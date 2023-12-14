@@ -1,3 +1,5 @@
 main:
-    num a = 10
-    output(a)
+    num b = 5
+    b = 10
+    num c = 10
+    b = 15

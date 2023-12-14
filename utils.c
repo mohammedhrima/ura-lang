@@ -13,6 +13,7 @@
 typedef struct Token Token;
 typedef struct Node Node;
 typedef enum Type Type;
+#define DEBUG 1
 
 enum Type
 {
@@ -40,9 +41,13 @@ enum Type
 struct Token
 {
     Type type;
-    char *character;
-    long number;
+    char *name;
     uintptr_t addr;
+    struct
+    {
+        char *character;
+        long number;
+    };
 };
 
 struct Node
@@ -52,52 +57,21 @@ struct Node
     Token *token;
 };
 
-void error(char *msg)
-{
-    // free memory before exiting
-    dprintf(2, "\033[0;31mError: %s\n", msg);
-    exit(1);
-}
-
-char *type_to_string(Type type)
-{
-    switch (type)
-    {
-    case eof_:
-        return "EOF";
-    case add_:
-        return "+";
-    case sub_:
-        return "-";
-    case mul_:
-        return "*";
-    case div_:
-        return "/";
-    case lparent_:
-        return "(";
-    case rparent_:
-        return ")";
-    case assign_:
-        return "=";
-    case void_var_:
-        return "void_var";
-    case num_val_:
-        return "num_val";
-    case char_val_:
-        return "char_val";
-    case num_var_:
-        return "num_var";
-    case char_var_:
-        return "char_var";
-    case func_call_:
-        return "function call";
-    case func_dec_:
-        return "function declaration";
-    default:
-        return "Unknown type";
-    }
-    return NULL;
-}
+// globals
+int asm_fd;
+FILE *fp;
+size_t size;
+char *text;
+int txt_pos;
+// tokens
+Token **tokens;
+int tk_len;
+int tk_pos;
+// variables
+Token **variables;
+int var_len;
+int var_pos;
+uintptr_t ptr;
 
 Type twine(Type type)
 {
@@ -108,7 +82,6 @@ Type twine(Type type)
     case char_var_:
         return num_var_;
     default:
-        error("in twine");
         break;
     }
     return 0;

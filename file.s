@@ -1,10 +1,11 @@
-.text
 .globl main
 main:
-    push  %rbp
-    movq   %rsp, %rbp
-    movl $10, -4(%rbp)
-    movl $11, -8(%rbp)
-    movl $12, -12(%rbp)
-    pop  %rbp
+    push   %rbp
+    mov    %rsp, %rbp
+    movl   $5, -4(%rbp)
+    movl   $10, -4(%rbp)
+    movl   $10, -8(%rbp)
+    movl   $15, -4(%rbp)
+    mov    $0, %rax
+    pop    %rbp
     ret
