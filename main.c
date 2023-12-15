@@ -472,7 +472,7 @@ Token *evaluate(Node *node)
     }
     default:
         break;
-    }
+    }    
     printf("\n");
     return NULL;
 }
