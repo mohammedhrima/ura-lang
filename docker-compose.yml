@@ -1,0 +1,10 @@
+version: "3.8"
+services:
+  client:
+    build: "./"
+    container_name: test_container
+    ports:
+      - '8080:8080'
+    volumes:
+      - ./:/app
+    restart: always
