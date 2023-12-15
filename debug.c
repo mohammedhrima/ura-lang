@@ -2,41 +2,30 @@
 
 char *type_to_string(Type type)
 {
-    switch (type)
+    struct
     {
-    case eof_:
-        return "EOF";
-    case add_:
-        return "+";
-    case sub_:
-        return "-";
-    case mul_:
-        return "*";
-    case div_:
-        return "/";
-    case lparent_:
-        return "(";
-    case rparent_:
-        return ")";
-    case assign_:
-        return "=";
-    case void_var_:
-        return "void_var";
-    case num_val_:
-        return "num_val";
-    case char_val_:
-        return "char_val";
-    case num_var_:
-        return "num_var";
-    case char_var_:
-        return "char_var";
-    case func_call_:
-        return "function call";
-    case func_dec_:
-        return "function declaration";
-    default:
-        return "Unknown type";
-    }
+        Type type;
+        char *name;
+    } Types[] = {
+        {eof_, "EOF"},
+        {add_, "+"},
+        {sub_, "-"},
+        {mul_, "*"},
+        {div_, "/"},
+        {lparent_, "("},
+        {rparent_, ")"},
+        {assign_, "="},
+        {void_var_, "void_var"},
+        {num_val_, "num_val"},
+        {char_val_, "char_val"},
+        {num_var_, "num_var"},
+        {char_var_, "char_var"},
+        {func_call_, "function call"},
+        {func_dec_, "function declaration"}};
+
+    for (int i = 0; sizeof(Types) / sizeof(*Types); i++)
+        if (Types[i].type == type)
+            return Types[i].name;
     return NULL;
 }
 
@@ -199,19 +188,28 @@ void debug(char *conv, ...)
                     ft_putstr(fd, type_to_string(token->type));
                     switch (token->type)
                     {
+                    case char_var_:
                     case void_var_:
+                    case num_var_:
                         ft_putstr(fd, ", name: ");
                         ft_putstr(fd, token->name);
+                    default:
                         break;
+                    }
+                    switch (token->type)
+                    {
                     case char_val_:
                         ft_putstr(fd, ", value: ");
                         ft_putstr(fd, token->character);
+                        ft_putstr(fd, " , number: LC");
+                        ft_putnbr(fd, token->LC);
                         break;
                     case num_val_:
                         ft_putstr(fd, ", value: ");
                         ft_putnbr(fd, token->number);
                         break;
                     default:
+                        // ft_putstr(fd, "Unkown");
                         break;
                     }
                 }
@@ -223,10 +221,10 @@ void debug(char *conv, ...)
                 error("in debug function");
                 break;
             }
+            // i++;
         }
         else
             ft_putchar(fd, conv[i]);
         i++;
     }
 }
-

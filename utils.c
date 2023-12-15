@@ -10,6 +10,7 @@
 #include <ctype.h>
 #include <stdint.h>
 #include <fcntl.h>
+#include <stdarg.h>
 typedef struct Token Token;
 typedef struct Node Node;
 typedef enum Type Type;
@@ -27,6 +28,7 @@ enum Type
     rparent_,
     assign_,
     // vars
+    data_type_,
     num_var_,
     char_var_,
     void_var_,
@@ -42,10 +44,14 @@ struct Token
 {
     Type type;
     char *name;
-    uintptr_t addr;
-    struct
+    uintptr_t ptr;
+    union
     {
-        char *character;
+        struct
+        {
+            char *character;
+            size_t LC;
+        };
         long number;
     };
 };
@@ -69,9 +75,11 @@ int tk_len;
 int tk_pos;
 // variables
 Token **variables;
+// Token **labels;
 int var_len;
 int var_pos;
 uintptr_t ptr;
+size_t LC;
 
 Type twine(Type type)
 {
@@ -80,9 +88,17 @@ Type twine(Type type)
     case num_var_:
         return num_val_;
     case char_var_:
-        return num_var_;
+        return char_val_;
     default:
         break;
     }
     return 0;
+}
+
+char *strjoin(char *left, char *right)
+{
+    char *res = calloc(strlen(left) + strlen(right) + 1, sizeof(char));
+    strcpy(res, left);
+    strcpy(res + strlen(res), right);
+    return res;
 }

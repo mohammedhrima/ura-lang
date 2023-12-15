@@ -1,5 +1,3 @@
 main:
-    num b = 5
-    b = 10
-    num c = 10
-    b = 15
+    num x = 10 + 12 * 5 + 2
+    output(num)
