@@ -3,8 +3,15 @@ services:
   client:
     build: "./"
     container_name: gcc_container
-    ports:
-      - '8080:8080'
     volumes:
       - ./:/app
     restart: always
+
+volumes:
+  container:
+    name: container
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /Users/mhrima/Desktop/container
