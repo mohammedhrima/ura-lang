@@ -1,10 +1,15 @@
-.globl main
+.section	.note.GNU-stack,"",@progbits
+.intel_syntax noprefix
+.text
+.globl	main
+
 main:
-   push   %rbp
-   mov    %rsp, %rbp
-   movl   $72, -4(%rbp)
-   mov    $0, %rax
-   pop    %rbp
+   push    rbp
+   mov     rbp, rsp
+   mov     rax, 0
+   pop     rbp
    ret
 
+.LC2:
+   .string "abc"
 

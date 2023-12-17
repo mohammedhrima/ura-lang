@@ -1,3 +1,2 @@
 main:
-    num x = 10 + 12 * 5 + 2
-    output(num)
+    output("abc")
