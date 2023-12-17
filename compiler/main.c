@@ -1,30 +1,4 @@
-#include "debug.c"
-
-FILE *fp;
-size_t size;
-char *text;
-int txt_pos;
-uintptr_t ptr;
-int asm_fd;
-
-Type types[255] = {
-    ['+'] = add_,
-    ['-'] = sub_,
-    ['*'] = mul_,
-    ['/'] = div_,
-    ['('] = lparent_,
-    [')'] = rparent_,
-    ['='] = assign_,
-};
-
-struct
-{
-    char *string;
-    Type type;
-} DataTypes[] = {
-    {"num ", num_var_},
-    {"char ", char_var_},
-};
+#include "utils.c"
 
 void free_token(Token *token)
 {
@@ -293,8 +267,12 @@ Node *prime()
         {
             node->token->type = func_call_;
             skip(lparent_);
-            // TODO: handle multiple params !!!
-            node->left = expr();
+            /*
+                add each param on left
+                and keep linking lisr from right
+            */
+            Node *tmp = node;
+            tmp->left = expr();
             skip(rparent_);
         }
         return node;
@@ -351,9 +329,15 @@ Token *evaluate(Node *node)
     Type type = node->token->type;
     switch (type)
     {
+    case void_var_:
+    {
+        Token *var = get_var(node->token->name);
+        if (var)
+            return var;
+        return node->token;
+    }
     case char_val_:
     case num_val_:
-    case void_var_:
     case char_var_:
     case num_var_:
         return node->token;
@@ -363,14 +347,14 @@ Token *evaluate(Node *node)
             - check if variable is does exists
         */
         // TODO: split assignement and initializing
-        debug("assign %s with %k\n", node->left->token->name, node->right->token);
+        // TODO: deep copy and shalow copy
         // check the compatibility
         left = evaluate(node->left);
         right = evaluate(node->right);
-        if (!check(left->type, char_var_, void_var_, num_var_, 0))
+        debug("assign %k with %k\n", left, right);
+
+        if (!isAssignValid(left, right))
             error("Invalid assignment");
-        if (left->type != void_var_ && twine(left->type) != right->type)
-            error("Incompatible type");
         to_find = get_var(left->name);
         if (!to_find && left->type == num_var_)
         {
@@ -386,7 +370,8 @@ Token *evaluate(Node *node)
             to_find = node->left->token;
             to_find->ptr = ptr;
             to_find = to_find;
-            printf("variable has name %s and value in .LC%ld\n", to_find->name, right->LC);
+            to_find->LC = right->LC;
+            printf("variable has name %s and value in .LC%zu\n", to_find->name, right->LC);
             new_variable(to_find);
         }
         else if (!to_find)
@@ -400,11 +385,11 @@ Token *evaluate(Node *node)
         {
         case num_var_:
             // printf("%ld", node->right->token->number);
-            dprintf(asm_fd, "   movl   $%ld, -%zu(%%rbp)\n", node->right->token->number, to_find->ptr);
+            dprintf(asm_fd, "   mov     QWORD PTR -%zu[rbp], %ld\n", to_find->ptr, node->right->token->number);
             break;
         case char_var_:
-            dprintf(asm_fd, "   leaq   .LC%zu(%%rip), %%rax\n", right->LC);
-            dprintf(asm_fd, "   movq   %%rax, -%zu(%%rbp)\n", to_find->ptr);
+            dprintf(asm_fd, "   lea     rax, .LC%zu[rip]\n", right->LC);
+            dprintf(asm_fd, "   mov     QWORD PTR -%zu[rbp], rax\n", to_find->ptr);
             break;
         default:
             break;
@@ -457,7 +442,6 @@ Token *evaluate(Node *node)
         else
         {
         }
-
         break;
     }
     case func_call_:
@@ -466,13 +450,18 @@ Token *evaluate(Node *node)
         if (strncmp("output", node->token->name, strlen("output")) == 0)
         {
             printf("found output\n");
+            while (node->left)
+            {
+                output(node->left->token);
+                node = node->left;
+            }
             // dprintf(asm_fd, "   ");
         }
         break;
     }
     default:
         break;
-    }    
+    }
     printf("\n");
     return NULL;
 }
@@ -506,10 +495,14 @@ int main(void)
     tk_pos = 0;
 
     // write the assembly
-    dprintf(asm_fd, ".globl main\n");
+    dprintf(asm_fd, ".section	.note.GNU-stack,\"\",@progbits\n");
+    dprintf(asm_fd, ".intel_syntax noprefix\n");
+    dprintf(asm_fd, ".text\n");
+    dprintf(asm_fd, ".globl	main\n\n");
+
     dprintf(asm_fd, "main:\n");
-    dprintf(asm_fd, "   push   %%rbp\n");
-    dprintf(asm_fd, "   mov    %%rsp, %%rbp\n");
+    dprintf(asm_fd, "   push    rbp\n");
+    dprintf(asm_fd, "   mov     rbp, rsp\n");
 
     Node *main = new_node(NULL);
     Node *curr = main;
@@ -520,8 +513,9 @@ int main(void)
         curr->right = new_node(NULL);
         curr = curr->right;
     }
-    dprintf(asm_fd, "   mov    $0, %%rax\n");
-    dprintf(asm_fd, "   pop    %%rbp\n");
+    // TODO: check exit status if changed
+    dprintf(asm_fd, "   mov     rax, 0\n");
+    dprintf(asm_fd, "   pop     rbp\n");
     dprintf(asm_fd, "   ret\n\n");
     for (int i = 0; i < tk_pos; i++)
     {
