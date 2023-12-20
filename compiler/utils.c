@@ -16,6 +16,9 @@ typedef struct Node Node;
 typedef enum Type Type;
 #define DEBUG 1
 
+void error(char *msg);
+Token *get_var(char *name);
+
 enum Type
 {
     eof_ = 11,
@@ -29,16 +32,46 @@ enum Type
     assign_,
     // vars
     data_type_,
-    num_var_,
-    char_var_,
-    void_var_,
-    // values
-    num_val_,
-    char_val_,
+    char_,
+    int_,
+    float_,
+    void_,
     // function
     func_dec_,
     func_call_,
 };
+
+char *type_to_string(Type type)
+{
+    struct
+    {
+        Type type;
+        char *name;
+    } Types[] = {
+        {eof_, "EOF"},
+        {add_, "+"},
+        {sub_, "-"},
+        {mul_, "*"},
+        {div_, "/"},
+        {lparent_, "("},
+        {rparent_, ")"},
+        {assign_, "="},
+        {data_type_, "data_type_"},
+        {char_, "char_"},
+        {int_, "int_"},
+        {float_, "float_"},
+        {void_, "void_"},
+        {func_dec_, "function declaration"},
+        {func_call_, "function call"},
+        {0, 0}};
+
+    for (int i = 0; Types[i].name; i++)
+        if (Types[i].type == type)
+            return Types[i].name;
+    // printf("-> %d\n", type);
+    error("error unkown type\n");
+    return NULL;
+}
 
 enum BuiltIn_enum
 {
@@ -56,10 +89,12 @@ struct Token
     {
         struct
         {
-            char *character;
-            size_t LC;
+            char *char_;
+            size_t index_;
         };
-        long number;
+        // TODO: protect from overflow
+        int int_;
+        float float_;
     };
 };
 
@@ -87,10 +122,17 @@ Token **variables;
 int var_len;
 int var_pos;
 uintptr_t ptr;
-size_t LC;
+size_t index_;
 
 // assembly fd
 int asm_fd;
+size_t rsp;
+size_t Label;
+
+// data types size
+size_t num_bit_size;
+size_t char_bit_size;
+size_t float_bit_pres;
 
 Type types[255] = {
     ['+'] = add_,
@@ -102,78 +144,17 @@ Type types[255] = {
     ['='] = assign_,
 };
 
-struct
-{
-    char *string;
-    Type type;
-} DataTypes[] = {
-    {"num ", num_var_},
-    {"char ", char_var_},
-};
+// struct
+// {
+//     char *string;
+//     Type type;
+// } DataTypes[] = {
+//     {"int ", int_},
+//     {"char ", char_},
+// };
 
 // built-ins assembly
-char *BuiltIns[100][100] = {
-    [strlen_] = {
-        "ft_strlen:",
-        "    push rbp\n",
-        "    mov rbp, rsp\n",
-        "    /* char *str */\n",
-        "    mov QWORD PTR -(str)[rbp], rbx",
-        "    /* size_t i = 0 */",
-        "    mov QWORD PTR -(i)[rbp], 0",
-        "    jmp .L2",
-        ".L3:",
-        "    /* i++ */",
-        "    add QWORD PTR -24[rbp], 1",
-        ".L2:",
-        "    mov rax, QWORD PTR -(i)[rbp]",
-        "    mov rdx, QWORD PTR -(str)[rbp]",
-        "    /* str + i */",
-        "    add rax, rdx",
-        "    movzx rax, BYTE PTR[rax]",
-        "    cmp rax, 0",
-        "    jne .L3",
-        "    /* return i */",
-        "    mov rax, QWORD PTR -(str)[rbp]",
-        "    pop rbp",
-        "    ret",
-        NULL,
-    },
-
-    [putstr_] = {
-        "ft_putstr:",
-        "    push rbp",
-        "    mov rbp, rsp",
-        "    /* char *str */",
-        "    mov QWORD PTR -32[rbp], rbx",
-        "    /* fd */",
-        "    mov rdi, 1",
-        "    /* pointer */",
-        "    mov rsi, rbx",
-        "    call ft_strlen",
-        "    /* length */",
-        "    mov rdx, rax",
-        "    call write@PLT",
-        "    leave",
-        "    ret",
-        NULL,
-    },
-
-    NULL};
-
-// TODO: check all data types
-bool isAssignValid(Token *left, Token *right)
-{
-    if (right->type == void_var_)
-        return false;
-    if (left->type == void_var_)
-        return true;
-    if (left->type == num_var_ && (right->type == num_var_ || right->type == num_val_))
-        return true;
-    if (left->type == char_var_ && (right->type == char_var_ || right->type == char_val_))
-        return true;
-    return false;
-}
+bool BuiltIns[100];
 
 char *strjoin(char *left, char *right)
 {
@@ -183,146 +164,13 @@ char *strjoin(char *left, char *right)
     return res;
 }
 
-// DEBUG
-char *type_to_string(Type type)
-{
-    struct
-    {
-        Type type;
-        char *name;
-    } Types[] = {
-        {eof_, "EOF"},
-        {add_, "+"},
-        {sub_, "-"},
-        {mul_, "*"},
-        {div_, "/"},
-        {lparent_, "("},
-        {rparent_, ")"},
-        {assign_, "="},
-        {void_var_, "void_var"},
-        {num_val_, "num_val"},
-        {char_val_, "char_val"},
-        {num_var_, "num_var"},
-        {char_var_, "char_var"},
-        {func_call_, "function call"},
-        {func_dec_, "function declaration"}};
-
-    for (int i = 0; sizeof(Types) / sizeof(*Types); i++)
-        if (Types[i].type == type)
-            return Types[i].name;
-    return NULL;
-}
-
 // built in functions
-// printing
-long power(long exponent, int p)
-{
-    if (exponent < 0)
-        return 0; // negative exponents are not handled in this simple example
-
-    long result = 1;
-    for (long i = 0; i < exponent; i++)
-        result *= p;
-    return result;
-}
-
-void ft_putchar(int fd, int c)
-{
-    write(fd, &c, 1);
-}
-
-void ft_putstr(int fd, char *str)
-{
-    if (!str)
-        return (ft_putstr(fd, "(null)"));
-    write(fd, str, strlen(str));
-}
-
-void ft_putnbr(int fd, long int num)
-{
-    if (num < 0)
-    {
-        ft_putchar(fd, '-');
-        num = -num;
-    }
-    if (num >= 0 && num < 10)
-        ft_putchar(fd, '0' + num);
-    if (num >= 10)
-    {
-        ft_putnbr(fd, num / 10);
-        ft_putchar(fd, num % 10 + '0');
-    }
-}
-// TODO: see if you can remove this shit !!!
-int numberOfDigits(long n)
-{
-    int count = 0;
-    while (n != 0)
-    {
-        count++;
-        n /= 10;
-    }
-    return count;
-}
-
-void ft_putFixedPoint(int fd, long number, int exponent)
-{
-    long p = power(exponent, 10);
-    long int_part = exponent ? number / p : number;
-    long frac_part = exponent ? number % p : 0;
-    ft_putnbr(fd, int_part);
-    if (exponent)
-    {
-        int limit = exponent - numberOfDigits(frac_part);
-        for (int i = 0; i < limit; i++)
-            ft_putchar(fd, '0');
-        ft_putnbr(fd, frac_part);
-    }
-}
-
-void ft_putnbrBase(int fd, size_t num, char *to)
-{
-    size_t len = strlen(to);
-    if (num < len)
-        ft_putchar(fd, to[num]);
-    if (num >= len)
-    {
-        ft_putnbrBase(fd, num / len, to);
-        ft_putchar(fd, to[num % len]);
-    }
-}
-
-void ft_putfloat(int fd, double num, int decimal_places)
-{
-    // TODO: protect it from overflow
-    if (num < 0.0)
-    {
-        ft_putchar(fd, '-');
-        num = -num;
-    }
-    long int_part = (long)num;
-    double float_part = num - (double)int_part;
-    while (decimal_places > 0)
-    {
-        float_part *= 10;
-        decimal_places--;
-    }
-    ft_putnbr(fd, int_part);
-    if (decimal_places)
-    {
-        ft_putchar(fd, '.');
-        ft_putnbr(fd, (long)round(float_part));
-    }
-}
 void error(char *msg)
 {
-    // free memory before exiting
-    ft_putstr(2, "\033[0;31mError: ");
-    ft_putstr(2, msg);
-    ft_putstr(2, "\033[0m\n");
+    // TODO: free memory before exiting
+    dprintf(2, "\033[0;31mError: %s\033[0m\n", msg);
     exit(1);
 }
-
 void debug(char *conv, ...)
 {
     size_t len = strlen(conv);
@@ -339,58 +187,47 @@ void debug(char *conv, ...)
             switch (conv[i])
             {
             case 'c':
-                ft_putchar(fd, va_arg(args, int));
+                dprintf(fd, "%c", va_arg(args, int));
                 break;
             case 's':
-                ft_putstr(fd, va_arg(args, char *));
+                dprintf(fd, "%s", va_arg(args, char *));
                 break;
             case 'p':
-                ft_putstr(fd, "0x");
-                ft_putnbrBase(fd, (size_t)(va_arg(args, void *)), "0123456789abcdef");
+                dprintf(fd, "%p", (size_t)(va_arg(args, void *)));
                 break;
             case 'x':
-                ft_putnbrBase(fd, (size_t)va_arg(args, void *), "0123456789abcdef");
+                dprintf(fd, "%x", (size_t)va_arg(args, void *));
                 break;
             case 'X':
-                ft_putnbrBase(fd, (size_t)va_arg(args, void *), "0123456789ABCDEF");
+                dprintf(fd, "%x", (size_t)va_arg(args, void *));
                 break;
             case 'd':
-                ft_putnbr(fd, (int)va_arg(args, int));
+                dprintf(fd, "%d", (int)va_arg(args, int));
                 break;
             case 'f':
-                ft_putfloat(fd, (double)va_arg(args, double), 10);
+                dprintf(fd, "%f", va_arg(args, double));
                 break;
             case '%':
-                ft_putchar(fd, '%');
+                dprintf(fd, "%%");
                 break;
             case 'k':
             {
                 Token *token = (Token *)va_arg(args, Token *);
                 if (token)
                 {
-                    ft_putstr(fd, "type: ");
-                    ft_putstr(fd, type_to_string(token->type));
+                    dprintf(fd, "type: %s, ", type_to_string(token->type));
+                    if (token->name)
+                        dprintf(fd, "name: %s, ", token->name);
                     switch (token->type)
                     {
-                    case char_var_:
-                    case void_var_:
-                    case num_var_:
-                        ft_putstr(fd, ", name: ");
-                        ft_putstr(fd, token->name);
-                    default:
+                    case char_:
+                        dprintf(fd, "value: %s, LC: %zu, ", token->char_, token->index_);
                         break;
-                    }
-                    switch (token->type)
-                    {
-                    case char_val_:
-                        ft_putstr(fd, ", value: ");
-                        ft_putstr(fd, token->character);
-                        ft_putstr(fd, " , number: LC");
-                        ft_putnbr(fd, token->LC);
+                    case int_:
+                        dprintf(fd, "value: %d, ", token->int_);
                         break;
-                    case num_val_:
-                        ft_putstr(fd, ", value: ");
-                        ft_putnbr(fd, token->number);
+                    case float_:
+                        dprintf(fd, "value: %f, ", token->float_);
                         break;
                     default:
                         // ft_putstr(fd, "Unkown");
@@ -398,17 +235,16 @@ void debug(char *conv, ...)
                     }
                 }
                 else
-                    ft_putstr(fd, "(null)");
+                    dprintf(fd, "(null)");
                 break;
             }
             default:
                 error("in debug function");
                 break;
             }
-            // i++;
         }
         else
-            ft_putchar(fd, conv[i]);
+            dprintf(fd,"%c", conv[i]);
         i++;
     }
 }
@@ -417,28 +253,21 @@ void output(Token *token)
 {
     switch (token->type)
     {
-    case char_val_:
-    case char_var_:
+    case char_:
     {
-        for (int i = 0; BuiltIns[strlen_][i]; i++)
-        {
-            if (strstr(BuiltIns[strlen_][i], "%zu[rbp]"))
-            {
-                printf(BuiltIns[strlen_][i], LC++);
-                printf("\n");
-            }
-            else
-                printf("%s\n", BuiltIns[strlen_][i]);
-        }
-        printf("\n");
+        BuiltIns[strlen_] = true;
+        BuiltIns[putstr_] = true;
+        printf("found %s, load string from STR%zu  \n", type_to_string(token->type), token->index_);
+        dprintf(asm_fd, "   lea     rax, STR%zu[rip]\n", token->index_);
+        dprintf(asm_fd, "   mov QWORD PTR -8[rbp], rax\n");
+        dprintf(asm_fd, "   mov rbx, rax\n");
+        dprintf(asm_fd, "   call ft_putstr\n");
         break;
     }
-    case num_var_:
-    case num_val_:
+    case int_:
+    case void_:
         break;
-    case void_var_:
         break;
-
     default:
         error("Error in output unknown type");
         break;

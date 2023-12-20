@@ -1,35 +1,44 @@
+.section	.note.GNU-stack,"",@progbits
 .intel_syntax noprefix
 .text
 	.globl	main
 
 ft_strlen:
-	push rbp
+	push	rbp
+	mov	rbp, rsp
+	mov	QWORD PTR -24[rbp], rdi
 	mov	QWORD PTR -8[rbp], 0
 	jmp	.L2
 .L3:
 	add	QWORD PTR -8[rbp], 1
 .L2:
-	mov	rdx, rdi
+	mov	rdx, QWORD PTR -24[rbp]
 	mov	rax, QWORD PTR -8[rbp]
 	add	rax, rdx
-	movzx ebx, BYTE PTR [rax]
-	cmp	ebx, 0
+	movzx	eax, BYTE PTR [rax]
+	test	al, al
 	jne	.L3
 	mov	rax, QWORD PTR -8[rbp]
+	mov rsp, rbp
 	pop	rbp
 	ret
 
 ft_putstr:
 	push	rbp
-	call ft_strlen
-	mov	rdx, rax
+	mov	rbp, rsp
+	sub	rsp, 32
+	mov	QWORD PTR -24[rbp], rdi
+	mov	rax, QWORD PTR -24[rbp]
+	mov	rdi, rax
+	call	ft_strlen
 	mov	QWORD PTR -8[rbp], rax
-	mov	rax, rdi
+	mov	rdx, QWORD PTR -8[rbp]
+	mov	rax, QWORD PTR -24[rbp]
 	mov	rsi, rax
-	mov	rdi, 1
+	mov	edi, 1
 	call	write@PLT
-	mov	rax, QWORD PTR -8[rbp]
-	leave
+	mov rsp, rbp
+	pop rbp
 	ret
 
 .LC0:
@@ -41,8 +50,9 @@ main:
 	sub	rsp, 16
 	lea	rax, .LC0[rip]
 	mov	QWORD PTR -8[rbp], rax
+	mov	rax, QWORD PTR -8[rbp]
 	mov	rdi, rax
 	call	ft_putstr
+	mov	eax, 0
 	leave
 	ret
-	.section	.note.GNU-stack,"",@progbits
