@@ -6,10 +6,4 @@
 main:
    push    rbp
    mov     rbp, rsp
-   mov     rax, 0
-   pop     rbp
-   ret
-
-.LC2:
-   .string "abc"
-
+   sub     rsp, 30

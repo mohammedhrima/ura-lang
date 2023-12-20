@@ -3,23 +3,10 @@
 void free_token(Token *token)
 {
     printf("free token has type %s\n", type_to_string(token->type));
-    switch (token->type)
-    {
-    case void_var_:
-    case num_var_:
-    case func_call_:
+    if (token->name)
         free(token->name);
-        break;
-    case char_val_:
-        free(token->character);
-        break;
-    case char_var_:
-        free(token->name);
-        free(token->character);
-        break;
-    default:
-        break;
-    }
+    if (token->type == char_)
+        free(token->char_);
     free(token);
 }
 
@@ -47,19 +34,33 @@ Token *new_token(int s, int e, Type type)
     case rparent_:
     case assign_:
         break;
-    case void_var_:
+    case data_type_:
+    case void_:
         tokens[tk_pos]->name = calloc(e - s + 1, sizeof(char));
         strncpy(tokens[tk_pos]->name, text + s, e - s);
         break;
-    case char_val_:
-        LC++;
-        tokens[tk_pos]->LC = LC;
-        tokens[tk_pos]->character = calloc(e - s + 1, sizeof(char));
-        strncpy(tokens[tk_pos]->character, text + s, e - s);
+    case char_:
+        index_++;
+        tokens[tk_pos]->index_ = index_;
+        tokens[tk_pos]->char_ = calloc(e - s + 1, sizeof(char));
+        strncpy(tokens[tk_pos]->char_, text + s, e - s);
         break;
-    case num_val_:
+    case int_:
         while (s < e)
-            tokens[tk_pos]->number = 10 * tokens[tk_pos]->number + text[s++] - '0';
+            tokens[tk_pos]->int_ = 10 * tokens[tk_pos]->int_ + text[s++] - '0';
+        break;
+    case float_:
+        while (s < e)
+        {
+            tokens[tk_pos]->float_ = 10 * tokens[tk_pos]->float_ + text[s++] - '0';
+            if (text[s] == '.')
+            {
+                s++;
+                break;
+            }
+        }
+        while (s < e)
+            tokens[tk_pos]->float_ = tokens[tk_pos]->float_ + (float)(text[s++] - '0') / 10;
         break;
     default:
         break;
@@ -86,6 +87,12 @@ void build_tokens()
 {
     Token *token;
     int start = 0;
+    char *DataTypes[] = {
+        "char ",
+        "int ",
+        "float ",
+        NULL};
+
     while (isspace(text[txt_pos]))
         txt_pos++;
     if (strncmp(&text[txt_pos], "main:\n", strlen("main:\n")))
@@ -101,12 +108,19 @@ void build_tokens()
             txt_pos++;
             continue;
         }
-        for (int i = 0; i < sizeof(DataTypes) / sizeof(*DataTypes); i++)
+        for (int i = 0; DataTypes[i]; i++)
         {
-            if (strncmp(DataTypes[i].string, text + txt_pos, strlen(DataTypes[i].string)) == 0)
+            if (strncmp(DataTypes[i], text + txt_pos, strlen(DataTypes[i])) == 0)
             {
-                token = new_token(0, 0, DataTypes[i].type);
-                txt_pos += strlen(DataTypes[i].string);
+                // TODO: verfy this error message
+                if (tk_pos > 1 && tokens[tk_pos - 1]->type == data_type_)
+                    error("Unexpected data type after data type");
+                token = new_token(txt_pos, txt_pos + strlen(DataTypes[i]) - 1, data_type_);
+                txt_pos += strlen(DataTypes[i]) - 2;
+                while (isspace(text[txt_pos]))
+                    txt_pos++;
+                if (!isalpha(text[txt_pos++]))
+                    error("Expected identifier after data type");
             }
         }
         if (token && token->type)
@@ -123,15 +137,26 @@ void build_tokens()
             txt_pos++;
         if (txt_pos > start)
         {
-            new_token(start, txt_pos, void_var_);
+            new_token(start, txt_pos, void_);
             continue;
         }
-        while (isdigit(text[txt_pos]))
-            txt_pos++;
-        if (txt_pos > start)
+        if (isdigit(text[txt_pos]))
         {
-            new_token(start, txt_pos, num_val_);
-            continue;
+            Type type = int_;
+            while (isdigit(text[txt_pos]))
+                txt_pos++;
+            if (text[txt_pos] == '.')
+            {
+                type = float_;
+                txt_pos++;
+            }
+            while (isdigit(text[txt_pos]))
+                txt_pos++;
+            if (txt_pos > start)
+            {
+                new_token(start, txt_pos, type);
+                continue;
+            }
         }
         if (strchr("\"\'", text[txt_pos]))
         {
@@ -140,7 +165,7 @@ void build_tokens()
                 txt_pos++;
             if (text[txt_pos++] != quote)
                 error("Syntax");
-            new_token(start + 1, txt_pos - 1, char_val_);
+            new_token(start + 1, txt_pos - 1, char_);
             continue;
         }
         error("tokenizing");
@@ -149,16 +174,17 @@ void build_tokens()
 }
 
 // build tree
-void free_node(Node *node)
-{
-    if (node)
-    {
-        free_node(node->left);
-        free_node(node->right);
-        free_token(node->token);
-        free(node);
-    }
-}
+// void free_node(Node *node)
+// {
+//     if (node)
+//     {
+//         free_node(node->left);
+//         free_node(node->right);
+//         free_token(node->token);
+//         free(node);
+//     }
+// }
+
 Node *new_node(Token *token)
 {
     Node *new = calloc(1, sizeof(Node));
@@ -210,7 +236,7 @@ Node *assign()
         node->right = add_sub();
         // printf("found %s\n", type_to_string(node->token->type));
         // printf("    left : %s, %s\n", type_to_string(node->left->token->type), node->left->token->name);
-        // printf("    right: %s, %ld\n", type_to_string(node->right->token->type), node->right->token->number);
+        // printf("    right: %s, %ld\n", type_to_string(node->right->token->type), node->right->token->int_);
         left = node;
     }
     return left;
@@ -247,20 +273,34 @@ Node *prime()
     // printf("call prime\n");
     switch (tokens[tk_pos]->type)
     {
-    case char_var_:
-    case num_var_:
+    case char_:
+    case int_:
+    case float_:
+    case eof_:
     {
-        // TODO: check redefined variable
-        // printf("found %s\n", type_to_string(tokens[tk_pos]->type));
-        tk_pos++;
-        if (tokens[tk_pos]->type != void_var_)
-            error("Expected variable name");
-        tokens[tk_pos]->type = tokens[tk_pos - 1]->type;
-        free_token(tokens[tk_pos - 1]);
-        tokens[tk_pos - 1] = NULL;
         return new_node(tokens[tk_pos++]);
     }
-    case void_var_:
+    case data_type_:
+    {
+        // TODO: check if variable already exists
+        Type type;
+        if (strcmp(tokens[tk_pos]->name, "int") == 0)
+            type = int_;
+        else if (strcmp(tokens[tk_pos]->name, "float") == 0)
+            type = float_;
+        else if (strcmp(tokens[tk_pos]->name, "char") == 0)
+            type = char_;
+        else
+            error("in prime in data type");
+        tk_pos++;
+        Node *node = prime();
+        if (get_var(node->token->name))
+            error("Variable already exists");
+        node->token->type = type;
+        new_variable(node->token);
+        return node;
+    }
+    case void_:
     {
         Node *node = new_node(tokens[tk_pos++]);
         if (tokens[tk_pos]->type == lparent_)
@@ -269,20 +309,14 @@ Node *prime()
             skip(lparent_);
             /*
                 add each param on left
-                and keep linking lisr from right
+                and keep linking list from right
             */
             Node *tmp = node;
             tmp->left = expr();
             skip(rparent_);
+            return node;
         }
         return node;
-    }
-    case eof_:
-    case char_val_:
-    case num_val_:
-    {
-        // printf("found %s\n", type_to_string(tokens[tk_pos]->type));
-        return new_node(tokens[tk_pos++]);
     }
     case lparent_:
     {
@@ -292,7 +326,7 @@ Node *prime()
         return node;
     }
     default:
-        error("in prime\n");
+        error("in prime");
         break;
     }
     return NULL;
@@ -329,17 +363,10 @@ Token *evaluate(Node *node)
     Type type = node->token->type;
     switch (type)
     {
-    case void_var_:
-    {
-        Token *var = get_var(node->token->name);
-        if (var)
-            return var;
-        return node->token;
-    }
-    case char_val_:
-    case num_val_:
-    case char_var_:
-    case num_var_:
+    case void_:
+    case char_:
+    case int_:
+    case float_:
         return node->token;
     case assign_:
         /*
@@ -349,30 +376,41 @@ Token *evaluate(Node *node)
         // TODO: split assignement and initializing
         // TODO: deep copy and shalow copy
         // check the compatibility
+        printf("%s\n", type_to_string(node->left->token->type));
         left = evaluate(node->left);
         right = evaluate(node->right);
+        // assert(0);
+        // if(!left)
+        //     error("assignement, left is null");
         debug("assign %k with %k\n", left, right);
 
-        if (!isAssignValid(left, right))
+        if (!left->name || left->type != right->type)
             error("Invalid assignment");
-        to_find = get_var(left->name);
-        if (!to_find && left->type == num_var_)
+        if (left->type == void_ && !(to_find = get_var(left->name)))
+            error("Undeclared variable");
+        else
+            to_find = left;
+        if (to_find->type == float_)
         {
             ptr += 4;
-            to_find = node->left->token;
             to_find->ptr = ptr;
-            printf("new variable has name %s and value %ld\n", to_find->name, node->right->token->number);
-            new_variable(to_find);
+            to_find->float_ = right->float_;
+            printf("new variable has name %s and value %f\n", to_find->name, to_find->float_);
         }
-        else if (!to_find && left->type == char_var_)
+        else if (to_find->type == int_)
+        {
+            ptr += 4;
+            to_find->ptr = ptr;
+            to_find->int_ = right->int_;
+            printf("new variable has name %s and value %d\n", to_find->name, to_find->int_);
+        }
+        else if (left->type == char_)
         {
             ptr += 8;
-            to_find = node->left->token;
             to_find->ptr = ptr;
             to_find = to_find;
-            to_find->LC = right->LC;
-            printf("variable has name %s and value in .LC%zu\n", to_find->name, right->LC);
-            new_variable(to_find);
+            to_find->index_ = right->index_;
+            printf("variable has name %s and value in .STR%zu\n", to_find->name, right->index_);
         }
         else if (!to_find)
             error("Undeclared variable");
@@ -383,15 +421,25 @@ Token *evaluate(Node *node)
 #endif
         switch (to_find->type)
         {
-        case num_var_:
-            // printf("%ld", node->right->token->number);
-            dprintf(asm_fd, "   mov     QWORD PTR -%zu[rbp], %ld\n", to_find->ptr, node->right->token->number);
+        case int_:
+            // printf("%ld", node->right->token->int_);
+            dprintf(asm_fd, "   mov     QWORD PTR -%zu[rbp], %ld\n", to_find->ptr, to_find->int_);
             break;
-        case char_var_:
-            dprintf(asm_fd, "   lea     rax, .LC%zu[rip]\n", right->LC);
+#if 1
+        case float_:
+            uint32_t u = *(uint32_t *)(&to_find->float_);
+            printf("store float\n");
+            // TODO: check xmms
+            dprintf(asm_fd, "   movss	xmm1, DWORD PTR .LC%zu[rip]\n");
+            dprintf(asm_fd, "   movss	DWORD PTR -%zu[rbp], xmm1\n");
+            break;
+#endif
+        case char_:
+            dprintf(asm_fd, "   lea     rax, .STR%zu[rip]\n", right->index_);
             dprintf(asm_fd, "   mov     QWORD PTR -%zu[rbp], rax\n", to_find->ptr);
             break;
         default:
+            error("add assembly for this one");
             break;
         }
         break;
@@ -402,36 +450,44 @@ Token *evaluate(Node *node)
     {
         Token *left = evaluate(node->left);
         Token *right = evaluate(node->right);
-        if (check(void_var_, left->type, right->type, 0))
-            error("Undeclared variable in math operation");
+        /*
+            TODO: there could be no declaed variable
+            in case of sending param to function
+        */
+        if (left->type == void_ && !(left = get_var(left->name)))
+            error("Undeclared variable, left");
+        if (right->type == void_ && !(right = get_var(right->name)))
+            error("Undeclared variable, right");
+        debug("do %s between %k with %k\n", type_to_string(node->token->type), left, right);
+
         if (left->type == right->type)
         {
             node->token->type = left->type;
             switch (left->type)
             {
-            case num_val_:
+            case int_:
                 if (type == add_)
-                    node->token->number = left->number + right->number;
+                    node->token->int_ = left->int_ + right->int_;
                 else if (type == sub_)
-                    node->token->number = left->number - right->number;
+                    node->token->int_ = left->int_ - right->int_;
                 else if (type == mul_)
-                    node->token->number = left->number * right->number;
+                    node->token->int_ = left->int_ * right->int_;
                 else if (type == div_)
                 {
-                    if (right->number == 0)
+                    if (right->int_ == 0)
                         error("can't devide by 0");
-                    node->token->number = left->number / right->number;
+                    node->token->int_ = left->int_ / right->int_;
                 }
                 break;
-            case char_val_:
-                left->LC = 0;
-                right->LC = 0;
+            case char_:
+                left->index_ = 0;
+                right->index_ = 0;
                 if (type == add_)
-                    node->token->character = strjoin(left->character, right->character);
+                    node->token->char_ = strjoin(left->char_, right->char_);
                 else
                     error("invalid operation for characters");
-                type = char_val_;
-                node->token->LC = LC++;
+                type = char_;
+                node->token->index_ = index_++;
                 break;
             default:
                 error("math operation");
@@ -441,20 +497,17 @@ Token *evaluate(Node *node)
         }
         else
         {
+            // TODO: handle this case
         }
         break;
     }
     case func_call_:
     {
-        printf("found function call has name '%s'\n", node->left->token->name);
+        printf("found function call has name '%s'\n", node->token->name);
         if (strncmp("output", node->token->name, strlen("output")) == 0)
         {
             printf("found output\n");
-            while (node->left)
-            {
-                output(node->left->token);
-                node = node->left;
-            }
+            output(evaluate(node->left));
             // dprintf(asm_fd, "   ");
         }
         break;
@@ -486,7 +539,7 @@ int main(void)
     fclose(fp);
     printf("%s\n\n", text);
 
-    LC = 1;
+    index_ = 1;
     tk_len = var_len = 100;
     tokens = calloc(tk_len, sizeof(Token *));
     variables = calloc(tk_len, sizeof(Token *));
@@ -494,15 +547,18 @@ int main(void)
     free(text);
     tk_pos = 0;
 
+    rsp = 30;
+    Label = 2; // label from where to start, TODO: verify all label then set start label
     // write the assembly
     dprintf(asm_fd, ".section	.note.GNU-stack,\"\",@progbits\n");
     dprintf(asm_fd, ".intel_syntax noprefix\n");
     dprintf(asm_fd, ".text\n");
     dprintf(asm_fd, ".globl	main\n\n");
-
     dprintf(asm_fd, "main:\n");
     dprintf(asm_fd, "   push    rbp\n");
     dprintf(asm_fd, "   mov     rbp, rsp\n");
+    dprintf(asm_fd, "   sub     rsp, %zu\n", rsp);
+    // TODO: verify rsp position
 
     Node *main = new_node(NULL);
     Node *curr = main;
@@ -515,12 +571,59 @@ int main(void)
     }
     // TODO: check exit status if changed
     dprintf(asm_fd, "   mov     rax, 0\n");
-    dprintf(asm_fd, "   pop     rbp\n");
+    dprintf(asm_fd, "   leave\n");
     dprintf(asm_fd, "   ret\n\n");
     for (int i = 0; i < tk_pos; i++)
     {
-        if (tokens[i] && tokens[i]->type == char_val_ && tokens[i]->LC)
-            dprintf(asm_fd, ".LC%zu:\n   .string \"%s\"\n", tokens[i]->LC, tokens[i]->character);
+        // test char variable before making any modification
+        if (!tokens[i]->name && tokens[i]->index_ && tokens[i]->type == char_)
+            dprintf(asm_fd, "STR%zu:\n   .string \"%s\"\n", tokens[i]->index_, tokens[i]->char_);
+    }
+    if (BuiltIns[strlen_])
+    {
+        dprintf(asm_fd, "ft_putstr:\n");
+        dprintf(asm_fd, "   push rbp\n");
+        dprintf(asm_fd, "   mov rbp, rsp\n");
+        dprintf(asm_fd, "   /* char *str */\n");
+        dprintf(asm_fd, "   mov QWORD PTR -8[rbp], rbx\n");
+        dprintf(asm_fd, "   /* fd */\n");
+        dprintf(asm_fd, "   mov rdi, 1\n");
+        dprintf(asm_fd, "   /* pointer */\n");
+        dprintf(asm_fd, "   mov rsi, rbx\n");
+        dprintf(asm_fd, "   call ft_strlen\n");
+        dprintf(asm_fd, "   /* lenght */\n");
+        dprintf(asm_fd, "   mov rdx, rax\n");
+        dprintf(asm_fd, "   call write@PLT\n");
+        dprintf(asm_fd, "   mov rsp, rbp\n");
+        dprintf(asm_fd, "   pop rbp\n");
+        dprintf(asm_fd, "   ret\n\n");
+    }
+    if (BuiltIns[putstr_])
+    {
+        dprintf(asm_fd, "ft_strlen:\n");
+        dprintf(asm_fd, "   push rbp\n");
+        dprintf(asm_fd, "   mov rbp, rsp\n");
+        dprintf(asm_fd, "   /* char *str */\n");
+        dprintf(asm_fd, "   mov QWORD PTR -8[rbp], rbx\n");
+        dprintf(asm_fd, "   /* size_t i = 0 */\n");
+        dprintf(asm_fd, "   mov QWORD PTR -16[rbp], 0\n");
+        dprintf(asm_fd, "   jmp .L2\n");
+        dprintf(asm_fd, ".L3:\n");
+        dprintf(asm_fd, "   /* i++ */\n");
+        dprintf(asm_fd, "   add QWORD PTR -16[rbp], 1\n");
+        dprintf(asm_fd, ".L2:\n");
+        dprintf(asm_fd, "   mov rax, QWORD PTR -8[rbp]\n");
+        dprintf(asm_fd, "   mov rdx, QWORD PTR -16[rbp]\n");
+        dprintf(asm_fd, "   /* str + i */\n");
+        dprintf(asm_fd, "   add rax, rdx\n");
+        dprintf(asm_fd, "   movzx rax, BYTE PTR[rax]\n");
+        dprintf(asm_fd, "   cmp rax, 0\n");
+        dprintf(asm_fd, "   jne .L3\n");
+        dprintf(asm_fd, "   /* return i */\n");
+        dprintf(asm_fd, "   mov rax, QWORD PTR -16[rbp]\n");
+        dprintf(asm_fd, "   mov rsp, rbp\n");
+        dprintf(asm_fd, "   pop rbp\n");
+        dprintf(asm_fd, "   ret\n\n");
     }
     dprintf(asm_fd, "\n");
 

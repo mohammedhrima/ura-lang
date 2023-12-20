@@ -8,33 +8,31 @@
 
 ft_strlen:
     push rbp
-    mov rbp, rsp
     /* char *str */
-    mov QWORD PTR -16[rbp], rbx
+    mov QWORD PTR -8[rbp], rbx
     /* size_t i = 0 */
-    mov QWORD PTR -24[rbp], 0
+    mov QWORD PTR -16[rbp], 0
     jmp .L2
 .L3:
     /* i++ */
-    add QWORD PTR -24[rbp], 1
+    add QWORD PTR -16[rbp], 1
 .L2:
-    mov rax, QWORD PTR -16[rbp]
-    mov rdx, QWORD PTR -24[rbp]
+    mov rax, QWORD PTR -8[rbp]
+    mov rdx, QWORD PTR -16[rbp]
     /* str + i */
     add rax, rdx
     movzx rax, BYTE PTR[rax]
     cmp rax, 0
     jne .L3
     /* return i */
-    mov rax, QWORD PTR -24[rbp]
+    mov rax, QWORD PTR -16[rbp]
     pop rbp
-    ret
+    ret       
 
 ft_putstr:
     push rbp
-    mov rbp, rsp
     /* char *str */
-    mov QWORD PTR -32[rbp], rbx
+    mov QWORD PTR -8[rbp], rbx
     /* fd */
     mov rdi, 1
     /* pointer */
@@ -43,12 +41,13 @@ ft_putstr:
     /* lenght */
     mov rdx, rax
     call write@PLT
-    leave
+    pop rbp
     ret
 
 main:
     push rbp
     mov rbp, rsp
+    sub rsp, 24
     lea rax, .LC0[rip]
     mov QWORD PTR -8[rbp], rax
     mov rbx, rax

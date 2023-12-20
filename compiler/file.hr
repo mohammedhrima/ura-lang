@@ -1,2 +1,2 @@
 main:
-    output("abc")
+    float x = 10.5

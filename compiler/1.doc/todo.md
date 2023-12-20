@@ -1,45 +1,27 @@
-- syntax:
-    - data types:
-        + num,char
-        - arrays, object
-    + math operation: +, -, *, /, ()
-    - output built in:
-        + write
-        + putchar
-        + strlen
-        + putstr
-        - putnbr
-        - putfloat
+- recap:
+    - int
+    - char
 
-- general:
-    - memory management
-    - data types methods
-    - operators:
-        logical, cemparision
-    - loops, statements
-    - OOP
-    - functions, class
-    - build a web server using it
-    - compiler bdarija
+- data types:
+    + int 
+    + char
+    - float
+    - arrays
+    - class data types: (optimized version of each known data type)
 
-- Error handeling:
-    - forgot " or '
-    - unknown data type
-    - tab level after :
++ math operation:
+    - negative numbers
+    + +, -, ()
+    - *, /:
+        - operation between float and int
 
-+ progress:
-    + 15 dec: 804 line
+- output built in:
+    - check type
+    - depends on type call function inside output
 
-- syntax:
-    num a = 123
-    char c = "acds"
-    num[8] a // array of ints 8d
-    a = [10, 20, 30, 42]
+- function call
+    - before calling function push rbp to the stack and pop it later
+    - each function has its own rbp
 
-    if condition:
-        bloc of code
-
-    while condition:
-        bloc of code
-
-- verify all TODO's
+- protect rsp
+- check MAX_INT, MIN_INT ...
