@@ -50,9 +50,10 @@ Token *new_token(int s, int e, Type type)
             tokens[tk_pos]->int_ = 10 * tokens[tk_pos]->int_ + text[s++] - '0';
         break;
     case float_:
+        float f = 0.0;
         while (s < e)
         {
-            tokens[tk_pos]->float_ = 10 * tokens[tk_pos]->float_ + text[s++] - '0';
+            f = 10 * f + text[s++] - '0';
             if (text[s] == '.')
             {
                 s++;
@@ -60,7 +61,10 @@ Token *new_token(int s, int e, Type type)
             }
         }
         while (s < e)
-            tokens[tk_pos]->float_ = tokens[tk_pos]->float_ + (float)(text[s++] - '0') / 10;
+            f = f + (float)(text[s++] - '0') / 10;
+        index_++;
+        tokens[tk_pos]->index_ = index_;
+        tokens[tk_pos]->float_ = *(uint32_t *)(&f);
         break;
     default:
         break;
@@ -174,16 +178,16 @@ void build_tokens()
 }
 
 // build tree
-// void free_node(Node *node)
-// {
-//     if (node)
-//     {
-//         free_node(node->left);
-//         free_node(node->right);
-//         free_token(node->token);
-//         free(node);
-//     }
-// }
+void free_node(Node *node)
+{
+    if (node)
+    {
+        free_node(node->left);
+        free_node(node->right);
+        free_token(node->token);
+        free(node);
+    }
+}
 
 Node *new_node(Token *token)
 {
@@ -395,7 +399,8 @@ Token *evaluate(Node *node)
             ptr += 4;
             to_find->ptr = ptr;
             to_find->float_ = right->float_;
-            printf("new variable has name %s and value %f\n", to_find->name, to_find->float_);
+            to_find->index_ = right->index_;
+            printf("new variable has name %s and value %zu in\n", to_find->name, to_find->float_);
         }
         else if (to_find->type == int_)
         {
@@ -425,15 +430,11 @@ Token *evaluate(Node *node)
             // printf("%ld", node->right->token->int_);
             dprintf(asm_fd, "   mov     QWORD PTR -%zu[rbp], %ld\n", to_find->ptr, to_find->int_);
             break;
-#if 1
         case float_:
-            uint32_t u = *(uint32_t *)(&to_find->float_);
-            printf("store float\n");
             // TODO: check xmms
-            dprintf(asm_fd, "   movss	xmm1, DWORD PTR .LC%zu[rip]\n");
-            dprintf(asm_fd, "   movss	DWORD PTR -%zu[rbp], xmm1\n");
+            dprintf(asm_fd, "   movss   xmm1, DWORD PTR .FLT%zu[rip]\n", to_find->index_);
+            dprintf(asm_fd, "   movss   DWORD PTR -%zu[rbp], xmm1\n", to_find->ptr);
             break;
-#endif
         case char_:
             dprintf(asm_fd, "   lea     rax, .STR%zu[rip]\n", right->index_);
             dprintf(asm_fd, "   mov     QWORD PTR -%zu[rbp], rax\n", to_find->ptr);
@@ -450,54 +451,83 @@ Token *evaluate(Node *node)
     {
         Token *left = evaluate(node->left);
         Token *right = evaluate(node->right);
-        /*
-            TODO: there could be no declaed variable
-            in case of sending param to function
-        */
-        if (left->type == void_ && !(left = get_var(left->name)))
-            error("Undeclared variable, left");
-        if (right->type == void_ && !(right = get_var(right->name)))
-            error("Undeclared variable, right");
-        debug("do %s between %k with %k\n", type_to_string(node->token->type), left, right);
-
-        if (left->type == right->type)
+        if (!left->name && !right->name)
         {
-            node->token->type = left->type;
-            switch (left->type)
+            /*
+                TODO: there could be no declaed variable
+                in case of sending param to function
+            */
+            if (left->type == void_ && !(left = get_var(left->name)))
+                error("Undeclared variable, left");
+            if (right->type == void_ && !(right = get_var(right->name)))
+                error("Undeclared variable, right");
+            debug("do %s between %k with %k\n", type_to_string(node->token->type), left, right);
+
+            if (left->type == right->type)
             {
-            case int_:
-                if (type == add_)
-                    node->token->int_ = left->int_ + right->int_;
-                else if (type == sub_)
-                    node->token->int_ = left->int_ - right->int_;
-                else if (type == mul_)
-                    node->token->int_ = left->int_ * right->int_;
-                else if (type == div_)
+                node->token->type = left->type;
+                switch (left->type)
                 {
-                    if (right->int_ == 0)
-                        error("can't devide by 0");
-                    node->token->int_ = left->int_ / right->int_;
+                case int_:
+                    if (type == add_)
+                        node->token->int_ = left->int_ + right->int_;
+                    else if (type == sub_)
+                        node->token->int_ = left->int_ - right->int_;
+                    else if (type == mul_)
+                        node->token->int_ = left->int_ * right->int_;
+                    else if (type == div_)
+                    {
+                        if (right->int_ == 0)
+                            error("can't devide by 0 (int)");
+                        node->token->int_ = left->int_ / right->int_;
+                    }
+                    break;
+                case float_:
+                    left->index_ = 0;
+                    right->index_ = 0;
+                    float l = *(float *)(&left->float_);
+                    float r = *(float *)(&right->float_);
+                    float res;
+                    if (type == add_)
+                        res = l + r;
+                    else if (type == sub_)
+                        res = l - r;
+                    else if (type == mul_)
+                        res = l * r;
+                    else if (type == div_)
+                    {
+                        if (r == 0)
+                            error("can't devide by 0 (float)");
+                        res = l / r;
+                    }
+                    node->token->type = float_;
+                    node->token->float_ = *(uint32_t *)(&res);
+                    node->token->index_ = index_++;
+                    break;
+                case char_:
+                    left->index_ = 0;
+                    right->index_ = 0;
+                    if (type == add_)
+                        node->token->char_ = strjoin(left->char_, right->char_);
+                    else
+                        error("invalid operation for characters");
+                    node->token->type = char_;
+                    node->token->index_ = index_++;
+                    break;
+                default:
+                    error("math operation");
+                    break;
                 }
-                break;
-            case char_:
-                left->index_ = 0;
-                right->index_ = 0;
-                if (type == add_)
-                    node->token->char_ = strjoin(left->char_, right->char_);
-                else
-                    error("invalid operation for characters");
-                type = char_;
-                node->token->index_ = index_++;
-                break;
-            default:
-                error("math operation");
-                break;
+                return node->token;
             }
-            return node->token;
+            else
+            {
+                // TODO: handle this case
+            }
         }
         else
         {
-            // TODO: handle this case
+            error("write the assembly this operation");
         }
         break;
     }
@@ -577,7 +607,9 @@ int main(void)
     {
         // test char variable before making any modification
         if (!tokens[i]->name && tokens[i]->index_ && tokens[i]->type == char_)
-            dprintf(asm_fd, "STR%zu:\n   .string \"%s\"\n", tokens[i]->index_, tokens[i]->char_);
+            dprintf(asm_fd, "STR%zu:\n   .string    \"%s\"\n", tokens[i]->index_, tokens[i]->char_);
+        if (!tokens[i]->name && tokens[i]->index_ && tokens[i]->type == float_)
+            dprintf(asm_fd, "FLT%zu:\n   .long  %zu\n", tokens[i]->index_, tokens[i]->float_);
     }
     if (BuiltIns[strlen_])
     {

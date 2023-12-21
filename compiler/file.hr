@@ -1,2 +1,2 @@
 main:
-    float x = 10.5
+    float x = 5.0 + 5.0 + 3.0

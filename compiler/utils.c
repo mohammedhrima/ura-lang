@@ -94,7 +94,7 @@ struct Token
         };
         // TODO: protect from overflow
         int int_;
-        float float_;
+        uint32_t float_;
     };
 };
 
@@ -227,7 +227,7 @@ void debug(char *conv, ...)
                         dprintf(fd, "value: %d, ", token->int_);
                         break;
                     case float_:
-                        dprintf(fd, "value: %f, ", token->float_);
+                        dprintf(fd, "value: %zu, ", token->float_);
                         break;
                     default:
                         // ft_putstr(fd, "Unkown");

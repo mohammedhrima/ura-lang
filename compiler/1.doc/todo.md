@@ -1,11 +1,7 @@
-- recap:
-    - int
-    - char
-
 - data types:
     + int 
     + char
-    - float
+    + float
     - arrays
     - class data types: (optimized version of each known data type)
 
