@@ -1,2 +1,27 @@
 main:
-    float x = 5.0 + 5.0 + 3.0
+    int x = 10
+    int y = x + 8
+
+/*
+    0.
+        int var = var + num
+    1.
+        int var
+        var = var + num
+    2. 
+        int var1
+        int var2
+        int var3 = var1 + var2
+    3. 
+        int var1 
+        int var2 
+        var1 = var1 + var2
+    3. 
+        int var1 
+        int var2 
+        var2 = var1 + var2
+    4.
+        int var1
+        int var2 = num
+        var2 = var1 + num
+*/
