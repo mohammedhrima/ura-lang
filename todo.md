@@ -26,7 +26,8 @@
         - function call
             - before calling function push rbp to the stack and pop it later
             - each function has its own rbp
-        - with lot of parameters
+        - with lot of parameters:
+            - use the stack
         - built ins functions:
             - output
     - variables by level

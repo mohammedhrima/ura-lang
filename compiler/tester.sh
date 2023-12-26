@@ -1,6 +1,7 @@
-cp -r a.out ./3.tests
-
 #!/bin/bash
+rm -rf a.out 
+gcc main.c -lm -fsanitize=address -fsanitize=null -g3 -D DEBUG=0
+cp -r a.out ./3.tests
 
 # Color codes for output
 GREEN='\033[0;32m'
@@ -31,5 +32,6 @@ for file in *.hr; do
         fi
     fi
 done
-
+rm -rf a.out
 cd ..
+
