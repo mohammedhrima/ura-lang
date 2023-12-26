@@ -12,6 +12,10 @@
 #include <fcntl.h>
 #include <stdarg.h>
 
+#ifndef DEBUG
+#define DEBUG 1
+#endif
+
 // structs, enums
 typedef struct Token Token;
 typedef struct Node Node;
@@ -172,6 +176,7 @@ void error(char *msg)
 
 void debug(char *conv, ...)
 {
+#if DEBUG
     size_t len = strlen(conv);
     size_t i = 0;
 
@@ -246,6 +251,7 @@ void debug(char *conv, ...)
             dprintf(fd, "%c", conv[i]);
         i++;
     }
+#endif
 }
 
 void output(Token *token)
@@ -256,7 +262,7 @@ void output(Token *token)
     {
         BuiltIns[length_] = true;
         BuiltIns[printstring_] = true;
-        printf("found %s, load string from STR%zu  \n", type_to_string(token->type), token->index_);
+        debug("found %s, load string from STR%zu  \n", type_to_string(token->type), token->index_);
         dprintf(asm_fd, "   lea     rax, STR%zu[rip]\n", token->index_);
         dprintf(asm_fd, "   mov QWORD PTR -8[rbp], rax\n");
         dprintf(asm_fd, "   mov rbx, rax\n");
@@ -277,7 +283,7 @@ void output(Token *token)
 // Token
 void free_token(Token *token)
 {
-    printf("free token has type %s\n", type_to_string(token->type));
+    debug("free token has type %s\n", type_to_string(token->type));
     if (token->name)
         free(token->name);
     if (token->type == char_)
@@ -314,19 +320,16 @@ Token *new_token(int s, int e, Type type)
         break;
     case char_:
         index_++;
-        // tokens[tk_pos]->ptr = 8;
         tokens[tk_pos]->index_ = index_;
         tokens[tk_pos]->char_ = calloc(e - s + 1, sizeof(char));
         strncpy(tokens[tk_pos]->char_, text + s, e - s);
         break;
     case int_:
-        // tokens[tk_pos]->ptr = 4;
         while (s < e)
             tokens[tk_pos]->int_ = 10 * tokens[tk_pos]->int_ + text[s++] - '0';
         break;
     case float_:
         float f = 0.0;
-        // tokens[tk_pos]->ptr = 4;
         index_++;
         tokens[tk_pos]->index_ = index_;
         while (s < e)
@@ -472,6 +475,22 @@ void free_node(Node *node)
     }
 }
 
+void print_node(Node *node, int level)
+{
+    if (node)
+    {
+        int curr = level;
+        while (curr)
+        {
+            debug("    ");
+            curr--;
+        }
+        debug("%k\n", node->token);
+        print_node(node->left, level + 1);
+        print_node(node->right, level + 1);
+    }
+}
+
 Node *new_node(Token *token)
 {
     Node *new = calloc(1, sizeof(Node));
@@ -515,12 +534,12 @@ Node *expr()
 Node *assign()
 {
     Node *left = add_sub();
-    while (check(tokens[tk_pos]->type, assign_, 0))
+    if (check(tokens[tk_pos]->type, assign_, 0))
     {
         Node *node = new_node(tokens[tk_pos++]);
         node->left = left;
-        node->right = add_sub();
-        left = node;
+        node->right = assign();
+        return node;
     }
     return left;
 }
@@ -528,12 +547,13 @@ Node *assign()
 Node *add_sub()
 {
     Node *left = mul_div();
-    while (check(tokens[tk_pos]->type, add_, sub_, 0))
+    // Node *tmp = left;
+    if (check(tokens[tk_pos]->type, add_, sub_, 0))
     {
         Node *node = new_node(tokens[tk_pos++]);
         node->left = left;
-        node->right = mul_div();
-        left = node;
+        node->right = add_sub();
+        return node;
     }
     return left;
 }
@@ -541,12 +561,12 @@ Node *add_sub()
 Node *mul_div()
 {
     Node *left = prime();
-    while (check(tokens[tk_pos]->type, mul_, div_, 0))
+    if (check(tokens[tk_pos]->type, mul_, div_, 0))
     {
         Node *node = new_node(tokens[tk_pos++]);
         node->left = left;
-        node->right = prime();
-        left = node;
+        node->right = mul_div();
+        return node;
     }
     return left;
 }
@@ -627,9 +647,11 @@ Node *initialize()
     dprintf(asm_fd, "   sub     rsp, %zu\n", rsp);
     Node *node = new_node(NULL);
     Node *curr = node;
+
     while (tokens[tk_pos]->type != eof_)
     {
         curr->left = expr();
+        print_node(curr->left, 0);
         evaluate(curr->left);
         curr->right = new_node(NULL);
         curr = curr->right;

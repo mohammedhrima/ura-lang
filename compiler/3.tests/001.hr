@@ -1,3 +1,15 @@
 main:
-    int x = 15
-    int y = x + 8
+    int x
+    int y
+    x = 10
+    y = 5 + x + 2 +1
+    x = x + y
+
+/*
+int x
+int y
+x = 10
+y = 5 + x + 2 +1
+x = x + y
+===========
+*/
