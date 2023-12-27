@@ -1,11 +1,3 @@
 rm -rf a.out
-gcc $1 -S -fno-verbose-asm -fno-asynchronous-unwind-tables -masm=intel
+cc $1 -S -fno-verbose-asm -fno-asynchronous-unwind-tables -masm=intel -O3
 rm -rf a.out.dSYM
-
-
-# movsbl
-# movzbl
-# movq > 64bit
-# movw > 16bit
-# movl > 32bit
-# movb > 08bit
