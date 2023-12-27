@@ -1,4 +1,3 @@
-docker-compose.yml
-Dockerfile
-./1.doc
-container.sh
+./docker-compose.yml
+./Dockerfile
+./todo.md
