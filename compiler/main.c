@@ -22,7 +22,6 @@ typedef struct Node Node;
 typedef enum Type Type;
 
 // stupid implicit declaration error
-void error(char *msg);
 Token *get_var(char *name);
 Token *evaluate(Node *node);
 
@@ -248,7 +247,8 @@ size_t index_;
 
 bool BuiltIns[100];
 
-int asm_fd;
+size_t rsp;
+FILE *asm_fd;
 void print_asm(char *fmt, ...)
 {
     va_list ap;
@@ -266,9 +266,9 @@ void output(Token *token)
         BuiltIns[printstring_] = true;
         debug("found %s, load string from STR%zu  \n", type_to_string(token->type), token->index_);
         print_asm("   lea     rax, STR%zu[rip]\n", token->index_);
-        print_ssm("   mov QWORD PTR -8[rbp], rax\n");
-        print_ssm("   mov rbx, rax\n");
-        print_ssm("   call printstring\n");
+        print_asm("   mov QWORD PTR -8[rbp], rax\n");
+        print_asm("   mov rbx, rax\n");
+        print_asm("   call printstring\n");
         break;
     }
     case float_:
@@ -334,18 +334,11 @@ Token *new_token(int s, int e, Type type)
         float f = 0.0;
         index_++;
         token->index_ = index_;
-        while (s < e)
-        {
+        while (isdigit(s))
             f = 10 * f + text[s++] - '0';
-            if (text[s] == '.')
-            {
-                s++;
-                break;
-            }
-        }
-        while (s < e)
+        s++;
+        while (isdigit(s))
             f = f + (float)(text[s++] - '0') / 10;
-
         token->float_ = *(uint32_t *)(&f);
         break;
     default:
@@ -377,6 +370,7 @@ Token *new_variable(Token *token)
         variables = tmp;
         var_len *= 2;
     }
+    debug("new variable %k\n", token);
     return (variables[var_pos++] = token);
 }
 
@@ -444,11 +438,8 @@ void build_tokens()
             }
             while (isdigit(text[e]))
                 e++;
-            if (e > s)
-            {
-                new_token(s, e, type);
-                continue;
-            }
+            new_token(s, e, type);
+            continue;
         }
         if (strchr("\"\'", text[e]))
         {
@@ -507,17 +498,425 @@ Node *add_sub();
 Node *mul_div();
 Node *prime();
 
-bool check(Type to_find, ...)
+Token *check(Type type, ...)
 {
     va_list ap;
-    va_start(ap, to_find);
-    while (1)
+    va_start(ap, type);
+    while (type)
     {
-        Type type = va_arg(ap, Type);
-        if (type == to_find)
-            return true;
-        if (type == 0)
-            break;
+        if (type == tokens[tk_pos]->type)
+            return tokens[tk_pos++];
+        type = va_arg(ap, Type);
     }
-    return false;
+    return NULL;
+}
+
+Token *expect(Type type, ...)
+{
+    va_list ap;
+    va_start(ap, type);
+    while (type)
+    {
+        if (type == tokens[tk_pos]->type)
+            return tokens[tk_pos++];
+        type = va_arg(ap, Type);
+    }
+    error("Unexpected %s\n", type_to_string(type));
+    return NULL;
+}
+
+Node *expr()
+{
+    return assign();
+}
+
+Node *assign()
+{
+    Node *node = add_sub();
+    Token *token = NULL;
+    if (token = check(assign_, 0))
+        node = new_node(token, node, assign());
+    return node;
+}
+
+Node *add_sub()
+{
+    Node *node = mul_div();
+    Token *token = NULL;
+    if (token = check(add_, sub_, 0))
+        node = new_node(token, node, add_sub());
+    return node;
+}
+
+Node *mul_div()
+{
+    Node *node = prime();
+    Token *token = NULL;
+    if (token = check(mul_, div_, 0))
+        node = new_node(token, node, mul_div());
+    return node;
+}
+
+Node *prime()
+{
+    Node *node = NULL;
+    Token *token = NULL;
+    if (token = check(identifier_, 0))
+    {
+        for (int i = 0; DataTypes[i].name; i++)
+        {
+            if (strcmp(DataTypes[i].name, token->name) == 0)
+            {
+                Type type = DataTypes[i].type;
+                debug("find %s\n", type_to_string(DataTypes[i].type));
+                if (tokens[tk_pos]->type != identifier_)
+                    error("Expected identifier after data type");
+                node = new_node(tokens[tk_pos++], NULL, NULL);
+                node->token->type = type;
+                if (get_var(node->token->name))
+                    error("redefinition of variable");
+                new_variable(node->token);
+                return node;
+            }
+        }
+#if 0
+        if (token->type == lparent_)
+        {
+            // TODO: get function
+            node->token->type = func_call_;
+            expect(lparent_);
+            node->left = expr();
+            expect(rparent_);
+            return node;
+        }
+#endif
+        char *name = token->name;
+        token = get_var(name);
+        if (!token)
+            error("Undeclared variable '%s'", name);
+        node = new_node(token, NULL, NULL);
+    }
+    else if (token = check(lparent_, 0))
+    {
+        expect(lparent_);
+        node = expr();
+        expect(rparent_);
+    }
+    else if (token = check(char_, int_, float_, eof_, 0))
+        node = new_node(token, NULL, NULL);
+    else
+        error("found %s in prime", type_to_string(token->type));
+    return node;
+}
+
+void initialize()
+{
+    // Label = 2; // label from where to start, TODO: verify all label then set start label
+    // write the assembly
+    tk_pos = 0;
+    print_asm(".section	.note.GNU-stack,\"\",@progbits\n");
+    print_asm(".intel_syntax noprefix\n");
+    print_asm(".text\n");
+    print_asm(".globl	main\n\n");
+    print_asm("main:\n");
+    print_asm("   push    rbp\n");
+    print_asm("   mov     rbp, rsp\n");
+    print_asm("   sub     rsp, %zu\n", rsp);
+
+    Node *curr = NULL;
+    while (tokens[tk_pos]->type != eof_)
+    {
+        curr = expr();
+        print_node(curr, 0);
+        evaluate(curr);
+        free_node(curr);
+    }
+}
+
+void finalize()
+{
+    // TODO: check exit status if changed
+    print_asm("   mov     rax, 0\n");
+    print_asm("   leave\n");
+    print_asm("   ret\n\n");
+    for (int i = 0; i < tk_pos; i++)
+    {
+        // test char variable before making any modification
+        if (!tokens[i]->name && tokens[i]->index_ && tokens[i]->type == char_)
+            print_asm("STR%zu:\n   .string    \"%s\"\n", tokens[i]->index_, tokens[i]->char_);
+        if (!tokens[i]->name && tokens[i]->index_ && tokens[i]->type == float_)
+            print_asm("FLT%zu:\n   .long  %zu\n", tokens[i]->index_, tokens[i]->float_);
+    }
+    if (BuiltIns[printstring_])
+    {
+        print_asm("printstring:\n");
+        print_asm("   push rbp\n");
+        print_asm("   mov rbp, rsp\n");
+        print_asm("   /* char *str */\n");
+        print_asm("   mov QWORD PTR -8[rbp], rbx\n");
+        print_asm("   /* fd */\n");
+        print_asm("   mov rdi, 1\n");
+        print_asm("   /* pointer */\n");
+        print_asm("   mov rsi, rbx\n");
+        print_asm("   call ft_strlen\n");
+        print_asm("   /* lenght */\n");
+        print_asm("   mov rdx, rax\n");
+        print_asm("   call write@PLT\n");
+        print_asm("   mov rsp, rbp\n");
+        print_asm("   pop rbp\n");
+        print_asm("   ret\n\n");
+    }
+    if (BuiltIns[length_])
+    {
+        print_asm("length:\n");
+        print_asm("   push rbp\n");
+        print_asm("   mov rbp, rsp\n");
+        print_asm("   /* char *str */\n");
+        print_asm("   mov QWORD PTR -8[rbp], rbx\n");
+        print_asm("   /* size_t i = 0 */\n");
+        print_asm("   mov QWORD PTR -16[rbp], 0\n");
+        print_asm("   jmp .L2\n");
+        print_asm(".L3:\n");
+        print_asm("   /* i++ */\n");
+        print_asm("   add QWORD PTR -16[rbp], 1\n");
+        print_asm(".L2:\n");
+        print_asm("   mov rax, QWORD PTR -8[rbp]\n");
+        print_asm("   mov rdx, QWORD PTR -16[rbp]\n");
+        print_asm("   /* str + i */\n");
+        print_asm("   add rax, rdx\n");
+        print_asm("   movzx rax, BYTE PTR[rax]\n");
+        print_asm("   cmp rax, 0\n");
+        print_asm("   jne .L3\n");
+        print_asm("   /* return i */\n");
+        print_asm("   mov rax, QWORD PTR -16[rbp]\n");
+        print_asm("   mov rsp, rbp\n");
+        print_asm("   pop rbp\n");
+        print_asm("   ret\n\n");
+    }
+}
+
+Token *get_var(char *name)
+{
+    for (int i = 0; i < var_pos; i++)
+        if (variables[i]->name && strcmp(variables[i]->name, name) == 0)
+            return variables[i];
+    return NULL;
+}
+
+Token *evaluate(Node *node)
+{
+    Token *left, *right, *to_find;
+    Type type = node->token->type;
+    switch (type)
+    {
+    case identifier_:
+    case char_:
+    case float_:
+    case int_:
+        break;
+    case assign_:
+    {
+        // TODO: assign / initializing
+        // TODO: deep / shallow copy
+        left = evaluate(node->left);
+        print_asm("   /* assign %s */\n", left->name);
+        right = evaluate(node->right);
+        debug("assign %k and %k \n", left, right);
+        if (!left->name || left->type != right->type)
+            error("Invalid assignement");
+        node->token = left;
+        switch (left->type)
+        {
+        case int_:
+            print_asm("   mov     QWORD PTR -%zu[rbp], ", left->ptr);
+            if (right->ptr)
+                print_asm("QWORD PTR -%zu[rbp]\n", right->ptr);
+            else
+                print_asm("%d\n", right->int_);
+            break;
+#if 0
+            case float_:
+                // TODO: check xmms, with multiple variables
+                print_asm( "   movss   xmm1, DWORD PTR .FLT%zu[rip]\n", right->index_);
+                print_asm( "   movss   DWORD PTR -%zu[rbp], xmm1\n", to_find->ptr);
+                break;
+            case char_:
+                print_asm( "   lea     rax, .STR%zu[rip]\n", right->index_);
+                print_asm( "   mov     QWORD PTR -%zu[rbp], rax\n", to_find->ptr);
+                break;
+#endif
+        default:
+            error("add assembly for this one 0");
+            break;
+        }
+        break;
+    }
+    case add_:
+    case sub_:
+    case mul_:
+    case div_:
+    {
+        left = evaluate(node->left);
+        right = evaluate(node->right);
+        if (left->type != right->type)
+            error("Uncompatible type in math operation");
+        node->token->type = left->type;
+        // has no name // optimization
+        if (!left->ptr && !right->ptr)
+        {
+            debug("0. do %s between %k with %k\n", type_to_string(type), left, right);
+            switch (node->token->type)
+            {
+            case int_:
+                // node->token->index_ = left->index_ < right->index_ ? left->index_ : right->index_;
+                if (type == add_)
+                    node->token->int_ = left->int_ + right->int_;
+                else if (type == sub_)
+                    node->token->int_ = left->int_ - right->int_;
+                else if (type == mul_)
+                    node->token->int_ = left->int_ * right->int_;
+                else if (type == div_)
+                {
+                    if (right->int_ == 0)
+                        error("can't devide by 0 (int)");
+                    node->token->int_ = left->int_ / right->int_;
+                }
+                break;
+            case float_:
+                node->token->index_ = left->index_ < right->index_ ? left->index_ : right->index_;
+                float l = *(float *)(&left->float_);
+                float r = *(float *)(&right->float_);
+                float res;
+                if (type == add_)
+                    res = l + r;
+                else if (type == sub_)
+                    res = l - r;
+                else if (type == mul_)
+                    res = l * r;
+                else if (type == div_)
+                {
+                    if (r == 0)
+                        error("can't devide by 0 (float)");
+                    res = l / r;
+                }
+                node->token->float_ = *(uint32_t *)(&res);
+                break;
+            case char_:
+                node->token->index_ = left->index_ < right->index_ ? left->index_ : right->index_;
+                if (type == add_)
+                    node->token->char_ = strjoin(left->char_, right->char_);
+                else
+                    error("invalid operation for characters");
+                break;
+            default:
+                error("math operation 0");
+                break;
+            }
+        }
+        else
+        {
+            debug("1. do %s between %k with %k\n", type_to_string(type), left, right);
+            switch (node->token->type)
+            {
+            case int_:
+                node->token->ptr = (ptr += 4);
+                // set left
+                print_asm("   mov     QWORD PTR -%zu[rbp], ", node->token->ptr);
+                if (left->ptr)
+                    print_asm("QWORD PTR -%zu[rbp]\n", left->ptr);
+                else
+                    print_asm("%d\n", left->int_);
+                // set right
+                char *str = type == add_   ? "add"
+                            : type == sub_ ? "sub"
+                            : type == mul_ ? "mul"
+                                           : NULL;
+                print_asm("   %s     QWORD PTR -%zu[rbp], ", str, node->token->ptr);
+                if (right->ptr)
+                    print_asm("QWORD PTR -%zu[rbp]\n", right->ptr);
+                else
+                    print_asm("%d\n", right->int_);
+                break;
+            case float_:
+
+                break;
+            default:
+                error("math operation 1");
+                break;
+            }
+        }
+        break;
+    }
+    case func_call_:
+    {
+        debug("found function call has name '%s'\n", node->token->name);
+        if (strncmp("output", node->token->name, strlen("output")) == 0)
+        {
+            debug("found output\n");
+            output(evaluate(node->left));
+        }
+        break;
+    }
+    default:
+        error("in evaluate %s", type_to_string(type));
+        break;
+    }
+    if (ptr + 10 > rsp)
+    {
+        // TODO: protect this line from being printed in wrong place
+        // after label for example
+        rsp += 30;
+        print_asm("   sub     rsp, 30\n");
+    }
+    return node->token;
+}
+
+int main(int argc, char **argv)
+{
+    if (argc != 2)
+    {
+        // TODO: check if file ends with .hr
+        error("require one file.hr as argument\n");
+    }
+#if 1
+    file = fopen(argv[1], "r");
+#else
+    file = fopen("file.hr", "r");
+#endif
+
+#if 0
+    char *filename = strdup(argv[1]);
+    filename[strlen(filename) - 2] = 's';
+    filename[strlen(filename) - 1] = 0;
+    
+    // opening file
+    debug("open %s\n", argv[1]);
+    debug("write to %s\n", filename);
+    asm_fd = fopen(filename, "w");
+    free(filename);
+#else
+    asm_fd = fopen("file.s", "w");
+#endif
+    if (!file || !asm_fd)
+        error("Opening file");
+    fseek(file, 0, SEEK_END);
+    size_t txt_len = ftell(file);
+    if (!(text = calloc(txt_len + 1, sizeof(char))))
+        error("Allocation");
+    fseek(file, 0, SEEK_SET);
+    fread(text, txt_len, sizeof(char), file);
+    fclose(file);
+    debug("%s\n\n", text);
+    index_ = 1;
+    tk_len = var_len = 100;
+    tokens = calloc(tk_len, sizeof(Token *));
+    variables = calloc(tk_len, sizeof(Token *));
+    build_tokens();
+    debug("\n");
+    free(text);
+    // TODO: verify rsp position
+    rsp = 30;
+    initialize();
+    finalize();
+    debug("\n");
 }

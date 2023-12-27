@@ -1,15 +1,15 @@
 #!/bin/bash
 rm -rf a.out 
 cc main.c -lm -fsanitize=address -fsanitize=null -g3 -D DEBUG=0
-cp -r a.out ./3.tests
+cp -r a.out ./1.tests
 
 # Color codes for output
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m' # No color
 
-# Change to the 3.tests directory
-cd 3.tests || exit
+# Change to the 1.tests directory
+cd 1.tests || exit
 
 # Iterate over all files with .hr extension
 for file in *.hr; do
@@ -32,6 +32,6 @@ for file in *.hr; do
         fi
     fi
 done
-rm -rf a.out
+rm -rf a.out file.s
 cd ..
 
