@@ -7,21 +7,22 @@ main:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 30
-   /* assign x */
-   mov     QWORD PTR -4[rbp], 10
-   /* assign x */
-   mov     QWORD PTR -4[rbp], 10
-   /* assign y */
-   mov     QWORD PTR -12[rbp], QWORD PTR -4[rbp]
-   add     QWORD PTR -12[rbp], 3
-   mov     QWORD PTR -16[rbp], 5
-   add     QWORD PTR -16[rbp], QWORD PTR -12[rbp]
-   mov     QWORD PTR -8[rbp], QWORD PTR -16[rbp]
-   /* assign x */
-   mov     QWORD PTR -20[rbp], QWORD PTR -4[rbp]
-   add     QWORD PTR -20[rbp], 5
-   mov     QWORD PTR -4[rbp], QWORD PTR -20[rbp]
-   mov     rax, 0
+
+   /* x = 10 */
+   mov     rax, 10
+   mov     QWORD PTR -4[rbp], rax
+   
+   /* y = 5 + x + 2 + 1 */
+   mov     rax, 5
+   add     rax, QWORD PTR -4[rbp]
+   add     rax, 2
+   add     rax, 1
+   mov     QWORD PTR -8[rbp], rax
+
+   /* x = x + 5 */
+   mov     rax, QWORD PTR -4[rbp]
+   add     rax, 5
+   mov     QWORD PTR -4[rbp], rax
    leave
    ret
 

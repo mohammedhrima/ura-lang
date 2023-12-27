@@ -1,5 +1,5 @@
 rm -rf a.out 
-gcc main.c -lm -fsanitize=address -fsanitize=null -g3 -D DEBUG=0
+cc main.c -lm -fsanitize=address -fsanitize=null -g3 -D DEBUG=0
 ./a.out file.hr
 
 # Argument provided, process the specified file

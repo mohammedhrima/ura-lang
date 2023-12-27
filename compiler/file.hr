@@ -2,7 +2,7 @@ main:
     int x = 10
     int y
     x = 10
-    y = 5 + x + 2 +1
+    y = 5 + x + 2 + 1
     x = x + 5
 
 /*
