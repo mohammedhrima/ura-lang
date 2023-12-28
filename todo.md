@@ -25,6 +25,7 @@
         - use the stack
     - built ins functions:
         - output
+    - send params by refrence or value
 - variables by level
 - add tester to expected output
 - set estimation for each lable how much will take from rsp
@@ -45,10 +46,6 @@
     - unknown data type
     - tab level after :
     - protect rsp
-    - int:
-        - (check MAX_INT, MIN_INT, ...)
-    - float:
-        - (check MAX_FLT, MIN_FLT, ...)
 
 ============================================================================
 - NOTES:

@@ -14,7 +14,8 @@ main:
 	movss	xmm0, DWORD PTR .LC0[rip]
 	movss	DWORD PTR -4[rbp], xmm0
 	movss	xmm1, DWORD PTR -4[rbp]
-	addss	xmm1, DWORD PTR .LC1[rip]
+	movss	xmm0, DWORD PTR .LC1[rip]
+	addss	xmm1, xmm0
 	movss	xmm0, DWORD PTR .LC2[rip]
 	divss	xmm0, xmm1
 	movss	DWORD PTR -8[rbp], xmm0
