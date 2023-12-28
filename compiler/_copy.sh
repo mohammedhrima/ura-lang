@@ -1,6 +1,6 @@
 rm -rf a.out 
-cc main.c -lm -fsanitize=address -fsanitize=null -g3 -D DEBUG=0
-./a.out file.hr
+cc main.c -lm -fsanitize=address -fsanitize=null -g3 -D DEBUG=0 -o comp
+./comp file.hr
 
 # Argument provided, process the specified file
 file_count=$(ls 1.tests/*.hr 2>/dev/null | wc -l)

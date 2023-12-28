@@ -47,6 +47,7 @@ enum Type
     int_,
     float_,
     identifier_,
+    neg_,
     // function
     func_dec_,
     func_call_,
@@ -74,7 +75,7 @@ struct Token
 
 struct Node
 {
-    Node *left
+    Node *left;
     Node *right;
     Token *token;
 };
@@ -122,6 +123,7 @@ struct
     // function
     {func_dec_, "function declaration"},
     {func_call_, "function call"},
+    {neg_, "negative"},
     {0, 0},
 };
 
@@ -208,6 +210,8 @@ void debug(char *conv, ...)
                         break;
                     case float_:
                         fprintf(stdout, "value: %zu (%f), ", token->float_, *(float *)(&token->float_));
+                        if (token->index_)
+                            fprintf(stdout, "in FLT%zu, ", token->index_);
                         break;
                     default:
                         // ft_putstr(stdout, "Unkown");
@@ -238,6 +242,11 @@ char *text;
 Token **tokens;
 int tk_len;
 int tk_pos;
+int exe_pos;
+
+// negative
+// Token *minus_int;
+// Token *minus_float;
 
 // variables
 Token **variables;
@@ -335,10 +344,10 @@ Token *new_token(int s, int e, Type type)
         float f = 0.0;
         index_++;
         token->index_ = index_;
-        while (isdigit(text[s]))
+        while (s < e && isdigit(text[s]))
             f = 10 * f + text[s++] - '0';
         s++;
-        while (isdigit(text[s]))
+        while (s < e && isdigit(text[s]))
             f = f + (float)(text[s++] - '0') / 10;
         token->float_ = *(uint32_t *)(&f);
         // exit(0);
@@ -352,14 +361,21 @@ Token *new_token(int s, int e, Type type)
 
 Token *new_variable(Token *token)
 {
+    // TODO: check if you can remove initilize instruction
+    print_asm("   /* declare %s */\n", token->name);
     switch (token->type)
     {
-    case int_:
-    case float_:
-        token->ptr = (ptr += 8);
-        break;
     case char_:
         token->ptr = (ptr += 8);
+        print_asm("\n");
+        break;
+    case int_:
+        token->ptr = (ptr += 8);
+        print_asm("   mov     QWORD PTR -%zu[rbp], %d\n", token->ptr, 0);
+        break;
+    case float_:
+        token->ptr = (ptr += 4);
+        print_asm("   mov     QWORD PTR -%zu[rbp], %d\n", token->ptr, 0);
         break;
     default:
         break;
@@ -492,10 +508,43 @@ Node *new_node(Token *token)
     return new;
 }
 
+/*
+
+main:
+    int x
+    int y
+    x = 10
+    y = 5 + x + 2 + 1
+    x = x + y
+
+main:
+    int x = 10
+    int y
+    x = 10
+    y = 5 + x + 2 +1
+    x = x + 5
+
+main:
+    int x = 10
+    int y
+    x = 10
+    y = 5 + x + 2 +1
+    x = x + 5
+
+main:
+    int x
+    int y
+    x = 10
+    y = 5 + x + 2 +1
+    x = x + y
+
+*/
+
 Node *expr();
 Node *assign();
 Node *add_sub();
 Node *mul_div();
+Node *unary();
 Node *prime();
 
 Token *check(Type type, ...)
@@ -504,8 +553,8 @@ Token *check(Type type, ...)
     va_start(ap, type);
     while (type)
     {
-        if (type == tokens[tk_pos]->type)
-            return tokens[tk_pos++];
+        if (type == tokens[exe_pos]->type)
+            return tokens[exe_pos++];
         type = va_arg(ap, Type);
     }
     return NULL;
@@ -517,8 +566,8 @@ Token *expect(Type type, ...)
     va_start(ap, type);
     while (type)
     {
-        if (type == tokens[tk_pos]->type)
-            return tokens[tk_pos++];
+        if (type == tokens[exe_pos]->type)
+            return tokens[exe_pos++];
         type = va_arg(ap, Type);
     }
     error("Unexpected %s\n", type_to_string(type));
@@ -539,7 +588,7 @@ Node *assign()
         Node *node = new_node(token);
         node->left = left;
         node->right = assign();
-        return node;
+        left = node;
     }
     return left;
 }
@@ -548,6 +597,15 @@ Node *add_sub()
 {
     Node *left = mul_div();
     Token *token;
+#if 0
+    while (token = check(add_, sub_, 0))
+    {
+        Node *node = new_node(token);
+        node->right = left;
+        node->left = mul_div();
+        left = node;
+    }
+#else
     if (token = check(add_, sub_, 0))
     {
         Node *node = new_node(token);
@@ -555,18 +613,54 @@ Node *add_sub()
         node->right = add_sub();
         return node;
     }
+#endif
     return left;
 }
 
 Node *mul_div()
 {
-    Node *left = prime();
+    Node *left = unary();
     Token *token;
+#if 0
+    while(token = check(mul_, div_, 0))
+    {
+        Node *node = new_node(token);
+        node->right = left;
+        node->left = unary();
+        left = node;
+    }
+#else
     if (token = check(mul_, div_, 0))
     {
         Node *node = new_node(token);
         node->left = left;
         node->right = mul_div();
+        return node;
+    }
+#endif
+    return left;
+}
+
+Node *unary()
+{
+    Token *token = check(add_, sub_, 0);
+    Node *left = prime();
+    if (token && token->type == sub_)
+    {
+        // if (minus_int == NULL)
+        // {
+        //     minus_int = calloc(1, sizeof(Token));
+        //     minus_int->type = int_;
+        //     minus_int->int_ = -1;
+
+        //     minus_float = calloc(1, sizeof(Token));
+        //     minus_float->type = float_;
+        //     float f = -1.0;
+        //     minus_float->float_ = *(uint32_t *)(&f);
+        //     minus_float->index_ = index_++;
+        // }
+        Node *node = new_node(new_token(0, 0, neg_));
+        node->left = left;
         return node;
     }
     return left;
@@ -584,6 +678,7 @@ Node *prime()
             {
                 Type type = DataTypes[i].type;
                 debug("find %s\n", type_to_string(DataTypes[i].type));
+
                 node = new_node(expect(identifier_, 0));
                 node->token->type = type;
                 if (get_var(node->token->name))
@@ -626,7 +721,6 @@ void initialize()
 {
     // Label = 2; // label from where to start, TODO: verify all label then set start label
     // write the assembly
-    tk_pos = 0;
     print_asm(".section	.note.GNU-stack,\"\",@progbits\n");
     print_asm(".intel_syntax noprefix\n");
     print_asm(".text\n");
@@ -637,7 +731,7 @@ void initialize()
     print_asm("   sub     rsp, %zu\n", rsp);
 
     Node *curr = NULL;
-    while (tokens[tk_pos]->type != eof_)
+    while (tokens[exe_pos]->type != eof_)
     {
         curr = expr();
         print_node(curr, 0);
@@ -662,7 +756,7 @@ void finalize()
         if (!tokens[i]->name && tokens[i]->index_ && tokens[i]->type == char_)
             print_asm("STR%zu:\n   .string    \"%s\"\n", tokens[i]->index_, tokens[i]->char_);
         if (!tokens[i]->name && tokens[i]->index_ && tokens[i]->type == float_)
-            print_asm("FLT%zu:\n   .long  %zu\n", tokens[i]->index_, tokens[i]->float_);
+            print_asm("FLT%zu:/* %f */\n   .long  %zu\n", tokens[i]->index_, *((float *)(&tokens[i]->float_)), tokens[i]->float_);
     }
     if (BuiltIns[printstring_])
     {
@@ -722,7 +816,7 @@ Token *get_var(char *name)
 
 Token *evaluate(Node *node)
 {
-    Token *left, *right, *to_find;
+    Token *left = NULL, *right = NULL;
     Type type = node->token->type;
     switch (type)
     {
@@ -731,17 +825,66 @@ Token *evaluate(Node *node)
     case float_:
     case int_:
         break;
+    case neg_:
+    {
+        // TODO: negative float has a different behaviou !!!
+        left = evaluate(node->left);
+        if (left->type != int_ && left->type != float_)
+            error("Invalid unary operation 0");
+
+        if (!left->name)
+        {
+            node->token->type = left->type;
+            switch (left->type)
+            {
+            case int_:
+                // TODO: prtect int_MIN
+                node->token->int_ = -1 * left->int_;
+                break;
+            case float_:
+                float f = -1 * (*(float *)(&left->float_));
+                left->float_ = *(uint32_t *)(&f);
+                node->token = left;
+                break;
+            default:
+                break;
+            }
+        }
+        else
+        {
+            Node *curr = new_node(new_token(0, 0, mul_));
+            curr->left = new_node(left);
+            if (left->type == int_)
+            {
+                curr->right = new_node(new_token(0, 0, int_));
+                curr->right->token->int_ = -1;
+            }
+            else if (left->type == float_)
+            {
+                curr->right = new_node(new_token(0, 0, float_));
+                float f = -1.0;
+                curr->right->token->float_ = *(uint32_t *)(&f);
+                curr->right->token->index_ = index_++;
+            }
+            else
+                error("Invalid unary operation 1");
+            print_node(curr, 0);
+            node->token = evaluate(curr);
+            free_node(curr);
+        }
+        break;
+    }
     case assign_:
     {
         // TODO: assign / initializing
         // TODO: deep / shallow copy
         left = evaluate(node->left);
-        print_asm("   /* assign %s */\n", left->name);
         right = evaluate(node->right);
         debug("assign %k and %k \n", left, right);
         if (!left->name || left->type != right->type)
             error("Invalid assignement");
         node->token = left;
+        print_asm("   /* assign to %s */\n", left->name);
         switch (left->type)
         {
         case int_:
@@ -757,13 +900,13 @@ Token *evaluate(Node *node)
             // TODO: check xmms, with multiple variables
             if (right->ptr)
             {
-                print_asm("   movss     xmm1, DWORD PTR -%zu[rbp]\n", right->ptr);
-                print_asm("   movss     DWORD PTR -%zu[rbp], xmm1\n", left->ptr);
+                print_asm("   movss   xmm1, DWORD PTR -%zu[rbp]\n", right->ptr);
+                print_asm("   movss   DWORD PTR -%zu[rbp], xmm1\n", left->ptr);
             }
             else
             {
-                print_asm("   movss     xmm1, DWORD PTR FLT%zu[rip]\n", right->index_);
-                print_asm("   movss     DWORD PTR -%zu[rbp], xmm1\n", left->ptr);
+                print_asm("   movss   xmm1, DWORD PTR FLT%zu[rip]\n", right->index_);
+                print_asm("   movss   DWORD PTR -%zu[rbp], xmm1\n", left->ptr);
             }
             break;
 #if 0
@@ -795,7 +938,6 @@ Token *evaluate(Node *node)
             switch (node->token->type)
             {
             case int_:
-                // node->token->index_ = left->index_ < right->index_ ? left->index_ : right->index_;
                 if (type == add_)
                     node->token->int_ = left->int_ + right->int_;
                 else if (type == sub_)
@@ -810,7 +952,9 @@ Token *evaluate(Node *node)
                 }
                 break;
             case float_:
-                node->token->index_ = left->index_ < right->index_ ? left->index_ : right->index_;
+                left->index_ = 0;
+                right->index_ = 0;
+                node->token->index_ = index_++;
                 float l = *(float *)(&left->float_);
                 float r = *(float *)(&right->float_);
                 float res;
@@ -829,7 +973,7 @@ Token *evaluate(Node *node)
                 node->token->float_ = *(uint32_t *)(&res);
                 break;
             case char_:
-                node->token->index_ = left->index_ < right->index_ ? left->index_ : right->index_;
+                node->token->index_ = index_++;
                 if (type == add_)
                     node->token->char_ = strjoin(left->char_, right->char_);
                 else
@@ -860,48 +1004,39 @@ Token *evaluate(Node *node)
                       : type == mul_ ? "imul    rax, "
                       : type == div_ ? "cdq\n   mov     rbx, "
                                      : NULL;
-
                 print_asm("   %s", str);
                 if (right->ptr)
                     print_asm("QWORD PTR -%zu[rbp]\n", right->ptr);
                 else
                     print_asm("%d\n", right->int_);
-
                 if (type == div_)
                     print_asm("   idiv    rbx\n");
-
                 print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
                 break;
             case float_:
-                /*
-                    if ptr load from FLT%zu
-                    else load value from register
-                */
                 node->token->ptr = (ptr += 4);
                 // set left
-                print_asm("   movss     xmm1, ");
-                if (left->name)
+                print_asm("   movss   xmm1, ");
+                if (left->ptr)
                     print_asm("DWORD PTR -%zu[rbp]\n", left->ptr);
                 else if (left->index_)
                     print_asm("DWORD PTR FLT%zu[rip]\n", left->index_);
                 else
                     print_asm("%zu\n", left->float_);
                 // set right
-                str = type == add_   ? "addss     xmm1, "
-                      : type == sub_ ? "subss     xmm1, "
-                      : type == mul_ ? "imulss    xmm1, "
-                      : type == div_ ? "idivss    xmm1, "
+                str = type == add_   ? "addss   xmm1, "
+                      : type == sub_ ? "subss   xmm1, "
+                      : type == mul_ ? "mulss   xmm1, "
+                      : type == div_ ? "divss   xmm1, "
                                      : NULL;
-
                 print_asm("   %s", str);
-                if (right->name)
+                if (right->ptr)
                     print_asm("DWORD PTR -%zu[rbp]\n", right->ptr);
                 else if (right->index_)
                     print_asm("DWORD PTR FLT%zu[rip]\n", right->index_);
                 else
                     print_asm("%zu\n", right->float_);
-
-                print_asm("   movss     DWORD PTR -%zu[rbp], xmm1\n", node->token->ptr);
+                print_asm("   movss   DWORD PTR -%zu[rbp], xmm1\n", node->token->ptr);
                 break;
             default:
                 error("math operation 1");
