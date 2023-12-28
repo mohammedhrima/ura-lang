@@ -1,17 +1,16 @@
-#include <stdint.h>
 #include <stdio.h>
 
-int main()
-{
-    float a = 10;
-    float b = 7;
-    float c = a + b;
-    printf("%f + %f = %f\n", a, b, c);
+int main() {
+    float x1 = 10.0;
+    float x2 = 5.0;
+    float x3 = 5.0;
+    float x4 = 5.0;
+    float x5 = 5.0;
+    float b = 5.0;
+    float b = 5.0;
+    float b = 5.0;
+    float b = 5.0;
+    float b = 5.0;
 
-    // uint32_t u = *(uint32_t *)(&x);
-    // printf("%zu\n", u);
-    double d = 10;
-    double e = 7;
-    double f = d + e;
-    printf("%lf + %f = %f\n", d , e, f);
+    printf("%f\n", b);
 }
