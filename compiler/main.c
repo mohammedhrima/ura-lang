@@ -74,7 +74,8 @@ struct Token
 
 struct Node
 {
-    Node *left, *right;
+    Node *left
+    Node *right;
     Token *token;
 };
 
