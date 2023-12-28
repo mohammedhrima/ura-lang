@@ -334,12 +334,13 @@ Token *new_token(int s, int e, Type type)
         float f = 0.0;
         index_++;
         token->index_ = index_;
-        while (isdigit(s))
+        while (isdigit(text[s]))
             f = 10 * f + text[s++] - '0';
         s++;
-        while (isdigit(s))
+        while (isdigit(text[s]))
             f = f + (float)(text[s++] - '0') / 10;
         token->float_ = *(uint32_t *)(&f);
+        // exit(0);
         break;
     default:
         break;
@@ -354,7 +355,7 @@ Token *new_variable(Token *token)
     {
     case int_:
     case float_:
-        token->ptr = (ptr += 4);
+        token->ptr = (ptr += 8);
         break;
     case char_:
         token->ptr = (ptr += 8);
@@ -483,12 +484,10 @@ void print_node(Node *node, int level)
     }
 }
 
-Node *new_node(Token *token, Node *left, Node *right)
+Node *new_node(Token *token)
 {
     Node *new = calloc(1, sizeof(Node));
     new->token = token;
-    new->left = left;
-    new->right = right;
     return new;
 }
 
@@ -532,29 +531,44 @@ Node *expr()
 
 Node *assign()
 {
-    Node *node = add_sub();
-    Token *token = NULL;
+    Node *left = add_sub();
+    Token *token;
     if (token = check(assign_, 0))
-        node = new_node(token, node, assign());
-    return node;
+    {
+        Node *node = new_node(token);
+        node->left = left;
+        node->right = assign();
+        return node;
+    }
+    return left;
 }
 
 Node *add_sub()
 {
-    Node *node = mul_div();
-    Token *token = NULL;
+    Node *left = mul_div();
+    Token *token;
     if (token = check(add_, sub_, 0))
-        node = new_node(token, node, add_sub());
-    return node;
+    {
+        Node *node = new_node(token);
+        node->left = left;
+        node->right = add_sub();
+        return node;
+    }
+    return left;
 }
 
 Node *mul_div()
 {
-    Node *node = prime();
-    Token *token = NULL;
+    Node *left = prime();
+    Token *token;
     if (token = check(mul_, div_, 0))
-        node = new_node(token, node, mul_div());
-    return node;
+    {
+        Node *node = new_node(token);
+        node->left = left;
+        node->right = mul_div();
+        return node;
+    }
+    return left;
 }
 
 Node *prime()
@@ -569,9 +583,7 @@ Node *prime()
             {
                 Type type = DataTypes[i].type;
                 debug("find %s\n", type_to_string(DataTypes[i].type));
-                if (tokens[tk_pos]->type != identifier_)
-                    error("Expected identifier after data type");
-                node = new_node(tokens[tk_pos++], NULL, NULL);
+                node = new_node(expect(identifier_, 0));
                 node->token->type = type;
                 if (get_var(node->token->name))
                     error("redefinition of variable");
@@ -594,18 +606,18 @@ Node *prime()
         token = get_var(name);
         if (!token)
             error("Undeclared variable '%s'", name);
-        node = new_node(token, NULL, NULL);
+        node = new_node(token);
     }
     else if (token = check(lparent_, 0))
     {
-        expect(lparent_);
+        // expect(lparent_);
         node = expr();
         expect(rparent_);
     }
     else if (token = check(char_, int_, float_, eof_, 0))
-        node = new_node(token, NULL, NULL);
+        node = new_node(token);
     else
-        error("found %s in prime", type_to_string(token->type));
+        error("found %s in prime", token ? type_to_string(token->type) : "(null)");
     return node;
 }
 
@@ -636,7 +648,11 @@ void initialize()
 void finalize()
 {
     // TODO: check exit status if changed
+#if 0
     print_asm("   mov     rax, 0\n");
+#else
+    print_asm("\n");
+#endif
     print_asm("   leave\n");
     print_asm("   ret\n\n");
     for (int i = 0; i < tk_pos; i++)
@@ -728,18 +744,28 @@ Token *evaluate(Node *node)
         switch (left->type)
         {
         case int_:
-            print_asm("   mov     QWORD PTR -%zu[rbp], ", left->ptr);
             if (right->ptr)
-                print_asm("QWORD PTR -%zu[rbp]\n", right->ptr);
+            {
+                print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
+                print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", left->ptr);
+            }
             else
-                print_asm("%d\n", right->int_);
+                print_asm("   mov     QWORD PTR -%zu[rbp], %d\n", left->ptr, right->int_);
+            break;
+        case float_:
+            // TODO: check xmms, with multiple variables
+            if (right->ptr)
+            {
+                print_asm("   movss     xmm1, DWORD PTR -%zu[rbp]\n", right->ptr);
+                print_asm("   movss     DWORD PTR -%zu[rbp], xmm1\n", left->ptr);
+            }
+            else
+            {
+                print_asm("   movss     xmm1, DWORD PTR FLT%zu[rip]\n", right->index_);
+                print_asm("   movss     DWORD PTR -%zu[rbp], xmm1\n", left->ptr);
+            }
             break;
 #if 0
-            case float_:
-                // TODO: check xmms, with multiple variables
-                print_asm( "   movss   xmm1, DWORD PTR .FLT%zu[rip]\n", right->index_);
-                print_asm( "   movss   DWORD PTR -%zu[rbp], xmm1\n", to_find->ptr);
-                break;
             case char_:
                 print_asm( "   lea     rax, .STR%zu[rip]\n", right->index_);
                 print_asm( "   mov     QWORD PTR -%zu[rbp], rax\n", to_find->ptr);
@@ -816,29 +842,65 @@ Token *evaluate(Node *node)
         else
         {
             debug("1. do %s between %k with %k\n", type_to_string(type), left, right);
+            char *str;
             switch (node->token->type)
             {
             case int_:
-                node->token->ptr = (ptr += 4);
+                node->token->ptr = (ptr += 8);
                 // set left
-                print_asm("   mov     QWORD PTR -%zu[rbp], ", node->token->ptr);
+                print_asm("   mov     rax, ");
                 if (left->ptr)
                     print_asm("QWORD PTR -%zu[rbp]\n", left->ptr);
                 else
                     print_asm("%d\n", left->int_);
                 // set right
-                char *str = type == add_   ? "add"
-                            : type == sub_ ? "sub"
-                            : type == mul_ ? "mul"
-                                           : NULL;
-                print_asm("   %s     QWORD PTR -%zu[rbp], ", str, node->token->ptr);
+                str = type == add_   ? "add     rax, "
+                      : type == sub_ ? "sub     rax, "
+                      : type == mul_ ? "imul    rax, "
+                      : type == div_ ? "cdq\n   mov     rbx, "
+                                     : NULL;
+
+                print_asm("   %s", str);
                 if (right->ptr)
                     print_asm("QWORD PTR -%zu[rbp]\n", right->ptr);
                 else
                     print_asm("%d\n", right->int_);
+
+                if (type == div_)
+                    print_asm("   idiv    rbx\n");
+
+                print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
                 break;
             case float_:
+                /*
+                    if ptr load from FLT%zu
+                    else load value from register
+                */
+                node->token->ptr = (ptr += 4);
+                // set left
+                print_asm("   movss     xmm1, ");
+                if (left->name)
+                    print_asm("DWORD PTR -%zu[rbp]\n", left->ptr);
+                else if (left->index_)
+                    print_asm("DWORD PTR FLT%zu[rip]\n", left->index_);
+                else
+                    print_asm("%zu\n", left->float_);
+                // set right
+                str = type == add_   ? "addss     xmm1, "
+                      : type == sub_ ? "subss     xmm1, "
+                      : type == mul_ ? "imulss    xmm1, "
+                      : type == div_ ? "idivss    xmm1, "
+                                     : NULL;
 
+                print_asm("   %s", str);
+                if (right->name)
+                    print_asm("DWORD PTR -%zu[rbp]\n", right->ptr);
+                else if (right->index_)
+                    print_asm("DWORD PTR FLT%zu[rip]\n", right->index_);
+                else
+                    print_asm("%zu\n", right->float_);
+
+                print_asm("   movss     DWORD PTR -%zu[rbp], xmm1\n", node->token->ptr);
                 break;
             default:
                 error("math operation 1");

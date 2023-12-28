@@ -1,9 +1,5 @@
 - TODOS:
     - Data types:
-        - int:
-            - (check MAX_INT, MIN_INT, ...)
-        - float:
-            - (check MAX_FLT, MIN_FLT, ...)
         - char:
             - NULL
         - arrays
@@ -49,8 +45,12 @@
     - unknown data type
     - tab level after :
     - protect rsp
+    - int:
+        - (check MAX_INT, MIN_INT, ...)
+    - float:
+        - (check MAX_FLT, MIN_FLT, ...)
 
-=================================================================================
+============================================================================
 - NOTES:
     + testb : 'and' bitwise operator
     + write system call:
@@ -62,3 +62,4 @@
     + long: 32bit
     + word: 16bit
     + byte: 08bit
+
