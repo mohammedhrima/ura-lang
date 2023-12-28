@@ -1,7 +1,7 @@
 #!/bin/bash
 rm -rf a.out 
-cc main.c -lm -fsanitize=address -fsanitize=null -g3 -D DEBUG=0
-cp -r a.out ./1.tests
+cc main.c -lm -fsanitize=address -fsanitize=null -g3 -D DEBUG=0 -o comp
+cp -r comp ./1.tests
 
 # Color codes for output
 GREEN='\033[0;32m'
@@ -16,7 +16,7 @@ for file in *.hr; do
     # Check if the file is a regular file
     if [ -f "$file" ]; then
         # Execute the command to generate file.s
-        ./a.out "$file"
+        ./comp "$file"
         
         # Extract the file name without extension
         filename=$(basename -- "$file")
@@ -32,6 +32,6 @@ for file in *.hr; do
         fi
     fi
 done
-rm -rf a.out file.s
+rm -rf comp file.s
 cd ..
 

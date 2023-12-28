@@ -1,45 +1,33 @@
 .section	.note.GNU-stack,"",@progbits
 .intel_syntax noprefix
 .text
-.globl	main
+	.globl	main
 
-FLT2:
-   .long  1092616192
-FLT3:
-   .long  1082130432
-LC3:
-	.string	"%f, %f \n"
+.LC0: .long	  1076953088
+.LC1: .long	  1075576832
+.LC2: .long	  1076101120
+.LC3: .string "%f + %f = %f\n"
 
 main:
-   push    rbp
-   mov     rbp, rsp
-   sub     rsp, 30
+   push     rbp
+	mov	rbp, rsp
 
-   /* assign x */
-   movss     xmm1, DWORD PTR FLT2[rip]
-   movss     DWORD PTR -4[rbp], xmm1
+	/* a */
+	mov		rax, QWORD PTR .LC0[rip]
+	movq     xmm2, rax
+   
+	/* b */
+	mov		rax, QWORD PTR .LC1[rip]
+	movq	   xmm1, rax
 
-   movss xmm1, DWORD PTR FLT3[rip]
-   movss DWORD PTR -8[rbp], xmm1
-
-   /* assign x */
-   movss     xmm1, DWORD PTR -4[rbp]
-   addss     xmm1, DWORD PTR -8[rbp]
-   movss     DWORD PTR -12[rbp], xmm1
-
-   pxor xmm1, xmm1
-   pxor xmm0, xmm0
-
-	cvtss2sd	xmm0, DWORD PTR -4[rbp]
-	cvtss2sd	xmm1, DWORD PTR -8[rbp]
-
-	lea	rax, LC3[rip]
-	mov	rdi, rax
-	mov	eax, 2
-	call	printf@PLT
+   /* c */
+	mov		rax, QWORD PTR .LC2[rip]
+	movq	   xmm0, rax
 	
-	mov	eax, 0
-   leave
-   ret
-
+	mov		eax, 1
+	call	   printf@PLT
+	xor		eax, eax
+   
+	leave
+	ret
 
