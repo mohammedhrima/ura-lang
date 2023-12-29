@@ -20,7 +20,7 @@ main:
 	mov		rax, QWORD PTR .LC1[rip]
 	movq	   xmm1, rax
 
-   /* c */
+    /* c */
 	mov		rax, QWORD PTR .LC2[rip]
 	movq	   xmm0, rax
 	
