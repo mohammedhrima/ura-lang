@@ -136,7 +136,7 @@ int main()
     multiply(&num1, &num2, &result);
     printBigInteger(&result);
 #else
-    initialize(&num1, "2468888888888888888888888888888888888888");
+    initialize(&num1, "123");
     initialize(&num2, "2");
     divide(&num1, &num2, &quotient, &remainder);
     printf("Quotient: ");

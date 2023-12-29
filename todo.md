@@ -4,6 +4,7 @@
         - char
         - arrays
         - implement BigInt, BigFloat
+            - shift the number in chnks of 4bytes
 
     - Operators:
         - math operators:
@@ -69,7 +70,7 @@
     - tab level after :
     - protect rsp
 
-============================================================================
+=========================================================================
 - NOTES:
     + testb : 'and' bitwise operator
     + write system call:

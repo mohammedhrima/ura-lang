@@ -8,6 +8,7 @@ RUN apt update -y \
     && apt full-upgrade -y \
     && apt install gcc -y \
     && apt install g++ -y \
-    && apt install clang -y 
+    && apt install vim -y \
+    && apt install man -y
 
 CMD ["sh", "_setup.sh"]
