@@ -1,24 +1,29 @@
-.section	.note.GNU-stack,"",@progbits
-.intel_syntax noprefix
-.text
-.globl	main
-.type	main, @function
-
+	.file	"div.c"
+	.intel_syntax noprefix
+	.text
+	.section	.rodata
+.LC0:
+	.string	"%d\n"
+	.text
+	.globl	main
+	.type	main, @function
 main:
 	push	rbp
 	mov	rbp, rsp
-
-	mov	QWORD PTR -8[rbp], 12
-	
+	sub	rsp, 16
+	mov	esi, 2
+	mov	edi, 15
+	call	div@PLT
+	mov	QWORD PTR -8[rbp], rax
 	mov	rax, QWORD PTR -8[rbp]
-	add	rax, 17
-	mov	QWORD PTR -16[rbp], rax
-
-	mov	rax, QWORD PTR -16[rbp]
-	cdq
-
-	idiv	QWORD PTR -8[rbp]
-	mov	QWORD PTR -24[rbp], rax
-	mov	rax, QWORD PTR -24[rbp]
-	pop	rbp
+	mov	rsi, rax
+	lea	rax, .LC0[rip]
+	mov	rdi, rax
+	mov	eax, 0
+	call	printf@PLT
+	mov	eax, 0
+	leave
 	ret
+	.size	main, .-main
+	.ident	"GCC: (Debian 12.2.0-14) 12.2.0"
+	.section	.note.GNU-stack,"",@progbits
