@@ -13,7 +13,7 @@
 #include <stdarg.h>
 
 #ifndef DEBUG
-#define DEBUG 1
+#define DEBUG 1 
 #endif
 
 // structs, enums

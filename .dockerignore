@@ -1,3 +1,7 @@
-./docker-compose.yml
-./Dockerfile
-./todo.md
+docker-compose.yml
+Dockerfile
+**/a.out
+**/a.out.dSYM/
+**/comp
+.DS_Store
+.vscode

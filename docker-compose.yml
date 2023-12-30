@@ -1,10 +1,10 @@
 version: "3.8"
 services:
   client:
-    build: "./"
+    build: "./compiler"
     container_name: gcc_container
     volumes:
-      - ./:/app
+      - "${PWD}/compiler:/compiler"
     restart: always
 
 volumes:
@@ -14,4 +14,4 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: /Users/mhrima/Desktop/Compiler/compiler
+      device: "${PWD}/compiler"
