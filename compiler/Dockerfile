@@ -1,8 +1,7 @@
 FROM debian:stable
 
-WORKDIR /app
-COPY compiler .
-COPY _setup.sh .
+WORKDIR /compiler
+COPY . .
 
 RUN apt update -y \
     && apt full-upgrade -y \

@@ -1,10 +1,11 @@
 - TODOS:
-    - Build a costume printf
     - Data types:
+        - bigInt
         - char
         - arrays
         - implement BigInt, BigFloat
             - shift the number in chnks of 4bytes
+    - Build a costume printf
 
     - Operators:
         - math operators:
