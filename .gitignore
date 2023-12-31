@@ -1,6 +1,7 @@
 **/a.out
 **/a.out.dSYM/
 **/comp
+**/asm
 
 .DS_Store
 .vscode

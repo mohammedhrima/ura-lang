@@ -7,34 +7,16 @@ main:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 30
-   /* declare x */
-   mov     QWORD PTR -4[rbp], 0
-   /* assign to x */
-   movss   xmm1, DWORD PTR FLT2[rip]
-   movss   DWORD PTR -4[rbp], xmm1
-   /* declare y */
-   mov     QWORD PTR -8[rbp], 0
-   /* assign to y */
-   movss   xmm1, DWORD PTR FLT3[rip]
-   movss   DWORD PTR -8[rbp], xmm1
-   /* declare z */
-   mov     QWORD PTR -12[rbp], 0
-   movss   xmm1, DWORD PTR -8[rbp]
-   addss   xmm1, DWORD PTR FLT4[rip]
-   movss   DWORD PTR -16[rbp], xmm1
-   movss   xmm1, DWORD PTR -4[rbp]
-   addss   xmm1, DWORD PTR -16[rbp]
-   movss   DWORD PTR -20[rbp], xmm1
-   /* assign to z */
-   movss   xmm1, DWORD PTR -20[rbp]
-   movss   DWORD PTR -12[rbp], xmm1
+   /* declare a */
 
-   leave
-   ret
+   /* assign to a */
+   lea     rax, STR1[rip]
+   mov     QWORD PTR -8[rbp], rax
+   /* declare b */
 
-FLT2:/* 2.000000 */
-   .long  1073741824
-FLT3:/* -1.000000 */
-   .long  3212836864
-FLT4:/* 5.000000 */
-   .long  1084227584
+   /* assign to b */
+   lea     rax, STR2[rip]
+   mov     QWORD PTR -16[rbp], rax
+   /* declare s */
+
+   sub     rsp, 30

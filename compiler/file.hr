@@ -1,4 +1,4 @@
 main:
-    float x = 2.0
-    float y = -1.0
-    float z = x + y + 5.0
+    char a = "abcd"
+    char b = "efg"
+    char s = a + b
