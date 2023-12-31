@@ -5,7 +5,7 @@ void ft_putchar(char c)
     write(1, &c, 1);
 }
 
-void ft_putnbr(long num)
+void ft_putnbr(long long num)
 {
     size_t i = 0;
     if (num < 0)
@@ -24,7 +24,7 @@ void ft_putnbr(long num)
 
 int main()
 {
-    long num = 1235;
+    long long num = 1235;
     ft_putnbr(num);
     write(1, "\n", 1);
 }

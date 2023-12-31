@@ -5,7 +5,7 @@ services:
     container_name: gcc_container
     volumes:
       - "${PWD}/compiler:/compiler"
-    restart: always
+    restart: on-failure
 
 volumes:
   container:
