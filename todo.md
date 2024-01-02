@@ -1,49 +1,70 @@
-- TODOS:
-    - Data types:
-        - int
-        - char 
-        - arrays
-        - float
+- variables:
+    - starts only with letter
+    - by levels
 
-    - Operators:
-        - math:
+- data Types:
+
+    - single:
+        - int:
             - negative numbers
-            + +, -, ()
-            - *, /:
-        - comparision:
-            - boolean
-            - < > == !=
-        - logic:
-            - && || !
-    
-    - assignement:
-        - += -= *= /=
+            - arithmetic operators: / * + - % ++ --
+            - relational operators: < > <= >= == !=
+        - float:
+            - negative numbers
+            - arithmetic operator: / * + -
+            - relational operator: < > <= >= == != 
+        - char:
+            - arithmetic operator: 
+                - only for mutable + 
+            - relational operator: == !=
+            - set rbp - 14: 0 or 1 (mu / imut)
+            - set rbp - 13: len
+            - set rbp - 08: address in stack 
+        - bool:
+            - relational operator: == != !
+            - logical operators: && || and or
 
-    - implement BigInt, BigFloat
+    - assign: += -= *= /=
 
-- loops, statments
-- return keyword (there is limit of exit status)
+- memory management:
+    - heap allocation
+    - stack allocation
+    - garbage collector
+    - normal mode
+        - free function
+    - garbage collection mode
+    - protect mode:
+        - check all []
 
-- functions:
+- inditions and loops:
+    - syntax 1:
+        if statement:
+            // code here ...
+        elif:
+            // code here ...
+        else:
+            // code here ...
+
+    - syntax 2:
+        while condition:
+            // code here ...
+
+- typedefs: use int as num
+- add _ before globals also
+
+- function declaration:
+    - syntax:
+        data_type func func_name(params ...):
+            // code here ...
+    - starts only with letter
+    - take params by refre or value
+    - variadic arguments
+    - return keyword
+    - add '_' before all declared functions:
+    - built in functions:
+        - output
+        - mutable
     - function call
         - before calling function push rbp to the stack and pop it later
         - each function has its own rbp
-    - with lot of parameters:
-        - use the stack
-    - built ins functions:
-        - output
-    - send params by refrence or value
-- variables by level
-- add tester to expected output
-- set estimation for each lable how much will take from rsp
-- data type methods
-- OOP shit:
-    - operators overloading
-    - class data types: 
-        - bigInt / bigfloat (optimized version of each known data type)
-- memory management:
-    heap / stack !!!
-- web server using it
-- 2nd version bdarija
-- pacman, snack game (using volkan)
-- web framework maybe !!
+    - polymorphism
