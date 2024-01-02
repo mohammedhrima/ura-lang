@@ -146,6 +146,29 @@ _putnbr2:
    leave
    ret
 
+_True: .string	"True"
+_False: .string	"False"
+_putbool:
+	push	rbp
+	mov		rbp, rsp
+	sub		rsp, 16
+	mov		eax, edi
+	mov		BYTE PTR -4[rbp], al
+	cmp		BYTE PTR -4[rbp], 0
+	je		_putbool0
+	lea		rax, _True[rip]
+	mov		rdi, rax
+	call	_putstr
+	jmp		_putbool1
+_putbool0:
+	lea	rax, _False[rip]
+	mov	rdi, rax
+	call	_putstr
+_putbool1:
+	mov		eax, 0
+	leave
+	ret
+
 _strdup:
 	push	rbp
 	mov		rbp, rsp
@@ -301,10 +324,11 @@ _strjoin:
 	leave
 	ret
 
-.macro  _strjoin_macro  left right
-	mov     rsi, \left
-   	mov     rdi, \right
+.macro  _strjoin_macro  left right dest
+	mov		rax, \left
+   	mov     rdi, rax
+	mov		rax, \right
+	mov     rsi, rax
 	call	_strjoin
-	mov		rsi, 0
-	mov		rdi, 0
+	mov		\dest, rax
 .endm

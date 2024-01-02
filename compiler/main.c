@@ -34,22 +34,27 @@ enum Type
     sub_,
     mul_,
     div_,
+    mod_,
     // comparision
     // TODO: expect expression after operator
+    equal_,
+    not_,
     less_than_,
     more_than_,
     less_than_equal_,
     more_than_equal_,
-    equal_,
     // parents
     lparent_,
     rparent_,
     // assignement
     assign_,
+#if 0
+    // TODO: handle logic operators
     add_assign_,
     sub_assign_,
     mul_assign_,
     div_assign_,
+#endif
     // memory
     fix_,
     dyn_,
@@ -130,19 +135,22 @@ struct
     {lparent_, "("},
     {rparent_, ")"},
     {coma_, ","},
+    // comparision
+    {less_than_equal_, "<="},
+    {more_than_equal_, ">="},
+    {not_, "!"},
+    {equal_, "=="},
+    {equal_, "is "},
+    {less_than_, "<"},
+    {more_than_, ">"},
     // assign
-    {assign_, "= "},
+    {assign_, "="},
+#if 0
     {add_assign_, "+="},
     {sub_assign_, "-="},
     {mul_assign_, "*="},
     {div_assign_, "/="},
-    // comparision
-    {less_than_, "<"},
-    {more_than_, ">"},
-    {less_than_equal_, "<="},
-    {more_than_equal_, ">="},
-    {equal_, "=="},
-    {equal_, "is "},
+#endif
     {0, 0},
 };
 
@@ -297,7 +305,7 @@ uintptr_t ptr;
 size_t index_;
 /*
 TODO:
-    protect Label index, putstr and punbr ...
+    protect Label index, putstr and putnbr ...
     may cause problems
 */
 // built ins
@@ -328,12 +336,14 @@ void output(Token *token)
             print_asm("   mov     rdi, rax\n", token->ptr);
             print_asm("   call    _putstr\n");
         }
-        else
+        else if (token->index_)
         {
-            print_asm("   lea   rax, STR%zu[rip]\n", token->index_);
+            print_asm("   lea     rax, STR%zu[rip]\n", token->index_);
             print_asm("   mov     rdi, rax\n", token->ptr);
-            print_asm("   call  _putstr\n");
+            print_asm("   call    _putstr\n");
         }
+        else
+            error("output char");
         break;
     }
     case int_:
@@ -344,7 +354,7 @@ void output(Token *token)
             print_asm("   mov   rdi, rax\n");
             print_asm("   call  _putnbr\n");
         }
-        else
+        else if (token->index_)
         {
             token->ptr = (ptr += 8);
             print_asm("   mov   QWORD PTR -%zu[rbp], %lld\n", token->ptr, token->int_);
@@ -352,7 +362,15 @@ void output(Token *token)
             print_asm("   mov   rdi, rax\n");
             print_asm("   call  _putnbr\n");
         }
+        else
+            error("output int");
         break;
+    }
+    case bool_:
+    {
+        print_asm("   movzx   eax, BYTE PTR -%zu[rbp]\n", token->ptr);
+        print_asm("   mov	  edi, eax\n");
+        print_asm("   call	  _putbool\n");
     }
     case float_:
     case identifier_:
@@ -460,11 +478,9 @@ Token *new_variable(Token *token)
         token->ptr = (ptr += 4);
         print_asm("   mov     QWORD PTR -%zu[rbp], %d\n", token->ptr, 0);
         break;
-#if 0
     case bool_:
         token->ptr = (ptr += 1);
         print_asm("   mov     BYTE PTR -%zu[rbp], %d\n", token->ptr, 0);
-#endif
     default:
         break;
     }
@@ -612,6 +628,7 @@ Node *new_node(Token *token)
 
 Node *expr();
 Node *assign();
+Node *logic();
 Node *add_sub();
 Node *mul_div();
 Node *unary();
@@ -651,13 +668,29 @@ Node *expr()
 
 Node *assign()
 {
-    Node *left = add_sub();
+    Node *left = logic();
     Token *token;
     if (token = check(assign_, 0))
     {
         Node *node = new_node(token);
         node->left = left;
         node->right = assign();
+        left = node;
+    }
+    return left;
+}
+
+Node *logic()
+{
+    Node *left = add_sub();
+    Token *token;
+    if (token = check(equal_, not_, less_than_,
+                      more_than_, less_than_equal_,
+                      more_than_equal_, 0))
+    {
+        Node *node = new_node(token);
+        node->left = left;
+        node->right = logic();
         left = node;
     }
     return left;
@@ -794,7 +827,7 @@ Node *prime()
         node = expr();
         expect(rparent_);
     }
-    else if (token = check(char_, int_, float_, eof_, 0))
+    else if (token = check(char_, int_, float_, eof_, bool_, 0))
         node = new_node(token);
     else
         error("found %s in prime", token ? type_to_string(token->type) : "(null)");
@@ -863,9 +896,7 @@ Token *evaluate(Node *node)
     case char_:
     case float_:
     case int_:
-#if 0
     case bool_:
-#endif
         break;
     case neg_:
     {
@@ -981,7 +1012,7 @@ Token *evaluate(Node *node)
 
             print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", left->ptr);
             break;
-#if 0
+#if 1
         case bool_:
             if (right->ptr)
             {
@@ -990,7 +1021,7 @@ Token *evaluate(Node *node)
                 print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", left->ptr);
             }
             else
-                print_asm("   movzx  BYTE PTR %zu[rbp], %d", left->ptr, right->bool_);
+                print_asm("   mov     BYTE PTR -%zu[rbp], %d", left->ptr, right->bool_);
             break;
 #endif
         default:
@@ -999,6 +1030,7 @@ Token *evaluate(Node *node)
         }
         break;
     }
+    // arithmetic operators
     case add_:
     case sub_:
     case mul_:
@@ -1124,32 +1156,29 @@ Token *evaluate(Node *node)
                     error("math operation 2");
                 node->token->sub_type = dyn_;
                 node->token->ptr = (ptr += 8);
-                /*
-                    mov rsi, ...
-                    mov rdi, ...
-                */
 
                 if (left->ptr)
-                    print_asm("   mov     rsi, QWORD PTR -%zu[rbp]\n", left->ptr);
+                    print_asm("   mov     rdi, QWORD PTR -%zu[rbp]\n", left->ptr);
                 else if (left->index_)
                 {
                     print_asm("   lea     rax, STR%zu[rip]\n", left->index_);
-                    print_asm("   mov     rsi, rax\n");
+                    print_asm("   mov     rdi, rax\n");
                 }
                 else
                     error("in char joining 1");
 
                 if (right->ptr)
-                    print_asm("   mov     rdi, QWORD PTR -%zu[rbp]\n", right->ptr);
+                    print_asm("   mov     rsi, QWORD PTR -%zu[rbp]\n", right->ptr);
                 else if (right->index_)
                 {
                     print_asm("   lea     rax, STR%zu[rip]\n", right->index_);
-                    print_asm("   mov     rdi, rax\n");
+                    print_asm("   mov     rsi, rax\n");
                 }
                 else
-                    error("in char joining 1");
-                print_asm("   call	   _strjoin\n");
-                print_asm("   mov      QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
+                    error("in char joining 2");
+                print_asm("   call	  _strjoin\n");
+                print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
+
                 break;
             default:
                 error("math operation 1");
@@ -1158,12 +1187,165 @@ Token *evaluate(Node *node)
         }
         break;
     }
+    // logic operators
     case equal_:
     case less_than_:
     case more_than_:
     case less_than_equal_:
     case more_than_equal_:
     {
+        node->token->type = bool_;
+        left = evaluate(node->left);
+        right = evaluate(node->right);
+        if (left->type != right->type)
+            error("Uncompatible type in logic operation");
+        // has no name // optimization
+        if (!left->ptr && !right->ptr)
+        {
+            debug("0. do %s between %k with %k\n", type_to_string(type), left, right);
+            // left->index_ = 0;
+            // right->index_ = 0;
+            // switch (node->token->type)
+            // {
+            // case int_:
+            //     if (type == equal_)
+            //         node->token->bool_ = (left->int_ == right->int_);
+            //     else if (type == less_than_)
+            //         node->token->bool_ = (left->int_ < right->int_);
+            //     else if (type == more_than_)
+            //          node->token->bool_ = (left->int_ == right->int_);
+            //     else if (type == less_than_equal_)
+            //          node->token->bool_ = (left->int_ == right->int_);
+            //     else if (type == less_than_equal_)
+            //           node->token->bool_ = (left->int_ == right->int_);
+                
+            //     break;
+# if 0
+            case float_:
+                node->token->index_ = index_++;
+                float l = *(float *)(&left->float_);
+                float r = *(float *)(&right->float_);
+                float res;
+                if (type == add_)
+                    res = l + r;
+                else if (type == sub_)
+                    res = l - r;
+                else if (type == mul_)
+                    res = l * r;
+                else if (type == div_)
+                {
+                    if (r == 0)
+                        error("can't devide by 0 (float)");
+                    res = l / r;
+                }
+                node->token->float_ = *(uint32_t *)(&res);
+                break;
+            // TODO: handle strings that get concatinated in run time
+            case char_:
+                node->token->index_ = index_++;
+                node->token->sub_type = dyn_;
+                if (type == add_)
+                    node->token->char_ = strjoin(left->char_, right->char_);
+                else
+                    error("invalid operation for characters");
+                break;
+#endif
+            default:
+                error("math operation 0");
+                break;
+            }
+        }
+#if 0
+        else
+        {
+            // TODO: addition for dynamic strings
+            debug("1. do %s between %k with %k\n", type_to_string(type), left, right);
+            char *str;
+            switch (node->token->type)
+            {
+            case int_:
+                node->token->ptr = (ptr += 8);
+                // set left
+                print_asm("   mov     rax, ");
+                if (left->ptr)
+                    print_asm("QWORD PTR -%zu[rbp]\n", left->ptr);
+                else
+                    print_asm("%d\n", left->int_);
+                // set right
+                str = type == add_   ? "add     rax, "
+                      : type == sub_ ? "sub     rax, "
+                      : type == mul_ ? "imul    rax, "
+                      : type == div_ ? "cdq\n   mov     rbx, "
+                                     : NULL;
+                print_asm("   %s", str);
+                if (right->ptr)
+                    print_asm("QWORD PTR -%zu[rbp]\n", right->ptr);
+                else
+                    print_asm("%d\n", right->int_);
+                if (type == div_)
+                    print_asm("   idiv    rbx\n");
+                print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
+                break;
+            case float_:
+                node->token->ptr = (ptr += 4);
+                // set left
+                print_asm("   movss   xmm1, ");
+                if (left->ptr)
+                    print_asm("DWORD PTR -%zu[rbp]\n", left->ptr);
+                else if (left->index_)
+                    print_asm("DWORD PTR FLT%zu[rip]\n", left->index_);
+                else
+                    print_asm("%zu\n", left->float_);
+                // set right
+                str = type == add_   ? "addss   xmm1, "
+                      : type == sub_ ? "subss   xmm1, "
+                      : type == mul_ ? "mulss   xmm1, "
+                      : type == div_ ? "divss   xmm1, "
+                                     : NULL;
+                print_asm("   %s", str);
+                if (right->ptr)
+                    print_asm("DWORD PTR -%zu[rbp]\n", right->ptr);
+                else if (right->index_)
+                    print_asm("DWORD PTR FLT%zu[rip]\n", right->index_);
+                else
+                    print_asm("%zu\n", right->float_);
+                print_asm("   movss   DWORD PTR -%zu[rbp], xmm1\n", node->token->ptr);
+                break;
+            case char_:
+                if (type != add_)
+                    error("math operation 2");
+                node->token->sub_type = dyn_;
+                node->token->ptr = (ptr += 8);
+
+                if (left->ptr)
+                    print_asm("   mov     rdi, QWORD PTR -%zu[rbp]\n", left->ptr);
+                else if (left->index_)
+                {
+                    print_asm("   lea     rax, STR%zu[rip]\n", left->index_);
+                    print_asm("   mov     rdi, rax\n");
+                }
+                else
+                    error("in char joining 1");
+
+                if (right->ptr)
+                    print_asm("   mov     rsi, QWORD PTR -%zu[rbp]\n", right->ptr);
+                else if (right->index_)
+                {
+                    print_asm("   lea     rax, STR%zu[rip]\n", right->index_);
+                    print_asm("   mov     rsi, rax\n");
+                }
+                else
+                    error("in char joining 2");
+                print_asm("   call	  _strjoin\n");
+                print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
+
+                break;
+            default:
+                error("math operation 1");
+                break;
+            }
+        }
+#endif
         break;
     }
     case func_call_:
@@ -1246,5 +1428,5 @@ int main(int argc, char **argv)
     rsp = 30;
     initialize();
     finalize();
-    debug("\n");
+    debug("\nresult: \n");
 }

@@ -69,6 +69,30 @@ _test() {
     rm -rf comp
 }
 
+_refresh() {
+    DEBUG_MODE=false
+    cc main.c -lm -fsanitize=address -fsanitize=null -g3 -D DEBUG=\$DEBUG_MODE -o comp
+    cp comp 1.tests/
+
+    cd 1.tests || exit
+    for file in *.hr; do
+        # Check if the file exists
+        if [ -e "\$file" ]; then
+            # Extract file name without extension
+            filename=\$(basename "\$file" .hr)
+
+            # Execute the command
+            ./comp "\$file"
+            # Move the generated file.s to 1.tests/cmp/ with the original filename.s
+            mv "file.s" "cmp/\$filename.s"
+            echo "create \$filename.s"
+        fi
+    done
+    rm -rf comp file.s
+    cd ..
+    rm -rf comp
+}
+
 _progress() {
     file_count=\$(ls 2.progress/*.c 2>/dev/null | wc -l)
     next_file_number=\$((file_count + 1))
@@ -84,6 +108,7 @@ _asm() {
 alias run="_run \$1"
 alias copy="_copy"
 alias test="_test"
+alias refresh="_refresh"
 alias prog="_progress"
 alias asm="_asm"
 EOL
