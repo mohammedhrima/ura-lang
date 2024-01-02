@@ -29,10 +29,12 @@
 - memory management:
     - heap allocation
     - stack allocation
+    - check allocation failure
     - garbage collector
     - normal mode
         - free function
     - garbage collection mode
+        - add bytes at left of pointer undecates how many variable is holding it
     - protect mode:
         - check all []
 
@@ -56,6 +58,7 @@
     - syntax:
         data_type func func_name(params ...):
             // code here ...
+    - if variable sent by refrence allocate there space in function code then push rbp to the stack
     - starts only with letter
     - take params by refre or value
     - variadic arguments

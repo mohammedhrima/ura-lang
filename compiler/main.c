@@ -103,7 +103,7 @@ struct
     {char_, "dyn:char"},
     // int
     {int_, "int"},
-    {int_, "fix:int"}, 
+    {int_, "fix:int"},
     {int_, "dyn:int"}, /* big Int */
     // float
     {float_, "float"},
@@ -301,10 +301,7 @@ TODO:
     may cause problems
 */
 // built ins
-bool Len_built_in;
-bool Putstr_built_in;
-bool Putnbr_built_in;
-bool Putchar_built_in;
+
 size_t Label;
 
 size_t rsp;
@@ -325,28 +322,27 @@ void output(Token *token)
     {
     case char_:
     {
-        Putstr_built_in = true;
-
         if (token->ptr)
         {
-            print_asm("   mov     rbx, QWORD PTR -%zu[rbp]\n", token->ptr);
-            print_asm("   call    putstr\n");
+            print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", token->ptr);
+            print_asm("   mov     rdi, rax\n", token->ptr);
+            print_asm("   call    _putstr\n");
         }
         else
         {
-            print_asm("   lea   rbx, STR%zu[rip]\n", token->index_);
-            print_asm("   call  putstr\n");
+            print_asm("   lea   rax, STR%zu[rip]\n", token->index_);
+            print_asm("   mov     rdi, rax\n", token->ptr);
+            print_asm("   call  _putstr\n");
         }
         break;
     }
     case int_:
     {
-        Putnbr_built_in = true;
         if (token->ptr)
         {
             print_asm("   mov   rax, QWORD PTR -%zu[rbp]\n", token->ptr);
             print_asm("   mov   rdi, rax\n");
-            print_asm("   call  putnbr\n");
+            print_asm("   call  _putnbr\n");
         }
         else
         {
@@ -354,7 +350,7 @@ void output(Token *token)
             print_asm("   mov   QWORD PTR -%zu[rbp], %lld\n", token->ptr, token->int_);
             print_asm("   mov   rax, QWORD PTR -%zu[rbp]\n", token->ptr);
             print_asm("   mov   rdi, rax\n");
-            print_asm("   call  putnbr\n");
+            print_asm("   call  _putnbr\n");
         }
         break;
     }
@@ -449,12 +445,12 @@ Token *new_token(int s, int e, Type type, Type sub_type)
 Token *new_variable(Token *token)
 {
     // TODO: check if you can remove initilize instruction
-    print_asm("   /* declare %s */\n", token->name);
+    print_asm(" %2s/* declare %s */\n", "", token->name);
     switch (token->type)
     {
     case char_:
         token->ptr = (ptr += 8);
-        print_asm("\n");
+        // print_asm("\n");
         break;
     case int_:
         token->ptr = (ptr += 8);
@@ -539,12 +535,15 @@ void build_tokens()
             token = NULL;
             continue;
         }
-        while (isalpha(text[e]))
-            e++;
-        if (e > s)
+        if (isalpha(text[e]))
         {
-            new_token(s, e, identifier_, sub_type);
-            continue;
+            while (isalnum(text[e]))
+                e++;
+            if (e > s)
+            {
+                new_token(s, e, identifier_, sub_type);
+                continue;
+            }
         }
         if (isdigit(text[e]))
         {
@@ -765,7 +764,7 @@ Node *prime()
         {
             debug("found function\n");
             /*
-                TODO: split
+                TODO:
                     + function call
                     + function declaration
             */
@@ -806,7 +805,6 @@ void initialize()
 {
     // TODO: verify all label then set start label
     // write the assembly
-    print_asm(".section	.note.GNU-stack,\"\",@progbits\n");
     print_asm(".intel_syntax noprefix\n");
     print_asm(".include \"import/header.s\"\n\n");
     print_asm(".text\n");
@@ -844,6 +842,7 @@ void finalize()
         if (!tokens[i]->name && tokens[i]->index_ && tokens[i]->type == float_)
             print_asm("FLT%zu: .long %zu /* %f */\n", tokens[i]->index_, *((float *)(&tokens[i]->float_)), tokens[i]->float_);
     }
+    print_asm(".section	.note.GNU-stack,\"\",@progbits\n");
 }
 
 Token *get_var(char *name)
@@ -927,10 +926,10 @@ Token *evaluate(Node *node)
         left = evaluate(node->left);
         right = evaluate(node->right);
         debug("assign %k and %k \n", left, right);
-        if (!left->name || left->type != right->type)
+        if (!left->name || left->type != right->type || !left->ptr)
             error("Invalid assignement");
+        print_asm(" %2s/* assign to %s */\n", "", left->name);
         node->token = left;
-        print_asm("   /* assign to %s */\n", left->name);
         switch (left->type)
         {
         case int_:
@@ -947,7 +946,7 @@ Token *evaluate(Node *node)
             if (right->ptr)
             {
                 print_asm("   movss   xmm1, DWORD PTR -%zu[rbp]\n", right->ptr);
-                print_asm("   movss   DWORD PTR -%zu[rbp], xmm1\n", left->ptr);
+                print_asm("   movss   DWORD PTR -%zu[rbp], xmm1", left->ptr);
             }
             else
             {
@@ -956,8 +955,30 @@ Token *evaluate(Node *node)
             }
             break;
         case char_:
-            // TODO: check if it has ptr, then load value from there
-            print_asm("   lea     rax, STR%zu[rip]\n", right->index_);
+            /*
+                TODO:
+                    + check right has ptr, then load value from there
+                    + strdup from right
+            */
+            if (left->sub_type == fix_)
+            {
+                if (right->index_)
+                    print_asm("   lea     rax, STR%zu[rip]\n", right->index_);
+                else
+                    print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
+            }
+            else if (left->sub_type == dyn_)
+            {
+                if (right->index_)
+                    print_asm("   lea     rax, STR%zu[rip]\n", right->index_);
+                else
+                    print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
+                print_asm("   mov     rdi, rax\n");
+                print_asm("   call    _strdup\n");
+            }
+            else
+                error("in assign char\n");
+
             print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", left->ptr);
             break;
 #if 0
@@ -1099,8 +1120,36 @@ Token *evaluate(Node *node)
                 print_asm("   movss   DWORD PTR -%zu[rbp], xmm1\n", node->token->ptr);
                 break;
             case char_:
-                // allocate in heap and copy both strings
+                if (type != add_)
+                    error("math operation 2");
+                node->token->sub_type = dyn_;
+                node->token->ptr = (ptr += 8);
+                /*
+                    mov rsi, ...
+                    mov rdi, ...
+                */
 
+                if (left->ptr)
+                    print_asm("   mov     rsi, QWORD PTR -%zu[rbp]\n", left->ptr);
+                else if (left->index_)
+                {
+                    print_asm("   lea     rax, STR%zu[rip]\n", left->index_);
+                    print_asm("   mov     rsi, rax\n");
+                }
+                else
+                    error("in char joining 1");
+
+                if (right->ptr)
+                    print_asm("   mov     rdi, QWORD PTR -%zu[rbp]\n", right->ptr);
+                else if (right->index_)
+                {
+                    print_asm("   lea     rax, STR%zu[rip]\n", right->index_);
+                    print_asm("   mov     rdi, rax\n");
+                }
+                else
+                    error("in char joining 1");
+                print_asm("   call	   _strjoin\n");
+                print_asm("   mov      QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
                 break;
             default:
                 error("math operation 1");
@@ -1115,7 +1164,6 @@ Token *evaluate(Node *node)
     case less_than_equal_:
     case more_than_equal_:
     {
-
         break;
     }
     case func_call_:
