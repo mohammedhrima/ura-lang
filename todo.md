@@ -7,19 +7,22 @@
     - single:
         - int:
             - negative numbers
-            - arithmetic operators: / * + - % ++ --
+            - arithmetic operators: / * + - %
             - relational operators: < > <= >= == !=
+            - dynamic int
         - float:
             - negative numbers
             - arithmetic operator: / * + -
             - relational operator: < > <= >= == != 
+            - dynamic float
         - char:
             - arithmetic operator: 
                 - only for mutable + 
             - relational operator: == !=
-            - set rbp - 14: 0 or 1 (mu / imut)
+            - set rbp - 14: 0 or 1
             - set rbp - 13: len
-            - set rbp - 08: address in stack 
+            - set rbp - 08: address in stack
+            - fix / dyn
         - bool:
             - relational operator: == != !
             - logical operators: && || and or

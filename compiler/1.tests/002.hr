@@ -1,6 +1,6 @@
 main:
-    fix:char stname = "mohammed"
-    dyn:char ndname = "hrima"
-    int age = 25
-
-    output("stname: ", stname, " ndname: ", ndname, " age: ", age, "\n")
+    char str1 = "abcde"
+    char str2 = "ghijkl"
+    char str3 = "mno\n"
+    char str4 = str1 + str2 + str3
+    output(str4)

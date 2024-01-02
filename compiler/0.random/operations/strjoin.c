@@ -80,9 +80,11 @@ void _putstr(char *str)
 }
 int main()
 {
-    char *a = "aaaa";
-    char *b = "bbb\n";
-    char *s = _strjoin(a, b);
-    _putstr(s);
+    char *a = "abc";
+    char *b = "def";
+    char *c = _strjoin(a, b);
+    char *d = "ghi\n";
+    char *e = _strjoin(c, d);
+    _putstr(e);
     _free_memory();
 }
