@@ -1,4 +1,3 @@
-.section	.note.GNU-stack,"",@progbits
 .intel_syntax noprefix
 .include "import/header.s"
 
@@ -9,50 +8,39 @@ main:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 30
-   /* declare stname */
-
-   /* assign to stname */
+   /* declare str1 */
+   /* assign to str1 */
    lea     rax, STR1[rip]
    mov     QWORD PTR -8[rbp], rax
-   /* declare ndname */
-
-   /* assign to ndname */
+   /* declare str2 */
+   /* assign to str2 */
    lea     rax, STR2[rip]
    mov     QWORD PTR -16[rbp], rax
-   /* declare age */
-   mov     QWORD PTR -24[rbp], 0
+   /* declare str3 */
    sub     rsp, 30
-   /* assign to age */
-   mov     QWORD PTR -24[rbp], 25
+   /* assign to str3 */
+   lea     rax, STR3[rip]
+   mov     QWORD PTR -24[rbp], rax
+   /* declare str4 */
+   
+   _strjoin_macro "QWORD PTR -8[rbp]" "QWORD PTR -16[rbp]"
+   mov      QWORD PTR -40[rbp], rax
+   
+   _strjoin_macro  "QWORD PTR -24[rbp]" "QWORD PTR -40[rbp]"
+   mov      QWORD PTR -48[rbp], rax
+
+   /* assign to str4 */
+   mov     rax, QWORD PTR -48[rbp]
+   mov     QWORD PTR -32[rbp], rax
    /* call output */
-   lea   rbx, STR3[rip]
-   call  putstr
-   /* call output */
-   mov     rbx, QWORD PTR -8[rbp]
-   call    putstr
-   /* call output */
-   lea   rbx, STR4[rip]
-   call  putstr
-   /* call output */
-   mov     rbx, QWORD PTR -16[rbp]
-   call    putstr
-   /* call output */
-   lea   rbx, STR5[rip]
-   call  putstr
-   /* call output */
-   mov   rax, QWORD PTR -24[rbp]
-   mov   rdi, rax
-   call  putnbr
-   /* call output */
-   lea   rbx, STR6[rip]
-   call  putstr
+   mov     rax, QWORD PTR -48[rbp]
+   mov     rdi, rax
+   call    _putstr
 
    leave
    ret
 
-STR1: .string "mohammed"
-STR2: .string "mohammed"
-STR3: .string "stname: "
-STR4: .string " ndname: "
-STR5: .string " age: "
-STR6: .string "\n"
+STR1: .string "abcde"
+STR2: .string "ghijkl"
+STR3: .string "a\n"
+.section	.note.GNU-stack,"",@progbits

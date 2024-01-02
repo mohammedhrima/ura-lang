@@ -126,9 +126,12 @@
 - memory management:
     - heap allocation
     - stack allocation
-    - garbage collector
+    - garbage collector:
+        - use threads
     - normal mode
         - free function
     - garbage collection mode
     - protect mode:
         - check all []
+
+add #if0 #else #endif

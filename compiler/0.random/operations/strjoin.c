@@ -1,7 +1,6 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include <stdint.h>
+#include <unistd.h>
+#include <stdlib.h>
 
 #define SIZE 100
 typedef struct Memo Memo;
@@ -48,18 +47,42 @@ void _free_memory()
     }
 }
 
+size_t _strlen(char *str)
+{
+    size_t i = 0;
+    while (str && str[i])
+        i++;
+    return i;
+}
+
+void _strcpy(char *destination, char *source)
+{
+    int i = 0;
+    while (destination && source && source[i])
+    {
+        destination[i] = source[i];
+        i++;
+    }
+}
+
+char *_strjoin(char *left, char *right)
+{
+    size_t len = _strlen(left);
+    char *res = _allocate(len + _strlen(right) + 1);
+    _strcpy(res, left);
+    _strcpy(res + len, right);
+    return res;
+}
+
+void _putstr(char *str)
+{
+    write(1, str, _strlen(str));
+}
 int main()
 {
-    void *ptr = _allocate(100);
-    ptr = _allocate(90);
-    printf("%zu\n", ((size_t *)ptr)[-1]);
-    ptr = _allocate(80);
-    printf("%zu\n", ((size_t *)ptr)[-1]);
-    ptr = _allocate(70);
-    printf("%zu\n", ((size_t *)ptr)[-1]);
-    ptr = _allocate(60);
-    printf("%zu\n", ((size_t *)ptr)[-1]);
-    // ptr = _allocate(50);
-    // printf("%zu\n", *(ptr + sizeof(size_t)));
+    char *a = "aaaa";
+    char *b = "bbb\n";
+    char *s = _strjoin(a, b);
+    _putstr(s);
     _free_memory();
 }
