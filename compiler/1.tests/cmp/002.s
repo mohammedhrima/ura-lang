@@ -33,7 +33,7 @@ main:
    /* assign to str4 */
    mov     rax, QWORD PTR -48[rbp]
    mov     QWORD PTR -32[rbp], rax
-   /* call output */
+   /* call _putstr */
    mov     rax, QWORD PTR -32[rbp]
    mov     rdi, rax
    call    _putstr

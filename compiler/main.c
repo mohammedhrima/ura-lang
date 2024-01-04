@@ -35,14 +35,19 @@ enum Type
     mul_,
     div_,
     mod_,
+    // logic operator
+    and_,
+    or_,
     // comparision
     // TODO: expect expression after operator
-    equal_,
+    // TODO: handle not
     not_,
+    not_equal_,
+    equal_,
     less_than_,
-    more_than_,
+    grea_than_,
     less_than_equal_,
-    more_than_equal_,
+    grea_than_equal_,
     // parents
     lparent_,
     rparent_,
@@ -69,6 +74,11 @@ enum Type
     func_dec_,
     func_call_,
     coma_,
+    // statements / loops
+    if_,
+    else_,
+    // TODO: expect new line after :
+    dots_,
 };
 
 struct Token
@@ -77,16 +87,22 @@ struct Token
     Type sub_type;
     char *name;
     uintptr_t ptr;
+    size_t level;
     union
     {
+        long long int_;
+        uint32_t float_;
         struct
         {
             char *char_;
             size_t index_;
         };
-        long long int_;
-        uint32_t float_;
-        bool bool_;
+        struct
+        {
+            bool bool_;
+            char c;
+            size_t Label;
+        };
     };
 };
 
@@ -137,12 +153,13 @@ struct
     {coma_, ","},
     // comparision
     {less_than_equal_, "<="},
-    {more_than_equal_, ">="},
+    {grea_than_equal_, ">="},
+    {not_equal_, "!="},
     {not_, "!"},
     {equal_, "=="},
     {equal_, "is "},
     {less_than_, "<"},
-    {more_than_, ">"},
+    {grea_than_, ">"},
     // assign
     {assign_, "="},
 #if 0
@@ -151,6 +168,10 @@ struct
     {mul_assign_, "*="},
     {div_assign_, "/="},
 #endif
+    // logic
+    {and_, "&&"},
+    {or_, "||"},
+    {dots_, ":"},
     {0, 0},
 };
 
@@ -167,6 +188,8 @@ struct
     {neg_, "negative"},
     {fix_, "fix"},
     {dyn_, "dynamic"},
+    {if_, "if"},
+    {else_, "else"},
     {none_, "none"},
     {0, 0},
 };
@@ -210,74 +233,86 @@ void debug(char *conv, ...)
         if (conv[i] == '%')
         {
             i++;
-            switch (conv[i])
+            if (strncmp(conv + i, "zu", 2) == 0)
             {
-            case 'c':
-                fprintf(stdout, "%c", va_arg(args, int));
-                break;
-            case 's':
-                fprintf(stdout, "%s", va_arg(args, char *));
-                break;
-            case 'p':
-                fprintf(stdout, "%p", (size_t)(va_arg(args, void *)));
-                break;
-            case 'x':
-                fprintf(stdout, "%x", (size_t)va_arg(args, void *));
-                break;
-            case 'X':
-                fprintf(stdout, "%X", (size_t)va_arg(args, void *));
-                break;
-            case 'd':
-                fprintf(stdout, "%d", (int)va_arg(args, int));
-                break;
-            case 'f':
-                fprintf(stdout, "%f", va_arg(args, double));
-                break;
-            case '%':
-                fprintf(stdout, "%%");
-                break;
-            case 'k':
-            {
-                Token *token = (Token *)va_arg(args, Token *);
-                if (token)
-                {
-                    fprintf(stdout, "type: %s, ", type_to_string(token->type));
-                    fprintf(stdout, "subtype: %s, ", type_to_string(token->sub_type));
-                    if (token->name)
-                        fprintf(stdout, "name: %s, ", token->name);
-#if 1
-                    else
-#endif
-                        switch (token->type)
-                        {
-                        case char_:
-                            fprintf(stdout, "value: %s, ", token->char_);
-                            if (token->index_)
-                                fprintf(stdout, "in STR%zu, ", token->index_);
-                            break;
-                        case int_:
-                            fprintf(stdout, "value: %d, ", token->int_);
-                            break;
-                        case float_:
-                            fprintf(stdout, "value: %zu (%.2f), ", token->float_, *(float *)(&token->float_));
-                            if (token->index_)
-                                fprintf(stdout, "in FLT%zu, ", token->index_);
-                            break;
-                        case bool_:
-                            fprintf(stdout, "value: %s, ", token->bool_ ? "True" : "False");
-                            break;
-                        default:
-                            // ft_putstr(stdout, "Unkown");
-                            break;
-                        }
-                }
-                else
-                    fprintf(stdout, "(null)");
-                break;
+                fprintf(stdout, "%zu", va_arg(args, size_t));
+                i++;
             }
-            default:
-                error("in debug function");
-                break;
+            else
+            {
+                switch (conv[i])
+                {
+                case 'c':
+                    fprintf(stdout, "%c", va_arg(args, int));
+                    break;
+                case 's':
+                    fprintf(stdout, "%s", va_arg(args, char *));
+                    break;
+                case 'p':
+                    fprintf(stdout, "%p", (size_t)(va_arg(args, void *)));
+                    break;
+                case 'x':
+                    fprintf(stdout, "%x", (size_t)va_arg(args, void *));
+                    break;
+                case 'X':
+                    fprintf(stdout, "%X", (size_t)va_arg(args, void *));
+                    break;
+                case 'd':
+                    fprintf(stdout, "%d", (int)va_arg(args, int));
+                    break;
+                case 'f':
+                    fprintf(stdout, "%f", va_arg(args, double));
+                    break;
+                case '%':
+                    fprintf(stdout, "%%");
+                    break;
+                case 'k':
+                {
+                    Token *token = (Token *)va_arg(args, Token *);
+                    if (token)
+                    {
+                        fprintf(stdout, "%s ", type_to_string(token->type));
+#if 0
+                    if (token->sub_type)
+                        fprintf(stdout, "subtype: %s, ", type_to_string(token->sub_type));
+#endif
+                        if (token->name)
+                            fprintf(stdout, "<name:%s> ", token->name);
+#if 1
+                        else
+#endif
+                            switch (token->type)
+                            {
+                            case char_:
+                                fprintf(stdout, "'%s' ", token->char_);
+                                if (token->index_)
+                                    fprintf(stdout, " STR%zu, ", token->index_);
+                                break;
+                            case int_:
+                                fprintf(stdout, "%d ", token->int_);
+                                break;
+                            case float_:
+                                fprintf(stdout, "%zu (%.2f) ", token->float_, *(float *)(&token->float_));
+                                if (token->index_)
+                                    fprintf(stdout, "FLT%zu ", token->index_);
+                                break;
+                            case bool_:
+                                fprintf(stdout, "%s ", token->bool_ ? "True" : "False");
+                                break;
+                            default:
+                                // ft_putstr(stdout, "Unkown");
+                                break;
+                            }
+                        fprintf(stdout, " in LVL%zu", token->level);
+                    }
+                    else
+                        fprintf(stdout, "(null)");
+                    break;
+                }
+                default:
+                    error("in debug function");
+                    break;
+                }
             }
         }
         else
@@ -311,6 +346,7 @@ TODO:
 // built ins
 
 size_t Label;
+char *Label_name;
 
 size_t rsp;
 FILE *asm_fd;
@@ -324,12 +360,12 @@ void print_asm(char *fmt, ...)
 void output(Token *token)
 {
     // TODO: handle bool
-    print_asm("   /* call output */\n");
     debug("output %k\n", token);
     switch (token->type)
     {
     case char_:
     {
+        print_asm("   /* call _putstr */\n");
         if (token->ptr)
         {
             print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", token->ptr);
@@ -348,6 +384,7 @@ void output(Token *token)
     }
     case int_:
     {
+        print_asm("   /* call _putnbr */\n");
         if (token->ptr)
         {
             print_asm("   mov   rax, QWORD PTR -%zu[rbp]\n", token->ptr);
@@ -368,13 +405,22 @@ void output(Token *token)
     }
     case bool_:
     {
-        print_asm("   movzx   eax, BYTE PTR -%zu[rbp]\n", token->ptr);
+        print_asm("   /* call _putbool */\n");
+        if (token->ptr)
+            print_asm("   movzx   eax, BYTE PTR -%zu[rbp]\n", token->ptr);
+        else if (token->c)
+            print_asm("   movzx   eax, %cl\n", token->c);
+        else
+            error("output bool");
         print_asm("   mov	  edi, eax\n");
         print_asm("   call	  _putbool\n");
+        break;
     }
     case float_:
-    case identifier_:
+        // TODO: handle float
+        error("Error in output float not handled yet");
         break;
+    case identifier_:
         break;
     default:
         error("Error in output unknown type");
@@ -402,7 +448,7 @@ void free_token(Token *token)
     free(token);
 }
 
-Token *new_token(int s, int e, Type type, Type sub_type)
+Token *new_token(int s, int e, Type type, Type sub_type, size_t level)
 {
     Token *token = calloc(1, sizeof(Token));
     if (tk_pos + 10 > tk_len)
@@ -415,6 +461,7 @@ Token *new_token(int s, int e, Type type, Type sub_type)
     }
     token->type = type;
     token->sub_type = sub_type;
+    token->level = level;
     switch (type)
     {
     case identifier_:
@@ -430,6 +477,14 @@ Token *new_token(int s, int e, Type type, Type sub_type)
             token->type = bool_;
             token->bool_ = false;
         }
+        else if (strcmp(token->name, "and") == 0)
+            token->type = and_;
+        else if (strcmp(token->name, "or") == 0)
+            token->type = or_;
+        else if (strcmp(token->name, "if") == 0)
+            token->type = if_;
+        else if (strcmp(token->name, "else") == 0)
+            token->type = else_;
         break;
     case char_:
         token->index_ = index_;
@@ -456,14 +511,13 @@ Token *new_token(int s, int e, Type type, Type sub_type)
     default:
         break;
     }
-    debug("new token %k\n", token);
+    debug("token %k \n", token);
     return (tokens[tk_pos++] = token);
 }
 
 Token *new_variable(Token *token)
 {
     // TODO: check if you can remove initilize instruction
-    print_asm(" %2s/* declare %s */\n", "", token->name);
     switch (token->type)
     {
     case char_:
@@ -472,15 +526,15 @@ Token *new_variable(Token *token)
         break;
     case int_:
         token->ptr = (ptr += 8);
-        print_asm("   mov     QWORD PTR -%zu[rbp], %d\n", token->ptr, 0);
+        print_asm("   mov     QWORD PTR -%zu[rbp], %d /* declare %s */\n", token->ptr, 0, token->name);
         break;
     case float_:
         token->ptr = (ptr += 4);
-        print_asm("   mov     QWORD PTR -%zu[rbp], %d\n", token->ptr, 0);
+        print_asm("   mov     DWORD PTR -%zu[rbp], %d /* declare %s */\n", token->ptr, 0, token->name);
         break;
     case bool_:
         token->ptr = (ptr += 1);
-        print_asm("   mov     BYTE PTR -%zu[rbp], %d\n", token->ptr, 0);
+        print_asm("   mov     BYTE PTR -%zu[rbp], %d /* declare %s */\n", token->ptr, 0, token->name);
     default:
         break;
     }
@@ -492,7 +546,7 @@ Token *new_variable(Token *token)
         variables = tmp;
         var_len *= 2;
     }
-    debug("new variable %k\n", token);
+    debug("new variable %k in ptr: %zu\n", token, token->ptr);
     return (variables[var_pos++] = token);
 }
 
@@ -500,9 +554,10 @@ void build_tokens()
 {
     int e = 0;
     // Expect main label
-    while (isspace(text[e]))
-        e++;
+    // while (isspace(text[e]))
+    //     e++;
     // TODO: main could any where
+    size_t level = 0;
     if (strncmp(&text[e], "main:\n", strlen("main:\n")))
         error("main label with new line is required\n");
     e += strlen("main:\n");
@@ -511,9 +566,20 @@ void build_tokens()
         Token *token = NULL;
         Type sub_type = fix_;
         int s = e;
-        if (isspace(text[e]))
+        if (text[e] == '\n')
         {
             e++;
+            level = 0;
+            while (text[e] != '\n' && isspace(text[e]))
+                e++;
+            debug("found space with lenght %d\n", e - s);
+            level = (e - s) / 4;
+            continue;
+        }
+        if (isspace(text[e]))
+        {
+            while (isspace(text[e]))
+                e++;
             continue;
         }
         if (strlen(text + e) > 1 && strncmp(text + e, "/*", 2) == 0)
@@ -526,7 +592,7 @@ void build_tokens()
             e += 2;
             continue;
         }
-        // TODO: protect it in parsing from stupid errors
+        // TODO: protect it from stupid parsing errors
         if (strncmp(text + e, "fix:", 4) == 0)
         {
             sub_type = fix_;
@@ -541,7 +607,7 @@ void build_tokens()
         {
             if (strncmp(Symbols[i].name, text + e, strlen(Symbols[i].name)) == 0)
             {
-                token = new_token(s, e + strlen(Symbols[i].name), Symbols[i].type, sub_type);
+                token = new_token(s, e + strlen(Symbols[i].name), Symbols[i].type, sub_type, level);
                 e += strlen(Symbols[i].name);
                 break;
             }
@@ -557,7 +623,7 @@ void build_tokens()
                 e++;
             if (e > s)
             {
-                new_token(s, e, identifier_, sub_type);
+                new_token(s, e, identifier_, sub_type, level);
                 continue;
             }
         }
@@ -573,7 +639,7 @@ void build_tokens()
             }
             while (isdigit(text[e]))
                 e++;
-            new_token(s, e, type, sub_type);
+            new_token(s, e, type, sub_type, level);
             continue;
         }
         // TODO: update error message
@@ -584,12 +650,12 @@ void build_tokens()
                 e++;
             if (text[e++] != quote)
                 error("Syntax");
-            new_token(s + 1, e - 1, char_, sub_type);
+            new_token(s + 1, e - 1, char_, sub_type, level);
             continue;
         }
         error("tokenizing");
     }
-    new_token(0, 0, eof_, none_);
+    new_token(0, 0, eof_, none_, level);
 }
 
 // Tree
@@ -623,15 +689,19 @@ Node *new_node(Token *token)
 {
     Node *new = calloc(1, sizeof(Node));
     new->token = token;
+    debug("new node %k\n", new->token);
     return new;
 }
 
 Node *expr();
-Node *assign();
-Node *logic();
-Node *add_sub();
-Node *mul_div();
-Node *unary();
+Node *assign();     // =
+Node *logic();      // || or && and
+Node *equality();   // ==  !=
+Node *comparison(); // < > <= >=
+Node *add_sub();    // + -
+Node *mul_div();    // * /
+Node *unary();      // -
+Node *else_statement();
 Node *prime();
 
 Token *check(Type type, ...)
@@ -675,22 +745,60 @@ Node *assign()
         Node *node = new_node(token);
         node->left = left;
         node->right = assign();
+        // left = node;
+        return node;
+    }
+    return left;
+}
+Node *logic()
+{
+    Node *left = equality();
+    Token *token;
+#if 0
+    while (token = check(or_, 0))
+    {
+        Node *node = new_node(token);
+        node->right = left;
+        node->left = logic_and();
+        left = node;
+    }
+#else
+    if (token = check(or_, and_, 0))
+    {
+        Node *node = new_node(token);
+        node->left = left;
+        node->right = logic();
+        left = node;
+        // return node;
+    }
+#endif
+    return left;
+}
+
+Node *equality()
+{
+    Node *left = comparison();
+    Token *token;
+    if (token = check(equal_, not_equal_, 0))
+    {
+        Node *node = new_node(token);
+        node->left = left;
+        node->right = equality();
         left = node;
     }
     return left;
 }
 
-Node *logic()
+Node *comparison()
 {
     Node *left = add_sub();
     Token *token;
-    if (token = check(equal_, not_, less_than_,
-                      more_than_, less_than_equal_,
-                      more_than_equal_, 0))
+    if (token = check(less_than_, grea_than_,
+                      less_than_equal_, grea_than_equal_, 0))
     {
         Node *node = new_node(token);
         node->left = left;
-        node->right = logic();
+        node->right = comparison();
         left = node;
     }
     return left;
@@ -748,7 +856,7 @@ Node *mul_div()
 Node *unary()
 {
     Token *token = check(add_, sub_, 0);
-    Node *left = prime();
+    Node *left = else_statement();
     if (token && token->type == sub_)
     {
         // if (minus_int == NULL)
@@ -762,8 +870,37 @@ Node *unary()
         //     minus_float->float_ = *(uint32_t *)(&f);
         //     minus_float->index_ = index_++;
         // }
-        Node *node = new_node(new_token(0, 0, neg_, none_));
+        Node *node = new_node(new_token(0, 0, neg_, none_, left->token->level));
         node->left = left;
+        return node;
+    }
+    return left;
+}
+
+Node *else_statement()
+{
+    Node *left = prime();
+    Token *token;
+    if (token = check(else_, 0))
+    {
+        debug("found else %k\n", left->token);
+        if (!left || left->token->type != if_)
+            error("Expected if bloc before else");
+        if (left->token->level != token->level)
+            error("Expected if and else to be on same level");
+
+        Node *node = new_node(token);
+        node->left = left;
+        expect(dots_);
+        if (tokens[exe_pos]->level <= node->token->level)
+            error("Expcted tab after :");
+        Node *tmp = node;
+        while (tokens[exe_pos]->level > node->token->level && tokens[exe_pos]->type != eof_)
+        {
+            tmp->right = new_node(NULL);
+            tmp = tmp->right;
+            tmp->left = expr();
+        }
         return node;
     }
     return left;
@@ -779,6 +916,7 @@ Node *prime()
         {
             if (strcmp(DataTypes[i].name, token->name) == 0)
             {
+                // TODO: update this code , try using the approach in new token function
                 Type type = DataTypes[i].type;
                 Type sub_type = token->sub_type;
                 debug("find %s\n", type_to_string(DataTypes[i].type));
@@ -829,6 +967,26 @@ Node *prime()
     }
     else if (token = check(char_, int_, float_, eof_, bool_, 0))
         node = new_node(token);
+    else if (token = check(if_, 0))
+    {
+        // TODO: to be checked
+        // size_t level = token->level;
+        node = new_node(token);
+        node->left = expr();
+        expect(dots_);
+        if (tokens[exe_pos]->level <= node->token->level)
+            error("Expcted tab after :");
+        Node *tmp = node;
+        while (tokens[exe_pos]->level > node->token->level && tokens[exe_pos]->type != eof_)
+        {
+            tmp->right = new_node(NULL);
+            tmp = tmp->right;
+            tmp->left = expr();
+        }
+        debug("return from if: %k\n", node->token);
+        // exit(1);
+        // node->right = expr();
+    }
     else
         error("found %s in prime", token ? type_to_string(token->type) : "(null)");
     return node;
@@ -850,6 +1008,7 @@ void initialize()
     Node *curr = NULL;
     while (tokens[exe_pos]->type != eof_)
     {
+        Label_name = "main";
         curr = expr();
         print_node(curr, 0);
         evaluate(curr);
@@ -925,16 +1084,16 @@ Token *evaluate(Node *node)
         }
         else
         {
-            Node *curr = new_node(new_token(0, 0, mul_, none_));
+            Node *curr = new_node(new_token(0, 0, mul_, none_, left->level));
             curr->left = new_node(left);
             if (left->type == int_)
             {
-                curr->right = new_node(new_token(0, 0, int_, none_));
+                curr->right = new_node(new_token(0, 0, int_, none_, left->level));
                 curr->right->token->int_ = -1;
             }
             else if (left->type == float_)
             {
-                curr->right = new_node(new_token(0, 0, float_, none_));
+                curr->right = new_node(new_token(0, 0, float_, none_, left->level));
                 float f = -1.0;
                 curr->right->token->float_ = *(uint32_t *)(&f);
                 curr->right->token->index_ = index_++;
@@ -959,7 +1118,7 @@ Token *evaluate(Node *node)
         debug("assign %k and %k \n", left, right);
         if (!left->name || left->type != right->type || !left->ptr)
             error("Invalid assignement");
-        print_asm(" %2s/* assign to %s */\n", "", left->name);
+        // print_asm(" %0s/* assign  %s */\n", "", left->name);
         node->token = left;
         switch (left->type)
         {
@@ -967,22 +1126,22 @@ Token *evaluate(Node *node)
             if (right->ptr)
             {
                 print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
-                print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", left->ptr);
+                print_asm("   mov     QWORD PTR -%zu[rbp], rax /* assign  %s */\n", left->ptr, left->name);
             }
             else
-                print_asm("   mov     QWORD PTR -%zu[rbp], %d\n", left->ptr, right->int_);
+                print_asm("   mov     QWORD PTR -%zu[rbp], %d /* assign  %s */\n\n", left->ptr, right->int_, left->name);
             break;
         case float_:
             // TODO: check xmms, with multiple variables
             if (right->ptr)
             {
                 print_asm("   movss   xmm1, DWORD PTR -%zu[rbp]\n", right->ptr);
-                print_asm("   movss   DWORD PTR -%zu[rbp], xmm1", left->ptr);
+                print_asm("   movss   DWORD PTR -%zu[rbp], xmm1 /* assign  %s */\n", left->ptr, left->name);
             }
             else
             {
                 print_asm("   movss   xmm1, DWORD PTR FLT%zu[rip]\n", right->index_);
-                print_asm("   movss   DWORD PTR -%zu[rbp], xmm1\n", left->ptr);
+                print_asm("   movss   DWORD PTR -%zu[rbp], xmm1 /* assign  %s */\n", left->ptr, left->name);
             }
             break;
         case char_:
@@ -1010,20 +1169,20 @@ Token *evaluate(Node *node)
             else
                 error("in assign char\n");
 
-            print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", left->ptr);
+            print_asm("   mov     QWORD PTR -%zu[rbp], rax /* assign  %s */\n", left->ptr, left->name);
             break;
-#if 1
         case bool_:
             if (right->ptr)
             {
                 // TODO: test this one
-                print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
-                print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", left->ptr);
+                print_asm("   mov     al, BYTE PTR -%zu[rbp]\n", right->ptr);
+                print_asm("   mov     BYTE PTR -%zu[rbp], al /* assign  %s */\n", left->ptr, left->name);
             }
+            else if (right->c)
+                print_asm("   mov     BYTE PTR -%zu[rbp], %cl\n", left->ptr, right->c);
             else
-                print_asm("   mov     BYTE PTR -%zu[rbp], %d", left->ptr, right->bool_);
+                print_asm("   mov     BYTE PTR -%zu[rbp], %d /* assign  %s */\n", left->ptr, right->bool_, left->name);
             break;
-#endif
         default:
             error("add assembly for this one 0");
             break;
@@ -1089,7 +1248,7 @@ Token *evaluate(Node *node)
                 if (type == add_)
                     node->token->char_ = strjoin(left->char_, right->char_);
                 else
-                    error("invalid operation for characters");
+                    error("invalid math operation for characters");
                 break;
             default:
                 error("math operation 0");
@@ -1112,12 +1271,11 @@ Token *evaluate(Node *node)
                 else
                     print_asm("%d\n", left->int_);
                 // set right
-                str = type == add_   ? "add     rax, "
-                      : type == sub_ ? "sub     rax, "
-                      : type == mul_ ? "imul    rax, "
-                      : type == div_ ? "cdq\n   mov     rbx, "
-                                     : NULL;
-                print_asm("   %s", str);
+                print_asm("   %s", type == add_   ? "add     rax, "
+                                   : type == sub_ ? "sub     rax, "
+                                   : type == mul_ ? "imul    rax, "
+                                   : type == div_ ? "cdq\n   mov     rbx, "
+                                                  : NULL);
                 if (right->ptr)
                     print_asm("QWORD PTR -%zu[rbp]\n", right->ptr);
                 else
@@ -1137,12 +1295,11 @@ Token *evaluate(Node *node)
                 else
                     print_asm("%zu\n", left->float_);
                 // set right
-                str = type == add_   ? "addss   xmm1, "
-                      : type == sub_ ? "subss   xmm1, "
-                      : type == mul_ ? "mulss   xmm1, "
-                      : type == div_ ? "divss   xmm1, "
-                                     : NULL;
-                print_asm("   %s", str);
+                print_asm("   %s", type == add_   ? "addss   xmm1, "
+                                   : type == sub_ ? "subss   xmm1, "
+                                   : type == mul_ ? "mulss   xmm1, "
+                                   : type == div_ ? "divss   xmm1, "
+                                                  : NULL);
                 if (right->ptr)
                     print_asm("DWORD PTR -%zu[rbp]\n", right->ptr);
                 else if (right->index_)
@@ -1156,7 +1313,6 @@ Token *evaluate(Node *node)
                     error("math operation 2");
                 node->token->sub_type = dyn_;
                 node->token->ptr = (ptr += 8);
-
                 if (left->ptr)
                     print_asm("   mov     rdi, QWORD PTR -%zu[rbp]\n", left->ptr);
                 else if (left->index_)
@@ -1188,11 +1344,16 @@ Token *evaluate(Node *node)
         break;
     }
     // logic operators
+    case not_:
+        // TODO:
+        error("handle not logic operator");
+        break;
+    case not_equal_:
     case equal_:
     case less_than_:
-    case more_than_:
+    case grea_than_:
     case less_than_equal_:
-    case more_than_equal_:
+    case grea_than_equal_:
     {
         node->token->type = bool_;
         left = evaluate(node->left);
@@ -1203,149 +1364,285 @@ Token *evaluate(Node *node)
         if (!left->ptr && !right->ptr)
         {
             debug("0. do %s between %k with %k\n", type_to_string(type), left, right);
-            // left->index_ = 0;
-            // right->index_ = 0;
-            // switch (node->token->type)
-            // {
-            // case int_:
-            //     if (type == equal_)
-            //         node->token->bool_ = (left->int_ == right->int_);
-            //     else if (type == less_than_)
-            //         node->token->bool_ = (left->int_ < right->int_);
-            //     else if (type == more_than_)
-            //          node->token->bool_ = (left->int_ == right->int_);
-            //     else if (type == less_than_equal_)
-            //          node->token->bool_ = (left->int_ == right->int_);
-            //     else if (type == less_than_equal_)
-            //           node->token->bool_ = (left->int_ == right->int_);
-                
-            //     break;
-# if 0
+            left->index_ = 0;
+            right->index_ = 0;
+            switch (left->type)
+            {
+            case int_:
+                if (type == equal_)
+                    node->token->bool_ = (left->int_ == right->int_);
+                else if (type == not_equal_)
+                    node->token->bool_ = (left->int_ != right->int_);
+                else if (type == less_than_)
+                    node->token->bool_ = (left->int_ < right->int_);
+                else if (type == grea_than_)
+                    node->token->bool_ = (left->int_ > right->int_);
+                else if (type == less_than_equal_)
+                    node->token->bool_ = (left->int_ <= right->int_);
+                else if (type == grea_than_equal_)
+                    node->token->bool_ = (left->int_ >= right->int_);
+
+                break;
             case float_:
-                node->token->index_ = index_++;
-                float l = *(float *)(&left->float_);
-                float r = *(float *)(&right->float_);
-                float res;
-                if (type == add_)
-                    res = l + r;
-                else if (type == sub_)
-                    res = l - r;
-                else if (type == mul_)
-                    res = l * r;
-                else if (type == div_)
-                {
-                    if (r == 0)
-                        error("can't devide by 0 (float)");
-                    res = l / r;
-                }
-                node->token->float_ = *(uint32_t *)(&res);
+                if (type == equal_)
+                    node->token->bool_ = (left->float_ == right->float_);
+                else if (type == not_equal_)
+                    node->token->bool_ = (left->float_ != right->float_);
+                else if (type == less_than_)
+                    node->token->bool_ = (left->float_ < right->float_);
+                else if (type == grea_than_)
+                    node->token->bool_ = (left->float_ > right->float_);
+                else if (type == less_than_equal_)
+                    node->token->bool_ = (left->float_ <= right->float_);
+                else if (type == grea_than_equal_)
+                    node->token->bool_ = (left->float_ >= right->float_);
                 break;
-            // TODO: handle strings that get concatinated in run time
+            /*
+                TODO:
+                    + handle strings that get concatinated in run time
+                    + strcmp shoud return boolean value
+            */
             case char_:
-                node->token->index_ = index_++;
-                node->token->sub_type = dyn_;
-                if (type == add_)
-                    node->token->char_ = strjoin(left->char_, right->char_);
+                if (type == equal_)
+                    node->token->bool_ = (strcmp(left->char_, right->char_) == 0);
+                else if (type == not_equal_)
+                    node->token->bool_ = (strcmp(left->char_, right->char_) != 0);
                 else
-                    error("invalid operation for characters");
+                    error("Invalid logic operation on char");
                 break;
-#endif
             default:
-                error("math operation 0");
+                error("logic operation 0");
                 break;
             }
         }
-#if 0
         else
         {
-            // TODO: addition for dynamic strings
             debug("1. do %s between %k with %k\n", type_to_string(type), left, right);
+            node->token->ptr = (ptr += 1);
             char *str;
-            switch (node->token->type)
+            switch (left->type)
             {
+            // TODO: handle heap allocated variables
             case int_:
-                node->token->ptr = (ptr += 8);
                 // set left
                 print_asm("   mov     rax, ");
                 if (left->ptr)
                     print_asm("QWORD PTR -%zu[rbp]\n", left->ptr);
                 else
                     print_asm("%d\n", left->int_);
-                // set right
-                str = type == add_   ? "add     rax, "
-                      : type == sub_ ? "sub     rax, "
-                      : type == mul_ ? "imul    rax, "
-                      : type == div_ ? "cdq\n   mov     rbx, "
-                                     : NULL;
-                print_asm("   %s", str);
+
+                print_asm("   cmp     rax, ");
                 if (right->ptr)
                     print_asm("QWORD PTR -%zu[rbp]\n", right->ptr);
                 else
                     print_asm("%d\n", right->int_);
-                if (type == div_)
-                    print_asm("   idiv    rbx\n");
-                print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
+
+                print_asm("   %s  al\n", type == equal_             ? "sete  "
+                                         : type == equal_           ? "setne"
+                                         : type == less_than_       ? "setl "
+                                         : type == less_than_equal_ ? "setle"
+                                         : type == grea_than_       ? "setg "
+                                         : type == grea_than_equal_ ? "setge"
+                                                                    : NULL);
+
+                print_asm("   mov     BYTE PTR -%zu[rbp], al\n", node->token->ptr);
                 break;
             case float_:
-                node->token->ptr = (ptr += 4);
-                // set left
-                print_asm("   movss   xmm1, ");
+                if ((type == less_than_ && (type = grea_than_)) ||
+                    (type == less_than_equal_ && (type = grea_than_equal_)))
+                {
+                    Token *tmp = left;
+                    left = right;
+                    right = tmp;
+                }
+                print_asm("   movss   xmm0, ");
                 if (left->ptr)
                     print_asm("DWORD PTR -%zu[rbp]\n", left->ptr);
                 else if (left->index_)
                     print_asm("DWORD PTR FLT%zu[rip]\n", left->index_);
                 else
                     print_asm("%zu\n", left->float_);
-                // set right
-                str = type == add_   ? "addss   xmm1, "
-                      : type == sub_ ? "subss   xmm1, "
-                      : type == mul_ ? "mulss   xmm1, "
-                      : type == div_ ? "divss   xmm1, "
-                                     : NULL;
-                print_asm("   %s", str);
+
+                print_asm("   %s xmm0, ", type != equal_ ? "comiss " : "ucomiss");
                 if (right->ptr)
                     print_asm("DWORD PTR -%zu[rbp]\n", right->ptr);
                 else if (right->index_)
                     print_asm("DWORD PTR FLT%zu[rip]\n", right->index_);
                 else
                     print_asm("%zu\n", right->float_);
-                print_asm("   movss   DWORD PTR -%zu[rbp], xmm1\n", node->token->ptr);
+
+                print_asm("   %s   al\n",
+                          type == grea_than_         ? "seta "
+                          : type == grea_than_equal_ ? "setnb"
+                          : type == equal_           ? "setnp"
+                          : type == not_equal_       ? "setp "
+                                                     : NULL);
+                if (type == equal_)
+                {
+                    print_asm("   mov	  edx, 0\n");
+                    print_asm("   movss	  xmm0, ");
+                    if (left->ptr)
+                        print_asm("DWORD PTR -%zu[rbp]\n", left->ptr);
+                    else if (left->index_)
+                        print_asm("DWORD PTR FLT%zu[rip]\n", left->index_);
+                    else
+                        print_asm("%zu\n", left->float_);
+                    print_asm("   ucomiss xmm0, ");
+                    if (right->ptr)
+                        print_asm("DWORD PTR -%zu[rbp]\n", right->ptr);
+                    else if (right->index_)
+                        print_asm("DWORD PTR FLT%zu[rip]\n", right->index_);
+                    else
+                        print_asm("%zu\n", right->float_);
+                    print_asm("   cmovne  eax, edx\n");
+                }
+                print_asm("   mov     BYTE PTR -%zu[rbp], al\n", node->token->ptr);
                 break;
             case char_:
-                if (type != add_)
-                    error("math operation 2");
-                node->token->sub_type = dyn_;
-                node->token->ptr = (ptr += 8);
-
+                if (type != equal_)
+                    error("logic operation 3");
                 if (left->ptr)
-                    print_asm("   mov     rdi, QWORD PTR -%zu[rbp]\n", left->ptr);
+                    print_asm("   mov     rsi, QWORD PTR -%zu[rbp]\n", left->ptr);
                 else if (left->index_)
                 {
                     print_asm("   lea     rax, STR%zu[rip]\n", left->index_);
-                    print_asm("   mov     rdi, rax\n");
-                }
-                else
-                    error("in char joining 1");
-
-                if (right->ptr)
-                    print_asm("   mov     rsi, QWORD PTR -%zu[rbp]\n", right->ptr);
-                else if (right->index_)
-                {
-                    print_asm("   lea     rax, STR%zu[rip]\n", right->index_);
                     print_asm("   mov     rsi, rax\n");
                 }
                 else
-                    error("in char joining 2");
-                print_asm("   call	  _strjoin\n");
-                print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
+                    error("in char equal");
 
+                if (right->ptr)
+                    print_asm("   mov     rdi, QWORD PTR -%zu[rbp]\n", right->ptr);
+                else if (right->index_)
+                {
+                    print_asm("   lea     rax, STR%zu[rip]\n", right->index_);
+                    print_asm("   mov     rdi, rax\n");
+                }
+                else
+                    error("in char equal 2");
+                print_asm("   call	  _strcmp\n");
+                print_asm("   mov     BYTE PTR -%zu[rbp], al\n", node->token->ptr);
                 break;
             default:
-                error("math operation 1");
+                error("logic operation 4");
                 break;
             }
         }
-#endif
+        break;
+    }
+    case and_:
+    case or_:
+    {
+        size_t True_label = Label++;
+        size_t False_label = Label++;
+        left = evaluate(node->left);
+        node->token->index_ = (Label++);
+        node->token->ptr = (ptr += 1);
+
+        if (left->type != bool_)
+            error("0.Expected boolean value");
+
+        if (type == or_)
+        {
+            print_asm("   /*or operation 1*/\n");
+            if (left->ptr)
+                print_asm("   cmp     BYTE PTR -%zu[rbp], 1\n", left->ptr);
+            else if (left->c)
+                print_asm("   cmp     %cl, 1\n", left->c);
+            else // TODO: handle if has value is True or False
+            {
+                print_asm("   mov     al, %d\n", left->bool_);
+                print_asm("   cmp     al, 1\n");
+            }
+            print_asm("   je      %s%zu\n", Label_name, True_label);
+            node->token->type = bool_;
+            print_asm("   mov     BYTE PTR -%zu[rbp], 0\n", node->token->ptr);
+            right = evaluate(node->right);
+            if (right->type != bool_)
+                error("0.Expected boolean value");
+            print_asm("   /*or operation 2*/\n");
+            if (right->ptr)
+                print_asm("   cmp     BYTE PTR -%zu[rbp], 1\n", right->ptr);
+            else if (right->c)
+                print_asm("   cmp     %cl, 1\n", right->c);
+            else // TODO: handle if has value is True or False
+            {
+                print_asm("   mov     al, %d\n", right->bool_);
+                print_asm("   cmp     al, 1\n");
+            }
+            print_asm("   je      %s%zu\n", Label_name, True_label);
+            print_asm("   jmp     %s%zu\n", Label_name, node->token->index_);
+            print_asm("%s%zu:\n", Label_name, True_label);
+            print_asm("   mov     BYTE PTR -%zu[rbp], 1\n", node->token->ptr);
+            print_asm("%s%zu:\n", Label_name, node->token->index_);
+        }
+        else if (type == and_)
+        {
+            print_asm("   /*and operation 1*/\n");
+            if (left->ptr)
+                print_asm("   cmp     BYTE PTR -%zu[rbp], 1\n", left->ptr);
+            else if (left->c)
+                print_asm("   cmp     %cl, 1\n", left->c);
+            else // TODO: handle if has value is True or False
+            {
+                print_asm("   mov     al, %d\n", left->bool_);
+                print_asm("   cmp     al, 1\n");
+            }
+            print_asm("   je      %s%zu\n", Label_name, True_label);
+            print_asm("   jmp     %s%zu\n", Label_name, False_label);
+
+            node->token->type = bool_;
+            print_asm("%s%zu:\n", Label_name, True_label);
+            print_asm("   mov     BYTE PTR -%zu[rbp], 1\n", node->token->ptr);
+            right = evaluate(node->right);
+            if (right->type != bool_)
+                error("0.Expected boolean value");
+            print_asm("   /*and operation 2*/\n");
+            if (right->ptr)
+                print_asm("   cmp     BYTE PTR -%zu[rbp], 1\n", right->ptr);
+            else if (right->c)
+                print_asm("   cmp     %cl, 1\n", right->c);
+            else // TODO: handle if has value is True or False
+            {
+                print_asm("   mov     al, %d\n", right->bool_);
+                print_asm("   cmp     al, 1\n");
+            }
+            print_asm("   jne     %s%zu\n", Label_name, False_label);
+            print_asm("   jmp     %s%zu\n", Label_name, node->token->index_);
+            print_asm("%s%zu:\n", Label_name, False_label);
+            print_asm("   mov     BYTE PTR -%zu[rbp], 0\n", node->token->ptr);
+            print_asm("%s%zu:\n", Label_name, node->token->index_);
+        }
+
+        break;
+    }
+    case if_:
+    case else_:
+    {
+        left = evaluate(node->left);
+        node->token->index_ = (Label++);
+        // node->token->ptr = (ptr += 1);
+        if (left->type != bool_)
+            error("Expected a valid condion in fi statment");
+        print_asm("   /* %s statement*/\n", type == if_ ? "if" : "else");
+        if (left->ptr)
+            print_asm("   cmp     BYTE PTR -%zu[rbp], %d\n", left->ptr, type == if_ ? 1 : 0);
+        else if (left->c)
+            print_asm("   cmp     %cl, %d\n", left->c, type == if_ ? 1 : 0);
+        else // TODO: handle if has value is True or False
+        {
+            print_asm("   mov     al, %d\n", left->bool_);
+            print_asm("   cmp     al, %d\n", type == if_ ? 1 : 0);
+        }
+        print_asm("   jne     %s%zu\n", Label_name, node->token->index_);
+        Node *tmp = node->right;
+        while (tmp)
+        {
+            evaluate(tmp->left);
+            tmp = tmp->right;
+        }
+        print_asm("%s%zu:\n", Label_name, node->token->index_);
+        return left;
         break;
     }
     case func_call_:
@@ -1355,6 +1652,7 @@ Token *evaluate(Node *node)
         {
             debug("found output\n");
             Node *tmp = node;
+
             while (tmp)
             {
                 output(evaluate(tmp->left));

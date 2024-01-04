@@ -74,3 +74,6 @@
         - before calling function push rbp to the stack and pop it later
         - each function has its own rbp
     - polymorphism
+
+- optimize the code
+- verify dynamic and fix data type for all operations

@@ -8,20 +8,6 @@ main:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 30
-   /* declare c */
-   mov     BYTE PTR -1[rbp], 0
-   /* assign to c */
-   mov     BYTE PTR -1[rbp], 0   /* call output */
-   movzx   eax, BYTE PTR -1[rbp]
-   mov	  edi, eax
-   call	  _putbool
-   /* call output */
-   lea     rax, STR1[rip]
-   mov     rdi, rax
-   call    _putstr
+   mov     QWORD PTR -8[rbp], 0 /* declare x */
+   mov     QWORD PTR -8[rbp], 10 /* assign  x */
 
-   leave
-   ret
-
-STR1: .string "\n"
-.section	.note.GNU-stack,"",@progbits
