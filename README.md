@@ -36,6 +36,9 @@
         - bool:
             - relational operator: == != !
             - logical operators: && || and or
+        - bigint / bigfloat:
+            - put value in stack
+            - send it's address in rax between functions
 
     - assign: += -= *= /=
 
@@ -134,4 +137,5 @@
     - protect mode:
         - check all []
 
-add #if0 #else #endif
+- add #if0 #else #endif
+- test heap vs stack variables (bool ...)

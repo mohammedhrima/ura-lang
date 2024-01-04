@@ -21,34 +21,34 @@ main:
    sub     rsp, 30
    /* assign to age */
    mov     QWORD PTR -24[rbp], 25
-   /* call output */
-   lea   rax, STR3[rip]
+   /* call _putstr */
+   lea     rax, STR3[rip]
    mov     rdi, rax
-   call  _putstr
-   /* call output */
+   call    _putstr
+   /* call _putstr */
    mov     rax, QWORD PTR -8[rbp]
    mov     rdi, rax
    call    _putstr
-   /* call output */
-   lea   rax, STR4[rip]
+   /* call _putstr */
+   lea     rax, STR4[rip]
    mov     rdi, rax
-   call  _putstr
-   /* call output */
+   call    _putstr
+   /* call _putstr */
    mov     rax, QWORD PTR -16[rbp]
    mov     rdi, rax
    call    _putstr
-   /* call output */
-   lea   rax, STR5[rip]
+   /* call _putstr */
+   lea     rax, STR5[rip]
    mov     rdi, rax
-   call  _putstr
-   /* call output */
+   call    _putstr
+   /* call _putnbr */
    mov   rax, QWORD PTR -24[rbp]
    mov   rdi, rax
    call  _putnbr
-   /* call output */
-   lea   rax, STR6[rip]
+   /* call _putstr */
+   lea     rax, STR6[rip]
    mov     rdi, rax
-   call  _putstr
+   call    _putstr
 
    leave
    ret

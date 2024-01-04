@@ -48,8 +48,7 @@ _putstr:
 .LC1:
 	.string	"False"
 	.text
-	.globl	_putbool
-	.type	_putbool, @function
+
 _putbool:
 	push	rbp
 	mov	rbp, rsp

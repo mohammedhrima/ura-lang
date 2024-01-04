@@ -16,38 +16,38 @@ main:
    mov     QWORD PTR -16[rbp], 0
    /* assign to b */
    mov     QWORD PTR -16[rbp], 25
-   /* call output */
-   lea   rax, STR1[rip]
+   /* call _putstr */
+   lea     rax, STR1[rip]
    mov     rdi, rax
-   call  _putstr
-   /* call output */
+   call    _putstr
+   /* call _putnbr */
    mov   rax, QWORD PTR -8[rbp]
    mov   rdi, rax
    call  _putnbr
-   /* call output */
-   lea   rax, STR2[rip]
+   /* call _putstr */
+   lea     rax, STR2[rip]
    mov     rdi, rax
-   call  _putstr
-   /* call output */
+   call    _putstr
+   /* call _putnbr */
    mov   rax, QWORD PTR -16[rbp]
    mov   rdi, rax
    call  _putnbr
-   /* call output */
-   lea   rax, STR3[rip]
+   /* call _putstr */
+   lea     rax, STR3[rip]
    mov     rdi, rax
-   call  _putstr
+   call    _putstr
    mov     rax, QWORD PTR -8[rbp]
    add     rax, QWORD PTR -16[rbp]
    mov     QWORD PTR -24[rbp], rax
    sub     rsp, 30
-   /* call output */
+   /* call _putnbr */
    mov   rax, QWORD PTR -24[rbp]
    mov   rdi, rax
    call  _putnbr
-   /* call output */
-   lea   rax, STR4[rip]
+   /* call _putstr */
+   lea     rax, STR4[rip]
    mov     rdi, rax
-   call  _putstr
+   call    _putstr
 
    leave
    ret
