@@ -19,17 +19,17 @@ main:
    mov     rdi, rax
    call    _putstr
    /* call _putnbr */
-   mov   rax, QWORD PTR -8[rbp]
-   mov   rdi, rax
-   call  _putnbr
+   mov     rax, QWORD PTR -8[rbp]
+   mov     rdi, rax
+   call    _putnbr
    /* call _putstr */
    lea     rax, STR2[rip]
    mov     rdi, rax
    call    _putstr
    /* call _putnbr */
-   mov   rax, QWORD PTR -16[rbp]
-   mov   rdi, rax
-   call  _putnbr
+   mov     rax, QWORD PTR -16[rbp]
+   mov     rdi, rax
+   call    _putnbr
    /* call _putstr */
    lea     rax, STR3[rip]
    mov     rdi, rax
@@ -39,9 +39,9 @@ main:
    mov     QWORD PTR -24[rbp], rax
    sub     rsp, 30
    /* call _putnbr */
-   mov   rax, QWORD PTR -24[rbp]
-   mov   rdi, rax
-   call  _putnbr
+   mov     rax, QWORD PTR -24[rbp]
+   mov     rdi, rax
+   call    _putnbr
    /* call _putstr */
    lea     rax, STR4[rip]
    mov     rdi, rax
