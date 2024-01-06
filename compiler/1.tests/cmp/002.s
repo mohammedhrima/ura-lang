@@ -8,20 +8,13 @@ main:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 30
-   /* declare str1 */
-   /* assign to str1 */
    lea     rax, STR1[rip]
-   mov     QWORD PTR -8[rbp], rax
-   /* declare str2 */
-   /* assign to str2 */
+   mov     QWORD PTR -8[rbp], rax /* assign  str1 */
    lea     rax, STR2[rip]
-   mov     QWORD PTR -16[rbp], rax
-   /* declare str3 */
+   mov     QWORD PTR -16[rbp], rax /* assign  str2 */
    sub     rsp, 30
-   /* assign to str3 */
    lea     rax, STR3[rip]
-   mov     QWORD PTR -24[rbp], rax
-   /* declare str4 */
+   mov     QWORD PTR -24[rbp], rax /* assign  str3 */
    mov     rdi, QWORD PTR -16[rbp]
    mov     rsi, QWORD PTR -24[rbp]
    call	  _strjoin
@@ -30,9 +23,8 @@ main:
    mov     rsi, QWORD PTR -40[rbp]
    call	  _strjoin
    mov     QWORD PTR -48[rbp], rax
-   /* assign to str4 */
    mov     rax, QWORD PTR -48[rbp]
-   mov     QWORD PTR -32[rbp], rax
+   mov     QWORD PTR -32[rbp], rax /* assign  str4 */
    /* call _putstr */
    mov     rax, QWORD PTR -32[rbp]
    mov     rdi, rax
