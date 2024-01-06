@@ -1,15 +1,6 @@
 main:
-    int x = 15
-    int y = 10
-    if x == 10:
-        output("0 x is 10\n")
-    elif x == 15:
-        output("1 x is 15\n")
-    elif x == 20:
-        output("2 x is 20\n")
-    elif x == 25:
-        output("3 x is 25\n")
-    
-    output("\n")
+    int x = 10
+    while x <= 20:
+        output("x: ", x,"\n")
+        x = x + 1
 
-    

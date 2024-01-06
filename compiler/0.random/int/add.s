@@ -1,27 +1,27 @@
-.section .note.GNU-stack,"",@progbits
-.intel_syntax noprefix
-.text 
-	.globl main
-
+	.file	"add.c"
+	.text
+	.globl	main
+	.type	main, @function
 main:
-    push rbp
-    mov rbp, rsp
-    mov QWORD PTR -4[rbp], 10
-    mov QWORD PTR -8[rbp], 5
-
-	mov rax, QWORD PTR -4[rbp]
-	add rax, QWORD PTR -8[rbp]
-
-	mov QWORD PTR -12[rbp], rax
-	mov rax, QWORD PTR -12[rbp]
-    
-	pop rbp
-    ret
-
-/*
-	mov edx, QWORD PTR -4[rbp]
-	mov eax, QWORD PTR -8[rbp]
-	add eax, edx
-	mov QWORD PTR -12[rbp], eax
-	mov eax, QWORD PTR -12[rbp]
-*/
+.LFB0:
+	.cfi_startproc
+	pushq	%rbp
+	.cfi_def_cfa_offset 16
+	.cfi_offset 6, -16
+	movq	%rsp, %rbp
+	.cfi_def_cfa_register 6
+	movl	$10, -4(%rbp)
+	movl	$5, -8(%rbp)
+	movl	-4(%rbp), %edx
+	movl	-8(%rbp), %eax
+	addl	%edx, %eax
+	movl	%eax, -12(%rbp)
+	movl	-12(%rbp), %eax
+	popq	%rbp
+	.cfi_def_cfa 7, 8
+	ret
+	.cfi_endproc
+.LFE0:
+	.size	main, .-main
+	.ident	"GCC: (Debian 12.2.0-14) 12.2.0"
+	.section	.note.GNU-stack,"",@progbits

@@ -82,7 +82,6 @@ enum Type
     if_,
     elif_,
     else_,
-    while_,
     // TODO: expect new line after :
     dots_,
 };
@@ -197,7 +196,6 @@ struct
     {if_, "if"},
     {else_, "else"},
     {elif_, "elif"},
-    {while_, "while"},
     {none_, "none"},
     {0, 0},
 };
@@ -496,8 +494,6 @@ Token *new_token(int s, int e, Type type, Type sub_type, size_t level)
             token->type = else_;
         else if (strcmp(token->name, "elif") == 0)
             token->type = elif_;
-        else if (strcmp(token->name, "while") == 0)
-            token->type = while_;
         break;
     case char_:
         token->index_ = index_;
@@ -967,10 +963,11 @@ Node *prime()
                                 left:  code
                                 right: (next node)
         */
+        size_t end_label = Label++;
         node = new_node(token);
         node->left = new_node(new_token(0, 0, none_, none_, node->token->level));
-        node->left->token->index_ = Label++;
         node->token->index_ = Label++;
+        node->left->token->index_ = end_label;
 
         // the condition bloc
         node->left->left = expr();
@@ -1031,24 +1028,6 @@ Node *prime()
                 tmp = tmp->right;
                 tmp->left = expr();
             }
-        }
-    }
-    else if (token = check(while_, 0))
-    {
-        node = new_node(token);
-        node->token->index_ = Label++;
-        node->left = expr();
-
-        expect(dots_);
-        Node *tmp = node;
-        while (
-            tokens[exe_pos]->level > node->token->level &&
-            tokens[exe_pos]->type != eof_)
-        {
-            tmp->right = new_node(NULL);
-            tmp = tmp->right;
-            // tmp->token->index_ = Label++;
-            tmp->left = expr();
         }
     }
     else // TODO: add Unexpected error message here
@@ -1742,36 +1721,7 @@ Token *evaluate(Node *node)
 
         break;
     }
-    case while_:
-    {
-        size_t Loop = Label++;
-        print_asm("   jmp     %s%zu %38s\n", Label_name, node->token->index_, "/* jmp to while loop condition*/");
-        // while loop bloc
-        print_asm("%s%zu: %44s\n", Label_name, Loop, "/* while loop bloc*/");
-        Node *tmp = node->right;
-        while (tmp)
-        {
-            evaluate(tmp->left);
-            tmp = tmp->right;
-        }
-        // while loop condition
-        print_asm("%s%zu: %44s\n", Label_name, node->token->index_, "/* while loop condition */");
-        left = evaluate(node->left);
-        if (left->type != bool_)
-            error("Expected a valid condition in if statment");
-        if (left->ptr)
-            print_asm("   cmp     BYTE PTR -%zu[rbp], 1\n", left->ptr);
-        else if (left->c)
-            print_asm("   cmp     %cl, 1\n", left->c);
-        else
-        {
-            print_asm("   mov     al, %d\n", left->bool_);
-            print_asm("   cmp     al, 1\n");
-        }
-        print_asm("   je     %s%zu %38s\n", Label_name, Loop, "/* je to while loop bloc*/");
-        // exit(1);
-        break;
-    }
+
     case func_call_:
     {
         debug("found function call has name '%s'\n", node->token->name);
