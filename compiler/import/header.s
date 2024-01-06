@@ -1,15 +1,15 @@
 _putstr:
 	push	rbp
-	mov	rbp, rsp
-	sub	rsp, 16
-	mov	QWORD PTR -8[rbp], rdi
-	mov	rax, QWORD PTR -8[rbp]
-	mov	rdi, rax
+	mov		rbp, rsp
+	sub		rsp, 16
+	mov		QWORD PTR -8[rbp], rdi
+	mov		rax, QWORD PTR -8[rbp]
+	mov		rdi, rax
 	call	_strlen
-	mov	rdx, rax
-	mov	rax, QWORD PTR -8[rbp]
-	mov	rsi, rax
-	mov	edi, 1
+	mov		rdx, rax
+	mov		rax, QWORD PTR -8[rbp]
+	mov		rsi, rax
+	mov		edi, 1
 	call	write@PLT
 	nop
 	leave
@@ -32,24 +32,24 @@ _putchar:
 
 _strlen:
 	push	rbp
-	mov	rbp, rsp
-	mov	QWORD PTR -24[rbp], rdi
-	mov	QWORD PTR -8[rbp], 0
-	jmp	_strlen0
+	mov		rbp, rsp
+	mov		QWORD PTR -24[rbp], rdi
+	mov		QWORD PTR -8[rbp], 0
+	jmp		_strlen0
 _strlen2:
-	add	QWORD PTR -8[rbp], 1
+	add		QWORD PTR -8[rbp], 1
 _strlen0:
-	cmp	QWORD PTR -24[rbp], 0
-	je	_strlen1
-	mov	rdx, QWORD PTR -24[rbp]
-	mov	rax, QWORD PTR -8[rbp]
-	add	rax, rdx
+	cmp		QWORD PTR -24[rbp], 0
+	je		_strlen1
+	mov		rdx, QWORD PTR -24[rbp]
+	mov		rax, QWORD PTR -8[rbp]
+	add		rax, rdx
 	movzx	eax, BYTE PTR [rax]
 	test	al, al
-	jne	_strlen2
+	jne	 	_strlen2
 _strlen1:
-	mov	rax, QWORD PTR -8[rbp]
-	pop	rbp
+	mov		rax, QWORD PTR -8[rbp]
+	pop		rbp
 	ret
 
 _strcpy:
@@ -85,7 +85,7 @@ _strcpy0:
 	jne		_strcpy1
 _strcpy2:
 	nop
-	pop	rbp
+	pop		rbp
 	ret
 
 _strcmp:
@@ -227,8 +227,8 @@ _putbool:
 	call	_putstr
 	jmp		_putbool1
 _putbool0:
-	lea	rax, _False[rip]
-	mov	rdi, rax
+	lea		rax, _False[rip]
+	mov		rdi, rax
 	call	_putstr
 _putbool1:
 	mov		eax, 0
@@ -357,36 +357,36 @@ _free_memory0:
 
 _strjoin:
 	push	rbp
-	mov	rbp, rsp
-	sub	rsp, 32
-	mov	QWORD PTR -24[rbp], rdi
-	mov	QWORD PTR -32[rbp], rsi
-	mov	rax, QWORD PTR -24[rbp]
-	mov	rdi, rax
+	mov		rbp, rsp
+	sub		rsp, 32
+	mov		QWORD PTR -24[rbp], rdi
+	mov		QWORD PTR -32[rbp], rsi
+	mov		rax, QWORD PTR -24[rbp]
+	mov		rdi, rax
 	call	_strlen
-	mov	QWORD PTR -8[rbp], rax
-	mov	rax, QWORD PTR -32[rbp]
-	mov	rdi, rax
+	mov		QWORD PTR -8[rbp], rax
+	mov		rax, QWORD PTR -32[rbp]
+	mov		rdi, rax
 	call	_strlen
-	mov	rdx, QWORD PTR -8[rbp]
-	add	rax, rdx
-	add	rax, 1
-	mov	rdi, rax
+	mov		rdx, QWORD PTR -8[rbp]
+	add		rax, rdx
+	add		rax, 1
+	mov		rdi, rax
 	call	_allocate
-	mov	QWORD PTR -16[rbp], rax
-	mov	rdx, QWORD PTR -24[rbp]
-	mov	rax, QWORD PTR -16[rbp]
-	mov	rsi, rdx
-	mov	rdi, rax
+	mov		QWORD PTR -16[rbp], rax
+	mov		rdx, QWORD PTR -24[rbp]
+	mov		rax, QWORD PTR -16[rbp]
+	mov		rsi, rdx
+	mov		rdi, rax
 	call	_strcpy
-	mov	rdx, QWORD PTR -16[rbp]
-	mov	rax, QWORD PTR -8[rbp]
-	add	rdx, rax
-	mov	rax, QWORD PTR -32[rbp]
-	mov	rsi, rax
-	mov	rdi, rdx
+	mov		rdx, QWORD PTR -16[rbp]
+	mov		rax, QWORD PTR -8[rbp]
+	add		rdx, rax
+	mov		rax, QWORD PTR -32[rbp]
+	mov		rsi, rax
+	mov		rdi, rdx
 	call	_strcpy
-	mov	rax, QWORD PTR -16[rbp]
+	mov		rax, QWORD PTR -16[rbp]
 	leave
 	ret
 

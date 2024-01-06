@@ -37,9 +37,9 @@ main:
    mov     rdi, rax
    call    _putstr
    /* call _putnbr */
-   mov   rax, QWORD PTR -24[rbp]
-   mov   rdi, rax
-   call  _putnbr
+   mov     rax, QWORD PTR -24[rbp]
+   mov     rdi, rax
+   call    _putnbr
    /* call _putstr */
    lea     rax, STR6[rip]
    mov     rdi, rax

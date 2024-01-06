@@ -41,25 +41,16 @@
     - protect mode:
         - check all []
 
-- inditions and loops:
-    - syntax 1:
-        if statement:
-            // code here ...
-        elif:
-            // code here ...
-        else:
-            // code here ...
-
-    - syntax 2:
-        while condition:
-            // code here ...
+- conditions and loops:
+    - continue keyword
+    - break keyword
 
 - typedefs: use int as num
 - add _ before globals also
 
 - function declaration:
     - syntax:
-        data_type func func_name(params ...):
+        func data_type func_name(params ...):
             // code here ...
     - if variable sent by refrence allocate there space in function code then push rbp to the stack
     - starts only with letter
@@ -68,8 +59,10 @@
     - return keyword
     - add '_' before all declared functions:
     - built in functions:
-        - output
-        - mutable
+        + output
+        - is_dynamic
+        - is_fix
+        - dyn: allocate in heap
     - function call
         - before calling function push rbp to the stack and pop it later
         - each function has its own rbp
@@ -77,4 +70,3 @@
 
 - optimize the code
 - verify dynamic and fix data type for all operations
-- break continue
