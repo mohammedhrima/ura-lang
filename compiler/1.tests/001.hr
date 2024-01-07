@@ -1,4 +1,4 @@
-main:
+main():
     char stname = "mohammed"
     char ndname = "mohammed"
     int age = 25

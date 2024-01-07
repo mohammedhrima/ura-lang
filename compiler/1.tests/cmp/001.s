@@ -44,7 +44,6 @@ main:
    lea     rax, STR6[rip]
    mov     rdi, rax
    call    _putstr
-
    leave
    ret
 

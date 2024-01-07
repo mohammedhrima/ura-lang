@@ -29,7 +29,6 @@ main:
    mov     rax, QWORD PTR -32[rbp]
    mov     rdi, rax
    call    _putstr
-
    leave
    ret
 

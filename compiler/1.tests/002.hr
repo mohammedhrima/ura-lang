@@ -1,4 +1,4 @@
-main:
+main():
     char str1 = "abcde"
     char str2 = "ghijkl"
     char str3 = "mno\n"

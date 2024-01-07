@@ -142,3 +142,4 @@
 - test heap vs stack variables (bool ...)
 - optimize the code
 - verify dynamic and fix data type for all operations
+- compile withh Wall Werror Wextra
