@@ -36,7 +36,6 @@ main1:                            /* while loop condition */
    setle   al
    cmp     al, 1
    je      main2                  /* je to while loop bloc*/
-
    leave
    ret
 

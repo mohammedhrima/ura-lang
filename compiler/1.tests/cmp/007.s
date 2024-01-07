@@ -27,7 +27,6 @@ main:
    lea     rax, STR1[rip]
    mov     rdi, rax
    call    _putstr
-
    leave
    ret
 

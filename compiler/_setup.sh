@@ -12,7 +12,8 @@ _run() {
     if [ \$? -eq 0 ]; then
         ./comp \$1
         if [ \$? -eq 0 ]; then
-            cc file.s -o asm        
+            cc file.s -o asm
+            ./asm
         fi
     fi
     rm -rf asm

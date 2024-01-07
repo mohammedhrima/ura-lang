@@ -21,7 +21,6 @@ main:
    mov     QWORD PTR -32[rbp], rax
    mov     rax, QWORD PTR -32[rbp]
    mov     QWORD PTR -24[rbp], rax /* assign  z */
-
    leave
    ret
 
