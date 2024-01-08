@@ -64,8 +64,8 @@
         - is_fix
         - dyn: allocate in heap
     - function call
-        - before calling function push rbp to the stack and pop it later
-        - each function has its own rbp
+        + before calling function push rbp to the stack and pop it later
+        + each function has its own rbp
     - polymorphism
 
 - optimize the code
