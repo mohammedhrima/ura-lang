@@ -3,7 +3,6 @@
 
 .text
 .globl	main
-
 main:
    push    rbp
    mov     rbp, rsp
@@ -14,8 +13,7 @@ main:
    mov     QWORD PTR -16[rbp], rax /* assign  ndname */
    mov     QWORD PTR -24[rbp], 0 /* declare age */
    sub     rsp, 30
-   mov     QWORD PTR -24[rbp], 25 /* assign  age */
-
+   mov     QWORD PTR -24[rbp], 25 /* assign age */
    /* call _putstr */
    lea     rax, STR3[rip]
    mov     rdi, rax

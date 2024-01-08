@@ -3,14 +3,12 @@
 
 .text
 .globl	main
-
 main:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 30
    mov     QWORD PTR -8[rbp], 0 /* declare x */
-   mov     QWORD PTR -8[rbp], 10 /* assign  x */
-
+   mov     QWORD PTR -8[rbp], 10 /* assign x */
    jmp     main1               /* jmp to while loop condition*/
 main2:                         /* while loop bloc*/
    /* call _putstr */
@@ -29,7 +27,7 @@ main2:                         /* while loop bloc*/
    add     rax, 1
    mov     QWORD PTR -16[rbp], rax
    mov     rax, QWORD PTR -16[rbp]
-   mov     QWORD PTR -8[rbp], rax /* assign  x */
+   mov     QWORD PTR -8[rbp], rax /* assign x */
 main1:                            /* while loop condition */
    mov     rax, QWORD PTR -8[rbp]
    cmp     rax, 20

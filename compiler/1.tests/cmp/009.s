@@ -3,21 +3,17 @@
 
 .text
 .globl	main
-
 main:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 30
    mov     QWORD PTR -8[rbp], 0 /* declare x */
-   mov     QWORD PTR -8[rbp], 10 /* assign  x */
-
+   mov     QWORD PTR -8[rbp], 10 /* assign x */
    mov     QWORD PTR -16[rbp], 0 /* declare y */
-   mov     QWORD PTR -16[rbp], 7 /* assign  y */
-
+   mov     QWORD PTR -16[rbp], 7 /* assign y */
    mov     QWORD PTR -24[rbp], 0 /* declare z */
    sub     rsp, 30
-   mov     QWORD PTR -24[rbp], 8 /* assign  z */
-
+   mov     QWORD PTR -24[rbp], 8 /* assign z */
    mov     rax, QWORD PTR -8[rbp]
    cmp     rax, 15
    sete    al
