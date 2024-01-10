@@ -20,5 +20,6 @@ main:
    mov     QWORD PTR -24[rbp], rax /* assign z */
    leave
    ret
+end_main:
 
 .section	.note.GNU-stack,"",@progbits

@@ -15,6 +15,7 @@
 #ifndef DEBUG
 #define DEBUG 1
 #endif
+#define EXIT_STATUS 0
 
 #define YELLOW "\033[1;33m"
 #define GREEN "\033[0;32m"
@@ -31,24 +32,30 @@ typedef enum Type Type;
 Token *get_var(char *name);
 Token *evaluate(Node *node);
 void print_node(Node *node, int level);
-Node *copy_node(Node *node);
 
+/*
+    TODOS:
+        - expect expression after operator
+        - handle not
+        - assignment operators
+        - expect new line after dots_
+*/
+
+// STRUCTURES / ENUMS
 enum Type
 {
-    none_,
     eof_,
-    // operators
+    none_,
+    // math operators
     add_,
     sub_,
     mul_,
     div_,
     mod_,
-    // logic operator
+    // logic operators
     and_,
     or_,
-    // comparision
-    // TODO: expect expression after operator
-    // TODO: handle not
+    // comparision operators
     not_,
     not_equal_,
     equal_,
@@ -59,18 +66,19 @@ enum Type
     // parents
     lparent_,
     rparent_,
-    // assignement
+    // assignment
     assign_,
 #if 0
-    // TODO: handle logic operators
     add_assign_,
     sub_assign_,
     mul_assign_,
     div_assign_,
 #endif
+#if 0
     // memory
     fix_,
     dyn_,
+#endif
     // Data types
     char_,
     int_,
@@ -78,7 +86,7 @@ enum Type
     bool_,
     identifier_,
     neg_,
-    // function
+    // functions
     main_,
     func_dec_,
     func_call_,
@@ -88,32 +96,52 @@ enum Type
     elif_,
     else_,
     while_,
-    // TODO: expect new line after :
     dots_,
 };
 
 struct Token
 {
+    char *name;
     Type type;
     Type sub_type;
-    char *name;
     uintptr_t ptr;
     size_t level;
     union
     {
+        // INTEGER
         long long int_;
+        // FLOAT
         uint32_t float_;
+        // CHARACTER
         struct
         {
             char *char_;
             size_t index_;
         };
+        // BOOLEAN
         struct
         {
             bool bool_;
             char c;
         };
     };
+};
+
+struct Label
+{
+    // NAME
+    char *name;
+    // NODE
+    Node *node;
+    // VARIABLES
+    Token **VARIABLES;
+    int var_len;
+    int var_pos;
+
+    // FUNCTIONS
+    Node **FUNCTIONS;
+    int func_len;
+    int func_pos;
 };
 
 struct Node
@@ -123,27 +151,22 @@ struct Node
     Token *token;
 };
 
+// GLOBALS
 struct
 {
     Type type;
     char *name;
 } DataTypes[] = {
-    // chars
+    // char
     {char_, "char"},
     {char_, "fix:char"},
     {char_, "dyn:char"},
     // int
     {int_, "int"},
-    {int_, "fix:int"},
-    {int_, "dyn:int"}, /* big Int */
     // float
     {float_, "float"},
-    {float_, "fix:float"},
-    {float_, "fix:float"}, /* big Float */
     // bool
     {bool_, "bool"},
-    // {bool_, "fix:bool"},
-    // {bool_, "dyn:bool"},
     {0, 0},
 };
 
@@ -152,7 +175,7 @@ struct
     Type type;
     char *name;
 } Symbols[] = {
-    // operators
+    // math operators
     {add_, "+"},
     {sub_, "-"},
     {mul_, "*"},
@@ -162,13 +185,12 @@ struct
     {lparent_, "("},
     {rparent_, ")"},
     {coma_, ","},
-    // comparision
+    // comparision operators
     {less_than_equal_, "<="},
     {grea_than_equal_, ">="},
     {not_equal_, "!="},
     {not_, "!"},
     {equal_, "=="},
-    {equal_, "is "},
     {less_than_, "<"},
     {grea_than_, ">"},
     // assign
@@ -190,27 +212,49 @@ struct
 {
     Type type;
     char *name;
-} Random[] = {
-    {eof_, "EOF"},
-    {identifier_, "identifier"},
-    {main_, "main"},
-    // function
-    {func_dec_, "function declaration"},
-    {func_call_, "function call"},
-    {neg_, "negative"},
-    {fix_, "fix"},
-    {dyn_, "dynamic"},
+} Specials[] = {
+    {and_, "and"},
+    {or_, "or"},
     {if_, "if"},
     {else_, "else"},
     {elif_, "elif"},
     {while_, "while"},
+    {func_dec_, "func"},
     {none_, "none"},
     {0, 0},
+    {identifier_, "identifier"},
+    {func_call_, "fcall"},
+    {neg_, "negative"},
+    {eof_, "EOF"},
 };
 
-// Debuging
+// FILES
+FILE *file;
+FILE *asm_fd;
+char *text;
+
+// TOKENS
+Token **TOKENS;
+int tk_len;
+int tk_pos;
+int exe_pos;
+
+// GLOBALS
+size_t Label_index;
+size_t index_;
+uintptr_t ptr;
+size_t rsp;
+
+// LABELS
+Label **LABELS;
+Label *LABEL;
+int lb_len;
+int lb_pos;
+
+// DEBUGING
 void error(char *fmt, ...)
 {
+    // TODO: update error messages
     va_list ap;
     va_start(ap, fmt);
     fprintf(stderr, "%s", RED);
@@ -221,15 +265,15 @@ void error(char *fmt, ...)
 
 char *type_to_string(Type type)
 {
-    for (int i = 0; DataTypes[i].name; i++)
+    for (int i = 0; i < sizeof(DataTypes) / sizeof(*DataTypes); i++)
         if (DataTypes[i].type == type)
             return DataTypes[i].name;
-    for (int i = 0; Symbols[i].name; i++)
+    for (int i = 0; i < sizeof(Symbols) / sizeof(*Symbols); i++)
         if (Symbols[i].type == type)
             return Symbols[i].name;
-    for (int i = 0; Random[i].name; i++)
-        if (Random[i].type == type)
-            return Random[i].name;
+    for (int i = 0; i < sizeof(Specials) / sizeof(*Specials); i++)
+        if (Specials[i].type == type)
+            return Specials[i].name;
     error("error unkown type (%d | %c)\n", type, type);
     return NULL;
 }
@@ -280,6 +324,9 @@ void debug(char *conv, ...)
                 case '%':
                     fprintf(stdout, "%%");
                     break;
+                case 't':
+                    fprintf(stdout, "%s", type_to_string((Type)va_arg(args, Type)));
+                    break;
                 case 'k':
                 {
                     Token *token = (Token *)va_arg(args, Token *);
@@ -300,7 +347,7 @@ void debug(char *conv, ...)
                             case char_:
                                 fprintf(stdout, "'%s' ", token->char_);
                                 if (token->index_)
-                                    fprintf(stdout, " STR%zu, ", token->index_);
+                                    fprintf(stdout, "STR%zu, ", token->index_);
                                 break;
                             case int_:
                                 fprintf(stdout, "%d ", token->int_);
@@ -317,7 +364,7 @@ void debug(char *conv, ...)
                             default:
                                 break;
                             }
-                        fprintf(stdout, " in LVL%zu", token->level);
+                        fprintf(stdout, "in LVL%zu", token->level);
                     }
                     else
                         fprintf(stdout, "(null)");
@@ -336,8 +383,25 @@ void debug(char *conv, ...)
 #endif
 }
 
-// utils
-FILE *asm_fd;
+void visualize()
+{
+#if 0
+    for (int i = 0; i < lb_pos; i++)
+    {
+        Label *curr = LABELS[i];
+        debug("%sLabel: %s\n", GREEN, curr->name);
+        debug("     variables:\n");
+        for (int i = 0; i < curr->var_pos; i++)
+            debug("         %s\n", curr->VARIABLES[i]->name);
+        debug("     functions:\n");
+        for (int i = 0; i < curr->func_pos; i++)
+            debug("         %s\n", curr->FUNCTIONS[i]->token->name);
+    }
+    debug("%s\n", RESET);
+#endif
+}
+
+// UTILS
 void print_asm(char *fmt, ...)
 {
     va_list ap;
@@ -361,7 +425,7 @@ char *strjoin(char *string1, char *string2, char *string3, char *string4)
     return res;
 }
 
-// BUILT INS
+// BUILTINS
 void output(Token *token)
 {
     debug("output %k\n", token);
@@ -432,107 +496,57 @@ void output(Token *token)
     }
 }
 
-// FILE
-FILE *file;
-char *text;
-
-// TOKENS
-Token **TOKENS;
-int tk_len;
-int tk_pos;
-int exe_pos;
-
-// GLOBALS
-size_t Label_index;
-size_t index_;
-uintptr_t ptr;
-size_t rsp;
-
-// LABELS
-struct Label
+void enter_label(Node *node)
 {
-    char *name;
-    // VARIABLES
-    Token **VARIABLES;
-    int var_len;
-    int var_pos;
-
-    // FUNCTIONS
-    Node **FUNCTIONS;
-    int func_len;
-    int func_pos;
-};
-
-Label **LABELS;
-int len;
-int pos;
-
-void label_next(char *name)
-{
-    pos++;
-    if (len && pos + 10 > len)
+    if (lb_len == 0)
     {
-        Label **tmp = calloc(len * 2, sizeof(Label *));
-        memcpy(tmp, LABELS, pos * sizeof(Label *));
-        free(LABELS);
-        LABELS = tmp;
-        len *= 2;
+        lb_len = 20;
+        LABELS = calloc(lb_len, sizeof(Label *));
     }
-    if (len == 0)
+    else if (lb_pos + 2 > lb_len)
     {
-        // debug("init label %s\n", name);
-        len = 100;
-        LABELS = calloc(len, sizeof(Label));
+        lb_len *= 2;
+        LABELS = realloc(LABELS, lb_len * sizeof(Label *));
     }
-    for (int i = 0; i < pos; i++)
+    char *name = strdup(node->token->name);
+    int curr = lb_pos;
+    while (curr > 0)
     {
-        if (strcmp(LABELS[i]->name, name) == 0)
-        {
-            debug("%sfound label %s%s\n", GREEN, name, RESET);
-            // error("in label_next");
-            return;
-        }
+        char *tmp = strjoin(LABELS[curr]->name, name, NULL, NULL);
+        free(name);
+        name = tmp;
+        curr--;
     }
-    debug("%snew label %s has pos %d%s\n", GREEN, name, pos, RESET);
-    LABELS[pos] = calloc(1, sizeof(Label));
-    LABELS[pos]->name = strdup(name);
-    // VARIABLES
-    LABELS[pos]->VARIABLES = calloc(100, sizeof(Token *));
-    LABELS[pos]->var_len = 100;
-    // FUNCTIONS
-    LABELS[pos]->FUNCTIONS = calloc(100, sizeof(Token *));
-    LABELS[pos]->func_len = 100;
+    Label *new = calloc(1, sizeof(Label));
+    new->name = name;
+    new->node = node;
+    new->var_len = 100;
+    new->func_len = 100;
+    new->VARIABLES = calloc(new->var_len, sizeof(Token *));
+    new->FUNCTIONS = calloc(new->func_len, sizeof(Node *));
+    debug("         Enter Label: %s \n", name);
+    lb_pos++;
+    LABELS[lb_pos] = new;
+    LABEL = LABELS[lb_pos];
 }
 
-void label_prev()
+void exit_label(Node *node)
 {
-    free(LABELS[pos]->name);
-    free(LABELS[pos]->VARIABLES);
-    for (int i = 0; i < LABELS[pos]->func_len; i++)
-        free(LABELS[pos]->FUNCTIONS[i]);
-    free(LABELS[pos]->FUNCTIONS);
-    free(LABELS[pos]);
-    LABELS[pos] = NULL;
-    if (pos > 0)
-        pos--;
+    debug("         Exit Label: %s \n", LABEL->name);
+    // TODO: verify this approach
+    if (LABEL->node != node)
+        error("in label exit\n");
+    free(LABEL->VARIABLES);
+    free(LABEL->FUNCTIONS);
+    free(LABEL->name);
+    free(LABEL);
+    LABELS[lb_pos] = NULL;
+    lb_pos--;
+    LABEL = LABELS[lb_pos];
+    debug("         Curr Label: %s \n", LABEL->name);
 }
 
-void visualize()
-{
-    for (int i = 0; i < pos; i++)
-    {
-        Label *curr = LABELS[pos];
-        debug("%sLabel: %s\n", GREEN, curr->name);
-        debug("     variables:\n");
-        for (int i = 0; i < curr->var_pos; i++)
-            debug("         %s\n", curr->VARIABLES[i]->name);
-        debug("     functions:\n");
-        for (int i = 0; i < curr->func_pos; i++)
-            debug("         %s\n", curr->FUNCTIONS[i]->token->name);
-    }
-    debug("%s\n", RESET);
-}
-
+// HANDLE VARIABLES
 Token *new_variable(Token *token)
 {
     // TODO: check if you can remove initilizing instruction
@@ -558,22 +572,32 @@ Token *new_variable(Token *token)
     default:
         break;
     }
-    if (LABELS[pos]->var_pos + 10 > LABELS[pos]->var_len)
+#if 1
+    if (LABEL->var_pos + 2 > LABEL->var_len)
     {
-        Token **tmp = calloc(LABELS[pos]->var_len * 2, sizeof(Token *));
-        memcpy(tmp, LABELS[pos]->VARIABLES, LABELS[pos]->var_pos * sizeof(Token *));
-        free(LABELS[pos]->VARIABLES);
-        LABELS[pos]->VARIABLES = tmp;
-        LABELS[pos]->var_len *= 2;
+#if 1
+        LABEL->var_len *= 2;
+        LABEL->VARIABLES = realloc(LABEL->VARIABLES, LABEL->var_len * sizeof(Token *));
+#else
+        Token **tmp = calloc(LABEL->var_len * 2, sizeof(Token *));
+        memcpy(tmp, LABEL->VARIABLES, LABEL->var_pos * sizeof(Token *));
+        free(LABEL->VARIABLES);
+        LABEL->VARIABLES = tmp;
+        LABEL->var_len *= 2;
+#endif
     }
     debug("new variable %k in ptr: %zu\n", token, token->ptr);
-    return (LABELS[pos]->VARIABLES[LABELS[pos]->var_pos++] = token);
+    return (LABEL->VARIABLES[LABEL->var_pos++] = token);
+#endif
+    // return token;
 }
 
 Token *get_var(char *name)
 {
-    debug("get_var %s from %s label\n", name, LABELS[pos]->name);
-    for (int j = pos; j >= 0; j--)
+#if 1
+    debug("label pos: %d\n", lb_pos);
+    debug("get_var %s from %s label\n", name, LABEL->name);
+    for (int j = lb_pos; j > 0; j--)
     {
         Label *curr = LABELS[j];
         for (int i = 0; i < curr->var_pos; i++)
@@ -583,106 +607,89 @@ Token *get_var(char *name)
                 return var;
         }
     }
+#endif
     return NULL;
 }
 
+// HANDLE FUNCTIONS
 Node *new_func(Node *node)
 {
+    // error("New func must be reviewed\n");
     /*
         TODO:
             - check current label name
             - create function with the name LABEL_NAME_FUNCTION_NAME_
+            - put function name in ->name
+            - put nd function name in ->char_
     */
-    Label *CURR = LABELS[pos];
-    if (CURR->func_pos + 10 > CURR->func_len)
+#if 1
+    // Label *CURR = LABELS[lb_pos];
+    if (LABEL->func_pos + 2 > LABEL->func_len)
     {
-        Node **tmp = calloc(CURR->func_len * 2, sizeof(Node *));
-        memcpy(tmp, CURR->FUNCTIONS, CURR->func_pos * sizeof(Node *));
-        free(CURR->FUNCTIONS);
-        CURR->FUNCTIONS = tmp;
-        CURR->func_len *= 2;
+#if 1
+        LABEL->func_len *= 2;
+        LABEL->FUNCTIONS = realloc(LABEL->FUNCTIONS, LABEL->func_len * sizeof(Node *));
+#else
+        Node **tmp = calloc(LABEL->func_len * 2, sizeof(Node *));
+        memcpy(tmp, LABEL->FUNCTIONS, LABEL->func_pos * sizeof(Node *));
+        free(LABEL->FUNCTIONS);
+        LABEL->FUNCTIONS = tmp;
+        LABEL->func_len *= 2;
+#endif
     }
-    debug("new function, name: %s, return type: %s, in Label %s\n", node->token->name,
-          type_to_string(node->token->type), CURR->name);
-    // print_node(node, 1);
-    return (CURR->FUNCTIONS[CURR->func_pos++] = node);
-}
-
-char *get_func_name(char *name)
-{
-    /*
-        TODO:
-            - get current label
-            - search in cerrent label and all the labels above
-    */
-    debug("get_func_name %s from %s label\n", name, strlen(LABELS[pos]->name) ? LABELS[pos]->name : "Global");
-    for (int j = pos; j >= 0; j--)
-    {
-        Label *curr = LABELS[j];
-        for (int i = 0; i < curr->func_pos; i++)
-        {
-            char *func_name = curr->FUNCTIONS[i]->token->name;
-            if (strcmp(func_name, name) == 0)
-            {
-                char *tmp = NULL;
-                curr = LABELS[j];
-                tmp = strjoin(curr->name, func_name, NULL, NULL);
-                func_name = tmp;
-                return func_name;
-            }
-        }
-    }
-    return NULL;
+    debug("new function, name: %s, return type: %t, in Label %s\n",
+          node->token->name, node->token->type, LABEL->name[0] ? LABEL->name : "global");
+    return (LABEL->FUNCTIONS[LABEL->func_pos++] = node);
+#endif
+    return node;
 }
 
 Node *get_func(char *name)
 {
-    /*
-        TODO:
-            - get current label
-            - search in cerrent label and all the labels above
-    */
-    debug("get_func %s from %s label\n", name, strlen(LABELS[pos]->name) ? LABELS[pos]->name : "Global");
-    for (int j = pos; j >= 0; j--)
+#if 1
+    debug("label pos: %d\n", lb_pos);
+    debug("get_func %s from %s label\n", name, LABEL->name[0] ? LABEL->name : "global");
+    for (int j = lb_pos; j > 0; j--)
     {
         Label *curr = LABELS[j];
+        debug("loop: get_func from label %s, has %d functions\n",
+              curr->name[0] ? curr->name : "global", curr->func_pos);
         for (int i = 0; i < curr->func_pos; i++)
         {
-            char *func_name = curr->FUNCTIONS[i]->token->name;
-            if (strcmp(curr->FUNCTIONS[i]->token->name, name) == 0)
-                return curr->FUNCTIONS[i];
+            Node *func = curr->FUNCTIONS[i];
+            if (func->token->name && strcmp(func->token->name, name) == 0)
+                return func;
         }
     }
+#endif
     return NULL;
 }
 
+// HANDLE TOKENS
 Token *new_token(int s, int e, Type type, Type sub_type, size_t level)
 {
-    Token *token = calloc(1, sizeof(Token));
-    if (tk_pos + 10 > tk_len)
+    if (tk_len == 0)
     {
+        tk_len = 100;
+        TOKENS = calloc(tk_len, sizeof(Token *));
+    }
+    else if (tk_pos + 2 > tk_len)
+    {
+#if 1
+        tk_len *= 2;
+        TOKENS = realloc(TOKENS, tk_len * sizeof(Token *));
+#else
         Token **tmp = calloc(tk_len * 2, sizeof(Token *));
         memcpy(tmp, TOKENS, tk_len * sizeof(Token *));
         free(TOKENS);
         TOKENS = tmp;
         tk_len *= 2;
+#endif
     }
+    Token *token = calloc(1, sizeof(Token));
     token->type = type;
     token->sub_type = sub_type;
     token->level = level;
-    struct
-    {
-        char *name;
-        Type type;
-    } Specials[] = {
-        {"and", and_},
-        {"or", or_},
-        {"if", if_},
-        {"else", else_},
-        {"elif", elif_},
-        {"while", while_},
-        {"func", func_dec_},
-        {0, 0}};
     switch (type)
     {
     case identifier_:
@@ -692,18 +699,27 @@ Token *new_token(int s, int e, Type type, Type sub_type, size_t level)
         {
             token->type = bool_;
             token->bool_ = true;
+            break;
         }
         else if (strcmp(token->name, "False") == 0)
         {
             token->type = bool_;
             token->bool_ = false;
+            break;
         }
+        for (int i = 0; DataTypes[i].name; i++)
+            if (strcmp(DataTypes[i].name, token->name) == 0)
+            {
+                token->type = DataTypes[i].type;
+                goto CLABEL0;
+            }
         for (int i = 0; Specials[i].name; i++)
             if (strcmp(Specials[i].name, token->name) == 0)
             {
                 token->type = Specials[i].type;
-                break;
+                goto CLABEL0;
             }
+    CLABEL0:
         break;
     case char_:
         token->index_ = index_;
@@ -740,23 +756,23 @@ void build_tokens()
     while (text[e])
     {
         Token *token = NULL;
-        Type sub_type = fix_;
+        Type sub_type = 0;
         int s = e;
         if (text[e] == '\n')
         {
+            level = 0;
             while (text[e] == '\n')
                 e++;
-            level = 0;
             s = e;
             while (text[e] != '\n' && isspace(text[e]))
                 e++;
-            // debug("found space with lenght %d\n", e - s);
             level = e - s;
+            debug("LEVEL%d\n", level);
             continue;
         }
-        if (isspace(text[e]))
+        if (isspace(text[e]) && text[e] != '\n')
         {
-            while (isspace(text[e]))
+            while (isspace(text[e]) && text[e] != '\n')
                 e++;
             continue;
         }
@@ -770,6 +786,7 @@ void build_tokens()
             e += 2;
             continue;
         }
+#if 0
         // TODO: protect it from stupid parsing errors
         if (strncmp(text + e, "fix:", 4) == 0)
         {
@@ -781,12 +798,12 @@ void build_tokens()
             sub_type = dyn_;
             e += 4;
         }
+#endif
         for (int i = 0; Symbols[i].name; i++)
         {
             if (strncmp(Symbols[i].name, text + e, strlen(Symbols[i].name)) == 0)
             {
-                token = new_token(s, e + strlen(Symbols[i].name), Symbols[i].type,
-                                  sub_type, level);
+                token = new_token(s, e + strlen(Symbols[i].name), Symbols[i].type, sub_type, level);
                 e += strlen(Symbols[i].name);
                 break;
             }
@@ -821,7 +838,6 @@ void build_tokens()
             new_token(s, e, type, sub_type, level);
             continue;
         }
-        // TODO: update error message
         if (strchr("\"\'", text[e]))
         {
             char quote = text[e++];
@@ -832,7 +848,7 @@ void build_tokens()
             new_token(s + 1, e - 1, char_, sub_type, level);
             continue;
         }
-        // TODO: update error message
+
         error("tokenizing: %s", text + s);
     }
     new_token(0, 0, eof_, none_, level);
@@ -851,44 +867,84 @@ void free_node(Node *node)
 
 void print_node(Node *node, int level)
 {
+    Node *tmp = NULL;
+    int curr = level;
     if (node)
     {
-        int curr = level;
         while (curr)
         {
-            debug("    ");
+            debug("   ");
             curr--;
         }
-        debug("%k\n", node->token);
-        print_node(node->left, level + 1);
-        print_node(node->right, level + 1);
+        switch (node->token->type)
+        {
+        case if_:
+        case elif_:
+        case else_:
+        case while_:
+        {
+            debug("%s%t %s (%t)%s\n", GREEN, node->token->type,
+                  node->token->name, node->token->sub_type, RESET);
+
+            tmp = node->left;
+            if (node->token->type != else_) // condition
+                print_node(tmp->left, level + 1);
+            // code bloc
+            tmp = node->left->right;
+            while (tmp)
+            {
+                print_node(tmp->left, level + 1);
+                tmp = tmp->right;
+            }
+            // elif / else nodes
+            tmp = node;
+            while (node->token->type == if_ && tmp->right)
+            {
+                print_node(tmp->right, level);
+                tmp = tmp->right;
+            }
+            break;
+        }
+        case func_call_:
+        case func_dec_:
+        {
+            debug("%s%t %s (%t)%s\n", GREEN, node->token->type, node->token->name, node->token->sub_type, RESET);
+            // arguments
+            tmp = node->left;
+            while (tmp)
+            {
+                print_node(tmp->left, level + 1);
+                tmp = tmp->right;
+            }
+            // code bloc
+            tmp = node->right;
+            while (tmp)
+            {
+                print_node(tmp->left, level + 1);
+                tmp = tmp->right;
+            }
+            break;
+        }
+        default:
+        {
+            debug("%k\n", node->token);
+            print_node(node->left, level + 1);
+            print_node(node->right, level + 1);
+            break;
+        }
+        }
     }
 }
-
-Node **NODES;
-size_t node_pos;
-size_t node_len;
 
 Node *new_node(Token *token)
 {
-    if (node_len == 0)
-    {
-        node_len = 100;
-        NODES = malloc(node_len * sizeof(Node *));
-    }
-    else if (node_pos + 10 > node_len)
-    {
-        Node **tmp = malloc(node_len * 2 * sizeof(Node *));
-        memcpy(tmp, NODES, node_pos * sizeof(Node *));
-        free(NODES);
-        NODES = tmp;
-    }
     Node *new = calloc(1, sizeof(Node));
     new->token = token;
     debug("new node %k\n", new->token);
-    return NODES[node_pos++] = new;
+    return new;
 }
 
+// TODO: check if can be removed
 Node *copy_node(Node *node)
 {
     Node *new = calloc(1, sizeof(Node));
@@ -901,7 +957,7 @@ Node *copy_node(Node *node)
 }
 
 Node *expr();
-Node *assign();     // =
+Node *assign();     // = += -= *= /=
 Node *logic();      // || or && and
 Node *equality();   // ==  !=
 Node *comparison(); // < > <= >=
@@ -933,7 +989,7 @@ Token *expect(Type type, ...)
             return TOKENS[exe_pos++];
         type = va_arg(ap, Type);
     }
-    error("Unexpected %s\n", type_to_string(type));
+    error("Unexpected %t\n", type);
     return NULL;
 }
 
@@ -1047,7 +1103,7 @@ Node *mul_div()
     return left;
 }
 
-// TODO: handle negative number / be carefull of casting
+// TODO: handle negative number / be carefull of casting long to in for example
 Node *unary()
 {
     Token *token = check(add_, sub_, 0);
@@ -1078,99 +1134,89 @@ Node *prime()
 {
     Node *node = NULL;
     Token *token = NULL;
+    Type sub_type = none_;
     if (token = check(identifier_, 0))
     {
-        for (int i = 0; DataTypes[i].name; i++)
+        if (check(lparent_, 0))
         {
-            if (strcmp(DataTypes[i].name, token->name) == 0)
-            {
-                Type type = DataTypes[i].type;
-                Type sub_type = token->sub_type;
-                debug("find %s\n", type_to_string(DataTypes[i].type));
-                if (TOKENS[exe_pos])
-                    node = new_node(expect(identifier_, 0));
-                node->token->type = type;
-                node->token->sub_type = sub_type;
-                return node;
-            }
-        }
-        Token *tmp_token;
-        if (tmp_token = check(lparent_, 0))
-        {
+            debug("found function call\n");
             node = new_node(token);
-            /*
-                TODOS:
-                    + check main redefinition
-            */
             node->token->type = func_call_;
-            Node *tmp = node;
-            while (TOKENS[exe_pos]->type != rparent_ && TOKENS[exe_pos]->type != eof_)
+            node->token->sub_type = sub_type;
+            Node *tmp;
+            if (TOKENS[exe_pos]->type != rparent_)
             {
-                tmp->left = expr();
-                if (TOKENS[exe_pos]->type == rparent_)
-                    break;
-                tmp->right = new_node(NULL);
-                tmp = tmp->right;
-                expect(coma_);
+                // function arguments
+                node->left = new_node(NULL);
+                tmp = node->left;
+                // arguments
+                while (TOKENS[exe_pos]->type != rparent_ && TOKENS[exe_pos]->type != eof_)
+                {
+                    tmp->left = expr();
+                    if (TOKENS[exe_pos]->type == rparent_ || TOKENS[exe_pos]->type == eof_)
+                        break;
+                    expect(coma_);
+                    tmp->right = new_node(NULL);
+                    tmp = tmp->right;
+                }
             }
             expect(rparent_);
             if (strcmp(node->token->name, "main") == 0)
             {
+                node->token->type = func_dec_;
                 expect(dots_);
                 tmp = node;
+                // main's code bloc
                 while (TOKENS[exe_pos]->level > node->token->level && TOKENS[exe_pos]->type != eof_)
                 {
+                    debug("loop\n");
                     tmp->right = new_node(NULL);
                     tmp = tmp->right;
                     tmp->left = expr();
                 }
             }
-            else if (strcmp(node->token->name, "output") == 0)
-                ;
-
             return node;
         }
         node = new_node(token);
     }
-    else if (token = check(lparent_, 0))
+    else if (check(lparent_, 0))
     {
-        // expect(lparent_);
         node = expr();
         expect(rparent_);
     }
-    else if (token = check(char_, int_, float_, eof_, bool_, 0))
+    else if (token = check(char_, int_, float_, bool_, 0))
+    {
+        if (token->name)
+        {
+            Type type = token->type;
+            token = expect(identifier_);
+            token->type = type;
+            token->sub_type = sub_type;
+        }
+        node = new_node(token);
+    }
+    else if (token = check(eof_))
         node = new_node(token);
     else if (token = check(if_, 0))
     {
-        /*
-            if:
-                left:
-                    left: condition
-                    right:
-                        left:  code
-                        right: (next node)
-                right: (next statement)
-                    elif:
-                        left:
-                            left: condition
-                            right:
-                                left:  code
-                                right: (next node)
-                        right:
-                            else:
-                                left:  code
-                                right: (next node)
-        */
+        free(token->name);
+        token->name = "";
         node = new_node(token);
-        node->left = new_node(new_token(0, 0, none_, none_, node->token->level));
-        node->left->token->index_ = Label_index++;
-        node->token->index_ = Label_index++;
+        node->token->index_ = Label_index++; // current label index
+        Label_index++;
+        node->token->sub_type = sub_type;
+
+        /*
+            cur Label = node->token->index_
+            end Label = node->token->index_ - 1
+        */
+        node->left = new_node(NULL);
+        Node *tmp = node->left;
 
         // the condition bloc
-        node->left->left = expr();
+        tmp->left = expr();
         expect(dots_);
         // statement bloc
-        Node *tmp = node->left;
         while (TOKENS[exe_pos]->level > node->token->level && TOKENS[exe_pos]->type != eof_)
         {
             tmp->right = new_node(NULL);
@@ -1178,59 +1224,52 @@ Node *prime()
             tmp->left = expr();
         }
         // elif
-        Node *tmp0 = node;
-        while (token = check(elif_, 0))
+        Node *tmp1 = node;
+        while (token = check(elif_, else_, 0))
         {
-            tmp = tmp0;
-            tmp->right = new_node(token);
-            tmp0 = tmp->right;
-            tmp->right->token->index_ = Label_index++;
-            tmp->right->left = new_node(NULL);
-            tmp = tmp->right->left;
+            free(token->name);
+            token->name = "";
 
-            // condition
-            tmp->left = expr();
+            tmp = tmp1;
+            tmp->right = new_node(token);
+            tmp1 = tmp1->right; // set second tmp
+
+            tmp = tmp->right;
+            tmp->token->index_ = Label_index++;
+            tmp->token->sub_type = sub_type;
+
+            tmp->left = new_node(NULL);
+            tmp = tmp->left;
+            if (token->type != else_)
+                tmp->left = expr(); // condition
             expect(dots_);
-            // bloc of code
-            while (TOKENS[exe_pos]->level > token->level && TOKENS[exe_pos]->type != eof_)
+            // code bloc
+            while (TOKENS[exe_pos]->level > node->token->level && TOKENS[exe_pos]->type != eof_)
             {
                 tmp->right = new_node(NULL);
                 tmp = tmp->right;
                 tmp->left = expr();
             }
-        }
-        // else
-        tmp = tmp0;
-        if (token = check(else_, 0))
-        {
-            expect(dots_);
-            int i = 0;
-            while (TOKENS[exe_pos]->level > token->level && TOKENS[exe_pos]->type != eof_)
-            {
-                if (i == 0)
-                {
-                    tmp->right = new_node(token);
-                    tmp->right->token->index_ = Label_index++;
-                    i++;
-                }
-                else
-                    tmp->right = new_node(NULL);
-                tmp = tmp->right;
-                tmp->left = expr();
-            }
+            if (token->type == else_)
+                break;
         }
     }
     else if (token = check(while_, 0))
     {
+        free(token->name);
+        token->name = "";
         node = new_node(token);
         node->token->index_ = Label_index++;
-        node->left = expr();
+        Label_index++;
+        node->token->sub_type = sub_type;
+        node->left = new_node(NULL);
+        Node *tmp = node->left;
 
+        tmp->left = expr();
         expect(dots_);
-        Node *tmp = node;
-        while (
-            TOKENS[exe_pos]->level > node->token->level &&
-            TOKENS[exe_pos]->type != eof_)
+
+        tmp = node->left;
+        while (TOKENS[exe_pos]->level > node->token->level && TOKENS[exe_pos]->type != eof_)
         {
             tmp->right = new_node(NULL);
             tmp = tmp->right;
@@ -1239,58 +1278,47 @@ Node *prime()
     }
     else if (token = check(func_dec_, 0))
     {
-        if (!(token = check(identifier_, 0)))
-            error("Expected data type after function declaration");
-        for (int i = 0; DataTypes[i].name; i++)
-        {
-            if (strcmp(DataTypes[i].name, token->name) == 0)
-            {
-                token->type = DataTypes[i].type;
-                break;
-            }
-        }
-        if (token->type != int_ && token->type != float_ && token->type != bool_ && token->type != char_)
+        if (!(token = check(int_, float_, bool_, char_, 0)))
             error("Expected a valid datatype for function declaration");
         Type type = token->type;
         if (!(token = expect(identifier_, 0)))
             error("Expected name for function declaration");
-        // TODO: maybe you won't need to check function redefinition here
+        token->type = func_dec_;
+        token->sub_type = type;
         node = new_node(token);
-
-        if (get_func_name(node->token->name))
-            error("redefinition of function");
-        node->token->type = func_dec_;
-        node->token->sub_type = type;
+        char *new_name = strjoin(node->token->name, "_", NULL, NULL);
+        free(node->token->name);
+        node->token->name = new_name;
+        Node *tmp;
         expect(lparent_);
-#if 1
         if (TOKENS[exe_pos]->type != rparent_)
         {
-            // TODO: optimize this code
+            // function arguments
             node->left = new_node(NULL);
-            Node *tmp = node->left;
-            while (TOKENS[exe_pos]->type != eof_ && TOKENS[exe_pos]->type != rparent_)
+            tmp = node->left;
+            // arguments
+            while (TOKENS[exe_pos]->type != rparent_ && TOKENS[exe_pos]->type != eof_)
             {
-                debug("loop 1\n");
+                tmp->left = expr();
+                if (TOKENS[exe_pos]->type == rparent_ || TOKENS[exe_pos]->type == eof_)
+                    break;
+                expect(coma_);
                 tmp->right = new_node(NULL);
                 tmp = tmp->right;
-                tmp->left = expr();
-                // debug(">> %k\n", tmp->left->token);
-                if (TOKENS[exe_pos]->type == coma_)
-                    exe_pos++;
             }
         }
-#endif
         expect(rparent_);
+
         expect(dots_);
-        // exit(1);
-        Node *tmp = node;
+        tmp = node;
+        // code bloc
         while (TOKENS[exe_pos]->level > node->token->level && TOKENS[exe_pos]->type != eof_)
         {
             tmp->right = new_node(NULL);
             tmp = tmp->right;
             tmp->left = expr();
         }
-        print_node(node, 0);
+        // print_node(node, 0);
         // exit(1);
     }
     else // TODO: add Unexpected error message here
@@ -1305,23 +1333,42 @@ void initialize()
     print_asm(".text\n");
     print_asm(".globl	main\n");
 
-    Node *curr = NULL;
+    Node *curr = new_node(NULL);
+    Node *head = curr;
+    curr->left = expr();
     while (TOKENS[exe_pos]->type != eof_)
     {
-        // TODO: build tree, then evaluate it
-        curr = expr();
-        print_node(curr, 0);
-        evaluate(curr);
-        // free_node(curr);
+        curr->right = new_node(NULL);
+        curr = curr->right;
+        curr->left = expr();
+    };
+    debug("%sABSTRACT TREE:%s\n", GREEN, RESET);
+    // print_node(head, 0);
+    curr = head;
+    while (curr)
+    {
+        print_node(curr->left, 0);
+        curr = curr->right;
     }
+#if 1
+    Node *new = new_node(new_token(0, 0, 0, 0, 0));
+    new->token->name = "";
+    enter_label(new);
+    curr = head;
+    while (curr)
+    {
+        evaluate(curr->left);
+        curr = curr->right;
+    }
+    // exit_label(new);
+#endif
+    free_node(new);
+    free_node(head);
 }
 
 void finalize()
 {
     // TODO: check exit status if changed
-#if 0
-    print_asm("   mov     rax, 0\n");
-#endif
     for (int i = 0; i < tk_pos; i++)
     {
         // test char variable before making any modification
@@ -1349,7 +1396,6 @@ Token *evaluate(Node *node)
         node->token = left;
         break;
     }
-
     case char_:
     case float_:
     case int_:
@@ -1406,9 +1452,7 @@ Token *evaluate(Node *node)
             }
             else
                 error("Invalid unary operation 1");
-            // print_node(curr, 0);
             node->token = evaluate(curr);
-            // free_node(curr);
         }
         break;
     }
@@ -1439,7 +1483,7 @@ Token *evaluate(Node *node)
                           left->ptr, right->int_, left->name);
             break;
         case float_:
-            // TODO: check xmms, with multiple LABELS[pos]->VARIABLES
+            // TODO: check xmms, with multiple LABELS[lb_pos]->VARIABLES
             if (right->ptr)
             {
                 print_asm("   movss   xmm1, DWORD PTR -%zu[rbp]\n", right->ptr);
@@ -1459,12 +1503,15 @@ Token *evaluate(Node *node)
                     + check right has ptr, then load value from there
                     + strdup from right
             */
+#if 0
             if (left->sub_type == fix_)
             {
-                if (right->index_)
-                    print_asm("   lea     rax, STR%zu[rip]\n", right->index_);
-                else
-                    print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
+#endif
+            if (right->index_)
+                print_asm("   lea     rax, STR%zu[rip]\n", right->index_);
+            else
+                print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
+#if 0
             }
             else if (left->sub_type == dyn_)
             {
@@ -1475,9 +1522,10 @@ Token *evaluate(Node *node)
                 print_asm("   mov     rdi, rax\n");
                 print_asm("   call    _strdup\n");
             }
+
             else
                 error("in assign char\n");
-
+#endif
             print_asm("   mov     QWORD PTR -%zu[rbp], rax /* assign  %s */\n", left->ptr,
                       left->name);
             break;
@@ -1513,9 +1561,9 @@ Token *evaluate(Node *node)
             error("Uncompatible type in math operation");
         node->token->type = left->type;
         // has no name // optimization
-        if (!left->ptr && !right->ptr)
+        if (!left->name && !right->name)
         {
-            debug("0. do %s between %k with %k\n", type_to_string(type), left, right);
+            debug("0. do %t between %k with %k\n", type, left, right);
             left->index_ = 0;
             right->index_ = 0;
             switch (node->token->type)
@@ -1553,10 +1601,9 @@ Token *evaluate(Node *node)
                 }
                 node->token->float_ = *(uint32_t *)(&res);
                 break;
-            // TODO: handle strings that get concatinated in run time
             case char_:
                 node->token->index_ = index_++;
-                node->token->sub_type = dyn_;
+                // node->token->sub_type = dyn_;
                 if (type == add_)
                     node->token->char_ = strjoin(left->char_, right->char_, NULL, NULL);
                 else
@@ -1570,7 +1617,7 @@ Token *evaluate(Node *node)
         else
         {
             // TODO: addition for dynamic strings
-            debug("1. do %s between %k with %k\n", type_to_string(type), left, right);
+            debug("1. do %t between %k with %k\n", type, left, right);
             char *str;
             switch (node->token->type)
             {
@@ -1623,7 +1670,7 @@ Token *evaluate(Node *node)
             case char_:
                 if (type != add_)
                     error("math operation 2");
-                node->token->sub_type = dyn_;
+                // node->token->sub_type = dyn_;
                 node->token->ptr = (ptr += 8);
                 if (left->ptr)
                     print_asm("   mov     rdi, QWORD PTR -%zu[rbp]\n", left->ptr);
@@ -1675,7 +1722,7 @@ Token *evaluate(Node *node)
         // has no name // optimization
         if (!left->ptr && !right->ptr)
         {
-            debug("0. do %s between %k with %k\n", type_to_string(type), left, right);
+            debug("0. do %t between %k with %k\n", type, left, right);
             left->index_ = 0;
             right->index_ = 0;
             switch (left->type)
@@ -1729,7 +1776,7 @@ Token *evaluate(Node *node)
         }
         else
         {
-            debug("1. do %s between %k with %k\n", type_to_string(type), left, right);
+            debug("1. do %t between %k with %k\n", type, left, right);
             // TODO: nested if statement maybe can cause problem ???
 #define BOOL_PTR 0
 #if BOOL_PTR
@@ -1740,7 +1787,7 @@ Token *evaluate(Node *node)
             char *str;
             switch (left->type)
             {
-            // TODO: handle heap allocated LABELS[pos]->VARIABLES
+            // TODO: handle heap allocated LABELS[lb_pos]->VARIABLES
             case int_:
                 // set left
                 print_asm("   mov     rax, ");
@@ -1867,7 +1914,7 @@ Token *evaluate(Node *node)
             if (left->type != bool_)
                 error("0.Expected boolean value");
 
-            print_asm("   /* %s operation %d */\n", type_to_string(tmp->token->type), i++);
+            print_asm("   /* %s operation %d */\n", type_to_string(node->token->type), i++);
             if (left->ptr)
                 print_asm("   cmp     BYTE PTR -%zu[rbp], 1\n", left->ptr);
             else if (left->c)
@@ -1878,32 +1925,31 @@ Token *evaluate(Node *node)
                 print_asm("   cmp     al, 1\n");
             }
             if (tmp->token->type == or_)
-                print_asm("   je      %s%zu\n", LABELS[pos]->name, node->token->index_);
+                print_asm("   je      %s%zu\n", LABEL->name, node->token->index_);
             else if (tmp->token->type == and_)
-                print_asm("   jne     %s%zu\n", LABELS[pos]->name, node->token->index_);
+                print_asm("   jne     %s%zu\n", LABEL->name, node->token->index_);
             tmp = tmp->right;
             if (tmp->token->type == and_ || tmp->token->type == or_)
-                print_asm("%s%zu:\n", LABELS[pos]->name, tmp->token->index_);
+                print_asm("%s%zu:\n", LABEL->name, tmp->token->index_);
         }
-        left = evaluate(tmp);
-        if (left->type != bool_)
+        right = evaluate(tmp);
+        if (right->type != bool_)
             error("0.Expected boolean value");
-        print_asm("%s%zu:\n", LABELS[pos]->name, node->token->index_);
+        print_asm("%s%zu:\n", LABEL->name, node->token->index_);
         node->token->c = 'a';
         node->token->type = bool_;
         break;
     }
+#if 1
     case if_:
     {
-        // printf("evaluate if\n");
         Node *curr = node->left;
-
+        size_t end_index = node->token->index_ + 1;
         left = evaluate(curr->left);
-        // size_t if_ptr = left->ptr;
         if (left->type != bool_)
-            error("Expected a valid condition in if statment");
+            error("Expected a valid condition in if statement");
 
-        print_asm("%s%zu: %43s\n", LABELS[pos]->name, node->token->index_, "/* if statement */");
+        print_asm("%s%zu: %43s\n", LABEL->name, node->token->index_, "/* if statement */");
         if (left->ptr)
             print_asm("   cmp     BYTE PTR -%zu[rbp], 1\n", left->ptr);
         else if (left->c)
@@ -1914,9 +1960,9 @@ Token *evaluate(Node *node)
             print_asm("   cmp     al, 1\n");
         }
         if (node->right)
-            print_asm("   jne     %s%zu %39s\n", LABELS[pos]->name, node->right->token->index_, "/* jmp next statement */");
+            print_asm("   jne     %s%zu %39s\n", LABEL->name, node->right->token->index_, "/* jmp next statement */");
         else
-            print_asm("   jne     %s%zu %15s\n", LABELS[pos]->name, node->left->token->index_, "/* jmp end statemnt */");
+            print_asm("   jne     %s%zu %15s\n", LABEL->name, end_index, "/* jmp end statemnt */");
         curr = curr->right;
         // if statment bloc
         while (curr)
@@ -1924,23 +1970,25 @@ Token *evaluate(Node *node)
             evaluate(curr->left);
             curr = curr->right;
         }
+        curr = node->left;
         if (node->right)
-            print_asm("   jmp     %s%zu %38s\n", LABELS[pos]->name, node->left->token->index_, "/* jmp end statement */");
+            print_asm("   jmp     %s%zu %38s\n", LABEL->name, end_index, "/* jmp end statement */");
 
         // elif / else statement
         curr = node->right;
         while (curr)
         {
+
             if (curr->token->type == elif_)
             {
+                Node *tmp0 = curr->left;
                 // evaluate elif
-                print_asm("%s%zu: %45s\n", LABELS[pos]->name, curr->token->index_, "/* elif statement */");
-                Node *tmp = curr->left;
+                print_asm("%s%zu: %45s\n", LABEL->name, curr->token->index_, "/* elif statement */");
+                Node *tmp = tmp0;
 
                 left = evaluate(tmp->left);
-                // size_t if_ptr = left->ptr;
                 if (left->type != bool_)
-                    error("Expected a valid condition in if statment");
+                    error("Expected a valid condition in elif statement");
                 if (left->ptr)
                     print_asm("   cmp     BYTE PTR -%zu[rbp], 1\n", left->ptr);
                 else if (left->c)
@@ -1951,9 +1999,9 @@ Token *evaluate(Node *node)
                     print_asm("   cmp     al, 1\n");
                 }
                 if (curr->right)
-                    print_asm("   jne     %s%zu %39s\n", LABELS[pos]->name, curr->right->token->index_, "/* jmp next statement */");
+                    print_asm("   jne     %s%zu %39s\n", LABEL->name, curr->right->token->index_, "/* jmp next statement */");
                 else
-                    print_asm("   jne     %s%zu %38s\n", LABELS[pos]->name, node->left->token->index_, "/* jmp end statemnt */");
+                    print_asm("   jne     %s%zu %38s\n", LABEL->name, end_index, "/* jmp end statemnt */");
                 tmp = tmp->right;
                 while (tmp)
                 {
@@ -1961,39 +2009,40 @@ Token *evaluate(Node *node)
                     tmp = tmp->right;
                 }
                 if (curr->right)
-                    print_asm("   jmp     %s%zu %38s\n", LABELS[pos]->name, node->left->token->index_, "/* jmp end statement */");
-                curr = curr->right;
+                    print_asm("   jmp     %s%zu %38s\n", LABEL->name, end_index, "/* jmp end statement */");
             }
             else if (curr->token->type == else_)
             {
-                print_asm("%s%zu: %45s\n", LABELS[pos]->name, curr->token->index_, "/* else statement */");
-                while (curr)
+                Node *tmp = curr->left->right;
+                print_asm("%s%zu: %45s\n", LABEL->name, curr->token->index_, "/* else statement */");
+                while (tmp)
                 {
-                    evaluate(curr->left);
-                    curr = curr->right;
+                    evaluate(tmp->left);
+                    tmp = tmp->right;
                 }
             }
+            curr = curr->right;
         }
         // end statement bloc
-        print_asm("%s%zu: %44s\n", LABELS[pos]->name, node->left->token->index_, "/* end statement */");
+        print_asm("%s%zu: %44s\n", LABEL->name, end_index, "/* end statement */");
 
         break;
     }
     case while_:
     {
-        size_t Loop = Label_index++;
-        print_asm("   jmp     %s%zu %46s\n", LABELS[pos]->name, node->token->index_, "/* jmp to while loop condition*/");
+        Node *curr = node->left;
+        print_asm("   jmp     %s%zu %46s\n", LABEL->name, node->token->index_ - 1, "/* jmp to while loop condition*/");
         // while loop bloc
-        print_asm("%s%zu: %44s\n", LABELS[pos]->name, Loop, "/* while loop bloc*/");
-        Node *tmp = node->right;
+        print_asm("%s%zu: %44s\n", LABEL->name, node->token->index_, "/* while loop bloc*/");
+        Node *tmp = curr->right;
         while (tmp)
         {
             evaluate(tmp->left);
             tmp = tmp->right;
         }
         // while loop condition
-        print_asm("%s%zu: %53s\n", LABELS[pos]->name, node->token->index_, "/* while loop condition */");
-        left = evaluate(node->left);
+        print_asm("%s%zu: %53s\n", LABEL->name, node->token->index_ - 1, "/* while loop condition */");
+        left = evaluate(curr->left);
         if (left->type != bool_)
             error("Expected a valid condition in if statment");
         if (left->ptr)
@@ -2005,161 +2054,111 @@ Token *evaluate(Node *node)
             print_asm("   mov     al, %d\n", left->bool_);
             print_asm("   cmp     al, 1\n");
         }
-        print_asm("   je      %s%zu %43s\n", LABELS[pos]->name, Loop, "/* je to while loop bloc*/");
+        print_asm("   je      %s%zu %43s\n", LABEL->name, node->token->index_, "/* je to while loop bloc*/");
         break;
     }
+#endif
     case func_call_:
     {
         debug("found function call has name '%s'\n", node->token->name);
         if (strncmp("output", node->token->name, strlen("output")) == 0)
         {
             // debug("found output\n");
-            Node *tmp = node;
+            Node *tmp = node->left;
             while (tmp)
             {
                 output(evaluate(tmp->left));
                 tmp = tmp->right;
             }
         }
-        else if (strncmp("main", node->token->name, strlen("main")) == 0)
-        {
-            // debug("found main label\n");
-            label_next("main");
-            print_asm("main:\n");
-            print_asm("   push    rbp\n");
-            print_asm("   mov     rbp, rsp\n");
-            print_asm("   sub     rsp, %zu\n", rsp);
-            Node *tmp = node->right;
-            while (tmp)
-            {
-                evaluate(tmp->left);
-                tmp = tmp->right;
-            }
-            print_asm("   leave\n");
-            print_asm("   ret\n\n");
-            // TODO: to be verified
-            // argc, argv
-            label_prev();
-        }
         else
         {
-            /*
-            TODO:
-                + get label name
-                + call function
-            */
-            // char *name = strjoin(LABELS[pos]->name, "_", node->token->name, "_");
-            // visualize();
-            // exit(1);
-            char *name;
-            if (!(name = get_func_name(node->token->name)))
+            char *name = strjoin(node->token->name, "_", NULL, NULL);
+            Node *func;
+            if (!(func = get_func(name)))
             {
                 visualize();
                 error("Undeclared function '%s'\n", node->token->name);
             }
-            Node *func = get_func(node->token->name);
-            label_next(node->token->name);
             if (func->left)
             {
+                // push arguments:
                 int stack_len = 100;
                 int stack_pos = 0;
-                Token **stack = calloc(stack_len, sizeof(stack_len));
-                func = func->left;
-                func = func->right;
-                while (func)
+                Token **stack = calloc(stack_len, sizeof(Token *));
+                Node *tmp = func->left;
+                while (tmp)
                 {
-#if 1
-                    stack[stack_pos++] = get_var(func->left->token->name);
-                    if (stack_pos + 10 > stack_len)
+                    stack[stack_pos++] = get_var(tmp->left->token->name);
+                    if (stack_pos + 2 > stack_len)
                     {
-                        Token **tmp = calloc(stack_len * 2, sizeof(Token *));
-                        memcpy(tmp, stack, stack_pos * sizeof(Token *));
-                        free(stack);
-                        stack = tmp;
+                        stack = realloc(stack, 2 * stack_len * sizeof(Token *));
+                        stack_len *= 2;
                     }
-
-                    func = func->right;
-#endif
+                    tmp = tmp->right;
                 }
                 stack_pos--;
+                tmp = func->left;
                 while (stack_pos >= 0)
                 {
                     Token *token = stack[stack_pos];
                     // check argument type if variable or value....
+                    Token *arg = tmp->left->token;
+                    if(arg->type != token->type)
+                        error("Incompatible type in function call\n");
                     if (token->ptr)
                         print_asm("   push    QWORD PTR -%zu[rbp]\n", token->ptr);
                     stack_pos--;
+                    tmp = tmp->right;
                 }
                 free(stack);
             }
-            label_prev();
-            // free_node(func);
-            print_asm("   call    %s_\n", name);
+            print_asm("   call    %s\n", name);
             free(name);
+
         }
-        break;
+       break;
     }
     case func_dec_:
     {
-        char *name;
-        if (strlen((LABELS[pos]->name)))
-            name = strjoin(LABELS[pos]->name, node->token->name, "_", NULL);
-        else
-            name = strjoin(node->token->name, "_", NULL, NULL);
-        // debug("found function declaration has name '%s'\n", node->token->name);
         new_func(node);
-        label_next(name);
-        // #if 1
-        // #endif
-        // debug("I'm in level %d\n", pos);
-        size_t curr_label = Label_index;
-        if (pos > 1)
-        {
-            Label_index++;
-            // TODO: push rbp ...
-            print_asm("   jmp     %s%d\n", name, curr_label);
-            print_asm("%s:\n", name);
-        }
-        else
-            print_asm("\n%s:\n", name);
+        enter_label(node);
+        char *name = node->token->name;
+        print_asm("%s:\n", name);
         print_asm("   push    rbp\n");
         print_asm("   mov     rbp, rsp\n");
         print_asm("   sub     rsp, %zu\n", rsp);
-        // argument
+
+        // arguments
         Node *tmp = node->left;
-        if (tmp)
+        while (tmp)
         {
+            Token *token = evaluate(tmp->left);
+            // TODO: I did only test for integers, check other data types
+            print_asm("   mov	  rax, QWORD PTR %zu[rbp]\n", token->ptr + 8);
+            print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", token->ptr);
             tmp = tmp->right;
-            while (tmp)
-            {
-                Token *token = evaluate(tmp->left);
-                // TODO: I did only test for integers, check other data types
-                print_asm("   mov	  rax, QWORD PTR %zu[rbp]\n", token->ptr + 8);
-                print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", token->ptr);
-                tmp = tmp->right;
-            }
         }
 
         // code bloc
         tmp = node->right;
-        // rsp += 30;
         while (tmp)
         {
+            if (tmp->left->token->type == func_dec_)
+                print_asm("   jmp end_%s\n", tmp->left->token->name);
+
             evaluate(tmp->left);
             tmp = tmp->right;
         }
-        // rsp -= 30;
         print_asm("   leave\n");
-        print_asm("   ret\n\n");
-        if (pos > 1)
-            print_asm("%s%d:\n", name, curr_label);
+        print_asm("   ret\n");
+        print_asm("end_%s:\n\n", name);
+        exit_label(node);
 
-        label_prev();
-        free(name);
         break;
     }
     default:
-        error("in evaluate %s", type_to_string(type));
+        error("in evaluate %t", type);
         break;
     }
     if (ptr + 10 > rsp)
@@ -2174,31 +2173,12 @@ Token *evaluate(Node *node)
 
 int main(int argc, char **argv)
 {
+    // TODO: check if file ends with .hr
     if (argc != 2)
-    {
-        // TODO: check if file ends with .hr
         error("require one file.hr as argument\n");
-    }
-#if 1
     file = fopen(argv[1], "r");
-#else
-    file = fopen("file.hr", "r");
-#endif
-
-#if 0
-    char *filename = strdup(argv[1]);
-    filename[strlen(filename) - 2] = 's';
-    filename[strlen(filename) - 1] = 0;
-    
-    // opening file
-    debug("open %s\n", argv[1]);
-    debug("write to %s\n", filename);
-    asm_fd = fopen(filename, "w");
-    free(filename);
-#else
     asm_fd = fopen("file.s", "w");
 
-#endif
     if (!file || !asm_fd)
         error("Opening file");
     fseek(file, 0, SEEK_END);
@@ -2211,19 +2191,13 @@ int main(int argc, char **argv)
     debug("%s\n\n", text);
     Label_index = 1;
     index_ = 1;
-    pos = -1;
-
-    label_next("");
-    tk_len = 100;
-    TOKENS = calloc(tk_len, sizeof(Token *));
 
     build_tokens();
     debug("\n");
     free(text);
-    // TODO: verify rsp position
     rsp = 30;
     initialize();
     finalize();
-    debug("\nresult: \n");
-    // free(LABELS);
+    debug("\nresult: (exiting with %d)\n", EXIT_STATUS);
+    exit(EXIT_STATUS);
 }

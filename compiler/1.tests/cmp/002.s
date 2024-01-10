@@ -30,6 +30,7 @@ main:
    call    _putstr
    leave
    ret
+end_main:
 
 STR1: .string "abcde"
 STR2: .string "ghijkl"

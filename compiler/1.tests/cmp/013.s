@@ -3,7 +3,6 @@
 
 .text
 .globl	main
-
 sayHi_:
    push    rbp
    mov     rbp, rsp
@@ -13,22 +12,23 @@ sayHi_:
    mov     rax, QWORD PTR -8[rbp]
    cmp     rax, 7
    sete    al
-sayHi_2:                          /* if statement */
+sayHi_1:                          /* if statement */
    cmp     al, 1
    jne     sayHi_3                /* jmp next statement */
    /* call _putstr */
    lea     rax, STR1[rip]
    mov     rdi, rax
    call    _putstr
-   jmp     sayHi_1                /* jmp end statement */
+   jmp     sayHi_2                /* jmp end statement */
 sayHi_3:                          /* else statement */
    /* call _putstr */
    lea     rax, STR2[rip]
    mov     rdi, rax
    call    _putstr
-sayHi_1:                          /* end statement */
+sayHi_2:                          /* end statement */
    leave
    ret
+end_sayHi_:
 
 main:
    push    rbp
@@ -39,6 +39,7 @@ main:
    call    sayHi_
    leave
    ret
+end_main:
 
 STR1: .string "is seven\n"
 STR2: .string "is not seven\n"
