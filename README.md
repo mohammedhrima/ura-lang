@@ -11,9 +11,6 @@
     + byte: 08bit
 
 - EXPECTED RESULT:
-- variables:
-    - starts only with letter
-    - by levels
 
 - data Types:
 
@@ -33,15 +30,9 @@
             - set rbp - 14: 0 or 1 (mu / imut)
             - set rbp - 13: len
             - set rbp - 08: address in stack 
-        - bool:
-            - relational operator: == != !
-            - logical operators: && || and or
         - bigint / bigfloat:
             - put value in stack
             - send it's address in rax between functions
-
-    - assign: += -= *= /=
-
     - array:
         - data_type[level]
         - logic operator: == !=
@@ -93,38 +84,16 @@
 - conditions and loops:
     - continue keyword
     - break keyword
-    + syntax 1:
-        if statement:
-            // code here ...
-        elif:
-            // code here ...
-        else:
-            // code here ...
-    + syntax 2:
-        while condition:
-            // code here ...
-    - syntax 3:
-        for data_type i in array_data_type:
-            // code here ...
     
 - function declaration:
-    - syntax:
-        func data_type func_name(params ...):
-            // code here ...
     - if variable sent by refrence allocate there space in function code then push rbp to the stack
-    - starts only with letter
     - take params by refre or value
     - variadic arguments
     - return keyword
-    - add '_' before all declared functions:
     - built in functions:
-        + output
         - is_dynamic
         - is_fix
         - dyn: allocate in heap
-    - function call
-        - before calling function push rbp to the stack and pop it later
-        - each function has its own rbp
     - polymorphism
 
 - memory management:

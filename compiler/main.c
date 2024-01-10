@@ -68,12 +68,10 @@ enum Type
     rparent_,
     // assignment
     assign_,
-#if 0
     add_assign_,
     sub_assign_,
     mul_assign_,
     div_assign_,
-#endif
 #if 0
     // memory
     fix_,
@@ -175,16 +173,6 @@ struct
     Type type;
     char *name;
 } Symbols[] = {
-    // math operators
-    {add_, "+"},
-    {sub_, "-"},
-    {mul_, "*"},
-    {div_, "/"},
-    {mod_, "%"},
-    // parents, coma
-    {lparent_, "("},
-    {rparent_, ")"},
-    {coma_, ","},
     // comparision operators
     {less_than_equal_, "<="},
     {grea_than_equal_, ">="},
@@ -195,12 +183,22 @@ struct
     {grea_than_, ">"},
     // assign
     {assign_, "="},
-#if 0
+#if 1
     {add_assign_, "+="},
     {sub_assign_, "-="},
     {mul_assign_, "*="},
     {div_assign_, "/="},
 #endif
+    // math operators
+    {add_, "+"},
+    {sub_, "-"},
+    {mul_, "*"},
+    {div_, "/"},
+    {mod_, "%"},
+    // parents, coma
+    {lparent_, "("},
+    {rparent_, ")"},
+    {coma_, ","},
     // logic
     {and_, "&&"},
     {or_, "||"},
@@ -533,7 +531,6 @@ void enter_label(Node *node)
 void exit_label(Node *node)
 {
     debug("         Exit Label: %s \n", LABEL->name);
-    // TODO: verify this approach
     if (LABEL->node != node)
         error("in label exit\n");
     free(LABEL->VARIABLES);
@@ -549,7 +546,6 @@ void exit_label(Node *node)
 // HANDLE VARIABLES
 Token *new_variable(Token *token)
 {
-    // TODO: check if you can remove initilizing instruction
     switch (token->type)
     {
     case char_:
@@ -615,13 +611,7 @@ Token *get_var(char *name)
 Node *new_func(Node *node)
 {
     // error("New func must be reviewed\n");
-    /*
-        TODO:
-            - check current label name
-            - create function with the name LABEL_NAME_FUNCTION_NAME_
-            - put function name in ->name
-            - put nd function name in ->char_
-    */
+
 #if 1
     // Label *CURR = LABELS[lb_pos];
     if (LABEL->func_pos + 2 > LABEL->func_len)
@@ -908,7 +898,8 @@ void print_node(Node *node, int level)
         case func_call_:
         case func_dec_:
         {
-            debug("%s%t %s (%t)%s\n", GREEN, node->token->type, node->token->name, node->token->sub_type, RESET);
+            debug("%s%t %s (%t)%s\n", GREEN, node->token->type,
+                  node->token->name, node->token->sub_type, RESET);
             // arguments
             tmp = node->left;
             while (tmp)
@@ -1002,11 +993,28 @@ Node *assign()
 {
     Node *left = logic();
     Token *token;
-    if (token = check(assign_, 0))
+
+    if (token = check(assign_, add_assign_, sub_assign_, mul_assign_, div_assign_, 0))
     {
+        // TODO: expect identifier at left
+        Node *right = assign();
+        Node *tmp = right;
+        if (token->type != assign_)
+        {
+            tmp = new_node(new_token(0, 0, token->type == add_assign_ ? add_ : token->type == sub_assign_ ? sub_
+                                                                           : token->type == mul_assign_   ? mul_
+                                                                           : token->type == div_assign_   ? div_
+                                                                                                          : 0,
+                                     0, token->level));
+            tmp->left = new_node(new_token(0, 0, 0, 0, 0));
+            memcpy(tmp->left->token, left->token, sizeof(Token));
+            tmp->left->token->type = identifier_;
+            tmp->right = right;
+        }
+        token->type = assign_;
         Node *node = new_node(token);
         node->left = left;
-        node->right = assign();
+        node->right = tmp;
         return node;
     }
     return left;
@@ -1368,7 +1376,6 @@ void initialize()
 
 void finalize()
 {
-    // TODO: check exit status if changed
     for (int i = 0; i < tk_pos; i++)
     {
         // test char variable before making any modification
@@ -1532,7 +1539,6 @@ Token *evaluate(Node *node)
         case bool_:
             if (right->ptr)
             {
-                // TODO: test this one
                 print_asm("   mov     al, BYTE PTR -%zu[rbp]\n", right->ptr);
                 print_asm("   mov     BYTE PTR -%zu[rbp], al /* assign  %s */\n", left->ptr,
                           left->name);
@@ -1616,7 +1622,6 @@ Token *evaluate(Node *node)
         }
         else
         {
-            // TODO: addition for dynamic strings
             debug("1. do %t between %k with %k\n", type, left, right);
             char *str;
             switch (node->token->type)
@@ -1704,7 +1709,6 @@ Token *evaluate(Node *node)
     }
     // logic operators
     case not_:
-        // TODO:
         error("handle not logic operator");
         break;
     case not_equal_:
@@ -1756,11 +1760,6 @@ Token *evaluate(Node *node)
                 else if (type == grea_than_equal_)
                     node->token->bool_ = (left->float_ >= right->float_);
                 break;
-            /*
-                TODO:
-                    + handle strings that get concatinated in run time
-                    + strcmp shoud return boolean value
-            */
             case char_:
                 if (type == equal_)
                     node->token->bool_ = (strcmp(left->char_, right->char_) == 0);
@@ -1777,7 +1776,6 @@ Token *evaluate(Node *node)
         else
         {
             debug("1. do %t between %k with %k\n", type, left, right);
-            // TODO: nested if statement maybe can cause problem ???
 #define BOOL_PTR 0
 #if BOOL_PTR
             node->token->ptr = (ptr += 1);
@@ -1919,7 +1917,7 @@ Token *evaluate(Node *node)
                 print_asm("   cmp     BYTE PTR -%zu[rbp], 1\n", left->ptr);
             else if (left->c)
                 print_asm("   cmp     %cl, 1\n", left->c);
-            else // TODO: handle if has value is True or False
+            else 
             {
                 print_asm("   mov     al, %d\n", left->bool_);
                 print_asm("   cmp     al, 1\n");
@@ -1999,7 +1997,8 @@ Token *evaluate(Node *node)
                     print_asm("   cmp     al, 1\n");
                 }
                 if (curr->right)
-                    print_asm("   jne     %s%zu %39s\n", LABEL->name, curr->right->token->index_, "/* jmp next statement */");
+                    print_asm("   jne     %s%zu %39s\n", LABEL->name,
+                              curr->right->token->index_, "/* jmp next statement */");
                 else
                     print_asm("   jne     %s%zu %38s\n", LABEL->name, end_index, "/* jmp end statemnt */");
                 tmp = tmp->right;
@@ -2009,7 +2008,8 @@ Token *evaluate(Node *node)
                     tmp = tmp->right;
                 }
                 if (curr->right)
-                    print_asm("   jmp     %s%zu %38s\n", LABEL->name, end_index, "/* jmp end statement */");
+                    print_asm("   jmp     %s%zu %38s\n", LABEL->name,
+                              end_index, "/* jmp end statement */");
             }
             else if (curr->token->type == else_)
             {
@@ -2031,7 +2031,8 @@ Token *evaluate(Node *node)
     case while_:
     {
         Node *curr = node->left;
-        print_asm("   jmp     %s%zu %46s\n", LABEL->name, node->token->index_ - 1, "/* jmp to while loop condition*/");
+        print_asm("   jmp     %s%zu %46s\n", LABEL->name,
+                  node->token->index_ - 1, "/* jmp to while loop condition*/");
         // while loop bloc
         print_asm("%s%zu: %44s\n", LABEL->name, node->token->index_, "/* while loop bloc*/");
         Node *tmp = curr->right;
@@ -2041,7 +2042,8 @@ Token *evaluate(Node *node)
             tmp = tmp->right;
         }
         // while loop condition
-        print_asm("%s%zu: %53s\n", LABEL->name, node->token->index_ - 1, "/* while loop condition */");
+        print_asm("%s%zu: %53s\n", LABEL->name, node->token->index_ - 1,
+                  "/* while loop condition */");
         left = evaluate(curr->left);
         if (left->type != bool_)
             error("Expected a valid condition in if statment");
@@ -2054,7 +2056,8 @@ Token *evaluate(Node *node)
             print_asm("   mov     al, %d\n", left->bool_);
             print_asm("   cmp     al, 1\n");
         }
-        print_asm("   je      %s%zu %43s\n", LABEL->name, node->token->index_, "/* je to while loop bloc*/");
+        print_asm("   je      %s%zu %43s\n", LABEL->name, node->token->index_,
+                  "/* je to while loop bloc*/");
         break;
     }
 #endif
@@ -2104,7 +2107,7 @@ Token *evaluate(Node *node)
                     Token *token = stack[stack_pos];
                     // check argument type if variable or value....
                     Token *arg = tmp->left->token;
-                    if(arg->type != token->type)
+                    if (arg->type != token->type)
                         error("Incompatible type in function call\n");
                     if (token->ptr)
                         print_asm("   push    QWORD PTR -%zu[rbp]\n", token->ptr);
@@ -2115,9 +2118,8 @@ Token *evaluate(Node *node)
             }
             print_asm("   call    %s\n", name);
             free(name);
-
         }
-       break;
+        break;
     }
     case func_dec_:
     {
