@@ -49,11 +49,11 @@
 - add _ before globals also
 
 - function declaration:
-    - syntax:
+    + syntax:
         func data_type func_name(params ...):
             // code here ...
     - if variable sent by refrence allocate there space in function code then push rbp to the stack
-    - starts only with letter
+    + starts only with letter
     - take params by refre or value
     - variadic arguments
     - return keyword
@@ -63,10 +63,21 @@
         - is_dynamic
         - is_fix
         - dyn: allocate in heap
-    - function call
+    + function call
         + before calling function push rbp to the stack and pop it later
         + each function has its own rbp
     - polymorphism
 
 - optimize the code
 - verify dynamic and fix data type for all operations
+
+
+- Refactor code:
+    - one big Tree for the whole code then evaluate it
+    - try using linked list for fiunction arguments
+    - clean TODOS
+    - check optimize this shit lines first
+    - remove type to string form all debug function
+    
+    - each function call / declaration is label
+    

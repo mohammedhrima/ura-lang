@@ -44,6 +44,7 @@ main:
    call    _putstr
    leave
    ret
+end_main:
 
 STR1: .string "mohammed"
 STR2: .string "mohammed"

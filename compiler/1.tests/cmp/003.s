@@ -45,6 +45,7 @@ main:
    call    _putstr
    leave
    ret
+end_main:
 
 STR1: .string "a is "
 STR2: .string " b is "

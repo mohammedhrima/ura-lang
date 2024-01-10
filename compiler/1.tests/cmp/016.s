@@ -3,7 +3,6 @@
 
 .text
 .globl	main
-
 sayHi_:
    push    rbp
    mov     rbp, rsp
@@ -48,6 +47,7 @@ sayHi_:
    call    _putstr
    leave
    ret
+end_sayHi_:
 
 main:
    push    rbp
@@ -65,6 +65,7 @@ main:
    call    sayHi_
    leave
    ret
+end_main:
 
 STR1: .string "x: "
 STR2: .string " y: "

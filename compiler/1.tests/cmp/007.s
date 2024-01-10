@@ -26,6 +26,7 @@ main:
    call    _putstr
    leave
    ret
+end_main:
 
 STR1: .string "\n"
 .section	.note.GNU-stack,"",@progbits

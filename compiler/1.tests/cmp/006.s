@@ -26,6 +26,7 @@ main:
    call    _putstr
    leave
    ret
+end_main:
 
 STR1: .string "abd"
 STR2: .string "abcd"
