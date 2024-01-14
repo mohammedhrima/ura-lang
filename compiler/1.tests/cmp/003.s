@@ -34,7 +34,7 @@ main:
    mov     rax, QWORD PTR -8[rbp]
    add     rax, QWORD PTR -16[rbp]
    mov     QWORD PTR -24[rbp], rax
-   sub     rsp, 30
+   sub     rsp, 60
    /* call _putnbr */
    mov     rax, QWORD PTR -24[rbp]
    mov     rdi, rax
