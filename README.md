@@ -112,3 +112,4 @@
 - optimize the code
 - verify dynamic and fix data type for all operations
 - compile withh Wall Werror Wextra
+- display all parsing error before exiting

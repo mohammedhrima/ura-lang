@@ -19,7 +19,7 @@ main1:                         /* while loop bloc*/
    mov     rax, QWORD PTR -8[rbp]
    sub     rax, 0
    mov     QWORD PTR -24[rbp], rax
-   sub     rsp, 30
+   sub     rsp, 60
    mov     rax, QWORD PTR -24[rbp]
    cmp     rax, 0
    sete    al

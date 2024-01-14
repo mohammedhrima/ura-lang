@@ -12,7 +12,7 @@ main:
    mov     QWORD PTR -16[rbp], 0 /* declare y */
    mov     QWORD PTR -16[rbp], 7 /* assign y */
    mov     QWORD PTR -24[rbp], 0 /* declare z */
-   sub     rsp, 30
+   sub     rsp, 60
    mov     QWORD PTR -24[rbp], 8 /* assign z */
    mov     rax, QWORD PTR -8[rbp]
    cmp     rax, 15

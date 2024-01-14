@@ -1,14 +1,20 @@
 - data Types:
+    - array:
+        + data_type[level] :
+        - logic operator: == !=
+        - math operators ...
+        - arithmetic operator: +
+        - set rbp - 14: 0 or 1 (mu / imut)
+        - set rbp - 13: len
+        - set rbp - 08: address in stack
     - single:
         - int:
             - negative numbers
             - arithmetic operators: / * + - %
-            - relational operators: < > <= >= == !=
             - dynamic int
         - float:
             - negative numbers
             - arithmetic operator: / * + -
-            - relational operator: < > <= >= == != 
             - dynamic float
         - char:
             - arithmetic operator: 
@@ -28,7 +34,8 @@
     - normal mode
         - free function
     - garbage collection mode
-        - add bytes at left of pointer undecates how many variable is holding it
+        - add bytes at left of pointer undecates 
+          how many variable is holding it
     - protect mode:
         - check all []
 
@@ -40,7 +47,8 @@
 - add _ before globals also
 
 - function declaration:
-    - if variable sent by refrence allocate there space in function code then push rbp to the stack
+    - if variable sent by refrence allocate there  
+      space in function code then push rbp to the stack
     - take params by refre or value
     - variadic arguments
     - return keyword
@@ -54,3 +62,6 @@
 - file system:
     - import files
     - open / close files
+
+- build my own version of docker to run in it
+- print all parsing error before exiting

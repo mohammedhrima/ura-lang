@@ -1,4 +1,4 @@
 
 main():
-    int y = 5
-    y += 7
+    array[int] arr = [1,2,3]
+    arr[1]
