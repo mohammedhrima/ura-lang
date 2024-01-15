@@ -102,6 +102,8 @@ enum Type
     elif_,
     else_,
     while_,
+    continue_,
+    break_,
     dots_,
 };
 
@@ -178,6 +180,8 @@ struct
     {else_, "else"},
     {elif_, "elif"},
     {while_, "while"},
+    {break_, "break"},
+    {continue_, "continue"},
     {func_dec_, "func"},
     {none_, "none"},
     {0, NULL},
