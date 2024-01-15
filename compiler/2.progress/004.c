@@ -973,6 +973,7 @@ Node *prime()
         }
         node->token->child_type = type;
         node->token->depth = deep;
+        // print_node(node, 0);
         return node;
     }
     else if (token = check(array_, 0))
@@ -1007,7 +1008,8 @@ Node *prime()
         }
         node = new_node(token);
     }
-
+    else if (token = check(eof_))
+        node = new_node(token);
     else if (token = check(if_, 0))
     {
         free(token->name);
@@ -1030,21 +1032,7 @@ Node *prime()
         {
             tmp->right = new_node(NULL);
             tmp = tmp->right;
-#if 0       
-            // TODO: add this one for the others
-            if (TOKENS[exe_pos]->type == continue_ || TOKENS[exe_pos]->type == break_)
-            {
-                // tmp->left = new_node(check(continue_, break_));
-                Token *token = TOKENS[exe_pos];
-                exe_pos++;
-                while (TOKENS[exe_pos]->col > node->token->col && TOKENS[exe_pos]->type != eof_)
-                    free_node(expr());
-                token->col -= 1;
-                TOKENS[exe_pos - 1] = token;
-            }
-            else
-#endif
-                tmp->left = expr();
+            tmp->left = expr();
         }
         // elif
         Node *tmp1 = node;
@@ -1072,8 +1060,7 @@ Node *prime()
                 tmp = tmp->right;
                 tmp->left = expr();
             }
-            // TODO; check this one
-            if (token->type == else_ || token->type == continue_ || token->type == break_)
+            if (token->type == else_)
                 break;
         }
     }
@@ -1082,9 +1069,8 @@ Node *prime()
         free(token->name);
         token->name = "";
         node = new_node(token);
-        Label_index++;
-        Label_index++;
         node->token->index_ = Label_index++;
+        Label_index++;
         node->left = new_node(NULL);
         Node *tmp = node->left;
 
@@ -1142,8 +1128,6 @@ Node *prime()
             tmp->left = expr();
         }
     }
-    else if (token = check(eof_, continue_, break_, 0))
-        node = new_node(token);
     else
         error(__LINE__, "Unexpected %s in prime",
               token ? type_to_string(__LINE__, token->type) : "(null)");
@@ -1340,6 +1324,8 @@ Token *evaluate(Node *node)
     }
     case lbracket_:
     {
+#if 1
+        //-48[rbp+rax*8]
         left = evaluate(node->left);
         right = evaluate(node->right);
         /*
@@ -1365,7 +1351,7 @@ Token *evaluate(Node *node)
             node->token->child_type = left->child_type;
         }
 
-        // TODO: this approach works only for array of integers
+        // TODO; this approach works only for array of integers
         print_asm("   /* %s[] (%s) */\n", left->name, type_to_string(__LINE__, node->token->type));
         if (right->ptr)
         {
@@ -1383,6 +1369,9 @@ Token *evaluate(Node *node)
             print_asm("   mov     rax, [rax]\n");
             print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
         }
+        print_node(node, 0);
+        // exit(1);
+#endif
         break;
     }
     case assign_:
@@ -1434,10 +1423,10 @@ Token *evaluate(Node *node)
         case char_:
         {
             /*
-                TODO:
-                    + check right has ptr, then load value from there
-                    + strdup from right
-            */
+            TODO:
+                + check right has ptr, then load value from there
+                + strdup from right
+        */
 #if 0
             if (left->sub_type == fix_)
             {
@@ -1881,6 +1870,7 @@ Token *evaluate(Node *node)
         node->token->type = bool_;
         break;
     }
+#if 1
     case if_:
     {
         Node *curr = node->left;
@@ -1974,22 +1964,18 @@ Token *evaluate(Node *node)
     {
         Node *curr = node->left;
         print_asm("   jmp     %s%zu %46s\n", LABEL->name,
-                  node->token->index_ - 1, "/* jmp to while condition*/");
-        // while bloc
-        print_asm("%s%zu: %44s\n", LABEL->name, node->token->index_, "/* while bloc*/");
+                  node->token->index_ - 1, "/* jmp to while loop condition*/");
+        // while loop bloc
+        print_asm("%s%zu: %44s\n", LABEL->name, node->token->index_, "/* while loop bloc*/");
         Node *tmp = curr->right;
         while (tmp)
         {
-            Token *token = evaluate(tmp->left);
-            if (token->type == break_)
-                print_asm("   jmp      %s%zu %4s\n", LABEL->name, node->token->index_ - 2, "/* break while*/");
-            else if (token->type == continue_)
-                print_asm("   jmp      %s%zu %4s\n", LABEL->name, node->token->index_ - 1, "/* continue while*/");
+            evaluate(tmp->left);
             tmp = tmp->right;
         }
-        // while condition
+        // while loop condition
         print_asm("%s%zu: %53s\n", LABEL->name, node->token->index_ - 1,
-                  "/* while condition */");
+                  "/* while loop condition */");
         left = evaluate(curr->left);
         if (left->type != bool_)
             error(__LINE__, "Expected a valid condition in if statment");
@@ -2002,16 +1988,15 @@ Token *evaluate(Node *node)
             print_asm("   mov     al, %d\n", left->bool_);
             print_asm("   cmp     al, 1\n");
         }
-        print_asm("   je      %s%zu %43s\n", LABEL->name, node->token->index_, "/* je to while bloc*/");
-        print_asm("%s%zu: %4s\n", LABEL->name, node->token->index_ - 2, "/* end while*/");
-        print_node(node, 1);
-        exit(1);
+        print_asm("   je      %s%zu %43s\n", LABEL->name, node->token->index_,
+                  "/* je to while loop bloc*/");
         break;
     }
-
+#endif
     case func_call_:
     {
         debug("found function call has name '%s'\n", node->token->name);
+        print_node(node, 0);
         if (strncmp("output", node->token->name, strlen("output")) == 0)
         {
             Node *tmp = node->left;
@@ -2106,9 +2091,6 @@ Token *evaluate(Node *node)
 
         break;
     }
-    case continue_:
-    case break_:
-        break;
     default:
         error(__LINE__, "in evaluate %t", type);
         break;

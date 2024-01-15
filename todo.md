@@ -25,7 +25,6 @@
             - set rbp - 08: address in stack
             - fix / dyn
 
-
 - memory management:
     - heap allocation
     - stack allocation

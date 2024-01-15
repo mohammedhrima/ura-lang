@@ -1,4 +1,10 @@
 
 main():
-    array[int] arr = [1,2,3]
-    arr[1]
+    int i = 0
+    while i < 10:
+        i += 1
+        if i == 7:
+            continue
+            int y = 10
+        output(i, " ")
+    output("\n")
