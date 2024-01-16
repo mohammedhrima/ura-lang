@@ -1,17 +1,17 @@
 version: "3.8"
 services:
   client:
-    build: "./compiler"
-    container_name: gcc_container
+    build: "./wcc"
+    container_name: wolf
     volumes:
-      - "${PWD}/compiler:/compiler"
+      - "${PWD}/wcc:/wcc"
     restart: on-failure
 
 volumes:
   container:
-    name: container
+    name: wolf-cc
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: "${PWD}/compiler"
+      device: "${PWD}/wcc"

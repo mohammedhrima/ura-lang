@@ -2327,9 +2327,9 @@ Token *evaluate(Node *node)
 
 int main(int argc, char **argv)
 {
-    // TODO: check if file ends with .hr
+    // TODO: check if file ends with .w
     if (argc != 2)
-        error("require one file.hr as argument\n");
+        error("require one file.w as argument\n");
     file = fopen(argv[1], "r");
     asm_fd = fopen("file.s", "w");
 

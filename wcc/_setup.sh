@@ -23,17 +23,17 @@ _run() {
 _copy() {
     DEBUG_MODE=false
     cc main.c -lm -fsanitize=address -fsanitize=null -g3 -D DEBUG=\$DEBUG_MODE -o comp
-    ./comp file.hr
+    ./comp file.w
 
-    file_count=\$(ls 1.tests/*.hr 2>/dev/null | wc -l)
+    file_count=\$(ls 1.tests/*.w 2>/dev/null | wc -l)
     next_file_number=\$((file_count + 1))
     new_filename="\$(printf '%03d' "\$next_file_number")"
 
-    new_hr_file="1.tests/\${new_filename}.hr"
+    new_hr_file="1.tests/\${new_filename}.w"
     new_s_file="1.tests/cmp/\${new_filename}.s"
     echo "create \$new_hr_file"
     echo "create \$new_s_file"
-    cp "file.hr" "\$new_hr_file"
+    cp "file.w" "\$new_hr_file"
     cp "file.s" "\$new_s_file"
     rm -rf comp
 }
@@ -48,7 +48,7 @@ _test() {
     NC='\033[0m'
 
     cd 1.tests || exit
-    for file in *.hr; do
+    for file in *.w; do
         if [ -f "\$file" ]; then
             # Execute the command to generate file.s
             ./comp "\$file"
@@ -73,11 +73,11 @@ _refresh() {
     cp comp 1.tests/
 
     cd 1.tests || exit
-    for file in *.hr; do
+    for file in *.w; do
         # Check if the file exists
         if [ -e "\$file" ]; then
             # Extract file name without extension
-            filename=\$(basename "\$file" .hr)
+            filename=\$(basename "\$file" .w)
 
             # Execute the command
             ./comp "\$file"
