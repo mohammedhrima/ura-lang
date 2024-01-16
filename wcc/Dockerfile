@@ -1,6 +1,6 @@
 FROM debian:stable
 
-WORKDIR /compiler
+WORKDIR /wcc
 COPY . .
 
 RUN apt update -y \
