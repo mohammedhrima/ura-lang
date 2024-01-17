@@ -6,7 +6,8 @@
 main:
    push    rbp
    mov     rbp, rsp
-   sub     rsp, 30
+   sub     rsp, 100
+   sub     rsp, 200
    lea     rax, STR1[rip]
    mov     QWORD PTR -8[rbp], rax /* assign  str1 */
    lea     rax, STR2[rip]

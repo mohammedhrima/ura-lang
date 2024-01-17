@@ -6,8 +6,9 @@
 main:
    push    rbp
    mov     rbp, rsp
-   sub     rsp, 30
+   sub     rsp, 100
    mov     QWORD PTR -8[rbp], 0 /* declare x */
+   sub     rsp, 200
    mov     QWORD PTR -8[rbp], 10 /* assign x */
    mov     QWORD PTR -16[rbp], 0 /* declare y */
    mov     QWORD PTR -16[rbp], 7 /* assign y */
@@ -16,32 +17,32 @@ main:
    sete    al
    /* || operation 0 */
    cmp     al, 1
-   je      main3
+   je      if3
    mov     rax, QWORD PTR -16[rbp]
    cmp     rax, 5
    sete    al
-main3:
+if3:
    /* && operation 0 */
    cmp     al, 1
-   jne     main4
+   jne     if4
    mov     rax, QWORD PTR -8[rbp]
    cmp     rax, 5
    setg    al
-main4:
-main1:                          /* if statement */
+if4:
+if2:                          /* if statement */
    cmp     al, 1
-   jne     main5                /* jmp next statement */
+   jne     if5                /* jmp next statement */
    /* call _putstr */
    lea     rax, STR1[rip]
    mov     rdi, rax
    call    _putstr
-   jmp     main2                /* jmp end statement */
-main5:                          /* else statement */
+   jmp     if1                /* jmp end statement */
+if5:                          /* else statement */
    /* call _putstr */
    lea     rax, STR2[rip]
    mov     rdi, rax
    call    _putstr
-main2:                          /* end statement */
+if1:                          /* end statement */
    leave
    ret
 end_main:

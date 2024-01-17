@@ -1,4 +1,11 @@
-
 main():
-    array[[int]] arr = [[11,22,33], [14, 55, 66]]
-    output(arr[1][0], "\n")
+    int x 
+    int y 
+    while x < 5:
+        y = 0
+        while y < 5:
+            output("y: ", y, ", ")
+            y = y + 1
+        x = x + 1
+        output("\nx: ", x, "\n")
+    output("\n")

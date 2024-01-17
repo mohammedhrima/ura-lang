@@ -6,11 +6,12 @@
 main:
    push    rbp
    mov     rbp, rsp
-   sub     rsp, 30
+   sub     rsp, 100
    mov     QWORD PTR -8[rbp], 0 /* declare x */
+   sub     rsp, 200
    mov     QWORD PTR -8[rbp], 10 /* assign x */
-   jmp     main0               /* jmp to while loop condition*/
-main1:                         /* while loop bloc*/
+   jmp     while1                    /* jmp to while condition*/
+while2:                              /* while bloc*/
    /* call _putstr */
    lea     rax, STR1[rip]
    mov     rdi, rax
@@ -28,12 +29,13 @@ main1:                         /* while loop bloc*/
    mov     QWORD PTR -16[rbp], rax
    mov     rax, QWORD PTR -16[rbp]
    mov     QWORD PTR -8[rbp], rax /* assign x */
-main0:                            /* while loop condition */
+while1:                                 /* while condition */
    mov     rax, QWORD PTR -8[rbp]
    cmp     rax, 20
    setle   al
    cmp     al, 1
-   je      main1                  /* je to while loop bloc*/
+   je      while2                       /* je to while bloc*/
+while3: /* end while*/
    leave
    ret
 end_main:

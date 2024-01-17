@@ -93,6 +93,7 @@ enum Type
     identifier_,
     neg_,
     array_,
+    ref_,
     // functions
     func_dec_,
     func_call_,
@@ -127,6 +128,7 @@ struct
     // bool
     {bool_, "bool"},
     {array_, "array"},
+    {ref_, "ref"},
     {none_, NULL},
 };
 
@@ -197,6 +199,7 @@ struct Token
     Type type;
     uintptr_t ptr;
     size_t col;
+    bool is_ref;
     union
     {
         // INTEGER
@@ -225,7 +228,7 @@ struct Token
             bool bool_;
             char c;
         };
-        // function
+        // FUNCTION
         Type ret_type;
     };
 };

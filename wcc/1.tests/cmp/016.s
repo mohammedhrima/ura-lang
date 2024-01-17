@@ -6,15 +6,15 @@
 sayHi_:
    push    rbp
    mov     rbp, rsp
-   sub     rsp, 30
+   sub     rsp, 100
    mov     QWORD PTR -8[rbp], 0 /* declare x */
+   sub     rsp, 200
    mov	  rax, QWORD PTR 16[rbp]
    mov     QWORD PTR -8[rbp], rax
    mov     QWORD PTR -16[rbp], 0 /* declare y */
    mov	  rax, QWORD PTR 24[rbp]
    mov     QWORD PTR -16[rbp], rax
    mov     QWORD PTR -24[rbp], 0 /* declare z */
-   sub     rsp, 60
    mov	  rax, QWORD PTR 32[rbp]
    mov     QWORD PTR -24[rbp], rax
    /* call _putstr */
@@ -52,7 +52,7 @@ end_sayHi_:
 main:
    push    rbp
    mov     rbp, rsp
-   sub     rsp, 90
+   sub     rsp, 300
    mov     QWORD PTR -32[rbp], 0 /* declare x */
    mov     QWORD PTR -32[rbp], 10 /* assign x */
    mov     QWORD PTR -40[rbp], 0 /* declare y */

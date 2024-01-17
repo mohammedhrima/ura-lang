@@ -6,13 +6,13 @@
 main:
    push    rbp
    mov     rbp, rsp
-   sub     rsp, 30
+   sub     rsp, 100
+   sub     rsp, 200
    lea     rax, STR1[rip]
    mov     QWORD PTR -8[rbp], rax /* assign  stname */
    lea     rax, STR2[rip]
    mov     QWORD PTR -16[rbp], rax /* assign  ndname */
    mov     QWORD PTR -24[rbp], 0 /* declare age */
-   sub     rsp, 60
    mov     QWORD PTR -24[rbp], 25 /* assign age */
    /* call _putstr */
    lea     rax, STR3[rip]

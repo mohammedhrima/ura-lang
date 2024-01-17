@@ -1,4 +1,4 @@
 
 main():
-    int y = 5
-    y += 7
+    array[[int]] arr = [[11,22,33], [14, 55, 66]]
+    output(arr[1][0], "\n")
