@@ -3,15 +3,19 @@
 
 .text
 .globl	main
-main:
+test_:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 100
-   mov     QWORD PTR -8[rbp], 0 /* declare a */
+   mov     QWORD PTR -8[rbp], 0 /* declare x */
    sub     rsp, 200
-   mov     QWORD PTR -8[rbp], 10 /* assign a */
-   mov     QWORD PTR -16[rbp], 0 /* declare b */
-   mov     QWORD PTR -16[rbp], 25 /* assign b */
+   mov	  rax, QWORD PTR 16[rbp]
+   mov     QWORD PTR -8[rbp], rax
+   mov	  rax, QWORD PTR 24[rbp]
+   mov     QWORD PTR -16[rbp], rax
+   mov     QWORD PTR -24[rbp], 0 /* declare y */
+   mov	  rax, QWORD PTR 32[rbp]
+   mov     QWORD PTR -24[rbp], rax
    /* call _putstr */
    lea     rax, STR1[rip]
    mov     rdi, rax
@@ -24,17 +28,14 @@ main:
    lea     rax, STR2[rip]
    mov     rdi, rax
    call    _putstr
-   /* call _putnbr */
+   /* call _putstr */
    mov     rax, QWORD PTR -16[rbp]
    mov     rdi, rax
-   call    _putnbr
+   call    _putstr
    /* call _putstr */
    lea     rax, STR3[rip]
    mov     rdi, rax
    call    _putstr
-   mov     rax, QWORD PTR -8[rbp]
-   add     rax, QWORD PTR -16[rbp]
-   mov     QWORD PTR -24[rbp], rax
    /* call _putnbr */
    mov     rax, QWORD PTR -24[rbp]
    mov     rdi, rax
@@ -45,10 +46,26 @@ main:
    call    _putstr
    leave
    ret
+end_test_:
+
+main:
+   push    rbp
+   mov     rbp, rsp
+   sub     rsp, 300
+    mov     rax, 2
+   push    rax
+   lea     rax, STR5[rip]
+   push    rax
+    mov     rax, 1
+   push    rax
+   call    test_
+   leave
+   ret
 end_main:
 
-STR1: .string "a is "
-STR2: .string " b is "
-STR3: .string "\na + b = "
+STR1: .string "x: "
+STR2: .string " s: "
+STR3: .string " y: "
 STR4: .string "\n"
+STR5: .string "something"
 .section	.note.GNU-stack,"",@progbits

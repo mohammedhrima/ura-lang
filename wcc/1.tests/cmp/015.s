@@ -6,32 +6,33 @@
 sayHi_:
    push    rbp
    mov     rbp, rsp
-   sub     rsp, 30
+   sub     rsp, 100
    mov     QWORD PTR -8[rbp], 0 /* declare x */
+   sub     rsp, 200
    mov     QWORD PTR -8[rbp], 5 /* assign x */
    jmp     end_sayHi_sayBy1_
 sayHi_sayBy1_:
    push    rbp
    mov     rbp, rsp
-   sub     rsp, 30
+   sub     rsp, 300
    /* call _putstr */
    lea     rax, STR1[rip]
    mov     rdi, rax
    call    _putstr
-   jmp     end_sayHi_sayBy1_something_
-sayHi_sayBy1_something_:
+   jmp     end_sayHi_sayHi_sayBy1_something_
+sayHi_sayHi_sayBy1_something_:
    push    rbp
    mov     rbp, rsp
-   sub     rsp, 30
+   sub     rsp, 300
    /* call _putstr */
    lea     rax, STR2[rip]
    mov     rdi, rax
    call    _putstr
    leave
    ret
-end_sayHi_sayBy1_something_:
+end_sayHi_sayHi_sayBy1_something_:
 
-   call    sayHi_sayBy1_something_
+   call    sayHi_sayHi_sayBy1_something_
    leave
    ret
 end_sayHi_sayBy1_:
@@ -40,7 +41,7 @@ end_sayHi_sayBy1_:
 sayHi_sayBy2_:
    push    rbp
    mov     rbp, rsp
-   sub     rsp, 30
+   sub     rsp, 300
    /* call _putstr */
    lea     rax, STR3[rip]
    mov     rdi, rax
@@ -72,7 +73,7 @@ end_sayHi_:
 main:
    push    rbp
    mov     rbp, rsp
-   sub     rsp, 30
+   sub     rsp, 300
    call    sayHi_
    leave
    ret

@@ -10,15 +10,25 @@
     + word: 16bit
     + byte: 08bit
 
+    + Stop container and remove images:
+        + docker-compose down -v --rmi all
+
 - EXPECTED RESULT:
 
 - data Types:
-
+    - array:
+        + data_type[level]
+        - logic operator: == !=
+        - arithmetic operator: +
+        - set rbp - 14: 0 or 1 (mu / imut)
+        - set rbp - 13: len
+        - set rbp - 08: address in stack
+    
     - single:
         - int:
             - negative numbers
-            - arithmetic operators: / * + - % ++ --
-            - relational operators: < > <= >= == !=
+            + arithmetic operators: / * + - % ++ --
+            + relational operators: < > <= >= == !=
         - float:
             - negative numbers
             - arithmetic operator: / * + -
@@ -26,23 +36,16 @@
         - char:
             - arithmetic operator: 
                 - only for mutable + 
-            - relational operator: == !=
+            + relational operator: == !=
             - set rbp - 14: 0 or 1 (mu / imut)
             - set rbp - 13: len
             - set rbp - 08: address in stack 
         - bigint / bigfloat:
             - put value in stack
             - send it's address in rax between functions
-    - array:
-        - data_type[level]
-        - logic operator: == !=
-        - arithmetic operator: +
-        - set rbp - 14: 0 or 1 (mu / imut)
-        - set rbp - 13: len
-        - set rbp - 08: address in stack
 
     - Class:
-        - take params by refre or value
+        - take params by refr or value
         - syntax:
             class class_name:
                 constractor(data_type1 params...):
@@ -70,8 +73,7 @@
                     [-]:
                         // code here ...
     
-
-
+- try, catch
 - methods
 - typedefs: use int as num
 - namespaces
@@ -82,8 +84,9 @@
     - open / close files
 
 - conditions and loops:
-    - continue keyword
-    - break keyword
+    + continue keyword
+    + break keyword
+    - add for loops
     
 - function declaration:
     - if variable sent by refrence allocate there space in function code then push rbp to the stack
@@ -113,3 +116,4 @@
 - verify dynamic and fix data type for all operations
 - compile withh Wall Werror Wextra
 - display all parsing error before exiting
+- build my own version of docker to run in it
