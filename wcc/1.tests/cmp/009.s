@@ -8,7 +8,6 @@ main:
    mov     rbp, rsp
    sub     rsp, 100
    mov     QWORD PTR -8[rbp], 0 /* declare x */
-   sub     rsp, 200
    mov     QWORD PTR -8[rbp], 10 /* assign x */
    mov     QWORD PTR -16[rbp], 0 /* declare y */
    mov     QWORD PTR -16[rbp], 7 /* assign y */

@@ -200,6 +200,7 @@ struct Token
     uintptr_t ptr;
     size_t col;
     bool is_ref;
+    bool has_ref;
     union
     {
         // INTEGER

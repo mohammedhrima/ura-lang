@@ -17,6 +17,7 @@ void error(int line, char *fmt, ...)
     exit(1);
 };
 
+// type to string
 char *type_to_string(int line, Type type)
 {
     for (int i = 0; i < sizeof(DataTypes) / sizeof(*DataTypes); i++)
@@ -97,36 +98,37 @@ void debug(char *conv, ...)
                         if (token->name)
                             fprintf(stdout, "<name:%5s> ", token->name);
                         if (token->is_ref)
-                            fprintf(stdout, "isref ");
-                        if (token->ptr)
-                            fprintf(stdout, "PTR(%zu) ", token->ptr);
-                        else
-                            switch (token->type)
-                            {
-                            case char_:
-                                fprintf(stdout, "'%s' ", token->char_);
-                                if (token->index_)
-                                    fprintf(stdout, "STR%zu, ", token->index_);
-                                break;
-                            case int_:
-                                fprintf(stdout, "%d ", token->int_);
-                                break;
-                            case float_:
-                                fprintf(stdout, "%zu (%.2f) ", token->float_, *(float *)(&token->float_));
-                                if (token->index_)
-                                    fprintf(stdout, "FLT%zu ", token->index_);
-                                break;
-                            case bool_:
-                                fprintf(stdout, "%s ", token->bool_ ? "True" : "False");
-                                break;
-                            case array_:
-                                fprintf(stdout, "depth: %zu, ", token->depth);
-                                if (token->child_type)
-                                    fprintf(stdout, "child: %s, ", tts(token->child_type));
-                                break;
-                            default:
-                                break;
-                            }
+                            fprintf(stdout, "ref ", token->name);
+                        switch (token->type)
+                        {
+                        case ref_:
+                            fprintf(stdout, "refrence to '%s' ", tts(token->child_type));
+                            break;
+                        case char_:
+                            fprintf(stdout, "'%s' ", token->char_);
+                            if (token->index_)
+                                fprintf(stdout, "STR%zu, ", token->index_);
+                            break;
+                        case int_:
+                            fprintf(stdout, "%d ", token->int_);
+                            break;
+                        case float_:
+                            fprintf(stdout, "%zu (%.2f) ", token->float_,
+                                    *(float *)(&token->float_));
+                            if (token->index_)
+                                fprintf(stdout, "FLT%zu ", token->index_);
+                            break;
+                        case bool_:
+                            fprintf(stdout, "%s ", token->bool_ ? "True" : "False");
+                            break;
+                        case array_:
+                            fprintf(stdout, "depth: %zu, ", token->depth);
+                            if (token->child_type)
+                                fprintf(stdout, "child: %s, ", tts(token->child_type));
+                            break;
+                        default:
+                            break;
+                        }
                         fprintf(stdout, "in COL%zu", token->col);
                     }
                     else
@@ -185,54 +187,50 @@ char *strjoin(char *string1, char *string2)
 // BUILTINS
 void output(Token *token)
 {
-    // TODO: verify each condition and test  it carefully
     switch (token->type)
     {
     case char_:
     {
         print_asm("   /* call _putstr */\n");
-        if (token->is_ref)
+        if (token->ptr)
         {
             print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", token->ptr);
-            print_asm("   mov     rax, QWORD PTR [rax]\n");
+            print_asm("   mov     rdi, rax\n");
+            print_asm("   call    _putstr\n");
         }
-        else if (token->ptr)
-            print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", token->ptr);
         else if (token->index_)
+        {
             print_asm("   lea     rax, STR%zu[rip]\n", token->index_);
+            print_asm("   mov     rdi, rax\n");
+            print_asm("   call    _putstr\n");
+        }
         else
             error(__LINE__, "output char");
-        print_asm("   mov     rdi, rax\n");
-        print_asm("   call    _putstr\n");
         break;
     }
     case int_:
     {
         print_asm("   /* call _putnbr */\n");
-        if (token->is_ref)
+        if (token->ptr)
         {
             print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", token->ptr);
-            print_asm("   mov     rax, QWORD PTR [rax]\n");
+            print_asm("   mov     rdi, rax\n");
+            print_asm("   call    _putnbr\n");
         }
-        else if (token->ptr)
-            print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", token->ptr);
         else if (token->int_)
+        {
             print_asm("   mov   rax, %lld\n", token->int_);
+            print_asm("   mov   rdi, rax\n");
+            print_asm("   call  _putnbr\n");
+        }
         else
             error(__LINE__, "output int");
-        print_asm("   mov     rdi, rax\n");
-        print_asm("   call    _putnbr\n");
         break;
     }
     case bool_:
     {
         print_asm("   /* call _putbool */\n");
-        if (token->is_ref)
-        {
-            print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", token->ptr);
-            print_asm("   mov     rax, QWORD PTR [rax]\n");
-        }
-        else if (token->ptr)
+        if (token->ptr)
             print_asm("   movzx   eax, BYTE PTR -%zu[rbp]\n", token->ptr);
         else if (token->c)
             print_asm("   movzx   eax, %cl\n", token->c);
@@ -309,41 +307,47 @@ void exit_label(Node *node)
 // HANDLE VARIABLES
 Token *new_variable(Token *token)
 {
-    if (token->is_ref)
+    switch (token->type)
     {
+    // case ref_:
+    //     token->ptr = (ptr += 8);
+    //     print_asm("   mov     QWORD PTR -%zu[rbp], rax /* declare %s as ref */\n", token->ptr, token->name);
+    //     break;
+    case char_:
         token->ptr = (ptr += 8);
-        print_asm("   mov     QWORD PTR -%zu[rbp], 0 /* declare %s (ref) */\n", token->ptr, token->name);
+        break;
+    case int_:
+        token->ptr = (ptr += 8);
+        print_asm("   mov     QWORD PTR -%zu[rbp], %d /* declare %s */\n", token->ptr, 0, token->name);
+        break;
+    case float_:
+        token->ptr = (ptr += 4);
+        print_asm("   mov     DWORD PTR -%zu[rbp], %d /* declare %s */\n", token->ptr, 0, token->name);
+        break;
+    case bool_:
+        token->ptr = (ptr += 1);
+        print_asm("   mov     BYTE PTR -%zu[rbp], %d /* declare %s */\n", token->ptr, 0, token->name);
+        break;
+    case array_:
+        token->ptr = (ptr += 8);
+        print_asm("   mov     QWORD PTR -%zu[rbp], %d /* declare %s */\n", token->ptr, 0, token->name);
+        break;
+    default:
+        break;
     }
-    else
-        switch (token->type)
-        {
-        case char_:
-            token->ptr = (ptr += 8);
-            break;
-        case int_:
-            token->ptr = (ptr += 8);
-            print_asm("   mov     QWORD PTR -%zu[rbp], 0 /* declare %s */\n", token->ptr, token->name);
-            break;
-        case float_:
-            token->ptr = (ptr += 4);
-            print_asm("   mov     DWORD PTR -%zu[rbp], 0 /* declare %s */\n", token->ptr, token->name);
-            break;
-        case bool_:
-            token->ptr = (ptr += 1);
-            print_asm("   mov     BYTE PTR -%zu[rbp], 0 /* declare %s */\n", token->ptr, token->name);
-            break;
-        case array_:
-            token->ptr = (ptr += 8);
-            print_asm("   mov     QWORD PTR -%zu[rbp], 0 /* declare %s */\n", token->ptr, token->name);
-            break;
-        default:
-            break;
-        }
     if (LABEL->var_pos + 2 > LABEL->var_len)
     {
         LABEL->var_len *= 2;
         LABEL->VARIABLES = realloc(LABEL->VARIABLES, LABEL->var_len * sizeof(Token *));
     }
+#if 1
+    if (token->is_ref)
+    {
+        print_asm("   lea     rax, -%zu[rbp]\n", token->ptr);
+        token->ptr = (ptr += 8);
+        print_asm("   mov     QWORD PTR -%zu[rbp], rax /* set %s as ref */\n", token->ptr, token->name);
+    }
+#endif
     debug("new variable %k in ptr: %zu\n", token, token->ptr);
     return (LABEL->VARIABLES[LABEL->var_pos++] = token);
 }
@@ -375,8 +379,8 @@ Node *new_func(Node *node)
     char *name = strjoin(LABEL->name, node->token->name);
     free(node->token->name);
     node->token->name = name;
-    debug("new function, name: %s, return type: %t, in Label %s\n", node->token->name, node->token->type,
-          LABEL->name[0] ? LABEL->name : "global");
+    debug("new function, name: %s, return type: %t, in Label %s\n",
+          node->token->name, node->token->type, LABEL->name[0] ? LABEL->name : "global");
     return (LABEL->FUNCTIONS[LABEL->func_pos++] = node);
 }
 
@@ -387,7 +391,8 @@ Node *get_func(char *name)
     {
         Label *curr = LABELS[j];
         char *tmp = strjoin(curr->name, name);
-        debug("loop: label %s, has %d functions, get %s\n", curr->name[0] ? curr->name : "global", curr->func_pos, tmp);
+        debug("loop: label %s, has %d functions, get %s\n",
+              curr->name[0] ? curr->name : "global", curr->func_pos, tmp);
         for (int i = 0; i < curr->func_pos; i++)
         {
             Node *func = curr->FUNCTIONS[i];
@@ -592,22 +597,23 @@ void print_node(Node *node, int col)
     int curr = col;
     if (node)
     {
-        Token *token = node->token;
         while (curr)
         {
             debug("   ");
             curr--;
         }
-        switch (token->type)
+        switch (node->token->type)
         {
         case if_:
         case elif_:
         case else_:
         case while_:
         {
-            debug("%s%t %s %s\n", GREEN, token->type, token->name, RESET);
+            debug("%s%t %s %s\n", GREEN, node->token->type,
+                  node->token->name, RESET);
+
             tmp = node->left;
-            if (token->type != else_) // condition
+            if (node->token->type != else_) // condition
                 print_node(tmp->left, col + 1);
             // code bloc
             tmp = node->left->right;
@@ -618,7 +624,7 @@ void print_node(Node *node, int col)
             }
             // elif / else nodes
             tmp = node;
-            while (token->type == if_ && tmp->right)
+            while (node->token->type == if_ && tmp->right)
             {
                 print_node(tmp->right, col);
                 tmp = tmp->right;
@@ -628,7 +634,8 @@ void print_node(Node *node, int col)
         case func_call_:
         case func_dec_:
         {
-            debug("%s%t %s return (%t)%s\n", GREEN, token->type, token->name, token->ret_type, RESET);
+            debug("%s%t %s return (%t)%s\n", GREEN, node->token->type,
+                  node->token->name, node->token->ret_type, RESET);
             // arguments
             tmp = node->left;
             while (tmp)
@@ -647,7 +654,11 @@ void print_node(Node *node, int col)
         }
         case array_:
         {
-            debug("%s%t %s depth: %d %s\n", GREEN, token->type, token->name ? token->name : "", token->depth, RESET);
+            debug("%s%t %s depth: %d %s\n", GREEN,
+                  node->token->type,
+                  node->token->name ? node->token->name : "",
+                  node->token->depth,
+                  RESET);
 
             while (node)
             {
@@ -658,7 +669,7 @@ void print_node(Node *node, int col)
         }
         default:
         {
-            debug("%k\n", token);
+            debug("%k\n", node->token);
             print_node(node->left, col + 1);
             print_node(node->right, col + 1);
             break;
@@ -734,17 +745,17 @@ Node *assign()
     Token *token;
     if (token = check(assign_, add_assign_, sub_assign_, mul_assign_, div_assign_, 0))
     {
-        // TODO: I made some modification, check this
         Node *right = assign();
         Node *tmp = right;
-        Type type = token->type;
-        if (type != assign_)
+        if (token->type != assign_)
         {
-            type = type == add_assign_ ? add_ : type == sub_assign_ ? sub_
-                                            : type == mul_assign_   ? mul_
-                                            : type == div_assign_   ? div_
-                                                                    : 0;
-            tmp = new_node(new_token(0, 0, type, token->col));
+            tmp = new_node(new_token(0, 0,
+                                     token->type == add_assign_   ? add_
+                                     : token->type == sub_assign_ ? sub_
+                                     : token->type == mul_assign_ ? mul_
+                                     : token->type == div_assign_ ? div_
+                                                                  : 0,
+                                     token->col));
             tmp->left = new_node(new_token(0, 0, 0, 0));
             memcpy(tmp->left->token, left->token, sizeof(Token));
             tmp->left->token->type = identifier_;
@@ -792,7 +803,8 @@ Node *comparison()
 {
     Node *left = add_sub();
     Token *token;
-    if (token = check(less_than_, grea_than_, less_than_equal_, grea_than_equal_, 0))
+    if (token = check(less_than_, grea_than_,
+                      less_than_equal_, grea_than_equal_, 0))
     {
         Node *node = new_node(token);
         node->left = left;
@@ -852,7 +864,7 @@ Node *mul_div()
 Node *unary()
 {
     Token *token = check(add_, sub_, 0);
-    Node *left = prime();
+    Node *left = brackets();
     if (token && token->type == sub_)
     {
 #if 0
@@ -875,20 +887,35 @@ Node *unary()
     return left;
 }
 
+#define BRAC 0
+Node *brackets()
+{
+    Node *node = prime();
+#if BRAC
+    Token *token;
+    if (token = check(lbracket_, 0))
+    {
+        Node *tmp = new_node(token);
+        tmp->left = node;
+        tmp->right = new_node(expect(__LINE__, identifier_, int_, 0));
+        expect(__LINE__, rbracket_, 0);
+    }
+#endif
+    return node;
+}
+
 Node *prime()
 {
     Node *node = NULL;
     Token *token = NULL;
-    Node *tmp = NULL;
-    Type type = 0;
     if (token = check(identifier_, 0))
     {
-        // TODO: reference fom funciton
         node = new_node(token);
         if (check(lparent_, 0))
         {
             node->token->ret_type = void_;
             node->token->type = func_call_;
+            Node *tmp;
             if (TOKENS[exe_pos]->type != rparent_)
             {
                 // function arguments
@@ -920,9 +947,10 @@ Node *prime()
                 }
             }
         }
+#if !BRAC
         while (token = check(lbracket_, 0))
         {
-            tmp = new_node(token);
+            Node *tmp = new_node(token);
             tmp->left = node;
 
             node = tmp;
@@ -930,13 +958,14 @@ Node *prime()
                 node->right = new_node(expect(__LINE__, identifier_, int_, 0));
             expect(__LINE__, rbracket_, 0);
         }
+#endif
         return node;
     }
     else if (token = check(func_dec_, 0))
     {
         if (!(token = check(int_, float_, bool_, char_, void_, 0)))
             error(__LINE__, "Expected a valid datatype for function declaration");
-        type = token->type;
+        Type type = token->type;
         if (!(token = expect(__LINE__, identifier_, 0)))
             error(__LINE__, "Expected name for function declaration");
         token->type = func_dec_;
@@ -945,6 +974,7 @@ Node *prime()
         char *new_name = strjoin(node->token->name, "_");
         free(node->token->name);
         node->token->name = new_name;
+        Node *tmp;
         expect(__LINE__, lparent_);
         if (TOKENS[exe_pos]->type != rparent_)
         {
@@ -985,9 +1015,9 @@ Node *prime()
         node = new_node(token);
         node->token->type = array_;
 
-        tmp = node;
+        Node *tmp = node;
         int deep = 1;
-        type = none_;
+        Type type = none_;
         while (!check(rbracket_, 0))
         {
             tmp->left = prime();
@@ -1030,12 +1060,7 @@ Node *prime()
     }
     else if (token = check(ref_, 0))
     {
-        token = expect(__LINE__, char_, int_, float_, bool_, 0);
-        if (!token->name)
-            error(__LINE__, "expected a identifier after ref keyword");
-        type = token->type;
         node = new_node(expect(__LINE__, identifier_, 0));
-        node->token->type = type;
         node->token->is_ref = true;
         return node;
     }
@@ -1043,7 +1068,7 @@ Node *prime()
     {
         if (token->name) // it might be int variable or int value
         {
-            type = token->type;
+            Type type = token->type;
             token = expect(__LINE__, identifier_);
             token->type = type;
         }
@@ -1059,7 +1084,7 @@ Node *prime()
         Label_index++;
         node->token->index_ = Label_index++; // current label index
         node->left = new_node(NULL);
-        tmp = node->left;
+        Node *tmp = node->left;
 
         // the condition bloc
         tmp->left = expr();
@@ -1109,7 +1134,7 @@ Node *prime()
         node->token->index_ = Label_index++;
         Label_index += 2;
         node->left = new_node(NULL);
-        tmp = node->left;
+        Node *tmp = node->left;
 
         tmp->left = expr();
         expect(__LINE__, dots_);
@@ -1122,10 +1147,12 @@ Node *prime()
             tmp->left = expr();
         }
     }
+
     else if (token = check(eof_, continue_, break_, 0))
         node = new_node(token);
     else
-        error(__LINE__, "Unexpected %s in prime", token ? tts(token->type) : "(null)");
+        error(__LINE__, "Unexpected %s in prime",
+              token ? tts(token->type) : "(null)");
     return node;
 }
 
@@ -1180,12 +1207,11 @@ void finalize()
     print_asm(".section	.note.GNU-stack,\"\",@progbits\n");
 }
 
-bool skip_check;
 Token *evaluate(Node *node)
 {
     /*
         mov	rax, QWORD PTR -8[rbp]
-        mov	eax, DWORD PTR [rax]
+    	mov	eax, DWORD PTR [rax]
     */
     Token *left = NULL, *right = NULL;
     Type type = node->token->type;
@@ -1194,9 +1220,11 @@ Token *evaluate(Node *node)
     {
     case identifier_:
     {
+        is_ref = node->token->is_ref;
         left = get_var(node->token->name);
         if (!left)
             error(__LINE__, "Undeclared variable '%s'", node->token->name);
+        left->is_ref = is_ref;
         node->token = left;
         break;
     }
@@ -1208,7 +1236,10 @@ Token *evaluate(Node *node)
         if (node->token->name)
         {
             if (get_var(node->token->name))
+            {
                 error(__LINE__, "redefinition of variable in %s", __func__);
+                // error(__LINE__, "redefinition of variable");
+            }
             new_variable(node->token);
         }
         break;
@@ -1338,6 +1369,7 @@ Token *evaluate(Node *node)
             node->token->type = left->type;
             node->token->child_type = left->child_type;
         }
+
         // TODO: this approach works only for array of integers
         print_asm("   /* %s[] (%s) */\n", left->name, tts(node->token->type));
         if (right->ptr)
@@ -1366,81 +1398,38 @@ Token *evaluate(Node *node)
         debug("%sassign:\n     %k\n     %k%s\n\n", RED, left, right, RESET);
         if (!left->name || left->type != right->type || !left->ptr)
             error(__LINE__, "Invalid assignement %s / %s", tts(left->type), tts(right->type));
-
         /*
             TODOS:
                 + assign / initializing
                 + deep / shallow copy
-                - handle those cases:
-                    - left ref, right var
-                    - left var, right var
-                    - left var, right ref
-                    - left ref, right ref
+                + handle those cases:
+                    + left ref, right var
+                    + left var, right var
+                    + left var, right ref
+                    + left ref, right ref
         */
-        if (right->is_ref && !right->has_ref)
-            error(__LINE__, "%s must have a reference before get used", right->name);
-        if (!skip_check && left->is_ref && !left->has_ref && !right->name)
-            error(__LINE__, "reference %s must be assigned to variable first time", left->name);
-
         node->token = left;
-        if (left->is_ref && !left->has_ref)
+        if (right->is_ref)
         {
-            left->has_ref = true;
-            print_asm("   lea     rax, -%zu[rbp]\n", right->ptr);
-            print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", left->ptr);
+            // TODO: check errors
+            char *name = left->name;
+            *left = *right;
+            left->name = name;
         }
         else
-        {
             switch (left->type)
             {
             case int_:
             {
-#if 0
-                if (right->ptr)
-                {
-                    if (right->is_ref)
-                    {
-                        print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
-                        print_asm("   mov     rax, QWORD PTR [rax]\n");
-                    }
-                    else
-                        print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
 
-                    if (left->is_ref)
-                    {
-                        print_asm("   mov     rbx,  QWORD PTR -%zu[rbp]\n", left->ptr);
-                        print_asm("   mov     QWORD PTR [rbx], rax /* assign ref %s */\n",  left->name);
-                    }
-                    else
-                        print_asm("   mov     QWORD PTR -%zu[rbp], rax /* assign %s */\n", left->ptr, left->name);
-                }
-                else
-                {
-                    if (left->is_ref)
-                    {
-                        print_asm("   mov     rbx,  QWORD PTR -%zu[rbp]\n", left->ptr);
-                        print_asm("   mov     QWORD PTR [rbx], %ld /* assign ref %s */\n", right->int_, left->name);
-                    }
-                    else
-                        print_asm("   mov     QWORD PTR -%zu[rbp], %ld /* assign %s */\n", left->ptr, right->int_, left->name);
-                }
-#else
                 if (right->ptr)
                 {
                     print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
-                    if (right->is_ref)
-                        print_asm("   mov     rax, QWORD PTR [rax]\n");
-                }
-                else
-                    print_asm("   mov     rax, %ld \n", right->int_);
-                if (left->is_ref)
-                {
-                    print_asm("   mov     rbx,  QWORD PTR -%zu[rbp]\n", left->ptr);
-                    print_asm("   mov     QWORD PTR [rbx], rax /* assign ref %s */\n", left->name);
-                }
-                else
                     print_asm("   mov     QWORD PTR -%zu[rbp], rax /* assign %s */\n", left->ptr, left->name);
-#endif
+                }
+                else
+                    print_asm("   mov     QWORD PTR -%zu[rbp], %d /* assign %s */\n", left->ptr, right->int_, left->name);
+
                 break;
             }
             case float_:
@@ -1522,7 +1511,6 @@ Token *evaluate(Node *node)
                 error(__LINE__, "add assembly for this one 0, %s", __func__);
                 break;
             }
-        }
         visualize();
         break;
     }
@@ -1944,6 +1932,7 @@ Token *evaluate(Node *node)
         curr = node->right;
         while (curr)
         {
+
             if (curr->token->type == elif_)
             {
                 Node *tmp0 = curr->left;
@@ -1964,7 +1953,8 @@ Token *evaluate(Node *node)
                     print_asm("   cmp     al, 1\n");
                 }
                 if (curr->right)
-                    print_asm("   jne     %s%zu %39s\n", LABEL->name, curr->right->token->index_, "/* jmp next statement */");
+                    print_asm("   jne     %s%zu %39s\n", LABEL->name,
+                              curr->right->token->index_, "/* jmp next statement */");
                 else
                     print_asm("   jne     %s%zu %38s\n", LABEL->name, end_index, "/* jmp end statemnt */");
                 tmp = tmp->right;
@@ -2028,7 +2018,6 @@ Token *evaluate(Node *node)
     }
     case func_call_:
     {
-        
         if (strncmp("output", node->token->name, strlen("output")) == 0)
         {
             Node *tmp = node->left;
@@ -2065,9 +2054,6 @@ Token *evaluate(Node *node)
                     if (d_tmp->left->token->type != c_tmp->left->token->type)
                         error(__LINE__, "Uncompatible type in function call");
                     Token *token = c_tmp->left->token;
-                    // TODO: to be checked
-                    token->is_ref = d_tmp->left->token->is_ref;
-
                     stack[stack_pos++] = c_tmp->left->token;
                     if (stack_pos + 2 > stack_len)
                     {
@@ -2086,12 +2072,7 @@ Token *evaluate(Node *node)
                 {
                     // declaration stack
                     Token *token = stack[stack_pos];
-                    if (token->is_ref)
-                    {
-                        print_asm("   lea     rax, -%zu[rbp]\n", c_tmp->left->token->ptr);
-                        print_asm("   push    rax\n", token->ptr);
-                    }
-                    else if (token->ptr)
+                    if (token->ptr)
                         print_asm("   push    QWORD PTR -%zu[rbp]\n", token->ptr);
                     else
                     {
@@ -2120,13 +2101,10 @@ Token *evaluate(Node *node)
             print_asm("   call    %s\n", dec->token->name);
             free(name);
         }
-
         break;
     }
     case func_dec_:
     {
-        size_t tmp_rbp = ptr;
-        ptr = 0;
         new_func(node);
         char *name = node->token->name;
         enter_label(node);
@@ -2140,19 +2118,16 @@ Token *evaluate(Node *node)
         while (tmp)
         {
             Token *token = evaluate(tmp->left);
-            
             /*
                 TODO:
                     I did only test for (integers/char), check other data types
             */
-           
             print_asm("   mov	  rax, QWORD PTR %zu[rbp]\n", token->ptr + 8);
             print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", token->ptr);
             tmp = tmp->right;
         }
 
         // code bloc
-        skip_check = true;
         tmp = node->right;
         while (tmp)
         {
@@ -2161,12 +2136,11 @@ Token *evaluate(Node *node)
             evaluate(tmp->left);
             tmp = tmp->right;
         }
-        skip_check = false;
         print_asm("   leave\n");
         print_asm("   ret\n");
         print_asm("end_%s:\n\n", name);
         exit_label(node);
-        ptr = tmp_rbp;
+
         break;
     }
     case continue_:
@@ -2196,7 +2170,7 @@ Token *evaluate(Node *node)
         error(__LINE__, "in evaluate %t", type);
         break;
     }
-    if (ptr + 10 > rsp)
+    if (ptr + 100 > rsp)
     {
         // TODO: protect this line from being printed in wrong place
         // after label for example

@@ -8,7 +8,6 @@ sayHi_:
    mov     rbp, rsp
    sub     rsp, 100
    mov     QWORD PTR -8[rbp], 0 /* declare y */
-   sub     rsp, 200
    mov     QWORD PTR -8[rbp], 7 /* assign y */
    mov     rax, QWORD PTR -8[rbp]
    cmp     rax, 7

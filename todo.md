@@ -37,6 +37,15 @@
 - typedefs: use int as num
 - add _ before globals also
 
+- reference syntax:
+    func int f(ref int v):
+        // code here ...
+    
+    int x = 5
+    ref int y = x
+    
+
+
 - function declaration:
     - if variable sent by refrence allocate there space in function code then push rbp to the stack
     - take params by refre or value:

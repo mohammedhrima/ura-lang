@@ -3,6 +3,7 @@ services:
   client:
     build: "./wcc"
     container_name: wolf
+    image: "wolf-cc"
     volumes:
       - "${PWD}/wcc:/wcc"
     restart: on-failure
