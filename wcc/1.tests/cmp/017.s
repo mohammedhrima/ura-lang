@@ -8,7 +8,6 @@ main:
    mov     rbp, rsp
    sub     rsp, 100
    mov     QWORD PTR -8[rbp], 0 /* declare arr */
-   sub     rsp, 200
    mov     QWORD PTR -16[rbp], 66
    mov     QWORD PTR -24[rbp], 55
    mov     QWORD PTR -32[rbp], 14

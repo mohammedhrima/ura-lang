@@ -8,7 +8,6 @@ sayHi_:
    mov     rbp, rsp
    sub     rsp, 100
    mov     QWORD PTR -8[rbp], 0 /* declare x */
-   sub     rsp, 200
    mov     QWORD PTR -8[rbp], 5 /* assign x */
    jmp     end_sayHi_sayBy_
 sayHi_sayBy_:

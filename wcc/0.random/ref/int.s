@@ -1,14 +1,26 @@
 	.file	"int.c"
 	.intel_syntax noprefix
 	.text
+	.section	.rodata
+.LC0:
+	.string	"%d"
+	.text
 	.globl	func
 	.type	func, @function
 func:
 	push	rbp
 	mov	rbp, rsp
+	sub	rsp, 16
 	mov	QWORD PTR -8[rbp], rdi
+	mov	rax, QWORD PTR -8[rbp]
+	mov	eax, DWORD PTR [rax]
+	mov	esi, eax
+	lea	rax, .LC0[rip]
+	mov	rdi, rax
+	mov	eax, 0
+	call	printf@PLT
 	nop
-	pop	rbp
+	leave
 	ret
 	.size	func, .-func
 	.globl	main
@@ -16,15 +28,13 @@ func:
 main:
 	push	rbp
 	mov	rbp, rsp
-	mov	DWORD PTR -16[rbp], 10
-	lea	rax, -16[rbp]
-	mov	QWORD PTR -8[rbp], rax
-	mov	DWORD PTR -12[rbp], 1
-	mov	rax, QWORD PTR -8[rbp]
-	mov	edx, DWORD PTR -12[rbp]
-	mov	DWORD PTR [rax], edx
+	sub	rsp, 16
+	mov	DWORD PTR -4[rbp], 10
+	lea	rax, -4[rbp]
+	mov	rdi, rax
+	call	func
 	mov	eax, 0
-	pop	rbp
+	leave
 	ret
 	.size	main, .-main
 	.ident	"GCC: (Debian 12.2.0-14) 12.2.0"

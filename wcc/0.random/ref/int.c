@@ -2,13 +2,11 @@
 
 void func(int *p)
 {
+    printf("%d", *p);
 }
 
 int main()
 {
-    int b = 10;
-    int *c = &b;
-    int d = 1;
-    *c = d;
-    // func(&b);
+    int c = 10;
+    func(&c);
 }
