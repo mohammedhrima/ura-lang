@@ -50,7 +50,7 @@ end_test_:
 main:
    push    rbp
    mov     rbp, rsp
-   sub     rsp, 300
+   sub     rsp, 100
     mov     rax, 2
    push    rax
    lea     rax, STR5[rip]

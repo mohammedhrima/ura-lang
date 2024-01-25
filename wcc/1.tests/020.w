@@ -6,7 +6,7 @@ main():
     int x = 1
     test(x)
     output("x in main: ", x, "\n")
-    int y = ref x
+    ref int y = x
     y = 7
     output("x in main (after ref): ", x, "\n")
 

@@ -5,7 +5,7 @@ BASHRC_PATH="$HOME/.bashrc"
 if ! grep -q "run" "$BASHRC_PATH" ; then
     cat <<EOL >> "$BASHRC_PATH"
 
-export PS1="\\W% "
+export PS1="\\W$ "
 _wcc() {
     DEBUG_MODE=true
     cc main.c -lm -fsanitize=address -fsanitize=null -g3 -D DEBUG=\$DEBUG_MODE -o comp

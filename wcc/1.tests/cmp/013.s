@@ -8,7 +8,8 @@ sayHi_:
    mov     rbp, rsp
    sub     rsp, 100
    mov     QWORD PTR -8[rbp], 0 /* declare y */
-   mov     QWORD PTR -8[rbp], 7 /* assign y */
+   mov     rax, 7 
+   mov     QWORD PTR -8[rbp], rax /* assign y */
    mov     rax, QWORD PTR -8[rbp]
    cmp     rax, 7
    sete    al
@@ -33,9 +34,10 @@ end_sayHi_:
 main:
    push    rbp
    mov     rbp, rsp
-   sub     rsp, 300
-   mov     QWORD PTR -16[rbp], 0 /* declare x */
-   mov     QWORD PTR -16[rbp], 10 /* assign x */
+   sub     rsp, 100
+   mov     QWORD PTR -8[rbp], 0 /* declare x */
+   mov     rax, 10 
+   mov     QWORD PTR -8[rbp], rax /* assign x */
    call    sayHi_
    leave
    ret

@@ -37,28 +37,16 @@
 - typedefs: use int as num
 - add _ before globals also
 
-- reference syntax:
-    func int f(ref int v):
-        // code here ...
     
-    int x = 5
-    ref int y = x
-    
-
-
 - function declaration:
-    - if variable sent by refrence allocate there space in function code then push rbp to the stack
-    - take params by refre or value:
-        - set variable address same as orgine address
     - variadic arguments
-    - return keyword
     - built in functions:
         - is_dynamic
         - is_fix
         - dyn: allocate in heap
     - polymorphism
 
-- freeing refrence memory may caus problem
+- freeing refrence memory may cause problem
 - verify dynamic and fix data type for all operations
 - file system:
     - import files

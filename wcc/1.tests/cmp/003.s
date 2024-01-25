@@ -8,10 +8,11 @@ main:
    mov     rbp, rsp
    sub     rsp, 100
    mov     QWORD PTR -8[rbp], 0 /* declare a */
-   sub     rsp, 200
-   mov     QWORD PTR -8[rbp], 10 /* assign a */
+   mov     rax, 10 
+   mov     QWORD PTR -8[rbp], rax /* assign a */
    mov     QWORD PTR -16[rbp], 0 /* declare b */
-   mov     QWORD PTR -16[rbp], 25 /* assign b */
+   mov     rax, 25 
+   mov     QWORD PTR -16[rbp], rax /* assign b */
    /* call _putstr */
    lea     rax, STR1[rip]
    mov     rdi, rax

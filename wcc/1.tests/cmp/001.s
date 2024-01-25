@@ -12,7 +12,8 @@ main:
    lea     rax, STR2[rip]
    mov     QWORD PTR -16[rbp], rax /* assign  ndname */
    mov     QWORD PTR -24[rbp], 0 /* declare age */
-   mov     QWORD PTR -24[rbp], 25 /* assign age */
+   mov     rax, 25 
+   mov     QWORD PTR -24[rbp], rax /* assign age */
    /* call _putstr */
    lea     rax, STR3[rip]
    mov     rdi, rax

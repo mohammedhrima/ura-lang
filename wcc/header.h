@@ -106,6 +106,7 @@ enum Type
     continue_,
     break_,
     dots_,
+    return_,
 };
 
 // GLOBALS
@@ -185,6 +186,7 @@ struct
     {break_, "break"},
     {continue_, "continue"},
     {func_dec_, "func"},
+    {return_, "return"},
     {none_, "none"},
     {0, NULL},
     {identifier_, "identifier"},
