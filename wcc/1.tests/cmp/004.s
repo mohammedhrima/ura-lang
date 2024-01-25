@@ -8,9 +8,11 @@ main:
    mov     rbp, rsp
    sub     rsp, 100
    mov     QWORD PTR -8[rbp], 0 /* declare x */
-   mov     QWORD PTR -8[rbp], 17 /* assign x */
+   mov     rax, 17 
+   mov     QWORD PTR -8[rbp], rax /* assign x */
    mov     QWORD PTR -16[rbp], 0 /* declare y */
-   mov     QWORD PTR -16[rbp], 5 /* assign y */
+   mov     rax, 5 
+   mov     QWORD PTR -16[rbp], rax /* assign y */
    mov     QWORD PTR -24[rbp], 0 /* declare z */
    mov     rax, QWORD PTR -8[rbp]
    imul    rax, QWORD PTR -16[rbp]

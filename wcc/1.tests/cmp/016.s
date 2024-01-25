@@ -51,16 +51,19 @@ end_sayHi_:
 main:
    push    rbp
    mov     rbp, rsp
-   sub     rsp, 300
-   mov     QWORD PTR -32[rbp], 0 /* declare x */
-   mov     QWORD PTR -32[rbp], 10 /* assign x */
-   mov     QWORD PTR -40[rbp], 0 /* declare y */
-   mov     QWORD PTR -40[rbp], 5 /* assign y */
-   mov     QWORD PTR -48[rbp], 0 /* declare z */
-   mov     QWORD PTR -48[rbp], 7 /* assign z */
-   push    QWORD PTR -48[rbp]
-   push    QWORD PTR -40[rbp]
-   push    QWORD PTR -32[rbp]
+   sub     rsp, 100
+   mov     QWORD PTR -8[rbp], 0 /* declare x */
+   mov     rax, 10 
+   mov     QWORD PTR -8[rbp], rax /* assign x */
+   mov     QWORD PTR -16[rbp], 0 /* declare y */
+   mov     rax, 5 
+   mov     QWORD PTR -16[rbp], rax /* assign y */
+   mov     QWORD PTR -24[rbp], 0 /* declare z */
+   mov     rax, 7 
+   mov     QWORD PTR -24[rbp], rax /* assign z */
+   push    QWORD PTR -24[rbp]
+   push    QWORD PTR -16[rbp]
+   push    QWORD PTR -8[rbp]
    call    sayHi_
    leave
    ret

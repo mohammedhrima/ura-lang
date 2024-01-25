@@ -124,6 +124,8 @@ void debug(char *conv, ...)
                                 if (token->child_type)
                                     fprintf(stdout, "child: %s, ", tts(token->child_type));
                                 break;
+                            case func_call_:
+                                fprintf(stdout, "ret (%s) ", tts(token->ret_type));
                             default:
                                 break;
                             }
@@ -387,7 +389,8 @@ Node *get_func(char *name)
     {
         Label *curr = LABELS[j];
         char *tmp = strjoin(curr->name, name);
-        debug("loop: label %s, has %d functions, get %s\n", curr->name[0] ? curr->name : "global", curr->func_pos, tmp);
+        debug("loop: label %s, has %d functions, get %s\n", curr->name[0] ? curr->name : "global",
+              curr->func_pos, tmp);
         for (int i = 0; i < curr->func_pos; i++)
         {
             Node *func = curr->FUNCTIONS[i];
@@ -403,6 +406,22 @@ Node *get_func(char *name)
 }
 
 // HANDLE TOKENS
+
+void free_token(Token *token)
+{
+    // if(token->name)
+    //     fre
+    // switch (token->type)
+    // {
+    // case char_:
+    //     free(token->char_);
+    //     break;
+
+    // default:
+    //     break;
+    // }
+}
+
 Token *new_token(int s, int e, Type type, size_t col)
 {
     if (tk_len == 0)
@@ -628,6 +647,7 @@ void print_node(Node *node, int col)
         case func_call_:
         case func_dec_:
         {
+            // TODO: expect return keyword
             debug("%s%t %s return (%t)%s\n", GREEN, token->type, token->name, token->ret_type, RESET);
             // arguments
             tmp = node->left;
@@ -638,16 +658,19 @@ void print_node(Node *node, int col)
             }
             // code bloc
             tmp = node->right;
+            // TODO: verify that function get initlized by none_ ret_type
             while (tmp)
             {
                 print_node(tmp->left, col + 1);
                 tmp = tmp->right;
             }
+
             break;
         }
         case array_:
         {
-            debug("%s%t %s depth: %d %s\n", GREEN, token->type, token->name ? token->name : "", token->depth, RESET);
+            debug("%s%t %s depth: %d %s\n", GREEN, token->type, token->name ? token->name : "",
+                  token->depth, RESET);
 
             while (node)
             {
@@ -934,6 +957,7 @@ Node *prime()
     }
     else if (token = check(func_dec_, 0))
     {
+        // TODO: expect return if function has ret_type
         if (!(token = check(int_, float_, bool_, char_, void_, 0)))
             error(__LINE__, "Expected a valid datatype for function declaration");
         type = token->type;
@@ -1122,6 +1146,11 @@ Node *prime()
             tmp->left = expr();
         }
     }
+    else if (token = check(return_, 0))
+    {
+        node = new_node(token);
+        node->left = expr();
+    }
     else if (token = check(eof_, continue_, break_, 0))
         node = new_node(token);
     else
@@ -1175,7 +1204,8 @@ void finalize()
         if (!TOKENS[i]->name && TOKENS[i]->index_ && TOKENS[i]->type == char_)
             print_asm("STR%zu: .string \"%s\"\n", TOKENS[i]->index_, TOKENS[i]->char_);
         if (!TOKENS[i]->name && TOKENS[i]->index_ && TOKENS[i]->type == float_)
-            print_asm("FLT%zu: .long %zu /* %f */\n", TOKENS[i]->index_, *((float *)(&TOKENS[i]->float_)), TOKENS[i]->float_);
+            print_asm("FLT%zu: .long %zu /* %f */\n", TOKENS[i]->index_, *((float *)(&TOKENS[i]->float_)),
+                      TOKENS[i]->float_);
     }
     print_asm(".section	.note.GNU-stack,\"\",@progbits\n");
 }
@@ -1364,7 +1394,11 @@ Token *evaluate(Node *node)
         right = evaluate(node->right);
 
         debug("%sassign:\n     %k\n     %k%s\n\n", RED, left, right, RESET);
-        if (!left->name || left->type != right->type || !left->ptr)
+        if (!left->name ||
+            !left->ptr ||
+            (right->type != func_call_ && left->type != right->type) ||
+            (right->type == func_call_ && left->type != right->ret_type)
+        )
             error(__LINE__, "Invalid assignement %s / %s", tts(left->type), tts(right->type));
 
         /*
@@ -1383,6 +1417,16 @@ Token *evaluate(Node *node)
             error(__LINE__, "reference %s must be assigned to variable first time", left->name);
 
         node->token = left;
+#if 0
+        if (left->is_ref && right->is_ref)
+        {
+            error(__LINE__, "left is ref , right is ref\n");
+            exit(1);
+            print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
+            print_asm("   mov     QWORD PTR -%zu[rbp], rax /* assign %s */\n", left->ptr, left->name);
+        }
+        else
+#endif
         if (left->is_ref && !left->has_ref)
         {
             left->has_ref = true;
@@ -1395,43 +1439,13 @@ Token *evaluate(Node *node)
             {
             case int_:
             {
-#if 0
-                if (right->ptr)
-                {
-                    if (right->is_ref)
-                    {
-                        print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
-                        print_asm("   mov     rax, QWORD PTR [rax]\n");
-                    }
-                    else
-                        print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
-
-                    if (left->is_ref)
-                    {
-                        print_asm("   mov     rbx,  QWORD PTR -%zu[rbp]\n", left->ptr);
-                        print_asm("   mov     QWORD PTR [rbx], rax /* assign ref %s */\n",  left->name);
-                    }
-                    else
-                        print_asm("   mov     QWORD PTR -%zu[rbp], rax /* assign %s */\n", left->ptr, left->name);
-                }
-                else
-                {
-                    if (left->is_ref)
-                    {
-                        print_asm("   mov     rbx,  QWORD PTR -%zu[rbp]\n", left->ptr);
-                        print_asm("   mov     QWORD PTR [rbx], %ld /* assign ref %s */\n", right->int_, left->name);
-                    }
-                    else
-                        print_asm("   mov     QWORD PTR -%zu[rbp], %ld /* assign %s */\n", left->ptr, right->int_, left->name);
-                }
-#else
                 if (right->ptr)
                 {
                     print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
                     if (right->is_ref)
-                        print_asm("   mov     rax, QWORD PTR [rax]\n");
+                        print_asm("   mov     rax, QWORD PTR [rax], /* assign from ref %s */\n", right->name);
                 }
-                else
+                else if (right->type != func_call_)
                     print_asm("   mov     rax, %ld \n", right->int_);
                 if (left->is_ref)
                 {
@@ -1440,7 +1454,6 @@ Token *evaluate(Node *node)
                 }
                 else
                     print_asm("   mov     QWORD PTR -%zu[rbp], rax /* assign %s */\n", left->ptr, left->name);
-#endif
                 break;
             }
             case float_:
@@ -1496,12 +1509,14 @@ Token *evaluate(Node *node)
                 if (right->ptr)
                 {
                     print_asm("   mov     al, BYTE PTR -%zu[rbp]\n", right->ptr);
-                    print_asm("   mov     BYTE PTR -%zu[rbp], al /* assign  %s */\n", left->ptr, left->name);
+                    print_asm("   mov     BYTE PTR -%zu[rbp], al /* assign  %s */\n", left->ptr,
+                              left->name);
                 }
                 else if (right->c)
                     print_asm("   mov     BYTE PTR -%zu[rbp], %cl\n", left->ptr, right->c);
                 else
-                    print_asm("   mov     BYTE PTR -%zu[rbp], %d /* assign  %s */\n", left->ptr, right->bool_, left->name);
+                    print_asm("   mov     BYTE PTR -%zu[rbp], %d /* assign  %s */\n", left->ptr,
+                              right->bool_, left->name);
                 break;
             }
             case array_:
@@ -1769,13 +1784,14 @@ Token *evaluate(Node *node)
                 else
                     print_asm("%d\n", right->int_);
 
-                print_asm("   %s   al\n", type == equal_             ? "sete "
-                                          : type == equal_           ? "setne"
-                                          : type == less_than_       ? "setl "
-                                          : type == less_than_equal_ ? "setle"
-                                          : type == grea_than_       ? "setg "
-                                          : type == grea_than_equal_ ? "setge"
-                                                                     : NULL);
+                print_asm("   %s   al\n",
+                          type == equal_             ? "sete "
+                          : type == equal_           ? "setne"
+                          : type == less_than_       ? "setl "
+                          : type == less_than_equal_ ? "setle"
+                          : type == grea_than_       ? "setg "
+                          : type == grea_than_equal_ ? "setge"
+                                                     : NULL);
 
 #if BOOL_PTR
                 print_asm("   mov     BYTE PTR -%zu[rbp], al\n", node->token->ptr);
@@ -1964,7 +1980,8 @@ Token *evaluate(Node *node)
                     print_asm("   cmp     al, 1\n");
                 }
                 if (curr->right)
-                    print_asm("   jne     %s%zu %39s\n", LABEL->name, curr->right->token->index_, "/* jmp next statement */");
+                    print_asm("   jne     %s%zu %39s\n", LABEL->name, curr->right->token->index_,
+                              "/* jmp next statement */");
                 else
                     print_asm("   jne     %s%zu %38s\n", LABEL->name, end_index, "/* jmp end statemnt */");
                 tmp = tmp->right;
@@ -2028,7 +2045,6 @@ Token *evaluate(Node *node)
     }
     case func_call_:
     {
-        
         if (strncmp("output", node->token->name, strlen("output")) == 0)
         {
             Node *tmp = node->left;
@@ -2066,9 +2082,18 @@ Token *evaluate(Node *node)
                         error(__LINE__, "Uncompatible type in function call");
                     Token *token = c_tmp->left->token;
                     // TODO: to be checked
-                    token->is_ref = d_tmp->left->token->is_ref;
-
-                    stack[stack_pos++] = c_tmp->left->token;
+                    // token->is_ref = d_tmp->left->token->is_ref;
+                    // stack[stack_pos++] = c_tmp->left->token;
+                    stack[stack_pos] = calloc(1, sizeof(Token));
+                    memcpy(stack[stack_pos], c_tmp->left->token, sizeof(Token));
+                    if (d_tmp->left->token->is_ref && c_tmp->left->token->is_ref)
+                        stack[stack_pos]->is_ref = false;
+                    else
+                    {
+                        stack[stack_pos]->is_ref = d_tmp->left->token->is_ref;
+                        stack[stack_pos]->has_ref = true;
+                    }
+                    stack_pos++;
                     if (stack_pos + 2 > stack_len)
                     {
                         stack = realloc(stack, 2 * stack_len * sizeof(Token *));
@@ -2112,6 +2137,7 @@ Token *evaluate(Node *node)
                         }
                         print_asm("   push    rax\n");
                     }
+                    free(stack[stack_pos]);
                     stack_pos--;
                     c_tmp = c_tmp->right;
                 }
@@ -2119,8 +2145,9 @@ Token *evaluate(Node *node)
             }
             print_asm("   call    %s\n", dec->token->name);
             free(name);
+            call->token->ret_type = dec->token->ret_type;
         }
-
+        
         break;
     }
     case func_dec_:
@@ -2140,12 +2167,13 @@ Token *evaluate(Node *node)
         while (tmp)
         {
             Token *token = evaluate(tmp->left);
-            
+            if (token->is_ref)
+                token->has_ref = true;
             /*
                 TODO:
                     I did only test for (integers/char), check other data types
             */
-           
+
             print_asm("   mov	  rax, QWORD PTR %zu[rbp]\n", token->ptr + 8);
             print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", token->ptr);
             tmp = tmp->right;
@@ -2158,7 +2186,17 @@ Token *evaluate(Node *node)
         {
             if (tmp->left->token->type == func_dec_)
                 print_asm("   jmp     end_%s%s\n", LABEL->name, tmp->left->token->name);
-            evaluate(tmp->left);
+            if (tmp->left->token->type == return_)
+            {
+                debug("found return\n");
+                // exit(1);
+                Token *token = evaluate(tmp->left->left);
+                // TODO check token type, this handeling is not enough
+                if (token->ptr)
+                    print_asm("   mov	  rax, QWORD PTR -%zu[rbp]\n", token->ptr);
+            }
+            else
+                evaluate(tmp->left);
             tmp = tmp->right;
         }
         skip_check = false;

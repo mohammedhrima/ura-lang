@@ -8,7 +8,8 @@ main:
    mov     rbp, rsp
    sub     rsp, 100
    mov     QWORD PTR -8[rbp], 0 /* declare x */
-   mov     QWORD PTR -8[rbp], 10 /* assign x */
+   mov     rax, 10 
+   mov     QWORD PTR -8[rbp], rax /* assign x */
    jmp     while1                    /* jmp to while condition*/
 while2:                              /* while bloc*/
    /* call _putstr */

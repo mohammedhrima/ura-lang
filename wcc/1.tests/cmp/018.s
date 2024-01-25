@@ -11,7 +11,8 @@ main:
    mov     QWORD PTR -16[rbp], 0 /* declare y */
    jmp     while1                    /* jmp to while condition*/
 while2:                              /* while bloc*/
-   mov     QWORD PTR -16[rbp], 0 /* assign y */
+   mov     rax, 0 
+   mov     QWORD PTR -16[rbp], rax /* assign y */
    jmp     while4                    /* jmp to while condition*/
 while5:                              /* while bloc*/
    /* call _putstr */

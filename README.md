@@ -89,14 +89,16 @@
     - add for loops
     
 - function declaration:
-    - if variable sent by refrence allocate there space in function code then push rbp to the stack
-    - take params by refre or value
+    + if variable sent by refrence allocate there space in function code then push rbp to the stack
+    + take params by refre or value
     - variadic arguments
-    - return keyword
+    + return keyword
     - built in functions:
         - is_dynamic
         - is_fix
         - dyn: allocate in heap
+        + output
+        - input
     - polymorphism
 
 - memory management:
@@ -117,14 +119,3 @@
 - compile withh Wall Werror Wextra
 - display all parsing error before exiting
 - build my own version of docker to run in it
-
-
-docker system prune -a -f
-docker volume prune -f
-docker image prune -f
-docker network prune -f
-dangling_volumes=$$(docker volume ls -q --filter dangling=true); \
-if [ $$? -eq 0 ]; then \
-    for volume in $$dangling_volumes; do \
-        docker volume rm $$volume; \
-    done; \
