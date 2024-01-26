@@ -1,8 +1,6 @@
-func int test2():
-    int x = 5
-    return x
+
 
 main():
-    int x = test2()
+    float x = 10.5
     output("x: ", x, "\n")
 

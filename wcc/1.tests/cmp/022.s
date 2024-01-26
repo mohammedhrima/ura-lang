@@ -7,18 +7,19 @@ test1_:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 100
-   mov     QWORD PTR -8[rbp], 0 /* declare y (ref) */
-   mov	  rax, QWORD PTR 16[rbp]
    mov     QWORD PTR -8[rbp], rax
+   mov     QWORD PTR -16[rbp], 0 /* declare y (ref) */
+   mov	  rax, QWORD PTR 16[rbp]
+   mov     QWORD PTR -16[rbp], rax
    mov     rax, 10 
-   mov     rbx,  QWORD PTR -8[rbp]
+   mov     rbx,  QWORD PTR -16[rbp]
    mov     QWORD PTR [rbx], rax /* assign ref y */
    /* call _putstr */
    lea     rax, STR1[rip]
    mov     rdi, rax
    call    _putstr
    /* call _putnbr */
-   mov     rax, QWORD PTR -8[rbp]
+   mov     rax, QWORD PTR -16[rbp]
    mov     rax, QWORD PTR [rax]
    mov     rdi, rax
    call    _putnbr
@@ -34,18 +35,19 @@ test2_:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 100
-   mov     QWORD PTR -8[rbp], 0 /* declare y (ref) */
+   mov     QWORD PTR -16[rbp], rax
+   mov     QWORD PTR -16[rbp], 0 /* declare y (ref) */
    mov	  rax, QWORD PTR 16[rbp]
-   mov     QWORD PTR -8[rbp], rax
+   mov     QWORD PTR -16[rbp], rax
    mov     rax, 20 
-   mov     rbx,  QWORD PTR -8[rbp]
+   mov     rbx,  QWORD PTR -16[rbp]
    mov     QWORD PTR [rbx], rax /* assign ref y */
    /* call _putstr */
    lea     rax, STR3[rip]
    mov     rdi, rax
    call    _putstr
    /* call _putnbr */
-   mov     rax, QWORD PTR -8[rbp]
+   mov     rax, QWORD PTR -16[rbp]
    mov     rax, QWORD PTR [rax]
    mov     rdi, rax
    call    _putnbr
@@ -65,7 +67,9 @@ main:
    mov     rax, 1 
    mov     QWORD PTR -8[rbp], rax /* assign x */
    lea     rax, -8[rbp]
-   push    rax
+   push    rax /*ref x*/
+   mov     QWORD PTR -16[rbp], 0 /*test1 result*/
+   lea     rax, -16[rbp]
    call    test1_
    /* call _putstr */
    lea     rax, STR5[rip]
@@ -80,7 +84,9 @@ main:
    mov     rdi, rax
    call    _putstr
    lea     rax, -8[rbp]
-   push    rax
+   push    rax /*ref x*/
+   mov     QWORD PTR -24[rbp], 0 /*test2 result*/
+   lea     rax, -24[rbp]
    call    test2_
    /* call _putstr */
    lea     rax, STR7[rip]

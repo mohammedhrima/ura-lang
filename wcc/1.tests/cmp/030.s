@@ -3,30 +3,39 @@
 
 .text
 .globl	main
-test2_:
+s_:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 100
    mov     QWORD PTR -8[rbp], rax
-   mov     QWORD PTR -16[rbp], 0 /* declare x */
-   mov     rax, 5 
-   mov     QWORD PTR -16[rbp], rax /* assign x */
-   mov	  rax, QWORD PTR -16[rbp]
+   mov     rax, 5
    mov     rbx, QWORD PTR -8[rbp]
    mov     QWORD PTR [rbx], rax
    leave
    ret
-end_test2_:
+end_s_:
 
 main:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 100
    mov     QWORD PTR -8[rbp], 0 /* declare x */
-   mov     QWORD PTR -16[rbp], 0 /*test2 result*/
+   mov     QWORD PTR -16[rbp], 0 /*s result*/
    lea     rax, -16[rbp]
-   call    test2_
+   call    s_
+   mov     QWORD PTR -24[rbp], 0 /*s result*/
+   lea     rax, -24[rbp]
+   call    s_
+   mov     QWORD PTR -32[rbp], 0 /*s result*/
+   lea     rax, -32[rbp]
+   call    s_
+   mov     rax, QWORD PTR -24[rbp]
+   add     rax, QWORD PTR -32[rbp]
+   mov     QWORD PTR -40[rbp], rax
    mov     rax, QWORD PTR -16[rbp]
+   add     rax, QWORD PTR -40[rbp]
+   mov     QWORD PTR -48[rbp], rax
+   mov     rax, QWORD PTR -48[rbp]
    mov     QWORD PTR -8[rbp], rax /* assign x */
    /* call _putstr */
    lea     rax, STR1[rip]

@@ -107,6 +107,7 @@ enum Type
     break_,
     dots_,
     return_,
+    class_,
 };
 
 // GLOBALS
@@ -177,6 +178,7 @@ struct
     Type type;
     char *name;
 } Specials[] = {
+    {not_, "not"},
     {and_, "and"},
     {or_, "or"},
     {if_, "if"},
@@ -187,6 +189,7 @@ struct
     {continue_, "continue"},
     {func_dec_, "func"},
     {return_, "return"},
+    {class_, "class"},
     {none_, "none"},
     {0, NULL},
     {identifier_, "identifier"},
