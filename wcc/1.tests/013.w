@@ -7,4 +7,4 @@ func int sayHi():
 
 main():
     int x = 10
-    sayHi()
+    output(sayHi(), "\n")

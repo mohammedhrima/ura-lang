@@ -3,13 +3,7 @@ FROM debian:stable
 WORKDIR /wcc
 COPY . .
 
-RUN apt update -y \
-    && apt full-upgrade -y \
-    && apt install gcc -y \
-    && apt install g++ -y \
-    && apt install vim -y \
-    && apt install man -y \
-    && apt install git -y \
-    && apt install python3 -y
+RUN apt update -y && apt full-upgrade -y \
+    && apt install -y gcc g++ vim man git python3
 
 CMD ["sh", "_setup.sh"]

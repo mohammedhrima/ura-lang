@@ -7,20 +7,30 @@ typedef struct
     int z;
 } var;
 
-void func(var x)
+void func()
 {
+    int x = 10;
+    int y = 5;
+    int z = 7;
 }
 
-void func1(long x)
+var func1(int x, int y, int z)
 {
+    return (var){x, y, z};
 }
 
 int main()
 {
-    var v = {
+    var v;
+#if 0
+    v = (var){
         .x = 10,
         .y = 11,
         .z = 12,
     };
-    func(v);
+#else
+    v = func1(1, 2, 3);
+#endif
+    // func(v);
+    printf("v: (%d, %d, %d)\n", v.x, v.y, v.z);
 }

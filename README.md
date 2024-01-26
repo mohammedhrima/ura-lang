@@ -37,9 +37,6 @@
             - arithmetic operator: 
                 - only for mutable + 
             + relational operator: == !=
-            - set rbp - 14: 0 or 1 (mu / imut)
-            - set rbp - 13: len
-            - set rbp - 08: address in stack 
         - bigint / bigfloat:
             - put value in stack
             - send it's address in rax between functions
@@ -74,6 +71,7 @@
                         // code here ...
     
 - try, catch
+- switch, case
 - methods
 - typedefs: use int as num
 - namespaces
@@ -90,7 +88,7 @@
     
 - function declaration:
     + if variable sent by refrence allocate there space in function code then push rbp to the stack
-    + take params by refre or value
+    + take params by refrence or value
     - variadic arguments
     + return keyword
     - built in functions:
@@ -104,11 +102,13 @@
 - memory management:
     - heap allocation
     - stack allocation
+    - check allocation failure
     - garbage collector:
-        - use threads
+        - use threads 
     - normal mode
         - free function
     - garbage collection mode
+        - add bytes at left of pointer undecates how many variable is holding it
     - protect mode:
         - check all []
 

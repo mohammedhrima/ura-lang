@@ -7,25 +7,18 @@ sayHi_:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 100
-   mov     QWORD PTR -8[rbp], 0 /* declare x */
-   mov	  rax, QWORD PTR 16[rbp]
    mov     QWORD PTR -8[rbp], rax
-   mov     QWORD PTR -16[rbp], 0 /* declare y */
-   mov	  rax, QWORD PTR 24[rbp]
+   mov     QWORD PTR -16[rbp], 0 /* declare x */
+   mov	  rax, QWORD PTR 16[rbp]
    mov     QWORD PTR -16[rbp], rax
-   mov     QWORD PTR -24[rbp], 0 /* declare z */
-   mov	  rax, QWORD PTR 32[rbp]
+   mov     QWORD PTR -24[rbp], 0 /* declare y */
+   mov	  rax, QWORD PTR 24[rbp]
    mov     QWORD PTR -24[rbp], rax
+   mov     QWORD PTR -32[rbp], 0 /* declare z */
+   mov	  rax, QWORD PTR 32[rbp]
+   mov     QWORD PTR -32[rbp], rax
    /* call _putstr */
    lea     rax, STR1[rip]
-   mov     rdi, rax
-   call    _putstr
-   /* call _putnbr */
-   mov     rax, QWORD PTR -8[rbp]
-   mov     rdi, rax
-   call    _putnbr
-   /* call _putstr */
-   lea     rax, STR2[rip]
    mov     rdi, rax
    call    _putstr
    /* call _putnbr */
@@ -33,11 +26,19 @@ sayHi_:
    mov     rdi, rax
    call    _putnbr
    /* call _putstr */
-   lea     rax, STR3[rip]
+   lea     rax, STR2[rip]
    mov     rdi, rax
    call    _putstr
    /* call _putnbr */
    mov     rax, QWORD PTR -24[rbp]
+   mov     rdi, rax
+   call    _putnbr
+   /* call _putstr */
+   lea     rax, STR3[rip]
+   mov     rdi, rax
+   call    _putstr
+   /* call _putnbr */
+   mov     rax, QWORD PTR -32[rbp]
    mov     rdi, rax
    call    _putnbr
    /* call _putstr */
@@ -61,9 +62,11 @@ main:
    mov     QWORD PTR -24[rbp], 0 /* declare z */
    mov     rax, 7 
    mov     QWORD PTR -24[rbp], rax /* assign z */
-   push    QWORD PTR -24[rbp]
-   push    QWORD PTR -16[rbp]
-   push    QWORD PTR -8[rbp]
+   push    QWORD PTR -24[rbp] /*z*/
+   push    QWORD PTR -16[rbp] /*y*/
+   push    QWORD PTR -8[rbp] /*x*/
+   mov     QWORD PTR -32[rbp], 0 /*sayHi result*/
+   lea     rax, -32[rbp]
    call    sayHi_
    leave
    ret
