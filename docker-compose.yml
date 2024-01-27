@@ -1,18 +1,18 @@
 version: "3.8"
 services:
   client:
-    build: "./wcc"
+    build: "./cwc"
     container_name: wolf
-    image: "wolf-cc"
+    image: "wolf-c"
     volumes:
-      - "${PWD}/wcc:/wcc"
+      - "${PWD}/wolf-c:/wolf-c"
     restart: on-failure
 
 volumes:
   container:
-    name: wolf-cc
+    name: wolf-c
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: "${PWD}/wcc"
+      device: "${PWD}/wolf-c"

@@ -6,7 +6,7 @@ if ! grep -q "run" "$BASHRC_PATH" ; then
     cat <<EOL >> "$BASHRC_PATH"
 
 export PS1="\\W$ "
-_wcc() {
+_cwc() {
     DEBUG_MODE=true
     cc main.c -lm -fsanitize=address -fsanitize=null -g3 -D DEBUG=\$DEBUG_MODE -o comp
     if [ \$? -eq 0 ]; then
@@ -103,7 +103,7 @@ _asm() {
     cc \$1 -S -fno-verbose-asm -fno-asynchronous-unwind-tables -masm=intel
 }
 
-alias wcc="_wcc \$1"
+alias cwc="_cwc \$1"
 alias copy="_copy"
 alias test="_test"
 alias refresh="_refresh"
