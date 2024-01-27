@@ -4,13 +4,6 @@
         - logic operator: == !=
         - arithmetic operator: +
     - single:
-        - int:
-            - negative numbers
-            - dynamic int
-        - float:
-            - negative numbers
-            - arithmetic operator: / * + -
-            - dynamic float
         - char:
             - arithmetic operator: 
                 - only for mutable + 
@@ -45,6 +38,7 @@
                     [-]:
                         // code here ...
 
+- input
 - try, catch
 - switch, case
 - typedefs: use int as num

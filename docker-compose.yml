@@ -1,7 +1,7 @@
 version: "3.8"
 services:
   client:
-    build: "./cwc"
+    build: "./wolf-c"
     container_name: wolf
     image: "wolf-c"
     volumes:
