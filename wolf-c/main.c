@@ -243,7 +243,21 @@ void output(Token *token)
     }
     case float_:
         // TODO: handle float
-        err("Err in output float not handled yet");
+        // err("Err in output float not handled yet");
+        print_asm("   /* call _putfloat */\n");
+        if (token->is_ref)
+        {
+            print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", token->ptr);
+            print_asm("   mov     eax, QWORD PTR [rax]\n");
+        }
+        else if (token->ptr)
+            print_asm("   mov     eax, DWORD PTR -%zu[rbp]\n", token->ptr);
+        else if (token->index_)
+            print_asm("   mov     eax, DWORD PTR FLT%zu[rip]\n", token->index_);
+        else
+            err("output float");
+        print_asm("   movd    xmm0, eax\n");
+        print_asm("   call    _putfloat\n");
         break;
     case array_:
         // TODO: handle array somehow
@@ -480,14 +494,26 @@ Token *new_token(int s, int e, Type type, size_t col)
             token->int_ = 10 * token->int_ + text[s++] - '0';
         break;
     case float_:
+        int i = s;
+        while (i < e)
+        {
+            write(1, &text[i], 1);
+            i++;
+        }
+        write(1, "\n", 1);
+
         float f = 0.0;
         token->index_ = index_;
         index_++;
         while (s < e && isdigit(text[s]))
             f = 10 * f + text[s++] - '0';
         s++;
+        float c = 10;
         while (s < e && isdigit(text[s]))
-            f = f + (float)(text[s++] - '0') / 10;
+        {
+            f = f + (float)(text[s++] - '0') / c;
+            c *= 10;
+        }
         token->float_ = *(uint32_t *)(&f);
         break;
     default:
@@ -1521,7 +1547,23 @@ Token *evaluate(Node *node)
             }
             case float_:
             {
-                // TODO: check xmms, with multiple LABELS[lb_pos]->VARIABLES
+#if 0
+                if (right->ptr)
+                {
+                    print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
+                    if (right->is_ref)
+                        print_asm("   mov     rax, QWORD PTR [rax], /* assign from ref %s */\n", right->name);
+                }
+                else if (right->type != func_call_)
+                    print_asm("   mov     rax, %ld \n", right->int_);
+                if (left->is_ref)
+                {
+                    print_asm("   mov     rbx,  QWORD PTR -%zu[rbp]\n", left->ptr);
+                    print_asm("   mov     QWORD PTR [rbx], rax /* assign ref %s */\n", left->name);
+                }
+                else
+                    print_asm("   mov     QWORD PTR -%zu[rbp], rax /* assign %s */\n", left->ptr, left->name);
+
                 if (right->ptr)
                 {
                     print_asm("   movss   xmm1, DWORD PTR -%zu[rbp]\n", right->ptr);
@@ -1532,6 +1574,7 @@ Token *evaluate(Node *node)
                     print_asm("   movss   xmm1, DWORD PTR FLT%zu[rip]\n", right->index_);
                     print_asm("   movss   DWORD PTR -%zu[rbp], xmm1 /* assign %s */\n", left->ptr, left->name);
                 }
+#endif
                 break;
             }
             case char_:
@@ -1680,7 +1723,7 @@ Token *evaluate(Node *node)
                 else if (left->index_)
                     print_asm("DWORD PTR FLT%zu[rip]\n", left->index_);
                 else
-                    print_asm("%zu\n", left->float_);
+                    err("something went wrong");
                 // set right
                 print_asm("   %s", type == add_   ? "addss   xmm1, "
                                    : type == sub_ ? "subss   xmm1, "

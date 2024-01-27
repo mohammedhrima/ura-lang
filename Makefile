@@ -2,7 +2,7 @@ all:
 	docker-compose up --build -d
 
 down:
-	docker-compose down
+	docker-compose down --rmi all
 
 clean: down
 	docker system prune -a -f
