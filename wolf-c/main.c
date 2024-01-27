@@ -248,7 +248,7 @@ void output(Token *token)
         if (token->is_ref)
         {
             print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", token->ptr);
-            print_asm("   mov     eax, QWORD PTR [rax]\n");
+            print_asm("   mov     eax, DWORD PTR [rax]\n");
         }
         else if (token->ptr)
             print_asm("   mov     eax, DWORD PTR -%zu[rbp]\n", token->ptr);
@@ -1340,7 +1340,7 @@ Token *evaluate(Node *node)
         if (node->token->name)
         {
             if (get_var(node->token->name))
-                err("redefinition of variable in %s", __func__);
+                err("redefinition of variable %s");
             new_variable(node->token);
         }
         break;
@@ -1351,7 +1351,7 @@ Token *evaluate(Node *node)
         if (node->token->name)
         {
             if (get_var(node->token->name))
-                err("redefinition of variable in %s", __func__);
+                err("redefinition of variable %s");
             new_variable(node->token);
         }
         else
@@ -1406,7 +1406,6 @@ Token *evaluate(Node *node)
     }
     case neg_:
     {
-        // TODO: negative float has a different behaviour !!!
         left = evaluate(node->left);
         if (left->type != int_ && left->type != float_)
             err("Invalid unary operation 0");
@@ -1431,7 +1430,9 @@ Token *evaluate(Node *node)
         else
         {
             Node *curr = new_node(new_token(0, 0, mul_, left->col));
-            curr->left = new_node(left);
+            curr->left = new_node(new_token(0, 0, 0, 0));
+            memcpy(curr->left->token, left, sizeof(Token));
+            curr->left->token->type = identifier_;
             if (left->type == int_)
             {
                 curr->right = new_node(new_token(0, 0, int_, left->col));
@@ -1446,7 +1447,9 @@ Token *evaluate(Node *node)
             }
             else
                 err("Invalid unary operation 1");
+            print_node(curr, 0);
             node->token = evaluate(curr);
+            free_node(curr);
         }
         break;
     }
@@ -1532,7 +1535,7 @@ Token *evaluate(Node *node)
                 {
                     print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
                     if (right->is_ref)
-                        print_asm("   mov     rax, QWORD PTR [rax], /* assign from ref %s */\n", right->name);
+                        print_asm("   mov     rax, QWORD PTR [rax] /* assign from ref %s */\n", right->name);
                 }
                 else if (right->type != func_call_)
                     print_asm("   mov     rax, %ld \n", right->int_);
@@ -1547,34 +1550,25 @@ Token *evaluate(Node *node)
             }
             case float_:
             {
-#if 0
                 if (right->ptr)
                 {
-                    print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
                     if (right->is_ref)
-                        print_asm("   mov     rax, QWORD PTR [rax], /* assign from ref %s */\n", right->name);
+                    {
+                        print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
+                        print_asm("   movd    xmm1, DWORD PTR [rax] /* assign from ref %s */\n", right->name);
+                    }
+                    else
+                        print_asm("   movss   xmm1, DWORD PTR -%zu[rbp]\n", right->ptr);
                 }
-                else if (right->type != func_call_)
-                    print_asm("   mov     rax, %ld \n", right->int_);
+                else
+                    print_asm("   movss   xmm1, DWORD PTR FLT%zu[rip]\n", right->index_);
                 if (left->is_ref)
                 {
                     print_asm("   mov     rbx,  QWORD PTR -%zu[rbp]\n", left->ptr);
                     print_asm("   mov     QWORD PTR [rbx], rax /* assign ref %s */\n", left->name);
                 }
                 else
-                    print_asm("   mov     QWORD PTR -%zu[rbp], rax /* assign %s */\n", left->ptr, left->name);
-
-                if (right->ptr)
-                {
-                    print_asm("   movss   xmm1, DWORD PTR -%zu[rbp]\n", right->ptr);
                     print_asm("   movss   DWORD PTR -%zu[rbp], xmm1 /* assign %s */\n", left->ptr, left->name);
-                }
-                else
-                {
-                    print_asm("   movss   xmm1, DWORD PTR FLT%zu[rip]\n", right->index_);
-                    print_asm("   movss   DWORD PTR -%zu[rbp], xmm1 /* assign %s */\n", left->ptr, left->name);
-                }
-#endif
                 break;
             }
             case char_:
@@ -2280,7 +2274,6 @@ Token *evaluate(Node *node)
             node->token->ptr = (tmp_rbp += 8);
             ptr += 8;
             print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
-            // exit(1);
         }
 
         // arguments
