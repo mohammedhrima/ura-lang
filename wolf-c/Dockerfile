@@ -1,6 +1,6 @@
 FROM debian:stable
 
-WORKDIR /wcc
+WORKDIR /wolf-c
 COPY . .
 
 RUN apt update -y && apt full-upgrade -y \
