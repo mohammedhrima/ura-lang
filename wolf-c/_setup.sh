@@ -8,14 +8,19 @@ if ! grep -q "run" "$BASHRC_PATH" ; then
 export PS1="\\W$ "
 _cwc() {
     DEBUG_MODE=true
-    cc main.c -lm -fsanitize=address -fsanitize=null -g3 -D DEBUG=\$DEBUG_MODE -o comp
+    FILENAME_W=\$1
+    FILENAME_S=\$(echo \$FILENAME_W | sed 's/\.w$/.s/')
+    
+    cc /wolf-c/main.c -lm -fsanitize=address -fsanitize=null -g3 -D DEBUG=\$DEBUG_MODE -o comp
     if [ \$? -eq 0 ]; then
-        ./comp \$1
+        ./comp \$FILENAME_W
+
         if [ \$? -eq 0 ]; then
-            cc file.s -o asm
+            cc \$FILENAME_S -o asm
             ./asm
         fi
     fi
+
     rm -rf asm
     rm -rf comp
 }
@@ -55,8 +60,9 @@ _test() {
             # Extract the file name without extension
             filename=\$(basename -- "\$file")
             filename_no_extension="\${filename%.*}"
-            if cmp -s "file.s" "cmp/\${filename_no_extension}.s"; then
+            if cmp -s "\${filename_no_extension}.s" "cmp/\${filename_no_extension}.s"; then
                 echo -e "\${GREEN}SUCCESS\${NC} for \$file"
+                rm -rf \${filename_no_extension}.s
             else
                 echo -e "\${RED}FAILED\${NC} for \$file"
             fi

@@ -1,5 +1,5 @@
 .intel_syntax noprefix
-.include "import/header.s"
+.include "/wolf-c/import/header.s"
 
 .text
 .globl	main
@@ -19,20 +19,20 @@ main:
    mov     rax, QWORD PTR -8[rbp]
    cmp     rax, 15
    sete    al
-if2:                          /* if statement */
+if2: /* if statement */
    cmp     al, 1
-   jne     if3                /* jmp next statement */
+   jne     if3    /* jmp next statement */
    /* call _putstr */
    lea     rax, STR1[rip]
    mov     rdi, rax
    call    _putstr
-   jmp     if1                /* jmp end statement */
-if3:                          /* elif statement */
+   jmp     if1    /* jmp end statement */
+if3: /* elif statement */
    mov     rax, QWORD PTR -8[rbp]
    cmp     rax, 10
    sete    al
    cmp     al, 1
-   jne     if10                /* jmp next statement */
+   jne     if10 /* jmp next statement */
    /* call _putstr */
    lea     rax, STR2[rip]
    mov     rdi, rax
@@ -40,9 +40,9 @@ if3:                          /* elif statement */
    mov     rax, QWORD PTR -16[rbp]
    cmp     rax, 7
    sete    al
-if5:                          /* if statement */
+if5: /* if statement */
    cmp     al, 1
-   jne     if9                /* jmp next statement */
+   jne     if9    /* jmp next statement */
    /* call _putstr */
    lea     rax, STR3[rip]
    mov     rdi, rax
@@ -50,78 +50,78 @@ if5:                          /* if statement */
    mov     rax, QWORD PTR -24[rbp]
    cmp     rax, 10
    setl    al
-if7:                          /* if statement */
+if7: /* if statement */
    cmp     al, 1
-   jne     if8                /* jmp next statement */
+   jne     if8    /* jmp next statement */
    /* call _putstr */
    lea     rax, STR4[rip]
    mov     rdi, rax
    call    _putstr
-   jmp     if6                /* jmp end statement */
-if8:                          /* else statement */
+   jmp     if6    /* jmp end statement */
+if8: /* else statement */
    /* call _putstr */
    lea     rax, STR5[rip]
    mov     rdi, rax
    call    _putstr
-if6:                          /* end statement */
-   jmp     if4                /* jmp end statement */
-if9:                          /* else statement */
+if6: /* end statement */
+   jmp     if4    /* jmp end statement */
+if9: /* else statement */
    /* call _putstr */
    lea     rax, STR6[rip]
    mov     rdi, rax
    call    _putstr
-if4:                          /* end statement */
-   jmp     if1                /* jmp end statement */
-if10:                          /* elif statement */
+if4: /* end statement */
+   jmp     if1 /* jmp end statement */
+if10: /* elif statement */
    mov     rax, QWORD PTR -8[rbp]
    cmp     rax, 10
    sete    al
    cmp     al, 1
-   jne     if11                /* jmp next statement */
+   jne     if11 /* jmp next statement */
    /* call _putstr */
    lea     rax, STR7[rip]
    mov     rdi, rax
    call    _putstr
-   jmp     if1                /* jmp end statement */
-if11:                          /* elif statement */
+   jmp     if1 /* jmp end statement */
+if11: /* elif statement */
    mov     rax, QWORD PTR -8[rbp]
    cmp     rax, 10
    sete    al
    cmp     al, 1
-   jne     if12                /* jmp next statement */
+   jne     if12 /* jmp next statement */
    /* call _putstr */
    lea     rax, STR8[rip]
    mov     rdi, rax
    call    _putstr
-   jmp     if1                /* jmp end statement */
-if12:                          /* elif statement */
+   jmp     if1 /* jmp end statement */
+if12: /* elif statement */
    mov     rax, QWORD PTR -8[rbp]
    cmp     rax, 10
    sete    al
    cmp     al, 1
-   jne     if13                /* jmp next statement */
+   jne     if13 /* jmp next statement */
    /* call _putstr */
    lea     rax, STR9[rip]
    mov     rdi, rax
    call    _putstr
-   jmp     if1                /* jmp end statement */
-if13:                          /* elif statement */
+   jmp     if1 /* jmp end statement */
+if13: /* elif statement */
    mov     rax, QWORD PTR -8[rbp]
    cmp     rax, 1
    sete    al
    cmp     al, 1
-   jne     if14                /* jmp next statement */
+   jne     if14 /* jmp next statement */
    /* call _putstr */
    lea     rax, STR10[rip]
    mov     rdi, rax
    call    _putstr
-   jmp     if1                /* jmp end statement */
-if14:                          /* else statement */
+   jmp     if1 /* jmp end statement */
+if14: /* else statement */
    /* call _putstr */
    lea     rax, STR11[rip]
    mov     rdi, rax
    call    _putstr
-if1:                          /* end statement */
+if1: /* end statement */
    leave
    ret
 end_main:

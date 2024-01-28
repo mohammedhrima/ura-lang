@@ -1,5 +1,5 @@
 .intel_syntax noprefix
-.include "import/header.s"
+.include "/wolf-c/import/header.s"
 
 .text
 .globl	main
@@ -37,8 +37,6 @@ main:
    push    rax /*ref b*/
    lea     rax, -8[rbp]
    push    rax /*ref a*/
-   mov     QWORD PTR -24[rbp], 0 /*chihaja result*/
-   lea     rax, -24[rbp]
    call    chihaja_
    /* call _putstr */
    lea     rax, STR1[rip]

@@ -1,5 +1,5 @@
 .intel_syntax noprefix
-.include "import/header.s"
+.include "/wolf-c/import/header.s"
 
 .text
 .globl	main
@@ -30,20 +30,20 @@ if3:
    cmp     rax, 5
    setg    al
 if4:
-if2:                          /* if statement */
+if2: /* if statement */
    cmp     al, 1
-   jne     if5                /* jmp next statement */
+   jne     if5    /* jmp next statement */
    /* call _putstr */
    lea     rax, STR1[rip]
    mov     rdi, rax
    call    _putstr
-   jmp     if1                /* jmp end statement */
-if5:                          /* else statement */
+   jmp     if1    /* jmp end statement */
+if5: /* else statement */
    /* call _putstr */
    lea     rax, STR2[rip]
    mov     rdi, rax
    call    _putstr
-if1:                          /* end statement */
+if1: /* end statement */
    leave
    ret
 end_main:

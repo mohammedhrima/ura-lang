@@ -1,5 +1,5 @@
 .intel_syntax noprefix
-.include "import/header.s"
+.include "/wolf-c/import/header.s"
 
 .text
 .globl	main
@@ -9,12 +9,12 @@ main:
    sub     rsp, 100
    mov     QWORD PTR -8[rbp], 0 /* declare x */
    mov     QWORD PTR -16[rbp], 0 /* declare y */
-   jmp     while1                    /* jmp to while condition*/
-while2:                              /* while bloc*/
+   jmp     while1 /* jmp to while condition*/
+while2: /* while bloc*/
    mov     rax, 0 
    mov     QWORD PTR -16[rbp], rax /* assign y */
-   jmp     while4                    /* jmp to while condition*/
-while5:                              /* while bloc*/
+   jmp     while4 /* jmp to while condition*/
+while5: /* while bloc*/
    /* call _putstr */
    lea     rax, STR1[rip]
    mov     rdi, rax
@@ -32,13 +32,13 @@ while5:                              /* while bloc*/
    mov     QWORD PTR -24[rbp], rax
    mov     rax, QWORD PTR -24[rbp]
    mov     QWORD PTR -16[rbp], rax /* assign y */
-while4:                                 /* while condition */
+while4: /* while condition */
    mov     rax, QWORD PTR -16[rbp]
    cmp     rax, 5
    setl    al
    cmp     al, 1
-   je      while5                       /* je to while bloc*/
-while6: /* end while*/
+   je      while5 /* je to while bloc*/
+while6: /* end while */
    mov     rax, QWORD PTR -8[rbp]
    add     rax, 1
    mov     QWORD PTR -32[rbp], rax
@@ -56,13 +56,13 @@ while6: /* end while*/
    lea     rax, STR4[rip]
    mov     rdi, rax
    call    _putstr
-while1:                                 /* while condition */
+while1: /* while condition */
    mov     rax, QWORD PTR -8[rbp]
    cmp     rax, 5
    setl    al
    cmp     al, 1
-   je      while2                       /* je to while bloc*/
-while3: /* end while*/
+   je      while2 /* je to while bloc*/
+while3: /* end while */
    /* call _putstr */
    lea     rax, STR5[rip]
    mov     rdi, rax

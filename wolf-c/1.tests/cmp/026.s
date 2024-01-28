@@ -1,5 +1,5 @@
 .intel_syntax noprefix
-.include "import/header.s"
+.include "/wolf-c/import/header.s"
 
 .text
 .globl	main
@@ -18,20 +18,20 @@ main:
    setl    al
    mov     BYTE PTR -16[rbp], al
    xor     BYTE PTR -16[rbp], 1
-if2:                          /* if statement */
+if2: /* if statement */
    cmp     BYTE PTR -16[rbp], 1
-   jne     if3                /* jmp next statement */
+   jne     if3    /* jmp next statement */
    /* call _putstr */
    lea     rax, STR1[rip]
    mov     rdi, rax
    call    _putstr
-   jmp     if1                /* jmp end statement */
-if3:                          /* else statement */
+   jmp     if1    /* jmp end statement */
+if3: /* else statement */
    /* call _putstr */
    lea     rax, STR2[rip]
    mov     rdi, rax
    call    _putstr
-if1:                          /* end statement */
+if1: /* end statement */
    leave
    ret
 end_main:

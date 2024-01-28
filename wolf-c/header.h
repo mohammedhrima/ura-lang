@@ -87,6 +87,7 @@ enum Type
     // Data types
     void_,
     char_,
+    chars_,
     int_,
     float_,
     bool_,
@@ -117,17 +118,14 @@ struct
     char *name;
 } DataTypes[] = {
     {void_, "void"},
-    // char
+    {chars_, "chars"},
     {char_, "char"},
 #if 0
-    {char_, "fix:char"},
-    {char_, "dyn:char"},
+    {chars_, "fix:char"},
+    {chars_, "dyn:char"},
 #endif
-    // int
     {int_, "int"},
-    // float
     {float_, "float"},
-    // bool
     {bool_, "bool"},
     {array_, "array"},
     {ref_, "ref"},
@@ -191,7 +189,7 @@ struct
     {return_, "return"},
     {class_, "class"},
     {none_, "none"},
-    {0, NULL},
+    {(Type)0, NULL},
     {identifier_, "identifier"},
     {func_call_, "fcall"},
     {neg_, "negative"},
@@ -215,7 +213,7 @@ struct Token
         // CHARACTER
         struct
         {
-            char *char_;
+            char *chars_;
             size_t index_;
         };
         // ARRAY

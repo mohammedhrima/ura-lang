@@ -1,5 +1,5 @@
 .intel_syntax noprefix
-.include "import/header.s"
+.include "/wolf-c/import/header.s"
 
 .text
 .globl	main
@@ -10,8 +10,8 @@ main:
    mov     QWORD PTR -8[rbp], 0 /* declare x */
    mov     rax, 10 
    mov     QWORD PTR -8[rbp], rax /* assign x */
-   jmp     while1                    /* jmp to while condition*/
-while2:                              /* while bloc*/
+   jmp     while1 /* jmp to while condition*/
+while2: /* while bloc*/
    /* call _putstr */
    lea     rax, STR1[rip]
    mov     rdi, rax
@@ -29,13 +29,13 @@ while2:                              /* while bloc*/
    mov     QWORD PTR -16[rbp], rax
    mov     rax, QWORD PTR -16[rbp]
    mov     QWORD PTR -8[rbp], rax /* assign x */
-while1:                                 /* while condition */
+while1: /* while condition */
    mov     rax, QWORD PTR -8[rbp]
    cmp     rax, 20
    setle   al
    cmp     al, 1
-   je      while2                       /* je to while bloc*/
-while3: /* end while*/
+   je      while2 /* je to while bloc*/
+while3: /* end while */
    leave
    ret
 end_main:
