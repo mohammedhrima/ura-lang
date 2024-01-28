@@ -1,5 +1,5 @@
 .intel_syntax noprefix
-.include "import/header.s"
+.include "/wolf-c/import/header.s"
 
 .text
 .globl	main
@@ -7,45 +7,24 @@ main:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 100
-   mov     QWORD PTR -8[rbp], 0 /* declare x */
-   mov     rax, 10 
-   mov     QWORD PTR -8[rbp], rax /* assign x */
-   mov     QWORD PTR -16[rbp], 0 /* declare y */
-   mov     rax, QWORD PTR -8[rbp]
-   imul    rax, -1
-   mov     QWORD PTR -24[rbp], rax
-   mov     rax, QWORD PTR -24[rbp]
-   mov     QWORD PTR -16[rbp], rax /* assign y */
+   mov     BYTE PTR -1[rbp], 0 /* declare s1 */
+   mov     al, 108 
+   mov     BYTE PTR -1[rbp], al /* assign s1 */
+   mov     QWORD PTR -9[rbp], 0 /* declare s2 (ref) */
+   lea     rax, -1[rbp]
+   mov     QWORD PTR -9[rbp], rax
+   /* call _putchar */
+   mov     rax, QWORD PTR -9[rbp]
+   mov     al, BYTE PTR [rax]
+   mov     edi, eax
+   call    _putchar
    /* call _putstr */
    lea     rax, STR1[rip]
-   mov     rdi, rax
-   call    _putstr
-   /* call _putnbr */
-   mov     rax, QWORD PTR -8[rbp]
-   mov     rdi, rax
-   call    _putnbr
-   /* call _putstr */
-   lea     rax, STR2[rip]
-   mov     rdi, rax
-   call    _putstr
-   /* call _putstr */
-   lea     rax, STR3[rip]
-   mov     rdi, rax
-   call    _putstr
-   /* call _putnbr */
-   mov     rax, QWORD PTR -16[rbp]
-   mov     rdi, rax
-   call    _putnbr
-   /* call _putstr */
-   lea     rax, STR4[rip]
    mov     rdi, rax
    call    _putstr
    leave
    ret
 end_main:
 
-STR1: .string "x: "
-STR2: .string "\n"
-STR3: .string "y: "
-STR4: .string "\n"
+STR1: .string "\n"
 .section	.note.GNU-stack,"",@progbits
