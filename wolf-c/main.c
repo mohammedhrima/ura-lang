@@ -164,7 +164,7 @@ void visualize()
 }
 
 // UTILS
-void print_asm(char *fmt, ...)
+void pasm(char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
@@ -191,93 +191,93 @@ void output(Token *token)
     {
     case chars_:
     {
-        print_asm("   /* call _putstr */\n");
+        pasm("   /* call _putstr */\n");
         if (token->is_ref)
         {
-            print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", token->ptr);
-            print_asm("   mov     rax, QWORD PTR [rax]\n");
+            pasm("   mov     rax, QWORD PTR -%zu[rbp]\n", token->ptr);
+            pasm("   mov     rax, QWORD PTR [rax]\n");
         }
         else if (token->ptr)
-            print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", token->ptr);
+            pasm("   mov     rax, QWORD PTR -%zu[rbp]\n", token->ptr);
         else if (token->index_)
-            print_asm("   lea     rax, STR%zu[rip]\n", token->index_);
+            pasm("   lea     rax, STR%zu[rip]\n", token->index_);
         else
             err("output char");
-        print_asm("   mov     rdi, rax\n");
-        print_asm("   call    _putstr\n");
+        pasm("   mov     rdi, rax\n");
+        pasm("   call    _putstr\n");
         break;
     }
     case char_:
     {
-        print_asm("   /* call _putchar */\n");
+        pasm("   /* call _putchar */\n");
         if (token->is_ref)
         {
-            print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", token->ptr);
-            print_asm("   mov     al, BYTE PTR [rax]\n");
+            pasm("   mov     rax, QWORD PTR -%zu[rbp]\n", token->ptr);
+            pasm("   mov     al, BYTE PTR [rax]\n");
         }
         else if (token->ptr)
-            print_asm("   mov     al, BYTE PTR -%zu[rbp]\n", token->ptr);
+            pasm("   mov     al, BYTE PTR -%zu[rbp]\n", token->ptr);
         else if (token->int_)
-            print_asm("   mov     al, %lld\n", token->int_);
+            pasm("   mov     al, %lld\n", token->int_);
         else
             err("output int");
-        print_asm("   mov     edi, eax\n");
-        print_asm("   call    _putchar\n");
+        pasm("   mov     edi, eax\n");
+        pasm("   call    _putchar\n");
         break;
     }
     case int_:
     {
-        print_asm("   /* call _putnbr */\n");
+        pasm("   /* call _putnbr */\n");
         if (token->is_ref)
         {
-            print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", token->ptr);
-            print_asm("   mov     rax, QWORD PTR [rax]\n");
+            pasm("   mov     rax, QWORD PTR -%zu[rbp]\n", token->ptr);
+            pasm("   mov     rax, QWORD PTR [rax]\n");
         }
         else if (token->ptr)
-            print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", token->ptr);
+            pasm("   mov     rax, QWORD PTR -%zu[rbp]\n", token->ptr);
         else if (token->int_)
-            print_asm("   mov   rax, %lld\n", token->int_);
+            pasm("   mov   rax, %lld\n", token->int_);
         else
             err("output int");
-        print_asm("   mov     rdi, rax\n");
-        print_asm("   call    _putnbr\n");
+        pasm("   mov     rdi, rax\n");
+        pasm("   call    _putnbr\n");
         break;
     }
     case bool_:
     {
-        print_asm("   /* call _putbool */\n");
+        pasm("   /* call _putbool */\n");
         if (token->is_ref)
         {
-            print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", token->ptr);
-            print_asm("   mov     rax, QWORD PTR [rax]\n");
+            pasm("   mov     rax, QWORD PTR -%zu[rbp]\n", token->ptr);
+            pasm("   mov     rax, QWORD PTR [rax]\n");
         }
         else if (token->ptr)
-            print_asm("   movzx   eax, BYTE PTR -%zu[rbp]\n", token->ptr);
+            pasm("   movzx   eax, BYTE PTR -%zu[rbp]\n", token->ptr);
         else if (token->c)
-            print_asm("   movzx   eax, %cl\n", token->c);
+            pasm("   movzx   eax, %cl\n", token->c);
         else
             err("output bool");
-        print_asm("   mov	   edi, eax\n");
-        print_asm("   call	   _putbool\n");
+        pasm("   mov	   edi, eax\n");
+        pasm("   call	   _putbool\n");
         break;
     }
     case float_:
         // TODO: handle float
         // err("Err in output float not handled yet");
-        print_asm("   /* call _putfloat */\n");
+        pasm("   /* call _putfloat */\n");
         if (token->is_ref)
         {
-            print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", token->ptr);
-            print_asm("   mov     eax, DWORD PTR [rax]\n");
+            pasm("   mov     rax, QWORD PTR -%zu[rbp]\n", token->ptr);
+            pasm("   mov     eax, DWORD PTR [rax]\n");
         }
         else if (token->ptr)
-            print_asm("   mov     eax, DWORD PTR -%zu[rbp]\n", token->ptr);
+            pasm("   mov     eax, DWORD PTR -%zu[rbp]\n", token->ptr);
         else if (token->index_)
-            print_asm("   mov     eax, DWORD PTR FLT%zu[rip]\n", token->index_);
+            pasm("   mov     eax, DWORD PTR FLT%zu[rip]\n", token->index_);
         else
             err("output float");
-        print_asm("   movd    xmm0, eax\n");
-        print_asm("   call    _putfloat\n");
+        pasm("   movd    xmm0, eax\n");
+        pasm("   call    _putfloat\n");
         break;
     case array_:
         // TODO: handle array somehow
@@ -345,7 +345,7 @@ Token *new_variable(Token *token)
     if (token->is_ref)
     {
         token->ptr = (ptr += 8);
-        print_asm("   mov     QWORD PTR -%zu[rbp], 0 /* declare %s (ref) */\n", token->ptr, token->name);
+        pasm("   mov     QWORD PTR -%zu[rbp], 0 /* declare %s (ref) */\n", token->ptr, token->name);
     }
     else
         switch (token->type)
@@ -355,23 +355,23 @@ Token *new_variable(Token *token)
             break;
         case int_:
             token->ptr = (ptr += 8);
-            print_asm("   mov     QWORD PTR -%zu[rbp], 0 /* declare %s */\n", token->ptr, token->name);
+            pasm("   mov     QWORD PTR -%zu[rbp], 0 /* declare %s */\n", token->ptr, token->name);
             break;
         case char_:
             token->ptr = (ptr += 1);
-            print_asm("   mov     BYTE PTR -%zu[rbp], 0 /* declare %s */\n", token->ptr, token->name);
+            pasm("   mov     BYTE PTR -%zu[rbp], 0 /* declare %s */\n", token->ptr, token->name);
             break;
         case float_:
             token->ptr = (ptr += 4);
-            print_asm("   mov     DWORD PTR -%zu[rbp], 0 /* declare %s */\n", token->ptr, token->name);
+            pasm("   mov     DWORD PTR -%zu[rbp], 0 /* declare %s */\n", token->ptr, token->name);
             break;
         case bool_:
             token->ptr = (ptr += 1);
-            print_asm("   mov     BYTE PTR -%zu[rbp], 0 /* declare %s */\n", token->ptr, token->name);
+            pasm("   mov     BYTE PTR -%zu[rbp], 0 /* declare %s */\n", token->ptr, token->name);
             break;
         case array_:
             token->ptr = (ptr += 8);
-            print_asm("   mov     QWORD PTR -%zu[rbp], 0 /* declare %s */\n", token->ptr, token->name);
+            pasm("   mov     QWORD PTR -%zu[rbp], 0 /* declare %s */\n", token->ptr, token->name);
             break;
         default:
             break;
@@ -1290,10 +1290,10 @@ Node *prime()
 
 void initialize()
 {
-    print_asm(".intel_syntax noprefix\n");
-    print_asm(".include \"/wolf-c/import/header.s\"\n\n");
-    print_asm(".text\n");
-    print_asm(".globl	main\n");
+    pasm(".intel_syntax noprefix\n");
+    pasm(".include \"/wolf-c/import/header.s\"\n\n");
+    pasm(".text\n");
+    pasm(".globl	main\n");
 
     Node *curr = new_node(NULL);
     Node *head = curr;
@@ -1332,12 +1332,12 @@ void finalize()
     {
         // test char variable before making any modification
         if (!TOKENS[i]->name && TOKENS[i]->index_ && TOKENS[i]->type == chars_)
-            print_asm("STR%zu: .string \"%s\"\n", TOKENS[i]->index_, TOKENS[i]->chars_);
+            pasm("STR%zu: .string \"%s\"\n", TOKENS[i]->index_, TOKENS[i]->chars_);
         if (!TOKENS[i]->name && TOKENS[i]->index_ && TOKENS[i]->type == float_)
-            print_asm("FLT%zu: .long %zu /* %f */\n", TOKENS[i]->index_, *((float *)(&TOKENS[i]->float_)),
-                      TOKENS[i]->float_);
+            pasm("FLT%zu: .long %zu /* %f */\n", TOKENS[i]->index_, *((float *)(&TOKENS[i]->float_)),
+                 TOKENS[i]->float_);
     }
-    print_asm(".section	.note.GNU-stack,\"\",@progbits\n");
+    pasm(".section	.note.GNU-stack,\"\",@progbits\n");
 }
 
 bool skip_check;
@@ -1416,14 +1416,14 @@ Token *evaluate(Node *node)
                     token->ptr = (ptr += 8);
                 if (token->type == array_)
                 {
-                    // print_asm("   mov     QWORD PTR -%zu[rbp], 0\n", token->ptr);
-                    print_asm("   lea     rax, -%zu[rbp]\n", queue[r]->left->token->ptr);
-                    print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", token->ptr);
+                    // pasm("   mov     QWORD PTR -%zu[rbp], 0\n", token->ptr);
+                    pasm("   lea     rax, -%zu[rbp]\n", queue[r]->left->token->ptr);
+                    pasm("   mov     QWORD PTR -%zu[rbp], rax\n", token->ptr);
                 }
                 else if (token->type == int_)
                 {
                     // TODO: check it it has ptr or value
-                    print_asm("   mov     QWORD PTR -%zu[rbp], %ld\n", token->ptr, token->int_);
+                    pasm("   mov     QWORD PTR -%zu[rbp], %ld\n", token->ptr, token->int_);
                 }
                 else
                     err("handle this case");
@@ -1486,38 +1486,74 @@ Token *evaluate(Node *node)
     {
         left = evaluate(node->left);
         right = evaluate(node->right);
-        if (left->type != array_ && left->type != lbracket_)
+        if (left->type != array_
+            //&& left->type != lbracket_
+            && left->type != chars_)
             err("Expected array to iterate over %s", tts(left->type));
-        if (!left->name && left->type != array_)
+        if (!left->name && left->type != array_ && left->type != chars_) // TODO: clean this shit
             err("Expected identifier in brackets");
         if (right->type != int_)
             err("Expected number inside brackets");
 
-        node->token->ptr = (ptr += 8);
-        if (left->depth <= 1)
-            node->token->type = left->child_type;
-        else
+        switch (left->type)
         {
-            node->token->type = left->type;
-            node->token->child_type = left->child_type;
+        case chars_:
+        {
+            node->token->type = char_;
+            // node->token->ptr = (ptr += 8);
+            pasm("   /* %s[] (%s) */\n", left->name, tts(node->token->type));
+            // if (right->ptr)
+            // {
+            //     pasm("   mov     rax, QWORD PTR -%zu[rbp]\n", left->ptr);
+            //     pasm("   mov     rbx, QWORD PTR -%zu[rbp]\n", right->ptr);
+            //     pasm("   lea     rbx, 0[0+rbx*8]\n");
+            //     pasm("   add     rax, rbx\n");
+            //     pasm("   mov     rax, [rax]\n");
+            //     pasm("   mov     QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
+            // }
+            // else
+            {
+                pasm("   mov     rbx, QWORD PTR -%zu[rbp]\n", left->ptr);
+                pasm("   add     rbx, %ld\n", right->int_);
+                pasm("   mov     rax, 0\n");
+                pasm("   mov     al, BYTE PTR [rbx]\n");
+                // pasm("   mov     QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
+            }
+            break;
         }
-        // TODO: this approach works only for array of integers
-        print_asm("   /* %s[] (%s) */\n", left->name, tts(node->token->type));
-        if (right->ptr)
+        case array_:
         {
-            print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", left->ptr);
-            print_asm("   mov     rbx, QWORD PTR -%zu[rbp]\n", right->ptr);
-            print_asm("   lea     rbx, 0[0+rbx*8]\n");
-            print_asm("   add     rax, rbx\n");
-            print_asm("   mov     rax, [rax]\n");
-            print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
+            node->token->ptr = (ptr += 8);
+            if (left->depth <= 1)
+                node->token->type = left->child_type;
+            else
+            {
+                node->token->type = left->type;
+                node->token->child_type = left->child_type;
+            }
+            // TODO: this approach works only for array of integers
+            pasm("   /* %s[] (%s) */\n", left->name, tts(node->token->type));
+            if (right->ptr)
+            {
+                pasm("   mov     rax, QWORD PTR -%zu[rbp]\n", left->ptr);
+                pasm("   mov     rbx, QWORD PTR -%zu[rbp]\n", right->ptr);
+                pasm("   lea     rbx, 0[0+rbx*8]\n");
+                pasm("   add     rax, rbx\n");
+                pasm("   mov     rax, [rax]\n");
+                pasm("   mov     QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
+            }
+            else
+            {
+                pasm("   mov     rax, QWORD PTR -%zu[rbp]\n", left->ptr);
+                pasm("   add     rax, %ld\n", right->int_ * 8);
+                pasm("   mov     rax, [rax]\n");
+                pasm("   mov     QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
+            }
+            break;
         }
-        else
-        {
-            print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", left->ptr);
-            print_asm("   add     rax, %ld\n", right->int_ * 8);
-            print_asm("   mov     rax, [rax]\n");
-            print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
+        default:
+            err("Invalid operation");
+            break;
         }
         break;
     }
@@ -1543,16 +1579,16 @@ Token *evaluate(Node *node)
         if (left->is_ref && right->is_ref)
         {
             err("left is ref , right is ref\n");
-            print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
-            print_asm("   mov     QWORD PTR -%zu[rbp], rax /* assign %s */\n", left->ptr, left->name);
+            pasm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
+            pasm("   mov     QWORD PTR -%zu[rbp], rax /* assign %s */\n", left->ptr, left->name);
         }
         else
 #endif
         if (left->is_ref && !left->has_ref)
         {
             left->has_ref = true;
-            print_asm("   lea     rax, -%zu[rbp]\n", right->ptr);
-            print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", left->ptr);
+            pasm("   lea     rax, -%zu[rbp]\n", right->ptr);
+            pasm("   mov     QWORD PTR -%zu[rbp], rax\n", left->ptr);
         }
         else
         {
@@ -1562,43 +1598,42 @@ Token *evaluate(Node *node)
             {
                 if (right->ptr)
                 {
-                    print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
+                    pasm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
                     if (right->is_ref)
-                        print_asm("   mov     rax, QWORD PTR [rax] /* assign from ref %s */\n", right->name);
+                        pasm("   mov     rax, QWORD PTR [rax] /* assign from ref %s */\n", right->name);
                 }
                 else if (right->type != func_call_)
-                    print_asm("   mov     rax, %ld \n", right->int_);
+                    pasm("   mov     rax, %ld \n", right->int_);
                 if (left->is_ref)
                 {
-                    print_asm("   mov     rbx,  QWORD PTR -%zu[rbp]\n", left->ptr);
-                    print_asm("   mov     QWORD PTR [rbx], rax /* assign ref %s */\n", left->name);
+                    pasm("   mov     rbx,  QWORD PTR -%zu[rbp]\n", left->ptr);
+                    pasm("   mov     QWORD PTR [rbx], rax /* assign ref %s */\n", left->name);
                 }
                 else
-                    print_asm("   mov     QWORD PTR -%zu[rbp], rax /* assign %s */\n", left->ptr, left->name);
+                    pasm("   mov     QWORD PTR -%zu[rbp], rax /* assign %s */\n", left->ptr, left->name);
                 break;
             }
             case char_:
             {
-                // TODO: handle this shit
                 if (right->ptr)
                 {
-                    // if (right->is_ref)
-                    // {
-                    //     print_asm("   mov     rax, QWORD PTR [rax] /* assign from ref %s */\n", right->name);
-                    //     print_asm("   mov     eax, QWORD PTR -%zu[rbp]\n", right->ptr);
-                    // }
-                    // else
-                    print_asm("   mov     al, BYTE PTR -%zu[rbp]\n", right->ptr);
+                    if (right->is_ref)
+                    {
+                        pasm("   mov     rax, QWORD PTR -%zu[rbp] /* assign from ref %s */\n", right->ptr, right->name);
+                        pasm("   mov     al, BYTE PTR [rax]\n");
+                    }
+                    else
+                        pasm("   mov     al, BYTE PTR -%zu[rbp]\n", right->ptr);
                 }
                 else if (right->type != func_call_)
-                    print_asm("   mov     al, %ld \n", right->int_);
-                // if (left->is_ref)
-                // {
-                //     print_asm("   mov     rbx,  QWORD PTR -%zu[rbp]\n", left->ptr);
-                //     print_asm("   mov     QWORD PTR [rbx], rax /* assign ref %s */\n", left->name);
-                // }
-                // else
-                print_asm("   mov     BYTE PTR -%zu[rbp], al /* assign %s */\n", left->ptr, left->name);
+                    pasm("   mov     al, %ld \n", right->int_);
+                if (left->is_ref)
+                {
+                    pasm("   mov     rbx,  QWORD PTR -%zu[rbp]\n", left->ptr);
+                    pasm("   mov     BYTE PTR [rbx], al /* assign ref %s */\n", left->name);
+                }
+                else
+                    pasm("   mov     BYTE PTR -%zu[rbp], al /* assign %s */\n", left->ptr, left->name);
                 break;
             }
             case float_:
@@ -1607,44 +1642,44 @@ Token *evaluate(Node *node)
                 {
                     if (right->is_ref)
                     {
-                        print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
-                        print_asm("   movd    xmm1, DWORD PTR [rax] /* assign from ref %s */\n", right->name);
+                        pasm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
+                        pasm("   movd    xmm1, DWORD PTR [rax] /* assign from ref %s */\n", right->name);
                     }
                     else
-                        print_asm("   movss   xmm1, DWORD PTR -%zu[rbp]\n", right->ptr);
+                        pasm("   movss   xmm1, DWORD PTR -%zu[rbp]\n", right->ptr);
                 }
                 else
-                    print_asm("   movss   xmm1, DWORD PTR FLT%zu[rip]\n", right->index_);
+                    pasm("   movss   xmm1, DWORD PTR FLT%zu[rip]\n", right->index_);
                 if (left->is_ref)
                 {
-                    print_asm("   mov     rbx,  QWORD PTR -%zu[rbp]\n", left->ptr);
-                    print_asm("   mov     QWORD PTR [rbx], rax /* assign ref %s */\n", left->name);
+                    pasm("   mov     rbx,  QWORD PTR -%zu[rbp]\n", left->ptr);
+                    pasm("   mov     QWORD PTR [rbx], rax /* assign ref %s */\n", left->name);
                 }
                 else
-                    print_asm("   movss   DWORD PTR -%zu[rbp], xmm1 /* assign %s */\n", left->ptr, left->name);
+                    pasm("   movss   DWORD PTR -%zu[rbp], xmm1 /* assign %s */\n", left->ptr, left->name);
                 break;
             }
             case chars_:
             {
                 if (right->index_)
-                    print_asm("   lea     rax, STR%zu[rip]\n", right->index_);
+                    pasm("   lea     rax, STR%zu[rip]\n", right->index_);
                 else
-                    print_asm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
+                    pasm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
 
-                print_asm("   mov     QWORD PTR -%zu[rbp], rax /* assign  %s */\n", left->ptr, left->name);
+                pasm("   mov     QWORD PTR -%zu[rbp], rax /* assign  %s */\n", left->ptr, left->name);
                 break;
             }
             case bool_:
             {
                 if (right->ptr)
                 {
-                    print_asm("   mov     al, BYTE PTR -%zu[rbp]\n", right->ptr);
-                    print_asm("   mov     BYTE PTR -%zu[rbp], al /* assign  %s */\n", left->ptr, left->name);
+                    pasm("   mov     al, BYTE PTR -%zu[rbp]\n", right->ptr);
+                    pasm("   mov     BYTE PTR -%zu[rbp], al /* assign  %s */\n", left->ptr, left->name);
                 }
                 else if (right->c)
-                    print_asm("   mov     BYTE PTR -%zu[rbp], %cl\n", left->ptr, right->c);
+                    pasm("   mov     BYTE PTR -%zu[rbp], %cl\n", left->ptr, right->c);
                 else
-                    print_asm("   mov     BYTE PTR -%zu[rbp], %d /* assign  %s */\n", left->ptr, right->bool_, left->name);
+                    pasm("   mov     BYTE PTR -%zu[rbp], %d /* assign  %s */\n", left->ptr, right->bool_, left->name);
                 break;
             }
             case array_:
@@ -1654,8 +1689,8 @@ Token *evaluate(Node *node)
                 size_t len = 0;
                 if (right->ptr)
                 {
-                    print_asm("   lea     rax, QWORD PTR -%zu[rbp] /* assign to %s */\n", right->ptr, left->name);
-                    print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", left->ptr);
+                    pasm("   lea     rax, QWORD PTR -%zu[rbp] /* assign to %s */\n", right->ptr, left->name);
+                    pasm("   mov     QWORD PTR -%zu[rbp], rax\n", left->ptr);
                 }
                 else
                     err("handle this one ");
@@ -1747,98 +1782,98 @@ Token *evaluate(Node *node)
                 // TODO: handle reference
                 node->token->ptr = (ptr += 1);
                 // set left
-                print_asm("   mov     al, ");
+                pasm("   mov     al, ");
                 if (left->ptr)
-                    print_asm("BYTE PTR -%zu[rbp]\n", left->ptr);
+                    pasm("BYTE PTR -%zu[rbp]\n", left->ptr);
                 else
-                    print_asm("%ld\n", left->int_);
+                    pasm("%ld\n", left->int_);
                 char *op = type == add_ ? "add     al, " : type == sub_ ? "sub     al, "
                                                                         : NULL;
                 if (!op)
                     err("Invalid operation");
                 // set right
-                print_asm("   %s", op);
+                pasm("   %s", op);
                 if (right->ptr)
-                    print_asm("BYTE PTR -%zu[rbp]\n", right->ptr);
+                    pasm("BYTE PTR -%zu[rbp]\n", right->ptr);
                 else
-                    print_asm("%d\n", right->int_);
-                print_asm("   mov     BYTE PTR -%zu[rbp], al\n", node->token->ptr);
+                    pasm("%d\n", right->int_);
+                pasm("   mov     BYTE PTR -%zu[rbp], al\n", node->token->ptr);
                 break;
             case int_:
                 node->token->ptr = (ptr += 8);
                 // set left
-                print_asm("   mov     rax, ");
+                pasm("   mov     rax, ");
                 if (left->ptr)
                 {
-                    print_asm("QWORD PTR -%zu[rbp]\n", left->ptr);
+                    pasm("QWORD PTR -%zu[rbp]\n", left->ptr);
                     if (left->is_ref)
-                        print_asm("mov     rax, QWORD PTR[rax]\n", left->ptr);
+                        pasm("mov     rax, QWORD PTR[rax]\n", left->ptr);
                 }
                 else
-                    print_asm("%d\n", left->int_);
+                    pasm("%d\n", left->int_);
                 // set right
-                print_asm("   %s", type == add_   ? "add     rax, "
-                                   : type == sub_ ? "sub     rax, "
-                                   : type == mul_ ? "imul    rax, "
-                                   : type == div_ ? "cdq\n   mov     rbx, "
-                                                  : NULL);
+                pasm("   %s", type == add_   ? "add     rax, "
+                              : type == sub_ ? "sub     rax, "
+                              : type == mul_ ? "imul    rax, "
+                              : type == div_ ? "cdq\n   mov     rbx, "
+                                             : NULL);
                 if (right->ptr)
-                    print_asm("QWORD PTR -%zu[rbp]\n", right->ptr);
+                    pasm("QWORD PTR -%zu[rbp]\n", right->ptr);
                 else
-                    print_asm("%d\n", right->int_);
+                    pasm("%d\n", right->int_);
                 if (type == div_)
-                    print_asm("   idiv    rbx\n");
-                print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
+                    pasm("   idiv    rbx\n");
+                pasm("   mov     QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
                 break;
             case float_:
                 node->token->ptr = (ptr += 4);
                 // set left
-                print_asm("   movss   xmm1, ");
+                pasm("   movss   xmm1, ");
                 if (left->ptr)
-                    print_asm("DWORD PTR -%zu[rbp]\n", left->ptr);
+                    pasm("DWORD PTR -%zu[rbp]\n", left->ptr);
                 else if (left->index_)
-                    print_asm("DWORD PTR FLT%zu[rip]\n", left->index_);
+                    pasm("DWORD PTR FLT%zu[rip]\n", left->index_);
                 else
                     err("something went wrong");
                 // set right
-                print_asm("   %s", type == add_   ? "addss   xmm1, "
-                                   : type == sub_ ? "subss   xmm1, "
-                                   : type == mul_ ? "mulss   xmm1, "
-                                   : type == div_ ? "divss   xmm1, "
-                                                  : NULL);
+                pasm("   %s", type == add_   ? "addss   xmm1, "
+                              : type == sub_ ? "subss   xmm1, "
+                              : type == mul_ ? "mulss   xmm1, "
+                              : type == div_ ? "divss   xmm1, "
+                                             : NULL);
                 if (right->ptr)
-                    print_asm("DWORD PTR -%zu[rbp]\n", right->ptr);
+                    pasm("DWORD PTR -%zu[rbp]\n", right->ptr);
                 else if (right->index_)
-                    print_asm("DWORD PTR FLT%zu[rip]\n", right->index_);
+                    pasm("DWORD PTR FLT%zu[rip]\n", right->index_);
                 else
-                    print_asm("%zu\n", right->float_);
-                print_asm("   movss   DWORD PTR -%zu[rbp], xmm1\n", node->token->ptr);
+                    pasm("%zu\n", right->float_);
+                pasm("   movss   DWORD PTR -%zu[rbp], xmm1\n", node->token->ptr);
                 break;
             case chars_:
                 if (type != add_)
                     err("math operation 2");
                 node->token->ptr = (ptr += 8);
                 if (left->ptr)
-                    print_asm("   mov     rdi, QWORD PTR -%zu[rbp]\n", left->ptr);
+                    pasm("   mov     rdi, QWORD PTR -%zu[rbp]\n", left->ptr);
                 else if (left->index_)
                 {
-                    print_asm("   lea     rax, STR%zu[rip]\n", left->index_);
-                    print_asm("   mov     rdi, rax\n");
+                    pasm("   lea     rax, STR%zu[rip]\n", left->index_);
+                    pasm("   mov     rdi, rax\n");
                 }
                 else
                     err("in char joining 1");
 
                 if (right->ptr)
-                    print_asm("   mov     rsi, QWORD PTR -%zu[rbp]\n", right->ptr);
+                    pasm("   mov     rsi, QWORD PTR -%zu[rbp]\n", right->ptr);
                 else if (right->index_)
                 {
-                    print_asm("   lea     rax, STR%zu[rip]\n", right->index_);
-                    print_asm("   mov     rsi, rax\n");
+                    pasm("   lea     rax, STR%zu[rip]\n", right->index_);
+                    pasm("   mov     rsi, rax\n");
                 }
                 else
                     err("in char joining 2");
-                print_asm("   call	  _strjoin\n");
-                print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
+                pasm("   call	  _strjoin\n");
+                pasm("   mov     QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
 
                 break;
             default:
@@ -1858,15 +1893,15 @@ Token *evaluate(Node *node)
         if (left->ptr)
         {
             node->token->ptr = ptr++;
-            print_asm("   mov     al, BYTE PTR -%zu[rbp]\n", left->ptr);
-            print_asm("   xor     al, 1\n");
-            print_asm("   mov     BYTE PTR -%zu[rbp], al\n", node->token->ptr);
+            pasm("   mov     al, BYTE PTR -%zu[rbp]\n", left->ptr);
+            pasm("   xor     al, 1\n");
+            pasm("   mov     BYTE PTR -%zu[rbp], al\n", node->token->ptr);
         }
         else if (left->c)
         {
             node->token->ptr = ptr++;
-            print_asm("   mov     BYTE PTR -%zu[rbp], %cl\n", node->token->ptr, left->c);
-            print_asm("   xor     BYTE PTR -%zu[rbp], 1\n", node->token->ptr);
+            pasm("   mov     BYTE PTR -%zu[rbp], %cl\n", node->token->ptr, left->c);
+            pasm("   xor     BYTE PTR -%zu[rbp], 1\n", node->token->ptr);
         }
         else
             node->token->bool_ = !left->bool_;
@@ -1948,56 +1983,56 @@ Token *evaluate(Node *node)
             {
             case int_:
                 // set left
-                print_asm("   mov     rax, ");
+                pasm("   mov     rax, ");
                 if (left->ptr)
-                    print_asm("QWORD PTR -%zu[rbp]\n", left->ptr);
+                    pasm("QWORD PTR -%zu[rbp]\n", left->ptr);
                 else
-                    print_asm("%d\n", left->int_);
+                    pasm("%d\n", left->int_);
 
-                print_asm("   cmp     rax, ");
+                pasm("   cmp     rax, ");
                 if (right->ptr)
-                    print_asm("QWORD PTR -%zu[rbp]\n", right->ptr);
+                    pasm("QWORD PTR -%zu[rbp]\n", right->ptr);
                 else
-                    print_asm("%d\n", right->int_);
+                    pasm("%d\n", right->int_);
 
-                print_asm("   %s   al\n",
-                          type == equal_             ? "sete "
-                          : type == not_equal_       ? "setne"
-                          : type == less_than_       ? "setl "
-                          : type == less_than_equal_ ? "setle"
-                          : type == grea_than_       ? "setg "
-                          : type == grea_than_equal_ ? "setge"
-                                                     : NULL);
+                pasm("   %s   al\n",
+                     type == equal_             ? "sete "
+                     : type == not_equal_       ? "setne"
+                     : type == less_than_       ? "setl "
+                     : type == less_than_equal_ ? "setle"
+                     : type == grea_than_       ? "setg "
+                     : type == grea_than_equal_ ? "setge"
+                                                : NULL);
 
 #if BOOL_PTR
-                print_asm("   mov     BYTE PTR -%zu[rbp], al\n", node->token->ptr);
+                pasm("   mov     BYTE PTR -%zu[rbp], al\n", node->token->ptr);
 #endif
                 break;
             case char_:
                 // set left
-                print_asm("   mov     al, ");
+                pasm("   mov     al, ");
                 if (left->ptr)
-                    print_asm("BYTE PTR -%zu[rbp]\n", left->ptr);
+                    pasm("BYTE PTR -%zu[rbp]\n", left->ptr);
                 else
-                    print_asm("%d\n", left->int_);
+                    pasm("%d\n", left->int_);
 
-                print_asm("   cmp     al, ");
+                pasm("   cmp     al, ");
                 if (right->ptr)
-                    print_asm("BYTE PTR -%zu[rbp]\n", right->ptr);
+                    pasm("BYTE PTR -%zu[rbp]\n", right->ptr);
                 else
-                    print_asm("%d\n", right->int_);
+                    pasm("%d\n", right->int_);
 
-                print_asm("   %s   al\n",
-                          type == equal_             ? "sete "
-                          : type == not_equal_       ? "setne"
-                          : type == less_than_       ? "setl "
-                          : type == less_than_equal_ ? "setle"
-                          : type == grea_than_       ? "setg "
-                          : type == grea_than_equal_ ? "setge"
-                                                     : NULL);
+                pasm("   %s   al\n",
+                     type == equal_             ? "sete "
+                     : type == not_equal_       ? "setne"
+                     : type == less_than_       ? "setl "
+                     : type == less_than_equal_ ? "setle"
+                     : type == grea_than_       ? "setg "
+                     : type == grea_than_equal_ ? "setge"
+                                                : NULL);
 
 #if BOOL_PTR
-                print_asm("   mov     BYTE PTR -%zu[rbp], al\n", node->token->ptr);
+                pasm("   mov     BYTE PTR -%zu[rbp], al\n", node->token->ptr);
 #endif
                 break;
             case float_:
@@ -2008,76 +2043,76 @@ Token *evaluate(Node *node)
                     left = right;
                     right = tmp;
                 }
-                print_asm("   movss   xmm0, ");
+                pasm("   movss   xmm0, ");
                 if (left->ptr)
-                    print_asm("DWORD PTR -%zu[rbp]\n", left->ptr);
+                    pasm("DWORD PTR -%zu[rbp]\n", left->ptr);
                 else if (left->index_)
-                    print_asm("DWORD PTR FLT%zu[rip]\n", left->index_);
+                    pasm("DWORD PTR FLT%zu[rip]\n", left->index_);
                 else
-                    print_asm("%zu\n", left->float_);
+                    pasm("%zu\n", left->float_);
 
-                print_asm("   %s xmm0, ", type != equal_ ? "comiss " : "ucomiss");
+                pasm("   %s xmm0, ", type != equal_ ? "comiss " : "ucomiss");
                 if (right->ptr)
-                    print_asm("DWORD PTR -%zu[rbp]\n", right->ptr);
+                    pasm("DWORD PTR -%zu[rbp]\n", right->ptr);
                 else if (right->index_)
-                    print_asm("DWORD PTR FLT%zu[rip]\n", right->index_);
+                    pasm("DWORD PTR FLT%zu[rip]\n", right->index_);
                 else
-                    print_asm("%zu\n", right->float_);
+                    pasm("%zu\n", right->float_);
 
-                print_asm("   %s   al\n",
-                          type == grea_than_         ? "seta "
-                          : type == grea_than_equal_ ? "setnb"
-                          : type == equal_           ? "setnp"
-                          : type == not_equal_       ? "setp "
-                                                     : NULL);
+                pasm("   %s   al\n",
+                     type == grea_than_         ? "seta "
+                     : type == grea_than_equal_ ? "setnb"
+                     : type == equal_           ? "setnp"
+                     : type == not_equal_       ? "setp "
+                                                : NULL);
                 if (type == equal_)
                 {
-                    print_asm("   mov	  edx, 0\n");
-                    print_asm("   movss	  xmm0, ");
+                    pasm("   mov	  edx, 0\n");
+                    pasm("   movss	  xmm0, ");
                     if (left->ptr)
-                        print_asm("DWORD PTR -%zu[rbp]\n", left->ptr);
+                        pasm("DWORD PTR -%zu[rbp]\n", left->ptr);
                     else if (left->index_)
-                        print_asm("DWORD PTR FLT%zu[rip]\n", left->index_);
+                        pasm("DWORD PTR FLT%zu[rip]\n", left->index_);
                     else
-                        print_asm("%zu\n", left->float_);
-                    print_asm("   ucomiss xmm0, ");
+                        pasm("%zu\n", left->float_);
+                    pasm("   ucomiss xmm0, ");
                     if (right->ptr)
-                        print_asm("DWORD PTR -%zu[rbp]\n", right->ptr);
+                        pasm("DWORD PTR -%zu[rbp]\n", right->ptr);
                     else if (right->index_)
-                        print_asm("DWORD PTR FLT%zu[rip]\n", right->index_);
+                        pasm("DWORD PTR FLT%zu[rip]\n", right->index_);
                     else
-                        print_asm("%zu\n", right->float_);
-                    print_asm("   cmovne  eax, edx\n");
+                        pasm("%zu\n", right->float_);
+                    pasm("   cmovne  eax, edx\n");
                 }
 #if BOOL_PTR
-                print_asm("   mov     BYTE PTR -%zu[rbp], al\n", node->token->ptr);
+                pasm("   mov     BYTE PTR -%zu[rbp], al\n", node->token->ptr);
 #endif
                 break;
             case chars_:
                 if (type != equal_)
                     err("logic operation 3");
                 if (left->ptr)
-                    print_asm("   mov     rsi, QWORD PTR -%zu[rbp]\n", left->ptr);
+                    pasm("   mov     rsi, QWORD PTR -%zu[rbp]\n", left->ptr);
                 else if (left->index_)
                 {
-                    print_asm("   lea     rax, STR%zu[rip]\n", left->index_);
-                    print_asm("   mov     rsi, rax\n");
+                    pasm("   lea     rax, STR%zu[rip]\n", left->index_);
+                    pasm("   mov     rsi, rax\n");
                 }
                 else
                     err("in char equal");
 
                 if (right->ptr)
-                    print_asm("   mov     rdi, QWORD PTR -%zu[rbp]\n", right->ptr);
+                    pasm("   mov     rdi, QWORD PTR -%zu[rbp]\n", right->ptr);
                 else if (right->index_)
                 {
-                    print_asm("   lea     rax, STR%zu[rip]\n", right->index_);
-                    print_asm("   mov     rdi, rax\n");
+                    pasm("   lea     rax, STR%zu[rip]\n", right->index_);
+                    pasm("   mov     rdi, rax\n");
                 }
                 else
                     err("in char equal 2");
-                print_asm("   call	  _strcmp\n");
+                pasm("   call	  _strcmp\n");
 #if BOOL_PTR
-                print_asm("   mov     BYTE PTR -%zu[rbp], al\n", node->token->ptr);
+                pasm("   mov     BYTE PTR -%zu[rbp], al\n", node->token->ptr);
 #endif
                 break;
             default:
@@ -2099,28 +2134,28 @@ Token *evaluate(Node *node)
             if (left->type != bool_)
                 err("0.Expected boolean value");
 
-            print_asm("   /* %s operation %d */\n", tts(node->token->type), i++);
+            pasm("   /* %s operation %d */\n", tts(node->token->type), i++);
             if (left->ptr)
-                print_asm("   cmp     BYTE PTR -%zu[rbp], 1\n", left->ptr);
+                pasm("   cmp     BYTE PTR -%zu[rbp], 1\n", left->ptr);
             else if (left->c)
-                print_asm("   cmp     %cl, 1\n", left->c);
+                pasm("   cmp     %cl, 1\n", left->c);
             else
             {
-                print_asm("   mov     al, %d\n", left->bool_);
-                print_asm("   cmp     al, 1\n");
+                pasm("   mov     al, %d\n", left->bool_);
+                pasm("   cmp     al, 1\n");
             }
             if (tmp->token->type == or_)
-                print_asm("   je      %s%zu\n", LABEL->name, node->token->index_);
+                pasm("   je      %s%zu\n", LABEL->name, node->token->index_);
             else if (tmp->token->type == and_)
-                print_asm("   jne     %s%zu\n", LABEL->name, node->token->index_);
+                pasm("   jne     %s%zu\n", LABEL->name, node->token->index_);
             tmp = tmp->right;
             if (tmp->token->type == and_ || tmp->token->type == or_)
-                print_asm("%s%zu:\n", LABEL->name, tmp->token->index_);
+                pasm("%s%zu:\n", LABEL->name, tmp->token->index_);
         }
         right = evaluate(tmp);
         if (right->type != bool_)
             err("0.Expected boolean value");
-        print_asm("%s%zu:\n", LABEL->name, node->token->index_);
+        pasm("%s%zu:\n", LABEL->name, node->token->index_);
         node->token->c = 'a';
         node->token->type = bool_;
         break;
@@ -2134,20 +2169,20 @@ Token *evaluate(Node *node)
         if (left->type != bool_)
             err("Expected a valid condition in if statement");
 
-        print_asm("%s%zu: /* if statement */\n", LABEL->name, node->token->index_);
+        pasm("%s%zu: /* if statement */\n", LABEL->name, node->token->index_);
         if (left->ptr)
-            print_asm("   cmp     BYTE PTR -%zu[rbp], 1\n", left->ptr);
+            pasm("   cmp     BYTE PTR -%zu[rbp], 1\n", left->ptr);
         else if (left->c)
-            print_asm("   cmp     %cl, 1\n", left->c);
+            pasm("   cmp     %cl, 1\n", left->c);
         else
         {
-            print_asm("   mov     al, %d\n", left->bool_);
-            print_asm("   cmp     al, 1\n");
+            pasm("   mov     al, %d\n", left->bool_);
+            pasm("   cmp     al, 1\n");
         }
         if (node->right)
-            print_asm("   jne     %s%zu    /* jmp next statement */\n", LABEL->name, node->right->token->index_);
+            pasm("   jne     %s%zu    /* jmp next statement */\n", LABEL->name, node->right->token->index_);
         else
-            print_asm("   jne     %s%zu    /* jmp end statemnt */\n", LABEL->name, end_index);
+            pasm("   jne     %s%zu    /* jmp end statemnt */\n", LABEL->name, end_index);
         curr = curr->right;
         // if statment bloc
         while (curr)
@@ -2157,7 +2192,7 @@ Token *evaluate(Node *node)
         }
         curr = node->left;
         if (node->right)
-            print_asm("   jmp     %s%zu    /* jmp end statement */\n", LABEL->name, end_index);
+            pasm("   jmp     %s%zu    /* jmp end statement */\n", LABEL->name, end_index);
 
         // elif / else statement
         curr = node->right;
@@ -2167,25 +2202,25 @@ Token *evaluate(Node *node)
             {
                 Node *tmp0 = curr->left;
                 // evaluate elif
-                print_asm("%s%zu: /* elif statement */\n", LABEL->name, curr->token->index_);
+                pasm("%s%zu: /* elif statement */\n", LABEL->name, curr->token->index_);
                 Node *tmp = tmp0;
 
                 left = evaluate(tmp->left);
                 if (left->type != bool_)
                     err("Expected a valid condition in elif statement");
                 if (left->ptr)
-                    print_asm("   cmp     BYTE PTR -%zu[rbp], 1\n", left->ptr);
+                    pasm("   cmp     BYTE PTR -%zu[rbp], 1\n", left->ptr);
                 else if (left->c)
-                    print_asm("   cmp     %cl, 1\n", left->c);
+                    pasm("   cmp     %cl, 1\n", left->c);
                 else
                 {
-                    print_asm("   mov     al, %d\n", left->bool_);
-                    print_asm("   cmp     al, 1\n");
+                    pasm("   mov     al, %d\n", left->bool_);
+                    pasm("   cmp     al, 1\n");
                 }
                 if (curr->right)
-                    print_asm("   jne     %s%zu /* jmp next statement */\n", LABEL->name, curr->right->token->index_);
+                    pasm("   jne     %s%zu /* jmp next statement */\n", LABEL->name, curr->right->token->index_);
                 else
-                    print_asm("   jne     %s%zu /* jmp end statemnt */\n", LABEL->name, end_index);
+                    pasm("   jne     %s%zu /* jmp end statemnt */\n", LABEL->name, end_index);
                 tmp = tmp->right;
                 while (tmp)
                 {
@@ -2193,12 +2228,12 @@ Token *evaluate(Node *node)
                     tmp = tmp->right;
                 }
                 if (curr->right)
-                    print_asm("   jmp     %s%zu /* jmp end statement */\n", LABEL->name, end_index);
+                    pasm("   jmp     %s%zu /* jmp end statement */\n", LABEL->name, end_index);
             }
             else if (curr->token->type == else_)
             {
                 Node *tmp = curr->left->right;
-                print_asm("%s%zu: /* else statement */\n", LABEL->name, curr->token->index_);
+                pasm("%s%zu: /* else statement */\n", LABEL->name, curr->token->index_);
                 while (tmp)
                 {
                     evaluate(tmp->left);
@@ -2208,7 +2243,7 @@ Token *evaluate(Node *node)
             curr = curr->right;
         }
         // end statement bloc
-        print_asm("%s%zu: /* end statement */\n", LABEL->name, end_index);
+        pasm("%s%zu: /* end statement */\n", LABEL->name, end_index);
         exit_label(node);
         break;
     }
@@ -2216,9 +2251,9 @@ Token *evaluate(Node *node)
     {
         enter_label(node);
         Node *curr = node->left;
-        print_asm("   jmp     %s%zu /* jmp to while condition*/\n", LABEL->name, node->token->index_);
+        pasm("   jmp     %s%zu /* jmp to while condition*/\n", LABEL->name, node->token->index_);
         // while bloc
-        print_asm("%s%zu: /* while bloc*/\n", LABEL->name, node->token->index_ + 1);
+        pasm("%s%zu: /* while bloc*/\n", LABEL->name, node->token->index_ + 1);
         Node *tmp = curr->right;
         while (tmp)
         {
@@ -2226,21 +2261,21 @@ Token *evaluate(Node *node)
             tmp = tmp->right;
         }
         // while condition
-        print_asm("%s%zu: /* while condition */\n", LABEL->name, node->token->index_);
+        pasm("%s%zu: /* while condition */\n", LABEL->name, node->token->index_);
         left = evaluate(curr->left);
         if (left->type != bool_)
             err("Expected a valid condition in if statment");
         if (left->ptr)
-            print_asm("   cmp     BYTE PTR -%zu[rbp], 1\n", left->ptr);
+            pasm("   cmp     BYTE PTR -%zu[rbp], 1\n", left->ptr);
         else if (left->c)
-            print_asm("   cmp     %cl, 1\n", left->c);
+            pasm("   cmp     %cl, 1\n", left->c);
         else
         {
-            print_asm("   mov     al, %d\n", left->bool_);
-            print_asm("   cmp     al, 1\n");
+            pasm("   mov     al, %d\n", left->bool_);
+            pasm("   cmp     al, 1\n");
         }
-        print_asm("   je      %s%zu /* je to while bloc*/\n", LABEL->name, node->token->index_ + 1);
-        print_asm("%s%zu: /* end while */\n", LABEL->name, node->token->index_ + 2);
+        pasm("   je      %s%zu /* je to while bloc*/\n", LABEL->name, node->token->index_ + 1);
+        pasm("%s%zu: /* end while */\n", LABEL->name, node->token->index_ + 2);
         exit_label(node);
         break;
     }
@@ -2317,32 +2352,32 @@ Token *evaluate(Node *node)
                     {
                         if (!token->ptr)
                             err("Expected reference");
-                        print_asm("   lea     rax, -%zu[rbp]\n", token->ptr);
-                        print_asm("   push    rax /*ref %s*/\n", token->name);
+                        pasm("   lea     rax, -%zu[rbp]\n", token->ptr);
+                        pasm("   push    rax /*ref %s*/\n", token->name);
                     }
                     else if (token->ptr)
-                        print_asm("   push    QWORD PTR -%zu[rbp] /*%s*/\n", token->ptr, token->name);
+                        pasm("   push    QWORD PTR -%zu[rbp] /*%s*/\n", token->ptr, token->name);
                     else
                     {
                         switch (token->type)
                         {
                         case chars_:
                             if (token->index_)
-                                print_asm("   lea     rax, STR%zu[rip]\n", token->index_);
+                                pasm("   lea     rax, STR%zu[rip]\n", token->index_);
                             else
                                 err("something went wrong");
                             break;
                         case int_:
-                            print_asm("   mov     rax, %ld\n", token->int_);
+                            pasm("   mov     rax, %ld\n", token->int_);
                             break;
                         case char_:
-                            print_asm("   mov     al, %ld\n", token->int_);
+                            pasm("   mov     al, %ld\n", token->int_);
                             break;
                         default:
                             err("handle this case");
                             break;
                         }
-                        print_asm("   push    rax\n");
+                        pasm("   push    rax\n");
                     }
                     free(stack[stack_pos]);
                     stack_pos--;
@@ -2354,11 +2389,11 @@ Token *evaluate(Node *node)
             {
                 debug("function return in call\n");
                 call->token->ptr = (ptr += 8);
-                print_asm("   mov     QWORD PTR -%zu[rbp], 0 /*%s result*/\n", call->token->ptr, call->token->name);
-                print_asm("   lea     rax, -%zu[rbp]\n", call->token->ptr);
+                pasm("   mov     QWORD PTR -%zu[rbp], 0 /*%s result*/\n", call->token->ptr, call->token->name);
+                pasm("   lea     rax, -%zu[rbp]\n", call->token->ptr);
                 // exit(1);
             }
-            print_asm("   call    %s\n", dec->token->name);
+            pasm("   call    %s\n", dec->token->name);
             free(name);
             call->token->ret_type = dec->token->ret_type;
         }
@@ -2370,19 +2405,19 @@ Token *evaluate(Node *node)
         new_func(node);
         char *name = node->token->name;
         enter_label(node);
-        print_asm("%s:\n", name);
+        pasm("%s:\n", name);
         size_t tmp_rbp = ptr;
         ptr = 0;
-        print_asm("   push    rbp\n");
-        print_asm("   mov     rbp, rsp\n");
-        print_asm("   sub     rsp, %zu\n", rsp);
+        pasm("   push    rbp\n");
+        pasm("   mov     rbp, rsp\n");
+        pasm("   sub     rsp, %zu\n", rsp);
         if (node->token->ret_type != void_)
         {
             debug("function does return (%t)\n", node->token->ret_type);
             // TODO: depends on return type define return ptr
             node->token->ptr = (tmp_rbp += 8);
             ptr += 8;
-            print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
+            pasm("   mov     QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
         }
 
         // arguments
@@ -2393,16 +2428,16 @@ Token *evaluate(Node *node)
             Token *token = evaluate(tmp->left);
             if (token->is_ref)
                 token->has_ref = true;
-            print_asm("   mov	  rax, QWORD PTR %zu[rbp]\n", tmp_ptr);
+            pasm("   mov	  rax, QWORD PTR %zu[rbp]\n", tmp_ptr);
             switch (token->type)
             {
             case int_:
             case chars_:
             case array_:
-                print_asm("   mov     QWORD PTR -%zu[rbp], rax\n", token->ptr);
+                pasm("   mov     QWORD PTR -%zu[rbp], rax\n", token->ptr);
                 break;
             case char_:
-                print_asm("   mov     BYTE PTR -%zu[rbp], al\n", token->ptr);
+                pasm("   mov     BYTE PTR -%zu[rbp], al\n", token->ptr);
                 break;
             default:
                 err("handle this case");
@@ -2418,38 +2453,38 @@ Token *evaluate(Node *node)
         while (tmp)
         {
             if (tmp->left->token->type == func_dec_)
-                print_asm("   jmp     end_%s%s\n", LABEL->name, tmp->left->token->name);
+                pasm("   jmp     end_%s%s\n", LABEL->name, tmp->left->token->name);
             if (tmp->left->token->type == return_)
             {
                 debug("found return\n");
                 Token *token = evaluate(tmp->left->left);
                 if (token->ptr) // TODO: this line may cause problem
                 {
-                    print_asm("   mov	  rax, QWORD PTR -%zu[rbp]\n", token->ptr);
-                    print_asm("   mov     rbx, QWORD PTR -%zu[rbp]\n", node->token->ptr);
-                    print_asm("   mov     QWORD PTR [rbx], rax\n");
+                    pasm("   mov	  rax, QWORD PTR -%zu[rbp]\n", token->ptr);
+                    pasm("   mov     rbx, QWORD PTR -%zu[rbp]\n", node->token->ptr);
+                    pasm("   mov     QWORD PTR [rbx], rax\n");
                 }
                 else
                 {
                     switch (token->type)
                     {
                     case chars_:
-                        print_asm("   lea     rax, STR%zu[rip]\n", token->index_);
-                        print_asm("   mov     rbx, QWORD PTR -%zu[rbp]\n", node->token->ptr);
-                        print_asm("   mov     QWORD PTR [rbx], rax\n");
+                        pasm("   lea     rax, STR%zu[rip]\n", token->index_);
+                        pasm("   mov     rbx, QWORD PTR -%zu[rbp]\n", node->token->ptr);
+                        pasm("   mov     QWORD PTR [rbx], rax\n");
                         break;
                     case int_:
-                        print_asm("   mov     rax, %ld\n", token->int_);
-                        print_asm("   mov     rbx, QWORD PTR -%zu[rbp]\n", node->token->ptr);
-                        print_asm("   mov     QWORD PTR [rbx], rax\n");
+                        pasm("   mov     rax, %ld\n", token->int_);
+                        pasm("   mov     rbx, QWORD PTR -%zu[rbp]\n", node->token->ptr);
+                        pasm("   mov     QWORD PTR [rbx], rax\n");
                         break;
                     case bool_:
                         if (token->c)
-                            print_asm("   mov     al, %cl\n", token->c);
+                            pasm("   mov     al, %cl\n", token->c);
                         else
-                            print_asm("   mov     al, %ld\n", token->bool_);
-                        print_asm("   mov     rbx, QWORD PTR -%zu[rbp]\n", node->token->ptr);
-                        print_asm("   mov     BYTE PTR [rbx], al\n");
+                            pasm("   mov     al, %ld\n", token->bool_);
+                        pasm("   mov     rbx, QWORD PTR -%zu[rbp]\n", node->token->ptr);
+                        pasm("   mov     BYTE PTR [rbx], al\n");
                         break;
                     case array_:
                         err("handle this one ");
@@ -2465,9 +2500,9 @@ Token *evaluate(Node *node)
             tmp = tmp->right;
         }
         skip_check = false;
-        print_asm("   leave\n");
-        print_asm("   ret\n");
-        print_asm("end_%s:\n\n", name);
+        pasm("   leave\n");
+        pasm("   ret\n");
+        pasm("end_%s:\n\n", name);
         exit_label(node);
         ptr = tmp_rbp;
         break;
@@ -2482,11 +2517,11 @@ Token *evaluate(Node *node)
             if (strncmp(LABELS[lb_tmp]->name, "while", strlen("while")) == 0)
             {
                 if (node->token->type == break_)
-                    print_asm("   jmp      %s%zu /* break while*/\n", LABELS[lb_tmp]->name,
-                              LABELS[lb_tmp]->node->token->index_ + 2);
+                    pasm("   jmp      %s%zu /* break while*/\n", LABELS[lb_tmp]->name,
+                         LABELS[lb_tmp]->node->token->index_ + 2);
                 else if (node->token->type == continue_)
-                    print_asm("   jmp      %s%zu /* continue while*/\n", LABELS[lb_tmp]->name,
-                              LABELS[lb_tmp]->node->token->index_);
+                    pasm("   jmp      %s%zu /* continue while*/\n", LABELS[lb_tmp]->name,
+                         LABELS[lb_tmp]->node->token->index_);
                 break;
             }
             lb_tmp--;
@@ -2501,7 +2536,7 @@ Token *evaluate(Node *node)
     }
     if (ptr + 10 > rsp)
     {
-        print_asm("   sub     rsp, %zu\n", rsp * 2);
+        pasm("   sub     rsp, %zu\n", rsp * 2);
         rsp = rsp + rsp * 2;
     }
     return node->token;

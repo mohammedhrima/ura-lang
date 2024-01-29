@@ -5,7 +5,7 @@ services:
     container_name: wolf
     image: "wolf-c"
     volumes:
-      - "${PWD}/wolf-c:/wolf-c"
+      - "./wolf-c:/wolf-c"
     restart: on-failure
 
 volumes:
@@ -15,4 +15,4 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: "${PWD}/wolf-c"
+      device: "./wolf-c"
