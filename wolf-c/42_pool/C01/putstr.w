@@ -1,0 +1,4 @@
+
+
+main():
+    chars s = "abcd"
