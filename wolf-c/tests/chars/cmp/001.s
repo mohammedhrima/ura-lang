@@ -7,9 +7,15 @@ main:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 100
+   mov     QWORD PTR -8[rbp], 0 /* declare stname */
    lea     rax, STR1[rip]
+   mov     rdi, rax
+   call    _strdup
    mov     QWORD PTR -8[rbp], rax /* assign  stname */
+   mov     QWORD PTR -16[rbp], 0 /* declare ndname */
    lea     rax, STR2[rip]
+   mov     rdi, rax
+   call    _strdup
    mov     QWORD PTR -16[rbp], rax /* assign  ndname */
    mov     QWORD PTR -24[rbp], 0 /* declare age */
    mov     rax, 25 

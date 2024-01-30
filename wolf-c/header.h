@@ -33,7 +33,7 @@ typedef enum Type Type;
 // stupid implicit declaration error
 Token *get_var(char *name);
 Token *evaluate(Node *node);
-void print_node(Node *node, int level);
+void pnode(Node *node, int level);
 Node *expr();
 Node *assign();     // = += -= *= /=
 Node *logic();      // || or && and
@@ -209,12 +209,16 @@ struct Token
         // INTEGER
         long long int_;
         // FLOAT
-        uint32_t float_;
+        struct
+        {
+            uint32_t float_;
+            size_t float_index_;
+        };
         // CHARACTER
         struct
         {
             char *chars_;
-            size_t index_;
+            size_t chars_index_;
         };
         // ARRAY
         struct
@@ -225,6 +229,7 @@ struct Token
             */
             size_t depth;
             Type child_type;
+            size_t arrlen_;
         };
         // BOOLEAN
         struct
@@ -232,6 +237,7 @@ struct Token
             bool bool_;
             char c;
         };
+        size_t label_index_;
         // FUNCTION
         Type ret_type;
     };

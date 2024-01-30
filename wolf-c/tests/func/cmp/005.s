@@ -11,6 +11,7 @@ test_:
    mov     QWORD PTR -16[rbp], 0 /* declare x */
    mov	  rax, QWORD PTR 16[rbp]
    mov     QWORD PTR -16[rbp], rax
+   mov     QWORD PTR -24[rbp], 0 /* declare s */
    mov	  rax, QWORD PTR 24[rbp]
    mov     QWORD PTR -24[rbp], rax
    mov     QWORD PTR -32[rbp], 0 /* declare y */
@@ -55,6 +56,8 @@ main:
    mov     rax, 2
    push    rax
    lea     rax, STR5[rip]
+   mov     rdi, rax
+   call    _strdup
    push    rax
    mov     rax, 1
    push    rax
