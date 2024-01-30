@@ -8,7 +8,7 @@ void error_msg(int line, char *fmt, ...)
     va_start(ap, fmt);
     fprintf(stderr, "%sline %d: ", RED, line);
     vfprintf(stderr, fmt, ap);
-    fprintf(stderr, "%s\n", RESET);
+    fprintf(stdout, "%s\n", RESET);
     exit(1);
 };
 
@@ -101,8 +101,8 @@ void debug(char *conv, ...)
                             {
                             case chars_:
                                 fprintf(stdout, "'%s' ", token->chars_);
-                                if (token->index_)
-                                    fprintf(stdout, "STR%zu, ", token->index_);
+                                if (token->chars_index_)
+                                    fprintf(stdout, "STR%zu, ", token->chars_index_);
                                 break;
                             case char_:
                                 fprintf(stdout, "'%c' ", token->int_);
@@ -112,8 +112,8 @@ void debug(char *conv, ...)
                                 break;
                             case float_:
                                 fprintf(stdout, "%zu (%.2f) ", token->float_, *(float *)(&token->float_));
-                                if (token->index_)
-                                    fprintf(stdout, "FLT%zu ", token->index_);
+                                if (token->float_index_)
+                                    fprintf(stdout, "FLT%zu ", token->float_index_);
                                 break;
                             case bool_:
                                 fprintf(stdout, "%s ", token->bool_ ? "True" : "False");
@@ -122,6 +122,8 @@ void debug(char *conv, ...)
                                 fprintf(stdout, "depth: %zu, ", token->depth);
                                 if (token->child_type)
                                     fprintf(stdout, "child: %s, ", tts(token->child_type));
+                                if (token->arrlen_)
+                                    fprintf(stdout, "elems: %zu, ", token->arrlen_);
                                 break;
                             case func_call_:
                                 fprintf(stdout, "ret (%s) ", tts(token->ret_type));
@@ -199,8 +201,8 @@ void output(Token *token)
         }
         else if (token->ptr)
             pasm("   mov     rax, QWORD PTR -%zu[rbp]\n", token->ptr);
-        else if (token->index_)
-            pasm("   lea     rax, STR%zu[rip]\n", token->index_);
+        else if (token->chars_index_)
+            pasm("   lea     rax, STR%zu[rip]\n", token->chars_index_);
         else
             err("output char");
         pasm("   mov     rdi, rax\n");
@@ -257,8 +259,8 @@ void output(Token *token)
             pasm("   movzx   eax, %cl\n", token->c);
         else
             err("output bool");
-        pasm("   mov	   edi, eax\n");
-        pasm("   call	   _putbool\n");
+        pasm("   mov	  edi, eax\n");
+        pasm("   call	  _putbool\n");
         break;
     }
     case float_:
@@ -272,8 +274,8 @@ void output(Token *token)
         }
         else if (token->ptr)
             pasm("   mov     eax, DWORD PTR -%zu[rbp]\n", token->ptr);
-        else if (token->index_)
-            pasm("   mov     eax, DWORD PTR FLT%zu[rip]\n", token->index_);
+        else if (token->float_index_)
+            pasm("   mov     eax, DWORD PTR FLT%zu[rip]\n", token->float_index_);
         else
             err("output float");
         pasm("   movd    xmm0, eax\n");
@@ -352,6 +354,7 @@ Token *new_variable(Token *token)
         {
         case chars_:
             token->ptr = (ptr += 8);
+            pasm("   mov     QWORD PTR -%zu[rbp], 0 /* declare %s */\n", token->ptr, token->name);
             break;
         case int_:
             token->ptr = (ptr += 8);
@@ -508,7 +511,7 @@ Token *new_token(int s, int e, Type type, size_t col)
     CLABEL0:
         break;
     case chars_:
-        token->index_ = index_;
+        token->chars_index_ = index_;
         index_++;
         token->chars_ = calloc(e - s + 1, sizeof(char));
         strncpy(token->chars_, text + s, e - s);
@@ -521,16 +524,8 @@ Token *new_token(int s, int e, Type type, size_t col)
             token->int_ = 10 * token->int_ + text[s++] - '0';
         break;
     case float_:
-        int i = s;
-        while (i < e)
-        {
-            write(1, &text[i], 1);
-            i++;
-        }
-        write(1, "\n", 1);
-
         float f = 0.0;
-        token->index_ = index_;
+        token->float_index_ = index_;
         index_++;
         while (s < e && isdigit(text[s]))
             f = 10 * f + text[s++] - '0';
@@ -661,7 +656,7 @@ void free_node(Node *node)
     }
 }
 
-void print_node(Node *node, int col)
+void pnode(Node *node, int col)
 {
     Node *tmp = NULL;
     int curr = col;
@@ -683,19 +678,19 @@ void print_node(Node *node, int col)
             debug("%s%t %s %s\n", GREEN, token->type, token->name, RESET);
             tmp = node->left;
             if (token->type != else_) // condition
-                print_node(tmp->left, col + 1);
+                pnode(tmp->left, col + 1);
             // code bloc
             tmp = node->left->right;
             while (tmp)
             {
-                print_node(tmp->left, col + 1);
+                pnode(tmp->left, col + 1);
                 tmp = tmp->right;
             }
             // elif / else nodes
             tmp = node;
             while (token->type == if_ && tmp->right)
             {
-                print_node(tmp->right, col);
+                pnode(tmp->right, col);
                 tmp = tmp->right;
             }
             break;
@@ -707,11 +702,11 @@ void print_node(Node *node, int col)
             // attributes
             tmp = node->left;
             if (tmp)
-                print_node(tmp, col + 1);
+                pnode(tmp, col + 1);
             tmp = node->right;
             while (tmp)
             {
-                print_node(tmp->left, col + 1);
+                pnode(tmp->left, col + 1);
                 tmp = tmp->right;
             }
 
@@ -727,19 +722,19 @@ void print_node(Node *node, int col)
         case func_call_:
         case func_dec_:
         {
-            debug("%s%t %s return (%t)%s\n", GREEN, token->type, token->name, token->ret_type, RESET);
+            debug("%s%k%s\n", GREEN, token, RESET);
             // arguments
             tmp = node->left;
             while (tmp)
             {
-                print_node(tmp->left, col + 1);
+                pnode(tmp->left, col + 1);
                 tmp = tmp->right;
             }
             // code bloc
             tmp = node->right;
             while (tmp)
             {
-                print_node(tmp->left, col + 1);
+                pnode(tmp->left, col + 1);
                 tmp = tmp->right;
             }
 
@@ -747,12 +742,10 @@ void print_node(Node *node, int col)
         }
         case array_:
         {
-            debug("%s%t %s depth: %d %s\n", GREEN, token->type, token->name ? token->name : "",
-                  token->depth, RESET);
-
+            debug("%s%k%s\n", GREEN, token, RESET);
             while (node)
             {
-                print_node(node->left, col + 1);
+                pnode(node->left, col + 1);
                 node = node->right;
             }
             break;
@@ -760,8 +753,8 @@ void print_node(Node *node, int col)
         default:
         {
             debug("%k\n", token);
-            print_node(node->left, col + 1);
-            print_node(node->right, col + 1);
+            pnode(node->left, col + 1);
+            pnode(node->right, col + 1);
             break;
         }
         }
@@ -866,7 +859,7 @@ Node *logic()
     if (token = check(or_, and_, 0))
     {
         Node *node = new_node(token);
-        node->token->index_ = Label_index++;
+        node->token->label_index_ = Label_index++;
         node->left = left;
         node->right = logic();
         return node;
@@ -1098,6 +1091,7 @@ Node *prime()
         }
         node->token->child_type = type;
         node->token->depth = deep;
+
         return node;
     }
     else if (token = check(array_, 0))
@@ -1202,7 +1196,7 @@ Node *prime()
         */
         node = new_node(token);
         Label_index++;
-        node->token->index_ = Label_index++; // current label index
+        node->token->label_index_ = Label_index++; // current label index
         node->left = new_node(NULL);
         tmp = node->left;
 
@@ -1225,7 +1219,7 @@ Node *prime()
             tmp1 = tmp1->right; // set second tmp
 
             tmp = tmp->right;
-            tmp->token->index_ = Label_index++;
+            tmp->token->label_index_ = Label_index++;
 
             tmp->left = new_node(NULL);
             tmp = tmp->left;
@@ -1251,7 +1245,7 @@ Node *prime()
             end         : label + 2
         */
         node = new_node(token);
-        node->token->index_ = Label_index++;
+        node->token->label_index_ = Label_index++;
         Label_index += 2;
         node->left = new_node(NULL);
         tmp = node->left;
@@ -1308,7 +1302,7 @@ void initialize()
     curr = head;
     while (curr)
     {
-        print_node(curr->left, 0);
+        pnode(curr->left, 0);
         curr = curr->right;
     }
 #if 1
@@ -1331,10 +1325,10 @@ void finalize()
     for (int i = 0; i < tk_pos; i++)
     {
         // test char variable before making any modification
-        if (!TOKENS[i]->name && TOKENS[i]->index_ && TOKENS[i]->type == chars_)
-            pasm("STR%zu: .string \"%s\"\n", TOKENS[i]->index_, TOKENS[i]->chars_);
-        if (!TOKENS[i]->name && TOKENS[i]->index_ && TOKENS[i]->type == float_)
-            pasm("FLT%zu: .long %zu /* %f */\n", TOKENS[i]->index_, *((float *)(&TOKENS[i]->float_)),
+        if (!TOKENS[i]->name && TOKENS[i]->chars_ && TOKENS[i]->type == chars_ && !TOKENS[i]->ptr)
+            pasm("STR%zu: .string \"%s\"\n", TOKENS[i]->chars_index_, TOKENS[i]->chars_);
+        if (!TOKENS[i]->name && TOKENS[i]->float_index_ && TOKENS[i]->type == float_)
+            pasm("FLT%zu: .long %zu /* %f */\n", TOKENS[i]->float_index_, *((float *)(&TOKENS[i]->float_)),
                  TOKENS[i]->float_);
     }
     pasm(".section	.note.GNU-stack,\"\",@progbits\n");
@@ -1376,18 +1370,22 @@ Token *evaluate(Node *node)
     }
     case array_:
     {
+        // TODO: use heap allocation
+        pnode(node, 0);
         is_ref = node->token->is_ref;
         if (node->token->name)
         {
             if (get_var(node->token->name))
-                err("redefinition of variable %s");
+                err("redefinition of variable %s", node->token->name);
             new_variable(node->token);
         }
         else
-        {
+        { 
+            node->token->ptr = (ptr += 8);
             size_t len = 100;
             size_t r = 0;
             size_t l = 0;
+            size_t i = 0;
 
             Node **queue = calloc(len, sizeof(Node *));
             Node *tmp = node;
@@ -1398,35 +1396,70 @@ Token *evaluate(Node *node)
                     queue = realloc(queue, (len *= 2) * sizeof(Node *));
                 tmp = tmp->right;
             }
+            node->token->arrlen_ = r;
             while (queue[l]->token->type == array_)
             {
                 Node *tmp = queue[l++];
+                i = 0;
                 while (tmp)
                 {
                     queue[r++] = tmp->left;
                     tmp = tmp->right;
+                    i++;
+                }
+                queue[l - 1]->token->arrlen_ = i;
+            }
+
+            pasm("   mov     rax, %zu\n", node->token->arrlen_);
+            if (node->token->depth > 1) // array
+                pasm("   mov     rsi, 8\n");
+            else // int, char, chars, bool ...
+            {
+                switch (node->token->child_type)
+                {
+                case int_:
+                    pasm("   mov     rsi, 8\n");
+                    break;
+                default:
+                    err("handle this case (%s)", tts(node->token->child_type));
+                    break;
                 }
             }
+            pasm("   mov     rdi, rax\n");
+            pasm("   call    calloc@PLT\n");
+            pasm("   mov     QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
+
             l = 0;
-            while (r > 0)
+            i = 0;
+            while (l < r)
             {
-                r--;
-                Token *token = queue[r]->token;
+                Token *token = queue[l]->token;
+#if 0
                 if (!token->ptr)
-                    token->ptr = (ptr += 8);
+                    token->ptr = token->type == char_ ? (ptr += 1) : (ptr += 8);
                 if (token->type == array_)
                 {
                     // pasm("   mov     QWORD PTR -%zu[rbp], 0\n", token->ptr);
                     pasm("   lea     rax, -%zu[rbp]\n", queue[r]->left->token->ptr);
                     pasm("   mov     QWORD PTR -%zu[rbp], rax\n", token->ptr);
                 }
-                else if (token->type == int_)
+                else
+#endif
+                if (token->type == int_)
                 {
-                    // TODO: check it it has ptr or value
-                    pasm("   mov     QWORD PTR -%zu[rbp], %ld\n", token->ptr, token->int_);
+                    // TODO: check if it has ptr or value
+                    pasm("   mov     QWORD PTR [rax], %ld\n", token->int_);
+                    pasm("   add     rax, 8\n");
+                }
+                else if (token->type == char_)
+                {
+                    // TODO: check if it has ptr or value
+                    pasm("   mov     QWORD PTR [rax], %ld\n", token->int_);
+                    pasm("   add     rax, 1\n");
                 }
                 else
                     err("handle this case");
+                l++;
             }
             node->token->ptr = queue[0]->token->ptr;
             free(queue);
@@ -1472,11 +1505,11 @@ Token *evaluate(Node *node)
                 curr->right = new_node(new_token(0, 0, float_, left->col));
                 float f = -1.0;
                 curr->right->token->float_ = *(uint32_t *)(&f);
-                curr->right->token->index_ = index_++;
+                curr->right->token->float_index_ = index_++;
             }
             else
                 err("Invalid unary operation 1");
-            print_node(curr, 0);
+            pnode(curr, 0);
             node->token = evaluate(curr);
             free_node(curr);
         }
@@ -1499,8 +1532,10 @@ Token *evaluate(Node *node)
         {
         case chars_:
         {
+            node->token->is_ref = true;
+            node->token->has_ref = true;
             node->token->type = char_;
-            // node->token->ptr = (ptr += 8);
+            node->token->ptr = (ptr += 8);
             pasm("   /* %s[] (%s) */\n", left->name, tts(node->token->type));
             // if (right->ptr)
             // {
@@ -1515,9 +1550,7 @@ Token *evaluate(Node *node)
             {
                 pasm("   mov     rbx, QWORD PTR -%zu[rbp]\n", left->ptr);
                 pasm("   add     rbx, %ld\n", right->int_);
-                pasm("   mov     rax, 0\n");
-                pasm("   mov     al, BYTE PTR [rbx]\n");
-                // pasm("   mov     QWORD PTR -%zu[rbp], rax\n", node->token->ptr);
+                pasm("   mov     QWORD PTR -%zu[rbp], rbx\n", node->token->ptr);
             }
             break;
         }
@@ -1563,8 +1596,7 @@ Token *evaluate(Node *node)
         right = evaluate(node->right);
 
         debug("%sassign:\n     %k\n     %k%s\n\n", RED, left, right, RESET);
-        if (!left->name ||
-            !left->ptr ||
+        if ((!left->name && !left->is_ref) || !left->ptr ||
             (right->type != func_call_ && left->type != right->type) ||
             (right->type == func_call_ && left->type != right->ret_type))
             err("Invalid assignement %s / %s", tts(left->type), tts(right->type));
@@ -1619,14 +1651,15 @@ Token *evaluate(Node *node)
                 {
                     if (right->is_ref)
                     {
-                        pasm("   mov     rax, QWORD PTR -%zu[rbp] /* assign from ref %s */\n", right->ptr, right->name);
+                        pasm("   mov     rax, QWORD PTR -%zu[rbp] /* assign from ref %s */\n",
+                             right->ptr, right->name);
                         pasm("   mov     al, BYTE PTR [rax]\n");
                     }
                     else
                         pasm("   mov     al, BYTE PTR -%zu[rbp]\n", right->ptr);
                 }
                 else if (right->type != func_call_)
-                    pasm("   mov     al, %ld \n", right->int_);
+                    pasm("   mov     al, %ld    /* '%c' */\n", right->int_, (char)right->int_);
                 if (left->is_ref)
                 {
                     pasm("   mov     rbx,  QWORD PTR -%zu[rbp]\n", left->ptr);
@@ -1649,7 +1682,7 @@ Token *evaluate(Node *node)
                         pasm("   movss   xmm1, DWORD PTR -%zu[rbp]\n", right->ptr);
                 }
                 else
-                    pasm("   movss   xmm1, DWORD PTR FLT%zu[rip]\n", right->index_);
+                    pasm("   movss   xmm1, DWORD PTR FLT%zu[rip]\n", right->float_index_);
                 if (left->is_ref)
                 {
                     pasm("   mov     rbx,  QWORD PTR -%zu[rbp]\n", left->ptr);
@@ -1661,11 +1694,28 @@ Token *evaluate(Node *node)
             }
             case chars_:
             {
-                if (right->index_)
-                    pasm("   lea     rax, STR%zu[rip]\n", right->index_);
-                else
+                // TODO: free allocated memory
+                if (right->ptr)
                     pasm("   mov     rax, QWORD PTR -%zu[rbp]\n", right->ptr);
-
+                else if (right->chars_index_)
+                {
+#if 0
+                    int i = strlen(right->chars_) - 1;
+                    pasm("   mov     BYTE PTR -%zu[rbp], 0\n", (ptr += 1));
+                    while (i >= 0)
+                    {
+                        pasm("   mov     BYTE PTR -%zu[rbp], %d\n", (ptr += 1), right->chars_[i]);
+                        i--;
+                    }
+                    pasm("   lea     rax, QWORD PTR -%zu[rbp]\n", ptr);
+#else
+                    pasm("   lea     rax, STR%zu[rip]\n", right->chars_index_);
+#endif
+                }
+                else
+                    err("something went wrong");
+                pasm("   mov     rdi, rax\n");
+                pasm("   call    _strdup\n");
                 pasm("   mov     QWORD PTR -%zu[rbp], rax /* assign  %s */\n", left->ptr, left->name);
                 break;
             }
@@ -1721,11 +1771,12 @@ Token *evaluate(Node *node)
         if (!left->ptr && !right->ptr)
         {
             debug("0. do %t between %k with %k\n", type, left, right);
-            left->index_ = 0;
-            right->index_ = 0;
+            // left->index_ = 0;
+            // right->index_ = 0;
             switch (node->token->type)
             {
             case char_:
+
             case int_:
                 if (type == add_)
                     node->token->int_ = left->int_ + right->int_;
@@ -1741,7 +1792,9 @@ Token *evaluate(Node *node)
                 }
                 break;
             case float_:
-                node->token->index_ = index_++;
+                left->float_index_ = 0;
+                right->float_index_ = 0;
+                node->token->float_index_ = index_++;
                 float l = *(float *)(&left->float_);
                 float r = *(float *)(&right->float_);
                 float res;
@@ -1760,7 +1813,8 @@ Token *evaluate(Node *node)
                 node->token->float_ = *(uint32_t *)(&res);
                 break;
             case chars_:
-                node->token->index_ = index_++;
+                left->chars_index_ = 0;
+                right->chars_index_ = 0;
                 if (type == add_)
                     node->token->chars_ = strjoin(left->chars_, right->chars_);
                 else
@@ -1831,8 +1885,8 @@ Token *evaluate(Node *node)
                 pasm("   movss   xmm1, ");
                 if (left->ptr)
                     pasm("DWORD PTR -%zu[rbp]\n", left->ptr);
-                else if (left->index_)
-                    pasm("DWORD PTR FLT%zu[rip]\n", left->index_);
+                else if (left->float_index_)
+                    pasm("DWORD PTR FLT%zu[rip]\n", left->float_index_);
                 else
                     err("something went wrong");
                 // set right
@@ -1843,8 +1897,8 @@ Token *evaluate(Node *node)
                                              : NULL);
                 if (right->ptr)
                     pasm("DWORD PTR -%zu[rbp]\n", right->ptr);
-                else if (right->index_)
-                    pasm("DWORD PTR FLT%zu[rip]\n", right->index_);
+                else if (right->float_index_)
+                    pasm("DWORD PTR FLT%zu[rip]\n", right->float_index_);
                 else
                     pasm("%zu\n", right->float_);
                 pasm("   movss   DWORD PTR -%zu[rbp], xmm1\n", node->token->ptr);
@@ -1855,21 +1909,21 @@ Token *evaluate(Node *node)
                 node->token->ptr = (ptr += 8);
                 if (left->ptr)
                     pasm("   mov     rdi, QWORD PTR -%zu[rbp]\n", left->ptr);
-                else if (left->index_)
-                {
-                    pasm("   lea     rax, STR%zu[rip]\n", left->index_);
-                    pasm("   mov     rdi, rax\n");
-                }
+                // else if (left->chars_index_)
+                // {
+                //     pasm("   lea     rax, STR%zu[rip]\n", left->chars_index_);
+                //     pasm("   mov     rdi, rax\n");
+                // }
                 else
                     err("in char joining 1");
 
                 if (right->ptr)
                     pasm("   mov     rsi, QWORD PTR -%zu[rbp]\n", right->ptr);
-                else if (right->index_)
-                {
-                    pasm("   lea     rax, STR%zu[rip]\n", right->index_);
-                    pasm("   mov     rsi, rax\n");
-                }
+                // else if (right->chars_index_)
+                // {
+                //     pasm("   lea     rax, STR%zu[rip]\n", right->chars_index_);
+                //     pasm("   mov     rsi, rax\n");
+                // }
                 else
                     err("in char joining 2");
                 pasm("   call	  _strjoin\n");
@@ -1923,8 +1977,8 @@ Token *evaluate(Node *node)
         if (!left->ptr && !right->ptr)
         {
             debug("0. do %t between %k with %k\n", type, left, right);
-            left->index_ = 0;
-            right->index_ = 0;
+            // left->index_ = 0;
+            // right->index_ = 0;
             switch (left->type)
             {
             case int_:
@@ -1943,6 +1997,8 @@ Token *evaluate(Node *node)
 
                 break;
             case float_:
+                left->float_index_ = 0;
+                right->float_index_ = 0;
                 if (type == equal_)
                     node->token->bool_ = (left->float_ == right->float_);
                 else if (type == not_equal_)
@@ -1957,6 +2013,8 @@ Token *evaluate(Node *node)
                     node->token->bool_ = (left->float_ >= right->float_);
                 break;
             case chars_:
+                left->chars_index_ = 0;
+                right->chars_index_ = 0;
                 if (type == equal_)
                     node->token->bool_ = (strcmp(left->chars_, right->chars_) == 0);
                 else if (type == not_equal_)
@@ -2046,16 +2104,16 @@ Token *evaluate(Node *node)
                 pasm("   movss   xmm0, ");
                 if (left->ptr)
                     pasm("DWORD PTR -%zu[rbp]\n", left->ptr);
-                else if (left->index_)
-                    pasm("DWORD PTR FLT%zu[rip]\n", left->index_);
+                else if (left->float_index_)
+                    pasm("DWORD PTR FLT%zu[rip]\n", left->float_index_);
                 else
                     pasm("%zu\n", left->float_);
 
                 pasm("   %s xmm0, ", type != equal_ ? "comiss " : "ucomiss");
                 if (right->ptr)
                     pasm("DWORD PTR -%zu[rbp]\n", right->ptr);
-                else if (right->index_)
-                    pasm("DWORD PTR FLT%zu[rip]\n", right->index_);
+                else if (right->float_index_)
+                    pasm("DWORD PTR FLT%zu[rip]\n", right->float_index_);
                 else
                     pasm("%zu\n", right->float_);
 
@@ -2071,15 +2129,15 @@ Token *evaluate(Node *node)
                     pasm("   movss	  xmm0, ");
                     if (left->ptr)
                         pasm("DWORD PTR -%zu[rbp]\n", left->ptr);
-                    else if (left->index_)
-                        pasm("DWORD PTR FLT%zu[rip]\n", left->index_);
+                    else if (left->float_index_)
+                        pasm("DWORD PTR FLT%zu[rip]\n", left->float_index_);
                     else
                         pasm("%zu\n", left->float_);
                     pasm("   ucomiss xmm0, ");
                     if (right->ptr)
                         pasm("DWORD PTR -%zu[rbp]\n", right->ptr);
-                    else if (right->index_)
-                        pasm("DWORD PTR FLT%zu[rip]\n", right->index_);
+                    else if (right->float_index_)
+                        pasm("DWORD PTR FLT%zu[rip]\n", right->float_index_);
                     else
                         pasm("%zu\n", right->float_);
                     pasm("   cmovne  eax, edx\n");
@@ -2093,21 +2151,21 @@ Token *evaluate(Node *node)
                     err("logic operation 3");
                 if (left->ptr)
                     pasm("   mov     rsi, QWORD PTR -%zu[rbp]\n", left->ptr);
-                else if (left->index_)
-                {
-                    pasm("   lea     rax, STR%zu[rip]\n", left->index_);
-                    pasm("   mov     rsi, rax\n");
-                }
+                // else if (left->chars_index_)
+                // {
+                //     pasm("   lea     rax, STR%zu[rip]\n", left->chars_index_);
+                //     pasm("   mov     rsi, rax\n");
+                // }
                 else
                     err("in char equal");
 
                 if (right->ptr)
                     pasm("   mov     rdi, QWORD PTR -%zu[rbp]\n", right->ptr);
-                else if (right->index_)
-                {
-                    pasm("   lea     rax, STR%zu[rip]\n", right->index_);
-                    pasm("   mov     rdi, rax\n");
-                }
+                // else if (right->chars_index_)
+                // {
+                //     pasm("   lea     rax, STR%zu[rip]\n", right->chars_index_);
+                //     pasm("   mov     rdi, rax\n");
+                // }
                 else
                     err("in char equal 2");
                 pasm("   call	  _strcmp\n");
@@ -2145,17 +2203,17 @@ Token *evaluate(Node *node)
                 pasm("   cmp     al, 1\n");
             }
             if (tmp->token->type == or_)
-                pasm("   je      %s%zu\n", LABEL->name, node->token->index_);
+                pasm("   je      %s%zu\n", LABEL->name, node->token->label_index_);
             else if (tmp->token->type == and_)
-                pasm("   jne     %s%zu\n", LABEL->name, node->token->index_);
+                pasm("   jne     %s%zu\n", LABEL->name, node->token->label_index_);
             tmp = tmp->right;
             if (tmp->token->type == and_ || tmp->token->type == or_)
-                pasm("%s%zu:\n", LABEL->name, tmp->token->index_);
+                pasm("%s%zu:\n", LABEL->name, tmp->token->label_index_);
         }
         right = evaluate(tmp);
         if (right->type != bool_)
             err("0.Expected boolean value");
-        pasm("%s%zu:\n", LABEL->name, node->token->index_);
+        pasm("%s%zu:\n", LABEL->name, node->token->label_index_);
         node->token->c = 'a';
         node->token->type = bool_;
         break;
@@ -2164,12 +2222,12 @@ Token *evaluate(Node *node)
     {
         enter_label(node);
         Node *curr = node->left;
-        size_t end_index = node->token->index_ - 1;
+        size_t end_index = node->token->label_index_ - 1;
         left = evaluate(curr->left);
         if (left->type != bool_)
             err("Expected a valid condition in if statement");
 
-        pasm("%s%zu: /* if statement */\n", LABEL->name, node->token->index_);
+        pasm("%s%zu: /* if statement */\n", LABEL->name, node->token->label_index_);
         if (left->ptr)
             pasm("   cmp     BYTE PTR -%zu[rbp], 1\n", left->ptr);
         else if (left->c)
@@ -2180,7 +2238,7 @@ Token *evaluate(Node *node)
             pasm("   cmp     al, 1\n");
         }
         if (node->right)
-            pasm("   jne     %s%zu    /* jmp next statement */\n", LABEL->name, node->right->token->index_);
+            pasm("   jne     %s%zu    /* jmp next statement */\n", LABEL->name, node->right->token->label_index_);
         else
             pasm("   jne     %s%zu    /* jmp end statemnt */\n", LABEL->name, end_index);
         curr = curr->right;
@@ -2202,7 +2260,7 @@ Token *evaluate(Node *node)
             {
                 Node *tmp0 = curr->left;
                 // evaluate elif
-                pasm("%s%zu: /* elif statement */\n", LABEL->name, curr->token->index_);
+                pasm("%s%zu: /* elif statement */\n", LABEL->name, curr->token->label_index_);
                 Node *tmp = tmp0;
 
                 left = evaluate(tmp->left);
@@ -2218,7 +2276,7 @@ Token *evaluate(Node *node)
                     pasm("   cmp     al, 1\n");
                 }
                 if (curr->right)
-                    pasm("   jne     %s%zu /* jmp next statement */\n", LABEL->name, curr->right->token->index_);
+                    pasm("   jne     %s%zu /* jmp next statement */\n", LABEL->name, curr->right->token->label_index_);
                 else
                     pasm("   jne     %s%zu /* jmp end statemnt */\n", LABEL->name, end_index);
                 tmp = tmp->right;
@@ -2233,7 +2291,7 @@ Token *evaluate(Node *node)
             else if (curr->token->type == else_)
             {
                 Node *tmp = curr->left->right;
-                pasm("%s%zu: /* else statement */\n", LABEL->name, curr->token->index_);
+                pasm("%s%zu: /* else statement */\n", LABEL->name, curr->token->label_index_);
                 while (tmp)
                 {
                     evaluate(tmp->left);
@@ -2251,9 +2309,9 @@ Token *evaluate(Node *node)
     {
         enter_label(node);
         Node *curr = node->left;
-        pasm("   jmp     %s%zu /* jmp to while condition*/\n", LABEL->name, node->token->index_);
+        pasm("   jmp     %s%zu /* jmp to while condition*/\n", LABEL->name, node->token->label_index_);
         // while bloc
-        pasm("%s%zu: /* while bloc*/\n", LABEL->name, node->token->index_ + 1);
+        pasm("%s%zu: /* while bloc*/\n", LABEL->name, node->token->label_index_ + 1);
         Node *tmp = curr->right;
         while (tmp)
         {
@@ -2261,7 +2319,7 @@ Token *evaluate(Node *node)
             tmp = tmp->right;
         }
         // while condition
-        pasm("%s%zu: /* while condition */\n", LABEL->name, node->token->index_);
+        pasm("%s%zu: /* while condition */\n", LABEL->name, node->token->label_index_);
         left = evaluate(curr->left);
         if (left->type != bool_)
             err("Expected a valid condition in if statment");
@@ -2274,8 +2332,8 @@ Token *evaluate(Node *node)
             pasm("   mov     al, %d\n", left->bool_);
             pasm("   cmp     al, 1\n");
         }
-        pasm("   je      %s%zu /* je to while bloc*/\n", LABEL->name, node->token->index_ + 1);
-        pasm("%s%zu: /* end while */\n", LABEL->name, node->token->index_ + 2);
+        pasm("   je      %s%zu /* je to while bloc*/\n", LABEL->name, node->token->label_index_ + 1);
+        pasm("%s%zu: /* end while */\n", LABEL->name, node->token->label_index_ + 2);
         exit_label(node);
         break;
     }
@@ -2362,10 +2420,9 @@ Token *evaluate(Node *node)
                         switch (token->type)
                         {
                         case chars_:
-                            if (token->index_)
-                                pasm("   lea     rax, STR%zu[rip]\n", token->index_);
-                            else
-                                err("something went wrong");
+                            pasm("   lea     rax, STR%zu[rip]\n", token->chars_index_);
+                            pasm("   mov     rdi, rax\n");
+                            pasm("   call    _strdup\n");
                             break;
                         case int_:
                             pasm("   mov     rax, %ld\n", token->int_);
@@ -2391,7 +2448,6 @@ Token *evaluate(Node *node)
                 call->token->ptr = (ptr += 8);
                 pasm("   mov     QWORD PTR -%zu[rbp], 0 /*%s result*/\n", call->token->ptr, call->token->name);
                 pasm("   lea     rax, -%zu[rbp]\n", call->token->ptr);
-                // exit(1);
             }
             pasm("   call    %s\n", dec->token->name);
             free(name);
@@ -2468,11 +2524,13 @@ Token *evaluate(Node *node)
                 {
                     switch (token->type)
                     {
-                    case chars_:
-                        pasm("   lea     rax, STR%zu[rip]\n", token->index_);
-                        pasm("   mov     rbx, QWORD PTR -%zu[rbp]\n", node->token->ptr);
-                        pasm("   mov     QWORD PTR [rbx], rax\n");
-                        break;
+#if 0
+    case chars_:
+    pasm("   lea     rax, STR%zu[rip]\n", token->chars_index_);
+    pasm("   mov     rbx, QWORD PTR -%zu[rbp]\n", node->token->ptr);
+    pasm("   mov     QWORD PTR [rbx], rax\n");
+    break;
+#endif
                     case int_:
                         pasm("   mov     rax, %ld\n", token->int_);
                         pasm("   mov     rbx, QWORD PTR -%zu[rbp]\n", node->token->ptr);
@@ -2518,10 +2576,10 @@ Token *evaluate(Node *node)
             {
                 if (node->token->type == break_)
                     pasm("   jmp      %s%zu /* break while*/\n", LABELS[lb_tmp]->name,
-                         LABELS[lb_tmp]->node->token->index_ + 2);
+                         LABELS[lb_tmp]->node->token->label_index_ + 2);
                 else if (node->token->type == continue_)
                     pasm("   jmp      %s%zu /* continue while*/\n", LABELS[lb_tmp]->name,
-                         LABELS[lb_tmp]->node->token->index_);
+                         LABELS[lb_tmp]->node->token->label_index_);
                 break;
             }
             lb_tmp--;
@@ -2549,7 +2607,7 @@ int main(int argc, char **argv)
     file = fopen(argv[1], "r");
 
     argv[1][strlen(argv[1]) - 1] = 's';
-    asm_fd = fopen(argv[1], "w");
+    asm_fd = fopen(argv[1], "w+");
     if (!file || !asm_fd)
         err("Opening file");
     fseek(file, 0, SEEK_END);

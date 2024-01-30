@@ -1,4 +1,4 @@
-- data Types:
+_- data Types:
     - array:
         + data_type[level] :
         - logic operator: == !=
@@ -51,3 +51,4 @@
     - open / close files
 
 - print all parsing error before exiting
+- free chars memory

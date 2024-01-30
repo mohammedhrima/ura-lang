@@ -289,7 +289,7 @@ _putbool1:
 	mov		eax, 0
 	leave
 	ret
-
+/*
 _strdup:
 	push	rbp
 	mov		rbp, rsp
@@ -317,7 +317,7 @@ _strdup1:
 _strdup0:
 	leave
 	ret
-
+*/
 /* allocation function */
 .bss
 	head:	.zero	8
@@ -453,3 +453,42 @@ _strjoin:
 	call	_strjoin
 	mov		\dest, rax
 .endm
+
+_strdup:
+	push	rbp
+	mov		rbp, rsp
+	sub		rsp, 32
+	mov		QWORD PTR -24[rbp], rdi
+	mov		rax, QWORD PTR -24[rbp]
+	mov		rdi, rax
+	call	_strlen
+	add		rax, 1
+	mov		esi, 1
+	mov		rdi, rax
+	call	calloc@PLT
+	mov		QWORD PTR -16[rbp], rax
+	mov		QWORD PTR -8[rbp], 0
+	jmp		_strdup0
+_strdup2:
+	mov		rdx, QWORD PTR -24[rbp]
+	mov		rax, QWORD PTR -8[rbp]
+	add		rax, rdx
+	mov		rcx, QWORD PTR -16[rbp]
+	mov		rdx, QWORD PTR -8[rbp]
+	add		rdx, rcx
+	movzx	eax, BYTE PTR [rax]
+	mov		BYTE PTR [rdx], al
+	add		QWORD PTR -8[rbp], 1
+_strdup0:
+	cmp		QWORD PTR -24[rbp], 0
+	je		_strdup1
+	mov		rdx, QWORD PTR -24[rbp]
+	mov		rax, QWORD PTR -8[rbp]
+	add		rax, rdx
+	movzx	eax, BYTE PTR [rax]
+	test	al, al
+	jne		_strdup2
+_strdup1:
+	mov		rax, QWORD PTR -16[rbp]
+	leave
+	ret
