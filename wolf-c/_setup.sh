@@ -2,7 +2,7 @@
 
 BASHRC_PATH="$HOME/.bashrc"
 # Check if the aliases are already present
-if ! grep -q "run" "$BASHRC_PATH" ; then
+if ! grep -q "asm" "$BASHRC_PATH" ; then
     cat <<EOL >> "$BASHRC_PATH"
 
 export PS1="\\W$ "
@@ -18,7 +18,6 @@ _cwc() {
             ./asm
         fi
     fi
-
     rm -rf asm
     rm -rf /wolf-c/comp
 }
@@ -46,6 +45,7 @@ _copy() {
 }
 
 _test() {
+    curr_pos=\$PWD
     cc /wolf-c/main.c -lm -fsanitize=address -fsanitize=null -g3 -D DEBUG=false -o /wolf-c/comp
 
     GREEN='\033[0;32m'
@@ -73,11 +73,12 @@ _test() {
         done
         cd ..
     done
-    cd /wolf-c
+    cd \$curr_pos
     rm -rf /wolf-c/comp
 }
 
 _refresh() {
+    curr_pos=\$PWD
     cc /wolf-c/main.c -fsanitize=address -fsanitize=null -g3 -D DEBUG=false -o /wolf-c/comp
     cd /wolf-c/tests || exit
     for folder in */; do
@@ -97,8 +98,8 @@ _refresh() {
         done
         cd ..
     done
-    cd /wolf-cker exec -it 2 bash
-    rm -rf comp
+    cd \$curr_pos
+    rm -rf /wolf-c/comp
 }
 
 _progress() {
@@ -113,12 +114,17 @@ _asm() {
     cc \$1 -S -fno-verbose-asm -fno-asynchronous-unwind-tables -masm=intel
 }
 
+_diff(){
+    grep -Fxvf \$1 \$2
+}
+
 alias cwc="_cwc \$1"
 alias copy="_copy"
 alias test="_test"
 alias refresh="_refresh"
 alias prog="_progress"
 alias asm="_asm"
+alias diff="_diff"
 EOL
 fi
 

@@ -14,7 +14,8 @@ main:
    mov     rax, 10 
    mov     QWORD PTR -16[rbp], rax /* assign b */
    mov     rax, QWORD PTR -8[rbp]
-   cmp     rax, QWORD PTR -16[rbp]
+   mov     rbx, QWORD PTR -16[rbp]
+   cmp     rax, rbx
    setl    al
    mov     BYTE PTR -16[rbp], al
    xor     BYTE PTR -16[rbp], 1

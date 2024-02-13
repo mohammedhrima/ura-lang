@@ -14,20 +14,23 @@ main:
    mov     rax, 7 
    mov     QWORD PTR -16[rbp], rax /* assign y */
    mov     rax, QWORD PTR -8[rbp]
-   cmp     rax, 10
+   mov     rbx, 10
+   cmp     rax, rbx
    sete    al
    /* || operation 0 */
    cmp     al, 1
    je      if3
    mov     rax, QWORD PTR -16[rbp]
-   cmp     rax, 5
+   mov     rbx, 5
+   cmp     rax, rbx
    sete    al
 if3:
    /* && operation 0 */
    cmp     al, 1
    jne     if4
    mov     rax, QWORD PTR -8[rbp]
-   cmp     rax, 5
+   mov     rbx, 5
+   cmp     rax, rbx
    setg    al
 if4:
 if2: /* if statement */

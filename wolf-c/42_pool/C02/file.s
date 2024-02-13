@@ -8,13 +8,17 @@ main:
    mov     rbp, rsp
    sub     rsp, 100
    mov     QWORD PTR -8[rbp], 0 /* declare str1 */
-   mov     BYTE PTR -9[rbp], 0
-   mov     BYTE PTR -10[rbp], 100
-   mov     BYTE PTR -11[rbp], 99
-   mov     BYTE PTR -12[rbp], 98
-   mov     BYTE PTR -13[rbp], 97
-   lea     rax, QWORD PTR -13[rbp]
+   lea     rax, STR1[rip]
+   mov     rdi, rax
+   call    _strdup
    mov     QWORD PTR -8[rbp], rax /* assign  str1 */
+   /* str1[] (char) */
+   mov     rbx, QWORD PTR -8[rbp]
+   add     rbx, 20
+   mov     QWORD PTR -16[rbp], rbx
+   mov     al, 49    /* '1' */
+   mov     rbx,  QWORD PTR -16[rbp]
+   mov     BYTE PTR [rbx], al /* assign ref (null) */
    /* call _putstr */
    mov     rax, QWORD PTR -8[rbp]
    mov     rdi, rax
@@ -27,6 +31,6 @@ main:
    ret
 end_main:
 
-STR1: .string "abcd"
+STR1: .string "abcdef"
 STR2: .string "\n"
 .section	.note.GNU-stack,"",@progbits

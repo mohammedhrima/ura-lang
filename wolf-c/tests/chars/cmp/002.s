@@ -23,12 +23,12 @@ main:
    call    _strdup
    mov     QWORD PTR -24[rbp], rax /* assign  str3 */
    mov     QWORD PTR -32[rbp], 0 /* declare str4 */
-   mov     rdi, QWORD PTR -16[rbp]
-   mov     rsi, QWORD PTR -24[rbp]
+   mov     rdi, QWORD PTR -8[rbp]
+   mov     rsi, QWORD PTR -16[rbp]
    call	  _strjoin
    mov     QWORD PTR -40[rbp], rax
-   mov     rdi, QWORD PTR -8[rbp]
-   mov     rsi, QWORD PTR -40[rbp]
+   mov     rdi, QWORD PTR -40[rbp]
+   mov     rsi, QWORD PTR -24[rbp]
    call	  _strjoin
    mov     QWORD PTR -48[rbp], rax
    mov     rax, QWORD PTR -48[rbp]

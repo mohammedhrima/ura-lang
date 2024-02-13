@@ -5,9 +5,9 @@ func void putnbr(int n):
     if n < 10:
         output(n)
     else:
-        output(n / 10)
-        output(n % 10)
+        putnbr(n / 10)
+        putnbr(n % 10)
 
 main():
-    putnbr(5)
+    putnbr(-51515)
     output("\n")

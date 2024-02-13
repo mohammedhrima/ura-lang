@@ -25,13 +25,15 @@ while2: /* while bloc*/
    mov     rdi, rax
    call    _putstr
    mov     rax, QWORD PTR -8[rbp]
-   add     rax, 1
+   mov     rbx, 1
+   add     rax, rbx
    mov     QWORD PTR -16[rbp], rax
    mov     rax, QWORD PTR -16[rbp]
    mov     QWORD PTR -8[rbp], rax /* assign x */
 while1: /* while condition */
    mov     rax, QWORD PTR -8[rbp]
-   cmp     rax, 20
+   mov     rbx, 20
+   cmp     rax, rbx
    setle   al
    cmp     al, 1
    je      while2 /* je to while bloc*/

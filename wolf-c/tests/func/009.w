@@ -1,6 +1,7 @@
 func int test4(ref int z):
     z = 4
 
+
 func int test3(ref int z):
     z = 3
     test4(z)

@@ -7,31 +7,29 @@ main:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 100
+   mov     QWORD PTR -16[rbp], 0 /* len of arr */
    mov     QWORD PTR -8[rbp], 0 /* declare arr */
-   mov     QWORD PTR -16[rbp], 66
-   mov     QWORD PTR -24[rbp], 55
-   mov     QWORD PTR -32[rbp], 14
-   mov     QWORD PTR -40[rbp], 33
-   mov     QWORD PTR -48[rbp], 22
-   mov     QWORD PTR -56[rbp], 11
-   lea     rax, -32[rbp]
-   mov     QWORD PTR -64[rbp], rax
-   lea     rax, -56[rbp]
-   mov     QWORD PTR -72[rbp], rax
-   lea     rax, QWORD PTR -72[rbp] /* assign to arr */
-   mov     QWORD PTR -8[rbp], rax
-   /* arr[] (array) */
+   mov     rsi, 8
+   mov     rdi, 5
+   call    calloc@PLT
+   mov     QWORD PTR -32[rbp], 5 /*len*/
+   mov     QWORD PTR -24[rbp], rax
+   mov     QWORD PTR 0[rax], 1
+   mov     QWORD PTR 8[rax], 2
+   mov     QWORD PTR 16[rax], 3
+   mov     QWORD PTR 24[rax], 4
+   mov     QWORD PTR 32[rax], 5
+   mov     rax, QWORD PTR -24[rbp]
+   mov     QWORD PTR -8[rbp], rax /* assign  arr */
+   mov     rax, QWORD PTR -32[rbp] /*array len*/
+   mov     QWORD PTR -16[rbp], rax /*array len*/
+   /* from array arr[] (int) */
    mov     rax, QWORD PTR -8[rbp]
-   add     rax, 8
-   mov     rax, [rax]
-   mov     QWORD PTR -80[rbp], rax
-   /* (null)[] (int) */
-   mov     rax, QWORD PTR -80[rbp]
-   add     rax, 0
-   mov     rax, [rax]
-   mov     QWORD PTR -88[rbp], rax
+   add     rax, 16
+   mov     QWORD PTR -40[rbp], rax
    /* call _putnbr */
-   mov     rax, QWORD PTR -88[rbp]
+   mov     rax, QWORD PTR -40[rbp]
+   mov     rax, QWORD PTR [rax]
    mov     rdi, rax
    call    _putnbr
    /* call _putstr */

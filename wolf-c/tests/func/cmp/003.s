@@ -7,7 +7,7 @@ sayHi_:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 100
-   mov     QWORD PTR -8[rbp], rax
+   mov	  QWORD PTR -8[rbp], rax
    mov     QWORD PTR -16[rbp], 0 /* declare x */
    mov     rax, 5 
    mov     QWORD PTR -16[rbp], rax /* assign x */
@@ -16,7 +16,7 @@ sayHi_sayBy1_:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 100
-   mov     QWORD PTR -24[rbp], rax
+   mov	  QWORD PTR -24[rbp], rax
    /* call _putstr */
    lea     rax, STR1[rip]
    mov     rdi, rax
@@ -26,7 +26,7 @@ sayHi_sayHi_sayBy1_something_:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 100
-   mov     QWORD PTR -16[rbp], rax
+   mov	  QWORD PTR -32[rbp], rax
    /* call _putstr */
    lea     rax, STR2[rip]
    mov     rdi, rax
@@ -35,8 +35,8 @@ sayHi_sayHi_sayBy1_something_:
    ret
 end_sayHi_sayHi_sayBy1_something_:
 
-   mov     QWORD PTR -24[rbp], 0 /*something result*/
-   lea     rax, -24[rbp]
+   mov     QWORD PTR -40[rbp], 0 /* something result */
+   lea     rax, -40[rbp]
    call    sayHi_sayHi_sayBy1_something_
    leave
    ret
@@ -47,7 +47,7 @@ sayHi_sayBy2_:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 100
-   mov     QWORD PTR -32[rbp], rax
+   mov	  QWORD PTR -32[rbp], rax
    /* call _putstr */
    lea     rax, STR3[rip]
    mov     rdi, rax
@@ -68,16 +68,16 @@ end_sayHi_sayBy2_:
    lea     rax, STR5[rip]
    mov     rdi, rax
    call    _putstr
-   mov     QWORD PTR -40[rbp], 0 /*sayBy1 result*/
+   mov     QWORD PTR -40[rbp], 0 /* sayBy1 result */
    lea     rax, -40[rbp]
    call    sayHi_sayBy1_
-   mov     QWORD PTR -48[rbp], 0 /*sayBy2 result*/
+   mov     QWORD PTR -48[rbp], 0 /* sayBy2 result */
    lea     rax, -48[rbp]
    call    sayHi_sayBy2_
-   mov     QWORD PTR -56[rbp], 0 /*sayBy1 result*/
+   mov     QWORD PTR -56[rbp], 0 /* sayBy1 result */
    lea     rax, -56[rbp]
    call    sayHi_sayBy1_
-   mov     QWORD PTR -64[rbp], 0 /*sayBy2 result*/
+   mov     QWORD PTR -64[rbp], 0 /* sayBy2 result */
    lea     rax, -64[rbp]
    call    sayHi_sayBy2_
    leave
@@ -88,7 +88,7 @@ main:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 100
-   mov     QWORD PTR -8[rbp], 0 /*sayHi result*/
+   mov     QWORD PTR -8[rbp], 0 /* sayHi result */
    lea     rax, -8[rbp]
    call    sayHi_
    leave

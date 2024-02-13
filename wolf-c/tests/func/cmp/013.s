@@ -7,7 +7,7 @@ s_:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 100
-   mov     QWORD PTR -8[rbp], rax
+   mov	  QWORD PTR -8[rbp], rax
    mov     rax, 5
    mov     rbx, QWORD PTR -8[rbp]
    mov     QWORD PTR [rbx], rax
@@ -20,20 +20,22 @@ main:
    mov     rbp, rsp
    sub     rsp, 100
    mov     QWORD PTR -8[rbp], 0 /* declare x */
-   mov     QWORD PTR -16[rbp], 0 /*s result*/
+   mov     QWORD PTR -16[rbp], 0 /* s result */
    lea     rax, -16[rbp]
    call    s_
-   mov     QWORD PTR -24[rbp], 0 /*s result*/
+   mov     QWORD PTR -24[rbp], 0 /* s result */
    lea     rax, -24[rbp]
    call    s_
-   mov     QWORD PTR -32[rbp], 0 /*s result*/
-   lea     rax, -32[rbp]
-   call    s_
-   mov     rax, QWORD PTR -24[rbp]
-   add     rax, QWORD PTR -32[rbp]
-   mov     QWORD PTR -40[rbp], rax
    mov     rax, QWORD PTR -16[rbp]
-   add     rax, QWORD PTR -40[rbp]
+   mov     rbx, QWORD PTR -24[rbp]
+   add     rax, rbx
+   mov     QWORD PTR -32[rbp], rax
+   mov     QWORD PTR -40[rbp], 0 /* s result */
+   lea     rax, -40[rbp]
+   call    s_
+   mov     rax, QWORD PTR -32[rbp]
+   mov     rbx, QWORD PTR -40[rbp]
+   add     rax, rbx
    mov     QWORD PTR -48[rbp], rax
    mov     rax, QWORD PTR -48[rbp]
    mov     QWORD PTR -8[rbp], rax /* assign x */

@@ -7,7 +7,7 @@ test_:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 100
-   mov     QWORD PTR -8[rbp], rax
+   mov	  QWORD PTR -8[rbp], rax
    mov     QWORD PTR -16[rbp], 0 /* declare x */
    mov	  rax, QWORD PTR 16[rbp]
    mov     QWORD PTR -16[rbp], rax
@@ -37,7 +37,7 @@ main:
    mov     rax, 1 
    mov     QWORD PTR -8[rbp], rax /* assign x */
    push    QWORD PTR -8[rbp] /*x*/
-   mov     QWORD PTR -16[rbp], 0 /*test result*/
+   mov     QWORD PTR -16[rbp], 0 /* test result */
    lea     rax, -16[rbp]
    call    test_
    /* call _putstr */
@@ -54,7 +54,7 @@ main:
    call    _putstr
    mov     QWORD PTR -24[rbp], 0 /* declare y (ref) */
    lea     rax, -8[rbp]
-   mov     QWORD PTR -24[rbp], rax
+   mov     QWORD PTR -24[rbp], rax /* assign ref y */
    mov     rax, 7 
    mov     rbx,  QWORD PTR -24[rbp]
    mov     QWORD PTR [rbx], rax /* assign ref y */

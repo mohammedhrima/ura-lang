@@ -7,7 +7,7 @@ sayHi_:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 100
-   mov     QWORD PTR -8[rbp], rax
+   mov	  QWORD PTR -8[rbp], rax
    mov     QWORD PTR -16[rbp], 0 /* declare x */
    mov	  rax, QWORD PTR 16[rbp]
    mov     QWORD PTR -16[rbp], rax
@@ -65,7 +65,7 @@ main:
    push    QWORD PTR -24[rbp] /*z*/
    push    QWORD PTR -16[rbp] /*y*/
    push    QWORD PTR -8[rbp] /*x*/
-   mov     QWORD PTR -32[rbp], 0 /*sayHi result*/
+   mov     QWORD PTR -32[rbp], 0 /* sayHi result */
    lea     rax, -32[rbp]
    call    sayHi_
    leave

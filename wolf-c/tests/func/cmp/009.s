@@ -7,7 +7,7 @@ test4_:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 100
-   mov     QWORD PTR -8[rbp], rax
+   mov	  QWORD PTR -8[rbp], rax
    mov     QWORD PTR -16[rbp], 0 /* declare z (ref) */
    mov	  rax, QWORD PTR 16[rbp]
    mov     QWORD PTR -16[rbp], rax
@@ -22,16 +22,16 @@ test3_:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 100
-   mov     QWORD PTR -16[rbp], rax
-   mov     QWORD PTR -16[rbp], 0 /* declare z (ref) */
+   mov	  QWORD PTR -16[rbp], rax
+   mov     QWORD PTR -24[rbp], 0 /* declare z (ref) */
    mov	  rax, QWORD PTR 16[rbp]
-   mov     QWORD PTR -16[rbp], rax
+   mov     QWORD PTR -24[rbp], rax
    mov     rax, 3 
-   mov     rbx,  QWORD PTR -16[rbp]
+   mov     rbx,  QWORD PTR -24[rbp]
    mov     QWORD PTR [rbx], rax /* assign ref z */
-   push    QWORD PTR -16[rbp] /*z*/
-   mov     QWORD PTR -24[rbp], 0 /*test4 result*/
-   lea     rax, -24[rbp]
+   push    QWORD PTR -24[rbp] /*z*/
+   mov     QWORD PTR -32[rbp], 0 /* test4 result */
+   lea     rax, -32[rbp]
    call    test4_
    leave
    ret
@@ -41,16 +41,16 @@ test2_:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 100
-   mov     QWORD PTR -24[rbp], rax
-   mov     QWORD PTR -16[rbp], 0 /* declare y (ref) */
+   mov	  QWORD PTR -24[rbp], rax
+   mov     QWORD PTR -32[rbp], 0 /* declare y (ref) */
    mov	  rax, QWORD PTR 16[rbp]
-   mov     QWORD PTR -16[rbp], rax
+   mov     QWORD PTR -32[rbp], rax
    mov     rax, 2 
-   mov     rbx,  QWORD PTR -16[rbp]
+   mov     rbx,  QWORD PTR -32[rbp]
    mov     QWORD PTR [rbx], rax /* assign ref y */
-   push    QWORD PTR -16[rbp] /*y*/
-   mov     QWORD PTR -24[rbp], 0 /*test3 result*/
-   lea     rax, -24[rbp]
+   push    QWORD PTR -32[rbp] /*y*/
+   mov     QWORD PTR -40[rbp], 0 /* test3 result */
+   lea     rax, -40[rbp]
    call    test3_
    leave
    ret
@@ -65,7 +65,7 @@ main:
    mov     QWORD PTR -8[rbp], rax /* assign x */
    lea     rax, -8[rbp]
    push    rax /*ref x*/
-   mov     QWORD PTR -16[rbp], 0 /*test2 result*/
+   mov     QWORD PTR -16[rbp], 0 /* test2 result */
    lea     rax, -16[rbp]
    call    test2_
    /* call _putstr */

@@ -34,7 +34,8 @@ main:
    mov     rdi, rax
    call    _putstr
    mov     rax, QWORD PTR -8[rbp]
-   add     rax, QWORD PTR -16[rbp]
+   mov     rbx, QWORD PTR -16[rbp]
+   add     rax, rbx
    mov     QWORD PTR -24[rbp], rax
    /* call _putnbr */
    mov     rax, QWORD PTR -24[rbp]

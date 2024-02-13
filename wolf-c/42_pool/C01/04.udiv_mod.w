@@ -7,4 +7,4 @@ main():
     int x = 20
     int y = 3
     divmod(x, y)
-    output(x, ", ", y, "\n")
+    output("x: ",x, " y: ", y, "\n")

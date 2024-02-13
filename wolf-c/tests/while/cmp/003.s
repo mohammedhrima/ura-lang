@@ -28,19 +28,22 @@ while5: /* while bloc*/
    mov     rdi, rax
    call    _putstr
    mov     rax, QWORD PTR -16[rbp]
-   add     rax, 1
+   mov     rbx, 1
+   add     rax, rbx
    mov     QWORD PTR -24[rbp], rax
    mov     rax, QWORD PTR -24[rbp]
    mov     QWORD PTR -16[rbp], rax /* assign y */
 while4: /* while condition */
    mov     rax, QWORD PTR -16[rbp]
-   cmp     rax, 5
+   mov     rbx, 5
+   cmp     rax, rbx
    setl    al
    cmp     al, 1
    je      while5 /* je to while bloc*/
 while6: /* end while */
    mov     rax, QWORD PTR -8[rbp]
-   add     rax, 1
+   mov     rbx, 1
+   add     rax, rbx
    mov     QWORD PTR -32[rbp], rax
    mov     rax, QWORD PTR -32[rbp]
    mov     QWORD PTR -8[rbp], rax /* assign x */
@@ -58,7 +61,8 @@ while6: /* end while */
    call    _putstr
 while1: /* while condition */
    mov     rax, QWORD PTR -8[rbp]
-   cmp     rax, 5
+   mov     rbx, 5
+   cmp     rax, rbx
    setl    al
    cmp     al, 1
    je      while2 /* je to while bloc*/

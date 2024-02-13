@@ -7,12 +7,13 @@ sayHi_:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 100
-   mov     QWORD PTR -8[rbp], rax
+   mov	  QWORD PTR -8[rbp], rax
    mov     QWORD PTR -16[rbp], 0 /* declare y */
    mov     rax, 7 
    mov     QWORD PTR -16[rbp], rax /* assign y */
    mov     rax, QWORD PTR -16[rbp]
-   cmp     rax, 7
+   mov     rbx, 7
+   cmp     rax, rbx
    sete    al
 if2: /* if statement */
    cmp     al, 1
@@ -39,7 +40,7 @@ main:
    mov     QWORD PTR -8[rbp], 0 /* declare x */
    mov     rax, 10 
    mov     QWORD PTR -8[rbp], rax /* assign x */
-   mov     QWORD PTR -16[rbp], 0 /*sayHi result*/
+   mov     QWORD PTR -16[rbp], 0 /* sayHi result */
    lea     rax, -16[rbp]
    call    sayHi_
    /* call _putnbr */

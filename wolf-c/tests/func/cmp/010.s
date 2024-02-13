@@ -7,7 +7,7 @@ test2_:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 100
-   mov     QWORD PTR -8[rbp], rax
+   mov	  QWORD PTR -8[rbp], rax
    mov     QWORD PTR -16[rbp], 0 /* declare x */
    mov     rax, 5 
    mov     QWORD PTR -16[rbp], rax /* assign x */
@@ -23,7 +23,7 @@ main:
    mov     rbp, rsp
    sub     rsp, 100
    mov     QWORD PTR -8[rbp], 0 /* declare x */
-   mov     QWORD PTR -16[rbp], 0 /*test2 result*/
+   mov     QWORD PTR -16[rbp], 0 /* test2 result */
    lea     rax, -16[rbp]
    call    test2_
    mov     rax, QWORD PTR -16[rbp]

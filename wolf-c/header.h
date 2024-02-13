@@ -204,7 +204,7 @@ struct Token
     size_t col;
     bool is_ref;
     bool has_ref;
-    union
+    struct
     {
         // INTEGER
         long long int_;
@@ -285,7 +285,6 @@ size_t rsp;
 
 // LABELS
 Label **LABELS;
-Label *LABEL;
 int lb_len;
 int lb_pos;
 
