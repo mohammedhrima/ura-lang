@@ -492,3 +492,59 @@ _strdup1:
 	mov		rax, QWORD PTR -16[rbp]
 	leave
 	ret
+
+_memcpy:
+	push	rbp
+	mov		rbp, rsp
+	mov		QWORD PTR -40[rbp], rdi
+	mov		QWORD PTR -48[rbp], rsi
+	mov		QWORD PTR -56[rbp], rdx
+	mov		rax, QWORD PTR -40[rbp]
+	mov		QWORD PTR -16[rbp], rax
+	mov		rax, QWORD PTR -48[rbp]
+	mov		QWORD PTR -24[rbp], rax
+	mov		QWORD PTR -8[rbp], 0
+	jmp		_memcpy0
+_memcpy1:
+	mov		rdx, QWORD PTR -24[rbp]
+	mov		rax, QWORD PTR -8[rbp]
+	add		rax, rdx
+	mov		rcx, QWORD PTR -16[rbp]
+	mov		rdx, QWORD PTR -8[rbp]
+	add		rdx, rcx
+	movzx	eax, BYTE PTR [rax]
+	mov		BYTE PTR [rdx], al
+	add		QWORD PTR -8[rbp], 1
+_memcpy0:
+	mov		rax, QWORD PTR -8[rbp]
+	cmp		rax, QWORD PTR -56[rbp]
+	jb		_memcpy1
+	nop
+	nop
+	pop		rbp
+	ret
+
+_memdub:
+	push	rbp
+	mov		rbp, rsp
+	sub		rsp, 48
+	mov		QWORD PTR -24[rbp], rdi
+	mov		QWORD PTR -32[rbp], rsi
+	mov		QWORD PTR -40[rbp], rdx
+	mov		rdx, QWORD PTR -40[rbp]
+	mov		rax, QWORD PTR -32[rbp]
+	mov		rsi, rdx
+	mov		rdi, rax
+	call	calloc@PLT
+	mov		QWORD PTR -8[rbp], rax
+	mov		rax, QWORD PTR -32[rbp]
+	imul	rax, QWORD PTR -40[rbp]
+	mov		rdx, rax
+	mov		rcx, QWORD PTR -24[rbp]
+	mov		rax, QWORD PTR -8[rbp]
+	mov		rsi, rcx
+	mov		rdi, rax
+	call	_memcpy
+	mov		rax, QWORD PTR -8[rbp]
+	leave
+	ret

@@ -15,13 +15,14 @@ main:
    mov     QWORD PTR -16[rbp], rax /* assign b */
    mov     BYTE PTR -17[rbp], 0 /* declare c */
    mov     rax, QWORD PTR -8[rbp]
-   cmp     rax, QWORD PTR -16[rbp]
+   mov     rbx, QWORD PTR -16[rbp]
+   cmp     rax, rbx
    setl    al
    mov     BYTE PTR -17[rbp], al
    /* call _putbool */
    movzx   eax, BYTE PTR -17[rbp]
-   mov	   edi, eax
-   call	   _putbool
+   mov	  edi, eax
+   call	  _putbool
    /* call _putstr */
    lea     rax, STR1[rip]
    mov     rdi, rax

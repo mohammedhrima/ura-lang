@@ -17,7 +17,8 @@ main:
    mov     rax, 8 
    mov     QWORD PTR -24[rbp], rax /* assign z */
    mov     rax, QWORD PTR -8[rbp]
-   cmp     rax, 15
+   mov     rbx, 15
+   cmp     rax, rbx
    sete    al
 if2: /* if statement */
    cmp     al, 1
@@ -29,7 +30,8 @@ if2: /* if statement */
    jmp     if1    /* jmp end statement */
 if3: /* elif statement */
    mov     rax, QWORD PTR -8[rbp]
-   cmp     rax, 10
+   mov     rbx, 10
+   cmp     rax, rbx
    sete    al
    cmp     al, 1
    jne     if10 /* jmp next statement */
@@ -38,7 +40,8 @@ if3: /* elif statement */
    mov     rdi, rax
    call    _putstr
    mov     rax, QWORD PTR -16[rbp]
-   cmp     rax, 7
+   mov     rbx, 7
+   cmp     rax, rbx
    sete    al
 if5: /* if statement */
    cmp     al, 1
@@ -48,7 +51,8 @@ if5: /* if statement */
    mov     rdi, rax
    call    _putstr
    mov     rax, QWORD PTR -24[rbp]
-   cmp     rax, 10
+   mov     rbx, 10
+   cmp     rax, rbx
    setl    al
 if7: /* if statement */
    cmp     al, 1
@@ -74,7 +78,8 @@ if4: /* end statement */
    jmp     if1 /* jmp end statement */
 if10: /* elif statement */
    mov     rax, QWORD PTR -8[rbp]
-   cmp     rax, 10
+   mov     rbx, 10
+   cmp     rax, rbx
    sete    al
    cmp     al, 1
    jne     if11 /* jmp next statement */
@@ -85,7 +90,8 @@ if10: /* elif statement */
    jmp     if1 /* jmp end statement */
 if11: /* elif statement */
    mov     rax, QWORD PTR -8[rbp]
-   cmp     rax, 10
+   mov     rbx, 10
+   cmp     rax, rbx
    sete    al
    cmp     al, 1
    jne     if12 /* jmp next statement */
@@ -96,7 +102,8 @@ if11: /* elif statement */
    jmp     if1 /* jmp end statement */
 if12: /* elif statement */
    mov     rax, QWORD PTR -8[rbp]
-   cmp     rax, 10
+   mov     rbx, 10
+   cmp     rax, rbx
    sete    al
    cmp     al, 1
    jne     if13 /* jmp next statement */
@@ -107,7 +114,8 @@ if12: /* elif statement */
    jmp     if1 /* jmp end statement */
 if13: /* elif statement */
    mov     rax, QWORD PTR -8[rbp]
-   cmp     rax, 1
+   mov     rbx, 1
+   cmp     rax, rbx
    sete    al
    cmp     al, 1
    jne     if14 /* jmp next statement */

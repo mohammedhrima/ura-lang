@@ -21,8 +21,8 @@ main:
    call    _putstr
    /* call _putbool */
    movzx   eax, BYTE PTR -1[rbp]
-   mov	   edi, eax
-   call	   _putbool
+   mov	  edi, eax
+   call	  _putbool
    /* call _putstr */
    lea     rax, STR2[rip]
    mov     rdi, rax
@@ -33,8 +33,8 @@ main:
    call    _putstr
    /* call _putbool */
    movzx   eax, BYTE PTR -2[rbp]
-   mov	   edi, eax
-   call	   _putbool
+   mov	  edi, eax
+   call	  _putbool
    /* call _putstr */
    lea     rax, STR4[rip]
    mov     rdi, rax

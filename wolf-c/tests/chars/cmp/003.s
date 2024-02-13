@@ -24,8 +24,8 @@ main:
    mov     BYTE PTR -17[rbp], al
    /* call _putbool */
    movzx   eax, BYTE PTR -17[rbp]
-   mov	   edi, eax
-   call	   _putbool
+   mov	  edi, eax
+   call	  _putbool
    /* call _putstr */
    lea     rax, STR3[rip]
    mov     rdi, rax

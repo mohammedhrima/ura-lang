@@ -5,8 +5,8 @@ _- data Types:
         - arithmetic operator: +
     - single:
         - char:
-            - arithmetic operator: 
-                - only for mutable + 
+            - add len similar to array
+            
     - Class:
         - take params by refr or value
         - syntax:
@@ -51,4 +51,5 @@ _- data Types:
     - open / close files
 
 - print all parsing error before exiting
-- free chars memory
+- free chars/array memory
+- index out of range for arrays and chars

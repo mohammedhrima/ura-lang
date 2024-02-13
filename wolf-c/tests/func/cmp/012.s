@@ -7,7 +7,7 @@ chihaja_:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 100
-   mov     QWORD PTR -8[rbp], rax
+   mov	  QWORD PTR -8[rbp], rax
    mov     rax, 5
    mov     rbx, QWORD PTR -8[rbp]
    mov     QWORD PTR [rbx], rax
@@ -19,7 +19,7 @@ main:
    push    rbp
    mov     rbp, rsp
    sub     rsp, 100
-   mov     QWORD PTR -8[rbp], 0 /*chihaja result*/
+   mov     QWORD PTR -8[rbp], 0 /* chihaja result */
    lea     rax, -8[rbp]
    call    chihaja_
    /* call _putnbr */

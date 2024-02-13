@@ -1,4 +1,3 @@
-
 main():
-    array[[int]] arr = [[11,22,33], [14, 55, 66]]
-    output(arr[1][0], "\n")
+    array[int] arr = [1,2,3, 4, 5]
+    output(arr[2], "\n")

@@ -14,12 +14,14 @@ main:
    mov     rax, 10 
    mov     QWORD PTR -16[rbp], rax /* assign b */
    mov     rax, QWORD PTR -8[rbp]
-   sub     rax, 5
+   mov     rbx, 5
+   sub     rax, rbx
    mov     QWORD PTR -24[rbp], rax
    mov     rax, QWORD PTR -24[rbp]
    mov     QWORD PTR -8[rbp], rax /* assign a */
    mov     rax, QWORD PTR -16[rbp]
-   add     rax, 5
+   mov     rbx, 5
+   add     rax, rbx
    mov     QWORD PTR -32[rbp], rax
    mov     rax, QWORD PTR -32[rbp]
    mov     QWORD PTR -16[rbp], rax /* assign b */
