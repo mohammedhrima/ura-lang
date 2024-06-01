@@ -1,11 +1,11 @@
 version: "3.8"
 services:
   client:
-    build: "./wolf-c"
+    build: "/home/ironman/Desktop/Wolf-Compiler/wolf-c"
     container_name: wolf
     image: "wolf-c"
     volumes:
-      - "./wolf-c:/wolf-c"
+      - "/home/ironman/Desktop/Wolf-Compiler/wolf-c:/wolf-c"
     restart: on-failure
 
 volumes:
@@ -15,4 +15,4 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: "./wolf-c"
+      device: "/home/ironman/Desktop/Wolf-Compiler/wolf-c"
