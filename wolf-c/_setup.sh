@@ -118,7 +118,7 @@ _diff(){
     grep -Fxvf \$1 \$2
 }
 
-alias cwc="_cwc \$1"
+alias wcc="_cwc \$1"
 alias copy="_copy"
 alias test="_test"
 alias refresh="_refresh"
