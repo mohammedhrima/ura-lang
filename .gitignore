@@ -2,6 +2,7 @@
 **/a.out.dSYM/
 **/comp
 **/asm
-
+**/*.mp4
+**/wcc
 .DS_Store
 .vscode
