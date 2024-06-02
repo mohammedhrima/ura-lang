@@ -14,25 +14,78 @@
 #include <fcntl.h>
 #include <stdarg.h>
 
+// COLORS
+#define GREEN "\033[0;32m"
+#define RED "\033[0;31m"
+#define CYAN "\033[0;36m"
+#define RESET "\033[0m"
+#define SPLIT GREEN "\n========================================================\n" RESET
+
+// DEBUGGING
+// #define DEBUG(func, line) printf(GREEN "%s:%d: " RESET, func, line)
+
+#define RLOG(log, msg, ...)                   \
+    do                                        \
+    {                                         \
+        printf("%s%8s%s: ", RED, log, RESET); \
+        printf(msg, ##__VA_ARGS__);           \
+    } while (0)
+
+#define CLOG(log, msg, ...)                    \
+    do                                         \
+    {                                          \
+        printf("%s%8s%s: ", CYAN, log, RESET); \
+        printf(msg, ##__VA_ARGS__);            \
+    } while (0)
+
+#define GLOG(log, msg, ...)                     \
+    do                                          \
+    {                                           \
+        printf("%s%8s%s: ", GREEN, log, RESET); \
+        printf(msg, ##__VA_ARGS__);             \
+    } while (0)
 // STRUCTS, ENUMS
 typedef enum Type
 {
-    assing_ = '=',
-    add_ = '+',
-    sub_ = '-',
-    mul_ = '*',
-    div_ = '/',
-    lpar_ = '(',
-    rpar_ = ')',
-    int_ = 'i',
-    float_ = 'f',
-    char_ = 'c',
-    string_ = 's',
-    array_ = 'a',
-    bool_ = 'b',
-    name_ = 'n',
-    end_ = 'e',
+    assign_ = 11,
+    less_,
+    more_,
+    equal_,
+    add_,
+    sub_,
+    mul_,
+    div_,
+    lpar_,
+    rpar_,
+    int_,
+    float_,
+    char_,
+    string_,
+    array_,
+    bool_,
+    name_,
+    end_,
+    while_,
+    for_,
+    if_,
+    else_,
+    in_,
+    semi_,
+    dots_,
+    incr_,
+    decr_,
 } Type;
+
+typedef struct sType
+{
+    char *value;
+    Type type;
+} sType;
+
+extern sType *dataTypes;
+extern sType *blocTypes;
+extern sType *randTypes;
+extern sType *symbTypes;
 
 typedef struct Int
 {
@@ -85,6 +138,10 @@ typedef struct Name
 typedef struct Token
 {
     char *name;
+    bool declaration;
+    int space;
+    size_t index;
+    size_t ptr;
     Type type;
     Name _name;
     Int _int;
@@ -114,14 +171,26 @@ extern FILE *asm_fd;
 char *to_string(Type type);
 void free_tokens();
 void free_node(Node *node);
-void print_token(Token *token);
+void print_token(Token *token, bool end);
 void print_node(Node *node, char *side, int space);
-void pasm(char *fmt, ...);
 
 Node *expr();
 Node *assign();
+Node *relation();
 Node *add_sub();
 Node *mul_div();
+Node *bloc();
 Node *prime();
+
+Token *evaluate(Node *node);
+
+void pasm(char *fmt, ...);
+void mov(char *fmt, ...);
+void add(char *fmt, ...);
+void sub(char *fmt, ...);
+void mul__(char *fmt, ...);
+void div__(char *fmt, ...);
+void push(char *fmt);
+void comment(char *fmt, ...);
 
 #endif

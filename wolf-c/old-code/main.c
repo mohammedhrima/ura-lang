@@ -195,9 +195,11 @@ void pasm(char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    if (!strchr(fmt, ':') && !strstr(fmt, ".section	.note.GNU-stack,\"\",@progbits") &&
-        !strstr(fmt, ".intel_syntax noprefix") && !strstr(fmt, ".include") &&
-        !strstr(fmt, ".text") && !strstr(fmt, ".globl	main"))
+    bool cond;
+    cond = !strchr(fmt, ':') && !strstr(fmt, ".section	.note.GNU-stack,\"\",@progbits");
+    cond = cond && !strstr(fmt, ".intel_syntax noprefix") && !strstr(fmt, ".include");
+    cond = cond && !strstr(fmt, ".text") && !strstr(fmt, ".globl	main");
+    if (cond)
         fprintf(asm_fd, "   ");
     vfprintf(asm_fd, fmt, ap);
 }

@@ -2,34 +2,19 @@
 
 char *to_string(Type type)
 {
-    switch (type)
+    sType **arr = (sType *[]){
+        dataTypes,
+        blocTypes,
+        symbTypes,
+        randTypes,
+        NULL,
+    };
+    for (size_t i = 0; arr[i]; i++)
     {
-    case add_:
-        return "+";
-    case sub_:
-        return "-";
-    case mul_:
-        return "*";
-    case div_:
-        return "/";
-    case lpar_:
-        return "(";
-    case rpar_:
-        return ")";
-    case int_:
-        return "int";
-    case float_:
-        return "float";
-    case char_:
-        return "char";
-    case string_:
-        return "string";
-    case array_:
-        return "array";
-    case bool_:
-        return "bool";
-    case name_:
-        return "name";
+        sType *elem = arr[i];
+        for (size_t j = 0; elem[j].value; j++)
+            if (elem[j].type == type)
+                return elem[j].value;
     }
     return "";
 }
@@ -37,7 +22,13 @@ char *to_string(Type type)
 void free_tokens()
 {
     for (size_t i = 0; i < pos0; i++)
+    {
+        if (tokens[i]->name)
+            free(tokens[i]->name);
+        if (tokens[i]->_string.value)
+            free(tokens[i]->_string.value);
         free(tokens[i]);
+    }
     free(tokens);
 }
 
@@ -51,42 +42,54 @@ void free_node(Node *node)
     }
 }
 
-void print_token(Token *token)
+void print_token(Token *token, bool end)
 {
-    printf("token type [%s] ", to_string(token->type));
-    switch (token->type)
+    if (token)
     {
-    case int_:
-        printf("value [%ld]", token->_int.value);
-        break;
-    case float_:
-        // printf("value [%ld]", token->_int.value);
-        break;
-    case string_:
-        printf("value [%s]", token->_string.value);
-        break;
-    case char_:
-        printf("value [%c]", token->_char.value);
-        break;
-    default:
-        break;
+        printf("token type [%s] ", to_string(token->type));
+        if (token->declaration)
+            printf("[declaration] name [%s] ", token->name ? token->name : "");
+        else
+            switch (token->type)
+            {
+            case int_:
+                printf("value [%lld]", token->_int.value);
+                break;
+            case float_:
+                // printf("value [%ld]", token->_int.value);
+                break;
+            case string_:
+                printf("value [%s]", token->_string.value);
+                break;
+            case char_:
+                printf("value [%c]", token->_char.value);
+                break;
+            case name_:
+                printf("name [%s]", token->name);
+                break;
+            default:
+                break;
+            }
     }
-    printf("\n");
+    else
+        printf("token [NULL] ");
+    if (end)
+        printf("\n");
 }
 
 void print_node(Node *node, char *side, int space)
 {
+    int i = 0;
     if (node)
     {
-        int i = 0;
         while (i < space)
             i += printf(" ");
         if (side)
-            printf("%s", side);
+            printf("%s%s%s: ", CYAN, side, RESET);
         printf("node has ");
-        print_token(node->token);
-        print_node(node->left, "LEFT : ", space + 6);
-        print_node(node->right, "RIGHT: ", space + 6);
+        print_token(node->token, true);
+        print_node(node->left, " LEFT", space + 4);
+        print_node(node->right, "RIGHT", space + 4);
     }
 }
 
@@ -99,4 +102,58 @@ void pasm(char *fmt, ...)
         !strstr(fmt, ".text") && !strstr(fmt, ".globl	main"))
         fprintf(asm_fd, "   ");
     vfprintf(asm_fd, fmt, ap);
+}
+
+void mov(char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(asm_fd, "   mov   ", ap);
+    vfprintf(asm_fd, fmt, ap);
+}
+
+void add(char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(asm_fd, "   add   ", ap);
+    vfprintf(asm_fd, fmt, ap);
+}
+
+void sub(char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(asm_fd, "   sub   ", ap);
+    vfprintf(asm_fd, fmt, ap);
+}
+
+void mul__(char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(asm_fd, "   mull   ", ap);
+    vfprintf(asm_fd, fmt, ap);
+}
+
+void div__(char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(asm_fd, "   div   ", ap);
+    vfprintf(asm_fd, fmt, ap);
+}
+
+void comment(char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    fprintf(asm_fd, " /* ");
+    vfprintf(asm_fd, fmt, ap);
+    fprintf(asm_fd, " */\n");
+}
+
+void push(char *fmt)
+{
+    fprintf(asm_fd, "   push  %s", fmt);
 }
