@@ -4,7 +4,7 @@ char *to_string(Type type)
 {
     sType **arr = (sType *[]){
         dataTypes,
-        // blocTypes,
+        blocTypes,
         symbTypes,
         randTypes,
         NULL,
@@ -21,12 +21,12 @@ char *to_string(Type type)
 
 void free_tokens()
 {
-    for (size_t i = 0; i < tk_pos; i++)
+    for (size_t i = 0; i < pos0; i++)
     {
         if (tokens[i]->name)
             free(tokens[i]->name);
-        // if (tokens[i]->_string.value)
-        //     free(tokens[i]->_string.value);
+        if (tokens[i]->_string.value)
+            free(tokens[i]->_string.value);
         free(tokens[i]);
     }
     free(tokens);
@@ -47,8 +47,8 @@ void print_token(Token *token, bool end)
     if (token)
     {
         printf("token type [%s] ", to_string(token->type));
-        if (token->declare)
-            printf("[declare] ");
+        if (token->declaration)
+            printf("[declaration] ");
         if (token->name)
             printf("name [%s] ", token->name ? token->name : "");
         else
@@ -56,6 +56,15 @@ void print_token(Token *token, bool end)
             {
             case int_:
                 printf("value [%lld] ", token->_int.value);
+                break;
+            case float_:
+                // printf("value [%ld]", token->_int.value);
+                break;
+            case string_:
+                printf("value [%s] ", token->_string.value);
+                break;
+            case char_:
+                printf("value [%c] ", token->_char.value);
                 break;
             case name_:
                 printf("name [%s] ", token->name);
