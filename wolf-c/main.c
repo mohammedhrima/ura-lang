@@ -10,6 +10,8 @@ FILE *asm_fd;
 int col;
 size_t line;
 size_t ptr;
+size_t bloc_index;
+size_t var_index;
 
 sType *dataTypes = (sType[]){
     {"int", int_},
@@ -56,7 +58,6 @@ bool is_bloc(Type type)
 {
     return type == if_ || type == else_ || type == for_ || while_;
 }
-size_t bloc_index;
 
 bool check_list(Token *new, sType *list)
 {
@@ -77,6 +78,43 @@ bool check_list(Token *new, sType *list)
     return false;
 }
 
+Token **variables;
+size_t vpos;
+size_t vlen;
+Token *new_variable(Token *token)
+{
+    for (size_t i = 0; i < vpos; i++)
+    {
+        if (strcmp(token->name, variables[i]->name) == 0)
+        {
+            RLOG("error", "redefinition of %s\n", token->name);
+            error = true;
+            return NULL;
+        }
+    }
+    if (vpos + 1 > vlen)
+    {
+        variables = realloc(variables, 2 * vlen * sizeof(Token *));
+        vlen *= 2;
+    }
+    token->declaration = false;
+    token->index = ++var_index;
+    variables[vpos++] = token;
+    return token;
+}
+
+Token *get_var(Token *token)
+{
+    for (size_t i = 0; i < vpos; i++)
+    {
+        if (strcmp(token->name, variables[i]->name) == 0)
+            return variables[i];
+    }
+    error = true;
+    RLOG("error", "%s not found\n", token->name);
+    return token;
+}
+
 void new_token(int s, int e, Type type, bool declaration)
 {
     if (pos0 + 1 > len)
@@ -94,27 +132,33 @@ void new_token(int s, int e, Type type, bool declaration)
         case name_:
             new->name = calloc(e - s + 1, sizeof(char));
             strncpy(new->name, input + s, e - s);
-            if (check_list(new, dataTypes) || check_list(new, blocTypes))
+            if (check_list(new, dataTypes))
+                break;
+            if (check_list(new, blocTypes))
                 break;
             break;
         case add_:
         case sub_:
         case mul_:
         case div_:
-        case lpar_:
-        case rpar_:
+            new->index = ++var_index;
+            break;
+        case assign_:
             break;
         case int_:
+            new->index = ++var_index;
             while (s < e)
                 new->_int.value = 10 * new->_int.value + (input[s++] - '0');
             break;
-
         case float_:
             break;
 
         default:
             break;
         }
+    else
+        new->index = ++var_index;
+
     GLOG("new", " ");
     print_token(new, true);
     tokens[pos0++] = new;
@@ -480,7 +524,7 @@ Token *inter(Node *node)
     {
     case name_:
     {
-        printf("%s ", token->name);
+        node->token = get_var(node->token);
         break;
     }
     case less_:
@@ -493,23 +537,35 @@ Token *inter(Node *node)
         inter(node->right);
         break;
     }
+    case add_:
+    case sub_:
     case div_:
     case mul_:
-    case sub_:
-    case add_:
+    {
+        // printf("v%zu: ", token->index);
+        Token *left = inter(node->left);
+        Token *right = inter(node->right);
+        node->left->token = left;
+        node->right->token = right;
+        printf("v%zu: v%zu %s v%zu\n", token->index, left->index, to_string(token->type), right->index);
+        break;
+    }
     case assign_:
     {
-        inter(node->left);
-        printf("%s ", to_string(token->type));
-        inter(node->right);
+        Token *left = inter(node->left);
+        Token *right = inter(node->right);
+        printf("v%zu: v%zu %s v%zu\n", left->index, left->index, to_string(token->type), right->index);
+        token->index = left->index;
         break;
     }
     case int_:
     {
+        // printf("v%zu: ", token->index);
         if (token->declaration)
-            printf("dec %s %s", token->name, to_string(token->type));
-        else
-            printf("%lld ", token->_int.value);
+            node->token = new_variable(token);
+        //     printf("v%zu: %s %s\n", token->index, token->name, to_string(token->type));
+        // else
+        //     printf("v%zu: %lld \n", token->index, token->_int.value);
         break;
     }
 #if 0
@@ -603,14 +659,237 @@ Token *inter(Node *node)
     return token;
 }
 
+Token *generate(Node *node)
+{
+    switch (node->token->type)
+    {
+    case name_:
+    {
+        printf("%s", node->token->name);
+        node->token = get_var(node->token);
+        break;
+    }
+    case less_:
+    case more_:
+    case equal_:
+    {
+        printf("comp ");
+        generate(node->left);
+        // printf(",");
+        generate(node->right);
+        break;
+    }
+    case add_:
+    case sub_:
+    case div_:
+    case mul_:
+    {
+        Token *left = generate(node->left);
+        node->left->token = left;
+        printf(" + ");
+        Token *right = generate(node->right);
+        node->right->token = right;
+        // printf("v%zu: v%zu %s v%zu\n", node->token->index, left->index, to_string(node->token->type), right->index);
+        break;
+    }
+    case assign_:
+    {
+        Token *left = generate(node->left);
+        printf(" = ");
+        Token *right = generate(node->right);
+        // node->left->token = left;
+        // node->right->token = right;
+        printf("\n");
+        node->token->index = left->index;
+        // printf("v%zu: v%zu %s v%zu\n", left->index, left->index, to_string(token->type), right->index);
+        break;
+    }
+    case int_:
+    {
+        // printf("v%zu: ", token->index);
+        if (node->token->name)
+            printf("%s", node->token->name);
+        else
+            printf("%lld", node->token->_int.value);
+        return node->token;
+        //     printf("v%zu: %s %s\n", token->index, token->name, to_string(token->type));
+        // else
+        //     printf("v%zu: %lld \n", token->index, token->_int.value);
+        break;
+    }
+#if 0
+    case for_:
+    {
+        printf("%s ", to_string(token->type));
+        inter(node->left->left);
+        inter(node->left->right->left);
+
+        printf("\n");
+        Node *curr = node->right;
+        while (curr)
+        {
+            print_space(token->space + 5);
+            inter(curr->left);
+            printf("\n");
+            curr = curr->right;
+        }
+        printf("end%s\n", to_string(token->type));
+        break;
+    }
+#endif
+    // case while_:
+    // {
+    //     print_space(token->space);
+    //     printf("%s%zu\n", to_string(token->type), node->token->index);
+    //     inter(node->left); // condition
+    //     printf("\n");
+    //     print_space(token->space);
+    //     printf("is false\n");
+    //     print_space(token->space);
+    //     printf("jmp end%s%zu\n", to_string(token->type), node->token->index);
+    //     Node *curr = node->right;
+    //     while (curr)
+    //     {
+    //         print_space(token->space);
+    //         inter(curr->left);
+    //         printf("\n");
+    //         curr = curr->right;
+    //         printf("jmp %s%zu\n", to_string(token->type), node->token->index);
+    //     }
+    //     printf("end%s%zu\n", to_string(token->type), node->token->index);
+    //     break;
+    // }
+    // case if_:
+    // {
+    //     print_space(token->space);
+    //     inter(node->left->left); // condition
+    //     // printf("\n%s%zu ", to_string(token->type), node->token->index);
+    //     printf("\n");
+    //     print_space(token->space);
+    //     printf("is false\n");
+    //     print_space(token->space);
+    //     if (node->right)
+    //         printf("jmp %s%zu\n", to_string(node->right->token->type), node->right->token->index);
+    //     else
+    //         printf("jmp end%s%zu\n", to_string(token->type), node->token->index);
+    //     Node *curr = node->left->right;
+    //     while (curr)
+    //     {
+    //         print_space(token->space);
+    //         inter(curr->left);
+    //         printf("\n");
+    //         curr = curr->right;
+    //     }
+
+    //     // printf("jmp end%s%zu\n", to_string(token->type), node->token->index);
+    //     if (node->right)
+    //         inter(node->right);
+    //     printf("end%s%zu\n", to_string(token->type), node->token->index);
+    //     break;
+    // }
+    // case else_:
+    // {
+    //     print_space(token->space);
+    //     printf("%s%zu\n", to_string(token->type), node->token->index);
+    //     Node *curr = node;
+    //     while (curr)
+    //     {
+    //         print_space(token->space);
+    //         inter(curr->left);
+    //         printf("\n");
+    //         curr = curr->right;
+    //     }
+    //     // printf("end%s%zu\n", to_string(token->type), node->token->index);
+    //     break;
+    // }
+    default:
+        break;
+    }
+    return node->token;
+}
+
+Node **ir;
+size_t ir_pos;
+size_t ir_len = 10;
+void add_to_ir(Node *node)
+{
+    if (ir_pos + 1 > ir_len)
+    {
+        Node **tmp = calloc(ir_len * 2, sizeof(Node *));
+        memcpy(tmp, ir, ir_pos * sizeof(Node *));
+        free(ir);
+        ir = tmp;
+        ir_len *= 2;
+    }
+    ir[ir_pos] = node;
+    ir_pos++;
+}
+
+bool ir_found(Node *to_find, Node *curr)
+{
+    bool found = false;
+    if (curr)
+    {
+        if (curr->token->index == to_find->token->index)
+            return true;
+        found = ir_found(to_find, curr->left) || ir_found(to_find, curr->right);
+    }
+    return found;
+}
+
+void check_ir()
+{
+    size_t i = 0;
+    while (i < ir_pos)
+    {
+        size_t j = i + 1;
+        while (j < ir_pos)
+        {
+            if (!ir_found(ir[i], ir[j]))
+                ir[i]->token->remove = true;
+            else
+                CLOG("found", "index %zu\n", ir[j]->token->index);
+            j++;
+        }
+        i++;
+    }
+}
+
+void visualize()
+{
+    CLOG("visualize", "\n");
+    size_t i = 0;
+    while (i < ir_pos)
+    {
+        // print_node(ir[i], NULL, 0);
+        if (!ir[i]->token->remove)
+        {
+            // GLOG("NOT remove", "\n");
+            generate(ir[i]);
+        }
+        else
+        {
+            // RLOG("remove", "\n");
+            free_node(ir[i]);
+        }
+        i++;
+    }
+}
+
 void compile()
 {
     pos0 = 0;
     pos1 = 0;
     len = 10;
+    vpos = 0;
+    vlen = 10;
+
     Node *head = new_node(NULL);
     Node *curr = head;
     tokens = calloc(len, sizeof(Token *));
+    variables = calloc(vlen, sizeof(Token *));
+    ir = calloc(ir_len, sizeof(Node));
+
     printf("%s", SPLIT);
     if (tokenize() == 0)
     {
@@ -637,13 +916,18 @@ void compile()
             {
                 // evaluate(curr->left);
                 inter(curr->left);
-                printf("\n");
+                add_to_ir(curr->left);
+                // printf("\n");
                 curr = curr->right;
             }
+            printf("%s", SPLIT);
+            check_ir();
+            printf("%s", SPLIT);
+            visualize();
         }
         printf("%s", SPLIT);
     }
-    free_node(head);
+    // free_node(head);
     free_tokens();
 }
 

@@ -137,6 +137,7 @@ typedef struct Name
 
 typedef struct Token
 {
+    bool remove;
     char *name;
     bool declaration;
     int space;
