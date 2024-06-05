@@ -22,7 +22,7 @@ void new_inst(Node *node)
     }
     Inst *new = calloc(1, sizeof(Inst));
     // new->cmd = strdup(cmd);
-    new->node = node;
+    // new->node = node;
     // new->index = index;
     insts[inst_pos++] = new;
 }
@@ -102,39 +102,65 @@ Token *inter(Node *node)
     }
     case add_:
     {
-        node->left->token = inter(node->left);
-        node->right->token = inter(node->right);
-        if (!node->left->token->index && !node->right->token->index)
+        Node *nleft = node->left;
+        Node *nright = node->right;
+        nleft->token = inter(nleft);
+        nright->token = inter(nright);
+        if (!nleft->token->ptr && !nright->token->ptr && nleft->token->type == int_ && nright->token->type == int_)
         {
             node->token->type = int_;
-            node->token->_int.value = node->left->token->_int.value + node->right->token->_int.value;
+            node->token->_int.value = nleft->token->_int.value + nright->token->_int.value;
         }
         else
         {
-            // node->token->index = ++var_index;
-            new_inst(node);
+            Token *token = node->token;
+            Token *right = node->right->token;
+            Token *left = node->left->token;
+            if (left->ptr)
+                printf("mov rax, QWORD PTR -%zu[rbp]\n", left->ptr);
+            else if (left->reg)
+            {
+                // printf("mov rax, r%cx ///\n", left->reg);
+            }
+            else
+                printf("mov rax, %lld\n", left->_int.value);
+
+            if (right->ptr)
+                printf("add rax, QWORD PTR -%zu[rbp]\n", right->ptr);
+            else if (right->reg)
+                printf("add rax, r%cx\n", right->reg);
+            else
+                printf("add rax, %lld\n", right->_int.value);
+
+            token->reg = 'a';
+            token->ptr = 0;
         }
-        // if (node->left->token->index || node->right->token->index)
-        // printf("v%zu: v%zu %s ", node->token->index, left->index, to_string(node->token->type));
-        // if (right->index)
-        //     printf("v%zu\n", right->index);
-        // else
-        //     printf("%lld\n", right->_int.value);
 
         break;
     }
     case assign_:
     {
-        node->left->token = inter(node->left);
-        node->right->token = inter(node->right);
+        Node *nleft = node->left;
+        Node *nright = node->right;
+        nleft->token = inter(node->left);
+        nright->token = inter(node->right);
         node->token->index = node->left->token->index;
-        new_inst(node);
 
-        // printf("v%zu: v%zu %s ", node->token->index, left->index, to_string(node->token->type));
-        // if (right->index)
-        //     printf("v%zu\n", right->index);
-        // else
-        //     printf("%lld\n", right->_int.value);
+        Token *left = nleft->token;
+        Token *right = nright->token;
+
+        printf("/*assign %s from right %s*/\n", left->name, to_string(right->type));
+        if (right->ptr)
+        {
+            printf("mov rax, QWORD PTR -%zu[rbp]\n", right->ptr);
+            printf("mov QWORD PTR -%zu[rbp], rax\n", left->ptr);
+        }
+        else if (right->reg)
+        {
+            printf("mov QWORD PTR -%zu[rbp], r%cx\n", left->ptr, right->reg);
+        }
+        else
+            printf("mov QWORD PTR -%zu[rbp], %lld\n", left->ptr, right->_int.value);
         break;
     }
     }
@@ -145,88 +171,7 @@ void generate()
 {
     for (size_t i = 0; i < inst_pos; i++)
     {
-        while (insts[i]->node->token->type == add_)
-        {
-
-            Node *node = insts[i]->node;
-            Token *token = node->token;
-            Token *right = node->right->token;
-            Token *left = node->left->token;
-            if (!left->index && !right->index)
-            {
-
-                token->_int.value = left->_int.value + right->_int.value;
-                token->type = int_;
-                token->index = 0;
-            }
-            else
-            {
-#if 0
-                printf("v%zu: ", token->index);
-                if (left->index)
-                    printf("v%zu", left->index);
-                else
-                    printf("%lld", left->_int.value);
-                printf(" %s ", to_string(token->type));
-                if (right->index)
-                    printf("v%zu\n", right->index);
-                else
-                    printf("%lld\n", right->_int.value);
-#else
-
-                if (left->ptr)
-                    printf("add rax, QWORD PTR -%zu[rbp]\n", left->ptr);
-                else if (left->reg)
-                {
-                    printf("add rax, r%cx ///\n", left->reg);
-                }
-                else
-                    printf("add rax, %lld\n", left->_int.value);
-
-                if (right->ptr)
-                    printf("add rax, QWORD PTR -%zu[rbp]\n", right->ptr);
-                else if (right->reg)
-                    printf("add rax, r%cx\n", right->reg);
-                else
-                    printf("add rax, %lld\n", right->_int.value);
-
-                token->reg = 'a';
-                token->ptr = 0;
-#endif
-            }
-            i++;
-        }
-        if (insts[i]->node->token->type == assign_)
-        {
-            Node *node = insts[i]->node;
-            Token *token = node->token;
-            Token *right = node->right->token;
-            Token *left = node->left->token;
-#if 0
-            printf("v%zu: v%zu %s ", token->index, left->index, to_string(token->type));
-            if (right->index)
-                printf("v%zu\n", right->index);
-            else
-                printf("%lld\n", right->_int.value);
-#else
-            printf("/*assign %s*/\n", left->name);
-            if (right->ptr)
-            {
-                printf("mov rax, QWORD PTR -%zu[rbp]\n", right->ptr);
-                printf("mov QWORD PTR -%zu[rbp], rax\n", left->ptr);
-                printf("mov rax, 0\n");
-            }
-            else if (right->reg)
-            {
-                printf("mov QWORD PTR -%zu[rbp], r%cx\n", left->ptr, right->reg);
-                printf("mov r%cx, 0\n", right->reg);
-            }
-            else
-            {
-                printf("mov QWORD PTR -%zu[rbp], %lld\n", left->ptr, right->_int.value);
-            }
-#endif
-        }
+        
     }
 }
 
@@ -238,6 +183,17 @@ void generate()
     + generate assembly from the intermediate result
 */
 
+void visualize()
+{
+    printf("\n%sVISUALIZE%s\n", SPLIT, SPLIT);
+    // for (size_t i = 0; i < inst_pos; i++)
+    // {
+    //     printf("%s :\n", to_string(insts[i]->node->token->type));
+    //     print_node(insts[i]->node, NULL, 0);
+    // }
+    printf("\n%s%s\n", SPLIT, SPLIT);
+}
+
 void compile(char *input)
 {
     Node *head = new_node(NULL);
@@ -246,7 +202,6 @@ void compile(char *input)
     insts = calloc(inst_len, sizeof(Inst *));
     variables = calloc(vlen, sizeof(Token *));
 
-    printf("\n%sTOKENIZE%s\n", SPLIT, SPLIT);
     if (tokenize(input) == 0)
     {
         printf("\n%sBUILD TREE%s\n", SPLIT, SPLIT);
@@ -274,7 +229,9 @@ void compile(char *input)
                 inter(curr->left);
                 curr = curr->right;
             }
-            generate();
+            // visualize();
+            printf("\n%sGENERATE%s\n", SPLIT, SPLIT);
+            // generate();
 #endif
             printf("\n%sEND%s\n", SPLIT, SPLIT);
         }
