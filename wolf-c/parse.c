@@ -82,7 +82,7 @@ void new_token(char *input, int s, int e, Type type)
 
 int tokenize(char *input)
 {
-    GLOG("tokenize", "\n");
+    printf("\n%sTOKENIZE%s\n", SPLIT, SPLIT);
     size_t e = 0;
     int line = 1;
     int col = 0;
@@ -202,7 +202,7 @@ Node *add_sub()
 {
     Node *left = mul_div();
     Token *token;
-#if 1
+#if 0
     if ((token = check((Type[]){add_, sub_, 0})))
     {
         Node *node = new_node(token);
