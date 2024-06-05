@@ -90,9 +90,10 @@ typedef struct Node
 typedef struct Inst
 {
     size_t index;
-    char *cmd;
-    Token *left;
-    Token *right;
+    Node *node;
+    // char *cmd;
+    // Token *left;
+    // Token *right;
 } Inst;
 
 // GLOBALS
