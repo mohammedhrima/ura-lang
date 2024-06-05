@@ -10,7 +10,7 @@ Inst **insts;
 size_t inst_pos = 0;
 size_t inst_len = 10;
 
-void new_inst(char *cmd, Token *left, Token *right, size_t index)
+void new_inst(Node *node)
 {
     if (inst_pos + 1 > inst_len)
     {
@@ -21,20 +21,66 @@ void new_inst(char *cmd, Token *left, Token *right, size_t index)
         inst_len *= 2;
     }
     Inst *new = calloc(1, sizeof(Inst));
-    new->cmd = strdup(cmd);
-    new->left = left;
-    new->right = right;
-    new->index = index;
+    // new->cmd = strdup(cmd);
+    new->node = node;
+    // new->index = index;
+    insts[inst_pos++] = new;
 }
 
 void free_insts()
 {
     for (size_t i = 0; i < inst_pos; i++)
     {
-        free(insts[i]->cmd);
+        // free(insts[i]->cmd);
         free(insts[i]);
     }
     free(insts);
+}
+
+Token **variables;
+size_t vpos = 0;
+size_t vlen = 10;
+size_t var_index;
+
+Token *new_variable(Token *token)
+{
+    for (size_t i = 0; i < vpos; i++)
+    {
+        if (strcmp(token->name, variables[i]->name) == 0)
+        {
+            RLOG("error", "redefinition of %s\n", token->name);
+            error = true;
+            return NULL;
+        }
+    }
+    if (vpos + 1 > vlen)
+    {
+        Token **tmp = calloc(2 * vlen, sizeof(Token *));
+        memcpy(tmp, variables, vpos * sizeof(Token *));
+        free(variables);
+        variables = tmp;
+        vlen *= 2;
+    }
+    token->declare = false;
+    token->index = ++var_index;
+    variables[vpos++] = token;
+    return token;
+}
+
+Token *get_var(Token *token)
+{
+    // GLOG("get var", "<%s> has index <%zu>\n", token->name, token->index);
+    for (size_t i = 0; i < vpos; i++)
+    {
+        if (strcmp(token->name, variables[i]->name) == 0)
+        {
+            // GLOG("get var", "found <%s> has index <%zu>\n", variables[i]->name, variables[i]->index);
+            return variables[i];
+        }
+    }
+    error = true;
+    RLOG("error", "%s not found\n", token->name);
+    return token;
 }
 
 Token *inter(Node *node)
@@ -43,23 +89,85 @@ Token *inter(Node *node)
     {
     case name_:
     {
+        node->token = get_var(node->token);
         break;
     }
     case int_:
     {
+        if (node->token->declare)
+            node->token = new_variable(node->token);
         break;
     }
     case add_:
     {
+        node->left->token = inter(node->left);
+        node->right->token = inter(node->right);
+        node->token->index = ++var_index;
+        // printf("v%zu: v%zu %s ", node->token->index, left->index, to_string(node->token->type));
+        // if (right->index)
+        //     printf("v%zu\n", right->index);
+        // else
+        //     printf("%lld\n", right->_int.value);
+        new_inst(node);
+
         break;
     }
     case assign_:
     {
+        node->left->token = inter(node->left);
+        node->right->token = inter(node->right);
+        node->token->index = node->left->token->index;
+        new_inst(node);
+
+        // printf("v%zu: v%zu %s ", node->token->index, left->index, to_string(node->token->type));
+        // if (right->index)
+        //     printf("v%zu\n", right->index);
+        // else
+        //     printf("%lld\n", right->_int.value);
         break;
     }
     }
     return node->token;
 }
+
+void generate()
+{
+    for (size_t i = 0; i < inst_pos; i++)
+    {
+        if (insts[i]->node->token->type == add_)
+        {
+            Node *node = insts[i]->node;
+            Token *token = node->token;
+            Token *right = node->right->token;
+            Token *left = node->left->token;
+            printf("v%zu: v%zu %s ", token->index, left->index, to_string(token->type));
+            if (right->index)
+                printf("v%zu\n", right->index);
+            else
+                printf("%lld\n", right->_int.value);
+        }
+        else if (insts[i]->node->token->type == assign_)
+        {
+            Node *node = insts[i]->node;
+            Token *token = node->token;
+            Token *right = node->right->token;
+            Token *left = node->left->token;
+            printf("v%zu: v%zu %s ", token->index, left->index, to_string(token->type));
+            if (right->index)
+                printf("v%zu\n", right->index);
+            else
+                printf("%lld\n", right->_int.value);
+        }
+    }
+}
+
+/*
+    + tokenize
+    + create tree
+    + intermediate
+    + generate my own IR
+    + generate assembly from the intermediate result
+*/
 
 void compile(char *input)
 {
@@ -67,6 +175,7 @@ void compile(char *input)
     Node *curr = head;
     tokens = calloc(tk_len, sizeof(Token *));
     insts = calloc(inst_len, sizeof(Inst *));
+    variables = calloc(vlen, sizeof(Token *));
 
     printf("\n%sTOKENIZE%s\n", SPLIT, SPLIT);
     if (tokenize(input) == 0)
@@ -88,7 +197,7 @@ void compile(char *input)
                 print_node(curr->left, NULL, 0);
                 curr = curr->right;
             }
-#if 0
+#if 1
             printf("\n%sINTERMEDIATE REPR%s\n", SPLIT, SPLIT);
             curr = head;
             while (curr)
@@ -96,6 +205,7 @@ void compile(char *input)
                 inter(curr->left);
                 curr = curr->right;
             }
+            generate();
 #endif
             printf("\n%sEND%s\n", SPLIT, SPLIT);
         }
