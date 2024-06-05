@@ -202,7 +202,15 @@ Node *add_sub()
 {
     Node *left = mul_div();
     Token *token;
-
+#if 1
+    if ((token = check((Type[]){add_, sub_, 0})))
+    {
+        Node *node = new_node(token);
+        node->left = left;
+        node->right = add_sub();
+        left = node;
+    }
+#else
     while ((token = check((Type[]){add_, sub_, 0})))
     {
         Node *node = new_node(token);
@@ -210,6 +218,7 @@ Node *add_sub()
         node->right = mul_div();
         left = node;
     }
+#endif
     return left;
 }
 

@@ -74,6 +74,7 @@ typedef struct Token
     char *name;
     size_t ptr;
     size_t index;
+    char reg;
 
     bool declare;
     Type type;

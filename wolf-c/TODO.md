@@ -175,3 +175,5 @@ _- data Types:
 - compile withh Wall Werror Wextra
 - display all parsing error before exiting
 - build my own version of docker to run in it
+
+- lesson 4
