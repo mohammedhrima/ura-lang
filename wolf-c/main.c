@@ -10,7 +10,7 @@ Inst **insts;
 size_t inst_pos = 0;
 size_t inst_len = 10;
 
-void new_inst(Node *node)
+void new_inst(Token *token, Token *left, Token *right)
 {
     if (inst_pos + 1 > inst_len)
     {
@@ -21,6 +21,9 @@ void new_inst(Node *node)
         inst_len *= 2;
     }
     Inst *new = calloc(1, sizeof(Inst));
+    new->token = token;
+    new->left = left;
+    new->right = right;
     // new->cmd = strdup(cmd);
     // new->node = node;
     // new->index = index;
@@ -63,7 +66,7 @@ Token *new_variable(Token *token)
         vlen *= 2;
     }
     token->declare = false;
-    token->index = ++var_index;
+    // token->index = ++var_index;
     token->ptr = (ptr += 8);
     variables[vpos++] = token;
     return token;
@@ -100,97 +103,86 @@ Token *inter(Node *node)
             node->token = new_variable(node->token);
         break;
     }
-    case add_:
-    {
-        Node *nleft = node->left;
-        Node *nright = node->right;
-        nleft->token = inter(nleft);
-        nright->token = inter(nright);
-        if (!nleft->token->ptr && !nright->token->ptr && nleft->token->type == int_ && nright->token->type == int_)
-        {
-            node->token->type = int_;
-            node->token->_int.value = nleft->token->_int.value + nright->token->_int.value;
-        }
-        else
-        {
-            Token *token = node->token;
-            Token *right = node->right->token;
-            Token *left = node->left->token;
-            if (left->ptr)
-                printf("mov rax, QWORD PTR -%zu[rbp]\n", left->ptr);
-            else if (left->reg)
-            {
-                // printf("mov rax, r%cx ///\n", left->reg);
-            }
-            else
-                printf("mov rax, %lld\n", left->_int.value);
-
-            if (right->ptr)
-                printf("add rax, QWORD PTR -%zu[rbp]\n", right->ptr);
-            else if (right->reg)
-                printf("add rax, r%cx\n", right->reg);
-            else
-                printf("add rax, %lld\n", right->_int.value);
-
-            token->reg = 'a';
-            token->ptr = 0;
-        }
-
-        break;
-    }
     case assign_:
     {
-        Node *nleft = node->left;
-        Node *nright = node->right;
-        nleft->token = inter(node->left);
-        nright->token = inter(node->right);
-        node->token->index = node->left->token->index;
-
-        Token *left = nleft->token;
-        Token *right = nright->token;
-
-        printf("/*assign %s from right %s*/\n", left->name, to_string(right->type));
-        if (right->ptr)
+        Token *left = inter(node->left);
+        Token *right = inter(node->right);
+        new_inst(node->token, left, right);
+        break;
+    }
+    case add_:
+    {
+        Token *left = inter(node->left);
+        Token *right = inter(node->right);
+        if (!left->ptr && !right->ptr)
         {
-            printf("mov rax, QWORD PTR -%zu[rbp]\n", right->ptr);
-            printf("mov QWORD PTR -%zu[rbp], rax\n", left->ptr);
-        }
-        else if (right->reg)
-        {
-            printf("mov QWORD PTR -%zu[rbp], r%cx\n", left->ptr, right->reg);
+            node->token->type = left->type;
+            node->token->_int.value = left->_int.value + right->_int.value;
         }
         else
-            printf("mov QWORD PTR -%zu[rbp], %lld\n", left->ptr, right->_int.value);
+        {
+            node->token->ptr = (ptr += 8);
+            new_inst(node->token, left, right);
+        }
         break;
     }
     }
     return node->token;
 }
 
-void generate()
+char *to_inst(Type type)
 {
-    for (size_t i = 0; i < inst_pos; i++)
+    switch (type)
     {
-        
+    case add_:
+        return "ADD";
+    case assign_:
+        return "ASSIGN";
+    default:
+        break;
     }
+    return to_string(type);
 }
 
-/*
-    + tokenize
-    + create tree
-    + intermediate
-    + generate my own IR
-    + generate assembly from the intermediate result
-*/
+void print_inst(Token *token, bool end)
+{
+    if (token)
+    {
+        printf("[%s] ", to_inst(token->type));
+        if (token->name)
+            printf("ident [%s] ", token->name ? token->name : "");
+        else
+            switch (token->type)
+            {
+            case int_:
+                printf("value [%lld] ", token->_int.value);
+                break;
+            case name_:
+                printf("name [%s] ", token->name);
+                break;
+            default:
+                break;
+            }
+        if (token->ptr)
+            printf("ptr [%zu] ", token->ptr);
+    }
+    else
+        printf("token [NULL] ");
+    if (end)
+        printf("\n");
+}
 
 void visualize()
 {
     printf("\n%sVISUALIZE%s\n", SPLIT, SPLIT);
-    // for (size_t i = 0; i < inst_pos; i++)
-    // {
-    //     printf("%s :\n", to_string(insts[i]->node->token->type));
-    //     print_node(insts[i]->node, NULL, 0);
-    // }
+    for (size_t i = 0; i < inst_pos; i++)
+    {
+        print_inst(insts[i]->token, 1);
+        printf("    ");
+        print_inst(insts[i]->left, 1);
+        printf("    ");
+        print_inst(insts[i]->right, 1);
+    }
     printf("\n%s%s\n", SPLIT, SPLIT);
 }
 
@@ -229,7 +221,7 @@ void compile(char *input)
                 inter(curr->left);
                 curr = curr->right;
             }
-            // visualize();
+            visualize();
             printf("\n%sGENERATE%s\n", SPLIT, SPLIT);
             // generate();
 #endif

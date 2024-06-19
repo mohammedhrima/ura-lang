@@ -63,8 +63,8 @@ void print_token(Token *token, bool end)
             default:
                 break;
             }
-        if (token->index)
-            printf("index [%zu] ", token->index);
+        if (token->ptr)
+            printf("ptr [%zu] ", token->ptr);
     }
     else
         printf("token [NULL] ");
