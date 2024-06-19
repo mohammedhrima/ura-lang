@@ -64,17 +64,18 @@ typedef struct Int
 {
     long long value;
     int power;
-    struct Int *next;
+    // struct Int *next;
+    long long *values;
+    size_t size;
 } Int;
-
 
 typedef struct Token
 {
     // if has name
     char *name;
     size_t ptr;
-    size_t index;
-    char reg;
+    size_t vers; // change it when assigning
+    // char reg;
 
     bool declare;
     Type type;
@@ -90,9 +91,9 @@ typedef struct Node
 
 typedef struct Inst
 {
-    Type cmd;
-    
-
+    Token *token;
+    Token *left;
+    Token *right;
 } Inst;
 
 // GLOBALS
