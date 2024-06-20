@@ -1,5 +1,5 @@
-#ifndef HEADER_H
-#define HEADER_H
+#ifndef COMPILER_H
+#define COMPILER_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,7 +14,10 @@
 #include <fcntl.h>
 #include <stdarg.h>
 
-// COLORS
+// MACROS
+#define DEBUG 1
+#define EXIT_STATUS 0
+
 #define GREEN "\033[0;32m"
 #define RED "\033[0;31m"
 #define CYAN "\033[0;36m"
@@ -40,7 +43,7 @@
         printf(msg, ##__VA_ARGS__);             \
     }
 
-// STRUCTS, ENUMS
+// STRUCTS / ENUMS
 typedef enum Type
 {
     assign_ = 11,
@@ -63,22 +66,20 @@ typedef struct sType
 typedef struct Int
 {
     long long value;
-    int power;
+    // int power;
     // struct Int *next;
-    long long *values;
-    size_t size;
+    // long long *values;
+    // size_t size;
 } Int;
 
 typedef struct Token
 {
-    // if has name
+    Type type;
+
     char *name;
     size_t ptr;
-    size_t vers; // change it when assigning
-    // char reg;
-
     bool declare;
-    Type type;
+
     Int _int;
 } Token;
 
@@ -89,17 +90,11 @@ typedef struct Node
     Token *token;
 } Node;
 
-typedef struct Inst
-{
-    Token *token;
-    Token *left;
-    Token *right;
-} Inst;
-
 // GLOBALS
 extern sType *symbTypes;
 extern sType *dataTypes;
 extern sType *randTypes;
+
 extern bool error;
 extern size_t exe_pos;
 extern size_t tk_pos;
@@ -107,6 +102,7 @@ extern size_t tk_len;
 extern Token **tokens;
 
 // FUNCTIONS
+char *open_file(char *filename);
 int tokenize(char *input);
 Node *expr();
 Node *assign();
