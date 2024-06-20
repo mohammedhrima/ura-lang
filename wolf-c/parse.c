@@ -276,3 +276,4 @@ Node *prime()
     }
     return node;
 }
+
