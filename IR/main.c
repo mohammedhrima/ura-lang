@@ -14,7 +14,7 @@ Token *new_token(char *input, int s, int e, Type type)
         while (s < e)
             new->value = new->value * 10 + input[s++] - '0';
     }
-    else if (type == id_)
+    else if (type == id_ || type == fcall_)
     {
         new->name = calloc(e - s + 1, sizeof(char));
         strncpy(new->name, input + s, e - s);
@@ -33,7 +33,7 @@ void tokenize(char *input)
             i++;
             continue;
         }
-        if (strchr("+/*-()=", input[i]))
+        if (strchr("+/*-()=,", input[i]))
         {
             new_token(input, 0, 0, input[i]);
             i++;
@@ -132,7 +132,7 @@ Node *mul_div()
 Node *prime()
 {
     Node *node = NULL;
-    Token *token = check((Type[]){int_, id_, 0});
+    Token *token = check((Type[]){int_, id_, lpar_, rpar_, 0});
     if (token)
     {
         if (token->type == id_ && strcmp(token->name, "int") == 0)
@@ -150,8 +150,38 @@ Node *prime()
                 exit(1);
             }
         }
+        else if (token->type == lpar_)
+        {
+            node = expr();
+            if (!check((Type[]){rpar_, 0}))
+            {
+                printf("Error: Expected )\n");
+                exit(1);
+            }
+        }
         else
+        {
             node = new_node(token);
+            /*
+                + Func call:
+                    LEFT :
+                    RIGHT:
+
+            */
+            if (check((Type[]){lpar_, 0}))
+            {
+                node->token->type = fcall_;
+                Node *curr = node;
+                while (!check((Type[]){rpar_, 0}))
+                {
+                    curr->left = expr();
+                    if (check((Type[]){coma_, 0}))
+                        ;
+                    curr->right = new_node(NULL);
+                    curr = curr->right;
+                }
+            }
+        }
     }
     return node;
 }
@@ -168,6 +198,11 @@ void print_token(Token *token)
             printf("[int] name [%s]", token->name);
         else
             printf("[int] value [%d]", token->value);
+        break;
+    }
+    case fcall_:
+    {
+        printf("[func call] name [%s]", token->name);
         break;
     }
     case id_:
@@ -188,10 +223,15 @@ void print_node(Node *node, char *side, int space)
             i += printf(" ");
         if (side)
             printf("%s:", side);
-        printf("node: ");
-        print_token(node->token);
-        print_node(node->left, "LEFT ", space + 4);
-        print_node(node->right, "RIGHT", space + 4);
+        if (node->token)
+        {
+            printf("node: ");
+            print_token(node->token);
+            print_node(node->left, "LEFT ", space + 4);
+            print_node(node->right, "RIGHT", space + 4);
+        }
+        else
+            printf("\n");
     }
 }
 
@@ -221,6 +261,12 @@ char *to_string(Type type)
         return "INT   ";
     case assign_:
         return "ASSIGN";
+    case lpar_:
+        return "LPARENT";
+    case rpar_:
+        return "RPARENT";
+    case fcall_:
+        return "FUNC CALL";
     case end_:
         return "END";
     default:
@@ -298,6 +344,17 @@ int generate(Node *node)
     {
         Inst *inst = new_inst(node);
         return inst->r1;
+        break;
+    }
+    case fcall_:
+    {
+        Node *curr = node;
+        while(curr->left)
+        {
+            // new_inst(node->left);
+            curr = curr->right;
+        }
+        // Inst *inst = new_inst(node);
         break;
     }
     case assign_:
@@ -432,6 +489,15 @@ void optimize_ir2()
                 }
                 j++;
             }
+            if (j == inst_pos)
+            {
+#if 0
+                int l = insts[i]->r2;
+                char *name = regs[l]->name;
+                printf("%s<%s> Not found%s\n", RED, name, RESET);
+                exit(1);
+#endif
+            }
         }
         i++;
     }
@@ -441,7 +507,7 @@ void simulate_ir()
 {
     if (!inst_pos)
         return;
-    printf("SIMULATE IR (%d instructions)\n", inst_pos);
+    printf("SIMULATE IR\n");
     int regs[100];
     int j = 0;
     for (int i = 0; i < inst_pos; i++)
