@@ -1,0 +1,1 @@
+cc main.c utils.c -fsanitize=address -g3
