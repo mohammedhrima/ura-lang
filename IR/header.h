@@ -22,7 +22,12 @@ typedef enum Type
     mul_ = '*',
     div_ = '/',
     int_ = 'i',
-    id_,
+    lpar_ = '(',
+    rpar_ = ')',
+    coma_ = ',',
+    id_ = 'I',
+    fcall_ = 'c',
+    arg_ = 'a',
     end_ = 'e',
 } Type;
 
