@@ -1,4 +1,85 @@
-#include "header.h"
+#ifndef HEADER
+#define HEADER
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <ctype.h>
+#include <string.h>
+#include <stdbool.h>
+
+#define SPLIT "=================================================\n"
+#define GREEN "\033[0;32m"
+#define RED "\033[0;31m"
+#define CYAN "\033[0;36m"
+#define RESET "\033[0m"
+
+typedef enum Type
+{
+    assign_ = '=',
+    add_ = '+',
+    sub_ = '-',
+    mul_ = '*',
+    div_ = '/',
+    int_ = 'i',
+    lpar_ = '(',
+    rpar_ = ')',
+    coma_ = ',',
+    id_ = 'I',
+    fcall_ = 'c',
+    arg_ = 'a',
+    end_ = 'e',
+} Type;
+
+typedef struct Token
+{
+    Type type;
+    int value;
+    char *name;
+    bool declare;
+    // int reg;
+} Token;
+
+typedef struct Node
+{
+    struct Node *left;
+    struct Node *right;
+    Token *token;
+} Node;
+
+typedef struct Inst
+{
+    // Token *token;
+    Type type;
+    // registers
+    int r1;
+    int r2;
+    int r3;
+
+    int value;
+    char *name;
+    bool remove;
+
+    // Token *left;
+    // Token *right;
+} Inst;
+
+// GLOBALS
+extern Token **tokens;
+extern int tk_size;
+extern int tk_pos;
+extern Inst **insts;
+extern int inst_size;
+extern int inst_pos;
+
+char *open_file(char *filename);
+void free_node(Node *node);
+char *to_string(Type type);
+void clear(Node *head, char *input);
+void print_token(Token *token);
+void print_node(Node *node, char *side, int space);
+
+#endif
 
 // DEBUG
 void print_token(Token *token)
@@ -412,7 +493,6 @@ Inst *new_inst(Node *node)
                 }
             }
             new->name = node->token->name;
-            new->declare = node->token->declare;
         }
         regs[new->r1] = new;
     }
@@ -513,8 +593,7 @@ void print_ir()
         {
             // printf("%s: ", to_string(insts[i]->type));
             printf("r%.2d: ", insts[i]->r1);
-            char *name = regs[insts[i]->r2]->name;
-            printf("%s (%s) r%d ", to_string(insts[i]->type), name ? name : "", insts[i]->r2);
+            printf("%s  r%d  ", to_string(insts[i]->type), insts[i]->r2);
             if (regs[insts[i]->r3]->name || is_operation(regs[insts[i]->r3]->type))
             {
 #if 1
@@ -534,7 +613,7 @@ void print_ir()
         }
         case int_:
         {
-            if (regs[insts[i]->r1]->name && regs[insts[i]->r1]->declare)
+            if (regs[insts[i]->r1]->name)
                 printf("r%.2d: declare %s\n", insts[i]->r1, insts[i]->name);
             else
             {
@@ -603,12 +682,10 @@ void optimize_ir1()
 void optimize_ir2()
 {
     printf("OPTIMIZATION %d (remove reassigned variables)\n", ++op_index);
-    int i = -1;
-    while (++i < inst_pos)
+    int i = 0;
+    while (i < inst_pos)
     {
-        if (insts[i]->remove)
-            continue;
-        if (insts[i]->type == assign_)
+        if (insts[i]->type == assign_ && !insts[i]->remove)
         {
             int j = i + 1;
             while (j < inst_pos)
@@ -636,37 +713,13 @@ void optimize_ir2()
 #endif
             }
         }
-    }
-}
-
-void optimize_ir3()
-{
-    printf("OPTIMIZATION %d (remove declaration before assignement)\n", ++op_index);
-    int i = -1;
-    while (++i < inst_pos)
-    {
-        if (insts[i]->remove)
-            continue;
-        if(insts[i]->declare)
-        {
-            int j = i;
-            while(++j < inst_pos)
-            {
-                if(insts[j]->type == assign_ && insts[j]->r2 == insts[i]->r1)
-                {
-                    insts[i]->remove = true;
-                    break;
-                }
-                if(insts[j]->r2 == insts[i]->r1 || insts[j]->r3 == insts[i]->r1)
-                    break;
-            }
-        }
+        i++;
     }
 }
 
 int main()
 {
-    char *input = open_file("file.w");
+    char *input = open_file("002.w");
     if (input == NULL)
     {
         printf("Error: openning file\n");
@@ -702,8 +755,6 @@ int main()
     optimize_ir1();
     print_ir();
     optimize_ir2();
-    print_ir();
-    optimize_ir3();
     print_ir();
     clear(head, input);
 }
