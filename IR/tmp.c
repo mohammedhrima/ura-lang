@@ -1,4 +1,129 @@
-#include "utils.c"
+#include "header.h"
+
+// DEBUG
+void print_token(Token *token)
+{
+    printf("token ");
+    switch (token->type)
+    {
+    case int_:
+    {
+        if (token->name)
+        {
+            printf("[int] name [%s]", token->name);
+            if (token->declare)
+                printf(" [declare]");
+        }
+        else
+            printf("[int] value [%d]", token->value);
+        break;
+    }
+    case fcall_:
+    {
+        printf("[func call] name [%s]", token->name);
+        break;
+    }
+    case id_:
+        printf("[id] name [%s]", token->name);
+        break;
+    default:
+        printf("[%c]", token->type);
+    }
+    printf("\n");
+}
+
+void print_node(Node *node, char *side, int space)
+{
+    if (node)
+    {
+        int i = 0;
+        while (i < space)
+            i += printf(" ");
+        if (side)
+            printf("%s:", side);
+        if (node->token)
+        {
+            printf("node: ");
+            print_token(node->token);
+            print_node(node->left, "LEFT ", space + 5);
+            print_node(node->right, "RIGHT", space + 5);
+        }
+        else
+            printf("\n");
+    }
+}
+
+// UTILS
+char *open_file(char *filename)
+{
+    FILE *file = fopen(filename, "r");
+    fseek(file, 0, SEEK_END);
+    size_t size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    char *input = calloc(size + 1, sizeof(char));
+    fread(input, size, sizeof(char), file);
+    fclose(file);
+    return input;
+}
+
+void free_node(Node *node)
+{
+    if (node)
+    {
+        free_node(node->left);
+        free_node(node->right);
+        free(node);
+    }
+}
+
+char *to_string(Type type)
+{
+    switch (type)
+    {
+    case add_:
+        return "ADD   ";
+    case sub_:
+        return "SUB   ";
+    case mul_:
+        return "MUL   ";
+    case div_:
+        return "DIV   ";
+    case int_:
+        return "INT   ";
+    case assign_:
+        return "ASSIGN";
+    case lpar_:
+        return "LPARENT";
+    case rpar_:
+        return "RPARENT";
+    case fcall_:
+        return "FUNC CALL";
+    case end_:
+        return "END";
+    default:
+        break;
+    }
+    return NULL;
+}
+
+void clear(Node *head, char *input)
+{
+    free_node(head);
+    for (int i = 0; i < tk_pos; i++)
+    {
+        if (tokens[i]->name)
+            free(tokens[i]->name);
+        free(tokens[i]);
+    }
+    for (int i = 0; i < inst_pos; i++)
+    {
+        // if(insts)
+        free(insts[i]);
+    }
+    free(insts);
+    free(input);
+    free(regs);
+}
 
 // TOKENIZE
 Token **tokens;
@@ -168,7 +293,7 @@ Node *add_sub()
         left = node;
     }
 #else
-    if ((token = check((Type[]){add_, sub_, 0})))
+    if((token = check((Type[]){add_, sub_, 0})))
     {
         Node *node = new_node(token);
         node->left = left;
@@ -278,40 +403,26 @@ void new_variable(Token *token)
 }
 
 // INSTRUCTIONS
-Inst **first_insts;
 Inst **insts;
 int inst_size;
 int inst_pos;
 
-void copy_insts()
-{
-    if (insts)
-        free(insts);
-    insts = calloc(inst_size, sizeof(Inst *)); // TODO: protect it if no instruction created
-    int j = 0;
-    for (int i = 0; i < inst_pos; i++)
-    {
-        if (!first_insts[i]->remove)
-            insts[j++] = first_insts[i];
-    }
-}
-
 void add_inst(Inst *inst)
 {
-    if (first_insts == NULL)
+    if (insts == NULL)
     {
         inst_size = 100;
-        first_insts = calloc(inst_size, sizeof(Inst *));
+        insts = calloc(inst_size, sizeof(Inst *));
     }
     else if (inst_pos + 1 == inst_size)
     {
         Inst **tmp = calloc(inst_size * 2, sizeof(Inst *));
-        memcpy(tmp, first_insts, inst_pos * sizeof(Inst *));
-        free(first_insts);
-        first_insts = tmp;
+        memcpy(tmp, insts, inst_pos * sizeof(Inst *));
+        free(insts);
+        insts = tmp;
         inst_size *= 2;
     }
-    first_insts[inst_pos++] = inst;
+    insts[inst_pos++] = inst;
 }
 
 Inst **regs;
@@ -348,7 +459,7 @@ Inst *new_inst(Node *node)
         {
             for (int i = 0; i < inst_pos; i++)
             {
-                if (first_insts[i]->name && strcmp(first_insts[i]->name, node->token->name) == 0)
+                if (insts[i]->name && strcmp(insts[i]->name, node->token->name) == 0)
                 {
                     printf("%sRedefinition of %s%s\n", RED, node->token->name, RESET);
                     exit(1);
@@ -374,10 +485,10 @@ Inst *new_inst(Node *node)
 
 Inst *get_variable(char *name)
 {
-    for (int i = 0; first_insts[i]; i++)
+    for (int i = 0; insts[i]; i++)
     {
-        if (first_insts[i]->name && strcmp(first_insts[i]->name, name) == 0)
-            return first_insts[i];
+        if (insts[i]->name && strcmp(insts[i]->name, name) == 0)
+            return insts[i];
     }
     printf("%s%s Not found%s\n", RED, name, RESET);
     exit(1);
@@ -422,12 +533,18 @@ int generate_ir(Node *node)
     return -1;
 }
 
-bool check_type(Type *types, Type type)
+bool is_operation(Type type)
 {
-    for (int i = 0; types[i]; i++)
+    switch (type)
     {
-        if (types[i] == type)
-            return true;
+    case add_:
+    case sub_:
+    case mul_:
+    case div_:
+    case assign_:
+        return true;
+    default:
+        break;
     }
     return false;
 }
@@ -436,8 +553,10 @@ void print_ir()
 {
     printf(SPLIT);
     int j = 0;
-    for (int i = 0; insts[i]; i++)
+    for (int i = 0; i < inst_pos; i++)
     {
+        if (insts[i]->remove)
+            continue;
         switch (insts[i]->type)
         {
         case add_:
@@ -450,9 +569,19 @@ void print_ir()
             printf("r%.2d: ", insts[i]->r1);
             char *name = regs[insts[i]->r2]->name;
             printf("%s (%s) r%d ", to_string(insts[i]->type), name ? name : "", insts[i]->r2);
-            Type type = regs[insts[i]->r3]->type;
-            if (regs[insts[i]->r3]->name || check_type((Type[]){add_, sub_, mul_, div_, assign_, 0}, type))
+            if (regs[insts[i]->r3]->name || is_operation(regs[insts[i]->r3]->type))
+            {
+#if 1
                 printf("r%d\n", insts[i]->r3);
+#else
+                printf("r%d ", insts[i]->r3);
+                if (regs[insts[i]->r3]->name)
+                    printf(" has name %s", regs[insts[i]->r3]->name);
+                else if (is_operation(insts[i]->type))
+                    printf("OP %s", to_string(insts[i]->type));
+                printf("\n");
+#endif
+            }
             else
                 printf("%d\n", regs[insts[i]->r3]->value);
             break;
@@ -462,7 +591,10 @@ void print_ir()
             if (regs[insts[i]->r1]->name && regs[insts[i]->r1]->declare)
                 printf("r%.2d: declare %s\n", insts[i]->r1, insts[i]->name);
             else
+            {
                 continue;
+                // printf("r%.2d: value   %d (%s)\n",insts[i]->r1, insts[i]->value, to_string(insts[i]->type));
+            }
             break;
         }
         default:
@@ -472,143 +604,137 @@ void print_ir()
     }
     printf("%.2d Instructions on total\n", j);
     printf(SPLIT);
-    for (int i = 1; regs[i]; i++)
-    {
-        if (regs[i]->type == int_ && !regs[i]->name)
-            printf("r%.2d: value  %d ", regs[i]->r1, regs[i]->value);
-        else
-            printf("r%.2d: %s r%d r%d ", regs[i]->r1, to_string(regs[i]->type), regs[i]->r2, regs[i]->r3);
-        if (regs[i]->remove)
-            printf("remove");
-        printf("\n");
-    }
-    printf(SPLIT);
 }
 
-void optimize_ir()
+bool is_math_operation(Type type)
 {
-    static int op_index;
-    switch (op_index)
+    return type == add_ || type == sub_ || type == mul_ || type == div_;
+};
+
+int op_index;
+void optimize_ir1()
+{
+    printf("OPTIMIZATION %d (calculate operations on numbers)\n", ++op_index);
+    bool op = true;
+    int i = 0;
+    while (i < inst_pos)
     {
-    case 0:
-    {
-        printf("OPTIMIZATION %d (calculate operations on numbers type 0)\n", ++op_index);
-        int i = 0;
-        while (insts[i])
+        if (is_math_operation(insts[i]->type))
         {
-            if (check_type((Type[]){add_, sub_, mul_, div_, 0}, insts[i]->type))
-            {
-                Inst *lreg = regs[insts[i]->r2];
-                Inst *rreg = regs[insts[i]->r3];
-                if (
-                    lreg->type == int_ && rreg->type == int_ &&
-                    !lreg->name && !rreg->name)
-                {
-                    switch (insts[i]->type)
-                    {
-                    case add_:
-                        insts[i]->value = lreg->value + rreg->value;
-                        break;
-                    case sub_:
-                        insts[i]->value = lreg->value - rreg->value;
-                        break;
-                    case mul_:
-                        insts[i]->value = lreg->value * rreg->value;
-                        break;
-                    case div_:
-                        insts[i]->value = lreg->value / rreg->value;
-                        break;
-                    default:
-                        break;
-                    }
-                    insts[i]->type = int_;
-                    lreg->remove = true;
-                    rreg->remove = true;
-                }
-            }
-            if (insts[i]->type == int_ && !insts[i]->name)
-            {
-                printf("found to remove in r%d\n", insts[i]->r1);
-                insts[i]->remove = true;
-            }
-            i++;
-        }
-        break;
-    }
-    case 1:
-    {
-        printf("OPTIMIZATION %d (calculate operations on numbers type 1)\n", ++op_index);
-        int i = 1;
-        while (insts[i])
-        {
+            int c = insts[i]->r1;
+            int l = insts[i]->r2;
+            int r = insts[i]->r3;
+            // Inst *creg = ;
+            Inst *lreg = regs[insts[i]->r2];
+            Inst *rreg = regs[insts[i]->r3];
             if (
-                insts[i]->type == add_ &&
-                insts[i - 1]->type == add_ &&
-                insts[i]->r2 == insts[i - 1]->r1 &&
-                !regs[insts[i - 1]->r3]->name &&
-                !regs[insts[i]->r3]->name)
+                lreg->type == int_ && rreg->type == int_ &&
+                !lreg->name && !rreg->name)
             {
-                printf("found r%d\n", insts[i]->r1);
-                insts[i]->remove = true;
-                regs[insts[i - 1]->r3]->value = regs[insts[i - 1]->r3]->value + regs[insts[i]->r3]->value;
-                if (insts[i + 1]->r2 == insts[i]->r1)
+                switch (insts[i]->type)
                 {
-                    insts[i + 1]->r2 = insts[i - 1]->r1;
+                case add_:
+                    insts[i]->value = lreg->value + rreg->value;
+                    break;
+                case sub_:
+                    insts[i]->value = lreg->value - rreg->value;
+                    break;
+                case mul_:
+                    insts[i]->value = lreg->value * rreg->value;
+                    break;
+                case div_:
+                    insts[i]->value = lreg->value / rreg->value;
+                    break;
+                default:
+                    break;
                 }
-                i = 1;
-                copy_insts();
-                continue;
+                insts[i]->type = int_;
+                lreg->remove = true;
+                rreg->remove = true;
             }
-            i++;
         }
-        break;
+        i++;
     }
-    case 2:
+}
+
+void optimize_ir2()
+{
+    printf("OPTIMIZATION %d (remove reassigned variables)\n", ++op_index);
+    for (int i = 0; i < inst_pos; i++)
     {
-        printf("OPTIMIZATION %d (remove reassigned variables)\n", ++op_index);
-        for (int i = 0; insts[i]; i++)
+        if (insts[i]->remove)
+            continue;
+        if (insts[i]->type == assign_)
         {
-            if (insts[i]->declare)
+            int j = i + 1;
+            while (j < inst_pos)
             {
-                int j = i + 1;
-                while (insts[j])
+                if (insts[j]->type == assign_ && insts[j]->r2 == insts[i]->r2)
                 {
-                    if (insts[j]->type == assign_ && insts[j]->r2 == insts[i]->r1)
-                    {
-                        insts[i]->declare = false;
-                        insts[i]->remove = true;
-                        break;
-                    }
+                    insts[i]->remove = true;
+                    break;
+                }
+                else
+                {
+                    // if used some where
                     if (insts[j]->r2 == insts[i]->r1 || insts[j]->r3 == insts[i]->r1)
                         break;
-                    j++;
                 }
+                j++;
             }
-            else if (insts[i]->type == assign_)
+            if (j == inst_pos)
             {
-                int j = i + 1;
-                while (insts[j])
-                {
-                    if (insts[j]->type == assign_ && insts[j]->r2 == insts[i]->r2)
-                    {
-                        insts[i]->remove = true;
-                        break;
-                    }
-                    else
-                    {
-                        // if used some where
-                        if (insts[j]->r2 == insts[i]->r1 || insts[j]->r3 == insts[i]->r1)
-                            break;
-                    }
-                    j++;
-                }
+#if 0
+                int l = insts[i]->r2;
+                char *name = regs[l]->name;
+                printf("%s<%s> Not found%s\n", RED, name, RESET);
+                exit(1);
+#endif
             }
         }
-        break;
     }
-    default:
-        printf("Optimization %d, Not implemented\n", op_index);
-        break;
+}
+
+void optimize_ir3()
+{
+    printf("OPTIMIZATION %d (remove declaration before assignement)\n", ++op_index);
+    for (int i = 0; i < inst_pos; i++)
+    {
+        if (insts[i]->remove)
+            continue;
+        if (insts[i]->declare)
+        {
+            int j = i;
+            while (++j < inst_pos)
+            {
+                if (insts[j]->type == assign_ && insts[j]->r2 == insts[i]->r1)
+                {
+                    insts[i]->declare = false;
+                    insts[i]->remove = true;
+                    break;
+                }
+                if (insts[j]->r2 == insts[i]->r1 || insts[j]->r3 == insts[i]->r1)
+                    break;
+            }
+        }
+    }
+}
+
+void optimize_ir4()
+{
+    printf("OPTIMIZATION %d (remove followed operation on numbers)\n", ++op_index);
+    for (int i = 0; i < inst_pos; i++)
+    {
+        int j = i + 1;
+        if (j < inst_pos)
+        {
+            if (insts[i]->type == add_)
+            {
+
+            }
+        }
+        if (insts[i]->remove)
+            continue;
     }
 }
 
@@ -617,8 +743,10 @@ size_t stack_ptr;
 void generate_asm()
 {
     printf("GENERATE ASM\n");
-    for (int i = 0; insts[i]; i++)
+    for (int i = 0; i < inst_pos; i++)
     {
+        if (insts[i]->remove)
+            continue;
         Inst *inst = insts[i];
         // printf("GEN: %s -> %s\n", to_string(insts[i]->type), to_string(inst->type));
         if (inst->declare)
@@ -715,20 +843,12 @@ int main()
         generate_ir(curr->left);
         curr = curr->right;
     }
-
-    copy_insts();
     print_ir();
-    optimize_ir();
-
-    copy_insts();
+    optimize_ir1();
     print_ir();
-    optimize_ir();
-
-    copy_insts();
+    optimize_ir2();
     print_ir();
-    optimize_ir();
-
-    copy_insts();
+    optimize_ir3();
     print_ir();
     generate_asm();
     clear(head, input);

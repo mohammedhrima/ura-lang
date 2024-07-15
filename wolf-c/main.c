@@ -14,10 +14,10 @@ size_t ptr;
 
 Token *evaluate(Node *node)
 {
-    switch(node->token->type)
-    {
-        case 
-    }
+    // switch(node->token->type)
+    // {
+    //     case
+    // }
     return node->token;
 }
 

@@ -60,10 +60,33 @@ typedef struct Inst
     char *name;
     bool declare;
     bool remove;
+    size_t ptr;
+    char c;
 
     // Token *left;
     // Token *right;
 } Inst;
+
+typedef enum Inst_type
+{
+    ADD,
+    SUB,
+    MUL,
+    DIV,
+    MOV,
+} Inst_type;
+
+typedef struct Asm
+{
+    Inst_type type;
+
+    bool is_reg;
+    char reg;
+    size_t ptr;
+
+    struct Asm *left;
+    struct Asm *right;
+} Asm;
 
 // GLOBALS
 extern Token **tokens;
@@ -72,6 +95,8 @@ extern int tk_pos;
 extern Inst **insts;
 extern int inst_size;
 extern int inst_pos;
+extern Inst **regs;
+extern size_t stack_ptr;
 
 char *open_file(char *filename);
 void free_node(Node *node);
@@ -79,6 +104,5 @@ char *to_string(Type type);
 void clear(Node *head, char *input);
 void print_token(Token *token);
 void print_node(Node *node, char *side, int space);
-
 
 #endif
