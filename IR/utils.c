@@ -1,6 +1,41 @@
 #include "header.h"
 
+// TOKENIZE GLOBALS
+Token **tokens;
+int tk_size;
+int tk_pos;
+int exe_pos;
+
+// VARIABLES GLOBALS
+Token **vars;
+int var_size;
+int var_pos;
+
+// INSTRUCTIONS
+Inst **first_insts;
+Inst **insts;
+int inst_size;
+int inst_pos;
+
+// SIMULATION
+Inst **regs;
+int reg_pos;
+int reg_size;
+
 // DEBUG
+Specials *specials = (Specials[]){
+    {"=", assign_},
+    {"+", add_},
+    {"-", sub_},
+    {"*", mul_},
+    {"/", div_},
+    {"(", lpar_},
+    {")", rpar_},
+    {",", coma_},
+    {"if", if_},
+    {0, (Type)0},
+};
+
 void print_token(Token *token)
 {
     printf("token ");
@@ -15,7 +50,19 @@ void print_token(Token *token)
                 printf(" [declare]");
         }
         else
-            printf("[int] value [%d]", token->value);
+            printf("[int] value [%lld]", token->Int.value);
+        break;
+    }
+    case bool_:
+    {
+        if (token->name)
+        {
+            printf("[bool] name [%s]", token->name);
+            if (token->declare)
+                printf(" [declare]");
+        }
+        else
+            printf("[bool] value [%d]", token->Bool.value);
         break;
     }
     case fcall_:
@@ -26,8 +73,21 @@ void print_token(Token *token)
     case id_:
         printf("[id] name [%s]", token->name);
         break;
+    case end_:
+        printf("[end]");
+        break;
     default:
-        printf("[%c]", token->type);
+    {
+        for (int i = 0; specials[i].value; i++)
+        {
+            if (specials[i].type == token->type)
+            {
+                printf("[%s]", specials[i].value);
+                break;
+            }
+        }
+        break;
+    }
     }
     printf("\n");
 }
@@ -40,7 +100,7 @@ void print_node(Node *node, char *side, int space)
         while (i < space)
             i += printf(" ");
         if (side)
-            printf("%s:", side);
+            printf("%s: ", side);
         if (node->token)
         {
             printf("node: ");
@@ -106,21 +166,34 @@ char *to_string(Type type)
     return NULL;
 }
 
-void clear(Node *head, char *input)
+#if AST
+void clear(
+    Node *head, char *input)
+#else
+void clear(char *input)
+#endif
 {
-    free_node(head);
+#if TOKENIZE
     for (int i = 0; i < tk_pos; i++)
     {
         if (tokens[i]->name)
             free(tokens[i]->name);
         free(tokens[i]);
     }
+#endif
+
+#if AST
+    free_node(head);
+#endif
+
+#if IR
     for (int i = 0; i < inst_pos; i++)
     {
         // if(insts)
-        free(insts[i]);
+        free(first_insts[i]);
     }
-    free(insts);
-    free(input);
+    free(first_insts);
     free(regs);
+#endif
+    free(input);
 }
