@@ -1,6 +1,113 @@
-#include "utils.c"
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <ctype.h>
+#include <string.h>
+#include <stdbool.h>
 
-#if TOKENIZE // TOKENIZE
+#define SPLIT "=================================================\n"
+#define GREEN "\033[0;32m"
+#define RED "\033[0;31m"
+#define CYAN "\033[0;36m"
+#define RESET "\033[0m"
+
+typedef enum Type
+{
+    assign_ = '=',
+    add_ = '+',
+    sub_ = '-',
+    mul_ = '*',
+    div_ = '/',
+    int_ = 'i',
+    lpar_ = '(',
+    rpar_ = ')',
+    coma_ = ',',
+    id_ = 'I',
+    fcall_ = 'c',
+    arg_ = 'a',
+    end_ = 'e',
+} Type;
+
+typedef struct Token
+{
+    Type type;
+    int value;
+    char *name;
+    bool declare;
+    // int reg;
+} Token;
+
+typedef struct Node
+{
+    struct Node *left;
+    struct Node *right;
+    Token *token;
+} Node;
+
+typedef struct Inst
+{
+    // Token *token;
+    Type type;
+    // registers
+    int r1;
+    int r2;
+    int r3;
+
+    int value;
+    char *name;
+    bool declare;
+    bool remove;
+    size_t ptr;
+    char c;
+
+    // Token *left;
+    // Token *right;
+} Inst;
+
+typedef enum Inst_type
+{
+    ADD,
+    SUB,
+    MUL,
+    DIV,
+    MOV,
+} Inst_type;
+
+typedef struct Asm
+{
+    Inst_type type;
+
+    bool is_reg;
+    char reg;
+    size_t ptr;
+
+    struct Asm *left;
+    struct Asm *right;
+} Asm;
+
+// GLOBALS
+extern Token **tokens;
+extern int tk_size;
+extern int tk_pos;
+extern Inst **insts;
+extern int inst_size;
+extern int inst_pos;
+extern Inst **regs;
+extern size_t stack_ptr;
+
+char *open_file(char *filename);
+void free_node(Node *node);
+char *to_string(Type type);
+void clear(Node *head, char *input);
+void print_token(Token *token);
+void print_node(Node *node, char *side, int space);
+
+// TOKENIZE
+Token **tokens;
+int tk_size;
+int tk_pos;
+int exe_pos;
+
 void add_token(Token *token)
 {
     if (tokens == NULL)
@@ -23,27 +130,15 @@ Token *new_token(char *input, int s, int e, Type type)
 {
     Token *new = calloc(1, sizeof(Token));
     new->type = type;
-    switch (type)
-    {
-    case int_:
+    if (type == int_)
     {
         while (s < e)
-            new->Int.value = new->Int.value * 10 + input[s++] - '0';
-        break;
+            new->value = new->value * 10 + input[s++] - '0';
     }
-    case bool_:
-    {
-        break;
-    }
-    case id_:
-    case fcall_:
+    else if (type == id_ || type == fcall_)
     {
         new->name = calloc(e - s + 1, sizeof(char));
         strncpy(new->name, input + s, e - s);
-        break;
-    }
-    default:
-        break;
     }
     add_token(new);
     return (new);
@@ -51,6 +146,22 @@ Token *new_token(char *input, int s, int e, Type type)
 
 void tokenize(char *input)
 {
+    struct
+    {
+        char *value;
+        Type type;
+    } specials[] = {
+        {"=", assign_},
+        {"+", add_},
+        {"-", sub_},
+        {"*", mul_},
+        {"/", div_},
+        {"(", lpar_},
+        {")", rpar_},
+        {",", coma_},
+        {0, (Type)0},
+    };
+
     int i = 0;
     while (input[i])
     {
@@ -90,9 +201,7 @@ void tokenize(char *input)
     }
     new_token(NULL, 0, 0, end_);
 }
-#endif
 
-#if AST
 // ABSTRACT SYNTAX TREE
 Node *expr();
 Node *assign();
@@ -196,40 +305,29 @@ Node *mul_div()
     return left;
 }
 
-Specials DataTypes[] = {
-    {"int", int_},
-    {"bool", bool_},
-    {0, 0},
-};
-
 Node *prime()
 {
     Node *node = NULL;
     Token *token = check((Type[]){int_, id_, lpar_, rpar_, 0});
     if (token)
     {
-        bool found = false;
-        for (int i = 0; token->type == id_ && DataTypes[i].value; i++)
+        if (token->type == id_ && strcmp(token->name, "int") == 0)
         {
-            if (strcmp(token->name, DataTypes[i].value) == 0)
+            Type type = int_;
+            token = check((Type[]){id_, 0});
+            if (token)
             {
-                Type type = DataTypes[i].type;
-                token = check((Type[]){id_, 0});
-                if (token)
-                {
-                    node = new_node(token);
-                    node->token->type = type;
-                    node->token->declare = true;
-                    return node;
-                }
-                else
-                {
-                    printf("Error");
-                    exit(1);
-                }
+                node = new_node(token);
+                node->token->type = type;
+                node->token->declare = true;
+            }
+            else
+            {
+                printf("Error");
+                exit(1);
             }
         }
-        if (token->type == lpar_)
+        else if (token->type == lpar_)
         {
             node = expr();
             if (!check((Type[]){rpar_, 0}))
@@ -258,9 +356,12 @@ Node *prime()
     }
     return node;
 }
-#endif
 
-#if IR
+// VARIABLES
+Token **vars;
+int var_size;
+int var_pos;
+
 void new_variable(Token *token)
 {
     if (vars == NULL)
@@ -277,6 +378,12 @@ void new_variable(Token *token)
     }
     vars[var_pos++] = token;
 }
+
+// INSTRUCTIONS
+Inst **first_insts;
+Inst **insts;
+int inst_size;
+int inst_pos;
 
 void copy_insts()
 {
@@ -309,9 +416,13 @@ void add_inst(Inst *inst)
     first_insts[inst_pos++] = inst;
 }
 
-void allocate_reg(Inst *inst, int pos)
+Inst **regs;
+int reg_pos;
+int reg_size;
+
+void add_reg(Inst *inst)
 {
-    inst->curr->reg = pos;
+    inst->r1 = ++reg_pos;
     if (regs == NULL)
     {
         reg_size = 10;
@@ -325,20 +436,12 @@ void allocate_reg(Inst *inst, int pos)
         free(regs);
         regs = tmp;
     }
-    regs[inst->curr->reg] = inst;
+    regs[inst->r1] = inst;
 }
 
 Inst *new_inst(Node *node)
 {
     Inst *new = calloc(1, sizeof(Inst));
-    new->type = node->token->type;
-    new->curr = node->token;
-
-    // if(node->left)
-    //     new->left = node->left->token;
-    // if(node->right)
-    //     new->right = node->right->token;
-#if 0
     if (node->token->type == int_)
     {
         new->type = node->token->type;
@@ -356,18 +459,17 @@ Inst *new_inst(Node *node)
             new->name = node->token->name;
             new->declare = node->token->declare;
         }
-        allocate_reg(new, reg_pos++);
+        add_reg(new);
     }
     else
     {
         new->type = node->token->type;
         if (node->token->type != assign_)
         {
-            allocate_reg(new, new->r1);
+            add_reg(new);
             regs[new->r1] = new;
         }
     }
-#endif
     add_inst(new);
     return new;
 }
@@ -384,20 +486,20 @@ Inst *get_variable(char *name)
     return NULL;
 }
 
-Inst *generate_ir(Node *node)
+int generate_ir(Node *node)
 {
     switch (node->token->type)
     {
     case id_:
     {
         Inst *inst = get_variable(node->token->name);
-        return inst;
+        return inst->r1;
         break;
     }
     case int_:
     {
         Inst *inst = new_inst(node);
-        return inst;
+        return inst->r1;
         break;
     }
     case assign_:
@@ -406,20 +508,20 @@ Inst *generate_ir(Node *node)
     case mul_:
     case div_:
     {
-        Inst *left = generate_ir(node->left);
-        Inst *right = generate_ir(node->right);
+        int left = generate_ir(node->left);
+        int right = generate_ir(node->right);
         Inst *inst = new_inst(node);
-        inst->left = left->curr;
-        inst->right = right->curr;
-        // if (node->token->type == assign_) // TODO: to be checked in new_inst
-        //     inst->r1 = left;
-        return inst;
+        inst->r2 = left;
+        inst->r3 = right;
+        if (node->token->type == assign_)
+            inst->r1 = left;
+        return inst->r1;
         break;
     }
     default:
         break;
     }
-    return NULL;
+    return -1;
 }
 
 bool check_type(Type *types, Type type)
@@ -611,9 +713,7 @@ void optimize_ir()
         break;
     }
 }
-#endif
 
-#if ASM
 char gen_reg;
 size_t stack_ptr;
 void generate_asm()
@@ -682,7 +782,6 @@ void generate_asm()
         }
     }
 }
-#endif
 
 int main()
 {
@@ -692,15 +791,10 @@ int main()
         printf("Error: openning file\n");
         exit(1);
     }
-#if TOKENIZE
     tokenize(input);
     for (int i = 0; i < tk_pos; i++)
         print_token(tokens[i]);
-#endif
-
-    Node *head = NULL;
-#if AST
-    head = new_node(NULL);
+    Node *head = new_node(NULL);
     Node *curr = head;
     curr->left = expr();
     while (curr->left)
@@ -716,9 +810,6 @@ int main()
         curr = curr->right;
     }
     printf(SPLIT);
-#endif
-
-#if IR
     // GENERATE IR
     curr = head;
     while (curr->left)
@@ -741,10 +832,6 @@ int main()
 
     copy_insts();
     print_ir();
-#endif
-
-#if ASM
     generate_asm();
-#endif
     clear(head, input);
 }
