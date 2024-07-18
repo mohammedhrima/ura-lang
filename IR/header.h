@@ -31,9 +31,10 @@
 
 typedef enum
 {
-    assign_ = 11, lpar_, rpar_, mul_, add_, coma_, sub_, div_, int_,
-    bool_, id_, fcall_, if_, dots_, equal_, not_equal_, less_, more_,
-    less_equal_, more_equal_, end_,
+    assign_ = 11, add_assign_, sub_assign_, mul_assign_, div_assign_, 
+    lpar_, rpar_, mul_, add_, coma_, sub_, div_, int_, bool_, id_, 
+    fcall_, if_, end_if_, dots_, equal_, not_equal_, less_, more_, 
+    less_equal_, more_equal_, bloc_, end_,
 } Type;
 
 typedef struct
@@ -51,6 +52,8 @@ typedef struct
     int reg;
     char c;
     size_t ptr;
+    size_t index;
+    int space;
 
     char *name;
     bool declare;
