@@ -35,6 +35,20 @@ Token *new_token(char *input, int s, int e, Type type)
     {
         new->name = calloc(e - s + 1, sizeof(char));
         strncpy(new->name, input + s, e - s);
+        if (strcmp(new->name, "True") == 0)
+        {
+            free(new->name);
+            new->name = NULL;
+            new->type = bool_;
+            new->Bool.value = true;
+        }
+        else if (strcmp(new->name, "False") == 0)
+        {
+            free(new->name);
+            new->name = NULL;
+            new->type = bool_;
+            new->Bool.value = false;
+        }
         break;
     }
     default:
@@ -90,6 +104,8 @@ void tokenize(char *input)
 #if AST
 Node *expr();
 Node *assign();
+Node *equality();
+Node *comparison();
 Node *add_sub();
 Node *mul_div();
 Node *prime();
@@ -101,14 +117,15 @@ Node *new_node(Token *token)
     return new;
 }
 
-Token *check(Type *types)
+Token *check(Type type, ...)
 {
-    int i = 0;
-    while (types[i])
+    va_list ap;
+    va_start(ap, type);
+    while (type)
     {
-        if (tokens[exe_pos]->type == types[i])
+        if (type == tokens[exe_pos]->type)
             return tokens[exe_pos++];
-        i++;
+        type = va_arg(ap, Type);
     }
     return NULL;
 }
@@ -120,14 +137,14 @@ Node *expr()
 
 Node *assign()
 {
-    Node *left = add_sub();
-    Token *token = NULL;
+    Node *left = comparison();
+    Token *token;
 #if 1
-    while ((token = check((Type[]){assign_, 0})))
+    while ((token = check(assign_, 0)))
     {
         Node *node = new_node(token);
         node->left = left;
-        node->right = add_sub();
+        node->right = comparison();
         left = node;
     }
 #else
@@ -142,12 +159,40 @@ Node *assign()
     return left;
 }
 
+Node *equality()
+{
+    Node *left = comparison();
+    Token *token;
+    while ((token = check(equal_, not_equal_, 0)))
+    {
+        Node *node = new_node(token);
+        node->left = left;
+        node->right = comparison();
+        left = node;
+    }
+    return left;
+}
+
+Node *comparison()
+{
+    Node *left = add_sub();
+    Token *token;
+    while ((token = check(less_, more_, less_equal_, more_equal_, equal_, 0)))
+    {
+        Node *node = new_node(token);
+        node->left = left;
+        node->right = add_sub();
+        left = node;
+    }
+    return left;
+}
+
 Node *add_sub()
 {
     Node *left = mul_div();
-    Token *token = NULL;
+    Token *token;
 #if 1
-    while ((token = check((Type[]){add_, sub_, 0})))
+    while ((token = check(add_, sub_, 0)))
     {
         Node *node = new_node(token);
         node->left = left;
@@ -171,7 +216,7 @@ Node *mul_div()
     Node *left = prime();
     Token *token = NULL;
 #if 1
-    while ((token = check((Type[]){mul_, div_, 0})))
+    while ((token = check(mul_, div_, 0)))
     {
         Node *node = new_node(token);
         node->left = left;
@@ -190,16 +235,12 @@ Node *mul_div()
     return left;
 }
 
-Specials DataTypes[] = {
-    {"int", int_},
-    {"bool", bool_},
-    {0, 0},
-};
+Specials DataTypes[] = {{"int", int_}, {"bool", bool_}, {0, 0}};
 
 Node *prime()
 {
     Node *node = NULL;
-    Token *token = check((Type[]){int_, id_, lpar_, rpar_, 0});
+    Token *token = check(int_, bool_, id_, lpar_, rpar_, 0);
     if (token)
     {
         bool found = false;
@@ -208,7 +249,7 @@ Node *prime()
             if (strcmp(token->name, DataTypes[i].value) == 0)
             {
                 Type type = DataTypes[i].type;
-                token = check((Type[]){id_, 0});
+                token = check(id_, 0);
                 if (token)
                 {
                     node = new_node(token);
@@ -226,7 +267,7 @@ Node *prime()
         if (token->type == lpar_)
         {
             node = expr();
-            if (!check((Type[]){rpar_, 0}))
+            if (!check(rpar_, 0))
             {
                 printf("Error: Expected )\n");
                 exit(1);
@@ -235,14 +276,14 @@ Node *prime()
         else
         {
             node = new_node(token);
-            if (check((Type[]){lpar_, 0}))
+            if (check(lpar_, 0)) // TODO: only if is identifier
             {
                 node->token->type = fcall_;
                 Node *curr = node;
-                while (!check((Type[]){rpar_, 0}))
+                while (!check(rpar_, 0))
                 {
                     curr->left = expr();
-                    if (!check((Type[]){coma_, 0}))
+                    if (!check(coma_, 0))
                     {
                         // TODO: syntax error
                     }
@@ -257,18 +298,6 @@ Node *prime()
 #endif
 
 #if IR
-void copy_insts()
-{
-    if (insts)
-        free(insts);
-    insts = calloc(inst_size, sizeof(Inst *)); // TODO: protect it if no instruction created
-    int j = 0;
-    for (int i = 0; i < inst_pos; i++)
-    {
-        // if (!first_insts[i]->remove)
-        insts[j++] = first_insts[i];
-    }
-}
 
 void add_inst(Inst *inst)
 {
@@ -307,15 +336,12 @@ void allocate_reg(Inst *inst, int pos)
     regs[inst->token->reg] = inst;
 }
 
+size_t ptr = 0;
 Inst *new_inst(Node *node)
 {
     printf("new instruction has type %s\n", to_string(node->token->type));
     Inst *new = calloc(1, sizeof(Inst));
     new->token = node->token;
-    // if (node->left) // it's handled int generate IR
-    //     new->left = node->left->token;
-    // if (node->right)
-    //     new->right = node->right->token;
     if (node->token->name)
     {
         for (int i = 0; i < inst_pos; i++)
@@ -329,16 +355,23 @@ Inst *new_inst(Node *node)
             }
         }
         if (node->token->declare)
+        {
+            node->token->ptr = (ptr += 8);
             allocate_reg(new, ++reg_pos);
+        }
     }
-    // else
-    // {
-    //     switch(node->token->type)
-    //     {
-    //         case id_:
-    //             break;
-    //     }
-    // }
+    else
+    {
+        switch (node->token->type)
+        {
+        case add_: case sub_: case mul_: case div_: case equal_:
+        case less_: case more_: case less_equal_: case more_equal_:
+            allocate_reg(new, ++reg_pos);
+            break;
+        default:
+            break;
+        }
+    }
     add_inst(new);
     return new;
 }
@@ -366,12 +399,13 @@ Token *generate_ir(Node *node)
         return token;
         break;
     }
-    case int_:
+    case bool_: case int_:
     {
         inst = new_inst(node);
         break;
     }
-    case assign_:
+    case add_: case sub_: case div_: case mul_: case assign_:
+    case equal_: case less_: case more_: case less_equal_: case more_equal_:
     {
         Token *left = generate_ir(node->left);
         Token *right = generate_ir(node->right);
@@ -386,25 +420,17 @@ Token *generate_ir(Node *node)
     return inst->token;
 }
 
-bool check_type(Type *types, Type type)
-{
-    for (int i = 0; types[i]; i++)
-    {
-        if (types[i] == type)
-            return true;
-    }
-    return false;
-}
-
 void print_ir()
 {
     printf(SPLIT);
-    int i;
-    for (i = 0; insts[i]; i++)
+    int j = 0;
+    for (int i = 0; insts[i]; i++)
     {
         Token *curr = insts[i]->token;
         Token *left = insts[i]->left;
         Token *right = insts[i]->right;
+        if (curr->remove)
+            continue;
         switch (curr->type)
         {
         case assign_:
@@ -415,7 +441,34 @@ void print_ir()
             if (right->reg)
                 printf("r%.2d", right->reg);
             else
+            {
+                switch (right->type)
+                {
+                case int_: printf("%lld", right->Int.value); break;
+                case bool_: printf("%s", right->Bool.value ? "True" : "False"); break;
+                default: break;
+                }
+            }
+            printf("\n");
+            break;
+        }
+        case add_: case sub_: case mul_: case div_: case equal_:
+        case less_: case more_: case less_equal_: case more_equal_:
+        {
+            printf("r%.2d: %s ", curr->reg, to_string(curr->type));
+            if (left->reg)
+                printf("r%.2d", left->reg);
+            else
+                printf("%lld", left->Int.value);
+            if (left->name)
+                printf(" (%s)", left->name);
+            printf(" to ");
+            if (right->reg)
+                printf("r%.2d", right->reg);
+            else
                 printf("%lld", right->Int.value);
+            if (right->name)
+                printf(" (%s)", right->name);
             printf("\n");
             break;
         }
@@ -423,49 +476,24 @@ void print_ir()
         {
             if (curr->declare)
                 printf("r%.2d: declare %s\n", curr->reg, curr->name);
-            break;
-        }
-        default:
-            break;
-        }
-#if 0
-        switch (insts[i]->type)
-        {
-        case add_:
-        case sub_:
-        case mul_:
-        case div_:
-        case assign_:
-        {
-            // printf("%s: ", to_string(curr->type));
-
-            printf("r%.2d: ", curr->reg);
-            char *name = regs[left->reg]->token->name;
-            printf("%s (%s) r%d ", to_string(curr->type), name ? name : "", left->reg);
-            Type type = regs[right->reg]->type;
-            if (
-                regs[right->reg]->name || 
-                check_type((Type[]){add_, sub_, mul_, div_, assign_, 0}, type))
-                printf("r%d\n", right->reg);
             else
-                printf("%d\n", regs[right->reg]->token->Int.value);
+                printf("r%.2d: value %lld\n", curr->reg, curr->Int.value);
             break;
         }
-        case int_:
+        case bool_:
         {
-            if (regs[curr->reg]->name && regs[curr->reg]->declare)
+            if (curr->declare)
                 printf("r%.2d: declare %s\n", curr->reg, curr->name);
             else
-                continue;
+                printf("r%.2d: value %s\n", curr->reg, curr->Bool.value ? "True" : "False");
             break;
         }
         default:
             break;
         }
         j++;
-#endif
     }
-    printf("%.2d Instructions on total\n", i);
+    printf("%.2d Instructions on total\n", j);
 #if 0
     printf(SPLIT);
     for (int i = 1; regs[i]; i++)
@@ -485,8 +513,245 @@ void print_ir()
 #endif
     printf(SPLIT);
 }
-
 #endif
+
+void optimize_ir()
+{
+#if 1
+    static int op_index;
+    bool optimize = true;
+    switch (op_index)
+    {
+    case 0:
+    {
+        printf("OPTIMIZATION %d (calculate operations on numbers type 0)\n", op_index);
+        for (int i = 0; insts[i]; i++)
+        {
+            Token *token = insts[i]->token;
+            Token *left = insts[i]->left;
+            Token *right = insts[i]->right;
+            if (check_type((Type[]){add_, sub_, mul_, div_, 0}, insts[i]->token->type))
+            {
+                if 
+                (
+                    left->type == int_ && right->type == int_ &&
+                    !left->name && !right->name
+                )
+                {
+                    switch (token->type)
+                    {
+                    case add_: token->Int.value = left->Int.value + right->Int.value;
+                        break;
+                    case sub_: token->Int.value = left->Int.value - right->Int.value;
+                        break;
+                    case mul_: token->Int.value = left->Int.value * right->Int.value;
+                        break;
+                    case div_: token->Int.value = left->Int.value / right->Int.value;
+                        break;
+                    default:
+                        break;
+                    }
+                    token->type = int_;
+                    left->remove = true;
+                    right->remove = true;
+                    copy_insts();
+                    i = 0;
+                }
+            }
+            if (token->type == int_ && !token->name)
+            {
+                // printf("found to remove in r%d\n", token->r1);
+                token->remove = true;
+                copy_insts();
+                i = 0;
+            }
+        }
+        break;
+    }
+    case 1:
+    {
+        printf("OPTIMIZATION %d (calculate operations on numbers type 1)\n", op_index);
+        int i = 1;
+        while (insts[i])
+        {
+            Token *token = insts[i]->token;
+            Token *left = insts[i]->left;
+            Token *right = insts[i]->right;
+            if (
+                token->type == add_ &&
+                insts[i - 1]->token->type == add_ &&
+                left == insts[i - 1]->token &&
+                !insts[i - 1]->right->name &&
+                !right->name)
+            {
+                // printf("%sfound %s\n", RED, RESET);
+                token->remove = true;
+                insts[i - 1]->right->Int.value += right->Int.value;
+                // printf("value is %lld\n", insts[i - 1]->right->Int.value);
+                if (insts[i + 1]->left == token)
+                    insts[i + 1]->left = insts[i - 1]->token;
+                i = 1;
+                copy_insts();
+                continue;
+            }
+            i++;
+        }
+        break;
+    }
+    case 2:
+    {
+        printf("OPTIMIZATION %d (remove reassigned variables)\n", op_index);
+        for (int i = 0; insts[i]; i++)
+        {
+            if (insts[i]->token->declare)
+            {
+                int j = i + 1;
+                while (insts[j])
+                {
+                    if (insts[j]->token->type == assign_ && insts[j]->left == insts[i]->token)
+                    {
+                        insts[i]->token->declare = false;
+                        insts[i]->token->remove = true;
+                        break;
+                    }
+                    if (insts[j]->left == insts[i]->token || insts[j]->right == insts[i]->token)
+                        break;
+                    j++;
+                }
+            }
+            else if (insts[i]->token->type == assign_)
+            {
+                int j = i + 1;
+                while (insts[j])
+                {
+                    if (insts[j]->token->type == assign_ && insts[j]->left == insts[i]->left)
+                    {
+                        insts[i]->token->remove = true;
+                        break;
+                    }
+                    else
+                    {
+                        // if used some where
+                        if (insts[j]->left == insts[i]->token || insts[j]->right == insts[i]->token)
+                            break;
+                    }
+                    j++;
+                }
+            }
+        }
+        break;
+    }
+    default:
+        break;
+    }
+    op_index++;
+#endif
+}
+
+void generate_asm()
+{
+    for (int i = 0; insts[i]; i++)
+    {
+        Token *curr = insts[i]->token;
+        Token *left = insts[i]->left;
+        Token *right = insts[i]->right;
+        switch (curr->type)
+        {
+        case assign_:
+        {
+            curr->ptr = left->ptr;
+            printf("/*assign %s*/\n", left->name);
+            if (right->ptr)
+            {
+                printf("mov rax, QWORD PTR -%zu[rbp]\n", right->ptr);
+                printf("mov QWORD PTR -%zu[rbp], rax\n", left->ptr);
+            }
+            else if(right->c)
+                printf("mov QWORD PTR -%zu[rbp], r%cx\n", left->ptr, right->c);
+            else
+            {
+                switch (right->type)
+                {
+                case int_:
+                    printf("mov QWORD PTR -%zu[rbp], %lld\n", left->ptr, right->Int.value);
+                    break;
+                case bool_:
+                    printf("mov QWORD PTR -%zu[rbp], %d\n", left->ptr, right->Bool.value);
+                    break;
+                default:
+                    break;
+                }
+            }
+            break;
+        }
+        case int_: case bool_:
+        {
+            if (curr->declare)
+            {
+                // curr->ptr = (ptr += 8);
+                // printf("r%.2d: declare %s\n", curr->reg, curr->name);
+                printf("/*declare %s*/\n", curr->name);
+                printf("mov QWORD PTR -%zu[rbp], 0\n", curr->ptr);
+            }
+            break;
+        }
+        case add_:
+        {
+            curr->c = 'a';
+            if (left->ptr)
+                printf("mov r%cx, QWORD PTR -%zu[rbp]\n", curr->c, left->ptr);
+            else if (left->c && left->c != curr->c)
+                printf("mov r%cx, r%cx\n", curr->c, left->c);
+            else if (!left->c)
+                printf("mov r%cx, %lld\n", curr->c, left->Int.value);
+
+            if (right->ptr)
+                printf("add r%cx, QWORD PTR -%zu[rbp]\n", curr->c, right->ptr);
+            else if (right->c) // TODO: to be checked
+                printf("add r%cx, r%cx\n", curr->c, right->c);
+            else if (!right->c)
+                printf("add r%cx, %lld\n", curr->c, right->Int.value);
+            break;
+        }
+        case equal_: case not_equal_: case less_:
+        case less_equal_: case more_: case more_equal_:
+        {
+            curr->c = 'a';
+            if (left->ptr)
+                printf("mov r%cx, QWORD PTR -%zu[rbp]\n", curr->c, left->ptr);
+            else if (left->c && left->c != curr->c)
+                printf("mov r%cx, r%cx\n", curr->c, left->c);
+            else if (!left->c)
+                printf("mov r%cx, %lld\n", curr->c, left->Int.value);
+
+            if (right->ptr)
+                printf("mov rbx, QWORD PTR -%zu[rbp]\n", right->ptr);
+            else if (right->c && right->c != 'b') // TODO: to be checked
+                printf("mov rbx, r%cx\n", right->c);
+            else if (!right->c)
+                printf("mov rbx, %lld\n", right->Int.value);
+            printf("cmp rax, rbx\n");
+
+            char *inst = NULL;
+            switch (curr->type)
+            {
+            case equal_: inst = "sete "; break;
+            case not_equal_: inst = "setne"; break;
+            case less_: inst = "setl "; break;
+            case less_equal_: inst = "setle"; break;
+            case more_: inst = "setg "; break;
+            case more_equal_: inst = "setge"; break;
+            default: inst = NULL; break;
+            }
+            printf("%s   %cl\n", inst, curr->c);
+            curr->type = bool_;
+            break;
+        }
+        default:
+            break;
+        }
+    }
+}
 
 int main(int argc, char **argv)
 {
@@ -529,8 +794,23 @@ int main(int argc, char **argv)
         generate_ir(curr->left);
         curr = curr->right;
     }
+
+    copy_insts();
+    printf(SPLIT);
+    optimize_ir();
+    print_ir();
+
+    copy_insts();
+    optimize_ir();
+    print_ir();
+
     copy_insts();
     print_ir();
+    optimize_ir();
+#endif
+
+#if ASM
+    generate_asm();
 #endif
 
 #if AST

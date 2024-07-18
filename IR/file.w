@@ -1,2 +1,1 @@
-int a = 10
-int b = a
+bool v = 10 == 10

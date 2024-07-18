@@ -12,7 +12,7 @@
 #include <ctype.h>
 #include <stdint.h>
 #include <fcntl.h>
-#include <stdarg.h>
+cc
 
 // MACROS
 #ifndef DEBUG
