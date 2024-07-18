@@ -6,3 +6,5 @@
         RIGHT: linked list of code bloc
 
 + divide by 0
+
++ check calloc failure

@@ -23,18 +23,10 @@ int reg_pos;
 int reg_size;
 
 // DEBUG
-Specials *specials = (Specials[]){
-    {"=", assign_},
-    {"+", add_},
-    {"-", sub_},
-    {"*", mul_},
-    {"/", div_},
-    {"(", lpar_},
-    {")", rpar_},
-    {",", coma_},
-    {"if", if_},
-    {0, (Type)0},
-};
+Specials *specials = (Specials[]){{"!=", not_equal_},{"==", equal_},{"<=", less_equal_},
+    {">=", more_equal_}, {"<", less_}, {">", more_}, {"=", assign_}, {"+", add_},
+    {"-", sub_}, {"*", mul_}, {"/", div_}, {"(", lpar_}, {")", rpar_}, {",", coma_}, 
+    {":", dots_}, {"if", if_}, {0, (Type)0}};
 
 void print_token(Token *token)
 {
@@ -140,26 +132,21 @@ char *to_string(Type type)
 {
     switch (type)
     {
-    case add_:
-        return "ADD   ";
-    case sub_:
-        return "SUB   ";
-    case mul_:
-        return "MUL   ";
-    case div_:
-        return "DIV   ";
-    case int_:
-        return "INT   ";
-    case assign_:
-        return "ASSIGN";
-    case lpar_:
-        return "LPARENT";
-    case rpar_:
-        return "RPARENT";
-    case fcall_:
-        return "FUNC CALL";
-    case end_:
-        return "END";
+    case add_: return "ADD   ";
+    case sub_: return "SUB   ";
+    case mul_: return "MUL   ";
+    case div_: return "DIV   ";
+    case equal_: return "EQUAL";
+    case less_: return "LESS THAN";
+    case more_: return "MORE THAN";
+    case more_equal_: return "MORE THAN OR EQUAL";
+    case less_equal_: return "LESS THAN OR EQUAL";
+    case int_: return "INT   ";
+    case assign_: return "ASSIGN";
+    case lpar_: return "LPARENT";
+    case rpar_: return "RPARENT";
+    case fcall_: return "FUNC CALL";
+    case end_: return "END";
     default:
         break;
     }
@@ -188,12 +175,32 @@ void clear(char *input)
 
 #if IR
     for (int i = 0; i < inst_pos; i++)
-    {
-        // if(insts)
         free(first_insts[i]);
-    }
     free(first_insts);
     free(regs);
 #endif
     free(input);
+}
+
+bool check_type(Type *types, Type type)
+{
+    for (int i = 0; types[i]; i++)
+    {
+        if (types[i] == type)
+            return true;
+    }
+    return false;
+}
+
+void copy_insts()
+{
+    if (insts)
+        free(insts);
+    insts = calloc(inst_size, sizeof(Inst *)); // TODO: protect it if no instruction created
+    int j = 0;
+    for (int i = 0; i < inst_pos; i++)
+    {
+        if (!first_insts[i]->token->remove)
+            insts[j++] = first_insts[i];
+    }
 }

@@ -7,6 +7,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdarg.h>
 
 #define SPLIT "=================================================\n"
 #define GREEN "\033[0;32m"
@@ -25,26 +26,14 @@
 #endif
 
 #if IR
-#define ASM 0
+#define ASM 1
 #endif
 
 typedef enum
 {
-    assign_ = 11,
-    lpar_,
-    rpar_,
-    mul_,
-    add_,
-    coma_,
-    sub_,
-    div_,
-    int_,
-    bool_,
-    id_,
-    fcall_,
-    if_,
-    dots_,
-    end_,
+    assign_ = 11, lpar_, rpar_, mul_, add_, coma_, sub_, div_, int_,
+    bool_, id_, fcall_, if_, dots_, equal_, not_equal_, less_, more_,
+    less_equal_, more_equal_, end_,
 } Type;
 
 typedef struct
@@ -59,16 +48,15 @@ typedef struct
 {
     Type type;
 
-    // {
-        int  reg;
-        char c;
-        size_t ptr;
+    int reg;
+    char c;
+    size_t ptr;
 
-        char *name;
-        bool declare;
-    // };
+    char *name;
+    bool declare;
+    bool remove;
 
-    union
+    struct
     {
         // integer
         struct
@@ -95,22 +83,10 @@ typedef struct Node
 
 typedef struct
 {
-    // Token *token;
-    Type type;
-
     // registers Token*
     Token *token;
     Token *left;
     Token *right;
-
-    // TODO: all of them to be removed
-    // int value;
-    // char *name;
-    // bool declare;
-    // bool remove;
-    // size_t ptr;
-    char c;
-
 } Inst;
 
 // GLOBALS
