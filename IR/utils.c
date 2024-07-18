@@ -23,12 +23,16 @@ int reg_pos;
 int reg_size;
 
 // DEBUG
-Specials *specials = (Specials[]){{"!=", not_equal_},{"==", equal_},{"<=", less_equal_},
-    {">=", more_equal_}, {"<", less_}, {">", more_}, {"=", assign_}, {"+", add_},
-    {"-", sub_}, {"*", mul_}, {"/", div_}, {"(", lpar_}, {")", rpar_}, {",", coma_}, 
-    {":", dots_}, {"if", if_}, {0, (Type)0}};
+Specials *specials = (Specials[])
+{
+    {"+=", add_assign_}, {"-=", sub_assign_}, {"*=", mul_assign_}, {"/=", div_assign_},
+    {"!=", not_equal_},{"==", equal_},{"<=", less_equal_}, {">=", more_equal_}, 
+    {"<", less_}, {">", more_}, {"=", assign_}, {"+", add_}, {"-", sub_}, {"*", mul_}, 
+    {"/", div_}, {"(", lpar_}, {")", rpar_}, {",", coma_}, {":", dots_}, {"if", if_}, 
+    {0, (Type)0}
+};
 
-void print_token(Token *token)
+void ptoken(Token *token)
 {
     printf("token ");
     switch (token->type)
@@ -81,10 +85,10 @@ void print_token(Token *token)
         break;
     }
     }
-    printf("\n");
+    printf(" space [%d]\n", token->space);
 }
 
-void print_node(Node *node, char *side, int space)
+void pnode(Node *node, char *side, int space)
 {
     if (node)
     {
@@ -96,12 +100,12 @@ void print_node(Node *node, char *side, int space)
         if (node->token)
         {
             printf("node: ");
-            print_token(node->token);
-            print_node(node->left, "LEFT ", space + 5);
-            print_node(node->right, "RIGHT", space + 5);
+            ptoken(node->token);
         }
         else
             printf("\n");
+        pnode(node->left, "LEFT ", space + 2);
+        pnode(node->right, "RIGHT", space + 2);
     }
 }
 
@@ -137,6 +141,7 @@ char *to_string(Type type)
     case mul_: return "MUL   ";
     case div_: return "DIV   ";
     case equal_: return "EQUAL";
+    case not_equal_: return "NOT EQUAL";
     case less_: return "LESS THAN";
     case more_: return "MORE THAN";
     case more_equal_: return "MORE THAN OR EQUAL";
@@ -146,6 +151,9 @@ char *to_string(Type type)
     case lpar_: return "LPARENT";
     case rpar_: return "RPARENT";
     case fcall_: return "FUNC CALL";
+    case if_: return "IF";
+    case end_if_: return "END IF";
+    case bloc_: return "BLOC";
     case end_: return "END";
     default:
         break;
@@ -204,3 +212,47 @@ void copy_insts()
             insts[j++] = first_insts[i];
     }
 }
+
+FILE *asm_fd;
+void pasm(char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    bool cond;
+    cond = !strchr(fmt, ':') && !strstr(fmt, ".section	.note.GNU-stack,\"\",@progbits");
+    cond = cond && !strstr(fmt, ".intel_syntax noprefix") && !strstr(fmt, ".include");
+    cond = cond && !strstr(fmt, ".text") && !strstr(fmt, ".globl	main");
+    if (cond)
+        fprintf(asm_fd, "   ");
+    vfprintf(asm_fd, fmt, ap);
+}
+
+#define mov(fmt, ...) pasm("mov     " fmt, __VA_ARGS__)
+#define cmp(fmt, ...) pasm("cmp     " fmt, __VA_ARGS__)
+#define jne(fmt, ...) pasm("jne     " fmt, __VA_ARGS__)
+
+// Define the math macro
+#define math_op(op, fmt, ...) \
+do { \
+    switch(op) { \
+        case add_: pasm("add     " fmt, __VA_ARGS__); break; \
+        case sub_: pasm("sub     " fmt, __VA_ARGS__); break; \
+        case mul_: pasm("mul     " fmt, __VA_ARGS__); break; \
+        case div_: pasm("div     " fmt, __VA_ARGS__); break; \
+        default: break; \
+    } \
+} while (0)
+
+#define relational_op(op, fmt, ...) \
+do { \
+    switch(op) { \
+        case equal_:      pasm("sete    " fmt, __VA_ARGS__); break; \
+        case not_equal_:  pasm("setne   " fmt, __VA_ARGS__); break; \
+        case less_:       pasm("setl    " fmt, __VA_ARGS__); break; \
+        case less_equal_: pasm("setle   " fmt, __VA_ARGS__); break; \
+        case more_:       pasm("setg    " fmt, __VA_ARGS__); break; \
+        case more_equal_: pasm("setge   " fmt, __VA_ARGS__); break; \
+        default: \
+            break; \
+    } \
+} while (0)
