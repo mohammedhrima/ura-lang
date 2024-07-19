@@ -37,27 +37,27 @@ void ptoken(Token *token)
     printf("token ");
     switch (token->type)
     {
+    case string_:
     case int_:
-    {
-        if (token->name)
-        {
-            printf("[int] name [%s]", token->name);
-            if (token->declare)
-                printf(" [declare]");
-        }
-        else
-            printf("[int] value [%lld]", token->Int.value);
-        break;
-    }
     case bool_:
     {
         if (token->name)
         {
-            printf("[bool] name [%s]", token->name);
+            printf(
+                "[%s] name [%s]",(token->type == string_ ? "string" :
+                                  token->type == int_    ? "int" :
+                                  token->type == bool_   ? "bool" :
+                                  NULL),
+                token->name
+             );
             if (token->declare)
                 printf(" [declare]");
         }
-        else
+        else if(token->type == int_)
+            printf("[int] value [%lld]", token->Int.value);
+        else if(token->type == string_)
+            printf("[string] value [%s]", token->String.value);
+        else if(token->type == bool_)
             printf("[bool] value [%d]", token->Bool.value);
         break;
     }
@@ -140,13 +140,17 @@ char *to_string(Type type)
     case sub_: return "SUB   ";
     case mul_: return "MUL   ";
     case div_: return "DIV   ";
+
     case equal_: return "EQUAL";
     case not_equal_: return "NOT EQUAL";
     case less_: return "LESS THAN";
     case more_: return "MORE THAN";
     case more_equal_: return "MORE THAN OR EQUAL";
     case less_equal_: return "LESS THAN OR EQUAL";
+    
     case int_: return "INT   ";
+    case string_: return "STRING ";
+
     case assign_: return "ASSIGN";
     case lpar_: return "LPARENT";
     case rpar_: return "RPARENT";
@@ -173,6 +177,8 @@ void clear(char *input)
     {
         if (tokens[i]->name)
             free(tokens[i]->name);
+        else if (tokens[i]->String.value)
+            free(tokens[i]->String.value);
         free(tokens[i]);
     }
 #endif
@@ -227,9 +233,11 @@ void pasm(char *fmt, ...)
     vfprintf(asm_fd, fmt, ap);
 }
 
-#define mov(fmt, ...) pasm("mov     " fmt, __VA_ARGS__)
-#define cmp(fmt, ...) pasm("cmp     " fmt, __VA_ARGS__)
-#define jne(fmt, ...) pasm("jne     " fmt, __VA_ARGS__)
+#define mov(fmt, ...)  pasm("mov     " fmt, __VA_ARGS__)
+#define lea(fmt, ...)  pasm("lea     " fmt, __VA_ARGS__)
+#define cmp(fmt, ...)  pasm("cmp     " fmt, __VA_ARGS__)
+#define jne(fmt, ...)  pasm("jne     " fmt, __VA_ARGS__)
+#define call(func) pasm("call    %s", func)
 
 // Define the math macro
 #define math_op(op, fmt, ...) \

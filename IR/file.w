@@ -1,3 +1,1 @@
-int a = 2
-a += 10
-
+string str = "abcd"

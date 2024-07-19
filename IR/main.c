@@ -32,6 +32,12 @@ Token *new_token(char *input, int s, int e, int space, Type type)
             new->Int.value = new->Int.value * 10 + input[s++] - '0';
         break;
     }
+    case string_:
+    {
+        new->String.value = calloc(e - s + 1, sizeof(char));
+        strncpy(new->String.value, input + s, e - s);
+        break;
+    }
     case id_:
     {
         new->name = calloc(e - s + 1, sizeof(char));
@@ -88,14 +94,14 @@ void tokenize(char *input)
             i++;
             continue;
         }
-        else if(input[i] == '#')
+        else if(input[i] == '#') // TODO: handle new lines inside comment
         {
             i++;
             while(input[i] && input[i] != '#')
                 i++;
             if(input[i] != '#')
             {
-                printf("Error : expected '#'\n");
+                printf("Error: expected '#'\n");
                 exit(1);
             }
             i++;
@@ -114,19 +120,38 @@ void tokenize(char *input)
         }
         if (found)
             continue;
+        if(input[i] == '\"')
+        {
+            i++;
+            while(input[i] && input[i] != '\"')
+                i++;
+            if(input[i] != '\"')
+            {
+                printf("Error: expected '\"'\n");
+                exit(1);
+            }
+            i++;
+            new_token(input, s, i, space, string_);
+            continue;
+        }
         if (isalpha(input[i]))
         {
             while (isalnum(input[i]))
                 i++;
-            new_token(input, s, i,space, id_);
+            new_token(input, s, i, space, id_);
             continue;
         }
         if (isdigit(input[i]))
         {
             while (isdigit(input[i]))
                 i++;
-            new_token(input, s, i,space, int_);
+            new_token(input, s, i, space, int_);
             continue;
+        }
+        if(input[i])
+        {
+            printf("Syntax Error: <%c>\n", input[i]);
+            exit(1);
         }
     }
     new_token(NULL, 0, 0, space, end_);
@@ -291,13 +316,13 @@ Node *mul_div()
     return left;
 }
 
-Specials DataTypes[] = {{"int", int_}, {"bool", bool_}, {0, 0}};
+Specials DataTypes[] = {{"int", int_}, {"bool", bool_}, {"string", string_}, {0, 0}};
 
 Node *prime()
 {
     Node *node = NULL;
     Token *token;
-    if ((token  = check(int_, bool_, id_, lpar_, rpar_, 0)))
+    if ((token  = check(int_, bool_, string_, id_, lpar_, rpar_, 0)))
     {
         bool found = false;
         for (int i = 0; token->type == id_ && DataTypes[i].value; i++)
@@ -485,6 +510,7 @@ Token *get_variable(char *name)
 }
 
 size_t bloc_index;
+size_t str_index;
 Token *generate_ir(Node *node)
 {
     Inst *inst = NULL;
@@ -518,7 +544,7 @@ Token *generate_ir(Node *node)
         // exit(1);
         break;
     }
-    case bool_: case int_:
+    case bool_: case int_: case string_:
     {
         inst = new_inst(node->token);
         break;
@@ -593,19 +619,18 @@ void print_ir()
             break;
         }
         case int_:
-        {
-            if (curr->declare)
-                printf("r%.2d: declare %s\n", curr->reg, curr->name);
-            else
-                printf("r%.2d: value %lld\n", curr->reg, curr->Int.value);
-            break;
-        }
         case bool_:
+        case string_:
         {
             if (curr->declare)
                 printf("r%.2d: declare %s\n", curr->reg, curr->name);
-            else
+            else if(curr->type == int_)
+                printf("r%.2d: value %lld\n", curr->reg, curr->Int.value);
+            else if(curr->type == bool_)
                 printf("r%.2d: value %s\n", curr->reg, curr->Bool.value ? "True" : "False");
+            else if(curr->type == string_)
+                printf("r%.2d: value %s in STR%zu\n", curr->reg, curr->String.value, 
+                                                     (curr->index = ++str_index));
             break;
         }
         case if_:
@@ -653,11 +678,11 @@ void print_ir()
 }
 #endif
 
-void optimize_ir()
+#define MAX_OPTIMIZATION 4
+bool optimize_ir(int op_index)
 {
 #if 1
-    static int op_index;
-    bool optimize = true;
+    bool did_optimize = false;
     switch (op_index)
     {
     case 0:
@@ -689,6 +714,7 @@ void optimize_ir()
                     right->remove = true;
                     copy_insts();
                     i = 0;
+                    did_optimize = true;
                 }
             }
             if (token->type == int_ && !token->name)
@@ -697,6 +723,7 @@ void optimize_ir()
                 token->remove = true;
                 copy_insts();
                 i = 0;
+                did_optimize = true;
             }
         }
         break;
@@ -732,6 +759,7 @@ void optimize_ir()
                 if (insts[i + 1]->left == token) insts[i + 1]->left = insts[i - 1]->token;
                 i = 1;
                 copy_insts();
+                did_optimize = true;
                 continue;
             }
             i++;
@@ -748,13 +776,22 @@ void optimize_ir()
                 int j = i + 1;
                 while (insts[j] && insts[j]->token->space == insts[i]->token->space)
                 {
+                    ptoken(insts[j]->token);
                     if (insts[j]->token->type == assign_ && insts[j]->left == insts[i]->token)
                     {
                         insts[i]->token->declare = false;
                         insts[i]->token->remove = true;
+                        did_optimize = true;
                         break;
                     }
-                    if (insts[j]->left == insts[i]->token || insts[j]->right == insts[i]->token)
+                    if 
+                    (
+                        insts[j]->left && insts[j]->left &&
+                        (
+                        insts[j]->left->reg == insts[i]->token->reg || 
+                        insts[j]->right->reg == insts[i]->token->reg
+                        )
+                    )
                         break;
                     j++;
                 }
@@ -771,16 +808,38 @@ void optimize_ir()
                     )
                     {
                         insts[i]->token->remove = true;
+                        did_optimize = true;
                         break;
                     }
-                    else
-                    {
-                        // if used some where
-                        if (insts[j]->left == insts[i]->token || insts[j]->right == insts[i]->token)
-                            break;
-                    }
+                    // if used some where
+                    else if 
+                    (
+                        insts[j]->left->reg == insts[i]->token->reg || 
+                        insts[j]->right->reg == insts[i]->token->reg
+                    )
+                        break;
                     j++;
                 }
+            }
+        }
+        break;
+    }
+    case MAX_OPTIMIZATION - 1:
+    {
+        printf("OPTIMIZATION %d (remove unused instructions)\n", op_index);
+        for(int i = 1; insts[i]; i++)
+        {
+            if
+            (
+                check_type((Type[]){add_, sub_, mul_, div_, 0}, insts[i - 1]->token->type) &&
+                insts[i]->left->reg != insts[i - 1]->token->reg && 
+                insts[i]->right->reg != insts[i - 1]->token->reg
+            )
+            {
+                did_optimize = true;
+                insts[i - 1]->token->remove = true;
+                copy_insts();
+                i = 1;
             }
         }
         break;
@@ -788,7 +847,7 @@ void optimize_ir()
     default:
         break;
     }
-    op_index++;
+    return did_optimize;
 #endif
 }
 
@@ -803,6 +862,7 @@ void generate_asm()
         {
         case assign_:
         {
+            // TODO: check incompatible type
             curr->ptr = left->ptr;
             pasm("/*assign %s*/\n", left->name);
             if (right->ptr)
@@ -822,13 +882,18 @@ void generate_asm()
                 case bool_:
                     mov("QWORD PTR -%zu[rbp], %d\n", left->ptr, right->Bool.value);
                     break;
+                case string_:
+                    lea("rdi, .STR%zu[rip]\n", right->index);
+                    call("_strdup\n");
+                    mov("QWORD PTR -%zu[rbp], rax\n", left->ptr);
+                    break;
                 default:
                     break;
                 }
             }
             break;
         }
-        case int_: case bool_:
+        case int_: case bool_: case string_:
         {
             if (curr->declare)
             {
@@ -837,6 +902,8 @@ void generate_asm()
                 pasm("/*declare %s*/\n", curr->name);
                 mov("QWORD PTR -%zu[rbp], 0\n", curr->ptr);
             }
+            else if(curr->type == string_ && !curr->name)
+                pasm(".STR%zu: .string %s\n", curr->index, curr->String.value);
             break;
         }
         case add_: case sub_: case mul_: case div_: // TODO: check all math_op operations
@@ -882,12 +949,12 @@ void generate_asm()
         case if_:
         {
             cmp("al, 1\n", "");
-            jne("endif%zu\n", curr->index);
+            jne(".endif%zu\n", curr->index);
             break;
         }
         case end_if_:
         {
-            pasm("endif%zu:\n", curr->index);
+            pasm(".endif%zu:\n", curr->index);
             break;
         }
         default:
@@ -900,7 +967,7 @@ void generate_asm()
 void initialize()
 {
     pasm(".intel_syntax noprefix\n");
-    // pasm(".include \"/wolf-c/import/header.s\"\n\n");
+    pasm(".include \"./import/header.s\"\n\n");
     pasm(".text\n");
     pasm(".globl	main\n");
     pasm("main:\n");
@@ -975,18 +1042,20 @@ int main(int argc, char **argv)
         }
         copy_insts();
         print_ir();
-#if 1
-        optimize_ir();
-        copy_insts();
-        print_ir();
-
-        optimize_ir();
-        copy_insts();
-        print_ir();
-
-        optimize_ir();
-        copy_insts();
-        print_ir();
+#if 0
+        int i = 0;
+        bool optimized = false;
+        while(i < MAX_OPTIMIZATION)
+        {
+            optimized = optimize_ir(i++) || optimized;
+            copy_insts();
+            print_ir();
+            if(i == MAX_OPTIMIZATION && optimized)
+            {
+                optimized = false;
+                i = 0;
+            }
+        }
 #endif
 
 #endif
