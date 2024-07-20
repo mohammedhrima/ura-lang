@@ -25,11 +25,12 @@ int reg_size;
 // DEBUG
 Specials *specials = (Specials[])
 {
-    {"+=", add_assign_}, {"-=", sub_assign_}, {"*=", mul_assign_}, {"/=", div_assign_},
-    {"!=", not_equal_},{"==", equal_},{"<=", less_equal_}, {">=", more_equal_}, 
-    {"<", less_}, {">", more_}, {"=", assign_}, {"+", add_}, {"-", sub_}, {"*", mul_}, 
-    {"/", div_}, {"(", lpar_}, {")", rpar_}, {",", coma_}, {":", dots_}, {"if", if_}, 
-    {0, (Type)0}
+    {"+=", add_assign_}, {"-=", sub_assign_}, {"*=", mul_assign_}, 
+    {"/=", div_assign_}, {"!=", not_equal_},{"==", equal_},{"<=", less_equal_}, 
+    {">=", more_equal_}, {"<", less_}, {">", more_}, {"=", assign_}, 
+    {"+", add_}, {"-", sub_}, {"*", mul_}, {"/", div_}, {"(", lpar_}, 
+    {")", rpar_}, {",", coma_}, {":", dots_}, {"if", if_}, {"elif", elif_},
+    {"else", else_}, {0, (Type)0}
 };
 
 void ptoken(Token *token)
@@ -150,17 +151,31 @@ char *to_string(Type type)
     
     case int_: return "INT   ";
     case string_: return "STRING ";
+    case bool_: return "BOOL";
+    case id_: return "ID";
+    case coma_: return "COMA";
 
     case assign_: return "ASSIGN";
+    case add_assign_: return "ADD ASSIGN";
+    case sub_assign_: return "SUB ASSIGN";
+    case mul_assign_: return "MUL ASSIGN";
+    case div_assign_: return "DIV ASSIGN";
+
     case lpar_: return "LPARENT";
     case rpar_: return "RPARENT";
     case fcall_: return "FUNC CALL";
+
+    case jne_: return "JNE";
+    case je_: return "JE";
+    case jmp_: return "JMP";
+    case cmp_: return "CMP";
+
     case if_: return "IF";
-    case end_if_: return "END IF";
+    case elif_: return "ELIF";
+    case else_: return "ELSE";
+    case dots_: return "DOTS";
     case bloc_: return "BLOC";
     case end_: return "END";
-    default:
-        break;
     }
     return NULL;
 }
@@ -237,7 +252,7 @@ void pasm(char *fmt, ...)
 #define lea(fmt, ...)  pasm("lea     " fmt, __VA_ARGS__)
 #define cmp(fmt, ...)  pasm("cmp     " fmt, __VA_ARGS__)
 #define jne(fmt, ...)  pasm("jne     " fmt, __VA_ARGS__)
-#define call(func) pasm("call    %s", func)
+#define call(func)     pasm("call    %s\n", func)
 
 // Define the math macro
 #define math_op(op, fmt, ...) \
@@ -260,7 +275,6 @@ do { \
         case less_equal_: pasm("setle   " fmt, __VA_ARGS__); break; \
         case more_:       pasm("setg    " fmt, __VA_ARGS__); break; \
         case more_equal_: pasm("setge   " fmt, __VA_ARGS__); break; \
-        default: \
-            break; \
+        default: break; \
     } \
 } while (0)

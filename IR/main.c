@@ -38,6 +38,7 @@ Token *new_token(char *input, int s, int e, int space, Type type)
         strncpy(new->String.value, input + s, e - s);
         break;
     }
+    case fcall_:
     case id_:
     {
         new->name = calloc(e - s + 1, sizeof(char));
@@ -86,7 +87,10 @@ void tokenize(char *input)
         if (isspace(input[i]))
         {
             if(input[i] == '\n')
+            {
                 new_line = true;
+                space = 0;
+            }
             if(new_line && input[i] == ' ')
                 space++;
             else if(!new_line && input[i] == ' ')
@@ -105,6 +109,7 @@ void tokenize(char *input)
                 exit(1);
             }
             i++;
+            continue;
         }
         new_line = false;
         bool found = false;
@@ -379,15 +384,18 @@ Node *prime()
     else if((token  = check(if_, 0)))
     {
         /*
+            
             + if:
                 + LEFT : 
-                    + LEFT :
-                        + condition
-                    + RIGHT:
-                        + code bloc
+                    + LEFT : condition
+                    + RIGHT: code bloc
                 + RIGHT:
-                   + elif
-                   + else
+                    + LEFT :
+                        + elif:
+                            + LEFT : condition
+                            + RIGHT: code bloc
+                    + else:
+                        + RIGHT: + code bloc
 
         */
         node = new_node(token);
@@ -399,14 +407,53 @@ Node *prime()
             printf("Error: expected : but found <%s>\n", to_string(tokens[exe_pos]->type));
             exit(1);
         }
-        node->right = new_node(NULL);
-        curr = node->right;
+        curr->right = new_node(NULL);
+        curr = curr->right;
         while(tokens[exe_pos]->type != end_ && tokens[exe_pos]->space > node->token->space)
         {
             curr->left = expr();
             curr->right = new_node(NULL);
             curr = curr->right;
         }
+        // if((token = check(elif_, 0)))
+        // {
+        //     if(token->space != node->token->space)
+        //     {
+        //         printf("Error: misplaced elif statement\n");
+        //         exit(1);
+        //     }
+        //     node
+        // }
+        if((token = check(else_, 0)))
+        {
+            if(!check(dots_, 0))
+            {
+                printf("Error: expected ':' after else\n");
+                exit(1);
+            }
+            if(token->space != node->token->space)
+            {
+                printf("Error: misplaced else statement\n");
+                exit(1);
+            }
+            node->right = new_node(NULL);
+            
+            curr = node->right;
+            curr->left = new_node(token);
+            curr = curr->left;
+            while(tokens[exe_pos]->type != end_ && tokens[exe_pos]->space > node->token->space)
+            {
+                curr->left = expr();
+                curr->right = new_node(NULL);
+                curr = curr->right;
+            }
+        }
+    }
+    else if(tokens[exe_pos]->type == end_);
+    else
+    {
+        printf("Error: Unexpected token <%s>\n", to_string(tokens[exe_pos]->type));
+        exit(1);
     }
     return node;
 }
@@ -448,6 +495,7 @@ void allocate_reg(Inst *inst, int pos)
         free(regs);
         regs = tmp;
     }
+    // TODO: remove regs
     regs[inst->token->reg] = inst;
 }
 
@@ -481,14 +529,11 @@ Inst *new_inst(Token *token)
         {
         case add_: case sub_: case mul_: case div_: case equal_:
         case less_: case more_: case less_equal_: case more_equal_:
-        case not_equal_:
+        case not_equal_: case fcall_:
             allocate_reg(new, ++reg_pos);
             break;
         case if_:
-        {
-            // new->type = cmp_;
             break;
-        }
         default:
             break;
         }
@@ -524,24 +569,79 @@ Token *generate_ir(Node *node)
     }
     case if_:
     {
-        printf("generate ir for if\n");
         Token *result = generate_ir(node->left->left); // TODO: check if it's boolean
 
+        node->token->type = jne_;
+        node->token->name = strdup("endif");
         node->token->index = ++bloc_index;
+
         new_inst(node->token);
-        Node *curr = node->right;
+        Node *curr = node->left->right;
         while(curr->left)
         {
             generate_ir(curr->left);
             curr = curr->right;
         }
-        Token *new = new_token(NULL, 0, 0, node->token->space, end_if_);
-        new->index = node->token->index;
-        new_inst(new);
+        // curr = node->right;
+        // if(curr && curr->left->token->type == else_)
+        // {
+        //     new_inst(new_token(NULL, 0, 0, node->token->space, ));
+        //     curr = curr->left;
+        //     while(curr->left)
+        //     {
+        //         generate_ir(curr->left);
+        //         curr = curr->right;
+        //     }
+        // }
+        Token *new = NULL;
 
+        new = new_token(NULL, 0, 0, node->token->space, 0);
+        new->type = bloc_;
+        new->name = strdup("if");
+        new->index = node->token->index;
+
+        new = new_token(NULL, 0, 0, node->token->space, 0);
+        new->type = bloc_;
+        new->name = strdup("endif");
+        new->index = node->token->index;
+
+        new_inst(new);
         return node->left->token;
         // pnode(node, NULL, 0);
         // exit(1);
+        break;
+    }
+    case fcall_:
+    {
+        pnode(node, NULL, 0);
+        if(strcmp(node->token->name, "output") == 0)
+        {
+            Node *curr = node;
+            char *fname = NULL;
+            while(curr->left)
+            {
+                Token *left = generate_ir(curr->left);
+                fname = NULL;
+                switch(left->type)
+                {
+                    case string_: fname = "_putstr"; break;
+                    case int_:    fname = "_putnbr"; break;
+                    default:
+                        break;
+                }
+                if(fname)
+                {
+                    inst = new_inst(new_token(fname, 0, strlen(fname), node->token->space, fcall_));
+                    inst->token->isbuiltin = true;
+                    inst->left = left;
+                }
+                curr = curr->right;
+            }
+        }
+        else {
+
+        }
+        return node->token;
         break;
     }
     case bool_: case int_: case string_:
@@ -597,6 +697,11 @@ void print_ir()
             printf("\n");
             break;
         }
+        case fcall_:
+        {
+            printf("call %s\n", curr->name);
+            break;
+        }
         case add_: case sub_: case mul_: case div_: case equal_:
         case less_: case more_: case less_equal_: case more_equal_:
         case not_equal_:
@@ -605,22 +710,32 @@ void print_ir()
             if (left->reg)
                 printf("r%.2d", left->reg);
             else
-                printf("%lld", left->Int.value);
+                switch(left->type)
+                {
+                    case int_: printf("%lld", left->Int.value); break;
+                    case string_: printf("%s", left->String.value); break;
+                    default: break;
+                }
+
             if (left->name)
                 printf(" (%s)", left->name);
             printf(" to ");
             if (right->reg)
                 printf("r%.2d", right->reg);
             else
-                printf("%lld", right->Int.value);
+                switch(right->type)
+                {
+                    case int_: printf("%lld", right->Int.value); break;
+                    case string_: printf("%s", right->String.value); break;
+                    default: break;
+                }
+
             if (right->name)
                 printf(" (%s)", right->name);
             printf("\n");
             break;
         }
-        case int_:
-        case bool_:
-        case string_:
+        case int_: case bool_: case string_:
         {
             if (curr->declare)
                 printf("r%.2d: declare %s\n", curr->reg, curr->name);
@@ -633,19 +748,14 @@ void print_ir()
                                                      (curr->index = ++str_index));
             break;
         }
-        case if_:
+        case jne_:
         {
-            printf("rxx: if%zu False jump to endif%zu\n", curr->index, curr->index);
+            printf("rxx: jne %s%zu\n", curr->name, curr->index);
             break;
-        }
-        case end_if_:
-        {
-            printf("rxx: endif%zu\n", curr->index);
-            break;            
         }
         case bloc_:
         {
-            printf("rxx: bloc %zu\n", curr->index);
+            printf("rxx: %s%zu (bloc)\n", curr->name, curr->index);
             break;
         }
         default:
@@ -678,6 +788,15 @@ void print_ir()
 }
 #endif
 
+char *strjoin(Token *left, Token *right)
+{
+    size_t len = strlen(left->String.value) + strlen(right->String.value);
+    char *res = calloc(len + 1, sizeof(char));
+    strcpy(res, left->String.value);
+    strcpy(res + strlen(res), right->String.value);
+    return res;
+}
+
 #define MAX_OPTIMIZATION 4
 bool optimize_ir(int op_index)
 {
@@ -687,7 +806,7 @@ bool optimize_ir(int op_index)
     {
     case 0:
     {
-        printf("OPTIMIZATION %d (calculate operations on numbers type 0)\n", op_index);
+        printf("OPTIMIZATION %d (calculate operations on constant type 0)\n", op_index);
         for (int i = 0; insts[i]; i++)
         {
             Token *token = insts[i]->token;
@@ -695,21 +814,37 @@ bool optimize_ir(int op_index)
             Token *right = insts[i]->right;
             if (check_type((Type[]){add_, sub_, mul_, div_, 0}, insts[i]->token->type))
             {
-                if 
+                if
                 (
-                    left->type == int_ && right->type == int_ &&
+                    // TODO: check it left nad right are compatible
+                    check_type((Type[]){int_, string_, 0}, left->type) &&
+                    check_type((Type[]){int_, string_, 0}, right->type) &&
                     !left->name && !right->name
                 )
                 {
-                    switch (token->type)
+                    switch(left->type)
                     {
-                    case add_: token->Int.value = left->Int.value + right->Int.value; break;
-                    case sub_: token->Int.value = left->Int.value - right->Int.value; break;
-                    case mul_: token->Int.value = left->Int.value * right->Int.value; break;
-                    case div_: token->Int.value = left->Int.value / right->Int.value; break;
-                    default: break;
+                    case int_:
+                        switch (token->type)
+                        {
+                        case add_: token->Int.value = left->Int.value + right->Int.value; break;
+                        case sub_: token->Int.value = left->Int.value - right->Int.value; break;
+                        case mul_: token->Int.value = left->Int.value * right->Int.value; break;
+                        case div_: token->Int.value = left->Int.value / right->Int.value; break;
+                        default: break;
+                        }
+                        break;
+                    case string_:
+                        switch(token->type)
+                        {
+                        case add_: token->String.value = strjoin(left, right); break;
+                        default:
+                            printf("Error: Invalid %s op in string\n", to_string(token->type)); break;
+                        }
+                    default:
+                        break;
                     }
-                    token->type = int_;
+                    token->type = left->type;
                     left->remove = true;
                     right->remove = true;
                     copy_insts();
@@ -739,6 +874,7 @@ bool optimize_ir(int op_index)
             Token *left = insts[i]->left;
             Token *right = insts[i]->right;
             if (
+                //  TODO: handle string also here X'D ma fiyach daba
                 check_type((Type[]){add_, sub_, mul_, div_, 0}, token->type) &&
                 insts[i - 1]->token->type == add_ &&
                 left == insts[i - 1]->token &&
@@ -884,7 +1020,7 @@ void generate_asm()
                     break;
                 case string_:
                     lea("rdi, .STR%zu[rip]\n", right->index);
-                    call("_strdup\n");
+                    call("_strdup");
                     mov("QWORD PTR -%zu[rbp], rax\n", left->ptr);
                     break;
                 default:
@@ -903,7 +1039,7 @@ void generate_asm()
                 mov("QWORD PTR -%zu[rbp], 0\n", curr->ptr);
             }
             else if(curr->type == string_ && !curr->name)
-                pasm(".STR%zu: .string %s\n", curr->index, curr->String.value);
+                ; // pasm(".STR%zu: .string %s\n", curr->index, curr->String.value);
             break;
         }
         case add_: case sub_: case mul_: case div_: // TODO: check all math_op operations
@@ -946,19 +1082,37 @@ void generate_asm()
             curr->type = bool_;
             break;
         }
-        case if_:
+        case fcall_:
         {
-            cmp("al, 1\n", "");
-            jne(".endif%zu\n", curr->index);
+            if(curr->isbuiltin)
+            {
+                if(left->ptr)
+                    mov("rdi, QWORD PTR -%zu[rbp]\n", left->ptr);
+                else
+                    switch(left->type)
+                    {
+                        case int_:    mov("rdi, %lld\n", left->Int.value); break;
+                        case string_: lea("rdi, .STR%zu[rip]\n", left->index); break;
+                        default: break;
+                    }
+            }
+            call(curr->name);
             break;
         }
-        case end_if_:
+        case jne_:
         {
-            pasm(".endif%zu:\n", curr->index);
+            cmp("al, 1\n", "");
+            jne("%s%zu\n", curr->name, curr->index);
+            break;
+        }
+        case bloc_:
+        {
+            pasm("%s%zu:\n", curr->name, curr->index);
             break;
         }
         default:
-            printf("%sGenerate asm: Unkown Instruction [%s]%s\n", RED, to_string(curr->type), RESET);
+            printf("%sGenerate asm: Unkown Instruction [%s]%s\n", 
+                RED, to_string(curr->type), RESET);
             break;
         }
     }
@@ -973,24 +1127,27 @@ void initialize()
     pasm("main:\n");
     pasm("push    rbp\n");
     mov("rbp, rsp\n","");
-    pasm("sub     rsp, 100\n");
+    pasm("sub     rsp, %zu\n", ptr + 8);
 }
 
 void finalize()
 {
-#if 0
-    for (int i = 0; i < tk_pos; i++)
-    {
-        // test char variable before making any modification
-        if (!TOKENS[i]->name && TOKENS[i]->chars_ && TOKENS[i]->type == chars_ && !TOKENS[i]->ptr)
-            pasm("STR%zu: .string \"%s\"\n", TOKENS[i]->chars_index_, TOKENS[i]->chars_);
-        if (!TOKENS[i]->name && TOKENS[i]->float_index_ && TOKENS[i]->type == float_)
-            pasm("FLT%zu: .long %zu /* %f */\n", TOKENS[i]->float_index_, *((float *)(&TOKENS[i]->float_)),
-                 TOKENS[i]->float_);
-    }
-#endif
     pasm("leave\n");
     pasm("ret\n");
+#if 1
+    for (int i = 0; tokens[i]; i++)
+    {
+        Token *curr = tokens[i];
+        // test char variable before making any modification
+        if (curr->type == string_ && !curr->name && !curr->ptr)
+            pasm(".STR%zu: .string %s\n", curr->index, curr->String.value);
+#if 0
+        if (!curr->name && curr->float_index_ && curr->type == float_)
+            pasm("FLT%zu: .long %zu /* %f */\n", curr->float_index_, *((float *)(&curr->float_)),
+                 curr->float_);
+#endif
+    }
+#endif
     pasm(".section	.note.GNU-stack,\"\",@progbits\n\n");
 }
 

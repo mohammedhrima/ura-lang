@@ -6,15 +6,23 @@
 main:
    push    rbp
    mov     rbp, rsp
-   sub     rsp, 500
-   /*declare str*/
+   sub     rsp, 16
+   /*declare n*/
    mov     QWORD PTR -8[rbp], 0
-   /*assign str*/
-   lea     rdi, [rip + .STR1]
-   call    strdup@PLT
+   /*assign n*/
+   mov     QWORD PTR -8[rbp], 10
+   mov     rax, QWORD PTR -8[rbp]
+   mov     rbx, 10
+   cmp     rax, rbx
+   sete    al
+   cmp     al, 1
+   jne     endif1
+   lea     rdi, .STR1[rip]
+   call    _putstr
+endif1:
    leave
    ret
-
-.STR1: .string "ab"
+.STR1: .string "is ten\n"
+.STR0: .string "is ten\n"
 .section	.note.GNU-stack,"",@progbits
 

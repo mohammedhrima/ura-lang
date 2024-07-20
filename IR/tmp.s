@@ -1,43 +1,37 @@
-	.text
-	.intel_syntax noprefix
 	.file	"tmp.c"
+	.intel_syntax noprefix
+	.text
+	.section	.rodata
+.LC0:
+	.string	"abcde"
+	.text
 	.globl	main
-	.p2align	4, 0x90
-	.type	main,@function
+	.type	main, @function
 main:
+	endbr64
 	push	rbp
 	mov	rbp, rsp
-	sub	rsp, 16
-	lea	rdi, [rip + .L.str]
-	call	strdup@PLT
-	mov	qword ptr [rbp - 8], rax
-	mov	rsi, qword ptr [rbp - 8]
-	lea	rdi, [rip + .L.str.1]
-	mov	al, 0
-	call	printf@PLT
-	mov	rdi, qword ptr [rbp - 8]
-	call	free@PLT
-	xor	eax, eax
-	add	rsp, 16
+	lea	rdi, .LC0[rip]
+	call	puts@PLT
+	mov	eax, 0
 	pop	rbp
 	ret
-.Lfunc_end0:
-	.size	main, .Lfunc_end0-main
-
-	.type	.L.str,@object
-	.section	.rodata.str1.1,"aMS",@progbits,1
-.L.str:
-	.asciz	"afhhfh5fgh21fffffj56fg4j65ghbcd"
-	.size	.L.str, 32
-
-	.type	.L.str.1,@object
-.L.str.1:
-	.asciz	"%s\n"
-	.size	.L.str.1, 4
-
-	.ident	"Homebrew clang version 18.1.8"
-	.section	".note.GNU-stack","",@progbits
-	.addrsig
-	.addrsig_sym strdup
-	.addrsig_sym printf
-	.addrsig_sym free
+	.size	main, .-main
+	.ident	"GCC: (Ubuntu 10.5.0-1ubuntu1~22.04) 10.5.0"
+	.section	.note.GNU-stack,"",@progbits
+	.section	.note.gnu.property,"a"
+	.align 8
+	.long	 1f - 0f
+	.long	 4f - 1f
+	.long	 5
+0:
+	.string	 "GNU"
+1:
+	.align 8
+	.long	 0xc0000002
+	.long	 3f - 2f
+2:
+	.long	 0x3
+3:
+	.align 8
+4:
