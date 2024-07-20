@@ -1,6 +1,7 @@
-int n = 10
-if n == 10:
-    output("is ten\n")
+if 1 == 1:
+    output("cond 1\n")
 else:
-    output("is ten\n")
+    output("cond 2\n")
+
+
 

@@ -252,6 +252,7 @@ void pasm(char *fmt, ...)
 #define lea(fmt, ...)  pasm("lea     " fmt, __VA_ARGS__)
 #define cmp(fmt, ...)  pasm("cmp     " fmt, __VA_ARGS__)
 #define jne(fmt, ...)  pasm("jne     " fmt, __VA_ARGS__)
+#define jmp(fmt, ...)  pasm("jmp     " fmt, __VA_ARGS__)
 #define call(func)     pasm("call    %s\n", func)
 
 // Define the math macro
