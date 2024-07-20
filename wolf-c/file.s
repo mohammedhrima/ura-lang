@@ -1,5 +1,5 @@
 .intel_syntax noprefix
-.include "/wolf-c/import/header.s"
+.include "import/header.s"
 
 .text
 .globl	main

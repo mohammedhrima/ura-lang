@@ -34,11 +34,12 @@ typedef enum
     assign_ = 11, add_assign_, sub_assign_, mul_assign_, div_assign_, 
     lpar_, rpar_, 
     mul_, add_, sub_, div_, 
-    equal_, not_equal_, less_, more_, less_equal_, more_equal_, bloc_,
+    equal_, not_equal_, less_, more_, less_equal_, more_equal_,
     id_, int_, bool_, string_,
     coma_,
-    fcall_, 
-    if_, end_if_, dots_, 
+    fcall_, /*mov_, dest_,*/
+    if_, elif_, else_, dots_, 
+    cmp_, jne_, je_, jmp_, bloc_,
     end_,
 } Type;
 
@@ -53,6 +54,7 @@ extern Specials *specials;
 typedef struct
 {
     Type type;
+    // Type subtype;
 
     int reg;
     char c;
@@ -63,6 +65,7 @@ typedef struct
     char *name;
     bool declare;
     bool remove;
+    bool isbuiltin;
 
     struct
     {
