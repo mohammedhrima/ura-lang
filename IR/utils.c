@@ -33,7 +33,8 @@ Specials *specials = (Specials[])
     {">=", more_equal_}, {"<", less_}, {">", more_}, {"=", assign_}, 
     {"+", add_}, {"-", sub_}, {"*", mul_}, {"/", div_}, {"(", lpar_}, 
     {")", rpar_}, {",", coma_}, {":", dots_}, {"if", if_}, {"elif", elif_},
-    {"else", else_}, {0, (Type)0}
+    {"else", else_}, {"while", while_}, {"func", fdec_}, {"return", ret_},
+    {0, (Type)0},
 };
 
 void ptoken(Token *token)
@@ -41,6 +42,7 @@ void ptoken(Token *token)
     printf("token ");
     switch (token->type)
     {
+    case void_:
     case string_:
     case int_:
     case bool_:
@@ -51,6 +53,7 @@ void ptoken(Token *token)
                 "[%s] name [%s]",(token->type == string_ ? "string" :
                                   token->type == int_    ? "int" :
                                   token->type == bool_   ? "bool" :
+                                  token->type == void_   ? "void" :
                                   NULL),
                 token->name
              );
@@ -68,6 +71,11 @@ void ptoken(Token *token)
     case fcall_:
     {
         printf("[func call] name [%s]", token->name);
+        break;
+    }
+    case fdec_:
+    {
+        printf("[func dec] name [%s]", token->name);
         break;
     }
     case id_:
@@ -155,6 +163,7 @@ char *to_string(Type type)
     case int_: return "INT   ";
     case string_: return "STRING ";
     case bool_: return "BOOL";
+    case void_: return "VOID";
     case id_: return "ID";
     case coma_: return "COMA";
 
@@ -167,17 +176,20 @@ char *to_string(Type type)
     case lpar_: return "LPARENT";
     case rpar_: return "RPARENT";
     case fcall_: return "FUNC CALL";
+    case fdec_: return "FUNC DECL";
 
     case jne_: return "JNE";
     case je_: return "JE";
     case jmp_: return "JMP";
     case cmp_: return "CMP";
 
+    case while_: return "WHILE";
     case if_: return "IF";
     case elif_: return "ELIF";
     case else_: return "ELSE";
     case dots_: return "DOTS";
     case bloc_: return "BLOC";
+    case ret_: return "RETURN";
     case end_: return "END";
     }
     return NULL;

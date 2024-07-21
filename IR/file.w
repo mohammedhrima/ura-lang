@@ -1,7 +1,7 @@
-int n = 10
-if n == 1:
-    output("cond 1\n")
-    if n == 2:
-        output("cond 12\n")
-else:
-    output("else")
+func void sayHi():
+    output("hi \n")
+
+main():
+    int a = 10
+    int b = 15
+    sayHi()

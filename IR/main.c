@@ -335,13 +335,16 @@ Node *mul_div()
     return left;
 }
 
-Specials DataTypes[] = {{"int", int_}, {"bool", bool_}, {"string", string_}, {0, 0}};
+Specials DataTypes[] = 
+{
+    {"int", int_}, {"bool", bool_}, {"string", string_}, {"void", void_}, {0, 0}
+};
 
 Node *prime()
 {
     Node *node = NULL;
     Token *token;
-    if ((token  = check(int_, bool_, string_, id_, lpar_, rpar_, 0)))
+    if ((token  = check(int_, bool_, string_, void_, id_, lpar_, rpar_, 0)))
     {
         bool found = false;
         for (int i = 0; token->type == id_ && DataTypes[i].value; i++)
@@ -380,116 +383,86 @@ Node *prime()
             node = new_node(token);
             if (check(lpar_, 0)) // TODO: only if is identifier
             {
-                node->token->type = fcall_;
-                Node *curr = node;
-                while (!check(rpar_, 0))
+                if(strcmp(node->token->name, "main") == 0)
                 {
-                    curr->left = expr();
-                    if (!check(coma_, 0))
+                    if(!check(rpar_, 0))
                     {
-                        // TODO: syntax error
+                        // TODO: error
                     }
-                    curr->right = new_node(NULL);
-                    curr = curr->right;
+                    if(!check(dots_, 0))
+                    {
+                        // TODO: error
+                    }
+                    node->token->type = fdec_;
+                }
+                else
+                {
+                    node->token->type = fcall_;
+                    Node *curr = node;
+                    while (!check(rpar_, 0))
+                    {
+                        curr->left = expr();
+                        if (!check(coma_, 0))
+                        {
+                            // TODO: syntax error
+                        }
+                        curr->right = new_node(NULL);
+                        curr = curr->right;
+                    }
                 }
             }
         }
     }
-    else if((token  = check(if_, 0)))
+    else if((token = check(fdec_, 0)))
     {
-        /*
-            + if:
-                + LEFT : 
-                    + LEFT : condition
-                    + RIGHT: code bloc
-                + RIGHT:
-                    + LEFT :
-                        + elif:
-                            + LEFT : condition
-                            + RIGHT: code bloc
-                    + else:
-                        + RIGHT: 
-                            + LEFT + code bloc
-
-        */
-#if 0
         node = new_node(token);
         node->left = new_node(NULL);
-        Node *curr = node->left;
-        curr->left = expr();
-        if(!check(dots_, 0))
+        node->left->left = prime();
+        if(!node->left->left->token || !node->left->left->token->declare)
         {
-            printf("Error: expected : but found <%s>\n", to_string(tokens[exe_pos]->type));
+            printf("Error: expected datatype after func declaration\n");
             exit(1);
         }
-        curr->right = new_node(NULL);
-        curr = curr->right;
+        node->token->name = node->left->left->token->name;
+        node->left->left->token->name = NULL;
+        // TODO: those errors should be checked
+        if(!check(lpar_, 0))
+        {
+            printf("Error: expected ( after function declaration\n");
+            exit(1);
+        }
+        if(!check(rpar_, 0))
+        {
+            printf("Error: expected ) after function declaration\n");
+            exit(1);
+        }
+        if(!check(dots_, 0))
+        {
+            printf("Error: expected :\n");
+            exit(1);
+        }
+
+        node->token->type = fdec_;
+        Node *curr = node;
         while
         (
-            tokens[exe_pos]->type != end_ && 
-            tokens[exe_pos]->space > node->token->space
+            tokens[exe_pos]->space > node->token->space &&
+            tokens[exe_pos]->type != end_
         )
         {
+            curr->right = new_node(NULL);
+            curr = curr->right;
             curr->left = expr();
-            curr->right = new_node(NULL);
-            curr = curr->right;
         }
-        while((token = check(elif_, 0)))
-        {
-            if(token->space != node->token->space)
-            {
-                printf("Error: misplaced elif statement\n");
-                exit(1);
-            }
-
-            curr->left = new_node(token);
-            curr->right = new_node(NULL);
-
-            Node *tmp0 = curr->left;
-            tmp0->left = expr();
-            if(!check(dots_, 0))
-            {
-                printf("Error: expected : after elif\n");
-                exit(1);
-            }
-            tmp0->right = new_node(NULL);
-            Node *tmp1 = tmp0->right;
-            while
-            (
-                tokens[exe_pos]->type != end_ && 
-                tokens[exe_pos]->space > node->token->space
-            )
-            {
-                tmp1->left = expr();
-                tmp1 = tmp1->right;
-            }
-            curr = curr->right;
-        }
-        if((token = check(else_, 0)))
-        {
-            if(!check(dots_, 0))
-            {
-                printf("Error: expected ':' after else\n");
-                exit(1);
-            }
-            if(token->space != node->token->space)
-            {
-                printf("Error: misplaced else statement\n");
-                exit(1);
-            }
-            curr->right = new_node(NULL);
-            
-            curr = curr->right;
-            curr->left = new_node(token);
-            curr = curr->left;
-            while(tokens[exe_pos]->type != end_ && tokens[exe_pos]->space > node->token->space)
-            {
-                curr->left = expr();
-                curr->right = new_node(NULL);
-                curr = curr->right;
-            }
-        }
-#endif
+        curr->right = new_node(NULL);
+        curr->right->left = new_node(
+            new_token(NULL, 0, 0, node->token->space + 1, ret_)
+            );
+        return node;
+    }
+    // TODO: handle error parsing
+    else if((token  = check(if_, 0)))
+    {
         node = new_node(token);
         
         Node *tmp = node;
@@ -560,6 +533,27 @@ Node *prime()
         }
 
     }
+    else if((token = check(while_, 0)))
+    {
+        node = new_node(token);
+        node->left = expr();
+        if(!check(dots_, 0))
+        {
+            printf("Error: expected :\n");
+            exit(1);
+        }
+        Node *tmp = node;
+        while
+        (
+            tokens[exe_pos]->type != end_  &&
+            tokens[exe_pos]->space > token->space
+        )
+        {
+            tmp->right = new_node(NULL);
+            tmp = tmp->right;
+            tmp->left = expr();
+        }
+    }
     else if(tokens[exe_pos]->type == end_);
     else
     {
@@ -590,26 +584,6 @@ void add_inst(Inst *inst)
     first_insts[inst_pos++] = inst;
 }
 
-// void allocate_reg(Inst *inst, int pos)
-// {
-//     inst->token->reg = pos;
-//     if (regs == NULL)
-//     {
-//         reg_size = 10;
-//         regs = calloc(reg_size, sizeof(Inst *));
-//     }
-//     else if (reg_pos + 1 == reg_size)
-//     {
-//         Inst **tmp = calloc(reg_size * 2, sizeof(Inst *));
-//         memcpy(tmp, regs, reg_pos * sizeof(Inst *));
-//         reg_size *= 2;
-//         free(regs);
-//         regs = tmp;
-//     }
-//     // TODO: remove regs
-//     regs[inst->token->reg] = inst;
-// }
-
 Inst *new_inst(Token *token)
 {
     printf("new instruction has type %s\n", to_string(token->type));
@@ -631,7 +605,6 @@ Inst *new_inst(Token *token)
         {
             token->ptr = (ptr += 8);
             token->reg = ++reg_pos;
-            // allocate_reg(new, );
         }
     }
     else
@@ -775,9 +748,65 @@ Token *generate_ir(Node *node)
         return node->left->token;
         break;
     }
+    case while_:
+    {
+        // condition
+
+        node->token->type = bloc_;
+        node->token->name = strdup("while");
+        node->token->index = ++bloc_index;
+        inst = new_inst(node->token);
+
+        Token *result = generate_ir(node->left); // TODO: check if it's boolean
+
+        Token *end = copy_token(node->token);
+        end->type = jne_;
+        if(end->name) free(end->name);
+        end->name = strdup("endwhile");
+        new_inst(end);
+
+        Node *curr = node->right;
+        while(curr) // if code bloc
+        {
+            generate_ir(curr->left);
+            curr = curr->right;
+        }
+
+        Token *lastInst = copy_token(node->token);
+        lastInst->type = jmp_;
+        free(lastInst->name);
+        lastInst->name = strdup("while");
+        new_inst(lastInst); // jne to endif
+
+        lastInst = copy_token(node->token);
+        lastInst->type = bloc_;
+        free(lastInst->name);
+        lastInst->name = strdup("endwhile");
+        new_inst(lastInst); // jne to endif
+        break;
+    }
+    case fdec_:
+    {
+        Token *fcall = copy_token(node->token);
+        fcall->type = fdec_;
+        inst = new_inst(fcall);
+        Node *curr = node->right;
+        while(curr)
+        {
+            generate_ir(curr->left);
+            curr = curr->right;
+        }
+        // new_inst(new_token(NULL, 0, 0, node->token->space, ret_)); // TODO: to be checked
+        break;
+    }
+    case ret_:
+    {
+        inst = new_inst(node->token);
+        break;
+    }
     case fcall_:
     {
-        pnode(node, NULL, 0);
+        // pnode(node, NULL, 0);
         if(strcmp(node->token->name, "output") == 0)
         {
             Node *curr = node;
@@ -790,8 +819,7 @@ Token *generate_ir(Node *node)
                 {
                     case string_: fname = "_putstr"; break;
                     case int_:    fname = "_putnbr"; break;
-                    default:
-                        break;
+                    default: break;
                 }
                 if(fname)
                 {
@@ -803,7 +831,7 @@ Token *generate_ir(Node *node)
             }
         }
         else {
-
+            new_inst(node->token);
         }
         return node->token;
         break;
@@ -823,8 +851,7 @@ Token *generate_ir(Node *node)
         inst->right = right;
         break;
     }
-    default:
-        break;
+    default: break;
     }
     return inst->token;
 }
@@ -863,7 +890,7 @@ void print_ir()
         }
         case fcall_:
         {
-            printf("call %s\n", curr->name);
+            printf("rxx: call %s\n", curr->name);
             break;
         }
         case add_: case sub_: case mul_: case div_: case equal_:
@@ -912,26 +939,14 @@ void print_ir()
                                                      (curr->index = ++str_index));
             break;
         }
-        case jne_:
-        {
-            printf("rxx: jne %s%zu\n", curr->name, curr->index);
-            break;
-        }
-        case jmp_:
-        {
-            printf("rxx: jmp %s%zu\n", curr->name, curr->index);
-            break;
-        }
-        case bloc_:
-        {
-            printf("rxx: %s%zu (bloc)\n", curr->name, curr->index);
-            break;
-        }
-        default:
-        {
+        case jne_: printf("rxx: jne %s%zu\n", curr->name, curr->index); break;
+        case jmp_: printf("rxx: jmp %s%zu\n", curr->name, curr->index); break;
+        case bloc_: printf("rxx: %s%zu (bloc)\n", curr->name, curr->index); break;
+        case fdec_: printf("rxx: %s (func dec)\n", curr->name); break;
+        case ret_: printf("rxx: return\n"); break;
+        default: 
             printf("%sPrint IR: Unkown inst [%s]%s\n", RED, to_string(curr->type), RESET);
             break;
-        }
         }
         j++;
     }
@@ -1010,8 +1025,7 @@ bool optimize_ir(int op_index)
                         default:
                             printf("Error: Invalid %s op in string\n", to_string(token->type)); break;
                         }
-                    default:
-                        break;
+                    default: break;
                     }
                     token->type = left->type;
                     left->remove = true;
@@ -1106,6 +1120,11 @@ bool optimize_ir(int op_index)
                 int j = i + 1;
                 while (insts[j] && insts[j]->token->space == insts[i]->token->space)
                 {
+                    if(!insts[j]->left || !insts[j]->right || !insts[i]->token)
+                    {
+                        j++;
+                        continue;
+                    }
                     if 
                     (
                         insts[j]->token->type == assign_ && 
@@ -1268,20 +1287,36 @@ void generate_asm()
             call(curr->name);
             break;
         }
+        case fdec_:
+        {
+            pasm("%s:\n", curr->name);
+            if(strcmp(curr->name, "main") == 0)
+            {
+                pasm("push    rbp\n");
+                mov("rbp, rsp\n","");
+                pasm("sub     rsp, %zu\n", ptr + 8);
+            }
+            break;
+        }
         case jne_:
         {
             cmp("al, 1\n", "");
-            jne("%s%zu\n", curr->name, curr->index);
+            jne(".%s%zu\n", curr->name, curr->index);
             break;
         }
         case jmp_:
         {
-            jmp("%s%zu\n", curr->name, curr->index);
+            jmp(".%s%zu\n", curr->name, curr->index);
             break;
         }
         case bloc_:
         {
-            pasm("%s%zu:\n", curr->name, curr->index);
+            pasm(".%s%zu:\n", curr->name, curr->index);
+            break;
+        }
+        case ret_:
+        {
+            pasm("ret\n");
             break;
         }
         default:
@@ -1297,11 +1332,7 @@ void initialize()
     pasm(".intel_syntax noprefix\n");
     pasm(".include \"./import/header.s\"\n\n");
     pasm(".text\n");
-    pasm(".globl	main\n");
-    pasm("main:\n");
-    pasm("push    rbp\n");
-    mov("rbp, rsp\n","");
-    pasm("sub     rsp, %zu\n", ptr + 8);
+    pasm(".globl	main\n");   
 }
 
 void finalize()
@@ -1373,7 +1404,8 @@ int main(int argc, char **argv)
         }
         copy_insts();
         print_ir();
-#if 0
+
+#if OPTIMIZE
         int i = 0;
         bool optimized = false;
         while(i < MAX_OPTIMIZATION)
