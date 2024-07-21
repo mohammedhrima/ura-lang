@@ -70,10 +70,13 @@ Token *new_token(char *input, int s, int e, int space, Type type)
 
 Token *copy_token(Token *token)
 {
+    if(token == NULL) return NULL;
     Token *new = calloc(1, sizeof(Token));
     memcpy(new, token, sizeof(Token));
-    if(token->name)
+    if(token->name) // TODO: check all data that can be copied
         new->name = strdup(token->name);
+    if(token->String.value)
+        new->String.value = strdup(token->String.value);
     add_token(new);
     return new;
 }
@@ -190,6 +193,10 @@ Node *copy_node(Node *node)
 {
     Node *new = calloc(1, sizeof(Node));
     new->token = copy_token(node->token);
+    if(node->left)
+        new->left = copy_node(node->left);
+    if(node->right)
+        new->right = copy_node(node->right);
     return new;
 }
 
@@ -505,47 +512,58 @@ Node *prime()
         Node *curr = node;
         while
         (
-            (token = check(elif_, 0)) && 
-            token->space > node->token->space
+            (tokens[exe_pos]->type == elif_ || tokens[exe_pos]->type == else_) &&
+            tokens[exe_pos]->space == node->token->space
         )
-        {                
-            curr->right = new_node(NULL);
-            tmp = curr->right;
-            tmp->left = new_node(token);
-            tmp = tmp->left;
-            tmp->left = expr(); // elif condition
-            if(!check(dots_, 0))
-                ; // TODO: expected ':' after condition
-            tmp->right = new_node(NULL);
-            tmp = tmp->right;
-            while(tokens[exe_pos]->space > node->token->space)
-            {
-                tmp->left = expr();
-                tmp->right = new_node(NULL);
-                tmp = tmp->right;
-            }
-            curr = curr->right;
-        }
-        if((token = check(else_, 0))) // TODO: check space
         {
-            if(!check(dots_, 0))
-                ; // Error: expected ':'
-            curr->left = new_node(token);
-            curr = curr->left;
-            while(tokens[exe_pos]->space > node->token->space)
-            {
-                curr->left = expr();
-                curr->right = new_node(NULL);
-                curr = curr->right;
-            }
+            token = tokens[exe_pos++];
             curr->right = new_node(NULL);
+            curr = curr->right;
+            curr->left = new_node(token);
+            if(token->type == elif_)
+            {
+                Node *tmp0 = curr->left;
+                tmp0->left = expr();
+                if(!check(dots_, 0))
+                {
+                    printf("Error: expected dots");
+                    exit(1);
+                }
+                tmp0->right = new_node(NULL);
+                tmp0 = tmp0->right;
+                while(tokens[exe_pos]->space > token->space)
+                {
+                    tmp0->left = expr();
+                    tmp0->right = new_node(NULL);
+                    tmp0 = tmp0->right;
+                }
+            }
+            else if(token->type == else_)
+            {
+                if(!check(dots_, 0))
+                {
+                    printf("Error: expected dots");
+                    exit(1);
+                }
+                Node *tmp0 = curr->left;
+
+                tmp0->right = new_node(NULL);
+                tmp0 = tmp0->right;
+                while(tokens[exe_pos]->space > token->space)
+                {
+                    tmp0->left = expr();
+                    tmp0->right = new_node(NULL);
+                    tmp0 = tmp0->right;
+                }
+                break;
+            }
         }
 
     }
     else if(tokens[exe_pos]->type == end_);
     else
     {
-        printf("Error: Unexpected token <%s>\n", to_string(tokens[exe_pos]->type));
+        printf("Prime: Unexpected token <%s>\n", to_string(tokens[exe_pos]->type));
         exit(1);
     }
     return node;
@@ -572,27 +590,26 @@ void add_inst(Inst *inst)
     first_insts[inst_pos++] = inst;
 }
 
-void allocate_reg(Inst *inst, int pos)
-{
-    inst->token->reg = pos;
-    if (regs == NULL)
-    {
-        reg_size = 10;
-        regs = calloc(reg_size, sizeof(Inst *));
-    }
-    else if (reg_pos + 1 == reg_size)
-    {
-        Inst **tmp = calloc(reg_size * 2, sizeof(Inst *));
-        memcpy(tmp, regs, reg_pos * sizeof(Inst *));
-        reg_size *= 2;
-        free(regs);
-        regs = tmp;
-    }
-    // TODO: remove regs
-    regs[inst->token->reg] = inst;
-}
+// void allocate_reg(Inst *inst, int pos)
+// {
+//     inst->token->reg = pos;
+//     if (regs == NULL)
+//     {
+//         reg_size = 10;
+//         regs = calloc(reg_size, sizeof(Inst *));
+//     }
+//     else if (reg_pos + 1 == reg_size)
+//     {
+//         Inst **tmp = calloc(reg_size * 2, sizeof(Inst *));
+//         memcpy(tmp, regs, reg_pos * sizeof(Inst *));
+//         reg_size *= 2;
+//         free(regs);
+//         regs = tmp;
+//     }
+//     // TODO: remove regs
+//     regs[inst->token->reg] = inst;
+// }
 
-size_t ptr = 0;
 Inst *new_inst(Token *token)
 {
     printf("new instruction has type %s\n", to_string(token->type));
@@ -613,7 +630,8 @@ Inst *new_inst(Token *token)
         if (token->declare)
         {
             token->ptr = (ptr += 8);
-            allocate_reg(new, ++reg_pos);
+            token->reg = ++reg_pos;
+            // allocate_reg(new, );
         }
     }
     else
@@ -622,8 +640,8 @@ Inst *new_inst(Token *token)
         {
         case add_: case sub_: case mul_: case div_: case equal_:
         case less_: case more_: case less_equal_: case more_equal_:
-        case not_equal_: case fcall_:
-            allocate_reg(new, ++reg_pos);
+        case not_equal_: case fcall_: 
+            token->reg = ++reg_pos;
             break;
         case if_:
             break;
@@ -662,25 +680,30 @@ Token *generate_ir(Node *node)
     }
     case if_:
     {
-        // printf("handle if\n"), exit(1);
         Node *tmp = node;
         Node *curr = node->left;
 
         // condition
         Token *result = generate_ir(curr->left); // TODO: check if it's boolean
 
-        Node *lastnode = node;
+        node->token->type = jne_;
+        node->token->name = strdup("endif");
+        node->token->index = ++bloc_index;
 
-        lastnode->token->type = jne_;
-        lastnode->token->name = strdup("endif");
-        lastnode->token->index = ++bloc_index;
-        new_inst(lastnode->token); // jne to endif
+        Token *lastInst = copy_token(node->token);
+        new_inst(lastInst); // jne to endif
 
         curr = curr->right;
         while(curr->left) // if code bloc
         {
             generate_ir(curr->left);
             curr = curr->right;
+        }
+        Inst *endInst = NULL;
+        if(node->right)
+        {
+            endInst = new_inst(new_token("endif", 0, 5, node->token->space, jmp_));
+            endInst->token->index = node->token->index;
         }
 
         curr = node->right;
@@ -692,20 +715,18 @@ Token *generate_ir(Node *node)
                 curr->left->token->type = bloc_;
                 curr->left->token->name = strdup("elif");
 
-                if(strcmp(lastnode->token->name, "endif") == 0)
                 {
-                    free(lastnode->token->name);
-                    lastnode->token->name = strdup("elif");
-                    lastnode->token->index = curr->left->token->index;
+                    free(lastInst->name);
+                    lastInst->name = strdup("elif");
+                    lastInst->index = curr->left->token->index;
+                    lastInst = copy_token(lastInst);
                 }
+
                 new_inst(curr->left->token);
                 Node *tmp = curr->left;
                 generate_ir(tmp->left); // elif condition, TODO: check is boolean
-
-                lastnode = tmp->left;
-                lastnode->token->type = jne_;
-                lastnode->token->name = strdup("endif");
-                lastnode->token->index = node->token->index;
+                
+                new_inst(lastInst);
 
                 tmp = tmp->right;
                 while(tmp->left)
@@ -719,14 +740,16 @@ Token *generate_ir(Node *node)
                 curr->left->token->index = ++bloc_index;
                 curr->left->token->type = bloc_;
                 curr->left->token->name = strdup("else");
-
-                if(strcmp(lastnode->token->name, "endif") == 0)
-                {
-                    free(lastnode->token->name);
-                    lastnode->token->name = strdup("else");
-                    lastnode->token->index = curr->left->token->index;
-                }
                 new_inst(curr->left->token);
+
+                {  
+                    free(lastInst->name);
+                    lastInst->name = strdup("else");
+                    lastInst->index = curr->left->token->index;
+                    lastInst = copy_token(lastInst);
+
+                }
+
                 Node *tmp = curr->left;
                 tmp = tmp->right;
                 while(tmp->left)
@@ -734,56 +757,21 @@ Token *generate_ir(Node *node)
                     generate_ir(tmp->left);
                     tmp = tmp->right;
                 }
+                break;
+            }
+            if(curr->right)
+            {
+                endInst = new_inst(new_token("endif", 0, 5, node->token->space, jmp_));
+                endInst->token->index = node->token->index;
             }
             curr = curr->right;
         }
-        
-        Token *new = NULL;
-#if 0
-        curr = node->right;
-        if(curr && curr->left->token->type == elif_)
-        {
-            curr = curr->left;
-            free(node->token->name);
-            node->token->name = strdup("elif");
-            new_inst(new_token("elif", 0, 4, node->token->space, bloc_));
 
-            while(curr && curr->left->token->type == elif_)
-            {
+        Token *new = new_token("endif", 0, 5, node->token->space, bloc_);
 
-                curr = curr->right;
-            }
-        }
-#endif
-#if 0
-        if(curr && curr->left->token->type == else_)
-        {
-            // TODO: add . before all Labels
-            new = new_token("endif", 0, 5, node->token->space, jmp_);
-            new->index = node->token->index;
-            new_inst(new);
-
-            if(strcmp(node->token->name, "endif") == 0)
-            {
-                free(node->token->name);
-                node->token->name = strdup("else");
-            }
-            new = new_token("else", 0, 4, node->token->space, bloc_);
-            new->index = node->token->index;
-            new_inst(new);
-
-            curr = curr->left;
-            while(curr->left)
-            {
-                generate_ir(curr->left);
-                curr = curr->right;
-            }
-        }
-#endif
-        new = new_token("endif", 0, 5, node->token->space, bloc_);
         new->index = node->token->index;
         new_inst(new);
-
+        // free_token(lastInst);
         return node->left->token;
         break;
     }

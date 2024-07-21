@@ -1,7 +1,7 @@
-if 1 == 1:
+int n = 10
+if n == 1:
     output("cond 1\n")
+    if n == 2:
+        output("cond 12\n")
 else:
-    output("cond 2\n")
-
-
-
+    output("else")

@@ -22,6 +22,9 @@ Inst **regs;
 int reg_pos;
 int reg_size;
 
+// STACK POINTER
+size_t ptr = 0;
+
 // DEBUG
 Specials *specials = (Specials[])
 {
@@ -180,6 +183,15 @@ char *to_string(Type type)
     return NULL;
 }
 
+void free_token(Token *token)
+{
+    if (token->name)
+        free(token->name);
+    else if (token->String.value)
+        free(token->String.value);
+    free(token);    
+}
+
 #if AST
 void clear(
     Node *head, char *input)
@@ -189,13 +201,7 @@ void clear(char *input)
 {
 #if TOKENIZE
     for (int i = 0; i < tk_pos; i++)
-    {
-        if (tokens[i]->name)
-            free(tokens[i]->name);
-        else if (tokens[i]->String.value)
-            free(tokens[i]->String.value);
-        free(tokens[i]);
-    }
+        free_token(tokens[i]);
 #endif
 
 #if AST
