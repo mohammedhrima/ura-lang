@@ -24,6 +24,8 @@ int reg_size;
 
 // STACK POINTER
 size_t ptr = 0;
+size_t arg_ptr = 0;
+bool inside_function;
 
 // DEBUG
 Specials *specials = (Specials[])
@@ -59,6 +61,8 @@ void ptoken(Token *token)
              );
             if (token->declare)
                 printf(" [declare]");
+            if (token->isarg)
+                printf(" [argument]");
         }
         else if(token->type == int_)
             printf("[int] value [%lld]", token->Int.value);
@@ -68,22 +72,10 @@ void ptoken(Token *token)
             printf("[bool] value [%d]", token->Bool.value);
         break;
     }
-    case fcall_:
-    {
-        printf("[func call] name [%s]", token->name);
-        break;
-    }
-    case fdec_:
-    {
-        printf("[func dec] name [%s]", token->name);
-        break;
-    }
-    case id_:
-        printf("[id] name [%s]", token->name);
-        break;
-    case end_:
-        printf("[end]");
-        break;
+    case fcall_: printf("[func call] name [%s]", token->name); break;
+    case fdec_: printf("[func dec] name [%s]", token->name); break;
+    case id_: printf("[id] name [%s]", token->name); break;
+    case end_: printf("[end]"); break;
     default:
     {
         for (int i = 0; specials[i].value; i++)
@@ -252,6 +244,11 @@ void copy_insts()
     }
 }
 
+char sign(Token *token)
+{
+    return (token->isarg ? ' ' : '-');
+}
+
 FILE *asm_fd;
 void pasm(char *fmt, ...)
 {
@@ -271,6 +268,7 @@ void pasm(char *fmt, ...)
 #define cmp(fmt, ...)  pasm("cmp     " fmt, __VA_ARGS__)
 #define jne(fmt, ...)  pasm("jne     " fmt, __VA_ARGS__)
 #define jmp(fmt, ...)  pasm("jmp     " fmt, __VA_ARGS__)
+#define push(fmt, ...) pasm("push    " fmt, __VA_ARGS__)
 #define call(func)     pasm("call    %s\n", func)
 
 // Define the math macro

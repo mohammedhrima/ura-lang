@@ -67,6 +67,7 @@ typedef struct
     bool declare;
     bool remove;
     bool isbuiltin;
+    bool isarg;
 
     struct
     {
