@@ -4,24 +4,22 @@
 .text
 .globl	main
 sayHi:
-   lea     rdi, .STR1[rip]
-   call    _putstr
+   push    rbp
+   mov     rbp, rsp
+   sub     rsp, 8
+   /*arg c in 24[rbp] */
+   /*arg b in 32[rbp] */
+   /*arg a in 40[rbp] */
+   mov     rdi, QWORD PTR  16[rbp]
+   call    _putnbr
+   leave
    ret
 main:
    push    rbp
    mov     rbp, rsp
-   sub     rsp, 24
-   /*declare a*/
-   mov     QWORD PTR -8[rbp], 0
-   /*assign a*/
-   mov     QWORD PTR -8[rbp], 10
-   /*declare b*/
-   mov     QWORD PTR -16[rbp], 0
-   /*assign b*/
-   mov     QWORD PTR -16[rbp], 15
+   sub     rsp, 8
    call    sayHi
    leave
    ret
-.STR1: .string "hi \n"
 .section	.note.GNU-stack,"",@progbits
 

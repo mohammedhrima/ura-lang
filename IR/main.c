@@ -38,10 +38,7 @@ Token *new_token(char *input, int s, int e, int space, Type type)
         strncpy(new->String.value, input + s, e - s);
         break;
     }
-    case fcall_:
-    case id_:
-    case jmp_:
-    case bloc_:
+    case fcall_: case id_: case jmp_: case bloc_:
     {
         new->name = calloc(e - s + 1, sizeof(char));
         strncpy(new->name, input + s, e - s);
@@ -402,6 +399,7 @@ Node *prime()
                     while (!check(rpar_, 0))
                     {
                         curr->left = expr();
+                        curr->left->token->isarg = true;
                         if (!check(coma_, 0))
                         {
                             // TODO: syntax error
@@ -433,7 +431,35 @@ Node *prime()
         }
         if(!check(rpar_, 0))
         {
-            printf("Error: expected ) after function declaration\n");
+            // TODO: working on passing arguemnts
+            inside_function = true;
+            arg_ptr = 8;
+
+            Node *args[100];
+            int arg_pos;
+
+            Node *curr = node->left;
+            while(!check_type((Type[]){rpar_, end_, 0}, tokens[exe_pos]->type))
+            {
+                args[arg_pos++] = prime();
+                if(tokens[exe_pos]->type != rpar_ && !check(coma_, 0))
+                {
+                    printf("Error: expected ',' between arguments\n");
+                    exit(1);
+                }
+            }
+            while(arg_pos > 0)
+            {
+                curr->right = new_node(NULL);
+                curr = curr->right;
+                curr->left = args[--arg_pos];
+                curr->left->token->isarg = true;
+            }
+            inside_function = false;
+        }
+        if(!check(rpar_, 0))
+        {
+            printf("Error: expected )\n");
             exit(1);
         }
         if(!check(dots_, 0))
@@ -455,9 +481,8 @@ Node *prime()
             curr->left = expr();
         }
         curr->right = new_node(NULL);
-        curr->right->left = new_node(
-            new_token(NULL, 0, 0, node->token->space + 1, ret_)
-            );
+        Token *ret_token = new_token(NULL, 0, 0, node->token->space + 1, ret_);
+        curr->right->left = new_node(ret_token);
         return node;
     }
     // TODO: handle error parsing
@@ -485,7 +510,7 @@ Node *prime()
         Node *curr = node;
         while
         (
-            (tokens[exe_pos]->type == elif_ || tokens[exe_pos]->type == else_) &&
+            check_type((Type[]){elif_, else_, 0}, tokens[exe_pos]->type) &&
             tokens[exe_pos]->space == node->token->space
         )
         {
@@ -603,7 +628,10 @@ Inst *new_inst(Token *token)
         }
         if (token->declare)
         {
-            token->ptr = (ptr += 8);
+            if(token->isarg || inside_function)
+                token->ptr = (arg_ptr += 8);
+            else
+                token->ptr = (ptr += 8);
             token->reg = ++reg_pos;
         }
     }
@@ -720,7 +748,6 @@ Token *generate_ir(Node *node)
                     lastInst->name = strdup("else");
                     lastInst->index = curr->left->token->index;
                     lastInst = copy_token(lastInst);
-
                 }
 
                 Node *tmp = curr->left;
@@ -790,7 +817,24 @@ Token *generate_ir(Node *node)
         Token *fcall = copy_token(node->token);
         fcall->type = fdec_;
         inst = new_inst(fcall);
-        Node *curr = node->right;
+        Node *curr;
+        
+        pnode(node, NULL, 0);
+
+        // arguments
+        inside_function = true;
+        if(node->left)
+        {
+            curr = node->left->right;
+            while(curr && curr->left)
+            {
+                Token *arg = generate_ir(curr->left);
+                curr = curr->right;
+            }
+            inside_function = false;
+        }
+
+        curr = node->right;
         while(curr)
         {
             generate_ir(curr->left);
@@ -807,6 +851,10 @@ Token *generate_ir(Node *node)
     case fcall_:
     {
         // pnode(node, NULL, 0);
+        size_t tmp_arg_ptr = arg_ptr;
+        size_t tmp_ptr = ptr;
+        arg_ptr = 8;
+        ptr = 8;
         if(strcmp(node->token->name, "output") == 0)
         {
             Node *curr = node;
@@ -831,8 +879,16 @@ Token *generate_ir(Node *node)
             }
         }
         else {
+            Node *curr = node;
+            while(curr->left)
+            {
+                generate_ir(curr->left);
+                curr = curr->right;
+            }
             new_inst(node->token);
         }
+        arg_ptr = tmp_arg_ptr;
+        ptr = tmp_ptr;
         return node->token;
         break;
     }
@@ -929,14 +985,17 @@ void print_ir()
         case int_: case bool_: case string_:
         {
             if (curr->declare)
-                printf("r%.2d: declare %s\n", curr->reg, curr->name);
+                printf("r%.2d: declare %s", curr->reg, curr->name);
             else if(curr->type == int_)
-                printf("r%.2d: value %lld\n", curr->reg, curr->Int.value);
+                printf("r%.2d: value %lld", curr->reg, curr->Int.value);
             else if(curr->type == bool_)
-                printf("r%.2d: value %s\n", curr->reg, curr->Bool.value ? "True" : "False");
+                printf("r%.2d: value %s", curr->reg, curr->Bool.value ? "True" : "False");
             else if(curr->type == string_)
-                printf("r%.2d: value %s in STR%zu\n", curr->reg, curr->String.value, 
+                printf("r%.2d: value %s in STR%zu", curr->reg, curr->String.value, 
                                                      (curr->index = ++str_index));
+            if(curr->isarg)
+                printf(" [argument]");
+            printf("\n");
             break;
         }
         case jne_: printf("rxx: jne %s%zu\n", curr->name, curr->index); break;
@@ -1191,25 +1250,25 @@ void generate_asm()
             pasm("/*assign %s*/\n", left->name);
             if (right->ptr)
             {
-                mov("rax, QWORD PTR -%zu[rbp]\n", right->ptr);
-                mov("QWORD PTR -%zu[rbp], rax\n", left->ptr);
+                mov("rax, QWORD PTR %c%zu[rbp]\n", sign(right), right->ptr);
+                mov("QWORD PTR %c%zu[rbp], rax\n", sign(left), left->ptr);
             }
             else if(right->c)
-                mov("QWORD PTR -%zu[rbp], r%cx\n", left->ptr, right->c);
+                mov("QWORD PTR %c%zu[rbp], r%cx\n", sign(left), left->ptr, right->c);
             else
             {
                 switch (right->type)
                 {
                 case int_:
-                    mov("QWORD PTR -%zu[rbp], %lld\n", left->ptr, right->Int.value);
+                    mov("QWORD PTR %c%zu[rbp], %lld\n", sign(left), left->ptr, right->Int.value);
                     break;
                 case bool_:
-                    mov("QWORD PTR -%zu[rbp], %d\n", left->ptr, right->Bool.value);
+                    mov("QWORD PTR %c%zu[rbp], %d\n", sign(left), left->ptr, right->Bool.value);
                     break;
                 case string_:
                     lea("rdi, .STR%zu[rip]\n", right->index);
                     call("_strdup");
-                    mov("QWORD PTR -%zu[rbp], rax\n", left->ptr);
+                    mov("QWORD PTR %c%zu[rbp], rax\n", sign(left), left->ptr);
                     break;
                 default:
                     break;
@@ -1221,27 +1280,35 @@ void generate_asm()
         {
             if (curr->declare)
             {
-                // curr->ptr = (ptr += 8);
-                // pasm("r%.2d: declare %s\n", curr->reg, curr->name);
-                pasm("/*declare %s*/\n", curr->name);
-                mov("QWORD PTR -%zu[rbp], 0\n", curr->ptr);
+                if(curr->isarg)
+                    pasm("/*arg %s in %zu[rbp] */\n", curr->name, curr->ptr + 8);
+                else
+                {
+                    pasm("/*declare %s*/\n", curr->name);
+                    mov("QWORD PTR %c%zu[rbp], 0\n", sign(curr), curr->ptr);
+                }
             }
-            else if(curr->type == string_ && !curr->name)
-                ; // pasm(".STR%zu: .string %s\n", curr->index, curr->String.value);
+            else
+            {
+                if(curr->isarg && !inside_function) // TODO: to be checked
+                    push("%ld\n", curr->Int.value);
+                if(curr->type == string_ && !curr->name)
+                    ; // pasm(".STR%zu: .string %s\n", curr->index, curr->String.value);
+            } 
             break;
         }
         case add_: case sub_: case mul_: case div_: // TODO: check all math_op operations
         {
             curr->c = 'a';
             if (left->ptr)
-                mov("r%cx, QWORD PTR -%zu[rbp]\n", curr->c, left->ptr);
+                mov("r%cx, QWORD PTR %c%zu[rbp]\n", curr->c, sign(left), left->ptr);
             else if (left->c && left->c != curr->c)
                 mov("r%cx, r%cx\n", curr->c, left->c);
             else if (!left->c)
                 mov("r%cx, %lld\n", curr->c, left->Int.value);
 
             if (right->ptr)
-                math_op(curr->type, "r%cx, QWORD PTR -%zu[rbp]\n", curr->c, right->ptr);
+                math_op(curr->type, "r%cx, QWORD PTR %c%zu[rbp]\n", curr->c, sign(right), right->ptr);
             else if (right->c) // TODO: to be checked
                 math_op(curr->type, "r%cx, r%cx\n", curr->c, right->c);
             else if (!right->c)
@@ -1253,14 +1320,14 @@ void generate_asm()
         {
             curr->c = 'a';
             if (left->ptr)
-                mov("r%cx, QWORD PTR -%zu[rbp]\n", curr->c, left->ptr);
+                mov("r%cx, QWORD PTR %c%zu[rbp]\n", curr->c, sign(left), left->ptr);
             else if (left->c && left->c != curr->c)
                 mov("r%cx, r%cx\n", curr->c, left->c);
             else if (!left->c)
                 mov("r%cx, %lld\n", curr->c, left->Int.value);
 
             if (right->ptr)
-                mov("rbx, QWORD PTR -%zu[rbp]\n", right->ptr);
+                mov("rbx, QWORD PTR %c%zu[rbp]\n", sign(right), right->ptr);
             else if (right->c && right->c != 'b') // TODO: to be checked
                 mov("rbx, r%cx\n", right->c);
             else if (!right->c)
@@ -1275,7 +1342,7 @@ void generate_asm()
             if(curr->isbuiltin)
             {
                 if(left->ptr)
-                    mov("rdi, QWORD PTR -%zu[rbp]\n", left->ptr);
+                    mov("rdi, QWORD PTR %c%zu[rbp]\n", sign(left), left->ptr);
                 else
                     switch(left->type)
                     {
@@ -1290,9 +1357,9 @@ void generate_asm()
         case fdec_:
         {
             pasm("%s:\n", curr->name);
-            if(strcmp(curr->name, "main") == 0)
+            // if(strcmp(curr->name, "main") == 0)
             {
-                pasm("push    rbp\n");
+                push("rbp\n", "");
                 mov("rbp, rsp\n","");
                 pasm("sub     rsp, %zu\n", ptr + 8);
             }
@@ -1316,6 +1383,7 @@ void generate_asm()
         }
         case ret_:
         {
+            pasm("leave\n");
             pasm("ret\n");
             break;
         }

@@ -1,7 +1,5 @@
-func void sayHi():
-    output("hi \n")
+func void sayHi(int a, int b, int c):
+    output(c)
 
 main():
-    int a = 10
-    int b = 15
-    sayHi()
+    sayHi(1, 2, 3)
