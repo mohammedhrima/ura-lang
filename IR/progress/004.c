@@ -1942,7 +1942,7 @@ int main(int argc, char **argv)
 #endif
     }
 
-#if AST
+#if AST 
     clear(head, input);
 #else
     clear(input);
