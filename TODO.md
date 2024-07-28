@@ -1,9 +1,4 @@
-+ divide by 0
-+ function take params:
-    + by value
-    + by refrence
++ kalkilatrice: + * - /
 
-
-+ assembly code use cpu registers then stack
-+ refactor header.s file
-+ refactor the compiler
++ be carefull with tokens size: rani dayr fiha 100 X'D
++ check error management
