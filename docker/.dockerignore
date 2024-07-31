@@ -1,8 +1,7 @@
+docker-compose.yml
+Dockerfile
 **/a.out
 **/a.out.dSYM/
 **/comp
-**/asm
-**/*.mp4
-**/wcc
 .DS_Store
 .vscode
