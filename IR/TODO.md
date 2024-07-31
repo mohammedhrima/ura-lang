@@ -2,4 +2,4 @@
     + by value
     + by refrence
 + define my bloc
-+ serach in that bloc
++ search in that bloc

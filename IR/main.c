@@ -149,16 +149,23 @@ size_t arg_ptr;
 
 typedef struct
 {
+    char *name;
+    Node **functions;
+    size_t func_size;
+    size_t func_pos;
+
     Token **variables;
     size_t var_size;
     size_t var_pos;
+} Scoop;
 
-} Bloc;
-
+// TODO: free blocs data
 // BLOCS
-Node **BLOC;
+Scoop *global_scoop;
 size_t bloc_size;
-size_t bloc_pos;
+ssize_t scoop_pos = -1;
+
+Scoop *curr_scoop;
 
 // DEBUG
 Specials *specials = (Specials[])
@@ -177,10 +184,7 @@ void ptoken(Token *token)
     printf("token ");
     switch (token->type)
     {
-    case void_:
-    case string_:
-    case int_:
-    case bool_:
+    case void_: case string_: case int_: case bool_:
     {
         Type type = token->type;
         printf("[%s]",(type == string_ ? "string" : type == int_    ? "int" :
@@ -392,8 +396,7 @@ void pasm(char *fmt, ...)
     cond = !strchr(fmt, ':') && !strstr(fmt, ".section	.note.GNU-stack,\"\",@progbits");
     cond = cond && !strstr(fmt, ".intel_syntax noprefix") && !strstr(fmt, ".include");
     cond = cond && !strstr(fmt, ".text") && !strstr(fmt, ".globl	main");
-    if (cond)
-        fprintf(asm_fd, "   ");
+    if (cond) fprintf(asm_fd, "   ");
     vfprintf(asm_fd, fmt, ap);
 }
 
@@ -535,11 +538,7 @@ void tokenize(char *input)
         {
             i++;
             while(input[i] && input[i] != '#') i++;
-            if(input[i] != '#')
-            {
-                printf("Error: expected '#'\n");
-                exit(1);
-            }
+            if(input[i] != '#'){printf("Error: expected '#'\n"); exit(1);}
             i++;
             continue;
         }
@@ -555,17 +554,12 @@ void tokenize(char *input)
                 break;
             }
         }
-        if (found)
-            continue;
+        if (found) continue;
         if(input[i] == '\"')
         {
             i++;
             while(input[i] && input[i] != '\"') i++;
-            if(input[i] != '\"')
-            {
-                printf("Error: expected '\"'\n");
-                exit(1);
-            }
+            if(input[i] != '\"'){printf("Error: expected '\"'\n"); exit(1);}
             i++;
             new_token(input, s, i, space, string_);
             continue;
@@ -582,11 +576,7 @@ void tokenize(char *input)
             new_token(input, s, i, space, int_);
             continue;
         }
-        if(input[i])
-        {
-            printf("Syntax Error: <%c>\n", input[i]);
-            exit(1);
-        }
+        if(input[i]){printf("Syntax Error: <%c>\n", input[i]); exit(1);}
     }
     new_token(NULL, 0, 0, space, end_);
 }
@@ -648,10 +638,15 @@ Node *assign()
         Node *right = equality();
         switch(token->type)
         {
-            case add_assign_:
+            case add_assign_: case sub_assign_: case mul_assign_: case div_assign_:
             {
+                Node *tmp = new_node(new_token(NULL, 0, 0, node->token->space, 
+                node->token->type == add_assign_ ? add_ :
+                node->token->type == sub_assign_ ? sub_ :
+                node->token->type == mul_assign_ ? mul_ :
+                node->token->type == div_assign_ ? div_ : 0
+                ));
                 node->token->type = assign_;
-                Node *tmp = new_node(new_token(NULL, 0, 0, node->token->space, add_));
                 tmp->left = copy_node(left);
                 tmp->left->token->declare = false;
                 tmp->right = right;
@@ -724,10 +719,169 @@ Node *mul_div()
     return left;
 }
 
-Specials DataTypes[] = 
+Specials DataTypes[] = {{"int", int_}, {"bool", bool_}, {"string", string_}, {"void", void_}, {0, 0}};
+
+void enter_scoop(char *name)
 {
-    {"int", int_}, {"bool", bool_}, {"string", string_}, {"void", void_}, {0, 0}
-};
+    GLOG("ENTER SCOOP", "%s\n", name);
+    if(global_scoop == NULL)
+    {
+        bloc_size = 10;
+        global_scoop = calloc(bloc_size, sizeof(Scoop));
+    }
+    else if(scoop_pos + 1 == bloc_size)
+    {
+        Scoop *tmp = calloc(bloc_size * 2, sizeof(Scoop));
+        memcpy(tmp, global_scoop, scoop_pos * sizeof(Scoop));
+        bloc_size *= 2;
+        free(global_scoop);
+        global_scoop = tmp;
+    }
+    scoop_pos++;
+    global_scoop[scoop_pos] = (Scoop){};
+    global_scoop[scoop_pos].name = name;
+    curr_scoop = &global_scoop[scoop_pos];
+}
+
+void exit_scoop()
+{
+    GLOG(" EXIT SCOOP", "%s\n", curr_scoop->name);
+    free(curr_scoop->functions);
+    free(curr_scoop->variables);
+    global_scoop[scoop_pos] = (Scoop){};
+    scoop_pos--;
+    // if(scoop_pos >= 0)
+    curr_scoop = &global_scoop[scoop_pos];
+    // else
+        // curr_scoop = NULL;
+}
+
+void pscoop(Scoop *scoop)
+{
+    printf("Scoop %s\n", scoop->name);
+    printf("    variables:\n");
+    for(size_t i = 0; i < scoop->var_pos; i++)
+    {
+        printf("        ");
+        ptoken(scoop->variables[i]);
+    }
+    printf("    functions:\n");
+    for(size_t i = 0; i < scoop->func_pos; i++)
+    {
+        printf("        ");
+        printf("%s\n", scoop->functions[i]->token->name);
+    }
+}
+
+Token *get_variable(char *name)
+{
+    CLOG("get var", "%s\n", name);
+    CLOG("Scoop", "%s\n", curr_scoop->name);
+    for(size_t i = 0; i < curr_scoop->var_pos; i++)
+    {
+        Token *var = curr_scoop->variables[i];
+        if(strcmp(var->name, name) == 0)
+        {
+            GLOG("found", "in [%s] scoop\n", curr_scoop->name);
+            return curr_scoop->variables[i];
+        }
+    }
+    RLOG(FUNC, "'%s' Not found\n", name);
+    exit(1);
+    return NULL;
+}
+
+Token *new_variable(Token *token)
+{
+    CLOG("new var", "%s\n", token->name);
+    // TODO: check here the global variables
+    Token **variables = curr_scoop->variables;
+    CLOG("Scoop", "%s\n", curr_scoop->name);
+    for(size_t i = 0; i < curr_scoop->var_pos; i++)
+    {
+        Token *var = curr_scoop->variables[i];
+        if(strcmp(var->name, token->name) == 0)
+        {
+            printf("%sRedefinition of %s%s\n", RED, token->name, RESET);
+            exit(1);
+        }
+    }
+    if(curr_scoop->variables == NULL)
+    {
+        curr_scoop->var_size = 10;
+        curr_scoop->variables = calloc(curr_scoop->var_size, sizeof(Token*));
+    }
+    else if(curr_scoop->var_pos + 1 == curr_scoop->var_size)
+    {
+        curr_scoop->var_size *= 2;
+        Token **tmp = calloc(curr_scoop->var_size, sizeof(Token*));
+        memcpy(tmp, curr_scoop->variables, curr_scoop->var_pos * sizeof(Token*));
+        free(curr_scoop->variables);
+        curr_scoop->variables = tmp;
+    }
+    // GLOG("", "in [%s] scoop\n", curr_scoop->name);
+    curr_scoop->variables[curr_scoop->var_pos++] = token;
+    return token;
+}
+
+Node *get_function(char *name)
+{
+    CLOG("get func", "%s\n", name);
+    CLOG("Scoop", "%s\n", curr_scoop->name);
+    char *builtins[] = {"output", 0};
+    for(int i = 0; builtins[i]; i++)
+        if(strcmp(name, builtins[i]) == 0)
+            return NULL;
+    for(size_t i = 0; i < curr_scoop->func_pos; i++)
+    {
+        Node *func = curr_scoop->functions[i];
+        if(strcmp(func->token->name, name) == 0)
+            return curr_scoop->functions[i];
+    }
+    RLOG(FUNC, "'%s' Not found\n", name);
+    exit(1);
+    return NULL;
+}
+
+// TODO: create a list fo built in functions
+Node *new_function(Node *node)
+{
+    CLOG("new func", "%s\n", node->token->name);
+    CLOG("Scoop", "%s\n", curr_scoop->name);
+    char *builtins[] = {"output", 0};
+    for(int i = 0; builtins[i]; i++)
+    {
+        if(strcmp(node->token->name, builtins[i]) == 0)
+        {
+            RLOG("Error", "%s is a built in function\n", node->token->name);
+            exit(1);
+        }
+    }
+    for(size_t i = 0; i < curr_scoop->func_pos; i++)
+    {
+        Node *func = curr_scoop->functions[i];
+        if(strcmp(func->token->name, node->token->name) == 0)
+        {
+            printf("%sRedefinition of %s%s\n", RED, node->token->name, RESET);
+            exit(1);
+        }
+    }
+    if(curr_scoop->functions == NULL)
+    {
+        curr_scoop->func_size = 10;
+        curr_scoop->functions = calloc(curr_scoop->func_size, sizeof(Node*));
+    }
+    else if(curr_scoop->func_pos + 1 == curr_scoop->func_size)
+    {
+        curr_scoop->func_size *= 2;
+        Node **tmp = calloc(curr_scoop->func_size, sizeof(Node*));
+        memcpy(tmp, curr_scoop->functions, curr_scoop->func_pos * sizeof(Node*));
+        free(curr_scoop->functions);
+        curr_scoop->functions = tmp;
+    }
+    curr_scoop->functions[curr_scoop->func_pos++] = node;
+    return node;
+}
 
 Node *prime()
 {
@@ -782,10 +936,22 @@ Node *prime()
                         // TODO: error
                     }
                     node->token->type = fdec_;
+                    Node *curr = node;
+                    while
+                    (
+                        tokens[exe_pos]->space > node->token->space &&
+                        tokens[exe_pos]->type != end_
+                    )
+                    {
+                        curr->right = new_node(NULL);
+                        curr = curr->right;
+                        curr->left = expr();
+                    }
                 }
                 else
                 {
                     node->token->type = fcall_;
+                    // Node *func = get_function(node->token->name);
                     Node *curr = node;
                     while (!check(rpar_, end_, 0)) // TODO: protect it, if no ) exists
                     {
@@ -805,8 +971,10 @@ Node *prime()
     else if((token = check(fdec_, 0)))
     {
         node = new_node(token);
+
         node->left = new_node(NULL);
         node->left->left = prime();
+        // TODO: hard code it
         if(!node->left->left->token || !node->left->left->token->declare)
         {
             printf("Error: expected datatype after func declaration\n");
@@ -823,7 +991,6 @@ Node *prime()
         printf("type: [%s]\n", to_string(tokens[exe_pos]->type));
         if(!check(rpar_, 0))
         {
-            // TODO: working on passing arguemnts
             // inside_function = true;
             arg_ptr = 8;
             Node *curr = node->left;
@@ -975,7 +1142,6 @@ Node *prime()
 #endif
 
 #if IR
-
 void add_inst(Inst *inst)
 {
     if (first_insts == NULL)
@@ -1001,17 +1167,8 @@ Inst *new_inst(Token *token)
     new->token = token;
     if (token->name && token->declare)
     {
-        for (int i = 0; i < inst_pos; i++)
-        {
-            if (
-                first_insts[i]->token->name &&
-                !strcmp(first_insts[i]->token->name, token->name))
-            {
-                printf("%sRedefinition of %s%s\n", RED, token->name, RESET);
-                exit(1);
-            }
-        }
-        if (token->declare)
+        new_variable(token);
+        // if (token->declare)
         {
             // if(token->isarg)
             //     token->ptr = (arg_ptr += 8);
@@ -1037,20 +1194,9 @@ Inst *new_inst(Token *token)
     return new;
 }
 
-Token *get_variable(char *name)
-{
-    for (int i = 0; first_insts[i]; i++)
-    {
-        if (first_insts[i]->token->name && strcmp(first_insts[i]->token->name, name) == 0)
-            return first_insts[i]->token;
-    }
-    RLOG(FUNC, "'%s' Not found\n", name);
-    exit(1);
-    return NULL;
-}
-
 size_t bloc_index;
 size_t str_index;
+
 Token *generate_ir(Node *node)
 {
     // printf("gen-ir: %s\n", to_string(node->token->type));
@@ -1162,14 +1308,12 @@ Token *generate_ir(Node *node)
     case while_:
     {
         // condition
-
         node->token->type = bloc_;
         node->token->name = strdup("while");
         node->token->index = ++bloc_index;
         inst = new_inst(node->token);
 
         Token *result = generate_ir(node->left); // TODO: check if it's boolean
-
         Token *end = copy_token(node->token);
         end->type = jne_;
         if(end->name) free(end->name);
@@ -1198,7 +1342,10 @@ Token *generate_ir(Node *node)
     }
     case fdec_:
     {
+        new_function(node);
+        enter_scoop(node->token->name);
         Token *fcall = copy_token(node->token);
+
         fcall->type = fdec_;
         inst = new_inst(fcall);
         Node *curr;
@@ -1265,6 +1412,7 @@ Token *generate_ir(Node *node)
             generate_ir(curr->left);
             curr = curr->right;
         }
+        exit_scoop();
         break;
     }
     case ret_:
@@ -1440,16 +1588,11 @@ void print_ir()
         }
         case int_: case bool_: case string_:
         {
-            if (curr->declare)
-                printf("r%.2d: declare %s", curr->reg, curr->name);
-            else if(curr->name)
-                printf("r%.2d: variable %s", curr->reg, curr->name);
-            else if(curr->type == int_)
-                printf("r%.2d: value %lld", curr->reg, curr->Int.value);
-            else if(curr->type == bool_)
-                printf("r%.2d: value %s", curr->reg, curr->Bool.value ? "True" : "False");
-            else if(curr->type == string_)
-                printf("r%.2d: value %s in STR%zu", curr->reg, curr->String.value, 
+            if (curr->declare) printf("r%.2d: declare %s", curr->reg, curr->name);
+            else if(curr->name) printf("r%.2d: variable %s", curr->reg, curr->name);
+            else if(curr->type == int_) printf("r%.2d: value %lld", curr->reg, curr->Int.value);
+            else if(curr->type == bool_) printf("r%.2d: value %s", curr->reg, curr->Bool.value ? "True" : "False");
+            else if(curr->type == string_) printf("r%.2d: value %s in STR%zu", curr->reg, curr->String.value, 
                                                      (curr->index = ++str_index));
             // if(curr->isarg)
             //     printf(" [argument]");
@@ -2027,12 +2170,15 @@ int main(int argc, char **argv)
     if (tk_pos > 1)
     {
 #if IR
+        enter_scoop("");
         curr = head;
         while (curr->left)
         {
             generate_ir(curr->left);
             curr = curr->right;
         }
+        exit_scoop();
+
         copy_insts();
         print_ir();
 
@@ -2066,5 +2212,4 @@ int main(int argc, char **argv)
 #else
     clear(input);
 #endif
-
 }

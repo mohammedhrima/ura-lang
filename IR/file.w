@@ -1,5 +1,6 @@
-func void sayHi(int x):
-    output(x)
-
+func void sayHi(int a):
+    output(a, "\n")
 main():
-    sayHi(1,2,3,4,5,6,7,8)
+    int a
+    a = 10
+    sayHi(a)
