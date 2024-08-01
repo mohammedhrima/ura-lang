@@ -1,8 +1,5 @@
 func int sayHi(int a):
-    output(a, "\n")
-    return a
-
+    return 0
 main():
-    int a = 10
     int b = 5
-    sayHi(a + b)
+    sayHi(b)
