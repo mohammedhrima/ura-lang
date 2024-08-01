@@ -74,7 +74,7 @@ extern Specials *specials;
 typedef struct
 {
     Type type;
-    // Type subtype;
+    Type retType;
 
     int reg;
     char c;
@@ -396,7 +396,7 @@ void pasm(char *fmt, ...)
     cond = !strchr(fmt, ':') && !strstr(fmt, ".section	.note.GNU-stack,\"\",@progbits");
     cond = cond && !strstr(fmt, ".intel_syntax noprefix") && !strstr(fmt, ".include");
     cond = cond && !strstr(fmt, ".text") && !strstr(fmt, ".globl	main");
-    if (cond) fprintf(asm_fd, "   ");
+    if (cond) fprintf(asm_fd, "    ");
     vfprintf(asm_fd, fmt, ap);
 }
 
@@ -832,11 +832,15 @@ Node *get_function(char *name)
     for(int i = 0; builtins[i]; i++)
         if(strcmp(name, builtins[i]) == 0)
             return NULL;
-    for(size_t i = 0; i < curr_scoop->func_pos; i++)
+    for(ssize_t j = scoop_pos; j >= 0; j--)
     {
-        Node *func = curr_scoop->functions[i];
-        if(strcmp(func->token->name, name) == 0)
-            return curr_scoop->functions[i];
+        Scoop *scoop = &global_scoop[j];
+        for(size_t i = 0; i < scoop->func_pos; i++)
+        {
+            Node *func = scoop->functions[i];
+            if(strcmp(func->token->name, name) == 0)
+                return func;
+        }
     }
     RLOG(FUNC, "'%s' Not found\n", name);
     exit(1);
@@ -1031,9 +1035,9 @@ Node *prime()
             curr = curr->right;
             curr->left = expr();
         }
-        curr->right = new_node(NULL);
-        Token *ret_token = new_token(NULL, 0, 0, node->token->space + 1, ret_);
-        curr->right->left = new_node(ret_token);
+        // curr->right = new_node(NULL);
+        // Token *ret_token = new_token(NULL, 0, 0, node->token->space + 1, ret_);
+        // curr->right->left = new_node(ret_token);
         return node;
     }
 #endif
@@ -1130,6 +1134,12 @@ Node *prime()
             tmp = tmp->right;
             tmp->left = expr();
         }
+    }
+    else if((token = check(ret_, 0)))
+    {
+        // TODO: check return type if is compatible with function
+        node = new_node(token);
+        node->left = expr();
     }
     else if(tokens[exe_pos]->type == end_);
     else
@@ -1418,6 +1428,7 @@ Token *generate_ir(Node *node)
     case ret_:
     {
         inst = new_inst(node->token);
+        inst->left = generate_ir(node->left);
         break;
     }
     case fcall_:
@@ -1451,7 +1462,7 @@ Token *generate_ir(Node *node)
                     // TODO: add other types
                     case string_: fname = ".putstr"; break;
                     case int_:    fname = ".putnbr"; break;
-                    default: RLOG(FUNC, "%d: handle this case\n", LINE); exit(1);
+                    default: RLOG(FUNC, "%d: handle this case <%s>\n", LINE, to_string(left->type)); exit(1);
                 }
                 if(fname)
                 {
@@ -1470,15 +1481,38 @@ Token *generate_ir(Node *node)
         }
         else 
         {
+            Node *func = get_function(node->token->name);
+            Node *arg = func->left->right;
+            printf("has the following arguments\n");
+            while(arg)
+            {
+                ptoken(arg->left->token);
+                arg = arg->right;
+            }
             char *regs[] = {"rdi", "rsi", "rdx", "rcx", NULL};
             int i = 0;
             size_t ptr = 8;
         
             Node *curr = node;
+            arg = func->left->right;
             while(curr->left)
             {
+                Token *left = generate_ir(curr->left);
                 Inst *inst = new_inst(new_token(NULL, 0, 0, node->token->space, push_));
-                inst->left = generate_ir(curr->left);
+                inst->left = left;
+                // printf("%s => %s\n", 
+                // to_string(inst->left->type), 
+                // to_string(arg->left->token->type));
+                if
+                (
+                    inst->left->type != arg->left->token->type && 
+                    inst->left->retType != arg->left->token->type
+                )
+                {
+                    RLOG("Error", "Incompatible type for function call <%s>\n", func->token->name);
+                    // TODO: add line after
+                    exit(1);
+                }
                 if(regs[i])
                 {
                     inst->right = new_token(regs[i], 0, strlen(regs[i]), node->token->space, 0);
@@ -1488,8 +1522,10 @@ Token *generate_ir(Node *node)
                     inst->right = new_token(NULL, 0, 0, node->token->space, 0);
                 // Token *arg = generate_ir(curr->left);
                 curr = curr->right;
+                arg = arg->right;
             }
             new_inst(node->token);
+            // exit(1);
         }
         arg_ptr = tmp_arg_ptr;
         ptr = tmp_ptr;
@@ -1501,14 +1537,34 @@ Token *generate_ir(Node *node)
         inst = new_inst(node->token);
         break;
     }
-    case add_: case sub_: case div_: case mul_: case assign_: case not_equal_:
-    case equal_: case less_: case more_: case less_equal_: case more_equal_:
+    case assign_:
+    case add_: case sub_: case div_: case mul_:
+    case not_equal_: case equal_: case less_: 
+    case more_: case less_equal_: case more_equal_:
     {
         Token *left = generate_ir(node->left);
         Token *right = generate_ir(node->right);
+        if(left->type != right->type && left->type != right->retType)
+        {
+            RLOG("Error", "Incompatible type for <%s> and <%s>",
+            to_string(left->type), to_string(right->type));
+            exit(1);
+        }
         inst = new_inst(node->token);
         inst->left = left;
         inst->right = right;
+        switch(node->token->type)
+        {
+            case assign_:
+                node->token->retType = left->type; break;
+            case add_: case sub_: case mul_: case div_: // TODO: check mul between string and int
+                node->token->retType = left->type; node->token->c = 'a'; break;
+            case not_equal_: case equal_: case less_: 
+            case more_: case less_equal_: case more_equal_:
+                node->token->retType = bool_; break;
+            default: break;
+        }
+        // inst->token->type = left->type; // TODO: to be checked
         break;
     }
     default: break;
@@ -1550,7 +1606,7 @@ void print_ir()
         }
         case fcall_:
         {
-            printf("rxx: call %s\n", curr->name);
+            printf("r%.2d: call %s\n",curr->reg, curr->name);
             break;
         }
         case add_: case sub_: case mul_: case div_: case equal_:
@@ -1624,11 +1680,21 @@ void print_ir()
             printf("\n");
             break;
         }
+        case ret_:
+        {
+            /*
+                TODO:
+                    + if function has datatype must have return
+                    + return value must be compatible with function
+            */
+            printf("rxx: return "); 
+            ptoken(left);
+            break;
+        }
         case jne_: printf("rxx: jne %s%zu\n", curr->name, curr->index); break;
         case jmp_: printf("rxx: jmp %s%zu\n", curr->name, curr->index); break;
         case bloc_: printf("rxx: %s%zu (bloc)\n", curr->name, curr->index); break;
         case fdec_: printf("%s: (func dec)\n", curr->name); break;
-        case ret_: printf("rxx: return\n"); break;
         default: 
             printf("%sPrint IR: Unkown inst [%s]%s\n", RED, to_string(curr->type), RESET);
             break;
@@ -1913,6 +1979,11 @@ void generate_asm()
             {
                 if(left->ptr)
                     mov("%s, QWORD PTR -%zu[rbp]\n", right->name, left->ptr);
+                else if(left->c)
+                {
+                    // printf("hey"); exit(1);
+                    push("r%cx\n", left->c);
+                }
                 else
                     switch(left->type)
                     {
@@ -1925,7 +1996,7 @@ void generate_asm()
                         mov("%s, rax\n", right->name);
                         break;
                     }
-                    default: RLOG(FUNC, "%d: handle this case", LINE); exit(1);
+                    default: RLOG(FUNC, "%d: handle this case <%s>", LINE, to_string(left->type)); exit(1);
                     }
             }
             else
@@ -2043,21 +2114,8 @@ void generate_asm()
         }
         case fcall_:
         {
-#if 0
-            if(curr->isbuiltin)
-            {
-                if(left->ptr)
-                    mov("rdi, QWORD PTR %c%zu[rbp]\n", sign(left), left->ptr);
-                else
-                    switch(left->type)
-                    {
-                        case int_:    mov("rdi, %lld\n", left->Int.value); break;
-                        case string_: lea("rdi, .STR%zu[rip]\n", left->index); break;
-                        default: break;
-                    }
-            }
-#endif
-            call(curr->name);
+            curr->c = 'a';
+            call(curr->name); 
             break;
         }
         case fdec_:
@@ -2089,6 +2147,19 @@ void generate_asm()
         }
         case ret_:
         {
+            if(left)
+            {
+                if(left->ptr)
+                    mov("rax, QWORD PTR -%zu[rbp]\n", left->ptr);
+                else
+                {
+                    switch(left->type)
+                    {
+                        case int_: mov("rax, %ld\n", left->Int.value); break;
+                        default: RLOG(FUNC, ":%d handle this case\n", LINE);
+                    }
+                }
+            }
             pasm("leave\n");
             pasm("ret\n");
             break;
