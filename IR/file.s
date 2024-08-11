@@ -3,19 +3,21 @@
 
 .text
 .globl	main
-
 main:
     push    rbp
     mov     rbp, rsp
-    sub     rsp, 24
-    /*declare b*/
-    mov     QWORD PTR -16[rbp], 0
-    /*assign b*/
-    mov     QWORD PTR -16[rbp], 5
-    lea     rbx, -16[rbp]
-    mov     QWORD PTR [rbx], 7
-    mov     rax, QWORD PTR -16[rbp]
+    sub     rsp, 16
+    /*declare s*/
+    mov     QWORD PTR -8[rbp], 0
+    /*assign s*/
+    lea     rdi, .STR4[rip]
+    call    .strdup
+    mov     QWORD PTR -8[rbp], rax
+    mov     rdi, rax
+    call    free@PLT
+    mov     rax, 0
     leave
     ret
+.STR4: .string "abcd"
 .section	.note.GNU-stack,"",@progbits
 

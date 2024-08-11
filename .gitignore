@@ -2,6 +2,7 @@
 **/a.out.dSYM/
 **/comp
 **/asm
+**/exe
 **/*.mp4
 **/wcc
 .DS_Store
