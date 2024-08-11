@@ -298,8 +298,7 @@
 	cmp		QWORD PTR -24[rbp], 0
 	jne		.strdup1
 	mov		edi, 1
-	mov		esi, 1
-	call	calloc@PLT
+	call	.allocate
 	jmp		.strdup0
 .strdup1:
 	mov		rax, QWORD PTR -24[rbp]
@@ -307,8 +306,7 @@
 	call	.strlen
 	add		rax, 1
 	mov		rdi, rax
-	mov		esi, 1
-	call	calloc@PLT
+	call	.allocate
 	mov		QWORD PTR -8[rbp], rax
 	mov		rdx, QWORD PTR -24[rbp]
 	mov		rax, QWORD PTR -8[rbp]
