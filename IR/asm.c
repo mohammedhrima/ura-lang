@@ -77,8 +77,8 @@ void generate_asm()
                     case int_: mov("%s, %lld\n", right->name, left->Int.value); break;
                     case chars_:
                     {
-                        lea("rdi, .STR%zu[rip]\n", left->index);
-                        call(".strdup");
+                        lea("rax, .STR%zu[rip]\n", left->index);
+                        // call(".strdup");
                         mov("%s, rax\n", right->name);
                         break;
                     }
@@ -237,6 +237,11 @@ void generate_asm()
             pasm(".%s%zu:\n", curr->name, curr->index);
             break;
         }
+        case end_bloc_:
+        {
+            pasm(".end%s:\n", curr->name);
+            break;
+        }
         case ret_:
         {
             if(left)
@@ -274,17 +279,17 @@ void initialize()
 
 void finalize()
 {
-    mov("rax, 0\n", "");
-    pasm("leave\n");
-    pasm("ret\n");
+    // mov("rax, 0\n", "");
+    // pasm("leave\n");
+    // pasm("ret\n");
 #if 1
     for (int i = 0; tokens[i]; i++)
     {
         Token *curr = tokens[i];
         // test char variable before making any modification
-        if (curr->type == chars_ && !curr->name && !curr->ptr)
+        if (curr->type == chars_ && !curr->name && !curr->ptr && curr->index)
             pasm(".STR%zu: .string %s\n", curr->index, curr->Chars.value);
-        if (curr->type == float_ && !curr->name && !curr->ptr)
+        if (curr->type == float_ && !curr->name && !curr->ptr && curr->index)
             pasm(".FLT%zu: .long %zu /* %f */\n", curr->index, 
                 *((unsigned int *)(&curr->Float.value)), curr->Float.value);
     }
@@ -323,6 +328,11 @@ int main(int argc, char **argv)
         ptoken(tokens[i]);
     debug(SPLIT);
 #endif
+    create_builtin("write", (Type[]){int_, chars_, int_, 0}, int_);
+    create_builtin("read", (Type[]){int_, chars_, int_, 0}, int_);
+    create_builtin("exit", (Type[]){int_, 0}, int_);
+    create_builtin("malloc", (Type[]){int_, 0}, ptr_);
+    create_builtin("calloc", (Type[]){int_, int_, 0}, ptr_);
 
     Node *head = NULL;
 #if AST
