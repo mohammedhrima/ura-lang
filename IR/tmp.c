@@ -14,7 +14,6 @@
 #define FUNC __func__
 #define LINE __LINE__
 
-
 #define TOKENIZE 1
 
 #if TOKENIZE
@@ -27,8 +26,8 @@
 
 #define MAX_OPTIMIZATION 3
 #if IR
-#define OPTIMIZE 1
-#define ASM 1
+#define OPTIMIZE 0
+#define ASM 0
 #endif
 
 #ifndef DEBUG
@@ -80,12 +79,13 @@ typedef enum
 {
     assign_ = 11, add_assign_, sub_assign_, mul_assign_, div_assign_, 
     lpar_, rpar_, 
-    mul_, add_, sub_, div_, 
+    mul_, add_, sub_, div_, mod_,
     equal_, not_equal_, less_, more_, less_equal_, more_equal_,
     id_, int_, bool_, string_, void_,
     coma_,
     fcall_, fdec_, ret_,
-    if_, elif_, else_, while_, dots_,
+    if_, elif_, else_, while_,
+    dots_, dot_, module_,
 
     cmp_, jne_, je_, jmp_, bloc_, end_bloc_, mov_, push_, pop_,
     end_,
@@ -178,6 +178,7 @@ size_t arg_ptr;
 typedef struct
 {
     char *name;
+    Type type;
     Node **functions;
     size_t func_size;
     size_t func_pos;
@@ -198,11 +199,12 @@ Scoop *curr_scoop;
 // DEBUG
 Specials *specials = (Specials[])
 {
+    {".", dot_}, {":", dots_},
     {"+=", add_assign_}, {"-=", sub_assign_}, {"*=", mul_assign_}, 
     {"/=", div_assign_}, {"!=", not_equal_},{"==", equal_},{"<=", less_equal_}, 
     {">=", more_equal_}, {"<", less_}, {">", more_}, {"=", assign_}, 
-    {"+", add_}, {"-", sub_}, {"*", mul_}, {"/", div_}, {"(", lpar_}, 
-    {")", rpar_}, {",", coma_}, {":", dots_}, {"if", if_}, {"elif", elif_},
+    {"+", add_}, {"-", sub_}, {"*", mul_}, {"/", div_}, {"%", mod_}, {"(", lpar_}, 
+    {")", rpar_}, {",", coma_}, {"if", if_}, {"elif", elif_},
     {"else", else_}, {"while", while_}, {"func", fdec_}, {"return", ret_},
     {0, (Type)0},
 };
@@ -311,6 +313,7 @@ char *to_string(Type type)
     case sub_: return "SUB   ";
     case mul_: return "MUL   ";
     case div_: return "DIV   ";
+    case mod_: return "MOD   ";
 
     case equal_: return "EQUAL";
     case not_equal_: return "NOT EQUAL";
@@ -351,7 +354,10 @@ char *to_string(Type type)
     case elif_: return "ELIF";
     case else_: return "ELSE";
     case dots_: return "DOTS";
+    case dot_: return "DOT";
+    case module_: return "MODULE";
     case bloc_: return "BLOC";
+    case end_bloc_: return "ENDBLOC";
     case ret_: return "RETURN";
     case end_: return "END";
     }
@@ -416,12 +422,6 @@ void copy_insts()
             insts[j++] = first_insts[i];
     }
 }
-
-// char sign(Token *token)
-// {
-//     // return (token->isarg ? ' ' : '-');
-//     return ' ';
-// }
 
 FILE *asm_fd;
 void pasm(char *fmt, ...)
@@ -529,6 +529,10 @@ Token *new_token(char *input, int s, int e, int space, Type type)
                 new->type = bool_;
                 new->Bool.value = false;
             }
+            else if (strcmp(new->name, "sys") == 0)
+            {
+                new->type = module_;
+            }
         }
         break;
     }
@@ -620,145 +624,7 @@ void tokenize(char *input)
 }
 #endif
 
-#if AST
-Node *expr();
-Node *assign();
-Node *equality();
-Node *comparison();
-Node *add_sub();
-Node *mul_div();
-Node *prime();
-
-Node *new_node(Token *token)
-{
-    Node *new = calloc(1, sizeof(Node));
-    new->token = token;
-    debug("new node has ");
-    if(token) ptoken(token);
-    else debug("NULL\n");
-    return new;
-}
-
-Node *copy_node(Node *node)
-{
-    Node *new = calloc(1, sizeof(Node));
-    new->token = copy_token(node->token);
-    if(node->left) new->left = copy_node(node->left);
-    if(node->right) new->right = copy_node(node->right);
-    return new;
-}
-
-Token *check(Type type, ...)
-{
-    va_list ap;
-    va_start(ap, type);
-    while (type)
-    {
-        if (type == tokens[exe_pos]->type) return tokens[exe_pos++];
-        type = va_arg(ap, Type);
-    }
-    return NULL;
-};
-
-Node *expr()
-{
-    return assign();
-}
-
-Node *assign()
-{
-    Node *left = equality();
-    Token *token;
-    while ((token = check(assign_, add_assign_, sub_assign_, mul_assign_, div_assign_, 0)))
-    {
-        Node *node = new_node(token);
-        node->token->space = left->token->space;
-        Node *right = equality();
-        switch(token->type)
-        {
-            case add_assign_: case sub_assign_: case mul_assign_: case div_assign_:
-            {
-                Node *tmp = new_node(new_token(NULL, 0, 0, node->token->space, 
-                node->token->type == add_assign_ ? add_ :
-                node->token->type == sub_assign_ ? sub_ :
-                node->token->type == mul_assign_ ? mul_ :
-                node->token->type == div_assign_ ? div_ : 0
-                ));
-                node->token->type = assign_;
-                tmp->left = copy_node(left);
-                tmp->left->token->declare = false;
-                tmp->right = right;
-                right = tmp;
-                break;
-            }
-            default:
-                break;
-        }
-        node->left = left;
-        node->right = right;
-        left = node;
-    }
-    return left;
-}
-
-Node *equality()
-{
-    Node *left = comparison();
-    Token *token;
-    while ((token = check(equal_, not_equal_, 0)))
-    {
-        Node *node = new_node(token);
-        node->left = left;
-        node->right = comparison();
-        left = node;
-    }
-    return left;
-}
-
-Node *comparison()
-{
-    Node *left = add_sub();
-    Token *token;
-    while ((token = check(less_, more_, less_equal_, more_equal_, 0)))
-    {
-        Node *node = new_node(token);
-        node->left = left;
-        node->right = add_sub();
-        left = node;
-    }
-    return left;
-}
-
-Node *add_sub()
-{
-    Node *left = mul_div();
-    Token *token;
-    while ((token = check(add_, sub_, 0)))
-    {
-        Node *node = new_node(token);
-        node->left = left;
-        node->right = mul_div();
-        left = node;
-    }
-    return left;
-}
-
-Node *mul_div()
-{
-    Node *left = prime();
-    Token *token = NULL;
-    while ((token = check(mul_, div_, 0)))
-    {
-        Node *node = new_node(token);
-        node->left = left;
-        node->right = prime();
-        left = node;
-    }
-    return left;
-}
-
-Specials DataTypes[] = {{"int", int_}, {"bool", bool_}, {"string", string_}, {"void", void_}, {0, 0}};
-
+// SCOOPS
 void enter_scoop(char *name)
 {
     GLOG("ENTER SCOOP", "%s\n", name);
@@ -811,6 +677,13 @@ void pscoop(Scoop *scoop)
     }
 }
 
+// NAMESPACE
+Token *get_namespace(char *name) // TODO: maybe you nee ne to use get scoop
+{
+
+}
+
+// VARIABLES / FUNCTIONS
 Token *get_variable(char *name)
 {
     CLOG("get var", "%s\n", name);
@@ -925,7 +798,172 @@ Node *new_function(Node *node)
     return node;
 }
 
-Node *prime()
+
+#if AST
+Node *expr_node();
+Node *assign_node();
+Node *equality_node();
+Node *comparison_node();
+Node *add_sub_node();
+Node *mul_div_node();
+Node *dot_node();
+Node *prime_node();
+
+Node *new_node(Token *token)
+{
+    Node *new = calloc(1, sizeof(Node));
+    new->token = token;
+    debug("new node has ");
+    if(token) ptoken(token);
+    else debug("NULL\n");
+    return new;
+}
+
+Node *copy_node(Node *node)
+{
+    Node *new = calloc(1, sizeof(Node));
+    new->token = copy_token(node->token);
+    if(node->left) new->left = copy_node(node->left);
+    if(node->right) new->right = copy_node(node->right);
+    return new;
+}
+
+Token *check(Type type, ...)
+{
+    va_list ap;
+    va_start(ap, type);
+    while (type)
+    {
+        if (type == tokens[exe_pos]->type) return tokens[exe_pos++];
+        type = va_arg(ap, Type);
+    }
+    return NULL;
+};
+
+Node *expr_node()
+{
+    return assign_node();
+}
+
+Node *assign_node()
+{
+    Node *left = equality_node();
+    Token *token;
+    while ((token = check(assign_, add_assign_, sub_assign_, mul_assign_, div_assign_, 0)))
+    {
+        Node *node = new_node(token);
+        node->token->space = left->token->space;
+        Node *right = equality_node();
+        switch(token->type)
+        {
+            case add_assign_: case sub_assign_: case mul_assign_: case div_assign_:
+            {
+                Node *tmp = new_node(new_token(NULL, 0, 0, node->token->space, 
+                node->token->type == add_assign_ ? add_ :
+                node->token->type == sub_assign_ ? sub_ :
+                node->token->type == mul_assign_ ? mul_ :
+                node->token->type == div_assign_ ? div_ : 0
+                ));
+                node->token->type = assign_;
+                tmp->left = copy_node(left);
+                tmp->left->token->declare = false;
+                tmp->right = right;
+                right = tmp;
+                break;
+            }
+            default:
+                break;
+        }
+        node->left = left;
+        node->right = right;
+        left = node;
+    }
+    return left;
+}
+
+Node *equality_node()
+{
+    Node *left = comparison_node();
+    Token *token;
+    while ((token = check(equal_, not_equal_, 0)))
+    {
+        Node *node = new_node(token);
+        node->left = left;
+        node->right = comparison_node();
+        left = node;
+    }
+    return left;
+}
+
+Node *comparison_node()
+{
+    Node *left = add_sub_node();
+    Token *token;
+    while ((token = check(less_, more_, less_equal_, more_equal_, 0)))
+    {
+        Node *node = new_node(token);
+        node->left = left;
+        node->right = add_sub_node();
+        left = node;
+    }
+    return left;
+}
+
+Node *add_sub_node()
+{
+    Node *left = mul_div_node();
+    Token *token;
+    while ((token = check(add_, sub_, 0)))
+    {
+        Node *node = new_node(token);
+        node->left = left;
+        node->right = mul_div_node();
+        left = node;
+    }
+    return left;
+}
+
+Node *mul_div_node()
+{
+    Node *left = dot_node();
+    Token *token = NULL;
+    while ((token = check(mul_, div_, 0)))
+    {
+        Node *node = new_node(token);
+        node->left = left;
+        node->right = dot_node();
+        left = node;
+    }
+    return left;
+}
+
+Node *dot_node()
+{
+    Node *left = prime_node();
+    Token *token = NULL;
+    if((token = check(module_, 0)))
+    {
+        Node *node = new_node(token);
+        node->left = left;
+        node->right = prime_node();
+        // GLOG("", "found module\n");
+        // pnode(node, NULL, 0);
+        // exit(1);
+        return node;
+    }
+    else if((token = check(dot_, 0)))
+    {
+        Node *node = new_node(token);
+        node->left = left;
+        node->right = dot_node();
+        return node;
+    }
+    return left;
+}
+
+Specials DataTypes[] = {{"int", int_}, {"bool", bool_}, {"string", string_}, {"void", void_}, {0, 0}};
+
+Node *prime_node()
 {
     Node *node = NULL;
     Token *token;
@@ -955,7 +993,7 @@ Node *prime()
         }
         if (token->type == lpar_)
         {
-            node = expr();
+            node = expr_node();
             if (!check(rpar_, 0))
             {
                 error("Expected ) but found '%s'\n", to_string(tokens[exe_pos]->type));
@@ -987,7 +1025,7 @@ Node *prime()
                     {
                         curr->right = new_node(NULL);
                         curr = curr->right;
-                        curr->left = expr();
+                        curr->left = expr_node();
                     }
                 }
                 else
@@ -997,7 +1035,7 @@ Node *prime()
                     Node *curr = node;
                     while (!check(rpar_, end_, 0)) // TODO: protect it, if no ) exists
                     {
-                        curr->left = expr();
+                        curr->left = expr_node();
                         if (!check(coma_, 0))
                         {
                             // TODO: syntax error
@@ -1015,7 +1053,7 @@ Node *prime()
         node = new_node(token);
 
         node->left = new_node(NULL);
-        node->left->left = prime();
+        node->left->left = prime_node();
         // TODO: hard code it
         if(!node->left->left->token || !node->left->left->token->declare)
         {
@@ -1040,7 +1078,7 @@ Node *prime()
             {
                 curr->right = new_node(NULL);
                 curr = curr->right;
-                curr->left = expr();
+                curr->left = expr_node();
                 if(tokens[exe_pos]->type != rpar_ && !check(coma_, 0))
                 {
                     error("expected ',' between arguments\n");
@@ -1071,7 +1109,7 @@ Node *prime()
         {
             curr->right = new_node(NULL);
             curr = curr->right;
-            curr->left = expr();
+            curr->left = expr_node();
         }
         // curr->right = new_node(NULL);
         // Token *ret_token = new_token(NULL, 0, 0, node->token->space + 1, ret_);
@@ -1088,7 +1126,7 @@ Node *prime()
         tmp->left = new_node(NULL);
         tmp = tmp->left;
 
-        tmp->left = expr(); // if condition
+        tmp->left = expr_node(); // if condition
         if(!check(dots_, 0))
             ; // TODO: expected ':' after condition
         
@@ -1096,7 +1134,7 @@ Node *prime()
         tmp = tmp->right;
         while(tokens[exe_pos]->space > node->token->space) // if bloc code
         {
-            tmp->left = expr();
+            tmp->left = expr_node();
             tmp->right = new_node(NULL);
             tmp = tmp->right;
         }
@@ -1115,7 +1153,7 @@ Node *prime()
             if(token->type == elif_)
             {
                 Node *tmp0 = curr->left;
-                tmp0->left = expr();
+                tmp0->left = expr_node();
                 if(!check(dots_, 0))
                 {
                     error("expected dots");
@@ -1125,7 +1163,7 @@ Node *prime()
                 tmp0 = tmp0->right;
                 while(tokens[exe_pos]->space > token->space)
                 {
-                    tmp0->left = expr();
+                    tmp0->left = expr_node();
                     tmp0->right = new_node(NULL);
                     tmp0 = tmp0->right;
                 }
@@ -1143,19 +1181,22 @@ Node *prime()
                 tmp0 = tmp0->right;
                 while(tokens[exe_pos]->space > token->space)
                 {
-                    tmp0->left = expr();
+                    tmp0->left = expr_node();
                     tmp0->right = new_node(NULL);
                     tmp0 = tmp0->right;
                 }
                 break;
             }
         }
-
+/*
+sys.output()
+sys.puts()
+*/
     }
     else if((token = check(while_, 0)))
     {
         node = new_node(token);
-        node->left = expr();
+        node->left = expr_node();
         if(!check(dots_, 0))
         {
             error("expected :\n");
@@ -1170,14 +1211,18 @@ Node *prime()
         {
             tmp->right = new_node(NULL);
             tmp = tmp->right;
-            tmp->left = expr();
+            tmp->left = expr_node();
         }
     }
     else if((token = check(ret_, 0)))
     {
         // TODO: check return type if is compatible with function
         node = new_node(token);
-        node->left = expr();
+        node->left = expr_node();
+    }
+    else if((token = check(module_, 0)))
+    {
+        return new_node(token);
     }
     else if(tokens[exe_pos]->type == end_);
     else
@@ -1255,6 +1300,11 @@ Token *generate_ir(Node *node)
     {
         Token *token = get_variable(node->token->name);
         return token;
+        break;
+    }
+    case module_:
+    {
+        return node->token;
         break;
     }
     case if_:
@@ -1569,6 +1619,30 @@ Token *generate_ir(Node *node)
         arg_ptr = tmp_arg_ptr;
         ptr = tmp_ptr;
         return node->token;
+        break;
+    }
+    case dot_:
+    {
+        // TODO: use namespaces here
+        debug("found dot\n");
+        Token *left = generate_ir(node->left);
+        if(left->type == module_)
+        {
+            // is module
+            // TODO: module must have a valid name like "sys"
+            debug("left is module\n");
+            Token *right = generate_ir(node->right);
+
+
+            // exit(1);
+        }
+        else
+        {
+            // is attribute or method
+            error("handle this case in dot\n");
+        }
+        return left;
+        // exit(1);
         break;
     }
     case bool_: case int_: case string_:
@@ -1984,7 +2058,7 @@ void generate_asm()
         {
             // TODO: check incompatible type
             curr->ptr = left->ptr;
-            pasm("/*assign %s*/\n", left->name);
+            pasm("/*assign_node %s*/\n", left->name);
             if (right->ptr)
             {
                 mov("rax, QWORD PTR %c%zu[rbp]\n", sign(right), right->ptr);
@@ -2277,12 +2351,12 @@ int main(int argc, char **argv)
 #if AST
     Node *head = new_node(NULL);
     Node *curr = head;
-    curr->left = expr();
+    curr->left = expr_node();
     while (curr->left)
     {
         curr->right = new_node(NULL);
         curr = curr->right;
-        curr->left = expr();
+        curr->left = expr_node();
     }
     curr = head;
     while (curr->left)
@@ -2336,5 +2410,11 @@ int main(int argc, char **argv)
     clear(head, input);
 #else
     clear(input);
+#endif
+
+#if ASM
+    return 0;
+#else
+    return 1;
 #endif
 }
