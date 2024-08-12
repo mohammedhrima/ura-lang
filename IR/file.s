@@ -7,17 +7,10 @@ main:
     push    rbp
     mov     rbp, rsp
     sub     rsp, 16
-    /*declare s*/
-    mov     QWORD PTR -8[rbp], 0
-    /*assign s*/
-    lea     rdi, .STR4[rip]
-    call    .strdup
-    mov     QWORD PTR -8[rbp], rax
-    mov     rdi, rax
-    call    free@PLT
+    /*assign_node c*/
+    mov     BYTE PTR -8[rbp], 101
     mov     rax, 0
     leave
     ret
-.STR4: .string "abcd"
 .section	.note.GNU-stack,"",@progbits
 
