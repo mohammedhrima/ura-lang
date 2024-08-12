@@ -456,6 +456,7 @@ Node *prime_node()
             error("expected datatype after func declaration\n");
             exit(1);
         }
+        node->token->retType = node->left->left->token->type;
         node->token->name = node->left->left->token->name;
         node->left->left->token->name = NULL;
         // TODO: those errors should be checked
@@ -509,6 +510,8 @@ Node *prime_node()
         }
         // TODO: add endblock for funstions also
         // curr->right = new_node(NULL);
+        // curr = curr->right;
+        // curr->left = new_node(new_token(, ));
         // Token *ret_token = new_token(NULL, 0, 0, node->token->space + 1, ret_);
         // curr->right->left = new_node(ret_token);
         return node;

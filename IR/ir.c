@@ -9,6 +9,7 @@ size_t reg_pos;
 
 size_t bloc_index;
 size_t str_index;
+size_t float_index;
 // STACK POINTER
 size_t ptr;
 size_t arg_ptr;
@@ -131,6 +132,42 @@ Token *new_variable(Token *token)
     return token;
 }
 
+Node **builtins_functions;
+size_t builtins_pos;
+size_t builtins_size;
+
+void create_builtin(char *name, Type *types, Type retType)
+{
+    Node *func = new_node(new_token(name, 0, strlen(name), 0, fdec_));
+    func->token->retType = retType;
+    func->left = new_node(NULL);
+    Node *curr = func->left;
+    int i = 0;
+    while(types[i])
+    {
+        curr->right = new_node(NULL);
+        curr = curr->right;
+        curr->left = new_node(new_token(0, 0, 0, 0, types[i]));
+        i++;
+    }
+    if(builtins_functions == NULL)
+    {
+        builtins_size = 10;
+        builtins_functions = calloc(builtins_size, sizeof(Node*));
+    }
+    else if(builtins_pos + 1 == builtins_size)
+    {
+        Node **tmp = calloc(builtins_size * 2, sizeof(Node*));
+        memcpy(tmp, builtins_functions, builtins_pos * sizeof(Node*));
+        free(builtins_functions);
+        builtins_size *= 2;
+        builtins_functions = tmp;
+    }
+    builtins_functions[builtins_pos++] = func;
+    debug("%screate function [%s]%s\n", GREEN, func->token->name, RESET);
+}
+
+
 Node *get_function(char *name)
 {
     // TODO: remove output from here
@@ -140,6 +177,28 @@ Node *get_function(char *name)
     for(int i = 0; builtins[i]; i++)
         if(strcmp(name, builtins[i]) == 0)
             return NULL;
+    for(size_t i = 0; i < builtins_pos; i++)
+    {
+        if(strcmp(name, builtins_functions[i]->token->name) == 0)
+            return builtins_functions[i];
+    }
+    // if(strcmp(name, "write") == 0)
+    // {
+    //     Node *func = new_node(new_token("write", 0, 5, 0, fdec_));
+    //     Node *curr = func;
+    //     curr->left = new_node(NULL);
+    //     curr = curr->left;
+    //     curr->right = new_node(NULL);
+    //     curr = curr->right;
+    //     curr->left = new_node(new_token(0, 0, 0, 0, int_));
+    //     curr->right = new_node(NULL);
+    //     curr = curr->right;
+    //     curr->left = new_node(new_token(0, 0, 0, 0, chars_));
+    //     curr->right = new_node(NULL);
+    //     curr = curr->right;
+    //     curr->left = new_node(new_token(0, 0, 0, 0, int_));
+    //     return func;
+    // }
     for(ssize_t j = scoop_pos; j >= 0; j--)
     {
         Scoop *scoop = &global_scoop[j];
@@ -444,12 +503,25 @@ Token *generate_ir(Node *node)
             }
             free(list);
         }
+        // debug(SPLIT);
+        // pnode(node, NULL, 0);
+        // debug(SPLIT);
+        // pnode(node->right, NULL, 0);
+        // debug(SPLIT);
+        // exit(1);
         curr = node->right;
         while(curr)
         {
             generate_ir(curr->left);
             curr = curr->right;
         }
+        // exit(1);
+        Token *new = new_token(NULL, 0, 0, node->token->space, end_bloc_);
+        new->name = strdup(node->token->name);
+        new->index = node->token->index;
+        // new->index = node->token->index;
+        new_inst(new);
+
         exit_scoop();
         break;
     }
@@ -513,6 +585,7 @@ Token *generate_ir(Node *node)
         else 
         {
             Node *func = get_function(node->token->name);
+            node->token->retType = func->token->retType;
             Node *arg = func->left->right;
             debug("has the following arguments\n");
             while(arg)
@@ -600,7 +673,11 @@ Token *generate_ir(Node *node)
         Token *left = generate_ir(node->left);
         Token *right = generate_ir(node->right);
         // TODO: fix this later for cases like char + int
-        if(left->type != right->type && left->type != right->retType)
+        if
+        (
+            left->type != right->type && left->type != right->retType &&
+            !(left->type == chars_ && right->retType == ptr_)
+        )
         {
             error("Incompatible type for <%s> and <%s>",
             to_string(left->type), to_string(right->type));
@@ -613,8 +690,16 @@ Token *generate_ir(Node *node)
         {
             case assign_:
                 node->token->retType = left->type; break;
-            case add_: case sub_: case mul_: case div_: // TODO: check mul between string and int
+            case add_: case sub_: case mul_: case div_:
+            {
+                if(left->type != int_ && left->type != float_)
+                {
+                    error("Invalid operation [%s] between [%s] and [%s]\n",
+                    to_string(node->token->type), to_string(left->type), to_string(right->type));
+                    exit(1);
+                }
                 node->token->retType = left->type; node->token->c = 'a'; break;
+            }
             case not_equal_: case equal_: case less_: 
             case more_: case less_equal_: case more_equal_:
                 node->token->retType = bool_; break;
@@ -730,7 +815,7 @@ void print_ir()
                 debug("value %s ", curr->Bool.value ? "True" : "False");
             else if(curr->type == float_)
             {
-                curr->index = ++str_index;
+                curr->index = ++float_index;
                 debug("value %f ", curr->Float.value);
             }
             else if(curr->type == chars_)
@@ -784,6 +869,7 @@ void print_ir()
         case jne_:  debug("rxx: jne %s%zu\n", curr->name, curr->index); break;
         case jmp_:  debug("rxx: jmp %s%zu\n", curr->name, curr->index); break;
         case bloc_: debug("rxx: %s%zu (bloc)\n", curr->name, curr->index); break;
+        case end_bloc_: debug("rxx: %s%zu (endbloc)\n", curr->name, curr->index); break;
         case fdec_: debug("%s: (func dec)\n", curr->name); break;
         default: 
             debug("%sPrint IR: Unkown inst [%s]%s\n", RED, to_string(curr->type), RESET);
@@ -833,6 +919,9 @@ bool optimize_ir(int op_index)
                         }
                         break;
                     case float_:
+                        left->index = 0;
+                        right->index = 0;
+                        token->index = ++float_index;
                         switch (token->type)
                         {
                         case add_: token->Float.value = left->Float.value + right->Float.value; break;

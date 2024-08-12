@@ -80,7 +80,7 @@ typedef enum
     lpar_, rpar_, 
     mul_, add_, sub_, div_, mod_,
     equal_, not_equal_, less_, more_, less_equal_, more_equal_,
-    id_, int_, bool_, char_, chars_, void_, float_,
+    id_, int_, bool_, char_, chars_, void_, float_, ptr_,
     coma_,
     fcall_, fdec_, ret_,
     if_, elif_, else_, while_,
@@ -113,6 +113,7 @@ char *to_string(Type type)
     case chars_: return "CHARS";
     case bool_: return "BOOL";
     case void_: return "VOID";
+    case ptr_: return "PTR";
     case id_: return "ID";
     case coma_: return "COMA";
 
@@ -324,6 +325,7 @@ void pnode(Node *node, char *side, int space)
         }
         else
             debug("\n");
+#if 0
         if(node->token && node->token->type == fdec_)
         {
             node = node->right;
@@ -334,6 +336,7 @@ void pnode(Node *node, char *side, int space)
             }
         }
         else
+#endif
         {
             pnode(node->left, "LEFT ", space + 2);
             pnode(node->right, "RIGHT", space + 2);
@@ -491,11 +494,11 @@ void clear(Node *head, Token **tokens, Inst **first_insts, char *input)
     free(input);
 }
 
-char *strjoin(Token *left, Token *right)
+char *strjoin(char *left, char *right)
 {
-    size_t len = strlen(left->Chars.value) + strlen(right->Chars.value);
+    size_t len = strlen(left) + strlen(right);
     char *res = calloc(len + 1, sizeof(char));
-    strcpy(res, left->Chars.value);
-    strcpy(res + strlen(res), right->Chars.value);
+    strcpy(res, left);
+    strcpy(res + strlen(res), right);
     return res;
 }

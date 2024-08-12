@@ -7,10 +7,15 @@ main:
     push    rbp
     mov     rbp, rsp
     sub     rsp, 16
-    /*assign_node c*/
-    mov     BYTE PTR -8[rbp], 101
+    /*declare str*/
+    mov     QWORD PTR -8[rbp], 0
+    mov     rdi, 10
+    call    malloc
+    /*assign_node str*/
+    mov     QWORD PTR -8[rbp], rax
     mov     rax, 0
     leave
     ret
+.endmain:
 .section	.note.GNU-stack,"",@progbits
 
