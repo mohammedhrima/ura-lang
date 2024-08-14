@@ -22,7 +22,7 @@ void enter_scoop(char *name)
         bloc_size = 10;
         global_scoop = calloc(bloc_size, sizeof(Scoop));
     }
-    else if(scoop_pos + 1 == bloc_size)
+    else if(scoop_pos + 1 == (ssize_t)bloc_size)
     {
         Scoop *tmp = calloc(bloc_size * 2, sizeof(Scoop));
         memcpy(tmp, global_scoop, scoop_pos * sizeof(Scoop));
@@ -70,10 +70,12 @@ void add_inst(Inst *inst)
 }
 
 // NAMESPACE
-Token *get_namespace(char *name) // TODO: maybe you nee ne to use get scoop
+#if 0
+Token *get_namespace(char *name) // TODO: maybe you need to use get scoop
 {
     return NULL;
 }
+#endif
 
 // VARIABLES / FUNCTIONS
 Token *get_variable(char *name)
@@ -98,7 +100,7 @@ Token *new_variable(Token *token)
 {
     CLOG("new var", "%s\n", token->name);
     // TODO: check here the global variables
-    Token **variables = curr_scoop->variables;
+    // Token **variables = curr_scoop->variables;
     CLOG("Scoop", "%s\n", curr_scoop->name);
     for(size_t i = 0; i < curr_scoop->var_pos; i++)
     {
@@ -270,8 +272,8 @@ Inst *new_inst(Token *token)
             // if(token->isarg)
             //     token->ptr = (arg_ptr += 8);
             // else
-            token->ptr = ptr;
-            ptr += sizeofToken(token);
+            token->ptr = (ptr += sizeofToken(token));
+            
             token->reg = ++reg_pos;
         }
     }
@@ -311,11 +313,12 @@ Token *generate_ir(Node *node)
     }
     case if_:
     {
-        Node *tmp = node;
+        // Node *tmp = node;
         Node *curr = node->left;
 
         // condition
-        Token *result = generate_ir(curr->left); // TODO: check if it's boolean
+        // Token *result =
+        generate_ir(curr->left); // TODO: check if it's boolean
 
         node->token->type = jne_;
         node->token->name = strdup("endif");
@@ -413,7 +416,8 @@ Token *generate_ir(Node *node)
         node->token->index = ++bloc_index;
         inst = new_inst(node->token);
 
-        Token *result = generate_ir(node->left); // TODO: check if it's boolean
+        // Token *result = 
+        generate_ir(node->left); // TODO: check if it's boolean
         Token *end = copy_token(node->token);
         end->type = jne_;
         if(end->name) free(end->name);
@@ -454,8 +458,10 @@ Token *generate_ir(Node *node)
         // inside_function = true;
         if(node->left) // arguments
         {
-            char *regs[] = {"rdi", "rsi", "rdx", "rcx", NULL};
-            int i = 0;
+            // TODO: make it compatibel with data type
+            char *eregs[] = {"edi", "esi", "edx", "ecx", NULL};
+            char *rregs[] = {"rdi", "rsi", "rdx", "rcx", NULL};
+            size_t i = 0;
             size_t ptr = 8;
             
             Token **list = NULL;
@@ -467,11 +473,16 @@ Token *generate_ir(Node *node)
             {
                 Inst *inst = new_inst(new_token(NULL, 0, 0, node->token->space, pop_));
                 inst->left = generate_ir(curr->left);
+                debug(RED"pop [%s]\n" RESET, to_string(inst->left->type));
+                // exit(1);
                 curr->left->token->declare = false;
                 // inst->left = curr->left->token;
-                if(regs[i])
+                if(eregs[i])
                 {
-                    inst->right = new_token(regs[i], 0, strlen(regs[i]), node->token->space, 0);
+                    if(inst->left->type == int_)
+                        inst->right = new_token(eregs[i], 0, strlen(eregs[i]), node->token->space, 0);
+                    else
+                        inst->right = new_token(rregs[i], 0, strlen(rregs[i]), node->token->space, 0);
                     i++;
                 }
                 else
@@ -596,9 +607,11 @@ Token *generate_ir(Node *node)
                 ptoken(arg->left->token);
                 arg = arg->right;
             }
-            char *regs[] = {"rdi", "rsi", "rdx", "rcx", NULL};
+            // TODO: make it compatibel with data type
+            char *eregs[] = {"edi", "esi", "edx", "ecx", NULL};
+            char *rregs[] = {"rdi", "rsi", "rdx", "rcx", NULL};
             int i = 0;
-            size_t ptr = 8;
+            // size_t ptr = 8;
         
             Node *curr = node;
             arg = func->left->right;
@@ -621,9 +634,12 @@ Token *generate_ir(Node *node)
                     // TODO: add line after
                     exit(1);
                 }
-                if(regs[i])
+                if(eregs[i])
                 {
-                    inst->right = new_token(regs[i], 0, strlen(regs[i]), node->token->space, 0);
+                    if (inst->left->type == int_)
+                        inst->right = new_token(eregs[i], 0, strlen(eregs[i]), node->token->space, 0);
+                    else
+                        inst->right = new_token(rregs[i], 0, strlen(rregs[i]), node->token->space, 0);
                     i++;
                 }
                 else
@@ -650,7 +666,8 @@ Token *generate_ir(Node *node)
             // is module
             // TODO: module must have a valid name like "sys"
             debug("left is module\n");
-            Token *right = generate_ir(node->right);
+            // Token *right = 
+            generate_ir(node->right);
 
 
             // exit(1);
@@ -863,6 +880,11 @@ void print_ir()
             debug("\n");
             break;
         }
+        case void_:
+        {
+            debug("r%.2d: [%s]\n", curr->reg, to_string(curr->type));
+            break;
+        }
         case struct_:
         {
             debug("r%.2d: [%s] ", curr->reg, to_string(curr->type));
@@ -911,6 +933,7 @@ void print_ir()
         case jmp_:  debug("rxx: jmp %s%zu\n", curr->name, curr->index); break;
         case bloc_: case end_bloc_: case end_struct_: case fdec_: 
             debug("%s: [%s]\n", curr->name, to_string(curr->type)); break;
+        
         default: 
             debug("%sPrint IR: Unkown inst [%s]%s\n", RED, to_string(curr->type), RESET);
             break;
