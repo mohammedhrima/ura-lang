@@ -1,13 +1,13 @@
 + 12/08:
-    + variable declaration/assignement:
-        + int, char, bool, float, chars
+    - variable declaration/assignement:
+        - int, char, bool, float, chars
     + optimazations on operations
 + 13/08:
     + if / while / break / continue
 + 14/08:
     + function call / declaration / return
     + Ptr datatype
-    + using c standart functions
+    - using c standart functions
 + 15/08:
     + classes
     + composite data types
@@ -85,3 +85,4 @@
 
 + after:
     +  handle this "aaaa""efg"
+    + handle unsigned data

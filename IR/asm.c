@@ -25,8 +25,23 @@ void generate_asm()
             pasm("/*assign_node %s*/\n", left->name);
             if (right->ptr)
             {
-                mov("rax, QWORD PTR %c%zu[rbp]\n", sign(right), right->ptr);
-                mov("QWORD PTR %c%zu[rbp], rax\n", sign(left), left->ptr);
+                // mov("rax, QWORD PTR %c%zu[rbp]\n", sign(right), right->ptr);
+                // mov("QWORD PTR %c%zu[rbp], rax\n", sign(left), left->ptr);
+                switch(right->type)
+                {
+                    case int_:
+                    {
+                        mov("eax, DWORD PTR %c%zu[rbp]\n", sign(right), right->ptr);
+                        mov("DWORD PTR %c%zu[rbp], eax\n", sign(left), left->ptr);
+                        break;
+                    }
+                    default:
+                    {
+                        error("%s:%d handle this case\n", FUNC, LINE, to_string(right->type));
+                        exit(1);
+                        break;
+                    }
+                }
             }
             else if(right->c)
                 mov("QWORD PTR %c%zu[rbp], r%cx\n", sign(left), left->ptr, right->c);
@@ -148,9 +163,21 @@ void generate_asm()
                 // if(curr->isarg)
                 //     pasm("/*arg %s in %zu[rbp] */\n", curr->name, curr->ptr + 8);
                 // else
+                switch(curr->type)
                 {
-                    pasm("/*declare %s*/\n", curr->name);
-                    mov("QWORD PTR %c%zu[rbp], 0\n", sign(curr), curr->ptr);
+                    case int_:
+                    {
+                        pasm("/*declare %s*/\n", curr->name);
+                        mov("DWORD PTR %c%zu[rbp], 0\n", sign(curr), curr->ptr);
+                        break;
+                    }
+                    default:
+                    {
+                        error("%s:%d handle this case\n", FUNC, LINE, to_string(curr->type));
+                        exit(1);
+                        break;
+                    }
+
                 }
             }
             else
@@ -261,6 +288,8 @@ void generate_asm()
             pasm("ret\n");
             break;
         }
+        case struct_: case end_struct_:
+            break;
         default:
             debug("%sGenerate asm: Unkown Instruction [%s]%s\n", 
                 RED, to_string(curr->type), RESET);
@@ -328,14 +357,11 @@ int main(int argc, char **argv)
         ptoken(tokens[i]);
     debug(SPLIT);
 #endif
-    create_builtin("write", (Type[]){int_, chars_, int_, 0}, int_);
-    create_builtin("read", (Type[]){int_, chars_, int_, 0}, int_);
-    create_builtin("exit", (Type[]){int_, 0}, int_);
-    create_builtin("malloc", (Type[]){int_, 0}, ptr_);
-    create_builtin("calloc", (Type[]){int_, int_, 0}, ptr_);
+    
 
     Node *head = NULL;
 #if AST
+    enter_scoop("");
     head = new_node(NULL);
     Node *curr = head;
     curr->left = expr_node();
@@ -354,7 +380,24 @@ int main(int argc, char **argv)
     if (tokens)
     {
 #if IR
-        enter_scoop("");
+#if BUILTINS
+        create_builtin("write", (Type[]){int_, chars_, int_, 0}, int_);
+        create_builtin("read", (Type[]){int_, chars_, int_, 0}, int_);
+        create_builtin("exit", (Type[]){int_, 0}, int_);
+        create_builtin("malloc", (Type[]){int_, 0}, ptr_);
+        create_builtin("calloc", (Type[]){int_, int_, 0}, ptr_);
+        create_builtin("strdup", (Type[]){chars_, 0}, chars_);
+        create_builtin("strlen", (Type[]){chars_, 0}, int_);
+        create_builtin("free", (Type[]){ptr_, 0}, void_);
+        create_builtin("strcpy", (Type[]){chars_, chars_, 0}, chars_);
+        create_builtin("strncpy", (Type[]){chars_, chars_, int_, 0}, chars_);
+        create_builtin("puts", (Type[]){chars_, 0}, int_);
+        create_builtin("putstr", (Type[]){chars_, 0}, int_);
+        create_builtin("putchar", (Type[]){char_, 0}, int_);
+        create_builtin("putnbr", (Type[]){int_, 0}, int_);
+        create_builtin("putbool", (Type[]){bool_, 0}, int_);
+        create_builtin("putfloat", (Type[]){float_, 0}, int_);
+#endif
         curr = head;
         while (curr->left)
         {

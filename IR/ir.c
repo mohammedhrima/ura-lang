@@ -2,7 +2,7 @@
 
 // INSTRUCTIONS
 Inst **first_insts;
-Inst **insts;
+Inst **insts = NULL;
 size_t inst_size;
 size_t inst_pos;
 size_t reg_pos;
@@ -11,15 +11,9 @@ size_t bloc_index;
 size_t str_index;
 size_t float_index;
 // STACK POINTER
-size_t ptr;
+size_t ptr = 0;
 size_t arg_ptr;
 
-// SCOOP
-Scoop *global_scoop;
-size_t bloc_size;
-ssize_t scoop_pos = -1;
-
-Scoop *curr_scoop;
 void enter_scoop(char *name)
 {
     GLOG("ENTER SCOOP", "%s\n", name);
@@ -47,6 +41,7 @@ void exit_scoop()
     GLOG(" EXIT SCOOP", "%s\n", curr_scoop->name);
     free(curr_scoop->functions);
     free(curr_scoop->variables);
+    free(curr_scoop->structs);
     global_scoop[scoop_pos] = (Scoop){};
     scoop_pos--;
     // if(scoop_pos >= 0)
@@ -136,23 +131,23 @@ Node **builtins_functions;
 size_t builtins_pos;
 size_t builtins_size;
 
-void create_builtin(char *name, Type *types, Type retType)
+void create_builtin(char *name, Type *params, Type retType)
 {
     Node *func = new_node(new_token(name, 0, strlen(name), 0, fdec_));
     func->token->retType = retType;
     func->left = new_node(NULL);
     Node *curr = func->left;
     int i = 0;
-    while(types[i])
+    while(params[i])
     {
         curr->right = new_node(NULL);
         curr = curr->right;
-        curr->left = new_node(new_token(0, 0, 0, 0, types[i]));
+        curr->left = new_node(new_token("", 0, 0, 0, params[i]));
         i++;
     }
     if(builtins_functions == NULL)
     {
-        builtins_size = 10;
+        builtins_size = 2;
         builtins_functions = calloc(builtins_size, sizeof(Node*));
     }
     else if(builtins_pos + 1 == builtins_size)
@@ -254,7 +249,6 @@ Node *new_function(Node *node)
     return node;
 }
 
-
 Inst *new_inst(Token *token)
 {
     debug("new instruction has type %s\n", to_string(token->type));
@@ -264,11 +258,20 @@ Inst *new_inst(Token *token)
     {
         new_variable(token);
         // if (token->declare)
+        if(token->type == struct_)
+        {
+            // token->ptr = ptr;
+            // ptr += token->offset;
+            // token->reg = ++reg_pos;
+            token->reg = ++reg_pos;
+        }
+        else
         {
             // if(token->isarg)
             //     token->ptr = (arg_ptr += 8);
             // else
-            token->ptr = (ptr += 8);
+            token->ptr = ptr;
+            ptr += sizeofToken(token);
             token->reg = ++reg_pos;
         }
     }
@@ -610,7 +613,8 @@ Token *generate_ir(Node *node)
                 if
                 (
                     inst->left->type != arg->left->token->type && 
-                    inst->left->retType != arg->left->token->type
+                    inst->left->retType != arg->left->token->type &&
+                    !(inst->left->type == chars_ && arg->left->token->type == ptr_)
                 )
                 {
                     error("Incompatible type for function call <%s>\n", func->token->name);
@@ -708,7 +712,41 @@ Token *generate_ir(Node *node)
         // inst->token->type = left->type; // TODO: to be checked
         break;
     }
-    default: {RLOG(FUNC, "%d: handle this case\n", LINE); exit(1); break;} 
+    case struct_:
+    {
+        if(node->token->declare)
+        {
+            inst = new_inst(node->token);
+            Node *curr = node->left->right;
+
+            // node->token->ptr = ptr;
+            // size_t tmp_ptr = ptr;
+            while(curr)
+            {
+                curr->left->token->declare = false;
+                generate_ir(curr->left);
+                curr->left->token->ptr = node->token->offset - 
+                (ptr + curr->left->token->offset);
+                curr->left->token->declare = true;
+                curr = curr->right;
+            }
+            new_inst(new_token(inst->token->name, 0,
+            strlen(inst->token->name), inst->token->space, end_struct_));
+            debug(RED"struct offset %zu\n"RESET, node->token->offset);
+            ptr += node->token->offset;
+            // exit(1);
+            // debug("found structs declaration\n");
+            // exit(1);
+        }
+        else
+            return node->token;
+        break;
+    };
+    default: 
+    {
+        RLOG(FUNC, "%d: handle this case [%s]\n", LINE, to_string(node->token->type)); 
+        exit(1); break;
+    } 
     }
     return inst->token;
 }
@@ -717,12 +755,7 @@ void print_ir()
 {
     debug(SPLIT);
     int j = 0;
-    if(insts == NULL)
-    {
-        printf("insts is NULL\n");
-        exit(1);
-    }
-    for (int i = 0; insts[i]; i++)
+    for (int i = 0; insts && insts[i]; i++)
     {
         Token *curr = insts[i]->token;
         Token *left = insts[i]->left;
@@ -804,7 +837,7 @@ void print_ir()
         {
             debug("r%.2d: [%s] ", curr->reg, to_string(curr->type));
             if (curr->declare) 
-                debug("declare %s ", curr->name);
+                debug("declare %s PTR=[%zu]", curr->name, curr->ptr);
             else if(curr->name)
                 debug("variable %s ", curr->name);
             else if(curr->type == int_)
@@ -827,6 +860,14 @@ void print_ir()
                 error("handle this case in generate ir line %d\n", LINE);
             // if(curr->isarg)
             //     debug(" [argument]");
+            debug("\n");
+            break;
+        }
+        case struct_:
+        {
+            debug("r%.2d: [%s] ", curr->reg, to_string(curr->type));
+            if (curr->declare) 
+                debug("declare %s PTR=[%zu]", curr->name, curr->ptr);
             debug("\n");
             break;
         }
@@ -855,22 +896,21 @@ void print_ir()
             debug("\n");
             break;
         }
+        /*
+            TODO:
+                + if function has datatype must have return
+                + return value must be compatible with function
+        */
         case ret_:
         {
-            /*
-                TODO:
-                    + if function has datatype must have return
-                    + return value must be compatible with function
-            */
             debug("rxx: return "); 
             ptoken(left);
             break;
         }
         case jne_:  debug("rxx: jne %s%zu\n", curr->name, curr->index); break;
         case jmp_:  debug("rxx: jmp %s%zu\n", curr->name, curr->index); break;
-        case bloc_: debug("rxx: %s%zu (bloc)\n", curr->name, curr->index); break;
-        case end_bloc_: debug("rxx: %s%zu (endbloc)\n", curr->name, curr->index); break;
-        case fdec_: debug("%s: (func dec)\n", curr->name); break;
+        case bloc_: case end_bloc_: case end_struct_: case fdec_: 
+            debug("%s: [%s]\n", curr->name, to_string(curr->type)); break;
         default: 
             debug("%sPrint IR: Unkown inst [%s]%s\n", RED, to_string(curr->type), RESET);
             break;
@@ -1010,6 +1050,7 @@ bool optimize_ir(int op_index)
                 int j = i + 1;
                 while (insts[j] && insts[j]->token->space == insts[i]->token->space)
                 {
+                    debug("line %d: ", LINE);
                     ptoken(insts[j]->token);
                     if (insts[j]->token->type == assign_ && insts[j]->left == insts[i]->token)
                     {
@@ -1020,11 +1061,9 @@ bool optimize_ir(int op_index)
                     }
                     if 
                     (
-                        insts[j]->left && insts[j]->left &&
-                        (
-                        insts[j]->left->reg == insts[i]->token->reg || 
-                        insts[j]->right->reg == insts[i]->token->reg
-                        )
+                        (insts[j]->left && insts[j]->left->reg == insts[i]->token->reg)
+                        ||
+                        (insts[j]->right && insts[j]->right->reg == insts[i]->token->reg)
                     )
                         break;
                     j++;
@@ -1064,6 +1103,21 @@ bool optimize_ir(int op_index)
         break;
     }
     case 3:
+    {
+        debug("OPTIMIZATION %d (remove followed return instructions)\n", op_index);
+        for(int i = 1; insts[i]; i++)
+        {
+            if (insts[i]->token->type == ret_ && insts[i - 1]->token->type == ret_)
+            {
+                did_optimize = true;
+                insts[i]->token->remove = true;
+                insts = copy_insts(first_insts, insts, inst_pos, inst_size);
+                i = 1;
+            }
+        }
+        break;
+    }
+    case 4:
     {
         debug("OPTIMIZATION %d (remove unused instructions)\n", op_index);
         for(int i = 1; insts[i]; i++)
