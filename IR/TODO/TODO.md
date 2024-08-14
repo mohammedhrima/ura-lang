@@ -1,13 +1,19 @@
 + 12/08:
     - variable declaration/assignement:
         - int, char, bool, float, chars
-    + optimazations on operations
+    - optimazations on operations
 + 13/08:
     + if / while / break / continue
 + 14/08:
     + function call / declaration / return
+    + function return struct:
+        + first: handle function take reference
+        + declare variable in struct and send it as parmeter
     + Ptr datatype
     - using c standart functions
+    # function that takes asm instruction 
+    # and injects them in the code
+    + asm("mov rax, 0") 
 + 15/08:
     + classes
     + composite data types
@@ -84,5 +90,5 @@
     + devision by 0
 
 + after:
-    +  handle this "aaaa""efg"
+    + handle this "aaaa""efg"
     + handle unsigned data

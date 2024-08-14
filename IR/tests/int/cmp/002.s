@@ -7,10 +7,11 @@ main:
     push    rbp
     mov     rbp, rsp
     sub     rsp, 16
-    /*assign a*/
-    mov     QWORD PTR -8[rbp], 12
-    mov     rax, 0
+    /*assign_node a*/
+    mov     DWORD PTR -4[rbp], 12
+    mov     eax, DWORD PTR -4[rbp]
     leave
     ret
+.endmain:
 .section	.note.GNU-stack,"",@progbits
 

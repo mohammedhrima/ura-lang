@@ -490,7 +490,6 @@ Node *prime_node()
             node->right = new_node(NULL); // methods
             Node *curr = node->left;
             // Token *attrs[100];
-            size_t pos = 0;
             // size_t struct_size = 0;
             while
             (
@@ -589,6 +588,7 @@ Node *prime_node()
                     while (!check(rpar_, end_, 0)) // TODO: protect it, if no ) exists
                     {
                         curr->left = expr_node();
+                        curr->left->token->isarg = true;
                         if (!check(coma_, 0))
                         {
                             // TODO: syntax error
@@ -633,6 +633,7 @@ Node *prime_node()
                 curr->right = new_node(NULL);
                 curr = curr->right;
                 curr->left = expr_node();
+                curr->left->token->isarg = true;
                 if(tokens[exe_pos]->type != rpar_ && !check(coma_, 0))
                 {
                     error("expected ',' between arguments\n");
@@ -665,6 +666,12 @@ Node *prime_node()
             curr = curr->right;
             curr->left = expr_node();
         }
+        curr->right = new_node(NULL);
+        curr = curr->right;
+        curr->left = new_node(new_token(NULL, 0, 0, node->token->space + 1, ret_));
+        curr->left->left = new_node(new_token(NULL, 0, 0, node->token->space + 1, 
+        node->left->left->token->type
+        ));
         // TODO: add endblock for funstions also
         // curr->right = new_node(NULL);
         // curr = curr->right;

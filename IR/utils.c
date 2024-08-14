@@ -26,10 +26,10 @@
 
 #define MAX_OPTIMIZATION 4
 
-#define BUILTINS 0
+#define BUILTINS 1
 
 #if IR
-#define OPTIMIZE 0
+#define OPTIMIZE 1
 #define ASM 1
 #endif
 
@@ -187,7 +187,7 @@ typedef struct
     bool declare;
     bool remove;
     bool isbuiltin;
-    // bool isarg;
+    bool isarg;
     char *arg_reg;
 
     struct
@@ -408,8 +408,8 @@ Inst** copy_insts(Inst **src, Inst **dest, size_t pos,  size_t size)
     if(!size) return NULL;
     if (dest) free(dest);
     dest = calloc(size, sizeof(Inst *)); 
-    int j = 0;
-    for (int i = 0; i < pos; i++)
+    size_t j = 0;
+    for (size_t i = 0; i < pos; i++)
     {
         if (!src[i]->token->remove)
             dest[j++] = src[i];

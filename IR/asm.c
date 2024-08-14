@@ -2,6 +2,7 @@
 
 char sign(Token *token)
 {
+    (void*)token;
     return '-';
 }
 
@@ -50,7 +51,7 @@ void generate_asm()
                 switch (right->type)
                 {
                 case int_:
-                    mov("QWORD PTR %c%zu[rbp], %lld\n", sign(left), left->ptr, right->Int.value);
+                    mov("DWORD PTR %c%zu[rbp], %lld\n", sign(left), left->ptr, right->Int.value);
                     break;
                 case bool_:
                     mov("BYTE PTR %c%zu[rbp], %d\n", sign(left), left->ptr, right->Bool.value);
@@ -79,7 +80,13 @@ void generate_asm()
             if(right->name) // destination
             {
                 if(left->ptr)
-                    mov("%s, QWORD PTR -%zu[rbp]\n", right->name, left->ptr);
+                {
+                    switch(left->type)
+                    {
+                        case int_: mov("%s, DWORD PTR -%zu[rbp]\n", right->name, left->ptr); break;
+                        default: error("%s:%d handle this case\n", FUNC, LINE); exit(1); break;
+                    }
+                }
                 else if(left->c)
                 {
                     // debug("hey"); exit(1);
@@ -107,7 +114,13 @@ void generate_asm()
             else
             {
                 if(left->ptr) // TODO: test calling function inside function
-                    push("QWORD PTR -%zu[rbp]\n", left->ptr);
+                {
+                    switch(left->type)
+                    {
+                        case int_: push("DWORD PTR -%zu[rbp]\n", left->ptr); break;
+                        default: error("%s:%d handle this case\n", FUNC, LINE);
+                    }
+                }
                 else
                     switch(left->type)
                     {
@@ -122,7 +135,16 @@ void generate_asm()
             if(right->name) // source
             {
                 // if(left->ptr)
-                mov("QWORD PTR -%zu[rbp], %s\n", left->ptr, right->name);
+                switch(left->type)
+                {
+                    case int_: mov("DWORD PTR -%zu[rbp], %s\n", left->ptr, right->name); break;
+                    default:
+                    {
+                        error("%s:%d handle this case [%s]\n", FUNC, LINE, to_string(left->type)); 
+                        exit(1);
+                        break;
+                    }
+                }
                 // else
                 //     switch(left->type)
                 //     {
@@ -180,19 +202,23 @@ void generate_asm()
 
                 }
             }
-            else
+            else if(!curr->isarg)
             {
-                if(curr->type == int_)
-                    mov("rax, %ld\n", curr->Int.value);
+                switch(curr->type)
+                {
+                    case int_: mov("eax, %ld\n", curr->Int.value); break;
+                    default: error("%s:%d handle this case\n", FUNC, LINE); break;
+                }
                 // if(curr->isarg) // TODO: to be checked
                 //     push("%ld\n", curr->Int.value);
                 // if(curr->type == chars_ && !curr->name)
-                    ; // pasm(".STR%zu: .string %s\n", curr->index, curr->Chars.value);
+                ; // pasm(".STR%zu: .string %s\n", curr->index, curr->Chars.value);
             } 
             break;
         }
         case add_: case sub_: case mul_: case div_: // TODO: check all math_op operations
         {
+            // TODO: check when to use eax / rax ...
             curr->c = 'a';
             if (left->ptr)
                 mov("r%cx, QWORD PTR %c%zu[rbp]\n", curr->c, sign(left), left->ptr);
@@ -212,6 +238,7 @@ void generate_asm()
         case equal_: case not_equal_: case less_:
         case less_equal_: case more_: case more_equal_:
         {
+            // TODO: check when to use eax / rax ...
             curr->c = 'a';
             if (left->ptr)
                 mov("r%cx, QWORD PTR %c%zu[rbp]\n", curr->c, sign(left), left->ptr);
@@ -274,13 +301,30 @@ void generate_asm()
             if(left)
             {
                 if(left->ptr)
-                    mov("rax, QWORD PTR -%zu[rbp]\n", left->ptr);
+                {
+                    switch(left->type)
+                    {
+                        case int_:mov("eax, DWORD PTR -%zu[rbp]\n", left->ptr); break;
+                        default:
+                        {
+                            error("%s:%d handle this case\n", FUNC, LINE); 
+                            exit(1);
+                            break;
+                        }
+                    }
+                }
                 else
                 {
                     switch(left->type)
                     {
-                        case int_: mov("rax, %ld\n", left->Int.value); break;
-                        default: RLOG(FUNC, ":%d handle this case\n", LINE);
+                        case int_: mov("eax, %ld\n", left->Int.value); break;
+                        case void_:mov("eax, 0\n",""); break;
+                        default:
+                        {
+                            error("%s:%d handle this case [%s]\n", FUNC, LINE, to_string(left->type)); 
+                            exit(1);
+                            break;
+                        }
                     }
                 }
             }
@@ -288,7 +332,7 @@ void generate_asm()
             pasm("ret\n");
             break;
         }
-        case struct_: case end_struct_:
+        case struct_: case end_struct_: case void_:
             break;
         default:
             debug("%sGenerate asm: Unkown Instruction [%s]%s\n", 
@@ -353,7 +397,7 @@ int main(int argc, char **argv)
 
 #if TOKENIZE
     tokenize(input);
-    for (int i = 0; i < tk_pos; i++)
+    for (size_t i = 0; i < tk_pos; i++)
         ptoken(tokens[i]);
     debug(SPLIT);
 #endif
