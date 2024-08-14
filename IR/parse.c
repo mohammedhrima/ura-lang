@@ -81,9 +81,15 @@ Token *new_token(char *input, int s, int e, int space, Type type)
                 new->name = NULL;
                 new->type = bool_;
             }
-            else if (strcmp(new->name, "sys") == 0)
+            // else if (strcmp(new->name, "sys") == 0)
+            // {
+            //     new->type = module_;
+            // }
+            else if (strcmp(new->name, "struct") == 0)
             {
-                new->type = module_;
+                free(new->name);
+                new->name = NULL;
+                new->type = struct_;
             }
         }
         break;
@@ -95,8 +101,8 @@ Token *new_token(char *input, int s, int e, int space, Type type)
 
 Token *copy_token(Token *token)
 {
-    RLOG(FUNC, "call it [%s]\n", to_string(token->type));
     if(token == NULL) return NULL;
+    RLOG(FUNC, "call it [%s]\n", to_string(token->type));
     Token *new = calloc(1, sizeof(Token));
     memcpy(new, token, sizeof(Token));
     if(token->name) // TODO: check all values that can be copied exmaple: name ...
@@ -122,8 +128,11 @@ void tokenize(char *input)
                 new_line = true;
                 space = 0;
             }
-            if(new_line && input[i] == ' ') space++;
-            else if(!new_line && input[i] == ' ') space = 0;
+            if(input[i] == ' ') space++;
+            /*
+                + I commented this line for this case: int a b
+                else if(!new_line && input[i] == ' ') space = 0;
+            */
             i++;
             continue;
         }
@@ -359,11 +368,58 @@ Specials DataTypes[] = {
     {"float", float_}, {"char", char_},
     {0, 0}};
 
+int sizeofToken(Token* token)
+{
+    switch(token->type)
+    {
+        case int_:    return sizeof(int);
+        case float_:  return sizeof(float);
+        case chars_:  return sizeof(char*);
+        case char_:   return sizeof(char);
+        // case struct_: return token->size;
+        default:
+        {
+            error("%s:%d add this type [%s]\n", FUNC, LINE, to_string(token->type));
+            exit(1);
+        }
+    }
+    return 0;
+}
+
+// SCOOP
+Scoop *global_scoop;
+size_t bloc_size;
+ssize_t scoop_pos = -1;
+Scoop *curr_scoop;
+
+Node *new_struct(Node *node)
+{
+    if(curr_scoop->structs == NULL)
+    {
+        curr_scoop->struct_size = 10;
+        curr_scoop->structs = calloc(curr_scoop->struct_size, sizeof(Node*));
+    }
+    else if(curr_scoop->struct_pos + 1 == curr_scoop->struct_size)
+    {
+        curr_scoop->struct_size *= 2;
+        Node **tmp = calloc(curr_scoop->struct_size, sizeof(Node*));
+        memcpy(tmp, curr_scoop->structs, curr_scoop->struct_pos * sizeof(Node*));
+        free(curr_scoop->structs);
+        curr_scoop->structs = tmp;
+    }
+    curr_scoop->structs[curr_scoop->struct_pos++] = node;
+    return node;
+}
+
 Node *prime_node()
 {
     Node *node = NULL;
     Token *token;
-    if ((token  = check(int_, bool_, char_, float_, chars_, void_, id_, lpar_, rpar_, 0)))
+    if 
+    ((
+        token = 
+        check(int_, bool_, char_, float_, chars_, void_, struct_, id_, lpar_, rpar_, 0)
+    ))
     {
         for (int i = 0; token->type == id_ && DataTypes[i].value; i++)
         {
@@ -387,6 +443,26 @@ Node *prime_node()
                 }
             }
         }
+        for(int i = 0; token->type == id_ && curr_scoop->structs && curr_scoop->structs[i]; i++)
+        {
+            if(strcmp(curr_scoop->structs[i]->token->name, token->name) == 0)
+            {
+                // debug("name [%s]\n", curr_scoop->structs[i]->token->name);
+                token = check(id_, 0);
+                if (token)
+                {
+                    node = copy_node(curr_scoop->structs[i]);
+                    node->token->space = token->space;
+                    node->token->declare = true;
+                    return node;
+                }
+                else
+                {
+                    error("%s:%s\n", FUNC, LINE);
+                    exit(1);
+                }
+            }
+        }
         if (token->type == lpar_)
         {
             node = expr_node();
@@ -396,6 +472,83 @@ Node *prime_node()
                 exit(1);
             }
         }
+#if 1
+        else if (token->type == struct_)
+        {
+            node = new_node(token);
+
+            if(!(token = check(id_, 0)))
+            {
+                // TODO: error
+            }
+            node->token->name = strdup(token->name);
+            if(!check(dots_, 0))
+            {
+                // TODO: error
+            }
+            node->left = new_node(NULL);  // attributes
+            node->right = new_node(NULL); // methods
+            Node *curr = node->left;
+            // Token *attrs[100];
+            size_t pos = 0;
+            // size_t struct_size = 0;
+            while
+            (
+                tokens[exe_pos]->type != end_ && 
+                tokens[exe_pos]->space > node->token->space
+            )
+            {
+                curr->right = new_node(NULL);
+                curr = curr->right;
+                curr->left = prime_node();
+                // TODO: check all types
+                if(!check_type((Type[]){int_, char_, chars_, bool_, float_, 0},
+                    curr->left->token->type) || !curr->left->token->declare)
+                {
+                    error("expected data type inside struct\n");
+                    exit(1);
+                }
+                curr->left->token->size = sizeofToken(curr->left->token);
+                // struct_size += sizeofType(curr->left->token->type);
+                // curr->left->token->size = sizeofType(curr->left->token->type);
+                // curr->left->token->ptr = struct_size;
+                // attrs[pos++] = curr->left->token;
+            }
+            // debug(SPLIT);
+            // pnode(node, NULL, 0);
+            // debug(SPLIT);
+            // debug("struct has the following attributes:\n");
+            
+            curr = node->left;
+            size_t offset = 0;
+            size_t align = 0;
+            while(curr->right)
+            {
+                curr = curr->right;
+                Token *token = curr->left->token;
+                offset = (offset + token->size - 1) / token->size * token->size;
+                token->offset = offset;
+                offset += token->size;
+                if (token->size > align)
+                    align = token->size;
+            }
+            node->token->offset = (offset + align - 1) / align * align;
+
+            new_struct(node);
+
+            curr = node->left;
+            while(curr->right)
+            {
+                curr = curr->right;
+                Token *token = curr->left->token;
+                debug(GREEN"name [%s] type [%4s] size [%zu]\n"RESET,
+                    token->name, to_string(token->type), token->offset);
+            }
+            debug(GREEN"struct offset [%zu]\n"RESET, node->token->offset);
+            // exit(1);
+            return node;
+        }
+#endif
         else
         {
             node = new_node(token);
@@ -423,6 +576,10 @@ Node *prime_node()
                         curr = curr->right;
                         curr->left = expr_node();
                     }
+                    curr->right = new_node(NULL);
+                    curr = curr->right;
+                    curr->left = new_node(new_token(NULL, 0, 0, node->token->space + 1, ret_));
+                    curr->left->left = new_node(new_token(NULL, 0, 0, node->token->space + 1, int_));
                 }
                 else
                 {

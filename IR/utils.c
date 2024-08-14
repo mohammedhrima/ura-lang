@@ -24,9 +24,12 @@
 #define IR 1
 #endif
 
-#define MAX_OPTIMIZATION 3
+#define MAX_OPTIMIZATION 4
+
+#define BUILTINS 0
+
 #if IR
-#define OPTIMIZE 1
+#define OPTIMIZE 0
 #define ASM 1
 #endif
 
@@ -80,7 +83,8 @@ typedef enum
     lpar_, rpar_, 
     mul_, add_, sub_, div_, mod_,
     equal_, not_equal_, less_, more_, less_equal_, more_equal_,
-    id_, int_, bool_, char_, chars_, void_, float_, ptr_,
+    id_, int_, bool_, char_, chars_, void_, float_, ptr_, struct_,
+    end_struct_,
     coma_,
     fcall_, fdec_, ret_,
     if_, elif_, else_, while_,
@@ -114,6 +118,8 @@ char *to_string(Type type)
     case bool_: return "BOOL";
     case void_: return "VOID";
     case ptr_: return "PTR";
+    case struct_: return "STRUCT";
+    case end_struct_: return "END STRUCT";
     case id_: return "ID";
     case coma_: return "COMA";
 
@@ -169,6 +175,11 @@ typedef struct
     int reg;
     char c;
     size_t ptr;
+    
+    size_t size;
+    int offset;
+    size_t allign;
+
     size_t index;
     int space;
 
@@ -237,8 +248,11 @@ typedef struct
     Token **variables;
     size_t var_size;
     size_t var_pos;
-} Scoop;
 
+    Node **structs;
+    size_t struct_size;
+    size_t struct_pos;
+} Scoop;
 
 // DEBUG
 Specials *specials = (Specials[])
@@ -289,6 +303,7 @@ void ptoken(Token *token)
     case fcall_: debug("[func call] name [%s]", token->name); break;
     case fdec_: debug("[func dec] name [%s]", token->name); break;
     case id_: debug("[id] name [%s]", token->name); break;
+    case struct_: debug("[struct]"); break;
     case end_: debug("[end]"); break;
     default:
     {
@@ -325,10 +340,26 @@ void pnode(Node *node, char *side, int space)
         }
         else
             debug("\n");
-#if 0
+#if 1
         if(node->token && node->token->type == fdec_)
         {
             node = node->right;
+            while(node)
+            {
+                pnode(node->left, NULL, space + 4);
+                node = node->right;
+            }
+        }
+        else if(node->token && node->token->type == struct_)
+        {
+            i = 0;
+            while (i < space)
+            {
+                i++;
+                debug(" ");
+            }
+            debug("attributes:\n");
+            node = node->left;
             while(node)
             {
                 pnode(node->left, NULL, space + 4);
@@ -374,9 +405,8 @@ bool check_type(Type *types, Type type)
 Inst** copy_insts(Inst **src, Inst **dest, size_t pos,  size_t size)
 {
     // debug("%scheck %zu instuction%s\n", RED, pos, RESET);
-    if (dest)
-        free(dest);
-    // TODO: protect it if no instruction created
+    if(!size) return NULL;
+    if (dest) free(dest);
     dest = calloc(size, sizeof(Inst *)); 
     int j = 0;
     for (int i = 0; i < pos; i++)
@@ -465,12 +495,9 @@ void free_node(Node *node)
 
 void free_token(Token *token)
 {
-    if(token->name)
-        free(token->name);
-    if(token->Chars.value)
-        free(token->Chars.value);
-    if(token->arg_reg)
-        free(token->arg_reg);
+    if(token->name) free(token->name);
+    if(token->Chars.value) free(token->Chars.value);
+    if(token->arg_reg) free(token->arg_reg);
     free(token);
 }
 
