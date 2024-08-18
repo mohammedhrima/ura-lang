@@ -3,28 +3,31 @@
 
 .text
 .globl	main
-print:
-    push    rbp
-    mov     rbp, rsp
-    sub     rsp, 16
-    mov     DWORD PTR -4[rbp], edi
-    lea     rax, .STR1[rip]
-    mov     rdi, rax
-    call    putstr
-    mov     eax, 0
-    leave
-    ret
-.endprint:
 main:
     push    rbp
     mov     rbp, rsp
     sub     rsp, 16
-    mov     edi, 11
-    call    print
+    mov     eax, 0
+    /*assign_node i*/
+    mov     DWORD PTR -4[rbp], 0
+.while1:
+    mov     eax, DWORD PTR -4[rbp]
+    mov     ebx, 10
+    cmp     eax, ebx
+    setl    al
+    cmp     al, 1
+    jne     .endwhile1
+    mov     edi, DWORD PTR -4[rbp]
+    call    putnbr
+    mov     eax, DWORD PTR -4[rbp]
+    add     eax, 1
+    /*assign_node i*/
+    mov     DWORD PTR -4[rbp], eax
+    jmp     .while1
+.endwhile1:
     mov     eax, 0
     leave
     ret
 .endmain:
-.STR1: .string "\n"
 .section	.note.GNU-stack,"",@progbits
 

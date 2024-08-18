@@ -1,10 +1,10 @@
-+ 12/08:
++ 16/08:
     - variable declaration/assignement:
         - int, char, bool, float, chars
     - optimazations on operations
-+ 13/08:
++ 17/08:
     + if / while / break / continue
-+ 14/08:
++ 18/08:
     + function call / declaration / return
     + function return struct:
         + first: handle function take reference
@@ -14,13 +14,13 @@
     # function that takes asm instruction 
     # and injects them in the code
     + asm("mov rax, 0") 
-+ 15/08:
++ 19/08:
     + classes
     + composite data types
-+ 16/08:
++ 21/08:
     + modules
     + swicth case
-+ 17/08:
++ 22/08:
     + package manager
 
 + data types:

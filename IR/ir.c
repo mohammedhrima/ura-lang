@@ -584,6 +584,7 @@ Token *generate_ir(Node *node)
                 {
                     inst = new_inst(new_token(NULL, 0, 0, node->token->space, push_));
                     // TODO: it causes problem in output("hello world")
+                    // TODO: remove use register depends on data type
                     // left = copy_token(left);
                     left->declare = false;
                     inst->left = left;
