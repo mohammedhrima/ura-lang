@@ -26,8 +26,6 @@ void generate_asm()
             pasm("/*assign_node %s*/\n", left->name);
             if (right->ptr)
             {
-                // mov("rax, QWORD PTR %c%zu[rbp]\n", sign(right), right->ptr);
-                // mov("QWORD PTR %c%zu[rbp], rax\n", sign(left), left->ptr);
                 switch(right->type)
                 {
                     case int_:
@@ -84,6 +82,7 @@ void generate_asm()
                     switch(left->type)
                     {
                         case int_: mov("%s, DWORD PTR -%zu[rbp]\n", right->name, left->ptr); break;
+                        case chars_: mov("%s, QWORD PTR -%zu[rbp]\n", right->name, left->ptr); break;
                         default: error("%s:%d handle this case\n", FUNC, LINE); exit(1); break;
                     }
                 }
@@ -191,6 +190,12 @@ void generate_asm()
                     {
                         pasm("/*declare %s*/\n", curr->name);
                         mov("DWORD PTR %c%zu[rbp], 0\n", sign(curr), curr->ptr);
+                        break;
+                    }
+                    case chars_:
+                    {
+                        pasm("/*declare %s*/\n", curr->name);
+                        mov("QWORD PTR %c%zu[rbp], 0\n", sign(curr), curr->ptr);
                         break;
                     }
                     default:
