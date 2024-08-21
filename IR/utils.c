@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdarg.h>
+#include <stdint.h>
 
 #define SPLIT "=================================================\n"
 #define GREEN "\033[0;32m"
@@ -49,8 +50,10 @@ int debug(char *fmt, ...)
     return res;
 }
 
+bool found_error;
 int error(char *fmt, ...)
 {
+    found_error = true;
     va_list ap;
     va_start(ap, fmt);
     int res = fprintf(stderr, "%sError:%s ", RED, RESET);
@@ -172,8 +175,9 @@ typedef struct
     Type type;
     Type retType;
 
-    int reg;
-    char c;
+    char *creg;
+    int sreg;
+    // char c;
     size_t ptr;
     
     size_t size;
@@ -529,3 +533,10 @@ char *strjoin(char *left, char *right)
     strcpy(res + strlen(res), right);
     return res;
 }
+
+struct {
+    char *reg;
+    char *bloc;
+} Global[] = {
+    [int_] = {""}
+};

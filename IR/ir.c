@@ -264,8 +264,8 @@ Inst *new_inst(Token *token)
         {
             // token->ptr = ptr;
             // ptr += token->offset;
-            // token->reg = ++reg_pos;
-            token->reg = ++reg_pos;
+            // token->sreg = ++reg_pos;
+            token->sreg = ++reg_pos;
         }
         else
         {
@@ -274,7 +274,7 @@ Inst *new_inst(Token *token)
             // else
             token->ptr = (ptr += sizeofToken(token));
             
-            token->reg = ++reg_pos;
+            token->sreg = ++reg_pos;
         }
     }
     else
@@ -284,7 +284,7 @@ Inst *new_inst(Token *token)
         case add_: case sub_: case mul_: case div_: case equal_:
         case less_: case more_: case less_equal_: case more_equal_:
         case not_equal_: case fcall_: 
-            token->reg = ++reg_pos;
+            token->sreg = ++reg_pos;
             break;
         default:
             break;
@@ -556,6 +556,7 @@ Token *generate_ir(Node *node)
         {
             Node *curr = node;
             char *fname = NULL;
+            char *regname = NULL;
 #if 0
             while(curr->left)
             {
@@ -574,8 +575,8 @@ Token *generate_ir(Node *node)
                 switch(left->type)
                 {
                     // TODO: add other types / maybe you will remove it
-                    case chars_: fname = ".putstr"; break;
-                    case int_:    fname = ".putnbr"; break;
+                    case chars_: fname = "putstr"; regname = "rdi"; break;
+                    case int_:   fname = "putnbr"; regname = "edi"; break;
                     default: 
                         RLOG(FUNC, "%d: handle this case <%s>\n", LINE, to_string(left->type)); 
                         exit(1);
@@ -588,7 +589,7 @@ Token *generate_ir(Node *node)
                     // left = copy_token(left);
                     left->declare = false;
                     inst->left = left;
-                    inst->right = new_token("rdi", 0, 3, node->token->space, 0);
+                    inst->right = new_token(regname, 0, strlen(regname), node->token->space, 0);
                     // new_inst(left);
                     inst = new_inst(new_token(fname, 0, strlen(fname), node->token->space, fcall_));
                     inst->token->isbuiltin = true;
@@ -720,7 +721,11 @@ Token *generate_ir(Node *node)
                     to_string(node->token->type), to_string(left->type), to_string(right->type));
                     exit(1);
                 }
-                node->token->retType = left->type; node->token->c = 'a'; break;
+                node->token->retType = left->type;
+                if(left->type == int_) node->token->creg = strdup("eax");
+                else 
+                if(left->type == float_)node->token->creg = strdup("xmm0");
+                break;
             }
             case not_equal_: case equal_: case less_: 
             case more_: case less_equal_: case more_equal_:
@@ -788,11 +793,11 @@ void print_ir()
         {
         case assign_:
         {
-            curr->reg = left->reg;
-            debug("r%.2d: %s [%s] ", curr->reg, to_string(curr->type), to_string(left->type));
-            debug("%s in (%d) to ", left->name, left->reg);
-            if (right->reg)
-                debug("r%.2d", right->reg);
+            curr->sreg = left->sreg;
+            debug("r%.2d: %s [%s] ", curr->sreg, to_string(curr->type), to_string(left->type));
+            debug("%s in (%d) to ", left->name, left->sreg);
+            if (right->sreg)
+                debug("r%.2d", right->sreg);
             else
             {
                 switch (right->type)
@@ -810,7 +815,7 @@ void print_ir()
         }
         case fcall_:
         {
-            debug("r%.2d: call %s\n",curr->reg, curr->name);
+            debug("r%.2d: call %s\n",curr->sreg, curr->name);
             break;
         }
         case add_: case sub_: case mul_: case div_: case equal_:
@@ -818,9 +823,9 @@ void print_ir()
         case not_equal_:
         {
             // TODO: set invalid operation for boolean type
-            debug("r%.2d: %s ", curr->reg, to_string(curr->type));
-            if (left->reg)
-                debug("r%.2d", left->reg);
+            debug("r%.2d: %s ", curr->sreg, to_string(curr->type));
+            if (left->sreg)
+                debug("r%.2d", left->sreg);
             else
                 switch(left->type)
                 {
@@ -834,8 +839,8 @@ void print_ir()
             if (left->name)
                 debug(" (%s)", left->name);
             debug(" to ");
-            if (right->reg)
-                debug("r%.2d", right->reg);
+            if (right->sreg)
+                debug("r%.2d", right->sreg);
             else
                 switch(right->type)
                 {
@@ -853,7 +858,7 @@ void print_ir()
         }
         case int_: case char_: case bool_: case chars_: case float_:
         {
-            debug("r%.2d: [%s] ", curr->reg, to_string(curr->type));
+            debug("r%.2d: [%s] ", curr->sreg, to_string(curr->type));
             if (curr->declare) 
                 debug("declare %s PTR=[%zu]", curr->name, curr->ptr);
             else if(curr->name)
@@ -883,12 +888,12 @@ void print_ir()
         }
         case void_:
         {
-            debug("r%.2d: [%s]\n", curr->reg, to_string(curr->type));
+            debug("r%.2d: [%s]\n", curr->sreg, to_string(curr->type));
             break;
         }
         case struct_:
         {
-            debug("r%.2d: [%s] ", curr->reg, to_string(curr->type));
+            debug("r%.2d: [%s] ", curr->sreg, to_string(curr->type));
             if (curr->declare) 
                 debug("declare %s PTR=[%zu]", curr->name, curr->ptr);
             debug("\n");
@@ -899,7 +904,7 @@ void print_ir()
             // TODO: check all cases
             debug("rxx: push ");
             // if(left->ptr)
-            debug("PTR r%.2d ", left->reg);
+            debug("PTR r%.2d ", left->sreg);
             if(right->name)
                 debug("to %s", right->name);
             debug("\n");
@@ -1015,7 +1020,9 @@ bool optimize_ir(int op_index)
             }
             if (check_type((Type[]){int_, float_, chars_, bool_, char_, 0}, token->type) && !token->name)
             {
-                token->c = 0;
+                // token->c = 0;
+                free(token->creg);
+                token->creg = NULL;
                 // debug("found to remove in r%d\n", token->r1);
                 token->remove = true;
                 insts = copy_insts(first_insts, insts, inst_pos, inst_size);
@@ -1085,9 +1092,9 @@ bool optimize_ir(int op_index)
                     }
                     if 
                     (
-                        (insts[j]->left && insts[j]->left->reg == insts[i]->token->reg)
+                        (insts[j]->left && insts[j]->left->sreg == insts[i]->token->sreg)
                         ||
-                        (insts[j]->right && insts[j]->right->reg == insts[i]->token->reg)
+                        (insts[j]->right && insts[j]->right->sreg == insts[i]->token->sreg)
                     )
                         break;
                     j++;
@@ -1116,8 +1123,8 @@ bool optimize_ir(int op_index)
                     // if the variable is used some where
                     else if 
                     (
-                        insts[j]->left->reg == insts[i]->token->reg || 
-                        insts[j]->right->reg == insts[i]->token->reg
+                        insts[j]->left->sreg == insts[i]->token->sreg || 
+                        insts[j]->right->sreg == insts[i]->token->sreg
                     )
                         break;
                     j++;
@@ -1149,8 +1156,8 @@ bool optimize_ir(int op_index)
             if
             (
                 check_type((Type[]){add_, sub_, mul_, div_, 0}, insts[i - 1]->token->type) &&
-                insts[i]->left->reg != insts[i - 1]->token->reg && 
-                insts[i]->right->reg != insts[i - 1]->token->reg
+                insts[i]->left->sreg != insts[i - 1]->token->sreg && 
+                insts[i]->right->sreg != insts[i - 1]->token->sreg
             )
             {
                 did_optimize = true;
