@@ -1,3 +1,4 @@
++ use a variadic functions instead of vprintf
 + 16/08:
     - variable declaration/assignement:
         - int, char, bool, float, chars
