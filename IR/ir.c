@@ -11,7 +11,7 @@ size_t bloc_index;
 size_t str_index;
 size_t float_index;
 // STACK POINTER
-size_t ptr = 0;
+long ptr = 0;
 size_t arg_ptr;
 
 void enter_scoop(char *name)

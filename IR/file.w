@@ -1,4 +1,3 @@
 main():
-    int i = 0
-
-
+    bool a = 'c'
+    bool b = a
