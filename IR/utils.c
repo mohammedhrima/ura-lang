@@ -178,7 +178,7 @@ typedef struct
     char *creg;
     int sreg;
     // char c;
-    size_t ptr;
+    long ptr;
     
     size_t size;
     int offset;
@@ -448,26 +448,26 @@ void pasm(char *fmt, ...)
     cond = !strchr(fmt, ':') && !strstr(fmt, ".section	.note.GNU-stack,\"\",@progbits");
     cond = cond && !strstr(fmt, ".intel_syntax noprefix") && !strstr(fmt, ".include");
     cond = cond && !strstr(fmt, ".text") && !strstr(fmt, ".globl	main");
-    if (cond) fprintf(asm_fd, "    ");
+    // if (cond) fprintf(asm_fd, "    ");
     vfprintf(asm_fd, fmt, ap);
 }
 
-#define mov(fmt, ...)   pasm("mov     " fmt, __VA_ARGS__)
-#define movss(fmt, ...) pasm("movss   " fmt, __VA_ARGS__)
-#define lea(fmt, ...)   pasm("lea     " fmt, __VA_ARGS__)
-#define cmp(fmt, ...)   pasm("cmp     " fmt, __VA_ARGS__)
-#define jne(fmt, ...)   pasm("jne     " fmt, __VA_ARGS__)
-#define jmp(fmt, ...)   pasm("jmp     " fmt, __VA_ARGS__)
-#define push(fmt, ...)  pasm("push    " fmt, __VA_ARGS__)
-#define call(func)      pasm("call    %s\n", func)
+#define mov(fmt, ...)   pasm("    mov     " fmt, __VA_ARGS__)
+#define movss(fmt, ...) pasm("    movss   " fmt, __VA_ARGS__)
+#define lea(fmt, ...)   pasm("    lea     " fmt, __VA_ARGS__)
+#define cmp(fmt, ...)   pasm("    cmp     " fmt, __VA_ARGS__)
+#define jne(fmt, ...)   pasm("    jne     " fmt, __VA_ARGS__)
+#define jmp(fmt, ...)   pasm("    jmp     " fmt, __VA_ARGS__)
+#define push(fmt, ...)  pasm("    push    " fmt, __VA_ARGS__)
+#define call(func)      pasm("    call    %s\n", func)
 
 #define math_op(op, fmt, ...) \
 do { \
     switch(op) { \
-        case add_: pasm("add     " fmt, __VA_ARGS__); break; \
-        case sub_: pasm("sub     " fmt, __VA_ARGS__); break; \
-        case mul_: pasm("mul     " fmt, __VA_ARGS__); break; \
-        case div_: pasm("div     " fmt, __VA_ARGS__); break; \
+        case add_: pasm("    add     " fmt, __VA_ARGS__); break; \
+        case sub_: pasm("    sub     " fmt, __VA_ARGS__); break; \
+        case mul_: pasm("    mul     " fmt, __VA_ARGS__); break; \
+        case div_: pasm("    div     " fmt, __VA_ARGS__); break; \
         default: break; \
     } \
 } while (0)
@@ -475,12 +475,12 @@ do { \
 #define relational_op(op, fmt, ...) \
 do { \
     switch(op) { \
-        case equal_:      pasm("sete    " fmt, __VA_ARGS__); break; \
-        case not_equal_:  pasm("setne   " fmt, __VA_ARGS__); break; \
-        case less_:       pasm("setl    " fmt, __VA_ARGS__); break; \
-        case less_equal_: pasm("setle   " fmt, __VA_ARGS__); break; \
-        case more_:       pasm("setg    " fmt, __VA_ARGS__); break; \
-        case more_equal_: pasm("setge   " fmt, __VA_ARGS__); break; \
+        case equal_:      pasm("    sete    " fmt, __VA_ARGS__); break; \
+        case not_equal_:  pasm("    setne   " fmt, __VA_ARGS__); break; \
+        case less_:       pasm("    setl    " fmt, __VA_ARGS__); break; \
+        case less_equal_: pasm("    setle   " fmt, __VA_ARGS__); break; \
+        case more_:       pasm("    setg    " fmt, __VA_ARGS__); break; \
+        case more_equal_: pasm("    setge   " fmt, __VA_ARGS__); break; \
         default: break; \
     } \
 } while (0)
