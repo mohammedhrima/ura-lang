@@ -17,6 +17,7 @@ int main(int argc, char **argv)
     char *input = open_file(argv[1]);
     char *outputFile = strdup(argv[1]);
     outputFile[strlen(outputFile) - 1] = 's';
+
     asm_fd = fopen(outputFile, "w+");
     if(asm_fd == NULL)
     {

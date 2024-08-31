@@ -70,16 +70,21 @@ Token *new_token(char *input, int s, int e, int space, Type type)
         {
             new->name = calloc(e - s + 1, sizeof(char));
             strncpy(new->name, input + s, e - s);
-            if 
-            (
-                (strcmp(new->name, "True") == 0 && (new->Bool.value = true))
-                ||
-                (strcmp(new->name, "False") == 0 && (new->Bool.value = false))
-            )
+
+            if(strcmp(new->name, "True") == 0)
             {
                 free(new->name);
                 new->name = NULL;
                 new->type = bool_;
+                new->Bool.value = true;
+            }
+            else
+            if(strcmp(new->name, "False") == 0)
+            {
+                free(new->name);
+                new->name = NULL;
+                new->type = bool_;
+                new->Bool.value = false;
             }
             // else if (strcmp(new->name, "sys") == 0)
             // {
@@ -372,14 +377,15 @@ int sizeofToken(Token* token)
 {
     switch(token->type)
     {
-        case int_:    return sizeof(int);
-        case float_:  return sizeof(float);
-        case chars_:  return sizeof(char*);
-        case char_:   return sizeof(char);
+        case int_  : return sizeof(int);
+        case float_: return sizeof(float);
+        case chars_: return sizeof(char*);
+        case char_ : return sizeof(char);
+        case bool_ : return sizeof(bool);
         // case struct_: return token->size;
         default:
         {
-            error("%s:%d add this type [%s]\n", FUNC, LINE, to_string(token->type));
+            error("%s %s:%d add this type [%s]\n", FILE, FUNC, LINE, to_string(token->type));
             exit(1);
         }
     }

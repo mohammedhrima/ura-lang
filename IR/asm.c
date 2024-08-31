@@ -33,43 +33,6 @@ TODOS:
         + left should be always an identifier
 */
 
-
-char* defaultReg(Token *token)
-{
-    switch(token->type)
-    {
-    case chars_: return "rax";
-    case int_:   return "eax";
-    case char_:  return "al";
-    case float_: return "xmm0";
-    default: error("%s: Unkown type [%s]\n", FUNC, to_string(token->type)); break;
-    }
-    return NULL;
-}
-
-void paddr(Token *token)
-{
-    switch(token->type)
-    {
-    case chars_: pasm("QWORD PTR -%ld[rbp]", token->ptr); break;
-    case int_:   pasm("DWORD PTR -%ld[rbp]", token->ptr); break;
-    case char_:  pasm("BYTE PTR -%ld[rbp]", token->ptr); break;
-    case float_: pasm("DWORD PTR -%ld[rbp]", token->ptr); break;
-    default: error("%s: Unkown type [%s]\n", FUNC, to_string(token->type)); break;
-    }
-}
-
-void pvalue(Token *token)
-{
-    switch (token->type)
-    {
-    case int_:  pasm("%lld", token->Int.value); break;
-    case bool_: pasm("%d", token->Bool.value); break;
-    case char_: pasm("%d\n", token->Char.value); break;
-    default: error("handle this case in %s:%d\n", FUNC, LINE); break;
-    }
-}
-
 void generate_asm()
 {
     initialize();
@@ -81,41 +44,41 @@ void generate_asm()
 
         switch(curr->type)
         {
+            case int_: case bool_: case chars_: case char_: case float_:
+            {
+                if(curr->declare)
+                {
+                    pasm("//declare [%s]\n", curr->name);
+                    pasm("mov %a, 0\n", curr);
+                }
+                else if(!curr->isarg)
+                    error("%s:%d handle this case\n", FUNC, LINE);
+                break;
+            }
             case assign_:
             {
                 curr->ptr = left->ptr;
-                pasm("    /*assign_node %s*/\n", left->name);
+                pasm("//assign [%s]\n", left->name);
                 if(right->ptr || right->creg)
                 {
-                    char *reg = right->creg ? right->creg : defaultReg(right);
-                    if(right->ptr)
-                    {
-                        left->type == float_ ? movss("%s, ", reg) : mov("%s, ", reg);
-                        paddr(right);
-                        pasm("\n");
-                    }
-                    left->type == float_ ? movss("", "") : mov("", "");
-                    paddr(left);
-                    pasm(", %s\n", reg);
+                    char *inst = left->type == float_ ? "movss " : "mov ";
+                    if(right->ptr && !right->creg) pasm("%i%r, %a\n", inst, left, right);
+                    pasm("%i%a, %r\n", inst, left, left);
                 }
                 else
                 {
                     switch (right->type)
                     {
                     case int_: case bool_: case char_:
-                        mov("", "");
-                        paddr(left);
-                        pasm(", ");
-                        pvalue(right);
-                        pasm("\n");
+                        pasm("mov %a, %v\n", left, right);
                         break;
                     case chars_:
-                        lea("rax, .STR%zu[rip]\n", right->index);
-                        mov("QWORD PTR -%ld[rbp], rax\n", left->ptr);
+                        pasm("lea rax, .STR%zu[rip]\n", right->index);
+                        pasm("mov QWORD PTR -%ld[rbp], rax\n", left->ptr);
                         break;
                     case float_:
-                        movss("xmm0, DWORD PTR .FLT%zu[rip]\n", right->index);
-                        movss("DWORD PTR -%ld[rbp], xmm0\n", left->ptr);
+                        pasm("movss xmm0, DWORD PTR .FLT%zu[rip]\n", right->index);
+                        pasm("movss DWORD PTR -%ld[rbp], xmm0\n", left->ptr);
                         break;
                     default:
                         error("handle this case in %s:%d\n", FUNC, LINE);
@@ -124,21 +87,48 @@ void generate_asm()
                 }
                 break;
             }
+            case add_: case sub_: case mul_: case div_: // TODO: check all math_op operations
+            {
+                // TODO: use rax for long etc...
+                // curr->creg = strdup("eax");
+                Type type = curr->type;
+                if(left->ptr)
+                    pasm("mov %r, %a\n", curr, left);
+                else if(left->creg && strcmp(left->creg, right->creg))
+                    pasm("mov %r, %r\n", curr, left);
+                else if(!left->creg)
+                    pasm("mov %r, %v\n", curr, left);
+                char *inst = NULL;
+                switch(curr->type)
+                {
+                    case add_: inst = "add "; break;
+                    case sub_: inst = "sub "; break;
+                    case mul_: inst = "mul "; break;
+                    case div_: inst = "div "; break;
+                    default: break;
+                }
+                if(right->ptr)
+                    pasm("%i%r, %a\n", inst, curr, right);
+                else if(right->creg)
+                    pasm("%i%r, %r\n", inst, curr, right);
+                else if(!right->creg)
+                    pasm("%i%r, %v\n", inst,  curr, left);
+                curr->type = left->type;
+                break;
+            }
             case ret_:
             {
                 if(left->ptr)
                 {
-                    mov("", "");
-                    pasm("%s, ", defaultReg(left));
-                    paddr(left);
-                    pasm("\n");
+                    // mov("", ""), pasm("%s, ", defaultReg(left)), paddr(left), pasm("\n");
+                    pasm("mov %r, %a\n", left, left);
                 }
                 else
                 {
                     switch(left->type)
                     {
-                        case int_: mov("eax, %ld\n", left->Int.value); break;
-                        case void_:mov("eax, 0\n",""); break;
+                        case int_: pasm("mov eax, %ld\n", left->Int.value); break;
+                        case void_:pasm("mov eax, 0\n"); break;
                         default:
                         {
                             error("%s:%d handle this case [%s]\n", FUNC, LINE, to_string(left->type)); 
@@ -147,16 +137,16 @@ void generate_asm()
                         }
                     }
                 }
-                pasm("    leave\n");
-                pasm("    ret\n");
+                pasm("leave\n");
+                pasm("ret\n");
                 break;
             }
             case fdec_:
             {
                 pasm("%s:\n", curr->name);
-                push("rbp\n", "");
-                mov("rbp, rsp\n", "");
-                pasm("    sub     rsp, %zu\n", (((ptr) + 15) / 16) * 16);
+                pasm("push rbp\n");
+                pasm("mov rbp, rsp\n");
+                pasm("sub rsp, %zu\n", (((ptr) + 15) / 16) * 16);
                 break;
             }
             case end_bloc_:

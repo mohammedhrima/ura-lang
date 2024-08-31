@@ -14,6 +14,7 @@ size_t float_index;
 long ptr = 0;
 size_t arg_ptr;
 
+#if AST
 void enter_scoop(char *name)
 {
     GLOG("ENTER SCOOP", "%s\n", name);
@@ -722,9 +723,9 @@ Token *generate_ir(Node *node)
                     exit(1);
                 }
                 node->token->retType = left->type;
-                if(left->type == int_) node->token->creg = strdup("eax");
+                if(left->type == int_)  node->token->creg = strdup("eax");
                 else 
-                if(left->type == float_)node->token->creg = strdup("xmm0");
+                if(left->type == float_) node->token->creg = strdup("xmm0");
                 break;
             }
             case not_equal_: case equal_: case less_: 
@@ -1176,4 +1177,4 @@ bool optimize_ir(int op_index)
 }
 
 #endif
-
+#endif
