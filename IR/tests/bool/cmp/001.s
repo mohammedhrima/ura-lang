@@ -8,8 +8,11 @@ main:
 	mov     rbp, rsp
 	sub     rsp, 16
 	//      assign [a]
-	mov     DWORD PTR -4[rbp], 12
-	mov     eax, DWORD PTR -4[rbp]
+	mov     BYTE PTR -1[rbp], 0
+	//      assign [b]
+	mov     al, BYTE PTR -1[rbp]
+	mov     BYTE PTR -2[rbp], al
+	mov     eax, 0
 	leave   
 	ret     
 .endmain:

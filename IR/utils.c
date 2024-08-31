@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stdarg.h>
 #include <stdint.h>
+#include <fcntl.h>
 
 #define SPLIT "=================================================\n"
 #define GREEN "\033[0;32m"
@@ -14,6 +15,7 @@
 #define RESET "\033[0m"
 #define FUNC __func__
 #define LINE __LINE__
+#define FILE __FILE__
 
 #define TOKENIZE 1
 
@@ -27,9 +29,8 @@
 
 #define MAX_OPTIMIZATION 4
 
-#define BUILTINS 1
-
 #if IR
+#define BUILTINS 1
 #define OPTIMIZE 1
 #define ASM 1
 #endif
@@ -381,7 +382,7 @@ void pnode(Node *node, char *side, int space)
 
 char *open_file(char *filename)
 {
-    FILE *file = fopen(filename, "r");
+    struct _IO_FILE *file = fopen(filename, "r");
     if(file == NULL)
     {
         debug("Failed to open file %s\n", filename);
@@ -439,52 +440,139 @@ void pscoop(Scoop *scoop)
     }
 }
 
-FILE *asm_fd;
+struct _IO_FILE *asm_fd;
 void pasm(char *fmt, ...)
 {
-    va_list ap;
-    va_start(ap, fmt);
-    bool cond;
-    cond = !strchr(fmt, ':') && !strstr(fmt, ".section	.note.GNU-stack,\"\",@progbits");
-    cond = cond && !strstr(fmt, ".intel_syntax noprefix") && !strstr(fmt, ".include");
-    cond = cond && !strstr(fmt, ".text") && !strstr(fmt, ".globl	main");
-    // if (cond) fprintf(asm_fd, "    ");
-    vfprintf(asm_fd, fmt, ap);
+    int i = 0;
+    va_list args;
+    va_start(args, fmt);
+    #define isInstruction(inst) do { \
+        if(strncmp(fmt + i, inst, strlen(inst)) == 0) \
+        { \
+            i += strlen(inst); \
+            fprintf(asm_fd, "\t%-8s", inst);  \
+        } \
+    } while(0)
+    isInstruction("movss ");
+    isInstruction("mov ");
+    isInstruction("sub ");
+    isInstruction("lea ");
+    isInstruction("cmp ");
+    isInstruction("push ");
+    isInstruction("call ");
+    isInstruction("leave");
+    isInstruction("ret");
+    isInstruction("//");
+
+    while (fmt[i])
+    {
+        if (fmt[i] == '%')
+        {
+            i++;
+            if(fmt[i] == 'i')
+            {
+                i++;
+                fprintf(asm_fd, "\t%-8s", va_arg(args, char*)); 
+            }
+            else if(fmt[i] == 'r')
+            {
+                i++;
+                Token *token = va_arg(args, Token*);
+                if(token->creg)
+                    fprintf(asm_fd, "%s", token->creg); 
+                else
+                    switch(token->type)
+                    {
+                    case chars_:
+                        fputs("rax", asm_fd); break;
+                    case int_:
+                        fputs("eax", asm_fd); break;
+                    case bool_: case char_:
+                        fputs("al", asm_fd); break;
+                    case float_:
+                        fputs("xmm0", asm_fd); break;
+                    default: error("%s: Unkown type [%s]\n", FUNC, to_string(token->type)); break;
+                    }
+            }
+            else if(fmt[i] == 'a')
+            {
+                i++;
+                Token *token = va_arg(args, Token*);
+                switch(token->type)
+                {
+                case chars_: fprintf(asm_fd, "QWORD PTR -%ld[rbp]", token->ptr); break;
+                case int_:   fprintf(asm_fd, "DWORD PTR -%ld[rbp]", token->ptr); break;
+                case char_:  fprintf(asm_fd, "BYTE PTR -%ld[rbp]", token->ptr); break;
+                case bool_:  fprintf(asm_fd, "BYTE PTR -%ld[rbp]", token->ptr); break;
+                case float_: fprintf(asm_fd, "DWORD PTR -%ld[rbp]", token->ptr); break;
+                default: error("%s: Unkown type [%s]\n", FUNC, to_string(token->type)); break;
+                }
+            }
+            else if(fmt[i] == 'v')
+            {
+                i++;
+                Token *token = va_arg(args, Token*);
+                switch(token->type)
+                {
+                case int_:  fprintf(asm_fd, "%lld", token->Int.value); break;
+                case bool_: fprintf(asm_fd, "%d", token->Bool.value); break;
+                case char_: fprintf(asm_fd, "%d", token->Char.value); break;
+                default: error("%s: Unkown type [%s]\n", FUNC, to_string(token->type)); break;
+                }
+            }
+            else {
+                int handled = 0;
+                #define check_format(string, type) do { \
+                    if (strncmp(fmt + i, string, strlen(string)) == 0) {\
+                        handled = 1; \
+                        i += strlen(string); \
+                        fprintf(asm_fd, "%"string, va_arg(args, type)); \
+                    } \
+                } while(0)
+                check_format("d", int);
+                check_format("ld", long);
+                check_format("s", char *);
+                check_format("zu", unsigned long);
+                check_format("f", double);
+                if (!handled)
+                {
+                    error("%s:%d handle this case [%s]\n", FUNC, LINE, fmt + i);
+                    exit(1);
+                }
+            }
+        }
+        else
+        {
+            fputc(fmt[i], asm_fd);
+            i++;
+        }
+    }
+    va_end(args);
 }
 
-#define mov(fmt, ...)   pasm("    mov     " fmt, __VA_ARGS__)
-#define movss(fmt, ...) pasm("    movss   " fmt, __VA_ARGS__)
-#define lea(fmt, ...)   pasm("    lea     " fmt, __VA_ARGS__)
-#define cmp(fmt, ...)   pasm("    cmp     " fmt, __VA_ARGS__)
-#define jne(fmt, ...)   pasm("    jne     " fmt, __VA_ARGS__)
-#define jmp(fmt, ...)   pasm("    jmp     " fmt, __VA_ARGS__)
-#define push(fmt, ...)  pasm("    push    " fmt, __VA_ARGS__)
-#define call(func)      pasm("    call    %s\n", func)
+// #define math_op(op, fmt, ...) \
+// do { \
+//     switch(op) { \
+//         case add_: pasm("    add     " fmt, __VA_ARGS__); break; \
+//         case sub_: pasm("    sub     " fmt, __VA_ARGS__); break; \
+//         case mul_: pasm("    mul     " fmt, __VA_ARGS__); break; \
+//         case div_: pasm("    div     " fmt, __VA_ARGS__); break; \
+//         default: break; \
+//     } \
+// } while (0)
 
-#define math_op(op, fmt, ...) \
-do { \
-    switch(op) { \
-        case add_: pasm("    add     " fmt, __VA_ARGS__); break; \
-        case sub_: pasm("    sub     " fmt, __VA_ARGS__); break; \
-        case mul_: pasm("    mul     " fmt, __VA_ARGS__); break; \
-        case div_: pasm("    div     " fmt, __VA_ARGS__); break; \
-        default: break; \
-    } \
-} while (0)
-
-#define relational_op(op, fmt, ...) \
-do { \
-    switch(op) { \
-        case equal_:      pasm("    sete    " fmt, __VA_ARGS__); break; \
-        case not_equal_:  pasm("    setne   " fmt, __VA_ARGS__); break; \
-        case less_:       pasm("    setl    " fmt, __VA_ARGS__); break; \
-        case less_equal_: pasm("    setle   " fmt, __VA_ARGS__); break; \
-        case more_:       pasm("    setg    " fmt, __VA_ARGS__); break; \
-        case more_equal_: pasm("    setge   " fmt, __VA_ARGS__); break; \
-        default: break; \
-    } \
-} while (0)
-
+// #define relational_op(op, fmt, ...) \
+// do { \
+//     switch(op) { \
+//         case equal_:      pasm("    sete    " fmt, __VA_ARGS__); break; \
+//         case not_equal_:  pasm("    setne   " fmt, __VA_ARGS__); break; \
+//         case less_:       pasm("    setl    " fmt, __VA_ARGS__); break; \
+//         case less_equal_: pasm("    setle   " fmt, __VA_ARGS__); break; \
+//         case more_:       pasm("    setg    " fmt, __VA_ARGS__); break; \
+//         case more_equal_: pasm("    setge   " fmt, __VA_ARGS__); break; \
+//         default: break; \
+//     } \
+// } while (0)
 
 // CLEAR
 void free_node(Node *node)
@@ -533,10 +621,3 @@ char *strjoin(char *left, char *right)
     strcpy(res + strlen(res), right);
     return res;
 }
-
-struct {
-    char *reg;
-    char *bloc;
-} Global[] = {
-    [int_] = {""}
-};
