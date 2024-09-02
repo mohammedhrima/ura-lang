@@ -28,6 +28,7 @@
 #endif
 
 #define MAX_OPTIMIZATION 4
+#define WITH_COMMENTS 1
 
 #if IR
 #define BUILTINS 1
@@ -183,6 +184,7 @@ typedef struct
 
     char *creg;
     int sreg;
+    // bool hasreg;
     // char c;
     long ptr;
     
@@ -468,7 +470,12 @@ void pasm(char *fmt, ...)
     isInstruction("call ");
     isInstruction("leave");
     isInstruction("ret");
+
+#if WITH_COMMENTS
     isInstruction("//");
+#else
+    if(strncmp(fmt + i, "//", 2) == 0) return;
+#endif
 
     while (fmt[i])
     {
@@ -485,7 +492,11 @@ void pasm(char *fmt, ...)
                 i++;
                 Token *token = va_arg(args, Token*);
                 if(token->creg)
+                {
+                    // printf("%s:%dhas been used\n",FUNC, LINE);
+                    // exit(1);
                     fprintf(asm_fd, "%s", token->creg); 
+                }
                 else
                 {
                     Type type = token->retType ? token->retType : token->type;

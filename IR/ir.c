@@ -92,7 +92,7 @@ Token *get_variable(char *name)
             return curr_scoop->variables[i];
         }
     }
-    RLOG(FUNC, "'%s' Not found\n", name);
+    error("%s:%d '%s' Not found\n", FUNC, LINE, name);
     exit(1);
     return NULL;
 }
@@ -207,7 +207,7 @@ Node *get_function(char *name)
                 return func;
         }
     }
-    RLOG(FUNC, "'%s' Not found\n", name);
+    error("%s:%d '%s' Not found\n", FUNC, LINE, name);
     exit(1);
     return NULL;
 }
@@ -451,6 +451,9 @@ Token *generate_ir(Node *node)
         enter_scoop(node->token->name);
         Token *fcall = copy_token(node->token);
 
+        size_t tmp_ptr = ptr;
+        ptr = 0;
+
         fcall->type = fdec_;
         inst = new_inst(fcall);
         Node *curr;
@@ -460,10 +463,11 @@ Token *generate_ir(Node *node)
         if(node->left) // arguments
         {
             // TODO: make it compatibel with data type
-            char *eregs[] = {"edi", "esi", "edx", "ecx", NULL};
-            char *rregs[] = {"rdi", "rsi", "rdx", "rcx", NULL};
+            char *eregs[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d", NULL};
+            char *rregs[] = {"rdi", "rsi", "rdx", "rcx", "r8d", "r9d", NULL};
             size_t i = 0;
-            size_t ptr = 8;
+
+            // size_t ptr = 8;
             
             Token **list = NULL;
             size_t list_pos = 0;
@@ -474,7 +478,7 @@ Token *generate_ir(Node *node)
             {
                 Inst *inst = new_inst(new_token(NULL, 0, 0, node->token->space, pop_));
                 inst->left = generate_ir(curr->left);
-                debug(RED"pop [%s]\n" RESET, to_string(inst->left->type));
+                // debug(RED"pop [%s]\n" RESET, to_string(inst->left->type));
                 // exit(1);
                 curr->left->token->declare = false;
                 // inst->left = curr->left->token;
@@ -518,6 +522,8 @@ Token *generate_ir(Node *node)
             }
             free(list);
         }
+        error("%s:%d ptr is %zu\n", FUNC, LINE, ptr);
+        ptr = tmp_ptr;
         // debug(SPLIT);
         // pnode(node, NULL, 0);
         // debug(SPLIT);
@@ -578,8 +584,8 @@ Token *generate_ir(Node *node)
                     // TODO: add other types / maybe you will remove it
                     case chars_: fname = "putstr"; regname = "rdi"; break;
                     case int_:   fname = "putnbr"; regname = "edi"; break;
-                    default: 
-                        RLOG(FUNC, "%d: handle this case <%s>\n", LINE, to_string(left->type)); 
+                    default:
+                        error("%s:%d handle this case [%s]\n", FUNC, LINE, to_string(left->type)); 
                         exit(1);
                 }
                 if(fname)
@@ -611,8 +617,8 @@ Token *generate_ir(Node *node)
                 arg = arg->right;
             }
             // TODO: make it compatibel with data type
-            char *eregs[] = {"edi", "esi", "edx", "ecx", NULL};
-            char *rregs[] = {"rdi", "rsi", "rdx", "rcx", NULL};
+            char *eregs[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d", NULL};
+            char *rregs[] = {"rdi", "rsi", "rdx", "rcx", "r8d", "r9d", NULL};
             int i = 0;
             // size_t ptr = 8;
         
@@ -637,7 +643,6 @@ Token *generate_ir(Node *node)
                     // TODO: add line after
                     exit(1);
                 }
-                // TODO: use sreg attribute
                 if(eregs[i])
                 {
                     if (inst->left->type == int_)
@@ -648,7 +653,6 @@ Token *generate_ir(Node *node)
                 }
                 else
                     inst->right = new_token(NULL, 0, 0, node->token->space, 0);
-                // Token *arg = generate_ir(curr->left);
                 curr = curr->right;
                 arg = arg->right;
             }
@@ -779,8 +783,6 @@ Token *generate_ir(Node *node)
             inst = new_inst(node->token);
             Node *curr = node->left->right;
 
-            // node->token->ptr = ptr;
-            // size_t tmp_ptr = ptr;
             while(curr)
             {
                 curr->left->token->declare = false;
@@ -794,9 +796,6 @@ Token *generate_ir(Node *node)
             strlen(inst->token->name), inst->token->space, end_struct_));
             debug(RED"struct offset %zu\n"RESET, node->token->offset);
             ptr += node->token->offset;
-            // exit(1);
-            // debug("found structs declaration\n");
-            // exit(1);
         }
         else
             return node->token;
@@ -804,7 +803,7 @@ Token *generate_ir(Node *node)
     };
     default: 
     {
-        RLOG(FUNC, "%d: handle this case [%s]\n", LINE, to_string(node->token->type)); 
+        error("%s:%d handle this case [%s]\n", FUNC, LINE, to_string(node->token->type)); 
         exit(1); break;
     } 
     }
@@ -822,7 +821,7 @@ void print_ir()
         Token *right = insts[i]->right;
         if (curr->remove)
         {
-            RLOG(FUNC, "this condtion must nuver exists\n");
+            error("%s:%d this condtion must never exists\n", FUNC, LINE);
             exit(1);
             continue;
         }
@@ -844,7 +843,7 @@ void print_ir()
                 case float_: debug("%f", right->Float.value); break;
                 case char_: debug("%c", right->Char.value); break;
                 case chars_: debug("%s", right->Chars.value); break;
-                default: RLOG(FUNC, "%d: handle this case\n", LINE); exit(1); break;
+                default: error("%s:%d: handle this case\n", FUNC, LINE); exit(1); break;
                 }
             }
             debug("\n");
