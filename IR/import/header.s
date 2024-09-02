@@ -15,59 +15,65 @@ putstr:
 	leave
 	ret
 
-.sign: .string "-"
-
+.INT_MIN: .string "-2147483648"
 putnbr:
 	push	rbp
 	mov		rbp, rsp
 	sub		rsp, 16
-	mov		QWORD PTR -8[rbp], rdi
-	cmp		QWORD PTR -8[rbp], 0
-	jns		putnbr0
-	neg		QWORD PTR -8[rbp]
+	mov		DWORD PTR -4[rbp], edi
+	cmp		DWORD PTR -4[rbp], -2147483648
+	jne		.putnbr0
+	lea		rdi, .INT_MIN[rip]
+	call	puts@PLT
+	jmp		.putnbr3
+.putnbr0:
+	cmp		DWORD PTR -4[rbp], 0
+	jns		.putnbr1
 	mov		edi, 45
-	call	putchar
-putnbr0:
-	cmp		QWORD PTR -8[rbp], 9
-	jle		putnbr1
-	mov		rcx, QWORD PTR -8[rbp]
-	movabs	rdx, 7378697629483820647
-	mov		rax, rcx
-	imul	rdx
-	mov		rax, rdx
-	sar		rax, 2
-	sar		rcx, 63
-	mov		rdx, rcx
-	sub		rax, rdx
-	mov		rdi, rax
+	call	putchar@PLT
+	neg		DWORD PTR -4[rbp]
+	mov		eax, DWORD PTR -4[rbp]
+	mov		edi, eax
 	call	putnbr
-	mov		rcx, QWORD PTR -8[rbp]
-	movabs	rdx, 7378697629483820647
-	mov		rax, rcx
-	imul	rdx
-	sar		rdx, 2
-	mov		rax, rcx
-	sar		rax, 63
-	sub		rdx, rax
-	mov		rax, rdx
-	sal		rax, 2
-	add		rax, rdx
-	add		rax, rax
-	sub		rcx, rax
-	mov		rdx, rcx
+	jmp		.putnbr3
+.putnbr1:
+	cmp		DWORD PTR -4[rbp], 9
+	jle		.putnbr2
+	mov		eax, DWORD PTR -4[rbp]
+	movsx	rdx, eax
+	imul	rdx, rdx, 1717986919
+	shr		rdx, 32
+	sar		edx, 2
+	sar		eax, 31
+	mov		ecx, eax
 	mov		eax, edx
-	add		eax, 48
-	movsx	eax, al
+	sub		eax, ecx
 	mov		edi, eax
-	call	putchar
-	jmp		putnbr2
-putnbr1:
-	mov		rax, QWORD PTR -8[rbp]
+	call	putnbr
+	mov		ecx, DWORD PTR -4[rbp]
+	movsx	rax, ecx
+	imul	rax, rax, 1717986919
+	shr		rax, 32
+	sar		eax, 2
+	mov		esi, ecx
+	sar		esi, 31
+	sub		eax, esi
+	mov		edx, eax
+	mov		eax, edx
+	sal		eax, 2
+	add		eax, edx
+	add		eax, eax
+	sub		ecx, eax
+	mov		edx, ecx
+	mov		edi, edx
+	call	putnbr
+	jmp		.putnbr3
+.putnbr2:
+	mov		eax, DWORD PTR -4[rbp]
 	add		eax, 48
-	movsx	eax, al
 	mov		edi, eax
-	call	putchar
-putnbr2:
+	call	putchar@PLT
+.putnbr3:
 	nop
 	leave
 	ret

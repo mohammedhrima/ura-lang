@@ -209,6 +209,7 @@ void tokenize(char *input)
 #if AST
 Node *expr_node();
 Node *assign_node();
+Node *logic_node();
 Node *equality_node();
 Node *comparison_node();
 Node *add_sub_node();
@@ -254,13 +255,13 @@ Node *expr_node()
 
 Node *assign_node()
 {
-    Node *left = equality_node();
+    Node *left = logic_node();
     Token *token;
     while ((token = check(assign_, add_assign_, sub_assign_, mul_assign_, div_assign_, 0)))
     {
         Node *node = new_node(token);
         node->token->space = left->token->space;
-        Node *right = equality_node();
+        Node *right = logic_node();
         switch(token->type)
         {
             case add_assign_: case sub_assign_: case mul_assign_: case div_assign_:
@@ -283,6 +284,20 @@ Node *assign_node()
         }
         node->left = left;
         node->right = right;
+        left = node;
+    }
+    return left;
+}
+
+Node *logic_node()
+{
+    Node *left = equality_node();
+    Token *token;
+    while (token = check(or_, and_, 0))
+    {
+        Node *node = new_node(token);
+        node->left = left;
+        node->right = equality_node();
         left = node;
     }
     return left;

@@ -31,7 +31,9 @@
 
 #if IR
 #define BUILTINS 1
-#define OPTIMIZE 1
+#ifndef OPTIMIZE
+#define OPTIMIZE 0
+#endif
 #define ASM 1
 #endif
 
@@ -87,6 +89,7 @@ typedef enum
     lpar_, rpar_, 
     mul_, add_, sub_, div_, mod_,
     equal_, not_equal_, less_, more_, less_equal_, more_equal_,
+    and_, or_,
     id_, int_, bool_, char_, chars_, void_, float_, ptr_, struct_,
     end_struct_,
     coma_,
@@ -114,6 +117,8 @@ char *to_string(Type type)
     case more_: return "MORE THAN";
     case more_equal_: return "MORE THAN OR EQUAL";
     case less_equal_: return "LESS THAN OR EQUAL";
+    case and_: return "AND";
+    case or_: return "OR";
     
     case float_: return "FLOAT";
     case int_: return "INT";
@@ -269,6 +274,7 @@ Specials *specials = (Specials[])
     {"+", add_}, {"-", sub_}, {"*", mul_}, {"/", div_}, {"%", mod_}, {"(", lpar_}, 
     {")", rpar_}, {",", coma_}, {"if", if_}, {"elif", elif_},
     {"else", else_}, {"while", while_}, {"func", fdec_}, {"return", ret_},
+    {"and", and_}, {"&&", and_}, {"or", or_}, {"||", or_},
     {0, (Type)0},
 };
 
@@ -481,7 +487,9 @@ void pasm(char *fmt, ...)
                 if(token->creg)
                     fprintf(asm_fd, "%s", token->creg); 
                 else
-                    switch(token->type)
+                {
+                    Type type = token->retType ? token->retType : token->type;
+                    switch(type)
                     {
                     case chars_:
                         fputs("rax", asm_fd); break;
@@ -491,8 +499,9 @@ void pasm(char *fmt, ...)
                         fputs("al", asm_fd); break;
                     case float_:
                         fputs("xmm0", asm_fd); break;
-                    default: error("%s: Unkown type [%s]\n", FUNC, to_string(token->type)); break;
+                    default: error("%s:%d Unkown type [%s]\n", FUNC, LINE, to_string(token->type)); break;
                     }
+                }
             }
             else if(fmt[i] == 'a')
             {
@@ -505,7 +514,7 @@ void pasm(char *fmt, ...)
                 case char_:  fprintf(asm_fd, "BYTE PTR -%ld[rbp]", token->ptr); break;
                 case bool_:  fprintf(asm_fd, "BYTE PTR -%ld[rbp]", token->ptr); break;
                 case float_: fprintf(asm_fd, "DWORD PTR -%ld[rbp]", token->ptr); break;
-                default: error("%s: Unkown type [%s]\n", FUNC, to_string(token->type)); break;
+                default: error("%s:%d Unkown type [%s]\n", FUNC, LINE, to_string(token->type)); break;
                 }
             }
             else if(fmt[i] == 'v')
@@ -517,7 +526,7 @@ void pasm(char *fmt, ...)
                 case int_:  fprintf(asm_fd, "%lld", token->Int.value); break;
                 case bool_: fprintf(asm_fd, "%d", token->Bool.value); break;
                 case char_: fprintf(asm_fd, "%d", token->Char.value); break;
-                default: error("%s: Unkown type [%s]\n", FUNC, to_string(token->type)); break;
+                default: error("%s:%d Unkown type [%s]\n", FUNC, LINE, to_string(token->type)); break;
                 }
             }
             else {

@@ -637,6 +637,7 @@ Token *generate_ir(Node *node)
                     // TODO: add line after
                     exit(1);
                 }
+                // TODO: use sreg attribute
                 if(eregs[i])
                 {
                     if (inst->left->type == int_)
@@ -730,10 +731,45 @@ Token *generate_ir(Node *node)
             }
             case not_equal_: case equal_: case less_: 
             case more_: case less_equal_: case more_equal_:
-                node->token->retType = bool_; break;
+                node->token->retType = bool_;
+                node->token->index = ++bloc_index;
+                debug(RED"this is [%d]\n"RESET, node->token->sreg);
+                break;
             default: break;
         }
         // inst->token->type = left->type; // TODO: to be checked
+        break;
+    }
+    case and_: case or_:
+    {
+        // TODO: check if left nad right are type is bool or retType is bool
+        Token *left = generate_ir(node->left);
+
+        node->token->index = ++bloc_index;
+        Token *end = copy_token(node->token);
+        if(node->token->type == and_)
+        {
+            end->type = jne_;
+            if(end->name) free(end->name);
+            end->name = strdup(to_string(node->token->type));
+            new_inst(end);
+        }
+        else if(node->token->type == or_)
+        {
+            end->type = je_;
+            if(end->name) free(end->name);
+            end->name = strdup(to_string(node->token->type));
+            new_inst(end);
+        }
+        Token *right = generate_ir(node->right);
+        end = copy_token(end);
+        end->type = bloc_;
+        new_inst(end);
+
+        node->token->type = bool_;
+        node->token->creg = strdup("al");
+
+        return node->token;
         break;
     }
     case struct_:
@@ -936,11 +972,11 @@ void print_ir()
             ptoken(left);
             break;
         }
-        case jne_:  debug("rxx: jne %s%zu\n", curr->name, curr->index); break;
-        case jmp_:  debug("rxx: jmp %s%zu\n", curr->name, curr->index); break;
+        case jne_: debug("rxx: jne %s%zu\n", curr->name, curr->index); break;
+        case je_:  debug("rxx: je %s%zu\n", curr->name, curr->index); break;
+        case jmp_: debug("rxx: jmp %s%zu\n", curr->name, curr->index); break;
         case bloc_: case end_bloc_: case end_struct_: case fdec_: 
-            debug("%s: [%s]\n", curr->name, to_string(curr->type)); break;
-        
+            debug("%s%zu: [%s]\n", curr->name, curr->index, to_string(curr->type)); break;
         default: 
             debug("%sPrint IR: Unkown inst [%s]%s\n", RED, to_string(curr->type), RESET);
             break;
