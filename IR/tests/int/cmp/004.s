@@ -7,12 +7,16 @@ main:
 	push    rbp
 	mov     rbp, rsp
 	sub     rsp, 16
-	//      declare [a1]
+	//      assign [a]
+	mov     DWORD PTR -4[rbp], 3
+	//      assign [b]
+	mov     DWORD PTR -8[rbp], 4
+	//      declare [c]
 	mov     DWORD PTR -12[rbp], 0
-	//      declare [a2]
-	mov     DWORD PTR -8[rbp], 0
-	//      declare [a3]
-	mov     DWORD PTR -4[rbp], 0
+	mov     eax, DWORD PTR -4[rbp]
+	imul    eax, DWORD PTR -8[rbp]
+	//      assign [c]
+	mov     DWORD PTR -12[rbp], eax
 	mov     eax, 0
 	leave   
 	ret     

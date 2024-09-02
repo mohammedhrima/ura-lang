@@ -6,20 +6,14 @@
 main:
 	push    rbp
 	mov     rbp, rsp
-	sub     rsp, 16
-	//      assign [a]
-	mov     DWORD PTR -4[rbp], 15
-	//      assign [b]
-	mov     DWORD PTR -8[rbp], 5
-	//      declare [c]
-	mov     DWORD PTR -12[rbp], 0
-	mov     eax, DWORD PTR -4[rbp]
-	add     eax, DWORD PTR -8[rbp]
-	//      assign [c]
-	mov     DWORD PTR -12[rbp], eax
+	sub     rsp, 0
+	lea     rax, .STR1[rip]
+	mov     rdi, rax
+	call    putstr
 	mov     eax, 0
 	leave   
 	ret     
 .endmain:
+.STR1: .string "abcde"
 .section	.note.GNU-stack,"",@progbits
 
