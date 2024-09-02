@@ -107,7 +107,6 @@ Token *new_token(char *input, int s, int e, int space, Type type)
 Token *copy_token(Token *token)
 {
     if(token == NULL) return NULL;
-    RLOG(FUNC, "call it [%s]\n", to_string(token->type));
     Token *new = calloc(1, sizeof(Token));
     memcpy(new, token, sizeof(Token));
     if(token->name) // TODO: check all values that can be copied exmaple: name ...

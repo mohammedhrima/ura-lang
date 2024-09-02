@@ -181,13 +181,9 @@ void generate_asm()
                 if(right->name)
                 {
                     if(left->ptr)
-                    {
                         pasm("mov %s, %a\n", right->name, left);
-                    }
                     else if(left->creg)
-                    {
                         pasm("mov %s, %r\n", right->name, left);
-                    }
                     else
                     {
                         switch (left->type)
@@ -213,7 +209,51 @@ void generate_asm()
                 }
                 else
                 {
-                    error("%s:%d handle this case\n");
+                    if(left->ptr)
+                    {
+                        pasm("mov %r, %a\n", left, left);
+                        pasm("push rax\n");
+                    }
+                    else if(left->creg)
+                    {
+                        pasm("mov %r, %a\n", left, left);
+                        pasm("push rax\n");
+                    }
+                    else
+                    {
+                        error("%s:%d handle this case\n", FUNC, LINE);
+                    }
+                }
+                break;
+            }
+            case pop_:
+            {
+                if(right->name)
+                {
+                    pasm("//pop [%s]\n", left->name);
+                    if(left->ptr)
+                    {
+                        switch(left->type)
+                        {
+                            case int_: pasm("mov DWORD PTR -%zu[rbp], %s\n", left->ptr, right->name); break;
+                            default:
+                            {
+                                error("%s:%d handle this case [%s]\n", FUNC, LINE, to_string(left->type)); 
+                                exit(1);
+                                break;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        error("%s:%d handle this case [%s]\n", FUNC, LINE, to_string(left->type)); 
+                        exit(1);
+                    }
+                }
+                else
+                {
+
+                    // error("%s:%d handle this case\n", FUNC, LINE);
                 }
                 break;
             }
