@@ -522,7 +522,7 @@ Token *generate_ir(Node *node)
             }
             free(list);
         }
-        error("%s:%d ptr is %zu\n", FUNC, LINE, ptr);
+        debug("%s:%d ptr is %zu\n", FUNC, LINE, ptr);
         ptr = tmp_ptr;
         // debug(SPLIT);
         // pnode(node, NULL, 0);
@@ -620,11 +620,13 @@ Token *generate_ir(Node *node)
             char *eregs[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d", NULL};
             char *rregs[] = {"rdi", "rsi", "rdx", "rcx", "r8d", "r9d", NULL};
             int i = 0;
+            int j = 0;
+            int k = 0;
             // size_t ptr = 8;
         
             Node *curr = node;
             arg = func->left->right;
-            while(curr->left)
+            while(curr->left && arg)
             {
                 Token *left = generate_ir(curr->left);
                 Inst *inst = new_inst(new_token(NULL, 0, 0, node->token->space, push_));
@@ -639,7 +641,7 @@ Token *generate_ir(Node *node)
                     !(inst->left->type == chars_ && arg->left->token->type == ptr_)
                 )
                 {
-                    error("Incompatible type for function call <%s>\n", func->token->name);
+                    error("%s:%d Incompatible type for function call <%s>\n", FUNC, LINE, func->token->name);
                     // TODO: add line after
                     exit(1);
                 }
@@ -655,9 +657,31 @@ Token *generate_ir(Node *node)
                     inst->right = new_token(NULL, 0, 0, node->token->space, 0);
                 curr = curr->right;
                 arg = arg->right;
+                j++;
+            }
+            if(arg)
+            {           
+                k = j;
+                while(arg)
+                {
+                    arg = arg->right;
+                    k++;
+                }
+                error(
+                "function [%s] takes %d argument(s) but receive %d\n", func->token->name, k, j);
+            }
+            else if(curr->left)
+            {
+                k = j;
+                while(curr->left)
+                {
+                    curr = curr->right;
+                    k++;
+                }
+                error(
+                "function [%s] takes %d argument(s) but receive %d\n", func->token->name, j, k);
             }
             new_inst(node->token);
-            // exit(1);
         }
         arg_ptr = tmp_arg_ptr;
         ptr = tmp_ptr;
@@ -708,8 +732,9 @@ Token *generate_ir(Node *node)
             !(left->type == chars_ && right->retType == ptr_)
         )
         {
-            error("Incompatible type for <%s> and <%s>",
-            to_string(left->type), to_string(right->type));
+            debug("%s:%d left[%s], right [%s]\n",FUNC, LINE, to_string(left->retType), to_string(right->type));
+            error("%s:%d Incompatible type for [%s] and [%s]", FUNC, LINE,
+            to_string(left->type), to_string(right->type) );
             exit(1);
         }
         inst = new_inst(node->token);
@@ -728,9 +753,9 @@ Token *generate_ir(Node *node)
                     exit(1);
                 }
                 node->token->retType = left->type;
-                if(left->type == int_)  node->token->creg = strdup("eax");
+                if(right->type == int_)  node->token->creg = "eax";
                 else 
-                if(left->type == float_) node->token->creg = strdup("xmm0");
+                if(right->type == float_) node->token->creg = "xmm0";
                 break;
             }
             case not_equal_: case equal_: case less_: 
@@ -771,7 +796,7 @@ Token *generate_ir(Node *node)
         new_inst(end);
 
         node->token->type = bool_;
-        node->token->creg = strdup("al");
+        node->token->creg = "al";
 
         return node->token;
         break;
@@ -838,11 +863,11 @@ void print_ir()
             {
                 switch (right->type)
                 { // TODO: handle the other cases
-                case int_: debug("%lld", right->Int.value); break;
+                case int_:  debug("%lld", right->Int.value); break;
                 case bool_: debug("%s", right->Bool.value ? "True" : "False"); break;
-                case float_: debug("%f", right->Float.value); break;
+                case float_:debug("%f", right->Float.value); break;
                 case char_: debug("%c", right->Char.value); break;
-                case chars_: debug("%s", right->Chars.value); break;
+                case chars_:debug("%s", right->Chars.value); break;
                 default: error("%s:%d: handle this case\n", FUNC, LINE); exit(1); break;
                 }
             }
@@ -1057,7 +1082,7 @@ bool optimize_ir(int op_index)
             if (check_type((Type[]){int_, float_, chars_, bool_, char_, 0}, token->type) && !token->name)
             {
                 // token->c = 0;
-                free(token->creg);
+                // free(token->creg);
                 token->creg = NULL;
                 // debug("found to remove in r%d\n", token->r1);
                 token->remove = true;

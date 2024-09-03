@@ -20,7 +20,6 @@ void finalize()
         if(curr->type == float_ && !curr->name && !curr->ptr && curr->index)
             pasm(".FLT%zu: .long %zu /* %f */\n", curr->index,  
             *((uint32_t *)(&curr->Float.value)), curr->Float.value);
-        if(curr->creg) free(curr->creg);
     }
     pasm(".section	.note.GNU-stack,\"\",@progbits\n\n");
 #endif
@@ -159,7 +158,7 @@ void generate_asm()
                     default: error("%s: Unkown type [%s]\n", FUNC, to_string(left->type)); break;
                 }
                 curr->retType = bool_;
-                curr->creg = strdup("al");
+                curr->creg = "al";
                 pasm("%i%r\n", inst, curr);
                 break;
             }
@@ -286,14 +285,14 @@ void generate_asm()
             {
                 pasm("%ial, 1\n", "cmp");
                 pasm("%i.%s%zu\n", "je", curr->name, curr->index);
-                // curr->creg = strdup("al");
+                // curr->creg = "al";
                 break;
             }
             case jne_:
             {
                 pasm("%ial, 1\n", "cmp");
                 pasm("%i.%s%zu\n", "jne", curr->name, curr->index);
-                // curr->creg = strdup("al");
+                // curr->creg = "al";
                 break;
             }
             case jmp_:
