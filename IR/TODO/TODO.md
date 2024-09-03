@@ -1,4 +1,4 @@
-+ use a variadic functions instead of vprintf
++ refector the code
 + 16/08:
     - variable declaration/assignement:
         - int, char, bool, float, chars

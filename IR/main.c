@@ -80,30 +80,31 @@ int main(int argc, char **argv)
             curr = curr->right;
         }
         exit_scoop();
-        insts = copy_insts(first_insts, insts, inst_pos, inst_size);
-        print_ir();
-
-#if OPTIMIZE
-        int i = 0;
-        bool optimized = false;
-        while(i < MAX_OPTIMIZATION)
+        if(!found_error)
         {
-            optimized = optimize_ir(i++) || optimized;
             insts = copy_insts(first_insts, insts, inst_pos, inst_size);
             print_ir();
-            if(i == MAX_OPTIMIZATION && optimized)
+#if OPTIMIZE
+            int i = 0;
+            bool optimized = false;
+            while(i < MAX_OPTIMIZATION)
             {
-                optimized = false;
-                i = 0;
+                optimized = optimize_ir(i++) || optimized;
+                insts = copy_insts(first_insts, insts, inst_pos, inst_size);
+                print_ir();
+                if(i == MAX_OPTIMIZATION && optimized)
+                {
+                    optimized = false;
+                    i = 0;
+                }
             }
-        }
 #endif
-
 #endif
 
 #if ASM
-    generate_asm();
+            generate_asm();
 #endif
+        }
     }
 #endif
     clear(head, tokens, first_insts, input);

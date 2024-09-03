@@ -214,6 +214,7 @@ Node *comparison_node();
 Node *add_sub_node();
 Node *mul_div_node();
 Node *dot_node();
+Node *sign_node();
 Node *prime_node();
 
 Node *new_node(Token *token)
@@ -360,13 +361,13 @@ Node *mul_div_node()
 
 Node *dot_node()
 {
-    Node *left = prime_node();
+    Node *left = sign_node();
     Token *token = NULL;
     if((token = check(module_, 0)))
     {
         Node *node = new_node(token);
         node->left = left;
-        node->right = prime_node();
+        node->right = sign_node();
         // GLOG("", "found module\n");
         // pnode(node, NULL, 0);
         // exit(1);
@@ -380,6 +381,25 @@ Node *dot_node()
         return node;
     }
     return left;
+}
+
+Node *sign_node()
+{
+    Token *token = NULL;
+    if((token = check(sub_, 0)))
+    {
+        //TODO: check type could be int or float only
+        token->type = mul_;
+        Node *node = new_node(token);
+        node->left = prime_node();
+        node->right = new_node(new_token(NULL, 0, 0, token->space, int_));
+        node->right->token->Int.value = -1;
+        // GLOG("", "found module\n");
+        // pnode(node, NULL, 0);
+        // exit(1);
+        return node;
+    }
+    return prime_node();
 }
 
 Specials DataTypes[] = {
@@ -519,7 +539,7 @@ Node *prime_node()
             {
                 curr->right = new_node(NULL);
                 curr = curr->right;
-                curr->left = prime_node();
+                curr->left = expr_node();
                 // TODO: check all types
                 if(!check_type((Type[]){int_, char_, chars_, bool_, float_, 0},
                     curr->left->token->type) || !curr->left->token->declare)
