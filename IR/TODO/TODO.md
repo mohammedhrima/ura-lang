@@ -93,3 +93,6 @@
 + after:
     + handle this "aaaa""efg"
     + handle unsigned data
+    + in output try this approach:
+        int a = 10;
+        output("this is %a")
