@@ -1,8 +1,8 @@
-FROM debian:stable
+FROM debian:latest
 
-WORKDIR /wolf-compiler
+WORKDIR /code
 COPY . .
 
 RUN apt update -y && apt full-upgrade -y && apt install -y gcc g++ vim man git python3
 
-CMD ["sh", "_setup.sh"]
+CMD ["sh", "setup.sh"]

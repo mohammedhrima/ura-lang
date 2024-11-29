@@ -1,16 +1,8 @@
 services:
   wolf_service:
-    image: "wolf_image"
-    container_name: wolf_container
-    build: "./"
+    container_name: wcc
+    build: .
     volumes:
-      - "wolf_volume:/wolf-compiler"
-    restart: on-failure
+      - ./code:/code
 
-volumes:
-  wolf_volume:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: "./"
+#restart: always
