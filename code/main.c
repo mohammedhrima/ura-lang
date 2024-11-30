@@ -19,6 +19,35 @@
 #define FUNC __func__
 #define FILE __FILE__
 
+#define TOKENIZE 1
+
+#if TOKENIZE
+#define AST 1
+#endif
+
+#if AST
+#define IR 1
+#else
+#define IR 0
+#endif
+
+#define MAX_OPTIMIZATION 3
+#define WITH_COMMENTS 1
+
+#if IR
+#define BUILTINS 0
+#ifndef OPTIMIZE
+#define OPTIMIZE 0
+#endif
+#define ASM 0
+#endif
+
+#ifndef DEBUG
+#define DEBUG 1
+#endif
+
+void check(bool cond, char *fmt, ...);
+
 // STRUCTS
 typedef enum
 {
@@ -27,7 +56,8 @@ typedef enum
     EQUAL, NOT_EQUAL, LESS_EQUAL, MORE_EQUAL, LESS, MORE,
     ADD, SUB, MUL, DIV, MOD, AND, OR, RPAR, LPAR, COMA,
     RETURN, DOT, DOTS, IF, ELIF, ELSE, WHILE, FDEC, FCALL,
-    INT, VOID, CHARS, CHAR, BOOL, FLOAT, STRUCT, ID, END
+    INT, VOID, CHARS, CHAR, BOOL, FLOAT, STRUCT, ID, END_BLOC,
+    END
 } Type;
 
 char *to_string(Type type)
@@ -56,8 +86,8 @@ char *to_string(Type type)
     case AND: return "AND";
     case OR: return "OR";
 
-    case RPAR: return "RIGHT PARENTHESIS";
-    case LPAR: return "LEFT PARENTHESIS";
+    case RPAR: return "R_PAR";
+    case LPAR: return "L_PAR";
     case COMA: return "COMMA";
 
     case RETURN: return "RETURN";
@@ -69,8 +99,8 @@ char *to_string(Type type)
     case ELSE: return "ELSE";
     case WHILE: return "WHILE";
 
-    case FDEC: return "FUNCTION DECLARATION";
-    case FCALL: return "FUNCTION CALL";
+    case FDEC: return "F_DEC";
+    case FCALL: return "F_CALL";
 
     case INT: return "INT";
     case VOID: return "VOID";
@@ -80,11 +110,17 @@ char *to_string(Type type)
     case FLOAT: return "FLOAT";
 
     case STRUCT: return "STRUCT";
-    case ID: return "IDENTIFIER";
+    case ID: return "ID";
+    case END_BLOC: return "END_BLOC";
     case END: return "END";
 
-    default: return "UNKNOWN";
+    default:
+    {
+        check(1, "Unknown type [%d]\n", type);
+        return "UNKNOWN";
+    };
     }
+    return NULL;
 }
 
 typedef struct
@@ -186,14 +222,14 @@ void check(bool cond, char *fmt, ...)
 
 void ptoken(Token *token)
 {
-    debug("token: space [%.2d] [%-10s] ", token->space, to_string(token->type));
+    debug("token: space [%.2d] [%-6s] ", token->space, to_string(token->type));
     switch (token->type)
     {
     case VOID: case CHARS: case CHAR: 
     case INT: case BOOL: case FLOAT:
     {
+        if (token->name) debug(" name [%-4s] ", token->name);
         if (token->declare) debug("[declare] ");
-        if (token->name) debug("name [%-5s] ", token->name);
         if(!token->name && !token->declare)
         {
             if (token->type == INT)
@@ -214,7 +250,7 @@ void ptoken(Token *token)
         break;
     }
     case FCALL: case FDEC: case ID:
-        debug("name [%-3s] ", token->name);
+        debug(" name [%-4s] ", token->name);
         break;
     default:
     {
@@ -310,8 +346,10 @@ Token *new_token(char *input, size_t s, size_t e, Type type, size_t space)
 
 Token **tokenize(char *input)
 {
-    size_t len = 10;
-    size_t pos = 0;
+    if(!TOKENIZE) return NULL;
+	debug(GREEN"=========== TOKENIZE ===========\n"RESET);
+    // size_t len = 10;
+    // size_t pos = 0;
     size_t i = 0;
     size_t space = 0;
     bool inc_space = true;
@@ -369,6 +407,8 @@ Token **tokenize(char *input)
         check(input[i], "Syntax error <%c>\n", input[i]);
     }
     new_token(input, 0, 0, END, space);
+    for (size_t i = 0; tokens[i]; i++)
+        ptoken(tokens[i]);
     return tokens;
 }
 
@@ -413,8 +453,8 @@ void pnode(Node *node, char *side, int space)
 		debug("node: ");
 		if(node->token) ptoken(node->token);
 		else debug("(NULL)\n");
-		pnode(node->left, "LEFT : ", space + 5);
-		pnode(node->right, "RIGHT: ", space + 5);
+		pnode(node->left, "L:", space + 2);
+		pnode(node->right, "R:", space + 2);
 	}
 }
 
@@ -511,9 +551,10 @@ Node *sign()
 Node *prime()
 {
     Token *token;
+    Node *node = NULL;
     if((token = find(ID, INT, 0)))
     {
-        if(token->declare)
+        if(token->declare) // int num
         {
 			debug("is declare %d\n", token->declare);
             Token *tmp = find(ID, 0);
@@ -521,9 +562,62 @@ Node *prime()
 			ptoken(token);
             check(!token, "Expected variable name after [%s] symbol\n", to_string(token->type));
         }
-        return new_node(token);
+        else if(token->type == ID && token->name && find(LPAR, 0)) // id
+        {
+            if(strcmp(token->name, "main") == 0)
+            {
+                debug(RED"found [%s]\n"RESET, token->name);
+                // TODO: expect ( and )
+                check(!find(RPAR, 0), "expected ) after main declaration");
+                check(!find(DOTS, 0), "expected : after main() declaration");
+                node = new_node(token);
+                token->type = FDEC;
+                size_t space = token->space;
+                Node *curr = node;
+                while(tokens[exe_pos]->space > space && tokens[exe_pos]->type != END)
+                {
+                    curr->right = new_node(NULL);
+                    curr = curr->right;
+                    curr->left = expr();
+                }
+                return node;
+            }
+            else
+            {
+
+            }
+        }
+        node = new_node(token);
     }
-    return NULL;
+    else if((token = find(LPAR, 0)))
+    {
+        node = expr();
+        check(!find(RPAR, 0), "Expected )\n");
+    }
+    return node;
+}
+
+Node *ast()
+{
+    if(!AST) return NULL;
+    debug(GREEN"===========   AST    ===========\n"RESET);
+	Node *head = new_node(NULL);
+	Node *curr = head;
+	curr->left = expr();
+	while(curr->left)
+	{
+		curr->right = new_node(NULL);
+		curr = curr->right;
+		curr->left = expr();
+	}
+    debug(GREEN"=========== PRINT AST ==========\n"RESET);
+	curr = head;
+	while(curr)
+	{
+		pnode(curr->left, NULL, 0);
+		curr = curr->right;
+	}
+    return head;
 }
 
 // IR
@@ -537,14 +631,27 @@ typedef struct
 Inst **OrgInsts;
 Inst **insts;
 
-void copy_inst()
+void clone_insts()
 {
-	
-}
+    size_t pos = 0;
+    size_t len = 100;
+    free(insts);
+    insts = allocate(len, sizeof(Inst*));
 
-Inst** clone_insts()
-{
-
+    for(size_t i = 0; OrgInsts[i]; i++)
+    {
+        if(!OrgInsts[i]->token->remove)
+        {
+            insts[pos++] = OrgInsts[i];
+            if(pos + 1 == len)
+            {
+                Inst **tmp = allocate((len *= 2), sizeof(Inst*));
+                memcpy(tmp, insts, pos * sizeof(Inst*));
+                free(insts);
+                insts = tmp;
+            }
+        }
+    }
 }
 
 void add_inst(Inst *inst)
@@ -582,6 +689,7 @@ int sizeofToken(Token* token)
     }
     return 0;
 }
+
 size_t ptr;
 Inst *new_inst(Token *token)
 {
@@ -596,10 +704,100 @@ Inst *new_inst(Token *token)
 	add_inst(new);
 	return new;
 }
-
+// TODO: implement it
 bool are_compatible(Token *left, Token *right)
 {
 	return true;
+}
+
+typedef struct
+{
+    char *name;
+    
+    Node **functions;
+    size_t fpos;
+    size_t fsize;
+
+    Token **vars;
+    size_t vpos;
+    size_t vsize;
+
+} Scoop;
+
+Scoop *Gscoop;
+Scoop *scoop;
+size_t scoopSize;
+size_t scoopPos;
+
+#define ENTER 1
+#define EXIT  2
+
+void enter_scoop(char *name)
+{
+    debug(CYAN"Enter Scoop [%s]\n"RESET, name);
+    if(Gscoop == NULL)
+    {
+        scoopSize = 10;
+        Gscoop = allocate(scoopSize, sizeof(Scoop));
+    }
+    else if(scoopPos + 1 == scoopSize)
+    {
+        Scoop *tmp = allocate(scoopSize * 2, sizeof(Scoop));
+        memcpy(tmp, Gscoop, scoopPos * sizeof(Scoop));
+        scoopSize *= 2;
+        free(Gscoop);
+        Gscoop = tmp;
+    }
+    scoopPos++;
+    Gscoop[scoopPos] = (Scoop){};
+    Gscoop[scoopPos].name = name;
+    scoop = &Gscoop[scoopPos];
+}
+
+void exit_scoop()
+{
+    debug(CYAN"Exit Scoop [%s]\n"RESET, scoop->name);
+    free(scoop->functions);
+    free(scoop->vars);
+    scoop[scoopPos] = (Scoop){};
+    scoop = &Gscoop[--scoopPos];
+}
+
+Node *new_function(Node *node)
+{
+    debug("new func %s in %s scoop\n", node->token->name, scoop->name);
+#if 0
+    char *builtins[] = {"output", 0};
+    for(int i = 0; builtins[i]; i++)
+    {
+        if(strcmp(node->token->name, builtins[i]) == 0)
+        {
+            error("%s is a built in function\n", node->token->name);
+            exit(1);
+        }
+    }
+#endif
+    for(size_t i = 0; i < scoop->fpos; i++)
+    {
+        Node *func = scoop->functions[i];
+        bool cond = strcmp(func->token->name, node->token->name) == 0;
+        check(cond, "Redefinition of %s\n", node->token->name);
+    }
+    if(scoop->functions == NULL)
+    {
+        scoop->fsize = 10;
+        scoop->functions = allocate(scoop->fsize, sizeof(Node*));
+    }
+    else if(scoop->fpos + 1 == scoop->fsize)
+    {
+        scoop->fsize *= 2;
+        Node **tmp = allocate(scoop->fsize, sizeof(Node*));
+        memcpy(tmp, scoop->functions, scoop->fpos * sizeof(Node*));
+        free(scoop->functions);
+        scoop->functions = tmp;
+    }
+    scoop->functions[scoop->fpos++] = node;
+    return node;
 }
 
 Token *generate_ir(Node *node)
@@ -623,6 +821,23 @@ Token *generate_ir(Node *node)
 		inst->token->retType = left->type;
 		break;
 	}
+    case FDEC:
+    {
+        new_function(node);
+        enter_scoop(node->token->name);
+        inst = new_inst(node->token);
+        Node *curr = node->right;
+        while(curr)
+        {
+            generate_ir(curr->left);
+            curr = curr->right;
+        }
+        Token *new = new_token(NULL, 0, 0, END_BLOC, node->token->space);
+        new->name = strdup(node->token->name);
+        new_inst(new);
+        exit_scoop();
+        break;
+    }
 	default: break;
 	}
 	return inst->token;
@@ -630,18 +845,24 @@ Token *generate_ir(Node *node)
 
 void print_ir()
 {
-	for(size_t i = 0; OrgInsts[i]; i++)
+    debug(GREEN"==========   PRINT IR  =========\n"RESET);
+    int i = 0;
+    clone_insts();
+	for(i = 0; insts[i]; i++)
 	{
-		Token *curr = OrgInsts[i]->token;
-        Token *left = OrgInsts[i]->left;
-        Token *right = OrgInsts[i]->right;
+		Token *curr = insts[i]->token;
+        Token *left = insts[i]->left;
+        Token *right = insts[i]->right;
+        debug("r%.2d:", curr->reg);
+        int k = 0;
+        while(k < curr->space)
+            k += printf(" ");
 		switch(curr->type)
 		{
 		case ASSIGN: case ADD: case SUB: case MUL: case DIV:
 		{
 			curr->reg = left->reg;
-			debug("r%.2d: [%-10s] ", curr->reg, to_string(curr->type));
-			debug("r%.2d to ", left->reg);
+			debug("[%-6s] r%.2d to ", to_string(curr->type), left->reg);
 			if (right->reg)
                 debug("r%.2d", right->reg);
             else
@@ -661,7 +882,7 @@ void print_ir()
 		}
 		case INT:
 		{
-			debug("r%.2d: [%-10s] ", curr->reg, to_string(curr->type));
+			debug("[%-6s] ", to_string(curr->type));
 			if (curr->declare)  debug("declare [%s] PTR=[%zu]", curr->name, curr->ptr);
             else if(curr->name) debug("variable %s ", curr->name);
             else if(curr->type == INT) debug("value %lld ", curr->Int.value);
@@ -681,9 +902,20 @@ void print_ir()
 			debug("\n");
 			break;
 		}
+        case FDEC:
+        {
+            debug("[%s] bloc\n", curr->name);
+            break;
+        }
+        case END_BLOC:
+        {
+            debug("[%s] endbloc\n", curr->name);
+            break;
+        }
 		default: break;
 		}
 	}
+    debug("total instructions [%d]\n", i);
 }
 
 bool includes(Type *types, Type type)
@@ -699,18 +931,18 @@ bool optimize_ir(int op)
 	{
 		case 0:
 		{
-			debug("OPTIMIZATION %d (calculate operations on constant type 0)\n", op);
-			for (int i = 0; OrgInsts[i]; i++)
+			debug(CYAN"OP[%d] calculate operations on constants\n"RESET, op);
+			for (int i = 0; insts[i]; i++)
 			{
-				Token *token = OrgInsts[i]->token;
-	            Token *left = OrgInsts[i]->left;
-    	        Token *right = OrgInsts[i]->right;
+				Token *token = insts[i]->token;
+	            Token *left = insts[i]->left;
+    	        Token *right = insts[i]->right;
 				if(includes((Type[]){ADD, SUB, MUL, DIV, 0}, token->type))
 				{
 					Type types[] = {INT, FLOAT, CHAR, 0};
-					if (includes(types, left->type) && 
-						includes(types, right->type) &&
-						!left->name && !right->name)
+					if 
+                    (includes(types, left->type) && includes(types, right->type) && 
+                    !left->name && !right->name)
 					{
 					switch(left->type)
                     {
@@ -750,16 +982,145 @@ bool optimize_ir(int op)
 					token->type = left->type;
                     left->remove = true;
                     right->remove = true;
-                    OrgInsts = clone_insts(insts);
+                    clone_insts();
                     i = 0;
                     optimize = true;
 				}
 			}
 			break;
 		}
+        case 1:
+        {
+			debug(CYAN"OP[%d] calculate operations on constants\n"RESET, op);
+            int i = 1;
+            while (insts[i])
+            {
+                Token *token = insts[i]->token;
+                Token *left = insts[i]->left;
+                Token *right = insts[i]->right;
+                if (
+                    //  TODO: handle string also here X'D ma fiyach daba
+                    includes((Type[]){ADD, SUB, MUL, DIV, 0}, token->type) &&
+                    insts[i - 1]->token->type == ADD &&
+                    left == insts[i - 1]->token &&
+                    !insts[i - 1]->right->name &&
+                    !right->name)
+                {
+                    // debug("%sfound %s\n", RED, RESET);
+                    token->remove = true;
+                    switch(token->type)
+                    {
+                    case ADD: insts[i - 1]->right->Int.value += right->Int.value; break;
+                    case SUB: insts[i - 1]->right->Int.value -= right->Int.value; break;
+                    case MUL: insts[i - 1]->right->Int.value *= right->Int.value; break;
+                    case DIV: insts[i - 1]->right->Int.value /= right->Int.value; break;
+                    default: break;
+                    }
+                    // debug("value is %lld\n", insts[i - 1]->right->Int.value);
+                    if (insts[i + 1]->left == token) insts[i + 1]->left = insts[i - 1]->token;
+                    i = 1;
+                    clone_insts();
+                    optimize = true;
+                    continue;
+                }
+                i++;
+            }
+            break;
+        }
+        case 2:
+        {
+			debug(CYAN"OP[%d] remove reassigned variables\n"RESET, op);
+            for (int i = 0; insts[i]; i++)
+            {
+                if (insts[i]->token->declare)
+                {
+                    int j = i + 1;
+                    while (insts[j] && insts[j]->token->space == insts[i]->token->space)
+                    {
+                        debug("line %d: ", LINE);
+                        ptoken(insts[j]->token);
+                        if (insts[j]->token->type == ASSIGN && insts[j]->left == insts[i]->token)
+                        {
+                            insts[i]->token->declare = false;
+                            insts[i]->token->remove = true;
+                            optimize = true;
+                            break;
+                        }
+                        if 
+                        (
+                            (insts[j]->left && insts[j]->left->reg == insts[i]->token->reg)
+                            ||
+                            (insts[j]->right && insts[j]->right->reg == insts[i]->token->reg)
+                        )
+                            break;
+                        j++;
+                    }
+                }
+                else if (insts[i]->token->type == ASSIGN)
+                {
+                    int j = i + 1;
+                    while (insts[j] && insts[j]->token->space == insts[i]->token->space)
+                    {
+                        if(!insts[j]->left || !insts[j]->right || !insts[i]->token)
+                        {
+                            j++;
+                            continue;
+                        }
+                        if 
+                        (
+                            insts[j]->token->type == ASSIGN && 
+                            insts[j]->left == insts[i]->left
+                        )
+                        {
+                            insts[i]->token->remove = true;
+                            optimize = true;
+                            break;
+                        }
+                        // if the variable is used some where
+                        else if 
+                        (
+                            insts[j]->left->reg == insts[i]->token->reg || 
+                            insts[j]->right->reg == insts[i]->token->reg
+                        )
+                            break;
+                        j++;
+                    }
+                }
+            }
+            break;
+        }
 		default: break;
 	}
 	return optimize;
+}
+
+void ir(Node *head)
+{
+    if(!IR) return;
+    
+    debug(GREEN"========== GENERATE IR =========\n"RESET);
+    enter_scoop("");
+	Node *curr = head;
+	while (curr->left)
+	{
+		generate_ir(curr->left);
+		curr = curr->right;
+	}
+    exit_scoop();
+
+    int i = 0;
+    bool optimized = false;
+    while(i < MAX_OPTIMIZATION)
+    {
+        print_ir();
+        optimized = optimize_ir(i++) || optimized;
+        if(i == MAX_OPTIMIZATION && optimized)
+        {
+            optimized = false;
+            i = 0;
+        }
+    }
+    print_ir();
 }
 // ASSEMBLY
 
@@ -767,55 +1128,21 @@ bool optimize_ir(int op)
 int main()
 {
     char *input = open_file("file.w");
-	debug(GREEN"=========== TOKENIZE ===========\n"RESET);
 	// debug("===========    IR    ===========\n");
     Token **tokens = tokenize(input);
-    for (size_t i = 0; tokens[i]; i++)
-        ptoken(tokens[i]);
-	
-	debug(GREEN"===========   AST    ===========\n"RESET);
-	Node *head = new_node(NULL);
-	Node *curr = head;
-	curr->left = expr();
-	while(curr->left)
-	{
-		curr->right = new_node(NULL);
-		curr = curr->right;
-		curr->left = expr();
-	}
-
-	debug(GREEN"=========== PRINT AST ==========\n"RESET);
-	curr = head;
-	while(curr)
-	{
-		pnode(curr->left, NULL, 0);
-		curr = curr->right;
-	}
-
-	debug(GREEN"========== GENERATE IR =========\n"RESET);
-	curr = head;
-	while (curr->left)
-	{
-		generate_ir(curr->left);
-		curr = curr->right;
-	}
-	debug(GREEN"==========   PRINT IR  =========\n"RESET);
-	print_ir();
-	
+	Node *head = ast();
+    ir(head);
 	free_node(head);
-	for (size_t i = 0; OrgInsts[i]; i++)
+	for (size_t i = 0; OrgInsts && OrgInsts[i]; i++)
         free(OrgInsts[i]);
-	for (size_t i = 0; tokens[i]; i++)
+	for (size_t i = 0; tokens && tokens[i]; i++)
         free_token(tokens[i]);
     free(tokens);
     free(input);
 }
 
 /*
-14:45 => 15:30
-15:46 => 16:53
-17:05 => 17:43
-17:52 => 18:22
-18:33 => 18:53
-19:40 =>
+15:00 => 16:29
+17:20 => 18:20
+
 */
