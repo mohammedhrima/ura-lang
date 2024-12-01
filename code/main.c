@@ -31,7 +31,7 @@
 #define IR 0
 #endif
 
-#define MAX_OPTIMIZATION 3
+#define MAX_OPTIMIZATION 5
 #define WITH_COMMENTS 1
 
 #if IR
@@ -46,7 +46,6 @@
 #define DEBUG 1
 #endif
 
-void check(bool cond, char *fmt, ...);
 
 // STRUCTS
 typedef enum
@@ -59,6 +58,10 @@ typedef enum
     INT, VOID, CHARS, CHAR, BOOL, FLOAT, STRUCT, ID, END_BLOC,
     END
 } Type;
+
+// PROTOTYPES
+void check(bool cond, char *fmt, ...);
+bool includes(Type *types, Type type);
 
 char *to_string(Type type)
 {
@@ -114,11 +117,7 @@ char *to_string(Type type)
     case END_BLOC: return "END_BLOC";
     case END: return "END";
 
-    default:
-    {
-        check(1, "Unknown type [%d]\n", type);
-        return "UNKNOWN";
-    };
+    default: check(1, "Unknown type [%d]\n", type);
     }
     return NULL;
 }
@@ -133,6 +132,8 @@ typedef struct
     size_t space;
 	bool remove;
 	size_t reg;
+    char *creg;
+    size_t index;
 
     struct
     {
@@ -183,7 +184,7 @@ typedef struct
 Specials *specials = (Specials[]){
     {".", DOT}, {":", DOTS}, {"+=", ADD_ASSIGN}, {"-=", SUB_ASSIGN},
     {"*=", MUL_ASSIGN}, {"/=", DIV_ASSIGN}, {"!=", NOT_EQUAL}, 
-    {"==", EQUAL}, {"<=", LESS_EQUAL}, {">=", MORE_EQUAL}, {"<", LESS},
+    {"==", EQUAL},{"is", EQUAL}, {"<=", LESS_EQUAL}, {">=", MORE_EQUAL}, {"<", LESS},
     {">", MORE}, {"=", ASSIGN}, {"+", ADD}, {"-", SUB}, {"*", MUL},
     {"/", DIV}, {"%", MOD}, {"(", LPAR}, {")", RPAR}, {",", COMA},
     {"if", IF}, {"elif", ELIF}, {"else", ELSE}, {"while", WHILE}, 
@@ -191,7 +192,7 @@ Specials *specials = (Specials[]){
     {"or", OR}, {"||", OR}, {0, (Type)0}};
 
 Specials *dataTypes = (Specials[]){
-    {"int", INT}, {"func", FDEC},
+    {"int", INT},{"bool", BOOL}, {"func", FDEC},
     {0,(Type)0}};
 
 // UTILS
@@ -228,7 +229,7 @@ void ptoken(Token *token)
     case VOID: case CHARS: case CHAR: 
     case INT: case BOOL: case FLOAT:
     {
-        if (token->name) debug(" name [%-4s] ", token->name);
+        if (token->name) debug("name  [%-4s] ", token->name);
         if (token->declare) debug("[declare] ");
         if(!token->name && !token->declare)
         {
@@ -242,7 +243,7 @@ void ptoken(Token *token)
                 debug("value [%d] ", token->Bool.value);
             else if (token->type == FLOAT)
                 debug("value [%f] ", token->Float.value);
-            // else if(token->type == chars_)
+            // else if(token->type == CHARS)
             //     debug(" value [%s]", token->Chars.value);
             // else if(token->type == BOOL)
             //     debug(" value [%d]", token->Bool.value);
@@ -250,7 +251,7 @@ void ptoken(Token *token)
         break;
     }
     case FCALL: case FDEC: case ID:
-        debug(" name [%-4s] ", token->name);
+        debug("name  [%-4s] ", token->name);
         break;
     default:
     {
@@ -265,7 +266,7 @@ void ptoken(Token *token)
         break;
     }
     }
-    debug("\n");
+    token->remove ? debug(" [remove]\n") : debug("\n");
 }
 
 void *allocate_func(size_t line, size_t len, size_t size)
@@ -322,14 +323,27 @@ Token *new_token(char *input, size_t s, size_t e, Type type, size_t space)
     {
     case INT:
     {
-        while (s < e)
-            new->Int.value = new->Int.value * 10 + input[s++] - '0';
+        while (s < e) new->Int.value = new->Int.value * 10 + input[s++] - '0';
         break;
     }
     case ID:
     {
         new->name = allocate(e - s + 1, sizeof(char));
         strncpy(new->name, input + s, e - s);
+        if(strcmp(new->name, "True") == 0)
+        {
+            free(new->name);
+            new->name = NULL;
+            new->type = BOOL;
+            new->Bool.value = true;
+        }
+        else if(strcmp(new->name, "False") == 0)
+        {
+            free(new->name);
+            new->name = NULL;
+            new->type = BOOL;
+            new->Bool.value = false;
+        }
         break;
     }
     case CHAR:
@@ -337,16 +351,15 @@ Token *new_token(char *input, size_t s, size_t e, Type type, size_t space)
         new->Char.value = input[s];
         break;
     }
-    default:
-        break;
+    default: break;
     }
     add_token(new);
     return new;
 }
 
-Token **tokenize(char *input)
+void tokenize(char *input)
 {
-    if(!TOKENIZE) return NULL;
+    if(!TOKENIZE) return;
 	debug(GREEN"=========== TOKENIZE ===========\n"RESET);
     // size_t len = 10;
     // size_t pos = 0;
@@ -358,7 +371,11 @@ Token **tokenize(char *input)
         size_t s = i;
         if (isspace(input[i]))
         {
-            if(input[i] == '\n') inc_space = true;
+            if(input[i] == '\n')
+            {
+                inc_space = true;
+                space = 0;
+            }
             else if(inc_space) space++;
             i++;
             continue;
@@ -409,7 +426,6 @@ Token **tokenize(char *input)
     new_token(input, 0, 0, END, space);
     for (size_t i = 0; tokens[i]; i++)
         ptoken(tokens[i]);
-    return tokens;
 }
 
 void free_token(Token *token)
@@ -497,17 +513,45 @@ Node *assign()
 
 Node *logic()
 {
-	return equality();
+	Node *left = equality();
+    Token *token;
+    while((token = find(AND, OR, 0)))
+    {
+        Node *node = new_node(token);
+        node->left = left;
+        node->right = equality();
+        left = node;
+    }
+    return left;
 }
 
+// TODO: handle NOT operator
 Node *equality()
 {
-	return comparison();
+	Node *left = comparison();
+    Token *token;
+    while((token = find(EQUAL, NOT_EQUAL, 0)))
+    {
+        Node *node = new_node(token);
+        node->left = left;
+        node->right = comparison();
+        left = node;
+    }
+    return left;
 }
 
 Node *comparison()
 {
-	return add_sub();
+	Node *left = add_sub();
+    Token *token;
+    while((token = find(LESS, MORE, LESS_EQUAL, MORE_EQUAL, 0)))
+    {
+        Node *node = new_node(token);
+        node->left = left;
+        node->right = add_sub();
+        left = node;
+    }
+    return left;
 }
 
 Node *add_sub()
@@ -528,7 +572,7 @@ Node *mul_div()
 {
 	Node *left = dot();
     Token *token;
-    while((token = find(MUL, DIV, 0)))
+    while((token = find(MUL, DIV, 0))) // TODO: handle modulo
     {
         Node *node = new_node(token);
         node->left = left;
@@ -550,9 +594,9 @@ Node *sign()
 
 Node *prime()
 {
-    Token *token;
+    Token *token = NULL;
     Node *node = NULL;
-    if((token = find(ID, INT, 0)))
+    if((token = find(ID, INT, BOOL, 0)))
     {
         if(token->declare) // int num
         {
@@ -594,6 +638,8 @@ Node *prime()
         node = expr();
         check(!find(RPAR, 0), "Expected )\n");
     }
+    else if(find(END, 0)) exe_pos--;
+    else check(1, "Unexpected token has type %s\n", to_string(tokens[exe_pos]->type));
     return node;
 }
 
@@ -621,6 +667,57 @@ Node *ast()
 }
 
 // IR
+
+typedef struct
+{
+    char *name;
+    
+    Node **functions;
+    size_t fpos;
+    size_t fsize;
+
+    Token **vars;
+    size_t vpos;
+    size_t vsize;
+
+} Scoop;
+
+Scoop *Gscoop;
+Scoop *scoop;
+size_t scoopSize;
+size_t scoopPos;
+
+void enter_scoop(char *name)
+{
+    debug(CYAN"Enter Scoop [%s]\n"RESET, name);
+    if(Gscoop == NULL)
+    {
+        scoopSize = 10;
+        Gscoop = allocate(scoopSize, sizeof(Scoop));
+    }
+    else if(scoopPos + 1 == scoopSize)
+    {
+        Scoop *tmp = allocate(scoopSize * 2, sizeof(Scoop));
+        memcpy(tmp, Gscoop, scoopPos * sizeof(Scoop));
+        scoopSize *= 2;
+        free(Gscoop);
+        Gscoop = tmp;
+    }
+    scoopPos++;
+    Gscoop[scoopPos] = (Scoop){};
+    Gscoop[scoopPos].name = name;
+    scoop = &Gscoop[scoopPos];
+}
+
+void exit_scoop()
+{
+    debug(CYAN"Exit Scoop [%s]\n"RESET, scoop->name);
+    free(scoop->functions);
+    free(scoop->vars);
+    scoop[scoopPos] = (Scoop){};
+    scoop = &Gscoop[--scoopPos];
+}
+
 typedef struct
 {
     Token *token;
@@ -684,88 +781,14 @@ int sizeofToken(Token* token)
         case CHAR : return sizeof(char);
         case BOOL : return sizeof(bool);
         // case struct_: return token->size;
-        default:
-            check(1, "%s %s:%d add this type [%s]\n", FILE, FUNC, LINE, to_string(token->type));
+        default: check(1, "%s %s:%d add this type [%s]\n", FILE, FUNC, LINE, to_string(token->type));
     }
     return 0;
 }
 
-size_t ptr;
-Inst *new_inst(Token *token)
-{
-	static size_t reg;
-	
-	Inst *new = allocate(1, sizeof(Inst));
-	new->token = token;
-	debug("new inst has ");
-	ptoken(new->token);
-	token->reg =  ++reg;
-	if(token->declare) token->ptr = (ptr += sizeofToken(token));
-	add_inst(new);
-	return new;
-}
-// TODO: implement it
-bool are_compatible(Token *left, Token *right)
-{
-	return true;
-}
-
-typedef struct
-{
-    char *name;
-    
-    Node **functions;
-    size_t fpos;
-    size_t fsize;
-
-    Token **vars;
-    size_t vpos;
-    size_t vsize;
-
-} Scoop;
-
-Scoop *Gscoop;
-Scoop *scoop;
-size_t scoopSize;
-size_t scoopPos;
-
-#define ENTER 1
-#define EXIT  2
-
-void enter_scoop(char *name)
-{
-    debug(CYAN"Enter Scoop [%s]\n"RESET, name);
-    if(Gscoop == NULL)
-    {
-        scoopSize = 10;
-        Gscoop = allocate(scoopSize, sizeof(Scoop));
-    }
-    else if(scoopPos + 1 == scoopSize)
-    {
-        Scoop *tmp = allocate(scoopSize * 2, sizeof(Scoop));
-        memcpy(tmp, Gscoop, scoopPos * sizeof(Scoop));
-        scoopSize *= 2;
-        free(Gscoop);
-        Gscoop = tmp;
-    }
-    scoopPos++;
-    Gscoop[scoopPos] = (Scoop){};
-    Gscoop[scoopPos].name = name;
-    scoop = &Gscoop[scoopPos];
-}
-
-void exit_scoop()
-{
-    debug(CYAN"Exit Scoop [%s]\n"RESET, scoop->name);
-    free(scoop->functions);
-    free(scoop->vars);
-    scoop[scoopPos] = (Scoop){};
-    scoop = &Gscoop[--scoopPos];
-}
-
 Node *new_function(Node *node)
 {
-    debug("new func %s in %s scoop\n", node->token->name, scoop->name);
+    debug("func %s in %s scoop\n", node->token->name, scoop->name);
 #if 0
     char *builtins[] = {"output", 0};
     for(int i = 0; builtins[i]; i++)
@@ -800,17 +823,99 @@ Node *new_function(Node *node)
     return node;
 }
 
+Token *new_variable(Token *token)
+{
+    debug(CYAN"variable [%s] in [%s] scoop\n"RESET, token->name, scoop->name);
+    for(size_t i = 0; i < scoop->vpos; i++)
+    {
+        Token *curr = scoop->vars[i];
+        if(strcmp(curr->name, token->name) == 0)
+            check(1, "Redefinition of %s\n", token->name);
+    }
+    if(scoop->vars == NULL)
+    {
+        scoop->vsize = 10;
+        scoop->vars = allocate(scoop->vsize, sizeof(Token *));
+    } 
+    else if(scoop->vpos + 1 == scoop->vsize)
+    {
+        Token **tmp = allocate(scoop->vsize *= 2, sizeof(Token*));
+        memcpy(tmp, scoop->vars, scoop->vpos * sizeof(Token*));
+        free(scoop->vars);
+        scoop->vars = tmp;
+    }
+    scoop->vars[scoop->vpos++] = token;
+    return token;
+}
+
+Token *get_variable(char *name)
+{
+    debug(CYAN"get variable [%s] from [%s] scoop\n"RESET, name, scoop->name);
+    for(size_t i = 0; i < scoop->vpos; i++)
+    {
+        Token *curr = scoop->vars[i];
+        if(strcmp(curr->name, name) == 0) return curr;
+    }
+    check(1, "%s variable not found\n", name);
+    return NULL;
+}
+
+size_t ptr;
+Inst *new_inst(Token *token)
+{
+	static size_t reg;
+	
+	Inst *new = allocate(1, sizeof(Inst));
+	new->token = token;
+    if(token->name && token->declare)
+    {
+        new_variable(token);
+        token->ptr = (ptr += sizeofToken(token));
+        token->reg =  ++reg;
+    }
+    else if(includes((Type[]){ADD, SUB, MUL, DIV, 0}, token->type))
+    {
+        token->reg =  ++reg;
+    }
+    else if(
+    includes((Type[]){EQUAL, NOT_EQUAL, LESS, MORE, LESS_EQUAL, MORE_EQUAL, 0}, 
+        token->type)
+    )
+    {
+        token->reg =  ++reg;
+    }
+	debug("inst: ");
+	ptoken(new->token);
+	add_inst(new);
+	return new;
+}
+// TODO: implement it
+bool are_compatible(Token *left, Token *right)
+{
+	return true;
+}
+
+size_t bloc_index;
 Token *generate_ir(Node *node)
 {
 	Inst *inst = NULL;
 	switch(node->token->type)
 	{
-	case INT:
+    case ID:
+    {
+        Token *token = get_variable(node->token->name);
+        return token;
+        break;
+    }
+	case INT: case BOOL:
 	{
 		inst = new_inst(node->token);
 		break;
 	}
-	case ASSIGN: case ADD: case SUB: case MUL: case DIV:
+	case ASSIGN: 
+    case ADD: case SUB: case MUL: case DIV:
+    case EQUAL: case NOT_EQUAL: case LESS: case MORE:
+    case LESS_EQUAL: case MORE_EQUAL:
 	{
 		Token *left = generate_ir(node->left);
 		Token *right = generate_ir(node->right);
@@ -818,9 +923,46 @@ Token *generate_ir(Node *node)
 		inst = new_inst(node->token);
 		inst->left = left;
 		inst->right = right;
-		inst->token->retType = left->type;
+		switch(node->token->type)
+        {
+            case ASSIGN: node->token->retType = left->type; break;
+            case ADD: case SUB: case MUL: case DIV:
+            {
+                // TODO: verify this
+                // if(left->type != INT && left->type != FLOAT)
+                // {
+                //     char *c = to_string(node->token->type);
+                //     char *l = to_string(left->type);
+                //     char *r = to_string(right->type);
+                //     check(1, "Invalid operation [%s] between [%s] and [%s]\n", c, l, r);
+                // }
+                node->token->retType = left->type;
+                if(right->type == INT)  node->token->creg = "eax";
+                else 
+                if(right->type == FLOAT) node->token->creg = "xmm0";
+                break;
+            }
+            case NOT_EQUAL: case EQUAL: case LESS: 
+            case MORE: case LESS_EQUAL: case MORE_EQUAL:
+                node->token->retType = BOOL;
+                node->token->index = ++bloc_index;
+                debug(RED"this is [%d]\n"RESET, node->token->reg);
+                break;
+            default: break;
+        }
 		break;
 	}
+
+	// {
+	// 	Token *left = generate_ir(node->left);
+	// 	Token *right = generate_ir(node->right);
+	// 	check(!are_compatible(left, right), "incompatible type for %s op\n", to_string(node->token->type));
+	// 	inst = new_inst(node->token);
+	// 	inst->left = left;
+	// 	inst->right = right;
+	// 	inst->token->retType = BOOL;
+	// 	break;
+	// }
     case FDEC:
     {
         new_function(node);
@@ -853,16 +995,64 @@ void print_ir()
 		Token *curr = insts[i]->token;
         Token *left = insts[i]->left;
         Token *right = insts[i]->right;
-        debug("r%.2d:", curr->reg);
+        curr->reg ? debug("r%.2d:", curr->reg) : debug("rxx:");
         int k = 0;
         while(k < curr->space)
             k += printf(" ");
 		switch(curr->type)
 		{
-		case ASSIGN: case ADD: case SUB: case MUL: case DIV:
+		case ASSIGN:
 		{
+            // debug("%s\n", right->reg ? "has reg" : "no reg");
 			curr->reg = left->reg;
-			debug("[%-6s] r%.2d to ", to_string(curr->type), left->reg);
+			debug("[%-6s] ", to_string(curr->type));
+			debug("r%.2d (%s) to ", left->reg, left->name);
+
+			if (right->reg)
+                debug("r%.2d (%s)", right->reg, right->name ? right->name : "");
+            else
+            {
+                // if(right->type == ADD) debug("<r%.2d>\n", right->reg);
+                switch (right->type)
+                { // TODO: handle the other cases
+                case INT:  debug("%lld", right->Int.value); break;
+                case BOOL: debug("%s", right->Bool.value ? "True" : "False"); break;
+                case FLOAT:debug("%f", right->Float.value); break;
+                case CHAR: debug("%c", right->Char.value); break;
+                case CHARS:debug("%s", right->Chars.value); break;
+                default:
+                { 
+                    check(1, "%s:%d: handle this case [%s]\n", FUNC, LINE, to_string(right->type)); break;
+                }
+                }
+            }
+			break;
+		}
+        case ADD: case SUB: case MUL: case DIV:
+        case EQUAL: case NOT_EQUAL: case LESS: case MORE:
+        case LESS_EQUAL: case MORE_EQUAL:
+        {
+            debug("[%-6s] ", to_string(curr->type));
+            if (left->reg)
+                debug("r%.2d", left->reg);
+            else
+            {
+                switch (left->type)
+                { // TODO: handle the other cases
+                case INT:  debug("%lld", left->Int.value); break;
+                case BOOL: debug("%s", left->Bool.value ? "True" : "False"); break;
+                case FLOAT:debug("%f", left->Float.value); break;
+                case CHAR: debug("%c", left->Char.value); break;
+                case CHARS:debug("%s", left->Chars.value); break;
+                default:
+                { 
+                    check(1, "%s:%d: handle this case [%s]\n", FUNC, LINE, to_string(left->type)); break;
+                }
+                }
+            }
+            if (left->name)
+                debug(" (%s)", left->name);
+            debug(" to ");
 			if (right->reg)
                 debug("r%.2d", right->reg);
             else
@@ -874,46 +1064,53 @@ void print_ir()
                 case FLOAT:debug("%f", right->Float.value); break;
                 case CHAR: debug("%c", right->Char.value); break;
                 case CHARS:debug("%s", right->Chars.value); break;
-                default: check(1, "%s:%d: handle this case\n", FUNC, LINE); break;
+                default:
+                { 
+                    debug("==========> %lld\n", right->Int.value);
+                    check(1, "%s:%d: handle this case [%s]\n", FUNC, LINE, to_string(right->type)); break;
+                }
                 }
             }
-            debug("\n");
-			break;
-		}
-		case INT:
+            if (right->name)
+                debug(" (%s)", right->name);
+            break;
+        }
+		case INT: case BOOL:
 		{
 			debug("[%-6s] ", to_string(curr->type));
 			if (curr->declare)  debug("declare [%s] PTR=[%zu]", curr->name, curr->ptr);
             else if(curr->name) debug("variable %s ", curr->name);
             else if(curr->type == INT) debug("value %lld ", curr->Int.value);
-            // else if(curr->type == char_) debug("value %c ", curr->Char.value);
-            // else if(curr->type == bool_) debug("value %s ", curr->Bool.value ? "True" : "False");
-            // else if(curr->type == float_)
+            else if(curr->type == BOOL) debug("value %s ", curr->Bool.value ? "True" : "False");
+            // else if(curr->type == CHAR) debug("value %c ", curr->Char.value);
+            // else if(curr->type == BOOL) debug("value %s ", curr->Bool.value ? "True" : "False");
+            // else if(curr->type == FLOAT)
             // {
             //     curr->index = ++float_index;
             //     debug("value %f ", curr->Float.value);
             // }
-            // else if(curr->type == chars_)
+            // else if(curr->type == CHARS)
             // {
             //     curr->index = ++str_index;
             //     debug("value %s in STR%zu ", curr->Chars.value, curr->index);
             // }
             else check(1, "handle this case in generate ir line %d\n", LINE);
-			debug("\n");
 			break;
 		}
         case FDEC:
         {
-            debug("[%s] bloc\n", curr->name);
+            debug("[%s] bloc", curr->name);
             break;
         }
         case END_BLOC:
         {
-            debug("[%s] endbloc\n", curr->name);
+            debug("[%s] endbloc", curr->name);
             break;
         }
 		default: break;
 		}
+        // if(curr->remove) debug(" remove");
+        debug("\n");
 	}
     debug("total instructions [%d]\n", i);
 }
@@ -923,6 +1120,14 @@ bool includes(Type *types, Type type)
     for (int i = 0; types[i]; i++) if (types[i] == type) return true;
     return false;
 }
+
+/*
++ TODO: check optimization when doing it in sub scoops
++ example:
+    int x = 10
+    if x == 2: (this will caus problem now)
+        x = 3
+*/
 
 bool optimize_ir(int op)
 {
@@ -940,51 +1145,51 @@ bool optimize_ir(int op)
 				if(includes((Type[]){ADD, SUB, MUL, DIV, 0}, token->type))
 				{
 					Type types[] = {INT, FLOAT, CHAR, 0};
-					if 
-                    (includes(types, left->type) && includes(types, right->type) && 
-                    !left->name && !right->name)
+					if // TODO: check if left nad right are compatible
+                    (includes(types, left->type) && includes(types, right->type) &&  !left->name && !right->name)
 					{
-					switch(left->type)
-                    {
-                    case INT:
-                        switch (token->type)
+                        switch(left->type)
                         {
-                        case ADD: token->Int.value = left->Int.value + right->Int.value; break;
-                        case SUB: token->Int.value = left->Int.value - right->Int.value; break;
-                        case MUL: token->Int.value = left->Int.value * right->Int.value; break;
-                        case DIV: token->Int.value = left->Int.value / right->Int.value; break;
-                        default: break;
+                        case INT:
+                            switch (token->type)
+                            {
+                            case ADD: token->Int.value = left->Int.value + right->Int.value; break;
+                            case SUB: token->Int.value = left->Int.value - right->Int.value; break;
+                            case MUL: token->Int.value = left->Int.value * right->Int.value; break;
+                            case DIV: token->Int.value = left->Int.value / right->Int.value; break;
+                            default: break;
+                            }
+                            break;
+                        case FLOAT:
+                            // left->index = 0;
+                            // right->index = 0;
+                            // token->index = ++float_index;
+                            // switch (token->type)
+                            // {
+                            // case ADD: token->Float.value = left->Float.value + right->Float.value; break;
+                            // case SUB: token->Float.value = left->Float.value - right->Float.value; break;
+                            // case MUL: token->Float.value = left->Float.value * right->Float.value; break;
+                            // case DIV: token->Float.value = left->Float.value / right->Float.value; break;
+                            // default: break;
+                            // }
+                            break;
+                        // case CHARS:
+                        //     switch(token->type)
+                        //     {
+                        //     case add_: token->Chars.value = strjoin(left, right); break;
+                        //     default:
+                        //         error("Invalid %s op in chars\n", to_string(token->type)); break;
+                        //     }
+                        default: check(1, "%s: %d handle this case\n", FUNC, LINE); break;
                         }
-                        break;
-                    case FLOAT:
-                        // left->index = 0;
-                        // right->index = 0;
-                        // token->index = ++float_index;
-                        // switch (token->type)
-                        // {
-                        // case ADD: token->Float.value = left->Float.value + right->Float.value; break;
-                        // case SUB: token->Float.value = left->Float.value - right->Float.value; break;
-                        // case MUL: token->Float.value = left->Float.value * right->Float.value; break;
-                        // case DIV: token->Float.value = left->Float.value / right->Float.value; break;
-                        // default: break;
-                        // }
-						break;
-                    // case chars_:
-                    //     switch(token->type)
-                    //     {
-                    //     case add_: token->Chars.value = strjoin(left, right); break;
-                    //     default:
-                    //         error("Invalid %s op in chars\n", to_string(token->type)); break;
-                    //     }
-                    default: check(1, "%s: %d handle this case\n", FUNC, LINE); break;
-                    }
+                        token->type = left->type;
+                        left->remove = true;
+                        right->remove = true;
+                        token->reg = 0;
+                        clone_insts();
+                        i = 0;
+                        optimize = true;
 					}
-					token->type = left->type;
-                    left->remove = true;
-                    right->remove = true;
-                    clone_insts();
-                    i = 0;
-                    optimize = true;
 				}
 			}
 			break;
@@ -1019,6 +1224,8 @@ bool optimize_ir(int op)
                     // debug("value is %lld\n", insts[i - 1]->right->Int.value);
                     if (insts[i + 1]->left == token) insts[i + 1]->left = insts[i - 1]->token;
                     i = 1;
+                    // left->remove = true;
+                    // right->remove = true;
                     clone_insts();
                     optimize = true;
                     continue;
@@ -1037,7 +1244,6 @@ bool optimize_ir(int op)
                     int j = i + 1;
                     while (insts[j] && insts[j]->token->space == insts[i]->token->space)
                     {
-                        debug("line %d: ", LINE);
                         ptoken(insts[j]->token);
                         if (insts[j]->token->type == ASSIGN && insts[j]->left == insts[i]->token)
                         {
@@ -1089,6 +1295,97 @@ bool optimize_ir(int op)
             }
             break;
         }
+        case 3:
+        {
+            for(int i = 0; insts[i]; i++)
+            {
+                Token *curr = insts[i]->token;
+                Token *left = insts[i]->left;   // variable
+                Token *right = insts[i]->right; // value
+                for(int j = i + 1; curr->type == ASSIGN && !right->ptr /*keep it*/ && insts[j]; j++)
+                {
+                    Token *curr1 = insts[j]->token;
+                    Token *left1 = insts[j]->left;   // variable || value
+                    Token *right1 = insts[j]->right; // value || variable
+                    if(curr1->type == ADD)
+                    {
+                        if(right1->ptr == left->ptr /*assignement PTR*/ && !left1->ptr)
+                        {
+                            debug(RED"found 1\n"RESET);
+                            // insts[j]->left = right;
+                            optimize = true;
+                            // i = 0;
+                            debug("ADD has\n");
+                            debug("L: "); ptoken(left1);
+                            debug("R: "); ptoken(right1);
+
+                            debug("\n"SPLIT"\n");
+                            // print_ir();
+                            curr1->Int.value = left1->Int.value + right->Int.value;
+                            left1->remove = true;
+                            right1->remove = true;
+                            curr1->type = left1->type;
+                            curr1->reg = 0;
+                            // insts[j]->token->remove = true;
+                            debug("\n"SPLIT"\n");
+                            // print_ir();
+                            // exit(1);
+
+                            optimize = true;
+                            //  clone_insts();
+                            //  i = 0;
+                            break;
+                        }
+                        else if(left1->ptr == left->ptr /*assignement PTR*/ && !right1->ptr)
+                        {
+                            debug(RED"found 2\n"RESET);
+                            // insts[j]->left = right;
+                            optimize = true;
+                            // i = 0;
+                            debug("ADD has\n");
+                            debug("L: "); ptoken(left1);
+                            debug("R: "); ptoken(right1);
+
+                            debug("\n"SPLIT"\n");
+                            // print_ir();
+                            curr1->Int.value = right1->Int.value + right->Int.value;
+                            left1->remove = true;
+                            right1->remove = true;
+                            curr1->type = right1->type;
+                            curr1->reg = 0;
+                            // insts[j]->token->remove = true;
+                            debug("\n"SPLIT"\n");
+                            // print_ir();
+                            // exit(1);
+                            optimize = true;
+                            //  clone_insts();
+                            //  i = 0;
+                            break;
+                        }
+                    }
+                }
+            }
+            break;
+        }
+#if 1
+        case MAX_OPTIMIZATION - 1:
+        {
+            for(size_t i = 0; insts[i]; i++)
+            {
+                Token *curr = insts[i]->token;
+                if(!curr->reg)
+                {
+                    if(curr->type != FDEC && curr->type != END_BLOC)
+                    {
+                        curr->remove = true;
+                        i = 0;
+                        clone_insts();
+                    }
+                }
+            }
+            break;
+        }
+#endif
 		default: break;
 	}
 	return optimize;
@@ -1108,6 +1405,7 @@ void ir(Node *head)
 	}
     exit_scoop();
 
+#if OPTIMIZE
     int i = 0;
     bool optimized = false;
     while(i < MAX_OPTIMIZATION)
@@ -1120,18 +1418,233 @@ void ir(Node *head)
             i = 0;
         }
     }
+#endif
     print_ir();
 }
-// ASSEMBLY
 
+// ASSEMBLY
+struct _IO_FILE *asm_fd ;
+void pasm(char *fmt, ...)
+{
+    int i = 0;
+    va_list args;
+    va_start(args, fmt);
+#if 1
+    #define isInstruction(inst) do { \
+        if(strncmp(fmt + i, inst, strlen(inst)) == 0) \
+        { \
+            i += strlen(inst); \
+            fprintf(asm_fd, "\t%-8s", inst);  \
+        } \
+    } while(0)
+    isInstruction("movss ");
+    isInstruction("mov ");
+    isInstruction("sub ");
+    isInstruction("lea ");
+    isInstruction("cmp ");
+    isInstruction("push ");
+    isInstruction("call ");
+    isInstruction("leave");
+    isInstruction("ret");
+#endif
+
+#if WITH_COMMENTS
+    isInstruction("//");
+#else
+    if(strncmp(fmt + i, "//", 2) == 0) return;
+#endif
+
+    while (fmt[i])
+    {
+        if (fmt[i] == '%')
+        {
+            i++;
+            if(fmt[i] == 'i')
+            {
+                i++;
+                fprintf(asm_fd, "\t%-8s", va_arg(args, char*)); 
+            }
+            else if(fmt[i] == 'r')
+            {
+                i++;
+                Token *token = va_arg(args, Token*);
+                if(token->creg)
+                {
+                    // printf("%s:%dhas been used\n",FUNC, LINE);
+                    // exit(1);
+                    fprintf(asm_fd, "%s", token->creg); 
+                }
+                else
+                {
+                    Type type = token->retType ? token->retType : token->type;
+                    switch(type)
+                    {
+                    case CHARS:
+                        fputs("rax", asm_fd); break;
+                    case INT:
+                        fputs("eax", asm_fd); break;
+                    case BOOL: case CHAR:
+                        fputs("al", asm_fd); break;
+                    case FLOAT:
+                        fputs("xmm0", asm_fd); break;
+                    default: check(1, "%s:%d Unkown type [%s]\n", FUNC, LINE, to_string(token->type)); break;
+                    }
+                }
+            }
+            else if(fmt[i] == 'a')
+            {
+                i++;
+                Token *token = va_arg(args, Token*);
+                switch(token->type)
+                {
+                case CHARS: fprintf(asm_fd, "QWORD PTR -%ld[rbp]", token->ptr); break;
+                case INT:   fprintf(asm_fd, "DWORD PTR -%ld[rbp]", token->ptr); break;
+                case CHAR:  fprintf(asm_fd, "BYTE PTR -%ld[rbp]", token->ptr); break;
+                case BOOL:  fprintf(asm_fd, "BYTE PTR -%ld[rbp]", token->ptr); break;
+                case FLOAT: fprintf(asm_fd, "DWORD PTR -%ld[rbp]", token->ptr); break;
+                default: check(1, "%s:%d Unkown type [%s]\n", FUNC, LINE, to_string(token->type)); break;
+                }
+            }
+            else if(fmt[i] == 'v')
+            {
+                i++;
+                Token *token = va_arg(args, Token*);
+                switch(token->type)
+                {
+                case INT:  fprintf(asm_fd, "%lld", token->Int.value); break;
+                case BOOL: fprintf(asm_fd, "%d", token->Bool.value); break;
+                case CHAR: fprintf(asm_fd, "%d", token->Char.value); break;
+                default: check(1, "%s:%d Unkown type [%s]\n", FUNC, LINE, to_string(token->type)); break;
+                }
+            }
+            else {
+                int handled = 0;
+                #define check_format(string, type) do { \
+                    if (strncmp(fmt + i, string, strlen(string)) == 0) {\
+                        handled = 1; \
+                        i += strlen(string); \
+                        fprintf(asm_fd, "%"string, va_arg(args, type)); \
+                    } \
+                } while(0)
+                check_format("d", int);
+                check_format("ld", long);
+                check_format("s", char *);
+                check_format("zu", unsigned long);
+                check_format("f", double);
+                check(!handled, "%s:%d handle this case [%s]\n", FUNC, LINE, fmt + i);
+            }
+        }
+        else
+        {
+            fputc(fmt[i], asm_fd);
+            i++;
+        }
+    }
+    va_end(args);
+}
+void generate_asm()
+{
+    debug(GREEN"======= GENERATE ASSEMBLY ======\n"RESET);
+    debug(CYAN);
+    asm_fd = stdout;
+    clone_insts();
+    for(size_t i = 0; insts[i]; i++)
+    {
+        Token *curr = insts[i]->token;
+        Token *left = insts[i]->left;
+        Token *right = insts[i]->right;
+        switch(curr->type)
+        {
+            case ASSIGN:
+            {
+                pasm("//assign [%s]\n", left->name);
+                if(right->ptr || right->creg)
+                {
+                    char *inst = left->type == FLOAT ? "movss " : "mov ";
+                    if(right->ptr && !right->creg) pasm("%i%r, %a\n", inst, left, right);
+                    pasm("%i%a, %r\n", inst, left, left);
+                }
+                else
+                {
+                    switch (right->type)
+                    {
+                    case INT: case BOOL: case CHAR:
+                        pasm("mov %a, %v\n", left, right); 
+                        break;
+                    // case CHARS:
+                    //     pasm("lea %r, .STR%zu[rip]\n", right, right->index);
+                    //     pasm("mov %a, %r\n", left, left);
+                    //     break;
+                    // case float_:
+                    //     pasm("movss %r, DWORD PTR .FLT%zu[rip]\n", right, right->index);
+                    //     pasm("movss %a, %r\n", left, left);
+                    //     break;
+                    default:
+                        check(1, "handle this case (%s) in %s:%d\n", to_string(right->type), FUNC, LINE);
+                        break;
+                    }
+                }
+                break;
+            }
+            case ADD: case SUB: case MUL: case DIV: // TODO: check all math_op operations
+            {
+                // TODO: use rax for long etc...
+                // TODO: something wrong here, fix it
+                Type type = curr->type;
+                char *inst = left->type == FLOAT ? "movss" : "mov";
+
+                if(left->ptr) pasm("%i%r, %a\n", inst, curr, left);
+                else if(left->creg && right->creg  && strcmp(left->creg, right->creg)) 
+                    pasm("%i%r, %r\n", inst, curr, left);
+                else if(!left->creg) pasm("%i%r, %v\n", inst, curr, left);
+                
+                switch(curr->type)
+                {
+                    case ADD: inst = left->type == FLOAT ? "addss "  : "add " ; break;
+                    case SUB: inst = left->type == FLOAT ? "subss "  : "sub " ; break;
+                    case MUL: inst = left->type == FLOAT ? "imulss " : "imul "; break;
+                    case DIV: inst = left->type == FLOAT ? "divss "  : "div " ; break;
+                    default: break;
+                }
+                if(right->ptr) pasm("%i%r, %a\n", inst, curr, right);
+                else 
+                if(right->creg) pasm("%i%r, %r\n", inst, curr, right);
+                else 
+                if(!right->creg) pasm("%i%r, %v\n", inst,  curr, left);
+                curr->type = left->type;
+                break;
+            }
+            case FDEC:
+            {
+                pasm("%s:\n", curr->name);
+                pasm("push rbp\n");
+                pasm("mov rbp, rsp\n");
+                pasm("sub rsp, %zu\n", (((ptr) + 15) / 16) * 16);
+                break;
+            }
+            case END_BLOC:
+            {
+                pasm(".end%s:\n", curr->name);
+                break;
+            }
+            case INT: 
+                break;
+            default:
+                check(1, "handle this case (%s) in %s:%d\n", to_string(curr->type), FUNC, LINE);
+                break;
+        }
+    }
+    debug(RESET);
+}
 // MAIN
 int main()
 {
     char *input = open_file("file.w");
 	// debug("===========    IR    ===========\n");
-    Token **tokens = tokenize(input);
+    tokenize(input);
 	Node *head = ast();
     ir(head);
+    generate_asm();
 	free_node(head);
 	for (size_t i = 0; OrgInsts && OrgInsts[i]; i++)
         free(OrgInsts[i]);
@@ -1142,7 +1655,9 @@ int main()
 }
 
 /*
-15:00 => 16:29
-17:20 => 18:20
-
+13:45 => 14:06
+14:12 => 15:01
+15:30 => 15:55
+15:55 => 18:00
+18:20 => 
 */

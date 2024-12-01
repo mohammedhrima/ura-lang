@@ -1,2 +1,6 @@
 main():
-    int a = 10 + 5 + 2 + 3
+    int b = 2
+    int c = 3
+    int a = 1
+    int d = a + 2 + b
+
