@@ -1590,7 +1590,7 @@ void generate_asm()
             {
                 // TODO: use rax for long etc...
                 // TODO: something wrong here, fix it
-                Type type = curr->type;
+                // Type type = curr->type;
                 char *inst = left->type == FLOAT ? "movss" : "mov";
 
                 if(left->ptr) pasm("%i%r, %a\n", inst, curr, left);
@@ -1610,7 +1610,7 @@ void generate_asm()
                 else 
                 if(right->creg) pasm("%i%r, %r\n", inst, curr, right);
                 else 
-                if(!right->creg) pasm("%i%r, %v\n", inst,  curr, left);
+                if(!right->creg) pasm("%i%r, %v\n", inst,  curr, right);
                 curr->type = left->type;
                 break;
             }
@@ -1655,9 +1655,5 @@ int main()
 }
 
 /*
-13:45 => 14:06
-14:12 => 15:01
-15:30 => 15:55
-15:55 => 18:00
-18:20 => 
+
 */
