@@ -341,6 +341,7 @@ Token *generate_ir(Node *node)
       generate_ir(curr->left);
       curr = curr->right;
     }
+    
     Inst *endInst = NULL;
     if (node->right)
     {
