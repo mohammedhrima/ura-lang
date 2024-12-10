@@ -1,10 +1,8 @@
 main():
-    int a = 3
-    int b 
-    if a == 1: 
-        b = 1
-    else:
-        b = 2
+    int i = 0
+    while i < 5:
+        i += 1
+    
 
 
 
