@@ -31,7 +31,7 @@
 #define IR 0
 #endif
 
-#define MAX_OPTIMIZATION 5
+#define MAX_OPTIMIZATION 1
 #define WITH_COMMENTS 1
 
 #if IR
@@ -330,23 +330,26 @@ Token *new_token(char *input, size_t s, size_t e, Type type, size_t space)
     while (s < e) new->Int.value = new->Int.value * 10 + input[s++] - '0';
     break;
   }
-  case BLOC: case ID:
+  case BLOC: case ID: case JMP: case JE: case JNE:
   {
-    new->name = allocate(e - s + 1, sizeof(char));
-    strncpy(new->name, input + s, e - s);
-    if (strcmp(new->name, "True") == 0)
+    if(e > s)
     {
-      free(new->name);
-      new->name = NULL;
-      new->type = BOOL;
-      new->Bool.value = true;
-    }
-    else if (strcmp(new->name, "False") == 0)
-    {
-      free(new->name);
-      new->name = NULL;
-      new->type = BOOL;
-      new->Bool.value = false;
+      new->name = allocate(e - s + 1, sizeof(char));
+      strncpy(new->name, input + s, e - s);
+      if (strcmp(new->name, "True") == 0)
+      {
+        free(new->name);
+        new->name = NULL;
+        new->type = BOOL;
+        new->Bool.value = true;
+      }
+      else if (strcmp(new->name, "False") == 0)
+      {
+        free(new->name);
+        new->name = NULL;
+        new->type = BOOL;
+        new->Bool.value = false;
+      }
     }
     break;
   }
@@ -422,6 +425,7 @@ void tokenize(char *input)
         new_token(NULL, 0, 0, specials[j].type, space);
         found = true;
         i += strlen(specials[j].value);
+        if(strcmp(specials[j].value, ":") == 0) space++;
         break;
       }
     }
@@ -1111,8 +1115,13 @@ Token *generate_ir(Node *node)
   case IF:
   {
     Node *curr = node->left;
-    generate_ir(curr->left); // TODO: check if it's boolean
 
+    Inst *tmp = new_inst(copy_token(node->token));
+    tmp->token->name = strdup("if");
+    tmp->token->type =  BLOC;
+    tmp->token->index = ++bloc_index;
+
+    generate_ir(curr->left); // TODO: check if it's boolean
     node->token->type = JNE;
     node->token->name = strdup("endif");
     node->token->index = ++bloc_index;
@@ -1315,6 +1324,7 @@ void print_ir()
       else check(1, "handle this case in generate ir\n", "");
       break;
     }
+    case JMP: debug("jmp to [%s]", curr->name); break;
     case JNE: debug("jne to [%s]", curr->name); break;
     case BLOC: case FDEC: debug("[%s] bloc", curr->name); break;
     case END_BLOC: debug("[%s] endbloc", curr->name); break;
@@ -1348,6 +1358,7 @@ bool optimize_ir(int op)
   bool optimize = false;
   switch (op)
   {
+#if MAX_OPTIMIZATION > 1
   case 0:
   {
     debug(CYAN "OP[%d] calculate operations on constants\n" RESET, op);
@@ -1412,6 +1423,8 @@ bool optimize_ir(int op)
     }
     break;
   }
+#endif
+#if MAX_OPTIMIZATION > 2
   case 1:
   {
     debug(CYAN "OP[%d] calculate operations on constants\n" RESET, op);
@@ -1452,6 +1465,8 @@ bool optimize_ir(int op)
     }
     break;
   }
+#endif
+#if MAX_OPTIMIZATION > 3
   case 2:
   {
     debug(CYAN "OP[%d] remove reassigned variables\n" RESET, op);
@@ -1506,6 +1521,8 @@ bool optimize_ir(int op)
     }
     break;
   }
+#endif
+#if MAX_OPTIMIZATION > 4
   case 3:
   {
     for (int i = 0; insts[i]; i++)
@@ -1582,20 +1599,18 @@ bool optimize_ir(int op)
     }
     break;
   }
+#endif
 #if 1
   case MAX_OPTIMIZATION - 1:
   {
     for (size_t i = 0; insts[i]; i++)
     {
       Token *curr = insts[i]->token;
-      if (!curr->reg)
+      if (!curr->reg && !includes((Type[]){FDEC, END_BLOC, BLOC, IF, ELSE, JMP, JNE, JE, 0}, curr->type))
       {
-        if (curr->type != FDEC && curr->type != END_BLOC)
-        {
           curr->remove = true;
           i = 0;
           clone_insts();
-        }
       }
     }
     break;
