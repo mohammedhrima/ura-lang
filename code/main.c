@@ -31,7 +31,8 @@
 #define IR 0
 #endif
 
-#define MAX_OPTIMIZATION 1
+// curent max value 4
+#define MAX_OPTIMIZATION 4
 #define WITH_COMMENTS 1
 
 #if IR
@@ -738,7 +739,7 @@ Node *prime()
       {
         Node *tmp0 = tmp->left;
         tmp0->left = expr();
-        check(!find(DOTS, 0), "expected dots");
+        check(!find(DOTS, 0), "expected : after else");
         tmp0->right = new_node(NULL);
         tmp0 = tmp0->right;
         while (tokens[exe_pos]->space > token->space)
@@ -762,6 +763,19 @@ Node *prime()
         }
         break;
       }
+    }
+  }
+  else if ((token = find(WHILE, 0)))
+  {
+    node = new_node(token);
+    node->left = expr();
+    check(!find(DOTS, 0), "Expected : after while condition\n", "");
+    Node *tmp = node;
+    while (tokens[exe_pos]->type != END && tokens[exe_pos]->space > token->space)
+    {
+      tmp->right = new_node(NULL);
+      tmp = tmp->right;
+      tmp->left = expr();
     }
   }
   else if ((token = find(LPAR, 0)))
@@ -1196,7 +1210,14 @@ Token *generate_ir(Node *node)
         }
         break;
       }
-      if (curr->right)
+
+      free(lastInst->name);
+      lastInst->name = strdup("endif");
+      lastInst->index = node->token->index;
+
+      if (curr->right) // to not add a jmp in the last statement to avoid
+                       // jne endifX
+                       // endifX:
       {
         endInst = new_inst(new_token("endif", 0, 5, JMP, node->token->space));
         endInst->token->index = node->token->index;
@@ -1209,6 +1230,40 @@ Token *generate_ir(Node *node)
     new_inst(new);
     // free_token(lastInst);
     return node->left->token;
+    break;
+  }
+  case WHILE:
+  {
+    node->token->type = BLOC;
+    node->token->name = strdup("while");
+    node->token->index = ++bloc_index;
+    inst = new_inst(node->token);
+
+    generate_ir(node->left); // TODO: check if it's boolean
+    Token *end = copy_token(node->token);
+    end->type = JNE;
+    if (end->name) free(end->name);
+    end->name = strdup("endwhile");
+    new_inst(end);
+
+    Node *curr = node->right;
+    while (curr) // while code bloc
+    {
+      generate_ir(curr->left);
+      curr = curr->right;
+    }
+
+    Token *lastInst = copy_token(node->token);
+    lastInst->type = JMP;
+    free(lastInst->name);
+    lastInst->name = strdup("while");
+    new_inst(lastInst); // jmp back to while loop
+
+    lastInst = copy_token(node->token);
+    lastInst->type = BLOC;
+    free(lastInst->name);
+    lastInst->name = strdup("endwhile");
+    new_inst(lastInst); // end while bloc
     break;
   }
   case RETURN:
@@ -1245,8 +1300,7 @@ void print_ir()
       debug("[%-6s] ", to_string(curr->type));
       debug("r%.2d (%s) to ", left->reg, left->name);
 
-      if (right->reg)
-        debug("r%.2d (%s)", right->reg, right->name ? right->name : "");
+      if (right->reg) debug("r%.2d (%s)", right->reg, right->name ? right->name : "");
       else
       {
         // if(right->type == ADD) debug("<r%.2d>\n", right->reg);
@@ -1356,10 +1410,7 @@ bool includes(Type *types, Type type)
 bool optimize_ir(int op)
 {
   bool optimize = false;
-  switch (op)
-  {
-#if MAX_OPTIMIZATION > 1
-  case 0:
+  if(op == 0)
   {
     debug(CYAN "OP[%d] calculate operations on constants\n" RESET, op);
     for (int i = 0; insts[i]; i++)
@@ -1371,9 +1422,7 @@ bool optimize_ir(int op)
       {
         Type types[] = {INT, FLOAT, CHAR, 0};
         // TODO: check if left nad right are compatible
-        if 
-        (includes(types, left->type) && includes(types, right->type) 
-        && !left->name && !right->name)
+        if (includes(types, left->type) && includes(types, right->type) && !left->name && !right->name)
         {
           switch (left->type)
           {
@@ -1421,11 +1470,8 @@ bool optimize_ir(int op)
         }
       }
     }
-    break;
   }
-#endif
-#if MAX_OPTIMIZATION > 2
-  case 1:
+  else if(op == 1)
   {
     debug(CYAN "OP[%d] calculate operations on constants\n" RESET, op);
     int i = 1;
@@ -1463,11 +1509,8 @@ bool optimize_ir(int op)
       }
       i++;
     }
-    break;
   }
-#endif
-#if MAX_OPTIMIZATION > 3
-  case 2:
+  else if(op == 2)
   {
     debug(CYAN "OP[%d] remove reassigned variables\n" RESET, op);
     for (int i = 0; insts[i]; i++)
@@ -1519,11 +1562,8 @@ bool optimize_ir(int op)
         }
       }
     }
-    break;
   }
-#endif
-#if MAX_OPTIMIZATION > 4
-  case 3:
+  else if(op == 3)
   {
     for (int i = 0; insts[i]; i++)
     {
@@ -1597,27 +1637,20 @@ bool optimize_ir(int op)
         }
       }
     }
-    break;
   }
-#endif
-#if 1
-  case MAX_OPTIMIZATION - 1:
+  else if(op == 4)
   {
     for (size_t i = 0; insts[i]; i++)
     {
       Token *curr = insts[i]->token;
       if (!curr->reg && !includes((Type[]){FDEC, END_BLOC, BLOC, IF, ELSE, JMP, JNE, JE, 0}, curr->type))
       {
-          curr->remove = true;
-          i = 0;
-          clone_insts();
+        curr->remove = true;
+        i = 0;
+        clone_insts();
+        // optimize = true;
       }
     }
-    break;
-  }
-#endif
-  default:
-    break;
   }
   return optimize;
 }
@@ -1808,8 +1841,7 @@ void generate_asm()
       if (right->ptr || right->creg)
       {
         char *inst = left->type == FLOAT ? "movss " : "mov ";
-        if (right->ptr && !right->creg)
-          pasm("%i%r, %a\n", inst, left, right);
+        if (right->ptr && !right->creg) pasm("%i%r, %a\n", inst, left, right);
         pasm("%i%a, %r\n", inst, left, left);
       }
       else
@@ -1852,7 +1884,7 @@ void generate_asm()
       {
       case ADD: inst = left->type == FLOAT ? "addss " : "add "; break;
       case SUB: inst = left->type == FLOAT ? "subss " : "sub "; break;
-      case MUL: inst = left->type == FLOAT ? "imulss " : "imul "; break;
+      case MUL: inst = left->type == FLOAT ? "imulss ": "imul "; break;
       case DIV: inst = left->type == FLOAT ? "divss " : "div "; break;
       default: break;
       }
