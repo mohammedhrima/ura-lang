@@ -6,6 +6,7 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <string.h>
+#include <stdint.h>
 
 // MACROS
 #define DEBUG 1
@@ -32,7 +33,6 @@
 #endif
 
 // curent max value 4
-#define MAX_OPTIMIZATION 4
 #define WITH_COMMENTS 1
 
 #if IR
@@ -555,8 +555,7 @@ Node *assign()
 {
   Node *left = logic();
   Token *token;
-  while ((token = find(ASSIGN, ADD_ASSIGN, SUB_ASSIGN, 
-          MUL_ASSIGN, DIV_ASSIGN, 0)))
+  while ((token = find(ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, 0)))
   {
     Node *node = new_node(token);
     Node *right = logic();
@@ -681,28 +680,44 @@ Node *prime()
     }
     else if (token->type == ID && token->name && find(LPAR, 0)) // id
     {
+      node = new_node(token);
       if (strcmp(token->name, "main") == 0)
       {
         check(!find(RPAR, 0), "expected ) after main declaration", "");
         check(!find(DOTS, 0), "expected : after main() declaration", "");
-        node = new_node(token);
         token->type = FDEC;
         size_t space = token->space;
         Node *curr = node;
+        Node *last = node;
         while (tokens[exe_pos]->space > space && tokens[exe_pos]->type != END)
         {
           curr->right = new_node(NULL);
           curr = curr->right;
           curr->left = expr();
+          last = curr->left;
+
         }
-        curr->right = new_node(NULL);
-        curr = curr->right;
-        curr->left = new_node(new_token(NULL, 0, 0, RETURN, node->token->space + 4));
-        curr->left->left = new_node(new_token(NULL, 0, 0, INT, node->token->space + 4));
+        if(last->token->type != RETURN)
+        {
+          curr->right = new_node(NULL);
+          curr = curr->right;
+          curr->left = new_node(new_token(NULL, 0, 0, RETURN, node->token->space + 4));
+          curr->left->left = new_node(new_token(NULL, 0, 0, INT, node->token->space + 4));
+        }
         return node;
       }
       else
       {
+        token->type = FCALL;
+        Node *tmp = node;
+        while(!find(RPAR, END, 0))
+        {
+          tmp->left = expr();
+          find(COMA, 0);
+          // tmp->
+          tmp->right = new_node(NULL);
+          tmp = tmp->right;
+        }
       }
     }
     node = new_node(token);
@@ -777,6 +792,26 @@ Node *prime()
       tmp = tmp->right;
       tmp->left = expr();
     }
+  }
+#if 0
+  else if ((token = find(FDEC, 0)))
+  {
+    node = new_node(token);
+    node->left = new_node(NULL);
+    node->left->left = expr();
+    check(!node->left->left->token || !node->left->left->token->declare, "declaraing function\n", "");
+    node->token->retType = node->left->left->token->type;
+    node->token->name = node->left->left->token->name;
+    node->left->left->token->name = NULL;
+    check(!find(LPAR, 0), "Expected ( after function declaration\n", "");
+    check(!find(RPAR, 0), "Expected ( after function declaration\n", "");
+  }
+#endif
+  else if((token = find(RETURN, 0)))
+  {
+    // TODO: chec kif return type is compatible with function
+    node = new_node(token);
+    node->left = expr();
   }
   else if ((token = find(LPAR, 0)))
   {
@@ -1027,6 +1062,10 @@ Inst *new_inst(Token *token)
   {
     token->reg = ++reg;
   }
+  else if (includes((Type[]){FCALL, 0}, token->type))
+  {
+    token->reg = ++reg;
+  }
   debug("inst: ");
   ptoken(new->token);
   add_inst(new);
@@ -1124,6 +1163,11 @@ Token *generate_ir(Node *node)
     new->name = strdup(node->token->name);
     new_inst(new);
     exit_scoop();
+    break;
+  }
+  case FCALL:
+  {
+
     break;
   }
   case IF:
@@ -1464,6 +1508,7 @@ bool optimize_ir(int op)
           left->remove = true;
           right->remove = true;
           token->reg = 0;
+          token->creg = NULL;
           clone_insts();
           i = 0;
           optimize = true;
@@ -1473,40 +1518,45 @@ bool optimize_ir(int op)
   }
   else if(op == 1)
   {
+    // TODO: to be checked
     debug(CYAN "OP[%d] calculate operations on constants\n" RESET, op);
     int i = 1;
     while (insts[i])
     {
-      Token *token = insts[i]->token;
-      Token *left = insts[i]->left;
-      Token *right = insts[i]->right;
-      if (
-          //  TODO: handle string also here X'D ma fiyach daba
-          includes((Type[]){ADD, SUB, MUL, DIV, 0}, token->type) &&
-          insts[i - 1]->token->type == ADD &&
-          left == insts[i - 1]->token &&
-          !insts[i - 1]->right->name &&
-          !right->name)
+      Token *curr_token = insts[i]->token;
+      Token *curr_left = insts[i]->left;
+      Token *curr_right = insts[i]->right;
+
+      Token *prev_token = insts[i - 1]->token;
+      Token *prev_left = insts[i - 1]->left;
+      Token *prev_right = insts[i - 1]->right;
+
+      //  TODO: handle string also here X'D ma fiyach daba
+      if(curr_token->type == ADD && prev_token->type == ADD)
       {
-        // debug("%sfound %s\n", RED, RESET);
-        token->remove = true;
-        switch (token->type)
+        if (curr_left == prev_token && !prev_right->name && !curr_right->name)
         {
-        case ADD: insts[i - 1]->right->Int.value += right->Int.value; break;
-        case SUB: insts[i - 1]->right->Int.value -= right->Int.value; break;
-        case MUL: insts[i - 1]->right->Int.value *= right->Int.value; break;
-        case DIV: insts[i - 1]->right->Int.value /= right->Int.value; break;
-        default: break;
+          // prev_right->type = INT;
+          curr_token->remove = true;
+          prev_right->Int.value += curr_right->Int.value;
+          i = 1;
+          clone_insts();
+          optimize = true;
+          continue;
         }
-        // debug("value is %lld\n", insts[i - 1]->right->Int.value);
-        if (insts[i + 1]->left == token) insts[i + 1]->left = insts[i - 1]->token;
-        i = 1;
-        // left->remove = true;
-        // right->remove = true;
-        clone_insts();
-        optimize = true;
-        continue;
+        // else
+        // if(curr_right == prev_token && !prev_left->name && !curr_left->name)
+        // {
+        //   // prev_r->type = INT;
+        //   // curr_token->remove = true;
+        //   prev_left->Int.value += curr_left->Int.value;
+        //   i = 1;
+        //   clone_insts();
+        //   optimize = true;
+        //   continue;
+        // }
       }
+
       i++;
     }
   }
@@ -1565,93 +1615,70 @@ bool optimize_ir(int op)
   }
   else if(op == 3)
   {
-    for (int i = 0; insts[i]; i++)
+    debug(CYAN"OP[%d] remove followed return instructions\n"RESET, op);
+    for (int i = 1; insts[i]; i++)
     {
-      Token *curr = insts[i]->token;
-      Token *left = insts[i]->left;   // variable
-      Token *right = insts[i]->right; // value
-      for (int j = i + 1; curr->type == ASSIGN && !right->ptr /*keep it*/ && insts[j]; j++)
+      if (insts[i]->token->type == RETURN && insts[i - 1]->token->type == RETURN)
       {
-        Token *curr1 = insts[j]->token;
-        Token *left1 = insts[j]->left;   // variable || value
-        Token *right1 = insts[j]->right; // value || variable
-        if (curr1->type == ADD)
-        {
-          if (right1->ptr == left->ptr /*assignement PTR*/ && !left1->ptr)
-          {
-            debug(RED "found 1\n" RESET);
-            // insts[j]->left = right;
-            optimize = true;
-            // i = 0;
-            debug("ADD has\n");
-            debug("L: ");
-            ptoken(left1);
-            debug("R: ");
-            ptoken(right1);
-
-            debug("\n" SPLIT "\n");
-            // print_ir();
-            curr1->Int.value = left1->Int.value + right->Int.value;
-            left1->remove = true;
-            right1->remove = true;
-            curr1->type = left1->type;
-            curr1->reg = 0;
-            // insts[j]->token->remove = true;
-            debug("\n" SPLIT "\n");
-            // print_ir();
-            // exit(1);
-
-            optimize = true;
-            //  clone_insts();
-            //  i = 0;
-            break;
-          }
-          else if (left1->ptr == left->ptr /*assignement PTR*/ && !right1->ptr)
-          {
-            debug(RED "found 2\n" RESET);
-            // insts[j]->left = right;
-            optimize = true;
-            // i = 0;
-            debug("ADD has\n");
-            debug("L: ");
-            ptoken(left1);
-            debug("R: ");
-            ptoken(right1);
-
-            debug("\n" SPLIT "\n");
-            // print_ir();
-            curr1->Int.value = right1->Int.value + right->Int.value;
-            left1->remove = true;
-            right1->remove = true;
-            curr1->type = right1->type;
-            curr1->reg = 0;
-            // insts[j]->token->remove = true;
-            debug("\n" SPLIT "\n");
-            // print_ir();
-            // exit(1);
-            optimize = true;
-            //  clone_insts();
-            //  i = 0;
-            break;
-          }
-        }
+        optimize = true;
+        insts[i]->token->remove = true;
+        clone_insts();
+        i = 1;
       }
     }
   }
   else if(op == 4)
   {
+    debug(CYAN "OP[%d] calculate followed operations\n" RESET, op);
+    for(int i = 0; insts[i]; i++)
+    {
+      Token *curr = insts[i]->token;
+      Token *left = insts[i]->left;   // a ptr
+      Token *right = insts[i]->right; // value (not a ptr)
+      // TODO: or declare
+      if(curr->type == ASSIGN && !right->ptr)
+      {
+        for(int j = i + 1; insts[j]; j++)
+        {
+          // TODO: handle other mathematical operations
+          if(insts[j]->token->type == ADD)
+          {
+            Token *math_left = insts[j]->left;
+            Token *math_right = insts[j]->right;
+            if(math_right->ptr == left->ptr)
+            {
+              insts[j]->right = copy_token(right);
+              clone_insts();
+              return true;
+            }
+            else if(math_left->ptr == left->ptr)
+            {
+              insts[j]->left = copy_token(right);
+              clone_insts();
+              return true;
+            }
+          }
+        }
+      }
+    }
+  }
+  else if(op == 5)
+  {
+    // TODO: be carefull this one remove anything that don't have reg
+    debug(CYAN "OP[%d] (remove unused instructions)\n"RESET, op);
     for (size_t i = 0; insts[i]; i++)
     {
       Token *curr = insts[i]->token;
-      if (!curr->reg && !includes((Type[]){FDEC, END_BLOC, BLOC, IF, ELSE, JMP, JNE, JE, 0}, curr->type))
+      if (!curr->ptr && !curr->reg && includes((Type[]){INT, 0}, curr->type))
       {
         curr->remove = true;
         i = 0;
         clone_insts();
-        // optimize = true;
+        return true;
       }
     }
   }
+#define MAX_OPTIMIZATION 6
   return optimize;
 }
 
@@ -1812,12 +1839,39 @@ void pasm(char *fmt, ...)
   }
   va_end(args);
 }
+
+void initialize()
+{
+  pasm(".intel_syntax noprefix\n");
+  pasm(".include \"./import/header.s\"\n\n");
+  pasm(".text\n");
+  pasm(".globl	main\n");
+}
+
+void finalize()
+{
+#if TOKENIZE
+  for (int i = 0; tokens[i]; i++)
+  {
+    Token *curr = tokens[i];
+    // test char variable before making any modification
+    if (curr->type == CHARS && !curr->name && !curr->ptr && curr->index)
+      pasm(".STR%zu: .string %s\n", curr->index, curr->Chars.value);
+    if (curr->type == FLOAT && !curr->name && !curr->ptr && curr->index)
+      pasm(".FLT%zu: .long %zu /* %f */\n", curr->index,
+           *((uint32_t *)(&curr->Float.value)), curr->Float.value);
+  }
+  pasm(".section	.note.GNU-stack,\"\",@progbits\n\n");
+#endif
+}
+
 void generate_asm()
 {
   if(!ASM) return;
   debug(GREEN "======= GENERATE ASSEMBLY ======\n" RESET);
   debug(CYAN);
-  asm_fd = stdout;
+  // asm_fd = stdout;
+  initialize();
   clone_insts();
   for (size_t i = 0; insts[i]; i++)
   {
@@ -1838,6 +1892,15 @@ void generate_asm()
     case ASSIGN:
     {
       pasm("//assign [%s]\n", left->name);
+      // if(strcmp(left->name, "i") == 0)
+      // {
+      //   debug(RED"found i\n");
+      //   debug("has right: ");
+      //   ptoken(right);
+      //   if(right->ptr) debug("has ptr %zu\n", right->ptr);
+      //   if(right->creg) debug("has creg %s\n", right->creg);
+      //   exit(1);
+      // }
       if (right->ptr || right->creg)
       {
         char *inst = left->type == FLOAT ? "movss " : "mov ";
@@ -1994,12 +2057,20 @@ void generate_asm()
     default: check(1, "handle this case (%s)\n", to_string(curr->type)); break;
     }
   }
+  finalize();
   debug(RESET);
 }
 // MAIN
 int main()
 {
+
   char *input = open_file("file.w");
+  char *outputFile = strdup("file.w");
+  outputFile[strlen(outputFile) - 1] = 's';
+
+  asm_fd = fopen(outputFile, "w+");
+  check(!asm_fd, "openning %s\n", outputFile);
+  free(outputFile);
   // debug("===========    IR    ===========\n");
   tokenize(input);
   Node *head = ast();
