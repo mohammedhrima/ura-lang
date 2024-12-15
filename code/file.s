@@ -3,17 +3,18 @@
 
 .text
 .globl	main
+m:
+	push    rbp
+	mov     rbp, rsp
+	sub     rsp, 16
+	mov     eax, 10
+	leave   
+	ret     
+.endm:
 main:
 	push    rbp
 	mov     rbp, rsp
 	sub     rsp, 16
-	//      assign [i]
-	mov     DWORD PTR -4[rbp], 8
-	//      assign [j]
-	mov     DWORD PTR -8[rbp], 25
-	mov     eax, 2
-	leave   
-	ret     
-.endmain:
-.section	.note.GNU-stack,"",@progbits
-
+	//      assign [n]
+	mov     DWORD PTR -4[rbp], 10
+	call    m
