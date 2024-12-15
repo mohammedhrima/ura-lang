@@ -204,7 +204,9 @@ Specials *specials = (Specials[]){
 {0, (Type)0}};
 
 Specials *dataTypes = (Specials[]){
-    {"int", INT}, {"bool", BOOL}, {"func", FDEC}, {0, (Type)0}};
+{"int", INT}, {"bool", BOOL}, {"func", FDEC}, {"chars", CHARS},
+{0, (Type)0},
+};
 
 // UTILS
 void debug(char *fmt, ...)
@@ -354,6 +356,15 @@ Token *new_token(char *input, size_t s, size_t e, Type type, size_t space)
     }
     break;
   }
+  case CHARS:
+  {
+    if(e > s)
+    {
+      new->Chars.value = allocate(e - s + 1, sizeof(char));
+      strncpy(new->Chars.value, input + s, e - s);
+    }
+    break;
+  }
   case CHAR:
   {
     new->Char.value = input[s];
@@ -445,6 +456,15 @@ void tokenize(char *input)
     }
     if (found)
       continue;
+    if (input[i] && strchr("\"\'", input[i]))
+    {
+      i++;
+      while(input[i] && input[i] != '"') i++;
+      check(input[i] != '"', "Expected '\"'");
+      i++;
+      new_token(input, s, i, CHARS, space);
+      continue;
+    }
     if (isalpha(input[i]))
     {
       while (isalnum(input[i]))
@@ -469,6 +489,7 @@ void tokenize(char *input)
 void free_token(Token *token)
 {
   if (token->name) free(token->name);
+  if (token->Chars.value) free(token->Chars.value);
   free(token);
 }
 
@@ -668,7 +689,7 @@ Node *prime()
 {
   Token *token = NULL;
   Node *node = NULL;
-  if ((token = find(ID, INT, BOOL, 0)))
+  if ((token = find(ID, INT, BOOL, CHARS, 0)))
   {
     if (token->declare) // int num
     {
@@ -695,7 +716,6 @@ Node *prime()
           curr = curr->right;
           curr->left = expr();
           last = curr->left;
-
         }
         if(last->token->type != RETURN)
         {
@@ -718,9 +738,38 @@ Node *prime()
           tmp->right = new_node(NULL);
           tmp = tmp->right;
         }
+        return node;
       }
     }
     node = new_node(token);
+  }
+  else if((token = find(FDEC, 0)))
+  {
+    node = new_node(token);
+
+    Node *func_name = prime();
+
+    check(!func_name->token || !func_name->token->declare, "expected data type after func declaration");
+
+    node->left = new_node(NULL);
+    node->left->left = func_name;
+
+    node->token->retType = func_name->token->type;
+    node->token->name = func_name->token->name;
+    func_name->token->name = NULL;
+
+    check(!find(LPAR, 0), "expected ( after function declaration");
+    check(!find(RPAR, 0), "expected ) after function declaration");
+    check(!find(DOTS, 0), "Expected : after function declaration");
+
+    Node *curr = node;
+    while(tokens[exe_pos]->space > node->token->space)
+    {
+      curr->right = new_node(NULL);
+      curr = curr->right;
+      curr->left = expr();
+    }
+    return node;
   }
   else if((token = find(IF, 0)))
   {
@@ -819,15 +868,13 @@ Node *prime()
     check(!find(RPAR, 0), "Expected )\n", "");
   }
   else if (find(END, 0)) exe_pos--;
-  else
-    check(1, "Unexpected token has type %s\n", to_string(tokens[exe_pos]->type));
+  else check(1, "Unexpected token has type %s\n", to_string(tokens[exe_pos]->type));
   return node;
 }
 
 Node *ast()
 {
-  if (!AST)
-    return NULL;
+  if (!AST) return NULL;
   debug(GREEN "===========   AST    ===========\n" RESET);
   Node *head = new_node(NULL);
   Node *curr = head;
@@ -970,7 +1017,7 @@ int sizeofToken(Token *token)
 
 Node *new_function(Node *node)
 {
-  debug("func %s in %s scoop\n", node->token->name, scoop->name);
+  debug("new_func %s in %s scoop\n", node->token->name, scoop->name);
 #if 0
     char *builtins[] = {"output", 0};
     for(int i = 0; builtins[i]; i++)
@@ -1003,6 +1050,53 @@ Node *new_function(Node *node)
   }
   scoop->functions[scoop->fpos++] = node;
   return node;
+}
+
+Node *get_function(char *name)
+{
+  // TODO: remove output from here
+  debug("get_func %s in %s scoop\n", name, scoop->name);
+
+#if 0
+  char *builtins[] = {"output", 0};
+  for (int i = 0; builtins[i]; i++)
+    if (strcmp(name, builtins[i]) == 0)
+      return NULL;
+  for (size_t i = 0; i < builtins_pos; i++)
+  {
+    if (strcmp(name, builtins_functions[i]->token->name) == 0)
+      return builtins_functions[i];
+  }
+  // if(strcmp(name, "write") == 0)
+  // {
+  //     Node *func = new_node(new_token("write", 0, 5, 0, fdec_));
+  //     Node *curr = func;
+  //     curr->left = new_node(NULL);
+  //     curr = curr->left;
+  //     curr->right = new_node(NULL);
+  //     curr = curr->right;
+  //     curr->left = new_node(new_token(0, 0, 0, 0, int_));
+  //     curr->right = new_node(NULL);
+  //     curr = curr->right;
+  //     curr->left = new_node(new_token(0, 0, 0, 0, chars_));
+  //     curr->right = new_node(NULL);
+  //     curr = curr->right;
+  //     curr->left = new_node(new_token(0, 0, 0, 0, int_));
+  //     return func;
+  // }
+#endif
+  for (size_t j = scoopPos; j >= 0; j--)
+  {
+    Scoop *scoop = &Gscoop[j];
+    for (size_t i = 0; i < scoop->fpos; i++)
+    {
+      Node *func = scoop->functions[i];
+      if (strcmp(func->token->name, name) == 0)
+        return func;
+    }
+  }
+  check(1, "'%s' Not found\n", name);
+  return NULL;
 }
 
 Token *new_variable(Token *token)
@@ -1078,6 +1172,7 @@ bool are_compatible(Token *left, Token *right)
 }
 
 size_t bloc_index;
+size_t str_index;
 Token *generate_ir(Node *node)
 {
   Inst *inst = NULL;
@@ -1089,7 +1184,7 @@ Token *generate_ir(Node *node)
     return token;
     break;
   }
-  case INT: case BOOL:
+  case INT: case BOOL: case CHARS:
   {
     inst = new_inst(node->token);
     break;
@@ -1167,7 +1262,9 @@ Token *generate_ir(Node *node)
   }
   case FCALL:
   {
-
+    // Node *func = get_function(node->token->name);
+    new_inst(node->token);
+    return node->token;
     break;
   }
   case IF:
@@ -1400,7 +1497,7 @@ void print_ir()
       if (right->name) debug(" (%s)", right->name);
       break;
     }
-    case INT: case BOOL:
+    case INT: case BOOL: case CHARS:
     {
       debug("[%-6s] ", to_string(curr->type));
       if (curr->declare) debug("declare [%s] PTR=[%zu]", curr->name, curr->ptr);
@@ -1414,16 +1511,17 @@ void print_ir()
       //     curr->index = ++float_index;
       //     debug("value %f ", curr->Float.value);
       // }
-      // else if(curr->type == CHARS)
-      // {
-      //     curr->index = ++str_index;
-      //     debug("value %s in STR%zu ", curr->Chars.value, curr->index);
-      // }
+      else if(curr->type == CHARS)
+      {
+          curr->index = ++str_index;
+          debug("value %s in STR%zu ", curr->Chars.value, curr->index);
+      }
       else check(1, "handle this case in generate ir\n", "");
       break;
     }
     case JMP: debug("jmp to [%s]", curr->name); break;
     case JNE: debug("jne to [%s]", curr->name); break;
+    case FCALL: debug("call [%s]", curr->name); break;
     case BLOC: case FDEC: debug("[%s] bloc", curr->name); break;
     case END_BLOC: debug("[%s] endbloc", curr->name); break;
     case RETURN: debug("return"); break;
@@ -1880,7 +1978,7 @@ void generate_asm()
     Token *right = insts[i]->right;
     switch (curr->type)
     {
-    case INT: case BOOL:
+    case INT: case BOOL: case CHARS:
     {
       if (curr->declare)
       {
@@ -1914,10 +2012,10 @@ void generate_asm()
         case INT: case BOOL: case CHAR:
           pasm("mov %a, %v\n", left, right);
           break;
-        // case CHARS:
-        //     pasm("lea %r, .STR%zu[rip]\n", right, right->index);
-        //     pasm("mov %a, %r\n", left, left);
-        //     break;
+        case CHARS:
+            pasm("lea %r, .STR%zu[rip]\n", right, right->index);
+            pasm("mov %a, %r\n", left, left);
+            break;
         // case float_:
         //     pasm("movss %r, DWORD PTR .FLT%zu[rip]\n", right, right->index);
         //     pasm("movss %a, %r\n", left, left);
@@ -2024,6 +2122,11 @@ void generate_asm()
       pasm("%i.%s%zu\n", "jmp", curr->name, curr->index);
       break;
     }
+    case FCALL:
+    {
+      pasm("call %s\n", curr->name);
+      break;
+    }
     case BLOC:
     {
       pasm(".%s%zu:\n", curr->name, curr->index);
@@ -2037,6 +2140,11 @@ void generate_asm()
     case RETURN:
     {
       if(left->ptr) pasm("mov %r, %a\n", left, left);
+      else if(left->reg)
+      {
+        debug("reg: %c\n", left->creg);
+        exit(1);
+      }
       else
       {
         switch (left->type)
