@@ -3,18 +3,20 @@
 
 .text
 .globl	main
-m:
+factorial:
 	push    rbp
 	mov     rbp, rsp
 	sub     rsp, 16
-	mov     eax, 10
+	mov     eax, 1
 	leave   
 	ret     
-.endm:
+.endfactorial:
 main:
 	push    rbp
 	mov     rbp, rsp
 	sub     rsp, 16
-	//      assign [n]
-	mov     DWORD PTR -4[rbp], 10
-	call    m
+	//      assign [num]
+	mov     DWORD PTR -4[rbp], 5
+	call    output
+	call    factorial
+	//      assign [result]

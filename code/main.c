@@ -229,6 +229,7 @@ void check_error(const char *filename, const char *funcname, int line, bool cond
   va_start(ap, fmt);
   fprintf(stderr, "%sError:%s:%s:%d %s", RED, filename, funcname, line, RESET);
   vfprintf(stderr, fmt, ap);
+  fprintf(stderr, "\n");
   va_end(ap);
   exit(1);
 }
