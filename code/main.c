@@ -38,7 +38,7 @@
 #if IR
 #define BUILTINS 0
 #ifndef OPTIMIZE
-#define OPTIMIZE 1
+#define OPTIMIZE 0
 #endif
 #define ASM 1
 #endif
@@ -63,6 +63,7 @@ typedef enum
   VOID, INT, CHARS, CHAR, BOOL, FLOAT,
   STRUCT, ID, BLOC, END_BLOC,
   JNE, JE, JMP,
+  PUSH,
   END
 } Type;
 
@@ -126,6 +127,7 @@ char *to_string(Type type)
   case JNE: return "JNE";
   case JE: return "JE";
   case JMP: return "JMP";
+  case PUSH: return "PUSH";
   case END: return "END";
 
   default: check(1, "Unknown type [%d]\n", type);
@@ -232,8 +234,6 @@ void check_error(const char *filename, const char *funcname, int line, bool cond
   va_end(ap);
   exit(1);
 }
-
-
 
 void ptoken(Token *token)
 {
@@ -483,6 +483,7 @@ void tokenize(char *input)
 void free_token(Token *token)
 {
   if (token->name) free(token->name);
+  if (token->creg) free(token->creg);
   if (token->Chars.value) free(token->Chars.value);
   free(token);
 }
@@ -700,6 +701,7 @@ Node *prime()
         check(!find(RPAR, 0), "expected ) after main declaration", "");
         check(!find(DOTS, 0), "expected : after main() declaration", "");
         token->type = FDEC;
+        token->retType = INT;
         Node *curr = node;
         Node *last = node;
         while (check_token(token->space))
@@ -712,6 +714,7 @@ Node *prime()
         }
         if(last->token->type != RETURN)
         {
+          // TODO: check that return is compatible with function
           curr->right = new_node(NULL);
           curr = curr->right;
           curr->left = new_node(new_token(NULL, 0, 0, RETURN, node->token->space + 3));
@@ -723,13 +726,15 @@ Node *prime()
       {
         token->type = FCALL;
         Node *tmp = node;
-        while(!find(RPAR, END, 0))
+        Token *tmptk = NULL;
+        while(!(tmptk = find(RPAR, END, 0)))
         {
           tmp->left = expr();
           find(COMA, 0);
           tmp->right = new_node(NULL);
           tmp = tmp->right;
         }
+        check(tmptk->type != RPAR, "expected )");
         return node;
       }
     }
@@ -740,18 +745,29 @@ Node *prime()
     node = new_node(token);
 
     Node *func_name = prime();
-
     check(!func_name->token || !func_name->token->declare, "expected data type after func declaration");
 
-    node->left = new_node(NULL);
-    node->left->left = func_name;
+    // func_name->token->declare = false;
+    // node->left = new_node(NULL);
+    // node->left->left = func_name;
 
     node->token->retType = func_name->token->type;
     node->token->name = func_name->token->name;
     func_name->token->name = NULL;
+    free_node(func_name);
+    debug("found FDEC with rettype %s\n", to_string(node->token->retType));
 
     check(!find(LPAR, 0), "expected ( after function declaration");
-    check(!find(RPAR, 0), "expected ) after function declaration");
+    Node *tmp = node;
+    Token *tmptk = NULL;
+    while(!(tmptk = find(RPAR, END, 0)))
+    {
+      tmp->left = expr();
+      find(COMA, 0);
+      tmp->right = new_node(NULL);
+      tmp = tmp->right;
+    }
+    check(tmptk->type != RPAR, "expected ) after function declaration");
     check(!find(DOTS, 0), "Expected : after function declaration");
 
     Node *curr = node;
@@ -1012,7 +1028,7 @@ int sizeofToken(Token *token)
 
 Node *new_function(Node *node)
 {
-  debug("new_func %s in %s scoop\n", node->token->name, scoop->name);
+  debug("new_func %s in %s scoop has return %d\n", node->token->name, scoop->name, node->token->retType);
 #if 0
     char *builtins[] = {"output", 0};
     for(int i = 0; builtins[i]; i++)
@@ -1241,7 +1257,16 @@ Token *generate_ir(Node *node)
   case FDEC:
   {
     new_function(node);
+    switch(node->token->retType)
+    {
+      case INT: node->token->creg = strdup("eax"); break;
+      default: check(1, "handle this case [%s]\n", to_string(node->token->retType)); break;
+    }
     enter_scoop(node->token->name);
+
+    size_t tmp_ptr = ptr;
+    ptr = 0;
+    
     inst = new_inst(node->token);
     Node *curr = node->right;
     while (curr)
@@ -1253,11 +1278,57 @@ Token *generate_ir(Node *node)
     new->name = strdup(node->token->name);
     new_inst(new);
     exit_scoop();
+    ptr = tmp_ptr;
     break;
   }
   case FCALL:
   {
-    // Node *func = get_function(node->token->name);
+    char *eregs[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d", NULL};
+    char *rregs[] = {"rdi", "rsi", "rdx", "rcx", "r8d", "r9d", NULL};
+    int i = 0;
+    int j = 0;
+    int k = 0;
+
+    if(strcmp(node->token->name, "output") == 0)
+    {
+
+    }
+    else
+    {
+      Node *func = get_function(node->token->name);
+      node->token->retType = func->token->retType;
+      node->token->creg = strdup(func->token->creg);
+      debug("%s: has the following arguments\n", node->token->name);
+      Node *arg = node;
+      while(arg->left)
+      {
+        pnode(arg->left, "", 10);
+        Token *left = generate_ir(arg->left);
+        Token *right = NULL;
+        Inst *push = new_inst(new_token(NULL, 0, 0, PUSH, node->token->space));
+        
+        if (eregs[i])
+        {
+          switch(left->type)
+          {
+            case INT:
+              right = new_token(NULL, 0, 0, 0, node->token->space);
+              right->creg = strdup(eregs[i]);
+              break;
+            default: check(1, "handle this case", "");
+          }
+          i++;
+        }
+        else 
+        {
+          check(1, "set PTR here (maybe)\n");
+          right = new_token(NULL, 0, 0, node->token->space, 0);
+        }
+        push->left = left;
+        push->right = right;
+        arg = arg->right;
+      }
+    }
     new_inst(node->token);
     return node->token;
     break;
@@ -1508,10 +1579,15 @@ void print_ir()
       // }
       else if(curr->type == CHARS)
       {
-          curr->index = ++str_index;
-          debug("value %s in STR%zu ", curr->Chars.value, curr->index);
+        curr->index = ++str_index;
+        debug("value %s in STR%zu ", curr->Chars.value, curr->index);
       }
       else check(1, "handle this case in generate ir\n", "");
+      break;
+    }
+    case PUSH:
+    {
+      debug("rxx: push ");
       break;
     }
     case JMP: debug("jmp to [%s]", curr->name); break;
@@ -1520,7 +1596,7 @@ void print_ir()
     case BLOC: case FDEC: debug("[%s] bloc", curr->name); break;
     case END_BLOC: debug("[%s] endbloc", curr->name); break;
     case RETURN: debug("[return]"); break;
-    default: debug(RED "handle [%s]"RESET, to_string(curr->type)); break;
+    default: debug(RED "print_ir:handle [%s]"RESET, to_string(curr->type)); break;
     }
     // if(curr->remove) debug(" remove");
     debug("\n");
@@ -2135,10 +2211,10 @@ void generate_asm()
     case RETURN:
     {
       if(left->ptr) pasm("mov %r, %a\n", left, left);
-      else if(left->reg)
+      else if(left->creg)
       {
-        debug("reg: %c\n", left->creg);
-        exit(1);
+        // TODO: check the type
+        if(strcmp(left->creg, "eax")) pasm("mov %r, %a\n", left, left);
       }
       else
       {
@@ -2155,6 +2231,22 @@ void generate_asm()
       }
       pasm("leave\n");
       pasm("ret\n");
+      break;
+    }
+    case PUSH:
+    {
+      /*
+        left: source
+        right: destination
+      */
+      if(right->name) pasm("mov %s, ", right->name);
+      else if(right->ptr) check(1, "handle this case");
+      else if(right->creg) pasm("mov %r, ", right);
+      else check(1, "handle this case");
+
+      if(left->ptr) pasm("%a\n", left);
+      else if(left->creg) pasm("%r\n", left);
+      else pasm("%v\n", left);
       break;
     }
     default: check(1, "handle this case (%s)\n", to_string(curr->type)); break;
