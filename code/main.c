@@ -222,8 +222,7 @@ void debug(char *fmt, ...)
 bool found_error;
 void check_error(const char *filename, const char *funcname, int line, bool cond, char *fmt, ...)
 {
-  if (!cond)
-    return;
+  if (!cond) return;
   found_error = true;
   va_list ap;
   va_start(ap, fmt);
@@ -392,8 +391,7 @@ Token *copy_token(Token *token)
 
 void tokenize(char *input)
 {
-  if (!TOKENIZE)
-    return;
+  if (!TOKENIZE) return;
   debug(GREEN "=========== TOKENIZE ===========\n" RESET);
   // size_t len = 10;
   // size_t pos = 0;
@@ -410,8 +408,7 @@ void tokenize(char *input)
         inc_space = true;
         space = 0;
       }
-      else if (inc_space)
-        space++;
+      else if (inc_space) space++;
       i++;
       continue;
     }
@@ -455,8 +452,7 @@ void tokenize(char *input)
         break;
       }
     }
-    if (found)
-      continue;
+    if (found) continue;
     if (input[i] && strchr("\"\'", input[i]))
     {
       i++;
@@ -468,23 +464,20 @@ void tokenize(char *input)
     }
     if (isalpha(input[i]))
     {
-      while (isalnum(input[i]))
-        i++;
+      while (isalnum(input[i])) i++;
       new_token(input, s, i, ID, space);
       continue;
     }
     if (isdigit(input[i]))
     {
-      while (isdigit(input[i]))
-        i++;
+      while (isdigit(input[i])) i++;
       new_token(input, s, i, INT, space);
       continue;
     }
     check(input[i], "Syntax error <%c>\n", input[i]);
   }
-  new_token(input, 0, 0, END, space);
-  for (size_t i = 0; tokens[i]; i++)
-    ptoken(tokens[i]);
+  new_token(input, 0, 0, END, -1);
+  for (size_t i = 0; tokens[i]; i++) ptoken(tokens[i]);
 }
 
 void free_token(Token *token)
@@ -513,8 +506,7 @@ Token *find(Type type, ...)
   va_start(ap, type);
   while (type)
   {
-    if (type == tokens[exe_pos]->type)
-      return tokens[exe_pos++];
+    if (type == tokens[exe_pos]->type) return tokens[exe_pos++];
     type = va_arg(ap, Type);
   }
   return NULL;
@@ -525,15 +517,10 @@ void pnode(Node *node, char *side, int space)
   if (node)
   {
     int i = 0;
-    while (i < space)
-      i += printf(" ");
-    if (side)
-      debug("%s", side);
-    debug("node: ");
-    if (node->token)
-      ptoken(node->token);
-    else
-      debug("(NULL)\n");
+    while (i < space) i += printf(" ");
+    if (side) debug("%snode: ", side ? side : "");
+    if (node->token) ptoken(node->token);
+    else debug("(NULL)\n");
     pnode(node->left, "L:", space + 2);
     pnode(node->right, "R:", space + 2);
   }
@@ -551,10 +538,8 @@ Node *copy_node(Node *node)
 {
   Node *new = allocate(1, sizeof(Node));
   new->token = copy_token(node->token);
-  if (node->left)
-    new->left = copy_node(node->left);
-  if (node->right)
-    new->right = copy_node(node->right);
+  if (node->left) new->left = copy_node(node->left);
+  if (node->right) new->right = copy_node(node->right);
   return new;
 }
 
@@ -686,8 +671,15 @@ Node *sign()
   return prime();
 }
 
+bool check_token(int space)
+{
+  return tokens[exe_pos]->space > space && tokens[exe_pos]->type != END;
+}
+
 Node *prime()
 {
+  // debug("prime\n");
+
   Token *token = NULL;
   Node *node = NULL;
   if ((token = find(ID, INT, BOOL, CHARS, 0)))
@@ -708,11 +700,11 @@ Node *prime()
         check(!find(RPAR, 0), "expected ) after main declaration", "");
         check(!find(DOTS, 0), "expected : after main() declaration", "");
         token->type = FDEC;
-        size_t space = token->space;
         Node *curr = node;
         Node *last = node;
-        while (tokens[exe_pos]->space > space && tokens[exe_pos]->type != END)
+        while (check_token(token->space))
         {
+          debug("loop [%s]\n", to_string(tokens[exe_pos]->type));
           curr->right = new_node(NULL);
           curr = curr->right;
           curr->left = expr();
@@ -722,8 +714,8 @@ Node *prime()
         {
           curr->right = new_node(NULL);
           curr = curr->right;
-          curr->left = new_node(new_token(NULL, 0, 0, RETURN, node->token->space + 4));
-          curr->left->left = new_node(new_token(NULL, 0, 0, INT, node->token->space + 4));
+          curr->left = new_node(new_token(NULL, 0, 0, RETURN, node->token->space + 3));
+          curr->left->left = new_node(new_token(NULL, 0, 0, INT, node->token->space + 3));
         }
         return node;
       }
@@ -735,7 +727,6 @@ Node *prime()
         {
           tmp->left = expr();
           find(COMA, 0);
-          // tmp->
           tmp->right = new_node(NULL);
           tmp = tmp->right;
         }
@@ -764,7 +755,7 @@ Node *prime()
     check(!find(DOTS, 0), "Expected : after function declaration");
 
     Node *curr = node;
-    while(tokens[exe_pos]->space > node->token->space)
+    while(check_token(token->space))
     {
       curr->right = new_node(NULL);
       curr = curr->right;
@@ -786,7 +777,7 @@ Node *prime()
     tmp = tmp->right;
 
     // if bloc code
-    while (tokens[exe_pos]->space > node->token->space) 
+    while (check_token(node->token->space)) 
     {
       tmp->left = expr();
       tmp->right = new_node(NULL);
@@ -794,7 +785,11 @@ Node *prime()
     }
 
     tmp = node;
-    while (includes((Type[]){ELSE, ELIF, 0}, tokens[exe_pos]->type) && tokens[exe_pos]->space == node->token->space)
+    while 
+    (
+      includes((Type[]){ELSE, ELIF, 0}, tokens[exe_pos]->type) && 
+      node->token->space == tokens[exe_pos]->space
+    )
     {
       token = tokens[exe_pos++];
       tmp->right = new_node(NULL);
@@ -807,7 +802,7 @@ Node *prime()
         check(!find(DOTS, 0), "expected : after else");
         tmp0->right = new_node(NULL);
         tmp0 = tmp0->right;
-        while (tokens[exe_pos]->space > token->space)
+        while (check_token(token->space))
         {
           tmp0->left = expr();
           tmp0->right = new_node(NULL);
@@ -820,7 +815,7 @@ Node *prime()
         Node *tmp0 = tmp->left;
         tmp0->right = new_node(NULL);
         tmp0 = tmp0->right;
-        while (tokens[exe_pos]->space > token->space)
+        while (check_token(token->space))
         {
           tmp0->left = expr();
           tmp0->right = new_node(NULL);
@@ -836,7 +831,7 @@ Node *prime()
     node->left = expr();
     check(!find(DOTS, 0), "Expected : after while condition\n", "");
     Node *tmp = node;
-    while (tokens[exe_pos]->type != END && tokens[exe_pos]->space > token->space)
+    while (check_token(token->space))
     {
       tmp->right = new_node(NULL);
       tmp = tmp->right;
@@ -868,7 +863,6 @@ Node *prime()
     node = expr();
     check(!find(RPAR, 0), "Expected )\n", "");
   }
-  else if (find(END, 0)) exe_pos--;
   else check(1, "Unexpected token has type %s\n", to_string(tokens[exe_pos]->type));
   return node;
 }
@@ -880,7 +874,7 @@ Node *ast()
   Node *head = new_node(NULL);
   Node *curr = head;
   curr->left = expr();
-  while (curr->left)
+  while (tokens[exe_pos]->type != END)
   {
     curr->right = new_node(NULL);
     curr = curr->right;
@@ -1167,7 +1161,7 @@ Inst *new_inst(Token *token)
   return new;
 }
 // TODO: implement it
-bool are_compatible(Token *left, Token *right)
+bool compatible(Token *left, Token *right)
 {
   return true;
 }
@@ -1197,7 +1191,7 @@ Token *generate_ir(Node *node)
   {
     Token *left = generate_ir(node->left);
     Token *right = generate_ir(node->right);
-    check(!are_compatible(left, right), "incompatible type for %s op\n", to_string(node->token->type));
+    check(!compatible(left, right), "incompatible type for %s op\n", to_string(node->token->type));
     inst = new_inst(node->token);
     inst->left = left;
     inst->right = right;
@@ -1237,7 +1231,7 @@ Token *generate_ir(Node *node)
     // {
     // 	Token *left = generate_ir(node->left);
     // 	Token *right = generate_ir(node->right);
-    // 	check(!are_compatible(left, right), "incompatible type for %s op\n", to_string(node->token->type));
+    // 	check(!compatible(left, right), "incompatible type for %s op\n", to_string(node->token->type));
     // 	inst = new_inst(node->token);
     // 	inst->left = left;
     // 	inst->right = right;
@@ -1525,7 +1519,7 @@ void print_ir()
     case FCALL: debug("call [%s]", curr->name); break;
     case BLOC: case FDEC: debug("[%s] bloc", curr->name); break;
     case END_BLOC: debug("[%s] endbloc", curr->name); break;
-    case RETURN: debug("return"); break;
+    case RETURN: debug("[return]"); break;
     default: debug(RED "handle [%s]"RESET, to_string(curr->type)); break;
     }
     // if(curr->remove) debug(" remove");
@@ -1789,7 +1783,7 @@ void ir(Node *head)
   debug(GREEN "========== GENERATE IR =========\n" RESET);
   enter_scoop("");
   Node *curr = head;
-  while (curr->left)
+  while (curr)
   {
     generate_ir(curr->left);
     curr = curr->right;
