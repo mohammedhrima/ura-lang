@@ -3,20 +3,23 @@
 
 .text
 .globl	main
-factorial:
+hello:
 	push    rbp
 	mov     rbp, rsp
 	sub     rsp, 16
-	mov     eax, 1
+	mov     eax, 12
 	leave   
 	ret     
-.endfactorial:
+.endhello:
 main:
 	push    rbp
 	mov     rbp, rsp
 	sub     rsp, 16
 	//      assign [num]
 	mov     DWORD PTR -4[rbp], 5
-	call    output
-	call    factorial
-	//      assign [result]
+	mov     eax, 0
+	leave   
+	ret     
+.endmain:
+.section	.note.GNU-stack,"",@progbits
+
