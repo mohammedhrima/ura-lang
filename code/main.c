@@ -63,7 +63,7 @@ typedef enum
   VOID, INT, CHARS, CHAR, BOOL, FLOAT,
   STRUCT, ID, BLOC, END_BLOC,
   JNE, JE, JMP,
-  PUSH,
+  PUSH, POP,
   END
 } Type;
 
@@ -128,6 +128,7 @@ char *to_string(Type type)
   case JE: return "JE";
   case JMP: return "JMP";
   case PUSH: return "PUSH";
+  case POP: return "POP";
   case END: return "END";
 
   default: check(1, "Unknown type [%d]\n", type);
@@ -758,19 +759,20 @@ Node *prime()
     debug("found FDEC with rettype %s\n", to_string(node->token->retType));
 
     check(!find(LPAR, 0), "expected ( after function declaration");
-    Node *tmp = node;
+    node->left = new_node(NULL);
+    Node *curr = node->left;
     Token *tmptk = NULL;
     while(!(tmptk = find(RPAR, END, 0)))
     {
-      tmp->left = expr();
+      curr->left = expr();
       find(COMA, 0);
-      tmp->right = new_node(NULL);
-      tmp = tmp->right;
+      curr->right = new_node(NULL);
+      curr = curr->right;
     }
     check(tmptk->type != RPAR, "expected ) after function declaration");
     check(!find(DOTS, 0), "Expected : after function declaration");
 
-    Node *curr = node;
+    curr = node;
     while(check_token(token->space))
     {
       curr->right = new_node(NULL);
@@ -854,20 +856,6 @@ Node *prime()
       tmp->left = expr();
     }
   }
-#if 0
-  else if ((token = find(FDEC, 0)))
-  {
-    node = new_node(token);
-    node->left = new_node(NULL);
-    node->left->left = expr();
-    check(!node->left->left->token || !node->left->left->token->declare, "declaraing function\n", "");
-    node->token->retType = node->left->left->token->type;
-    node->token->name = node->left->left->token->name;
-    node->left->left->token->name = NULL;
-    check(!find(LPAR, 0), "Expected ( after function declaration\n", "");
-    check(!find(RPAR, 0), "Expected ( after function declaration\n", "");
-  }
-#endif
   else if((token = find(RETURN, 0)))
   {
     // TODO: chec kif return type is compatible with function
@@ -1267,7 +1255,48 @@ Token *generate_ir(Node *node)
     size_t tmp_ptr = ptr;
     ptr = 0;
     
+    pnode(node, NULL, 5);
     inst = new_inst(node->token);
+
+    // arguments
+    char *eregs[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d", NULL};
+    char *rregs[] = {"rdi", "rsi", "rdx", "rcx", "r8d", "r9d", NULL};
+    int i = 0;
+    Node *arg = node->left;
+    
+    while (arg && arg->left)
+    {
+      pnode(arg->left, "", 10);
+      Token *left = arg->left->token;
+      // TODO: it must be declare
+      check(!left->declare, "invalid argument");
+      left->space += 3;
+      Token *right = NULL;
+      Inst *pop = new_inst(new_token(NULL, 0, 0, POP, node->token->space + 3));
+      
+      if (eregs[i])
+      {
+        switch(left->type)
+        {
+          case INT:
+            right = new_token(NULL, 0, 0, 0, node->token->space + 3);
+            right->creg = strdup(eregs[i]);
+            break;
+          default: check(1, "handle this case", "");
+        }
+        i++;
+      }
+      else 
+      {
+        check(1, "set PTR here (maybe)\n");
+        right = new_token(NULL, 0, 0, 0, node->token->space + 3);
+      }
+      pop->left = left;
+      pop->right = right;
+      arg = arg->right;
+    }
+
+    // code bloc
     Node *curr = node->right;
     while (curr)
     {
@@ -1322,7 +1351,7 @@ Token *generate_ir(Node *node)
         else 
         {
           check(1, "set PTR here (maybe)\n");
-          right = new_token(NULL, 0, 0, node->token->space, 0);
+          right = new_token(NULL, 0, 0, 0, node->token->space);
         }
         push->left = left;
         push->right = right;
@@ -1585,11 +1614,17 @@ void print_ir()
       else check(1, "handle this case in generate ir\n", "");
       break;
     }
-    case PUSH:
+    case POP:
     {
-      debug("rxx: push ");
+      debug("pop from ");
+      if(right->ptr) debug("PTR");
+      else if(right->creg) debug("%s", right->creg);
+      debug(" to ");
+      if(left->ptr) debug("PTR");
+      else if(left->creg) debug("%s", left->creg);
       break;
     }
+    case PUSH: debug("push "); break;
     case JMP: debug("jmp to [%s]", curr->name); break;
     case JNE: debug("jne to [%s]", curr->name); break;
     case FCALL: debug("call [%s]", curr->name); break;
@@ -2120,12 +2155,9 @@ void generate_asm()
       case DIV: inst = left->type == FLOAT ? "divss " : "div "; break;
       default: break;
       }
-      if (right->ptr)
-        pasm("%i%r, %a\n", inst, curr, right);
-      else if (right->creg)
-        pasm("%i%r, %r\n", inst, curr, right);
-      else if (!right->creg)
-        pasm("%i%r, %v\n", inst, curr, right);
+      if (right->ptr) pasm("%i%r, %a\n", inst, curr, right);
+      else if (right->creg) pasm("%i%r, %r\n", inst, curr, right);
+      else if (!right->creg) pasm("%i%r, %v\n", inst, curr, right);
       curr->type = left->type;
       break;
     }
@@ -2234,6 +2266,22 @@ void generate_asm()
       break;
     }
     case PUSH:
+    {
+      /*
+        left: source
+        right: destination
+      */
+      if(right->name) pasm("mov %s, ", right->name);
+      else if(right->ptr) check(1, "handle this case");
+      else if(right->creg) pasm("mov %r, ", right);
+      else check(1, "handle this case");
+
+      if(left->ptr) pasm("%a\n", left);
+      else if(left->creg) pasm("%r\n", left);
+      else pasm("%v\n", left);
+      break;
+    }
+    case POP:
     {
       /*
         left: source
