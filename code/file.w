@@ -1,4 +1,4 @@
-func int hello(int a):
+func int hello(int a, int b):
    return 12
 
 main():
