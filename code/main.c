@@ -21,6 +21,7 @@
 #define FILE __FILE__
 
 #define TOKENIZE 1
+#define TAB 3
 
 #if TOKENIZE
 #define AST 1
@@ -46,7 +47,6 @@
 #ifndef DEBUG
 #define DEBUG 1
 #endif
-
 
 // STRUCTS
 typedef enum
@@ -334,7 +334,7 @@ Token *new_token(char *input, size_t s, size_t e, Type type, size_t space)
     while (s < e) new->Int.value = new->Int.value * 10 + input[s++] - '0';
     break;
   }
-  case BLOC: case ID: case JMP: case JE: case JNE:
+  case BLOC: case ID: case JMP: case JE: case JNE: case FDEC:
   {
     if(e > s)
     {
@@ -718,8 +718,8 @@ Node *prime()
           // TODO: check that return is compatible with function
           curr->right = new_node(NULL);
           curr = curr->right;
-          curr->left = new_node(new_token(NULL, 0, 0, RETURN, node->token->space + 3));
-          curr->left->left = new_node(new_token(NULL, 0, 0, INT, node->token->space + 3));
+          curr->left = new_node(new_token(NULL, 0, 0, RETURN, node->token->space + TAB));
+          curr->left->left = new_node(new_token(NULL, 0, 0, INT, node->token->space + TAB));
         }
         return node;
       }
@@ -728,10 +728,37 @@ Node *prime()
         token->type = FCALL;
         Node *tmp = node;
         Token *tmptk = NULL;
+        char *eregs[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d", NULL};
+        char *rregs[] = {"rdi", "rsi", "rdx", "rcx", "r8d", "r9d", NULL};
+        int i = 0;
         while(!(tmptk = find(RPAR, END, 0)))
         {
+#if 1
+          Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, token->space + TAB));
+          assign->right = expr();
+          // check(!assign->right->token->declare, "Invalid argument for function call");
+          assign->right->token->space = token->space + TAB;
+          assign->left = new_node(new_token(NULL, 0, 0, assign->right->token->type, token->space + TAB));
+          if(eregs[i])
+          {
+            switch(assign->left->token->type)
+            {
+              case CHARS: assign->left->token->creg = strdup(rregs[i]); break;
+              case INT: assign->left->token->creg = strdup(eregs[i]); break;
+              default: check(1, "handle this case");
+            }
+            i++;
+          }
+          else
+          {
+            check(1, "implemnt PTR");
+          }
+          tmp->left = assign;
+          find(COMA, 0);
+#else
           tmp->left = expr();
           find(COMA, 0);
+#endif
           tmp->right = new_node(NULL);
           tmp = tmp->right;
         }
@@ -762,10 +789,38 @@ Node *prime()
     node->left = new_node(NULL);
     Node *curr = node->left;
     Token *tmptk = NULL;
+    char *eregs[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d", NULL};
+    char *rregs[] = {"rdi", "rsi", "rdx", "rcx", "r8d", "r9d", NULL};
+    int i = 0;
+
     while(!(tmptk = find(RPAR, END, 0)))
     {
+#if 1
+      Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, token->space + TAB));
+      assign->left = expr();
+      check(!assign->left->token->declare, "Invalid argument for function declaration");
+      assign->left->token->space = token->space + TAB;
+      assign->right = new_node(new_token(NULL, 0, 0, assign->left->token->type, token->space + TAB));
+      if(eregs[i])
+      {
+        switch(assign->left->token->type)
+        {
+          case CHARS: assign->left->token->creg = strdup(rregs[i]); break;
+          case INT: assign->left->token->creg = strdup(eregs[i]); break;
+          default: check(1, "handle this case");
+        };
+        i++;
+      }
+      else
+      {
+        check(1, "implemnt PTR");
+      }
+      curr->left = assign;
+      find(COMA, 0);
+#else
       curr->left = expr();
       find(COMA, 0);
+#endif
       curr->right = new_node(NULL);
       curr = curr->right;
     }
@@ -1014,6 +1069,42 @@ int sizeofToken(Token *token)
   return 0;
 }
 
+Node **builtins_functions;
+size_t builtins_pos;
+size_t builtins_size;
+
+void create_builtin(char *name, Type *params, Type retType)
+{
+  Node *func = new_node(new_token(name, 0, strlen(name), FDEC, 0));
+  func->token->retType = retType;
+  func->token->creg = strdup("eax");
+  func->left = new_node(NULL);
+  Node *curr = func->left;
+  int i = 0;
+  while (params[i])
+  {
+    curr->right = new_node(NULL);
+    curr = curr->right;
+    curr->left = new_node(new_token(NULL, 0, 0, params[i], func->token->space + TAB));
+    i++;
+  }
+  if (builtins_functions == NULL)
+  {
+    builtins_size = 2;
+    builtins_functions = allocate(builtins_size, sizeof(Node *));
+  }
+  else if (builtins_pos + 1 == builtins_size)
+  {
+    Node **tmp = allocate(builtins_size * 2, sizeof(Node *));
+    memcpy(tmp, builtins_functions, builtins_pos * sizeof(Node *));
+    free(builtins_functions);
+    builtins_size *= 2;
+    builtins_functions = tmp;
+  }
+  builtins_functions[builtins_pos++] = func;
+  debug("%screate builin [%s]%s\n", GREEN, func->token->name, RESET);
+}
+
 Node *new_function(Node *node)
 {
   debug("new_func %s in %s scoop has return %d\n", node->token->name, scoop->name, node->token->retType);
@@ -1056,13 +1147,14 @@ Node *get_function(char *name)
   // TODO: remove output from here
   debug("get_func %s in %s scoop\n", name, scoop->name);
 
-#if 0
-  char *builtins[] = {"output", 0};
-  for (int i = 0; builtins[i]; i++)
-    if (strcmp(name, builtins[i]) == 0)
-      return NULL;
+#if 1
+  // char *builtins[] = {"output", 0};
+  // for (int i = 0; builtins[i]; i++)
+  //   if (strcmp(name, builtins[i]) == 0)
+  //     return NULL;
   for (size_t i = 0; i < builtins_pos; i++)
   {
+    debug("loop [%d]\n", i);
     if (strcmp(name, builtins_functions[i]->token->name) == 0)
       return builtins_functions[i];
   }
@@ -1215,8 +1307,8 @@ Token *generate_ir(Node *node)
       //     check(1, "Invalid operation [%s] between [%s] and [%s]\n", c, l, r);
       // }
       node->token->retType = left->type;
-      if (right->type == INT) node->token->creg = "eax";
-      else if (right->type == FLOAT) node->token->creg = "xmm0";
+      if (right->type == INT) node->token->creg = strdup("eax");
+      else if (right->type == FLOAT) node->token->creg = strdup("xmm0");
       break;
     }
     case NOT_EQUAL: case EQUAL: case LESS: 
@@ -1248,6 +1340,7 @@ Token *generate_ir(Node *node)
     switch(node->token->retType)
     {
       case INT: node->token->creg = strdup("eax"); break;
+      case CHARS: node->token->creg = strdup("rax"); break;
       default: check(1, "handle this case [%s]\n", to_string(node->token->retType)); break;
     }
     enter_scoop(node->token->name);
@@ -1259,43 +1352,19 @@ Token *generate_ir(Node *node)
     inst = new_inst(node->token);
 
     // arguments
-    char *eregs[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d", NULL};
-    char *rregs[] = {"rdi", "rsi", "rdx", "rcx", "r8d", "r9d", NULL};
-    int i = 0;
     Node *arg = node->left;
-    
+    /*
+      dest: left  (variable inside function)
+      src : right
+    */
+    debug(GREEN"print arguments\n"RESET);
     while (arg && arg->left)
     {
       pnode(arg->left, "", 10);
-      Token *left = arg->left->token;
-      // TODO: it must be declare
-      check(!left->declare, "invalid argument");
-      left->space += 3;
-      Token *right = NULL;
-      Inst *pop = new_inst(new_token(NULL, 0, 0, POP, node->token->space + 3));
-      
-      if (eregs[i])
-      {
-        switch(left->type)
-        {
-          case INT:
-            right = new_token(NULL, 0, 0, 0, node->token->space + 3);
-            right->creg = strdup(eregs[i]);
-            break;
-          default: check(1, "handle this case", "");
-        }
-        i++;
-      }
-      else 
-      {
-        check(1, "set PTR here (maybe)\n");
-        right = new_token(NULL, 0, 0, 0, node->token->space + 3);
-      }
-      pop->left = left;
-      pop->right = right;
+      generate_ir(arg->left);
       arg = arg->right;
     }
-
+    // exit(1);
     // code bloc
     Node *curr = node->right;
     while (curr)
@@ -1312,12 +1381,6 @@ Token *generate_ir(Node *node)
   }
   case FCALL:
   {
-    char *eregs[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d", NULL};
-    char *rregs[] = {"rdi", "rsi", "rdx", "rcx", "r8d", "r9d", NULL};
-    int i = 0;
-    int j = 0;
-    int k = 0;
-
     if(strcmp(node->token->name, "output") == 0)
     {
 
@@ -1332,29 +1395,7 @@ Token *generate_ir(Node *node)
       while(arg->left)
       {
         pnode(arg->left, "", 10);
-        Token *left = generate_ir(arg->left);
-        Token *right = NULL;
-        Inst *push = new_inst(new_token(NULL, 0, 0, PUSH, node->token->space));
-        
-        if (eregs[i])
-        {
-          switch(left->type)
-          {
-            case INT:
-              right = new_token(NULL, 0, 0, 0, node->token->space);
-              right->creg = strdup(eregs[i]);
-              break;
-            default: check(1, "handle this case", "");
-          }
-          i++;
-        }
-        else 
-        {
-          check(1, "set PTR here (maybe)\n");
-          right = new_token(NULL, 0, 0, 0, node->token->space);
-        }
-        push->left = left;
-        push->right = right;
+        generate_ir(arg->left);
         arg = arg->right;
       }
     }
@@ -1534,9 +1575,11 @@ void print_ir()
       // debug("%s\n", right->reg ? "has reg" : "no reg");
       curr->reg = left->reg;
       debug("[%-6s] ", to_string(curr->type));
-      debug("r%.2d (%s) to ", left->reg, left->name);
+      if(left->creg) debug("r%.2d (%s) = ", left->reg, left->creg);
+      else debug("r%.2d (%s) = ", left->reg, left->name);
 
       if (right->reg) debug("r%.2d (%s)", right->reg, right->name ? right->name : "");
+      else if(right->creg) debug("[%s]", right->creg);
       else
       {
         // if(right->type == ADD) debug("<r%.2d>\n", right->reg);
@@ -1562,6 +1605,10 @@ void print_ir()
       debug("[%-6s] ", to_string(curr->type));
       if (left->reg)
         debug("r%.2d", left->reg);
+      else if(left->creg)
+      {
+        check(1, "handle this case");
+      }
       else
       {
         switch (left->type)
@@ -1608,22 +1655,31 @@ void print_ir()
       // }
       else if(curr->type == CHARS)
       {
-        curr->index = ++str_index;
-        debug("value %s in STR%zu ", curr->Chars.value, curr->index);
+        if(!curr->creg)
+        {
+          curr->index = ++str_index;
+          debug("value %s in STR%zu", curr->Chars.value, curr->index);
+        }
+        else
+          debug("in %s", curr->creg);
       }
       else check(1, "handle this case in generate ir\n", "");
       break;
     }
-    case POP:
-    {
-      debug("pop from ");
-      if(right->ptr) debug("PTR");
-      else if(right->creg) debug("%s", right->creg);
-      debug(" to ");
-      if(left->ptr) debug("PTR");
-      else if(left->creg) debug("%s", left->creg);
-      break;
-    }
+    // case POP:
+    // {
+    //   /*
+    //     dest: left  (variable inside function)
+    //     src : right
+    //   */
+    //   debug("pop from ");
+    //   if(right->ptr) debug("PTR %zu", right->ptr);
+    //   else if(right->creg) debug("%s", right->creg);
+    //   debug(" to ");
+    //   if(left->ptr) debug("PTR %zu", left->ptr);
+    //   else if(left->creg) debug("%s", left->creg);
+    //   break;
+    // }
     case PUSH: debug("push "); break;
     case JMP: debug("jmp to [%s]", curr->name); break;
     case JNE: debug("jne to [%s]", curr->name); break;
@@ -1634,6 +1690,7 @@ void print_ir()
     default: debug(RED "print_ir:handle [%s]"RESET, to_string(curr->type)); break;
     }
     // if(curr->remove) debug(" remove");
+    debug(" space (%zu)", curr->space);
     debug("\n");
   }
   debug("total instructions [%d]\n", i);
@@ -1990,15 +2047,18 @@ void pasm(char *fmt, ...)
       {
         i++;
         Token *token = va_arg(args, Token *);
-        switch (token->type)
-        {
-        case CHARS: fprintf(asm_fd, "QWORD PTR -%ld[rbp]", token->ptr); break;
-        case INT: fprintf(asm_fd, "DWORD PTR -%ld[rbp]", token->ptr); break;
-        case CHAR: fprintf(asm_fd, "BYTE PTR -%ld[rbp]", token->ptr); break;
-        case BOOL: fprintf(asm_fd, "BYTE PTR -%ld[rbp]", token->ptr); break;
-        case FLOAT: fprintf(asm_fd, "DWORD PTR -%ld[rbp]", token->ptr); break;
-        default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
-        }
+        if(token->creg)
+          fprintf(asm_fd, "%s", token->creg);
+        else
+          switch (token->type)
+          {
+          case CHARS: fprintf(asm_fd, "QWORD PTR -%ld[rbp]", token->ptr); break;
+          case INT: fprintf(asm_fd, "DWORD PTR -%ld[rbp]", token->ptr); break;
+          case CHAR: fprintf(asm_fd, "BYTE PTR -%ld[rbp]", token->ptr); break;
+          case BOOL: fprintf(asm_fd, "BYTE PTR -%ld[rbp]", token->ptr); break;
+          case FLOAT: fprintf(asm_fd, "DWORD PTR -%ld[rbp]", token->ptr); break;
+          default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
+          }
       }
       else if (fmt[i] == 'v')
       {
@@ -2060,7 +2120,7 @@ void finalize()
     Token *curr = tokens[i];
     // test char variable before making any modification
     if (curr->type == CHARS && !curr->name && !curr->ptr && curr->index)
-      pasm(".STR%zu: .string %s\n", curr->index, curr->Chars.value);
+      pasm(".STR%zu: .string %s\n", curr->index, curr->Chars.value ? curr->Chars.value : "\"\"");
     if (curr->type == FLOAT && !curr->name && !curr->ptr && curr->index)
       pasm(".FLT%zu: .long %zu /* %f */\n", curr->index,
            *((uint32_t *)(&curr->Float.value)), curr->Float.value);
@@ -2095,7 +2155,8 @@ void generate_asm()
     }
     case ASSIGN:
     {
-      pasm("//assign [%s]\n", left->name);
+      if(left->name) pasm("//assign [%s]\n", left->name);
+      else if(left->creg) pasm("//assign [%s]\n", left->creg);
       // if(strcmp(left->name, "i") == 0)
       // {
       //   debug(RED"found i\n");
@@ -2105,11 +2166,15 @@ void generate_asm()
       //   if(right->creg) debug("has creg %s\n", right->creg);
       //   exit(1);
       // }
-      if (right->ptr || right->creg)
+      char *inst = left->type == FLOAT ? "movss " : "mov ";
+      if (right->ptr)
       {
-        char *inst = left->type == FLOAT ? "movss " : "mov ";
-        if (right->ptr && !right->creg) pasm("%i%r, %a\n", inst, left, right);
+        pasm("%i%r, %a\n", inst, left, right);
         pasm("%i%a, %r\n", inst, left, left);
+      }
+      else if(right->creg)
+      {
+        pasm("%i%a, %r\n", inst, left, right);
       }
       else
       {
@@ -2119,8 +2184,8 @@ void generate_asm()
           pasm("mov %a, %v\n", left, right);
           break;
         case CHARS:
-            pasm("lea %r, .STR%zu[rip]\n", right, right->index);
-            pasm("mov %a, %r\n", left, left);
+            pasm("lea %r, .STR%zu[rip]\n", left, right->index);
+            pasm("mov %a, %r\n", left, right);
             break;
         // case float_:
         //     pasm("movss %r, DWORD PTR .FLT%zu[rip]\n", right, right->index);
@@ -2195,7 +2260,7 @@ void generate_asm()
         default: check(1, "Unkown type [%s]\n", to_string(left->type)); break;
       }
       curr->retType = BOOL;
-      curr->creg = "al";
+      curr->creg = strdup("al");
       pasm("%i%r\n", inst, curr);
       break;
       break;
@@ -2281,22 +2346,22 @@ void generate_asm()
       else pasm("%v\n", left);
       break;
     }
-    case POP:
-    {
-      /*
-        left: source
-        right: destination
-      */
-      if(right->name) pasm("mov %s, ", right->name);
-      else if(right->ptr) check(1, "handle this case");
-      else if(right->creg) pasm("mov %r, ", right);
-      else check(1, "handle this case");
+    // case POP:
+    // {
+    //   /*
+    //     left: source
+    //     right: destination
+    //   */
+    //   if(right->name) pasm("mov %s, ", right->name);
+    //   else if(right->ptr) check(1, "handle this case");
+    //   else if(right->creg) pasm("mov %r, ", right);
+    //   else check(1, "handle this case");
 
-      if(left->ptr) pasm("%a\n", left);
-      else if(left->creg) pasm("%r\n", left);
-      else pasm("%v\n", left);
-      break;
-    }
+    //   if(left->ptr) pasm("%a\n", left);
+    //   else if(left->creg) pasm("%r\n", left);
+    //   else pasm("%v\n", left);
+    //   break;
+    // }
     default: check(1, "handle this case (%s)\n", to_string(curr->type)); break;
     }
   }
@@ -2317,6 +2382,22 @@ int main()
   // debug("===========    IR    ===========\n");
   tokenize(input);
   Node *head = ast();
+  create_builtin("putnbr", (Type[]){INT, 0}, INT);
+  create_builtin("write", (Type[]){INT, CHARS, INT, 0}, INT);
+  // create_builtin("read", (Type[]){int_, chars_, int_, 0}, int_);
+  // create_builtin("exit", (Type[]){int_, 0}, int_);
+  // create_builtin("malloc", (Type[]){int_, 0}, ptr_);
+  // create_builtin("calloc", (Type[]){int_, int_, 0}, ptr_);
+  // create_builtin("strdup", (Type[]){chars_, 0}, chars_);
+  // create_builtin("strlen", (Type[]){chars_, 0}, int_);
+  // create_builtin("free", (Type[]){ptr_, 0}, void_);
+  // create_builtin("strcpy", (Type[]){chars_, chars_, 0}, chars_);
+  // create_builtin("strncpy", (Type[]){chars_, chars_, int_, 0}, chars_);
+  // // create_builtin("puts", (Type[]){chars_, 0}, int_);
+  // create_builtin("putstr", (Type[]){chars_, 0}, int_);
+  // create_builtin("putchar", (Type[]){char_, 0}, int_);
+  // create_builtin("putbool", (Type[]){bool_, 0}, int_);
+  // create_builtin("putfloat", (Type[]){float_, 0}, int_);
   ir(head);
   generate_asm();
   free_node(head);

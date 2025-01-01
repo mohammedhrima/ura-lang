@@ -7,3 +7,8 @@ Makefile
 .DS_Store
 .vscode
 .gitignore
+.git
+node_modules
+*.log
+*.md
+*.tmp

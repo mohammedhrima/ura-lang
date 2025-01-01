@@ -1,5 +1,5 @@
-func int hello(int a, int b):
-   return 12
+func int hello(chars str):
+   return 1
 
 main():
-   return hello(1)
+   chars a = "ee"
