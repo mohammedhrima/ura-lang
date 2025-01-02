@@ -1,11 +1,12 @@
-FROM debian:bullseye-slim
+FROM debian:stable
 
 WORKDIR /code
 
 RUN apt update -y && apt full-upgrade -y && \
-    apt install -y gcc g++ vim man git python3 && \
+    apt install -y gcc g++ vim man git python3 \
+    && \
     apt clean && rm -rf /var/lib/apt/lists/*
 
 COPY . .
 
-CMD ["sh", "setup.sh"]
+CMD sh -c "tail -f /dev/null"

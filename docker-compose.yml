@@ -5,5 +5,6 @@ services:
     build: .
     volumes:
       - ./code:/code
+      - ./src.sh:/root/.bashrc
 
 #restart: always
