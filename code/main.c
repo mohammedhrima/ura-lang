@@ -9,7 +9,6 @@
 #include <stdint.h>
 
 // MACROS
-#define DEBUG 1
 #define EXIT_STATUS 0
 #define SPLIT "=================================================\n"
 #define GREEN "\033[0;32m"
@@ -39,9 +38,11 @@
 #if IR
 #define BUILTINS 0
 #ifndef OPTIMIZE
-#define OPTIMIZE 0
+#define OPTIMIZE 1
 #endif
 #define ASM 1
+#else
+#define ASM 0
 #endif
 
 #ifndef DEBUG
@@ -54,7 +55,7 @@ typedef enum
   START = 11,
   ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN,
   EQUAL, NOT_EQUAL, LESS_EQUAL, MORE_EQUAL, LESS, MORE,
-  ADD, SUB, MUL, DIV, MOD,
+  ADD, SUB, MUL, DIV, MOD, 
   AND, OR,
   RPAR, LPAR, COMA, DOT, DOTS,
   RETURN,
@@ -127,8 +128,8 @@ char *to_string(Type type)
   case JNE: return "JNE";
   case JE: return "JE";
   case JMP: return "JMP";
-  case PUSH: return "PUSH";
-  case POP: return "POP";
+  // case PUSH: return "PUSH";
+  // case POP: return "POP";
   case END: return "END";
 
   default: check(1, "Unknown type [%d]\n", type);
@@ -148,6 +149,7 @@ typedef struct
   size_t reg;
   char *creg;
   size_t index;
+  // bool isarg;
 
   struct
   {
@@ -212,14 +214,16 @@ Specials *dataTypes = (Specials[]){
 };
 
 // UTILS
-void debug(char *fmt, ...)
+int debug(char *fmt, ...)
 {
+  int res = 0;
 #if DEBUG
   va_list ap;
   va_start(ap, fmt);
-  vprintf(fmt, ap);
+  res = vprintf(fmt, ap);
   va_end(ap);
 #endif
+  return res;
 }
 
 bool found_error;
@@ -238,6 +242,7 @@ void check_error(const char *filename, const char *funcname, int line, bool cond
 
 void ptoken(Token *token)
 {
+  if(!DEBUG) return;
   debug("token: space [%.2d] [%s] ", token->space, to_string(token->type));
   switch (token->type)
   {
@@ -290,7 +295,7 @@ void *allocate_func(size_t line, size_t len, size_t size)
 char *open_file(char *filename)
 {
   struct _IO_FILE *file = fopen(filename, "r");
-  check(!filename, "failed to open file %s\n", filename);
+  check(!file, "failed to open file %s\n", filename);
   fseek(file, 0, SEEK_END);
   size_t size = ftell(file);
   fseek(file, 0, SEEK_SET);
@@ -479,6 +484,7 @@ void tokenize(char *input)
   }
   new_token(input, 0, 0, END, -1);
   for (size_t i = 0; tokens[i]; i++) ptoken(tokens[i]);
+  check(!tokens, "No token generated");
 }
 
 void free_token(Token *token)
@@ -516,7 +522,7 @@ Token *find(Type type, ...)
 
 void pnode(Node *node, char *side, int space)
 {
-  if (node)
+  if (node && DEBUG)
   {
     int i = 0;
     while (i < space) i += printf(" ");
@@ -677,6 +683,10 @@ bool check_token(int space)
 {
   return tokens[exe_pos]->space > space && tokens[exe_pos]->type != END;
 }
+Token *new_variable(Token *token);
+Token *get_variable(char *name);
+void enter_scoop(char *name);
+void exit_scoop();
 
 Node *prime()
 {
@@ -688,17 +698,19 @@ Node *prime()
   {
     if (token->declare) // int num
     {
-      debug("is declare %d\n", token->declare);
+      // debug("is declare %d\n", token->declare);
       Token *tmp = find(ID, 0);
+      check(!tmp, "Expected variable name after [%s] symbol\n", to_string(token->type));
       token->name = strdup(tmp->name);
       ptoken(token);
-      check(!token, "Expected variable name after [%s] symbol\n", to_string(token->type));
+      new_variable(token);
     }
     else if (token->type == ID && token->name && find(LPAR, 0)) // id
     {
       node = new_node(token);
       if (strcmp(token->name, "main") == 0)
       {
+        enter_scoop(token->name);
         check(!find(RPAR, 0), "expected ) after main declaration", "");
         check(!find(DOTS, 0), "expected : after main() declaration", "");
         token->type = FDEC;
@@ -707,7 +719,6 @@ Node *prime()
         Node *last = node;
         while (check_token(token->space))
         {
-          debug("loop [%s]\n", to_string(tokens[exe_pos]->type));
           curr->right = new_node(NULL);
           curr = curr->right;
           curr->left = expr();
@@ -721,6 +732,7 @@ Node *prime()
           curr->left = new_node(new_token(NULL, 0, 0, RETURN, node->token->space + TAB));
           curr->left->left = new_node(new_token(NULL, 0, 0, INT, node->token->space + TAB));
         }
+        exit_scoop();
         return node;
       }
       else
@@ -734,18 +746,26 @@ Node *prime()
         while(!(tmptk = find(RPAR, END, 0)))
         {
 #if 1
-          Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, token->space + TAB));
+          Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, token->space ));
           assign->right = expr();
           // check(!assign->right->token->declare, "Invalid argument for function call");
-          assign->right->token->space = token->space + TAB;
-          assign->left = new_node(new_token(NULL, 0, 0, assign->right->token->type, token->space + TAB));
+          assign->right->token->space = token->space ;
+          assign->left = new_node(new_token(NULL, 0, 0, assign->right->token->type, token->space ));
           if(eregs[i])
           {
-            switch(assign->left->token->type)
+            // assign->left->token->isarg = true;
+            if(assign->left->token->type == ID)
+            {
+              debug("found function\n");
+              Token *var = get_variable(assign->right->token->name);
+              assign->left->token->type = var->type;
+            }
+            Type type = assign->left->token->type;
+            switch(type)
             {
               case CHARS: assign->left->token->creg = strdup(rregs[i]); break;
               case INT: assign->left->token->creg = strdup(eregs[i]); break;
-              default: check(1, "handle this case");
+              default: check(1, "handle this case [%s]", to_string(type));
             }
             i++;
           }
@@ -781,6 +801,7 @@ Node *prime()
 
     node->token->retType = func_name->token->type;
     node->token->name = func_name->token->name;
+    enter_scoop(token->name);
     func_name->token->name = NULL;
     free_node(func_name);
     debug("found FDEC with rettype %s\n", to_string(node->token->retType));
@@ -805,8 +826,8 @@ Node *prime()
       {
         switch(assign->left->token->type)
         {
-          case CHARS: assign->left->token->creg = strdup(rregs[i]); break;
-          case INT: assign->left->token->creg = strdup(eregs[i]); break;
+          case CHARS: assign->right->token->creg = strdup(rregs[i]); break;
+          case INT: assign->right->token->creg = strdup(eregs[i]); break;
           default: check(1, "handle this case");
         };
         i++;
@@ -834,6 +855,7 @@ Node *prime()
       curr = curr->right;
       curr->left = expr();
     }
+    exit_scoop();
     return node;
   }
   else if((token = find(IF, 0)))
@@ -1043,7 +1065,7 @@ void add_inst(Inst *inst)
     len = 10;
     OrgInsts = allocate(len, sizeof(Inst *));
   }
-  else if (pos + 1 == len)
+  else if (pos + 2 == len)
   {
     Inst **tmp = allocate(len * 2, sizeof(Inst *));
     memcpy(tmp, OrgInsts, len * sizeof(Inst *));
@@ -1102,7 +1124,7 @@ void create_builtin(char *name, Type *params, Type retType)
     builtins_functions = tmp;
   }
   builtins_functions[builtins_pos++] = func;
-  debug("%screate builin [%s]%s\n", GREEN, func->token->name, RESET);
+  // debug("%screate builin [%s]%s\n", GREEN, func->token->name, RESET);
 }
 
 Node *new_function(Node *node)
@@ -1176,7 +1198,7 @@ Node *get_function(char *name)
   //     return func;
   // }
 #endif
-  for (size_t j = scoopPos; j >= 0; j--)
+  for (size_t j = scoopPos; j > 0; j--)
   {
     Scoop *scoop = &Gscoop[j];
     for (size_t i = 0; i < scoop->fpos; i++)
@@ -1275,9 +1297,15 @@ Token *generate_ir(Node *node)
     return token;
     break;
   }
-  case INT: case BOOL: case CHARS:
+  case INT: case BOOL:
   {
     inst = new_inst(node->token);
+    break;
+  }
+  case CHARS:
+  {
+    inst = new_inst(node->token);
+    if(!node->token->creg) node->token->index = ++str_index;
     break;
   }
   case ASSIGN: 
@@ -1294,6 +1322,7 @@ Token *generate_ir(Node *node)
     switch (node->token->type)
     {
     case ASSIGN:
+      node->token->reg = left->reg;
       node->token->retType = left->type;
       break;
     case ADD: case SUB: case MUL: case DIV:
@@ -1557,6 +1586,7 @@ Token *generate_ir(Node *node)
 
 void print_ir()
 {
+  if(!DEBUG) return;
   debug(GREEN "==========   PRINT IR  =========\n" RESET);
   int i = 0;
   clone_insts();
@@ -1573,7 +1603,6 @@ void print_ir()
     case ASSIGN:
     {
       // debug("%s\n", right->reg ? "has reg" : "no reg");
-      curr->reg = left->reg;
       debug("[%-6s] ", to_string(curr->type));
       if(left->creg) debug("r%.2d (%s) = ", left->reg, left->creg);
       else debug("r%.2d (%s) = ", left->reg, left->name);
@@ -1603,8 +1632,7 @@ void print_ir()
     case EQUAL: case NOT_EQUAL: case LESS: case MORE: case LESS_EQUAL: case MORE_EQUAL:
     {
       debug("[%-6s] ", to_string(curr->type));
-      if (left->reg)
-        debug("r%.2d", left->reg);
+      if (left->reg) debug("r%.2d", left->reg);
       else if(left->creg)
       {
         check(1, "handle this case");
@@ -1655,13 +1683,8 @@ void print_ir()
       // }
       else if(curr->type == CHARS)
       {
-        if(!curr->creg)
-        {
-          curr->index = ++str_index;
-          debug("value %s in STR%zu", curr->Chars.value, curr->index);
-        }
-        else
-          debug("in %s", curr->creg);
+        if(curr->index) debug("value %s in STR%zu", curr->Chars.value, curr->index);
+        else debug("in %s", curr->creg);
       }
       else check(1, "handle this case in generate ir\n", "");
       break;
@@ -1680,7 +1703,7 @@ void print_ir()
     //   else if(left->creg) debug("%s", left->creg);
     //   break;
     // }
-    case PUSH: debug("push "); break;
+    // case PUSH: debug("push "); break;
     case JMP: debug("jmp to [%s]", curr->name); break;
     case JNE: debug("jne to [%s]", curr->name); break;
     case FCALL: debug("call [%s]", curr->name); break;
@@ -1699,8 +1722,7 @@ void print_ir()
 bool includes(Type *types, Type type)
 {
   for (int i = 0; types[i]; i++)
-    if (types[i] == type)
-      return true;
+    if (types[i] == type) return true;
   return false;
 }
 
@@ -1714,6 +1736,7 @@ bool includes(Type *types, Type type)
 
 bool optimize_ir(int op)
 {
+  check(!insts, "empty file (no instruction created)");
   bool optimize = false;
   if(op == 0)
   {
@@ -1782,7 +1805,7 @@ bool optimize_ir(int op)
     // TODO: to be checked
     debug(CYAN "OP[%d] calculate operations on constants\n" RESET, op);
     int i = 1;
-    while (insts[i])
+    while (insts && insts[i])
     {
       Token *curr_token = insts[i]->token;
       Token *curr_left = insts[i]->left;
@@ -1945,8 +1968,7 @@ bool optimize_ir(int op)
 
 void ir(Node *head)
 {
-  if (!IR)
-    return;
+  if (!IR) return;
 
   debug(GREEN "========== GENERATE IR =========\n" RESET);
   enter_scoop("");
@@ -1958,9 +1980,11 @@ void ir(Node *head)
   }
   exit_scoop();
 
+  
 #if OPTIMIZE
   int i = 0;
   bool optimized = false;
+  clone_insts();
   while (i < MAX_OPTIMIZATION)
   {
     print_ir();
@@ -1973,6 +1997,8 @@ void ir(Node *head)
   }
 #endif
   print_ir();
+
+ 
 }
 
 // ASSEMBLY
@@ -2170,7 +2196,11 @@ void generate_asm()
       if (right->ptr)
       {
         pasm("%i%r, %a\n", inst, left, right);
-        pasm("%i%a, %r\n", inst, left, left);
+        /*
+        test this case before changing
+        chars str = "fffff" int a = strlen(str)
+        */
+        if(!left->creg) pasm("%i%a, %r\n", inst, left, left);
       }
       else if(right->creg)
       {
@@ -2185,7 +2215,10 @@ void generate_asm()
           break;
         case CHARS:
             pasm("lea %r, .STR%zu[rip]\n", left, right->index);
-            pasm("mov %a, %r\n", left, right);
+            // I did this to defrenticiate 
+            // function parameter from
+            // variable declaration
+            if(left->ptr) pasm("mov %a, %r\n", left, right); 
             break;
         // case float_:
         //     pasm("movss %r, DWORD PTR .FLT%zu[rip]\n", right, right->index);
@@ -2330,22 +2363,22 @@ void generate_asm()
       pasm("ret\n");
       break;
     }
-    case PUSH:
-    {
-      /*
-        left: source
-        right: destination
-      */
-      if(right->name) pasm("mov %s, ", right->name);
-      else if(right->ptr) check(1, "handle this case");
-      else if(right->creg) pasm("mov %r, ", right);
-      else check(1, "handle this case");
+    // case PUSH:
+    // {
+    //   /*
+    //     left: source
+    //     right: destination
+    //   */
+    //   if(right->name) pasm("mov %s, ", right->name);
+    //   else if(right->ptr) check(1, "handle this case");
+    //   else if(right->creg) pasm("mov %r, ", right);
+    //   else check(1, "handle this case");
 
-      if(left->ptr) pasm("%a\n", left);
-      else if(left->creg) pasm("%r\n", left);
-      else pasm("%v\n", left);
-      break;
-    }
+    //   if(left->ptr) pasm("%a\n", left);
+    //   else if(left->creg) pasm("%r\n", left);
+    //   else pasm("%v\n", left);
+    //   break;
+    // }
     // case POP:
     // {
     //   /*
@@ -2369,12 +2402,13 @@ void generate_asm()
   debug(RESET);
 }
 // MAIN
-int main()
+int main(int argc, char **argv)
 {
-
-  char *input = open_file("file.w");
-  char *outputFile = strdup("file.w");
+  char *outputFile = strdup(argv[1]);
   outputFile[strlen(outputFile) - 1] = 's';
+
+  char *input = open_file(argv[1]);
+  // printf("in file %s, outfile %s\n", argv[1], outputFile);
 
   asm_fd = fopen(outputFile, "w+");
   check(!asm_fd, "openning %s\n", outputFile);
@@ -2389,12 +2423,12 @@ int main()
   // create_builtin("malloc", (Type[]){int_, 0}, ptr_);
   // create_builtin("calloc", (Type[]){int_, int_, 0}, ptr_);
   // create_builtin("strdup", (Type[]){chars_, 0}, chars_);
-  // create_builtin("strlen", (Type[]){chars_, 0}, int_);
+  create_builtin("strlen", (Type[]){CHARS, 0}, INT);
   // create_builtin("free", (Type[]){ptr_, 0}, void_);
   // create_builtin("strcpy", (Type[]){chars_, chars_, 0}, chars_);
   // create_builtin("strncpy", (Type[]){chars_, chars_, int_, 0}, chars_);
   // // create_builtin("puts", (Type[]){chars_, 0}, int_);
-  // create_builtin("putstr", (Type[]){chars_, 0}, int_);
+  create_builtin("putstr", (Type[]){CHARS, 0}, INT);
   // create_builtin("putchar", (Type[]){char_, 0}, int_);
   // create_builtin("putbool", (Type[]){bool_, 0}, int_);
   // create_builtin("putfloat", (Type[]){float_, 0}, int_);
@@ -2407,4 +2441,5 @@ int main()
     free_token(tokens[i]);
   free(tokens);
   free(input);
+  debug("\n");
 }

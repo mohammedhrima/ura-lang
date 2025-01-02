@@ -18,63 +18,65 @@ putstr:
 .INT_MIN: .string "-2147483648"
 putnbr:
 	push	rbp
-	mov		rbp, rsp
-	sub		rsp, 16
-	mov		DWORD PTR -4[rbp], edi
-	cmp		DWORD PTR -4[rbp], -2147483648
-	jne		.putnbr0
-	lea		rdi, .INT_MIN[rip]
-	call	puts@PLT
-	jmp		.putnbr3
+	mov	rbp, rsp
+	sub	rsp, 32
+	mov	DWORD PTR -20[rbp], edi
+	mov	DWORD PTR -4[rbp], 0
+	cmp	DWORD PTR -20[rbp], -2147483648
+	jne	.putnbr0
+	mov	edx, 11
+	lea	rax, .INT_MIN[rip]
+	mov	rsi, rax
+	mov	edi, 1
+	mov	eax, 0
+	call	write
+	jmp	.putnbr1
 .putnbr0:
-	cmp		DWORD PTR -4[rbp], 0
-	jns		.putnbr1
-	mov		edi, 45
-	call	putchar@PLT
-	neg		DWORD PTR -4[rbp]
-	mov		eax, DWORD PTR -4[rbp]
-	mov		edi, eax
-	call	putnbr
-	jmp		.putnbr3
-.putnbr1:
-	cmp		DWORD PTR -4[rbp], 9
-	jle		.putnbr2
-	mov		eax, DWORD PTR -4[rbp]
+	cmp	DWORD PTR -20[rbp], 0
+	jns	.putnbr2
+	mov	edi, 45
+	call	putchar
+	add	DWORD PTR -4[rbp], eax
+	neg	DWORD PTR -20[rbp]
+.putnbr2:
+	cmp	DWORD PTR -20[rbp], 9
+	jle	.putnbr3
+	mov	eax, DWORD PTR -20[rbp]
 	movsx	rdx, eax
 	imul	rdx, rdx, 1717986919
-	shr		rdx, 32
-	sar		edx, 2
-	sar		eax, 31
-	mov		ecx, eax
-	mov		eax, edx
-	sub		eax, ecx
-	mov		edi, eax
+	shr	rdx, 32
+	mov	ecx, edx
+	sar	ecx, 2
+	cdq
+	mov	eax, ecx
+	sub	eax, edx
+	mov	edi, eax
 	call	putnbr
-	mov		ecx, DWORD PTR -4[rbp]
+	add	DWORD PTR -4[rbp], eax
+.putnbr3:
+	mov	ecx, DWORD PTR -20[rbp]
 	movsx	rax, ecx
 	imul	rax, rax, 1717986919
-	shr		rax, 32
-	sar		eax, 2
-	mov		esi, ecx
-	sar		esi, 31
-	sub		eax, esi
-	mov		edx, eax
-	mov		eax, edx
-	sal		eax, 2
-	add		eax, edx
-	add		eax, eax
-	sub		ecx, eax
-	mov		edx, ecx
-	mov		edi, edx
-	call	putnbr
-	jmp		.putnbr3
-.putnbr2:
-	mov		eax, DWORD PTR -4[rbp]
-	add		eax, 48
-	mov		edi, eax
-	call	putchar@PLT
-.putnbr3:
-	nop
+	shr	rax, 32
+	mov	edx, eax
+	sar	edx, 2
+	mov	eax, ecx
+	sar	eax, 31
+	sub	edx, eax
+	mov	eax, edx
+	sal	eax, 2
+	add	eax, edx
+	add	eax, eax
+	sub	ecx, eax
+	mov	edx, ecx
+	mov	eax, edx
+	add	eax, 48
+	movsx	eax, al
+	mov	edi, eax
+	call	putchar
+	add	DWORD PTR -4[rbp], eax
+	mov	eax, DWORD PTR -4[rbp]
+.putnbr1:
 	leave
 	ret
 
