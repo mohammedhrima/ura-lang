@@ -373,7 +373,7 @@ Token *new_token(char *input, size_t s, size_t e, Type type, size_t space)
   }
   case CHAR:
   {
-    new->Char.value = input[s];
+    if(e > s) new->Char.value = input[s];
     break;
   }
   default:
@@ -383,6 +383,7 @@ Token *new_token(char *input, size_t s, size_t e, Type type, size_t space)
   return new;
 }
 
+void setName(Token *token, char *name);
 Token *copy_token(Token *token)
 {
   if (token == NULL) return NULL;
@@ -451,21 +452,29 @@ void tokenize(char *input)
       {
         Token *token = new_token(NULL, 0, 0, dataTypes[j].type, space);
         token->declare = true;
-        free(token->name);
-        token->name = NULL;
+        setName(token, NULL);
         found = true;
         i += strlen(dataTypes[j].value);
         break;
       }
     }
     if (found) continue;
-    if (input[i] && strchr("\"\'", input[i]))
+    if (input[i] && input[i] == '\"')
     {
       i++;
-      while(input[i] && input[i] != '"') i++;
-      check(input[i] != '"', "Expected '\"'");
+      while(input[i] && input[i] != '\"') i++;
+      check(input[i] != '\"', "Expected '\"'");
       i++;
       new_token(input, s, i, CHARS, space);
+      continue;
+    }
+    if (input[i] && input[i] == '\'')
+    {
+      i++;
+      if(input[i] && input[i] != '\'') i++;
+      check(input[i] != '\'', "Expected '\''");
+      i++;
+      new_token(input, s + 1, i, CHAR, space);
       continue;
     }
     if (isalpha(input[i]))
@@ -574,23 +583,33 @@ Node *assign()
   {
     Node *node = new_node(token);
     Node *right = logic();
-    if(token->type != ASSIGN)
-    {
-      switch(token->type)
-      {
-        case ADD_ASSIGN: token->type = ADD; break;
-        case SUB_ASSIGN: token->type = SUB; break;
-        case MUL_ASSIGN: token->type = MUL; break;
-        case DIV_ASSIGN: token->type = DIV; break;
-        default: break;
-      }
-      Node *tmp = new_node(new_token(NULL, 0, 0, token->type, node->token->space));
-      node->token->type = ASSIGN;
-      tmp->left = copy_node(left);
-      tmp->left->token->declare = false;
-      tmp->right = right;
-      right = tmp;
-    }
+    // if(token->type != ASSIGN)
+    // {
+    //   // check(1, "check this");
+    //   // Node *tmp = copy_node(node);
+    //   // tmp->token->ptr = 0;
+    //   // tmp->token->creg = 0;
+    //   Type math;
+    //   switch(token->type)
+    //   {
+    //     case ADD_ASSIGN: math = ADD; break;
+    //     case SUB_ASSIGN: math = SUB; break;
+    //     case MUL_ASSIGN: math = MUL; break;
+    //     case DIV_ASSIGN: math = DIV; break;
+    //     default: check(1, "handle this case [%s]", to_string(token->type)); break;
+    //   }
+    //   Node *math_node = new_node(new_token(NULL, 0, 0, math, token->space));
+    //   math_node->left = copy_node(left);
+    //   math_node->right = right;
+      
+    //   node->token->type = ASSIGN;
+    //   right = math_node;
+
+    //   // tmp->left = copy_node(left);
+    //   // tmp->left->token->declare = false;
+    //   // tmp->right = right;
+    //   // right = tmp;
+    // }
     node->left = left;
     node->right = right;
     left = node;
@@ -688,20 +707,40 @@ Token *get_variable(char *name);
 void enter_scoop(char *name);
 void exit_scoop();
 
+void setReg(Token *token, char *creg)
+{
+  if(token->creg)
+  {
+    free(token->creg);
+    token->creg = NULL;
+  }
+  if(creg) token->creg = strdup(creg);
+}
+
+void setName(Token *token, char *name)
+{
+  if(token->name) 
+  {
+    free(token->name);
+    token->name= NULL;
+  }
+  if(name) token->name = strdup(name);
+}
+
 Node *prime()
 {
   // debug("prime\n");
 
   Token *token = NULL;
   Node *node = NULL;
-  if ((token = find(ID, INT, BOOL, CHARS, 0)))
+  if ((token = find(ID, INT, BOOL, CHARS, CHAR, 0)))
   {
     if (token->declare) // int num
     {
       // debug("is declare %d\n", token->declare);
       Token *tmp = find(ID, 0);
       check(!tmp, "Expected variable name after [%s] symbol\n", to_string(token->type));
-      token->name = strdup(tmp->name);
+      setName(token, tmp->name);
       ptoken(token);
       new_variable(token);
     }
@@ -763,8 +802,9 @@ Node *prime()
             Type type = assign->left->token->type;
             switch(type)
             {
-              case CHARS: assign->left->token->creg = strdup(rregs[i]); break;
-              case INT: assign->left->token->creg = strdup(eregs[i]); break;
+              case CHARS: setReg(assign->left->token, rregs[i]); break;
+              case ADD: case SUB: case MUL: case DIV:
+              case INT: setReg(assign->left->token, eregs[i]); break;
               default: check(1, "handle this case [%s]", to_string(type));
             }
             i++;
@@ -826,8 +866,8 @@ Node *prime()
       {
         switch(assign->left->token->type)
         {
-          case CHARS: assign->right->token->creg = strdup(rregs[i]); break;
-          case INT: assign->right->token->creg = strdup(eregs[i]); break;
+          case CHARS: setReg(assign->right->token, rregs[i]); break;
+          case INT: setReg(assign->right->token, eregs[i]); break;
           default: check(1, "handle this case");
         };
         i++;
@@ -1099,7 +1139,7 @@ void create_builtin(char *name, Type *params, Type retType)
 {
   Node *func = new_node(new_token(name, 0, strlen(name), FDEC, 0));
   func->token->retType = retType;
-  func->token->creg = strdup("eax");
+  setReg(func->token, "eax");
   func->left = new_node(NULL);
   Node *curr = func->left;
   int i = 0;
@@ -1300,6 +1340,7 @@ Token *generate_ir(Node *node)
   case INT: case BOOL:
   {
     inst = new_inst(node->token);
+    // if(inst->token->declare) ptr += sizeofToken(inst->token);
     break;
   }
   case CHARS:
@@ -1308,7 +1349,7 @@ Token *generate_ir(Node *node)
     if(!node->token->creg) node->token->index = ++str_index;
     break;
   }
-  case ASSIGN: 
+  case ASSIGN: case ADD_ASSIGN:
   case ADD: case SUB: case MUL: case DIV:
   case EQUAL: case NOT_EQUAL: 
   case LESS: case MORE: case LESS_EQUAL: case MORE_EQUAL:
@@ -1321,6 +1362,7 @@ Token *generate_ir(Node *node)
     inst->right = right;
     switch (node->token->type)
     {
+    case ADD_ASSIGN:
     case ASSIGN:
       node->token->reg = left->reg;
       node->token->retType = left->type;
@@ -1336,8 +1378,9 @@ Token *generate_ir(Node *node)
       //     check(1, "Invalid operation [%s] between [%s] and [%s]\n", c, l, r);
       // }
       node->token->retType = left->type;
-      if (right->type == INT) node->token->creg = strdup("eax");
-      else if (right->type == FLOAT) node->token->creg = strdup("xmm0");
+      if (right->type == INT) setReg(node->token, "eax");
+      else 
+      if (right->type == FLOAT) setReg(node->token, "xmm0");
       break;
     }
     case NOT_EQUAL: case EQUAL: case LESS: 
@@ -1368,8 +1411,8 @@ Token *generate_ir(Node *node)
     new_function(node);
     switch(node->token->retType)
     {
-      case INT: node->token->creg = strdup("eax"); break;
-      case CHARS: node->token->creg = strdup("rax"); break;
+      case INT: setReg(node->token, "eax"); break;
+      case CHARS: setReg(node->token, "rax"); break;
       default: check(1, "handle this case [%s]\n", to_string(node->token->retType)); break;
     }
     enter_scoop(node->token->name);
@@ -1418,7 +1461,7 @@ Token *generate_ir(Node *node)
     {
       Node *func = get_function(node->token->name);
       node->token->retType = func->token->retType;
-      node->token->creg = strdup(func->token->creg);
+      setReg(node->token, func->token->creg);
       debug("%s: has the following arguments\n", node->token->name);
       Node *arg = node;
       while(arg->left)
@@ -1437,13 +1480,13 @@ Token *generate_ir(Node *node)
     Node *curr = node->left;
 
     Inst *tmp = new_inst(copy_token(node->token));
-    tmp->token->name = strdup("if");
+    setName(tmp->token, "if");
     tmp->token->type =  BLOC;
     tmp->token->index = ++bloc_index;
 
     generate_ir(curr->left); // TODO: check if it's boolean
     node->token->type = JNE;
-    node->token->name = strdup("endif");
+    setName(node->token, "endif");
     node->token->index = ++bloc_index;
 
     Token *lastInst = copy_token(node->token);
@@ -1471,11 +1514,10 @@ Token *generate_ir(Node *node)
       {
         curr->left->token->index = ++bloc_index;
         curr->left->token->type = BLOC;
-        curr->left->token->name = strdup("elif");
+        setName(curr->left->token, "elif");
 
         {
-          free(lastInst->name);
-          lastInst->name = strdup("elif");
+          setName(lastInst, "elif");
           lastInst->index = curr->left->token->index;
           lastInst = copy_token(lastInst);
         }
@@ -1497,12 +1539,11 @@ Token *generate_ir(Node *node)
       {
         curr->left->token->index = ++bloc_index;
         curr->left->token->type = BLOC;
-        curr->left->token->name = strdup("else");
+        setName(curr->left->token, "else");
         new_inst(curr->left->token);
 
         {
-          free(lastInst->name);
-          lastInst->name = strdup("else");
+          setName(lastInst, "else");
           lastInst->index = curr->left->token->index;
           lastInst = copy_token(lastInst);
         }
@@ -1517,8 +1558,7 @@ Token *generate_ir(Node *node)
         break;
       }
 
-      free(lastInst->name);
-      lastInst->name = strdup("endif");
+      setName(lastInst, "endif");
       lastInst->index = node->token->index;
 
       if (curr->right) // to not add a jmp in the last statement to avoid
@@ -1541,15 +1581,14 @@ Token *generate_ir(Node *node)
   case WHILE:
   {
     node->token->type = BLOC;
-    node->token->name = strdup("while");
+    setName(node->token, "while");
     node->token->index = ++bloc_index;
     inst = new_inst(node->token);
 
     generate_ir(node->left); // TODO: check if it's boolean
     Token *end = copy_token(node->token);
     end->type = JNE;
-    if (end->name) free(end->name);
-    end->name = strdup("endwhile");
+    setName(end, "endwhile");
     new_inst(end);
 
     Node *curr = node->right;
@@ -1561,14 +1600,12 @@ Token *generate_ir(Node *node)
 
     Token *lastInst = copy_token(node->token);
     lastInst->type = JMP;
-    free(lastInst->name);
-    lastInst->name = strdup("while");
+    setName(lastInst, "while");
     new_inst(lastInst); // jmp back to while loop
 
     lastInst = copy_token(node->token);
     lastInst->type = BLOC;
-    free(lastInst->name);
-    lastInst->name = strdup("endwhile");
+    setName(lastInst, "endwhile");
     new_inst(lastInst); // end while bloc
     break;
   }
@@ -1600,6 +1637,7 @@ void print_ir()
     while (k < curr->space) k += printf(" ");
     switch (curr->type)
     {
+    case ADD_ASSIGN:
     case ASSIGN:
     {
       // debug("%s\n", right->reg ? "has reg" : "no reg");
@@ -1733,7 +1771,7 @@ bool includes(Type *types, Type type)
     if x == 2: (this will caus problem now)
         x = 3
 */
-
+#define MAX_OPTIMIZATION 6
 bool optimize_ir(int op)
 {
   check(!insts, "empty file (no instruction created)");
@@ -1792,7 +1830,8 @@ bool optimize_ir(int op)
           left->remove = true;
           right->remove = true;
           token->reg = 0;
-          token->creg = NULL;
+          setReg(token, NULL);
+          // token->creg = NULL;
           clone_insts();
           i = 0;
           optimize = true;
@@ -1911,42 +1950,48 @@ bool optimize_ir(int op)
       }
     }
   }
+  /*
+    I commented it because it aused me problem in this case:
+      int i = 0
+      while i < 5:
+        i = i + 1
+  */
+  // else if(op == 4)
+  // {
+  //   debug(CYAN "OP[%d] calculate followed operations\n" RESET, op);
+  //   for(int i = 0; insts[i]; i++)
+  //   {
+  //     Token *curr = insts[i]->token;
+  //     Token *left = insts[i]->left;   // a ptr
+  //     Token *right = insts[i]->right; // value (not a ptr)
+  //     // TODO: or declare
+  //     if(curr->type == ASSIGN && !right->ptr)
+  //     {
+  //       for(int j = i + 1; insts[j]; j++)
+  //       {
+  //         // TODO: handle other mathematical operations
+  //         if(insts[j]->token->type == ADD)
+  //         {
+  //           Token *math_left = insts[j]->left;
+  //           Token *math_right = insts[j]->right;
+  //           if(math_right->ptr == left->ptr)
+  //           {
+  //             insts[j]->right = copy_token(right);
+  //             clone_insts();
+  //             return true;
+  //           }
+  //           else if(math_left->ptr == left->ptr)
+  //           {
+  //             insts[j]->left = copy_token(right);
+  //             clone_insts();
+  //             return true;
+  //           }
+  //         }
+  //       }
+  //     }
+  //   }
+  // }
   else if(op == 4)
-  {
-    debug(CYAN "OP[%d] calculate followed operations\n" RESET, op);
-    for(int i = 0; insts[i]; i++)
-    {
-      Token *curr = insts[i]->token;
-      Token *left = insts[i]->left;   // a ptr
-      Token *right = insts[i]->right; // value (not a ptr)
-      // TODO: or declare
-      if(curr->type == ASSIGN && !right->ptr)
-      {
-        for(int j = i + 1; insts[j]; j++)
-        {
-          // TODO: handle other mathematical operations
-          if(insts[j]->token->type == ADD)
-          {
-            Token *math_left = insts[j]->left;
-            Token *math_right = insts[j]->right;
-            if(math_right->ptr == left->ptr)
-            {
-              insts[j]->right = copy_token(right);
-              clone_insts();
-              return true;
-            }
-            else if(math_left->ptr == left->ptr)
-            {
-              insts[j]->left = copy_token(right);
-              clone_insts();
-              return true;
-            }
-          }
-        }
-      }
-    }
-  }
-  else if(op == 5)
   {
     // TODO: be carefull this one remove anything that don't have reg
     debug(CYAN "OP[%d] (remove unused instructions)\n"RESET, op);
@@ -1962,7 +2007,6 @@ bool optimize_ir(int op)
       }
     }
   }
-#define MAX_OPTIMIZATION 6
   return optimize;
 }
 
@@ -2179,6 +2223,13 @@ void generate_asm()
       }
       break;
     }
+    case ADD_ASSIGN:
+    {
+      if(left->name) pasm("//add_assign [%s]\n", left->name);
+      char *inst = "add";
+      pasm("%i%a, %v\n", inst, left, right);
+      break;
+    }
     case ASSIGN:
     {
       if(left->name) pasm("//assign [%s]\n", left->name);
@@ -2237,25 +2288,46 @@ void generate_asm()
       // TODO: something wrong here, fix it
       // Type type = curr->type;
       char *inst = left->type == FLOAT ? "movss" : "mov";
-
-      if (left->ptr)
-        pasm("%i%r, %a\n", inst, curr, left);
-      else if (left->creg && right->creg && strcmp(left->creg, right->creg))
-        pasm("%i%r, %r\n", inst, curr, left);
-      else if (!left->creg)
-        pasm("%i%r, %v\n", inst, curr, left);
-
+      char *inst2 = NULL;
       switch (curr->type)
       {
-      case ADD: inst = left->type == FLOAT ? "addss " : "add "; break;
-      case SUB: inst = left->type == FLOAT ? "subss " : "sub "; break;
-      case MUL: inst = left->type == FLOAT ? "imulss ": "imul "; break;
-      case DIV: inst = left->type == FLOAT ? "divss " : "div "; break;
+      case ADD: inst2 = left->type == FLOAT ? "addss " : "add "; break;
+      case SUB: inst2 = left->type == FLOAT ? "subss " : "sub "; break;
+      case MUL: inst2 = left->type == FLOAT ? "imulss ": "imul "; break;
+      case DIV: inst2 = left->type == FLOAT ? "divss " : "div "; break;
       default: break;
       }
-      if (right->ptr) pasm("%i%r, %a\n", inst, curr, right);
-      else if (right->creg) pasm("%i%r, %r\n", inst, curr, right);
-      else if (!right->creg) pasm("%i%r, %v\n", inst, curr, right);
+      // debug("left: "); ptoken(left);
+      // debug("right: "); ptoken(right);
+      // debug("left creg %s\n", left->creg);
+      // debug("right creg %s\n", right->creg);
+      // debug("left %s, right: %s\n", left->creg, right->creg);
+      // if (left->ptr)
+      //   pasm("%i%r, %a\n", inst, curr, left);
+      // else if (left->creg && right->creg && strcmp(left->creg, right->creg)) // they should != eax
+      //   pasm("%i%r, %r\n", inst, curr, left);
+      // else if (!left->creg)
+      // {
+      //   // debug("helloooo\n");
+      //   if(!right->creg) pasm("%i%r, %v\n", inst, curr, left);
+      //   else if(strcmp(right->creg, "eax") == 0)
+      //   {
+      //     inst = "add";
+      //     pasm("%i%r, %v\n",inst2, curr, left);
+      //   }
+      // }
+
+     
+      // if (right->ptr) 
+      //   pasm("%i%r, %a\n", inst2, curr, right);
+      // else if (right->creg && (!left->creg || (left->creg && strcmp(left->creg, right->creg)))) // they should != eax
+      //   pasm("%i%r, %r\n", inst2, curr, right);
+      // else 
+      //   pasm("%i%r, %v\n", inst2, curr, right);
+      if(left->ptr)
+        pasm("%i%a, ", inst2, left);
+      // if(right->ptr)
+      pasm("%v\n", right);
       curr->type = left->type;
       break;
     }
@@ -2293,7 +2365,7 @@ void generate_asm()
         default: check(1, "Unkown type [%s]\n", to_string(left->type)); break;
       }
       curr->retType = BOOL;
-      curr->creg = strdup("al");
+      setReg(curr, "al");
       pasm("%i%r\n", inst, curr);
       break;
       break;
@@ -2415,7 +2487,9 @@ int main(int argc, char **argv)
   free(outputFile);
   // debug("===========    IR    ===========\n");
   tokenize(input);
+  enter_scoop("");
   Node *head = ast();
+  exit_scoop();
   create_builtin("putnbr", (Type[]){INT, 0}, INT);
   create_builtin("write", (Type[]){INT, CHARS, INT, 0}, INT);
   // create_builtin("read", (Type[]){int_, chars_, int_, 0}, int_);
@@ -2429,7 +2503,7 @@ int main(int argc, char **argv)
   // create_builtin("strncpy", (Type[]){chars_, chars_, int_, 0}, chars_);
   // // create_builtin("puts", (Type[]){chars_, 0}, int_);
   create_builtin("putstr", (Type[]){CHARS, 0}, INT);
-  // create_builtin("putchar", (Type[]){char_, 0}, int_);
+  create_builtin("putchar", (Type[]){CHAR, 0}, INT);
   // create_builtin("putbool", (Type[]){bool_, 0}, int_);
   // create_builtin("putfloat", (Type[]){float_, 0}, int_);
   ir(head);

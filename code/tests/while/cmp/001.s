@@ -1,42 +1,30 @@
+.intel_syntax noprefix
+.include "./import/header.s"
 
-main():
-   int i = 1
-   while i < 10:
-      write(1, "x", 1)
-      i += 1
-   
-   return i
-
-
-
-/*
+.text
+.globl	main
 main:
 	push    rbp
 	mov     rbp, rsp
+	sub     rsp, 0
 	//      assign [i]
-	mov     DWORD PTR -4[rbp], 1
+	mov     DWORD PTR -4[rbp], 0
 .while1:
 	mov     eax, DWORD PTR -4[rbp]
-	mov     ebx, 10
+	mov     ebx, 5
 	cmp     eax, ebx
 	setl    al
 	cmp     al, 1
 	jne     .endwhile1
-	//      assign [edi]
-	mov     edi, 1
-	//      assign [rsi]
-	lea     rsi, .STR1[rip]
-	//      assign [edx]
-	mov     edx, 1
-	call    write
 	mov     eax, DWORD PTR -4[rbp]
 	add     eax, 1
 	//      assign [i]
 	mov     DWORD PTR -4[rbp], eax
 	jmp     .while1
 .endwhile1:
-	mov     eax, DWORD PTR -4[rbp]
+	mov     eax, 0
 	leave   
 	ret     
 .endmain:
-*/
+.section	.note.GNU-stack,"",@progbits
+
