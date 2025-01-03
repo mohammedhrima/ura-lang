@@ -6,14 +6,27 @@
 main:
 	push    rbp
 	mov     rbp, rsp
-	sub     rsp, 0
-	//      assign [str]
-	lea     rax, .STR2[rip]
-	mov     QWORD PTR -8[rbp], rax
-	mov     eax, 0
+	sub     rsp, 8
+	//      assign [i]
+	mov     DWORD PTR -4[rbp], 1
+.while1:
+	cmp     DWORD PTR -4[rbp], 10
+	jge     .endwhile1
+	//      assign [edi]
+	mov     edi, 1
+	//      assign [rsi]
+	lea     rsi, .STR1[rip]
+	//      assign [edx]
+	mov     edx, 1
+	call    write
+	//      add_assign [i]
+	add     DWORD PTR -4[rbp], 1
+	jmp     .while1
+.endwhile1:
+	mov     eax, DWORD PTR -4[rbp]
 	leave   
 	ret     
 .endmain:
-.STR2: .string "fffff"
+.STR1: .string "x"
 .section	.note.GNU-stack,"",@progbits
 
