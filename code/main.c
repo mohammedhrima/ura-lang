@@ -333,7 +333,7 @@ Token *new_token(char *input, size_t s, size_t e, Type type, size_t space)
 {
   Token *new = allocate(1, sizeof(Token));
   new->type = type;
-  new->space = space;
+  new->space = ((space + TAB / 2) / TAB) * TAB;
   switch (type)
   {
   case INT:
@@ -774,8 +774,8 @@ Node *prime()
           // TODO: check that return is compatible with function
           curr->right = new_node(NULL);
           curr = curr->right;
-          curr->left = new_node(new_token(NULL, 0, 0, RETURN, node->token->space + TAB));
-          curr->left->left = new_node(new_token(NULL, 0, 0, INT, node->token->space + TAB));
+          curr->left = new_node(new_token(NULL, 0, 0, RETURN, token->space + TAB));
+          curr->left->left = new_node(new_token(NULL, 0, 0, INT, token->space + TAB));
         }
         exit_scoop();
         return node;
@@ -2297,10 +2297,11 @@ void generate_asm()
           break;
         case CHARS:
             pasm("%i%r, .STR%zu[rip]", "lea", left, right->index);
+           
             // I did this to defrenticiate 
             // function parameter from
             // variable declaration
-            if(left->ptr) pasm("%i%a, %r", "mov", left, right); 
+            if(left->ptr) {skip_space(curr->space); pasm("%i%a, %r", "mov", left, right); }
             break;
         // case float_:
         //     pasm("movss %r, DWORD PTR .FLT%zu[rip]\n", right, right->index);
@@ -2360,8 +2361,24 @@ void generate_asm()
       //   pasm("%i%r, %v\n", inst2, curr, right);
       // skip_space(curr->space);
       if(left->ptr) pasm("%i%a, ", inst2, left);
+      else if(left->creg) pasm("%i%r, ", inst2, left);
+      
+      if (!left->creg && !left->ptr)
+      {
+        if(!right->creg) pasm("%i%r, %v", inst, curr, left);
+        else if(strcmp(right->creg, "eax") == 0)
+        {
+          inst = "add";
+          pasm("%i%r, %v\n",inst2, curr, left);
+        }
+      }
+      else
+      {
+        if(right->ptr) pasm("%i%a, ", inst2, right);
+        else if(right->creg) pasm("%i%r, ", inst2, right);
+        else if (!right->creg) pasm("%i%v, ", inst2, right);
+      }
       // if(right->ptr)
-      pasm("%v", right);
       curr->type = left->type;
       break;
     }

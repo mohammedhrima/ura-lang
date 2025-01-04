@@ -7,27 +7,13 @@
 main:
     push rbp
     mov  rbp, rsp
-    sub  rsp, 32
-    mov  DWORD PTR -4[rbp], 1 ;// assign [i]
-    mov  DWORD PTR -8[rbp], 10 ;// assign [a]
-    mov  DWORD PTR -12[rbp], 5 ;// assign [b]
-    mov  DWORD PTR -16[rbp], 6 ;// assign [c]
-    mov  DWORD PTR -20[rbp], 10 ;// assign [d]
-    .while1:
-    cmp  DWORD PTR -4[rbp], 10
-    jge   .endwhile1
-        mov  edi, 1 ;// assign [edi]
-        lea  rsi, .STR1[rip] ;// assign [rsi]
-        mov  edx, 1 ;// assign [edx]
-        call write
-        add  DWORD PTR -4[rbp], 1 ;// add_assign [i]
-        add  DWORD PTR -8[rbp], 1 ;// add_assign [a]
-        add  DWORD PTR -12[rbp], 1 ;// add_assign [b]
-        jmp  .while1
-    .endwhile1:
-    mov  eax, DWORD PTR -4[rbp]
+    sub  rsp, 16
+    mov  DWORD PTR -4[rbp], 6 ;// assign [a]
+    mov  DWORD PTR -8[rbp], 4 ;// assign [b]
+    mov  eax, 4
+    mov  DWORD PTR -12[rbp], eax ;// assign [c]
+    mov  eax, 0
     leave 
     ret  
-.endmain:.STR1: .string "x"
-.section	.note.GNU-stack,"",@progbits
+.endmain:.section	.note.GNU-stack,"",@progbits
 
