@@ -2360,24 +2360,34 @@ void generate_asm()
       // else 
       //   pasm("%i%r, %v\n", inst2, curr, right);
       // skip_space(curr->space);
-      if(left->ptr) pasm("%i%a, ", inst2, left);
-      else if(left->creg) pasm("%i%r, ", inst2, left);
+      pasm("%i%r, ", inst, left);
+      if(left->ptr) pasm("%a", left);
+      else if(left->creg) pasm("%r", left) ;
+      else pasm("%v", left);
+      // pasm("\n [%zu]", curr->space);
+      skip_space(curr->space);
       
-      if (!left->creg && !left->ptr)
-      {
-        if(!right->creg) pasm("%i%r, %v", inst, curr, left);
-        else if(strcmp(right->creg, "eax") == 0)
-        {
-          inst = "add";
-          pasm("%i%r, %v\n",inst2, curr, left);
-        }
-      }
-      else
-      {
-        if(right->ptr) pasm("%i%a, ", inst2, right);
-        else if(right->creg) pasm("%i%r, ", inst2, right);
-        else if (!right->creg) pasm("%i%v, ", inst2, right);
-      }
+
+      pasm("%i%r, ", inst2, right);
+      if(right->ptr) pasm("%a", right);
+      else if(right->creg) pasm("%r", right) ;
+      else pasm("%v", right);
+      
+      // if (!left->creg && !left->ptr)
+      // {
+      //   if(!right->creg) pasm("%i%r, %v", inst, curr, left);
+      //   else if(strcmp(right->creg, "eax") == 0)
+      //   {
+      //     inst = "add";
+      //     pasm("%i%r, %v\n",inst2, curr, left);
+      //   }
+      // }
+      // else
+      // {
+      //   if(right->ptr) pasm("%i%a, ", inst2, right);
+      //   else if(right->creg) pasm("%i%r, ", inst2, right);
+      //   else if (!right->creg) pasm("%i%v, ", inst2, right);
+      // }
       // if(right->ptr)
       curr->type = left->type;
       break;

@@ -11,7 +11,14 @@ main:
     mov  DWORD PTR -4[rbp], 6 ;// assign [a]
     mov  DWORD PTR -8[rbp], 4 ;// assign [b]
     mov  eax, 4
+    add  eax, DWORD PTR -4[rbp]
     mov  DWORD PTR -12[rbp], eax ;// assign [c]
+    mov  edi, DWORD PTR -4[rbp] ;// assign [edi]
+    call putnbr
+    mov  edi, DWORD PTR -8[rbp] ;// assign [edi]
+    call putnbr
+    mov  edi, DWORD PTR -12[rbp] ;// assign [edi]
+    call putnbr
     mov  eax, 0
     leave 
     ret  

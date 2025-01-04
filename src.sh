@@ -8,7 +8,7 @@ asm() {
 }
 
 flags="-fsanitize=address -fsanitize=null -g3" 
-flags="$flags -Wall -Werror=incompatible-pointer-types"
+flags="$flags -Wall -Werror=incompatible-pointer-types -Werror=int-conversion"
 # flags="$flags -Werror -Wextra"
 
 copy() {
@@ -77,6 +77,10 @@ wcc_build() {
 
 run(){
 	cc /code/file.s && ./a.out
+}
+
+update(){
+	source ~/.bashrc
 }
 
 alias build="wcc_build"
