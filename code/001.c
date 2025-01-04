@@ -6,8 +6,8 @@
 #include <stdio.h>
 #include <unistd.h>
 
-// int putnbr(int n)
-// {
+int putnbr(int n)
+{
 //   int res = 0;
 //   if (n == -2147483648)
 //     return write(1, "-2147483648", 11);
@@ -20,29 +20,37 @@
 //     res += putnbr(n / 10);
 //   res += putchar(n % 10 + '0');
 //   return res;
-// }
+}
+
+int strlen(char *str){}
 
 int hello(char *str)
 {
   return 1;
 }
 // #include <stdio.h>
+// int main()
+// {
+//   // hello("abc");
+//   // puts("fffff");
+//   // char *str = "Ffffff";
+//   // int i = strlen(str);
+//   // return i;
+//   int a = 5;
+//   int b = 10;
+//   int i = 0;
+//   while(i < 10)
+//   {
+//     write(1, "x", 1);
+//     // putnbr(i);
+//     i+= 1;
+//   }
+// }
 int main()
 {
-  // hello("abc");
-  // puts("fffff");
-  // char *str = "Ffffff";
-  // int i = strlen(str);
-  // return i;
-  int a = 5;
-  int b = 10;
-  int i = 0;
-  while(i < 10)
-  {
-    write(1, "x", 1);
-    // putnbr(i);
-    i+= 1;
-  }
+   char* str = "fffff";
+   int a = strlen(str);
+   putnbr(a);
 }
 
 /*
