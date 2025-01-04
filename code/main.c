@@ -20,7 +20,7 @@
 #define FILE __FILE__
 
 #define TOKENIZE 1
-#define TAB 3
+#define TAB 4
 
 #if TOKENIZE
 #define AST 1
@@ -149,6 +149,8 @@ typedef struct
   size_t reg;
   char *creg;
   size_t index;
+  bool isCond;
+  // size_t rsp;
   // bool isarg;
 
   struct
@@ -415,7 +417,11 @@ void tokenize(char *input)
         inc_space = true;
         space = 0;
       }
-      else if (inc_space) space++;
+      else if (inc_space)
+      {
+        if(input[i] == '\t') space += TAB;
+        else space++;
+      }
       i++;
       continue;
     }
@@ -785,11 +791,11 @@ Node *prime()
         while(!(tmptk = find(RPAR, END, 0)))
         {
 #if 1
-          Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, token->space ));
+          Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, token->space));
           assign->right = expr();
           // check(!assign->right->token->declare, "Invalid argument for function call");
-          assign->right->token->space = token->space ;
-          assign->left = new_node(new_token(NULL, 0, 0, assign->right->token->type, token->space ));
+          assign->right->token->space = token->space;
+          assign->left = new_node(new_token(NULL, 0, 0, assign->right->token->type, token->space));
           if(eregs[i])
           {
             // assign->left->token->isarg = true;
@@ -964,6 +970,7 @@ Node *prime()
   {
     node = new_node(token);
     node->left = expr();
+    node->left->token->isCond = true;
     check(!find(DOTS, 0), "Expected : after while condition\n", "");
     Node *tmp = node;
     while (check_token(token->space))
@@ -971,6 +978,7 @@ Node *prime()
       tmp->right = new_node(NULL);
       tmp = tmp->right;
       tmp->left = expr();
+      tmp->left->token->space = node->token->space + TAB;
     }
   }
   else if((token = find(RETURN, 0)))
@@ -1448,6 +1456,7 @@ Token *generate_ir(Node *node)
     new->name = strdup(node->token->name);
     new_inst(new);
     exit_scoop();
+    node->token->ptr = ptr;
     ptr = tmp_ptr;
     break;
   }
@@ -1585,11 +1594,13 @@ Token *generate_ir(Node *node)
     node->token->index = ++bloc_index;
     inst = new_inst(node->token);
 
+    setName(node->left->token, "endwhile");
     generate_ir(node->left); // TODO: check if it's boolean
-    Token *end = copy_token(node->token);
-    end->type = JNE;
-    setName(end, "endwhile");
-    new_inst(end);
+    node->left->token->index = node->token->index;
+    // Token *end = copy_token(node->token);
+    // end->type = JNE;
+    // setName(end, "endwhile");
+    // new_inst(end);
 
     Node *curr = node->right;
     while (curr) // while code bloc
@@ -2041,25 +2052,26 @@ void ir(Node *head)
   }
 #endif
   print_ir();
-
- 
 }
 
 // ASSEMBLY
 struct _IO_FILE *asm_fd;
+bool did_pasm = true;
 void pasm(char *fmt, ...)
 {
+  did_pasm = true;
   int i = 0;
   va_list args;
   va_start(args, fmt);
-#if 1
+
+#if 0
 #define isInstruction(inst)                        \
   do                                               \
   {                                                \
     if (strncmp(fmt + i, inst, strlen(inst)) == 0) \
     {                                              \
       i += strlen(inst);                           \
-      fprintf(asm_fd, "\t%-8s", inst);             \
+      fprintf(asm_fd, "%-8s", inst);             \
     }                                              \
   } while (0)
   isInstruction("movss ");
@@ -2071,24 +2083,34 @@ void pasm(char *fmt, ...)
   isInstruction("call ");
   isInstruction("leave");
   isInstruction("ret");
+  isInstruction("jne ");
+  isInstruction("jmp ");
 #endif
 
-#if WITH_COMMENTS
-  isInstruction("//");
-#else
-  if (strncmp(fmt + i, "//", 2) == 0)
-    return;
-#endif
+// #if WITH_COMMENTS
+//   isInstruction("//");
+// #else
+//   if (strncmp(fmt + i, "//", 2) == 0)
+//     return;
+// #endif
 
   while (fmt[i])
   {
+#if !WITH_COMMENTS
+    if(strncmp(fmt + i, "//", 2) == 0)
+    {
+      while(fmt[i] && fmt[i] != '\n') i++;
+      while(fmt[i] == '\n') i++;
+    }
+    else
+#endif
     if (fmt[i] == '%')
     {
       i++;
       if (fmt[i] == 'i')
       {
         i++;
-        fprintf(asm_fd, "\t%-8s", va_arg(args, char *));
+        fprintf(asm_fd, "%-4s ", va_arg(args, char *));
       }
       else if (fmt[i] == 'r')
       {
@@ -2199,6 +2221,16 @@ void finalize()
 #endif
 }
 
+void skip_space(int space)
+{
+  if(did_pasm)
+  {
+    pasm("\n");
+    int j = -1; while(++j < space) pasm(" ");
+    did_pasm = false;
+  }
+}
+
 void generate_asm()
 {
   if(!ASM) return;
@@ -2212,28 +2244,27 @@ void generate_asm()
     Token *curr = insts[i]->token;
     Token *left = insts[i]->left;
     Token *right = insts[i]->right;
+    skip_space(curr->space);
     switch (curr->type)
     {
     case INT: case BOOL: case CHARS:
     {
       if (curr->declare)
       {
-        pasm("//declare [%s]\n", curr->name);
-        pasm("mov %a, 0\n", curr);
+        pasm("%i%a, 0 ;// declare [%s]", "mov", curr, curr->name); skip_space(curr->space);
       }
       break;
     }
     case ADD_ASSIGN:
     {
-      if(left->name) pasm("//add_assign [%s]\n", left->name);
       char *inst = "add";
-      pasm("%i%a, %v\n", inst, left, right);
+      pasm("%i%a, %v", inst, left, right);
+      if(left->name){pasm(" ;// add_assign [%s]", left->name); skip_space(curr->space);}
       break;
     }
     case ASSIGN:
     {
-      if(left->name) pasm("//assign [%s]\n", left->name);
-      else if(left->creg) pasm("//assign [%s]\n", left->creg);
+
       // if(strcmp(left->name, "i") == 0)
       // {
       //   debug(RED"found i\n");
@@ -2246,30 +2277,30 @@ void generate_asm()
       char *inst = left->type == FLOAT ? "movss " : "mov ";
       if (right->ptr)
       {
-        pasm("%i%r, %a\n", inst, left, right);
+        pasm("%i%r, %a", inst, left, right);
         /*
         test this case before changing
         chars str = "fffff" int a = strlen(str)
         */
-        if(!left->creg) pasm("%i%a, %r\n", inst, left, left);
+        if(!left->creg) pasm("%i%a, %r", inst, left, left);
       }
       else if(right->creg)
       {
-        pasm("%i%a, %r\n", inst, left, right);
+        pasm("%i%a, %r", inst, left, right);
       }
       else
       {
         switch (right->type)
         {
         case INT: case BOOL: case CHAR:
-          pasm("mov %a, %v\n", left, right);
+          pasm("%i%a, %v","mov", left, right);
           break;
         case CHARS:
-            pasm("lea %r, .STR%zu[rip]\n", left, right->index);
+            pasm("%i%r, .STR%zu[rip]", "lea", left, right->index);
             // I did this to defrenticiate 
             // function parameter from
             // variable declaration
-            if(left->ptr) pasm("mov %a, %r\n", left, right); 
+            if(left->ptr) pasm("%i%a, %r", "mov", left, right); 
             break;
         // case float_:
         //     pasm("movss %r, DWORD PTR .FLT%zu[rip]\n", right, right->index);
@@ -2280,6 +2311,9 @@ void generate_asm()
           break;
         }
       }
+
+      if(left->name) {pasm(" ;// assign [%s]", left->name); }
+      else if(left->creg) {pasm(" ;// assign [%s]", left->creg);}
       break;
     }
     case ADD: case SUB: case MUL: case DIV: // TODO: check all math_op operations
@@ -2324,106 +2358,139 @@ void generate_asm()
       //   pasm("%i%r, %r\n", inst2, curr, right);
       // else 
       //   pasm("%i%r, %v\n", inst2, curr, right);
-      if(left->ptr)
-        pasm("%i%a, ", inst2, left);
+      // skip_space(curr->space);
+      if(left->ptr) pasm("%i%a, ", inst2, left);
       // if(right->ptr)
-      pasm("%v\n", right);
+      pasm("%v", right);
       curr->type = left->type;
       break;
     }
     case EQUAL: case NOT_EQUAL: case LESS: case MORE: case MORE_EQUAL:
     {
-      char *inst = left->type == FLOAT ? "movss" : "mov";
-      if (left->ptr) pasm("%i%r, %a\n", inst, left, left);
-      else if (left->creg /*&& strcmp(left->creg, r->creg)*/)
-        pasm("%i%r, %r\n", inst, left, left);
-      else if (!left->creg) pasm("%i%r, %v\n", inst, left, left);
-
-      char *reg = NULL;
-      switch (left->type)
+      if(curr->isCond)
       {
-        case INT: reg = "ebx"; break;
-        case FLOAT: reg = "xmm1"; break;
-        case CHAR: reg = "bl"; break;
-        case BOOL: reg = "ebx"; break;
-      default: check(1, "Unkown type [%s]\n", to_string(left->type)); break;
+        char *inst = NULL;
+        switch (curr->type)
+        {
+          case EQUAL: inst = "jne"; break;
+          case NOT_EQUAL: inst = "je"; break;
+          case LESS: inst = "jge"; break;
+          case LESS_EQUAL: inst = "jg"; break;
+          case MORE: inst = "jle"; break;
+          case MORE_EQUAL: inst = "jl"; break;
+          default: check(1, "Unkown type [%s]\n", to_string(left->type)); break;
+        }
+        skip_space(curr->space); pasm("%i", "cmp");
+        if (left->ptr) pasm("%a",left);
+        else 
+        if (left->creg) pasm("%r", left);
+        else 
+        if (!left->creg) pasm("%v", left);
+
+        // skip_space(curr->space);
+        if (right->ptr) pasm(", %a", right);
+        else 
+        if (right->creg) pasm(", %r", right);
+        else 
+        if (!right->creg) pasm(", %v", right);
+        skip_space(curr->space); pasm("%i .%s%zu", inst, curr->name, curr->index);
       }
-      if (right->ptr) pasm("%i%s, %a\n", inst, reg, right);
-      else if (right->creg) pasm("%i%s, %r\n", inst, reg, right);
-      else if (!right->creg) pasm("%i%s, %v\n", inst, reg, right);
-
-      inst = left->type == FLOAT ? "ucomiss" : "cmp";
-      pasm("%i%r, %s\n", inst, left, reg);
-      switch (curr->type)
+      else
       {
-        case EQUAL: inst = "sete"; break;
-        case NOT_EQUAL: inst = "setne"; break;
-        case LESS: inst = "setl"; break;
-        case LESS_EQUAL: inst = "setle"; break;
-        case MORE: inst = "setg"; break;
-        case MORE_EQUAL: inst = "setge"; break;
+        char *inst = left->type == FLOAT ? "movss" : "mov";
+        if (left->ptr) pasm("%i%r, %a", inst, left, left);
+        else if (left->creg /*&& strcmp(left->creg, r->creg)*/)
+          pasm("%i%r, %r", inst, left, left);
+        else if (!left->creg) pasm("%i%r, %v", inst, left, left);
+
+        char *reg = NULL;
+        switch (left->type)
+        {
+          case INT: reg = "ebx"; break;
+          case FLOAT: reg = "xmm1"; break;
+          case CHAR: reg = "bl"; break;
+          case BOOL: reg = "ebx"; break;
         default: check(1, "Unkown type [%s]\n", to_string(left->type)); break;
+        }
+        skip_space(curr->space);
+        if (right->ptr) pasm("%i%s, %a", inst, reg, right);
+        else if (right->creg) pasm("%i%s, %r", inst, reg, right);
+        else if (!right->creg) pasm("%i%s, %v", inst, reg, right);
+
+        inst = left->type == FLOAT ? "ucomiss" : "cmp";
+        skip_space(curr->space);
+        pasm("%i%r, %s", inst, left, reg);
+        switch (curr->type)
+        {
+          case EQUAL: inst = "sete"; break;
+          case NOT_EQUAL: inst = "setne"; break;
+          case LESS: inst = "setl"; break;
+          case LESS_EQUAL: inst = "setle"; break;
+          case MORE: inst = "setg"; break;
+          case MORE_EQUAL: inst = "setge"; break;
+          default: check(1, "Unkown type [%s]\n", to_string(left->type)); break;
+        }
+        curr->retType = BOOL;
+        setReg(curr, "al");
+        skip_space(curr->space);
+        pasm("%i%r", inst, curr);
       }
-      curr->retType = BOOL;
-      setReg(curr, "al");
-      pasm("%i%r\n", inst, curr);
-      break;
       break;
     }
     case FDEC:
     {
-      pasm("%s:\n", curr->name);
-      pasm("push rbp\n");
-      pasm("mov rbp, rsp\n");
-      pasm("sub rsp, %zu\n", (((ptr) + 15) / 16) * 16);
+      pasm("%s:", curr->name);
+      skip_space(curr->space + TAB); pasm("%irbp", "push");
+      skip_space(curr->space + TAB); pasm("%irbp, rsp", "mov");
+      skip_space(curr->space + TAB); pasm("%irsp, %zu", "sub", (((curr->ptr) + 15) / 16) * 16);
       break;
     }
     case JE:
     {
-      pasm("%ial, 1\n", "cmp");
-      pasm("%i.%s%zu\n", "je", curr->name, curr->index);
+      pasm("%ial, 1", "cmp");
+      skip_space(curr->space); pasm("%i.%s%zu", "je", curr->name, curr->index);
       break;
     }
     case JNE:
     {
-      pasm("%ial, 1\n", "cmp");
-      pasm("%i.%s%zu\n", "jne", curr->name, curr->index);
+      pasm("%ial, 1", "cmp");
+      skip_space(curr->space); pasm("%i.%s%zu", "jne", curr->name, curr->index);
       break;
     }
     case JMP:
     {
-      pasm("%i.%s%zu\n", "jmp", curr->name, curr->index);
+      pasm("%i.%s%zu", "jmp", curr->name, curr->index);
       break;
     }
     case FCALL:
     {
-      pasm("call %s\n", curr->name);
+      pasm("%i%s","call", curr->name);
       break;
     }
     case BLOC:
     {
-      pasm(".%s%zu:\n", curr->name, curr->index);
+      pasm(".%s%zu:", curr->name, curr->index);
       break;
     }
     case END_BLOC:
     {
-      pasm(".end%s:\n", curr->name);
+      pasm(".end%s:", curr->name);
       break;
     }
     case RETURN:
     {
-      if(left->ptr) pasm("mov %r, %a\n", left, left);
+      if(left->ptr) pasm("%i%r, %a", "mov", left, left);
       else if(left->creg)
       {
         // TODO: check the type
-        if(strcmp(left->creg, "eax")) pasm("mov %r, %a\n", left, left);
+        if(strcmp(left->creg, "eax")) pasm("%i%r, %a","mov", left, left);
       }
       else
       {
         switch (left->type)
         {
-        case INT: pasm("mov %r, %ld\n", left, left->Int.value); break;
-        case VOID: pasm("mov eax, 0\n"); break;
+        case INT: pasm("%i%r, %ld", "mov", left, left->Int.value); break;
+        case VOID: pasm("%ieax, 0", "mov"); break;
         default:
         {
           check(1, "handle this case [%s]\n", to_string(left->type));
@@ -2431,8 +2498,8 @@ void generate_asm()
         }
         }
       }
-      pasm("leave\n");
-      pasm("ret\n");
+      skip_space(curr->space); pasm("%i", "leave");
+      skip_space(curr->space); pasm("%i", "ret");
       break;
     }
     // case PUSH:
