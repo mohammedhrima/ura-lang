@@ -57,9 +57,8 @@ main():
 1. Run `make` to create a Docker container.
 2. Use `docker ps` to find the container ID of the running project.
 3. Access the container using the command:
-bash
 ```bash
-docker exec -it <container_id> bash
+    docker exec -it <container_id> bash
 ```
 #### Step 2: Compile Your Code
 + modify file.w inside the code directory.

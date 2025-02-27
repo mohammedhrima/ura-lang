@@ -1,8 +1,10 @@
+COMPOSE = docker-compose -f docker/docker-compose.yml
+
 all:
-	docker-compose up -d
+	$(COMPOSE) up -d
 
 down:
-	docker-compose down
+	$(COMPOSE) down
 
 clean: down
 	docker volume rm $$(docker volume ls -q --filter name=$$(basename $$PWD)_*)
@@ -13,6 +15,6 @@ fclean: down
 	docker network prune -f
 
 logs:
-	docker-compose logs -f
+	$(COMPOSE) logs -f
 
 re: clean all
