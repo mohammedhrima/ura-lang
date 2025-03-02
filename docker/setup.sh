@@ -13,8 +13,8 @@ YELLOW='\033[0;33m'
 NC='\033[0m'
 
 san="-fsanitize=address -fsanitize=null -g3" 
-flags="$san -Wall -Werror=incompatible-pointer-types -Werror=int-conversion"
-files="/src/main.c"
+flags="$san -Wall -Wextra -Werror=incompatible-pointer-types -Werror=int-conversion"
+files="/src/main.c /src/parse.c /src/gen.c /src/utils.c"
 
 copy() {
 	currflags=$flags
@@ -42,7 +42,7 @@ copy() {
 test() {
 	currflags=$flags
 	flags="$flags -D DEBUG=false"
-	gcc /src/main.c $flags -o /src/wcc
+	gcc $files $flags -o /src/wcc
 	CURRDIR=$PWD
 	cd /src/tests || exit
 
@@ -68,7 +68,7 @@ test() {
 
 wcc_build() {
 	clear && rm -rf /src/wcc 
-	gcc main.c $flags -o /src/wcc && /src/wcc /src/file.w
+	gcc $files $flags -o /src/wcc && /src/wcc /src/file.w
 }
 
 run(){
@@ -80,7 +80,9 @@ update(){
 }
 
 indent(){
-	astyle --mode=c --indent=spaces=3 --pad-oper --pad-header --keep-one-line-statements --keep-one-line-blocks --convert-tabs /src/main.c
+	astyle --mode=c --indent=spaces=3 --pad-oper --pad-header \
+	--keep-one-line-statements --keep-one-line-blocks --convert-tabs $files && rm -rf *.c.orig
+	chmod -R 777 /src /import /random /tests /root/.bashrc
 }
 
 alias build="wcc_build"
