@@ -1,29 +1,7 @@
 #include "./include/header.h"
 
 // TOKENIZE
-void add_token(Token *token)
-{
-   static size_t pos;
-   static size_t len;
-   if (len == 0)
-   {
-      len = 10;
-      obj.tokens = allocate(len, sizeof(Token *));
-   }
-   else if (pos + 1 == len)
-   {
-      Token **tmp = allocate(len * 2, sizeof(Token *));
-      memcpy(tmp, obj.tokens, len * sizeof(Token *));
-      free(obj.tokens);
-      obj.tokens = tmp;
-      len *= 2;
-   }
-   obj.tokens[pos++] = token;
-}
-
-Specials *dataTypes = (Specials[]) {
-   {"int", INT}, {"bool", BOOL}, {"chars", CHARS}, {0, (Type)0},
-};
+Specials *dataTypes = (Specials[]) {{"int", INT}, {"bool", BOOL}, {"chars", CHARS}, {0, (Type)0}};
 
 Token* new_token(char *input, size_t s, size_t e, Type type, size_t space)
 {
@@ -108,6 +86,7 @@ Specials *specials = (Specials[]) {
    {"and", AND}, {"&&", AND}, {"or", OR}, {"||", OR},
    {0, (Type)0}
 };
+
 void tokenize()
 {
    if (obj.is_error) return;
@@ -199,25 +178,6 @@ void tokenize()
 }
 
 // AST
-Node *new_node(Token *token)
-{
-   Node *new = allocate(1, sizeof(Node));
-   new->token = token;
-   return new;
-}
-
-Token *find(Type type, ...)
-{
-   va_list ap;
-   va_start(ap, type);
-   while (type)
-   {
-      if (type == obj.tokens[obj.exe_pos]->type) return obj.tokens[obj.exe_pos++];
-      type = va_arg(ap, Type);
-   }
-   return NULL;
-};
-
 Node *expr()
 {
    return assign();
@@ -318,16 +278,61 @@ Node *sign()
    return prime();
 }
 
-bool check_token(size_t space)
+Node *func_dec()
 {
-   return obj.tokens[obj.exe_pos]->space > space && obj.tokens[obj.exe_pos]->type != END;
+   return NULL;
+}
+
+Node *func_call(Node *node)
+{
+   check(1, "handle this case");
+   return NULL;
+}
+
+Node *func_main(Node *node)
+{
+   check(!find(RPAR, 0), "expected ) after main declaration", "");
+   check(!find(DOTS, 0), "expected : after main() declaration", "");
+   node->token->type = FDEC;
+   node->token->retType = INT;
+   Node *curr = node;
+   Node *last = node;
+   while (within_space(node->token->space))
+   {
+      curr->right = new_node(NULL);
+      curr = curr->right;
+      curr->left = expr();
+      last = curr->left;
+   }
+   if (last->token->type != RETURN)
+   {
+      curr->right = new_node(NULL);
+      curr = curr->right;
+      curr->left = new_node(new_token(NULL, 0, 0, RETURN, node->token->space + TAB));
+      curr->left->left = new_node(new_token(NULL, 0, 0, INT, node->token->space + TAB));
+   }
+   return node;
 }
 
 Node *prime()
 {
+   Node *node = NULL;
    Token *token;
    if ((token = find(ID, INT, BOOL, CHARS, CHAR, 0)))
    {
+      if (token->declare) // int variable_name
+      {
+         Token *tmp = find(ID, 0);
+         check(!tmp, "Expected variable name after [%s] symbol\n", to_string(token->type));
+         setName(token, tmp->name);
+         return new_node(token);
+      }
+      else if(token->type == ID && token->name && find(LPAR, 0))
+      {
+         node = new_node(token);
+         if (strcmp(token->name, "main") == 0) return func_main(node);
+         return func_call(node);
+      }
       return new_node(token);
    }
    else check(1, "Unexpected token has type %s\n", to_string(obj.tokens[obj.exe_pos]->type));
@@ -355,4 +360,11 @@ void generate_ast()
       curr = curr->right;
    }
    obj.head = head;
+}
+
+void parse()
+{
+   if (obj.is_error) return;
+   tokenize();
+   generate_ast();
 }

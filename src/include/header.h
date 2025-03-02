@@ -18,6 +18,13 @@ extern Wolfc obj;
 // PARSE
 void tokenize();
 void generate_ast();
+void setName(Token *token, char *name);
+void setReg(Token *token, char *creg);
+bool within_space(size_t space);
+void add_token(Token *token);
+Node *new_node(Token *token);
+Token *find(Type type, ...);
+void parse();
 
 // AST
 Node *expr();
@@ -31,10 +38,12 @@ Node *dot();
 Node *sign();
 Node *prime();
 
+
 // GENERATE
 void generate_ir();
 void optimize_ir();
 void generate_asm();
+void generate();
 
 // UTILS
 const char *to_string(Type type);
