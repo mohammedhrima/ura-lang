@@ -122,16 +122,41 @@ int pnode(Node *node, char *side, size_t space)
       res += debug(" ");
    if(side) res += debug("%s", side);
    res += debug("%k\n", node->token);
-   if (node->left)
+   if(node->token)
    {
-      res += pnode(node->left, "LEFT : ", space + TAB);
+      switch(node->token->type)
+      {
+         case FDEC:
+         {
+   #if 1
+            node = node->right;
+            while(node)
+            {
+               res += pnode(node->left, NULL , space + TAB);
+               node = node->right;
+            }
+   #else
+            res += pnode(node->left, "L: ", space + TAB);
+            res += pnode(node->right, "R: ", space + TAB);
+   #endif
+            break;
+         }
+         default:
+         {
+            res += pnode(node->left, "L: ", space + TAB);
+            res += pnode(node->right, "R: ", space + TAB);
+            break;
+         }
+      }
    }
-   if (node->right)
+   else
    {
-      res += pnode(node->right, "RIGHT: ", space + TAB);
+      res += pnode(node->left, "L: ", space + TAB);
+      res += pnode(node->right, "R: ", space + TAB);
    }
    return res;
 }
+
 int debug(char *conv, ...)
 {
    size_t i = 0;
@@ -192,3 +217,66 @@ int debug(char *conv, ...)
    return res;
 }
 
+void setName(Token *token, char *name)
+{
+   if (token->name)
+   {
+      free(token->name);
+      token->name = NULL;
+   }
+   if (name) token->name = strdup(name);
+}
+
+void setReg(Token *token, char *creg)
+{
+   if (token->creg)
+   {
+      free(token->creg);
+      token->creg = NULL;
+   }
+   if (creg) token->creg = strdup(creg);
+}
+
+bool within_space(size_t space)
+{
+   return obj.tokens[obj.exe_pos]->space > space && obj.tokens[obj.exe_pos]->type != END;
+}
+
+void add_token(Token *token)
+{
+   static size_t pos;
+   static size_t len;
+   if (len == 0)
+   {
+      len = 10;
+      obj.tokens = allocate(len, sizeof(Token *));
+   }
+   else if (pos + 1 == len)
+   {
+      Token **tmp = allocate(len * 2, sizeof(Token *));
+      memcpy(tmp, obj.tokens, len * sizeof(Token *));
+      free(obj.tokens);
+      obj.tokens = tmp;
+      len *= 2;
+   }
+   obj.tokens[pos++] = token;
+}
+
+Node *new_node(Token *token)
+{
+   Node *new = allocate(1, sizeof(Node));
+   new->token = token;
+   return new;
+}
+
+Token *find(Type type, ...)
+{
+   va_list ap;
+   va_start(ap, type);
+   while (type)
+   {
+      if (type == obj.tokens[obj.exe_pos]->type) return obj.tokens[obj.exe_pos++];
+      type = va_arg(ap, Type);
+   }
+   return NULL;
+};

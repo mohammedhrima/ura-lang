@@ -506,7 +506,7 @@ Node *sign()
    return prime();
 }
 
-bool check_token(int space)
+bool within_space(int space)
 {
    return tokens[exe_pos]->space > space && tokens[exe_pos]->type != END;
 }
@@ -545,7 +545,6 @@ Node *prime()
    {
       if (token->declare) // int num
       {
-         // debug("is declare %d\n", token->declare);
          Token *tmp = find(ID, 0);
          check(!tmp, "Expected variable name after [%s] symbol\n", to_string(token->type));
          setName(token, tmp->name);
@@ -564,7 +563,7 @@ Node *prime()
             token->retType = INT;
             Node *curr = node;
             Node *last = node;
-            while (check_token(token->space))
+            while (within_space(token->space))
             {
                curr->right = new_node(NULL);
                curr = curr->right;
@@ -697,7 +696,7 @@ Node *prime()
       check(!find(DOTS, 0), "Expected : after function declaration");
 
       curr = node;
-      while (check_token(token->space))
+      while (within_space(token->space))
       {
          curr->right = new_node(NULL);
          curr = curr->right;
@@ -720,7 +719,7 @@ Node *prime()
       tmp = tmp->right;
 
       // if bloc code
-      while (check_token(node->token->space))
+      while (within_space(node->token->space))
       {
          tmp->left = expr();
          tmp->right = new_node(NULL);
@@ -745,7 +744,7 @@ Node *prime()
             check(!find(DOTS, 0), "expected : after else");
             tmp0->right = new_node(NULL);
             tmp0 = tmp0->right;
-            while (check_token(token->space))
+            while (within_space(token->space))
             {
                tmp0->left = expr();
                tmp0->right = new_node(NULL);
@@ -758,7 +757,7 @@ Node *prime()
             Node *tmp0 = tmp->left;
             tmp0->right = new_node(NULL);
             tmp0 = tmp0->right;
-            while (check_token(token->space))
+            while (within_space(token->space))
             {
                tmp0->left = expr();
                tmp0->right = new_node(NULL);
@@ -775,7 +774,7 @@ Node *prime()
       node->left->token->isCond = true;
       check(!find(DOTS, 0), "Expected : after while condition\n", "");
       Node *tmp = node;
-      while (check_token(token->space))
+      while (within_space(token->space))
       {
          tmp->right = new_node(NULL);
          tmp = tmp->right;
