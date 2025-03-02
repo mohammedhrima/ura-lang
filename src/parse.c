@@ -1,5 +1,6 @@
 #include "./include/header.h"
 
+// TOKENIZE
 void add_token(Token *token)
 {
    static size_t pos;
@@ -21,7 +22,8 @@ void add_token(Token *token)
 }
 
 Specials *dataTypes = (Specials[]) {
-   {"int", INT}, {"bool", BOOL}, {"chars", CHARS}, {0, (Type)0},};
+   {"int", INT}, {"bool", BOOL}, {"chars", CHARS}, {0, (Type)0},
+};
 
 Token* new_token(char *input, size_t s, size_t e, Type type, size_t space)
 {
@@ -196,8 +198,161 @@ void tokenize()
    new_token(input, 0, 0, END, -1);
 }
 
+// AST
+Node *new_node(Token *token)
+{
+   Node *new = allocate(1, sizeof(Node));
+   new->token = token;
+   return new;
+}
+
+Token *find(Type type, ...)
+{
+   va_list ap;
+   va_start(ap, type);
+   while (type)
+   {
+      if (type == obj.tokens[obj.exe_pos]->type) return obj.tokens[obj.exe_pos++];
+      type = va_arg(ap, Type);
+   }
+   return NULL;
+};
+
+Node *expr()
+{
+   return assign();
+}
+
+Node *assign()
+{
+   Node *left = logic();
+   Token *token;
+   while ((token = find(ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, 0)))
+   {
+      Node *node = new_node(token);
+      node->left = left;
+      node->right = logic();
+      left = node;
+   }
+   return left;
+}
+
+Node *logic()
+{
+   Node *left = equality();
+   Token *token;
+   while ((token = find(AND, OR, 0)))
+   {
+      Node *node = new_node(token);
+      node->left = left;
+      node->right = equality();
+      left = node;
+   }
+   return left;
+}
+
+// TODO: handle NOT operator
+Node *equality()
+{
+   Node *left = comparison();
+   Token *token;
+   while ((token = find(EQUAL, NOT_EQUAL, 0)))
+   {
+      Node *node = new_node(token);
+      node->left = left;
+      node->right = comparison();
+      left = node;
+   }
+   return left;
+}
+
+Node *comparison()
+{
+   Node *left = add_sub();
+   Token *token;
+   while ((token = find(LESS, MORE, LESS_EQUAL, MORE_EQUAL, 0)))
+   {
+      Node *node = new_node(token);
+      node->left = left;
+      node->right = add_sub();
+      left = node;
+   }
+   return left;
+}
+
+Node *add_sub()
+{
+   Node *left = mul_div();
+   Token *token;
+   while ((token = find(ADD, SUB, 0)))
+   {
+      Node *node = new_node(token);
+      node->left = left;
+      node->right = mul_div();
+      left = node;
+   }
+   return left;
+}
+
+Node *mul_div()
+{
+   Node *left = dot();
+   Token *token;
+   while ((token = find(MUL, DIV, 0))) // TODO: handle modulo
+   {
+      Node *node = new_node(token);
+      node->left = left;
+      node->right = dot();
+      left = node;
+   }
+   return left;
+}
+
+Node *dot()
+{
+   return sign();
+}
+
+Node *sign()
+{
+   return prime();
+}
+
+bool check_token(size_t space)
+{
+   return obj.tokens[obj.exe_pos]->space > space && obj.tokens[obj.exe_pos]->type != END;
+}
+
+Node *prime()
+{
+   Token *token;
+   if ((token = find(ID, INT, BOOL, CHARS, CHAR, 0)))
+   {
+      return new_node(token);
+   }
+   else check(1, "Unexpected token has type %s\n", to_string(obj.tokens[obj.exe_pos]->type));
+   return NULL;
+}
+
 void generate_ast()
 {
    if (obj.is_error) return;
-   
+   debug(GREEN "===========   AST    ===========\n" RESET);
+   Node *head = new_node(NULL);
+   Node *curr = head;
+   curr->left = expr();
+   while (obj.tokens[obj.exe_pos]->type != END)
+   {
+      curr->right = new_node(NULL);
+      curr = curr->right;
+      curr->left = expr();
+   }
+   debug(GREEN "=========== PRINT AST ==========\n" RESET);
+   curr = head;
+   while (curr)
+   {
+      debug("%n\n", curr->left);
+      curr = curr->right;
+   }
+   obj.head = head;
 }
