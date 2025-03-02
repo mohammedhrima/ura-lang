@@ -7,16 +7,16 @@
 - [ ] Function takes arguments
 - [ ] Implement built-in functions
 - [ ] Implement output functionality
+- [ ] check function existance in generate_ir
+- [ ] import files in tokenize
 
 ## Assembly Generation
 
 - [ ] Generate assembly with proper indentation (tabs)
-```assembly
 main:
     .if1:
         mov eax, 1
     .endif1:
-```
 
 
 #### 2. **Data_Types.md**
@@ -40,24 +40,6 @@ This file will define the data types, their operators, and related notes.
 ### `array` (heap allocated)
 - **Arithmetic Operators**: `+` (concatenation)
 - **Logical Operators**: `==`, `!=`
-
-## Notes
-- `testb`: Bitwise AND operator
-- System Calls:
-  - `write`:
-    - `rdi`: File descriptor
-    - `rsi`: Pointer to data
-    - `rdx`: Length of data
-- Data Sizes:
-  - `quad`: 64-bit
-  - `long`: 32-bit
-  - `word`: 16-bit
-  - `byte`: 8-bit
-- Docker Commands:
-  - Stop and remove containers/images:
-    ```bash
-    docker-compose down -v --rmi all
-    ```
 
 # Language Syntax
 

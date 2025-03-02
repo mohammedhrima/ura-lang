@@ -113,4 +113,6 @@ typedef struct
    Inst *insts;
    bool is_error;
 
+   size_t exe_pos;
+
 } Wolfc;

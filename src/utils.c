@@ -52,10 +52,19 @@ void free_token(Token *token)
    free(token);
 }
 
+void free_node(Node *node)
+{
+   if(!node) return;
+   free_node(node->left);
+   free_node(node->right);
+   free(node);
+}
+
 void free_memory()
 {
    free(obj.input);
-   for(int i = 0; obj.tokens && obj.tokens[i]; i++) free_token(obj.tokens[i]);
+   for (int i = 0; obj.tokens && obj.tokens[i]; i++) free_token(obj.tokens[i]);
+   free_node(obj.head);
 }
 
 void check_error(const char *filename, const char *funcname, int line, bool cond, char *fmt, ...)
@@ -75,7 +84,7 @@ int ptoken(Token *token)
    int res = 0;
    if (!DEBUG) return res;
 
-   res += debug("token: space [%d] [%t] ", token->space, token->type);
+   res += debug("[%t] ", token->type);
    switch (token->type)
    {
    case VOID: case CHARS: case CHAR: case INT: case BOOL: case FLOAT:
@@ -99,20 +108,30 @@ int ptoken(Token *token)
    case FCALL: case FDEC: case ID: res += debug("name [%s] ", token->name); break;
    default: break;
    }
-   if (token->remove) res += debug(" [remove]");
+   if (token->remove) res += debug("[remove] ");
+   res += debug("space [%zu] ", token->space);
    return res;
 }
 
-int pnode(Node *node)
+int pnode(Node *node, char *side, size_t space)
 {
+   if (!node) return 0;
+
    int res = 0;
-   if (!node) return res;
-   res += debug("node: %t", node->token);
-   res += debug("LEFT : %n", node->left);
-   res += debug("RIGHT: %n", node->right);
+   for (size_t i = 0; i < space; i++) 
+      res += debug(" ");
+   if(side) res += debug("%s", side);
+   res += debug("%k\n", node->token);
+   if (node->left)
+   {
+      res += pnode(node->left, "LEFT : ", space + TAB);
+   }
+   if (node->right)
+   {
+      res += pnode(node->right, "RIGHT: ", space + TAB);
+   }
    return res;
 }
-
 int debug(char *conv, ...)
 {
    size_t i = 0;
@@ -130,7 +149,7 @@ int debug(char *conv, ...)
             res += fprintf(stdout, "%zu", va_arg(args, size_t));
             i++;
          }
-         if (strncmp(conv + i, "lld", 2) == 0)
+         else if (strncmp(conv + i, "lld", 3) == 0)
          {
             res += fprintf(stdout, "%lld", va_arg(args, long long));
             i += 2;
@@ -142,28 +161,27 @@ int debug(char *conv, ...)
             case 'c': res += fprintf(stdout, "%c", va_arg(args, int)); break;
             case 's': res += fprintf(stdout, "%s", va_arg(args, char *)); break;
             case 'p': res += fprintf(stdout, "%p", (void*)(va_arg(args, void *))); break;
-            case 'x': res += fprintf(stdout, "%x", (unsigned int)va_arg(args, void *)); break;
-            case 'X': res += fprintf(stdout, "%X", (unsigned int)va_arg(args, void *)); break;
+            case 'x': res += fprintf(stdout, "%x", va_arg(args, unsigned int)); break;
+            case 'X': res += fprintf(stdout, "%X", va_arg(args, unsigned int)); break;
             case 'd': res += fprintf(stdout, "%d", (int)va_arg(args, int)); break;
             case 'f': res += fprintf(stdout, "%f", va_arg(args, double)); break;
             case '%': res += fprintf(stdout, "%%"); break;
             case 't': res += fprintf(stdout, "%s", to_string((Type)va_arg(args, Type))); break;
             case 'k':
             {
-               Token *token = (Token *)va_arg(args, Token *);
-               if (token) res += ptoken(token);
-               else res += fprintf(stdout, "(null)");
+               Token *token = va_arg(args, Token *);
+               res += token ? ptoken(token) : fprintf(stdout, "(null)");
                break;
             }
             case 'n':
             {
                Node *node = (Node*)va_arg(args, Node*);
-               if(node) res += pnode(node);
-               else res += fprintf(stdout, "(null)");
+               res += node ? pnode(node, NULL, node->token->space) : fprintf(stdout, "(null)");
                break;
             }
             default:
                check(true, "invalid precedent [%c]", conv[i]);
+               exit(1);
                break;
             }
          }
