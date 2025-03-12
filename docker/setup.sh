@@ -1,4 +1,5 @@
 #!/bin/bash
+chmod -R 777 /src /import /random /tests /root/.bashrc
 
 alias cc="gcc"
 export PATH="/src:$PATH"
@@ -14,7 +15,7 @@ NC='\033[0m'
 
 san="-fsanitize=address -fsanitize=null -g3" 
 flags="$san -Wall -Wextra -Werror=incompatible-pointer-types -Werror=int-conversion"
-files="/src/main.c /src/parse.c /src/gen.c /src/utils.c"
+files="/src/main.c /src/utils.c"
 
 copy() {
 	currflags=$flags
@@ -87,4 +88,3 @@ indent(){
 
 alias build="wcc_build"
 PS1='\[\e[1;32m\]\u@\h\[\e[m\]:\[\e[1;34m\]\w\[\e[m\]\$ '
-

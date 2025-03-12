@@ -102,15 +102,3 @@ typedef struct
    Token *right;
 } Inst;
 
-typedef struct
-{
-   char *input;
-   char *filename;
-
-   Token **tokens;
-   Node *head;
-   Inst *all;
-   Inst *insts;
-   bool is_error;
-   size_t exe_pos;
-} Wolfc;
