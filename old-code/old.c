@@ -123,6 +123,7 @@ void *allocate_func(size_t line, size_t len, size_t size)
 
 char *open_file(char *filename)
 {
+   
    struct _IO_FILE *file = fopen(filename, "r");
    check(!file, "failed to open file %s\n", filename);
    fseek(file, 0, SEEK_END);
