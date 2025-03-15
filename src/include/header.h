@@ -14,6 +14,7 @@
 
 // GLOBAL
 extern bool found_error;
+extern bool did_pasm;
 extern char *input;
 extern Token **tokens;
 extern Node *head;
@@ -22,6 +23,7 @@ extern Inst **OrgInsts;
 extern Inst **insts;
 extern Scoop *scoop;
 extern size_t ptr;
+extern struct _IO_FILE *asm_fd;
 
 void open_file(char *filename);
 Token* new_token(char *input, size_t s, size_t e, Type type, size_t space);
@@ -37,7 +39,7 @@ Node *mul_div();
 Node *dot();
 Node *sign();
 Node *prime();
-void generate();
+void generate(char *name);
 Inst *new_inst(Token *token);
 void setName(Token *token, char *name);
 void setReg(Token *token, char *creg);
@@ -62,3 +64,6 @@ Token *get_variable(char *name);
 Token *new_variable(Token *token);
 void print_ir();
 bool compatible(Token *left, Token *right);
+void initialize();
+void finalize();
+void skip_space(int space);

@@ -18,48 +18,45 @@ Token* new_token(char *input, size_t s, size_t e, Type type, size_t space)
    // case BLOC: case ID: case JMP: case JE: case JNE: case FDEC:
    case ID:
    {
-      if (e > s)
+      if (e <= s)
+         break;
+      new->name = allocate(e - s + 1, sizeof(char));
+      strncpy(new->name, input + s, e - s);
+      if (strcmp(new->name, "True") == 0)
       {
-         new->name = allocate(e - s + 1, sizeof(char));
-         strncpy(new->name, input + s, e - s);
-         if (strcmp(new->name, "True") == 0)
+         free(new->name);
+         new->name = NULL;
+         new->type = BOOL;
+         new->Bool.value = true;
+         break;
+      }
+      else if (strcmp(new->name, "False") == 0)
+      {
+         free(new->name);
+         new->name = NULL;
+         new->type = BOOL;
+         new->Bool.value = false;
+         break;
+      }
+      for (int j = 0; dataTypes[j].value; j++)
+      {
+         if (strncmp(dataTypes[j].value, new->name, strlen(dataTypes[j].value)) == 0)
          {
+            new->type = dataTypes[j].type;
+            new->declare = true;
             free(new->name);
             new->name = NULL;
-            new->type = BOOL;
-            new->Bool.value = true;
-         }
-         else if (strcmp(new->name, "False") == 0)
-         {
-            free(new->name);
-            new->name = NULL;
-            new->type = BOOL;
-            new->Bool.value = false;
-         }
-         else
-         {
-            for (int j = 0; dataTypes[j].value; j++)
-            {
-               if (strncmp(dataTypes[j].value, new->name, strlen(dataTypes[j].value)) == 0)
-               {
-                  new->type = dataTypes[j].type;
-                  new->declare = true;
-                  free(new->name);
-                  new->name = NULL;
-                  break;
-               }
-            }
+            break;
          }
       }
       break;
    }
    case CHARS:
    {
-      if (e > s)
-      {
-         new->Chars.value = allocate(e - s + 1, sizeof(char));
-         strncpy(new->Chars.value, input + s, e - s);
-      }
+      if (e <= s)
+         break;
+      new->Chars.value = allocate(e - s + 1, sizeof(char));
+      strncpy(new->Chars.value, input + s, e - s);
       break;
    }
    case CHAR:
@@ -120,7 +117,6 @@ bool within_space(size_t space)
 {
    return tokens[exe_pos]->space > space && tokens[exe_pos]->type != END;
 }
-
 
 // INTERMEDIATE REPRESENTATION
 void setName(Token *token, char *name)
@@ -433,7 +429,197 @@ void check_error(const char *filename, const char *funcname, int line, bool cond
    va_end(ap);
 }
 
+// ASSEMBLY
+void pasm(char *fmt, ...)
+{
+   did_pasm = true;
+   int i = 0;
+   va_list args;
+   va_start(args, fmt);
+
+#if 0
+#define isInstruction(inst)                        \
+  do                                               \
+  {                                                \
+    if (strncmp(fmt + i, inst, strlen(inst)) == 0) \
+    {                                              \
+      i += strlen(inst);                           \
+      fprintf(asm_fd, "%-8s", inst);             \
+    }                                              \
+  } while (0)
+   isInstruction("movss ");
+   isInstruction("mov ");
+   isInstruction("sub ");
+   isInstruction("lea ");
+   isInstruction("cmp ");
+   isInstruction("push ");
+   isInstruction("call ");
+   isInstruction("leave");
+   isInstruction("ret");
+   isInstruction("jne ");
+   isInstruction("jmp ");
+#endif
+
+// #if WITH_COMMENTS
+//   isInstruction("//");
+// #else
+//   if (strncmp(fmt + i, "//", 2) == 0)
+//     return;
+// #endif
+
+   while (fmt[i])
+   {
+#if !WITH_COMMENTS
+      if (strncmp(fmt + i, "//", 2) == 0)
+      {
+         while (fmt[i] && fmt[i] != '\n') i++;
+         while (fmt[i] == '\n') i++;
+      }
+      else
+#endif
+         if (fmt[i] == '%')
+         {
+            i++;
+            if (fmt[i] == 'i')
+            {
+               i++;
+               fprintf(asm_fd, "%-4s ", va_arg(args, char *));
+            }
+            else if (fmt[i] == 'r')
+            {
+               i++;
+               Token *token = va_arg(args, Token *);
+               if (token->creg)
+               {
+                  // printf("%s:%dhas been used\n",FUNC, LINE);
+                  // exit(1);
+                  fprintf(asm_fd, "%s", token->creg);
+               }
+               else
+               {
+                  Type type = token->retType ? token->retType : token->type;
+                  switch (type)
+                  {
+                  case CHARS: fputs("rax", asm_fd); break;
+                  case INT: fputs("eax", asm_fd); break;
+                  case BOOL: case CHAR: fputs("al", asm_fd); break;
+                  case FLOAT: fputs("xmm0", asm_fd); break;
+                  default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
+                  }
+               }
+            }
+            else if (fmt[i] == 'a')
+            {
+               i++;
+               Token *token = va_arg(args, Token *);
+               if (token->creg)
+                  fprintf(asm_fd, "%s", token->creg);
+               else
+                  switch (token->type)
+                  {
+                  case CHARS: fprintf(asm_fd, "QWORD PTR -%ld[rbp]", token->ptr); break;
+                  case INT: fprintf(asm_fd, "DWORD PTR -%ld[rbp]", token->ptr); break;
+                  case CHAR: fprintf(asm_fd, "BYTE PTR -%ld[rbp]", token->ptr); break;
+                  case BOOL: fprintf(asm_fd, "BYTE PTR -%ld[rbp]", token->ptr); break;
+                  case FLOAT: fprintf(asm_fd, "DWORD PTR -%ld[rbp]", token->ptr); break;
+                  default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
+                  }
+            }
+            else if (fmt[i] == 'v')
+            {
+               i++;
+               Token *token = va_arg(args, Token *);
+               switch (token->type)
+               {
+               case INT: fprintf(asm_fd, "%lld", token->Int.value); break;
+               case BOOL: fprintf(asm_fd, "%d", token->Bool.value); break;
+               case CHAR: fprintf(asm_fd, "%d", token->Char.value); break;
+               default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
+               }
+            }
+            else
+            {
+               int handled = 0;
+               #define check_format(string, type)                     \
+               do                                                   \
+               {                                                    \
+                  if (strncmp(fmt + i, string, strlen(string)) == 0) \
+                  {                                                  \
+                     handled = 1;                                     \
+                     i += strlen(string);                             \
+                     fprintf(asm_fd, "%" string, va_arg(args, type)); \
+                  }                                                  \
+               } while (0)
+               check_format("d", int);
+               check_format("ld", long);
+               check_format("s", char *);
+               check_format("zu", unsigned long);
+               check_format("f", double);
+               check(!handled, "handle this case [%s]\n", fmt + i);
+            }
+         }
+         else
+         {
+            fputc(fmt[i], asm_fd);
+            i++;
+         }
+   }
+   va_end(args);
+}
+
+void initialize()
+{
+   pasm(".intel_syntax noprefix\n");
+   pasm(".include \"./import/header.s\"\n\n");
+   pasm(".text\n");
+   pasm(".globl	main\n");
+}
+
+void finalize()
+{
+#if TOKENIZE
+   for (int i = 0; tokens[i]; i++)
+   {
+      Token *curr = tokens[i];
+      // test char variable before making any modification
+      if (curr->type == CHARS && !curr->name && !curr->ptr && curr->index)
+         pasm(".STR%zu: .string %s\n", curr->index, curr->Chars.value ? curr->Chars.value : "\"\"");
+      if (curr->type == FLOAT && !curr->name && !curr->ptr && curr->index)
+         pasm(".FLT%zu: .long %zu /* %f */\n", curr->index,
+              *((uint32_t *)(&curr->Float.value)), curr->Float.value);
+   }
+   pasm(".section	.note.GNU-stack,\"\",@progbits\n\n");
+#endif
+}
+
+bool did_pasm;
+void skip_space(int space)
+{
+   if (did_pasm)
+   {
+      pasm("\n");
+      int j = -1; while (++j < space) pasm(" ");
+      did_pasm = false;
+   }
+}
+
 // LOGGING
+void print_value(Token *token)
+{
+   switch (token->type)
+   {  // TODO: handle the other cases
+   case INT: debug("%lld", token->Int.value); break;
+   case BOOL: debug("%s", token->Bool.value ? "True" : "False"); break;
+   case FLOAT: debug("%f", token->Float.value); break;
+   case CHAR: debug("%c", token->Char.value); break;
+   case CHARS: debug("%s", token->Chars.value); break;
+   default:
+   {
+      check(1, "handle this case [%s]\n", to_string(token->type));
+      break;
+   }
+   }
+}
 void print_ir()
 {
    if (!DEBUG) return;
@@ -460,23 +646,7 @@ void print_ir()
 
          if (right->reg) debug("r%.2d (%s)", right->reg, right->name ? right->name : "");
          else if (right->creg) debug("[%s]", right->creg);
-         else
-         {
-            // if(right->type == ADD) debug("<r%.2d>\n", right->reg);
-            switch (right->type)
-            {  // TODO: handle the other cases
-            case INT: debug("%lld", right->Int.value); break;
-            case BOOL: debug("%s", right->Bool.value ? "True" : "False"); break;
-            case FLOAT: debug("%f", right->Float.value); break;
-            case CHAR: debug("%c", right->Char.value); break;
-            case CHARS: debug("%s", right->Chars.value); break;
-            default:
-            {
-               check(1, "handle this case [%s]\n", to_string(right->type));
-               break;
-            }
-            }
-         }
+         else print_value(right);
          break;
       }
       case ADD: case SUB: case MUL: case DIV:
@@ -488,33 +658,11 @@ void print_ir()
          {
             check(1, "handle this case");
          }
-         else
-         {
-            switch (left->type)
-            {  // TODO: handle the other cases
-            case INT: debug("%lld", left->Int.value); break;
-            case BOOL: debug("%s", left->Bool.value ? "True" : "False"); break;
-            case FLOAT: debug("%f", left->Float.value); break;
-            case CHAR: debug("%c", left->Char.value); break;
-            case CHARS: debug("%s", left->Chars.value); break;
-            default: check(1, "handle this case [%s]\n", to_string(left->type));
-            }
-         }
+         else print_value(left);
          if (left->name) debug(" (%s)", left->name);
          debug(" to ");
          if (right->reg) debug("r%.2d", right->reg);
-         else
-         {
-            switch (right->type)
-            {  // TODO: handle the other cases
-            case INT: debug("%lld", right->Int.value); break;
-            case BOOL: debug("%s", right->Bool.value ? "True" : "False"); break;
-            case FLOAT: debug("%f", right->Float.value); break;
-            case CHAR: debug("%c", right->Char.value); break;
-            case CHARS: debug("%s", right->Chars.value); break;
-            default: check(1, "handle this case [%s]\n", to_string(right->type)); break;
-            }
-         }
+         else print_value(right);
          if (right->name) debug(" (%s)", right->name);
          break;
       }
@@ -662,17 +810,9 @@ int debug(char *conv, ...)
       {
          i++;
          int left_align = 0;
-         if (conv[i] == '-')
-         {
-            left_align = 1;
-            i++;
-         }
+         if (conv[i] == '-') { left_align = 1; i++; }
          int width = 0;
-         while (conv[i] >= '0' && conv[i] <= '9')
-         {
-            width = width * 10 + (conv[i] - '0');
-            i++;
-         }
+         while (conv[i] >= '0' && conv[i] <= '9') { width = width * 10 + (conv[i] - '0'); i++; }
          int precision = -1;
          if (conv[i] == '.')
          {
@@ -706,53 +846,35 @@ int debug(char *conv, ...)
                char *str = va_arg(args, char *);
                if (left_align)
                {
-                  if (precision >= 0)
-                     res += fprintf(stdout, "%-*.*s", width, precision, str);
-                  else
-                     res += fprintf(stdout, "%-*s", width, str);
+                  if (precision >= 0) res += fprintf(stdout, "%-*.*s", width, precision, str);
+                  else res += fprintf(stdout, "%-*s", width, str);
                }
                else
                {
-                  if (precision >= 0)
-                     res += fprintf(stdout, "%*.*s", width, precision, str);
-                  else
-                     res += fprintf(stdout, "%*s", width, str);
+                  if (precision >= 0) res += fprintf(stdout, "%*.*s", width, precision, str);
+                  else res += fprintf(stdout, "%*s", width, str);
                }
                break;
             }
-            case 'p':
-               res += fprintf(stdout, "%p", (void *)(va_arg(args, void *)));
-               break;
+            case 'p': res += fprintf(stdout, "%p", (void *)(va_arg(args, void *))); break;
             case 'x':
-               if (precision >= 0)
-                  res += fprintf(stdout, "%.*x", precision, va_arg(args, unsigned int));
-               else
-                  res += fprintf(stdout, "%x", va_arg(args, unsigned int));
+               if (precision >= 0) res += fprintf(stdout, "%.*x", precision, va_arg(args, unsigned int));
+               else  res += fprintf(stdout, "%x", va_arg(args, unsigned int));
                break;
             case 'X':
-               if (precision >= 0)
-                  res += fprintf(stdout, "%.*X", precision, va_arg(args, unsigned int));
-               else
-                  res += fprintf(stdout, "%X", va_arg(args, unsigned int));
+               if (precision >= 0) res += fprintf(stdout, "%.*X", precision, va_arg(args, unsigned int));
+               else res += fprintf(stdout, "%X", va_arg(args, unsigned int));
                break;
             case 'd':
-               if (precision >= 0)
-                  res += fprintf(stdout, "%.*d", precision, va_arg(args, int));
-               else
-                  res += fprintf(stdout, "%d", va_arg(args, int));
+               if (precision >= 0) res += fprintf(stdout, "%.*d", precision, va_arg(args, int));
+               else res += fprintf(stdout, "%d", va_arg(args, int));
                break;
             case 'f':
-               if (precision >= 0)
-                  res += fprintf(stdout, "%.*f", precision, va_arg(args, double));
-               else
-                  res += fprintf(stdout, "%f", va_arg(args, double));
+               if (precision >= 0) res += fprintf(stdout, "%.*f", precision, va_arg(args, double));
+               else res += fprintf(stdout, "%f", va_arg(args, double));
                break;
-            case '%':
-               res += fprintf(stdout, "%%");
-               break;
-            case 't':
-               res += fprintf(stdout, "%s", to_string((Type)va_arg(args, Type)));
-               break;
+            case '%': res += fprintf(stdout, "%%"); break;
+            case 't': res += fprintf(stdout, "%s", to_string((Type)va_arg(args, Type))); break;
             case 'k':
             {
                Token *token = va_arg(args, Token *);
@@ -766,16 +888,13 @@ int debug(char *conv, ...)
                break;
             }
             default:
-               fprintf(stderr, "invalid format specifier [%c]\n", conv[i]);
+               check(1, "invalid format specifier [%c]\n", conv[i]);
                exit(1);
                break;
             }
          }
       }
-      else
-      {
-         res += fprintf(stdout, "%c", conv[i]);
-      }
+      else res += fprintf(stdout, "%c", conv[i]);
       i++;
    }
 
