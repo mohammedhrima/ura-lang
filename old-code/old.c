@@ -2068,24 +2068,12 @@ void generate_asm()
       }
       case ASSIGN:
       {
-
-         // if(strcmp(left->name, "i") == 0)
-         // {
-         //   debug(RED"found i\n");
-         //   debug("has right: ");
-         //   ptoken(right);
-         //   if(right->ptr) debug("has ptr %zu\n", right->ptr);
-         //   if(right->creg) debug("has creg %s\n", right->creg);
-         //   exit(1);
-         // }
          char *inst = left->type == FLOAT ? "movss " : "mov ";
          if (right->ptr)
          {
             pasm("%i%r, %a", inst, left, right);
-            /*
-            test this case before changing
-            chars str = "fffff" int a = strlen(str)
-            */
+            // TODO: test this case before changing
+            // chars str = "fffff" int a = strlen(str)
             if (!left->creg) pasm("%i%a, %r", inst, left, left);
          }
          else if (right->creg)
@@ -2367,6 +2355,7 @@ void generate_asm()
    finalize();
    debug(RESET);
 }
+
 // MAIN
 int main(int argc, char **argv)
 {
