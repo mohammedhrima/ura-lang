@@ -176,8 +176,7 @@ int sizeofToken(Token *token)
 
 bool includes(Type *types, Type type)
 {
-   for (int i = 0; types[i]; i++)
-      if (types[i] == type) return true;
+   for (int i = 0; types[i]; i++) if (types[i] == type) return true;
    return false;
 }
 
@@ -371,7 +370,10 @@ Token *get_variable(char *name)
 // TODO: implement it
 bool compatible(Token *left, Token *right)
 {
-   return true;
+   return (
+      left->type == right->type || left->type == right->retType || 
+      left->retType == right->type || left->retType == left->retType
+   );
 }
 
 
@@ -540,7 +542,7 @@ void pasm(char *fmt, ...)
             else
             {
                int handled = 0;
-               #define check_format(string, type)                     \
+#define check_format(string, type)                     \
                do                                                   \
                {                                                    \
                   if (strncmp(fmt + i, string, strlen(string)) == 0) \
@@ -570,7 +572,7 @@ void pasm(char *fmt, ...)
 void initialize()
 {
    pasm(".intel_syntax noprefix\n");
-   pasm(".include \"./import/header.s\"\n\n");
+   pasm(".include \"/import/header.s\"\n\n");
    pasm(".text\n");
    pasm(".globl	main\n");
 }
@@ -748,6 +750,7 @@ int ptoken(Token *token)
    default: break;
    }
    if (token->remove) res += debug("[remove] ");
+   if(token->retType) res+= debug("ret [%t] ", token->retType);
    res += debug("space [%zu] ", token->space);
    return res;
 }

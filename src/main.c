@@ -111,6 +111,18 @@ void tokenize()
 }
 
 // ABSTRACT SYNTAX TREE
+Type getRetType(Node *node)
+{
+   if(includes((Type[]){INT, 0}, node->token->type)) return node->token->type;
+   if(includes((Type[]){INT, 0}, node->token->retType)) return node->token->retType;
+   Type left = 0, right = 0;
+   if(node->left) left = getRetType(node->left);
+   if(node->right) right = getRetType(node->right);
+   if(left) return left;
+   if(right) return right;
+   return 0;
+}
+
 Node *expr()
 {
    return assign();
@@ -125,6 +137,7 @@ Node *assign()
       Node *node = new_node(token);
       node->left = left;
       node->right = logic();
+      node->token->retType = getRetType(node);
       left = node;
    }
    return left;
@@ -173,6 +186,7 @@ Node *comparison()
    return left;
 }
 
+
 Node *add_sub()
 {
    Node *left = mul_div();
@@ -182,6 +196,7 @@ Node *add_sub()
       Node *node = new_node(token);
       node->left = left;
       node->right = mul_div();
+      node->token->retType = getRetType(node);
       left = node;
    }
    return left;
@@ -196,6 +211,7 @@ Node *mul_div()
       Node *node = new_node(token);
       node->left = left;
       node->right = dot();
+      node->token->retType = getRetType(node);
       left = node;
    }
    return left;
@@ -211,9 +227,30 @@ Node *sign()
    return prime();
 }
 
-Node *func_dec()
+Node *func_dec(Node *node)
 {
-   return NULL;
+   Node *fname = prime();
+   check(!fname->token || !fname->token->declare, "expected data type after func declaration");
+   check(!find(LPAR, 0), "expected ( after function declaration");
+   check(!find(RPAR, 0), "expected ) after function declaration");
+   check(!find(DOTS, 0), "Expected : after function declaration");
+
+   node->token->retType = fname->token->type;
+   node->token->name = fname->token->name;
+   fname->token->name = NULL;
+
+   enter_scoop(node->token->name);
+   free_node(fname);
+   debug("found FDEC with retType %s\n", to_string(node->token->retType));
+   Node *curr = node;
+   while (within_space(node->token->space) && !found_error)
+   {
+      curr->right = new_node(NULL);
+      curr = curr->right;
+      curr->left = expr();
+   }
+   exit_scoop();
+   return node;
 }
 
 Node *func_call(Node *node)
@@ -224,13 +261,14 @@ Node *func_call(Node *node)
 
 Node *func_main(Node *node)
 {
-   check(!find(RPAR, 0), "expected ) after main declaration", "");
-   check(!find(DOTS, 0), "expected : after main() declaration", "");
+   check(!find(RPAR, 0), "expected ) after main declaration");
+   check(!find(DOTS, 0), "expected : after main() declaration");
+
    node->token->type = FDEC;
    node->token->retType = INT;
    Node *curr = node;
    Node *last = node;
-   while (within_space(node->token->space))
+   while (within_space(node->token->space) && !found_error)
    {
       curr->right = new_node(NULL);
       curr = curr->right;
@@ -268,6 +306,18 @@ Node *prime()
       }
       return new_node(token);
    }
+   else if ((token = find(FDEC, 0)))
+   {
+      node = new_node(token);
+      return func_dec(node);
+   }
+   else if ((token = find(RETURN, 0)))
+   {
+      // TODO: check if return type is compatible with function
+      node = new_node(token);
+      node->left = expr();
+      return node;
+   }
    else check(1, "Unexpected token has type %s\n", to_string(tokens[exe_pos]->type));
    return NULL;
 }
@@ -285,6 +335,7 @@ void generate_ast()
       curr = curr->right;
       curr->left = expr();
    }
+   if(found_error) return;
    debug(BLUE BOLD"PRINT AST:\n" RESET);
    curr = head;
    while (curr && !found_error)
@@ -297,7 +348,134 @@ void generate_ast()
 // INTERMEDIATE REPRESENTATION
 bool optimize_ir()
 {
-   return false;
+   static int op = 0;
+   static bool did_optimize = false;
+   bool did_something = false;
+   switch (op)
+   {
+   case 0:
+   {
+      debug(CYAN "OP[%d] calculate operations on values\n" RESET, op);
+      for (int i = 0; insts[i]; i++)
+      {
+         Token *token = insts[i]->token;
+         Token *left = insts[i]->left;
+         Token *right = insts[i]->right;
+         
+         Type types[] = {INT, FLOAT, CHAR, 0};
+         Type ops[] = {ADD, SUB, MUL, DIV, 0};
+         // TODO: check if left and right are compatible
+         // test if left is function, and right is number ...
+         if (
+            includes(ops, token->type) && includes(types, left->type) && 
+            compatible(left, right) && !left->name && !right->name)
+         {
+            did_something = true;
+            did_optimize = true;
+            switch (left->type)
+            {
+            case INT:
+               switch (token->type)
+               {
+               case ADD: token->Int.value = left->Int.value + right->Int.value; break;
+               case SUB: token->Int.value = left->Int.value - right->Int.value; break;
+               case MUL: token->Int.value = left->Int.value * right->Int.value; break;
+               case DIV: token->Int.value = left->Int.value / right->Int.value; break;
+               default: break;
+               }
+               break;
+            default:
+               check(1, "handle this case\n", "");
+               break;
+            }
+            token->type = left->type;
+            token->retType = 0;
+            left->remove = true;
+            right->remove = true;
+            token->reg = 0;
+            setReg(token, NULL);
+            if (i > 0) i -= 2;
+         }
+      }
+      if(did_something) print_ir();
+      break;
+   }
+   case 1:
+   {
+      break;
+   }
+   case 2:
+   {
+      debug(CYAN "OP[%d] remove reassigned variables\n" RESET, op);
+      for (int i = 0; insts[i]; i++)
+      {
+         Token *token = insts[i]->token;
+         if(token->declare)
+         {
+            for (int j = i + 1; insts[j] && insts[j]->token->space == token->space; j++) {
+               if (insts[j]->token->type == ASSIGN && insts[j]->left == token) {
+                  token->declare = false;
+                  token->remove = true;
+                  did_optimize = true;
+                  did_something = true;
+                  break;
+               }
+               if ((insts[j]->left && insts[j]->left->reg == token->reg) ||
+                  (insts[j]->right && insts[j]->right->reg == token->reg)) {
+                  break;
+               }
+            }
+         }
+         else if(token->type == ASSIGN)
+         {
+            for (int j = i + 1; insts[j] && insts[j]->token->space == token->space; j++) {
+               if (!insts[j]->left || !insts[j]->right) 
+                  continue; 
+               if (insts[j]->token->type == ASSIGN && insts[j]->left == insts[i]->left) {
+                  token->remove = true;
+                  did_optimize = true;
+                  did_something = true;
+                  break;
+               }
+               if (insts[j]->left->reg == token->reg || insts[j]->right->reg == token->reg) 
+                  break;
+            }
+         }
+      }
+      if(did_something) print_ir();
+      break;
+   }
+   case 3:
+   {
+      break;
+   }
+   case 4:
+   {
+      // TODO: be carefull this one remove anything that don't have reg
+      debug(CYAN "OP[%d] (remove unused instructions)\n"RESET, op);
+      for (size_t i = 0; insts[i]; i++)
+      {
+         Token *curr = insts[i]->token;
+         if (!curr->ptr && !curr->reg && includes((Type[]) {INT, 0}, curr->type))
+         {
+            curr->remove = true;
+            did_something = true;
+            did_optimize = true;
+         }
+      }
+      if(did_something) print_ir();
+      break;
+   }
+   default:
+   {
+      op = 0;
+      if (!did_optimize) return false;
+      did_optimize = false;
+      break;
+   }
+   }
+   op++;
+   return true;
 }
 
 Token* generate_ir(Node *node)
@@ -332,7 +510,9 @@ Token* generate_ir(Node *node)
    {
       Token *left = generate_ir(node->left);
       Token *right = generate_ir(node->right);
-      check(!compatible(left, right), "incompatible type for %s op\n", to_string(node->token->type));
+      check(!compatible(left, right), "invalid [%s] op between %s and %s \n",
+      to_string(node->token->type), to_string(left->type), to_string(right->type));
+
       inst = new_inst(node->token);
       inst->left = left;
       inst->right = right;
@@ -488,9 +668,7 @@ void generate_asm(char *name)
                break;
             case CHARS:
                pasm("%i%r, .STR%zu[rip]", "lea", left, right->index);
-
-               // I did this to defrenticiate
-               // function parameter from
+               // I did this to diffenticiate function parameter from
                // variable declaration
                if (left->ptr) {skip_space(curr->space); pasm("%i%a, %r", "mov", left, right); }
                break;
@@ -765,12 +943,15 @@ void generate(char *name)
       generate_ir(curr->left);
       curr = curr->right;
    }
+   if(found_error) return;
    debug(BLUE BOLD"PRINT IR:\n" RESET);
    print_ir();
    debug(BLUE BOLD"OPTIMIZE IR:\n" RESET);
-   while (optimize_ir() && !found_error);
+   while (!found_error && optimize_ir()) ;
+#if 1
    debug(BLUE BOLD"GENERATE ASM:\n" RESET);
    generate_asm(name);
+#endif
 }
 
 int main(int argc, char **argv)
