@@ -4,20 +4,12 @@
 .text
 .globl	main
 
-hello:
-    push rbp
-    mov  rbp, rsp
-    sub  rsp, 0
-    mov  eax, 1
-    leave 
-    ret  
-.endhello:
 main:
     push rbp
     mov  rbp, rsp
-    sub  rsp, 16
-    mov  DWORD PTR -4[rbp], 6 ;// assign [a]
-    mov  DWORD PTR -8[rbp], 15 ;// assign [b]
+    sub  rsp, 0
+    mov  edi, 123 ;// assign [edi]
+    call putnbr
     mov  eax, 0
     leave 
     ret  

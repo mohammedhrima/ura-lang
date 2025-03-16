@@ -1,4 +1,9 @@
-- declare interger
-- math operation for interger
-- function that return
-+ function that takes parameters
++ Built-in functions:
+
++ if, else, elif
+
++ Loops:
+    + while loop
+    + for loops
+    + continue 
+    + break

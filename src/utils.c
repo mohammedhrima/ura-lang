@@ -15,13 +15,13 @@ Token* new_token(char *input, size_t s, size_t e, Type type, size_t space)
       while (s < e) new->Int.value = new->Int.value * 10 + input[s++] - '0';
       break;
    }
-   // case BLOC: case ID: case JMP: case JE: case JNE: case FDEC:
-   case ID:
+   case BLOC: case ID: case JMP: case JE: case JNE: case FDEC: case END_BLOC:
    {
       if (e <= s)
          break;
       new->name = allocate(e - s + 1, sizeof(char));
       strncpy(new->name, input + s, e - s);
+      if(type != ID) break;
       if (strcmp(new->name, "True") == 0)
       {
          free(new->name);
@@ -65,6 +65,7 @@ Token* new_token(char *input, size_t s, size_t e, Type type, size_t space)
       break;
    }
    default:
+      check(e > s, "implement adding name for this one %s", to_string(type));
       break;
    }
    add_token(new);
@@ -92,6 +93,18 @@ void add_token(Token *token)
    tokens[pos++] = token;
 }
 
+Token *copy_token(Token *token)
+{
+   if (token == NULL) return NULL;
+   Token *new = allocate(1, sizeof(Token));
+   memcpy(new, token, sizeof(Token));
+   // TODO: check all values that can be copied example: name ...
+   if (token->name) new->name = strdup(token->name);
+   if (token->Chars.value) new->Chars.value = strdup(token->Chars.value);
+   add_token(new);
+   return new;
+}
+
 // ABSTRACT SYNTAX TREE
 Node *new_node(Token *token)
 {
@@ -100,8 +113,18 @@ Node *new_node(Token *token)
    return new;
 }
 
+Node *copy_node(Node *node)
+{
+   Node *new = allocate(1, sizeof(Node));
+   new->token = copy_token(node->token);
+   if (node->left) new->left = copy_node(node->left);
+   if (node->right) new->right = copy_node(node->right);
+   return new;
+}
+
 Token *find(Type type, ...)
 {
+   if (found_error) return NULL;
    va_list ap;
    va_start(ap, type);
    while (type)
@@ -269,6 +292,41 @@ void clone_insts()
    }
 }
 
+Node **builtins_functions;
+size_t builtins_pos;
+size_t builtins_size;
+void create_builtin(char *name, Type *params, Type retType)
+{
+   Node *func = new_node(new_token(name, 0, strlen(name), FDEC, 0));
+   func->token->retType = retType;
+   setReg(func->token, "eax");
+   func->left = new_node(NULL);
+   Node *curr = func->left;
+   int i = 0;
+   while (params[i])
+   {
+      curr->right = new_node(NULL);
+      curr = curr->right;
+      curr->left = new_node(new_token(NULL, 0, 0, params[i], func->token->space + TAB));
+      i++;
+   }
+   if (builtins_functions == NULL)
+   {
+      builtins_size = 2;
+      builtins_functions = allocate(builtins_size, sizeof(Node *));
+   }
+   else if (builtins_pos + 1 == builtins_size)
+   {
+      Node **tmp = allocate(builtins_size * 2, sizeof(Node *));
+      memcpy(tmp, builtins_functions, builtins_pos * sizeof(Node *));
+      free(builtins_functions);
+      builtins_size *= 2;
+      builtins_functions = tmp;
+   }
+   builtins_functions[builtins_pos++] = func;
+   // debug("%screate builin [%s]%s\n", GREEN, func->token->name, RESET);
+}
+
 Node *new_function(Node *node)
 {
    debug("new_func %s in %s scoop has return %d\n", node->token->name, scoop->name, node->token->retType);
@@ -310,7 +368,7 @@ Node *get_function(char *name)
 {
    // TODO: remove output from here
    debug("get_func %s in %s scoop\n", name, scoop->name);
-#if 0
+#if 1
    for (size_t i = 0; i < builtins_pos; i++)
    {
       debug("loop [%d]\n", i);
@@ -371,9 +429,9 @@ Token *get_variable(char *name)
 bool compatible(Token *left, Token *right)
 {
    return (
-      left->type == right->type || left->type == right->retType || 
-      left->retType == right->type || left->retType == left->retType
-   );
+             left->type == right->type || left->type == right->retType ||
+             left->retType == right->type || left->retType == right->retType
+          );
 }
 
 
@@ -383,8 +441,8 @@ bool compatible(Token *left, Token *right)
 const char *to_string(Type type) {
    const char *type_strings[] = {
       [ASSIGN] = "ASSIGN", [ADD_ASSIGN] = "ADD ASSIGN", [SUB_ASSIGN] = "SUB ASSIGN",
-      [MUL_ASSIGN] = "MUL ASSIGN", [DIV_ASSIGN] = "DIV ASSIGN", [EQUAL] = "EQUAL",
-      [NOT_EQUAL] = "NOT EQUAL", [LESS_EQUAL] = "LESS THAN OR EQUAL",
+      [MUL_ASSIGN] = "MUL ASSIGN", [DIV_ASSIGN] = "DIV ASSIGN", [MOD_ASSIGN] = "MOD_ASSIGN",
+      [EQUAL] = "EQUAL", [NOT_EQUAL] = "NOT EQUAL", [LESS_EQUAL] = "LESS THAN OR EQUAL",
       [MORE_EQUAL] = "MORE THAN OR EQUAL", [LESS] = "LESS THAN", [MORE] = "MORE THAN",
       [ADD] = "ADD", [SUB] = "SUB", [MUL] = "MUL", [DIV] = "DIV", [MOD] = "MOD",
       [AND] = "AND", [OR]  = "OR", [RPAR] = "R_PAR", [LPAR] = "L_PAR", [COMA] = "COMMA",
@@ -736,11 +794,11 @@ int ptoken(Token *token)
       {
          switch (token->type)
          {
-         case INT: res += debug("value [%lld]", token->Int.value); break;
-         case CHARS: res += debug("value [%s]", token->Chars.value); break;
-         case CHAR: res += debug("value [%c]", token->Char.value); break;
-         case BOOL: res += debug("value [%d]", token->Bool.value); break;
-         case FLOAT: res += debug("value [%f]", token->Float.value); break;
+         case INT: res += debug("value [%lld] ", token->Int.value); break;
+         case CHARS: res += debug("value [%s] ", token->Chars.value); break;
+         case CHAR: res += debug("value [%c] ", token->Char.value); break;
+         case BOOL: res += debug("value [%d] ", token->Bool.value); break;
+         case FLOAT: res += debug("value [%f] ", token->Float.value); break;
          default: break;
          }
       }
@@ -750,7 +808,7 @@ int ptoken(Token *token)
    default: break;
    }
    if (token->remove) res += debug("[remove] ");
-   if(token->retType) res+= debug("ret [%t] ", token->retType);
+   if (token->retType) res += debug("ret [%t] ", token->retType);
    res += debug("space [%zu] ", token->space);
    return res;
 }
