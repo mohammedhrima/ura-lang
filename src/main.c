@@ -113,13 +113,13 @@ void tokenize()
 // ABSTRACT SYNTAX TREE
 Type getRetType(Node *node)
 {
-   if(includes((Type[]){INT, 0}, node->token->type)) return node->token->type;
-   if(includes((Type[]){INT, 0}, node->token->retType)) return node->token->retType;
+   if (includes((Type[]) {INT, 0}, node->token->type)) return node->token->type;
+   if (includes((Type[]) {INT, 0}, node->token->retType)) return node->token->retType;
    Type left = 0, right = 0;
-   if(node->left) left = getRetType(node->left);
-   if(node->right) right = getRetType(node->right);
-   if(left) return left;
-   if(right) return right;
+   if (node->left) left = getRetType(node->left);
+   if (node->right) right = getRetType(node->right);
+   if (left) return left;
+   if (right) return right;
    return 0;
 }
 
@@ -231,18 +231,54 @@ Node *func_dec(Node *node)
 {
    Node *fname = prime();
    check(!fname->token || !fname->token->declare, "expected data type after func declaration");
-   check(!find(LPAR, 0), "expected ( after function declaration");
-   check(!find(RPAR, 0), "expected ) after function declaration");
-   check(!find(DOTS, 0), "Expected : after function declaration");
-
    node->token->retType = fname->token->type;
    node->token->name = fname->token->name;
    fname->token->name = NULL;
-
-   enter_scoop(node->token->name);
    free_node(fname);
+   enter_scoop(node->token->name);
    debug("found FDEC with retType %s\n", to_string(node->token->retType));
-   Node *curr = node;
+   char *eregs[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d", NULL};
+   char *rregs[] = {"rdi", "rsi", "rdx", "rcx", "r8d", "r9d", NULL};
+   int i = 0;
+   Token *arg = NULL;
+   Token *token = node->token;
+
+   node->left = new_node(NULL);
+   Node *curr = node->left;
+
+   check(!find(LPAR, 0), "expected ( after function declaration");
+   while (!(arg = find(RPAR, END, 0)))
+   {
+      Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, token->space + 2 * TAB));
+      assign->left = expr();
+      check(!assign->left->token->declare, "Invalid argument for function declaration");
+      assign->left->token->space = token->space + 2 * TAB;
+      assign->right = new_node(new_token(NULL, 0, 0, assign->left->token->type, token->space + 2 * TAB));
+      if (eregs[i])
+      {
+         // TODO: add other data type and math operations
+         switch (assign->left->token->type)
+         {
+         case CHARS: setReg(assign->right->token, rregs[i]); break;
+         case INT:   setReg(assign->right->token, eregs[i]); break;
+         default: check(1, "set reg for %s", to_string(assign->left->token->type));
+         };
+         i++;
+      }
+      else
+      {
+         // TODO:
+         check(1, "implemnt assigning function argument using PTR");
+      }
+      curr->left = assign;
+      find(COMA, 0);
+      curr->right = new_node(NULL);
+      curr = curr->right;
+   }
+   check(arg->type != RPAR, "expected ) after function declaration");
+   check(!find(DOTS, 0), "Expected : after function declaration");
+
+   curr = node;
    while (within_space(node->token->space) && !found_error)
    {
       curr->right = new_node(NULL);
@@ -255,8 +291,48 @@ Node *func_dec(Node *node)
 
 Node *func_call(Node *node)
 {
-   check(1, "handle this case");
-   return NULL;
+   node->token->type = FCALL;
+   Node *curr = node;
+   Token *arg = NULL;
+   Token *token = node->token;
+
+   char *eregs[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d", NULL};
+   char *rregs[] = {"rdi", "rsi", "rdx", "rcx", "r8d", "r9d", NULL};
+   int i = 0;
+   while (!(arg = find(RPAR, END, 0)))
+   {
+      Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, token->space));
+      assign->right = expr();
+      assign->right->token->space = token->space;
+      assign->left = new_node(new_token(NULL, 0, 0, assign->right->token->type, token->space));
+      if (eregs[i])
+      {
+         if (assign->left->token->type == ID)
+         {
+            Token *var = get_variable(assign->right->token->name);
+            assign->left->token->type = var->type;
+         }
+         Type type = assign->left->token->type;
+         switch (type)
+         {
+         case CHARS: setReg(assign->left->token, rregs[i]); break;
+         case ADD: case SUB: case MUL: case DIV:
+         case INT: setReg(assign->left->token, eregs[i]); break;
+         default: check(1, "handle this case [%s]", to_string(type));
+         }
+         i++;
+      }
+      else
+      {
+         check(1, "implemnt PTR");
+      }
+      curr->left = assign;
+      find(COMA, 0);
+      curr->right = new_node(NULL);
+      curr = curr->right;
+   }
+   check(arg->type != RPAR, "expected ) after function call");
+   return node;
 }
 
 Node *func_main(Node *node)
@@ -281,6 +357,65 @@ Node *func_main(Node *node)
       curr = curr->right;
       curr->left = new_node(new_token(NULL, 0, 0, RETURN, node->token->space + TAB));
       curr->left->left = new_node(new_token(NULL, 0, 0, INT, node->token->space + TAB));
+   }
+   return node;
+}
+
+Node *if_node(Node *node)
+{
+   node->left = new_node(NULL);
+   Node *curr = node->left; // if bloc
+   
+   curr->left = expr(); // condition
+   curr->left->token->space = node->token->space + TAB;
+
+   check(!find(DOTS, 0), "Expected : after if condition\n", "");
+   curr->right = new_node(NULL);
+   curr = curr->right;
+
+   while(within_space(node->token->space))
+   {
+      curr->left = expr();
+      curr->left->token->space = node->token->space + TAB;
+      curr->right = new_node(NULL);
+      curr = curr->right;
+   }
+   curr = node;
+   while(includes((Type[]) {ELSE, ELIF, 0}, tokens[exe_pos]->type) && node->token->space == tokens[exe_pos]->space)
+   {
+      Token *token = find(ELSE, ELIF, 0);
+      
+      curr->right = new_node(NULL);
+      curr = curr->right;
+      curr->left = new_node(token);
+      if (token->type == ELIF)
+      {
+         Node *elif_node = curr->left;
+         elif_node->left = expr();
+         check(!find(DOTS, 0), "expected : after elif condition");
+         elif_node->right = new_node(NULL);
+         elif_node = elif_node->right;
+         while (within_space(token->space))
+         {
+            elif_node->left = expr();
+            elif_node->right = new_node(NULL);
+            elif_node = elif_node->right;
+         }
+      }
+      else if (token->type == ELSE)
+      {
+         check(!find(DOTS, 0), "expected dots");
+         Node *else_node = curr->left;
+         else_node->right = new_node(NULL);
+         else_node = else_node->right;
+         while (within_space(token->space))
+         {
+            else_node->left = expr();
+            else_node->right = new_node(NULL);
+            else_node = else_node->right;
+         }
+         break;
+      }
    }
    return node;
 }
@@ -318,6 +453,11 @@ Node *prime()
       node->left = expr();
       return node;
    }
+   else if ((token = find(IF, 0)))
+   {
+      node = new_node(token);
+      return if_node(node);
+   }
    else check(1, "Unexpected token has type %s\n", to_string(tokens[exe_pos]->type));
    return NULL;
 }
@@ -335,7 +475,7 @@ void generate_ast()
       curr = curr->right;
       curr->left = expr();
    }
-   if(found_error) return;
+   if (found_error) return;
    debug(BLUE BOLD"PRINT AST:\n" RESET);
    curr = head;
    while (curr && !found_error)
@@ -361,13 +501,13 @@ bool optimize_ir()
          Token *token = insts[i]->token;
          Token *left = insts[i]->left;
          Token *right = insts[i]->right;
-         
+
          Type types[] = {INT, FLOAT, CHAR, 0};
          Type ops[] = {ADD, SUB, MUL, DIV, 0};
          // TODO: check if left and right are compatible
          // test if left is function, and right is number ...
          if (
-            includes(ops, token->type) && includes(types, left->type) && 
+            includes(ops, token->type) && includes(types, left->type) &&
             compatible(left, right) && !left->name && !right->name)
          {
             did_something = true;
@@ -397,7 +537,7 @@ bool optimize_ir()
             if (i > 0) i -= 2;
          }
       }
-      if(did_something) print_ir();
+      if (did_something) print_ir();
       break;
    }
    case 1:
@@ -410,7 +550,7 @@ bool optimize_ir()
       for (int i = 0; insts[i]; i++)
       {
          Token *token = insts[i]->token;
-         if(token->declare)
+         if (token->declare)
          {
             for (int j = i + 1; insts[j] && insts[j]->token->space == token->space; j++) {
                if (insts[j]->token->type == ASSIGN && insts[j]->left == token) {
@@ -421,28 +561,28 @@ bool optimize_ir()
                   break;
                }
                if ((insts[j]->left && insts[j]->left->reg == token->reg) ||
-                  (insts[j]->right && insts[j]->right->reg == token->reg)) {
+                     (insts[j]->right && insts[j]->right->reg == token->reg)) {
                   break;
                }
             }
          }
-         else if(token->type == ASSIGN)
+         else if (token->type == ASSIGN)
          {
             for (int j = i + 1; insts[j] && insts[j]->token->space == token->space; j++) {
-               if (!insts[j]->left || !insts[j]->right) 
-                  continue; 
+               if (!insts[j]->left || !insts[j]->right)
+                  continue;
                if (insts[j]->token->type == ASSIGN && insts[j]->left == insts[i]->left) {
                   token->remove = true;
                   did_optimize = true;
                   did_something = true;
                   break;
                }
-               if (insts[j]->left->reg == token->reg || insts[j]->right->reg == token->reg) 
+               if (insts[j]->left->reg == token->reg || insts[j]->right->reg == token->reg)
                   break;
             }
          }
       }
-      if(did_something) print_ir();
+      if (did_something) print_ir();
       break;
    }
    case 3:
@@ -463,7 +603,7 @@ bool optimize_ir()
             did_optimize = true;
          }
       }
-      if(did_something) print_ir();
+      if (did_something) print_ir();
       break;
    }
    default:
@@ -495,6 +635,7 @@ Token* generate_ir(Node *node)
    case INT: case BOOL:
    {
       inst = new_inst(node->token);
+      if(inst->token->name && inst->token->declare) new_variable(inst->token);
       break;
    }
    case CHARS:
@@ -508,10 +649,11 @@ Token* generate_ir(Node *node)
    case EQUAL: case NOT_EQUAL:
    case LESS: case MORE: case LESS_EQUAL: case MORE_EQUAL:
    {
+
       Token *left = generate_ir(node->left);
       Token *right = generate_ir(node->right);
       check(!compatible(left, right), "invalid [%s] op between %s and %s \n",
-      to_string(node->token->type), to_string(left->type), to_string(right->type));
+            to_string(node->token->type), to_string(left->type), to_string(right->type));
 
       inst = new_inst(node->token);
       inst->left = left;
@@ -521,7 +663,7 @@ Token* generate_ir(Node *node)
       case ADD_ASSIGN:
       case ASSIGN:
          node->token->reg = left->reg;
-         node->token->retType = left->type;
+         node->token->retType = getRetType(node);
          break;
       case ADD: case SUB: case MUL: case DIV:
       {
@@ -533,7 +675,7 @@ Token* generate_ir(Node *node)
          //     char *r = to_string(right->type);
          //     check(1, "Invalid operation [%s] between [%s] and [%s]\n", c, l, r);
          // }
-         node->token->retType = left->type;
+         node->token->retType = getRetType(node);
          if (right->type == INT) setReg(node->token, "eax");
          else if (right->type == FLOAT) setReg(node->token, "xmm0");
          break;
@@ -548,6 +690,105 @@ Token* generate_ir(Node *node)
       }
       default: break;
       }
+      break;
+   }
+   case IF:
+   {
+      Node *curr = node->left;
+      // set if bloc
+      Inst *tmp = new_inst(copy_token(node->token));
+      setName(tmp->token, "if");
+      tmp->token->type =  BLOC;
+      tmp->token->index = ++bloc_index;
+
+      // check condition
+      generate_ir(curr->left); // TODO: check if it's boolean
+
+      Node *next = copy_node(node);
+      setName(next->token, "endif");
+      next->token->type = JNE;
+      next->token->index = ++bloc_index;
+      next->token->space = node->token->space + TAB;
+      new_inst(next->token);
+
+      curr = curr->right;
+      // if code bloc
+      while (curr->left)
+      {
+         generate_ir(curr->left);
+         curr = curr->right;
+      }
+#if 1
+      Inst *inst = NULL;
+      if (node->right) // add jmp to endif if there is elif or else blocs
+      {
+         inst = new_inst(new_token("endif", 0, 5, JMP, node->token->space));
+         inst->token->index = node->token->index;
+      }
+      curr = node->right;
+      while(curr)
+      {
+#if 0
+         if (curr->left->token->type == ELIF)
+         {
+            curr->left->token->index = ++bloc_index;
+            setName(curr->left->token, "elif");
+            curr->left->token->type = BLOC;
+            {
+               setName(next->token, "elif");
+               next->token->index = curr->left->token->index;
+               next->token = copy_token(next->token);
+            }
+            new_inst(curr->left->token);
+            Node *tmp = curr->left;
+            generate_ir(tmp->left); // elif condition, TODO: check is boolean
+
+            new_inst(next->token);
+
+            tmp = tmp->right;
+            while (tmp->left)
+            {
+               generate_ir(tmp->left);
+               tmp = tmp->right;
+            }
+         }
+         else 
+#endif
+         if (curr->left->token->type == ELSE)
+         {
+            curr->left->token->index = ++bloc_index;
+            setName(curr->left->token, "else");
+            curr->left->token->type = BLOC;
+            new_inst(curr->left->token);
+
+            {
+               setName(next->token, "else");
+               next->token->index = curr->left->token->index;
+               next->token = copy_token(next->token);
+            }
+
+            Node *tmp = curr->left;
+            tmp = tmp->right;
+            while (tmp->left)
+            {
+               generate_ir(tmp->left);
+               tmp = tmp->right;
+            }
+            break;
+         }       
+         if (curr->right) // to avoid adding jmp in the last statement
+         {
+            inst = new_inst(new_token("endif", 0, 5, JMP, node->token->space));
+            inst->token->index = node->token->index;
+         }
+         curr = curr->right;
+      }
+#endif
+      Token *new = new_token("endif", 0, 5, BLOC, node->token->space);
+      new->index = node->token->index;
+      new_inst(new);
+      free_node(next);
+      return node->left->token;
       break;
    }
    case FDEC:
@@ -591,6 +832,30 @@ Token* generate_ir(Node *node)
       exit_scoop();
       node->token->ptr = ptr;
       ptr = tmp_ptr;
+      break;
+   }
+   case FCALL:
+   {
+      if (strcmp(node->token->name, "output") == 0)
+      {
+         check(1, "handle this case"); // TODO
+      }
+      else
+      {
+         Node *func = get_function(node->token->name);
+         if(!func) return NULL;
+         node->token->retType = func->token->retType;
+         setReg(node->token, func->token->creg);
+         debug("%s: has the following arguments\n", node->token->name);
+         Node *arg = node;
+         while (arg->left)
+         {
+            pnode(arg->left, "", 10);
+            generate_ir(arg->left);
+            arg = arg->right;
+         }
+      }
+      inst = new_inst(node->token);
       break;
    }
    case RETURN:
@@ -861,7 +1126,7 @@ void generate_asm(char *name)
       }
       case BLOC:
       {
-         pasm(".%s%zu:", curr->name, curr->index);
+         pasm(".%s%zu:", (curr->name ? curr->name : "(null)"), curr->index);
          break;
       }
       case END_BLOC:
@@ -932,18 +1197,40 @@ void generate_asm(char *name)
    finalize();
 }
 
+void add_builtins()
+{
+   if(found_error) return;
+   create_builtin("putnbr", (Type[]) {INT, 0}, INT);
+   create_builtin("write", (Type[]) {INT, CHARS, INT, 0}, INT);
+   // create_builtin("read", (Type[]){int_, chars_, int_, 0}, int_);
+   // create_builtin("exit", (Type[]){int_, 0}, int_);
+   // create_builtin("malloc", (Type[]){int_, 0}, ptr_);
+   // create_builtin("calloc", (Type[]){int_, int_, 0}, ptr_);
+   // create_builtin("strdup", (Type[]){chars_, 0}, chars_);
+   create_builtin("strlen", (Type[]) {CHARS, 0}, INT);
+   // create_builtin("free", (Type[]){ptr_, 0}, void_);
+   // create_builtin("strcpy", (Type[]){chars_, chars_, 0}, chars_);
+   // create_builtin("strncpy", (Type[]){chars_, chars_, int_, 0}, chars_);
+   // // create_builtin("puts", (Type[]){chars_, 0}, int_);
+   create_builtin("putstr", (Type[]) {CHARS, 0}, INT);
+   create_builtin("putchar", (Type[]) {CHAR, 0}, INT);
+   // create_builtin("putbool", (Type[]){bool_, 0}, int_);
+   // create_builtin("putfloat", (Type[]){float_, 0}, int_);
+}
+
 void generate(char *name)
 {
    if (found_error) return;
    debug(BLUE BOLD"GENERATE IR:\n" RESET);
    enter_scoop("");
    Node *curr = head;
+   add_builtins();
    while (curr && !found_error)
    {
       generate_ir(curr->left);
       curr = curr->right;
    }
-   if(found_error) return;
+   if (found_error) return;
    debug(BLUE BOLD"PRINT IR:\n" RESET);
    print_ir();
    debug(BLUE BOLD"OPTIMIZE IR:\n" RESET);
