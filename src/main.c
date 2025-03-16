@@ -113,6 +113,7 @@ void tokenize()
 // ABSTRACT SYNTAX TREE
 Type getRetType(Node *node)
 {
+   if(!node || node->token) return 0;
    if (includes((Type[]) {INT, 0}, node->token->type)) return node->token->type;
    if (includes((Type[]) {INT, 0}, node->token->retType)) return node->token->retType;
    Type left = 0, right = 0;
@@ -229,12 +230,14 @@ Node *sign()
 
 Node *func_dec(Node *node)
 {
-   Node *fname = prime();
-   check(!fname->token || !fname->token->declare, "expected data type after func declaration");
-   node->token->retType = fname->token->type;
-   node->token->name = fname->token->name;
-   fname->token->name = NULL;
-   free_node(fname);
+   Token *typeName = find(INT, BOOL, CHARS, CHAR, 0);
+   Token *fname = find(ID, 0);
+   check(!typeName || !fname, "expected data type and identifier after func declaration");
+   
+   node->token->retType = typeName->type;
+   node->token->name = fname->name;
+   fname->name = NULL;
+   
    enter_scoop(node->token->name);
    debug("found FDEC with retType %s\n", to_string(node->token->retType));
    char *eregs[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d", NULL};
@@ -247,7 +250,7 @@ Node *func_dec(Node *node)
    Node *curr = node->left;
 
    check(!find(LPAR, 0), "expected ( after function declaration");
-   while (!(arg = find(RPAR, END, 0)))
+   while (!found_error && !(arg = find(RPAR, END, 0)))
    {
       Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, token->space + 2 * TAB));
       assign->left = expr();
@@ -279,7 +282,7 @@ Node *func_dec(Node *node)
    check(!find(DOTS, 0), "Expected : after function declaration");
 
    curr = node;
-   while (within_space(node->token->space) && !found_error)
+   while (within_space(node->token->space))
    {
       curr->right = new_node(NULL);
       curr = curr->right;
@@ -299,7 +302,7 @@ Node *func_call(Node *node)
    char *eregs[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d", NULL};
    char *rregs[] = {"rdi", "rsi", "rdx", "rcx", "r8d", "r9d", NULL};
    int i = 0;
-   while (!(arg = find(RPAR, END, 0)))
+   while (!found_error && !(arg = find(RPAR, END, 0)))
    {
       Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, token->space));
       assign->right = expr();
@@ -310,15 +313,18 @@ Node *func_call(Node *node)
          if (assign->left->token->type == ID)
          {
             Token *var = get_variable(assign->right->token->name);
-            assign->left->token->type = var->type;
+            if(var) assign->left->token->type = var->type;
          }
-         Type type = assign->left->token->type;
-         switch (type)
+         if(!found_error)
          {
-         case CHARS: setReg(assign->left->token, rregs[i]); break;
-         case ADD: case SUB: case MUL: case DIV:
-         case INT: setReg(assign->left->token, eregs[i]); break;
-         default: check(1, "handle this case [%s]", to_string(type));
+            Type type = assign->left->token->type;
+            switch (type)
+            {
+            case CHARS: setReg(assign->left->token, rregs[i]); break;
+            case ADD: case SUB: case MUL: case DIV:
+            case INT: setReg(assign->left->token, eregs[i]); break;
+            default: check(1, "handle this case [%s]", to_string(type));
+            }
          }
          i++;
       }
@@ -331,7 +337,7 @@ Node *func_call(Node *node)
       curr->right = new_node(NULL);
       curr = curr->right;
    }
-   check(arg->type != RPAR, "expected ) after function call");
+   check(!found_error && arg->type != RPAR, "expected ) after function call");
    return node;
 }
 
@@ -340,40 +346,43 @@ Node *func_main(Node *node)
    check(!find(RPAR, 0), "expected ) after main declaration");
    check(!find(DOTS, 0), "expected : after main() declaration");
 
+   enter_scoop(node->token->name);
    node->token->type = FDEC;
    node->token->retType = INT;
    Node *curr = node;
    Node *last = node;
-   while (within_space(node->token->space) && !found_error)
+   while (within_space(node->token->space))
    {
       curr->right = new_node(NULL);
       curr = curr->right;
       curr->left = expr();
       last = curr->left;
    }
-   if (last->token->type != RETURN)
+   if (last && last->token->type != RETURN)
    {
       curr->right = new_node(NULL);
       curr = curr->right;
       curr->left = new_node(new_token(NULL, 0, 0, RETURN, node->token->space + TAB));
       curr->left->left = new_node(new_token(NULL, 0, 0, INT, node->token->space + TAB));
    }
+   exit_scoop();
    return node;
 }
 
 Node *if_node(Node *node)
 {
+   enter_scoop(node->token->name);
    node->left = new_node(NULL);
    Node *curr = node->left; // if bloc
-   
+
    curr->left = expr(); // condition
-   curr->left->token->space = node->token->space + TAB;
+   curr->left->token->space = node->token->space;
 
    check(!find(DOTS, 0), "Expected : after if condition\n", "");
+   
    curr->right = new_node(NULL);
    curr = curr->right;
-
-   while(within_space(node->token->space))
+   while (within_space(node->token->space))
    {
       curr->left = expr();
       curr->left->token->space = node->token->space + TAB;
@@ -381,10 +390,12 @@ Node *if_node(Node *node)
       curr = curr->right;
    }
    curr = node;
-   while(includes((Type[]) {ELSE, ELIF, 0}, tokens[exe_pos]->type) && node->token->space == tokens[exe_pos]->space)
+   while (!found_error && 
+      includes((Type[]) {ELSE, ELIF, 0}, tokens[exe_pos]->type) && 
+      node->token->space == tokens[exe_pos]->space)
    {
       Token *token = find(ELSE, ELIF, 0);
-      
+
       curr->right = new_node(NULL);
       curr = curr->right;
       curr->left = new_node(token);
@@ -392,31 +403,54 @@ Node *if_node(Node *node)
       {
          Node *elif_node = curr->left;
          elif_node->left = expr();
+         elif_node->left->token->space = node->token->space;
          check(!find(DOTS, 0), "expected : after elif condition");
          elif_node->right = new_node(NULL);
          elif_node = elif_node->right;
          while (within_space(token->space))
          {
             elif_node->left = expr();
+            elif_node->left->token->space = node->token->space + TAB;
             elif_node->right = new_node(NULL);
             elif_node = elif_node->right;
          }
       }
       else if (token->type == ELSE)
       {
-         check(!find(DOTS, 0), "expected dots");
+         check(!find(DOTS, 0), "expected : after else");
          Node *else_node = curr->left;
          else_node->right = new_node(NULL);
          else_node = else_node->right;
          while (within_space(token->space))
          {
             else_node->left = expr();
+            else_node->left->token->space = node->token->space + TAB;
             else_node->right = new_node(NULL);
             else_node = else_node->right;
          }
          break;
       }
    }
+   exit_scoop();
+   return node;
+}
+
+Node *while_node(Node *node)
+{
+   enter_scoop(node->token->name);
+   node->left = expr();
+   node->left->token->space = node->token->space;
+
+   check(!find(DOTS, 0), "Expected : after while condition\n", "");
+   Node *curr = node;
+   while (within_space(node->token->space))
+   {
+      curr->right = new_node(NULL);
+      curr = curr->right;
+      curr->left = expr();
+      curr->left->token->space = node->token->space + TAB;
+   }
+   exit_scoop();
    return node;
 }
 
@@ -431,6 +465,7 @@ Node *prime()
          Token *tmp = find(ID, 0);
          check(!tmp, "Expected variable name after [%s] symbol\n", to_string(token->type));
          setName(token, tmp->name);
+         new_variable(token);
          return new_node(token);
       }
       else if (token->type == ID && token->name && find(LPAR, 0))
@@ -442,10 +477,7 @@ Node *prime()
       return new_node(token);
    }
    else if ((token = find(FDEC, 0)))
-   {
-      node = new_node(token);
-      return func_dec(node);
-   }
+      return func_dec(new_node(token));
    else if ((token = find(RETURN, 0)))
    {
       // TODO: check if return type is compatible with function
@@ -454,10 +486,9 @@ Node *prime()
       return node;
    }
    else if ((token = find(IF, 0)))
-   {
-      node = new_node(token);
-      return if_node(node);
-   }
+      return if_node(new_node(token));
+   else if((token = find(WHILE, 0)))
+      return while_node(new_node(token));
    else check(1, "Unexpected token has type %s\n", to_string(tokens[exe_pos]->type));
    return NULL;
 }
@@ -611,6 +642,7 @@ bool optimize_ir()
       op = 0;
       if (!did_optimize) return false;
       did_optimize = false;
+      return true;
       break;
    }
    }
@@ -632,16 +664,17 @@ Token* generate_ir(Node *node)
       Token *token = get_variable(node->token->name);
       return token;
    }
-   case INT: case BOOL:
+   case INT: case BOOL: case CHAR: 
    {
       inst = new_inst(node->token);
-      if(inst->token->name && inst->token->declare) new_variable(inst->token);
+      if (inst->token->name && inst->token->declare) new_variable(inst->token);
       break;
    }
    case CHARS:
    {
       inst = new_inst(node->token);
-      if (!node->token->creg) node->token->index = ++str_index;
+      if (inst->token->name && inst->token->declare) new_variable(inst->token);
+      else if (!node->token->creg) node->token->index = ++str_index;
       break;
    }
    case ASSIGN: case ADD_ASSIGN:
@@ -688,62 +721,65 @@ Token* generate_ir(Node *node)
          // debug(RED "this is [%d]\n" RESET, node->token->reg);
          break;
       }
-      default: break;
+      default:
+         check(1, "handle [%s]", to_string(node->token->type)); // keep it, it prevents bugs
+      break;
       }
       break;
    }
    case IF:
    {
       Node *curr = node->left;
-      // set if bloc
+
       Inst *tmp = new_inst(copy_token(node->token));
       setName(tmp->token, "if");
       tmp->token->type =  BLOC;
       tmp->token->index = ++bloc_index;
 
-      // check condition
       generate_ir(curr->left); // TODO: check if it's boolean
-
-      Node *next = copy_node(node);
-      setName(next->token, "endif");
-      next->token->type = JNE;
-      next->token->index = ++bloc_index;
-      next->token->space = node->token->space + TAB;
-      new_inst(next->token);
-
+      node->token->type = JNE;
+      setName(node->token, "endif");
+      node->token->index = ++bloc_index;
+      
+      Token *lastInst = copy_token(node->token);
+      lastInst->space += TAB;
+      new_inst(lastInst); // jne to endif
       curr = curr->right;
+
       // if code bloc
       while (curr->left)
       {
          generate_ir(curr->left);
          curr = curr->right;
       }
-#if 1
-      Inst *inst = NULL;
-      if (node->right) // add jmp to endif if there is elif or else blocs
+
+      Inst *endInst = NULL;
+      if (node->right)
       {
-         inst = new_inst(new_token("endif", 0, 5, JMP, node->token->space));
-         inst->token->index = node->token->index;
+         endInst = new_inst(new_token("endif", 0, 5, JMP, node->token->space));
+         endInst->token->index = node->token->index;
       }
+
       curr = node->right;
-      while(curr)
+      while (curr)
       {
-#if 0
          if (curr->left->token->type == ELIF)
          {
             curr->left->token->index = ++bloc_index;
-            setName(curr->left->token, "elif");
             curr->left->token->type = BLOC;
+            setName(curr->left->token, "elif");
+
             {
-               setName(next->token, "elif");
-               next->token->index = curr->left->token->index;
-               next->token = copy_token(next->token);
+               setName(lastInst, "elif");
+               lastInst->index = curr->left->token->index;
+               lastInst = copy_token(lastInst);
             }
+
             new_inst(curr->left->token);
             Node *tmp = curr->left;
             generate_ir(tmp->left); // elif condition, TODO: check is boolean
 
-            new_inst(next->token);
+            new_inst(lastInst);
 
             tmp = tmp->right;
             while (tmp->left)
@@ -752,19 +788,17 @@ Token* generate_ir(Node *node)
                tmp = tmp->right;
             }
          }
-         else 
-#endif
-         if (curr->left->token->type == ELSE)
+         else if (curr->left->token->type == ELSE)
          {
             curr->left->token->index = ++bloc_index;
-            setName(curr->left->token, "else");
             curr->left->token->type = BLOC;
+            setName(curr->left->token, "else");
             new_inst(curr->left->token);
 
             {
-               setName(next->token, "else");
-               next->token->index = curr->left->token->index;
-               next->token = copy_token(next->token);
+               setName(lastInst, "else");
+               lastInst->index = curr->left->token->index;
+               lastInst = copy_token(lastInst);
             }
 
             Node *tmp = curr->left;
@@ -775,20 +809,69 @@ Token* generate_ir(Node *node)
                tmp = tmp->right;
             }
             break;
-         }       
-         if (curr->right) // to avoid adding jmp in the last statement
+         }
+
+         setName(lastInst, "endif");
+         lastInst->index = node->token->index;
+
+         if (curr->right) // to not add a jmp in the last statement to avoid
+            // jne endifX
+            // endifX:
          {
-            inst = new_inst(new_token("endif", 0, 5, JMP, node->token->space));
-            inst->token->index = node->token->index;
+            endInst = new_inst(new_token("endif", 0, 5, JMP, node->token->space));
+            endInst->token->index = node->token->index;
          }
          curr = curr->right;
       }
-#endif
+
       Token *new = new_token("endif", 0, 5, BLOC, node->token->space);
       new->index = node->token->index;
       new_inst(new);
-      free_node(next);
+      // free_token(lastInst);
       return node->left->token;
+      break;
+   }
+   case WHILE:
+   {
+      size_t start = ++bloc_index;
+      size_t end = ++bloc_index;
+      // while bloc name
+      node->token->type = BLOC;
+      setName(node->token, "while");
+      node->token->index = start;
+      inst = new_inst(node->token);
+
+      // while condition
+      node->left->token->index = start;
+      generate_ir(node->left); // TODO: check if it's boolean
+
+      // jmp to the end of not true
+      Token *lastInst = copy_token(node->token);
+      lastInst->type = JNE;
+      setName(lastInst, "endwhile");
+      lastInst->space += TAB;
+      lastInst->index = end;
+      new_inst(lastInst); // jne to while
+
+      // while code bloc
+      Node *curr = node->right;
+      while (curr)
+      {
+         generate_ir(curr->left);
+         curr = curr->right;
+      }
+
+      // jmp back to while loop condition
+      Token *jmp = copy_token(lastInst);
+      jmp->type = JMP;
+      setName(jmp, "while");
+      jmp->index = start;
+      new_inst(jmp);
+
+      // end while loop
+      Token *new = new_token("endwhile", 0, 9, BLOC, node->token->space);
+      new->index = end;
+      new_inst(new);
       break;
    }
    case FDEC:
@@ -812,7 +895,7 @@ Token* generate_ir(Node *node)
       // dest: left  (variable inside function)
       // src : right
       // debug(GREEN"print arguments\n"RESET);
-      while (arg && arg->left)
+      while (arg && arg->left && !found_error)
       {
          debug("%n", arg->left);
          generate_ir(arg->left);
@@ -821,7 +904,7 @@ Token* generate_ir(Node *node)
 
       // code bloc
       Node *curr = node->right;
-      while (curr)
+      while (curr && !found_error)
       {
          generate_ir(curr->left);
          curr = curr->right;
@@ -843,12 +926,12 @@ Token* generate_ir(Node *node)
       else
       {
          Node *func = get_function(node->token->name);
-         if(!func) return NULL;
+         if (!func) return NULL;
          node->token->retType = func->token->retType;
          setReg(node->token, func->token->creg);
          debug("%s: has the following arguments\n", node->token->name);
          Node *arg = node;
-         while (arg->left)
+         while (arg->left && !found_error)
          {
             pnode(arg->left, "", 10);
             generate_ir(arg->left);
@@ -1159,38 +1242,6 @@ void generate_asm(char *name)
          skip_space(curr->space); pasm("%i", "ret");
          break;
       }
-      // case PUSH:
-      // {
-      //   /*
-      //     left: source
-      //     right: destination
-      //   */
-      //   if(right->name) pasm("mov %s, ", right->name);
-      //   else if(right->ptr) check(1, "handle this case");
-      //   else if(right->creg) pasm("mov %r, ", right);
-      //   else check(1, "handle this case");
-
-      //   if(left->ptr) pasm("%a\n", left);
-      //   else if(left->creg) pasm("%r\n", left);
-      //   else pasm("%v\n", left);
-      //   break;
-      // }
-      // case POP:
-      // {
-      //   /*
-      //     left: source
-      //     right: destination
-      //   */
-      //   if(right->name) pasm("mov %s, ", right->name);
-      //   else if(right->ptr) check(1, "handle this case");
-      //   else if(right->creg) pasm("mov %r, ", right);
-      //   else check(1, "handle this case");
-
-      //   if(left->ptr) pasm("%a\n", left);
-      //   else if(left->creg) pasm("%r\n", left);
-      //   else pasm("%v\n", left);
-      //   break;
-      // }
       default: check(1, "handle this case (%s)\n", to_string(curr->type)); break;
       }
    }
@@ -1199,7 +1250,7 @@ void generate_asm(char *name)
 
 void add_builtins()
 {
-   if(found_error) return;
+   if (found_error) return;
    create_builtin("putnbr", (Type[]) {INT, 0}, INT);
    create_builtin("write", (Type[]) {INT, CHARS, INT, 0}, INT);
    // create_builtin("read", (Type[]){int_, chars_, int_, 0}, int_);
@@ -1234,7 +1285,8 @@ void generate(char *name)
    debug(BLUE BOLD"PRINT IR:\n" RESET);
    print_ir();
    debug(BLUE BOLD"OPTIMIZE IR:\n" RESET);
-   while (!found_error && optimize_ir()) ;
+   clone_insts();
+   while (!found_error && optimize_ir()) clone_insts();
 #if 1
    debug(BLUE BOLD"GENERATE ASM:\n" RESET);
    generate_asm(name);
