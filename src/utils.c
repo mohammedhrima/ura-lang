@@ -21,7 +21,7 @@ Token* new_token(char *input, size_t s, size_t e, Type type, size_t space)
          break;
       new->name = allocate(e - s + 1, sizeof(char));
       strncpy(new->name, input + s, e - s);
-      if(type != ID) break;
+      // if (type != ID) break;
       if (strcmp(new->name, "True") == 0)
       {
          free(new->name);
@@ -138,7 +138,7 @@ Token *find(Type type, ...)
 
 bool within_space(size_t space)
 {
-   return tokens[exe_pos]->space > space && tokens[exe_pos]->type != END;
+   return tokens[exe_pos]->space > space && tokens[exe_pos]->type != END && !found_error;
 }
 
 // INTERMEDIATE REPRESENTATION
@@ -150,6 +150,7 @@ void setName(Token *token, char *name)
       token->name = NULL;
    }
    if (name) token->name = strdup(name);
+   else token->name = NULL;
 }
 
 void setReg(Token *token, char *creg)
@@ -160,6 +161,7 @@ void setReg(Token *token, char *creg)
       token->creg = NULL;
    }
    if (creg) token->creg = strdup(creg);
+   else token->creg = NULL;
 }
 
 void add_inst(Inst *inst)
@@ -330,17 +332,6 @@ void create_builtin(char *name, Type *params, Type retType)
 Node *new_function(Node *node)
 {
    debug("new_func %s in %s scoop has return %d\n", node->token->name, scoop->name, node->token->retType);
-#if 0
-   char *builtins[] = {"output", 0};
-   for (int i = 0; builtins[i]; i++)
-   {
-      if (strcmp(node->token->name, builtins[i]) == 0)
-      {
-         error("%s is a built in function\n", node->token->name);
-         exit(1);
-      }
-   }
-#endif
    for (size_t i = 0; i < scoop->fpos; i++)
    {
       Node *func = scoop->functions[i];
@@ -683,9 +674,9 @@ void print_value(Token *token)
 void print_ir()
 {
    if (!DEBUG) return;
+   clone_insts();
    debug(GREEN "==========   PRINT IR  =========\n" RESET);
    int i = 0;
-   clone_insts();
    for (i = 0; insts[i]; i++)
    {
       Token *curr = insts[i]->token;
@@ -781,7 +772,7 @@ void print_ir()
 int ptoken(Token *token)
 {
    int res = 0;
-   if (!DEBUG) return res;
+   // if (!DEBUG) return res;
 
    res += debug("[%-6s] ", to_string(token->type));
    switch (token->type)
@@ -859,6 +850,7 @@ int pnode(Node *node, char *side, size_t space)
 
 int debug(char *conv, ...)
 {
+   if(!DEBUG) return 0;
    size_t i = 0;
    int res = 0;
 
@@ -965,8 +957,12 @@ int debug(char *conv, ...)
 // CLEAR MEMORY
 void free_token(Token *token)
 {
+   // debug("free %k\n", token);
    if (token->name) free(token->name);
-   if (token->creg) free(token->creg);
+   if (token->creg)
+   {
+      free(token->creg);
+   }
    if (token->Chars.value) free(token->Chars.value);
    free(token);
 }

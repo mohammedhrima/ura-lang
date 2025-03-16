@@ -950,11 +950,11 @@ size_t builtins_size;
 
 void create_builtin(char *name, Type *params, Type retType)
 {
-   Node *func = new_node(new_token(name, 0, strlen(name), FDEC, 0));
+   Node *func = new_node(new_token(name, 0, strlen(name), FCALL, 0));
    func->token->retType = retType;
    setReg(func->token, "eax");
-   func->left = new_node(NULL);
-   Node *curr = func->left;
+   // func->left = new_node(NULL);
+   Node *curr = func;
    int i = 0;
    while (params[i])
    {
