@@ -10,15 +10,10 @@ Token* new_token(char *input, size_t s, size_t e, Type type, size_t space)
    new->space = ((space + TAB / 2) / TAB) * TAB;
    switch (type)
    {
-   case INT:
-   {
-      while (s < e) new->Int.value = new->Int.value * 10 + input[s++] - '0';
-      break;
-   }
+   case INT: while (s < e) new->Int.value = new->Int.value * 10 + input[s++] - '0'; break;
    case BLOC: case ID: case JMP: case JE: case JNE: case FDEC: case END_BLOC:
    {
-      if (e <= s)
-         break;
+      if (e <= s) break;
       new->name = allocate(e - s + 1, sizeof(char));
       strncpy(new->name, input + s, e - s);
       // if (type != ID) break;
@@ -53,20 +48,13 @@ Token* new_token(char *input, size_t s, size_t e, Type type, size_t space)
    }
    case CHARS:
    {
-      if (e <= s)
-         break;
+      if (e <= s) break;
       new->Chars.value = allocate(e - s + 1, sizeof(char));
       strncpy(new->Chars.value, input + s, e - s);
       break;
    }
-   case CHAR:
-   {
-      if (e > s) new->Char.value = input[s];
-      break;
-   }
-   default:
-      check(e > s, "implement adding name for this one %s", to_string(type));
-      break;
+   case CHAR: if (e > s) new->Char.value = input[s]; break;
+   default: check(e > s, "implement adding name for this one %s", to_string(type)); break;
    }
    add_token(new);
    debug("new %k\n", new);
@@ -212,7 +200,7 @@ Inst *new_inst(Token *token)
 
    Inst *new = allocate(1, sizeof(Inst));
    new->token = token;
-   if(token->isref)
+   if (token->isref)
    {
       token->ptr = (ptr += 8);
    }
@@ -365,22 +353,14 @@ Node *get_function(char *name)
    // TODO: remove output from here
    debug("get_func %s in scoop %k\n", name, scoop->token);
 #if 1
-   for (ssize_t i = 0; i < builtins_pos; i++)
-   {
-      debug("loop [%d]\n", i);
-      if (strcmp(name, builtins_functions[i]->token->name) == 0)
-         return builtins_functions[i];
-   }
+   for (size_t i = 0; i < builtins_pos; i++)
+      if (strcmp(name, builtins_functions[i]->token->name) == 0) return builtins_functions[i];
 #endif
    for (ssize_t j = scoopPos; j >= 0; j--)
    {
       Scoop *scoop = &Gscoop[j];
-      for (ssize_t i = 0; i < scoop->fpos; i++)
-      {
-         Node *func = scoop->functions[i];
-         if (strcmp(func->token->name, name) == 0)
-            return func;
-      }
+      for (size_t i = 0; i < scoop->fpos; i++)
+         if (strcmp(scoop->functions[i]->token->name, name) == 0) return scoop->functions[i];
    }
    check(1, "'%s' Not found\n", name);
    return NULL;
@@ -416,11 +396,8 @@ Token *get_variable(char *name)
    for (ssize_t j = scoopPos; j >= 0; j--)
    {
       Scoop *scoop = &Gscoop[j];
-      for (ssize_t i = 0; i < scoop->vpos; i++)
-      {
-         Token *curr = scoop->vars[i];
-         if (strcmp(curr->name, name) == 0) return curr;
-      }
+      for (size_t i = 0; i < scoop->vpos; i++)
+         if (strcmp(scoop->vars[i]->name, name) == 0) return scoop->vars[i];
    }
    check(1, "%s not found\n", name);
    return NULL;
@@ -428,18 +405,16 @@ Token *get_variable(char *name)
 // TODO: implement it
 bool compatible(Token *left, Token *right)
 {
-   return (
-             left->type == right->type || left->type == right->retType ||
-             left->retType == right->type || left->retType == right->retType
-          );
+   Type ltype = left->type;
+   Type lrtype = left->retType;
+   Type rtype = right->type;
+   Type rrtype = right->retType;
+   return (ltype == rtype || ltype == rrtype || lrtype == rtype || lrtype == rrtype);
 }
-
-
-// ASSMBLY GENERATION
 
 // UTILS
 const char *to_string(Type type) {
-   const char *type_strings[] = {
+   const char *arr[] = {
       [ASSIGN] = "ASSIGN", [ADD_ASSIGN] = "ADD ASSIGN", [SUB_ASSIGN] = "SUB ASSIGN",
       [MUL_ASSIGN] = "MUL ASSIGN", [DIV_ASSIGN] = "DIV ASSIGN", [MOD_ASSIGN] = "MOD_ASSIGN",
       [EQUAL] = "EQUAL", [NOT_EQUAL] = "NOT EQUAL", [LESS_EQUAL] = "LESS THAN OR EQUAL",
@@ -453,8 +428,7 @@ const char *to_string(Type type) {
       [END_BLOC] = "END_BLOC", [BLOC] = "BLOC", [JNE] = "JNE", [JE] = "JE", [JMP] = "JMP",
       [END] = "END"
    };
-   if (type >= 1 && type < sizeof(type_strings) / sizeof(type_strings[0]) && type_strings[type] != NULL)
-      return type_strings[type];
+   if (type >= 1 && type < sizeof(arr) / sizeof(arr[0]) && arr[type] != NULL) return arr[type];
    check(1, "Unknown type [%d]\n", type);
    return NULL;
 }
@@ -499,146 +473,103 @@ void pasm(char *fmt, ...)
    va_list args;
    va_start(args, fmt);
 
-#if 0
-#define isInstruction(inst)                        \
-  do                                               \
-  {                                                \
-    if (strncmp(fmt + i, inst, strlen(inst)) == 0) \
-    {                                              \
-      i += strlen(inst);                           \
-      fprintf(asm_fd, "%-8s", inst);             \
-    }                                              \
-  } while (0)
-   isInstruction("movss ");
-   isInstruction("mov ");
-   isInstruction("sub ");
-   isInstruction("lea ");
-   isInstruction("cmp ");
-   isInstruction("push ");
-   isInstruction("call ");
-   isInstruction("leave");
-   isInstruction("ret");
-   isInstruction("jne ");
-   isInstruction("jmp ");
-#endif
-
-// #if WITH_COMMENTS
-//   isInstruction("//");
-// #else
-//   if (strncmp(fmt + i, "//", 2) == 0)
-//     return;
-// #endif
-
    while (fmt[i])
    {
-#if !WITH_COMMENTS
-      if (strncmp(fmt + i, "//", 2) == 0)
+      if (fmt[i] == '%')
       {
-         while (fmt[i] && fmt[i] != '\n') i++;
-         while (fmt[i] == '\n') i++;
-      }
-      else
-#endif
-         if (fmt[i] == '%')
+         i++;
+         if (fmt[i] == 'i')
          {
             i++;
-            if (fmt[i] == 'i')
+            fprintf(asm_fd, "%-4s ", va_arg(args, char *));
+         }
+         else if (strncmp(fmt + i, "rb", 2) == 0)
+         {
+            i += 2;
+            Token *token = va_arg(args, Token *);
+            if (token->creg)
             {
-               i++;
-               fprintf(asm_fd, "%-4s ", va_arg(args, char *));
-            }
-            else if(strncmp(fmt + i, "rb", 2) == 0)
-            {
-               i+= 2;
-               Token *token = va_arg(args, Token *);
-               if (token->creg)
-               {
-                  // printf("%s:%dhas been used\n",FUNC, LINE);
-                  // exit(1);
-                  fprintf(asm_fd, "%s", token->creg);
-               }
-               else
-               {
-                  Type type = token->retType ? token->retType : token->type;
-                  switch (type)
-                  {
-                  case CHARS: fputs("rbx", asm_fd); break;
-                  case INT: fputs("ebx", asm_fd); break;
-                  case BOOL: case CHAR: fputs("bl", asm_fd); break;
-                  case FLOAT: fputs("xmm1", asm_fd); break;
-                  default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
-                  }
-               }
-            }
-            else if (fmt[i] == 'r')
-            {
-               i++;
-               Token *token = va_arg(args, Token *);
-               if (token->creg)
-               {
-                  // printf("%s:%dhas been used\n",FUNC, LINE);
-                  // exit(1);
-                  fprintf(asm_fd, "%s", token->creg);
-               }
-               else
-               {
-                  Type type = token->retType ? token->retType : token->type;
-                  switch (type)
-                  {
-                  case CHARS: fputs("rax", asm_fd); break;
-                  case INT: fputs("eax", asm_fd); break;
-                  case BOOL: case CHAR: fputs("al", asm_fd); break;
-                  case FLOAT: fputs("xmm0", asm_fd); break;
-                  default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
-                  }
-               }
-            }
-            else if (fmt[i] == 'a')
-            {
-               i++;
-               Token *token = va_arg(args, Token *);
-               if (token->creg)
-                  fprintf(asm_fd, "%s", token->creg);
-               else
-                  switch (token->type)
-                  {
-                  case CHARS: fprintf(asm_fd, "QWORD PTR -%ld[rbp]", token->ptr); break;
-                  case INT: fprintf(asm_fd, "DWORD PTR -%ld[rbp]", token->ptr); break;
-                  case CHAR: fprintf(asm_fd, "BYTE PTR -%ld[rbp]", token->ptr); break;
-                  case BOOL: fprintf(asm_fd, "BYTE PTR -%ld[rbp]", token->ptr); break;
-                  case FLOAT: fprintf(asm_fd, "DWORD PTR -%ld[rbp]", token->ptr); break;
-                  default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
-                  }
-            }
-            else if (fmt[i] == 'm')
-            {
-               i++;
-               Token *token = va_arg(args, Token *);
-               switch (token->type)
-               {
-               case CHARS: fprintf(asm_fd, "QWORD PTR [rax]"); break;
-               case INT: fprintf(asm_fd, "DWORD PTR [rax]"); break;
-               case CHAR: fprintf(asm_fd, "BYTE PTR [rax]"); break;
-               case BOOL: fprintf(asm_fd, "BYTE PTR [rax]"); break;
-               case FLOAT: fprintf(asm_fd, "DWORD PTR [rax]"); break;
-               default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
-               }
-            }
-            else if (fmt[i] == 'v')
-            {
-               i++;
-               Token *token = va_arg(args, Token *);
-               switch (token->type)
-               {
-               case INT: fprintf(asm_fd, "%lld", token->Int.value); break;
-               case BOOL: fprintf(asm_fd, "%d", token->Bool.value); break;
-               case CHAR: fprintf(asm_fd, "%d", token->Char.value); break;
-               default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
-               }
+               // printf("%s:%dhas been used\n",FUNC, LINE);
+               // exit(1);
+               fprintf(asm_fd, "%s", token->creg);
             }
             else
             {
-               int handled = 0;
+               Type type = token->retType ? token->retType : token->type;
+               switch (type)
+               {
+               case CHARS: fputs("rbx", asm_fd); break;
+               case INT: fputs("ebx", asm_fd); break;
+               case BOOL: case CHAR: fputs("bl", asm_fd); break;
+               case FLOAT: fputs("xmm1", asm_fd); break;
+               default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
+               }
+            }
+         }
+         else if (fmt[i] == 'r')
+         {
+            i++;
+            Token *token = va_arg(args, Token *);
+            if (token->creg)
+               fprintf(asm_fd, "%s", token->creg);
+            else
+            {
+               Type type = token->retType ? token->retType : token->type;
+               switch (type)
+               {
+               case CHARS: fputs("rax", asm_fd); break;
+               case INT: fputs("eax", asm_fd); break;
+               case BOOL: case CHAR: fputs("al", asm_fd); break;
+               case FLOAT: fputs("xmm0", asm_fd); break;
+               default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
+               }
+            }
+         }
+         else if (fmt[i] == 'a')
+         {
+            i++;
+            Token *token = va_arg(args, Token *);
+            if (token->creg) fprintf(asm_fd, "%s", token->creg);
+            else
+               switch (token->type)
+               {
+               case CHARS: fprintf(asm_fd, "QWORD PTR -%ld[rbp]", token->ptr); break;
+               case INT: fprintf(asm_fd, "DWORD PTR -%ld[rbp]", token->ptr); break;
+               case CHAR: fprintf(asm_fd, "BYTE PTR -%ld[rbp]", token->ptr); break;
+               case BOOL: fprintf(asm_fd, "BYTE PTR -%ld[rbp]", token->ptr); break;
+               case FLOAT: fprintf(asm_fd, "DWORD PTR -%ld[rbp]", token->ptr); break;
+               default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
+               }
+         }
+         else if (fmt[i] == 'm')
+         {
+            i++;
+            Token *token = va_arg(args, Token *);
+            switch (token->type)
+            {
+            case CHARS: fprintf(asm_fd, "QWORD PTR [rax]"); break;
+            case INT: fprintf(asm_fd, "DWORD PTR [rax]"); break;
+            case CHAR: fprintf(asm_fd, "BYTE PTR [rax]"); break;
+            case BOOL: fprintf(asm_fd, "BYTE PTR [rax]"); break;
+            case FLOAT: fprintf(asm_fd, "DWORD PTR [rax]"); break;
+            default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
+            }
+         }
+         else if (fmt[i] == 'v')
+         {
+            i++;
+            Token *token = va_arg(args, Token *);
+            switch (token->type)
+            {
+            case INT: fprintf(asm_fd, "%lld", token->Int.value); break;
+            case BOOL: fprintf(asm_fd, "%d", token->Bool.value); break;
+            case CHAR: fprintf(asm_fd, "%d", token->Char.value); break;
+            default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
+            }
+         }
+         else
+         {
+            int handled = 0;
 #define check_format(string, type)                     \
                do                                                   \
                {                                                    \
@@ -649,19 +580,19 @@ void pasm(char *fmt, ...)
                      fprintf(asm_fd, "%" string, va_arg(args, type)); \
                   }                                                  \
                } while (0)
-               check_format("d", int);
-               check_format("ld", long);
-               check_format("s", char *);
-               check_format("zu", unsigned long);
-               check_format("f", double);
-               check(!handled, "handle this case [%s]\n", fmt + i);
-            }
+            check_format("d", int);
+            check_format("ld", long);
+            check_format("s", char *);
+            check_format("zu", unsigned long);
+            check_format("f", double);
+            check(!handled, "handle this case [%s]\n", fmt + i);
          }
-         else
-         {
-            fputc(fmt[i], asm_fd);
-            i++;
-         }
+      }
+      else
+      {
+         fputc(fmt[i], asm_fd);
+         i++;
+      }
    }
    va_end(args);
 }
@@ -684,20 +615,19 @@ void finalize()
       if (curr->type == CHARS && !curr->name && !curr->ptr && curr->index)
          pasm(".STR%zu: .string %s\n", curr->index, curr->Chars.value ? curr->Chars.value : "\"\"");
       if (curr->type == FLOAT && !curr->name && !curr->ptr && curr->index)
-         pasm(".FLT%zu: .long %zu /* %f */\n", curr->index,
-              *((uint32_t *)(&curr->Float.value)), curr->Float.value);
+         pasm(".FLT%zu: .long %zu /* %f */\n", curr->index, *((uint32_t *)(&curr->Float.value)), curr->Float.value);
    }
    pasm(".section	.note.GNU-stack,\"\",@progbits\n\n");
 #endif
 }
 
 bool did_pasm;
-void skip_space(int space)
+void asm_space(int space)
 {
    if (did_pasm)
    {
       pasm("\n");
-      int j = -1; while (++j < space) pasm(" ");
+      for (int i = 0; i < space; i++) pasm(" ");
       did_pasm = false;
    }
 }
@@ -712,11 +642,7 @@ void print_value(Token *token)
    case FLOAT: debug("%f", token->Float.value); break;
    case CHAR: debug("%c", token->Char.value); break;
    case CHARS: debug("%s", token->Chars.value); break;
-   default:
-   {
-      check(1, "handle this case [%s]\n", to_string(token->type));
-      break;
-   }
+   default: check(1, "handle this case [%s]\n", to_string(token->type)); break;
    }
 }
 void print_ir()
@@ -806,8 +732,6 @@ int ptoken(Token *token)
 {
    int res = 0;
    if (!token) return debug("null token");
-   // if (!DEBUG) return res;
-
    res += debug("[%-6s] ", to_string(token->type));
    switch (token->type)
    {
@@ -843,8 +767,7 @@ int pnode(Node *node, char *side, size_t space)
    if (!node) return 0;
 
    int res = 0;
-   for (size_t i = 0; i < space; i++)
-      res += debug(" ");
+   for (size_t i = 0; i < space; i++) res += debug(" ");
    if (side) res += debug("%s", side);
    res += debug("%k\n", node->token);
    if (node->token)
@@ -885,13 +808,11 @@ int pnode(Node *node, char *side, size_t space)
 int debug(char *conv, ...)
 {
    if (!DEBUG) return 0;
-   size_t i = 0;
    int res = 0;
-
    va_list args;
    va_start(args, conv);
 
-   while (conv[i])
+   for (size_t i = 0; conv[i]; i++)
    {
       if (conv[i] == '%')
       {
@@ -911,23 +832,13 @@ int debug(char *conv, ...)
                i++;
             }
          }
-         if (strncmp(conv + i, "zu", 2) == 0)
-         {
-            res += fprintf(stdout, "%zu", va_arg(args, size_t));
-            i++;
-         }
-         else if (strncmp(conv + i, "lld", 3) == 0)
-         {
-            res += fprintf(stdout, "%lld", va_arg(args, long long));
-            i += 2;
-         }
+         if (strncmp(conv + i, "zu", 2) == 0) {res += fprintf(stdout, "%zu", va_arg(args, size_t)); i++; }
+         else if (strncmp(conv + i, "lld", 3) == 0) { res += fprintf(stdout, "%lld", va_arg(args, long long)); i += 2; }
          else
          {
             switch (conv[i])
             {
-            case 'c':
-               res += fprintf(stdout, "%c", va_arg(args, int));
-               break;
+            case 'c': res += fprintf(stdout, "%c", va_arg(args, int)); break;
             case 's':
             {
                char *str = va_arg(args, char *);
@@ -974,29 +885,20 @@ int debug(char *conv, ...)
                res += node ? pnode(node, NULL, node->token->space) : fprintf(stdout, "(null)");
                break;
             }
-            default:
-               check(1, "invalid format specifier [%c]\n", conv[i]);
-               exit(1);
-               break;
+            default: check(1, "invalid format specifier [%c]\n", conv[i]); exit(1); break;
             }
          }
       }
       else res += fprintf(stdout, "%c", conv[i]);
-      i++;
    }
-
    va_end(args);
    return res;
 }
 // CLEAR MEMORY
 void free_token(Token *token)
 {
-   // debug("free %k\n", token);
    if (token->name) free(token->name);
-   if (token->creg)
-   {
-      free(token->creg);
-   }
+   if (token->creg) free(token->creg);
    if (token->Chars.value) free(token->Chars.value);
    free(token);
 }
