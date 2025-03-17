@@ -17,30 +17,30 @@
 #define TAB 4
 
 #if TOKENIZE
-   #define AST 1
+#define AST 1
 #endif
 
 #if AST
-   #define IR 1
+#define IR 1
 #else
-   #define IR 0
+#define IR 0
 #endif
 
 #define WITH_COMMENTS 1
 
 #if IR
-   #define BUILTINS 0
-   #ifndef OPTIMIZE
-      #define OPTIMIZE 1
-   #endif
+#define BUILTINS 0
+#ifndef OPTIMIZE
+#define OPTIMIZE 1
+#endif
 
-   #define ASM 1
+#define ASM 1
 #else
-   #define ASM 0
+#define ASM 0
 #endif
 
 #ifndef DEBUG
-   #define DEBUG 1
+#define DEBUG 1
 #endif
 
 #define allocate(len, size) allocate_func(LINE, len, size)

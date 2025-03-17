@@ -212,7 +212,11 @@ Inst *new_inst(Token *token)
 
    Inst *new = allocate(1, sizeof(Inst));
    new->token = token;
-   if (token->name && token->declare)
+   if(token->isref)
+   {
+      token->ptr = (ptr += 8);
+   }
+   else if (token->name && token->declare)
    {
       // new_variable(token);
       token->ptr = (ptr += sizeofToken(token));
@@ -237,18 +241,18 @@ Inst *new_inst(Token *token)
 
 Scoop *Gscoop;
 Scoop *scoop;
-size_t scoopSize;
-size_t scoopPos;
+ssize_t scoopSize;
+ssize_t scoopPos = -1;
 
-void enter_scoop(char *name)
+void enter_scoop(Token *token)
 {
-   debug(CYAN "Enter Scoop [%s]\n" RESET, name);
+   debug(CYAN "Enter Scoop: %k index %zu\n" RESET, token, scoopPos + 1);
    if (Gscoop == NULL)
    {
       scoopSize = 10;
       Gscoop = allocate(scoopSize, sizeof(Scoop));
    }
-   else if (scoopPos + 1 == scoopSize)
+   else if (scoopPos + 1 >= scoopSize)
    {
       Scoop *tmp = allocate(scoopSize * 2, sizeof(Scoop));
       memcpy(tmp, Gscoop, scoopPos * sizeof(Scoop));
@@ -257,18 +261,19 @@ void enter_scoop(char *name)
       Gscoop = tmp;
    }
    scoopPos++;
-   Gscoop[scoopPos] = (Scoop) {};
-   Gscoop[scoopPos].name = name;
+   Gscoop[scoopPos] = (Scoop) { .token = token, .functions = NULL, .vars = NULL };
    scoop = &Gscoop[scoopPos];
 }
 
 void exit_scoop()
 {
-   debug(CYAN "Exit Scoop [%s]\n" RESET, scoop->name);
-   free(scoop->functions);
-   free(scoop->vars);
-   scoop[scoopPos] = (Scoop) {};
-   scoop = &Gscoop[--scoopPos];
+   if (check(scoopPos < 0, "No active scoop to exit\n")) return;
+   debug(CYAN "Exit Scoop: %k index %zu\n" RESET, Gscoop[scoopPos].token, scoopPos);
+   free(Gscoop[scoopPos].functions);
+   free(Gscoop[scoopPos].vars);
+   Gscoop[scoopPos] = (Scoop) { .token = NULL, .functions = NULL, .vars = NULL };
+   scoopPos--;
+   if (scoopPos >= 0) scoop = &Gscoop[scoopPos];
 }
 
 void clone_insts()
@@ -331,7 +336,7 @@ void create_builtin(char *name, Type *params, Type retType)
 
 Node *new_function(Node *node)
 {
-   debug("new_func %s in %s scoop has return %d\n", node->token->name, scoop->name, node->token->retType);
+   debug("new_func %s in scoop %k that return %t", node->token->name, scoop->token, node->token->retType);
    for (size_t i = 0; i < scoop->fpos; i++)
    {
       Node *func = scoop->functions[i];
@@ -358,19 +363,19 @@ Node *new_function(Node *node)
 Node *get_function(char *name)
 {
    // TODO: remove output from here
-   debug("get_func %s in %s scoop\n", name, scoop->name);
+   debug("get_func %s in scoop %k\n", name, scoop->token);
 #if 1
-   for (size_t i = 0; i < builtins_pos; i++)
+   for (ssize_t i = 0; i < builtins_pos; i++)
    {
       debug("loop [%d]\n", i);
       if (strcmp(name, builtins_functions[i]->token->name) == 0)
          return builtins_functions[i];
    }
 #endif
-   for (size_t j = scoopPos; j > 0; j--)
+   for (ssize_t j = scoopPos; j >= 0; j--)
    {
       Scoop *scoop = &Gscoop[j];
-      for (size_t i = 0; i < scoop->fpos; i++)
+      for (ssize_t i = 0; i < scoop->fpos; i++)
       {
          Node *func = scoop->functions[i];
          if (strcmp(func->token->name, name) == 0)
@@ -383,7 +388,7 @@ Node *get_function(char *name)
 
 Token *new_variable(Token *token)
 {
-   debug(CYAN "variable [%s] in [%s] scoop\n" RESET, token->name, scoop->name);
+   debug(CYAN "variable [%s] in scoop %k\n" RESET, token->name, scoop->token);
    for (size_t i = 0; i < scoop->vpos; i++)
    {
       Token *curr = scoop->vars[i];
@@ -407,11 +412,15 @@ Token *new_variable(Token *token)
 
 Token *get_variable(char *name)
 {
-   debug(CYAN "get variable [%s] from [%s] scoop\n" RESET, name, scoop->name);
-   for (size_t i = 0; i < scoop->vpos; i++)
+   debug(CYAN "get variable [%s] from scoop %k\n" RESET, name, scoop->token);
+   for (ssize_t j = scoopPos; j >= 0; j--)
    {
-      Token *curr = scoop->vars[i];
-      if (strcmp(curr->name, name) == 0) return curr;
+      Scoop *scoop = &Gscoop[j];
+      for (ssize_t i = 0; i < scoop->vpos; i++)
+      {
+         Token *curr = scoop->vars[i];
+         if (strcmp(curr->name, name) == 0) return curr;
+      }
    }
    check(1, "%s not found\n", name);
    return NULL;
@@ -438,10 +447,11 @@ const char *to_string(Type type) {
       [ADD] = "ADD", [SUB] = "SUB", [MUL] = "MUL", [DIV] = "DIV", [MOD] = "MOD",
       [AND] = "AND", [OR]  = "OR", [RPAR] = "R_PAR", [LPAR] = "L_PAR", [COMA] = "COMMA",
       [DOTS] = "DOTS", [DOT] = "DOT", [RETURN] = "RETURN", [IF] = "IF", [ELIF] = "ELIF",
-      [ELSE] = "ELSE", [WHILE] = "HILE", [FDEC] = "F_DEC", [FCALL] = "F_CALL", [INT] = "INT",
-      [VOID] = "VOID", [CHARS] = "CHARS", [CHAR] = "CHAR", [BOOL] = "BOOL", [FLOAT] = "FLOAT",
-      [STRUCT] = "STRUCT", [ID] = "ID", [END_BLOC] = "END_BLOC", [BLOC] = "BLOC", [JNE] = "JNE",
-      [JE] = "JE", [JMP] = "JMP", [END] = "END"
+      [ELSE] = "ELSE", [WHILE] = "HILE", [CONTINUE] = "continue", [BREAK] = "break", [REF] = "REF",
+      [FDEC] = "F_DEC", [FCALL] = "F_CALL", [INT] = "INT", [VOID] = "VOID", [CHARS] = "CHARS",
+      [CHAR] = "CHAR", [BOOL] = "BOOL", [FLOAT] = "FLOAT", [STRUCT] = "STRUCT", [ID] = "ID",
+      [END_BLOC] = "END_BLOC", [BLOC] = "BLOC", [JNE] = "JNE", [JE] = "JE", [JMP] = "JMP",
+      [END] = "END"
    };
    if (type >= 1 && type < sizeof(type_strings) / sizeof(type_strings[0]) && type_strings[type] != NULL)
       return type_strings[type];
@@ -468,9 +478,9 @@ void open_file(char *filename)
    fclose(file);
 }
 
-void check_error(const char *filename, const char *funcname, int line, bool cond, char *fmt, ...)
+bool check_error(const char *filename, const char *funcname, int line, bool cond, char *fmt, ...)
 {
-   if (!cond) return;
+   if (!cond) return cond;
    found_error = true;
    va_list ap;
    va_start(ap, fmt);
@@ -478,6 +488,7 @@ void check_error(const char *filename, const char *funcname, int line, bool cond
    vfprintf(stderr, fmt, ap);
    fprintf(stderr, "\n");
    va_end(ap);
+   return cond;
 }
 
 // ASSEMBLY
@@ -536,6 +547,29 @@ void pasm(char *fmt, ...)
                i++;
                fprintf(asm_fd, "%-4s ", va_arg(args, char *));
             }
+            else if(strncmp(fmt + i, "rb", 2) == 0)
+            {
+               i+= 2;
+               Token *token = va_arg(args, Token *);
+               if (token->creg)
+               {
+                  // printf("%s:%dhas been used\n",FUNC, LINE);
+                  // exit(1);
+                  fprintf(asm_fd, "%s", token->creg);
+               }
+               else
+               {
+                  Type type = token->retType ? token->retType : token->type;
+                  switch (type)
+                  {
+                  case CHARS: fputs("rbx", asm_fd); break;
+                  case INT: fputs("ebx", asm_fd); break;
+                  case BOOL: case CHAR: fputs("bl", asm_fd); break;
+                  case FLOAT: fputs("xmm1", asm_fd); break;
+                  default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
+                  }
+               }
+            }
             else if (fmt[i] == 'r')
             {
                i++;
@@ -575,6 +609,20 @@ void pasm(char *fmt, ...)
                   case FLOAT: fprintf(asm_fd, "DWORD PTR -%ld[rbp]", token->ptr); break;
                   default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
                   }
+            }
+            else if (fmt[i] == 'm')
+            {
+               i++;
+               Token *token = va_arg(args, Token *);
+               switch (token->type)
+               {
+               case CHARS: fprintf(asm_fd, "QWORD PTR [rax]"); break;
+               case INT: fprintf(asm_fd, "DWORD PTR [rax]"); break;
+               case CHAR: fprintf(asm_fd, "BYTE PTR [rax]"); break;
+               case BOOL: fprintf(asm_fd, "BYTE PTR [rax]"); break;
+               case FLOAT: fprintf(asm_fd, "DWORD PTR [rax]"); break;
+               default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
+               }
             }
             else if (fmt[i] == 'v')
             {
@@ -739,27 +787,12 @@ void print_ir()
          else check(1, "handle this case in generate ir\n", "");
          break;
       }
-      // case POP:
-      // {
-      //   /*
-      //     dest: left  (variable inside function)
-      //     src : right
-      //   */
-      //   debug("pop from ");
-      //   if(right->ptr) debug("PTR %zu", right->ptr);
-      //   else if(right->creg) debug("%s", right->creg);
-      //   debug(" to ");
-      //   if(left->ptr) debug("PTR %zu", left->ptr);
-      //   else if(left->creg) debug("%s", left->creg);
-      //   break;
-      // }
-      // case PUSH: debug("push "); break;
       case JMP: debug("jmp to [%s]", curr->name); break;
       case JNE: debug("jne to [%s]", curr->name); break;
       case FCALL: debug("call [%s]", curr->name); break;
       case BLOC: case FDEC: debug("[%s] bloc", curr->name); break;
       case END_BLOC: debug("[%s] endbloc", curr->name); break;
-      case RETURN: debug("[return]"); break;
+      case RETURN: case CONTINUE: case BREAK: debug("[%s]", to_string(curr->type)); break;
       default: debug(RED "print_ir:handle [%s]"RESET, to_string(curr->type)); break;
       }
       // if(curr->remove) debug(" remove");
@@ -772,6 +805,7 @@ void print_ir()
 int ptoken(Token *token)
 {
    int res = 0;
+   if (!token) return debug("null token");
    // if (!DEBUG) return res;
 
    res += debug("[%-6s] ", to_string(token->type));
@@ -850,7 +884,7 @@ int pnode(Node *node, char *side, size_t space)
 
 int debug(char *conv, ...)
 {
-   if(!DEBUG) return 0;
+   if (!DEBUG) return 0;
    size_t i = 0;
    int res = 0;
 

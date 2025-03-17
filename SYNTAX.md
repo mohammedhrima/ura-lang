@@ -2,16 +2,15 @@
 - function call
 - function return
 - function with arguementa
+- if, else, elif
+- while loop
+- continue 
+- break
+- Implement built-in functions
 
-+ Built-in functions:
-+ if, else, elif
-+ Loops:
-    + while loop
-    + for loops
-    + continue 
-    + break
++ refrence variables
++ for loops
 
-+ Implement built-in functions
 + check function existance in generate_ir
 + import files in tokenize
 
@@ -20,6 +19,7 @@
 + structs: attributes, memeber function, operator overloading
 + logic operator for all data types
 + math operator for all data types
++ assign struct with value, and with refrence
 
 + try, catch
 + switch, case
@@ -29,3 +29,6 @@
 + test with c libraries
 + test function with lot of arguments
 + test all possible cases that can be handled, so the code does not crash
+
++ (To be checked if neccessary) set registers for function argument , in generate_ir
++ every loop inside source code should check found_error

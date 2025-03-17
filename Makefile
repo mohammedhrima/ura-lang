@@ -3,15 +3,11 @@ COMPOSE = docker-compose -f docker/docker-compose.yml
 PROJECT_NAME = $(shell basename $(PWD))
 
 # Targets
-all: build up
-
-build:
-	@echo "Building Docker containers..."
-	$(COMPOSE) build
+all: up
 
 up:
 	@echo "Starting Docker containers..."
-	$(COMPOSE) up -d
+	$(COMPOSE) up --build -d
 
 down:
 	@echo "Stopping Docker containers..."
