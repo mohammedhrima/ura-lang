@@ -483,35 +483,11 @@ void pasm(char *fmt, ...)
             i++;
             fprintf(asm_fd, "%-4s ", va_arg(args, char *));
          }
-         else if (strncmp(fmt + i, "rb", 2) == 0)
+         else if (strncmp(fmt + i, "ra", 2) == 0)
          {
             i += 2;
             Token *token = va_arg(args, Token *);
-            if (token->creg)
-            {
-               // printf("%s:%dhas been used\n",FUNC, LINE);
-               // exit(1);
-               fprintf(asm_fd, "%s", token->creg);
-            }
-            else
-            {
-               Type type = token->retType ? token->retType : token->type;
-               switch (type)
-               {
-               case CHARS: fputs("rbx", asm_fd); break;
-               case INT: fputs("ebx", asm_fd); break;
-               case BOOL: case CHAR: fputs("bl", asm_fd); break;
-               case FLOAT: fputs("xmm1", asm_fd); break;
-               default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
-               }
-            }
-         }
-         else if (fmt[i] == 'r')
-         {
-            i++;
-            Token *token = va_arg(args, Token *);
-            if (token->creg)
-               fprintf(asm_fd, "%s", token->creg);
+            if (token->creg) fprintf(asm_fd, "%s", token->creg);
             else
             {
                Type type = token->retType ? token->retType : token->type;
@@ -525,11 +501,67 @@ void pasm(char *fmt, ...)
                }
             }
          }
+         else if (strncmp(fmt + i, "rb", 2) == 0)
+         {
+            i += 2;
+            Token *token = va_arg(args, Token *);
+            if (token->creg) fprintf(asm_fd, "%s", token->creg);
+            else
+            {
+               Type type = token->retType ? token->retType : token->type;
+               switch (type)
+               {
+               case CHARS: fputs("rbx", asm_fd); break;
+               case INT: fputs("ebx", asm_fd); break;
+               case BOOL: case CHAR: fputs("bl", asm_fd); break;
+               case FLOAT: fputs("xmm1", asm_fd); break;
+               default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
+               }
+            }
+         }
+         else if (strncmp(fmt + i, "rd", 2) == 0)
+         {
+            i += 2;
+            Token *token = va_arg(args, Token *);
+            if (token->creg) fprintf(asm_fd, "%s", token->creg);
+            else
+            {
+               Type type = token->retType ? token->retType : token->type;
+               switch (type)
+               {
+               case CHARS: fputs("dbx", asm_fd); break;
+               case INT: fputs("edx", asm_fd); break;
+               case BOOL: case CHAR: fputs("dl", asm_fd); break;
+               case FLOAT: fputs("xmm2", asm_fd); break;
+               default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
+               }
+            }
+         }
+         // else if (fmt[i] == 'r')
+         // {
+         //    i++;
+         //    Token *token = va_arg(args, Token *);
+         //    if (token->creg)
+         //       fprintf(asm_fd, "%s", token->creg);
+         //    else
+         //    {
+         //       Type type = token->retType ? token->retType : token->type;
+         //       switch (type)
+         //       {
+         //       case CHARS: fputs("rax", asm_fd); break;
+         //       case INT: fputs("eax", asm_fd); break;
+         //       case BOOL: case CHAR: fputs("al", asm_fd); break;
+         //       case FLOAT: fputs("xmm0", asm_fd); break;
+         //       default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
+         //       }
+         //    }
+         // }
          else if (fmt[i] == 'a')
          {
             i++;
             Token *token = va_arg(args, Token *);
             if (token->creg) fprintf(asm_fd, "%s", token->creg);
+            else if(token->isref) fprintf(asm_fd, "QWORD PTR -%ld[rbp]", token->ptr);
             else
                switch (token->type)
                {
@@ -540,6 +572,34 @@ void pasm(char *fmt, ...)
                case FLOAT: fprintf(asm_fd, "DWORD PTR -%ld[rbp]", token->ptr); break;
                default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
                }
+         }
+         else if (strncmp(fmt + i, "ma", 2) == 0)
+         {
+            i += 2;
+            Token *token = va_arg(args, Token *);
+            switch (token->type)
+            {
+            case CHARS: fprintf(asm_fd, "QWORD PTR [rax]"); break;
+            case INT: fprintf(asm_fd, "DWORD PTR [rax]"); break;
+            case CHAR: fprintf(asm_fd, "BYTE PTR [rax]"); break;
+            case BOOL: fprintf(asm_fd, "BYTE PTR [rax]"); break;
+            case FLOAT: fprintf(asm_fd, "DWORD PTR [rax]"); break;
+            default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
+            }
+         }
+         else if (strncmp(fmt + i, "mb", 2) == 0)
+         {
+            i += 2;
+            Token *token = va_arg(args, Token *);
+            switch (token->type)
+            {
+            case CHARS: fprintf(asm_fd, "QWORD PTR [rbx]"); break;
+            case INT: fprintf(asm_fd, "DWORD PTR [rbx]"); break;
+            case CHAR: fprintf(asm_fd, "BYTE PTR [rbx]"); break;
+            case BOOL: fprintf(asm_fd, "BYTE PTR [rbx]"); break;
+            case FLOAT: fprintf(asm_fd, "DWORD PTR [rbx]"); break;
+            default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
+            }
          }
          else if (fmt[i] == 'm')
          {
@@ -722,6 +782,7 @@ void print_ir()
       default: debug(RED "print_ir:handle [%s]"RESET, to_string(curr->type)); break;
       }
       // if(curr->remove) debug(" remove");
+      if (curr->isref) debug(" isref");
       debug(" space (%zu)", curr->space);
       debug("\n");
    }
