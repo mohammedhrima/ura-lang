@@ -561,7 +561,7 @@ void pasm(char *fmt, ...)
             i++;
             Token *token = va_arg(args, Token *);
             if (token->creg) fprintf(asm_fd, "%s", token->creg);
-            else if(token->isref) fprintf(asm_fd, "QWORD PTR -%ld[rbp]", token->ptr);
+            else if (token->isref) fprintf(asm_fd, "QWORD PTR -%ld[rbp]", token->ptr);
             else
                switch (token->type)
                {
