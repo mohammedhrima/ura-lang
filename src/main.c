@@ -29,7 +29,7 @@ void tokenize()
 
    size_t space = 0;
    bool inc_space = true;
-   for (size_t i = 0; input[i]; )
+   for (size_t i = 0; input[i] && !found_error; )
    {
       size_t s = i;
       if (isspace(input[i]))
@@ -482,6 +482,7 @@ Node *prime()
    else if ((token = find(REF, 0)))
    {
       node = prime(); // TODO: check it
+      check(!node->token->declare, "must be variable declaration after ref");
       node->token->isref = true;
       return node;
    }
@@ -631,11 +632,12 @@ bool optimize_ir()
          if (token->declare)
          {
             for (int j = i + 1; insts[j] && insts[j]->token->space == token->space; j++) {
-               if (insts[j]->token->type == ASSIGN && insts[j]->left == token) {
+               if (insts[j]->token->type == ASSIGN && insts[j]->left->ptr == token->ptr /*&& !token->isref*/) {
                   token->declare = false;
                   token->remove = true;
                   did_optimize = true;
                   did_something = true;
+                  insts[j]->left->isref = token->isref;
                   break;
                }
                if ((insts[j]->left && insts[j]->left->reg == token->reg) ||
@@ -944,8 +946,7 @@ Token *op_ir(Node *node)
    inst->right = right;
    switch (node->token->type)
    {
-   case ADD_ASSIGN:
-   case ASSIGN:
+   case ADD_ASSIGN: case ASSIGN:
       node->token->reg = left->reg;
       node->token->retType = getRetType(node);
       break;
@@ -992,10 +993,7 @@ Token* generate_ir(Node *node)
    case ASSIGN: case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN:
    case ADD: case SUB: case MUL: case DIV: case EQUAL: case NOT_EQUAL:
    case LESS: case MORE: case LESS_EQUAL: case MORE_EQUAL:
-   {
       return op_ir(node);
-      break;
-   }
    case IF:    return if_ir(node);
    case WHILE: return while_ir(node);
    case FDEC:  return func_dec_ir(node);
@@ -1088,30 +1086,117 @@ void generate_asm(char *name)
       }
       case ASSIGN:
       {
-         /*
-            TODO:
-              left ref, right ref, has ref
-              left ref, right ptr
-              left ref, right value
-              left ref, right creg
-
-              left ptr, right ref, has ref
-              left ptr, right ptr
-              left ptr, right value
-              left ptr, right creg
-         */
          char *inst = left->type == FLOAT ? "movss " : "mov ";
          check(right->isref && !right->hasref, "can't assign from reference that don't point to anything");
          check(left->isref && !left->hasref && !right->ptr, "first assignment for ref must have have ptr");
+         check(left->isref && right->isref, "assignment between two references is forbidden");
+
          if (left->isref && !left->hasref)
          {
-            // TODO: right must have PTR
-            // TODO: check if right is ref
+            // int a = 1 ref int b = a
+            // check(1, "found"); exit(1);
             left->hasref = true;
-            debug(RED"left don't have ref\n", RESET);
             pasm("%irax, -%zu[rbp]", "lea", right->ptr); asm_space(curr->space);
             pasm("%iQWORD PTR -%zu[rbp], rax", "mov", left->ptr);
-            break;
+         }
+         else if (left->isref && left->hasref)
+         {
+            if (right->ptr)
+            {
+               // check(1, "found"); exit(1);
+               /*
+                  int a = 1 
+                  int c = 2
+                  ref int b = a
+                  b = c
+                  putnbr(a)
+               */
+               pasm("%irax, %a", "mov", left); asm_space(curr->space);
+               pasm("%i%rd, %a", "mov", left, right); asm_space(curr->space);
+               pasm("%i%ma, %rd", "mov", left, right);
+            }
+            else if (right->creg)
+            {
+               check(1, "handle this case");
+               pasm("%irax, %a", "mov", left); asm_space(curr->space);
+               // if(strcmp(left->creg, right->creg))
+            }
+            else // right is value
+            {
+               // int a = 1 ref int b = a b = 3
+               // check(1, "found"); exit(1);
+               pasm("%irax, %a", "mov", left, left); asm_space(curr->space);
+               pasm("%i%ma, %v", "mov", left,  right);
+            }
+         }
+         else if (left->ptr && !left->isref)
+         {
+            if (right->isref)
+            {
+               check(1, "found"); exit(1);
+               pasm("%i%ra, -%zu[rbp]", "lea", left, right->ptr); asm_space(curr->space);
+               pasm("%i%ra, %ma", "mov", right, right); asm_space(curr->space);
+               pasm("%i%a, %ra", "mov", left, right);
+            }
+            else if (right->ptr)
+            {
+               // int a = 1 int b = a
+               // check(1, "found"); exit(1);
+               pasm("%i%ra, %a", "mov", right, right); asm_space(curr->space);
+               pasm("%i%a, %ra", "mov", left, right);
+            }
+            else if (right->creg)
+            {
+               check(1, "found"); exit(1);
+               pasm("%i%a, %ra", "mov", left, right);
+            }
+            else // right is value
+            {
+               // int a = 1
+               // check(1, "found"); exit(1);
+               pasm("%i%a, %v", "mov", left, right, left->name);
+            }
+         }
+         else if (left->creg) // function parameter
+         {
+            if (right->isref)
+            {
+               check(1, "found"); exit(1);
+               pasm("%i%ra, -%zu[rbp]", "lea", left, right->ptr); asm_space(curr->space);
+               pasm("%i%ra, %ma", "mov", right, right); asm_space(curr->space);
+               pasm("%i%ra, %ra", "mov", left, right);
+            }
+            else if (right->ptr)
+            {
+               // int a = 1 ref int b = a b = 3 putnbr(a)
+               // check(1, "found"); exit(1);
+               pasm("%i%ra, %a", "mov", right, right); asm_space(curr->space);
+               pasm("%i%ra, %ra", "mov", left, right);
+            }
+            else if (right->creg)
+            {
+               check(1, "found"); exit(1);
+               pasm("%i%ra, %ra", "mov", left, right);
+            }
+            else // right is value
+            {
+               check(1, "found"); exit(1);
+               pasm("%i%ra, %v", "mov", left, right, left->name);
+            }
+         }
+         else check(1, "handle this case");
+         if (left->name) {pasm(" ;// assign [%s]", left->name); }
+         else if (left->creg) {pasm(" ;// assign [%s]", left->creg);}
+         if (left->isref) {pasm(" isref"); }
+         asm_space(curr->space);
+#if 0
+         if (left->isref && right->isref)
+         {
+            pasm("%irax, -%zu[rbp]", "lea", right->ptr); asm_space(curr->space);
+            pasm("%iQWORD PTR -%zu[rbp], rax", "mov", left->ptr);
+
+            pasm("%irax, QWORD PTR -%zu[rbp];// get left address", "mov", left->ptr); asm_space(curr->space);
+            pasm("%i%m, %a;// assign left address", "mov", left, right);
          }
          if (right->ptr)
          {
@@ -1182,9 +1267,8 @@ void generate_asm(char *name)
                break;
             }
          }
+#endif
 
-         if (left->name) {pasm(" ;// assign [%s]", left->name); }
-         else if (left->creg) {pasm(" ;// assign [%s]", left->creg);}
 
          break;
       }
@@ -1245,8 +1329,7 @@ void generate_asm(char *name)
          {
             char *inst = left->type == FLOAT ? "movss" : "mov";
             if (left->ptr) pasm("%i%r, %a", inst, left, left);
-            else if (left->creg /*&& strcmp(left->creg, r->creg)*/)
-               pasm("%i%r, %r", inst, left, left);
+            else if (left->creg /*&& strcmp(left->creg, r->creg)*/) pasm("%i%r, %r", inst, left, left);
             else if (!left->creg) pasm("%i%r, %v", inst, left, left);
 
             char *reg = NULL;
@@ -1303,7 +1386,7 @@ void generate_asm(char *name)
          {
             switch (left->type)
             {
-            case INT: pasm("%i%r, %ld", "mov", left, left->Int.value); break;
+            case INT: pasm("%i%ra, %ld", "mov", left, left->Int.value); break;
             case VOID: pasm("%ieax, 0", "mov"); break;
             default: check(1, "handle this case [%s]\n", to_string(left->type)); break;
             }

@@ -1,6 +1,7 @@
 
 main():
-   int a = 123
+   int a = 1 
+   int c = 2
    ref int b = a
-   b = 20
+   b = c
    putnbr(a)
