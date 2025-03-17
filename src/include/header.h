@@ -21,11 +21,12 @@ typedef enum
    AND, OR, NOT,
    RPAR, LPAR, COMA, DOT, DOTS,
    RETURN,
-   IF, ELIF, ELSE, WHILE,
+   IF, ELIF, ELSE, 
+   WHILE, CONTINUE, BREAK,
    FDEC, FCALL,
    VOID, INT, CHARS, CHAR, BOOL, FLOAT,
-   STRUCT, ID, BLOC, END_BLOC,
-   JNE, JE, JMP,
+   STRUCT, ID, REF,
+   JNE, JE, JMP, BLOC, END_BLOC,
    PUSH, POP,
    END
 } Type;
@@ -43,6 +44,8 @@ typedef struct
    char *creg;
    size_t index;
    bool isCond;
+   bool isref;
+   bool hasref;
    // size_t rsp;
    // bool isarg;
 
@@ -94,7 +97,7 @@ typedef struct
 
 typedef struct
 {
-   char *name;
+   Token *token;
 
    Node **functions;
    size_t fpos;
@@ -122,6 +125,9 @@ extern Node *head;
 extern size_t exe_pos;
 extern Inst **OrgInsts;
 extern Inst **insts;
+extern Scoop *Gscoop;
+extern ssize_t scoopSize;
+extern ssize_t scoopPos;
 extern Scoop *scoop;
 extern size_t ptr;
 extern struct _IO_FILE *asm_fd;
@@ -149,14 +155,13 @@ void add_token(Token *token);
 Node *new_node(Token *token);
 Token *find(Type type, ...);
 const char *to_string(Type type);
-void enter_scoop(char *name);
-void check_error(const char *filename, const char *funcname, int line, bool cond, char *fmt, ...);
+void enter_scoop(Token *token);
+bool check_error(const char *filename, const char *funcname, int line, bool cond, char *fmt, ...);
 void free_memory();
 void *allocate_func(size_t line, size_t len, size_t size);
 int debug(char *conv, ...);
 int pnode(Node *node, char *side, size_t space);
 int ptoken(Token *token);
-void enter_scoop(char *name);
 void exit_scoop();
 void clone_insts();
 Node *new_function(Node *node);

@@ -1,5 +1,5 @@
 .intel_syntax noprefix
-.include "./import/header.s"
+.include "/import/header.s"
 
 .text
 .globl	main
@@ -12,9 +12,8 @@ main:
     .while1:
     cmp  DWORD PTR -4[rbp], 5
     jge   .endwhile1
-        add  DWORD PTR -4[rbp], 1
-        mov  DWORD PTR -4[rbp], eax ;// assign [i]
-    jmp  .while1
+        add  DWORD PTR -4[rbp], 1 ;// add_assign [i]
+        jmp  .while1
     .endwhile1:
     mov  eax, 0
     leave 

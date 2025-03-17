@@ -2090,9 +2090,8 @@ void generate_asm()
             case CHARS:
                pasm("%i%r, .STR%zu[rip]", "lea", left, right->index);
 
-               // I did this to defrenticiate
-               // function parameter from
-               // variable declaration
+               // I did this to diffrenticiate function parameter
+               // from variable declaration
                if (left->ptr) {skip_space(curr->space); pasm("%i%a, %r", "mov", left, right); }
                break;
             // case float_:
@@ -2214,8 +2213,7 @@ void generate_asm()
          {
             char *inst = left->type == FLOAT ? "movss" : "mov";
             if (left->ptr) pasm("%i%r, %a", inst, left, left);
-            else if (left->creg /*&& strcmp(left->creg, r->creg)*/)
-               pasm("%i%r, %r", inst, left, left);
+            else if (left->creg /*&& strcmp(left->creg, r->creg)*/) pasm("%i%r, %r", inst, left, left);
             else if (!left->creg) pasm("%i%r, %v", inst, left, left);
 
             char *reg = NULL;
