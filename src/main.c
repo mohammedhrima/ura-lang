@@ -1105,7 +1105,7 @@ void generate_asm(char *name)
             {
                // check(1, "found"); exit(1);
                /*
-                  int a = 1 
+                  int a = 1
                   int c = 2
                   ref int b = a
                   b = c
