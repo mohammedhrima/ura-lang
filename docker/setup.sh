@@ -31,8 +31,8 @@ copy() {
 		new_s_file="/tests/$1/asm/${new_filename}.s"
 		echo "create $new_w_file"
 		echo "create $new_s_file"
-		cp "file.w" "$new_w_file"
-		cp "file.s" "$new_s_file"
+		cp "/src/file.w" "$new_w_file"
+		cp "/src/file.s" "$new_s_file"
 	else
 		echo "Error: Compilation or execution of /src/wcc failed. Aborting copy operation."
 	fi

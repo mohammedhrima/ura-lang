@@ -44,4 +44,7 @@
 #endif
 
 #define allocate(len, size) allocate_func(LINE, len, size)
-#define check(cond, fmt, ...) check_error(__FILE__, __func__, __LINE__, cond, fmt, ##__VA_ARGS__)
+#define check(cond, fmt, ...) check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)
+#define to_string(type) to_string_(FILE, LINE, type)
+#define new_token(input, s, e, type, space) new_token_(FILE, LINE, input, s, e, type, space)
+#define ptoken(token) ptoken_(FILE, LINE, token)

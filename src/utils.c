@@ -3,11 +3,13 @@
 // TOKENIZE
 Specials *dataTypes = (Specials[]) { {"int", INT}, {"bool", BOOL}, {"chars", CHARS}, {0, (Type)0}};
 
-Token* new_token(char *input, size_t s, size_t e, Type type, size_t space)
+Token* new_token_(char *filename, int line, char *input, size_t s, size_t e, Type type, size_t space)
 {
+   debug("new token in %s:%d\n", filename, line);
    Token *new = allocate(1, sizeof(Token));
    new->type = type;
    new->space = ((space + TAB / 2) / TAB) * TAB;
+   if(type)
    switch (type)
    {
    case INT: while (s < e) new->Int.value = new->Int.value * 10 + input[s++] - '0'; break;
@@ -368,7 +370,7 @@ Node *get_function(char *name)
 
 Token *new_variable(Token *token)
 {
-   debug(CYAN "variable [%s] in scoop %k\n" RESET, token->name, scoop->token);
+   debug(CYAN "new variable [%s] [%s] in scoop %k\n" RESET, token->name, to_string(token->type), scoop->token);
    for (size_t i = 0; i < scoop->vpos; i++)
    {
       Token *curr = scoop->vars[i];
@@ -413,7 +415,7 @@ bool compatible(Token *left, Token *right)
 }
 
 // UTILS
-const char *to_string(Type type) {
+const char *to_string_(const char *filename, const int line, Type type) {
    const char *arr[] = {
       [ASSIGN] = "ASSIGN", [ADD_ASSIGN] = "ADD ASSIGN", [SUB_ASSIGN] = "SUB ASSIGN",
       [MUL_ASSIGN] = "MUL ASSIGN", [DIV_ASSIGN] = "DIV ASSIGN", [MOD_ASSIGN] = "MOD_ASSIGN",
@@ -429,7 +431,7 @@ const char *to_string(Type type) {
       [END] = "END"
    };
    if (type >= 1 && type < sizeof(arr) / sizeof(arr[0]) && arr[type] != NULL) return arr[type];
-   check(1, "Unknown type [%d]\n", type);
+   check(1, "Unknown type [%d] in %s:%d\n", type, filename, line);
    return NULL;
 }
 
@@ -529,7 +531,7 @@ void pasm(char *fmt, ...)
                Type type = token->retType ? token->retType : token->type;
                switch (type)
                {
-               case CHARS: fputs("dbx", asm_fd); break;
+               case CHARS: fputs("edx", asm_fd); break;
                case INT: fputs("edx", asm_fd); break;
                case BOOL: case CHAR: fputs("dl", asm_fd); break;
                case FLOAT: fputs("xmm2", asm_fd); break;
@@ -601,20 +603,20 @@ void pasm(char *fmt, ...)
             default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
             }
          }
-         else if (fmt[i] == 'm')
-         {
-            i++;
-            Token *token = va_arg(args, Token *);
-            switch (token->type)
-            {
-            case CHARS: fprintf(asm_fd, "QWORD PTR [rax]"); break;
-            case INT: fprintf(asm_fd, "DWORD PTR [rax]"); break;
-            case CHAR: fprintf(asm_fd, "BYTE PTR [rax]"); break;
-            case BOOL: fprintf(asm_fd, "BYTE PTR [rax]"); break;
-            case FLOAT: fprintf(asm_fd, "DWORD PTR [rax]"); break;
-            default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
-            }
-         }
+         // else if (fmt[i] == 'm')
+         // {
+         //    i++;
+         //    Token *token = va_arg(args, Token *);
+         //    switch (token->type)
+         //    {
+         //    case CHARS: fprintf(asm_fd, "QWORD PTR [rax]"); break;
+         //    case INT: fprintf(asm_fd, "DWORD PTR [rax]"); break;
+         //    case CHAR: fprintf(asm_fd, "BYTE PTR [rax]"); break;
+         //    case BOOL: fprintf(asm_fd, "BYTE PTR [rax]"); break;
+         //    case FLOAT: fprintf(asm_fd, "DWORD PTR [rax]"); break;
+         //    default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
+         //    }
+         // }
          else if (fmt[i] == 'v')
          {
             i++;
@@ -789,11 +791,11 @@ void print_ir()
    debug("total instructions [%d]\n", i);
 }
 
-int ptoken(Token *token)
+int ptoken_(const char*filename, int line, Token *token)
 {
    int res = 0;
    if (!token) return debug("null token");
-   res += debug("[%-6s] ", to_string(token->type));
+   res += debug("[%-6s] ", to_string_(filename, line, token->type));
    switch (token->type)
    {
    case VOID: case CHARS: case CHAR: case INT: case BOOL: case FLOAT:

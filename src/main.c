@@ -113,9 +113,9 @@ void tokenize()
 // ABSTRACT SYNTAX TREE
 Type getRetType(Node *node)
 {
-   if (!node || node->token) return 0;
-   if (includes((Type[]) {INT, 0}, node->token->type)) return node->token->type;
-   if (includes((Type[]) {INT, 0}, node->token->retType)) return node->token->retType;
+   if (!node || !node->token) return 0;
+   if (includes((Type[]) {INT, CHARS, CHAR, FLOAT, BOOL, 0}, node->token->type)) return node->token->type;
+   if (includes((Type[]) {INT, CHARS, CHAR, FLOAT, BOOL, 0}, node->token->retType)) return node->token->retType;
    Type left = 0, right = 0;
    if (node->left) left = getRetType(node->left);
    if (node->right) right = getRetType(node->right);
@@ -230,7 +230,7 @@ Node *sign()
 
 Node *func_dec(Node *node)
 {
-   Token *typeName = find(INT, BOOL, CHARS, CHAR, 0);
+   Token *typeName = find(INT, CHARS, CHAR, FLOAT, BOOL, 0);
    Token *fname = find(ID, 0);
    check(!typeName || !fname, "expected data type and identifier after func declaration");
 
@@ -271,7 +271,7 @@ Node *func_dec(Node *node)
       else
       {
          // TODO:
-         check(1, "implemnt assigning function argument using PTR");
+         check(1, "implement assigning function argument using PTR");
       }
       curr->left = assign;
       find(COMA, 0);
@@ -304,17 +304,32 @@ Node *func_call(Node *node)
    int i = 0;
    while (!found_error && !(arg = find(RPAR, END, 0)))
    {
+      // TODO: this approach need to be modified
       Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, token->space));
       assign->right = expr();
       assign->right->token->space = token->space;
-      assign->left = new_node(new_token(NULL, 0, 0, assign->right->token->type, token->space));
+      assign->left = new_node(NULL);
+      if(assign->right->token->type == ID)
+      {
+         Token *var = get_variable(assign->right->token->name);
+         if(var)
+         {
+            assign->left->token = copy_token(var);
+            setName(assign->left->token, NULL);
+            setReg(assign->left->token, NULL);
+            assign->left->token->space = token->space;
+            assign->left->token->declare = false;
+         }
+      }
+      else
+      {
+         assign->left->token = copy_token(assign->right->token);
+         assign->left->token->space = token->space;
+         assign->left->token->type = getRetType(assign->right);
+      }
+      check(assign->left->token->type == 0, "found another stupid error in function call");
       if (eregs[i])
       {
-         if (assign->left->token->type == ID)
-         {
-            Token *var = get_variable(assign->right->token->name);
-            if (var) assign->left->token->type = var->type;
-         }
          if (!found_error)
          {
             Type type = assign->left->token->type;
@@ -391,8 +406,9 @@ Node *if_node(Node *node)
       curr = curr->right;
    }
    curr = node;
-   while (!found_error && includes((Type[]) {ELSE, ELIF, 0}, tokens[exe_pos]->type)
-&& node->token->space == tokens[exe_pos]->space)
+   while (
+      !found_error && includes((Type[]) {ELSE, ELIF, 0}, tokens[exe_pos]->type) && 
+      node->token->space == tokens[exe_pos]->space)
    {
       Token *token = find(ELSE, ELIF, 0);
 
@@ -461,7 +477,7 @@ Node *prime()
 {
    Node *node = NULL;
    Token *token;
-   if ((token = find(ID, INT, BOOL, CHARS, CHAR, 0)))
+   if ((token = find(ID, INT, CHARS, CHAR, FLOAT, BOOL, 0)))
    {
       if (token->declare) // int variable_name
       {
@@ -542,7 +558,7 @@ bool optimize_ir()
          Token *left = insts[i]->left;
          Token *right = insts[i]->right;
 
-         Type types[] = {INT, FLOAT, CHAR, 0};
+         Type types[] = {INT, FLOAT, 0};
          Type ops[] = {ADD, SUB, MUL, DIV, 0};
          // TODO: check if left and right are compatible
          // test if left is function, and right is number ...
@@ -570,6 +586,8 @@ bool optimize_ir()
             }
             token->type = left->type;
             token->retType = 0;
+            insts[i]->left = NULL;
+            insts[i]->right = NULL;
             left->remove = true;
             right->remove = true;
             token->reg = 0;
@@ -689,7 +707,7 @@ bool optimize_ir()
       for (size_t i = 0; insts[i]; i++)
       {
          Token *curr = insts[i]->token;
-         if (!curr->ptr && !curr->reg && includes((Type[]) {INT, 0}, curr->type))
+         if (!curr->ptr && !curr->reg && includes((Type[]) {INT, CHARS, CHAR, FLOAT, BOOL, 0}, curr->type))
          {
             curr->remove = true;
             did_something = true;
@@ -876,7 +894,7 @@ Token *func_dec_ir(Node *node)
    }
    enter_scoop(node->token);
 
-   debug("%n", node);
+   // debug("%n", node);
    size_t tmp_ptr = ptr;
    ptr = 0;
    Inst* inst = new_inst(node->token);
@@ -888,7 +906,7 @@ Token *func_dec_ir(Node *node)
    // debug(GREEN"print arguments\n"RESET);
    while (arg && arg->left && !found_error)
    {
-      debug("%n", arg->left);
+      // debug("%n", arg->left);
       generate_ir(arg->left);
       arg = arg->right;
    }
@@ -921,11 +939,9 @@ Token *func_call_ir(Node *node)
       if (!func) return NULL;
       node->token->retType = func->token->retType;
       setReg(node->token, func->token->creg);
-      debug("%s: has the following arguments\n", node->token->name);
       Node *arg = node;
       while (arg->left && !found_error)
       {
-         pnode(arg->left, "", 10);
          generate_ir(arg->left);
          arg = arg->right;
       }
@@ -953,8 +969,9 @@ Token *op_ir(Node *node)
    case ADD: case SUB: case MUL: case DIV:
    {
       node->token->retType = getRetType(node);
-      if (right->type == INT) setReg(node->token, "eax");
-      else if (right->type == FLOAT) setReg(node->token, "xmm0");
+      if (node->token->retType  == INT) setReg(node->token, "eax");
+      else if (node->token->retType == FLOAT) setReg(node->token, "xmm0");
+      else check(1, "handle this case");
       break;
    }
    case NOT_EQUAL: case EQUAL: case LESS:
@@ -977,7 +994,7 @@ Token* generate_ir(Node *node)
    switch (node->token->type)
    {
    case ID: return get_variable(node->token->name);
-   case INT: case BOOL: case CHAR:
+   case INT: case BOOL: case CHAR: case FLOAT:
    {
       inst = new_inst(node->token);
       if (inst->token->name && inst->token->declare) new_variable(inst->token);
@@ -1068,7 +1085,7 @@ void generate_asm(char *name)
       asm_space(curr->space);
       switch (curr->type)
       {
-      case INT: case BOOL: case CHARS:
+      case INT: case BOOL: case CHARS: case CHAR: case FLOAT:
       {
          if (curr->declare)
          {
@@ -1093,8 +1110,8 @@ void generate_asm(char *name)
 
          if (left->isref && !left->hasref)
          {
-            // int a = 1 ref int b = a
             // check(1, "found"); exit(1);
+            // int a = 1 ref int b = a
             left->hasref = true;
             pasm("%irax, -%zu[rbp]", "lea", right->ptr); asm_space(curr->space);
             pasm("%iQWORD PTR -%zu[rbp], rax", "mov", left->ptr);
@@ -1104,27 +1121,27 @@ void generate_asm(char *name)
             if (right->ptr)
             {
                // check(1, "found"); exit(1);
-               /*
-                  int a = 1
-                  int c = 2
-                  ref int b = a
-                  b = c
-                  putnbr(a)
-               */
+               // int a = 1 int c = 2 ref int b = a b = c putnbr(a)
                pasm("%irax, %a", "mov", left); asm_space(curr->space);
                pasm("%i%rd, %a", "mov", left, right); asm_space(curr->space);
                pasm("%i%ma, %rd", "mov", left, right);
             }
             else if (right->creg)
             {
-               check(1, "handle this case");
+               // check(1, "handle this case");
+               // int a = 1 + 2 ref int b = a b = 2 + a putnbr(a)
+               pasm("%i%rb, %ra", "mov", left, right); asm_space(curr->space);
                pasm("%irax, %a", "mov", left); asm_space(curr->space);
-               // if(strcmp(left->creg, right->creg))
+               pasm("%i%ma, %rb", "mov", left, left);
             }
+            // else if(right->type == CHARS)
+            // {
+            //    check(1, "found"); exit(1);
+            // }
             else // right is value
             {
-               // int a = 1 ref int b = a b = 3
                // check(1, "found"); exit(1);
+               // int a = 1 ref int b = a b = 3
                pasm("%irax, %a", "mov", left, left); asm_space(curr->space);
                pasm("%i%ma, %v", "mov", left,  right);
             }
@@ -1133,27 +1150,34 @@ void generate_asm(char *name)
          {
             if (right->isref)
             {
-               check(1, "found"); exit(1);
-               pasm("%i%ra, -%zu[rbp]", "lea", left, right->ptr); asm_space(curr->space);
+               // check(1, "found"); exit(1);
+               // int a = 1 + 2 ref int b = a int c = b putnbr(c)
+               pasm("%irax, %a", "mov", right); asm_space(curr->space);
                pasm("%i%ra, %ma", "mov", right, right); asm_space(curr->space);
                pasm("%i%a, %ra", "mov", left, right);
             }
             else if (right->ptr)
             {
-               // int a = 1 int b = a
                // check(1, "found"); exit(1);
+               // int a = 1 int b = a
                pasm("%i%ra, %a", "mov", right, right); asm_space(curr->space);
                pasm("%i%a, %ra", "mov", left, right);
             }
             else if (right->creg)
             {
-               check(1, "found"); exit(1);
+               // check(1, "found"); exit(1);
+               pasm("%i%a, %ra", "mov", left, right);
+            }
+            else if(right->type == CHARS)
+            {
+               // check(1, "found"); exit(1);
+               pasm("%i%ra, .STR%zu[rip]", "lea", left, right->index); asm_space(curr->space);
                pasm("%i%a, %ra", "mov", left, right);
             }
             else // right is value
             {
-               // int a = 1
                // check(1, "found"); exit(1);
+               // int a = 1
                pasm("%i%a, %v", "mov", left, right, left->name);
             }
          }
@@ -1161,26 +1185,34 @@ void generate_asm(char *name)
          {
             if (right->isref)
             {
-               check(1, "found"); exit(1);
-               pasm("%i%ra, -%zu[rbp]", "lea", left, right->ptr); asm_space(curr->space);
-               pasm("%i%ra, %ma", "mov", right, right); asm_space(curr->space);
-               pasm("%i%ra, %ra", "mov", left, right);
+               // check(1, "found"); exit(1);
+               // int a = 1 ref int b = a putnbr(a)
+               pasm("%irax, %a", "mov", right); asm_space(curr->space);
+               pasm("%i%ra, %ma", "mov", left, right);
             }
             else if (right->ptr)
             {
-               // int a = 1 ref int b = a b = 3 putnbr(a)
                // check(1, "found"); exit(1);
-               pasm("%i%ra, %a", "mov", right, right); asm_space(curr->space);
-               pasm("%i%ra, %ra", "mov", left, right);
+               // int a = 1 ref int b = a b = 3 putnbr(a)
+               pasm("%i%ra, %a", "mov", left, right); //asm_space(curr->space);
+               // pasm("%i%ra, %ra", "mov", left, right);
             }
             else if (right->creg)
             {
-               check(1, "found"); exit(1);
+               // check(1, "found"); exit(1);
+               // putnbr(1 + 2)
                pasm("%i%ra, %ra", "mov", left, right);
+            }
+            else if(right->type == CHARS)
+            {
+               // check(1, "found"); exit(1);
+               // putstr("cond 1\n")
+               pasm("%i%ra, .STR%zu[rip]", "lea", left, right->index); 
+               // pasm("%i%ra, %ra", "mov", left, right);
             }
             else // right is value
             {
-               check(1, "found"); exit(1);
+               // check(1, "found"); exit(1);
                pasm("%i%ra, %v", "mov", left, right, left->name);
             }
          }
@@ -1189,87 +1221,6 @@ void generate_asm(char *name)
          else if (left->creg) {pasm(" ;// assign [%s]", left->creg);}
          if (left->isref) {pasm(" isref"); }
          asm_space(curr->space);
-#if 0
-         if (left->isref && right->isref)
-         {
-            pasm("%irax, -%zu[rbp]", "lea", right->ptr); asm_space(curr->space);
-            pasm("%iQWORD PTR -%zu[rbp], rax", "mov", left->ptr);
-
-            pasm("%irax, QWORD PTR -%zu[rbp];// get left address", "mov", left->ptr); asm_space(curr->space);
-            pasm("%i%m, %a;// assign left address", "mov", left, right);
-         }
-         if (right->ptr)
-         {
-            pasm("%i%r, %a", inst, left, right);
-            // TODO: test this case before changing
-            // chars str = "fffff" int a = strlen(str)
-            if (!left->creg)
-            {
-#if 1
-               if (left->isref && !right->isref)
-               {
-                  debug(RED"left has ref\n", RESET);
-                  pasm("%irax, QWORD PTR -%zu[rbp];// get left address", "mov", left->ptr); asm_space(curr->space);
-                  pasm("%i%m, %a;// assign left address", "mov", left, right);
-               }
-               else if (left->isref && right->isref)
-               {
-                  // debug(RED"left has ref\n", RESET);
-                  // pasm("%irax, QWORD PTR -%zu[rbp];// get left address", "mov", left->ptr); asm_space(curr->space);
-                  // pasm("%irax, QWORD PTR -%zu[rbp];// get left address", "mov", left->ptr); asm_space(curr->space);
-                  // pasm("%i%m, QWORD PTR -%zu[rbp];// assign left address", "mov", left, right);
-               }
-               else pasm("%i%a, %r", inst, left, left);
-
-               if (left->isref)
-               {
-                  // pasm("%i%rb, %r", inst, left, right);
-                  check(1, "implement this");
-               }
-               else pasm("%i%a, %r", inst, left, left);
-#else
-               if (!left->creg) pasm("%i%a, %r", inst, left, left);
-#endif
-            }
-         }
-         else if (right->creg)
-         {
-            pasm("%i%a, %r", inst, left, right);
-            // TODO: handle ref here too
-         }
-         else
-         {
-            switch (right->type)
-            {
-            case INT: case BOOL: case CHAR:
-            {
-               if (left->isref)
-               {
-                  debug(RED"left has ref\n", RESET);
-                  pasm("%irax, QWORD PTR -%zu[rbp];// get left address", "mov", left->ptr); asm_space(curr->space);
-                  pasm("%i%m, %v;// assign left address", "mov", left, right);
-               }
-               else pasm("%i%a, %v", "mov", left, right);
-               break;
-            }
-            case CHARS:
-               pasm("%i%r, .STR%zu[rip]", "lea", left, right->index);
-               // I did this to diffenticiate function parameter from
-               // variable declaration
-               if (left->ptr) {asm_space(curr->space); pasm("%i%a, %r", "mov", left, right); }
-               break;
-            // case float_:
-            //     pasm("movss %r, DWORD PTR .FLT%zu[rip]\n", right, right->index);
-            //     pasm("movss %a, %r\n", left, left);
-            //     break;
-            default:
-               check(1, "handle this case (%s)\n", to_string(right->type));
-               break;
-            }
-         }
-#endif
-
-
          break;
       }
       case ADD: case SUB: case MUL: case DIV: // TODO: check all math_op operations
@@ -1287,16 +1238,16 @@ void generate_asm(char *name)
          case DIV: inst2 = left->type == FLOAT ? "divss " : "div "; break;
          default: break;
          }
-         pasm("%i%r, ", inst, left);
+         pasm("%i%ra, ", inst, left);
          if (left->ptr) pasm("%a", left);
-         else if (left->creg) pasm("%r", left) ;
+         else if (left->creg) pasm("%ra", left) ;
          else pasm("%v", left);
          asm_space(curr->space);
-         pasm("%i%r, ", inst2, right);
+         pasm("%i%ra, ", inst2, right);
          if (right->ptr) pasm("%a", right);
-         else if (right->creg) pasm("%r", right) ;
+         else if (right->creg) pasm("%ra", right) ;
          else pasm("%v", right);
-         curr->type = left->type;
+         // curr->type = getTypeleft->type;
          break;
       }
       case EQUAL: case NOT_EQUAL: case LESS: case MORE: case MORE_EQUAL:
@@ -1316,21 +1267,21 @@ void generate_asm(char *name)
             }
             asm_space(curr->space); pasm("%i", "cmp");
             if (left->ptr) pasm("%a", left);
-            else if (left->creg) pasm("%r", left);
+            else if (left->creg) pasm("%ra", left);
             else if (!left->creg) pasm("%v", left);
 
             // asm_space(curr->space);
             if (right->ptr) pasm(", %a", right);
-            else if (right->creg) pasm(", %r", right);
+            else if (right->creg) pasm(", %ra", right);
             else if (!right->creg) pasm(", %v", right);
             asm_space(curr->space); pasm("%i .%s%zu", inst, curr->name ? curr->name : "(null)", curr->index);
          }
          else
          {
             char *inst = left->type == FLOAT ? "movss" : "mov";
-            if (left->ptr) pasm("%i%r, %a", inst, left, left);
-            else if (left->creg /*&& strcmp(left->creg, r->creg)*/) pasm("%i%r, %r", inst, left, left);
-            else if (!left->creg) pasm("%i%r, %v", inst, left, left);
+            if (left->ptr) pasm("%i%ra, %a", inst, left, left);
+            else if (left->creg /*&& strcmp(left->creg, r->creg)*/) pasm("%i%ra, %ra", inst, left, left);
+            else if (!left->creg) pasm("%i%ra, %v", inst, left, left);
 
             char *reg = NULL;
             switch (left->type)
@@ -1343,12 +1294,12 @@ void generate_asm(char *name)
             }
             asm_space(curr->space);
             if (right->ptr) pasm("%i%s, %a", inst, reg, right);
-            else if (right->creg) pasm("%i%s, %r", inst, reg, right);
+            else if (right->creg) pasm("%i%s, %ra", inst, reg, right);
             else if (!right->creg) pasm("%i%s, %v", inst, reg, right);
 
             inst = left->type == FLOAT ? "ucomiss" : "cmp";
             asm_space(curr->space);
-            pasm("%i%r, %s", inst, left, reg);
+            pasm("%i%ra, %s", inst, left, reg);
             switch (curr->type)
             {
             case EQUAL: inst = "sete"; break;
@@ -1362,7 +1313,7 @@ void generate_asm(char *name)
             curr->retType = BOOL;
             setReg(curr, "al");
             asm_space(curr->space);
-            pasm("%i%r", inst, curr);
+            pasm("%i%ra", inst, curr);
          }
          break;
       }
@@ -1376,11 +1327,11 @@ void generate_asm(char *name)
       }
       case RETURN:
       {
-         if (left->ptr) pasm("%i%r, %a", "mov", left, left);
+         if (left->ptr) pasm("%i%ra, %a", "mov", left, left);
          else if (left->creg)
          {
             // TODO: check the type
-            if (strcmp(left->creg, "eax")) pasm("%i%r, %a", "mov", left, left);
+            if (strcmp(left->creg, "eax")) pasm("%i%ra, %a", "mov", left, left);
          }
          else
          {
