@@ -233,11 +233,11 @@ Node *func_dec(Node *node)
    Token *typeName = find(INT, CHARS, CHAR, FLOAT, BOOL, 0);
    Token *fname = find(ID, 0);
    check(!typeName || !fname, "expected data type and identifier after func declaration");
-
+   
    node->token->retType = typeName->type;
    node->token->name = fname->name;
    fname->name = NULL;
-
+   
    enter_scoop(node->token);
    debug("found FDEC with retType %s\n", to_string(node->token->retType));
    char *eregs[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d", NULL};
@@ -245,16 +245,18 @@ Node *func_dec(Node *node)
    int i = 0;
    Token *arg = NULL;
    Token *token = node->token;
-
+   
    node->left = new_node(NULL);
    Node *curr = node->left;
-
+   
    check(!find(LPAR, 0), "expected ( after function declaration");
+#if 0
    while (!found_error && !(arg = find(RPAR, END, 0)))
    {
       Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, token->space + 2 * TAB));
       assign->left = expr();
       check(!assign->left->token->declare, "Invalid argument for function declaration");
+      if (assign->left->token->isref) assign->left->token->hasref = true;
       assign->left->token->space = token->space + 2 * TAB;
       assign->right = new_node(new_token(NULL, 0, 0, assign->left->token->type, token->space + 2 * TAB));
       if (eregs[i])
@@ -278,8 +280,45 @@ Node *func_dec(Node *node)
       curr->right = new_node(NULL);
       curr = curr->right;
    }
-   check(arg->type != RPAR, "expected ) after function declaration");
-   check(!find(DOTS, 0), "Expected : after function declaration");
+#else
+   while(!found_error && !includes((Type[]){RPAR, END, 0}, tokens[exe_pos]->type))
+   {
+      Token *ref = find(REF, 0);
+      arg = find(INT, CHARS, CHAR, FLOAT, BOOL, 0);
+      if(check(!arg, "expected data type in function argument")) break;
+      Token *name = find(ID, 0);
+      if(check(!name, "expected identifier in function argument")) break;
+      if(ref)
+      {
+         name->isref = true;
+         // name->hasref = true;
+      }
+      name->type = arg->type;
+      // name->declare = true;
+      if (eregs[i])
+      {
+         // TODO: add other data type and math operations
+         switch (name->type)
+         {
+            case CHARS: setReg(name, rregs[i]); break;
+            case INT:   setReg(name, eregs[i]); break;
+            default: check(1, "set reg for %s", to_string(name->type));
+         };
+         i++;
+      }
+      else
+      {
+         // TODO:
+         check(1, "implement assigning function argument using PTR");
+      }
+      curr->left = new_node(name);
+      find(COMA, 0);
+      curr->right = new_node(NULL);
+      curr = curr->right;
+   }
+#endif
+   check(!found_error && !find(RPAR, 0), "expected ) after function declaration");
+   check(!found_error && !find(DOTS, 0), "Expected : after function declaration");
 
    curr = node;
    while (within_space(node->token->space))
@@ -305,14 +344,15 @@ Node *func_call(Node *node)
    while (!found_error && !(arg = find(RPAR, END, 0)))
    {
       // TODO: this approach need to be modified
+      // doesn't work well if function takes references
       Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, token->space));
       assign->right = expr();
       assign->right->token->space = token->space;
       assign->left = new_node(NULL);
-      if(assign->right->token->type == ID)
+      if (assign->right->token->type == ID)
       {
          Token *var = get_variable(assign->right->token->name);
-         if(var)
+         if (var)
          {
             assign->left->token = copy_token(var);
             setName(assign->left->token, NULL);
@@ -407,8 +447,8 @@ Node *if_node(Node *node)
    }
    curr = node;
    while (
-      !found_error && includes((Type[]) {ELSE, ELIF, 0}, tokens[exe_pos]->type) && 
-      node->token->space == tokens[exe_pos]->space)
+   !found_error && includes((Type[]) {ELSE, ELIF, 0}, tokens[exe_pos]->type) &&
+node->token->space == tokens[exe_pos]->space)
    {
       Token *token = find(ELSE, ELIF, 0);
 
@@ -886,24 +926,26 @@ Token *while_ir(Node *node)
 Token *func_dec_ir(Node *node)
 {
    new_function(node);
-   switch (node->token->retType)
-   {
-   case INT: setReg(node->token, "eax"); break;
-   case CHARS: setReg(node->token, "rax"); break;
-   default: check(1, "handle this case [%s]\n", to_string(node->token->retType)); break;
-   }
    enter_scoop(node->token);
-
-   // debug("%n", node);
    size_t tmp_ptr = ptr;
    ptr = 0;
    Inst* inst = new_inst(node->token);
+#if 0
+   // switch (node->token->retType)
+   // {
+   // case INT: setReg(node->token, "eax"); break;
+   // case CHARS: setReg(node->token, "rax"); break;
+   // default: check(1, "handle this case [%s]\n", to_string(node->token->retType)); break;
+   // }
+
+   // debug("%n", node);
+  
 
    // arguments
    Node *arg = node->left;
    // dest: left  (variable inside function)
    // src : right
-   // debug(GREEN"print arguments\n"RESET);
+
    while (arg && arg->left && !found_error)
    {
       // debug("%n", arg->left);
@@ -918,12 +960,40 @@ Token *func_dec_ir(Node *node)
       generate_ir(curr->left);
       curr = curr->right;
    }
+#else
+   Node *curr = node->left;
+   while(curr && curr->left)
+   {
+      if(check(!curr->left, "is NULL 0")) exit(1);
+      if(check(!curr->left->token, "is NULL 1")) exit(1);
+      // generate_ir(curr->left);
+      new_variable(curr->left->token);
+      if(curr->left->token->isref) curr->left->token->hasref = true;
+      curr = curr->right;
+   }
+   pnode(node, NULL, 0);
+   curr = node->right;
+   while(curr)
+   {
+      if(check(!curr->left, "is NULL 0")) exit(1);
+      if(check(!curr->left->token, "is NULL 1")) exit(1);
+      generate_ir(curr->left);
+      curr = curr->right;
+   }
+   // curr = node->left;
+   // while(curr && curr->left)
+   // {
+   //    curr->left->token->hasref = false;
+   //    curr = curr->right;
+   // }
+   // exit(1);
+#endif
    Token *new = new_token(NULL, 0, 0, END_BLOC, node->token->space);
    new->name = strdup(node->token->name);
    new_inst(new);
-   exit_scoop();
    node->token->ptr = ptr;
    ptr = tmp_ptr;
+   exit_scoop();
    return inst->token;
 }
 
@@ -937,13 +1007,34 @@ Token *func_call_ir(Node *node)
    {
       Node *func = get_function(node->token->name);
       if (!func) return NULL;
+      
       node->token->retType = func->token->retType;
       setReg(node->token, func->token->creg);
       Node *arg = node;
+      Node *farg = func->left;
       while (arg->left && !found_error)
       {
-         generate_ir(arg->left);
+         if(farg->left->token->isref)
+         {
+            // debug(RED"found\n" RESET);
+            // if(arg->left->token->hasref) debug(RED"has ref\n" RESET);
+            // else debug(RED"has not ref\n" RESET);
+            // pnode(arg, NULL, 0);
+            // exit(1);
+            // pnode(arg->left, NULL, 4);
+            // arg->left->left->token->isref = true;
+            // arg->left->left->token->hasref = true;
+            // pnode(arg->left, NULL, 5);
+            arg->left->token->isref = true;
+            generate_ir(arg->left);
+            // arg->left->token->hasref = true;
+         }
+         else
+         {
+            generate_ir(arg->left);
+         }
          arg = arg->right;
+         farg = farg->right;
       }
    }
    Inst* inst = new_inst(node->token);
@@ -1104,7 +1195,7 @@ void generate_asm(char *name)
       case ASSIGN:
       {
          char *inst = left->type == FLOAT ? "movss " : "mov ";
-         check(right->isref && !right->hasref, "can't assign from reference that don't point to anything");
+         check(right->isref && !right->hasref , "can't assign from reference that don't point to anything");
          check(left->isref && !left->hasref && !right->ptr, "first assignment for ref must have have ptr");
          check(left->isref && right->isref, "assignment between two references is forbidden");
 
@@ -1168,7 +1259,7 @@ void generate_asm(char *name)
                // check(1, "found"); exit(1);
                pasm("%i%a, %ra", "mov", left, right);
             }
-            else if(right->type == CHARS)
+            else if (right->type == CHARS)
             {
                // check(1, "found"); exit(1);
                pasm("%i%ra, .STR%zu[rip]", "lea", left, right->index); asm_space(curr->space);
@@ -1203,11 +1294,11 @@ void generate_asm(char *name)
                // putnbr(1 + 2)
                pasm("%i%ra, %ra", "mov", left, right);
             }
-            else if(right->type == CHARS)
+            else if (right->type == CHARS)
             {
                // check(1, "found"); exit(1);
                // putstr("cond 1\n")
-               pasm("%i%ra, .STR%zu[rip]", "lea", left, right->index); 
+               pasm("%i%ra, .STR%zu[rip]", "lea", left, right->index);
                // pasm("%i%ra, %ra", "mov", left, right);
             }
             else // right is value

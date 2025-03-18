@@ -47,7 +47,7 @@ typedef struct
    bool isref;
    bool hasref;
    // size_t rsp;
-   // bool isarg;
+   bool isarg;
 
    struct
    {

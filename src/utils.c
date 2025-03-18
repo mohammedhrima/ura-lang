@@ -9,55 +9,55 @@ Token* new_token_(char *filename, int line, char *input, size_t s, size_t e, Typ
    Token *new = allocate(1, sizeof(Token));
    new->type = type;
    new->space = ((space + TAB / 2) / TAB) * TAB;
-   if(type)
-   switch (type)
-   {
-   case INT: while (s < e) new->Int.value = new->Int.value * 10 + input[s++] - '0'; break;
-   case BLOC: case ID: case JMP: case JE: case JNE: case FDEC: case END_BLOC:
-   {
-      if (e <= s) break;
-      new->name = allocate(e - s + 1, sizeof(char));
-      strncpy(new->name, input + s, e - s);
-      // if (type != ID) break;
-      if (strcmp(new->name, "True") == 0)
+   if (type)
+      switch (type)
       {
-         free(new->name);
-         new->name = NULL;
-         new->type = BOOL;
-         new->Bool.value = true;
-         break;
-      }
-      else if (strcmp(new->name, "False") == 0)
+      case INT: while (s < e) new->Int.value = new->Int.value * 10 + input[s++] - '0'; break;
+      case BLOC: case ID: case JMP: case JE: case JNE: case FDEC: case END_BLOC:
       {
-         free(new->name);
-         new->name = NULL;
-         new->type = BOOL;
-         new->Bool.value = false;
-         break;
-      }
-      for (int j = 0; dataTypes[j].value; j++)
-      {
-         if (strncmp(dataTypes[j].value, new->name, strlen(dataTypes[j].value)) == 0)
+         if (e <= s) break;
+         new->name = allocate(e - s + 1, sizeof(char));
+         strncpy(new->name, input + s, e - s);
+         // if (type != ID) break;
+         if (strcmp(new->name, "True") == 0)
          {
-            new->type = dataTypes[j].type;
-            new->declare = true;
             free(new->name);
             new->name = NULL;
+            new->type = BOOL;
+            new->Bool.value = true;
             break;
          }
+         else if (strcmp(new->name, "False") == 0)
+         {
+            free(new->name);
+            new->name = NULL;
+            new->type = BOOL;
+            new->Bool.value = false;
+            break;
+         }
+         for (int j = 0; dataTypes[j].value; j++)
+         {
+            if (strncmp(dataTypes[j].value, new->name, strlen(dataTypes[j].value)) == 0)
+            {
+               new->type = dataTypes[j].type;
+               new->declare = true;
+               free(new->name);
+               new->name = NULL;
+               break;
+            }
+         }
+         break;
       }
-      break;
-   }
-   case CHARS:
-   {
-      if (e <= s) break;
-      new->Chars.value = allocate(e - s + 1, sizeof(char));
-      strncpy(new->Chars.value, input + s, e - s);
-      break;
-   }
-   case CHAR: if (e > s) new->Char.value = input[s]; break;
-   default: check(e > s, "implement adding name for this one %s", to_string(type)); break;
-   }
+      case CHARS:
+      {
+         if (e <= s) break;
+         new->Chars.value = allocate(e - s + 1, sizeof(char));
+         strncpy(new->Chars.value, input + s, e - s);
+         break;
+      }
+      case CHAR: if (e > s) new->Char.value = input[s]; break;
+      default: check(e > s, "implement adding name for this one %s", to_string(type)); break;
+      }
    add_token(new);
    debug("new %k\n", new);
    return new;
@@ -91,6 +91,7 @@ Token *copy_token(Token *token)
    // TODO: check all values that can be copied example: name ...
    if (token->name) new->name = strdup(token->name);
    if (token->Chars.value) new->Chars.value = strdup(token->Chars.value);
+   if (token->creg) new->creg = strdup(token->creg);
    add_token(new);
    return new;
 }
@@ -489,7 +490,7 @@ void pasm(char *fmt, ...)
          {
             i += 2;
             Token *token = va_arg(args, Token *);
-            if (token->creg) fprintf(asm_fd, "%s", token->creg);
+            if (token->creg) fprintf(asm_fd, "%s", token->creg); // TODO: those lines are bad
             else
             {
                Type type = token->retType ? token->retType : token->type;
@@ -662,7 +663,7 @@ void pasm(char *fmt, ...)
 void initialize()
 {
    pasm(".intel_syntax noprefix\n");
-   pasm(".include \"/import/header.s\"\n\n");
+   pasm(".include \"/import/header.s\"\n");
    pasm(".text\n");
    pasm(".globl	main\n");
 }
@@ -758,6 +759,7 @@ void print_ir()
          debug("[%-6s] ", to_string(curr->type));
          if (curr->declare) debug("declare [%s] PTR=[%zu]", curr->name, curr->ptr);
          else if (curr->name) debug("variable %s ", curr->name);
+         else if (curr->creg) debug("creg %s ", curr->creg);
          else if (curr->type == INT) debug("value %lld ", curr->Int.value);
          else if (curr->type == BOOL) debug("value %s ", curr->Bool.value ? "True" : "False");
          // else if(curr->type == CHAR) debug("value %c ", curr->Char.value);
