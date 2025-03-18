@@ -25,7 +25,7 @@ main:
             cmp  al, 1
             jne  .elif7
             mov  DWORD PTR -4[rbp], 3 ;// assign [i]
-        jmp  .endif6
+            jmp  .endif6
         .elif7:
         mov  eax, DWORD PTR -4[rbp]
         mov  ebx, 3
@@ -34,7 +34,7 @@ main:
             cmp  al, 1
             jne  .else9
             mov  DWORD PTR -4[rbp], 4 ;// assign [i]
-        jmp  .endif6
+            jmp  .endif6
         .else9:
             mov  DWORD PTR -4[rbp], 2 ;// assign [i]
             .if10:
@@ -45,12 +45,12 @@ main:
                 cmp  al, 1
                 jne  .endif12
                 mov  DWORD PTR -4[rbp], 5 ;// assign [i]
-            .endif12:
+                .endif12:
         .endif6:
     jmp  .endif3
     .else13:
         mov  DWORD PTR -4[rbp], 4 ;// assign [i]
-    .endif3:
+        .endif3:
     mov  eax, 0
     leave 
     ret  

@@ -1,7 +1,5 @@
 
 main():
-   int a = 1 
-   int c = 2
-   ref int b = a
-   b = c
+   chars str = "fffff" 
+   int a = strlen(str)
    putnbr(a)

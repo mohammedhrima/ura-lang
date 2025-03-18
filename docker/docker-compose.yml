@@ -1,7 +1,6 @@
 services:
   wolf_service:
     container_name: wcc
-    image: wcc
     build: .
     mem_limit: 4g
     memswap_limit: 4g

@@ -133,7 +133,8 @@ extern size_t ptr;
 extern struct _IO_FILE *asm_fd;
 
 void open_file(char *filename);
-Token* new_token(char *input, size_t s, size_t e, Type type, size_t space);
+Token* new_token_(char *filename, int line, char *input, size_t s, size_t e, Type type, size_t space);
+
 void tokenize();
 void generate_ast();
 Node *expr();
@@ -154,14 +155,14 @@ bool within_space(size_t space);
 void add_token(Token *token);
 Node *new_node(Token *token);
 Token *find(Type type, ...);
-const char *to_string(Type type);
+const char *to_string_(const char *filename, const int line, Type type);
 void enter_scoop(Token *token);
 bool check_error(const char *filename, const char *funcname, int line, bool cond, char *fmt, ...);
 void free_memory();
 void *allocate_func(size_t line, size_t len, size_t size);
 int debug(char *conv, ...);
 int pnode(Node *node, char *side, size_t space);
-int ptoken(Token *token);
+int ptoken_(const char*filename, int line, Token *token);
 void exit_scoop();
 void clone_insts();
 Node *new_function(Node *node);
