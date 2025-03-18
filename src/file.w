@@ -1,5 +1,9 @@
 
+func int m(ref int a):
+   int b = a
+   return a
+
 main():
-   chars str = "fffff" 
-   int a = strlen(str)
-   putnbr(a)
+   int x = 2
+   m(3)
+   
