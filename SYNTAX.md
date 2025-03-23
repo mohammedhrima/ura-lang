@@ -7,10 +7,16 @@
 - continue 
 - break
 - Implement built-in functions
+- references
+- reference as function parameter
+- assign variable from refrence
+- assign reference from variable
+- refrence variables
 
-+ refrence variables
+
 + for loops
-
++ use return with refrence
++ math operations with refrence
 + check function existance in generate_ir
 + import files in tokenize
 

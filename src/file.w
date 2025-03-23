@@ -1,9 +1,8 @@
 
-func int m(ref int a):
-   int b = a
-   return a
+struct User:
+   int a
+   int b
 
 main():
-   int x = 2
-   m(3)
-   
+   int c 
+   User x
