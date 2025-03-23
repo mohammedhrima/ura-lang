@@ -220,7 +220,18 @@ Node *mul_div()
 
 Node *dot()
 {
-   return sign();
+   Node *left = sign();
+   Token *token;
+   while((token = find(DOT, 0)))
+   {
+      Node *node = new_node(token);
+      node->left = left;
+      node->right = sign();
+      // TODO: check righ should be an identifier
+      node->right->token->isattr = true;
+      left = node;
+   }
+   return left;
 }
 
 Node *sign()
@@ -250,37 +261,6 @@ Node *func_dec(Node *node)
    Node *curr = node->left;
 
    check(!find(LPAR, 0), "expected ( after function declaration");
-#if 0
-   while (!found_error && !(arg = find(RPAR, END, 0)))
-   {
-      Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, token->space + 2 * TAB));
-      assign->left = expr();
-      check(!assign->left->token->declare, "Invalid argument for function declaration");
-      if (assign->left->token->isref) assign->left->token->hasref = true;
-      assign->left->token->space = token->space + 2 * TAB;
-      assign->right = new_node(new_token(NULL, 0, 0, assign->left->token->type, token->space + 2 * TAB));
-      if (eregs[i])
-      {
-         // TODO: add other data type and math operations
-         switch (assign->left->token->type)
-         {
-         case CHARS: setReg(assign->right->token, rregs[i]); break;
-         case INT:   setReg(assign->right->token, eregs[i]); break;
-         default: check(1, "set reg for %s", to_string(assign->left->token->type));
-         };
-         i++;
-      }
-      else
-      {
-         // TODO:
-         check(1, "implement assigning function argument using PTR");
-      }
-      curr->left = assign;
-      find(COMA, 0);
-      curr->right = new_node(NULL);
-      curr = curr->right;
-   }
-#else
    while (!found_error && !includes((Type[]) {RPAR, END, 0}, tokens[exe_pos]->type))
    {
       Token *ref = find(REF, 0);
@@ -323,7 +303,6 @@ Node *func_dec(Node *node)
       curr->right = new_node(NULL);
       curr = curr->right;
    }
-#endif
    check(!found_error && !find(RPAR, 0), "expected ) after function declaration");
    check(!found_error && !find(DOTS, 0), "Expected : after function declaration");
 
@@ -454,8 +433,7 @@ Node *if_node(Node *node)
    }
    curr = node;
    while (
-   !found_error && includes((Type[]) {ELSE, ELIF, 0}, tokens[exe_pos]->type) &&
-node->token->space == tokens[exe_pos]->space)
+   !found_error && includes((Type[]) {ELSE, ELIF, 0}, tokens[exe_pos]->type) && node->token->space == tokens[exe_pos]->space)
    {
       Token *token = find(ELSE, ELIF, 0);
 
@@ -547,15 +525,21 @@ Node *prime()
       size_t offset = 0;
       while (within_space(token->space))
       {
-         Token *attr = find(INT, CHARS, CHAR, FLOAT, BOOL, 0);
+         Token *attr = find(INT, CHARS, CHAR, FLOAT, BOOL, ID, 0);
          Token *id = find(ID, 0);
-         if (check(!attr , "expected data type followed by id")) break;
+         if(attr->type == ID)
+         {
+            Node *tmp = get_struct(attr);
+            if(tmp) attr = tmp->token;
+            else attr = NULL;
+         }
+         if (check(!attr, "expected data type followed by id")) break;
          if (check(!id, "expected id after data type")) break;
-         
+
          size_t size = sizeofToken(attr); // Size of the current data type
          size_t alignment = size; // Alignment is typically equal to the size of the data type
          size_t padding = calculate_padding(offset, alignment);
-         if(offset) offset += padding;
+         if (offset) offset += padding;
          else offset = size;
 
          id->type = attr->type;
@@ -572,6 +556,9 @@ Node *prime()
       node->token->ptr = offset;
       // define struct size
       new_struct(node);
+      debug(CYAN "========================================\n");
+      pnode(node, NULL, 0);
+      debug("\n========================================\n", RESET);
       return node;
    }
    else if ((token = find(ID, INT, CHARS, CHAR, FLOAT, BOOL, 0)))
@@ -580,13 +567,18 @@ Node *prime()
       if (token->type == ID && token->name && (struct_node =  is_struct(token)))
       {
          // token = tmp_node->token;
+         if(!struct_node->token->struct_id)
+         {
+            check(1, "expected struct id\n");
+            exit(1);
+         }
          token = find(ID, 0);
          check(!token, "Expected variable name after struct declaration\n");
          setName(struct_node->token, token->name);
          struct_node->token->declare = true;
          struct_node->token->type = STRUCT_CALL;
          Node *curr = struct_node->right;
-         while(curr->left)
+         while (curr->left)
          {
             char *name = strjoin(token->name, ".", curr->left->token->name);
             setName(curr->left->token, name);
@@ -598,8 +590,7 @@ Node *prime()
          new_variable(struct_node->token);
          return struct_node;
       }
-      else 
-      if (token->declare)
+      else if (token->declare)
       {
          Token *tmp = find(ID, 0);
          check(!tmp, "Expected variable name after [%s] symbol\n", to_string(token->type));
@@ -667,6 +658,7 @@ void generate_ast()
 // INTERMEDIATE REPRESENTATION
 bool optimize_ir()
 {
+   return false;
    static int op = 0;
    static bool did_optimize = false;
    bool did_something = false;
@@ -1124,7 +1116,11 @@ Token* generate_ir(Node *node)
    Inst *inst = NULL;
    switch (node->token->type)
    {
-   case ID: return get_variable(node->token->name);
+   case ID: 
+   {
+      if(node->token->isattr) return node->token;
+      return get_variable(node->token->name);
+   }
    case INT: case BOOL: case CHAR: case FLOAT:
    {
       inst = new_inst(node->token);
@@ -1189,15 +1185,25 @@ Token* generate_ir(Node *node)
       // TODO: invalid syntax, break should be inside whie loop
       break;
    }
-   case STRUCT_DEF: return NULL;
+   case STRUCT_DEF: 
+   {
+      new_struct(node);
+      return NULL;
+   }
    case STRUCT_CALL:
    {
       pnode(node, NULL, 0);
+      if(!node->token->struct_id)
+      {
+         check(1, "expected struct id\n");
+         exit(1);
+      }
       // if(node->token) new_variable(node->token);
       // new_inst(node->token);
+      if (node->token->name && node->token->declare) new_variable(node->token);
       size_t offset = node->token->ptr;
       node = node->right;
-      while(node->left)
+      while (node->left)
       {
          node->left->token->declare = false;
          generate_ir(node->left);
@@ -1205,8 +1211,44 @@ Token* generate_ir(Node *node)
          node = node->right;
       }
       ptr += offset;
+      
       // exit(1);
       return NULL;
+      break;
+   }
+   case DOT:
+   {
+      Node *res = node;
+      Token *left =  generate_ir(node->left);
+      Node *struct_ = get_struct_by_id(left->struct_id);
+      Token *right =  generate_ir(node->right);
+      // debug("access %k from %k \n", right, left);
+      char *name =  strjoin(left->name, ".", right->name);
+      setName(right, name);
+      free(name);
+      debug("===================================\n");
+      check(!struct_, "struct not found");
+      pnode(struct_, NULL, 0);
+      debug("===================================\n");
+      bool found = false;
+      struct_ = struct_->right;
+      // debug("right %k\n", right);
+      while(struct_->left)
+      {
+         char *to_find = strjoin(left->name ,".",struct_->left->token->name);
+         // debug("find %s\n", to_find);
+         if(strcmp(right->name, to_find) == 0)
+         {
+            free(to_find);
+            found = true;
+            right->ptr = node->token->ptr + struct_->left->token->ptr;
+            right->type = struct_->left->token->type;
+            break;
+         }
+         free(to_find);
+         struct_ = struct_->right;
+      }
+      return right;
       break;
    }
    default: check(1, "handle this case %s", to_string(node->token->type)); return NULL;
@@ -1376,7 +1418,12 @@ void generate_asm(char *name)
                pasm("%i%ra, %v", "mov", left, right, left->name);
             }
          }
-         else check(1, "handle this case");
+         else
+         {
+            check(1, "handle this case");
+            debug("left:%k, right:%k\n", left, right);
+            // check(1, "handle this case left:%k, right:%k", left, right);
+         }
          if (left->name) {pasm(" ;// assign [%s]", left->name); }
          else if (left->creg) {pasm(" ;// assign [%s]", left->creg);}
          if (left->isref) {pasm(" isref"); }

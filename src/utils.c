@@ -1,8 +1,9 @@
 #include "./include/header.h"
 
 // TOKENIZE
-Specials *dataTypes = (Specials[]) { {"int", INT}, {"bool", BOOL}, {"chars", CHARS}, 
-                                       {"char", CHAR}, {"float", FLOAT}, {0, (Type)0}};
+Specials *dataTypes = (Specials[]) { {"int", INT}, {"bool", BOOL}, {"chars", CHARS},
+   {"char", CHAR}, {"float", FLOAT}, {0, (Type)0}
+};
 
 Token* new_token_(char *filename, int line, char *input, size_t s, size_t e, Type type, size_t space)
 {
@@ -209,7 +210,7 @@ int sizeofToken(Token *token)
    case CHARS: return sizeof(char *);
    case CHAR: return sizeof(char);
    case BOOL: return sizeof(bool);
-   // case struct_: return token->size;
+   case STRUCT_DEF: return token->ptr;
    default: check(1, "add this type [%s]\n", to_string(token->type));
    }
    return 0;
@@ -234,7 +235,7 @@ Inst *new_inst(Token *token)
    }
    else if (token->name && token->declare)
    {
-      if(token->type == STRUCT_CALL)
+      if (token->type == STRUCT_CALL)
       {
          debug("found"); exit(1);
       }
@@ -438,13 +439,14 @@ Token *get_variable(char *name)
    check(1, "%s not found\n", name);
    return NULL;
 }
-
 Node *new_struct(Node *node)
 {
+   static size_t structs_ids;
+   if(!node->token->struct_id) node->token->struct_id = (structs_ids += 1);
    // check(1, "implement this one");
-   debug(CYAN "new struct [%s] " RESET, node->token->name);
-   if(scoop && scoop->token) debug("in scoop %k", scoop->token);
-   else if(scoop && !scoop->token) debug("in scoop with NULL token");
+   debug(CYAN "new struct [%s] with id [%zu] " RESET, node->token->name, node->token->struct_id);
+   if (scoop && scoop->token) debug("in scoop %k", scoop->token);
+   else if (scoop && !scoop->token) debug("in scoop with NULL token");
    else debug("in NULL scoop");
    debug("\n" RESET);
    for (size_t i = 0; i < scoop->spos; i++)
@@ -471,11 +473,11 @@ Node *new_struct(Node *node)
 Node *get_struct(Token *token)
 {
    debug(CYAN "get struct [%s] ", token->name);
-   if(scoop && scoop->token) debug("from scoop %k", scoop->token);
-   else if(scoop && !scoop->token) debug("from scoop with NULL token");
+   if (scoop && scoop->token) debug("from scoop %k", scoop->token);
+   else if (scoop && !scoop->token) debug("from scoop with NULL token");
    else debug("from NULL scoop");
    debug("\n" RESET);
-   
+
    for (ssize_t j = scoopPos; j >= 0; j--)
    {
       Scoop *scoop = &Gscoop[j];
@@ -485,6 +487,28 @@ Node *get_struct(Token *token)
    // check(1, "%s not found\n", name);
    return NULL;
 }
+
+Node *get_struct_by_id(size_t id)
+{
+   debug(CYAN "get struct with id [%zu] ", id);
+   if (scoop && scoop->token) debug("from scoop %k", scoop->token);
+   else if (scoop && !scoop->token) debug("from scoop with NULL token");
+   else debug("from NULL scoop");
+   debug("\n" RESET);
+   for (ssize_t j = scoopPos; j >= 0; j--)
+   {
+      Scoop *scoop = &Gscoop[j];
+      debug("[%d] scoop [%s] has %zu structs\n", j, scoop->token->name, scoop->spos);
+      for (size_t i = 0; i < scoop->spos; i++)
+      {
+         debug(GREEN"struct has [%zu]\n"RESET, scoop->structs[i]->token->struct_id);
+         if (scoop->structs[i]->token->struct_id == id) return scoop->structs[i];
+      }
+   }
+   // check(1, "%s not found\n", name);
+   return NULL;
+}
+
 
 // TODO: implement it
 bool compatible(Token *left, Token *right)
@@ -843,7 +867,7 @@ void print_ir()
          else if (curr->creg) debug("creg %s ", curr->creg);
          else if (curr->type == INT) debug("value %lld ", curr->Int.value);
          else if (curr->type == BOOL) debug("value %s ", curr->Bool.value ? "True" : "False");
-         else if(curr->type == CHAR) debug("value %c ", curr->Char.value);
+         else if (curr->type == CHAR) debug("value %c ", curr->Char.value);
          // else if(curr->type == BOOL) debug("value %s ", curr->Bool.value ? "True" : "False");
          // else if(curr->type == FLOAT)
          // {
@@ -856,6 +880,12 @@ void print_ir()
             else debug("in %s", curr->creg);
          }
          else check(1, "handle this case in generate ir\n", "");
+         break;
+      }
+      case DOT:
+      {
+         debug("[%-6s] ", to_string(curr->type));
+         debug("access [%s] in %k", right->name, left);
          break;
       }
       case JMP: debug("jmp to [%s]", curr->name); break;
@@ -881,7 +911,7 @@ int ptoken_(const char*filename, int line, Token *token)
    res += debug("[%-6s] ", to_string_(filename, line, token->type));
    switch (token->type)
    {
-   case VOID: case CHARS: case CHAR: case INT: case BOOL: case FLOAT:
+   case VOID: case CHARS: case CHAR: case INT: case BOOL: case FLOAT: case STRUCT_CALL:
    {
       if (token->name) res += debug("name [%s] ", token->name);
       if (token->declare) res += debug("[declare] ");
@@ -903,8 +933,10 @@ int ptoken_(const char*filename, int line, Token *token)
    case FDEC: case ID: res += debug("name [%s] ", token->name); break;
    default: break;
    }
+   if (token->ptr) res += debug("PTR [%zu] ", token->ptr);
    if (token->remove) res += debug("[remove] ");
    if (token->retType) res += debug("ret [%t] ", token->retType);
+   if (token->struct_id) res += debug("struct_id [%zu] ", token->struct_id);
    res += debug("space [%zu] ", token->space);
    return res;
 }
@@ -1074,7 +1106,7 @@ char *strjoin(char *str0, char *str1, char *str2)
 
    char *res = allocate(len0 + len1 + len2 + 1, 1);
    strcpy(res, str0);
-   strcpy(res + len0 , str1);
-   strcpy(res + len0 + len1 , str2);
+   strcpy(res + len0, str1);
+   strcpy(res + len0 + len1, str2);
    return res;
 }

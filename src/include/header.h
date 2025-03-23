@@ -48,6 +48,8 @@ typedef struct Token
    bool hasref;
    // size_t rsp;
    bool isarg;
+   size_t struct_id;
+   bool isattr;
 
    struct
    {
@@ -193,6 +195,7 @@ bool includes(Type *types, Type type);
 Token* generate_ir(Node *node);
 Node *new_struct(Node *node);
 Node*get_struct(Token *token);
+Node *get_struct_by_id(size_t id);
 void add_attribute(Token *obj, Token *attr);
 char *strjoin(char *str0, char *str1, char *str2);
 int sizeofToken(Token *token);
