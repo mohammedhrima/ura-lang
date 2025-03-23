@@ -25,13 +25,13 @@ typedef enum
    WHILE, CONTINUE, BREAK,
    FDEC, FCALL,
    VOID, INT, CHARS, CHAR, BOOL, FLOAT,
-   STRUCT, ID, REF,
+   STRUCT_DEF, STRUCT_CALL, ID, REF,
    JNE, JE, JMP, BLOC, END_BLOC,
    PUSH, POP,
    END
 } Type;
 
-typedef struct
+typedef struct Token
 {
    Type type;
    Type retType;
@@ -79,6 +79,12 @@ typedef struct
       {
          char value;
       } Char;
+      // struct
+      // {
+      //    struct Token **attrs;
+      //    size_t pos;
+      //    size_t len;
+      // } Struct;
    };
 } Token;
 
@@ -102,6 +108,10 @@ typedef struct
    Node **functions;
    size_t fpos;
    size_t fsize;
+
+   Node **structs;
+   size_t spos;
+   size_t ssize;
 
    Token **vars;
    size_t vpos;
@@ -181,3 +191,7 @@ Node *copy_node(Node *node);
 void create_builtin(char *name, Type *params, Type retType);
 bool includes(Type *types, Type type);
 Token* generate_ir(Node *node);
+Node *new_struct(Node *node);
+Node*get_struct(Token *token);
+void add_attribute(Token *obj, Token *attr);
+char *strjoin(char *str0, char *str1, char *str2);

@@ -5,7 +5,8 @@ Specials *dataTypes = (Specials[]) { {"int", INT}, {"bool", BOOL}, {"chars", CHA
 
 Token* new_token_(char *filename, int line, char *input, size_t s, size_t e, Type type, size_t space)
 {
-   debug("new token in %s:%d\n", filename, line);
+   // debug("new token in %s:%d\n", filename, line);
+   debug("new token ");
    Token *new = allocate(1, sizeof(Token));
    new->type = type;
    new->space = ((space + TAB / 2) / TAB) * TAB;
@@ -92,6 +93,12 @@ Token *copy_token(Token *token)
    if (token->name) new->name = strdup(token->name);
    if (token->Chars.value) new->Chars.value = strdup(token->Chars.value);
    if (token->creg) new->creg = strdup(token->creg);
+   // if (token->Struct.attrs)
+   // {
+   //    new->Struct.attrs = allocate(token->Struct.len, sizeof(Token*));
+   //    for (size_t i = 0; i < token->Struct.pos; i++)
+   //       new->Struct.attrs[i] = copy_token(token->Struct.attrs[i]);
+   // }
    add_token(new);
    return new;
 }
@@ -130,6 +137,23 @@ Token *find(Type type, ...)
 bool within_space(size_t space)
 {
    return tokens[exe_pos]->space > space && tokens[exe_pos]->type != END && !found_error;
+}
+
+void add_attribute(Token *obj, Token *attr)
+{
+   // if (obj->Struct.attrs == NULL)
+   // {
+   //    obj->Struct.len = 10;
+   //    obj->Struct.attrs = allocate(obj->Struct.len, sizeof(Token *));
+   // }
+   // else if (obj->Struct.pos + 1 == obj->Struct.len)
+   // {
+   //    Token **tmp = allocate((obj->Struct.len *= 2), sizeof(Token *));
+   //    memcpy(tmp, obj->Struct.attrs, obj->Struct.pos * sizeof(Token *));
+   //    free(obj->Struct.attrs);
+   //    obj->Struct.attrs = tmp;
+   // }
+   // obj->Struct.attrs[obj->Struct.pos++] = attr;
 }
 
 // INTERMEDIATE REPRESENTATION
@@ -252,7 +276,7 @@ void enter_scoop(Token *token)
       Gscoop = tmp;
    }
    scoopPos++;
-   Gscoop[scoopPos] = (Scoop) { .token = token, .functions = NULL, .vars = NULL };
+   Gscoop[scoopPos] = (Scoop) { .token = token, .functions = NULL, .vars = NULL, .structs = NULL };
    scoop = &Gscoop[scoopPos];
 }
 
@@ -262,7 +286,8 @@ void exit_scoop()
    debug(CYAN "Exit Scoop: %k index %zu\n" RESET, Gscoop[scoopPos].token, scoopPos);
    free(Gscoop[scoopPos].functions);
    free(Gscoop[scoopPos].vars);
-   Gscoop[scoopPos] = (Scoop) { .token = NULL, .functions = NULL, .vars = NULL };
+   free(Gscoop[scoopPos].structs);
+   Gscoop[scoopPos] = (Scoop) { .token = NULL, .functions = NULL, .vars = NULL, .structs = NULL  };
    scoopPos--;
    if (scoopPos >= 0) scoop = &Gscoop[scoopPos];
 }
@@ -303,9 +328,9 @@ void create_builtin(char *name, Type *params, Type retType)
    int i = 0;
    while (params[i])
    {
+      curr->left = new_node(new_token(NULL, 0, 0, params[i], func->token->space + TAB));
       curr->right = new_node(NULL);
       curr = curr->right;
-      curr->left = new_node(new_token(NULL, 0, 0, params[i], func->token->space + TAB));
       i++;
    }
    if (builtins_functions == NULL)
@@ -327,7 +352,7 @@ void create_builtin(char *name, Type *params, Type retType)
 
 Node *new_function(Node *node)
 {
-   debug("new_func %s in scoop %k that return %t", node->token->name, scoop->token, node->token->retType);
+   debug("new_func %s in scoop %k that return %t\n", node->token->name, scoop->token, node->token->retType);
    for (size_t i = 0; i < scoop->fpos; i++)
    {
       Node *func = scoop->functions[i];
@@ -405,6 +430,54 @@ Token *get_variable(char *name)
    check(1, "%s not found\n", name);
    return NULL;
 }
+
+Node *new_struct(Node *node)
+{
+   // check(1, "implement this one");
+   debug(CYAN "new struct [%s] " RESET, node->token->name);
+   if(scoop && scoop->token) debug("in scoop %k", scoop->token);
+   else if(scoop && !scoop->token) debug("in scoop with NULL token");
+   else debug("in NULL scoop");
+   debug("\n" RESET);
+   for (size_t i = 0; i < scoop->spos; i++)
+   {
+      Token *curr = scoop->structs[i]->token;
+      if (strcmp(curr->name, node->token->name) == 0) check(1, "Redefinition of %s\n", node->token->name);
+   }
+   if (scoop->structs == NULL)
+   {
+      scoop->ssize = 10;
+      scoop->structs = allocate(scoop->ssize, sizeof(Node *));
+   }
+   else if (scoop->spos + 1 == scoop->ssize)
+   {
+      Node **tmp = allocate(scoop->ssize *= 2, sizeof(Node *));
+      memcpy(tmp, scoop->structs, scoop->spos * sizeof(Node *));
+      free(scoop->structs);
+      scoop->structs = tmp;
+   }
+   scoop->structs[scoop->spos++] = node;
+   return node;
+}
+
+Node *get_struct(Token *token)
+{
+   debug(CYAN "get struct [%s] ", token->name);
+   if(scoop && scoop->token) debug("from scoop %k", scoop->token);
+   else if(scoop && !scoop->token) debug("from scoop with NULL token");
+   else debug("from NULL scoop");
+   debug("\n" RESET);
+   
+   for (ssize_t j = scoopPos; j >= 0; j--)
+   {
+      Scoop *scoop = &Gscoop[j];
+      for (size_t i = 0; i < scoop->spos; i++)
+         if (strcmp(scoop->structs[i]->token->name, token->name) == 0) return scoop->structs[i];
+   }
+   // check(1, "%s not found\n", name);
+   return NULL;
+}
+
 // TODO: implement it
 bool compatible(Token *left, Token *right)
 {
@@ -427,9 +500,9 @@ const char *to_string_(const char *filename, const int line, Type type) {
       [DOTS] = "DOTS", [DOT] = "DOT", [RETURN] = "RETURN", [IF] = "IF", [ELIF] = "ELIF",
       [ELSE] = "ELSE", [WHILE] = "HILE", [CONTINUE] = "continue", [BREAK] = "break", [REF] = "REF",
       [FDEC] = "F_DEC", [FCALL] = "F_CALL", [INT] = "INT", [VOID] = "VOID", [CHARS] = "CHARS",
-      [CHAR] = "CHAR", [BOOL] = "BOOL", [FLOAT] = "FLOAT", [STRUCT] = "STRUCT", [ID] = "ID",
-      [END_BLOC] = "END_BLOC", [BLOC] = "BLOC", [JNE] = "JNE", [JE] = "JE", [JMP] = "JMP",
-      [END] = "END"
+      [CHAR] = "CHAR", [BOOL] = "BOOL", [FLOAT] = "FLOAT", [STRUCT_CALL] = "STRUCT CALL",
+      [STRUCT_DEF] = "STRUCT DEF", [ID] = "ID", [END_BLOC] = "END_BLOC", [BLOC] = "BLOC",
+      [JNE] = "JNE", [JE] = "JE", [JMP] = "JMP", [END] = "END"
    };
    if (type >= 1 && type < sizeof(arr) / sizeof(arr[0]) && arr[type] != NULL) return arr[type];
    check(1, "Unknown type [%d] in %s:%d\n", type, filename, line);
@@ -818,7 +891,8 @@ int ptoken_(const char*filename, int line, Token *token)
       }
       break;
    }
-   case FCALL: case FDEC: case ID: res += debug("name [%s] ", token->name); break;
+   case STRUCT_DEF: case FCALL:
+   case FDEC: case ID: res += debug("name [%s] ", token->name); break;
    default: break;
    }
    if (token->remove) res += debug("[remove] ");
@@ -965,6 +1039,7 @@ void free_token(Token *token)
    if (token->name) free(token->name);
    if (token->creg) free(token->creg);
    if (token->Chars.value) free(token->Chars.value);
+   // if (token->Struct.attrs) free(token->Struct.attrs);
    free(token);
 }
 
@@ -981,4 +1056,17 @@ void free_memory()
    free(input);
    for (int i = 0; tokens && tokens[i]; i++) free_token(tokens[i]);
    free_node(head);
+}
+
+char *strjoin(char *str0, char *str1, char *str2)
+{
+   size_t len0 = strlen(str0);
+   size_t len1 = strlen(str1);
+   size_t len2 = strlen(str2);
+
+   char *res = allocate(len0 + len1 + len2 + 1, 1);
+   strcpy(res, str0);
+   strcpy(res + len0 , str1);
+   strcpy(res + len0 + len1 , str2);
+   return res;
 }
