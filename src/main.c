@@ -527,6 +527,11 @@ Node *is_struct(Token *token)
    return NULL;
 }
 
+size_t calculate_padding(size_t offset, size_t alignment) {
+   size_t padding = (alignment - (offset % alignment)) % alignment;
+   return padding;
+}
+
 Node *prime()
 {
    Node *node = NULL;
@@ -539,19 +544,32 @@ Node *prime()
       node->token->type = STRUCT_DEF;
       node->right = new_node(NULL);
       Node *curr = node->right;
+      size_t offset = 0;
       while (within_space(token->space))
       {
          Token *attr = find(INT, CHARS, CHAR, FLOAT, BOOL, 0);
          Token *id = find(ID, 0);
-         if (check(!attr || !id, "expected data type followed by id")) break;
+         if (check(!attr , "expected data type followed by id")) break;
+         if (check(!id, "expected id after data type")) break;
+         
+         size_t size = sizeofToken(attr); // Size of the current data type
+         size_t alignment = size; // Alignment is typically equal to the size of the data type
+         size_t padding = calculate_padding(offset, alignment);
+         if(offset) offset += padding;
+         else offset = size;
+
          id->type = attr->type;
          // char *name = strjoin(token->name, ".", id->name);
          // setName(id, name);
          // free(name);
          curr->left = new_node(id);
+         curr->left->token->ptr = offset;
          curr->right = new_node(NULL);
          curr = curr->right;
+         offset += size;
       }
+      // ptr = offset;
+      node->token->ptr = offset;
       // define struct size
       new_struct(node);
       return node;
@@ -572,9 +590,11 @@ Node *prime()
          {
             char *name = strjoin(token->name, ".", curr->left->token->name);
             setName(curr->left->token, name);
+            // curr->left->token->ptr += ptr;
             free(name);
             curr = curr->right;
          }
+         // ptr += struct_node->token->ptr;
          new_variable(struct_node->token);
          return struct_node;
       }
@@ -661,7 +681,7 @@ bool optimize_ir()
          Token *left = insts[i]->left;
          Token *right = insts[i]->right;
 
-         Type types[] = {INT, FLOAT, 0};
+         Type types[] = {INT, FLOAT, CHAR, 0};
          Type ops[] = {ADD, SUB, MUL, DIV, 0};
          // TODO: check if left and right are compatible
          // test if left is function, and right is number ...
@@ -806,7 +826,7 @@ bool optimize_ir()
    case 4:
    {
       // TODO: be carefull this one remove anything that don't have reg
-      debug(CYAN "OP[%d] (remove unused instructions)\n"RESET, op);
+      debug(CYAN "OP[%d] remove unused instructions\n"RESET, op);
       for (size_t i = 0; insts[i]; i++)
       {
          Token *curr = insts[i]->token;
@@ -1174,13 +1194,17 @@ Token* generate_ir(Node *node)
    {
       pnode(node, NULL, 0);
       // if(node->token) new_variable(node->token);
+      // new_inst(node->token);
+      size_t offset = node->token->ptr;
       node = node->right;
       while(node->left)
       {
-         node->left->token->declare = true;
+         node->left->token->declare = false;
          generate_ir(node->left);
+         node->left->token->declare = true;
          node = node->right;
       }
+      ptr += offset;
       // exit(1);
       return NULL;
       break;

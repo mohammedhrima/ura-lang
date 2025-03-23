@@ -1,7 +1,8 @@
 #include "./include/header.h"
 
 // TOKENIZE
-Specials *dataTypes = (Specials[]) { {"int", INT}, {"bool", BOOL}, {"chars", CHARS}, {0, (Type)0}};
+Specials *dataTypes = (Specials[]) { {"int", INT}, {"bool", BOOL}, {"chars", CHARS}, 
+                                       {"char", CHAR}, {"float", FLOAT}, {0, (Type)0}};
 
 Token* new_token_(char *filename, int line, char *input, size_t s, size_t e, Type type, size_t space)
 {
@@ -233,9 +234,16 @@ Inst *new_inst(Token *token)
    }
    else if (token->name && token->declare)
    {
-      // new_variable(token);
-      token->ptr = (ptr += sizeofToken(token));
-      token->reg = ++reg;
+      if(token->type == STRUCT_CALL)
+      {
+         debug("found"); exit(1);
+      }
+      else
+      {
+         // new_variable(token);
+         token->ptr = (ptr += sizeofToken(token));
+         token->reg = ++reg;
+      }
    }
    else if (includes((Type[]) {ADD, SUB, MUL, DIV, 0}, token->type))
    {
@@ -827,7 +835,7 @@ void print_ir()
          if (right->name) debug(" (%s)", right->name);
          break;
       }
-      case INT: case BOOL: case CHARS:
+      case INT: case BOOL: case CHARS: case CHAR:
       {
          debug("[%-6s] ", to_string(curr->type));
          if (curr->declare) debug("declare [%s] PTR=[%zu]", curr->name, curr->ptr);
@@ -835,7 +843,7 @@ void print_ir()
          else if (curr->creg) debug("creg %s ", curr->creg);
          else if (curr->type == INT) debug("value %lld ", curr->Int.value);
          else if (curr->type == BOOL) debug("value %s ", curr->Bool.value ? "True" : "False");
-         // else if(curr->type == CHAR) debug("value %c ", curr->Char.value);
+         else if(curr->type == CHAR) debug("value %c ", curr->Char.value);
          // else if(curr->type == BOOL) debug("value %s ", curr->Bool.value ? "True" : "False");
          // else if(curr->type == FLOAT)
          // {

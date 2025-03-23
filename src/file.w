@@ -1,8 +1,8 @@
 
 struct User:
-   int a
-   int b
+   char a
+   char b
+   int c
 
 main():
-   int c 
    User x
