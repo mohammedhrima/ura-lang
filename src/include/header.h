@@ -195,3 +195,4 @@ Node *new_struct(Node *node);
 Node*get_struct(Token *token);
 void add_attribute(Token *obj, Token *attr);
 char *strjoin(char *str0, char *str1, char *str2);
+int sizeofToken(Token *token);
