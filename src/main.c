@@ -222,7 +222,7 @@ Node *dot()
 {
    Node *left = sign();
    Token *token;
-   while((token = find(DOT, 0)))
+   while ((token = find(DOT, 0)))
    {
       Node *node = new_node(token);
       node->left = left;
@@ -527,10 +527,10 @@ Node *prime()
       {
          Token *attr = find(INT, CHARS, CHAR, FLOAT, BOOL, ID, 0);
          Token *id = find(ID, 0);
-         if(attr->type == ID)
+         if (attr->type == ID)
          {
             Node *tmp = get_struct(attr);
-            if(tmp) attr = tmp->token;
+            if (tmp) attr = tmp->token;
             else attr = NULL;
          }
          if (check(!attr, "expected data type followed by id")) break;
@@ -553,6 +553,7 @@ Node *prime()
          offset += size;
       }
       // ptr = offset;
+      // node->token->offset = offset;
       node->token->ptr = offset;
       // define struct size
       new_struct(node);
@@ -567,7 +568,7 @@ Node *prime()
       if (token->type == ID && token->name && (struct_node =  is_struct(token)))
       {
          // token = tmp_node->token;
-         if(!struct_node->token->struct_id)
+         if (!struct_node->token->struct_id)
          {
             check(1, "expected struct id\n");
             exit(1);
@@ -586,6 +587,9 @@ Node *prime()
             free(name);
             curr = curr->right;
          }
+         size_t offset = struct_node->token->ptr;
+         struct_node->token->ptr = ptr;
+         ptr += offset;
          // ptr += struct_node->token->ptr;
          new_variable(struct_node->token);
          return struct_node;
@@ -1116,9 +1120,9 @@ Token* generate_ir(Node *node)
    Inst *inst = NULL;
    switch (node->token->type)
    {
-   case ID: 
+   case ID:
    {
-      if(node->token->isattr) return node->token;
+      if (node->token->isattr) return node->token;
       return get_variable(node->token->name);
    }
    case INT: case BOOL: case CHAR: case FLOAT:
@@ -1185,7 +1189,7 @@ Token* generate_ir(Node *node)
       // TODO: invalid syntax, break should be inside whie loop
       break;
    }
-   case STRUCT_DEF: 
+   case STRUCT_DEF:
    {
       new_struct(node);
       return NULL;
@@ -1193,7 +1197,7 @@ Token* generate_ir(Node *node)
    case STRUCT_CALL:
    {
       pnode(node, NULL, 0);
-      if(!node->token->struct_id)
+      if (!node->token->struct_id)
       {
          check(1, "expected struct id\n");
          exit(1);
@@ -1208,10 +1212,11 @@ Token* generate_ir(Node *node)
          node->left->token->declare = false;
          generate_ir(node->left);
          node->left->token->declare = true;
+         node->left->token->ptr += ptr;
          node = node->right;
       }
       ptr += offset;
-      
+
       // exit(1);
       return NULL;
       break;
@@ -1233,11 +1238,11 @@ Token* generate_ir(Node *node)
       bool found = false;
       struct_ = struct_->right;
       // debug("right %k\n", right);
-      while(struct_->left)
+      while (struct_->left)
       {
-         char *to_find = strjoin(left->name ,".",struct_->left->token->name);
+         char *to_find = strjoin(left->name, ".", struct_->left->token->name);
          // debug("find %s\n", to_find);
-         if(strcmp(right->name, to_find) == 0)
+         if (strcmp(right->name, to_find) == 0)
          {
             free(to_find);
             found = true;

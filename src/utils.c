@@ -442,7 +442,7 @@ Token *get_variable(char *name)
 Node *new_struct(Node *node)
 {
    static size_t structs_ids;
-   if(!node->token->struct_id) node->token->struct_id = (structs_ids += 1);
+   if (!node->token->struct_id) node->token->struct_id = (structs_ids += 1);
    // check(1, "implement this one");
    debug(CYAN "new struct [%s] with id [%zu] " RESET, node->token->name, node->token->struct_id);
    if (scoop && scoop->token) debug("in scoop %k", scoop->token);

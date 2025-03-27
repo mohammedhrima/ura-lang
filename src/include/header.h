@@ -50,6 +50,7 @@ typedef struct Token
    bool isarg;
    size_t struct_id;
    bool isattr;
+   size_t offset;
 
    struct
    {
@@ -81,12 +82,12 @@ typedef struct Token
       {
          char value;
       } Char;
-      // struct
-      // {
-      //    struct Token **attrs;
-      //    size_t pos;
-      //    size_t len;
-      // } Struct;
+      struct
+      {
+         struct Token **attrs;
+         size_t pos;
+         size_t len;
+      } Struct;
    };
 } Token;
 
@@ -111,7 +112,7 @@ typedef struct
    size_t fpos;
    size_t fsize;
 
-   Node **structs;
+   Token **structs;
    size_t spos;
    size_t ssize;
 
