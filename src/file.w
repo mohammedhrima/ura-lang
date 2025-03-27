@@ -8,10 +8,9 @@ struct User:
    int a
    int b
    int c
+   Tmp y
 
 main():
    int d
    User x
-   Tmp y
    x.a = 1
-   y.b1 = 2
