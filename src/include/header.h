@@ -15,7 +15,7 @@
 // STRUCTS
 typedef enum
 {
-   START = 1,
+   START = 1, CHILDREN,
    ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,
    EQUAL, NOT_EQUAL, LESS_EQUAL, MORE_EQUAL, LESS, MORE,
    ADD, SUB, MUL, DIV, MOD,
@@ -97,6 +97,11 @@ typedef struct Node
    struct Node *left;
    struct Node *right;
    Token *token;
+
+   struct Node **children;
+   size_t cpos; // children pos
+   size_t csize; // children size
+
 } Node;
 
 typedef struct
@@ -202,3 +207,4 @@ Token *get_struct_by_id(size_t id);
 void add_attribute(Token *obj, Token *attr);
 char *strjoin(char *str0, char *str1, char *str2);
 int sizeofToken(Token *token);
+Node* add_child(Node *node, Node *child);

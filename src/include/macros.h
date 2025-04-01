@@ -29,7 +29,7 @@
 #define WITH_COMMENTS 1
 
 #if IR
-#define BUILTINS 0
+#define BUILTINS 1
 #ifndef OPTIMIZE
 #define OPTIMIZE 1
 #endif
@@ -42,6 +42,8 @@
 #ifndef DEBUG
 #define DEBUG 1
 #endif
+
+#define TREE 0
 
 #define allocate(len, size) allocate_func(LINE, len, size)
 #define check(cond, fmt, ...) check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)
