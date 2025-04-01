@@ -7,11 +7,9 @@ main:
     push rbp
     mov  rbp, rsp
     sub  rsp, 16
-    mov  DWORD PTR -4[rbp], 0 ;// declare [d]
-    mov  DWORD PTR -8[rbp], 0 ;// declare [x.a]
-    mov  DWORD PTR -12[rbp], 0 ;// declare [x.b]
-    mov  DWORD PTR -16[rbp], 0 ;// declare [x.c]
-     ;// assign [x.a]
+    mov  edi, 10 ;// assign [edi]
+    call malloc
+    mov  QWORD PTR -8[rbp], rax ;// assign [str]
     mov  eax, 0
     leave 
     ret  

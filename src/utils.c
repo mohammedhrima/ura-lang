@@ -95,12 +95,11 @@ Token *copy_token(Token *token)
    if (token->name) new->name = strdup(token->name);
    if (token->Chars.value) new->Chars.value = strdup(token->Chars.value);
    if (token->creg) new->creg = strdup(token->creg);
-   // if (token->Struct.attrs)
-   // {
-   //    new->Struct.attrs = allocate(token->Struct.len, sizeof(Token*));
-   //    for (size_t i = 0; i < token->Struct.pos; i++)
-   //       new->Struct.attrs[i] = copy_token(token->Struct.attrs[i]);
-   // }
+   if (token->Struct.attrs)
+   {
+      new->Struct.attrs = allocate(token->Struct.len, sizeof(Token*));
+      for (size_t i = 0; i < token->Struct.pos; i++) new->Struct.attrs[i] = copy_token(token->Struct.attrs[i]);
+   }
    add_token(new);
    return new;
 }
@@ -143,19 +142,19 @@ bool within_space(size_t space)
 
 void add_attribute(Token *obj, Token *attr)
 {
-   // if (obj->Struct.attrs == NULL)
-   // {
-   //    obj->Struct.len = 10;
-   //    obj->Struct.attrs = allocate(obj->Struct.len, sizeof(Token *));
-   // }
-   // else if (obj->Struct.pos + 1 == obj->Struct.len)
-   // {
-   //    Token **tmp = allocate((obj->Struct.len *= 2), sizeof(Token *));
-   //    memcpy(tmp, obj->Struct.attrs, obj->Struct.pos * sizeof(Token *));
-   //    free(obj->Struct.attrs);
-   //    obj->Struct.attrs = tmp;
-   // }
-   // obj->Struct.attrs[obj->Struct.pos++] = attr;
+   if (obj->Struct.attrs == NULL)
+   {
+      obj->Struct.len = 10;
+      obj->Struct.attrs = allocate(obj->Struct.len, sizeof(Token *));
+   }
+   else if (obj->Struct.pos + 1 == obj->Struct.len)
+   {
+      Token **tmp = allocate((obj->Struct.len *= 2), sizeof(Token *));
+      memcpy(tmp, obj->Struct.attrs, obj->Struct.pos * sizeof(Token *));
+      free(obj->Struct.attrs);
+      obj->Struct.attrs = tmp;
+   }
+   obj->Struct.attrs[obj->Struct.pos++] = attr;
 }
 
 // INTERMEDIATE REPRESENTATION
@@ -331,7 +330,14 @@ void create_builtin(char *name, Type *params, Type retType)
 {
    Node *func = new_node(new_token(name, 0, strlen(name), FDEC, 0));
    func->token->retType = retType;
-   setReg(func->token, "eax");
+   switch(retType)
+   {
+      case INT: setReg(func->token, "eax"); break;
+      case CHAR: setReg(func->token, "al"); break;
+      case CHARS: setReg(func->token, "rax"); break;
+      case VOID:  setReg(func->token, "rax"); break;
+      default: check(1, "handle this case %s", to_string(retType)) ;
+   }
    func->left = new_node(NULL);
    Node *curr = func->left;
    int i = 0;
@@ -439,40 +445,41 @@ Token *get_variable(char *name)
    check(1, "%s not found\n", name);
    return NULL;
 }
-Node *new_struct(Node *node)
+
+Token *new_struct(Token *token)
 {
    static size_t structs_ids;
-   if (!node->token->struct_id) node->token->struct_id = (structs_ids += 1);
+   if (!token->struct_id) token->struct_id = (structs_ids += 1);
    // check(1, "implement this one");
-   debug(CYAN "new struct [%s] with id [%zu] " RESET, node->token->name, node->token->struct_id);
+   debug(CYAN "new struct [%s] with id [%zu] " RESET, token->name, token->struct_id);
    if (scoop && scoop->token) debug("in scoop %k", scoop->token);
    else if (scoop && !scoop->token) debug("in scoop with NULL token");
    else debug("in NULL scoop");
    debug("\n" RESET);
    for (size_t i = 0; i < scoop->spos; i++)
    {
-      Token *curr = scoop->structs[i]->token;
-      if (strcmp(curr->name, node->token->name) == 0) check(1, "Redefinition of %s\n", node->token->name);
+      Token *curr = scoop->structs[i];
+      if (strcmp(curr->name, token->name) == 0) check(1, "Redefinition of %s\n", token->name);
    }
    if (scoop->structs == NULL)
    {
       scoop->ssize = 10;
-      scoop->structs = allocate(scoop->ssize, sizeof(Node *));
+      scoop->structs = allocate(scoop->ssize, sizeof(Token *));
    }
    else if (scoop->spos + 1 == scoop->ssize)
    {
-      Node **tmp = allocate(scoop->ssize *= 2, sizeof(Node *));
-      memcpy(tmp, scoop->structs, scoop->spos * sizeof(Node *));
+      Token **tmp = allocate(scoop->ssize *= 2, sizeof(Token *));
+      memcpy(tmp, scoop->structs, scoop->spos * sizeof(Token *));
       free(scoop->structs);
       scoop->structs = tmp;
    }
-   scoop->structs[scoop->spos++] = node;
-   return node;
+   scoop->structs[scoop->spos++] = token;
+   return token;
 }
 
-Node *get_struct(Token *token)
+Token *get_struct(char *name)
 {
-   debug(CYAN "get struct [%s] ", token->name);
+   debug(CYAN "get struct [%s] ", name);
    if (scoop && scoop->token) debug("from scoop %k", scoop->token);
    else if (scoop && !scoop->token) debug("from scoop with NULL token");
    else debug("from NULL scoop");
@@ -482,13 +489,13 @@ Node *get_struct(Token *token)
    {
       Scoop *scoop = &Gscoop[j];
       for (size_t i = 0; i < scoop->spos; i++)
-         if (strcmp(scoop->structs[i]->token->name, token->name) == 0) return scoop->structs[i];
+         if (strcmp(scoop->structs[i]->name, name) == 0) return scoop->structs[i];
    }
    // check(1, "%s not found\n", name);
    return NULL;
 }
 
-Node *get_struct_by_id(size_t id)
+Token *get_struct_by_id(size_t id)
 {
    debug(CYAN "get struct with id [%zu] ", id);
    if (scoop && scoop->token) debug("from scoop %k", scoop->token);
@@ -501,8 +508,8 @@ Node *get_struct_by_id(size_t id)
       debug("[%d] scoop [%s] has %zu structs\n", j, scoop->token->name, scoop->spos);
       for (size_t i = 0; i < scoop->spos; i++)
       {
-         debug(GREEN"struct has [%zu]\n"RESET, scoop->structs[i]->token->struct_id);
-         if (scoop->structs[i]->token->struct_id == id) return scoop->structs[i];
+         debug(GREEN"struct has [%zu]\n"RESET, scoop->structs[i]->struct_id);
+         if (scoop->structs[i]->struct_id == id) return scoop->structs[i];
       }
    }
    // check(1, "%s not found\n", name);
@@ -517,6 +524,7 @@ bool compatible(Token *left, Token *right)
    Type lrtype = left->retType;
    Type rtype = right->type;
    Type rrtype = right->retType;
+   if(ltype == CHARS && (rtype == VOID || rrtype == VOID)) return true;
    return (ltype == rtype || ltype == rrtype || lrtype == rtype || lrtype == rrtype);
 }
 
@@ -534,7 +542,8 @@ const char *to_string_(const char *filename, const int line, Type type) {
       [FDEC] = "F_DEC", [FCALL] = "F_CALL", [INT] = "INT", [VOID] = "VOID", [CHARS] = "CHARS",
       [CHAR] = "CHAR", [BOOL] = "BOOL", [FLOAT] = "FLOAT", [STRUCT_CALL] = "STRUCT CALL",
       [STRUCT_DEF] = "STRUCT DEF", [ID] = "ID", [END_BLOC] = "END_BLOC", [BLOC] = "BLOC",
-      [JNE] = "JNE", [JE] = "JE", [JMP] = "JMP", [END] = "END"
+      [JNE] = "JNE", [JE] = "JE", [JMP] = "JMP", [LBRA] = "L_BRA", [RBRA] = "R_BRA",
+      [END] = "END"
    };
    if (type >= 1 && type < sizeof(arr) / sizeof(arr[0]) && arr[type] != NULL) return arr[type];
    check(1, "Unknown type [%d] in %s:%d\n", type, filename, line);
@@ -929,7 +938,22 @@ int ptoken_(const char*filename, int line, Token *token)
       }
       break;
    }
-   case STRUCT_DEF: case FCALL:
+   case STRUCT_DEF: 
+   {
+      res += debug("name [%s] ", token->name);
+      res += debug("attributes: ");
+      for(int i = 0; i < token->Struct.pos; i++)
+      {
+         Token *attr = token->Struct.attrs[i];
+#if 0
+         res += ptoken(attr) + debug(", ");
+#else
+         res += debug("%s %t [%zu], ", attr->name, attr->type, attr->ptr);
+#endif
+      }
+      break;
+   }
+   case FCALL:
    case FDEC: case ID: res += debug("name [%s] ", token->name); break;
    default: break;
    }
@@ -1079,7 +1103,7 @@ void free_token(Token *token)
    if (token->name) free(token->name);
    if (token->creg) free(token->creg);
    if (token->Chars.value) free(token->Chars.value);
-   // if (token->Struct.attrs) free(token->Struct.attrs);
+   if (token->Struct.attrs) free(token->Struct.attrs);
    free(token);
 }
 
