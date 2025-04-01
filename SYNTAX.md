@@ -13,7 +13,7 @@
 - assign reference from variable
 - refrence variables
 
-
++ maybe I will need to declare arguments as variables inside function declaration
 + for loops
 + use return with refrence
 + math operations with refrence

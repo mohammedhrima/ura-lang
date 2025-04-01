@@ -2,7 +2,7 @@
 
 // TOKENIZE
 Specials *dataTypes = (Specials[]) { {"int", INT}, {"bool", BOOL}, {"chars", CHARS},
-   {"char", CHAR}, {"float", FLOAT}, {0, (Type)0}
+   {"char", CHAR}, {"float", FLOAT}, {"void", VOID}, {0, (Type)0}
 };
 
 Token* new_token_(char *filename, int line, char *input, size_t s, size_t e, Type type, size_t space)
@@ -121,6 +121,26 @@ Node *copy_node(Node *node)
    return new;
 }
 
+Node* add_child(Node *node, Node *child)
+{
+   if (node->csize == 0)
+   {
+      node->csize = 10;
+      node->children = allocate(node->csize, sizeof(Node *));
+   }
+   else if (node->cpos + 1 == node->csize)
+   {
+      Node **tmp = allocate(node->csize * 2, sizeof(Node *));
+      memcpy(tmp, node->children, node->csize * sizeof(Node *));
+      free(node->children);
+      node->children = tmp;
+      node->csize *= 2;
+   }
+   child->token->space = node->token->space + TAB;
+   node->children[node->cpos++] = child;
+   return child;
+}
+
 Token *find(Type type, ...)
 {
    if (found_error) return NULL;
@@ -228,7 +248,13 @@ Inst *new_inst(Token *token)
 
    Inst *new = allocate(1, sizeof(Inst));
    new->token = token;
-   if (token->isref)
+   if (token->isref && token->ptr) 
+   // I added this line for this case 
+   // func int m(ref int a)
+   // the code increment rsp and 
+   // it become for example sub rsp, 16
+   // even though I'm not declaring any variable inside
+   // function declaration
    {
       token->ptr = (ptr += 8);
    }
@@ -242,21 +268,21 @@ Inst *new_inst(Token *token)
       {
          // new_variable(token);
          token->ptr = (ptr += sizeofToken(token));
-         token->reg = ++reg;
+         // token->reg = ++reg;
       }
    }
    else if (includes((Type[]) {ADD, SUB, MUL, DIV, 0}, token->type))
    {
-      token->reg = ++reg;
+      // token->reg = ++reg;
    }
    else if (includes((Type[]) {EQUAL, NOT_EQUAL, LESS, MORE, LESS_EQUAL, MORE_EQUAL, 0}, token->type))
    {
-      token->reg = ++reg;
+      // token->reg = ++reg;
    }
    else if (includes((Type[]) {FCALL, 0}, token->type))
    {
-      token->reg = ++reg;
    }
+   token->reg = ++reg;
    debug("inst: %k\n", new->token);
    add_inst(new);
    return new;
@@ -323,46 +349,96 @@ void clone_insts()
    }
 }
 
+/*
+get_func m in scoop [F_DEC ] name [main] ret [INT] space [0]
+[F_DEC ] name [m] PTR [8] ret [INT] space [0]
+   L: [CHILDREN  ] space [0]
+   children:
+      [CHARS ] name [e] space [4]
+children:
+   [ASSIGN] ret [CHARS] space [4]
+      L: [CHARS ] name [t] [declare] PTR [8] space [4]
+      R: [ID    ] name [e] space [4]
+   [RETURN] space [4]
+      L: [INT   ] value [1] space [4]
+*/
 Node **builtins_functions;
 size_t builtins_pos;
 size_t builtins_size;
 void create_builtin(char *name, Type *params, Type retType)
 {
-   Node *func = new_node(new_token(name, 0, strlen(name), FDEC, 0));
-   func->token->retType = retType;
-   switch(retType)
+   if (found_error) return;
+   Node *node = new_node(new_token(name, 0, strlen(name), FDEC, 0));
+   enter_scoop(node->token);
+   node->token->retType = retType;
+   switch (retType)
    {
-      case INT: setReg(func->token, "eax"); break;
-      case CHAR: setReg(func->token, "al"); break;
-      case CHARS: setReg(func->token, "rax"); break;
-      case VOID:  setReg(func->token, "rax"); break;
-      default: check(1, "handle this case %s", to_string(retType)) ;
+   case INT:   setReg(node->token, "eax"); break;
+   case CHAR:  setReg(node->token, "al"); break;
+   case CHARS: setReg(node->token, "rax"); break;
+   case VOID:  setReg(node->token, "rax"); break;
+   default: check(1, "handle this case %s", to_string(retType)) ;
    }
-   func->left = new_node(NULL);
-   Node *curr = func->left;
+   node->left = new_node(new_token(0, 0, 0, CHILDREN, node->token->space));
+   Node *args = node->left;
    int i = 0;
+   char *eregs[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d", NULL};
+   char *rregs[] = {"rdi", "rsi", "rdx", "rcx", "r8d", "r9d", NULL};
    while (params[i])
    {
-      curr->left = new_node(new_token(NULL, 0, 0, params[i], func->token->space + TAB));
-      curr->right = new_node(NULL);
-      curr = curr->right;
+#if TREE
+      args->left = new_node(new_token(NULL, 0, 0, params[i], node->token->space + TAB));
+      args->right = new_node(NULL);
+      args = args->right;
+#else
+
+      Token *arg_token = new_token(NULL, 0, 0, params[i], node->token->space + TAB);
+      //arg_token->declare = true;
+      if (i < sizeof(eregs) / sizeof(eregs[0]))
+      {
+         // if (name->isref) setReg(name, rregs[i]);
+         // else
+         {
+            // check(1, "set reg");
+            // TODO: add other data type and math operations
+            switch (arg_token->type)
+            {
+            case CHARS: setReg(arg_token, rregs[i]); break;
+            case INT:   setReg(arg_token, eregs[i]); break;
+            case CHAR:  setReg(arg_token, eregs[i]); break;
+            case FLOAT: setReg(arg_token, rregs[i]); break; // TODO: to be checked
+            case BOOL:  setReg(arg_token, eregs[i]); break;
+            default: check(1, "set reg for %s", to_string(arg_token->type));
+            };
+         }
+      }
+      else
+      {
+         // TODO:
+         check(1, "implement assigning function argument using PTR");
+      }
+      add_child(args, new_node(arg_token));
+#endif
       i++;
    }
-   if (builtins_functions == NULL)
-   {
-      builtins_size = 2;
-      builtins_functions = allocate(builtins_size, sizeof(Node *));
-   }
-   else if (builtins_pos + 1 == builtins_size)
-   {
-      Node **tmp = allocate(builtins_size * 2, sizeof(Node *));
-      memcpy(tmp, builtins_functions, builtins_pos * sizeof(Node *));
-      free(builtins_functions);
-      builtins_size *= 2;
-      builtins_functions = tmp;
-   }
-   builtins_functions[builtins_pos++] = func;
+
+   // if (builtins_functions == NULL)
+   // {
+   //    builtins_size = 2;
+   //    builtins_functions = allocate(builtins_size, sizeof(Node *));
+   // }
+   // else if (builtins_pos + 1 == builtins_size)
+   // {
+   //    Node **tmp = allocate(builtins_size * 2, sizeof(Node *));
+   //    memcpy(tmp, builtins_functions, builtins_pos * sizeof(Node *));
+   //    free(builtins_functions);
+   //    builtins_size *= 2;
+   //    builtins_functions = tmp;
+   // }
+   //builtins_functions[builtins_pos++] = func;
    // debug("%screate builin [%s]%s\n", GREEN, func->token->name, RESET);
+   exit_scoop();
+   new_function(node);
 }
 
 Node *new_function(Node *node)
@@ -524,7 +600,7 @@ bool compatible(Token *left, Token *right)
    Type lrtype = left->retType;
    Type rtype = right->type;
    Type rrtype = right->retType;
-   if(ltype == CHARS && (rtype == VOID || rrtype == VOID)) return true;
+   if (ltype == CHARS && (rtype == VOID || rrtype == VOID)) return true;
    return (ltype == rtype || ltype == rrtype || lrtype == rtype || lrtype == rrtype);
 }
 
@@ -543,7 +619,7 @@ const char *to_string_(const char *filename, const int line, Type type) {
       [CHAR] = "CHAR", [BOOL] = "BOOL", [FLOAT] = "FLOAT", [STRUCT_CALL] = "STRUCT CALL",
       [STRUCT_DEF] = "STRUCT DEF", [ID] = "ID", [END_BLOC] = "END_BLOC", [BLOC] = "BLOC",
       [JNE] = "JNE", [JE] = "JE", [JMP] = "JMP", [LBRA] = "L_BRA", [RBRA] = "R_BRA",
-      [END] = "END"
+      [END] = "END", [CHILDREN] = "CHILDREN",
    };
    if (type >= 1 && type < sizeof(arr) / sizeof(arr[0]) && arr[type] != NULL) return arr[type];
    check(1, "Unknown type [%d] in %s:%d\n", type, filename, line);
@@ -926,23 +1002,25 @@ int ptoken_(const char*filename, int line, Token *token)
       if (token->declare) res += debug("[declare] ");
       if (!token->name && !token->declare)
       {
-         switch (token->type)
-         {
-         case INT: res += debug("value [%lld] ", token->Int.value); break;
-         case CHARS: res += debug("value [%s] ", token->Chars.value); break;
-         case CHAR: res += debug("value [%c] ", token->Char.value); break;
-         case BOOL: res += debug("value [%d] ", token->Bool.value); break;
-         case FLOAT: res += debug("value [%f] ", token->Float.value); break;
-         default: break;
-         }
+         if (token->creg) res += debug("creg [%s] ", token->creg);
+         else
+            switch (token->type)
+            {
+            case INT: res += debug("value [%lld] ", token->Int.value); break;
+            case CHARS: res += debug("value [%s] ", token->Chars.value); break;
+            case CHAR: res += debug("value [%c] ", token->Char.value); break;
+            case BOOL: res += debug("value [%d] ", token->Bool.value); break;
+            case FLOAT: res += debug("value [%f] ", token->Float.value); break;
+            default: break;
+            }
       }
       break;
    }
-   case STRUCT_DEF: 
+   case STRUCT_DEF:
    {
       res += debug("name [%s] ", token->name);
       res += debug("attributes: ");
-      for(int i = 0; i < token->Struct.pos; i++)
+      for (int i = 0; i < token->Struct.pos; i++)
       {
          Token *attr = token->Struct.attrs[i];
 #if 0
@@ -973,38 +1051,18 @@ int pnode(Node *node, char *side, size_t space)
    for (size_t i = 0; i < space; i++) res += debug(" ");
    if (side) res += debug("%s", side);
    res += debug("%k\n", node->token);
-   if (node->token)
+
+
+   res += pnode(node->left, "L: ", space + TAB);
+   res += pnode(node->right, "R: ", space + TAB);
+   if (node->children)
    {
-      switch (node->token->type)
-      {
-      case FDEC:
-      {
-#if 0
-         node = node->right;
-         while (node)
-         {
-            res += pnode(node->left, NULL, space + TAB);
-            node = node->right;
-         }
-#else
-         res += pnode(node->left, "L: ", space + TAB);
-         res += pnode(node->right, "R: ", space + TAB);
-#endif
-         break;
-      }
-      default:
-      {
-         res += pnode(node->left, "L: ", space + TAB);
-         res += pnode(node->right, "R: ", space + TAB);
-         break;
-      }
-      }
+      for (size_t i = 0; i < space; i++) res += debug(" ");
+      res += debug("children: \n");
+      //for (size_t i = 0; i < space; i++) res += debug(" ");
+      for (int i = 0; i < node->cpos; i++) pnode(node->children[i], NULL, space + TAB);
    }
-   else
-   {
-      res += pnode(node->left, "L: ", space + TAB);
-      res += pnode(node->right, "R: ", space + TAB);
-   }
+
    return res;
 }
 
@@ -1110,8 +1168,10 @@ void free_token(Token *token)
 void free_node(Node *node)
 {
    if (!node) return;
+   for (int i = 0; i < node->cpos; i++) free_node(node->children[i]);
    free_node(node->left);
    free_node(node->right);
+   free(node->children);
    free(node);
 }
 
