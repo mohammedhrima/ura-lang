@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <stdint.h>
+#include <sys/types.h>
 #include "macros.h"
 
 // STRUCTS
@@ -19,7 +20,7 @@ typedef enum
    EQUAL, NOT_EQUAL, LESS_EQUAL, MORE_EQUAL, LESS, MORE,
    ADD, SUB, MUL, DIV, MOD,
    AND, OR, NOT,
-   RPAR, LPAR, COMA, DOT, DOTS,
+   LPAR, RPAR, LBRA, RBRA, COMA, DOT, DOTS,
    RETURN,
    IF, ELIF, ELSE, 
    WHILE, CONTINUE, BREAK,
@@ -159,6 +160,7 @@ Node *add_sub();
 Node *mul_div();
 Node *dot();
 Node *sign();
+Node *brackets();
 Node *prime();
 void generate(char *name);
 Inst *new_inst(Token *token);
@@ -194,9 +196,9 @@ Node *copy_node(Node *node);
 void create_builtin(char *name, Type *params, Type retType);
 bool includes(Type *types, Type type);
 Token* generate_ir(Node *node);
-Node *new_struct(Node *node);
-Node*get_struct(Token *token);
-Node *get_struct_by_id(size_t id);
+Token *new_struct(Token *token);
+Token *get_struct(char *name);
+Token *get_struct_by_id(size_t id);
 void add_attribute(Token *obj, Token *attr);
 char *strjoin(char *str0, char *str1, char *str2);
 int sizeofToken(Token *token);

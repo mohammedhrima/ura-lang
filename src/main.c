@@ -19,7 +19,7 @@ void tokenize()
       {"*=", MUL_ASSIGN}, {"/=", DIV_ASSIGN}, {"!=", NOT_EQUAL},
       {"==", EQUAL}, {"is", EQUAL}, {"<=", LESS_EQUAL}, {">=", MORE_EQUAL},
       {"<", LESS}, {">", MORE}, {"=", ASSIGN}, {"+", ADD}, {"-", SUB},
-      {"*", MUL}, {"/", DIV}, {"%", MOD}, {"(", LPAR}, {")", RPAR},
+      {"*", MUL}, {"/", DIV}, {"%", MOD}, {"(", LPAR}, {")", RPAR}, {"[", LBRA}, {"]", RBRA},
       {",", COMA}, {"if", IF}, {"elif", ELIF}, {"else", ELSE},
       {"while", WHILE}, {"func", FDEC}, {"return", RETURN},
       {"break", BREAK}, {"continue", CONTINUE}, {"ref", REF},
@@ -114,8 +114,10 @@ void tokenize()
 Type getRetType(Node *node)
 {
    if (!node || !node->token) return 0;
-   if (includes((Type[]) {INT, CHARS, CHAR, FLOAT, BOOL, 0}, node->token->type)) return node->token->type;
-   if (includes((Type[]) {INT, CHARS, CHAR, FLOAT, BOOL, 0}, node->token->retType)) return node->token->retType;
+   if (includes((Type[]) {INT, CHARS, CHAR, FLOAT, BOOL, 0}, 
+      node->token->type)) return node->token->type;
+   if (includes((Type[]) {INT, CHARS, CHAR, FLOAT, BOOL, 0}, 
+      node->token->retType)) return node->token->retType;
    Type left = 0, right = 0;
    if (node->left) left = getRetType(node->left);
    if (node->right) right = getRetType(node->right);
@@ -220,16 +222,31 @@ Node *mul_div()
 
 Node *dot()
 {
-   Node *left = sign();
+   Node *left = brackets();
    Token *token;
    while ((token = find(DOT, 0)))
    {
       Node *node = new_node(token);
       node->left = left;
-      node->right = sign();
+      node->right = brackets();
       // TODO: check righ should be an identifier
       node->right->token->isattr = true;
       left = node;
+   }
+   return left;
+}
+
+Node *brackets()
+{
+   Node *left = sign();
+   Token *token;
+   if((token = find(LBRA, 0)))
+   {
+      Node *node = new_node(token);
+      node->left = left;
+      node->right = brackets();
+      check(!find(RBRA, 0), "expected right bracket");
+      return node;
    }
    return left;
 }
@@ -317,6 +334,12 @@ Node *func_dec(Node *node)
    return node;
 }
 
+// TODO: to be used when settign struct as function parameter
+void add_param()
+{
+
+}
+
 Node *func_call(Node *node)
 {
    node->token->type = FCALL;
@@ -374,9 +397,9 @@ Node *func_call(Node *node)
          check(1, "implemnt PTR");
       }
       curr->left = assign;
-      find(COMA, 0);
       curr->right = new_node(NULL);
       curr = curr->right;
+      find(COMA, 0);
    }
    check(!found_error && arg->type != RPAR, "expected ) after function call");
    return node;
@@ -433,7 +456,8 @@ Node *if_node(Node *node)
    }
    curr = node;
    while (
-   !found_error && includes((Type[]) {ELSE, ELIF, 0}, tokens[exe_pos]->type) && node->token->space == tokens[exe_pos]->space)
+   !found_error && includes((Type[]) {ELSE, ELIF, 0}, tokens[exe_pos]->type) && 
+   node->token->space == tokens[exe_pos]->space)
    {
       Token *token = find(ELSE, ELIF, 0);
 
@@ -498,10 +522,10 @@ Node *while_node(Node *node)
    return node;
 }
 
-Node *is_struct(Token *token)
+Token *is_struct(Token *token)
 {
-   Node *struct_ = get_struct(token);
-   if (struct_) return copy_node(struct_);
+   Token *res = get_struct(token->name);
+   if (res) return copy_token(res);
    return NULL;
 }
 
@@ -520,19 +544,13 @@ Node *prime()
       if (check(!find(DOTS, 0), "expected dots after struct definition")) return NULL;
       node = new_node(token);
       node->token->type = STRUCT_DEF;
-      node->right = new_node(NULL);
-      Node *curr = node->right;
+
       size_t offset = 0;
       while (within_space(token->space))
       {
          Token *attr = find(INT, CHARS, CHAR, FLOAT, BOOL, ID, 0);
          Token *id = find(ID, 0);
-         if (attr->type == ID)
-         {
-            Node *tmp = get_struct(attr);
-            if (tmp) attr = tmp->token;
-            else attr = NULL;
-         }
+         if (attr->type == ID) attr = get_struct(attr->name);
          if (check(!attr, "expected data type followed by id")) break;
          if (check(!id, "expected id after data type")) break;
 
@@ -543,20 +561,13 @@ Node *prime()
          else offset = size;
 
          id->type = attr->type;
-         // char *name = strjoin(token->name, ".", id->name);
-         // setName(id, name);
-         // free(name);
-         curr->left = new_node(id);
-         curr->left->token->ptr = offset;
-         curr->right = new_node(NULL);
-         curr = curr->right;
+         id->ptr = offset;
+         add_attribute(token, id);
          offset += size;
       }
-      // ptr = offset;
-      // node->token->offset = offset;
-      node->token->ptr = offset;
-      // define struct size
-      new_struct(node);
+
+      node->token->offset = offset;
+      new_struct(node->token);
       debug(CYAN "========================================\n");
       pnode(node, NULL, 0);
       debug("\n========================================\n", RESET);
@@ -564,9 +575,10 @@ Node *prime()
    }
    else if ((token = find(ID, INT, CHARS, CHAR, FLOAT, BOOL, 0)))
    {
-      Node *struct_node = NULL;
-      if (token->type == ID && token->name && (struct_node =  is_struct(token)))
+      Token *struct_token = NULL;
+      if (token->type == ID && token->name && (struct_token =  is_struct(token)))
       {
+         Node *struct_node = new_node(struct_token);
          // token = tmp_node->token;
          if (!struct_node->token->struct_id)
          {
@@ -578,20 +590,19 @@ Node *prime()
          setName(struct_node->token, token->name);
          struct_node->token->declare = true;
          struct_node->token->type = STRUCT_CALL;
-         Node *curr = struct_node->right;
-         while (curr->left)
-         {
-            char *name = strjoin(token->name, ".", curr->left->token->name);
-            setName(curr->left->token, name);
-            // curr->left->token->ptr += ptr;
-            free(name);
-            curr = curr->right;
-         }
-         size_t offset = struct_node->token->ptr;
-         struct_node->token->ptr = ptr;
-         ptr += offset;
-         // ptr += struct_node->token->ptr;
+         
+         // debug("curr ptr %zu\n", ptr);
+         // struct_node->token->ptr = ptr;
+         // size_t s = ptr;
+         // for(int i = 0; i < struct_node->token->Struct.pos; i++)
+         // {
+         //    Token *attr = struct_node->token->Struct.attrs[i];
+         //    attr->ptr = s + attr->ptr;
+         //    debug(">> %s is in PTR %zu\n", attr->name, attr->ptr);
+         // }
+         //ptr += struct_node->token->offset;
          new_variable(struct_node->token);
+         //exit(1);
          return struct_node;
       }
       else if (token->declare)
@@ -629,6 +640,12 @@ Node *prime()
    else if ((token = find(IF, 0))) return if_node(new_node(token));
    else if ((token = find(WHILE, 0))) return while_node(new_node(token));
    else if ((token = find(BREAK, CONTINUE, 0))) return new_node(token);
+   else if((token = find(LPAR, 0)))
+   {
+      if(tokens[exe_pos]->type != RPAR) node = expr();
+      check(!find(RPAR, 0), "expected right par");
+      return node;
+   }
    else check(1, "Unexpected token has type %s\n", to_string(tokens[exe_pos]->type));
    return new_node(tokens[exe_pos]);
 }
@@ -788,7 +805,9 @@ bool optimize_ir()
             for (int j = i + 1; insts[j] && insts[j]->token->space == token->space; j++) {
                if (!insts[j]->left || !insts[j]->right)
                   continue;
-               if (insts[j]->token->type == ASSIGN && insts[j]->left == insts[i]->left && !insts[i]->left->isref) {
+               // TODO: to be checked
+               // I replaced insts[j]->left == insts[i]->left with insts[j]->left->ptr == insts[i]->left->ptr
+               if (insts[j]->token->type == ASSIGN && insts[j]->left->ptr == insts[i]->left->ptr && !insts[i]->left->isref) {
                   token->remove = true;
                   did_optimize = true;
                   did_something = true;
@@ -1191,7 +1210,7 @@ Token* generate_ir(Node *node)
    }
    case STRUCT_DEF:
    {
-      new_struct(node);
+      new_struct(node->token);
       return NULL;
    }
    case STRUCT_CALL:
@@ -1202,20 +1221,21 @@ Token* generate_ir(Node *node)
          check(1, "expected struct id\n");
          exit(1);
       }
-      // if(node->token) new_variable(node->token);
-      // new_inst(node->token);
       if (node->token->name && node->token->declare) new_variable(node->token);
-      size_t offset = node->token->ptr;
-      node = node->right;
-      while (node->left)
+
+      size_t start = ptr;
+      for(size_t i = 0; i < node->token->Struct.pos; i++)
       {
-         node->left->token->declare = false;
-         generate_ir(node->left);
-         node->left->token->declare = true;
-         node->left->token->ptr += ptr;
-         node = node->right;
+         Token *attr = node->token->Struct.attrs[i];
+         attr->declare = false;
+         Node *tmp = new_node(attr);
+         generate_ir(tmp);
+         free_node(tmp);
+         attr->declare = true;
+         attr->ptr = start + attr->ptr;
+         //s += attr->ptr;
       }
-      ptr += offset;
+      ptr += node->token->offset;
 
       // exit(1);
       return NULL;
@@ -1223,37 +1243,36 @@ Token* generate_ir(Node *node)
    }
    case DOT:
    {
+      // TODO: left and right both must have name
       Node *res = node;
       Token *left =  generate_ir(node->left);
-      Node *struct_ = get_struct_by_id(left->struct_id);
       Token *right =  generate_ir(node->right);
-      // debug("access %k from %k \n", right, left);
-      char *name =  strjoin(left->name, ".", right->name);
-      setName(right, name);
-      free(name);
-      debug("===================================\n");
-      check(!struct_, "struct not found");
-      pnode(struct_, NULL, 0);
-      debug("===================================\n");
-      bool found = false;
-      struct_ = struct_->right;
-      // debug("right %k\n", right);
-      while (struct_->left)
+      debug("access %k from %k \n", right, left);
+      for(int i = 0; i < left->Struct.pos; i++)
       {
-         char *to_find = strjoin(left->name, ".", struct_->left->token->name);
-         // debug("find %s\n", to_find);
-         if (strcmp(right->name, to_find) == 0)
+         Token *attr = left->Struct.attrs[i];
+         if(strcmp(right->name, attr->name) == 0)
          {
-            free(to_find);
-            found = true;
-            right->ptr = node->token->ptr + struct_->left->token->ptr;
-            right->type = struct_->left->token->type;
-            break;
+            attr = copy_token(attr);
+            char *name = strjoin(left->name, ".", attr->name);
+            setName(attr, name);
+            free(name);
+            debug(GREEN"found %k\n"RESET, attr);
+            return attr;
          }
-         free(to_find);
-         struct_ = struct_->right;
       }
+
+      check(1, "%s has no attribute %s", left->name, right->name);
+      exit(1);
       return right;
+      break;
+   }
+   case LBRA:
+   {
+      Token *left = generate_ir(node->left);
+      Token *right = generate_ir(node->right);
+      debug("access %k in %k\n", right, left);
+      inst = new_inst(node->token);
       break;
    }
    default: check(1, "handle this case %s", to_string(node->token->type)); return NULL;
