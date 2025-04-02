@@ -3,13 +3,13 @@
 .text
 .globl	main
 
-    mov  QWORD PTR -8[rbp], 0 ;// declare [name]
-    main:
+main:
     push rbp
     mov  rbp, rsp
-    sub  rsp, 64
-    mov  QWORD PTR -8[rbp], 0 ;// declare [name]
-    mov  DWORD PTR -32[rbp], 0 ;// declare [age]
+    sub  rsp, 16
+    mov  DWORD PTR -4[rbp], 123 ;// assign [user.age]
+    mov  edi, DWORD PTR -4[rbp] ;// assign [edi]
+    call putnbr
     mov  eax, 0
     leave 
     ret  

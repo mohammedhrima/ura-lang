@@ -231,7 +231,7 @@ int sizeofToken(Token *token)
    case CHAR: return sizeof(char);
    case BOOL: return sizeof(bool);
    case STRUCT_DEF: case STRUCT_CALL:
-   return token->offset;
+      return token->offset;
    default: check(1, "add this type [%s]\n", to_string(token->type));
    }
    return 0;
@@ -290,42 +290,39 @@ Inst *new_inst(Token *token)
    return new;
 }
 
-Scoop *Gscoop;
-Scoop *scoop;
+Node **Gscoop;
+Node *scoop;
 int scoopSize;
 int scoopPos = -1;
 
-void enter_scoop(Token *token)
+void enter_scoop(Node *node)
 {
-   debug(CYAN "Enter Scoop: %k index %d\n" RESET, token, scoopPos + 1);
+   debug(CYAN "Enter Scoop: %k index %d\n" RESET, node->token, scoopPos + 1);
    if (Gscoop == NULL)
    {
       scoopSize = 10;
-      Gscoop = allocate(scoopSize, sizeof(Scoop));
+      Gscoop = allocate(scoopSize, sizeof(Node*));
    }
    else if (scoopPos + 1 >= scoopSize)
    {
-      Scoop *tmp = allocate(scoopSize * 2, sizeof(Scoop));
-      memcpy(tmp, Gscoop, scoopPos * sizeof(Scoop));
+      Node **tmp = allocate(scoopSize * 2, sizeof(Node*));
+      memcpy(tmp, Gscoop, scoopPos * sizeof(Node*));
       scoopSize *= 2;
       free(Gscoop);
       Gscoop = tmp;
    }
    scoopPos++;
-   Gscoop[scoopPos] = (Scoop) { .token = token, .functions = NULL, .vars = NULL, .structs = NULL };
-   scoop = &Gscoop[scoopPos];
+   Gscoop[scoopPos] = node;
+   scoop = Gscoop[scoopPos];
 }
 
 void exit_scoop()
 {
    if (check(scoopPos < 0, "No active scoop to exit\n")) return;
-   debug(CYAN "Exit Scoop: %k index %d\n" RESET, Gscoop[scoopPos].token, scoopPos);
-   free(Gscoop[scoopPos].functions);
-   free(Gscoop[scoopPos].vars);
-   free(Gscoop[scoopPos].structs);
-   Gscoop[scoopPos] = (Scoop) { .token = NULL, .functions = NULL, .vars = NULL, .structs = NULL  };
+   debug(CYAN "Exit Scoop: %k index %d\n" RESET, Gscoop[scoopPos]->token, scoopPos);
+   Gscoop[scoopPos] = NULL;
    scoopPos--;
-   if (scoopPos >= 0) scoop = &Gscoop[scoopPos];
+   if (scoopPos >= 0) scoop = Gscoop[scoopPos];
 }
 
 void clone_insts()
@@ -456,7 +453,7 @@ Node *get_function(char *name)
 #endif
    for (int j = scoopPos; j >= 0; j--)
    {
-      Scoop *scoop = &Gscoop[j];
+      Node *scoop = Gscoop[j];
       for (int i = 0; i < scoop->fpos; i++)
          if (strcmp(scoop->functions[i]->token->name, name) == 0) return scoop->functions[i];
    }
@@ -493,7 +490,7 @@ Token *get_variable(char *name)
    debug(CYAN "get variable [%s] from scoop %k\n" RESET, name, scoop->token);
    for (int j = scoopPos; j >= 0; j--)
    {
-      Scoop *scoop = &Gscoop[j];
+      Node *scoop = Gscoop[j];
       for (int i = 0; i < scoop->vpos; i++)
          if (strcmp(scoop->vars[i]->name, name) == 0) return scoop->vars[i];
    }
@@ -542,9 +539,9 @@ Token *get_struct(char *name)
 
    for (int j = scoopPos; j >= 0; j--)
    {
-      Scoop *scoop = &Gscoop[j];
-      for (int i = 0; i < scoop->spos; i++)
-         if (strcmp(scoop->structs[i]->name, name) == 0) return scoop->structs[i];
+      Node *node = Gscoop[j];
+      for (int i = 0; i < node->spos; i++)
+         if (strcmp(node->structs[i]->name, name) == 0) return node->structs[i];
    }
    // check(1, "%s not found\n", name);
    return NULL;
@@ -552,19 +549,15 @@ Token *get_struct(char *name)
 
 Token *get_struct_by_id(int id)
 {
-   debug(CYAN "get struct with id [%d] ", id);
-   if (scoop && scoop->token) debug("from scoop %k", scoop->token);
-   else if (scoop && !scoop->token) debug("from scoop with NULL token");
-   else debug("from NULL scoop");
-   debug("\n" RESET);
+   debug(CYAN "get struct with id [%d] from scoop %k\n", id, scoop->token);
    for (int j = scoopPos; j >= 0; j--)
    {
-      Scoop *scoop = &Gscoop[j];
-      debug("[%d] scoop [%s] has %d structs\n", j, scoop->token->name, scoop->spos);
-      for (int i = 0; i < scoop->spos; i++)
+      Node *node = Gscoop[j];
+      debug("[%d] scoop [%s] has %d structs\n", j, scoop->token->name, node->spos);
+      for (int i = 0; i < node->spos; i++)
       {
-         debug(GREEN"struct has [%d]\n"RESET, scoop->structs[i]->struct_id);
-         if (scoop->structs[i]->struct_id == id) return scoop->structs[i];
+         debug(GREEN"struct has [%d]\n"RESET, node->structs[i]->struct_id);
+         if (node->structs[i]->struct_id == id) return node->structs[i];
       }
    }
    // check(1, "%s not found\n", name);
@@ -1144,10 +1137,10 @@ int debug(char *conv, ...)
 // CLEAR MEMORY
 void free_token(Token *token)
 {
-   if (token->name) free(token->name);
-   if (token->creg) free(token->creg);
-   if (token->Chars.value) free(token->Chars.value);
-   if (token->Struct.attrs) free(token->Struct.attrs);
+   free(token->name);
+   free(token->creg);
+   free(token->Chars.value);
+   free(token->Struct.attrs);
    free(token);
 }
 
@@ -1158,6 +1151,9 @@ void free_node(Node *node)
    free_node(node->left);
    free_node(node->right);
    free(node->children);
+   free(node->functions);
+   free(node->vars);
+   free(node->structs);
    free(node);
 }
 

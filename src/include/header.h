@@ -102,6 +102,20 @@ typedef struct Node
    int cpos; // children pos
    int csize; // children size
 
+   struct {
+      struct Node **functions;
+      int fpos;
+      int fsize;
+
+      Token **structs;
+      int spos;
+      int ssize;
+
+      Token **vars;
+      int vpos;
+      int vsize;
+   };
+
 } Node;
 
 typedef struct
@@ -109,24 +123,6 @@ typedef struct
    char *value;
    Type type;
 } Specials;
-
-typedef struct
-{
-   Token *token;
-
-   Node **functions;
-   int fpos;
-   int fsize;
-
-   Token **structs;
-   int spos;
-   int ssize;
-
-   Token **vars;
-   int vpos;
-   int vsize;
-
-} Scoop;
 
 typedef struct
 {
@@ -141,13 +137,16 @@ extern bool did_pasm;
 extern char *input;
 extern Token **tokens;
 extern Node *head;
+extern Node *global;
 extern int exe_pos;
 extern Inst **OrgInsts;
 extern Inst **insts;
-extern Scoop *Gscoop;
+
+extern Node **Gscoop;
+extern Node *scoop;
 extern int scoopSize;
 extern int scoopPos;
-extern Scoop *scoop;
+
 extern int ptr;
 extern struct _IO_FILE *asm_fd;
 
@@ -176,7 +175,7 @@ void add_token(Token *token);
 Node *new_node(Token *token);
 Token *find(Type type, ...);
 const char *to_string_(const char *filename, const int line, Type type);
-void enter_scoop(Token *token);
+void enter_scoop(Node *node);
 bool check_error(const char *filename, const char *funcname, int line, bool cond, char *fmt, ...);
 void free_memory();
 void *allocate_func(int line, int len, int size);
