@@ -1,13 +1,12 @@
 
 struct Id:
-    chars name
+    int nums
 
 struct User:
-    // Id id
     int age
+    Id id
 
 main():
     User user
-    user.age = 123
-    // user.id.name = "abc"
-    putnbr(user.age)
+    User user
+    //Id id

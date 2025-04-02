@@ -42,7 +42,7 @@ copy() {
 
 test() {
 	currflags=$flags
-	flags="$flags -D DEBUG=false"
+	flags="$flags -D DEBUG=false -D OPTIMIZE=true"
 	gcc $files $flags -o /src/wcc
 	CURRDIR=$PWD
 	cd /tests || exit

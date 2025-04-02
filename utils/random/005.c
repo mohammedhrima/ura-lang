@@ -1,55 +1,59 @@
 #include <stdio.h>
 #include <stddef.h>
+#include <stdalign.h>
 
-#if 0
-// Define the struct with the given data types
-struct MyStruct {
-    char c;       // char
-    int i;        // int
-    char *p;      // char *
-    short s;      // short
-};
-
-int main() {
-    // Print the offset of each member in the struct
-    printf("Offset of char c: %zu\n", offsetof(struct MyStruct, c));
-    printf("Offset of int i: %zu\n", offsetof(struct MyStruct, i));
-    printf("Offset of char *p: %zu\n", offsetof(struct MyStruct, p));
-    printf("Offset of short s: %zu\n", offsetof(struct MyStruct, s));
-
-    return 0;
-}
-#else
-size_t calculate_padding(size_t offset, size_t alignment) {
-    // Calculate the amount of padding needed to align the offset
-    size_t padding = (alignment - (offset % alignment)) % alignment;
-    return padding;
+size_t calculate_padding(size_t offset, size_t alignment)
+{
+    return (alignment - (offset % alignment)) % alignment;
 }
 
-int main() {
-    size_t arr[] = {sizeof(char), sizeof(int), sizeof(char *), sizeof(short)};
-    size_t n = sizeof(arr) / sizeof(arr[0]); // Number of elements in the array
+int main()
+{
+    // Define the Id struct members
+    const char *member_names[] = {"a (char*)", "b (int)", "c (char)"};
+    size_t sizes[] = {8, 4, 1};      // sizeof(char*), sizeof(int), sizeof(char)
+    size_t alignments[] = {8, 4, 1}; // alignof(char*), alignof(int), alignof(char)
+    size_t n = sizeof(sizes) / sizeof(sizes[0]);
 
-    size_t offset = 0; // Start with offset 0
+    // For a struct on x86-64, we typically start at offset 0 and add fields
+    size_t current_offset = 0;
+    size_t member_offsets[3];
 
-    for (size_t i = 0; i < n; i++) {
-        size_t size = arr[i]; // Size of the current data type
-        size_t alignment = size; // Alignment is typically equal to the size of the data type
+    // Calculate offsets and paddings
+    for (int i = 0; i < n; i++)
+    {
+        // Add padding to satisfy alignment
+        size_t padding = calculate_padding(current_offset, alignments[i]);
+        current_offset += padding;
 
-        // Calculate padding required to align the current offset
-        size_t padding = calculate_padding(offset, alignment);
+        // Store this member's offset
+        member_offsets[i] = current_offset;
 
-        // Add padding to the offset
-        offset += padding;
+        // Move offset past this member
+        current_offset += sizes[i];
+    }
 
-        // Print the offset for the current data type
-        printf("Offset for element %zu (size %zu): %zu\n", i, size, offset);
+    // Calculate total struct size (with padding at the end to satisfy struct alignment)
+    // Struct alignment is typically the largest alignment of any member
+    size_t max_alignment = 8; // For Id struct, this would be alignof(char*)
+    size_t end_padding = calculate_padding(current_offset, max_alignment);
+    size_t total_size = current_offset + end_padding;
 
-        // Update the offset for the next element
-        offset += size;
+    // Print the struct layout
+    printf("Struct layout simulation:\n");
+    for (int i = 0; i < n; i++)
+    {
+        printf("Member %s: offset %zu\n", member_names[i], member_offsets[i]);
+    }
+    printf("Total struct size: %zu bytes\n\n", total_size);
+
+    // Now calculate stack offsets (negative from rbp)
+    printf("Stack offsets simulation:\n");
+    size_t stack_start = 16; // Starting point, aligned to 16
+    for (int i = 0; i < n; i++)
+    {
+        printf("Variable %s: rbp-%zu\n", member_names[i], stack_start - member_offsets[i]);
     }
 
     return 0;
 }
-
-#endif
