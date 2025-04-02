@@ -31,7 +31,7 @@
 #if IR
 #define BUILTINS 1
 #ifndef OPTIMIZE
-#define OPTIMIZE 1
+#define OPTIMIZE 0
 #endif
 
 #define ASM 1

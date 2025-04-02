@@ -6,10 +6,9 @@
 main:
     push rbp
     mov  rbp, rsp
-    sub  rsp, 16
-    mov  DWORD PTR -4[rbp], 123 ;// assign [user.age]
-    mov  edi, DWORD PTR -4[rbp] ;// assign [edi]
-    call putnbr
+    sub  rsp, 0
+    mov  DWORD PTR -8[rbp], 0 ;// declare [age]
+    mov  DWORD PTR -16[rbp], 0 ;// declare [age]
     mov  eax, 0
     leave 
     ret  

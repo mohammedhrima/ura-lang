@@ -228,7 +228,9 @@ Node *dot()
    {
       Node *node = new_node(token);
       node->left = left;
-      node->right = brackets();
+      token = find(ID, 0);
+      if (check(!token, "error, expected id after dot")) exit(1);
+      node->right = new_node(token);
       node->token->retType = getRetType(node);
       // TODO: check righ should be an identifier
       node->right->token->isattr = true;
@@ -515,66 +517,6 @@ Node *if_node(Node *node)
 {
    enter_scoop(node);
    debug(GREEN "Enter if\n" RESET);
-#if TREE
-   node->left = new_node(NULL);
-   Node *curr = node->left; // if bloc
-
-   curr->left = expr(); // condition
-   curr->left->token->space = node->token->space;
-
-   check(!find(DOTS, 0), "Expected : after if condition\n", "");
-
-   curr->right = new_node(NULL);
-   curr = curr->right;
-   while (within_space(node->token->space))
-   {
-      curr->left = expr();
-      // curr->left->token->space = node->token->space + TAB;
-      curr->right = new_node(NULL);
-      curr = curr->right;
-   }
-   curr = node;
-   while (!found_error && includes((Type[]) {ELSE, ELIF, 0}, tokens[exe_pos]->type) &&
-node->token->space == tokens[exe_pos]->space)
-   {
-      Token *token = find(ELSE, ELIF, 0);
-
-      curr->right = new_node(NULL);
-      curr = curr->right;
-      curr->left = new_node(token);
-      if (token->type == ELIF)
-      {
-         Node *elif_node = curr->left;
-         elif_node->left = expr();
-         elif_node->left->token->space = node->token->space;
-         check(!find(DOTS, 0), "expected : after elif condition");
-         elif_node->right = new_node(NULL);
-         elif_node = elif_node->right;
-         while (within_space(token->space))
-         {
-            elif_node->left = expr();
-            elif_node->left->token->space = node->token->space + TAB;
-            elif_node->right = new_node(NULL);
-            elif_node = elif_node->right;
-         }
-      }
-      else if (token->type == ELSE)
-      {
-         check(!find(DOTS, 0), "expected : after else");
-         Node *else_node = curr->left;
-         else_node->right = new_node(NULL);
-         else_node = else_node->right;
-         while (within_space(token->space))
-         {
-            else_node->left = expr();
-            else_node->left->token->space = node->token->space + TAB;
-            else_node->right = new_node(NULL);
-            else_node = else_node->right;
-         }
-         break;
-      }
-   }
-#else
    /*
    if:
       left: condition
@@ -616,13 +558,12 @@ node->token->space == tokens[exe_pos]->space)
       }
       else if (token->type == ELSE)
       {
-         debug(GREEN "found else\n" RESET);
+         // debug(GREEN "found else\n" RESET);
          check(!find(DOTS, 0), "expected : after else");
          while (within_space(token->space)) add_child(curr, expr());
          break;
       }
    }
-#endif
    exit_scoop();
    //exit(1);
    return node;
@@ -663,37 +604,31 @@ Token *is_struct(Token *token)
 
 int calculate_padding(int offset, int alignment) {
    if (check(!alignment, "invalid alignment")) return 0;
-   int padding = (alignment - (offset % alignment)) % alignment;
-   return padding;
+   return (alignment - (offset % alignment)) % alignment;
 }
-
+/*
+16
+8
+4
+*/
 void set_struct_size(Token *token)
 {
    int offset = 0;
+   Token *attr;
    for (int i = 0; i < token->Struct.pos; i++)
    {
-      Token *attr = token->Struct.attrs[i];
-      int size = 0;
-      if (attr->type == STRUCT_CALL)
-      {
-         set_struct_size(attr);
-         // check(1, "found has size %d", attr->offset);
-         // exit(1);
-         size = attr->offset;
-      }
-      else
-      {
-         size = sizeofToken(attr); // Size of the current data type
-      }
-      int alignment = size; // Alignment is typically equal to the size of the data type
-      int padding = calculate_padding(offset, alignment);
-      if (offset) offset += padding;
-      else offset = size;
-
-      attr->ptr = offset;
+      attr = token->Struct.attrs[i];
+      int size = sizeofToken(attr);
+      int padding = calculate_padding(offset, size);
+      offset += padding;
+      attr->offset = offset;
       offset += size;
    }
+   int max_alignment = 8; // For Id struct, this would be alignof(char*)
+   int end_padding = calculate_padding(offset, max_alignment);
+   int total_size = offset + end_padding;
    token->offset = offset;
+   // token->ptr = total_size;
 }
 
 Node *prime()
@@ -706,8 +641,7 @@ Node *prime()
       if (check(!find(DOTS, 0), "expected dots after struct definition")) return NULL;
       node = new_node(token);
       node->token->type = STRUCT_DEF;
-
-      int offset = 0;
+      bool block = false;
       while (within_space(token->space))
       {
          Token *attr = find(INT, CHARS, CHAR, FLOAT, BOOL, ID, 0);
@@ -716,36 +650,40 @@ Node *prime()
          if (check(!attr, "expected data type followed by id")) break;
          if (check(!id, "expected id after data type")) break;
 
-         //int size = sizeofToken(attr); // Size of the current data type
-         //int alignment = size; // Alignment is typically equal to the size of the data type
-         //int padding = calculate_padding(offset, alignment);
-         //if (offset) offset += padding;
-         //else offset = size;
          if (attr->type == ID)
          {
             attr = get_struct(attr->name);
             if (check(!attr, "")) exit(1);
+            attr = copy_token(attr);
             char *name = id->name;
             id = attr;
             setName(id, name);
             id->type = STRUCT_CALL;
+            block = true;
          }
          else
             id->type = attr->type;
-         //id->ptr = offset;
+         // attr->declare = false;
          add_attribute(token, id);
-         //offset += size;
       }
       set_struct_size(node->token);
-      //node->token->offset = offset;
       new_struct(node->token);
+      for (int i = 0; i < node->token->Struct.pos; i++)
+      {
+         Token *attr = node->token->Struct.attrs[i];
+         debug(GREEN"<%k offset %d>\n" RESET, attr, attr->offset);
+      }
+      debug(GREEN"<struct offset %d>\n" RESET, node->token->offset);
+      // if(block) exit(1);
       return node;
    }
    else if ((token = find(ID, INT, CHARS, CHAR, FLOAT, BOOL, 0)))
    {
       Token *struct_token = NULL;
+      debug("token: %k \n", token);
       if (token->type == ID && token->name && (struct_token =  is_struct(token)))
       {
+         struct_token = copy_token(struct_token);
          Node *struct_node = new_node(struct_token);
          // token = tmp_node->token;
          if (!struct_node->token->struct_id)
@@ -754,11 +692,20 @@ Node *prime()
             exit(1);
          }
          token = find(ID, 0);
-         check(!token, "Expected variable name after struct declaration\n");
+         (check(!token, "Expected variable name after struct declaration\n"));
          setName(struct_node->token, token->name);
-         struct_node->token->declare = true;
          struct_node->token->type = STRUCT_CALL;
-         new_variable(struct_node->token);
+
+         debug(RED"==========================================\n");
+         debug("offset %d\n", struct_node->token->offset);
+         ptr += struct_node->token->offset;
+         for (int i = 0; i < struct_node->token->Struct.pos; i++)
+         {
+            Token *attr = struct_node->token->Struct.attrs[i];
+            attr->ptr = ptr - attr->offset;
+            debug("<%k PTR %d>\n", attr, attr->ptr);
+         }
+         debug("==========================================\n"RESET);
          return struct_node;
       }
       else if (token->declare)
@@ -838,7 +785,7 @@ void generate_ast()
 // INTERMEDIATE REPRESENTATION
 bool optimize_ir()
 {
-   if (!OPTIMIZE) return false;
+
    static int op = 0;
    static bool did_optimize = false;
    bool did_something = false;
@@ -1378,31 +1325,44 @@ Token* generate_ir(Node *node)
          check(1, "expected struct id\n");
          exit(1);
       }
-
-      int start = ptr;
       for (int i = 0; i < node->token->Struct.pos; i++)
       {
          Token *attr = node->token->Struct.attrs[i];
          attr->declare = false;
+         debug(CYAN"line %d: IR for %k\n"RESET, LINE, attr);
          Node *tmp = new_node(attr);
-         generate_ir(tmp);
+         if(attr->type == STRUCT_CALL)
+         {
+            Token *curr = attr;
+            for (int i = 0; i < curr->Struct.pos; i++)
+            {
+               Token *attr = curr->Struct.attrs[i];
+               attr->declare = false;
+               debug(CYAN"line %d: IR for %k\n"RESET, LINE, attr);
+               Node *tmp = new_node(attr);
+               // generate_ir(tmp);
+               free_node(tmp);
+
+               attr->declare = true;
+            }
+         }
+         else
+            generate_ir(tmp);
          free_node(tmp);
+
          attr->declare = true;
-         attr->ptr = start + attr->ptr;
-         //s += attr->ptr;
       }
-      ptr += node->token->offset;
 
       return NULL;
       break;
    }
    case DOT:
    {
-      pnode(node, NULL, 0);
+      //(node, NULL, 0);
       // TODO: left and right both must have name
       Token *left =  generate_ir(node->left);
       Token *right =  generate_ir(node->right);
-      debug("access %k from %k \n", right, left);
+      //debug("access %k from %k \n", right, left);
       for (int i = 0; i < left->Struct.pos; i++)
       {
          Token *attr = left->Struct.attrs[i];
@@ -1413,7 +1373,9 @@ Token* generate_ir(Node *node)
             char *name = strjoin(left->name, ".", attr->name);
             setName(attr, name);
             free(name);
-            debug(GREEN"found %k\n"RESET, attr);
+            debug(RED"\n=>found %k\n"RESET, attr);
+            ptoken(attr);
+            // exit(1);
             return attr;
          }
       }
@@ -1797,6 +1759,7 @@ void add_builtins()
 void generate(char *name)
 {
    if (found_error) return;
+#if IR
    debug(BLUE BOLD"GENERATE IR:\n" RESET);
    Node *curr = head;
    add_builtins();
@@ -1810,8 +1773,11 @@ void generate(char *name)
    print_ir();
    debug(BLUE BOLD"OPTIMIZE IR:\n" RESET);
    clone_insts();
-   while (!found_error && optimize_ir()) clone_insts();
-#if 1
+#endif
+#if OPTIMIZE
+   while (OPTIMIZE && !found_error && optimize_ir()) clone_insts();
+#endif
+#if ASM
    debug(BLUE BOLD"GENERATE ASM:\n" RESET);
    generate_asm(name);
 #endif

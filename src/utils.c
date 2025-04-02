@@ -99,7 +99,7 @@ Token *copy_token(Token *token)
    if (token->Struct.attrs)
    {
       new->Struct.attrs = allocate(token->Struct.len, sizeof(Token*));
-      for (int i = 0; i < token->Struct.pos; i++) new->Struct.attrs[i] = copy_token(token->Struct.attrs[i]);
+      for (int i = 0; i < new->Struct.pos; i++) new->Struct.attrs[i] = copy_token(token->Struct.attrs[i]);
    }
    add_token(new);
    return new;
@@ -175,6 +175,7 @@ void add_attribute(Token *obj, Token *attr)
       free(obj->Struct.attrs);
       obj->Struct.attrs = tmp;
    }
+   attr->space = obj->space + TAB;
    obj->Struct.attrs[obj->Struct.pos++] = attr;
 }
 
@@ -230,7 +231,9 @@ int sizeofToken(Token *token)
    case CHARS: return sizeof(char *);
    case CHAR: return sizeof(char);
    case BOOL: return sizeof(bool);
-   case STRUCT_DEF: case STRUCT_CALL:
+   case STRUCT_DEF:
+      return token->offset;
+   case STRUCT_CALL:
       return token->offset;
    default: check(1, "add this type [%s]\n", to_string(token->type));
    }
@@ -1014,7 +1017,8 @@ int ptoken_(const char*filename, int line, Token *token)
    case FDEC: case ID: res += debug("name [%s] ", token->name); break;
    default: break;
    }
-   if (token->ptr) res += debug("PTR [%d] ", token->ptr);
+   //if (token->ptr)
+   res += debug("PTR [%d] ", token->ptr);
    if (token->remove) res += debug("[remove] ");
    if (token->retType) res += debug("ret [%t] ", token->retType);
    if (token->struct_id) res += debug("struct_id [%d] ", token->struct_id);
