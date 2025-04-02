@@ -5,9 +5,10 @@ Specials *dataTypes = (Specials[]) { {"int", INT}, {"bool", BOOL}, {"chars", CHA
    {"char", CHAR}, {"float", FLOAT}, {"void", VOID}, {0, (Type)0}
 };
 
-Token* new_token_(char *filename, int line, char *input, size_t s, size_t e, Type type, size_t space)
+Token* new_token_(char *filename, int line, char *input, int s, int e, Type type, int space)
 {
    // debug("new token in %s:%d\n", filename, line);
+   filename = NULL, line = 0;
    debug("new token ");
    Token *new = allocate(1, sizeof(Token));
    new->type = type;
@@ -68,8 +69,8 @@ Token* new_token_(char *filename, int line, char *input, size_t s, size_t e, Typ
 
 void add_token(Token *token)
 {
-   static size_t pos;
-   static size_t len;
+   static int pos;
+   static int len;
    if (len == 0)
    {
       len = 10;
@@ -98,7 +99,7 @@ Token *copy_token(Token *token)
    if (token->Struct.attrs)
    {
       new->Struct.attrs = allocate(token->Struct.len, sizeof(Token*));
-      for (size_t i = 0; i < token->Struct.pos; i++) new->Struct.attrs[i] = copy_token(token->Struct.attrs[i]);
+      for (int i = 0; i < token->Struct.pos; i++) new->Struct.attrs[i] = copy_token(token->Struct.attrs[i]);
    }
    add_token(new);
    return new;
@@ -155,7 +156,7 @@ Token *find(Type type, ...)
 };
 
 
-bool within_space(size_t space)
+bool within_space(int space)
 {
    return tokens[exe_pos]->space > space && tokens[exe_pos]->type != END && !found_error;
 }
@@ -202,8 +203,8 @@ void setReg(Token *token, char *creg)
 
 void add_inst(Inst *inst)
 {
-   static size_t pos;
-   static size_t len;
+   static int pos;
+   static int len;
    if (len == 0)
    {
       len = 10;
@@ -229,7 +230,8 @@ int sizeofToken(Token *token)
    case CHARS: return sizeof(char *);
    case CHAR: return sizeof(char);
    case BOOL: return sizeof(bool);
-   case STRUCT_DEF: return token->ptr;
+   case STRUCT_DEF: case STRUCT_CALL:
+   return token->offset;
    default: check(1, "add this type [%s]\n", to_string(token->type));
    }
    return 0;
@@ -241,20 +243,20 @@ bool includes(Type *types, Type type)
    return false;
 }
 
-size_t ptr;
+int ptr;
 Inst *new_inst(Token *token)
 {
-   static size_t reg;
+   static int reg;
 
    Inst *new = allocate(1, sizeof(Inst));
    new->token = token;
-   if (token->isref && token->ptr) 
-   // I added this line for this case 
-   // func int m(ref int a)
-   // the code increment rsp and 
-   // it become for example sub rsp, 16
-   // even though I'm not declaring any variable inside
-   // function declaration
+   if (token->is_ref && token->ptr)
+      // I added this line for this case
+      // func int m(ref int a)
+      // the code increment rsp and
+      // it become for example sub rsp, 16
+      // even though I'm not declaring any variable inside
+      // function declaration
    {
       token->ptr = (ptr += 8);
    }
@@ -290,12 +292,12 @@ Inst *new_inst(Token *token)
 
 Scoop *Gscoop;
 Scoop *scoop;
-ssize_t scoopSize;
-ssize_t scoopPos = -1;
+int scoopSize;
+int scoopPos = -1;
 
 void enter_scoop(Token *token)
 {
-   debug(CYAN "Enter Scoop: %k index %zu\n" RESET, token, scoopPos + 1);
+   debug(CYAN "Enter Scoop: %k index %d\n" RESET, token, scoopPos + 1);
    if (Gscoop == NULL)
    {
       scoopSize = 10;
@@ -317,7 +319,7 @@ void enter_scoop(Token *token)
 void exit_scoop()
 {
    if (check(scoopPos < 0, "No active scoop to exit\n")) return;
-   debug(CYAN "Exit Scoop: %k index %zu\n" RESET, Gscoop[scoopPos].token, scoopPos);
+   debug(CYAN "Exit Scoop: %k index %d\n" RESET, Gscoop[scoopPos].token, scoopPos);
    free(Gscoop[scoopPos].functions);
    free(Gscoop[scoopPos].vars);
    free(Gscoop[scoopPos].structs);
@@ -328,12 +330,12 @@ void exit_scoop()
 
 void clone_insts()
 {
-   size_t pos = 0;
-   size_t len = 100;
+   int pos = 0;
+   int len = 100;
    free(insts);
    insts = allocate(len, sizeof(Inst *));
 
-   for (size_t i = 0; OrgInsts[i]; i++)
+   for (int i = 0; OrgInsts[i]; i++)
    {
       if (!OrgInsts[i]->token->remove)
       {
@@ -363,13 +365,12 @@ children:
       L: [INT   ] value [1] space [4]
 */
 Node **builtins_functions;
-size_t builtins_pos;
-size_t builtins_size;
+int builtins_pos;
+int builtins_size;
 void create_builtin(char *name, Type *params, Type retType)
 {
    if (found_error) return;
    Node *node = new_node(new_token(name, 0, strlen(name), FDEC, 0));
-   enter_scoop(node->token);
    node->token->retType = retType;
    switch (retType)
    {
@@ -384,19 +385,14 @@ void create_builtin(char *name, Type *params, Type retType)
    int i = 0;
    char *eregs[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d", NULL};
    char *rregs[] = {"rdi", "rsi", "rdx", "rcx", "r8d", "r9d", NULL};
-   while (params[i])
+   while (params[i] && !found_error)
    {
-#if TREE
-      args->left = new_node(new_token(NULL, 0, 0, params[i], node->token->space + TAB));
-      args->right = new_node(NULL);
-      args = args->right;
-#else
 
       Token *arg_token = new_token(NULL, 0, 0, params[i], node->token->space + TAB);
-      //arg_token->declare = true;
-      if (i < sizeof(eregs) / sizeof(eregs[0]))
+      // arg_token->declare = true;
+      if (i < (int)(sizeof(eregs) / sizeof(eregs[0])))
       {
-         // if (name->isref) setReg(name, rregs[i]);
+         // if (name->is_ref) setReg(name, rregs[i]);
          // else
          {
             // check(1, "set reg");
@@ -418,33 +414,16 @@ void create_builtin(char *name, Type *params, Type retType)
          check(1, "implement assigning function argument using PTR");
       }
       add_child(args, new_node(arg_token));
-#endif
       i++;
    }
 
-   // if (builtins_functions == NULL)
-   // {
-   //    builtins_size = 2;
-   //    builtins_functions = allocate(builtins_size, sizeof(Node *));
-   // }
-   // else if (builtins_pos + 1 == builtins_size)
-   // {
-   //    Node **tmp = allocate(builtins_size * 2, sizeof(Node *));
-   //    memcpy(tmp, builtins_functions, builtins_pos * sizeof(Node *));
-   //    free(builtins_functions);
-   //    builtins_size *= 2;
-   //    builtins_functions = tmp;
-   // }
-   //builtins_functions[builtins_pos++] = func;
-   // debug("%screate builin [%s]%s\n", GREEN, func->token->name, RESET);
-   exit_scoop();
    new_function(node);
 }
 
 Node *new_function(Node *node)
 {
    debug("new_func %s in scoop %k that return %t\n", node->token->name, scoop->token, node->token->retType);
-   for (size_t i = 0; i < scoop->fpos; i++)
+   for (int i = 0; i < scoop->fpos; i++)
    {
       Node *func = scoop->functions[i];
       bool cond = strcmp(func->token->name, node->token->name) == 0;
@@ -472,13 +451,13 @@ Node *get_function(char *name)
    // TODO: remove output from here
    debug("get_func %s in scoop %k\n", name, scoop->token);
 #if 1
-   for (size_t i = 0; i < builtins_pos; i++)
+   for (int i = 0; i < builtins_pos; i++)
       if (strcmp(name, builtins_functions[i]->token->name) == 0) return builtins_functions[i];
 #endif
-   for (ssize_t j = scoopPos; j >= 0; j--)
+   for (int j = scoopPos; j >= 0; j--)
    {
       Scoop *scoop = &Gscoop[j];
-      for (size_t i = 0; i < scoop->fpos; i++)
+      for (int i = 0; i < scoop->fpos; i++)
          if (strcmp(scoop->functions[i]->token->name, name) == 0) return scoop->functions[i];
    }
    check(1, "'%s' Not found\n", name);
@@ -488,7 +467,7 @@ Node *get_function(char *name)
 Token *new_variable(Token *token)
 {
    debug(CYAN "new variable [%s] [%s] in scoop %k\n" RESET, token->name, to_string(token->type), scoop->token);
-   for (size_t i = 0; i < scoop->vpos; i++)
+   for (int i = 0; i < scoop->vpos; i++)
    {
       Token *curr = scoop->vars[i];
       if (strcmp(curr->name, token->name) == 0) check(1, "Redefinition of %s\n", token->name);
@@ -512,10 +491,10 @@ Token *new_variable(Token *token)
 Token *get_variable(char *name)
 {
    debug(CYAN "get variable [%s] from scoop %k\n" RESET, name, scoop->token);
-   for (ssize_t j = scoopPos; j >= 0; j--)
+   for (int j = scoopPos; j >= 0; j--)
    {
       Scoop *scoop = &Gscoop[j];
-      for (size_t i = 0; i < scoop->vpos; i++)
+      for (int i = 0; i < scoop->vpos; i++)
          if (strcmp(scoop->vars[i]->name, name) == 0) return scoop->vars[i];
    }
    check(1, "%s not found\n", name);
@@ -524,15 +503,15 @@ Token *get_variable(char *name)
 
 Token *new_struct(Token *token)
 {
-   static size_t structs_ids;
+   static int structs_ids;
    if (!token->struct_id) token->struct_id = (structs_ids += 1);
    // check(1, "implement this one");
-   debug(CYAN "new struct [%s] with id [%zu] " RESET, token->name, token->struct_id);
+   debug(CYAN "new struct [%s] with id [%d] offset [%d] ", token->name, token->struct_id, token->offset);
    if (scoop && scoop->token) debug("in scoop %k", scoop->token);
    else if (scoop && !scoop->token) debug("in scoop with NULL token");
    else debug("in NULL scoop");
    debug("\n" RESET);
-   for (size_t i = 0; i < scoop->spos; i++)
+   for (int i = 0; i < scoop->spos; i++)
    {
       Token *curr = scoop->structs[i];
       if (strcmp(curr->name, token->name) == 0) check(1, "Redefinition of %s\n", token->name);
@@ -561,30 +540,30 @@ Token *get_struct(char *name)
    else debug("from NULL scoop");
    debug("\n" RESET);
 
-   for (ssize_t j = scoopPos; j >= 0; j--)
+   for (int j = scoopPos; j >= 0; j--)
    {
       Scoop *scoop = &Gscoop[j];
-      for (size_t i = 0; i < scoop->spos; i++)
+      for (int i = 0; i < scoop->spos; i++)
          if (strcmp(scoop->structs[i]->name, name) == 0) return scoop->structs[i];
    }
    // check(1, "%s not found\n", name);
    return NULL;
 }
 
-Token *get_struct_by_id(size_t id)
+Token *get_struct_by_id(int id)
 {
-   debug(CYAN "get struct with id [%zu] ", id);
+   debug(CYAN "get struct with id [%d] ", id);
    if (scoop && scoop->token) debug("from scoop %k", scoop->token);
    else if (scoop && !scoop->token) debug("from scoop with NULL token");
    else debug("from NULL scoop");
    debug("\n" RESET);
-   for (ssize_t j = scoopPos; j >= 0; j--)
+   for (int j = scoopPos; j >= 0; j--)
    {
       Scoop *scoop = &Gscoop[j];
-      debug("[%d] scoop [%s] has %zu structs\n", j, scoop->token->name, scoop->spos);
-      for (size_t i = 0; i < scoop->spos; i++)
+      debug("[%d] scoop [%s] has %d structs\n", j, scoop->token->name, scoop->spos);
+      for (int i = 0; i < scoop->spos; i++)
       {
-         debug(GREEN"struct has [%zu]\n"RESET, scoop->structs[i]->struct_id);
+         debug(GREEN"struct has [%d]\n"RESET, scoop->structs[i]->struct_id);
          if (scoop->structs[i]->struct_id == id) return scoop->structs[i];
       }
    }
@@ -626,10 +605,10 @@ const char *to_string_(const char *filename, const int line, Type type) {
    return NULL;
 }
 
-void *allocate_func(size_t line, size_t len, size_t size)
+void *allocate_func(int line, int len, int size)
 {
    void *ptr = calloc(len, size);
-   check(!ptr, "allocate did failed in line %zu\n", line);
+   check(!ptr, "allocate did failed in line %d\n", line);
    return ptr;
 }
 
@@ -638,7 +617,7 @@ void open_file(char *filename)
    if (found_error) return;
    struct _IO_FILE *file = fopen(filename, "r");
    fseek(file, 0, SEEK_END);
-   size_t size = ftell(file);
+   int size = ftell(file);
    fseek(file, 0, SEEK_SET);
    input = allocate((size + 1), sizeof(char));
    if (input) fread(input, size, sizeof(char), file);
@@ -754,15 +733,15 @@ void pasm(char *fmt, ...)
             i++;
             Token *token = va_arg(args, Token *);
             if (token->creg) fprintf(asm_fd, "%s", token->creg);
-            else if (token->isref) fprintf(asm_fd, "QWORD PTR -%ld[rbp]", token->ptr);
+            else if (token->is_ref) fprintf(asm_fd, "QWORD PTR -%d[rbp]", token->ptr);
             else
                switch (token->type)
                {
-               case CHARS: fprintf(asm_fd, "QWORD PTR -%ld[rbp]", token->ptr); break;
-               case INT: fprintf(asm_fd, "DWORD PTR -%ld[rbp]", token->ptr); break;
-               case CHAR: fprintf(asm_fd, "BYTE PTR -%ld[rbp]", token->ptr); break;
-               case BOOL: fprintf(asm_fd, "BYTE PTR -%ld[rbp]", token->ptr); break;
-               case FLOAT: fprintf(asm_fd, "DWORD PTR -%ld[rbp]", token->ptr); break;
+               case CHARS: fprintf(asm_fd, "QWORD PTR -%d[rbp]", token->ptr); break;
+               case INT: fprintf(asm_fd, "DWORD PTR -%d[rbp]", token->ptr); break;
+               case CHAR: fprintf(asm_fd, "BYTE PTR -%d[rbp]", token->ptr); break;
+               case BOOL: fprintf(asm_fd, "BYTE PTR -%d[rbp]", token->ptr); break;
+               case FLOAT: fprintf(asm_fd, "DWORD PTR -%d[rbp]", token->ptr); break;
                default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
                }
          }
@@ -866,9 +845,9 @@ void finalize()
       Token *curr = tokens[i];
       // test char variable before making any modification
       if (curr->type == CHARS && !curr->name && !curr->ptr && curr->index)
-         pasm(".STR%zu: .string %s\n", curr->index, curr->Chars.value ? curr->Chars.value : "\"\"");
+         pasm(".STR%d: .string %s\n", curr->index, curr->Chars.value ? curr->Chars.value : "\"\"");
       if (curr->type == FLOAT && !curr->name && !curr->ptr && curr->index)
-         pasm(".FLT%zu: .long %zu /* %f */\n", curr->index, *((uint32_t *)(&curr->Float.value)), curr->Float.value);
+         pasm(".FLT%d: .long %d /* %f */\n", curr->index, *((uint32_t *)(&curr->Float.value)), curr->Float.value);
    }
    pasm(".section	.note.GNU-stack,\"\",@progbits\n\n");
 #endif
@@ -910,7 +889,7 @@ void print_ir()
       Token *left = insts[i]->left;
       Token *right = insts[i]->right;
       curr->reg ? debug("r%.2d:", curr->reg) : debug("rxx:");
-      size_t k = 0;
+      int k = 0;
       while (k < curr->space) k += printf(" ");
       switch (curr->type)
       {
@@ -930,6 +909,12 @@ void print_ir()
       case ADD: case SUB: case MUL: case DIV:
       case EQUAL: case NOT_EQUAL: case LESS: case MORE: case LESS_EQUAL: case MORE_EQUAL:
       {
+         if (!left || !right)
+         {
+            if (!left) check(1, " left NULL\n");
+            if (!right) check(1, " right NULL\n");
+            exit(1);
+         }
          debug("[%-6s] ", to_string(curr->type));
          if (left->reg) debug("r%.2d", left->reg);
          else if (left->creg)
@@ -947,7 +932,7 @@ void print_ir()
       case INT: case BOOL: case CHARS: case CHAR:
       {
          debug("[%-6s] ", to_string(curr->type));
-         if (curr->declare) debug("declare [%s] PTR=[%zu]", curr->name, curr->ptr);
+         if (curr->declare) debug("declare [%s] PTR=[%d]", curr->name, curr->ptr);
          else if (curr->name) debug("variable %s ", curr->name);
          else if (curr->creg) debug("creg %s ", curr->creg);
          else if (curr->type == INT) debug("value %lld ", curr->Int.value);
@@ -961,7 +946,7 @@ void print_ir()
          // }
          else if (curr->type == CHARS)
          {
-            if (curr->index) debug("value %s in STR%zu", curr->Chars.value, curr->index);
+            if (curr->index) debug("value %s in STR%d", curr->Chars.value, curr->index);
             else debug("in %s", curr->creg);
          }
          else check(1, "handle this case in generate ir\n", "");
@@ -982,8 +967,8 @@ void print_ir()
       default: debug(RED "print_ir:handle [%s]"RESET, to_string(curr->type)); break;
       }
       // if(curr->remove) debug(" remove");
-      if (curr->isref) debug(" isref");
-      debug(" space (%zu)", curr->space);
+      if (curr->is_ref) debug(" is_ref");
+      debug(" space (%d)", curr->space);
       debug("\n");
    }
    debug("total instructions [%d]\n", i);
@@ -996,7 +981,7 @@ int ptoken_(const char*filename, int line, Token *token)
    res += debug("[%-6s] ", to_string_(filename, line, token->type));
    switch (token->type)
    {
-   case VOID: case CHARS: case CHAR: case INT: case BOOL: case FLOAT: case STRUCT_CALL:
+   case VOID: case CHARS: case CHAR: case INT: case BOOL: case FLOAT:// case STRUCT_CALL:
    {
       if (token->name) res += debug("name [%s] ", token->name);
       if (token->declare) res += debug("[declare] ");
@@ -1016,6 +1001,7 @@ int ptoken_(const char*filename, int line, Token *token)
       }
       break;
    }
+   case STRUCT_CALL:
    case STRUCT_DEF:
    {
       res += debug("name [%s] ", token->name);
@@ -1026,7 +1012,7 @@ int ptoken_(const char*filename, int line, Token *token)
 #if 0
          res += ptoken(attr) + debug(", ");
 #else
-         res += debug("%s %t [%zu], ", attr->name, attr->type, attr->ptr);
+         res += debug("%s %t [%d], ", attr->name, attr->type, attr->ptr);
 #endif
       }
       break;
@@ -1035,20 +1021,20 @@ int ptoken_(const char*filename, int line, Token *token)
    case FDEC: case ID: res += debug("name [%s] ", token->name); break;
    default: break;
    }
-   if (token->ptr) res += debug("PTR [%zu] ", token->ptr);
+   if (token->ptr) res += debug("PTR [%d] ", token->ptr);
    if (token->remove) res += debug("[remove] ");
    if (token->retType) res += debug("ret [%t] ", token->retType);
-   if (token->struct_id) res += debug("struct_id [%zu] ", token->struct_id);
-   res += debug("space [%zu] ", token->space);
+   if (token->struct_id) res += debug("struct_id [%d] ", token->struct_id);
+   res += debug("space [%d] ", token->space);
    return res;
 }
 
-int pnode(Node *node, char *side, size_t space)
+int pnode(Node *node, char *side, int space)
 {
    if (!node) return 0;
 
    int res = 0;
-   for (size_t i = 0; i < space; i++) res += debug(" ");
+   for (int i = 0; i < space; i++) res += debug(" ");
    if (side) res += debug("%s", side);
    res += debug("%k\n", node->token);
 
@@ -1057,9 +1043,9 @@ int pnode(Node *node, char *side, size_t space)
    res += pnode(node->right, "R: ", space + TAB);
    if (node->children)
    {
-      for (size_t i = 0; i < space; i++) res += debug(" ");
+      for (int i = 0; i < space; i++) res += debug(" ");
       res += debug("children: \n");
-      //for (size_t i = 0; i < space; i++) res += debug(" ");
+      //for (int i = 0; i < space; i++) res += debug(" ");
       for (int i = 0; i < node->cpos; i++) pnode(node->children[i], NULL, space + TAB);
    }
 
@@ -1073,7 +1059,7 @@ int debug(char *conv, ...)
    va_list args;
    va_start(args, conv);
 
-   for (size_t i = 0; conv[i]; i++)
+   for (int i = 0; conv[i]; i++)
    {
       if (conv[i] == '%')
       {
@@ -1093,7 +1079,7 @@ int debug(char *conv, ...)
                i++;
             }
          }
-         if (strncmp(conv + i, "zu", 2) == 0) {res += fprintf(stdout, "%zu", va_arg(args, size_t)); i++; }
+         if (strncmp(conv + i, "zu", 2) == 0) {res += fprintf(stdout, "%d", va_arg(args, int)); i++; }
          else if (strncmp(conv + i, "lld", 3) == 0) { res += fprintf(stdout, "%lld", va_arg(args, long long)); i += 2; }
          else
          {
@@ -1184,9 +1170,9 @@ void free_memory()
 
 char *strjoin(char *str0, char *str1, char *str2)
 {
-   size_t len0 = strlen(str0);
-   size_t len1 = strlen(str1);
-   size_t len2 = strlen(str2);
+   int len0 = strlen(str0);
+   int len1 = strlen(str1);
+   int len2 = strlen(str2);
 
    char *res = allocate(len0 + len1 + len2 + 1, 1);
    strcpy(res, str0);

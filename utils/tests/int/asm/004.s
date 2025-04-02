@@ -6,9 +6,10 @@
 m:
     push rbp
     mov  rbp, rsp
-    sub  rsp, 0
-    mov  rax, rdi
-    mov  DWORD PTR [rax], 1 ;// assign [a] isref
+    sub  rsp, 16
+    mov  QWORD PTR -8[rbp], rdi ;// assign [a] is_ref
+    mov  rax, QWORD PTR -8[rbp]
+    mov  DWORD PTR [rax], 1 ;// assign [a] is_ref
     mov  eax, 1
     leave 
     ret  
@@ -19,7 +20,7 @@ main:
     sub  rsp, 16
     mov  DWORD PTR -4[rbp], 2 ;// assign [x]
     lea  rax, -4[rbp]
-    mov  rdi, rax ;// assign [edi] isref
+    mov  rdi, rax ;// assign [edi] is_ref
     call m
     mov  edi, DWORD PTR -4[rbp] ;// assign [edi]
     call putnbr

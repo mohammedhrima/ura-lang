@@ -1,4 +1,3 @@
-+ refactor if and while
-
-+ math operation using references
-+ ....
++ struct inside struct
++ struct as function parameter
++ reference to struct
