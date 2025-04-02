@@ -9,29 +9,21 @@ main:
     sub  rsp, 16
     mov  DWORD PTR -4[rbp], 0 ;// declare [a]
     .if1:
-    mov  eax, DWORD PTR -4[rbp]
-    mov  ebx, 1
-    cmp  eax, ebx
-    sete al
-        cmp  al, 1
-        jne  .elif4
+    cmp  DWORD PTR -4[rbp], 1
+    jne   .elif3
         lea  rdi, .STR1[rip] ;// assign [rdi]
         call putstr
-    jmp  .endif3
-    .elif4:
-    mov  eax, DWORD PTR -4[rbp]
-    mov  ebx, 0
-    cmp  eax, ebx
-    sete al
-        cmp  al, 1
-        jne  .else6
+        jmp  .endif1
+    .elif3:
+    cmp  DWORD PTR -4[rbp], 0
+    jne   .else5
         lea  rdi, .STR2[rip] ;// assign [rdi]
         call putstr
-    jmp  .endif3
-    .else6:
+        jmp  .endif1
+    .else5:
         lea  rdi, .STR3[rip] ;// assign [rdi]
         call putstr
-    .endif3:
+    .endif1:
     mov  eax, 0
     leave 
     ret  

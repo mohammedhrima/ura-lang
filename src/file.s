@@ -3,34 +3,15 @@
 .text
 .globl	main
 
-main:
+    mov  QWORD PTR -8[rbp], 0 ;// declare [name]
+    main:
     push rbp
     mov  rbp, rsp
-    sub  rsp, 16
-    mov  DWORD PTR -4[rbp], 0 ;// declare [a]
-    .if1:
-    cmp  DWORD PTR -4[rbp], 1
-    jne   .elif2
-        lea  rdi, .STR1[rip] ;// assign [rdi]
-        call putstr
-    jmp  .endif0
-    .elif3:
-    mov  eax, DWORD PTR -4[rbp]
-    mov  ebx, 0
-    cmp  eax, ebx
-    sete al
-    lea  rdi, .STR2[rip] ;// assign [rdi]
-        call putstr
-    jmp  .endif0
-    .else5:
-        lea  rdi, .STR3[rip] ;// assign [rdi]
-        call putstr
-    .endif0:
+    sub  rsp, 64
+    mov  QWORD PTR -8[rbp], 0 ;// declare [name]
+    mov  DWORD PTR -32[rbp], 0 ;// declare [age]
     mov  eax, 0
     leave 
     ret  
-.endmain:.STR1: .string "cond 1\n"
-.STR2: .string "cond 2\n"
-.STR3: .string "cond 3\n"
-.section	.note.GNU-stack,"",@progbits
+.endmain:.section	.note.GNU-stack,"",@progbits
 

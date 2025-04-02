@@ -12,8 +12,9 @@
 - assign variable from refrence
 - assign reference from variable
 - refrence variables
+- maybe I will need to declare arguments as variables inside function declaration
 
-+ maybe I will need to declare arguments as variables inside function declaration
++ check all conditions to be boolean
 + for loops
 + use return with refrence
 + math operations with refrence
@@ -36,6 +37,8 @@
 + test function with lot of arguments
 + test all possible cases that can be handled, so the code does not crash
 
++ implement output
 + (To be checked if neccessary) set registers for function argument , in generate_ir
 + every loop inside source code should check found_error
 + void function need to be checked
++ global variable

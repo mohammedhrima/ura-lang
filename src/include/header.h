@@ -37,21 +37,21 @@ typedef struct Token
    Type type;
    Type retType;
    char *name;
-   size_t ptr;
+   int ptr;
    bool declare;
-   size_t space;
+   int space;
    bool remove;
-   size_t reg;
+   int reg;
    char *creg;
-   size_t index;
-   bool isCond;
-   bool isref;
-   bool hasref;
-   // size_t rsp;
+   int index;
+   bool is_cond;
+   bool is_ref;
+   bool has_ref;
+   // int rsp;
    bool isarg;
-   size_t struct_id;
+   int struct_id;
    bool isattr;
-   size_t offset;
+   int offset;
 
    struct
    {
@@ -86,8 +86,8 @@ typedef struct Token
       struct
       {
          struct Token **attrs;
-         size_t pos;
-         size_t len;
+         int pos;
+         int len;
       } Struct;
    };
 } Token;
@@ -99,8 +99,8 @@ typedef struct Node
    Token *token;
 
    struct Node **children;
-   size_t cpos; // children pos
-   size_t csize; // children size
+   int cpos; // children pos
+   int csize; // children size
 
 } Node;
 
@@ -115,16 +115,16 @@ typedef struct
    Token *token;
 
    Node **functions;
-   size_t fpos;
-   size_t fsize;
+   int fpos;
+   int fsize;
 
    Token **structs;
-   size_t spos;
-   size_t ssize;
+   int spos;
+   int ssize;
 
    Token **vars;
-   size_t vpos;
-   size_t vsize;
+   int vpos;
+   int vsize;
 
 } Scoop;
 
@@ -141,18 +141,18 @@ extern bool did_pasm;
 extern char *input;
 extern Token **tokens;
 extern Node *head;
-extern size_t exe_pos;
+extern int exe_pos;
 extern Inst **OrgInsts;
 extern Inst **insts;
 extern Scoop *Gscoop;
-extern ssize_t scoopSize;
-extern ssize_t scoopPos;
+extern int scoopSize;
+extern int scoopPos;
 extern Scoop *scoop;
-extern size_t ptr;
+extern int ptr;
 extern struct _IO_FILE *asm_fd;
 
 void open_file(char *filename);
-Token* new_token_(char *filename, int line, char *input, size_t s, size_t e, Type type, size_t space);
+Token* new_token_(char *filename, int line, char *input, int s, int e, Type type, int space);
 
 void tokenize();
 void generate_ast();
@@ -171,7 +171,7 @@ void generate(char *name);
 Inst *new_inst(Token *token);
 void setName(Token *token, char *name);
 void setReg(Token *token, char *creg);
-bool within_space(size_t space);
+bool within_space(int space);
 void add_token(Token *token);
 Node *new_node(Token *token);
 Token *find(Type type, ...);
@@ -179,9 +179,9 @@ const char *to_string_(const char *filename, const int line, Type type);
 void enter_scoop(Token *token);
 bool check_error(const char *filename, const char *funcname, int line, bool cond, char *fmt, ...);
 void free_memory();
-void *allocate_func(size_t line, size_t len, size_t size);
+void *allocate_func(int line, int len, int size);
 int debug(char *conv, ...);
-int pnode(Node *node, char *side, size_t space);
+int pnode(Node *node, char *side, int space);
 int ptoken_(const char*filename, int line, Token *token);
 void exit_scoop();
 void clone_insts();
@@ -203,7 +203,7 @@ bool includes(Type *types, Type type);
 Token* generate_ir(Node *node);
 Token *new_struct(Token *token);
 Token *get_struct(char *name);
-Token *get_struct_by_id(size_t id);
+Token *get_struct_by_id(int id);
 void add_attribute(Token *obj, Token *attr);
 char *strjoin(char *str0, char *str1, char *str2);
 int sizeofToken(Token *token);
