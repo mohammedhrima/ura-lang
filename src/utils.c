@@ -135,6 +135,39 @@ bool within_space(int space)
    return tokens[exe_pos]->space > space && tokens[exe_pos]->type != END && !found_error;
 }
 
+int calculate_padding(int offset, int alignment) {
+   if (check(!alignment, "invalid alignment")) return 0;
+   return (alignment - (offset % alignment)) % alignment;
+}
+
+int alignofToken(Token *token)
+{
+   // switch(token->type)
+   // {
+
+   // }
+   return sizeofToken(token);
+}
+void set_struct_size(Token *token)
+{
+   int offset = 0;
+   int max_align = 1;
+
+   for (int i = 0; i < token->Struct.pos; i++)
+   {
+      Token *attr = token->Struct.attrs[i];
+      int align = alignofToken(attr);
+      int size = sizeofToken(attr);
+
+      int padding = calculate_padding(offset, align);
+      offset += padding;
+      offset += size;
+      if (align > max_align) max_align = align;
+   }
+   int final_padding = calculate_padding(offset, max_align);
+   token->offset = offset + final_padding;
+}
+
 Token *new_struct(Token *token)
 {
    static int structs_ids;
@@ -208,9 +241,22 @@ Node *new_node(Token *token)
 Node *copy_node(Node *node)
 {
    Node *new = allocate(1, sizeof(Node));
+   memcpy(new, node, sizeof(Node));
    new->token = copy_token(node->token);
    if (node->left) new->left = copy_node(node->left);
    if (node->right) new->right = copy_node(node->right);
+   if (node->cpos) // children
+   {
+      new->children = allocate(node->csize, sizeof(Node *));
+      for (int i = 0; i < node->cpos; i++)
+         new->children[i] = copy_node(node->children[i]);
+      new->structs = NULL;
+      new->spos = 0;
+      new->ssize = 0;
+      new->vars = NULL;
+      new->vpos = 0;
+      new->vsize = 0;
+   }
    return new;
 }
 
@@ -363,7 +409,6 @@ Node *new_function(Node *node)
 
 Node *get_function(char *name)
 {
-   // TODO: remove output from here
    debug("get_func %s in scoop %k\n", name, scoop->token);
    for (int j = scoopPos; j >= 0; j--)
    {
@@ -437,6 +482,7 @@ Inst *new_inst(Token *token)
    {
       token->ptr = (ptr += 8);
    }
+   else if (token->type == CHARS && token->Chars.value && !token->index) token->index = ++str_index;
    else if (token->name && token->declare)
    {
       if (token->type == STRUCT_CALL)
@@ -460,7 +506,7 @@ Inst *new_inst(Token *token)
          ptr = curr + token->offset;
          return NULL;
       }
-      else if (!token->ptr) // I added this line for structs attributes
+      else  // I added this line for structs attributes
       {
          token->ptr = (ptr += sizeofToken(token));
       }
@@ -470,6 +516,204 @@ Inst *new_inst(Token *token)
    debug("inst: %k\n", new->token);
    add_inst(new);
    return new;
+}
+
+bool optimize_ir()
+{
+   static int op = 0;
+   static bool did_optimize = false;
+   bool did_something = false;
+   switch (op)
+   {
+   case 0:
+   {
+      debug(CYAN "OP[%d] calculate operations on values\n" RESET, op);
+      for (int i = 0; insts[i]; i++)
+      {
+         Token *token = insts[i]->token;
+         Token *left = insts[i]->left;
+         Token *right = insts[i]->right;
+
+         // TODO: check if left and right are compatible
+         // test if left is function, and right is number ...
+         if (
+            includes(token->type, ADD, SUB, MUL, DIV, 0) && includes(left->type, INT, FLOAT, CHAR, 0)
+            && compatible(left, right) && !left->name && !right->name)
+         {
+            did_something = true;
+            did_optimize = true;
+            switch (left->type)
+            {
+            case INT:
+               switch (token->type)
+               {
+               case ADD: token->Int.value = left->Int.value + right->Int.value; break;
+               case SUB: token->Int.value = left->Int.value - right->Int.value; break;
+               case MUL: token->Int.value = left->Int.value * right->Int.value; break;
+               case DIV: token->Int.value = left->Int.value / right->Int.value; break;
+               default: break;
+               }
+               break;
+            default:
+               check(1, "handle this case\n", "");
+               break;
+            }
+            token->type = left->type;
+            token->retType = 0;
+            insts[i]->left = NULL;
+            insts[i]->right = NULL;
+            left->remove = true;
+            right->remove = true;
+            token->reg = 0;
+            setReg(token, NULL);
+            if (i > 0) i -= 2;
+         }
+      }
+      if (did_something) print_ir();
+      break;
+   }
+   case 1:
+   {
+      debug(CYAN "OP[%d] calculate operations on constants\n" RESET, op);
+      for (int i = 1; insts && insts[i]; i++)
+      {
+         Token *curr_token = insts[i]->token;
+         Token *curr_left = insts[i]->left;
+         Token *curr_right = insts[i]->right;
+
+         Token *prev_token = insts[i - 1]->token;
+         // Token *prev_left = insts[i - 1]->left;
+         Token *prev_right = insts[i - 1]->right;
+
+         //  TODO: handle string also here X'D ma fiyach daba
+         if (curr_token->type == ADD && prev_token->type == ADD)
+         {
+            if (curr_left == prev_token && !prev_right->name && !curr_right->name)
+            {
+               // prev_right->type = INT;
+               curr_token->remove = true;
+               prev_right->Int.value += curr_right->Int.value;
+               i = 1;
+               copy_insts();
+               did_something = true;
+               did_optimize = true;
+               continue;
+            }
+            // else
+            // if(curr_right == prev_token && !prev_left->name && !curr_left->name)
+            // {
+            //   // prev_r->type = INT;
+            //   // curr_token->remove = true;
+            //   prev_left->Int.value += curr_left->Int.value;
+            //   i = 1;
+            //   copy_insts();
+            //   optimize = true;
+            //   continue;
+            // }
+         }
+      }
+      if (did_something) print_ir();
+      break;
+   }
+   case 2:
+   {
+      debug(CYAN "OP[%d] remove reassigned variables\n" RESET, op);
+      for (int i = 0; insts[i]; i++)
+      {
+         Token *token = insts[i]->token;
+         if (token->declare )
+         {
+            for (int j = i + 1; insts[j] && insts[j]->token->space == token->space; j++)
+            {
+               if (insts[j]->token->type == ASSIGN && insts[j]->left->reg == token->reg /*&& !token->is_ref*/)
+               {
+                  // debug(RED"1. remove r%d %k\n"RESET, token->reg, token);
+                  token->declare = false;
+                  token->remove = true;
+                  did_optimize = true;
+                  did_something = true;
+                  insts[j]->left->is_ref = token->is_ref;
+                  break;
+               }
+               else if ((insts[j]->left && insts[j]->left->reg == token->reg) ||
+                        (insts[j]->right && insts[j]->right->reg == token->reg)) {
+                  break;
+               }
+            }
+         }
+         else if (token->type == ASSIGN)
+         {
+            for (int j = i + 1; insts[j] && insts[j]->token->space == token->space; j++)
+            {
+               if (!insts[j]->left || !insts[j]->right) continue;
+               // TODO: to be checked
+               // I replaced insts[j]->left == insts[i]->left with insts[j]->left->reg == insts[i]->left->reg
+               if (insts[j]->token->type == ASSIGN && insts[j]->left->reg == token->reg)
+               {
+                  // debug(RED"2. remove r%d %k\n"RESET, token->reg, token);
+                  token->remove = true;
+                  did_optimize = true;
+                  did_something = true;
+                  break;
+               }
+               else if (insts[j]->left->reg == token->reg || insts[j]->right->reg == token->reg)
+                  break;
+            }
+         }
+      }
+      if (did_something) print_ir();
+      break;
+   }
+   case 3:
+   {
+      debug(CYAN"OP[%d] remove followed return instructions\n"RESET, op);
+      for (int i = 1; insts[i]; i++)
+      {
+         if (insts[i]->token->type == RETURN && insts[i - 1]->token->type == RETURN)
+         {
+            did_optimize = true;
+            did_something = true;
+            insts[i]->token->remove = true;
+            copy_insts();
+            i = 1;
+         }
+      }
+      if (did_something) print_ir();
+      break;
+   }
+   case 4:
+   {
+      // TODO: be carefull this one remove anything that don't have reg
+      debug(CYAN "OP[%d] remove unused instructions\n"RESET, op);
+      for (int i = 0; insts[i]; i++)
+      {
+         Token *curr = insts[i]->token;
+         if (!curr->ptr && !curr->reg && includes(curr->type, INT, CHARS, CHAR, FLOAT, BOOL, 0))
+         {
+            curr->remove = true;
+            did_something = true;
+            did_optimize = true;
+         }
+      }
+      if (did_something) print_ir();
+      break;
+   }
+   case 5:
+   {
+
+      break;
+   }
+   default:
+   {
+      op = 0;
+      if (!did_optimize) return false;
+      did_optimize = false;
+      return true;
+      break;
+   }
+   }
+   op++;
+   return true;
 }
 
 void pasm(char *fmt, ...)
@@ -714,7 +958,6 @@ void create_builtin(char *name, Type *params, Type retType)
    char *rregs[] = {"rdi", "rsi", "rdx", "rcx", "r8d", "r9d", NULL};
    while (params[i] && !found_error)
    {
-
       Token *arg_token = new_token(NULL, 0, 0, params[i], node->token->space + TAB);
       // arg_token->declare = true;
       if (i < (int)(sizeof(eregs) / sizeof(eregs[0])))
@@ -746,73 +989,6 @@ void create_builtin(char *name, Type *params, Type retType)
       i++;
    }
    new_function(node);
-}
-
-void add_builtins()
-{
-   struct { char *name; Type*attrs; Type ret;} builtins[] = {
-      //----------------------
-      // Memory Management
-      //----------------------
-      {"malloc",  (Type[]){LONG, 0},                 PTR},
-      {"calloc",  (Type[]){LONG, LONG, 0},         PTR},
-      {"realloc", (Type[]){PTR, LONG, 0},       PTR},
-      {"free",    (Type[]){PTR, 0},               VOID},
-
-      //----------------------
-      // String Operations
-      //----------------------
-      {"strlen",  (Type[]){CHARS, 0},         LONG},
-      {"strcpy",  (Type[]){CHARS, CHARS, 0}, CHARS},
-      {"strncpy", (Type[]){CHARS, CHARS, LONG, 0}, CHARS},
-      {"strcat",  (Type[]){CHARS, CHARS, 0}, CHARS},
-      {"strncat", (Type[]){CHARS, CHARS, LONG, 0}, CHARS},
-      {"strcmp",  (Type[]){CHARS, CHARS, 0}, INT},
-      {"strncmp", (Type[]){CHARS, CHARS, LONG, 0}, INT},
-      {"strdup",  (Type[]){CHARS, 0},         CHARS},
-      {"strchr",  (Type[]){CHARS, INT, 0},    CHARS},
-      {"strstr",  (Type[]){CHARS, CHARS, 0}, CHARS},
-
-      //----------------------
-      // I/O Operations
-      //----------------------
-      // {"printf",  (Type[]){CHARS, VARARG, 0}, INT},
-      // {"scanf",   (Type[]){CHARS, VARARG, 0}, INT},
-      {"puts",    (Type[]){CHARS, 0},         INT},
-      {"putchar", (Type[]){INT, 0},                    INT},
-      {"getchar", (Type[]){0},                         INT},
-      // {"fopen",   (Type[]){CHARS, CHARS, 0}, FILE_PTR},
-      // {"fclose",  (Type[]){FILE_PTR, 0},               INT},
-
-      //----------------------
-      // Math Functions
-      //----------------------
-      {"abs",     (Type[]){INT, 0},                    INT},
-      {"labs",    (Type[]){LONG, 0},                   LONG},
-      // {"sqrt",    (Type[]){DOUBLE, 0},                 DOUBLE},
-      // {"pow",     (Type[]){DOUBLE, DOUBLE, 0},         DOUBLE},
-      // {"sin",     (Type[]){DOUBLE, 0},                 DOUBLE},
-      // {"cos",     (Type[]){DOUBLE, 0},                 DOUBLE},
-
-      //----------------------
-      // System/Process
-      //----------------------
-      {"exit",    (Type[]){INT, 0},                    VOID},
-      {"system",  (Type[]){CHARS, 0},         INT},
-      // {"atexit",  (Type[]){VOID_FUNC_PTR, 0},          INT},
-
-      //----------------------
-      // Utility
-      //----------------------
-      {"rand",    (Type[]){0},                         INT},
-      // {"srand",   (Type[]){UNSIGNED_INT, 0},           VOID},
-      // {"qsort",   (Type[]){PTR, LONG, LONG, COMPAR_FUNC_PTR, 0}, VOID},
-
-      // Sentinel
-      {NULL, NULL, 0}
-   };
-   for (int i = 0; builtins[i].name; i++)
-      create_builtin(builtins[i].name, builtins[i].attrs, builtins[i].ret);
 }
 
 void open_file(char *filename)
@@ -1177,7 +1353,7 @@ void print_ir()
       {
          debug("[%-6s] ", to_string(curr->type));
          if (curr->declare) debug("declare [%s] PTR=[%d]", curr->name, curr->ptr);
-         else if (curr->name) debug("variable %s ", curr->name);
+         else if (curr->name) debug("variable %s PTR=[%d]", curr->name, curr->ptr);
          else if (curr->creg) debug("creg %s ", curr->creg);
          // else if(curr->type == FLOAT)
          // {
@@ -1211,7 +1387,8 @@ void print_ir()
       case RETURN: case CONTINUE: case BREAK: debug("[%s]", to_string(curr->type)); break;
       default: debug(RED "print_ir:handle [%s]"RESET, to_string(curr->type)); break;
       }
-      if (curr->is_ref) debug(" is_ref");
+      if (curr->is_ref) debug("ref");
+      if (curr->has_ref) debug(" has-ref");
       debug(" space (%d)", curr->space);
       debug("\n");
    }

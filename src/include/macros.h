@@ -29,9 +29,9 @@
 #define WITH_COMMENTS 1
 
 #if IR
-#define BUILTINS 0
+#define BUILTINS 1
 #ifndef OPTIMIZE
-#define OPTIMIZE 0
+#define OPTIMIZE 1
 #endif
 
 #define ASM 1

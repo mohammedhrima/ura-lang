@@ -15,7 +15,7 @@ NC='\033[0m'
 
 san="-fsanitize=address -fsanitize=null -g3" 
 flags="$san -Wall -Wextra -Werror=incompatible-pointer-types -Werror=int-conversion"
-files="/src/main.c /src/utils.c"
+files="/src/main.c /src/utils.c /src/config.c"
 
 copy() {
 	currflags=$flags
@@ -73,7 +73,8 @@ wcc_build() {
 }
 
 run(){
-	cc /src/file.s && ./a.out
+	cc /src/file.s #$san
+	./a.out
 }
 
 update(){
