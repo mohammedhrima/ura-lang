@@ -45,11 +45,11 @@ main:
     ret  
 .endmain:.STR1: .string "Mars"
 .STR2: .string "Earth"
-.STR3: .string "🌍 Welcome home, astronaut!"
+.STR3: .string "🌍 Welcome home, astronaut!\n"
 .STR4: .string "Mars"
-.STR5: .string "👽 Greetings Martian explorer! Temperature: -80°C"
+.STR5: .string "👽 Greetings Martian explorer! Temperature: -80°C\n"
 .STR6: .string "Jupiter"
-.STR7: .string "⚡ Danger! Extreme gas giant storms detected!"
-.STR8: .string "🚀 Unknown planet. Proceeding with caution..."
+.STR7: .string "⚡ Danger! Extreme gas giant storms detected!\n"
+.STR8: .string "🚀 Unknown planet. Proceeding with caution...\n"
 .section	.note.GNU-stack,"",@progbits
 

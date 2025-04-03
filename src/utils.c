@@ -39,7 +39,7 @@ Token* new_token(char *input, int s, int e, Type type, int space)
       if (bools[i].name) break;
 
       struct { char *name; Type type; } dataTypes [] = { {"int", INT}, {"bool", BOOL}, {"chars", CHARS},
-         {"char", CHAR}, {"float", FLOAT}, {"void", VOID}, {"long", LONG}, {"ptr", PTR}, {0, 0}
+         {"char", CHAR}, {"float", FLOAT}, {"void", VOID}, {"long", LONG}, {"_ptr_", PTR}, {0, 0}
       };
       for (i = 0; dataTypes[i].name; i++)
       {
@@ -496,6 +496,8 @@ Inst *new_inst(Token *token)
             offset += sizeofToken(attr);
          }
          ptr = curr + token->offset;
+         token->ptr = ptr;
+         // token->remove = true;
          return NULL;
       }
       else  // I added this line for structs attributes
@@ -692,7 +694,20 @@ bool optimize_ir()
    }
    case 5:
    {
-
+      debug(CYAN "OP[%d] remove structs declarations\n"RESET, op);
+      for (int i = 0; insts[i]; i++)
+      {
+         Token *curr = insts[i]->token;
+         Token *left = insts[i]->left;
+         Token *right = insts[i]->right;
+         if (curr->type == ASSIGN && left->type == STRUCT_CALL)
+         {
+            curr->remove = true;
+            did_something = true;
+            did_optimize = true;
+         }
+      }
+      if (did_something) print_ir();
       break;
    }
    default:
@@ -729,7 +744,7 @@ void pasm(char *fmt, ...)
          {
             i += 2;
             Token *token = va_arg(args, Token *);
-            if (token->creg) fprintf(asm_fd, "{{%s}}", token->creg); // TODO: those lines are bad
+            if (token->creg && token->creg[1] != 'a') fprintf(asm_fd, "{{%s}}", token->creg); // TODO: those lines are bad
             else
             {
                Type type = token->retType ? token->retType : token->type;
@@ -747,7 +762,7 @@ void pasm(char *fmt, ...)
          {
             i += 2;
             Token *token = va_arg(args, Token *);
-            if (token->creg) fprintf(asm_fd, "{{%s}}", token->creg);
+            if (token->creg && token->creg[1] != 'b') fprintf(asm_fd, "{{%s}}", token->creg);
             else
             {
                Type type = token->retType ? token->retType : token->type;
@@ -765,7 +780,7 @@ void pasm(char *fmt, ...)
          {
             i += 2;
             Token *token = va_arg(args, Token *);
-            if (token->creg) fprintf(asm_fd, "{{%s}}", token->creg);
+            if (token->creg && strcmp(token->creg + 1, "dx")) fprintf(asm_fd, "{{%s}}", token->creg);
             else
             {
                Type type = token->retType ? token->retType : token->type;
@@ -787,7 +802,7 @@ void pasm(char *fmt, ...)
             else
             {
                check(1, "fix this one");
-               fputs("error-reg", asm_fd);
+               fputs("rxx", asm_fd);
             }
          }
          else if (fmt[i] == 'a')
@@ -811,6 +826,8 @@ void pasm(char *fmt, ...)
          {
             i += 2;
             Token *token = va_arg(args, Token *);
+            // if (token->is_ref) fprintf(asm_fd, "QWORD PTR -%d[rbp]", token->ptr);
+            // else
             switch (token->type)
             {
             case CHARS: fprintf(asm_fd, "QWORD PTR [rax]"); break;
@@ -825,6 +842,8 @@ void pasm(char *fmt, ...)
          {
             i += 2;
             Token *token = va_arg(args, Token *);
+            // if (token->is_ref) fprintf(asm_fd, "QWORD PTR -%d[rbp]", token->ptr);
+            // else
             switch (token->type)
             {
             case CHARS: fprintf(asm_fd, "QWORD PTR [rbx]"); break;
@@ -942,7 +961,16 @@ void create_builtin(char *name, Type *params, Type retType)
    char *rregs[] = {"rdi", "rsi", "rdx", "rcx", "r8d", "r9d", NULL};
    while (params[i] && !found_error)
    {
+      Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space + TAB));
+
       Token *arg_token = new_token(NULL, 0, 0, params[i], node->token->space + TAB);
+
+      Node *left = new_node(arg_token);
+      left->token->declare = true;
+
+      Node *right = new_node(new_token(NULL, 0, 0, left->token->type, 0));
+      setReg(left->token, NULL);
+      setName(right->token, NULL);
       // arg_token->declare = true;
       if (i < (int)(sizeof(eregs) / sizeof(eregs[0])))
       {
@@ -960,16 +988,21 @@ void create_builtin(char *name, Type *params, Type retType)
             case BOOL:  setReg(arg_token, eregs[i]); break;
             case LONG:  setReg(arg_token, rregs[i]); break;
             case PTR:   setReg(arg_token, rregs[i]); break;
-            default: check(1, "set reg for %s", to_string(arg_token->type));
+            default: todo(1, "set reg for %s", to_string(arg_token->type));
             };
          }
       }
       else
       {
          // TODO:
-         check(1, "implement assigning function argument using PTR");
+         todo(1, "implement assigning function argument using PTR");
+
       }
-      add_child(args, new_node(arg_token));
+      assign->left = left;
+      assign->right = right;
+      add_child(args, assign);
+      right->token->space = assign->token->space;
+      left->token->space = assign->token->space;
       i++;
    }
    new_function(node);
@@ -1288,6 +1321,7 @@ void print_value(Token *token)
    case FLOAT: debug("%f ", token->Float.value); break;
    case CHAR: debug("%c ", token->Char.value); break;
    case CHARS: debug("%s ", token->Chars.value); break;
+   case STRUCT_CALL: debug("has %d attrs ", token->Struct.pos); break;
    default: check(1, "handle this case [%s]\n", to_string(token->type)); break;
    }
 }
@@ -1343,7 +1377,7 @@ void print_ir()
          debug("[%-6s] ", to_string(curr->type));
          if (curr->declare) debug("declare [%s] PTR=[%d] ", curr->name, curr->ptr);
          else if (curr->name) debug("variable %s PTR=[%d] ", curr->name, curr->ptr);
-         else if (curr->creg) debug("creg %s ", curr->creg);
+         if (curr->creg) debug("creg %s ", curr->creg);
          // else if(curr->type == FLOAT)
          // {
          //     curr->index = ++float_index;
