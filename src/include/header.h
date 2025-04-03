@@ -187,6 +187,7 @@ Token *get_struct_by_id(int id);
 Token *is_struct(Token *token);
 void add_attribute(Token *obj, Token *attr);
 Node* add_child(Node *node, Node *child);
+void set_struct_size(Token *token);
 
 // ----------------------------------------------------------------------------
 // Code Generation
@@ -203,6 +204,7 @@ void asm_space(int space);
 void finalize();
 void pasm(char *fmt, ...);
 Token* generate_ir(Node *node);
+int calculate_padding(int offset, int alignment);
 
 // ----------------------------------------------------------------------------
 // Utilities
@@ -222,6 +224,7 @@ int sizeofToken(Token *token);
 int alignofToken(Token *token);
 void add_builtins();
 Type getRetType(Node *node);
+bool optimize_ir();
 
 // ----------------------------------------------------------------------------
 // Logs

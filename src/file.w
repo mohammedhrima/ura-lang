@@ -1,15 +1,10 @@
-struct Data:
-    chars name
-    int a
 
-struct User:
-    Data data
-    char e
-    int b
-    char c
+func int m(ref int a):
+   a = 1
+   return 1
 
 main():
-    User user1
-    user1.data.a = 10
-    User user2
-    user2.data.a = 11
+   int x = 2
+   m(x)
+   // putnbr(x)
+   

@@ -10,17 +10,17 @@ main:
     mov  DWORD PTR -4[rbp], 0 ;// declare [a]
     .if1:
     cmp  DWORD PTR -4[rbp], 1
-    jne   .elif3
+    jne   .elif2
         lea  rdi, .STR1[rip] ;// assign [rdi]
         call putstr
         jmp  .endif1
-    .elif3:
+    .elif2:
     cmp  DWORD PTR -4[rbp], 0
-    jne   .else5
+    jne   .else3
         lea  rdi, .STR2[rip] ;// assign [rdi]
         call putstr
         jmp  .endif1
-    .else5:
+    .else3:
         lea  rdi, .STR3[rip] ;// assign [rdi]
         call putstr
     .endif1:

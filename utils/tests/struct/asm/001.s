@@ -6,13 +6,13 @@
 main:
     push rbp
     mov  rbp, rsp
-    sub  rsp, 32
-    lea  rax, .STR2[rip]
+    sub  rsp, 16
+    lea  rax, .STR1[rip]
     mov  QWORD PTR -8[rbp], rax ;// assign [user.name]
-    mov  DWORD PTR -16[rbp], 27 ;// assign [user.age]
+    mov  DWORD PTR -12[rbp], 27 ;// assign [user.age]
     mov  eax, 0
     leave 
     ret  
-.endmain:.STR2: .string "Mohammed"
+.endmain:.STR1: .string "Mohammed"
 .section	.note.GNU-stack,"",@progbits
 

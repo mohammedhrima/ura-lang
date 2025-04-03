@@ -10,30 +10,30 @@ main:
     mov  DWORD PTR -4[rbp], 0 ;// assign [i]
     .if1:
     cmp  DWORD PTR -4[rbp], 1
-    jne   .else10
-        mov  DWORD PTR -4[rbp], 2 ;// assign [i]
-        .if3:
-        cmp  DWORD PTR -4[rbp], 2
-        jne   .elif5
-            mov  DWORD PTR -4[rbp], 3 ;// assign [i]
-            jmp  .endif3
-        .elif5:
-        cmp  DWORD PTR -4[rbp], 3
-        jne   .else7
-            mov  DWORD PTR -4[rbp], 4 ;// assign [i]
-            jmp  .endif3
-        .else7:
+    jne   .else6
             mov  DWORD PTR -4[rbp], 2 ;// assign [i]
-            .if8:
+        .if2:
             cmp  DWORD PTR -4[rbp], 2
-            jne   .endif8
-                mov  DWORD PTR -4[rbp], 5 ;// assign [i]
-                .endif8:
-        .endif3:
+            jne   .elif3
+                mov  DWORD PTR -4[rbp], 3 ;// assign [i]
+            jmp  .endif2
+            .elif3:
+            cmp  DWORD PTR -4[rbp], 3
+            jne   .else4
+                mov  DWORD PTR -4[rbp], 4 ;// assign [i]
+            jmp  .endif2
+            .else4:
+                mov  DWORD PTR -4[rbp], 2 ;// assign [i]
+                .if5:
+                cmp  DWORD PTR -4[rbp], 2
+                jne   .endif5
+                    mov  DWORD PTR -4[rbp], 5 ;// assign [i]
+                .endif5:
+        .endif2:
         jmp  .endif1
-    .else10:
+    .else6:
         mov  DWORD PTR -4[rbp], 4 ;// assign [i]
-        .endif1:
+    .endif1:
     mov  eax, 0
     leave 
     ret  
