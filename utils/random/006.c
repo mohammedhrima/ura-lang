@@ -1,22 +1,28 @@
 typedef struct
 {
-    char *a;
-    int b;
-    char c;
+    char a1;
+    //long a2;
+    long a3;
+    char a4;
 } Id;
 
-typedef struct 
-{
-    Id id;
-    int age;
-} User;
-
+// typedef struct 
+// {
+//     Id id;
+//     int age;
+// } User;
 
 int main()
 {
-    // User user = {0};
-    Id i = {0};
-    i.a = (char*)125;
-    i.b = 12;
-    i.c = 13;
+    Id i ;
+    i.a1 = 1;
+    //i.a2 = 2;
+    i.a3 = 3;
+    i.a4 = 4;
+    // i.c = 13;
+
 }
+
+/*
+4 4 4
+*/

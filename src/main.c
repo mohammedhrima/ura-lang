@@ -1,30 +1,47 @@
 #include "./include/header.h"
 
-// GLOBALS
-bool found_error = false;
-Inst **OrgInsts;
-Inst **insts;
+// ----------------------------------------------------------------------------
+// Globals
+// ----------------------------------------------------------------------------
+bool found_error;
+bool did_pasm;
+char *input;
 Token **tokens;
 Node *head;
+Node *global;
 int exe_pos;
-char *input;
+Inst **OrgInsts;
+Inst **insts;
 
-// TOKENIZE
+Node **Gscoop;
+Node *scoop;
+int scoopSize;
+int scoopPos = -1;
+
+int ptr;
+struct _IO_FILE *asm_fd;
+int str_index;
+int bloc_index;
+
+char *eregs[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d", NULL};
+char *rregs[] = {"rdi", "rsi", "rdx", "rcx", "r8d", "r9d", NULL};
+
+// ----------------------------------------------------------------------------
+// Parsing
+// ----------------------------------------------------------------------------
+// Tokenization - Convert source text to token stream
+// Syntax Analysis - Build abstract syntax tree from tokens
 void tokenize()
 {
    if (found_error) return;
    debug(GREEN BOLD"TOKENIZE:\n" RESET);
-   Specials *specials = (Specials[]) {
+   struct { char *value; Type type; } specials[] = {
       {".", DOT}, {":", DOTS}, {"+=", ADD_ASSIGN}, {"-=", SUB_ASSIGN},
       {"*=", MUL_ASSIGN}, {"/=", DIV_ASSIGN}, {"!=", NOT_EQUAL},
       {"==", EQUAL}, {"is", EQUAL}, {"<=", LESS_EQUAL}, {">=", MORE_EQUAL},
       {"<", LESS}, {">", MORE}, {"=", ASSIGN}, {"+", ADD}, {"-", SUB},
       {"*", MUL}, {"/", DIV}, {"%", MOD}, {"(", LPAR}, {")", RPAR}, {"[", LBRA}, {"]", RBRA},
-      {",", COMA}, {"if", IF}, {"elif", ELIF}, {"else", ELSE},
-      {"while", WHILE}, {"func", FDEC}, {"return", RETURN},
-      {"break", BREAK}, {"continue", CONTINUE}, {"ref", REF},
-      {"and", AND}, {"&&", AND}, {"or", OR}, {"||", OR}, {"struct", STRUCT_DEF},
-      {0, (Type)0}
+      {",", COMA}, {"&&", AND}, {"||", OR}, {0, (Type)0}
    };
 
    int space = 0;
@@ -110,22 +127,6 @@ void tokenize()
    new_token(input, 0, 0, END, -1);
 }
 
-// ABSTRACT SYNTAX TREE
-Type getRetType(Node *node)
-{
-   if (!node || !node->token) return 0;
-   if (includes((Type[]) {INT, CHARS, CHAR, FLOAT, BOOL, 0},
-node->token->type)) return node->token->type;
-   if (includes((Type[]) {INT, CHARS, CHAR, FLOAT, BOOL, 0},
-node->token->retType)) return node->token->retType;
-   Type left = 0, right = 0;
-   if (node->left) left = getRetType(node->left);
-   if (node->right) right = getRetType(node->right);
-   if (left) return left;
-   if (right) return right;
-   return 0;
-}
-
 Node *expr()
 {
    return assign();
@@ -140,7 +141,7 @@ Node *assign()
       Node *node = new_node(token);
       node->left = left;
       node->right = logic();
-      node->token->retType = getRetType(node);
+      // node->token->retType = getRetType(node);
       left = node;
    }
    return left;
@@ -189,7 +190,6 @@ Node *comparison()
    return left;
 }
 
-
 Node *add_sub()
 {
    Node *left = mul_div();
@@ -199,7 +199,7 @@ Node *add_sub()
       Node *node = new_node(token);
       node->left = left;
       node->right = mul_div();
-      node->token->retType = getRetType(node);
+      // node->token->retType = getRetType(node);
       left = node;
    }
    return left;
@@ -226,14 +226,16 @@ Node *dot()
    Token *token;
    while ((token = find(DOT, 0)))
    {
+      /*
+      TODO: expect left to be an struct call
+      and iterate over it here
+      handle the dot here
+      */
       Node *node = new_node(token);
       node->left = left;
       token = find(ID, 0);
       if (check(!token, "error, expected id after dot")) exit(1);
       node->right = new_node(token);
-      node->token->retType = getRetType(node);
-      // TODO: check righ should be an identifier
-      node->right->token->isattr = true;
       left = node;
    }
    return left;
@@ -259,20 +261,27 @@ Node *sign()
    return prime();
 }
 
+/******************************************
+ *  Function Declaration Layout:          *
+ *  ┌───────────────┐    ┌───────────┐    *
+ *  │ left children │ -> │ Arguments │    *
+ *  └───────────────┘    └───────────┘    *
+ *  ┌───────────────┐    ┌────────────┐   *
+ *  │ children      │ -> │ Code block │   *
+ *  └───────────────┘    └────────────┘   *
+ ******************************************/
 Node *func_dec(Node *node)
 {
-   /*
-   function declaration:
-      LEFT : array of argument
-      array of childen
-   */
    Token *typeName = find(INT, CHARS, CHAR, FLOAT, BOOL, VOID, 0);
    Token *fname = find(ID, 0);
-   check(!typeName || !fname, "expected data type and identifier after func declaration");
+   int i = 0;
+   Token *arg = NULL;
+   if (check(!typeName || !fname, "expected data type and identifier after func declaration"))
+      return node;
 
    node->token->retType = typeName->type;
-   node->token->name = fname->name;
-   fname->name = NULL;
+   setName(node->token, fname->name);
+   enter_scoop(node);
 
    switch (node->token->retType)
    {
@@ -280,17 +289,10 @@ Node *func_dec(Node *node)
    case CHAR:  setReg(node->token, "al"); break;
    case CHARS: setReg(node->token, "rax"); break;
    case VOID:  setReg(node->token, "rax"); break;
-   default: check(1, "handle this case %s", to_string(node->token->retType)) ;
+   default: todo(1, "this case %s", to_string(node->token->retType));
    }
 
-   enter_scoop(node);
-   char *eregs[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d", NULL};
-   char *rregs[] = {"rdi", "rsi", "rdx", "rcx", "r8d", "r9d", NULL};
-   int i = 0;
-   Token *arg = NULL;
-
    check(!find(LPAR, 0), "expected ( after function declaration");
-
    node->left = new_node(new_token(0, 0, 0, CHILDREN, node->token->space));
    Node *args = node->left;
    Token *last;
@@ -316,7 +318,7 @@ Node *func_dec(Node *node)
             case CHAR:  setReg(name, eregs[i]); break;
             case FLOAT: setReg(name, rregs[i]); break; // TODO: to be checked
             case BOOL:  setReg(name, eregs[i]); break;
-            default: check(1, "set reg for %s", to_string(name->type));
+            default: todo(1, "set reg for %s", to_string(name->type));
             };
             i++;
          }
@@ -324,7 +326,7 @@ Node *func_dec(Node *node)
       else
       {
          // TODO:
-         check(1, "implement assigning function argument using PTR");
+         todo(1, "implement assigning function argument using PTR");
       }
       add_child(args, new_node(name));
       find(COMA, 0); // TODO: check this later
@@ -334,6 +336,8 @@ Node *func_dec(Node *node)
 
    for (int i = 0; i < args->cpos; i++)
    {
+      // I used assign here because I need to declare variables
+      // inside function declaration
       Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space + TAB));
       Node *left = copy_node(args->children[i]);
       left->token->declare = true;
@@ -352,11 +356,7 @@ Node *func_dec(Node *node)
       add_child(node, assign);
    }
    Node *child = NULL;
-   while (within_space(node->token->space))
-   {
-      child = expr();
-      add_child(node, child);
-   }
+   while (within_space(node->token->space)) child = add_child(node, expr());
    // TODO: expect return only for none VOID functions
    if (node->token->retType != VOID)
       check(!child || child->token->type != RETURN, "expected return statment");
@@ -370,39 +370,15 @@ Node *func_dec(Node *node)
    return node;
 }
 
-// TODO: to be used when settign struct as function parameter
-void add_param()
-{
-
-}
-
-Type get_attr_type(Node *src, Node *attr)
-{
-   debug("access %s in %s \n", attr->token->name, src->token->name);
-   Type src_type = 0;
-   if (src->token->type == DOT) src_type = get_attr_type(src->left, src->right);
-   else if (src->token->type == ID)
-   {
-      Token *var = get_variable(src->token->name);
-      if (!var) return 0;
-      // TODO: check if it's a struct call
-      for (int i = 0; i < var->Struct.pos; i++)
-      {
-         Token *curr = var->Struct.attrs[i];
-         if (strcmp(curr->name,  attr->token->name) == 0)
-         {
-            // debug("found has type %s\n", to_string(curr->type));
-            return curr->type;
-         }
-      }
-      // TODO: if not found return some error
-   }
-
-   return src->token->type;
-}
-
+/******************************************
+ *  Function call Layout:                 *
+ *  ┌───────────────┐    ┌────────────┐   *
+ *  │ children      │ -> │ Parameters │   *
+ *  └───────────────┘    └────────────┘   *
+ ******************************************/
 Node *func_call(Node *node)
 {
+#if 0
    node->token->type = FCALL;
    Token *arg = NULL;
    Token *token = node->token;
@@ -412,6 +388,8 @@ Node *func_call(Node *node)
    int i = 0;
    while (!found_error && !(arg = find(RPAR, END, 0)))
    {
+      // I used assign here because I need to assign register
+      // before function call
       // TODO: this approach need to be modified
       // doesn't work well if function takes references
       Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, token->space));
@@ -485,9 +463,16 @@ Node *func_call(Node *node)
       find(COMA, 0);
    }
    check(!found_error && arg->type != RPAR, "expected ) after function call");
+#endif
    return node;
 }
 
+/******************************************
+ *  Function main Layout:                 *
+ *  ┌───────────────┐    ┌────────────┐   *
+ *  │ children      │ -> │ Code bloc  │   *
+ *  └───────────────┘    └────────────┘   *
+ ******************************************/
 Node *func_main(Node *node)
 {
    check(!find(RPAR, 0), "expected ) after main declaration");
@@ -513,217 +498,117 @@ Node *func_main(Node *node)
    return node;
 }
 
-Node *if_node(Node *node)
-{
-   enter_scoop(node);
-   debug(GREEN "Enter if\n" RESET);
-   /*
-   if:
-      left: condition
-      children: code bloc
-      right:
-         children: elif, else
-   */
-
-   node->left = expr();  // condition
-   node->left->token->is_cond = true;
-   node->left->token->space = node->token->space;
-   node->right = new_node(new_token(NULL, 0, 0, CHILDREN, node->token->space));
-
-   check(!find(DOTS, 0), "Expected : after if condition\n", "");
-
-   // code bloc
-   while (within_space(node->token->space)) add_child(node, expr());
-   while (!found_error && includes((Type[]) {ELSE, ELIF, 0}, tokens[exe_pos]->type) &&
-node->token->space == tokens[exe_pos]->space)
-   {
-      Token *token = find(ELSE, ELIF, 0);
-      Node *curr = add_child(node->right, new_node(token));
-      token->space -= TAB;
-      if (token->type == ELIF)
-      {
-         // debug(GREEN "found elif\n" RESET);
-         curr->left = expr();
-         curr->left->token->is_cond = true;
-         //curr->left->token->space = node->token->space;
-         check(!find(DOTS, 0), "expected : after elif condition");
-         // debug("within %k, current %k\n", token, tokens[exe_pos]);
-         while (within_space(token->space))
-         {
-            // debug("add %k\n", tokens[exe_pos]);
-            add_child(curr, expr());
-         }
-         // debug("current is %k\n", tokens[exe_pos]);
-         // exit(1);
-      }
-      else if (token->type == ELSE)
-      {
-         // debug(GREEN "found else\n" RESET);
-         check(!find(DOTS, 0), "expected : after else");
-         while (within_space(token->space)) add_child(curr, expr());
-         break;
-      }
-   }
-   exit_scoop();
-   //exit(1);
-   return node;
-}
-
-Node *while_node(Node *node)
-{
-   /*
-   while:
-      left: condition
-      children: code bloc
-   */
-   enter_scoop(node);
-   node->left = expr();
-   node->left->token->is_cond = true;
-   node->left->token->space = node->token->space;
-
-   check(!find(DOTS, 0), "Expected : after while condition\n", "");
-
-   while (within_space(node->token->space))
-   {
-      Token *token = find(CONTINUE, BREAK, 0);
-      Node *child = NULL;
-      if (token) child = new_node(token);
-      else child = expr();
-      add_child(node, child);
-   }
-   exit_scoop();
-   return node;
-}
-
-Token *is_struct(Token *token)
-{
-   Token *res = get_struct(token->name);
-   if (res) return copy_token(res);
-   return NULL;
-}
-
 int calculate_padding(int offset, int alignment) {
    if (check(!alignment, "invalid alignment")) return 0;
    return (alignment - (offset % alignment)) % alignment;
 }
-/*
-16
-8
-4
-*/
+
+int alignofToken(Token *token)
+{
+   // switch(token->type)
+   // {
+
+   // }
+   return sizeofToken(token);
+}
 void set_struct_size(Token *token)
 {
    int offset = 0;
+   int max_align = 1;
+
    Token *attr;
    for (int i = 0; i < token->Struct.pos; i++)
    {
-      attr = token->Struct.attrs[i];
+      Token *attr = token->Struct.attrs[i];
+      int align = alignofToken(attr);
       int size = sizeofToken(attr);
-      int padding = calculate_padding(offset, size);
+
+      int padding = calculate_padding(offset, align);
       offset += padding;
-      attr->offset = offset;
       offset += size;
+      if (align > max_align) max_align = align;
    }
-   int max_alignment = 8; // For Id struct, this would be alignof(char*)
-   int end_padding = calculate_padding(offset, max_alignment);
-   int total_size = offset + end_padding;
-   token->offset = offset;
-   // token->ptr = total_size;
+   int final_padding = calculate_padding(offset, max_align);
+   token->offset = offset + final_padding;
+}
+
+// TODO: for structs set PTR in geenrate_ir
+// specially in new_inst function, make it handle the struct ptr
+Node *struct_def(Node *node)
+{
+   Token *name;
+   if (check(!(name = find(ID, 0)), "expected identifier after struct definition")) return NULL;
+   if (check(!find(DOTS, 0), "expected dots after struct definition")) return NULL;
+   setName(node->token, name->name);
+   while (within_space(node->token->space))
+   {
+      Token *attr = find(INT, CHARS, CHAR, FLOAT, BOOL, ID, 0);
+      Token *id = find(ID, 0);
+      if (check(!attr, "expected data type followed by id")) break;
+      if (check(!id, "expected id after data type")) break;
+
+      if (attr->type == ID) // attribute is a struct
+      {
+         attr = get_struct(attr->name);
+         if (check(!attr, "")) exit(1);
+         attr = copy_token(attr);
+         char *name = id->name;
+         id = attr;
+         setName(id, name);
+         id->type = STRUCT_CALL;
+      }
+      else
+         id->type = attr->type;
+      add_attribute(node->token, id);
+   }
+   set_struct_size(node->token);
+   new_struct(node->token);
+   return node;
+}
+
+Node *symbol(Token *token)
+{
+   Token *struct_token = NULL;
+   Node *node;
+   if (token->type == ID && token->name && (struct_token =  is_struct(token)))
+   {
+      //struct_token = copy_token(struct_token);
+      node = new_node(struct_token);
+      if (!node->token->Struct.id)
+      {
+         check(1, "expected struct id\n");
+         exit(1);
+      }
+      token = find(ID, 0);
+      (check(!token, "Expected variable name after struct declaration\n"));
+      setName(node->token, token->name);
+      node->token->type = STRUCT_CALL;
+      node->token->declare = true;
+      return node;
+   }
+   else if (token->declare)
+   {
+      Token *tmp = find(ID, 0);
+      check(!tmp, "Expected variable name after [%s] symbol\n", to_string(token->type));
+      setName(token, tmp->name);
+      new_variable(token);
+      return new_node(token);
+   }
+   else if (token->type == ID && token->name && find(LPAR, 0))
+   {
+      node = new_node(token);
+      if (strcmp(token->name, "main") == 0) return func_main(node);
+      return func_call(node);
+   }
+   return new_node(token);
 }
 
 Node *prime()
 {
    Node *node = NULL;
    Token *token;
-   if ((token = find(STRUCT_DEF)))
-   {
-      if (check(!(token = find(ID, 0)), "expected identifier after struct definition")) return NULL;
-      if (check(!find(DOTS, 0), "expected dots after struct definition")) return NULL;
-      node = new_node(token);
-      node->token->type = STRUCT_DEF;
-      bool block = false;
-      while (within_space(token->space))
-      {
-         Token *attr = find(INT, CHARS, CHAR, FLOAT, BOOL, ID, 0);
-         Token *id = find(ID, 0);
-         //if (attr->type == ID) attr = get_struct(attr->name);
-         if (check(!attr, "expected data type followed by id")) break;
-         if (check(!id, "expected id after data type")) break;
-
-         if (attr->type == ID)
-         {
-            attr = get_struct(attr->name);
-            if (check(!attr, "")) exit(1);
-            attr = copy_token(attr);
-            char *name = id->name;
-            id = attr;
-            setName(id, name);
-            id->type = STRUCT_CALL;
-            block = true;
-         }
-         else
-            id->type = attr->type;
-         // attr->declare = false;
-         add_attribute(token, id);
-      }
-      set_struct_size(node->token);
-      new_struct(node->token);
-      for (int i = 0; i < node->token->Struct.pos; i++)
-      {
-         Token *attr = node->token->Struct.attrs[i];
-         debug(GREEN"<%k offset %d>\n" RESET, attr, attr->offset);
-      }
-      debug(GREEN"<struct offset %d>\n" RESET, node->token->offset);
-      // if(block) exit(1);
-      return node;
-   }
-   else if ((token = find(ID, INT, CHARS, CHAR, FLOAT, BOOL, 0)))
-   {
-      Token *struct_token = NULL;
-      debug("token: %k \n", token);
-      if (token->type == ID && token->name && (struct_token =  is_struct(token)))
-      {
-         struct_token = copy_token(struct_token);
-         Node *struct_node = new_node(struct_token);
-         // token = tmp_node->token;
-         if (!struct_node->token->struct_id)
-         {
-            check(1, "expected struct id\n");
-            exit(1);
-         }
-         token = find(ID, 0);
-         (check(!token, "Expected variable name after struct declaration\n"));
-         setName(struct_node->token, token->name);
-         struct_node->token->type = STRUCT_CALL;
-
-         debug(RED"==========================================\n");
-         debug("offset %d\n", struct_node->token->offset);
-         ptr += struct_node->token->offset;
-         for (int i = 0; i < struct_node->token->Struct.pos; i++)
-         {
-            Token *attr = struct_node->token->Struct.attrs[i];
-            attr->ptr = ptr - attr->offset;
-            debug("<%k PTR %d>\n", attr, attr->ptr);
-         }
-         debug("==========================================\n"RESET);
-         return struct_node;
-      }
-      else if (token->declare)
-      {
-         Token *tmp = find(ID, 0);
-         check(!tmp, "Expected variable name after [%s] symbol\n", to_string(token->type));
-         setName(token, tmp->name);
-         new_variable(token);
-         return new_node(token);
-      }
-      else if (token->type == ID && token->name && find(LPAR, 0))
-      {
-         node = new_node(token);
-         if (strcmp(token->name, "main") == 0) return func_main(node);
-         return func_call(node);
-      }
-      return new_node(token);
-   }
+   if ((token = find(STRUCT_DEF))) return struct_def(new_node(token));
+   else if ((token = find(ID, INT, CHARS, CHAR, FLOAT, BOOL, 0))) return symbol(token);
    else if ((token = find(REF, 0)))
    {
       node = prime(); // TODO: check it
@@ -731,8 +616,8 @@ Node *prime()
       node->token->is_ref = true;
       return node;
    }
-   else if ((token = find(FDEC, 0)))
-      return func_dec(new_node(token));
+   // else if ((token = find(FDEC, 0)))
+   //    return func_dec(new_node(token));
    else if ((token = find(RETURN, 0)))
    {
       // TODO: check if return type is compatible with function
@@ -740,375 +625,84 @@ Node *prime()
       node->left = expr();
       return node;
    }
-   else if ((token = find(IF, 0))) return if_node(new_node(token));
-   else if ((token = find(WHILE, 0))) return while_node(new_node(token));
-   else if ((token = find(BREAK, CONTINUE, 0))) return new_node(token);
-   else if ((token = find(LPAR, 0)))
-   {
-      if (tokens[exe_pos]->type != RPAR) node = expr();
-      check(!find(RPAR, 0), "expected right par");
-      return node;
-   }
+   // else if ((token = find(IF, 0))) return if_node(new_node(token));
+   // else if ((token = find(WHILE, 0))) return while_node(new_node(token));
+   // else if ((token = find(BREAK, CONTINUE, 0))) return new_node(token);
+   // else if ((token = find(LPAR, 0)))
+   // {
+   //    if (tokens[exe_pos]->type != RPAR) node = expr();
+   //    check(!find(RPAR, 0), "expected right par");
+   //    return node;
+   // }
    else check(1, "Unexpected token has type %s\n", to_string(tokens[exe_pos]->type));
    return new_node(tokens[exe_pos]);
 }
 
-Node *global;
+
 void generate_ast()
 {
    if (found_error) return;
    global = new_node(new_token(".global", 0, strlen(".global"), ID, 0));
    enter_scoop(global);
 
-   debug(BLUE BOLD"AST:\n" RESET);
-   head = new_node(NULL);
-   Node *curr = head;
-   curr->left = expr();
+   debug(GREEN BOLD"AST:\n" RESET);
+   head = new_node(new_token(NULL, 0, 0, TMP, 0));
+   head->token->space = -TAB;
+#if BUILTINS
+   add_builtins();
+#endif
    while (tokens[exe_pos]->type != END && !found_error)
    {
-      curr->right = new_node(NULL);
-      curr = curr->right;
-      curr->left = expr();
+      Node *child = add_child(head, expr());
    }
-   if (found_error) return;
-   debug(BLUE BOLD"PRINT AST:\n" RESET);
-   curr = head;
-   while (curr && !found_error)
-   {
-      debug("%n\n", curr->left);
-      curr = curr->right;
-   }
-   //exit_scoop();
-   //free_node(global);
+   print_ast();
 }
 
-// INTERMEDIATE REPRESENTATION
-bool optimize_ir()
+// ----------------------------------------------------------------------------
+// Code Generation
+// ----------------------------------------------------------------------------
+// IR Generation - Produce intermediate representation
+// Optimization - Apply optimization passes
+
+Token *op_ir(Node *node)
 {
-
-   static int op = 0;
-   static bool did_optimize = false;
-   bool did_something = false;
-   switch (op)
-   {
-   case 0:
-   {
-      debug(CYAN "OP[%d] calculate operations on values\n" RESET, op);
-      for (int i = 0; insts[i]; i++)
-      {
-         Token *token = insts[i]->token;
-         Token *left = insts[i]->left;
-         Token *right = insts[i]->right;
-
-         Type types[] = {INT, FLOAT, CHAR, 0};
-         Type ops[] = {ADD, SUB, MUL, DIV, 0};
-         // TODO: check if left and right are compatible
-         // test if left is function, and right is number ...
-         if (
-            includes(ops, token->type) && includes(types, left->type) &&
-            compatible(left, right) && !left->name && !right->name)
-         {
-            did_something = true;
-            did_optimize = true;
-            switch (left->type)
-            {
-            case INT:
-               switch (token->type)
-               {
-               case ADD: token->Int.value = left->Int.value + right->Int.value; break;
-               case SUB: token->Int.value = left->Int.value - right->Int.value; break;
-               case MUL: token->Int.value = left->Int.value * right->Int.value; break;
-               case DIV: token->Int.value = left->Int.value / right->Int.value; break;
-               default: break;
-               }
-               break;
-            default:
-               check(1, "handle this case\n", "");
-               break;
-            }
-            token->type = left->type;
-            token->retType = 0;
-            insts[i]->left = NULL;
-            insts[i]->right = NULL;
-            left->remove = true;
-            right->remove = true;
-            token->reg = 0;
-            setReg(token, NULL);
-            if (i > 0) i -= 2;
-         }
-      }
-      if (did_something) print_ir();
-      break;
-   }
-   case 1:
-   {
-      debug(CYAN "OP[%d] calculate operations on constants\n" RESET, op);
-      for (int i = 1; insts && insts[i]; i++)
-      {
-         Token *curr_token = insts[i]->token;
-         Token *curr_left = insts[i]->left;
-         Token *curr_right = insts[i]->right;
-
-         Token *prev_token = insts[i - 1]->token;
-         // Token *prev_left = insts[i - 1]->left;
-         Token *prev_right = insts[i - 1]->right;
-
-         //  TODO: handle string also here X'D ma fiyach daba
-         if (curr_token->type == ADD && prev_token->type == ADD)
-         {
-            if (curr_left == prev_token && !prev_right->name && !curr_right->name)
-            {
-               // prev_right->type = INT;
-               curr_token->remove = true;
-               prev_right->Int.value += curr_right->Int.value;
-               i = 1;
-               clone_insts();
-               did_something = true;
-               did_optimize = true;
-               continue;
-            }
-            // else
-            // if(curr_right == prev_token && !prev_left->name && !curr_left->name)
-            // {
-            //   // prev_r->type = INT;
-            //   // curr_token->remove = true;
-            //   prev_left->Int.value += curr_left->Int.value;
-            //   i = 1;
-            //   clone_insts();
-            //   optimize = true;
-            //   continue;
-            // }
-         }
-      }
-      if (did_something) print_ir();
-      break;
-   }
-   case 2:
-   {
-      debug(CYAN "OP[%d] remove reassigned variables\n" RESET, op);
-      for (int i = 0; insts[i]; i++)
-      {
-         Token *token = insts[i]->token;
-         if (!token->ptr) continue;
-         if (token->declare)
-         {
-            for (int j = i + 1; insts[j] && insts[j]->token->space == token->space; j++)
-            {
-               if (insts[j]->token->type == ASSIGN && insts[j]->left->ptr == token->ptr /*&& !token->is_ref*/)
-               {
-                  // debug(RED"1. remove r%d %k\n"RESET, token->reg, token);
-                  token->declare = false;
-                  token->remove = true;
-                  did_optimize = true;
-                  did_something = true;
-                  insts[j]->left->is_ref = token->is_ref;
-                  break;
-               }
-               if ((insts[j]->left && insts[j]->left->reg == token->reg) ||
-                     (insts[j]->right && insts[j]->right->reg == token->reg)) {
-                  break;
-               }
-            }
-         }
-         else if (token->type == ASSIGN)
-         {
-            for (int j = i + 1; insts[j] && insts[j]->token->space == token->space; j++)
-            {
-               if (!insts[j]->left || !insts[j]->right) continue;
-               // TODO: to be checked
-               // I replaced insts[j]->left == insts[i]->left with insts[j]->left->ptr == insts[i]->left->ptr
-               if (insts[j]->token->type == ASSIGN && insts[j]->left->ptr == token->ptr && !insts[i]->left->is_ref)
-               {
-                  // debug(RED"2. remove r%d %k\n"RESET, token->reg, token);
-                  token->remove = true;
-                  did_optimize = true;
-                  did_something = true;
-                  break;
-               }
-               if (insts[j]->left->reg == token->reg || insts[j]->right->reg == token->reg)
-                  break;
-            }
-         }
-      }
-      if (did_something) print_ir();
-      break;
-   }
-   case 3:
-   {
-      debug(CYAN"OP[%d] remove followed return instructions\n"RESET, op);
-      for (int i = 1; insts[i]; i++)
-      {
-         if (insts[i]->token->type == RETURN && insts[i - 1]->token->type == RETURN)
-         {
-            did_optimize = true;
-            did_something = true;
-            insts[i]->token->remove = true;
-            clone_insts();
-            i = 1;
-         }
-      }
-      if (did_something) print_ir();
-      break;
-   }
-   case 4:
-   {
-      // TODO: be carefull this one remove anything that don't have reg
-      debug(CYAN "OP[%d] remove unused instructions\n"RESET, op);
-      for (int i = 0; insts[i]; i++)
-      {
-         Token *curr = insts[i]->token;
-         if (!curr->ptr && !curr->reg && includes((Type[]) {INT, CHARS, CHAR, FLOAT, BOOL, 0}, curr->type))
-         {
-            curr->remove = true;
-            did_something = true;
-            did_optimize = true;
-         }
-      }
-      if (did_something) print_ir();
-      break;
-   }
-   case 5:
-   {
-
-      break;
-   }
-   default:
-   {
-      op = 0;
-      if (!did_optimize) return false;
-      did_optimize = false;
-      return true;
-      break;
-   }
-   }
-   op++;
-   return true;
-}
-
-int str_index;
-int bloc_index;
-Token *if_ir(Node *node)
-{
-   enter_scoop(node);
+   Token *left = generate_ir(node->left);
+   Token *right = generate_ir(node->right);
+   check(!compatible(left, right), "invalid [%s] op between %s and %s\n",
+         to_string(node->token->type), to_string(left->type), to_string(right->type));
 
    Inst *inst = new_inst(node->token);
-   setName(inst->token, "if");
-   inst->token->type =  BLOC;
-   inst->token->index = ++bloc_index;
+   inst->left = left;
+   inst->right = right;
 
-   Token *cond = generate_ir(node->left); // TODO: check if it's boolean
-   setName(cond, "endif");
-   cond->index = inst->token->index;
-
-   Token *lastInst = cond;
-   // code bloc
-   for (int i = 0; i < node->cpos; i++) generate_ir(node->children[i]);
-
-   Inst *endInst = NULL;
-   if (node->right->cpos)
+   switch (node->token->type)
    {
-      endInst = new_inst(new_token("endif", 0, 5, JMP, node->token->space + TAB));
-      endInst->token->index = node->token->index;
-   }
-#if 1
-   Node *subs = node->right;
-   for (int i = 0; i < subs->cpos; i++)
+   case ADD_ASSIGN: case ASSIGN:
    {
-      Node *curr = subs->children[i];
-      if (curr->token->type == ELIF)
-      {
-         curr->token->index = ++bloc_index;
-         curr->token->type = BLOC;
-         setName(curr->token, "elif");
-         char *name = strdup(lastInst->name);
-         int index = lastInst->index;
-         {
-            setName(lastInst, "elif");
-            lastInst->index = curr->token->index;
-            lastInst = copy_token(lastInst);
-         }
-         new_inst(curr->token); // elif bloc
-         setName(curr->left->token, name);
-         free(name);
-         generate_ir(curr->left); // elif condition, TODO: check is boolean
-         curr->left->token->index = index;
-         lastInst = curr->left->token;
-         for (int j = 0; j < curr->cpos; j++) generate_ir(curr->children[j]);
-         endInst = new_inst(new_token("endif", 0, 5, JMP, node->token->space + TAB));
-         endInst->token->index = node->token->index;
-      }
-      else if (curr->token->type == ELSE)
-      {
-         curr->token->index = ++bloc_index;
-         curr->token->type = BLOC;
-         setName(curr->token, "else");
-         new_inst(curr->token);
-         {
-            setName(lastInst, "else");
-            lastInst->index = curr->token->index;
-            lastInst = copy_token(lastInst);
-         }
-         for (int j = 0; j < curr->cpos; j++) generate_ir(curr->children[j]);
-         break;
-      }
-
+      node->token->reg = left->reg;
+      node->token->retType = getRetType(node);
+      break;
    }
-#endif
-   Token *new = new_token("endif", 0, 5, BLOC, node->token->space);
-   new->index = node->token->index;
-   new_inst(new);
-   // free_token(lastInst);
-   exit_scoop();
-   return node->left->token;
-}
-
-Token *while_ir(Node *node)
-{
-   enter_scoop(node);
-   node->token->type = BLOC;
-   setName(node->token, "while");
-   node->token->index = ++bloc_index;
-   Inst *inst = new_inst(node->token);
-
-   setName(node->left->token, "endwhile");
-   generate_ir(node->left); // TODO: check if it's boolean
-   node->left->token->index = node->token->index;
-
-   for (int i = 0; i < node->cpos; i++) // while code bloc
+   case ADD: case SUB: case MUL: case DIV:
    {
-      Node *curr = node->children[i];
-      Token *lastInst;
-      switch (curr->token->type)
-      {
-      case BREAK:
-         lastInst = copy_token(node->left->token);
-         lastInst->type = JMP;
-         setName(lastInst, "endwhile");
-         new_inst(lastInst); // jmp back to while loop
-         break;
-      case CONTINUE:
-         lastInst = copy_token(node->token);
-         lastInst->type = JMP;
-         setName(lastInst, "while");
-         new_inst(lastInst); // jmp back to while loop
-         break;
-      default:
-         generate_ir(curr); break;
-      }
+      node->token->retType = getRetType(node);
+      if (node->token->retType  == INT) setReg(node->token, "eax");
+      else if (node->token->retType == FLOAT) setReg(node->token, "xmm0");
+      else check(1, "handle this case");
+      break;
    }
-
-   Token *lastInst = copy_token(node->token);
-   lastInst->type = JMP;
-   setName(lastInst, "while");
-   new_inst(lastInst); // jmp back to while loop
-
-   lastInst = copy_token(node->token);
-   lastInst->type = BLOC;
-   setName(lastInst, "endwhile");
-   new_inst(lastInst); // end while bloc
-   exit_scoop();
+   case NOT_EQUAL: case EQUAL: case LESS:
+   case MORE: case LESS_EQUAL: case MORE_EQUAL:
+   {
+      node->token->retType = BOOL;
+      node->token->index = ++bloc_index;
+      break;
+   }
+   default: check(1, "handle [%s]", to_string(node->token->type)); break;
+   }
    return inst->token;
 }
+
 
 Token *func_dec_ir(Node *node)
 {
@@ -1146,101 +740,6 @@ Token *func_dec_ir(Node *node)
    return inst->token;
 }
 
-Token *func_call_ir(Node *node)
-{
-   if (strcmp(node->token->name, "output") == 0)
-   {
-      check(1, "handle this case"); // TODO
-   }
-   else
-   {
-      Node *dec = get_function(node->token->name);
-      if (!dec) return NULL;
-      node->token->retType = dec->token->retType;
-      setReg(node->token, dec->token->creg);
-      dec = dec->left;
-
-      Node *call = node;
-#if 1
-      debug("call: cpos [%d]\n", call->cpos);
-      pnode(call, NULL, 0);
-      debug("dec: cpos [%d]\n", dec->cpos);
-      pnode(dec, NULL, 0);
-#endif
-
-      for (int i = 0 ; !found_error && i < call->cpos && i < dec->cpos; i++)
-      {
-         Node *carg = call->children[i];
-         Node *darg = dec->children[i];
-         if (darg->token->is_ref)
-         {
-            generate_ir(carg);
-            carg->left->token->is_ref = true;
-            carg->left->token->has_ref = 0;
-            carg->left->token->ptr = 0;
-            carg->token->ptr = 0;
-         }
-         else
-         {
-            if (carg->token->type == DOT)
-            {
-               debug("found");
-               exit(1);
-            }
-            generate_ir(carg);
-         }
-
-      }
-   }
-   Inst* inst = new_inst(node->token);
-   return inst->token;
-}
-
-Token *op_ir(Node *node)
-{
-   Token *left = generate_ir(node->left);
-   Token *right = generate_ir(node->right);
-   check(!compatible(left, right), "invalid [%s] op between %s and %s \n",
-         to_string(node->token->type), to_string(left->type), to_string(right->type));
-
-   Inst *inst = new_inst(node->token);
-   inst->left = left;
-   inst->right = right;
-
-   switch (node->token->type)
-   {
-   case ADD_ASSIGN: case ASSIGN:
-      node->token->reg = left->reg;
-      node->token->retType = getRetType(node);
-      break;
-   case ADD: case SUB: case MUL: case DIV:
-   {
-      node->token->retType = getRetType(node);
-      if (node->token->retType  == INT) setReg(node->token, "eax");
-      else if (node->token->retType == FLOAT) setReg(node->token, "xmm0");
-      else check(1, "handle this case");
-      break;
-   }
-   case NOT_EQUAL: case EQUAL: case LESS:
-   case MORE: case LESS_EQUAL: case MORE_EQUAL:
-   {
-      node->token->retType = BOOL;
-      node->token->index = ++bloc_index;
-      // debug(RED"===========================");
-      // debug("> %k\n", inst->token);
-      // debug("left : %k\n", inst->left);
-      // debug("right: %k\n", inst->right);
-      // debug("===========================\n"RESET);
-      return inst->token;
-      // debug(RED "this is [%d]\n" RESET, node->token->reg);
-      break;
-   }
-   default: check(1, "handle [%s]", to_string(node->token->type)); break;
-   }
-   return inst->token;
-}
-
-
 Token* generate_ir(Node *node)
 {
    if (found_error) return NULL;
@@ -1249,10 +748,10 @@ Token* generate_ir(Node *node)
    {
    case ID:
    {
-      if (node->token->isattr) return node->token;
+      // if (node->token->isattr) return node->token;
       return get_variable(node->token->name);
    }
-   case INT: case BOOL: case CHAR: case FLOAT:
+   case INT: case BOOL: case CHAR: case FLOAT: case LONG:
    {
       inst = new_inst(node->token);
       // if (inst->token->name && inst->token->declare) new_variable(inst->token);
@@ -1270,10 +769,10 @@ Token* generate_ir(Node *node)
    case ADD: case SUB: case MUL: case DIV: case EQUAL: case NOT_EQUAL:
    case LESS: case MORE: case LESS_EQUAL: case MORE_EQUAL:
       return op_ir(node);
-   case IF:    return if_ir(node);
-   case WHILE: return while_ir(node);
+   // case IF:    return if_ir(node);
+   // case WHILE: return while_ir(node);
    case FDEC:  return func_dec_ir(node);
-   case FCALL: return func_call_ir(node);
+   //case FCALL: return func_call_ir(node);
    case RETURN:
    {
       Token *left = generate_ir(node->left);
@@ -1319,69 +818,30 @@ Token* generate_ir(Node *node)
    }
    case STRUCT_CALL:
    {
-      pnode(node, NULL, 0);
-      if (!node->token->struct_id)
-      {
-         check(1, "expected struct id\n");
-         exit(1);
-      }
-      for (int i = 0; i < node->token->Struct.pos; i++)
-      {
-         Token *attr = node->token->Struct.attrs[i];
-         attr->declare = false;
-         debug(CYAN"line %d: IR for %k\n"RESET, LINE, attr);
-         Node *tmp = new_node(attr);
-         if(attr->type == STRUCT_CALL)
-         {
-            Token *curr = attr;
-            for (int i = 0; i < curr->Struct.pos; i++)
-            {
-               Token *attr = curr->Struct.attrs[i];
-               attr->declare = false;
-               debug(CYAN"line %d: IR for %k\n"RESET, LINE, attr);
-               Node *tmp = new_node(attr);
-               // generate_ir(tmp);
-               free_node(tmp);
-
-               attr->declare = true;
-            }
-         }
-         else
-            generate_ir(tmp);
-         free_node(tmp);
-
-         attr->declare = true;
-      }
-
-      return NULL;
+      new_variable(node->token);
+      new_inst(node->token);
+      return node->token;
       break;
    }
    case DOT:
    {
-      //(node, NULL, 0);
-      // TODO: left and right both must have name
+
       Token *left =  generate_ir(node->left);
-      Token *right =  generate_ir(node->right);
-      //debug("access %k from %k \n", right, left);
+      Token *right =  node->right->token;
       for (int i = 0; i < left->Struct.pos; i++)
       {
          Token *attr = left->Struct.attrs[i];
-         ptoken(attr);
-         if (strcmp(right->name, attr->name) == 0)
+         // debug("%k\n", attr);
+         char *to_find = strjoin(left->name, ".", right->name);
+         if (strcmp(to_find, attr->name) == 0)
          {
-            attr = copy_token(attr);
-            char *name = strjoin(left->name, ".", attr->name);
-            setName(attr, name);
-            free(name);
-            debug(RED"\n=>found %k\n"RESET, attr);
-            ptoken(attr);
-            // exit(1);
+            free(to_find);
             return attr;
          }
+         free(to_find);
       }
 
       check(1, "%s has no attribute %s", left->name, right->name);
-      exit(1);
       return right;
       break;
    }
@@ -1399,8 +859,18 @@ Token* generate_ir(Node *node)
    return inst->token;
 }
 
-// ASSMBLY GENERATION
-struct _IO_FILE *asm_fd;
+// Assembly - Generate machine code
+bool did_pasm;
+void asm_space(int space)
+{
+   if (did_pasm)
+   {
+      space = (space / TAB) * 4;
+      pasm("\n");
+      for (int i = 0; i < space; i++) pasm(" ");
+      did_pasm = false;
+   }
+}
 
 void generate_asm(char *name)
 {
@@ -1412,7 +882,7 @@ void generate_asm(char *name)
    if (found_error) return;
    free(outfile);
    initialize();
-   clone_insts();
+   copy_insts();
    for (int i = 0; insts[i]; i++)
    {
       Token *curr = insts[i]->token;
@@ -1734,51 +1204,22 @@ void generate_asm(char *name)
    finalize();
 }
 
-void add_builtins()
-{
-   if (found_error) return;
-   create_builtin("putnbr", (Type[]) {INT, 0}, INT);
-   create_builtin("write", (Type[]) {INT, CHARS, INT, 0}, INT);
-   create_builtin("read", (Type[]) {INT, CHARS, INT, 0}, INT);
-   create_builtin("exit", (Type[]) {INT, 0}, INT);
-   create_builtin("malloc", (Type[]) {INT, 0}, VOID);
-   create_builtin("calloc", (Type[]) {INT, INT, 0}, VOID);
-   create_builtin("strdup", (Type[]) {CHARS, 0}, CHARS);
-   create_builtin("strlen", (Type[]) {CHARS, 0}, INT);
-   // create_builtin("free", (Type[]) {VOID, 0}, VOID);
-   create_builtin("strcpy", (Type[]) {CHARS, CHARS, 0}, CHARS);
-   create_builtin("strncpy", (Type[]) {CHARS, CHARS, INT, 0}, CHARS);
-   create_builtin("puts", (Type[]) {CHARS, 0}, INT);
-   create_builtin("putstr", (Type[]) {CHARS, 0}, INT);
-   create_builtin("putchar", (Type[]) {CHAR, 0}, INT);
-   create_builtin("putbool", (Type[]) {BOOL, 0}, INT);
-   create_builtin("putfloat", (Type[]) {FLOAT, 0}, INT);
-   create_builtin("strcmp", (Type[]) {CHARS, CHARS, 0}, INT);
-}
-
 void generate(char *name)
 {
    if (found_error) return;
 #if IR
-   debug(BLUE BOLD"GENERATE IR:\n" RESET);
-   Node *curr = head;
-   add_builtins();
-   while (curr && !found_error)
-   {
-      generate_ir(curr->left);
-      curr = curr->right;
-   }
+   debug(GREEN BOLD"GENERATE IR:\n" RESET);
+   for (int i = 0; !found_error && i < head->cpos; i++) generate_ir(head->children[i]);
    if (found_error) return;
-   debug(BLUE BOLD"PRINT IR:\n" RESET);
    print_ir();
-   debug(BLUE BOLD"OPTIMIZE IR:\n" RESET);
-   clone_insts();
 #endif
 #if OPTIMIZE
-   while (OPTIMIZE && !found_error && optimize_ir()) clone_insts();
+   debug(GREEN BOLD"OPTIMIZE IR:\n" RESET);
+   copy_insts();
+   while (OPTIMIZE && !found_error && optimize_ir()) copy_insts();
 #endif
 #if ASM
-   debug(BLUE BOLD"GENERATE ASM:\n" RESET);
+   debug(GREEN BOLD"GENERATE ASM:\n" RESET);
    generate_asm(name);
 #endif
 }
@@ -1792,9 +1233,3 @@ int main(int argc, char **argv)
    generate(argv[1]);
    free_memory();
 }
-
-/*
-2090 + 1528
-1819 + 1179
-
-*/

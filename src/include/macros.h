@@ -14,7 +14,7 @@
 #define FILE __FILE__
 
 #define TOKENIZE 1
-#define TAB 4
+#define TAB 3
 
 #if TOKENIZE
 #define AST 1
@@ -29,7 +29,7 @@
 #define WITH_COMMENTS 1
 
 #if IR
-#define BUILTINS 1
+#define BUILTINS 0
 #ifndef OPTIMIZE
 #define OPTIMIZE 0
 #endif
@@ -45,8 +45,14 @@
 
 #define TREE 0
 
+#define DEBUG_NEW_TOKEN 0
+
 #define allocate(len, size) allocate_func(LINE, len, size)
 #define check(cond, fmt, ...) check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)
 #define to_string(type) to_string_(FILE, LINE, type)
+#define todo(cond, fmt, ...) check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__); exit(1);
+
+#if DEBUG_NEW_TOKEN
 #define new_token(input, s, e, type, space) new_token_(FILE, LINE, input, s, e, type, space)
-#define ptoken(token) ptoken_(FILE, LINE, token)
+#endif
+// #define ptoken(token) ptoken_(FILE, LINE, token)
