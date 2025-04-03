@@ -110,9 +110,9 @@ void tokenize()
          new_token(input, s + 1, i, CHAR, space);
          continue;
       }
-      if (isalpha(input[i]))
+      if (isalpha(input[i]) || strchr("@$-_", input[i]))
       {
-         while (isalnum(input[i])) i++;
+         while (isalnum(input[i]) || strchr("@$-_", input[i])) i++;
          new_token(input, s, i, ID, space);
          continue;
       }
@@ -261,6 +261,7 @@ Node *sign()
    return prime();
 }
 
+
 /******************************************
  *  Function Declaration Layout:          *
  *  ┌───────────────┐    ┌───────────┐    *
@@ -299,6 +300,8 @@ Node *func_dec(Node *node)
    int i = 0;
    while (!found_error && !(last = find(RPAR, END, 0)))
    {
+      Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space + TAB));
+
       bool is_ref = find(REF, 0) != NULL;
       arg = find(INT, CHARS, CHAR, FLOAT, BOOL, 0);
       if (check(!arg, "expected data type in function argument")) break;
@@ -307,19 +310,25 @@ Node *func_dec(Node *node)
       name->is_ref = is_ref;
       name->type = arg->type;
 
+      Node *left = new_node(name);
+      left->token->declare = true;
+
+      Node *right = new_node(new_token(NULL, 0, 0, left->token->type, 0));
+      setReg(left->token, NULL);
+      setName(right->token, NULL);
       if (i < (int)(sizeof(eregs) / sizeof(eregs[0])))
       {
-         if (name->is_ref) setReg(name, rregs[i]);
+         if (name->is_ref) setReg(right->token, rregs[i]);
          else
          {
             // TODO: add other data type and math operations
             switch (name->type)
             {
-            case CHARS: setReg(name, rregs[i]); break;
-            case INT:   setReg(name, eregs[i]); break;
-            case CHAR:  setReg(name, eregs[i]); break;
-            case FLOAT: setReg(name, rregs[i]); break; // TODO: to be checked
-            case BOOL:  setReg(name, eregs[i]); break;
+            case CHARS: setReg(right->token, rregs[i]); break;
+            case INT:   setReg(right->token, eregs[i]); break;
+            case CHAR:  setReg(right->token, eregs[i]); break;
+            case FLOAT: setReg(right->token, rregs[i]); break; // TODO: to be checked
+            case BOOL:  setReg(right->token, eregs[i]); break;
             default: todo(1, "set reg for %s", to_string(name->type));
             };
             i++;
@@ -330,33 +339,17 @@ Node *func_dec(Node *node)
          // TODO:
          todo(1, "implement assigning function argument using PTR");
       }
-      add_child(args, new_node(name));
+      assign->left = left;
+      assign->right = right;
+      add_child(args, assign);
+      right->token->space = assign->token->space;
+      left->token->space = assign->token->space;
+
       find(COMA, 0); // TODO: check this later
    }
    check((!found_error && last->type != RPAR), "expected ) after function declaration");
    check((!found_error && !find(DOTS, 0)), "Expected : after function declaration");
 
-   for (int i = 0; i < args->cpos; i++)
-   {
-      // I used assign here because I need to declare variables
-      // inside function declaration
-      Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space + TAB));
-      Node *left = args->children[i];
-      Node *right = copy_node(args->children[i]);
-      left->token->declare = true;
-
-      // if (right->token->is_ref)
-      // {
-      //    right->token->has_ref = true;
-      //    right->token->ptr = 0;
-      // }
-      setReg(left->token, NULL);
-      setName(right->token, NULL);
-
-      assign->left = left;
-      assign->right = right;
-      args->children[i] = assign;
-   }
    Node *child = NULL;
    while (within_space(node->token->space)) child = add_child(node, expr());
    if (node->token->retType != VOID)
@@ -497,6 +490,7 @@ Node *symbol(Token *token)
       }
       token = find(ID, 0);
       (check(!token, "Expected variable name after struct declaration\n"));
+      debug("found instead %k\n", tokens[exe_pos]);
       setName(node->token, token->name);
       node->token->type = STRUCT_CALL;
       node->token->declare = true;
@@ -636,7 +630,6 @@ Node *prime()
    return new_node(tokens[exe_pos]);
 }
 
-
 void generate_ast()
 {
    if (found_error) return;
@@ -677,47 +670,78 @@ Token *op_ir(Node *node)
    {
    case ASSIGN:
    {
-      node->token->reg = left->reg;
-      node->token->retType = getRetType(node);
-      if (left->is_ref) // reg, ptr
+      if (left->type == STRUCT_CALL)
       {
-         if (right->is_ref) // reg, ptr
+         debug(RED SPLIT RESET);
+         for (int i = 0; i < left->Struct.pos; i++)
          {
-            if (check(!right->has_ref, "can not assign from reference that point to nothing")) break;
-            if (left->has_ref) node->token->assign_type = REF_REF;
-            else node->token->assign_type = REF_HOLD_REF;
+            Node *tmp = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space));
+            tmp->left = new_node(left->Struct.attrs[i]);
+            tmp->left->token->declare = false;
+            tmp->right = new_node(right->Struct.attrs[i]);
+            tmp->right->token->declare = false;
+            op_ir(tmp);
+            free_node(tmp);
          }
-         else if (right->ptr) // ptr
-         {
-            if (left->has_ref) node->token->assign_type = REF_ID;
-            else node->token->assign_type = REF_HOLD_ID;
-         }
-         else // reg, value
-         {
-            if (check(!left->has_ref, "can not assign to reference that point to nothing")) break;
-            node->token->assign_type = REF_VAL;
-         }
-         left->has_ref = true;
-      }
-      else if (left->ptr || left->creg) // reg, ptr
-      {
-         if (right->is_ref) // reg, ptr
-         {
-            if (check(!right->has_ref, "can not assign from reference that point to nothing")) break;
-            node->token->assign_type = ID_REF;
-         }
-         else if (right->ptr) // ptr
-         {
-            node->token->assign_type = ID_ID;
-         }
-         else // reg, value
-         {
-            node->token->assign_type = ID_VAL;
-         }
+         debug(RED SPLIT RESET);
+         // todo("found", "");
       }
       else
       {
-         todo(1, "Invalid assignment");
+         node->token->reg = left->reg;
+         node->token->retType = getRetType(node);
+         if (left->is_ref) // reg, ptr
+         {
+            if (right->is_ref) // reg, ptr
+            {
+               if (check(!right->has_ref, "can not assign from reference that point to nothing"))
+               {
+                  debug(RED SPLIT RESET);
+                  debug("%n\n", node);
+                  debug(RED SPLIT RESET);
+                  break;
+               }
+               if (left->has_ref) node->token->assign_type = REF_REF;
+               else node->token->assign_type = REF_HOLD_REF;
+            }
+            else if (right->ptr) // ptr
+            {
+               if (left->has_ref) node->token->assign_type = REF_ID;
+               else node->token->assign_type = REF_HOLD_ID;
+            }
+            else // reg, value
+            {
+               if (check(!left->has_ref, "can not assign to reference that point to nothing"))
+               {
+                  debug(RED SPLIT RESET);
+                  debug("%n\n", node);
+                  debug(RED SPLIT RESET);
+                  break;
+               }
+               node->token->assign_type = REF_VAL;
+            }
+            left->has_ref = true;
+         }
+         else if (left->ptr || left->creg) // reg, ptr
+         {
+            if (right->is_ref) // reg, ptr
+            {
+               if (check(!right->has_ref, "can not assign from reference that point to nothing")) break;
+               node->token->assign_type = ID_REF;
+            }
+            else if (right->ptr) // ptr
+            {
+               node->token->assign_type = ID_ID;
+            }
+            else // reg, value
+            {
+               node->token->assign_type = ID_VAL;
+            }
+         }
+         else
+         {
+            todo(1, "Invalid assignment");
+         }
       }
       break;
    }
@@ -885,7 +909,11 @@ Token *func_dec_ir(Node *node)
       //    free_node(tmp);
       // }
       // else
+      if (child->left->token->is_ref) child->left->token->has_ref = true;
       generate_ir(child);
+      // keep this line commented it causes problem here
+      // func void m(ref int a): a = 1
+      // if (child->left->token->is_ref) child->left->token->has_ref = false;
    }
    //pnode(node, NULL, 0);
 
@@ -919,42 +947,46 @@ Token *func_call_ir(Node *node)
       func = copy_node(func);
       node->token->retType = func->token->retType;
       setReg(node->token, func->token->creg);
-      Node *dec = func->left;
-      Node *call = node;
+      Node *fdec = func->left;
+      Node *fcall = node;
 #if 0
       pnode(func, "dec", 0);
       pnode(call, "call", 0);
       // todo("hey", "");
 #endif
-      for (int i = 0; !found_error && i < call->cpos && i < dec->cpos; i++)
+      for (int i = 0; !found_error && i < fcall->cpos && i < fdec->cpos; i++)
       {
-         Node *carg = call->children[i];
-         Node *darg = dec->children[i];
+         Node *carg = fcall->children[i];
+         Node *darg = fdec->children[i];
 
          generate_ir(carg->right); // get right element of assign
 
-         debug(RED SPLIT RESET);
-         pnode(carg, NULL, 0);
-         debug(RED SPLIT RESET);
-
          if (check(carg->right->token->type == ID, "Indeclared variable %s", carg->right->token->name)) break;
          carg->left->token->type = carg->right->token->type;
+         carg->token->retType = darg->token->retType;
+
          //TODO: check if they arr compatible carg->left->token->type != darg->token->type;
-         if (darg->token->is_ref)
+
+
+         if (darg->left->token->is_ref)
          {
-            todo(1, "check dot here", "");
-            generate_ir(carg);
-            // carg->left->token->is_ref = true;
-            // carg->left->token->has_ref = 0;
-            // carg->left->token->ptr = 0;
-            // carg->token->ptr = 0;
+            carg->left->token->is_ref = true;
+            carg->left->token->has_ref = false;
          }
-         else
+
+         if (eregs[i] && !found_error)
          {
-            if (eregs[i] && !found_error)
+            if (darg->left->token->is_ref)
             {
+               carg->left->token->ptr = 0;
+               setReg(carg->left->token, rregs[i]);
+            }
+            else
+            {
+               carg->left->token->ptr = 0;
                Type type = carg->left->token->type;
                Type retType = carg->left->token->retType;
+               // if(type == DOT) ;
                switch (type)
                {
                case CHARS: setReg(carg->left->token, rregs[i]); break;
@@ -963,13 +995,19 @@ Token *func_call_ir(Node *node)
                default: todo(1, "handle this case [%s] [%s]", to_string(type), to_string(retType));
                }
             }
-            else if (!found_error)
-            {
-               todo(1, "implemnt PTR");
-            }
-            generate_ir(carg);
          }
+         else if (!found_error)
+         {
+            todo(1, "implemnt PTR");
+         }
+         debug(BOLD RED SPLIT RESET);
+         pnode(carg, "call:", 0);
+         debug(RED SPLIT RESET);
 
+         debug(RED SPLIT RESET);
+         pnode(darg, "dec :", 0);
+         debug(BOLD RED SPLIT RESET);
+         generate_ir(carg);
       }
       free_node(func);
    }
@@ -1176,7 +1214,6 @@ void generate_asm(char *name)
             }
             else if (left->creg)
             {
-               todo(1, "handle this case", "");
                if (right->creg) // left creg, right creg
                {
                   todo(1, "handle this case", "");
@@ -1185,11 +1222,15 @@ void generate_asm(char *name)
                {
                   if (right->type == CHARS)
                   {
-                     todo(1, "handle this case", "");
+                     // I used %r for this:
+                     // chars planet = "Mars"
+                     // strcmp(planet, "Earth")
+                     pasm("%i%r, .STR%d[rip]", "lea", left, right->index);
                   }
                   else
                   {
-                     todo(1, "handle this case", "");
+                     // todo(1, "handle this case", "");
+                     pasm("%i%r, %v", "mov", left, right, left->name);
                   }
                }
             }
@@ -1211,8 +1252,7 @@ void generate_asm(char *name)
             // functions parameters
             else if (left->creg && right->ptr)
             {
-               todo(1, "check this case", "");
-               pasm("%i%a, %ra", "mov", left, right);
+               pasm("%i%r, %a", "mov", left, right);
             }
             else
             {
@@ -1224,16 +1264,18 @@ void generate_asm(char *name)
          {
             // left ptr, creg
             // right ptr
-            if (left->ptr && right->ptr)
+            if (left->creg)
             {
+               // todo(1, "handle this case");
+               pasm("%i%r, -%d[rbp]", "lea", left,  right->ptr);
+            }
+            else if (left->ptr)
+            {
+               // debug("left : %k\n", left);
+               // debug("right: %k\n", right);
+               // todo(1, "handle this case");
                pasm("%irax, -%d[rbp]", "lea", right->ptr); asm_space(curr->space);
                pasm("%iQWORD PTR -%d[rbp], rax", "mov", left->ptr);
-            }
-            else if (left->ptr && right->creg)
-            {
-               todo(1, "handle this case");
-               pasm("%irax, -%d[rbp]", "lea", right->ptr); asm_space(curr->space);
-               pasm("%irdi, rax", "mov");
             }
             else
             {
@@ -1308,11 +1350,11 @@ void generate_asm(char *name)
          {
             // left ptr (has_refrence) , creg
             // right creg, value
-            if(left->ptr)
+            if (left->ptr)
             {
-               if(right->creg)
+               if (right->creg)
                {
-                  todo(1, "handle this case");
+                  pasm("%i%a, %r", "mov", left, right);
                }
                else
                {
@@ -1320,9 +1362,9 @@ void generate_asm(char *name)
                   pasm("%i%ma, %v", "mov", left,  right);
                }
             }
-            else if(left->creg)
+            else if (left->creg)
             {
-               if(right->creg)
+               if (right->creg)
                {
                   todo(1, "handle this case");
                }
@@ -1348,12 +1390,45 @@ void generate_asm(char *name)
          {
             // left ptr, creg
             // right ptr, creg
-            todo(1, "handle this case");
+            if (left->ptr)
+            {
+               if (right->ptr)
+               {
+                  todo(1, "handle this case");
+               }
+               else if (right->creg)
+               {
+                  todo(1, "handle this case");
+               }
+               else
+               {
+                  todo(1, "handle this case");
+               }
+            }
+            else if (left->creg)
+            {
+               if (right->ptr)
+               {
+                  todo(1, "handle this case");
+               }
+               else if (right->creg)
+               {
+                  todo(1, "handle this case");
+               }
+               else
+               {
+                  todo(1, "handle this case");
+               }
+            }
+            else
+            {
+               todo(1, "handle this case");
+            }
             break;
          }
          default:
          {
-            todo(1, "handle this case");
+            todo(1, "handle this case [%d]", curr->assign_type);
             break;
          }
          }
@@ -1636,6 +1711,7 @@ void generate_asm(char *name)
       case FCALL: pasm("%i%s", "call", curr->name); break;
       case BLOC: pasm(".%s%d:", (curr->name ? curr->name : "(null)"), curr->index); break;
       case END_BLOC: pasm(".end%s:", curr->name); break;
+      case STRUCT_CALL: break;
       default: check(1, "handle this case (%s)\n", to_string(curr->type)); break;
       }
    }
@@ -1657,6 +1733,7 @@ void generate(char *name)
    while (OPTIMIZE && !found_error && optimize_ir()) copy_insts();
 #endif
 #if ASM
+   copy_insts();
    debug(GREEN BOLD"GENERATE ASM:\n" RESET);
    generate_asm(name);
 #endif

@@ -1,10 +1,14 @@
 
-// func int m(ref int a):
-//    a = 1
-//    return 1
+struct User:
+   int a
+   char b
+   int c
 
 main():
-   int a = 2
-   ref int b = a
-   b = 1
-   
+   User abc
+
+   User efg
+   efg.a = 123
+   abc = efg
+   putnbr(abc.a)
+
