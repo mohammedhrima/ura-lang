@@ -16,3 +16,26 @@ struct Card:
 card.user.name  is chars
 card.user.age   is int
 card.id         is int
+
+
++ variables:
+    - declaration 
+        + int
+        - float
+        + chars
+        - short
+        - long
+        - struct
+    - assignemt
+        + int
+        - float
+        + chars
+        - short
+        - long
+        - struct
+
++ access child attributes
++ function call
++ function with parameters
++ if stataments
++ while loop 

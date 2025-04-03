@@ -1,12 +1,15 @@
-
-struct Id:
-    int nums
+struct Data:
+    chars name
+    int a
 
 struct User:
-    int age
-    Id id
+    Data data
+    char e
+    int b
+    char c
 
 main():
-    User user
-    User user
-    //Id id
+    User user1
+    user1.data.a = 10
+    User user2
+    user2.data.a = 11

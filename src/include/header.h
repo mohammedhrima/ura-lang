@@ -15,7 +15,7 @@
 // STRUCTS
 typedef enum
 {
-   START = 1, CHILDREN,
+   TMP = 1, CHILDREN,
    ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,
    EQUAL, NOT_EQUAL, LESS_EQUAL, MORE_EQUAL, LESS, MORE,
    ADD, SUB, MUL, DIV, MOD,
@@ -25,7 +25,7 @@ typedef enum
    IF, ELIF, ELSE, 
    WHILE, CONTINUE, BREAK,
    FDEC, FCALL,
-   VOID, INT, CHARS, CHAR, BOOL, FLOAT,
+   VOID, INT, CHARS, CHAR, BOOL, FLOAT, PTR, LONG,
    STRUCT_DEF, STRUCT_CALL, ID, REF,
    JNE, JE, JMP, BLOC, END_BLOC,
    PUSH, POP,
@@ -34,12 +34,12 @@ typedef enum
 
 typedef struct Token
 {
-   Type type;
-   Type retType;
+   Type type; 
+   Type retType; // return type
    char *name;
-   int ptr;
-   bool declare;
-   int space;
+   int ptr; // pointer
+   bool declare; // is variable declaration
+   int space; // indentation
    bool remove;
    int reg;
    char *creg;
@@ -48,9 +48,8 @@ typedef struct Token
    bool is_ref;
    bool has_ref;
    // int rsp;
-   bool isarg;
-   int struct_id;
-   bool isattr;
+   // bool isarg;
+   // bool isattr;
    int offset;
 
    struct
@@ -85,6 +84,7 @@ typedef struct Token
       } Char;
       struct
       {
+         int id;
          struct Token **attrs;
          int pos;
          int len;
@@ -115,14 +115,8 @@ typedef struct Node
       int vpos;
       int vsize;
    };
-
 } Node;
 
-typedef struct
-{
-   char *value;
-   Type type;
-} Specials;
 
 typedef struct
 {
@@ -130,6 +124,8 @@ typedef struct
    Token *left;
    Token *right;
 } Inst;
+
+
 
 // GLOBAL
 extern bool found_error;
@@ -149,12 +145,20 @@ extern int scoopPos;
 
 extern int ptr;
 extern struct _IO_FILE *asm_fd;
+extern int str_index;
+extern int bloc_index;
 
-void open_file(char *filename);
+// ----------------------------------------------------------------------------
+// Parsing
+// ----------------------------------------------------------------------------
+
+#if DEBUG_NEW_TOKEN
 Token* new_token_(char *filename, int line, char *input, int s, int e, Type type, int space);
-
+#else
+Token* new_token(char *input, int s, int e, Type type, int space);
+#endif
+void add_token(Token *token);
 void tokenize();
-void generate_ast();
 Node *expr();
 Node *assign();
 Node *logic();
@@ -166,44 +170,66 @@ Node *dot();
 Node *sign();
 Node *brackets();
 Node *prime();
-void generate(char *name);
-Inst *new_inst(Token *token);
-void setName(Token *token, char *name);
-void setReg(Token *token, char *creg);
-bool within_space(int space);
-void add_token(Token *token);
 Node *new_node(Token *token);
+bool includes(Type to_find, ...);
 Token *find(Type type, ...);
-const char *to_string_(const char *filename, const int line, Type type);
-void enter_scoop(Node *node);
-bool check_error(const char *filename, const char *funcname, int line, bool cond, char *fmt, ...);
-void free_memory();
-void *allocate_func(int line, int len, int size);
-int debug(char *conv, ...);
-int pnode(Node *node, char *side, int space);
-int ptoken_(const char*filename, int line, Token *token);
-void exit_scoop();
-void clone_insts();
+void generate_ast();
 Node *new_function(Node *node);
 Node *get_function(char *name);
 Token *get_variable(char *name);
 Token *new_variable(Token *token);
-void print_ir();
-bool compatible(Token *left, Token *right);
-void initialize();
-void finalize();
-void asm_space(int space);
-void pasm(char *fmt, ...);
 void free_node(Node *node);
 Token *copy_token(Token *token);
 Node *copy_node(Node *node);
-void create_builtin(char *name, Type *params, Type retType);
-bool includes(Type *types, Type type);
-Token* generate_ir(Node *node);
 Token *new_struct(Token *token);
 Token *get_struct(char *name);
 Token *get_struct_by_id(int id);
+Token *is_struct(Token *token);
 void add_attribute(Token *obj, Token *attr);
+Node* add_child(Node *node, Node *child);
+
+// ----------------------------------------------------------------------------
+// Code Generation
+// ----------------------------------------------------------------------------
+
+void generate(char *name);
+Inst *new_inst(Token *token);
+void enter_scoop(Node *node);
+void exit_scoop();
+void copy_insts();
+bool compatible(Token *left, Token *right);
+void initialize();
+void asm_space(int space);
+void finalize();
+void pasm(char *fmt, ...);
+Token* generate_ir(Node *node);
+
+// ----------------------------------------------------------------------------
+// Utilities
+// ----------------------------------------------------------------------------
+
+void open_file(char *filename);
+const char *to_string_(const char *filename, const int line, Type type);
+void setName(Token *token, char *name);
+void setReg(Token *token, char *creg);
+bool within_space(int space);
+bool check_error(const char *filename, const char *funcname, int line, bool cond, char *fmt, ...);
+void free_memory();
+void *allocate_func(int line, int len, int size);
+void create_builtin(char *name, Type *params, Type retType);
 char *strjoin(char *str0, char *str1, char *str2);
 int sizeofToken(Token *token);
-Node* add_child(Node *node, Node *child);
+int alignofToken(Token *token);
+void add_builtins();
+Type getRetType(Node *node);
+
+// ----------------------------------------------------------------------------
+// Logs
+// ----------------------------------------------------------------------------
+
+int debug(char *conv, ...);
+int pnode(Node *node, char *side, int space);
+int ptoken(Token *token);
+void print_ast();
+void print_ir();
+

@@ -42,3 +42,5 @@
 + every loop inside source code should check found_error
 + void function need to be checked
 + global variable
++ when you finish the code check this approach, setting ptr at the end
+before generatin assembly code

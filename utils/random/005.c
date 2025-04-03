@@ -1,59 +1,70 @@
 #include <stdio.h>
 #include <stddef.h>
-#include <stdalign.h>
 
-size_t calculate_padding(size_t offset, size_t alignment)
+typedef struct
+{
+    char *name;
+    int size;
+    int align;
+    char *type;
+} Simulator;
+
+int calculate_padding(int offset, int alignment)
 {
     return (alignment - (offset % alignment)) % alignment;
 }
 
+void print_struct_layout(Simulator *sims, int size)
+{
+
+    int offsets[size];
+    int offset = 0;
+
+    for (int i = 0; i < size; i++)
+    {
+        int padding = calculate_padding(offset, sims[i].align);
+        offset += padding;
+        offsets[i] = offset;
+        offset += sims[i].size;
+    }
+
+    int max_align = 1;
+    for (int i = 0; i < size; i++)
+        if (sims[i].align > max_align)
+            max_align = sims[i].align;
+
+    int final_padding = calculate_padding(offset, max_align);
+    int total_size = offset + final_padding;
+
+    printf("Total struct size: %d bytes \n", total_size);
+
+    int stack_alignment = 4;
+
+    int stack_space = ((total_size + stack_alignment - 1) / stack_alignment) * stack_alignment;
+    int base_rbp_offset = -stack_space;
+
+    for (int i = 0; i < size; i++)
+    {
+        int rbp_offset = base_rbp_offset + offsets[i];
+        printf("  %s (%s):  rbp %d\n", sims[i].name, sims[i].type, rbp_offset);
+    }
+}
+
+#define macro(t) sizeof(t), _Alignof(t), #t
 int main()
 {
-    // Define the Id struct members
-    const char *member_names[] = {"a (char*)", "b (int)", "c (char)"};
-    size_t sizes[] = {8, 4, 1};      // sizeof(char*), sizeof(int), sizeof(char)
-    size_t alignments[] = {8, 4, 1}; // alignof(char*), alignof(int), alignof(char)
-    size_t n = sizeof(sizes) / sizeof(sizes[0]);
+    // int s = 0;
+    // struct {long a0; int a1; char a2;} a;
+    // printf("%d\n", (void*)&s - (void*)&(a.a0) + sizeof(s));
+    // printf("%d\n", (void*)&s - (void*)&(a.a1) + sizeof(s));
+    // printf("%d\n", (void*)&s - (void*)&(a.a2) + sizeof(s));
 
-    // For a struct on x86-64, we typically start at offset 0 and add fields
-    size_t current_offset = 0;
-    size_t member_offsets[3];
-
-    // Calculate offsets and paddings
-    for (int i = 0; i < n; i++)
-    {
-        // Add padding to satisfy alignment
-        size_t padding = calculate_padding(current_offset, alignments[i]);
-        current_offset += padding;
-
-        // Store this member's offset
-        member_offsets[i] = current_offset;
-
-        // Move offset past this member
-        current_offset += sizes[i];
-    }
-
-    // Calculate total struct size (with padding at the end to satisfy struct alignment)
-    // Struct alignment is typically the largest alignment of any member
-    size_t max_alignment = 8; // For Id struct, this would be alignof(char*)
-    size_t end_padding = calculate_padding(current_offset, max_alignment);
-    size_t total_size = current_offset + end_padding;
-
-    // Print the struct layout
-    printf("Struct layout simulation:\n");
-    for (int i = 0; i < n; i++)
-    {
-        printf("Member %s: offset %zu\n", member_names[i], member_offsets[i]);
-    }
-    printf("Total struct size: %zu bytes\n\n", total_size);
-
-    // Now calculate stack offsets (negative from rbp)
-    printf("Stack offsets simulation:\n");
-    size_t stack_start = 16; // Starting point, aligned to 16
-    for (int i = 0; i < n; i++)
-    {
-        printf("Variable %s: rbp-%zu\n", member_names[i], stack_start - member_offsets[i]);
-    }
-
+    Simulator sims[] = {
+        // (Simulator){"", macro(int)},
+        (Simulator){"a", macro(long)},
+        (Simulator){"b", macro(int)},
+        (Simulator){"c", macro(char)},
+    };
+    print_struct_layout(sims, sizeof(sims) / sizeof(sims[0]));
     return 0;
 }
