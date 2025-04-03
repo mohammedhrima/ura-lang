@@ -345,11 +345,11 @@ Node *func_dec(Node *node)
       Node *right = copy_node(args->children[i]);
       left->token->declare = true;
 
-      if (right->token->is_ref)
-      {
-         right->token->has_ref = true;
-         right->token->ptr = 0;
-      }
+      // if (right->token->is_ref)
+      // {
+      //    right->token->has_ref = true;
+      //    right->token->ptr = 0;
+      // }
       setReg(left->token, NULL);
       setName(right->token, NULL);
 
@@ -675,13 +675,53 @@ Token *op_ir(Node *node)
 
    switch (node->token->type)
    {
-   case ADD_ASSIGN: case ASSIGN:
+   case ASSIGN:
    {
       node->token->reg = left->reg;
       node->token->retType = getRetType(node);
+      if (left->is_ref) // reg, ptr
+      {
+         if (right->is_ref) // reg, ptr
+         {
+            if (check(!right->has_ref, "can not assign from reference that point to nothing")) break;
+            if (left->has_ref) node->token->assign_type = REF_REF;
+            else node->token->assign_type = REF_HOLD_REF;
+         }
+         else if (right->ptr) // ptr
+         {
+            if (left->has_ref) node->token->assign_type = REF_ID;
+            else node->token->assign_type = REF_HOLD_ID;
+         }
+         else // reg, value
+         {
+            if (check(!left->has_ref, "can not assign to reference that point to nothing")) break;
+            node->token->assign_type = REF_VAL;
+         }
+         left->has_ref = true;
+      }
+      else if (left->ptr || left->creg) // reg, ptr
+      {
+         if (right->is_ref) // reg, ptr
+         {
+            if (check(!right->has_ref, "can not assign from reference that point to nothing")) break;
+            node->token->assign_type = ID_REF;
+         }
+         else if (right->ptr) // ptr
+         {
+            node->token->assign_type = ID_ID;
+         }
+         else // reg, value
+         {
+            node->token->assign_type = ID_VAL;
+         }
+      }
+      else
+      {
+         todo(1, "Invalid assignment");
+      }
       break;
    }
-   case ADD: case SUB: case MUL: case DIV:
+   case ADD: case SUB: case MUL: case DIV: case ADD_ASSIGN:
    {
       node->token->retType = getRetType(node);
       if (node->token->retType  == INT) setReg(node->token, "eax");
@@ -837,15 +877,15 @@ Token *func_dec_ir(Node *node)
    for (int i = 0; curr && i < curr->cpos && !found_error; i++)
    {
       Node *child = curr->children[i];
-      if (child->left->token->is_ref)
-      {
-         Node *tmp = copy_node(child);
-         tmp->left->token->has_ref = true;
-         generate_ir(tmp);
-         free_node(tmp);
-      }
-      else
-         generate_ir(child);
+      // if (child->left->token->is_ref)
+      // {
+      //    Node *tmp = copy_node(child);
+      //    tmp->left->token->has_ref = true;
+      //    generate_ir(tmp);
+      //    free_node(tmp);
+      // }
+      // else
+      generate_ir(child);
    }
    //pnode(node, NULL, 0);
 
@@ -1111,17 +1151,218 @@ void generate_asm(char *name)
          // char *inst = left->type == FLOAT ? "movss " : "mov ";
          debug("LEFT : %k\n", left);
          debug("RIGHT: %k\n", right);
-         check(right->is_ref && !right->has_ref, "can't assign from reference that don't point to anything");
-         check(left->is_ref && !left->has_ref && (!right->ptr && !right->creg), "first assignment for ref must have have ptr");
-         //check(left->is_ref && right->is_ref, "assignment between two references is forbidden");
+         switch (curr->assign_type)
+         {
+         case ID_VAL:
+         {
+            // todo(1, "handle this case");
+            // left ptr, creg
+            // right value, creg
+            if (left->ptr)
+            {
+               if (right->creg) pasm("%i%a, %r", "mov", left, right); // left ptr, right creg
+               else // left ptr, right value
+               {
+                  if (right->type == CHARS)
+                  {
+                     pasm("%i%ra, .STR%d[rip]", "lea", left, right->index); asm_space(curr->space);
+                     pasm("%i%a, %ra", "mov", left, right);
+                  }
+                  else
+                  {
+                     pasm("%i%a, %v", "mov", left, right, left->name);
+                  }
+               }
+            }
+            else if (left->creg)
+            {
+               todo(1, "handle this case", "");
+               if (right->creg) // left creg, right creg
+               {
+                  todo(1, "handle this case", "");
+               }
+               else // left creg, right value
+               {
+                  if (right->type == CHARS)
+                  {
+                     todo(1, "handle this case", "");
+                  }
+                  else
+                  {
+                     todo(1, "handle this case", "");
+                  }
+               }
+            }
+            else
+            {
+               todo(1, "handle this case", "");
+            }
+            break;
+         }
+         case ID_ID:
+         {
+            // left ptr, creg
+            // right ptr
+            if (left->ptr && right->ptr)
+            {
+               pasm("%i%ra, %a", "mov", right, right); asm_space(curr->space);
+               pasm("%i%a, %ra", "mov", left, right);
+            }
+            // functions parameters
+            else if (left->creg && right->ptr)
+            {
+               todo(1, "check this case", "");
+               pasm("%i%a, %ra", "mov", left, right);
+            }
+            else
+            {
+               todo(1, "handle this case", "");
+            }
+            break;
+         }
+         case REF_HOLD_ID:
+         {
+            // left ptr, creg
+            // right ptr
+            if (left->ptr && right->ptr)
+            {
+               pasm("%irax, -%d[rbp]", "lea", right->ptr); asm_space(curr->space);
+               pasm("%iQWORD PTR -%d[rbp], rax", "mov", left->ptr);
+            }
+            else if (left->ptr && right->creg)
+            {
+               todo(1, "handle this case");
+               pasm("%irax, -%d[rbp]", "lea", right->ptr); asm_space(curr->space);
+               pasm("%irdi, rax", "mov");
+            }
+            else
+            {
+               todo(1, "handle this case");
+            }
+            break;
+         }
+         case ID_REF:
+         {
+            // left ptr, creg
+            // right ptr, creg
+            if (left->ptr)
+            {
+               if (right->ptr)
+               {
+                  todo(1, "handle this case");
 
-         if (left->is_ref) debug("left is ref\n");
-         if (left->has_ref) debug("left has ref\n");
-         // if(left->isarg) debug("left is arg\n");
+               }
+               else if (right->creg)
+               {
+                  todo(1, "handle this case");
 
-         if (right->is_ref) debug("right is ref\n");
-         if (right->has_ref) debug("right has ref\n");
-         // if(right->isarg) debug("right is arg\n");
+               }
+               else
+               {
+                  todo(1, "handle this case");
+               }
+            }
+            else if (left->creg)
+            {
+               if (right->ptr)
+               {
+                  todo(1, "handle this case");
+               }
+               else if (right->creg)
+               {
+                  todo(1, "handle this case");
+               }
+               else
+               {
+                  todo(1, "handle this case");
+               }
+            }
+            else
+            {
+               todo(1, "handle this case");
+            }
+            break;
+         }
+         case REF_ID:
+         {
+            // left ptr (has_refrence), creg
+            // right ptr
+            todo(1, "handle this case");
+            if (left->ptr && right->ptr)
+            {
+               // pasm("%irax, %a", "mov", left); asm_space(curr->space);
+               // pasm("%i%rd, %a", "mov", left, right); asm_space(curr->space);
+               // pasm("%i%ma, %rd", "mov", left, right);
+            }
+            else if (left->creg && right->ptr)
+            {
+
+            }
+            else
+            {
+               todo(1, "handle this case");
+            }
+            break;
+         }
+         case REF_VAL:
+         {
+            // left ptr (has_refrence) , creg
+            // right creg, value
+            if(left->ptr)
+            {
+               if(right->creg)
+               {
+                  todo(1, "handle this case");
+               }
+               else
+               {
+                  pasm("%irax, %a", "mov", left, left); asm_space(curr->space);
+                  pasm("%i%ma, %v", "mov", left,  right);
+               }
+            }
+            else if(left->creg)
+            {
+               if(right->creg)
+               {
+                  todo(1, "handle this case");
+               }
+               else
+               {
+                  todo(1, "handle this case");
+               }
+            }
+            else
+            {
+               todo(1, "handle this case");
+            }
+            break;
+         }
+         case REF_REF:
+         {
+            // left ptr (has_refrence), creg
+            // right ptr, creg
+            todo(1, "handle this case");
+            break;
+         }
+         case REF_HOLD_REF:
+         {
+            // left ptr, creg
+            // right ptr, creg
+            todo(1, "handle this case");
+            break;
+         }
+         default:
+         {
+            todo(1, "handle this case");
+            break;
+         }
+         }
+         if (left->name) pasm(" ;// assign [%s]", left->name);
+         else if (left->creg) pasm(" ;// assign [%s]", left->creg);
+         if (left->is_ref) pasm(" is_ref");
+         break;
+
+#if 1
          if (left->ptr && left->is_ref && !left->has_ref)
          {
             left->has_ref = true;
@@ -1258,11 +1499,8 @@ void generate_asm(char *name)
             debug("left:%k, right:%k\n", left, right);
             // check(1, "handle this case left:%k, right:%k", left, right);
          }
-         if (left->name) {pasm(" ;// assign [%s]", left->name); }
-         else if (left->creg) {pasm(" ;// assign [%s]", left->creg);}
-         if (left->is_ref) {pasm(" is_ref"); }
-         // asm_space(curr->space);
          break;
+#endif
       }
       case ADD: case SUB: case MUL: case DIV: // TODO: check all math_op operations
       {

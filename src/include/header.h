@@ -15,7 +15,10 @@
 // STRUCTS
 typedef enum
 {
-   TMP = 1, CHILDREN,
+   TMP = 1, CHILDREN, 
+   // TODO: don't assign from reference if it does not have reference
+   REF_ID, REF_HOLD_ID, REF_VAL, REF_HOLD_REF, REF_REF, ID_ID, ID_REF, ID_VAL,
+
    ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,
    EQUAL, NOT_EQUAL, LESS_EQUAL, MORE_EQUAL, LESS, MORE,
    ADD, SUB, MUL, DIV, MOD,
@@ -36,6 +39,7 @@ typedef struct Token
 {
    Type type; 
    Type retType; // return type
+   Type assign_type;
    char *name;
    int ptr; // pointer
    bool declare; // is variable declaration

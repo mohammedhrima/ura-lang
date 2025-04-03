@@ -282,6 +282,7 @@ Node* add_child(Node *node, Node *child)
 
 int sizeofToken(Token *token)
 {
+   if (token->is_ref) return sizeof(void*);
    switch (token->type)
    {
    case INT: return sizeof(int);
@@ -472,16 +473,7 @@ Inst *new_inst(Token *token)
 
    Inst *new = allocate(1, sizeof(Inst));
    new->token = token;
-   if (token->is_ref && token->ptr)
-      // I added this line for this case
-      // func int m(ref int a)
-      // the code increment rsp and
-      // it become for example sub rsp, 16
-      // even though I'm not declaring any variable inside
-      // function declaration
-   {
-      token->ptr = (ptr += 8);
-   }
+   if (token->is_ref) token->ptr = (ptr += 8);
    else if (token->type == CHARS && token->Chars.value && !token->index) token->index = ++str_index;
    else if (token->name && token->declare)
    {
@@ -621,11 +613,11 @@ bool optimize_ir()
       for (int i = 0; insts[i]; i++)
       {
          Token *token = insts[i]->token;
-         if (token->declare )
+         if (token->declare)
          {
             for (int j = i + 1; insts[j] && insts[j]->token->space == token->space; j++)
             {
-               if (insts[j]->token->type == ASSIGN && insts[j]->left->reg == token->reg /*&& !token->is_ref*/)
+               if (insts[j]->token->type == ASSIGN && insts[j]->left->reg == token->reg )
                {
                   // debug(RED"1. remove r%d %k\n"RESET, token->reg, token);
                   token->declare = false;
@@ -641,7 +633,7 @@ bool optimize_ir()
                }
             }
          }
-         else if (token->type == ASSIGN)
+         else if (token->type == ASSIGN && !insts[i]->left->is_ref)
          {
             for (int j = i + 1; insts[j] && insts[j]->token->space == token->space; j++)
             {
@@ -737,7 +729,7 @@ void pasm(char *fmt, ...)
          {
             i += 2;
             Token *token = va_arg(args, Token *);
-            if (token->creg) fprintf(asm_fd, "%s", token->creg); // TODO: those lines are bad
+            if (token->creg) fprintf(asm_fd, "{{%s}}", token->creg); // TODO: those lines are bad
             else
             {
                Type type = token->retType ? token->retType : token->type;
@@ -755,7 +747,7 @@ void pasm(char *fmt, ...)
          {
             i += 2;
             Token *token = va_arg(args, Token *);
-            if (token->creg) fprintf(asm_fd, "%s", token->creg);
+            if (token->creg) fprintf(asm_fd, "{{%s}}", token->creg);
             else
             {
                Type type = token->retType ? token->retType : token->type;
@@ -773,7 +765,7 @@ void pasm(char *fmt, ...)
          {
             i += 2;
             Token *token = va_arg(args, Token *);
-            if (token->creg) fprintf(asm_fd, "%s", token->creg);
+            if (token->creg) fprintf(asm_fd, "{{%s}}", token->creg);
             else
             {
                Type type = token->retType ? token->retType : token->type;
@@ -787,30 +779,22 @@ void pasm(char *fmt, ...)
                }
             }
          }
-         // else if (fmt[i] == 'r')
-         // {
-         //    i++;
-         //    Token *token = va_arg(args, Token *);
-         //    if (token->creg)
-         //       fprintf(asm_fd, "%s", token->creg);
-         //    else
-         //    {
-         //       Type type = token->retType ? token->retType : token->type;
-         //       switch (type)
-         //       {
-         //       case CHARS: fputs("rax", asm_fd); break;
-         //       case INT: fputs("eax", asm_fd); break;
-         //       case BOOL: case CHAR: fputs("al", asm_fd); break;
-         //       case FLOAT: fputs("xmm0", asm_fd); break;
-         //       default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
-         //       }
-         //    }
-         // }
-         else if (fmt[i] == 'a')
+         else if (fmt[i] == 'r')
          {
             i++;
             Token *token = va_arg(args, Token *);
             if (token->creg) fprintf(asm_fd, "%s", token->creg);
+            else
+            {
+               check(1, "fix this one");
+               fputs("error-reg", asm_fd);
+            }
+         }
+         else if (fmt[i] == 'a')
+         {
+            i++;
+            Token *token = va_arg(args, Token *);
+            if (token->creg) fprintf(asm_fd, "{{%s}}", token->creg);
             else if (token->is_ref) fprintf(asm_fd, "QWORD PTR -%d[rbp]", token->ptr);
             else
                switch (token->type)
@@ -1025,7 +1009,10 @@ const char *to_string_(const char *filename, const int line, Type type) {
       [CHAR] = "CHAR", [BOOL] = "BOOL", [FLOAT] = "FLOAT", [STRUCT_CALL] = "ST_CALL",
       [STRUCT_DEF] = "ST_DEF", [ID] = "ID", [END_BLOC] = "END_BLOC", [BLOC] = "BLOC",
       [JNE] = "JNE", [JE] = "JE", [JMP] = "JMP", [LBRA] = "L_BRA", [RBRA] = "R_BRA",
-      [END] = "END", [CHILDREN] = "CHILDREN", [TMP] = "TMP", [LONG] = "LONG", [PTR] = "PTR"
+      [END] = "END", [CHILDREN] = "CHILDREN", [TMP] = "TMP", [LONG] = "LONG", [PTR] = "PTR",
+      [REF_ID] = "REF_ID", [REF_HOLD_ID] = "REF_HOLD_ID", [REF_VAL] = "REF_VAL",
+      [REF_HOLD_REF] = "REF_HOLD_REF", [REF_REF] = "REF_REF", [ID_ID] = "ID_ID",
+      [ID_REF] = "ID_REF", [ID_VAL] = "ID_VAL",
    };
    if (type > 0 && type < sizeof(arr) / sizeof(arr[0]) && arr[type] != NULL) return arr[type];
    check(1, "Unknown type [%d] in %s:%d\n", type, filename, line);
@@ -1266,6 +1253,8 @@ int ptoken(Token *token)
    default: break;
    }
    if (token->ptr) res += debug("PTR [%d] ", token->ptr);
+   if (token->is_ref) debug("ref ");
+   if (token->has_ref) debug("has-ref ");
    if (token->remove) res += debug("[remove] ");
    if (token->retType) res += debug("ret [%t] ", token->retType);
    res += debug("space [%d] ", token->space);
@@ -1294,11 +1283,11 @@ void print_value(Token *token)
 {
    switch (token->type)
    {  // TODO: handle the other cases
-   case INT: debug("%lld", token->Int.value); break;
-   case BOOL: debug("%s", token->Bool.value ? "True" : "False"); break;
-   case FLOAT: debug("%f", token->Float.value); break;
-   case CHAR: debug("%c", token->Char.value); break;
-   case CHARS: debug("%s", token->Chars.value); break;
+   case INT: debug("%lld ", token->Int.value); break;
+   case BOOL: debug("%s ", token->Bool.value ? "True" : "False"); break;
+   case FLOAT: debug("%f ", token->Float.value); break;
+   case CHAR: debug("%c ", token->Char.value); break;
+   case CHARS: debug("%s ", token->Chars.value); break;
    default: check(1, "handle this case [%s]\n", to_string(token->type)); break;
    }
 }
@@ -1323,12 +1312,12 @@ void print_ir()
       case ADD_ASSIGN:
       case ASSIGN:
       {
-         debug("[%-6s] ", to_string(curr->type));
+         debug("[%-6s] [%s] ", to_string(curr->type), (curr->assign_type ? to_string(curr->assign_type) : ""));
          if (left->creg) debug("r%.2d (%s) = ", left->reg, left->creg);
          else debug("r%.2d (%s) = ", left->reg, left->name);
 
-         if (right->reg) debug("r%.2d (%s)", right->reg, right->name ? right->name : "");
-         else if (right->creg) debug("[%s]", right->creg);
+         if (right->reg) debug("r%.2d (%s) ", right->reg, right->name ? right->name : "");
+         else if (right->creg) debug("[%s] ", right->creg);
          else print_value(right);
          break;
       }
@@ -1342,18 +1331,18 @@ void print_ir()
             check(1, "handle this case");
          }
          else print_value(left);
-         if (left->name) debug(" (%s)", left->name);
+         if (left->name) debug("(%s)", left->name);
          debug(" to ");
          if (right->reg) debug("r%.2d", right->reg);
          else print_value(right);
-         if (right->name) debug(" (%s)", right->name);
+         if (right->name) debug("(%s)", right->name);
          break;
       }
       case INT: case BOOL: case CHARS: case CHAR:
       {
          debug("[%-6s] ", to_string(curr->type));
-         if (curr->declare) debug("declare [%s] PTR=[%d]", curr->name, curr->ptr);
-         else if (curr->name) debug("variable %s PTR=[%d]", curr->name, curr->ptr);
+         if (curr->declare) debug("declare [%s] PTR=[%d] ", curr->name, curr->ptr);
+         else if (curr->name) debug("variable %s PTR=[%d] ", curr->name, curr->ptr);
          else if (curr->creg) debug("creg %s ", curr->creg);
          // else if(curr->type == FLOAT)
          // {
@@ -1362,7 +1351,7 @@ void print_ir()
          // }
          else if (curr->type == CHARS)
          {
-            if (curr->index) debug("value %s in STR%d", curr->Chars.value, curr->index);
+            if (curr->index) debug("value %s in STR%d ", curr->Chars.value, curr->index);
             else debug("in %s", curr->creg);
          }
          else
@@ -1378,18 +1367,17 @@ void print_ir()
          debug("access [%s] in %k", right->name, left);
          break;
       }
-      case JMP: debug("jmp to [%s]", curr->name); break;
-      case JNE: debug("jne to [%s]", curr->name); break;
-      case FCALL: debug("call [%s]", curr->name); break;
-      case BLOC: case FDEC: debug("[%s] bloc", curr->name); break;
-      case END_BLOC:  debug("[%s] endbloc", curr->name); break;
-      case STRUCT_CALL: debug("[%-6s] %s", to_string(curr->type), curr->name); break;
-      case RETURN: case CONTINUE: case BREAK: debug("[%s]", to_string(curr->type)); break;
+      case JMP: debug("jmp to [%s] ", curr->name); break;
+      case JNE: debug("jne to [%s] ", curr->name); break;
+      case FCALL: debug("call [%s] ", curr->name); break;
+      case BLOC: case FDEC: debug("[%s] bloc ", curr->name); break;
+      case END_BLOC:  debug("[%s] endbloc ", curr->name); break;
+      case STRUCT_CALL: debug("[%-6s] %s ", to_string(curr->type), curr->name); break;
+      case RETURN: case CONTINUE: case BREAK: debug("[%s] ", to_string(curr->type)); break;
       default: debug(RED "print_ir:handle [%s]"RESET, to_string(curr->type)); break;
       }
-      if (curr->is_ref) debug("ref");
-      if (curr->has_ref) debug(" has-ref");
-      debug(" space (%d)", curr->space);
+
+      debug("space (%d)", curr->space);
       debug("\n");
    }
    debug("total instructions [%d]\n", i);
