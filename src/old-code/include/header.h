@@ -15,9 +15,10 @@
 // STRUCTS
 typedef enum
 {
-   TMP = 1, CHILDREN, DEFAULT,
+   TMP = 1, CHILDREN, 
    // TODO: don't assign from reference if it does not have reference
    REF_ID, REF_HOLD_ID, REF_VAL, REF_HOLD_REF, REF_REF, ID_ID, ID_REF, ID_VAL,
+
    ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,
    EQUAL, NOT_EQUAL, LESS_EQUAL, MORE_EQUAL, LESS, MORE,
    ADD, SUB, MUL, DIV, MOD,
@@ -37,11 +38,11 @@ typedef enum
 typedef struct Token
 {
    Type type; 
-   Type retType; // return type
+   Type retType; 
    Type assign_type;
    char *name;
-   int ptr; // pointer
-   // bool declare; // is variable declaration
+   int ptr; 
+   bool declare; // is variable declaration
    int space; // indentation
    bool remove;
    int reg;
@@ -50,10 +51,6 @@ typedef struct Token
    bool is_cond;
    bool is_ref;
    bool has_ref;
-   bool is_data_type;
-   // int rsp;
-   // bool isarg;
-   // bool isattr;
    int offset;
 
    struct
@@ -106,7 +103,6 @@ typedef struct Node
    int cpos; // children pos
    int csize; // children size
 
-   // bloc Infos
    struct {
       struct Node **functions;
       int fpos;
@@ -192,7 +188,6 @@ Token *get_struct_by_id(int id);
 Token *is_struct(Token *token);
 void add_attribute(Token *obj, Token *attr);
 Node* add_child(Node *node, Node *child);
-void add_variable(Node *bloc, Token *token);
 void set_struct_size(Token *token);
 
 // ----------------------------------------------------------------------------
@@ -231,7 +226,6 @@ int alignofToken(Token *token);
 void add_builtins();
 Type getRetType(Node *node);
 bool optimize_ir();
-void config();
 
 // ----------------------------------------------------------------------------
 // Logs

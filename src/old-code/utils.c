@@ -47,7 +47,7 @@ Token* new_token(char *input, int s, int e, Type type, int space)
          {
             setName(new, NULL);
             new->type = dataTypes[i].type;
-            new->is_data_type = true;
+            new->declare = true;
             break;
          }
       }
@@ -109,7 +109,10 @@ Token *copy_token(Token *token)
 bool includes(Type to_find, ...)
 {
    if (found_error) return false;
-   va_list ap; Type current; va_start(ap, to_find);
+   va_list ap;
+   Type current;
+
+   va_start(ap, to_find);
    while ((current = va_arg(ap, Type)) != 0) if (current == to_find) return true;
    return false;
 }
@@ -117,7 +120,8 @@ bool includes(Type to_find, ...)
 Token *find(Type type, ...)
 {
    if (found_error) return NULL;
-   va_list ap; va_start(ap, type);
+   va_list ap;
+   va_start(ap, type);
    while (type)
    {
       if (type == tokens[exe_pos]->type) return tokens[exe_pos++];
@@ -131,8 +135,7 @@ bool within_space(int space)
    return tokens[exe_pos]->space > space && tokens[exe_pos]->type != END && !found_error;
 }
 
-int calculate_padding(int offset, int alignment)
-{
+int calculate_padding(int offset, int alignment) {
    if (check(!alignment, "invalid alignment")) return 0;
    return (alignment - (offset % alignment)) % alignment;
 }
@@ -141,41 +144,11 @@ int alignofToken(Token *token)
 {
    return sizeofToken(token);
 }
-
-void enter_scoop(Node *node)
-{
-   debug(CYAN "Enter Scoop: %k index %d\n" RESET, node->token, scoopPos + 1);
-   if (Gscoop == NULL)
-   {
-      scoopSize = 10;
-      Gscoop = allocate(scoopSize, sizeof(Node*));
-   }
-   else if (scoopPos + 1 >= scoopSize)
-   {
-      Node **tmp = allocate(scoopSize * 2, sizeof(Node*));
-      memcpy(tmp, Gscoop, scoopPos * sizeof(Node*));
-      scoopSize *= 2;
-      free(Gscoop);
-      Gscoop = tmp;
-   }
-   scoopPos++;
-   Gscoop[scoopPos] = node;
-   scoop = Gscoop[scoopPos];
-}
-
-void exit_scoop()
-{
-   if (check(scoopPos < 0, "No active scoop to exit\n")) return;
-   debug(CYAN "Exit Scoop: %k index %d\n" RESET, Gscoop[scoopPos]->token, scoopPos);
-   Gscoop[scoopPos] = NULL;
-   scoopPos--;
-   if (scoopPos >= 0) scoop = Gscoop[scoopPos];
-}
-
 void set_struct_size(Token *token)
 {
    int offset = 0;
    int max_align = 1;
+
    for (int i = 0; i < token->Struct.pos; i++)
    {
       Token *attr = token->Struct.attrs[i];
@@ -235,6 +208,23 @@ Token *get_struct(char *name)
    return NULL;
 }
 
+Token *get_struct_by_id(int id)
+{
+   debug(CYAN "get struct with id [%d] from scoop %k\n", id, scoop->token);
+   for (int j = scoopPos; j >= 0; j--)
+   {
+      Node *node = Gscoop[j];
+      debug("[%d] scoop [%s] has %d structs\n", j, scoop->token->name, node->spos);
+      for (int i = 0; i < node->spos; i++)
+      {
+         debug(GREEN"struct has [%d]\n"RESET, node->structs[i]->Struct.id);
+         if (node->structs[i]->Struct.id == id) return node->structs[i];
+      }
+   }
+   // check(1, "%s not found\n", name);
+   return NULL;
+}
+
 Token *is_struct(Token *token)
 {
    Token *res = get_struct(token->name);
@@ -252,12 +242,22 @@ Node *new_node(Token *token)
 Node *copy_node(Node *node)
 {
    Node *new = allocate(1, sizeof(Node));
+   memcpy(new, node, sizeof(Node));
    new->token = copy_token(node->token);
    if (node->left) new->left = copy_node(node->left);
    if (node->right) new->right = copy_node(node->right);
-   for (int i = 0; i < node->cpos; i++) add_child(new, copy_node(node->children[i]));
-   for (int i = 0; i < node->spos; i++) add_struct(new, copy_token(node->structs[i]));
-   for (int i = 0; i < node->vpos; i++) add_variable(new, copy_token(node->vars[i]));
+   if (node->cpos) // children
+   {
+      new->children = allocate(node->csize, sizeof(Node *));
+      for (int i = 0; i < node->cpos; i++)
+         new->children[i] = copy_node(node->children[i]);
+      new->structs = NULL;
+      new->spos = 0;
+      new->ssize = 0;
+      new->vars = NULL;
+      new->vpos = 0;
+      new->vsize = 0;
+   }
    return new;
 }
 
@@ -281,6 +281,23 @@ Node* add_child(Node *node, Node *child)
    return child;
 }
 
+int sizeofToken(Token *token)
+{
+   if (token->is_ref) return sizeof(void*);
+   switch (token->type)
+   {
+   case INT: return sizeof(int);
+   case FLOAT: return sizeof(float);
+   case CHARS: return sizeof(char *);
+   case CHAR: return sizeof(char);
+   case BOOL: return sizeof(bool);
+   case STRUCT_DEF: return token->offset;
+   case STRUCT_CALL: return token->offset;
+   default: check(1, "add this type [%s]\n", to_string(token->type));
+   }
+   return 0;
+}
+
 void add_attribute(Token *obj, Token *attr)
 {
    if (obj->Struct.attrs == NULL)
@@ -299,21 +316,34 @@ void add_attribute(Token *obj, Token *attr)
    obj->Struct.attrs[obj->Struct.pos++] = attr;
 }
 
-int sizeofToken(Token *token)
+void enter_scoop(Node *node)
 {
-   if (token->is_ref) return sizeof(void*);
-   switch (token->type)
+   debug(CYAN "Enter Scoop: %k index %d\n" RESET, node->token, scoopPos + 1);
+   if (Gscoop == NULL)
    {
-   case INT: return sizeof(int);
-   case FLOAT: return sizeof(float);
-   case CHARS: return sizeof(char *);
-   case CHAR: return sizeof(char);
-   case BOOL: return sizeof(bool);
-   case STRUCT_DEF: return token->offset;
-   case STRUCT_CALL: return token->offset;
-   default: check(1, "add this type [%s]\n", to_string(token->type));
+      scoopSize = 10;
+      Gscoop = allocate(scoopSize, sizeof(Node*));
    }
-   return 0;
+   else if (scoopPos + 1 >= scoopSize)
+   {
+      Node **tmp = allocate(scoopSize * 2, sizeof(Node*));
+      memcpy(tmp, Gscoop, scoopPos * sizeof(Node*));
+      scoopSize *= 2;
+      free(Gscoop);
+      Gscoop = tmp;
+   }
+   scoopPos++;
+   Gscoop[scoopPos] = node;
+   scoop = Gscoop[scoopPos];
+}
+
+void exit_scoop()
+{
+   if (check(scoopPos < 0, "No active scoop to exit\n")) return;
+   debug(CYAN "Exit Scoop: %k index %d\n" RESET, Gscoop[scoopPos]->token, scoopPos);
+   Gscoop[scoopPos] = NULL;
+   scoopPos--;
+   if (scoopPos >= 0) scoop = Gscoop[scoopPos];
 }
 
 void add_variable(Node *bloc, Token *token)
@@ -341,7 +371,6 @@ Token *new_variable(Token *token)
       Token *curr = scoop->vars[i];
       if (strcmp(curr->name, token->name) == 0) check(1, "Redefinition of %s\n", token->name);
    }
-   token->ptr = (ptr += sizeofToken(token));
    add_variable(scoop, token);
    return token;
 }
@@ -455,7 +484,6 @@ Inst *new_inst(Token *token)
 
    Inst *new = allocate(1, sizeof(Inst));
    new->token = token;
-#if 0
    if (token->is_ref) token->ptr = (ptr += 8);
    else if (token->type == CHARS && token->Chars.value && !token->index) token->index = ++str_index;
    else if (token->name && token->declare)
@@ -488,14 +516,8 @@ Inst *new_inst(Token *token)
          token->ptr = (ptr += sizeofToken(token));
       }
    }
-#endif
-   switch (token->type)
-   {
-   case INT: if (token->is_data_type) token->reg = ++reg; break;
-   case RETURN: token->reg = ++reg; break;
-   case ASSIGN: break;
-   default: break;
-   }
+
+   token->reg = ++reg;
    debug("inst: %k\n", new->token);
    add_inst(new);
    return new;
@@ -604,28 +626,27 @@ bool optimize_ir()
       for (int i = 0; insts[i]; i++)
       {
          Token *token = insts[i]->token;
-         // if (token->declare)
-         // {
-         //    for (int j = i + 1; insts[j] && insts[j]->token->space == token->space; j++)
-         //    {
-         //       if (insts[j]->token->type == ASSIGN && insts[j]->left->reg == token->reg )
-         //       {
-         //          // debug(RED"1. remove r%d %k\n"RESET, token->reg, token);
-         //          token->declare = false;
-         //          token->remove = true;
-         //          did_optimize = true;
-         //          did_something = true;
-         //          insts[j]->left->is_ref = token->is_ref;
-         //          break;
-         //       }
-         //       else if ((insts[j]->left && insts[j]->left->reg == token->reg) ||
-         //                (insts[j]->right && insts[j]->right->reg == token->reg)) {
-         //          break;
-         //       }
-         //    }
-         // }
-         // else
-         if (token->type == ASSIGN && !insts[i]->left->is_ref)
+         if (token->declare)
+         {
+            for (int j = i + 1; insts[j] && insts[j]->token->space == token->space; j++)
+            {
+               if (insts[j]->token->type == ASSIGN && insts[j]->left->reg == token->reg )
+               {
+                  // debug(RED"1. remove r%d %k\n"RESET, token->reg, token);
+                  token->declare = false;
+                  token->remove = true;
+                  did_optimize = true;
+                  did_something = true;
+                  insts[j]->left->is_ref = token->is_ref;
+                  break;
+               }
+               else if ((insts[j]->left && insts[j]->left->reg == token->reg) ||
+                        (insts[j]->right && insts[j]->right->reg == token->reg)) {
+                  break;
+               }
+            }
+         }
+         else if (token->type == ASSIGN && !insts[i]->left->is_ref)
          {
             for (int j = i + 1; insts[j] && insts[j]->token->space == token->space; j++)
             {
@@ -844,6 +865,20 @@ void pasm(char *fmt, ...)
             default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
             }
          }
+         // else if (fmt[i] == 'm')
+         // {
+         //    i++;
+         //    Token *token = va_arg(args, Token *);
+         //    switch (token->type)
+         //    {
+         //    case CHARS: fprintf(asm_fd, "QWORD PTR [rax]"); break;
+         //    case INT: fprintf(asm_fd, "DWORD PTR [rax]"); break;
+         //    case CHAR: fprintf(asm_fd, "BYTE PTR [rax]"); break;
+         //    case BOOL: fprintf(asm_fd, "BYTE PTR [rax]"); break;
+         //    case FLOAT: fprintf(asm_fd, "DWORD PTR [rax]"); break;
+         //    default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
+         //    }
+         // }
          else if (fmt[i] == 'v')
          {
             i++;
@@ -910,9 +945,79 @@ void finalize()
 #endif
 }
 
+
 // ----------------------------------------------------------------------------
 // Utilities
 // ----------------------------------------------------------------------------
+
+void create_builtin(char *name, Type *params, Type retType)
+{
+   if (found_error) return;
+   Node *node = new_node(new_token(name, 0, strlen(name), FDEC, 0));
+   node->token->retType = retType;
+   switch (retType)
+   {
+   case INT:   setReg(node->token, "eax"); break;
+   case CHAR:  setReg(node->token, "al"); break;
+   case CHARS: setReg(node->token, "rax"); break;
+   case VOID:  setReg(node->token, "rax"); break;
+   case PTR:   setReg(node->token, "rax"); break;
+   case LONG:  setReg(node->token, "rax"); break;
+   default: check(1, "handle this case %s", to_string(retType)) ;
+   }
+   node->left = new_node(new_token(0, 0, 0, CHILDREN, node->token->space));
+   Node *args = node->left;
+   int i = 0;
+   char *eregs[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d", NULL};
+   char *rregs[] = {"rdi", "rsi", "rdx", "rcx", "r8d", "r9d", NULL};
+   while (params[i] && !found_error)
+   {
+      Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space + TAB));
+
+      Token *arg_token = new_token(NULL, 0, 0, params[i], node->token->space + TAB);
+
+      Node *left = new_node(arg_token);
+      left->token->declare = true;
+
+      Node *right = new_node(new_token(NULL, 0, 0, left->token->type, 0));
+      setReg(left->token, NULL);
+      setName(right->token, NULL);
+      // arg_token->declare = true;
+      if (i < (int)(sizeof(eregs) / sizeof(eregs[0])))
+      {
+         // if (name->is_ref) setReg(name, rregs[i]);
+         // else
+         {
+            // check(1, "set reg");
+            // TODO: add other data type and math operations
+            switch (arg_token->type)
+            {
+            case CHARS: setReg(arg_token, rregs[i]); break;
+            case INT:   setReg(arg_token, eregs[i]); break;
+            case CHAR:  setReg(arg_token, eregs[i]); break;
+            case FLOAT: setReg(arg_token, rregs[i]); break; // TODO: to be checked
+            case BOOL:  setReg(arg_token, eregs[i]); break;
+            case LONG:  setReg(arg_token, rregs[i]); break;
+            case PTR:   setReg(arg_token, rregs[i]); break;
+            default: todo(1, "set reg for %s", to_string(arg_token->type));
+            };
+         }
+      }
+      else
+      {
+         // TODO:
+         todo(1, "implement assigning function argument using PTR");
+
+      }
+      assign->left = left;
+      assign->right = right;
+      add_child(args, assign);
+      right->token->space = assign->token->space;
+      left->token->space = assign->token->space;
+      i++;
+   }
+   new_function(node);
+}
 
 void open_file(char *filename)
 {
@@ -951,7 +1056,7 @@ const char *to_string_(const char *filename, const int line, Type type) {
       [END] = "END", [CHILDREN] = "CHILDREN", [TMP] = "TMP", [LONG] = "LONG", [PTR] = "PTR",
       [REF_ID] = "REF_ID", [REF_HOLD_ID] = "REF_HOLD_ID", [REF_VAL] = "REF_VAL",
       [REF_HOLD_REF] = "REF_HOLD_REF", [REF_REF] = "REF_REF", [ID_ID] = "ID_ID",
-      [ID_REF] = "ID_REF", [ID_VAL] = "ID_VAL", [DEFAULT] = "DEFAULT",
+      [ID_REF] = "ID_REF", [ID_VAL] = "ID_VAL",
    };
    if (type > 0 && type < sizeof(arr) / sizeof(arr[0]) && arr[type] != NULL) return arr[type];
    check(1, "Unknown type [%d] in %s:%d\n", type, filename, line);
@@ -1150,12 +1255,11 @@ int ptoken(Token *token)
    res += debug("[%-7s] ", to_string(token->type));
    switch (token->type)
    {
-   case VOID: case CHARS: case CHAR: case INT: case BOOL: case FLOAT:
+   case VOID: case CHARS: case CHAR: case INT: case BOOL: case FLOAT:// case STRUCT_CALL:
    {
       if (token->name) res += debug("name [%s] ", token->name);
-      // if (token->declare) res += debug("[declare] ");
-      // if (!token->name)
-      else
+      if (token->declare) res += debug("[declare] ");
+      if (!token->name && !token->declare)
       {
          if (token->creg) res += debug("creg [%s] ", token->creg);
          else
@@ -1229,7 +1333,6 @@ void print_value(Token *token)
    case CHAR: debug("%c ", token->Char.value); break;
    case CHARS: debug("%s ", token->Chars.value); break;
    case STRUCT_CALL: debug("has %d attrs ", token->Struct.pos); break;
-   case DEFAULT: debug("default value "); break;
    default: check(1, "handle this case [%s]\n", to_string(token->type)); break;
    }
 }
@@ -1283,9 +1386,8 @@ void print_ir()
       case INT: case BOOL: case CHARS: case CHAR:
       {
          debug("[%-6s] ", to_string(curr->type));
-         if (curr->is_data_type) debug("is_data_type [%s] PTR=[%d] ", curr->name, curr->ptr);
-         // else
-         if (curr->name) debug("var %s PTR=[%d] ", curr->name, curr->ptr);
+         if (curr->declare) debug("declare [%s] PTR=[%d] ", curr->name, curr->ptr);
+         else if (curr->name) debug("variable %s PTR=[%d] ", curr->name, curr->ptr);
          if (curr->creg) debug("creg %s ", curr->creg);
          // else if(curr->type == FLOAT)
          // {
@@ -1297,7 +1399,7 @@ void print_ir()
             if (curr->index) debug("value %s in STR%d ", curr->Chars.value, curr->index);
             else debug("in %s", curr->creg);
          }
-         else if (!curr->name && !curr->creg)
+         else
          {
             debug("value: "); print_value(curr);
          }

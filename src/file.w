@@ -1,14 +1,7 @@
-
-struct User:
-   int a
-   char b
-   int c
+func int m(ref int a):
+   int c = 15
+   return 10
 
 main():
-   User abc
-
-   User efg
-   efg.a = 123
-   abc = efg
-   putnbr(abc.a)
-
+   int v = 10
+   putnbr(v)

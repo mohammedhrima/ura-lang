@@ -56,16 +56,3 @@
 #define new_token(input, s, e, type, space) new_token_(FILE, LINE, input, s, e, type, space)
 #endif
 // #define ptoken(token) ptoken_(FILE, LINE, token)
-
-#define AST_NODE(name, child_func, ...) \
-Node *name() { \
-    Node *left = child_func(); \
-    Token *token; \
-    while ((token = find(__VA_ARGS__, 0))) { \
-        Node *node = new_node(token); \
-        node->left = left; \
-        node->right = child_func(); \
-        left = node; \
-    } \
-    return left; \
-}
