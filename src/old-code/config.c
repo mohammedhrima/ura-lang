@@ -1,34 +1,5 @@
 #include "./include/header.h"
 
-void create_builtin(char *name, Type *params, Type retType)
-{
-   if (found_error) return;
-   Node *node = new_node(new_token(name, 0, strlen(name), FDEC, 0));
-   node->token->retType = retType;
-   switch (retType)
-   {
-   case INT:   setReg(node->token, "eax"); break;
-   case CHAR:  setReg(node->token, "al"); break;
-   case CHARS: setReg(node->token, "rax"); break;
-   case VOID:  setReg(node->token, "rax"); break;
-   case PTR:   setReg(node->token, "rax"); break;
-   case LONG:  setReg(node->token, "rax"); break;
-   default: check(1, "handle this case %s", to_string(retType)) ;
-   }
-
-   node->left = new_node(new_token(0, 0, 0, CHILDREN, node->token->space));
-   int i = 0;
-   char *eregs[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d", NULL};
-   char *rregs[] = {"rdi", "rsi", "rdx", "rcx", "r8d", "r9d", NULL};
-   while (params[i] && !found_error)
-   {
-      Node *child = new_node(new_token(NULL, 0, 0, params[i], node->token->space));
-      add_child(node->left, child);
-      i++;
-   }
-   new_function(node);
-}
-
 void add_builtins()
 {
    struct { char *name; Type *attrs; Type ret;} builtins[] = {
