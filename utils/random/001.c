@@ -22,11 +22,11 @@ int putnbr(int n)
 //   return res;
 }
 
-int strlen(char *str){}
+int strlen(char *str) {}
 
 int hello(char *str)
 {
-  return 1;
+   return 1;
 }
 // #include <stdio.h>
 // int main()
@@ -55,26 +55,26 @@ int main()
 
 /*
 main:
-	push    rbp
-	mov     rbp, rsp
-	sub		rsp, 8
-	//      assign [i]
-	mov     DWORD PTR -4[rbp], 0
+   push    rbp
+   mov     rbp, rsp
+   sub      rsp, 8
+   //      assign [i]
+   mov     DWORD PTR -4[rbp], 0
 .while1:
-	cmp		DWORD PTR -4[rbp], 9
-	jg     .endwhile1
-	//      assign [edi]
-	mov     edi, 1
-	//      assign [rsi]
-	lea     rsi, .STR1[rip]
-	//      assign [edx]
-	mov     edx, 1
-	call    write@PLT
-	//      assign [i]
-	add     DWORD PTR -4[rbp], 1
-	jmp     .while1
+   cmp      DWORD PTR -4[rbp], 9
+   jg     .endwhile1
+   //      assign [edi]
+   mov     edi, 1
+   //      assign [rsi]
+   lea     rsi, .STR1[rip]
+   //      assign [edx]
+   mov     edx, 1
+   call    write@PLT
+   //      assign [i]
+   add     DWORD PTR -4[rbp], 1
+   jmp     .while1
 .endwhile1:
-	mov     eax, DWORD PTR -4[rbp]
-	leave   
-	ret 
+   mov     eax, DWORD PTR -4[rbp]
+   leave
+   ret
 */

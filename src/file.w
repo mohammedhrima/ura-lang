@@ -1,7 +1,12 @@
-func int m(ref int a):
-   int c = 15
-   return 10
+struct Tmp:
+   int id
+
+struct User:
+   chars name
+   int age
 
 main():
-   int v = 10
-   putnbr(v)
+   User user
+   user.name = "Mohammed"
+   user.age = 27
+   

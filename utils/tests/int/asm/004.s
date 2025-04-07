@@ -19,7 +19,7 @@ main:
     mov  rbp, rsp
     sub  rsp, 16
     mov  DWORD PTR -4[rbp], 2 ;// assign [x]
-    lea  rdi, -4[rbp] ;// assign [rdi] is_ref
+    lea  rdi, -4[rbp] ;// assign [a] is_ref
     call m
     mov  edi, DWORD PTR -4[rbp] ;// assign [edi]
     call putnbr

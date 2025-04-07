@@ -11,7 +11,7 @@ main:
     .if1:
     cmp  DWORD PTR -4[rbp], 1
     jne   .else6
-            mov  DWORD PTR -4[rbp], 2 ;// assign [i]
+        mov  DWORD PTR -4[rbp], 2 ;// assign [i]
         .if2:
             cmp  DWORD PTR -4[rbp], 2
             jne   .elif3

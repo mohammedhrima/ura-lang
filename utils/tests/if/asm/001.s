@@ -7,7 +7,7 @@ main:
     push rbp
     mov  rbp, rsp
     sub  rsp, 16
-    mov  DWORD PTR -4[rbp], 0 ;// declare [a]
+    mov  DWORD PTR -4[rbp], 0 ;// assign [a]
     .if1:
     cmp  DWORD PTR -4[rbp], 1
     jne   .elif2

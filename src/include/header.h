@@ -24,7 +24,7 @@ typedef enum
    AND, OR, NOT,
    LPAR, RPAR, LBRA, RBRA, COMA, DOT, DOTS,
    RETURN,
-   IF, ELIF, ELSE, 
+   IF, ELIF, ELSE,
    WHILE, CONTINUE, BREAK,
    FDEC, FCALL,
    VOID, INT, CHARS, CHAR, BOOL, FLOAT, PTR, LONG,
@@ -36,7 +36,7 @@ typedef enum
 
 typedef struct Token
 {
-   Type type; 
+   Type type;
    Type retType; // return type
    Type assign_type;
    char *name;
@@ -152,6 +152,8 @@ extern int ptr;
 extern struct _IO_FILE *asm_fd;
 extern int str_index;
 extern int bloc_index;
+extern char *eregs[];
+extern char *rregs[];
 
 // ----------------------------------------------------------------------------
 // Parsing
@@ -211,6 +213,8 @@ void finalize();
 void pasm(char *fmt, ...);
 Token* generate_ir(Node *node);
 int calculate_padding(int offset, int alignment);
+void generate_asm(char *name);
+void to_default(Token *token, Type type);
 
 // ----------------------------------------------------------------------------
 // Utilities
@@ -242,4 +246,5 @@ int pnode(Node *node, char *side, int space);
 int ptoken(Token *token);
 void print_ast();
 void print_ir();
+int print_value(Token *token);
 

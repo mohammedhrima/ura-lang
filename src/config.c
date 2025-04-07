@@ -18,11 +18,35 @@ void create_builtin(char *name, Type *params, Type retType)
 
    node->left = new_node(new_token(0, 0, 0, CHILDREN, node->token->space));
    int i = 0;
-   char *eregs[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d", NULL};
-   char *rregs[] = {"rdi", "rsi", "rdx", "rcx", "r8d", "r9d", NULL};
+   int j = 0;
    while (params[i] && !found_error)
    {
       Node *child = new_node(new_token(NULL, 0, 0, params[i], node->token->space));
+      if (eregs[j])
+      {
+         if (child->token->is_ref) setReg(child->token, rregs[j]);
+         else
+         {
+            // TODO: add other data type and math operations
+            switch (child->token->type)
+            {
+            case CHARS: setReg(child->token, rregs[j]); break;
+            case INT:   setReg(child->token, eregs[j]); break;
+            case CHAR:  setReg(child->token, eregs[j]); break;
+            case FLOAT: setReg(child->token, rregs[j]); break; // TODO: to be checked
+            case BOOL:  setReg(child->token, eregs[j]); break;
+            case LONG:  setReg(child->token, rregs[j]); break;
+            case PTR:   setReg(child->token, rregs[j]); break;
+            default: todo(1, "set reg for %s", to_string(child->token->type));
+            };
+         }
+         j++;
+      }
+      else
+      {
+         // TODO:
+         todo(1, "implement assigning function argument using PTR");
+      }
       add_child(node->left, child);
       i++;
    }

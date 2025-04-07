@@ -79,6 +79,7 @@ Token* new_token(char *input, int s, int e, Type type, int space)
       if (e <= s) break;
       new->Chars.value = allocate(e - s + 1, sizeof(char));
       strncpy(new->Chars.value, input + s, e - s);
+      new->index = ++str_index;
       break;
    }
    case CHAR: if (e > s) new->Char.value = input[s]; break;
@@ -489,8 +490,58 @@ Inst *new_inst(Token *token)
       }
    }
 #endif
+   if (token->type == STRUCT_CALL)
+   {
+      todo(1, "current code is under development, not clean yet");
+      int curr = ptr;
+      // free(new);
+      int offset = 0;
+      for (int i = 0; i < token->Struct.pos; i++) {
+         Token *attr = token->Struct.attrs[i];
+         // attr->declare = true;
+         char *name = strjoin(token->name, ".", attr->name);
+         setName(attr, name);
+         free(name);
+         if(attr->type == STRUCT_CALL)
+         {
+            int tmp = ptr;
+            ptr = curr;
+            new_inst(attr);
+            int padding = calculate_padding(offset, alignofToken(attr));
+            attr->ptr = -1;
+            new_inst(attr);
+            attr->ptr = (curr + offset + padding) + sizeofToken(attr);
+            if (padding > 0) offset += padding;
+            offset += sizeofToken(attr);
+            ptr = tmp;
+         }
+         else
+         {
+            int padding = calculate_padding(offset, alignofToken(attr));
+            attr->ptr = -1;
+            new_inst(attr);
+            attr->ptr = (curr + offset + padding) + sizeofToken(attr);
+            if (padding > 0) offset += padding;
+            offset += sizeofToken(attr);
+         }
+      }
+      ptr = curr + offset;
+      token->ptr = ptr;
+     
+   }
    switch (token->type)
    {
+   case CHARS:
+   {
+      if (token->is_data_type) token->reg = ++reg;
+
+      if (token->Chars.value)
+      {
+         debug("%k\n", new->token);
+         todo(1, "found");
+      }
+      break;
+   }
    case INT: if (token->is_data_type) token->reg = ++reg; break;
    case RETURN: token->reg = ++reg; break;
    case ASSIGN: break;
@@ -499,6 +550,21 @@ Inst *new_inst(Token *token)
    debug("inst: %k\n", new->token);
    add_inst(new);
    return new;
+}
+
+void to_default(Token *token, Type type)
+{
+   token->type = type;
+   switch (type)
+   {
+   case CHARS:
+   {
+      token->Chars.value = strdup("\"\"");
+      break;
+   }
+   case INT: break;
+   default: check(1, "handle this case [%s]", to_string(type)); break;
+   }
 }
 
 bool optimize_ir()
@@ -549,10 +615,11 @@ bool optimize_ir()
             right->remove = true;
             token->reg = 0;
             setReg(token, NULL);
+            debug(RED"%d: remove %k\n", LINE, insts[i]->token);
+
             if (i > 0) i -= 2;
          }
       }
-      if (did_something) print_ir();
       break;
    }
    case 1:
@@ -580,6 +647,7 @@ bool optimize_ir()
                copy_insts();
                did_something = true;
                did_optimize = true;
+               debug(RED"%d: remove %k\n", LINE, insts[i]->token);
                continue;
             }
             // else
@@ -595,7 +663,6 @@ bool optimize_ir()
             // }
          }
       }
-      if (did_something) print_ir();
       break;
    }
    case 2:
@@ -629,13 +696,14 @@ bool optimize_ir()
          {
             for (int j = i + 1; insts[j] && insts[j]->token->space == token->space; j++)
             {
-               if (!insts[j]->left || !insts[j]->right) continue;
+               if (!insts[j]->left || !insts[j]->right || !token->reg) continue;
                // TODO: to be checked
                // I replaced insts[j]->left == insts[i]->left with insts[j]->left->reg == insts[i]->left->reg
                if (insts[j]->token->type == ASSIGN && insts[j]->left->reg == token->reg)
                {
                   // debug(RED"2. remove r%d %k\n"RESET, token->reg, token);
                   token->remove = true;
+                  debug(RED"%d: remove %k\n", LINE, insts[i]->token);
                   did_optimize = true;
                   did_something = true;
                   break;
@@ -645,7 +713,6 @@ bool optimize_ir()
             }
          }
       }
-      if (did_something) print_ir();
       break;
    }
    case 3:
@@ -658,11 +725,11 @@ bool optimize_ir()
             did_optimize = true;
             did_something = true;
             insts[i]->token->remove = true;
+            debug(RED"%d: remove %k\n", LINE, insts[i]->token);
             copy_insts();
             i = 1;
          }
       }
-      if (did_something) print_ir();
       break;
    }
    case 4:
@@ -672,14 +739,14 @@ bool optimize_ir()
       for (int i = 0; insts[i]; i++)
       {
          Token *curr = insts[i]->token;
-         if (!curr->ptr && !curr->reg && includes(curr->type, INT, CHARS, CHAR, FLOAT, BOOL, 0))
+         if (!curr->ptr && !curr->reg && !curr->creg && includes(curr->type, INT, CHARS, CHAR, FLOAT, BOOL, 0))
          {
             curr->remove = true;
             did_something = true;
             did_optimize = true;
+            debug(RED"%d: remove %k\n", LINE, insts[i]->token);
          }
       }
-      if (did_something) print_ir();
       break;
    }
    case 5:
@@ -689,15 +756,28 @@ bool optimize_ir()
       {
          Token *curr = insts[i]->token;
          Token *left = insts[i]->left;
-         Token *right = insts[i]->right;
+         // Token *right = insts[i]->right;
          if (curr->type == ASSIGN && left->type == STRUCT_CALL)
          {
             curr->remove = true;
+            debug(RED"%d: remove %k\n", LINE, insts[i]->token);
             did_something = true;
             did_optimize = true;
          }
       }
-      if (did_something) print_ir();
+      break;
+   }
+   case 6:
+   {
+      debug(CYAN "OP[%d] replace DEFAULT\n"RESET, op);
+      for (int i = 0; insts[i]; i++)
+      {
+         Token *token = insts[i]->token;
+         Token *right = insts[i]->right;
+         Token *left = insts[i]->left;
+         if (token->type == ASSIGN && right->type == DEFAULT)
+            to_default(right, left->type);
+      }
       break;
    }
    default:
@@ -709,6 +789,7 @@ bool optimize_ir()
       break;
    }
    }
+   if (did_something) print_ir();
    op++;
    return true;
 }
@@ -737,14 +818,21 @@ void pasm(char *fmt, ...)
             if (token->creg && token->creg[1] != 'a') fprintf(asm_fd, "{{%s}}", token->creg); // TODO: those lines are bad
             else
             {
-               Type type = token->retType ? token->retType : token->type;
-               switch (type)
+               if (token->is_ref)
                {
-               case CHARS: fputs("rax", asm_fd); break;
-               case INT: fputs("eax", asm_fd); break;
-               case BOOL: case CHAR: fputs("al", asm_fd); break;
-               case FLOAT: fputs("xmm0", asm_fd); break;
-               default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
+                  fputs("rax", asm_fd);
+               }
+               else
+               {
+                  Type type = token->retType ? token->retType : token->type;
+                  switch (type)
+                  {
+                  case CHARS: fputs("rax", asm_fd); break;
+                  case INT: fputs("eax", asm_fd); break;
+                  case BOOL: case CHAR: fputs("al", asm_fd); break;
+                  case FLOAT: fputs("xmm0", asm_fd); break;
+                  default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
+                  }
                }
             }
          }
@@ -901,9 +989,9 @@ void finalize()
    {
       Token *curr = tokens[i];
       // test char variable before making any modification
-      if (curr->type == CHARS && !curr->name && !curr->ptr && curr->index)
-         pasm(".STR%d: .string %s\n", curr->index, curr->Chars.value ? curr->Chars.value : "\"\"");
-      if (curr->type == FLOAT && !curr->name && !curr->ptr && curr->index)
+      if (curr->type == CHARS && curr->Chars.value && !curr->creg)
+         pasm(".STR%d: .string %s\n", curr->index, curr->Chars.value);
+      if (curr->type == FLOAT && !curr->name && !curr->ptr && !curr->creg)
          pasm(".FLT%d: .long %d /* %f */\n", curr->index, *((uint32_t *)(&curr->Float.value)), curr->Float.value);
    }
    pasm(".section	.note.GNU-stack,\"\",@progbits\n\n");
@@ -1158,16 +1246,7 @@ int ptoken(Token *token)
       else
       {
          if (token->creg) res += debug("creg [%s] ", token->creg);
-         else
-            switch (token->type)
-            {
-            case INT: res += debug("value [%lld] ", token->Int.value); break;
-            case CHARS: res += debug("value [%s] ", token->Chars.value); break;
-            case CHAR: res += debug("value [%c] ", token->Char.value); break;
-            case BOOL: res += debug("value [%d] ", token->Bool.value); break;
-            case FLOAT: res += debug("value [%f] ", token->Float.value); break;
-            default: break;
-            }
+         else print_value(token);
       }
       break;
    }
@@ -1219,19 +1298,20 @@ int pnode(Node *node, char *side, int space)
    return res;
 }
 
-void print_value(Token *token)
+int print_value(Token *token)
 {
    switch (token->type)
    {  // TODO: handle the other cases
-   case INT: debug("%lld ", token->Int.value); break;
-   case BOOL: debug("%s ", token->Bool.value ? "True" : "False"); break;
-   case FLOAT: debug("%f ", token->Float.value); break;
-   case CHAR: debug("%c ", token->Char.value); break;
-   case CHARS: debug("%s ", token->Chars.value); break;
-   case STRUCT_CALL: debug("has %d attrs ", token->Struct.pos); break;
-   case DEFAULT: debug("default value "); break;
-   default: check(1, "handle this case [%s]\n", to_string(token->type)); break;
+   case INT: return debug("value %lld ", token->Int.value);
+   case BOOL: return debug("value %s ", token->Bool.value ? "True" : "False");
+   case FLOAT: return debug("value %f ", token->Float.value);
+   case CHAR: return debug("value %c ", token->Char.value);
+   case CHARS: return debug("value %s index [%d] ", token->Chars.value, token->index);
+   case STRUCT_CALL: return debug("has %d attrs ", token->Struct.pos);
+   case DEFAULT: return debug("default value ");
+   default: check(1, "handle this case [%s]\n", to_string(token->type));
    }
+   return 0;
 }
 
 void print_ir()
@@ -1268,12 +1348,10 @@ void print_ir()
       {
          debug("[%-6s] ", to_string(curr->type));
          if (left->reg) debug("r%.2d", left->reg);
-         else if (left->creg)
-         {
-            check(1, "handle this case");
-         }
+         else if (left->creg) debug("creg %s ", left->creg);
          else print_value(left);
          if (left->name) debug("(%s)", left->name);
+
          debug(" to ");
          if (right->reg) debug("r%.2d", right->reg);
          else print_value(right);

@@ -54,8 +54,8 @@ void putbool(int b)
 
 char *strjoin(const char *s1, const char *s2)
 {
-   if(!s1) return s2;
-   if(!s2) return s1;
+   if (!s1) return s2;
+   if (!s2) return s1;
 
    char *result = calloc(strlen(s1) + strlen(s2) + 1, 1);
    if (!result) return NULL;

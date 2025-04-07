@@ -7,10 +7,25 @@
 #define PORT 8080
 #define BUFFER_SIZE 1024
 
+typedef struct
+{
+    int s_addr;
+} my_in_addr;
+
+// Custom sockaddr_in equivalent
+typedef struct
+{
+    short sin_family;
+    short sin_port;
+    my_in_addr sin_addr;
+    char *sin_zero;
+} my_sockaddr_in;
+
 int main()
 {
     int server_fd, new_socket;
-    struct sockaddr_in address;
+    my_sockaddr_in address;
+    address.sin_zero = malloc(8);
     int opt = 1;
     int addrlen = sizeof(address);
     char buffer[BUFFER_SIZE] = {0};
@@ -35,7 +50,7 @@ int main()
     address.sin_port = htons(PORT);
 
     // Bind socket
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0)
+    if (bind(server_fd, &address, sizeof(address)) < 0)
     {
         perror("bind failed");
         exit(EXIT_FAILURE);
