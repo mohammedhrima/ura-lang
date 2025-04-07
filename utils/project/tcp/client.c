@@ -20,13 +20,15 @@ typedef struct
     short sin_family;
     short sin_port;
     my_in_addr sin_addr;
-    unsigned char sin_zero[8];
+    char *sin_zero;
 } my_sockaddr_in;
 
 int main()
 {
     int sock = 0;
-    my_sockaddr_in mine;
+    my_sockaddr_in mine = {0};
+    mine.sin_zero = malloc(8);
+#if 1
     char buffer[BUFFER_SIZE] = {0};
 
     // Create socket
@@ -49,7 +51,7 @@ int main()
     }
 
     // Connect using our custom struct (cast to sockaddr*)
-    if (connect(sock, (struct sockaddr *)&mine, sizeof(mine)) < 0)
+    if (connect(sock, &mine, sizeof(mine)) < 0)
     {
         perror("connection failed");
         exit(EXIT_FAILURE);
@@ -61,4 +63,5 @@ int main()
 
     close(sock);
     return 0;
+#endif
 }

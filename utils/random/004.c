@@ -3,5 +3,5 @@
 
 int main()
 {
-	char *str = "abcde";
+   char *str = "abcde";
 }
