@@ -1,12 +1,14 @@
-struct Tmp:
-   int id
 
 struct User:
-   chars name
-   int age
+   int a
+   char b
+   int d
+
 
 main():
    User user
-   user.name = "Mohammed"
-   user.age = 27
+   User user1
+   user = user1
+
+
    

@@ -201,7 +201,8 @@ Node *func_dec(Node *node)
    while (!found_error && !(last = find(RPAR, END, 0)))
    {
       bool is_ref = find(REF, 0) != NULL;
-      Token* data_type = find(INT, CHARS, CHAR, FLOAT, BOOL, 0);
+      Token* data_type = find(INT, CHARS, CHAR, FLOAT, BOOL, ID, 0);
+      if(data_type && data_type->type == ID) data_type = get_struct(data_type->name);
       if (check(!data_type, "expected data type in function argument")) break;
       Token *name = find(ID, 0);
       if (check(!name, "expected identifier in function argument")) break;
@@ -296,15 +297,19 @@ Node *struct_def(Node *node)
    setName(node->token, name->name);
    while (within_space(node->token->space))
    {
-      Token *attr = find(INT, CHARS, CHAR, FLOAT, BOOL, ID, 0);
+      Token *attr = find(LONG, INT, CHARS, CHAR, FLOAT, BOOL, ID, 0);
       Token *id = find(ID, 0);
-      if (check(!attr, "expected data type followed by id")) break;
+      if (check(!attr, "expected data type followed by id"))
+      {
+         ptoken(tokens[exe_pos]);
+         break;
+      }
       if (check(!id, "expected id after data type")) break;
 
       if (attr->type == ID) // attribute is a struct
       {
          Token *st = get_struct(attr->name);
-         if (check(!st, "Unkown data type [%s]\n", st->name)) exit(1);
+         if (check(!st, "Unkown data type [%s]\n", attr->name)) exit(1);
          attr = copy_token(st);
          char *name = id->name;
          id = attr;
@@ -919,9 +924,9 @@ Token *generate_ir(Node *node)
       Token *right =  node->right->token;
       if (check(left->type == ID, "undeclared variable %s", left->name)) break;
 
-      debug(RED SPLIT RESET);
-      pnode(node, 0, 0);
-      debug(RED SPLIT RESET);
+      // debug(RED SPLIT RESET);
+      // pnode(node, 0, 0);
+      // debug(RED SPLIT RESET);
       ptoken(left);
       for (int i = 0; i < left->Struct.pos; i++)
       {

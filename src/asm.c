@@ -19,7 +19,7 @@ void generate_asm(char *name)
       asm_space(curr->space);
       switch (curr->type)
       {
-      case INT: case BOOL: case CHARS: case CHAR: case FLOAT:
+      case INT: case BOOL: case CHARS: case CHAR: case FLOAT: case LONG:
       {
          // if (curr->declare)
          // {
@@ -38,8 +38,8 @@ void generate_asm(char *name)
       case ASSIGN:
       {
          // char *inst = left->type == FLOAT ? "movss " : "mov ";
-         debug("LEFT : %k\n", left);
-         debug("RIGHT: %k\n", right);
+         // debug("LEFT : %k\n", left);
+         // debug("RIGHT: %k\n", right);
          // if (right->type == DEFAULT)
          // {
          //    pasm("%i%a, 0 ;// declare [%s]", "mov", curr, curr->name); asm_space(curr->space);

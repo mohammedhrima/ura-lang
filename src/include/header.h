@@ -53,7 +53,7 @@ typedef struct Token
    bool is_data_type;
    // int rsp;
    // bool isarg;
-   // bool isattr;
+   bool isattr;
    int offset;
 
    struct
@@ -61,10 +61,17 @@ typedef struct Token
       // integer
       struct
       {
-         long long value;
+         long value;
          int power;
          struct Int *next;
       } Int;
+      // long
+      struct
+      {
+         long long value;
+         int power;
+         struct Int *next;
+      } Long;
       // float
       struct
       {
