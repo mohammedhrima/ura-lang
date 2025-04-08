@@ -45,3 +45,4 @@
 + when you finish the code check this approach, setting ptr at the end before generatin assembly code
 + to handle segvaults, try implement an approach that fork() then execute the program inside child process and read from its stderr
 + check all dat type are together in all places
++ try using memset/memcpy to assign struct, it would be better
