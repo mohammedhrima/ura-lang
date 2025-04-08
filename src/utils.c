@@ -176,19 +176,21 @@ void exit_scoop()
 void set_struct_size(Token *token)
 {
    int offset = 0;
-   int max_align = 1;
+   int max_align = 0;
    for (int i = 0; i < token->Struct.pos; i++)
    {
       Token *attr = token->Struct.attrs[i];
       int align = alignofToken(attr);
       int size = sizeofToken(attr);
 
-      int padding = calculate_padding(offset, align);
+      int padding = (align - (offset % align)) % align;
       offset += padding;
+      attr->offset = offset;
       offset += size;
+
       if (align > max_align) max_align = align;
    }
-   int final_padding = calculate_padding(offset, max_align);
+   int final_padding = (max_align - (offset % max_align)) % max_align;
    token->offset = offset + final_padding;
 }
 
@@ -310,9 +312,10 @@ int sizeofToken(Token *token)
    case CHARS: return sizeof(char *);
    case CHAR: return sizeof(char);
    case BOOL: return sizeof(bool);
+   case LONG: return sizeof(long);
    case STRUCT_DEF: return token->offset;
    case STRUCT_CALL: return token->offset;
-   default: check(1, "add this type [%s]\n", to_string(token->type));
+   default: todo(1, "add this type [%s]\n", to_string(token->type));
    }
    return 0;
 }
@@ -380,7 +383,7 @@ void add_function(Node *bloc, Node *node)
 
 Node *new_function(Node *node)
 {
-   debug("new_func %s in scoop %k that return %t\n", node->token->name, scoop->token, node->token->retType);
+   debug("new_func %s in scoop %kthat return %t\n", node->token->name, scoop->token, node->token->retType);
    for (int i = 0; i < scoop->fpos; i++)
    {
       Node *func = scoop->functions[i];
@@ -492,42 +495,39 @@ Inst *new_inst(Token *token)
 #endif
    if (token->type == STRUCT_CALL)
    {
-      todo(1, "current code is under development, not clean yet");
-      int curr = ptr;
-      // free(new);
-      int offset = 0;
+      /*
+      4
+      5
+      12
+      16
+      20
+      */
+
       for (int i = 0; i < token->Struct.pos; i++) {
          Token *attr = token->Struct.attrs[i];
          // attr->declare = true;
          char *name = strjoin(token->name, ".", attr->name);
          setName(attr, name);
          free(name);
-         if(attr->type == STRUCT_CALL)
+        
+         if (attr->type == STRUCT_CALL) // struct ptr should be ptr for the first element
          {
-            int tmp = ptr;
-            ptr = curr;
             new_inst(attr);
-            int padding = calculate_padding(offset, alignofToken(attr));
-            attr->ptr = -1;
-            new_inst(attr);
-            attr->ptr = (curr + offset + padding) + sizeofToken(attr);
-            if (padding > 0) offset += padding;
-            offset += sizeofToken(attr);
-            ptr = tmp;
          }
          else
          {
-            int padding = calculate_padding(offset, alignofToken(attr));
-            attr->ptr = -1;
-            new_inst(attr);
-            attr->ptr = (curr + offset + padding) + sizeofToken(attr);
-            if (padding > 0) offset += padding;
-            offset += sizeofToken(attr);
+            attr->ptr = ptr + token->offset - attr->offset;
+            debug("ptr: %d\n", attr->ptr);
+            Node *tmp = new_node(new_token(NULL, 0, 0, ASSIGN, attr->space));
+            tmp->left = new_node(attr);
+            tmp->right = new_node(new_token(NULL, 0, 0, DEFAULT, attr->space));
+            to_default(tmp->right->token, attr->type);
+            generate_ir(tmp);
+            free_node(tmp);
          }
       }
-      ptr = curr + offset;
-      token->ptr = ptr;
-     
+      ptr += token->offset;
+
    }
    switch (token->type)
    {
@@ -560,6 +560,16 @@ void to_default(Token *token, Type type)
    case CHARS:
    {
       token->Chars.value = strdup("\"\"");
+      break;
+   }
+   case CHAR:
+   {
+      token->Char.value = 0;
+      break;
+   }
+   case LONG:
+   {
+      token->Long.value = 0;
       break;
    }
    case INT: break;
@@ -893,6 +903,7 @@ void pasm(char *fmt, ...)
                switch (token->type)
                {
                case CHARS: fprintf(asm_fd, "QWORD PTR -%d[rbp]", token->ptr); break;
+               case LONG: fprintf(asm_fd, "QWORD PTR -%d[rbp]", token->ptr); break;
                case INT: fprintf(asm_fd, "DWORD PTR -%d[rbp]", token->ptr); break;
                case CHAR: fprintf(asm_fd, "BYTE PTR -%d[rbp]", token->ptr); break;
                case BOOL: fprintf(asm_fd, "BYTE PTR -%d[rbp]", token->ptr); break;
@@ -938,9 +949,10 @@ void pasm(char *fmt, ...)
             Token *token = va_arg(args, Token *);
             switch (token->type)
             {
-            case INT: fprintf(asm_fd, "%lld", token->Int.value); break;
+            case INT: fprintf(asm_fd, "%ld", token->Int.value); break;
             case BOOL: fprintf(asm_fd, "%d", token->Bool.value); break;
             case CHAR: fprintf(asm_fd, "%d", token->Char.value); break;
+            case LONG: fprintf(asm_fd, "%lld", token->Long.value); break;
             default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
             }
          }
@@ -1246,7 +1258,7 @@ int ptoken(Token *token)
       else
       {
          if (token->creg) res += debug("creg [%s] ", token->creg);
-         else print_value(token);
+         else if(token->type != VOID) print_value(token);
       }
       break;
    }
@@ -1302,12 +1314,13 @@ int print_value(Token *token)
 {
    switch (token->type)
    {  // TODO: handle the other cases
-   case INT: return debug("value %lld ", token->Int.value);
-   case BOOL: return debug("value %s ", token->Bool.value ? "True" : "False");
-   case FLOAT: return debug("value %f ", token->Float.value);
-   case CHAR: return debug("value %c ", token->Char.value);
-   case CHARS: return debug("value %s index [%d] ", token->Chars.value, token->index);
-   case STRUCT_CALL: return debug("has %d attrs ", token->Struct.pos);
+   case INT: return debug("value [%lld] ", token->Int.value);
+   case LONG: return debug("value [%lld] ", token->Long.value);
+   case BOOL: return debug("value [%s] ", token->Bool.value ? "True" : "False");
+   case FLOAT: return debug("value [%f] ", token->Float.value);
+   case CHAR: return debug("value [%c] ", token->Char.value);
+   case CHARS: return debug("value [%s] index [%d] ", token->Chars.value, token->index);
+   case STRUCT_CALL: return debug("has [%d] attrs ", token->Struct.pos);
    case DEFAULT: return debug("default value ");
    default: check(1, "handle this case [%s]\n", to_string(token->type));
    }
