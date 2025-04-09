@@ -6,7 +6,7 @@ PROJECT_NAME = $(shell basename $(PWD))
 all: up
 
 up:
-	echo 0 | sudo tee /proc/sys/kernel/randomize_va_space
+	# echo 0 | sudo tee /proc/sys/kernel/randomize_va_space
 	@echo "Starting Docker containers..."
 	$(COMPOSE) up --build -d
 

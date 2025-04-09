@@ -84,7 +84,9 @@ Token* new_token(char *input, int s, int e, Type type, int space)
    case CHAR: if (e > s) new->Char.value = input[s]; break;
    default: check(e > s, "implement adding name for this one %s", to_string(type)); break;
    }
+  // #if DEBUG
    debug("token: %k\n", new);
+   //#endif
    add_token(new);
    return new;
 }
@@ -968,8 +970,8 @@ void create_builtin(char *name, Type *params, Type retType)
    node->left = new_node(new_token(0, 0, 0, CHILDREN, node->token->space));
    Node *args = node->left;
    int i = 0;
-   char *eregs[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d", NULL};
-   char *rregs[] = {"rdi", "rsi", "rdx", "rcx", "r8d", "r9d", NULL};
+   char *eregs[] = {"edi", "esi", "edx", "ecx", "r8d", "r9", NULL};
+   char *rregs[] = {"rdi", "rsi", "rdx", "rcx", "r8d", "r9", NULL};
    while (params[i] && !found_error)
    {
       Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space + TAB));
@@ -1160,7 +1162,7 @@ Type getRetType(Node *node)
 // ----------------------------------------------------------------------------
 int debug(char *conv, ...)
 {
-   if (!DEBUG) return 0;
+   // if (!DEBUG) return 0;
    int res = 0;
    va_list args;
    va_start(args, conv);
@@ -1339,7 +1341,7 @@ void print_value(Token *token)
 
 void print_ir()
 {
-   if (!DEBUG) return;
+   // if (!DEBUG) return;
    copy_insts();
    debug(GREEN BOLD SPLIT RESET);
    debug(GREEN BOLD"PRINT IR:\n" RESET);
@@ -1432,7 +1434,7 @@ void print_ir()
 void print_ast()
 {
    debug(GREEN BOLD SPLIT RESET);
-   debug(GREEN BOLD"PRINT AST:\n" RESET);
+   debug(GREEN BOLD"PRINT ABSTRACT SYNTAX TREE:\n" RESET);
    for (int i = 0; !found_error && i < head->cpos; i++) debug("%n\n", head->children[i]);
    debug(GREEN BOLD SPLIT RESET);
 }

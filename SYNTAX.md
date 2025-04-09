@@ -46,3 +46,10 @@
 + to handle segvaults, try implement an approach that fork() then execute the program inside child process and read from its stderr
 + check all dat type are together in all places
 + try using memset/memcpy to assign struct, it would be better
+
++ This will generate and print:
+   + Abstract Syntax Tree (AST)
+   + Intermediate Representation (IR)
+   + Assembly Code
+   + fix for: AddressSanitizer:DEADLYSIGNAL 
+      - echo 0 | sudo tee /proc/sys/kernel/randomize_va_space
