@@ -78,6 +78,7 @@ void generate_asm(char *name)
                {
                   if (right->type == CHARS)
                   {
+                     //todo(1, "handle this case", "");
                      // I used %r for this:
                      // chars planet = "Mars"
                      // strcmp(planet, "Earth")
@@ -147,8 +148,9 @@ void generate_asm(char *name)
             {
                if (right->ptr)
                {
-                  todo(1, "handle this case");
-
+                  pasm("%i%ra, %a", "mov", right, right); asm_space(curr->space);
+                  pasm("%i%ra, %ma", "mov", left, left);  asm_space(curr->space);
+                  pasm("%i%a, %ra", "mov", left, left);
                }
                else if (right->creg)
                {
@@ -164,7 +166,9 @@ void generate_asm(char *name)
             {
                if (right->ptr)
                {
-                  todo(1, "handle this case");
+                  // todo(1, "handle this case");
+                  pasm("%irax, %a", "mov", right); asm_space(curr->space);
+                  pasm("%i%r, %ma", "mov", left, left);
                }
                else if (right->creg)
                {
@@ -185,16 +189,17 @@ void generate_asm(char *name)
          {
             // left ptr (has_refrence), creg
             // right ptr
-            todo(1, "handle this case");
             if (left->ptr && right->ptr)
             {
-               // pasm("%irax, %a", "mov", left); asm_space(curr->space);
-               // pasm("%i%rd, %a", "mov", left, right); asm_space(curr->space);
-               // pasm("%i%ma, %rd", "mov", left, right);
+               pasm("%irax, %a", "mov", left, right); asm_space(curr->space);
+               left->is_ref = false;
+               pasm("%i%rb, %a", "mov", left, right); asm_space(curr->space);
+               left->is_ref = true;
+               pasm("%i%ma, %rb", "mov", left, right);
             }
             else if (left->creg && right->ptr)
             {
-
+               todo(1, "handle this case");
             }
             else
             {
@@ -237,13 +242,22 @@ void generate_asm(char *name)
          }
          case REF_REF:
          {
+            // left has_ref, right has_ref
             // left ptr (has_refrence), creg
             // right ptr, creg
             if (left->ptr)
             {
                if (right->ptr)
                {
-                  todo(1, "handle this case");
+                  // todo(1, "handle this case");
+                  pasm("%i%ra, %a", "mov", left, right); asm_space(curr->space);
+                  left->is_ref = false;
+                  pasm("%i%ra, %ma", "mov", left, right); asm_space(curr->space);
+                  left->is_ref = true;
+                  pasm("%i%rb, %a", "mov", left, left); asm_space(curr->space);
+                  right->is_ref = false;
+                  pasm("%i%mb, %ra", "mov", left, right);
+                  right->is_ref = true;
                }
                else if (right->creg)
                {

@@ -85,7 +85,9 @@ Token* new_token(char *input, int s, int e, Type type, int space)
    case CHAR: if (e > s) new->Char.value = input[s]; break;
    default: check(e > s, "implement adding name for this one %s", to_string(type)); break;
    }
+#if DEBUG
    debug("token: %k\n", new);
+#endif
    add_token(new);
    return new;
 }
@@ -145,7 +147,9 @@ int alignofToken(Token *token)
 
 void enter_scoop(Node *node)
 {
+#if DEBUG
    debug(CYAN "Enter Scoop: %k index %d\n" RESET, node->token, scoopPos + 1);
+#endif
    if (Gscoop == NULL)
    {
       scoopSize = 10;
@@ -167,7 +171,9 @@ void enter_scoop(Node *node)
 void exit_scoop()
 {
    if (check(scoopPos < 0, "No active scoop to exit\n")) return;
+#if DEBUG
    debug(CYAN "Exit Scoop: %k index %d\n" RESET, Gscoop[scoopPos]->token, scoopPos);
+#endif
    Gscoop[scoopPos] = NULL;
    scoopPos--;
    if (scoopPos >= 0) scoop = Gscoop[scoopPos];
@@ -215,7 +221,9 @@ Token *new_struct(Token *token)
 {
    static int structs_ids;
    token->Struct.id = (++structs_ids);
+#if DEBUG
    debug(CYAN "new struct [%s] id [%d] in scoop %k\n" RESET, token->name, token->Struct.id, scoop->token);
+#endif
    for (int i = 0; i < scoop->spos; i++)
    {
       Token *curr = scoop->structs[i];
@@ -227,7 +235,9 @@ Token *new_struct(Token *token)
 
 Token *get_struct(char *name)
 {
+#if DEBUG
    debug(CYAN "get struct [%s] from scoop %k\n"RESET, name, scoop->token);
+#endif
    for (int j = scoopPos; j >= 0; j--)
    {
       Node *node = Gscoop[j];
@@ -339,7 +349,9 @@ void add_variable(Node *bloc, Token *token)
 
 Token *new_variable(Token *token)
 {
+#if DEBUG
    debug(CYAN "new variable [%s] [%s] in scoop %k\n" RESET, token->name, to_string(token->type), scoop->token);
+#endif
    for (int i = 0; i < scoop->vpos; i++)
    {
       Token *curr = scoop->vars[i];
@@ -352,7 +364,9 @@ Token *new_variable(Token *token)
 
 Token *get_variable(char *name)
 {
+#if DEBUG
    debug(CYAN "get variable [%s] from scoop %k\n" RESET, name, scoop->token);
+#endif
    for (int j = scoopPos; j >= 0; j--)
    {
       Node *scoop = Gscoop[j];
@@ -383,7 +397,9 @@ void add_function(Node *bloc, Node *node)
 
 Node *new_function(Node *node)
 {
+#if DEBUG
    debug("new_func %s in scoop %kthat return %t\n", node->token->name, scoop->token, node->token->retType);
+#endif
    for (int i = 0; i < scoop->fpos; i++)
    {
       Node *func = scoop->functions[i];
@@ -396,7 +412,9 @@ Node *new_function(Node *node)
 
 Node *get_function(char *name)
 {
+#if DEBUG
    debug("get_func %s in scoop %k\n", name, scoop->token);
+#endif
    for (int j = scoopPos; j >= 0; j--)
    {
       Node *scoop = Gscoop[j];
@@ -453,6 +471,27 @@ void add_inst(Inst *inst)
    OrgInsts[pos++] = inst;
 }
 
+Token *get_struct_by_id(int id)
+{
+#if DEBUG
+   debug(CYAN "get struct with id [%d] from scoop %k\n", id, scoop->token);
+#endif
+   for (int j = scoopPos; j >= 0; j--)
+   {
+      Node *node = Gscoop[j];
+#if DEBUG
+      debug("[%d] scoop [%s] has %d structs\n", j, scoop->token->name, node->spos);
+#endif
+      for (int i = 0; i < node->spos; i++)
+      {
+         debug(GREEN"struct has [%d]\n"RESET, node->structs[i]->Struct.id);
+         if (node->structs[i]->Struct.id == id) return node->structs[i];
+      }
+   }
+   // check(1, "%s not found\n", name);
+   return NULL;
+}
+
 Inst *new_inst(Token *token)
 {
    static int reg;
@@ -495,6 +534,8 @@ Inst *new_inst(Token *token)
 #endif
    if (token->type == STRUCT_CALL)
    {
+      debug(CYAN"handle [%k], offset [%d]\n"RESET, token, token->offset);
+
       /*
       4
       5
@@ -505,23 +546,44 @@ Inst *new_inst(Token *token)
 
       for (int i = 0; i < token->Struct.pos; i++) {
          Token *attr = token->Struct.attrs[i];
-         // attr->declare = true;
-         char *name = strjoin(token->name, ".", attr->name);
-         setName(attr, name);
-         free(name);
-        
          if (attr->type == STRUCT_CALL) // struct ptr should be ptr for the first element
          {
+            char *name = attr->name;
+            int space = attr->space;
+            attr = get_struct_by_id(attr->Struct.id);
+            attr->type = STRUCT_CALL;
+            attr->space = space;
+            setName(attr, name);
+
+            name = strjoin(token->name, ".", attr->name);
+            setName(attr, name);
+            free(name);
+
+            debug(RED SPLIT RESET);
+            debug("[%k], offset [%d]\n", attr, attr->offset);
             new_inst(attr);
+            debug(RED SPLIT RESET);
+            token->Struct.attrs[i] = attr;
+            // todo(1, "");
          }
          else
          {
+            char *name = strjoin(token->name, ".", attr->name);
+            setName(attr, name);
+            free(name);
+
             attr->ptr = ptr + token->offset - attr->offset;
-            debug("ptr: %d\n", attr->ptr);
+            attr->reg = ++reg;
+
             Node *tmp = new_node(new_token(NULL, 0, 0, ASSIGN, attr->space));
             tmp->left = new_node(attr);
             tmp->right = new_node(new_token(NULL, 0, 0, DEFAULT, attr->space));
             to_default(tmp->right->token, attr->type);
+
+            // debug(RED SPLIT RESET);
+            // pnode(tmp, NULL, attr->space);
+            // debug(RED SPLIT RESET);
+
             generate_ir(tmp);
             free_node(tmp);
          }
@@ -547,7 +609,9 @@ Inst *new_inst(Token *token)
    case ASSIGN: break;
    default: break;
    }
+#if DEBUG
    debug("inst: %k\n", new->token);
+#endif
    add_inst(new);
    return new;
 }
@@ -625,8 +689,9 @@ bool optimize_ir()
             right->remove = true;
             token->reg = 0;
             setReg(token, NULL);
+#if DEBUG
             debug(RED"%d: remove %k\n", LINE, insts[i]->token);
-
+#endif
             if (i > 0) i -= 2;
          }
       }
@@ -657,7 +722,9 @@ bool optimize_ir()
                copy_insts();
                did_something = true;
                did_optimize = true;
+#if DEBUG
                debug(RED"%d: remove %k\n", LINE, insts[i]->token);
+#endif
                continue;
             }
             // else
@@ -713,7 +780,9 @@ bool optimize_ir()
                {
                   // debug(RED"2. remove r%d %k\n"RESET, token->reg, token);
                   token->remove = true;
+#if DEBUG
                   debug(RED"%d: remove %k\n", LINE, insts[i]->token);
+#endif
                   did_optimize = true;
                   did_something = true;
                   break;
@@ -735,7 +804,9 @@ bool optimize_ir()
             did_optimize = true;
             did_something = true;
             insts[i]->token->remove = true;
+#if DEBUG
             debug(RED"%d: remove %k\n", LINE, insts[i]->token);
+#endif
             copy_insts();
             i = 1;
          }
@@ -754,7 +825,9 @@ bool optimize_ir()
             curr->remove = true;
             did_something = true;
             did_optimize = true;
+#if DEBUG
             debug(RED"%d: remove %k\n", LINE, insts[i]->token);
+#endif
          }
       }
       break;
@@ -770,7 +843,9 @@ bool optimize_ir()
          if (curr->type == ASSIGN && left->type == STRUCT_CALL)
          {
             curr->remove = true;
+#if DEBUG
             debug(RED"%d: remove %k\n", LINE, insts[i]->token);
+#endif
             did_something = true;
             did_optimize = true;
          }
@@ -799,7 +874,12 @@ bool optimize_ir()
       break;
    }
    }
-   if (did_something) print_ir();
+   if (did_something)
+   {
+#if DEBUG
+      print_ir();
+#endif
+   }
    op++;
    return true;
 }
@@ -853,14 +933,21 @@ void pasm(char *fmt, ...)
             if (token->creg && token->creg[1] != 'b') fprintf(asm_fd, "{{%s}}", token->creg);
             else
             {
-               Type type = token->retType ? token->retType : token->type;
-               switch (type)
+               if (token->is_ref)
                {
-               case CHARS: fputs("rbx", asm_fd); break;
-               case INT: fputs("ebx", asm_fd); break;
-               case BOOL: case CHAR: fputs("bl", asm_fd); break;
-               case FLOAT: fputs("xmm1", asm_fd); break;
-               default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
+                  fputs("rbx", asm_fd);
+               }
+               else
+               {
+                  Type type = token->retType ? token->retType : token->type;
+                  switch (type)
+                  {
+                  case CHARS: fputs("rbx", asm_fd); break;
+                  case INT: fputs("ebx", asm_fd); break;
+                  case BOOL: case CHAR: fputs("bl", asm_fd); break;
+                  case FLOAT: fputs("xmm1", asm_fd); break;
+                  default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
+                  }
                }
             }
          }
@@ -1113,14 +1200,13 @@ void setReg(Token *token, char *creg)
 
 char *strjoin(char *str0, char *str1, char *str2)
 {
-   int len0 = strlen(str0);
-   int len1 = strlen(str1);
-   int len2 = strlen(str2);
-
+   int len0 = str0 ? strlen(str0) : 0;
+   int len1 = str1 ? strlen(str1) : 0;
+   int len2 = str2 ? strlen(str2) : 0;
    char *res = allocate(len0 + len1 + len2 + 1, 1);
-   strcpy(res, str0);
-   strcpy(res + len0, str1);
-   strcpy(res + len0 + len1, str2);
+   if (str0) strcpy(res, str0);
+   if (str1) strcpy(res + len0, str1);
+   if (str2) strcpy(res + len0 + len1, str2);
    return res;
 }
 
@@ -1155,7 +1241,7 @@ Type getRetType(Node *node)
 // ----------------------------------------------------------------------------
 int debug(char *conv, ...)
 {
-   if (!DEBUG) return 0;
+   // if (!DEBUG) return 0;
    int res = 0;
    va_list args;
    va_start(args, conv);
@@ -1258,7 +1344,7 @@ int ptoken(Token *token)
       else
       {
          if (token->creg) res += debug("creg [%s] ", token->creg);
-         else if(token->type != VOID) print_value(token);
+         else if (token->type != VOID) print_value(token);
       }
       break;
    }
@@ -1329,7 +1415,7 @@ int print_value(Token *token)
 
 void print_ir()
 {
-   if (!DEBUG) return;
+   //if (!DEBUG) return;
    copy_insts();
    debug(GREEN BOLD SPLIT RESET);
    debug(GREEN BOLD"PRINT IR:\n" RESET);

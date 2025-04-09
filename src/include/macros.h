@@ -1,7 +1,6 @@
 #pragma once
 #include "header.h"
 
-#define EXIT_STATUS 0
 #define SPLIT "=================================================\n"
 #define GREEN "\033[0;32m"
 #define RED "\033[0;31m"
@@ -40,7 +39,7 @@
 #endif
 
 #ifndef DEBUG
-#define DEBUG 1
+#define DEBUG 0
 #endif
 
 #define TREE 0
