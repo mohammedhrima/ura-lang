@@ -643,7 +643,6 @@ Token* inialize_variable(Node *node, Token *src)
             int space = attr->space;
             attr = get_struct_by_id(attr->Struct.id);
             attr->isattr = true;
-            debug("before: [%k], offset [%d]\n", attr, attr->offset);
 
             attr->type = STRUCT_CALL;
             attr->space = space;
@@ -651,19 +650,15 @@ Token* inialize_variable(Node *node, Token *src)
 
             Node *tmp = new_node(attr);
 
-            name = strjoin(node->token->name, ".", attr->name);
-            setName(attr, name);
-            free(name);
-
             inialize_variable(tmp, NULL);
             free_node(tmp);
+            debug(RED SPLIT RESET);
+            ptoken(attr);
+            debug(RED SPLIT RESET);
          }
          else
          {
             attr->ptr = ptr + node->token->offset - attr->offset;
-            char *name = strjoin(node->token->name, ".", attr->name);
-            setName(attr, name);
-            free(name);
 
             Node *tmp = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space));
             tmp->token->reg = attr->reg;
@@ -1081,13 +1076,10 @@ Token *generate_ir(Node *node)
    case DOT:
    {
       Token *left = generate_ir(node->left);
-      Token *right =  node->right->token;
+      Token *right = node->right->token;
       if (check(left->type == ID, "undeclared variable %s", left->name)) break;
 
-      // debug(RED SPLIT RESET);
-      // pnode(node, 0, 0);
       debug(RED SPLIT RESET);
-      // ptoken(left);
       for (int i = 0; i < left->Struct.pos; i++)
       {
          Token *attr = left->Struct.attrs[i];
@@ -1100,6 +1092,7 @@ Token *generate_ir(Node *node)
          }
          free(to_find);
       }
+      debug(RED SPLIT RESET);
 
       todo(1, "%s has no attribute %s", left->name, right->name);
       return right;
