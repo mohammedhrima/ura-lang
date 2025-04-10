@@ -369,6 +369,18 @@ void add_variable(Node *bloc, Token *token)
    bloc->vars[bloc->vpos++] = token;
 }
 
+void setAttrName(Token *parent, Token *child)
+{
+   if(parent)
+   {
+      char *name = strjoin(parent->name, "." ,child->name);
+      setName(child, name);
+      free(name);
+   }
+   for(int i = 0; i < child->Struct.pos; i++)
+      setAttrName(child, child->Struct.attrs[i]);
+}
+
 Token *new_variable(Token *token)
 {
 #if DEBUG
@@ -381,7 +393,10 @@ Token *new_variable(Token *token)
    }
    if (token->type == STRUCT_CALL)
    {
-
+      setAttrName(NULL, token);
+      debug(CYAN SPLIT);
+      ptoken(token);
+      debug(CYAN SPLIT RESET);
    }
    else
    {
@@ -522,7 +537,7 @@ Inst *new_inst(Token *token)
          // todo(1, "hello");
          if (attr->type == STRUCT_CALL) // struct ptr should be ptr for the first element
          {
-
+            attr->reg = ++reg;
          }
          else
          {

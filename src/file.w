@@ -10,4 +10,4 @@ struct User:
 
 main():
    User user1
-   user1.data.a = 10
+   user1.b = 10

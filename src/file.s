@@ -6,22 +6,17 @@
 main:
     push rbp
     mov  rbp, rsp
-    sub  rsp, 16
-    lea  rax, .STR1[rip]
-    mov  QWORD PTR -16[rbp], rax ;// assign [user.name]
-    mov  DWORD PTR -8[rbp], 27 ;// assign [user.age]
-    lea  rdi, .STR3[rip] ;// assign [rdi]
-    mov  esi, DWORD PTR -8[rbp] ;// assign [esi]
-    lea  rdx, .STR2[rip] ;// assign [rdx]
-    mov  rcx, QWORD PTR -16[rbp] ;// assign [rcx]
-    call printf
+    sub  rsp, 32
+    lea  rax, .STR0[rip]
+    mov  QWORD PTR -16[rbp], rax ;// assign [name]
+    mov  DWORD PTR -8[rbp], 0 ;// assign [a]
+    mov  BYTE PTR -16[rbp], 0 ;// assign [user1.e]
+    mov  BYTE PTR -8[rbp], 0 ;// assign [user1.c]
+    mov  DWORD PTR -12[rbp], 10 ;// assign [user1.b]
     mov  eax, 0
     leave 
     ret  
 .endmain:
-.STR1: .string "Mohammed"
-.STR2: .string ", "
 .STR0: .string ""
-.STR3: .string "%d%s%s"
 .section	.note.GNU-stack,"",@progbits
 
