@@ -1,3 +1,13 @@
+struct Data:
+   chars name
+   int a
+
+struct User:
+   Data data
+   char e
+   int b
+   char c
 
 main():
-   chars str = "fffff" 
+   User user1
+   user1.data.a = 10

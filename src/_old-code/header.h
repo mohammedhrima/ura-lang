@@ -1,17 +1,5 @@
 #pragma once
 
-// HEADERS
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <stdarg.h>
-#include <ctype.h>
-#include <fcntl.h>
-#include <string.h>
-#include <stdint.h>
-#include <sys/types.h>
-#include "macros.h"
-
 // STRUCTS
 typedef enum
 {

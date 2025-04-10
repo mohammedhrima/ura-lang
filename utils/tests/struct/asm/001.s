@@ -6,7 +6,7 @@
 main:
     push rbp
     mov  rbp, rsp
-    sub  rsp, 32
+    sub  rsp, 16
     lea  rax, .STR1[rip]
     mov  QWORD PTR -16[rbp], rax ;// assign [user.name]
     mov  DWORD PTR -8[rbp], 27 ;// assign [user.age]

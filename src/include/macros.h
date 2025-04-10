@@ -56,6 +56,7 @@
 #define check(cond, fmt, ...) check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)
 #define to_string(type) to_string_(FILE, LINE, type)
 #define todo(cond, fmt, ...) check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__); exit(1);
+#define stop(cond, fmt, ...) check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__); exit(1);
 
 #if DEBUG_NEW_TOKEN
 #define new_token(input, s, e, type, space) new_token_(FILE, LINE, input, s, e, type, space)
