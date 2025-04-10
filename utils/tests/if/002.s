@@ -8,6 +8,7 @@ main:
     mov  rbp, rsp
     sub  rsp, 16
     mov  DWORD PTR -4[rbp], 0 ;// assign [i]
+    mov  DWORD PTR -4[rbp], 0 ;// assign [i]
     .if1:
     cmp  DWORD PTR -4[rbp], 1
     jne   .else6

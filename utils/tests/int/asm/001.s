@@ -11,5 +11,6 @@ main:
     mov  eax, 0
     leave 
     ret  
-.endmain:.section	.note.GNU-stack,"",@progbits
+.endmain:
+.section	.note.GNU-stack,"",@progbits
 

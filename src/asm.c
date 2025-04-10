@@ -616,7 +616,7 @@ void generate_asm(char *name)
       case JMP: pasm("%i.%s%d", "jmp", curr->name, curr->index); break;
       case FCALL: pasm("%i%s", "call", curr->name); break;
       case BLOC: pasm(".%s%d:", (curr->name ? curr->name : "(null)"), curr->index); break;
-      case END_BLOC: pasm(".end%s:", curr->name); break;
+      case END_BLOC: pasm(".end%s:", curr->name); asm_space(curr->space); break;
       case STRUCT_CALL: break;
       default: check(1, "handle this case (%s)\n", to_string(curr->type)); break;
       }

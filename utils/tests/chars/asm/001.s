@@ -12,6 +12,7 @@ main:
     mov  eax, 0
     leave 
     ret  
-.endmain:.STR1: .string "fffff"
+.endmain:
+.STR1: .string "fffff"
 .section	.note.GNU-stack,"",@progbits
 

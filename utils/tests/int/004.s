@@ -18,6 +18,7 @@ main:
     push rbp
     mov  rbp, rsp
     sub  rsp, 16
+    mov  DWORD PTR -4[rbp], 0 ;// assign [x]
     mov  DWORD PTR -4[rbp], 2 ;// assign [x]
     lea  rdi, -4[rbp] ;// assign [a] is_ref
     call m
