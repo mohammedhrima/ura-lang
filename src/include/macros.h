@@ -61,7 +61,7 @@
 #define new_token(input, s, e, type, space) new_token_(FILE, LINE, input, s, e, type, space)
 #endif
 
-#if DEBUG_INC_PTR 
+#if DEBUG_INC_PTR
 #define inc_ptr(value) inc_ptr_(FILE, LINE, value)
 #endif
 

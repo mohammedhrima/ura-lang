@@ -379,19 +379,20 @@ Token *new_variable(Token *token)
       Token *curr = scoop->vars[i];
       if (strcmp(curr->name, token->name) == 0) check(1, "Redefinition of %s\n", token->name);
    }
-   if(token->type == STRUCT_CALL)
+   if (token->type == STRUCT_CALL)
    {
 
    }
    else
    {
       // is attribute
-      if(!token->ptr) 
+      if (!token->ptr)
       {
          inc_ptr(sizeofToken(token));
          token->ptr = ptr;
       }
    }
+   new_inst(token);
    add_variable(scoop, token);
    return token;
 }
@@ -516,15 +517,6 @@ Inst *new_inst(Token *token)
    if (token->type == STRUCT_CALL)
    {
       debug("handle [%k], offset [%d]\n", token, token->offset);
-
-      /*
-      4
-      5
-      12
-      16
-      20
-      */
-
       for (int i = 0; i < token->Struct.pos; i++) {
          Token *attr = token->Struct.attrs[i];
          // todo(1, "hello");
@@ -542,7 +534,11 @@ Inst *new_inst(Token *token)
    {
    case CHARS:
    {
-      if (token->is_data_type) token->reg = ++reg;
+      if (token->ptr && !token->reg)
+      {
+         token->reg = ++reg;
+         // todo(1, "found");
+      }
 
       if (token->Chars.value)
       {
@@ -551,13 +547,16 @@ Inst *new_inst(Token *token)
       }
       break;
    }
-   case INT: if (token->is_data_type) token->reg = ++reg; break;
+   case INT: if (token->ptr) token->reg = ++reg; break;
    case RETURN: token->reg = ++reg; break;
-   case ASSIGN: break;
+   case ASSIGN:
+   {
+      break;
+   }
    default: break;
    }
 #if DEBUG
-   // debug("inst: %k%c", new->token, token->type != STRUCT_CALL ? '\n' : '\0');
+   debug("inst: %k%c", new->token, token->type != STRUCT_CALL ? '\n' : '\0');
 #endif
    add_inst(new);
    return new;
@@ -808,7 +807,10 @@ bool optimize_ir()
          Token *right = insts[i]->right;
          Token *left = insts[i]->left;
          if (token->type == ASSIGN && right->type == DEFAULT)
+         {
+            todo(1, "there should not be any default remaining here")
             to_default(right, left->type);
+         }
       }
       break;
    }
@@ -1316,7 +1318,7 @@ int ptoken(Token *token)
       for (int i = 0; i < token->Struct.pos; i++)
       {
          Token *attr = token->Struct.attrs[i];
-#if 1    
+#if 1
 
          for (int j = 0; !TESTING && j < attr->space; ) j += debug(" ");
          res += ptoken(attr) + debug(", offset [%d] PTR [%d]\n", attr->offset, attr->ptr);
