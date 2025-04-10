@@ -631,21 +631,14 @@ Token *while_ir(Node *node)
 Token* inialize_variable(Node *node, Token *src)
 {
    node->token->is_data_type = false;
-   if(node->token->type == STRUCT_CALL)
+   if (node->token->type == STRUCT_CALL)
    {
       pnode(node, NULL, 0);
-      // int size0 = 10;
-      // int pos0 = 0;
-      // Token **structs = calloc(size0, sizeof(Token*));
-      // 
-      // int size1 = 10;
-      // int pos1 = 0;
-      // Token **arr = calloc(size0, sizeof(Token*));
       new_variable(node->token);
-      for(int i = 0; i < node->token->Struct.pos; i++)
+      for (int i = 0; i < node->token->Struct.pos; i++)
       {
          Token *attr = node->token->Struct.attrs[i];
-         if(attr->type == STRUCT_CALL)
+         if (attr->type == STRUCT_CALL)
          {
             char *name = attr->name;
             int space = attr->space;
@@ -671,24 +664,32 @@ Token* inialize_variable(Node *node, Token *src)
             char *name = strjoin(node->token->name, ".", attr->name);
             setName(attr, name);
             free(name);
-            
+
             Node *tmp = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space));
+            tmp->token->reg = attr->reg;
             tmp->left = new_node(attr);
             tmp->right = new_node(new_token(NULL, 0, 0, DEFAULT, attr->space));
+            to_default(tmp->right->token, tmp->left->token->type);
             generate_ir(tmp);
-            free_node(tmp);  
+            free_node(tmp);
          }
       }
-      if(!node->token->isattr) inc_ptr(node->token->offset);
-      // todo(1, "initilize struct");
+      if (!node->token->isattr) inc_ptr(node->token->offset);
 
    }
    else
    {
       new_variable(node->token);
+
       Node *tmp = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space));
+      tmp->token->reg = node->token->reg;
       tmp->left = copy_node(node);
       tmp->right = new_node(src);
+      to_default(src, tmp->left->token->type);
+
+      debug(RED);
+      pnode(tmp, NULL, 0);
+      debug(RESET);
 
       generate_ir(tmp);
       free_node(tmp);
@@ -829,6 +830,7 @@ Token *func_call_ir(Node *node)
             todo(1, "implement assigning function argument using PTR");
          }
          assign = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space));
+         assign->token->reg = assign->left->token->reg;
          assign->left = new_node(src);
          assign->right = new_node(var);
          generate_ir(assign);
@@ -921,6 +923,13 @@ Token *op_ir(Node *node)
    case ASSIGN:
    {
       node->token->reg = left->reg;
+      if(!node->token->reg || !left->reg)
+      {
+         pnode(node, NULL, 0);
+         debug(">> %k\n", left);
+         debug(">> %d\n", left->reg);
+         todo(1, "tmp condition");
+      }
       node->token->retType = getRetType(node);
       if (left->is_ref) // reg, ptr
       {
@@ -1000,7 +1009,7 @@ Token *generate_ir(Node *node)
    {
       if (node->token->is_data_type)
       {
-         if(node->token->type == STRUCT_CALL)
+         if (node->token->type == STRUCT_CALL)
             return inialize_variable(node, NULL);
          return inialize_variable(node, new_token(NULL, 0, 0, DEFAULT, node->token->space));
       }
@@ -1094,7 +1103,11 @@ Token *generate_ir(Node *node)
    {
       return node->token;
    }
-   case DEFAULT: return node->token;
+   case DEFAULT:
+   {
+      todo(1, "who is looking for default ?");
+      return node->token;
+   }
    default:
    {
       check(1, "handle this case %s", to_string(node->token->type));

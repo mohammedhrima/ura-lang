@@ -7,8 +7,6 @@ main:
     push rbp
     mov  rbp, rsp
     sub  rsp, 16
-    lea  rax, .STR0[rip]
-    mov  QWORD PTR -8[rbp], rax ;// assign [str]
     lea  rax, .STR1[rip]
     mov  QWORD PTR -8[rbp], rax ;// assign [str]
     mov  eax, 0
