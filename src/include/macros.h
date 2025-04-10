@@ -39,11 +39,17 @@
 #endif
 
 #ifndef DEBUG
-#define DEBUG 0
+#define DEBUG 1
 #endif
+
+#ifndef TESTING
+#define TESTING false
+#endif
+
 
 #define TREE 0
 
+#define DEBUG_INC_PTR 1
 #define DEBUG_NEW_TOKEN 0
 
 #define allocate(len, size) allocate_func(LINE, len, size)
@@ -54,7 +60,11 @@
 #if DEBUG_NEW_TOKEN
 #define new_token(input, s, e, type, space) new_token_(FILE, LINE, input, s, e, type, space)
 #endif
-// #define ptoken(token) ptoken_(FILE, LINE, token)
+
+#if DEBUG_INC_PTR 
+#define inc_ptr(value) inc_ptr_(FILE, LINE, value)
+#endif
+
 
 #define AST_NODE(name, child_func, ...) \
 Node *name() { \

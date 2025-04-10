@@ -1162,7 +1162,7 @@ Type getRetType(Node *node)
 // ----------------------------------------------------------------------------
 int debug(char *conv, ...)
 {
-   // if (!DEBUG) return 0;
+   if (!DEBUG) return 0;
    int res = 0;
    va_list args;
    va_start(args, conv);

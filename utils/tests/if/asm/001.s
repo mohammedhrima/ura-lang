@@ -27,7 +27,8 @@ main:
     mov  eax, 0
     leave 
     ret  
-.endmain:.STR1: .string "cond 1\n"
+.endmain:
+.STR1: .string "cond 1\n"
 .STR2: .string "cond 2\n"
 .STR3: .string "cond 3\n"
 .section	.note.GNU-stack,"",@progbits

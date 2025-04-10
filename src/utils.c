@@ -86,7 +86,7 @@ Token* new_token(char *input, int s, int e, Type type, int space)
    default: check(e > s, "implement adding name for this one %s", to_string(type)); break;
    }
 #if DEBUG
-   debug("token: %k\n", new);
+   // debug("token: %k\n", new);
 #endif
    add_token(new);
    return new;
@@ -233,6 +233,28 @@ Token *new_struct(Token *token)
    return token;
 }
 
+Token *get_struct_by_id(int id)
+{
+#if DEBUG
+   debug("get struct with id [%d] from scoop %k\n", id, scoop->token);
+#endif
+   for (int j = scoopPos; j >= 0; j--)
+   {
+      Node *node = Gscoop[j];
+#if DEBUG
+      debug("[%d] scoop [%s] has %d structs\n", j, scoop->token->name, node->spos);
+#endif
+      for (int i = 0; i < node->spos; i++)
+      {
+         // debug(GREEN"struct has [%d]\n"RESET, node->structs[i]->Struct.id);
+         if (node->structs[i]->Struct.id == id) return copy_token(node->structs[i]);
+      }
+   }
+   // check(1, "%s not found\n", name);
+   return NULL;
+}
+
+
 Token *get_struct(char *name)
 {
 #if DEBUG
@@ -242,7 +264,7 @@ Token *get_struct(char *name)
    {
       Node *node = Gscoop[j];
       for (int i = 0; i < node->spos; i++)
-         if (strcmp(node->structs[i]->name, name) == 0) return node->structs[i];
+         if (strcmp(node->structs[i]->name, name) == 0) return copy_token(node->structs[i]);
    }
    // check(1, "%s not found\n", name);
    return NULL;
@@ -251,7 +273,7 @@ Token *get_struct(char *name)
 Token *is_struct(Token *token)
 {
    Token *res = get_struct(token->name);
-   if (res) return copy_token(res);
+   if (res) return res;
    return NULL;
 }
 
@@ -357,7 +379,19 @@ Token *new_variable(Token *token)
       Token *curr = scoop->vars[i];
       if (strcmp(curr->name, token->name) == 0) check(1, "Redefinition of %s\n", token->name);
    }
-   token->ptr = (ptr += sizeofToken(token));
+   if(token->type == STRUCT_CALL)
+   {
+
+   }
+   else
+   {
+      // is attribute
+      if(!token->ptr) 
+      {
+         inc_ptr(sizeofToken(token));
+         token->ptr = ptr;
+      }
+   }
    add_variable(scoop, token);
    return token;
 }
@@ -398,7 +432,7 @@ void add_function(Node *bloc, Node *node)
 Node *new_function(Node *node)
 {
 #if DEBUG
-   debug("new_func %s in scoop %kthat return %t\n", node->token->name, scoop->token, node->token->retType);
+   // debug("new_func %s in scoop %kthat return %t\n", node->token->name, scoop->token, node->token->retType);
 #endif
    for (int i = 0; i < scoop->fpos; i++)
    {
@@ -471,26 +505,6 @@ void add_inst(Inst *inst)
    OrgInsts[pos++] = inst;
 }
 
-Token *get_struct_by_id(int id)
-{
-#if DEBUG
-   debug(CYAN "get struct with id [%d] from scoop %k\n", id, scoop->token);
-#endif
-   for (int j = scoopPos; j >= 0; j--)
-   {
-      Node *node = Gscoop[j];
-#if DEBUG
-      debug("[%d] scoop [%s] has %d structs\n", j, scoop->token->name, node->spos);
-#endif
-      for (int i = 0; i < node->spos; i++)
-      {
-         debug(GREEN"struct has [%d]\n"RESET, node->structs[i]->Struct.id);
-         if (node->structs[i]->Struct.id == id) return node->structs[i];
-      }
-   }
-   // check(1, "%s not found\n", name);
-   return NULL;
-}
 
 Inst *new_inst(Token *token)
 {
@@ -498,43 +512,10 @@ Inst *new_inst(Token *token)
 
    Inst *new = allocate(1, sizeof(Inst));
    new->token = token;
-#if 0
-   if (token->is_ref) token->ptr = (ptr += 8);
-   else if (token->type == CHARS && token->Chars.value && !token->index) token->index = ++str_index;
-   else if (token->name && token->declare)
-   {
-      if (token->type == STRUCT_CALL)
-      {
-         int curr = ptr;
-         free(new);
-         int offset = 0;
-         for (int i = 0; i < token->Struct.pos; i++) {
-            Token *attr = token->Struct.attrs[i];
-            int padding = calculate_padding(offset, alignofToken(attr));
-            attr->ptr = -1;
-            attr->declare = true;
-            char *name = strjoin(token->name, ".", attr->name);
-            setName(attr, name);
-            free(name);
-            new_inst(attr);
-            attr->ptr = (curr + offset + padding) + sizeofToken(attr);
-            if (padding > 0) offset += padding;
-            offset += sizeofToken(attr);
-         }
-         ptr = curr + token->offset;
-         token->ptr = ptr;
-         // token->remove = true;
-         return NULL;
-      }
-      else  // I added this line for structs attributes
-      {
-         token->ptr = (ptr += sizeofToken(token));
-      }
-   }
-#endif
+
    if (token->type == STRUCT_CALL)
    {
-      debug(CYAN"handle [%k], offset [%d]\n"RESET, token, token->offset);
+      debug("handle [%k], offset [%d]\n", token, token->offset);
 
       /*
       4
@@ -546,50 +527,16 @@ Inst *new_inst(Token *token)
 
       for (int i = 0; i < token->Struct.pos; i++) {
          Token *attr = token->Struct.attrs[i];
+         // todo(1, "hello");
          if (attr->type == STRUCT_CALL) // struct ptr should be ptr for the first element
          {
-            char *name = attr->name;
-            int space = attr->space;
-            attr = get_struct_by_id(attr->Struct.id);
-            attr->type = STRUCT_CALL;
-            attr->space = space;
-            setName(attr, name);
 
-            name = strjoin(token->name, ".", attr->name);
-            setName(attr, name);
-            free(name);
-
-            debug(RED SPLIT RESET);
-            debug("[%k], offset [%d]\n", attr, attr->offset);
-            new_inst(attr);
-            debug(RED SPLIT RESET);
-            token->Struct.attrs[i] = attr;
-            // todo(1, "");
          }
          else
          {
-            char *name = strjoin(token->name, ".", attr->name);
-            setName(attr, name);
-            free(name);
-
-            attr->ptr = ptr + token->offset - attr->offset;
             attr->reg = ++reg;
-
-            Node *tmp = new_node(new_token(NULL, 0, 0, ASSIGN, attr->space));
-            tmp->left = new_node(attr);
-            tmp->right = new_node(new_token(NULL, 0, 0, DEFAULT, attr->space));
-            to_default(tmp->right->token, attr->type);
-
-            // debug(RED SPLIT RESET);
-            // pnode(tmp, NULL, attr->space);
-            // debug(RED SPLIT RESET);
-
-            generate_ir(tmp);
-            free_node(tmp);
          }
       }
-      ptr += token->offset;
-
    }
    switch (token->type)
    {
@@ -610,7 +557,7 @@ Inst *new_inst(Token *token)
    default: break;
    }
 #if DEBUG
-   debug("inst: %k\n", new->token);
+   // debug("inst: %k%c", new->token, token->type != STRUCT_CALL ? '\n' : '\0');
 #endif
    add_inst(new);
    return new;
@@ -1116,9 +1063,9 @@ void open_file(char *filename)
 
 void *allocate_func(int line, int len, int size)
 {
-   void *ptr = calloc(len, size);
-   check(!ptr, "allocate did failed in line %d\n", line);
-   return ptr;
+   void *res = calloc(len, size);
+   check(!res, "allocate did failed in line %d\n", line);
+   return res;
 }
 
 const char *to_string_(const char *filename, const int line, Type type) {
@@ -1235,13 +1182,24 @@ Type getRetType(Node *node)
    if (right) return right;
    return 0;
 }
+#if DEBUG_INC_PTR
+void inc_ptr_(char *filename, int line, int size)
+#else
+void inc_ptr(int size)
+#endif
+{
+#if DEBUG_INC_PTR
+   debug(RED"%s:%d add [%d] to ptr [%d]\n"RESET, filename, line, size, ptr);
+#endif
+   ptr += size;
+}
 
 // ----------------------------------------------------------------------------
 // Logs
 // ----------------------------------------------------------------------------
 int debug(char *conv, ...)
 {
-   // if (!DEBUG) return 0;
+   if (TESTING) return 0;
    int res = 0;
    va_list args;
    va_start(args, conv);
@@ -1353,16 +1311,20 @@ int ptoken(Token *token)
    {
       res += debug("name [%s] ", token->name);
       res += debug("struct_id [%d] ", token->Struct.id);
-      res += debug("attributes: ");
+      res += debug("space [%d] ", token->space);
+      res += debug("attributes:\n");
       for (int i = 0; i < token->Struct.pos; i++)
       {
          Token *attr = token->Struct.attrs[i];
-#if 0
-         res += ptoken(attr) + debug(", ");
+#if 1    
+
+         for (int j = 0; !TESTING && j < attr->space; ) j += debug(" ");
+         res += ptoken(attr) + debug(", offset [%d] PTR [%d]\n", attr->offset, attr->ptr);
 #else
          res += debug("%s %t [%d], ", attr->name, attr->type, attr->ptr);
 #endif
       }
+      return res;
       break;
    }
    case FCALL:
@@ -1427,7 +1389,7 @@ void print_ir()
       Token *right = insts[i]->right;
       curr->reg ? debug("r%.2d:", curr->reg) : debug("rxx:");
       int k = 0;
-      while (k < curr->space) k += printf(" ");
+      while (!TESTING && k < curr->space) k += debug(" ");
       switch (curr->type)
       {
       case ADD_ASSIGN:

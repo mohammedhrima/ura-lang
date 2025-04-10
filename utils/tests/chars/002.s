@@ -7,6 +7,8 @@ main:
     push rbp
     mov  rbp, rsp
     sub  rsp, 16
+    lea  rax, .STR0[rip]
+    mov  QWORD PTR -8[rbp], rax ;// assign [planet]
     lea  rax, .STR1[rip]
     mov  QWORD PTR -8[rbp], rax ;// assign [planet]
     .if1:
@@ -52,5 +54,6 @@ main:
 .STR6: .string "Jupiter"
 .STR7: .string "⚡ Danger! Extreme gas giant storms detected!\n"
 .STR8: .string "🚀 Unknown planet. Proceeding with caution...\n"
+.STR0: .string ""
 .section	.note.GNU-stack,"",@progbits
 

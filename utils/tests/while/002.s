@@ -7,10 +7,15 @@ main:
     push rbp
     mov  rbp, rsp
     sub  rsp, 32
+    mov  DWORD PTR -4[rbp], 0 ;// assign [i]
     mov  DWORD PTR -4[rbp], 1 ;// assign [i]
+    mov  DWORD PTR -8[rbp], 0 ;// assign [a]
     mov  DWORD PTR -8[rbp], 10 ;// assign [a]
+    mov  DWORD PTR -12[rbp], 0 ;// assign [b]
     mov  DWORD PTR -12[rbp], 5 ;// assign [b]
+    mov  DWORD PTR -16[rbp], 0 ;// assign [c]
     mov  DWORD PTR -16[rbp], 6 ;// assign [c]
+    mov  DWORD PTR -20[rbp], 0 ;// assign [d]
     mov  DWORD PTR -20[rbp], 10 ;// assign [d]
     .while1:
     cmp  DWORD PTR -4[rbp], 10

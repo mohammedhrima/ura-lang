@@ -7,7 +7,9 @@ main:
     push rbp
     mov  rbp, rsp
     sub  rsp, 16
+    mov  DWORD PTR -4[rbp], 0 ;// assign [a]
     mov  DWORD PTR -4[rbp], 3 ;// assign [a]
+    mov  DWORD PTR -8[rbp], 0 ;// assign [b]
     mov  eax, DWORD PTR -4[rbp]
     add  eax, 2
     mov  DWORD PTR -8[rbp], eax ;// assign [b]

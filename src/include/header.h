@@ -244,6 +244,12 @@ Type getRetType(Node *node);
 bool optimize_ir();
 void config();
 
+#if DEBUG_INC_PTR
+void inc_ptr_(char *filename, int line, int size);
+#else
+void inc_ptr(int size);
+#endif
+
 // ----------------------------------------------------------------------------
 // Logs
 // ----------------------------------------------------------------------------
