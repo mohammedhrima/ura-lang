@@ -923,7 +923,7 @@ Token *op_ir(Node *node)
    case ASSIGN:
    {
       node->token->reg = left->reg;
-      if(!node->token->reg || !left->reg)
+      if (!node->token->reg || !left->reg)
       {
          pnode(node, NULL, 0);
          debug(">> %k\n", left);

@@ -534,7 +534,7 @@ Inst *new_inst(Token *token)
    {
    case CHARS:
    {
-      if (token->ptr && !token->reg)
+      if (token->ptr /*&& !token->reg*/) // TODO: this is the fix but remove it, it hardcoded
       {
          token->reg = ++reg;
          // todo(1, "found");
