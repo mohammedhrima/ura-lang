@@ -55,7 +55,7 @@ Token* new_token(char *input, int s, int e, Type type, int space)
 
       struct { char *name; Type type; } keywords[] = {{"if", IF}, {"elif", ELIF}, {"else", ELSE},
          {"while", WHILE}, {"func", FDEC}, {"return", RETURN}, {"break", BREAK}, {"continue", CONTINUE},
-         {"ref", REF}, {"and", AND}, {"or", OR}, {"struct", STRUCT_DEF}, {0, 0}
+         {"ref", REF}, {"and", AND}, {"or", OR}, {"struct", STRUCT_DEF}, {"is", EQUAL}, {0, 0}
       };
       for (i = 0; keywords[i].name; i++)
       {
@@ -534,20 +534,20 @@ Inst *new_inst(Token *token)
    {
    case CHARS:
    {
-      if (token->ptr /*&& !token->reg*/) // TODO: this is the fix but remove it, it hardcoded
-      {
-         token->reg = ++reg;
-         // todo(1, "found");
-      }
+      if (token->ptr || token->creg) token->reg = ++reg;
 
       if (token->Chars.value)
       {
          debug("%k\n", new->token);
-         todo(1, "found");
+         stop(1, "found");
       }
       break;
    }
-   case INT: if (token->ptr) token->reg = ++reg; break;
+   case INT:
+   {
+      if (token->ptr || token->creg) token->reg = ++reg;
+      break;
+   }
    case RETURN: token->reg = ++reg; break;
    case ASSIGN:
    {
@@ -556,7 +556,7 @@ Inst *new_inst(Token *token)
    default: break;
    }
 #if DEBUG
-   debug("inst: %k%c", new->token, token->type != STRUCT_CALL ? '\n' : '\0');
+   debug("new inst: %k%c", new->token, token->type != STRUCT_CALL ? '\n' : '\0');
 #endif
    add_inst(new);
    return new;
@@ -831,6 +831,17 @@ bool optimize_ir()
    }
    op++;
    return true;
+}
+
+void asm_space(int space)
+{
+   // if (did_pasm)
+   {
+      space = (space / TAB) * 4;
+      pasm("\n");
+      for (int i = 0; i < space; i++) pasm(" ");
+      did_pasm = false;
+   }
 }
 
 void pasm(char *fmt, ...)
@@ -1334,6 +1345,7 @@ int ptoken(Token *token)
    default: break;
    }
    if (token->ptr) res += debug("PTR [%d] ", token->ptr);
+   if (token->reg) res += debug("reg [%d] ", token->reg);
    if (token->is_ref) debug("ref ");
    if (token->has_ref) debug("has-ref ");
    if (token->remove) res += debug("[remove] ");
@@ -1424,8 +1436,11 @@ void print_ir()
       case INT: case BOOL: case CHARS: case CHAR:
       {
          debug("[%-6s] ", to_string(curr->type));
-         if (curr->is_data_type) debug("is_data_type [%s] PTR=[%d] ", curr->name, curr->ptr);
-         // else
+         if (curr->is_data_type)
+         {
+            stop(1, "I removed is_data_type in intialize variable, this coniditon should never be true");
+            // debug("is_data_type [%s] PTR=[%d] ", curr->name, curr->ptr);
+         }
          if (curr->name) debug("var %s PTR=[%d] ", curr->name, curr->ptr);
          if (curr->creg) debug("creg %s ", curr->creg);
          // else if(curr->type == FLOAT)
@@ -1433,11 +1448,8 @@ void print_ir()
          //     curr->index = ++float_index;
          //     debug("value %f ", curr->Float.value);
          // }
-         else if (curr->type == CHARS)
-         {
-            if (curr->index) debug("value %s in STR%d ", curr->Chars.value, curr->index);
-            else debug("in %s", curr->creg);
-         }
+         if (curr->type == CHARS && !curr->name)
+            debug("value %s in STR%d ", curr->Chars.value, curr->index);
          else if (!curr->name && !curr->creg)
          {
             debug("value: "); print_value(curr);

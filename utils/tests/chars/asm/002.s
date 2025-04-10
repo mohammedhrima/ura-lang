@@ -52,5 +52,6 @@ main:
 .STR6: .string "Jupiter"
 .STR7: .string "⚡ Danger! Extreme gas giant storms detected!\n"
 .STR8: .string "🚀 Unknown planet. Proceeding with caution...\n"
+.STR0: .string ""
 .section	.note.GNU-stack,"",@progbits
 

@@ -16,7 +16,6 @@ void generate_asm(char *name)
       Token *curr = insts[i]->token;
       Token *left = insts[i]->left;
       Token *right = insts[i]->right;
-      asm_space(curr->space);
       switch (curr->type)
       {
       case INT: case BOOL: case CHARS: case CHAR: case FLOAT: case LONG:
@@ -29,10 +28,11 @@ void generate_asm(char *name)
       }
       case ADD_ASSIGN:
       {
+         asm_space(curr->space);
          // TODO: check this
          char *inst = "add";
          pasm("%i%a, %v", inst, left, right);
-         if (left->name) {pasm(" ;// add_assign [%s]", left->name); asm_space(curr->space);}
+         if (left->name) {pasm(" ;// add_assign [%s]", left->name); }
          break;
       }
       case ASSIGN:
@@ -45,6 +45,7 @@ void generate_asm(char *name)
          //    pasm("%i%a, 0 ;// declare [%s]", "mov", curr, curr->name); asm_space(curr->space);
          //    break;
          // }
+         asm_space(curr->space);
          switch (curr->assign_type)
          {
          case ID_VAL:
@@ -54,12 +55,16 @@ void generate_asm(char *name)
             // right value, creg
             if (left->ptr)
             {
-               if (right->creg) pasm("%i%a, %r", "mov", left, right); // left ptr, right creg
+               if (right->creg)
+               {
+                  pasm("%i%a, %r", "mov", left, right); // left ptr, right creg
+               }
                else // left ptr, right value
                {
                   if (right->type == CHARS)
                   {
-                     pasm("%i%ra, .STR%d[rip]", "lea", left, right->index); asm_space(curr->space);
+                     pasm("%i%ra, .STR%d[rip]", "lea", left, right->index);
+                     asm_space(curr->space);
                      pasm("%i%a, %ra", "mov", left, right);
                   }
                   else
@@ -498,10 +503,12 @@ void generate_asm(char *name)
          case DIV: inst2 = left->type == FLOAT ? "divss " : "div "; break;
          default: break;
          }
+         asm_space(curr->space);
          pasm("%i%ra, ", inst, left);
          if (left->ptr) pasm("%a", left);
          else if (left->creg) pasm("%ra", left) ;
          else pasm("%v", left);
+
          asm_space(curr->space);
          pasm("%i%ra, ", inst2, right);
          if (right->ptr) pasm("%a", right);
@@ -525,16 +532,17 @@ void generate_asm(char *name)
             case MORE_EQUAL: inst = "jl"; break;
             default: check(1, "Unkown type [%s]\n", to_string(left->type)); break;
             }
-            asm_space(curr->space); pasm("%i", "cmp");
+            asm_space(curr->space);
+            pasm("%i", "cmp");
             if (left->ptr) pasm("%a", left);
             else if (left->creg) pasm("%ra", left);
             else if (!left->creg) pasm("%v", left);
 
-            // asm_space(curr->space);
             if (right->ptr) pasm(", %a", right);
             else if (right->creg) pasm(", %ra", right);
             else if (!right->creg) pasm(", %v", right);
-            asm_space(curr->space); pasm("%i .%s%d", inst, curr->name ? curr->name : "(null)", curr->index);
+            asm_space(curr->space);
+            pasm("%i .%s%d", inst, curr->name ? curr->name : "(null)", curr->index);
          }
          else
          {
@@ -572,13 +580,14 @@ void generate_asm(char *name)
             }
             curr->retType = BOOL;
             setReg(curr, "al");
-            asm_space(curr->space); pasm("%i%ra", inst, curr);
+            asm_space(curr->space);
+            pasm("%i%ra", inst, curr);
          }
          break;
       }
       case FDEC:
       {
-         pasm("%s:", curr->name);
+         asm_space(curr->space); pasm("%s:", curr->name);
          asm_space(curr->space + TAB); pasm("%irbp", "push");
          asm_space(curr->space + TAB); pasm("%irbp, rsp", "mov");
          asm_space(curr->space + TAB); pasm("%irsp, %d", "sub", (((curr->ptr) + 15) / 16) * 16);
@@ -592,6 +601,7 @@ void generate_asm(char *name)
             a = 1
             return a
          */
+         asm_space(curr->space);
          if (left->ptr) pasm("%i%ra, %a", "mov", left, left);
          else if (left->creg)
          {
@@ -611,12 +621,47 @@ void generate_asm(char *name)
          asm_space(curr->space); pasm("%i", "ret");
          break;
       }
-      case JE: pasm("%ial, 1", "cmp"); asm_space(curr->space); pasm("%i.%s%d", "je", curr->name, curr->index); break;
-      case JNE: pasm("%ial, 1", "cmp"); asm_space(curr->space); pasm("%i.%s%d", "jne", curr->name, curr->index); break;
-      case JMP: pasm("%i.%s%d", "jmp", curr->name, curr->index); break;
-      case FCALL: pasm("%i%s", "call", curr->name); break;
-      case BLOC: pasm(".%s%d:", (curr->name ? curr->name : "(null)"), curr->index); break;
-      case END_BLOC: pasm(".end%s:", curr->name); asm_space(curr->space); break;
+      case JE:
+      {
+         asm_space(curr->space);
+         pasm("%ial, 1", "cmp");
+         asm_space(curr->space);
+         pasm("%i.%s%d", "je", curr->name, curr->index);
+         break;
+      }
+      case JNE:
+      {
+         asm_space(curr->space);
+         pasm("%ial, 1", "cmp");
+         asm_space(curr->space);
+         pasm("%i.%s%d", "jne", curr->name, curr->index);
+         break;
+      }
+      case JMP:
+      {
+         asm_space(curr->space);
+         pasm("%i.%s%d", "jmp", curr->name, curr->index);
+         break;
+      }
+      case FCALL:
+      {
+         asm_space(curr->space);
+         pasm("%i%s", "call", curr->name);
+         break;
+      }
+      case BLOC:
+      {
+         asm_space(curr->space);
+         pasm(".%s%d:", (curr->name ? curr->name : "(null)"), curr->index);
+         break;
+      }
+      case END_BLOC:
+      {
+         asm_space(curr->space);
+         pasm(".end%s:", curr->name);
+         asm_space(curr->space);
+         break;
+      }
       case STRUCT_CALL: break;
       default: check(1, "handle this case (%s)\n", to_string(curr->type)); break;
       }

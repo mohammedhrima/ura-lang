@@ -165,7 +165,6 @@ extern char *rregs[];
 // ----------------------------------------------------------------------------
 // Parsing
 // ----------------------------------------------------------------------------
-
 #if DEBUG_NEW_TOKEN
 Token* new_token_(char *filename, int line, char *input, int s, int e, Type type, int space);
 #else
@@ -207,7 +206,6 @@ void set_struct_size(Token *token);
 // ----------------------------------------------------------------------------
 // Code Generation
 // ----------------------------------------------------------------------------
-
 void generate(char *name);
 Inst *new_inst(Token *token);
 void enter_scoop(Node *node);
@@ -226,7 +224,6 @@ void to_default(Token *token, Type type);
 // ----------------------------------------------------------------------------
 // Utilities
 // ----------------------------------------------------------------------------
-
 void open_file(char *filename);
 const char *to_string_(const char *filename, const int line, Type type);
 void setName(Token *token, char *name);
@@ -253,7 +250,6 @@ void inc_ptr(int size);
 // ----------------------------------------------------------------------------
 // Logs
 // ----------------------------------------------------------------------------
-
 int debug(char *conv, ...);
 int pnode(Node *node, char *side, int space);
 int ptoken(Token *token);

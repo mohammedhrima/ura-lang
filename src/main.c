@@ -40,7 +40,7 @@ void tokenize()
    struct { char *value; Type type; } specials[] = {
       {".", DOT}, {":", DOTS}, {"+=", ADD_ASSIGN}, {"-=", SUB_ASSIGN},
       {"*=", MUL_ASSIGN}, {"/=", DIV_ASSIGN}, {"!=", NOT_EQUAL},
-      {"==", EQUAL}, {"is", EQUAL}, {"<=", LESS_EQUAL}, {">=", MORE_EQUAL},
+      {"==", EQUAL}, {"<=", LESS_EQUAL}, {">=", MORE_EQUAL},
       {"<", LESS}, {">", MORE}, {"=", ASSIGN}, {"+", ADD}, {"-", SUB},
       {"*", MUL}, {"/", DIV}, {"%", MOD}, {"(", LPAR}, {")", RPAR}, {"[", LBRA}, {"]", RBRA},
       {",", COMA}, {"&&", AND}, {"||", OR}, {0, (Type)0}
@@ -616,6 +616,7 @@ Token *while_ir(Node *node)
    Token *lastInst = copy_token(node->token);
    lastInst->type = JMP;
    setName(lastInst, "while");
+   lastInst->space += TAB;
    new_inst(lastInst); // jmp back to while loop
 
    lastInst = copy_token(node->token);
@@ -626,15 +627,13 @@ Token *while_ir(Node *node)
    return inst->token;
 }
 
-
-
 Token* inialize_variable(Node *node, Token *src)
 {
    node->token->is_data_type = false;
    if (node->token->type == STRUCT_CALL)
    {
-      pnode(node, NULL, 0);
-      new_variable(node->token);
+      // pnode(node, NULL, 0);
+      if (!node->token->isattr) new_variable(node->token);
       for (int i = 0; i < node->token->Struct.pos; i++)
       {
          Token *attr = node->token->Struct.attrs[i];
@@ -650,11 +649,12 @@ Token* inialize_variable(Node *node, Token *src)
             attr->space = space;
             setName(attr, name);
 
+            Node *tmp = new_node(attr);
+
             name = strjoin(node->token->name, ".", attr->name);
             setName(attr, name);
             free(name);
 
-            Node *tmp = new_node(attr);
             inialize_variable(tmp, NULL);
             free_node(tmp);
          }
@@ -675,27 +675,19 @@ Token* inialize_variable(Node *node, Token *src)
          }
       }
       if (!node->token->isattr) inc_ptr(node->token->offset);
-
    }
    else
    {
       new_variable(node->token);
-
       Node *tmp = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space));
       tmp->token->reg = node->token->reg;
       tmp->left = copy_node(node);
       tmp->right = new_node(src);
       to_default(src, tmp->left->token->type);
-
-      debug(RED);
-      pnode(tmp, NULL, 0);
-      debug(RESET);
-
       generate_ir(tmp);
       free_node(tmp);
    }
-   Inst *inst = new_inst(node->token);
-   return inst->token;
+   return node->token;
 }
 
 Token *func_dec_ir(Node *node)
@@ -779,12 +771,15 @@ Token *func_call_ir(Node *node)
       Node *fcall = node;
 
       Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space));
-      Token *reg = new_token(0, 0, 0, CHARS, fcall->token->space + TAB);
-      reg->creg = strdup("rdi");
+      Token *_register = new_token(0, 0, 0, CHARS, fcall->token->space + TAB);
+      _register->creg = strdup("rdi");
       Token *varg = new_token("\"", 0, 1, CHARS, fcall->token->space + TAB);
 
-      assign->left = new_node(reg);
+      new_inst(_register);
+      assign->left = new_node(_register);
       assign->right = new_node(varg);
+      assign->token->reg = _register->reg;
+
       generate_ir(assign);
       free_node(assign);
 
@@ -829,10 +824,16 @@ Token *func_call_ir(Node *node)
          {
             todo(1, "implement assigning function argument using PTR");
          }
+         new_inst(src);
          assign = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space));
-         assign->token->reg = assign->left->token->reg;
          assign->left = new_node(src);
          assign->right = new_node(var);
+         assign->token->reg = src->reg;
+
+         debug(RED);
+         pnode(assign, NULL, 0);
+         debug(RESET);
+
          generate_ir(assign);
          free_node(assign);
       }
@@ -895,11 +896,18 @@ Token *func_call_ir(Node *node)
             src->is_ref = true;
             src->has_ref = false;
          }
-         Node *tmp = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space));
-         tmp->left = new_node(src);
-         tmp->right = new_node(var);
-         generate_ir(tmp);
-         free_node(tmp);
+         new_inst(src);
+         Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space));
+         assign->left = new_node(src);
+         assign->right = new_node(var);
+         assign->token->reg = src->reg;
+
+         debug(RED);
+         pnode(assign, NULL, 0);
+         debug(RESET);
+
+         generate_ir(assign);
+         free_node(assign);
       }
       free_node(func);
    }
@@ -928,7 +936,7 @@ Token *op_ir(Node *node)
          pnode(node, NULL, 0);
          debug(">> %k\n", left);
          debug(">> %d\n", left->reg);
-         todo(1, "tmp condition");
+         // todo(1, "tmp condition");
       }
       node->token->retType = getRetType(node);
       if (left->is_ref) // reg, ptr
@@ -1009,8 +1017,7 @@ Token *generate_ir(Node *node)
    {
       if (node->token->is_data_type)
       {
-         if (node->token->type == STRUCT_CALL)
-            return inialize_variable(node, NULL);
+         if (node->token->type == STRUCT_CALL) return inialize_variable(node, NULL);
          return inialize_variable(node, new_token(NULL, 0, 0, DEFAULT, node->token->space));
       }
       return node->token;
@@ -1080,7 +1087,7 @@ Token *generate_ir(Node *node)
       // debug(RED SPLIT RESET);
       // pnode(node, 0, 0);
       debug(RED SPLIT RESET);
-      ptoken(left);
+      // ptoken(left);
       for (int i = 0; i < left->Struct.pos; i++)
       {
          Token *attr = left->Struct.attrs[i];
@@ -1094,8 +1101,7 @@ Token *generate_ir(Node *node)
          free(to_find);
       }
 
-      check(1, "%s has no attribute %s", left->name, right->name);
-      exit(1);
+      todo(1, "%s has no attribute %s", left->name, right->name);
       return right;
       break;
    }
@@ -1118,18 +1124,6 @@ Token *generate_ir(Node *node)
 }
 
 // Assembly - Generate machine code
-bool did_pasm;
-void asm_space(int space)
-{
-   if (did_pasm)
-   {
-      space = (space / TAB) * 4;
-      pasm("\n");
-      for (int i = 0; i < space; i++) pasm(" ");
-      did_pasm = false;
-   }
-}
-
 void generate(char *name)
 {
    if (found_error) return;
@@ -1138,7 +1132,7 @@ void generate(char *name)
    debug(GREEN BOLD"GENERATE INTERMEDIATE REPRESENTATIONS:\n" RESET);
    for (int i = 0; !found_error && i < head->cpos; i++) generate_ir(head->children[i]);
    if (found_error) return;
-   // print_ir();
+   print_ir();
 #endif
 #if OPTIMIZE
    debug(GREEN BOLD"OPTIMIZE INTERMEDIATE REPRESENTATIONS:\n" RESET);

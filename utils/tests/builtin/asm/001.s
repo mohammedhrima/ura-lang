@@ -19,5 +19,6 @@ main:
     ret  
 .endmain:
 .STR1: .string "fffff"
+.STR0: .string ""
 .section	.note.GNU-stack,"",@progbits
 
