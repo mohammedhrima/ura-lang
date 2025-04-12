@@ -44,7 +44,7 @@ typedef struct Token
    // bool declare; // is variable declaration
    int space; // indentation
    bool remove;
-   int reg;
+   int ir_reg;
    char *creg;
    int index;
    bool is_cond;
@@ -240,7 +240,7 @@ void add_builtins();
 Type getRetType(Node *node);
 bool optimize_ir();
 void config();
-
+void setAttrName(Token *parent, Token *child);
 #if DEBUG_INC_PTR
 void inc_ptr_(char *filename, int line, int size);
 #else

@@ -192,7 +192,7 @@ Node *func_dec(Node *node)
    if (typeName->type == ID)
    {
       typeName = get_struct(typeName->name);
-      todo(1, "handle strutc properly");
+      todo(1, "handle function return struct properly");
    }
    Token *fname = find(ID, 0);
    if (check(!typeName || !fname, "expected data type and identifier after func declaration"))
@@ -212,13 +212,24 @@ Node *func_dec(Node *node)
       {
          data_type = get_struct(data_type->name);
          if (data_type) data_type->type = STRUCT_CALL;
+         debug(RED"found struct %k\n"RESET, data_type);
       }
       if (check(!data_type, "expected data type in function argument")) break;
       Token *name = find(ID, 0);
       if (check(!name, "expected identifier in function argument")) break;
-      name->is_ref = is_ref;
-      name->type = data_type->type;
-      Node *curr = new_node(name);
+      Node *curr;
+      if(data_type->type == STRUCT_CALL)
+      {
+         curr = new_node(data_type);
+         data_type->is_ref = is_ref;
+         setName(data_type, name->name);
+      }
+      else
+      {
+         curr = new_node(name);
+         name->is_ref = is_ref;
+         name->type = data_type->type;
+      }
       add_child(node->left, curr);
       find(COMA, 0); // TODO: check this later
    }
@@ -343,8 +354,9 @@ Node *symbol(Token *token)
    {
       node = new_node(struct_token);
       token = find(ID, 0);
-      check(!token, "Expected variable name after struct declaration\n");
-      debug("found instead %k\n", tokens[exe_pos]);
+      if(check(!token, "Expected variable name after struct declaration\n"))
+         debug(RED"found instead %k\n"RESET, tokens[exe_pos]);
+
       setName(node->token, token->name);
       node->token->type = STRUCT_CALL;
       node->token->is_data_type = true;
@@ -632,6 +644,7 @@ Token* inialize_variable(Node *node, Token *src)
    node->token->is_data_type = false;
    if (node->token->type == STRUCT_CALL)
    {
+      // debug(RED "initialize : offset[%d] %k\n"RESET, node->token->offset,  node->token);
       // pnode(node, NULL, 0);
       if (!node->token->isattr) new_variable(node->token);
       for (int i = 0; i < node->token->Struct.pos; i++)
@@ -639,29 +652,18 @@ Token* inialize_variable(Node *node, Token *src)
          Token *attr = node->token->Struct.attrs[i];
          if (attr->type == STRUCT_CALL)
          {
-            char *name = attr->name;
-            int space = attr->space;
-            attr = get_struct_by_id(attr->Struct.id);
-            attr->isattr = true;
-
-            attr->type = STRUCT_CALL;
-            attr->space = space;
-            setName(attr, name);
-
             Node *tmp = new_node(attr);
-
+            attr->offset += node->token->offset;
             inialize_variable(tmp, NULL);
             free_node(tmp);
-            debug(RED SPLIT RESET);
-            ptoken(attr);
-            debug(RED SPLIT RESET);
          }
          else
          {
             attr->ptr = ptr + node->token->offset - attr->offset;
+            debug(CYAN"%k\n"RESET, attr);
 
             Node *tmp = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space));
-            tmp->token->reg = attr->reg;
+            tmp->token->ir_reg = attr->ir_reg;
             tmp->left = new_node(attr);
             tmp->right = new_node(new_token(NULL, 0, 0, DEFAULT, attr->space));
             to_default(tmp->right->token, tmp->left->token->type);
@@ -675,7 +677,7 @@ Token* inialize_variable(Node *node, Token *src)
    {
       new_variable(node->token);
       Node *tmp = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space));
-      tmp->token->reg = node->token->reg;
+      tmp->token->ir_reg = node->token->ir_reg;
       tmp->left = copy_node(node);
       tmp->right = new_node(src);
       to_default(src, tmp->left->token->type);
@@ -683,6 +685,65 @@ Token* inialize_variable(Node *node, Token *src)
       free_node(tmp);
    }
    return node->token;
+}
+
+void set_func_dec_regs(Token *child, int *ptr)
+{
+   Token *src = new_token(NULL, 0, 0, DEFAULT, child->space);
+   int i = *ptr;
+   if (i < (int)(sizeof(eregs) / sizeof(eregs[0])))
+   {
+      if (child->is_ref)
+      {
+         if (child->type == STRUCT_DEF)
+         {
+            ptoken(child);
+            //Token *tmp = get_struct_by_id()
+            todo(1, "found");
+         }
+         setReg(src, rregs[i]);
+      }
+      else
+      {
+         // TODO: add other data type and math operations
+         switch (child->type)
+         {
+         case CHARS: setReg(src, rregs[i]); break;
+         case INT:   setReg(src, eregs[i]); break;
+         case CHAR:  setReg(src, eregs[i]); break;
+         case FLOAT: setReg(src, rregs[i]); break; // TODO: to be checked
+         case BOOL:  setReg(src, eregs[i]); break;
+         case STRUCT_CALL:
+         {
+            for(int j = 0; j < child->Struct.pos; j++)
+            {
+               i += j;
+               set_func_dec_regs(child->Struct.attrs[j],  &i);
+            }
+            break;
+         }
+         default: todo(1, "set ir_reg for %s", to_string(child->type));
+         };
+      }
+   }
+   else
+   {
+      // TODO:
+      todo(1, "implement assigning function argument using PTR");
+   }
+   // if(!child->isattr)
+   {
+      if (child->is_ref /*&& !child->token->has_ref*/)
+      {
+         src->is_ref = true;
+         src->has_ref = true;
+      }
+      child->has_ref = true;
+      Node *child_node = new_node(child);
+      inialize_variable(child_node, src);
+      free_node(child_node);
+   }
+   *ptr = i;
 }
 
 Token *func_dec_ir(Node *node)
@@ -698,46 +759,7 @@ Token *func_dec_ir(Node *node)
    for (int i = 0; curr && i < curr->cpos && !found_error; i++)
    {
       Node *child = curr->children[i];
-      Token *src = new_token(NULL, 0, 0, DEFAULT, node->token->space);
-      if (i < (int)(sizeof(eregs) / sizeof(eregs[0])))
-      {
-         if (child->token->is_ref)
-         {
-            if (child->token->type == STRUCT_DEF)
-            {
-               ptoken(child->token);
-               //Token *tmp = get_struct_by_id()
-               todo(1, "found");
-            }
-            setReg(src, rregs[i]);
-         }
-         else
-         {
-            // TODO: add other data type and math operations
-            switch (child->token->type)
-            {
-            case CHARS: setReg(src, rregs[i]); break;
-            case INT:   setReg(src, eregs[i]); break;
-            case CHAR:  setReg(src, eregs[i]); break;
-            case FLOAT: setReg(src, rregs[i]); break; // TODO: to be checked
-            case BOOL:  setReg(src, eregs[i]); break;
-            default: todo(1, "set reg for %s", to_string(child->token->type));
-            };
-         }
-      }
-      else
-      {
-         // TODO:
-         todo(1, "implement assigning function argument using PTR");
-      }
-      if (child->token->is_ref /*&& !child->token->has_ref*/)
-      {
-         src->is_ref = true;
-         src->has_ref = true;
-      }
-      child->token->has_ref = true;
-      inialize_variable(child, src);
-      // generate_ir(child);
+      set_func_dec_regs(child->token, &i);
    }
 
    // code bloc
@@ -773,7 +795,7 @@ Token *func_call_ir(Node *node)
       new_inst(_register);
       assign->left = new_node(_register);
       assign->right = new_node(varg);
-      assign->token->reg = _register->reg;
+      assign->token->ir_reg = _register->ir_reg;
 
       generate_ir(assign);
       free_node(assign);
@@ -812,7 +834,7 @@ Token *func_call_ir(Node *node)
             // case CHAR:  setReg(src, eregs[j]); break;
             // case FLOAT: setReg(src, rregs[j]); break; // TODO: to be checked
             // case BOOL:  setReg(src, eregs[j]); break;
-            default: todo(1, "set reg for %s", to_string(src->type));
+            default: todo(1, "set ir_reg for %s", to_string(src->type));
             };
          }
          else
@@ -823,7 +845,7 @@ Token *func_call_ir(Node *node)
          assign = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space));
          assign->left = new_node(src);
          assign->right = new_node(var);
-         assign->token->reg = src->reg;
+         assign->token->ir_reg = src->ir_reg;
 
          debug(RED);
          pnode(assign, NULL, 0);
@@ -851,11 +873,11 @@ Token *func_call_ir(Node *node)
          Node *darg = fdec->children[i];
          Node *carg = fcall->children[i]; // will always be ID
 #if DEBUG
-         debug(RED SPLIT);
-         debug("dec : %n", darg);
-         debug("call: %n", carg);
-         // pnode(scoop, "scoop", 0);
-         debug(SPLIT RESET);
+         // debug(RED SPLIT);
+         // debug("dec : %n", darg);
+         // debug("call: %n", carg);
+         // // pnode(scoop, "scoop", 0);
+         // debug(SPLIT RESET);
 #endif
          Token *var = generate_ir(carg);
 
@@ -877,7 +899,7 @@ Token *func_call_ir(Node *node)
                case CHAR:  setReg(src, eregs[i]); break;
                case FLOAT: setReg(src, rregs[i]); break; // TODO: to be checked
                case BOOL:  setReg(src, eregs[i]); break;
-               default: todo(1, "set reg for %s", to_string(src->type));
+               default: todo(1, "set ir_reg for %s", to_string(src->type));
                };
             }
          }
@@ -895,7 +917,7 @@ Token *func_call_ir(Node *node)
          Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space));
          assign->left = new_node(src);
          assign->right = new_node(var);
-         assign->token->reg = src->reg;
+         assign->token->ir_reg = src->ir_reg;
 
          debug(RED);
          pnode(assign, NULL, 0);
@@ -914,6 +936,8 @@ Token *op_ir(Node *node)
 {
    Token *left = generate_ir(node->left);
    Token *right = generate_ir(node->right);
+   if (!right || !right) return NULL;
+
    check(!compatible(left, right), "invalid [%s] op between %s and %s\n",
          to_string(node->token->type), to_string(left->type), to_string(right->type));
 
@@ -925,18 +949,18 @@ Token *op_ir(Node *node)
    {
    case ASSIGN:
    {
-      node->token->reg = left->reg;
-      if (!node->token->reg || !left->reg)
+      node->token->ir_reg = left->ir_reg;
+      if (!node->token->ir_reg || !left->ir_reg)
       {
          pnode(node, NULL, 0);
          debug(">> %k\n", left);
-         debug(">> %d\n", left->reg);
+         debug(">> %d\n", left->ir_reg);
          // todo(1, "tmp condition");
       }
       node->token->retType = getRetType(node);
-      if (left->is_ref) // reg, ptr
+      if (left->is_ref) // ir_reg, ptr
       {
-         if (right->is_ref) // reg, ptr
+         if (right->is_ref) // ir_reg, ptr
          {
             if (check(!right->has_ref, "can not assign from reference that point to nothing")) break;
             if (left->has_ref) node->token->assign_type = REF_REF;
@@ -947,23 +971,23 @@ Token *op_ir(Node *node)
             if (left->has_ref) node->token->assign_type = REF_ID;
             else node->token->assign_type = REF_HOLD_ID;
          }
-         else // reg, value
+         else // ir_reg, value
          {
             if (check(!left->has_ref, "can not assign to reference that point to nothing")) break;
             node->token->assign_type = REF_VAL;
          }
          left->has_ref = true;
       }
-      else if (left->ptr || left->creg) // reg, ptr
+      else if (left->ptr || left->creg) // ir_reg, ptr
       {
-         if (right->is_ref) // reg, ptr
+         if (right->is_ref) // ir_reg, ptr
          {
             if (check(!right->has_ref, "can not assign from reference that point to nothing")) break;
             node->token->assign_type = ID_REF;
          }
          else if (right->ptr) // ptr
             node->token->assign_type = ID_ID;
-         else // reg, value
+         else // ir_reg, value
             node->token->assign_type = ID_VAL;
       }
       else

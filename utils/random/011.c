@@ -19,35 +19,31 @@ void func(User p)
     };
 }
 #else
-void func(User *p)
+void func(User p)
 {
-    *p = (User){
+    p = (User){
         .a = 1,
         .b = 2,
         .c = 3,
-        .d = 4,
-        .e = 5,
-        .f = 7,
-        .g = 8,
-        .h = 9
+        // .d = 4,
+        // .e = 5,
+        // .f = 7,
+        // .g = 8,
+        // .h = 9
     };
 }
 
-void func2(int *a, int *b)
-{
-    *a = 3;
-}
 #endif
 int main() {
     User user = (User){
         .a = 1,
         .b = 2,
         .c = 3,
-        .d = 4,
-        .e = 5,
-        .f = 6,
-        .g = 7,
-        .h = 8,
+        //.d = 4,
+        //.e = 5,
+        //.f = 6,
+        //.g = 7,
+        //.h = 8,
     };
-    func(&user);
+    func(user);
 }
