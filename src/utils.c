@@ -247,7 +247,8 @@ Token *get_struct_by_id(int id)
       for (int i = 0; i < node->spos; i++)
       {
          // debug(GREEN"struct has [%d]\n"RESET, node->structs[i]->Struct.id);
-         if (node->structs[i]->Struct.id == id) return copy_token(node->structs[i]);
+         if (node->structs[i]->Struct.id == id) 
+            return copy_token(node->structs[i]);
       }
    }
    // check(1, "%s not found\n", name);
@@ -263,8 +264,12 @@ Token *get_struct(char *name)
    for (int j = scoopPos; j >= 0; j--)
    {
       Node *node = Gscoop[j];
+#if DEBUG
+      debug("[%d] scoop [%s] has %d structs\n", j, scoop->token->name, node->spos);
+#endif
       for (int i = 0; i < node->spos; i++)
-         if (strcmp(node->structs[i]->name, name) == 0) return copy_token(node->structs[i]);
+         if (strcmp(node->structs[i]->name, name) == 0) 
+            return copy_token(node->structs[i]);
    }
    // check(1, "%s not found\n", name);
    return NULL;
@@ -371,14 +376,35 @@ void add_variable(Node *bloc, Token *token)
 
 void setAttrName(Token *parent, Token *child)
 {
-   if(parent)
+   if (parent)
    {
-      char *name = strjoin(parent->name, "." ,child->name);
+      child->isattr = true;
+      char *name = strjoin(parent->name, ".", child->name);
       setName(child, name);
       free(name);
    }
-   for(int i = 0; i < child->Struct.pos; i++)
-      setAttrName(child, child->Struct.attrs[i]);
+   for (int i = 0; i < child->Struct.pos; i++)
+   {
+      Token *attr = child->Struct.attrs[i];
+      if (attr->type == STRUCT_CALL)
+      {
+         char *name = attr->name;
+         int space = attr->space;
+         int offset = attr->offset;
+
+         attr = get_struct_by_id(attr->Struct.id);
+         setName(attr, name);
+         attr->offset = offset;
+         attr->space = space;
+         attr->type = STRUCT_CALL;
+         setAttrName(child, attr);
+         child->Struct.attrs[i] = attr;
+      }
+      else
+      {
+         setAttrName(child, attr);
+      }
+   }
 }
 
 Token *new_variable(Token *token)
@@ -394,9 +420,6 @@ Token *new_variable(Token *token)
    if (token->type == STRUCT_CALL)
    {
       setAttrName(NULL, token);
-      debug(CYAN SPLIT);
-      ptoken(token);
-      debug(CYAN SPLIT RESET);
    }
    else
    {
@@ -524,24 +547,24 @@ void add_inst(Inst *inst)
 
 Inst *new_inst(Token *token)
 {
-   static int reg;
+   static int ir_reg;
 
    Inst *new = allocate(1, sizeof(Inst));
    new->token = token;
 
    if (token->type == STRUCT_CALL)
    {
-      debug("handle [%k], offset [%d]\n", token, token->offset);
+      // debug("handle [%k], offset [%d]\n", token, token->offset);
       for (int i = 0; i < token->Struct.pos; i++) {
          Token *attr = token->Struct.attrs[i];
          // todo(1, "hello");
          if (attr->type == STRUCT_CALL) // struct ptr should be ptr for the first element
          {
-            attr->reg = ++reg;
+            attr->ir_reg = ++ir_reg;
          }
          else
          {
-            attr->reg = ++reg;
+            attr->ir_reg = ++ir_reg;
          }
       }
    }
@@ -549,7 +572,7 @@ Inst *new_inst(Token *token)
    {
    case CHARS:
    {
-      if (token->ptr || token->creg) token->reg = ++reg;
+      if (token->ptr || token->creg) token->ir_reg = ++ir_reg;
 
       if (token->Chars.value)
       {
@@ -560,10 +583,10 @@ Inst *new_inst(Token *token)
    }
    case INT:
    {
-      if (token->ptr || token->creg) token->reg = ++reg;
+      if (token->ptr || token->creg) token->ir_reg = ++ir_reg;
       break;
    }
-   case RETURN: token->reg = ++reg; break;
+   case RETURN: token->ir_reg = ++ir_reg; break;
    case ASSIGN:
    {
       break;
@@ -648,7 +671,7 @@ bool optimize_ir()
             insts[i]->right = NULL;
             left->remove = true;
             right->remove = true;
-            token->reg = 0;
+            token->ir_reg = 0;
             setReg(token, NULL);
 #if DEBUG
             debug(RED"%d: remove %k\n", LINE, insts[i]->token);
@@ -713,9 +736,9 @@ bool optimize_ir()
          // {
          //    for (int j = i + 1; insts[j] && insts[j]->token->space == token->space; j++)
          //    {
-         //       if (insts[j]->token->type == ASSIGN && insts[j]->left->reg == token->reg )
+         //       if (insts[j]->token->type == ASSIGN && insts[j]->left->ir_reg == token->ir_reg )
          //       {
-         //          // debug(RED"1. remove r%d %k\n"RESET, token->reg, token);
+         //          // debug(RED"1. remove r%d %k\n"RESET, token->ir_reg, token);
          //          token->declare = false;
          //          token->remove = true;
          //          did_optimize = true;
@@ -723,8 +746,8 @@ bool optimize_ir()
          //          insts[j]->left->is_ref = token->is_ref;
          //          break;
          //       }
-         //       else if ((insts[j]->left && insts[j]->left->reg == token->reg) ||
-         //                (insts[j]->right && insts[j]->right->reg == token->reg)) {
+         //       else if ((insts[j]->left && insts[j]->left->ir_reg == token->ir_reg) ||
+         //                (insts[j]->right && insts[j]->right->ir_reg == token->ir_reg)) {
          //          break;
          //       }
          //    }
@@ -734,12 +757,12 @@ bool optimize_ir()
          {
             for (int j = i + 1; insts[j] && insts[j]->token->space == token->space; j++)
             {
-               if (!insts[j]->left || !insts[j]->right || !token->reg) continue;
+               if (!insts[j]->left || !insts[j]->right || !token->ir_reg) continue;
                // TODO: to be checked
-               // I replaced insts[j]->left == insts[i]->left with insts[j]->left->reg == insts[i]->left->reg
-               if (insts[j]->token->type == ASSIGN && insts[j]->left->reg == token->reg)
+               // I replaced insts[j]->left == insts[i]->left with insts[j]->left->ir_reg == insts[i]->left->ir_reg
+               if (insts[j]->token->type == ASSIGN && insts[j]->left->ir_reg == token->ir_reg)
                {
-                  // debug(RED"2. remove r%d %k\n"RESET, token->reg, token);
+                  // debug(RED"2. remove r%d %k\n"RESET, token->ir_reg, token);
                   token->remove = true;
 #if DEBUG
                   debug(RED"%d: remove %k\n", LINE, insts[i]->token);
@@ -748,7 +771,7 @@ bool optimize_ir()
                   did_something = true;
                   break;
                }
-               else if (insts[j]->left->reg == token->reg || insts[j]->right->reg == token->reg)
+               else if (insts[j]->left->ir_reg == token->ir_reg || insts[j]->right->ir_reg == token->ir_reg)
                   break;
             }
          }
@@ -776,12 +799,12 @@ bool optimize_ir()
    }
    case 4:
    {
-      // TODO: be carefull this one remove anything that don't have reg
+      // TODO: be carefull this one remove anything that don't have ir_reg
       debug(CYAN "OP[%d] remove unused instructions\n"RESET, op);
       for (int i = 0; insts[i]; i++)
       {
          Token *curr = insts[i]->token;
-         if (!curr->ptr && !curr->reg && !curr->creg && includes(curr->type, INT, CHARS, CHAR, FLOAT, BOOL, 0))
+         if (!curr->ptr && !curr->ir_reg && !curr->creg && includes(curr->type, INT, CHARS, CHAR, FLOAT, BOOL, 0))
          {
             curr->remove = true;
             did_something = true;
@@ -1360,7 +1383,7 @@ int ptoken(Token *token)
    default: break;
    }
    if (token->ptr) res += debug("PTR [%d] ", token->ptr);
-   if (token->reg) res += debug("reg [%d] ", token->reg);
+   if (token->ir_reg) res += debug("ir_reg [%d] ", token->ir_reg);
    if (token->is_ref) debug("ref ");
    if (token->has_ref) debug("has-ref ");
    if (token->remove) res += debug("[remove] ");
@@ -1416,7 +1439,7 @@ void print_ir()
       Token *curr = insts[i]->token;
       Token *left = insts[i]->left;
       Token *right = insts[i]->right;
-      curr->reg ? debug("r%.2d:", curr->reg) : debug("rxx:");
+      curr->ir_reg ? debug("r%.2d:", curr->ir_reg) : debug("rxx:");
       int k = 0;
       while (!TESTING && k < curr->space) k += debug(" ");
       switch (curr->type)
@@ -1425,10 +1448,10 @@ void print_ir()
       case ASSIGN:
       {
          debug("[%-6s] [%s] ", to_string(curr->type), (curr->assign_type ? to_string(curr->assign_type) : ""));
-         if (left->creg) debug("r%.2d (%s) = ", left->reg, left->creg);
-         else debug("r%.2d (%s) = ", left->reg, left->name);
+         if (left->creg) debug("r%.2d (%s) = ", left->ir_reg, left->creg);
+         else debug("r%.2d (%s) = ", left->ir_reg, left->name);
 
-         if (right->reg) debug("r%.2d (%s) ", right->reg, right->name ? right->name : "");
+         if (right->ir_reg) debug("r%.2d (%s) ", right->ir_reg, right->name ? right->name : "");
          else if (right->creg) debug("[%s] ", right->creg);
          else print_value(right);
          break;
@@ -1437,13 +1460,13 @@ void print_ir()
       case EQUAL: case NOT_EQUAL: case LESS: case MORE: case LESS_EQUAL: case MORE_EQUAL:
       {
          debug("[%-6s] ", to_string(curr->type));
-         if (left->reg) debug("r%.2d", left->reg);
+         if (left->ir_reg) debug("r%.2d", left->ir_reg);
          else if (left->creg) debug("creg %s ", left->creg);
          else print_value(left);
          if (left->name) debug("(%s)", left->name);
 
          debug(" to ");
-         if (right->reg) debug("r%.2d", right->reg);
+         if (right->ir_reg) debug("r%.2d", right->ir_reg);
          else print_value(right);
          if (right->name) debug("(%s)", right->name);
          break;

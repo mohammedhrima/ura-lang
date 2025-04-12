@@ -1,13 +1,9 @@
-struct Data:
-   chars name
-   int a
-
 struct User:
-   Data data
-   char e
+   int a
    int b
-   char c
+
+func void m(User user):
+   user.a = 123
 
 main():
    User user1
-   user1.b = 10
