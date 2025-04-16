@@ -247,7 +247,7 @@ Token *get_struct_by_id(int id)
       for (int i = 0; i < node->spos; i++)
       {
          // debug(GREEN"struct has [%d]\n"RESET, node->structs[i]->Struct.id);
-         if (node->structs[i]->Struct.id == id) 
+         if (node->structs[i]->Struct.id == id)
             return copy_token(node->structs[i]);
       }
    }
@@ -268,7 +268,7 @@ Token *get_struct(char *name)
       debug("[%d] scoop [%s] has %d structs\n", j, scoop->token->name, node->spos);
 #endif
       for (int i = 0; i < node->spos; i++)
-         if (strcmp(node->structs[i]->name, name) == 0) 
+         if (strcmp(node->structs[i]->name, name) == 0)
             return copy_token(node->structs[i]);
    }
    // check(1, "%s not found\n", name);
