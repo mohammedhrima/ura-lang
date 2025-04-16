@@ -218,7 +218,7 @@ Node *func_dec(Node *node)
       Token *name = find(ID, 0);
       if (check(!name, "expected identifier in function argument")) break;
       Node *curr;
-      if(data_type->type == STRUCT_CALL)
+      if (data_type->type == STRUCT_CALL)
       {
          curr = new_node(data_type);
          data_type->is_ref = is_ref;
@@ -354,7 +354,7 @@ Node *symbol(Token *token)
    {
       node = new_node(struct_token);
       token = find(ID, 0);
-      if(check(!token, "Expected variable name after struct declaration\n"))
+      if (check(!token, "Expected variable name after struct declaration\n"))
          debug(RED"found instead %k\n"RESET, tokens[exe_pos]);
 
       setName(node->token, token->name);
@@ -715,7 +715,7 @@ void set_func_dec_regs(Token *child, int *ptr)
          case BOOL:  setReg(src, eregs[i]); break;
          case STRUCT_CALL:
          {
-            for(int j = 0; j < child->Struct.pos; j++)
+            for (int j = 0; j < child->Struct.pos; j++)
             {
                i += j;
                set_func_dec_regs(child->Struct.attrs[j],  &i);
