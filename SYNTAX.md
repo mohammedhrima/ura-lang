@@ -53,3 +53,8 @@
    + Assembly Code
    + fix for: AddressSanitizer:DEADLYSIGNAL 
       - echo 0 | sudo tee /proc/sys/kernel/randomize_va_space
+
++ Check:
+   + Alfred V aho
+   + Yacc
+   + Ll1
