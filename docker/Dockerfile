@@ -1,4 +1,4 @@
-FROM public.ecr.aws/debian/debian:stable
+FROM public.ecr.aws/docker/library/debian:stable
 
 WORKDIR /src
 
