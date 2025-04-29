@@ -66,7 +66,7 @@ void tokenize()
          i++;
          continue;
       }
-      // TODO: handle new lines inside comment
+      // TODO: handle new lines inside commebnt
       else if (strncmp(input + i, "/*", 2) == 0)
       {
          i += 2;
@@ -646,6 +646,7 @@ Token* inialize_variable(Node *node, Token *src)
    {
       // debug(RED "initialize : offset[%d] %k\n"RESET, node->token->offset,  node->token);
       // pnode(node, NULL, 0);
+
       if (!node->token->isattr) new_variable(node->token);
       for (int i = 0; i < node->token->Struct.pos; i++)
       {
@@ -653,6 +654,7 @@ Token* inialize_variable(Node *node, Token *src)
          if (attr->type == STRUCT_CALL)
          {
             Node *tmp = new_node(attr);
+            // attr->isattr = true;
             attr->offset += node->token->offset;
             inialize_variable(tmp, NULL);
             free_node(tmp);
@@ -660,7 +662,7 @@ Token* inialize_variable(Node *node, Token *src)
          else
          {
             attr->ptr = ptr + node->token->offset - attr->offset;
-            debug(CYAN"%k\n"RESET, attr);
+            debug(CYAN">> %k\n"RESET, attr);
 
             Node *tmp = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space));
             tmp->token->ir_reg = attr->ir_reg;
@@ -675,6 +677,7 @@ Token* inialize_variable(Node *node, Token *src)
    }
    else
    {
+      debug("line %d: ", LINE);
       new_variable(node->token);
       Node *tmp = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space));
       tmp->token->ir_reg = node->token->ir_reg;
@@ -689,61 +692,58 @@ Token* inialize_variable(Node *node, Token *src)
 
 void set_func_dec_regs(Token *child, int *ptr)
 {
+   debug("set %k\n", child);
    Token *src = new_token(NULL, 0, 0, DEFAULT, child->space);
-   int i = *ptr;
-   if (i < (int)(sizeof(eregs) / sizeof(eregs[0])))
+   int r = *ptr;
+   if (r < (int)(sizeof(eregs) / sizeof(eregs[0])))
    {
       if (child->is_ref)
       {
-         if (child->type == STRUCT_DEF)
-         {
-            ptoken(child);
-            //Token *tmp = get_struct_by_id()
-            todo(1, "found");
-         }
-         setReg(src, rregs[i]);
+         setReg(src, rregs[r]);
       }
       else
       {
          // TODO: add other data type and math operations
          switch (child->type)
          {
-         case CHARS: setReg(src, rregs[i]); break;
-         case INT:   setReg(src, eregs[i]); break;
-         case CHAR:  setReg(src, eregs[i]); break;
-         case FLOAT: setReg(src, rregs[i]); break; // TODO: to be checked
-         case BOOL:  setReg(src, eregs[i]); break;
+         case CHARS: setReg(src, rregs[r]); break;
+         case INT:   setReg(src, eregs[r]); break;
+         case CHAR:  setReg(src, eregs[r]); break;
+         case FLOAT: setReg(src, rregs[r]); break; // TODO: to be checked
+         case BOOL:  setReg(src, eregs[r]); break;
          case STRUCT_CALL:
          {
+            if (!child->isattr) new_variable(child);
             for (int j = 0; j < child->Struct.pos; j++)
             {
-               i += j;
-               set_func_dec_regs(child->Struct.attrs[j],  &i);
+               set_func_dec_regs(child->Struct.attrs[j],  &r);
+               debug(RED"%k\n"RESET, child->Struct.attrs[j]);
             }
             break;
          }
          default: todo(1, "set ir_reg for %s", to_string(child->type));
          };
       }
+      r++;
    }
    else
    {
       // TODO:
       todo(1, "implement assigning function argument using PTR");
    }
-   // if(!child->isattr)
+   if (child->is_ref /*&& !child->token->has_ref*/)
    {
-      if (child->is_ref /*&& !child->token->has_ref*/)
-      {
-         src->is_ref = true;
-         src->has_ref = true;
-      }
-      child->has_ref = true;
+      src->is_ref = true;
+      src->has_ref = true;
+   }
+   if (child->type != STRUCT_CALL)
+   {
+      if (src->is_ref) child->has_ref = true;
       Node *child_node = new_node(child);
       inialize_variable(child_node, src);
       free_node(child_node);
    }
-   *ptr = i;
+   *ptr = r;
 }
 
 Token *func_dec_ir(Node *node)
@@ -756,10 +756,10 @@ Token *func_dec_ir(Node *node)
 
    // parameters
    Node *curr = node->left;
-   for (int i = 0; curr && i < curr->cpos && !found_error; i++)
+   for (int i = 0, r = 0; curr && i < curr->cpos && !found_error; i++)
    {
       Node *child = curr->children[i];
-      set_func_dec_regs(child->token, &i);
+      set_func_dec_regs(child->token, &r);
    }
 
    // code bloc
@@ -777,6 +777,65 @@ Token *func_dec_ir(Node *node)
    ptr = tmp_ptr;
    exit_scoop();
    return inst->token;
+}
+
+void set_func_call_regs(int *ptr, Token *src, Token *dist, Node *node)
+{
+   int r = *ptr;
+   if (r < (int)(sizeof(eregs) / sizeof(eregs[0])))
+   {
+      // added because unfction declaration params do have ptrs
+      dist->ptr = 0;
+      if (dist->is_ref) setReg(dist, rregs[r]);
+      else
+      {
+         // TODO: add other data type and math operations
+         switch (dist->type)
+         {
+         case CHARS: setReg(dist, rregs[r]); break;
+         case INT:   setReg(dist, eregs[r]); break;
+         case CHAR:  setReg(dist, eregs[r]); break;
+         case FLOAT: setReg(dist, rregs[r]); break; // TODO: to be checked
+         case BOOL:  setReg(dist, eregs[r]); break;
+         case STRUCT_CALL:
+         {
+            for (int j = 0; j < dist->Struct.pos; j++)
+            {
+               set_func_call_regs(&r, src->Struct.attrs[j], dist->Struct.attrs[j], node);
+               // debug(RED"%k\n"RESET, child->Struct.attrs[j]);
+            }
+            break;
+         }
+         default: todo(1, "set ir_reg for %s", to_string(dist->type));
+         };
+      }
+      r++;
+   }
+   else
+   {
+      todo(1, "implement assigning function argument using PTR");
+   }
+   if (dist->is_ref)
+   {
+      dist->is_ref = true;
+      dist->has_ref = false;
+   }
+   if(dist->type != STRUCT_CALL)
+   {
+      new_inst(dist);
+      Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space));
+      assign->left = new_node(dist);
+      assign->right = new_node(src);
+      assign->token->ir_reg = dist->ir_reg;
+
+      debug(RED);
+      pnode(assign, NULL, 0);
+      debug(RESET);
+
+      generate_ir(assign);
+      free_node(assign);
+      *ptr = r;
+   }
 }
 
 Token *func_call_ir(Node *node)
@@ -868,63 +927,16 @@ Token *func_call_ir(Node *node)
       Node *fdec = func->left;
       Node *fcall = node;
 
-      for (int i = 0; !found_error && i < fcall->cpos && i < fdec->cpos; i++)
+      for (int i = 0, r = 0; !found_error && i < fcall->cpos && i < fdec->cpos; i++)
       {
          Node *darg = fdec->children[i];
          Node *carg = fcall->children[i]; // will always be ID
-#if DEBUG
-         // debug(RED SPLIT);
-         // debug("dec : %n", darg);
-         // debug("call: %n", carg);
-         // // pnode(scoop, "scoop", 0);
-         // debug(SPLIT RESET);
-#endif
-         Token *var = generate_ir(carg);
 
-         if (check(var->type == ID, "Indeclared variable %s", carg->token->name)) break;
-         Token *src = copy_token(darg->token);
+         Token *src = generate_ir(carg);
 
-         if (i < (int)(sizeof(eregs) / sizeof(eregs[0])))
-         {
-            // added because unfction declaration params do have ptrs
-            src->ptr = 0;
-            if (src->is_ref) setReg(src, rregs[i]);
-            else
-            {
-               // TODO: add other data type and math operations
-               switch (src->type)
-               {
-               case CHARS: setReg(src, rregs[i]); break;
-               case INT:   setReg(src, eregs[i]); break;
-               case CHAR:  setReg(src, eregs[i]); break;
-               case FLOAT: setReg(src, rregs[i]); break; // TODO: to be checked
-               case BOOL:  setReg(src, eregs[i]); break;
-               default: todo(1, "set ir_reg for %s", to_string(src->type));
-               };
-            }
-         }
-         else
-         {
-            // TODO:
-            todo(1, "implement assigning function argument using PTR");
-         }
-         if (src->is_ref)
-         {
-            src->is_ref = true;
-            src->has_ref = false;
-         }
-         new_inst(src);
-         Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space));
-         assign->left = new_node(src);
-         assign->right = new_node(var);
-         assign->token->ir_reg = src->ir_reg;
-
-         debug(RED);
-         pnode(assign, NULL, 0);
-         debug(RESET);
-
-         generate_ir(assign);
-         free_node(assign);
+         if (check(src->type == ID, "Indeclared variable %s", carg->token->name)) break;
+         Token *dist = copy_token(darg->token);
+         set_func_call_regs(&r, src, dist, node);
       }
       free_node(func);
    }

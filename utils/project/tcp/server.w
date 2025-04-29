@@ -15,7 +15,7 @@ main():
    
    int opt = 1
    // takes ref to opt
-   if setsockopt(server_fd, 1, 2, opt, 4):
+   if setsockopt(server_fd, 1, 2, opt, 4) < 0:
       putstr("failed to setsockopt")
       exit(1)
    
@@ -25,7 +25,7 @@ main():
    address.sin_addr.s_addr = 0
    address.sin_port = htons(17000)
 
-   if bind(server_fd, address, sizeof(address) < 0):
+   if bind(server_fd, address, sizeof(address)) < 0:
       putstr("bind failed")
       exit(1)
    
