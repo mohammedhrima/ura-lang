@@ -5,3 +5,4 @@ struct User:
    int b
 
 func void m(ref User a):
+

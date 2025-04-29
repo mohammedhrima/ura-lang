@@ -212,7 +212,6 @@ Node *func_dec(Node *node)
       {
          data_type = get_struct(data_type->name);
          if (data_type) data_type->type = STRUCT_CALL;
-         debug(RED"found struct %k\n"RESET, data_type);
       }
       if (check(!data_type, "expected data type in function argument")) break;
       Token *name = find(ID, 0);
@@ -639,60 +638,52 @@ Token *while_ir(Node *node)
    return inst->token;
 }
 
+Token *inialize_struct(Node *node)
+{
+   if (!node->token->isattr) new_variable(node->token);
+   for (int i = 0; i < node->token->Struct.pos; i++)
+   {
+      Token *attr = node->token->Struct.attrs[i];
+      if (attr->type == STRUCT_CALL)
+      {
+         Node *tmp = new_node(attr);
+         // attr->isattr = true;
+         attr->offset += node->token->offset;
+         inialize_struct(tmp);
+         free_node(tmp);
+      }
+      else
+      {
+         attr->ptr = ptr + node->token->offset - attr->offset;
+         Node *tmp = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space));
+         tmp->token->ir_reg = attr->ir_reg;
+         tmp->left = new_node(attr);
+         tmp->right = new_node(new_token(NULL, 0, 0, DEFAULT, attr->space));
+         to_default(tmp->right->token, tmp->left->token->type);
+         generate_ir(tmp);
+         free_node(tmp);
+      }
+   }
+   if (!node->token->isattr) inc_ptr(node->token->offset);
+   return node->token;
+}
+
 Token* inialize_variable(Node *node, Token *src)
 {
    node->token->is_data_type = false;
-   if (node->token->type == STRUCT_CALL)
-   {
-      // debug(RED "initialize : offset[%d] %k\n"RESET, node->token->offset,  node->token);
-      // pnode(node, NULL, 0);
-
-      if (!node->token->isattr) new_variable(node->token);
-      for (int i = 0; i < node->token->Struct.pos; i++)
-      {
-         Token *attr = node->token->Struct.attrs[i];
-         if (attr->type == STRUCT_CALL)
-         {
-            Node *tmp = new_node(attr);
-            // attr->isattr = true;
-            attr->offset += node->token->offset;
-            inialize_variable(tmp, NULL);
-            free_node(tmp);
-         }
-         else
-         {
-            attr->ptr = ptr + node->token->offset - attr->offset;
-            debug(CYAN">> %k\n"RESET, attr);
-
-            Node *tmp = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space));
-            tmp->token->ir_reg = attr->ir_reg;
-            tmp->left = new_node(attr);
-            tmp->right = new_node(new_token(NULL, 0, 0, DEFAULT, attr->space));
-            to_default(tmp->right->token, tmp->left->token->type);
-            generate_ir(tmp);
-            free_node(tmp);
-         }
-      }
-      if (!node->token->isattr) inc_ptr(node->token->offset);
-   }
-   else
-   {
-      debug("line %d: ", LINE);
-      new_variable(node->token);
-      Node *tmp = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space));
-      tmp->token->ir_reg = node->token->ir_reg;
-      tmp->left = copy_node(node);
-      tmp->right = new_node(src);
-      to_default(src, tmp->left->token->type);
-      generate_ir(tmp);
-      free_node(tmp);
-   }
+   new_variable(node->token);
+   Node *tmp = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space));
+   tmp->token->ir_reg = node->token->ir_reg;
+   tmp->left = copy_node(node);
+   tmp->right = new_node(src);
+   to_default(src, tmp->left->token->type);
+   generate_ir(tmp);
+   free_node(tmp);
    return node->token;
 }
 
 void set_func_dec_regs(Token *child, int *ptr)
 {
-   debug("set %k\n", child);
    Token *src = new_token(NULL, 0, 0, DEFAULT, child->space);
    int r = *ptr;
    if (r < (int)(sizeof(eregs) / sizeof(eregs[0])))
@@ -736,7 +727,7 @@ void set_func_dec_regs(Token *child, int *ptr)
       src->is_ref = true;
       src->has_ref = true;
    }
-   if (child->type != STRUCT_CALL)
+   if (child->type != STRUCT_CALL || child->is_ref)
    {
       if (src->is_ref) child->has_ref = true;
       Node *child_node = new_node(child);
@@ -820,7 +811,7 @@ void set_func_call_regs(int *ptr, Token *src, Token *dist, Node *node)
       dist->is_ref = true;
       dist->has_ref = false;
    }
-   if(dist->type != STRUCT_CALL)
+   if (dist->type != STRUCT_CALL)
    {
       new_inst(dist);
       Node *assign = new_node(new_token(NULL, 0, 0, ASSIGN, node->token->space));
@@ -961,13 +952,19 @@ Token *op_ir(Node *node)
    {
    case ASSIGN:
    {
+      if(left->type == STRUCT_CALL)
+      {
+         debug(">> %k\n", left);
+         debug(">> %k\n", right);
+     //    stop(1, "found");
+      }
       node->token->ir_reg = left->ir_reg;
       if (!node->token->ir_reg || !left->ir_reg)
       {
          pnode(node, NULL, 0);
          debug(">> %k\n", left);
-         debug(">> %d\n", left->ir_reg);
-         // todo(1, "tmp condition");
+         debug(">> %k\n", right);
+         //todo(1, "tmp condition");
       }
       node->token->retType = getRetType(node);
       if (left->is_ref) // ir_reg, ptr
@@ -975,7 +972,7 @@ Token *op_ir(Node *node)
          if (right->is_ref) // ir_reg, ptr
          {
             if (check(!right->has_ref, "can not assign from reference that point to nothing")) break;
-            if (left->has_ref) node->token->assign_type = REF_REF;
+            if (left->has_ref){ node->token->assign_type = REF_REF;/* stop(1, "found")*/}
             else node->token->assign_type = REF_HOLD_REF;
          }
          else if (right->ptr) // ptr
@@ -1048,7 +1045,7 @@ Token *generate_ir(Node *node)
    {
       if (node->token->is_data_type)
       {
-         if (node->token->type == STRUCT_CALL) return inialize_variable(node, NULL);
+         if (node->token->type == STRUCT_CALL) return inialize_struct(node);
          return inialize_variable(node, new_token(NULL, 0, 0, DEFAULT, node->token->space));
       }
       return node->token;

@@ -241,9 +241,9 @@ Token *get_struct_by_id(int id)
    for (int j = scoopPos; j >= 0; j--)
    {
       Node *node = Gscoop[j];
-#if DEBUG
-      debug("[%d] scoop [%s] has %d structs\n", j, scoop->token->name, node->spos);
-#endif
+// #if DEBUG
+//       debug("[%d] scoop [%s] has %d structs\n", j, scoop->token->name, node->spos);
+// #endif
       for (int i = 0; i < node->spos; i++)
       {
          // debug(GREEN"struct has [%d]\n"RESET, node->structs[i]->Struct.id);
@@ -264,9 +264,9 @@ Token *get_struct(char *name)
    for (int j = scoopPos; j >= 0; j--)
    {
       Node *node = Gscoop[j];
-#if DEBUG
-      debug("[%d] scoop [%s] has %d structs\n", j, scoop->token->name, node->spos);
-#endif
+// #if DEBUG
+//       debug("[%d] scoop [%s] has %d structs\n", j, scoop->token->name, node->spos);
+// #endif
       for (int i = 0; i < node->spos; i++)
          if (strcmp(node->structs[i]->name, name) == 0)
             return copy_token(node->structs[i]);
@@ -552,22 +552,6 @@ Inst *new_inst(Token *token)
    Inst *new = allocate(1, sizeof(Inst));
    new->token = token;
 
-   if (token->type == STRUCT_CALL)
-   {
-      // debug("handle [%k], offset [%d]\n", token, token->offset);
-      for (int i = 0; i < token->Struct.pos; i++) {
-         Token *attr = token->Struct.attrs[i];
-         // todo(1, "hello");
-         if (attr->type == STRUCT_CALL) // struct ptr should be ptr for the first element
-         {
-            attr->ir_reg = ++ir_reg;
-         }
-         else
-         {
-            attr->ir_reg = ++ir_reg;
-         }
-      }
-   }
    switch (token->type)
    {
    case CHARS:
@@ -584,6 +568,23 @@ Inst *new_inst(Token *token)
    case INT:
    {
       if (token->ptr || token->creg) token->ir_reg = ++ir_reg;
+      break;
+   }
+   case STRUCT_CALL:
+   {
+      // debug("handle [%k], offset [%d]\n", token, token->offset);
+      for (int i = 0; i < token->Struct.pos; i++) {
+         Token *attr = token->Struct.attrs[i];
+         // todo(1, "hello");
+         if (attr->type == STRUCT_CALL) // struct ptr should be ptr for the first element
+         {
+            attr->ir_reg = ++ir_reg;
+         }
+         else
+         {
+            attr->ir_reg = ++ir_reg;
+         }
+      }
       break;
    }
    case RETURN: token->ir_reg = ++ir_reg; break;
@@ -603,6 +604,7 @@ Inst *new_inst(Token *token)
 void to_default(Token *token, Type type)
 {
    token->type = type;
+   if (token->is_ref) return;
    switch (type)
    {
    case CHARS:
@@ -1368,14 +1370,12 @@ int ptoken(Token *token)
       {
          Token *attr = token->Struct.attrs[i];
 #if 1
-
          for (int j = 0; !TESTING && j < attr->space; ) j += debug(" ");
          res += ptoken(attr) + debug(", offset [%d] PTR [%d]\n", attr->offset, attr->ptr);
 #else
          res += debug("%s %t [%d], ", attr->name, attr->type, attr->ptr);
 #endif
       }
-      return res;
       break;
    }
    case FCALL:
