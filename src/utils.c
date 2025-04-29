@@ -3,18 +3,21 @@
 // ----------------------------------------------------------------------------
 // Parsing
 // ----------------------------------------------------------------------------
-#if DEBUG_NEW_TOKEN
-Token* new_token_(char *filename, int line, char *input, int s, int e, Type type, int space)
-#else
-Token* new_token(char *input, int s, int e, Type type, int space)
-#endif
+
+Token* new_token(Type type, int space)
 {
-#if DEBUG_NEW_TOKEN
-   debug("%s:%d: ", filename, line);
-#endif
    Token *new = allocate(1, sizeof(Token));
    new->type = type;
    new->space = ((space + TAB / 2) / TAB) * TAB;
+   add_token(new);
+   return new;
+}
+
+void parse_token(char *input, int s, int e, Type type, int space, char *filename, int line)
+{
+   Token *new = new_token(type, space);
+   new->line = line;
+   new->filename = filename;
    switch (type)
    {
    case INT: while (s < e) new->Int.value = new->Int.value * 10 + input[s++] - '0'; break;
@@ -38,9 +41,9 @@ Token* new_token(char *input, int s, int e, Type type, int space)
       }
       if (bools[i].name) break;
 
-      struct { char *name; Type type; } dataTypes [] = { {"int", INT}, {"bool", BOOL}, {"chars", CHARS},
-         {"char", CHAR}, {"float", FLOAT}, {"void", VOID}, {"long", LONG}, {"_ptr_", PTR},
-         {"short", SHORT}, {0, 0}
+      struct { char *name; Type type; } dataTypes [] = { {"int", INT}, {"bool", BOOL},
+         {"chars", CHARS}, {"char", CHAR}, {"float", FLOAT}, {"void", VOID}, {"long", LONG},
+         {"pointer", PTR}, {"short", SHORT}, {0, 0}
       };
       for (i = 0; dataTypes[i].name; i++)
       {
@@ -55,8 +58,9 @@ Token* new_token(char *input, int s, int e, Type type, int space)
       if (dataTypes[i].name) break;
 
       struct { char *name; Type type; } keywords[] = {{"if", IF}, {"elif", ELIF}, {"else", ELSE},
-         {"while", WHILE}, {"func", FDEC}, {"return", RETURN}, {"break", BREAK}, {"continue", CONTINUE},
-         {"ref", REF}, {"and", AND}, {"or", OR}, {"struct", STRUCT_DEF}, {"is", EQUAL}, {0, 0}
+         {"while", WHILE}, {"func", FDEC}, {"return", RETURN}, {"break", BREAK},
+         {"continue", CONTINUE}, {"ref", REF}, {"and", AND}, {"or", OR}, {"struct", STRUCT_DEF},
+         {"is", EQUAL}, {"proto", PROTO}, {0, 0}
       };
       for (i = 0; keywords[i].name; i++)
       {
@@ -86,11 +90,7 @@ Token* new_token(char *input, int s, int e, Type type, int space)
    case CHAR: if (e > s) new->Char.value = input[s]; break;
    default: check(e > s, "implement adding name for this one %s", to_string(type)); break;
    }
-#if DEBUG
-   // debug("token: %k\n", new);
-#endif
-   add_token(new);
-   return new;
+   debug("new %k\n", new);
 }
 
 Token *copy_token(Token *token)
@@ -106,7 +106,7 @@ Token *copy_token(Token *token)
       new->Struct.attrs = allocate(token->Struct.len, sizeof(Token*));
       for (int i = 0; i < new->Struct.pos; i++) new->Struct.attrs[i] = copy_token(token->Struct.attrs[i]);
    }
-   if(token->Struct.name) new->Struct.name = strdup(token->Struct.name);
+   if (token->Struct.name) new->Struct.name = strdup(token->Struct.name);
    add_token(new);
    return new;
 }
@@ -221,8 +221,6 @@ void add_struct(Node *bloc, Token *token)
 
 Token *new_struct(Token *token)
 {
-   static int structs_ids;
-   token->Struct.id = (++structs_ids);
    for (int i = 0; i < scoop->spos; i++)
    {
       Token *curr = scoop->structs[i];
@@ -235,42 +233,24 @@ Token *new_struct(Token *token)
    return token;
 }
 
-Token *get_struct_by_id(int id)
-{
-#if DEBUG
-   debug("get struct with id [%d] from scoop %k\n", id, scoop->token);
-#endif
-   for (int j = scoopPos; j >= 0; j--)
-   {
-      Node *node = Gscoop[j];
-// #if DEBUG
-//       debug("[%d] scoop [%s] has %d structs\n", j, scoop->token->name, node->spos);
-// #endif
-      for (int i = 0; i < node->spos; i++)
-      {
-         // debug(GREEN"struct has [%d]\n"RESET, node->structs[i]->Struct.id);
-         if (node->structs[i]->Struct.id == id)
-            return copy_token(node->structs[i]);
-      }
-   }
-   // check(1, "%s not found\n", name);
-   return NULL;
-}
-
-
 Token *get_struct(char *name)
 {
 #if DEBUG
    debug(CYAN "get struct [%s] from scoop %k\n"RESET, name, scoop->token);
 #endif
-   for (int j = scoopPos; j >= 0; j--)
+   for (int j = scoopPos; j > 0; j--)
    {
       Node *node = Gscoop[j];
-// #if DEBUG
-//       debug("[%d] scoop [%s] has %d structs\n", j, scoop->token->name, node->spos);
-// #endif
+      if (node == NULL)
+      {
+         debug(RED"Error accessing NULL, %d\n"RESET, j);
+         exit(1);
+      }
+#if DEBUG
+      debug("[%d] scoop [%s] has %d structs\n", j, node->token->name, node->spos);
+#endif
       for (int i = 0; i < node->spos; i++)
-         if (strcmp(node->structs[i]->name, name) == 0)
+         if (strcmp(node->structs[i]->Struct.name, name) == 0)
             return copy_token(node->structs[i]);
    }
    // check(1, "%s not found\n", name);
@@ -353,6 +333,7 @@ int sizeofToken(Token *token)
    case BOOL: return sizeof(bool);
    case LONG: return sizeof(long);
    case SHORT: return sizeof(short);
+   case PTR: return sizeof(void*);
    case STRUCT_DEF: return token->offset;
    case STRUCT_CALL: return token->offset;
    default: todo(1, "add this type [%s]\n", to_string(token->type));
@@ -381,7 +362,7 @@ void setAttrName(Token *parent, Token *child)
 {
    if (parent)
    {
-      child->isattr = true;
+      child->is_attr = true;
       char *name = strjoin(parent->name, ".", child->name);
       setName(child, name);
       free(name);
@@ -395,7 +376,7 @@ void setAttrName(Token *parent, Token *child)
          int space = attr->space;
          int offset = attr->offset;
 
-         attr = get_struct_by_id(attr->Struct.id);
+         attr = get_struct(attr->Struct.name);
          setName(attr, name);
          attr->offset = offset;
          attr->space = space;
@@ -423,7 +404,7 @@ Token *new_variable(Token *token)
    if (token->type == STRUCT_CALL)
    {
       setAttrName(NULL, token);
-      if(token->is_ref && !token->ptr)
+      if (token->is_ref && !token->ptr)
       {
          inc_ptr(sizeofToken(token));
          token->ptr = ptr;
@@ -620,17 +601,8 @@ void to_default(Token *token, Type type)
       token->Chars.value = strdup("\"\"");
       break;
    }
-   case CHAR:
-   {
-      token->Char.value = 0;
-      break;
-   }
-   case LONG:
-   {
-      token->Long.value = 0;
-      break;
-   }
-   case INT: break;
+   case CHAR: case LONG:
+   case PTR: case INT: break;
    default: check(1, "handle this case [%s]", to_string(type)); break;
    }
 }
@@ -1003,6 +975,7 @@ void pasm(char *fmt, ...)
                case CHAR: fprintf(asm_fd, "BYTE PTR -%d[rbp]", token->ptr); break;
                case BOOL: fprintf(asm_fd, "BYTE PTR -%d[rbp]", token->ptr); break;
                case FLOAT: fprintf(asm_fd, "DWORD PTR -%d[rbp]", token->ptr); break;
+               case PTR: fprintf(asm_fd, "QWORD PTR -%d[rbp]", token->ptr); break;
                default: check(1, "Unknown type [%s]\n", to_string(token->type)); break;
                }
          }
@@ -1109,17 +1082,18 @@ void finalize()
 // Utilities
 // ----------------------------------------------------------------------------
 
-void open_file(char *filename)
+char* open_file(char *filename)
 {
-   if (found_error) return;
+   if (found_error) return NULL;
    struct _IO_FILE *file = fopen(filename, "r");
-   if (check(!file, "openning %s", filename)) return;
+   if (check(!file, "openning %s", filename)) return NULL;
    fseek(file, 0, SEEK_END);
    int size = ftell(file);
    fseek(file, 0, SEEK_SET);
-   input = allocate((size + 1), sizeof(char));
+   char *input = allocate((size + 1), sizeof(char));
    if (input) fread(input, size, sizeof(char), file);
    fclose(file);
+   return input;
 }
 
 void *allocate_func(int line, int len, int size)
@@ -1139,7 +1113,7 @@ const char *to_string_(const char *filename, const int line, Type type) {
       [AND] = "AND", [OR]  = "OR", [RPAR] = "R_PAR", [LPAR] = "L_PAR", [COMA] = "COMMA",
       [DOTS] = "DOTS", [DOT] = "DOT", [RETURN] = "RETURN", [IF] = "IF", [ELIF] = "ELIF",
       [ELSE] = "ELSE", [WHILE] = "HILE", [CONTINUE] = "continue", [BREAK] = "break", [REF] = "REF",
-      [FDEC] = "F_DEC", [FCALL] = "F_CALL", [INT] = "INT", [VOID] = "VOID", [CHARS] = "CHARS",
+      [FDEC] = "F_DEC", [FCALL] = "F_CALL", [PROTO] = "PROTO", [INT] = "INT", [VOID] = "VOID", [CHARS] = "CHARS",
       [CHAR] = "CHAR", [BOOL] = "BOOL", [FLOAT] = "FLOAT", [SHORT] = "SHORT", [STRUCT_CALL] = "ST_CALL",
       [STRUCT_DEF] = "ST_DEF", [ID] = "ID", [END_BLOC] = "END_BLOC", [BLOC] = "BLOC",
       [JNE] = "JNE", [JE] = "JE", [JMP] = "JMP", [LBRA] = "L_BRA", [RBRA] = "R_BRA",
@@ -1166,24 +1140,25 @@ bool check_error(const char *filename, const char *funcname, int line, bool cond
    return cond;
 }
 
+int tk_pos;
+int tk_len;
+
 void add_token(Token *token)
 {
-   static int pos;
-   static int len;
-   if (len == 0)
+   if (tk_len == 0)
    {
-      len = 10;
-      tokens = allocate(len, sizeof(Token *));
+      tk_len = 10;
+      tokens = allocate(tk_len, sizeof(Token *));
    }
-   else if (pos + 1 == len)
+   else if (tk_pos + 1 == tk_len)
    {
-      Token **tmp = allocate(len * 2, sizeof(Token *));
-      memcpy(tmp, tokens, len * sizeof(Token *));
+      Token **tmp = allocate(tk_len * 2, sizeof(Token *));
+      memcpy(tmp, tokens, tk_len * sizeof(Token *));
       free(tokens);
       tokens = tmp;
-      len *= 2;
+      tk_len *= 2;
    }
-   tokens[pos++] = token;
+   tokens[tk_pos++] = token;
 }
 
 void setName(Token *token, char *name)
@@ -1355,7 +1330,7 @@ int ptoken(Token *token)
    res += debug("[%-7s] ", to_string(token->type));
    switch (token->type)
    {
-   case VOID: case CHARS: case CHAR: case INT: case BOOL: case FLOAT:
+   case VOID: case CHARS: case CHAR: case INT: case BOOL: case FLOAT: case LONG:
    {
       if (token->name) res += debug("name [%s] ", token->name);
       // if (token->declare) res += debug("[declare] ");
@@ -1367,11 +1342,9 @@ int ptoken(Token *token)
       }
       break;
    }
-   case STRUCT_CALL:
-   case STRUCT_DEF:
+   case STRUCT_CALL: case STRUCT_DEF:
    {
-      res += debug("name [%s] ", token->name);
-      res += debug("struct_id [%d] ", token->Struct.id);
+      res += debug("name [%s] ", token->Struct.name);
       res += debug("space [%d] ", token->space);
       res += debug("attributes:\n");
       for (int i = 0; i < token->Struct.pos; i++)
@@ -1396,7 +1369,7 @@ int ptoken(Token *token)
    if (token->has_ref) debug("has_ref ");
    if (token->remove) res += debug("[remove] ");
    if (token->retType) res += debug("ret [%t] ", token->retType);
-   res += debug("space [%d] ", token->space);
+   if(!includes(token->type, STRUCT_CALL, STRUCT_DEF, 0)) res += debug("space [%d] ", token->space);
    return res;
 }
 
@@ -1479,7 +1452,7 @@ void print_ir()
          if (right->name) debug("(%s)", right->name);
          break;
       }
-      case INT: case BOOL: case CHARS: case CHAR:
+      case INT: case BOOL: case CHARS: case CHAR: case LONG:
       {
          debug("[%-6s] ", to_string(curr->type));
          if (curr->is_data_type)
@@ -1526,7 +1499,7 @@ void print_ir()
    debug(GREEN BOLD SPLIT RESET);
 }
 
-void print_ast()
+void print_ast(Node *head)
 {
    debug(GREEN BOLD SPLIT RESET);
    debug(GREEN BOLD"PRINT AST:\n" RESET);
@@ -1541,6 +1514,7 @@ void free_token(Token *token)
    free(token->creg);
    free(token->Chars.value);
    free(token->Struct.attrs);
+   free(token->Struct.name);
    free(token);
 }
 
@@ -1559,7 +1533,11 @@ void free_node(Node *node)
 
 void free_memory()
 {
-   free(input);
-   for (int i = 0; tokens && tokens[i]; i++) free_token(tokens[i]);
-   free_node(head);
+   for (int i = 0; tokens && tokens[i]; i++)
+   {
+      free_token(tokens[i]);
+      tokens[i] = NULL;
+   }
+   tk_pos = 0;
+   exe_pos = 0;
 }
