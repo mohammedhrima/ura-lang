@@ -66,6 +66,7 @@
 #define inc_ptr(value) inc_ptr_(FILE, LINE, value)
 #endif
 
+#define DATA_TYPES INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT
 
 #define AST_NODE(name, child_func, ...) \
 Node *name() { \

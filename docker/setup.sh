@@ -15,7 +15,7 @@ NC='\033[0m'
 
 san="-fsanitize=address -fsanitize=null -g3" 
 flags="$san -Wall -Wextra -Werror=incompatible-pointer-types -Werror=int-conversion"
-files="/src/main.c /src/utils.c /src/config.c /src/asm.c"
+files="/src/main.c /src/utils.c /src/asm.c"
 
 copy() {
 	currflags=$flags

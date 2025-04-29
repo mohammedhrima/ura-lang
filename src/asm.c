@@ -18,7 +18,7 @@ void generate_asm(char *name)
       Token *right = insts[i]->right;
       switch (curr->type)
       {
-      case INT: case BOOL: case CHARS: case CHAR: case FLOAT: case LONG:
+      case INT: case BOOL: case CHARS: case CHAR: case FLOAT: case LONG: case PTR:
       {
          // if (curr->declare)
          // {

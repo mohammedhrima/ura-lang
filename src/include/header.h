@@ -26,7 +26,7 @@ typedef enum
    RETURN,
    IF, ELIF, ELSE,
    WHILE, CONTINUE, BREAK,
-   FDEC, FCALL,
+   FDEC, FCALL, PROTO,
    VOID, INT, CHARS, CHAR, BOOL, FLOAT, PTR, LONG, SHORT,
    STRUCT_DEF, STRUCT_CALL, ID, REF,
    JNE, JE, JMP, BLOC, END_BLOC,
@@ -47,14 +47,16 @@ typedef struct Token
    int ir_reg;
    char *creg;
    int index;
+
    bool is_cond;
    bool is_ref;
    bool has_ref;
    bool is_data_type;
-   // int rsp;
-   // bool isarg;
-   bool isattr;
+   bool is_attr;
+   bool is_proto;
    int offset;
+   char *filename;
+   int line;
 
    struct
    {
@@ -96,7 +98,6 @@ typedef struct Token
       struct
       {
          char *name;
-         int id;
          struct Token **attrs;
          int pos;
          int len;
@@ -138,14 +139,11 @@ typedef struct
    Token *right;
 } Inst;
 
-
-
 // GLOBAL
 extern bool found_error;
 extern bool did_pasm;
 extern char *input;
 extern Token **tokens;
-extern Node *head;
 extern Node *global;
 extern int exe_pos;
 extern Inst **OrgInsts;
@@ -166,11 +164,10 @@ extern char *rregs[];
 // ----------------------------------------------------------------------------
 // Parsing
 // ----------------------------------------------------------------------------
-#if DEBUG_NEW_TOKEN
-Token* new_token_(char *filename, int line, char *input, int s, int e, Type type, int space);
-#else
-Token* new_token(char *input, int s, int e, Type type, int space);
-#endif
+
+Token* new_token(Type type, int space);
+void parse_token(char *input, int s, int e, Type type, int space, char *filename, int line);
+
 void add_token(Token *token);
 void tokenize();
 Node *expr();
@@ -225,7 +222,7 @@ void to_default(Token *token, Type type);
 // ----------------------------------------------------------------------------
 // Utilities
 // ----------------------------------------------------------------------------
-void open_file(char *filename);
+char* open_file(char *filename);
 const char *to_string_(const char *filename, const int line, Type type);
 void setName(Token *token, char *name);
 void setReg(Token *token, char *creg);
@@ -256,7 +253,7 @@ void inc_ptr(int size);
 int debug(char *conv, ...);
 int pnode(Node *node, char *side, int space);
 int ptoken(Token *token);
-void print_ast();
+void print_ast(Node *head);
 void print_ir();
 int print_value(Token *token);
 
