@@ -1,52 +1,7 @@
 #include "./include/header.h"
 
-// ----------------------------------------------------------------------------
-// Globals
-// ----------------------------------------------------------------------------
-bool found_error;
-bool did_pasm;
-char *input;
-Token **tokens;
-Node *head;
-Node *global;
-int exe_pos;
-Inst **OrgInsts;
-Inst **insts;
-
-Node **Gscoop;
-Node *scoop;
-int scoopSize;
-int scoopPos = -1;
-
-int ptr;
-struct _IO_FILE *asm_fd;
-int str_index;
-int bloc_index;
-
-// Assembly - Generate machine code
-bool did_pasm;
-void asm_space(int space)
-{
-   if (did_pasm)
-   {
-      space = (space / TAB) * 4;
-      pasm("\n");
-      for (int i = 0; i < space; i++) pasm(" ");
-      did_pasm = false;
-   }
-}
-
 void generate_asm(char *name)
 {
-   if (found_error) return;
-   char *outfile = strdup(name);
-   outfile[strlen(outfile) - 1] = 's';
-   asm_fd = fopen(outfile, "w+");
-   check(!asm_fd, "openning %s\n", outfile);
-   if (found_error) return;
-   free(outfile);
-   initialize();
-   copy_insts();
    for (int i = 0; insts[i]; i++)
    {
       Token *curr = insts[i]->token;
@@ -354,36 +309,4 @@ void generate_asm(char *name)
       default: check(1, "handle this case (%s)\n", to_string(curr->type)); break;
       }
    }
-   finalize();
-}
-
-void generate(char *name)
-{
-   if (found_error) return;
-#if IR
-   debug(GREEN BOLD"GENERATE IR:\n" RESET);
-   for (int i = 0; !found_error && i < head->cpos; i++) generate_ir(head->children[i]);
-   if (found_error) return;
-   print_ir();
-#endif
-#if OPTIMIZE
-   debug(GREEN BOLD"OPTIMIZE IR:\n" RESET);
-   copy_insts();
-   while (OPTIMIZE && !found_error && optimize_ir()) copy_insts();
-#endif
-#if ASM
-   copy_insts();
-   debug(GREEN BOLD"GENERATE ASM:\n" RESET);
-   generate_asm(name);
-#endif
-}
-
-int main(int argc, char **argv)
-{
-   check(argc < 2, "Invalid arguments");
-   open_file(argv[1]);
-   tokenize();
-   generate_ast();
-   generate(argv[1]);
-   free_memory();
 }

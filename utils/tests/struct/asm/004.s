@@ -6,7 +6,9 @@
 m:
     push rbp
     mov  rbp, rsp
-    sub  rsp, 0
+    sub  rsp, 16
+    mov  DWORD PTR -4[rbp], 1 ;// assign [user.a]
+    mov  DWORD PTR -8[rbp], 13 ;// assign [user.b]
     mov  eax, 0
     leave 
     ret  
