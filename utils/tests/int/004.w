@@ -1,3 +1,4 @@
+use :src:config
 
 func int m(ref int a):
    a = 1

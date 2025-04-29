@@ -9,10 +9,10 @@ main:
     sub  rsp, 16
     lea  rax, .STR1[rip]
     mov  QWORD PTR -8[rbp], rax ;// assign [str]
-    mov  rdi, QWORD PTR -8[rbp] ;// assign [rdi]
+    mov  rdi, QWORD PTR -8[rbp] ;// assign [str]
     call strlen
     mov  DWORD PTR -12[rbp], eax ;// assign [a]
-    mov  edi, DWORD PTR -12[rbp] ;// assign [edi]
+    mov  edi, DWORD PTR -12[rbp] ;// assign [n]
     call putnbr
     mov  eax, 0
     leave 

@@ -1,5 +1,5 @@
 **/a.out
 **/a.out.dSYM/
 **/wcc
-./src/wcc
+/src/wcc
 .vscode

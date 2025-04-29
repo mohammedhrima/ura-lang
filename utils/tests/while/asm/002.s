@@ -15,9 +15,9 @@ main:
     .while1:
     cmp  DWORD PTR -4[rbp], 10
     jge   .endwhile1
-        mov  edi, 1 ;// assign [edi]
-        lea  rsi, .STR1[rip] ;// assign [rsi]
-        mov  edx, 1 ;// assign [edx]
+        mov  edi, 1 ;// assign [fd]
+        lea  rsi, .STR1[rip] ;// assign [buf]
+        mov  edx, 1 ;// assign [count]
         call write
         add  DWORD PTR -4[rbp], 1 ;// add_assign [i]
         add  DWORD PTR -8[rbp], 1 ;// add_assign [a]

@@ -3,55 +3,29 @@
 .text
 .globl	main
 
-    mov  QWORD PTR -8[rbp], rdi ;// assign [size]
-    mov  QWORD PTR -8[rbp], rdi ;// assign [size]
-    mov  QWORD PTR -16[rbp], rsi ;// assign [count]
-    mov  QWORD PTR -8[rbp], rdi ;// assign [ptr]
-    mov  QWORD PTR -16[rbp], rsi ;// assign [size]
-    mov  QWORD PTR -8[rbp], rdi ;// assign [str]
-    mov  QWORD PTR -8[rbp], rdi ;// assign [dest]
-    mov  QWORD PTR -16[rbp], rsi ;// assign [src]
-    mov  QWORD PTR -8[rbp], rdi ;// assign [dest]
-    mov  QWORD PTR -16[rbp], rsi ;// assign [src]
-    mov  QWORD PTR -24[rbp], rdx ;// assign [n]
-    mov  QWORD PTR -8[rbp], rdi ;// assign [dest]
-    mov  QWORD PTR -16[rbp], rsi ;// assign [src]
-    mov  QWORD PTR -8[rbp], rdi ;// assign [dest]
-    mov  QWORD PTR -16[rbp], rsi ;// assign [src]
-    mov  QWORD PTR -24[rbp], rdx ;// assign [n]
-    mov  QWORD PTR -8[rbp], rdi ;// assign [str1]
-    mov  QWORD PTR -16[rbp], rsi ;// assign [str2]
-    mov  QWORD PTR -8[rbp], rdi ;// assign [str1]
-    mov  QWORD PTR -16[rbp], rsi ;// assign [str2]
-    mov  QWORD PTR -24[rbp], rdx ;// assign [n]
-    mov  QWORD PTR -8[rbp], rdi ;// assign [str]
-    mov  QWORD PTR -8[rbp], rdi ;// assign [str]
-    mov  DWORD PTR -12[rbp], esi ;// assign [c]
-    mov  QWORD PTR -8[rbp], rdi ;// assign [str1]
-    mov  QWORD PTR -16[rbp], rsi ;// assign [str2]
-    mov  DWORD PTR -4[rbp], edi ;// assign [fd]
-    mov  QWORD PTR -12[rbp], rsi ;// assign [buf]
-    mov  DWORD PTR -16[rbp], edx ;// assign [count]
-    mov  DWORD PTR -4[rbp], edi ;// assign [fd]
-    mov  QWORD PTR -12[rbp], rsi ;// assign [buf]
-    mov  DWORD PTR -16[rbp], edx ;// assign [count]
-    mov  QWORD PTR -8[rbp], rdi ;// assign [str]
-    mov  DWORD PTR -4[rbp], edi ;// assign [n]
-    mov  QWORD PTR -8[rbp], rdi ;// assign [str]
-    mov  DWORD PTR -4[rbp], edi ;// assign [c]
-    mov  DWORD PTR -4[rbp], edi ;// assign [domain]
-    mov  DWORD PTR -8[rbp], esi ;// assign [type]
-    mov  DWORD PTR -12[rbp], edx ;// assign [protocol]
-    mov  DWORD PTR -4[rbp], edi ;// assign [n]
-    mov  QWORD PTR -8[rbp], rdi ;// assign [n]
-    mov  DWORD PTR -4[rbp], edi ;// assign [status]
-    main:
-        push rbp
-        mov  rbp, rsp
-        sub  rsp, 0
+main:
+    push rbp
+    mov  rbp, rsp
+    sub  rsp, 64
+    lea  rax, .STR0[rip]
+    mov  QWORD PTR -32[rbp], rax ;// assign [user1.data.name]
+    mov  DWORD PTR -24[rbp], 0 ;// assign [user1.data.a]
+    mov  BYTE PTR -16[rbp], 0 ;// assign [user1.e]
+    mov  DWORD PTR -12[rbp], 0 ;// assign [user1.b]
+    mov  BYTE PTR -8[rbp], 0 ;// assign [user1.c]
+    mov  DWORD PTR -24[rbp], 10 ;// assign [user1.data.a]
+    lea  rax, .STR0[rip]
+    mov  QWORD PTR -64[rbp], rax ;// assign [user2.data.name]
+    mov  DWORD PTR -56[rbp], 0 ;// assign [user2.data.a]
+    mov  BYTE PTR -48[rbp], 0 ;// assign [user2.e]
+    mov  DWORD PTR -44[rbp], 0 ;// assign [user2.b]
+    mov  BYTE PTR -40[rbp], 0 ;// assign [user2.c]
+    mov  DWORD PTR -56[rbp], 11 ;// assign [user2.data.a]
     mov  eax, 0
     leave 
     ret  
-    .endmain:
-    .section	.note.GNU-stack,"",@progbits
+.endmain:
+.STR0: .string ""
+.STR0: .string ""
+.section	.note.GNU-stack,"",@progbits
 
