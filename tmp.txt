@@ -1,0 +1,41 @@
+TOKENIZE:
+Enter Scoop: [ID     ] name [.global] space [0]  index 0
+AST:
+new struct [User] id [1] in scoop [ID     ] name [.global] space [0] 
+Enter Scoop: [F_DEC  ] name [m] ret [VOID] space [0]  index 1
+Exit Scoop: [F_DEC  ] name [m] ret [VOID] space [0]  index 1
+=================================================
+PRINT AST:
+node: [ST_DEF ] name [User] struct_id [1] space [0] attributes:
+   [INT    ] name [a] space [3] , offset [0] PTR [0]
+   [INT    ] name [b] space [3] , offset [4] PTR [0]
+space [0] 
+
+node: [F_DEC  ] name [m] ret [VOID] space [0] 
+   L: [CHILDREN] space [0] 
+   children: 
+      [INT    ] name [a] ref space [3] 
+children: 
+   [RETURN ] space [3] 
+      L: [INT    ] value [0] space [3] 
+
+=================================================
+GENERATE INTERMEDIATE REPRESENTATIONS:
+Enter Scoop: [F_DEC  ] name [m] ret [VOID] space [0]  index 1
+new inst: [F_DEC  ] name [m] ret [VOID] space [0] 
+new variable [a] [INT] in scoop [F_DEC  ] name [m] ret [VOID] space [0] 
+new inst: [INT    ] name [a] PTR [8] ir_reg [1] ref has_ref space [3] 
+new inst: [ASSIGN ] ir_reg [1] space [3] 
+new inst: [RETURN ] ir_reg [2] space [3] 
+new inst: [END_BLOC] space [0] 
+Exit Scoop: [F_DEC  ] name [m] PTR [8] ret [VOID] space [0]  index 1
+=================================================
+PRINT IR:
+rxx:[m] bloc space (0)
+r01:   [INT   ] var a PTR=[8] space (3)
+r01:   [ASSIGN] [REF_REF] r01 (a) = [rdi] space (3)
+r02:   [RETURN] space (3)
+rxx:[m] endbloc space (0)
+total instructions [5]
+=================================================
+GENERATE ASSEMBLY CODE:

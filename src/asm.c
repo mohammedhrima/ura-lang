@@ -247,7 +247,7 @@ void generate_asm(char *name)
          }
          case REF_REF:
          {
-            todo(1, "handle this case");
+//            todo(1, "handle this case");
 
             // left has_ref, right has_ref
             // left ptr (has_refrence), creg
@@ -277,7 +277,7 @@ void generate_asm(char *name)
                   todo(1, "handle this case");
                }
             }
-            else if ( left->creg)
+            else if (left->creg)
             {
                if (right->ptr)
                {
