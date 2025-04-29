@@ -34,6 +34,7 @@ void tokenize(char *filename)
    debug(GREEN BOLD"TOKENIZE: [%s]\n" RESET, filename);
 #endif
    char *input = open_file(filename);
+   if(!input) return;
 
    struct { char *value; Type type; } specials[] = {
       {".", DOT}, {":", DOTS}, {"+=", ADD_ASSIGN}, {"-=", SUB_ASSIGN},
@@ -494,13 +495,14 @@ Token *if_ir(Node *node)
    inst->token->index = ++bloc_index;
 
    Token *cond = generate_ir(node->left); // TODO: check if it's boolean
+   if(!cond) return NULL;
    setName(cond, "endif");
    cond->index = inst->token->index;
    --bloc_index;
 
    Token *next = cond;
    // code bloc
-   for (int i = 0; i < node->cpos; i++) generate_ir(node->children[i]);
+   for (int i = 0; i < node->cpos && !found_error; i++) generate_ir(node->children[i]);
 
    Inst *end = NULL;
    if (node->right->cpos)
@@ -654,7 +656,7 @@ Token* inialize_variable(Node *node, Token *src)
    return node->token;
 }
 
-void set_func_dec_regs(Token *child, int *ptr)
+void set_func_dec_regs(Token *child, int *ptr, bool is_proto)
 {
    Token *src = new_token(DEFAULT, child->space);
    int r = *ptr;
@@ -677,7 +679,7 @@ void set_func_dec_regs(Token *child, int *ptr)
             if (!child->is_attr) new_variable(child);
             for (int j = 0; j < child->Struct.pos; j++)
             {
-               set_func_dec_regs(child->Struct.attrs[j],  &r);
+               set_func_dec_regs(child->Struct.attrs[j],  &r, is_proto);
                debug(RED"%k\n"RESET, child->Struct.attrs[j]);
             }
             break;
@@ -697,7 +699,8 @@ void set_func_dec_regs(Token *child, int *ptr)
       src->is_ref = true;
       src->has_ref = true;
    }
-   if (child->type != STRUCT_CALL || child->is_ref)
+   if(is_proto);
+   else if (child->type != STRUCT_CALL || child->is_ref)
    {
       if (src->is_ref) child->has_ref = true;
       Node *child_node = new_node(child);
@@ -714,7 +717,7 @@ void set_remove(Node *node)
       Node *child = node->children[i];
       child->token->remove = true;
       set_remove(child);
-   }   
+   }
 }
 Token *func_dec_ir(Node *node)
 {
@@ -722,20 +725,20 @@ Token *func_dec_ir(Node *node)
    enter_scoop(node);
    int tmp_ptr = ptr;
    ptr = 0;
-   
+
    Inst* inst = NULL;
-   if(!node->token->is_proto) inst = new_inst(node->token);
+   if (!node->token->is_proto) inst = new_inst(node->token);
 
    // parameters
    Node *curr = node->left;
    for (int i = 0, r = 0; curr && i < curr->cpos && !found_error; i++)
    {
       Node *child = curr->children[i];
-      set_func_dec_regs(child->token, &r);
+      set_func_dec_regs(child->token, &r, node->token->is_proto);
    }
-   
-   if(node->token->is_proto) set_remove(node);
-   
+
+   if (node->token->is_proto) set_remove(node);
+
    // code bloc
    for (int i = 0; !node->token->is_proto && i < node->cpos; i++)
    {
@@ -743,7 +746,7 @@ Token *func_dec_ir(Node *node)
       generate_ir(child);
    }
 
-   if(!node->token->is_proto)
+   if (!node->token->is_proto)
    {
       // TODO: if RETURN not found add it
       Token *new = new_token(END_BLOC, node->token->space);
@@ -753,7 +756,7 @@ Token *func_dec_ir(Node *node)
       ptr = tmp_ptr;
    }
    exit_scoop();
-   if(!node->token->is_proto) return inst->token;
+   if (!node->token->is_proto) return inst->token;
    return NULL;
 }
 
@@ -828,6 +831,7 @@ Token *func_call_ir(Node *node)
       Token *_register = new_token(CHARS, fcall->token->space + TAB);
       _register->creg = strdup("rdi");
       Token *varg = new_token(CHARS, fcall->token->space + TAB);
+      varg->index = ++str_index;
       varg->Chars.value = strdup("\"");
 
       new_inst(_register);
@@ -1143,7 +1147,7 @@ void compile(char *filename)
    tokenize(filename);
    new_token(END, -1);
    if (found_error) return;
-   Node *global = new_node(new_token(ID, 0));
+   Node *global = new_node(new_token(ID, -TAB - 1));
    setName(global->token, ".global");
    enter_scoop(global);
 

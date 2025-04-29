@@ -1,3 +1,4 @@
+use :src:config
 
 main():
     int i = 1

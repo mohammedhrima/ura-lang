@@ -221,15 +221,19 @@ void add_struct(Node *bloc, Token *token)
 
 Token *new_struct(Token *token)
 {
+   #if DEBUG
+   debug(CYAN "in scoop %k, new struct [%k]\n" RESET, scoop->token, token);
+   #endif
    for (int i = 0; i < scoop->spos; i++)
    {
+      debug(GREEN"loop [%d]\n"RESET, i);
       Token *curr = scoop->structs[i];
-      if (strcmp(curr->name, token->name) == 0) check(1, "Redefinition of %s\n", token->name);
+      // if(curr->Struct.name == NULL){ todo(1, "found");}
+      // if(token == NULL){ todo(1, "found");}
+      // if(token->name == NULL){ todo(1, "found");}
+      if (strcmp(curr->Struct.name, token->Struct.name) == 0) check(1, "Redefinition of %s\n", token->Struct.name);
    }
    add_struct(scoop, token);
-#if DEBUG
-   debug(CYAN "in scoop %k, new struct [%k]\n" RESET, scoop->token, token);
-#endif
    return token;
 }
 
@@ -429,7 +433,7 @@ Token *get_variable(char *name)
 #if DEBUG
    debug(CYAN "get variable [%s] from scoop %k\n" RESET, name, scoop->token);
 #endif
-   for (int j = scoopPos; j >= 0; j--)
+   for (int j = scoopPos; j > 0; j--)
    {
       Node *scoop = Gscoop[j];
       for (int i = 0; i < scoop->vpos; i++)
@@ -468,6 +472,16 @@ Node *new_function(Node *node)
       bool cond = strcmp(func->token->name, node->token->name) == 0;
       check(cond, "Redefinition of %s\n", node->token->name);
    }
+   switch(node->token->retType)
+   {
+      case CHAR: case INT: case VOID:
+         setReg(node->token, "eax"); break;
+      case LONG: case PTR: case CHARS:
+         setReg(node->token, "rax"); break;
+      default: 
+         todo(1, "handle this case %s\n", to_string(node->token->retType)); 
+         break;
+   }
    add_function(scoop, node);
    return node;
 }
@@ -477,7 +491,7 @@ Node *get_function(char *name)
 #if DEBUG
    debug("get_func %s in scoop %k\n", name, scoop->token);
 #endif
-   for (int j = scoopPos; j >= 0; j--)
+   for (int j = scoopPos; j > 0; j--)
    {
       Node *scoop = Gscoop[j];
       for (int i = 0; i < scoop->fpos; i++)
@@ -1085,8 +1099,18 @@ void finalize()
 char* open_file(char *filename)
 {
    if (found_error) return NULL;
+   //filename = strjoin("/", filename, NULL);
+
+   for(int i = 0; filename[i]; i++) if(filename[i] == ':') filename[i] = '/';
+   
    struct _IO_FILE *file = fopen(filename, "r");
-   if (check(!file, "openning %s", filename)) return NULL;
+   
+   if (check(!file, "openning %s", filename))
+   {
+     // free(filename);
+      return NULL;
+   }
+   //free(filename);
    fseek(file, 0, SEEK_END);
    int size = ftell(file);
    fseek(file, 0, SEEK_SET);
@@ -1369,7 +1393,7 @@ int ptoken(Token *token)
    if (token->has_ref) debug("has_ref ");
    if (token->remove) res += debug("[remove] ");
    if (token->retType) res += debug("ret [%t] ", token->retType);
-   if(!includes(token->type, STRUCT_CALL, STRUCT_DEF, 0)) res += debug("space [%d] ", token->space);
+   if (!includes(token->type, STRUCT_CALL, STRUCT_DEF, 0)) res += debug("space [%d] ", token->space);
    return res;
 }
 

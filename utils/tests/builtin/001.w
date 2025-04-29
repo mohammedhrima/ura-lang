@@ -1,3 +1,4 @@
+use :src:config
 
 main():
    chars str = "fffff" 
