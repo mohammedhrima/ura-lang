@@ -317,7 +317,7 @@ Node *struct_def(Node *node)
    setName(node->token, name->name);
    while (within_space(node->token->space))
    {
-      Token *attr = find(LONG, INT, CHARS, CHAR, FLOAT, BOOL, ID, 0);
+      Token *attr = find(LONG, INT, CHARS, CHAR, FLOAT, BOOL, SHORT, ID, 0);
       Token *id = find(ID, 0);
       if (check(!attr, "expected data type followed by id"))
       {
@@ -502,6 +502,7 @@ void generate_ast()
 #if BUILTINS
    // add_builtins();
 #endif
+   config();
    while (tokens[exe_pos]->type != END && !found_error)
    {
       /*Node *child = */add_child(head, expr());
@@ -952,11 +953,11 @@ Token *op_ir(Node *node)
    {
    case ASSIGN:
    {
-      if(left->type == STRUCT_CALL)
+      if (left->type == STRUCT_CALL)
       {
          debug(">> %k\n", left);
          debug(">> %k\n", right);
-     //    stop(1, "found");
+         //    stop(1, "found");
       }
       node->token->ir_reg = left->ir_reg;
       if (!node->token->ir_reg || !left->ir_reg)
@@ -972,7 +973,7 @@ Token *op_ir(Node *node)
          if (right->is_ref) // ir_reg, ptr
          {
             if (check(!right->has_ref, "can not assign from reference that point to nothing")) break;
-            if (left->has_ref){ node->token->assign_type = REF_REF;/* stop(1, "found")*/}
+            if (left->has_ref) { node->token->assign_type = REF_REF;/* stop(1, "found")*/}
             else node->token->assign_type = REF_HOLD_REF;
          }
          else if (right->ptr) // ptr
@@ -1154,7 +1155,8 @@ void generate(char *name)
 {
    if (found_error) return;
 #if IR
-   config();
+   
+
    debug(GREEN BOLD"GENERATE INTERMEDIATE REPRESENTATIONS:\n" RESET);
    for (int i = 0; !found_error && i < head->cpos; i++) generate_ir(head->children[i]);
    if (found_error) return;
@@ -1180,6 +1182,7 @@ int main(int argc, char **argv)
    check(argc < 2, "Invalid arguments");
    open_file(argv[1]);
    tokenize();
+
    generate_ast();
    generate(argv[1]);
    free_memory();

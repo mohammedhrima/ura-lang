@@ -27,7 +27,7 @@ typedef enum
    IF, ELIF, ELSE,
    WHILE, CONTINUE, BREAK,
    FDEC, FCALL,
-   VOID, INT, CHARS, CHAR, BOOL, FLOAT, PTR, LONG,
+   VOID, INT, CHARS, CHAR, BOOL, FLOAT, PTR, LONG, SHORT,
    STRUCT_DEF, STRUCT_CALL, ID, REF,
    JNE, JE, JMP, BLOC, END_BLOC,
    PUSH, POP,
@@ -95,6 +95,7 @@ typedef struct Token
       } Char;
       struct
       {
+         char *name;
          int id;
          struct Token **attrs;
          int pos;
@@ -241,6 +242,8 @@ Type getRetType(Node *node);
 bool optimize_ir();
 void config();
 void setAttrName(Token *parent, Token *child);
+void create_struct(char *name, Token *attrs);
+
 #if DEBUG_INC_PTR
 void inc_ptr_(char *filename, int line, int size);
 #else

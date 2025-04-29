@@ -39,7 +39,8 @@ Token* new_token(char *input, int s, int e, Type type, int space)
       if (bools[i].name) break;
 
       struct { char *name; Type type; } dataTypes [] = { {"int", INT}, {"bool", BOOL}, {"chars", CHARS},
-         {"char", CHAR}, {"float", FLOAT}, {"void", VOID}, {"long", LONG}, {"_ptr_", PTR}, {0, 0}
+         {"char", CHAR}, {"float", FLOAT}, {"void", VOID}, {"long", LONG}, {"_ptr_", PTR},
+         {"short", SHORT}, {0, 0}
       };
       for (i = 0; dataTypes[i].name; i++)
       {
@@ -105,6 +106,7 @@ Token *copy_token(Token *token)
       new->Struct.attrs = allocate(token->Struct.len, sizeof(Token*));
       for (int i = 0; i < new->Struct.pos; i++) new->Struct.attrs[i] = copy_token(token->Struct.attrs[i]);
    }
+   if(token->Struct.name) new->Struct.name = strdup(token->Struct.name);
    add_token(new);
    return new;
 }
@@ -221,15 +223,15 @@ Token *new_struct(Token *token)
 {
    static int structs_ids;
    token->Struct.id = (++structs_ids);
-#if DEBUG
-   debug(CYAN "new struct [%s] id [%d] in scoop %k\n" RESET, token->name, token->Struct.id, scoop->token);
-#endif
    for (int i = 0; i < scoop->spos; i++)
    {
       Token *curr = scoop->structs[i];
       if (strcmp(curr->name, token->name) == 0) check(1, "Redefinition of %s\n", token->name);
    }
    add_struct(scoop, token);
+#if DEBUG
+   debug(CYAN "in scoop %k, new struct [%k]\n" RESET, scoop->token, token);
+#endif
    return token;
 }
 
@@ -350,6 +352,7 @@ int sizeofToken(Token *token)
    case CHAR: return sizeof(char);
    case BOOL: return sizeof(bool);
    case LONG: return sizeof(long);
+   case SHORT: return sizeof(short);
    case STRUCT_DEF: return token->offset;
    case STRUCT_CALL: return token->offset;
    default: todo(1, "add this type [%s]\n", to_string(token->type));
@@ -420,6 +423,11 @@ Token *new_variable(Token *token)
    if (token->type == STRUCT_CALL)
    {
       setAttrName(NULL, token);
+      if(token->is_ref && !token->ptr)
+      {
+         inc_ptr(sizeofToken(token));
+         token->ptr = ptr;
+      }
    }
    else
    {
@@ -1132,7 +1140,7 @@ const char *to_string_(const char *filename, const int line, Type type) {
       [DOTS] = "DOTS", [DOT] = "DOT", [RETURN] = "RETURN", [IF] = "IF", [ELIF] = "ELIF",
       [ELSE] = "ELSE", [WHILE] = "HILE", [CONTINUE] = "continue", [BREAK] = "break", [REF] = "REF",
       [FDEC] = "F_DEC", [FCALL] = "F_CALL", [INT] = "INT", [VOID] = "VOID", [CHARS] = "CHARS",
-      [CHAR] = "CHAR", [BOOL] = "BOOL", [FLOAT] = "FLOAT", [STRUCT_CALL] = "ST_CALL",
+      [CHAR] = "CHAR", [BOOL] = "BOOL", [FLOAT] = "FLOAT", [SHORT] = "SHORT", [STRUCT_CALL] = "ST_CALL",
       [STRUCT_DEF] = "ST_DEF", [ID] = "ID", [END_BLOC] = "END_BLOC", [BLOC] = "BLOC",
       [JNE] = "JNE", [JE] = "JE", [JMP] = "JMP", [LBRA] = "L_BRA", [RBRA] = "R_BRA",
       [END] = "END", [CHILDREN] = "CHILDREN", [TMP] = "TMP", [LONG] = "LONG", [PTR] = "PTR",
@@ -1385,7 +1393,7 @@ int ptoken(Token *token)
    if (token->ptr) res += debug("PTR [%d] ", token->ptr);
    if (token->ir_reg) res += debug("ir_reg [%d] ", token->ir_reg);
    if (token->is_ref) debug("ref ");
-   if (token->has_ref) debug("has-ref ");
+   if (token->has_ref) debug("has_ref ");
    if (token->remove) res += debug("[remove] ");
    if (token->retType) res += debug("ret [%t] ", token->retType);
    res += debug("space [%d] ", token->space);

@@ -90,6 +90,7 @@ void add_builtins()
       {"puts", (Type[]){CHARS, 0}, INT},
       {"putchar", (Type[]){INT, 0}, INT},
       {"getchar", (Type[]){0}, INT},
+      {"socket", (Type[]){INT, INT, INT, 0}, INT},
       // {"fopen",   (Type[]){CHARS, CHARS, 0}, FILE_PTR},
       // {"fclose",  (Type[]){FILE_PTR, 0},               INT},
 
@@ -124,7 +125,62 @@ void add_builtins()
       create_builtin(builtins[i].name, builtins[i].attrs, builtins[i].ret);
 }
 
+
+void create_struct(char *name, Token *attrs)
+{
+   Token *token = new_token("struct", 0, strlen("struct"), ID, 0);
+   setName(token, name);
+
+   for(int i = 0; attrs[i].name; i++)
+   {
+      Token *attr = NULL;
+      if(attrs[i].type == STRUCT_CALL)
+      {
+         Token *st = get_struct(attr->name);
+         if (check(!st, "Unkown data type [%s]\n", attr->name)) exit(1);
+         attr = get_struct(attrs[i].name);
+         attr->type = STRUCT_CALL;
+      }
+      else attr = new_token(NULL, 0, 0, attrs[i].type, 0);
+      setName(attr, attrs[i].name);
+      add_attribute(token, attr);
+   }
+
+   set_struct_size(token);
+   new_struct(token);
+}
+
+void add_structs()
+{
+#if 0
+   struct { char *name; Token *attrs; } structs[] = {
+      {"Info", (Token[]){
+         {.name = "heigh", .type = INT},
+         {.name = "width", .type = INT},
+         {.name = NULL, .type = 0},
+      }},
+      {"Region", (Token[]){
+         {.name = "name", .type = CHARS},
+         {.name = "size", .type = INT},
+         {.name = NULL, .type = 0},
+      }},
+      {"User", (Token[]){
+         {.name = "Region", .type = STRUCT_CALL},
+         {.name = "Info", .type = STRUCT_CALL},
+         {.name = NULL, .type = 0},
+      }},
+      {NULL, NULL}
+   };
+
+   for(int i = 0; structs[i].name; i++)
+   {
+      create_struct(structs[i].name, structs[i].attrs);
+   }
+#endif
+}
+
 void config()
 {
    add_builtins();
+   add_structs();
 }
