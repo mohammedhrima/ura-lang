@@ -34,7 +34,7 @@ void tokenize(char *filename)
    debug(GREEN BOLD"TOKENIZE: [%s]\n" RESET, filename);
 #endif
    char *input = open_file(filename);
-   if(!input) return;
+   if (!input) return;
 
    struct { char *value; Type type; } specials[] = {
       {".", DOT}, {":", DOTS}, {"+=", ADD_ASSIGN}, {"-=", SUB_ASSIGN},
@@ -495,7 +495,7 @@ Token *if_ir(Node *node)
    inst->token->index = ++bloc_index;
 
    Token *cond = generate_ir(node->left); // TODO: check if it's boolean
-   if(!cond) return NULL;
+   if (!cond) return NULL;
    setName(cond, "endif");
    cond->index = inst->token->index;
    --bloc_index;
@@ -699,7 +699,7 @@ void set_func_dec_regs(Token *child, int *ptr, bool is_proto)
       src->is_ref = true;
       src->has_ref = true;
    }
-   if(is_proto);
+   if (is_proto);
    else if (child->type != STRUCT_CALL || child->is_ref)
    {
       if (src->is_ref) child->has_ref = true;

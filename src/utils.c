@@ -221,9 +221,9 @@ void add_struct(Node *bloc, Token *token)
 
 Token *new_struct(Token *token)
 {
-   #if DEBUG
+#if DEBUG
    debug(CYAN "in scoop %k, new struct [%k]\n" RESET, scoop->token, token);
-   #endif
+#endif
    for (int i = 0; i < scoop->spos; i++)
    {
       debug(GREEN"loop [%d]\n"RESET, i);
@@ -472,15 +472,15 @@ Node *new_function(Node *node)
       bool cond = strcmp(func->token->name, node->token->name) == 0;
       check(cond, "Redefinition of %s\n", node->token->name);
    }
-   switch(node->token->retType)
+   switch (node->token->retType)
    {
-      case CHAR: case INT: case VOID:
-         setReg(node->token, "eax"); break;
-      case LONG: case PTR: case CHARS:
-         setReg(node->token, "rax"); break;
-      default: 
-         todo(1, "handle this case %s\n", to_string(node->token->retType)); 
-         break;
+   case CHAR: case INT: case VOID:
+      setReg(node->token, "eax"); break;
+   case LONG: case PTR: case CHARS:
+      setReg(node->token, "rax"); break;
+   default:
+      todo(1, "handle this case %s\n", to_string(node->token->retType));
+      break;
    }
    add_function(scoop, node);
    return node;
@@ -1101,13 +1101,13 @@ char* open_file(char *filename)
    if (found_error) return NULL;
    //filename = strjoin("/", filename, NULL);
 
-   for(int i = 0; filename[i]; i++) if(filename[i] == ':') filename[i] = '/';
-   
+   for (int i = 0; filename[i]; i++) if (filename[i] == ':') filename[i] = '/';
+
    struct _IO_FILE *file = fopen(filename, "r");
-   
+
    if (check(!file, "openning %s", filename))
    {
-     // free(filename);
+      // free(filename);
       return NULL;
    }
    //free(filename);
