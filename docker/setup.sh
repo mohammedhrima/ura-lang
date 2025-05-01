@@ -41,6 +41,7 @@ copy() {
 }
 
 test() {
+	rm -rf /src/wcc
 	currflags=$flags
 	flags="$flags -D DEBUG=false -D OPTIMIZE=true -D TESTING=true"
 	gcc $files $flags -o /src/wcc
