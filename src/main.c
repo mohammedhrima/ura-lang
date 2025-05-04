@@ -378,6 +378,20 @@ Node *symbol(Token *token)
       if (strcmp(token->name, "main") == 0) return func_main(node);
       return func_call(node);
    }
+   else if (token->type == ID && token->name && find(LBRA, 0))
+   {
+      node = new_node(tokens[exe_pos - 1]); // LBRA
+      node->token->type = ACCESS;
+
+
+      node->left = new_node(token);
+      node->right = expr(); // TODO: should be integer or ID;
+
+      check(!find(RBRA, 0), "expected right bra");
+      debug("%n\n", node);
+      exit(1);
+      return node;
+   }
    return new_node(token);
 }
 
@@ -475,6 +489,12 @@ Node *prime()
       check(!find(RPAR, 0), "expected right par");
       return node;
    }
+   // else if((token = find(LBRA, 0)))
+   // {
+   //    if (tokens[exe_pos]->type != RPAR) node = expr();
+   //    check(!find(RBRA, 0), "expected right bra");
+   //    return node;
+   // }
    else check(1, "Unexpected token has type %s\n", to_string(tokens[exe_pos]->type));
    return new_node(tokens[exe_pos]);
 }
