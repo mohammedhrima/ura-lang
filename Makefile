@@ -10,6 +10,9 @@ up:
 	@echo "Starting Docker containers..."
 	$(COMPOSE) up --build -d
 
+exec:
+	docker exec -it wcc bash
+
 down:
 	@echo "Stopping Docker containers..."
 	$(COMPOSE) down
