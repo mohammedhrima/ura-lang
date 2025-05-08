@@ -43,7 +43,7 @@ void parse_token(char *input, int s, int e, Type type, int space, char *filename
 
       struct { char *name; Type type; } dataTypes [] = { {"int", INT}, {"bool", BOOL},
          {"chars", CHARS}, {"char", CHAR}, {"float", FLOAT}, {"void", VOID}, {"long", LONG},
-         {"pointer", PTR}, {"short", SHORT}, {0, 0}
+         {"pointer", PTR}, {"array", ARRAY}, {"short", SHORT}, {0, 0}
       };
       for (i = 0; dataTypes[i].name; i++)
       {
@@ -511,7 +511,7 @@ void copy_insts()
    free(insts);
    insts = allocate(len, sizeof(Inst *));
 
-   for (int i = 0; OrgInsts[i]; i++)
+   for (int i = 0; OrgInsts && OrgInsts[i]; i++)
    {
       if (!OrgInsts[i]->token->remove)
       {
@@ -999,7 +999,8 @@ void pasm(char *fmt, ...)
             Token *token = va_arg(args, Token *);
             // if (token->is_ref) fprintf(asm_fd, "QWORD PTR -%d[rbp]", token->ptr);
             // else
-            switch (token->type)
+            Type type = token->retType ? token->retType : token->type;
+            switch (type)
             {
             case CHARS: fprintf(asm_fd, "QWORD PTR [rax]"); break;
             case INT: fprintf(asm_fd, "DWORD PTR [rax]"); break;
@@ -1143,7 +1144,7 @@ const char *to_string_(const char *filename, const int line, Type type) {
       [JNE] = "JNE", [JE] = "JE", [JMP] = "JMP", [LBRA] = "L_BRA", [RBRA] = "R_BRA",
       [END] = "END", [CHILDREN] = "CHILDREN", [TMP] = "TMP", [LONG] = "LONG", [PTR] = "PTR",
       [REF_ID] = "REF_ID", [REF_HOLD_ID] = "REF_HOLD_ID", [REF_VAL] = "REF_VAL",
-      [REF_HOLD_REF] = "REF_HOLD_REF", [REF_REF] = "REF_REF", [ID_ID] = "ID_ID",
+      [REF_HOLD_REF] = "REF_HOLD_REF", [REF_REF] = "REF_REF", [ID_ID] = "ID_ID", [ARRAY] = "ARRAY",
       [ID_REF] = "ID_REF", [ID_VAL] = "ID_VAL", [DEFAULT] = "DEFAULT", [ACCESS] = "ACCESS"
    };
    if (type > 0 && type < sizeof(arr) / sizeof(arr[0]) && arr[type] != NULL) return arr[type];
@@ -1449,8 +1450,7 @@ void print_ir()
       while (!TESTING && k < curr->space) k += debug(" ");
       switch (curr->type)
       {
-      case ADD_ASSIGN:
-      case ASSIGN:
+      case ADD_ASSIGN: case ASSIGN:
       {
          debug("[%-6s] [%s] ", to_string(curr->type), (curr->assign_type ? to_string(curr->assign_type) : ""));
          if (left->creg) debug("r%.2d (%s) = ", left->ir_reg, left->creg);
@@ -1459,6 +1459,23 @@ void print_ir()
          if (right->ir_reg) debug("r%.2d (%s) ", right->ir_reg, right->name ? right->name : "");
          else if (right->creg) debug("[%s] ", right->creg);
          else print_value(right);
+         break;
+      }
+      case ACCESS:
+      {
+         debug("[%-6s] ", to_string(curr->type));
+
+         if (right->ir_reg) debug("r%.2d ", right->ir_reg);
+         else print_value(right);
+         if (right->name) debug("(%s) ", right->name);
+
+         debug("in ");
+
+         if (left->ir_reg) debug("r%.2d ", left->ir_reg);
+         else if (left->creg) debug("creg %s ", left->creg);
+
+         if (left->name) debug("(%s) ", left->name);
+
          break;
       }
       case ADD: case SUB: case MUL: case DIV:

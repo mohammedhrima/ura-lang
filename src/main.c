@@ -119,7 +119,7 @@ void tokenize(char *filename)
       if (isalpha(input[i]) || strchr("@$-_", input[i]))
       {
          while (input[i] && (isalnum(input[i]) || strchr("@$-_", input[i]))) i++;
-         if (strncmp(input + s, "use", i - s) == 0)
+         if (strncmp(input + s, "use ", 4) == 0)
          {
             while (isspace(input[i])) i++;
             s = i;
@@ -793,7 +793,7 @@ void set_func_call_regs(int *ptr, Token *src, Token *dist, Node *node)
          // TODO: add other data type and math operations
          switch (dist->type)
          {
-         case CHARS: setReg(dist, rregs[r]); break;
+         case LONG: case CHARS: setReg(dist, rregs[r]); break;
          case INT:   setReg(dist, eregs[r]); break;
          case CHAR:  setReg(dist, eregs[r]); break;
          case FLOAT: setReg(dist, rregs[r]); break; // TODO: to be checked
@@ -1144,10 +1144,39 @@ Token *generate_ir(Node *node)
       return right;
       break;
    }
-   case STRUCT_DEF:
+   case ACCESS:
    {
+      debug("%n\n", node);
+      Token *left = generate_ir(node->left);
+      Token *right = generate_ir(node->right);
+      // TODO: check if right is a number
+      // TODO: check if left is aan iterable data type
+
+      Inst *inst = new_inst(node->token);
+      inst->token->creg = strdup("rax");
+      inst->token->is_ref = true;
+      inst->token->has_ref = true;
+      switch (left->type)
+      {
+      case CHARS:
+      {
+         inst->token->offset = sizeof(char);
+         inst->token->retType = CHAR;
+         break;
+      }
+      case INT:
+      {
+         inst->token->offset = sizeof(int);
+         inst->token->retType = INT;
+         break;
+      }
+      default: todo(1, "handle this case");
+      }
+      inst->left = left;
+      inst->right = right;
       return node->token;
    }
+   case STRUCT_DEF: return node->token;
    case DEFAULT:
    {
       todo(1, "who is looking for default ?");

@@ -7,6 +7,14 @@ func:
 	push	rbp
 	mov	rbp, rsp
 	mov	QWORD PTR -8[rbp], rdi
+	mov	rax, QWORD PTR -8[rbp]
+	mov	DWORD PTR [rax], 1
+	mov	rax, QWORD PTR -8[rbp]
+	mov	DWORD PTR 4[rax], 2
+	mov	rax, QWORD PTR -8[rbp]
+	mov	DWORD PTR 8[rax], 3
+	mov	rax, QWORD PTR -8[rbp]
+	mov	DWORD PTR 12[rax], 4
 	nop
 	pop	rbp
 	ret

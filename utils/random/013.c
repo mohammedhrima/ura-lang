@@ -7,7 +7,10 @@ typedef struct {
 
 void func(User *user)
 {
-
+   user->a = 1;
+   user->b = 2;
+   user->c = 3;
+   user->d = 4;
 }
 
 int main()
