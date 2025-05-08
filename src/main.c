@@ -388,8 +388,8 @@ Node *symbol(Token *token)
       node->right = expr(); // TODO: should be integer or ID;
 
       check(!find(RBRA, 0), "expected right bra");
-      debug("%n\n", node);
-      exit(1);
+      // debug("%n\n", node);
+      // exit(1);
       return node;
    }
    return new_node(token);

@@ -8,7 +8,7 @@
 2. Use `docker ps` to find the container ID of the running project.
 3. Access the container using the command:
 ```bash
-    docker exec -it <container_id> bash
+    docker exec -it wcc bash
 ```
 ### Step 2: Compile Your Code
 + modify file.w inside the code directory.

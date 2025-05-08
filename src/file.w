@@ -1,5 +1,5 @@
 
 main():
    chars str
-   str[5 + 3]
+   str[1]
 
