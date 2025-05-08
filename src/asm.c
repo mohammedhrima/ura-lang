@@ -236,7 +236,8 @@ void generate_asm(char *name)
                }
                else
                {
-                  todo(1, "handle this case");
+                  pasm("%i%ma, %v", "mov", left,  right);
+                  // todo(1, "handle this case");
                }
             }
             else
@@ -585,6 +586,12 @@ void generate_asm(char *name)
             asm_space(curr->space);
             pasm("%i%ra", inst, curr);
          }
+         break;
+      }
+      case ACCESS:
+      {
+         asm_space(curr->space); pasm("%irax, %a", "mov", left);
+         asm_space(curr->space); pasm("%irax, %d", "add", curr->offset * right->Int.value);
          break;
       }
       case FDEC:

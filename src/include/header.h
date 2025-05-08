@@ -29,6 +29,7 @@ typedef enum
    FDEC, FCALL, PROTO,
    VOID, INT, CHARS, CHAR, BOOL, FLOAT, PTR, LONG, SHORT,
    STRUCT_DEF, STRUCT_CALL, ID, REF,
+   ARRAY,
    JNE, JE, JMP, BLOC, END_BLOC,
    PUSH, POP,
    END
@@ -54,7 +55,7 @@ typedef struct Token
    bool is_data_type;
    bool is_attr;
    bool is_proto;
-   int offset;
+   int offset; // used for structs and []
    char *filename;
    int line;
 
