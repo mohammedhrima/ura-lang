@@ -413,6 +413,10 @@ Token *new_variable(Token *token)
          inc_ptr(sizeofToken(token));
          token->ptr = ptr;
       }
+      else
+      {
+         // token->ptr = token->Struct.attrs[0]->ptr;
+      }
    }
    else
    {
@@ -1376,8 +1380,8 @@ int ptoken(Token *token)
       {
          Token *attr = token->Struct.attrs[i];
 #if 1
-         for (int j = 0; !TESTING && j < attr->space; ) j += debug(" ");
-         res += ptoken(attr) + debug(", offset [%d] PTR [%d]\n", attr->offset, attr->ptr);
+         for (int j = 0; !TESTING && j < token->space + TAB; ) j += debug(" ");
+         res += ptoken(attr)  + debug(", offset [%d] PTR [%d]\n", attr->offset, attr->ptr);
 #else
          res += debug("%s %t [%d], ", attr->name, attr->type, attr->ptr);
 #endif

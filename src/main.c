@@ -956,28 +956,18 @@ Token *op_ir(Node *node)
    check(!compatible(left, right), "invalid [%s] op between %s and %s\n",
          to_string(node->token->type), to_string(left->type), to_string(right->type));
 
-   Inst *inst = new_inst(node->token);
-   inst->left = left;
-   inst->right = right;
 
    switch (node->token->type)
    {
    case ASSIGN:
    {
-      if (left->type == STRUCT_CALL)
-      {
-         debug(">> %k\n", left);
-         debug(">> %k\n", right);
-         //    stop(1, "found");
-      }
+      // if (left->type == STRUCT_CALL)
+      // {
+      //    debug(">> %k\n", left);
+      //    debug(">> %k\n", right);
+      //    //    stop(1, "found");
+      // }
       node->token->ir_reg = left->ir_reg;
-      if (!node->token->ir_reg || !left->ir_reg)
-      {
-         pnode(node, NULL, 0);
-         debug(">> %k\n", left);
-         debug(">> %k\n", right);
-         //todo(1, "tmp condition");
-      }
       node->token->retType = getRetType(node);
       if (left->is_ref) // ir_reg, ptr
       {
@@ -1011,6 +1001,22 @@ Token *op_ir(Node *node)
          else // ir_reg, value
             node->token->assign_type = ID_VAL;
       }
+      else if (left->type == STRUCT_CALL)
+      {
+         debug(">> %k\n", left);
+         debug(">> %k\n", right);
+         // TODO: check compatibility
+         for (int i = 0; i < left->Struct.pos; i++)
+         {
+            Node *tmp = new_node(new_token(ASSIGN, node->token->space));
+            tmp->left = new_node(left->Struct.attrs[i]);
+            tmp->right = new_node(right->Struct.attrs[i]);
+            op_ir(tmp);
+            free_node(tmp);
+         }
+         return NULL;
+         // exit(1);
+      }
       else
       {
          pnode(node, NULL, 0);
@@ -1038,6 +1044,10 @@ Token *op_ir(Node *node)
    }
    default: check(1, "handle [%s]", to_string(node->token->type)); break;
    }
+   Inst *inst = new_inst(node->token);
+   inst->left = left;
+   inst->right = right;
+
    return node->token;
 }
 

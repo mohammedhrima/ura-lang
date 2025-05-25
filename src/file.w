@@ -1,10 +1,12 @@
 
 struct User:
-   int id
+   int a
+   int b
+   int c
 
-func void init(ref User u):
-   u.id = 10
-   
 
 main():
+   User user1
+   ref User user2 
+   user2 = user1
 

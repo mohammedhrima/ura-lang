@@ -2,6 +2,7 @@ services:
   wolf_service:
     container_name: wcc
     build: .
+    image: wcc
     volumes:
       - ../src:/src
       - ../utils/import:/import
