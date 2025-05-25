@@ -739,6 +739,7 @@ void set_remove(Node *node)
       set_remove(child);
    }
 }
+
 Token *func_dec_ir(Node *node)
 {
    new_function(node);
@@ -758,7 +759,6 @@ Token *func_dec_ir(Node *node)
    }
 
    if (node->token->is_proto) set_remove(node);
-
    // code bloc
    for (int i = 0; !node->token->is_proto && i < node->cpos; i++)
    {
@@ -977,14 +977,15 @@ Token *op_ir(Node *node)
             if (left->has_ref) { node->token->assign_type = REF_REF;/* stop(1, "found")*/}
             else node->token->assign_type = REF_HOLD_REF;
          }
-         else if (right->ptr) // ptr
+         else if (right->ptr || right->creg) // ptr
          {
             if (left->has_ref) node->token->assign_type = REF_ID;
             else node->token->assign_type = REF_HOLD_ID;
          }
          else // ir_reg, value
          {
-            if (check(!left->has_ref, "can not assign to reference that point to nothing")) break;
+            debug("%n\n", node);
+            // if (check(!left->has_ref, "can not assign to reference that point to nothing")) break;
             node->token->assign_type = REF_VAL;
          }
          left->has_ref = true;

@@ -1,12 +1,11 @@
+use :src:config
 
-struct User:
-   int a
-   int b
-   int c
-
+func int m(ref int a):
+   a = 1
+   return 1
 
 main():
-   User user1
-   ref User user2 
-   user2 = user1
-
+   int x = 2
+   m(x)
+   putnbr(x)
+   

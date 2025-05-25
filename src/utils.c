@@ -753,8 +753,9 @@ bool optimize_ir()
          //    }
          // }
          // else
-         if (token->type == ASSIGN && !insts[i]->left->is_ref)
+         if (token->type == ASSIGN)
          {
+            if(token->assign_type == REF_HOLD_ID) continue;
             for (int j = i + 1; insts[j] && insts[j]->token->space == token->space; j++)
             {
                if (!insts[j]->left || !insts[j]->right || !token->ir_reg) continue;
