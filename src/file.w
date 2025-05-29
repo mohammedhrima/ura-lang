@@ -1,11 +1,13 @@
-use :src:config
+struct Infos:
+   chars name
 
-func int m(ref int a):
-   a = 1
-   return 1
+struct Info:
+   chars name
+   Infos i
 
-main():
-   int x = 2
-   m(x)
-   putnbr(x)
-   
+struct User:
+   int a
+   int b
+   Info info
+
+func void m(User user):
