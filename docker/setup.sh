@@ -15,7 +15,7 @@ NC='\033[0m'
 
 san="-fsanitize=address -fsanitize=null -g3" 
 flags="$san -Wall -Wextra -Werror=incompatible-pointer-types -Werror=int-conversion"
-files="/src/main.c /src/utils.c /src/asm.c"
+files="/src/main.c /src/utils.c /src/asm.c /src/ir.c"
 
 copy() {
 	currflags=$flags
@@ -83,7 +83,7 @@ update(){
 }
 
 indent(){
-	astyle --mode=c --indent=spaces=3 --pad-oper --pad-header \
+	astyle --mode=c --indent=spaces=4 --pad-oper --pad-header \
 	--keep-one-line-statements --keep-one-line-blocks --convert-tabs \
 	/src/*.c /src/include/*.h /import/*.c \
 	&& rm -rf /src/*.c.orig /src/include/*.h.orig /import/*.c.orig

@@ -10,134 +10,213 @@
 #include <string.h>
 #include <stdint.h>
 #include <sys/types.h>
-#include "macros.h"
+
+// MACROS
+#define SPLIT "=================================================\n"
+#define GREEN "\033[0;32m"
+#define RED "\033[0;31m"
+#define CYAN "\033[0;36m"
+#define BOLD "\e[1m"
+#define BLUE "\x1b[34m"
+#define RESET "\033[0m"
+#define LINE __LINE__
+#define FUNC __func__
+#define FILE __FILE__
+
+#define TOKENIZE 1
+#define TAB 3
+
+#if TOKENIZE
+#define AST 1
+#endif
+
+#if AST
+#define IR 1
+#else
+#define IR 0
+#endif
+
+#define WITH_COMMENTS 1
+
+#if IR
+#define BUILTINS 1
+#ifndef OPTIMIZE
+#define OPTIMIZE 1
+#endif
+
+#define ASM 1
+#else
+#define ASM 0
+#endif
+
+#ifndef DEBUG
+#define DEBUG 1
+#endif
+
+#ifndef TESTING
+#define TESTING false
+#endif
+
+#define TREE 0
+
+#define DEBUG_INC_PTR 0
+#define DEBUG_NEW_TOKEN 0
+
+#define allocate(len, size) allocate_func(LINE, len, size)
+#define check(cond, fmt, ...) check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)
+#define to_string(type) to_string_(FILE, LINE, type)
+#define todo(cond, fmt, ...) check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__); exit(1);
+#define stop(cond, fmt, ...) check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__); exit(1);
+
+#if DEBUG_NEW_TOKEN
+#define new_token(input, s, e, type, space) new_token_(FILE, LINE, input, s, e, type, space)
+#endif
+
+#if DEBUG_INC_PTR
+#define inc_ptr(value) inc_ptr_(FILE, LINE, value)
+#endif
+
+#define DATA_TYPES INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT
+
+#define AST_NODE(name, child_func, ...) \
+Node *name() { \
+    Node *left = child_func(); \
+    Token *token; \
+    while ((token = find(__VA_ARGS__, 0))) { \
+        Node *node = new_node(token); \
+        node->left = left; \
+        node->right = child_func(); \
+        left = node; \
+    } \
+    return left; \
+}
 
 // STRUCTS
 typedef enum
 {
-   TMP = 1, CHILDREN, DEFAULT,
-   // TODO: don't assign from reference if it does not have reference
-   REF_ID, REF_HOLD_ID, REF_VAL, REF_HOLD_REF, REF_REF, ID_ID, ID_REF, ID_VAL,
-   ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,
-   EQUAL, NOT_EQUAL, LESS_EQUAL, MORE_EQUAL, LESS, MORE,
-   ADD, SUB, MUL, DIV, MOD,
-   AND, OR, NOT,
-   LPAR, RPAR, LBRA, RBRA, COMA, DOT, DOTS, ACCESS,
-   RETURN,
-   IF, ELIF, ELSE,
-   WHILE, CONTINUE, BREAK,
-   FDEC, FCALL, PROTO,
-   VOID, INT, CHARS, CHAR, BOOL, FLOAT, PTR, LONG, SHORT,
-   STRUCT_DEF, STRUCT_CALL, ID, REF,
-   ARRAY,
-   JNE, JE, JMP, BLOC, END_BLOC,
-   PUSH, POP,
-   END
+    TMP = 1, CHILDREN, DEFAULT,
+    // TODO: don't assign from reference if it does not have reference
+    REF_ID, REF_HOLD_ID, REF_VAL, REF_HOLD_REF, REF_REF, ID_ID, ID_REF, ID_VAL,
+    ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,
+    EQUAL, NOT_EQUAL, LESS_EQUAL, MORE_EQUAL, LESS, MORE,
+    ADD, SUB, MUL, DIV, MOD,
+    AND, OR, NOT,
+    LPAR, RPAR, LBRA, RBRA, COMA, DOT, DOTS, ACCESS,
+    RETURN,
+    IF, ELIF, ELSE,
+    WHILE, CONTINUE, BREAK,
+    FDEC, FCALL, PROTO,
+    VOID, INT, CHARS, CHAR, BOOL, FLOAT, PTR, LONG, SHORT,
+    STRUCT_DEF, STRUCT_CALL, ID, REF,
+    ARRAY,
+    JNE, JE, JMP, BLOC, END_BLOC,
+    PUSH, POP,
+    END
 } Type;
 
 typedef struct Token
 {
-   Type type;
-   Type retType; // return type
-   Type assign_type;
-   char *name;
-   int ptr; // pointer
-   // bool declare; // is variable declaration
-   int space; // indentation
-   bool remove;
-   int ir_reg;
-   char *creg;
-   int index;
+    Type type;
+    Type retType; // return type
+    Type assign_type;
+    char *name;
+    int ptr; // pointer
+    // bool declare; // is variable declaration
+    int space; // indentation
+    bool remove;
+    int ir_reg;
+    char *creg;
+    int index;
 
-   bool is_cond;
-   bool is_ref;
-   bool has_ref;
-   bool is_data_type;
-   bool is_attr;
-   bool is_proto;
-   int offset; // used for structs and []
-   char *filename;
-   int line;
+    bool is_cond;
+    bool is_ref;
+    bool has_ref;
+    bool is_data_type;
+    bool is_attr;
+    bool is_proto;
+    int offset; // used for structs and []
+    char *filename;
+    int line;
 
-   struct
-   {
-      // integer
-      struct
-      {
-         long value;
-         int power;
-         struct Int *next;
-      } Int;
-      // long
-      struct
-      {
-         long long value;
-         int power;
-         struct Int *next;
-      } Long;
-      // float
-      struct
-      {
-         float value;
-      } Float;
-      // boolean
-      struct
-      {
-         bool value;
-         char c;
-      } Bool;
-      // chars
-      struct
-      {
-         char *value;
-      } Chars;
-      // char
-      struct
-      {
-         char value;
-      } Char;
-      struct
-      {
-         char *name;
-         struct Token **attrs;
-         int pos;
-         int len;
-      } Struct;
-   };
+    struct
+    {
+        // integer
+        struct
+        {
+            long value;
+            int power;
+            struct Int *next;
+        } Int;
+        // long
+        struct
+        {
+            long long value;
+            int power;
+            struct Int *next;
+        } Long;
+        // float
+        struct
+        {
+            float value;
+        } Float;
+        // boolean
+        struct
+        {
+            bool value;
+            char c;
+        } Bool;
+        // chars
+        struct
+        {
+            char *value;
+        } Chars;
+        // char
+        struct
+        {
+            char value;
+        } Char;
+        struct
+        {
+            char *name;
+            struct Token **attrs;
+            int pos;
+            int len;
+        } Struct;
+    };
 } Token;
 
 typedef struct Node
 {
-   struct Node *left;
-   struct Node *right;
-   Token *token;
+    struct Node *left;
+    struct Node *right;
+    Token *token;
 
-   struct Node **children;
-   int cpos; // children pos
-   int csize; // children size
+    struct Node **children;
+    int cpos; // children pos
+    int csize; // children size
 
-   // bloc Infos
-   struct {
-      struct Node **functions;
-      int fpos;
-      int fsize;
+    // bloc Infos
+    struct {
+        struct Node **functions;
+        int fpos;
+        int fsize;
 
-      Token **structs;
-      int spos;
-      int ssize;
+        Token **structs;
+        int spos;
+        int ssize;
 
-      Token **vars;
-      int vpos;
-      int vsize;
-   };
+        Token **vars;
+        int vpos;
+        int vsize;
+    };
 } Node;
 
 
 typedef struct
 {
-   Token *token;
-   Token *left;
-   Token *right;
+    Token *token;
+    Token *left;
+    Token *right;
 } Inst;
 
 // GLOBAL
@@ -161,6 +240,7 @@ extern int str_index;
 extern int bloc_index;
 extern char *eregs[];
 extern char *rregs[];
+extern int regLen;
 
 // ----------------------------------------------------------------------------
 // Parsing
@@ -241,6 +321,7 @@ bool optimize_ir();
 void config();
 void setAttrName(Token *parent, Token *child);
 void create_struct(char *name, Token *attrs);
+void set_remove(Node *node);
 
 #if DEBUG_INC_PTR
 void inc_ptr_(char *filename, int line, int size);
