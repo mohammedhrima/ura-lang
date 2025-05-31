@@ -445,16 +445,14 @@ void copy_insts()
 
     for (int i = 0; OrgInsts && OrgInsts[i]; i++)
     {
-        if (!OrgInsts[i]->token->remove)
+        if (OrgInsts[i]->token->remove) continue;
+        insts[pos++] = OrgInsts[i];
+        if (pos + 1 == len)
         {
-            insts[pos++] = OrgInsts[i];
-            if (pos + 1 == len)
-            {
-                Inst **tmp = allocate((len *= 2), sizeof(Inst *));
-                memcpy(tmp, insts, pos * sizeof(Inst *));
-                free(insts);
-                insts = tmp;
-            }
+            Inst **tmp = allocate((len *= 2), sizeof(Inst *));
+            memcpy(tmp, insts, pos * sizeof(Inst *));
+            free(insts);
+            insts = tmp;
         }
     }
 }
@@ -489,6 +487,7 @@ Inst *new_inst(Token *token)
     switch (token->type)
     {
     case CHARS:
+    case INT:
     {
         if (token->ptr || token->creg) token->ir_reg = ++ir_reg;
 
@@ -497,11 +496,6 @@ Inst *new_inst(Token *token)
             debug("%k\n", new->token);
             stop(1, "found");
         }
-        break;
-    }
-    case INT:
-    {
-        if (token->ptr || token->creg) token->ir_reg = ++ir_reg;
         break;
     }
     case STRUCT_CALL:
@@ -522,10 +516,7 @@ Inst *new_inst(Token *token)
         break;
     }
     case RETURN: token->ir_reg = ++ir_reg; break;
-    case ASSIGN:
-    {
-        break;
-    }
+    case ASSIGN: break;
     default: break;
     }
 #if DEBUG
@@ -546,26 +537,22 @@ void to_default(Token *token, Type type)
         token->Chars.value = strdup("\"\"");
         break;
     }
-    case CHAR: case LONG:
-    case PTR: case INT: break;
+    case CHAR: case LONG: case PTR: case INT: break;
     default: check(1, "handle this case [%s]", to_string(type)); break;
     }
 }
 
 void asm_space(int space)
 {
-    // if (did_pasm)
-    {
-        space = (space / TAB) * 4;
-        pasm("\n");
-        for (int i = 0; i < space; i++) pasm(" ");
-        did_pasm = false;
-    }
+    space = (space / TAB) * 4;
+    pasm("\n");
+    for (int i = 0; i < space; i++) pasm(" ");
+    // did_pasm = false;
 }
 
 void pasm(char *fmt, ...)
 {
-    did_pasm = true;
+    // did_pasm = true;
     int i = 0;
     va_list args;
     va_start(args, fmt);
@@ -727,16 +714,14 @@ void pasm(char *fmt, ...)
             else
             {
                 int handled = 0;
-#define check_format(string, type)                     \
-               do                                                   \
-               {                                                    \
-                  if (strncmp(fmt + i, string, strlen(string)) == 0) \
-                  {                                                  \
-                     handled = 1;                                     \
-                     i += strlen(string);                             \
-                     fprintf(asm_fd, "%" string, va_arg(args, type)); \
-                  }                                                  \
-               } while (0)
+#define check_format(string, type) \
+    do { \
+        if (strncmp(fmt + i, string, strlen(string)) == 0) \
+        { \
+            handled = 1; \
+            i += strlen(string); \
+            fprintf(asm_fd, "%" string, va_arg(args, type)); \
+        } } while (0)
                 check_format("d", int);
                 check_format("ld", long);
                 check_format("s", char *);
@@ -785,18 +770,9 @@ void finalize()
 char* open_file(char *filename)
 {
     if (found_error) return NULL;
-    //filename = strjoin("/", filename, NULL);
-
     for (int i = 0; filename[i]; i++) if (filename[i] == ':') filename[i] = '/';
-
     struct _IO_FILE *file = fopen(filename, "r");
-
-    if (check(!file, "openning %s", filename))
-    {
-        // free(filename);
-        return NULL;
-    }
-    //free(filename);
+    if (check(!file, "openning %s", filename)) return NULL;
     fseek(file, 0, SEEK_END);
     int size = ftell(file);
     fseek(file, 0, SEEK_SET);
@@ -873,22 +849,14 @@ void add_token(Token *token)
 
 void setName(Token *token, char *name)
 {
-    if (token->name)
-    {
-        free(token->name);
-        token->name = NULL;
-    }
-    if (name) token->name = strdup(name);
+    if (token->name) free(token->name);
+    token->name = name ? strdup(name) : NULL;
 }
 
 void setReg(Token *token, char *creg)
 {
-    if (token->creg)
-    {
-        free(token->creg);
-        token->creg = NULL;
-    }
-    if (creg) token->creg = strdup(creg);
+    if (token->creg) free(token->creg);
+    token->creg = creg ? strdup(creg) : NULL;
 }
 
 char *strjoin(char *str0, char *str1, char *str2)
@@ -1064,7 +1032,8 @@ int ptoken(Token *token)
     }
     case STRUCT_CALL: case STRUCT_DEF:
     {
-        res += debug("name [%s] ", token->Struct.name);
+        if (token->name) res += debug("name [%s] ", token->name);
+        res += debug("st_name [%s] ", token->Struct.name);
         res += debug("space [%d] ", token->space);
         res += debug("attributes:\n");
         for (int i = 0; i < token->Struct.pos; i++)
@@ -1113,8 +1082,9 @@ int pnode(Node *node, char *side, int space)
 
 int print_value(Token *token)
 {
+	// TODO: handle the other cases
     switch (token->type)
-    {   // TODO: handle the other cases
+    {  
     case INT: return debug("value [%lld] ", token->Int.value);
     case LONG: return debug("value [%lld] ", token->Long.value);
     case BOOL: return debug("value [%s] ", token->Bool.value ? "True" : "False");

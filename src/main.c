@@ -343,6 +343,7 @@ Node *struct_def(Node *node)
             id = attr;
             setName(id, name);
             id->type = STRUCT_CALL;
+
         }
         else id->type = attr->type;
         id->is_attr = true;
