@@ -5,8 +5,11 @@ void setAttrName(Token *parent, Token *child)
     if (parent)
     {
         child->is_attr = true;
-        child->ptr = parent->ptr + child->offset;
-
+        if(child->type != STRUCT_CALL)
+            child->ptr = parent->ptr + child->offset;
+        else
+            child->ptr = parent->ptr + child->offset;
+    
         char *name = strjoin(parent->name, ".", child->name);
         setName(child, name);
         free(name);
@@ -53,7 +56,7 @@ Token *new_variable(Token *token)
     if (token->type == STRUCT_CALL)
     {
         token->ptr = ptr;
-        if(token->is_arg) token->ptr += sizeofToken(token->Struct.attrs[0]);
+        if (token->is_arg) token->ptr += sizeofToken(token->Struct.attrs[0]);
         setAttrName(NULL, token);
         inc_ptr(sizeofToken(token)); // TODO: each struct must have attributes
     }

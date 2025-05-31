@@ -1,10 +1,14 @@
-struct User:
+struct Infos:
    chars name
-   int age
 
-main():
-   User user
+struct Info:
+   chars name
+   Infos i
+
+struct User:
+   int a
+   int b
+   Info info
+
+func void m(User user):
    User user1
-   // user.name = "Mohammed"
-   // user.age = 27
-   // output(user.age, ", ", user.name)
