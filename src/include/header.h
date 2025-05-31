@@ -59,7 +59,7 @@
 
 #define TREE 0
 
-#define DEBUG_INC_PTR 0
+#define DEBUG_INC_PTR 1
 #define DEBUG_NEW_TOKEN 0
 
 #define allocate(len, size) allocate_func(LINE, len, size)
