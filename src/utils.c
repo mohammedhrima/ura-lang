@@ -1082,9 +1082,9 @@ int pnode(Node *node, char *side, int space)
 
 int print_value(Token *token)
 {
-	// TODO: handle the other cases
+    // TODO: handle the other cases
     switch (token->type)
-    {  
+    {
     case INT: return debug("value [%lld] ", token->Int.value);
     case LONG: return debug("value [%lld] ", token->Long.value);
     case BOOL: return debug("value [%s] ", token->Bool.value ? "True" : "False");

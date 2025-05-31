@@ -6,10 +6,9 @@
 m:
     push rbp
     mov  rbp, rsp
-    sub  rsp, 32
-    mov  DWORD PTR -4[rbp], edi ;// assign [user.a]
+    sub  rsp, 16
     mov  DWORD PTR -8[rbp], esi ;// assign [user.b]
-    mov  QWORD PTR -16[rbp], rdx ;// assign [name]
+    mov  QWORD PTR -12[rbp], rdx ;// assign [user.info.name]
     mov  DWORD PTR -4[rbp], 123 ;// assign [user.a]
     mov  eax, 0
     leave 

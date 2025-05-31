@@ -5,6 +5,8 @@ void setAttrName(Token *parent, Token *child)
     if (parent)
     {
         child->is_attr = true;
+        child->ptr = parent->ptr + child->offset;
+
         char *name = strjoin(parent->name, ".", child->name);
         setName(child, name);
         free(name);
@@ -50,10 +52,9 @@ Token *new_variable(Token *token)
     }
     if (token->type == STRUCT_CALL)
     {
+        token->ptr = ptr;
+        if(token->is_arg) token->ptr += sizeofToken(token->Struct.attrs[0]);
         setAttrName(NULL, token);
-        // if (token->is_ref && !token->ptr) { }
-        // else { /*token->ptr = token->Struct.attrs[0]->ptr;*/ };
-        token->ptr = ptr + token->Struct.attrs[0]->ptr;
         inc_ptr(sizeofToken(token)); // TODO: each struct must have attributes
     }
     else
@@ -250,12 +251,18 @@ Token* inialize_variable(Node *node)
     return node->token;
 }
 
-void set_func_dec_regs(Token *child, int *ptr, bool is_proto)
+void set_func_dec_regs(Token *child, int *r_ptr, bool is_proto)
 {
+    if (!child->is_attr)
+    {
+        child->is_arg = true;
+        new_variable(child);
+    }
+
     // TODO: src should not be used I guess
     // if argument is struct call and not reference
     Token *src = new_token(child->type, child->space);
-    int r = *ptr;
+    int r = *r_ptr;
     if (r < regLen)
     {
         if (child->is_ref)
@@ -275,8 +282,9 @@ void set_func_dec_regs(Token *child, int *ptr, bool is_proto)
                 for (int j = 0; j < child->Struct.pos; j++)
                 {
                     set_func_dec_regs(child->Struct.attrs[j],  &r, is_proto);
-                    debug(RED"%k\n"RESET, child->Struct.attrs[j]);
+                    debug(RED"<<%k>>\n"RESET, child->Struct.attrs[j]);
                 }
+                // todo(1, "found");
 
                 break;
             }
@@ -291,7 +299,6 @@ void set_func_dec_regs(Token *child, int *ptr, bool is_proto)
         todo(1, "implement assigning function argument using PTR");
     }
 
-    if (!child->is_attr) new_variable(child);
 
     if (child->is_ref /*&& !child->has_ref*/)
     {
@@ -305,9 +312,6 @@ void set_func_dec_regs(Token *child, int *ptr, bool is_proto)
     else if (child->type != STRUCT_CALL || child->is_ref)
     {
         if (src->is_ref) child->has_ref = true;
-
-        // new_variable(child);
-
         Node *assign = new_node(new_token(ASSIGN, child->space));
         assign->left = new_node(child);
         assign->right =  new_node(src);
@@ -315,7 +319,7 @@ void set_func_dec_regs(Token *child, int *ptr, bool is_proto)
         generate_ir(assign);
         free_node(assign);
     }
-    *ptr = r;
+    *r_ptr = r;
 }
 
 Token *func_dec_ir(Node *node)
@@ -358,9 +362,9 @@ Token *func_dec_ir(Node *node)
     return NULL;
 }
 
-void set_func_call_regs(int *ptr, Token *src, Token *dist, Node *node)
+void set_func_call_regs(int *r_ptr, Token *src, Token *dist, Node *node)
 {
-    int r = *ptr;
+    int r = *r_ptr;
     if (r < regLen)
     {
         // added because unfction declaration params do have ptrs
@@ -413,7 +417,7 @@ void set_func_call_regs(int *ptr, Token *src, Token *dist, Node *node)
 
         generate_ir(assign);
         free_node(assign);
-        *ptr = r;
+        *r_ptr = r;
     }
 }
 
@@ -766,7 +770,6 @@ Token *generate_ir(Node *node)
     }
     return NULL;
 }
-
 
 bool optimize_ir()
 {
