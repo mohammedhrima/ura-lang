@@ -41,7 +41,7 @@
 #if IR
 #define BUILTINS 1
 #ifndef OPTIMIZE
-#define OPTIMIZE 1
+#define OPTIMIZE 0
 #endif
 
 #define ASM 1
@@ -134,6 +134,7 @@ typedef struct Token
     bool is_data_type;
     bool is_attr;
     bool is_proto;
+    bool is_arg;
     int offset; // used for structs and []
     char *filename;
     int line;

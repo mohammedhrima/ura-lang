@@ -1,6 +1,10 @@
 struct User:
-   int a
-   int b
+   chars name
+   int age
 
-func void m(User user):
-
+main():
+   User user
+   User user1
+   // user.name = "Mohammed"
+   // user.age = 27
+   // output(user.age, ", ", user.name)
