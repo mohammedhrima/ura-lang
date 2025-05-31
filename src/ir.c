@@ -53,8 +53,8 @@ Token *new_variable(Token *token)
         setAttrName(NULL, token);
         // if (token->is_ref && !token->ptr) { }
         // else { /*token->ptr = token->Struct.attrs[0]->ptr;*/ };
-        token->ptr = ptr;
-        inc_ptr(sizeofToken(token));
+        token->ptr = ptr + token->Struct.attrs[0]->ptr;
+        inc_ptr(sizeofToken(token)); // TODO: each struct must have attributes
     }
     else
     {
@@ -181,7 +181,7 @@ Token *while_ir(Node *node)
             new_inst(next); // jmp back to while loop
             break;
         default:
-            generate_ir(curr); 
+            generate_ir(curr);
             break;
         }
     }
@@ -218,6 +218,7 @@ Token *inialize_struct(Node *node)
             attr->ptr = node->token->ptr + node->token->offset - attr->offset;
             Node *tmp = new_node(new_token(ASSIGN, node->token->space));
             tmp->token->ir_reg = attr->ir_reg;
+
             tmp->left = new_node(attr);
             tmp->right = new_node(new_token(DEFAULT, attr->space));
             to_default(tmp->right->token, tmp->left->token->type);
@@ -235,7 +236,6 @@ Token* inialize_variable(Node *node)
     if (node->token->type == STRUCT_CALL)
     {
         inialize_struct(node);
-        // inc_ptr(node->token->offset);
     }
     else
     {
@@ -277,7 +277,7 @@ void set_func_dec_regs(Token *child, int *ptr, bool is_proto)
                     set_func_dec_regs(child->Struct.attrs[j],  &r, is_proto);
                     debug(RED"%k\n"RESET, child->Struct.attrs[j]);
                 }
-                if (!child->is_attr) new_variable(child);
+
                 break;
             }
             default: todo(1, "set ir_reg for %s", to_string(child->type));
@@ -290,6 +290,8 @@ void set_func_dec_regs(Token *child, int *ptr, bool is_proto)
         // TODO:
         todo(1, "implement assigning function argument using PTR");
     }
+
+    if (!child->is_attr) new_variable(child);
 
     if (child->is_ref /*&& !child->has_ref*/)
     {
@@ -304,7 +306,8 @@ void set_func_dec_regs(Token *child, int *ptr, bool is_proto)
     {
         if (src->is_ref) child->has_ref = true;
 
-        new_variable(child);
+        // new_variable(child);
+
         Node *assign = new_node(new_token(ASSIGN, child->space));
         assign->left = new_node(child);
         assign->right =  new_node(src);
