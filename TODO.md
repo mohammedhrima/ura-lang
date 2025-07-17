@@ -3,3 +3,4 @@
 + it causes lot of bugs
 + handle passing references to comparision functions
 + increment reg for variables on declaration, find a way to fix it
++ handle operator for function arguments
