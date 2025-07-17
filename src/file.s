@@ -3,25 +3,21 @@
 .text
 .globl	main
 
-m:
+main:
     push rbp
     mov  rbp, rsp
-    sub  rsp, 64
-    mov  DWORD PTR -4[rbp], edi ;// assign [user.a]
-    mov  DWORD PTR -8[rbp], esi ;// assign [user.b]
-    mov  QWORD PTR -20[rbp], rdx ;// assign [user.info.name]
-    mov  QWORD PTR -28[rbp], rcx ;// assign [user.info.i.name]
-    mov  DWORD PTR -64[rbp], 0 ;// assign [user1.a]
-    mov  DWORD PTR -60[rbp], 0 ;// assign [user1.b]
-    lea  rax, .STR0[rip]
-    mov  QWORD PTR -80[rbp], rax ;// assign [user1.info.name]
-    lea  rax, .STR0[rip]
-    mov  QWORD PTR -88[rbp], rax ;// assign [user1.info.i.name]
+    sub  rsp, 16
+    mov  DWORD PTR -4[rbp], 0 ;// assign [a]
+    mov  DWORD PTR -4[rbp], 11 ;// assign [a]
+    lea  rdi, .STR2[rip] ;// assign [rdi]
+    lea  rsi, .STR1[rip] ;// assign [rsi]
+    mov  edx, DWORD PTR -4[rbp] ;// assign [edx]
+    call printf
     mov  eax, 0
     leave 
     ret  
-.endm:
-.STR0: .string ""
-.STR0: .string ""
+.endmain:
+.STR1: .string "Hello this is "
+.STR2: .string "%s%d"
 .section	.note.GNU-stack,"",@progbits
 
