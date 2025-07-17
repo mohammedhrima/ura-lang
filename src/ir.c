@@ -5,11 +5,11 @@ void setAttrName(Token *parent, Token *child)
     if (parent)
     {
         child->is_attr = true;
-        if(child->type != STRUCT_CALL)
+        if (child->type != STRUCT_CALL)
             child->ptr = parent->ptr + child->offset;
         else
             child->ptr = parent->ptr + child->offset;
-    
+
         char *name = strjoin(parent->name, ".", child->name);
         setName(child, name);
         free(name);
