@@ -1,7 +1,11 @@
+
 services:
   wolf_service:
     container_name: wcc
-    build: .
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: wcc
     volumes:
       - ../src:/src
