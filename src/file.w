@@ -1,4 +1,6 @@
 
+func int call():
+    return 1
+
 main():
-   int a = 11
-   output("Hello this is ", a)
+    call()
