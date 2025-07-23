@@ -73,7 +73,7 @@ void parse_token(char *input, int s, int e, Type type, int space, char *filename
          {
             setName(new, NULL);
             new->type = dataTypes[i].type;
-            new->is_data_type = true;
+            new->declare = true;
             break;
          }
       }
@@ -129,6 +129,7 @@ Token *copy_token(Token *token)
       for (int i = 0; i < new->Struct.pos; i++) new->Struct.attrs[i] = copy_token(token->Struct.attrs[i]);
    }
    if (token->Struct.name) new->Struct.name = strdup(token->Struct.name);
+   new->llvm = token->llvm;
    add_token(new);
    return new;
 }
@@ -449,7 +450,6 @@ Token *new_variable(Token *token)
          token->ptr = ptr;
       }
    }
-   new_inst(token);
    add_variable(scoop, token);
    return token;
 }
@@ -1523,10 +1523,10 @@ void print_ir()
       case INT: case BOOL: case CHARS: case CHAR: case LONG:
       {
          debug("[%-6s] ", to_string(curr->type));
-         if (curr->is_data_type)
+         if (curr->declare)
          {
-            stop(1, "I removed is_data_type in intialize variable, this coniditon should never be true");
-            // debug("is_data_type [%s] PTR=[%d] ", curr->name, curr->ptr);
+            stop(1, "I removed declare in intialize variable, this coniditon should never be true");
+            // debug("declare [%s] PTR=[%d] ", curr->name, curr->ptr);
          }
          if (curr->name) debug("var %s PTR=[%d] ", curr->name, curr->ptr);
          if (curr->creg) debug("creg %s ", curr->creg);
@@ -1951,10 +1951,10 @@ Node *symbol(Token *token)
 
       setName(node->token, token->name);
       node->token->type = STRUCT_CALL;
-      node->token->is_data_type = true;
+      node->token->declare = true;
       return node;
    }
-   else if (token->is_data_type)
+   else if (token->declare)
    {
       Token *tmp = find(ID, 0);
       check(!tmp, "Expected variable name after [%s] symbol\n", to_string(token->type));
@@ -2056,7 +2056,7 @@ Node *prime()
    else if ((token = find(REF, 0)))
    {
       node = prime(); // TODO: check it
-      check(!node->token->is_data_type, "must be variable declaration after ref");
+      check(!node->token->declare, "must be variable declaration after ref");
       node->token->is_ref = true;
       return node;
    }
@@ -2253,7 +2253,7 @@ Token *inialize_struct(Node *node)
 
 Token* inialize_variable(Node *node, Token *src)
 {
-   node->token->is_data_type = false;
+   node->token->declare = false;
    new_variable(node->token);
    Node *tmp = new_node(new_token(ASSIGN, node->token->space));
    tmp->token->ir_reg = node->token->ir_reg;
@@ -2656,7 +2656,7 @@ Token *generate_ir(Node *node)
    case INT: case BOOL: case CHAR: case STRUCT_CALL:
    case FLOAT: case LONG: case CHARS: case PTR:
    {
-      if (node->token->is_data_type)
+      if (node->token->declare)
       {
          if (node->token->type == STRUCT_CALL) return inialize_struct(node);
          return inialize_variable(node, new_token(DEFAULT, node->token->space));

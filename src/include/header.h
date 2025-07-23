@@ -10,6 +10,10 @@
 #include <string.h>
 #include <stdint.h>
 #include <sys/types.h>
+#include <llvm-c/Core.h>
+#include <llvm-c/BitWriter.h>
+#include <llvm-c/Target.h>
+#include <llvm-c/TargetMachine.h>
 
 // MACROS
 #define SPLIT "=================================================\n"
@@ -59,22 +63,11 @@
 
 #define TREE 0
 
-#define DEBUG_INC_PTR 1
-#define DEBUG_NEW_TOKEN 0
-
 #define allocate(len, size) allocate_func(LINE, len, size)
 #define check(cond, fmt, ...) check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)
 #define to_string(type) to_string_(FILE, LINE, type)
 #define todo(cond, fmt, ...) check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__); exit(1);
 #define stop(cond, fmt, ...) check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__); exit(1);
-
-#if DEBUG_NEW_TOKEN
-#define new_token(input, s, e, type, space) new_token_(FILE, LINE, input, s, e, type, space)
-#endif
-
-#if DEBUG_INC_PTR
-#define inc_ptr(value) inc_ptr_(FILE, LINE, value)
-#endif
 
 #define DATA_TYPES INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT
 
@@ -120,7 +113,7 @@ typedef struct Token
     Type retType; // return type
     Type assign_type;
     char *name;
-    int ptr; // pointer
+    // int ptr; // pointer
     // bool declare; // is variable declaration
     int space; // indentation
     bool remove;
@@ -131,7 +124,7 @@ typedef struct Token
     bool is_cond;
     bool is_ref;
     bool has_ref;
-    bool is_data_type;
+    bool declare;
     bool is_attr;
     bool is_proto;
     bool is_arg;
@@ -139,6 +132,11 @@ typedef struct Token
     char *filename;
     int line;
 
+    struct 
+    {
+        LLVMTypeRef funcType;
+        LLVMValueRef element;
+    } llvm;
     struct
     {
         // integer
@@ -176,6 +174,7 @@ typedef struct Token
         {
             char value;
         } Char;
+        // structure
         struct
         {
             char *name;
@@ -183,6 +182,11 @@ typedef struct Token
             int pos;
             int len;
         } Struct;
+        // function call
+        struct 
+        {
+            struct Token *ptr;
+        } Fcall;
     };
 } Token;
 
@@ -212,7 +216,6 @@ typedef struct Node
     };
 } Node;
 
-
 typedef struct
 {
     Token *token;
@@ -222,9 +225,12 @@ typedef struct
 
 // GLOBAL
 extern bool found_error;
-extern bool did_pasm;
-extern char *input;
+
 extern Token **tokens;
+extern int tk_pos;
+extern int tk_len;
+
+extern char *input;
 extern Node *global;
 extern int exe_pos;
 extern Inst **OrgInsts;
@@ -236,12 +242,11 @@ extern int scoopSize;
 extern int scoopPos;
 
 extern int ptr;
-extern struct _IO_FILE *asm_fd;
-extern int str_index;
-extern int bloc_index;
-extern char *eregs[];
-extern char *rregs[];
-extern int regLen;
+#if defined(__APPLE__)
+    extern struct __sFILE *asm_fd;
+#elif defined(__linux__)
+    extern struct _IO_FILE *asm_fd;
+#endif
 
 // ----------------------------------------------------------------------------
 // Parsing
@@ -251,7 +256,6 @@ Token* new_token(Type type, int space);
 void parse_token(char *input, int s, int e, Type type, int space, char *filename, int line);
 
 void add_token(Token *token);
-void tokenize();
 Node *expr();
 Node *assign();
 Node *logic();
@@ -339,4 +343,3 @@ int ptoken(Token *token);
 void print_ast(Node *head);
 void print_ir();
 int print_value(Token *token);
-
