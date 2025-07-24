@@ -413,6 +413,8 @@ Token *func_call_ir(Node *node)
 {
     if (strcmp(node->token->name, "output") == 0)
     {
+        todo(1, "implement this");
+#if 0
         // setReg(node->token, "eax");
         setName(node->token, "printf");
         Node *fcall = node;
@@ -489,6 +491,7 @@ Token *func_call_ir(Node *node)
         char *tmp = strjoin(varg->Chars.value, "\"", NULL);
         free(varg->Chars.value);
         varg->Chars.value = tmp;
+#endif
     }
     else
     {
@@ -503,7 +506,7 @@ Token *func_call_ir(Node *node)
         Node *fdec = func->left;
         Node *fcall = node;
 
-        for (int i = 0, r = 0; !found_error && i < fcall->cpos && i < fdec->cpos; i++)
+        for (int i = 0; !found_error && i < fcall->cpos && i < fdec->cpos; i++)
         {
             Node *darg = fdec->children[i];
             Node *carg = fcall->children[i]; // will always be ID
@@ -782,13 +785,15 @@ void compile(char *filename)
 #if DEBUG
     debug(GREEN BOLD"AST:\n" RESET);
 #endif
-    while (tokens[exe_pos]->type != END && !found_error) add_child(global, expr());
+    while (tokens[exe_pos]->type != END && !found_error) 
+        add_child(global, expr());
     print_ast(global);
     if (found_error) return;
 
 #if IR
     debug(GREEN BOLD"GENERATE INTERMEDIATE REPRESENTATIONS:\n" RESET);
-    for (int i = 0; !found_error && i < global->cpos; i++) generate_ir(global->children[i]);
+    for (int i = 0; !found_error && i < global->cpos; i++) 
+        generate_ir(global->children[i]);
     if (found_error) return;
     print_ir();
 #endif
