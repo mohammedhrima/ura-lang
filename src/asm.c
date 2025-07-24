@@ -28,9 +28,26 @@ void generate_asm(char *name)
             LLVMBuildStore(builder, right->llvm.element, left->llvm.element);
             break;
         }
+        case ADD: case SUB: case MUL: case DIV:
+        {
+            LLVMValueRef leftRef = left->name ? LLVMBuildLoad2(builder, int32Type, left->llvm.element, left->name) : left->llvm.element;
+            LLVMValueRef rightRef = right->name ? LLVMBuildLoad2(builder, int32Type, right->llvm.element, right->name) : right->llvm.element;
+            LLVMValueRef ret;
+            Type op = curr->type;
+            switch(curr->type) 
+            {
+                case ADD: ret = LLVMBuildAdd(builder, leftRef, rightRef, to_string(op)); break;
+                case SUB: ret = LLVMBuildSub(builder, leftRef, rightRef, to_string(op)); break;
+                case MUL: ret = LLVMBuildMul(builder, leftRef, rightRef, to_string(op)); break;
+                case DIV: ret = LLVMBuildSDiv(builder, leftRef, rightRef, to_string(op)); break;
+                default: todo(1, "handle this")
+            }
+            curr->llvm.element = ret;
+            break;
+        }
         case FCALL:
         {
-            LLVMBuildCall2(builder, 
+            curr->llvm.element = LLVMBuildCall2(builder, 
                 curr->Fcall.ptr->llvm.funcType, 
                 curr->Fcall.ptr->llvm.element, 
                 NULL, 0, "");
@@ -56,7 +73,7 @@ void generate_asm(char *name)
         {
             break;
         }
-        default: check(1, "handle this case (%s)\n", to_string(curr->type)); break;
+        default: todo(1, "handle this case (%s)\n", to_string(curr->type)); break;
         }
     }
     char *outfile = calloc(strlen(name) + 2, 1);

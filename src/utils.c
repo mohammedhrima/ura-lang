@@ -114,8 +114,9 @@ int ptoken(Token *token)
         // if (!token->name)
         else
         {
-            if (token->creg) res += debug("creg [%s] ", token->creg);
-            else if (token->type != VOID) print_value(token);
+            // if (token->creg) res += debug("creg [%s] ", token->creg);
+            // else 
+            if (token->type != VOID) print_value(token);
         }
         break;
     }
@@ -182,6 +183,7 @@ int print_value(Token *token)
     case CHARS: return debug("value [%s] index [%d] ", token->Chars.value, token->index);
     case STRUCT_CALL: return debug("has [%d] attrs ", token->Struct.pos);
     case DEFAULT: return debug("default value ");
+    case ADD: return debug("%t ", token->type); break;
     default: check(1, "handle this case [%s]\n", to_string(token->type));
     }
     return 0;
@@ -215,37 +217,36 @@ void print_ir()
         case ADD_ASSIGN: case ASSIGN:
         {
             debug("[%-6s] [%s] ", to_string(curr->type), (curr->assign_type ? to_string(curr->assign_type) : ""));
-            if (left->creg) debug("r%.2d (%s) = ", left->ir_reg, left->creg);
-            else debug("r%.2d (%s) = ", left->ir_reg, left->name);
+            if (left->name)  debug("r%.2d (%s) = ", left->ir_reg, left->name);
+            else debug("r%.2d = ", left->ir_reg);
 
             if (right->ir_reg) debug("r%.2d (%s) ", right->ir_reg, right->name ? right->name : "");
-            else if (right->creg) debug("[%s] ", right->creg);
             else print_value(right);
             break;
         }
-        case ACCESS:
-        {
-            debug("[%-6s] ", to_string(curr->type));
+        // case ACCESS:
+        // {
+        //     debug("[%-6s] ", to_string(curr->type));
 
-            if (right->ir_reg) debug("r%.2d ", right->ir_reg);
-            else print_value(right);
-            if (right->name) debug("(%s) ", right->name);
+        //     if (right->ir_reg) debug("r%.2d ", right->ir_reg);
+        //     else print_value(right);
+        //     if (right->name) debug("(%s) ", right->name);
 
-            debug("in ");
+        //     debug("in ");
 
-            if (left->ir_reg) debug("r%.2d ", left->ir_reg);
-            else if (left->creg) debug("creg %s ", left->creg);
+        //     if (left->ir_reg) debug("r%.2d ", left->ir_reg);
+        //     else if (left->creg) debug("creg %s ", left->creg);
 
-            if (left->name) debug("(%s) ", left->name);
+        //     if (left->name) debug("(%s) ", left->name);
 
-            break;
-        }
+        //     break;
+        // }
         case ADD: case SUB: case MUL: case DIV:
         case EQUAL: case NOT_EQUAL: case LESS: case MORE: case LESS_EQUAL: case MORE_EQUAL:
         {
             debug("[%-6s] ", to_string(curr->type));
             if (left->ir_reg) debug("r%.2d", left->ir_reg);
-            else if (left->creg) debug("creg %s ", left->creg);
+            // else if (left->creg) debug("creg %s ", left->creg);
             else print_value(left);
             if (left->name) debug("(%s)", left->name);
 
@@ -310,7 +311,7 @@ void *allocate_func(int line, int len, int size)
 void free_token(Token *token)
 {
     free(token->name);
-    free(token->creg);
+    // free(token->creg);
     free(token->Chars.value);
     free(token->Struct.attrs);
     free(token->Struct.name);
@@ -438,7 +439,7 @@ Token *copy_token(Token *token)
     memcpy(new, token, sizeof(Token));
     if (token->name) new->name = strdup(token->name);
     if (token->Chars.value) new->Chars.value = strdup(token->Chars.value);
-    if (token->creg) new->creg = strdup(token->creg);
+    // if (token->creg) new->creg = strdup(token->creg);
     if (token->Struct.attrs)
     {
         new->Struct.attrs = allocate(token->Struct.len, sizeof(Token*));
@@ -500,11 +501,9 @@ Inst *new_inst(Token *token)
 
     switch (token->type)
     {
-    case CHARS:
-    case INT:
+    case CHARS: case INT:
     {
         if (token->name) token->ir_reg = ++ir_reg;
-
         if (token->Chars.value)
         {
             debug("%k\n", new->token);
@@ -531,6 +530,7 @@ Inst *new_inst(Token *token)
     }
     case RETURN: token->ir_reg = ++ir_reg; break;
     case ASSIGN: break;
+    case ADD: case SUB: case MUL: case DIV: token->ir_reg = ++ir_reg; break;
     default: break;
     }
 #if DEBUG

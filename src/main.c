@@ -419,7 +419,7 @@ Token *func_call_ir(Node *node)
 
         Node *assign = new_node(new_token(ASSIGN, node->token->space));
         Token *_register = new_token(CHARS, fcall->token->space + TAB);
-        _register->creg = strdup("rdi");
+        // _register->creg = strdup("rdi");
         Token *varg = new_token(CHARS, fcall->token->space + TAB);
         // varg->index = ++str_index;
         varg->Chars.value = strdup("\"");
@@ -495,7 +495,7 @@ Token *func_call_ir(Node *node)
         Node *func = get_function(node->token->name);
         if (!func) return NULL;
         node->token->Fcall.ptr = func->token;
-        
+
         func = copy_node(func);
         node->token->retType = func->token->retType;
 
@@ -593,14 +593,14 @@ Token *op_ir(Node *node)
         // }
         break;
     }
-    case ADD: case SUB: case MUL: case DIV: case ADD_ASSIGN:
+    case ADD: case SUB: case MUL: case DIV:
     {
         // TODO: to be checked
         // node->token->retType = getRetType(node);
         // if (node->token->retType  == INT) setReg(node->token, "eax");
         // else if (node->token->retType == FLOAT) setReg(node->token, "xmm0");
         // else 
-        check(1, "handle this case");
+        // check(1, "handle this case");
         break;
     }
     case NOT_EQUAL: case EQUAL: case LESS:
@@ -730,7 +730,7 @@ Token *generate_ir(Node *node)
         // TODO: check if left is aan iterable data type
 
         Inst *inst = new_inst(node->token);
-        inst->token->creg = strdup("rax");
+        // inst->token->creg = strdup("rax");
         inst->token->is_ref = true;
         inst->token->has_ref = true;
         switch (left->type)
