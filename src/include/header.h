@@ -118,7 +118,7 @@ typedef struct Token
     int space; // indentation
     bool remove;
     int ir_reg;
-    char *creg;
+    // char *creg;
     int index;
 
     bool is_cond;

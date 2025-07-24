@@ -13,7 +13,8 @@ int main() {
 }
 */
 
-int main() {
+int main()
+{
     // Create a new LLVM module named "example"
     LLVMModuleRef mod = LLVMModuleCreateWithName("example");
 
@@ -34,16 +35,16 @@ int main() {
     LLVMPositionBuilderAtEnd(builder, entry);
 
     // Step 1: Declare and assign `a = 1`
-    LLVMValueRef const1 = LLVMConstInt(int32Type, 1, 0);         // constant 1
-    LLVMValueRef a = LLVMBuildAlloca(builder, int32Type, "a");   // allocate space for `a`
-    LLVMBuildStore(builder, const1, a);                          // store 1 into `a`
+    LLVMValueRef const1 = LLVMConstInt(int32Type, 1, 0);       // constant 1
+    LLVMValueRef a = LLVMBuildAlloca(builder, int32Type, "a"); // allocate space for `a`
+    LLVMBuildStore(builder, const1, a);                        // store 1 into `a`
 
     // Step 2: Load `a`, add 2 to it, and store the result in `b`
     LLVMValueRef a_val = LLVMBuildLoad2(builder, int32Type, a, "a_val"); // load `a`
     LLVMValueRef const2 = LLVMConstInt(int32Type, 2, 0);                 // constant 2
-    LLVMValueRef add = LLVMBuildAdd(builder, a_val, const2, "sum");     // a + 2
-    LLVMValueRef b = LLVMBuildAlloca(builder, int32Type, "b");          // allocate space for `b`
-    LLVMBuildStore(builder, add, b);                                    // store result into `b`
+    LLVMValueRef add = LLVMBuildAdd(builder, a_val, const2, "sum");      // a + 2
+    LLVMValueRef b = LLVMBuildAlloca(builder, int32Type, "b");           // allocate space for `b`
+    LLVMBuildStore(builder, add, b);                                     // store result into `b`
 
     // Step 3: Return 0
     LLVMBuildRet(builder, LLVMConstInt(int32Type, 0, 0));
