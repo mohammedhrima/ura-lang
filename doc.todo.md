@@ -1,13 +1,17 @@
 
-+ assignment:
-    + id to ref
-    + ref to id
-    + ref to ref
-    + id to id
+- assignment:
+    + id = id
+    + id = value
+    - id = ref
+    - id = func return
+    - ref = id
+    - ref = value
+    - ref = ref
+    - ref = func return
 
-+ functions:
-    + takes arguments
-    + return
-    + assignment from function return
+- functions:
+    - takes arguments
+    - return
+    - assignment from function return
 
-+ implement structs
+- structs

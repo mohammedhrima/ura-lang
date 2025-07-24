@@ -1,16 +1,13 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/Wolf-Compiler/src/code/file.w'
-source_filename = "/Users/hrimamohammed/Desktop/Wolf-Compiler/src/code/file.w"
+; ModuleID = '/home/ironman/Desktop/Wolf-Compiler/src/code/file.w'
+source_filename = "/home/ironman/Desktop/Wolf-Compiler/src/code/file.w"
+
+define i32 @m() {
+entry:
+  ret i32 12
+}
 
 define i32 @main() {
 entry:
-  %a = alloca i32, align 4
-  store i32 1, ptr %a, align 4
-  %b = alloca i32, align 4
-  store i32 3, ptr %b, align 4
-  %c = alloca i32, align 4
-  %a1 = load i32, ptr %a, align 4
-  %b2 = load i32, ptr %b, align 4
-  %ADD = add i32 %a1, %b2
-  store i32 %ADD, ptr %c, align 4
+  %0 = call i32 @m()
   ret i32 0
 }

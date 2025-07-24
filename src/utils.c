@@ -581,7 +581,7 @@ char* open_file(char *filename)
     #if defined(__APPLE__)
         struct __sFILE *file;
     #elif defined(__linux__)
-        struct _IO_FILE *file
+        struct _IO_FILE *file;
     #endif
     file = fopen(filename, "r");
     if (check(!file, "openning %s", filename)) return NULL;
