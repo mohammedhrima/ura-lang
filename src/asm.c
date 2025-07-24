@@ -9,7 +9,6 @@ void generate_asm(char *name)
     LLVMBuilderRef builder = LLVMCreateBuilder();
     LLVMTypeRef int32Type = LLVMInt32Type();
 
-    copy_insts();
     for (int i = 0; insts[i]; i++)
     {
         Token *curr = insts[i]->token;
@@ -66,7 +65,7 @@ void generate_asm(char *name)
         }
         case RETURN:
         {
-            LLVMBuildRet(builder, left->llvm.element);
+            curr->llvm.element = LLVMBuildRet(builder, left->llvm.element);
             break;
         }
         case END_BLOC:

@@ -1,5 +1,5 @@
-; ModuleID = 'file.w'
-source_filename = "file.w"
+; ModuleID = '/Users/hrimamohammed/Desktop/Wolf-Compiler/src/code/file.w'
+source_filename = "/Users/hrimamohammed/Desktop/Wolf-Compiler/src/code/file.w"
 
 define i32 @main() {
 entry:
