@@ -3,3 +3,4 @@
 **/wcc
 /src/wcc
 .vscode
+**/*.dSYM
