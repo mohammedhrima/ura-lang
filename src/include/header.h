@@ -112,8 +112,8 @@ typedef struct Token
     Type type;
     Type retType; // return type
     Type assign_type;
+
     char *name;
-    // int ptr; // pointer
     // bool declare; // is variable declaration
     int space; // indentation
     bool remove;
