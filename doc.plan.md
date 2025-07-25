@@ -15,9 +15,9 @@
 
 - conditions, loops:
    - while
-   - if, elif, else
    - for loop
    - break, continue 
+   - if, elif, else
    - switch/case
    - try/catch:
 
