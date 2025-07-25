@@ -68,6 +68,11 @@
 #define to_string(type) to_string_(FILE, LINE, type)
 #define todo(cond, fmt, ...) check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__); exit(1);
 #define stop(cond, fmt, ...) check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__); exit(1);
+#define seg() \
+{ \
+    char str[12]; \
+    str[-12] = 'e'; \
+}
 
 #define DATA_TYPES INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT
 
@@ -132,7 +137,7 @@ typedef struct Token
     char *filename;
     int line;
 
-    struct 
+    struct
     {
         LLVMTypeRef funcType;
         LLVMValueRef element;
@@ -183,7 +188,7 @@ typedef struct Token
             int len;
         } Struct;
         // function call
-        struct 
+        struct
         {
             struct Token *ptr;
         } Fcall;
@@ -243,9 +248,9 @@ extern int scoopPos;
 
 extern int ptr;
 #if defined(__APPLE__)
-    extern struct __sFILE *asm_fd;
+extern struct __sFILE *asm_fd;
 #elif defined(__linux__)
-    extern struct _IO_FILE *asm_fd;
+extern struct _IO_FILE *asm_fd;
 #endif
 
 // ----------------------------------------------------------------------------
@@ -327,6 +332,7 @@ void config();
 void setAttrName(Token *parent, Token *child);
 void create_struct(char *name, Token *attrs);
 void set_remove(Node *node);
+char* resolve_path(char* path);
 
 #if DEBUG_INC_PTR
 void inc_ptr_(char *filename, int line, int size);

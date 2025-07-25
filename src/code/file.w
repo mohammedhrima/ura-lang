@@ -1,7 +1,4 @@
-
-
-func int m():
-    return 12
-
 main():
-    int a = m()
+    int a = 10
+    if a == 10:
+        a = 2
