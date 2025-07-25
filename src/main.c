@@ -19,9 +19,9 @@ int scoopPos;
 
 int ptr;
 #if defined(__APPLE__)
-    struct __sFILE *asm_fd;
+struct __sFILE *asm_fd;
 #elif defined(__linux__)
-    struct _IO_FILE *asm_fd;
+struct _IO_FILE *asm_fd;
 #endif
 
 
@@ -322,13 +322,53 @@ Node *symbol(Token *token)
         setName(token, tmp->name);
         return new_node(token);
     }
-        else if (token->type == ID && token->name && find(LPAR, 0))
+    else if (token->type == ID && token->name && find(LPAR, 0))
     {
         node = new_node(token);
         if (strcmp(token->name, "main") == 0) return func_main(node);
         return func_call(node);
     }
     return new_node(token);
+}
+
+// if Layout:
+//    + left    : condition
+//    + children: code bloc
+//    + right   : elif/else
+Node *if_node(Node *node)
+{
+    enter_scoop(node);
+
+    node->left = expr();  // condition, TODO: check if it's boolean
+    node->left->token->is_cond = true;
+    node->left->token->space = node->token->space;
+    node->right = new_node(new_token(CHILDREN, node->token->space));
+
+    check(!find(DOTS, 0), "Expected : after if condition\n", "");
+
+    // code bloc
+    while (within_space(node->token->space)) add_child(node, expr());
+    while (includes(tokens[exe_pos]->type, ELSE, ELIF, 0) && within_space(node->token->space - TAB))
+    {
+        Token *token = find(ELSE, ELIF, 0);
+        Node *curr = add_child(node->right, new_node(token));
+        token->space -= TAB;
+        if (token->type == ELIF)
+        {
+            curr->left = expr();
+            curr->left->token->is_cond = true;
+            check(!find(DOTS, 0), "expected : after elif condition");
+            while (within_space(token->space)) add_child(curr, expr());
+        }
+        else if (token->type == ELSE)
+        {
+            check(!find(DOTS, 0), "expected : after else");
+            while (within_space(token->space)) add_child(curr, expr());
+            break;
+        }
+    }
+    exit_scoop();
+    return node;
 }
 
 Node *prime()
@@ -340,7 +380,7 @@ Node *prime()
     //     ptoken(token);
     //     todo(1, "wtf 1");
     //     return struct_def(new_node(token));
-    // } 
+    // }
     //else
     if ((token = find(ID, INT, CHARS, CHAR, FLOAT, BOOL, 0))) return symbol(token);
     // else if ((token = find(REF, 0)))
@@ -359,6 +399,7 @@ Node *prime()
         node->left = expr();
         return node;
     }
+    else if ((token = find(IF, 0))) return if_node(new_node(token));
     else if ((token = find(LPAR, 0)))
     {
         if (tokens[exe_pos]->type != RPAR) node = expr();
@@ -515,13 +556,92 @@ Token *func_call_ir(Node *node)
 
             if (check(src->type == ID, "Indeclared variable %s", carg->token->name)) break;
             Token *dist = copy_token(darg->token);
-           // set_func_call_regs(&r, src, dist, node);
+            // set_func_call_regs(&r, src, dist, node);
         }
         free_node(func);
     }
     Inst* inst = new_inst(node->token);
     return inst->token;
 }
+
+Token *if_ir(Node *node)
+{
+    enter_scoop(node);
+
+    Inst *inst = new_inst(node->token);
+    setName(inst->token, "if");
+    inst->token->type =  BLOC;
+    // inst->token->index = ++bloc_index;
+
+    Token *cond = generate_ir(node->left); // TODO: check if it's boolean
+    if (!cond) return NULL;
+    setName(cond, "endif");
+    cond->index = inst->token->index;
+    // --bloc_index;
+
+    Token *next = cond;
+    // code bloc
+    for (int i = 0; i < node->cpos && !found_error; i++) generate_ir(node->children[i]);
+
+    Inst *end = NULL;
+    if (node->right->cpos)
+    {
+        end = new_inst(new_token(JMP, node->token->space + TAB));
+        setName(end->token, "endif");
+        end->token->index = node->token->index;
+    }
+    Node *subs = node->right;
+    for (int i = 0; i < subs->cpos; i++)
+    {
+        Node *curr = subs->children[i];
+        if (curr->token->type == ELIF)
+        {
+            // curr->token->index = ++bloc_index;
+            curr->token->type = BLOC;
+            setName(curr->token, "elif");
+            char *name = strdup(next->name);
+            int index = next->index;
+            {
+                setName(next, "elif");
+                next->index = curr->token->index;
+                next = copy_token(next);
+            }
+            new_inst(curr->token); // elif bloc
+            setName(curr->left->token, name);
+            free(name);
+            generate_ir(curr->left); // elif condition, TODO: check is boolean
+            // --bloc_index;
+            curr->left->token->index = index;
+            next = curr->left->token;
+            for (int j = 0; j < curr->cpos; j++) generate_ir(curr->children[j]);
+            end = new_inst(new_token(JMP, node->token->space + TAB));
+            setName(end->token, "endif");
+            end->token->index = node->token->index;
+        }
+        else if (curr->token->type == ELSE)
+        {
+            // curr->token->index = ++bloc_index;
+            curr->token->type = BLOC;
+            setName(curr->token, "else");
+            new_inst(curr->token);
+            {
+                setName(next, "else");
+                next->index = curr->token->index;
+                next = copy_token(next);
+            }
+            for (int j = 0; j < curr->cpos; j++) generate_ir(curr->children[j]);
+            break;
+        }
+
+    }
+    Token *new = new_token(BLOC, node->token->space);
+    setName(new, "endif");
+    new->index = node->token->index;
+    new_inst(new);
+    exit_scoop();
+    return node->left->token;
+}
+
 
 Token *op_ir(Node *node)
 {
@@ -602,7 +722,7 @@ Token *op_ir(Node *node)
         // node->token->retType = getRetType(node);
         // if (node->token->retType  == INT) setReg(node->token, "eax");
         // else if (node->token->retType == FLOAT) setReg(node->token, "xmm0");
-        // else 
+        // else
         // check(1, "handle this case");
         break;
     }
@@ -640,11 +760,11 @@ Token *generate_ir(Node *node)
         if (!node->token->declare) return node->token;
         // variable declaration
         new_variable(node->token);
-        #if 0
+#if 0
         return inialize_variable(node);
-        #else
+#else
         return node->token;
-        #endif    
+#endif
     }
     case ASSIGN: case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN:
     case ADD: case SUB: case MUL: case DIV: case EQUAL: case NOT_EQUAL:
@@ -653,7 +773,7 @@ Token *generate_ir(Node *node)
         // check if right is DEFAULT, then initlize it, and return left
         return op_ir(node);
     }
-    // case IF:    return if_ir(node);
+    case IF:    return if_ir(node);
     // case WHILE: return while_ir(node);
     case FDEC:  return func_dec_ir(node);
     case FCALL: return func_call_ir(node);
@@ -785,14 +905,14 @@ void compile(char *filename)
 #if DEBUG
     debug(GREEN BOLD"AST:\n" RESET);
 #endif
-    while (tokens[exe_pos]->type != END && !found_error) 
+    while (tokens[exe_pos]->type != END && !found_error)
         add_child(global, expr());
     print_ast(global);
     if (found_error) return;
 
 #if IR
     debug(GREEN BOLD"GENERATE INTERMEDIATE REPRESENTATIONS:\n" RESET);
-    for (int i = 0; !found_error && i < global->cpos; i++) 
+    for (int i = 0; !found_error && i < global->cpos; i++)
         generate_ir(global->children[i]);
     if (found_error) return;
     print_ir();

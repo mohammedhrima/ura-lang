@@ -4,5 +4,5 @@
 #   -Wno-unused-command-line-argument \
 #   -lLLVM
 
-cc main.c `llvm-config --cflags --ldflags --libs core` \
+cc $1 `llvm-config --cflags --ldflags --libs core` \
 && ./a.out && rm -rf a.out && llc out.ll -o out.s

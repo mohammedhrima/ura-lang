@@ -7,7 +7,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 # === Paths & Global Variables ===
-src="$PWD"
+src="./"
 files=(main.c utils.c asm.c)
 
 # === Compiler Flags ===
@@ -43,16 +43,26 @@ wcc_ir() {
 }
 
 wcc_asm() {
-    echo -e "${YELLOW}Generating file.s from file.ll...${NC}"
-    llc "$src/code/file.ll" -o "$src/code/file.s" || {
+    echo -e "${YELLOW}Generating file.s from file.ir...${NC}"
+    llc "$src/code/file.ir" -o "$src/code/file.s" || {
         echo -e "${RED}Error:${NC} Assembly generation failed."
         return 1
     }
 }
 
+wcc_run() {
+    echo -e "${YELLOW}compile file.s${NC}"
+    clang "$src/code/file.s" -o exe.out
+    ./exe.out
+}
+
 build() {
     unalias build 2>/dev/null || true
     wcc_build && wcc_ir && wcc_asm
+}
+
+run() {
+    wcc_run
 }
 
 # === Test Suite ===
@@ -131,14 +141,24 @@ indent() {
     echo -e "${YELLOW}Formatting code...${NC}"
     astyle --mode=c --indent=spaces=4 --pad-oper --pad-header \
         --keep-one-line-statements --keep-one-line-blocks --convert-tabs \
-        "$src"/*.c "$src"/include/*.h &&
-        rm -f "$src"/*.c.orig "$src"/include/*.h.orig
+        $src*.c $src*/*.h &&
+        rm -f $src*.c.orig $src*/*.h.orig
 }
 
 # === Reload Config & Shell ===
 
 update() {
+    # Colors
+    GREEN="%F{green}"
+    BLUE="%F{blue}"
+    RESET="%f"
+
+    # Set prompt
+    export PS1="${GREEN}%n@%m ${BLUE}%~ %{$RESET%}%# "
+
     echo -e "${YELLOW}Reloading config...${NC}"
     source "$src/config.sh"
     source ~/.zshrc
 }
+
+

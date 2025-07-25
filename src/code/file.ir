@@ -1,0 +1,20 @@
+; ModuleID = './code/file.w'
+source_filename = "./code/file.w"
+
+define i32 @hello() {
+entry:
+  ret i32 13
+}
+
+define i32 @main() {
+entry:
+  %a = alloca i32, align 4
+  %0 = call i32 @hello()
+  store i32 %0, ptr %a, align 4
+  %b = alloca i32, align 4
+  %a1 = load i32, ptr %a, align 4
+  %ADD = add i32 %a1, 1
+  store i32 %ADD, ptr %b, align 4
+  %b2 = load i32, ptr %b, align 4
+  ret i32 %b2
+}

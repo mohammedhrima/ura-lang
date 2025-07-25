@@ -115,7 +115,7 @@ int ptoken(Token *token)
         else
         {
             // if (token->creg) res += debug("creg [%s] ", token->creg);
-            // else 
+            // else
             if (token->type != VOID) print_value(token);
         }
         break;
@@ -184,7 +184,11 @@ int print_value(Token *token)
     case STRUCT_CALL: return debug("has [%d] attrs ", token->Struct.pos);
     case DEFAULT: return debug("default value ");
     case ADD: return debug("%t ", token->type); break;
-    default: check(1, "handle this case [%s]\n", to_string(token->type));
+    default:
+    {
+        seg();
+        check(1, "handle this case [%s]\n", to_string(token->type));
+    }
     }
     return 0;
 }
@@ -367,7 +371,7 @@ void parse_token(char *input, int s, int e, Type type, int space, char *filename
         strncpy(new->name, input + s, e - s);
         int i = 0;
 
-        struct { char *name; bool value; } bools[] = {{"True", true},  {"False", false}, {0, 0}};
+        struct { char *name; bool value; } bools[] = {{"True", true}, {"False", false}, {0, 0}};
         for (i = 0; bools[i].name; i++)
         {
             if (strcmp(new->name, bools[i].name) == 0)
@@ -530,6 +534,7 @@ Inst *new_inst(Token *token)
     }
     case RETURN: token->ir_reg = ++ir_reg; break;
     case ASSIGN: break;
+    case FCALL:
     case ADD: case SUB: case MUL: case DIV: token->ir_reg = ++ir_reg; break;
     default: break;
     }
@@ -577,12 +582,12 @@ char* open_file(char *filename)
 {
     if (found_error) return NULL;
     for (int i = 0; filename[i]; i++) if (filename[i] == ':') filename[i] = '/';
-    
-    #if defined(__APPLE__)
-        struct __sFILE *file;
-    #elif defined(__linux__)
-        struct _IO_FILE *file;
-    #endif
+
+#if defined(__APPLE__)
+    struct __sFILE *file;
+#elif defined(__linux__)
+    struct _IO_FILE *file;
+#endif
     file = fopen(filename, "r");
     if (check(!file, "openning %s", filename)) return NULL;
     fseek(file, 0, SEEK_END);
@@ -850,7 +855,7 @@ void add_attribute(Token *obj, Token *attr)
 
 int sizeofToken(Token *token)
 {
-    if (token->is_ref) return sizeof(void*);
+    if (token->is_ref) return sizeof(void * );
     switch (token->type)
     {
     case INT: return sizeof(int);
@@ -982,4 +987,25 @@ Type getRetType(Node *node)
     if (left) return left;
     if (right) return right;
     return 0;
+}
+
+
+char* resolve_path(char* path) 
+{
+    if (path == NULL) return NULL;
+
+    char* cleaned = calloc(strlen(path) + 1, 1);
+    if (!cleaned) return NULL;
+
+    size_t i = 0, j = 0;
+    while (path[i]) {
+        cleaned[j++] = path[i++];
+        while (path[i] == '/') {
+            if (cleaned[j - 1] != '/') cleaned[j++] = '/';
+            i++;
+        }
+    }
+    if (j > 1 && cleaned[j - 1] == '/') j--;
+    cleaned[j] = '\0';
+    return cleaned;
 }

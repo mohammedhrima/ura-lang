@@ -3,7 +3,7 @@
     + id = id
     + id = value
     - id = ref
-    - id = func return
+    + id = func return
     - ref = id
     - ref = value
     - ref = ref
@@ -11,7 +11,6 @@
 
 - functions:
     - takes arguments
-    - return
-    - assignment from function return
+    + return
 
 - structs
