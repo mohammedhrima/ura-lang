@@ -30,8 +30,10 @@ void generate_asm(char *name)
         }
         case ADD: case SUB: case MUL: case DIV:
         {
-            LLVMValueRef leftRef = left->name ? LLVMBuildLoad2(builder, int32Type, left->llvm.element, left->name) : left->llvm.element;
-            LLVMValueRef rightRef = right->name ? LLVMBuildLoad2(builder, int32Type, right->llvm.element, right->name) : right->llvm.element;
+            LLVMValueRef leftRef = left->name ?
+                                   LLVMBuildLoad2(builder, int32Type, left->llvm.element, left->name) : left->llvm.element;
+            LLVMValueRef rightRef = right->name ?
+                                    LLVMBuildLoad2(builder, int32Type, right->llvm.element, right->name) : right->llvm.element;
             LLVMValueRef ret;
             Type op = curr->type;
             switch (curr->type)
@@ -47,8 +49,8 @@ void generate_asm(char *name)
         }
         case FCALL:
         {
-            curr->llvm.element = LLVMBuildCall2(builder, curr->Fcall.ptr->llvm.funcType,
-                                                curr->Fcall.ptr->llvm.element, NULL, 0, "");
+            LLvm fcall = curr->Fcall.ptr->llvm;
+            curr->llvm.element = LLVMBuildCall2(builder, fcall.funcType, fcall.element, NULL, 0, "");
             break;
         }
         case FDEC:
@@ -69,8 +71,6 @@ void generate_asm(char *name)
             {
             case FCALL:
             {
-                // LLVMValueRef result = LLVMBuildCall2(builder, left->Fcall.ptr->llvm.funcType,
-                //                                      left->Fcall.ptr->llvm.element, NULL, 0, "");
                 ret = LLVMBuildRet(builder, left->llvm.element);
                 break;
             }
@@ -99,7 +99,7 @@ void generate_asm(char *name)
         }
     }
     strcpy(moduleName + strlen(moduleName) - 1, "ir");
-    
+
     LLVMPrintModuleToFile(mod, moduleName, NULL);
     // Cleanup
     LLVMDisposeBuilder(builder);
