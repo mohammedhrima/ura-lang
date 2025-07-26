@@ -1,0 +1,10 @@
+; ModuleID = 'module'
+source_filename = "module"
+
+define i32 @main() {
+bloc:
+  %a = alloca i32, align 4
+  store i32 3, ptr %a, align 4
+  %ret_val = load i32, ptr %a, align 4
+  ret i32 %ret_val
+}

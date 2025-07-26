@@ -1,84 +1,91 @@
 #include <llvm-c/Core.h>
-#include <llvm-c/BitWriter.h>
+#include <llvm-c/Analysis.h>
 #include <llvm-c/Target.h>
 #include <llvm-c/TargetMachine.h>
+#include <llvm-c/BitWriter.h>
 #include <stdio.h>
 
-// Pseudo code:
-// int a = 10;
-// if (a > 3)
-//     a = a + 1;
-// else if (a > 2)
-//     a = a + 2;
-// else
-//     a = a + 3;
+// int a = 1;
+// if (a > 2) a = a + 3;
+// else if (a == 4) a = a + 5;
+// else a = a + 6;
 
 int main() {
-    LLVMModuleRef module = LLVMModuleCreateWithName("if_elif_else");
-    LLVMBuilderRef builder = LLVMCreateBuilder();
-    LLVMTypeRef int32Type = LLVMInt32Type();
+    LLVMModuleRef mod = LLVMModuleCreateWithName("if_else_chain");
+    LLVMContextRef ctx = LLVMGetGlobalContext();
+    LLVMBuilderRef builder = LLVMCreateBuilderInContext(ctx);
 
-    // Function: int main()
-    LLVMTypeRef funcType = LLVMFunctionType(int32Type, NULL, 0, 0);
-    LLVMValueRef mainFunc = LLVMAddFunction(module, "main", funcType);
-    LLVMBasicBlockRef entryBB = LLVMAppendBasicBlock(mainFunc, "entry");
-    LLVMPositionBuilderAtEnd(builder, entryBB);
+    // Define integer types
+    LLVMTypeRef int32Ty = LLVMInt32TypeInContext(ctx);
+    LLVMTypeRef funcType = LLVMFunctionType(int32Ty, NULL, 0, 0);
+    LLVMValueRef mainFunc = LLVMAddFunction(mod, "main", funcType);
 
-    // int a = 10;
-    LLVMValueRef aVar = LLVMBuildAlloca(builder, int32Type, "a");
-    LLVMBuildStore(builder, LLVMConstInt(int32Type, 10, 0), aVar);
+    // Entry block
+    LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(ctx, mainFunc, "entry");
+    LLVMPositionBuilderAtEnd(builder, entry);
 
-    // Load a for first condition: if (a > 3)
-    LLVMValueRef aVal1 = LLVMBuildLoad2(builder, int32Type, aVar, "a_val1");
-    LLVMValueRef cond1 = LLVMBuildICmp(builder, LLVMIntSGT, aVal1, LLVMConstInt(int32Type, 3, 0), "cond1");
+    // === Constants ===
+    LLVMValueRef const0 = LLVMConstInt(int32Ty, 0, 0);
+    LLVMValueRef const1 = LLVMConstInt(int32Ty, 1, 0);
+    LLVMValueRef const2 = LLVMConstInt(int32Ty, 2, 0);
+    LLVMValueRef const3 = LLVMConstInt(int32Ty, 3, 0);
+    LLVMValueRef const4 = LLVMConstInt(int32Ty, 4, 0);
+    LLVMValueRef const5 = LLVMConstInt(int32Ty, 5, 0);
+    LLVMValueRef const6 = LLVMConstInt(int32Ty, 6, 0);
 
-    // Blocks
-    LLVMBasicBlockRef ifBB = LLVMAppendBasicBlock(mainFunc, "if");
-    LLVMBasicBlockRef elifCondBB = LLVMAppendBasicBlock(mainFunc, "elif_cond");
-    LLVMBasicBlockRef elifBB = LLVMAppendBasicBlock(mainFunc, "elif");
-    LLVMBasicBlockRef elseBB = LLVMAppendBasicBlock(mainFunc, "else");
-    LLVMBasicBlockRef mergeBB = LLVMAppendBasicBlock(mainFunc, "merge");
+    // int a = 1;
+    LLVMValueRef a = LLVMBuildAlloca(builder, int32Ty, "a");
+    LLVMBuildStore(builder, const1, a);
 
-    LLVMBuildCondBr(builder, cond1, ifBB, elifCondBB);
+    // === First condition: if (a > 2) ===
+    LLVMValueRef a_val1 = LLVMBuildLoad2(builder, int32Ty, a, "a_val1");
+    LLVMValueRef cond1 = LLVMBuildICmp(builder, LLVMIntSGT, a_val1, const2, "cond1");
 
-    // if (a > 3): a = a + 1;
-    LLVMPositionBuilderAtEnd(builder, ifBB);
-    LLVMValueRef aIf = LLVMBuildLoad2(builder, int32Type, aVar, "a_if");
-    LLVMValueRef inc1 = LLVMBuildAdd(builder, aIf, LLVMConstInt(int32Type, 1, 0), "a_inc1");
-    LLVMBuildStore(builder, inc1, aVar);
+    LLVMBasicBlockRef then1 = LLVMAppendBasicBlockInContext(ctx, mainFunc, "then1");
+    LLVMBasicBlockRef cond2 = LLVMAppendBasicBlockInContext(ctx, mainFunc, "cond2");
+    LLVMBuildCondBr(builder, cond1, then1, cond2);
+
+    // === then1: a = a + 3 ===
+    LLVMPositionBuilderAtEnd(builder, then1);
+    LLVMValueRef a_val_then1 = LLVMBuildLoad2(builder, int32Ty, a, "a_then1");
+    LLVMValueRef result_then1 = LLVMBuildAdd(builder, a_val_then1, const3, "result_then1");
+    LLVMBuildStore(builder, result_then1, a);
+    LLVMBasicBlockRef mergeBB = LLVMAppendBasicBlockInContext(ctx, mainFunc, "merge");
     LLVMBuildBr(builder, mergeBB);
 
-    // elif condition: (a > 2)
-    LLVMPositionBuilderAtEnd(builder, elifCondBB);
-    LLVMValueRef aVal2 = LLVMBuildLoad2(builder, int32Type, aVar, "a_val2");
-    LLVMValueRef cond2 = LLVMBuildICmp(builder, LLVMIntSGT, aVal2, LLVMConstInt(int32Type, 2, 0), "cond2");
-    LLVMBuildCondBr(builder, cond2, elifBB, elseBB);
+    // === cond2: else if (a == 4) ===
+    LLVMPositionBuilderAtEnd(builder, cond2);
+    LLVMValueRef a_val2 = LLVMBuildLoad2(builder, int32Ty, a, "a_val2");
+    LLVMValueRef cond2 = LLVMBuildICmp(builder, LLVMIntEQ, a_val2, const4, "cond2");
 
-    // elif: a = a + 2;
-    LLVMPositionBuilderAtEnd(builder, elifBB);
-    LLVMValueRef aElif = LLVMBuildLoad2(builder, int32Type, aVar, "a_elif");
-    LLVMValueRef inc2 = LLVMBuildAdd(builder, aElif, LLVMConstInt(int32Type, 2, 0), "a_inc2");
-    LLVMBuildStore(builder, inc2, aVar);
+    LLVMBasicBlockRef then2BB = LLVMAppendBasicBlockInContext(ctx, mainFunc, "then2");
+    LLVMBasicBlockRef elseBB = LLVMAppendBasicBlockInContext(ctx, mainFunc, "else");
+    LLVMBuildCondBr(builder, cond2, then2BB, elseBB);
+
+    // === then2: a = a + 5 ===
+    LLVMPositionBuilderAtEnd(builder, then2BB);
+    LLVMValueRef a_val_then2 = LLVMBuildLoad2(builder, int32Ty, a, "a_then2");
+    LLVMValueRef result_then2 = LLVMBuildAdd(builder, a_val_then2, const5, "result_then2");
+    LLVMBuildStore(builder, result_then2, a);
     LLVMBuildBr(builder, mergeBB);
 
-    // else: a = a + 3;
+    // === else: a = a + 6 ===
     LLVMPositionBuilderAtEnd(builder, elseBB);
-    LLVMValueRef aElse = LLVMBuildLoad2(builder, int32Type, aVar, "a_else");
-    LLVMValueRef inc3 = LLVMBuildAdd(builder, aElse, LLVMConstInt(int32Type, 3, 0), "a_inc3");
-    LLVMBuildStore(builder, inc3, aVar);
+    LLVMValueRef a_val_else = LLVMBuildLoad2(builder, int32Ty, a, "a_else");
+    LLVMValueRef result_else = LLVMBuildAdd(builder, a_val_else, const6, "result_else");
+    LLVMBuildStore(builder, result_else, a);
     LLVMBuildBr(builder, mergeBB);
 
-    // merge block
+    // === merge ===
     LLVMPositionBuilderAtEnd(builder, mergeBB);
-    LLVMBuildRet(builder, LLVMConstInt(int32Type, 0, 0));
+    LLVMBuildRet(builder, const0);
 
-    // Output IR
-    char *irString = LLVMPrintModuleToString(module);
-    puts(irString);
-    LLVMDisposeMessage(irString);
+    // Output the IR
+    LLVMDumpModule(mod);
 
+    // Clean up
     LLVMDisposeBuilder(builder);
-    LLVMDisposeModule(module);
+    LLVMDisposeModule(mod);
 
     return 0;
 }
