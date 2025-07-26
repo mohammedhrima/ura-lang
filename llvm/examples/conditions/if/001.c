@@ -4,18 +4,21 @@
 #include <llvm-c/TargetMachine.h>
 #include <llvm-c/Analysis.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 typedef enum Type Type;
 typedef struct LLVM LLVM;
 typedef struct LLVMFunction LLVMFunction;
-typedef struct LLVMVariable LLVMVariable;
-typedef struct LLVMConst LLVMConst;
+typedef struct LLVMEntity LLVMEntity;
+typedef struct LLVMStatement LLVMStatement;
 
 LLVMTypeRef int32;
+LLVM llvm;
 
 enum Type
 {
-    INT = 1,
+    INT = 1
 };
 
 struct LLVM
@@ -33,107 +36,178 @@ struct LLVMFunction
     LLVMBasicBlockRef bloc;
 };
 
-struct LLVMVariable
+struct LLVMEntity
 {
-    LLVMValueRef ptr;
+    Type type;
+    char *name;
+    LLVMValueRef content;
 };
 
-struct LLVMConst
+struct LLVMStatement
 {
-    LLVMValueRef value;
+    LLVMBasicBlockRef start;
+    LLVMBasicBlockRef end;
+    LLVMEntity cond;
 };
 
-LLVM init(char *name)
+void init(char *name)
 {
-    LLVM res = {};
-    res.module = LLVMModuleCreateWithName(name);
-    res.builder = LLVMCreateBuilder();
-    res.context = LLVMGetGlobalContext();
-    return res;
+    llvm.module = LLVMModuleCreateWithName(name);
+    llvm.builder = LLVMCreateBuilder();
+    llvm.context = LLVMGetGlobalContext();
+
+    int32 = LLVMInt32Type();
 }
 
-LLVMFunction new_function(LLVM *llvm, char *name, Type ret)
+LLVMFunction new_function(char *name, Type ret)
 {
     LLVMFunction res = {};
+    if (ret == INT) res.setup = LLVMFunctionType(int32, NULL, 0, 0);
+    res.ref = LLVMAddFunction(llvm.module, name, res.setup);
+    res.bloc = LLVMAppendBasicBlock(res.ref, "entry");
+    LLVMPositionBuilderAtEnd(llvm.builder, res.bloc);
+    return res;
+}
 
-    switch (ret)
+LLVMEntity new_variable(char *name, Type type)
+{
+    LLVMEntity res = {.type = type, .name = name};
+    if (type == INT) res.content = LLVMBuildAlloca(llvm.builder, int32, name);
+    return res;
+}
+
+LLVMEntity new_constant(int value)
+{
+    LLVMEntity res = {.type = INT, .content = LLVMConstInt(int32, value, 0)};
+    return res;
+}
+
+void LLVMassign(LLVMEntity *left, LLVMEntity *right)
+{
+    LLVMValueRef value;
+
+    if (right->name) value = LLVMBuildLoad2(llvm.builder, int32, right->content, right->name);
+    else value = right->content;
+    LLVMBuildStore(llvm.builder, value, left->content);
+}
+
+void LLVMreturn(LLVMEntity *entity)
+{
+    LLVMValueRef value;
+
+    if (entity->name) value = LLVMBuildLoad2(llvm.builder, int32, entity->content, "ret");
+    else value = entity->content;
+    LLVMBuildRet(llvm.builder, value);
+}
+
+void LLVMsaveToFile(char *outfile)
+{
+    LLVMVerifyModule(llvm.module, LLVMAbortProcessAction, NULL);
+    LLVMPrintModuleToFile(llvm.module, outfile, NULL);
+    LLVMDisposeBuilder(llvm.builder);
+    LLVMDisposeModule(llvm.module);
+}
+
+LLVMEntity LLVMcompare(LLVMEntity *left, char *op, LLVMEntity *right)
+{
+    LLVMValueRef leftRef, rightRef;
+    LLVMEntity res = {};
+
+    if (left->name) leftRef = LLVMBuildLoad2(llvm.builder, int32, left->content, "");
+    else leftRef = left->content;
+
+    if (right->name) rightRef = LLVMBuildLoad2(llvm.builder, int32, right->content, "");
+    else rightRef = right->content;
+
+    LLVMIntPredicate pr;
+    struct { LLVMIntPredicate key; char *value; } arr[] = {
+        {LLVMIntEQ, "=="}, {LLVMIntNE, "!="}, {LLVMIntUGT, ">"},
+        {LLVMIntUGE, ">="}, {LLVMIntULT, "<"}, {LLVMIntULE, "<="},
+        {0, NULL},
+    };
+    for(int i = 0; arr[i].value; i++)
     {
-    case INT:
-        res.setup = LLVMFunctionType(int32, NULL, 0, 0);
-        break;
-    default:
-        break;
+        if(strcmp(arr[i].value, op) == 0)
+        {
+            res.content = LLVMBuildICmp(llvm.builder, LLVMIntSGT, leftRef, rightRef, "cond");
+            return res;
+        }
     }
-    res.ref = LLVMAddFunction(llvm->module, name, res.setup);
-    res.bloc = LLVMAppendBasicBlock(res.ref, "bloc");
-    LLVMPositionBuilderAtEnd(llvm->builder, res.bloc);
-
+    perror("in compare");
+    exit(1);
     return res;
 }
 
-LLVMVariable new_variable(LLVM *llvm, char *name, Type type)
+LLVMEntity LLVMmath(LLVMEntity *left, char op, LLVMEntity *right)
 {
-    LLVMVariable res;
-    switch (type)
+    LLVMValueRef leftRef, rightRef;
+    LLVMEntity res = {};
+
+    if (left->name) leftRef = LLVMBuildLoad2(llvm.builder, int32, left->content, "");
+    else leftRef = left->content;
+
+    if (right->name) rightRef = LLVMBuildLoad2(llvm.builder, int32, right->content, "");
+    else rightRef = right->content;
+    
+    switch(op)
     {
-    case INT:
-        res.ptr = LLVMBuildAlloca(llvm->builder, int32, name);
-    default:
-        break;
+        case '+': res.content = LLVMBuildAdd(llvm.builder, leftRef, rightRef, "+"); break;
+        default: break;
     }
     return res;
 }
 
-LLVMConst new_constant(int value)
-{
-    LLVMConst res = {.value = LLVMConstInt(int32, value, 0)};
-    return res;
-}
-
-void LLVMassign(LLVM *llvm, LLVMVariable *var, LLVMConst *val)
-{
-    LLVMBuildStore(llvm->builder, val->value, var->ptr);
-}
-
-void LLVMreturnFromVariable(LLVM *llvm, LLVMVariable *v)
-{
-    LLVMValueRef ret_val = LLVMBuildLoad2(llvm->builder, int32, v->ptr, "ret_val");
-    LLVMBuildRet(llvm->builder, ret_val);
-}
-
-void LLVMreturnFromConst(LLVM *llvm, LLVMConst *val)
-{
-    LLVMBuildRet(llvm->builder, val->value);
-}
-
-void LLVMsaveToFile(LLVM *llvm, char *outfile)
-{
-    LLVMPrintModuleToFile(llvm->module, outfile, NULL);
-
-    LLVMDisposeBuilder(llvm->builder);
-    LLVMDisposeModule(llvm->module);
-}
-
-// int a = 10;
-// if a > 5: a = a + 1
+// =====================================================
+/*
+main():
+    int a = 10
+    if a > 5: a = a + 1
+    return a
+*/
+// =====================================================
 int main()
 {
-    LLVM llvm = init("module");
-    int32 = LLVMInt32Type();
+    init("module");
 
-    // define int main()
-    LLVMFunction func = new_function(&llvm, "main", INT);
-    LLVMVariable var1 = new_variable(&llvm, "a", INT);
+    LLVMFunction func = new_function("main", INT);
 
-    LLVMConst const1 = new_constant(1);
-    LLVMConst const2 = new_constant(2);
-    LLVMConst const3 = new_constant(3);
+    // int a = 10;
+    LLVMEntity a = new_variable("a", INT);
+    LLVMEntity const1 = new_constant(1);
+    LLVMEntity const2 = new_constant(2);
+    LLVMEntity const3 = new_constant(3);
+    LLVMEntity const4 = new_constant(4);
+    LLVMEntity const5 = new_constant(5);
+    LLVMEntity const10 = new_constant(10);
+    
+    LLVMassign(&a, &const10);
 
-    LLVMassign(&llvm, &var1, &const3);
+    // Build: if (a > 5)
+    LLVMStatement state = {
+        .cond = LLVMcompare(&a, ">", &const5),
+        .start = LLVMAppendBasicBlock(func.ref, "then"),
+        .end = LLVMAppendBasicBlock(func.ref, "merge"),
+    };
 
-    // LLVMreturnFromConst(&llvm, &const1);
-    LLVMreturnFromVariable(&llvm, &var1);
+    LLVMBuildCondBr(llvm.builder, state.cond.content, state.start, state.end);
 
-    LLVMsaveToFile(&llvm, "out.ir");
+    // start block
+    LLVMPositionBuilderAtEnd(llvm.builder, state.start);
+    
+    // a = a + 1
+    LLVMEntity add = LLVMmath(&a, '+', &const1);
+    LLVMassign(&a, &add);
+    
+    // end block
+    LLVMBuildBr(llvm.builder, state.end);
+
+    LLVMPositionBuilderAtEnd(llvm.builder, state.end);
+    
+    // return a
+    LLVMreturn(&a);
+
+    // Save IR
+    LLVMsaveToFile("out.ir");
+
     return 0;
 }
