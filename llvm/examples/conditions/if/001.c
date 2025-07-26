@@ -52,19 +52,19 @@ struct LLVMStatement
 
 void init(char *name)
 {
-    llvm.module = LLVMModuleCreateWithName(name);
-    llvm.builder = LLVMCreateBuilder();
-    llvm.context = LLVMGetGlobalContext();
-
-    int32 = LLVMInt32Type();
+    llvm.context = LLVMContextCreate();
+    llvm.module = LLVMModuleCreateWithNameInContext(name, llvm.context);
+    llvm.builder = LLVMCreateBuilderInContext(llvm.context);
+    int32 = LLVMInt32TypeInContext(llvm.context);
 }
 
 LLVMFunction new_function(char *name, Type ret)
 {
     LLVMFunction res = {};
-    if (ret == INT) res.setup = LLVMFunctionType(int32, NULL, 0, 0);
+    if (ret == INT)
+        res.setup = LLVMFunctionType(int32, NULL, 0, 0);
     res.ref = LLVMAddFunction(llvm.module, name, res.setup);
-    res.bloc = LLVMAppendBasicBlock(res.ref, "entry");
+    res.bloc = LLVMAppendBasicBlockInContext(llvm.context, res.ref, "entry");
     LLVMPositionBuilderAtEnd(llvm.builder, res.bloc);
     return res;
 }
@@ -72,7 +72,8 @@ LLVMFunction new_function(char *name, Type ret)
 LLVMEntity new_variable(char *name, Type type)
 {
     LLVMEntity res = {.type = type, .name = name};
-    if (type == INT) res.content = LLVMBuildAlloca(llvm.builder, int32, name);
+    if (type == INT)
+        res.content = LLVMBuildAlloca(llvm.builder, int32, name);
     return res;
 }
 
@@ -84,19 +85,13 @@ LLVMEntity new_constant(int value)
 
 void LLVMassign(LLVMEntity *left, LLVMEntity *right)
 {
-    LLVMValueRef value;
-
-    if (right->name) value = LLVMBuildLoad2(llvm.builder, int32, right->content, right->name);
-    else value = right->content;
+    LLVMValueRef value = right->name ? LLVMBuildLoad2(llvm.builder, int32, right->content, right->name) : right->content;
     LLVMBuildStore(llvm.builder, value, left->content);
 }
 
 void LLVMreturn(LLVMEntity *entity)
 {
-    LLVMValueRef value;
-
-    if (entity->name) value = LLVMBuildLoad2(llvm.builder, int32, entity->content, "ret");
-    else value = entity->content;
+    LLVMValueRef value = entity->name ? LLVMBuildLoad2(llvm.builder, int32, entity->content, "ret") : entity->content;
     LLVMBuildRet(llvm.builder, value);
 }
 
@@ -106,108 +101,126 @@ void LLVMsaveToFile(char *outfile)
     LLVMPrintModuleToFile(llvm.module, outfile, NULL);
     LLVMDisposeBuilder(llvm.builder);
     LLVMDisposeModule(llvm.module);
+    LLVMContextDispose(llvm.context);
 }
 
 LLVMEntity LLVMcompare(LLVMEntity *left, char *op, LLVMEntity *right)
 {
-    LLVMValueRef leftRef, rightRef;
-    LLVMEntity res = {};
-
-    if (left->name) leftRef = LLVMBuildLoad2(llvm.builder, int32, left->content, "");
-    else leftRef = left->content;
-
-    if (right->name) rightRef = LLVMBuildLoad2(llvm.builder, int32, right->content, "");
-    else rightRef = right->content;
+    LLVMValueRef leftRef = left->name ? LLVMBuildLoad2(llvm.builder, int32, left->content, "") : left->content;
+    LLVMValueRef rightRef = right->name ? LLVMBuildLoad2(llvm.builder, int32, right->content, "") : right->content;
 
     LLVMIntPredicate pr;
-    struct { LLVMIntPredicate key; char *value; } arr[] = {
-        {LLVMIntEQ, "=="}, {LLVMIntNE, "!="}, {LLVMIntUGT, ">"},
-        {LLVMIntUGE, ">="}, {LLVMIntULT, "<"}, {LLVMIntULE, "<="},
-        {0, NULL},
-    };
-    for(int i = 0; arr[i].value; i++)
-    {
-        if(strcmp(arr[i].value, op) == 0)
-        {
-            res.content = LLVMBuildICmp(llvm.builder, LLVMIntSGT, leftRef, rightRef, "cond");
-            return res;
-        }
-    }
-    perror("in compare");
-    exit(1);
+    if (strcmp(op, ">") == 0)
+        pr = LLVMIntSGT;
+    else if (strcmp(op, ">=") == 0)
+        pr = LLVMIntSGE;
+    else if (strcmp(op, "<") == 0)
+        pr = LLVMIntSLT;
+    else if (strcmp(op, "<=") == 0)
+        pr = LLVMIntSLE;
+    else if (strcmp(op, "==") == 0)
+        pr = LLVMIntEQ;
+    else if (strcmp(op, "!=") == 0)
+        pr = LLVMIntNE;
+    else
+        pr = LLVMIntNE;
+
+    LLVMEntity res = {.type = INT, .content = LLVMBuildICmp(llvm.builder, pr, leftRef, rightRef, "cond")};
     return res;
 }
 
 LLVMEntity LLVMmath(LLVMEntity *left, char op, LLVMEntity *right)
 {
-    LLVMValueRef leftRef, rightRef;
+    LLVMValueRef leftRef = left->name ? LLVMBuildLoad2(llvm.builder, int32, left->content, "") : left->content;
+    LLVMValueRef rightRef = right->name ? LLVMBuildLoad2(llvm.builder, int32, right->content, "") : right->content;
+
     LLVMEntity res = {};
-
-    if (left->name) leftRef = LLVMBuildLoad2(llvm.builder, int32, left->content, "");
-    else leftRef = left->content;
-
-    if (right->name) rightRef = LLVMBuildLoad2(llvm.builder, int32, right->content, "");
-    else rightRef = right->content;
-    
-    switch(op)
+    switch (op)
     {
-        case '+': res.content = LLVMBuildAdd(llvm.builder, leftRef, rightRef, "+"); break;
-        default: break;
+    case '+':
+        res.content = LLVMBuildAdd(llvm.builder, leftRef, rightRef, "+");
+        break;
+    case '-':
+        res.content = LLVMBuildSub(llvm.builder, leftRef, rightRef, "-");
+        break;
+    case '*':
+        res.content = LLVMBuildMul(llvm.builder, leftRef, rightRef, "*");
+        break;
+    case '/':
+        res.content = LLVMBuildSDiv(llvm.builder, leftRef, rightRef, "/");
+        break;
+    default:
+        break;
     }
     return res;
 }
 
-// =====================================================
+// Simple if statement abstraction
+LLVMStatement create_simple_if(LLVMFunction *func, LLVMEntity condition, char *label)
+{
+    char then_name[64], end_name[64];
+    snprintf(then_name, sizeof(then_name), "then_%s", label);
+    snprintf(end_name, sizeof(end_name), "end_%s", label);
+
+    LLVMStatement stmt = {
+        .cond = condition,
+        .start = LLVMAppendBasicBlockInContext(llvm.context, func->ref, then_name),
+        .end = LLVMAppendBasicBlockInContext(llvm.context, func->ref, end_name)};
+
+    LLVMBuildCondBr(llvm.builder, condition.content, stmt.start, stmt.end);
+    return stmt;
+}
+
+void enter_if_then(LLVMStatement *stmt)
+{
+    LLVMPositionBuilderAtEnd(llvm.builder, stmt->start);
+}
+
+void exit_if_then(LLVMStatement *stmt)
+{
+    LLVMBuildBr(llvm.builder, stmt->end);
+    LLVMPositionBuilderAtEnd(llvm.builder, stmt->end);
+}
+
 /*
+Simple If Example:
 main():
     int a = 10
-    if a > 5: a = a + 1
-    return a
+    if (a > 5) {
+        a = a + 1  // 10 + 1 = 11
+    }
+    return a  // returns 11
 */
-// =====================================================
+
 int main()
 {
-    init("module");
-
+    init("simple_if_example");
     LLVMFunction func = new_function("main", INT);
 
-    // int a = 10;
+    // Variables and constants
     LLVMEntity a = new_variable("a", INT);
-    LLVMEntity const1 = new_constant(1);
-    LLVMEntity const2 = new_constant(2);
-    LLVMEntity const3 = new_constant(3);
-    LLVMEntity const4 = new_constant(4);
-    LLVMEntity const5 = new_constant(5);
     LLVMEntity const10 = new_constant(10);
-    
+    LLVMEntity const5 = new_constant(5);
+    LLVMEntity const1 = new_constant(1);
+
+    // a = 10
     LLVMassign(&a, &const10);
 
-    // Build: if (a > 5)
-    LLVMStatement state = {
-        .cond = LLVMcompare(&a, ">", &const5),
-        .start = LLVMAppendBasicBlock(func.ref, "then"),
-        .end = LLVMAppendBasicBlock(func.ref, "merge"),
-    };
+    // if (a > 5) { a = a + 1 }
+    LLVMEntity condition = LLVMcompare(&a, ">", &const5);
+    LLVMStatement if_stmt = create_simple_if(&func, condition, "simple");
 
-    LLVMBuildCondBr(llvm.builder, state.cond.content, state.start, state.end);
+    enter_if_then(&if_stmt);
+    LLVMEntity result = LLVMmath(&a, '+', &const1);
+    LLVMassign(&a, &result);
+    exit_if_then(&if_stmt);
 
-    // start block
-    LLVMPositionBuilderAtEnd(llvm.builder, state.start);
-    
-    // a = a + 1
-    LLVMEntity add = LLVMmath(&a, '+', &const1);
-    LLVMassign(&a, &add);
-    
-    // end block
-    LLVMBuildBr(llvm.builder, state.end);
-
-    LLVMPositionBuilderAtEnd(llvm.builder, state.end);
-    
     // return a
     LLVMreturn(&a);
-
-    // Save IR
     LLVMsaveToFile("out.ir");
+
+    printf("Simple if statement IR generated: simple_if.ir\n");
+    printf("Expected result: 11 (10 > 5 is true, so a = 10 + 1 = 11)\n");
 
     return 0;
 }

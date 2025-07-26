@@ -44,3 +44,5 @@
    + Alfred V aho
    + Yacc
    + Ll1
+
+- install for linux/macos/windows

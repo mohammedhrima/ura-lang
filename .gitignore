@@ -4,3 +4,5 @@
 /src/wcc
 .vscode
 **/*.dSYM
+**/*.out
+.DS_Store

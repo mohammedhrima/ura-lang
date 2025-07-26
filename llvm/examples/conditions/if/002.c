@@ -11,7 +11,6 @@ typedef enum Type Type;
 typedef struct LLVM LLVM;
 typedef struct LLVMFunction LLVMFunction;
 typedef struct LLVMEntity LLVMEntity;
-typedef struct LLVMStatement LLVMStatement;
 
 LLVMTypeRef int32;
 LLVM llvm;
@@ -43,28 +42,28 @@ struct LLVMEntity
     LLVMValueRef content;
 };
 
-struct LLVMStatement
+typedef struct
 {
-    LLVMBasicBlockRef start;
-    LLVMBasicBlockRef end;
-    LLVMEntity cond;
-};
+    LLVMBasicBlockRef then_block;
+    LLVMBasicBlockRef else_block;
+    LLVMBasicBlockRef merge_block;
+} LLVMIfElse;
 
 void init(char *name)
 {
-    llvm.module = LLVMModuleCreateWithName(name);
-    llvm.builder = LLVMCreateBuilder();
-    llvm.context = LLVMGetGlobalContext();
-
-    int32 = LLVMInt32Type();
+    llvm.context = LLVMContextCreate();
+    llvm.module = LLVMModuleCreateWithNameInContext(name, llvm.context);
+    llvm.builder = LLVMCreateBuilderInContext(llvm.context);
+    int32 = LLVMInt32TypeInContext(llvm.context);
 }
 
 LLVMFunction new_function(char *name, Type ret)
 {
     LLVMFunction res = {};
-    if (ret == INT) res.setup = LLVMFunctionType(int32, NULL, 0, 0);
+    if (ret == INT)
+        res.setup = LLVMFunctionType(int32, NULL, 0, 0);
     res.ref = LLVMAddFunction(llvm.module, name, res.setup);
-    res.bloc = LLVMAppendBasicBlock(res.ref, "entry");
+    res.bloc = LLVMAppendBasicBlockInContext(llvm.context, res.ref, "entry");
     LLVMPositionBuilderAtEnd(llvm.builder, res.bloc);
     return res;
 }
@@ -72,7 +71,8 @@ LLVMFunction new_function(char *name, Type ret)
 LLVMEntity new_variable(char *name, Type type)
 {
     LLVMEntity res = {.type = type, .name = name};
-    if (type == INT) res.content = LLVMBuildAlloca(llvm.builder, int32, name);
+    if (type == INT)
+        res.content = LLVMBuildAlloca(llvm.builder, int32, name);
     return res;
 }
 
@@ -100,6 +100,7 @@ void LLVMsaveToFile(char *outfile)
     LLVMPrintModuleToFile(llvm.module, outfile, NULL);
     LLVMDisposeBuilder(llvm.builder);
     LLVMDisposeModule(llvm.module);
+    LLVMContextDispose(llvm.context);
 }
 
 LLVMEntity LLVMcompare(LLVMEntity *left, char *op, LLVMEntity *right)
@@ -108,77 +109,105 @@ LLVMEntity LLVMcompare(LLVMEntity *left, char *op, LLVMEntity *right)
     LLVMValueRef rightRef = right->name ? LLVMBuildLoad2(llvm.builder, int32, right->content, "") : right->content;
 
     LLVMIntPredicate pr;
-    if (strcmp(op, ">") == 0) pr = LLVMIntSGT;
-    else if (strcmp(op, "==") == 0) pr = LLVMIntEQ;
-    else pr = LLVMIntNE; // fallback
+    if (strcmp(op, ">") == 0)
+        pr = LLVMIntSGT;
+    else if (strcmp(op, ">=") == 0)
+        pr = LLVMIntSGE;
+    else if (strcmp(op, "<") == 0)
+        pr = LLVMIntSLT;
+    else if (strcmp(op, "<=") == 0)
+        pr = LLVMIntSLE;
+    else if (strcmp(op, "==") == 0)
+        pr = LLVMIntEQ;
+    else if (strcmp(op, "!=") == 0)
+        pr = LLVMIntNE;
+    else
+        pr = LLVMIntNE;
 
     LLVMEntity res = {.type = INT, .content = LLVMBuildICmp(llvm.builder, pr, leftRef, rightRef, "cond")};
     return res;
 }
 
-LLVMEntity LLVMmath(LLVMEntity *left, char op, LLVMEntity *right)
+// If/Else abstraction
+LLVMIfElse create_if_else(LLVMFunction *func, LLVMEntity condition, char *label)
 {
-    LLVMValueRef leftRef = left->name ? LLVMBuildLoad2(llvm.builder, int32, left->content, "") : left->content;
-    LLVMValueRef rightRef = right->name ? LLVMBuildLoad2(llvm.builder, int32, right->content, "") : right->content;
+    char then_name[64], else_name[64], merge_name[64];
+    snprintf(then_name, sizeof(then_name), "then_%s", label);
+    snprintf(else_name, sizeof(else_name), "else_%s", label);
+    snprintf(merge_name, sizeof(merge_name), "merge_%s", label);
 
-    LLVMEntity res = {};
-    switch(op)
-    {
-        case '+': res.content = LLVMBuildAdd(llvm.builder, leftRef, rightRef, "+"); break;
-        default: break;
-    }
-    return res;
+    LLVMIfElse if_else = {
+        .then_block = LLVMAppendBasicBlockInContext(llvm.context, func->ref, then_name),
+        .else_block = LLVMAppendBasicBlockInContext(llvm.context, func->ref, else_name),
+        .merge_block = LLVMAppendBasicBlockInContext(llvm.context, func->ref, merge_name)};
+
+    LLVMBuildCondBr(llvm.builder, condition.content, if_else.then_block, if_else.else_block);
+    return if_else;
 }
+
+void enter_if_then_else(LLVMIfElse *if_else, int is_else)
+{
+    LLVMPositionBuilderAtEnd(llvm.builder, is_else ? if_else->else_block : if_else->then_block);
+}
+
+void exit_if_else_branch(LLVMIfElse *if_else)
+{
+    LLVMBuildBr(llvm.builder, if_else->merge_block);
+}
+
+void finalize_if_else(LLVMIfElse *if_else)
+{
+    LLVMPositionBuilderAtEnd(llvm.builder, if_else->merge_block);
+}
+
+/*
+If/Else Example:
+main():
+    int a = 3
+    if (a > 5) {
+        a = 10  // won't execute (3 > 5 is false)
+    } else {
+        a = 20  // will execute
+    }
+    return a  // returns 20
+*/
 
 int main()
 {
-    init("if_else_chain");
+    init("if_else_example");
     LLVMFunction func = new_function("main", INT);
 
+    // Variables and constants
     LLVMEntity a = new_variable("a", INT);
-    LLVMEntity const1 = new_constant(1);
-    LLVMEntity const2 = new_constant(2);
     LLVMEntity const3 = new_constant(3);
-    LLVMEntity const4 = new_constant(4);
     LLVMEntity const5 = new_constant(5);
-    LLVMEntity const6 = new_constant(6);
     LLVMEntity const10 = new_constant(10);
+    LLVMEntity const20 = new_constant(20);
 
-    LLVMassign(&a, &const1);
+    // a = 3
+    LLVMassign(&a, &const3);
 
-    LLVMStatement if1 = {
-        .cond = LLVMcompare(&a, ">", &const2),
-        .start = LLVMAppendBasicBlock(func.ref, "then1"),
-        .end = LLVMAppendBasicBlock(func.ref, "cond2"),
-    };
+    // if (a > 5) { a = 10 } else { a = 20 }
+    LLVMEntity condition = LLVMcompare(&a, ">", &const5);
+    LLVMIfElse if_else = create_if_else(&func, condition, "main");
 
-    LLVMBuildCondBr(llvm.builder, if1.cond.content, if1.start, if1.end);
+    // Then branch (won't execute)
+    enter_if_then_else(&if_else, 0);
+    LLVMassign(&a, &const10);
+    exit_if_else_branch(&if_else);
 
-    LLVMPositionBuilderAtEnd(llvm.builder, if1.start);
-    LLVMEntity add1 = LLVMmath(&a, '+', &const3);
-    LLVMassign(&a, &add1);
-    LLVMBasicBlockRef merge = LLVMAppendBasicBlock(func.ref, "merge");
-    LLVMBuildBr(llvm.builder, merge);
+    // Else branch (will execute)
+    enter_if_then_else(&if_else, 1);
+    LLVMassign(&a, &const20);
+    exit_if_else_branch(&if_else);
 
-    LLVMPositionBuilderAtEnd(llvm.builder, if1.end);
-    LLVMEntity cond2 = LLVMcompare(&a, "==", &const4);
-    LLVMBasicBlockRef then2 = LLVMAppendBasicBlock(func.ref, "then2");
-    LLVMBasicBlockRef else2 = LLVMAppendBasicBlock(func.ref, "else");
-    LLVMBuildCondBr(llvm.builder, cond2.content, then2, else2);
-
-    LLVMPositionBuilderAtEnd(llvm.builder, then2);
-    LLVMEntity add2 = LLVMmath(&a, '+', &const5);
-    LLVMassign(&a, &add2);
-    LLVMBuildBr(llvm.builder, merge);
-
-    LLVMPositionBuilderAtEnd(llvm.builder, else2);
-    LLVMEntity add3 = LLVMmath(&a, '+', &const6);
-    LLVMassign(&a, &add3);
-    LLVMBuildBr(llvm.builder, merge);
-
-    LLVMPositionBuilderAtEnd(llvm.builder, merge);
+    // Merge and return
+    finalize_if_else(&if_else);
     LLVMreturn(&a);
     LLVMsaveToFile("out.ir");
+
+    printf("If/else statement IR generated: if_else.ir\n");
+    printf("Expected result: 20 (3 > 5 is false, so else branch executes, a = 20)\n");
 
     return 0;
 }
