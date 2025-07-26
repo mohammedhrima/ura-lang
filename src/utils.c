@@ -990,7 +990,7 @@ Type getRetType(Node *node)
 }
 
 
-char* resolve_path(char* path) 
+char* resolve_path(char* path)
 {
     if (path == NULL) return NULL;
 

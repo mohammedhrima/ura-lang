@@ -112,6 +112,12 @@ typedef enum
     END
 } Type;
 
+typedef struct LLvm
+{
+    LLVMTypeRef funcType;
+    LLVMValueRef element;
+} LLvm;
+
 typedef struct Token
 {
     Type type;
@@ -137,11 +143,7 @@ typedef struct Token
     char *filename;
     int line;
 
-    struct
-    {
-        LLVMTypeRef funcType;
-        LLVMValueRef element;
-    } llvm;
+    LLvm llvm;
     struct
     {
         // integer

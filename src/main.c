@@ -334,13 +334,13 @@ Node *symbol(Token *token)
 // if Layout:
 //    + left    : condition
 //    + children: code bloc
-//    + right   : elif/else
+//    + right   : elif/else Layout
 Node *if_node(Node *node)
 {
     enter_scoop(node);
 
     node->left = expr();  // condition, TODO: check if it's boolean
-    node->left->token->is_cond = true;
+    // node->left->token->is_cond = true;
     node->left->token->space = node->token->space;
     node->right = new_node(new_token(CHILDREN, node->token->space));
 
@@ -356,7 +356,7 @@ Node *if_node(Node *node)
         if (token->type == ELIF)
         {
             curr->left = expr();
-            curr->left->token->is_cond = true;
+            // curr->left->token->is_cond = true;
             check(!find(DOTS, 0), "expected : after elif condition");
             while (within_space(token->space)) add_child(curr, expr());
         }
@@ -576,20 +576,20 @@ Token *if_ir(Node *node)
     Token *cond = generate_ir(node->left); // TODO: check if it's boolean
     if (!cond) return NULL;
     setName(cond, "endif");
-    cond->index = inst->token->index;
+    // cond->index = inst->token->index;
     // --bloc_index;
 
     Token *next = cond;
     // code bloc
     for (int i = 0; i < node->cpos && !found_error; i++) generate_ir(node->children[i]);
 
-    Inst *end = NULL;
-    if (node->right->cpos)
-    {
-        end = new_inst(new_token(JMP, node->token->space + TAB));
-        setName(end->token, "endif");
-        end->token->index = node->token->index;
-    }
+    // Inst *end = NULL;
+    // if (node->right->cpos)
+    // {
+    //     end = new_inst(new_token(JMP, node->token->space + TAB));
+    //     setName(end->token, "endif");
+    //     end->token->index = node->token->index;
+    // }
     Node *subs = node->right;
     for (int i = 0; i < subs->cpos; i++)
     {
