@@ -7,14 +7,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Type definitions
 typedef enum Type Type;
 typedef struct LLVM LLVM;
 typedef struct LLVMFunction LLVMFunction;
 typedef struct LLVMEntity LLVMEntity;
 
+// Global variables
 LLVMTypeRef int32;
 LLVM llvm;
 
+// Enums and structures
 enum Type
 {
     INT = 1
@@ -49,6 +52,7 @@ typedef struct
     LLVMBasicBlockRef merge_block;
 } LLVMIfElse;
 
+// Utility functions
 void init(char *name)
 {
     llvm.context = LLVMContextCreate();
@@ -109,26 +113,19 @@ LLVMEntity LLVMcompare(LLVMEntity *left, char *op, LLVMEntity *right)
     LLVMValueRef rightRef = right->name ? LLVMBuildLoad2(llvm.builder, int32, right->content, "") : right->content;
 
     LLVMIntPredicate pr;
-    if (strcmp(op, ">") == 0)
-        pr = LLVMIntSGT;
-    else if (strcmp(op, ">=") == 0)
-        pr = LLVMIntSGE;
-    else if (strcmp(op, "<") == 0)
-        pr = LLVMIntSLT;
-    else if (strcmp(op, "<=") == 0)
-        pr = LLVMIntSLE;
-    else if (strcmp(op, "==") == 0)
-        pr = LLVMIntEQ;
-    else if (strcmp(op, "!=") == 0)
-        pr = LLVMIntNE;
-    else
-        pr = LLVMIntNE;
+    if (strcmp(op, ">") == 0)       pr = LLVMIntSGT;
+    else if (strcmp(op, ">=") == 0) pr = LLVMIntSGE;
+    else if (strcmp(op, "<") == 0)  pr = LLVMIntSLT;
+    else if (strcmp(op, "<=") == 0) pr = LLVMIntSLE;
+    else if (strcmp(op, "==") == 0) pr = LLVMIntEQ;
+    else if (strcmp(op, "!=") == 0) pr = LLVMIntNE;
+    else pr = LLVMIntNE;
 
     LLVMEntity res = {.type = INT, .content = LLVMBuildICmp(llvm.builder, pr, leftRef, rightRef, "cond")};
     return res;
 }
 
-// If/Else abstraction
+// Control flow functions needed for this example
 LLVMIfElse create_if_else(LLVMFunction *func, LLVMEntity condition, char *label)
 {
     char then_name[64], else_name[64], merge_name[64];
@@ -161,53 +158,64 @@ void finalize_if_else(LLVMIfElse *if_else)
 }
 
 /*
-If/Else Example:
-main():
-    int a = 3
-    if (a > 5) {
-        a = 10  // won't execute (3 > 5 is false)
-    } else {
-        a = 20  // will execute
-    }
-    return a  // returns 20
+PSEUDOCODE for if/else statement:
+BEGIN
+    a = 3
+    IF a > 5 THEN
+        a = 10
+    ELSE
+        a = 20
+    END IF
+    RETURN a
+END
+Expected result: 20 (since 3 is not > 5, else branch executes)
 */
 
-int main()
+void example_if_else()
 {
     init("if_else_example");
     LLVMFunction func = new_function("main", INT);
 
-    // Variables and constants
     LLVMEntity a = new_variable("a", INT);
     LLVMEntity const3 = new_constant(3);
     LLVMEntity const5 = new_constant(5);
     LLVMEntity const10 = new_constant(10);
     LLVMEntity const20 = new_constant(20);
 
-    // a = 3
     LLVMassign(&a, &const3);
 
     // if (a > 5) { a = 10 } else { a = 20 }
     LLVMEntity condition = LLVMcompare(&a, ">", &const5);
     LLVMIfElse if_else = create_if_else(&func, condition, "main");
 
-    // Then branch (won't execute)
+    // Then branch
     enter_if_then_else(&if_else, 0);
     LLVMassign(&a, &const10);
     exit_if_else_branch(&if_else);
 
-    // Else branch (will execute)
+    // Else branch
     enter_if_then_else(&if_else, 1);
     LLVMassign(&a, &const20);
     exit_if_else_branch(&if_else);
 
-    // Merge and return
     finalize_if_else(&if_else);
     LLVMreturn(&a);
     LLVMsaveToFile("out.ir");
+}
 
-    printf("If/else statement IR generated: if_else.ir\n");
-    printf("Expected result: 20 (3 > 5 is false, so else branch executes, a = 20)\n");
+int main()
+{
+    printf("=== Example 2: If/Else Statement ===\n");
+    printf("Pseudocode:\n");
+    printf("  a = 3\n");
+    printf("  if (a > 5) then\n");
+    printf("    a = 10\n");
+    printf("  else\n");
+    printf("    a = 20\n");
+    printf("  end if\n");
+    printf("  return a\n");
+    printf("Expected result: 20\n\n");
 
+    example_if_else();
     return 0;
 }
