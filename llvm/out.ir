@@ -1,23 +1,21 @@
-; ModuleID = 'if_else_example'
-source_filename = "if_else_example"
+; ModuleID = 'simple_if'
+source_filename = "simple_if"
 
 define i32 @main() {
 entry:
   %a = alloca i32, align 4
-  store i32 3, ptr %a, align 4
+  store i32 10, ptr %a, align 4
   %0 = load i32, ptr %a, align 4
   %cond = icmp sgt i32 %0, 5
-  br i1 %cond, label %then_main, label %else_main
+  br i1 %cond, label %if_0, label %merge_simple
 
-then_main:                                        ; preds = %entry
-  store i32 10, ptr %a, align 4
-  br label %merge_main
+if_0:                                             ; preds = %entry
+  %1 = load i32, ptr %a, align 4
+  %"+" = add i32 %1, 1
+  store i32 %"+", ptr %a, align 4
+  br label %merge_simple
 
-else_main:                                        ; preds = %entry
-  store i32 20, ptr %a, align 4
-  br label %merge_main
-
-merge_main:                                       ; preds = %else_main, %then_main
+merge_simple:                                     ; preds = %if_0, %entry
   %ret = load i32, ptr %a, align 4
   ret i32 %ret
 }
