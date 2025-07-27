@@ -1,4 +1,4 @@
-	.file	"if_else_example"
+	.file	"simple_if"
 	.text
 	.globl	main                            # -- Begin function main
 	.p2align	4
@@ -6,16 +6,13 @@
 main:                                   # @main
 	.cfi_startproc
 # %bb.0:                                # %entry
-	movl	$3, -4(%rsp)
-	movb	$1, %al
+	movl	$10, -4(%rsp)
+	xorl	%eax, %eax
 	testb	%al, %al
 	jne	.LBB0_2
-# %bb.1:                                # %then_main
-	movl	$10, -4(%rsp)
-	movl	-4(%rsp), %eax
-	retq
-.LBB0_2:                                # %else_main
-	movl	$20, -4(%rsp)
+# %bb.1:                                # %if_0
+	incl	-4(%rsp)
+.LBB0_2:                                # %merge_simple
 	movl	-4(%rsp), %eax
 	retq
 .Lfunc_end0:
