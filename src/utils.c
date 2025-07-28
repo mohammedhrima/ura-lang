@@ -651,7 +651,7 @@ void add_token(Token *token)
         tk_len = 10;
         tokens = allocate(tk_len, sizeof(Token *));
     }
-    else if (tk_pos + 1 == tk_len)
+    else if (tk_pos + 5 >= tk_len)
     {
         Token **tmp = allocate(tk_len * 2, sizeof(Token *));
         memcpy(tmp, tokens, tk_len * sizeof(Token *));

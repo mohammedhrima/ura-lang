@@ -148,17 +148,8 @@ indent() {
 # === Reload Config & Shell ===
 
 update() {
-    # Colors
-    GREEN="%F{green}"
-    BLUE="%F{blue}"
-    RESET="%f"
-
-    # Set prompt
-    export PS1="${GREEN}%n@%m ${BLUE}%~ %{$RESET%}%# "
-
-    echo -e "${YELLOW}Reloading config...${NC}"
     source "$src/config.sh"
-    source ~/.zshrc
+    # source ~/.zshrc
 }
 
 

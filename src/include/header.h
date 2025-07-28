@@ -355,5 +355,5 @@ int debug(char *conv, ...);
 int pnode(Node *node, char *side, int space);
 int ptoken(Token *token);
 void print_ast(Node *head);
-void print_ir();
+void print_ir(Inst *inst);
 int print_value(Token *token);

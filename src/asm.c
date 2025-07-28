@@ -2,6 +2,7 @@
 
 void generate_asm(char *name)
 {
+#if ASM
     if (found_error) return;
 
     // Create LLVM context, module, and IR builder
@@ -105,4 +106,5 @@ void generate_asm(char *name)
     LLVMDisposeBuilder(builder);
     LLVMDisposeModule(mod);
     free(moduleName);
+#endif
 }
