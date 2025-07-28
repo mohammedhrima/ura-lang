@@ -9,8 +9,8 @@ int tk_len;
 char *input;
 Node *global;
 int exe_pos;
-Inst **OrgInsts;
-Inst **insts;
+// Inst **OrgInsts;
+// Inst **insts;
 
 Node **Gscoop;
 Node *scoop;
@@ -450,6 +450,7 @@ Token *func_dec_ir(Node *node)
     return NULL;
 }
 
+#if 0
 Token *func_call_ir(Node *node)
 {
     Inst* inst = NULL;
@@ -643,7 +644,6 @@ Token *if_ir(Node *node)
     return node->left->token;
 }
 
-
 Token *op_ir(Node *node)
 {
     Token *left = generate_ir(node->left);
@@ -742,9 +742,11 @@ Token *op_ir(Node *node)
 
     return node->token;
 }
+#endif
 
 Token *generate_ir(Node *node, Inst *parent)
 {
+    Inst *inst = NULL;
     if (found_error) return NULL;
     switch (node->token->type)
     {
@@ -757,16 +759,11 @@ Token *generate_ir(Node *node, Inst *parent)
     case INT: case BOOL: case CHAR: case STRUCT_CALL:
     case FLOAT: case LONG: case CHARS: case PTR:
     {
-        add_inst(parent, new_inst(node->token));
-        if (!node->token->declare) return node->token;
-        // variable declaration
-        new_variable(node->token);
-#if 0
-        return inialize_variable(node);
-#else
-        return node->token;
-#endif
+        inst = new_inst(node->token);
+        if (node->token->declare) new_variable(node->token);
+        break;
     }
+#if 0
     case ASSIGN: case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN:
     case ADD: case SUB: case MUL: case DIV: case EQUAL: case NOT_EQUAL:
     case LESS: case MORE: case LESS_EQUAL: case MORE_EQUAL:
@@ -776,15 +773,18 @@ Token *generate_ir(Node *node, Inst *parent)
     }
     case IF:    return if_ir(node);
     // case WHILE: return while_ir(node);
+#endif
     case FDEC:  return func_dec_ir(node);
-    case FCALL: return func_call_ir(node);
     case RETURN:
     {
-        Token *left = generate_ir(node->left);
-        Inst *inst = add_inst(parent, new_inst(node->token));
+        Token *left = generate_ir(node->left, NULL);
+        inst = new_inst(node->token);
         inst->left = left;
+        if(parent) add_inst(parent, inst);
         return node->token;
     }
+#if 0
+    case FCALL: return func_call_ir(node);
     case BREAK:
     {
         for (int i = scoopPos; i >= 0; i--)
@@ -796,6 +796,9 @@ Token *generate_ir(Node *node, Inst *parent)
                 token->type = JMP;
                 token->index = scoop->token->index;
                 setName(token, "endwhile");
+
+                Inst *inst = new_inst(node->token);
+        if(parent) add_inst(parent, inst);
                 return add_inst(parent, new_inst(token))->token;
                 break;
             }
@@ -886,15 +889,16 @@ Token *generate_ir(Node *node, Inst *parent)
         todo(1, "who is looking for default ?");
         return node->token;
     }
+#endif
     default:
     {
-        check(1, "handle this case %s", to_string(node->token->type));
-        return node->token;
+        todo(1, "handle this case %s", to_string(node->token->type));
+        break;
     }
     }
-    return NULL;
+    if(parent && inst) add_inst(parent, inst);
+    return node->token;
 }
-
 
 void compile(char *filename)
 {
@@ -921,7 +925,7 @@ void compile(char *filename)
     for (int i = 0; !found_error && i < global->cpos; i++)
         generate_ir(global->children[i], globalInst);
     if (found_error) return;
-    print_ir();
+    // print_ir(globalInst);
 #endif
 
 #if OPTIMIZE
@@ -939,10 +943,15 @@ void compile(char *filename)
     generate_asm(filename);
 #endif
     free_node(global);
+    debug(BLUE BOLD"FINISH COMPILATION 1:\n" RESET);
+    exit(0);
+    debug(BLUE BOLD"FINISH COMPILATION 2:\n" RESET);
+    debug(BLUE BOLD"FINISH COMPILATION 3:\n" RESET);
 }
 
 int main(int argc, char **argv)
 {
     compile(argv[1]);
-    free_memory();
+    // free_memory();
+    debug(BLUE BOLD"EXIT CODE:\n" RESET);
 }
