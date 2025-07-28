@@ -201,106 +201,113 @@ void print_ast(Node *head)
     debug(GREEN BOLD SPLIT RESET);
 }
 
-void print_ir()
+void print_inst(Inst *inst)
+{
+    Token *curr = inst->token;
+    Token *left = inst->left;
+    Token *right = inst->right;
+    curr->ir_reg ? debug("r%.2d:", curr->ir_reg) : debug("rxx:");
+    int k = 0;
+    while (!TESTING && k < curr->space) k += debug(" ");
+    switch (curr->type)
+    {
+    case ADD_ASSIGN: case ASSIGN:
+    {
+        debug("[%-6s] [%s] ", to_string(curr->type), (curr->assign_type ? to_string(curr->assign_type) : ""));
+        if (left->name)  debug("r%.2d (%s) = ", left->ir_reg, left->name);
+        else debug("r%.2d = ", left->ir_reg);
+
+        if (right->ir_reg) debug("r%.2d (%s) ", right->ir_reg, right->name ? right->name : "");
+        else print_value(right);
+        break;
+    }
+    // case ACCESS:
+    // {
+    //     debug("[%-6s] ", to_string(curr->type));
+
+    //     if (right->ir_reg) debug("r%.2d ", right->ir_reg);
+    //     else print_value(right);
+    //     if (right->name) debug("(%s) ", right->name);
+
+    //     debug("in ");
+
+    //     if (left->ir_reg) debug("r%.2d ", left->ir_reg);
+    //     else if (left->creg) debug("creg %s ", left->creg);
+
+    //     if (left->name) debug("(%s) ", left->name);
+
+    //     break;
+    // }
+    case ADD: case SUB: case MUL: case DIV:
+    case EQUAL: case NOT_EQUAL: case LESS: case MORE: case LESS_EQUAL: case MORE_EQUAL:
+    {
+        debug("[%-6s] ", to_string(curr->type));
+        if (left->ir_reg) debug("r%.2d", left->ir_reg);
+        // else if (left->creg) debug("creg %s ", left->creg);
+        else print_value(left);
+        if (left->name) debug("(%s)", left->name);
+
+        debug(" to ");
+        if (right->ir_reg) debug("r%.2d", right->ir_reg);
+        else print_value(right);
+        if (right->name) debug("(%s)", right->name);
+        break;
+    }
+    case INT: case BOOL: case CHARS: case CHAR: case LONG:
+    {
+        debug("[%-6s] ", to_string(curr->type));
+        if (curr->declare)
+        {
+            // stop(1, "I removed declare in intialize variable, this coniditon should never be true");
+            // debug("declare [%s] PTR=[%d] ", curr->name, curr->ptr);
+        }
+        if (curr->name) debug("name %s ", curr->name);
+        // if (curr->creg) debug("creg %s ", curr->creg);
+        // else if(curr->type == FLOAT)
+        // {
+        //     curr->index = ++float_index;
+        //     debug("value %f ", curr->Float.value);
+        // }
+        if (curr->type == CHARS && !curr->name)
+            debug("value %s in STR%d ", curr->Chars.value, curr->index);
+        else if (!curr->name) print_value(curr);
+        //else check(1, "handle this case in generate ir\n", "");
+        break;
+    }
+    case DOT:
+    {
+        debug("[%-6s] ", to_string(curr->type));
+        debug("access [%s] in %k", right->name, left);
+        break;
+    }
+    case JMP: debug("jmp to [%s] ", curr->name); break;
+    case JNE: debug("jne to [%s] ", curr->name); break;
+    case FCALL: debug("call [%s] ", curr->name); break;
+    case BLOC: case FDEC: debug("[%s] bloc ", curr->name); break;
+    case END_BLOC:  debug("[%s] endbloc ", curr->name); break;
+    case STRUCT_CALL: debug("[%-6s] %s ", to_string(curr->type), curr->name); break;
+    case RETURN: case CONTINUE: case BREAK: debug("[%s] ", to_string(curr->type)); break;
+    default: debug(RED "print_ir:handle [%s]"RESET, to_string(curr->type)); break;
+    }
+
+    debug("space (%d)", curr->space);
+    debug("\n");
+    for (int i = 0; inst->children[i]; i++) print_inst(inst->children[i]);
+}
+
+void print_ir(Inst *inst)
 {
     //if (!DEBUG) return;
     copy_insts();
     debug(GREEN BOLD SPLIT RESET);
     debug(GREEN BOLD"PRINT IR:\n" RESET);
-    int i = 0;
-    for (i = 0; insts[i]; i++)
-    {
-        Token *curr = insts[i]->token;
-        Token *left = insts[i]->left;
-        Token *right = insts[i]->right;
-        curr->ir_reg ? debug("r%.2d:", curr->ir_reg) : debug("rxx:");
-        int k = 0;
-        while (!TESTING && k < curr->space) k += debug(" ");
-        switch (curr->type)
-        {
-        case ADD_ASSIGN: case ASSIGN:
-        {
-            debug("[%-6s] [%s] ", to_string(curr->type), (curr->assign_type ? to_string(curr->assign_type) : ""));
-            if (left->name)  debug("r%.2d (%s) = ", left->ir_reg, left->name);
-            else debug("r%.2d = ", left->ir_reg);
-
-            if (right->ir_reg) debug("r%.2d (%s) ", right->ir_reg, right->name ? right->name : "");
-            else print_value(right);
-            break;
-        }
-        // case ACCESS:
-        // {
-        //     debug("[%-6s] ", to_string(curr->type));
-
-        //     if (right->ir_reg) debug("r%.2d ", right->ir_reg);
-        //     else print_value(right);
-        //     if (right->name) debug("(%s) ", right->name);
-
-        //     debug("in ");
-
-        //     if (left->ir_reg) debug("r%.2d ", left->ir_reg);
-        //     else if (left->creg) debug("creg %s ", left->creg);
-
-        //     if (left->name) debug("(%s) ", left->name);
-
-        //     break;
-        // }
-        case ADD: case SUB: case MUL: case DIV:
-        case EQUAL: case NOT_EQUAL: case LESS: case MORE: case LESS_EQUAL: case MORE_EQUAL:
-        {
-            debug("[%-6s] ", to_string(curr->type));
-            if (left->ir_reg) debug("r%.2d", left->ir_reg);
-            // else if (left->creg) debug("creg %s ", left->creg);
-            else print_value(left);
-            if (left->name) debug("(%s)", left->name);
-
-            debug(" to ");
-            if (right->ir_reg) debug("r%.2d", right->ir_reg);
-            else print_value(right);
-            if (right->name) debug("(%s)", right->name);
-            break;
-        }
-        case INT: case BOOL: case CHARS: case CHAR: case LONG:
-        {
-            debug("[%-6s] ", to_string(curr->type));
-            if (curr->declare)
-            {
-                // stop(1, "I removed declare in intialize variable, this coniditon should never be true");
-                // debug("declare [%s] PTR=[%d] ", curr->name, curr->ptr);
-            }
-            if (curr->name) debug("name %s ", curr->name);
-            // if (curr->creg) debug("creg %s ", curr->creg);
-            // else if(curr->type == FLOAT)
-            // {
-            //     curr->index = ++float_index;
-            //     debug("value %f ", curr->Float.value);
-            // }
-            if (curr->type == CHARS && !curr->name)
-                debug("value %s in STR%d ", curr->Chars.value, curr->index);
-            else if (!curr->name) print_value(curr);
-            //else check(1, "handle this case in generate ir\n", "");
-            break;
-        }
-        case DOT:
-        {
-            debug("[%-6s] ", to_string(curr->type));
-            debug("access [%s] in %k", right->name, left);
-            break;
-        }
-        case JMP: debug("jmp to [%s] ", curr->name); break;
-        case JNE: debug("jne to [%s] ", curr->name); break;
-        case FCALL: debug("call [%s] ", curr->name); break;
-        case BLOC: case FDEC: debug("[%s] bloc ", curr->name); break;
-        case END_BLOC:  debug("[%s] endbloc ", curr->name); break;
-        case STRUCT_CALL: debug("[%-6s] %s ", to_string(curr->type), curr->name); break;
-        case RETURN: case CONTINUE: case BREAK: debug("[%s] ", to_string(curr->type)); break;
-        default: debug(RED "print_ir:handle [%s]"RESET, to_string(curr->type)); break;
-        }
-
-        debug("space (%d)", curr->space);
-        debug("\n");
-    }
-    debug("total instructions [%d]\n", i);
+    print_inst(inst);
+    // int i = 0;
+    // for (i = 0; insts[i]; i++)
+    // {
+        
+    // }
+    // debug("total instructions [%d]\n", i);
     debug(GREEN BOLD SPLIT RESET);
 }
 
@@ -457,6 +464,7 @@ Token *copy_token(Token *token)
 // IR
 void copy_insts()
 {
+#if OPTIMIZE
     int pos = 0;
     int len = 100;
     free(insts);
@@ -474,26 +482,26 @@ void copy_insts()
             insts = tmp;
         }
     }
+#endif
 }
 
-void add_inst(Inst *inst)
+Inst* add_inst(Inst *parent, Inst *child)
 {
-    static int pos;
-    static int len;
-    if (len == 0)
+    if (parent->csize == 0)
     {
-        len = 10;
-        OrgInsts = allocate(len, sizeof(Inst *));
+        parent->csize = 10;
+        parent->children = allocate(10, sizeof(Inst *));
     }
-    else if (pos + 2 == len)
+    else if (parent->cpos + 2 == parent->csize)
     {
-        Inst **tmp = allocate(len * 2, sizeof(Inst *));
-        memcpy(tmp, OrgInsts, len * sizeof(Inst *));
-        free(OrgInsts);
-        OrgInsts = tmp;
-        len *= 2;
+        Inst **tmp = allocate(parent->csize * 2, sizeof(Inst *));
+        memcpy(tmp, parent->children, parent->csize * sizeof(Inst *));
+        free(parent->children);
+        parent->children = tmp;
+        parent->csize *= 2;
     }
-    OrgInsts[pos++] = inst;
+    parent->children[parent->cpos++] = child;
+    return child;
 }
 
 Inst *new_inst(Token *token)
@@ -541,7 +549,7 @@ Inst *new_inst(Token *token)
 #if DEBUG
     debug("new inst: %k%c", new->token, token->type != STRUCT_CALL ? '\n' : '\0');
 #endif
-    add_inst(new);
+    // add_inst(new);
     return new;
 }
 
@@ -989,18 +997,19 @@ Type getRetType(Node *node)
     return 0;
 }
 
-
 char* resolve_path(char* path)
 {
     if (path == NULL) return NULL;
 
-    char* cleaned = calloc(strlen(path) + 1, 1);
+    char* cleaned = allocate(strlen(path) + 1, 1);
     if (!cleaned) return NULL;
 
     size_t i = 0, j = 0;
-    while (path[i]) {
+    while (path[i]) 
+    {
         cleaned[j++] = path[i++];
-        while (path[i] == '/') {
+        while (path[i] == '/') 
+        {
             if (cleaned[j - 1] != '/') cleaned[j++] = '/';
             i++;
         }

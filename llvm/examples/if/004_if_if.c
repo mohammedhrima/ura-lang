@@ -18,60 +18,66 @@ int main()
 
    // int a = 1;
    LLVMValueRef a = LLVMBuildAlloca(builder, int32, "a");
-   LLVMValueRef const1 = LLVMConstInt(int32, 1, 0);
-   LLVMValueRef const2 = LLVMConstInt(int32, 2, 0);
-   LLVMValueRef const3 = LLVMConstInt(int32, 3, 0);
-   LLVMValueRef const4 = LLVMConstInt(int32, 4, 0);
-   LLVMBuildStore(builder, const1, a);
+   LLVMBuildStore(builder, LLVMConstInt(int32, 1, 0), a);
 
    // Create basic blocks for each if statement
-   LLVMBasicBlockRef if1_body = LLVMAppendBasicBlockInContext(context, main_func, "if1_body");
-   LLVMBasicBlockRef if2_check = LLVMAppendBasicBlockInContext(context, main_func, "if2_check");
-   LLVMBasicBlockRef if2_body = LLVMAppendBasicBlockInContext(context, main_func, "if2_body");
-   LLVMBasicBlockRef if3_check = LLVMAppendBasicBlockInContext(context, main_func, "if3_check");
-   LLVMBasicBlockRef if3_body = LLVMAppendBasicBlockInContext(context, main_func, "if3_body");
-   LLVMBasicBlockRef end_block = LLVMAppendBasicBlockInContext(context, main_func, "end");
+   LLVMBasicBlockRef if1_beg = LLVMAppendBasicBlockInContext(context, main_func, "if1_beg");
+   LLVMBasicBlockRef if2_beg = LLVMAppendBasicBlockInContext(context, main_func, "if2_beg");
+   LLVMBasicBlockRef if3_beg = LLVMAppendBasicBlockInContext(context, main_func, "if3_beg");
+   LLVMBasicBlockRef if4_beg = LLVMAppendBasicBlockInContext(context, main_func, "if4_beg");
+   LLVMBasicBlockRef if5_beg = LLVMAppendBasicBlockInContext(context, main_func, "if5_beg");
+   LLVMBasicBlockRef if_end = LLVMAppendBasicBlockInContext(context, main_func, "end");
 
-   // First if (a < 2)
-   LLVMValueRef a_val1 = LLVMBuildLoad2(builder, int32, a, "a_val1");
-   LLVMValueRef condition1 = LLVMBuildICmp(builder, LLVMIntSLT, a_val1, const2, "cmp1");
-   LLVMBuildCondBr(builder, condition1, if1_body, if2_check);
+   // if (a < 2)
+   LLVMValueRef cond1 = LLVMBuildICmp(builder, LLVMIntSLT,
+                                      LLVMBuildLoad2(builder, int32, a, "a_val1"),
+                                      LLVMConstInt(int32, 2, 0), "cmp1");
+   LLVMBuildCondBr(builder, cond1, if1_beg, if2_beg); // if condition false, jump to
 
-   // if1 body: a = 3
-   LLVMPositionBuilderAtEnd(builder, if1_body);
-   LLVMBuildStore(builder, const3, a);
-   LLVMBuildBr(builder, if2_check);
+   // startif
+   //    a = 3
+   // endif
+   LLVMPositionBuilderAtEnd(builder, if1_beg);
+   LLVMBuildStore(builder, LLVMConstInt(int32, 3, 0), a);
+   LLVMBuildBr(builder, if2_beg); // if condition true, jump to
 
-   // Second if (a < 3)
-   LLVMPositionBuilderAtEnd(builder, if2_check);
-   LLVMValueRef a_val2 = LLVMBuildLoad2(builder, int32, a, "a_val2");
-   LLVMValueRef condition2 = LLVMBuildICmp(builder, LLVMIntSLT, a_val2, const3, "cmp2");
-   LLVMBuildCondBr(builder, condition2, if2_body, if3_check);
+   // if (a < 3)
+   LLVMPositionBuilderAtEnd(builder, if2_beg);
+   LLVMValueRef cond2 = LLVMBuildICmp(builder, LLVMIntSLT,
+                                      LLVMBuildLoad2(builder, int32, a, "a_val2"),
+                                      LLVMConstInt(int32, 3, 0), "cmp2");
+   LLVMBuildCondBr(builder, cond2, if3_beg, if4_beg);
 
-   // if2 body: a = 4
-   LLVMPositionBuilderAtEnd(builder, if2_body);
-   LLVMBuildStore(builder, const4, a);
-   LLVMBuildBr(builder, if3_check);
+   // startif
+   //    a = 4
+   // endif
+   LLVMPositionBuilderAtEnd(builder, if3_beg);
+   LLVMBuildStore(builder, LLVMConstInt(int32, 4, 0), a);
+   LLVMBuildBr(builder, if4_beg); // next instrution
 
-   // Third if (a < 4)
-   LLVMPositionBuilderAtEnd(builder, if3_check);
-   LLVMValueRef a_val3 = LLVMBuildLoad2(builder, int32, a, "a_val3");
-   LLVMValueRef condition3 = LLVMBuildICmp(builder, LLVMIntSLT, a_val3, const4, "cmp3");
-   LLVMBuildCondBr(builder, condition3, if3_body, end_block);
+   // if (a < 4)
+   LLVMPositionBuilderAtEnd(builder, if4_beg);
+   LLVMValueRef cond3 = LLVMBuildICmp(builder, LLVMIntSLT,
+                                      LLVMBuildLoad2(builder, int32, a, "a_val3"),
+                                      LLVMConstInt(int32, 4, 0), "cmp3");
+   LLVMBuildCondBr(builder, cond3, if5_beg, if_end);
 
-   // if3 body: a = 5
-   LLVMPositionBuilderAtEnd(builder, if3_body);
+   // startif
+   //    a = 5
+   // endif
+   LLVMPositionBuilderAtEnd(builder, if5_beg);
    LLVMBuildStore(builder, LLVMConstInt(int32, 5, 0), a);
-   LLVMBuildBr(builder, end_block);
+   LLVMBuildBr(builder, if_end); // next instrution
 
-   // end block: return a
-   LLVMPositionBuilderAtEnd(builder, end_block);
+   // set postion
+   LLVMPositionBuilderAtEnd(builder, if_end);
+
+   /* ==================================================================== */
+   // return a
    LLVMBuildRet(builder, LLVMBuildLoad2(builder, int32, a, "ret"));
-
    // Verify and output
    LLVMVerifyModule(module, LLVMAbortProcessAction, NULL);
    LLVMPrintModuleToFile(module, "out.ir", NULL);
-
    // Cleanup
    LLVMDisposeBuilder(builder);
    LLVMDisposeModule(module);
