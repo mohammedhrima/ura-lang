@@ -48,7 +48,7 @@
 #define OPTIMIZE 0
 #endif
 
-#define ASM 1
+#define ASM 0
 #else
 #define ASM 0
 #endif
@@ -223,11 +223,15 @@ typedef struct Node
     };
 } Node;
 
-typedef struct
+typedef struct Inst
 {
     Token *token;
     Token *left;
     Token *right;
+
+    struct Inst **children;
+    int cpos;
+    int csize;
 } Inst;
 
 // GLOBAL
@@ -240,8 +244,8 @@ extern int tk_len;
 extern char *input;
 extern Node *global;
 extern int exe_pos;
-extern Inst **OrgInsts;
-extern Inst **insts;
+// extern Inst **OrgInsts;
+// extern Inst **insts;
 
 extern Node **Gscoop;
 extern Node *scoop;
@@ -299,6 +303,8 @@ void set_struct_size(Token *token);
 // ----------------------------------------------------------------------------
 void generate(char *name);
 Inst *new_inst(Token *token);
+Inst* add_inst(Inst *parent, Inst *child);
+
 void enter_scoop(Node *node);
 void exit_scoop();
 void copy_insts();
@@ -307,7 +313,7 @@ void initialize();
 void asm_space(int space);
 void finalize();
 void pasm(char *fmt, ...);
-Token* generate_ir(Node *node);
+Token *generate_ir(Node *node, Inst *parent);
 int calculate_padding(int offset, int alignment);
 void generate_asm(char *name);
 void to_default(Token *token, Type type);

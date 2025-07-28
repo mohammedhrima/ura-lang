@@ -18,44 +18,39 @@ int main()
 
    // int a = 1;
    LLVMValueRef a = LLVMBuildAlloca(builder, int32, "a");
-   LLVMValueRef const1 = LLVMConstInt(int32, 1, 0);
-   LLVMValueRef const10 = LLVMConstInt(int32, 10, 0);
-   LLVMBuildStore(builder, const1, a);
+   LLVMBuildStore(builder, LLVMConstInt(int32, 1, 0), a);
 
    // if (a < 10)
-   LLVMValueRef a_val = LLVMBuildLoad2(builder, int32, a, "a_val");
-   LLVMValueRef condition = LLVMBuildICmp(builder, LLVMIntSLT, a_val, const10, "cmp");
+   LLVMValueRef cond = LLVMBuildICmp(builder, LLVMIntSLT,
+                                     LLVMBuildLoad2(builder, int32, a, "load_a"),
+                                     LLVMConstInt(int32, 10, 0), "cmp");
 
    // Create basic blocks for if and after
-   LLVMBasicBlockRef if_start = LLVMAppendBasicBlockInContext(context, main_func, "if_body");
-   LLVMBasicBlockRef if_end = LLVMAppendBasicBlockInContext(context, main_func, "after");
+   LLVMBasicBlockRef if_beg = LLVMAppendBasicBlockInContext(context, main_func, "start_if");
+   LLVMBasicBlockRef if_end = LLVMAppendBasicBlockInContext(context, main_func, "end_if");
 
    // set start and end
-   LLVMBuildCondBr(builder, condition, if_start, if_end);
+   LLVMBuildCondBr(builder, cond, if_beg, if_end);
 
-   // put postion at the beginning of if
-   LLVMPositionBuilderAtEnd(builder, if_start);
-   
+   // startif
    // if body: a = 3
+   // endif
+   LLVMPositionBuilderAtEnd(builder, if_beg);
    LLVMBuildStore(builder, LLVMConstInt(int32, 3, 0), a);
-   
-   // end if
    LLVMBuildBr(builder, if_end);
 
-   // put postion at the ending of if
+   // set postion
    LLVMPositionBuilderAtEnd(builder, if_end);
 
-   // after block: return a
+   /* ==================================================================== */
+   // return a
    LLVMBuildRet(builder, LLVMBuildLoad2(builder, int32, a, "ret"));
-
    // Verify and output
    LLVMVerifyModule(module, LLVMAbortProcessAction, NULL);
    LLVMPrintModuleToFile(module, "out.ir", NULL);
-
    // Cleanup
    LLVMDisposeBuilder(builder);
    LLVMDisposeModule(module);
    LLVMContextDispose(context);
-
    return 0;
 }
