@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <stdint.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <llvm-c/Core.h>
 #include <llvm-c/BitWriter.h>
@@ -48,7 +49,7 @@
 #define OPTIMIZE 0
 #endif
 
-#define ASM 0
+#define ASM 1
 #else
 #define ASM 0
 #endif
@@ -68,11 +69,7 @@
 #define to_string(type) to_string_(FILE, LINE, type)
 #define todo(cond, fmt, ...) check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__); exit(1);
 #define stop(cond, fmt, ...) check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__); exit(1);
-#define seg() \
-{ \
-    char str[12]; \
-    str[-12] = 'e'; \
-}
+#define seg() raise(SIGSEGV);
 
 #define DATA_TYPES INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT
 
@@ -89,8 +86,15 @@ Node *name() { \
     return left; \
 }
 
+// TYPEDEFS
+typedef struct Token Token;
+typedef struct Node Node;
+typedef struct Inst Inst;
+typedef struct LLvm LLvm;
+typedef enum Type Type;
+
 // STRUCTS
-typedef enum
+enum Type
 {
     TMP = 1, CHILDREN, DEFAULT,
     // TODO: don't assign from reference if it does not have reference
@@ -101,7 +105,8 @@ typedef enum
     AND, OR, NOT,
     LPAR, RPAR, LBRA, RBRA, COMA, DOT, DOTS, ACCESS,
     RETURN,
-    IF, ELIF, ELSE,
+    IF, ELIF, ELSE, END_IF,
+
     WHILE, CONTINUE, BREAK,
     FDEC, FCALL, PROTO,
     VOID, INT, CHARS, CHAR, BOOL, FLOAT, PTR, LONG, SHORT,
@@ -110,15 +115,17 @@ typedef enum
     JNE, JE, JMP, BLOC, END_BLOC,
     PUSH, POP,
     END
-} Type;
+};
 
-typedef struct LLvm
+struct LLvm
 {
+    bool is_set;  // is LLVM block created
     LLVMTypeRef funcType;
     LLVMValueRef element;
-} LLvm;
+    LLVMBasicBlockRef bloc;
+};
 
-typedef struct Token
+struct Token
 {
     Type type;
     Type retType; // return type
@@ -185,22 +192,28 @@ typedef struct Token
         struct
         {
             char *name;
-            struct Token **attrs;
+            Token **attrs;
             int pos;
             int len;
         } Struct;
         // function call
         struct
         {
-            struct Token *ptr;
+            Token *ptr;
         } Fcall;
+        // if condition
+        struct
+        {
+           
+            Token *ptr;
+        } ifCond;
     };
-} Token;
+};
 
-typedef struct Node
+struct Node
 {
-    struct Node *left;
-    struct Node *right;
+    Node *left;
+    Node *right;
     Token *token;
 
     struct Node **children;
@@ -221,18 +234,14 @@ typedef struct Node
         int vpos;
         int vsize;
     };
-} Node;
+};
 
-typedef struct Inst
+struct Inst
 {
     Token *token;
     Token *left;
     Token *right;
-
-    struct Inst **children;
-    int cpos;
-    int csize;
-} Inst;
+};
 
 // GLOBAL
 extern bool found_error;
@@ -244,8 +253,8 @@ extern int tk_len;
 extern char *input;
 extern Node *global;
 extern int exe_pos;
-// extern Inst **OrgInsts;
-// extern Inst **insts;
+extern Inst **OrgInsts;
+extern Inst **insts;
 
 extern Node **Gscoop;
 extern Node *scoop;
@@ -303,7 +312,7 @@ void set_struct_size(Token *token);
 // ----------------------------------------------------------------------------
 void generate(char *name);
 Inst *new_inst(Token *token);
-Inst* add_inst(Inst *parent, Inst *child);
+void add_inst(Inst *inst);
 
 void enter_scoop(Node *node);
 void exit_scoop();
@@ -313,10 +322,11 @@ void initialize();
 void asm_space(int space);
 void finalize();
 void pasm(char *fmt, ...);
-Token *generate_ir(Node *node, Inst *parent);
+Token *generate_ir(Node *node);
 int calculate_padding(int offset, int alignment);
 void generate_asm(char *name);
 void to_default(Token *token, Type type);
+void handle_ir(Inst *inst);
 
 // ----------------------------------------------------------------------------
 // Utilities
@@ -355,5 +365,5 @@ int debug(char *conv, ...);
 int pnode(Node *node, char *side, int space);
 int ptoken(Token *token);
 void print_ast(Node *head);
-void print_ir(Inst *inst);
+void print_ir();
 int print_value(Token *token);
