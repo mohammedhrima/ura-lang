@@ -280,6 +280,10 @@ void print_inst(Inst *inst)
         debug("access [%s] in %k", right->name, left);
         break;
     }
+
+    case IF: debug("[%-6s] ", to_string(curr->type)); break;
+    case END_IF: debug("[%-6s] ", to_string(curr->type)); break;
+
     case JMP: debug("jmp to [%s] ", curr->name); break;
     case JNE: debug("jne to [%s] ", curr->name); break;
     case FCALL: debug("call [%s] ", curr->name); break;
@@ -292,22 +296,18 @@ void print_inst(Inst *inst)
 
     debug("space (%d)", curr->space);
     debug("\n");
-    for (int i = 0; inst->children[i]; i++) print_inst(inst->children[i]);
+    // for (int i = 0; inst->children[i]; i++) print_inst(inst->children[i]);
 }
 
-void print_ir(Inst *inst)
+void print_ir()
 {
     //if (!DEBUG) return;
     copy_insts();
     debug(GREEN BOLD SPLIT RESET);
     debug(GREEN BOLD"PRINT IR:\n" RESET);
-    print_inst(inst);
-    // int i = 0;
-    // for (i = 0; insts[i]; i++)
-    // {
-        
-    // }
-    // debug("total instructions [%d]\n", i);
+    int i;
+    for (i = 0; insts && insts[i]; i++) print_inst(insts[i]);
+    debug("total instructions [%d]\n", i);
     debug(GREEN BOLD SPLIT RESET);
 }
 
@@ -464,7 +464,7 @@ Token *copy_token(Token *token)
 // IR
 void copy_insts()
 {
-#if OPTIMIZE
+#if IR
     int pos = 0;
     int len = 100;
     free(insts);
@@ -485,23 +485,24 @@ void copy_insts()
 #endif
 }
 
-Inst* add_inst(Inst *parent, Inst *child)
+void add_inst(Inst *inst)
 {
-    if (parent->csize == 0)
+    static int pos;
+    static int len;
+    if (len == 0)
     {
-        parent->csize = 10;
-        parent->children = allocate(10, sizeof(Inst *));
+        len = 10;
+        OrgInsts = allocate(len, sizeof(Inst *));
     }
-    else if (parent->cpos + 2 == parent->csize)
+    else if (pos + 2 == len)
     {
-        Inst **tmp = allocate(parent->csize * 2, sizeof(Inst *));
-        memcpy(tmp, parent->children, parent->csize * sizeof(Inst *));
-        free(parent->children);
-        parent->children = tmp;
-        parent->csize *= 2;
+        Inst **tmp = allocate(len * 2, sizeof(Inst *));
+        memcpy(tmp, OrgInsts, len * sizeof(Inst *));
+        free(OrgInsts);
+        OrgInsts = tmp;
+        len *= 2;
     }
-    parent->children[parent->cpos++] = child;
-    return child;
+    OrgInsts[pos++] = inst;
 }
 
 Inst *new_inst(Token *token)
@@ -549,7 +550,7 @@ Inst *new_inst(Token *token)
 #if DEBUG
     debug("new inst: %k%c", new->token, token->type != STRUCT_CALL ? '\n' : '\0');
 #endif
-    // add_inst(new);
+    add_inst(new);
     return new;
 }
 
@@ -609,27 +610,34 @@ char* open_file(char *filename)
 
 const char *to_string_(const char *filename, const int line, Type type) {
     const char *arr[] = {
-        [ASSIGN] = "ASSIGN", [ADD_ASSIGN] = "ADD ASSIGN", [SUB_ASSIGN] = "SUB ASSIGN",
-        [MUL_ASSIGN] = "MUL ASSIGN", [DIV_ASSIGN] = "DIV ASSIGN", [MOD_ASSIGN] = "MOD_ASSIGN",
-        [EQUAL] = "EQUAL", [NOT_EQUAL] = "NOT EQUAL", [LESS_EQUAL] = "LESS THAN OR EQUAL",
-        [MORE_EQUAL] = "MORE THAN OR EQUAL", [LESS] = "LESS THAN", [MORE] = "MORE THAN",
-        [ADD] = "ADD", [SUB] = "SUB", [MUL] = "MUL", [DIV] = "DIV", [MOD] = "MOD",
-        [AND] = "AND", [OR]  = "OR", [RPAR] = "R_PAR", [LPAR] = "L_PAR", [COMA] = "COMMA",
-        [DOTS] = "DOTS", [DOT] = "DOT", [RETURN] = "RETURN", [IF] = "IF", [ELIF] = "ELIF",
-        [ELSE] = "ELSE", [WHILE] = "HILE", [CONTINUE] = "continue", [BREAK] = "break", [REF] = "REF",
-        [FDEC] = "F_DEC", [FCALL] = "F_CALL", [PROTO] = "PROTO", [INT] = "INT", [VOID] = "VOID", [CHARS] = "CHARS",
-        [CHAR] = "CHAR", [BOOL] = "BOOL", [FLOAT] = "FLOAT", [SHORT] = "SHORT", [STRUCT_CALL] = "ST_CALL",
-        [STRUCT_DEF] = "ST_DEF", [ID] = "ID", [END_BLOC] = "END_BLOC", [BLOC] = "BLOC",
-        [JNE] = "JNE", [JE] = "JE", [JMP] = "JMP", [LBRA] = "L_BRA", [RBRA] = "R_BRA",
-        [END] = "END", [CHILDREN] = "CHILDREN", [TMP] = "TMP", [LONG] = "LONG", [PTR] = "PTR",
-        [REF_ID] = "REF_ID", [REF_HOLD_ID] = "REF_HOLD_ID", [REF_VAL] = "REF_VAL",
-        [REF_HOLD_REF] = "REF_HOLD_REF", [REF_REF] = "REF_REF", [ID_ID] = "ID_ID", [ARRAY] = "ARRAY",
-        [ID_REF] = "ID_REF", [ID_VAL] = "ID_VAL", [DEFAULT] = "DEFAULT", [ACCESS] = "ACCESS"
+        [TMP] = "TMP", [CHILDREN] = "CHILDREN", [DEFAULT] = "DEFAULT", [REF_ID] = "REF_ID",
+        [REF_HOLD_ID] = "REF_HOLD_ID", [REF_VAL] = "REF_VAL", [REF_HOLD_REF] = "REF_HOLD_REF",
+        [REF_REF] = "REF_REF", [ID_ID] = "ID_ID", [ID_REF] = "ID_REF", [ID_VAL] = "ID_VAL",
+        [ASSIGN] = "ASSIGN", [ADD_ASSIGN] = "ADD_ASSIGN", [SUB_ASSIGN] = "SUB_ASSIGN",
+        [MUL_ASSIGN] = "MUL_ASSIGN", [DIV_ASSIGN] = "DIV_ASSIGN", [MOD_ASSIGN] = "MOD_ASSIGN",
+        [EQUAL] = "EQUAL", [NOT_EQUAL] = "NOT_EQUAL", [LESS_EQUAL] = "LESS_EQUAL",
+        [MORE_EQUAL] = "MORE_EQUAL", [LESS] = "LESS", [MORE] = "MORE", [ADD] = "ADD",
+        [SUB] = "SUB", [MUL] = "MUL", [DIV] = "DIV", [MOD] = "MOD", [OR] = "OR",
+        [NOT] = "NOT", [LPAR] = "LPAR", [RPAR] = "RPAR", [LBRA] = "LBRA", [RBRA] = "RBRA",
+        [COMA] = "COMA", [DOT] = "DOT", [DOTS] = "DOTS", [ACCESS] = "ACCESS",
+        [RETURN] = "RETURN", [IF] = "START_IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
+        [END_IF] = "END_IF", [WHILE] = "WHILE", [CONTINUE] = "CONTINUE", [BREAK] = "BREAK",
+        [FDEC] = "FDEC", [FCALL] = "FCALL", [PROTO] = "PROTO", [VOID] = "VOID", [INT] = "INT",
+        [CHARS] = "CHARS", [CHAR] = "CHAR", [BOOL] = "BOOL", [FLOAT] = "FLOAT", [PTR] = "PTR",
+        [LONG] = "LONG", [SHORT] = "SHORT", [STRUCT_DEF] = "STRUCT_DEF",
+        [STRUCT_CALL] = "STRUCT_CALL", [ID] = "ID", [REF] = "REF", [ARRAY] = "ARRAY",
+        [JNE] = "JNE", [JE] = "JE", [JMP] = "JMP", [BLOC] = "BLOC", [END_BLOC] = "END_BLOC",
+        [PUSH] = "PUSH", [POP] = "POP", [END] = "END"
     };
-    if (type > 0 && type < sizeof(arr) / sizeof(arr[0]) && arr[type] != NULL) return arr[type];
+
+    if (type > 0 && type < (int)(sizeof(arr) / sizeof(arr[0])) && arr[type]) {
+        return arr[type];
+    }
+
     check(1, "Unknown type [%d] in %s:%d\n", type, filename, line);
     return NULL;
 }
+
 
 bool check_error(const char *filename, const char *funcname, int line, bool cond, char *fmt, ...)
 {
@@ -1005,10 +1013,10 @@ char* resolve_path(char* path)
     if (!cleaned) return NULL;
 
     size_t i = 0, j = 0;
-    while (path[i]) 
+    while (path[i])
     {
         cleaned[j++] = path[i++];
-        while (path[i] == '/') 
+        while (path[i] == '/')
         {
             if (cleaned[j - 1] != '/') cleaned[j++] = '/';
             i++;
