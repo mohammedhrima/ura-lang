@@ -9,8 +9,8 @@ int tk_len;
 char *input;
 Node *global;
 int exe_pos;
-// Inst **OrgInsts;
-// Inst **insts;
+Inst **OrgInsts;
+Inst **insts;
 
 Node **Gscoop;
 Node *scoop;
@@ -433,7 +433,7 @@ Token *func_dec_ir(Node *node)
     for (int i = 0; !node->token->is_proto && i < node->cpos; i++)
     {
         Node *child = node->children[i];
-        generate_ir(child, inst);
+        generate_ir(child);
     }
 
     if (!node->token->is_proto)
@@ -450,7 +450,6 @@ Token *func_dec_ir(Node *node)
     return NULL;
 }
 
-#if 0
 Token *func_call_ir(Node *node)
 {
     Inst* inst = NULL;
@@ -541,7 +540,7 @@ Token *func_call_ir(Node *node)
         Node *func = get_function(node->token->name);
         if (!func) return NULL;
         node->token->Fcall.ptr = func->token;
-        
+
         func = copy_node(func);
         node->token->retType = func->token->retType;
         inst = new_inst(node->token);
@@ -555,7 +554,7 @@ Token *func_call_ir(Node *node)
             Node *darg = fdec->children[i];
             Node *carg = fcall->children[i]; // will always be ID
 
-            Token *src = generate_ir(carg, inst);
+            Token *src = generate_ir(carg);
 
             if (check(src->type == ID, "Indeclared variable %s", carg->token->name)) break;
             Token *dist = copy_token(darg->token);
@@ -566,24 +565,34 @@ Token *func_call_ir(Node *node)
     return inst->token;
 }
 
+/*
+inst: if_bloc
+    + cond
+    + start bloc
+    + next bloc
+    + end bloc
+*/
 Token *if_ir(Node *node)
 {
     enter_scoop(node);
 
+    Token *cond = generate_ir(node->left); // TODO: check if it's boolean
+
     Inst *inst = new_inst(node->token);
-    setName(inst->token, "if");
-    inst->token->type =  BLOC;
+    setName(inst->token, "start_if");
+    // inst->token->type =  BLOC;
     // inst->token->index = ++bloc_index;
 
-    Token *cond = generate_ir(node->left, inst); // TODO: check if it's boolean
     if (!cond) return NULL;
-    setName(cond, "endif");
+    inst->token->ifCond.ptr = cond;
+    // inst->left = cond;
+    // setName(cond, "endif");
     // cond->index = inst->token->index;
     // --bloc_index;
 
-    Token *next = cond;
+    // Token *next = cond;
     // code bloc
-    for (int i = 0; i < node->cpos && !found_error; i++) generate_ir(node->children[i], inst);
+    for (int i = 0; i < node->cpos && !found_error; i++) generate_ir(node->children[i]);
 
     // Inst *end = NULL;
     // if (node->right->cpos)
@@ -592,6 +601,7 @@ Token *if_ir(Node *node)
     //     setName(end->token, "endif");
     //     end->token->index = node->token->index;
     // }
+#if 0
     Node *subs = node->right;
     for (int i = 0; i < subs->cpos; i++)
     {
@@ -634,10 +644,11 @@ Token *if_ir(Node *node)
             for (int j = 0; j < curr->cpos; j++) generate_ir(curr->children[j]);
             break;
         }
-
     }
-    Token *new = new_token(BLOC, node->token->space);
-    setName(new, "endif");
+#endif
+
+    Token *new = new_token(END_IF, node->token->space);
+    setName(new, "end_if");
     new->index = node->token->index;
     new_inst(new);
     exit_scoop();
@@ -742,9 +753,8 @@ Token *op_ir(Node *node)
 
     return node->token;
 }
-#endif
 
-Token *generate_ir(Node *node, Inst *parent)
+Token *generate_ir(Node *node)
 {
     Inst *inst = NULL;
     if (found_error) return NULL;
@@ -761,9 +771,8 @@ Token *generate_ir(Node *node, Inst *parent)
     {
         inst = new_inst(node->token);
         if (node->token->declare) new_variable(node->token);
-        break;
+        return node->token;
     }
-#if 0
     case ASSIGN: case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN:
     case ADD: case SUB: case MUL: case DIV: case EQUAL: case NOT_EQUAL:
     case LESS: case MORE: case LESS_EQUAL: case MORE_EQUAL:
@@ -773,14 +782,12 @@ Token *generate_ir(Node *node, Inst *parent)
     }
     case IF:    return if_ir(node);
     // case WHILE: return while_ir(node);
-#endif
     case FDEC:  return func_dec_ir(node);
     case RETURN:
     {
-        Token *left = generate_ir(node->left, NULL);
+        Token *left = generate_ir(node->left);
         inst = new_inst(node->token);
         inst->left = left;
-        if(parent) add_inst(parent, inst);
         return node->token;
     }
 #if 0
@@ -798,7 +805,7 @@ Token *generate_ir(Node *node, Inst *parent)
                 setName(token, "endwhile");
 
                 Inst *inst = new_inst(node->token);
-        if(parent) add_inst(parent, inst);
+                if (parent) add_inst(parent, inst);
                 return add_inst(parent, new_inst(token))->token;
                 break;
             }
@@ -896,8 +903,7 @@ Token *generate_ir(Node *node, Inst *parent)
         break;
     }
     }
-    if(parent && inst) add_inst(parent, inst);
-    return node->token;
+    return NULL;
 }
 
 void compile(char *filename)
@@ -913,19 +919,17 @@ void compile(char *filename)
 #if DEBUG
     debug(GREEN BOLD"AST:\n" RESET);
 #endif
-    while (tokens[exe_pos]->type != END && !found_error)
-        add_child(global, expr());
+
+    while (tokens[exe_pos]->type != END && !found_error) add_child(global, expr());
     print_ast(global);
     if (found_error) return;
 
 #if IR
     debug(GREEN BOLD"GENERATE INTERMEDIATE REPRESENTATIONS:\n" RESET);
-
-    Inst *globalInst = new_inst(global->token);
     for (int i = 0; !found_error && i < global->cpos; i++)
-        generate_ir(global->children[i], globalInst);
+        generate_ir(global->children[i]);
     if (found_error) return;
-    // print_ir(globalInst);
+    print_ir();
 #endif
 
 #if OPTIMIZE
@@ -942,11 +946,9 @@ void compile(char *filename)
     debug(GREEN BOLD"GENERATE ASSEMBLY CODE:\n" RESET);
     generate_asm(filename);
 #endif
+
     free_node(global);
-    debug(BLUE BOLD"FINISH COMPILATION 1:\n" RESET);
-    exit(0);
-    debug(BLUE BOLD"FINISH COMPILATION 2:\n" RESET);
-    debug(BLUE BOLD"FINISH COMPILATION 3:\n" RESET);
+    debug(BLUE BOLD"FINISH COMPILATION:\n" RESET);
 }
 
 int main(int argc, char **argv)
