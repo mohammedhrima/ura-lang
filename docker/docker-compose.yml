@@ -1,0 +1,14 @@
+version: "3.8"
+services:
+    wolf_service:
+        container_name: wcc
+        build:
+            context: .
+            dockerfile: Dockerfile
+        volumes:
+            - ../src:/src
+            - ../utils:/utils
+            - ../llvm:/llvm
+            - ./source.sh:/root/.bashrc
+        stdin_open: true
+        tty: true
