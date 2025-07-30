@@ -37,7 +37,7 @@ wcc_build() {
 wcc_ir() {
     echo -e "${YELLOW}Compiling file.w...${NC}"
     "$src/wcc" "$src/code/file.w" || {
-        echo -e "${RED}Error:${NC} Compilation failed."
+        echo -e "${RED}Error:${NC} Compiling .w file failed."
         return 1
     }
 }
@@ -61,10 +61,14 @@ build() {
     wcc_build && wcc_ir && wcc_asm
 }
 
+comp() {
+    wcc_ir
+    wcc_asm
+}
+
 run() {
     wcc_run
 }
-
 # === Test Suite ===
 
 test() {
