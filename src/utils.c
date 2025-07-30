@@ -90,7 +90,7 @@ int debug(char *conv, ...)
                     res += debug("node: ") + (node ? pnode(node, NULL, node->token->space) : fprintf(stdout, "(null)"));
                     break;
                 }
-                default: check(1, "invalid format specifier [%c]\n", conv[i]); exit(1); break;
+                default: todo(1, "invalid format specifier [%c]\n", conv[i]); break;
                 }
             }
         }
@@ -280,10 +280,8 @@ void print_inst(Inst *inst)
         debug("access [%s] in %k", right->name, left);
         break;
     }
-
-    case IF: debug("[%-6s] ", to_string(curr->type)); break;
-    case END_IF: debug("[%-6s] ", to_string(curr->type)); break;
-
+    case IF: case ELIF: case END_IF: case ELSE: case END_COND:
+        debug("[%-6s] ", to_string(curr->type)); break;
     case JMP: debug("jmp to [%s] ", curr->name); break;
     case JNE: debug("jne to [%s] ", curr->name); break;
     case FCALL: debug("call [%s] ", curr->name); break;
@@ -620,14 +618,14 @@ const char *to_string_(const char *filename, const int line, Type type) {
         [SUB] = "SUB", [MUL] = "MUL", [DIV] = "DIV", [MOD] = "MOD", [OR] = "OR",
         [NOT] = "NOT", [LPAR] = "LPAR", [RPAR] = "RPAR", [LBRA] = "LBRA", [RBRA] = "RBRA",
         [COMA] = "COMA", [DOT] = "DOT", [DOTS] = "DOTS", [ACCESS] = "ACCESS",
-        [RETURN] = "RETURN", [IF] = "START_IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
+        [RETURN] = "RETURN", [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
         [END_IF] = "END_IF", [WHILE] = "WHILE", [CONTINUE] = "CONTINUE", [BREAK] = "BREAK",
         [FDEC] = "FDEC", [FCALL] = "FCALL", [PROTO] = "PROTO", [VOID] = "VOID", [INT] = "INT",
         [CHARS] = "CHARS", [CHAR] = "CHAR", [BOOL] = "BOOL", [FLOAT] = "FLOAT", [PTR] = "PTR",
         [LONG] = "LONG", [SHORT] = "SHORT", [STRUCT_DEF] = "STRUCT_DEF",
         [STRUCT_CALL] = "STRUCT_CALL", [ID] = "ID", [REF] = "REF", [ARRAY] = "ARRAY",
         [JNE] = "JNE", [JE] = "JE", [JMP] = "JMP", [BLOC] = "BLOC", [END_BLOC] = "END_BLOC",
-        [PUSH] = "PUSH", [POP] = "POP", [END] = "END"
+        [PUSH] = "PUSH", [POP] = "POP", [END_COND] = "END_COND", [END] = "END"
     };
 
     if (type > 0 && type < (int)(sizeof(arr) / sizeof(arr[0])) && arr[type]) {
@@ -638,16 +636,16 @@ const char *to_string_(const char *filename, const int line, Type type) {
     return NULL;
 }
 
-
 bool check_error(const char *filename, const char *funcname, int line, bool cond, char *fmt, ...)
 {
     if (!cond) return cond;
     found_error = true;
     va_list ap;
     va_start(ap, fmt);
-    fprintf(stderr, BOLD RED"Error:%s:%s:%d "RESET, filename, funcname, line);
+    fprintf(stderr, BOLD RED"wcc_error:%s:%s:%d "RESET, filename, funcname, line);
     vfprintf(stderr, fmt, ap);
     fprintf(stderr, "\n");
+    debug("\n");
     va_end(ap);
     return cond;
 }
@@ -789,11 +787,7 @@ Token *get_struct(char *name)
     for (int j = scoopPos; j > 0; j--)
     {
         Node *node = Gscoop[j];
-        if (node == NULL)
-        {
-            debug(RED"Error accessing NULL, %d\n"RESET, j);
-            exit(1);
-        }
+        todo(node == NULL, RED"Error accessing NULL, %d\n"RESET, j);
 #if DEBUG
         debug("[%d] scoop [%s] has %d structs\n", j, node->token->name, node->spos);
 #endif
@@ -1009,7 +1003,7 @@ char* resolve_path(char* path)
 {
     if (path == NULL) return NULL;
 
-    char* cleaned = allocate(strlen(path) + 1, 1);
+    char* cleaned = allocate(strlen(path) + 5, 1);
     if (!cleaned) return NULL;
 
     size_t i = 0, j = 0;
