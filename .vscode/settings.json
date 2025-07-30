@@ -1,6 +1,6 @@
 {
     "C_Cpp.errorSquiggles": "disabled",
     "files.associations": {
-        "*.ir": "llvm"
+        "*.ir": "llvm",
     },
 }
