@@ -166,7 +166,7 @@ Node *dot()
         Node *node = new_node(token);
         node->left = left;
         token = find(ID, 0);
-        if (check(!token, "error, expected id after dot")) exit(1);
+        todo(!token, "error, expected id after dot");
         node->right = new_node(token);
         left = node;
     }
@@ -575,72 +575,40 @@ inst: if_bloc
 Token *if_ir(Node *node)
 {
     enter_scoop(node);
-
-    Token *cond = generate_ir(node->left); // TODO: check if it's boolean
-
+    
     Inst *inst = new_inst(node->token);
     setName(inst->token, "start_if");
-    // inst->token->type =  BLOC;
-    // inst->token->index = ++bloc_index;
-
+    
+    Token *cond = generate_ir(node->left); // TODO: check if it's boolean
     if (!cond) return NULL;
-    inst->token->ifCond.ptr = cond;
-    // inst->left = cond;
-    // setName(cond, "endif");
-    // cond->index = inst->token->index;
-    // --bloc_index;
+    inst->token->ifStatement.cond = cond;
+    new_inst(new_token(END_COND, node->token->space));
 
-    // Token *next = cond;
-    // code bloc
     for (int i = 0; i < node->cpos && !found_error; i++) generate_ir(node->children[i]);
 
-    // Inst *end = NULL;
-    // if (node->right->cpos)
-    // {
-    //     end = new_inst(new_token(JMP, node->token->space + TAB));
-    //     setName(end->token, "endif");
-    //     end->token->index = node->token->index;
-    // }
-#if 0
+#if 1
+    Token *prev = inst->token;
     Node *subs = node->right;
     for (int i = 0; i < subs->cpos; i++)
     {
         Node *curr = subs->children[i];
+        prev->ifStatement.next = curr->token;
+        prev = curr->token;
         if (curr->token->type == ELIF)
         {
-            // curr->token->index = ++bloc_index;
-            curr->token->type = BLOC;
-            setName(curr->token, "elif");
-            char *name = strdup(next->name);
-            int index = next->index;
-            {
-                setName(next, "elif");
-                next->index = curr->token->index;
-                next = copy_token(next);
-            }
+            setName(inst->token, "start_elif");
             new_inst(curr->token); // elif bloc
-            setName(curr->left->token, name);
-            free(name);
-            generate_ir(curr->left); // elif condition, TODO: check is boolean
-            // --bloc_index;
-            curr->left->token->index = index;
-            next = curr->left->token;
+            Token *cond = generate_ir(curr->left); // elif condition, TODO: check is boolean
+            inst->token->ifStatement.cond = cond;
+            new_inst(new_token(END_COND, inst->token->space));
+ 
             for (int j = 0; j < curr->cpos; j++) generate_ir(curr->children[j]);
-            // end = new_inst(new_token(JMP, node->token->space + TAB));
-            // setName(end->token, "endif");
-            // end->token->index = node->token->index;
         }
         else if (curr->token->type == ELSE)
         {
-            // curr->token->index = ++bloc_index;
-            curr->token->type = BLOC;
-            setName(curr->token, "else");
-            new_inst(curr->token);
-            {
-                setName(next, "else");
-                next->index = curr->token->index;
-                next = copy_token(next);
-            }
+            new_inst(curr->token); // else bloc
+            setName(inst->token, "start_else");
+       
             for (int j = 0; j < curr->cpos; j++) generate_ir(curr->children[j]);
             break;
         }
@@ -954,6 +922,6 @@ void compile(char *filename)
 int main(int argc, char **argv)
 {
     compile(argv[1]);
-    // free_memory();
+    free_memory();
     debug(BLUE BOLD"EXIT CODE:\n" RESET);
 }

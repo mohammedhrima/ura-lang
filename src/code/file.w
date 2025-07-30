@@ -1,4 +1,8 @@
 main():
-   int a = 10
+   int a = 1
+   int b = 0
 
-   return a
+   if a > 1: b = 11
+   //elif a < 1: b = 22
+
+   return b

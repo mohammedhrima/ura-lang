@@ -112,7 +112,7 @@ enum Type
     VOID, INT, CHARS, CHAR, BOOL, FLOAT, PTR, LONG, SHORT,
     STRUCT_DEF, STRUCT_CALL, ID, REF,
     ARRAY,
-    JNE, JE, JMP, BLOC, END_BLOC,
+    JNE, JE, JMP, BLOC, END_BLOC, END_COND,
     PUSH, POP,
     END
 };
@@ -204,9 +204,9 @@ struct Token
         // if condition
         struct
         {
-           
-            Token *ptr;
-        } ifCond;
+            Token *cond;
+            Token *next;
+        } ifStatement;
     };
 };
 

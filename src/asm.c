@@ -10,30 +10,100 @@ LLVMValueRef main_func; // TODO: to be removed
 int i = 0;
 void generate_if(Token *token)
 {
-    check(!token->ifCond.ptr->llvm.is_set, "condition is not set");
+    i++; // skip IF instruction
     
-    LLVMValueRef cond = token->ifCond.ptr->llvm.element;
-    
-    LLVMBasicBlockRef if_beg = LLVMAppendBasicBlockInContext(
-        context,
-         main_func,
-          "start_if");
-    LLVMBasicBlockRef if_end = LLVMAppendBasicBlockInContext(context, main_func, "end_if");
-
-    LLVMBuildCondBr(builder, cond, if_beg, if_end);
-
-    LLVMPositionBuilderAtEnd(builder, if_beg);
-    i++;
-    while(insts[i] && insts[i]->token->type != END_IF)
+    while (insts[i] && insts[i]->token->type != END_COND) 
     {
         handle_ir(insts[i]);
         i++;
     }
-    check(insts[i]->token->type != END_IF, "handling if statement");
+    
+    if(insts[i]->token->type != END_COND) check(1, "expected end condition\n", "");
+    
     i++;
+    
+    check(!token->ifStatement.cond->llvm.is_set, "if condition is not set");
+    printf(BLUE"problem here %p, %s\n"RESET,token->ifStatement.cond, to_string(token->ifStatement.cond->type));
+    debug("<%k>\n", token);
+    LLVMValueRef cond = token->ifStatement.cond->llvm.element; // condition
+
+    // Create basic blocks for if statement
+    LLVMBasicBlockRef if_beg = LLVMAppendBasicBlockInContext(context, main_func, "start_if");
+    LLVMBasicBlockRef if_end;
+    LLVMBasicBlockRef else_beg;
+    LLVMBasicBlockRef elif_beg;
+
+    if (token->ifStatement.next == NULL)
+    {
+        if_end = LLVMAppendBasicBlockInContext(context, main_func, "end_if");
+        LLVMBuildCondBr(builder, cond, if_beg, if_end);  // if false, jump to endif
+    }
+    Token *curr = token;
+    if (curr->ifStatement.next && curr->ifStatement.next->type == ELIF)
+    {
+        elif_beg = LLVMAppendBasicBlockInContext(context, main_func, "elif_body");
+        LLVMBuildCondBr(builder, cond, if_beg, elif_beg);  // if false, jump to elif
+    }
+
+    if (token->ifStatement.next && token->ifStatement.next->type == ELSE)
+    {
+        else_beg = LLVMAppendBasicBlockInContext(context, main_func, "else_body");
+        LLVMBuildCondBr(builder, cond, if_beg, else_beg);  // if false, jump to else
+    }
+
+    // start if body
+    LLVMPositionBuilderAtEnd(builder, if_beg);
+    while (insts[i] && !includes(insts[i]->token->type, END_IF, ELIF, ELSE, 0))
+    {
+        handle_ir(insts[i]);
+        i++;
+    }
+
+    if (insts[i]->token->type == ELIF)
+    {
+        curr = insts[i]->token;
+        i++;
+        while (insts[i] && insts[i]->token->type != END_COND) handle_ir(insts[i++]);
+        // if condition true, jump to endif
+        if_end = LLVMAppendBasicBlockInContext(context, main_func, "end_if");
+        LLVMValueRef cond = curr->ifStatement.cond->llvm.element; // condition
+        check(!curr->ifStatement.cond->llvm.is_set, "elif condition is not set");
+
+        LLVMBuildBr(builder, if_end);
+
+        LLVMPositionBuilderAtEnd(builder, elif_beg);
+        while (insts[i] && !includes(insts[i]->token->type, END_IF, 0))
+        {
+            handle_ir(insts[i]);
+            i++;
+        }
+
+    }
+
+    if (insts[i]->token->type == ELSE)
+    {
+        // if condition true, jump to endif
+        if_end = LLVMAppendBasicBlockInContext(context, main_func, "end_if");
+        LLVMBuildBr(builder, if_end);
+
+        // start else
+        LLVMPositionBuilderAtEnd(builder, else_beg);
+        i++; // skip else bloc
+        while (insts[i] && !includes(insts[i]->token->type, END_IF, 0))
+        {
+            handle_ir(insts[i]);
+            i++;
+        }
+    }
+
+    // Verify we found END_IF
+    check(insts[i] == NULL, "missing END_IF token");
+    check(insts[i]->token->type != END_IF, "expected END_IF token");
+
+    // Branch to end block
     LLVMBuildBr(builder, if_end);
+    // Position builder at end block for subsequent code
     LLVMPositionBuilderAtEnd(builder, if_end);
-    debug(RED"current inst: %k\n"RESET, insts[i]->token);
 }
 
 void handle_ir(Inst *inst)
@@ -44,13 +114,15 @@ void handle_ir(Inst *inst)
     Token *right = inst->right;
     switch (curr->type)
     {
+    case IF:
+    {
+        generate_if(insts[i]->token);
+        break;
+    }
     case INT:
     {
         if (curr->name) curr->llvm.element = LLVMBuildAlloca(builder, int32Type, curr->name);
-        else
-        {
-            curr->llvm.element = LLVMConstInt(int32Type, curr->Int.value, 0);
-        } 
+        else curr->llvm.element = LLVMConstInt(int32Type, curr->Int.value, 0);
         curr->llvm.is_set = true;
         break;
     }
@@ -62,9 +134,11 @@ void handle_ir(Inst *inst)
     case ADD: case SUB: case MUL: case DIV:
     {
         LLVMValueRef leftRef = left->name ?
-                               LLVMBuildLoad2(builder, int32Type, left->llvm.element, left->name) : left->llvm.element;
+                               LLVMBuildLoad2(builder, int32Type, left->llvm.element, left->name) :
+                               left->llvm.element;
         LLVMValueRef rightRef = right->name ?
-                                LLVMBuildLoad2(builder, int32Type, right->llvm.element, right->name) : right->llvm.element;
+                                LLVMBuildLoad2(builder, int32Type, right->llvm.element, right->name) :
+                                right->llvm.element;
         LLVMValueRef ret;
         Type op = curr->type;
         switch (curr->type)
@@ -98,6 +172,7 @@ void handle_ir(Inst *inst)
         case NOT_EQUAL:  ret = LLVMBuildICmp(builder, LLVMIntNE,  leftRef, rightRef, to_string(op)); break;
         default: todo(1, "handle this")
         }
+        printf(BLUE"set is_set %p, %s\n"RESET, curr, to_string(curr->type));
         curr->llvm.element = ret;
         curr->llvm.is_set = true;
         break;
@@ -105,7 +180,7 @@ void handle_ir(Inst *inst)
     case FCALL:
     {
         LLvm fcall = curr->Fcall.ptr->llvm;
-        curr->llvm.element = LLVMBuildCall2(builder, fcall.funcType, fcall.element, NULL, 0, "");
+        curr->llvm.element = LLVMBuildCall2(builder, fcall.funcType, fcall.element, NULL, 0, curr->name);
         curr->llvm.is_set = true;
         break;
     }
@@ -125,11 +200,6 @@ void handle_ir(Inst *inst)
         curr->llvm.is_set = true;
         break;
     }
-    case IF:
-    {
-        generate_if(curr);
-        break;
-    }
     case RETURN:
     {
         LLVMValueRef ret;
@@ -142,10 +212,17 @@ void handle_ir(Inst *inst)
         }
         case INT:
         {
-            debug("%k\n", left);
-            todo(!left->llvm.is_set, "need to be set\n");
-            
-            debug(RED"return %k\n"RESET, left);
+            // debug(">>>> %k\n", left);
+            // if(!left->llvm.is_set)
+            // {
+            //     debug(RED"variable is not set\n"RESET);
+            //     // exit(1);
+            // }
+            // stop(!left->llvm.is_set, "helloooooooooo\n", "");
+            // if(!left->llvm.is_set)
+            //     check_error(FILE, FUNC, LINE, true, "found error"); exit(1);
+
+            // debug(RED"return %k\n"RESET, left);
             if (left->name)
             {
                 ret = LLVMBuildLoad2(builder, int32Type, left->llvm.element, left->name);
@@ -179,10 +256,15 @@ void generate_asm(char *name)
     builder = LLVMCreateBuilder();
     int32Type = LLVMInt32Type();
 
-    for ( ; insts[i]; i++) handle_ir(insts[i]);
-    strcpy(moduleName + strlen(moduleName) - 1, "ir");
+    for (i = 0; insts[i]; ) {
+        handle_ir(insts[i]);
+        i++;
+    }
 
+    debug("module name: [%s]\n", moduleName);
+    strcpy(moduleName + strlen(moduleName) - 1, "ir");
     LLVMPrintModuleToFile(mod, moduleName, NULL);
+
     // Cleanup
     LLVMDisposeBuilder(builder);
     LLVMDisposeModule(mod);
