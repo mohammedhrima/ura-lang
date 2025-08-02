@@ -625,7 +625,9 @@ const char *to_string_(const char *filename, const int line, Type type) {
         [LONG] = "LONG", [SHORT] = "SHORT", [STRUCT_DEF] = "STRUCT_DEF",
         [STRUCT_CALL] = "STRUCT_CALL", [ID] = "ID", [REF] = "REF", [ARRAY] = "ARRAY",
         [JNE] = "JNE", [JE] = "JE", [JMP] = "JMP", [BLOC] = "BLOC", [END_BLOC] = "END_BLOC",
-        [PUSH] = "PUSH", [POP] = "POP", [END_COND] = "END_COND", [END] = "END"
+        [PUSH] = "PUSH", [POP] = "POP", [END_COND] = "END_COND", [END] = "END", 
+        [APPEND_BLOC] = "APPEND_BLOC", [BUILD_COND] = "BUILD_COND", [SET_POS] = "SET_POS",
+        [BUILD_BR] = "BUILD_BR",
     };
 
     if (type > 0 && type < (int)(sizeof(arr) / sizeof(arr[0])) && arr[type]) {
