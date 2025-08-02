@@ -105,14 +105,15 @@ enum Type
     AND, OR, NOT,
     LPAR, RPAR, LBRA, RBRA, COMA, DOT, DOTS, ACCESS,
     RETURN,
-    IF, ELIF, ELSE, END_IF,
+    IF, ELIF, ELSE, END_IF, BUILD_COND,
 
     WHILE, CONTINUE, BREAK,
     FDEC, FCALL, PROTO,
     VOID, INT, CHARS, CHAR, BOOL, FLOAT, PTR, LONG, SHORT,
     STRUCT_DEF, STRUCT_CALL, ID, REF,
     ARRAY,
-    JNE, JE, JMP, BLOC, END_BLOC, END_COND,
+    JNE, JE, JMP, BLOC, END_BLOC, END_COND, APPEND_BLOC, SET_POS,
+    BUILD_BR,
     PUSH, POP,
     END
 };
@@ -138,6 +139,7 @@ struct Token
     int ir_reg;
     // char *creg;
     int index;
+    int size;
 
     bool is_cond;
     bool is_ref;
@@ -204,9 +206,8 @@ struct Token
         // if condition
         struct
         {
-            Token *cond;
-            Token *next;
-        } ifStatement;
+            Token *ptr;
+        } cond;
     };
 };
 
