@@ -12,9 +12,10 @@ main:                                   # @main
 	testb	%al, %al
 	jne	.LBB0_2
 # %bb.1:                                # %start_if
-	movl	$11, -8(%rsp)
+	movl	$1, -8(%rsp)
 .LBB0_2:                                # %end_if
-	movl	-8(%rsp), %eax
+	movl	$2, -8(%rsp)
+	movl	$2, %eax
 	retq
 .Lfunc_end0:
 	.size	main, .Lfunc_end0-main
