@@ -104,7 +104,7 @@ int ptoken(Token *token)
 {
     int res = 0;
     if (!token) return debug("null token");
-    res += debug("[%-7s] ", to_string(token->type));
+    res += debug("[%-8s] ", to_string(token->type));
     switch (token->type)
     {
     case VOID: case CHARS: case CHAR: case INT: case BOOL: case FLOAT: case LONG:
@@ -289,6 +289,31 @@ void print_inst(Inst *inst)
     case END_BLOC:  debug("[%s] endbloc ", curr->name); break;
     case STRUCT_CALL: debug("[%-6s] %s ", to_string(curr->type), curr->name); break;
     case RETURN: case CONTINUE: case BREAK: debug("[%s] ", to_string(curr->type)); break;
+    case APPEND_BLOC:
+    {
+        debug("[%-6s] %s ", to_string(curr->type), curr->name);
+        break;
+    }
+    case BUILD_COND:
+    {
+        debug("[%-6s] ", to_string(curr->type));
+        debug("between ");
+        if (left->name) debug("(%s) ", left->name);
+
+        debug("and ");
+        if (right->name) debug("(%s) ", right->name);
+        break;
+    }
+    case SET_POS:
+    {
+        debug("[%-6s] %s ", to_string(curr->type), left->name);
+        break;
+    }
+    case BUILD_BR:
+    {
+        debug("[%-6s] %s ", to_string(curr->type), left->name);
+        break;
+    }
     default: debug(RED "print_ir:handle [%s]"RESET, to_string(curr->type)); break;
     }
 
@@ -608,26 +633,26 @@ char* open_file(char *filename)
 
 const char *to_string_(const char *filename, const int line, Type type) {
     const char *arr[] = {
-        [TMP] = "TMP", [CHILDREN] = "CHILDREN", [DEFAULT] = "DEFAULT", [REF_ID] = "REF_ID",
-        [REF_HOLD_ID] = "REF_HOLD_ID", [REF_VAL] = "REF_VAL", [REF_HOLD_REF] = "REF_HOLD_REF",
+        [TMP] = "TMP", [CHILDREN] = "CHILD", [DEFAULT] = "DEF", [REF_ID] = "REF_ID",
+        [REF_HOLD_ID] = "REF_HID", [REF_VAL] = "REF_VAL", [REF_HOLD_REF] = "REF_HRF",
         [REF_REF] = "REF_REF", [ID_ID] = "ID_ID", [ID_REF] = "ID_REF", [ID_VAL] = "ID_VAL",
-        [ASSIGN] = "ASSIGN", [ADD_ASSIGN] = "ADD_ASSIGN", [SUB_ASSIGN] = "SUB_ASSIGN",
-        [MUL_ASSIGN] = "MUL_ASSIGN", [DIV_ASSIGN] = "DIV_ASSIGN", [MOD_ASSIGN] = "MOD_ASSIGN",
-        [EQUAL] = "EQUAL", [NOT_EQUAL] = "NOT_EQUAL", [LESS_EQUAL] = "LESS_EQUAL",
-        [MORE_EQUAL] = "MORE_EQUAL", [LESS] = "LESS", [MORE] = "MORE", [ADD] = "ADD",
+        [ASSIGN] = "ASSIGN", [ADD_ASSIGN] = "ADD_ASGN", [SUB_ASSIGN] = "SUB_ASGN",
+        [MUL_ASSIGN] = "MUL_ASGN", [DIV_ASSIGN] = "DIV_ASGN", [MOD_ASSIGN] = "MOD_ASGN",
+        [EQUAL] = "EQUAL", [NOT_EQUAL] = "NOT_EQ", [LESS_EQUAL] = "LE_EQ",
+        [MORE_EQUAL] = "MO_EQ", [LESS] = "LESS", [MORE] = "MORE", [ADD] = "ADD",
         [SUB] = "SUB", [MUL] = "MUL", [DIV] = "DIV", [MOD] = "MOD", [OR] = "OR",
         [NOT] = "NOT", [LPAR] = "LPAR", [RPAR] = "RPAR", [LBRA] = "LBRA", [RBRA] = "RBRA",
         [COMA] = "COMA", [DOT] = "DOT", [DOTS] = "DOTS", [ACCESS] = "ACCESS",
         [RETURN] = "RETURN", [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
-        [END_IF] = "END_IF", [WHILE] = "WHILE", [CONTINUE] = "CONTINUE", [BREAK] = "BREAK",
+        [END_IF] = "END_IF", [WHILE] = "WHILE", [CONTINUE] = "CONT", [BREAK] = "BREAK",
         [FDEC] = "FDEC", [FCALL] = "FCALL", [PROTO] = "PROTO", [VOID] = "VOID", [INT] = "INT",
         [CHARS] = "CHARS", [CHAR] = "CHAR", [BOOL] = "BOOL", [FLOAT] = "FLOAT", [PTR] = "PTR",
-        [LONG] = "LONG", [SHORT] = "SHORT", [STRUCT_DEF] = "STRUCT_DEF",
-        [STRUCT_CALL] = "STRUCT_CALL", [ID] = "ID", [REF] = "REF", [ARRAY] = "ARRAY",
-        [JNE] = "JNE", [JE] = "JE", [JMP] = "JMP", [BLOC] = "BLOC", [END_BLOC] = "END_BLOC",
-        [PUSH] = "PUSH", [POP] = "POP", [END_COND] = "END_COND", [END] = "END", 
-        [APPEND_BLOC] = "APPEND_BLOC", [BUILD_COND] = "BUILD_COND", [SET_POS] = "SET_POS",
-        [BUILD_BR] = "BUILD_BR",
+        [LONG] = "LONG", [SHORT] = "SHORT", [STRUCT_DEF] = "ST_DEF",
+        [STRUCT_CALL] = "ST_CALL", [ID] = "ID", [REF] = "REF", [ARRAY] = "ARRAY",
+        [JNE] = "JNE", [JE] = "JE", [JMP] = "JMP", [BLOC] = "BLOC", [END_BLOC] = "ENDBLOC",
+        [PUSH] = "PUSH", [POP] = "POP", [END_COND] = "ENDCOND", [END] = "END",
+        [APPEND_BLOC] = "APP_BLC", [BUILD_COND] = "BLD_COND", [SET_POS] = "SET_POS",
+        [BUILD_BR] = "BLD_BR",
     };
 
     if (type > 0 && type < (int)(sizeof(arr) / sizeof(arr[0])) && arr[type]) {
