@@ -351,8 +351,9 @@ Node *if_node(Node *node)
     // code bloc
     while (within_space(node->token->space)) add_child(node, expr());
 
-    Node *end = add_child(node->right, new_node(new_token(APPEND_BLOC, node->token->space - TAB)));
+    Node *end = add_child(node->right, new_node(new_token(APPEND_BLOC, 0)));
     end->token->type = APPEND_BLOC;
+    end->token->space -= TAB;
     setName(end->token, "end_if");
     while (includes(tokens[exe_pos]->type, ELSE, ELIF, 0) && within_space(node->token->space - TAB))
     {
@@ -376,7 +377,7 @@ Node *if_node(Node *node)
         }
         // node->token->size++;
     }
-  
+
     exit_scoop();
     return node;
 }
@@ -615,11 +616,11 @@ Token *if_ir(Node *node)
     inst = new_inst(copy_token(node->token));
     inst->token->type = SET_POS;
     inst->left = startif->token;
-    
+
     // call code bloc
     for (int i = 0; i < node->cpos && !found_error; i++)
         generate_ir(node->children[i]);
-    
+
     inst = new_inst(copy_token(node->token));
     inst->token->type = BUILD_BR;
     inst->left = next->token;
@@ -644,16 +645,11 @@ Token *if_ir(Node *node)
         if (curr->token->type == ELSE)
         {
             // else bloc
-            for (int j = 0; j < curr->cpos; j++) 
+            for (int j = 0; j < curr->cpos; j++)
                 generate_ir(curr->children[j]);
-            
-            // inst = new_inst(copy_token(curr->token));
-            // inst->token->type = BUILD_BR;
-            // inst->left = next->token;
-
             inst = new_inst(copy_token(curr->token));
             inst->token->type = SET_POS;
-            inst->left = next->token; 
+            inst->left = next->token;
             break;
         }
     }
