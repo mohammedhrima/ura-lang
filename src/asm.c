@@ -70,7 +70,7 @@ void handle_ir(Inst *inst)
         case NOT_EQUAL:  ret = LLVMBuildICmp(builder, LLVMIntNE,  leftRef, rightRef, to_string(op)); break;
         default: todo(1, "handle this")
         }
-        printf(BLUE"set is_set %p, %s\n"RESET, curr, to_string(curr->type));
+        // printf(BLUE"set is_set %p, %s\n"RESET, curr, to_string(curr->type));
         curr->llvm.element = ret;
         curr->llvm.is_set = true;
         break;
@@ -182,7 +182,7 @@ void generate_asm(char *name)
         i++;
     }
 
-    debug("module name: [%s]\n", moduleName);
+    // debug("module name: [%s]\n", moduleName);
     strcpy(moduleName + strlen(moduleName) - 1, "ir");
     LLVMPrintModuleToFile(mod, moduleName, NULL);
 

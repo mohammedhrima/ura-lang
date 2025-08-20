@@ -1,24 +1,18 @@
-	.text
-	.file	"file.w"
-	.globl	main                            # -- Begin function main
-	.p2align	4, 0x90
-	.type	main,@function
-main:                                   # @main
+	.build_version macos, 15, 0
+	.section	__TEXT,__text,regular,pure_instructions
+	.globl	_main                           ; -- Begin function main
+	.p2align	2
+_main:                                  ; @main
 	.cfi_startproc
-# %bb.0:                                # %entry
-	movl	$1, -4(%rsp)
-	movl	$0, -8(%rsp)
-	movb	$1, %al
-	testb	%al, %al
-	jne	.LBB0_2
-# %bb.1:                                # %start_if
-	movl	$1, -8(%rsp)
-.LBB0_2:                                # %end_if
-	movl	$2, -8(%rsp)
-	movl	$2, %eax
-	retq
-.Lfunc_end0:
-	.size	main, .Lfunc_end0-main
+; %bb.0:                                ; %entry
+	sub	sp, sp, #16
+	.cfi_def_cfa_offset 16
+	mov	w8, #1                          ; =0x1
+	mov	w9, #2                          ; =0x2
+	mov	w0, #2                          ; =0x2
+	stp	w9, w8, [sp, #8]
+	add	sp, sp, #16
+	ret
 	.cfi_endproc
-                                        # -- End function
-	.section	".note.GNU-stack","",@progbits
+                                        ; -- End function
+.subsections_via_symbols

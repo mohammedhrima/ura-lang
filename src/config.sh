@@ -24,7 +24,7 @@ export flags files llvm_flags src
 
 # === Build Functions ===
 
-wcc_build() {
+build() {
     echo -e "${YELLOW}Building...${NC}"
     echo "Files: $files"
     echo "Flags: $flags"
@@ -34,7 +34,7 @@ wcc_build() {
     }
 }
 
-wcc_ir() {
+ir() {
     echo -e "${YELLOW}Compiling file.w...${NC}"
     "$src/wcc" "$src/code/file.w" || {
         echo -e "${RED}Error:${NC} Compiling .w file failed."
@@ -42,7 +42,7 @@ wcc_ir() {
     }
 }
 
-wcc_asm() {
+asm() {
     echo -e "${YELLOW}Generating file.s from file.ir...${NC}"
     llc "$src/code/file.ir" -o "$src/code/file.s" || {
         echo -e "${RED}Error:${NC} Assembly generation failed."
@@ -50,25 +50,16 @@ wcc_asm() {
     }
 }
 
-wcc_run() {
+exec() {
     echo -e "${YELLOW}compile file.s${NC}"
     clang "$src/code/file.s" -o exe.out
     ./exe.out
 }
 
-build() {
-    unalias build 2>/dev/null || true
-    wcc_build && wcc_ir && wcc_asm
-}
-
-comp() {
-    wcc_ir
-    wcc_asm
-}
-
 run() {
-    wcc_run
+    build && ir && asm && exec
 }
+
 # === Test Suite ===
 
 test() {
@@ -140,14 +131,14 @@ copy() {
 }
 
 # === Format Source Code ===
-
 indent() {
     echo -e "${YELLOW}Formatting code...${NC}"
     astyle --mode=c --indent=spaces=4 --pad-oper --pad-header \
         --keep-one-line-statements --keep-one-line-blocks --convert-tabs \
-        $src*.c $src*/*.h &&
-        rm -f $src*.c.orig $src*/*.h.orig
+        $src*.c $src*/*.h
+    find "$src" -type f \( -name "*.c.orig" -o -name "*.h.orig" \) -delete
 }
+
 
 # === Reload Config & Shell ===
 
