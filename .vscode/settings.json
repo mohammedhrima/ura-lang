@@ -1,7 +1,7 @@
 {
     "C_Cpp.errorSquiggles": "disabled",
     "files.associations": {
-        "*.ir": "llvm",
+        "*.ll": "llvm",
         "array": "c",
         "charconv": "c",
         "compare": "c",
