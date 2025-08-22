@@ -1,10 +1,4 @@
 main():
-   int a = 1
-   int b = 0   
 
-   if a > 10: 
-      b = 1
-   else: 
-      b = 2
+   if 1 > 10: 
 
-   return b
