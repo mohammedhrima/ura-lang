@@ -1,4 +1,4 @@
-#include "./include/header.h"
+#include "./header.h"
 
 LLVMModuleRef mod;
 LLVMBuilderRef builder;
