@@ -1,4 +1,4 @@
-#include "./include/header.h"
+#include "./header.h"
 
 bool found_error;
 
@@ -353,7 +353,7 @@ Node *if_node(Node *node)
 
     Node *end = add_child(node->right, new_node(new_token(APPEND_BLOC, 0)));
     end->token->type = APPEND_BLOC;
-    end->token->space -= TAB;
+    end->token->space = node->right->token->space;
     setName(end->token, "end_if");
     while (includes(tokens[exe_pos]->type, ELSE, ELIF, 0) && within_space(node->token->space - TAB))
     {

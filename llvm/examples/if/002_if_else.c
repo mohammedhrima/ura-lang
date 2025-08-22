@@ -16,37 +16,35 @@ int main()
    LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(context, main_func, "entry");
    LLVMPositionBuilderAtEnd(builder, entry);
 
-   // int a = 10;
+   // int a = 1;
    LLVMValueRef a = LLVMBuildAlloca(builder, int32, "a");
    LLVMBuildStore(builder, LLVMConstInt(int32, 1, 0), a);
 
-   // Create basic blocks for if, else and after
-   LLVMBasicBlockRef if_beg = LLVMAppendBasicBlockInContext(context, main_func, "if_body");
-   LLVMBasicBlockRef else_beg = LLVMAppendBasicBlockInContext(context, main_func, "else_body");
-   LLVMBasicBlockRef if_end = LLVMAppendBasicBlockInContext(context, main_func, "after");
+   // Create basic blocks
+   LLVMBasicBlockRef bloc0 = LLVMAppendBasicBlockInContext(context, main_func, "if_body");
+   LLVMBasicBlockRef bloc1 = LLVMAppendBasicBlockInContext(context, main_func, "else_body");
+   LLVMBasicBlockRef end = LLVMAppendBasicBlockInContext(context, main_func, "after");
 
-   // if (a < 10)
-   LLVMValueRef condition = LLVMBuildICmp(builder, LLVMIntSLT,
-                                          LLVMBuildLoad2(builder, int32, a, "a_val"),
-                                          LLVMConstInt(int32, 10, 0), "cmp");
-   LLVMBuildCondBr(builder, condition, if_beg, else_beg); // if condition false, jump to
-
-   // startif
+   // cond = a < 10
+   // cond ? go to bloc0 : go to bloc1
+   // set pos bloc0
    //    a = 3
-   // endif
-   LLVMPositionBuilderAtEnd(builder, if_beg);
+   // jmp to end
+   LLVMValueRef cond = LLVMBuildICmp(builder, LLVMIntSLT, LLVMBuildLoad2(builder, int32, a, "load_a"), LLVMConstInt(int32, 10, 0), "cmp");
+   LLVMBuildCondBr(builder, cond, bloc0, bloc1);
+   LLVMPositionBuilderAtEnd(builder, bloc0);
    LLVMBuildStore(builder, LLVMConstInt(int32, 3, 0), a);
-   LLVMBuildBr(builder, if_end); // if condition true, jump to
+   LLVMBuildBr(builder, end);
 
-   // startelse
+   // set pos bloc1
    //    a = 4
-   // endelse
-   LLVMPositionBuilderAtEnd(builder, else_beg);
+   // jmp to end
+   LLVMPositionBuilderAtEnd(builder, bloc1);
    LLVMBuildStore(builder, LLVMConstInt(int32, 4, 0), a);
-   LLVMBuildBr(builder, if_end);
+   LLVMBuildBr(builder, end);
 
-   // set position
-   LLVMPositionBuilderAtEnd(builder, if_end);
+   // set pos end
+   LLVMPositionBuilderAtEnd(builder, end);
 
    /* ==================================================================== */
    // return a
@@ -58,6 +56,5 @@ int main()
    LLVMDisposeBuilder(builder);
    LLVMDisposeModule(module);
    LLVMContextDispose(context);
-
    return 0;
 }

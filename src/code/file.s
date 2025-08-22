@@ -3,16 +3,18 @@
 	.globl	_main                           ; -- Begin function main
 	.p2align	2
 _main:                                  ; @main
+	.file	"file.w"
+	.text
+	.globl	main                            # -- Begin function main
+	.p2align	4
+	.type	main,@function
+main:                                   # @main
 	.cfi_startproc
-; %bb.0:                                ; %entry
-	sub	sp, sp, #16
-	.cfi_def_cfa_offset 16
-	mov	w8, #1                          ; =0x1
-	mov	w9, #2                          ; =0x2
-	mov	w0, #2                          ; =0x2
-	stp	w9, w8, [sp, #8]
-	add	sp, sp, #16
-	ret
+# %bb.0:                                # %entry
+	xorl	%eax, %eax
+	retq
+.Lfunc_end0:
+	.size	main, .Lfunc_end0-main
 	.cfi_endproc
                                         ; -- End function
 .subsections_via_symbols

@@ -1,4 +1,4 @@
-#include "./include/header.h"
+#include "./header.h"
 
 /*
 SECTIONS:
@@ -288,6 +288,8 @@ void print_inst(Inst *inst)
     case BLOC: case FDEC: debug("[%s] bloc ", curr->name); break;
     case END_BLOC:  debug("[%s] endbloc ", curr->name); break;
     case STRUCT_CALL: debug("[%-6s] %s ", to_string(curr->type), curr->name); break;
+    case BUILD_COND: case BUILD_BR: case APPEND_BLOC: case SET_POS:
+    debug("[%s] %s ", to_string(curr->type), curr->name); break;
     case RETURN: case CONTINUE: case BREAK: debug("[%s] ", to_string(curr->type)); break;
     case APPEND_BLOC:
     {
