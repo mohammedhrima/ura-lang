@@ -1,3 +1,0 @@
-
-main():
-   chars str = "fffff"
