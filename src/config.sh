@@ -43,8 +43,8 @@ ir() {
 }
 
 asm() {
-    echo -e "${YELLOW}Generating file.s from file.ir...${NC}"
-    llc "$src/code/file.ir" -o "$src/code/file.s" || {
+    echo -e "${YELLOW}Generating file.s from file.ll...${NC}"
+    llc "$src/code/file.ll" -o "$src/code/file.s" || {
         echo -e "${RED}Error:${NC} Assembly generation failed."
         return 1
     }
