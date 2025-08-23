@@ -2,7 +2,7 @@
 **/a.out.dSYM/
 **/wcc
 /src/wcc
-# .vscode
+.vscode
 **/*.dSYM
 **/*.out
 .DS_Store
