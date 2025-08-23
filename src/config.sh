@@ -74,7 +74,7 @@ indent() {
 
 update() {
     source "$src/config.sh"
-    # source ~/.zshrc
 }
 
+export PS1="(wolfc) $PS1"
 

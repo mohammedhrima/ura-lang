@@ -183,7 +183,7 @@ void generate_asm(char *name)
     }
 
     // debug("module name: [%s]\n", moduleName);
-    strcpy(moduleName + strlen(moduleName) - 1, "ir");
+    strcpy(moduleName + strlen(moduleName) - 1, "ll");
     LLVMPrintModuleToFile(mod, moduleName, NULL);
 
     // Cleanup
