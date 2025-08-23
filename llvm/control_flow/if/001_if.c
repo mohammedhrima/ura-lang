@@ -19,23 +19,26 @@ int main()
    // int a = 1;
    LLVMValueRef a = LLVMBuildAlloca(builder, int32, "a");
    LLVMBuildStore(builder, LLVMConstInt(int32, 1, 0), a);
-
-   // create blocks
+   
+   // CONDITION
+   LLVMValueRef cond = LLVMBuildICmp(builder, LLVMIntSLT, LLVMBuildLoad2(builder, int32, a, "load_a"), LLVMConstInt(int32, 10, 0), "cmp");
+   
+   // APPEND BLOC
    LLVMBasicBlockRef bloc0 = LLVMAppendBasicBlockInContext(context, main_func, "start_if");
    LLVMBasicBlockRef end = LLVMAppendBasicBlockInContext(context, main_func, "end_if");
-
-   // cond = a < 10
+   
+   // BUILD CONDITION
    // cond ? go to bloc0 : go to end
-   // set pos bloc0
-   //    a = 3
-   // jmp to end
-   LLVMValueRef cond = LLVMBuildICmp(builder, LLVMIntSLT, LLVMBuildLoad2(builder, int32, a, "load_a"), LLVMConstInt(int32, 10, 0), "cmp");
    LLVMBuildCondBr(builder, cond, bloc0, end);
+
+   // SET POSITION bloc0
    LLVMPositionBuilderAtEnd(builder, bloc0);
+   //    a = 3
    LLVMBuildStore(builder, LLVMConstInt(int32, 3, 0), a);
+   // BUILD BR to end
    LLVMBuildBr(builder, end);
 
-   // set pos end
+   // SET POSITION end
    LLVMPositionBuilderAtEnd(builder, end);
 
    /* ==================================================================== */
@@ -43,7 +46,7 @@ int main()
    LLVMBuildRet(builder, LLVMBuildLoad2(builder, int32, a, "ret"));
    // Verify and output
    LLVMVerifyModule(module, LLVMAbortProcessAction, NULL);
-   LLVMPrintModuleToFile(module, "out.ir", NULL);
+   LLVMPrintModuleToFile(module, "out.ll", NULL);
    // Cleanup
    LLVMDisposeBuilder(builder);
    LLVMDisposeModule(module);
