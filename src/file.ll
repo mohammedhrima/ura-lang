@@ -16,7 +16,6 @@ start_if:                                         ; preds = %entry
   br label %end_if
 
 end_if:                                           ; preds = %start_if, %entry
-  store i32 2, ptr %b, align 4
   %b2 = load i32, ptr %b, align 4
   ret i32 %b2
 }

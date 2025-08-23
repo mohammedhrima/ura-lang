@@ -338,11 +338,9 @@ Node *symbol(Token *token)
 Node *if_node(Node *node)
 {
     enter_scoop(node);
-    setName(node->token, "if");
-    // node->token->size = 2;
+    // setName(node->token, "start_if");
 
     node->left = expr();  // condition, TODO: check if it's boolean
-    // node->left->token->is_cond = true;
     node->left->token->space = node->token->space;
     node->right = new_node(new_token(CHILDREN, node->token->space));
 
@@ -350,11 +348,7 @@ Node *if_node(Node *node)
 
     // code bloc
     while (within_space(node->token->space)) add_child(node, expr());
-
-    Node *end = add_child(node->right, new_node(new_token(APPEND_BLOC, 0)));
-    end->token->type = APPEND_BLOC;
-    end->token->space = node->right->token->space;
-    setName(end->token, "end_if");
+    
     while (includes(tokens[exe_pos]->type, ELSE, ELIF, 0) && within_space(node->token->space - TAB))
     {
         Token *token = find(ELSE, ELIF, 0);
@@ -362,21 +356,23 @@ Node *if_node(Node *node)
         token->space -= TAB;
         if (token->type == ELIF)
         {
-            setName(token, "elif");
+            // setName(token, "elif");
             curr->left = expr();
-            // curr->left->token->is_cond = true;
             check(!find(DOTS, 0), "expected : after elif condition");
             while (within_space(token->space)) add_child(curr, expr());
         }
         else if (token->type == ELSE)
         {
-            setName(token, "else");
+            // setName(token, "else");
             check(!find(DOTS, 0), "expected : after else");
             while (within_space(token->space)) add_child(curr, expr());
             break;
         }
-        // node->token->size++;
     }
+
+    Node *end = add_child(node->right, new_node(new_token(END_IF, 0)));
+    end->token->space = node->right->token->space;
+    setName(end->token, "end_if");
 
     exit_scoop();
     return node;
@@ -577,14 +573,14 @@ Token *func_call_ir(Node *node)
 }
 
 /*
-if logic:
-    - create condition
-    - create startbloc / endbloc
-    - build bloc, using cond, startif, endif
-    - set position at end in startif
-    - if code bloc
-    - buildrbr ifend
-    - set end in if_end
+CONDITION
+APPEND BLOC
+BUILD CONDITION
+cond ? go to bloc0 : go to end
+SET POSITION bloc0
+   a = 3
+BUILD BR to end
+SET POSITION end
 */
 Token *if_ir(Node *node)
 {
@@ -592,68 +588,78 @@ Token *if_ir(Node *node)
     Node **children = node->right->children;
     int cpos = node->right->cpos;
 
-    // create condition
-    // TODO: check if it's boolean
-    Token *cond = generate_ir(node->left); // create condition
+    // CONDITION
+    Token *cond = generate_ir(node->left); // TODO: check if it's boolean
     if (!cond) return NULL;
 
-    // create blocs
-    node->token->type = APPEND_BLOC;
-    Inst *startif = new_inst(copy_token(node->token)); // startif
-    setName(startif->token, "start_if");
+    // APPEND BLOC
+    Inst *start = new_inst(copy_token(node->token)); // start
+    start->token->type = APPEND_BLOC;
 
-    Inst *next = new_inst(copy_token(children[0]->token)); // next
-    next->token->type = APPEND_BLOC;
+    for (int i = 0; i < cpos && !found_error; i++)
+    {
+        Inst *bloc = new_inst(copy_token(children[i]->token));
+        bloc->token->type = APPEND_BLOC;
+    }
 
-    // set start/end
-    // build pos at end of ifstart
+    // BUILD CONDITION
+    // cond ? go to left : go to right
     Inst *inst = new_inst(node->token);
     inst->token->type = BUILD_COND;
-    inst->left = startif->token;
-    inst->right = next->token;
     inst->token->cond.ptr = cond;
+    inst->left = start->token;
+    inst->right = children[0]->token;
 
+    // SET POSITION start
     inst = new_inst(copy_token(node->token));
     inst->token->type = SET_POS;
-    inst->left = startif->token;
+    inst->left = start->token;
 
-    // call code bloc
+    // children code
     for (int i = 0; i < node->cpos && !found_error; i++)
         generate_ir(node->children[i]);
 
+    // BUILD BR to end (jmp to end if condition is true)
     inst = new_inst(copy_token(node->token));
     inst->token->type = BUILD_BR;
-    inst->left = next->token;
+    inst->left = children[cpos - 1]->token;
 
+    // SET POSITION next
     inst = new_inst(copy_token(node->token));
     inst->token->type = SET_POS;
-    inst->left = next->token;
+    inst->left = children[0]->token;
 
-    for (int i = 1; i < cpos && !found_error; i++)
+    for (int i = 0; i < cpos && !found_error; i++)
     {
         Node *curr = children[i];
-        // if (curr->token->type == ELIF)
-        // {
-        //     setName(inst->token, "start_elif");
-        //     new_inst(curr->token); // elif bloc
-        //     Token *cond = generate_ir(curr->left); // elif condition, TODO: check is boolean
-        //     new_inst(new_token(END_COND, inst->token->space));
-        //     for (int j = 0; j < curr->cpos; j++)
-        //         generate_ir(curr->children[j]);
-        // }
-        // else
-        if (curr->token->type == ELSE)
+        switch (curr->token->type)
         {
-            // else bloc
+        case ELSE:
+        {
+            todo(1, "");
+            // children bloc
             for (int j = 0; j < curr->cpos; j++)
                 generate_ir(curr->children[j]);
             inst = new_inst(copy_token(curr->token));
             inst->token->type = SET_POS;
-            inst->left = next->token;
+            inst->left = children[i + 1]->token;         
             break;
         }
+        case ELIF:
+        {
+            todo(1, "");
+            break;
+        }
+        case END_IF:
+        {
+            inst = new_inst(copy_token(curr->token));
+            inst->token->type = SET_POS;
+            inst->left = curr->token;
+            break;
+        }
+        default: break;
+        }
     }
-
     exit_scoop();
     return NULL;
 }
