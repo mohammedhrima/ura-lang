@@ -20,72 +20,70 @@ int main()
    LLVMValueRef a = LLVMBuildAlloca(builder, int32, "a");
    LLVMBuildStore(builder, LLVMConstInt(int32, 1, 0), a);
 
-   // Create all basic blocks
-   LLVMBasicBlockRef if1_beg = LLVMAppendBasicBlockInContext(context, main_func, "if1_beg");
-   LLVMBasicBlockRef elif2_beg = LLVMAppendBasicBlockInContext(context, main_func, "elif2_beg");
-   LLVMBasicBlockRef elif3_beg = LLVMAppendBasicBlockInContext(context, main_func, "elif3_beg");
-   LLVMBasicBlockRef elif4_beg = LLVMAppendBasicBlockInContext(context, main_func, "elif4_beg");
-   LLVMBasicBlockRef elif5_beg = LLVMAppendBasicBlockInContext(context, main_func, "elif5_beg");
-   LLVMBasicBlockRef else_beg = LLVMAppendBasicBlockInContext(context, main_func, "else_beg");
-   LLVMBasicBlockRef if_end = LLVMAppendBasicBlockInContext(context, main_func, "end");
+   // Create basic blocks
+   LLVMBasicBlockRef bloc0 = LLVMAppendBasicBlockInContext(context, main_func, "if1");
+   LLVMBasicBlockRef bloc1 = LLVMAppendBasicBlockInContext(context, main_func, "elif2");
+   LLVMBasicBlockRef bloc2 = LLVMAppendBasicBlockInContext(context, main_func, "elif3");
+   LLVMBasicBlockRef bloc3 = LLVMAppendBasicBlockInContext(context, main_func, "elif4");
+   LLVMBasicBlockRef bloc4 = LLVMAppendBasicBlockInContext(context, main_func, "elif5");
+   LLVMBasicBlockRef bloc5 = LLVMAppendBasicBlockInContext(context, main_func, "else");
+   LLVMBasicBlockRef end = LLVMAppendBasicBlockInContext(context, main_func, "end");
 
-   // if (a < 2)
-   LLVMValueRef cond1 = LLVMBuildICmp(builder, LLVMIntSLT,
-                                           LLVMBuildLoad2(builder, int32, a, "a_val1"),
-                                           LLVMConstInt(int32, 2, 0), "cmp1");
-   LLVMBuildCondBr(builder, cond1, if1_beg, elif2_beg); // if condition false, jump to
-
-   // startif
+   // cond1 = a < 2
+   // cond1 ? go to bloc0 : go to bloc1
+   // set pos bloc0
    //    a = 3
-   // endif
-   LLVMPositionBuilderAtEnd(builder, if1_beg);
+   // jmp to end
+   LLVMValueRef cond1 = LLVMBuildICmp(builder, LLVMIntSLT, LLVMBuildLoad2(builder, int32, a, "a_val1"), LLVMConstInt(int32, 2, 0), "cmp1");
+   LLVMBuildCondBr(builder, cond1, bloc0, bloc1);
+   LLVMPositionBuilderAtEnd(builder, bloc0);
    LLVMBuildStore(builder, LLVMConstInt(int32, 3, 0), a);
-   LLVMBuildBr(builder, if_end); // if condition true, jump to
+   LLVMBuildBr(builder, end);
 
-   // else if (a < 3)
-   LLVMPositionBuilderAtEnd(builder, elif2_beg);
-   LLVMValueRef condition2 = LLVMBuildICmp(builder, LLVMIntSLT,
-                                           LLVMBuildLoad2(builder, int32, a, "a_val2"),
-                                           LLVMConstInt(int32, 3, 0), "cmp2");
-   LLVMBuildCondBr(builder, condition2, elif3_beg, elif4_beg);
-
-   // startif
+   // set pos bloc1
+   // cond2 = a < 3
+   // cond2 ? go to bloc2 : go to bloc3
+   // set pos bloc2
    //    a = 4
-   // endif
-   LLVMPositionBuilderAtEnd(builder, elif3_beg);
+   // jmp to end
+   LLVMPositionBuilderAtEnd(builder, bloc1);
+   LLVMValueRef cond2 = LLVMBuildICmp(builder, LLVMIntSLT, LLVMBuildLoad2(builder, int32, a, "a_val2"), LLVMConstInt(int32, 3, 0), "cmp2");
+   LLVMBuildCondBr(builder, cond2, bloc2, bloc3);
+
+   LLVMPositionBuilderAtEnd(builder, bloc2);
    LLVMBuildStore(builder, LLVMConstInt(int32, 4, 0), a);
-   LLVMBuildBr(builder, if_end); // if condition true, jump to
+   LLVMBuildBr(builder, end);
 
-   // else if (a < 4)
-   LLVMPositionBuilderAtEnd(builder, elif4_beg);
-   LLVMValueRef condition3 = LLVMBuildICmp(builder, LLVMIntSLT,
-                                           LLVMBuildLoad2(builder, int32, a, "a_val3"),
-                                           LLVMConstInt(int32, 4, 0), "cmp3");
-   LLVMBuildCondBr(builder, condition3, elif5_beg, else_beg);
-
-   // startelif
+   // set pos bloc3
+   // cond3 = a < 4
+   // cond3 ? go to bloc4 : go to bloc5
+   // set pos bloc4
    //    a = 5
-   // endelif
-   LLVMPositionBuilderAtEnd(builder, elif5_beg);
+   // jmp to end
+   LLVMPositionBuilderAtEnd(builder, bloc3);
+   LLVMValueRef cond3 = LLVMBuildICmp(builder, LLVMIntSLT, LLVMBuildLoad2(builder, int32, a, "a_val3"), LLVMConstInt(int32, 4, 0), "cmp3");
+   LLVMBuildCondBr(builder, cond3, bloc4, bloc5);
+
+   LLVMPositionBuilderAtEnd(builder, bloc4);
    LLVMBuildStore(builder, LLVMConstInt(int32, 5, 0), a);
-   LLVMBuildBr(builder, if_end); // if condition true, jump to
+   LLVMBuildBr(builder, end);
 
-   // startelse
+   // set pos bloc5
    //    a = 6
-   // endelse
-   LLVMPositionBuilderAtEnd(builder, else_beg);
+   // jmp to end
+   LLVMPositionBuilderAtEnd(builder, bloc5);
    LLVMBuildStore(builder, LLVMConstInt(int32, 6, 0), a);
-   LLVMBuildBr(builder, if_end); 
+   LLVMBuildBr(builder, end);
 
-   // set position
-   LLVMPositionBuilderAtEnd(builder, if_end);
+   // set pos end
+   LLVMPositionBuilderAtEnd(builder, end);
 
    /* ==================================================================== */
    // return a
    LLVMBuildRet(builder, LLVMBuildLoad2(builder, int32, a, "ret"));
    // Verify and output
    LLVMVerifyModule(module, LLVMAbortProcessAction, NULL);
-   LLVMPrintModuleToFile(module, "out.ll", NULL);
+   LLVMPrintModuleToFile(module, "out.ir", NULL);
    // Cleanup
    LLVMDisposeBuilder(builder);
    LLVMDisposeModule(module);

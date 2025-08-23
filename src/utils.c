@@ -291,31 +291,6 @@ void print_inst(Inst *inst)
     case BUILD_COND: case BUILD_BR: case APPEND_BLOC: case SET_POS:
     debug("[%s] %s ", to_string(curr->type), curr->name); break;
     case RETURN: case CONTINUE: case BREAK: debug("[%s] ", to_string(curr->type)); break;
-    case APPEND_BLOC:
-    {
-        debug("[%-6s] %s ", to_string(curr->type), curr->name);
-        break;
-    }
-    case BUILD_COND:
-    {
-        debug("[%-6s] ", to_string(curr->type));
-        debug("between ");
-        if (left->name) debug("(%s) ", left->name);
-
-        debug("and ");
-        if (right->name) debug("(%s) ", right->name);
-        break;
-    }
-    case SET_POS:
-    {
-        debug("[%-6s] %s ", to_string(curr->type), left->name);
-        break;
-    }
-    case BUILD_BR:
-    {
-        debug("[%-6s] %s ", to_string(curr->type), left->name);
-        break;
-    }
     default: debug(RED "print_ir:handle [%s]"RESET, to_string(curr->type)); break;
     }
 
