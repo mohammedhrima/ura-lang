@@ -288,8 +288,10 @@ void print_inst(Inst *inst)
     case BLOC: case FDEC: debug("[%s] bloc ", curr->name); break;
     case END_BLOC:  debug("[%s] endbloc ", curr->name); break;
     case STRUCT_CALL: debug("[%-6s] %s ", to_string(curr->type), curr->name); break;
-    case BUILD_COND: case BUILD_BR: case APPEND_BLOC: case SET_POS:
-    debug("[%s] %s ", to_string(curr->type), curr->name); break;
+    case BUILD_COND:
+        debug("[%s] %s ", to_string(curr->type), curr->name); break;
+    case SET_POS: case APPEND_BLOC: case BUILD_BR:
+        debug("[%s] %s ", to_string(curr->type), left->name); break;
     case RETURN: case CONTINUE: case BREAK: debug("[%s] ", to_string(curr->type)); break;
     default: debug(RED "print_ir:handle [%s]"RESET, to_string(curr->type)); break;
     }
@@ -629,7 +631,7 @@ const char *to_string_(const char *filename, const int line, Type type) {
         [JNE] = "JNE", [JE] = "JE", [JMP] = "JMP", [BLOC] = "BLOC", [END_BLOC] = "ENDBLOC",
         [PUSH] = "PUSH", [POP] = "POP", [END_COND] = "ENDCOND", [END] = "END",
         [APPEND_BLOC] = "APP_BLC", [BUILD_COND] = "BLD_COND", [SET_POS] = "SET_POS",
-        [BUILD_BR] = "BLD_BR",
+        [BUILD_BR] = "BLD_BR", [COMMENT] = "COMMENT",
     };
 
     if (type > 0 && type < (int)(sizeof(arr) / sizeof(arr[0])) && arr[type]) {
