@@ -355,17 +355,21 @@ Node *if_node(Node *node)
         token->space -= TAB;
         if (token->type == ELIF)
         {
+            enter_scoop(curr);
             curr->left = expr();
             Node *bloc = add_child(node->right, new_node(copy_token(token)));
             setName(bloc->token, "bloc");
             bloc->token->space -= TAB;
             check(!find(DOTS, 0), "expected : after elif condition");
             while (within_space(token->space)) add_child(curr, expr());
+            exit_scoop();
         }
         else if (token->type == ELSE)
         {
+            enter_scoop(curr);
             check(!find(DOTS, 0), "expected : after else");
             while (within_space(token->space)) add_child(curr, expr());
+            exit_scoop();
             break;
         }
     }
@@ -373,6 +377,24 @@ Node *if_node(Node *node)
     Node *end = add_child(node->right, new_node(new_token(END_IF, 0)));
     end->token->space = node->right->token->space;
     setName(end->token, "end_if");
+
+    exit_scoop();
+    return node;
+}
+
+// while Layout:
+//    + left    : condition
+//    + children: code bloc
+Node *while_node(Node *node)
+{
+    enter_scoop(node);
+
+    node->left = expr();  // condition, TODO: check if it's boolean
+    node->left->token->space = node->token->space;
+    check(!find(DOTS, 0), "Expected : after if condition\n", "");
+
+    // code bloc
+    while (within_space(node->token->space)) add_child(node, expr());
 
     exit_scoop();
     return node;
@@ -407,12 +429,14 @@ Node *prime()
         return node;
     }
     else if ((token = find(IF, 0))) return if_node(new_node(token));
+    else if ((token = find(WHILE, 0))) return while_node(new_node(token));
     else if ((token = find(LPAR, 0)))
     {
         if (tokens[exe_pos]->type != RPAR) node = expr();
         check(!find(RPAR, 0), "expected right par");
         return node;
     }
+    else if((token = find(BREAK, CONTINUE, 0))) return new_node(token);
     else check(1, "Unexpected token has type %s\n", to_string(tokens[exe_pos]->type));
     return new_node(tokens[exe_pos]);
 }
@@ -609,7 +633,7 @@ Token *if_ir(Node *node)
     // cond ? go to left : go to right
     Inst *inst = new_inst(node->token);
     inst->token->type = BUILD_COND;
-    inst->token->cond.ptr = cond;
+    inst->token->statement.ptr = cond;
     inst->left = start;
     inst->right = children[0]->token;
 
@@ -639,6 +663,7 @@ Token *if_ir(Node *node)
         {
         case ELSE:
         {
+            enter_scoop(curr);
             for (int j = 0; j < curr->cpos; j++)
                 generate_ir(curr->children[j]);
 
@@ -646,10 +671,12 @@ Token *if_ir(Node *node)
             inst = new_inst(copy_token(curr->token));
             inst->token->type = BUILD_BR;
             inst->left = children[cpos - 1]->token;
+            exit_scoop();
             break;
         }
         case ELIF:
         {
+            enter_scoop(curr);
             Token *cond = generate_ir(curr->left); // TODO: check if it's boolean
             if (!cond) return NULL;
             i++;
@@ -658,7 +685,7 @@ Token *if_ir(Node *node)
             // cond ? go to left : go to right
             Inst *inst = new_inst(curr->token);
             inst->token->type = BUILD_COND;
-            inst->token->cond.ptr = cond;
+            inst->token->statement.ptr = cond;
             inst->left = children[i]->token;
             inst->right = children[i + 1]->token;
 
@@ -675,12 +702,83 @@ Token *if_ir(Node *node)
             inst = new_inst(copy_token(node->token));
             inst->token->type = BUILD_BR;
             inst->left = children[cpos - 1]->token;
+            exit_scoop();
             break;
         }
         case END_IF: break;
         default: break;
         }
     }
+    exit_scoop();
+    return NULL;
+}
+
+Token *while_ir(Node *node)
+{
+    enter_scoop(node);
+    // APPEND BLOC
+    Token *loop_cond = copy_token(node->token);
+    setName(loop_cond, "while");
+    Inst *bloc = new_inst(copy_token(node->token));
+    bloc->token->type = APPEND_BLOC;
+    bloc->left = loop_cond;
+
+    Token *loop_body = copy_token(node->token);
+    setName(loop_body, "while_bloc");
+    bloc = new_inst(copy_token(node->token));
+    bloc->token->type = APPEND_BLOC;
+    bloc->left = loop_body;
+
+    Token *loop_end = copy_token(node->token);
+    setName(loop_end, "end_while");
+    bloc = new_inst(copy_token(loop_end));
+    bloc->token->type = APPEND_BLOC;
+    bloc->left = loop_end;
+
+    node->token->statement.start = loop_cond;
+    node->token->statement.end = loop_end;
+
+    // BUILD BR
+    Inst *inst = new_inst(copy_token(node->token));
+    inst->token->type = BUILD_BR;
+    inst->left = loop_cond;
+    
+    // SET POSITION 
+    inst = new_inst(copy_token(node->token));
+    inst->token->type = SET_POS;
+    inst->left = loop_cond;
+
+    // CONDITION
+    Token *cond = generate_ir(node->left); // TODO: check if it's boolean
+    if (!cond) return NULL;
+
+    // BUILD CONDITION
+    // cond ? go to left : go to right
+    inst = new_inst(node->token);
+    inst->token->type = BUILD_COND;
+    inst->token->statement.ptr = cond;
+    inst->left = loop_body;
+    inst->right = loop_end;
+
+    // SET POSITION 
+    inst = new_inst(copy_token(node->token));
+    inst->token->type = SET_POS;
+    inst->left = loop_body;
+
+    // children code
+    for (int i = 0; i < node->cpos && !found_error; i++)
+        generate_ir(node->children[i]);
+
+    // BUILD BR to end (jmp to end if condition is true)
+    inst = new_inst(copy_token(node->token));
+    inst->token->type = BUILD_BR;
+    inst->left = loop_cond;
+
+    // SET POSITION 
+    inst = new_inst(copy_token(node->token));
+    inst->token->type = SET_POS;
+    inst->left = loop_end;
+
     exit_scoop();
     return NULL;
 }
@@ -811,7 +909,7 @@ Token *generate_ir(Node *node)
         return op_ir(node);
     }
     case IF:    return if_ir(node);
-    // case WHILE: return while_ir(node);
+    case WHILE: return while_ir(node);
     case FDEC:  return func_dec_ir(node);
     case RETURN:
     {
@@ -822,45 +920,28 @@ Token *generate_ir(Node *node)
     }
 #if 0
     case FCALL: return func_call_ir(node);
-    case BREAK:
+#endif
+    case BREAK: case CONTINUE:
     {
+        bool found = false;
         for (int i = scoopPos; i >= 0; i--)
         {
             Node *scoop = Gscoop[i];
             if (strcmp(scoop->token->name, "while") == 0)
             {
-                Token *token = copy_token(node->token);
-                token->type = JMP;
-                token->index = scoop->token->index;
-                setName(token, "endwhile");
-
+                // BUILD BR
+                found = true;
                 Inst *inst = new_inst(node->token);
-                if (parent) add_inst(parent, inst);
-                return add_inst(parent, new_inst(token))->token;
+                inst->token->type = BUILD_BR;
+                if(node->token->type == BREAK) inst->left = scoop->token->statement.end;
+                else inst->left = scoop->token->statement.start;
                 break;
             }
         }
-        // TODO: invalid syntax, break should be inside whie loop
+        todo(!found, "Invalid syntax");
         break;
     }
-    case CONTINUE:
-    {
-        for (int i = scoopPos; i >= 0; i--)
-        {
-            Node *scoop = Gscoop[i];
-            if (strcmp(scoop->token->name, "while") == 0)
-            {
-                Token *token = copy_token(node->token);
-                token->type = JMP;
-                token->index = scoop->token->index;
-                setName(token, "while");
-                return add_inst(parent, new_inst(token))->token;
-                break;
-            }
-        }
-        // TODO: invalid syntax, break should be inside whie loop
-        break;
-    }
+#if 0
     case DOT:
     {
         todo(1, "add add_inst");

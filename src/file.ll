@@ -5,26 +5,32 @@ define i32 @main() {
 entry:
   %a = alloca i32, align 4
   store i32 1, ptr %a, align 4
-  %b = alloca i32, align 4
-  store i32 0, ptr %b, align 4
+  br label %while
+
+while:                                            ; preds = %end_if, %if, %entry
   %a1 = load i32, ptr %a, align 4
   %LESS = icmp slt i32 %a1, 10
-  br i1 %LESS, label %if, label %end_if
+  br i1 %LESS, label %while_bloc, label %end_while
 
-if:                                               ; preds = %entry
-  store i32 1, ptr %b, align 4
-  %b2 = load i32, ptr %b, align 4
-  %EQUAL = icmp eq i32 %b2, 1
-  br i1 %EQUAL, label %if3, label %end_if4
+while_bloc:                                       ; preds = %while
+  %a2 = load i32, ptr %a, align 4
+  %EQUAL = icmp eq i32 %a2, 9
+  br i1 %EQUAL, label %if, label %else
 
-end_if:                                           ; preds = %end_if4, %entry
-  %b5 = load i32, ptr %b, align 4
-  ret i32 %b5
+end_while:                                        ; preds = %while
+  %a4 = load i32, ptr %a, align 4
+  ret i32 %a4
 
-if3:                                              ; preds = %if
-  store i32 5, ptr %b, align 4
-  br label %end_if4
-
-end_if4:                                          ; preds = %if3, %if
+if:                                               ; preds = %while_bloc
+  br label %while
   br label %end_if
+
+else:                                             ; preds = %while_bloc
+  %a3 = load i32, ptr %a, align 4
+  %ADD = add i32 %a3, 1
+  store i32 %ADD, ptr %a, align 4
+  br label %end_if
+
+end_if:                                           ; preds = %else, %if
+  br label %while
 }

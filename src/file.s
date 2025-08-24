@@ -7,19 +7,21 @@ main:                                   # @main
 	.cfi_startproc
 # %bb.0:                                # %entry
 	movl	$1, -4(%rsp)
-	movl	$0, -8(%rsp)
-	xorl	%eax, %eax
-	testb	%al, %al
-	jne	.LBB0_3
-# %bb.1:                                # %if
-	movl	$1, -8(%rsp)
-	movb	$1, %al
-	testb	%al, %al
-	je	.LBB0_3
-# %bb.2:                                # %if3
-	movl	$5, -8(%rsp)
-.LBB0_3:                                # %end_if
-	movl	-8(%rsp), %eax
+	.p2align	4
+.LBB0_1:                                # %while
+                                        # =>This Inner Loop Header: Depth=1
+	cmpl	$9, -4(%rsp)
+	jg	.LBB0_4
+# %bb.2:                                # %while_bloc
+                                        #   in Loop: Header=BB0_1 Depth=1
+	cmpl	$9, -4(%rsp)
+	je	.LBB0_1
+# %bb.3:                                # %else
+                                        #   in Loop: Header=BB0_1 Depth=1
+	incl	-4(%rsp)
+	jmp	.LBB0_1
+.LBB0_4:                                # %end_while
+	movl	-4(%rsp), %eax
 	retq
 .Lfunc_end0:
 	.size	main, .Lfunc_end0-main
