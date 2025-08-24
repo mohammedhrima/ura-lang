@@ -9,13 +9,21 @@ entry:
   store i32 0, ptr %b, align 4
   %a1 = load i32, ptr %a, align 4
   %MORE = icmp sgt i32 %a1, 10
-  br i1 %MORE, label %start_if, label %end_if
+  br <null operand!>, label %if, label %elif
 
-start_if:                                         ; preds = %entry
+if:                                               ; preds = %entry
   store i32 1, ptr %b, align 4
   br label %end_if
 
-end_if:                                           ; preds = %start_if, %entry
-  %b2 = load i32, ptr %b, align 4
-  ret i32 %b2
+elif:                                             ; preds = %entry
+  %a2 = load i32, ptr %a, align 4
+  %MORE3 = icmp sgt i32 %a2, 1
+  br i1 %MORE3, label %bloc, label %end_if
+
+bloc:                                             ; preds = %elif
+
+end_if:                                           ; preds = %end_if, %elif, %if
+  br label %end_if
+  %b4 = load i32, ptr %b, align 4
+  ret i32 %b4
 }
