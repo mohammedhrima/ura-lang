@@ -79,3 +79,29 @@ update() {
 [[ $PS1 != "(wolfc)"* ]] && PS1="(wolfc) $PS1"
 
 
+# Make sure we're in a git repo
+if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+    echo -e "${YELLOW}Warning:${NC} Not a git repository, skipping sync check."
+    return 0
+fi
+
+# Fetch remote changes
+git fetch origin &>/dev/null
+
+# Compare local vs remote
+LOCAL=$(git rev-parse @)
+REMOTE=$(git rev-parse @{u})
+BASE=$(git merge-base @ @{u})
+
+if [ "$LOCAL" = "$REMOTE" ]; then
+    return 0
+elif [ "$LOCAL" = "$BASE" ]; then
+    echo -e "${RED}Error:${NC} Your branch is behind the remote. Please pull before building."
+    return 1
+elif [ "$REMOTE" = "$BASE" ]; then
+    echo -e "${YELLOW}Warning:${NC} Your branch is ahead of the remote."
+    return 0
+else
+    echo -e "${RED}Error:${NC} Your branch has diverged from remote. Resolve conflicts first."
+    return 1
+fi

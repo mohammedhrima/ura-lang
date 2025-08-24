@@ -1,13 +1,10 @@
 main():
    int a = 1
-   int b = 0   
+   
+   while a < 10:
+      if a == 9:
+         break
+      else:
+         a = a + 1
 
-   if a < 10: 
-      b = 1
-      if b == 1:
-         b = 5
-   // elif a > 1:
-   //    b = 2
-   // else:
-   //    b = 3
-   return b
+   return a
