@@ -139,7 +139,9 @@ void handle_ir(Inst *inst)
     }
     case APPEND_BLOC:
     {
+        check(!left->name, "APPEND BLOC require a name");
         left->llvm.bloc = LLVMAppendBasicBlockInContext(context, main_func, left->name);
+        curr->llvm.is_set = true;
         break;
     }
     case BUILD_COND:
@@ -147,7 +149,8 @@ void handle_ir(Inst *inst)
         LLVMValueRef cond = curr->cond.ptr->llvm.element;
         LLVMBasicBlockRef start = left->llvm.bloc;
         LLVMBasicBlockRef end = right->llvm.bloc;
-        LLVMBuildCondBr(builder, cond, start, end);
+        curr->llvm.element = LLVMBuildCondBr(builder, cond, start, end);
+        curr->llvm.is_set = true;
         break;
     }
     case SET_POS:
@@ -157,6 +160,7 @@ void handle_ir(Inst *inst)
     }
     case BUILD_BR:
     {
+        check(!left->name, "BUILD BR require a name");
         LLVMBuildBr(builder, left->llvm.bloc);
         break;
     }

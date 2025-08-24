@@ -65,7 +65,7 @@ indent() {
     echo -e "${YELLOW}Formatting code...${NC}"
     astyle --mode=c --indent=spaces=4 --pad-oper --pad-header \
         --keep-one-line-statements --keep-one-line-blocks --convert-tabs \
-        $src*.c $src*/*.h
+        $src*.c $src*.h
     find "$src" -type f \( -name "*.c.orig" -o -name "*.h.orig" \) -delete
 }
 
@@ -76,5 +76,6 @@ update() {
     source "$src/config.sh"
 }
 
-export PS1="(wolfc) $PS1"
+[[ $PS1 != "(wolfc)"* ]] && PS1="(wolfc) $PS1"
+
 

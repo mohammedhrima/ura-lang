@@ -114,7 +114,8 @@ enum Type
     ARRAY,
     JNE, JE, JMP, BLOC, END_BLOC, END_COND, APPEND_BLOC, SET_POS,
     BUILD_BR,
-    PUSH, POP,
+    PUSH, POP, COMMENT,
+
     END
 };
 
