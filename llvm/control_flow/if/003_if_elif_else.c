@@ -43,19 +43,19 @@ int main()
    // BUILD BR to end
    LLVMBuildBr(builder, end);
 
-   // set pos bloc1
-   // cond2 = a < 3
-   // cond2 ? go to bloc2 : go to bloc3
-   // set pos bloc2
-   //    a = 4
-   // jmp to end
+   // SET POSITION bloc1
    LLVMPositionBuilderAtEnd(builder, bloc1);
    LLVMValueRef cond2 = LLVMBuildICmp(builder, LLVMIntSLT, LLVMBuildLoad2(builder, int32, a, "a_val2"), LLVMConstInt(int32, 3, 0), "cmp2");
+   // BUILD CONDITION
+   // cond2 ? go to bloc2 : go to bloc3
    LLVMBuildCondBr(builder, cond2, bloc2, bloc3);
-
+   // SET POSITION bloc2
    LLVMPositionBuilderAtEnd(builder, bloc2);
+   //    a = 4
    LLVMBuildStore(builder, LLVMConstInt(int32, 4, 0), a);
+   // BUILD BR to end
    LLVMBuildBr(builder, end);
+
 
    // set pos bloc3
    // cond3 = a < 4

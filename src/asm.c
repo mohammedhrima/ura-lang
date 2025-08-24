@@ -139,7 +139,7 @@ void handle_ir(Inst *inst)
     }
     case APPEND_BLOC:
     {
-        curr->llvm.bloc = LLVMAppendBasicBlockInContext(context, main_func, curr->name);
+        left->llvm.bloc = LLVMAppendBasicBlockInContext(context, main_func, left->name);
         break;
     }
     case BUILD_COND:
