@@ -107,7 +107,7 @@ enum Type
     RETURN,
     IF, ELIF, ELSE, END_IF, BUILD_COND,
 
-    WHILE, CONTINUE, BREAK,
+    WHILE, CONTINUE, BREAK, END_WHILE,
     FDEC, FCALL, PROTO,
     VOID, INT, CHARS, CHAR, BOOL, FLOAT, PTR, LONG, SHORT,
     STRUCT_DEF, STRUCT_CALL, ID, REF,
@@ -204,11 +204,13 @@ struct Token
         {
             Token *ptr;
         } Fcall;
-        // if condition
+        // statement
         struct
         {
             Token *ptr;
-        } cond;
+            Token *start;
+            Token *end;
+        } statement;
     };
 };
 
