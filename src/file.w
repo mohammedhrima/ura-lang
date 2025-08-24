@@ -4,5 +4,6 @@ main():
 
    if a > 10: 
       b = 1
-
+   elif a > 1:
+      b = 2
    return b
