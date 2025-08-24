@@ -11,7 +11,7 @@ main:                                   # @main
 	movb	$1, %al
 	testb	%al, %al
 	jne	.LBB0_2
-# %bb.1:                                # %start_if
+# %bb.1:                                # %if
 	movl	$1, -8(%rsp)
 .LBB0_2:                                # %end_if
 	movl	-8(%rsp), %eax
