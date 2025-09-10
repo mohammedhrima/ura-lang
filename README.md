@@ -1,1 +1,1 @@
-# Wolf-C Compiler
+# Pandu Compiler

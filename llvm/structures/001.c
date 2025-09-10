@@ -8,16 +8,17 @@ It allocates space for the struct and stores values into the fields.
 #include <llvm-c/BitWriter.h>
 #include <stdio.h>
 
+/*
+struct Point:
+    int x
+    int y
+
+*/
+
 int main() {
     LLVMModuleRef mod = LLVMModuleCreateWithName("struct_example");
     LLVMBuilderRef builder = LLVMCreateBuilder();
-
     LLVMTypeRef i32 = LLVMInt32Type();
-
-    // Create struct type: { i32, i32 }
-    LLVMTypeRef pointStruct = LLVMStructCreateNamed(LLVMGetGlobalContext(), "Point");
-    LLVMTypeRef elements[] = { i32, i32 };
-    LLVMStructSetBody(pointStruct, elements, 2, 0);
 
     // Define main function
     LLVMTypeRef mainType = LLVMFunctionType(i32, NULL, 0, 0);
@@ -25,13 +26,21 @@ int main() {
     LLVMBasicBlockRef entry = LLVMAppendBasicBlock(mainFunc, "entry");
     LLVMPositionBuilderAtEnd(builder, entry);
 
-    // Allocate struct
+    // CREATE STRUCT
+    LLVMTypeRef pointStruct = LLVMStructCreateNamed(LLVMGetGlobalContext(), "Point");
+    LLVMTypeRef elements[] = { i32, i32 };
+
+    // SET STRUCT BODY
+    LLVMStructSetBody(pointStruct, elements, 2, 0);
+
+    // ALLOCATE STRUCT
     LLVMValueRef point = LLVMBuildAlloca(builder, pointStruct, "point");
 
-    // Access and store into fields
+    // ADD ATTRIBUTE
     LLVMValueRef gepX = LLVMBuildStructGEP(builder, point, 0, "x");
     LLVMBuildStore(builder, LLVMConstInt(i32, 10, 0), gepX);
 
+    // ADD ATTRIBUTE
     LLVMValueRef gepY = LLVMBuildStructGEP(builder, point, 1, "y");
     LLVMBuildStore(builder, LLVMConstInt(i32, 20, 0), gepY);
 
