@@ -729,17 +729,15 @@ char *to_string_(char *filename, int line, Type type) {
    return NULL;
 }
 
-bool check_error(const char *filename, const char *funcname, int line,
-                 bool cond,
-                 char *fmt, ...)
+bool check_error(const char *filename, const char *funcname,
+                 int line, bool cond, char *fmt, ...)
 {
    if (!cond) return cond;
    found_error = true;
    va_list ap;
    va_start(ap, fmt);
-   fprintf(stderr,
-           BOLD RED"wcc_error:%s:%s:%d "RESET, filename,
-           funcname, line);
+   fprintf(stderr, BOLD RED"pan_error:%s:%s:%d "RESET,
+           filename, funcname, line);
    vfprintf(stderr, fmt, ap);
    fprintf(stderr, "\n");
    debug("\n");

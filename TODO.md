@@ -14,5 +14,4 @@
     + return
 
 - structs
-
-- if statement
+- function call
