@@ -15,7 +15,7 @@ void handle_ir(Inst *inst)
    Token *curr = inst->token;
    Token *left = inst->left;
    Token *right = inst->right;
-   LLVMValueRef leftRef, rightRef, ret;
+   LLVMValueRef leftRef, rightRef, ret = NULL;
 
    switch (curr->type)
    {
@@ -125,7 +125,6 @@ void handle_ir(Inst *inst)
    }
    case RETURN:
    {
-      LLVMValueRef ret;
       switch (left->type)
       {
       case FCALL:
@@ -156,8 +155,7 @@ void handle_ir(Inst *inst)
          break;
       }
       default:
-         todo(1, "handle this case %s\n",
-              to_string(left->type));
+         todo(1, "handle this case %s\n", to_string(left->type));
          break;
       }
       curr->llvm.element = ret;
@@ -215,7 +213,7 @@ void generate_asm(char *name)
    }
 
    // debug("module name: [%s]\n", moduleName);
-   strcpy(moduleName + strlen(moduleName) - 1, "ll");
+   strcpy(moduleName + strlen(moduleName) - 2, "ll");
    LLVMPrintModuleToFile(mod, moduleName, NULL);
 
    // Cleanup

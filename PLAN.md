@@ -14,10 +14,10 @@
    - open files ...
 
 - conditions, loops:
-   - while
+   + while
    - for loop
-   - break, continue 
-   - if, elif, else
+   + break, continue 
+   + if, elif, else
    - switch/case
    - try/catch:
 
@@ -36,6 +36,7 @@
    - garbage collection mode
 
 - link with C/C++ libraries
+- install for linux/macos/windows
 
 - macros:
    - prepreccesing macros
@@ -44,5 +45,3 @@
    + Alfred V aho
    + Yacc
    + Ll1
-
-- install for linux/macos/windows
