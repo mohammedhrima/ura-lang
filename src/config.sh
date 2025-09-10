@@ -28,16 +28,16 @@ build() {
     echo -e "${YELLOW}Building...${NC}"
     echo "Files: $files"
     echo "Flags: $flags"
-    clang "${files[@]}" "${flags[@]}" -o "$src/wcc" || {
+    clang "${files[@]}" "${flags[@]}" -o "$src/pan" || {
         echo -e "${RED}Error:${NC} Build failed."
         return 1
     }
 }
 
 ir() {
-    echo -e "${YELLOW}Compiling file.w...${NC}"
-    "$src/wcc" "$src/file.w" || {
-        echo -e "${RED}Error:${NC} Compiling .w file failed."
+    echo -e "${YELLOW}Compiling file.pn...${NC}"
+    "$src/pan" "$src/file.pn" || {
+        echo -e "${RED}Error:${NC} Compiling .pn file failed."
         return 1
     }
 }
@@ -76,7 +76,7 @@ update() {
     source "$src/config.sh"
 }
 
-[[ $PS1 != "(wolfc)"* ]] && PS1="(wolfc) $PS1"
+[[ $PS1 != "(pandu)"* ]] && PS1="(pandu) $PS1"
 
 
 # Make sure we're in a git repo

@@ -1,30 +1,35 @@
-	.file	"file.w"
-	.text
-	.globl	main                            # -- Begin function main
-	.p2align	4
-	.type	main,@function
-main:                                   # @main
+	.build_version macos, 15, 0
+	.section	__TEXT,__text,regular,pure_instructions
+	.globl	_main                           ; -- Begin function main
+	.p2align	2
+_main:                                  ; @main
 	.cfi_startproc
-# %bb.0:                                # %entry
-	movl	$1, -4(%rsp)
-	.p2align	4
-.LBB0_1:                                # %while
-                                        # =>This Inner Loop Header: Depth=1
-	cmpl	$9, -4(%rsp)
-	jg	.LBB0_4
-# %bb.2:                                # %while_bloc
-                                        #   in Loop: Header=BB0_1 Depth=1
-	cmpl	$9, -4(%rsp)
-	je	.LBB0_1
-# %bb.3:                                # %else
-                                        #   in Loop: Header=BB0_1 Depth=1
-	incl	-4(%rsp)
-	jmp	.LBB0_1
-.LBB0_4:                                # %end_while
-	movl	-4(%rsp), %eax
-	retq
-.Lfunc_end0:
-	.size	main, .Lfunc_end0-main
+; %bb.0:                                ; %entry
+	sub	sp, sp, #16
+	.cfi_def_cfa_offset 16
+	mov	w8, #1                          ; =0x1
+LBB0_1:                                 ; %while.sink.split
+                                        ; =>This Loop Header: Depth=1
+                                        ;     Child Loop BB0_2 Depth 2
+	mov	w0, w8
+	str	w8, [sp, #12]
+LBB0_2:                                 ; %while
+                                        ;   Parent Loop BB0_1 Depth=1
+                                        ; =>  This Inner Loop Header: Depth=2
+	cmp	w0, #9
+	b.gt	LBB0_5
+; %bb.3:                                ; %while_bloc
+                                        ;   in Loop: Header=BB0_2 Depth=2
+	cmp	w0, #5
+	b.eq	LBB0_2
+; %bb.4:                                ; %else
+                                        ;   in Loop: Header=BB0_1 Depth=1
+	ldr	w8, [sp, #12]
+	add	w8, w8, #1
+	b	LBB0_1
+LBB0_5:                                 ; %end_while
+	add	sp, sp, #16
+	ret
 	.cfi_endproc
-                                        # -- End function
-	.section	".note.GNU-stack","",@progbits
+                                        ; -- End function
+.subsections_via_symbols

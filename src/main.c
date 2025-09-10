@@ -125,7 +125,7 @@ void tokenize(char *filename)
             while (input[i] && !isspace(input[i])) i++;
             char *use = allocate(i - s + 1, sizeof(char));
             strncpy(use, input + s, i - s);
-            char *tmp = strjoin(use, ".w", NULL);
+            char *tmp = strjoin(use, ".pn", NULL);
             free(use);
             use = tmp;
             tokenize(use);
@@ -929,7 +929,7 @@ Token *op_ir(Node *node)
 Token *struct_ir(Node *node)
 {
    // create struct
-   Inst inst = new_inst(node->token);
+   Inst *inst = new_inst(node->token);
    Token **attrs = node->token->Struct.attrs;
    int attrs_size = node->token->Struct.pos;
    // node->token->Struct.attrs = NULL;
@@ -974,7 +974,7 @@ Token *generate_ir(Node *node)
    {
       inst = new_inst(node->token);
       if (node->token->declare) new_variable(node->token);
-      if(node->token->type == STRUCT_CALL) struct_ir(node);
+      if (node->token->type == STRUCT_CALL) struct_ir(node);
       return node->token;
    }
    case STRUCT_DEF: return node->token;
@@ -1001,22 +1001,27 @@ Token *generate_ir(Node *node)
 #endif
    case BREAK: case CONTINUE:
    {
+      debug(RED"handle BREAK/CONTINUE\n");
       bool found = false;
-      for (int i = scoopPos; i >= 0; i--)
+      for (int i = scoopPos; i >= 0 && !found; i--)
       {
          Node *scoop = Gscoop[i];
+         // debug(">>> %s\n", scoop->token->name);
          if (strcmp(scoop->token->name, "while") == 0)
          {
             // BUILD BR
             found = true;
             Inst *inst = new_inst(node->token);
-            inst->token->type = BUILD_BR;
-            if (node->token->type == BREAK) inst->left = scoop->token->statement.end;
+            if (node->token->type == BREAK)
+            {
+               inst->left = scoop->token->statement.end;
+               // debug(RED "break to %k\n" RESET, scoop->token->statement.end);
+            }
             else inst->left = scoop->token->statement.start;
-            break;
+            inst->token->type = BUILD_BR;
          }
       }
-      todo(!found, "Invalid syntax");
+      todo(!found, "Invalid syntax\n");
       break;
    }
 #if 0
@@ -1104,12 +1109,9 @@ void compile(char *filename)
    setName(global->token, ".global");
    enter_scoop(global);
 
-#if DEBUG
    debug(GREEN BOLD"AST:\n" RESET);
-#endif
-
-   while (tokens[exe_pos]->type != END &&
-          !found_error) add_child(global, expr());
+   while (tokens[exe_pos]->type != END && !found_error)
+      add_child(global, expr());
    print_ast(global);
    if (found_error) return;
 
@@ -1131,8 +1133,8 @@ void compile(char *filename)
 #endif
 
 #if ASM
-   copy_insts();
    debug(GREEN BOLD"GENERATE ASSEMBLY CODE:\n" RESET);
+   copy_insts();
    generate_asm(filename);
 #endif
 
@@ -1145,4 +1147,11 @@ int main(int argc, char **argv)
    compile(argv[1]);
    free_memory();
    debug(BLUE BOLD"EXIT CODE:\n" RESET);
+#if !IR
+   debug(RED"NO IR GENERATION\n"RESET);
+#endif
+#if !ASM
+   debug(RED"NO ASSEMBLY GENERATION\n"RESET);
+#endif
+   if (found_error || !ASM || !IR) exit(1);
 }

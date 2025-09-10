@@ -1,7 +1,7 @@
 **/a.out
 **/a.out.dSYM/
-**/wcc
-/src/wcc
+**/pan
+/src/pan
 .vscode
 **/*.dSYM
 **/*.out

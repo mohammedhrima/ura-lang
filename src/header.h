@@ -67,23 +67,23 @@
 #define allocate(len, size) allocate_func(LINE, len, size)
 #define check(cond, fmt, ...) check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)
 #define to_string(type) to_string_(FILE, LINE, type)
-#define todo(cond, fmt, ...) check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__); exit(1);
-#define stop(cond, fmt, ...) check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__); exit(1);
+#define todo(cond, fmt, ...) if (check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)) exit(1);
+#define stop(cond, fmt, ...) if (check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)) exit(1);
 #define seg() raise(SIGSEGV);
 
 #define DATA_TYPES INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT
 
 #define AST_NODE(name, child_func, ...) \
 Node *name() { \
-    Node *left = child_func(); \
-    Token *token; \
-    while ((token = find(__VA_ARGS__, 0))) { \
-        Node *node = new_node(token); \
-        node->left = left; \
-        node->right = child_func(); \
-        left = node; \
-    } \
-    return left; \
+   Node *left = child_func(); \
+   Token *token; \
+   while ((token = find(__VA_ARGS__, 0))) { \
+      Node *node = new_node(token); \
+      node->left = left; \
+      node->right = child_func(); \
+      left = node; \
+   } \
+   return left; \
 }
 
 // TYPEDEFS
