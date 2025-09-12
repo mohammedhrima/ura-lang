@@ -7,8 +7,8 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 # === Paths & Global Variables ===
-src="./"
-files=(main.c utils.c asm.c)
+src="$HOME/Desktop/Personal/pandu-lang/src"
+files=($src/main.c $src/utils.c $src/asm.c)
 
 # === Compiler Flags ===
 san_flags=(-fsanitize=address -fsanitize=null)
@@ -50,14 +50,14 @@ asm() {
     }
 }
 
-exec() {
+exe() {
     echo -e "${YELLOW}compile file.s${NC}"
-    clang "$src/file.s" -o exe.out
+    clang "$src/file.s" -o $src/exe.out
     ./exe.out
 }
 
 run() {
-    build && ir && asm && exec
+    build && ir && asm && exe
 }
 
 # === Format Source Code ===
@@ -66,14 +66,14 @@ indent() {
     astyle --mode=c --indent=spaces=3 --pad-oper --pad-header \
        --keep-one-line-statements --keep-one-line-blocks --convert-tabs \
        --max-code-length=75 --break-after-logical \
-       --suffix=none $src*.c $src*.h
+       --suffix=none $src/*.c $src/*.h
 }
 
 
 # === Reload Config & Shell ===
 
 update() {
-    source "$src/config.sh"
+    source "$src/../config.sh"
 }
 
 [[ $PS1 != "(pandu)"* ]] && PS1="(pandu) $PS1"

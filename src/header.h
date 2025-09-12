@@ -96,29 +96,51 @@ typedef enum Type Type;
 // STRUCTS
 enum Type
 {
-   TMP = 1, CHILDREN, DEFAULT,
-   // TODO: don't assign from reference if it does not have reference
-   REF_ID, REF_HOLD_ID, REF_VAL, REF_HOLD_REF, REF_REF, ID_ID, ID_REF, ID_VAL,
+   // 🔹 General / Special
+   TMP = 1, CHILDREN, DEFAULT, COMMENT, END,
+   // 🔹 Identifiers & References
+   ID, REF,
+   REF_ID, REF_HOLD_ID, REF_VAL, REF_HOLD_REF, REF_REF,
+   ID_ID, ID_REF, ID_VAL,
+
+   // 🔹 Types
+   VOID, INT, FLOAT, LONG, SHORT, BOOL, CHAR, CHARS, PTR,
+   STRUCT_DEF, STRUCT_BODY, STRUCT_ATTR,
+   ARRAY,
+
+   // 🔹 Struct Usage
+   STRUCT_ALLOC, STRUCT_CALL,
+
+   // 🔹 Operators
+   // Assignment
    ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,
+   // Comparison
    EQUAL, NOT_EQUAL, LESS_EQUAL, MORE_EQUAL, LESS, MORE,
+   // Arithmetic
    ADD, SUB, MUL, DIV, MOD,
+   // Logical
    AND, OR, NOT,
+
+   // 🔹 Punctuation & Syntax
    LPAR, RPAR, LBRA, RBRA, COMA, DOT, DOTS, ACCESS,
+
+   // 🔹 Control Flow
    RETURN,
    IF, ELIF, ELSE, END_IF, BUILD_COND,
-
    WHILE, CONTINUE, BREAK, END_WHILE,
-   FDEC, FCALL, PROTO,
-   VOID, INT, CHARS, CHAR, BOOL, FLOAT, PTR, LONG, SHORT,
-   STRUCT_DEF, SET_STRUCT_BODY, ALLOCATE_STRUCT, ADD_ATTRIBUTE,
-   STRUCT_CALL, ID, REF,
-   ARRAY,
-   JNE, JE, JMP, BLOC, END_BLOC, END_COND, APPEND_BLOC, SET_POS,
+   BLOC, END_BLOC, END_COND, APPEND_BLOC, SET_POS,
    BUILD_BR,
-   PUSH, POP, COMMENT,
 
-   END
+   // 🔹 Functions
+   FDEC, FCALL, PROTO,
+
+   // 🔹 Low-level / Jumps
+   JMP, JE, JNE,
+
+   // 🔹 Stack
+   PUSH, POP
 };
+
 
 struct LLvm
 {
@@ -135,7 +157,6 @@ struct Token
    Type assign_type;
 
    char *name;
-   // bool declare; // is variable declaration
    int space; // indentation
    bool remove;
    int ir_reg;
@@ -278,8 +299,8 @@ extern struct _IO_FILE *asm_fd;
 // ----------------------------------------------------------------------------
 
 Token* new_token(Type type, int space);
-void parse_token(char *input, int s, int e,
-                 Type type, int space, char *filename, int line);
+void parse_token(char *input, int s, int e, Type type, int space,
+                 char *filename, int line);
 
 void add_token(Token *token);
 Node *expr();
@@ -342,13 +363,11 @@ char *to_string_(char *filename, int line, Type type);
 void setName(Token *token, char *name);
 void setReg(Token *token, char *creg);
 bool within_space(int space);
-bool check_error(const char *filename,
-                 const char *funcname, int line, bool cond,
-                 char *fmt, ...);
+bool check_error(const char *filename, const char *funcname, int line,
+                 bool cond, char *fmt, ...);
 void free_memory();
 void *allocate_func(int line, int len, int size);
-void create_builtin(char *name, Type *params,
-                    Type retType);
+void create_builtin(char *name, Type *params,  Type retType);
 char *strjoin(char *str0, char *str1, char *str2);
 int sizeofToken(Token *token);
 int alignofToken(Token *token);
