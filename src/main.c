@@ -131,8 +131,7 @@ void tokenize(char *filename)
             tokenize(use);
             free(use);
          }
-         else
-            parse_token(input, s, i, ID, space, filename, line);
+         else parse_token(input, s, i, ID, space, filename, line);
          continue;
       }
       if (isdigit(input[i]))
@@ -153,8 +152,8 @@ Node *expr() {
 AST_NODE(assign, logic, ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN,
          DIV_ASSIGN, 0);
 AST_NODE(logic, equality, AND, OR, 0);
-AST_NODE(equality, comparison, EQUAL, NOT_EQUAL,
-         0); // TODO: handle ! operator
+// TODO: handle ! operator
+AST_NODE(equality, comparison, EQUAL, NOT_EQUAL, 0);
 AST_NODE(comparison, add_sub, LESS, MORE, LESS_EQUAL, MORE_EQUAL, 0);
 AST_NODE(add_sub, mul_div, ADD, SUB, 0);
 AST_NODE(mul_div, dot, MUL, DIV, 0); // TODO: handle modulo %
@@ -209,8 +208,8 @@ Node *func_dec(Node *node)
       todo(1, "handle function return struct properly");
    }
    Token *fname = find(ID, 0);
-   if (check(!typeName ||
-             !fname, "expected data type and identifier after func declaration"))
+   if (check(!typeName || !fname,
+             "expected data type and identifier after func declaration"))
       return node;
    node->token->retType = typeName->type;
    node->token->is_proto = is_proto;
@@ -248,10 +247,10 @@ Node *func_dec(Node *node)
       add_child(node->left, curr);
       find(COMA, 0); // TODO: check this later
    }
-   check((!found_error &&
-          last->type != RPAR), "expected ) after function declaration");
-   check((!found_error &&
-          !find(DOTS, 0)), "Expected : after function declaration");
+   check((!found_error && last->type != RPAR),
+         "expected ) after function declaration");
+   check((!found_error && !find(DOTS, 0)),
+         "Expected : after function declaration");
 
    Node *child = NULL;
    while (within_space(node->token->space)) child = add_child(node, expr());
@@ -342,10 +341,11 @@ Node *symbol(Token *token)
 Node *struct_def(Node *node)
 {
    Token *st_name;
-   if (check(!(st_name = find(ID, 0)), "expected identifier "
-                                       "after struct definition")) return NULL;
-   if (check(!find(DOTS, 0), "expected dots after struct "
-                             "definition")) return NULL;
+   if (check(!(st_name = find(ID, 0)),
+             "expected identifier after struct definition"))
+      return NULL;
+   if (check(!find(DOTS, 0), "expected dots after struct definition"))
+      return NULL;
 
    setName(node->token, NULL);
    node->token->Struct.name = strdup(st_name->name);
@@ -937,13 +937,13 @@ Token *struct_ir(Node *node)
 
    // set struct body
    Token *body = copy_token(node->token);
-   body->type = SET_STRUCT_BODY;
+   body->type = STRUCT_BODY;
    inst = new_inst(body);
    inst->left = node->token;
 
    // allocate struct
    Token *alloca_st = copy_token(node->token);
-   alloca_st->type = ALLOCATE_STRUCT;
+   alloca_st->type = STRUCT_ALLOC;
    inst = new_inst(alloca_st);
    inst->left = node->token;
 

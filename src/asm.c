@@ -23,15 +23,13 @@ void handle_ir(Inst *inst)
    {
       if (curr->name) curr->llvm.element =
             LLVMBuildAlloca(builder, int32Type, curr->name);
-      else curr->llvm.element = LLVMConstInt(int32Type,
-                                                curr->Int.value, 0);
+      else curr->llvm.element = LLVMConstInt(int32Type, curr->Int.value, 0);
       curr->llvm.is_set = true;
       break;
    }
    case ASSIGN:
    {
-      LLVMBuildStore(builder, right->llvm.element,
-                     left->llvm.element);
+      LLVMBuildStore(builder, right->llvm.element, left->llvm.element);
       break;
    }
    case ADD: case SUB: case MUL: case DIV:
@@ -111,8 +109,8 @@ void handle_ir(Inst *inst)
       // debug("FDEC: ", curr->name);
       curr->llvm.funcType = LLVMFunctionType(int32Type, NULL, 0, 0);
       curr->llvm.element = LLVMAddFunction(mod, curr->name, curr->llvm.funcType);
-      LLVMBasicBlockRef funcEntry = LLVMAppendBasicBlock(curr->llvm.element,
-                                    "entry");
+      LLVMBasicBlockRef funcEntry =
+         LLVMAppendBasicBlock(curr->llvm.element, "entry");
       LLVMPositionBuilderAtEnd(builder, funcEntry);
 
       if (strcmp(curr->name, "main") == 0)
@@ -150,8 +148,8 @@ void handle_ir(Inst *inst)
             ret = LLVMBuildLoad2(builder, int32Type, left->llvm.element, left->name);
             ret = LLVMBuildRet(builder, ret);
          }
-         else ret = LLVMBuildRet(builder, LLVMConstInt(int32Type, left->Int.value,
-                                    0));
+         else
+            ret = LLVMBuildRet(builder, LLVMConstInt(int32Type, left->Int.value, 0));
          break;
       }
       default:
@@ -165,8 +163,8 @@ void handle_ir(Inst *inst)
    case APPEND_BLOC:
    {
       check(!left->name, "APPEND BLOC require a name");
-      left->llvm.bloc = LLVMAppendBasicBlockInContext(context, main_func,
-                        left->name);
+      left->llvm.bloc =
+         LLVMAppendBasicBlockInContext(context, main_func, left->name);
       curr->llvm.is_set = true;
       break;
    }
