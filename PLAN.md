@@ -36,9 +36,10 @@
 
 - functions:
    - built in functions
-   - declare function
-   - function return
-   - function takes arguments
+   + declare function
+   + function call
+   + function return
+   + function takes arguments
    - variadic functions
    - polymorphism
 
