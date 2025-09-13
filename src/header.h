@@ -232,7 +232,7 @@ struct Token
          Token *ptr;
          Token *start;
          Token *end;
-      } statement;
+      } Statement;
    };
 };
 
