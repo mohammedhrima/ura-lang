@@ -452,7 +452,8 @@ void parse_token(char *input, int s, int e,
       struct { char *name; Type type; } keywords[] = {{"if", IF}, {"elif", ELIF},
          {"else", ELSE}, {"while", WHILE}, {"func", FDEC}, {"return", RETURN},
          {"break", BREAK}, {"continue", CONTINUE}, {"ref", REF}, {"and", AND},
-         {"or", OR}, {"struct", STRUCT_DEF}, {"is", EQUAL}, {"proto", PROTO}, {0, 0}
+         {"or", OR}, {"struct", STRUCT_DEF}, {"is", EQUAL}, {"proto", PROTO}, 
+         {0, 0},
       };
       for (i = 0; keywords[i].name; i++)
       {
@@ -889,7 +890,7 @@ Token *get_struct(char *name)
 #endif
       for (int i = 0; i < node->spos; i++)
          if (strcmp(node->structs[i]->Struct.name, name) == 0)
-            return copy_token(node->structs[i]);
+            return node->structs[i];
    }
    // check(1, "%s not found\n", name);
    return NULL;

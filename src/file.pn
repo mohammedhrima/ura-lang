@@ -1,7 +1,8 @@
 
 
-func int hello(int a):
-    return a
+struct User:
+    int a
+    int b
 
 main():
-    hello(11)
+    User user
