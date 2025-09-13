@@ -252,6 +252,7 @@ void generate_asm(char *name)
 
    // Create LLVM context, module, and IR builder
    char *moduleName = resolve_path(name);
+   // context = LLVMGetGlobalContext();
    context = LLVMContextCreate();
    mod = LLVMModuleCreateWithName(moduleName);
    builder = LLVMCreateBuilder();
