@@ -46,7 +46,7 @@ int main() {
 
     LLVMBuildRet(builder, LLVMConstInt(i32, 0, 0));
 
-    LLVMPrintModuleToFile(mod, "struct1.ll", NULL);
+    LLVMPrintModuleToFile(mod, "out.ll", NULL);
 
     LLVMDisposeBuilder(builder);
     LLVMDisposeModule(mod);
