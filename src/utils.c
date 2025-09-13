@@ -129,7 +129,7 @@ int ptoken(Token *token)
    case BOOL: case FLOAT: case LONG:
    {
       if (token->name) res += debug("name [%s] ", token->name);
-      // if (token->declare) res += debug("[declare] ");
+      // if (token->is_declare) res += debug("[declare] ");
       // if (!token->name)
       else
       {
@@ -285,7 +285,7 @@ void print_inst(Inst *inst)
    case LONG:
    {
       debug("[%-6s] ", to_string(curr->type));
-      if (curr->declare)
+      if (curr->is_declare)
       {
          // stop(1, "I removed declare in intialize variable, this coniditon should never be true");
          // debug("declare [%s] PTR=[%d] ", curr->name, curr->ptr);
@@ -443,7 +443,7 @@ void parse_token(char *input, int s, int e,
          {
             setName(new, NULL);
             new->type = dataTypes[i].type;
-            new->declare = true;
+            new->is_declare = true;
             break;
          }
       }
@@ -499,7 +499,7 @@ Token *copy_token(Token *token)
    // if (token->creg) new->creg = strdup(token->creg);
    if (token->Struct.attrs)
    {
-      new->Struct.attrs = allocate(token->Struct.len, sizeof(Token*));
+      new->Struct.attrs = allocate(token->Struct.size, sizeof(Token*));
       for (int i = 0; i < new->Struct.pos; i++)
          new->Struct.attrs[i] = copy_token(token->Struct.attrs[i]);
    }
@@ -948,12 +948,12 @@ void add_attribute(Token *obj, Token *attr)
 {
    if (obj->Struct.attrs == NULL)
    {
-      obj->Struct.len = 10;
-      obj->Struct.attrs = allocate(obj->Struct.len, sizeof(Token *));
+      obj->Struct.size = 10;
+      obj->Struct.attrs = allocate(obj->Struct.size, sizeof(Token *));
    }
-   else if (obj->Struct.pos + 1 == obj->Struct.len)
+   else if (obj->Struct.pos + 1 == obj->Struct.size)
    {
-      Token **tmp = allocate((obj->Struct.len *= 2), sizeof(Token *));
+      Token **tmp = allocate((obj->Struct.size *= 2), sizeof(Token *));
       memcpy(tmp, obj->Struct.attrs, obj->Struct.pos * sizeof(Token *));
       free(obj->Struct.attrs);
       obj->Struct.attrs = tmp;
