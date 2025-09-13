@@ -673,7 +673,7 @@ Token *if_ir(Node *node)
    // cond ? go to left : go to right
    Inst *inst = new_inst(node->token);
    inst->token->type = BUILD_COND;
-   inst->token->statement.ptr = cond;
+   inst->token->Statement.ptr = cond;
    inst->left = start;
    inst->right = children[0]->token;
 
@@ -725,7 +725,7 @@ Token *if_ir(Node *node)
          // cond ? go to left : go to right
          Inst *inst = new_inst(curr->token);
          inst->token->type = BUILD_COND;
-         inst->token->statement.ptr = cond;
+         inst->token->Statement.ptr = cond;
          inst->left = children[i]->token;
          inst->right = children[i + 1]->token;
 
@@ -775,8 +775,8 @@ Token *while_ir(Node *node)
    bloc->token->type = APPEND_BLOC;
    bloc->left = loop_end;
 
-   node->token->statement.start = loop_cond;
-   node->token->statement.end = loop_end;
+   node->token->Statement.start = loop_cond;
+   node->token->Statement.end = loop_end;
 
    // BUILD BR
    Inst *inst = new_inst(copy_token(node->token));
@@ -796,7 +796,7 @@ Token *while_ir(Node *node)
    // cond ? go to left : go to right
    inst = new_inst(node->token);
    inst->token->type = BUILD_COND;
-   inst->token->statement.ptr = cond;
+   inst->token->Statement.ptr = cond;
    inst->left = loop_body;
    inst->right = loop_end;
 
@@ -1014,10 +1014,10 @@ Token *generate_ir(Node *node)
             Inst *inst = new_inst(node->token);
             if (node->token->type == BREAK)
             {
-               inst->left = scoop->token->statement.end;
-               // debug(RED "break to %k\n" RESET, scoop->token->statement.end);
+               inst->left = scoop->token->Statement.end;
+               // debug(RED "break to %k\n" RESET, scoop->token->Statement.end);
             }
-            else inst->left = scoop->token->statement.start;
+            else inst->left = scoop->token->Statement.start;
             inst->token->type = BUILD_BR;
          }
       }

@@ -170,7 +170,7 @@ void handle_ir(Inst *inst)
    }
    case BUILD_COND:
    {
-      LLVMValueRef cond = curr->statement.ptr->llvm.element;
+      LLVMValueRef cond = curr->Statement.ptr->llvm.element;
       LLVMBasicBlockRef start = left->llvm.bloc;
       LLVMBasicBlockRef end = right->llvm.bloc;
       curr->llvm.element = LLVMBuildCondBr(builder, cond, start, end);
