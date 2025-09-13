@@ -21,9 +21,10 @@ void handle_ir(Inst *inst)
    {
    case INT:
    {
-      if (curr->name) curr->llvm.element =
-            LLVMBuildAlloca(builder, int32Type, curr->name);
-      else curr->llvm.element = LLVMConstInt(int32Type, curr->Int.value, 0);
+      if (curr->name) 
+         curr->llvm.element = LLVMBuildAlloca(builder, int32Type, curr->name);
+      else 
+         curr->llvm.element = LLVMConstInt(int32Type, curr->Int.value, 0);
       curr->llvm.is_set = true;
       break;
    }
@@ -34,23 +35,27 @@ void handle_ir(Inst *inst)
    }
    case ADD: case SUB: case MUL: case DIV:
    {
-      if (left->name) leftRef = LLVMBuildLoad2(builder, int32Type,
-                                   left->llvm.element, left->name);
+      if (left->name) 
+         leftRef = LLVMBuildLoad2(builder, int32Type, left->llvm.element, left->name);
       else leftRef = left->llvm.element;
-      if (right->name) rightRef = LLVMBuildLoad2( builder, int32Type,
-                                     right->llvm.element, right->name);
+      if (right->name) 
+         rightRef = LLVMBuildLoad2( builder, int32Type, right->llvm.element, right->name);
       else rightRef = right->llvm.element;
 
       Type op = curr->type;
       switch (curr->type)
       {
-      case ADD: ret = LLVMBuildAdd(builder, leftRef, rightRef, to_string(op));
+      case ADD:
+         ret = LLVMBuildAdd(builder, leftRef, rightRef, to_string(op));
          break;
-      case SUB: ret = LLVMBuildSub(builder, leftRef, rightRef, to_string(op));
+      case SUB:
+         ret = LLVMBuildSub(builder, leftRef, rightRef, to_string(op));
          break;
-      case MUL: ret = LLVMBuildMul(builder, leftRef, rightRef, to_string(op));
+      case MUL:
+         ret = LLVMBuildMul(builder, leftRef, rightRef, to_string(op));
          break;
-      case DIV: ret = LLVMBuildSDiv(builder, leftRef, rightRef, to_string(op));
+      case DIV:
+         ret = LLVMBuildSDiv(builder, leftRef, rightRef, to_string(op));
          break;
       default: todo(1, "handle this")
       }
@@ -64,7 +69,7 @@ void handle_ir(Inst *inst)
       if (left->name) leftRef = LLVMBuildLoad2(builder, int32Type,
                                    left->llvm.element, left->name);
       else leftRef = left->llvm.element;
-      if (right->name) rightRef = LLVMBuildLoad2( builder, int32Type,
+      if (right->name) rightRef = LLVMBuildLoad2(builder, int32Type,
                                      right->llvm.element, right->name);
       else rightRef = right->llvm.element;
 
@@ -98,19 +103,66 @@ void handle_ir(Inst *inst)
    }
    case FCALL:
    {
-      LLvm fcall = curr->Fcall.ptr->llvm;
-      curr->llvm.element = LLVMBuildCall2(builder, fcall.funcType, fcall.element,
+      /*
+      LLVMValueRef args[] = {
+         LLVMConstInt(int32Type, 5, 0),
+         LLVMConstInt(int32Type, 3, 0),
+         LLVMConstInt(int32Type, 2, 0),
+      };
+      LLVMValueRef callResult = LLVMBuildCall2(builder, addMultiplyType, addMultiplyFunc, args, 3, "call_result");
+      */
+
+      LLvm srcFunc = curr->Fcall.ptr->llvm;
+      LLVMValueRef *args = NULL;
+      if(curr->Fcall.pos)
+      {
+         args = allocate(curr->Fcall.pos, sizeof(LLVMValueRef));
+         for(int i = 0; i < curr->Fcall.pos; i++)
+         {
+            Token *arg = curr->Fcall.args[i];
+            debug(">> [%k]\n", arg);
+            check(!arg->llvm.is_set, "llvm is not set");
+            args[i] = curr->Fcall.args[i]->llvm.element;
+         }
+         curr->llvm.element = LLVMBuildCall2(builder, srcFunc.funcType, srcFunc.element,
+            args, curr->Fcall.pos, curr->name);
+         free(args);
+      }
+      else
+         curr->llvm.element = LLVMBuildCall2(builder, srcFunc.funcType, srcFunc.element,
                                           NULL, 0, curr->name);
+      
       curr->llvm.is_set = true;
       break;
    }
    case FDEC:
    {
       // debug("FDEC: ", curr->name);
-      curr->llvm.funcType = LLVMFunctionType(int32Type, NULL, 0, 0);
+      LLVMTypeRef *args = NULL;
+      
+      if(curr->Fdec.pos)
+      {
+         args = allocate(curr->Fdec.pos + 1, sizeof(LLVMTypeRef));
+         for(int i = 0; i < curr->Fdec.pos; i++)
+         {
+            switch (curr->Fdec.args[i]->type)
+            {
+            case INT:
+               args[i] = int32Type;
+               break;
+            default:
+               check(1, "handle this case");
+               break;
+            }
+         }
+         curr->llvm.funcType = LLVMFunctionType(int32Type, args, curr->Fdec.pos, 0);
+         free(args);
+      }
+      else curr->llvm.funcType = LLVMFunctionType(int32Type, NULL, 0, 0);
+
       curr->llvm.element = LLVMAddFunction(mod, curr->name, curr->llvm.funcType);
-      LLVMBasicBlockRef funcEntry =
-         LLVMAppendBasicBlock(curr->llvm.element, "entry");
+      LLVMBasicBlockRef funcEntry = LLVMAppendBasicBlock(curr->llvm.element,
+                                    "entry");
       LLVMPositionBuilderAtEnd(builder, funcEntry);
 
       if (strcmp(curr->name, "main") == 0)
@@ -132,7 +184,7 @@ void handle_ir(Inst *inst)
       }
       case INT:
       {
-         // debug(">>>> %k\n", left);
+         // debug(">>>> %k\n\n", left);
          // if(!left->llvm.is_set)
          // {
          //     debug(RED"variable is not set\n"RESET);
@@ -142,7 +194,7 @@ void handle_ir(Inst *inst)
          // if(!left->llvm.is_set)
          //     check_error(FILE, FUNC, LINE, true, "found error"); exit(1);
 
-         // debug(RED"return %k\n"RESET, left);
+         // debug(RED"return %k\n\n"RESET, left);
          if (left->name)
          {
             ret = LLVMBuildLoad2(builder, int32Type, left->llvm.element, left->name);

@@ -167,7 +167,7 @@ struct Token
    bool is_cond;
    bool is_ref;
    bool has_ref;
-   bool declare;
+   bool is_declare;
    bool is_attr;
    bool is_proto;
    bool is_arg;
@@ -218,14 +218,24 @@ struct Token
       {
          char *name;
          Token **attrs;
+         int size;
          int pos;
-         int len;
       } Struct;
       // function call
       struct
       {
          Token *ptr;
+         Token **args;
+         int size;
+         int pos;
       } Fcall;
+      // function declaration
+      struct
+      {
+         Token **args;
+         int size;
+         int pos;
+      } Fdec;
       // statement
       struct
       {
