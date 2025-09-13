@@ -319,6 +319,7 @@ Node *symbol(Token *token)
 {
    // Token *struct_token = NULL;
    Node *node;
+   Token *st_dec = NULL;
    if (token->is_declare)
    {
       Token *tmp = find(ID, 0);
@@ -327,11 +328,21 @@ Node *symbol(Token *token)
       setName(token, tmp->name);
       return new_node(token);
    }
-   else if (token->type == ID && token->name && find(LPAR, 0))
+   else if (token->type == ID && find(LPAR, 0))
    {
       node = new_node(token);
       if (strcmp(token->name, "main") == 0) return func_main(node);
       return func_call(node);
+   }
+   else if(token->type == ID && (st_dec = get_struct(token->name)))
+   {
+      token = copy_token(st_dec);
+      token->type = STRUCT_DEF;
+
+      Token *tmp = find(ID, 0);
+      check(!tmp, "Expected variable name after [%s] symbol\n",
+            to_string(token->type));
+      return new_node(token);
    }
    return new_node(token);
 }
@@ -639,7 +650,6 @@ Token *func_call_ir(Node *node)
       
       func = copy_node(func);
       node->token->retType = func->token->retType;
-      inst = new_inst(node->token);
       
       // setReg(node->token, func->token->creg);
       Node *fcall = node;
@@ -647,7 +657,7 @@ Token *func_call_ir(Node *node)
 
       if (check(fcall->cpos != fdec->cpos, 
          "Incompatible number of arguments %s", func->token->name))
-         return inst->token;
+         return NULL;
 
       for (int i = 0; !found_error && i < fcall->cpos; i++)
       {
@@ -666,6 +676,7 @@ Token *func_call_ir(Node *node)
          // set_func_call_regs(&r, src, dist, node);
       }
       free_node(func);
+      inst = new_inst(node->token);
    }
    return inst->token;
 }
@@ -952,6 +963,7 @@ Token *op_ir(Node *node)
 // ADD ATTRIBUTE
 Token *struct_ir(Node *node)
 {
+   todo(1, "handle this\n");
    // create struct
    Inst *inst = new_inst(node->token);
    Token **attrs = node->token->Struct.attrs;
@@ -1104,11 +1116,6 @@ Token *generate_ir(Node *node)
       }
       inst->left = left;
       inst->right = right;
-      return node->token;
-   }
-   case DEFAULT:
-   {
-      todo(1, "who is looking for default ?");
       return node->token;
    }
 #endif
