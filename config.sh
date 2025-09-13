@@ -53,7 +53,7 @@ asm() {
 exe() {
     echo -e "${YELLOW}compile file.s${NC}"
     clang "$src/file.s" -o $src/exe.out
-    ./exe.out
+    $src/exe.out
 }
 
 run() {
