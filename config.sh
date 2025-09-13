@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # === Color Definitions ===
 GREEN='\033[0;32m'
@@ -18,12 +18,10 @@ llvm_flags=($(llvm-config --cflags --ldflags --libs core))
 
 flags=("${san_flags[@]}" "${debug_flags[@]}" "${warn_flags[@]}" "${llvm_flags[@]}")
 
-
 # === Export Variables for Shell Access ===
 export flags files llvm_flags src
 
 # === Build Functions ===
-
 build() {
     echo -e "${YELLOW}Building...${NC}"
     echo "Files: $files"
@@ -51,9 +49,8 @@ asm() {
 }
 
 exe() {
-    echo -e "${YELLOW}compile file.s${NC}"
-    clang "$src/file.s" -o $src/exe.out
-    $src/exe.out
+    echo -e "${YELLOW}Compiling file.s...${NC}"
+    clang "$src/file.s" -o "$src/exe.out" && "$src/exe.out"
 }
 
 run() {
@@ -69,39 +66,43 @@ indent() {
        --suffix=none $src/*.c $src/*.h
 }
 
-
-# === Reload Config & Shell ===
-
+# === Reload Config ===
 update() {
     source "$src/../config.sh"
 }
 
-[[ $PS1 != "(pandu)"* ]] && PS1="(pandu) $PS1"
+# === Prompt Handling (works for bash & zsh) ===
+set_prompt() {
+    if [ -n "$ZSH_VERSION" ]; then
+        # zsh: username + last folder + %
+        PROMPT="(pandu) %n@%1~ % "
+    elif [ -n "$BASH_VERSION" ]; then
+        # bash: username + last folder + $
+        PS1="(pandu) \u@\W \$ "
+    fi
+}
+set_prompt
 
 
-# Make sure we're in a git repo
-if ! git rev-parse --is-inside-work-tree &>/dev/null; then
-    echo -e "${YELLOW}Warning:${NC} Not a git repository, skipping sync check."
-    return 0
-fi
+# === Git Sync Check ===
+if git rev-parse --is-inside-work-tree &>/dev/null; then
+    git fetch origin &>/dev/null
 
-# Fetch remote changes
-git fetch origin &>/dev/null
+    LOCAL=$(git rev-parse @)
+    REMOTE=$(git rev-parse @{u} 2>/dev/null || echo "")
+    BASE=$(git merge-base @ @{u} 2>/dev/null || echo "")
 
-# Compare local vs remote
-LOCAL=$(git rev-parse @)
-REMOTE=$(git rev-parse @{u})
-BASE=$(git merge-base @ @{u})
-
-if [ "$LOCAL" = "$REMOTE" ]; then
-    return 0
-elif [ "$LOCAL" = "$BASE" ]; then
-    echo -e "${RED}Error:${NC} Your branch is behind the remote. Please pull before building."
-    return 1
-elif [ "$REMOTE" = "$BASE" ]; then
-    echo -e "${YELLOW}Warning:${NC} Your branch is ahead of the remote."
-    return 0
+    if [ "$LOCAL" = "$REMOTE" ]; then
+        :
+    elif [ "$LOCAL" = "$BASE" ]; then
+        echo -e "${RED}Error:${NC} Your branch is behind the remote. Please pull before building."
+        return 1
+    elif [ "$REMOTE" = "$BASE" ]; then
+        echo -e "${YELLOW}Warning:${NC} Your branch is ahead of the remote."
+    else
+        echo -e "${RED}Error:${NC} Your branch has diverged from remote. Resolve conflicts first."
+        return 1
+    fi
 else
-    echo -e "${RED}Error:${NC} Your branch has diverged from remote. Resolve conflicts first."
-    return 1
+    echo -e "${YELLOW}Warning:${NC} Not a git repository, skipping sync check."
 fi
