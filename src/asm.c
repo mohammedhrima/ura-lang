@@ -103,15 +103,6 @@ void handle_ir(Inst *inst)
    }
    case FCALL:
    {
-      /*
-      LLVMValueRef args[] = {
-         LLVMConstInt(int32Type, 5, 0),
-         LLVMConstInt(int32Type, 3, 0),
-         LLVMConstInt(int32Type, 2, 0),
-      };
-      LLVMValueRef callResult = LLVMBuildCall2(builder, addMultiplyType, addMultiplyFunc, args, 3, "call_result");
-      */
-
       LLvm srcFunc = curr->Fcall.ptr->llvm;
       LLVMValueRef *args = NULL;
       if(curr->Fcall.pos)
