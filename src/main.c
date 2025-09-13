@@ -337,7 +337,7 @@ Node *symbol(Token *token)
    else if(token->type == ID && (st_dec = get_struct(token->name)))
    {
       token = copy_token(st_dec);
-      token->type = STRUCT_DEF;
+      token->type = STRUCT_CALL;
 
       Token *tmp = find(ID, 0);
       check(!tmp, "Expected variable name after [%s] symbol\n",
