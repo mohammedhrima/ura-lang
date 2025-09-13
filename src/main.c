@@ -194,13 +194,12 @@ Node *sign() // TODO: implement it
    return prime();
 }
 
-// Function Declaration:
-//    + left children: arguments
-//    + children     : code block
 Node *func_dec(Node *node)
 {
+   // Function Declaration:
+   //    + left children: arguments
+   //    + children     : code block
    bool is_proto = find(PROTO, 0) != NULL;
-
    Token *typeName = find(DATA_TYPES, 0);
    if (typeName->type == ID)
    {
@@ -244,13 +243,14 @@ Node *func_dec(Node *node)
          name->is_ref = is_ref;
          name->type = data_type->type;
       }
+      curr->token->is_declare = true;
       add_child(node->left, curr);
       find(COMA, 0); // TODO: check this later
    }
-   check((!found_error && last->type != RPAR),
-         "expected ) after function declaration");
-   check((!found_error && !find(DOTS, 0)),
-         "Expected : after function declaration");
+   check(!found_error &&
+         last->type != RPAR, "expected ) after function declaration");
+   check(!found_error &&
+         !find(DOTS, 0), "Expected : after function declaration");
 
    Node *child = NULL;
    while (within_space(node->token->space)) child = add_child(node, expr());
@@ -269,10 +269,10 @@ Node *func_dec(Node *node)
    return node;
 }
 
-// Function call:
-//    + children: Parameters
 Node *func_call(Node *node)
 {
+   // Function call:
+   //    + children: Parameters
    node->token->type = FCALL;
    Token *arg = NULL;
    Token *token = node->token;
@@ -288,10 +288,10 @@ Node *func_call(Node *node)
    return node;
 }
 
-// Function main:
-//    + children: code bloc
 Node *func_main(Node *node)
 {
+   // Function main:
+   //    + children: code bloc
    check(!find(RPAR, 0), "expected ) after main declaration");
    check(!find(DOTS, 0), "expected : after main() declaration");
 
@@ -319,7 +319,7 @@ Node *symbol(Token *token)
 {
    // Token *struct_token = NULL;
    Node *node;
-   if (token->declare)
+   if (token->is_declare)
    {
       Token *tmp = find(ID, 0);
       check(!tmp, "Expected variable name after [%s] symbol\n",
@@ -336,10 +336,10 @@ Node *symbol(Token *token)
    return new_node(token);
 }
 
-// Struct def Layout:
-//    + children: attributes
 Node *struct_def(Node *node)
 {
+   // Struct def Layout:
+   //    + children: attributes
    Token *st_name;
    if (check(!(st_name = find(ID, 0)),
              "expected identifier after struct definition"))
@@ -381,12 +381,12 @@ Node *struct_def(Node *node)
    return node;
 }
 
-// if Layout:
-//    + left    : condition
-//    + children: code bloc
-//    + right   : elif/else Layout
 Node *if_node(Node *node)
 {
+   // if Layout:
+   //    + left    : condition
+   //    + children: code bloc
+   //    + right   : elif/else Layout
    enter_scoop(node);
 
    node->left = expr();  // condition, TODO: check if it's boolean
@@ -433,11 +433,11 @@ Node *if_node(Node *node)
    return node;
 }
 
-// while Layout:
-//    + left    : condition
-//    + children: code bloc
 Node *while_node(Node *node)
 {
+   // while Layout:
+   //    + left    : condition
+   //    + children: code bloc
    enter_scoop(node);
 
    node->left = expr();  // condition, TODO: check if it's boolean
@@ -462,7 +462,7 @@ Node *prime()
    // else if ((token = find(REF, 0)))
    // {
    //     node = prime(); // TODO: check it
-   //     check(!node->token->declare, "must be variable declaration after ref");
+   //     check(!node->token->is_declare, "must be variable declaration after ref");
    //     node->token->is_ref = true;
    //     return node;
    // }
@@ -497,15 +497,30 @@ Token *func_dec_ir(Node *node)
    // ptr = 0;
 
    Inst* inst = NULL;
-   if (!node->token->is_proto) inst = new_inst(node->token);
+   // if (!node->token->is_proto)
+   inst = new_inst(node->token);
 
    // parameters
-   // Node *curr = node->left;
-   // for (int i = 0, r = 0; curr && i < curr->cpos && !found_error; i++)
-   // {
-   //     Node *child = curr->children[i];
-   //     set_func_dec_regs(child->token, &r, node->token->is_proto);
-   // }
+   Node **params = (node->left ? node->left->children : NULL);
+   Token *token = node->token;
+   for (int i = 0; params && i < node->left->cpos && !found_error; i++)
+   {
+      Node *child = params[i];
+      generate_ir(child);
+      if (token->Fdec.args == NULL)
+      {
+         token->Fdec.size = 10;
+         token->Fdec.args = allocate(token->Fdec.size, sizeof(Token*));
+      }
+      else if (token->Fdec.pos + 1 == token->Fdec.size)
+      {
+         Token **tmp = allocate(token->Fdec.size *= 2, sizeof(Token*));
+         memcpy(tmp, token->Fdec.args, token->Fdec.pos * sizeof(Token*));
+         free(token->Fdec.args);
+         token->Fdec.args = tmp;
+      }
+      token->Fdec.args[token->Fdec.pos++] = child->token;
+   }
 
    // if (node->token->is_proto) set_remove(node);
    // code bloc
@@ -521,12 +536,11 @@ Token *func_dec_ir(Node *node)
       Token *new = new_token(END_BLOC, node->token->space);
       new->name = strdup(node->token->name);
       new_inst(new);
-      // node->token->ptr = ptr;
-      // ptr = tmp_ptr;
    }
    exit_scoop();
-   if (!node->token->is_proto) return inst->token;
-   return NULL;
+   // if (!node->token->is_proto)
+   return inst->token;
+   // return NULL;
 }
 
 Token *func_call_ir(Node *node)
@@ -620,25 +634,35 @@ Token *func_call_ir(Node *node)
       Node *func = get_function(node->token->name);
       if (!func) return NULL;
       node->token->Fcall.ptr = func->token;
-
+      node->token->Fcall.args = allocate(node->cpos, sizeof(Token*));
+      node->token->Fcall.pos = node->cpos;
+      
       func = copy_node(func);
       node->token->retType = func->token->retType;
       inst = new_inst(node->token);
-
+      
       // setReg(node->token, func->token->creg);
-      Node *fdec = func->left;
       Node *fcall = node;
+      Node *fdec = func->left;
 
-      for (int i = 0; !found_error && i < fcall->cpos && i < fdec->cpos; i++)
+      if (check(fcall->cpos != fdec->cpos, 
+         "Incompatible number of arguments %s", func->token->name))
+         return inst->token;
+
+      for (int i = 0; !found_error && i < fcall->cpos; i++)
       {
-         Node *darg = fdec->children[i];
          Node *carg = fcall->children[i]; // will always be ID
+         Node *darg = fdec->children[i];
 
          Token *src = generate_ir(carg);
+         Token *dist = generate_ir(darg);
 
-         if (check(src->type == ID, "Indeclared variable %s",
-                   carg->token->name)) break;
-         Token *dist = copy_token(darg->token);
+         if (check(src->type == ID, "Indeclared variable %s", carg->token->name)) break;
+         if (check(src->type != dist->type, "Incompatible type arg %s", func->token->name)) break;
+         debug(CYAN"==(%k)==\n"RESET, src);
+         debug(CYAN"==(%k)==\n"RESET, dist);
+         node->token->Fcall.args[i] = src;
+         // Token *dist = copy_token(darg->token);
          // set_func_call_regs(&r, src, dist, node);
       }
       free_node(func);
@@ -973,7 +997,7 @@ Token *generate_ir(Node *node)
    case FLOAT: case LONG: case CHARS: case PTR:
    {
       inst = new_inst(node->token);
-      if (node->token->declare) new_variable(node->token);
+      if (node->token->is_declare) new_variable(node->token);
       if (node->token->type == STRUCT_CALL) struct_ir(node);
       return node->token;
    }
@@ -988,6 +1012,7 @@ Token *generate_ir(Node *node)
    }
    case IF:    return if_ir(node);
    case WHILE: return while_ir(node);
+   case FCALL: return func_call_ir(node);
    case FDEC:  return func_dec_ir(node);
    case RETURN:
    {
@@ -996,9 +1021,6 @@ Token *generate_ir(Node *node)
       inst->left = left;
       return node->token;
    }
-#if 0
-   case FCALL: return func_call_ir(node);
-#endif
    case BREAK: case CONTINUE:
    {
       debug(RED"handle BREAK/CONTINUE\n");
