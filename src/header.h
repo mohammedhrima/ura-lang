@@ -106,7 +106,7 @@ enum Type
    // 🔹 Types
    VOID, INT, FLOAT, LONG, SHORT, BOOL, CHAR, CHARS, PTR,
    ARRAY,
-   
+
    // 🔹 Struct Usage
    STRUCT_DEF, STRUCT_BODY, STRUCT_ATTR,
    STRUCT_ALLOC, STRUCT_CALL,
