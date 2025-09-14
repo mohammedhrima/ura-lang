@@ -21,16 +21,16 @@ void handle_asm(Inst *inst)
    {
    case INT:
    {
-      if (curr->name) 
+      if (curr->name)
          curr->llvm.element = LLVMBuildAlloca(builder, int32Type, curr->name);
-      else 
+      else
          curr->llvm.element = LLVMConstInt(int32Type, curr->Int.value, 0);
       curr->llvm.is_set = true;
       break;
    }
    case STRUCT_DEF:
    {
-      curr->llvm.is_set = true; 
+      curr->llvm.is_set = true;
       // CREATE STRUCT TYPE
       // SET STRUCT BODY
       curr->llvm.structType = LLVMStructCreateNamed(LLVMGetGlobalContext(), curr->Struct.name);
@@ -39,7 +39,6 @@ void handle_asm(Inst *inst)
       for (int i = 0; i < pos; i++)
       {
          Token *attr = curr->Struct.attrs[i];
-         if(attr) debug(">>> %k\n", attr);
          stop(!attr, "attribite is NULL\n");
          switch (attr->type)
          {
@@ -56,33 +55,40 @@ void handle_asm(Inst *inst)
       free(attrs);
       break;
    }
-   case STRUCT_CALL: 
+   case STRUCT_CALL:
    {
-      curr->llvm.element = LLVMBuildAlloca(builder,
-      curr->Struct.ptr->llvm.structType, curr->name);
+      curr->llvm.element = LLVMBuildAlloca(builder, curr->Struct.ptr->llvm.structType, curr->name);
       curr->llvm.is_set = true;
       break;
    }
-   case ACCESS:
+   case DOT:
    {
-      todo(1, "access");
-      // LLVMValueRef gep1X = LLVMBuildStructGEP(builder, point1, 0, "point1_x");
-      LLVMValueRef structRef = left->llvm.element;
+      LLVMValueRef st_call = left->llvm.element;
+      LLVMTypeRef st_type = left->Struct.ptr->llvm.structType;
       int index = right->Struct.attr_index; // attribute position
-      curr->llvm.element = LLVMBuildStructGEP(builder, structRef, index, "access");
+      curr->llvm.element = LLVMBuildStructGEP2(builder, st_type, st_call, index, right->name);
+      curr->llvm.is_set = true;
+      curr->type = right->type;
+      curr->name = strdup(right->name);
       break;
    }
    case ASSIGN:
    {
+      debug("==================================\n");
+      debug(">>> %k\n", left);
+      debug(">>> %k\n", right);
+      debug("==================================\n");
+      check(!left->llvm.is_set, "assign, left is not set");
+      check(!right->llvm.is_set, "assign, right is not set");
       LLVMBuildStore(builder, right->llvm.element, left->llvm.element);
       break;
    }
    case ADD: case SUB: case MUL: case DIV:
    {
-      if (left->name) 
+      if (left->name)
          leftRef = LLVMBuildLoad2(builder, int32Type, left->llvm.element, left->name);
       else leftRef = left->llvm.element;
-      if (right->name) 
+      if (right->name)
          rightRef = LLVMBuildLoad2( builder, int32Type, right->llvm.element, right->name);
       else rightRef = right->llvm.element;
 
@@ -149,10 +155,10 @@ void handle_asm(Inst *inst)
    {
       LLvm srcFunc = curr->Fcall.ptr->llvm;
       LLVMValueRef *args = NULL;
-      if(curr->Fcall.pos)
+      if (curr->Fcall.pos)
       {
          args = allocate(curr->Fcall.pos, sizeof(LLVMValueRef));
-         for(int i = 0; i < curr->Fcall.pos; i++)
+         for (int i = 0; i < curr->Fcall.pos; i++)
          {
             Token *arg = curr->Fcall.args[i];
             debug(">> [%k]\n", arg);
@@ -160,13 +166,13 @@ void handle_asm(Inst *inst)
             args[i] = curr->Fcall.args[i]->llvm.element;
          }
          curr->llvm.element = LLVMBuildCall2(builder, srcFunc.funcType, srcFunc.element,
-            args, curr->Fcall.pos, curr->name);
+                                             args, curr->Fcall.pos, curr->name);
          free(args);
       }
       else
          curr->llvm.element = LLVMBuildCall2(builder, srcFunc.funcType, srcFunc.element,
-                                          NULL, 0, curr->name);
-      
+                                             NULL, 0, curr->name);
+
       curr->llvm.is_set = true;
       break;
    }
@@ -174,11 +180,11 @@ void handle_asm(Inst *inst)
    {
       // debug("FDEC: ", curr->name);
       LLVMTypeRef *args = NULL;
-      
-      if(curr->Fdec.pos)
+
+      if (curr->Fdec.pos)
       {
          args = allocate(curr->Fdec.pos + 1, sizeof(LLVMTypeRef));
-         for(int i = 0; i < curr->Fdec.pos; i++)
+         for (int i = 0; i < curr->Fdec.pos; i++)
          {
             switch (curr->Fdec.args[i]->type)
             {
@@ -229,14 +235,23 @@ void handle_asm(Inst *inst)
          // if(!left->llvm.is_set)
          //     check_error(FILE, FUNC, LINE, true, "found error"); exit(1);
 
-         // debug(RED"return %k\n\n"RESET, left);
-         if (left->name)
+
+         if(check(!left->llvm.is_set, "return result is not set\n")) break;
+         if (left->name || left->is_attr)
          {
-            ret = LLVMBuildLoad2(builder, int32Type, left->llvm.element, left->name);
+            ret = LLVMBuildLoad2(
+               builder, 
+               int32Type, 
+               left->llvm.element, 
+               left->name);
             ret = LLVMBuildRet(builder, ret);
          }
          else
             ret = LLVMBuildRet(builder, LLVMConstInt(int32Type, left->Int.value, 0));
+         break;
+      }
+      case DOT:
+      {
          break;
       }
       default:
