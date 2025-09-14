@@ -6,4 +6,5 @@ struct User:
 
 main():
     User user
-    user.a
+    user.a = 10
+    return user.a
