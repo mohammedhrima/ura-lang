@@ -143,7 +143,7 @@ int ptoken(Token *token)
    {
       if (token->name) res += debug("name [%s] ", token->name);
       res += debug("st_name [%s] ", token->Struct.name);
-      res += debug("space [%d] ", token->space);
+      // res += debug("space [%d] ", token->space);
       res += debug("attributes:\n");
       for (int i = 0; i < token->Struct.pos; i++)
       {
@@ -171,8 +171,8 @@ int ptoken(Token *token)
    if (token->has_ref) debug("has_ref ");
    if (token->remove) res += debug("[remove] ");
    if (token->retType) res += debug("ret [%t] ", token->retType);
-   if (!includes(token->type, STRUCT_CALL, STRUCT_DEF, 0))
-      res += debug("space [%d] ", token->space);
+   // if (!includes(token->type, STRUCT_CALL, STRUCT_DEF, 0))
+   //    res += debug("space [%d] ", token->space);
    return res;
 }
 
@@ -302,7 +302,7 @@ void print_inst(Inst *inst)
    case DOT:
    {
       debug("[%-6s] ", to_string(curr->type));
-      debug("access [%s] in %k", right->name, left);
+      debug("get attribute [%s] in %k", right->name, left);
       break;
    }
    case IF: case ELIF: case END_IF: case ELSE:
@@ -323,7 +323,8 @@ void print_inst(Inst *inst)
       debug("[%s] %s ", to_string(curr->type), left->name); break;
    case ACCESS:
    {
-      debug("[%s] [%s] in [%s] ", to_string(curr->type), right->name, left->name);
+      debug("[%s] [%s] in [%s] ", to_string(curr->type), right->name,
+            left->name);
       break;
    }
    case STRUCT_ALLOC: case STRUCT_BODY:
@@ -332,7 +333,7 @@ void print_inst(Inst *inst)
    default:
       debug(RED "print_ir:handle [%s]"RESET, to_string(curr->type)); break;
    }
-   debug("space (%d)", curr->space);
+   // debug("space (%d)", curr->space);
    debug("\n");
    // for (int i = 0; inst->children[i]; i++) print_inst(inst->children[i]);
 }
@@ -456,7 +457,7 @@ void parse_token(char *input, int s, int e,
       struct { char *name; Type type; } keywords[] = {{"if", IF}, {"elif", ELIF},
          {"else", ELSE}, {"while", WHILE}, {"func", FDEC}, {"return", RETURN},
          {"break", BREAK}, {"continue", CONTINUE}, {"ref", REF}, {"and", AND},
-         {"or", OR}, {"struct", STRUCT_DEF}, {"is", EQUAL}, {"proto", PROTO}, 
+         {"or", OR}, {"struct", STRUCT_DEF}, {"is", EQUAL}, {"proto", PROTO},
          {0, 0},
       };
       for (i = 0; keywords[i].name; i++)
