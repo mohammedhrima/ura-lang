@@ -6,3 +6,4 @@ struct User:
 
 main():
     User user
+    user.a

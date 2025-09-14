@@ -338,10 +338,13 @@ Node *symbol(Token *token)
    {
       token = copy_token(st_dec);
       token->type = STRUCT_CALL;
+      token->Struct.ptr = st_dec;
+      token->is_declare = true;
 
       Token *tmp = find(ID, 0);
       check(!tmp, "Expected variable name after [%s] symbol\n",
             to_string(token->type));
+      setName(token, tmp->name);
       return new_node(token);
    }
    return new_node(token);
@@ -957,31 +960,33 @@ Token *op_ir(Node *node)
    return node->token;
 }
 
-// CREATE STRUCT
-// SET STRUCT BODY
-// ALLOCATE STRUCT
-// ADD ATTRIBUTE
-Token *struct_ir(Node *node)
+Token *struct_def_ir(Node *node)
 {
-   todo(1, "handle this\n");
-   // create struct
-   Inst *inst = new_inst(node->token);
+   new_inst(node->token);
+   return node->token;
+}
+
+Token *struct_call_ir(Node *node)
+{
+   // ALLOCATE STRUCT
+   // ADD ATTRIBUTE
+   Inst *inst = NULL;
    Token **attrs = node->token->Struct.attrs;
    int attrs_size = node->token->Struct.pos;
    // node->token->Struct.attrs = NULL;
    // node->token->Struct.pos = 0;
 
    // set struct body
-   Token *body = copy_token(node->token);
-   body->type = STRUCT_BODY;
-   inst = new_inst(body);
-   inst->left = node->token;
+   // Token *body = copy_token(node->token);
+   // body->type = STRUCT_BODY;
+   // inst = new_inst(body);
+   // inst->left = node->token;
 
    // allocate struct
-   Token *alloca_st = copy_token(node->token);
-   alloca_st->type = STRUCT_ALLOC;
-   inst = new_inst(alloca_st);
-   inst->left = node->token;
+   // Token *alloca_st = copy_token(node->token);
+   // alloca_st->type = STRUCT_ALLOC;
+   // inst = new_inst(alloca_st);
+   // inst->left = node->token;
 
    // TODO: handle children if they are struct type
    // ...
@@ -1009,11 +1014,11 @@ Token *generate_ir(Node *node)
    case FLOAT: case LONG: case CHARS: case PTR:
    {
       inst = new_inst(node->token);
+      if (node->token->type == STRUCT_CALL) struct_call_ir(node);
       if (node->token->is_declare) new_variable(node->token);
-      if (node->token->type == STRUCT_CALL) struct_ir(node);
       return node->token;
    }
-   case STRUCT_DEF: return node->token;
+   case STRUCT_DEF: return struct_def_ir(node);
    case ASSIGN: case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN:
    case DIV_ASSIGN:
    case ADD: case SUB: case MUL: case DIV: case EQUAL: case NOT_EQUAL:
@@ -1058,33 +1063,38 @@ Token *generate_ir(Node *node)
       todo(!found, "Invalid syntax\n");
       break;
    }
-#if 0
    case DOT:
    {
-      todo(1, "add add_inst");
-      Token *left = generate_ir(node->left);
-      Token *right = node->right->token;
+      Token *left = generate_ir(node->left); // struct name
+      Token *right = node->right->token; // attribute
       if (check(left->type == ID, "undeclared variable %s", left->name)) break;
-
-      debug(RED SPLIT RESET);
+      if (check(left->type != STRUCT_CALL, "%s should be a struct call", left->name)) break;
+      debug("========================================\n");
+      debug(">> %k\n", left);
+      debug(">> %k\n", right);
+      debug("========================================\n");
+      debug("(%d)\n", left->Struct.pos);
       for (int i = 0; i < left->Struct.pos; i++)
       {
          Token *attr = left->Struct.attrs[i];
-         debug("%k\n", attr);
-         char *to_find = strjoin(left->name, ".", right->name);
-         if (strcmp(to_find, attr->name) == 0)
+         debug("compare %s == %s\n", attr->name, right->name);
+         if (strcmp(attr->name, right->name) == 0)
          {
-            free(to_find);
+            attr->Struct.attr_index = i;
+            attr->Struct.ptr = left->Statement.ptr;
+            Inst *inst =  new_inst(node->token);
+            inst->token->type = ACCESS;
+            inst->left = left;
+            inst->right = attr;
             return attr;
          }
-         free(to_find);
       }
-      debug(RED SPLIT RESET);
 
       todo(1, "%s has no attribute %s", left->name, right->name);
       return right;
       break;
    }
+#if 0
    case ACCESS:
    {
       todo(1, "add add_inst");

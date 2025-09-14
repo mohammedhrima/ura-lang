@@ -9,9 +9,9 @@ LLVMValueRef main_func; // TODO: to be removed
 
 int i = 0;
 
-void handle_ir(Inst *inst)
+void handle_asm(Inst *inst)
 {
-   debug("handle ir: %k\n", inst->token);
+   debug("%k\n", inst->token);
    Token *curr = inst->token;
    Token *left = inst->left;
    Token *right = inst->right;
@@ -26,6 +26,50 @@ void handle_ir(Inst *inst)
       else 
          curr->llvm.element = LLVMConstInt(int32Type, curr->Int.value, 0);
       curr->llvm.is_set = true;
+      break;
+   }
+   case STRUCT_DEF:
+   {
+      curr->llvm.is_set = true; 
+      // CREATE STRUCT TYPE
+      // SET STRUCT BODY
+      curr->llvm.structType = LLVMStructCreateNamed(LLVMGetGlobalContext(), curr->Struct.name);
+      int pos = curr->Struct.pos;
+      LLVMTypeRef *attrs = allocate(pos, sizeof(LLVMTypeRef));
+      for (int i = 0; i < pos; i++)
+      {
+         Token *attr = curr->Struct.attrs[i];
+         if(attr) debug(">>> %k\n", attr);
+         stop(!attr, "attribite is NULL\n");
+         switch (attr->type)
+         {
+         case INT:
+            attrs[i] = int32Type;
+            break;
+         default:
+            todo(1, "handle this case");
+            break;
+         }
+      }
+      // SET STRUCT BODY
+      LLVMStructSetBody(curr->llvm.structType, attrs, pos, 0);
+      free(attrs);
+      break;
+   }
+   case STRUCT_CALL: 
+   {
+      curr->llvm.element = LLVMBuildAlloca(builder,
+      curr->Struct.ptr->llvm.structType, curr->name);
+      curr->llvm.is_set = true;
+      break;
+   }
+   case ACCESS:
+   {
+      todo(1, "access");
+      // LLVMValueRef gep1X = LLVMBuildStructGEP(builder, point1, 0, "point1_x");
+      LLVMValueRef structRef = left->llvm.element;
+      int index = right->Struct.attr_index; // attribute position
+      curr->llvm.element = LLVMBuildStructGEP(builder, structRef, index, "access");
       break;
    }
    case ASSIGN:
@@ -250,7 +294,7 @@ void generate_asm(char *name)
    int32Type = LLVMInt32Type();
 
    for (i = 0; insts[i]; ) {
-      handle_ir(insts[i]);
+      handle_asm(insts[i]);
       i++;
    }
 
