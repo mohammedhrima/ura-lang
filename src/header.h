@@ -148,6 +148,7 @@ struct LLvm
    LLVMTypeRef funcType;
    LLVMValueRef element;
    LLVMBasicBlockRef bloc;
+   LLVMTypeRef structType;
 };
 
 struct Token
@@ -216,10 +217,12 @@ struct Token
       // structure
       struct
       {
+         Token *ptr;
          char *name;
          Token **attrs;
          int size;
          int pos;
+         int attr_index;
       } Struct;
       // function call
       struct

@@ -5,7 +5,10 @@
 _main:                                  ; @main
 	.cfi_startproc
 ; %bb.0:                                ; %entry
+	sub	sp, sp, #16
+	.cfi_def_cfa_offset 16
 	mov	w0, wzr
+	add	sp, sp, #16
 	ret
 	.cfi_endproc
                                         ; -- End function
