@@ -152,6 +152,7 @@ int ptoken(Token *token)
          for (int j = 0; !TESTING && j < token->space + TAB; )
             j += debug(" ");
          res += ptoken(attr);
+         debug("\n");
          // + debug(", offset [%d] PTR [%d]\n", attr->offset, attr->ptr);
 #else
          res += debug("%s %t [%d], ", attr->name,
@@ -251,18 +252,13 @@ void print_inst(Inst *inst)
    // case ACCESS:
    // {
    //     debug("[%-6s] ", to_string(curr->type));
-
    //     if (right->ir_reg) debug("r%.2d ", right->ir_reg);
    //     else print_value(right);
    //     if (right->name) debug("(%s) ", right->name);
-
    //     debug("in ");
-
    //     if (left->ir_reg) debug("r%.2d ", left->ir_reg);
    //     else if (left->creg) debug("creg %s ", left->creg);
-
    //     if (left->name) debug("(%s) ", left->name);
-
    //     break;
    // }
    case ADD: case SUB: case MUL: case DIV:
@@ -319,10 +315,18 @@ void print_inst(Inst *inst)
    case END_BLOC: debug("[%s] endbloc ", curr->name); break;
    case STRUCT_CALL:
       debug("[%-6s] %s ", to_string(curr->type), curr->name); break;
+   case STRUCT_DEF:
+      debug("[%-6s] %s ", to_string(curr->type), curr->Struct.name); break;
    case BUILD_COND:
       debug("[%s] %s ", to_string(curr->type), curr->name); break;
    case SET_POS: case APPEND_BLOC: case BUILD_BR:
       debug("[%s] %s ", to_string(curr->type), left->name); break;
+   case ACCESS:
+   {
+      debug("[%s] [%s] in [%s] ", to_string(curr->type), right->name, left->name);
+      break;
+   }
+   case STRUCT_ALLOC: case STRUCT_BODY:
    case RETURN: case CONTINUE: case BREAK:
       debug("[%s] ", to_string(curr->type)); break;
    default:
@@ -495,9 +499,7 @@ Token *copy_token(Token *token)
    Token *new = allocate(1, sizeof(Token));
    memcpy(new, token, sizeof(Token));
    if (token->name) new->name = strdup(token->name);
-   if (token->Chars.value)
-      new->Chars.value = strdup( token->Chars.value);
-   // if (token->creg) new->creg = strdup(token->creg);
+   if (token->Chars.value) new->Chars.value = strdup(token->Chars.value);
    if (token->Struct.attrs)
    {
       new->Struct.attrs = allocate(token->Struct.size, sizeof(Token*));

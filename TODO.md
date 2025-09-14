@@ -1,1 +1,4 @@
-- structs
+- struct def
+- struct call
+- struct access attr
+- struct modify attr

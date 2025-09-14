@@ -1,6 +1,6 @@
 /*
-This example defines two structs: `Point` and `Line`.
-`Line` contains two `Point` fields. We allocate a `Line`, then set coordinates for both points.
+This example creates a struct type `Point` with two i32 fields: x and y.
+It creates two separate Point variables and demonstrates operations on both.
 */
 
 #include <llvm-c/Core.h>
@@ -8,42 +8,98 @@ This example defines two structs: `Point` and `Line`.
 #include <llvm-c/BitWriter.h>
 #include <stdio.h>
 
-int main() {
-    LLVMModuleRef mod = LLVMModuleCreateWithName("nested_struct");
-    LLVMBuilderRef builder = LLVMCreateBuilder();
-    LLVMTypeRef i32 = LLVMInt32Type();
+/*
+struct Point:
+   int x
+   int y
 
-    // Create Point struct: { i32, i32 }
-    LLVMTypeRef point = LLVMStructCreateNamed(LLVMGetGlobalContext(), "Point");
-    LLVMTypeRef pointFields[] = { i32, i32 };
-    LLVMStructSetBody(point, pointFields, 2, 0);
+Variables created:
+- point1: Point with values (10, 20)
+- point2: Point with values (30, 40)
+*/
 
-    // Create Line struct: { Point, Point }
-    LLVMTypeRef line = LLVMStructCreateNamed(LLVMGetGlobalContext(), "Line");
-    LLVMTypeRef lineFields[] = { point, point };
-    LLVMStructSetBody(line, lineFields, 2, 0);
+int main()
+{
+   LLVMModuleRef mod = LLVMModuleCreateWithName("two_structs_example");
+   LLVMBuilderRef builder = LLVMCreateBuilder();
+   LLVMTypeRef i32 = LLVMInt32Type();
 
-    LLVMTypeRef mainType = LLVMFunctionType(i32, NULL, 0, 0);
-    LLVMValueRef mainFunc = LLVMAddFunction(mod, "main", mainType);
-    LLVMBasicBlockRef entry = LLVMAppendBasicBlock(mainFunc, "entry");
-    LLVMPositionBuilderAtEnd(builder, entry);
+   // Define main function
+   LLVMTypeRef mainType = LLVMFunctionType(i32, NULL, 0, 0);
+   LLVMValueRef mainFunc = LLVMAddFunction(mod, "main", mainType);
+   LLVMBasicBlockRef entry = LLVMAppendBasicBlock(mainFunc, "entry");
+   LLVMPositionBuilderAtEnd(builder, entry);
 
-    LLVMValueRef lineVar = LLVMBuildAlloca(builder, line, "line");
+   // CREATE STRUCT TYPE
+   LLVMTypeRef pointStruct = LLVMStructCreateNamed(LLVMGetGlobalContext(), "Point");
+   LLVMTypeRef elements[] = {i32, i32};
 
-    // Access line.a.x (field 0 -> x = 0)
-    LLVMValueRef a = LLVMBuildStructGEP(builder, lineVar, 0, "a");
-    LLVMValueRef a_x = LLVMBuildStructGEP(builder, a, 0, "a_x");
-    LLVMBuildStore(builder, LLVMConstInt(i32, 1, 0), a_x);
+   // SET STRUCT BODY
+   LLVMStructSetBody(pointStruct, elements, 2, 0);
 
-    // Access line.b.y (field 1 -> y = 1)
-    LLVMValueRef b = LLVMBuildStructGEP(builder, lineVar, 1, "b");
-    LLVMValueRef b_y = LLVMBuildStructGEP(builder, b, 1, "b_y");
-    LLVMBuildStore(builder, LLVMConstInt(i32, 9, 0), b_y);
+   // ===== FIRST STRUCT VARIABLE =====
+   // ALLOCATE FIRST STRUCT
+   LLVMValueRef point1 = LLVMBuildAlloca(builder, pointStruct, "point1");
 
-    LLVMBuildRet(builder, LLVMConstInt(i32, 0, 0));
-    LLVMPrintModuleToFile(mod, "out.ll", NULL);
+   // SET point1.x = 10
+   LLVMValueRef gep1X = LLVMBuildStructGEP(builder, point1, 0, "point1_x");
+   LLVMBuildStore(builder, LLVMConstInt(i32, 10, 0), gep1X);
 
-    LLVMDisposeBuilder(builder);
-    LLVMDisposeModule(mod);
-    return 0;
+   // SET point1.y = 20
+   LLVMValueRef gep1Y = LLVMBuildStructGEP(builder, point1, 1, "point1_y");
+   LLVMBuildStore(builder, LLVMConstInt(i32, 20, 0), gep1Y);
+
+   // ===== SECOND STRUCT VARIABLE =====
+   // ALLOCATE SECOND STRUCT
+   LLVMValueRef point2 = LLVMBuildAlloca(builder, pointStruct, "point2");
+
+   // SET point2.x = 30
+   LLVMValueRef gep2X = LLVMBuildStructGEP(builder, point2, 0, "point2_x");
+   LLVMBuildStore(builder, LLVMConstInt(i32, 30, 0), gep2X);
+
+   // SET point2.y = 40
+   LLVMValueRef gep2Y = LLVMBuildStructGEP(builder, point2, 1, "point2_y");
+   LLVMBuildStore(builder, LLVMConstInt(i32, 40, 0), gep2Y);
+
+   // ===== DEMONSTRATE READING VALUES =====
+   // Load values from point1
+   LLVMValueRef point1_x_val = LLVMBuildLoad(builder, gep1X, "load_point1_x");
+   LLVMValueRef point1_y_val = LLVMBuildLoad(builder, gep1Y, "load_point1_y");
+
+   // Load values from point2
+   LLVMValueRef point2_x_val = LLVMBuildLoad(builder, gep2X, "load_point2_x");
+   LLVMValueRef point2_y_val = LLVMBuildLoad(builder, gep2Y, "load_point2_y");
+
+   // ===== OPTIONAL: PERFORM OPERATIONS =====
+   // Calculate sum of x coordinates: point1.x + point2.x
+   LLVMValueRef sum_x = LLVMBuildAdd(builder, point1_x_val, point2_x_val, "sum_x");
+
+   // Calculate sum of y coordinates: point1.y + point2.y
+   LLVMValueRef sum_y = LLVMBuildAdd(builder, point1_y_val, point2_y_val, "sum_y");
+
+   // Create a third point to store the result
+   LLVMValueRef result_point = LLVMBuildAlloca(builder, pointStruct, "result_point");
+
+   // Store sum_x into result_point.x
+   LLVMValueRef result_x_gep = LLVMBuildStructGEP(builder, result_point, 0, "result_x");
+   LLVMBuildStore(builder, sum_x, result_x_gep);
+
+   // Store sum_y into result_point.y
+   LLVMValueRef result_y_gep = LLVMBuildStructGEP(builder, result_point, 1, "result_y");
+   LLVMBuildStore(builder, sum_y, result_y_gep);
+
+   LLVMBuildRet(builder, LLVMConstInt(i32, 0, 0));
+
+   // Output the generated LLVM IR
+   LLVMPrintModuleToFile(mod, "two_structs_out.ll", NULL);
+
+   printf("LLVM IR generated successfully!\n");
+   printf("Created:\n");
+   printf("  - point1: (10, 20)\n");
+   printf("  - point2: (30, 40)\n");
+   printf("  - result_point: (40, 60) [sum of coordinates]\n");
+
+   LLVMDisposeBuilder(builder);
+   LLVMDisposeModule(mod);
+   return 0;
 }

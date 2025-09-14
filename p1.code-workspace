@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"string": "c",
+			"unordered_map": "c",
+			"string_view": "c"
+		}
+	}
+}
