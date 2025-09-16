@@ -1,17 +1,67 @@
 #include "./header.h"
 
+
+// Add these global variables with your existing ones
 LLVMModuleRef mod;
 LLVMBuilderRef builder;
-LLVMTypeRef int32Type;
 LLVMContextRef context;
 
-LLVMValueRef main_func; // TODO: to be removed
+// Type declarations
+LLVMTypeRef voidType;
+LLVMTypeRef int32Type;
+LLVMTypeRef floatType;
+LLVMTypeRef int64Type;    // long
+LLVMTypeRef int16Type;    // short
+LLVMTypeRef boolType;     // bool (i1)
+LLVMTypeRef charType;     // char (i8)
+LLVMTypeRef charsType;    // char* (pointer to i8)
+// PTR will be handled dynamically
+
+LLVMValueRef curr_func; // TODO: to be removed
 
 int i = 0;
 
+// Initialize types in generate_asm function
+void init_llvm_types() {
+   voidType = LLVMVoidTypeInContext(context);
+   int32Type = LLVMInt32TypeInContext(context);
+   floatType = LLVMFloatTypeInContext(context);
+   int64Type = LLVMInt64TypeInContext(context);
+   int16Type = LLVMInt16TypeInContext(context);
+   boolType = LLVMInt1TypeInContext(context);     // 1-bit integer for bool
+   charType = LLVMInt8TypeInContext(context);     // 8-bit integer for char
+   charsType = LLVMPointerType(charType, 0);      // char* for strings
+}
+
+LLVMTypeRef get_llvm_type(Type type)
+{
+   switch (type)
+   {
+   case VOID: return voidType;
+   case INT: return int32Type;
+   case FLOAT: return floatType;
+   case LONG: return int64Type;
+   case SHORT: return int16Type;
+   case BOOL: return boolType;
+   case CHAR: return charType;
+   case CHARS: return charsType;
+   case PTR:
+      // For PTR, you'll need additional context about what it points to
+      // This is a placeholder - you might need to pass the pointed-to type
+      return LLVMPointerType(int32Type, 0); // Default to int* for now
+   default: todo(1, "handle this case %s", to_string(type)); break;
+   }
+   return NULL;
+}
+
+// LLVMValueRef import_ref()
+// {
+
+// }
+
 void handle_asm(Inst *inst)
 {
-   debug("%k\n", inst->token);
+   if(DEBUG) debug("%k\n", inst->token);
    Token *curr = inst->token;
    Token *left = inst->left;
    Token *right = inst->right;
@@ -19,13 +69,37 @@ void handle_asm(Inst *inst)
 
    switch (curr->type)
    {
-   case INT:
+   case INT: case BOOL: case LONG: case SHORT: case CHAR:
    {
-      if (curr->name)
-         curr->llvm.element = LLVMBuildAlloca(builder, int32Type, curr->name);
+      if(curr->is_param)
+      {
+         ret = LLVMGetParam(curr->Param.func_ptr->llvm.element, curr->Param.index);
+         LLVMSetValueName(ret, curr->name);
+      }
+      else if (curr->name)
+      {
+         if(curr->is_declare) ret = LLVMBuildAlloca(builder, get_llvm_type(curr->type), curr->name);
+         else todo(1, "handle this case")
+         curr->is_declare = false;
+         // ret = LLVMBuildLoad2(builder, get_llvm_type(curr->type), ret, curr->name);
+      }
       else
-         curr->llvm.element = LLVMConstInt(int32Type, curr->Int.value, 0);
+      {
+         switch (curr->type)
+         {
+         case INT: ret = LLVMConstInt(get_llvm_type(curr->type), curr->Int.value, 0); break;
+         case BOOL: ret = LLVMConstInt(get_llvm_type(curr->type), curr->Bool.value ? 1 : 0,   0); break;
+         case LONG: ret = LLVMConstInt(get_llvm_type(curr->type), curr->Long.value, 0); break;
+         // Assuming you store short in Int.value break;
+         case SHORT: ret = LLVMConstInt(get_llvm_type(curr->type), curr->Int.value, 0); break;
+         case CHAR: ret = LLVMConstInt(get_llvm_type(curr->type), curr->Char.value, 0); break;
+         default:
+            todo(1, "handle this literal case %s", to_string(curr->type));
+            break;
+         }
+      }
       curr->llvm.is_set = true;
+      curr->llvm.element = ret;
       break;
    }
    case STRUCT_DEF:
@@ -74,10 +148,6 @@ void handle_asm(Inst *inst)
    }
    case ASSIGN:
    {
-      debug("==================================\n");
-      debug(">>> %k\n", left);
-      debug(">>> %k\n", right);
-      debug("==================================\n");
       check(!left->llvm.is_set, "assign, left is not set");
       check(!right->llvm.is_set, "assign, right is not set");
       LLVMBuildStore(builder, right->llvm.element, left->llvm.element);
@@ -86,42 +156,46 @@ void handle_asm(Inst *inst)
    case ADD: case SUB: case MUL: case DIV:
    {
       if (left->name)
-         leftRef = LLVMBuildLoad2(builder, int32Type, left->llvm.element, left->name);
+         leftRef = LLVMBuildLoad2(builder, get_llvm_type(left->type), left->llvm.element, left->name);
       else leftRef = left->llvm.element;
       if (right->name)
-         rightRef = LLVMBuildLoad2( builder, int32Type, right->llvm.element, right->name);
+         rightRef = LLVMBuildLoad2( builder, get_llvm_type(left->type), right->llvm.element, right->name);
       else rightRef = right->llvm.element;
 
       Type op = curr->type;
       switch (curr->type)
       {
-      case ADD:
-         ret = LLVMBuildAdd(builder, leftRef, rightRef, to_string(op));
-         break;
-      case SUB:
-         ret = LLVMBuildSub(builder, leftRef, rightRef, to_string(op));
-         break;
-      case MUL:
-         ret = LLVMBuildMul(builder, leftRef, rightRef, to_string(op));
-         break;
-      case DIV:
-         ret = LLVMBuildSDiv(builder, leftRef, rightRef, to_string(op));
-         break;
+      case ADD: ret = LLVMBuildAdd(builder, leftRef, rightRef, to_string(op)); break;
+      case SUB: ret = LLVMBuildSub(builder, leftRef, rightRef, to_string(op)); break;
+      case MUL: ret = LLVMBuildMul(builder, leftRef, rightRef, to_string(op)); break;
+      case DIV: ret = LLVMBuildSDiv(builder, leftRef, rightRef, to_string(op)); break;
       default: todo(1, "handle this")
       }
       curr->llvm.element = ret;
       curr->llvm.is_set = true;
       break;
    }
+   case AND: case OR:
+   {
+      if (check(!left->llvm.is_set, "left is not set\n")) break;
+      if (check(!right->llvm.is_set, "right is not set\n")) break;
+
+      leftRef = left->llvm.element;
+      rightRef = right->llvm.element;
+
+      ret = curr->type == AND ?
+            LLVMBuildAnd(builder, leftRef, rightRef, "and") :
+            LLVMBuildOr(builder, leftRef, rightRef, "or");
+      curr->llvm.element = ret;
+      curr->llvm.is_set = true;
+
+      break;
+   }
    case LESS: case LESS_EQUAL: case MORE:
    case MORE_EQUAL: case EQUAL: case NOT_EQUAL:
    {
-      if (left->name) leftRef = LLVMBuildLoad2(builder, int32Type,
-                                   left->llvm.element, left->name);
-      else leftRef = left->llvm.element;
-      if (right->name) rightRef = LLVMBuildLoad2(builder, int32Type,
-                                     right->llvm.element, right->name);
-      else rightRef = right->llvm.element;
+      leftRef = left->llvm.element;
+      rightRef = right->llvm.element;
 
       Type op = curr->type;
       switch (curr->type)
@@ -161,12 +235,11 @@ void handle_asm(Inst *inst)
          for (int i = 0; i < curr->Fcall.pos; i++)
          {
             Token *arg = curr->Fcall.args[i];
-            debug(">> [%k]\n", arg);
             check(!arg->llvm.is_set, "llvm is not set");
             args[i] = curr->Fcall.args[i]->llvm.element;
          }
-         curr->llvm.element = LLVMBuildCall2(builder, srcFunc.funcType, srcFunc.element,
-                                             args, curr->Fcall.pos, curr->name);
+         curr->llvm.element = LLVMBuildCall2(builder, srcFunc.funcType, srcFunc.element, args,
+                                             curr->Fcall.pos, curr->name);
          free(args);
       }
       else
@@ -185,37 +258,27 @@ void handle_asm(Inst *inst)
       {
          args = allocate(curr->Fdec.pos + 1, sizeof(LLVMTypeRef));
          for (int i = 0; i < curr->Fdec.pos; i++)
-         {
-            switch (curr->Fdec.args[i]->type)
-            {
-            case INT:
-               args[i] = int32Type;
-               break;
-            default:
-               check(1, "handle this case");
-               break;
-            }
-         }
-         curr->llvm.funcType = LLVMFunctionType(int32Type, args, curr->Fdec.pos, 0);
+            args[i] = get_llvm_type(curr->Fdec.args[i]->type);
+         curr->llvm.funcType = LLVMFunctionType(get_llvm_type(curr->retType), args, curr->Fdec.pos, 0);
          free(args);
       }
-      else curr->llvm.funcType = LLVMFunctionType(int32Type, NULL, 0, 0);
+      else curr->llvm.funcType = LLVMFunctionType(get_llvm_type(curr->retType), NULL, 0, 0);
 
       curr->llvm.element = LLVMAddFunction(mod, curr->name, curr->llvm.funcType);
-      LLVMBasicBlockRef funcEntry = LLVMAppendBasicBlock(curr->llvm.element,
-                                    "entry");
+      LLVMBasicBlockRef funcEntry = LLVMAppendBasicBlock(curr->llvm.element, "entry");
       LLVMPositionBuilderAtEnd(builder, funcEntry);
 
-      if (strcmp(curr->name, "main") == 0)
+      // if (strcmp(curr->name, "main") == 0)
       {
          LLVMPositionBuilderAtEnd(builder, funcEntry);
-         main_func = curr->llvm.element; // TODO: to be removed
+         curr_func = curr->llvm.element; // TODO: to be removed
       }
       curr->llvm.is_set = true;
       break;
    }
    case RETURN:
    {
+      if (check(!left->llvm.is_set, "return result is not set\n")) break;
       switch (left->type)
       {
       case FCALL:
@@ -223,35 +286,43 @@ void handle_asm(Inst *inst)
          ret = LLVMBuildRet(builder, left->llvm.element);
          break;
       }
-      case INT:
+      case LESS: case LESS_EQUAL: case MORE:
+      case MORE_EQUAL: case EQUAL: case NOT_EQUAL:
+      case AND: case OR:
       {
-         // debug(">>>> %k\n\n", left);
-         // if(!left->llvm.is_set)
-         // {
-         //     debug(RED"variable is not set\n"RESET);
-         //     // exit(1);
-         // }
-         // stop(!left->llvm.is_set, "helloooooooooo\n", "");
-         // if(!left->llvm.is_set)
-         //     check_error(FILE, FUNC, LINE, true, "found error"); exit(1);
-
-
-         if(check(!left->llvm.is_set, "return result is not set\n")) break;
-         if (left->name || left->is_attr)
-         {
-            ret = LLVMBuildLoad2(
-               builder, 
-               int32Type, 
-               left->llvm.element, 
-               left->name);
-            ret = LLVMBuildRet(builder, ret);
-         }
-         else
-            ret = LLVMBuildRet(builder, LLVMConstInt(int32Type, left->Int.value, 0));
+         ret = LLVMBuildRet(builder, left->llvm.element);
          break;
       }
-      case DOT:
+      case INT: case BOOL: case LONG: case SHORT: case CHAR: case FLOAT:
       {
+         if (left->name || left->is_attr)
+         {
+            // Load variable and return it
+            ret = LLVMBuildRet(builder, left->llvm.element);
+         }
+         else
+         {
+            // Return literal constant
+            LLVMValueRef constant = NULL;
+            switch (left->type)
+            {
+            case INT: constant = LLVMConstInt(get_llvm_type(left->type), left->Int.value, 0); break;
+            case BOOL: constant = LLVMConstInt(get_llvm_type(left->type), left->Bool.value ? 1 : 0, 0); break;
+            case LONG: constant = LLVMConstInt(get_llvm_type(left->type), left->Long.value, 0); break;
+            // Assuming SHORT stored in Int.value
+            case SHORT: constant = LLVMConstInt(get_llvm_type(left->type), left->Int.value, 0); break;
+            case CHAR: constant = LLVMConstInt(get_llvm_type(left->type), left->Char.value, 0); break;
+            case FLOAT: constant = LLVMConstReal(get_llvm_type(left->type), left->Float.value); break;
+            default: todo(1, "unhandled constant type in return"); break;
+            }
+            ret = LLVMBuildRet(builder, constant);
+         }
+         break;
+      }
+      case VOID:
+      {
+         // Void return - no value
+         ret = LLVMBuildRetVoid(builder);
          break;
       }
       default:
@@ -265,8 +336,7 @@ void handle_asm(Inst *inst)
    case APPEND_BLOC:
    {
       check(!left->name, "APPEND BLOC require a name");
-      left->llvm.bloc =
-         LLVMAppendBasicBlockInContext(context, main_func, left->name);
+      left->llvm.bloc = LLVMAppendBasicBlockInContext(context, curr_func, left->name);
       curr->llvm.is_set = true;
       break;
    }
@@ -302,11 +372,12 @@ void generate_asm(char *name)
 
    // Create LLVM context, module, and IR builder
    char *moduleName = resolve_path(name);
-   // context = LLVMGetGlobalContext();
    context = LLVMContextCreate();
    mod = LLVMModuleCreateWithName(moduleName);
    builder = LLVMCreateBuilder();
-   int32Type = LLVMInt32Type();
+
+   // Initialize all types
+   init_llvm_types();
 
    for (i = 0; insts[i]; ) {
       handle_asm(insts[i]);
@@ -320,6 +391,7 @@ void generate_asm(char *name)
    // Cleanup
    LLVMDisposeBuilder(builder);
    LLVMDisposeModule(mod);
+   LLVMContextDispose(context); // Don't forget to dispose the context
    free(moduleName);
 #endif
 }
