@@ -7,7 +7,8 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 # === Paths & Global Variables ===
-src="$HOME/Desktop/Personal/pandu-lang/src"
+pandu_dir="$HOME/Desktop/Personal/pandu-lang"
+src="$pandu_dir/src"
 files=($src/main.c $src/utils.c $src/asm.c)
 
 # === Compiler Flags ===
@@ -23,17 +24,14 @@ export flags files llvm_flags src
 
 # === Build Functions ===
 build() {
-    echo -e "${YELLOW}Building...${NC}"
-    echo "Files: $files"
-    echo "Flags: $flags"
-    clang "${files[@]}" "${flags[@]}" -o "$src/pan" || {
+    local debug_mode="${1:-true}"   # default true unless specified
+    clang "${files[@]}" "${flags[@]}" -D DEBUG=$debug_mode -o "$src/pan" || {
         echo -e "${RED}Error:${NC} Build failed."
         return 1
     }
 }
 
 ir() {
-    echo -e "${YELLOW}Compiling file.pn...${NC}"
     "$src/pan" "$src/file.pn" || {
         echo -e "${RED}Error:${NC} Compiling .pn file failed."
         return 1
@@ -41,7 +39,6 @@ ir() {
 }
 
 asm() {
-    echo -e "${YELLOW}Generating file.s from file.ll...${NC}"
     llc "$src/file.ll" -o "$src/file.s" || {
         echo -e "${RED}Error:${NC} Assembly generation failed."
         return 1
@@ -49,24 +46,82 @@ asm() {
 }
 
 exe() {
-    echo -e "${YELLOW}Compiling file.s...${NC}"
     clang "$src/file.s" -o "$src/exe.out" && "$src/exe.out"
 }
 
 run() {
-    build && ir && asm && exe
+    build true && ir && asm && exe
 }
 
-# === Format Source Code ===
 indent() {
     echo -e "${YELLOW}Formatting code...${NC}"
     astyle --mode=c --indent=spaces=3 --pad-oper --pad-header \
        --keep-one-line-statements --keep-one-line-blocks --convert-tabs \
-       --max-code-length=75 --break-after-logical \
+       --max-code-length=100 --break-after-logical \
        --suffix=none $src/*.c $src/*.h
 }
 
-# === Reload Config ===
+copy() {
+    if [ -z "$1" ]; then
+        echo -e "${RED}Error:${NC} No directory name provided."
+        echo "Usage: copy <dir_name>"
+        return 1
+    fi
+
+    local dir_name="$1"
+    local test_dir="$pandu_dir/tests/$dir_name"
+
+    mkdir -p "$test_dir"
+
+    local count=$(ls "$test_dir"/*.pn 2>/dev/null | wc -l)
+    local next=$(printf "%03d" $((count + 1)))
+
+    local pn_dest="$test_dir/${next}.pn"
+    local ll_dest="$test_dir/${next}.ll"
+
+    # Build with DEBUG=false before copying reference outputs
+    build false || return 1
+    ir || return 1
+
+    cp "$src/file.pn" "$pn_dest" || {
+        echo -e "${RED}Error:${NC} Failed to copy file.pn"
+        return 1
+    }
+    cp "$src/file.ll" "$ll_dest" || {
+        echo -e "${RED}Error:${NC} Failed to copy file.ll"
+        return 1
+    }
+
+    echo -e "${GREEN}Saved:${NC} $pn_dest and $ll_dest"
+}
+
+tests() {
+    # Build with DEBUG=false for test comparison
+    build false || return 1
+
+    for pn_file in "$pandu_dir/tests"/*/*.pn; do
+        [ -e "$pn_file" ] || continue
+
+        local base_name=$(basename "$pn_file" .pn)
+        local dir_name=$(basename "$(dirname "$pn_file")")
+        local ll_file="$(dirname "$pn_file")/${base_name}.ll"
+
+        cp "$pn_file" "$src/tmp.pn"
+
+        if ! "$src/pan" "$src/tmp.pn" > /dev/null 2>&1; then
+            echo -e "${RED}FAILED:${NC} $dir_name/$base_name.pn (compilation error)"
+            continue
+        fi
+
+        if diff -q <(tail -n +3 "$src/tmp.ll") <(tail -n +3 "$ll_file") > /dev/null 2>&1; then
+            echo -e "${GREEN}PASSED:${NC} $dir_name/$base_name"
+        else
+            echo -e "${RED}FAILED:${NC} $dir_name/$base_name"
+        fi
+    done
+    rm -rf  "$src/tmp.pn" "$src/tmp.ll"
+}
+
 update() {
     source "$src/../config.sh"
 }
