@@ -1,10 +1,5 @@
 
-
-struct User:
-    int a
-    int b
-
 main():
-    User user
-    user.a = 10
-    return user.a
+    int a = 1 
+    int b = 3
+    int c = a + b

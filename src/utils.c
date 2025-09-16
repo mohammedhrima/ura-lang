@@ -2,11 +2,11 @@
 
 /*
 SECTIONS:
-    + LOGGING:
-    + MEMMORY
-    + PARSING
-    + IR
-    + UTILS
+   + LOGGING:
+   + MEMMORY
+   + PARSING
+   + IR
+   + UTILS
 */
 
 // LOGGING
@@ -220,6 +220,7 @@ int print_value(Token *token)
 
 void print_ast(Node *head)
 {
+   if(!DEBUG) return;
    debug(GREEN BOLD SPLIT RESET);
    debug(GREEN BOLD"PRINT AST:\n" RESET);
    for (int i = 0; !found_error && i < head->cpos; i++)
@@ -229,6 +230,7 @@ void print_ast(Node *head)
 
 void print_inst(Inst *inst)
 {
+   if(!DEBUG) return;
    Token *curr = inst->token;
    Token *left = inst->left;
    Token *right = inst->right;
@@ -264,6 +266,7 @@ void print_inst(Inst *inst)
    case ADD: case SUB: case MUL: case DIV:
    case EQUAL: case NOT_EQUAL: case LESS: case MORE:
    case LESS_EQUAL: case MORE_EQUAL:
+   case AND: case OR:
    {
       debug("[%-6s] ", to_string(curr->type));
       if (left->ir_reg) debug("r%.2d", left->ir_reg);
@@ -340,7 +343,7 @@ void print_inst(Inst *inst)
 
 void print_ir()
 {
-   //if (!DEBUG) return;
+   if (!DEBUG) return;
    copy_insts();
    debug(GREEN BOLD SPLIT RESET);
    debug(GREEN BOLD"PRINT IR:\n" RESET);
@@ -433,7 +436,7 @@ void parse_token(char *input, int s, int e,
             break;
          }
       }
-      if (bools[i].name) break;
+      if (new->name == NULL) break;
 
       struct { char *name; Type type; } dataTypes [] =
       {
@@ -491,7 +494,9 @@ void parse_token(char *input, int s, int e,
       check(e > s, "implement adding name for this one %s", to_string(type));
       break;
    }
+#if DEBUG
    debug("new %k\n", new);
+#endif
 }
 
 Token *copy_token(Token *token)
@@ -569,36 +574,20 @@ Inst *new_inst(Token *token)
    {
       if (token->name) token->ir_reg = ++ir_reg;
       if (token->Chars.value)
-      {
-         debug("%k\n", new->token);
          stop(1, "found");
-      }
       break;
    }
    case STRUCT_CALL:
    {
-      // debug("handle [%k], offset [%d]\n", token, token->offset);
       for (int i = 0; i < token->Struct.pos; i++) {
          Token *attr = token->Struct.attrs[i];
-#if 0
-         if (attr->type == STRUCT_CALL)
-         {
-            attr->ir_reg = ++ir_reg;
-         }
-         else
-         {
-            attr->ir_reg = ++ir_reg;
-         }
-#else
          attr->ir_reg = ++ir_reg;
-#endif
       }
       break;
    }
    case RETURN: token->ir_reg = ++ir_reg; break;
-   case ASSIGN: break;
-   case FCALL:
-   case ADD: case SUB: case MUL: case DIV:
+   case FCALL: case ADD: case SUB: case MUL: case DIV: case AND: case OR:
+   case LESS: case LESS_EQUAL: case MORE: case MORE_EQUAL: case EQUAL:
       token->ir_reg = ++ir_reg; break;
    default: break;
    }

@@ -469,7 +469,7 @@ Node *prime()
 {
    Node *node = NULL;
    Token *token;
-   if ((token = find(ID, INT, CHARS, CHAR, FLOAT, BOOL, 0)))
+   if ((token = find(ID, INT, CHARS, CHAR, FLOAT, BOOL, LONG, SHORT, 0)))
       return symbol(token);
    else if ((token = find(STRUCT_DEF, 0)))
       return struct_def(new_node(token));
@@ -533,6 +533,9 @@ Token *func_dec_ir(Node *node)
          free(token->Fdec.args);
          token->Fdec.args = tmp;
       }
+      child->token->is_param = true;
+      child->token->Param.index = i;
+      child->token->Param.func_ptr = node->token; 
       token->Fdec.args[token->Fdec.pos++] = child->token;
    }
 
@@ -560,87 +563,42 @@ Token *func_dec_ir(Node *node)
 Token *func_call_ir(Node *node)
 {
    Inst* inst = NULL;
+   // static Node *printf_func = NULL;
+
    if (strcmp(node->token->name, "output") == 0)
    {
-      todo(1, "implement this");
-#if 0
-      // setReg(node->token, "eax");
-      setName(node->token, "printf");
+#if 1
+      todo(1, "handle this\n");
+#else
+      if (!printf_func)
+      {
+
+      }
+      node->token->Fcall.ptr = func->token;
+      node->token->Fcall.args = allocate(node->cpos, sizeof(Token*));
+      node->token->Fcall.pos = node->cpos;
+
+      func = copy_node(func);
+      node->token->retType = func->token->retType;
+
+      // setReg(node->token, func->token->creg);
       Node *fcall = node;
-
-      Node *assign = new_node(new_token(ASSIGN, node->token->space));
-      Token *_register = new_token(CHARS, fcall->token->space + TAB);
-      // _register->creg = strdup("rdi");
-      Token *varg = new_token(CHARS, fcall->token->space + TAB);
-      // varg->index = ++str_index;
-      varg->Chars.value = strdup("\"");
-
-      new_inst(_register);
-      assign->left = new_node(_register);
-      assign->right = new_node(varg);
-      assign->token->ir_reg = _register->ir_reg;
-
-      generate_ir(assign);
-      free_node(assign);
+      Node *fdec = func->left;
 
       for (int i = 0; !found_error && i < fcall->cpos; i++)
       {
-         Node *carg = fcall->children[i];
-         Token *var = generate_ir(carg);
-         if (check(var->type == ID, "Indeclared variable %s",
+         Node *carg = fcall->children[i]; // will always be ID
+
+         Token *src = generate_ir(carg);
+
+         if (check(src->type == ID, "Indeclared variable %s",
                    carg->token->name)) break;
-         Token *src = new_token(INT, var->space);
 
-         // int j = i + 1;
-         // if (j < regLen)
-         // {
-         //     // added because unfction declaration params do have ptrs
-         //     // TODO: add other data type and math operations
-         //     src->ptr = 0;
-         //     switch (var->type)
-         //     {
-         //     case CHARS:
-         //     {
-         //         setReg(src, rregs[j]);
-         //         char *tmp = strjoin(varg->Chars.value, "%s", NULL);
-         //         free(varg->Chars.value);
-         //         varg->Chars.value = tmp;
-         //         break;
-         //     }
-         //     case INT:
-         //     {
-         //         setReg(src, eregs[j]);
-         //         char *tmp = strjoin(varg->Chars.value, "%d", NULL);
-         //         free(varg->Chars.value);
-         //         varg->Chars.value = tmp;
-         //         break;
-         //     }
-         //     // case CHAR:  setReg(src, eregs[j]); break;
-         //     // case FLOAT: setReg(src, rregs[j]); break; // TODO: to be checked
-         //     // case BOOL:  setReg(src, eregs[j]); break;
-         //     default: todo(1, "set ir_reg for %s", to_string(src->type));
-         //     };
-         // }
-         // else
-         // {
-         //     todo(1, "implement assigning function argument using PTR");
-         // }
-         new_inst(src);
-         assign = new_node(new_token(ASSIGN, node->token->space));
-         assign->left = new_node(src);
-         assign->right = new_node(var);
-         assign->token->ir_reg = src->ir_reg;
-
-         debug(RED);
-         pnode(assign, NULL, 0);
-         debug(RESET);
-
-         generate_ir(assign);
-         free_node(assign);
+         node->token->Fcall.args[i] = src;
+         // Token *dist = copy_token(darg->token);
+         // set_func_call_regs(&r, src, dist, node);
       }
-      char *tmp = strjoin(varg->Chars.value, "\"", NULL);
-      free(varg->Chars.value);
-      varg->Chars.value = tmp;
+      inst = new_inst(node->token);
 #endif
    }
    else
@@ -674,8 +632,6 @@ Token *func_call_ir(Node *node)
                    carg->token->name)) break;
          if (check(src->type != dist->type, "Incompatible type arg %s",
                    func->token->name)) break;
-         debug(CYAN"==(%k)==\n"RESET, src);
-         debug(CYAN"==(%k)==\n"RESET, dist);
          node->token->Fcall.args[i] = src;
          // Token *dist = copy_token(darg->token);
          // set_func_call_regs(&r, src, dist, node);
@@ -870,7 +826,7 @@ Token *op_ir(Node *node)
    if (!right || !right) return NULL;
 
    check(!compatible(left, right), "invalid [%s] op between %s and %s\n",
-   to_string(node->token->type), to_string(left->type), to_string(right->type));
+         to_string(node->token->type), to_string(left->type), to_string(right->type));
    switch (node->token->type)
    {
    case ASSIGN:
@@ -946,6 +902,11 @@ Token *op_ir(Node *node)
       // check(1, "handle this case");
       break;
    }
+   case AND: case OR:
+   {
+      node->token->retType = BOOL;
+      break;
+   }
    case NOT_EQUAL: case EQUAL: case LESS:
    case MORE: case LESS_EQUAL: case MORE_EQUAL:
    {
@@ -972,6 +933,7 @@ Token *struct_call_ir(Node *node)
 {
    // ALLOCATE STRUCT
    // ADD ATTRIBUTE
+#if 0
    Inst *inst = NULL;
    Token **attrs = node->token->Struct.attrs;
    int attrs_size = node->token->Struct.pos;
@@ -996,7 +958,7 @@ Token *struct_call_ir(Node *node)
    {
 
    }
-
+#endif
    return node->token;
 }
 
@@ -1029,6 +991,17 @@ Token *generate_ir(Node *node)
       // TODO: check if right is DEFAULT, then initlize it, and return left
       return op_ir(node);
    }
+   case AND: case OR:
+   {
+      Token *left = generate_ir(node->left);
+      Token *right = generate_ir(node->right);
+      check(!(left->type == BOOL || left->retType == BOOL), "left should be boolean");
+      check(!(right->type == BOOL || right->retType == BOOL), "right should be boolean");
+      inst = new_inst(node->token);
+      inst->left = left;
+      inst->right = right;
+      return inst->token;
+   }
    case IF:    return if_ir(node);
    case WHILE: return while_ir(node);
    case FCALL: return func_call_ir(node);
@@ -1047,7 +1020,6 @@ Token *generate_ir(Node *node)
       for (int i = scoopPos; i >= 0 && !found; i--)
       {
          Node *scoop = Gscoop[i];
-         // debug(">>> %s\n", scoop->token->name);
          if (strcmp(scoop->token->name, "while") == 0)
          {
             // BUILD BR
@@ -1070,13 +1042,8 @@ Token *generate_ir(Node *node)
       Token *left = generate_ir(node->left); // struct name
       Token *right = node->right->token; // attribute
       if (check(left->type == ID, "undeclared variable %s", left->name)) break;
-      if (check(left->type != STRUCT_CALL, "%s should be a struct call",
-                left->name)) break;
-      // debug("========================================\n");
-      // debug(">> %k\n", left);
-      // debug(">> %k\n", right);
-      // debug("========================================\n");
-      // debug("(%d)\n", left->Struct.pos);
+      if (check(left->type != STRUCT_CALL,
+                "%s should be a struct call", left->name)) break;
       for (int i = 0; i < left->Struct.pos; i++)
       {
          Token *attr = left->Struct.attrs[i];
@@ -1086,7 +1053,7 @@ Token *generate_ir(Node *node)
             attr->Struct.attr_index = i;
             attr->Struct.ptr = left->Statement.ptr;
             Inst *inst =  new_inst(node->token);
-            
+
             inst->left = left;
             inst->right = attr;
             inst->token->is_attr = true;
@@ -1151,18 +1118,18 @@ void compile(char *filename)
    setName(global->token, ".global");
    enter_scoop(global);
 
-   debug(GREEN BOLD"AST:\n" RESET);
+   if(DEBUG) debug(GREEN BOLD"AST:\n" RESET);
    while (tokens[exe_pos]->type != END && !found_error)
       add_child(global, expr());
    print_ast(global);
    if (found_error) return;
 
 #if IR
-   debug(GREEN BOLD"GENERATE INTERMEDIATE REPRESENTATIONS:\n" RESET);
+   if(DEBUG) debug(GREEN BOLD"GENERATE INTERMEDIATE REPRESENTATIONS:\n" RESET);
    for (int i = 0; !found_error && i < global->cpos; i++)
       generate_ir(global->children[i]);
    if (found_error) return;
-   print_ir();
+    if(DEBUG) print_ir();
 #endif
 
 #if OPTIMIZE
@@ -1175,20 +1142,21 @@ void compile(char *filename)
 #endif
 
 #if ASM
-   debug(GREEN BOLD"GENERATE ASSEMBLY CODE:\n" RESET);
+   if(DEBUG) debug(GREEN BOLD"GENERATE ASSEMBLY CODE:\n" RESET);
    copy_insts();
    generate_asm(filename);
 #endif
 
    free_node(global);
-   debug(BLUE BOLD"FINISH COMPILATION:\n" RESET);
+   if(DEBUG) debug(BLUE BOLD"FINISH COMPILATION:\n" RESET);
 }
 
 int main(int argc, char **argv)
 {
+   check(argc < 2, "require argument, usage pan <file.pn>");
    compile(argv[1]);
    free_memory();
-   debug(BLUE BOLD"EXIT CODE:\n" RESET);
+   if(DEBUG) debug(BLUE BOLD"EXIT CODE:\n" RESET);
 #if !IR
    debug(RED"NO IR GENERATION\n"RESET);
 #endif

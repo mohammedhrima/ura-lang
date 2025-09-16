@@ -172,6 +172,7 @@ struct Token
    bool is_attr;
    bool is_proto;
    bool is_arg;
+   bool is_param;
    int offset; // used for structs and []
    char *filename;
    int line;
@@ -224,6 +225,11 @@ struct Token
          int pos;
          int attr_index;
       } Struct;
+      struct
+      {
+         Token *func_ptr;
+         int index;
+      } Param;
       // function call
       struct
       {
