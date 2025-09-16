@@ -64,20 +64,27 @@ indent() {
 copy() {
     if [ -z "$1" ]; then
         echo -e "${RED}Error:${NC} No directory name provided."
-        echo "Usage: copy <dir_name>"
+        echo "Usage: copy <dir_name> [file_name]"
         return 1
     fi
 
     local dir_name="$1"
     local test_dir="$pandu_dir/tests/$dir_name"
-
     mkdir -p "$test_dir"
 
-    local count=$(ls "$test_dir"/*.pn 2>/dev/null | wc -l)
-    local next=$(printf "%03d" $((count + 1)))
+    local filename
+    if [ -z "$2" ]; then
+        # Auto-generate if no filename given
+        local count=$(ls "$test_dir"/*.pn 2>/dev/null | wc -l)
+        local next=$(printf "%03d" $((count + 1)))
+        filename="$next"
+    else
+        # Use provided filename
+        filename="$2"
+    fi
 
-    local pn_dest="$test_dir/${next}.pn"
-    local ll_dest="$test_dir/${next}.ll"
+    local pn_dest="$test_dir/${filename}.pn"
+    local ll_dest="$test_dir/${filename}.ll"
 
     # Build with DEBUG=false before copying reference outputs
     build false || return 1

@@ -220,7 +220,7 @@ int print_value(Token *token)
 
 void print_ast(Node *head)
 {
-   if(!DEBUG) return;
+   if (!DEBUG) return;
    debug(GREEN BOLD SPLIT RESET);
    debug(GREEN BOLD"PRINT AST:\n" RESET);
    for (int i = 0; !found_error && i < head->cpos; i++)
@@ -230,7 +230,7 @@ void print_ast(Node *head)
 
 void print_inst(Inst *inst)
 {
-   if(!DEBUG) return;
+   if (!DEBUG) return;
    Token *curr = inst->token;
    Token *left = inst->left;
    Token *right = inst->right;
