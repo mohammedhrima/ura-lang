@@ -535,7 +535,8 @@ Token *func_dec_ir(Node *node)
       }
       child->token->is_param = true;
       child->token->Param.index = i;
-      child->token->Param.func_ptr = node->token; 
+      child->token->Param.func_ptr = node->token;
+      child->token->is_declare = false;
       token->Fdec.args[token->Fdec.pos++] = child->token;
    }
 
@@ -557,7 +558,6 @@ Token *func_dec_ir(Node *node)
    exit_scoop();
    // if (!node->token->is_proto)
    return inst->token;
-   // return NULL;
 }
 
 Token *func_call_ir(Node *node)
@@ -833,6 +833,7 @@ Token *op_ir(Node *node)
    {
       node->token->ir_reg = left->ir_reg;
       node->token->retType = getRetType(node);
+#if 0
       // if (left->is_ref) // ir_reg, ptr
       // {
       //     if (right->is_ref) // ir_reg, ptr
@@ -890,6 +891,7 @@ Token *op_ir(Node *node)
       //     debug("<%k>\n", right);
       //     // todo(1, "Invalid assignment");
       // }
+#endif
       break;
    }
    case ADD: case SUB: case MUL: case DIV:
@@ -1118,18 +1120,18 @@ void compile(char *filename)
    setName(global->token, ".global");
    enter_scoop(global);
 
-   if(DEBUG) debug(GREEN BOLD"AST:\n" RESET);
+   if (DEBUG) debug(GREEN BOLD"AST:\n" RESET);
    while (tokens[exe_pos]->type != END && !found_error)
       add_child(global, expr());
    print_ast(global);
    if (found_error) return;
 
 #if IR
-   if(DEBUG) debug(GREEN BOLD"GENERATE INTERMEDIATE REPRESENTATIONS:\n" RESET);
+   if (DEBUG) debug(GREEN BOLD"GENERATE INTERMEDIATE REPRESENTATIONS:\n" RESET);
    for (int i = 0; !found_error && i < global->cpos; i++)
       generate_ir(global->children[i]);
    if (found_error) return;
-    if(DEBUG) print_ir();
+   if (DEBUG) print_ir();
 #endif
 
 #if OPTIMIZE
@@ -1142,13 +1144,13 @@ void compile(char *filename)
 #endif
 
 #if ASM
-   if(DEBUG) debug(GREEN BOLD"GENERATE ASSEMBLY CODE:\n" RESET);
+   if (DEBUG) debug(GREEN BOLD"GENERATE ASSEMBLY CODE:\n" RESET);
    copy_insts();
    generate_asm(filename);
 #endif
 
    free_node(global);
-   if(DEBUG) debug(BLUE BOLD"FINISH COMPILATION:\n" RESET);
+   if (DEBUG) debug(BLUE BOLD"FINISH COMPILATION:\n" RESET);
 }
 
 int main(int argc, char **argv)
@@ -1156,7 +1158,7 @@ int main(int argc, char **argv)
    check(argc < 2, "require argument, usage pan <file.pn>");
    compile(argv[1]);
    free_memory();
-   if(DEBUG) debug(BLUE BOLD"EXIT CODE:\n" RESET);
+   if (DEBUG) debug(BLUE BOLD"EXIT CODE:\n" RESET);
 #if !IR
    debug(RED"NO IR GENERATION\n"RESET);
 #endif

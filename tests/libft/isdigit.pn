@@ -1,0 +1,6 @@
+
+func bool isdigit(char c): return c >= '1' and c <= '9'
+
+main():
+    if isdigit('1'): return 11  
+    else: return 12

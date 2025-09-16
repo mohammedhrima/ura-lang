@@ -61,7 +61,7 @@ LLVMTypeRef get_llvm_type(Type type)
 
 void handle_asm(Inst *inst)
 {
-   if(DEBUG) debug("%k\n", inst->token);
+   if (DEBUG) debug("%k\n", inst->token);
    Token *curr = inst->token;
    Token *left = inst->left;
    Token *right = inst->right;
@@ -71,16 +71,17 @@ void handle_asm(Inst *inst)
    {
    case INT: case BOOL: case LONG: case SHORT: case CHAR:
    {
-      if(curr->is_param)
+      if (curr->is_param)
       {
          ret = LLVMGetParam(curr->Param.func_ptr->llvm.element, curr->Param.index);
          LLVMSetValueName(ret, curr->name);
       }
       else if (curr->name)
       {
-         if(curr->is_declare) ret = LLVMBuildAlloca(builder, get_llvm_type(curr->type), curr->name);
-         else todo(1, "handle this case")
-         curr->is_declare = false;
+         if (curr->is_declare || curr->is_param) ret = LLVMBuildAlloca(builder, get_llvm_type(curr->type), curr->name);
+         else todo(1, "handle this case");
+            curr->is_declare = false;
+            curr->is_param = false;
          // ret = LLVMBuildLoad2(builder, get_llvm_type(curr->type), ret, curr->name);
       }
       else
