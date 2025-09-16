@@ -1,4 +1,3 @@
-- struct def
-- struct call
-- struct access attr
-- struct modify attr
+- struct as attribute to another struct
+- handle chars
+- handle variadic function
