@@ -1,6 +1,7 @@
 /*
 This example creates a struct type `Point` with two i32 fields: x and y.
 It allocates space for the struct and stores values into the fields.
+Fixed for LLVM 20+ using LLVMBuildStructGEP2 instead of deprecated LLVMBuildStructGEP.
 */
 
 #include <llvm-c/Core.h>
@@ -12,7 +13,6 @@ It allocates space for the struct and stores values into the fields.
 struct Point:
     int x
     int y
-
 */
 
 int main() {
@@ -36,12 +36,12 @@ int main() {
     // ALLOCATE STRUCT
     LLVMValueRef point = LLVMBuildAlloca(builder, pointStruct, "point");
 
-    // ADD ATTRIBUTE
-    LLVMValueRef gepX = LLVMBuildStructGEP(builder, point, 0, "x");
+    // ACCESS STRUCT FIELD x (index 0) - Using LLVMBuildStructGEP2 for LLVM 20+
+    LLVMValueRef gepX = LLVMBuildStructGEP2(builder, pointStruct, point, 0, "x");
     LLVMBuildStore(builder, LLVMConstInt(i32, 10, 0), gepX);
 
-    // ADD ATTRIBUTE
-    LLVMValueRef gepY = LLVMBuildStructGEP(builder, point, 1, "y");
+    // ACCESS STRUCT FIELD y (index 1) - Using LLVMBuildStructGEP2 for LLVM 20+
+    LLVMValueRef gepY = LLVMBuildStructGEP2(builder, pointStruct, point, 1, "y");
     LLVMBuildStore(builder, LLVMConstInt(i32, 20, 0), gepY);
 
     LLVMBuildRet(builder, LLVMConstInt(i32, 0, 0));

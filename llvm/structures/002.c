@@ -1,6 +1,7 @@
 /*
 This example creates a struct type `Point` with two i32 fields: x and y.
 It creates two separate Point variables and demonstrates operations on both.
+Fixed for LLVM 20+ using LLVMBuildStructGEP2 and LLVMBuildLoad2.
 */
 
 #include <llvm-c/Core.h>
@@ -10,8 +11,8 @@ It creates two separate Point variables and demonstrates operations on both.
 
 /*
 struct Point:
-   int x
-   int y
+    int x
+    int y
 
 Variables created:
 - point1: Point with values (10, 20)
@@ -42,11 +43,11 @@ int main()
    LLVMValueRef point1 = LLVMBuildAlloca(builder, pointStruct, "point1");
 
    // SET point1.x = 10
-   LLVMValueRef gep1X = LLVMBuildStructGEP(builder, point1, 0, "point1_x");
+   LLVMValueRef gep1X = LLVMBuildStructGEP2(builder, pointStruct, point1, 0, "point1_x");
    LLVMBuildStore(builder, LLVMConstInt(i32, 10, 0), gep1X);
 
    // SET point1.y = 20
-   LLVMValueRef gep1Y = LLVMBuildStructGEP(builder, point1, 1, "point1_y");
+   LLVMValueRef gep1Y = LLVMBuildStructGEP2(builder, pointStruct, point1, 1, "point1_y");
    LLVMBuildStore(builder, LLVMConstInt(i32, 20, 0), gep1Y);
 
    // ===== SECOND STRUCT VARIABLE =====
@@ -54,21 +55,21 @@ int main()
    LLVMValueRef point2 = LLVMBuildAlloca(builder, pointStruct, "point2");
 
    // SET point2.x = 30
-   LLVMValueRef gep2X = LLVMBuildStructGEP(builder, point2, 0, "point2_x");
+   LLVMValueRef gep2X = LLVMBuildStructGEP2(builder, pointStruct, point2, 0, "point2_x");
    LLVMBuildStore(builder, LLVMConstInt(i32, 30, 0), gep2X);
 
    // SET point2.y = 40
-   LLVMValueRef gep2Y = LLVMBuildStructGEP(builder, point2, 1, "point2_y");
+   LLVMValueRef gep2Y = LLVMBuildStructGEP2(builder, pointStruct, point2, 1, "point2_y");
    LLVMBuildStore(builder, LLVMConstInt(i32, 40, 0), gep2Y);
 
    // ===== DEMONSTRATE READING VALUES =====
-   // Load values from point1
-   LLVMValueRef point1_x_val = LLVMBuildLoad(builder, gep1X, "load_point1_x");
-   LLVMValueRef point1_y_val = LLVMBuildLoad(builder, gep1Y, "load_point1_y");
+   // Load values from point1 - Using LLVMBuildLoad2 for LLVM 20+
+   LLVMValueRef point1_x_val = LLVMBuildLoad2(builder, i32, gep1X, "load_point1_x");
+   LLVMValueRef point1_y_val = LLVMBuildLoad2(builder, i32, gep1Y, "load_point1_y");
 
-   // Load values from point2
-   LLVMValueRef point2_x_val = LLVMBuildLoad(builder, gep2X, "load_point2_x");
-   LLVMValueRef point2_y_val = LLVMBuildLoad(builder, gep2Y, "load_point2_y");
+   // Load values from point2 - Using LLVMBuildLoad2 for LLVM 20+
+   LLVMValueRef point2_x_val = LLVMBuildLoad2(builder, i32, gep2X, "load_point2_x");
+   LLVMValueRef point2_y_val = LLVMBuildLoad2(builder, i32, gep2Y, "load_point2_y");
 
    // ===== OPTIONAL: PERFORM OPERATIONS =====
    // Calculate sum of x coordinates: point1.x + point2.x
@@ -81,17 +82,17 @@ int main()
    LLVMValueRef result_point = LLVMBuildAlloca(builder, pointStruct, "result_point");
 
    // Store sum_x into result_point.x
-   LLVMValueRef result_x_gep = LLVMBuildStructGEP(builder, result_point, 0, "result_x");
+   LLVMValueRef result_x_gep = LLVMBuildStructGEP2(builder, pointStruct, result_point, 0, "result_x");
    LLVMBuildStore(builder, sum_x, result_x_gep);
 
    // Store sum_y into result_point.y
-   LLVMValueRef result_y_gep = LLVMBuildStructGEP(builder, result_point, 1, "result_y");
+   LLVMValueRef result_y_gep = LLVMBuildStructGEP2(builder, pointStruct, result_point, 1, "result_y");
    LLVMBuildStore(builder, sum_y, result_y_gep);
 
    LLVMBuildRet(builder, LLVMConstInt(i32, 0, 0));
 
    // Output the generated LLVM IR
-   LLVMPrintModuleToFile(mod, "two_structs_out.ll", NULL);
+   LLVMPrintModuleToFile(mod, "out.ll", NULL);
 
    printf("LLVM IR generated successfully!\n");
    printf("Created:\n");

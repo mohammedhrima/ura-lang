@@ -52,6 +52,12 @@
 - macros:
    - prepreccesing macros
 
+- projects:
+   - 42 libft
+   - donuts
+
+- publish the vscode extention
+
 - Check:
    + Alfred V aho
    + Yacc

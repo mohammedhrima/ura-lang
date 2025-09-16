@@ -1,6 +1,7 @@
 /*
 This example allocates two `Point` structs.
 It sets fields in one and performs a memory copy to assign it to another.
+Fixed for LLVM 20+ using LLVMBuildStructGEP2 and updated intrinsic declarations.
 */
 
 #include <llvm-c/Core.h>
@@ -28,29 +29,47 @@ int main() {
     LLVMValueRef src = LLVMBuildAlloca(builder, point, "src");
     LLVMValueRef dst = LLVMBuildAlloca(builder, point, "dst");
 
-    // src.x = 5
-    LLVMValueRef x = LLVMBuildStructGEP(builder, src, 0, "src_x");
+    // src.x = 5 - Using LLVMBuildStructGEP2
+    LLVMValueRef x = LLVMBuildStructGEP2(builder, point, src, 0, "src_x");
     LLVMBuildStore(builder, LLVMConstInt(i32, 5, 0), x);
 
-    // src.y = 7
-    LLVMValueRef y = LLVMBuildStructGEP(builder, src, 1, "src_y");
+    // src.y = 7 - Using LLVMBuildStructGEP2
+    LLVMValueRef y = LLVMBuildStructGEP2(builder, point, src, 1, "src_y");
     LLVMBuildStore(builder, LLVMConstInt(i32, 7, 0), y);
 
     // memcpy(dst, src, sizeof(Point)) (via llvm.memcpy)
+    // In LLVM 20+, we use opaque pointers, so the intrinsic name is simplified
     LLVMTypeRef voidTy = LLVMVoidType();
+    LLVMTypeRef ptrTy = LLVMPointerType(LLVMInt8Type(), 0);
     LLVMTypeRef memcpyParamTypes[] = {
-        LLVMPointerType(LLVMInt8Type(), 0),
-        LLVMPointerType(LLVMInt8Type(), 0),
-        LLVMInt64Type(), LLVMInt1Type()
+        ptrTy,           // dst pointer
+        ptrTy,           // src pointer
+        LLVMInt64Type(), // size
+        LLVMInt1Type()   // is_volatile
     };
     LLVMTypeRef memcpyType = LLVMFunctionType(voidTy, memcpyParamTypes, 4, 0);
-    LLVMValueRef memcpyFn = LLVMAddFunction(mod, "llvm.memcpy.p0i8.p0i8.i64", memcpyType);
+    
+    // For LLVM 20+, the intrinsic name might be simplified due to opaque pointers
+    LLVMValueRef memcpyFn = LLVMAddFunction(mod, "llvm.memcpy.p0.p0.i64", memcpyType);
 
-    LLVMValueRef dstCast = LLVMBuildBitCast(builder, dst, LLVMPointerType(LLVMInt8Type(), 0), "dst8");
-    LLVMValueRef srcCast = LLVMBuildBitCast(builder, src, LLVMPointerType(LLVMInt8Type(), 0), "src8");
-    LLVMValueRef size = LLVMConstInt(LLVMInt64Type(), LLVMABISizeOfType(LLVMGetDataLayout(mod), point), 0);
+    // Cast pointers to i8* for memcpy
+    LLVMValueRef dstCast = LLVMBuildBitCast(builder, dst, ptrTy, "dst8");
+    LLVMValueRef srcCast = LLVMBuildBitCast(builder, src, ptrTy, "src8");
+    
+    // Calculate size of Point struct - Create target data from module's data layout
+    const char* dataLayoutStr = LLVMGetDataLayout(mod);
+    LLVMTargetDataRef targetData = LLVMCreateTargetData(dataLayoutStr);
+    unsigned long long pointSize = LLVMABISizeOfType(targetData, point);
+    LLVMValueRef size = LLVMConstInt(LLVMInt64Type(), pointSize, 0);
+    LLVMDisposeTargetData(targetData);
 
-    LLVMValueRef args[] = { dstCast, srcCast, size, LLVMConstInt(LLVMInt1Type(), 0, 0) };
+    // Call memcpy with is_volatile = false
+    LLVMValueRef args[] = { 
+        dstCast, 
+        srcCast, 
+        size, 
+        LLVMConstInt(LLVMInt1Type(), 0, 0) // is_volatile = false
+    };
     LLVMBuildCall2(builder, memcpyType, memcpyFn, args, 4, "");
 
     LLVMBuildRet(builder, LLVMConstInt(i32, 0, 0));
