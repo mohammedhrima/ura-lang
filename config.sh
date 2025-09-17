@@ -53,6 +53,10 @@ run() {
     build true && ir && asm && exe
 }
 
+lines() {
+    find $src -type f \( -name "*.c" -o -name "*.h" \) -exec wc -l {} +
+}
+
 indent() {
     echo -e "${YELLOW}Formatting code...${NC}"
     astyle --mode=c --indent=spaces=3 --pad-oper --pad-header \
