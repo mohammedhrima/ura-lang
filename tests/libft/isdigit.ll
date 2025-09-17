@@ -5,8 +5,8 @@ define i1 @isdigit(i8 %c) {
 entry:
   %MO_EQ = icmp sge i8 %c, 49
   %LE_EQ = icmp sle i8 %c, 57
-  %and = and i1 %MO_EQ, %LE_EQ
-  ret i1 %and
+  %AND = and i1 %MO_EQ, %LE_EQ
+  ret i1 %AND
 }
 
 define i32 @main() {

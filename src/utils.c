@@ -37,33 +37,26 @@ int debug(char *conv, ...)
                i++;
             }
          }
-         if (strncmp(conv + i, "zu", 2) == 0)
-         {
-            res += fprintf(stdout, "%d", va_arg(args, int)); i++;
-         }
+         if (strncmp(conv + i, "zu", 2) == 0) {res += fprintf(stdout, "%d", va_arg(args, int)); i++;}
          else if (strncmp(conv + i, "lld", 3) == 0)
-         {
-            res += fprintf(stdout, "%lld", va_arg(args, long long)); i += 2;
-         }
+         {res += fprintf(stdout, "%lld", va_arg(args, long long)); i += 2;}
          else
          {
             switch (conv[i])
             {
-            case 'c':
-               res += fprintf(stdout, "%c", va_arg(args, int)); break;
+            case 'c': res += fprintf(stdout, "%c", va_arg(args, int)); break;
             case 's':
             {
                char *str = va_arg(args, char *);
+               if (!str) str = "(null_str)";
                if (left_align)
                {
-                  if (prec >= 0)
-                     res += fprintf(stdout, "%-*.*s", width, prec, str);
+                  if (prec >= 0) res += fprintf(stdout, "%-*.*s", width, prec, str);
                   else res += fprintf(stdout, "%-*s", width, str);
                }
                else
                {
-                  if (prec >= 0)
-                     res += fprintf(stdout, "%*.*s", width, prec, str);
+                  if (prec >= 0) res += fprintf(stdout, "%*.*s", width, prec, str);
                   else res += fprintf(stdout, "%*s", width, str);
                }
                break;
@@ -77,8 +70,7 @@ int debug(char *conv, ...)
                   res += fprintf(stdout, "%x", va_arg(args, unsigned int));
                break;
             case 'X':
-               if (prec >= 0)
-                  res += fprintf(stdout, "%.*X", prec, va_arg(args, unsigned int));
+               if (prec >= 0) res += fprintf(stdout, "%.*X", prec, va_arg(args, unsigned int));
                else res += fprintf(stdout, "%X", va_arg(args, unsigned int));
                break;
             case 'd':
@@ -87,8 +79,7 @@ int debug(char *conv, ...)
                break;
             case 'f':
                if (prec >= 0) res += fprintf(stdout, "%.*f", prec, va_arg(args, double));
-               else res += fprintf(stdout, "%f", va_arg(args,
-                                      double));
+               else res += fprintf(stdout, "%f", va_arg(args, double));
                break;
             case '%': res += fprintf(stdout, "%%"); break;
             case 't':
@@ -202,18 +193,14 @@ int print_value(Token *token)
    {
    case INT: return debug("value [%lld] ", token->Int.value);
    case LONG: return debug("value [%lld] ", token->Long.value);
-   case BOOL:
-      return debug("value [%s] ", token->Bool.value ? "True" : "False");
+   case BOOL: return debug("value [%s] ", token->Bool.value ? "True" : "False");
    case FLOAT: return debug("value [%f] ", token->Float.value);
    case CHAR: return debug("value [%c] ", token->Char.value);
-   case CHARS:
-      return debug("value [%s] index [%d] ", token->Chars.value, token->index);
-   case STRUCT_CALL:
-      return debug("has [%d] attrs ", token->Struct.pos);
+   case CHARS: return debug("value [%s] index [%d] ", token->Chars.value, token->index);
+   case STRUCT_CALL: return debug("has [%d] attrs ", token->Struct.pos);
    case DEFAULT: return debug("default value ");
    case ADD: return debug("%t ", token->type); break;
-   default:
-      check(1, "handle this case [%s]\n", to_string(token->type));
+   default: check(1, "handle this case [%s]\n", to_string(token->type));
    }
    return 0;
 }
@@ -241,13 +228,13 @@ void print_inst(Inst *inst)
    {
    case ADD_ASSIGN: case ASSIGN:
    {
-      debug("[%-6s] [%s] ", to_string(curr->type),
-            (curr->assign_type ? to_string(curr->assign_type) : ""));
-      if (left->name)  debug("r%.2d (%s) = ", left->ir_reg, left->name);
+      char *assign_type_str = curr->assign_type ? to_string(curr->assign_type) : "";
+      debug("[%-6s] [%s] ", to_string(curr->type), assign_type_str);
+
+      if (left->name) debug("r%.2d (%s) = ", left->ir_reg, left->name);
       else debug("r%.2d = ", left->ir_reg);
 
-      if (right->ir_reg)
-         debug("r%.2d (%s) ", right->ir_reg, right->name ? right->name : "");
+      if (right->ir_reg) debug("r%.2d (%s) ", right->ir_reg, right->name ? right->name : "");
       else print_value(right);
       break;
    }
@@ -573,8 +560,8 @@ Inst *new_inst(Token *token)
    case CHARS: case INT:
    {
       if (token->name) token->ir_reg = ++ir_reg;
-      if (token->Chars.value)
-         stop(1, "found");
+      // if (token->Chars.value)
+      //    stop(1, "found");
       break;
    }
    case STRUCT_CALL:
@@ -691,7 +678,8 @@ static const char *type_names[] = {
    [RBRA] = "RBRA", [COMA] = "COMA", [DOT] = "DOT",
    [DOTS] = "DOTS", [ACCESS] = "ACCESS",
 
-   [RETURN] = "RETURN", [IF] = "IF", [ELIF] = "ELIF",
+   [RETURN] = "RETURN", [ARROW] = "ARROW",
+   [IF] = "IF", [ELIF] = "ELIF",
    [ELSE] = "ELSE", [END_IF] = "END_IF",
    [BUILD_COND] = "BLD_COND", [WHILE] = "WHILE",
    [CONTINUE] = "CONT", [BREAK] = "BREAK",
@@ -713,6 +701,7 @@ char *to_string_(char *filename, int line, Type type)
    if (type > 0 && (int)type < size && type_names[type])
       return (char *)type_names[type];
    check(1, "Unknown type [%d] in %s:%d\n", type, filename, line);
+   seg();
    return NULL;
 }
 

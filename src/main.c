@@ -35,6 +35,7 @@ void tokenize(char *filename)
    if (!input) return;
 
    struct { char *value; Type type; } specials[] = {
+      {"->", ARROW},
       {".", DOT}, {":", DOTS}, {"+=", ADD_ASSIGN}, {"-=", SUB_ASSIGN},
       {"*=", MUL_ASSIGN}, {"/=", DIV_ASSIGN}, {"!=", NOT_EQUAL},
       {"==", EQUAL}, {"<=", LESS_EQUAL}, {">=", MORE_EQUAL},
@@ -92,7 +93,7 @@ void tokenize(char *filename)
             parse_token(NULL, 0, 0, specials[j].type, space, filename, line);
             found = true;
             i += strlen(specials[j].value);
-            if (strcmp(specials[j].value, ":") == 0) space += TAB;
+            if (includes(specials[j].type, ARROW, DOTS, 0)) space += TAB;
             break;
          }
       }
@@ -103,7 +104,7 @@ void tokenize(char *filename)
          while (input[i] && input[i] != '\"') i++;
          check(input[i] != '\"', "Expected '\"'");
          i++;
-         parse_token(input, s, i, CHARS, space, filename, line);
+         parse_token(input, s + 1, i - 1, CHARS, space, filename, line);
          continue;
       }
       if (input[i] && input[i] == '\'')
@@ -247,14 +248,21 @@ Node *func_dec(Node *node)
       add_child(node->left, curr);
       find(COMA, 0); // TODO: check this later
    }
-   check(!found_error &&
-         last->type != RPAR, "expected ) after function declaration");
-   check(!found_error &&
-         !find(DOTS, 0), "Expected : after function declaration");
+   check(!found_error && last->type != RPAR, "expected ) after function declaration");
+   Token*next = find(DOTS, ARROW, 0);
+   check(!found_error && !next, "Expected : after function declaration");
 
    Node *child = NULL;
-   while (within_space(node->token->space)) child = add_child(node, expr());
-   if (!is_proto)
+   if (next->type == DOTS) while (within_space(node->token->space)) child = add_child(node, expr());
+   else
+   {
+      Token *retToken = copy_token(next);
+      retToken->type = RETURN;
+      Node *retNode = new_node(retToken);
+      retNode->left = expr();
+      child = add_child(node, retNode);
+   }
+   if (!is_proto && next->type == DOTS)
    {
       if (node->token->retType != VOID)
          check(!child || child->token->type != RETURN, "expected return statment");
@@ -570,15 +578,14 @@ Token *func_call_ir(Node *node)
 #if 1
       todo(1, "handle this\n");
 #else
-      if (!printf_func)
-      {
+      // if (!printf_func)
+      // {
 
-      }
+      // }
+
       node->token->Fcall.ptr = func->token;
       node->token->Fcall.args = allocate(node->cpos, sizeof(Token*));
       node->token->Fcall.pos = node->cpos;
-
-      func = copy_node(func);
       node->token->retType = func->token->retType;
 
       // setReg(node->token, func->token->creg);
