@@ -125,7 +125,7 @@ enum Type
    LPAR, RPAR, LBRA, RBRA, COMA, DOT, DOTS, ACCESS,
 
    // 🔹 Control Flow
-   RETURN,
+   RETURN, ARROW,
    IF, ELIF, ELSE, END_IF, BUILD_COND,
    WHILE, CONTINUE, BREAK, END_WHILE,
    BLOC, END_BLOC, END_COND, APPEND_BLOC, SET_POS,
@@ -184,9 +184,16 @@ struct Token
       struct
       {
          long value;
-         int power;
-         struct Int *next;
+         // int power;
+         // struct Int *next;
       } Int;
+      // short
+      struct
+      {
+         int value;
+         // int power;
+         // struct Int *next;
+      } Short;
       // long
       struct
       {
