@@ -1,4 +1,6 @@
 
+func proto int puts(chars str):
+
 main():
-    chars str = "abcde"
-    
+    chars str = "abc"
+    puts(str)

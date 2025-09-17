@@ -1,7 +1,6 @@
 #include "./header.h"
 
-
-// Add these global variables with your existing ones
+// Global variables
 LLVMModuleRef mod;
 LLVMBuilderRef builder;
 LLVMContextRef context;
@@ -15,9 +14,23 @@ LLVMTypeRef int16Type;    // short
 LLVMTypeRef boolType;     // bool (i1)
 LLVMTypeRef charType;     // char (i8)
 LLVMTypeRef charsType;    // char* (pointer to i8)
-// PTR will be handled dynamically
 
+LLVMValueRef func_arr[100];
 LLVMValueRef curr_func; // TODO: to be removed
+
+static int func_pos = 0;
+void enter_func(LLVMValueRef func)
+{
+   func_arr[func_pos] = func;
+   curr_func = func_arr[func_pos];
+   func_pos++;
+}
+
+void exit_func()
+{
+   func_pos--;
+   curr_func = func_arr[func_pos];
+}
 
 int i = 0;
 
@@ -33,8 +46,9 @@ void init_llvm_types() {
    charsType = LLVMPointerType(charType, 0);      // char* for strings
 }
 
-LLVMTypeRef get_llvm_type(Type type)
+LLVMTypeRef get_llvm_type(Token *token)
 {
+   Type type = includes(token->type, FDEC, FCALL, 0) ? token->retType : token->type;
    switch (type)
    {
    case VOID: return voidType;
@@ -49,15 +63,62 @@ LLVMTypeRef get_llvm_type(Type type)
       // For PTR, you'll need additional context about what it points to
       // This is a placeholder - you might need to pass the pointed-to type
       return LLVMPointerType(int32Type, 0); // Default to int* for now
-   default: todo(1, "handle this case %s", to_string(type)); break;
+   default:
+      todo(1, "handle this case %s", to_string(type)); break;
+      seg();
    }
    return NULL;
 }
 
-// LLVMValueRef import_ref()
-// {
+LLVMValueRef get_value(Token *token)
+{
+   LLVMTypeRef llvmType = get_llvm_type(token);
+   switch (token->type)
+   {
+   case INT: return LLVMConstInt(llvmType, token->Int.value, 0);
+   case FLOAT: return LLVMConstReal(llvmType, token->Float.value);
+   case BOOL: return LLVMConstInt(llvmType, token->Bool.value ? 1 : 0, 0);
+   case LONG: return LLVMConstInt(llvmType, token->Long.value, 0);
+   case SHORT: return LLVMConstInt(llvmType, token->Short.value, 0);
+   case CHAR: return LLVMConstInt(llvmType, token->Char.value, 0);
+   case CHARS:
+      return LLVMConstStringInContext(context, token->Chars.value, strlen(token->Chars.value), 0);
+   default: todo(1, "handle this literal case %s", to_string(token->type));
+   }
+   return (LLVMValueRef) {};
+}
 
-// }
+LLVMValueRef get_llvm_op(Token *token, Token* left, Token* right)
+{
+   LLVMValueRef leftRef = NULL, rightRef = NULL;
+   if (left->name && !left->is_param && left->type != FCALL)
+      leftRef = LLVMBuildLoad2(builder, get_llvm_type(left), left->llvm.element, left->name);
+   else leftRef = left->llvm.element;
+
+   if (right->name && !right->is_param && right->type != FCALL)
+      rightRef = LLVMBuildLoad2(builder, get_llvm_type(left), right->llvm.element, right->name);
+   else rightRef = right->llvm.element;
+
+   char* op = to_string(token->type);
+   Type type = token->type == FCALL ? token->retType : token->type;
+   switch (type)
+   {
+   case LESS: return LLVMBuildICmp(builder, LLVMIntSLT, leftRef, rightRef, op); break;
+   case LESS_EQUAL: return LLVMBuildICmp(builder, LLVMIntSLE, leftRef, rightRef, op); break;
+   case MORE: return LLVMBuildICmp(builder, LLVMIntSGT, leftRef, rightRef, op); break;
+   case MORE_EQUAL: return LLVMBuildICmp(builder, LLVMIntSGE, leftRef, rightRef, op); break;
+   case EQUAL: return LLVMBuildICmp(builder, LLVMIntEQ,  leftRef, rightRef, op); break;
+   case NOT_EQUAL: return LLVMBuildICmp(builder, LLVMIntNE,  leftRef, rightRef, op); break;
+   case ADD: return LLVMBuildAdd(builder, leftRef, rightRef, op); break;
+   case SUB: return LLVMBuildSub(builder, leftRef, rightRef, op); break;
+   case MUL: return LLVMBuildMul(builder, leftRef, rightRef, op); break;
+   case DIV: return LLVMBuildSDiv(builder, leftRef, rightRef, op); break;
+   case AND: return LLVMBuildAnd(builder, leftRef, rightRef, op); break;
+   case OR: return LLVMBuildOr(builder, leftRef, rightRef, op); break;
+   default: todo(1, "handle this %s", op);
+   }
+   return (LLVMValueRef) {};
+}
 
 void handle_asm(Inst *inst)
 {
@@ -69,7 +130,7 @@ void handle_asm(Inst *inst)
 
    switch (curr->type)
    {
-   case INT: case BOOL: case LONG: case SHORT: case CHAR:
+   case INT: case BOOL: case LONG: case SHORT: case CHAR: case CHARS:
    {
       if (curr->is_param)
       {
@@ -78,29 +139,15 @@ void handle_asm(Inst *inst)
       }
       else if (curr->name)
       {
-         if (curr->is_declare || curr->is_param) ret = LLVMBuildAlloca(builder, get_llvm_type(curr->type), curr->name);
+         if (curr->is_declare) ret = LLVMBuildAlloca(builder, get_llvm_type(curr), curr->name);
          else todo(1, "handle this case");
-            curr->is_declare = false;
-            curr->is_param = false;
-         // ret = LLVMBuildLoad2(builder, get_llvm_type(curr->type), ret, curr->name);
+         curr->is_declare = false;
+         curr->is_param = false;
       }
-      else
-      {
-         switch (curr->type)
-         {
-         case INT: ret = LLVMConstInt(get_llvm_type(curr->type), curr->Int.value, 0); break;
-         case BOOL: ret = LLVMConstInt(get_llvm_type(curr->type), curr->Bool.value ? 1 : 0,   0); break;
-         case LONG: ret = LLVMConstInt(get_llvm_type(curr->type), curr->Long.value, 0); break;
-         // Assuming you store short in Int.value break;
-         case SHORT: ret = LLVMConstInt(get_llvm_type(curr->type), curr->Int.value, 0); break;
-         case CHAR: ret = LLVMConstInt(get_llvm_type(curr->type), curr->Char.value, 0); break;
-         default:
-            todo(1, "handle this literal case %s", to_string(curr->type));
-            break;
-         }
-      }
-      curr->llvm.is_set = true;
+      else ret = get_value(curr);
+
       curr->llvm.element = ret;
+      curr->llvm.is_set = true;
       break;
    }
    case STRUCT_DEF:
@@ -115,15 +162,8 @@ void handle_asm(Inst *inst)
       {
          Token *attr = curr->Struct.attrs[i];
          stop(!attr, "attribite is NULL\n");
-         switch (attr->type)
-         {
-         case INT:
-            attrs[i] = int32Type;
-            break;
-         default:
-            todo(1, "handle this case");
-            break;
-         }
+         attrs[i] = get_llvm_type(attr);
+
       }
       // SET STRUCT BODY
       LLVMStructSetBody(curr->llvm.structType, attrs, pos, 0);
@@ -155,73 +195,13 @@ void handle_asm(Inst *inst)
       break;
    }
    case ADD: case SUB: case MUL: case DIV:
-   {
-      if (left->name)
-         leftRef = LLVMBuildLoad2(builder, get_llvm_type(left->type), left->llvm.element, left->name);
-      else leftRef = left->llvm.element;
-      if (right->name)
-         rightRef = LLVMBuildLoad2( builder, get_llvm_type(left->type), right->llvm.element, right->name);
-      else rightRef = right->llvm.element;
-
-      Type op = curr->type;
-      switch (curr->type)
-      {
-      case ADD: ret = LLVMBuildAdd(builder, leftRef, rightRef, to_string(op)); break;
-      case SUB: ret = LLVMBuildSub(builder, leftRef, rightRef, to_string(op)); break;
-      case MUL: ret = LLVMBuildMul(builder, leftRef, rightRef, to_string(op)); break;
-      case DIV: ret = LLVMBuildSDiv(builder, leftRef, rightRef, to_string(op)); break;
-      default: todo(1, "handle this")
-      }
-      curr->llvm.element = ret;
-      curr->llvm.is_set = true;
-      break;
-   }
+   case LESS: case LESS_EQUAL: case MORE:
+   case MORE_EQUAL: case EQUAL: case NOT_EQUAL:
    case AND: case OR:
    {
       if (check(!left->llvm.is_set, "left is not set\n")) break;
       if (check(!right->llvm.is_set, "right is not set\n")) break;
-
-      leftRef = left->llvm.element;
-      rightRef = right->llvm.element;
-
-      ret = curr->type == AND ?
-            LLVMBuildAnd(builder, leftRef, rightRef, "and") :
-            LLVMBuildOr(builder, leftRef, rightRef, "or");
-      curr->llvm.element = ret;
-      curr->llvm.is_set = true;
-
-      break;
-   }
-   case LESS: case LESS_EQUAL: case MORE:
-   case MORE_EQUAL: case EQUAL: case NOT_EQUAL:
-   {
-      leftRef = left->llvm.element;
-      rightRef = right->llvm.element;
-
-      Type op = curr->type;
-      switch (curr->type)
-      {
-      case LESS:
-         ret = LLVMBuildICmp(builder, LLVMIntSLT, leftRef, rightRef, to_string(op));
-         break;
-      case LESS_EQUAL:
-         ret = LLVMBuildICmp(builder, LLVMIntSLE, leftRef, rightRef, to_string(op));
-         break;
-      case MORE:
-         ret = LLVMBuildICmp(builder, LLVMIntSGT, leftRef, rightRef, to_string(op));
-         break;
-      case MORE_EQUAL:
-         ret = LLVMBuildICmp(builder, LLVMIntSGE, leftRef, rightRef, to_string(op));
-         break;
-      case EQUAL:
-         ret = LLVMBuildICmp(builder, LLVMIntEQ,  leftRef, rightRef, to_string(op));
-         break;
-      case NOT_EQUAL:
-         ret = LLVMBuildICmp(builder, LLVMIntNE,  leftRef, rightRef, to_string(op));
-         break;
-      default: todo(1, "handle this")
-      }
-      // printf(BLUE"set is_set %p, %s\n"RESET, curr, to_string(curr->type));
+      ret = get_llvm_op(curr, left, right);
       curr->llvm.element = ret;
       curr->llvm.is_set = true;
       break;
@@ -259,22 +239,31 @@ void handle_asm(Inst *inst)
       {
          args = allocate(curr->Fdec.pos + 1, sizeof(LLVMTypeRef));
          for (int i = 0; i < curr->Fdec.pos; i++)
-            args[i] = get_llvm_type(curr->Fdec.args[i]->type);
-         curr->llvm.funcType = LLVMFunctionType(get_llvm_type(curr->retType), args, curr->Fdec.pos, 0);
+            args[i] = get_llvm_type(curr->Fdec.args[i]);
+         curr->llvm.funcType = LLVMFunctionType(get_llvm_type(curr), args, curr->Fdec.pos, 0);
          free(args);
       }
-      else curr->llvm.funcType = LLVMFunctionType(get_llvm_type(curr->retType), NULL, 0, 0);
+      else curr->llvm.funcType = LLVMFunctionType(get_llvm_type(curr), NULL, 0, 0);
 
       curr->llvm.element = LLVMAddFunction(mod, curr->name, curr->llvm.funcType);
-      LLVMBasicBlockRef funcEntry = LLVMAppendBasicBlock(curr->llvm.element, "entry");
-      LLVMPositionBuilderAtEnd(builder, funcEntry);
 
-      // if (strcmp(curr->name, "main") == 0)
+      if (!curr->is_proto)
       {
+         LLVMBasicBlockRef funcEntry = LLVMAppendBasicBlock(curr->llvm.element, "entry");
          LLVMPositionBuilderAtEnd(builder, funcEntry);
-         curr_func = curr->llvm.element; // TODO: to be removed
+         // if (strcmp(curr->name, "main") == 0)
+         {
+            LLVMPositionBuilderAtEnd(builder, funcEntry);
+         }
       }
+      
+      enter_func(curr->llvm.element);
       curr->llvm.is_set = true;
+      break;
+   }
+   case END_BLOC:
+   {
+      exit_func();
       break;
    }
    case RETURN:
@@ -297,32 +286,13 @@ void handle_asm(Inst *inst)
       case INT: case BOOL: case LONG: case SHORT: case CHAR: case FLOAT:
       {
          if (left->name || left->is_attr)
-         {
-            // Load variable and return it
             ret = LLVMBuildRet(builder, left->llvm.element);
-         }
          else
-         {
-            // Return literal constant
-            LLVMValueRef constant = NULL;
-            switch (left->type)
-            {
-            case INT: constant = LLVMConstInt(get_llvm_type(left->type), left->Int.value, 0); break;
-            case BOOL: constant = LLVMConstInt(get_llvm_type(left->type), left->Bool.value ? 1 : 0, 0); break;
-            case LONG: constant = LLVMConstInt(get_llvm_type(left->type), left->Long.value, 0); break;
-            // Assuming SHORT stored in Int.value
-            case SHORT: constant = LLVMConstInt(get_llvm_type(left->type), left->Int.value, 0); break;
-            case CHAR: constant = LLVMConstInt(get_llvm_type(left->type), left->Char.value, 0); break;
-            case FLOAT: constant = LLVMConstReal(get_llvm_type(left->type), left->Float.value); break;
-            default: todo(1, "unhandled constant type in return"); break;
-            }
-            ret = LLVMBuildRet(builder, constant);
-         }
+            ret = LLVMBuildRet(builder, get_value(left));
          break;
       }
       case VOID:
       {
-         // Void return - no value
          ret = LLVMBuildRetVoid(builder);
          break;
       }
@@ -361,7 +331,6 @@ void handle_asm(Inst *inst)
       LLVMBuildBr(builder, left->llvm.bloc);
       break;
    }
-   case END_BLOC: break;
    default: todo(1, "handle this case (%s)\n", to_string(curr->type)); break;
    }
 }
@@ -380,10 +349,7 @@ void generate_asm(char *name)
    // Initialize all types
    init_llvm_types();
 
-   for (i = 0; insts[i]; ) {
-      handle_asm(insts[i]);
-      i++;
-   }
+   for (i = 0; insts[i]; i++) handle_asm(insts[i]);
 
    // debug("module name: [%s]\n", moduleName);
    strcpy(moduleName + strlen(moduleName) - 2, "ll");
