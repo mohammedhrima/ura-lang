@@ -45,12 +45,20 @@ asm() {
     }
 }
 
+comp_asm() {
+    clang "$src/file.s" -o "$src/exe.out"
+}
+
 exe() {
-    clang "$src/file.s" -o "$src/exe.out" && "$src/exe.out"
+    "$src/exe.out"
+}
+
+comp() {
+    build true && ir && asm && comp_asm
 }
 
 run() {
-    build true && ir && asm && exe
+    build true && ir && asm && comp_asm && exe
 }
 
 lines() {
@@ -151,24 +159,24 @@ set_prompt
 
 
 # === Git Sync Check ===
-if git rev-parse --is-inside-work-tree &>/dev/null; then
-    git fetch origin &>/dev/null
+# if git rev-parse --is-inside-work-tree &>/dev/null; then
+#     git fetch origin &>/dev/null
 
-    LOCAL=$(git rev-parse @)
-    REMOTE=$(git rev-parse @{u} 2>/dev/null || echo "")
-    BASE=$(git merge-base @ @{u} 2>/dev/null || echo "")
+#     LOCAL=$(git rev-parse @)
+#     REMOTE=$(git rev-parse @{u} 2>/dev/null || echo "")
+#     BASE=$(git merge-base @ @{u} 2>/dev/null || echo "")
 
-    if [ "$LOCAL" = "$REMOTE" ]; then
-        :
-    elif [ "$LOCAL" = "$BASE" ]; then
-        echo -e "${RED}Error:${NC} Your branch is behind the remote. Please pull before building."
-        return 1
-    elif [ "$REMOTE" = "$BASE" ]; then
-        echo -e "${YELLOW}Warning:${NC} Your branch is ahead of the remote."
-    else
-        echo -e "${RED}Error:${NC} Your branch has diverged from remote. Resolve conflicts first."
-        return 1
-    fi
-else
-    echo -e "${YELLOW}Warning:${NC} Not a git repository, skipping sync check."
-fi
+#     if [ "$LOCAL" = "$REMOTE" ]; then
+#         :
+#     elif [ "$LOCAL" = "$BASE" ]; then
+#         echo -e "${RED}Error:${NC} Your branch is behind the remote. Please pull before building."
+#         return 1
+#     elif [ "$REMOTE" = "$BASE" ]; then
+#         echo -e "${YELLOW}Warning:${NC} Your branch is ahead of the remote."
+#     else
+#         echo -e "${RED}Error:${NC} Your branch has diverged from remote. Resolve conflicts first."
+#         return 1
+#     fi
+# else
+#     echo -e "${YELLOW}Warning:${NC} Not a git repository, skipping sync check."
+# fi

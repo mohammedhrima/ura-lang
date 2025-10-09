@@ -122,15 +122,19 @@ void tokenize(char *filename)
          if (strncmp(input + s, "use ", 4) == 0)
          {
             while (isspace(input[i])) i++;
+            check(input[i] != '\"', "expected \" after use"); i++;
             s = i;
-            while (input[i] && !isspace(input[i])) i++;
-            char *use = allocate(i - s + 1, sizeof(char));
-            strncpy(use, input + s, i - s);
-            char *tmp = strjoin(use, ".pn", NULL);
+            while (input[i] && !isspace(input[i]) && input[i] != '\"') i++;
+            check(input[i] != '\"', "expected \""); i++;
+
+            char *use = allocate(i - s, sizeof(char));
+            strncpy(use, input + s, i - s - 1);
+
+            char *use_filename = strjoin(dirname(filename), "/", use);
             free(use);
-            use = tmp;
+            use = strjoin(use_filename, ".pn", NULL);
             tokenize(use);
-            free(use);
+            free(use_filename);
          }
          else parse_token(input, s, i, ID, space, filename, line);
          continue;
@@ -150,8 +154,7 @@ Node *expr() {
    return assign();
 }
 
-AST_NODE(assign, logic, ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN,
-         DIV_ASSIGN, 0);
+AST_NODE(assign, logic, ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, 0);
 AST_NODE(logic, equality, AND, OR, 0);
 // TODO: handle ! operator
 AST_NODE(equality, comparison, EQUAL, NOT_EQUAL, 0);
@@ -200,7 +203,6 @@ Node *func_dec(Node *node)
    // Function Declaration:
    //    + left children: arguments
    //    + children     : code block
-   bool is_proto = find(PROTO, 0) != NULL;
    Token *typeName = find(DATA_TYPES, 0);
    if (typeName->type == ID)
    {
@@ -209,10 +211,11 @@ Node *func_dec(Node *node)
    }
    Token *fname = find(ID, 0);
    if (check(!typeName || !fname,
-             "expected data type and identifier after func declaration"))
+      "expected data type and identifier after func declaration"))
       return node;
    node->token->retType = typeName->type;
-   node->token->is_proto = is_proto;
+   node->token->is_proto = (node->token->type == PROTO_FUNC);
+   node->token->type = FDEC;
    setName(node->token, fname->name);
    enter_scoop(node);
 
@@ -249,30 +252,35 @@ Node *func_dec(Node *node)
       find(COMA, 0); // TODO: check this later
    }
    check(!found_error && last->type != RPAR, "expected ) after function declaration");
-   Token*next = find(DOTS, ARROW, 0);
-   check(!found_error && !next, "Expected : after function declaration");
-
-   Node *child = NULL;
-   if (next->type == DOTS) while (within_space(node->token->space)) child = add_child(node, expr());
-   else
+   
+   if(!node->token->is_proto)
    {
-      Token *retToken = copy_token(next);
-      retToken->type = RETURN;
-      Node *retNode = new_node(retToken);
-      retNode->left = expr();
-      child = add_child(node, retNode);
-   }
-   if (!is_proto && next->type == DOTS)
-   {
-      if (node->token->retType != VOID)
-         check(!child || child->token->type != RETURN, "expected return statment");
+      Token *next = find(DOTS, ARROW, 0);
+      check(!found_error && !next, "Expected : after function declaration");
+      Node *child = NULL;
+      
+      if (next->type == DOTS) while (within_space(node->token->space)) child = add_child(node, expr());
       else
       {
-         Node *ret = new_node(new_token(RETURN, node->token->space + TAB));
-         ret->left = new_node(new_token(INT, node->token->space + TAB));
-         add_child(node, ret);
+         Token *retToken = copy_token(next);
+         retToken->type = RETURN;
+         Node *retNode = new_node(retToken);
+         retNode->left = expr();
+         child = add_child(node, retNode);
+      }
+      if (next->type == DOTS)
+      {
+         if (node->token->retType != VOID)
+            check(!child || child->token->type != RETURN, "expected return statment");
+         else
+         {
+            Node *ret = new_node(new_token(RETURN, node->token->space + TAB));
+            ret->left = new_node(new_token(INT, node->token->space + TAB));
+            add_child(node, ret);
+         }
       }
    }
+
    exit_scoop();
    return node;
 }
@@ -488,7 +496,7 @@ Node *prime()
    //     node->token->is_ref = true;
    //     return node;
    // }
-   else if ((token = find(FDEC, 0))) return func_dec(new_node(token));
+   else if ((token = find(FDEC, PROTO_FUNC, 0))) return func_dec(new_node(token));
    else if ((token = find(RETURN, 0)))
    {
       // TODO: check if return type is compatible with function

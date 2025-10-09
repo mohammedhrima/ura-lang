@@ -2,6 +2,7 @@
 
 // HEADERS
 #include <stdio.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdarg.h>
@@ -10,6 +11,8 @@
 #include <string.h>
 #include <stdint.h>
 #include <signal.h>
+#include <libgen.h>  
+#include <limits.h>  
 #include <sys/types.h>
 #include <llvm-c/Core.h>
 #include <llvm-c/BitWriter.h>
@@ -96,22 +99,22 @@ typedef enum Type Type;
 // STRUCTS
 enum Type
 {
-   // 🔹 General / Special
+   // General / Special
    TMP = 1, CHILDREN, DEFAULT, COMMENT, END,
-   // 🔹 Identifiers & References
+   // Identifiers & References
    ID, REF,
    REF_ID, REF_HOLD_ID, REF_VAL, REF_HOLD_REF, REF_REF,
    ID_ID, ID_REF, ID_VAL,
 
-   // 🔹 Types
+   // Types
    VOID, INT, FLOAT, LONG, SHORT, BOOL, CHAR, CHARS, PTR,
    ARRAY,
 
-   // 🔹 Struct Usage
+   // Struct Usage
    STRUCT_DEF, STRUCT_BODY, STRUCT_ATTR,
    STRUCT_ALLOC, STRUCT_CALL,
 
-   // 🔹 Operators
+   // Operators
    // Assignment
    ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,
    // Comparison
@@ -121,30 +124,30 @@ enum Type
    // Logical
    AND, OR, NOT,
 
-   // 🔹 Punctuation & Syntax
+   // Punctuation & Syntax
    LPAR, RPAR, LBRA, RBRA, COMA, DOT, DOTS, ACCESS,
 
-   // 🔹 Control Flow
+   // Control Flow
    RETURN, ARROW,
    IF, ELIF, ELSE, END_IF, BUILD_COND,
    WHILE, CONTINUE, BREAK, END_WHILE,
    BLOC, END_BLOC, END_COND, APPEND_BLOC, SET_POS,
    BUILD_BR,
 
-   // 🔹 Functions
-   FDEC, FCALL, PROTO,
+   // Functions
+   FDEC, FCALL, PROTO_FUNC,
 
-   // 🔹 Low-level / Jumps
+   // Jumps
    JMP, JE, JNE,
 
-   // 🔹 Stack
+   // Functions params
    PUSH, POP
 };
 
 
 struct LLvm
 {
-   bool is_set;  // is LLVM block created
+   bool is_set;  // is LLVM block set
    LLVMTypeRef funcType;
    LLVMValueRef element;
    LLVMBasicBlockRef bloc;
@@ -161,7 +164,6 @@ struct Token
    int space; // indentation
    bool remove;
    int ir_reg;
-   // char *creg;
    int index;
    int size;
 
@@ -173,7 +175,6 @@ struct Token
    bool is_proto;
    bool is_arg;
    bool is_param;
-   int offset; // used for structs and []
    char *filename;
    int line;
 
@@ -181,47 +182,19 @@ struct Token
    struct
    {
       // integer
-      struct
-      {
-         long value;
-         // int power;
-         // struct Int *next;
-      } Int;
+      struct { long value; } Int;
       // short
-      struct
-      {
-         int value;
-         // int power;
-         // struct Int *next;
-      } Short;
+      struct { int value; } Short;
       // long
-      struct
-      {
-         long long value;
-         int power;
-         struct Int *next;
-      } Long;
+      struct { long long value; } Long;
       // float
-      struct
-      {
-         float value;
-      } Float;
+      struct { float value; } Float;
       // boolean
-      struct
-      {
-         bool value;
-         char c;
-      } Bool;
+      struct { bool value; } Bool;
       // chars
-      struct
-      {
-         char *value;
-      } Chars;
+      struct { char *value; } Chars;
       // char
-      struct
-      {
-         char value;
-      } Char;
+      struct { char value; } Char;
       // structure
       struct
       {
@@ -273,7 +246,8 @@ struct Node
    int csize; // children size
 
    // bloc Infos
-   struct {
+   struct
+   {
       struct Node **functions;
       int fpos;
       int fsize;

@@ -1,64 +1,96 @@
-- data types:
-   - int, float, long, double, char, chars
+- add attribute "int used" in Token struct to check how manny times a function or variables is used so it can be removed if used is still 0 in the optimization step
+
+- declare:
+   + int, float, long, double, char, chars
    - arrays
-   - structs
    - reference to variables
+   - global variables
+   - const / immutable variables
+   - type inference
+   - modules / namespaces
 
 - operators:
-   - overide operation in structs etc ...
-   - [] ...
-
-- filesystem:
-   - input, output, errput
-   - import files
-   - open files ...
+   + math operators (+, -, *, /, %, **)
+   + logic operators (&&, ||, !, <, <=, >, >=, ==, !=)
+   - override operation in structs
+   - [] (index operator)
+   - assignment operators (+=, -=, *=, /=, etc.)
 
 - conditions, loops:
    + while
-   - for loop
-   + break, continue 
+   + break, continue
    + if, elif, else
+   - for loop
    - switch/case
-   - try/catch:
-
-- package manager:
-   - import from github ...
+   - try/catch
 
 - assignment:
    + id = id
    + id = value
-   - id = ref
    + id = func return
+   - id = ref
    - ref = id
    - ref = value
    - ref = ref
    - ref = func return
 
 - functions:
-   - built in functions
+   + built in functions:
+      + output
    + declare function
    + function call
    + function return
    + function takes arguments
    - variadic functions
-   - polymorphism
+   - polymorphism (overloading)
+   - recursion optimization (tail call)
+
+- structs:
+   + structs
+   - methods
+   - operator overloading
+   - inheritance
+   - templates
+   - generics (if not templates)
+   - struct as attribute to another struct
 
 - memory:
-   - garbage collection mode
+   - garbage collection
+   - manual memory management (malloc/free style)
+   - references / pointers
+   - smart pointers (optional)
 
-- link with C/C++ libraries
-- install for linux/macos/windows
+- filesystem:
+   - input, output, errput
+   + import files
+   - open files
+   - read/write files
+   - directory management
 
 - macros:
-   - prepreccesing macros
+   - preprocessing macros
+
+- modules / packages:
+   - package manager (config file to install/build)
+   - linking external code
+   - linking with C/C++ libraries
+   - standard library (math, strings, collections, time, etc.)
+
+- error handling:
+   - try/catch/finally
+   - error codes
+
+- install / distribution:
+   - install for linux
+   - install for macos
+   - install for windows
+
+- concurrency (optional, advanced):
+   - threads
+   - atomic operations
 
 - projects:
    - 42 libft
    - donuts
-
-- publish the vscode extention
-
-- Check:
-   + Alfred V aho
-   + Yacc
-   + Ll1
+   - sample CLI tool
+   - example web server
