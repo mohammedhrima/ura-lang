@@ -82,7 +82,16 @@ LLVMValueRef get_value(Token *token)
    case SHORT: return LLVMConstInt(llvmType, token->Short.value, 0);
    case CHAR: return LLVMConstInt(llvmType, token->Char.value, 0);
    case CHARS:
-      return LLVMConstStringInContext(context, token->Chars.value, strlen(token->Chars.value), 0);
+   {
+      LLVMValueRef str_constant = LLVMConstStringInContext(context, token->Chars.value,
+                                  strlen(token->Chars.value), 0);
+      // 0 means null-terminate
+      LLVMValueRef global_str = LLVMAddGlobal(mod, LLVMTypeOf(str_constant), "str_literal");
+      LLVMSetInitializer(global_str, str_constant);
+      LLVMSetLinkage(global_str, LLVMPrivateLinkage);
+      LLVMSetGlobalConstant(global_str, 1);
+      return global_str;
+   }
    default: todo(1, "handle this literal case %s", to_string(token->type));
    }
    return (LLVMValueRef) {};
@@ -126,7 +135,7 @@ void handle_asm(Inst *inst)
    Token *curr = inst->token;
    Token *left = inst->left;
    Token *right = inst->right;
-   LLVMValueRef leftRef, rightRef, ret = NULL;
+   LLVMValueRef ret = NULL;
 
    switch (curr->type)
    {
@@ -251,12 +260,9 @@ void handle_asm(Inst *inst)
       {
          LLVMBasicBlockRef funcEntry = LLVMAppendBasicBlock(curr->llvm.element, "entry");
          LLVMPositionBuilderAtEnd(builder, funcEntry);
-         // if (strcmp(curr->name, "main") == 0)
-         {
-            LLVMPositionBuilderAtEnd(builder, funcEntry);
-         }
+         LLVMPositionBuilderAtEnd(builder, funcEntry);
       }
-      
+
       enter_func(curr->llvm.element);
       curr->llvm.is_set = true;
       break;
