@@ -224,12 +224,13 @@ void print_inst(Inst *inst)
    curr->ir_reg ? debug("r%.2d:", curr->ir_reg) : debug("rxx:");
    int k = 0;
    while (!TESTING && k < curr->space) k += debug(" ");
+   debug("[%-6s] ", to_string(curr->type));
+
    switch (curr->type)
    {
    case ADD_ASSIGN: case ASSIGN:
    {
-      char *assign_type_str = curr->assign_type ? to_string(curr->assign_type) : "";
-      debug("[%-6s] [%s] ", to_string(curr->type), assign_type_str);
+      debug("[%s] ", curr->assign_type ? to_string(curr->assign_type) : "");
 
       if (left->name) debug("r%.2d (%s) = ", left->ir_reg, left->name);
       else debug("r%.2d = ", left->ir_reg);
@@ -238,26 +239,12 @@ void print_inst(Inst *inst)
       else print_value(right);
       break;
    }
-   // case ACCESS:
-   // {
-   //     debug("[%-6s] ", to_string(curr->type));
-   //     if (right->ir_reg) debug("r%.2d ", right->ir_reg);
-   //     else print_value(right);
-   //     if (right->name) debug("(%s) ", right->name);
-   //     debug("in ");
-   //     if (left->ir_reg) debug("r%.2d ", left->ir_reg);
-   //     else if (left->creg) debug("creg %s ", left->creg);
-   //     if (left->name) debug("(%s) ", left->name);
-   //     break;
-   // }
    case ADD: case SUB: case MUL: case DIV:
    case EQUAL: case NOT_EQUAL: case LESS: case MORE:
    case LESS_EQUAL: case MORE_EQUAL:
    case AND: case OR:
    {
-      debug("[%-6s] ", to_string(curr->type));
       if (left->ir_reg) debug("r%.2d", left->ir_reg);
-      // else if (left->creg) debug("creg %s ", left->creg);
       else print_value(left);
       if (left->name) debug("(%s)", left->name);
 
@@ -267,65 +254,32 @@ void print_inst(Inst *inst)
       if (right->name) debug("(%s)", right->name);
       break;
    }
-   case INT: case BOOL: case CHARS: case CHAR:
-   case LONG:
+   case INT: case BOOL: case CHARS: case CHAR: case LONG:
    {
-      debug("[%-6s] ", to_string(curr->type));
-      if (curr->is_declare)
-      {
-         // stop(1, "I removed declare in intialize variable, this coniditon should never be true");
-         // debug("declare [%s] PTR=[%d] ", curr->name, curr->ptr);
-      }
       if (curr->name) debug("name %s ", curr->name);
-      // if (curr->creg) debug("creg %s ", curr->creg);
-      // else if(curr->type == FLOAT)
-      // {
-      //     curr->index = ++float_index;
-      //     debug("value %f ", curr->Float.value);
-      // }
       if (curr->type == CHARS && !curr->name)
          debug("value %s in STR%d ", curr->Chars.value, curr->index);
       else if (!curr->name) print_value(curr);
-      //else check(1, "handle this case in generate ir\n", "");
       break;
    }
-   case DOT:
-   {
-      debug("[%-6s] ", to_string(curr->type));
-      debug("get attribute [%s] in %k", right->name, left);
-      break;
-   }
-   case IF: case ELIF: case END_IF: case ELSE:
-   case END_COND: debug("[%-6s] ", to_string(curr->type)); break;
+   case DOT: debug("get attribute [%s] in %k", right->name, left); break;
    case JMP: debug("jmp to [%s] ", curr->name); break;
    case JNE: debug("jne to [%s] ", curr->name); break;
    case FCALL: debug("call [%s] ", curr->name); break;
-   case BLOC: case FDEC:
-      debug("[%s] bloc ", curr->name); break;
+   case BLOC: case FDEC: debug("[%s] bloc ", curr->name); break;
    case END_BLOC: debug("[%s] endbloc ", curr->name); break;
-   case STRUCT_CALL:
-      debug("[%-6s] %s ", to_string(curr->type), curr->name); break;
-   case STRUCT_DEF:
-      debug("[%-6s] %s ", to_string(curr->type), curr->Struct.name); break;
-   case BUILD_COND:
-      debug("[%s] %s ", to_string(curr->type), curr->name); break;
+   case STRUCT_CALL: debug("%s ", curr->name); break;
+   case STRUCT_DEF: debug("%s ", curr->Struct.name); break;
+   case BUILD_COND: debug("%s ", curr->name); break;
    case SET_POS: case APPEND_BLOC: case BUILD_BR:
-      debug("[%s] %s ", to_string(curr->type), left->name); break;
-   case ACCESS:
-   {
-      debug("[%s] [%s] in [%s] ", to_string(curr->type), right->name,
-            left->name);
-      break;
-   }
+      debug("%s ", left->name); break;
+   case ACCESS: debug("[%s] in [%s] ", right->name, left->name); break;
+   case IF: case ELIF: case END_IF: case ELSE: case END_COND:
    case STRUCT_ALLOC: case STRUCT_BODY:
-   case RETURN: case CONTINUE: case BREAK:
-      debug("[%s] ", to_string(curr->type)); break;
-   default:
-      debug(RED "print_ir:handle [%s]"RESET, to_string(curr->type)); break;
+   case RETURN: case CONTINUE: case BREAK: break;
+   default: debug(RED "print_ir:handle [%s]"RESET, to_string(curr->type)); break;
    }
-   // debug("space (%d)", curr->space);
    debug("\n");
-   // for (int i = 0; inst->children[i]; i++) print_inst(inst->children[i]);
 }
 
 void print_ir()
@@ -447,7 +401,7 @@ void parse_token(char *input, int s, int e,
       struct { char *name; Type type; } keywords[] = {{"if", IF}, {"elif", ELIF},
          {"else", ELSE}, {"while", WHILE}, {"func", FDEC}, {"return", RETURN},
          {"break", BREAK}, {"continue", CONTINUE}, {"ref", REF}, {"and", AND},
-         {"or", OR}, {"struct", STRUCT_DEF}, {"is", EQUAL}, {"proto", PROTO},
+         {"or", OR}, {"struct", STRUCT_DEF}, {"is", EQUAL}, {"protoFunc", PROTO_FUNC},
          {0, 0},
       };
       for (i = 0; keywords[i].name; i++)
@@ -471,9 +425,99 @@ void parse_token(char *input, int s, int e,
    case CHARS:
    {
       if (e <= s) break;
-      new->Chars.value = allocate(e - s + 1, sizeof(char));
-      strncpy(new->Chars.value, input + s, e - s);
-      // new->index = ++str_index;
+      int len = e - s;
+      new->Chars.value = allocate(len + 1, sizeof(char));
+      char *value = new->Chars.value;
+      int j = 0;
+
+      for (int i = 0; i < len && s < e; i++, s++)
+      {
+         if (s + 1 < e && input[s] == '\\')
+         {
+            switch (input[s + 1])
+            {
+            case 'n': value[j++] = '\n'; s++; break;  // newline
+            case 't': value[j++] = '\t'; s++; break;  // tab
+            case 'r': value[j++] = '\r'; s++; break;  // carriage return
+            case 'b': value[j++] = '\b'; s++; break;  // backspace
+            case 'f': value[j++] = '\f'; s++; break;  // form feed
+            case 'v': value[j++] = '\v'; s++; break;  // vertical tab
+            case 'a': value[j++] = '\a'; s++; break;  // alert (bell)
+            case '0': value[j++] = '\0'; s++; break;  // null character
+            case '\\': value[j++] = '\\'; s++; break; // backslash
+            case '"': value[j++] = '"'; s++; break;   // double quote
+            case '\'': value[j++] = '\''; s++; break; // single quote
+            case '?': value[j++] = '\?'; s++; break;  // question mark (for trigraphs)
+            // Three digit octal
+            case '1': case '2': case '3': case '4': case '5': case '6': case '7':
+               if (s + 3 < e && isdigit(input[s + 2]) && isdigit(input[s + 3]))
+               {
+                  int octal = (input[s + 1] - '0') * 64 +
+                              (input[s + 2] - '0') * 8 +
+                              (input[s + 3] - '0');
+                  if (octal <= 255) { value[j++] = (char)octal; s += 3; }
+                  // Invalid octal, keep backslash
+                  else value[j++] = input[s];
+               }
+               // Two digit octal
+               else if (s + 2 < e && isdigit(input[s + 2]))
+               {
+                  int octal = (input[s + 1] - '0') * 8 + (input[s + 2] - '0');
+                  value[j++] = (char)octal;
+                  s += 2;
+               }
+               // Single digit octal
+               else { value[j++] = (char)(input[s + 1] - '0'); s++; }
+               break;
+            case 'x':
+               // Hexadecimal escape sequences (\x00 to \xFF)
+               if (s + 3 < e && isxdigit(input[s + 2]) && isxdigit(input[s + 3]))
+               {
+                  int hex = 0;
+                  char c1 = input[s + 2];
+                  char c2 = input[s + 3];
+
+                  // Convert first hex digit
+                  if (c1 >= '0' && c1 <= '9') hex += (c1 - '0') * 16;
+                  else if (c1 >= 'a' && c1 <= 'f') hex += (c1 - 'a' + 10) * 16;
+                  else if (c1 >= 'A' && c1 <= 'F') hex += (c1 - 'A' + 10) * 16;
+
+                  // Convert second hex digit
+                  if (c2 >= '0' && c2 <= '9') hex += (c2 - '0');
+                  else if (c2 >= 'a' && c2 <= 'f') hex += (c2 - 'a' + 10);
+                  else if (c2 >= 'A' && c2 <= 'F') hex += (c2 - 'A' + 10);
+
+                  value[j++] = (char)hex;
+                  s += 3;
+               }
+               else value[j++] = input[s]; // Invalid hex escape, keep backslash
+               break;
+            case 'u':
+               // Unicode escape sequences (basic support)
+               // \uXXXX - 4 hex digits for Unicode, basic implementation
+               if (s + 5 < e) value[j++] = input[s]; // For now, keep as-is
+               else value[j++] = input[s];
+               break;
+            case 'U':
+               // \UXXXXXXXX - 8 hex digits for Unicode, basic implementation
+               if (s + 9 < e) value[j++] = input[s]; // For now, keep as-is
+               else value[j++] = input[s];
+               break;
+
+            default:
+               // Unknown escape sequence, keep the backslash
+               value[j++] = input[s];
+               break;
+            }
+         }
+         else value[j++] = input[s];
+      }
+      if (j < len)
+      {
+         char *resized = allocate(j + 1, sizeof(char));
+         strcpy(resized, value);
+         new->Chars.value = resized;
+      }
       break;
    }
    case CHAR: if (e > s) new->Char.value = input[s]; break;
@@ -555,15 +599,9 @@ Inst *new_inst(Token *token)
    Inst *new = allocate(1, sizeof(Inst));
    new->token = token;
 
+   if (includes(token->type, DATA_TYPES) && token->name) token->ir_reg = ++ir_reg;
    switch (token->type)
    {
-   case CHARS: case INT:
-   {
-      if (token->name) token->ir_reg = ++ir_reg;
-      // if (token->Chars.value)
-      //    stop(1, "found");
-      break;
-   }
    case STRUCT_CALL:
    {
       for (int i = 0; i < token->Struct.pos; i++) {
@@ -579,8 +617,7 @@ Inst *new_inst(Token *token)
    default: break;
    }
 #if DEBUG
-   debug("new inst: %k%c", new->token,
-         token->type != STRUCT_CALL ? '\n' : '\0');
+   debug("new inst: %k%c", new->token, token->type != STRUCT_CALL ? '\n' : '\0');
 #endif
    add_inst(new);
    return new;
@@ -624,8 +661,8 @@ Token *new_variable(Token *token)
 char* open_file(char *filename)
 {
    if (found_error) return NULL;
-   for (int i = 0; filename[i]; i++)
-      if (filename[i] == ':') filename[i] = '/';
+   // for (int i = 0; filename[i]; i++)
+   //    if (filename[i] == ':') filename[i] = '/';
 
 #if defined(__APPLE__)
    struct __sFILE *file;
@@ -688,7 +725,7 @@ static const char *type_names[] = {
    [APPEND_BLOC] = "APP_BLC", [SET_POS] = "SET_POS",
    [BUILD_BR] = "BLD_BR",
 
-   [FDEC] = "FDEC", [FCALL] = "FCALL", [PROTO] = "PROTO",
+   [FDEC] = "FDEC", [FCALL] = "FCALL", [PROTO_FUNC] = "PROTO_FUNC",
    [JMP] = "JMP", [JE] = "JE", [JNE] = "JNE",
 
    [PUSH] = "PUSH", [POP] = "POP"
@@ -942,26 +979,6 @@ void add_attribute(Token *obj, Token *attr)
    }
    attr->space = obj->space + TAB;
    obj->Struct.attrs[obj->Struct.pos++] = attr;
-}
-
-int sizeofToken(Token *token)
-{
-   if (token->is_ref) return sizeof(void * );
-   switch (token->type)
-   {
-   case INT: return sizeof(int);
-   case FLOAT: return sizeof(float);
-   case CHARS: return sizeof(char *);
-   case CHAR: return sizeof(char);
-   case BOOL: return sizeof(bool);
-   case LONG: return sizeof(long);
-   case SHORT: return sizeof(short);
-   case PTR: return sizeof(void*);
-   case STRUCT_DEF: return token->offset;
-   case STRUCT_CALL: return token->offset;
-   default: todo(1, "add this type [%s]\n", to_string(token->type));
-   }
-   return 0;
 }
 
 void add_variable(Node *bloc, Token *token)
