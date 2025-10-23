@@ -132,7 +132,7 @@ void tokenize(char *filename)
 
             char *use_filename = strjoin(dirname(filename), "/", use);
             free(use);
-            use = strjoin(use_filename, ".pn", NULL);
+            use = strjoin(use_filename, ".ura", NULL);
             tokenize(use);
             free(use_filename);
          }
@@ -1165,7 +1165,7 @@ void compile(char *filename)
 
 int main(int argc, char **argv)
 {
-   check(argc < 2, "require argument, usage pan <file.pn>");
+   check(argc < 2, "require argument, usage ura <file.ura>");
    compile(argv[1]);
    free_memory();
    if (DEBUG) debug(BLUE BOLD"EXIT CODE:\n" RESET);
