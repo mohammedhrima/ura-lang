@@ -258,7 +258,7 @@ void print_inst(Inst *inst)
    {
       if (curr->name) debug("name %s ", curr->name);
       if (curr->type == CHARS && !curr->name)
-         debug("value %s in STR%d ", curr->Chars.value, curr->index);
+         debug("value \"%s\" in STR%d ", curr->Chars.value, curr->index);
       else if (!curr->name) print_value(curr);
       break;
    }
@@ -273,7 +273,15 @@ void print_inst(Inst *inst)
    case BUILD_COND: debug("%s ", curr->name); break;
    case SET_POS: case APPEND_BLOC: case BUILD_BR:
       debug("%s ", left->name); break;
-   case ACCESS: debug("[%s] in [%s] ", right->name, left->name); break;
+   case ACCESS: 
+   {
+      if (left->ir_reg) debug("r%.2d ", left->ir_reg);
+      if (left->name) debug("(%s) ", left->name);
+      debug("in ");
+      if (right->ir_reg) debug("r%.2d ", right->ir_reg);
+      else print_value(right);
+      if (right->name) debug("(%s) ", right->name);
+   }
    case IF: case ELIF: case END_IF: case ELSE: case END_COND:
    case STRUCT_ALLOC: case STRUCT_BODY:
    case RETURN: case CONTINUE: case BREAK: break;
@@ -613,6 +621,7 @@ Inst *new_inst(Token *token)
    case RETURN: token->ir_reg = ++ir_reg; break;
    case FCALL: case ADD: case SUB: case MUL: case DIV: case AND: case OR:
    case LESS: case LESS_EQUAL: case MORE: case MORE_EQUAL: case EQUAL:
+   case ACCESS:
       token->ir_reg = ++ir_reg; break;
    default: break;
    }
