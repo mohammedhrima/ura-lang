@@ -1,0 +1,7 @@
+
+protoFunc int putchar(int str)
+
+main():
+    chars str = "abcd"
+    char c = str[1]
+    putchar(c)
