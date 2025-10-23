@@ -363,6 +363,17 @@ Node *symbol(Token *token)
       setName(token, tmp->name);
       return new_node(token);
    }
+   else if (token->type == ID && find(LBRA, 0))
+   {
+      node = new_node(copy_token(token));
+      node->token->type = ACCESS;
+      Token *index = find(INT, 0);
+      check(!index, "expected index after left bracket\n");
+      check(!find(RBRA, 0), "expected right bracket\n");
+      node->left = new_node(token);
+      node->right = new_node(index);
+      return node;  
+   }
    return new_node(token);
 }
 
@@ -645,7 +656,7 @@ Token *func_call_ir(Node *node)
 
          if (check(src->type == ID, "Indeclared variable %s",
                    carg->token->name)) break;
-         if (check(src->type != dist->type, "Incompatible type arg %s",
+         if (check(!compatible(src, dist), "Incompatible type arg %s",
                    func->token->name)) break;
          node->token->Fcall.args[i] = src;
          // Token *dist = copy_token(darg->token);
@@ -1081,41 +1092,25 @@ Token *generate_ir(Node *node)
       check(1, "%s has no attribute %s", left->name, right->name);
       break;
    }
-#if 0
    case ACCESS:
    {
-      todo(1, "add add_inst");
-      debug("line %d: %n\n", LINE, node);
       Token *left = generate_ir(node->left);
       Token *right = generate_ir(node->right);
-      // TODO: check if right is a number
-      // TODO: check if left is aan iterable data type
+      if (check(left->type == ID, "undeclared variable %s", left->name)) break;
+      if (check(right->type != INT, "should be int")) break;
 
-      Inst *inst = new_inst(node->token);
-      // inst->token->creg = strdup("rax");
-      inst->token->is_ref = true;
-      inst->token->has_ref = true;
-      switch (left->type)
-      {
-      case CHARS:
-      {
-         inst->token->offset = sizeof(char);
-         inst->token->retType = CHAR;
-         break;
-      }
-      case INT:
-      {
-         inst->token->offset = sizeof(int);
-         inst->token->retType = INT;
-         break;
-      }
-      default: todo(1, "handle this case");
-      }
+      inst = new_inst(node->token);
       inst->left = left;
       inst->right = right;
+      switch (inst->left->type)
+      {
+         case CHARS: inst->token->retType = CHAR; break;
+         default: check(1, "handle this case %s\n", to_string(inst->left->type)); break;
+         break;
+      }
       return node->token;
+      break;
    }
-#endif
    default:
    {
       todo(1, "handle this case %s", to_string(node->token->type));
