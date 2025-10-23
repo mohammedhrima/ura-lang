@@ -758,7 +758,7 @@ bool check_error(const char *filename, const char *funcname,
    found_error = true;
    va_list ap;
    va_start(ap, fmt);
-   fprintf(stderr, BOLD RED"pan_error:%s:%s:%d "RESET,
+   fprintf(stderr, BOLD RED"ura_error:%s:%s:%d "RESET,
            filename, funcname, line);
    vfprintf(stderr, fmt, ap);
    fprintf(stderr, "\n");
