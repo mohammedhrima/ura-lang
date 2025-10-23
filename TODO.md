@@ -1,1 +1,1 @@
-- variadic arguments
+- access to chars
