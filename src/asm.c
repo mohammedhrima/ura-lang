@@ -385,7 +385,9 @@ void generate_asm(char *name)
    for (i = 0; insts[i]; i++) handle_asm(insts[i]);
 
    // debug("module name: [%s]\n", moduleName);
-   strcpy(moduleName + strlen(moduleName) - 2, "ll");
+   int len = strlen(moduleName);
+   strcpy(moduleName + len - 3, "ll");
+   moduleName[len - 1] = '\0';
    LLVMPrintModuleToFile(mod, moduleName, NULL);
 
    // Cleanup
