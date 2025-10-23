@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/Personal/pandu-lang/src/file.pn'
-source_filename = "/Users/hrimamohammed/Desktop/Personal/pandu-lang/src/file.pn"
+; ModuleID = '/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura'
+source_filename = "/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura"
 
 @str_literal = private constant [5 x i8] c"abcd\00"
 
