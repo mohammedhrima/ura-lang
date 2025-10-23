@@ -7,8 +7,8 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 # === Paths & Global Variables ===
-pandu_dir="$HOME/Desktop/Personal/pandu-lang"
-src="$pandu_dir/src"
+ura_dir="$HOME/Desktop/Personal/ura-lang"
+src="$ura_dir/src"
 files=($src/main.c $src/utils.c $src/asm.c)
 
 # === Compiler Flags ===
@@ -81,7 +81,7 @@ copy() {
     fi
 
     local dir_name="$1"
-    local test_dir="$pandu_dir/tests/$dir_name"
+    local test_dir="$ura_dir/tests/$dir_name"
     mkdir -p "$test_dir"
 
     local filename
@@ -118,7 +118,7 @@ tests() {
     # Build with DEBUG=false for test comparison
     build false || return 1
 
-    for pn_file in "$pandu_dir/tests"/*/*.pn; do
+    for pn_file in "$ura_dir/tests"/*/*.pn; do
         [ -e "$pn_file" ] || continue
 
         local base_name=$(basename "$pn_file" .pn)
@@ -149,10 +149,10 @@ update() {
 set_prompt() {
     if [ -n "$ZSH_VERSION" ]; then
         # zsh: username + last folder + %
-        PROMPT="(pandu) %n@%1~ % "
+        PROMPT="(ura) %n@%1~ % "
     elif [ -n "$BASH_VERSION" ]; then
         # bash: username + last folder + $
-        PS1="(pandu) \u@\W \$ "
+        PS1="(ura) \u@\W \$ "
     fi
 }
 set_prompt
