@@ -1,0 +1,3 @@
+protoFunc int puts(chars str)
+protoFunc pointer calloc(int len, int size)
+protoFunc int free(pointer ptr)

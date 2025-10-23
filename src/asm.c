@@ -48,7 +48,7 @@ void init_llvm_types() {
 
 LLVMTypeRef get_llvm_type(Token *token)
 {
-   Type type = includes(token->type, FDEC, FCALL, 0) ? token->retType : token->type;
+   Type type = includes(token->type, FDEC, FCALL, ACCESS, 0) ? token->retType : token->type;
    switch (type)
    {
    case VOID: return voidType;
@@ -139,7 +139,7 @@ void handle_asm(Inst *inst)
 
    switch (curr->type)
    {
-   case INT: case BOOL: case LONG: case SHORT: case CHAR: case CHARS:
+   case INT: case BOOL: case LONG: case SHORT: case CHAR: case CHARS: case PTR:
    {
       if (curr->is_param)
       {
@@ -226,7 +226,12 @@ void handle_asm(Inst *inst)
          {
             Token *arg = curr->Fcall.args[i];
             check(!arg->llvm.is_set, "llvm is not set");
-            args[i] = curr->Fcall.args[i]->llvm.element;
+            
+            // Load the value if it's a variable, otherwise use the element directly
+            if (arg->name && !arg->is_param && arg->type != FCALL)
+               args[i] = LLVMBuildLoad2(builder, get_llvm_type(arg), arg->llvm.element, arg->name);
+            else
+               args[i] = arg->llvm.element;
          }
          curr->llvm.element = LLVMBuildCall2(builder, srcFunc.funcType, srcFunc.element, args,
                                              curr->Fcall.pos, curr->name);
@@ -326,6 +331,28 @@ void handle_asm(Inst *inst)
       curr->llvm.is_set = true;
       break;
    }
+case ACCESS:
+{
+   check(!left->llvm.is_set, "left is not set");
+   check(!right->llvm.is_set, "right is not set");
+
+   LLVMValueRef leftRef = NULL, rightRef = NULL;
+   if (left->name && !left->is_param && left->type != FCALL)
+      leftRef = LLVMBuildLoad2(builder, get_llvm_type(left), left->llvm.element, left->name);
+   else leftRef = left->llvm.element;
+
+   if (right->name && !right->is_param && right->type != FCALL)
+      rightRef = LLVMBuildLoad2(builder, get_llvm_type(right), right->llvm.element, right->name);
+   else rightRef = right->llvm.element;
+
+   LLVMValueRef indices[] = { rightRef };
+   LLVMValueRef elem_ptr = LLVMBuildGEP2(builder, charType, leftRef, indices, 1, "access");
+   
+   curr->llvm.element = LLVMBuildLoad2(builder, charType, elem_ptr, "access_val");
+   curr->llvm.is_set = true;
+   curr->type = CHAR; 
+   break;
+}
    case SET_POS:
    {
       LLVMPositionBuilderAtEnd(builder, left->llvm.bloc);
