@@ -110,7 +110,9 @@ void tokenize(char *filename)
       if (input[i] && input[i] == '\'')
       {
          i++;
-         if (input[i] && input[i] != '\'') i++;
+         if (input[i] == '\\') i++;
+         if (input[i] && input[i] != '\'')
+            i++;
          check(input[i] != '\'', "Expected '\''");
          i++;
          parse_token(input, s + 1, i, CHAR, space, filename, line);
@@ -204,6 +206,7 @@ Node *func_dec(Node *node)
    //    + left children: arguments
    //    + children     : code block
    Token *typeName = find(DATA_TYPES, 0);
+   check(!typeName, "Expected data type after func declaration");
    if (typeName->type == ID)
    {
       typeName = get_struct(typeName->name);
@@ -367,11 +370,11 @@ Node *symbol(Token *token)
    {
       node = new_node(copy_token(token));
       node->token->type = ACCESS;
-      Token *index = find(INT, 0);
-      check(!index, "expected index after left bracket\n");
+      Node *index = prime();
+      check(!index || !index->token, "expected index after left bracket\n");
       check(!find(RBRA, 0), "expected right bracket\n");
       node->left = new_node(token);
-      node->right = new_node(index);
+      node->right = index;
       return node;  
    }
    return new_node(token);

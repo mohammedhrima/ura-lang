@@ -8,8 +8,8 @@ NC='\033[0m'
 
 # === Paths & Global Variables ===
 ura_dir="$HOME/Desktop/Personal/ura-lang"
-src="$ura_dir/src"
-files=($src/main.c $src/utils.c $src/asm.c)
+ura_src="$ura_dir/src"
+files=($ura_src/main.c $ura_src/utils.c $ura_src/asm.c)
 
 # === Compiler Flags ===
 san_flags=(-fsanitize=address -fsanitize=null)
@@ -25,32 +25,32 @@ export flags files llvm_flags src
 # === Build Functions ===
 build() {
     local debug_mode="${1:-true}"   # default true unless specified
-    clang "${files[@]}" "${flags[@]}" -D DEBUG=$debug_mode -o "$src/pan" || {
+    clang "${files[@]}" "${flags[@]}" -D DEBUG=$debug_mode -o "$ura_src/ura" || {
         echo -e "${RED}Error:${NC} Build failed."
         return 1
     }
 }
 
 ir() {
-    "$src/pan" "$src/file.pn" || {
-        echo -e "${RED}Error:${NC} Compiling .pn file failed."
+    "$ura_src/ura" "$ura_src/file.ura" || {
+        echo -e "${RED}Error:${NC} Compiling .ura file failed."
         return 1
     }
 }
 
 asm() {
-    llc "$src/file.ll" -o "$src/file.s" || {
+    llc "$ura_src/file.ll" -o "$ura_src/file.s" || {
         echo -e "${RED}Error:${NC} Assembly generation failed."
         return 1
     }
 }
 
 comp_asm() {
-    clang "$src/file.s" -o "$src/exe.out"
+    clang "$ura_src/file.s" -o "$ura_src/exe.out"
 }
 
 exe() {
-    "$src/exe.out"
+    "$ura_src/exe.out"
 }
 
 comp() {
@@ -62,7 +62,7 @@ run() {
 }
 
 lines() {
-    find $src -type f \( -name "*.c" -o -name "*.h" \) -exec wc -l {} +
+    find $ura_src -type f \( -name "*.c" -o -name "*.h" \) -exec wc -l {} +
 }
 
 indent() {
@@ -70,7 +70,7 @@ indent() {
     astyle --mode=c --indent=spaces=3 --pad-oper --pad-header \
        --keep-one-line-statements --keep-one-line-blocks --convert-tabs \
        --max-code-length=100 --break-after-logical \
-       --suffix=none $src/*.c $src/*.h
+       --suffix=none $ura_src/*.c $ura_src/*.h
 }
 
 copy() {
@@ -87,7 +87,7 @@ copy() {
     local filename
     if [ -z "$2" ]; then
         # Auto-generate if no filename given
-        local count=$(ls "$test_dir"/*.pn 2>/dev/null | wc -l)
+        local count=$(ls "$test_dir"/*.ura 2>/dev/null | wc -l)
         local next=$(printf "%03d" $((count + 1)))
         filename="$next"
     else
@@ -95,54 +95,54 @@ copy() {
         filename="$2"
     fi
 
-    local pn_dest="$test_dir/${filename}.pn"
+    local ura_dest="$test_dir/${filename}.ura"
     local ll_dest="$test_dir/${filename}.ll"
 
     # Build with DEBUG=false before copying reference outputs
     build false || return 1
     ir || return 1
 
-    cp "$src/file.pn" "$pn_dest" || {
-        echo -e "${RED}Error:${NC} Failed to copy file.pn"
+    cp "$ura_src/file.ura" "$ura_dest" || {
+        echo -e "${RED}Error:${NC} Failed to copy file.ura"
         return 1
     }
-    cp "$src/file.ll" "$ll_dest" || {
+    cp "$ura_src/file.ll" "$ll_dest" || {
         echo -e "${RED}Error:${NC} Failed to copy file.ll"
         return 1
     }
 
-    echo -e "${GREEN}Saved:${NC} $pn_dest and $ll_dest"
+    echo -e "${GREEN}Saved:${NC} $ura_dest and $ll_dest"
 }
 
 tests() {
     # Build with DEBUG=false for test comparison
     build false || return 1
 
-    for pn_file in "$ura_dir/tests"/*/*.pn; do
-        [ -e "$pn_file" ] || continue
+    for ura_file in "$ura_dir/tests"/*/*.ura; do
+        [ -e "$ura_file" ] || continue
 
-        local base_name=$(basename "$pn_file" .pn)
-        local dir_name=$(basename "$(dirname "$pn_file")")
-        local ll_file="$(dirname "$pn_file")/${base_name}.ll"
+        local base_name=$(basename "$ura_file" .ura)
+        local dir_name=$(basename "$(dirname "$ura_file")")
+        local ll_file="$(dirname "$ura_file")/${base_name}.ll"
 
-        cp "$pn_file" "$src/tmp.pn"
+        cp "$ura_file" "$ura_src/tmp.ura"
 
-        if ! "$src/pan" "$src/tmp.pn" > /dev/null 2>&1; then
-            echo -e "${RED}FAILED:${NC} $dir_name/$base_name.pn (compilation error)"
+        if ! "$ura_src/ura" "$ura_src/tmp.ura" > /dev/null 2>&1; then
+            echo -e "${RED}FAILED:${NC} $dir_name/$base_name.ura (compilation error)"
             continue
         fi
 
-        if diff -q <(tail -n +3 "$src/tmp.ll") <(tail -n +3 "$ll_file") > /dev/null 2>&1; then
+        if diff -q <(tail -n +3 "$ura_src/tmp.ll") <(tail -n +3 "$ll_file") > /dev/null 2>&1; then
             echo -e "${GREEN}PASSED:${NC} $dir_name/$base_name"
         else
             echo -e "${RED}FAILED:${NC} $dir_name/$base_name"
         fi
     done
-    rm -rf  "$src/tmp.pn" "$src/tmp.ll"
+    rm -rf  "$ura_src/tmp.ura" "$ura_src/tmp.ll"
 }
 
 update() {
-    source "$src/../config.sh"
+    source "$ura_src/../config.sh"
 }
 
 # === Prompt Handling (works for bash & zsh) ===
@@ -155,8 +155,9 @@ set_prompt() {
         PS1="(ura) \u@\W \$ "
     fi
 }
-set_prompt
 
+set_prompt
+cd $ura_src
 
 # === Git Sync Check ===
 # if git rev-parse --is-inside-work-tree &>/dev/null; then
