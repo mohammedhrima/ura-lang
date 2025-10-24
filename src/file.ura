@@ -1,7 +1,14 @@
+protoFunc pointer calloc(int len, int size)
+protoFunc int puts(chars str)
 
-protoFunc int putchar(int str)
+func void strcpy(chars dist, chars src):
+    int i = 0
+    while src[i] != '\0': 
+        dist[i] = src[i]
+        i = i + 1
 
 main():
     chars str = "abcd"
-    char c = str[1]
-    putchar(c)
+    chars tmp = calloc(1, 10)
+    strcpy(tmp, str)
+    puts(tmp)

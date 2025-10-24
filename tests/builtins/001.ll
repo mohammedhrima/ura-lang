@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/Personal/pandu-lang/src/file.pn'
-source_filename = "/Users/hrimamohammed/Desktop/Personal/pandu-lang/src/file.pn"
+; ModuleID = '/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura'
+source_filename = "/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura"
 
 @str_literal = private constant [9 x i8] c"is digit\00"
 @str_literal.1 = private constant [13 x i8] c"is not digit\00"

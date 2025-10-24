@@ -150,6 +150,7 @@ struct LLvm
    bool is_set;  // is LLVM block set
    LLVMTypeRef funcType;
    LLVMValueRef element;
+   LLVMValueRef ptr;  // ADD THIS LINE - pointer for lvalue assignments
    LLVMBasicBlockRef bloc;
    LLVMTypeRef structType;
 };
