@@ -528,7 +528,30 @@ void parse_token(char *input, int s, int e,
       }
       break;
    }
-   case CHAR: if (e > s) new->Char.value = input[s]; break;
+   case CHAR:
+   {
+      if (e == s + 1) new->Char.value = input[s];
+      else // is special character
+      {
+         switch (input[s + 1])
+         {
+         case 'n':  new->Char.value = '\n';  break;  
+         case 't':  new->Char.value = '\t';  break;  
+         case 'r':  new->Char.value = '\r';  break;  
+         case 'b':  new->Char.value = '\b';  break;  
+         case 'f':  new->Char.value = '\f';  break;  
+         case 'v':  new->Char.value = '\v';  break;  
+         case 'a':  new->Char.value = '\a';  break;  
+         case '0':  new->Char.value = '\0';  break;  
+         case '\\': new->Char.value = '\\';  break;  
+         case '"':  new->Char.value = '"'; break;    
+         case '\'': new->Char.value = '\'';  break; 
+         case '?':  new->Char.value = '\?';  break;  
+         default: break;
+         }
+      }
+      break;
+   }
    default:
       check(e > s, "implement adding name for this one %s", to_string(type));
       break;

@@ -200,7 +200,11 @@ void handle_asm(Inst *inst)
    {
       check(!left->llvm.is_set, "assign, left is not set");
       check(!right->llvm.is_set, "assign, right is not set");
-      LLVMBuildStore(builder, right->llvm.element, left->llvm.element);
+      
+      // FIXED: Check if left side is an ACCESS operation (has ptr set)
+      // Use the pointer for ACCESS, otherwise use element
+      LLVMValueRef target = left->llvm.ptr ? left->llvm.ptr : left->llvm.element;
+      LLVMBuildStore(builder, right->llvm.element, target);
       break;
    }
    case ADD: case SUB: case MUL: case DIV:
@@ -297,7 +301,12 @@ void handle_asm(Inst *inst)
       case INT: case BOOL: case LONG: case SHORT: case CHAR: case FLOAT:
       {
          if (left->name || left->is_attr)
-            ret = LLVMBuildRet(builder, left->llvm.element);
+         {
+            // FIXED: Load the value before returning
+            LLVMValueRef loaded = LLVMBuildLoad2(builder, get_llvm_type(left), 
+                                                 left->llvm.element, left->name);
+            ret = LLVMBuildRet(builder, loaded);
+         }
          else
             ret = LLVMBuildRet(builder, get_value(left));
          break;
@@ -331,28 +340,33 @@ void handle_asm(Inst *inst)
       curr->llvm.is_set = true;
       break;
    }
-case ACCESS:
-{
-   check(!left->llvm.is_set, "left is not set");
-   check(!right->llvm.is_set, "right is not set");
+   case ACCESS:
+   {
+      check(!left->llvm.is_set, "left is not set");
+      check(!right->llvm.is_set, "right is not set");
 
-   LLVMValueRef leftRef = NULL, rightRef = NULL;
-   if (left->name && !left->is_param && left->type != FCALL)
-      leftRef = LLVMBuildLoad2(builder, get_llvm_type(left), left->llvm.element, left->name);
-   else leftRef = left->llvm.element;
+      LLVMValueRef leftRef = NULL, rightRef = NULL;
+      if (left->name && !left->is_param && left->type != FCALL)
+         leftRef = LLVMBuildLoad2(builder, get_llvm_type(left), left->llvm.element, left->name);
+      else leftRef = left->llvm.element;
 
-   if (right->name && !right->is_param && right->type != FCALL)
-      rightRef = LLVMBuildLoad2(builder, get_llvm_type(right), right->llvm.element, right->name);
-   else rightRef = right->llvm.element;
+      if (right->name && !right->is_param && right->type != FCALL)
+         rightRef = LLVMBuildLoad2(builder, get_llvm_type(right), right->llvm.element, right->name);
+      else rightRef = right->llvm.element;
 
-   LLVMValueRef indices[] = { rightRef };
-   LLVMValueRef elem_ptr = LLVMBuildGEP2(builder, charType, leftRef, indices, 1, "access");
-   
-   curr->llvm.element = LLVMBuildLoad2(builder, charType, elem_ptr, "access_val");
-   curr->llvm.is_set = true;
-   curr->type = CHAR; 
-   break;
-}
+      LLVMValueRef indices[] = { rightRef };
+      LLVMValueRef elem_ptr = LLVMBuildGEP2(builder, charType, leftRef, indices, 1, "access");
+      
+      // FIXED: Store the pointer separately for use in assignments
+      curr->llvm.ptr = elem_ptr;
+      
+      // Load the value for use in expressions
+      curr->llvm.element = LLVMBuildLoad2(builder, charType, elem_ptr, "access_val");
+      curr->llvm.is_set = true;
+      curr->type = CHAR;
+      curr->name = NULL;  // Clear name to prevent double-loading
+      break;
+   }
    case SET_POS:
    {
       LLVMPositionBuilderAtEnd(builder, left->llvm.bloc);
