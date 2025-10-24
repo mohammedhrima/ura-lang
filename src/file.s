@@ -5,22 +5,26 @@
 _main:                                  ; @main
 	.cfi_startproc
 ; %bb.0:                                ; %entry
-	sub	sp, sp, #32
-	stp	x29, x30, [sp, #16]             ; 16-byte Folded Spill
-	.cfi_def_cfa_offset 32
-	.cfi_offset w30, -8
-	.cfi_offset w29, -16
+	sub	sp, sp, #16
+	.cfi_def_cfa_offset 16
+	mov	w0, wzr
 Lloh0:
 	adrp	x8, l_str_literal@PAGE
 Lloh1:
 	add	x8, x8, l_str_literal@PAGEOFF
-	ldrb	w0, [x8, #1]
 	str	x8, [sp, #8]
-	strb	w0, [sp, #7]
-	bl	_putchar
-	ldp	x29, x30, [sp, #16]             ; 16-byte Folded Reload
-	mov	w0, wzr
-	add	sp, sp, #32
+LBB0_1:                                 ; %while
+                                        ; =>This Inner Loop Header: Depth=1
+	ldr	x8, [sp, #8]
+	str	w0, [sp, #4]
+	ldrb	w8, [x8, w0, sxtw]
+	cbz	w8, LBB0_3
+; %bb.2:                                ; %while_bloc
+                                        ;   in Loop: Header=BB0_1 Depth=1
+	add	w0, w0, #1
+	b	LBB0_1
+LBB0_3:                                 ; %end_while
+	add	sp, sp, #16
 	ret
 	.loh AdrpAdd	Lloh0, Lloh1
 	.cfi_endproc
