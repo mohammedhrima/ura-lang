@@ -1,0 +1,1 @@
++ forbid math operations for char
