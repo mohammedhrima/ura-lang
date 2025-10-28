@@ -114,8 +114,8 @@ void tokenize(char *filename)
          if (input[i] && input[i] != '\'')
             i++;
          check(input[i] != '\'', "Expected '\''");
-         i++;
          parse_token(input, s + 1, i, CHAR, space, filename, line);
+         i++;
          continue;
       }
       if (isalpha(input[i]) || strchr("@$-_", input[i]))
@@ -156,7 +156,41 @@ Node *expr() {
    return assign();
 }
 
-AST_NODE(assign, logic, ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, 0);
+Node *assign()
+{
+   Node *left = logic();
+   Token *token;
+   while ((token = find(ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, 0)))
+   {
+      Node *node = new_node(token);
+
+      if (token->type == ASSIGN)
+      {
+         node->left = left;
+         node->right = logic();
+      }
+      else
+      {
+         node->left = left;
+         node->right = new_node(copy_token(token));
+         node->right->left = new_node(left->token);
+         node->right->right = logic();
+         switch (token->type)
+         {
+         case ADD_ASSIGN: node->right->token->type = ADD; break;
+         case SUB_ASSIGN: node->right->token->type = SUB; break;
+         case MUL_ASSIGN: node->right->token->type = MUL; break;
+         case DIV_ASSIGN: node->right->token->type = DIV; break;
+         case MOD_ASSIGN: node->right->token->type = MOD; break;
+         default: break;
+         }
+         node->token->type = ASSIGN;
+      }
+      left = node;
+   }
+   return left;
+}
+// AST_NODE(assign, logic, ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, 0);
 AST_NODE(logic, equality, AND, OR, 0);
 // TODO: handle ! operator
 AST_NODE(equality, comparison, EQUAL, NOT_EQUAL, 0);
@@ -197,6 +231,18 @@ Node *brackets()
 
 Node *sign() // TODO: implement it
 {
+   Token *token;
+   if ((token = find(SUB, 0)))
+   {
+      // TODO: left should be a number
+      Node *node = new_node(token);
+      token->type = MUL;
+      node->left = prime();
+
+      node->right = new_node(new_token(INT, node->left->token->space));
+      node->right->token->Int.value = -1;
+      return node;
+   }
    return prime();
 }
 
@@ -214,7 +260,7 @@ Node *func_dec(Node *node)
    }
    Token *fname = find(ID, 0);
    if (check(!typeName || !fname,
-      "expected data type and identifier after func declaration"))
+             "expected data type and identifier after func declaration"))
       return node;
    node->token->retType = typeName->type;
    node->token->is_proto = (node->token->type == PROTO_FUNC);
@@ -255,16 +301,17 @@ Node *func_dec(Node *node)
       find(COMA, 0); // TODO: check this later
    }
    check(!found_error && last->type != RPAR, "expected ) after function declaration");
-   
-   if(!node->token->is_proto)
+
+   if (!node->token->is_proto)
    {
       Token *next = find(DOTS, ARROW, 0);
       check(!found_error && !next, "Expected : after function declaration");
       Node *child = NULL;
-      
+
       if (next->type == DOTS) while (within_space(node->token->space)) child = add_child(node, expr());
       else
       {
+         todo(1, "stop");
          Token *retToken = copy_token(next);
          retToken->type = RETURN;
          Node *retNode = new_node(retToken);
@@ -278,7 +325,7 @@ Node *func_dec(Node *node)
          else
          {
             Node *ret = new_node(new_token(RETURN, node->token->space + TAB));
-            ret->left = new_node(new_token(INT, node->token->space + TAB));
+            ret->left = new_node(new_token(VOID, node->token->space + TAB));
             add_child(node, ret);
          }
       }
@@ -375,7 +422,7 @@ Node *symbol(Token *token)
       check(!find(RBRA, 0), "expected right bracket\n");
       node->left = new_node(token);
       node->right = index;
-      return node;  
+      return node;
    }
    return new_node(token);
 }
@@ -926,7 +973,7 @@ Token *op_ir(Node *node)
    case ADD: case SUB: case MUL: case DIV:
    {
       // TODO: to be checked
-      // node->token->retType = getRetType(node);
+      // node->token->retType = INT;
       // if (node->token->retType  == INT) setReg(node->token, "eax");
       // else if (node->token->retType == FLOAT) setReg(node->token, "xmm0");
       // else
@@ -1005,8 +1052,9 @@ Token *generate_ir(Node *node)
       if (find) return find;
       return node->token;
    }
+   // case VOID: return node->token;
    case INT: case BOOL: case CHAR: case STRUCT_CALL:
-   case FLOAT: case LONG: case CHARS: case PTR:
+   case FLOAT: case LONG: case CHARS: case PTR: case VOID:
    {
       inst = new_inst(node->token);
       if (node->token->type == STRUCT_CALL) struct_call_ir(node);
@@ -1107,8 +1155,8 @@ Token *generate_ir(Node *node)
       inst->right = right;
       switch (inst->left->type)
       {
-         case CHARS: inst->token->retType = CHAR; break;
-         default: check(1, "handle this case %s\n", to_string(inst->left->type)); break;
+      case CHARS: inst->token->retType = CHAR; break;
+      default: check(1, "handle this case %s\n", to_string(inst->left->type)); break;
          break;
       }
       return node->token;

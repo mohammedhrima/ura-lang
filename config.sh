@@ -114,7 +114,7 @@ copy() {
     echo -e "${GREEN}Saved:${NC} $ura_dest and $ll_dest"
 }
 
-tests() {
+test() {
     # Build with DEBUG=false for test comparison
     build false || return 1
 
@@ -142,6 +142,7 @@ tests() {
 }
 
 update() {
+    echo $GREEN"updating ura config..."$NC
     source "$ura_src/../config.sh"
 }
 
@@ -157,6 +158,7 @@ set_prompt() {
 }
 
 set_prompt
+export tests=test
 cd $ura_src
 
 # === Git Sync Check ===

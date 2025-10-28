@@ -11,8 +11,8 @@
 #include <string.h>
 #include <stdint.h>
 #include <signal.h>
-#include <libgen.h>  
-#include <limits.h>  
+#include <libgen.h>
+#include <limits.h>
 #include <sys/types.h>
 #include <llvm-c/Core.h>
 #include <llvm-c/BitWriter.h>
@@ -164,9 +164,12 @@ struct Token
    char *name;
    int space; // indentation
    bool remove;
-   int ir_reg;
    int index;
    int size;
+   
+   // Intermediate Representation
+   int ir_reg;
+   int used;
 
    bool is_cond;
    bool is_ref;
@@ -176,6 +179,8 @@ struct Token
    bool is_proto;
    bool is_arg;
    bool is_param;
+   
+   // display errors, file and line
    char *filename;
    int line;
 
