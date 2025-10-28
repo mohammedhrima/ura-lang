@@ -60,8 +60,6 @@ LLVMTypeRef get_llvm_type(Token *token)
    case CHAR: return charType;
    case CHARS: return charsType;
    case PTR:
-      // For PTR, you'll need additional context about what it points to
-      // This is a placeholder - you might need to pass the pointed-to type
       return LLVMPointerType(int32Type, 0); // Default to int* for now
    default:
       todo(1, "handle this case %s", to_string(type)); break;
@@ -85,7 +83,6 @@ LLVMValueRef get_value(Token *token)
    {
       LLVMValueRef str_constant = LLVMConstStringInContext(context, token->Chars.value,
                                   strlen(token->Chars.value), 0);
-      // 0 means null-terminate
       LLVMValueRef global_str = LLVMAddGlobal(mod, LLVMTypeOf(str_constant), "str_literal");
       LLVMSetInitializer(global_str, str_constant);
       LLVMSetLinkage(global_str, LLVMPrivateLinkage);
@@ -139,6 +136,11 @@ void handle_asm(Inst *inst)
 
    switch (curr->type)
    {
+   case VOID:
+   {
+      curr->llvm.is_set = true;
+      break;
+   }
    case INT: case BOOL: case LONG: case SHORT: case CHAR: case CHARS: case PTR:
    {
       if (curr->is_param)
@@ -200,9 +202,7 @@ void handle_asm(Inst *inst)
    {
       check(!left->llvm.is_set, "assign, left is not set");
       check(!right->llvm.is_set, "assign, right is not set");
-      
-      // FIXED: Check if left side is an ACCESS operation (has ptr set)
-      // Use the pointer for ACCESS, otherwise use element
+
       LLVMValueRef target = left->llvm.ptr ? left->llvm.ptr : left->llvm.element;
       LLVMBuildStore(builder, right->llvm.element, target);
       break;
@@ -230,8 +230,7 @@ void handle_asm(Inst *inst)
          {
             Token *arg = curr->Fcall.args[i];
             check(!arg->llvm.is_set, "llvm is not set");
-            
-            // Load the value if it's a variable, otherwise use the element directly
+
             if (arg->name && !arg->is_param && arg->type != FCALL)
                args[i] = LLVMBuildLoad2(builder, get_llvm_type(arg), arg->llvm.element, arg->name);
             else
@@ -286,11 +285,7 @@ void handle_asm(Inst *inst)
       if (check(!left->llvm.is_set, "return result is not set\n")) break;
       switch (left->type)
       {
-      case FCALL:
-      {
-         ret = LLVMBuildRet(builder, left->llvm.element);
-         break;
-      }
+      case FCALL: case ADD: case SUB: case MUL: case DIV: case MOD:
       case LESS: case LESS_EQUAL: case MORE:
       case MORE_EQUAL: case EQUAL: case NOT_EQUAL:
       case AND: case OR:
@@ -302,8 +297,7 @@ void handle_asm(Inst *inst)
       {
          if (left->name || left->is_attr)
          {
-            // FIXED: Load the value before returning
-            LLVMValueRef loaded = LLVMBuildLoad2(builder, get_llvm_type(left), 
+            LLVMValueRef loaded = LLVMBuildLoad2(builder, get_llvm_type(left),
                                                  left->llvm.element, left->name);
             ret = LLVMBuildRet(builder, loaded);
          }
@@ -356,15 +350,13 @@ void handle_asm(Inst *inst)
 
       LLVMValueRef indices[] = { rightRef };
       LLVMValueRef elem_ptr = LLVMBuildGEP2(builder, charType, leftRef, indices, 1, "access");
-      
-      // FIXED: Store the pointer separately for use in assignments
+
       curr->llvm.ptr = elem_ptr;
-      
-      // Load the value for use in expressions
+
       curr->llvm.element = LLVMBuildLoad2(builder, charType, elem_ptr, "access_val");
       curr->llvm.is_set = true;
       curr->type = CHAR;
-      curr->name = NULL;  // Clear name to prevent double-loading
+      curr->name = NULL;
       break;
    }
    case SET_POS:
@@ -387,13 +379,11 @@ void generate_asm(char *name)
 #if ASM
    if (found_error) return;
 
-   // Create LLVM context, module, and IR builder
    char *moduleName = resolve_path(name);
    context = LLVMContextCreate();
    mod = LLVMModuleCreateWithName(moduleName);
    builder = LLVMCreateBuilder();
 
-   // Initialize all types
    init_llvm_types();
 
    for (i = 0; insts[i]; i++) handle_asm(insts[i]);
@@ -404,10 +394,9 @@ void generate_asm(char *name)
    moduleName[len - 1] = '\0';
    LLVMPrintModuleToFile(mod, moduleName, NULL);
 
-   // Cleanup
    LLVMDisposeBuilder(builder);
    LLVMDisposeModule(mod);
-   LLVMContextDispose(context); // Don't forget to dispose the context
+   LLVMContextDispose(context);
    free(moduleName);
 #endif
 }

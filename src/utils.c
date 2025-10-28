@@ -199,7 +199,7 @@ int print_value(Token *token)
    case CHARS: return debug("value [%s] index [%d] ", token->Chars.value, token->index);
    case STRUCT_CALL: return debug("has [%d] attrs ", token->Struct.pos);
    case DEFAULT: return debug("default value ");
-   case ADD: return debug("%t ", token->type); break;
+   case ADD: case SUB: case NOT_EQUAL: return debug("%t ", token->type); break;
    default: check(1, "handle this case [%s]\n", to_string(token->type));
    }
    return 0;
@@ -244,14 +244,16 @@ void print_inst(Inst *inst)
    case LESS_EQUAL: case MORE_EQUAL:
    case AND: case OR:
    {
-      if (left->ir_reg) debug("r%.2d", left->ir_reg);
+      if (left->ir_reg) debug("r%.2d ", left->ir_reg);
       else print_value(left);
       if (left->name) debug("(%s)", left->name);
 
       debug(" to ");
-      if (right->ir_reg) debug("r%.2d", right->ir_reg);
+      if (right->ir_reg) debug("r%.2d ", right->ir_reg);
       else print_value(right);
       if (right->name) debug("(%s)", right->name);
+
+      // debug(" ret (%t)", to_string(curr->retType));
       break;
    }
    case INT: case BOOL: case CHARS: case CHAR: case LONG:
@@ -273,7 +275,7 @@ void print_inst(Inst *inst)
    case BUILD_COND: debug("%s ", curr->name); break;
    case SET_POS: case APPEND_BLOC: case BUILD_BR:
       debug("%s ", left->name); break;
-   case ACCESS: 
+   case ACCESS:
    {
       if (left->ir_reg) debug("r%.2d ", left->ir_reg);
       if (left->name) debug("(%s) ", left->name);
@@ -535,18 +537,18 @@ void parse_token(char *input, int s, int e,
       {
          switch (input[s + 1])
          {
-         case 'n':  new->Char.value = '\n';  break;  
-         case 't':  new->Char.value = '\t';  break;  
-         case 'r':  new->Char.value = '\r';  break;  
-         case 'b':  new->Char.value = '\b';  break;  
-         case 'f':  new->Char.value = '\f';  break;  
-         case 'v':  new->Char.value = '\v';  break;  
-         case 'a':  new->Char.value = '\a';  break;  
-         case '0':  new->Char.value = '\0';  break;  
-         case '\\': new->Char.value = '\\';  break;  
-         case '"':  new->Char.value = '"'; break;    
-         case '\'': new->Char.value = '\'';  break; 
-         case '?':  new->Char.value = '\?';  break;  
+         case 'n':  new->Char.value = '\n';  break;
+         case 't':  new->Char.value = '\t';  break;
+         case 'r':  new->Char.value = '\r';  break;
+         case 'b':  new->Char.value = '\b';  break;
+         case 'f':  new->Char.value = '\f';  break;
+         case 'v':  new->Char.value = '\v';  break;
+         case 'a':  new->Char.value = '\a';  break;
+         case '0':  new->Char.value = '\0';  break;
+         case '\\': new->Char.value = '\\';  break;
+         case '"':  new->Char.value = '"'; break;
+         case '\'': new->Char.value = '\'';  break;
+         case '?':  new->Char.value = '\?';  break;
          default: break;
          }
       }
@@ -955,6 +957,7 @@ Token *is_struct(Token *token)
 
 Node *new_node(Token *token)
 {
+   debug("new node: %k\n", token);
    Node *new = allocate(1, sizeof(Node));
    new->token = token;
    return new;
