@@ -28,51 +28,31 @@
 #define BLUE "\x1b[34m"
 #define RESET "\033[0m"
 #define LINE __LINE__
-#define FUNC __func__
-#define FILE __FILE__
+#define FUNC (char*)__func__
+#define FILE (char*)__FILE__
 
 #define TOKENIZE 1
 #define TAB 3
-
-#if TOKENIZE
 #define AST 1
-#endif
-
-#if AST
 #define IR 1
-#else
-#define IR 0
-#endif
-
-#define WITH_COMMENTS 1
-
-#if IR
-#define BUILTINS 1
-#ifndef OPTIMIZE
 #define OPTIMIZE 0
-#endif
-
 #define ASM 1
-#else
-#define ASM 0
-#endif
 
 #ifndef DEBUG
 #define DEBUG 1
 #endif
 
-#ifndef TESTING
-#define TESTING false
-#endif
-
-#define TREE 0
-
 #define allocate(len, size) allocate_func(LINE, len, size)
 #define check(cond, fmt, ...) check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)
 #define to_string(type) to_string_(FILE, LINE, type)
 #define todo(cond, fmt, ...) if (check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)) exit(1);
-#define stop(cond, fmt, ...) if (check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)) exit(1);
 #define seg() raise(SIGSEGV);
+
+#if DEBUG
+#define debug(fmt, ...) print(fmt, ##__VA_ARGS__)
+#else
+#define debug(fmt, ...) do { } while (0)
+#endif
 
 #define DATA_TYPES INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT
 
@@ -93,28 +73,28 @@ Node *name() { \
 typedef struct Token Token;
 typedef struct Node Node;
 typedef struct Inst Inst;
-typedef struct LLvm LLvm;
 typedef enum Type Type;
+
+typedef LLVMValueRef llvmValue;
+typedef LLVMBasicBlockRef llvmBloc;
+typedef LLVMTypeRef llvmType;
 
 // STRUCTS
 enum Type
 {
-   // General / Special
-   TMP = 1, CHILDREN, DEFAULT, COMMENT, END,
-   // Identifiers & References
+   END = 1,
+
    ID, REF,
    REF_ID, REF_HOLD_ID, REF_VAL, REF_HOLD_REF, REF_REF,
    ID_ID, ID_REF, ID_VAL,
 
-   // Types
+   // Data types
    VOID, INT, FLOAT, LONG, SHORT, BOOL, CHAR, CHARS, PTR,
-   ARRAY,
+   ARRAY, CAST,
 
    // Struct Usage
-   STRUCT_DEF, STRUCT_BODY, STRUCT_ATTR,
-   STRUCT_ALLOC, STRUCT_CALL,
+   STRUCT_DEF, STRUCT_BODY, STRUCT_ALLOC, STRUCT_CALL,
 
-   // Operators
    // Assignment
    ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,
    // Comparison
@@ -131,43 +111,23 @@ enum Type
    RETURN, ARROW,
    IF, ELIF, ELSE, END_IF, BUILD_COND,
    WHILE, CONTINUE, BREAK, END_WHILE,
-   BLOC, END_BLOC, END_COND, APPEND_BLOC, SET_POS,
-   BUILD_BR,
+   APPEND_BLOC, SET_POS, BUILD_BR,
+   END_BLOC,
 
    // Functions
-   FDEC, FCALL, PROTO_FUNC,
-
-   // Jumps
-   JMP, JE, JNE,
-
-   // Functions params
-   PUSH, POP
-};
-
-
-struct LLvm
-{
-   bool is_set;  // is LLVM block set
-   LLVMTypeRef funcType;
-   LLVMValueRef element;
-   LLVMValueRef ptr;  // ADD THIS LINE - pointer for lvalue assignments
-   LLVMBasicBlockRef bloc;
-   LLVMTypeRef structType;
+   FDEC, FCALL, PROTO_FUNC, CHILDREN,
 };
 
 struct Token
 {
    Type type;
-   Type retType; // return type
+   Type retType;
    Type assign_type;
 
    char *name;
-   int space; // indentation
+   int space;
    bool remove;
-   int index;
-   int size;
-   
-   // Intermediate Representation
+
    int ir_reg;
    int used;
 
@@ -175,16 +135,22 @@ struct Token
    bool is_ref;
    bool has_ref;
    bool is_declare;
-   bool is_attr;
+   // bool is_attr;
    bool is_proto;
    bool is_arg;
    bool is_param;
-   
-   // display errors, file and line
+   bool is_cast;
+
    char *filename;
    int line;
 
-   LLvm llvm;
+   struct {
+      bool is_set;
+      llvmValue elem;
+      llvmBloc bloc;
+      llvmType type;
+   } llvm;
+
    struct
    {
       // integer
@@ -209,7 +175,7 @@ struct Token
          Token **attrs;
          int size;
          int pos;
-         int attr_index;
+         int index; // attribute index
       } Struct;
       struct
       {
@@ -219,7 +185,7 @@ struct Token
       // function call
       struct
       {
-         Token *ptr;
+         Token *func_ptr; // function declaration
          Token **args;
          int size;
          int pos;
@@ -247,14 +213,14 @@ struct Node
    Node *right;
    Token *token;
 
-   struct Node **children;
+   Node **children;
    int cpos; // children pos
    int csize; // children size
 
    // bloc Infos
    struct
    {
-      struct Node **functions;
+      Node **functions;
       int fpos;
       int fsize;
 
@@ -282,7 +248,6 @@ extern Token **tokens;
 extern int tk_pos;
 extern int tk_len;
 
-extern char *input;
 extern Node *global;
 extern int exe_pos;
 extern Inst **OrgInsts;
@@ -293,7 +258,6 @@ extern Node *scoop;
 extern int scoopSize;
 extern int scoopPos;
 
-extern int ptr;
 #if defined(__APPLE__)
 extern struct __sFILE *asm_fd;
 #elif defined(__linux__)
@@ -303,11 +267,9 @@ extern struct _IO_FILE *asm_fd;
 // ----------------------------------------------------------------------------
 // Parsing
 // ----------------------------------------------------------------------------
-
+void tokenize(char *filename);
 Token* new_token(Type type, int space);
-void parse_token(char *input, int s, int e, Type type, int space,
-                 char *filename, int line);
-
+void parse_token(char *filename, int line, char *input, int s, int e, Type type, int space);
 void add_token(Token *token);
 Node *expr();
 Node *assign();
@@ -323,7 +285,6 @@ Node *prime();
 Node *new_node(Token *token);
 bool includes(Type to_find, ...);
 Token *find(Type type, ...);
-void generate_ast();
 Node *new_function(Node *node);
 Node *get_function(char *name);
 Token *get_variable(char *name);
@@ -333,33 +294,23 @@ Token *copy_token(Token *token);
 Node *copy_node(Node *node);
 Token *new_struct(Token *token);
 Token *get_struct(char *name);
-Token *get_struct_by_id(int id);
 Token *is_struct(Token *token);
 void add_attribute(Token *obj, Token *attr);
 Node* add_child(Node *node, Node *child);
 void add_variable(Node *bloc, Token *token);
-void set_struct_size(Token *token);
+void add_struct(Node *bloc, Token *token);
 
 // ----------------------------------------------------------------------------
 // Code Generation
 // ----------------------------------------------------------------------------
-void generate(char *name);
 Inst *new_inst(Token *token);
 void add_inst(Inst *inst);
-
 void enter_scoop(Node *node);
 void exit_scoop();
 void copy_insts();
 bool compatible(Token *left, Token *right);
-void initialize();
-void asm_space(int space);
-void finalize();
-void pasm(char *fmt, ...);
 Token *generate_ir(Node *node);
-int calculate_padding(int offset, int alignment);
 void generate_asm(char *name);
-void to_default(Token *token, Type type);
-void handle_ir(Inst *inst);
 
 // ----------------------------------------------------------------------------
 // Utilities
@@ -367,37 +318,21 @@ void handle_ir(Inst *inst);
 char* open_file(char *filename);
 char *to_string_(char *filename, int line, Type type);
 void setName(Token *token, char *name);
-void setReg(Token *token, char *creg);
 bool within_space(int space);
-bool check_error(const char *filename, const char *funcname, int line,
-                 bool cond, char *fmt, ...);
+bool check_error(char *filename, char *funcname, int line, bool cond, char *fmt, ...);
 void free_memory();
 void *allocate_func(int line, int len, int size);
-void create_builtin(char *name, Type *params,  Type retType);
 char *strjoin(char *str0, char *str1, char *str2);
-int sizeofToken(Token *token);
-int alignofToken(Token *token);
-void add_builtins();
 Type getRetType(Node *node);
-bool optimize_ir();
-void config();
-void setAttrName(Token *parent, Token *child);
-void create_struct(char *name, Token *attrs);
-void set_remove(Node *node);
 char* resolve_path(char* path);
-
-#if DEBUG_INC_PTR
-void inc_ptr_(char *filename, int line, int size);
-#else
-void inc_ptr(int size);
-#endif
 
 // ----------------------------------------------------------------------------
 // Logs
 // ----------------------------------------------------------------------------
-int debug(char *conv, ...);
+int print(char *conv, ...);
 int pnode(Node *node, char *side, int space);
 int ptoken(Token *token);
 void print_ast(Node *head);
 void print_ir();
 int print_value(Token *token);
+
