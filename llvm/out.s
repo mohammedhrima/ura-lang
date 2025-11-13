@@ -6,30 +6,25 @@ _main:                                  ; @main
 	.cfi_startproc
 ; %bb.0:                                ; %entry
 	sub	sp, sp, #32
-	stp	x29, x30, [sp, #16]             ; 16-byte Folded Spill
 	.cfi_def_cfa_offset 32
-	.cfi_offset w30, -8
-	.cfi_offset w29, -16
+	adrp	x8, l_str_literal@PAGE
 Lloh0:
-	adrp	x8, l_str@PAGE
-	ldrsb	w0, [x8, l_str@PAGEOFF]
+	adrp	x9, l_str_literal@PAGE
 Lloh1:
-	adrp	x8, l_str@PAGE
-Lloh2:
-	add	x8, x8, l_str@PAGEOFF
-	str	x8, [sp, #8]
-	strb	w0, [sp, #7]
-	bl	_putchar
-	ldp	x29, x30, [sp, #16]             ; 16-byte Folded Reload
+	add	x9, x9, l_str_literal@PAGEOFF
+	ldrb	w8, [x8, l_str_literal@PAGEOFF]
 	mov	w0, wzr
+	str	x9, [sp, #24]
+	str	w8, [sp, #20]
+	add	w8, w8, #2
+	stp	w8, w8, [sp, #12]
 	add	sp, sp, #32
 	ret
-	.loh AdrpAdd	Lloh1, Lloh2
-	.loh AdrpAdrp	Lloh0, Lloh1
+	.loh AdrpAdd	Lloh0, Lloh1
 	.cfi_endproc
                                         ; -- End function
-	.section	__TEXT,__cstring,cstring_literals
-l_str:                                  ; @str
-	.asciz	"abcd"
+	.section	__TEXT,__const
+l_str_literal:                          ; @str_literal
+	.asciz	"abc"
 
 .subsections_via_symbols

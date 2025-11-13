@@ -1,76 +1,19 @@
-
-func int to_ascci(char c):
-    if c == 'a': return 97
-    if c == 'b': return 98
-    if c == 'c': return 99
-    if c == 'd': return 100
-    if c == 'e': return 101
-    if c == 'f': return 102
-    if c == 'g': return 103
-    if c == 'h': return 104
-    if c == 'i': return 105
-    if c == 'j': return 106
-    if c == 'k': return 107
-    if c == 'l': return 108
-    if c == 'm': return 109
-    if c == 'n': return 110
-    if c == 'o': return 111
-    if c == 'p': return 112
-    if c == 'q': return 113
-    if c == 'r': return 114
-    if c == 's': return 115
-    if c == 't': return 116
-    if c == 'u': return 117
-    if c == 'v': return 118
-    if c == 'w': return 119
-    if c == 'x': return 120
-    if c == 'y': return 121
-    if c == 'z': return 122
-    if c == 'A': return 65
-    if c == 'B': return 66
-    if c == 'C': return 67
-    if c == 'D': return 68
-    if c == 'E': return 69
-    if c == 'F': return 70
-    if c == 'G': return 71
-    if c == 'H': return 72
-    if c == 'I': return 73
-    if c == 'J': return 74
-    if c == 'K': return 75
-    if c == 'L': return 76
-    if c == 'M': return 77
-    if c == 'N': return 78
-    if c == 'O': return 79
-    if c == 'P': return 80
-    if c == 'Q': return 81
-    if c == 'R': return 82
-    if c == 'S': return 83
-    if c == 'T': return 84
-    if c == 'U': return 85
-    if c == 'V': return 86
-    if c == 'W': return 87
-    if c == 'X': return 88
-    if c == 'Y': return 89
-    if c == 'Z': return 90
-    if c == '0': return 48
-    if c == '1': return 49
-    if c == '2': return 50
-    if c == '3': return 51
-    if c == '4': return 52
-    if c == '5': return 53
-    if c == '6': return 54
-    if c == '7': return 55
-    if c == '8': return 56
-    if c == '9': return 57
-    if c == ' ': return 32
-    if c == '\0': return 0
+func int to_ascii(char c):
+    int n = c
+    if n < 0 or n > 127: return -1
+    // Check if it's a valid character
+    if (n >= 97 and n <= 122) or  // a-z
+       (n >= 65 and n <= 90) or   // A-Z
+       (n >= 48 and n <= 57) or   // 0-9
+       n == 32 or n == 0:         // space or null terminator
+        return n
     return -1
 
 func int strcmp(chars left, chars right):
     int i = 0
     while left[i] == right[i] and left[i] != '\0':
         i += 1
-    return to_ascci(left[i]) - to_ascci(right[i])
+    return to_ascii(left[i]) - to_ascii(right[i])
 
 main():
     int len = strcmp("b", "a")
