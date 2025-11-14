@@ -1,0 +1,46 @@
+func bool foo():
+    return True
+
+func bool bar():
+    return False
+
+main():
+    bool a = True
+    bool b = False
+    
+    // Test: variable && variable
+    bool t1 = a && b
+    
+    // Test: variable && value
+    bool t2 = a && True
+    
+    // Test: variable && function
+    bool t3 = a && foo()
+    
+    // Test: value && variable
+    bool t4 = False && b
+    
+    // Test: value && value
+    bool t5 = True && True
+    
+    // Test: value && function
+    bool t6 = True && bar()
+    
+    // Test: function && variable
+    bool t7 = foo() && a
+    
+    // Test: function && value
+    bool t8 = bar() && False
+    
+    // Test: function && function
+    bool t9 = foo() && bar()
+    
+    // Test using 'and' keyword
+    bool t10 = a and b
+    bool t11 = True and False
+    bool t12 = foo() and bar()
+    
+    // Short-circuit evaluation tests
+    // These should not call bar() if first operand is False
+    bool t13 = False && bar()
+    bool t14 = b and foo()
