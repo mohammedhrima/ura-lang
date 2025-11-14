@@ -2,6 +2,7 @@
 
 Token *func_dec_ir(Node *node)
 {
+   // already has retType
    new_function(node);
    enter_scoop(node);
    // int tmp_ptr = ptr;
@@ -49,7 +50,7 @@ Token *func_dec_ir(Node *node)
    {
       // TODO: if RETURN not found add it
       Token *new = new_token(END_BLOC, node->token->space);
-      new->name = strdup(node->token->name);
+      setName(new, node->token->name);
       new_inst(new);
    }
    exit_scoop();
@@ -329,76 +330,12 @@ Token *op_ir(Node *node)
    case ASSIGN:
    {
       node->token->ir_reg = left->ir_reg;
-      node->token->retType = getRetType(node);
-#if 0
-      // if (left->is_ref) // ir_reg, ptr
-      // {
-      //     if (right->is_ref) // ir_reg, ptr
-      //     {
-      //         if (check(!right->has_ref, "can not assign from reference that point to nothing")) break;
-      //         if (left->has_ref) { node->token->assign_type = REF_REF;/* stop(1, "found")*/}
-      //         else node->token->assign_type = REF_HOLD_REF;
-      //     }
-      //     else if (right->ptr || right->creg) // ptr
-      //     {
-      //         if (left->has_ref) node->token->assign_type = REF_ID;
-      //         else node->token->assign_type = REF_HOLD_ID;
-      //     }
-      //     else // ir_reg, value
-      //     {
-      //         print("line %d: %n\n", LINE, node);
-      //         // if (check(!left->has_ref, "can not assign to reference that point to nothing")) break;
-      //         node->token->assign_type = REF_VAL;
-      //     }
-      //     left->has_ref = true;
-      // }
-      // else if (left->ptr || left->creg) // ir_reg, ptr
-      // {
-      //     if (right->is_ref) // ir_reg, ptr
-      //     {
-      //         if (check(!right->has_ref, "can not assign from reference that point to nothing")) break;
-      //         node->token->assign_type = ID_REF;
-      //     }
-      //     else if (right->ptr) // ptr
-      //         node->token->assign_type = ID_ID;
-      //     else // ir_reg, value
-      //         node->token->assign_type = ID_VAL;
-      // }
-      // else if (left->type == STRUCT_CALL)
-      // {
-      //     stop(1, "check this");
-      //     print(">> %k\n", left);
-      //     print(">> %k\n", right);
-      //     // TODO: check compatibility
-      //     for (int i = 0; i < left->Struct.pos; i++)
-      //     {
-      //         Node *tmp = new_node(new_token(ASSIGN, node->token->space));
-      //         tmp->left = new_node(left->Struct.attrs[i]);
-      //         tmp->right = new_node(right->Struct.attrs[i]);
-      //         op_ir(tmp);
-      //         free_node(tmp);
-      //     }
-      //     return NULL;
-      //     // exit(1);
-      // }
-      // else
-      // {
-      //     pnode(node, NULL, 0);
-      //     print("<%k>\n", left);
-      //     print("<%k>\n", right);
-      //     // todo(1, "Invalid assignment");
-      // }
-#endif
+      node->token->retType = left->retType;
       break;
    }
    case ADD: case SUB: case MUL: case DIV: case MOD:
    {
-      // TODO: to be checked
-      // node->token->retType = INT;
-      // if (node->token->retType  == INT) setReg(node->token, "eax");
-      // else if (node->token->retType == FLOAT) setReg(node->token, "xmm0");
-      // else
-      // check(1, "handle this case");
+      node->token->retType = left->retType;
       break;
    }
    case AND: case OR:
@@ -475,37 +412,38 @@ Token *generate_ir(Node *node)
    }
    case CAST:
    {
-
       break;
    }
-   // case VOID: return node->token;
    case INT: case BOOL: case CHAR: case STRUCT_CALL:
    case FLOAT: case LONG: case CHARS: case PTR: case VOID:
    {
       inst = new_inst(node->token);
       if (node->token->type == STRUCT_CALL) struct_call_ir(node);
       if (node->token->is_declare) new_variable(node->token);
+      inst->token->retType = inst->token->type;
       return node->token;
    }
    case STRUCT_DEF: return struct_def_ir(node);
-   case ASSIGN: case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN:
-   case DIV_ASSIGN:
-   case ADD: case SUB: case MUL: case DIV: case EQUAL: case NOT_EQUAL:
-   case LESS: case MORE: case LESS_EQUAL: case MORE_EQUAL: case MOD:
+   case ASSIGN: case ADD: case SUB: case MUL: case DIV: case EQUAL:
+   case NOT_EQUAL: case LESS: case MORE: case LESS_EQUAL:
+   case MORE_EQUAL: case MOD:
    {
-      // TODO: check if right is DEFAULT, then initlize it, and return left
       return op_ir(node);
+   }
+   case NOT:
+   {
+      Token *left = generate_ir(node->left);
+      inst = new_inst(node->token);
+      inst->left = left;
+      inst->token->retType = BOOL;
+      return inst->token;
    }
    case AND: case OR:
    {
       Token *left = generate_ir(node->left);
       Token *right = generate_ir(node->right);
-      check(!(left->type == BOOL || left->retType == BOOL),
-            "left should be boolean but instead recieved (%s) (%s)", to_string(left->type),
-            left->retType ? to_string(left->retType) : "");
-      check(!(right->type == BOOL || right->retType == BOOL),
-            "right should be boolean but instead recieved (%s) (%s)", to_string(right->type),
-            right->retType ? to_string(right->retType) : "");
+      check(left->retType != BOOL, "expected boolean but recieved (%s)", to_string(left->retType));
+      check(right->retType != BOOL, "expected boolean but recieved (%s)", to_string(right->retType));
 
       inst = new_inst(node->token);
       inst->left = left;
@@ -521,6 +459,7 @@ Token *generate_ir(Node *node)
    {
       Token *left = generate_ir(node->left);
       inst = new_inst(node->token);
+      inst->token->retType = left->type;
       inst->left = left;
       return node->token;
    }
@@ -539,7 +478,6 @@ Token *generate_ir(Node *node)
             if (node->token->type == BREAK)
             {
                inst->left = scoop->token->Statement.end;
-               // print(RED "break to %k\n" RESET, scoop->token->Statement.end);
             }
             else inst->left = scoop->token->Statement.start;
             inst->token->type = BUILD_BR;
@@ -553,8 +491,7 @@ Token *generate_ir(Node *node)
       Token *left = generate_ir(node->left); // struct name
       Token *right = node->right->token; // attribute
       if (check(left->type == ID, "undeclared variable %s", left->name)) break;
-      if (check(left->type != STRUCT_CALL,
-                "%s should be a struct call", left->name)) break;
+      if (check(left->type != STRUCT_CALL, "%s should be a struct call", left->name)) break;
       for (int i = 0; i < left->Struct.pos; i++)
       {
          Token *attr = left->Struct.attrs[i];
@@ -564,6 +501,7 @@ Token *generate_ir(Node *node)
             attr->Struct.index = i;
             attr->Struct.ptr = left->Statement.ptr;
             Inst *inst =  new_inst(node->token);
+            inst->token->retType = attr->type;
 
             inst->left = left;
             inst->right = attr;
@@ -588,8 +526,8 @@ Token *generate_ir(Node *node)
       switch (inst->left->type)
       {
       case CHARS: inst->token->retType = CHAR; break;
-      default: check(1, "handle this case %s\n", to_string(inst->left->type)); break;
-         break;
+      default:
+         check(1, "handle this case %s\n", to_string(inst->left->type)); break;
       }
       return node->token;
       break;
@@ -601,4 +539,312 @@ Token *generate_ir(Node *node)
    }
    }
    return NULL;
+}
+
+LLVMValueRef get_llvm_ref(Token *token)
+{
+   if (token->name && !token->is_param && !includes(token->type, FCALL, AND, OR))
+      return LLVMBuildLoad2(builder, get_llvm_type(token), token->llvm.elem, token->name);
+   return token->llvm.elem;
+}
+
+// ASSEMBLY GENERATION
+LLVMValueRef get_llvm_op(Token *token, Token* left, Token* right)
+{
+   LLVMValueRef leftRef = get_llvm_ref(left);
+   LLVMValueRef rightRef = get_llvm_ref(right);
+   char* op = to_string(token->type);
+   switch (token->type)
+   {
+   case LESS: return LLVMBuildICmp(builder, LLVMIntSLT, leftRef, rightRef, op); break;
+   case LESS_EQUAL: return LLVMBuildICmp(builder, LLVMIntSLE, leftRef, rightRef, op); break;
+   case MORE: return LLVMBuildICmp(builder, LLVMIntSGT, leftRef, rightRef, op); break;
+   case MORE_EQUAL: return LLVMBuildICmp(builder, LLVMIntSGE, leftRef, rightRef, op); break;
+   case EQUAL: return LLVMBuildICmp(builder, LLVMIntEQ,  leftRef, rightRef, op); break;
+   case NOT_EQUAL: return LLVMBuildICmp(builder, LLVMIntNE,  leftRef, rightRef, op); break;
+   case ADD: return LLVMBuildAdd(builder, leftRef, rightRef, op); break;
+   case SUB: return LLVMBuildSub(builder, leftRef, rightRef, op); break;
+   case MUL: return LLVMBuildMul(builder, leftRef, rightRef, op); break;
+   case DIV: return LLVMBuildSDiv(builder, leftRef, rightRef, op); break;
+   case MOD: return LLVMBuildSRem(builder, leftRef, rightRef, op); break;
+   case AND: return LLVMBuildAnd(builder, leftRef, rightRef, op); break;
+   case OR: return LLVMBuildOr(builder, leftRef, rightRef, op); break;
+   default: todo(1, "handle this %s", op);
+   }
+   return NULL;
+}
+
+void handle_asm(Inst *inst)
+{
+   debug("Processing: %k\n", inst->token);
+   Token *curr = inst->token;
+   Token *left = inst->left;
+   Token *right = inst->right;
+   LLVMValueRef ret = NULL;
+
+   if (curr->llvm.is_set)
+   {
+      print(RED"%k already set\n"RESET, curr);
+      exit(1);
+      return;
+   }
+
+   switch (curr->type)
+   {
+   case VOID:
+   {
+      curr->llvm.is_set = true;
+      break;
+   }
+   case INT: case BOOL: case LONG: case SHORT: case CHAR: case CHARS: case PTR:
+   {
+      if (curr->is_param)
+      {
+         ret = LLVMGetParam(curr->Param.func_ptr->llvm.elem, curr->Param.index);
+         LLVMSetValueName(ret, curr->name);
+      }
+      else if (curr->is_declare)
+      {
+         ret = LLVMBuildAlloca(builder, get_llvm_type(curr), curr->name);
+      }
+      else if (curr->name)
+      {
+         ret = curr->llvm.elem;
+      }
+      else ret = get_value(curr);
+
+      curr->llvm.elem = ret;
+      curr->llvm.is_set = true;
+      break;
+   }
+#if 0
+   case STRUCT_DEF:
+   {
+      curr->llvm.is_set = true;
+      // CREATE STRUCT TYPE
+      // SET STRUCT BODY
+      curr->llvm.structType = LLVMStructCreateNamed(LLVMGetGlobalContext(), curr->Struct.name);
+      int pos = curr->Struct.pos;
+      LLVMTypeRef *attrs = allocate(pos, sizeof(LLVMTypeRef));
+      for (int i = 0; i < pos; i++)
+      {
+         Token *attr = curr->Struct.attrs[i];
+         stop(!attr, "attribite is NULL\n");
+         attrs[i] = get_llvm_type(attr);
+      }
+      // SET STRUCT BODY
+      LLVMStructSetBody(curr->llvm.structType, attrs, pos, 0);
+      free(attrs);
+      break;
+   }
+   case STRUCT_CALL:
+   {
+      curr->llvm.elem = LLVMBuildAlloca(builder, curr->Struct.ptr->llvm.structType, curr->name);
+      curr->llvm.is_set = true;
+      break;
+   }
+   case DOT:
+   {
+      LLVMValueRef st_call = left->llvm.elem;
+      LLVMTypeRef st_type = left->Struct.ptr->llvm.structType;
+      int index = right->Struct.attr_index; // attribute position
+      curr->llvm.elem = LLVMBuildStructGEP2(builder, st_type, st_call, index, right->name);
+      curr->llvm.is_set = true;
+      curr->type = right->type;
+      curr->name = strdup(right->name);
+      break;
+   }
+#endif
+   case ASSIGN:
+   {
+      if(check(!left->llvm.is_set, "assign, left is not set")) break;
+      if(check(!right->llvm.is_set, "assign, right is not set")) break;
+
+      // LLVMValueRef target = left->llvm.ptr ? left->llvm.ptr : left->llvm.elem;
+      LLVMValueRef target = left->llvm.elem;
+      LLVMBuildStore(builder, right->llvm.elem, target);
+      break;
+   }
+   case ADD: case SUB: case MUL: case DIV: case MOD:
+   case LESS: case LESS_EQUAL: case MORE:
+   case MORE_EQUAL: case EQUAL: case NOT_EQUAL:
+   case AND: case OR:
+   {
+      if (check(!left->llvm.is_set, "left is not set")) break;
+      if (check(!right->llvm.is_set, "right is not set")) break;
+   
+      ret = get_llvm_op(curr, left, right);
+      curr->llvm.elem = ret;
+      curr->llvm.is_set = true;
+      break;
+   }
+   case NOT:
+   {
+      if(check(!left->llvm.is_set, "not, left is not set")) break;
+      LLVMValueRef leftRef = get_llvm_ref(left);
+      ret = LLVMBuildNot(builder, leftRef, to_string(curr->type));
+      curr->llvm.elem = ret;
+      curr->llvm.is_set = true;
+      break;
+   }
+   case FCALL:
+   {
+      LLVM srcFunc = curr->Fcall.func_ptr->llvm;
+
+      LLVMValueRef *args = NULL;
+      if (curr->Fcall.pos)
+      {
+         args = allocate(curr->Fcall.pos, sizeof(LLVMValueRef));
+         for (int i = 0; i < curr->Fcall.pos; i++)
+         {
+            Token *arg = curr->Fcall.args[i];
+            check(!arg->llvm.is_set, "llvm is not set");
+            if (arg->name && !arg->is_param && arg->type != FCALL)
+               args[i] = LLVMBuildLoad2(builder, get_llvm_type(arg), arg->llvm.elem, arg->name);
+            else
+               args[i] = arg->llvm.elem;
+         }
+         curr->llvm.elem = LLVMBuildCall2(builder, srcFunc.funcType, srcFunc.elem, args,
+                                          curr->Fcall.pos, curr->name);
+         free(args);
+      }
+      else
+         curr->llvm.elem = LLVMBuildCall2(builder, srcFunc.funcType, srcFunc.elem,
+                                          NULL, 0, curr->name);
+
+      curr->llvm.is_set = true;
+      break;
+   }
+   case FDEC:
+   {
+      // print("FDEC: ", curr->name);
+      LLVMTypeRef *args = NULL;
+
+      if (curr->Fdec.pos)
+      {
+         args = allocate(curr->Fdec.pos + 1, sizeof(LLVMTypeRef));
+         for (int i = 0; i < curr->Fdec.pos; i++)
+            args[i] = get_llvm_type(curr->Fdec.args[i]);
+         curr->llvm.funcType = LLVMFunctionType(get_llvm_type(curr), args, curr->Fdec.pos, 0);
+         free(args);
+      }
+      else curr->llvm.funcType = LLVMFunctionType(get_llvm_type(curr), NULL, 0, 0);
+
+      curr->llvm.elem = LLVMAddFunction(mod, curr->name, curr->llvm.funcType);
+
+      if (!curr->is_proto)
+      {
+         LLVMBasicBlockRef funcEntry = LLVMAppendBasicBlock(curr->llvm.elem, "entry");
+         LLVMPositionBuilderAtEnd(builder, funcEntry);
+         LLVMPositionBuilderAtEnd(builder, funcEntry);
+      }
+
+      enter_func(curr->llvm.elem);
+      curr->llvm.is_set = true;
+      break;
+   }
+   case END_BLOC:
+   {
+      exit_func();
+      break;
+   }
+   case RETURN:
+   {
+      if (check(!left->llvm.is_set, "return result is not set\n")) break;
+      switch (left->type)
+      {
+      case FCALL: case ADD: case SUB: case MUL: case DIV: case MOD:
+      case LESS: case LESS_EQUAL: case MORE:
+      case MORE_EQUAL: case EQUAL: case NOT_EQUAL:
+      case AND: case OR:
+      {
+         ret = LLVMBuildRet(builder, left->llvm.elem);
+         break;
+      }
+      case INT: case BOOL: case LONG: case SHORT: case CHAR: case FLOAT:
+      {
+         if (left->name
+#if 0
+               || left->is_attr
+#endif
+            )
+         {
+            LLVMValueRef loaded = LLVMBuildLoad2(builder, get_llvm_type(left),
+                                                 left->llvm.elem, left->name);
+            ret = LLVMBuildRet(builder, loaded);
+         }
+         else
+            ret = LLVMBuildRet(builder, get_value(left));
+         break;
+      }
+      case VOID:
+      {
+         ret = LLVMBuildRetVoid(builder);
+         break;
+      }
+      default:
+         todo(1, "handle this case %s\n", to_string(left->type));
+         break;
+      }
+      curr->llvm.elem = ret;
+      curr->llvm.is_set = true;
+      break;
+   }
+   case APPEND_BLOC:
+   {
+      check(!left->name, "APPEND BLOC require a name");
+      left->llvm.bloc = LLVMAppendBasicBlockInContext(context, get_current_func(), left->name);
+      curr->llvm.is_set = true;
+      break;
+   }
+   case BUILD_COND:
+   {
+      LLVMValueRef cond = curr->Statement.ptr->llvm.elem;
+      LLVMBasicBlockRef start = left->llvm.bloc;
+      LLVMBasicBlockRef end = right->llvm.bloc;
+      curr->llvm.elem = LLVMBuildCondBr(builder, cond, start, end);
+      curr->llvm.is_set = true;
+      break;
+   }
+#if 0
+   case ACCESS:
+   {
+      check(!left->llvm.is_set, "left is not set");
+      check(!right->llvm.is_set, "right is not set");
+
+      LLVMValueRef leftRef = NULL, rightRef = NULL;
+      if (left->name && !left->is_param && left->type != FCALL)
+         leftRef = LLVMBuildLoad2(builder, get_llvm_type(left), left->llvm.elem, left->name);
+      else leftRef = left->llvm.elem;
+
+      if (right->name && !right->is_param && right->type != FCALL)
+         rightRef = LLVMBuildLoad2(builder, get_llvm_type(right), right->llvm.elem, right->name);
+      else rightRef = right->llvm.elem;
+
+      LLVMValueRef indices[] = { rightRef };
+      LLVMValueRef elem_ptr = LLVMBuildGEP2(builder, i8, leftRef, indices, 1, "access");
+
+      curr->llvm.ptr = elem_ptr;
+
+      curr->llvm.elem = LLVMBuildLoad2(builder, i8, elem_ptr, "access_val");
+      curr->llvm.is_set = true;
+      curr->type = CHAR;
+      setName(curr, N)
+      curr->name = NULL;
+      break;
+   }
+#endif
+   case SET_POS:
+   {
+      LLVMPositionBuilderAtEnd(builder, left->llvm.bloc);
+      break;
+   }
+   case BUILD_BR:
+   {
+      check(!left->name, "BUILD BR require a name");
+      LLVMBuildBr(builder, left->llvm.bloc);
+      break;
+   }
+   default: todo(1, "handle this case (%s)\n", to_string(curr->type)); break;
+   }
 }

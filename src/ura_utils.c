@@ -6,6 +6,7 @@ SECTIONS:
    + MEMMORY
    + PARSING
    + IR
+   + LLVM UTILS
    + UTILS
 */
 
@@ -93,8 +94,8 @@ int print(char *conv, ...)
             {
                Node *node = (Node *)va_arg(args, Node *);
                res += print("node: ") + (node ?
-                                       pnode(node, NULL, node->token->space) :
-                                       fprintf(stdout, "(null)"));
+                                         pnode(node, NULL, node->token->space) :
+                                         fprintf(stdout, "(null)"));
                break;
             }
             default: todo(1, "invalid format specifier [%c]\n", conv[i]);
@@ -209,7 +210,7 @@ void print_inst(Inst *inst)
    {
    case ASSIGN:
    {
-      if(curr->assign_type) print("[%s] ", to_string(curr->assign_type));
+      if (curr->assign_type) print("[%s] ", to_string(curr->assign_type));
 
       print("r%.2d = r%.2d ", left->ir_reg, right->ir_reg);
 
@@ -224,13 +225,18 @@ void print_inst(Inst *inst)
    case AND: case OR:
    {
       print("r%.2d to r%.2d ", left->ir_reg, right->ir_reg);
-      
+
       // if (left->name) print("(%s)", left->name);
-      // else print_value(left);    
+      // else print_value(left);
       // print(" to ");
       // if (right->name) print("(%s)", right->name);
       // else print_value(right);
 
+      break;
+   }
+   case NOT:
+   {
+      print("r%.2d ", left->ir_reg);
       break;
    }
    case INT: case BOOL: case CHARS: case CHAR: case LONG: case VOID:
@@ -247,7 +253,7 @@ void print_inst(Inst *inst)
    case STRUCT_DEF: print("%s ", curr->Struct.name); break;
    case BUILD_COND: print("%s ", curr->name); break;
    case RETURN:  print("r%.2d ", left->ir_reg); break;
-   case SET_POS: case APPEND_BLOC: case BUILD_BR: 
+   case SET_POS: case APPEND_BLOC: case BUILD_BR:
       print("%s ", left->name); break;
    case ACCESS:
    {
@@ -367,6 +373,7 @@ Token *copy_token(Token *token)
    if (token == NULL) return NULL;
    Token *new = allocate(1, sizeof(Token));
    memcpy(new, token, sizeof(Token));
+   // TODO: can't use setName here to investigate later why ?
    if (token->name) new->name = strdup(token->name);
    if (token->Chars.value) new->Chars.value = strdup(token->Chars.value);
    if (token->Struct.attrs)
@@ -506,7 +513,8 @@ void add_variable(Node *bloc, Token *token)
 
 Token *new_variable(Token *token)
 {
-   debug(CYAN "new variable [%s] [%s] in scoop %k\n" RESET, token->name, to_string(token->type), scoop->token);
+   debug(CYAN "new variable [%s] [%s] in scoop %k\n" RESET, token->name, to_string(token->type),
+         scoop->token);
    for (int i = 0; i < scoop->vpos; i++)
    {
       Token *curr = scoop->vars[i];
@@ -656,11 +664,13 @@ bool compatible(Token *left, Token *right)
 
 Type getRetType(Node *node)
 {
-   if (!node || !node->token) return 0;
-   if (includes(node->token->type, INT, CHARS, CHAR, FLOAT, BOOL, 0))
+   if (!node || !node->token)
+   {
+      check(1, "recieved NULL\n");
+      return 0;
+   }
+   if (includes(node->token->retType, DATA_TYPES, 0))
       return node->token->type;
-   if (includes(node->token->retType, INT, CHARS, CHAR, FLOAT, BOOL, 0))
-      return node->token->retType;
 
    Type left = 0, right = 0;
    if (node->left) left = getRetType(node->left);
@@ -670,18 +680,102 @@ Type getRetType(Node *node)
    return 0;
 }
 
+// LLVM UTILS
+static LLVMTypeRef vd, f32, i1, i8, i16, i32, i64, p8, p32;
+
+void init_llvm_types()
+{
+   vd = LLVMVoidTypeInContext(context);
+   f32 = LLVMFloatTypeInContext(context);
+   i1 = LLVMInt1TypeInContext(context);
+   i8 = LLVMInt8TypeInContext(context);
+   i16 = LLVMInt16TypeInContext(context);
+   i32 = LLVMInt32TypeInContext(context);
+   i64 = LLVMInt64TypeInContext(context);
+   p8 = LLVMPointerType(i8, 0);
+   p32 = LLVMPointerType(i32, 0);
+}
+
+LLVMTypeRef get_llvm_type(Token *token)
+{
+   switch (token->retType)
+   {
+   case VOID: return vd;
+   case INT: return i32;
+   case FLOAT: return f32;
+   case LONG: return i64;
+   case SHORT: return i16;
+   case BOOL: return i1;
+   case CHAR: return i8;
+   case CHARS: return p8;
+   case PTR: return p32;
+   default:
+   {
+      todo(1, "handle this case %s", to_string(token->retType));
+      seg();
+      break;
+   }
+   }
+   return NULL;
+}
+
+LLVMValueRef get_value(Token *token)
+{
+   LLVMTypeRef llvmType = get_llvm_type(token);
+   switch (token->type)
+   {
+   case INT: return LLVMConstInt(llvmType, token->Int.value, 0);
+   case FLOAT: return LLVMConstReal(llvmType, token->Float.value);
+   case BOOL: return LLVMConstInt(llvmType, token->Bool.value ? 1 : 0, 0);
+   case LONG: return LLVMConstInt(llvmType, token->Long.value, 0);
+   case SHORT: return LLVMConstInt(llvmType, token->Short.value, 0);
+   case CHAR: return LLVMConstInt(llvmType, token->Char.value, 0);
+   case CHARS:
+   {
+      LLVMValueRef str_constant = LLVMConstStringInContext(context, token->Chars.value,
+                                  strlen(token->Chars.value), 0);
+      LLVMValueRef global_str = LLVMAddGlobal(mod, LLVMTypeOf(str_constant), "STR");
+      LLVMSetInitializer(global_str, str_constant);
+      LLVMSetLinkage(global_str, LLVMPrivateLinkage);
+      LLVMSetGlobalConstant(global_str, 1);
+      return global_str;
+   }
+   default: todo(1, "handle this literal case %s", to_string(token->type));
+   }
+   return (LLVMValueRef) {};
+}
+
+// TODO: this approach need to be customized
+LLVMValueRef farr[100];
+int fpos = 0;
+LLVMValueRef get_current_func()
+{
+   return farr[fpos];
+}
+
+void enter_func(LLVMValueRef func)
+{
+   farr[fpos] = func;
+   fpos++;
+}
+
+void exit_func()
+{
+   fpos--;
+}
+
 // UTILS
 char *to_string_(char *filename, int line, Type type)
 {
    char *type_names[] = {
       [CHILDREN] = "CHILDREN",
-   
+
       [ID] = "ID", [REF] = "REF",
       [REF_ID] = "REF_ID", [REF_HOLD_ID] = "REF_HID",
       [REF_VAL] = "REF_VAL", [REF_HOLD_REF] = "REF_HRF",
       [REF_REF] = "REF_REF", [ID_ID] = "ID_ID",
       [ID_REF] = "ID_REF", [ID_VAL] = "ID_VAL",
-   
+
       [VOID] = "VOID", [INT] = "INT",
       [FLOAT] = "FLOAT", [LONG] = "LONG",
       [SHORT] = "SHORT", [BOOL] = "BOOL",
@@ -690,8 +784,8 @@ char *to_string_(char *filename, int line, Type type)
       [STRUCT_DEF] = "ST_DEF", [STRUCT_BODY] = "ST_BODY",
       [STRUCT_ALLOC] = "ST_ALLOC", [STRUCT_CALL] = "ST_CALL",
       [ARRAY] = "ARRAY", [CAST] = "CAST",
-   
-   
+
+
       [ASSIGN] = "ASSIGN", [ADD_ASSIGN] = "ADD_ASGN",
       [SUB_ASSIGN] = "SUB_ASGN", [MUL_ASSIGN] = "MUL_ASGN",
       [DIV_ASSIGN] = "DIV_ASGN", [MOD_ASSIGN] = "MOD_ASGN",
@@ -700,19 +794,19 @@ char *to_string_(char *filename, int line, Type type)
       [LESS] = "LESS", [MORE] = "MORE", [ADD] = "ADD",
       [SUB] = "SUB", [MUL] = "MUL", [DIV] = "DIV",
       [MOD] = "MOD", [AND] = "AND", [OR] = "OR", [NOT] = "NOT",
-   
+
       [LPAR] = "LPAR", [RPAR] = "RPAR", [LBRA] = "LBRA",
       [RBRA] = "RBRA", [COMA] = "COMA", [DOT] = "DOT",
       [DOTS] = "DOTS", [ACCESS] = "ACCESS",
-   
+
       [RETURN] = "RETURN", [ARROW] = "ARROW",
       [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
       [BUILD_COND] = "BLD_COND", [WHILE] = "WHILE",
       [CONTINUE] = "CONT", [BREAK] = "BREAK",
       [END_WHILE] = "END_WHILE",
       [APPEND_BLOC] = "APP_BLC", [SET_POS] = "SET_POS",
-      [BUILD_BR] = "BLD_BR", [END_BLOC]= "END_BLOC",
-   
+      [BUILD_BR] = "BLD_BR", [END_BLOC] = "END_BLOC",
+
       [FDEC] = "FDEC", [FCALL] = "FCALL", [PROTO_FUNC] = "PROTO_FUNC",
    };
    int size = (int)(sizeof(type_names) / sizeof(type_names[0]));
@@ -760,6 +854,26 @@ char *strjoin(char *str0, char *str1, char *str2)
    if (str1) strcpy(res + len0, str1);
    if (str2) strcpy(res + len0 + len1, str2);
    return res;
+}
+
+char* resolve_path(char* path)
+{
+   if (path == NULL) return NULL;
+   char* cleaned = allocate(strlen(path) + 5, 1);
+   if (!cleaned) return NULL;
+   size_t i = 0, j = 0;
+   while (path[i])
+   {
+      cleaned[j++] = path[i++];
+      while (path[i] == '/')
+      {
+         if (cleaned[j - 1] != '/') cleaned[j++] = '/';
+         i++;
+      }
+   }
+   if (j > 1 && cleaned[j - 1] == '/') j--;
+   cleaned[j] = '\0';
+   return cleaned;
 }
 
 char* open_file(char *filename)

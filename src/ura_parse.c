@@ -61,15 +61,28 @@ void parse_token(char *filename, int line, char *input, int s, int e,  Type type
 
       struct { char *name; Type type; } keywords[] = {{"if", IF}, {"elif", ELIF},
          {"else", ELSE}, {"while", WHILE}, {"func", FDEC}, {"return", RETURN},
-         {"break", BREAK}, {"continue", CONTINUE}, {"ref", REF}, {"and", AND},
-         {"or", OR}, {"struct", STRUCT_DEF}, {"is", EQUAL}, {"protoFunc", PROTO_FUNC},
-         {"cast", CAST}, {0, 0},
+         {"break", BREAK}, {"continue", CONTINUE}, {"ref", REF}, {"struct", STRUCT_DEF},
+         {"protoFunc", PROTO_FUNC}, {"cast", CAST}, {0, 0},
       };
       for (i = 0; keywords[i].name; i++)
       {
          if (strcmp(keywords[i].name, new->name) == 0)
          {
             new->type = keywords[i].type;
+            break;
+         }
+      }
+      if (keywords[i].name) break;
+
+      struct { char *name; Type type; } keywords2[] = {{"and", AND},
+         {"or", OR}, {"is", EQUAL}, {"not", NOT}, {0, 0},
+      };
+      for (i = 0; keywords2[i].name; i++)
+      {
+         if (strcmp(keywords2[i].name, new->name) == 0)
+         {
+            setName(new, NULL);
+            new->type = keywords2[i].type;
             break;
          }
       }
@@ -222,7 +235,7 @@ void tokenize(char *filename)
    struct { char *value; Type type; } specials[] = {
       {"->", ARROW},
       {".", DOT}, {":", DOTS}, {"+=", ADD_ASSIGN}, {"-=", SUB_ASSIGN},
-      {"*=", MUL_ASSIGN}, {"/=", DIV_ASSIGN}, {"!=", NOT_EQUAL},
+      {"*=", MUL_ASSIGN}, {"/=", DIV_ASSIGN}, {"!=", NOT_EQUAL}, {"!", NOT},
       {"==", EQUAL}, {"<=", LESS_EQUAL}, {">=", MORE_EQUAL},
       {"<", LESS}, {">", MORE}, {"=", ASSIGN}, {"+", ADD}, {"-", SUB},
       {"*", MUL}, {"/", DIV}, {"%", MOD}, {"(", LPAR}, {")", RPAR},
@@ -291,9 +304,9 @@ void tokenize(char *filename)
          i++;
          continue;
       }
-      if (isalpha(c) || strchr("@$-_", c))
+      if (isalpha(c) || strchr("@$_", c))
       {
-         while (input[i] && (isalnum(input[i]) || strchr("@$-_", input[i]))) i++;
+         while (input[i] && (isalnum(input[i]) || strchr("@$_", input[i]))) i++;
          if (i - s == 3 && strncmp(input + s, "use", 3) == 0 && isspace(input[i]))
          {
             while (isspace(input[i])) i++;
@@ -326,7 +339,7 @@ void tokenize(char *filename)
       bool found = false;
       for (int j = 0; specials[j].value; j++)
       {
-         size_t len = strlen(specials[j].value);  // Cache this
+         size_t len = strlen(specials[j].value);
          if (strncmp(specials[j].value, input + i, len) == 0)
          {
             parse_token(filename, line, NULL, 0, 0, specials[j].type, space);
@@ -344,7 +357,7 @@ void tokenize(char *filename)
 }
 
 // AST
-Node *expr() 
+Node *expr()
 {
    return assign();
 }
@@ -452,8 +465,7 @@ Node *func_dec(Node *node)
       todo(1, "handle function return struct properly");
    }
    Token *fname = find(ID, 0);
-   if (check(!typeName || !fname,
-             "expected data type and identifier after func declaration"))
+   if (check(!typeName || !fname, "expected data type and identifier after func declaration"))
       return node;
    node->token->retType = typeName->type;
    node->token->is_proto = (node->token->type == PROTO_FUNC);
@@ -722,6 +734,12 @@ Node *prime()
    Token *token;
    if ((token = find(ID, INT, CHARS, CHAR, FLOAT, BOOL, LONG, SHORT, 0)))
       return symbol(token);
+   else if((token = find(NOT, 0)))
+   {
+      node = new_node(token);
+      node->left = expr();
+      return node;
+   }
    else if ((token = find(STRUCT_DEF, 0)))
       return struct_def(new_node(token));
    // else if ((token = find(REF, 0)))

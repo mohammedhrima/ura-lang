@@ -55,6 +55,8 @@
 #endif
 
 #define DATA_TYPES INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT
+#define LOGIC_TYPE AND, OR
+#define MATH_TYPE ADD, SUB, MUL, DIV, MOD
 
 #define AST_NODE(name, child_func, ...) \
 Node *name() { \
@@ -74,6 +76,7 @@ typedef struct Token Token;
 typedef struct Node Node;
 typedef struct Inst Inst;
 typedef enum Type Type;
+typedef struct LLVM LLVM;
 
 typedef LLVMValueRef llvmValue;
 typedef LLVMBasicBlockRef llvmBloc;
@@ -118,6 +121,15 @@ enum Type
    FDEC, FCALL, PROTO_FUNC, CHILDREN,
 };
 
+struct LLVM
+{
+   bool is_set;
+   llvmValue elem;
+   llvmBloc bloc;
+   llvmType type;
+   llvmType funcType;
+};
+
 struct Token
 {
    Type type;
@@ -144,12 +156,7 @@ struct Token
    char *filename;
    int line;
 
-   struct {
-      bool is_set;
-      llvmValue elem;
-      llvmBloc bloc;
-      llvmType type;
-   } llvm;
+   LLVM llvm;
 
    struct
    {
@@ -258,6 +265,10 @@ extern Node *scoop;
 extern int scoopSize;
 extern int scoopPos;
 
+extern LLVMModuleRef mod;
+extern LLVMBuilderRef builder;
+extern LLVMContextRef context;
+
 #if defined(__APPLE__)
 extern struct __sFILE *asm_fd;
 #elif defined(__linux__)
@@ -310,7 +321,14 @@ void exit_scoop();
 void copy_insts();
 bool compatible(Token *left, Token *right);
 Token *generate_ir(Node *node);
-void generate_asm(char *name);
+void handle_asm(Inst *inst);
+void init_llvm_types();
+// LLVMTypeRef get_llvm_type(Type type);
+LLVMTypeRef get_llvm_type(Token* token);
+LLVMValueRef get_value(Token *token);
+void enter_func(LLVMValueRef func);
+void exit_func();
+LLVMValueRef get_current_func();
 
 // ----------------------------------------------------------------------------
 // Utilities
