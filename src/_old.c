@@ -355,20 +355,6 @@ LLVMModuleRef mod;
 LLVMBuilderRef builder;
 LLVMContextRef context;
 
-// Type declarations
-LLVMTypeRef vd;
-
-LLVMTypeRef f32;
-
-LLVMTypeRef i1;     // bool (i1)
-LLVMTypeRef i8;     // char (i8)
-LLVMTypeRef i16;
-LLVMTypeRef i32;
-LLVMTypeRef i64;
-
-LLVMTypeRef p8;    // char* (pointer to i8)
-LLVMTypeRef p32;   // i32*
-
 // TODO: this approach need to be customized
 LLVMValueRef farr[100];
 static int fpos = 0;
@@ -387,20 +373,19 @@ void exit_func()
    cfunc = farr[fpos];
 }
 
-void init_llvm_types() {
-   vd = LLVMVoidTypeInContext(context);
-   f32 = LLVMFloatTypeInContext(context);
-   i1 = LLVMInt1TypeInContext(context);
-   i8 = LLVMInt8TypeInContext(context);
-   i16 = LLVMInt16TypeInContext(context);
-   i32 = LLVMInt32TypeInContext(context);
-   i64 = LLVMInt64TypeInContext(context);
-   p8 = LLVMPointerType(i8, 0);
-   p32 = LLVMPointerType(i32, 0);
-}
 
 LLVMTypeRef get_llvm_type(Token *token)
 {
+   static LLVMTypeRef vd = LLVMVoidTypeInContext(context);
+   static LLVMTypeRef f32 = LLVMFloatTypeInContext(context);
+   static LLVMTypeRef i1 = LLVMInt1TypeInContext(context); // bool (i1)
+   static LLVMTypeRef i8 = LLVMInt8TypeInContext(context); // char (i8)
+   static LLVMTypeRef i16 = LLVMInt16TypeInContext(context);
+   static LLVMTypeRef i32 = LLVMInt32TypeInContext(context);
+   static LLVMTypeRef i64 = LLVMInt64TypeInContext(context);
+   static LLVMTypeRef p8 = LLVMPointerType(i8, 0); // char* (pointer to i8)
+   static LLVMTypeRef p32 = LLVMPointerType(i32, 0); // i32*
+
    Type type = token->retType ? token->retType : token->type;
    switch (type)
    {
@@ -743,8 +728,6 @@ void generate_asm(char *name)
    mod = LLVMModuleCreateWithName(moduleName);
    builder = LLVMCreateBuilder();
 
-   init_llvm_types();
-
    for (int i = 0; insts[i]; i++) handle_asm(insts[i]);
 
    // save to file
@@ -854,8 +837,8 @@ int print(char *conv, ...)
             {
                Node *node = (Node *)va_arg(args, Node *);
                res += print("node: ") + (node ?
-                                       pnode(node, NULL, node->token->space) :
-                                       fprintf(stdout, "(null)"));
+                                         pnode(node, NULL, node->token->space) :
+                                         fprintf(stdout, "(null)"));
                break;
             }
             default: todo(1, "invalid format specifier [%c]\n", conv[i]);
@@ -1400,7 +1383,7 @@ Token *new_variable(Token *token)
 {
 #if DEBUG
    print(CYAN "new variable [%s] [%s] in scoop %k\n" RESET,
-       token->name, to_string(token->type), scoop->token);
+         token->name, to_string(token->type), scoop->token);
 #endif
    for (int i = 0; i < scoop->vpos; i++)
    {
@@ -1598,7 +1581,7 @@ void enter_scoop(Node *node)
 {
 #if DEBUG
    debug(CYAN "Enter Scoop: %k index %d\n" RESET,
-       node->token, scoopPos + 1);
+         node->token, scoopPos + 1);
 #endif
    if (Gscoop == NULL)
    {
@@ -1623,7 +1606,7 @@ void exit_scoop()
    if (check(scoopPos < 0, "No active scoop to exit\n")) return;
 #if DEBUG
    print(CYAN "Exit Scoop: %k index %d\n" RESET,
-       Gscoop[scoopPos]->token, scoopPos);
+         Gscoop[scoopPos]->token, scoopPos);
 #endif
    Gscoop[scoopPos] = NULL;
    scoopPos--;
@@ -1651,7 +1634,7 @@ Token *new_struct(Token *token)
 {
 #if DEBUG
    print(CYAN "in scoop %k, new struct [%k]\n" RESET,
-       scoop->token, token);
+         scoop->token, token);
 #endif
    for (int i = 0; i < scoop->spos; i++)
    {
@@ -1675,7 +1658,7 @@ Token *get_struct(char *name)
       todo(node == NULL, RED"Error accessing NULL, %d\n"RESET, j);
 #if DEBUG
       print("[%d] scoop [%s] has %d structs\n", j,
-          node->token->name, node->spos);
+            node->token->name, node->spos);
 #endif
       for (int i = 0; i < node->spos; i++)
          if (strcmp(node->structs[i]->Struct.name, name) == 0)
@@ -1774,7 +1757,7 @@ Token *get_variable(char *name)
 {
 #if DEBUG
    print(CYAN "get variable [%s] from scoop %k\n"
-       RESET, name, scoop->token);
+         RESET, name, scoop->token);
 #endif
    for (int j = scoopPos; j > 0; j--)
    {
