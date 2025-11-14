@@ -22,6 +22,10 @@ struct __sFILE *asm_fd;
 struct _IO_FILE *asm_fd;
 #endif
 
+LLVMModuleRef mod;
+LLVMBuilderRef builder;
+LLVMContextRef context;
+
 void parse() 
 {
    if (found_error) return;
@@ -51,9 +55,35 @@ void optimize_ir()
 {
    if (found_error) return;
 }
-void code_gen() 
+
+void code_gen(char *filename) 
 {
    if (found_error) return;
+
+#if ASM
+   debug(GREEN BOLD"GENERATE ASSEMBLY CODE:\n" RESET);
+   copy_insts();
+   
+   char *moduleName = resolve_path(filename);
+   context = LLVMContextCreate();
+   mod = LLVMModuleCreateWithName(moduleName);
+   builder = LLVMCreateBuilder();
+   init_llvm_types();
+   for (int i = 0; insts[i]; i++) handle_asm(insts[i]);
+
+   // save to file
+   int len = strlen(moduleName);
+   strcpy(moduleName + len - 3, "ll");
+   moduleName[len - 1] = '\0';
+   LLVMPrintModuleToFile(mod, moduleName, NULL);
+
+   // free llvm context
+   LLVMDisposeBuilder(builder);
+   LLVMDisposeModule(mod);
+   LLVMContextDispose(context);
+   free(moduleName);
+   
+#endif
 }
 
 void compile(char *filename)
@@ -62,7 +92,7 @@ void compile(char *filename)
    parse();
    build_ir();
    optimize_ir();
-   code_gen();
+   code_gen(filename);
 }
 
 int main(int argc, char **argv)
