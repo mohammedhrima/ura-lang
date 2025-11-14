@@ -36,7 +36,7 @@ int main() {
     LLVMBuildRet(builder, aValue);
 
     // Output LLVM IR
-    LLVMPrintModuleToFile(module, "output.ll", NULL);
+    LLVMPrintModuleToFile(module, "out.ll", NULL);
 
     // Clean up
     LLVMDisposeBuilder(builder);
