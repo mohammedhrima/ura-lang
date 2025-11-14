@@ -89,6 +89,8 @@
    - threads
    - atomic operations
 
+- use llvm optimizer: opt -O2
+
 - projects:
    - 42 libft
    - donuts

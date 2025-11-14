@@ -5,9 +5,13 @@
 #include <stdio.h>
 
 /*
+bool isalpha(char c)
+{
+   return c >= 'a' && c <= 'z'
+}
 int main()
 {
-   char*str="abc"
+  
 }
 */
 
