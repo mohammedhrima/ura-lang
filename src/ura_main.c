@@ -26,7 +26,7 @@ LLVMModuleRef mod;
 LLVMBuilderRef builder;
 LLVMContextRef context;
 
-void parse() 
+void parse()
 {
    if (found_error) return;
 #if AST
@@ -40,7 +40,7 @@ void parse()
 #endif
 }
 
-void build_ir() 
+void build_ir()
 {
    if (found_error) return;
 #if IR
@@ -51,26 +51,28 @@ void build_ir()
 #endif
 }
 
-void optimize_ir() 
+void optimize_ir()
 {
    if (found_error) return;
 }
 
-void code_gen(char *filename) 
+void code_gen(char *filename)
 {
    if (found_error) return;
 
 #if ASM
    debug(GREEN BOLD"GENERATE ASSEMBLY CODE:\n" RESET);
    copy_insts();
-   
-   char *moduleName = resolve_path(filename);
-   context = LLVMContextCreate();
-   mod = LLVMModuleCreateWithName(moduleName);
-   builder = LLVMCreateBuilder();
-   init_llvm_types();
-   for (int i = 0; insts[i]; i++) handle_asm(insts[i]);
 
+   char *moduleName = resolve_path(filename);
+
+   context = LLVMContextCreate();
+   mod = LLVMModuleCreateWithNameInContext("moduleName", context);
+   builder = LLVMCreateBuilderInContext(context);
+   init_llvm_types();
+   for (int i = 0; insts[i] ; i++) handle_asm(insts[i]);
+
+   // LLVMVerifyModule(mod, LLVMAbortProcessAction, NULL);
    // save to file
    int len = strlen(moduleName);
    strcpy(moduleName + len - 3, "ll");
@@ -82,7 +84,7 @@ void code_gen(char *filename)
    LLVMDisposeModule(mod);
    LLVMContextDispose(context);
    free(moduleName);
-   
+
 #endif
 }
 

@@ -31,7 +31,7 @@ Token *func_dec_ir(Node *node)
          free(token->Fdec.args);
          token->Fdec.args = tmp;
       }
-      child->token->is_param = true;
+      child->token->is_dec_param = true;
       child->token->Param.index = i;
       child->token->Param.func_ptr = node->token;
       child->token->is_declare = false;
@@ -123,12 +123,14 @@ Token *func_call_ir(Node *node)
          Node *darg = fdec->children[i];
 
          Token *src = generate_ir(carg);
-         Token *dist = generate_ir(darg);
+         Token *dist = darg->token;
 
          if (check(src->type == ID, "Indeclared variable %s",
                    carg->token->name)) break;
          if (check(!compatible(src, dist), "Incompatible type arg %s",
                    func->token->name)) break;
+         
+         src->is_dec_param = false;
          node->token->Fcall.args[i] = src;
          // Token *dist = copy_token(darg->token);
          // set_func_call_regs(&r, src, dist, node);
@@ -147,7 +149,7 @@ Token *if_ir(Node *node)
 
    // CONDITION
    Token *cond = generate_ir(node->left); // TODO: check if it's boolean
-   if (!cond) return NULL;
+   if (check(!cond || cond->retType != BOOL, "expected condition that return bool")) return NULL;
 
    // APPEND BLOC
    Token *start = copy_token(node->token);
@@ -541,18 +543,18 @@ Token *generate_ir(Node *node)
    return NULL;
 }
 
-LLVMValueRef get_llvm_ref(Token *token)
+ValueRef get_llvm_ref(Token *token)
 {
-   if (token->name && !token->is_param && !includes(token->type, FCALL, AND, OR))
+   if (token->name && !token->is_dec_param && !includes(token->type, FCALL, AND, OR))
       return LLVMBuildLoad2(builder, get_llvm_type(token), token->llvm.elem, token->name);
    return token->llvm.elem;
 }
 
 // ASSEMBLY GENERATION
-LLVMValueRef get_llvm_op(Token *token, Token* left, Token* right)
+ValueRef get_llvm_op(Token *token, Token* left, Token* right)
 {
-   LLVMValueRef leftRef = get_llvm_ref(left);
-   LLVMValueRef rightRef = get_llvm_ref(right);
+   ValueRef leftRef = get_llvm_ref(left);
+   ValueRef rightRef = get_llvm_ref(right);
    char* op = to_string(token->type);
    switch (token->type)
    {
@@ -580,8 +582,9 @@ void handle_asm(Inst *inst)
    Token *curr = inst->token;
    Token *left = inst->left;
    Token *right = inst->right;
-   LLVMValueRef ret = NULL;
+   ValueRef ret = NULL;
 
+   // Sanity check: ensure we don't process the same instruction twice
    if (curr->llvm.is_set)
    {
       print(RED"%k already set\n"RESET, curr);
@@ -593,25 +596,43 @@ void handle_asm(Inst *inst)
    {
    case VOID:
    {
+      // Void type has no value, just mark as processed
       curr->llvm.is_set = true;
       break;
    }
    case INT: case BOOL: case LONG: case SHORT: case CHAR: case CHARS: case PTR:
    {
-      if (curr->is_param)
+      debug(RED"get %k\n"RESET, curr);
+      if (curr->is_dec_param)
       {
-         ret = LLVMGetParam(curr->Param.func_ptr->llvm.elem, curr->Param.index);
-         LLVMSetValueName(ret, curr->name);
+         check(curr->Param.func_ptr == NULL, "error\n");
+         check(!curr->Param.func_ptr->llvm.is_set, "error\n");
+         debug("curr->is_dec_param\n");
+         // Get function parameter value
+         ValueRef param_val = LLVMGetParam(curr->Param.func_ptr->llvm.elem, curr->Param.index);
+         LLVMSetValueName(param_val, curr->name);
+
+         // Allocate stack space for the parameter (makes it mutable)
+         ret = LLVMBuildAlloca(builder, get_llvm_type(curr), curr->name);
+
+         // Store the parameter value into the allocated space
+         LLVMBuildStore(builder, param_val, ret);
+         curr->is_dec_param = false;
       }
       else if (curr->is_declare)
       {
+         debug("curr->is_declare\n");
          ret = LLVMBuildAlloca(builder, get_llvm_type(curr), curr->name);
       }
       else if (curr->name)
       {
+         debug("curr->name\n");
          ret = curr->llvm.elem;
       }
-      else ret = get_value(curr);
+      else
+      {
+         ret = get_value(curr);
+      }
 
       curr->llvm.elem = ret;
       curr->llvm.is_set = true;
@@ -621,32 +642,36 @@ void handle_asm(Inst *inst)
    case STRUCT_DEF:
    {
       curr->llvm.is_set = true;
-      // CREATE STRUCT TYPE
-      // SET STRUCT BODY
+      // Create a named struct type
       curr->llvm.structType = LLVMStructCreateNamed(LLVMGetGlobalContext(), curr->Struct.name);
       int pos = curr->Struct.pos;
-      LLVMTypeRef *attrs = allocate(pos, sizeof(LLVMTypeRef));
+      TypeRef *attrs = allocate(pos, sizeof(TypeRef));
+
+      // Get types for all struct attributes
       for (int i = 0; i < pos; i++)
       {
          Token *attr = curr->Struct.attrs[i];
          stop(!attr, "attribite is NULL\n");
          attrs[i] = get_llvm_type(attr);
       }
-      // SET STRUCT BODY
+
+      // Set the struct's body with all attribute types
       LLVMStructSetBody(curr->llvm.structType, attrs, pos, 0);
       free(attrs);
       break;
    }
    case STRUCT_CALL:
    {
+      // Allocate space for a struct instance
       curr->llvm.elem = LLVMBuildAlloca(builder, curr->Struct.ptr->llvm.structType, curr->name);
       curr->llvm.is_set = true;
       break;
    }
    case DOT:
    {
-      LLVMValueRef st_call = left->llvm.elem;
-      LLVMTypeRef st_type = left->Struct.ptr->llvm.structType;
+      // Access struct member using dot notation (e.g., person.age)
+      ValueRef st_call = left->llvm.elem;
+      TypeRef st_type = left->Struct.ptr->llvm.structType;
       int index = right->Struct.attr_index; // attribute position
       curr->llvm.elem = LLVMBuildStructGEP2(builder, st_type, st_call, index, right->name);
       curr->llvm.is_set = true;
@@ -657,12 +682,11 @@ void handle_asm(Inst *inst)
 #endif
    case ASSIGN:
    {
-      if(check(!left->llvm.is_set, "assign, left is not set")) break;
-      if(check(!right->llvm.is_set, "assign, right is not set")) break;
+      if (check(!left->llvm.is_set, "assign, left is not set")) break;
+      if (check(!right->llvm.is_set, "assign, right is not set")) break;
 
-      // LLVMValueRef target = left->llvm.ptr ? left->llvm.ptr : left->llvm.elem;
-      LLVMValueRef target = left->llvm.elem;
-      LLVMBuildStore(builder, right->llvm.elem, target);
+      ValueRef rightRef = get_llvm_ref(right);
+      LLVMBuildStore(builder, rightRef, left->llvm.elem);
       break;
    }
    case ADD: case SUB: case MUL: case DIV: case MOD:
@@ -672,7 +696,8 @@ void handle_asm(Inst *inst)
    {
       if (check(!left->llvm.is_set, "left is not set")) break;
       if (check(!right->llvm.is_set, "right is not set")) break;
-   
+
+      // Perform binary operation (e.g., a + b, x < y, p && q)
       ret = get_llvm_op(curr, left, right);
       curr->llvm.elem = ret;
       curr->llvm.is_set = true;
@@ -680,8 +705,10 @@ void handle_asm(Inst *inst)
    }
    case NOT:
    {
-      if(check(!left->llvm.is_set, "not, left is not set")) break;
-      LLVMValueRef leftRef = get_llvm_ref(left);
+      if (check(!left->llvm.is_set, "not, left is not set")) break;
+
+      // Logical NOT operation (e.g., !x)
+      ValueRef leftRef = get_llvm_ref(left);
       ret = LLVMBuildNot(builder, leftRef, to_string(curr->type));
       curr->llvm.elem = ret;
       curr->llvm.is_set = true;
@@ -689,53 +716,61 @@ void handle_asm(Inst *inst)
    }
    case FCALL:
    {
+      // Function call (e.g., strlen("abc"))
       LLVM srcFunc = curr->Fcall.func_ptr->llvm;
 
-      LLVMValueRef *args = NULL;
+      ValueRef *args = NULL;
       if (curr->Fcall.pos)
       {
-         args = allocate(curr->Fcall.pos, sizeof(LLVMValueRef));
+         // Prepare function arguments
+         args = allocate(curr->Fcall.pos, sizeof(ValueRef));
          for (int i = 0; i < curr->Fcall.pos; i++)
          {
             Token *arg = curr->Fcall.args[i];
             check(!arg->llvm.is_set, "llvm is not set");
-            if (arg->name && !arg->is_param && arg->type != FCALL)
-               args[i] = LLVMBuildLoad2(builder, get_llvm_type(arg), arg->llvm.elem, arg->name);
-            else
+
+            // Load variable values, pass literals/temporaries directly
+            // if (arg->name && !arg->is_dec_param && arg->type != FCALL)
+            //    args[i] = LLVMBuildLoad2(builder, get_llvm_type(arg), arg->llvm.elem, arg->name);
+            // else
                args[i] = arg->llvm.elem;
          }
-         curr->llvm.elem = LLVMBuildCall2(builder, srcFunc.funcType, srcFunc.elem, args,
-                                          curr->Fcall.pos, curr->name);
-         free(args);
-      }
-      else
-         curr->llvm.elem = LLVMBuildCall2(builder, srcFunc.funcType, srcFunc.elem,
-                                          NULL, 0, curr->name);
 
+      }
+      char *fname = curr->retType != VOID ? curr->name : "";
+      curr->llvm.elem = LLVMBuildCall2(builder, srcFunc.funcType, srcFunc.elem, args, curr->Fcall.pos,
+                                       fname);
+      free(args);
       curr->llvm.is_set = true;
       break;
    }
    case FDEC:
    {
-      // print("FDEC: ", curr->name);
-      LLVMTypeRef *args = NULL;
+      // Function declaration/definition
+      TypeRef *args = NULL;
 
       if (curr->Fdec.pos)
       {
-         args = allocate(curr->Fdec.pos + 1, sizeof(LLVMTypeRef));
+         // Build function type with parameters
+         args = allocate(curr->Fdec.pos + 1, sizeof(TypeRef));
          for (int i = 0; i < curr->Fdec.pos; i++)
             args[i] = get_llvm_type(curr->Fdec.args[i]);
          curr->llvm.funcType = LLVMFunctionType(get_llvm_type(curr), args, curr->Fdec.pos, 0);
          free(args);
       }
-      else curr->llvm.funcType = LLVMFunctionType(get_llvm_type(curr), NULL, 0, 0);
+      else
+      {
+         // Build function type with no parameters
+         curr->llvm.funcType = LLVMFunctionType(get_llvm_type(curr), NULL, 0, 0);
+      }
 
+      // Add function to module
       curr->llvm.elem = LLVMAddFunction(mod, curr->name, curr->llvm.funcType);
 
       if (!curr->is_proto)
       {
-         LLVMBasicBlockRef funcEntry = LLVMAppendBasicBlock(curr->llvm.elem, "entry");
-         LLVMPositionBuilderAtEnd(builder, funcEntry);
+         // Create entry block for function body
+         BasicBlocRef funcEntry = LLVMAppendBasicBlockInContext(context, curr->llvm.elem, "entry");
          LLVMPositionBuilderAtEnd(builder, funcEntry);
       }
 
@@ -745,12 +780,14 @@ void handle_asm(Inst *inst)
    }
    case END_BLOC:
    {
+      // Exit current function scope
       exit_func();
       break;
    }
    case RETURN:
    {
       if (check(!left->llvm.is_set, "return result is not set\n")) break;
+
       switch (left->type)
       {
       case FCALL: case ADD: case SUB: case MUL: case DIV: case MOD:
@@ -758,27 +795,29 @@ void handle_asm(Inst *inst)
       case MORE_EQUAL: case EQUAL: case NOT_EQUAL:
       case AND: case OR:
       {
+         // Return computed/temporary value directly
          ret = LLVMBuildRet(builder, left->llvm.elem);
          break;
       }
       case INT: case BOOL: case LONG: case SHORT: case CHAR: case FLOAT:
       {
-         if (left->name
-#if 0
-               || left->is_attr
-#endif
-            )
+         if (left->name)
          {
-            LLVMValueRef loaded = LLVMBuildLoad2(builder, get_llvm_type(left),
-                                                 left->llvm.elem, left->name);
+            // Load and return variable value
+            ValueRef loaded = LLVMBuildLoad2(builder, get_llvm_type(left),
+                                             left->llvm.elem, left->name);
             ret = LLVMBuildRet(builder, loaded);
          }
          else
+         {
+            // Return literal value
             ret = LLVMBuildRet(builder, get_value(left));
+         }
          break;
       }
       case VOID:
       {
+         // Return from void function
          ret = LLVMBuildRetVoid(builder);
          break;
       }
@@ -792,59 +831,67 @@ void handle_asm(Inst *inst)
    }
    case APPEND_BLOC:
    {
-      check(!left->name, "APPEND BLOC require a name");
+      if (check(!left->name, "APPEND BLOC require a name")) break;
+
+      // Create a new basic block (e.g., for while loops, if statements)
+      // debug(RED"append bloc [%s]\n"RESET, left->name);
       left->llvm.bloc = LLVMAppendBasicBlockInContext(context, get_current_func(), left->name);
-      curr->llvm.is_set = true;
+      left->llvm.is_set = true;
       break;
    }
    case BUILD_COND:
    {
-      LLVMValueRef cond = curr->Statement.ptr->llvm.elem;
-      LLVMBasicBlockRef start = left->llvm.bloc;
-      LLVMBasicBlockRef end = right->llvm.bloc;
+      check(!curr->Statement.ptr->llvm.is_set, "BUILD COND require cond to be set");
+
+      // Build conditional branch (e.g., if condition goto then else goto else_block)
+      ValueRef cond = curr->Statement.ptr->llvm.elem;
+      BasicBlocRef start = left->llvm.bloc;
+      BasicBlocRef end = right->llvm.bloc;
       curr->llvm.elem = LLVMBuildCondBr(builder, cond, start, end);
       curr->llvm.is_set = true;
       break;
    }
-#if 0
    case ACCESS:
    {
       check(!left->llvm.is_set, "left is not set");
       check(!right->llvm.is_set, "right is not set");
 
-      LLVMValueRef leftRef = NULL, rightRef = NULL;
-      if (left->name && !left->is_param && left->type != FCALL)
-         leftRef = LLVMBuildLoad2(builder, get_llvm_type(left), left->llvm.elem, left->name);
-      else leftRef = left->llvm.elem;
+      ValueRef leftRef = NULL, rightRef = NULL;
+      leftRef = get_llvm_ref(left);
+      rightRef = get_llvm_ref(right);
 
-      if (right->name && !right->is_param && right->type != FCALL)
-         rightRef = LLVMBuildLoad2(builder, get_llvm_type(right), right->llvm.elem, right->name);
-      else rightRef = right->llvm.elem;
+      // Calculate the address of array[index] using GEP
+      // Returns a pointer to the element, not the value itself
+      ValueRef indices[] = { rightRef };
+      ValueRef elem_ptr = LLVMBuildGEP2(builder, get_llvm_type(curr), leftRef, indices, 1,
+                                        to_string(curr->type));
 
-      LLVMValueRef indices[] = { rightRef };
-      LLVMValueRef elem_ptr = LLVMBuildGEP2(builder, i8, leftRef, indices, 1, "access");
-
-      curr->llvm.ptr = elem_ptr;
-
-      curr->llvm.elem = LLVMBuildLoad2(builder, i8, elem_ptr, "access_val");
+      // Store the pointer for later use
+      // This enables both reading (str[i]) and writing (str[i] = 'a')
+      curr->llvm.elem = elem_ptr;
       curr->llvm.is_set = true;
       curr->type = CHAR;
-      setName(curr, N)
-      curr->name = NULL;
       break;
    }
-#endif
    case SET_POS:
    {
+      check(!left->llvm.is_set, "SET POS require left to be set");
+
+      // Position builder at the end of specified basic block
       LLVMPositionBuilderAtEnd(builder, left->llvm.bloc);
       break;
    }
    case BUILD_BR:
    {
+      check(!left->llvm.is_set, "SET POS require left to be set");
       check(!left->name, "BUILD BR require a name");
+
+      // Build unconditional branch to target block
       LLVMBuildBr(builder, left->llvm.bloc);
       break;
    }
-   default: todo(1, "handle this case (%s)\n", to_string(curr->type)); break;
+   default:
+      todo(1, "handle this case (%s)\n", to_string(curr->type));
+      break;
    }
 }
