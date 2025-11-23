@@ -1,8 +1,8 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura'
-source_filename = "/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura"
+; ModuleID = 'moduleName'
+source_filename = "moduleName"
 
-@str_literal = private constant [2 x i8] c"b\00"
-@str_literal.1 = private constant [2 x i8] c"a\00"
+@STR = private constant [2 x i8] c"b\00"
+@STR.1 = private constant [2 x i8] c"a\00"
 
 define i32 @to_ascii(i8 %c) {
 entry:
@@ -62,42 +62,42 @@ entry:
 
 while:                                            ; preds = %while_bloc, %entry
   %i1 = load i32, ptr %i, align 4
-  %access = getelementptr i8, ptr %left, i32 %i1
-  %access_val = load i8, ptr %access, align 1
+  %ACCESS = getelementptr i8, ptr %left, i32 %i1
   %i2 = load i32, ptr %i, align 4
-  %access3 = getelementptr i8, ptr %right, i32 %i2
-  %access_val4 = load i8, ptr %access3, align 1
-  %EQUAL = icmp eq i8 %access_val, %access_val4
-  %i5 = load i32, ptr %i, align 4
-  %access6 = getelementptr i8, ptr %left, i32 %i5
-  %access_val7 = load i8, ptr %access6, align 1
-  %NOT_EQ = icmp ne i8 %access_val7, 0
+  %ACCESS3 = getelementptr i8, ptr %right, i32 %i2
+  %left4 = load i8, ptr %ACCESS, align 1
+  %right5 = load i8, ptr %ACCESS3, align 1
+  %EQUAL = icmp eq i8 %left4, %right5
+  %i6 = load i32, ptr %i, align 4
+  %ACCESS7 = getelementptr i8, ptr %left, i32 %i6
+  %left8 = load i8, ptr %ACCESS7, align 1
+  %NOT_EQ = icmp ne i8 %left8, 0
   %AND = and i1 %EQUAL, %NOT_EQ
   br i1 %AND, label %while_bloc, label %end_while
 
 while_bloc:                                       ; preds = %while
-  %i8 = load i32, ptr %i, align 4
-  %ADD = add i32 %i8, 1
+  %i9 = load i32, ptr %i, align 4
+  %ADD = add i32 %i9, 1
   store i32 %ADD, ptr %i, align 4
   br label %while
 
 end_while:                                        ; preds = %while
-  %i9 = load i32, ptr %i, align 4
-  %access10 = getelementptr i8, ptr %left, i32 %i9
-  %access_val11 = load i8, ptr %access10, align 1
-  %to_ascii = call i32 @to_ascii(i8 %access_val11)
-  %i12 = load i32, ptr %i, align 4
-  %access13 = getelementptr i8, ptr %right, i32 %i12
-  %access_val14 = load i8, ptr %access13, align 1
-  %to_ascii15 = call i32 @to_ascii(i8 %access_val14)
-  %SUB = sub i32 %to_ascii, %to_ascii15
+  %i10 = load i32, ptr %i, align 4
+  %ACCESS11 = getelementptr i8, ptr %left, i32 %i10
+  %left12 = load i8, ptr %ACCESS11, align 1
+  %to_ascii = call i32 @to_ascii(i8 %left12)
+  %i13 = load i32, ptr %i, align 4
+  %ACCESS14 = getelementptr i8, ptr %right, i32 %i13
+  %right15 = load i8, ptr %ACCESS14, align 1
+  %to_ascii16 = call i32 @to_ascii(i8 %right15)
+  %SUB = sub i32 %to_ascii, %to_ascii16
   ret i32 %SUB
 }
 
 define i32 @main() {
 entry:
   %len = alloca i32, align 4
-  %strcmp = call i32 @strcmp(ptr @str_literal, ptr @str_literal.1)
+  %strcmp = call i32 @strcmp(ptr @STR, ptr @STR.1)
   store i32 %strcmp, ptr %len, align 4
   %len1 = load i32, ptr %len, align 4
   ret i32 %len1

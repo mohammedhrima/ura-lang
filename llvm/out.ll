@@ -1,24 +1,19 @@
-; ModuleID = 'string_example'
-source_filename = "string_example"
-
-@str_literal = private constant [4 x i8] c"abc\00"
+; ModuleID = 'simple_if'
+source_filename = "simple_if"
 
 define i32 @main() {
 entry:
-  %str = alloca ptr, align 8
-  store ptr @str_literal, ptr %str, align 8
-  %c = alloca i32, align 4
-  %str1 = load ptr, ptr %str, align 8
-  %access = getelementptr i8, ptr %str1, i32 0
-  %access_val = load i8, ptr %access, align 1
-  %extended = zext i8 %access_val to i32
-  store i32 %extended, ptr %c, align 4
   %a = alloca i32, align 4
-  %c1 = load i32, ptr %c, align 4
-  %ADD = add i32 %c1, 2
-  store i32 %ADD, ptr %a, align 4
-  %b = alloca i32, align 4
-  %a1 = load i32, ptr %a, align 4
-  store i32 %a1, ptr %b, align 4
-  ret i32 0
+  store i32 1, ptr %a, align 4
+  %load_a = load i32, ptr %a, align 4
+  %cmp = icmp slt i32 %load_a, 10
+  br i1 %cmp, label %start_if, label %end_if
+
+start_if:                                         ; preds = %entry
+  store i32 3, ptr %a, align 4
+  br label %end_if
+
+end_if:                                           ; preds = %start_if, %entry
+  %ret = load i32, ptr %a, align 4
+  ret i32 %ret
 }

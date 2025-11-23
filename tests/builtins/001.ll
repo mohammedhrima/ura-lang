@@ -1,8 +1,8 @@
 ; ModuleID = '/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura'
 source_filename = "/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura"
 
-@str_literal = private constant [9 x i8] c"is digit\00"
-@str_literal.1 = private constant [13 x i8] c"is not digit\00"
+@STR = private constant [9 x i8] c"is digit\00"
+@STR.1 = private constant [13 x i8] c"is not digit\00"
 
 declare i32 @puts(ptr)
 
@@ -20,11 +20,11 @@ entry:
   br i1 %isdigit, label %if, label %else
 
 if:                                               ; preds = %entry
-  %puts = call i32 @puts(ptr @str_literal)
+  %puts = call i32 @puts(ptr @STR)
   br label %end_if
 
 else:                                             ; preds = %entry
-  %puts1 = call i32 @puts(ptr @str_literal.1)
+  %puts1 = call i32 @puts(ptr @STR.1)
   br label %end_if
 
 end_if:                                           ; preds = %else, %if
