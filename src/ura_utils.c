@@ -37,7 +37,8 @@ int print(char *conv, ...)
                i++;
             }
          }
-         if (strncmp(conv + i, "zu", 2) == 0) {res += fprintf(stdout, "%d", va_arg(args, int)); i++;}
+         if (strncmp(conv + i, "zu", 2) == 0)
+         {res += fprintf(stdout, "%d", va_arg(args, int)); i++;}
          else if (strncmp(conv + i, "lld", 3) == 0)
          {res += fprintf(stdout, "%lld", va_arg(args, long long)); i += 2;}
          else
@@ -374,7 +375,15 @@ Token *copy_token(Token *token)
    Token *new = allocate(1, sizeof(Token));
    memcpy(new, token, sizeof(Token));
    // TODO: can't use setName here to investigate later why ?
-   if (token->name) new->name = strdup(token->name);
+   if (token->name)
+   {
+      new->name = strdup(token->name);
+      if (strcmp(new->name, "n") == 0)
+      {
+         debug(RED"found [%p]\n"RESET, new);
+      }
+   }
+
    if (token->Chars.value) new->Chars.value = strdup(token->Chars.value);
    if (token->Struct.attrs)
    {
@@ -750,7 +759,7 @@ LLVMValueRef farr[100];
 int fpos = 0;
 LLVMValueRef get_current_func()
 {
-   return farr[fpos];
+   return farr[fpos - 1];
 }
 
 void enter_func(LLVMValueRef func)
@@ -801,6 +810,7 @@ char *to_string_(char *filename, int line, Type type)
 
       [RETURN] = "RETURN", [ARROW] = "ARROW",
       [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
+      [END_IF] = "END_IF",
       [BUILD_COND] = "BLD_COND", [WHILE] = "WHILE",
       [CONTINUE] = "CONT", [BREAK] = "BREAK",
       [END_WHILE] = "END_WHILE",
