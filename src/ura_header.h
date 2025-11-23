@@ -18,6 +18,7 @@
 #include <llvm-c/BitWriter.h>
 #include <llvm-c/Target.h>
 #include <llvm-c/TargetMachine.h>
+#include <llvm-c/Analysis.h>
 
 // MACROS
 #define SPLIT "=================================================\n"
@@ -78,9 +79,9 @@ typedef struct Inst Inst;
 typedef enum Type Type;
 typedef struct LLVM LLVM;
 
-typedef LLVMValueRef llvmValue;
-typedef LLVMBasicBlockRef llvmBloc;
-typedef LLVMTypeRef llvmType;
+typedef LLVMValueRef ValueRef;
+typedef LLVMBasicBlockRef BasicBlocRef;
+typedef LLVMTypeRef TypeRef;
 
 // STRUCTS
 enum Type
@@ -124,10 +125,10 @@ enum Type
 struct LLVM
 {
    bool is_set;
-   llvmValue elem;
-   llvmBloc bloc;
-   llvmType type;
-   llvmType funcType;
+   ValueRef elem;
+   BasicBlocRef bloc;
+   TypeRef type;
+   TypeRef funcType;
 };
 
 struct Token
@@ -150,7 +151,8 @@ struct Token
    // bool is_attr;
    bool is_proto;
    bool is_arg;
-   bool is_param;
+   bool is_dec_param;
+   bool is_call_param;
    bool is_cast;
 
    char *filename;
@@ -324,11 +326,11 @@ Token *generate_ir(Node *node);
 void handle_asm(Inst *inst);
 void init_llvm_types();
 // LLVMTypeRef get_llvm_type(Type type);
-LLVMTypeRef get_llvm_type(Token* token);
-LLVMValueRef get_value(Token *token);
+TypeRef get_llvm_type(Token* token);
+ValueRef get_value(Token *token);
 void enter_func(LLVMValueRef func);
 void exit_func();
-LLVMValueRef get_current_func();
+ValueRef get_current_func();
 
 // ----------------------------------------------------------------------------
 // Utilities

@@ -379,6 +379,7 @@ Node *assign()
          node->left = left;
          node->right = new_node(NULL);
          *(node->right) = (Node) {
+            .token = new_token(0, node->token->space),
             .left = new_node(left->token),
             .right = logic(),
          };
@@ -734,7 +735,7 @@ Node *prime()
    Token *token;
    if ((token = find(ID, INT, CHARS, CHAR, FLOAT, BOOL, LONG, SHORT, 0)))
       return symbol(token);
-   else if((token = find(NOT, 0)))
+   else if ((token = find(NOT, 0)))
    {
       node = new_node(token);
       node->left = expr();
