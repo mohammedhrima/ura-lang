@@ -58,7 +58,7 @@ comp() {
 }
 
 run() {
-    build true && ir && asm && comp_asm && exe
+    rm -rf $ura_src/file.ll $ura_src/file.s && build true && ir && asm && comp_asm && exe
 }
 
 lines() {
