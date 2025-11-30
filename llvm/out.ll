@@ -1,19 +1,21 @@
-; ModuleID = 'simple_if'
-source_filename = "simple_if"
+; ModuleID = 'putchar_example'
+source_filename = "putchar_example"
+
+@STR0 = private unnamed_addr constant [5 x i8] c"abcd\00", align 1
+
+declare i32 @putchar(i32)
 
 define i32 @main() {
 entry:
-  %a = alloca i32, align 4
-  store i32 1, ptr %a, align 4
-  %load_a = load i32, ptr %a, align 4
-  %cmp = icmp slt i32 %load_a, 10
-  br i1 %cmp, label %start_if, label %end_if
-
-start_if:                                         ; preds = %entry
-  store i32 3, ptr %a, align 4
-  br label %end_if
-
-end_if:                                           ; preds = %start_if, %entry
-  %ret = load i32, ptr %a, align 4
-  ret i32 %ret
+  %str = alloca ptr, align 8
+  store ptr @STR0, ptr %str, align 8
+  %str_val = load ptr, ptr %str, align 8
+  %access = getelementptr i8, ptr %str_val, i32 0
+  %c = load i8, ptr %access, align 1
+  %c1 = alloca i8, align 1
+  store i8 %c, ptr %c1, align 1
+  %c_val = load i8, ptr %c1, align 1
+  %c_ext = sext i8 %c_val to i32
+  %0 = call i32 @putchar(i32 %c_ext)
+  ret i32 0
 }

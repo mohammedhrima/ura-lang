@@ -1,9 +1,0 @@
-protoFunc int write(int a)
-
-func void my_print(chars msg):
-    write(1)
-    return
-
-main():
-    my_print("test")
-    return 0
