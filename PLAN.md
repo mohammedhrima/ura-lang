@@ -1,5 +1,9 @@
 - add attribute "int used" in Token struct to check how manny times a function or variables is used so it can be removed if used is still 0 in the optimization step
 
++ forbid math operations for char
++ working on casting
+
+
 - declare:
    + int, float, long, double, char, chars
    - arrays

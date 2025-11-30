@@ -543,18 +543,18 @@ Token *generate_ir(Node *node)
    return NULL;
 }
 
-ValueRef get_llvm_ref(Token *token)
+// ASSEMBLY GENERATION
+ValueRef llvm_get_ref(Token *token)
 {
    if (token->name && !token->is_dec_param && !includes(token->type, FCALL, AND, OR))
       return LLVMBuildLoad2(builder, get_llvm_type(token), token->llvm.elem, token->name);
    return token->llvm.elem;
 }
 
-// ASSEMBLY GENERATION
-ValueRef get_llvm_op(Token *token, Token* left, Token* right)
+ValueRef llvm_get_op(Token *token, Token* left, Token* right)
 {
-   ValueRef leftRef = get_llvm_ref(left);
-   ValueRef rightRef = get_llvm_ref(right);
+   ValueRef leftRef = llvm_get_ref(left);
+   ValueRef rightRef = llvm_get_ref(right);
    char* op = to_string(token->type);
    switch (token->type)
    {
@@ -612,11 +612,17 @@ void handle_asm(Inst *inst)
          ValueRef param_val = LLVMGetParam(curr->Param.func_ptr->llvm.elem, curr->Param.index);
          LLVMSetValueName(param_val, curr->name);
 
-         // Allocate stack space for the parameter (makes it mutable)
-         ret = LLVMBuildAlloca(builder, get_llvm_type(curr), curr->name);
-
-         // Store the parameter value into the allocated space
-         LLVMBuildStore(builder, param_val, ret);
+         if(!curr->Param.func_ptr->is_proto)
+         {
+            // Allocate stack space for the parameter (makes it mutable)
+            ret = LLVMBuildAlloca(
+               builder, 
+               get_llvm_type(curr), 
+               curr->name);
+   
+            // Store the parameter value into the allocated space
+            LLVMBuildStore(builder, param_val, ret);
+         }
          curr->is_dec_param = false;
       }
       else if (curr->is_declare)
@@ -685,7 +691,7 @@ void handle_asm(Inst *inst)
       if (check(!left->llvm.is_set, "assign, left is not set")) break;
       if (check(!right->llvm.is_set, "assign, right is not set")) break;
 
-      ValueRef rightRef = get_llvm_ref(right);
+      ValueRef rightRef = llvm_get_ref(right);
       LLVMBuildStore(builder, rightRef, left->llvm.elem);
       break;
    }
@@ -698,17 +704,17 @@ void handle_asm(Inst *inst)
       if (check(!right->llvm.is_set, "right is not set")) break;
 
       // Perform binary operation (e.g., a + b, x < y, p && q)
-      ret = get_llvm_op(curr, left, right);
+      ret = llvm_get_op(curr, left, right);
       curr->llvm.elem = ret;
       curr->llvm.is_set = true;
       break;
    }
    case NOT:
    {
-      if (check(!left->llvm.is_set, "not, left is not set")) break;
+      if (check(!left->llvm.is_set, "left is not set")) break;
 
       // Logical NOT operation (e.g., !x)
-      ValueRef leftRef = get_llvm_ref(left);
+      ValueRef leftRef = llvm_get_ref(left);
       ret = LLVMBuildNot(builder, leftRef, to_string(curr->type));
       curr->llvm.elem = ret;
       curr->llvm.is_set = true;
@@ -730,9 +736,9 @@ void handle_asm(Inst *inst)
             check(!arg->llvm.is_set, "llvm is not set");
 
             // Load variable values, pass literals/temporaries directly
-            // if (arg->name && !arg->is_dec_param && arg->type != FCALL)
-            //    args[i] = LLVMBuildLoad2(builder, get_llvm_type(arg), arg->llvm.elem, arg->name);
-            // else
+            if (arg->name && !arg->is_dec_param && arg->type != FCALL)
+               args[i] = LLVMBuildLoad2(builder, get_llvm_type(arg), arg->llvm.elem, arg->name);
+            else
                args[i] = arg->llvm.elem;
          }
 
@@ -773,13 +779,14 @@ void handle_asm(Inst *inst)
          BasicBlocRef funcEntry = LLVMAppendBasicBlockInContext(context, curr->llvm.elem, "entry");
          LLVMPositionBuilderAtEnd(builder, funcEntry);
       }
-
+      debug(CYAN">> enter %s\n"RESET, curr->name);
       enter_func(curr->llvm.elem);
       curr->llvm.is_set = true;
       break;
    }
    case END_BLOC:
    {
+      debug(CYAN">> exit %s\n"RESET, curr->name);
       // Exit current function scope
       exit_func();
       break;
@@ -857,8 +864,8 @@ void handle_asm(Inst *inst)
       check(!right->llvm.is_set, "right is not set");
 
       ValueRef leftRef = NULL, rightRef = NULL;
-      leftRef = get_llvm_ref(left);
-      rightRef = get_llvm_ref(right);
+      leftRef = llvm_get_ref(left);
+      rightRef = llvm_get_ref(right);
 
       // Calculate the address of array[index] using GEP
       // Returns a pointer to the element, not the value itself
