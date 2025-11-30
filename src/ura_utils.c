@@ -378,10 +378,10 @@ Token *copy_token(Token *token)
    if (token->name)
    {
       new->name = strdup(token->name);
-      if (strcmp(new->name, "n") == 0)
-      {
-         debug(RED"found [%p]\n"RESET, new);
-      }
+      // if (strcmp(new->name, "n") == 0)
+      // {
+      //    debug(RED"found [%p]\n"RESET, new);
+      // }
    }
 
    if (token->Chars.value) new->Chars.value = strdup(token->Chars.value);
