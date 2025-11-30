@@ -1,21 +1,38 @@
 ; ModuleID = 'moduleName'
 source_filename = "moduleName"
 
-@STR = private constant [9 x i8] c"is digit\00"
-@STR.1 = private constant [13 x i8] c"is not digit\00"
-
-declare i32 @puts(ptr)
+define i1 @isalpha(i8 %c) {
+entry:
+  %c1 = alloca i8, align 1
+  store i8 %c, ptr %c1, align 1
+  %c2 = load i8, ptr %c1, align 1
+  %MO_EQ = icmp sge i8 %c2, 97
+  %c3 = load i8, ptr %c1, align 1
+  %LE_EQ = icmp sle i8 %c3, 122
+  %AND = and i1 %MO_EQ, %LE_EQ
+  ret i1 %AND
+}
 
 define i1 @isdigit(i8 %c) {
 entry:
   %c1 = alloca i8, align 1
   store i8 %c, ptr %c1, align 1
   %c2 = load i8, ptr %c1, align 1
-  %MO_EQ = icmp sge i8 %c2, 48
+  %MO_EQ = icmp sge i8 %c2, 49
   %c3 = load i8, ptr %c1, align 1
   %LE_EQ = icmp sle i8 %c3, 57
   %AND = and i1 %MO_EQ, %LE_EQ
   ret i1 %AND
+}
+
+define i1 @islanum(i8 %0) {
+entry:
+  %c = load, align 1
+  %isalpha = call i1 @isalpha(i8 %c)
+  %c1 = load, align 1
+  %isdigit = call i1 @isdigit(i8 %c1)
+  %OR = or i1 %isalpha, %isdigit
+  ret i1 %OR
 }
 
 define i32 @main() {
@@ -24,11 +41,11 @@ entry:
   br i1 %isdigit, label %if, label %else
 
 if:                                               ; preds = %entry
-  %puts = call i32 @puts(ptr @STR)
+  ret i32 11
   br label %end_if
 
 else:                                             ; preds = %entry
-  %puts1 = call i32 @puts(ptr @STR.1)
+  ret i32 12
   br label %end_if
 
 end_if:                                           ; preds = %else, %if

@@ -1,6 +1,12 @@
-#include <llvm-c/Core.h>
-#include <llvm-c/Analysis.h>
-#include <stdio.h>
+#include "../header.h"
+
+void init()
+{
+   context = LLVMContextCreate();
+   module = LLVMModuleCreateWithNameInContext("simple_if", context);
+   builder = LLVMCreateBuilderInContext(context);
+   int32 = LLVMInt32TypeInContext(context);
+}
 
 int main()
 {
