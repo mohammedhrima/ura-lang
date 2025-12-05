@@ -5,20 +5,32 @@
 #include <llvm-c/TargetMachine.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 
-LLVMContextRef context;
-LLVMModuleRef module;
-LLVMBuilderRef builder;
-LLVMTypeRef 
-   voidType,
-   float32Type,
-   boolType,
-   charType,
-   int16Type,
-   int32Type,
-   int64Type,
-   charPtrType,
-   int32PtrType;
+typedef LLVMTypeRef TypeRef;
+typedef LLVMContextRef ContextRef;
+typedef LLVMModuleRef ModuleRef;
+typedef LLVMBuilderRef BuilderRef;
+typedef LLVMBasicBlockRef BasicBlockRef;
+typedef LLVMValueRef ValueRef;
+
+ContextRef context;
+ModuleRef module;
+BuilderRef builder;
+TypeRef voidType, float32Type, boolType, charType,
+int16Type, int32Type, int64Type, charPtrType,
+int32PtrType;
+
+typedef struct {
+   char *name;
+   TypeRef retType;
+   TypeRef *paramTypes;
+   int paramCount;
+   bool isVariadic;
+
+   TypeRef funcType;
+   ValueRef elem;
+} Foo;
 
 void init(char *name)
 {
@@ -45,12 +57,12 @@ void init(char *name)
    LLVMInitializeAllAsmPrinters();
 }
 
-LLVMBasicBlockRef create_bloc(char *name, LLVMValueRef parent)
+BasicBlockRef create_bloc(char *name, Foo *parent)
 {
-   return LLVMAppendBasicBlockInContext(context, parent, name);
+   return LLVMAppendBasicBlockInContext(context, parent->elem, name);
 }
 
-void create_branch(LLVMBasicBlockRef bloc)
+void branch(LLVMBasicBlockRef bloc)
 {
    LLVMBuildBr(builder, bloc);
 }
@@ -60,28 +72,25 @@ void open_block(LLVMBasicBlockRef bloc)
    LLVMPositionBuilderAtEnd(builder, bloc);
 }
 
-typedef struct {
-   char *name;
-   LLVMTypeRef retType;
-   LLVMTypeRef *paramTypes;
-   int paramCount;
-
-   LLVMTypeRef funcType;
-   LLVMValueRef elem;
-} Foo;
-
 void create_function(Foo *func)
 {
-   func->funcType = LLVMFunctionType(func->retType, func->paramTypes, func->paramCount, 0);
+   func->funcType = LLVMFunctionType(func->retType, func->paramTypes, func->paramCount, func->isVariadic);
    func->elem = LLVMAddFunction(module, func->name, func->funcType);
 }
 
-LLVMValueRef call_function(Foo *func, char *name, LLVMValueRef *args, int argsCount)
+ValueRef call_function(Foo *func, char *name, ValueRef *args, int argsCount)
 {
    return LLVMBuildCall2(builder, func->funcType, func->elem, args, argsCount, name);
 }
 
-LLVMValueRef create_string(char *value)
+ValueRef get_param(Foo *func, int index, char *name)
+{
+   ValueRef param = LLVMGetParam(func->elem, index);
+   if(name) LLVMSetValueName(param, name);
+   return param;
+}
+
+ValueRef create_string(char *value)
 {
    static int index = 0;
    char name[20];
@@ -89,97 +98,84 @@ LLVMValueRef create_string(char *value)
    return LLVMBuildGlobalStringPtr(builder, value, name);
 }
 
-// Create a mutable string on the stack
-LLVMValueRef create_mutable_string(char *value)
-{
-   size_t len = strlen(value) + 1; // Include null terminator
-   LLVMTypeRef arrayType = LLVMArrayType(charType, len);
-   LLVMValueRef str_alloc = LLVMBuildAlloca(builder, arrayType, "str_alloc");
-   
-   // Copy each character
-   for (size_t i = 0; i < len; i++) {
-      LLVMValueRef indices[] = {
-         LLVMConstInt(int32Type, 0, 0),
-         LLVMConstInt(int32Type, i, 0)
-      };
-      LLVMValueRef elem_ptr = LLVMBuildGEP2(builder, arrayType, str_alloc, 
-                                            indices, 2, "elem");
-      LLVMBuildStore(builder, LLVMConstInt(charType, value[i], 0), elem_ptr);
-   }
-   
-   // Return pointer to first element
-   LLVMValueRef indices[] = {
-      LLVMConstInt(int32Type, 0, 0),
-      LLVMConstInt(int32Type, 0, 0)
-   };
-   return LLVMBuildGEP2(builder, arrayType, str_alloc, indices, 2, "str_ptr");
-}
-
-LLVMValueRef create_int(LLVMTypeRef type, int value)
+ValueRef create_int(LLVMTypeRef type, int value)
 {
    return LLVMConstInt(type, value, 0);
 }
 
-LLVMValueRef create_float(float value)
+ValueRef create_float(float value)
 {
    return LLVMConstReal(float32Type, value);
 }
 
-void create_condition(LLVMValueRef cond, LLVMBasicBlockRef isTrue, LLVMBasicBlockRef isFalse)
+void create_condition(ValueRef cond, BasicBlockRef isTrue, BasicBlockRef isFalse)
 {
    LLVMBuildCondBr(builder, cond, isTrue, isFalse);
 }
 
-LLVMValueRef load_variable(LLVMTypeRef type, char *name, LLVMValueRef source)
+ValueRef load_variable(LLVMTypeRef type, char *name, ValueRef source)
 {
    return LLVMBuildLoad2(builder, type, source, name);
 }
 
-LLVMValueRef allocate_variable(LLVMTypeRef type, char *name)
+ValueRef allocate_variable(LLVMTypeRef type, char *name)
 {
    return LLVMBuildAlloca(builder, type, name);
 }
 
-LLVMValueRef assign(LLVMValueRef variable, LLVMValueRef value)
+ValueRef assign(ValueRef variable, ValueRef value)
 {
    LLVMBuildStore(builder, value, variable);
    return variable;
 }
 
-LLVMValueRef operation(LLVMIntPredicate op, LLVMValueRef left, LLVMValueRef right)
+ValueRef operation(ValueRef left, char *op, ValueRef right)
 {
-   return LLVMBuildICmp(builder, op, left, right, "cmp");
+   // ---- Comparison (int) ----
+   if (strcmp(op, "==") == 0) return LLVMBuildICmp(builder, LLVMIntEQ, left, right, "eq");
+   if (strcmp(op, "!=") == 0) return LLVMBuildICmp(builder, LLVMIntNE, left, right, "ne");
+   if (strcmp(op, ">") == 0) return LLVMBuildICmp(builder, LLVMIntSGT, left, right, "gt");
+   if (strcmp(op, "<") == 0) return LLVMBuildICmp(builder, LLVMIntSLT, left, right, "lt");
+   if (strcmp(op, ">=") == 0) return LLVMBuildICmp(builder, LLVMIntSGE, left, right, "ge");
+   if (strcmp(op, "<=") == 0) return LLVMBuildICmp(builder, LLVMIntSLE, left, right, "le");
+
+   // ---- Arithmetic ----
+   if (strcmp(op, "+") == 0) return LLVMBuildAdd(builder, left, right, "add");
+   if (strcmp(op, "-") == 0) return LLVMBuildSub(builder, left, right, "sub");
+   if (strcmp(op, "*") == 0) return LLVMBuildMul(builder, left, right, "mul");
+   if (strcmp(op, "/") == 0) return LLVMBuildSDiv(builder, left, right, "div");
+   if (strcmp(op, "%") == 0) return LLVMBuildSRem(builder, left, right, "mod");
+
+   // ---- Bitwise ----
+   if (strcmp(op, "&&") == 0) return LLVMBuildAnd(builder, left, right, "and");
+   if (strcmp(op, "||") == 0) return LLVMBuildOr(builder, left, right, "or");
+   if (strcmp(op, "^") == 0) return LLVMBuildXor(builder, left, right, "xor");
+   if (strcmp(op, "<<") == 0) return LLVMBuildShl(builder, left, right, "shl");
+   if (strcmp(op, ">>") == 0) return LLVMBuildAShr(builder, left, right, "shr"); // arithmetic shift
+
+   // ---- Logical (boolean) ----
+   if (strcmp(op, "and") == 0) return LLVMBuildAnd(builder, left, right, "and");
+   if (strcmp(op, "or") == 0) return LLVMBuildOr(builder, left, right, "or");
+
+   fprintf(stderr, "Unknown operator: %s\n", op);
+   return NULL;
 }
 
-LLVMValueRef math(char op, LLVMValueRef left, LLVMValueRef right)
+ValueRef access(ValueRef source, ValueRef index, TypeRef elementType)
 {
-   switch (op)
-   {
-   case '+': return LLVMBuildAdd(builder, left, right, "add");
-   case '-': return LLVMBuildSub(builder, left, right, "sub");
-   case '*': return LLVMBuildMul(builder, left, right, "mul");
-   case '/': return LLVMBuildSDiv(builder, left, right, "div");
-   case '%': return LLVMBuildSRem(builder, left, right, "rem");
-   default:
-      fprintf(stderr, "Unknown math operation: %c\n", op);
-      return NULL;
-   }
-}
-
-LLVMValueRef access(LLVMValueRef source, LLVMValueRef index, LLVMTypeRef elementType)
-{
-   LLVMValueRef indices[] = {index};
+   ValueRef indices[] = {index};
    return LLVMBuildGEP2(builder, elementType, source, indices, 1, "access");
 }
 
-// Call a function
-
-void ret(LLVMValueRef value)
+ValueRef cast_to(ValueRef source, LLVMTypeRef ntype, char *name)
 {
-   if (value)
-      LLVMBuildRet(builder, value);
-   else
-      LLVMBuildRetVoid(builder);
+   return LLVMBuildSExt(builder, source, ntype, name);
+}
+
+void ret(ValueRef value)
+{
+   if (value) LLVMBuildRet(builder, value);
+   else LLVMBuildRetVoid(builder);
 }
 
 // Verify and print module
