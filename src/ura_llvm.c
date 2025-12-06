@@ -218,3 +218,27 @@ ValueRef access_(Token *curr, Token *left, Token *right)
    ValueRef indices[] = { rightRef };
    return LLVMBuildGEP2(builder, get_llvm_type(curr), leftRef, indices, 1, to_string(curr->type));
 }
+
+ValueRef cast(Token *from, Token *to)
+{
+   ValueRef source = from->llvm.elem;
+   TypeRef sourceType = LLVMTypeOf(source);
+   TypeRef ntype = get_llvm_type(to);
+
+   // Check if source is a pointer - if so, LOAD it first
+   if (LLVMGetTypeKind(sourceType) == LLVMPointerTypeKind) {
+      source = load_variable(from);
+      sourceType = get_llvm_type(from);
+   }
+   
+   unsigned sourceBits = LLVMGetIntTypeWidth(sourceType);
+   unsigned targetBits = LLVMGetIntTypeWidth(ntype);
+   
+   if (sourceBits > targetBits) {
+      return LLVMBuildTrunc(builder, source, ntype, "cast");
+   } else if (sourceBits < targetBits) {
+      return LLVMBuildSExt(builder, source, ntype, "cast");
+   } else {
+      return source;
+   }
+}
