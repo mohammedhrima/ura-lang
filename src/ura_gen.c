@@ -320,7 +320,16 @@ Token *op_ir(Node *node)
 {
    Token *left = generate_ir(node->left);
    Token *right = generate_ir(node->right);
-   if (!right || !right) return NULL;
+   if(check(!left, "error in assignment, left is NULL"))
+   {
+      print("%n\n", node);
+      return NULL;
+   }
+    if(check(!right, "error in assignment, right is NULL"))
+   {
+      print("%n\n", node);
+      return NULL;
+   }
 
    // TODO: fix the check later
    // check(!compatible(left, right), "invalid [%s] op between %s and %s\n",
@@ -412,7 +421,15 @@ Token *generate_ir(Node *node)
    }
    case CAST:
    {
-      break;
+      Token *left = generate_ir(node->left);
+      Token *right = generate_ir(node->right);
+      
+      inst = new_inst(node->token);
+      inst->token->name = NULL; // causes error in llvm generation
+      inst->left = left;
+      inst->right = right;
+      inst->token->retType = node->right->token->type;
+      return node->token;
    }
    case INT: case BOOL: case CHAR: case STRUCT_CALL:
    case FLOAT: case LONG: case CHARS: case PTR: case VOID:
@@ -601,6 +618,14 @@ void handle_asm(Inst *inst)
       curr->llvm.is_set = true;
       break;
    }
+   case CAST:
+{
+   if (check(!left->llvm.is_set, "CAST, left is not set")) break;
+   
+   curr->llvm.elem = cast(left, right);
+   curr->llvm.is_set = true;
+   break;
+}
 #if 0
    case STRUCT_DEF:
    {

@@ -62,7 +62,7 @@ void parse_token(char *filename, int line, char *input, int s, int e,  Type type
       struct { char *name; Type type; } keywords[] = {{"if", IF}, {"elif", ELIF},
          {"else", ELSE}, {"while", WHILE}, {"func", FDEC}, {"return", RETURN},
          {"break", BREAK}, {"continue", CONTINUE}, {"ref", REF}, {"struct", STRUCT_DEF},
-         {"protoFunc", PROTO_FUNC}, {"cast", CAST}, {0, 0},
+         {"protoFunc", PROTO_FUNC}, {"cast", CAST}, {"to", TO}, {0, 0},
       };
       for (i = 0; keywords[i].name; i++)
       {
@@ -735,6 +735,22 @@ Node *prime()
    Token *token;
    if ((token = find(ID, INT, CHARS, CHAR, FLOAT, BOOL, LONG, SHORT, 0)))
       return symbol(token);
+   else if((token = find(CAST, 0)))
+   {
+      node = new_node(token);
+      node->left = expr();
+      if (check(find(TO, 0) == NULL, "expected to after casting"))
+      {
+         print("<%k>", tokens[exe_pos]);
+         return NULL;
+      }
+      Token *to = find(DATA_TYPES, 0);
+      if (check(to == NULL || !to->is_declare, "expected data type after to"))
+         return NULL;
+      to->is_declare = false;
+      node->right = new_node(to);
+      return node;
+   }
    else if ((token = find(NOT, 0)))
    {
       node = new_node(token);
@@ -759,7 +775,6 @@ Node *prime()
       for (int i = scoopPos; i >= 0; i--)
       {
          Node *curr = Gscoop[i];
-         print(">> %k\n", curr->token);
          if (curr->token->type == FDEC)
          {
             // TODO: check return type here
