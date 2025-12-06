@@ -94,7 +94,7 @@ enum Type
 
    // Data types
    VOID, INT, FLOAT, LONG, SHORT, BOOL, CHAR, CHARS, PTR,
-   ARRAY, CAST, TO,
+   ARRAY, AS,
 
    // Struct Usage
    STRUCT_DEF, STRUCT_BODY, STRUCT_ALLOC, STRUCT_CALL,
@@ -302,6 +302,7 @@ Node *mul_div();
 Node *dot();
 Node *sign();
 Node *brackets();
+Node *cast_node();
 Node *prime();
 Node *new_node(Token *token);
 bool includes(Type to_find, ...);
@@ -341,6 +342,25 @@ ValueRef get_current_func();
 void init(char *name);
 void finalize(char *moduleName);
 ValueRef load_variable(Token *token);
+ValueRef create_string(char *value);
+TypeRef get_llvm_type(Token *token);
+LLVMValueRef get_value(Token *token);
+ValueRef llvm_get_ref(Token *token);
+void create_function(Token *token);
+void call_function(Token *token, LLVM *source, ValueRef *args, int argsCount);
+BasicBlockRef create_bloc(char *name);
+void branch(BasicBlockRef bloc);
+void open_block(BasicBlockRef bloc);
+ValueRef load_variable(Token *token);
+ValueRef assign2(Token *variable, Token* value);
+ValueRef operation(Token *token, Token* left, Token* right);
+ValueRef NotOperation(Token *token);
+ValueRef return_(ValueRef value);
+ValueRef allocate_variable(LLVMTypeRef type, char *name);
+ValueRef get_param(Token *token);
+void build_condition(Token* curr, Token *left, Token* right);
+ValueRef access_(Token *curr, Token *left, Token *right);
+ValueRef cast(Token *from, Token *to);
 
 // ----------------------------------------------------------------------------
 // Utilities

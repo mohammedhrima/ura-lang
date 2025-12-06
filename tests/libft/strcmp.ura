@@ -1,5 +1,5 @@
 func int to_ascii(char c):
-    int n = c
+    int n = c as int
     if n < 0 or n > 127: return -1
     // Check if it's a valid character
     if (n >= 97 and n <= 122) or  // a-z
