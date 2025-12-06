@@ -266,8 +266,9 @@ void print_inst(Inst *inst)
       if (right->name) print("(%s) ", right->name);
       break;
    }
-   case CAST:
+   case AS:
    {
+      print("from ");
       if (left->ir_reg) print("r%.2d ", left->ir_reg);
       if (left->name) print("(%s) ", left->name);
       print("to %s", to_string(right->type));
@@ -736,7 +737,7 @@ char *to_string_(char *filename, int line, Type type)
       [PTR] = "PTR",
       [STRUCT_DEF] = "ST_DEF", [STRUCT_BODY] = "ST_BODY",
       [STRUCT_ALLOC] = "ST_ALLOC", [STRUCT_CALL] = "ST_CALL",
-      [ARRAY] = "ARRAY", [CAST] = "CAST", [TO] = "TO",
+      [ARRAY] = "ARRAY", [AS] = "AS",
 
 
       [ASSIGN] = "ASSIGN", [ADD_ASSIGN] = "ADD_ASGN",

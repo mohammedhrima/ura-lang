@@ -9,7 +9,7 @@ NC='\033[0m'
 # === Paths & Global Variables ===
 ura_dir="$HOME/Desktop/Personal/ura-lang"
 ura_src="$ura_dir/src"
-files=($ura_src/ura_main.c $ura_src/ura_parse.c $ura_src/ura_gen.c $ura_src/ura_utils.c)
+files=($ura_src/ura_main.c $ura_src/ura_parse.c $ura_src/ura_gen.c $ura_src/ura_utils.c $ura_src/ura_llvm.c)
 
 # === Compiler Flags ===
 san_flags=(-fsanitize=address -fsanitize=null)

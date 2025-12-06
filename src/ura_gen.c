@@ -320,12 +320,12 @@ Token *op_ir(Node *node)
 {
    Token *left = generate_ir(node->left);
    Token *right = generate_ir(node->right);
-   if(check(!left, "error in assignment, left is NULL"))
+   if (check(!left, "error in assignment, left is NULL"))
    {
       print("%n\n", node);
       return NULL;
    }
-    if(check(!right, "error in assignment, right is NULL"))
+   if (check(!right, "error in assignment, right is NULL"))
    {
       print("%n\n", node);
       return NULL;
@@ -338,6 +338,10 @@ Token *op_ir(Node *node)
    {
    case ASSIGN:
    {
+      if(check(!compatible(left, right), "type mismatch in assignment"))
+      {
+         // print("between %k and %k\n", left, right);
+      }
       node->token->ir_reg = left->ir_reg;
       node->token->retType = left->retType;
       break;
@@ -419,16 +423,16 @@ Token *generate_ir(Node *node)
       if (find) return find;
       return node->token;
    }
-   case CAST:
+   case AS:
    {
       Token *left = generate_ir(node->left);
       Token *right = generate_ir(node->right);
-      
+
       inst = new_inst(node->token);
       inst->token->name = NULL; // causes error in llvm generation
       inst->left = left;
       inst->right = right;
-      inst->token->retType = node->right->token->type;
+      inst->token->retType = node->right->token->retType;
       return node->token;
    }
    case INT: case BOOL: case CHAR: case STRUCT_CALL:
@@ -559,7 +563,7 @@ Token *generate_ir(Node *node)
 }
 
 // ASSEMBLY GENERATION
-#include "ura_llvm.c"
+// #include "ura_llvm.c"
 
 void handle_asm(Inst *inst)
 {
@@ -618,14 +622,14 @@ void handle_asm(Inst *inst)
       curr->llvm.is_set = true;
       break;
    }
-   case CAST:
-{
-   if (check(!left->llvm.is_set, "CAST, left is not set")) break;
-   
-   curr->llvm.elem = cast(left, right);
-   curr->llvm.is_set = true;
-   break;
-}
+   case AS:
+   {
+      if (check(!left->llvm.is_set, "casting, left is not set")) break;
+
+      curr->llvm.elem = cast(left, right);
+      curr->llvm.is_set = true;
+      break;
+   }
 #if 0
    case STRUCT_DEF:
    {
