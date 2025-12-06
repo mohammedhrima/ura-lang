@@ -90,7 +90,7 @@ LLVMValueRef get_value(Token *token)
 
 ValueRef llvm_get_ref(Token *token)
 {
-   if (token->name && !token->is_param && !includes(token->type, FCALL, AND, OR))
+   if (token->name && !token->is_param && !includes(token->type, FCALL, AND, OR, AS))
       return load_variable(token);
    return token->llvm.elem;
 }
@@ -140,6 +140,27 @@ ValueRef load_variable(Token *token)
 ValueRef assign2(Token *variable, Token* value)
 {
    ValueRef rightRef = llvm_get_ref(value);
+
+   // Check if we need implicit type conversion
+   TypeRef varType = get_llvm_type(variable);
+   TypeRef valType = LLVMTypeOf(rightRef);
+
+   // Only convert if both are integer types (not pointers)
+   if (LLVMGetTypeKind(valType) != LLVMPointerTypeKind &&
+         LLVMGetTypeKind(varType) != LLVMPointerTypeKind)
+   {
+      unsigned varBits = LLVMGetIntTypeWidth(varType);
+      unsigned valBits = LLVMGetIntTypeWidth(valType);
+
+      if (varBits > valBits) {
+         // Extend: i8 → i32
+         rightRef = LLVMBuildSExt(builder, rightRef, varType, "implicit_cast");
+      } else if (varBits < valBits) {
+         // Truncate: i32 → i8
+         rightRef = LLVMBuildTrunc(builder, rightRef, varType, "implicit_cast");
+      }
+   }
+
    LLVMBuildStore(builder, rightRef, variable->llvm.elem);
    return variable->llvm.elem;
 }
@@ -190,7 +211,7 @@ ValueRef get_param(Token *token)
 {
    ValueRef param = LLVMGetParam(token->Param.func_ptr->llvm.elem, token->Param.index);
    LLVMSetValueName(param, token->name);
-   // TODO: check if the param got modified 
+   // TODO: check if the param got modified
    // else: don't need to allocate stack for it
    if (!token->Param.func_ptr->is_proto)
    {
@@ -230,15 +251,16 @@ ValueRef cast(Token *from, Token *to)
       source = load_variable(from);
       sourceType = get_llvm_type(from);
    }
-   
+
    unsigned sourceBits = LLVMGetIntTypeWidth(sourceType);
    unsigned targetBits = LLVMGetIntTypeWidth(ntype);
-   
+
    if (sourceBits > targetBits) {
       return LLVMBuildTrunc(builder, source, ntype, "cast");
    } else if (sourceBits < targetBits) {
       return LLVMBuildSExt(builder, source, ntype, "cast");
    } else {
+      print(RED"the same\n"RESET);
       return source;
    }
 }
