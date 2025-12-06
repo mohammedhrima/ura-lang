@@ -151,8 +151,8 @@ struct Token
    // bool is_attr;
    bool is_proto;
    bool is_arg;
-   bool is_dec_param;
-   bool is_call_param;
+   bool is_param;
+   // bool is_call_param;
    bool is_cast;
 
    char *filename;
@@ -202,6 +202,7 @@ struct Token
       // function declaration
       struct
       {
+         bool isVaradic;
          Token **args;
          int size;
          int pos;
@@ -267,9 +268,16 @@ extern Node *scoop;
 extern int scoopSize;
 extern int scoopPos;
 
-extern LLVMModuleRef mod;
-extern LLVMBuilderRef builder;
-extern LLVMContextRef context;
+typedef LLVMTypeRef TypeRef;
+typedef LLVMContextRef ContextRef;
+typedef LLVMModuleRef ModuleRef;
+typedef LLVMBuilderRef BuilderRef;
+typedef LLVMBasicBlockRef BasicBlockRef;
+typedef LLVMValueRef ValueRef;
+
+extern ContextRef context;
+extern ModuleRef module;
+extern BuilderRef builder;
 
 #if defined(__APPLE__)
 extern struct __sFILE *asm_fd;
@@ -324,13 +332,15 @@ void copy_insts();
 bool compatible(Token *left, Token *right);
 Token *generate_ir(Node *node);
 void handle_asm(Inst *inst);
-void init_llvm_types();
 // LLVMTypeRef get_llvm_type(Type type);
 TypeRef get_llvm_type(Token* token);
 ValueRef get_value(Token *token);
 void enter_func(LLVMValueRef func);
 void exit_func();
 ValueRef get_current_func();
+void init(char *name);
+void finalize(char *moduleName);
+ValueRef load_variable(Token *token);
 
 // ----------------------------------------------------------------------------
 // Utilities

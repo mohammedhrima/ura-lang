@@ -1,8 +1,8 @@
 ; ModuleID = 'moduleName'
 source_filename = "moduleName"
 
-@STR = private constant [9 x i8] c"is digit\00"
-@STR.1 = private constant [13 x i8] c"is not digit\00"
+@STR0 = private unnamed_addr constant [9 x i8] c"is digit\00", align 1
+@STR1 = private unnamed_addr constant [13 x i8] c"is not digit\00", align 1
 
 declare i32 @puts(ptr)
 
@@ -24,11 +24,11 @@ entry:
   br i1 %isdigit, label %if, label %else
 
 if:                                               ; preds = %entry
-  %puts = call i32 @puts(ptr @STR)
+  %puts = call i32 @puts(ptr @STR0)
   br label %end_if
 
 else:                                             ; preds = %entry
-  %puts1 = call i32 @puts(ptr @STR.1)
+  %puts1 = call i32 @puts(ptr @STR1)
   br label %end_if
 
 end_if:                                           ; preds = %else, %if
