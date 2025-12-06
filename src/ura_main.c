@@ -22,7 +22,7 @@ struct __sFILE *asm_fd;
 struct _IO_FILE *asm_fd;
 #endif
 
-LLVMModuleRef mod;
+LLVMModuleRef module;
 LLVMBuilderRef builder;
 LLVMContextRef context;
 
@@ -65,26 +65,14 @@ void code_gen(char *filename)
    copy_insts();
 
    char *moduleName = resolve_path(filename);
-
-   context = LLVMContextCreate();
-   mod = LLVMModuleCreateWithNameInContext("moduleName", context);
-   builder = LLVMCreateBuilderInContext(context);
-   init_llvm_types();
+   init(moduleName);
    for (int i = 0; insts[i] ; i++) handle_asm(insts[i]);
 
-   // LLVMVerifyModule(mod, LLVMAbortProcessAction, NULL);
-   // save to file
    int len = strlen(moduleName);
    strcpy(moduleName + len - 3, "ll");
    moduleName[len - 1] = '\0';
-   LLVMPrintModuleToFile(mod, moduleName, NULL);
-
-   // free llvm context
-   LLVMDisposeBuilder(builder);
-   LLVMDisposeModule(mod);
-   LLVMContextDispose(context);
+   finalize(moduleName);
    free(moduleName);
-
 #endif
 }
 

@@ -62,12 +62,12 @@ BasicBlockRef create_bloc(char *name, Foo *parent)
    return LLVMAppendBasicBlockInContext(context, parent->elem, name);
 }
 
-void branch(LLVMBasicBlockRef bloc)
+void branch(BasicBlockRef bloc)
 {
    LLVMBuildBr(builder, bloc);
 }
 
-void open_block(LLVMBasicBlockRef bloc)
+void open_block(BasicBlockRef bloc)
 {
    LLVMPositionBuilderAtEnd(builder, bloc);
 }
