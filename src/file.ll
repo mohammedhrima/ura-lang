@@ -1,53 +1,40 @@
-; ModuleID = 'moduleName'
-source_filename = "moduleName"
+; ModuleID = '/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura'
+source_filename = "/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura"
 
-define i1 @isalpha(i8 %c) {
-entry:
-  %c1 = alloca i8, align 1
-  store i8 %c, ptr %c1, align 1
-  %c2 = load i8, ptr %c1, align 1
-  %MO_EQ = icmp sge i8 %c2, 97
-  %c3 = load i8, ptr %c1, align 1
-  %LE_EQ = icmp sle i8 %c3, 122
-  %AND = and i1 %MO_EQ, %LE_EQ
-  ret i1 %AND
-}
+@STR0 = private unnamed_addr constant [4 x i8] c"abc\00", align 1
 
-define i1 @isdigit(i8 %c) {
+define i32 @strlen(ptr %str) {
 entry:
-  %c1 = alloca i8, align 1
-  store i8 %c, ptr %c1, align 1
-  %c2 = load i8, ptr %c1, align 1
-  %MO_EQ = icmp sge i8 %c2, 49
-  %c3 = load i8, ptr %c1, align 1
-  %LE_EQ = icmp sle i8 %c3, 57
-  %AND = and i1 %MO_EQ, %LE_EQ
-  ret i1 %AND
-}
+  %str1 = alloca ptr, align 8
+  store ptr %str, ptr %str1, align 8
+  %i = alloca i32, align 4
+  store i32 0, ptr %i, align 4
+  br label %while
 
-define i1 @islanum(i8 %0) {
-entry:
-  %c = load, align 1
-  %isalpha = call i1 @isalpha(i8 %c)
-  %c1 = load, align 1
-  %isdigit = call i1 @isdigit(i8 %c1)
-  %OR = or i1 %isalpha, %isdigit
-  ret i1 %OR
+while:                                            ; preds = %while_bloc, %entry
+  %str2 = load ptr, ptr %str1, align 8
+  %i3 = load i32, ptr %i, align 4
+  %ACCESS = getelementptr i8, ptr %str2, i32 %i3
+  %str4 = load i8, ptr %ACCESS, align 1
+  %NOT_EQ = icmp ne i8 %str4, 0
+  br i1 %NOT_EQ, label %while_bloc, label %end_while
+
+while_bloc:                                       ; preds = %while
+  %i5 = load i32, ptr %i, align 4
+  %ADD = add i32 %i5, 1
+  store i32 %ADD, ptr %i, align 4
+  br label %while
+
+end_while:                                        ; preds = %while
+  %i6 = load i32, ptr %i, align 4
+  ret i32 %i6
 }
 
 define i32 @main() {
 entry:
-  %isdigit = call i1 @isdigit(i8 49)
-  br i1 %isdigit, label %if, label %else
-
-if:                                               ; preds = %entry
-  ret i32 11
-  br label %end_if
-
-else:                                             ; preds = %entry
-  ret i32 12
-  br label %end_if
-
-end_if:                                           ; preds = %else, %if
-  ret i32 0
+  %len = alloca i32, align 4
+  %strlen = call i32 @strlen(ptr @STR0)
+  store i32 %strlen, ptr %len, align 4
+  %len1 = load i32, ptr %len, align 4
+  ret i32 %len1
 }
