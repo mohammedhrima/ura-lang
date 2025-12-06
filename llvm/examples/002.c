@@ -32,7 +32,6 @@ int main()
    create_condition(cond, whileBody, whileEnd);
 
    open_block(whileBody);
-   // i = i + 1
    ValueRef i_loaded = load_variable(int32Type, "i_loaded", i);
    ValueRef i_inc = operation(i_loaded, "+", create_int(int32Type, 1));
    assign(i, i_inc);

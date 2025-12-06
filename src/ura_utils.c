@@ -690,74 +690,10 @@ Type getRetType(Node *node)
 }
 
 // LLVM UTILS
-static LLVMTypeRef vd, f32, i1, i8, i16, i32, i64, p8, p32;
-
-void init_llvm_types()
-{
-   vd = LLVMVoidTypeInContext(context);
-   f32 = LLVMFloatTypeInContext(context);
-   i1 = LLVMInt1TypeInContext(context);
-   i8 = LLVMInt8TypeInContext(context);
-   i16 = LLVMInt16TypeInContext(context);
-   i32 = LLVMInt32TypeInContext(context);
-   i64 = LLVMInt64TypeInContext(context);
-   p8 = LLVMPointerType(i8, 0);
-   p32 = LLVMPointerType(i32, 0);
-}
-
-LLVMTypeRef get_llvm_type(Token *token)
-{
-   switch (token->retType)
-   {
-   case VOID: return vd;
-   case INT: return i32;
-   case FLOAT: return f32;
-   case LONG: return i64;
-   case SHORT: return i16;
-   case BOOL: return i1;
-   case CHAR: return i8;
-   case CHARS: return p8;
-   case PTR: return p32;
-   default:
-   {
-      todo(1, "handle this case %s", to_string(token->retType));
-      seg();
-      break;
-   }
-   }
-   return NULL;
-}
-
-LLVMValueRef get_value(Token *token)
-{
-   LLVMTypeRef llvmType = get_llvm_type(token);
-   switch (token->type)
-   {
-   case INT: return LLVMConstInt(llvmType, token->Int.value, 0);
-   case FLOAT: return LLVMConstReal(llvmType, token->Float.value);
-   case BOOL: return LLVMConstInt(llvmType, token->Bool.value ? 1 : 0, 0);
-   case LONG: return LLVMConstInt(llvmType, token->Long.value, 0);
-   case SHORT: return LLVMConstInt(llvmType, token->Short.value, 0);
-   case CHAR: return LLVMConstInt(llvmType, token->Char.value, 0);
-   case CHARS:
-   {
-      LLVMValueRef str_constant = LLVMConstStringInContext(context, token->Chars.value,
-                                  strlen(token->Chars.value), 0);
-      LLVMValueRef global_str = LLVMAddGlobal(mod, LLVMTypeOf(str_constant), "STR");
-      LLVMSetInitializer(global_str, str_constant);
-      LLVMSetLinkage(global_str, LLVMPrivateLinkage);
-      LLVMSetGlobalConstant(global_str, 1);
-      return global_str;
-   }
-   default: todo(1, "handle this literal case %s", to_string(token->type));
-   }
-   return (LLVMValueRef) {};
-}
-
 // TODO: this approach need to be customized
-LLVMValueRef farr[100];
+ValueRef farr[100];
 int fpos = 0;
-LLVMValueRef get_current_func()
+ValueRef get_current_func()
 {
    return farr[fpos - 1];
 }

@@ -3,24 +3,36 @@ source_filename = "/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura"
 
 define i1 @isalpha(i8 %c) {
 entry:
-  %MO_EQ = icmp sge i8 %c, 97
-  %LE_EQ = icmp sle i8 %c, 122
+  %c1 = alloca i8, align 1
+  store i8 %c, ptr %c1, align 1
+  %c2 = load i8, ptr %c1, align 1
+  %MO_EQ = icmp sge i8 %c2, 97
+  %c3 = load i8, ptr %c1, align 1
+  %LE_EQ = icmp sle i8 %c3, 122
   %AND = and i1 %MO_EQ, %LE_EQ
   ret i1 %AND
 }
 
 define i1 @isdigit(i8 %c) {
 entry:
-  %MO_EQ = icmp sge i8 %c, 49
-  %LE_EQ = icmp sle i8 %c, 57
+  %c1 = alloca i8, align 1
+  store i8 %c, ptr %c1, align 1
+  %c2 = load i8, ptr %c1, align 1
+  %MO_EQ = icmp sge i8 %c2, 49
+  %c3 = load i8, ptr %c1, align 1
+  %LE_EQ = icmp sle i8 %c3, 57
   %AND = and i1 %MO_EQ, %LE_EQ
   ret i1 %AND
 }
 
 define i1 @islanum(i8 %c) {
 entry:
-  %isalpha = call i1 @isalpha(i8 %c)
-  %isdigit = call i1 @isdigit(i8 %c)
+  %c1 = alloca i8, align 1
+  store i8 %c, ptr %c1, align 1
+  %c2 = load i8, ptr %c1, align 1
+  %isalpha = call i1 @isalpha(i8 %c2)
+  %c3 = load i8, ptr %c1, align 1
+  %isdigit = call i1 @isdigit(i8 %c3)
   %OR = or i1 %isalpha, %isdigit
   ret i1 %OR
 }

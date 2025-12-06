@@ -31,9 +31,9 @@ Token *func_dec_ir(Node *node)
          free(token->Fdec.args);
          token->Fdec.args = tmp;
       }
-      child->token->is_dec_param = true;
       child->token->Param.index = i;
       child->token->Param.func_ptr = node->token;
+      child->token->is_param = true;
       child->token->is_declare = false;
       token->Fdec.args[token->Fdec.pos++] = child->token;
    }
@@ -125,12 +125,10 @@ Token *func_call_ir(Node *node)
          Token *src = generate_ir(carg);
          Token *dist = darg->token;
 
-         if (check(src->type == ID, "Indeclared variable %s",
-                   carg->token->name)) break;
-         if (check(!compatible(src, dist), "Incompatible type arg %s",
-                   func->token->name)) break;
-         
-         src->is_dec_param = false;
+         if (check(src->type == ID, "Indeclared variable %s", carg->token->name)) break;
+         if (check(!compatible(src, dist), "Incompatible type arg %s", func->token->name)) break;
+
+         // src->is_param = false;
          node->token->Fcall.args[i] = src;
          // Token *dist = copy_token(darg->token);
          // set_func_call_regs(&r, src, dist, node);
@@ -544,41 +542,11 @@ Token *generate_ir(Node *node)
 }
 
 // ASSEMBLY GENERATION
-ValueRef llvm_get_ref(Token *token)
-{
-   if (token->name && !token->is_dec_param && !includes(token->type, FCALL, AND, OR))
-      return LLVMBuildLoad2(builder, get_llvm_type(token), token->llvm.elem, token->name);
-   return token->llvm.elem;
-}
-
-ValueRef llvm_get_op(Token *token, Token* left, Token* right)
-{
-   ValueRef leftRef = llvm_get_ref(left);
-   ValueRef rightRef = llvm_get_ref(right);
-   char* op = to_string(token->type);
-   switch (token->type)
-   {
-   case LESS: return LLVMBuildICmp(builder, LLVMIntSLT, leftRef, rightRef, op); break;
-   case LESS_EQUAL: return LLVMBuildICmp(builder, LLVMIntSLE, leftRef, rightRef, op); break;
-   case MORE: return LLVMBuildICmp(builder, LLVMIntSGT, leftRef, rightRef, op); break;
-   case MORE_EQUAL: return LLVMBuildICmp(builder, LLVMIntSGE, leftRef, rightRef, op); break;
-   case EQUAL: return LLVMBuildICmp(builder, LLVMIntEQ,  leftRef, rightRef, op); break;
-   case NOT_EQUAL: return LLVMBuildICmp(builder, LLVMIntNE,  leftRef, rightRef, op); break;
-   case ADD: return LLVMBuildAdd(builder, leftRef, rightRef, op); break;
-   case SUB: return LLVMBuildSub(builder, leftRef, rightRef, op); break;
-   case MUL: return LLVMBuildMul(builder, leftRef, rightRef, op); break;
-   case DIV: return LLVMBuildSDiv(builder, leftRef, rightRef, op); break;
-   case MOD: return LLVMBuildSRem(builder, leftRef, rightRef, op); break;
-   case AND: return LLVMBuildAnd(builder, leftRef, rightRef, op); break;
-   case OR: return LLVMBuildOr(builder, leftRef, rightRef, op); break;
-   default: todo(1, "handle this %s", op);
-   }
-   return NULL;
-}
+#include "ura_llvm.c"
 
 void handle_asm(Inst *inst)
 {
-   debug("Processing: %k\n", inst->token);
+   // debug("Processing: %k\n", inst->token);
    Token *curr = inst->token;
    Token *left = inst->left;
    Token *right = inst->right;
@@ -602,43 +570,32 @@ void handle_asm(Inst *inst)
    }
    case INT: case BOOL: case LONG: case SHORT: case CHAR: case CHARS: case PTR:
    {
-      debug(RED"get %k\n"RESET, curr);
-      if (curr->is_dec_param)
+      debug(RED"get %k"RESET, curr);
+      if (curr->is_param)
       {
+         debug(" is_param");
          check(curr->Param.func_ptr == NULL, "error\n");
          check(!curr->Param.func_ptr->llvm.is_set, "error\n");
-         debug("curr->is_dec_param\n");
-         // Get function parameter value
-         ValueRef param_val = LLVMGetParam(curr->Param.func_ptr->llvm.elem, curr->Param.index);
-         LLVMSetValueName(param_val, curr->name);
 
-         if(!curr->Param.func_ptr->is_proto)
-         {
-            // Allocate stack space for the parameter (makes it mutable)
-            ret = LLVMBuildAlloca(
-               builder, 
-               get_llvm_type(curr), 
-               curr->name);
-   
-            // Store the parameter value into the allocated space
-            LLVMBuildStore(builder, param_val, ret);
-         }
-         curr->is_dec_param = false;
+         ret = get_param(curr);
+         curr->is_param = false;
       }
       else if (curr->is_declare)
       {
-         debug("curr->is_declare\n");
-         ret = LLVMBuildAlloca(builder, get_llvm_type(curr), curr->name);
+         debug(" is_declare");
+         ret = allocate_variable(get_llvm_type(curr), curr->name);
       }
       else if (curr->name)
       {
-         debug("curr->name\n");
+         debug(" name");
          ret = curr->llvm.elem;
       }
       else
       {
+         debug(" value");
          ret = get_value(curr);
       }
+      debug("\n");
 
       curr->llvm.elem = ret;
       curr->llvm.is_set = true;
@@ -691,8 +648,7 @@ void handle_asm(Inst *inst)
       if (check(!left->llvm.is_set, "assign, left is not set")) break;
       if (check(!right->llvm.is_set, "assign, right is not set")) break;
 
-      ValueRef rightRef = llvm_get_ref(right);
-      LLVMBuildStore(builder, rightRef, left->llvm.elem);
+      assign2(left, right);
       break;
    }
    case ADD: case SUB: case MUL: case DIV: case MOD:
@@ -704,7 +660,7 @@ void handle_asm(Inst *inst)
       if (check(!right->llvm.is_set, "right is not set")) break;
 
       // Perform binary operation (e.g., a + b, x < y, p && q)
-      ret = llvm_get_op(curr, left, right);
+      ret = operation(curr, left, right);
       curr->llvm.elem = ret;
       curr->llvm.is_set = true;
       break;
@@ -713,22 +669,19 @@ void handle_asm(Inst *inst)
    {
       if (check(!left->llvm.is_set, "left is not set")) break;
 
-      // Logical NOT operation (e.g., !x)
-      ValueRef leftRef = llvm_get_ref(left);
-      ret = LLVMBuildNot(builder, leftRef, to_string(curr->type));
+      ret = NotOperation(left);
       curr->llvm.elem = ret;
       curr->llvm.is_set = true;
       break;
    }
    case FCALL:
    {
-      // Function call (e.g., strlen("abc"))
+      // TODO: move this insde call_function later
       LLVM srcFunc = curr->Fcall.func_ptr->llvm;
 
       ValueRef *args = NULL;
       if (curr->Fcall.pos)
       {
-         // Prepare function arguments
          args = allocate(curr->Fcall.pos, sizeof(ValueRef));
          for (int i = 0; i < curr->Fcall.pos; i++)
          {
@@ -736,58 +689,32 @@ void handle_asm(Inst *inst)
             check(!arg->llvm.is_set, "llvm is not set");
 
             // Load variable values, pass literals/temporaries directly
-            if (arg->name && !arg->is_dec_param && arg->type != FCALL)
-               args[i] = LLVMBuildLoad2(builder, get_llvm_type(arg), arg->llvm.elem, arg->name);
+            if (arg->name && !arg->is_param && arg->type != FCALL)
+               args[i] = load_variable(arg);
             else
                args[i] = arg->llvm.elem;
          }
 
       }
-      char *fname = curr->retType != VOID ? curr->name : "";
-      curr->llvm.elem = LLVMBuildCall2(builder, srcFunc.funcType, srcFunc.elem, args, curr->Fcall.pos,
-                                       fname);
+      call_function(curr, &srcFunc, args, curr->Fcall.pos);
+
       free(args);
+
       curr->llvm.is_set = true;
       break;
    }
    case FDEC:
    {
-      // Function declaration/definition
-      TypeRef *args = NULL;
-
-      if (curr->Fdec.pos)
-      {
-         // Build function type with parameters
-         args = allocate(curr->Fdec.pos + 1, sizeof(TypeRef));
-         for (int i = 0; i < curr->Fdec.pos; i++)
-            args[i] = get_llvm_type(curr->Fdec.args[i]);
-         curr->llvm.funcType = LLVMFunctionType(get_llvm_type(curr), args, curr->Fdec.pos, 0);
-         free(args);
-      }
-      else
-      {
-         // Build function type with no parameters
-         curr->llvm.funcType = LLVMFunctionType(get_llvm_type(curr), NULL, 0, 0);
-      }
-
-      // Add function to module
-      curr->llvm.elem = LLVMAddFunction(mod, curr->name, curr->llvm.funcType);
-
-      if (!curr->is_proto)
-      {
-         // Create entry block for function body
-         BasicBlocRef funcEntry = LLVMAppendBasicBlockInContext(context, curr->llvm.elem, "entry");
-         LLVMPositionBuilderAtEnd(builder, funcEntry);
-      }
+      create_function(curr);
       debug(CYAN">> enter %s\n"RESET, curr->name);
       enter_func(curr->llvm.elem);
+      if (!curr->is_proto) open_block(create_bloc("entry"));
       curr->llvm.is_set = true;
       break;
    }
    case END_BLOC:
    {
       debug(CYAN">> exit %s\n"RESET, curr->name);
-      // Exit current function scope
       exit_func();
       break;
    }
@@ -802,30 +729,23 @@ void handle_asm(Inst *inst)
       case MORE_EQUAL: case EQUAL: case NOT_EQUAL:
       case AND: case OR:
       {
-         // Return computed/temporary value directly
-         ret = LLVMBuildRet(builder, left->llvm.elem);
+         ret = return_(left->llvm.elem);
          break;
       }
       case INT: case BOOL: case LONG: case SHORT: case CHAR: case FLOAT:
       {
          if (left->name)
          {
-            // Load and return variable value
-            ValueRef loaded = LLVMBuildLoad2(builder, get_llvm_type(left),
-                                             left->llvm.elem, left->name);
-            ret = LLVMBuildRet(builder, loaded);
+            ValueRef loaded = load_variable(left);
+            ret = return_(loaded);
          }
          else
-         {
-            // Return literal value
-            ret = LLVMBuildRet(builder, get_value(left));
-         }
+            ret = return_(get_value(left));
          break;
       }
       case VOID:
       {
-         // Return from void function
-         ret = LLVMBuildRetVoid(builder);
+         ret = return_(NULL);
          break;
       }
       default:
@@ -840,21 +760,14 @@ void handle_asm(Inst *inst)
    {
       if (check(!left->name, "APPEND BLOC require a name")) break;
 
-      // Create a new basic block (e.g., for while loops, if statements)
-      // debug(RED"append bloc [%s]\n"RESET, left->name);
-      left->llvm.bloc = LLVMAppendBasicBlockInContext(context, get_current_func(), left->name);
+      left->llvm.bloc = create_bloc(left->name);
       left->llvm.is_set = true;
       break;
    }
    case BUILD_COND:
    {
       check(!curr->Statement.ptr->llvm.is_set, "BUILD COND require cond to be set");
-
-      // Build conditional branch (e.g., if condition goto then else goto else_block)
-      ValueRef cond = curr->Statement.ptr->llvm.elem;
-      BasicBlocRef start = left->llvm.bloc;
-      BasicBlocRef end = right->llvm.bloc;
-      curr->llvm.elem = LLVMBuildCondBr(builder, cond, start, end);
+      build_condition(curr, left, right);
       curr->llvm.is_set = true;
       break;
    }
@@ -863,38 +776,20 @@ void handle_asm(Inst *inst)
       check(!left->llvm.is_set, "left is not set");
       check(!right->llvm.is_set, "right is not set");
 
-      ValueRef leftRef = NULL, rightRef = NULL;
-      leftRef = llvm_get_ref(left);
-      rightRef = llvm_get_ref(right);
-
-      // Calculate the address of array[index] using GEP
-      // Returns a pointer to the element, not the value itself
-      ValueRef indices[] = { rightRef };
-      ValueRef elem_ptr = LLVMBuildGEP2(builder, get_llvm_type(curr), leftRef, indices, 1,
-                                        to_string(curr->type));
-
-      // Store the pointer for later use
-      // This enables both reading (str[i]) and writing (str[i] = 'a')
-      curr->llvm.elem = elem_ptr;
+      curr->llvm.elem = access_(curr, left, right);
       curr->llvm.is_set = true;
-      curr->type = CHAR;
       break;
    }
    case SET_POS:
    {
       check(!left->llvm.is_set, "SET POS require left to be set");
-
-      // Position builder at the end of specified basic block
-      LLVMPositionBuilderAtEnd(builder, left->llvm.bloc);
+      open_block(left->llvm.bloc);
       break;
    }
    case BUILD_BR:
    {
-      check(!left->llvm.is_set, "SET POS require left to be set");
-      check(!left->name, "BUILD BR require a name");
-
-      // Build unconditional branch to target block
-      LLVMBuildBr(builder, left->llvm.bloc);
+      check(!left->llvm.is_set, "BUILD BR require left to be set");
+      branch(left->llvm.bloc);
       break;
    }
    default:

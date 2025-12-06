@@ -132,7 +132,11 @@ test() {
             continue
         fi
 
-        if diff -q <(tail -n +3 "$ura_src/tmp.ll") <(tail -n +3 "$ll_file") > /dev/null 2>&1; then
+        if [[ ! -f "$ura_src/tmp.ll" ]]; then
+            echo -e "${RED}FAILED:${NC} $dir_name/$base_name (tmp.ll does not exist)"
+        elif [[ ! -f "$ll_file" ]]; then
+            echo -e "${RED}FAILED:${NC} $dir_name/$base_name ($(basename "$ll_file") does not exist)"
+        elif diff -q <(tail -n +3 "$ura_src/tmp.ll") <(tail -n +3 "$ll_file") > /dev/null 2>&1; then
             echo -e "${GREEN}PASSED:${NC} $dir_name/$base_name"
         else
             echo -e "${RED}FAILED:${NC} $dir_name/$base_name"
