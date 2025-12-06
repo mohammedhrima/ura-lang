@@ -264,6 +264,14 @@ void print_inst(Inst *inst)
       if (right->ir_reg) print("r%.2d ", right->ir_reg);
       else print_value(right);
       if (right->name) print("(%s) ", right->name);
+      break;
+   }
+   case CAST:
+   {
+      if (left->ir_reg) print("r%.2d ", left->ir_reg);
+      if (left->name) print("(%s) ", left->name);
+      print("to %s", to_string(right->type));
+      break;
    }
    case IF: case ELIF: case END_IF: case ELSE:
    case STRUCT_ALLOC: case STRUCT_BODY:
@@ -275,7 +283,7 @@ void print_inst(Inst *inst)
 
 void print_ir()
 {
-   if (!DEBUG) return;
+   if (!DEBUG || found_error) return;
    copy_insts();
    print(GREEN BOLD SPLIT RESET);
    print(GREEN BOLD"PRINT IR:\n" RESET);
@@ -728,7 +736,7 @@ char *to_string_(char *filename, int line, Type type)
       [PTR] = "PTR",
       [STRUCT_DEF] = "ST_DEF", [STRUCT_BODY] = "ST_BODY",
       [STRUCT_ALLOC] = "ST_ALLOC", [STRUCT_CALL] = "ST_CALL",
-      [ARRAY] = "ARRAY", [CAST] = "CAST",
+      [ARRAY] = "ARRAY", [CAST] = "CAST", [TO] = "TO",
 
 
       [ASSIGN] = "ASSIGN", [ADD_ASSIGN] = "ADD_ASGN",

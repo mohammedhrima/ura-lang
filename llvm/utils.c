@@ -167,9 +167,22 @@ ValueRef access(ValueRef source, ValueRef index, TypeRef elementType)
    return LLVMBuildGEP2(builder, elementType, source, indices, 1, "access");
 }
 
-ValueRef cast_to(ValueRef source, LLVMTypeRef ntype, char *name)
+ValueRef cast_to(ValueRef source, TypeRef ntype, char *name)
 {
-   return LLVMBuildSExt(builder, source, ntype, name);
+   TypeRef sourceType = LLVMTypeOf(source);
+   unsigned sourceBits = LLVMGetIntTypeWidth(sourceType);
+   unsigned targetBits = LLVMGetIntTypeWidth(ntype);
+   
+   if (sourceBits > targetBits) {
+      // Truncate: large → small
+      return LLVMBuildTrunc(builder, source, ntype, name);
+   } else if (sourceBits < targetBits) {
+      // Extend: small → large
+      return LLVMBuildSExt(builder, source, ntype, name);  // or ZExt for unsigned
+   } else {
+      // Same size, return as-is
+      return source;
+   }
 }
 
 void ret(ValueRef value)

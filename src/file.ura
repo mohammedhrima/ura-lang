@@ -1,10 +1,15 @@
-
-func int strlen(chars str):
-    int i = 0
-    while str[i] != '\0':
-        i += 1
-    return i
+// func int to_ascii(char c):
+    
+//     // // Check if it's a valid character
+//     // if (n >= 97 and n <= 122) or  // a-z
+//     //    (n >= 65 and n <= 90) or   // A-Z
+//     //    (n >= 48 and n <= 57) or   // 0-9
+//     //    n == 32 or n == 0:         // space or null terminator
+//     //     return n
+//     return n
 
 main():
-    int len = strlen("abc")
-    return len
+    char c = 'a'
+    int n = cast c to char
+    if n < 0 or n > 127: return -1
+    return n
