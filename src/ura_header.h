@@ -94,6 +94,7 @@ enum Type
 
    // Data types
    VOID, INT, FLOAT, LONG, SHORT, BOOL, CHAR, CHARS, PTR,
+   VARIADIC, STACK,
    ARRAY, AS,
 
    // Struct Usage
@@ -154,6 +155,7 @@ struct Token
    bool is_param;
    // bool is_call_param;
    bool is_cast;
+   bool is_variadic;
 
    char *filename;
    int line;
@@ -202,7 +204,6 @@ struct Token
       // function declaration
       struct
       {
-         bool isVaradic;
          Token **args;
          int size;
          int pos;
@@ -278,6 +279,7 @@ typedef LLVMValueRef ValueRef;
 extern ContextRef context;
 extern ModuleRef module;
 extern BuilderRef builder;
+extern TypeRef vd, f32, i1, i8, i16, i32, i64, p8, p32;
 
 #if defined(__APPLE__)
 extern struct __sFILE *asm_fd;
@@ -361,6 +363,7 @@ ValueRef get_param(Token *token);
 void build_condition(Token* curr, Token *left, Token* right);
 ValueRef access_(Token *curr, Token *left, Token *right);
 ValueRef cast(Token *from, Token *to);
+ValueRef allocate_stack(ValueRef size, TypeRef elementType, char *name);
 
 // ----------------------------------------------------------------------------
 // Utilities

@@ -1,6 +1,6 @@
 #include "ura_header.h"
 
-static TypeRef vd, f32, i1, i8, i16, i32, i64, p8, p32;
+TypeRef vd, f32, i1, i8, i16, i32, i64, p8, p32;
 void init(char *name)
 {
    context = LLVMContextCreate();
@@ -99,7 +99,7 @@ void create_function(Token *token)
 {
    TypeRef *args = NULL;
    int pos = token->Fdec.pos;
-   bool isVariadic = token->Fdec.isVaradic;
+   bool isVariadic = token->is_variadic;
    if (pos)
    {
       args = allocate(pos + 1, sizeof(TypeRef));
@@ -263,4 +263,27 @@ ValueRef cast(Token *from, Token *to)
       print(RED"the same\n"RESET);
       return source;
    }
+}
+
+ValueRef allocate_stack(ValueRef size, TypeRef elementType, char *name)
+{
+   // Indices for GEP to get the pointer to the first element
+   ValueRef indices[] = {
+      LLVMConstInt(i32, 0, 0),
+      LLVMConstInt(i32, 0, 0)
+   };
+
+   // Constant size: create an [N x elem] alloca and GEP to &array[0]
+   if (LLVMIsConstant(size))
+   {
+      unsigned long long constSize = LLVMConstIntGetZExtValue(size);
+      TypeRef arrayType = LLVMArrayType(elementType, constSize);
+      ValueRef array_alloca = LLVMBuildAlloca(builder, arrayType, name);
+      // Return pointer to first element (elementType*)
+      return LLVMBuildGEP2(builder, elementType, array_alloca, indices, 2, name);
+   }
+
+   // Dynamic size: use LLVMBuildArrayAlloca then GEP to &array[0]
+   ValueRef array_alloca = LLVMBuildArrayAlloca(builder, elementType, size, name);
+   return LLVMBuildGEP2(builder, elementType, array_alloca, indices, 2, name);
 }
