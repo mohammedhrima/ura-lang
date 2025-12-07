@@ -98,6 +98,25 @@ Token *func_call_ir(Node *node)
       inst = new_inst(node->token);
 #endif
    }
+   else if (strcmp(node->token->name, "stack") == 0)
+   {
+      node->token->Fcall.args = allocate(node->cpos, sizeof(Token*));
+      node->token->Fcall.pos = node->cpos;
+      
+      node->token->retType = PTR;
+      node->token->type = STACK;
+
+      Node *call_args = node;
+
+      for (int i = 0; !found_error && i < call_args->cpos; i++)
+      {
+         Node *carg = call_args->children[i]; // will always be ID
+         Token *src = generate_ir(carg);
+         if (check(src->type == ID, "Indeclared variable %s", carg->token->name)) break;
+         node->token->Fcall.args[i] = src;
+      }
+      inst = new_inst(node->token);
+   }
    else
    {
       Node *func = get_function(node->token->name);
@@ -108,25 +127,28 @@ Token *func_call_ir(Node *node)
 
       func = copy_node(func);
       node->token->retType = func->token->retType;
+      node->token->is_variadic = func->token->is_variadic;
 
-      // setReg(node->token, func->token->creg);
-      Node *fcall = node;
-      Node *fdec = func->left;
+      Node *call_args = node;
+      Node *dec_args = func->left;
 
-      if (check(fcall->cpos != fdec->cpos,
+      if (check(call_args->cpos != dec_args->cpos && !node->token->is_variadic,
                 "Incompatible number of arguments %s", func->token->name))
          return NULL;
 
-      for (int i = 0; !found_error && i < fcall->cpos; i++)
+      for (int i = 0; !found_error && i < call_args->cpos; i++)
       {
-         Node *carg = fcall->children[i]; // will always be ID
-         Node *darg = fdec->children[i];
-
+         Node *carg = call_args->children[i]; // will always be ID
          Token *src = generate_ir(carg);
-         Token *dist = darg->token;
 
          if (check(src->type == ID, "Indeclared variable %s", carg->token->name)) break;
-         if (check(!compatible(src, dist), "Incompatible type arg %s", func->token->name)) break;
+         if (i < dec_args->cpos)
+         {
+            Node *darg = dec_args->children[i];
+            Token *dist = darg->token;
+
+            if (check(!compatible(src, dist), "Incompatible type arg %s", func->token->name)) break;
+         }
 
          // src->is_param = false;
          node->token->Fcall.args[i] = src;
@@ -338,7 +360,7 @@ Token *op_ir(Node *node)
    {
    case ASSIGN:
    {
-      if(check(!compatible(left, right), "type mismatch in assignment"))
+      if (check(!compatible(left, right), "type mismatch in assignment"))
       {
          // print("between %k and %k\n", left, right);
       }
@@ -563,8 +585,6 @@ Token *generate_ir(Node *node)
 }
 
 // ASSEMBLY GENERATION
-// #include "ura_llvm.c"
-
 void handle_asm(Inst *inst)
 {
    // debug("Processing: %k\n", inst->token);
@@ -703,6 +723,22 @@ void handle_asm(Inst *inst)
       curr->llvm.is_set = true;
       break;
    }
+ case STACK:
+{
+   Token *arg = curr->Fcall.args[0];
+   ValueRef elem = NULL;
+   check(!arg->llvm.is_set, "llvm is not set");
+   if (arg->name && !arg->is_param && arg->type != FCALL)
+      elem = load_variable(arg);
+   else
+      elem = arg->llvm.elem;
+
+   // Request an element pointer (i8*) directly.
+   curr->llvm.elem = allocate_stack(elem, i8, "stack");
+   curr->llvm.is_set = true;
+   break;
+}
+
    case FCALL:
    {
       // TODO: move this insde call_function later

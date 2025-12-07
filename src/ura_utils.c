@@ -737,7 +737,8 @@ char *to_string_(char *filename, int line, Type type)
       [PTR] = "PTR",
       [STRUCT_DEF] = "ST_DEF", [STRUCT_BODY] = "ST_BODY",
       [STRUCT_ALLOC] = "ST_ALLOC", [STRUCT_CALL] = "ST_CALL",
-      [ARRAY] = "ARRAY", [AS] = "AS",
+      [ARRAY] = "ARRAY", [AS] = "AS", [VARIADIC] = "VARIADIC",
+      [STACK] = "STACK",
 
 
       [ASSIGN] = "ASSIGN", [ADD_ASSIGN] = "ADD_ASGN",
