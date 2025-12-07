@@ -233,7 +233,7 @@ void tokenize(char *filename)
    debug(GREEN BOLD"TOKENIZE: [%s]\n" RESET, filename);
 
    struct { char *value; Type type; } specials[] = {
-      {"->", ARROW},
+      {"->", ARROW}, {"...", VARIADIC},
       {".", DOT}, {":", DOTS}, {"+=", ADD_ASSIGN}, {"-=", SUB_ASSIGN},
       {"*=", MUL_ASSIGN}, {"/=", DIV_ASSIGN}, {"!=", NOT_EQUAL}, {"!", NOT},
       {"==", EQUAL}, {"<=", LESS_EQUAL}, {">=", MORE_EQUAL},
@@ -479,31 +479,42 @@ Node *func_dec(Node *node)
    Token *last;
    while (!found_error && !(last = find(RPAR, END, 0)))
    {
-      bool is_ref = find(REF, 0) != NULL;
-      Token* data_type = find(DATA_TYPES, ID, 0);
-      if (data_type && data_type->type == ID)
+      if (find(VARIADIC, 0))
       {
-         data_type = get_struct(data_type->name);
-         if (data_type) data_type->type = STRUCT_CALL;
-      }
-      if (check(!data_type, "expected data type in function argument")) break;
-      Token *name = find(ID, 0);
-      if (check(!name, "expected identifier in function argument")) break;
-      Node *curr;
-      if (data_type->type == STRUCT_CALL)
-      {
-         curr = new_node(data_type);
-         data_type->is_ref = is_ref;
-         setName(data_type, name->name);
+         node->token->is_variadic = true;
+         last = find(RPAR, 0);
+         check(!last, "expected ) after function ... in variadic function");
+         break;
       }
       else
       {
-         curr = new_node(name);
-         name->is_ref = is_ref;
-         name->type = data_type->type;
+         bool is_ref = find(REF, 0) != NULL;
+         Token* data_type = find(DATA_TYPES, ID, 0);
+         if (data_type && data_type->type == ID)
+         {
+            data_type = get_struct(data_type->name);
+            if (data_type) data_type->type = STRUCT_CALL;
+         }
+         debug(">>> %k <<<<\n", tokens[exe_pos]);
+         if (check(!data_type, "expected data type in function argument")) break;
+         Token *name = find(ID, 0);
+         if (check(!name, "expected identifier in function argument")) break;
+         Node *curr;
+         if (data_type->type == STRUCT_CALL)
+         {
+            curr = new_node(data_type);
+            data_type->is_ref = is_ref;
+            setName(data_type, name->name);
+         }
+         else
+         {
+            curr = new_node(name);
+            name->is_ref = is_ref;
+            name->type = data_type->type;
+         }
+         curr->token->is_declare = true;
+         add_child(node->left, curr);
       }
-      curr->token->is_declare = true;
-      add_child(node->left, curr);
       find(COMA, 0); // TODO: check this later
    }
    check(!found_error && last->type != RPAR, "expected ) after function declaration");
