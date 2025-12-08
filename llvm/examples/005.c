@@ -12,7 +12,7 @@ int main()
 {
    init("simple_printf");
 
-   Foo printfFunc = (Foo){.name = "printf", .retType = int32Type, .paramCount = 1, .paramTypes = (LLVMTypeRef[]){charPtrType}, .isVariadic = true, };
+   Foo printfFunc = (Foo){.name = "printf", .retType = int32Type, .paramCount = 1, .paramTypes = (TypeRef[]){charPtrType}, .isVariadic = true, };
    create_function(&printfFunc);
 
    Foo mainFunc = (Foo){.name = "main", .retType = int32Type};
