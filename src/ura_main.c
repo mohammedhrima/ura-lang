@@ -52,6 +52,7 @@ void build_ir()
    debug(GREEN BOLD"GENERATE INTERMEDIATE REPRESENTATIONS:\n" RESET);
    for (int i = 0; !found_error && i < global->cpos; i++)
       generate_ir(global->children[i]);
+   copy_insts();
    print_ir();
 #endif
 }
@@ -59,17 +60,25 @@ void build_ir()
 void optimize_ir()
 {
    if (found_error) return;
+#if OPTIMIZE
+   debug(GREEN BOLD"GENERATE INTERMEDIATE REPRESENTATIONS:\n" RESET);
+   while (did_opimize());
+   copy_insts();
+   print_ir();
+#endif
 }
 
 void code_gen(char *filename)
 {
    if (found_error) return;
-
-#if ASM
+#if IR
    debug(GREEN BOLD"GENERATE ASSEMBLY CODE:\n" RESET);
    print(GREEN BOLD SPLIT RESET);
    copy_insts();
+   optimize_ir();
+#endif
 
+#if ASM
    char *moduleName = resolve_path(filename);
    init(moduleName);
    for (int i = 0; insts[i] ; i++) handle_asm(insts[i]);

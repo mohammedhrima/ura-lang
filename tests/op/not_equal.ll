@@ -11,11 +11,6 @@ entry:
   ret i32 20
 }
 
-define i32 @zero() {
-entry:
-  ret i32 0
-}
-
 define i32 @main() {
 entry:
   %a = alloca i32, align 4

@@ -3,8 +3,8 @@ protoFunc void abort()
 protoFunc void exit(int code)
 protoFunc void quick_exit(int code)
 protoFunc void _Exit(int code)
-protoFunc int atexit(pointer func)
-protoFunc int at_quick_exit(pointer func)
+// protoFunc int atexit(pointer func)
+// protoFunc int at_quick_exit(pointer func)
 
 // Environment
 protoFunc chars getenv(chars name)

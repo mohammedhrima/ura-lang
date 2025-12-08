@@ -22,6 +22,8 @@ protoFunc chars gets(chars buffer)
 // Block I/O
 protoFunc int fread(pointer ptr, int size, int nmemb, pointer file)
 protoFunc int fwrite(pointer ptr, int size, int nmemb, pointer file)
+protoFunc int write(int fd, pointer ptr, int len)
+protoFunc int read(int fd, pointer ptr, int len)
 
 // File positioning
 protoFunc int fseek(pointer file, long offset, int whence)
@@ -53,7 +55,7 @@ protoFunc int fileno(pointer file)
 protoFunc pointer fdopen(int fd, chars mode)
 
 // Formatted output
-protoFunc int printf(chars format)
+protoFunc int printf(chars format, ...)
 protoFunc int fprintf(pointer file, chars format)
 protoFunc int sprintf(chars buffer, chars format)
 protoFunc int snprintf(chars buffer, int size, chars format)

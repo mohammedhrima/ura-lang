@@ -8,24 +8,29 @@ SECTIONS:
 */
 
 // TOKENIZE
-void parse_token(char *filename, int line, char *input, int s, int e,  Type type, int space)
+Token *parse_token(char *filename, int line, char *input, int s, int e,  Type type, int space)
 {
    Token *new = new_token(type, space);
    new->line = line;
    new->filename = filename;
+   new->pos = tk_pos;
 
    switch (type)
    {
    case INT:
    {
+      new->logType = VALUE;
       while (s < e) new->Int.value = new->Int.value * 10 + input[s++] - '0';
       break;
    }
    case ID:
    {
+      new->logType = SYMBOL;
       if (e <= s) break;
       new->name = allocate(e - s + 1, sizeof(char));
+      new->logName = allocate(e - s + 1, sizeof(char));
       strncpy(new->name, input + s, e - s);
+      strncpy(new->logName, input + s, e - s);
       int i = 0;
 
       struct { char *name; bool value; } bools[] = {{"True", true}, {"False", false}, {0, 0}};
@@ -91,6 +96,7 @@ void parse_token(char *filename, int line, char *input, int s, int e,  Type type
    }
    case FDEC:
    {
+      new->logType = SYMBOL;
       if (e <= s) break;
       new->name = allocate(e - s + 1, sizeof(char));
       strncpy(new->name, input + s, e - s);
@@ -98,6 +104,7 @@ void parse_token(char *filename, int line, char *input, int s, int e,  Type type
    }
    case CHARS:
    {
+      new->logType = VALUE;
       if (e <= s) break;
       int len = e - s;
       new->Chars.value = allocate(len + 1, sizeof(char));
@@ -196,6 +203,7 @@ void parse_token(char *filename, int line, char *input, int s, int e,  Type type
    }
    case CHAR:
    {
+      new->logType = VALUE;
       if (e == s + 1) new->Char.value = input[s];
       else // is special character
       {
@@ -219,9 +227,10 @@ void parse_token(char *filename, int line, char *input, int s, int e,  Type type
       break;
    }
    default:
-      check(e > s, "implement adding name for this one %s", to_string(type));
+      // todo(1 , "implement adding name for this one %s\n", to_string(type));
       break;
    }
+   return new;
    // debug("new %k\n", new);
 }
 
@@ -247,8 +256,8 @@ void tokenize(char *filename)
    int space = 0;
    int line = 0;
    bool new_line = true;
-   
-   if(!add_file(filename)) return;
+
+   if (!add_file(filename)) return;
    for (int i = 0; input[i] && !found_error; )
    {
       int s = i;
@@ -345,7 +354,9 @@ void tokenize(char *filename)
          size_t len = strlen(specials[j].value);
          if (strncmp(specials[j].value, input + i, len) == 0)
          {
-            parse_token(filename, line, NULL, 0, 0, specials[j].type, space);
+            Token *curr = parse_token(filename, line, NULL, 0, 0, specials[j].type, space);
+            curr->logName = strdup(specials[j].value);
+            curr->logType = SYMBOL;
             i += len;
             if (includes(specials[j].type, ARROW, DOTS, 0)) space += TAB;
             found = true;
@@ -501,7 +512,7 @@ Node *func_dec(Node *node)
          // debug(">>> %k <<<<\n", tokens[exe_pos]);
          if (check(!data_type, "expected data type in function argument")) break;
          Token *name = find(ID, 0);
-         if (check(!name, "expected identifier in function argument")) break;
+         if (check(!name, "expected identifier in function argument %s", fname->name)) break;
          Node *curr;
          if (data_type->type == STRUCT_CALL)
          {
@@ -769,7 +780,7 @@ Node *prime()
    Token *token;
    if ((token = find(ID, INT, CHARS, CHAR, FLOAT, BOOL, LONG, SHORT, 0)))
       return symbol(token);
-   else if((token = find(TYPEOF, 0)))
+   else if ((token = find(TYPEOF, 0)))
    {
       node = new_node(token);
       Token *tk_type = find(DATA_TYPES, 0);
