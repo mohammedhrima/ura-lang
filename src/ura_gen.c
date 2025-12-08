@@ -48,7 +48,6 @@ Token *func_dec_ir(Node *node)
 
    // if (!node->token->is_proto)
    {
-      // TODO: if RETURN not found add it
       Token *new = new_token(END_BLOC, node->token->space);
       setName(new, node->token->name);
       new_inst(new);
@@ -169,7 +168,7 @@ Token *if_ir(Node *node)
    int cpos = node->right->cpos;
 
    // CONDITION
-   Token *cond = generate_ir(node->left); // TODO: check if it's boolean
+   Token *cond = generate_ir(node->left);
    if (check(!cond || cond->retType != BOOL, "expected condition that return bool")) return NULL;
 
    // APPEND BLOC
@@ -233,8 +232,8 @@ Token *if_ir(Node *node)
       case ELIF:
       {
          enter_scoop(curr);
-         Token *cond = generate_ir(curr->left); // TODO: check if it's boolean
-         if (!cond) return NULL;
+         Token *cond = generate_ir(curr->left);
+         if (check(!cond || cond->retType != BOOL, "expected condition that return bool")) return NULL;
          i++;
 
          // BUILD CONDITION
@@ -306,7 +305,7 @@ Token *while_ir(Node *node)
 
    // CONDITION
    Token *cond = generate_ir(node->left); // TODO: check if it's boolean
-   if (!cond) return NULL;
+   if (check(!cond || cond->retType != BOOL, "expected condition that return bool")) return NULL;
 
    // BUILD CONDITION
    // cond ? go to left : go to right
@@ -841,11 +840,6 @@ void handle_asm(Inst *inst)
       Token *arg = curr->Fcall.args[0];
       check(!arg->llvm.is_set, "llvm is not set");
       ValueRef elem = llvm_get_ref(arg);
-      // TODO: compare ti with llvm_get_ref
-      // if (arg->name && !arg->is_param && arg->type != FCALL)
-      //    elem = load_variable(arg);
-      // else
-      //    elem = arg->llvm.elem;
 
       // Request an element pointer (i8*) directly.
       curr->llvm.elem = allocate_stack(elem, i8, "stack");
