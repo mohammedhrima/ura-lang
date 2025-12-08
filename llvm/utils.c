@@ -185,6 +185,27 @@ ValueRef cast_to(ValueRef source, TypeRef ntype, char *name)
    }
 }
 
+ValueRef allocate_stack(ValueRef size, TypeRef elementType, char *name)
+{
+   // Check if size is a constant
+   if (LLVMIsConstant(size))
+   {
+      // Static allocation: use array type
+      unsigned long long constSize = LLVMConstIntGetZExtValue(size);
+      TypeRef arrayType = LLVMArrayType(elementType, constSize);
+      ValueRef array_alloca = LLVMBuildAlloca(builder, arrayType, name);
+      
+      ValueRef indices[] = {
+         LLVMConstInt(int32Type, 0, 0),
+         LLVMConstInt(int32Type, 0, 0)
+      };
+      return LLVMBuildGEP2(builder, arrayType, array_alloca, indices, 2, name);
+   }
+   // Dynamic allocation: use alloca with size
+   ValueRef array_alloca = LLVMBuildArrayAlloca(builder, elementType, size, name);
+   return array_alloca;
+}
+
 void ret(ValueRef value)
 {
    if (value) LLVMBuildRet(builder, value);

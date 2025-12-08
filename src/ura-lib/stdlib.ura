@@ -1,0 +1,48 @@
+// Program termination
+protoFunc void abort()
+protoFunc void exit(int code)
+protoFunc void quick_exit(int code)
+protoFunc void _Exit(int code)
+protoFunc int atexit(pointer func)
+protoFunc int at_quick_exit(pointer func)
+
+// Environment
+protoFunc chars getenv(chars name)
+protoFunc int setenv(chars name, chars value, int overwrite)
+protoFunc int unsetenv(chars name)
+protoFunc int putenv(chars string)
+protoFunc int system(chars command)
+
+// Random numbers
+protoFunc int rand()
+protoFunc void srand(int seed)
+
+// Searching and sorting
+protoFunc pointer bsearch(pointer key, pointer base, int nmemb, int size, pointer compar)
+protoFunc void qsort(pointer base, int nmemb, int size, pointer compar)
+
+// Integer arithmetic
+protoFunc int abs(int n)
+protoFunc long labs(long n)
+
+// Division with quotient and remainder
+protoFunc pointer div(int numer, int denom)
+protoFunc pointer ldiv(long numer, long denom)
+
+// String to number conversion
+protoFunc int atoi(chars str)
+protoFunc long atol(chars str)
+protoFunc float atof(chars str)
+protoFunc long strtol(chars str, pointer endptr, int base)
+protoFunc long strtoul(chars str, pointer endptr, int base)
+protoFunc float strtof(chars str, pointer endptr)
+protoFunc float strtod(chars str, pointer endptr)
+protoFunc long strtoll(chars str, pointer endptr, int base)
+protoFunc long strtoull(chars str, pointer endptr, int base)
+
+// Multibyte/wide character conversion
+protoFunc int mblen(chars s, int n)
+protoFunc int mbtowc(pointer pwc, chars s, int n)
+protoFunc int wctomb(chars s, int wchar)
+protoFunc int mbstowcs(pointer dest, chars src, int n)
+protoFunc int wcstombs(chars dest, pointer src, int n)

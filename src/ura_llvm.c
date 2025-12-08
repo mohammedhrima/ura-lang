@@ -90,8 +90,13 @@ LLVMValueRef get_value(Token *token)
 
 ValueRef llvm_get_ref(Token *token)
 {
-   if (token->name && !token->is_param && !includes(token->type, FCALL, AND, OR, AS))
+   debug(RED"get %k, ", token);
+   if (token->name && !token->is_param && !includes(token->type, FCALL, AND, OR, AS, STACK))
+   {
+      debug("load elem\n");
       return load_variable(token);
+   }
+   debug("current elem\n");
    return token->llvm.elem;
 }
 
@@ -134,6 +139,7 @@ void open_block(BasicBlockRef bloc)
 
 ValueRef load_variable(Token *token)
 {
+   debug("load %k\n", token);
    return LLVMBuildLoad2(builder, get_llvm_type(token), token->llvm.elem, token->name);
 }
 
@@ -242,15 +248,15 @@ ValueRef access_(Token *curr, Token *left, Token *right)
 
 ValueRef cast(Token *from, Token *to)
 {
-   ValueRef source = from->llvm.elem;
+   ValueRef source = llvm_get_ref(from); //.elem;
    TypeRef sourceType = LLVMTypeOf(source);
    TypeRef ntype = get_llvm_type(to);
 
    // Check if source is a pointer - if so, LOAD it first
-   if (LLVMGetTypeKind(sourceType) == LLVMPointerTypeKind) {
-      source = load_variable(from);
-      sourceType = get_llvm_type(from);
-   }
+   // if (LLVMGetTypeKind(sourceType) == LLVMPointerTypeKind) {
+   //    source = load_variable(from);
+   //    sourceType = get_llvm_type(from);
+   // }
 
    unsigned sourceBits = LLVMGetIntTypeWidth(sourceType);
    unsigned targetBits = LLVMGetIntTypeWidth(ntype);
@@ -260,7 +266,7 @@ ValueRef cast(Token *from, Token *to)
    } else if (sourceBits < targetBits) {
       return LLVMBuildSExt(builder, source, ntype, "cast");
    } else {
-      print(RED"the same\n"RESET);
+      // print(RED"the same\n"RESET);
       return source;
    }
 }
@@ -280,7 +286,7 @@ ValueRef allocate_stack(ValueRef size, TypeRef elementType, char *name)
       TypeRef arrayType = LLVMArrayType(elementType, constSize);
       ValueRef array_alloca = LLVMBuildAlloca(builder, arrayType, name);
       // Return pointer to first element (elementType*)
-      return LLVMBuildGEP2(builder, elementType, array_alloca, indices, 2, name);
+      return LLVMBuildGEP2(builder, arrayType, array_alloca, indices, 2, name);;
    }
 
    // Dynamic size: use LLVMBuildArrayAlloca then GEP to &array[0]

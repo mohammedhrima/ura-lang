@@ -1,0 +1,6 @@
+// Memory allocation
+protoFunc pointer malloc(int size)
+protoFunc pointer calloc(int len, int size)
+protoFunc pointer realloc(pointer ptr, int newSize)
+protoFunc void free(pointer ptr)
+protoFunc pointer aligned_alloc(int alignment, int size)

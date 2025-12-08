@@ -7,11 +7,9 @@ _main:                                  ; @main
 ; %bb.0:                                ; %entry
 	sub	sp, sp, #16
 	.cfi_def_cfa_offset 16
-	add	x8, sp, #12
-	mov	w9, #2                          ; =0x2
-	mov	w0, #2                          ; =0x2
-	str	x8, [sp]
-	str	w9, [sp, #12]
+	mov	w8, #72                         ; =0x48
+	mov	w0, wzr
+	strb	w8, [sp, #6]
 	add	sp, sp, #16
 	ret
 	.cfi_endproc
