@@ -361,8 +361,62 @@ Token *op_ir(Node *node)
    {
    case ASSIGN:
    {
-      if (check(!compatible(left, right), "type mismatch in assignment"))
+      if (check(!compatible(left, right), "type mismatch"))
       {
+         int s = left->pos;
+         int e = right->pos;
+         int l = left->line;
+
+         int ts = s;
+         for (; ts > 0 && tokens[ts - 1]->line == l; ts--);
+         int te = e;
+         for (; tokens[te]->type != END && tokens[te]->line == l; te++);
+
+         int space = 0;
+         bool add_space = true;
+
+         while (ts < te)
+         {
+            Token *token = tokens[ts];
+            int to_add = 0;
+            switch (token->logType)
+            {
+            case SYMBOL:
+            {
+               to_add += print("%s ", token->logName);
+               break;
+            }
+            case VALUE:
+            {
+               switch (token->type)
+               {
+               case INT: to_add += print("%d", token->Int.value); break;
+               case SHORT: to_add += print("%d", token->Short.value); break;
+               case LONG: to_add += print("%lld", token->Long.value); break;
+               case FLOAT: to_add += print("%f", token->Float.value); break;
+               case BOOL: to_add += print("%s", token->Bool.value ? "True" : "False"); break;
+               case CHARS: to_add += print_escaped(token->Chars.value); break;
+               case CHAR: to_add += print("%c", token->Char.value); break;
+               default:
+                  todo(1, "handle this case %s", to_string(token->type));
+                  break;
+               }
+               break;
+            }
+            default:
+               debug(RED"%k "RESET, token);
+               todo(1, "handle this case");
+               break;
+            }
+            if (token == node->token) add_space = false;
+            if (add_space) space += to_add;
+            ts++;
+         }
+         print("\n");
+         for (int i = 0; i < space; i++) print(" ");
+         print("^\n");
+
+
          // print("between %k and %k\n", left, right);
       }
       node->token->ir_reg = left->ir_reg;
@@ -486,7 +540,7 @@ Token *generate_ir(Node *node)
    {
       Token *left = generate_ir(node->left);
       Token *right = generate_ir(node->right);
-      check(left->retType != BOOL, "expected boolean but recieved (%s)", to_string(left->retType));
+      check(left->retType != BOOL, "expected booleanatexit but recieved (%s)", to_string(left->retType));
       check(right->retType != BOOL, "expected boolean but recieved (%s)", to_string(right->retType));
 
       inst = new_inst(node->token);
@@ -585,6 +639,63 @@ Token *generate_ir(Node *node)
    return NULL;
 }
 
+// OPTIMIZATION
+
+bool did_opimize()
+{
+   bool res = false;
+   Inst **all = insts;
+   int i = 0;
+   for (i = 0; all[i]; i++)
+   {
+      Inst *inst = all[i];
+      bool remove = true;
+      if (inst->token->type == FDEC && strcmp(inst->token->name, "main") != 0)
+      {
+         for (int j = i + 1; all[j]; j++)
+         {
+            Token *token = all[j]->token;
+            if (token->type == FCALL && strcmp(token->name, inst->token->name) == 0)
+            {
+               remove = false;
+               break;
+            }
+         }
+         if (remove)
+         {
+            for (int k = 0; k < inst->token->Fdec.pos; k++)
+            {
+               inst->token->Fdec.args[k]->remove = true;
+            }
+            int k = i;
+            for (; all[k]->token->type != END_BLOC; k++)
+            {
+               all[k]->token->remove = true;
+            }
+            todo(all[k]->token->type != END_BLOC, "expected end bloc");
+            all[k]->token->remove = true;
+            res = true;
+         }
+      }
+   }
+   Inst **tmp = allocate(i + 1, sizeof(Inst*));
+   int k = 0;
+   for (int j = 0; all[j]; j++)
+   {
+      if (!all[j]->token->remove)
+      {
+         tmp[k++] = all[j];
+      }
+      else
+      {
+         // debug(RED"remove %k\n"RESET, all[j]->token);
+      }
+   }
+   free(insts);
+   insts = tmp;
+   return res;
+}
+
 // ASSEMBLY GENERATION
 void handle_asm(Inst *inst)
 {
@@ -610,14 +721,15 @@ void handle_asm(Inst *inst)
       curr->llvm.is_set = true;
       break;
    }
-   case INT: case BOOL: case LONG: case SHORT: 
+   case INT: case BOOL: case LONG: case SHORT:
    case CHAR: case CHARS: case PTR: case FLOAT:
    {
       if (curr->is_param)
       {
          // debug(" is_param");
-         check(curr->Param.func_ptr == NULL, "error\n");
-         check(!curr->Param.func_ptr->llvm.is_set, "error\n");
+         if (check(curr->Param.func_ptr == NULL, "error\n")) return;
+         if (check(!curr->Param.func_ptr->llvm.is_set, "error\n")) return;
+
 
          ret = get_param(curr);
          curr->is_param = false;

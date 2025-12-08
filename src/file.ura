@@ -2,5 +2,5 @@ use "ura-lib/header"
 
 main():
     chars str = typeof "hello world\n"
-    puts(str)
+    printf("<%s>\n", str)
     return 0
