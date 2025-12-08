@@ -85,9 +85,12 @@ typedef enum Type Type;
 typedef enum LogType LogType;
 typedef struct LLVM LLVM;
 
-typedef LLVMValueRef ValueRef;
-typedef LLVMBasicBlockRef BasicBlocRef;
 typedef LLVMTypeRef TypeRef;
+typedef LLVMContextRef ContextRef;
+typedef LLVMModuleRef ModuleRef;
+typedef LLVMBuilderRef BuilderRef;
+typedef LLVMBasicBlockRef BasicBlockRef;
+typedef LLVMValueRef ValueRef;
 
 // STRUCTS
 enum LogType
@@ -139,7 +142,7 @@ struct LLVM
 {
    bool is_set;
    ValueRef elem;
-   BasicBlocRef bloc;
+   BasicBlockRef bloc;
    TypeRef type;
    TypeRef funcType;
 };
@@ -289,13 +292,6 @@ extern char **used_files;
 extern int used_size;
 extern int used_pos;
 
-typedef LLVMTypeRef TypeRef;
-typedef LLVMContextRef ContextRef;
-typedef LLVMModuleRef ModuleRef;
-typedef LLVMBuilderRef BuilderRef;
-typedef LLVMBasicBlockRef BasicBlockRef;
-typedef LLVMValueRef ValueRef;
-
 extern ContextRef context;
 extern ModuleRef module;
 extern BuilderRef builder;
@@ -355,10 +351,9 @@ void copy_insts();
 bool compatible(Token *left, Token *right);
 Token *generate_ir(Node *node);
 void handle_asm(Inst *inst);
-// LLVMTypeRef get_llvm_type(Type type);
 TypeRef get_llvm_type(Token* token);
 ValueRef get_value(Token *token);
-void enter_func(LLVMValueRef func);
+void enter_func(ValueRef func);
 void exit_func();
 ValueRef get_current_func();
 void init(char *name);
@@ -366,7 +361,7 @@ void finalize(char *moduleName);
 ValueRef load_variable(Token *token);
 ValueRef create_string(char *value);
 TypeRef get_llvm_type(Token *token);
-LLVMValueRef get_value(Token *token);
+ValueRef get_value(Token *token);
 ValueRef llvm_get_ref(Token *token);
 void create_function(Token *token);
 void call_function(Token *token, LLVM *source, ValueRef *args, int argsCount);
@@ -378,7 +373,7 @@ ValueRef assign2(Token *variable, Token* value);
 ValueRef operation(Token *token, Token* left, Token* right);
 ValueRef NotOperation(Token *token);
 ValueRef return_(ValueRef value);
-ValueRef allocate_variable(LLVMTypeRef type, char *name);
+ValueRef allocate_variable(TypeRef type, char *name);
 ValueRef get_param(Token *token);
 void build_condition(Token* curr, Token *left, Token* right);
 ValueRef access_(Token *curr, Token *left, Token *right);

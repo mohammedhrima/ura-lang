@@ -414,7 +414,6 @@ Node *assign()
 }
 
 AST_NODE(logic, equality, AND, OR, 0);
-// TODO: handle ! operator
 AST_NODE(equality, comparison, EQUAL, NOT_EQUAL, 0);
 AST_NODE(comparison, add_sub, LESS, MORE, LESS_EQUAL, MORE_EQUAL, 0);
 AST_NODE(add_sub, mul_div, ADD, SUB, 0);
@@ -679,7 +678,6 @@ Node *struct_def(Node *node)
       }
       if (check(!id, "expected id after data type")) break;
       id->type = attr->type;
-      // id->is_attr = true; // TODO: check if is-attr is useful
       add_attribute(node->token, id);
    }
    new_struct(node->token);
@@ -694,7 +692,7 @@ Node *if_node(Node *node)
    //    + right   : elif/else Layout
    enter_scoop(node);
 
-   node->left = expr();  // condition, TODO: check if it's boolean
+   node->left = expr();
    node->left->token->space = node->token->space;
    node->right = new_node(new_token(CHILDREN, node->token->space));
 
@@ -743,7 +741,7 @@ Node *while_node(Node *node)
    //    + children: code bloc
    enter_scoop(node);
 
-   node->left = expr();  // condition, TODO: check if it's boolean
+   node->left = expr();
    node->left->token->space = node->token->space;
    check(!find(DOTS, 0), "Expected : after if condition\n", "");
 

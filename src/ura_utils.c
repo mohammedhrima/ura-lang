@@ -168,7 +168,7 @@ int pnode(Node *node, char *side, int space)
    return res;
 }
 
-int print_escaped(char *str) 
+int print_escaped(char *str)
 {
    if (!str) return 0;
    int r = 0;
@@ -758,16 +758,28 @@ Type getRetType(Node *node)
 }
 
 // LLVM UTILS
-// TODO: this approach need to be customized
-ValueRef farr[100];
-int fpos = 0;
+ValueRef *farr;
+int fpos;
+int flen;
 ValueRef get_current_func()
 {
    return farr[fpos - 1];
 }
 
-void enter_func(LLVMValueRef func)
+void enter_func(ValueRef func)
 {
+   if (fpos == 0)
+   {
+      flen = 100;
+      farr = allocate(flen, sizeof(ValueRef));
+   }
+   else if (fpos + 1 == flen)
+   {
+      ValueRef *tmp = allocate(flen *= 2, sizeof(ValueRef));
+      memcpy(tmp, farr, fpos * sizeof(ValueRef));
+      free(farr);
+      farr = tmp;
+   }
    // debug("access %d\n", fpos);
    farr[fpos] = func;
    fpos++;

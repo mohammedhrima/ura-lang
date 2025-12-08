@@ -71,9 +71,9 @@ TypeRef get_llvm_type(Token *token)
    return NULL;
 }
 
-LLVMValueRef get_value(Token *token)
+ValueRef get_value(Token *token)
 {
-   LLVMTypeRef llvmType = get_llvm_type(token);
+   TypeRef llvmType = get_llvm_type(token);
    switch (token->type)
    {
    case INT: return LLVMConstInt(llvmType, token->Int.value, 0);
@@ -85,7 +85,7 @@ LLVMValueRef get_value(Token *token)
    case CHARS: return create_string(token->Chars.value);
    default: todo(1, "handle this literal case %s", to_string(token->type));
    }
-   return (LLVMValueRef) {};
+   return (ValueRef) {};
 }
 
 ValueRef llvm_get_ref(Token *token)
@@ -208,7 +208,7 @@ ValueRef return_(ValueRef value)
    return LLVMBuildRetVoid(builder);
 }
 
-ValueRef allocate_variable(LLVMTypeRef type, char *name)
+ValueRef allocate_variable(TypeRef type, char *name)
 {
    return LLVMBuildAlloca(builder, type, name);
 }
@@ -217,8 +217,11 @@ ValueRef get_param(Token *token)
 {
    ValueRef param = LLVMGetParam(token->Param.func_ptr->llvm.elem, token->Param.index);
    LLVMSetValueName(param, token->name);
-   // TODO: check if the param got modified
-   // else: don't need to allocate stack for it
+   /*
+   TODO:
+      - check if the param got modified
+      - else: don't need to allocate stack for it
+   */
    if (!token->Param.func_ptr->is_proto)
    {
       ValueRef ret = allocate_variable(get_llvm_type(token), token->name);
@@ -231,8 +234,8 @@ ValueRef get_param(Token *token)
 void build_condition(Token* curr, Token *left, Token* right)
 {
    ValueRef cond = curr->Statement.ptr->llvm.elem;
-   BasicBlocRef start = left->llvm.bloc;
-   BasicBlocRef end = right->llvm.bloc;
+   BasicBlockRef start = left->llvm.bloc;
+   BasicBlockRef end = right->llvm.bloc;
    curr->llvm.elem = LLVMBuildCondBr(builder, cond, start, end);
 }
 
