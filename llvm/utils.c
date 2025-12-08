@@ -98,7 +98,7 @@ ValueRef create_string(char *value)
    return LLVMBuildGlobalStringPtr(builder, value, name);
 }
 
-ValueRef create_int(LLVMTypeRef type, int value)
+ValueRef create_int(TypeRef type, int value)
 {
    return LLVMConstInt(type, value, 0);
 }
@@ -113,12 +113,12 @@ void create_condition(ValueRef cond, BasicBlockRef isTrue, BasicBlockRef isFalse
    LLVMBuildCondBr(builder, cond, isTrue, isFalse);
 }
 
-ValueRef load_variable(LLVMTypeRef type, char *name, ValueRef source)
+ValueRef load_variable(TypeRef type, char *name, ValueRef source)
 {
    return LLVMBuildLoad2(builder, type, source, name);
 }
 
-ValueRef allocate_variable(LLVMTypeRef type, char *name)
+ValueRef allocate_variable(TypeRef type, char *name)
 {
    return LLVMBuildAlloca(builder, type, name);
 }
