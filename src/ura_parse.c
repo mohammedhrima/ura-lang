@@ -75,7 +75,7 @@ void parse_token(char *filename, int line, char *input, int s, int e,  Type type
       if (keywords[i].name) break;
 
       struct { char *name; Type type; } keywords2[] = {{"and", AND},
-         {"or", OR}, {"is", EQUAL}, {"not", NOT}, {0, 0},
+         {"or", OR}, {"is", EQUAL}, {"not", NOT}, {"typeof", TYPEOF}, {0, 0},
       };
       for (i = 0; keywords2[i].name; i++)
       {
@@ -766,6 +766,16 @@ Node *prime()
    Token *token;
    if ((token = find(ID, INT, CHARS, CHAR, FLOAT, BOOL, LONG, SHORT, 0)))
       return symbol(token);
+   else if((token = find(TYPEOF, 0)))
+   {
+      node = new_node(token);
+      Token *tk_type = find(DATA_TYPES, 0);
+      check(!tk_type, "Expected data type after TYPEOF\n");
+      node->token->type = CHARS;
+      node->token->retType = CHARS;
+      node->token->Chars.value = strdup(to_string(tk_type->type));
+      return node;
+   }
    else if ((token = find(NOT, 0)))
    {
       node = new_node(token);
