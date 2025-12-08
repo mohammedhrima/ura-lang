@@ -1,6 +1,8 @@
 use "ura-lib/header"
 
+func int s():
+    int a = 0
+
 main():
-    chars str = typeof "hello world\n"
-    printf("<%s>\n", str)
+    s()
     return 0
