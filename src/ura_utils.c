@@ -144,7 +144,7 @@ int ptoken(Token *token)
    if (token->ir_reg) res += print("ir_reg [%d] ", token->ir_reg);
    if (token->is_ref) print("ref ");
    if (token->has_ref) print("has_ref ");
-   if (token->remove) res += print("[remove] ");
+   // if (token->remove) res += print("[remove] ");
    if (token->retType) res += print("ret [%t] ", token->retType);
    return res;
 }
@@ -168,6 +168,30 @@ int pnode(Node *node, char *side, int space)
    return res;
 }
 
+int print_escaped(char *str) 
+{
+   if (!str) return 0;
+   int r = 0;
+#if DEBUG
+   r += debug("\"");
+   for (int i = 0; str[i]; i++) {
+      switch (str[i]) {
+      case '\n': r += debug("\\n"); break;
+      case '\t': r += debug("\\t"); break;
+      case '\r': r += debug("\\r"); break;
+      case '\\': r += debug("\\\\"); break;
+      case '\"': r += debug("\\\""); break;
+      default:
+         // print normal character
+         r += putchar(str[i]);
+         break;
+      }
+   }
+   r += debug("\"");
+#endif
+   return r;
+}
+
 int print_value(Token *token)
 {
    switch (token->type)
@@ -177,7 +201,14 @@ int print_value(Token *token)
    case BOOL: return print("[%s] ", token->Bool.value ? "True" : "False");
    case FLOAT: return print("[%f] ", token->Float.value);
    case CHAR: return print("[%c] ", token->Char.value);
-   case CHARS: return print("[%s]", token->Chars.value);
+   case CHARS:
+   {
+      int r = 0;
+      r += print("[");
+      r += print_escaped(token->Chars.value);
+      r += print("]");
+      return r;
+   }
    case STRUCT_CALL: return print("has [%d] attrs ", token->Struct.pos);
    case ADD: case SUB: case NOT_EQUAL: return print("%t ", token->type); break;
    case VOID: break;
@@ -202,7 +233,7 @@ void print_inst(Inst *inst)
    Token *curr = inst->token;
    Token *left = inst->left;
    Token *right = inst->right;
-   curr->ir_reg ? print("r%.3d:", curr->ir_reg) : print("rxxx:");
+   curr->ir_reg ? print("r%.4d:", curr->ir_reg) : print("rxxxx:");
    int k = 0;
    while (k < curr->space) k += print(" ");
    print("[%-6s] ", to_string(curr->type));
@@ -240,20 +271,21 @@ void print_inst(Inst *inst)
       print("r%.2d ", left->ir_reg);
       break;
    }
-   case INT: case BOOL: case CHARS: case CHAR: case LONG: case VOID: case PTR:
+   case INT: case BOOL: case CHARS: case CHAR:
+   case FLOAT: case LONG: case VOID: case PTR:
    {
       if (curr->name) print("name %s ", curr->name);
       else print_value(curr);
       break;
    }
-   case DOT: print("get attribute [%s] in %k", right->name, left); break;
-   case FCALL: print("call [%s] ", curr->name); break;
-   case FDEC: print("[%s] bloc ", curr->name); break;
-   case END_BLOC: print("[%s] endbloc ", curr->name); break;
+   case DOT: print("get attribute [%s] in %k ", right->name, left); break;
+   case FCALL: print("%s ", curr->name); break;
+   case FDEC: print("%s ", curr->name); break;
+   case END_BLOC: print("%s ", curr->name); break;
    case STRUCT_CALL: print("%s ", curr->name); break;
    case STRUCT_DEF: print("%s ", curr->Struct.name); break;
    case BUILD_COND: print("%s ", curr->name); break;
-   case RETURN:  print("r%.2d ", left->ir_reg); break;
+   case RETURN: print("r%.2d ", left->ir_reg); break;
    case SET_POS: case APPEND_BLOC: case BUILD_BR:
       print("%s ", left->name); break;
    case ACCESS:
@@ -290,7 +322,6 @@ void print_inst(Inst *inst)
 void print_ir()
 {
    if (!DEBUG || found_error) return;
-   copy_insts();
    print(GREEN BOLD SPLIT RESET);
    print(GREEN BOLD"PRINT IR:\n" RESET);
    int i;
@@ -325,6 +356,7 @@ void *allocate_func(int line, int len, int size)
 void free_token(Token *token)
 {
    free(token->name);
+   // free(token->logName);
    free(token->Chars.value);
    free(token->Struct.attrs);
    free(token->Struct.name);
@@ -372,7 +404,7 @@ bool add_file(char *filename)
    }
    for (int i = 0; i < used_pos; i++)
    {
-      if(strcmp(filename, used_files[i]) == 0)
+      if (strcmp(filename, used_files[i]) == 0)
          return false;
    }
    used_files[used_pos++] = filename;

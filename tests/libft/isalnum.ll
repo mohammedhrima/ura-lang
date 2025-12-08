@@ -39,8 +39,8 @@ entry:
 
 define i32 @main() {
 entry:
-  %isdigit = call i1 @isdigit(i8 49)
-  br i1 %isdigit, label %if, label %else
+  %islanum = call i1 @islanum(i8 49)
+  br i1 %islanum, label %if, label %else
 
 if:                                               ; preds = %entry
   ret i32 11

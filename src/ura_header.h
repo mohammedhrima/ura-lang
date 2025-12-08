@@ -36,11 +36,16 @@
 #define TAB 3
 #define AST 1
 #define IR 1
-#define OPTIMIZE 0
 #define ASM 1
 
 #ifndef DEBUG
-#define DEBUG 1
+#define DEBUG 0
+#endif
+
+#if ASM
+#define OPTIMIZE 1
+#else
+#define OPTIMIZE 1
 #endif
 
 #define allocate(len, size) allocate_func(LINE, len, size)
@@ -77,6 +82,7 @@ typedef struct Token Token;
 typedef struct Node Node;
 typedef struct Inst Inst;
 typedef enum Type Type;
+typedef enum LogType LogType;
 typedef struct LLVM LLVM;
 
 typedef LLVMValueRef ValueRef;
@@ -84,6 +90,12 @@ typedef LLVMBasicBlockRef BasicBlocRef;
 typedef LLVMTypeRef TypeRef;
 
 // STRUCTS
+enum LogType
+{
+   SYMBOL = 1,
+   VALUE,
+};
+
 enum Type
 {
    END = 1,
@@ -137,6 +149,8 @@ struct Token
    Type type;
    Type retType;
    Type assign_type;
+   LogType logType;
+   char *logName;
 
    char *name;
    int space;
@@ -144,6 +158,7 @@ struct Token
 
    int ir_reg;
    int used;
+   int pos;
 
    bool is_cond;
    bool is_ref;
@@ -247,6 +262,7 @@ struct Node
 
 struct Inst
 {
+   // bool remove;
    Token *token;
    Token *left;
    Token *right;
@@ -296,7 +312,7 @@ extern struct _IO_FILE *asm_fd;
 // ----------------------------------------------------------------------------
 void tokenize(char *filename);
 Token* new_token(Type type, int space);
-void parse_token(char *filename, int line, char *input, int s, int e, Type type, int space);
+Token* parse_token(char *filename, int line, char *input, int s, int e, Type type, int space);
 void add_token(Token *token);
 Node *expr();
 Node *assign();
@@ -368,6 +384,7 @@ void build_condition(Token* curr, Token *left, Token* right);
 ValueRef access_(Token *curr, Token *left, Token *right);
 ValueRef cast(Token *from, Token *to);
 ValueRef allocate_stack(ValueRef size, TypeRef elementType, char *name);
+bool did_opimize();
 
 // ----------------------------------------------------------------------------
 // Utilities
@@ -392,5 +409,6 @@ int pnode(Node *node, char *side, int space);
 int ptoken(Token *token);
 void print_ast(Node *head);
 void print_ir();
+int print_escaped(char *str) ;
 int print_value(Token *token);
 
