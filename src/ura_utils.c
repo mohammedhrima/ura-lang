@@ -240,7 +240,7 @@ void print_inst(Inst *inst)
       print("r%.2d ", left->ir_reg);
       break;
    }
-   case INT: case BOOL: case CHARS: case CHAR: case LONG: case VOID:
+   case INT: case BOOL: case CHARS: case CHAR: case LONG: case VOID: case PTR:
    {
       if (curr->name) print("name %s ", curr->name);
       else print_value(curr);
@@ -272,6 +272,11 @@ void print_inst(Inst *inst)
       if (left->ir_reg) print("r%.2d ", left->ir_reg);
       if (left->name) print("(%s) ", left->name);
       print("to %s", to_string(right->type));
+      break;
+   }
+   case STACK:
+   {
+      print("allocate");
       break;
    }
    case IF: case ELIF: case END_IF: case ELSE:
@@ -709,6 +714,7 @@ ValueRef get_current_func()
 
 void enter_func(LLVMValueRef func)
 {
+   debug("access %d\n", fpos);
    farr[fpos] = func;
    fpos++;
 }
@@ -738,7 +744,7 @@ char *to_string_(char *filename, int line, Type type)
       [STRUCT_DEF] = "ST_DEF", [STRUCT_BODY] = "ST_BODY",
       [STRUCT_ALLOC] = "ST_ALLOC", [STRUCT_CALL] = "ST_CALL",
       [ARRAY] = "ARRAY", [AS] = "AS", [VARIADIC] = "VARIADIC",
-      [STACK] = "STACK",
+      [STACK] = "STACK", [TYPEOF] = "TYPEOF",
 
 
       [ASSIGN] = "ASSIGN", [ADD_ASSIGN] = "ADD_ASGN",
