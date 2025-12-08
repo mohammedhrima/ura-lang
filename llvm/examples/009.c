@@ -23,7 +23,7 @@ int main()
 
    ValueRef b = allocate_variable(charType, "b");
    ValueRef a_val = load_variable(int32Type, "a_val", a);
-   ValueRef a_truncated = LLVMBuildTrunc(builder, a_val, charType, "a_truncated");
+   ValueRef a_truncated = cast_to(a_val, charType, "a_truncated");
    assign(b, a_truncated);
 
    assign(b, create_int(charType, 'e'));

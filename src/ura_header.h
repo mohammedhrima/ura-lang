@@ -94,7 +94,7 @@ enum Type
 
    // Data types
    VOID, INT, FLOAT, LONG, SHORT, BOOL, CHAR, CHARS, PTR,
-   VARIADIC, STACK,
+   VARIADIC, STACK, TYPEOF,
    ARRAY, AS,
 
    // Struct Usage

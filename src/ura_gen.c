@@ -46,7 +46,7 @@ Token *func_dec_ir(Node *node)
       generate_ir(child);
    }
 
-   if (!node->token->is_proto)
+   // if (!node->token->is_proto)
    {
       // TODO: if RETURN not found add it
       Token *new = new_token(END_BLOC, node->token->space);
@@ -102,7 +102,7 @@ Token *func_call_ir(Node *node)
    {
       node->token->Fcall.args = allocate(node->cpos, sizeof(Token*));
       node->token->Fcall.pos = node->cpos;
-      
+
       node->token->retType = PTR;
       node->token->type = STACK;
 
@@ -114,6 +114,7 @@ Token *func_call_ir(Node *node)
          Token *src = generate_ir(carg);
          if (check(src->type == ID, "Indeclared variable %s", carg->token->name)) break;
          node->token->Fcall.args[i] = src;
+         src->space = node->token->space;
       }
       inst = new_inst(node->token);
    }
@@ -609,12 +610,12 @@ void handle_asm(Inst *inst)
       curr->llvm.is_set = true;
       break;
    }
-   case INT: case BOOL: case LONG: case SHORT: case CHAR: case CHARS: case PTR:
+   case INT: case BOOL: case LONG: case SHORT: 
+   case CHAR: case CHARS: case PTR: case FLOAT:
    {
-      debug(RED"get %k"RESET, curr);
       if (curr->is_param)
       {
-         debug(" is_param");
+         // debug(" is_param");
          check(curr->Param.func_ptr == NULL, "error\n");
          check(!curr->Param.func_ptr->llvm.is_set, "error\n");
 
@@ -623,20 +624,20 @@ void handle_asm(Inst *inst)
       }
       else if (curr->is_declare)
       {
-         debug(" is_declare");
+         // debug(" is_declare");
          ret = allocate_variable(get_llvm_type(curr), curr->name);
       }
       else if (curr->name)
       {
-         debug(" name");
+         // debug(" name");
          ret = curr->llvm.elem;
       }
       else
       {
-         debug(" value");
+         // debug(" value");
          ret = get_value(curr);
       }
-      debug("\n");
+      // debug("\n");
 
       curr->llvm.elem = ret;
       curr->llvm.is_set = true;
@@ -723,21 +724,22 @@ void handle_asm(Inst *inst)
       curr->llvm.is_set = true;
       break;
    }
- case STACK:
-{
-   Token *arg = curr->Fcall.args[0];
-   ValueRef elem = NULL;
-   check(!arg->llvm.is_set, "llvm is not set");
-   if (arg->name && !arg->is_param && arg->type != FCALL)
-      elem = load_variable(arg);
-   else
-      elem = arg->llvm.elem;
+   case STACK:
+   {
+      Token *arg = curr->Fcall.args[0];
+      check(!arg->llvm.is_set, "llvm is not set");
+      ValueRef elem = llvm_get_ref(arg);
+      // TODO: compare ti with llvm_get_ref
+      // if (arg->name && !arg->is_param && arg->type != FCALL)
+      //    elem = load_variable(arg);
+      // else
+      //    elem = arg->llvm.elem;
 
-   // Request an element pointer (i8*) directly.
-   curr->llvm.elem = allocate_stack(elem, i8, "stack");
-   curr->llvm.is_set = true;
-   break;
-}
+      // Request an element pointer (i8*) directly.
+      curr->llvm.elem = allocate_stack(elem, i8, "stack");
+      curr->llvm.is_set = true;
+      break;
+   }
 
    case FCALL:
    {
@@ -754,10 +756,12 @@ void handle_asm(Inst *inst)
             check(!arg->llvm.is_set, "llvm is not set");
 
             // Load variable values, pass literals/temporaries directly
-            if (arg->name && !arg->is_param && arg->type != FCALL)
-               args[i] = load_variable(arg);
-            else
-               args[i] = arg->llvm.elem;
+            // TODO: compare ti with llvm_get_ref
+            args[i] = llvm_get_ref(arg);
+            // if (arg->name && !arg->is_param && arg->type != FCALL)
+            //    args[i] = load_variable(arg);
+            // else
+            //    args[i] = arg->llvm.elem;
          }
 
       }
@@ -801,6 +805,7 @@ void handle_asm(Inst *inst)
       {
          if (left->name)
          {
+            // TODO: compare ti with llvm_get_ref
             ValueRef loaded = load_variable(left);
             ret = return_(loaded);
          }
