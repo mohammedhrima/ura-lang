@@ -775,7 +775,7 @@ void handle_asm(Inst *inst)
    case FDEC:
    {
       create_function(curr);
-      debug(CYAN">> enter %s\n"RESET, curr->name);
+      // debug(CYAN">> enter %s\n"RESET, curr->name);
       enter_func(curr->llvm.elem);
       if (!curr->is_proto) open_block(create_bloc("entry"));
       curr->llvm.is_set = true;
@@ -783,7 +783,7 @@ void handle_asm(Inst *inst)
    }
    case END_BLOC:
    {
-      debug(CYAN">> exit %s\n"RESET, curr->name);
+      // debug(CYAN">> exit %s\n"RESET, curr->name);
       exit_func();
       break;
    }
