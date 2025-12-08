@@ -13,6 +13,7 @@ void parse_token(char *filename, int line, char *input, int s, int e,  Type type
    Token *new = new_token(type, space);
    new->line = line;
    new->filename = filename;
+
    switch (type)
    {
    case INT:
@@ -221,7 +222,7 @@ void parse_token(char *filename, int line, char *input, int s, int e,  Type type
       check(e > s, "implement adding name for this one %s", to_string(type));
       break;
    }
-   debug("new %k\n", new);
+   // debug("new %k\n", new);
 }
 
 void tokenize(char *filename)
@@ -246,6 +247,8 @@ void tokenize(char *filename)
    int space = 0;
    int line = 0;
    bool new_line = true;
+   
+   if(!add_file(filename)) return;
    for (int i = 0; input[i] && !found_error; )
    {
       int s = i;
@@ -495,7 +498,7 @@ Node *func_dec(Node *node)
             data_type = get_struct(data_type->name);
             if (data_type) data_type->type = STRUCT_CALL;
          }
-         debug(">>> %k <<<<\n", tokens[exe_pos]);
+         // debug(">>> %k <<<<\n", tokens[exe_pos]);
          if (check(!data_type, "expected data type in function argument")) break;
          Token *name = find(ID, 0);
          if (check(!name, "expected identifier in function argument")) break;

@@ -269,6 +269,10 @@ extern Node *scoop;
 extern int scoopSize;
 extern int scoopPos;
 
+extern char **used_files;
+extern int used_size;
+extern int used_pos;
+
 typedef LLVMTypeRef TypeRef;
 typedef LLVMContextRef ContextRef;
 typedef LLVMModuleRef ModuleRef;
@@ -369,6 +373,7 @@ ValueRef allocate_stack(ValueRef size, TypeRef elementType, char *name);
 // Utilities
 // ----------------------------------------------------------------------------
 char* open_file(char *filename);
+bool add_file(char *filename);
 char *to_string_(char *filename, int line, Type type);
 void setName(Token *token, char *name);
 bool within_space(int space);
