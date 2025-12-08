@@ -16,6 +16,10 @@ Node *scoop;
 int scoopSize;
 int scoopPos;
 
+char **used_files;
+int used_size = 0;
+int used_pos = 0;
+
 #if defined(__APPLE__)
 struct __sFILE *asm_fd;
 #elif defined(__linux__)
@@ -30,6 +34,7 @@ void parse()
 {
    if (found_error) return;
 #if AST
+   print(GREEN BOLD SPLIT RESET);
    debug(GREEN BOLD"AST:\n" RESET);
    global = new_node(new_token(ID, -TAB - 1));
    setName(global->token, "ura-scoop");
@@ -62,6 +67,7 @@ void code_gen(char *filename)
 
 #if ASM
    debug(GREEN BOLD"GENERATE ASSEMBLY CODE:\n" RESET);
+   print(GREEN BOLD SPLIT RESET);
    copy_insts();
 
    char *moduleName = resolve_path(filename);

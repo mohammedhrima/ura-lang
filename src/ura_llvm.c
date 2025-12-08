@@ -90,13 +90,13 @@ LLVMValueRef get_value(Token *token)
 
 ValueRef llvm_get_ref(Token *token)
 {
-   debug(RED"get %k, ", token);
+   // debug(RED"get %k, ", token);
    if (token->name && !token->is_param && !includes(token->type, FCALL, AND, OR, AS, STACK))
    {
-      debug("load elem\n");
+      // debug("load elem\n");
       return load_variable(token);
    }
-   debug("current elem\n");
+   // debug("current elem\n");
    return token->llvm.elem;
 }
 
@@ -139,7 +139,7 @@ void open_block(BasicBlockRef bloc)
 
 ValueRef load_variable(Token *token)
 {
-   debug("load %k\n", token);
+   // debug("load %k\n", token);
    return LLVMBuildLoad2(builder, get_llvm_type(token), token->llvm.elem, token->name);
 }
 

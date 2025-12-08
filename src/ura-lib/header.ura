@@ -1,2 +1,5 @@
 use "io"
-use "math"
+// use "math"
+// use "memory"
+// use "signals"
+// use "stdlib"

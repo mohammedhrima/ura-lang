@@ -202,7 +202,7 @@ void print_inst(Inst *inst)
    Token *curr = inst->token;
    Token *left = inst->left;
    Token *right = inst->right;
-   curr->ir_reg ? print("r%.2d:", curr->ir_reg) : print("rxx:");
+   curr->ir_reg ? print("r%.3d:", curr->ir_reg) : print("rxxx:");
    int k = 0;
    while (k < curr->space) k += print(" ");
    print("[%-6s] ", to_string(curr->type));
@@ -356,6 +356,29 @@ void free_memory()
 }
 
 // PARSING
+bool add_file(char *filename)
+{
+   if (used_files == NULL)
+   {
+      used_size = 10;
+      used_files = allocate(used_size, sizeof(char*));
+   }
+   else if (used_pos + 1 == used_size)
+   {
+      char**tmp = allocate((used_size *= 2), sizeof(char*));
+      memcpy(tmp, used_files, used_pos * sizeof(char*));
+      free(used_files);
+      used_files = tmp;
+   }
+   for (int i = 0; i < used_pos; i++)
+   {
+      if(strcmp(filename, used_files[i]) == 0)
+         return false;
+   }
+   used_files[used_pos++] = filename;
+   return true;
+}
+
 Token* new_token(Type type, int space)
 {
    Token *new = allocate(1, sizeof(Token));
@@ -430,7 +453,7 @@ void add_token(Token *token)
 
 Node *new_node(Token *token)
 {
-   print("new node: %k\n", token);
+   // print("new node: %k\n", token);
    Node *new = allocate(1, sizeof(Node));
    new->token = token;
    return new;
@@ -490,10 +513,10 @@ void add_struct(Node *bloc, Token *token)
 
 Token *new_struct(Token *token)
 {
-   debug(CYAN "in scoop %k, new struct [%k]\n" RESET, scoop->token, token);
+   // debug(CYAN "in scoop %k, new struct [%k]\n" RESET, scoop->token, token);
    for (int i = 0; i < scoop->spos; i++)
    {
-      print(GREEN"loop [%d]\n"RESET, i);
+      // print(GREEN"loop [%d]\n"RESET, i);
       Token *curr = scoop->structs[i];
       check(strcmp(curr->Struct.name, token->Struct.name) == 0,
             "Redefinition of %s\n", token->Struct.name);
@@ -504,12 +527,12 @@ Token *new_struct(Token *token)
 
 Token *get_struct(char *name)
 {
-   debug(CYAN "get struct [%s] from scoop %k\n"RESET, name, scoop->token);
+   // debug(CYAN "get struct [%s] from scoop %k\n"RESET, name, scoop->token);
    for (int j = scoopPos; j > 0; j--)
    {
       Node *node = Gscoop[j];
       todo(node == NULL, RED"Error accessing NULL, %d\n"RESET, j);
-      debug("[%d] scoop [%s] has %d structs\n", j, node->token->name, node->spos);
+      // debug("[%d] scoop [%s] has %d structs\n", j, node->token->name, node->spos);
       for (int i = 0; i < node->spos; i++)
          if (strcmp(node->structs[i]->Struct.name, name) == 0)
             return node->structs[i];
@@ -536,8 +559,7 @@ void add_variable(Node *bloc, Token *token)
 
 Token *new_variable(Token *token)
 {
-   debug(CYAN "new variable [%s] [%s] in scoop %k\n" RESET, token->name, to_string(token->type),
-         scoop->token);
+   // debug(CYAN "new variable [%s] [%s] in scoop %k\n" RESET, token->name, to_string(token->type), scoop->token);
    for (int i = 0; i < scoop->vpos; i++)
    {
       Token *curr = scoop->vars[i];
@@ -549,7 +571,7 @@ Token *new_variable(Token *token)
 
 Token *get_variable(char *name)
 {
-   debug(CYAN "get variable [%s] from scoop %k\n" RESET, name, scoop->token);
+   // debug(CYAN "get variable [%s] from scoop %k\n" RESET, name, scoop->token);
    for (int j = scoopPos; j > 0; j--)
    {
       Node *scoop = Gscoop[j];
@@ -668,7 +690,7 @@ Inst *new_inst(Token *token)
       token->ir_reg = ++ir_reg;
       break;
    }
-   debug("new inst: %k%c", new->token, token->type != STRUCT_CALL ? '\n' : '\0');
+   // debug("new inst: %k%c", new->token, token->type != STRUCT_CALL ? '\n' : '\0');
    add_inst(new);
    return new;
 }
@@ -714,7 +736,7 @@ ValueRef get_current_func()
 
 void enter_func(LLVMValueRef func)
 {
-   debug("access %d\n", fpos);
+   // debug("access %d\n", fpos);
    farr[fpos] = func;
    fpos++;
 }
@@ -865,7 +887,7 @@ void setName(Token *token, char *name)
 
 void enter_scoop(Node *node)
 {
-   debug(CYAN "Enter Scoop: %k index %d\n" RESET, node->token, scoopPos + 1);
+   // debug(CYAN "Enter Scoop: %k index %d\n" RESET, node->token, scoopPos + 1);
    if (Gscoop == NULL)
    {
       scoopSize = 10;
@@ -887,7 +909,7 @@ void enter_scoop(Node *node)
 void exit_scoop()
 {
    if (check(scoopPos < 0, "No active scoop to exit\n")) return;
-   debug(CYAN "Exit Scoop: %k index %d\n" RESET, Gscoop[scoopPos]->token, scoopPos);
+   // debug(CYAN "Exit Scoop: %k index %d\n" RESET, Gscoop[scoopPos]->token, scoopPos);
    Gscoop[scoopPos] = NULL;
    scoopPos--;
    if (scoopPos >= 0) scoop = Gscoop[scoopPos];
