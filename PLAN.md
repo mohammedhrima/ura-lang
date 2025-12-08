@@ -1,8 +1,6 @@
 - add attribute "int used" in Token struct to check how manny times a function or variables is used so it can be removed if used is still 0 in the optimization step
 
 + forbid math operations for char
-+ working on casting
-
 
 - declare:
    + int, float, long, double, char, chars
@@ -93,6 +91,13 @@
    - threads
    - atomic operations
 
++ skip br in if: in case last instruction was ret:
+    + example:
+        if:
+            ret i32 11
+            br label %end_if
+
+- allocate function paramater only if it got modified inside the function
 - use llvm optimizer: opt -O2
 
 - projects:
