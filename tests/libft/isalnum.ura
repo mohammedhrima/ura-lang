@@ -4,5 +4,5 @@ func bool isdigit(char c): return c >= '1' and c <= '9'
 func bool islanum(char c): return isalpha(c) or isdigit(c)
 
 main():
-    if isdigit('1'): return 11  
+    if islanum('1'): return 11  
     else: return 12

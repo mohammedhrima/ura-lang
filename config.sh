@@ -1,5 +1,51 @@
 #!/usr/bin/env bash
 
+# If script is executed (not sourced), re-execute with proper shell
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    echo "Loading ura environment..."
+    
+    # Detect user's default shell
+    if command -v dscl &> /dev/null; then
+        # macOS
+        user_shell=$(dscl . -read ~/ UserShell 2>/dev/null | sed 's/UserShell: //')
+    elif command -v getent &> /dev/null; then
+        # Linux
+        user_shell=$(getent passwd "$USER" 2>/dev/null | cut -d: -f7)
+    else
+        # Fallback
+        user_shell="$SHELL"
+    fi
+    
+    # Get absolute path to this script
+    script_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+    
+    if [[ "$user_shell" == *"zsh"* ]]; then
+        # Create temp zsh config
+        temp_rc=$(mktemp)
+        cat > "$temp_rc" << RCEOF
+# Source default zshrc
+if [ -f ~/.zshrc ]; then
+    source ~/.zshrc
+fi
+# Source ura config
+source '$script_path'
+RCEOF
+        exec env ZDOTDIR="$(dirname "$temp_rc")" zsh -c "ln -sf '$temp_rc' \"\$ZDOTDIR/.zshrc\" 2>/dev/null; exec zsh"
+    else
+        # Create temp bash config
+        temp_rc=$(mktemp)
+        cat > "$temp_rc" << RCEOF
+# Source default bashrc
+if [ -f ~/.bashrc ]; then
+    source ~/.bashrc
+fi
+# Source ura config
+source '$script_path'
+RCEOF
+        exec bash --rcfile "$temp_rc"
+    fi
+fi
+
 # === Color Definitions ===
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
@@ -24,7 +70,7 @@ export flags files llvm_flags src
 
 # === Build Functions ===
 build() {
-    local debug_mode="${1:-true}"   # default true unless specified
+    local debug_mode="${1:-true}"
     clang "${files[@]}" "${flags[@]}" -D DEBUG=$debug_mode -o "$ura_src/ura" || {
         echo -e "${RED}Error:${NC} Build failed."
         return 1
@@ -86,19 +132,16 @@ copy() {
 
     local filename
     if [ -z "$2" ]; then
-        # Auto-generate if no filename given
         local count=$(ls "$test_dir"/*.ura 2>/dev/null | wc -l)
         local next=$(printf "%03d" $((count + 1)))
         filename="$next"
     else
-        # Use provided filename
         filename="$2"
     fi
 
     local ura_dest="$test_dir/${filename}.ura"
     local ll_dest="$test_dir/${filename}.ll"
 
-    # Build with DEBUG=false before copying reference outputs
     build false || return 1
     ir || return 1
 
@@ -115,7 +158,6 @@ copy() {
 }
 
 test() {
-    # Build with DEBUG=false for test comparison
     build false || return 1
 
     for ura_file in "$ura_dir/tests"/*/*.ura; do
@@ -142,48 +184,26 @@ test() {
             echo -e "${RED}FAILED:${NC} $dir_name/$base_name"
         fi
     done
-    rm -rf  "$ura_src/tmp.ura" "$ura_src/tmp.ll"
+    rm -rf "$ura_src/tmp.ura" "$ura_src/tmp.ll"
 }
 
 update() {
-    echo $GREEN"updating ura config..."$NC
+    echo -e "${GREEN}updating ura config...${NC}"
     source "$ura_src/../config.sh"
 }
 
-# === Prompt Handling (works for bash & zsh) ===
+# === Prompt Handling ===
 set_prompt() {
     if [ -n "$ZSH_VERSION" ]; then
-        # zsh: username + last folder + %
         PROMPT="(ura) %n@%1~ % "
     elif [ -n "$BASH_VERSION" ]; then
-        # bash: username + last folder + $
         PS1="(ura) \u@\W \$ "
     fi
 }
 
 set_prompt
 export tests=test
-cd $ura_src
+cd "$ura_src" 2>/dev/null || cd "$ura_dir"
 
-# === Git Sync Check ===
-# if git rev-parse --is-inside-work-tree &>/dev/null; then
-#     git fetch origin &>/dev/null
-
-#     LOCAL=$(git rev-parse @)
-#     REMOTE=$(git rev-parse @{u} 2>/dev/null || echo "")
-#     BASE=$(git merge-base @ @{u} 2>/dev/null || echo "")
-
-#     if [ "$LOCAL" = "$REMOTE" ]; then
-#         :
-#     elif [ "$LOCAL" = "$BASE" ]; then
-#         echo -e "${RED}Error:${NC} Your branch is behind the remote. Please pull before building."
-#         return 1
-#     elif [ "$REMOTE" = "$BASE" ]; then
-#         echo -e "${YELLOW}Warning:${NC} Your branch is ahead of the remote."
-#     else
-#         echo -e "${RED}Error:${NC} Your branch has diverged from remote. Resolve conflicts first."
-#         return 1
-#     fi
-# else
-#     echo -e "${YELLOW}Warning:${NC} Not a git repository, skipping sync check."
-# fi
+echo -e "${GREEN}Ura environment loaded!${NC}"
+echo -e "Available commands: build, ir, asm, comp_asm, exe, comp, run, lines, indent, copy, test, update"
