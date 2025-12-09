@@ -364,7 +364,7 @@ TypeRef get_llvm_type(Token *token);
 ValueRef get_value(Token *token);
 ValueRef llvm_get_ref(Token *token);
 void create_function(Token *token);
-void call_function(Token *token, LLVM *source, ValueRef *args, int argsCount);
+void call_function(Token *curr);
 BasicBlockRef create_bloc(char *name);
 void branch(BasicBlockRef bloc);
 void open_block(BasicBlockRef bloc);
