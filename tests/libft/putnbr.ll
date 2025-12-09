@@ -99,45 +99,45 @@ while_bloc16:                                     ; preds = %while15
   %MOD = srem i32 %n19, 10
   store i32 %MOD, ptr %digit, align 4
   %buffer20 = load ptr, ptr %buffer, align 8
-  %i21 = load i32, ptr %i, align 4
-  %ACCESS = getelementptr i8, ptr %buffer20, i32 %i21
-  %digits22 = load ptr, ptr %digits, align 8
-  %digit23 = load i32, ptr %digit, align 4
-  %ACCESS24 = getelementptr i8, ptr %digits22, i32 %digit23
-  %digits25 = load i8, ptr %ACCESS24, align 1
-  store i8 %digits25, ptr %ACCESS, align 1
-  %n26 = load i32, ptr %n1, align 4
-  %DIV27 = sdiv i32 %n26, 10
-  store i32 %DIV27, ptr %n1, align 4
-  %i28 = load i32, ptr %i, align 4
-  %SUB29 = sub i32 %i28, 1
-  store i32 %SUB29, ptr %i, align 4
+  %idx = load i32, ptr %i, align 4
+  %ACCESS = getelementptr i8, ptr %buffer20, i32 %idx
+  %digits21 = load ptr, ptr %digits, align 8
+  %idx22 = load i32, ptr %digit, align 4
+  %ACCESS23 = getelementptr i8, ptr %digits21, i32 %idx22
+  %digits24 = load i8, ptr %ACCESS23, align 1
+  store i8 %digits24, ptr %ACCESS, align 1
+  %n25 = load i32, ptr %n1, align 4
+  %DIV26 = sdiv i32 %n25, 10
+  store i32 %DIV26, ptr %n1, align 4
+  %i27 = load i32, ptr %i, align 4
+  %SUB28 = sub i32 %i27, 1
+  store i32 %SUB28, ptr %i, align 4
   br label %while15
 
 end_while17:                                      ; preds = %while15
   store i32 0, ptr %i, align 4
-  br label %while30
+  br label %while29
 
-while30:                                          ; preds = %while_bloc31, %end_while17
-  %i33 = load i32, ptr %i, align 4
-  %digit_count34 = load i32, ptr %digit_count, align 4
-  %LESS35 = icmp slt i32 %i33, %digit_count34
-  br i1 %LESS35, label %while_bloc31, label %end_while32
+while29:                                          ; preds = %while_bloc30, %end_while17
+  %i32 = load i32, ptr %i, align 4
+  %digit_count33 = load i32, ptr %digit_count, align 4
+  %LESS34 = icmp slt i32 %i32, %digit_count33
+  br i1 %LESS34, label %while_bloc30, label %end_while31
 
-while_bloc31:                                     ; preds = %while30
-  %buffer36 = load ptr, ptr %buffer, align 8
-  %i37 = load i32, ptr %i, align 4
-  %ACCESS38 = getelementptr i8, ptr %buffer36, i32 %i37
-  %buffer39 = load i8, ptr %ACCESS38, align 1
-  %putchar40 = call i32 @putchar(i8 %buffer39)
-  %i41 = load i32, ptr %i, align 4
-  %ADD42 = add i32 %i41, 1
-  store i32 %ADD42, ptr %i, align 4
-  br label %while30
+while_bloc30:                                     ; preds = %while29
+  %buffer35 = load ptr, ptr %buffer, align 8
+  %idx36 = load i32, ptr %i, align 4
+  %ACCESS37 = getelementptr i8, ptr %buffer35, i32 %idx36
+  %buffer38 = load i8, ptr %ACCESS37, align 1
+  %putchar39 = call i32 @putchar(i8 %buffer38)
+  %i40 = load i32, ptr %i, align 4
+  %ADD41 = add i32 %i40, 1
+  store i32 %ADD41, ptr %i, align 4
+  br label %while29
 
-end_while32:                                      ; preds = %while30
-  %buffer43 = load ptr, ptr %buffer, align 8
-  %free = call i32 @free(ptr %buffer43)
+end_while31:                                      ; preds = %while29
+  %buffer42 = load ptr, ptr %buffer, align 8
+  %free = call i32 @free(ptr %buffer42)
   ret void
   ret void
 }

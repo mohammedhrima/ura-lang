@@ -1,8 +1,10 @@
-use "ura-lib/header"
 
-func int s():
-    int a = 0
+func int strlen(chars str):
+    int i = 0
+    while str[i] != '\0':
+        i += 1
+    return i
 
 main():
-    s()
-    return 0
+    int len = strlen("abc")
+    return len

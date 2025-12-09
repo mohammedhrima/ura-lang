@@ -7,7 +7,6 @@ void init(char *name)
    module = LLVMModuleCreateWithNameInContext(name, context);
    builder = LLVMCreateBuilderInContext(context);
 
-   // thread safety
    vd = LLVMVoidTypeInContext(context);
    f32 = LLVMFloatTypeInContext(context);
    i1 = LLVMInt1TypeInContext(context);
@@ -18,7 +17,6 @@ void init(char *name)
    p8 = LLVMPointerType(i8, 0);
    p32 = LLVMPointerType(i32, 0);
 
-   // Initialize targets for code generation
    LLVMInitializeAllTargetInfos();
    LLVMInitializeAllTargets();
    LLVMInitializeAllTargetMCs();
@@ -50,25 +48,39 @@ ValueRef create_string(char *value)
 
 TypeRef get_llvm_type(Token *token)
 {
+   if (!token) {
+      check(1, "get_llvm_type: token is NULL");
+      return NULL;
+   }
+   
+   TypeRef base_type;
    switch (token->retType)
    {
-   case VOID: return vd;
-   case INT: return i32;
-   case FLOAT: return f32;
-   case LONG: return i64;
-   case SHORT: return i16;
-   case BOOL: return i1;
-   case CHAR: return i8;
-   case CHARS: return p8;
-   case PTR: return p32;
+   case VOID: base_type = vd; break;
+   case INT: base_type = i32; break;
+   case FLOAT: base_type = f32; break;
+   case LONG: base_type = i64; break;
+   case SHORT: base_type = i16; break;
+   case BOOL: base_type = i1; break;
+   case CHAR: base_type = i8; break;
+   case CHARS: base_type = p8; break;
+   case PTR: base_type = p32; break;
    default:
    {
       todo(1, "handle this case %s", to_string(token->retType));
       seg();
-      break;
+      return NULL;
    }
    }
-   return NULL;
+   
+   if (!base_type) {
+      check(1, "get_llvm_type: base_type is NULL for retType %d", token->retType);
+      return NULL;
+   }
+   
+   if (token->is_ref)
+      return LLVMPointerType(base_type, 0);
+   return base_type;
 }
 
 ValueRef get_value(Token *token)
@@ -88,15 +100,37 @@ ValueRef get_value(Token *token)
    return (ValueRef) {};
 }
 
+TypeRef get_base_type(Token *token)
+{
+   bool was_ref = token->is_ref;
+   token->is_ref = false;
+   TypeRef baseType = get_llvm_type(token);
+   token->is_ref = was_ref;
+   return baseType;
+}
+
+ValueRef dereference_if_ref(Token *token)
+{
+   if (!token->is_ref || !token->has_ref)
+      return token->llvm.elem;
+   
+   TypeRef baseType = get_base_type(token);
+   ValueRef addr = LLVMBuildLoad2(builder,
+                                   LLVMPointerType(baseType, 0),
+                                   token->llvm.elem,
+                                   "ref_addr");
+   
+   return LLVMBuildLoad2(builder, baseType, addr, "deref");
+}
+
 ValueRef llvm_get_ref(Token *token)
 {
-   // debug(RED"get %k, ", token);
+   if (token->is_ref && token->has_ref)
+      return dereference_if_ref(token);
+   
    if (token->name && !token->is_param && !includes(token->type, FCALL, AND, OR, AS, STACK))
-   {
-      // debug("load elem\n");
       return load_variable(token);
-   }
-   // debug("current elem\n");
+   
    return token->llvm.elem;
 }
 
@@ -109,17 +143,67 @@ void create_function(Token *token)
    {
       args = allocate(pos + 1, sizeof(TypeRef));
       for (int i = 0; i < pos; i++)
-         args[i] = get_llvm_type(token->Fdec.args[i]);
+      {
+         Token *param = token->Fdec.args[i];
+         if (!param) {
+            check(1, "create_function: parameter %d is NULL", i);
+            continue;
+         }
+         
+         TypeRef argType = get_base_type(param);
+         if (param->is_ref)
+            argType = LLVMPointerType(argType, 0);
+         
+         args[i] = argType;
+      }
    }
-   token->llvm.funcType = LLVMFunctionType(get_llvm_type(token), args, pos, isVariadic);
+   
+   TypeRef retType = get_base_type(token);
+   
+   token->llvm.funcType = LLVMFunctionType(retType, args, pos, isVariadic);
    token->llvm.elem = LLVMAddFunction(module, token->name, token->llvm.funcType);
    free(args);
 }
 
-void call_function(Token *token, LLVM *source, ValueRef *args, int argsCount)
+void call_function(Token *curr)
 {
-   char *name = token->retType != VOID ? token->name : "";
-   token->llvm.elem = LLVMBuildCall2(builder, source->funcType, source->elem, args, argsCount, name);
+   LLVM srcFunc = curr->Fcall.func_ptr->llvm;
+   int argsCount = curr->Fcall.pos;
+
+   ValueRef *args = NULL;
+   if (curr->Fcall.pos)
+   {
+      args = allocate(curr->Fcall.pos, sizeof(ValueRef));
+      for (int i = 0; i < curr->Fcall.pos; i++)
+      {
+         Token *arg = curr->Fcall.args[i];
+         Token *param = curr->Fcall.func_ptr->Fdec.args[i];
+         check(!arg->llvm.is_set, "llvm is not set");
+
+         if (param->is_ref)
+         {
+            if (arg->name && arg->llvm.is_set)
+            {
+               args[i] = arg->llvm.elem;
+            }
+            else
+            {
+               ValueRef val = llvm_get_ref(arg);
+               TypeRef valType = LLVMTypeOf(val);
+               ValueRef storage = LLVMBuildAlloca(builder, valType, "temp_ref");
+               LLVMBuildStore(builder, val, storage);
+               args[i] = storage;
+            }
+         }
+         else
+         {
+            args[i] = llvm_get_ref(arg);
+         }
+      }
+   }
+   char *name = curr->retType != VOID ? curr->name : "";
+   curr->llvm.elem = LLVMBuildCall2(builder, srcFunc.funcType, srcFunc.elem, args, argsCount, name);
+   free(args);
 }
 
 BasicBlockRef create_bloc(char *name)
@@ -139,36 +223,91 @@ void open_block(BasicBlockRef bloc)
 
 ValueRef load_variable(Token *token)
 {
-   // debug("load %k\n", token);
-   return LLVMBuildLoad2(builder, get_llvm_type(token), token->llvm.elem, token->name);
+   TypeRef baseType = token->is_ref ? get_base_type(token) : get_llvm_type(token);
+   return LLVMBuildLoad2(builder, baseType, token->llvm.elem, token->name);
 }
 
-ValueRef assign2(Token *variable, Token* value)
+ValueRef convert_type_if_needed(ValueRef value, TypeRef targetType)
 {
-   ValueRef rightRef = llvm_get_ref(value);
-
-   // Check if we need implicit type conversion
-   TypeRef varType = get_llvm_type(variable);
-   TypeRef valType = LLVMTypeOf(rightRef);
-
-   // Only convert if both are integer types (not pointers)
-   if (LLVMGetTypeKind(valType) != LLVMPointerTypeKind &&
-         LLVMGetTypeKind(varType) != LLVMPointerTypeKind)
+   TypeRef valType = LLVMTypeOf(value);
+   
+   if (valType == targetType)
+      return value;
+   
+   if (LLVMGetTypeKind(valType) == LLVMIntegerTypeKind &&
+       LLVMGetTypeKind(targetType) == LLVMIntegerTypeKind)
    {
-      unsigned varBits = LLVMGetIntTypeWidth(varType);
+      unsigned targetBits = LLVMGetIntTypeWidth(targetType);
       unsigned valBits = LLVMGetIntTypeWidth(valType);
+      
+      if (targetBits > valBits)
+         return LLVMBuildSExt(builder, value, targetType, "cast");
+      else if (targetBits < valBits)
+         return LLVMBuildTrunc(builder, value, targetType, "cast");
+   }
+   
+   return value;
+}
 
-      if (varBits > valBits) {
-         // Extend: i8 → i32
-         rightRef = LLVMBuildSExt(builder, rightRef, varType, "implicit_cast");
-      } else if (varBits < valBits) {
-         // Truncate: i32 → i8
-         rightRef = LLVMBuildTrunc(builder, rightRef, varType, "implicit_cast");
+ValueRef assign2(Token *variable, Token *value)
+{
+   if (variable->is_ref)
+   {
+      if (!variable->has_ref)
+      {
+         if (value->name && value->llvm.is_set)
+         {
+            ValueRef addr = value->llvm.elem;
+            LLVMBuildStore(builder, addr, variable->llvm.elem);
+            variable->has_ref = true;
+            return variable->llvm.elem;
+         }
+         else
+         {
+            ValueRef rightVal = llvm_get_ref(value);
+            TypeRef valueType = LLVMTypeOf(rightVal);
+            ValueRef allocatedSpace = LLVMBuildAlloca(builder, valueType, "ref_storage");
+            LLVMBuildStore(builder, rightVal, allocatedSpace);
+            LLVMBuildStore(builder, allocatedSpace, variable->llvm.elem);
+            variable->has_ref = true;
+            return variable->llvm.elem;
+         }
+      }
+      else
+      {
+         TypeRef baseType = get_base_type(variable);
+         ValueRef targetAddr = LLVMBuildLoad2(builder, 
+                                               LLVMPointerType(baseType, 0),
+                                               variable->llvm.elem, 
+                                               "ref_addr");
+         
+         ValueRef rightVal;
+         if (value->is_ref)
+         {
+            if (!value->has_ref)
+            {
+               check(1, "Cannot assign from uninitialized reference");
+               return NULL;
+            }
+            rightVal = dereference_if_ref(value);
+         }
+         else
+         {
+            rightVal = llvm_get_ref(value);
+         }
+         
+         rightVal = convert_type_if_needed(rightVal, baseType);
+         LLVMBuildStore(builder, rightVal, targetAddr);
+         return targetAddr;
       }
    }
-
-   LLVMBuildStore(builder, rightRef, variable->llvm.elem);
-   return variable->llvm.elem;
+   else
+   {
+      ValueRef rightRef = llvm_get_ref(value);
+      rightRef = convert_type_if_needed(rightRef, get_llvm_type(variable));
+      LLVMBuildStore(builder, rightRef, variable->llvm.elem);
+      return variable->llvm.elem;
+   }
 }
 
 ValueRef operation(Token *token, Token* left, Token* right)
@@ -176,21 +315,22 @@ ValueRef operation(Token *token, Token* left, Token* right)
    ValueRef leftRef = llvm_get_ref(left);
    ValueRef rightRef = llvm_get_ref(right);
    char* op = to_string(token->type);
+   
    switch (token->type)
    {
-   case LESS: return LLVMBuildICmp(builder, LLVMIntSLT, leftRef, rightRef, op); break;
-   case LESS_EQUAL: return LLVMBuildICmp(builder, LLVMIntSLE, leftRef, rightRef, op); break;
-   case MORE: return LLVMBuildICmp(builder, LLVMIntSGT, leftRef, rightRef, op); break;
-   case MORE_EQUAL: return LLVMBuildICmp(builder, LLVMIntSGE, leftRef, rightRef, op); break;
-   case EQUAL: return LLVMBuildICmp(builder, LLVMIntEQ,  leftRef, rightRef, op); break;
-   case NOT_EQUAL: return LLVMBuildICmp(builder, LLVMIntNE,  leftRef, rightRef, op); break;
-   case ADD: return LLVMBuildAdd(builder, leftRef, rightRef, op); break;
-   case SUB: return LLVMBuildSub(builder, leftRef, rightRef, op); break;
-   case MUL: return LLVMBuildMul(builder, leftRef, rightRef, op); break;
-   case DIV: return LLVMBuildSDiv(builder, leftRef, rightRef, op); break;
-   case MOD: return LLVMBuildSRem(builder, leftRef, rightRef, op); break;
-   case AND: return LLVMBuildAnd(builder, leftRef, rightRef, op); break;
-   case OR: return LLVMBuildOr(builder, leftRef, rightRef, op); break;
+   case LESS: return LLVMBuildICmp(builder, LLVMIntSLT, leftRef, rightRef, op);
+   case LESS_EQUAL: return LLVMBuildICmp(builder, LLVMIntSLE, leftRef, rightRef, op);
+   case MORE: return LLVMBuildICmp(builder, LLVMIntSGT, leftRef, rightRef, op);
+   case MORE_EQUAL: return LLVMBuildICmp(builder, LLVMIntSGE, leftRef, rightRef, op);
+   case EQUAL: return LLVMBuildICmp(builder, LLVMIntEQ,  leftRef, rightRef, op);
+   case NOT_EQUAL: return LLVMBuildICmp(builder, LLVMIntNE,  leftRef, rightRef, op);
+   case ADD: return LLVMBuildAdd(builder, leftRef, rightRef, op);
+   case SUB: return LLVMBuildSub(builder, leftRef, rightRef, op);
+   case MUL: return LLVMBuildMul(builder, leftRef, rightRef, op);
+   case DIV: return LLVMBuildSDiv(builder, leftRef, rightRef, op);
+   case MOD: return LLVMBuildSRem(builder, leftRef, rightRef, op);
+   case AND: return LLVMBuildAnd(builder, leftRef, rightRef, op);
+   case OR: return LLVMBuildOr(builder, leftRef, rightRef, op);
    default: todo(1, "handle this %s", op);
    }
    return NULL;
@@ -217,11 +357,16 @@ ValueRef get_param(Token *token)
 {
    ValueRef param = LLVMGetParam(token->Param.func_ptr->llvm.elem, token->Param.index);
    LLVMSetValueName(param, token->name);
-   /*
-   TODO:
-      - check if the param got modified
-      - else: don't need to allocate stack for it
-   */
+   
+   if (token->is_ref)
+   {
+      TypeRef baseType = get_base_type(token);
+      ValueRef ref_storage = LLVMBuildAlloca(builder, LLVMPointerType(baseType, 0), token->name);
+      LLVMBuildStore(builder, param, ref_storage);
+      token->has_ref = true;
+      return ref_storage;
+   }
+   
    if (!token->Param.func_ptr->is_proto)
    {
       ValueRef ret = allocate_variable(get_llvm_type(token), token->name);
@@ -241,58 +386,59 @@ void build_condition(Token* curr, Token *left, Token* right)
 
 ValueRef access_(Token *curr, Token *left, Token *right)
 {
-   ValueRef leftRef = NULL, rightRef = NULL;
-   leftRef = llvm_get_ref(left);
-   rightRef = llvm_get_ref(right);
-
+   ValueRef leftRef = llvm_get_ref(left);
+   ValueRef rightRef;
+   
+   // For index, we always need the actual value, not a pointer
+   if (right->name && right->llvm.is_set)
+   {
+      // Load the index value
+      TypeRef rightType = right->is_ref ? get_base_type(right) : get_llvm_type(right);
+      rightRef = LLVMBuildLoad2(builder, rightType, right->llvm.elem, "idx");
+   }
+   else
+   {
+      rightRef = llvm_get_ref(right);
+   }
+   
    ValueRef indices[] = { rightRef };
-   return LLVMBuildGEP2(builder, get_llvm_type(curr), leftRef, indices, 1, to_string(curr->type));
+   TypeRef indexType = curr->is_ref ? get_base_type(curr) : get_llvm_type(curr);
+   
+   return LLVMBuildGEP2(builder, indexType, leftRef, indices, 1, to_string(curr->type));
 }
 
 ValueRef cast(Token *from, Token *to)
 {
-   ValueRef source = llvm_get_ref(from); //.elem;
+   ValueRef source = llvm_get_ref(from);
    TypeRef sourceType = LLVMTypeOf(source);
-   TypeRef ntype = get_llvm_type(to);
-
-   // Check if source is a pointer - if so, LOAD it first
-   // if (LLVMGetTypeKind(sourceType) == LLVMPointerTypeKind) {
-   //    source = load_variable(from);
-   //    sourceType = get_llvm_type(from);
-   // }
+   TypeRef ntype = get_base_type(to);
 
    unsigned sourceBits = LLVMGetIntTypeWidth(sourceType);
    unsigned targetBits = LLVMGetIntTypeWidth(ntype);
 
-   if (sourceBits > targetBits) {
+   if (sourceBits > targetBits)
       return LLVMBuildTrunc(builder, source, ntype, "cast");
-   } else if (sourceBits < targetBits) {
+   else if (sourceBits < targetBits)
       return LLVMBuildSExt(builder, source, ntype, "cast");
-   } else {
-      // print(RED"the same\n"RESET);
-      return source;
-   }
+   
+   return source;
 }
 
 ValueRef allocate_stack(ValueRef size, TypeRef elementType, char *name)
 {
-   // Indices for GEP to get the pointer to the first element
    ValueRef indices[] = {
       LLVMConstInt(i32, 0, 0),
       LLVMConstInt(i32, 0, 0)
    };
 
-   // Constant size: create an [N x elem] alloca and GEP to &array[0]
    if (LLVMIsConstant(size))
    {
       unsigned long long constSize = LLVMConstIntGetZExtValue(size);
       TypeRef arrayType = LLVMArrayType(elementType, constSize);
       ValueRef array_alloca = LLVMBuildAlloca(builder, arrayType, name);
-      // Return pointer to first element (elementType*)
-      return LLVMBuildGEP2(builder, arrayType, array_alloca, indices, 2, name);;
+      return LLVMBuildGEP2(builder, arrayType, array_alloca, indices, 2, name);
    }
 
-   // Dynamic size: use LLVMBuildArrayAlloca then GEP to &array[0]
    ValueRef array_alloca = LLVMBuildArrayAlloca(builder, elementType, size, name);
    return LLVMBuildGEP2(builder, elementType, array_alloca, indices, 2, name);
 }

@@ -12,17 +12,13 @@ func int to_ascii(char c):
 func int strncmp(chars left, chars right, int n):
     int i = 0
     if n == 0: return 0
-    
     while i < n and left[i] == right[i] and left[i] != '\0':
         i += 1
-    
-    if i == n:
-        return 0
-    
+    if i == n: return 0
     int left_val = to_ascii(left[i])
     int right_val = to_ascii(right[i])
     return left_val - right_val
 
 main():
-    int len = strncmp("abd", "abc", 2) 
+    int len = strncmp("abd", "abc", 4) 
     return len
