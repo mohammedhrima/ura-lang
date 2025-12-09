@@ -31,6 +31,8 @@ Token *func_dec_ir(Node *node)
          free(token->Fdec.args);
          token->Fdec.args = tmp;
       }
+      if(child->token->is_ref)
+         child->token->has_ref = true;
       child->token->Param.index = i;
       child->token->Param.func_ptr = node->token;
       child->token->is_param = true;
@@ -140,6 +142,7 @@ Token *func_call_ir(Node *node)
       {
          Node *carg = call_args->children[i]; // will always be ID
          Token *src = generate_ir(carg);
+         
 
          if (check(src->type == ID, "Indeclared variable %s", carg->token->name)) break;
          if (i < dec_args->cpos)
@@ -148,6 +151,8 @@ Token *func_call_ir(Node *node)
             Token *dist = darg->token;
 
             if (check(!compatible(src, dist), "Incompatible type arg %s", func->token->name)) break;
+            src->is_ref = darg->token->is_ref;
+            src->has_ref = false;
          }
 
          // src->is_param = false;
@@ -849,32 +854,7 @@ void handle_asm(Inst *inst)
 
    case FCALL:
    {
-      // TODO: move this insde call_function later
-      LLVM srcFunc = curr->Fcall.func_ptr->llvm;
-
-      ValueRef *args = NULL;
-      if (curr->Fcall.pos)
-      {
-         args = allocate(curr->Fcall.pos, sizeof(ValueRef));
-         for (int i = 0; i < curr->Fcall.pos; i++)
-         {
-            Token *arg = curr->Fcall.args[i];
-            check(!arg->llvm.is_set, "llvm is not set");
-
-            // Load variable values, pass literals/temporaries directly
-            // TODO: compare ti with llvm_get_ref
-            args[i] = llvm_get_ref(arg);
-            // if (arg->name && !arg->is_param && arg->type != FCALL)
-            //    args[i] = load_variable(arg);
-            // else
-            //    args[i] = arg->llvm.elem;
-         }
-
-      }
-      call_function(curr, &srcFunc, args, curr->Fcall.pos);
-
-      free(args);
-
+      call_function(curr);
       curr->llvm.is_set = true;
       break;
    }

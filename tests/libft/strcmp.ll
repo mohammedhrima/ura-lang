@@ -70,40 +70,40 @@ entry:
 
 while:                                            ; preds = %while_bloc, %entry
   %left3 = load ptr, ptr %left1, align 8
-  %i4 = load i32, ptr %i, align 4
-  %ACCESS = getelementptr i8, ptr %left3, i32 %i4
-  %right5 = load ptr, ptr %right2, align 8
-  %i6 = load i32, ptr %i, align 4
-  %ACCESS7 = getelementptr i8, ptr %right5, i32 %i6
-  %left8 = load i8, ptr %ACCESS, align 1
-  %right9 = load i8, ptr %ACCESS7, align 1
-  %EQUAL = icmp eq i8 %left8, %right9
-  %left10 = load ptr, ptr %left1, align 8
-  %i11 = load i32, ptr %i, align 4
-  %ACCESS12 = getelementptr i8, ptr %left10, i32 %i11
-  %left13 = load i8, ptr %ACCESS12, align 1
-  %NOT_EQ = icmp ne i8 %left13, 0
+  %idx = load i32, ptr %i, align 4
+  %ACCESS = getelementptr i8, ptr %left3, i32 %idx
+  %right4 = load ptr, ptr %right2, align 8
+  %idx5 = load i32, ptr %i, align 4
+  %ACCESS6 = getelementptr i8, ptr %right4, i32 %idx5
+  %left7 = load i8, ptr %ACCESS, align 1
+  %right8 = load i8, ptr %ACCESS6, align 1
+  %EQUAL = icmp eq i8 %left7, %right8
+  %left9 = load ptr, ptr %left1, align 8
+  %idx10 = load i32, ptr %i, align 4
+  %ACCESS11 = getelementptr i8, ptr %left9, i32 %idx10
+  %left12 = load i8, ptr %ACCESS11, align 1
+  %NOT_EQ = icmp ne i8 %left12, 0
   %AND = and i1 %EQUAL, %NOT_EQ
   br i1 %AND, label %while_bloc, label %end_while
 
 while_bloc:                                       ; preds = %while
-  %i14 = load i32, ptr %i, align 4
-  %ADD = add i32 %i14, 1
+  %i13 = load i32, ptr %i, align 4
+  %ADD = add i32 %i13, 1
   store i32 %ADD, ptr %i, align 4
   br label %while
 
 end_while:                                        ; preds = %while
-  %left15 = load ptr, ptr %left1, align 8
-  %i16 = load i32, ptr %i, align 4
-  %ACCESS17 = getelementptr i8, ptr %left15, i32 %i16
-  %left18 = load i8, ptr %ACCESS17, align 1
-  %to_ascii = call i32 @to_ascii(i8 %left18)
-  %right19 = load ptr, ptr %right2, align 8
-  %i20 = load i32, ptr %i, align 4
-  %ACCESS21 = getelementptr i8, ptr %right19, i32 %i20
-  %right22 = load i8, ptr %ACCESS21, align 1
-  %to_ascii23 = call i32 @to_ascii(i8 %right22)
-  %SUB = sub i32 %to_ascii, %to_ascii23
+  %left14 = load ptr, ptr %left1, align 8
+  %idx15 = load i32, ptr %i, align 4
+  %ACCESS16 = getelementptr i8, ptr %left14, i32 %idx15
+  %left17 = load i8, ptr %ACCESS16, align 1
+  %to_ascii = call i32 @to_ascii(i8 %left17)
+  %right18 = load ptr, ptr %right2, align 8
+  %idx19 = load i32, ptr %i, align 4
+  %ACCESS20 = getelementptr i8, ptr %right18, i32 %idx19
+  %right21 = load i8, ptr %ACCESS20, align 1
+  %to_ascii22 = call i32 @to_ascii(i8 %right21)
+  %SUB = sub i32 %to_ascii, %to_ascii22
   ret i32 %SUB
 }
 
