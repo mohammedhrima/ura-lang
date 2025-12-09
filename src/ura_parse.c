@@ -550,8 +550,9 @@ Node *func_dec(Node *node)
       }
       if (next->type == DOTS)
       {
+         // TODO: check if function has if/else
          if (node->token->retType != VOID)
-            check(!child || child->token->type != RETURN, "expected return statment");
+            check(!child || child->token->type != RETURN, "expected return statment %s", node->token->name);
          else
          {
             Node *ret = new_node(new_token(RETURN, node->token->space + TAB));
@@ -796,13 +797,13 @@ Node *prime()
    }
    else if ((token = find(STRUCT_DEF, 0)))
       return struct_def(new_node(token));
-   // else if ((token = find(REF, 0)))
-   // {
-   //     node = prime(); // TODO: check it
-   //     check(!node->token->is_declare, "must be variable declaration after ref");
-   //     node->token->is_ref = true;
-   //     return node;
-   // }
+   else if ((token = find(REF, 0)))
+   {
+      node = prime(); // TODO: check it
+      check(!node->token->is_declare, "must be variable declaration after ref");
+      node->token->is_ref = true;
+      return node;
+   }
    else if ((token = find(FDEC, PROTO_FUNC, 0))) return func_dec(new_node(token));
    else if ((token = find(RETURN, 0)))
    {
