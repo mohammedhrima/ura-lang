@@ -7,4 +7,4 @@
 rm -rf out.ll out.s && 
 clang $1 `llvm-config --cflags --ldflags --libs core` -Wall -Werror -fsanitize=address -g3 && \
     ./a.out && rm -rf a.out && llc out.ll -o out.s && \
-    clang out.s -o exe.out && cat out.ll
+    clang out.s -o exe.out && ./exe.out #&& cat out.ll

@@ -180,6 +180,11 @@ struct Token
 
    LLVM llvm;
 
+   struct {
+      ValueRef size;  // Add this field
+      int const_size;
+   } Array;
+
    struct
    {
       // integer
@@ -380,6 +385,9 @@ ValueRef access_(Token *curr, Token *left, Token *right);
 ValueRef cast(Token *from, Token *to);
 ValueRef allocate_stack(ValueRef size, TypeRef elementType, char *name);
 bool did_opimize();
+ValueRef safe_access_(Token *curr, Token *left, Token *right);
+void store_array_size(ValueRef array_ptr, ValueRef size);
+ValueRef get_array_size(ValueRef array_ptr);
 
 // ----------------------------------------------------------------------------
 // Utilities

@@ -4,6 +4,7 @@
 #include <llvm-c/Target.h>
 #include <llvm-c/TargetMachine.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 
@@ -20,6 +21,9 @@ BuilderRef builder;
 TypeRef voidType, float32Type, boolType, charType,
 int16Type, int32Type, int64Type, charPtrType,
 int32PtrType;
+
+ValueRef boundsCheckFunc = NULL;
+ValueRef nullCheckFunc = NULL;
 
 typedef struct {
    char *name;
@@ -38,7 +42,6 @@ void init(char *name)
    module = LLVMModuleCreateWithNameInContext(name, context);
    builder = LLVMCreateBuilderInContext(context);
 
-   // thread safety
    voidType     = LLVMVoidTypeInContext(context);
    float32Type  = LLVMFloatTypeInContext(context);
    boolType     = LLVMInt1TypeInContext(context);
@@ -49,7 +52,6 @@ void init(char *name)
    charPtrType  = LLVMPointerType(charType, 0);
    int32PtrType = LLVMPointerType(int32Type, 0);
    
-   // Initialize targets for code generation
    LLVMInitializeAllTargetInfos();
    LLVMInitializeAllTargets();
    LLVMInitializeAllTargetMCs();
@@ -98,7 +100,7 @@ ValueRef create_string(char *value)
    return LLVMBuildGlobalStringPtr(builder, value, name);
 }
 
-ValueRef create_int(TypeRef type, int value)
+ValueRef create_int(TypeRef type, long long value)
 {
    return LLVMConstInt(type, value, 0);
 }
@@ -131,29 +133,22 @@ ValueRef assign(ValueRef variable, ValueRef value)
 
 ValueRef operation(ValueRef left, char *op, ValueRef right)
 {
-   // ---- Comparison (int) ----
    if (strcmp(op, "==") == 0) return LLVMBuildICmp(builder, LLVMIntEQ, left, right, "eq");
    if (strcmp(op, "!=") == 0) return LLVMBuildICmp(builder, LLVMIntNE, left, right, "ne");
    if (strcmp(op, ">") == 0) return LLVMBuildICmp(builder, LLVMIntSGT, left, right, "gt");
    if (strcmp(op, "<") == 0) return LLVMBuildICmp(builder, LLVMIntSLT, left, right, "lt");
    if (strcmp(op, ">=") == 0) return LLVMBuildICmp(builder, LLVMIntSGE, left, right, "ge");
    if (strcmp(op, "<=") == 0) return LLVMBuildICmp(builder, LLVMIntSLE, left, right, "le");
-
-   // ---- Arithmetic ----
    if (strcmp(op, "+") == 0) return LLVMBuildAdd(builder, left, right, "add");
    if (strcmp(op, "-") == 0) return LLVMBuildSub(builder, left, right, "sub");
    if (strcmp(op, "*") == 0) return LLVMBuildMul(builder, left, right, "mul");
    if (strcmp(op, "/") == 0) return LLVMBuildSDiv(builder, left, right, "div");
    if (strcmp(op, "%") == 0) return LLVMBuildSRem(builder, left, right, "mod");
-
-   // ---- Bitwise ----
    if (strcmp(op, "&&") == 0) return LLVMBuildAnd(builder, left, right, "and");
    if (strcmp(op, "||") == 0) return LLVMBuildOr(builder, left, right, "or");
    if (strcmp(op, "^") == 0) return LLVMBuildXor(builder, left, right, "xor");
    if (strcmp(op, "<<") == 0) return LLVMBuildShl(builder, left, right, "shl");
-   if (strcmp(op, ">>") == 0) return LLVMBuildAShr(builder, left, right, "shr"); // arithmetic shift
-
-   // ---- Logical (boolean) ----
+   if (strcmp(op, ">>") == 0) return LLVMBuildAShr(builder, left, right, "shr");
    if (strcmp(op, "and") == 0) return LLVMBuildAnd(builder, left, right, "and");
    if (strcmp(op, "or") == 0) return LLVMBuildOr(builder, left, right, "or");
 
@@ -174,23 +169,18 @@ ValueRef cast_to(ValueRef source, TypeRef ntype, char *name)
    unsigned targetBits = LLVMGetIntTypeWidth(ntype);
    
    if (sourceBits > targetBits) {
-      // Truncate: large → small
       return LLVMBuildTrunc(builder, source, ntype, name);
    } else if (sourceBits < targetBits) {
-      // Extend: small → large
-      return LLVMBuildSExt(builder, source, ntype, name);  // or ZExt for unsigned
+      return LLVMBuildSExt(builder, source, ntype, name);
    } else {
-      // Same size, return as-is
       return source;
    }
 }
 
 ValueRef allocate_stack(ValueRef size, TypeRef elementType, char *name)
 {
-   // Check if size is a constant
    if (LLVMIsConstant(size))
    {
-      // Static allocation: use array type
       unsigned long long constSize = LLVMConstIntGetZExtValue(size);
       TypeRef arrayType = LLVMArrayType(elementType, constSize);
       ValueRef array_alloca = LLVMBuildAlloca(builder, arrayType, name);
@@ -201,7 +191,6 @@ ValueRef allocate_stack(ValueRef size, TypeRef elementType, char *name)
       };
       return LLVMBuildGEP2(builder, arrayType, array_alloca, indices, 2, name);
    }
-   // Dynamic allocation: use alloca with size
    ValueRef array_alloca = LLVMBuildArrayAlloca(builder, elementType, size, name);
    return array_alloca;
 }
@@ -212,7 +201,101 @@ void ret(ValueRef value)
    else LLVMBuildRetVoid(builder);
 }
 
-// Verify and print module
+ValueRef get_printf()
+{
+   ValueRef printfFunc = LLVMGetNamedFunction(module, "printf");
+   if (!printfFunc) {
+      TypeRef printfType = LLVMFunctionType(int32Type, (TypeRef[]){charPtrType}, 1, true);
+      printfFunc = LLVMAddFunction(module, "printf", printfType);
+   }
+   return printfFunc;
+}
+
+ValueRef get_exit()
+{
+   ValueRef exitFunc = LLVMGetNamedFunction(module, "exit");
+   if (!exitFunc) {
+      TypeRef exitType = LLVMFunctionType(voidType, (TypeRef[]){int32Type}, 1, false);
+      exitFunc = LLVMAddFunction(module, "exit", exitType);
+   }
+   return exitFunc;
+}
+
+ValueRef create_bounds_check_function()
+{
+   if (boundsCheckFunc) return boundsCheckFunc;
+   
+   ValueRef printfFunc = get_printf();
+   ValueRef exitFunc = get_exit();
+   
+   TypeRef printfType = LLVMGlobalGetValueType(printfFunc);
+   TypeRef exitType = LLVMGlobalGetValueType(exitFunc);
+   
+   TypeRef params[] = {charPtrType, int32Type, int32Type, int32Type, int32Type};
+   TypeRef funcType = LLVMFunctionType(voidType, params, 5, false);
+   boundsCheckFunc = LLVMAddFunction(module, "__ura_bounds_check", funcType);
+   
+   BasicBlockRef entry = LLVMAppendBasicBlock(boundsCheckFunc, "entry");
+   BasicBlockRef error = LLVMAppendBasicBlock(boundsCheckFunc, "error");
+   BasicBlockRef ok = LLVMAppendBasicBlock(boundsCheckFunc, "ok");
+   
+   BuilderRef oldBuilder = builder;
+   builder = LLVMCreateBuilderInContext(context);
+   LLVMPositionBuilderAtEnd(builder, entry);
+   
+   ValueRef idx = LLVMGetParam(boundsCheckFunc, 1);
+   ValueRef size = LLVMGetParam(boundsCheckFunc, 2);
+   ValueRef line = LLVMGetParam(boundsCheckFunc, 3);
+   ValueRef col = LLVMGetParam(boundsCheckFunc, 4);
+   
+   ValueRef cond1 = LLVMBuildICmp(builder, LLVMIntSGE, idx, create_int(int32Type, 0), "ge0");
+   ValueRef cond2 = LLVMBuildICmp(builder, LLVMIntSLT, idx, size, "ltsize");
+   ValueRef valid = LLVMBuildAnd(builder, cond1, cond2, "valid");
+   
+   LLVMBuildCondBr(builder, valid, ok, error);
+   
+   LLVMPositionBuilderAtEnd(builder, error);
+   ValueRef fmt = create_string(
+      "\n\033[1;31m=================================================================\033[0m\n"
+      "\033[1;31mRUNTIME ERROR: Array Index Out of Bounds\033[0m\n"
+      "\033[1;31m=================================================================\033[0m\n"
+      "Location: \033[1;33mline %d, column %d\033[0m\n"
+      "Index:    \033[1;36m%d\033[0m\n"
+      "Max size: \033[1;36m%d\033[0m\n"
+      "\033[1;31m=================================================================\033[0m\n\n"
+   );
+   LLVMBuildCall2(builder, printfType, printfFunc, 
+                  (ValueRef[]){fmt, line, col, idx, size}, 5, "");
+   LLVMBuildCall2(builder, exitType, exitFunc, (ValueRef[]){create_int(int32Type, 1)}, 1, "");
+   LLVMBuildUnreachable(builder);
+   
+   LLVMPositionBuilderAtEnd(builder, ok);
+   LLVMBuildRetVoid(builder);
+   
+   LLVMDisposeBuilder(builder);
+   builder = oldBuilder;
+   
+   return boundsCheckFunc;
+}
+
+ValueRef safe_access(ValueRef source, ValueRef index, TypeRef elementType, 
+                     int arraySize, int line, int col)
+{
+   ValueRef checkFunc = create_bounds_check_function();
+   
+   TypeRef funcType = LLVMGlobalGetValueType(checkFunc);
+   LLVMBuildCall2(builder, funcType, checkFunc,
+                  (ValueRef[]){
+                     source,
+                     index,
+                     create_int(int32Type, arraySize),
+                     create_int(int32Type, line),
+                     create_int(int32Type, col)
+                  }, 5, "");
+   
+   return access(source, index, elementType);
+}
+
 int verify_module()
 {
    char *error = NULL;

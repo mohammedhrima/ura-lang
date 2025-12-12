@@ -73,7 +73,7 @@ void code_gen(char *filename)
    if (found_error) return;
 #if IR
    debug(GREEN BOLD"GENERATE ASSEMBLY CODE:\n" RESET);
-   print(GREEN BOLD SPLIT RESET);
+   debug(GREEN BOLD SPLIT RESET);
    copy_insts();
    optimize_ir();
 #endif
