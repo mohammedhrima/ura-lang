@@ -1,6 +1,36 @@
 #include "ura_header.h"
 
 TypeRef vd, f32, i1, i8, i16, i32, i64, p8, p32;
+
+// Global variable to track if bounds check function was created
+static ValueRef boundsCheckFunc = NULL;
+
+// Global map to track array sizes
+typedef struct {
+   ValueRef array_ptr;
+   ValueRef size;
+} ArraySizeInfo;
+
+static ArraySizeInfo array_sizes[1000];
+static int array_size_count = 0;
+
+// Store array size
+void store_array_size(ValueRef array_ptr, ValueRef size) {
+   array_sizes[array_size_count].array_ptr = array_ptr;
+   array_sizes[array_size_count].size = size;
+   array_size_count++;
+}
+
+// Get array size
+ValueRef get_array_size(ValueRef array_ptr) {
+   for (int i = 0; i < array_size_count; i++) {
+      if (array_sizes[i].array_ptr == array_ptr) {
+         return array_sizes[i].size;
+      }
+   }
+   return NULL;
+}
+
 void init(char *name)
 {
    context = LLVMContextCreate();
@@ -52,7 +82,7 @@ TypeRef get_llvm_type(Token *token)
       check(1, "get_llvm_type: token is NULL");
       return NULL;
    }
-   
+
    TypeRef base_type;
    switch (token->retType)
    {
@@ -72,12 +102,12 @@ TypeRef get_llvm_type(Token *token)
       return NULL;
    }
    }
-   
+
    if (!base_type) {
       check(1, "get_llvm_type: base_type is NULL for retType %d", token->retType);
       return NULL;
    }
-   
+
    if (token->is_ref)
       return LLVMPointerType(base_type, 0);
    return base_type;
@@ -113,13 +143,13 @@ ValueRef dereference_if_ref(Token *token)
 {
    if (!token->is_ref || !token->has_ref)
       return token->llvm.elem;
-   
+
    TypeRef baseType = get_base_type(token);
    ValueRef addr = LLVMBuildLoad2(builder,
-                                   LLVMPointerType(baseType, 0),
-                                   token->llvm.elem,
-                                   "ref_addr");
-   
+                                  LLVMPointerType(baseType, 0),
+                                  token->llvm.elem,
+                                  "ref_addr");
+
    return LLVMBuildLoad2(builder, baseType, addr, "deref");
 }
 
@@ -127,10 +157,10 @@ ValueRef llvm_get_ref(Token *token)
 {
    if (token->is_ref && token->has_ref)
       return dereference_if_ref(token);
-   
+
    if (token->name && !token->is_param && !includes(token->type, FCALL, AND, OR, AS, STACK))
       return load_variable(token);
-   
+
    return token->llvm.elem;
 }
 
@@ -149,17 +179,17 @@ void create_function(Token *token)
             check(1, "create_function: parameter %d is NULL", i);
             continue;
          }
-         
+
          TypeRef argType = get_base_type(param);
          if (param->is_ref)
             argType = LLVMPointerType(argType, 0);
-         
+
          args[i] = argType;
       }
    }
-   
+
    TypeRef retType = get_base_type(token);
-   
+
    token->llvm.funcType = LLVMFunctionType(retType, args, pos, isVariadic);
    token->llvm.elem = LLVMAddFunction(module, token->name, token->llvm.funcType);
    free(args);
@@ -230,22 +260,22 @@ ValueRef load_variable(Token *token)
 ValueRef convert_type_if_needed(ValueRef value, TypeRef targetType)
 {
    TypeRef valType = LLVMTypeOf(value);
-   
+
    if (valType == targetType)
       return value;
-   
+
    if (LLVMGetTypeKind(valType) == LLVMIntegerTypeKind &&
-       LLVMGetTypeKind(targetType) == LLVMIntegerTypeKind)
+         LLVMGetTypeKind(targetType) == LLVMIntegerTypeKind)
    {
       unsigned targetBits = LLVMGetIntTypeWidth(targetType);
       unsigned valBits = LLVMGetIntTypeWidth(valType);
-      
+
       if (targetBits > valBits)
          return LLVMBuildSExt(builder, value, targetType, "cast");
       else if (targetBits < valBits)
          return LLVMBuildTrunc(builder, value, targetType, "cast");
    }
-   
+
    return value;
 }
 
@@ -276,11 +306,11 @@ ValueRef assign2(Token *variable, Token *value)
       else
       {
          TypeRef baseType = get_base_type(variable);
-         ValueRef targetAddr = LLVMBuildLoad2(builder, 
-                                               LLVMPointerType(baseType, 0),
-                                               variable->llvm.elem, 
-                                               "ref_addr");
-         
+         ValueRef targetAddr = LLVMBuildLoad2(builder,
+                                              LLVMPointerType(baseType, 0),
+                                              variable->llvm.elem,
+                                              "ref_addr");
+
          ValueRef rightVal;
          if (value->is_ref)
          {
@@ -295,7 +325,7 @@ ValueRef assign2(Token *variable, Token *value)
          {
             rightVal = llvm_get_ref(value);
          }
-         
+
          rightVal = convert_type_if_needed(rightVal, baseType);
          LLVMBuildStore(builder, rightVal, targetAddr);
          return targetAddr;
@@ -315,7 +345,7 @@ ValueRef operation(Token *token, Token* left, Token* right)
    ValueRef leftRef = llvm_get_ref(left);
    ValueRef rightRef = llvm_get_ref(right);
    char* op = to_string(token->type);
-   
+
    switch (token->type)
    {
    case LESS: return LLVMBuildICmp(builder, LLVMIntSLT, leftRef, rightRef, op);
@@ -357,7 +387,7 @@ ValueRef get_param(Token *token)
 {
    ValueRef param = LLVMGetParam(token->Param.func_ptr->llvm.elem, token->Param.index);
    LLVMSetValueName(param, token->name);
-   
+
    if (token->is_ref)
    {
       TypeRef baseType = get_base_type(token);
@@ -366,7 +396,7 @@ ValueRef get_param(Token *token)
       token->has_ref = true;
       return ref_storage;
    }
-   
+
    if (!token->Param.func_ptr->is_proto)
    {
       ValueRef ret = allocate_variable(get_llvm_type(token), token->name);
@@ -388,7 +418,7 @@ ValueRef access_(Token *curr, Token *left, Token *right)
 {
    ValueRef leftRef = llvm_get_ref(left);
    ValueRef rightRef;
-   
+
    // For index, we always need the actual value, not a pointer
    if (right->name && right->llvm.is_set)
    {
@@ -400,10 +430,10 @@ ValueRef access_(Token *curr, Token *left, Token *right)
    {
       rightRef = llvm_get_ref(right);
    }
-   
+
    ValueRef indices[] = { rightRef };
    TypeRef indexType = curr->is_ref ? get_base_type(curr) : get_llvm_type(curr);
-   
+
    return LLVMBuildGEP2(builder, indexType, leftRef, indices, 1, to_string(curr->type));
 }
 
@@ -420,7 +450,7 @@ ValueRef cast(Token *from, Token *to)
       return LLVMBuildTrunc(builder, source, ntype, "cast");
    else if (sourceBits < targetBits)
       return LLVMBuildSExt(builder, source, ntype, "cast");
-   
+
    return source;
 }
 
@@ -441,4 +471,111 @@ ValueRef allocate_stack(ValueRef size, TypeRef elementType, char *name)
 
    ValueRef array_alloca = LLVMBuildArrayAlloca(builder, elementType, size, name);
    return LLVMBuildGEP2(builder, elementType, array_alloca, indices, 2, name);
+}
+
+// Create the bounds check function once
+ValueRef create_bounds_check_function()
+{
+   if (boundsCheckFunc) return boundsCheckFunc;
+
+   // Get printf and exit functions
+   ValueRef printfFunc = LLVMGetNamedFunction(module, "printf");
+   if (!printfFunc) {
+      TypeRef printfType = LLVMFunctionType(i32, (TypeRef[]) {p8}, 1, true);
+      printfFunc = LLVMAddFunction(module, "printf", printfType);
+   }
+
+   ValueRef exitFunc = LLVMGetNamedFunction(module, "exit");
+   if (!exitFunc) {
+      TypeRef exitType = LLVMFunctionType(vd, (TypeRef[]) {i32}, 1, false);
+      exitFunc = LLVMAddFunction(module, "exit", exitType);
+   }
+
+   TypeRef printfType = LLVMGlobalGetValueType(printfFunc);
+   TypeRef exitType = LLVMGlobalGetValueType(exitFunc);
+
+   // Function signature: void __bounds_check(i32 index, i32 size, i32 line, i8* filename)
+   TypeRef params[] = {i32, i32, i32, p8};
+   TypeRef funcType = LLVMFunctionType(vd, params, 4, false);
+   boundsCheckFunc = LLVMAddFunction(module, "__bounds_check", funcType);
+
+   BasicBlockRef entry = LLVMAppendBasicBlock(boundsCheckFunc, "entry");
+   BasicBlockRef error = LLVMAppendBasicBlock(boundsCheckFunc, "error");
+   BasicBlockRef ok = LLVMAppendBasicBlock(boundsCheckFunc, "ok");
+
+   // Save current builder and create temporary one
+   BuilderRef oldBuilder = builder;
+   builder = LLVMCreateBuilderInContext(context);
+   LLVMPositionBuilderAtEnd(builder, entry);
+
+   // Get parameters in correct order
+   ValueRef idx = LLVMGetParam(boundsCheckFunc, 0);
+   ValueRef size = LLVMGetParam(boundsCheckFunc, 1);
+   ValueRef line = LLVMGetParam(boundsCheckFunc, 2);
+   ValueRef filename = LLVMGetParam(boundsCheckFunc, 3);
+
+   // Check: index >= 0 && index < size
+   ValueRef cond1 = LLVMBuildICmp(builder, LLVMIntSGE, idx, LLVMConstInt(i32, 0, 0), "ge0");
+   ValueRef cond2 = LLVMBuildICmp(builder, LLVMIntSLT, idx, size, "ltsize");
+   ValueRef valid = LLVMBuildAnd(builder, cond1, cond2, "valid");
+
+   LLVMBuildCondBr(builder, valid, ok, error);
+
+   // Error block - simple message
+   LLVMPositionBuilderAtEnd(builder, error);
+   ValueRef fmt = LLVMBuildGlobalStringPtr(builder,
+                                           "Error: index %d out of bounds (size: %d) at %s:%d\n", "err_fmt");
+   LLVMBuildCall2(builder, printfType, printfFunc,
+   (ValueRef[]) {fmt, idx, size, filename, line}, 5, "");
+   LLVMBuildCall2(builder, exitType, exitFunc,
+   (ValueRef[]) {LLVMConstInt(i32, 1, 0)}, 1, "");
+   LLVMBuildUnreachable(builder);
+
+   // OK block
+   LLVMPositionBuilderAtEnd(builder, ok);
+   LLVMBuildRetVoid(builder);
+
+   // Restore builder
+   LLVMDisposeBuilder(builder);
+   builder = oldBuilder;
+
+   return boundsCheckFunc;
+}
+
+// Safe access with bounds checking
+ValueRef safe_access_(Token *curr, Token *left, Token *right)
+{
+   ValueRef leftRef = llvm_get_ref(left);
+   ValueRef rightRef;
+
+   if (right->name && right->llvm.is_set) {
+      TypeRef rightType = right->is_ref ? get_base_type(right) : get_llvm_type(right);
+      rightRef = LLVMBuildLoad2(builder, rightType, right->llvm.elem, "idx");
+   } else {
+      rightRef = llvm_get_ref(right);
+   }
+
+   // Get size from the token itself
+   ValueRef size = left->Array.size;
+
+   if (size) {
+      ValueRef checkFunc = create_bounds_check_function();
+      TypeRef funcType = LLVMGlobalGetValueType(checkFunc);
+
+      ValueRef filename_str = LLVMBuildGlobalStringPtr(builder,
+                              curr->filename ? curr->filename : "unknown", "filename");
+
+      LLVMBuildCall2(builder, funcType, checkFunc,
+      (ValueRef[]) {
+         rightRef,
+         size,
+         LLVMConstInt(i32, curr->line, 0),
+         filename_str
+      }, 4, "");
+   }
+
+   ValueRef indices[] = { rightRef };
+   TypeRef indexType = curr->is_ref ? get_base_type(curr) : get_llvm_type(curr);
+
+   return LLVMBuildGEP2(builder, indexType, leftRef, indices, 1, "access");
 }
