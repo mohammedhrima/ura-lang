@@ -75,11 +75,5 @@ main():
    return b
 ```
 
-+ pointers: 008.c
-```c
-main():
-   int a = 1
-   ref int b = a
-   b = 2
-   return b
-```
++ try/catch: 012.c
+

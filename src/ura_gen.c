@@ -31,7 +31,7 @@ Token *func_dec_ir(Node *node)
          free(token->Fdec.args);
          token->Fdec.args = tmp;
       }
-      if(child->token->is_ref)
+      if (child->token->is_ref)
          child->token->has_ref = true;
       child->token->Param.index = i;
       child->token->Param.func_ptr = node->token;
@@ -142,7 +142,7 @@ Token *func_call_ir(Node *node)
       {
          Node *carg = call_args->children[i]; // will always be ID
          Token *src = generate_ir(carg);
-         
+
 
          if (check(src->type == ID, "Indeclared variable %s", carg->token->name)) break;
          if (i < dec_args->cpos)
@@ -349,12 +349,12 @@ Token *op_ir(Node *node)
    Token *right = generate_ir(node->right);
    if (check(!left, "error in assignment, left is NULL"))
    {
-      print("%n\n", node);
+      debug("%n\n", node);
       return NULL;
    }
    if (check(!right, "error in assignment, right is NULL"))
    {
-      print("%n\n", node);
+      debug("%n\n", node);
       return NULL;
    }
 
@@ -425,6 +425,10 @@ Token *op_ir(Node *node)
       }
       node->token->ir_reg = left->ir_reg;
       node->token->retType = left->retType;
+       if (right->Array.size) {
+      left->Array.size = right->Array.size;
+      left->Array.const_size = right->Array.const_size;
+   }
       break;
    }
    case ADD: case SUB: case MUL: case DIV: case MOD:
@@ -505,17 +509,24 @@ Token *generate_ir(Node *node)
       return node->token;
    }
    case AS:
-   {
-      Token *left = generate_ir(node->left);
-      Token *right = generate_ir(node->right);
+{
+   Token *left = generate_ir(node->left);
+   Token *right = generate_ir(node->right);
 
-      inst = new_inst(node->token);
-      inst->token->name = NULL; // causes error in llvm generation
-      inst->left = left;
-      inst->right = right;
-      inst->token->retType = node->right->token->retType;
-      return node->token;
+   inst = new_inst(node->token);
+   inst->token->name = NULL;
+   inst->left = left;
+   inst->right = right;
+   inst->token->retType = node->right->token->retType;
+   
+   // CRITICAL FIX: Preserve array size through cast
+   if (left->Array.size) {
+      inst->token->Array.size = left->Array.size;
+      inst->token->Array.const_size = left->Array.const_size;
    }
+   
+   return node->token;
+}
    case INT: case BOOL: case CHAR: case STRUCT_CALL:
    case FLOAT: case LONG: case CHARS: case PTR: case VOID:
    {
@@ -759,14 +770,23 @@ void handle_asm(Inst *inst)
       curr->llvm.is_set = true;
       break;
    }
-   case AS:
-   {
-      if (check(!left->llvm.is_set, "casting, left is not set")) break;
+case AS:
+{
+   if (check(!left->llvm.is_set, "casting, left is not set")) break;
 
-      curr->llvm.elem = cast(left, right);
-      curr->llvm.is_set = true;
-      break;
+   curr->llvm.elem = cast(left, right);
+   curr->llvm.is_set = true;
+   
+   // Preserve array size information through casts
+   if (left->Array.size) {
+      curr->Array.size = left->Array.size;
+      curr->Array.const_size = left->Array.const_size;
    }
+   
+   break;
+}
+
+
 #if 0
    case STRUCT_DEF:
    {
@@ -809,14 +829,26 @@ void handle_asm(Inst *inst)
       break;
    }
 #endif
-   case ASSIGN:
-   {
-      if (check(!left->llvm.is_set, "assign, left is not set")) break;
-      if (check(!right->llvm.is_set, "assign, right is not set")) break;
+ case ASSIGN:
+{
+   if (check(!left->llvm.is_set, "assign, left is not set")) break;
+   if (check(!right->llvm.is_set, "assign, right is not set")) break;
 
-      assign2(left, right);
-      break;
+   assign2(left, right);
+
+   // Copy array size info from right to left
+   if (right->Array.size) {
+      left->Array.size = right->Array.size;
+      left->Array.const_size = right->Array.const_size;
+      
+      // Also store in global map using LLVM pointer as key (backup mechanism)
+      if (left->llvm.elem) {
+         store_array_size(left->llvm.elem, right->Array.size);
+      }
    }
+
+   break;
+}
    case ADD: case SUB: case MUL: case DIV: case MOD:
    case LESS: case LESS_EQUAL: case MORE:
    case MORE_EQUAL: case EQUAL: case NOT_EQUAL:
@@ -846,12 +878,17 @@ void handle_asm(Inst *inst)
       check(!arg->llvm.is_set, "llvm is not set");
       ValueRef elem = llvm_get_ref(arg);
 
-      // Request an element pointer (i8*) directly.
       curr->llvm.elem = allocate_stack(elem, i8, "stack");
       curr->llvm.is_set = true;
+
+      // Store size in the token itself
+      curr->Array.size = elem;
+      if (LLVMIsConstant(elem)) {
+         curr->Array.const_size = LLVMConstIntGetZExtValue(elem);
+      }
+
       break;
    }
-
    case FCALL:
    {
       call_function(curr);
@@ -891,7 +928,7 @@ void handle_asm(Inst *inst)
       {
          if (left->name)
          {
-            // TODO: compare ti with llvm_get_ref
+            // TODO: compare it with llvm_get_ref
             ValueRef loaded = load_variable(left);
             ret = return_(loaded);
          }
@@ -927,15 +964,21 @@ void handle_asm(Inst *inst)
       curr->llvm.is_set = true;
       break;
    }
-   case ACCESS:
-   {
-      check(!left->llvm.is_set, "left is not set");
-      check(!right->llvm.is_set, "right is not set");
+case ACCESS:
+{
+   check(!left->llvm.is_set, "left is not set");
+   check(!right->llvm.is_set, "right is not set");
 
-      curr->llvm.elem = access_(curr, left, right);
-      curr->llvm.is_set = true;
-      break;
+   // Size should already be in left from IR generation
+   // But add fallback mechanisms just in case
+   if (!left->Array.size && left->llvm.elem) {
+      left->Array.size = get_array_size(left->llvm.elem);
    }
+
+   curr->llvm.elem = safe_access_(curr, left, right);
+   curr->llvm.is_set = true;
+   break;
+}
    case SET_POS:
    {
       check(!left->llvm.is_set, "SET POS require left to be set");
