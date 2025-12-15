@@ -16,8 +16,8 @@ while:                                            ; preds = %while_bloc, %entry
   %idx = load i32, ptr %i, align 4
   %ACCESS = getelementptr i8, ptr %str2, i32 %idx
   %str3 = load i8, ptr %ACCESS, align 1
-  %NOT_EQ = icmp ne i8 %str3, 0
-  br i1 %NOT_EQ, label %while_bloc, label %end_while
+  %NOT_EQUAL = icmp ne i8 %str3, 0
+  br i1 %NOT_EQUAL, label %while_bloc, label %end_while
 
 while_bloc:                                       ; preds = %while
   %i4 = load i32, ptr %i, align 4

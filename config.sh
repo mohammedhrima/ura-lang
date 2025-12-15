@@ -116,7 +116,7 @@ indent() {
     astyle --mode=c --indent=spaces=3 --pad-oper --pad-header \
        --keep-one-line-statements --keep-one-line-blocks --convert-tabs \
        --max-code-length=100 --break-after-logical \
-       --suffix=none $ura_src/*.c $ura_src/*.h
+       --suffix=none $ura_src/*.c $ura_src/*.h $ura_src/../llvm/*/*.c
 }
 
 copy() {

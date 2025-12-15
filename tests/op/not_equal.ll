@@ -20,41 +20,41 @@ entry:
   %t1 = alloca i1, align 1
   %a1 = load i32, ptr %a, align 4
   %b2 = load i32, ptr %b, align 4
-  %NOT_EQ = icmp ne i32 %a1, %b2
-  store i1 %NOT_EQ, ptr %t1, align 1
+  %NOT_EQUAL = icmp ne i32 %a1, %b2
+  store i1 %NOT_EQUAL, ptr %t1, align 1
   %t2 = alloca i1, align 1
   %a3 = load i32, ptr %a, align 4
-  %NOT_EQ4 = icmp ne i32 %a3, 10
-  store i1 %NOT_EQ4, ptr %t2, align 1
+  %NOT_EQUAL4 = icmp ne i32 %a3, 10
+  store i1 %NOT_EQUAL4, ptr %t2, align 1
   %t3 = alloca i1, align 1
   %foo = call i32 @foo()
   %a5 = load i32, ptr %a, align 4
-  %NOT_EQ6 = icmp ne i32 %a5, %foo
-  store i1 %NOT_EQ6, ptr %t3, align 1
+  %NOT_EQUAL6 = icmp ne i32 %a5, %foo
+  store i1 %NOT_EQUAL6, ptr %t3, align 1
   %t4 = alloca i1, align 1
   %b7 = load i32, ptr %b, align 4
-  %NOT_EQ8 = icmp ne i32 20, %b7
-  store i1 %NOT_EQ8, ptr %t4, align 1
+  %NOT_EQUAL8 = icmp ne i32 20, %b7
+  store i1 %NOT_EQUAL8, ptr %t4, align 1
   %t5 = alloca i1, align 1
   store i1 false, ptr %t5, align 1
   %t6 = alloca i1, align 1
   %bar = call i32 @bar()
-  %NOT_EQ9 = icmp ne i32 10, %bar
-  store i1 %NOT_EQ9, ptr %t6, align 1
+  %NOT_EQUAL9 = icmp ne i32 10, %bar
+  store i1 %NOT_EQUAL9, ptr %t6, align 1
   %t7 = alloca i1, align 1
   %foo10 = call i32 @foo()
   %a11 = load i32, ptr %a, align 4
-  %NOT_EQ12 = icmp ne i32 %foo10, %a11
-  store i1 %NOT_EQ12, ptr %t7, align 1
+  %NOT_EQUAL12 = icmp ne i32 %foo10, %a11
+  store i1 %NOT_EQUAL12, ptr %t7, align 1
   %t8 = alloca i1, align 1
   %bar13 = call i32 @bar()
-  %NOT_EQ14 = icmp ne i32 %bar13, 20
-  store i1 %NOT_EQ14, ptr %t8, align 1
+  %NOT_EQUAL14 = icmp ne i32 %bar13, 20
+  store i1 %NOT_EQUAL14, ptr %t8, align 1
   %t9 = alloca i1, align 1
   %foo15 = call i32 @foo()
   %bar16 = call i32 @bar()
-  %NOT_EQ17 = icmp ne i32 %foo15, %bar16
-  store i1 %NOT_EQ17, ptr %t9, align 1
+  %NOT_EQUAL17 = icmp ne i32 %foo15, %bar16
+  store i1 %NOT_EQUAL17, ptr %t9, align 1
   %n1 = alloca i1, align 1
   %a18 = load i32, ptr %a, align 4
   %b19 = load i32, ptr %b, align 4
