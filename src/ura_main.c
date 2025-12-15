@@ -62,7 +62,7 @@ void optimize_ir()
    if (found_error) return;
 #if OPTIMIZE
    debug(GREEN BOLD"GENERATE INTERMEDIATE REPRESENTATIONS:\n" RESET);
-   while (did_opimize());
+   while (did_opimize() && !found_error);
    copy_insts();
    print_ir();
 #endif
@@ -81,7 +81,7 @@ void code_gen(char *filename)
 #if ASM
    char *moduleName = resolve_path(filename);
    init(moduleName);
-   for (int i = 0; insts[i] ; i++) handle_asm(insts[i]);
+   for (int i = 0; insts[i] && !found_error; i++) handle_asm(insts[i]);
 
    int len = strlen(moduleName);
    strcpy(moduleName + len - 3, "ll");

@@ -1,47 +1,20 @@
-#include "../utils.c"
-
-/*
-main():
-   char* str = "abcd"
-   char c = str[0]
-   putchar(c)
-   return 0
-*/
+#include "./utils.c"
 
 int main()
 {
-   init("module");
-   Foo mainFunc = (Foo){.name = "main", .retType = int32Type};
-   create_function(&mainFunc);
+   input =
+      "def int main():\n"
+      "   int i = 0\n"
+      "   while i < 5:\n"
+      "      i = i + 1\n"
+      "   end\n"
+      "   return i\n"
+      "end\n"
+      "\0";
 
-   BasicBlockRef entry = create_bloc("entry", mainFunc.elem);
-   open_block(entry);
+   tokenize();
+   compile();
+   free_tokens();
 
-   ValueRef i = allocate_variable(int32Type, "i");
-   assign(i, create_int(int32Type, 0));
-
-   BasicBlockRef whileCond = create_bloc("whileCond", mainFunc.elem);
-   BasicBlockRef whileBody = create_bloc("whileBody", mainFunc.elem);
-   BasicBlockRef whileEnd = create_bloc("whileEnd", mainFunc.elem);
-
-   branch(whileCond);
-   open_block(whileCond);
-   
-   ValueRef i_val = load_variable(int32Type, "i_val", i);
-   ValueRef cond = operation(i_val, "<", create_int(int32Type, 5));   
-   create_condition(cond, whileBody, whileEnd);
-
-   open_block(whileBody);
-   ValueRef i_loaded = load_variable(int32Type, "i_loaded", i);
-   ValueRef i_inc = operation(i_loaded, "+", create_int(int32Type, 1));
-   assign(i, i_inc);
-   branch(whileCond);
-
-   open_block(whileEnd);
-   
-   ValueRef ret_val = load_variable(int32Type, "ret", i);
-   ret(ret_val);
-
-   finalize();
    return 0;
 }
