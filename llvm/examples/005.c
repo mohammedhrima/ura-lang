@@ -1,36 +1,20 @@
-#include "../utils.c"
-
-/*
-protoFunc int printf(chars fmt, ...)
-main():
-   int result = 10
-   printf("func1 returned: %d\n", result)
-   return 0
-*/
+#include "./utils.c"
 
 int main()
 {
-   init("simple_printf");
+   input =
+      "protoFunc int printf(chars fmt, ...)\n"
+      "\n"
+      "def int main():\n"
+      "   int result = 10\n"
+      "   printf(\"func1 returned: %d\\n\", result)\n"
+      "   return 0\n"
+      "end\n"
+      "\0";
 
-   Foo printfFunc = (Foo){.name = "printf", .retType = int32Type, .paramCount = 1, .paramTypes = (TypeRef[]){charPtrType}, .isVariadic = true, };
-   create_function(&printfFunc);
+   tokenize();
+   compile();
+   free_tokens();
 
-   Foo mainFunc = (Foo){.name = "main", .retType = int32Type};
-   create_function(&mainFunc);
-
-   BasicBlockRef mainEntry = create_bloc("entry", &mainFunc);
-   open_block(mainEntry);
-
-   ValueRef result_alloca = allocate_variable(int32Type, "result");
-   assign(result_alloca, create_int(int32Type, 10));
-
-   ValueRef result_val = load_variable(int32Type, "result_val", result_alloca);
-
-   ValueRef format_str = create_string("func1 returned: %d\n");
-   call_function(&printfFunc, "", (ValueRef[]){format_str, result_val}, 2);
-
-   ret(create_int(int32Type, 0));
-
-   finalize();
    return 0;
 }
