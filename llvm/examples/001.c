@@ -1,26 +1,17 @@
-#include "../utils.c"
-
-/*
-main():
-   chars str = "Hello world"
-   return 0
-*/
+#include "./utils.c"
 
 int main()
 {
-   init("module");
-   Foo mainFunc = (Foo){.name = "main", .retType = int32Type};
-   create_function(&mainFunc);
+   input =
+      "def int main():\n"
+      "   chars str = \"Hello World\"\n"
+      "   return 0\n"
+      "end\n"
+      "\0";
 
-   BasicBlockRef entry = create_bloc(&mainFunc, "entry");
-   open_block(entry);
+   tokenize();
+   compile();
+   free_tokens();
 
-   ValueRef str = allocate_variable(charPtrType, "str");
-   ValueRef value = create_string("hello world");
-   assign(str, value);
-
-   ret(create_int(int32Type, 0));
-
-   finalize();
    return 0;
 }

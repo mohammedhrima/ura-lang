@@ -1,31 +1,41 @@
-#include "../utils.c"
+#include "utils.c"
 
 /*
 main():
-   chars a = stack(10) as chars
+   try:
+      int x = 10
+      int y = 0
+      if y == 0:
+         throw 1
+      end
+      int result = x / y
+   catch int error:
+      return error
+   end
    return 0
 */
 
 int main()
 {
-   init("example");
+   input =
+      "def int main():\n"
+      "   try:\n"
+      "      int x = 10\n"
+      "      int y = 0\n"
+      "      if y == 0:\n"
+      "         throw 1\n"
+      "      end\n"
+      "      int result = x / y\n"
+      "   catch int error:\n"
+      "      return error\n"
+      "   end\n"
+      "   return 0\n"
+      "end\n"
+      "\0";
 
-   Foo mainFunc = {.name = "main", .retType = int32Type};
-   create_function(&mainFunc);
-
-   BasicBlockRef entry = create_bloc("entry", &mainFunc);
-   open_block(entry);
-
-   // chars a = stack(10) as chars
-   ValueRef a = allocate_stack(create_int(int32Type, 10), charType, "a");
-   
-   // a[0] = 'H'
-   ValueRef ptr = access(a, create_int(int32Type, 0), charType);
-   assign(ptr, create_int(charType, 'H'));
-
-   ret(create_int(int32Type, 0));
-
-   finalize();
+   tokenize();
+   compile();
+   free_tokens();
 
    return 0;
 }

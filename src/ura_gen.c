@@ -2,14 +2,10 @@
 
 Token *func_dec_ir(Node *node)
 {
-   // already has retType
    new_function(node);
    enter_scoop(node);
-   // int tmp_ptr = ptr;
-   // ptr = 0;
 
    Inst* inst = NULL;
-   // if (!node->token->is_proto)
    inst = new_inst(node->token);
 
    // parameters
@@ -39,8 +35,6 @@ Token *func_dec_ir(Node *node)
       child->token->is_declare = false;
       token->Fdec.args[token->Fdec.pos++] = child->token;
    }
-
-   // if (node->token->is_proto) set_remove(node);
    // code bloc
    for (int i = 0; !node->token->is_proto && i < node->cpos; i++)
    {
@@ -55,25 +49,17 @@ Token *func_dec_ir(Node *node)
       new_inst(new);
    }
    exit_scoop();
-   // if (!node->token->is_proto)
    return inst->token;
 }
 
 Token *func_call_ir(Node *node)
 {
    Inst* inst = NULL;
-   // static Node *printf_func = NULL;
 
    if (strcmp(node->token->name, "output") == 0)
    {
-#if 1
       todo(1, "handle this\n");
-#else
-      // if (!printf_func)
-      // {
-
-      // }
-
+#if 0
       node->token->Fcall.ptr = func->token;
       node->token->Fcall.args = allocate(node->cpos, sizeof(Token*));
       node->token->Fcall.pos = node->cpos;
@@ -154,11 +140,7 @@ Token *func_call_ir(Node *node)
             src->is_ref = darg->token->is_ref;
             src->has_ref = false;
          }
-
-         // src->is_param = false;
          node->token->Fcall.args[i] = src;
-         // Token *dist = copy_token(darg->token);
-         // set_func_call_regs(&r, src, dist, node);
       }
       free_node(func);
       inst = new_inst(node->token);
@@ -212,7 +194,6 @@ Token *if_ir(Node *node)
    inst->left = children[cpos - 1]->token;
 
    // SET POSITION next
-
    for (int i = 0; i < cpos && !found_error; i++)
    {
       Node *curr = children[i];
@@ -348,15 +329,9 @@ Token *op_ir(Node *node)
    Token *left = generate_ir(node->left);
    Token *right = generate_ir(node->right);
    if (check(!left, "error in assignment, left is NULL"))
-   {
-      debug("%n\n", node);
       return NULL;
-   }
    if (check(!right, "error in assignment, right is NULL"))
-   {
-      debug("%n\n", node);
       return NULL;
-   }
 
    // TODO: fix the check later
    // check(!compatible(left, right), "invalid [%s] op between %s and %s\n",
@@ -419,16 +394,13 @@ Token *op_ir(Node *node)
          print("\n");
          for (int i = 0; i < space; i++) print(" ");
          print("^\n");
-
-
-         // print("between %k and %k\n", left, right);
       }
       node->token->ir_reg = left->ir_reg;
       node->token->retType = left->retType;
-       if (right->Array.size) {
-      left->Array.size = right->Array.size;
-      left->Array.const_size = right->Array.const_size;
-   }
+      if (right->Array.size) {
+         left->Array.size = right->Array.size;
+         left->Array.const_size = right->Array.const_size;
+      }
       break;
    }
    case ADD: case SUB: case MUL: case DIV: case MOD:
@@ -445,7 +417,6 @@ Token *op_ir(Node *node)
    case MORE: case LESS_EQUAL: case MORE_EQUAL:
    {
       node->token->retType = BOOL;
-      // node->token->index = ++bloc_index;
       break;
    }
    default: check(1, "handle [%s]", to_string(node->token->type)); break;
@@ -509,24 +480,23 @@ Token *generate_ir(Node *node)
       return node->token;
    }
    case AS:
-{
-   Token *left = generate_ir(node->left);
-   Token *right = generate_ir(node->right);
+   {
+      Token *left = generate_ir(node->left);
+      Token *right = generate_ir(node->right);
 
-   inst = new_inst(node->token);
-   inst->token->name = NULL;
-   inst->left = left;
-   inst->right = right;
-   inst->token->retType = node->right->token->retType;
-   
-   // CRITICAL FIX: Preserve array size through cast
-   if (left->Array.size) {
-      inst->token->Array.size = left->Array.size;
-      inst->token->Array.const_size = left->Array.const_size;
+      inst = new_inst(node->token);
+      inst->token->name = NULL;
+      inst->left = left;
+      inst->right = right;
+      inst->token->retType = node->right->token->retType;
+
+      // CRITICAL FIX: Preserve array size through cast
+      if (left->Array.size) {
+         inst->token->Array.size = left->Array.size;
+         inst->token->Array.const_size = left->Array.const_size;
+      }
+      return node->token;
    }
-   
-   return node->token;
-}
    case INT: case BOOL: case CHAR: case STRUCT_CALL:
    case FLOAT: case LONG: case CHARS: case PTR: case VOID:
    {
@@ -720,13 +690,8 @@ void handle_asm(Inst *inst)
    Token *right = inst->right;
    ValueRef ret = NULL;
 
-   // Sanity check: ensure we don't process the same instruction twice
-   if (curr->llvm.is_set)
-   {
-      print(RED"%k already set\n"RESET, curr);
-      exit(1);
+   if (check(curr->llvm.is_set, "already set\n"))
       return;
-   }
 
    switch (curr->type)
    {
@@ -770,21 +735,21 @@ void handle_asm(Inst *inst)
       curr->llvm.is_set = true;
       break;
    }
-case AS:
-{
-   if (check(!left->llvm.is_set, "casting, left is not set")) break;
+   case AS:
+   {
+      if (check(!left->llvm.is_set, "casting, left is not set")) break;
 
-   curr->llvm.elem = cast(left, right);
-   curr->llvm.is_set = true;
-   
-   // Preserve array size information through casts
-   if (left->Array.size) {
-      curr->Array.size = left->Array.size;
-      curr->Array.const_size = left->Array.const_size;
+      curr->llvm.elem = cast(left, right);
+      curr->llvm.is_set = true;
+
+      // Preserve array size information through casts
+      if (left->Array.size) {
+         curr->Array.size = left->Array.size;
+         curr->Array.const_size = left->Array.const_size;
+      }
+
+      break;
    }
-   
-   break;
-}
 
 
 #if 0
@@ -829,26 +794,26 @@ case AS:
       break;
    }
 #endif
- case ASSIGN:
-{
-   if (check(!left->llvm.is_set, "assign, left is not set")) break;
-   if (check(!right->llvm.is_set, "assign, right is not set")) break;
+   case ASSIGN:
+   {
+      if (check(!left->llvm.is_set, "assign, left is not set")) break;
+      if (check(!right->llvm.is_set, "assign, right is not set")) break;
 
-   assign2(left, right);
+      assign2(left, right);
 
-   // Copy array size info from right to left
-   if (right->Array.size) {
-      left->Array.size = right->Array.size;
-      left->Array.const_size = right->Array.const_size;
-      
-      // Also store in global map using LLVM pointer as key (backup mechanism)
-      if (left->llvm.elem) {
-         store_array_size(left->llvm.elem, right->Array.size);
+      // Copy array size info from right to left
+      if (right->Array.size) {
+         left->Array.size = right->Array.size;
+         left->Array.const_size = right->Array.const_size;
+
+         // Also store in global map using LLVM pointer as key (backup mechanism)
+         if (left->llvm.elem) {
+            store_array_size(left->llvm.elem, right->Array.size);
+         }
       }
-   }
 
-   break;
-}
+      break;
+   }
    case ADD: case SUB: case MUL: case DIV: case MOD:
    case LESS: case LESS_EQUAL: case MORE:
    case MORE_EQUAL: case EQUAL: case NOT_EQUAL:
@@ -964,21 +929,21 @@ case AS:
       curr->llvm.is_set = true;
       break;
    }
-case ACCESS:
-{
-   check(!left->llvm.is_set, "left is not set");
-   check(!right->llvm.is_set, "right is not set");
+   case ACCESS:
+   {
+      check(!left->llvm.is_set, "left is not set");
+      check(!right->llvm.is_set, "right is not set");
 
-   // Size should already be in left from IR generation
-   // But add fallback mechanisms just in case
-   if (!left->Array.size && left->llvm.elem) {
-      left->Array.size = get_array_size(left->llvm.elem);
+      // Size should already be in left from IR generation
+      // But add fallback mechanisms just in case
+      if (!left->Array.size && left->llvm.elem) {
+         left->Array.size = get_array_size(left->llvm.elem);
+      }
+
+      curr->llvm.elem = safe_access_(curr, left, right);
+      curr->llvm.is_set = true;
+      break;
    }
-
-   curr->llvm.elem = safe_access_(curr, left, right);
-   curr->llvm.is_set = true;
-   break;
-}
    case SET_POS:
    {
       check(!left->llvm.is_set, "SET POS require left to be set");

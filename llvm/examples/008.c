@@ -1,36 +1,32 @@
-#include "../utils.c"
+#include "./utils.c"
 
 /*
-main():
+def int main():
    int a = 1
    ref int b = a
    b = 2
-   return b
+   return a
+end
+
+Note: 'ref int b = a' creates a reference to a
+Setting b = 2 should change a to 2
+So this returns 2
 */
 
 int main()
 {
-    init("module");
+   input =
+      "def int main():\n"
+      "   int a = 1\n"
+      "   ref int b = a\n"
+      "   b = 2\n"
+      "   return a\n"
+      "end\n"
+      "\0";
 
-    Foo mainFunc = {.name = "main", .retType = int32Type};
-    create_function(&mainFunc);
+   tokenize();
+   compile();
+   free_tokens();
 
-    BasicBlockRef entry = create_bloc("entry", &mainFunc);
-    open_block(entry);
-
-    ValueRef a = allocate_variable(int32Type, "a");
-    assign(a, create_int(int32Type, 1));
-
-    ValueRef b = allocate_variable(int32PtrType, "b");
-    assign(b, a);
-
-    ValueRef b_val = load_variable(int32PtrType, "b_val", b);
-    assign(b_val, create_int(int32Type, 2));
-
-    ValueRef result = load_variable(int32Type, "result", b_val);
-    ret(result);
-
-    finalize();
-
-    return 0;
+   return 0;
 }

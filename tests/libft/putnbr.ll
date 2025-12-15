@@ -90,8 +90,8 @@ end_while:                                        ; preds = %while
 
 while15:                                          ; preds = %while_bloc16, %end_while
   %i18 = load i32, ptr %i, align 4
-  %MO_EQ = icmp sge i32 %i18, 0
-  br i1 %MO_EQ, label %while_bloc16, label %end_while17
+  %MO_EQUAL = icmp sge i32 %i18, 0
+  br i1 %MO_EQUAL, label %while_bloc16, label %end_while17
 
 while_bloc16:                                     ; preds = %while15
   %digit = alloca i32, align 4
