@@ -1,87 +1,4 @@
-#include <llvm-c/Core.h>
-#include <llvm-c/Analysis.h>
-#include <llvm-c/BitWriter.h>
-#include <llvm-c/Target.h>
-#include <llvm-c/TargetMachine.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>
-#include <ctype.h>
-#include <stdarg.h>
-
-typedef LLVMTypeRef TypeRef;
-typedef LLVMContextRef ContextRef;
-typedef LLVMModuleRef ModuleRef;
-typedef LLVMBuilderRef BuilderRef;
-typedef LLVMBasicBlockRef BasicBlockRef;
-typedef LLVMValueRef ValueRef;
-
-typedef struct Token Token;
-typedef enum Type Type;
-typedef struct Foo Foo;
-
-void create_function(Token *func);
-ValueRef build_va_start(ValueRef va_list_ptr, ValueRef last_param_ptr);
-ValueRef build_va_arg(ValueRef va_list_ptr, TypeRef type);
-ValueRef build_va_end(ValueRef va_list_ptr);
-ValueRef create_int(TypeRef type, long long value);
-void skip_newlines();
-
-struct Foo
-{
-   char *name;
-   TypeRef retType;
-   TypeRef *paramTypes;
-   int paramCount;
-   bool isVariadic;
-   TypeRef funcType;
-   ValueRef elem;
-};
-
-enum Type {
-   ID = 1, CHAR, CHARS, INT, BOOL,
-   LPAR, RPAR, FDEC, NEWLINE, END,
-   IF, WHILE, RETURN, END_BLOCK, ELSE,
-   ADD, SUB, MUL, DIV, MOD,
-   ASSIGN, EQUAL, NOT_EQUAL, LESS, MORE,
-   LESS_EQUAL, MORE_EQUAL,
-   AND, OR,
-   COLON, COMMA,
-   LBRACKET, RBRACKET, PROTO, ELLIPSIS, REF,
-   VA_LIST,
-   AS, STACK,
-   TRY, CATCH, THROW,
-};
-
-struct Token
-{
-   Type type;
-   int line;
-   int pos;
-   char *name;
-   bool is_dec;
-   bool is_ref;
-
-   struct
-   {
-      ValueRef elem;
-      TypeRef funcType;
-      TypeRef type;
-      bool is_variadic;
-      TypeRef *paramTypes;
-      TypeRef retType;
-      int paramCount;
-      ValueRef arraySize;
-   } llvm;
-
-   struct
-   {
-      struct { long value; } Int;
-      struct { char *value; } Chars;
-      struct { char value; } Char;
-   };
-};
+#include "header.h"
 
 ContextRef context;
 ModuleRef module;
@@ -90,58 +7,14 @@ TypeRef vd, f32, i1, i8, i16, i32, i64, p8, p32;
 
 ValueRef boundsCheckFunc = NULL;
 ValueRef nullCheckFunc = NULL;
-Foo printfFunc;
-Foo exitFunc;
 ValueRef vaStartFunc = NULL;
 ValueRef vaEndFunc = NULL;
-
+char *importedFiles[100];
+int importedFileCount = 0;
 int block_counter = 0;
-
-char *to_string(Type type)
-{
-   char* res[50] = {
-      [ID] = "ID", [CHAR] = "CHAR", [CHARS] = "CHARS",
-      [INT] = "INT", [BOOL] = "BOOL", [NEWLINE] = "NEWLINE", [FDEC] = "FDEC",
-      [END] = "END", [LPAR] = "LPAR", [RPAR] = "RPAR",
-      [IF] = "IF", [WHILE] = "WHILE", [RETURN] = "RETURN",
-      [END_BLOCK] = "END_BLOCK", [ELSE] = "ELSE", [ADD] = "ADD", [SUB] = "SUB",
-      [MUL] = "MUL", [DIV] = "DIV", [ASSIGN] = "ASSIGN", [MOD] = "MOD",
-      [EQUAL] = "EQUAL", [NOT_EQUAL] = "NOT_EQUAL", [LESS] = "LESS", [MORE] = "MORE",
-      [LESS_EQUAL] = "LESS_EQUAL", [MORE_EQUAL] = "MORE_EQUAL",
-      [AND] = "AND", [OR] = "OR",
-      [COLON] = "COLON", [COMMA] = "COMMA",
-      [LBRACKET] = "LBRACKET", [RBRACKET] = "RBRACKET",
-      [PROTO] = "PROTO", [ELLIPSIS] = "ELLIPSIS", [REF] = "REF",
-      [VA_LIST] = "VA_LIST", [AS] = "AS", [STACK] = "STACK",
-      [TRY] = "TRY", [CATCH] = "CATCH", [THROW] = "THROW",
-   };
-   if (!res[type]) printf("%s:%d handle this case %d\n", __FILE__, __LINE__, type);
-   return res[type];
-}
-
-TypeRef get_llvm_type(Type type)
-{
-   switch (type)
-   {
-   case INT: return i32;
-   case CHAR: return i8;
-   case CHARS: return p8;
-   case BOOL: return i1;
-   case VA_LIST: return p8;
-   default:
-   {
-      printf("%s:%d handle this case %d\n", __FILE__, __LINE__, type);
-      exit(1);
-      break;
-   }
-   }
-   return (TypeRef) {};
-}
 
 void init_varargs_intrinsics()
 {
-   // LLVM requires type-mangled intrinsic names for va_start and va_end
-   // For pointer types, the suffix should be ".p0" (opaque pointers)
    TypeRef vaStartParams[] = {p8};
    TypeRef vaStartType = LLVMFunctionType(vd, vaStartParams, 1, 0);
    vaStartFunc = LLVMAddFunction(module, "llvm.va_start.p0", vaStartType);
@@ -150,12 +23,6 @@ void init_varargs_intrinsics()
    TypeRef vaEndType = LLVMFunctionType(vd, vaEndParams, 1, 0);
    vaEndFunc = LLVMAddFunction(module, "llvm.va_end.p0", vaEndType);
 }
-
-// Only showing the modified init_bounds_check_function()
-// Replace the existing function in utils.c with this version
-
-// Only showing the modified init_bounds_check_function()
-// Replace the existing function in utils.c with this version
 
 void init_bounds_check_function()
 {
@@ -288,7 +155,7 @@ void create_function(Token *token)
                              token->llvm.paramCount,
                              token->llvm.is_variadic
                           );
-   
+
    // Check if function already exists (e.g., printf declared in init_bounds_check_function)
    ValueRef existingFunc = LLVMGetNamedFunction(module, token->name);
    if (existingFunc) {
@@ -300,6 +167,12 @@ void create_function(Token *token)
 
 ValueRef call_function(Token *token, ValueRef *args, int argCount)
 {
+   // LLVMTypeRef retType = LLVMGetReturnType(token->llvm.funcType);
+
+   // if (LLVMGetTypeKind(token->llvm.funcType) == LLVMVoidTypeKind) {
+   //    return LLVMBuildCall2(builder, token->llvm.funcType, token->llvm.elem, args, argCount, "");
+   // }
+   char *name = get_named_function(token->name);
    return LLVMBuildCall2(builder, token->llvm.funcType, token->llvm.elem, args, argCount, token->name);
 }
 
@@ -530,13 +403,6 @@ ValueRef throw_exception(ValueRef value)
    return value;
 }
 
-char *substr(char *input, int s, int e)
-{
-   char *res = calloc(e - s + 1, sizeof(char));
-   strncpy(res, input + s, e - s);
-   return res;
-}
-
 Token* find_variable(char *name) {
    for (int i = var_count - 1; i >= 0; i--) {
       if (strcmp(vars[i]->name, name) == 0) return vars[i];
@@ -570,6 +436,46 @@ void ptoken(Token *token)
    printf("\n");
 }
 
+bool is_file_imported(char *filename)
+{
+   for (int i = 0; i < importedFileCount; i++) {
+      if (strcmp(importedFiles[i], filename) == 0) {
+         return true;
+      }
+   }
+   return false;
+}
+
+void mark_file_imported(char *filename)
+{
+   importedFiles[importedFileCount] = strdup(filename);
+   importedFileCount++;
+}
+
+void import_module(char *filename)
+{
+   if (is_file_imported(filename)) {
+      printf("Module '%s' already imported, skipping\n", filename);
+      return;
+   }
+
+   printf("Importing module: %s\n", filename);
+   mark_file_imported(filename);
+
+   // Save current parsing state
+   char *saved_input = input;
+   int saved_tk_pos = tk_pos;
+
+   // Read and tokenize the module file
+   input = open_file(filename);
+   tokenize();
+
+   // Restore input (but keep tokens)
+   free(input);
+   input = saved_input;
+   tk_pos = saved_tk_pos;
+}
+
 Token *new_token(Type type, int line, int pos, int s, int e)
 {
    Token *new = calloc(1, sizeof(Token));
@@ -583,10 +489,11 @@ Token *new_token(Type type, int line, int pos, int s, int e)
       if (e <= s) break;
       struct {char *value; Type type;} special[] = {
          {"int", INT}, {"chars", CHARS}, {"char", CHAR}, {"bool", BOOL},
+         {"void", VOID},
          {"va_list", VA_LIST},
          {"def", FDEC}, {"if", IF}, {"while", WHILE},
          {"return", RETURN}, {"end", END_BLOCK}, {"else", ELSE},
-         {"protoFunc", PROTO}, {"ref", REF}, {"as", AS},
+         {"protoFunc", PROTO}, {"ref", REF}, {"as", AS}, {"use", USE},
          {"stack", STACK}, {"try", TRY}, {"catch", CATCH}, {"throw", THROW},
          {NULL, 0},
       };
@@ -596,8 +503,7 @@ Token *new_token(Type type, int line, int pos, int s, int e)
                (e - s) == strlen(special[i].value))
          {
             new->type = special[i].type;
-            if (new->type == INT || new->type == CHARS || new->type == CHAR ||
-                  new->type == BOOL || new->type == VA_LIST)
+            if (includes(new->type, INT, CHARS, CHAR, BOOL, VOID, VA_LIST, 0))
                new->is_dec = true;
             break;
          }
@@ -750,6 +656,8 @@ Token *find(Type type, ...)
    }
    return NULL;
 }
+
+
 
 Token* parse_expression();
 void parse_statement();
@@ -951,6 +859,7 @@ Token* parse_primary()
 
          // Perform bounds check if size is known
          if (var->llvm.arraySize) {
+#if 0
             ValueRef lineNum = create_int(i32, var->line);
             ValueRef colNum = create_int(i32, var->pos);
             ValueRef varName = create_string(var->name);
@@ -965,6 +874,9 @@ Token* parse_primary()
 
             TypeRef boundsCheckType = LLVMGlobalGetValueType(boundsCheckFunc);
             LLVMBuildCall2(builder, boundsCheckType, boundsCheckFunc, checkArgs, 5, "");
+#else
+            call_bounds_check(var, indexExpr);
+#endif
          }
 
          // Read from array
@@ -1089,12 +1001,12 @@ Token* parse_cast()
       }
 
       result->llvm.elem = cast_value(sourceValue, sourceType, targetLLVMType);
-      
+
       // CRITICAL: Preserve arraySize through cast
       if (left->llvm.arraySize) {
          result->llvm.arraySize = left->llvm.arraySize;
       }
-      
+
       return result;
    }
 
@@ -1331,6 +1243,7 @@ void parse_statement()
 
          // Perform bounds check if size is known
          if (var->llvm.arraySize) {
+#if 0
             ValueRef lineNum = create_int(i32, var->line);
             ValueRef colNum = create_int(i32, var->pos);
             ValueRef varName = create_string(var->name);
@@ -1345,6 +1258,9 @@ void parse_statement()
 
             TypeRef boundsCheckType = LLVMGlobalGetValueType(boundsCheckFunc);
             LLVMBuildCall2(builder, boundsCheckType, boundsCheckFunc, checkArgs, 5, "");
+#else
+            call_bounds_check(var, indexExpr);
+#endif
          }
 
          // Perform the assignment (WRITE to array)
@@ -1593,12 +1509,33 @@ void compile()
       skip_newlines();
       if (tokens[exe_pos]->type == END) break;
 
+      if (tokens[exe_pos]->type == USE)
+      {
+         exe_pos++;
+
+         if (tokens[exe_pos]->type != CHARS) {
+            printf("Error: Expected filename string after 'use'\n");
+            exit(1);
+         }
+
+         char *filename = tokens[exe_pos]->Chars.value;
+         exe_pos++;
+
+         import_module(filename);
+
+         skip_newlines();
+         continue;
+      }
+
       if (tokens[exe_pos]->type == PROTO)
       {
          exe_pos++;
 
          if (!tokens[exe_pos]->is_dec) {
-            printf("Error: Expected return type after 'protoFunc'\n");
+            printf("Error: Expected return type after 'protoFunc'"
+                   " found [%s] [%s]\n", to_string(tokens[exe_pos]->type),
+                   tokens[exe_pos]->name
+                  );
             exit(1);
          }
 
@@ -1768,4 +1705,14 @@ void compile()
    }
 
    finalize();
+}
+
+int main(int argc, char **argv)
+{
+   (void)argc;
+   input = open_file(argv[1]);
+   tokenize();
+   compile();
+   free_tokens();
+   return 0;
 }

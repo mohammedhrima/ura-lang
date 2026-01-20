@@ -1,0 +1,12 @@
+
+
+def int main():
+   def bool isdigit(char c):
+      return (c >= '0' && c <= '9')
+   end
+   char c = 'a'
+   if isdigit(c):
+      return 11
+   end
+   return 12
+end
