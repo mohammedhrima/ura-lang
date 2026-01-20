@@ -1,72 +1,89 @@
 ### Examples
 
-+ simple main: 001.c
-```c
-main():
-   chars str = "Hello World"
-   return 0
++ simple main: 000.c
+```bash
+def int main():
+   int a = 1
+   return a
+end
 ```
 
-+ while loop: 002.c
-```c
-main():
++ while loop: 001.c
+```bash
+def int main():
    int i = 0
    while i < 5:
       i = i + 1
+   end
    return i
+end
+```
+
++ while loop: 002.c
+```bash
+def int main():
+   int i = 0
+   while i < 5:
+      i += 1
+   end
+   return i
+end
 ```
 
 + builtin and access []: 003.c
-```c
-protoFunc int putchar(char c)
-main():
-   char* str = "abcd"
-   char c = str[0]
+```bash
+protoFunc int putchar(char a)
+
+def int main():
+   chars str = "abcd"
+   char c = str[1]
    putchar(c)
    return 0
+end
 ```
 
 + function with params: 004.c
-```c
-func int add_multiply(int a, int b, int c):
+```bash
+def int add_multiply(int a, int b, int c):
    int sum = a + b
    int result = sum * c
    return result
+end
 
-main():
+def int main():
    int x = add_multiply(5, 3, 2)
    return x
+end
 ```
 
 + built-in function with variadic arguments: 005.c
-```c
+```bash
 protoFunc int printf(chars fmt, ...)
-main():
+
+def int main():
    int result = 10
    printf("func1 returned: %d\n", result)
    return 0
+end
 ```
 
 + function with-in function: 006.c
-```c
-main():
+```bash
+def int main():
+   def bool isdigit(char c):
+      return (c >= '0' && c <= '9')
+   end
    char c = 'a'
-   func bool isdigit(): return (c >= '0' && c <= '9')
-   if isdigit(): return 11
-   else: return 12
-```
-the above code will turn to: (in compile time)
-```c
-func bool isdigit(char* ptr): return (*ptr >= '0' && *ptr <= '9')
-main():
-   char c = 'a'
-   if isdigit(&c): return 11
-   else: return 12
+   if isdigit(c):
+      return 11
+   end
+   return 12
+end
 ```
 
 + variadic function: 007.c
-```c
-func int sum(int count, ...):
+```bash
+def int sum(int count, ...):
    va_list args
    va_start(args, count)
    int total = 0
@@ -77,40 +94,45 @@ func int sum(int count, ...):
    end
    va_end(args)
    return total
+end
 
-main():
+def int main():
    int result = sum(3, 10, 20, 30)
    return result
+end
 ```
 
-+ pointers: 008.c
-```c
-main():
++ reference: 008.c
+```bash
+def int main():
    int a = 1
    ref int b = a
    b = 2
-   return a  // returns 2
+   return a
+end
 ```
 
 + casting: 009.c
-```c
-main():
+```bash
+def int main():
    int a = 1
    char b = a as char
    b = 'e'
    return 0
+end
 ```
 
 + stack allocation: 010.c
-```c
-main():
+```bash
+def int main():
    chars a = stack(10) as chars
    return 0
+end
 ```
 
 + try/catch: 011.c
-```c
-main():
+```bash
+def int main():
    try:
       int x = 10
       int y = 0
@@ -122,19 +144,22 @@ main():
       return error
    end
    return 0
+end
 ```
 
 + array bounds checking: 012.c
-```c
+```bash
 protoFunc int printf(chars, ...)
+protoFunc void exit(int)
 
-main():
+def int main():
    printf("Before allocation\n")
    chars u = stack(2) as chars
    printf("After allocation\n")
-   u[-10] = 'a'  // Runtime error: segmentation fault (array bounds)
+   u[-10] = 'a'
    printf("This should not print\n")
    return 0
+end
 ```
 
 Output:
@@ -146,14 +171,3 @@ line 6: segmentation fault (array bounds)
 error in accessing u[-10]
                    ^^^^
 ```
-
-### Features
-
-- **Type System**: `int`, `char`, `chars` (string), `bool`, `va_list`
-- **Control Flow**: `if`/`else`, `while` loops
-- **Functions**: Function declarations with parameters, variadic functions
-- **Memory**: Stack allocation with `stack()`, references with `ref`
-- **Type Casting**: Explicit type conversion with `as`
-- **Exception Handling**: `try`/`catch`/`throw` for error handling
-- **Array Access**: Bracket notation `[]` with runtime bounds checking
-- **Safety**: Automatic bounds checking for array access with detailed error messages
