@@ -1,0 +1,5 @@
+
+def int main():
+   chars a = stack(10) as chars
+   return 0
+end
