@@ -1,0 +1,21 @@
+protoFunc int printf(chars, ...)
+protoFunc void exit(int)
+
+def void bounds_check(int index, int size, int line, int col, chars varname):
+    if index < 0 || index >= size:
+        printf("\nline %d: segmentation fault (array bounds)\n", line)
+        printf("error in accessing %s[%d]\n", varname, index)
+        printf("                   ^^^^\n")
+        exit(1)
+    end
+    return
+end
+
+def int main():
+   printf("Before allocation\n")
+   chars u = stack(2) as chars
+   printf("After allocation\n")
+   u[-10] = 'a'
+   printf("This should not print\n")
+   return 0
+end

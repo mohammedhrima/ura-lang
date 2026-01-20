@@ -1,0 +1,14 @@
+
+def int main():
+   try:
+      int x = 10
+      int y = 0
+      if y == 0:
+         throw 1
+      end
+      int result = x / y
+   catch int error:
+      return error
+   end
+   return 0
+end

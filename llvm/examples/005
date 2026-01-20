@@ -1,0 +1,9 @@
+
+protoFunc int printf(chars fmt, ...)
+
+def int main():
+   int result = 10
+   printf("func1 returned: %d\n", result)
+   return 0
+end
+
