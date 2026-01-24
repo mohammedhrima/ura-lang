@@ -1,36 +1,42 @@
 ### Examples
 
-+ simple main: 000.c
++ simple main: 000
 ```bash
 def int main():
-   int a = 1
-   return a
+    int a = 1
+    return a
 end
 ```
 
-+ while loop: 001.c
++ while loop with compound assignment: 001
+```bash
+def int main():
+    int i = 0
+    while i < 5:
+        i += 1
+    end
+   return i
+end
+```
+
++ if/elif/else conditionals: 002
 ```bash
 def int main():
    int i = 0
-   while i < 5:
-      i = i + 1
+   if i < 1:
+      i += 2
+   end
+   elif i < 3:
+      i += 4
+   end
+   else:
+      i += 3
    end
    return i
 end
 ```
 
-+ while loop: 002.c
-```bash
-def int main():
-   int i = 0
-   while i < 5:
-      i += 1
-   end
-   return i
-end
-```
-
-+ builtin and access []: 003.c
++ builtin and array access: 003
 ```bash
 protoFunc int putchar(char a)
 
@@ -42,7 +48,7 @@ def int main():
 end
 ```
 
-+ function with params: 004.c
++ function with multiple parameters: 004
 ```bash
 def int add_multiply(int a, int b, int c):
    int sum = a + b
@@ -56,24 +62,18 @@ def int main():
 end
 ```
 
-+ built-in function with variadic arguments: 005.c
++ nested function with isdigit: 005
 ```bash
-protoFunc int printf(chars fmt, ...)
-
-def int main():
-   int result = 10
-   printf("func1 returned: %d\n", result)
-   return 0
+def bool isdigit(char c):
+   return (c >= '0' && c <= '9')
 end
-```
 
-+ function with-in function: 006.c
-```bash
 def int main():
    def bool isdigit(char c):
       return (c >= '0' && c <= '9')
    end
    char c = 'a'
+   isdigit(c)
    if isdigit(c):
       return 11
    end
@@ -81,7 +81,7 @@ def int main():
 end
 ```
 
-+ variadic function: 007.c
++ variadic function: 006
 ```bash
 def int sum(int count, ...):
    va_list args
@@ -102,7 +102,7 @@ def int main():
 end
 ```
 
-+ reference: 008.c
++ reference: 007
 ```bash
 def int main():
    int a = 1
@@ -112,7 +112,7 @@ def int main():
 end
 ```
 
-+ casting: 009.c
++ casting: 008
 ```bash
 def int main():
    int a = 1
@@ -122,7 +122,7 @@ def int main():
 end
 ```
 
-+ stack allocation: 010.c
++ stack allocation: 009
 ```bash
 def int main():
    chars a = stack(10) as chars
@@ -130,7 +130,7 @@ def int main():
 end
 ```
 
-+ try/catch: 011.c
++ try/catch: 010
 ```bash
 def int main():
    try:
@@ -147,10 +147,20 @@ def int main():
 end
 ```
 
-+ array bounds checking: 012.c
++ array bounds checking with function: 011
 ```bash
 protoFunc int printf(chars, ...)
 protoFunc void exit(int)
+
+def void bounds_check(int index, int size, int line, int col, chars varname):
+    if index < 0 || index >= size:
+        printf("\nline %d: segmentation fault (array bounds)\n", line)
+        printf("error in accessing %s[%d]\n", varname, index)
+        printf("                   ^^^^\n")
+        exit(1)
+    end
+    return
+end
 
 def int main():
    printf("Before allocation\n")
@@ -160,14 +170,4 @@ def int main():
    printf("This should not print\n")
    return 0
 end
-```
-
-Output:
-```
-Before allocation
-After allocation
-
-line 6: segmentation fault (array bounds)
-error in accessing u[-10]
-                   ^^^^
 ```

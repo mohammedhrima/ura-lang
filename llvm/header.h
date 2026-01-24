@@ -53,13 +53,13 @@ Node *name() { \
 #define BLUE "\x1b[34m"
 #define RESET "\033[0m"
 
-#define DATA_TYPES INT, CHAR, CHARS
+#define DATA_TYPES INT, LONG, CHARS, CHAR, BOOL, VOID
 #define MATH_OP ADD, SUB, MUL, DIV
 
 enum Type {
-   ID = 1, CHAR, CHARS, INT, BOOL, VOID,
+   ID = 1, CHAR, CHARS, INT, LONG, BOOL, VOID,
    LPAR, RPAR, FDEC, FCALL, NEWLINE,
-   IF, WHILE, RETURN, END_BLOCK, ELSE,
+   IF, ELIF, ELSE, WHILE, RETURN, END_BLOCK,
    ADD, SUB, MUL, DIV, MOD, COMA,
    ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN,
    DIV_ASSIGN, MOD_ASSIGN,
@@ -67,12 +67,12 @@ enum Type {
    LESS_EQUAL, MORE_EQUAL,
    AND, OR,
    COLON, COMMA, DOTS,
-   LBRACKET, RBRACKET, PROTO, ELLIPSIS, REF,
+   LBRACKET, RBRACKET, PROTO, VARIADIC, REF,
    VA_LIST, ACCESS, LBRA, RBRA,
    AS, STACK,
    TRY, CATCH, THROW,
    USE,
-
+   DOT, MEMBER_ACCESS,
 
    END,
 };
@@ -80,27 +80,24 @@ enum Type {
 struct Token
 {
    Type type;
+   Type cast_type;
    int line;
    int pos;
    char *name;
+   char *llvm_name;
    bool is_dec;
    bool is_ref;
+   bool has_ref;
    int space;
 
    struct
    {
       ValueRef elem;
-      TypeRef funcType;
-      TypeRef type;
-      bool is_variadic;
-      TypeRef *paramTypes;
-      TypeRef retType;
-      int paramCount;
-      ValueRef arraySize;
-      // while loop
-      BasicBlockRef cond;
-      BasicBlockRef body;
-      BasicBlockRef end;
+      LLVMValueRef va_count;
+      LLVMValueRef error_flag;
+      LLVMValueRef error_value;
+      BasicBlockRef catch_block;
+      BasicBlockRef landing_pad;
    } llvm;
 
    struct
@@ -108,8 +105,9 @@ struct Token
       struct { long value; } Int;
       struct { char *value; } Chars;
       struct { char value; } Char;
-      struct { Type retType; Token **args; int argslen; } Fdec;
-      struct { Token **args; int argslen; } Fcall;
+      struct { Type retType; Token **args; int args_len; bool is_variadic; } Fdec;
+      struct { Token **args; int args_len; } Fcall;
+      struct { Type error_type; char *error_name; } Catch;
    };
 };
 
@@ -126,6 +124,10 @@ struct Node
    Node **variables;
    int vpos;
    int vlen;
+
+   Node **functions;
+   int fpos;
+   int flen;
 };
 
 extern ContextRef context;
@@ -143,18 +145,19 @@ extern int block_counter;
 extern Token *tokens[1000];
 
 
-Node *expr();
-Node *assign();
-Node *logic();
-Node *equality();
-Node *comparison();
-Node *add_sub();
-Node *mul_div();
-Node *dot();
-Node *sign();
-Node *brackets();
+Node *expr_node();
+Node *assign_node();
+Node *logic_node();
+Node *equality_node();
+Node *comparison_node();
+Node *add_sub_node();
+Node *mul_div_node();
+Node *dot_node();
+Node *sign_node();
+Node *brackets_node();
 Node *cast_node();
-Node *prime();
+Node *prime_node();
+
 void create_function(Token *func);
 ValueRef build_va_start(ValueRef va_list_ptr, ValueRef last_param_ptr);
 ValueRef build_va_arg(ValueRef va_list_ptr, TypeRef type);
@@ -175,6 +178,20 @@ void free_tokens();
 void init(char *name);
 void finalize();
 Token *copy_token(Token *token);
+Token *get_function(char *name);
+BasicBlockRef _append_block(char *name);
+void load_if_neccessary(Node *node);
+void add_variable(Node *node);
+void generate_ir(Node *node);
+void exit_scoop();
+void _branch(BasicBlockRef bloc);
+void enter_scoop(Node *node);
+
+
+
+
+
+
 
 
 
