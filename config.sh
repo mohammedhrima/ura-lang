@@ -116,7 +116,8 @@ indent() {
     astyle --mode=c --indent=spaces=3 --pad-oper --pad-header \
        --keep-one-line-statements --keep-one-line-blocks --convert-tabs \
        --max-code-length=100 --break-after-logical \
-       --suffix=none $ura_src/*.c $ura_src/*.h $ura_src/../llvm/*/*.c
+       --suffix=none $ura_src/*.c $ura_src/*.h $ura_src/../llvm/*.c \
+       $ura_src/../llvm/*.h
 }
 
 copy() {
@@ -204,6 +205,5 @@ set_prompt() {
 set_prompt
 export tests=test
 cd "$ura_src" 2>/dev/null || cd "$ura_dir"
-
+indent
 echo -e "${GREEN}Ura environment loaded!${NC}"
-echo -e "Available commands: build, ir, asm, comp_asm, exe, comp, run, lines, indent, copy, test, update"
