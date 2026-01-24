@@ -20,11 +20,7 @@ char **used_files;
 int used_size = 0;
 int used_pos = 0;
 
-#if defined(__APPLE__)
-struct __sFILE *asm_fd;
-#elif defined(__linux__)
-struct _IO_FILE *asm_fd;
-#endif
+File asm_fd;
 
 LLVMModuleRef module;
 LLVMBuilderRef builder;

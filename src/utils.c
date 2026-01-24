@@ -907,12 +907,8 @@ char* resolve_path(char* path)
 char* open_file(char *filename)
 {
    if (found_error) return NULL;
-#if defined(__APPLE__)
-   struct __sFILE *file;
-#elif defined(__linux__)
-   struct _IO_FILE *file;
-#endif
-   file = fopen(filename, "r");
+
+   File file = fopen(filename, "r");
    if (check(!file, "openning %s", filename)) return NULL;
    fseek(file, 0, SEEK_END);
    int size = ftell(file);

@@ -60,6 +60,12 @@
 #define debug(fmt, ...) do { } while (0)
 #endif
 
+#if defined(__APPLE__)
+typedef struct __sFILE* File;
+#elif defined(__linux__)
+typedef struct _IO_FILE* File;
+#endif
+
 #define DATA_TYPES INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT
 #define LOGIC_TYPE AND, OR
 #define MATH_TYPE ADD, SUB, MUL, DIV, MOD
@@ -301,12 +307,7 @@ extern ContextRef context;
 extern ModuleRef module;
 extern BuilderRef builder;
 extern TypeRef vd, f32, i1, i8, i16, i32, i64, p8, p32;
-
-#if defined(__APPLE__)
-extern struct __sFILE *asm_fd;
-#elif defined(__linux__)
-extern struct _IO_FILE *asm_fd;
-#endif
+extern File asm_fd;
 
 // ----------------------------------------------------------------------------
 // Parsing

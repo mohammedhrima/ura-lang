@@ -1,9 +1,15 @@
-
-protoFunc int printf(chars fmt, ...)
-
-def int main():
-   int result = 10
-   printf("func1 returned: %d\n", result)
-   return 0
+def bool isdigit(char c):
+   return (c >= '0' && c <= '9')
 end
 
+def int main():
+   def bool isdigit(char c):
+      return (c >= '0' && c <= '9')
+   end
+   char c = '1'
+   isdigit(c)
+   if isdigit(c):
+      return 11
+   end
+   return 12
+end
