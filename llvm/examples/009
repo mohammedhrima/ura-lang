@@ -1,7 +1,6 @@
 
 def int main():
-   int a = 1
-   char b = a as char
-   b = 'e'
-   return 0
+   int a = 'a'
+   int b = a as int
+   return b
 end
