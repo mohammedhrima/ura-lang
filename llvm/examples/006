@@ -1,12 +1,23 @@
+def int sum(...args):
+   int total = 0
+   int i = 0
+   while (i < args.len):
+      total = total + args.elem as int
+      i = i + 1
+   end
+   return total
+end
 
+def int mul(...args):
+   int total = 0
+   int i = 0
+   while (i < args.len):
+      total = total * args.elem as int
+      i = i + 1
+   end
+   return total
+end
 
 def int main():
-   def bool isdigit(char c):
-      return (c >= '0' && c <= '9')
-   end
-   char c = 'a'
-   if isdigit(c):
-      return 11
-   end
-   return 12
+   return sum(1, 2, 3, 4, 2, 3, 4)
 end
