@@ -112,17 +112,31 @@ def int main():
 end
 ```
 
-+ casting: 008
++ reference parameter: 008
 ```bash
+def void func(ref int c):
+   c = 2
+end
+
 def int main():
-   int a = 1
-   char b = a as char
-   b = 'e'
-   return 0
+   int a = 12
+   ref int c = a
+   func(c)
+   return a
 end
 ```
 
-+ stack allocation: 009
++ casting: 008
+```bash
+
+def int main():
+   int a = 'a'
+   int b = a as int
+   return b
+end
+```
+
++ stack allocation: 010
 ```bash
 def int main():
    chars a = stack(10) as chars
@@ -130,16 +144,22 @@ def int main():
 end
 ```
 
-+ try/catch: 010
++ try/catch with function call: 011
 ```bash
+def int func():
+   throw 12
+   return 0
+end
+
 def int main():
    try:
+      func()
       int x = 10
       int y = 0
       if y == 0:
          throw 1
-      end
       int result = x / y
+   end
    catch int error:
       return error
    end
@@ -147,7 +167,7 @@ def int main():
 end
 ```
 
-+ array bounds checking with function: 011
++ array bounds checking with function: 012
 ```bash
 protoFunc int printf(chars, ...)
 protoFunc void exit(int)

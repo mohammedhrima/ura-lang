@@ -7,10 +7,15 @@ Token *tokens[1000];
 int tk_pos;
 int exe_pos;
 char *input;
-ContextRef context;
-ModuleRef module;
-BuilderRef builder;
-TypeRef vd, f32, i1, i8, i16, i32, i64, p8, p32;
+_Context context;
+_Module module;
+_Builder builder;
+_Type vd, f32, i1, i8, i16, i32, i64, p8, p32;
+
+Node *scoop[100];
+int scoop_pos = -1;
+Node *curr_scoop;
+bool enable_bounds_check = false;
 
 bool check_error(char *filename, const char *funcname, int line, bool cond, char *fmt, ...)
 {
@@ -54,7 +59,10 @@ Token *new_token(Type type, int line, int pos, int s, int e, int space)
          {
             new->type = specials[i].type;
             if (includes(new->type, INT, CHARS, CHAR, BOOL, VOID, VA_LIST, 0))
+            {
+               if (new->type == CHARS) new->is_ref = true;
                new->is_dec = true;
+            }
             free(new->name);
             new->name = NULL;
             break;
@@ -68,9 +76,20 @@ Token *new_token(Type type, int line, int pos, int s, int e, int space)
       char c = 0;
       if (input[s] == '\\')
       {
-         char str[255] = {['n'] = '\n', ['t'] = '\t', ['\''] = '\'', ['0'] = '\0'};
+         char str[255];
+         memset(str, 0, sizeof(str));
+         str['n'] = '\n';
+         str['t'] = '\t';
+         str['\''] = '\'';
+         str['0'] = '\0';
+         str['\\'] = '\\';
+         str['\"'] = '\"';
+         str['r'] = '\r';
+
          c = str[(unsigned char)input[s + 1]];
-         check(!c, "handle this case [%c]\n", input[s + 1]);
+         if (c == 0 && input[s + 1] != '0')
+            check(1, "Unknown escape sequence '\\%c'\n", input[s + 1]);
+
       }
       else c = input[s];
       new->Char.value = c;
@@ -86,7 +105,7 @@ Token *new_token(Type type, int line, int pos, int s, int e, int space)
 
 void tokenize()
 {
-   int line = 0, pos = 0, space = 0;
+   int line = 1, pos = 0, space = 0;
    for (int i = 0; input[i];)
    {
       if (isspace(input[i]))
@@ -243,51 +262,52 @@ void add_child_node(Node *parent, Node *child)
    child->token->space = parent->token->space + TAB;
 }
 
+ExcepCTX *exceps;
+int exceps_len;
+int exceps_pos = -1;
 
-// Global to track current function's landing pad
-typedef struct {
-   BasicBlockRef landing_pad;
-   BasicBlockRef catch_block;
-   BasicBlockRef end_block;
-   LLVMValueRef error_storage;
-   Type error_type;
-   bool in_catch_block;
-} ExceptionContext;
-
-ExceptionContext exception_stack[100];
-int exception_stack_pos = -1;
-
-void push_exception_context(BasicBlockRef landing_pad, BasicBlockRef catch_block,
-                            BasicBlockRef end_block, LLVMValueRef error_storage, Type error_type) {
-   exception_stack_pos++;
-   exception_stack[exception_stack_pos].landing_pad = landing_pad;
-   exception_stack[exception_stack_pos].catch_block = catch_block;
-   exception_stack[exception_stack_pos].end_block = end_block;
-   exception_stack[exception_stack_pos].error_storage = error_storage;
-   exception_stack[exception_stack_pos].error_type = error_type;
-   exception_stack[exception_stack_pos].in_catch_block = false;
+void push_exception_context(_Block lpad, _Block catch, _Block end, _Value storage,
+                            Type type) {
+   if (exceps_len == 0)
+   {
+      exceps = calloc(100, sizeof( ExcepCTX));
+      exceps_len = 100;
+   }
+   else if (exceps_pos + 1 == exceps_len)
+   {
+      ExcepCTX *tmp = calloc(exceps_len *= 2, sizeof( ExcepCTX));
+      memcpy(tmp, exceps, exceps_pos * sizeof( ExcepCTX));
+      free(exceps);
+      exceps = tmp;
+   }
+   exceps_pos++;
+   exceps[exceps_pos].lpad = lpad;
+   exceps[exceps_pos].catch = catch;
+   exceps[exceps_pos].end = end;
+   exceps[exceps_pos].storage = storage;
+   exceps[exceps_pos].type = type;
+   exceps[exceps_pos].in_catch = false;
 }
 
 void pop_exception_context() {
-   exception_stack_pos--;
+   exceps_pos--;
 }
 
-ExceptionContext* get_current_exception_context() {
-   if (exception_stack_pos < 0) return NULL;
-   return &exception_stack[exception_stack_pos];
+ExcepCTX* get_current_exception_context() {
+   if (exceps_pos < 0) return NULL;
+   return &exceps[exceps_pos];
 }
 
-// Helper to get or create exception type info
-LLVMValueRef get_type_info_for_type(Type type) {
+_Value get_type_info_for_type(Type type) {
    const char *typeinfo_name;
    switch (type) {
-   case INT: typeinfo_name = "_ZTIi"; break;  // typeinfo for int
-   case LONG: typeinfo_name = "_ZTIl"; break; // typeinfo for long
-   case CHAR: typeinfo_name = "_ZTIc"; break; // typeinfo for char
-   default: typeinfo_name = "_ZTIi"; break;   // default to int
+   case INT: typeinfo_name = "_ZTIi"; break;
+   case LONG: typeinfo_name = "_ZTIl"; break;
+   case CHAR: typeinfo_name = "_ZTIc"; break;
+   default: typeinfo_name = "_ZTIi"; break;
    }
 
-   LLVMValueRef type_info = LLVMGetNamedGlobal(module, typeinfo_name);
+   _Value type_info = LLVMGetNamedGlobal(module, typeinfo_name);
    if (!type_info) {
       type_info = LLVMAddGlobal(module, p8, typeinfo_name);
       LLVMSetLinkage(type_info, LLVMExternalLinkage);
@@ -295,20 +315,19 @@ LLVMValueRef get_type_info_for_type(Type type) {
    return type_info;
 }
 
-// Declare __cxa_* functions
-LLVMValueRef get_or_declare_cxa_allocate_exception() {
-   LLVMValueRef fn = LLVMGetNamedFunction(module, "__cxa_allocate_exception");
+_Value get_exception() {
+   _Value fn = LLVMGetNamedFunction(module, "__cxa_allocate_exception");
    if (!fn) {
-      LLVMTypeRef fn_type = LLVMFunctionType(p8, (LLVMTypeRef[]) {i64}, 1, false);
+      _Type fn_type = LLVMFunctionType(p8, (_Type[]) {i64}, 1, false);
       fn = LLVMAddFunction(module, "__cxa_allocate_exception", fn_type);
    }
    return fn;
 }
 
-LLVMValueRef get_or_declare_cxa_throw() {
-   LLVMValueRef fn = LLVMGetNamedFunction(module, "__cxa_throw");
+_Value get_throw() {
+   _Value fn = LLVMGetNamedFunction(module, "__cxa_throw");
    if (!fn) {
-      LLVMTypeRef fn_type = LLVMFunctionType(vd, (LLVMTypeRef[]) {p8, p8, p8}, 3, false);
+      _Type fn_type = LLVMFunctionType(vd, (_Type[]) {p8, p8, p8}, 3, false);
       fn = LLVMAddFunction(module, "__cxa_throw", fn_type);
       LLVMSetFunctionCallConv(fn, LLVMCCallConv);
       LLVMAddAttributeAtIndex(fn, LLVMAttributeFunctionIndex,
@@ -317,242 +336,312 @@ LLVMValueRef get_or_declare_cxa_throw() {
    return fn;
 }
 
-LLVMValueRef get_or_declare_cxa_begin_catch() {
-   LLVMValueRef fn = LLVMGetNamedFunction(module, "__cxa_begin_catch");
+_Value get_begin_catch() {
+   _Value fn = LLVMGetNamedFunction(module, "__cxa_begin_catch");
    if (!fn) {
-      LLVMTypeRef fn_type = LLVMFunctionType(p8, (LLVMTypeRef[]) {p8}, 1, false);
+      _Type fn_type = LLVMFunctionType(p8, (_Type[]) {p8}, 1, false);
       fn = LLVMAddFunction(module, "__cxa_begin_catch", fn_type);
    }
    return fn;
 }
 
-LLVMValueRef get_or_declare_cxa_end_catch() {
-   LLVMValueRef fn = LLVMGetNamedFunction(module, "__cxa_end_catch");
+_Value get_end_catch() {
+   _Value fn = LLVMGetNamedFunction(module, "__cxa_end_catch");
    if (!fn) {
-      LLVMTypeRef fn_type = LLVMFunctionType(vd, NULL, 0, false);
+      _Type fn_type = LLVMFunctionType(vd, NULL, 0, false);
       fn = LLVMAddFunction(module, "__cxa_end_catch", fn_type);
    }
    return fn;
 }
 
-LLVMValueRef get_or_declare_personality() {
-   LLVMValueRef personality = LLVMGetNamedFunction(module, "__gxx_personality_v0");
+_Value get_personality() {
+   _Value personality = LLVMGetNamedFunction(module, "__gxx_personality_v0");
    if (!personality) {
-      LLVMTypeRef personality_type = LLVMFunctionType(i32, NULL, 0, true);
+      _Type personality_type = LLVMFunctionType(i32, NULL, 0, true);
       personality = LLVMAddFunction(module, "__gxx_personality_v0", personality_type);
    }
    return personality;
 }
 
-// Modified function call to use invoke instead of call inside try blocks
-void _fcall_invoke(Token *token) {
-   Token *funcToken = get_function(token->name);
-   LLVMValueRef func = funcToken->llvm.elem;
-
-   int arg_count = token->Fcall.args_len;
-   LLVMValueRef *args = NULL;
-
-   if (funcToken->Fdec.is_variadic) {
-      int fixed_params = funcToken->Fdec.args_len - 1;
-      int variadic_count = arg_count - fixed_params;
-      args = calloc(arg_count + 1, sizeof(LLVMValueRef));
-      for (int i = 0; i < fixed_params; i++)
-         args[i] = token->Fcall.args[i]->llvm.elem;
-      args[fixed_params] = LLVMConstInt(i32, variadic_count, 0);
-      for (int i = fixed_params; i < arg_count; i++)
-         args[i + 1] = token->Fcall.args[i]->llvm.elem;
-      arg_count++;
-   } else {
-      args = calloc(arg_count, sizeof(LLVMValueRef));
-      for (int i = 0; i < arg_count; i++)
-         args[i] = token->Fcall.args[i]->llvm.elem;
+void finalize()
+{
+   char *error = NULL;
+   if (LLVMVerifyModule(module, LLVMReturnStatusAction, &error)) {
+      fprintf(stderr, RED"Module verification failed:\n%s\n"RESET, error);
+      LLVMDisposeMessage(error);
    }
+   LLVMPrintModuleToFile(module, "build/out.ll", NULL);
 
-   LLVMTypeRef funcType = LLVMGlobalGetValueType(func);
-   LLVMTypeRef retType = LLVMGetReturnType(funcType);
-   char *callName = (LLVMGetTypeKind(retType) == LLVMVoidTypeKind) ? "" : token->name;
-
-   // Check if we're inside a try block
-   ExceptionContext *ctx = get_current_exception_context();
-   if (ctx && ctx->landing_pad) {
-      // Use invoke instead of call
-      BasicBlockRef normal_dest = _append_block("invoke.cont");
-      token->llvm.elem = LLVMBuildInvoke2(builder, funcType, func, args, arg_count,
-                                          normal_dest, ctx->landing_pad, callName);
-      LLVMPositionBuilderAtEnd(builder, normal_dest);
-   } else {
-      // Regular call
-      token->llvm.elem = LLVMBuildCall2(builder, funcType, func, args, arg_count, callName);
-   }
-
-   free(args);
+   LLVMDisposeBuilder(builder);
+   LLVMDisposeModule(module);
+   LLVMContextDispose(context);
 }
 
-// Now update the generate_ir function for TRY and THROW cases:
+bool includes(Type to_find, ...)
+{
+   va_list ap; Type current; va_start(ap, to_find);
+   while ((current = va_arg(ap, Type)) != 0)
+      if (current == to_find) return true;
+   return false;
+}
 
-void generate_ir_try_catch(Node *node) {
-   enter_scoop(node);
+char *substr(char *input, int s, int e)
+{
+   char *res = calloc(e - s + 1, sizeof(char));
+   strncpy(res, input + s, e - s);
+   return res;
+}
 
-   // Get current function from the basic block we're in
-   BasicBlockRef current_block = LLVMGetInsertBlock(builder);
-   if (!current_block) {
-      check(1, "try-catch must be inside a function");
+void free_tokens()
+{
+   for (int i = 0; tokens[i]; i++)
+   {
+      if (tokens[i]->Chars.value) free(tokens[i]->Chars.value);
+      if (tokens[i]->name) free(tokens[i]->name);
+      free(tokens[i]);
+   }
+}
+
+Token *copy_token(Token *token)
+{
+   if (token == NULL) return NULL;
+   Token *new = calloc(1, sizeof(Token));
+   memcpy(new, token, sizeof(Token));
+   if (token->name) new->name = strdup(token->name);
+   if (token->Chars.value) new->Chars.value = strdup(token->Chars.value);
+   tokens[tk_pos++] = new;
+   return new;
+}
+
+char* open_file(char *filename)
+{
+   char dir[100000] = {};
+   getwd(dir);
+   filename = strjoin(dir, "/", filename, NULL);
+   File file = fopen(filename, "r");
+   if (!file)
+   {
+      printf("Error: openning file [%s]", filename);
+      free(filename);
+      exit(1);
+   }
+   fseek(file, 0, SEEK_END);
+   int size = ftell(file);
+   fseek(file, 0, SEEK_SET);
+   char *input = calloc((size + 1), sizeof(char));
+   if (input) fread(input, size, sizeof(char), file);
+   fclose(file);
+   free(filename);
+   return input;
+}
+
+char *strjoin(char *str, ...)
+{
+   if (!str) return NULL;
+
+   va_list ap;
+   size_t len = 0;
+
+   va_start(ap, str);
+   char *ptr = str;
+   while (ptr)
+   {
+      len += strlen(ptr);
+      ptr = va_arg(ap, char *);
+   }
+   va_end(ap);
+
+   char *res = calloc(len + 1, 1);
+   if (!res) return NULL;
+
+   char *dst = res;
+   va_start(ap, str);
+   ptr = str;
+   while (ptr)
+   {
+      size_t l = strlen(ptr);
+      memcpy(dst, ptr, l);
+      dst += l;
+      ptr = va_arg(ap, char *);
+   }
+   va_end(ap);
+
+   return res;
+}
+
+void ptoken(Token *token)
+{
+   if (TESTING) return;
+   if (!token)
+   {
+      printf("token NULL \n");
       return;
    }
-   LLVMValueRef current_func = LLVMGetBasicBlockParent(current_block);
-   if (!current_func) {
-      check(1, "try-catch must be inside a function");
-      return;
-   }
+   printf("token %s ", to_string(token->type));
+   if (token->name) printf("[%s] ", token->name);
 
-   // Set personality function
-   LLVMValueRef personality = get_or_declare_personality();
-   LLVMSetPersonalityFn(current_func, personality);
-
-   // Create basic blocks
-   BasicBlockRef try_block = _append_block("try");
-   BasicBlockRef landing_pad_block = _append_block("lpad");
-   BasicBlockRef catch_block = _append_block("catch");
-   BasicBlockRef end_block = _append_block("try.end");
-
-   // Get catch type
-   Type catch_type = node->right ? node->right->token->Catch.error_type : INT;
-   TypeRef catch_llvm_type = get_llvm_type(node->right->token);
-
-   // Allocate storage for caught exception
-   BasicBlockRef entry = LLVMGetEntryBasicBlock(current_func);
-   BasicBlockRef saved_pos = LLVMGetInsertBlock(builder);
-   LLVMPositionBuilderAtEnd(builder, entry);
-   LLVMValueRef error_storage = LLVMBuildAlloca(builder, catch_llvm_type, "exception.storage");
-   LLVMPositionBuilderAtEnd(builder, saved_pos);
-
-   // Push exception context
-   push_exception_context(landing_pad_block, catch_block, end_block, error_storage, catch_type);
-
-   // Jump to try block
-   _branch(try_block);
-   LLVMPositionBuilderAtEnd(builder, try_block);
-
-   // Generate try block body - all function calls will use invoke
-   for (int i = 0; i < node->cpos; i++) {
-      generate_ir(node->children[i]);
-   }
-
-   // If no exception, jump to end
-   _branch(end_block);
-
-   // Generate landing pad
-   LLVMPositionBuilderAtEnd(builder, landing_pad_block);
-
-   // Create landing pad instruction
-   LLVMTypeRef landing_pad_type = LLVMStructTypeInContext(context,
-   (LLVMTypeRef[]) {p8, i32}, 2, false);
-   LLVMValueRef landing_pad = LLVMBuildLandingPad(builder, landing_pad_type,
-                              personality, 1, "lpad");
-
-   // Add catch clause for our type
-   LLVMValueRef type_info = get_type_info_for_type(catch_type);
-   LLVMAddClause(landing_pad, type_info);
-
-   // Extract exception pointer
-   LLVMValueRef exception_ptr = LLVMBuildExtractValue(builder, landing_pad, 0, "exc.ptr");
-
-   // Call __cxa_begin_catch
-   LLVMValueRef begin_catch = get_or_declare_cxa_begin_catch();
-   LLVMValueRef caught_ptr = LLVMBuildCall2(builder,
-                             LLVMGlobalGetValueType(begin_catch), begin_catch,
-                             &exception_ptr, 1, "caught");
-
-   // Cast and load the exception value
-   LLVMValueRef typed_ptr = LLVMBuildBitCast(builder, caught_ptr,
-                            LLVMPointerType(catch_llvm_type, 0), "typed.ptr");
-   LLVMValueRef exception_value = LLVMBuildLoad2(builder, catch_llvm_type,
-                                  typed_ptr, "exception.value");
-
-   // Store in our error_storage
-   LLVMBuildStore(builder, exception_value, error_storage);
-
-   // Jump to catch block
-   LLVMBuildBr(builder, catch_block);
-
-// Generate catch block
-   LLVMPositionBuilderAtEnd(builder, catch_block);
-   ExceptionContext *ctx_for_catch = get_current_exception_context();
-   if (ctx_for_catch) {
-      ctx_for_catch->in_catch_block = true;
-   }
-
-   if (node->right) {
-      // Create catch variable pointing to error_storage
-      Token *catch_param = calloc(1, sizeof(Token));
-      catch_param->type = catch_type;
-      catch_param->name = node->right->token->Catch.error_name;
-      catch_param->llvm.elem = error_storage;
-      add_variable(new_node(catch_param));
-
-      // Generate catch block body
-      for (int i = 0; i < node->right->cpos; i++) {
-         generate_ir(node->right->children[i]);
+   if (token->is_dec) printf("is dec ");
+   else
+      switch (token->type)
+      {
+      case INT: printf("%ld ", token->Int.value); break;
+      case CHAR: printf("[%c] ", token->Char.value); break;
+      case CHARS: printf("[%s] ", token->Chars.value); break;
+      default: break;
       }
-   }
-
-   // Mark that we're no longer in the catch block
-   if (ctx_for_catch) {
-      ctx_for_catch->in_catch_block = false;
-   }
-
-   // Only add end_catch and branch if there's no terminator
-   // (return statements in catch block will have already added end_catch)
-   if (!LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder))) {
-      LLVMValueRef end_catch = get_or_declare_cxa_end_catch();
-      LLVMBuildCall2(builder, LLVMGlobalGetValueType(end_catch), end_catch, NULL, 0, "");
-      LLVMBuildBr(builder, end_block);
-   }
-
-   // Position at end block
-   LLVMPositionBuilderAtEnd(builder, end_block);
-
-   // Pop exception context
-   pop_exception_context();
-   exit_scoop();
+   if (token->reType) printf("ret [%s] ", to_string(token->reType));
+   if (token->is_ref) printf("is_ref");
+   printf(" space [%d]\n", token->space);
 }
 
-void generate_ir_throw(Node *node) {
-   // Evaluate the expression to throw
-   generate_ir(node->left);
-   load_if_neccessary(node->left);
+void pnode(Node *node, char *side, int space)
+{
+   if (!node || TESTING) return;
+#if !TESTING
+   int i = 0;
+   while (i < space) i += printf(" ");
+#endif
+   if (side) printf("%s ", side);
+   printf("node "); ptoken(node->token);
+   pnode(node->left, "L:", space + TAB);
+   pnode(node->right, "R:", space + TAB);
+   switch (node->token->type)
+   {
+   case FDEC:
+   {
+      for (int i = 0; i < node->cpos; i++)
+         pnode(node->children[i], NULL, space + TAB);
+      break;
+   }
+   default:
+      break;
+   }
+}
 
-   Token *throw_token = node->left->token;
-   Type throw_type = throw_token->type;
-   TypeRef throw_llvm_type = get_llvm_type(throw_token);
+char *to_string(Type type)
+{
+   char* res[END + 1] = {
+      [ID] = "ID", [CHAR] = "CHAR", [CHARS] = "CHARS", [VOID] = "VOID",
+      [INT] = "INT", [BOOL] = "BOOL", [NEWLINE] = "NEWLINE", [FDEC] = "FDEC",
+      [FCALL] = "FCALL", [END] = "END", [LPAR] = "LPAR", [RPAR] = "RPAR",
+      [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE", [WHILE] = "WHILE",
+      [RETURN] = "RETURN", [END_BLOCK] = "END_BLOCK", [ADD] = "ADD",
+      [SUB] = "SUB", [MUL] = "MUL", [DIV] = "DIV", [ASSIGN] = "ASSIGN",
+      [ADD_ASSIGN] = "ADD_ASSIGN", [SUB_ASSIGN] = "SUB_ASSIGN",
+      [MUL_ASSIGN] = "MUL_ASSIGN", [DIV_ASSIGN] = "DIV_ASSIGN",
+      [MOD_ASSIGN] = "MOD_ASSIGN", [ACCESS] = "ACCESS",
+      [MOD] = "MOD", [COMA] = "COMA", [REF] = "REF",
+      [EQUAL] = "EQUAL", [NOT_EQUAL] = "NOT_EQUAL", [LESS] = "LESS",
+      [MORE] = "MORE", [LESS_EQUAL] = "LESS_EQUAL",
+      [MORE_EQUAL] = "MORE_EQUAL", [AND] = "AND", [OR] = "OR",
+      [DOTS] = "DOTS", [COLON] = "COLON", [COMMA] = "COMMA",
+      [LBRACKET] = "LBRACKET", [RBRACKET] = "RBRACKET",
+      [PROTO] = "PROTO", [VARIADIC] = "VARIADIC",
+      [VA_LIST] = "VA_LIST", [AS] = "AS", [STACK] = "STACK",
+      [TRY] = "TRY", [CATCH] = "CATCH", [THROW] = "THROW",
+      [USE] = "USE", [LBRA] = "LBRA", [RBRA] = "RBRA",
+      [DOT] = "DOT",
+   };
+   if (!res[type])
+   {
+      printf("%s:%d handle this case %d\n", __FILE__, __LINE__, type);
+      exit(1);
+   }
+   return res[type];
+}
 
-   // Allocate exception object
-   LLVMValueRef alloc_exception = get_or_declare_cxa_allocate_exception();
-   size_t exception_size = LLVMABISizeOfType(LLVMGetModuleDataLayout(module), throw_llvm_type);
-   LLVMValueRef size_val = LLVMConstInt(i64, exception_size, 0);
-   LLVMValueRef exception_mem = LLVMBuildCall2(builder,
-                                LLVMGlobalGetValueType(alloc_exception), alloc_exception,
-                                &size_val, 1, "exception");
+void create_bounds_check_function() {
+   _Value existing = LLVMGetNamedFunction(module, "__bounds_check");
+   if (existing) return;
 
-   // Cast to appropriate pointer type and store value
-   LLVMValueRef typed_exception = LLVMBuildBitCast(builder, exception_mem,
-                                  LLVMPointerType(throw_llvm_type, 0), "typed.exception");
-   LLVMBuildStore(builder, throw_token->llvm.elem, typed_exception);
+   // void __bounds_check(i32 index, i32 size, i32 line, ptr filename)
+   _Type param_types[] = {i32, i32, i32, p8};
+   _Type func_type = LLVMFunctionType(vd, param_types, 4, false);
+   _Value func = LLVMAddFunction(module, "__bounds_check", func_type);
 
-   // Get type info
-   LLVMValueRef type_info = get_type_info_for_type(throw_type);
+   _Block entry = LLVMAppendBasicBlockInContext(context, func, "entry");
+   _Block error_block = LLVMAppendBasicBlockInContext(context, func, "error");
+   _Block ok_block = LLVMAppendBasicBlockInContext(context, func, "ok");
 
-   // Call __cxa_throw (destructor is NULL for POD types)
-   LLVMValueRef cxa_throw = get_or_declare_cxa_throw();
-   LLVMValueRef null_dtor = LLVMConstNull(p8);
-   LLVMValueRef throw_args[] = {exception_mem, type_info, null_dtor};
-   LLVMBuildCall2(builder, LLVMGlobalGetValueType(cxa_throw), cxa_throw,
-                  throw_args, 3, "");
+   LLVMPositionBuilderAtEnd(builder, entry);
 
-   // Add unreachable after throw
+   _Value index_param = LLVMGetParam(func, 0);
+   _Value size_param = LLVMGetParam(func, 1);
+   _Value line_param = LLVMGetParam(func, 2);
+   _Value filename_param = LLVMGetParam(func, 3);
+
+   // Check: index >= 0 && index < size
+   _Value cmp_negative = LLVMBuildICmp(builder, LLVMIntSLT, index_param,
+                                       LLVMConstInt(i32, 0, 0), "is_negative");
+   _Value cmp_overflow = LLVMBuildICmp(builder, LLVMIntSGE, index_param,
+                                       size_param, "is_overflow");
+   _Value is_bad = LLVMBuildOr(builder, cmp_negative, cmp_overflow, "is_bad");
+
+   LLVMBuildCondBr(builder, is_bad, error_block, ok_block);
+
+   // Error block
+   LLVMPositionBuilderAtEnd(builder, error_block);
+
+   // Get printf function (simpler than fprintf with stderr)
+   _Value printf_func = LLVMGetNamedFunction(module, "printf");
+   if (!printf_func) {
+      _Type printf_type = LLVMFunctionType(i32, (_Type[]) {p8}, 1, true);
+      printf_func = LLVMAddFunction(module, "printf", printf_type);
+   }
+
+   // Error messages
+   _Value fmt_header = LLVMBuildGlobalStringPtr(builder,
+                       "\n\033[1m\033[31mruntime error:\033[0m array index out of bounds\n", "fmt_header");
+   _Value fmt_location = LLVMBuildGlobalStringPtr(builder,
+                         "\033[1m%s:%d:\033[0m ", "fmt_location");
+   _Value fmt_error = LLVMBuildGlobalStringPtr(builder,
+                      "\033[1m\033[31merror:\033[0m index \033[1m%d\033[0m is out of bounds for array of size \033[1m%d\033[0m\n\n",
+                      "fmt_error");
+
+   // Print error using printf
+   LLVMBuildCall2(builder, LLVMGlobalGetValueType(printf_func), printf_func,
+   (_Value[]) {fmt_header}, 1, "");
+   LLVMBuildCall2(builder, LLVMGlobalGetValueType(printf_func), printf_func,
+   (_Value[]) {fmt_location, filename_param, line_param}, 3, "");
+   LLVMBuildCall2(builder, LLVMGlobalGetValueType(printf_func), printf_func,
+   (_Value[]) {fmt_error, index_param, size_param}, 3, "");
+
+   // Abort
+   _Value abort_func = LLVMGetNamedFunction(module, "abort");
+   if (!abort_func) {
+      _Type abort_type = LLVMFunctionType(vd, NULL, 0, false);
+      abort_func = LLVMAddFunction(module, "abort", abort_type);
+      LLVMAddAttributeAtIndex(abort_func, LLVMAttributeFunctionIndex,
+                              LLVMCreateEnumAttribute(context, LLVMGetEnumAttributeKindForName("noreturn", 8), 0));
+   }
+   LLVMBuildCall2(builder, LLVMGlobalGetValueType(abort_func), abort_func, NULL, 0, "");
    LLVMBuildUnreachable(builder);
 
-   // Create new block for any potential code after throw (unreachable)
-   BasicBlockRef after_throw = _append_block("after.throw");
-   LLVMPositionBuilderAtEnd(builder, after_throw);
+   // OK block
+   LLVMPositionBuilderAtEnd(builder, ok_block);
+   LLVMBuildRetVoid(builder);
+}
+
+void init(char *name)
+{
+   context = LLVMContextCreate();
+   module = LLVMModuleCreateWithNameInContext(name, context);
+   builder = LLVMCreateBuilderInContext(context);
+
+   vd = LLVMVoidTypeInContext(context);
+   f32 = LLVMFloatTypeInContext(context);
+   i1 = LLVMInt1TypeInContext(context);
+   i8 = LLVMInt8TypeInContext(context);
+   i16 = LLVMInt16TypeInContext(context);
+   i32 = LLVMInt32TypeInContext(context);
+   i64 = LLVMInt64TypeInContext(context);
+   p8 = LLVMPointerType(i8, 0);
+   p32 = LLVMPointerType(i32, 0);
+
+   LLVMInitializeAllTargetInfos();
+   LLVMInitializeAllTargets();
+   LLVMInitializeAllTargetMCs();
+   LLVMInitializeAllAsmParsers();
+   LLVMInitializeAllAsmPrinters();
+   LLVMSetTarget(module, LLVMGetDefaultTargetTriple());
 }
