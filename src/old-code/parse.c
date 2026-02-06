@@ -59,7 +59,7 @@ Token *parse_token(char *filename, int line, char *input, int s, int e,  Type ty
          {
             setName(new, NULL);
             new->type = dataTypes[i].type;
-            new->is_declare = true;
+            new->is_dec = true;
             break;
          }
       }
@@ -371,14 +371,14 @@ void tokenize(char *filename)
 }
 
 // AST
-Node *expr()
+Node *expr_node()
 {
-   return assign();
+   return assign_node();
 }
 
-Node *assign()
+Node *assign_node()
 {
-   Node *left = logic();
+   Node *left = logic_node();
    Token *token;
    while ((token = find(ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN, 0)))
    {
@@ -386,7 +386,7 @@ Node *assign()
       if (token->type == ASSIGN)
       {
          node->left = left;
-         node->right = logic();
+         node->right = logic_node();
       }
       else
       {
@@ -395,7 +395,7 @@ Node *assign()
          *(node->right) = (Node) {
             .token = new_token(0, node->token->space),
             .left = new_node(left->token),
-            .right = logic(),
+            .right = logic_node(),
          };
          switch (token->type)
          {
@@ -419,9 +419,9 @@ AST_NODE(comparison, add_sub, LESS, MORE, LESS_EQUAL, MORE_EQUAL, 0);
 AST_NODE(add_sub, mul_div, ADD, SUB, 0);
 AST_NODE(mul_div, dot, MUL, DIV, MOD, 0);
 
-Node *dot()
+Node *dot_node()
 {
-   Node *left = brackets();
+   Node *left = brackets_node();
    Token *token;
    while ((token = find(DOT, 0)))
    {
@@ -435,22 +435,22 @@ Node *dot()
    return left;
 }
 
-Node *brackets()
+Node *brackets_node()
 {
-   Node *left = sign();
+   Node *left = sign_node();
    Token *token;
    if ((token = find(LBRA, 0)))
    {
       Node *node = new_node(token);
       node->left = left;
-      node->right = brackets();
+      node->right = brackets_node();
       check(!find(RBRA, 0), "expected right bracket");
       return node;
    }
    return left;
 }
 
-Node *sign()
+Node *sign_node()
 {
    Token *token;
    if ((token = find(SUB, 0)))
@@ -525,7 +525,7 @@ Node *func_dec(Node *node)
             name->is_ref = is_ref;
             name->type = data_type->type;
          }
-         curr->token->is_declare = true;
+         curr->token->is_dec = true;
          add_child(node->left, curr);
       }
       find(COMA, 0); // TODO: check this later
@@ -538,14 +538,14 @@ Node *func_dec(Node *node)
       check(!found_error && !next, "Expected : after function declaration");
       Node *child = NULL;
 
-      if (next->type == DOTS) while (within_space(node->token->space)) child = add_child(node, expr());
+      if (next->type == DOTS) while (within(node->token->space)) child = add_child(node, expr_node());
       else
       {
          todo(1, "stop");
          Token *retToken = copy_token(next);
          retToken->type = RETURN;
          Node *retNode = new_node(retToken);
-         retNode->left = expr();
+         retNode->left = expr_node();
          child = add_child(node, retNode);
       }
       if (next->type == DOTS)
@@ -575,7 +575,7 @@ Node *func_call(Node *node)
 
    while (!found_error && !(arg = find(RPAR, END, 0)))
    {
-      Node *curr = expr();
+      Node *curr = expr_node();
       curr->token->space = token->space;
       add_child(node, curr);
       find(COMA, 0);
@@ -596,9 +596,9 @@ Node *func_main(Node *node)
    node->token->retType = INT;
 
    Node *last = NULL;
-   while (within_space(node->token->space))
+   while (within(node->token->space))
    {
-      last = expr();
+      last = expr_node();
       add_child(node, last);
    }
    if (!last || last->token->type != RETURN)
@@ -615,7 +615,7 @@ Node *symbol(Token *token)
 {
    Node *node;
    Token *st_dec = NULL;
-   if (token->is_declare)
+   if (token->is_dec)
    {
       Token *tmp = find(ID, 0);
       check(!tmp, "Expected variable name after [%s] symbol\n",
@@ -634,7 +634,7 @@ Node *symbol(Token *token)
       token = copy_token(st_dec);
       token->type = STRUCT_CALL;
       token->Struct.ptr = st_dec;
-      token->is_declare = true;
+      token->is_dec = true;
 
       Token *tmp = find(ID, 0);
       check(!tmp, "Expected variable name after [%s] symbol\n",
@@ -646,7 +646,7 @@ Node *symbol(Token *token)
    {
       node = new_node(copy_token(token));
       node->token->type = ACCESS;
-      Node *index = prime();
+      Node *index = prime_node();
       check(!index || !index->token, "expected index after left bracket\n");
       check(!find(RBRA, 0), "expected right bracket\n");
       node->left = new_node(token);
@@ -668,7 +668,7 @@ Node *struct_def(Node *node)
 
    setName(node->token, NULL);
    node->token->Struct.name = strdup(st_name->name);
-   while (within_space(node->token->space))
+   while (within(node->token->space))
    {
       Token *attr = find(DATA_TYPES, ID, 0);
       Token *id = find(ID, 0);
@@ -693,15 +693,15 @@ Node *if_node(Node *node)
    //    + right   : elif/else Layout
    enter_scoop(node);
 
-   node->left = expr();
+   node->left = expr_node();
    node->left->token->space = node->token->space;
    node->right = new_node(new_token(CHILDREN, node->token->space));
 
    check(!find(DOTS, 0), "Expected : after if condition\n", "");
 
    // code bloc
-   while (within_space(node->token->space)) add_child(node, expr());
-   while (includes(tokens[exe_pos]->type, ELSE, ELIF, 0) && within_space(node->token->space - TAB))
+   while (within(node->token->space)) add_child(node, expr_node());
+   while (includes(tokens[exe_pos]->type, ELSE, ELIF, 0) && within(node->token->space - TAB))
    {
       Token *token = find(ELSE, ELIF, 0);
       Node *curr = add_child(node->right, new_node(token));
@@ -709,19 +709,19 @@ Node *if_node(Node *node)
       if (token->type == ELIF)
       {
          enter_scoop(curr);
-         curr->left = expr();
+         curr->left = expr_node();
          Node *bloc = add_child(node->right, new_node(copy_token(token)));
          setName(bloc->token, "bloc");
          bloc->token->space -= TAB;
          check(!find(DOTS, 0), "expected : after elif condition");
-         while (within_space(token->space)) add_child(curr, expr());
+         while (within(token->space)) add_child(curr, expr_node());
          exit_scoop();
       }
       else if (token->type == ELSE)
       {
          enter_scoop(curr);
          check(!find(DOTS, 0), "expected : after else");
-         while (within_space(token->space)) add_child(curr, expr());
+         while (within(token->space)) add_child(curr, expr_node());
          exit_scoop();
          break;
       }
@@ -742,12 +742,12 @@ Node *while_node(Node *node)
    //    + children: code bloc
    enter_scoop(node);
 
-   node->left = expr();
+   node->left = expr_node();
    node->left->token->space = node->token->space;
    check(!find(DOTS, 0), "Expected : after if condition\n", "");
 
    // code bloc
-   while (within_space(node->token->space)) add_child(node, expr());
+   while (within(node->token->space)) add_child(node, expr_node());
 
    exit_scoop();
    return node;
@@ -755,16 +755,16 @@ Node *while_node(Node *node)
 
 Node *cast_node()
 {
-   Node *node = prime();
+   Node *node = prime_node();
    Token *token;
    if ((token = find(AS, 0)))
    {
       Node *left = node;
       node = new_node(token);
       Token *to = find(DATA_TYPES);
-      if (check(to == NULL || !to->is_declare, "expected data type after to"))
+      if (check(to == NULL || !to->is_dec, "expected data type after to"))
          return NULL;
-      to->is_declare = false;
+      to->is_dec = false;
       // TODO: check that is exists
       node->right = new_node(to);
       node->left = left;
@@ -773,7 +773,7 @@ Node *cast_node()
    return node;
 }
 
-Node *prime()
+Node *prime_node()
 {
    Node *node = NULL;
    Token *token;
@@ -792,15 +792,15 @@ Node *prime()
    else if ((token = find(NOT, 0)))
    {
       node = new_node(token);
-      node->left = expr();
+      node->left = expr_node();
       return node;
    }
    else if ((token = find(STRUCT_DEF, 0)))
       return struct_def(new_node(token));
    else if ((token = find(REF, 0)))
    {
-      node = prime(); // TODO: check it
-      check(!node->token->is_declare, "must be variable declaration after ref");
+      node = prime_node(); // TODO: check it
+      check(!node->token->is_dec, "must be variable declaration after ref");
       node->token->is_ref = true;
       return node;
    }
@@ -810,7 +810,7 @@ Node *prime()
       // TODO: check if return type is compatible with function
       // in current scoop
       node = new_node(token);
-      for (int i = scoopPos; i >= 0; i--)
+      for (int i = scoop_pos; i >= 0; i--)
       {
          Node *curr = Gscoop[i];
          if (curr->token->type == FDEC)
@@ -821,7 +821,7 @@ Node *prime()
                node->left = copy_node(node);
                node->left->token->type = VOID;
             }
-            else node->left = expr();
+            else node->left = expr_node();
             break;
          }
       }
@@ -831,7 +831,7 @@ Node *prime()
    else if ((token = find(WHILE, 0))) return while_node(new_node(token));
    else if ((token = find(LPAR, 0)))
    {
-      if (tokens[exe_pos]->type != RPAR) node = expr();
+      if (tokens[exe_pos]->type != RPAR) node = expr_node();
       check(!find(RPAR, 0), "expected right par");
       return node;
    }
