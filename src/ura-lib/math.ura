@@ -45,7 +45,7 @@ protoFunc float remainder(float x, float y)
 protoFunc float remquo(float x, float y, pointer quo)
 
 // Floating-point manipulation functions
-protoFunc float copysign(float x, float y)
+protoFunc float copysign_node(float x, float y)
 protoFunc float nextafter(float x, float y)
 protoFunc float nexttoward(float x, float y)
 

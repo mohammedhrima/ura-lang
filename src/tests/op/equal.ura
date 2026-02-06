@@ -1,0 +1,52 @@
+func int foo():
+    return 10
+
+func int bar():
+    return 20
+
+func int zero():
+    return 0
+
+main():
+    int a = 10
+    int b = 20
+
+    // Test: variable == variable
+    bool t1 = a == b
+
+    // Test: variable == value
+    bool t2 = a == 10
+
+    // Test: variable == function
+    bool t3 = a == foo()
+
+    // Test: value == variable
+    bool t4 = 20 == b
+
+    // Test: value == value
+    bool t5 = 10 == 10
+
+    // Test: value == function
+    bool t6 = 10 == bar()
+
+    // Test: function == variable
+    bool t7 = foo() == a
+
+    // Test: function == value
+    bool t8 = bar() == 20
+
+    // Test: function == function
+    bool t9 = foo() == bar()
+
+    // More function return comparisons
+    bool t10 = zero() == 0
+    bool t11 = zero() == foo()
+    bool t12 = foo() == foo()
+
+    // If your language allows 'is' keyword
+    bool t13 = a is b
+    bool t14 = foo() is bar()
+
+    // Short-circuit? (not relevant for ==, but checking eval order)
+    // Should evaluate both sides
+    bool t15 = foo() == bar()

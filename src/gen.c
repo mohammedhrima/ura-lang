@@ -1,618 +1,348 @@
-#include "./ura_header.h"
+#include "./header.h"
 
-Token *func_dec_ir(Node *node)
+// ASSEMBLY GENERATION
+void _alloca(Token *token)
 {
-   new_function(node);
-   enter_scoop(node);
-
-   Inst* inst = NULL;
-   inst = new_inst(node->token);
-
-   // parameters
-   Node **params = (node->left ? node->left->children : NULL);
-   Token *token = node->token;
-   for (int i = 0; params && i < node->left->cpos && !found_error; i++)
-   {
-      Node *child = params[i];
-      generate_ir(child);
-      if (token->Fdec.args == NULL)
-      {
-         token->Fdec.size = 10;
-         token->Fdec.args = allocate(token->Fdec.size, sizeof(Token*));
-      }
-      else if (token->Fdec.pos + 1 == token->Fdec.size)
-      {
-         Token **tmp = allocate(token->Fdec.size *= 2, sizeof(Token*));
-         memcpy(tmp, token->Fdec.args, token->Fdec.pos * sizeof(Token*));
-         free(token->Fdec.args);
-         token->Fdec.args = tmp;
-      }
-      if (child->token->is_ref)
-         child->token->has_ref = true;
-      child->token->Param.index = i;
-      child->token->Param.func_ptr = node->token;
-      child->token->is_param = true;
-      child->token->is_declare = false;
-      token->Fdec.args[token->Fdec.pos++] = child->token;
-   }
-   // code bloc
-   for (int i = 0; !node->token->is_proto && i < node->cpos; i++)
-   {
-      Node *child = node->children[i];
-      generate_ir(child);
-   }
-
-   // if (!node->token->is_proto)
-   {
-      Token *new = new_token(END_BLOC, node->token->space);
-      setName(new, node->token->name);
-      new_inst(new);
-   }
-   exit_scoop();
-   return inst->token;
+   TypeRef type = get_llvm_type(token);
+   token->llvm.elem = llvm_build_alloca(token, type, token->name);
 }
 
-Token *func_call_ir(Node *node)
+void _int(Token *token)
 {
-   Inst* inst = NULL;
+   TypeRef type = get_llvm_type(token); long long value;
+   value = (long long)token->Int.value;
+   token->llvm.elem = llvm_const_int(type, value, 0);
+}
 
-   if (strcmp(node->token->name, "output") == 0)
-   {
-      todo(1, "handle this\n");
-#if 0
-      node->token->Fcall.ptr = func->token;
-      node->token->Fcall.args = allocate(node->cpos, sizeof(Token*));
-      node->token->Fcall.pos = node->cpos;
-      node->token->retType = func->token->retType;
+void _char(Token *token)
+{
+   TypeRef type = get_llvm_type(token); int value;
+   value = (int)token->Char.value;
+   token->llvm.elem = llvm_const_int(type, value, 0);
+}
 
-      // setReg(node->token, func->token->creg);
-      Node *fcall = node;
-      Node *fdec = func->left;
+void _chars(Token *token)
+{
+   static int index = 0;
+   char name[20];
+   snprintf(name, sizeof(name), "STR%d", index++);
 
-      for (int i = 0; !found_error && i < fcall->cpos; i++)
-      {
-         Node *carg = fcall->children[i]; // will always be ID
-
-         Token *src = generate_ir(carg);
-
-         if (check(src->type == ID, "Indeclared variable %s",
-                   carg->token->name)) break;
-
-         node->token->Fcall.args[i] = src;
-         // Token *dist = copy_token(darg->token);
-         // set_func_call_regs(&r, src, dist, node);
-      }
-      inst = new_inst(node->token);
-#endif
-   }
-   else if (strcmp(node->token->name, "stack") == 0)
-   {
-      node->token->Fcall.args = allocate(node->cpos, sizeof(Token*));
-      node->token->Fcall.pos = node->cpos;
-
-      node->token->retType = PTR;
-      node->token->type = STACK;
-
-      Node *call_args = node;
-
-      for (int i = 0; !found_error && i < call_args->cpos; i++)
-      {
-         Node *carg = call_args->children[i]; // will always be ID
-         Token *src = generate_ir(carg);
-         if (check(src->type == ID, "Indeclared variable %s", carg->token->name)) break;
-         node->token->Fcall.args[i] = src;
-         src->space = node->token->space;
-      }
-      inst = new_inst(node->token);
-   }
-   else
-   {
-      Node *func = get_function(node->token->name);
-      if (!func) return NULL;
-      node->token->Fcall.func_ptr = func->token;
-      node->token->Fcall.args = allocate(node->cpos, sizeof(Token*));
-      node->token->Fcall.pos = node->cpos;
-
-      func = copy_node(func);
-      node->token->retType = func->token->retType;
-      node->token->is_variadic = func->token->is_variadic;
-
-      Node *call_args = node;
-      Node *dec_args = func->left;
-
-      if (check(call_args->cpos != dec_args->cpos && !node->token->is_variadic,
-                "Incompatible number of arguments %s", func->token->name))
-         return NULL;
-
-      for (int i = 0; !found_error && i < call_args->cpos; i++)
-      {
-         Node *carg = call_args->children[i]; // will always be ID
-         Token *src = generate_ir(carg);
-
-
-         if (check(src->type == ID, "Indeclared variable %s", carg->token->name)) break;
-         if (i < dec_args->cpos)
-         {
-            Node *darg = dec_args->children[i];
-            Token *dist = darg->token;
-
-            if (check(!compatible(src, dist), "Incompatible type arg %s", func->token->name)) break;
-            src->is_ref = darg->token->is_ref;
-            src->has_ref = false;
+   char *processed = calloc(strlen(token->Chars.value) * 2 + 1, 1);
+   int j = 0;
+   for (int i = 0; token->Chars.value[i]; i++) {
+      if (token->Chars.value[i] == '\\' && token->Chars.value[i + 1]) {
+         switch (token->Chars.value[i + 1]) {
+         case 'n': processed[j++] = '\n'; i++; break;
+         case 't': processed[j++] = '\t'; i++; break;
+         case 'r': processed[j++] = '\r'; i++; break;
+         case '0': processed[j++] = '\0'; i++; break;
+         case '\\': processed[j++] = '\\'; i++; break;
+         case '\"': processed[j++] = '\"'; i++; break;
+         case '\'': processed[j++] = '\''; i++; break;
+         default: processed[j++] = token->Chars.value[i]; break;
          }
-         node->token->Fcall.args[i] = src;
+      } else {
+         processed[j++] = token->Chars.value[i];
       }
-      free_node(func);
-      inst = new_inst(node->token);
    }
-   return inst->token;
+
+   token->llvm.elem = llvm_build_global_string_ptr(token, processed, name);
+   free(processed);
 }
 
-Token *if_ir(Node *node)
+void _return(Token *token)
 {
-   enter_scoop(node);
-   Node **children = node->right->children;
-   int cpos = node->right->cpos;
+   Value value = token->llvm.elem;
+   if (value) llvm_build_ret(token, value);
+   else llvm_build_ret_void(token);
+}
 
-   // CONDITION
-   Token *cond = generate_ir(node->left);
-   if (check(!cond || cond->retType != BOOL, "expected condition that return bool")) return NULL;
+TypeRef get_llvm_type(Token *token)
+{
+   Type type = token->type;
+   debug("==> %k\n", token);
+   if (includes(type, FDEC, PROTO, 0)) type = token->retType;
+   TypeRef res[END] = {[INT] = i32, [CHAR] = i8, [CHARS] = p8,
+                       [BOOL] = i1, [VOID] = vd,
+                       //[VA_LIST] = p8,
+                       [ACCESS] = i8,
+                       //[CATCH] = i32,
+                      };
 
-   // APPEND BLOC
-   Token *start = copy_token(node->token);
-   Inst *bloc = new_inst(copy_token(start));
-   bloc->token->type = APPEND_BLOC;
-   bloc->left = start;
+   check(!res[type], "handle this case [%s]\n", to_string(type));
+   return res[type];
+}
 
-   for (int i = 0; i < cpos && !found_error; i++)
+void load_if_neccessary(Node *node)
+{
+   Token *token = node->token;
+
+   if (token->llvm.is_loaded || includes(token->type, CHARS, /*STACK,*/ 0))
+      return;
+
+   if (token->name && token->type != FCALL)
    {
-      Inst *bloc = new_inst(copy_token(children[i]->token));
-      bloc->token->type = APPEND_BLOC;
-      bloc->left = children[i]->token;
+      Token *new = copy_token(token);
+      _load(new, token);
+      new->llvm.is_loaded = true;
+      node->token = new;
    }
-
-   // BUILD CONDITION
-   // cond ? go to left : go to right
-   Inst *inst = new_inst(node->token);
-   inst->token->type = BUILD_COND;
-   inst->token->Statement.ptr = cond;
-   inst->left = start;
-   inst->right = children[0]->token;
-
-   // SET POSITION start
-   inst = new_inst(copy_token(node->token));
-   inst->token->type = SET_POS;
-   inst->left = start;
-
-   // children code
-   for (int i = 0; i < node->cpos && !found_error; i++)
-      generate_ir(node->children[i]);
-
-   // BUILD BR to end (jmp to end if condition is true)
-   inst = new_inst(copy_token(node->token));
-   inst->token->type = BUILD_BR;
-   inst->left = children[cpos - 1]->token;
-
-   // SET POSITION next
-   for (int i = 0; i < cpos && !found_error; i++)
+   else if (includes(token->type, ACCESS, ADD, SUB, MUL, DIV, 0))
    {
-      Node *curr = children[i];
-      inst = new_inst(copy_token(node->token));
-      inst->token->type = SET_POS;
-      inst->left = children[i]->token;
-      switch (curr->token->type)
-      {
-      case ELSE:
-      {
-         enter_scoop(curr);
-         for (int j = 0; j < curr->cpos; j++)
-            generate_ir(curr->children[j]);
-
-         // BUILD BR to end (jmp to end if condition is true)
-         inst = new_inst(copy_token(curr->token));
-         inst->token->type = BUILD_BR;
-         inst->left = children[cpos - 1]->token;
-         exit_scoop();
-         break;
-      }
-      case ELIF:
-      {
-         enter_scoop(curr);
-         Token *cond = generate_ir(curr->left);
-         if (check(!cond || cond->retType != BOOL, "expected condition that return bool")) return NULL;
-         i++;
-
-         // BUILD CONDITION
-         // cond ? go to left : go to right
-         Inst *inst = new_inst(curr->token);
-         inst->token->type = BUILD_COND;
-         inst->token->Statement.ptr = cond;
-         inst->left = children[i]->token;
-         inst->right = children[i + 1]->token;
-
-
-         // SET POSITION next
-         inst = new_inst(copy_token(node->token));
-         inst->token->type = SET_POS;
-         inst->left = children[i]->token;
-
-         for (int i = 0; i < curr->cpos && !found_error; i++)
-            generate_ir(curr->children[i]);
-
-         // BUILD BR to end (jmp to end if condition is true)
-         inst = new_inst(copy_token(node->token));
-         inst->token->type = BUILD_BR;
-         inst->left = children[cpos - 1]->token;
-         exit_scoop();
-         break;
-      }
-      case END_IF: break;
-      default: break;
-      }
+      Token *new = copy_token(token);
+      _load(new, token);
+      new->llvm.is_loaded = true;
+      node->token = new;
    }
-   exit_scoop();
-   return NULL;
 }
 
-Token *while_ir(Node *node)
+void _fdec(Token *token)
 {
-   enter_scoop(node);
-   // APPEND BLOC
-   Token *loop_cond = copy_token(node->token);
-   setName(loop_cond, "while");
-   Inst *bloc = new_inst(copy_token(node->token));
-   bloc->token->type = APPEND_BLOC;
-   bloc->left = loop_cond;
+   TypeRef retType = get_llvm_type(token);
 
-   Token *loop_body = copy_token(node->token);
-   setName(loop_body, "while_bloc");
-   bloc = new_inst(copy_token(node->token));
-   bloc->token->type = APPEND_BLOC;
-   bloc->left = loop_body;
+   int param_count = token->Fdec.len;
+   int param_count1 = param_count;
 
-   Token *loop_end = copy_token(node->token);
-   setName(loop_end, "end_while");
-   bloc = new_inst(copy_token(loop_end));
-   bloc->token->type = APPEND_BLOC;
-   bloc->left = loop_end;
+   if (token->Fdec.is_variadic)
+   {
+      param_count--;
+      param_count1 = param_count + 1;
+   }
 
-   node->token->Statement.start = loop_cond;
-   node->token->Statement.end = loop_end;
+   TypeRef *paramTypes = calloc(param_count1 + 1, sizeof(TypeRef));
 
-   // BUILD BR
-   Inst *inst = new_inst(copy_token(node->token));
-   inst->token->type = BUILD_BR;
-   inst->left = loop_cond;
+   for (int i = 0; i < param_count; i++)
+   {
+      Token *param = token->Fdec.args[i];
 
-   // SET POSITION
-   inst = new_inst(copy_token(node->token));
-   inst->token->type = SET_POS;
-   inst->left = loop_cond;
+      if (param->is_ref)
+      {
+         TypeRef base_type = get_llvm_type(param);
+         paramTypes[i] = llvm_pointer_type(base_type, 0);
+      }
+      else
+         paramTypes[i] = get_llvm_type(param);
+   }
 
-   // CONDITION
-   Token *cond = generate_ir(node->left); // TODO: check if it's boolean
-   if (check(!cond || cond->retType != BOOL, "expected condition that return bool")) return NULL;
+   // Hidden count parameter (after regular params, before varargs)
+   if (token->Fdec.is_variadic)
+      paramTypes[param_count] = i32;
 
-   // BUILD CONDITION
-   // cond ? go to left : go to right
-   inst = new_inst(node->token);
-   inst->token->type = BUILD_COND;
-   inst->token->Statement.ptr = cond;
-   inst->left = loop_body;
-   inst->right = loop_end;
+   TypeRef funcType = llvm_function_type(retType, paramTypes, param_count1, token->Fdec.is_variadic);
 
-   // SET POSITION
-   inst = new_inst(copy_token(node->token));
-   inst->token->type = SET_POS;
-   inst->left = loop_body;
-
-   // children code
-   for (int i = 0; i < node->cpos && !found_error; i++)
-      generate_ir(node->children[i]);
-
-   // BUILD BR to end (jmp to end if condition is true)
-   inst = new_inst(copy_token(node->token));
-   inst->token->type = BUILD_BR;
-   inst->left = loop_cond;
-
-   // SET POSITION
-   inst = new_inst(copy_token(node->token));
-   inst->token->type = SET_POS;
-   inst->left = loop_end;
-
-   exit_scoop();
-   return NULL;
+   Value existingFunc = llvm_get_named_function(token->llvm_name ? token->llvm_name : token->name);
+   if (existingFunc) {
+      token->llvm.elem = existingFunc;
+   } else {
+      token->llvm.elem = llvm_add_function(token->llvm_name ? token->llvm_name : token->name,
+                                           funcType);
+   }
 }
 
-Token *op_ir(Node *node)
+void _entry(Token *token)
 {
-   Token *left = generate_ir(node->left);
-   Token *right = generate_ir(node->right);
-   if (check(!left, "error in assignment, left is NULL"))
-      return NULL;
-   if (check(!right, "error in assignment, right is NULL"))
-      return NULL;
+   Block entry = llvm_append_basic_block_in_context(token->llvm.elem, "entry");
+   llvm_position_builder_at_end(entry);
+}
 
-   // TODO: fix the check later
-   // check(!compatible(left, right), "invalid [%s] op between %s and %s\n",
-   //       to_string(node->token->type), to_string(left->type), to_string(right->type));
+void handle_asm(Node *node)
+{
+   // debug("Processing: %k\n", inst->token);
+   Value ret = NULL;
+   Node *left = node->left;
+   Node *right = node->right;
+
+   if (check(node->token->llvm.is_set, "already set\n"))
+      return;
    switch (node->token->type)
    {
+   case INT: case CHARS: case CHAR:
+   {
+      if (node->token->is_dec)
+      {
+         _alloca(node->token);
+         node->token->is_dec = false;
+         return;
+      }
+      else if (node->token->name)
+      {
+         return;
+      }
+      void (*funcs[END])(Token *) = {[INT] = &_int, [CHAR] = &_char, [CHARS] = &_chars};
+      void (*func)(Token *) = funcs[node->token->type];
+      check(!func, "handle this case [%s]\n", to_string(node->token->type));
+      func(node->token);
+      break;
+   }
    case ASSIGN:
    {
-      if (check(!compatible(left, right), "type mismatch"))
+      handle_asm(left);
+      handle_asm(right);
+      if (!left->token->is_ref && !right->token->is_ref)
       {
-         int s = left->pos;
-         int e = right->pos;
-         int l = left->line;
-
-         int ts = s;
-         for (; ts > 0 && tokens[ts - 1]->line == l; ts--);
-         int te = e;
-         for (; tokens[te]->type != END && tokens[te]->line == l; te++);
-
-         int space = 0;
-         bool add_space = true;
-
-         while (ts < te)
+         if (left->token->type == CHARS &&
+               (right->token->type == CHARS && !right->token->name))
          {
-            Token *token = tokens[ts];
-            int to_add = 0;
-            switch (token->logType)
-            {
-            case SYMBOL:
-            {
-               to_add += print("%s ", token->logName);
-               break;
-            }
-            case VALUE:
-            {
-               switch (token->type)
-               {
-               case INT: to_add += print("%d", token->Int.value); break;
-               case SHORT: to_add += print("%d", token->Short.value); break;
-               case LONG: to_add += print("%lld", token->Long.value); break;
-               case FLOAT: to_add += print("%f", token->Float.value); break;
-               case BOOL: to_add += print("%s", token->Bool.value ? "True" : "False"); break;
-               case CHARS: to_add += print_escaped(token->Chars.value); break;
-               case CHAR: to_add += print("%c", token->Char.value); break;
-               default:
-                  todo(1, "handle this case %s", to_string(token->type));
-                  break;
-               }
-               break;
-            }
-            default:
-               debug(RED"%k "RESET, token);
-               todo(1, "handle this case");
-               break;
-            }
-            if (token == node->token) add_space = false;
-            if (add_space) space += to_add;
-            ts++;
+            llvm_build_store(node->token, right->token->llvm.elem, left->token->llvm.elem);
+            node->token->llvm.elem = left->token->llvm.elem;
          }
-         print("\n");
-         for (int i = 0; i < space; i++) print(" ");
-         print("^\n");
+         else {
+            load_if_neccessary(node->right);
+            llvm_build_store(node->token, right->token->llvm.elem, left->token->llvm.elem);
+            right->token->llvm.elem = left->token->llvm.elem;
+         }
       }
-      node->token->ir_reg = left->ir_reg;
-      node->token->retType = left->retType;
-      if (right->Array.size) {
-         left->Array.size = right->Array.size;
-         left->Array.const_size = right->Array.const_size;
+      else
+         check(1, "handle this case");
+      break;
+   }
+   case FDEC: case PROTO:
+   {
+      if (scoop_pos > 1)
+      {
+         static int nested_id = 0;
+         char new_name[256];
+         snprintf(new_name, sizeof(new_name), "%s.%s.%d", scoop->token->name, node->token->name,
+                  nested_id++);
+         node->token->llvm_name = strdup(new_name);
       }
-      break;
-   }
-   case ADD: case SUB: case MUL: case DIV: case MOD:
-   {
-      node->token->retType = left->retType;
-      break;
-   }
-   case AND: case OR:
-   {
-      node->token->retType = BOOL;
-      break;
-   }
-   case NOT_EQUAL: case EQUAL: case LESS:
-   case MORE: case LESS_EQUAL: case MORE_EQUAL:
-   {
-      node->token->retType = BOOL;
-      break;
-   }
-   default: check(1, "handle [%s]", to_string(node->token->type)); break;
-   }
-   Inst *inst = new_inst(node->token);
-   inst->left = left;
-   inst->right = right;
+      else
+         node->token->llvm_name = strdup(node->token->name);
 
-   return node->token;
+      enter_scoop(node);
+      _fdec(node->token);
+
+      if (node->token->type == FDEC)
+      {
+         _entry(node->token);
+
+         for (int i = 0; i < node->cpos; i++)
+         {
+            // if (node->children[i]->token->type != FDEC)
+            handle_asm(node->children[i]);
+         }
+
+         if (!llvm_get_basic_block_terminator(llvm_get_insert_block()))
+         {
+            if (node->token->retType == VOID)
+               llvm_build_ret_void(node->token);
+            else
+            {
+               fprintf(stderr, "Warning: Non-void function '%s' may not return a value\n",
+                       node->token->name);
+               llvm_build_ret(node->token, llvm_const_int(get_llvm_type(node->token), 0, 0));
+            }
+         }
+      }
+      exit_scoop();
+      break;
+   }
+   case RETURN:
+   {
+      handle_asm(node->left);
+      load_if_neccessary(node->left);
+
+      // ExcepCTX *ctx = get_current_exception_context();
+      // if (ctx && ctx->in_catch) {
+      //    Value end_catch = get_end_catch();
+      //    llvm_build_call2(node->token, llvm_global_get_value_type(end_catch), end_catch, NULL, 0, "");
+      // }
+
+      _return(node->left->token);
+      break;
+   }
+   case END_BLOC: exit_scoop(); break;
+   default:
+      check(1, "handle this case %s", to_string(node->token->type));
+      break;
+   }
+
 }
 
-Token *struct_def_ir(Node *node)
+void generate_ir(Node *node)
 {
-   new_inst(node->token);
-   return node->token;
-}
-
-Token *struct_call_ir(Node *node)
-{
-   // ALLOCATE STRUCT
-   // ADD ATTRIBUTE
-#if 0
-   Inst *inst = NULL;
-   Token **attrs = node->token->Struct.attrs;
-   int attrs_size = node->token->Struct.pos;
-   // node->token->Struct.attrs = NULL;
-   // node->token->Struct.pos = 0;
-
-   // set struct body
-   // Token *body = copy_token(node->token);
-   // body->type = STRUCT_BODY;
-   // inst = new_inst(body);
-   // inst->left = node->token;
-
-   // allocate struct
-   // Token *alloca_st = copy_token(node->token);
-   // alloca_st->type = STRUCT_ALLOC;
-   // inst = new_inst(alloca_st);
-   // inst->left = node->token;
-
-   // TODO: handle children if they are struct type
-   // ...
-   for (int i = 0; i < attrs_size; i++)
-   {
-
-   }
-#endif
-   return node->token;
-}
-
-Token *generate_ir(Node *node)
-{
-   Inst *inst = NULL;
-   if (found_error) return NULL;
+   if (found_error) return;
    switch (node->token->type)
    {
    case ID:
    {
       Token *find = get_variable(node->token->name);
-      if (find) return find;
-      return node->token;
-   }
-   case AS:
-   {
-      Token *left = generate_ir(node->left);
-      Token *right = generate_ir(node->right);
-
-      inst = new_inst(node->token);
-      inst->token->name = NULL;
-      inst->left = left;
-      inst->right = right;
-      inst->token->retType = node->right->token->retType;
-
-      // CRITICAL FIX: Preserve array size through cast
-      if (left->Array.size) {
-         inst->token->Array.size = left->Array.size;
-         inst->token->Array.const_size = left->Array.const_size;
-      }
-      return node->token;
+      if (find) node->token = find;
+      break;
    }
    case INT: case BOOL: case CHAR: case STRUCT_CALL:
    case FLOAT: case LONG: case CHARS: case PTR: case VOID:
    {
-      inst = new_inst(node->token);
-      if (node->token->type == STRUCT_CALL) struct_call_ir(node);
-      if (node->token->is_declare) new_variable(node->token);
-      inst->token->retType = inst->token->type;
-      return node->token;
+      node->token->ir_reg++;
+      if (node->token->is_dec) new_variable(node->token);
+      node->token->retType = node->token->type;
+      break;
    }
-   case STRUCT_DEF: return struct_def_ir(node);
-   case ASSIGN: case ADD: case SUB: case MUL: case DIV: case EQUAL:
-   case NOT_EQUAL: case LESS: case MORE: case LESS_EQUAL:
-   case MORE_EQUAL: case MOD:
+   case ASSIGN:
    {
-      return op_ir(node);
+      generate_ir(node->left);
+      generate_ir(node->right);
+      node->token->ir_reg = node->left->token->ir_reg;
+      node->token->retType = node->left->token->retType;
+      break;
    }
-   case NOT:
+   case FDEC:
    {
-      Token *left = generate_ir(node->left);
-      inst = new_inst(node->token);
-      inst->left = left;
-      inst->token->retType = BOOL;
-      return inst->token;
-   }
-   case AND: case OR:
-   {
-      Token *left = generate_ir(node->left);
-      Token *right = generate_ir(node->right);
-      check(left->retType != BOOL, "expected booleanatexit but recieved (%s)", to_string(left->retType));
-      check(right->retType != BOOL, "expected boolean but recieved (%s)", to_string(right->retType));
+      node->token->ir_reg++;
+      new_function(node);
+      enter_scoop(node);
 
-      inst = new_inst(node->token);
-      inst->left = left;
-      inst->right = right;
-      inst->token->retType = BOOL;
-      return inst->token;
+#if 0
+      // parameters
+      Node **params = (node->left ? node->left->children : NULL);
+      Token *token = node->token;
+      for (int i = 0; params && i < node->left->cpos && !found_error; i++)
+      {
+         Node *child = params[i];
+         generate_ir(child);
+         if (token->Fdec.args == NULL)
+         {
+            token->Fdec.len = 10;
+            token->Fdec.args = allocate(token->Fdec.len, sizeof(Token*));
+         }
+         else if (token->Fdec.pos + 1 == token->Fdec.len)
+         {
+            Token **tmp = allocate(token->Fdec.len *= 2, sizeof(Token*));
+            memcpy(tmp, token->Fdec.args, token->Fdec.pos * sizeof(Token*));
+            free(token->Fdec.args);
+            token->Fdec.args = tmp;
+         }
+         if (child->token->is_ref)
+            child->token->has_ref = true;
+         child->token->Param.index = i;
+         child->token->Param.func_ptr = node->token;
+         child->token->is_param = true;
+         child->token->is_dec = false;
+         token->Fdec.args[token->Fdec.pos++] = child->token;
+      }
+#endif
+
+      // code bloc
+      for (int i = 0; node->token->type != PROTO && i < node->cpos; i++)
+      {
+         Node *child = node->children[i];
+         generate_ir(child);
+      }
+
+      // // if (!node->token->is_proto)
+      // {
+      //    Token *new = new_token(END_BLOC, node->token->space);
+      //    setName(new, node->token->name);
+      //    new_inst(new);
+      // }
+      exit_scoop();
+      break;
    }
-   case IF:    return if_ir(node);
-   case WHILE: return while_ir(node);
-   case FCALL: return func_call_ir(node);
-   case FDEC:  return func_dec_ir(node);
    case RETURN:
    {
-      Token *left = generate_ir(node->left);
-      inst = new_inst(node->token);
-      inst->token->retType = left->type;
-      inst->left = left;
-      return node->token;
-   }
-   case BREAK: case CONTINUE:
-   {
-      print(RED"handle BREAK/CONTINUE\n");
-      bool found = false;
-      for (int i = scoopPos; i >= 0 && !found; i--)
-      {
-         Node *scoop = Gscoop[i];
-         if (strcmp(scoop->token->name, "while") == 0)
-         {
-            // BUILD BR
-            found = true;
-            Inst *inst = new_inst(node->token);
-            if (node->token->type == BREAK)
-            {
-               inst->left = scoop->token->Statement.end;
-            }
-            else inst->left = scoop->token->Statement.start;
-            inst->token->type = BUILD_BR;
-         }
-      }
-      todo(!found, "Invalid syntax\n");
-      break;
-   }
-   case DOT:
-   {
-      Token *left = generate_ir(node->left); // struct name
-      Token *right = node->right->token; // attribute
-      if (check(left->type == ID, "undeclared variable %s", left->name)) break;
-      if (check(left->type != STRUCT_CALL, "%s should be a struct call", left->name)) break;
-      for (int i = 0; i < left->Struct.pos; i++)
-      {
-         Token *attr = left->Struct.attrs[i];
-         // print("compare %s == %s\n", attr->name, right->name);
-         if (strcmp(attr->name, right->name) == 0)
-         {
-            attr->Struct.index = i;
-            attr->Struct.ptr = left->Statement.ptr;
-            Inst *inst =  new_inst(node->token);
-            inst->token->retType = attr->type;
-
-            inst->left = left;
-            inst->right = attr;
-            // inst->token->is_attr = true;
-            return inst->token;
-         }
-      }
-
-      check(1, "%s has no attribute %s", left->name, right->name);
-      break;
-   }
-   case ACCESS:
-   {
-      Token *left = generate_ir(node->left);
-      Token *right = generate_ir(node->right);
-      if (check(left->type == ID, "undeclared variable %s", left->name)) break;
-      if (check(right->type != INT, "should be int")) break;
-
-      inst = new_inst(node->token);
-      inst->left = left;
-      inst->right = right;
-      switch (inst->left->type)
-      {
-      case CHARS: inst->token->retType = CHAR; break;
-      default:
-         check(1, "handle this case %s\n", to_string(inst->left->type)); break;
-      }
-      return node->token;
+      node->token->ir_reg++;
+      generate_ir(node->left);
+      node->token->retType = node->left->token->type;
       break;
    }
    default:
@@ -620,344 +350,5 @@ Token *generate_ir(Node *node)
       todo(1, "handle this case %s", to_string(node->token->type));
       break;
    }
-   }
-   return NULL;
-}
-
-// OPTIMIZATION
-
-bool did_opimize()
-{
-   bool res = false;
-   Inst **all = insts;
-   int i = 0;
-   for (i = 0; all[i]; i++)
-   {
-      Inst *inst = all[i];
-      bool remove = true;
-      if (inst->token->type == FDEC && strcmp(inst->token->name, "main") != 0)
-      {
-         for (int j = i + 1; all[j]; j++)
-         {
-            Token *token = all[j]->token;
-            if (token->type == FCALL && strcmp(token->name, inst->token->name) == 0)
-            {
-               remove = false;
-               break;
-            }
-         }
-         if (remove)
-         {
-            for (int k = 0; k < inst->token->Fdec.pos; k++)
-            {
-               inst->token->Fdec.args[k]->remove = true;
-            }
-            int k = i;
-            for (; all[k]->token->type != END_BLOC; k++)
-            {
-               all[k]->token->remove = true;
-            }
-            todo(all[k]->token->type != END_BLOC, "expected end bloc");
-            all[k]->token->remove = true;
-            res = true;
-         }
-      }
-   }
-   Inst **tmp = allocate(i + 1, sizeof(Inst*));
-   int k = 0;
-   for (int j = 0; all[j]; j++)
-   {
-      if (!all[j]->token->remove)
-      {
-         tmp[k++] = all[j];
-      }
-      else
-      {
-         // debug(RED"remove %k\n"RESET, all[j]->token);
-      }
-   }
-   free(insts);
-   insts = tmp;
-   return res;
-}
-
-// ASSEMBLY GENERATION
-void handle_asm(Inst *inst)
-{
-   // debug("Processing: %k\n", inst->token);
-   Token *curr = inst->token;
-   Token *left = inst->left;
-   Token *right = inst->right;
-   ValueRef ret = NULL;
-
-   if (check(curr->llvm.is_set, "already set\n"))
-      return;
-
-   switch (curr->type)
-   {
-   case VOID:
-   {
-      // Void type has no value, just mark as processed
-      curr->llvm.is_set = true;
-      break;
-   }
-   case INT: case BOOL: case LONG: case SHORT:
-   case CHAR: case CHARS: case PTR: case FLOAT:
-   {
-      if (curr->is_param)
-      {
-         // debug(" is_param");
-         if (check(curr->Param.func_ptr == NULL, "error\n")) return;
-         if (check(!curr->Param.func_ptr->llvm.is_set, "error\n")) return;
-
-
-         ret = get_param(curr);
-         curr->is_param = false;
-      }
-      else if (curr->is_declare)
-      {
-         // debug(" is_declare");
-         ret = allocate_variable(get_llvm_type(curr), curr->name);
-      }
-      else if (curr->name)
-      {
-         // debug(" name");
-         ret = curr->llvm.elem;
-      }
-      else
-      {
-         // debug(" value");
-         ret = get_value(curr);
-      }
-      // debug("\n");
-
-      curr->llvm.elem = ret;
-      curr->llvm.is_set = true;
-      break;
-   }
-   case AS:
-   {
-      if (check(!left->llvm.is_set, "casting, left is not set")) break;
-
-      curr->llvm.elem = cast(left, right);
-      curr->llvm.is_set = true;
-
-      // Preserve array size information through casts
-      if (left->Array.size) {
-         curr->Array.size = left->Array.size;
-         curr->Array.const_size = left->Array.const_size;
-      }
-
-      break;
-   }
-
-
-#if 0
-   case STRUCT_DEF:
-   {
-      curr->llvm.is_set = true;
-      // Create a named struct type
-      curr->llvm.structType = LLVMStructCreateNamed(LLVMGetGlobalContext(), curr->Struct.name);
-      int pos = curr->Struct.pos;
-      TypeRef *attrs = allocate(pos, sizeof(TypeRef));
-
-      // Get types for all struct attributes
-      for (int i = 0; i < pos; i++)
-      {
-         Token *attr = curr->Struct.attrs[i];
-         stop(!attr, "attribite is NULL\n");
-         attrs[i] = get_llvm_type(attr);
-      }
-
-      // Set the struct's body with all attribute types
-      LLVMStructSetBody(curr->llvm.structType, attrs, pos, 0);
-      free(attrs);
-      break;
-   }
-   case STRUCT_CALL:
-   {
-      // Allocate space for a struct instance
-      curr->llvm.elem = LLVMBuildAlloca(builder, curr->Struct.ptr->llvm.structType, curr->name);
-      curr->llvm.is_set = true;
-      break;
-   }
-   case DOT:
-   {
-      // Access struct member using dot notation (e.g., person.age)
-      ValueRef st_call = left->llvm.elem;
-      TypeRef st_type = left->Struct.ptr->llvm.structType;
-      int index = right->Struct.attr_index; // attribute position
-      curr->llvm.elem = LLVMBuildStructGEP2(builder, st_type, st_call, index, right->name);
-      curr->llvm.is_set = true;
-      curr->type = right->type;
-      curr->name = strdup(right->name);
-      break;
-   }
-#endif
-   case ASSIGN:
-   {
-      if (check(!left->llvm.is_set, "assign, left is not set")) break;
-      if (check(!right->llvm.is_set, "assign, right is not set")) break;
-
-      assign2(left, right);
-
-      // Copy array size info from right to left
-      if (right->Array.size) {
-         left->Array.size = right->Array.size;
-         left->Array.const_size = right->Array.const_size;
-
-         // Also store in global map using LLVM pointer as key (backup mechanism)
-         if (left->llvm.elem) {
-            store_array_size(left->llvm.elem, right->Array.size);
-         }
-      }
-
-      break;
-   }
-   case ADD: case SUB: case MUL: case DIV: case MOD:
-   case LESS: case LESS_EQUAL: case MORE:
-   case MORE_EQUAL: case EQUAL: case NOT_EQUAL:
-   case AND: case OR:
-   {
-      if (check(!left->llvm.is_set, "left is not set")) break;
-      if (check(!right->llvm.is_set, "right is not set")) break;
-
-      // Perform binary operation (e.g., a + b, x < y, p && q)
-      ret = operation(curr, left, right);
-      curr->llvm.elem = ret;
-      curr->llvm.is_set = true;
-      break;
-   }
-   case NOT:
-   {
-      if (check(!left->llvm.is_set, "left is not set")) break;
-
-      ret = NotOperation(left);
-      curr->llvm.elem = ret;
-      curr->llvm.is_set = true;
-      break;
-   }
-   case STACK:
-   {
-      Token *arg = curr->Fcall.args[0];
-      check(!arg->llvm.is_set, "llvm is not set");
-      ValueRef elem = llvm_get_ref(arg);
-
-      curr->llvm.elem = allocate_stack(elem, i8, "stack");
-      curr->llvm.is_set = true;
-
-      // Store size in the token itself
-      curr->Array.size = elem;
-      if (LLVMIsConstant(elem)) {
-         curr->Array.const_size = LLVMConstIntGetZExtValue(elem);
-      }
-
-      break;
-   }
-   case FCALL:
-   {
-      call_function(curr);
-      curr->llvm.is_set = true;
-      break;
-   }
-   case FDEC:
-   {
-      create_function(curr);
-      // debug(CYAN">> enter %s\n"RESET, curr->name);
-      enter_func(curr->llvm.elem);
-      if (!curr->is_proto) open_block(create_bloc("entry"));
-      curr->llvm.is_set = true;
-      break;
-   }
-   case END_BLOC:
-   {
-      // debug(CYAN">> exit %s\n"RESET, curr->name);
-      exit_func();
-      break;
-   }
-   case RETURN:
-   {
-      if (check(!left->llvm.is_set, "return result is not set\n")) break;
-
-      switch (left->type)
-      {
-      case FCALL: case ADD: case SUB: case MUL: case DIV: case MOD:
-      case LESS: case LESS_EQUAL: case MORE:
-      case MORE_EQUAL: case EQUAL: case NOT_EQUAL:
-      case AND: case OR:
-      {
-         ret = return_(left->llvm.elem);
-         break;
-      }
-      case INT: case BOOL: case LONG: case SHORT: case CHAR: case FLOAT:
-      {
-         if (left->name)
-         {
-            // TODO: compare it with llvm_get_ref
-            ValueRef loaded = load_variable(left);
-            ret = return_(loaded);
-         }
-         else
-            ret = return_(get_value(left));
-         break;
-      }
-      case VOID:
-      {
-         ret = return_(NULL);
-         break;
-      }
-      default:
-         todo(1, "handle this case %s\n", to_string(left->type));
-         break;
-      }
-      curr->llvm.elem = ret;
-      curr->llvm.is_set = true;
-      break;
-   }
-   case APPEND_BLOC:
-   {
-      if (check(!left->name, "APPEND BLOC require a name")) break;
-
-      left->llvm.bloc = create_bloc(left->name);
-      left->llvm.is_set = true;
-      break;
-   }
-   case BUILD_COND:
-   {
-      check(!curr->Statement.ptr->llvm.is_set, "BUILD COND require cond to be set");
-      build_condition(curr, left, right);
-      curr->llvm.is_set = true;
-      break;
-   }
-   case ACCESS:
-   {
-      check(!left->llvm.is_set, "left is not set");
-      check(!right->llvm.is_set, "right is not set");
-
-      // Size should already be in left from IR generation
-      // But add fallback mechanisms just in case
-      if (!left->Array.size && left->llvm.elem) {
-         left->Array.size = get_array_size(left->llvm.elem);
-      }
-
-      curr->llvm.elem = safe_access_(curr, left, right);
-      curr->llvm.is_set = true;
-      break;
-   }
-   case SET_POS:
-   {
-      check(!left->llvm.is_set, "SET POS require left to be set");
-      open_block(left->llvm.bloc);
-      break;
-   }
-   case BUILD_BR:
-   {
-      check(!left->llvm.is_set, "BUILD BR require left to be set");
-      branch(left->llvm.bloc);
-      break;
-   }
-   default:
-      todo(1, "handle this case (%s)\n", to_string(curr->type));
-      break;
    }
 }

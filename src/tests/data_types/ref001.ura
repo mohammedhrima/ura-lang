@@ -1,0 +1,6 @@
+
+main():
+    int a = 1
+    ref int b = a
+    b = 2
+    return a
