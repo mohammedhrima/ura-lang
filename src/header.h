@@ -1,6 +1,6 @@
 #pragma once
 
-// HEADERS
+// Headers
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -20,7 +20,13 @@
 #include <llvm-c/TargetMachine.h>
 #include <llvm-c/Analysis.h>
 
-// MACROS
+// Macros
+#if defined(__APPLE__)
+typedef struct __sFILE *File;
+#elif defined(__linux__)
+typedef struct _IO_FILE *File;
+#endif
+
 #define SPLIT "=================================================\n"
 #define GREEN "\033[0;32m"
 #define RED "\033[0;31m"
@@ -28,6 +34,7 @@
 #define BOLD "\e[1m"
 #define BLUE "\x1b[34m"
 #define RESET "\033[0m"
+
 #define LINE __LINE__
 #define FUNC (char*)__func__
 #define FILE (char*)__FILE__
@@ -39,7 +46,7 @@
 #define ASM 1
 
 #ifndef DEBUG
-#define DEBUG 0
+#define DEBUG 1
 #endif
 
 #if ASM
@@ -48,22 +55,20 @@
 #define OPTIMIZE 1
 #endif
 
-#define allocate(len, size) allocate_func(LINE, len, size)
-#define check(cond, fmt, ...) check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)
-#define to_string(type) to_string_(FILE, LINE, type)
-#define todo(cond, fmt, ...) if (check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)) exit(1);
+#define allocate(len, size) \
+   allocate_func(LINE, len, size)
+#define check(cond, fmt, ...) \
+   check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)
+// #define to_string(type) to_string_(FILE, LINE, type)
+#define todo(cond, fmt, ...) \
+   if (check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)) \
+      exit(1);
 #define seg() raise(SIGSEGV);
 
 #if DEBUG
-#define debug(fmt, ...) print(fmt, ##__VA_ARGS__)
+#define debug(fmt, ...) debug_(fmt, ##__VA_ARGS__)
 #else
 #define debug(fmt, ...) do { } while (0)
-#endif
-
-#if defined(__APPLE__)
-typedef struct __sFILE* File;
-#elif defined(__linux__)
-typedef struct _IO_FILE* File;
 #endif
 
 #define DATA_TYPES INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT
@@ -83,43 +88,30 @@ Node *name() { \
    return left; \
 }
 
-// TYPEDEFS
+// enums / structs
 typedef struct Token Token;
 typedef struct Node Node;
-typedef struct Inst Inst;
+typedef struct LLVM LLVM;
 typedef enum Type Type;
 typedef enum LogType LogType;
-typedef struct LLVM LLVM;
+typedef struct ExcepCTX ExcepCTX;
 
 typedef LLVMTypeRef TypeRef;
-typedef LLVMContextRef ContextRef;
-typedef LLVMModuleRef ModuleRef;
-typedef LLVMBuilderRef BuilderRef;
-typedef LLVMBasicBlockRef BasicBlockRef;
-typedef LLVMValueRef ValueRef;
-
-// STRUCTS
-enum LogType
-{
-   SYMBOL = 1,
-   VALUE,
-};
+typedef LLVMContextRef Context;
+typedef LLVMModuleRef Module;
+typedef LLVMBuilderRef Builder;
+typedef LLVMBasicBlockRef Block;
+typedef LLVMValueRef Value;
 
 enum Type
 {
-   END = 1,
-
-   ID, REF,
-   REF_ID, REF_HOLD_ID, REF_VAL, REF_HOLD_REF, REF_REF,
-   ID_ID, ID_REF, ID_VAL,
-
+   ID = 1,
    // Data types
    VOID, INT, FLOAT, LONG, SHORT, BOOL, CHAR, CHARS, PTR,
-   VARIADIC, STACK, TYPEOF,
-   ARRAY, AS,
+   VARIADIC, REF,
 
-   // Struct Usage
-   STRUCT_DEF, STRUCT_BODY, STRUCT_ALLOC, STRUCT_CALL,
+   // Structures
+   STRUCT_DEF, STRUCT_CALL,
 
    // Assignment
    ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,
@@ -130,27 +122,44 @@ enum Type
    // Logical
    AND, OR, NOT,
 
-   // Punctuation & Syntax
+   // Punctuation and Syntax
    LPAR, RPAR, LBRA, RBRA, COMA, DOT, DOTS, ACCESS,
+   AS, TYPEOF,
 
    // Control Flow
-   RETURN, ARROW,
-   IF, ELIF, ELSE, END_IF, BUILD_COND,
-   WHILE, CONTINUE, BREAK, END_WHILE,
-   APPEND_BLOC, SET_POS, BUILD_BR,
+   RETURN,
+   IF, ELIF, ELSE, END_IF,
+   WHILE, CONTINUE, BREAK,
    END_BLOC,
 
    // Functions
-   FDEC, FCALL, PROTO_FUNC, CHILDREN,
+   FDEC, FCALL, PROTO,
+
+
+   END,
 };
 
 struct LLVM
 {
    bool is_set;
-   ValueRef elem;
-   BasicBlockRef bloc;
-   TypeRef type;
-   TypeRef funcType;
+   bool is_loaded;
+   Value array_size;
+   Value elem;
+   Value va_count;
+   Value error_flag;
+   Value error_value;
+   Block catch;
+   Block lpad;
+};
+
+struct ExcepCTX
+{
+   Block lpad;
+   Block catch;
+   Block end;
+   Value storage;
+   Type type;
+   bool in_catch;
 };
 
 struct Token
@@ -158,10 +167,9 @@ struct Token
    Type type;
    Type retType;
    Type assign_type;
-   LogType logType;
-   char *logName;
 
    char *name;
+   char *llvm_name;
    int space;
    bool remove;
 
@@ -172,12 +180,9 @@ struct Token
    bool is_cond;
    bool is_ref;
    bool has_ref;
-   bool is_declare;
-   // bool is_attr;
-   bool is_proto;
+   bool is_dec;
    bool is_arg;
    bool is_param;
-   // bool is_call_param;
    bool is_cast;
    bool is_variadic;
 
@@ -186,64 +191,22 @@ struct Token
 
    LLVM llvm;
 
-   struct {
-      ValueRef size;  // Add this field
-      int const_size;
-   } Array;
-
    struct
    {
-      // integer
+
       struct { long value; } Int;
-      // short
       struct { int value; } Short;
-      // long
       struct { long long value; } Long;
-      // float
       struct { float value; } Float;
-      // boolean
       struct { bool value; } Bool;
-      // chars
       struct { char *value; } Chars;
-      // char
       struct { char value; } Char;
-      // structure
-      struct
-      {
-         Token *ptr;
-         char *name;
-         Token **attrs;
-         int size;
-         int pos;
-         int index; // attribute index
-      } Struct;
-      struct
-      {
-         Token *func_ptr;
-         int index;
-      } Param;
-      // function call
-      struct
-      {
-         Token *func_ptr; // function declaration
-         Token **args;
-         int size;
-         int pos;
-      } Fcall;
-      // function declaration
-      struct
-      {
-         Token **args;
-         int size;
-         int pos;
-      } Fdec;
-      // statement
-      struct
-      {
-         Token *ptr;
-         Token *start;
-         Token *end;
-      } Statement;
+      struct { char *name; Token **attrs; int size; int pos; int index; } Struct;
+      struct { Token *func_ptr; int index; } Param;
+      struct { Token **args; Token *ptr; int size; int pos; } Fcall;
+      struct { Token **args; int pos; int len; bool is_variadic; } Fdec;
+      struct { Token *ptr; Token *start; Token *end; } Statement;
+      struct { Type type; char *name; } Catch;
    };
 };
 
@@ -254,32 +217,20 @@ struct Node
    Token *token;
 
    Node **children;
-   int cpos; // children pos
-   int csize; // children size
+   int cpos;
+   int clen;
 
-   // bloc Infos
-   struct
-   {
-      Node **functions;
-      int fpos;
-      int fsize;
+   Token **variables;
+   int vpos;
+   int vlen;
 
-      Token **structs;
-      int spos;
-      int ssize;
+   Node **functions;
+   int fpos;
+   int flen;
 
-      Token **vars;
-      int vpos;
-      int vsize;
-   };
-};
-
-struct Inst
-{
-   // bool remove;
-   Token *token;
-   Token *left;
-   Token *right;
+   Token **structs;
+   int spos;
+   int slen;
 };
 
 // GLOBAL
@@ -291,23 +242,26 @@ extern int tk_len;
 
 extern Node *global;
 extern int exe_pos;
-extern Inst **OrgInsts;
-extern Inst **insts;
 
 extern Node **Gscoop;
 extern Node *scoop;
 extern int scoopSize;
-extern int scoopPos;
+extern int scoop_pos;
 
 extern char **used_files;
 extern int used_size;
 extern int used_pos;
 
-extern ContextRef context;
-extern ModuleRef module;
-extern BuilderRef builder;
+extern Context context;
+extern Module module;
+extern Builder builder;
 extern TypeRef vd, f32, i1, i8, i16, i32, i64, p8, p32;
 extern File asm_fd;
+
+extern Value boundsCheckFunc;
+extern Value nullCheckFunc;
+extern Value vaStartFunc;
+extern Value vaEndFunc;
 
 // ----------------------------------------------------------------------------
 // Parsing
@@ -316,18 +270,18 @@ void tokenize(char *filename);
 Token* new_token(Type type, int space);
 Token* parse_token(char *filename, int line, char *input, int s, int e, Type type, int space);
 void add_token(Token *token);
-Node *expr();
-Node *assign();
-Node *logic();
-Node *equality();
-Node *comparison();
-Node *add_sub();
-Node *mul_div();
-Node *dot();
-Node *sign();
-Node *brackets();
+Node *expr_node();
+Node *assign_node();
+Node *logic_node();
+Node *equality_node();
+Node *comparison_node();
+Node *add_sub_node();
+Node *mul_div_node();
+Node *dot_node();
+Node *sign_node();
+Node *brackets_node();
 Node *cast_node();
-Node *prime();
+Node *prime_node();
 Node *new_node(Token *token);
 bool includes(Type to_find, ...);
 Token *find(Type type, ...);
@@ -349,55 +303,55 @@ void add_struct(Node *bloc, Token *token);
 // ----------------------------------------------------------------------------
 // Code Generation
 // ----------------------------------------------------------------------------
-Inst *new_inst(Token *token);
-void add_inst(Inst *inst);
 void enter_scoop(Node *node);
 void exit_scoop();
 void copy_insts();
 bool compatible(Token *left, Token *right);
-Token *generate_ir(Node *node);
-void handle_asm(Inst *inst);
+void generate_ir(Node *node);
 TypeRef get_llvm_type(Token* token);
-ValueRef get_value(Token *token);
-void enter_func(ValueRef func);
+Value get_value(Token *token);
+void enter_func(Value func);
 void exit_func();
-ValueRef get_current_func();
+Value get_current_func();
 void init(char *name);
 void finalize(char *moduleName);
-ValueRef load_variable(Token *token);
-ValueRef create_string(char *value);
+Value load_variable(Token *token);
+Value create_string(char *value);
 TypeRef get_llvm_type(Token *token);
-ValueRef get_value(Token *token);
-ValueRef llvm_get_ref(Token *token);
+Value get_value(Token *token);
+Value llvm_get_ref(Token *token);
 void create_function(Token *token);
 void call_function(Token *curr);
-BasicBlockRef create_bloc(char *name);
-void branch(BasicBlockRef bloc);
-void open_block(BasicBlockRef bloc);
-ValueRef load_variable(Token *token);
-ValueRef assign2(Token *variable, Token* value);
-ValueRef operation(Token *token, Token* left, Token* right);
-ValueRef NotOperation(Token *token);
-ValueRef return_(ValueRef value);
-ValueRef allocate_variable(TypeRef type, char *name);
-ValueRef get_param(Token *token);
+Block create_bloc(char *name);
+void branch(Block bloc);
+void open_block(Block bloc);
+Value load_variable(Token *token);
+Value assign2(Token *variable, Token* value);
+Value operation(Token *token, Token* left, Token* right);
+Value NotOperation(Token *token);
+Value return_(Value value);
+Value allocate_variable(TypeRef type, char *name);
+Value get_param(Token *token);
 void build_condition(Token* curr, Token *left, Token* right);
-ValueRef access_(Token *curr, Token *left, Token *right);
-ValueRef cast(Token *from, Token *to);
-ValueRef allocate_stack(ValueRef size, TypeRef elementType, char *name);
+Value access_(Token *curr, Token *left, Token *right);
+Value cast(Token *from, Token *to);
+Value allocate_stack(Value size, TypeRef elementType, char *name);
 bool did_opimize();
-ValueRef safe_access_(Token *curr, Token *left, Token *right);
-void store_array_size(ValueRef array_ptr, ValueRef size);
-ValueRef get_array_size(ValueRef array_ptr);
+Value safe_access_(Token *curr, Token *left, Token *right);
+void store_array_size(Value array_ptr, Value size);
+Value get_array_size(Value array_ptr);
+void handle_asm(Node *node);
+void _load(Token *to, Token *from);
+
 
 // ----------------------------------------------------------------------------
 // Utilities
 // ----------------------------------------------------------------------------
 char* open_file(char *filename);
 bool add_file(char *filename);
-char *to_string_(char *filename, int line, Type type);
+char *to_string(Type type);
 void setName(Token *token, char *name);
-bool within_space(int space);
+bool within(int space);
 bool check_error(char *filename, char *funcname, int line, bool cond, char *fmt, ...);
 void free_memory();
 void *allocate_func(int line, int len, int size);
@@ -408,11 +362,104 @@ char* resolve_path(char* path);
 // ----------------------------------------------------------------------------
 // Logs
 // ----------------------------------------------------------------------------
-int print(char *conv, ...);
+int debug_(char *conv, ...);
 int pnode(Node *node, char *side, int space);
 int ptoken(Token *token);
 void print_ast(Node *head);
 void print_ir();
 int print_escaped(char *str) ;
 int print_value(Token *token);
+void print_inst(Node *node);
+
+// ----------------------------------------------------------------------------
+// LLVM Wrappers
+// ----------------------------------------------------------------------------
+// Builder operations
+Value llvm_build_store(Token *token, Value val, Value ptr);
+Value llvm_build_load2(Token *token, TypeRef ty, Value ptr, char *name);
+Value llvm_build_alloca(Token *token, TypeRef ty, char *name);
+Value llvm_build_add(Token *token, Value lhs, Value rhs, char *name);
+Value llvm_build_sub(Token *token, Value lhs, Value rhs, char *name);
+Value llvm_build_mul(Token *token, Value lhs, Value rhs, char *name);
+Value llvm_build_sdiv(Token *token, Value lhs, Value rhs, char *name);
+Value llvm_build_srem(Token *token, Value lhs, Value rhs, char *name);
+Value llvm_build_icmp(Token *token, LLVMIntPredicate op, Value lhs, Value rhs, char *name);
+Value llvm_build_and(Token *token, Value lhs, Value rhs, char *name);
+Value llvm_build_or(Token *token, Value lhs, Value rhs, char *name);
+Value llvm_build_ret(Token *token, Value val);
+Value llvm_build_ret_void(Token *token);
+Value llvm_build_br(Token *token, Block dest);
+Value llvm_build_cond_br(Token *token, Value cond, Block then_block, Block else_block);
+Value llvm_build_call2(Token *token, TypeRef ty, Value fn, Value *args, unsigned num_args,
+                       char *name);
+Value llvm_build_global_string_ptr(Token *token, const char *str, char *name);
+Value llvm_build_gep2(Token *token, TypeRef ty, Value ptr, Value *indices, unsigned num_indices,
+                      char *name);
+Value llvm_build_bit_cast(Token *token, Value val, TypeRef dest_ty, char *name);
+Value llvm_build_sext(Token *token, Value val, TypeRef dest_ty, char *name);
+Value llvm_build_trunc(Token *token, Value val, TypeRef dest_ty, char *name);
+Value llvm_build_int_to_ptr(Token *token, Value val, TypeRef dest_ty, char *name);
+Value llvm_build_ptr_to_int(Token *token, Value val, TypeRef dest_ty, char *name);
+Value llvm_build_array_alloca(Token *token, TypeRef ty, Value val, char *name);
+Value llvm_build_invoke2(Token *token, TypeRef ty, Value fn, Value *args, unsigned num_args,
+                         Block then_block, Block catch_block, char *name);
+Value llvm_build_landing_pad(Token *token, TypeRef ty, Value pers_fn, unsigned num_clauses,
+                             char *name);
+Value llvm_build_extract_value(Token *token, Value agg_val, unsigned index, char *name);
+Value llvm_build_va_arg(Token *token, Value list, TypeRef ty, char *name);
+Value llvm_build_unreachable(Token *token);
+Value llvm_build_global_string_ptr_raw(const char *str, char *name);
+
+// Type creation wrappers
+TypeRef llvm_pointer_type(TypeRef element_ty, unsigned address_space);
+TypeRef llvm_function_type(TypeRef return_type, TypeRef *param_types, unsigned param_count,
+                           int is_var_arg);
+TypeRef llvm_array_type(TypeRef element_type, unsigned element_count);
+
+// Constant creation wrappers
+Value llvm_const_int(TypeRef int_type, unsigned long long n, int sign_extend);
+
+// Function management wrappers
+Value llvm_get_named_function(char *name);
+Value llvm_add_function(char *name, TypeRef function_type);
+Value llvm_get_param(Value fn, unsigned index);
+
+// Block management wrappers
+Block llvm_append_basic_block_in_context(Value func, char *name);
+Block llvm_get_insert_block();
+Value llvm_get_basic_block_parent(Block block);
+Block llvm_get_entry_basic_block(Value func);
+void llvm_position_builder_at_end(Block block);
+Value llvm_get_basic_block_terminator(Block block);
+
+// Type queries
+TypeRef llvm_type_of(Value val);
+LLVMTypeKind llvm_get_type_kind(TypeRef ty);
+unsigned llvm_get_int_type_width(TypeRef int_ty);
+
+// Type lookup wrappers
+TypeRef llvm_get_type_by_name2(char *name);
+TypeRef llvm_struct_type_in_context(TypeRef *element_types, unsigned element_count, int packed);
+
+// Function type queries
+TypeRef llvm_global_get_value_type(Value global);
+TypeRef llvm_get_return_type(TypeRef function_type);
+
+// Module and target information
+const char *llvm_get_target(LLVMModuleRef m);
+
+// Personality function
+void llvm_set_personality_fn(Value func, Value pers_fn);
+
+// Landing pad clauses
+void llvm_add_clause(Value landing_pad, Value clause_val);
+
+// Data layout information
+size_t llvm_abi_size_of_type(LLVMTargetDataRef td, TypeRef ty);
+LLVMTargetDataRef llvm_get_module_data_layout(LLVMModuleRef m);
+
+// Const null value
+Value llvm_const_null(TypeRef ty);
+TypeRef get_llvm_type(Token *token);
+
 
