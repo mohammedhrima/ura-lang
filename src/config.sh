@@ -175,8 +175,9 @@ tests() {
     
     local failed=0
     local passed=0
+    local folder_filter="${1:-.}"  # Default to all folders (.)
 
-    for ura_file in "$TESTS_DIR"/**/*.ura; do
+    for ura_file in "$TESTS_DIR"/$folder_filter/**/*.ura; do
         [[ -e "$ura_file" ]] || continue
 
         local base_name=$(basename "$ura_file" .ura)
@@ -208,7 +209,7 @@ tests() {
             continue
         fi
 
-        if diff -q "$BUILD_DIR/test.ll" "$ll_file" > /dev/null 2>&1; then
+        if diff -q <(tail -n +3 "$BUILD_DIR/test.ll") <(tail -n +3 "$ll_file") > /dev/null 2>&1; then
             echo -e "  ${GREEN}$dir_name/$base_name${RESET}"
             ((passed++))
         else

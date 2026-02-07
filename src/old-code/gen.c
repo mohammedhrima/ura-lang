@@ -682,7 +682,7 @@ bool did_opimize()
 }
 
 // ASSEMBLY GENERATION
-void handle_asm(Inst *inst)
+void generate_asm(Inst *inst)
 {
    // debug("Processing: %k\n", inst->token);
    Token *curr = inst->token;
