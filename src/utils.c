@@ -121,9 +121,17 @@ int pnode(Node *node, char *side, int space)
    int res = 0;
    for (int i = 0; i < space; i++) res += debug(" ");
    if (side) res += debug("%s", side);
+
    res += debug("%k\n", node->token);
-   res += pnode(node->left, "L: ", space + TAB);
-   res += pnode(node->right, "R: ", space + TAB);
+   if (node->token->type == FDEC)
+   {
+
+   }
+   else
+   {
+      res += pnode(node->left, "L: ", space + TAB);
+      res += pnode(node->right, "R: ", space + TAB);
+   }
    if (node->children)
    {
       for (int i = 0; i < space; i++) res += debug(" ");
@@ -256,7 +264,12 @@ void print_inst(Node *node)
       else print_value(curr);
       break;
    }
-   case FDEC: debug("%s ", curr->name); break;
+   case FDEC:
+   {
+      debug("%s\n", curr->name);
+      for (int i = 0; i < node->cpos; i++) print_inst(node->children[i]);
+      break;
+   }
    case END_BLOC: debug("%s ", curr->name); break;
    case RETURN: debug("r%.2d ", node->left->token->ir_reg); break;
    default: debug(RED "print_ir:handle [%s]"RESET, to_string(curr->type)); break;
@@ -279,7 +292,7 @@ char *to_string(Type type)
       [MOD_ASSIGN] = "MOD_ASSIGN", [ACCESS] = "ACCESS",
       [MOD] = "MOD", [COMA] = "COMA", //[REF] = "REF",
       [EQUAL] = "EQUAL", [NOT_EQUAL] = "NOT_EQUAL", [LESS] = "LESS",
-      [MORE] = "MORE", [LESS_EQUAL] = "LESS_EQUAL",
+      [MORE] = "MORE", [LESS_EQUAL] = "LESS_EQUAL", [NOT] = "NOT",
       [MORE_EQUAL] = "MORE_EQUAL", [AND] = "AND", [OR] = "OR",
       [DOTS] = "DOTS", //[COLON] = "COLON", [COMMA] = "COMMA",
       [PROTO] = "PROTO", [VARIADIC] = "VARIADIC",
