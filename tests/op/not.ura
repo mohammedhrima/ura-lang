@@ -1,4 +1,0 @@
-
-main():
-    bool a = True
-    bool b = !a
