@@ -212,42 +212,25 @@ void generate_asm(Node *node)
    case FCALL:
    {
       LLVM srcFunc = node->token->Fcall.ptr->llvm;
-      int argsCount = node->token->Fcall.pos;
+      int count = node->left->cpos;
+      Node **argNodes = node->left->children;
 
       Value *args = NULL;
-      // if (node->token->Fcall.pos)
-      // {
-      //    args = allocate(node->token->Fcall.pos, sizeof(Value));
-      //    for (int i = 0; i < node->token->Fcall.pos; i++)
-      //    {
-      //       Token *arg = node->token->Fcall.args[i];
-      //       Token *param = node->token->Fcall.ptr->Fdec.args[i];
-      //       check(!arg->llvm.is_set, "llvm is not set");
-
-      //       if (param->is_ref)
-      //       {
-      //          if (arg->name && arg->llvm.is_set)
-      //          {
-      //             args[i] = arg->llvm.elem;
-      //          }
-      //          else
-      //          {
-      //             Value val = llvm_get_ref(arg);
-      //             TypeRef valType = LLVMTypeOf(val);
-      //             Value storage = LLVMBuildAlloca(builder, valType, "temp_ref");
-      //             LLVMBuildStore(builder, val, storage);
-      //             args[i] = storage;
-      //          }
-      //       }
-      //       else
-      //       {
-      //          args[i] = llvm_get_ref(arg);
-      //       }
-      //    }
-      // }
+      if (count)
+      {
+         args = allocate(count + 1, sizeof(Value));
+         for (int i = 0; i < count; i++)
+         {
+            generate_asm(argNodes[i]);
+            if (argNodes[i]->token->name) // TODO: to be tested
+               load_if_neccessary(argNodes[i]);
+            args[i] = argNodes[i]->token->llvm.elem;
+         }
+      }
       char *name = node->token->retType != VOID ? node->token->name : "";
-      node->token->llvm.elem = LLVMBuildCall2(builder, srcFunc.funcType, srcFunc.elem, args, argsCount,
-                                              name);
+      TypeRef funcType = srcFunc.funcType;
+      Value elem = srcFunc.elem;
+      node->token->llvm.elem = LLVMBuildCall2(builder, funcType, elem, args, count, name);
       free(args);
       break;
    }
@@ -255,38 +238,45 @@ void generate_asm(Node *node)
    {
       if (scoop_pos > 1)
       {
-         static int nested_id = 0;
-         char new_name[256];
-         snprintf(new_name, sizeof(new_name), "%s.%s.%d", scoop->token->name, node->token->name,
-                  nested_id++);
-         node->token->llvm_name = strdup(new_name);
+         static int id = 0;
+         char name[256];
+         snprintf(name, sizeof(name), "%s.%s.%d", scoop->token->name, node->token->name, id++);
+         node->token->llvm_name = strdup(name);
       }
       else
          node->token->llvm_name = strdup(node->token->name);
 
       enter_scoop(node);
+
       TypeRef retType = get_llvm_type(node->token);
+      TypeRef *paramTypes = NULL;
+      int param_count1 = 0;
 
-      int param_count = node->token->Fdec.len;
-      int param_count1 = param_count;
-
-      if (node->token->Fdec.is_variadic)
+      if (node->left->cpos)
       {
-         param_count--;
-         param_count1 = param_count + 1;
+         int param_count = node->left->cpos;
+         param_count1 = param_count;
+
+         if (node->token->Fdec.is_variadic)
+         {
+            param_count--;
+            param_count1 = param_count + 1;
+         }
+
+         paramTypes = calloc(param_count1 + 1, sizeof(TypeRef));
+
+         for (int i = 0; i < param_count; i++)
+         {
+            Token *param = node->left->children[i]->token;
+            if (param->is_ref) paramTypes[i] = llvm_pointer_type(get_llvm_type(param), 0);
+            else paramTypes[i] = get_llvm_type(param);
+         }
+
+         // Hidden count parameter
+         if (node->token->Fdec.is_variadic) paramTypes[param_count] = i32;
       }
 
-      TypeRef *paramTypes = calloc(param_count1 + 1, sizeof(TypeRef));
 
-      for (int i = 0; i < param_count; i++)
-      {
-         Token *param = node->token->Fdec.args[i];
-         if (param->is_ref) paramTypes[i] = llvm_pointer_type(get_llvm_type(param), 0);
-         else paramTypes[i] = get_llvm_type(param);
-      }
-
-      // Hidden count parameter
-      if (node->token->Fdec.is_variadic) paramTypes[param_count] = i32;
 
       TypeRef funcType = llvm_function_type(retType, paramTypes, param_count1,
                                             node->token->Fdec.is_variadic);
@@ -300,6 +290,18 @@ void generate_asm(Node *node)
       if (node->token->type == FDEC)
       {
          _entry(node->token);
+         for (int i = 0; i < node->left->cpos; i++)
+         {
+            Token *param_token = node->left->children[i]->token;
+            Value param = LLVMGetParam(node->token->llvm.elem, i);
+            LLVMSetValueName(param, param_token->name);
+
+            // if is not ref
+            _alloca(param_token);
+            param_token->is_dec = false;
+
+            LLVMBuildStore(builder, param, param_token->llvm.elem);
+         }
 
          for (int i = 0; i < node->cpos; i++)
          {
@@ -341,7 +343,6 @@ void generate_asm(Node *node)
       todo(1, "handle this case %s", to_string(node->token->type));
       break;
    }
-
 }
 
 void generate_ir(Node *node)
@@ -413,35 +414,11 @@ void generate_ir(Node *node)
       new_function(node);
       enter_scoop(node);
 
-#if 0
       // parameters
       Node **params = (node->left ? node->left->children : NULL);
       Token *token = node->token;
       for (int i = 0; params && i < node->left->cpos && !found_error; i++)
-      {
-         Node *child = params[i];
-         generate_ir(child);
-         if (token->Fdec.args == NULL)
-         {
-            token->Fdec.len = 10;
-            token->Fdec.args = allocate(token->Fdec.len, sizeof(Token*));
-         }
-         else if (token->Fdec.pos + 1 == token->Fdec.len)
-         {
-            Token **tmp = allocate(token->Fdec.len *= 2, sizeof(Token*));
-            memcpy(tmp, token->Fdec.args, token->Fdec.pos * sizeof(Token*));
-            free(token->Fdec.args);
-            token->Fdec.args = tmp;
-         }
-         if (child->token->is_ref)
-            child->token->has_ref = true;
-         child->token->Param.index = i;
-         child->token->Param.func_ptr = node->token;
-         child->token->is_param = true;
-         child->token->is_dec = false;
-         token->Fdec.args[token->Fdec.pos++] = child->token;
-      }
-#endif
+         generate_ir(params[i]);
 
       // code bloc
       for (int i = 0; node->token->type != PROTO && i < node->cpos; i++)
@@ -464,8 +441,8 @@ void generate_ir(Node *node)
       Node *func = get_function(node->token->name);
       if (!func) return;
       node->token->Fcall.ptr = func->token;
-      node->token->Fcall.args = allocate(node->cpos, sizeof(Token*));
-      node->token->Fcall.pos = node->cpos;
+      // node->token->Fcall.args = allocate(node->cpos, sizeof(Token*));
+      // node->token->Fcall.pos = node->cpos;
 
       func = copy_node(func);
       // node->token->retType = func->token->retType;
