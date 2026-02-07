@@ -221,6 +221,27 @@ Node *sign_node()
    return cast_node();
 }
 
+Node *func_call(Node *node)
+{
+   // Function call:
+   //    + left:
+   //       + children: Parameters
+   node->token->type = FCALL;
+   Token *arg = NULL;
+   Token *token = node->token;
+   node->left = new_node(new_token(0, node->token->space));
+
+   while (!found_error && !(arg = find(RPAR, END, 0)))
+   {
+      Node *curr = expr_node();
+      curr->token->space = token->space;
+      add_child(node->left, curr);
+      find(COMA, 0);
+   }
+   check(!found_error && arg->type != RPAR, "expected ) after function call");
+   return node;
+}
+
 Node *func_dec(Node *node)
 {
    // Function Declaration:
@@ -317,25 +338,6 @@ Node *func_dec(Node *node)
    return node;
 }
 
-Node *func_call(Node *node)
-{
-   // Function call:
-   //    + children: Parameters
-   node->token->type = FCALL;
-   Token *arg = NULL;
-   Token *token = node->token;
-
-   while (!found_error && !(arg = find(RPAR, END, 0)))
-   {
-      Node *curr = expr_node();
-      curr->token->space = token->space;
-      add_child(node, curr);
-      find(COMA, 0);
-   }
-   check(!found_error && arg->type != RPAR, "expected ) after function call");
-   return node;
-}
-
 Node *func_main(Node *node)
 {
    // Function main:
@@ -346,6 +348,7 @@ Node *func_main(Node *node)
    enter_scoop(node);
    node->token->type = FDEC;
    node->token->retType = INT;
+   node->left = new_node(new_token(0, node->token->space));
 
    Node *last = NULL;
    while (within(node->token->space))
@@ -601,27 +604,21 @@ void parse()
 {
    if (found_error) return;
 #if AST
-   debug(GREEN BOLD SPLIT RESET);
-   debug(GREEN BOLD"AST:\n" RESET);
-   global = new_node(new_token(ID, -TAB - 1));
+   global = new_node(new_token(ID, -TAB));
    setName(global->token, "ura-scoop");
    enter_scoop(global);
    while (!find(END, 0) && !found_error)
       add_child(global, expr_node());
-   print_ast(global);
+
+
 #endif
 }
 
 void build_ir()
 {
-   if (found_error) return;
 #if IR
-   debug(GREEN BOLD"GENERATE INTERMEDIATE REPRESENTATIONS:\n" RESET);
-
    for (int i = 0; !found_error && i < global->cpos; i++)
       generate_ir(global->children[i]);
-   for (int i = 0; !found_error && i < global->cpos; i++)
-      print_inst(global->children[i]);
 #endif
 }
 
@@ -647,8 +644,22 @@ void code_gen(char *filename)
 void compile(char *filename)
 {
    tokenize(filename);
+   debug(GREEN BOLD SPLIT RESET);
+   debug(GREEN BOLD"PRINT TOKENS:\n" RESET);
+   for (int i = 0; tokens[i]; i++) debug("%k\n", tokens[i]);
+
    parse();
+   debug(GREEN BOLD SPLIT RESET);
+   debug(GREEN BOLD"PRINT AST:\n" RESET);
+   for (int i = 0; !found_error && i < global->cpos; i++)
+      pnode(global->children[i], NULL, 0);
+
    build_ir();
+   debug(GREEN BOLD SPLIT RESET);
+   debug(GREEN BOLD"PRINT IR:\n" RESET);
+   for (int i = 0; !found_error && i < global->cpos; i++)
+      pnode(global->children[i], NULL, 0);
+
    optimize_ir();
    code_gen(filename);
 }
