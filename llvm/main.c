@@ -128,7 +128,7 @@ Node *prime_node()
             check(!find(COMA, 0), "");
          } while (true);
 
-         token->Fcall.args_len = p;
+         token->Fcall.len = p;
          return new_node(token);
       }
       else if (find(LBRA, 0))
@@ -204,7 +204,7 @@ Node *prime_node()
          check(!find(COMA, 0), "");
       } while (true);
 
-      node->token->Fdec.args_len = p;
+      node->token->Fdec.len = p;
       check(!arg || arg->type != RPAR, "");
 
       if (node->token->type != PROTO)
@@ -326,9 +326,9 @@ Node *prime_node()
 
 void _fdec(Token *token)
 {
-   _Type retType = get_llvm_type(token);
+   TypeRef retType = get_llvm_type(token);
 
-   int param_count = token->Fdec.args_len;
+   int param_count = token->Fdec.len;
    int param_count1 = param_count;
 
    if (token->Fdec.is_variadic)
@@ -337,7 +337,7 @@ void _fdec(Token *token)
       param_count1 = param_count + 1;
    }
 
-   _Type *paramTypes = calloc(param_count1 + 1, sizeof(_Type));
+   TypeRef *paramTypes = calloc(param_count1 + 1, sizeof(TypeRef));
 
    for (int i = 0; i < param_count; i++)
    {
@@ -345,7 +345,7 @@ void _fdec(Token *token)
 
       if (param->is_ref)
       {
-         _Type base_type = get_llvm_type(param);
+         TypeRef base_type = get_llvm_type(param);
          paramTypes[i] = llvm_pointer_type(base_type, 0);
       }
       else
@@ -356,9 +356,9 @@ void _fdec(Token *token)
    if (token->Fdec.is_variadic)
       paramTypes[param_count] = i32;
 
-   _Type funcType = llvm_function_type(retType, paramTypes, param_count1, token->Fdec.is_variadic);
+   TypeRef funcType = llvm_function_type(retType, paramTypes, param_count1, token->Fdec.is_variadic);
 
-   _Value existingFunc = llvm_get_named_function(token->llvm_name ? token->llvm_name : token->name);
+   Value existingFunc = llvm_get_named_function(token->llvm_name ? token->llvm_name : token->name);
    if (existingFunc) {
       token->llvm.elem = existingFunc;
    } else {
@@ -369,33 +369,33 @@ void _fdec(Token *token)
 
 void _entry(Token *token)
 {
-   _Block entry = llvm_append_basic_block_in_context(token->llvm.elem, "entry");
+   Block entry = llvm_append_basic_block_in_context(token->llvm.elem, "entry");
    llvm_position_builder_at_end(entry);
 }
 
 void _return(Token *token)
 {
-   _Value value = token->llvm.elem;
+   Value value = token->llvm.elem;
    if (value) llvm_build_ret(token, value);
    else llvm_build_ret_void(token);
 }
 
 void _alloca(Token *token)
 {
-   _Type type = get_llvm_type(token);
+   TypeRef type = get_llvm_type(token);
    token->llvm.elem = llvm_build_alloca(token, type, token->name);
 }
 
 void _int(Token *token)
 {
-   _Type type = get_llvm_type(token); long long value;
+   TypeRef type = get_llvm_type(token); long long value;
    value = (long long)token->Int.value;
    token->llvm.elem = llvm_const_int(type, value, 0);
 }
 
 void _char(Token *token)
 {
-   _Type type = get_llvm_type(token); int value;
+   TypeRef type = get_llvm_type(token); int value;
    value = (int)token->Char.value;
    token->llvm.elem = llvm_const_int(type, value, 0);
 }
@@ -431,19 +431,19 @@ void _chars(Token *token)
 
 void _load(Token *to, Token *from)
 {
-   _Type type = get_llvm_type(from);
+   TypeRef type = get_llvm_type(from);
 
    char *name = to->name ? to->name : to_string(to->type);
-   _Value source = from->llvm.elem;
+   Value source = from->llvm.elem;
 
    to->llvm.elem = llvm_build_load2(to, type, source, name);
 }
 
 void _op(Token *token, Token *left, Token *right)
 {
-   _Value l = left->llvm.elem;
-   _Value r = right->llvm.elem;
-   _Value elem = NULL;
+   Value l = left->llvm.elem;
+   Value r = right->llvm.elem;
+   Value elem = NULL;
    switch (token->type)
    {
    case ADD: elem = llvm_build_add(token, l, r, "add"); break;
@@ -466,23 +466,23 @@ void _op(Token *token, Token *left, Token *right)
    token->llvm.elem = elem;
 }
 
-void _branch(_Block bloc)
+void _branch(Block bloc)
 {
    if (!llvm_get_basic_block_terminator(llvm_get_insert_block()))
       llvm_build_br(NULL, bloc);
 }
 
-void _position_at(_Block bloc)
+void _position_at(Block bloc)
 {
    llvm_position_builder_at_end(bloc);
 }
 
-void _condition(_Value cond, _Block isTrue, _Block isFalse)
+void _condition(Value cond, Block isTrue, Block isFalse)
 {
    llvm_build_cond_br(NULL, cond, isTrue, isFalse);
 }
 
-_Block _append_block(char *name)
+Block _append_block(char *name)
 {
    char block_name[256];
    snprintf(block_name, sizeof(block_name), "%s.%d", name, block_counter++);
@@ -492,16 +492,16 @@ _Block _append_block(char *name)
 
 void _access(Token *curr, Token *left, Token *right)
 {
-   _Value leftValue = left->llvm.elem;
-   _Value rightRef = right->llvm.elem;
+   Value leftValue = left->llvm.elem;
+   Value rightRef = right->llvm.elem;
 
-   _Type element_type;
+   TypeRef element_type;
    if (left->type == CHARS) {
       element_type = i8;
-      curr->reType = CHAR;
+      curr->rTypeRef = CHAR;
    } else {
       element_type = get_llvm_type(left);
-      curr->reType = left->type;
+      curr->rTypeRef = left->type;
    }
 
    // Add bounds checking if enabled
@@ -510,21 +510,21 @@ void _access(Token *curr, Token *left, Token *right)
       // For CHARS (strings), we can use strlen at runtime
       // For STACK arrays, we need to store the size
 
-      _Value size_val = NULL;
+      Value size_val = NULL;
 
       if (left->type == CHARS) {
          // For strings, we need to get the length
          // First check if it's a string literal or a variable
          if (left->name && !left->llvm.array_size) {
             // It's a variable - we need strlen
-            _Value strlen_func = llvm_get_named_function("strlen");
+            Value strlen_func = llvm_get_named_function("strlen");
             if (!strlen_func) {
-               _Type strlen_type = llvm_function_type(i64, (_Type[]) {p8}, 1, false);
+               TypeRef strlen_type = llvm_function_type(i64, (TypeRef[]) {p8}, 1, false);
                strlen_func = llvm_add_function("strlen", strlen_type);
             }
-            _Value strlen_result = llvm_build_call2(NULL,
+            Value strlen_result = llvm_build_call2(NULL,
                                                     llvm_global_get_value_type(strlen_func), strlen_func,
-            (_Value[]) {leftValue}, 1, "strlen");
+            (Value[]) {leftValue}, 1, "strlen");
             size_val = llvm_build_trunc(NULL, strlen_result, i32, "size");
          }
          else if (left->llvm.array_size)
@@ -545,10 +545,10 @@ void _access(Token *curr, Token *left, Token *right)
 
       if (size_val) {
          // Get bounds check function
-         _Value bounds_check = llvm_get_named_function("__bounds_check");
+         Value bounds_check = llvm_get_named_function("__bounds_check");
 
          // Create filename string
-         static _Value filename_str = NULL;
+         static Value filename_str = NULL;
 
          if (!filename_str) {
             char filename[256] = {0};
@@ -572,21 +572,21 @@ void _access(Token *curr, Token *left, Token *right)
 
 
          // Call bounds check: __bounds_check(index, size, line, filename)
-         _Value line_val = llvm_const_int(i32, curr->line, 0);
+         Value line_val = llvm_const_int(i32, curr->line, 0);
          llvm_build_call2(NULL, llvm_global_get_value_type(bounds_check), bounds_check,
-         (_Value[]) {rightRef, size_val, line_val, filename_str}, 4, "");
+         (Value[]) {rightRef, size_val, line_val, filename_str}, 4, "");
       }
    }
 
-   _Value indices[] = { rightRef };
-   _Value gep = llvm_build_gep2(curr, element_type, leftValue, indices, 1, "ACCESS");
+   Value indices[] = { rightRef };
+   Value gep = llvm_build_gep2(curr, element_type, leftValue, indices, 1, "ACCESS");
    curr->llvm.elem = gep;
 }
 
-void _cast(Token *to, Token *from, _Type target_type)
+void _cast(Token *to, Token *from, TypeRef target_type)
 {
-   _Value source = from->llvm.elem;
-   _Type source_type = llvm_type_of(source);
+   Value source = from->llvm.elem;
+   TypeRef source_type = llvm_type_of(source);
 
    if (source_type == target_type)
    {
@@ -622,15 +622,15 @@ void _cast(Token *to, Token *from, _Type target_type)
 void enter_scoop(Node *node)
 {
    scoop_pos++;
-   scoop[scoop_pos] = node;
-   curr_scoop = scoop[scoop_pos];
+   Gscoop[scoop_pos] = node;
+   curr_scoop = Gscoop[scoop_pos];
 }
 
 void exit_scoop()
 {
    scoop_pos--;
    if (scoop_pos >= 0)
-      curr_scoop = scoop[scoop_pos];
+      curr_scoop = Gscoop[scoop_pos];
 }
 
 void add_function(Node *node)
@@ -655,7 +655,7 @@ Token *get_function(char *name)
 {
    for (int j = scoop_pos; j >= 0; j--)
    {
-      Node *curr = scoop[j];
+      Node *curr = Gscoop[j];
       if (!curr) continue;
       for (int i = 0; i < curr->fpos; i++)
       {
@@ -689,7 +689,7 @@ Token *get_variable(char *name)
 {
    for (int j = scoop_pos; j >= 0; j--)
    {
-      Node *curr = scoop[j];
+      Node *curr = Gscoop[j];
       if (!curr) continue;
       for (int i = 0; i < curr->vpos; i++)
       {
@@ -747,11 +747,11 @@ int get_va_list_size(LLVMModuleRef module)
    return 24;
 }
 
-_Type get_llvm_type(Token *token)
+TypeRef get_llvm_type(Token *token)
 {
    Type type = token->type;
    if (includes(type, FDEC, PROTO, 0)) type = token->Fdec.retType;
-   _Type res[END] = {[INT] = i32, [CHAR] = i8, [CHARS] = p8,
+   TypeRef res[END] = {[INT] = i32, [CHAR] = i8, [CHARS] = p8,
                      [BOOL] = i1, [VOID] = vd, [VA_LIST] = p8,
                      [ACCESS] = i8, [CATCH] = i32,
                     };
@@ -900,47 +900,47 @@ void generate_ir(Node *node)
          _entry(node->token);
 
          int param_idx = 0;
-         for (int i = 0; i < node->token->Fdec.args_len; i++)
+         for (int i = 0; i < node->token->Fdec.len; i++)
          {
             Token *param = node->token->Fdec.args[i];
 
             if (param->type == VA_LIST)
             {
-               _Value count_param = llvm_get_param(node->token->llvm.elem, param_idx);
+               Value count_param = llvm_get_param(node->token->llvm.elem, param_idx);
                param_idx++;
 
-               _Value count_alloca = llvm_build_alloca(param, i32, "va_count");
+               Value count_alloca = llvm_build_alloca(param, i32, "va_count");
                llvm_build_store(param, count_param, count_alloca);
                param->llvm.va_count = count_alloca;
 
                int va_list_size = get_va_list_size(module);
 
-               _Type va_list_type = llvm_get_type_by_name2("struct.__va_list_tag");
+               TypeRef va_list_type = llvm_get_type_by_name2("struct.__va_list_tag");
                if (!va_list_type) {
                   va_list_type = llvm_array_type(i8, va_list_size);
                }
 
-               _Value va_list_alloca = llvm_build_alloca(param, va_list_type, param->name);
+               Value va_list_alloca = llvm_build_alloca(param, va_list_type, param->name);
                param->llvm.elem = va_list_alloca;
 
-               _Value va_start = llvm_get_named_function("llvm.va_start.p0");
+               Value va_start = llvm_get_named_function("llvm.va_start.p0");
                if (!va_start) {
-                  _Type params[] = { llvm_pointer_type(i8, 0) };
-                  _Type va_start_type = llvm_function_type(vd, params, 1, false);
+                  TypeRef params[] = { llvm_pointer_type(i8, 0) };
+                  TypeRef va_start_type = llvm_function_type(vd, params, 1, false);
                   va_start = llvm_add_function("llvm.va_start.p0", va_start_type);
                }
 
-               _Value gep = llvm_build_gep2(param, llvm_array_type(i8, va_list_size),
+               Value gep = llvm_build_gep2(param, llvm_array_type(i8, va_list_size),
                                             va_list_alloca,
-               (_Value[]) {llvm_const_int(i32, 0, 0)}, 1, "");
-               _Value cast = llvm_build_bit_cast(param, gep, llvm_pointer_type(i8, 0), "");
+               (Value[]) {llvm_const_int(i32, 0, 0)}, 1, "");
+               Value cast = llvm_build_bit_cast(param, gep, llvm_pointer_type(i8, 0), "");
                llvm_build_call2(param, llvm_global_get_value_type(va_start), va_start, &cast, 1, "");
 
                add_variable(param);
             }
             else if (param->is_ref)
             {
-               _Value p = llvm_get_param(node->token->llvm.elem, param_idx);
+               Value p = llvm_get_param(node->token->llvm.elem, param_idx);
                param_idx++;
                param->llvm.elem = p;
                param->has_ref = true;
@@ -948,10 +948,10 @@ void generate_ir(Node *node)
             }
             else
             {
-               _Value p = llvm_get_param(node->token->llvm.elem, param_idx);
+               Value p = llvm_get_param(node->token->llvm.elem, param_idx);
                param_idx++;
 
-               _Value alloca = llvm_build_alloca(param, get_llvm_type(param), "param");
+               Value alloca = llvm_build_alloca(param, get_llvm_type(param), "param");
                llvm_build_store(param, p, alloca);
                param->llvm.elem = alloca;
                add_variable(param);
@@ -983,14 +983,14 @@ void generate_ir(Node *node)
       pnode(node, NULL, 0);
       generate_ir(node->left);
 
-      _Value size_value = node->left->token->llvm.elem;
+      Value size_value = node->left->token->llvm.elem;
 
-      _Type size_type = llvm_type_of(size_value);
+      TypeRef size_type = llvm_type_of(size_value);
       if (llvm_get_type_kind(size_type) != LLVMIntegerTypeKind) {
          check(1, "stack() size must be an integer, got %d", llvm_get_type_kind(size_type));
       }
 
-      _Value stack_alloc = llvm_build_array_alloca(node->token, i8, size_value, "stack");
+      Value stack_alloc = llvm_build_array_alloca(node->token, i8, size_value, "stack");
 
       node->token->llvm.elem = stack_alloc;
       node->token->type = STACK;
@@ -1004,13 +1004,13 @@ void generate_ir(Node *node)
    {
       Token *funcToken = get_function(node->token->name);
 
-      for (int i = 0; i < node->token->Fcall.args_len; i++) {
+      for (int i = 0; i < node->token->Fcall.len; i++) {
          Node *nodeArg = new_node(node->token->Fcall.args[i]);
          generate_ir(nodeArg);
 
          bool should_load = true;
 
-         if (i < funcToken->Fdec.args_len && !funcToken->Fdec.is_variadic) {
+         if (i < funcToken->Fdec.len && !funcToken->Fdec.is_variadic) {
             should_load = !funcToken->Fdec.args[i]->is_ref;
          }
          else {
@@ -1029,15 +1029,15 @@ void generate_ir(Node *node)
 
 
       Token *token = node->token;
-      _Value func = funcToken->llvm.elem;
+      Value func = funcToken->llvm.elem;
 
-      int arg_count = token->Fcall.args_len;
-      _Value *args = NULL;
+      int arg_count = token->Fcall.len;
+      Value *args = NULL;
 
       if (funcToken->Fdec.is_variadic) {
-         int fixed_params = funcToken->Fdec.args_len - 1;
+         int fixed_params = funcToken->Fdec.len - 1;
          int variadic_count = arg_count - fixed_params;
-         args = calloc(arg_count + 1,  sizeof(_Value));
+         args = calloc(arg_count + 1,  sizeof(Value));
          for (int i = 0; i < fixed_params; i++)
             args[i] = token->Fcall.args[i]->llvm.elem;
          args[fixed_params] = llvm_const_int(i32, variadic_count, 0);
@@ -1045,18 +1045,18 @@ void generate_ir(Node *node)
             args[i + 1] = token->Fcall.args[i]->llvm.elem;
          arg_count++;
       } else {
-         args = calloc(arg_count,  sizeof(_Value));
+         args = calloc(arg_count,  sizeof(Value));
          for (int i = 0; i < arg_count; i++)
             args[i] = token->Fcall.args[i]->llvm.elem;
       }
 
-      _Type funcType = llvm_global_get_value_type(func);
-      _Type retType = llvm_get_return_type(funcType);
+      TypeRef funcType = llvm_global_get_value_type(func);
+      TypeRef retType = llvm_get_return_type(funcType);
       char *callName = (llvm_get_type_kind(retType) == LLVMVoidTypeKind) ? "" : token->name;
 
       ExcepCTX *ctx = get_current_exception_context();
       if (ctx && ctx->lpad) {
-         _Block normal_dest = _append_block("invoke.cont");
+         Block normal_dest = _append_block("invoke.cont");
          token->llvm.elem = llvm_build_invoke2(token, funcType, func, args, arg_count,
                                                normal_dest, ctx->lpad, callName);
          llvm_position_builder_at_end(normal_dest);
@@ -1070,9 +1070,9 @@ void generate_ir(Node *node)
    {
       enter_scoop(node);
 
-      _Block cond = _append_block("while.cond");
-      _Block body = _append_block("while.body");
-      _Block end = _append_block("while.end");
+      Block cond = _append_block("while.cond");
+      Block body = _append_block("while.body");
+      Block end = _append_block("while.end");
 
       _branch(cond);
       _position_at(cond);
@@ -1093,13 +1093,13 @@ void generate_ir(Node *node)
    {
       enter_scoop(node);
 
-      _Block end = _append_block("if.end");
+      Block end = _append_block("if.end");
       Node* curr = node;
 
       while (curr && (curr->token->type == IF || curr->token->type == ELIF))
       {
-         _Block then_block = _append_block("if.then");
-         _Block else_block = _append_block("if.else");
+         Block then_block = _append_block("if.then");
+         Block else_block = _append_block("if.else");
          generate_ir(curr->left);
          _condition(curr->left->token->llvm.elem, then_block, else_block);
          _position_at(then_block);
@@ -1132,36 +1132,36 @@ void generate_ir(Node *node)
       enter_scoop(node);
 
       // Get current function from the basic block we're in
-      _Block current_block = llvm_get_insert_block();
+      Block current_block = llvm_get_insert_block();
       if (!current_block) {
          check(1, "try-catch must be inside a function");
          return;
       }
-      _Value current_func = llvm_get_basic_block_parent(current_block);
+      Value current_func = llvm_get_basic_block_parent(current_block);
       if (!current_func) {
          check(1, "try-catch must be inside a function");
          return;
       }
 
       // Set personality function
-      _Value personality = get_personality();
+      Value personality = get_personality();
       llvm_set_personality_fn(current_func, personality);
 
       // Create basic blocks
-      _Block try_block = _append_block("try");
-      _Block lpad_block = _append_block("lpad");
-      _Block catch = _append_block("catch");
-      _Block end = _append_block("try.end");
+      Block try_block = _append_block("try");
+      Block lpad_block = _append_block("lpad");
+      Block catch = _append_block("catch");
+      Block end = _append_block("try.end");
 
       // Get catch type
       Type catch_type = node->right ? node->right->token->Catch.type : INT;
-      _Type catch_llvm_type = get_llvm_type(node->right->token);
+      TypeRef catch_llvm_type = get_llvm_type(node->right->token);
 
       // Allocate storage for caught exception
-      _Block entry = llvm_get_entry_basic_block(current_func);
-      _Block saved_pos = llvm_get_insert_block();
+      Block entry = llvm_get_entry_basic_block(current_func);
+      Block saved_pos = llvm_get_insert_block();
       llvm_position_builder_at_end(entry);
-      _Value storage = llvm_build_alloca(node->token, catch_llvm_type, "exception.storage");
+      Value storage = llvm_build_alloca(node->token, catch_llvm_type, "exception.storage");
       llvm_position_builder_at_end(saved_pos);
 
       // Push exception context
@@ -1183,28 +1183,28 @@ void generate_ir(Node *node)
       llvm_position_builder_at_end(lpad_block);
 
       // Create landing pad instruction
-      _Type lpad_type = llvm_struct_type_in_context(
-      (_Type[]) {p8, i32}, 2, false);
-      _Value lpad = llvm_build_landing_pad(node->token, lpad_type,
+      TypeRef lpad_type = llvm_struct_type_in_context(
+      (TypeRef[]) {p8, i32}, 2, false);
+      Value lpad = llvm_build_landing_pad(node->token, lpad_type,
                                            personality, 1, "lpad");
 
       // Add catch clause for our type
-      _Value type_info = get_type_info_for_type(catch_type);
+      Value type_info = get_type_info_for_type(catch_type);
       llvm_add_clause(lpad, type_info);
 
       // Extract exception pointer
-      _Value exception_ptr = llvm_build_extract_value(node->token, lpad, 0, "exc.ptr");
+      Value exception_ptr = llvm_build_extract_value(node->token, lpad, 0, "exc.ptr");
 
       // Call __cxa_begin_catch
-      _Value begin_catch = get_begin_catch();
-      _Value caught_ptr = llvm_build_call2(node->token,
+      Value begin_catch = get_begin_catch();
+      Value caught_ptr = llvm_build_call2(node->token,
                                            llvm_global_get_value_type(begin_catch), begin_catch,
                                            &exception_ptr, 1, "caught");
 
       // Cast and load the exception value
-      _Value typed_ptr = llvm_build_bit_cast(node->token, caught_ptr,
+      Value typed_ptr = llvm_build_bit_cast(node->token, caught_ptr,
                                              llvm_pointer_type(catch_llvm_type, 0), "typed.ptr");
-      _Value exception_value = llvm_build_load2(node->token, catch_llvm_type,
+      Value exception_value = llvm_build_load2(node->token, catch_llvm_type,
                                typed_ptr, "exception.value");
 
       // Store in our storage
@@ -1242,7 +1242,7 @@ void generate_ir(Node *node)
       // Only add end_catch and branch if there's no terminator
       // (return statements in catch block will have already added end_catch)
       if (!llvm_get_basic_block_terminator(llvm_get_insert_block())) {
-         _Value end_catch = get_end_catch();
+         Value end_catch = get_end_catch();
          llvm_build_call2(node->token, llvm_global_get_value_type(end_catch), end_catch, NULL, 0, "");
          llvm_build_br(node->token, end);
       }
@@ -1263,28 +1263,28 @@ void generate_ir(Node *node)
 
       Token *throw_token = node->left->token;
       Type throw_type = throw_token->type;
-      _Type throw_llvm_type = get_llvm_type(throw_token);
+      TypeRef throw_llvm_type = get_llvm_type(throw_token);
 
       // Allocate exception object
-      _Value alloc_exception = get_exception();
+      Value alloc_exception = get_exception();
       size_t exception_size = llvm_abi_size_of_type(llvm_get_module_data_layout(module), throw_llvm_type);
-      _Value size_val = llvm_const_int(i64, exception_size, 0);
-      _Value exception_mem = llvm_build_call2(node->token,
+      Value size_val = llvm_const_int(i64, exception_size, 0);
+      Value exception_mem = llvm_build_call2(node->token,
                                               llvm_global_get_value_type(alloc_exception), alloc_exception,
                                               &size_val, 1, "exception");
 
       // Cast to appropriate pointer type and store value
-      _Value typed_exception = llvm_build_bit_cast(node->token, exception_mem,
+      Value typed_exception = llvm_build_bit_cast(node->token, exception_mem,
                                llvm_pointer_type(throw_llvm_type, 0), "typed.exception");
       llvm_build_store(node->token, throw_token->llvm.elem, typed_exception);
 
       // Get type info
-      _Value type_info = get_type_info_for_type(throw_type);
+      Value type_info = get_type_info_for_type(throw_type);
 
       // Call __cxa_throw (destructor is NULL for POD types)
-      _Value cxa_throw = get_throw();
-      _Value null_dtor = llvm_const_null(p8);
-      _Value throw_args[] = {exception_mem, type_info, null_dtor};
+      Value cxa_throw = get_throw();
+      Value null_dtor = llvm_const_null(p8);
+      Value throw_args[] = {exception_mem, type_info, null_dtor};
       llvm_build_call2(node->token, llvm_global_get_value_type(cxa_throw), cxa_throw,
                        throw_args, 3, "");
 
@@ -1292,7 +1292,7 @@ void generate_ir(Node *node)
       llvm_build_unreachable(node->token);
 
       // Create new block for any potential code after throw (unreachable)
-      _Block after_throw = _append_block("after.throw");
+      Block after_throw = _append_block("after.throw");
       llvm_position_builder_at_end(after_throw);
       break;
    }
@@ -1328,7 +1328,7 @@ void generate_ir(Node *node)
    {
       Token *target_type_token = node->right->token;
       Type target_type_enum = target_type_token->type;
-      _Type target_type = get_llvm_type(target_type_token);
+      TypeRef target_type = get_llvm_type(target_type_token);
 
       if (node->left->token->type == DOT)
       {
@@ -1338,11 +1338,11 @@ void generate_ir(Node *node)
 
          if (object->type == VA_LIST && strcmp(member_name, "elem") == 0)
          {
-            _Type extract_type = get_llvm_type(target_type_token);
+            TypeRef extract_type = get_llvm_type(target_type_token);
 
-            _Value va_list_ptr = object->llvm.elem;
-            _Value bitcast = llvm_build_bit_cast(node->token, va_list_ptr, p8, "va_cast");
-            _Value result = llvm_build_va_arg(node->token, bitcast, extract_type, "va_arg");
+            Value va_list_ptr = object->llvm.elem;
+            Value bitcast = llvm_build_bit_cast(node->token, va_list_ptr, p8, "va_cast");
+            Value result = llvm_build_va_arg(node->token, bitcast, extract_type, "va_arg");
 
             node->token->llvm.elem = result;
             node->token->type = target_type_enum;
@@ -1370,7 +1370,7 @@ void generate_ir(Node *node)
 
       ExcepCTX *ctx = get_current_exception_context();
       if (ctx && ctx->in_catch) {
-         _Value end_catch = get_end_catch();
+         Value end_catch = get_end_catch();
          llvm_build_call2(node->token, llvm_global_get_value_type(end_catch), end_catch, NULL, 0, "");
       }
 

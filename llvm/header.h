@@ -14,12 +14,12 @@
 #include <unistd.h>
 #include <signal.h>
 
-typedef LLVMTypeRef _Type;
-typedef LLVMContextRef _Context;
-typedef LLVMModuleRef _Module;
-typedef LLVMBuilderRef _Builder;
-typedef LLVMBasicBlockRef _Block;
-typedef LLVMValueRef _Value;
+typedef LLVMTypeRef TypeRef;
+typedef LLVMContextRef Context;
+typedef LLVMModuleRef Module;
+typedef LLVMBuilderRef Builder;
+typedef LLVMBasicBlockRef Block;
+typedef LLVMValueRef Value;
 
 typedef enum Type Type;
 typedef struct Token Token;
@@ -88,7 +88,7 @@ enum Type {
 struct Token
 {
    Type type;
-   Type reType;
+   Type rTypeRef;
    int line;
    int pos;
    char *name;
@@ -101,13 +101,13 @@ struct Token
    
    struct
    {
-      _Value array_size;
-      _Value elem;
-      _Value va_count;
-      _Value error_flag;
-      _Value error_value;
-      _Block catch;
-      _Block lpad;
+      Value array_size;
+      Value elem;
+      Value va_count;
+      Value error_flag;
+      Value error_value;
+      Block catch;
+      Block lpad;
    } llvm;
 
    struct
@@ -115,17 +115,17 @@ struct Token
       struct { long value; } Int;
       struct { char *value; } Chars;
       struct { char value; } Char;
-      struct { Type retType; Token **args; int args_len; bool is_variadic; } Fdec;
-      struct { Token **args; int args_len; } Fcall;
+      struct { Type retType; Token **args; int len; bool is_variadic; } Fdec;
+      struct { Token **args; int len; } Fcall;
       struct { Type type; char *name; } Catch;
    };
 };
 
 typedef struct {
-   _Block lpad;
-   _Block catch;
-   _Block end;
-   _Value storage;
+   Block lpad;
+   Block catch;
+   Block end;
+   Value storage;
    Type type;
    bool in_catch;
 }  ExcepCTX;
@@ -149,15 +149,15 @@ struct Node
    int flen;
 };
 
-extern _Context context;
-extern _Module module;
-extern _Builder builder;
-extern _Type vd, f32, i1, i8, i16, i32, i64, p8, p32;
+extern Context context;
+extern Module module;
+extern Builder builder;
+extern TypeRef vd, f32, i1, i8, i16, i32, i64, p8, p32;
 
-extern _Value boundsCheckFunc;
-extern _Value nullCheckFunc;
-extern _Value vaStartFunc;
-extern _Value vaEndFunc;
+extern Value boundsCheckFunc;
+extern Value nullCheckFunc;
+extern Value vaStartFunc;
+extern Value vaEndFunc;
 extern char *importedFiles[100];
 extern int importedFileCount;
 extern int block_counter;
@@ -180,18 +180,18 @@ Node *minus_node();
 Node *prime_node();
 
 void create_function(Token *func);
-_Value build_va_start(_Value va_list_ptr, _Value last_param_ptr);
-_Value build_va_arg(_Value va_list_ptr, _Type type);
-_Value build_va_end(_Value va_list_ptr);
+Value build_va_start(Value va_list_ptr, Value last_param_ptr);
+Value build_va_arg(Value va_list_ptr, TypeRef type);
+Value build_va_end(Value va_list_ptr);
 void skip_newlines();
 void tokenize();
 char *to_string(Type type);
 char *strjoin(char *str, ...);
 char* open_file(char *filename);
-_Type get_llvm_type(Token *token);
+TypeRef get_llvm_type(Token *token);
 bool includes(Type to_find, ...);
 void create_int(Token *token);
-_Value create_string(char *value);
+Value create_string(char *value);
 char *substr(char *input, int s, int e);
 void ptoken(Token *token);
 void pnode(Node *node, char *side, int space);
@@ -200,11 +200,11 @@ void init(char *name);
 void finalize();
 Token *copy_token(Token *token);
 Token *get_function(char *name);
-_Block _append_block(char *name);
+Block _append_block(char *name);
 void load_if_neccessary(Node *node);
 void add_variable(Token *token);
 void generate_ir(Node *node);
 void exit_scoop();
-void _branch(_Block bloc);
+void _branch(Block bloc);
 void enter_scoop(Node *node);
 
