@@ -7,14 +7,14 @@ Token *tokens[1000];
 int tk_pos;
 int exe_pos;
 char *input;
-_Context context;
-_Module module;
-_Builder builder;
-_Type vd, f32, i1, i8, i16, i32, i64, p8, p32;
+Context context;
+Module module;
+Builder builder;
+TypeRef vd, f32, i1, i8, i16, i32, i64, p8, p32;
 
-Node *scoop[100];
+Node *Gscoop[100];
 int scoop_pos = -1;
-Node *curr_scoop;
+Node *scoop;
 bool enable_bounds_check = false;
 
 bool check_error(char *filename, const char *funcname, int line, bool cond, char *fmt, ...)
@@ -266,7 +266,7 @@ ExcepCTX *exceps;
 int exceps_len;
 int exceps_pos = -1;
 
-void push_exception_context(_Block lpad, _Block catch, _Block end, _Value storage,
+void push_exception_context(Block lpad, Block catch, Block end, Value storage,
                             Type type) {
    if (exceps_len == 0)
    {
@@ -298,7 +298,7 @@ ExcepCTX* get_current_exception_context() {
    return &exceps[exceps_pos];
 }
 
-_Value get_type_info_for_type(Type type) {
+Value get_type_info_for_type(Type type) {
    const char *typeinfo_name;
    switch (type) {
    case INT: typeinfo_name = "_ZTIi"; break;
@@ -307,7 +307,7 @@ _Value get_type_info_for_type(Type type) {
    default: typeinfo_name = "_ZTIi"; break;
    }
 
-   _Value type_info = LLVMGetNamedGlobal(module, typeinfo_name);
+   Value type_info = LLVMGetNamedGlobal(module, typeinfo_name);
    if (!type_info) {
       type_info = LLVMAddGlobal(module, p8, typeinfo_name);
       LLVMSetLinkage(type_info, LLVMExternalLinkage);
@@ -315,19 +315,19 @@ _Value get_type_info_for_type(Type type) {
    return type_info;
 }
 
-_Value get_exception() {
-   _Value fn = LLVMGetNamedFunction(module, "__cxa_allocate_exception");
+Value get_exception() {
+   Value fn = LLVMGetNamedFunction(module, "__cxa_allocate_exception");
    if (!fn) {
-      _Type fn_type = LLVMFunctionType(p8, (_Type[]) {i64}, 1, false);
+      TypeRef fn_type = LLVMFunctionType(p8, (TypeRef[]) {i64}, 1, false);
       fn = LLVMAddFunction(module, "__cxa_allocate_exception", fn_type);
    }
    return fn;
 }
 
-_Value get_throw() {
-   _Value fn = LLVMGetNamedFunction(module, "__cxa_throw");
+Value get_throw() {
+   Value fn = LLVMGetNamedFunction(module, "__cxa_throw");
    if (!fn) {
-      _Type fn_type = LLVMFunctionType(vd, (_Type[]) {p8, p8, p8}, 3, false);
+      TypeRef fn_type = LLVMFunctionType(vd, (TypeRef[]) {p8, p8, p8}, 3, false);
       fn = LLVMAddFunction(module, "__cxa_throw", fn_type);
       LLVMSetFunctionCallConv(fn, LLVMCCallConv);
       LLVMAddAttributeAtIndex(fn, LLVMAttributeFunctionIndex,
@@ -336,28 +336,28 @@ _Value get_throw() {
    return fn;
 }
 
-_Value get_begin_catch() {
-   _Value fn = LLVMGetNamedFunction(module, "__cxa_begin_catch");
+Value get_begin_catch() {
+   Value fn = LLVMGetNamedFunction(module, "__cxa_begin_catch");
    if (!fn) {
-      _Type fn_type = LLVMFunctionType(p8, (_Type[]) {p8}, 1, false);
+      TypeRef fn_type = LLVMFunctionType(p8, (TypeRef[]) {p8}, 1, false);
       fn = LLVMAddFunction(module, "__cxa_begin_catch", fn_type);
    }
    return fn;
 }
 
-_Value get_end_catch() {
-   _Value fn = LLVMGetNamedFunction(module, "__cxa_end_catch");
+Value get_end_catch() {
+   Value fn = LLVMGetNamedFunction(module, "__cxa_end_catch");
    if (!fn) {
-      _Type fn_type = LLVMFunctionType(vd, NULL, 0, false);
+      TypeRef fn_type = LLVMFunctionType(vd, NULL, 0, false);
       fn = LLVMAddFunction(module, "__cxa_end_catch", fn_type);
    }
    return fn;
 }
 
-_Value get_personality() {
-   _Value personality = LLVMGetNamedFunction(module, "__gxx_personality_v0");
+Value get_personality() {
+   Value personality = LLVMGetNamedFunction(module, "__gxx_personality_v0");
    if (!personality) {
-      _Type personality_type = LLVMFunctionType(i32, NULL, 0, true);
+      TypeRef personality_type = LLVMFunctionType(i32, NULL, 0, true);
       personality = LLVMAddFunction(module, "__gxx_personality_v0", personality_type);
    }
    return personality;
@@ -373,7 +373,7 @@ void finalize()
    LLVMPrintModuleToFile(module, "build/out.ll", NULL);
 
    LLVMDisposeBuilder(builder);
-   LLVMDisposeModule(module);
+   LLVMDisposModule(module);
    LLVMContextDispose(context);
 }
 
@@ -489,7 +489,7 @@ void ptoken(Token *token)
       case CHARS: printf("[%s] ", token->Chars.value); break;
       default: break;
       }
-   if (token->reType) printf("ret [%s] ", to_string(token->reType));
+   if (token->rTypeRef) printf("ret [%s] ", to_string(token->rTypeRef));
    if (token->is_ref) printf("is_ref");
    printf(" space [%d]\n", token->space);
 }
@@ -551,31 +551,31 @@ char *to_string(Type type)
 }
 
 void create_bounds_check_function() {
-   _Value existing = LLVMGetNamedFunction(module, "__bounds_check");
+   Value existing = LLVMGetNamedFunction(module, "__bounds_check");
    if (existing) return;
 
    // void __bounds_check(i32 index, i32 size, i32 line, ptr filename)
-   _Type param_types[] = {i32, i32, i32, p8};
-   _Type func_type = LLVMFunctionType(vd, param_types, 4, false);
-   _Value func = LLVMAddFunction(module, "__bounds_check", func_type);
+   TypeRef param_types[] = {i32, i32, i32, p8};
+   TypeRef func_type = LLVMFunctionType(vd, param_types, 4, false);
+   Value func = LLVMAddFunction(module, "__bounds_check", func_type);
 
-   _Block entry = LLVMAppendBasicBlockInContext(context, func, "entry");
-   _Block error_block = LLVMAppendBasicBlockInContext(context, func, "error");
-   _Block ok_block = LLVMAppendBasicBlockInContext(context, func, "ok");
+   Block entry = LLVMAppendBasicBlockInContext(context, func, "entry");
+   Block error_block = LLVMAppendBasicBlockInContext(context, func, "error");
+   Block ok_block = LLVMAppendBasicBlockInContext(context, func, "ok");
 
    LLVMPositionBuilderAtEnd(builder, entry);
 
-   _Value index_param = LLVMGetParam(func, 0);
-   _Value size_param = LLVMGetParam(func, 1);
-   _Value line_param = LLVMGetParam(func, 2);
-   _Value filename_param = LLVMGetParam(func, 3);
+   Value index_param = LLVMGetParam(func, 0);
+   Value size_param = LLVMGetParam(func, 1);
+   Value line_param = LLVMGetParam(func, 2);
+   Value filename_param = LLVMGetParam(func, 3);
 
    // Check: index >= 0 && index < size
-   _Value cmp_negative = LLVMBuildICmp(builder, LLVMIntSLT, index_param,
+   Value cmp_negative = LLVMBuildICmp(builder, LLVMIntSLT, index_param,
                                        LLVMConstInt(i32, 0, 0), "is_negative");
-   _Value cmp_overflow = LLVMBuildICmp(builder, LLVMIntSGE, index_param,
+   Value cmp_overflow = LLVMBuildICmp(builder, LLVMIntSGE, index_param,
                                        size_param, "is_overflow");
-   _Value is_bad = LLVMBuildOr(builder, cmp_negative, cmp_overflow, "is_bad");
+   Value is_bad = LLVMBuildOr(builder, cmp_negative, cmp_overflow, "is_bad");
 
    LLVMBuildCondBr(builder, is_bad, error_block, ok_block);
 
@@ -583,38 +583,38 @@ void create_bounds_check_function() {
    LLVMPositionBuilderAtEnd(builder, error_block);
 
    // Get printf function (simpler than fprintf with stderr)
-   _Value printf_func = LLVMGetNamedFunction(module, "printf");
+   Value printf_func = LLVMGetNamedFunction(module, "printf");
    if (!printf_func) {
-      _Type printf_type = LLVMFunctionType(i32, (_Type[]) {p8}, 1, true);
+      TypeRef printf_type = LLVMFunctionType(i32, (TypeRef[]) {p8}, 1, true);
       printf_func = LLVMAddFunction(module, "printf", printf_type);
    }
 
    // Error messages
-   _Value fmt_header = LLVMBuildGlobalStringPtr(builder,
+   Value fmt_header = LLVMBuildGlobalStringPtr(builder,
                        "\n\033[1m\033[31mruntime error:\033[0m array index out of bounds\n", "fmt_header");
-   _Value fmt_location = LLVMBuildGlobalStringPtr(builder,
+   Value fmt_location = LLVMBuildGlobalStringPtr(builder,
                          "\033[1m%s:%d:\033[0m ", "fmt_location");
-   _Value fmt_error = LLVMBuildGlobalStringPtr(builder,
+   Value fmt_error = LLVMBuildGlobalStringPtr(builder,
                       "\033[1m\033[31merror:\033[0m index \033[1m%d\033[0m is out of bounds for array of size \033[1m%d\033[0m\n\n",
                       "fmt_error");
 
    // Print error using printf
-   LLVMBuildCall2(builder, LLVMGlobalGetValueType(printf_func), printf_func,
-   (_Value[]) {fmt_header}, 1, "");
-   LLVMBuildCall2(builder, LLVMGlobalGetValueType(printf_func), printf_func,
-   (_Value[]) {fmt_location, filename_param, line_param}, 3, "");
-   LLVMBuildCall2(builder, LLVMGlobalGetValueType(printf_func), printf_func,
-   (_Value[]) {fmt_error, index_param, size_param}, 3, "");
+   LLVMBuildCall2(builder, LLVMGlobalGetValuTypeRef(printf_func), printf_func,
+   (Value[]) {fmt_header}, 1, "");
+   LLVMBuildCall2(builder, LLVMGlobalGetValuTypeRef(printf_func), printf_func,
+   (Value[]) {fmt_location, filename_param, line_param}, 3, "");
+   LLVMBuildCall2(builder, LLVMGlobalGetValuTypeRef(printf_func), printf_func,
+   (Value[]) {fmt_error, index_param, size_param}, 3, "");
 
    // Abort
-   _Value abort_func = LLVMGetNamedFunction(module, "abort");
+   Value abort_func = LLVMGetNamedFunction(module, "abort");
    if (!abort_func) {
-      _Type abort_type = LLVMFunctionType(vd, NULL, 0, false);
+      TypeRef abort_type = LLVMFunctionType(vd, NULL, 0, false);
       abort_func = LLVMAddFunction(module, "abort", abort_type);
       LLVMAddAttributeAtIndex(abort_func, LLVMAttributeFunctionIndex,
                               LLVMCreateEnumAttribute(context, LLVMGetEnumAttributeKindForName("noreturn", 8), 0));
    }
-   LLVMBuildCall2(builder, LLVMGlobalGetValueType(abort_func), abort_func, NULL, 0, "");
+   LLVMBuildCall2(builder, LLVMGlobalGetValuTypeRef(abort_func), abort_func, NULL, 0, "");
    LLVMBuildUnreachable(builder);
 
    // OK block
