@@ -1,6 +1,0 @@
-protoFunc int puts(chars str)
-
-main():
-    chars str = typeof "hello world\n"
-    puts(str)
-    return 0
