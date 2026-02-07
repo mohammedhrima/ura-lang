@@ -1,5 +1,6 @@
 ; ModuleID = 'moduleName'
 source_filename = "moduleName"
+target triple = "arm64-apple-darwin25.2.0"
 
 @STR0 = private unnamed_addr constant [9 x i8] c"is digit\00", align 1
 @STR1 = private unnamed_addr constant [13 x i8] c"is not digit\00", align 1

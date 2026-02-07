@@ -150,10 +150,7 @@ void tokenize(char *filename)
          size_t len = strlen(specials[j].value);
          if (strncmp(specials[j].value, input + i, len) == 0)
          {
-            // Token *curr =
             parse_token(filename, line, NULL, 0, 0, specials[j].type, space);
-            // curr->logName = strdup(specials[j].value);
-            // curr->logType = SYMBOL;
             i += len;
             if (includes(specials[j].type, DOTS, 0)) space += TAB;
             found = true;
@@ -167,48 +164,10 @@ void tokenize(char *filename)
    free(input);
 }
 
-Node *expr_node()
-{
-   return assign_node();
-}
+Node *expr_node() { return assign_node(); }
 
-Node *assign_node()
-{
-   Node *left = logic_node();
-   Token *token;
-   while ((token = find(ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN, 0)))
-   {
-      Node *node = new_node(token);
-      if (token->type == ASSIGN)
-      {
-         node->left = left;
-         node->right = logic_node();
-      }
-      else
-      {
-         node->left = left;
-         node->right = new_node(NULL);
-         *(node->right) = (Node) {
-            .token = new_token(0, node->token->space),
-            .left = new_node(left->token),
-            .right = logic_node(),
-         };
-         switch (token->type)
-         {
-         case ADD_ASSIGN: node->right->token->type = ADD; break;
-         case SUB_ASSIGN: node->right->token->type = SUB; break;
-         case MUL_ASSIGN: node->right->token->type = MUL; break;
-         case DIV_ASSIGN: node->right->token->type = DIV; break;
-         case MOD_ASSIGN: node->right->token->type = MOD; break;
-         default: break;
-         }
-         node->token->type = ASSIGN;
-      }
-      left = node;
-   }
-   return left;
-}
-
+AST_NODE(assign_node, logic_node, ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN,
+         MOD_ASSIGN, 0);
 AST_NODE(logic_node, equality_node, AND, OR, 0);
 AST_NODE(equality_node, comparison_node, EQUAL, NOT_EQUAL, 0);
 AST_NODE(comparison_node, add_sub_node, LESS, MORE, LESS_EQUAL, MORE_EQUAL, 0);
@@ -282,7 +241,7 @@ Node *func_dec(Node *node)
    enter_scoop(node);
 
    check(!find(LPAR, 0), "expected ( after function declaration");
-   node->left = new_node(NULL);
+   node->left = new_node(new_token(0, node->token->space));
    Token *last;
    while (!found_error && !(last = find(RPAR, END, 0)))
    {
@@ -658,6 +617,7 @@ void build_ir()
    if (found_error) return;
 #if IR
    debug(GREEN BOLD"GENERATE INTERMEDIATE REPRESENTATIONS:\n" RESET);
+
    for (int i = 0; !found_error && i < global->cpos; i++)
       generate_ir(global->children[i]);
    for (int i = 0; !found_error && i < global->cpos; i++)
@@ -672,8 +632,9 @@ void code_gen(char *filename)
 #if ASM
    char *moduleName = resolve_path(filename);
    init(moduleName);
+
    for (int i = 0; !found_error && i < global->cpos; i++)
-      handle_asm(global->children[i]);
+      generate_asm(global->children[i]);
 
    int len = strlen(moduleName);
    strcpy(moduleName + len - 3, "ll");
