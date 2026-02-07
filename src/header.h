@@ -203,9 +203,9 @@ struct Token
       struct { char *value; } Chars;
       struct { char value; } Char;
       struct { char *name; Token **attrs; int size; int pos; int index; } Struct;
-      struct { Token *func_ptr; int index; } Param;
-      struct { Token **args; Token *ptr; int size; int pos; } Fcall;
-      struct { Token **args; int pos; int len; bool is_variadic; } Fdec;
+      // struct { Token *ptr; int index; } Param;
+      struct { Token *ptr; } Fcall;
+      struct { bool is_variadic; } Fdec;
       struct { Token *ptr; Token *start; Token *end; } Statement;
       struct { Type type; char *name; } Catch;
    };

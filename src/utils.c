@@ -123,9 +123,13 @@ int pnode(Node *node, char *side, int space)
    if (side) res += debug("%s", side);
 
    res += debug("%k\n", node->token);
-   if (node->token->type == FDEC)
+   if (includes(node->token->type, FDEC, FCALL))
    {
-
+      for (int i = 0; i < space; i++) res += debug(" ");
+      debug("params:\n");
+      todo(node->left == NULL, "left null");
+      for (int i = 0; i < node->left->cpos; i++)
+         pnode(node->left->children[i], NULL, space + TAB);
    }
    else
    {
@@ -224,57 +228,6 @@ int print_value(Token *token)
    default: check(1, "handle this case [%s]\n", to_string(token->type));
    }
    return 0;
-}
-
-void print_ast(Node *head)
-{
-   if (!DEBUG) return;
-   debug(GREEN BOLD SPLIT RESET);
-   debug(GREEN BOLD"PRINT AST:\n" RESET);
-   for (int i = 0; !found_error && i < head->cpos; i++)
-      debug("%n\n", head->children[i]);
-   debug(GREEN BOLD SPLIT RESET);
-}
-
-void print_inst(Node *node)
-{
-   if (!DEBUG) return;
-   Token *curr = node->token;
-   int k = 0;
-   while (k < curr->space) k += debug(" ");
-   debug("[%-6s] ", to_string(curr->type));
-
-   switch (curr->type)
-   {
-   case ASSIGN:
-   {
-      // if (curr->assign_type) debug("[%s] ", to_string(curr->assign_type));
-
-      debug("r%.2d = r%.2d ", node->left->token->ir_reg, node->right->token->ir_reg);
-
-      // if (left->name) debug("(%s) = ", left->name);
-      // if (right->name) debug("(%s)", right->name);
-      // else print_value(right);
-      break;
-   }
-   case INT: case BOOL: case CHARS: case CHAR:
-   case FLOAT: case LONG: case VOID: case PTR:
-   {
-      if (curr->name) debug("name %s ", curr->name);
-      else print_value(curr);
-      break;
-   }
-   case FDEC:
-   {
-      debug("%s\n", curr->name);
-      for (int i = 0; i < node->cpos; i++) print_inst(node->children[i]);
-      break;
-   }
-   case END_BLOC: debug("%s ", curr->name); break;
-   case RETURN: debug("r%.2d ", node->left->token->ir_reg); break;
-   default: debug(RED "print_ir:handle [%s]"RESET, to_string(curr->type)); break;
-   }
-   debug("\n");
 }
 
 // TOKENIZE
