@@ -77,7 +77,7 @@ void code_gen(char *filename)
 #if ASM
    char *moduleName = resolve_path(filename);
    init(moduleName);
-   for (int i = 0; insts[i] && !found_error; i++) handle_asm(insts[i]);
+   for (int i = 0; insts[i] && !found_error; i++) generate_asm(insts[i]);
 
    int len = strlen(moduleName);
    strcpy(moduleName + len - 3, "ll");

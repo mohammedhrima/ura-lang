@@ -1,5 +1,6 @@
 ; ModuleID = '/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura'
 source_filename = "/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura"
+target triple = "arm64-apple-darwin25.2.0"
 
 @STR0 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
 

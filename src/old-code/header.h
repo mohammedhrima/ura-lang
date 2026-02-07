@@ -356,7 +356,7 @@ void exit_scoop();
 void copy_insts();
 bool compatible(Token *left, Token *right);
 Token *generate_ir(Node *node);
-void handle_asm(Inst *inst);
+void generate_asm(Inst *inst);
 TypeRef get_llvm_type(Token* token);
 ValueRef get_value(Token *token);
 void enter_func(ValueRef func);

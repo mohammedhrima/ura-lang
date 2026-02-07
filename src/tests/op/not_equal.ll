@@ -1,5 +1,6 @@
 ; ModuleID = '/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura'
 source_filename = "/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura"
+target triple = "arm64-apple-darwin25.2.0"
 
 define i32 @foo() {
 entry:
@@ -9,6 +10,11 @@ entry:
 define i32 @bar() {
 entry:
   ret i32 20
+}
+
+define i32 @zero() {
+entry:
+  ret i32 0
 }
 
 define i32 @main() {

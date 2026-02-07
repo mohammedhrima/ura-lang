@@ -145,6 +145,7 @@ struct LLVM
    bool is_loaded;
    Value array_size;
    Value elem;
+   TypeRef funcType;
    Value va_count;
    Value error_flag;
    Value error_value;
@@ -340,7 +341,7 @@ bool did_opimize();
 Value safe_access_(Token *curr, Token *left, Token *right);
 void store_array_size(Value array_ptr, Value size);
 Value get_array_size(Value array_ptr);
-void handle_asm(Node *node);
+void generate_asm(Node *node);
 void _load(Token *to, Token *from);
 
 
@@ -457,6 +458,7 @@ void llvm_add_clause(Value landing_pad, Value clause_val);
 // Data layout information
 size_t llvm_abi_size_of_type(LLVMTargetDataRef td, TypeRef ty);
 LLVMTargetDataRef llvm_get_module_data_layout(LLVMModuleRef m);
+Value llvm_build_not(Token *token);
 
 // Const null value
 Value llvm_const_null(TypeRef ty);

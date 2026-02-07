@@ -387,3 +387,8 @@ Value llvm_build_global_string_ptr_raw(const char *str, char *name)
    printf("llvm_build_global_string_ptr_raw: name=%s str=\"%s\"\n", name, str);
    return LLVMBuildGlobalStringPtr(builder, str, name);
 }
+
+Value llvm_build_not(Token *token)
+{
+   return LLVMBuildNot(builder, token->llvm.elem, "NOT");
+}
