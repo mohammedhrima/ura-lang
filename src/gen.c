@@ -349,13 +349,44 @@ void generate_asm(Node *node)
       exit_scoop();
       break;
    }
+   case WHILE:
+   {
+      enter_scoop(node);
+      Block start = _append_block("while.start");
+      Block then = _append_block("while.then");
+      Block end = _append_block("while.end");
+
+      // Store blocks for break/continue
+      node->token->llvm.start = start;
+      node->token->llvm.then = then;
+      node->token->llvm.end = end;
+
+      _branch(start);
+
+      _position_at(start);
+      generate_asm(node->left); // condition
+      load_if_neccessary(node->left);
+      _condition(node->left->token->llvm.elem, then, end);
+
+      _position_at(then);
+      for (int i = 0; i < node->cpos; i++)
+         generate_asm(node->children[i]);
+      _branch(start);
+
+      _position_at(end);
+      exit_scoop();
+      break;
+   }
    case IF:
    {
-      pnode(node, NULL, 0);
       enter_scoop(node);
 
       Block if_start = _append_block("if.start");
       Block end = _append_block("if.end");
+
+      // Store blocks for potential break/continue
+      node->token->llvm.start = if_start;
+      node->token->llvm.end = end;
 
       _branch(if_start);
 
@@ -371,16 +402,18 @@ void generate_asm(Node *node)
 
             if (curr->token->type == IF)
             {
-               start = if_start; 
+               start = if_start;
                then = _append_block("if.then");
             }
             else
             {
-               start = curr->token->llvm.bloc;  
+               start = curr->token->llvm.bloc;
                then = _append_block("elif.then");
             }
 
-            // if condition is false, jump to next or to end
+            // Store then block
+            curr->token->llvm.then = then;
+
             if (curr->right)
             {
                if (curr->right->token->type == ELSE) next = _append_block("if.else");
@@ -390,7 +423,7 @@ void generate_asm(Node *node)
 
             _position_at(start);
             generate_asm(curr->left); // condition
-            load_if_neccessary(curr->left); // TODO: to be tested
+            load_if_neccessary(curr->left);
             _condition(curr->left->token->llvm.elem, then, next);
 
             _position_at(then);
@@ -398,7 +431,6 @@ void generate_asm(Node *node)
                generate_asm(curr->children[i]);
             _branch(end);
 
-            // store start block for next iteration
             if (curr->right && includes(curr->right->token->type, ELIF, ELSE, 0))
                curr->right->token->llvm.bloc = next;
          }
@@ -413,6 +445,32 @@ void generate_asm(Node *node)
       }
       _position_at(end);
       exit_scoop();
+      break;
+   }
+   case BREAK:
+   {
+      for (int i = scoop_pos; i >= 0; i--)
+      {
+         if (Gscoop[i]->token->type == WHILE)
+         {
+            _branch(Gscoop[i]->token->llvm.end);
+            return;
+         }
+      }
+      check(1, "break outside loop");
+      break;
+   }
+   case CONTINUE:
+   {
+      for (int i = scoop_pos; i >= 0; i--)
+      {
+         if (Gscoop[i]->token->type == WHILE)
+         {
+            _branch(Gscoop[i]->token->llvm.start);
+            return;
+         }
+      }
+      check(1, "continue outside loop");
       break;
    }
    case RETURN:
@@ -499,18 +557,24 @@ void generate_ir(Node *node)
       }
       break;
    }
+   case WHILE:
+   {
+      enter_scoop(node);
+      generate_ir(node->left); // condition
+      // code bloc
+      for (int i = 0; i < node->cpos; i++)
+         generate_ir(node->children[i]);
+      exit_scoop();
+      break;
+   }
    case IF:
    {
       enter_scoop(node);
-      debug("\n"SPLIT);
-      pnode(node, NULL, 0);
-      debug("\n"SPLIT);
       Node *curr = node;
       while (curr && includes(curr->token->type, IF, ELIF, ELSE, 0))
       {
          if (includes(curr->token->type, IF, ELIF, 0))
          {
-            debug(">>>> %k\n", curr->token);
             check(curr->left == NULL, "error");
             generate_ir(curr->left); // condition
          }
@@ -523,7 +587,6 @@ void generate_ir(Node *node)
       exit_scoop();
       break;
    }
-   case END_IF: break;
    case FDEC:
    {
       node->token->ir_reg++;
@@ -599,6 +662,7 @@ void generate_ir(Node *node)
       node->token->retType = node->left->token->type;
       break;
    }
+   case BREAK: case CONTINUE: break;
    default:
    {
       todo(1, "handle this case %s", to_string(node->token->type));
