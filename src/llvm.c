@@ -92,18 +92,21 @@ Value llvm_build_ret_void(Token *token)
    return LLVMBuildRetVoid(builder);
 }
 
-Value llvm_build_br(Token *token, Block dest)
+void _branch(Block bloc)
 {
-   printf("llvm_build_br: ");
-   ptoken(token);
-   return LLVMBuildBr(builder, dest);
+   if (!llvm_get_basic_block_terminator(llvm_get_insert_block()))
+      LLVMBuildBr(builder, bloc);
 }
 
-Value llvm_build_cond_br(Token *token, Value cond, Block then_block, Block else_block)
+Block _append_block(char *name)
 {
-   printf("llvm_build_cond_br: ");
-   ptoken(token);
-   return LLVMBuildCondBr(builder, cond, then_block, else_block);
+   return llvm_append_basic_block_in_context(llvm_get_basic_block_parent(llvm_get_insert_block()),
+          name);
+}
+
+void _condition(Value cond, Block then_block, Block else_block)
+{
+   LLVMBuildCondBr(builder, cond, then_block, else_block);
 }
 
 Value llvm_build_call2(Token *token, TypeRef ty, Value fn, Value *args, unsigned num_args,
@@ -284,7 +287,7 @@ Block llvm_get_entry_basic_block(Value func)
    return LLVMGetEntryBasicBlock(func);
 }
 
-void llvm_position_builder_at_end(Block block)
+void _position_at(Block block)
 {
    printf("llvm_position_builder_at_end\n");
    LLVMPositionBuilderAtEnd(builder, block);

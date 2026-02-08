@@ -1,10 +1,10 @@
 
-func int strlen(chars str):
-    int i = 0
+fn strlen(str: chars) int:
+    i: int = 0
     while str[i] != '\0':
         i += 1
     return i
 
 main():
-    int len = strlen("abc")
+    len: int = strlen("abc")
     return len

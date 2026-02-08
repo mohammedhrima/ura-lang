@@ -1,7 +1,7 @@
 
-func bool isalpha(char c): return c >= 'a' and c <= 'z'
-func bool isdigit(char c): return c >= '1' and c <= '9'
-func bool islanum(char c): return isalpha(c) or isdigit(c)
+fn isalpha(c: char) bool: return c >= 'a' and c <= 'z'
+fn isdigit(c: char) bool: return c >= '1' and c <= '9'
+fn islanum(c: char) bool: return isalpha(c) or isdigit(c)
 
 main():
     if islanum('1'): return 11  
