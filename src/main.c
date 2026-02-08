@@ -247,21 +247,13 @@ Node *func_dec(Node *node)
    // Function Declaration:
    //    + left children: arguments
    //    + children     : code block
-   Token *typeName = find(DATA_TYPES, 0);
-   check(!typeName, "Expected data type after func declaration");
-   if (typeName->type == ID)
-   {
-      typeName = get_struct(typeName->name);
-      todo(1, "handle function return struct properly");
-   }
    Token *fname = find(ID, 0);
-   if (check(!typeName || !fname, "expected data type and identifier after func declaration"))
+   if (check(!fname, "expected identifier after fn declaration"))
       return node;
-   node->token->retType = typeName->type;
-   setName(node->token, fname->name);
-   enter_scoop(node);
 
+   enter_scoop(node);
    check(!find(LPAR, 0), "expected ( after function declaration");
+   // arguments
    node->left = new_node(new_token(0, node->token->space));
    Token *last;
    while (!found_error && !(last = find(RPAR, END, 0)))
@@ -275,16 +267,18 @@ Node *func_dec(Node *node)
       }
       else
       {
+         Token *name = find(ID, 0);
+         if (check(!name, "expected identifier in function argument %s", fname->name)) break;
+         if (check(!find(DOTS, 0), "expected : after function argument")) break;
+
          bool is_ref = find(REF, 0) != NULL;
          Token* data_type = find(DATA_TYPES, ID, 0);
+         if (check(!data_type, "expected data type in function argument")) break;
          if (data_type && data_type->type == ID)
          {
             data_type = get_struct(data_type->name);
             if (data_type) data_type->type = STRUCT_CALL;
          }
-         if (check(!data_type, "expected data type in function argument")) break;
-         Token *name = find(ID, 0);
-         if (check(!name, "expected identifier in function argument %s", fname->name)) break;
          Node *curr;
          if (data_type->type == STRUCT_CALL)
          {
@@ -305,13 +299,24 @@ Node *func_dec(Node *node)
    }
    check(!found_error && last->type != RPAR, "expected ) after function declaration");
 
-   if (node->token->type != PROTO)
+   Token *typeName = find(DATA_TYPES, 0);
+   check(!typeName, "Expected data type after fun declaration");
+   if (typeName->type == ID)
+   {
+      typeName = get_struct(typeName->name);
+      todo(1, "handle function return struct properly");
+   }
+   node->token->retType = typeName->type;
+   setName(node->token, fname->name);
+
+   if (!node->token->is_proto)
    {
       Token *next = find(DOTS, 0);
       check(!found_error && !next, "Expected : after function declaration");
       Node *child = NULL;
 
-      if (next->type == DOTS) while (within(node->token->space)) child = add_child(node, expr_node());
+      if (next->type == DOTS)
+         while (within(node->token->space)) child = add_child(node, expr_node());
       else
       {
          todo(1, "stop");
@@ -370,13 +375,18 @@ Node *symbol(Token *token)
 {
    Node *node;
    Token *st_dec = NULL;
-   if (token->is_dec)
+   if (token->type != ID && !token->is_dec) return new_node(token);
+   else if (token->is_dec)
    {
-      Token *tmp = find(ID, 0);
-      check(!tmp, "Expected variable name after [%s] symbol\n",
-            to_string(token->type));
-      setName(token, tmp->name);
-      return new_node(token);
+      check(1, "unxpected token %s", to_string(token->type));
+      return new_node(token); // added so the program doesn't segvault
+   }
+   else if (token->type == ID && find(DOTS, 0))
+   {
+      Token *tmp = find(DATA_TYPES, 0);
+      check(!tmp, "Expected data type after [%s]\n", token->name);
+      setName(tmp, token->name);
+      return new_node(tmp);
    }
    else if (token->type == ID && find(LPAR, 0))
    {
@@ -515,7 +525,7 @@ Node *cast_node()
    {
       Node *left = node;
       node = new_node(token);
-      Token *to = find(DATA_TYPES);
+      Token *to = find(DATA_TYPES, 0);
       if (check(to == NULL || !to->is_dec, "expected data type after to"))
          return NULL;
       to->is_dec = false;
@@ -531,7 +541,7 @@ Node *prime_node()
 {
    Node *node = NULL;
    Token *token;
-   if ((token = find(ID, INT, CHARS, CHAR, FLOAT, BOOL, LONG, SHORT, 0)))
+   if ((token = find(ID, DATA_TYPES, 0)))
       return symbol(token);
    else if ((token = find(TYPEOF, 0)))
    {
@@ -558,7 +568,14 @@ Node *prime_node()
       node->token->is_ref = true;
       return node;
    }
-   else if ((token = find(FDEC, PROTO, 0))) return func_dec(new_node(token));
+   else if ((token = find(PROTO, 0)))
+   {
+      if (includes(tokens[exe_pos]->type, FDEC, STRUCT_DEF, 0))
+         tokens[exe_pos]->is_proto = true;
+      else check(1, "expected fn or struct after proto");
+      return expr_node();
+   }
+   else if ((token = find(FDEC, 0))) return func_dec(new_node(token));
    else if ((token = find(RETURN, 0)))
    {
       // TODO: check if return type is compatible with function

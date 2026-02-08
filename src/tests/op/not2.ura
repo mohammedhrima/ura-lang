@@ -1,33 +1,33 @@
-func bool foo():
+fn foo() bool:
     return True
 
-func bool bar():
+fn bar() bool:
     return False
 
 main():
-    bool a = True
-    bool b = False
+    a: bool = True
+    b: bool = False
     
     // Test: !variable
-    bool t1 = !a
-    bool t2 = !b
+    t1: bool = !a
+    t2: bool = !b
     
     // Test: !value
-    bool t3 = !True
-    bool t4 = !False
+    t3: bool = !True
+    t4: bool = !False
     
     // Test: !function
-    bool t5 = !foo()
-    bool t6 = !bar()
+    t5: bool = !foo()
+    t6: bool = !bar()
     
     // Test: Double negation !!variable
-    bool t7 = !!a
-    bool t8 = !!b
+    t7: bool = !!a
+    t8: bool = !!b
     
     // Test: Double negation with value
-    bool t9 = !!True
-    bool t10 = !!False
+    t9: bool = !!True
+    t10: bool = !!False
     
     // Test: Double negation with function
-    bool t11 = !!foo()
-    bool t12 = !!bar()
+    t11: bool = !!foo()
+    t12: bool = !!bar()

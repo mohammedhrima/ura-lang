@@ -1,5 +1,5 @@
 
-func bool isalpha(char c): return c >= 'a' and c <= 'z'
+fn isalpha(c: char) bool: return c >= 'a' and c <= 'z'
 
 main():
     if isalpha('1'): return 11  

@@ -130,7 +130,7 @@ int pnode(Node *node, char *side, int space)
    if (side) res += debug("%s", side);
 
    res += debug("%k\n", node->token);
-   if (includes(node->token->type, FDEC, FCALL, 0))
+   if (includes(node->token->type, FDEC, FCALL, STACK, 0))
    {
       if (node->left)
       {
@@ -139,10 +139,13 @@ int pnode(Node *node, char *side, int space)
          for (int i = 0; i < node->left->cpos; i++)
             res += pnode(node->left->children[i], NULL, space + TAB);
       }
-      pspace(space);
-      res += debug("children: \n");
-      for (int i = 0; i < node->cpos; i++)
-         res += pnode(node->children[i], NULL, space + TAB);
+      if (node->cpos)
+      {
+         pspace(space);
+         res += debug("children: \n");
+         for (int i = 0; i < node->cpos; i++)
+            res += pnode(node->children[i], NULL, space + TAB);
+      }
       return res;
    }
    else if (includes(node->token->type, IF, ELIF, ELSE, 0))
@@ -281,7 +284,7 @@ char *to_string(Type type)
       [PROTO] = "PROTO", [VARIADIC] = "VARIADIC",
       //[VA_LIST] = "VA_LIST",
       [AS] = "AS", [END_BLOC] = "END_BLOC",
-      //[STACK] = "STACK",
+      [STACK] = "STACK",
       //[TRY] = "TRY", [CATCH] = "CATCH", [THROW] = "THROW",
       //[USE] = "USE",
       [LBRA] = "LBRA", [RBRA] = "RBRA",
@@ -432,9 +435,9 @@ Token *parse_token(char *filename, int line, char *input, int s, int e,  Type ty
 
       struct { char *name; Type type; } keywords[] = {
          {"if", IF},  {"elif", ELIF}, {"else", ELSE},
-         {"while", WHILE},  {"func", FDEC}, {"return", RETURN},
+         {"while", WHILE},  {"fn", FDEC}, {"return", RETURN},
          {"break", BREAK}, {"continue", CONTINUE}, {"ref", REF},
-         {"struct", STRUCT_DEF}, {"protoFunc", PROTO}, {"as", AS}, {0, 0},
+         {"struct", STRUCT_DEF}, {"proto", PROTO}, {"as", AS}, {0, 0},
       };
       for (i = 0; keywords[i].name; i++)
       {
@@ -759,7 +762,8 @@ void add_variable(Node *bloc, Token *token)
 
 Token *new_variable(Token *token)
 {
-   // debug(CYAN "new variable [%s] [%s] in scoop %k\n" RESET, token->name, to_string(token->type), scoop->token);
+   debug(CYAN "new variable [%s] [%s] in scoop %k\n" RESET,
+         token->name, to_string(token->type), scoop->token);
    for (int i = 0; i < scoop->vpos; i++)
    {
       Token *curr = scoop->variables[i];

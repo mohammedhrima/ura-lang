@@ -1,9 +1,9 @@
 
-func bool check():
+fn check() bool:
     return True
 
 main():
-    int a = 1
+    a: int = 1
     if check():
         return 1
     elif a == 2:

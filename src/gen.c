@@ -110,7 +110,7 @@ void load_if_neccessary(Node *node)
 void _entry(Token *token)
 {
    Block entry = llvm_append_basic_block_in_context(token->llvm.elem, "entry");
-   llvm_position_builder_at_end(entry);
+   _position_at(entry);
 }
 
 Value build_binary_op(Type op_type, Value lref, Value rref)
@@ -145,29 +145,23 @@ void build_literal(Type type, Token *token)
    }
 }
 
-void _branch(Block bloc)
+Value allocate_stack(Value size, TypeRef elementType, char *name)
 {
-   if (!llvm_get_basic_block_terminator(llvm_get_insert_block()))
-      llvm_build_br(NULL, bloc);
-}
+   Value indices[] = {
+      LLVMConstInt(i32, 0, 0),
+      LLVMConstInt(i32, 0, 0)
+   };
 
-void _position_at(Block bloc)
-{
-   llvm_position_builder_at_end(bloc);
-}
+   if (LLVMIsConstant(size))
+   {
+      unsigned long long constSize = LLVMConstIntGetZExtValue(size);
+      TypeRef arrayType = LLVMArrayType(elementType, constSize);
+      Value array_alloca = LLVMBuildAlloca(builder, arrayType, name);
+      return LLVMBuildGEP2(builder, arrayType, array_alloca, indices, 2, name);
+   }
 
-void _condition(Value cond, Block isTrue, Block isFalse)
-{
-   llvm_build_cond_br(NULL, cond, isTrue, isFalse);
-}
-
-Block _append_block(char *name)
-{
-   char block_name[256];
-   static int block_counter;
-   snprintf(block_name, sizeof(block_name), "%s.%d", name, block_counter++);
-   return llvm_append_basic_block_in_context(llvm_get_basic_block_parent(llvm_get_insert_block()),
-          block_name);
+   Value array_alloca = LLVMBuildArrayAlloca(builder, elementType, size, name);
+   return LLVMBuildGEP2(builder, elementType, array_alloca, indices, 2, name);
 }
 
 void generate_asm(Node *node)
@@ -234,6 +228,23 @@ void generate_asm(Node *node)
       node->token->retType = left->token->type;
       break;
    }
+   case STACK:
+   {
+      generate_asm(node->left->children[0]);
+      load_if_neccessary(node->left->children[0]);
+      Value elem = node->left->children[0]->token->llvm.elem;
+
+      node->token->llvm.elem = allocate_stack(elem, i8, "stack");
+      node->token->llvm.is_set = true;
+
+      // Store size in the token itself
+      node->token->llvm.array_size = elem;
+      // if (LLVMIsConstant(elem)) {
+      //    curr->Array.const_size = LLVMConstIntGetZExtValue(elem);
+      // }
+
+      break;
+   }
    case FCALL:
    {
       LLVM srcFunc = node->token->Fcall.ptr->llvm;
@@ -259,7 +270,7 @@ void generate_asm(Node *node)
       free(args);
       break;
    }
-   case FDEC: case PROTO:
+   case FDEC:
    {
       if (scoop_pos > 1)
       {
@@ -312,7 +323,7 @@ void generate_asm(Node *node)
       else node->token->llvm.elem = llvm_add_function(name, funcType);
       node->token->llvm.funcType = funcType;
 
-      if (node->token->type == FDEC)
+      if (!node->token->is_proto)
       {
          _entry(node->token);
          for (int i = 0; i < node->left->cpos; i++)
@@ -487,6 +498,54 @@ void generate_asm(Node *node)
       _return(left->token);
       break;
    }
+   case AS:
+   {
+      generate_asm(left);
+      load_if_neccessary(left);
+
+      Value source = left->token->llvm.elem;
+      TypeRef sourceType = LLVMTypeOf(source);
+      TypeRef targetType = get_llvm_type(node->right->token);
+
+      LLVMTypeKind sourceKind = LLVMGetTypeKind(sourceType);
+      LLVMTypeKind targetKind = LLVMGetTypeKind(targetType);
+
+      Value result;
+
+      // Pointer to integer
+      if (sourceKind == LLVMPointerTypeKind && targetKind == LLVMIntegerTypeKind)
+         result = LLVMBuildPtrToInt(builder, source, targetType, "as");
+      // Integer to pointer
+      else if (sourceKind == LLVMIntegerTypeKind && targetKind == LLVMPointerTypeKind)
+         result = LLVMBuildIntToPtr(builder, source, targetType, "as");
+      // Integer to integer
+      else if (sourceKind == LLVMIntegerTypeKind && targetKind == LLVMIntegerTypeKind)
+      {
+         unsigned sourceBits = LLVMGetIntTypeWidth(sourceType);
+         unsigned targetBits = LLVMGetIntTypeWidth(targetType);
+
+         if (sourceBits > targetBits)
+            result = LLVMBuildTrunc(builder, source, targetType, "as");
+         else if (sourceBits < targetBits)
+            result = LLVMBuildSExt(builder, source, targetType, "as");
+         else
+            result = source;
+      }
+      // Pointer to pointer (bitcast)
+      else if (sourceKind == LLVMPointerTypeKind && targetKind == LLVMPointerTypeKind)
+         result = LLVMBuildBitCast(builder, source, targetType, "as");
+
+      else
+      {
+         check(1, "unsupported cast from %d to %d", sourceKind, targetKind);
+         result = source;
+      }
+
+      node->token->llvm.elem = result;
+      node->token->llvm.is_loaded = true;
+      break;
+   }
+   // TODO: check if it has to be removed
    case END_BLOC: exit_scoop(); break;
    default:
       todo(1, "handle this case %s", to_string(node->token->type));
@@ -600,7 +659,7 @@ void generate_ir(Node *node)
          generate_ir(params[i]);
 
       // code bloc
-      for (int i = 0; node->token->type != PROTO && i < node->cpos; i++)
+      for (int i = 0; !node->token->is_proto && i < node->cpos; i++)
       {
          Node *child = node->children[i];
          generate_ir(child);
@@ -617,42 +676,81 @@ void generate_ir(Node *node)
    }
    case FCALL:
    {
-      Node *func = get_function(node->token->name);
-      if (!func) return;
-      node->token->Fcall.ptr = func->token;
-      // TODO: I guess declaring params mut be here
-      // node->token->Fcall.args = allocate(node->cpos, sizeof(Token*));
-      // node->token->Fcall.pos = node->cpos;
+      if (strcmp(node->token->name, "stack") == 0)
+      {
+         // node->token->Fcall.args = allocate(node->cpos, sizeof(Token*));
+         // node->token->Fcall.pos = node->cpos;
 
-      func = copy_node(func);
-      // node->token->retType = func->token->retType;
-      // node->token->is_variadic = func->token->is_variadic;
+         node->token->retType = CHARS;
+         node->token->type = STACK;
 
-      // Node *call_args = node;
-      // Node *dec_args = func->left;
+         Node *call_args = node->left;
 
-      // if (check(call_args->cpos != dec_args->cpos && !node->token->is_variadic, "Incompatible number of arguments %s", func->token->name))
-      //    return NULL;
+         // if (check(call_args->cpos != dec_args->cpos && !node->token->is_variadic, "Incompatible number of arguments %s", func->token->name))
+         //    return NULL;
 
-      // for (int i = 0; !found_error && i < call_args->cpos; i++)
-      // {
-      //    Node *carg = call_args->children[i]; // will always be ID
-      //    Token *src = generate_ir(carg);
+         Node *carg = call_args->children[0];
+         generate_ir(carg);
+         Token *src = carg->token;
+         if (check(src->type == ID, "Indeclared variable %s", carg->token->name)) break;
 
+         // Node *call_args = node;
 
-      //    if (check(src->type == ID, "Indeclared variable %s", carg->token->name)) break;
-      //    if (i < dec_args->cpos)
-      //    {
-      //       Node *darg = dec_args->children[i];
-      //       Token *dist = darg->token;
+         // for (int i = 0; !found_error && i < call_args->cpos; i++)
+         // {
+         //    Node *carg = call_args->children[i]; // will always be ID
+         //    Token *src = generate_ir(carg);
+         //    if (check(src->type == ID, "Indeclared variable %s", carg->token->name)) break;
+         //    node->token->Fcall.args[i] = src;
+         //    src->space = node->token->space;
+         // }
+         // inst = new_inst(node->token);
+      }
+      else
+      {
+         Node *func = get_function(node->token->name);
+         if (!func) return;
+         node->token->Fcall.ptr = func->token;
+         // TODO: I guess declaring params mut be here
+         // node->token->Fcall.args = allocate(node->cpos, sizeof(Token*));
+         // node->token->Fcall.pos = node->cpos;
 
-      //       // if (check(!compatible(src, dist), "Incompatible type arg %s", func->token->name)) break;
-      //       src->is_ref = darg->token->is_ref;
-      //       src->has_ref = false;
-      //    }
-      //    node->token->Fcall.args[i] = src;
-      // }
-      free_node(func);
+         func = copy_node(func);
+         // node->token->retType = func->token->retType;
+         // node->token->is_variadic = func->token->is_variadic;
+
+         Node *call_args = node->left;
+         Node *dec_args = func->left;
+
+         // if (check(call_args->cpos != dec_args->cpos && !node->token->is_variadic, "Incompatible number of arguments %s", func->token->name))
+         //    return NULL;
+
+         for (int i = 0; !found_error && call_args && i < call_args->cpos; i++)
+         {
+            Node *carg = call_args->children[i];
+            generate_ir(carg);
+            Token *src = carg->token;
+            if (check(src->type == ID, "Indeclared variable %s", carg->token->name)) break;
+            if (i < dec_args->cpos)
+            {
+               Node *darg = dec_args->children[i];
+               Token *dist = darg->token;
+
+               // if (check(!compatible(src, dist), "Incompatible type arg %s", func->token->name)) break;
+               src->is_ref = darg->token->is_ref;
+               src->has_ref = false;
+            }
+            // node->token->Fcall.args[i] = src;
+         }
+         free_node(func);
+      }
+
+      break;
+   }
+   case AS:
+   {
+      generate_ir(node->left);
+      node->token->retType = node->right->token->type;
       break;
    }
    case RETURN:
