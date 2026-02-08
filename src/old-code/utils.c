@@ -707,7 +707,7 @@ Inst *new_inst(Token *token)
    Inst *new = allocate(1, sizeof(Inst));
    new->token = token;
 
-   if (includes(token->type, DATA_TYPES) && token->name) token->ir_reg = ++ir_reg;
+   if (includes(token->type, DATA_TYPES, 0) && token->name) token->ir_reg = ++ir_reg;
    switch (token->type)
    {
    case STRUCT_CALL:

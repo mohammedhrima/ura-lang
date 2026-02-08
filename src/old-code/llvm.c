@@ -158,7 +158,7 @@ ValueRef llvm_get_ref(Token *token)
    if (token->is_ref && token->has_ref)
       return dereference_if_ref(token);
 
-   if (token->name && !token->is_param && !includes(token->type, FCALL, AND, OR, AS, STACK))
+   if (token->name && !token->is_param && !includes(token->type, FCALL, AND, OR, AS, STACK, 0))
       return load_variable(token);
 
    return token->llvm.elem;
