@@ -145,6 +145,7 @@ struct LLVM
    bool is_loaded;
    Value array_size;
    Value elem;
+   Block bloc;
    TypeRef funcType;
    Value va_count;
    Value error_flag;
