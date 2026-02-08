@@ -115,21 +115,50 @@ int debug_(char *conv, ...)
    return res;
 }
 
+int pspace(int space)
+{
+   int res = 0;
+   for (int i = 0; i < space; i++) res += debug(" ");
+   return res;
+}
+
 int pnode(Node *node, char *side, int space)
 {
    if (!node) return 0;
    int res = 0;
-   for (int i = 0; i < space; i++) res += debug(" ");
+   pspace(space);
    if (side) res += debug("%s", side);
 
    res += debug("%k\n", node->token);
-   if (includes(node->token->type, FDEC, FCALL))
+   if (includes(node->token->type, FDEC, FCALL, 0))
    {
-      for (int i = 0; i < space; i++) res += debug(" ");
-      debug("params:\n");
-      todo(node->left == NULL, "left null");
-      for (int i = 0; i < node->left->cpos; i++)
-         pnode(node->left->children[i], NULL, space + TAB);
+      if (node->left)
+      {
+         pspace(space);
+         res += debug("params:\n");
+         for (int i = 0; i < node->left->cpos; i++)
+            res += pnode(node->left->children[i], NULL, space + TAB);
+      }
+      pspace(space);
+      res += debug("children: \n");
+      for (int i = 0; i < node->cpos; i++)
+         res += pnode(node->children[i], NULL, space + TAB);
+      return res;
+   }
+   else if (includes(node->token->type, IF, ELIF, ELSE, 0))
+   {
+      if (node->token->type != ELSE)
+      {
+         pspace(space);
+         res += debug("condition:\n");
+         res += pnode(node->left, NULL, space + TAB);
+      }
+      pspace(space);
+      res += debug("children: \n");
+      for (int i = 0; i < node->cpos; i++)
+         res += pnode(node->children[i], NULL, space + TAB);
+      if (node->right) pnode(node->right, NULL, node->right->token->space);
+      return res;
    }
    else
    {
@@ -141,7 +170,7 @@ int pnode(Node *node, char *side, int space)
       for (int i = 0; i < space; i++) res += debug(" ");
       res += debug("children: \n");
       for (int i = 0; i < node->cpos; i++)
-         pnode(node->children[i], NULL, space + TAB);
+         res += pnode(node->children[i], NULL, space + TAB);
    }
    return res;
 }
@@ -237,7 +266,8 @@ char *to_string(Type type)
       [ID] = "ID", [CHAR] = "CHAR", [CHARS] = "CHARS", [VOID] = "VOID",
       [INT] = "INT", [BOOL] = "BOOL", [FDEC] = "FDEC",
       [FCALL] = "FCALL", [END] = "END", [LPAR] = "LPAR", [RPAR] = "RPAR",
-      [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE", [WHILE] = "WHILE",
+      [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE", [END_IF] = "END_IF",
+      [WHILE] = "WHILE",
       [RETURN] = "RETURN", [ADD] = "ADD",
       [SUB] = "SUB", [MUL] = "MUL", [DIV] = "DIV", [ASSIGN] = "ASSIGN",
       [ADD_ASSIGN] = "ADD_ASSIGN", [SUB_ASSIGN] = "SUB_ASSIGN",

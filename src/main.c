@@ -453,25 +453,25 @@ Node *if_node(Node *node)
    enter_scoop(node);
 
    node->left = expr_node();
-   node->left->token->space = node->token->space;
-   node->right = new_node(NULL);
+   node->left->token->space = node->token->space + TAB;
 
    check(!find(DOTS, 0), "Expected : after if condition\n", "");
 
    // code bloc
    while (within(node->token->space)) add_child(node, expr_node());
+
+   Node *curr = node;
    while (includes(tokens[exe_pos]->type, ELSE, ELIF, 0) && within(node->token->space - TAB))
    {
       Token *token = find(ELSE, ELIF, 0);
-      Node *curr = add_child(node->right, new_node(token));
-      token->space -= TAB;
+
+      curr->right = new_node(token);
+      curr = curr->right;
+
       if (token->type == ELIF)
       {
          enter_scoop(curr);
          curr->left = expr_node();
-         Node *bloc = add_child(node->right, new_node(copy_token(token)));
-         setName(bloc->token, "bloc");
-         bloc->token->space -= TAB;
          check(!find(DOTS, 0), "expected : after elif condition");
          while (within(token->space)) add_child(curr, expr_node());
          exit_scoop();
@@ -485,11 +485,6 @@ Node *if_node(Node *node)
          break;
       }
    }
-
-   Node *end = add_child(node->right, new_node(new_token(END_IF, 0)));
-   end->token->space = node->right->token->space;
-   setName(end->token, "end_if");
-
    exit_scoop();
    return node;
 }
@@ -609,8 +604,6 @@ void parse()
    enter_scoop(global);
    while (!find(END, 0) && !found_error)
       add_child(global, expr_node());
-
-
 #endif
 }
 
