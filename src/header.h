@@ -152,6 +152,11 @@ struct LLVM
    Value error_value;
    Block catch;
    Block lpad;
+
+   // statements/loops
+   Block start;
+   Block then;
+   Block end;
 };
 
 struct ExcepCTX

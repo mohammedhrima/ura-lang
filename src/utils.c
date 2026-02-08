@@ -267,7 +267,7 @@ char *to_string(Type type)
       [INT] = "INT", [BOOL] = "BOOL", [FDEC] = "FDEC",
       [FCALL] = "FCALL", [END] = "END", [LPAR] = "LPAR", [RPAR] = "RPAR",
       [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE", [END_IF] = "END_IF",
-      [WHILE] = "WHILE",
+      [WHILE] = "WHILE", [BREAK] = "BREAK", [CONTINUE] = "CONTINUE",
       [RETURN] = "RETURN", [ADD] = "ADD",
       [SUB] = "SUB", [MUL] = "MUL", [DIV] = "DIV", [ASSIGN] = "ASSIGN",
       [ADD_ASSIGN] = "ADD_ASSIGN", [SUB_ASSIGN] = "SUB_ASSIGN",
