@@ -1,57 +1,57 @@
-func int foo():
+fn foo() int:
     return 10
 
-func int bar():
+fn bar() int:
     return 20
 
-func int zero():
+fn zero() int:
     return 0
 
 main():
-    int a = 10
-    int b = 20
+    a: int = 10
+    b: int = 20
 
     // Test: variable != variable
-    bool t1 = a != b
+    t1: bool = a != b
 
     // Test: variable != value
-    bool t2 = a != 10
+    t2: bool = a != 10
 
     // Test: variable != function
-    bool t3 = a != foo()
+    t3: bool = a != foo()
 
     // Test: value != variable
-    bool t4 = 20 != b
+    t4: bool = 20 != b
 
     // Test: value != value
-    bool t5 = 10 != 10
+    t5: bool = 10 != 10
 
     // Test: value != function
-    bool t6 = 10 != bar()
+    t6: bool = 10 != bar()
 
     // Test: function != variable
-    bool t7 = foo() != a
+    t7: bool = foo() != a
 
     // Test: function != value
-    bool t8 = bar() != 20
+    t8: bool = bar() != 20
 
     // Test: function != function
-    bool t9 = foo() != bar()
+    t9: bool = foo() != bar()
 
     // ------------------------------------
     // Same tests, but using negation syntax
     // ------------------------------------
 
-    bool n1 = not (a == b)
-    bool n2 = not (a == 10)
-    bool n3 = not (a == foo())
-    bool n4 = not (20 == b)
-    bool n5 = not (10 == 10)
-    bool n6 = not (10 == bar())
-    bool n7 = not (foo() == a)
-    bool n8 = not (bar() == 20)
-    bool n9 = not (foo() == bar())
+    n1: bool = not (a == b)
+    n2: bool = not (a == 10)
+    n3: bool = not (a == foo())
+    n4: bool = not (20 == b)
+    n5: bool = not (10 == 10)
+    n6: bool = not (10 == bar())
+    n7: bool = not (foo() == a)
+    n8: bool = not (bar() == 20)
+    n9: bool = not (foo() == bar())
 
     // Optional: using 'is' if your language supports it
-    bool t10 = not (a is b)
-    bool t11 = not (foo() is bar())
+    t10: bool = not (a is b)
+    t11: bool = not (foo() is bar())

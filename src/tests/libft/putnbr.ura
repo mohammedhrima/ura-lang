@@ -1,15 +1,15 @@
-protoFunc pointer calloc(int len, int size)
-protoFunc int write(int fd, pointer ptr, int len)
-protoFunc int free(pointer ptr)
+proto fn calloc(int len, int size) pointer
+proto fn write(int fd, pointer ptr, int len) int
+proto fn free(pointer ptr) int
 
-func int putchar(char c):
-    chars str = calloc(2, 1)
+fn putchar(c: char) int:
+    str: chars = calloc(2, 1)
     str[0] = c
     write(1, str, 1)
     free(str)
     return 0
 
-func void putnbr(int n):
+fn putnbr(n: int) void:
     if n < 0:
         putchar('-')
         n = -n
@@ -18,22 +18,22 @@ func void putnbr(int n):
         putchar('0')
         return
     
-    chars digits = "0123456789"
+    digits: chars = "0123456789"
     
     // Count digits
-    int temp = n
-    int digit_count = 0
+    temp: int = n
+    digit_count: int = 0
     while temp > 0:
         digit_count += 1
         temp = temp / 10
     
     // Allocate buffer for digits
-    chars buffer = calloc(digit_count + 1, 1)
+    buffer: chars = calloc(digit_count + 1, 1)
     
     // Build number string from right to left in buffer
-    int i = digit_count - 1
+    i: int = digit_count - 1
     while i >= 0:
-        int digit = n % 10
+        digit: int = n % 10
         buffer[i] = digits[digit]
         n = n / 10
         i -= 1
