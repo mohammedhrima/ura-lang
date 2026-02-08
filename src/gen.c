@@ -145,6 +145,31 @@ void build_literal(Type type, Token *token)
    }
 }
 
+void _branch(Block bloc)
+{
+   if (!llvm_get_basic_block_terminator(llvm_get_insert_block()))
+      llvm_build_br(NULL, bloc);
+}
+
+void _position_at(Block bloc)
+{
+   llvm_position_builder_at_end(bloc);
+}
+
+void _condition(Value cond, Block isTrue, Block isFalse)
+{
+   llvm_build_cond_br(NULL, cond, isTrue, isFalse);
+}
+
+Block _append_block(char *name)
+{
+   char block_name[256];
+   static int block_counter;
+   snprintf(block_name, sizeof(block_name), "%s.%d", name, block_counter++);
+   return llvm_append_basic_block_in_context(llvm_get_basic_block_parent(llvm_get_insert_block()),
+          block_name);
+}
+
 void generate_asm(Node *node)
 {
    // debug("Processing: %k\n", inst->token);
@@ -324,6 +349,72 @@ void generate_asm(Node *node)
       exit_scoop();
       break;
    }
+   case IF:
+   {
+      pnode(node, NULL, 0);
+      enter_scoop(node);
+
+      Block if_start = _append_block("if.start");
+      Block end = _append_block("if.end");
+
+      _branch(if_start);
+
+      Node *curr = node;
+
+      while (curr && includes(curr->token->type, IF, ELIF, ELSE, 0))
+      {
+         if (includes(curr->token->type, IF, ELIF, 0))
+         {
+            Block start;
+            Block then;
+            Block next;
+
+            if (curr->token->type == IF)
+            {
+               start = if_start; 
+               then = _append_block("if.then");
+            }
+            else
+            {
+               start = curr->token->llvm.bloc;  
+               then = _append_block("elif.then");
+            }
+
+            // if condition is false, jump to next or to end
+            if (curr->right)
+            {
+               if (curr->right->token->type == ELSE) next = _append_block("if.else");
+               else next = _append_block("elif.start");
+            }
+            else next = end;
+
+            _position_at(start);
+            generate_asm(curr->left); // condition
+            load_if_neccessary(curr->left); // TODO: to be tested
+            _condition(curr->left->token->llvm.elem, then, next);
+
+            _position_at(then);
+            for (int i = 0; i < curr->cpos; i++)
+               generate_asm(curr->children[i]);
+            _branch(end);
+
+            // store start block for next iteration
+            if (curr->right && includes(curr->right->token->type, ELIF, ELSE, 0))
+               curr->right->token->llvm.bloc = next;
+         }
+         else if (curr->token->type == ELSE)
+         {
+            _position_at(curr->token->llvm.bloc);
+            for (int i = 0; i < curr->cpos; i++)
+               generate_asm(curr->children[i]);
+            _branch(end);
+         }
+         curr = curr->right;
+      }
+      _position_at(end);
+      exit_scoop();
+      break;
+   }
    case RETURN:
    {
       generate_asm(left);
@@ -408,6 +499,31 @@ void generate_ir(Node *node)
       }
       break;
    }
+   case IF:
+   {
+      enter_scoop(node);
+      debug("\n"SPLIT);
+      pnode(node, NULL, 0);
+      debug("\n"SPLIT);
+      Node *curr = node;
+      while (curr && includes(curr->token->type, IF, ELIF, ELSE, 0))
+      {
+         if (includes(curr->token->type, IF, ELIF, 0))
+         {
+            debug(">>>> %k\n", curr->token);
+            check(curr->left == NULL, "error");
+            generate_ir(curr->left); // condition
+         }
+         // code bloc
+         for (int i = 0; i < curr->cpos; i++)
+            generate_ir(curr->children[i]);
+         curr = curr->right;
+      }
+
+      exit_scoop();
+      break;
+   }
+   case END_IF: break;
    case FDEC:
    {
       node->token->ir_reg++;
@@ -441,6 +557,7 @@ void generate_ir(Node *node)
       Node *func = get_function(node->token->name);
       if (!func) return;
       node->token->Fcall.ptr = func->token;
+      // TODO: I guess declaring params mut be here
       // node->token->Fcall.args = allocate(node->cpos, sizeof(Token*));
       // node->token->Fcall.pos = node->cpos;
 

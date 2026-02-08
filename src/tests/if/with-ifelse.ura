@@ -1,10 +1,8 @@
 
-func bool check():
-    return True
 
 main():
     int a = 1
-    if check():
+    if a == 1:
         return 1
     elif a == 2:
         return 2
