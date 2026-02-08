@@ -1,46 +1,46 @@
-func bool foo():
+fn foo() bool:
     return True
 
-func bool bar():
+fn bar() bool:
     return False
 
 main():
-    bool a = True
-    bool b = False
+    a: bool = True
+    b: bool = False
     
     // Test: variable || variable
-    bool t1 = a || b
+    t1: bool = a || b
     
     // Test: variable || value
-    bool t2 = b || True
+    t2: bool = b || True
     
     // Test: variable || function
-    bool t3 = b || foo()
+    t3: bool = b || foo()
     
     // Test: value || variable
-    bool t4 = False || a
+    t4: bool = False || a
     
     // Test: value || value
-    bool t5 = False || False
+    t5: bool = False || False
     
     // Test: value || function
-    bool t6 = False || bar()
+    t6: bool = False || bar()
     
     // Test: function || variable
-    bool t7 = bar() || a
+    t7: bool = bar() || a
     
     // Test: function || value
-    bool t8 = foo() || False
+    t8: bool = foo() || False
     
     // Test: function || function
-    bool t9 = bar() || foo()
+    t9: bool = bar() || foo()
     
     // Test using 'or' keyword
-    bool t10 = a or b
-    bool t11 = False or True
-    bool t12 = bar() or foo()
+    t10: bool = a or b
+    t11: bool = False or True
+    t12: bool = bar() or foo()
     
     // Short-circuit evaluation tests
     // These should not call bar() if first operand is True
-    bool t13 = True || bar()
-    bool t14 = a or foo()
+    t13: bool = True || bar()
+    t14: bool = a or foo()

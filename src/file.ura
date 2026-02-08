@@ -1,9 +1,6 @@
 
 
 main():
-    int a = 1
-    while a < 10:
-        a = a + 1
-        if a == 2: break
+    str: chars = stack(2) as chars
+    a: int = str as int
     return a
-    

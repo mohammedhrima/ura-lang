@@ -11,26 +11,26 @@ define i32 @main() {
 entry:
   %a = alloca i32, align 4
   store i32 1, ptr %a, align 4
-  br label %if.start.0
+  br label %if.start
 
-if.start.0:                                       ; preds = %entry
+if.start:                                         ; preds = %entry
   %check = call i1 @check()
-  br i1 %check, label %if.then.2, label %elif.start.3
+  br i1 %check, label %if.then, label %elif.start
 
-if.end.1:                                         ; No predecessors!
+if.end:                                           ; No predecessors!
   ret i32 0
 
-if.then.2:                                        ; preds = %if.start.0
+if.then:                                          ; preds = %if.start
   ret i32 1
 
-elif.start.3:                                     ; preds = %if.start.0
+elif.start:                                       ; preds = %if.start
   %a1 = load i32, ptr %a, align 4
   %EQUAL = icmp eq i32 %a1, 2
-  br i1 %EQUAL, label %elif.then.4, label %if.else.5
+  br i1 %EQUAL, label %elif.then, label %if.else
 
-elif.then.4:                                      ; preds = %elif.start.3
+elif.then:                                        ; preds = %elif.start
   ret i32 2
 
-if.else.5:                                        ; preds = %elif.start.3
+if.else:                                          ; preds = %elif.start
   ret i32 3
 }

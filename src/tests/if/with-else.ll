@@ -6,19 +6,19 @@ define i32 @main() {
 entry:
   %a = alloca i32, align 4
   store i32 1, ptr %a, align 4
-  br label %if.start.0
+  br label %if.start
 
-if.start.0:                                       ; preds = %entry
+if.start:                                         ; preds = %entry
   %a1 = load i32, ptr %a, align 4
   %EQUAL = icmp eq i32 %a1, 1
-  br i1 %EQUAL, label %if.then.2, label %if.else.3
+  br i1 %EQUAL, label %if.then, label %if.else
 
-if.end.1:                                         ; No predecessors!
+if.end:                                           ; No predecessors!
   ret i32 0
 
-if.then.2:                                        ; preds = %if.start.0
+if.then:                                          ; preds = %if.start
   ret i32 5
 
-if.else.3:                                        ; preds = %if.start.0
+if.else:                                          ; preds = %if.start
   ret i32 2
 }

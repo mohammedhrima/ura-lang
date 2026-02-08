@@ -1,36 +1,36 @@
-func int foo():
+fn foo() int:
     return 5
 
-func int bar():
+fn bar() int:
     return 10
 
 main():
-    int a = 15
-    int b = 8
+    a: int = 15
+    b: int = 8
     
     // Test: variable > variable
-    bool t1 = a > b
+    t1: bool = a > b
     
     // Test: variable > value
-    bool t2 = a > 10
+    t2: bool = a > 10
     
     // Test: variable > function
-    bool t3 = a > foo()
+    t3: bool = a > foo()
     
     // Test: value > variable
-    bool t4 = 20 > b
+    t4: bool = 20 > b
     
     // Test: value > value
-    bool t5 = 12 > 6
+    t5: bool = 12 > 6
     
     // Test: value > function
-    bool t6 = 15 > bar()
+    t6: bool = 15 > bar()
     
     // Test: function > variable
-    bool t7 = bar() > b
+    t7: bool = bar() > b
     
     // Test: function > value
-    bool t8 = bar() > 5
+    t8: bool = bar() > 5
     
     // Test: function > function
-    bool t9 = bar() > foo()
+    t9: bool = bar() > foo()

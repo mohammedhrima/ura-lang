@@ -135,6 +135,8 @@ enum Type
    // Functions
    FDEC, FCALL, PROTO,
 
+   // Built ins
+   STACK,
 
    END,
 };
@@ -192,6 +194,7 @@ struct Token
    bool is_param;
    bool is_cast;
    bool is_variadic;
+   bool is_proto;
 
    char *filename;
    int line;
@@ -395,8 +398,9 @@ Value llvm_build_and(Token *token, Value lhs, Value rhs, char *name);
 Value llvm_build_or(Token *token, Value lhs, Value rhs, char *name);
 Value llvm_build_ret(Token *token, Value val);
 Value llvm_build_ret_void(Token *token);
-Value llvm_build_br(Token *token, Block dest);
-Value llvm_build_cond_br(Token *token, Value cond, Block then_block, Block else_block);
+void _branch(Block bloc);
+void _condition(Value cond, Block then_block, Block else_block);
+Block _append_block(char *name);
 Value llvm_build_call2(Token *token, TypeRef ty, Value fn, Value *args, unsigned num_args,
                        char *name);
 Value llvm_build_global_string_ptr(Token *token, const char *str, char *name);
@@ -436,7 +440,7 @@ Block llvm_append_basic_block_in_context(Value func, char *name);
 Block llvm_get_insert_block();
 Value llvm_get_basic_block_parent(Block block);
 Block llvm_get_entry_basic_block(Value func);
-void llvm_position_builder_at_end(Block block);
+void _position_at(Block block);
 Value llvm_get_basic_block_terminator(Block block);
 
 // Type queries

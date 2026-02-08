@@ -1,36 +1,36 @@
-func int foo():
+fn foo() int:
     return 5
 
-func int bar():
+fn bar() int:
     return 10
 
 main():
-    int a = 6
-    int b = 4
+    a: int = 6
+    b: int = 4
     
     // Test: variable * variable
-    int t1 = a * b
+    t1: int = a * b
     
     // Test: variable * value
-    int t2 = a * 3
+    t2: int = a * 3
     
     // Test: variable * function
-    int t3 = a * foo()
+    t3: int = a * foo()
     
     // Test: value * variable
-    int t4 = 7 * b
+    t4: int = 7 * b
     
     // Test: value * value
-    int t5 = 8 * 9
+    t5: int = 8 * 9
     
     // Test: value * function
-    int t6 = 2 * bar()
+    t6: int = 2 * bar()
     
     // Test: function * variable
-    int t7 = foo() * a
+    t7: int = foo() * a
     
     // Test: function * value
-    int t8 = bar() * 5
+    t8: int = bar() * 5
     
     // Test: function * function
-    int t9 = foo() * bar()
+    t9: int = foo() * bar()
