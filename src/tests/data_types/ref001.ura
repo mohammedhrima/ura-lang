@@ -1,6 +1,6 @@
 
 main():
-    int a = 1
-    ref int b = a
+    a: int = 1
+    b: ref int = a
     b = 2
     return a

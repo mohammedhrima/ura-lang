@@ -1,7 +1,7 @@
 
-protoFunc int puts(chars str)
+proto fn puts(str: chars) int
 
-func bool isdigit(char c): 
+fn isdigit(c: char) bool:
     return c >= '0' and c <= '9'
 
 main():
