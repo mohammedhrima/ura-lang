@@ -4,6 +4,9 @@
 void _alloca(Token *token)
 {
    TypeRef type = get_llvm_type(token);
+   if (token->is_ref) {
+      type = LLVMPointerType(type, 0);
+   }
    token->llvm.elem = llvm_build_alloca(token, type, token->name);
 }
 
@@ -68,6 +71,7 @@ TypeRef get_llvm_type(Token *token)
 {
    Type type = token->type;
    if (token->retType) type = token->retType;
+   // if (token->is_ref) return i64;
    TypeRef res[END] = {[INT] = i32, [CHAR] = i8, [CHARS] = p8,
                        [BOOL] = i1, [VOID] = vd,
                        //[VA_LIST] = p8,
@@ -88,7 +92,7 @@ void load_if_neccessary(Node *node)
    if (includes(token->type, MATH_TYPE, 0))
       return;
 
-   if (token->llvm.is_loaded || includes(token->type, CHARS, /*STACK,*/ 0))
+   if (token->llvm.is_loaded || includes(token->type, CHARS, STACK, 0))
       return;
 
    if (token->name && token->type != FCALL)
@@ -167,7 +171,6 @@ Value allocate_stack(Value size, TypeRef elementType, char *name)
 void generate_asm(Node *node)
 {
    // debug("Processing: %k\n", inst->token);
-   Value ret = NULL;
    Node *left = node->left;
    Node *right = node->right;
 
@@ -180,13 +183,17 @@ void generate_asm(Node *node)
       if (node->token->is_dec)
       {
          _alloca(node->token);
+         if (node->token->is_ref)
+         {
+            TypeRef type = get_llvm_type(node->token);
+            Value null = LLVMConstNull(LLVMPointerType(type, 0));
+            llvm_build_store(node->token, null, node->token->llvm.elem);
+         }
          node->token->is_dec = false;
          return;
       }
       else if (node->token->name)
-      {
          return;
-      }
       build_literal(node->token->type, node->token);
       break;
    }
@@ -194,14 +201,47 @@ void generate_asm(Node *node)
    {
       generate_asm(left);
       generate_asm(right);
+
       if (!left->token->is_ref && !right->token->is_ref)
       {
          load_if_neccessary(right);
          llvm_build_store(node->token, right->token->llvm.elem, left->token->llvm.elem);
-         right->token->llvm.elem = left->token->llvm.elem;
+      }
+      else if (left->token->is_ref && !right->token->is_ref)
+      {
+         llvm_build_store(node->token, right->token->llvm.elem, left->token->llvm.elem);
+      }
+      else if (left->token->is_ref && right->token->is_ref)
+      {
+         TypeRef type = get_llvm_type(right->token);
+         Value ptr = llvm_build_load2(right->token, LLVMPointerType(type, 0),
+                                      right->token->llvm.elem, "ptr");
+
+         Value line_val = LLVMConstInt(i32, right->token->line, 0);
+         Value file_str = llvm_build_global_string_ptr_raw(
+                             right->token->filename ? right->token->filename : "unknown", "file");
+
+         Value checked = LLVMBuildCall2(builder, llvm_global_get_value_type(nullCheckFunc),
+         nullCheckFunc, (Value[]) {ptr, line_val, file_str}, 3, "");
+
+         llvm_build_store(node->token, checked, left->token->llvm.elem);
       }
       else
-         check(1, "handle this case");
+      {
+         TypeRef type = get_llvm_type(right->token);
+         Value ptr = llvm_build_load2(right->token, LLVMPointerType(type, 0),
+                                      right->token->llvm.elem, "ptr");
+
+         Value line_val = LLVMConstInt(i32, right->token->line, 0);
+         Value file_str = llvm_build_global_string_ptr_raw(
+                             right->token->filename ? right->token->filename : "unknown", "file");
+
+         Value checked = LLVMBuildCall2(builder, llvm_global_get_value_type(nullCheckFunc),
+         nullCheckFunc, (Value[]) {ptr, line_val, file_str}, 3, "");
+
+         Value val = llvm_build_load2(right->token, type, checked, "val");
+         llvm_build_store(node->token, val, left->token->llvm.elem);
+      }
       break;
    }
    case NOT:
@@ -545,6 +585,112 @@ void generate_asm(Node *node)
       node->token->llvm.is_loaded = true;
       break;
    }
+   case ACCESS:
+   {
+
+      bool enable_bounds_check = false;
+      generate_asm(node->left);
+      generate_asm(node->right);
+
+      load_if_neccessary(node->left);
+      load_if_neccessary(node->right);
+
+      Token *left = node->left->token;
+      Token *right = node->right->token;
+      Token *curr = node->token;
+
+      Value leftValue = left->llvm.elem;
+      Value rightRef = right->llvm.elem;
+
+      TypeRef element_type;
+      if (left->type == CHARS) {
+         element_type = i8;
+         curr->retType = CHAR;
+      } else {
+         element_type = get_llvm_type(left);
+         curr->retType = left->type;
+      }
+
+      // Add bounds checking if enabled
+      if (enable_bounds_check) {
+         // We need to track array sizes - for now we'll use a conservative approach
+         // For CHARS (strings), we can use strlen at runtime
+         // For STACK arrays, we need to store the size
+
+         Value size_val = NULL;
+
+         if (left->type == CHARS) {
+            // For strings, we need to get the length
+            // First check if it's a string literal or a variable
+            if (left->name && !left->llvm.array_size) {
+               // It's a variable - we need strlen
+               Value strlen_func = llvm_get_named_function("strlen");
+               if (!strlen_func) {
+                  TypeRef strlen_type = llvm_function_type(i64, (TypeRef[]) {p8}, 1, false);
+                  strlen_func = llvm_add_function("strlen", strlen_type);
+               }
+               Value strlen_result = llvm_build_call2(NULL,
+                                                      llvm_global_get_value_type(strlen_func), strlen_func,
+               (Value[]) {leftValue}, 1, "strlen");
+               size_val = llvm_build_trunc(NULL, strlen_result, i32, "size");
+            }
+            else if (left->llvm.array_size)
+            {
+               size_val = left->llvm.array_size;
+            }
+            else
+            {
+               // String literal - we know the size at compile time
+               // This is handled in _chars function
+               size_val = llvm_const_int(i32, strlen(left->Chars.value), 0);
+            }
+         } else if (left->type == STACK) {
+            // For STACK arrays, we should have stored the size
+            // For now, use a placeholder - you'll need to enhance this
+            size_val = llvm_const_int(i32, 1000000, 0); // Conservative large value
+         }
+
+         if (size_val) {
+            // Get bounds check function
+            Value bounds_check = llvm_get_named_function("__bounds_check");
+
+            // Create filename string
+            static Value filename_str = NULL;
+
+            if (!filename_str) {
+               char filename[256] = {0};
+
+               if (getcwd(filename, sizeof(filename)) != NULL) {
+                  size_t len = strlen(filename);
+
+                  snprintf(
+                     filename + len,
+                     sizeof(filename) - len,
+                     "/%s",
+                     "input_file"   // actual filename
+                  );
+
+                  filename_str = llvm_build_global_string_ptr_raw(
+                                    filename,
+                                    "filename"
+                                 );
+               }
+            }
+
+
+            // Call bounds check: __bounds_check(index, size, line, filename)
+            Value line_val = llvm_const_int(i32, curr->line, 0);
+            llvm_build_call2(NULL, llvm_global_get_value_type(bounds_check), bounds_check,
+            (Value[]) {rightRef, size_val, line_val, filename_str}, 4, "");
+         }
+      }
+
+      Value indices[] = { rightRef };
+      Value gep = llvm_build_gep2(curr, element_type, leftValue, indices, 1, "ACCESS");
+      curr->llvm.elem = gep;
+
+      break;
+   }
    // TODO: check if it has to be removed
    case END_BLOC: exit_scoop(); break;
    default:
@@ -553,10 +699,41 @@ void generate_asm(Node *node)
    }
 }
 
+bool validate_ref_assignment(Token *left, Token *right)
+{
+   if (!left->is_ref && !right->is_ref) return true;
+   if (left->is_ref && !right->is_ref) return true;
+
+   if (left->is_ref && right->is_ref)
+   {
+      if (!right->has_ref)
+      {
+         fprintf(stderr, RED "Error:" RESET " Cannot assign uninitialized reference '%s' to '%s'\n",
+                 right->name, left->name);
+         fprintf(stderr, "  at %s:%d\n", right->filename, right->line);
+         return false;
+      }
+      return true;
+   }
+
+   if (!left->is_ref && right->is_ref)
+   {
+      if (!right->has_ref)
+      {
+         fprintf(stderr, RED "Error:" RESET " Cannot use uninitialized reference '%s'\n",
+                 right->name);
+         fprintf(stderr, "  at %s:%d\n", right->filename, right->line);
+         return false;
+      }
+      return true;
+   }
+
+   return false;
+}
+
 void generate_ir(Node *node)
 {
    if (found_error) return;
-   Node *curr = node;
    Node *left = node->left;
    Node *right = node->right;
    switch (node->token->type)
@@ -570,9 +747,8 @@ void generate_ir(Node *node)
    case INT: case BOOL: case CHAR: case STRUCT_CALL:
    case FLOAT: case LONG: case CHARS: case PTR: case VOID:
    {
-      node->token->ir_reg++;
       if (node->token->is_dec) new_variable(node->token);
-      node->token->retType = node->token->type;
+      // node->token->retType = node->token->type;
       break;
    }
    case ASSIGN:
@@ -580,7 +756,14 @@ void generate_ir(Node *node)
       // TODO: check compatibility
       generate_ir(left);
       generate_ir(right);
-      node->token->ir_reg = left->token->ir_reg;
+      check(!validate_ref_assignment(left->token, right->token), "");
+
+      if (left->token->is_ref)
+      {
+         if (right->token->is_ref) left->token->has_ref = right->token->has_ref;
+         else left->token->has_ref = true;
+      }
+
       node->token->retType = left->token->retType;
       break;
    }
@@ -648,13 +831,11 @@ void generate_ir(Node *node)
    }
    case FDEC:
    {
-      node->token->ir_reg++;
       new_function(node);
       enter_scoop(node);
 
       // parameters
       Node **params = (node->left ? node->left->children : NULL);
-      Token *token = node->token;
       for (int i = 0; params && i < node->left->cpos && !found_error; i++)
          generate_ir(params[i]);
 
@@ -734,7 +915,6 @@ void generate_ir(Node *node)
             if (i < dec_args->cpos)
             {
                Node *darg = dec_args->children[i];
-               Token *dist = darg->token;
 
                // if (check(!compatible(src, dist), "Incompatible type arg %s", func->token->name)) break;
                src->is_ref = darg->token->is_ref;
@@ -753,9 +933,23 @@ void generate_ir(Node *node)
       node->token->retType = node->right->token->type;
       break;
    }
+   case ACCESS:
+   {
+      generate_ir(node->left);
+      generate_ir(node->right);
+      Type retType = 0;
+      switch (node->left->token->type)
+      {
+      case CHARS: retType = CHAR; break;
+      default:
+         check(1, "handle this case %s", to_string(node->left->token->type));
+         break;
+      }
+      node->token->retType = retType;
+      break;
+   }
    case RETURN:
    {
-      node->token->ir_reg++;
       generate_ir(node->left);
       node->token->retType = node->left->token->type;
       break;
