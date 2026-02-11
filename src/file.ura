@@ -1,6 +1,6 @@
-
-
 main():
-    str: chars = stack(2) as chars
-    a: int = str as int
-    return a
+    a: int = 13
+    b: ref int
+    if (b == 13):
+        b = a
+    return b
