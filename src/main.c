@@ -50,7 +50,7 @@ void tokenize(char *filename)
    };
 
    int space = 0;
-   int line = 0;
+   int line = 1;
    bool new_line = true;
 
    if (!add_file(filename)) return;
@@ -234,7 +234,7 @@ Node *func_call(Node *node)
    while (!found_error && !(arg = find(RPAR, END, 0)))
    {
       Node *curr = expr_node();
-      curr->token->space = token->space;
+      // curr->token->space = token->space;
       add_child(node->left, curr);
       find(COMA, 0);
    }
@@ -375,17 +375,22 @@ Node *symbol(Token *token)
 {
    Node *node;
    Token *st_dec = NULL;
+   // value example: "hello", 1, 'c'
    if (token->type != ID && !token->is_dec) return new_node(token);
+   // int, char, chars, etc...
    else if (token->is_dec)
    {
       check(1, "unxpected token %s", to_string(token->type));
-      return new_node(token); // added so the program doesn't segvault
+      return new_node(new_token(SYNTAX_ERROR, 0)); // added so the program doesn't segvault
    }
+   // variable declaration
    else if (token->type == ID && find(DOTS, 0))
    {
+      bool is_ref = find(REF, 0) != NULL;
       Token *tmp = find(DATA_TYPES, 0);
       check(!tmp, "Expected data type after [%s]\n", token->name);
       setName(tmp, token->name);
+      tmp->is_ref = is_ref;
       return new_node(tmp);
    }
    else if (token->type == ID && find(LPAR, 0))
@@ -402,8 +407,7 @@ Node *symbol(Token *token)
       token->is_dec = true;
 
       Token *tmp = find(ID, 0);
-      check(!tmp, "Expected variable name after [%s] symbol\n",
-            to_string(token->type));
+      check(!tmp, "Expected variable name after [%s] symbol\n", to_string(token->type));
       setName(token, tmp->name);
       return new_node(token);
    }
@@ -463,7 +467,6 @@ Node *if_node(Node *node)
    enter_scoop(node);
 
    node->left = expr_node();
-   node->left->token->space = node->token->space + TAB;
 
    check(!find(DOTS, 0), "Expected : after if condition\n", "");
 
@@ -507,7 +510,7 @@ Node *while_node(Node *node)
    enter_scoop(node);
 
    node->left = expr_node();
-   node->left->token->space = node->token->space;
+   // node->left->token->space = node->token->space;
    check(!find(DOTS, 0), "Expected : after if condition\n", "");
 
    // code bloc
@@ -527,7 +530,7 @@ Node *cast_node()
       node = new_node(token);
       Token *to = find(DATA_TYPES, 0);
       if (check(to == NULL || !to->is_dec, "expected data type after to"))
-         return NULL;
+         return new_node(syntax_error());
       to->is_dec = false;
       // TODO: check that is exists
       node->right = new_node(to);
@@ -607,8 +610,8 @@ Node *prime_node()
       return node;
    }
    else if ((token = find(BREAK, CONTINUE, 0))) return new_node(token);
-   else check(1, "Unexpected token has type %s\n", to_string(tokens[exe_pos]->type));
-   return new_node(tokens[exe_pos]);
+   check(1, "Unexpected token has type %s\n", to_string(tokens[exe_pos]->type));
+   return new_node(syntax_error());
 }
 
 
@@ -651,6 +654,7 @@ void code_gen(char *filename)
 #endif
 }
 
+
 void compile(char *filename)
 {
    tokenize(filename);
@@ -662,13 +666,13 @@ void compile(char *filename)
    debug(GREEN BOLD SPLIT RESET);
    debug(GREEN BOLD"PRINT AST:\n" RESET);
    for (int i = 0; !found_error && i < global->cpos; i++)
-      pnode(global->children[i], NULL, 0);
+      pnode(global->children[i], "");
 
    build_ir();
    debug(GREEN BOLD SPLIT RESET);
    debug(GREEN BOLD"PRINT IR:\n" RESET);
    for (int i = 0; !found_error && i < global->cpos; i++)
-      pnode(global->children[i], NULL, 0);
+      pnode(global->children[i], "");
 
    optimize_ir();
    code_gen(filename);

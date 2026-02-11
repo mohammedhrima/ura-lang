@@ -1,0 +1,6 @@
+main():
+    a: int = 13
+    b: ref int = a
+    c: int 
+    c = b
+    return c
