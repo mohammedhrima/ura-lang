@@ -138,6 +138,7 @@ enum Type
    // Built ins
    STACK,
 
+   SYNTAX_ERROR,
    END,
 };
 
@@ -182,13 +183,16 @@ struct Token
    int space;
    bool remove;
 
-   int ir_reg;
    int used;
    int pos;
 
    bool is_cond;
-   bool is_ref;
+
+   // TODO: to be fixed later, has_ref
+   // must depends on scoop position
    bool has_ref;
+   bool is_ref;
+
    bool is_dec;
    bool is_arg;
    bool is_param;
@@ -309,6 +313,7 @@ void add_attribute(Token *obj, Token *attr);
 Node* add_child(Node *node, Node *child);
 void add_variable(Node *bloc, Token *token);
 void add_struct(Node *bloc, Token *token);
+Token *syntax_error();
 
 // ----------------------------------------------------------------------------
 // Code Generation
@@ -368,12 +373,13 @@ void *allocate_func(int line, int len, int size);
 char *strjoin(char *str0, char *str1, char *str2);
 Type getRetType(Node *node);
 char* resolve_path(char* path);
+Value create_null_check_function();
 
 // ----------------------------------------------------------------------------
 // Logs
 // ----------------------------------------------------------------------------
 int debug_(char *conv, ...);
-int pnode(Node *node, char *side, int space);
+int pnode(Node *node, char *indent);
 int ptoken(Token *token);
 void print_ast(Node *head);
 void print_ir();
@@ -474,4 +480,4 @@ Value llvm_build_not(Token *token);
 Value llvm_const_null(TypeRef ty);
 TypeRef get_llvm_type(Token *token);
 
-
+void adjust_node(Node *node, int space);
