@@ -272,6 +272,7 @@ extern Builder builder;
 extern TypeRef vd, f32, i1, i8, i16, i32, i64, p8, p32;
 extern File asm_fd;
 
+extern bool enable_bounds_check;
 extern Value boundsCheckFunc;
 extern Value nullCheckFunc;
 extern Value vaStartFunc;
@@ -313,7 +314,8 @@ void add_attribute(Token *obj, Token *attr);
 Node* add_child(Node *node, Node *child);
 void add_variable(Node *bloc, Token *token);
 void add_struct(Node *bloc, Token *token);
-Token *syntax_error();
+Token *syntax_error_token();
+Node *syntax_error_node();
 
 // ----------------------------------------------------------------------------
 // Code Generation
@@ -480,4 +482,5 @@ Value llvm_build_not(Token *token);
 Value llvm_const_null(TypeRef ty);
 TypeRef get_llvm_type(Token *token);
 
-void adjust_node(Node *node, int space);
+Value check_null(Node *node);
+

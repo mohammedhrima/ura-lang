@@ -26,28 +26,28 @@ if:                                               ; preds = %entry
 
 end_if:                                           ; preds = %if, %entry
   %n5 = load i32, ptr %n, align 4
-  %MO_EQUAL = icmp sge i32 %n5, 97
+  %GE = icmp sge i32 %n5, 97
   %n6 = load i32, ptr %n, align 4
-  %LE_EQUAL = icmp sle i32 %n6, 122
-  %AND = and i1 %MO_EQUAL, %LE_EQUAL
+  %LE = icmp sle i32 %n6, 122
+  %AND = and i1 %GE, %LE
   %n7 = load i32, ptr %n, align 4
-  %MO_EQUAL8 = icmp sge i32 %n7, 65
+  %GE8 = icmp sge i32 %n7, 65
   %n9 = load i32, ptr %n, align 4
-  %LE_EQUAL10 = icmp sle i32 %n9, 90
-  %AND11 = and i1 %MO_EQUAL8, %LE_EQUAL10
+  %LE10 = icmp sle i32 %n9, 90
+  %AND11 = and i1 %GE8, %LE10
   %OR12 = or i1 %AND, %AND11
   %n13 = load i32, ptr %n, align 4
-  %MO_EQUAL14 = icmp sge i32 %n13, 48
+  %GE14 = icmp sge i32 %n13, 48
   %n15 = load i32, ptr %n, align 4
-  %LE_EQUAL16 = icmp sle i32 %n15, 57
-  %AND17 = and i1 %MO_EQUAL14, %LE_EQUAL16
+  %LE16 = icmp sle i32 %n15, 57
+  %AND17 = and i1 %GE14, %LE16
   %OR18 = or i1 %OR12, %AND17
   %n19 = load i32, ptr %n, align 4
-  %EQUAL = icmp eq i32 %n19, 32
-  %OR20 = or i1 %OR18, %EQUAL
+  %EQ = icmp eq i32 %n19, 32
+  %OR20 = or i1 %OR18, %EQ
   %n21 = load i32, ptr %n, align 4
-  %EQUAL22 = icmp eq i32 %n21, 0
-  %OR23 = or i1 %OR20, %EQUAL22
+  %EQ22 = icmp eq i32 %n21, 0
+  %OR23 = or i1 %OR20, %EQ22
   br i1 %OR23, label %if24, label %end_if25
 
 if24:                                             ; preds = %end_if
@@ -70,8 +70,8 @@ entry:
   %i = alloca i32, align 4
   store i32 0, ptr %i, align 4
   %n4 = load i32, ptr %n3, align 4
-  %EQUAL = icmp eq i32 %n4, 0
-  br i1 %EQUAL, label %if, label %end_if
+  %EQ = icmp eq i32 %n4, 0
+  br i1 %EQ, label %if, label %end_if
 
 if:                                               ; preds = %entry
   ret i32 0
@@ -92,8 +92,8 @@ while:                                            ; preds = %while_bloc, %end_if
   %ACCESS10 = getelementptr i8, ptr %right8, i32 %idx9
   %left11 = load i8, ptr %ACCESS, align 1
   %right12 = load i8, ptr %ACCESS10, align 1
-  %EQUAL13 = icmp eq i8 %left11, %right12
-  %AND = and i1 %LESS, %EQUAL13
+  %EQ13 = icmp eq i8 %left11, %right12
+  %AND = and i1 %LESS, %EQ13
   %left14 = load ptr, ptr %left1, align 8
   %idx15 = load i32, ptr %i, align 4
   %ACCESS16 = getelementptr i8, ptr %left14, i32 %idx15
@@ -111,8 +111,8 @@ while_bloc:                                       ; preds = %while
 end_while:                                        ; preds = %while
   %i20 = load i32, ptr %i, align 4
   %n21 = load i32, ptr %n3, align 4
-  %EQUAL22 = icmp eq i32 %i20, %n21
-  br i1 %EQUAL22, label %if23, label %end_if24
+  %EQ22 = icmp eq i32 %i20, %n21
+  br i1 %EQ22, label %if23, label %end_if24
 
 if23:                                             ; preds = %end_while
   ret i32 0

@@ -29,6 +29,8 @@ Value nullCheckFunc;
 Value vaStartFunc;
 Value vaEndFunc;
 
+bool enable_bounds_check = false;
+
 // PARSING
 void tokenize(char *filename)
 {
@@ -79,7 +81,7 @@ void tokenize(char *filename)
             if (input[i] == '\n') line++;
             i++;
          }
-         check(input[i + 1] && strncmp(input + i, "*/", 2), "expected '*/'\n");
+         check(input[i + 1] && strncmp(input + i, "*/", 2), "expected '*/'");
          i += 2;
          continue;
       }
@@ -158,7 +160,7 @@ void tokenize(char *filename)
          }
       }
       if (found) continue;
-      check(1, "Syntax error <%c>\n", c);
+      check(1, "Syntax error <%c>", c);
    }
    if (!calling_use) new_token(END, -1);
    free(input);
@@ -249,7 +251,7 @@ Node *func_dec(Node *node)
    //    + children     : code block
    Token *fname = find(ID, 0);
    if (check(!fname, "expected identifier after fn declaration"))
-      return node;
+      return syntax_error_node();
 
    enter_scoop(node);
    check(!find(LPAR, 0), "expected ( after function declaration");
@@ -268,8 +270,10 @@ Node *func_dec(Node *node)
       else
       {
          Token *name = find(ID, 0);
-         if (check(!name, "expected identifier in function argument %s", fname->name)) break;
-         if (check(!find(DOTS, 0), "expected : after function argument")) break;
+         if (check(!name, "expected identifier in function argument %s", fname->name))
+            return syntax_error_node();
+         // if (check(!find(DOTS, 0), "expected : after function argument"))
+         //    return syntax_error_node();
 
          bool is_ref = find(REF, 0) != NULL;
          Token* data_type = find(DATA_TYPES, ID, 0);
@@ -381,14 +385,16 @@ Node *symbol(Token *token)
    else if (token->is_dec)
    {
       check(1, "unxpected token %s", to_string(token->type));
-      return new_node(new_token(SYNTAX_ERROR, 0)); // added so the program doesn't segvault
+      // added so the program doesn't segvault
+      return syntax_error_node();
    }
    // variable declaration
-   else if (token->type == ID && find(DOTS, 0))
+   else if (token->type == ID && includes(tokens[exe_pos]->type, DATA_TYPES, REF, 0))
    {
       bool is_ref = find(REF, 0) != NULL;
       Token *tmp = find(DATA_TYPES, 0);
-      check(!tmp, "Expected data type after [%s]\n", token->name);
+      if (check(!tmp, "Expected data type after [%s]", token->name))
+         return syntax_error_node();
       setName(tmp, token->name);
       tmp->is_ref = is_ref;
       return new_node(tmp);
@@ -407,7 +413,7 @@ Node *symbol(Token *token)
       token->is_dec = true;
 
       Token *tmp = find(ID, 0);
-      check(!tmp, "Expected variable name after [%s] symbol\n", to_string(token->type));
+      check(!tmp, "Expected variable name after [%s] symbol", to_string(token->type));
       setName(token, tmp->name);
       return new_node(token);
    }
@@ -416,8 +422,8 @@ Node *symbol(Token *token)
       node = new_node(copy_token(token));
       node->token->type = ACCESS;
       Node *index = prime_node();
-      check(!index || !index->token, "expected index after left bracket\n");
-      check(!find(RBRA, 0), "expected right bracket\n");
+      check(!index || !index->token, "expected index after left bracket");
+      check(!find(RBRA, 0), "expected right bracket");
       node->left = new_node(token);
       node->right = index;
       return node;
@@ -427,7 +433,7 @@ Node *symbol(Token *token)
 
 Node *struct_def(Node *node)
 {
-   todo("handle this case", "");
+   todo(1, "handle this case");
    return node;
 #if 0
    // Struct def Layout:
@@ -468,7 +474,7 @@ Node *if_node(Node *node)
 
    node->left = expr_node();
 
-   check(!find(DOTS, 0), "Expected : after if condition\n", "");
+   check(!find(DOTS, 0), "Expected : after if condition");
 
    // code bloc
    while (within(node->token->space)) add_child(node, expr_node());
@@ -511,7 +517,7 @@ Node *while_node(Node *node)
 
    node->left = expr_node();
    // node->left->token->space = node->token->space;
-   check(!find(DOTS, 0), "Expected : after if condition\n", "");
+   check(!find(DOTS, 0), "Expected : after if condition");
 
    // code bloc
    while (within(node->token->space)) add_child(node, expr_node());
@@ -530,7 +536,7 @@ Node *cast_node()
       node = new_node(token);
       Token *to = find(DATA_TYPES, 0);
       if (check(to == NULL || !to->is_dec, "expected data type after to"))
-         return new_node(syntax_error());
+         return syntax_error_node();
       to->is_dec = false;
       // TODO: check that is exists
       node->right = new_node(to);
@@ -550,7 +556,7 @@ Node *prime_node()
    {
       node = new_node(token);
       Token *tk_type = find(DATA_TYPES, 0);
-      check(!tk_type, "Expected data type after TYPEOF\n");
+      check(!tk_type, "Expected data type after TYPEOF");
       node->token->type = CHARS;
       node->token->retType = CHARS;
       node->token->Chars.value = strdup(to_string(tk_type->type));
@@ -606,12 +612,12 @@ Node *prime_node()
    else if ((token = find(LPAR, 0)))
    {
       if (tokens[exe_pos]->type != RPAR) node = expr_node();
-      check(!find(RPAR, 0), "expected right par");
+      check(!find(RPAR, 0), "expected right )");
       return node;
    }
    else if ((token = find(BREAK, CONTINUE, 0))) return new_node(token);
-   check(1, "Unexpected token has type %s\n", to_string(tokens[exe_pos]->type));
-   return new_node(syntax_error());
+   check(1, "Unexpected token has type %s", to_string(tokens[exe_pos]->type));
+   return syntax_error_node();
 }
 
 

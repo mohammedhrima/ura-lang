@@ -1,4 +1,4 @@
 
 main():
-    a: bool = True
-    b: bool = !a
+    a bool = True
+    b bool = !a

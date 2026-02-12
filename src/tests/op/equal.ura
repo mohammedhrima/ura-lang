@@ -8,45 +8,45 @@ fn zero() int:
     return 0
 
 main():
-    a: int = 10
-    b: int = 20
+    a int = 10
+    b int = 20
 
     // Test: variable == variable
-    t1: bool = a == b
+    t1 bool = a == b
 
     // Test: variable == value
-    t2: bool = a == 10
+    t2 bool = a == 10
 
     // Test: variable == function
-    t3: bool = a == foo()
+    t3 bool = a == foo()
 
     // Test: value == variable
-    t4: bool = 20 == b
+    t4 bool = 20 == b
 
     // Test: value == value
-    t5: bool = 10 == 10
+    t5 bool = 10 == 10
 
     // Test: value == function
-    t6: bool = 10 == bar()
+    t6 bool = 10 == bar()
 
     // Test: function == variable
-    t7: bool = foo() == a
+    t7 bool = foo() == a
 
     // Test: function == value
-    t8: bool = bar() == 20
+    t8 bool = bar() == 20
 
     // Test: function == function
-    t9: bool = foo() == bar()
+    t9 bool = foo() == bar()
 
     // More function return comparisons
-    t10: bool = zero() == 0
-    t11: bool = zero() == foo()
-    t12: bool = foo() == foo()
+    t10 bool = zero() == 0
+    t11 bool = zero() == foo()
+    t12 bool = foo() == foo()
 
     // If your language allows 'is' keyword
-    t13: bool = a is b
-    t14: bool = foo() is bar()
+    t13 bool = a is b
+    t14 bool = foo() is bar()
 
     // Short-circuit? (not relevant for ==, but checking eval order)
     // Should evaluate both sides
-    t15: bool = foo() == bar()
+    t15 bool = foo() == bar()

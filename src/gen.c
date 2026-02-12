@@ -79,7 +79,7 @@ TypeRef get_llvm_type(Token *token)
                        //[CATCH] = i32,
                       };
 
-   check(!res[type], "handle this case [%s]\n", to_string(type));
+   check(!res[type], "handle this case [%s]", to_string(type));
    return res[type];
 }
 
@@ -145,7 +145,7 @@ void build_literal(Type type, Token *token)
    case BOOL:  _bool(token); break;
    case CHAR:  _char(token); break;
    case CHARS: _chars(token); break;
-   default:    check(1, "handle this case [%s]\n", to_string(type)); break;
+   default:    check(1, "handle this case [%s]", to_string(type)); break;
    }
 }
 
@@ -174,7 +174,7 @@ void generate_asm(Node *node)
    Node *left = node->left;
    Node *right = node->right;
 
-   if (check(node->token->llvm.is_set, "already set\n"))
+   if (check(node->token->llvm.is_set, "already set"))
       return;
    switch (node->token->type)
    {
@@ -213,33 +213,14 @@ void generate_asm(Node *node)
       }
       else if (left->token->is_ref && right->token->is_ref)
       {
-         TypeRef type = get_llvm_type(right->token);
-         Value ptr = llvm_build_load2(right->token, LLVMPointerType(type, 0),
-                                      right->token->llvm.elem, "ptr");
-
-         Value line_val = LLVMConstInt(i32, right->token->line, 0);
-         Value file_str = llvm_build_global_string_ptr_raw(
-                             right->token->filename ? right->token->filename : "unknown", "file");
-
-         Value checked = LLVMBuildCall2(builder, llvm_global_get_value_type(nullCheckFunc),
-         nullCheckFunc, (Value[]) {ptr, line_val, file_str}, 3, "");
-
-         llvm_build_store(node->token, checked, left->token->llvm.elem);
+         Value val = enable_bounds_check ? check_null(right) : right->token->llvm.elem;
+         llvm_build_store(node->token, val, left->token->llvm.elem);
       }
       else
       {
          TypeRef type = get_llvm_type(right->token);
-         Value ptr = llvm_build_load2(right->token, LLVMPointerType(type, 0),
-                                      right->token->llvm.elem, "ptr");
-
-         Value line_val = LLVMConstInt(i32, right->token->line, 0);
-         Value file_str = llvm_build_global_string_ptr_raw(
-                             right->token->filename ? right->token->filename : "unknown", "file");
-
-         Value checked = LLVMBuildCall2(builder, llvm_global_get_value_type(nullCheckFunc),
-         nullCheckFunc, (Value[]) {ptr, line_val, file_str}, 3, "");
-
-         Value val = llvm_build_load2(right->token, type, checked, "val");
+         Value val = enable_bounds_check ? check_null(right) : right->token->llvm.elem;
+         val = llvm_build_load2(right->token, type, val, "val");
          llvm_build_store(node->token, val, left->token->llvm.elem);
       }
       break;
@@ -588,7 +569,7 @@ void generate_asm(Node *node)
    case ACCESS:
    {
 
-      bool enable_bounds_check = false;
+      // bool enable_bounds_check = false;
       generate_asm(node->left);
       generate_asm(node->right);
 

@@ -1,6 +1,8 @@
+
+fn isalpha(c char) bool: return c >= 'a' and c <= 'z'
+fn isdigit(c char) bool: return c >= '1' and c <= '9'
+fn islanum(c char) bool: return isalpha(c) or isdigit(c)
+
 main():
-    a: int = 13
-    b: ref int
-    if (b == 13):
-        b = a
-    return b
+    if islanum('1'): return 11  
+    else: return 12

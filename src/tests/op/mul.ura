@@ -5,32 +5,32 @@ fn bar() int:
     return 10
 
 main():
-    a: int = 6
-    b: int = 4
+    a int = 6
+    b int = 4
     
     // Test: variable * variable
-    t1: int = a * b
+    t1 int = a * b
     
     // Test: variable * value
-    t2: int = a * 3
+    t2 int = a * 3
     
     // Test: variable * function
-    t3: int = a * foo()
+    t3 int = a * foo()
     
     // Test: value * variable
-    t4: int = 7 * b
+    t4 int = 7 * b
     
     // Test: value * value
-    t5: int = 8 * 9
+    t5 int = 8 * 9
     
     // Test: value * function
-    t6: int = 2 * bar()
+    t6 int = 2 * bar()
     
     // Test: function * variable
-    t7: int = foo() * a
+    t7 int = foo() * a
     
     // Test: function * value
-    t8: int = bar() * 5
+    t8 int = bar() * 5
     
     // Test: function * function
-    t9: int = foo() * bar()
+    t9 int = foo() * bar()
