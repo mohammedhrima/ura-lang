@@ -5,32 +5,32 @@ fn bar() int:
     return 10
 
 main():
-    a: int = 8
-    b: int = 12
+    a int = 8
+    b int = 12
     
     // Test: variable < variable
-    t1: bool = a < b
+    t1 bool = a < b
     
     // Test: variable < value
-    t2: bool = a < 10
+    t2 bool = a < 10
     
     // Test: variable < function
-    t3: bool = a < foo()
+    t3 bool = a < foo()
     
     // Test: value < variable
-    t4: bool = 5 < b
+    t4 bool = 5 < b
     
     // Test: value < value
-    t5: bool = 3 < 7
+    t5 bool = 3 < 7
     
     // Test: value < function
-    t6: bool = 4 < bar()
+    t6 bool = 4 < bar()
     
     // Test: function < variable
-    t7: bool = foo() < b
+    t7 bool = foo() < b
     
     // Test: function < value
-    t8: bool = bar() < 15
+    t8 bool = bar() < 15
     
     // Test: function < function
-    t9: bool = foo() < bar()
+    t9 bool = foo() < bar()

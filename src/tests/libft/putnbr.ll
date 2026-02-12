@@ -45,8 +45,8 @@ if:                                               ; preds = %entry
 
 end_if:                                           ; preds = %if, %entry
   %n4 = load i32, ptr %n1, align 4
-  %EQUAL = icmp eq i32 %n4, 0
-  br i1 %EQUAL, label %if5, label %end_if6
+  %EQ = icmp eq i32 %n4, 0
+  br i1 %EQ, label %if5, label %end_if6
 
 if5:                                              ; preds = %end_if
   %putchar7 = call i32 @putchar(i8 48)
@@ -91,8 +91,8 @@ end_while:                                        ; preds = %while
 
 while15:                                          ; preds = %while_bloc16, %end_while
   %i18 = load i32, ptr %i, align 4
-  %MO_EQUAL = icmp sge i32 %i18, 0
-  br i1 %MO_EQUAL, label %while_bloc16, label %end_while17
+  %GE = icmp sge i32 %i18, 0
+  br i1 %GE, label %while_bloc16, label %end_while17
 
 while_bloc16:                                     ; preds = %while15
   %digit = alloca i32, align 4
