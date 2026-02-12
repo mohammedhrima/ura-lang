@@ -25,8 +25,8 @@ while.end:                                        ; preds = %if.then, %while.sta
 
 if.start:                                         ; preds = %while.then
   %a3 = load i32, ptr %a, align 4
-  %EQUAL = icmp eq i32 %a3, 2
-  br i1 %EQUAL, label %if.then, label %if.end
+  %EQ = icmp eq i32 %a3, 2
+  br i1 %EQ, label %if.then, label %if.end
 
 if.end:                                           ; preds = %if.start
   br label %while.start

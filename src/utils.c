@@ -7,11 +7,10 @@ bool check_error(char *filename, char *funcname, int line, bool cond, char *fmt,
    found_error = true;
    va_list ap;
    va_start(ap, fmt);
-   fprintf(stderr, BOLD RED"ura_error:%s:%s:%d "RESET,
+   fprintf(stderr, BOLD RED"ura_error: %s:%s:%d "RESET,
            filename, funcname, line);
    vfprintf(stderr, fmt, ap);
    fprintf(stderr, "\n");
-   debug("\n");
    va_end(ap);
    return cond;
 }
@@ -105,7 +104,7 @@ int debug_(char *conv, ...)
                check(1, "");
                break;
             }
-            default: todo(1, "invalid format specifier [%c]\n", conv[i]);
+            default: todo(1, "invalid format specifier [%c]", conv[i]);
                break;
             }
          }
@@ -256,7 +255,7 @@ int print_value(Token *token)
    case STRUCT_CALL: return debug("has [%d] attrs ", token->Struct.pos);
    case ADD: case SUB: case NOT_EQUAL: return debug("%t ", token->type); break;
    case VOID: break;
-   default: check(1, "handle this case [%s]\n", to_string(token->type));
+   default: check(1, "handle this case [%s]", to_string(token->type));
    }
    return 0;
 }
@@ -598,7 +597,7 @@ Token *parse_token(char *filename, int line, char *input, int s, int e,  Type ty
       break;
    }
    default:
-      // todo(1 , "implement adding name for this one %s\n", to_string(type));
+      // todo(1 , "implement adding name for this one %s", to_string(type));
       break;
    }
    return new;
@@ -626,11 +625,16 @@ Token *find(Type type, ...)
    return NULL;
 };
 
-Token *syntax_error()
+Token *syntax_error_token()
 {
    static Token *token;
    if (token == NULL) token = new_token(SYNTAX_ERROR, -1);
    return token;
+}
+
+Node *syntax_error_node()
+{
+   return new_node(syntax_error_token());
 }
 
 // AST
@@ -700,7 +704,7 @@ void enter_scoop(Node *node)
 
 void exit_scoop()
 {
-   if (check(scoop_pos < 0, "No active scoop to exit\n")) return;
+   if (check(scoop_pos < 0, "No active scoop to exit")) return;
    Gscoop[scoop_pos] = NULL;
    scoop_pos--;
    if (scoop_pos >= 0) scoop = Gscoop[scoop_pos];
@@ -731,7 +735,7 @@ Token *new_struct(Token *token)
       // debug(GREEN"loop [%d]\n"RESET, i);
       Token *curr = scoop->structs[i];
       check(strcmp(curr->Struct.name, token->Struct.name) == 0,
-            "Redefinition of %s\n", token->Struct.name);
+            "Redefinition of %s", token->Struct.name);
    }
    add_struct(scoop, token);
    return token;
@@ -743,7 +747,7 @@ Token *get_struct(char *name)
    for (int j = scoop_pos; j > 0; j--)
    {
       Node *node = Gscoop[j];
-      todo(node == NULL, RED"Error accessing NULL, %d\n"RESET, j);
+      todo(node == NULL, RED"Error accessing NULL, %d"RESET, j);
       // debug("[%d] scoop [%s] has %d structs\n", j, node->token->name, node->spos);
       for (int i = 0; i < node->spos; i++)
          if (strcmp(node->structs[i]->Struct.name, name) == 0)
@@ -776,7 +780,7 @@ Token *new_variable(Token *token)
    for (int i = 0; i < scoop->vpos; i++)
    {
       Token *curr = scoop->variables[i];
-      check(strcmp(curr->name, token->name) == 0, "Redefinition of %s\n", token->name);
+      check(strcmp(curr->name, token->name) == 0, "Redefinition of %s", token->name);
    }
    add_variable(scoop, token);
    return token;
@@ -792,8 +796,8 @@ Token *get_variable(char *name)
          if (strcmp(scoop->variables[i]->name, name) == 0)
             return scoop->variables[i];
    }
-   check(1, "%s not found\n", name);
-   return syntax_error();
+   check(1, "%s not found", name);
+   return syntax_error_token();
 }
 
 void add_function(Node *bloc, Node *node)
@@ -820,7 +824,7 @@ Node *new_function(Node *node)
    {
       Node *func = scoop->functions[i];
       bool cond = strcmp(func->token->name, node->token->name) == 0;
-      check(cond, "Redefinition of %s\n", node->token->name);
+      check(cond, "Redefinition of %s", node->token->name);
    }
    add_function(scoop, node);
    return node;
@@ -835,8 +839,8 @@ Node *get_function(char *name)
          if (strcmp(scoop->functions[i]->token->name, name) == 0)
             return scoop->functions[i];
    }
-   check(1, "'%s' Not found\n", name);
-   return new_node(syntax_error());
+   check(1, "'%s' Not found", name);
+   return syntax_error_node();
 }
 
 // IR
@@ -917,7 +921,7 @@ void init(char *name)
    LLVMInitializeAllAsmParsers();
    LLVMInitializeAllAsmPrinters();
    LLVMSetTarget(module, LLVMGetDefaultTargetTriple());
-   // nullCheckFunc = create_null_check_function();
+   if (enable_bounds_check) nullCheckFunc = create_null_check_function();
 }
 
 void finalize(char *output)
@@ -934,22 +938,27 @@ void finalize(char *output)
    LLVMContextDispose(context);
 }
 
+Value check_null(Node *node)
+{
+   TypeRef type = get_llvm_type(node->token);
+   Value ptr = llvm_build_load2(node->token, LLVMPointerType(type, 0), node->token->llvm.elem, "ptr");
+   Value line_val = LLVMConstInt(i32, node->token->line, 0);
+   Value file_str = llvm_build_global_string_ptr_raw(node->token->filename ? node->token->filename :
+                    "unknown", "file");
+
+   Value checked = LLVMBuildCall2(builder, llvm_global_get_value_type(nullCheckFunc), nullCheckFunc,
+   (Value[]) {ptr, line_val, file_str}, 3, "");
+   return checked;
+}
+
 void _load(Token *to, Token *from)
 {
    TypeRef type = get_llvm_type(from);
 
    if (from->is_ref)
    {
-      Value ptr = llvm_build_load2(from, LLVMPointerType(type, 0), from->llvm.elem, "ptr");
-
-      Value line_val = LLVMConstInt(i32, from->line, 0);
-      Value file_str = llvm_build_global_string_ptr_raw(
-                          from->filename ? from->filename : "unknown", "file");
-
-      Value checked = LLVMBuildCall2(builder, llvm_global_get_value_type(nullCheckFunc),
-      nullCheckFunc, (Value[]) {ptr, line_val, file_str}, 3, "");
-
-      to->llvm.elem = llvm_build_load2(to, type, checked, from->name);
+      Value value = enable_bounds_check ? check_null(new_node(from)) : from->llvm.elem;
+      to->llvm.elem = llvm_build_load2(to, type, value, from->name);
    }
    else
    {
@@ -1001,7 +1010,7 @@ char* open_file(char *filename)
 void *allocate_func(int line, int len, int size)
 {
    void *res = calloc(len, size);
-   check(!res, "allocate did failed in line %d\n", line);
+   check(!res, "allocate did failed in line %d", line);
    return res;
 }
 
