@@ -7,10 +7,10 @@ entry:
   %c1 = alloca i8, align 1
   store i8 %c, ptr %c1, align 1
   %c2 = load i8, ptr %c1, align 1
-  %MO_EQUAL = icmp sge i8 %c2, 49
+  %GE = icmp sge i8 %c2, 49
   %c3 = load i8, ptr %c1, align 1
-  %LE_EQUAL = icmp sle i8 %c3, 57
-  %AND = and i1 %MO_EQUAL, %LE_EQUAL
+  %LE = icmp sle i8 %c3, 57
+  %AND = and i1 %GE, %LE
   ret i1 %AND
 }
 

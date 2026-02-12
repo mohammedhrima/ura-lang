@@ -25,8 +25,8 @@ if.then:                                          ; preds = %if.start
 
 elif.start:                                       ; preds = %if.start
   %a1 = load i32, ptr %a, align 4
-  %EQUAL = icmp eq i32 %a1, 2
-  br i1 %EQUAL, label %elif.then, label %if.else
+  %EQ = icmp eq i32 %a1, 2
+  br i1 %EQ, label %elif.then, label %if.else
 
 elif.then:                                        ; preds = %elif.start
   ret i32 2
