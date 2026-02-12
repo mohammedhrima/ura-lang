@@ -1,5 +1,5 @@
-fn to_ascii(c: char) int:
-    n: int = c as int
+fn to_ascii(c char) int:
+    n int = c as int
     if n < 0 or n > 127: return -1
     // Check if it's a valid character
     if (n >= 97 and n <= 122) or  // a-z
@@ -9,12 +9,12 @@ fn to_ascii(c: char) int:
         return n
     return -1
 
-fn strcmp(left: chars, right: chars) int:
-    i: int = 0
+fn strcmp(left chars, right chars) int:
+    i int = 0
     while left[i] == right[i] and left[i] != '\0':
         i += 1
     return to_ascii(left[i]) - to_ascii(right[i])
 
 main():
-    len: int = strcmp("b", "a")
+    len int = strcmp("b", "a")
     return len

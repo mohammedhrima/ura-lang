@@ -10,8 +10,8 @@ entry:
 
 if.start:                                         ; preds = %entry
   %a1 = load i32, ptr %a, align 4
-  %EQUAL = icmp eq i32 %a1, 1
-  br i1 %EQUAL, label %if.then, label %if.else
+  %EQ = icmp eq i32 %a1, 1
+  br i1 %EQ, label %if.then, label %if.else
 
 if.end:                                           ; No predecessors!
   ret i32 0

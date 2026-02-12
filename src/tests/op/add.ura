@@ -5,32 +5,32 @@ fn bar() int:
     return 10
 
 main():
-    a: int = 10
-    b: int = 20
+    a int = 10
+    b int = 20
     
     // Test: variable + variable
-    t1: int = a + b
+    t1 int = a + b
     
     // Test: variable + value
-    t2: int = a + 15
+    t2 int = a + 15
     
     // Test: variable + function
-    t3: int = a + foo()
+    t3 int = a + foo()
     
     // Test: value + variable
-    t4: int = 25 + b
+    t4 int = 25 + b
     
     // Test: value + value
-    t5: int = 30 + 40
+    t5 int = 30 + 40
     
     // Test: value + function
-    t6: int = 50 + bar()
+    t6 int = 50 + bar()
     
     // Test: function + variable
-    t7: int = foo() + a
+    t7 int = foo() + a
     
     // Test: function + value
-    t8: int = bar() + 100
+    t8 int = bar() + 100
     
     // Test: function + function
-    t9: int = foo() + bar()
+    t9 int = foo() + bar()

@@ -2,51 +2,56 @@
 source_filename = "/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura"
 target triple = "arm64-apple-darwin25.2.0"
 
-@fmt = private unnamed_addr constant [62 x i8] c"\0A\1B[0;31mRuntime Error: \1B[0mNull pointer dereference at %s:%d\0A\00", align 1
-@file = private unnamed_addr constant [60 x i8] c"/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura\00", align 1
-@file.1 = private unnamed_addr constant [60 x i8] c"/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura\00", align 1
-
-define ptr @__null_check(ptr %0, i32 %1, ptr %2) {
+define i1 @isalpha(i8 %c) {
 entry:
-  %ptrint = ptrtoint ptr %0 to i64
-  %isnull = icmp eq i64 %ptrint, 0
-  br i1 %isnull, label %is_null, label %not_null
-
-is_null:                                          ; preds = %entry
-  %3 = call i32 (ptr, ...) @printf(ptr @fmt, ptr %2, i32 %1)
-  call void @exit(i32 1)
-  unreachable
-
-not_null:                                         ; preds = %entry
-  ret ptr %0
+  %c1 = alloca i8, align 1
+  store i8 %c, ptr %c1, align 1
+  %c2 = load i8, ptr %c1, align 1
+  %GE = icmp sge i8 %c2, 97
+  %c3 = load i8, ptr %c1, align 1
+  %LE = icmp sle i8 %c3, 122
+  %AND = and i1 %GE, %LE
+  ret i1 %AND
 }
 
-declare i32 @printf(ptr, ...)
+define i1 @isdigit(i8 %c) {
+entry:
+  %c1 = alloca i8, align 1
+  store i8 %c, ptr %c1, align 1
+  %c2 = load i8, ptr %c1, align 1
+  %GE = icmp sge i8 %c2, 49
+  %c3 = load i8, ptr %c1, align 1
+  %LE = icmp sle i8 %c3, 57
+  %AND = and i1 %GE, %LE
+  ret i1 %AND
+}
 
-declare void @exit(i32)
+define i1 @islanum(i8 %c) {
+entry:
+  %c1 = alloca i8, align 1
+  store i8 %c, ptr %c1, align 1
+  %c2 = load i8, ptr %c1, align 1
+  %isalpha = call i1 @isalpha(i8 %c2)
+  %c3 = load i8, ptr %c1, align 1
+  %isdigit = call i1 @isdigit(i8 %c3)
+  %OR = or i1 %isalpha, %isdigit
+  ret i1 %OR
+}
 
 define i32 @main() {
 entry:
-  %a = alloca i32, align 4
-  store i32 13, ptr %a, align 4
-  %b = alloca ptr, align 8
-  store ptr null, ptr %b, align 8
   br label %if.start
 
 if.start:                                         ; preds = %entry
-  %ptr = load ptr, ptr %b, align 8
-  %0 = call ptr @__null_check(ptr %ptr, i32 3, ptr @file)
-  %b1 = load i32, ptr %0, align 4
-  %EQ = icmp eq i32 %b1, 13
-  br i1 %EQ, label %if.then, label %if.end
+  %islanum = call i1 @islanum(i8 49)
+  br i1 %islanum, label %if.then, label %if.else
 
-if.end:                                           ; preds = %if.then, %if.start
-  %ptr2 = load ptr, ptr %b, align 8
-  %1 = call ptr @__null_check(ptr %ptr2, i32 3, ptr @file.1)
-  %b3 = load i32, ptr %1, align 4
-  ret i32 %b3
+if.end:                                           ; No predecessors!
+  ret i32 0
 
 if.then:                                          ; preds = %if.start
-  store ptr %a, ptr %b, align 8
-  br label %if.end
+  ret i32 11
+
+if.else:                                          ; preds = %if.start
+  ret i32 12
 }
