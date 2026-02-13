@@ -5,60 +5,6 @@ target triple = "arm64-apple-darwin25.2.0"
 @STR0 = private unnamed_addr constant [4 x i8] c"abd\00", align 1
 @STR1 = private unnamed_addr constant [4 x i8] c"abc\00", align 1
 
-define i32 @to_ascii(i8 %c) {
-entry:
-  %c1 = alloca i8, align 1
-  store i8 %c, ptr %c1, align 1
-  %n = alloca i32, align 4
-  %c2 = load i8, ptr %c1, align 1
-  %cast = sext i8 %c2 to i32
-  store i32 %cast, ptr %n, align 4
-  %n3 = load i32, ptr %n, align 4
-  %LESS = icmp slt i32 %n3, 0
-  %n4 = load i32, ptr %n, align 4
-  %MORE = icmp sgt i32 %n4, 127
-  %OR = or i1 %LESS, %MORE
-  br i1 %OR, label %if, label %end_if
-
-if:                                               ; preds = %entry
-  ret i32 -1
-  br label %end_if
-
-end_if:                                           ; preds = %if, %entry
-  %n5 = load i32, ptr %n, align 4
-  %GE = icmp sge i32 %n5, 97
-  %n6 = load i32, ptr %n, align 4
-  %LE = icmp sle i32 %n6, 122
-  %AND = and i1 %GE, %LE
-  %n7 = load i32, ptr %n, align 4
-  %GE8 = icmp sge i32 %n7, 65
-  %n9 = load i32, ptr %n, align 4
-  %LE10 = icmp sle i32 %n9, 90
-  %AND11 = and i1 %GE8, %LE10
-  %OR12 = or i1 %AND, %AND11
-  %n13 = load i32, ptr %n, align 4
-  %GE14 = icmp sge i32 %n13, 48
-  %n15 = load i32, ptr %n, align 4
-  %LE16 = icmp sle i32 %n15, 57
-  %AND17 = and i1 %GE14, %LE16
-  %OR18 = or i1 %OR12, %AND17
-  %n19 = load i32, ptr %n, align 4
-  %EQ = icmp eq i32 %n19, 32
-  %OR20 = or i1 %OR18, %EQ
-  %n21 = load i32, ptr %n, align 4
-  %EQ22 = icmp eq i32 %n21, 0
-  %OR23 = or i1 %OR20, %EQ22
-  br i1 %OR23, label %if24, label %end_if25
-
-if24:                                             ; preds = %end_if
-  %n26 = load i32, ptr %n, align 4
-  ret i32 %n26
-  br label %end_if25
-
-end_if25:                                         ; preds = %if24, %end_if
-  ret i32 -1
-}
-
 define i32 @strncmp(ptr %left, ptr %right, i32 %n) {
 entry:
   %left1 = alloca ptr, align 8
@@ -69,74 +15,72 @@ entry:
   store i32 %n, ptr %n3, align 4
   %i = alloca i32, align 4
   store i32 0, ptr %i, align 4
+  br label %if.start
+
+if.start:                                         ; preds = %entry
   %n4 = load i32, ptr %n3, align 4
   %EQ = icmp eq i32 %n4, 0
-  br i1 %EQ, label %if, label %end_if
+  br i1 %EQ, label %if.then, label %if.end
 
-if:                                               ; preds = %entry
+if.end:                                           ; preds = %if.start
+  br label %while.start
+
+if.then:                                          ; preds = %if.start
   ret i32 0
-  br label %end_if
 
-end_if:                                           ; preds = %if, %entry
-  br label %while
-
-while:                                            ; preds = %while_bloc, %end_if
+while.start:                                      ; preds = %while.then, %if.end
   %i5 = load i32, ptr %i, align 4
   %n6 = load i32, ptr %n3, align 4
-  %LESS = icmp slt i32 %i5, %n6
+  %LT = icmp slt i32 %i5, %n6
   %left7 = load ptr, ptr %left1, align 8
-  %idx = load i32, ptr %i, align 4
-  %ACCESS = getelementptr i8, ptr %left7, i32 %idx
-  %right8 = load ptr, ptr %right2, align 8
-  %idx9 = load i32, ptr %i, align 4
-  %ACCESS10 = getelementptr i8, ptr %right8, i32 %idx9
-  %left11 = load i8, ptr %ACCESS, align 1
-  %right12 = load i8, ptr %ACCESS10, align 1
-  %EQ13 = icmp eq i8 %left11, %right12
-  %AND = and i1 %LESS, %EQ13
-  %left14 = load ptr, ptr %left1, align 8
-  %idx15 = load i32, ptr %i, align 4
-  %ACCESS16 = getelementptr i8, ptr %left14, i32 %idx15
-  %left17 = load i8, ptr %ACCESS16, align 1
-  %NOT_EQUAL = icmp ne i8 %left17, 0
-  %AND18 = and i1 %AND, %NOT_EQUAL
-  br i1 %AND18, label %while_bloc, label %end_while
+  %i8 = load i32, ptr %i, align 4
+  %ACCESS = getelementptr i8, ptr %left7, i32 %i8
+  %right9 = load ptr, ptr %right2, align 8
+  %i10 = load i32, ptr %i, align 4
+  %ACCESS11 = getelementptr i8, ptr %right9, i32 %i10
+  %left12 = load i8, ptr %ACCESS, align 1
+  %right13 = load i8, ptr %ACCESS11, align 1
+  %EQ14 = icmp eq i8 %left12, %right13
+  %AND = and i1 %LT, %EQ14
+  %left15 = load ptr, ptr %left1, align 8
+  %i16 = load i32, ptr %i, align 4
+  %ACCESS17 = getelementptr i8, ptr %left15, i32 %i16
+  %left18 = load i8, ptr %ACCESS17, align 1
+  %NEQ = icmp ne i8 %left18, 0
+  %AND19 = and i1 %AND, %NEQ
+  br i1 %AND19, label %while.then, label %while.end
 
-while_bloc:                                       ; preds = %while
-  %i19 = load i32, ptr %i, align 4
-  %ADD = add i32 %i19, 1
+while.then:                                       ; preds = %while.start
+  %current = load i32, ptr %i, align 4
+  %ADD = add i32 %current, 1
   store i32 %ADD, ptr %i, align 4
-  br label %while
+  br label %while.start
 
-end_while:                                        ; preds = %while
-  %i20 = load i32, ptr %i, align 4
-  %n21 = load i32, ptr %n3, align 4
-  %EQ22 = icmp eq i32 %i20, %n21
-  br i1 %EQ22, label %if23, label %end_if24
+while.end:                                        ; preds = %while.start
+  br label %if.start20
 
-if23:                                             ; preds = %end_while
-  ret i32 0
-  br label %end_if24
+if.start20:                                       ; preds = %while.end
+  %i23 = load i32, ptr %i, align 4
+  %n24 = load i32, ptr %n3, align 4
+  %EQ25 = icmp eq i32 %i23, %n24
+  br i1 %EQ25, label %if.then22, label %if.end21
 
-end_if24:                                         ; preds = %if23, %end_while
-  %left_val = alloca i32, align 4
-  %left25 = load ptr, ptr %left1, align 8
-  %idx26 = load i32, ptr %i, align 4
-  %ACCESS27 = getelementptr i8, ptr %left25, i32 %idx26
-  %left28 = load i8, ptr %ACCESS27, align 1
-  %to_ascii = call i32 @to_ascii(i8 %left28)
-  store i32 %to_ascii, ptr %left_val, align 4
-  %right_val = alloca i32, align 4
-  %right29 = load ptr, ptr %right2, align 8
-  %idx30 = load i32, ptr %i, align 4
-  %ACCESS31 = getelementptr i8, ptr %right29, i32 %idx30
-  %right32 = load i8, ptr %ACCESS31, align 1
-  %to_ascii33 = call i32 @to_ascii(i8 %right32)
-  store i32 %to_ascii33, ptr %right_val, align 4
-  %left_val34 = load i32, ptr %left_val, align 4
-  %right_val35 = load i32, ptr %right_val, align 4
-  %SUB = sub i32 %left_val34, %right_val35
+if.end21:                                         ; preds = %if.start20
+  %left26 = load ptr, ptr %left1, align 8
+  %i27 = load i32, ptr %i, align 4
+  %ACCESS28 = getelementptr i8, ptr %left26, i32 %i27
+  %left29 = load i8, ptr %ACCESS28, align 1
+  %as = sext i8 %left29 to i32
+  %right30 = load ptr, ptr %right2, align 8
+  %i31 = load i32, ptr %i, align 4
+  %ACCESS32 = getelementptr i8, ptr %right30, i32 %i31
+  %right33 = load i8, ptr %ACCESS32, align 1
+  %as34 = sext i8 %right33 to i32
+  %SUB = sub i32 %as, %as34
   ret i32 %SUB
+
+if.then22:                                        ; preds = %if.start20
+  ret i32 0
 }
 
 define i32 @main() {

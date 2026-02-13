@@ -122,16 +122,20 @@ int pspace(int space)
    return res;
 }
 
-Node **check_limit(Node **node, int count, int *capacity_ptr)
+void** resize_array(void **array, int *size, int pos, int element_size)
 {
-   int capacity = *capacity_ptr;
-   if (count >= capacity) {
-      capacity *= 2;
-      Node **new = realloc(node, capacity * sizeof(Node *));
-      node = new;
+   if (array == NULL) {
+      *size = 10;
+      return allocate(*size, element_size);
    }
-   *capacity_ptr = capacity;
-   return node;
+   if (pos + 5 >= *size) {
+      void **tmp = allocate(*size * 2, element_size);
+      memcpy(tmp, array, (*size) * element_size);
+      free(array);
+      *size *= 2;
+      return tmp;
+   }
+   return array;
 }
 
 int pnode(Node *node, char *indent)
@@ -150,12 +154,12 @@ int pnode(Node *node, char *indent)
 
    if (node->left) children[count++] = node->left;
    if (node->right) {
-      children = check_limit(children, count, &capacity);
+      children = (Node**)resize_array((void**)children, &capacity, count, sizeof(Node *));
       children[count++] = node->right;
    }
 
    for (int i = 0; i < node->cpos; i++) {
-      children = check_limit(children, count, &capacity);
+      children = (Node**)resize_array((void**)children, &capacity, count, sizeof(Node *));
       children[count++] = node->children[i];
    }
 
@@ -209,7 +213,7 @@ int ptoken(Token *token)
    }
    // if (token->ir_reg) res += debug("ir_reg [%d] ", token->ir_reg);
    if (token->is_ref) debug("ref ");
-   if (token->has_ref) debug("has_ref ");
+   // if (token->has_ref) debug("has_ref ");
    if (token->retType) res += debug("ret [%t] ", token->retType);
    return res;
 }
@@ -267,18 +271,18 @@ char *to_string(Type type)
       [ID] = "ID", [CHAR] = "CHAR", [CHARS] = "STR", [VOID] = "VOID",
       [INT] = "INT", [BOOL] = "BOOL", [FDEC] = "FDEC",
       [FCALL] = "CALL", [END] = "END", [LPAR] = "LPAR", [RPAR] = "RPAR",
-      [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE", [END_IF] = "EIF",
-      [WHILE] = "WHIL", [BREAK] = "BRK", [CONTINUE] = "CONT",
+      [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
+      [WHILE] = "WHILE", [BREAK] = "BRK", [CONTINUE] = "CONT",
       [RETURN] = "RET",
-      [ADD] = "PLUS",
-      [SUB] = "MINU", [MUL] = "MULT", [DIV] = "DIV", [ASSIGN] = "ASSIGN",
-      [ADD_ASSIGN] = "PLS=", [SUB_ASSIGN] = "MIN=",
-      [MUL_ASSIGN] = "MUL=", [DIV_ASSIGN] = "DIV=",
-      [MOD_ASSIGN] = "MOD=", [ACCESS] = "ACC",
+      [ADD] = "ADD",
+      [SUB] = "SUB", [MUL] = "MUL", [DIV] = "DIV", [ASSIGN] = "ASSIGN",
+      [ADD_ASSIGN] = "ADD_ASS", [SUB_ASSIGN] = "SUB_ASS",
+      [MUL_ASSIGN] = "MUL_ASS", [DIV_ASSIGN] = "DIV_ASS",
+      [MOD_ASSIGN] = "MOD_ASS", [ACCESS] = "ACC",
       [MOD] = "MOD", [COMA] = "COMA", [REF] = "REF",
       [EQUAL] = "EQ", [NOT_EQUAL] = "NEQ", [LESS] = "LT",
-      [MORE] = "GT", [LESS_EQUAL] = "LE", [NOT] = "NOT",
-      [MORE_EQUAL] = "GE", [AND] = "AND", [OR] = "OR",
+      [GREAT] = "GT", [LESS_EQUAL] = "LE", [NOT] = "NOT",
+      [GREAT_EQUAL] = "GE", [AND] = "AND", [OR] = "OR",
       [DOTS] = "DOTS", //[COLON] = "COLON", [COMMA] = "COMMA",
       [PROTO] = "PROT", [VARIADIC] = "VAR",
       //[VA_LIST] = "VA_LIST",
@@ -302,18 +306,7 @@ char *to_string(Type type)
 
 bool add_file(char *filename)
 {
-   if (used_files == NULL)
-   {
-      used_size = 10;
-      used_files = allocate(used_size, sizeof(char*));
-   }
-   else if (used_pos + 1 == used_size)
-   {
-      char**tmp = allocate((used_size *= 2), sizeof(char*));
-      memcpy(tmp, used_files, used_pos * sizeof(char*));
-      free(used_files);
-      used_files = tmp;
-   }
+   used_files = (char**)resize_array((void**)used_files, &used_size, used_pos, sizeof(char *));
    for (int i = 0; i < used_pos; i++)
    {
       if (strcmp(filename, used_files[i]) == 0)
@@ -325,19 +318,7 @@ bool add_file(char *filename)
 
 void add_token(Token *token)
 {
-   if (tk_len == 0)
-   {
-      tk_len = 10;
-      tokens = allocate(tk_len, sizeof(Token *));
-   }
-   else if (tk_pos + 5 >= tk_len)
-   {
-      Token **tmp = allocate(tk_len * 2, sizeof(Token *));
-      memcpy(tmp, tokens, tk_len * sizeof(Token *));
-      free(tokens);
-      tokens = tmp;
-      tk_len *= 2;
-   }
+   tokens = (Token**)resize_array((void**)tokens, &tk_len, tk_pos, sizeof(Token *));
    tokens[tk_pos++] = token;
 }
 
@@ -625,6 +606,21 @@ Token *find(Type type, ...)
    return NULL;
 };
 
+Token* expect_token(Type type, char *error_msg, ...)
+{
+   Token *token = find(type, 0);
+   if (!token) {
+      va_list args;
+      va_start(args, error_msg);
+      char buffer[256];
+      vsnprintf(buffer, sizeof(buffer), error_msg, args);
+      va_end(args);
+      check(1, "%s", buffer);
+      return syntax_error_token();
+   }
+   return token;
+}
+
 Token *syntax_error_token()
 {
    static Token *token;
@@ -663,19 +659,8 @@ Node *copy_node(Node *node)
 
 Node* add_child(Node *node, Node *child)
 {
-   if (node->clen == 0)
-   {
-      node->clen = 10;
-      node->children = allocate(node->clen, sizeof(Node *));
-   }
-   else if (node->cpos + 1 == node->clen)
-   {
-      Node **tmp = allocate(node->clen * 2, sizeof(Node *));
-      memcpy(tmp, node->children, node->clen * sizeof(Node *));
-      free(node->children);
-      node->children = tmp;
-      node->clen *= 2;
-   }
+   node->children = (Node**)resize_array((void**)node->children, &node->clen, node->cpos,
+                                         sizeof(Node *));
    child->token->space = node->token->space + TAB;
    node->children[node->cpos++] = child;
    return child;
@@ -684,19 +669,7 @@ Node* add_child(Node *node, Node *child)
 void enter_scoop(Node *node)
 {
    // debug(CYAN "Enter Scoop: %k index %d\n" RESET, node->token, scoop_pos + 1);
-   if (Gscoop == NULL)
-   {
-      scoopSize = 10;
-      Gscoop = allocate(scoopSize, sizeof(Node*));
-   }
-   else if (scoop_pos + 1 >= scoopSize)
-   {
-      Node **tmp = allocate(scoopSize * 2, sizeof(Node*));
-      memcpy(tmp, Gscoop, scoop_pos * sizeof(Node*));
-      scoopSize *= 2;
-      free(Gscoop);
-      Gscoop = tmp;
-   }
+   Gscoop = (Node**)resize_array((void**)Gscoop, &scoopSize, scoop_pos, sizeof(Node*));
    scoop_pos++;
    Gscoop[scoop_pos] = node;
    scoop = Gscoop[scoop_pos];
@@ -712,18 +685,8 @@ void exit_scoop()
 
 void add_struct(Node *bloc, Token *token)
 {
-   if (bloc->structs == NULL)
-   {
-      bloc->slen = 10;
-      bloc->structs = allocate(bloc->slen, sizeof(Token *));
-   }
-   else if (bloc->spos + 1 == bloc->slen)
-   {
-      Token **tmp = allocate(bloc->slen *= 2, sizeof(Token *));
-      memcpy(tmp, bloc->structs, bloc->spos * sizeof(Token *));
-      free(bloc->structs);
-      bloc->structs = tmp;
-   }
+   bloc->structs = (Token**)resize_array((void**)bloc->structs, &bloc->slen, bloc->spos,
+                                         sizeof(Token*));
    bloc->structs[bloc->spos++] = token;
 }
 
@@ -758,18 +721,8 @@ Token *get_struct(char *name)
 
 void add_variable(Node *bloc, Token *token)
 {
-   if (bloc->variables == NULL)
-   {
-      bloc->vlen = 10;
-      bloc->variables = allocate(bloc->vlen, sizeof(Token *));
-   }
-   else if (bloc->vpos + 1 == bloc->vlen)
-   {
-      Token **tmp = allocate(bloc->vlen *= 2, sizeof(Token *));
-      memcpy(tmp, bloc->variables, bloc->vpos * sizeof(Token *));
-      free(bloc->variables);
-      bloc->variables = tmp;
-   }
+   bloc->variables = (Token**)resize_array((void**)bloc->variables, &bloc->vlen, bloc->vpos,
+                                           sizeof(Token *));
    bloc->variables[bloc->vpos++] = token;
 }
 
@@ -802,19 +755,8 @@ Token *get_variable(char *name)
 
 void add_function(Node *bloc, Node *node)
 {
-   if (bloc->functions == NULL)
-   {
-      bloc->flen = 10;
-      bloc->functions = allocate(bloc->flen, sizeof(Node *));
-   }
-   else if (bloc->fpos + 1 == bloc->flen)
-   {
-      bloc->flen *= 2;
-      Node **tmp = allocate(bloc->flen, sizeof(Node *));
-      memcpy(tmp, bloc->functions, bloc->fpos * sizeof(Node *));
-      free(bloc->functions);
-      bloc->functions = tmp;
-   }
+   bloc->functions = (Node**)resize_array((void**)bloc->functions, &bloc->flen, bloc->fpos,
+                                          sizeof(Node*));
    bloc->functions[bloc->fpos++] = node;
 }
 
@@ -899,6 +841,47 @@ Value create_null_check_function()
    return func;
 }
 
+Value create_ref_assign_function()
+{
+   TypeRef param_types[] = {p8, p8, i32};
+   TypeRef func_type = llvm_function_type(vd, param_types, 3, 0);
+   Value func = llvm_add_function("ref_assign", func_type);
+   
+   Block entry = llvm_append_basic_block_in_context(func, "entry");
+   Block bind = llvm_append_basic_block_in_context(func, "bind");
+   Block store = llvm_append_basic_block_in_context(func, "store");
+   Block ret = llvm_append_basic_block_in_context(func, "ret");
+   
+   _position_at(entry);
+   
+   Value ref_var = llvm_get_param(func, 0);
+   Value value_addr = llvm_get_param(func, 1);
+   Value size = llvm_get_param(func, 2);
+   
+   Value current_ptr = llvm_build_load2(p8, ref_var, "current");
+   Value is_null = llvm_build_icmp(LLVMIntEQ, current_ptr, llvm_const_null(p8), "is_null");
+   _condition(is_null, bind, store);
+   
+   _position_at(bind);
+   llvm_build_store(value_addr, ref_var);
+   _branch(ret);
+   
+   _position_at(store);
+   Value bound_ptr = llvm_build_load2(p8, ref_var, "bound");
+   
+   // FIXED: Use direct load/store for i32 instead of memcpy
+   Value val_as_i32_ptr = llvm_build_bit_cast(value_addr, LLVMPointerType(i32, 0), "val_i32_ptr");
+   Value val = llvm_build_load2(i32, val_as_i32_ptr, "val");
+   Value dest_as_i32_ptr = llvm_build_bit_cast(bound_ptr, LLVMPointerType(i32, 0), "dest_i32_ptr");
+   llvm_build_store(val, dest_as_i32_ptr);
+   _branch(ret);
+   
+   _position_at(ret);
+   llvm_build_ret_void();
+   
+   return func;
+}
+
 void init(char *name)
 {
    context = LLVMContextCreate();
@@ -921,7 +904,11 @@ void init(char *name)
    LLVMInitializeAllAsmParsers();
    LLVMInitializeAllAsmPrinters();
    LLVMSetTarget(module, LLVMGetDefaultTargetTriple());
-   if (enable_bounds_check) nullCheckFunc = create_null_check_function();
+   if (enable_bounds_check)
+   {
+      nullCheckFunc = create_null_check_function();
+      refAssignFunc = create_ref_assign_function();
+   }
 }
 
 void finalize(char *output)
@@ -938,17 +925,21 @@ void finalize(char *output)
    LLVMContextDispose(context);
 }
 
-Value check_null(Node *node)
+Value check_null(Token *token)
 {
-   TypeRef type = get_llvm_type(node->token);
-   Value ptr = llvm_build_load2(node->token, LLVMPointerType(type, 0), node->token->llvm.elem, "ptr");
-   Value line_val = LLVMConstInt(i32, node->token->line, 0);
-   Value file_str = llvm_build_global_string_ptr_raw(node->token->filename ? node->token->filename :
-                    "unknown", "file");
+   TypeRef type = get_llvm_type(token);
+   Value ptr = llvm_build_load2(LLVMPointerType(type, 0), token->llvm.elem, "ptr");
 
-   Value checked = LLVMBuildCall2(builder, llvm_global_get_value_type(nullCheckFunc), nullCheckFunc,
-   (Value[]) {ptr, line_val, file_str}, 3, "");
-   return checked;
+   if (enable_bounds_check)
+   {
+      Value line_val = LLVMConstInt(i32, token->line, 0);
+      Value file_str = llvm_build_global_string_ptr_raw(token->filename ? token->filename : "unknown",
+                       "file");
+      ptr = LLVMBuildCall2(builder, llvm_global_get_value_type(nullCheckFunc), nullCheckFunc,
+      (Value[]) {ptr, line_val, file_str}, 3, "");
+   }
+
+   return ptr;
 }
 
 void _load(Token *to, Token *from)
@@ -957,12 +948,14 @@ void _load(Token *to, Token *from)
 
    if (from->is_ref)
    {
-      Value value = enable_bounds_check ? check_null(new_node(from)) : from->llvm.elem;
-      to->llvm.elem = llvm_build_load2(to, type, value, from->name);
+      // Reference: load pointer, check null, then load value
+      Value ptr = check_null(from);
+      to->llvm.elem = llvm_build_load2(type, ptr, from->name);
    }
    else
    {
-      to->llvm.elem = llvm_build_load2(to, type, from->llvm.elem, from->name);
+      // Regular variable: just load value
+      to->llvm.elem = llvm_build_load2(type, from->llvm.elem, from->name);
    }
 }
 
