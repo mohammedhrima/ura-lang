@@ -3,6 +3,7 @@ source_filename = "/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura"
 target triple = "arm64-apple-darwin25.2.0"
 
 @fmt = private unnamed_addr constant [62 x i8] c"\0A\1B[0;31mRuntime Error: \1B[0mNull pointer dereference at %s:%d\0A\00", align 1
+@file = private unnamed_addr constant [60 x i8] c"/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura\00", align 1
 
 define ptr @__null_check(ptr %0, i32 %1, ptr %2) {
 entry:
@@ -47,16 +48,39 @@ declare void @llvm.memcpy.p0.p0.i32(ptr noalias nocapture writeonly, ptr noalias
 
 define i32 @main() {
 entry:
-  %a = alloca i32, align 4
-  store i32 10, ptr %a, align 4
-  %b = alloca ptr, align 8
-  store ptr null, ptr %b, align 8
-  store ptr %a, ptr %b, align 8
+  %val1 = alloca i32, align 4
+  store i32 10, ptr %val1, align 4
+  %val2 = alloca i32, align 4
+  store i32 20, ptr %val2, align 4
+  %val3 = alloca i32, align 4
+  store i32 30, ptr %val3, align 4
+  %current = alloca ptr, align 8
+  store ptr null, ptr %current, align 8
+  store ptr %val1, ptr %current, align 8
   %ref_temp = alloca i32, align 4
-  store i32 20, ptr %ref_temp, align 4
-  call void @ref_assign(ptr %b, ptr %ref_temp, i32 4)
-  %a1 = load i32, ptr %a, align 4
-  ret i32 %a1
+  store i32 15, ptr %ref_temp, align 4
+  call void @ref_assign(ptr %current, ptr %ref_temp, i32 4)
+  store ptr %val2, ptr %current, align 8
+  %ref_temp1 = alloca i32, align 4
+  store i32 25, ptr %ref_temp1, align 4
+  call void @ref_assign(ptr %current, ptr %ref_temp1, i32 4)
+  store ptr %val3, ptr %current, align 8
+  %ptr = load ptr, ptr %current, align 8
+  %0 = call ptr @__null_check(ptr %ptr, i32 8, ptr @file)
+  %current2 = load i32, ptr %0, align 4
+  %add = add i32 %current2, 5
+  %op_temp = alloca i32, align 4
+  store i32 %add, ptr %op_temp, align 4
+  call void @ref_assign(ptr %current, ptr %op_temp, i32 4)
+  %sum = alloca i32, align 4
+  %val13 = load i32, ptr %val1, align 4
+  %val24 = load i32, ptr %val2, align 4
+  %ADD = add i32 %val13, %val24
+  %val35 = load i32, ptr %val3, align 4
+  %ADD6 = add i32 %ADD, %val35
+  store i32 %ADD6, ptr %sum, align 4
+  %sum7 = load i32, ptr %sum, align 4
+  ret i32 %sum7
 }
 
 attributes #0 = { nocallback nofree nounwind willreturn memory(argmem: readwrite) }

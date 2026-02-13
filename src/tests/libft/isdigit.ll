@@ -16,17 +16,18 @@ entry:
 
 define i32 @main() {
 entry:
+  br label %if.start
+
+if.start:                                         ; preds = %entry
   %isdigit = call i1 @isdigit(i8 49)
-  br i1 %isdigit, label %if, label %else
+  br i1 %isdigit, label %if.then, label %if.else
 
-if:                                               ; preds = %entry
-  ret i32 11
-  br label %end_if
-
-else:                                             ; preds = %entry
-  ret i32 12
-  br label %end_if
-
-end_if:                                           ; preds = %else, %if
+if.end:                                           ; No predecessors!
   ret i32 0
+
+if.then:                                          ; preds = %if.start
+  ret i32 11
+
+if.else:                                          ; preds = %if.start
+  ret i32 12
 }

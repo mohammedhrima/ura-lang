@@ -1,62 +1,62 @@
 #include "header.h"
 
-Value llvm_build_store(Token *token, Value val, Value ptr)
+Value llvm_build_store(Value val, Value ptr)
 {
    // printf("llvm_build_store: ");
    // ptoken(token);
    return LLVMBuildStore(builder, val, ptr);
 }
 
-Value llvm_build_load2(Token *token, TypeRef ty, Value ptr, char *name)
+Value llvm_build_load2(TypeRef ty, Value ptr, char *name)
 {
    // printf("llvm_build_load2: ");
    // ptoken(token);
    return LLVMBuildLoad2(builder, ty, ptr, name);
 }
 
-Value llvm_build_alloca(Token *token, TypeRef ty, char *name)
+Value llvm_build_alloca(TypeRef ty, char *name)
 {
    // printf("llvm_build_alloca: ");
    // ptoken(token);
    return LLVMBuildAlloca(builder, ty, name);
 }
 
-Value llvm_build_add(Token *token, Value lhs, Value rhs, char *name)
+Value llvm_build_add(Value lhs, Value rhs, char *name)
 {
    // printf("llvm_build_add: ");
    // ptoken(token);
    return LLVMBuildAdd(builder, lhs, rhs, name);
 }
 
-Value llvm_build_sub(Token *token, Value lhs, Value rhs, char *name)
+Value llvm_build_sub(Value lhs, Value rhs, char *name)
 {
    // printf("llvm_build_sub: ");
    // ptoken(token);
    return LLVMBuildSub(builder, lhs, rhs, name);
 }
 
-Value llvm_build_mul(Token *token, Value lhs, Value rhs, char *name)
+Value llvm_build_mul(Value lhs, Value rhs, char *name)
 {
    // printf("llvm_build_mul: ");
    // ptoken(token);
    return LLVMBuildMul(builder, lhs, rhs, name);
 }
 
-Value llvm_build_sdiv(Token *token, Value lhs, Value rhs, char *name)
+Value llvm_build_sdiv(Value lhs, Value rhs, char *name)
 {
    // printf("llvm_build_sdiv: ");
    // ptoken(token);
    return LLVMBuildSDiv(builder, lhs, rhs, name);
 }
 
-Value llvm_build_srem(Token *token, Value lhs, Value rhs, char *name)
+Value llvm_build_srem(Value lhs, Value rhs, char *name)
 {
    // printf("llvm_build_srem: ");
    // ptoken(token);
    return LLVMBuildSRem(builder, lhs, rhs, name);
 }
 
-Value llvm_build_icmp(Token *token, LLVMIntPredicate op, Value lhs, Value rhs,
+Value llvm_build_icmp(LLVMIntPredicate op, Value lhs, Value rhs,
                       char *name)
 {
    // printf("llvm_build_icmp: ");
@@ -64,28 +64,28 @@ Value llvm_build_icmp(Token *token, LLVMIntPredicate op, Value lhs, Value rhs,
    return LLVMBuildICmp(builder, op, lhs, rhs, name);
 }
 
-Value llvm_build_and(Token *token, Value lhs, Value rhs, char *name)
+Value llvm_build_and(Value lhs, Value rhs, char *name)
 {
    // printf("llvm_build_and: ");
    // ptoken(token);
    return LLVMBuildAnd(builder, lhs, rhs, name);
 }
 
-Value llvm_build_or(Token *token, Value lhs, Value rhs, char *name)
+Value llvm_build_or(Value lhs, Value rhs, char *name)
 {
    // printf("llvm_build_or: ");
    // ptoken(token);
    return LLVMBuildOr(builder, lhs, rhs, name);
 }
 
-Value llvm_build_ret(Token *token, Value val)
+Value llvm_build_ret(Value val)
 {
    // printf("llvm_build_ret: ");
    // ptoken(token);
    return LLVMBuildRet(builder, val);
 }
 
-Value llvm_build_ret_void(Token *token)
+Value llvm_build_ret_void()
 {
    // printf("llvm_build_ret_void: ");
    // ptoken(token);
@@ -109,7 +109,7 @@ void _condition(Value cond, Block then_block, Block else_block)
    LLVMBuildCondBr(builder, cond, then_block, else_block);
 }
 
-Value llvm_build_call2(Token *token, TypeRef ty, Value fn, Value *args, unsigned num_args,
+Value llvm_build_call2(TypeRef ty, Value fn, Value *args, unsigned num_args,
                        char *name)
 {
    // printf("llvm_build_call2: ");
@@ -118,7 +118,7 @@ Value llvm_build_call2(Token *token, TypeRef ty, Value fn, Value *args, unsigned
    return LLVMBuildCall2(builder, ty, fn, args, num_args, name);
 }
 
-Value llvm_build_global_string_ptr(Token *token, const char *str, char *name)
+Value llvm_build_global_string_ptr(const char *str, char *name)
 {
    // printf("llvm_build_global_string_ptr: ");
    // printf("name=%s str=\"%s\"\n", name, str);
@@ -126,7 +126,7 @@ Value llvm_build_global_string_ptr(Token *token, const char *str, char *name)
    return LLVMBuildGlobalStringPtr(builder, str, name);
 }
 
-Value llvm_build_gep2(Token *token, TypeRef ty, Value ptr, Value *indices, unsigned num_indices,
+Value llvm_build_gep2(TypeRef ty, Value ptr, Value *indices, unsigned num_indices,
                       char *name)
 {
    // printf("llvm_build_gep2: ");
@@ -135,49 +135,49 @@ Value llvm_build_gep2(Token *token, TypeRef ty, Value ptr, Value *indices, unsig
    return LLVMBuildGEP2(builder, ty, ptr, indices, num_indices, name);
 }
 
-Value llvm_build_bit_cast(Token *token, Value val, TypeRef dest_ty, char *name)
+Value llvm_build_bit_cast(Value val, TypeRef dest_ty, char *name)
 {
    // printf("llvm_build_bit_cast: ");
    // ptoken(token);
    return LLVMBuildBitCast(builder, val, dest_ty, name);
 }
 
-Value llvm_build_sext(Token *token, Value val, TypeRef dest_ty, char *name)
+Value llvm_build_sext(Value val, TypeRef dest_ty, char *name)
 {
    // printf("llvm_build_sext: ");
    // ptoken(token);
    return LLVMBuildSExt(builder, val, dest_ty, name);
 }
 
-Value llvm_build_trunc(Token *token, Value val, TypeRef dest_ty, char *name)
+Value llvm_build_trunc(Value val, TypeRef dest_ty, char *name)
 {
    // printf("llvm_build_trunc: ");
    // ptoken(token);
    return LLVMBuildTrunc(builder, val, dest_ty, name);
 }
 
-Value llvm_build_int_to_ptr(Token *token, Value val, TypeRef dest_ty, char *name)
+Value llvm_build_int_to_ptr(Value val, TypeRef dest_ty, char *name)
 {
    // printf("llvm_build_int_to_ptr: ");
    // ptoken(token);
    return LLVMBuildIntToPtr(builder, val, dest_ty, name);
 }
 
-Value llvm_build_ptr_to_int(Token *token, Value val, TypeRef dest_ty, char *name)
+Value llvm_build_ptr_to_int(Value val, TypeRef dest_ty, char *name)
 {
    // printf("llvm_build_ptr_to_int: ");
    // ptoken(token);
    return LLVMBuildPtrToInt(builder, val, dest_ty, name);
 }
 
-Value llvm_build_array_alloca(Token *token, TypeRef ty, Value val, char *name)
+Value llvm_build_array_alloca(TypeRef ty, Value val, char *name)
 {
    // printf("llvm_build_array_alloca: ");
    // ptoken(token);
    return LLVMBuildArrayAlloca(builder, ty, val, name);
 }
 
-Value llvm_build_invoke2(Token *token, TypeRef ty, Value fn, Value *args, unsigned num_args,
+Value llvm_build_invoke2(TypeRef ty, Value fn, Value *args, unsigned num_args,
                          Block then_block, Block catch_block, char *name)
 {
    // printf("llvm_build_invoke2: ");
@@ -186,7 +186,7 @@ Value llvm_build_invoke2(Token *token, TypeRef ty, Value fn, Value *args, unsign
    return LLVMBuildInvoke2(builder, ty, fn, args, num_args, then_block, catch_block, name);
 }
 
-Value llvm_build_landing_pad(Token *token, TypeRef ty, Value pers_fn, unsigned num_clauses,
+Value llvm_build_landing_pad(TypeRef ty, Value pers_fn, unsigned num_clauses,
                              char *name)
 {
    // printf("llvm_build_landing_pad: ");
@@ -195,7 +195,7 @@ Value llvm_build_landing_pad(Token *token, TypeRef ty, Value pers_fn, unsigned n
    return LLVMBuildLandingPad(builder, ty, pers_fn, num_clauses, name);
 }
 
-Value llvm_build_extract_value(Token *token, Value agg_val, unsigned index,  char *name)
+Value llvm_build_extract_value(Value agg_val, unsigned index,  char *name)
 {
    // printf("llvm_build_extract_value: ");
    // printf("name=%s index=%u\n", name, index);
@@ -203,14 +203,14 @@ Value llvm_build_extract_value(Token *token, Value agg_val, unsigned index,  cha
    return LLVMBuildExtractValue(builder, agg_val, index, name);
 }
 
-Value llvm_build_va_arg(Token *token, Value list, TypeRef ty, char *name)
+Value llvm_build_va_arg(Value list, TypeRef ty, char *name)
 {
    // printf("llvm_build_va_arg: ");
    // ptoken(token);
    return LLVMBuildVAArg(builder, list, ty, name);
 }
 
-Value llvm_build_unreachable(Token *token)
+Value llvm_build_unreachable()
 {
    // printf("llvm_build_unreachable: ");
    // ptoken(token);

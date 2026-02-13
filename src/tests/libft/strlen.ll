@@ -10,23 +10,23 @@ entry:
   store ptr %str, ptr %str1, align 8
   %i = alloca i32, align 4
   store i32 0, ptr %i, align 4
-  br label %while
+  br label %while.start
 
-while:                                            ; preds = %while_bloc, %entry
+while.start:                                      ; preds = %while.then, %entry
   %str2 = load ptr, ptr %str1, align 8
-  %idx = load i32, ptr %i, align 4
-  %ACCESS = getelementptr i8, ptr %str2, i32 %idx
-  %str3 = load i8, ptr %ACCESS, align 1
-  %NOT_EQUAL = icmp ne i8 %str3, 0
-  br i1 %NOT_EQUAL, label %while_bloc, label %end_while
+  %i3 = load i32, ptr %i, align 4
+  %ACCESS = getelementptr i8, ptr %str2, i32 %i3
+  %str4 = load i8, ptr %ACCESS, align 1
+  %NEQ = icmp ne i8 %str4, 0
+  br i1 %NEQ, label %while.then, label %while.end
 
-while_bloc:                                       ; preds = %while
-  %i4 = load i32, ptr %i, align 4
-  %ADD = add i32 %i4, 1
+while.then:                                       ; preds = %while.start
+  %current = load i32, ptr %i, align 4
+  %ADD = add i32 %current, 1
   store i32 %ADD, ptr %i, align 4
-  br label %while
+  br label %while.start
 
-end_while:                                        ; preds = %while
+while.end:                                        ; preds = %while.start
   %i5 = load i32, ptr %i, align 4
   ret i32 %i5
 }
