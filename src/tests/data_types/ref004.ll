@@ -48,15 +48,36 @@ declare void @llvm.memcpy.p0.p0.i32(ptr noalias nocapture writeonly, ptr noalias
 define i32 @main() {
 entry:
   %a = alloca i32, align 4
-  store i32 10, ptr %a, align 4
-  %b = alloca ptr, align 8
-  store ptr null, ptr %b, align 8
-  store ptr %a, ptr %b, align 8
+  store i32 1, ptr %a, align 4
+  %b = alloca i32, align 4
+  store i32 2, ptr %b, align 4
+  %choice = alloca i32, align 4
+  store i32 1, ptr %choice, align 4
+  %r = alloca ptr, align 8
+  store ptr null, ptr %r, align 8
+  br label %if.start
+
+if.start:                                         ; preds = %entry
+  %choice1 = load i32, ptr %choice, align 4
+  %EQ = icmp eq i32 %choice1, 1
+  br i1 %EQ, label %if.then, label %if.else
+
+if.end:                                           ; preds = %if.else, %if.then
   %ref_temp = alloca i32, align 4
-  store i32 20, ptr %ref_temp, align 4
-  call void @ref_assign(ptr %b, ptr %ref_temp, i32 4)
-  %a1 = load i32, ptr %a, align 4
-  ret i32 %a1
+  store i32 100, ptr %ref_temp, align 4
+  call void @ref_assign(ptr %r, ptr %ref_temp, i32 4)
+  %a2 = load i32, ptr %a, align 4
+  %b3 = load i32, ptr %b, align 4
+  %ADD = add i32 %a2, %b3
+  ret i32 %ADD
+
+if.then:                                          ; preds = %if.start
+  store ptr %a, ptr %r, align 8
+  br label %if.end
+
+if.else:                                          ; preds = %if.start
+  store ptr %b, ptr %r, align 8
+  br label %if.end
 }
 
 attributes #0 = { nocallback nofree nounwind willreturn memory(argmem: readwrite) }

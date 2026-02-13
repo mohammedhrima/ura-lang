@@ -2,56 +2,54 @@
 source_filename = "/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura"
 target triple = "arm64-apple-darwin25.2.0"
 
-define i1 @isalpha(i8 %c) {
+@fmt = private unnamed_addr constant [62 x i8] c"\0A\1B[0;31mRuntime Error: \1B[0mNull pointer dereference at %s:%d\0A\00", align 1
+@STR0 = private unnamed_addr constant [8 x i8] c"x = %d\0A\00", align 1
+
+define ptr @__null_check(ptr %0, i32 %1, ptr %2) {
 entry:
-  %c1 = alloca i8, align 1
-  store i8 %c, ptr %c1, align 1
-  %c2 = load i8, ptr %c1, align 1
-  %GE = icmp sge i8 %c2, 97
-  %c3 = load i8, ptr %c1, align 1
-  %LE = icmp sle i8 %c3, 122
-  %AND = and i1 %GE, %LE
-  ret i1 %AND
+  %ptrint = ptrtoint ptr %0 to i64
+  %isnull = icmp eq i64 %ptrint, 0
+  br i1 %isnull, label %is_null, label %not_null
+
+is_null:                                          ; preds = %entry
+  %3 = call i32 (ptr, ...) @printf(ptr @fmt, ptr %2, i32 %1)
+  call void @exit(i32 1)
+  unreachable
+
+not_null:                                         ; preds = %entry
+  ret ptr %0
 }
 
-define i1 @isdigit(i8 %c) {
-entry:
-  %c1 = alloca i8, align 1
-  store i8 %c, ptr %c1, align 1
-  %c2 = load i8, ptr %c1, align 1
-  %GE = icmp sge i8 %c2, 49
-  %c3 = load i8, ptr %c1, align 1
-  %LE = icmp sle i8 %c3, 57
-  %AND = and i1 %GE, %LE
-  ret i1 %AND
-}
+declare i32 @printf(ptr, ...)
 
-define i1 @islanum(i8 %c) {
+declare void @exit(i32)
+
+define void @ref_assign(ptr %0, ptr %1, i32 %2) {
 entry:
-  %c1 = alloca i8, align 1
-  store i8 %c, ptr %c1, align 1
-  %c2 = load i8, ptr %c1, align 1
-  %isalpha = call i1 @isalpha(i8 %c2)
-  %c3 = load i8, ptr %c1, align 1
-  %isdigit = call i1 @isdigit(i8 %c3)
-  %OR = or i1 %isalpha, %isdigit
-  ret i1 %OR
+  %current = load ptr, ptr %0, align 8
+  %is_null = icmp eq ptr %current, null
+  br i1 %is_null, label %bind, label %store
+
+bind:                                             ; preds = %entry
+  store ptr %1, ptr %0, align 8
+  br label %ret
+
+store:                                            ; preds = %entry
+  %bound = load ptr, ptr %0, align 8
+  %val = load i32, ptr %1, align 4
+  store i32 %val, ptr %bound, align 4
+  br label %ret
+
+ret:                                              ; preds = %store, %bind
+  ret void
 }
 
 define i32 @main() {
 entry:
-  br label %if.start
-
-if.start:                                         ; preds = %entry
-  %islanum = call i1 @islanum(i8 49)
-  br i1 %islanum, label %if.then, label %if.else
-
-if.end:                                           ; No predecessors!
-  ret i32 0
-
-if.then:                                          ; preds = %if.start
-  ret i32 11
-
-if.else:                                          ; preds = %if.start
-  ret i32 12
+  %x = alloca i32, align 4
+  store i32 111, ptr %x, align 4
+  %x1 = load i32, ptr %x, align 4
+  %printf = call i32 @printf(ptr @STR0, i32 %x1)
+  %x2 = load i32, ptr %x, align 4
+  ret i32 %x2
 }
