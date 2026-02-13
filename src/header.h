@@ -116,7 +116,7 @@ enum Type
    // Assignment
    ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,
    // Comparison
-   EQUAL, NOT_EQUAL, LESS_EQUAL, MORE_EQUAL, LESS, MORE,
+   EQUAL, NOT_EQUAL, LESS_EQUAL, GREAT_EQUAL, LESS, GREAT,
    // Arithmetic
    ADD, SUB, MUL, DIV, MOD,
    // Logical
@@ -190,7 +190,7 @@ struct Token
 
    // TODO: to be fixed later, has_ref
    // must depends on scoop position
-   bool has_ref;
+   // bool has_ref;
    bool is_ref;
 
    bool is_dec;
@@ -277,6 +277,7 @@ extern Value boundsCheckFunc;
 extern Value nullCheckFunc;
 extern Value vaStartFunc;
 extern Value vaEndFunc;
+extern Value refAssignFunc;
 
 // ----------------------------------------------------------------------------
 // Parsing
@@ -300,6 +301,7 @@ Node *prime_node();
 Node *new_node(Token *token);
 bool includes(Type to_find, ...);
 Token *find(Type type, ...);
+Token* expect_token(Type type, char *error_msg, ...);
 Node *new_function(Node *node);
 Node *get_function(char *name);
 Token *get_variable(char *name);
@@ -393,40 +395,37 @@ void print_inst(Node *node);
 // LLVM Wrappers
 // ----------------------------------------------------------------------------
 // Builder operations
-Value llvm_build_store(Token *token, Value val, Value ptr);
-Value llvm_build_load2(Token *token, TypeRef ty, Value ptr, char *name);
-Value llvm_build_alloca(Token *token, TypeRef ty, char *name);
-Value llvm_build_add(Token *token, Value lhs, Value rhs, char *name);
-Value llvm_build_sub(Token *token, Value lhs, Value rhs, char *name);
-Value llvm_build_mul(Token *token, Value lhs, Value rhs, char *name);
-Value llvm_build_sdiv(Token *token, Value lhs, Value rhs, char *name);
-Value llvm_build_srem(Token *token, Value lhs, Value rhs, char *name);
-Value llvm_build_icmp(Token *token, LLVMIntPredicate op, Value lhs, Value rhs, char *name);
-Value llvm_build_and(Token *token, Value lhs, Value rhs, char *name);
-Value llvm_build_or(Token *token, Value lhs, Value rhs, char *name);
-Value llvm_build_ret(Token *token, Value val);
-Value llvm_build_ret_void(Token *token);
+Value llvm_build_store(Value val, Value ptr);
+Value llvm_build_load2(TypeRef ty, Value ptr, char *name);
+Value llvm_build_alloca(TypeRef ty, char *name);
+Value llvm_build_add(Value lhs, Value rhs, char *name);
+Value llvm_build_sub(Value lhs, Value rhs, char *name);
+Value llvm_build_mul(Value lhs, Value rhs, char *name);
+Value llvm_build_sdiv(Value lhs, Value rhs, char *name);
+Value llvm_build_srem(Value lhs, Value rhs, char *name);
+Value llvm_build_icmp(LLVMIntPredicate op, Value lhs, Value rhs, char *name);
+Value llvm_build_and(Value lhs, Value rhs, char *name);
+Value llvm_build_or(Value lhs, Value rhs, char *name);
+Value llvm_build_ret(Value val);
+Value llvm_build_ret_void();
 void _branch(Block bloc);
 void _condition(Value cond, Block then_block, Block else_block);
 Block _append_block(char *name);
-Value llvm_build_call2(Token *token, TypeRef ty, Value fn, Value *args, unsigned num_args,
-                       char *name);
-Value llvm_build_global_string_ptr(Token *token, const char *str, char *name);
-Value llvm_build_gep2(Token *token, TypeRef ty, Value ptr, Value *indices, unsigned num_indices,
-                      char *name);
-Value llvm_build_bit_cast(Token *token, Value val, TypeRef dest_ty, char *name);
-Value llvm_build_sext(Token *token, Value val, TypeRef dest_ty, char *name);
-Value llvm_build_trunc(Token *token, Value val, TypeRef dest_ty, char *name);
-Value llvm_build_int_to_ptr(Token *token, Value val, TypeRef dest_ty, char *name);
-Value llvm_build_ptr_to_int(Token *token, Value val, TypeRef dest_ty, char *name);
-Value llvm_build_array_alloca(Token *token, TypeRef ty, Value val, char *name);
-Value llvm_build_invoke2(Token *token, TypeRef ty, Value fn, Value *args, unsigned num_args,
-                         Block then_block, Block catch_block, char *name);
-Value llvm_build_landing_pad(Token *token, TypeRef ty, Value pers_fn, unsigned num_clauses,
-                             char *name);
-Value llvm_build_extract_value(Token *token, Value agg_val, unsigned index, char *name);
-Value llvm_build_va_arg(Token *token, Value list, TypeRef ty, char *name);
-Value llvm_build_unreachable(Token *token);
+Value llvm_build_call2(TypeRef ty, Value fn, Value *args, unsigned num_args, char *name);
+Value llvm_build_global_string_ptr(const char *str, char *name);
+Value llvm_build_gep2(TypeRef ty, Value ptr, Value *indices, unsigned num_indices, char *name);
+Value llvm_build_bit_cast(Value val, TypeRef dest_ty, char *name);
+Value llvm_build_sext(Value val, TypeRef dest_ty, char *name);
+Value llvm_build_trunc(Value val, TypeRef dest_ty, char *name);
+Value llvm_build_int_to_ptr(Value val, TypeRef dest_ty, char *name);
+Value llvm_build_ptr_to_int(Value val, TypeRef dest_ty, char *name);
+Value llvm_build_array_alloca(TypeRef ty, Value val, char *name);
+Value llvm_build_invoke2(TypeRef ty, Value fn, Value *args, unsigned num_args, Block then_block,
+                         Block catch_block, char *name);
+Value llvm_build_landing_pad(TypeRef ty, Value pers_fn, unsigned num_clauses, char *name);
+Value llvm_build_extract_value(Value agg_val, unsigned index, char *name);
+Value llvm_build_va_arg(Value list, TypeRef ty, char *name);
+Value llvm_build_unreachable();
 Value llvm_build_global_string_ptr_raw(const char *str, char *name);
 
 // Type creation wrappers
@@ -482,5 +481,7 @@ Value llvm_build_not(Token *token);
 Value llvm_const_null(TypeRef ty);
 TypeRef get_llvm_type(Token *token);
 
-Value check_null(Node *node);
+Value check_null(Token *token);
+Value deref_or_load(Token *token);
+
 

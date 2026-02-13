@@ -1,6 +1,6 @@
-proto fn calloc(int len, int size) pointer
-proto fn write(int fd, pointer ptr, int len) int
-proto fn free(pointer ptr) int
+proto fn calloc(len int, size int) chars
+proto fn write(fd int, ptr chars, len int) int
+proto fn free(ptr chars) int
 
 fn putchar(c char) int:
     str chars = calloc(2, 1)
@@ -53,4 +53,5 @@ main():
     putnbr(-456)
     putchar('\n')
     putnbr(0)
+    putchar('\n')
     return 0

@@ -78,7 +78,7 @@
 - [*] function <= value
 - [*] function <= function
 
-## ASSIGN + MORE
+## ASSIGN + GREAT
 - [*] variable > variable
 - [*] variable > value
 - [*] variable > function
@@ -89,7 +89,7 @@
 - [*] function > value
 - [*] function > function
 
-## ASSIGN + MORE_EQUAL
+## ASSIGN + GREAT_EQUAL
 - [*] variable >= variable
 - [*] variable >= value
 - [*] variable >= function

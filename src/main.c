@@ -28,6 +28,7 @@ Value boundsCheckFunc;
 Value nullCheckFunc;
 Value vaStartFunc;
 Value vaEndFunc;
+Value refAssignFunc;
 
 bool enable_bounds_check = false;
 
@@ -44,8 +45,8 @@ void tokenize(char *filename)
       {"...", VARIADIC}, {".", DOT}, {":", DOTS}, {"+=", ADD_ASSIGN},
       {"-=", SUB_ASSIGN},
       {"*=", MUL_ASSIGN}, {"/=", DIV_ASSIGN}, {"!=", NOT_EQUAL}, {"!", NOT},
-      {"==", EQUAL}, {"<=", LESS_EQUAL}, {">=", MORE_EQUAL},
-      {"<", LESS}, {">", MORE}, {"=", ASSIGN}, {"+", ADD}, {"-", SUB},
+      {"==", EQUAL}, {"<=", LESS_EQUAL}, {">=", GREAT_EQUAL},
+      {"<", LESS}, {">", GREAT}, {"=", ASSIGN}, {"+", ADD}, {"-", SUB},
       {"*", MUL}, {"/", DIV}, {"%", MOD}, {"(", LPAR}, {")", RPAR},
       {"[", LBRA}, {"]", RBRA}, {",", COMA}, {"&&", AND}, {"||", OR},
       {0, (Type)0}
@@ -172,7 +173,7 @@ AST_NODE(assign_node, logic_node, ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DI
          MOD_ASSIGN, 0);
 AST_NODE(logic_node, equality_node, AND, OR, 0);
 AST_NODE(equality_node, comparison_node, EQUAL, NOT_EQUAL, 0);
-AST_NODE(comparison_node, add_sub_node, LESS, MORE, LESS_EQUAL, MORE_EQUAL, 0);
+AST_NODE(comparison_node, add_sub_node, LESS, GREAT, LESS_EQUAL, GREAT_EQUAL, 0);
 AST_NODE(add_sub_node, mul_div_node, ADD, SUB, 0);
 AST_NODE(mul_div_node, dot_node, MUL, DIV, MOD, 0);
 
@@ -201,6 +202,7 @@ Node *brackets_node()
       Node *node = new_node(token);
       node->left = left;
       node->right = brackets_node();
+
       check(!find(RBRA, 0), "expected right bracket");
       return node;
    }
@@ -230,7 +232,6 @@ Node *func_call(Node *node)
    //       + children: Parameters
    node->token->type = FCALL;
    Token *arg = NULL;
-   Token *token = node->token;
    node->left = new_node(new_token(0, node->token->space));
 
    while (!found_error && !(arg = find(RPAR, END, 0)))

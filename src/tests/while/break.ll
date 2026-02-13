@@ -10,8 +10,8 @@ entry:
 
 while.start:                                      ; preds = %if.end, %entry
   %a1 = load i32, ptr %a, align 4
-  %LESS = icmp slt i32 %a1, 10
-  br i1 %LESS, label %while.then, label %while.end
+  %LT = icmp slt i32 %a1, 10
+  br i1 %LT, label %while.then, label %while.end
 
 while.then:                                       ; preds = %while.start
   %a2 = load i32, ptr %a, align 4
