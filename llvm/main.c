@@ -39,7 +39,7 @@ Node *assign_node()
 
 AST_NODE(logic_node, equality_node, AND, OR, 0);
 AST_NODE(equality_node, comparison_node, EQUAL, NOT_EQUAL, 0);
-AST_NODE(comparison_node, add_sub_node, LESS, MORE, LESS_EQUAL, MORE_EQUAL, 0);
+AST_NODE(comparison_node, add_sub_node, LESS, GREAT, LESS_EQUAL, GREAT_EQUAL, 0);
 AST_NODE(add_sub_node, mul_div_node, ADD, SUB, 0);
 AST_NODE(mul_div_node, cast_node, MUL, DIV, MOD, 0);
 
@@ -451,9 +451,9 @@ void _op(Token *token, Token *left, Token *right)
    case EQUAL: elem = llvm_build_icmp(token, LLVMIntEQ, l, r, "equal"); break;
    case NOT_EQUAL: elem = llvm_build_icmp(token, LLVMIntNE, l, r, "not_equal"); break;
    case LESS: elem = llvm_build_icmp(token, LLVMIntSLT, l, r, "less"); break;
-   case MORE: elem = llvm_build_icmp(token, LLVMIntSGT, l, r, "more"); break;
+   case GREAT: elem = llvm_build_icmp(token, LLVMIntSGT, l, r, "more"); break;
    case LESS_EQUAL: elem = llvm_build_icmp(token, LLVMIntSLE, l, r, "less_equal"); break;
-   case MORE_EQUAL: elem = llvm_build_icmp(token, LLVMIntSGE, l, r, "more_equal"); break;
+   case GREAT_EQUAL: elem = llvm_build_icmp(token, LLVMIntSGE, l, r, "more_equal"); break;
    case MUL: elem = llvm_build_mul(token, l, r, "mul"); break;
    case DIV: elem = llvm_build_sdiv(token, l, r, "div"); break;
    case MOD: elem = llvm_build_srem(token, l, r, "mod"); break;
@@ -791,7 +791,7 @@ void generate_ir(Node *node)
    }
    case AND: case OR:
    case ADD: case SUB: case MUL: case DIV: case MOD: case LESS:
-   case MORE: case EQUAL: case LESS_EQUAL: case MORE_EQUAL:
+   case GREAT: case EQUAL: case LESS_EQUAL: case GREAT_EQUAL:
    {
       generate_ir(node->left);
       load_if_neccessary(node->left);
