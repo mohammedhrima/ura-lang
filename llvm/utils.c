@@ -193,7 +193,7 @@ void tokenize()
       {
          struct { char *value; Type type; } specials[] = {
             {"!=", NOT_EQUAL},  {"==", EQUAL}, {"<=", LESS_EQUAL},
-            {">=", MORE_EQUAL}, {"<", LESS}, {">", MORE}, {"=", ASSIGN},
+            {">=", GREAT_EQUAL}, {"<", LESS}, {">", GREAT}, {"=", ASSIGN},
             {"+=", ADD_ASSIGN}, {"-=", SUB_ASSIGN}, {"*=", MUL_ASSIGN},
             {"/=", DIV_ASSIGN}, {"...", VARIADIC}, {".", DOT},
             {"+", ADD}, {"-", SUB}, {"*", MUL}, {"/", DIV}, {"%", MOD},
@@ -266,8 +266,7 @@ ExcepCTX *exceps;
 int exceps_len;
 int exceps_pos = -1;
 
-void push_exception_context(Block lpad, Block catch, Block end, Value storage,
-                            Type type) {
+void push_exception_context(Block lpad, Block catch, Block end, Value storage, Type type) {
    if (exceps_len == 0)
    {
       exceps = calloc(100, sizeof( ExcepCTX));
@@ -330,8 +329,7 @@ Value get_throw() {
       TypeRef fn_type = LLVMFunctionType(vd, (TypeRef[]) {p8, p8, p8}, 3, false);
       fn = LLVMAddFunction(module, "__cxa_throw", fn_type);
       LLVMSetFunctionCallConv(fn, LLVMCCallConv);
-      LLVMAddAttributeAtIndex(fn, LLVMAttributeFunctionIndex,
-                              LLVMCreateEnumAttribute(context, LLVMGetEnumAttributeKindForName("noreturn", 8), 0));
+      LLVMAddAttributeAtIndex(fn, LLVMAttributeFunctionIndex, LLVMCreateEnumAttribute(context, LLVMGetEnumAttributeKindForName("noreturn", 8), 0));
    }
    return fn;
 }
@@ -532,8 +530,8 @@ char *to_string(Type type)
       [MOD_ASSIGN] = "MOD_ASSIGN", [ACCESS] = "ACCESS",
       [MOD] = "MOD", [COMA] = "COMA", [REF] = "REF",
       [EQUAL] = "EQUAL", [NOT_EQUAL] = "NOT_EQUAL", [LESS] = "LESS",
-      [MORE] = "MORE", [LESS_EQUAL] = "LESS_EQUAL",
-      [MORE_EQUAL] = "MORE_EQUAL", [AND] = "AND", [OR] = "OR",
+      [GREAT] = "GREAT", [LESS_EQUAL] = "LESS_EQUAL",
+      [GREAT_EQUAL] = "GREAT_EQUAL", [AND] = "AND", [OR] = "OR",
       [DOTS] = "DOTS", [COLON] = "COLON", [COMMA] = "COMMA",
       [LBRACKET] = "LBRACKET", [RBRACKET] = "RBRACKET",
       [PROTO] = "PROTO", [VARIADIC] = "VARIADIC",

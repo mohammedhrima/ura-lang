@@ -3,5 +3,5 @@
     + that add a label to llvm to shw what should be implimented later
 
 - reference to variables
-
-
+- protect free unallocated memery, double free
+- use malloc_error_break
