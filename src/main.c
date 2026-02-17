@@ -31,6 +31,7 @@ Value vaEndFunc;
 Value refAssignFunc;
 
 bool enable_bounds_check = false;
+bool using_refs = false;
 
 // PARSING
 void tokenize(char *filename)
@@ -169,8 +170,7 @@ void tokenize(char *filename)
 
 Node *expr_node() { return assign_node(); }
 
-AST_NODE(assign_node, logic_node, ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN,
-         MOD_ASSIGN, 0);
+AST_NODE(assign_node, logic_node, ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN, 0);
 AST_NODE(logic_node, equality_node, AND, OR, 0);
 AST_NODE(equality_node, comparison_node, EQUAL, NOT_EQUAL, 0);
 AST_NODE(comparison_node, add_sub_node, LESS, GREAT, LESS_EQUAL, GREAT_EQUAL, 0);
@@ -638,7 +638,7 @@ void build_ir()
 {
 #if IR
    for (int i = 0; !found_error && i < global->cpos; i++)
-      generate_ir(global->children[i]);
+      gen_ir(global->children[i]);
 #endif
 }
 
@@ -651,7 +651,7 @@ void code_gen(char *filename)
    init(moduleName);
 
    for (int i = 0; !found_error && i < global->cpos; i++)
-      generate_asm(global->children[i]);
+      gen_asm(global->children[i]);
 
    int len = strlen(moduleName);
    strcpy(moduleName + len - 3, "ll");

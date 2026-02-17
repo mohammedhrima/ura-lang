@@ -215,6 +215,7 @@ int ptoken(Token *token)
    if (token->is_ref) debug("ref ");
    // if (token->has_ref) debug("has_ref ");
    if (token->retType) res += debug("ret [%t] ", token->retType);
+   if (token->is_variadic) res += debug("variadic ");
    return res;
 }
 
@@ -268,7 +269,7 @@ int print_value(Token *token)
 char *to_string(Type type)
 {
    char* res[END + 1] = {
-      [ID] = "ID", [CHAR] = "CHAR", [CHARS] = "STR", [VOID] = "VOID",
+      [ID] = "ID", [CHAR] = "CHAR", [CHARS] = "CHARS", [VOID] = "VOID",
       [INT] = "INT", [BOOL] = "BOOL", [FDEC] = "FDEC",
       [FCALL] = "CALL", [END] = "END", [LPAR] = "LPAR", [RPAR] = "RPAR",
       [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
@@ -284,14 +285,12 @@ char *to_string(Type type)
       [GREAT] = "GT", [LESS_EQUAL] = "LE", [NOT] = "NOT",
       [GREAT_EQUAL] = "GE", [AND] = "AND", [OR] = "OR",
       [DOTS] = "DOTS", //[COLON] = "COLON", [COMMA] = "COMMA",
-      [PROTO] = "PROT", [VARIADIC] = "VAR",
+      [PROTO] = "PROT", [VARIADIC] = "VAR", [TYPEOF] = "TYPEOF",
       //[VA_LIST] = "VA_LIST",
-      [AS] = "AS", [END_BLOC] = "EBLK",
-      [STACK] = "STCK",
-      //[TRY] = "TRY", [CATCH] = "CATCH", [THROW] = "THROW",
-      //[USE] = "USE",
+      [AS] = "AS", [END_BLOC] = "EBLK", [STACK] = "STCK",
+      //[TRY] = "TRY", [CATCH] = "CATCH", [THROW] = "THROW", [USE] = "USE",
       [LBRA] = "LBRA", [RBRA] = "RBRA",
-      [DOT] = "DOT",
+      [DOT] = "DOT", [SYNTAX_ERROR] = "SYNTAX_ERROR",
    };
 
    if (!res[type])
@@ -426,6 +425,7 @@ Token *parse_token(char *filename, int line, char *input, int s, int e,  Type ty
          if (strcmp(keywords[i].name, new->name) == 0)
          {
             new->type = keywords[i].type;
+            if(new->type == REF) using_refs = true;
             break;
          }
       }
@@ -623,6 +623,7 @@ Token* expect_token(Type type, char *error_msg, ...)
 
 Token *syntax_error_token()
 {
+   found_error = true;
    static Token *token;
    if (token == NULL) token = new_token(SYNTAX_ERROR, -1);
    return token;
@@ -846,40 +847,56 @@ Value create_ref_assign_function()
    TypeRef param_types[] = {p8, p8, i32};
    TypeRef func_type = llvm_function_type(vd, param_types, 3, 0);
    Value func = llvm_add_function("ref_assign", func_type);
-   
+
    Block entry = llvm_append_basic_block_in_context(func, "entry");
    Block bind = llvm_append_basic_block_in_context(func, "bind");
    Block store = llvm_append_basic_block_in_context(func, "store");
    Block ret = llvm_append_basic_block_in_context(func, "ret");
-   
+
    _position_at(entry);
-   
+
    Value ref_var = llvm_get_param(func, 0);
    Value value_addr = llvm_get_param(func, 1);
-   Value size = llvm_get_param(func, 2);
-   
+   // Value size = llvm_get_param(func, 2);
+
    Value current_ptr = llvm_build_load2(p8, ref_var, "current");
    Value is_null = llvm_build_icmp(LLVMIntEQ, current_ptr, llvm_const_null(p8), "is_null");
    _condition(is_null, bind, store);
-   
+
    _position_at(bind);
    llvm_build_store(value_addr, ref_var);
    _branch(ret);
-   
+
    _position_at(store);
    Value bound_ptr = llvm_build_load2(p8, ref_var, "bound");
-   
+
    // FIXED: Use direct load/store for i32 instead of memcpy
    Value val_as_i32_ptr = llvm_build_bit_cast(value_addr, LLVMPointerType(i32, 0), "val_i32_ptr");
    Value val = llvm_build_load2(i32, val_as_i32_ptr, "val");
    Value dest_as_i32_ptr = llvm_build_bit_cast(bound_ptr, LLVMPointerType(i32, 0), "dest_i32_ptr");
    llvm_build_store(val, dest_as_i32_ptr);
    _branch(ret);
-   
+
    _position_at(ret);
    llvm_build_ret_void();
-   
+
    return func;
+}
+
+Value getNullCheckFunc()
+{
+   static Value nullCheckFunc;
+   if (nullCheckFunc == NULL)
+      nullCheckFunc = create_null_check_function();
+   return nullCheckFunc;
+}
+
+Value getRefAssignFunc()
+{
+   static Value refAssignFunc;
+   if (refAssignFunc == NULL)
+      refAssignFunc = create_ref_assign_function();
+   return refAssignFunc;
 }
 
 void init(char *name)
@@ -904,11 +921,7 @@ void init(char *name)
    LLVMInitializeAllAsmParsers();
    LLVMInitializeAllAsmPrinters();
    LLVMSetTarget(module, LLVMGetDefaultTargetTriple());
-   if (enable_bounds_check)
-   {
-      nullCheckFunc = create_null_check_function();
-      refAssignFunc = create_ref_assign_function();
-   }
+   if (using_refs) getRefAssignFunc(); // TODO: to be removed later
 }
 
 void finalize(char *output)
@@ -932,6 +945,7 @@ Value check_null(Token *token)
 
    if (enable_bounds_check)
    {
+      Value nullCheckFunc = getNullCheckFunc();
       Value line_val = LLVMConstInt(i32, token->line, 0);
       Value file_str = llvm_build_global_string_ptr_raw(token->filename ? token->filename : "unknown",
                        "file");

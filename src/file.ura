@@ -1,6 +1,20 @@
-proto fn printf(fmt chars, ...) int
-
 main():
-    x int = 111
-    printf("x = %d\n", x)
-    return x
+    val1 int = 10
+    val2 int = 20
+    val3 int = 30
+    
+    // Reference to val1
+    r1 ref int = val1
+    r1 = 15        // val1 = 15
+    
+    // Reference to val2
+    r2 ref int = val2
+    r2 *= 2        // val2 = 40
+    
+    // Reference to val3
+    r3 ref int = val3
+    r3 -= 5        // val3 = 25
+    
+    // Calculate with references
+    result int = r1 + r2 + r3  // 15 + 40 + 25
+    return result

@@ -163,7 +163,7 @@ indent() {
     echo -e "${YELLOW}Formatting code...${RESET}"
     astyle --mode=c --indent=spaces=3 --pad-oper --pad-header \
        --keep-one-line-statements --keep-one-line-blocks --convert-tabs \
-       --max-code-length=100 --break-after-logical \
+       --max-code-length=150 --break-after-logical \
        --suffix=none "$ROOT_DIR"/*.c "$ROOT_DIR"/*.h
     echo -e "${GREEN}Code formatted${RESET}"
 }
