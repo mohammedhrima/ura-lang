@@ -1,0 +1,23 @@
+def int sum(...args):
+   int total = 0
+   int i = 0
+   while (i < args.len):
+      total = total + args.elem as int
+      i = i + 1
+   end
+   return total
+end
+
+def int mul(...args):
+   int total = 0
+   int i = 0
+   while (i < args.len):
+      total = total * args.elem as int
+      i = i + 1
+   end
+   return total
+end
+
+def int main():
+   return sum(1, 2, 3, 4, 2, 3, 4)
+end

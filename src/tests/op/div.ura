@@ -1,0 +1,36 @@
+fn foo() int:
+    return 5
+
+fn bar() int:
+    return 10
+
+main():
+    a int = 20
+    b int = 4
+    
+    // Test: variable / variable
+    t1 int = a / b
+    
+    // Test: variable / value
+    t2 int = a / 2
+    
+    // Test: variable / function
+    t3 int = a / foo()
+    
+    // Test: value / variable
+    t4 int = 100 / b
+    
+    // Test: value / value
+    t5 int = 50 / 10
+    
+    // Test: value / function
+    t6 int = 30 / foo()
+    
+    // Test: function / variable
+    t7 int = bar() / b
+    
+    // Test: function / value
+    t8 int = bar() / 2
+    
+    // Test: function / function
+    t9 int = bar() / foo()

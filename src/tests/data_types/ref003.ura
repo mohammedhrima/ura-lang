@@ -1,0 +1,10 @@
+main():
+    base int = 100
+    ref1 ref int = base
+    ref2 ref int = base
+    
+    ref1 += 20      // base becomes 120
+    ref2 -= 10      // base becomes 110
+    
+    result int = ref1 + ref2  // 110 + 110 = 220
+    return result

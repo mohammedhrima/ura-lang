@@ -1,0 +1,4 @@
+
+main():
+    a bool = True
+    b bool = !a

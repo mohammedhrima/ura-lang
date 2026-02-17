@@ -1,0 +1,36 @@
+fn foo() int:
+    return 5
+
+fn bar() int:
+    return 10
+
+main():
+    a int = 10
+    b int = 10
+    
+    // Test: variable <= variable
+    t1 bool = a <= b
+    
+    // Test: variable <= value
+    t2 bool = a <= 15
+    
+    // Test: variable <= function
+    t3 bool = a <= foo()
+    
+    // Test: value <= variable
+    t4 bool = 10 <= b
+    
+    // Test: value <= value
+    t5 bool = 8 <= 8
+    
+    // Test: value <= function
+    t6 bool = 10 <= bar()
+    
+    // Test: function <= variable
+    t7 bool = foo() <= a
+    
+    // Test: function <= value
+    t8 bool = bar() <= 10
+    
+    // Test: function <= function
+    t9 bool = foo() <= bar()

@@ -1,0 +1,57 @@
+fn foo() int:
+    return 10
+
+fn bar() int:
+    return 20
+
+fn zero() int:
+    return 0
+
+main():
+    a int = 10
+    b int = 20
+
+    // Test: variable != variable
+    t1 bool = a != b
+
+    // Test: variable != value
+    t2 bool = a != 10
+
+    // Test: variable != function
+    t3 bool = a != foo()
+
+    // Test: value != variable
+    t4 bool = 20 != b
+
+    // Test: value != value
+    t5 bool = 10 != 10
+
+    // Test: value != function
+    t6 bool = 10 != bar()
+
+    // Test: function != variable
+    t7 bool = foo() != a
+
+    // Test: function != value
+    t8 bool = bar() != 20
+
+    // Test: function != function
+    t9 bool = foo() != bar()
+
+    // ------------------------------------
+    // Same tests, but using negation syntax
+    // ------------------------------------
+
+    n1 bool = not (a == b)
+    n2 bool = not (a == 10)
+    n3 bool = not (a == foo())
+    n4 bool = not (20 == b)
+    n5 bool = not (10 == 10)
+    n6 bool = not (10 == bar())
+    n7 bool = not (foo() == a)
+    n8 bool = not (bar() == 20)
+    n9 bool = not (foo() == bar())
+
+    // Optional: using 'is' if your language supports it
+    t10 bool = not (a is b)
+    t11 bool = not (foo() is bar())
