@@ -2,28 +2,6 @@
 source_filename = "/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura"
 target triple = "arm64-apple-darwin25.2.0"
 
-@fmt = private unnamed_addr constant [62 x i8] c"\0A\1B[0;31mRuntime Error: \1B[0mNull pointer dereference at %s:%d\0A\00", align 1
-@STR0 = private unnamed_addr constant [8 x i8] c"x = %d\0A\00", align 1
-
-define ptr @__null_check(ptr %0, i32 %1, ptr %2) {
-entry:
-  %ptrint = ptrtoint ptr %0 to i64
-  %isnull = icmp eq i64 %ptrint, 0
-  br i1 %isnull, label %is_null, label %not_null
-
-is_null:                                          ; preds = %entry
-  %3 = call i32 (ptr, ...) @printf(ptr @fmt, ptr %2, i32 %1)
-  call void @exit(i32 1)
-  unreachable
-
-not_null:                                         ; preds = %entry
-  ret ptr %0
-}
-
-declare i32 @printf(ptr, ...)
-
-declare void @exit(i32)
-
 define void @ref_assign(ptr %0, ptr %1, i32 %2) {
 entry:
   %current = load ptr, ptr %0, align 8
@@ -46,10 +24,46 @@ ret:                                              ; preds = %store, %bind
 
 define i32 @main() {
 entry:
-  %x = alloca i32, align 4
-  store i32 111, ptr %x, align 4
-  %x1 = load i32, ptr %x, align 4
-  %printf = call i32 @printf(ptr @STR0, i32 %x1)
-  %x2 = load i32, ptr %x, align 4
-  ret i32 %x2
+  %val1 = alloca i32, align 4
+  store i32 10, ptr %val1, align 4
+  %val2 = alloca i32, align 4
+  store i32 20, ptr %val2, align 4
+  %val3 = alloca i32, align 4
+  store i32 30, ptr %val3, align 4
+  %r1 = alloca ptr, align 8
+  store ptr null, ptr %r1, align 8
+  store ptr %val1, ptr %r1, align 8
+  %ref_temp = alloca i32, align 4
+  store i32 15, ptr %ref_temp, align 4
+  call void @ref_assign(ptr %r1, ptr %ref_temp, i32 4)
+  %r2 = alloca ptr, align 8
+  store ptr null, ptr %r2, align 8
+  store ptr %val2, ptr %r2, align 8
+  %ptr = load ptr, ptr %r2, align 8
+  %current = load i32, ptr %ptr, align 4
+  %MUL = mul i32 %current, 2
+  %op_temp = alloca i32, align 4
+  store i32 %MUL, ptr %op_temp, align 4
+  call void @ref_assign(ptr %r2, ptr %op_temp, i32 4)
+  %r3 = alloca ptr, align 8
+  store ptr null, ptr %r3, align 8
+  store ptr %val3, ptr %r3, align 8
+  %ptr1 = load ptr, ptr %r3, align 8
+  %current2 = load i32, ptr %ptr1, align 4
+  %SUB = sub i32 %current2, 5
+  %op_temp3 = alloca i32, align 4
+  store i32 %SUB, ptr %op_temp3, align 4
+  call void @ref_assign(ptr %r3, ptr %op_temp3, i32 4)
+  %result = alloca i32, align 4
+  %ptr4 = load ptr, ptr %r1, align 8
+  %r15 = load i32, ptr %ptr4, align 4
+  %ptr6 = load ptr, ptr %r2, align 8
+  %r27 = load i32, ptr %ptr6, align 4
+  %ADD = add i32 %r15, %r27
+  %ptr8 = load ptr, ptr %r3, align 8
+  %r39 = load i32, ptr %ptr8, align 4
+  %ADD10 = add i32 %ADD, %r39
+  store i32 %ADD10, ptr %result, align 4
+  %result11 = load i32, ptr %result, align 4
+  ret i32 %result11
 }
