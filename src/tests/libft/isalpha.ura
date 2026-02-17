@@ -1,0 +1,6 @@
+
+fn isalpha(c char) bool: return c >= 'a' and c <= 'z'
+
+main():
+    if isalpha('1'): return 11  
+    else: return 12

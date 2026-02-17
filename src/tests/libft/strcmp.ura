@@ -1,0 +1,9 @@
+fn strcmp(left chars, right chars) int:
+    i int = 0
+    while left[i] == right[i] and left[i] != '\0':
+        i += 1
+    return left[i] as int - right[i] as int
+
+main():
+    len int = strcmp("d", "a")
+    return len

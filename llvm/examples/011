@@ -1,0 +1,20 @@
+
+def int func():
+   throw 12
+   return 0
+end
+
+def int main():
+   try:
+      func()
+      int x = 10
+      int y = 0
+      if y == 0:
+         throw 1
+      int result = x / y
+   end
+   catch int error:
+      return error
+   end
+   return 0
+end

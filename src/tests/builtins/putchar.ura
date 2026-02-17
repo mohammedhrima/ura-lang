@@ -1,0 +1,12 @@
+proto fn write(fd int, ptr chars, len int) int
+
+fn putchar(c char) int:
+    str chars = stack(2) as chars
+    str[0] = c
+    write(1, str, 1)
+    return 0
+
+main():
+    putchar('a')
+    putchar('\n')
+    return 0

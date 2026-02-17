@@ -1,0 +1,5 @@
+main():
+    a int = 10
+    b ref int = a
+    b = 20
+    return a

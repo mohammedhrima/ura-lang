@@ -1,0 +1,9 @@
+proto fn write(fd int, ptr chars, len int) int
+proto fn strcpy(dist chars, src chars) void
+proto fn strlen(str chars) int
+
+main():
+    str chars = stack(20) as chars
+    strcpy(str, "Hello world")
+    write(1, str, strlen("Hello world"))
+    return 0

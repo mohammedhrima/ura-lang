@@ -1,0 +1,13 @@
+protoFunc int printf(chars fmt, ...args)
+protoFunc int putchar(char a)
+protoFunc void strcpy(chars left, chars right)
+
+def int main():
+   printf("Before allocation\n")
+   chars str = stack(12) as chars
+   strcpy(str, "hello world")
+   char c = str[-1]
+   printf("<%s> <%c>\n", str, c)
+   return 0
+end
+

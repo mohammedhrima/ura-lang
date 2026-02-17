@@ -1,0 +1,10 @@
+def int add_multiply(int a, int b, int c):
+   int sum = a + b
+   int result = sum * c
+   return result
+end
+
+def int main():
+   int x = add_multiply(5, 3, 2)
+   return x
+end

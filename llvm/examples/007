@@ -1,0 +1,9 @@
+def int main():
+   int a = 1
+   int b = 2
+
+   ref int pa = a
+   ref int pb = b
+   pa = pb
+   return a
+end

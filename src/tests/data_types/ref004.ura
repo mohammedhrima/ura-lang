@@ -1,0 +1,14 @@
+main():
+    a int = 1
+    b int = 2
+    choice int = 1
+    
+    r ref int
+    if choice == 1:
+        r = a
+    else:
+        r = b
+    
+    r = 100
+    
+    return a + b
