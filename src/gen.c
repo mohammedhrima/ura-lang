@@ -83,11 +83,13 @@ void load_if_neccessary(Node *node)
 {
    Token *token = node->token;
 
-   // Skip if already loaded or is a math operation result
-   if (includes(token->type, MATH_TYPE, 0))
+   // added fo the case of value chars, to be tested with all data types
+   if (includes(token->type, MATH_TYPE, 0) || (includes(token->type, DATA_TYPES, 0) && !token->name))
       return;
-   // i comment CHARS because it causes errors in putnber
-   if (token->llvm.is_loaded || includes(token->type, STACK, 0))
+   // I commented CHARS
+   // because when sending it as param
+   // the thing that CHARS point to should be loaded
+   if (token->llvm.is_loaded || includes(token->type, STACK, /*CHARS,*/ 0))
       return;
 
    if (token->name && token->type != FCALL)
@@ -96,13 +98,9 @@ void load_if_neccessary(Node *node)
 
       // Use the deref_or_load helper which handles refs
       if (token->is_ref)
-      {
          new->llvm.elem = deref_or_load(token);
-      }
       else
-      {
          _load(new, token);
-      }
 
       new->llvm.is_loaded = true;
       node->token = new;
@@ -164,52 +162,42 @@ Value allocate_stack(Value size, TypeRef elementType, char *name)
 
 Value deref_or_load(Token *token)
 {
-   if (!token->name && !token->is_ref) {
-      // It's a constant value, already loaded
-      return token->llvm.elem;
-   }
-
-   if (token->llvm.is_loaded) {
-      // Already loaded
-      return token->llvm.elem;
-   }
-
+   // It's a constant value, already loaded
+   if (!token->name && !token->is_ref) return token->llvm.elem;
+   // Already loaded
+   if (token->llvm.is_loaded) return token->llvm.elem;
    TypeRef type = get_llvm_type(token);
-
-   if (token->is_ref) {
+   if (token->is_ref)
+   {
       // It's a reference - need to:
       // 1. Load the pointer from the ref variable
       // 2. Check if null (with check_null)
       // 3. Load the value from that pointer
       Value ptr = check_null(token);
       return llvm_build_load2(type, ptr, token->name ? token->name : "deref");
-   } else {
-      // Regular variable - just load it
-      return llvm_build_load2(type, token->llvm.elem, token->name);
    }
+   // Regular variable - just load it
+   return llvm_build_load2(type, token->llvm.elem, token->name);
+
 }
 
 Value get_store_ptr(Token *token)
 {
-   if (!token->is_ref) {
-      // Regular variable - return its alloca'd address
-      return token->llvm.elem;
-   } else {
-      // Reference - need to load the pointer it points to
-      TypeRef type = get_llvm_type(token);
-      TypeRef ptr_type = LLVMPointerType(type, 0);
-      return llvm_build_load2(ptr_type, token->llvm.elem, "store_ptr");
-   }
+   // Regular variable - return its alloca'd address
+   if (!token->is_ref) return token->llvm.elem;
+   // Reference - need to load the pointer it points to
+   TypeRef type = get_llvm_type(token);
+   TypeRef ptr_type = LLVMPointerType(type, 0);
+   return llvm_build_load2(ptr_type, token->llvm.elem, "store_ptr");
 }
 
-void generate_asm(Node *node)
+void gen_asm(Node *node)
 {
    // debug("Processing: %k\n", inst->token);
    Node *left = node->left;
    Node *right = node->right;
 
-   if (check(node->token->llvm.is_set, "already set"))
-      return;
+   if (check(node->token->llvm.is_set, "already set")) return;
    switch (node->token->type)
    {
    case INT: case CHARS: case CHAR: case BOOL:
@@ -233,8 +221,8 @@ void generate_asm(Node *node)
    }
    case ASSIGN:
    {
-      generate_asm(left);
-      generate_asm(right);
+      gen_asm(left);
+      gen_asm(right);
 
       // Case 1: Neither is ref - simple assignment
       if (!left->token->is_ref && !right->token->is_ref)
@@ -260,44 +248,44 @@ void generate_asm(Node *node)
          }
          else
          {
+            Value refAssignFunc = getRefAssignFunc();
             // REASSIGNMENT: Use ref_assign for constants/expressions
             Value temp = llvm_build_alloca(type, "ref_temp");
             load_if_neccessary(right);
             llvm_build_store(right->token->llvm.elem, temp);
 
-            LLVMTargetDataRef target_data = llvm_get_module_data_layout(module);
+            TargetData target_data = llvm_get_module_data_layout(module);
             size_t type_size = llvm_abi_size_of_type(target_data, type);
 
             Value ref_cast = llvm_build_bit_cast(left->token->llvm.elem, p8, "ref");
             Value temp_cast = llvm_build_bit_cast(temp, p8, "val");
             Value args[] = {ref_cast, temp_cast, llvm_const_int(i32, type_size, 0)};
-            llvm_build_call2(llvm_global_get_value_type(refAssignFunc), refAssignFunc,
-                             args, 3, "");
+            llvm_build_call2(llvm_global_get_value_type(refAssignFunc), refAssignFunc, args, 3, "");
          }
       }
       // Case 3: Both are refs - copy reference pointer
-     // Case 3: Both are refs - copy VALUE, not pointer
-else if (left->token->is_ref && right->token->is_ref)
-{
-   TypeRef type = get_llvm_type(right->token);
-   
-   // Load the value from right ref
-   Value right_ptr = check_null(right->token);
-   Value value = llvm_build_load2(type, right_ptr, "ref_val");
-   
-   // Store through left ref using ref_assign
-   Value temp = llvm_build_alloca(type, "ref_temp");
-   llvm_build_store(value, temp);
-   
-   LLVMTargetDataRef target_data = llvm_get_module_data_layout(module);
-   size_t type_size = llvm_abi_size_of_type(target_data, type);
-   
-   Value ref_cast = llvm_build_bit_cast(left->token->llvm.elem, p8, "ref");
-   Value temp_cast = llvm_build_bit_cast(temp, p8, "val");
-   Value args[] = {ref_cast, temp_cast, llvm_const_int(i32, type_size, 0)};
-   llvm_build_call2(llvm_global_get_value_type(refAssignFunc), refAssignFunc, 
-                   args, 3, "");
-}
+      // Case 3: Both are refs - copy VALUE, not pointer
+      else if (left->token->is_ref && right->token->is_ref)
+      {
+         Value refAssignFunc = getRefAssignFunc();
+         TypeRef type = get_llvm_type(right->token);
+
+         // Load the value from right ref
+         Value right_ptr = check_null(right->token);
+         Value value = llvm_build_load2(type, right_ptr, "ref_val");
+
+         // Store through left ref using ref_assign
+         Value temp = llvm_build_alloca(type, "ref_temp");
+         llvm_build_store(value, temp);
+
+         TargetData target_data = llvm_get_module_data_layout(module);
+         size_t type_size = llvm_abi_size_of_type(target_data, type);
+
+         Value ref_cast = llvm_build_bit_cast(left->token->llvm.elem, p8, "ref");
+         Value temp_cast = llvm_build_bit_cast(temp, p8, "val");
+         Value args[] = {ref_cast, temp_cast, llvm_const_int(i32, type_size, 0)};
+         llvm_build_call2(llvm_global_get_value_type(refAssignFunc), refAssignFunc, args, 3, "");
+      }
       // Case 4: Left is not ref, right is ref - dereference right
       else
       {
@@ -310,8 +298,8 @@ else if (left->token->is_ref && right->token->is_ref)
    }
    case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN: case MOD_ASSIGN:
    {
-      generate_asm(left);
-      generate_asm(right);
+      gen_asm(left);
+      gen_asm(right);
 
       TypeRef type = get_llvm_type(left->token);
       Value current_val;
@@ -323,9 +311,7 @@ else if (left->token->is_ref && right->token->is_ref)
          current_val = llvm_build_load2(type, ptr, "current");
       }
       else
-      {
          current_val = llvm_build_load2(type, left->token->llvm.elem, "current");
-      }
 
       // Load right value
       Value right_val;
@@ -344,39 +330,37 @@ else if (left->token->is_ref && right->token->is_ref)
       Value result;
       switch (node->token->type)
       {
-      case ADD_ASSIGN: result = llvm_build_add(current_val, right_val, "add"); break;
-      case SUB_ASSIGN: result = llvm_build_sub(current_val, right_val, "sub"); break;
-      case MUL_ASSIGN: result = llvm_build_mul(current_val, right_val, "mul"); break;
-      case DIV_ASSIGN: result = llvm_build_sdiv(current_val, right_val, "div"); break;
-      case MOD_ASSIGN: result = llvm_build_srem(current_val, right_val, "mod"); break;
+      case ADD_ASSIGN: result = llvm_build_add(current_val, right_val, to_string(ADD)); break;
+      case SUB_ASSIGN: result = llvm_build_sub(current_val, right_val, to_string(SUB)); break;
+      case MUL_ASSIGN: result = llvm_build_mul(current_val, right_val, to_string(MUL)); break;
+      case DIV_ASSIGN: result = llvm_build_sdiv(current_val, right_val, to_string(DIV)); break;
+      case MOD_ASSIGN: result = llvm_build_srem(current_val, right_val, to_string(MOD)); break;
       default: break;
       }
 
       // Store result back
       if (left->token->is_ref)
       {
+         Value refAssignFunc = getRefAssignFunc();
          // Use ref_assign with temp
          Value temp = llvm_build_alloca(type, "op_temp");
          llvm_build_store(result, temp);
 
-         LLVMTargetDataRef target_data = llvm_get_module_data_layout(module);
+         TargetData target_data = llvm_get_module_data_layout(module);
          size_t type_size = llvm_abi_size_of_type(target_data, type);
 
          Value ref_cast = llvm_build_bit_cast(left->token->llvm.elem, p8, "ref");
          Value temp_cast = llvm_build_bit_cast(temp, p8, "val");
          Value args[] = {ref_cast, temp_cast, llvm_const_int(i32, type_size, 0)};
-         llvm_build_call2(llvm_global_get_value_type(refAssignFunc), refAssignFunc,
-                          args, 3, "");
+         llvm_build_call2(llvm_global_get_value_type(refAssignFunc), refAssignFunc, args, 3, "");
       }
       else
-      {
          llvm_build_store(result, left->token->llvm.elem);
-      }
       break;
    }
    case NOT:
    {
-      generate_asm(left);
+      gen_asm(left);
       load_if_neccessary(left);
       node->token->llvm.elem = llvm_build_not(left->token);
       break;
@@ -385,8 +369,8 @@ else if (left->token->is_ref && right->token->is_ref)
    case NOT_EQUAL: case LESS: case GREAT: case LESS_EQUAL:
    case GREAT_EQUAL: case MOD: case ADD: case AND: case OR:
    {
-      generate_asm(left);
-      generate_asm(right);
+      gen_asm(left);
+      gen_asm(right);
 
       load_if_neccessary(left);
       load_if_neccessary(right);
@@ -400,7 +384,7 @@ else if (left->token->is_ref && right->token->is_ref)
    }
    case STACK:
    {
-      generate_asm(node->left->children[0]);
+      gen_asm(node->left->children[0]);
       load_if_neccessary(node->left->children[0]);
       Value elem = node->left->children[0]->token->llvm.elem;
 
@@ -418,18 +402,27 @@ else if (left->token->is_ref && right->token->is_ref)
    case FCALL:
    {
       LLVM srcFunc = node->token->Fcall.ptr->llvm;
+      bool is_variadic = node->token->Fcall.ptr->is_variadic;
       int count = node->left->cpos;
       Node **argNodes = node->left->children;
 
       Value *args = NULL;
       if (count)
       {
-         args = allocate(count + 1, sizeof(Value));
-         for (int i = 0; i < count; i++)
+         int i = 0;
+         args = allocate(count + 2, sizeof(Value));
+         if (is_variadic)
          {
-            generate_asm(argNodes[i]);
-            load_if_neccessary(argNodes[i]);
-            args[i] = argNodes[i]->token->llvm.elem;
+            Token *args_len = new_token(INT, node->left->token->space + TAB);
+            args_len->Int.value = count;
+            _const_value(args_len);
+            args[i++] = args_len->llvm.elem;
+         }
+         for (int j = 0; j < count; j++)
+         {
+            gen_asm(argNodes[j]);
+            load_if_neccessary(argNodes[j]);
+            args[j + i] = argNodes[j]->token->llvm.elem;
          }
       }
       char *name = node->token->Fcall.ptr->retType != VOID ? node->token->name : "";
@@ -448,41 +441,27 @@ else if (left->token->is_ref && right->token->is_ref)
          snprintf(name, sizeof(name), "%s.%s.%d", scoop->token->name, node->token->name, id++);
          node->token->llvm_name = strdup(name);
       }
-      else
-         node->token->llvm_name = strdup(node->token->name);
+      else node->token->llvm_name = strdup(node->token->name);
 
       enter_scoop(node);
 
       TypeRef retType = get_llvm_type(node->token);
       TypeRef *paramTypes = NULL;
-      int param_count1 = 0;
+      int param_count = node->left->cpos;
 
       if (node->left->cpos)
       {
-         int param_count = node->left->cpos;
-         param_count1 = param_count;
-
-         // if (node->token->Fdec.is_variadic)
-         // {
-         //    param_count--;
-         //    param_count1 = param_count + 1;
-         // }
-
-         paramTypes = calloc(param_count1 + 1, sizeof(TypeRef));
-
+         paramTypes = calloc(param_count + 2, sizeof(TypeRef));
          for (int i = 0; i < param_count; i++)
          {
             Token *param = node->left->children[i]->token;
             if (param->is_ref) paramTypes[i] = llvm_pointer_type(get_llvm_type(param), 0);
             else paramTypes[i] = get_llvm_type(param);
          }
-
-         // Hidden count parameter
-         // if (node->token->Fdec.is_variadic) paramTypes[param_count] = i32;
+         if (node->token->is_variadic) paramTypes[param_count - 1] = i32;
       }
 
-      TypeRef funcType = llvm_function_type(retType, paramTypes, param_count1,
-                                            node->token->Fdec.is_variadic);
+      TypeRef funcType = llvm_function_type(retType, paramTypes, param_count, node->token->is_variadic);
       char *name = node->token->llvm_name ? node->token->llvm_name : node->token->name;
       Value existingFunc = llvm_get_named_function(name);
       if (existingFunc) node->token->llvm.elem = existingFunc;
@@ -508,7 +487,7 @@ else if (left->token->is_ref && right->token->is_ref)
          for (int i = 0; i < node->cpos; i++)
          {
             // if (node->children[i]->token->type != FDEC)
-            generate_asm(node->children[i]);
+            gen_asm(node->children[i]);
          }
       }
       exit_scoop();
@@ -529,13 +508,13 @@ else if (left->token->is_ref && right->token->is_ref)
       _branch(start);
 
       _position_at(start);
-      generate_asm(node->left); // condition
+      gen_asm(node->left); // condition
       load_if_neccessary(node->left);
       _condition(node->left->token->llvm.elem, then, end);
 
       _position_at(then);
       for (int i = 0; i < node->cpos; i++)
-         generate_asm(node->children[i]);
+         gen_asm(node->children[i]);
       _branch(start);
 
       _position_at(end);
@@ -587,13 +566,13 @@ else if (left->token->is_ref && right->token->is_ref)
             else next = end;
 
             _position_at(start);
-            generate_asm(curr->left); // condition
+            gen_asm(curr->left); // condition
             load_if_neccessary(curr->left);
             _condition(curr->left->token->llvm.elem, then, next);
 
             _position_at(then);
             for (int i = 0; i < curr->cpos; i++)
-               generate_asm(curr->children[i]);
+               gen_asm(curr->children[i]);
             _branch(end);
 
             if (curr->right && includes(curr->right->token->type, ELIF, ELSE, 0))
@@ -603,7 +582,7 @@ else if (left->token->is_ref && right->token->is_ref)
          {
             _position_at(curr->token->llvm.bloc);
             for (int i = 0; i < curr->cpos; i++)
-               generate_asm(curr->children[i]);
+               gen_asm(curr->children[i]);
             _branch(end);
          }
          curr = curr->right;
@@ -642,7 +621,7 @@ else if (left->token->is_ref && right->token->is_ref)
    {
       if (node->left->token->type != VOID)
       {
-         generate_asm(node->left);
+         gen_asm(node->left);
          load_if_neccessary(node->left);
       }
       _return(node->left->token);
@@ -650,15 +629,15 @@ else if (left->token->is_ref && right->token->is_ref)
    }
    case AS:
    {
-      generate_asm(left);
+      gen_asm(left);
       load_if_neccessary(left);
 
       Value source = left->token->llvm.elem;
       TypeRef sourceType = LLVMTypeOf(source);
       TypeRef targetType = get_llvm_type(node->right->token);
 
-      LLVMTypeKind sourceKind = LLVMGetTypeKind(sourceType);
-      LLVMTypeKind targetKind = LLVMGetTypeKind(targetType);
+      TypeKind sourceKind = LLVMGetTypeKind(sourceType);
+      TypeKind targetKind = LLVMGetTypeKind(targetType);
 
       Value result;
 
@@ -699,37 +678,41 @@ else if (left->token->is_ref && right->token->is_ref)
    {
 
       // bool enable_bounds_check = false;
-      generate_asm(node->left);
-      generate_asm(node->right);
-
-      // Load the array pointer/base (handles refs)
-      Token *left = node->left->token;
-      Token *right = node->right->token;
-      Token *curr = node->token;
+      gen_asm(node->left);
+      gen_asm(node->right);
 
       Value leftValue;
-      if (left->is_ref)
+      if (node->left->token->is_ref)
       {
+         todo(1, "stop");
          // If left is a ref, dereference it to get the actual array
-         leftValue = deref_or_load(left);
+         leftValue = deref_or_load(node->left->token);
       }
       else
       {
+         // todo(1, "stop");
          load_if_neccessary(node->left);
-         leftValue = left->llvm.elem;
+         leftValue = node->left->token->llvm.elem;
+         TypeKind kind = LLVMGetTypeKind(LLVMTypeOf(leftValue));
+         if (kind == LLVMPointerTypeKind && node->left->token->name &&
+               !node->left->token->llvm.is_loaded &&
+               node->left->token->type != STACK)
+         {
+            leftValue = llvm_build_load2(p8, leftValue, "ptr_load");
+         }
       }
 
       // Load the index (handles refs)
       load_if_neccessary(node->right);
-      Value rightRef = right->llvm.elem;
+      Value rightRef = node->right->token->llvm.elem;
 
       TypeRef element_type;
-      if (left->type == CHARS) {
+      if (node->left->token->type == CHARS) {
          element_type = i8;
-         curr->retType = CHAR;
+         node->token->retType = CHAR;
       } else {
-         element_type = get_llvm_type(left);
-         curr->retType = left->type;
+         element_type = get_llvm_type(left->token);
+         node->token->retType = left->token->type;
       }
 
       // Add bounds checking if enabled
@@ -740,10 +723,10 @@ else if (left->token->is_ref && right->token->is_ref)
 
          Value size_val = NULL;
 
-         if (left->type == CHARS) {
+         if (node->left->token->type == CHARS) {
             // For strings, we need to get the length
             // First check if it's a string literal or a variable
-            if (left->name && !left->llvm.array_size) {
+            if (node->left->token->name && !left->token->llvm.array_size) {
                // It's a variable - we need strlen
                Value strlen_func = llvm_get_named_function("strlen");
                if (!strlen_func) {
@@ -754,17 +737,17 @@ else if (left->token->is_ref && right->token->is_ref)
                (Value[]) {leftValue}, 1, "strlen");
                size_val = llvm_build_trunc(strlen_result, i32, "size");
             }
-            else if (left->llvm.array_size)
+            else if (node->left->token->llvm.array_size)
             {
-               size_val = left->llvm.array_size;
+               size_val = node->left->token->llvm.array_size;
             }
             else
             {
                // String literal - we know the size at compile time
                // This is handled in _chars function
-               size_val = llvm_const_int(i32, strlen(left->Chars.value), 0);
+               size_val = llvm_const_int(i32, strlen(node->left->token->Chars.value), 0);
             }
-         } else if (left->type == STACK) {
+         } else if (node->left->token->type == STACK) {
             // For STACK arrays, we should have stored the size
             // For now, use a placeholder - you'll need to enhance this
             size_val = llvm_const_int(i32, 1000000, 0); // Conservative large value
@@ -789,7 +772,7 @@ else if (left->token->is_ref && right->token->is_ref)
 
 
             // Call bounds check: __bounds_check(index, size, line, filename)
-            Value line_val = llvm_const_int(i32, curr->line, 0);
+            Value line_val = llvm_const_int(i32, node->token->line, 0);
             llvm_build_call2(llvm_global_get_value_type(bounds_check), bounds_check,
             (Value[]) {rightRef, size_val, line_val, filename_str}, 4, "");
          }
@@ -797,7 +780,7 @@ else if (left->token->is_ref && right->token->is_ref)
 
       Value indices[] = { rightRef };
       Value gep = llvm_build_gep2(element_type, leftValue, indices, 1, "ACCESS");
-      curr->llvm.elem = gep;
+      node->token->llvm.elem = gep;
 
       break;
    }
@@ -809,39 +792,7 @@ else if (left->token->is_ref && right->token->is_ref)
    }
 }
 
-// bool validate_ref_assignment(Token *left, Token *right)
-// {
-//    if (!left->is_ref && !right->is_ref) return true;
-//    if (left->is_ref && !right->is_ref) return true;
-
-//    if (left->is_ref && right->is_ref)
-//    {
-//       if (!right->has_ref)
-//       {
-//          fprintf(stderr, RED "Error:" RESET " Cannot assign uninitialized reference '%s' to '%s'\n",
-//                  right->name, left->name);
-//          fprintf(stderr, "  at %s:%d\n", right->filename, right->line);
-//          return false;
-//       }
-//       return true;
-//    }
-
-//    if (!left->is_ref && right->is_ref)
-//    {
-//       if (!right->has_ref)
-//       {
-//          fprintf(stderr, RED "Error:" RESET " Cannot use uninitialized reference '%s'\n",
-//                  right->name);
-//          fprintf(stderr, "  at %s:%d\n", right->filename, right->line);
-//          return false;
-//       }
-//       return true;
-//    }
-
-//    return false;
-// }
-
-void generate_ir(Node *node)
+void gen_ir(Node *node)
 {
    if (found_error) return;
    Node *left = node->left;
@@ -858,30 +809,27 @@ void generate_ir(Node *node)
    case FLOAT: case LONG: case CHARS: case PTR: case VOID:
    {
       if (node->token->is_dec) new_variable(node->token);
-      // node->token->retType = node->token->type;
       break;
    }
    case ASSIGN:
    {
       // TODO: check compatibility
-      generate_ir(left);
-      generate_ir(right);
-      // check(!validate_ref_assignment(left->token, right->token), "");
-
+      gen_ir(left);
+      gen_ir(right);
       node->token->retType = left->token->retType;
       break;
    }
    case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN: case MOD_ASSIGN:
    {
-      generate_ir(left);
-      generate_ir(right);
+      gen_ir(left);
+      gen_ir(right);
       // check(!validate_ref_assignment(left->token, right->token), "");
       node->token->retType = left->token->retType;
       break;
    }
    case NOT:
    {
-      generate_ir(left);
+      gen_ir(left);
       break;
    }
    case ADD: case SUB: case MUL: case DIV: case EQUAL:
@@ -889,8 +837,8 @@ void generate_ir(Node *node)
    case GREAT_EQUAL: case MOD: case AND: case OR:
    {
       // TODO: check compatibility
-      generate_ir(left);
-      generate_ir(right);
+      gen_ir(left);
+      gen_ir(right);
 
       check(!left || !left->token, "error in assignment, left is NULL");
       check(!right || !right->token, "error in assignment, right is NULL");
@@ -898,15 +846,10 @@ void generate_ir(Node *node)
       switch (node->token->type)
       {
       case ADD: case SUB: case MUL: case DIV: case MOD:
-         node->token->retType = left->token->retType;
-         break;
-      case AND: case OR:
-         node->token->retType = BOOL;
-         break;
-      case NOT_EQUAL: case EQUAL: case LESS:
+         node->token->retType = left->token->retType; break;
+      case AND: case OR: case NOT_EQUAL: case EQUAL: case LESS:
       case GREAT: case LESS_EQUAL: case GREAT_EQUAL:
-         node->token->retType = BOOL;
-         break;
+         node->token->retType = BOOL; break;
       default: break;
       }
       break;
@@ -914,10 +857,9 @@ void generate_ir(Node *node)
    case WHILE:
    {
       enter_scoop(node);
-      generate_ir(node->left); // condition
+      gen_ir(node->left); // condition
       // code bloc
-      for (int i = 0; i < node->cpos; i++)
-         generate_ir(node->children[i]);
+      for (int i = 0; i < node->cpos; i++) gen_ir(node->children[i]);
       exit_scoop();
       break;
    }
@@ -930,11 +872,11 @@ void generate_ir(Node *node)
          if (includes(curr->token->type, IF, ELIF, 0))
          {
             check(curr->left == NULL, "error");
-            generate_ir(curr->left); // condition
+            gen_ir(curr->left); // condition
          }
          // code bloc
          for (int i = 0; i < curr->cpos; i++)
-            generate_ir(curr->children[i]);
+            gen_ir(curr->children[i]);
          curr = curr->right;
       }
 
@@ -949,21 +891,14 @@ void generate_ir(Node *node)
       // parameters
       Node **params = (node->left ? node->left->children : NULL);
       for (int i = 0; params && i < node->left->cpos && !found_error; i++)
-         generate_ir(params[i]);
+         gen_ir(params[i]);
 
       // code bloc
       for (int i = 0; !node->token->is_proto && i < node->cpos; i++)
       {
          Node *child = node->children[i];
-         generate_ir(child);
+         gen_ir(child);
       }
-
-      // // if (!node->token->is_proto)
-      // {
-      //    Token *new = new_token(END_BLOC, node->token->space);
-      //    setName(new, node->token->name);
-      //    new_inst(new);
-      // }
       exit_scoop();
       break;
    }
@@ -971,68 +906,36 @@ void generate_ir(Node *node)
    {
       if (strcmp(node->token->name, "stack") == 0)
       {
-         // node->token->Fcall.args = allocate(node->cpos, sizeof(Token*));
-         // node->token->Fcall.pos = node->cpos;
-
          node->token->retType = CHARS;
          node->token->type = STACK;
 
          Node *call_args = node->left;
-
-         // if (check(call_args->cpos != dec_args->cpos && !node->token->is_variadic, "Incompatible number of arguments %s", func->token->name))
-         //    return NULL;
-
          Node *carg = call_args->children[0];
-         generate_ir(carg);
+         gen_ir(carg);
          Token *src = carg->token;
          if (check(src->type == ID, "Indeclared variable %s", carg->token->name)) break;
-
-         // Node *call_args = node;
-
-         // for (int i = 0; !found_error && i < call_args->cpos; i++)
-         // {
-         //    Node *carg = call_args->children[i]; // will always be ID
-         //    Token *src = generate_ir(carg);
-         //    if (check(src->type == ID, "Indeclared variable %s", carg->token->name)) break;
-         //    node->token->Fcall.args[i] = src;
-         //    src->space = node->token->space;
-         // }
-         // inst = new_inst(node->token);
       }
       else
       {
          Node *func = get_function(node->token->name);
          if (!func) return;
          node->token->Fcall.ptr = func->token;
-         // TODO: I guess declaring params mut be here
-         // node->token->Fcall.args = allocate(node->cpos, sizeof(Token*));
-         // node->token->Fcall.pos = node->cpos;
-
          func = copy_node(func);
-         // node->token->retType = func->token->retType;
-         // node->token->is_variadic = func->token->is_variadic;
 
          Node *call_args = node->left;
          Node *dec_args = func->left;
 
-         // if (check(call_args->cpos != dec_args->cpos && !node->token->is_variadic, "Incompatible number of arguments %s", func->token->name))
-         //    return NULL;
-
          for (int i = 0; !found_error && call_args && i < call_args->cpos; i++)
          {
             Node *carg = call_args->children[i];
-            generate_ir(carg);
+            gen_ir(carg);
             Token *src = carg->token;
             if (check(src->type == ID, "Indeclared variable %s", carg->token->name)) break;
             if (i < dec_args->cpos)
             {
                Node *darg = dec_args->children[i];
-
-               // if (check(!compatible(src, dist), "Incompatible type arg %s", func->token->name)) break;
                src->is_ref = darg->token->is_ref;
-               // src->has_ref = false;
             }
-            // node->token->Fcall.args[i] = src;
          }
          free_node(func);
       }
@@ -1041,14 +944,15 @@ void generate_ir(Node *node)
    }
    case AS:
    {
-      generate_ir(node->left);
+      gen_ir(node->left);
       node->token->retType = node->right->token->type;
       break;
    }
    case ACCESS:
    {
-      generate_ir(node->left);
-      generate_ir(node->right);
+      gen_ir(node->left);
+      gen_ir(node->right);
+      if (found_error) break;
       Type retType = 0;
       switch (node->left->token->type)
       {
@@ -1062,7 +966,7 @@ void generate_ir(Node *node)
    }
    case RETURN:
    {
-      generate_ir(node->left);
+      gen_ir(node->left);
       node->token->retType = node->left->token->type;
       break;
    }

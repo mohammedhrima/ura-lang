@@ -102,6 +102,8 @@ typedef LLVMModuleRef Module;
 typedef LLVMBuilderRef Builder;
 typedef LLVMBasicBlockRef Block;
 typedef LLVMValueRef Value;
+typedef LLVMTargetDataRef TargetData;
+typedef LLVMTypeKind TypeKind;
 
 enum Type
 {
@@ -218,7 +220,7 @@ struct Token
       struct { char *name; Token **attrs; int size; int pos; int index; } Struct;
       // struct { Token *ptr; int index; } Param;
       struct { Token *ptr; } Fcall;
-      struct { bool is_variadic; } Fdec;
+      // struct { bool is_variadic; } Fdec;
       struct { Token *ptr; Token *start; Token *end; } Statement;
       struct { Type type; char *name; } Catch;
    };
@@ -274,10 +276,11 @@ extern File asm_fd;
 
 extern bool enable_bounds_check;
 extern Value boundsCheckFunc;
-extern Value nullCheckFunc;
+// extern Value nullCheckFunc;
 extern Value vaStartFunc;
 extern Value vaEndFunc;
-extern Value refAssignFunc;
+extern bool using_refs;
+// extern Value refAssignFunc;
 
 // ----------------------------------------------------------------------------
 // Parsing
@@ -324,44 +327,15 @@ Node *syntax_error_node();
 // ----------------------------------------------------------------------------
 void enter_scoop(Node *node);
 void exit_scoop();
-void copy_insts();
 bool compatible(Token *left, Token *right);
-void generate_ir(Node *node);
+void gen_ir(Node *node);
 TypeRef get_llvm_type(Token* token);
-Value get_value(Token *token);
-void enter_func(Value func);
-void exit_func();
-Value get_current_func();
 void init(char *name);
 void finalize(char *moduleName);
-Value load_variable(Token *token);
-Value create_string(char *value);
 TypeRef get_llvm_type(Token *token);
-Value get_value(Token *token);
-Value llvm_get_ref(Token *token);
-void create_function(Token *token);
-void call_function(Token *curr);
-Block create_bloc(char *name);
-void branch(Block bloc);
-void open_block(Block bloc);
-Value load_variable(Token *token);
-Value assign2(Token *variable, Token* value);
-Value operation(Token *token, Token* left, Token* right);
-Value NotOperation(Token *token);
-Value return_(Value value);
-Value allocate_variable(TypeRef type, char *name);
-Value get_param(Token *token);
-void build_condition(Token* curr, Token *left, Token* right);
-Value access_(Token *curr, Token *left, Token *right);
-Value cast(Token *from, Token *to);
 Value allocate_stack(Value size, TypeRef elementType, char *name);
-bool did_opimize();
-Value safe_access_(Token *curr, Token *left, Token *right);
-void store_array_size(Value array_ptr, Value size);
-Value get_array_size(Value array_ptr);
-void generate_asm(Node *node);
 void _load(Token *to, Token *from);
-
+void gen_asm(Node *node);
 
 // ----------------------------------------------------------------------------
 // Utilities
@@ -375,7 +349,6 @@ bool check_error(char *filename, char *funcname, int line, bool cond, char *fmt,
 void free_memory();
 void *allocate_func(int line, int len, int size);
 char *strjoin(char *str0, char *str1, char *str2);
-Type getRetType(Node *node);
 char* resolve_path(char* path);
 Value create_null_check_function();
 
@@ -385,11 +358,8 @@ Value create_null_check_function();
 int debug_(char *conv, ...);
 int pnode(Node *node, char *indent);
 int ptoken(Token *token);
-void print_ast(Node *head);
-void print_ir();
 int print_escaped(char *str) ;
 int print_value(Token *token);
-void print_inst(Node *node);
 
 // ----------------------------------------------------------------------------
 // LLVM Wrappers
@@ -412,7 +382,7 @@ void _branch(Block bloc);
 void _condition(Value cond, Block then_block, Block else_block);
 Block _append_block(char *name);
 Value llvm_build_call2(TypeRef ty, Value fn, Value *args, unsigned num_args, char *name);
-Value llvm_build_global_string_ptr(const char *str, char *name);
+Value llvm_build_global_string_ptr(char *str, char *name);
 Value llvm_build_gep2(TypeRef ty, Value ptr, Value *indices, unsigned num_indices, char *name);
 Value llvm_build_bit_cast(Value val, TypeRef dest_ty, char *name);
 Value llvm_build_sext(Value val, TypeRef dest_ty, char *name);
@@ -420,68 +390,42 @@ Value llvm_build_trunc(Value val, TypeRef dest_ty, char *name);
 Value llvm_build_int_to_ptr(Value val, TypeRef dest_ty, char *name);
 Value llvm_build_ptr_to_int(Value val, TypeRef dest_ty, char *name);
 Value llvm_build_array_alloca(TypeRef ty, Value val, char *name);
-Value llvm_build_invoke2(TypeRef ty, Value fn, Value *args, unsigned num_args, Block then_block,
-                         Block catch_block, char *name);
+Value llvm_build_invoke2(TypeRef ty, Value fn, Value *args, unsigned num_args, Block then_block, Block catch_block, char *name);
 Value llvm_build_landing_pad(TypeRef ty, Value pers_fn, unsigned num_clauses, char *name);
 Value llvm_build_extract_value(Value agg_val, unsigned index, char *name);
 Value llvm_build_va_arg(Value list, TypeRef ty, char *name);
 Value llvm_build_unreachable();
-Value llvm_build_global_string_ptr_raw(const char *str, char *name);
+Value llvm_build_global_string_ptr_raw(char *str, char *name);
 
-// Type creation wrappers
 TypeRef llvm_pointer_type(TypeRef element_ty, unsigned address_space);
-TypeRef llvm_function_type(TypeRef return_type, TypeRef *param_types, unsigned param_count,
-                           int is_var_arg);
+TypeRef llvm_function_type(TypeRef retType, TypeRef *types, int param_count, int is_var_arg);
 TypeRef llvm_array_type(TypeRef element_type, unsigned element_count);
-
-// Constant creation wrappers
 Value llvm_const_int(TypeRef int_type, unsigned long long n, int sign_extend);
-
-// Function management wrappers
 Value llvm_get_named_function(char *name);
 Value llvm_add_function(char *name, TypeRef function_type);
 Value llvm_get_param(Value fn, unsigned index);
-
-// Block management wrappers
 Block llvm_append_basic_block_in_context(Value func, char *name);
 Block llvm_get_insert_block();
 Value llvm_get_basic_block_parent(Block block);
 Block llvm_get_entry_basic_block(Value func);
 void _position_at(Block block);
 Value llvm_get_basic_block_terminator(Block block);
-
-// Type queries
 TypeRef llvm_type_of(Value val);
-LLVMTypeKind llvm_get_type_kind(TypeRef ty);
+TypeKind llvm_get_type_kind(TypeRef ty);
 unsigned llvm_get_int_type_width(TypeRef int_ty);
-
-// Type lookup wrappers
 TypeRef llvm_get_type_by_name2(char *name);
-TypeRef llvm_struct_type_in_context(TypeRef *element_types, unsigned element_count, int packed);
-
-// Function type queries
+TypeRef llvm_struct_type_in_context(TypeRef *types, unsigned count, int packed);
 TypeRef llvm_global_get_value_type(Value global);
 TypeRef llvm_get_return_type(TypeRef function_type);
-
-// Module and target information
-const char *llvm_get_target(LLVMModuleRef m);
-
-// Personality function
+const char *llvm_get_target(Module m);
 void llvm_set_personality_fn(Value func, Value pers_fn);
-
-// Landing pad clauses
 void llvm_add_clause(Value landing_pad, Value clause_val);
-
-// Data layout information
-size_t llvm_abi_size_of_type(LLVMTargetDataRef td, TypeRef ty);
-LLVMTargetDataRef llvm_get_module_data_layout(LLVMModuleRef m);
+size_t llvm_abi_size_of_type(TargetData td, TypeRef ty);
+TargetData llvm_get_module_data_layout(Module m);
 Value llvm_build_not(Token *token);
-
-// Const null value
 Value llvm_const_null(TypeRef ty);
 TypeRef get_llvm_type(Token *token);
-
 Value check_null(Token *token);
 Value deref_or_load(Token *token);
-
-
+Value getNullCheckFunc();
+Value getRefAssignFunc();
