@@ -1,0 +1,6 @@
+
+def int main():
+   int a = 'a'
+   int b = a as int
+   return b
+end

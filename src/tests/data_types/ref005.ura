@@ -1,0 +1,23 @@
+main():
+    // Initialize values
+    val1 int = 10
+    val2 int = 20
+    val3 int = 30
+    
+    // Reference to val1
+    current ref int = val1
+    
+    // Modify through reference
+    current = 15        // val1 = 15
+    
+    // Re-bind to val2
+    current = val2      // current now references val2
+    current = 25        // val2 = 25
+    
+    // Re-bind to val3
+    current = val3      // current now references val3
+    current += 5        // val3 = 35
+    
+    // Sum all values
+    sum int = val1 + val2 + val3
+    return sum

@@ -1,0 +1,46 @@
+fn foo() bool:
+    return True
+
+fn bar() bool:
+    return False
+
+main():
+    a bool = True
+    b bool = False
+    
+    // Test: variable || variable
+    t1 bool = a || b
+    
+    // Test: variable || value
+    t2 bool = b || True
+    
+    // Test: variable || function
+    t3 bool = b || foo()
+    
+    // Test: value || variable
+    t4 bool = False || a
+    
+    // Test: value || value
+    t5 bool = False || False
+    
+    // Test: value || function
+    t6 bool = False || bar()
+    
+    // Test: function || variable
+    t7 bool = bar() || a
+    
+    // Test: function || value
+    t8 bool = foo() || False
+    
+    // Test: function || function
+    t9 bool = bar() || foo()
+    
+    // Test using 'or' keyword
+    t10 bool = a or b
+    t11 bool = False or True
+    t12 bool = bar() or foo()
+    
+    // Short-circuit evaluation tests
+    // These should not call bar() if first operand is True
+    t13 bool = True || bar()
+    t14 bool = a or foo()
