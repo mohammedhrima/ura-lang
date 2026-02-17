@@ -1,0 +1,6 @@
+proto fn puts(str chars) int
+
+main():
+    str chars = typeof "hello world\n"
+    puts(str)
+    return 0

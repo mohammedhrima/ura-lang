@@ -1,0 +1,11 @@
+fn strncmp(left chars, right chars, n int) int:
+    i int = 0
+    if n == 0: return 0
+    while i < n and left[i] == right[i] and left[i] != '\0':
+        i += 1
+    if i == n: return 0
+    return left[i] as int - right[i] as int
+
+main():
+    len int = strncmp("abd", "abc", 4) 
+    return len
