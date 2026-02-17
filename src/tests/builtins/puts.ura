@@ -1,0 +1,9 @@
+
+proto fn puts(str chars) int
+
+fn isdigit(c char) bool:
+    return c >= '0' and c <= '9'
+
+main():
+    if isdigit('1'): puts("is digit") 
+    else: puts("is not digit")

@@ -1,0 +1,36 @@
+fn foo() int:
+    return 5
+
+fn bar() int:
+    return 10
+
+main():
+    a int = 20
+    b int = 10
+    
+    // Test: variable - variable
+    t1 int = a - b
+    
+    // Test: variable - value
+    t2 int = a - 5
+    
+    // Test: variable - function
+    t3 int = a - foo()
+    
+    // Test: value - variable
+    t4 int = 30 - b
+    
+    // Test: value - value
+    t5 int = 50 - 15
+    
+    // Test: value - function
+    t6 int = 40 - bar()
+    
+    // Test: function - variable
+    t7 int = foo() - b
+    
+    // Test: function - value
+    t8 int = bar() - 3
+    
+    // Test: function - function
+    t9 int = bar() - foo()

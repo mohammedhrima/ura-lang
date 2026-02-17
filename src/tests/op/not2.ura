@@ -1,0 +1,33 @@
+fn foo() bool:
+    return True
+
+fn bar() bool:
+    return False
+
+main():
+    a bool = True
+    b bool = False
+    
+    // Test: !variable
+    t1 bool = !a
+    t2 bool = !b
+    
+    // Test: !value
+    t3 bool = !True
+    t4 bool = !False
+    
+    // Test: !function
+    t5 bool = !foo()
+    t6 bool = !bar()
+    
+    // Test: Double negation !!variable
+    t7 bool = !!a
+    t8 bool = !!b
+    
+    // Test: Double negation with value
+    t9 bool = !!True
+    t10 bool = !!False
+    
+    // Test: Double negation with function
+    t11 bool = !!foo()
+    t12 bool = !!bar()

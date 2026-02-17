@@ -1,0 +1,10 @@
+
+fn strlen(str chars) int:
+    i int = 0
+    while str[i] != '\0':
+        i += 1
+    return i
+
+main():
+    len int = strlen("abc")
+    return len
