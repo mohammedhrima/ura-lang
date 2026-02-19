@@ -95,15 +95,6 @@ int debug_(char *conv, ...)
                res += token ? ptoken(token) : fprintf(stdout, "(null)");
                break;
             }
-            case 'n':
-            {
-               // Node *node = (Node *)va_arg(args, Node *);
-               // res += debug("node: ") + (node ?
-               //                           pnode(node, NULL, 0) :
-               //                           fprintf(stdout, "(null)"));
-               check(1, "");
-               break;
-            }
             default: todo(1, "invalid format specifier [%c]", conv[i]);
                break;
             }
@@ -138,46 +129,51 @@ void** resize_array(void **array, int *size, int pos, int element_size)
    return array;
 }
 
-int pnode(Node *node, char *indent)
+void pnode(Node *node, char *indent)
 {
-   if (!node || !node->token || !node->token->type) return 0;
+   if (!node || !node->token) return;
 
-   int res = 0;
+   Node **kids    = NULL;
+   int    count   = 0;
+   int    capacity = 0;
+
+#define push(n) do { \
+      kids = (Node **)resize_array((void **)kids, &capacity, count, sizeof(Node *)); \
+      kids[count++] = (n); \
+   } while(0)
+
    debug("%k\n", node->token);
 
-   Node **children = NULL;
-   int count = 0;
-   int capacity = 16;
-
-   children = malloc(capacity * sizeof(Node *));
-   if (!children) return 0;
-
-   if (node->left) children[count++] = node->left;
-   if (node->right) {
-      children = (Node**)resize_array((void**)children, &capacity, count, sizeof(Node *));
-      children[count++] = node->right;
+   if (includes(node->token->type, IF, ELIF, ELSE, 0))
+   {
+      if (node->left) push(node->left);
+      for (int i = 0; i < node->cpos; i++) push(node->children[i]);
+      if (node->right) push(node->right);
    }
-
-   for (int i = 0; i < node->cpos; i++) {
-      children = (Node**)resize_array((void**)children, &capacity, count, sizeof(Node *));
-      children[count++] = node->children[i];
+   else
+   {
+      if (node->left)  push(node->left);
+      if (node->right) push(node->right);
+      for (int i = 0; i < node->cpos; i++) push(node->children[i]);
    }
 
    for (int i = 0; i < count; i++) {
-      char new_indent[4096];
-      char *add;
+      Node *child = kids[i];
+      if (!child || !child->token || !child->token->type) continue;
 
-      if (i == count - 1) {
-         printf("%s└──", indent); add = "   ";
-      } else {
-         printf("%s├──", indent); add = "│  ";
-      }
-      snprintf(new_indent, sizeof(new_indent), "%s%s", indent, add);
-      res += pnode(children[i], new_indent);
+      int         is_last   = (i == count - 1);
+      const char *connector = is_last ? "└──" : "├──";
+      const char *bar       = is_last ? "   " : "│  ";
+
+      char new_indent[4096];
+      snprintf(new_indent, sizeof(new_indent), "%s%s", indent, bar);
+
+      printf("%s%s", indent, connector);
+      pnode(child, new_indent);
    }
 
-   free(children);
-   return res;
+   free(kids);
+#undef push
 }
 
 int ptoken(Token *token)
@@ -194,20 +190,13 @@ int ptoken(Token *token)
       else if (token->type != VOID) print_value(token);
       break;
    }
-   case STRUCT_CALL: case STRUCT_DEF:
+   case STRUCT_CALL:
    {
-      if (token->name) res += debug("name [%s] ", token->name);
-      res += debug("st_name [%s] ", token->Struct.name);
-      res += debug("attributes:\n");
-      for (int i = 0; i < token->Struct.pos; i++)
-      {
-         Token *attr = token->Struct.attrs[i];
-         for (int j = 0; j < token->space + TAB; ) j += debug(" ");
-         res += ptoken(attr);
-         debug("\n");
-      }
+      res += debug("name [%s] ", token->name);
+      res += debug("st_name [%s] ", token->Struct.ptr->name);
       break;
    }
+   case STRUCT_DEF:
    case FCALL: case FDEC: case ID: res += debug("%s ", token->name); break;
    default: break;
    }
@@ -248,7 +237,14 @@ int print_value(Token *token)
    case LONG: return debug("[%lld] ", token->Long.value);
    case BOOL: return debug("[%s] ", token->Bool.value ? "True" : "False");
    case FLOAT: return debug("[%f] ", token->Float.value);
-   case CHAR: return debug("[%c] ", token->Char.value);
+   case CHAR:
+   {
+      int r = 0;
+      r += debug("[");
+      r += print_escaped(&token->Char.value);
+      r += debug("]");
+      return r;
+   }
    case CHARS:
    {
       int r = 0;
@@ -257,7 +253,6 @@ int print_value(Token *token)
       r += debug("]");
       return r;
    }
-   case STRUCT_CALL: return debug("has [%d] attrs ", token->Struct.pos);
    case ADD: case SUB: case NOT_EQUAL: return debug("%t ", token->type); break;
    case VOID: break;
    default: check(1, "handle this case [%s]", to_string(token->type));
@@ -270,7 +265,8 @@ char *to_string(Type type)
 {
    char* res[END + 1] = {
       [ID] = "ID", [CHAR] = "CHAR", [CHARS] = "CHARS", [VOID] = "VOID",
-      [INT] = "INT", [BOOL] = "BOOL", [FDEC] = "FDEC",
+      [INT] = "INT", [BOOL] = "BOOL", [LONG] = "LONG", [FLOAT] = "FLOAT",
+      [FDEC] = "FDEC",
       [FCALL] = "CALL", [END] = "END", [LPAR] = "LPAR", [RPAR] = "RPAR",
       [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
       [WHILE] = "WHILE", [BREAK] = "BRK", [CONTINUE] = "CONT",
@@ -284,11 +280,11 @@ char *to_string(Type type)
       [EQUAL] = "EQ", [NOT_EQUAL] = "NEQ", [LESS] = "LT",
       [GREAT] = "GT", [LESS_EQUAL] = "LE", [NOT] = "NOT",
       [GREAT_EQUAL] = "GE", [AND] = "AND", [OR] = "OR",
-      [DOTS] = "DOTS", //[COLON] = "COLON", [COMMA] = "COMMA",
-      [PROTO] = "PROT", [VARIADIC] = "VAR", [TYPEOF] = "TYPEOF",
-      //[VA_LIST] = "VA_LIST",
-      [AS] = "AS", [END_BLOC] = "EBLK", [STACK] = "STCK",
+      [DOTS] = "DOTS",  [PROTO] = "PROT", [VARIADIC] = "VAR",
+      [TYPEOF] = "TYPEOF", [ARGS] = "ARGS", [CHILDREN] = "CHILDREN",
+      [AS] = "AS", [STACK] = "STCK",
       //[TRY] = "TRY", [CATCH] = "CATCH", [THROW] = "THROW", [USE] = "USE",
+      [STRUCT_DEF] = "STRUCT_DEF", [STRUCT_CALL] = "STRUCT_CALL",
       [LBRA] = "LBRA", [RBRA] = "RBRA",
       [DOT] = "DOT", [SYNTAX_ERROR] = "SYNTAX_ERROR",
    };
@@ -296,7 +292,7 @@ char *to_string(Type type)
    if (!res[type])
    {
       printf("%s:%d handle this case %d\n", __FILE__, __LINE__, type);
-      seg();
+      // seg();
       exit(1);
    }
    return res[type];
@@ -335,24 +331,9 @@ Token *copy_token(Token *token)
    if (token == NULL) return NULL;
    Token *new = allocate(1, sizeof(Token));
    memcpy(new, token, sizeof(Token));
-   // TODO: can't use setName here to investigate later why ?
-   if (token->name)
-   {
-      new->name = strdup(token->name);
-      // if (strcmp(new->name, "n") == 0)
-      // {
-      //    debug(RED"found [%p]\n"RESET, new);
-      // }
-   }
-
+   new->name = NULL;
+   if (token->name) setName(new, token->name);
    if (token->Chars.value) new->Chars.value = strdup(token->Chars.value);
-   if (token->Struct.attrs)
-   {
-      new->Struct.attrs = allocate(token->Struct.size, sizeof(Token*));
-      for (int i = 0; i < new->Struct.pos; i++)
-         new->Struct.attrs[i] = copy_token(token->Struct.attrs[i]);
-   }
-   if (token->Struct.name) new->Struct.name = strdup(token->Struct.name);
    add_token(new);
    return new;
 }
@@ -399,7 +380,7 @@ Token *parse_token(char *filename, int line, char *input, int s, int e,  Type ty
       {
          {"int", INT}, {"bool", BOOL}, {"chars", CHARS},
          {"char", CHAR}, {"float", FLOAT}, {"void", VOID},
-         {"long", LONG}, {"pointer", PTR},
+         {"long", LONG}, {"pointer", CHARS}, // TODO: this approach need to be fixed later
          {"short", SHORT}, {0, 0}
       };
       for (i = 0; dataTypes[i].name; i++)
@@ -425,7 +406,7 @@ Token *parse_token(char *filename, int line, char *input, int s, int e,  Type ty
          if (strcmp(keywords[i].name, new->name) == 0)
          {
             new->type = keywords[i].type;
-            if(new->type == REF) using_refs = true;
+            if (new->type == REF) using_refs = true;
             break;
          }
       }
@@ -634,6 +615,11 @@ Node *syntax_error_node()
    return new_node(syntax_error_token());
 }
 
+bool is_data_type(Token *token)
+{
+   return includes(token->type, DATA_TYPES, 0);
+}
+
 // AST
 Node *new_node(Token *token)
 {
@@ -652,7 +638,7 @@ Node *copy_node(Node *node)
    for (int i = 0; i < node->cpos; i++)
       add_child(new, copy_node(node->children[i]));
    for (int i = 0; i < node->spos; i++)
-      add_struct(new, copy_token(node->structs[i]));
+      add_struct(new, node->structs[i]);
    for (int i = 0; i < node->vpos; i++)
       add_variable(new, copy_token(node->variables[i]));
    return new;
@@ -684,28 +670,27 @@ void exit_scoop()
    if (scoop_pos >= 0) scoop = Gscoop[scoop_pos];
 }
 
-void add_struct(Node *bloc, Token *token)
+void add_struct(Node *bloc, Node *node)
 {
-   bloc->structs = (Token**)resize_array((void**)bloc->structs, &bloc->slen, bloc->spos,
-                                         sizeof(Token*));
-   bloc->structs[bloc->spos++] = token;
+   bloc->structs = (Node**)resize_array((void**)bloc->structs, &bloc->slen, bloc->spos,
+                                        sizeof(Node*));
+   bloc->structs[bloc->spos++] = node;
 }
 
-Token *new_struct(Token *token)
+Node *new_struct(Node *node)
 {
-   // debug(CYAN "in scoop %k, new struct [%k]\n" RESET, scoop->token, token);
+   debug(CYAN "new struct [%s] in scoop %k\n" RESET, node->token->name, scoop->token);
    for (int i = 0; i < scoop->spos; i++)
    {
-      // debug(GREEN"loop [%d]\n"RESET, i);
-      Token *curr = scoop->structs[i];
-      check(strcmp(curr->Struct.name, token->Struct.name) == 0,
-            "Redefinition of %s", token->Struct.name);
+      Token *curr = scoop->structs[i]->token;
+      check(strcmp(curr->name, node->token->name) == 0,
+            "Redefinition of %s", node->token->name);
    }
-   add_struct(scoop, token);
-   return token;
+   add_struct(scoop, node);
+   return node;
 }
 
-Token *get_struct(char *name)
+Node *get_struct(char *name)
 {
    // debug(CYAN "get struct [%s] from scoop %k\n"RESET, name, scoop->token);
    for (int j = scoop_pos; j > 0; j--)
@@ -714,7 +699,7 @@ Token *get_struct(char *name)
       todo(node == NULL, RED"Error accessing NULL, %d"RESET, j);
       // debug("[%d] scoop [%s] has %d structs\n", j, node->token->name, node->spos);
       for (int i = 0; i < node->spos; i++)
-         if (strcmp(node->structs[i]->Struct.name, name) == 0)
+         if (strcmp(node->structs[i]->token->name, name) == 0)
             return node->structs[i];
    }
    return NULL;
@@ -756,8 +741,8 @@ Token *get_variable(char *name)
 
 void add_function(Node *bloc, Node *node)
 {
-   bloc->functions = (Node**)resize_array((void**)bloc->functions, &bloc->flen, bloc->fpos,
-                                          sizeof(Node*));
+   bloc->functions = (Node**)resize_array((void**)bloc->functions,
+                                          &bloc->flen, bloc->fpos, sizeof(Node*));
    bloc->functions[bloc->fpos++] = node;
 }
 
@@ -921,7 +906,7 @@ void init(char *name)
    LLVMInitializeAllAsmParsers();
    LLVMInitializeAllAsmPrinters();
    LLVMSetTarget(module, LLVMGetDefaultTargetTriple());
-   if (using_refs) getRefAssignFunc(); // TODO: to be removed later
+   if (using_refs) getRefAssignFunc();
 }
 
 void finalize(char *output)
@@ -1026,8 +1011,6 @@ void free_token(Token *token)
    free(token->name);
    // free(token->logName);
    free(token->Chars.value);
-   free(token->Struct.attrs);
-   free(token->Struct.name);
    free(token);
 }
 

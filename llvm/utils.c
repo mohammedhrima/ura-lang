@@ -14,8 +14,12 @@ TypeRef vd, f32, i1, i8, i16, i32, i64, p8, p32;
 
 Node *Gscoop[100];
 int scoop_pos = -1;
-Node *scoop;
+Node *curr_scoop;
 bool enable_bounds_check = false;
+
+
+StructDef struct_defs[100];
+int struct_def_count = 0;
 
 bool check_error(char *filename, const char *funcname, int line, bool cond, char *fmt, ...)
 {
@@ -49,7 +53,7 @@ Token *new_token(Type type, int line, int pos, int s, int e, int space)
          {"while", WHILE}, {"return", RETURN}, {"end", END_BLOCK}, {"elif", ELIF},
          {"else", ELSE}, {"protoFunc", PROTO}, {"ref", REF},
          {"as", AS}, {"use", USE}, {"stack", STACK}, {"try", TRY},
-         {"catch", CATCH}, {"throw", THROW}, {NULL, 0}
+         {"catch", CATCH}, {"throw", THROW}, {"struct", STRUCT_DEF}, {NULL, 0}
       };
       new->name = substr(input, s, e);
 
@@ -68,6 +72,7 @@ Token *new_token(Type type, int line, int pos, int s, int e, int space)
             break;
          }
       }
+
       break;
    }
    case CHAR:
@@ -329,7 +334,8 @@ Value get_throw() {
       TypeRef fn_type = LLVMFunctionType(vd, (TypeRef[]) {p8, p8, p8}, 3, false);
       fn = LLVMAddFunction(module, "__cxa_throw", fn_type);
       LLVMSetFunctionCallConv(fn, LLVMCCallConv);
-      LLVMAddAttributeAtIndex(fn, LLVMAttributeFunctionIndex, LLVMCreateEnumAttribute(context, LLVMGetEnumAttributeKindForName("noreturn", 8), 0));
+      LLVMAddAttributeAtIndex(fn, LLVMAttributeFunctionIndex, LLVMCreateEnumAttribute(context,
+                              LLVMGetEnumAttributeKindForName("noreturn", 8), 0));
    }
    return fn;
 }
@@ -371,7 +377,7 @@ void finalize()
    LLVMPrintModuleToFile(module, "build/out.ll", NULL);
 
    LLVMDisposeBuilder(builder);
-   LLVMDisposModule(module);
+   LLVMDisposeModule(module);
    LLVMContextDispose(context);
 }
 
@@ -395,7 +401,7 @@ void free_tokens()
    for (int i = 0; tokens[i]; i++)
    {
       if (tokens[i]->Chars.value) free(tokens[i]->Chars.value);
-      if (tokens[i]->name) free(tokens[i]->name);
+      // if (tokens[i]->name) free(tokens[i]->name);
       free(tokens[i]);
    }
 }
@@ -538,7 +544,7 @@ char *to_string(Type type)
       [VA_LIST] = "VA_LIST", [AS] = "AS", [STACK] = "STACK",
       [TRY] = "TRY", [CATCH] = "CATCH", [THROW] = "THROW",
       [USE] = "USE", [LBRA] = "LBRA", [RBRA] = "RBRA",
-      [DOT] = "DOT",
+      [DOT] = "DOT", [STRUCT_DEF] = "STRUCT_DEF", [STRUCT] = "STRUCT",
    };
    if (!res[type])
    {
@@ -570,9 +576,9 @@ void create_bounds_check_function() {
 
    // Check: index >= 0 && index < size
    Value cmp_negative = LLVMBuildICmp(builder, LLVMIntSLT, index_param,
-                                       LLVMConstInt(i32, 0, 0), "is_negative");
+                                      LLVMConstInt(i32, 0, 0), "is_negative");
    Value cmp_overflow = LLVMBuildICmp(builder, LLVMIntSGE, index_param,
-                                       size_param, "is_overflow");
+                                      size_param, "is_overflow");
    Value is_bad = LLVMBuildOr(builder, cmp_negative, cmp_overflow, "is_bad");
 
    LLVMBuildCondBr(builder, is_bad, error_block, ok_block);
@@ -589,19 +595,19 @@ void create_bounds_check_function() {
 
    // Error messages
    Value fmt_header = LLVMBuildGlobalStringPtr(builder,
-                       "\n\033[1m\033[31mruntime error:\033[0m array index out of bounds\n", "fmt_header");
+                      "\n\033[1m\033[31mruntime error:\033[0m array index out of bounds\n", "fmt_header");
    Value fmt_location = LLVMBuildGlobalStringPtr(builder,
-                         "\033[1m%s:%d:\033[0m ", "fmt_location");
+                        "\033[1m%s:%d:\033[0m ", "fmt_location");
    Value fmt_error = LLVMBuildGlobalStringPtr(builder,
-                      "\033[1m\033[31merror:\033[0m index \033[1m%d\033[0m is out of bounds for array of size \033[1m%d\033[0m\n\n",
-                      "fmt_error");
+                     "\033[1m\033[31merror:\033[0m index \033[1m%d\033[0m is out of bounds for array of size \033[1m%d\033[0m\n\n",
+                     "fmt_error");
 
    // Print error using printf
-   LLVMBuildCall2(builder, LLVMGlobalGetValuTypeRef(printf_func), printf_func,
+   LLVMBuildCall2(builder, LLVMGlobalGetValueType(printf_func), printf_func,
    (Value[]) {fmt_header}, 1, "");
-   LLVMBuildCall2(builder, LLVMGlobalGetValuTypeRef(printf_func), printf_func,
+   LLVMBuildCall2(builder, LLVMGlobalGetValueType(printf_func), printf_func,
    (Value[]) {fmt_location, filename_param, line_param}, 3, "");
-   LLVMBuildCall2(builder, LLVMGlobalGetValuTypeRef(printf_func), printf_func,
+   LLVMBuildCall2(builder, LLVMGlobalGetValueType(printf_func), printf_func,
    (Value[]) {fmt_error, index_param, size_param}, 3, "");
 
    // Abort
@@ -612,7 +618,7 @@ void create_bounds_check_function() {
       LLVMAddAttributeAtIndex(abort_func, LLVMAttributeFunctionIndex,
                               LLVMCreateEnumAttribute(context, LLVMGetEnumAttributeKindForName("noreturn", 8), 0));
    }
-   LLVMBuildCall2(builder, LLVMGlobalGetValuTypeRef(abort_func), abort_func, NULL, 0, "");
+   LLVMBuildCall2(builder, LLVMGlobalGetValueType(abort_func), abort_func, NULL, 0, "");
    LLVMBuildUnreachable(builder);
 
    // OK block

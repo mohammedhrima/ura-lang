@@ -106,7 +106,7 @@ end
 ```bash
 def int main():
    int a = 1
-   ref int b = a
+   int ref b = a
    b = 2
    return a
 end
@@ -114,13 +114,13 @@ end
 
 + reference parameter: 008
 ```bash
-def void func(ref int c):
+def void func(int ref c):
    c = 2
 end
 
 def int main():
    int a = 12
-   ref int c = a
+   int ref c = a
    func(c)
    return a
 end

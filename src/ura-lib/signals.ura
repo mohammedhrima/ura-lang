@@ -1,6 +1,6 @@
-protoFunc pointer signal(int sig, pointer handler)
-protoFunc int raise(int sig)
-protoFunc int kill(int pid, int sig)
-protoFunc int sigaction(int sig, pointer act, pointer oldact)
-protoFunc int sigprocmask(int how, pointer set, pointer oldset)
-protoFunc int sigsuspend(pointer mask)
+proto fn signal(sig int, handler pointer) pointer
+proto fn raise(sig int) int
+proto fn kill(pid int, sig int) int
+proto fn sigaction(sig int, act pointer, oldact pointer) int
+proto fn sigprocmask(how int, set pointer, oldset pointer) int
+proto fn sigsuspend(mask pointer) int

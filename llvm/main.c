@@ -87,8 +87,62 @@ Node *prime_node()
       node->token->has_ref = false;
       return node;
    }
-   else if ((token = find(DATA_TYPES, ID, 0)))
+   else if ((token = find(STRUCT_DEF, 0)))
    {
+      // "struct Point:"
+      //    field declarations inside body
+      // "end"
+      Token *name_tok = find(ID, 0);
+      check(!name_tok, "Expected struct name after 'struct'");
+
+      node = new_node(token);
+      node->token->name = name_tok->name;
+      name_tok->name = NULL;
+
+      check(!find(DOTS, 0), "Expected ':' after struct name");
+
+      // Register the struct early so fields can reference it (optional)
+      StructDef *def = &struct_defs[struct_def_count++];
+      def->name = strdup(node->token->name);
+      def->fields = calloc(32, sizeof(StructField));
+      def->field_count = 0;
+      node->struct_def = def;
+
+      Token *t;
+      while (!(t = find(END_BLOCK, END, 0))) {
+         // Each line: "int x" or "chars name" — parse as a declaration
+         Node *field_node = expr_node();
+         // field_node->token is a declared variable token
+         check(!field_node->token->is_dec && field_node->token->type != INT
+               && field_node->token->type != CHAR && field_node->token->type != CHARS
+               && field_node->token->type != BOOL,
+               "Expected field declaration in struct");
+         StructField *f = &def->fields[def->field_count++];
+         f->name  = strdup(field_node->token->name);
+         f->type  = field_node->token->type;
+         f->index = def->field_count - 1;
+         add_child_node(node, field_node);
+      }
+      check(!t || t->type != END_BLOCK, "Expected 'end' to close struct");
+      return node;
+   }
+   else if ((token = find(DATA_TYPES, STRUCT, ID, 0)))
+   {
+      /* Resolve a plain ID to a struct type if its name matches a known struct def */
+      if (token->type == ID && !token->is_dec && token->name)
+      {
+         for (int i = 0; i < struct_def_count; i++)
+         {
+            if (strcmp(struct_defs[i].name, token->name) == 0)
+            {
+               token->type = STRUCT;
+               token->Struct.struct_name = struct_defs[i].name;
+               token->is_dec = true;
+               break;
+            }
+         }
+      }
+
       if (token->is_dec)
       {
          Token *fname = find(ID, 0);
@@ -108,21 +162,31 @@ Node *prime_node()
             arg = find(RPAR, END, 0);
             if (arg) break;
 
-            arg = prime_node()->token;
+            Node *argNode = expr_node();
             if (len == 0)
             {
                len = 10;
-               token->Fcall.args = calloc(len, sizeof(Token*));
+               token->Fcall.args  = calloc(len, sizeof(Token*));
+               token->Fcall.nodes = calloc(len, sizeof(Node*));
             }
             else if (p + 1 == len)
             {
-               Token **tmp = calloc(len *= 2, sizeof(Token*));
-               memcpy(tmp, token->Fcall.args, p *  sizeof(Token*));
+               Token **tmp = calloc(len * 2, sizeof(Token*));
+               memcpy(tmp, token->Fcall.args, p * sizeof(Token*));
                free(token->Fcall.args);
                token->Fcall.args = tmp;
+
+               Node **ntmp = calloc(len * 2, sizeof(Node*));
+               memcpy(ntmp, token->Fcall.nodes, p * sizeof(Node*));
+               free(token->Fcall.nodes);
+               token->Fcall.nodes = ntmp;
+               len *= 2;
             }
 
-            token->Fcall.args[p++] = arg;
+            token->Fcall.args[p]  = argNode->token;
+            token->Fcall.nodes[p] = argNode;
+            p++;
+
             arg = find(RPAR, END, 0);
             if (arg) break;
             check(!find(COMA, 0), "");
@@ -504,7 +568,7 @@ void _access(Token *curr, Token *left, Token *right)
       curr->rTypeRef = left->type;
    }
 
-   // Add bounds checking if enabled
+#if 0
    if (enable_bounds_check) {
       // We need to track array sizes - for now we'll use a conservative approach
       // For CHARS (strings), we can use strlen at runtime
@@ -523,7 +587,7 @@ void _access(Token *curr, Token *left, Token *right)
                strlen_func = llvm_add_function("strlen", strlen_type);
             }
             Value strlen_result = llvm_build_call2(NULL,
-                                                    llvm_global_get_value_type(strlen_func), strlen_func,
+                                                   llvm_global_get_value_type(strlen_func), strlen_func,
             (Value[]) {leftValue}, 1, "strlen");
             size_val = llvm_build_trunc(NULL, strlen_result, i32, "size");
          }
@@ -577,6 +641,7 @@ void _access(Token *curr, Token *left, Token *right)
          (Value[]) {rightRef, size_val, line_val, filename_str}, 4, "");
       }
    }
+#endif
 
    Value indices[] = { rightRef };
    Value gep = llvm_build_gep2(curr, element_type, leftValue, indices, 1, "ACCESS");
@@ -705,7 +770,20 @@ void load_if_neccessary(Node *node)
 {
    Token *token = node->token;
 
-   if (token->is_loaded || includes(token->type, CHARS, STACK, 0))
+   if (token->is_loaded)
+      return;
+
+   // STACK is an alloca pointer used as-is, never load
+   if (token->type == STACK)
+      return;
+
+   // STRUCT alloca pointer: never load the base pointer itself
+   if (token->type == STRUCT)
+      return;
+
+   // CHARS literal: already a pointer to string data, no load needed.
+   // CHARS via ref (struct field GEP): pointer-to-pointer, must load.
+   if (token->type == CHARS && !(token->is_ref && token->has_ref))
       return;
 
    if (token->name && token->type != FCALL)
@@ -750,11 +828,18 @@ int get_va_list_size(LLVMModuleRef module)
 TypeRef get_llvm_type(Token *token)
 {
    Type type = token->type;
+   if (type == STRUCT)
+   {
+      for (int i = 0; i < struct_def_count; i++) {
+         if (strcmp(struct_defs[i].name, token->Struct.struct_name) == 0)
+            return struct_defs[i].llvm_type;
+      }
+   }
    if (includes(type, FDEC, PROTO, 0)) type = token->Fdec.retType;
    TypeRef res[END] = {[INT] = i32, [CHAR] = i8, [CHARS] = p8,
-                     [BOOL] = i1, [VOID] = vd, [VA_LIST] = p8,
-                     [ACCESS] = i8, [CATCH] = i32,
-                    };
+                       [BOOL] = i1, [VOID] = vd, [VA_LIST] = p8,
+                       [ACCESS] = i8, [CATCH] = i32,
+                      };
 
    check(!res[type], "handle this case [%s]\n", to_string(type));
    return res[type];
@@ -767,6 +852,41 @@ void generate_ir(Node *node)
    {
    case ID:
    {
+      node->token = get_variable(node->token->name);
+      break;
+   }
+   case STRUCT_DEF:
+   {
+      StructDef *def = node->struct_def;
+
+      // Build LLVM field types
+      TypeRef *field_types = calloc(def->field_count, sizeof(TypeRef));
+      for (int i = 0; i < def->field_count; i++) {
+         Token tmp = {.type = def->fields[i].type};
+         field_types[i] = get_llvm_type(&tmp);
+      }
+
+      def->llvm_type = llvm_struct_type_in_context(field_types, def->field_count, 0);
+      free(field_types);
+
+      // Name it in LLVM IR for readability
+      char type_name[256];
+      snprintf(type_name, sizeof(type_name), "struct.%s", def->name);
+      // (LLVMStructSetBody on a named struct is optional — anonymous struct is fine)
+      break;
+   }
+   case STRUCT:
+   {
+      if (node->token->is_dec)
+      {
+         /* Allocate stack space for the struct */
+         TypeRef struct_llvm_type = get_llvm_type(node->token);
+         node->token->llvm.elem = llvm_build_alloca(node->token, struct_llvm_type, node->token->name);
+         add_variable(node->token);
+         node->token->is_dec = false;
+         return;
+      }
+      /* Non-declaration: look up variable by name */
       node->token = get_variable(node->token->name);
       break;
    }
@@ -836,6 +956,11 @@ void generate_ir(Node *node)
             left->has_ref = true;
             left->type = right->type;
             node->token->llvm.elem = left->llvm.elem;
+            /* A CHARS ref bound to a direct pointer value (e.g. stack()/literal)
+               has no pointer-to-pointer indirection — clear is_ref so
+               load_if_neccessary won't try to load through the pointer. */
+            if (left->type == CHARS)
+               left->is_ref = false;
          }
          else
          {
@@ -858,6 +983,9 @@ void generate_ir(Node *node)
             left->has_ref = true;
             left->type = right->type;
             node->token->llvm.elem = left->llvm.elem;
+            /* Same: CHARS ref bound to another direct-pointer CHARS */
+            if (left->type == CHARS)
+               left->is_ref = false;
          }
          else
          {
@@ -931,7 +1059,7 @@ void generate_ir(Node *node)
                }
 
                Value gep = llvm_build_gep2(param, llvm_array_type(i8, va_list_size),
-                                            va_list_alloca,
+                                           va_list_alloca,
                (Value[]) {llvm_const_int(i32, 0, 0)}, 1, "");
                Value cast = llvm_build_bit_cast(param, gep, llvm_pointer_type(i8, 0), "");
                llvm_build_call2(param, llvm_global_get_value_type(va_start), va_start, &cast, 1, "");
@@ -1005,7 +1133,9 @@ void generate_ir(Node *node)
       Token *funcToken = get_function(node->token->name);
 
       for (int i = 0; i < node->token->Fcall.len; i++) {
-         Node *nodeArg = new_node(node->token->Fcall.args[i]);
+         Node *nodeArg = node->token->Fcall.nodes
+                         ? node->token->Fcall.nodes[i]
+                         : new_node(node->token->Fcall.args[i]);
          generate_ir(nodeArg);
 
          bool should_load = true;
@@ -1014,9 +1144,8 @@ void generate_ir(Node *node)
             should_load = !funcToken->Fdec.args[i]->is_ref;
          }
          else {
-            if (nodeArg->token->type == CHARS && !nodeArg->token->name) {
-               should_load = false;
-            }
+            // Defer to load_if_neccessary: it handles literals vs refs correctly
+            should_load = true;
          }
 
          if (should_load) {
@@ -1024,7 +1153,7 @@ void generate_ir(Node *node)
          }
 
          node->token->Fcall.args[i] = nodeArg->token;
-         free(nodeArg);
+         /* Do NOT free nodeArg — it may be part of the parse tree */
       }
 
 
@@ -1186,7 +1315,7 @@ void generate_ir(Node *node)
       TypeRef lpad_type = llvm_struct_type_in_context(
       (TypeRef[]) {p8, i32}, 2, false);
       Value lpad = llvm_build_landing_pad(node->token, lpad_type,
-                                           personality, 1, "lpad");
+                                          personality, 1, "lpad");
 
       // Add catch clause for our type
       Value type_info = get_type_info_for_type(catch_type);
@@ -1198,14 +1327,14 @@ void generate_ir(Node *node)
       // Call __cxa_begin_catch
       Value begin_catch = get_begin_catch();
       Value caught_ptr = llvm_build_call2(node->token,
-                                           llvm_global_get_value_type(begin_catch), begin_catch,
-                                           &exception_ptr, 1, "caught");
+                                          llvm_global_get_value_type(begin_catch), begin_catch,
+                                          &exception_ptr, 1, "caught");
 
       // Cast and load the exception value
       Value typed_ptr = llvm_build_bit_cast(node->token, caught_ptr,
-                                             llvm_pointer_type(catch_llvm_type, 0), "typed.ptr");
+                                            llvm_pointer_type(catch_llvm_type, 0), "typed.ptr");
       Value exception_value = llvm_build_load2(node->token, catch_llvm_type,
-                               typed_ptr, "exception.value");
+                              typed_ptr, "exception.value");
 
       // Store in our storage
       llvm_build_store(node->token, exception_value, storage);
@@ -1270,12 +1399,12 @@ void generate_ir(Node *node)
       size_t exception_size = llvm_abi_size_of_type(llvm_get_module_data_layout(module), throw_llvm_type);
       Value size_val = llvm_const_int(i64, exception_size, 0);
       Value exception_mem = llvm_build_call2(node->token,
-                                              llvm_global_get_value_type(alloc_exception), alloc_exception,
-                                              &size_val, 1, "exception");
+                                             llvm_global_get_value_type(alloc_exception), alloc_exception,
+                                             &size_val, 1, "exception");
 
       // Cast to appropriate pointer type and store value
       Value typed_exception = llvm_build_bit_cast(node->token, exception_mem,
-                               llvm_pointer_type(throw_llvm_type, 0), "typed.exception");
+                              llvm_pointer_type(throw_llvm_type, 0), "typed.exception");
       llvm_build_store(node->token, throw_token->llvm.elem, typed_exception);
 
       // Get type info
@@ -1317,6 +1446,46 @@ void generate_ir(Node *node)
          {
             check(1, "Unknown va_list member: %s", member_name);
          }
+      }
+      else if (object->type == STRUCT) {
+         // Find struct definition
+         StructDef *def = NULL;
+         for (int i = 0; i < struct_def_count; i++) {
+            if (strcmp(struct_defs[i].name, object->Struct.struct_name) == 0) {
+               def = &struct_defs[i];
+               break;
+            }
+         }
+         check(!def, "Unknown struct type: %s", object->Struct.struct_name);
+
+         // Find the field
+         StructField *field = NULL;
+         for (int i = 0; i < def->field_count; i++) {
+            if (strcmp(def->fields[i].name, member_name) == 0) {
+               field = &def->fields[i];
+               break;
+            }
+         }
+         check(!field, "Struct '%s' has no field '%s'", def->name, member_name);
+
+         // GEP to get pointer to the field
+         TypeRef struct_type = def->llvm_type;
+         Value indices[] = {
+            llvm_const_int(i32, 0, 0),              // deref the alloca pointer
+            llvm_const_int(i32, field->index, 0),   // field index
+         };
+         Value field_ptr = llvm_build_gep2(
+                              node->token, struct_type, object->llvm.elem, indices, 2, member_name
+                           );
+
+         // The result is a pointer to the field — set up token accordingly
+         node->token->llvm.elem = field_ptr;
+         node->token->type = field->type;
+         node->token->name = member_name;
+         // is_ref so that load_if_necessary will load it when reading,
+         // but store will work when writing
+         node->token->is_ref  = true;
+         node->token->has_ref = true;
       }
       else
       {
