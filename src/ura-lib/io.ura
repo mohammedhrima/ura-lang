@@ -1,79 +1,79 @@
 // File operations
-protoFunc pointer fopen(chars path, chars mode)
-protoFunc pointer freopen(chars path, chars mode, pointer file)
-protoFunc int fclose(pointer file)
-protoFunc int fflush(pointer file)
+proto fn fopen(path chars, mode chars) pointer
+proto fn freopen(path chars, mode chars, file pointer) pointer
+proto fn fclose(file pointer) int
+proto fn fflush(file pointer) int
 
 // Character I/O
-protoFunc int fgetc(pointer file)
-protoFunc int fputc(int c, pointer file)
-protoFunc int getc(pointer file)
-protoFunc int putc(int c, pointer file)
-protoFunc int getchar()
-protoFunc int putchar(char c)
-protoFunc int ungetc(int c, pointer file)
+proto fn fgetc(file pointer) int
+proto fn fputc(c int, file pointer) int
+proto fn getc(file pointer) int
+proto fn putc(c int, file pointer) int
+proto fn getchar() int
+proto fn putchar(c char) int
+proto fn ungetc(c int, file pointer) int
 
 // String I/O
-protoFunc chars fgets(chars buffer, int size, pointer file)
-protoFunc int fputs(chars str, pointer file)
-protoFunc int puts(chars str)
-protoFunc chars gets(chars buffer)
+proto fn fgets(buffer chars, size int, file pointer) chars
+proto fn fputs(str chars, file pointer) int
+proto fn puts(str chars) int
+proto fn gets(buffer chars) chars
 
 // Block I/O
-protoFunc int fread(pointer ptr, int size, int nmemb, pointer file)
-protoFunc int fwrite(pointer ptr, int size, int nmemb, pointer file)
-protoFunc int write(int fd, pointer ptr, int len)
-protoFunc int read(int fd, pointer ptr, int len)
+proto fn fread(ptr pointer, size int, nmemb int, file pointer) int
+proto fn fwrite(ptr pointer, size int, nmemb int, file pointer) int
+proto fn write(fd int, ptr pointer, len int) int
+proto fn read(fd int, ptr pointer, len int) int
 
 // File positioning
-protoFunc int fseek(pointer file, long offset, int whence)
-protoFunc long ftell(pointer file)
-protoFunc void rewind(pointer file)
-protoFunc int fgetpos(pointer file, pointer pos)
-protoFunc int fsetpos(pointer file, pointer pos)
+proto fn fseek(file pointer, offset long, whence int) int
+proto fn ftell(file pointer) long
+proto fn rewind(file pointer) void
+proto fn fgetpos(file pointer, pos pointer) int
+proto fn fsetpos(file pointer, pos pointer) int
 
 // Error handling
-protoFunc int feof(pointer file)
-protoFunc int ferror(pointer file)
-protoFunc void clearerr(pointer file)
-protoFunc void perror(chars str)
+proto fn feof(file pointer) int
+proto fn ferror(file pointer) int
+proto fn clearerr(file pointer) void
+proto fn perror(str chars) void
 
 // Buffering
-protoFunc int setvbuf(pointer file, chars buffer, int mode, int size)
-protoFunc void setbuf(pointer file, chars buffer)
+proto fn setvbuf(file pointer, buffer chars, mode int, size int) int
+proto fn setbuf(file pointer, buffer chars) void
 
 // File system operations
-protoFunc int remove(chars path)
-protoFunc int rename(chars oldpath, chars newpath)
+proto fn remove(path chars) int
+proto fn rename(oldpath chars, newpath chars) int
 
 // Temporary files
-protoFunc pointer tmpfile()
-protoFunc chars tmpnam(chars str)
+proto fn tmpfile() pointer
+proto fn tmpnam(str chars) chars
 
 // File descriptor operations (POSIX)
-protoFunc int fileno(pointer file)
-protoFunc pointer fdopen(int fd, chars mode)
+proto fn fileno(file pointer) int
+proto fn fdopen(fd int, mode chars) pointer
 
 // Formatted output
-protoFunc int printf(chars format, ...)
-protoFunc int fprintf(pointer file, chars format)
-protoFunc int sprintf(chars buffer, chars format)
-protoFunc int snprintf(chars buffer, int size, chars format)
-protoFunc int dprintf(int fd, chars format)
+proto fn printf(format chars, ...) int
+proto fn fprintf(file pointer, format chars) int
+proto fn sprintf(buffer chars, format chars) int
+proto fn snprintf(buffer chars, size int, format chars) int
+proto fn dprintf(fd int, format chars) int
 
 // Variadic formatted output
-protoFunc int vprintf(chars format, pointer args)
-protoFunc int vfprintf(pointer file, chars format, pointer args)
-protoFunc int vsprintf(chars buffer, chars format, pointer args)
-protoFunc int vsnprintf(chars buffer, int size, chars format, pointer args)
-protoFunc int vdprintf(int fd, chars format, pointer args)
+proto fn vprintf(format chars, args pointer) int
+proto fn vfprintf(file pointer, format chars, args pointer) int
+proto fn vsprintf(buffer chars, format chars, args pointer) int
+proto fn vsnprintf(buffer chars, size int, format chars, args pointer) int
+proto fn vdprintf(fd int, format chars, args pointer) int
 
 // Formatted input
-protoFunc int scanf(chars format)
-protoFunc int fscanf(pointer file, chars format)
-protoFunc int sscanf(chars buffer, chars format)
+proto fn scanf(format chars) int
+proto fn fscanf(file pointer, format chars) int
+proto fn sscanf(buffer chars, format chars) int
 
 // Variadic formatted input
-protoFunc int vscanf(chars format, pointer args)
-protoFunc int vfscanf(pointer file, chars format, pointer args)
-protoFunc int vsscanf(chars buffer, chars format, pointer args)
+proto fn vscanf(format chars, args pointer) int
+proto fn vfscanf(file pointer, format chars, args pointer) int
+proto fn vsscanf(buffer chars, format chars, args pointer) int

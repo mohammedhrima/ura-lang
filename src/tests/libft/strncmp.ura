@@ -7,5 +7,5 @@ fn strncmp(left chars, right chars, n int) int:
     return left[i] as int - right[i] as int
 
 main():
-    len int = strncmp("abd", "abc", 4) 
+    len int = strncmp("abd", "abc", 4)
     return len

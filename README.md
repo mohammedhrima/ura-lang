@@ -86,7 +86,7 @@ References allow binding to existing variables:
 ```ura
 main():
     a int = 10
-    b ref int = a    // b is a reference to a
+    b int ref = a    // b is a reference to a
     b = 20           // modifies a through the reference
     return a         // returns 20
 ```
@@ -754,4 +754,3 @@ This is a work-in-progress educational project. Contributions, suggestions, and 
 
 - LLVM Project for the compiler infrastructure
 - Inspired by various programming language implementations
-

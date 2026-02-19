@@ -1,55 +1,55 @@
 // String length
-protoFunc int strlen(chars s)
-protoFunc int strnlen(chars s, int maxlen)
+proto fn strlen(s chars) int
+proto fn strnlen(s chars, maxlen int) int
 
 // String comparison
-protoFunc int strcmp(chars a, chars b)
-protoFunc int strncmp(chars a, chars b, int n)
-protoFunc int strcasecmp(chars a, chars b)
-protoFunc int strncasecmp(chars a, chars b, int n)
-protoFunc int strcoll(chars a, chars b)
-protoFunc int strxfrm(chars dest, chars src, int n)
+proto fn strcmp(a chars, b chars) int
+proto fn strncmp(a chars, b chars, n int) int
+proto fn strcasecmp(a chars, b chars) int
+proto fn strncasecmp(a chars, b chars, n int) int
+proto fn strcoll(a chars, b chars) int
+proto fn strxfrm(dest chars, src chars, n int) int
 
 // String copying
-protoFunc chars strcpy(chars dest, chars src)
-protoFunc chars strncpy(chars dest, chars src, int n)
-protoFunc chars strdup(chars s)
-protoFunc chars strndup(chars s, int n)
+proto fn strcpy(dest chars, src chars) chars
+proto fn strncpy(dest chars, src chars, n int) chars
+proto fn strdup(s chars) chars
+proto fn strndup(s chars, n int) chars
 
 // String concatenation
-protoFunc chars strcat(chars dest, chars src)
-protoFunc chars strncat(chars dest, chars src, int n)
+proto fn strcat(dest chars, src chars) chars
+proto fn strncat(dest chars, src chars, n int) chars
 
 // String searching
-protoFunc chars strchr(chars s, int c)
-protoFunc chars strrchr(chars s, int c)
-protoFunc chars strstr(chars haystack, chars needle)
-protoFunc chars strcasestr(chars haystack, chars needle)
-protoFunc int strspn(chars s, chars accept)
-protoFunc int strcspn(chars s, chars reject)
-protoFunc chars strpbrk(chars s, chars accept)
-protoFunc chars strtok(chars s, chars delim)
-protoFunc chars strtok_r(chars s, chars delim, pointer saveptr)
+proto fn strchr(s chars, c int) chars
+proto fn strrchr(s chars, c int) chars
+proto fn strstr(haystack chars, needle chars) chars
+proto fn strcasestr(haystack chars, needle chars) chars
+proto fn strspn(s chars, accept chars) int
+proto fn strcspn(s chars, reject chars) int
+proto fn strpbrk(s chars, accept chars) chars
+proto fn strtok(s chars, delim chars) chars
+proto fn strtok_r(s chars, delim chars, saveptr pointer) chars
 
 // String error messages
-protoFunc chars strerror(int errnum)
-protoFunc int strerror_r(int errnum, chars buf, int buflen)
+proto fn strerror(errnum int) chars
+proto fn strerror_r(errnum int, buf chars, buflen int) int
 
 // Memory functions
-protoFunc pointer memchr(pointer ptr, int c, int n)
-protoFunc pointer memrchr(pointer ptr, int c, int n)
-protoFunc int memcmp(pointer a, pointer b, int n)
-protoFunc pointer memcpy(pointer dest, pointer src, int n)
-protoFunc pointer memmove(pointer dest, pointer src, int n)
-protoFunc pointer memset(pointer ptr, int value, int n)
-protoFunc pointer memccpy(pointer dest, pointer src, int c, int n)
+proto fn memchr(ptr pointer, c int, n int) pointer
+proto fn memrchr(ptr pointer, c int, n int) pointer
+proto fn memcmp(a pointer, b pointer, n int) int
+proto fn memcpy(dest pointer, src pointer, n int) pointer
+proto fn memmove(dest pointer, src pointer, n int) pointer
+proto fn memset(ptr pointer, value int, n int) pointer
+proto fn memccpy(dest pointer, src pointer, c int, n int) pointer
 
 // BSD string functions (safer alternatives)
-protoFunc int strlcpy(chars dest, chars src, int size)
-protoFunc int strlcat(chars dest, chars src, int size)
+proto fn strlcpy(dest chars, src chars, size int) int
+proto fn strlcat(dest chars, src chars, size int) int
 
 // Signal-safe string length
-protoFunc chars strsignal(int sig)
+proto fn strsignal(sig int) chars
 
 // Explicit zeroing (C11)
-protoFunc pointer memset_s(pointer ptr, int size, int value, int n)
+proto fn memset_s(ptr pointer, size int, value int, n int) pointer

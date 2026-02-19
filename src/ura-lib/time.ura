@@ -1,19 +1,19 @@
 // Time manipulation
-protoFunc long time(pointer timer)
-protoFunc float difftime(long time1, long time0)
-protoFunc long clock()
+proto fn time(timer pointer) long
+proto fn difftime(time1 long, time0 long) float
+proto fn clock() long
 
 // Time conversion
-protoFunc pointer gmtime(pointer timer)
-protoFunc pointer localtime(pointer timer)
-protoFunc long mktime(pointer timeptr)
+proto fn gmtime(timer pointer) pointer
+proto fn localtime(timer pointer) pointer
+proto fn mktime(timeptr pointer) long
 
 // Time formatting
-protoFunc int strftime(chars s, int maxsize, chars format, pointer timeptr)
-protoFunc chars asctime(pointer timeptr)
-protoFunc chars ctime(pointer timer)
+proto fn strftime(s chars, maxsize int, format chars, timeptr pointer) int
+proto fn asctime(timeptr pointer) chars
+proto fn ctime(timer pointer) chars
 
 // High-resolution time (C11/POSIX)
-protoFunc int clock_gettime(int clk_id, pointer tp)
-protoFunc int clock_settime(int clk_id, pointer tp)
-protoFunc int nanosleep(pointer req, pointer rem)
+proto fn clock_gettime(clk_id int, tp pointer) int
+proto fn clock_settime(clk_id int, tp pointer) int
+proto fn nanosleep(req pointer, rem pointer) int

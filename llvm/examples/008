@@ -1,10 +1,10 @@
-def void func(ref int c):
+def void func(int ref c):
    c = 2
 end
 
 def int main():
    int a = 12
-   ref int c = a
+   int ref c = a
    func(c)
    return a
 end

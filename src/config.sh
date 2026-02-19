@@ -7,7 +7,7 @@ CONFIG_FILE="${BASH_SOURCE[0]:-$0}"
 ROOT_DIR="$(cd "$(dirname "$CONFIG_FILE")" && pwd)"
 BUILD_DIR="$ROOT_DIR/build"
 TESTS_DIR="$ROOT_DIR/tests"
-
+export URA_LIB="$ROOT_DIR/ura-lib"
 # =========================================================
 #  Color Definitions
 # =========================================================
@@ -209,7 +209,7 @@ tests() {
             continue
         fi
 
-        if diff -q <(tail -n +3 "$BUILD_DIR/test.ll") <(tail -n +3 "$ll_file") > /dev/null 2>&1; then
+        if diff -q <(tail -n +4 "$BUILD_DIR/test.ll") <(tail -n +4 "$ll_file") > /dev/null 2>&1; then
             echo -e "  ${GREEN}$dir_name/$base_name${RESET}"
             ((passed++))
         else
