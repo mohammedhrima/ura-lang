@@ -4,15 +4,15 @@ main():
     val3 int = 30
     
     // Reference to val1
-    r1 ref int = val1
+    r1 int ref = val1
     r1 = 15        // val1 = 15
     
     // Reference to val2
-    r2 ref int = val2
+    r2 int ref = val2
     r2 *= 2        // val2 = 40
     
     // Reference to val3
-    r3 ref int = val3
+    r3 int ref = val3
     r3 -= 5        // val3 = 25
     
     // Calculate with references

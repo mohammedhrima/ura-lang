@@ -1,5 +1,5 @@
 main():
     a int = 10
-    b ref int = a
+    b int ref = a
     b = 20
     return a

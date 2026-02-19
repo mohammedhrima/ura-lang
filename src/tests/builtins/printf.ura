@@ -1,0 +1,31 @@
+proto fn puts(fmt chars) int
+proto fn printf(fmt chars, ...) int
+
+main():
+    printf("hello world\n")
+
+    name chars = "alice"
+    printf("name: %s\n", name)
+
+    age int = 30
+    printf("age: %d\n", age)
+
+    grade char = 'A'
+    printf("grade: %c\n", grade)
+
+    printf("name: %s age: %d\n", name, age)
+
+    x int = 10
+    y int = 20
+    printf("x + y = %d\n", x + y)
+
+    n int = -5
+    printf("negative: %d\n", n)
+
+    printf("zero: %d\n", 0)
+
+    first chars = "john"
+    last chars  = "doe"
+    printf("full name: %s %s\n", first, last)
+
+    return 0

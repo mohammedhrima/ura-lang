@@ -130,7 +130,19 @@ void tokenize(char *filename)
             char *use = strndup(input + s, i - s);
             i++;
 
-            char *use_filename = strjoin(dirname(filename), "/", use);
+            char *use_filename = NULL;
+            if (use[0] == '@')
+            {
+               char *lib = getenv("URA_LIB");
+               check(!lib, "URA_LIB environment variable not set");
+               char *resolved = strjoin(lib, use + 1, NULL);
+               free(use);
+               use = resolved;
+               use_filename = strdup(use);
+            }
+            else
+               use_filename = strjoin(dirname(filename), "/", use);
+
             free(use);
             use = strjoin(use_filename, ".ura", NULL);
             bool old = calling_use;
@@ -232,12 +244,11 @@ Node *func_call(Node *node)
    //       + children: Parameters
    node->token->type = FCALL;
    Token *arg = NULL;
-   node->left = new_node(new_token(0, node->token->space));
+   node->left = new_node(new_token(ARGS, node->token->space));
 
    while (!found_error && !(arg = find(RPAR, END, 0)))
    {
       Node *curr = expr_node();
-      // curr->token->space = token->space;
       add_child(node->left, curr);
       find(COMA, 0);
    }
@@ -248,7 +259,8 @@ Node *func_call(Node *node)
 Node *func_dec(Node *node)
 {
    // Function Declaration:
-   //    + left children: arguments
+   //    + left:
+   //       + children: arguments
    //    + children     : code block
    Token *fname = find(ID, 0);
    if (check(!fname, "expected identifier after fn declaration"))
@@ -257,7 +269,7 @@ Node *func_dec(Node *node)
    enter_scoop(node);
    check(!find(LPAR, 0), "expected ( after function declaration");
    // arguments
-   node->left = new_node(new_token(0, node->token->space));
+   node->left = new_node(new_token(ARGS, node->token->space));
    Token *last;
    while (!found_error && !(last = find(RPAR, END, 0)))
    {
@@ -273,16 +285,14 @@ Node *func_dec(Node *node)
          Token *name = find(ID, 0);
          if (check(!name, "expected identifier in function argument %s", fname->name))
             return syntax_error_node();
-         // if (check(!find(DOTS, 0), "expected : after function argument"))
-         //    return syntax_error_node();
 
          bool is_ref = find(REF, 0) != NULL;
          Token* data_type = find(DATA_TYPES, ID, 0);
          if (check(!data_type, "expected data type in function argument")) break;
-         if (data_type && data_type->type == ID)
+         if (data_type->type == ID)
          {
-            data_type = get_struct(data_type->name);
-            if (data_type) data_type->type = STRUCT_CALL;
+            Node *to_find = get_struct(data_type->name);
+            if (to_find) data_type->type = STRUCT_CALL;
          }
          Node *curr;
          if (data_type->type == STRUCT_CALL)
@@ -300,7 +310,8 @@ Node *func_dec(Node *node)
          curr->token->is_dec = true;
          add_child(node->left, curr);
       }
-      find(COMA, 0); // TODO: check this later
+      if (tokens[exe_pos]->type != RPAR)
+         check(!find(COMA, 0), "xpected coma");
    }
    check(!found_error && last->type != RPAR, "expected ) after function declaration");
 
@@ -308,7 +319,7 @@ Node *func_dec(Node *node)
    check(!typeName, "Expected data type after fun declaration");
    if (typeName->type == ID)
    {
-      typeName = get_struct(typeName->name);
+      // typeName = get_struct(typeName->name);
       todo(1, "handle function return struct properly");
    }
    node->token->retType = typeName->type;
@@ -333,7 +344,6 @@ Node *func_dec(Node *node)
       }
       if (next->type == DOTS)
       {
-         // TODO: check if function has if/else
          if (node->token->retType != VOID)
             check(!child || child->token->type != RETURN, "expected return statment %s", node->token->name);
          else
@@ -379,44 +389,44 @@ Node *func_main(Node *node)
 Node *symbol(Token *token)
 {
    Node *node;
-   Token *st_dec = NULL;
+   Node *st_dec = NULL;
    // value example: "hello", 1, 'c'
    if (token->type != ID && !token->is_dec) return new_node(token);
    // int, char, chars, etc...
    else if (token->is_dec)
    {
       check(1, "unxpected token %s", to_string(token->type));
-      // added so the program doesn't segvault
       return syntax_error_node();
    }
    // variable declaration
-   else if (token->type == ID && includes(tokens[exe_pos]->type, DATA_TYPES, REF, 0))
+   else if (token->type == ID && includes(tokens[exe_pos]->type, DATA_TYPES, 0))
    {
+      Token *tmp = find(DATA_TYPES, 0); // skip data type
       bool is_ref = find(REF, 0) != NULL;
-      Token *tmp = find(DATA_TYPES, 0);
-      if (check(!tmp, "Expected data type after [%s]", token->name))
-         return syntax_error_node();
       setName(tmp, token->name);
+      tmp->is_dec = true;
       tmp->is_ref = is_ref;
       return new_node(tmp);
+   }
+   // variable declaration (struct variable)
+   else if (
+      token->type == ID &&
+      includes(tokens[exe_pos]->type, ID, 0) &&
+      (st_dec = get_struct(tokens[exe_pos]->name)))
+   {
+      find(ID, 0); // skip struct data type
+      bool is_ref = find(REF, 0) != NULL;
+      token->type = STRUCT_CALL;
+      token->is_dec = true;
+      token->is_ref = is_ref;
+      token->Struct.ptr = st_dec->token;
+      return new_node(token);
    }
    else if (token->type == ID && find(LPAR, 0))
    {
       node = new_node(token);
       if (strcmp(token->name, "main") == 0) return func_main(node);
       return func_call(node);
-   }
-   else if (token->type == ID && (st_dec = get_struct(token->name)))
-   {
-      token = copy_token(st_dec);
-      token->type = STRUCT_CALL;
-      // token->Struct.ptr = st_dec;
-      token->is_dec = true;
-
-      Token *tmp = find(ID, 0);
-      check(!tmp, "Expected variable name after [%s] symbol", to_string(token->type));
-      setName(token, tmp->name);
-      return new_node(token);
    }
    else if (token->type == ID && find(LBRA, 0))
    {
@@ -429,14 +439,21 @@ Node *symbol(Token *token)
       node->right = index;
       return node;
    }
+   else if (token->type == ID && find(DOT, 0))
+   {
+      node = new_node(copy_token(token));
+      node->token->type = DOT;
+      Node *index = prime_node();
+      check(!index || !index->token, "expected index after dot");
+      node->left = new_node(token);
+      node->right = index;
+      return node;
+   }
    return new_node(token);
 }
 
 Node *struct_def(Node *node)
 {
-   todo(1, "handle this case");
-   return node;
-#if 0
    // Struct def Layout:
    //    + children: attributes
    Token *st_name;
@@ -445,24 +462,20 @@ Node *struct_def(Node *node)
    if (check(!find(DOTS, 0), "expected dots after struct definition"))
       return NULL;
 
-   setName(node->token, NULL);
-   node->token->Struct.name = strdup(st_name->name);
+   setName(node->token, st_name->name);
    while (within(node->token->space))
    {
-      Token *attr = find(DATA_TYPES, ID, 0);
       Token *id = find(ID, 0);
-      if (check(!attr, "expected data type followed by id"))
-      {
-         ptoken(tokens[exe_pos]);
-         break;
-      }
-      if (check(!id, "expected id after data type")) break;
+      if (check(!id, "expected id followed by data type"))
+         return syntax_error_node();
+      Token *attr = find(DATA_TYPES, ID, 0);
+      if (check(!attr, "expected data type after id"))
+         return syntax_error_node();
       id->type = attr->type;
-      add_attribute(node->token, id);
+      add_child(node, new_node(id));
    }
-   new_struct(node->token);
+   new_struct(node);
    return node;
-#endif
 }
 
 Node *if_node(Node *node)
@@ -539,7 +552,6 @@ Node *cast_node()
       if (check(to == NULL || !to->is_dec, "expected data type after to"))
          return syntax_error_node();
       to->is_dec = false;
-      // TODO: check that is exists
       node->right = new_node(to);
       node->left = left;
       return node;
@@ -571,13 +583,6 @@ Node *prime_node()
    }
    else if ((token = find(STRUCT_DEF, 0)))
       return struct_def(new_node(token));
-   else if ((token = find(REF, 0)))
-   {
-      node = prime_node(); // TODO: check it
-      check(!node->token->is_dec, "must be variable declaration after ref");
-      node->token->is_ref = true;
-      return node;
-   }
    else if ((token = find(PROTO, 0)))
    {
       if (includes(tokens[exe_pos]->type, FDEC, STRUCT_DEF, 0))
@@ -589,14 +594,13 @@ Node *prime_node()
    else if ((token = find(RETURN, 0)))
    {
       // TODO: check if return type is compatible with function
-      // in current scoop
+      // in current scoop, must be done inside gen_ir
       node = new_node(token);
       for (int i = scoop_pos; i >= 0; i--)
       {
          Node *curr = Gscoop[i];
          if (curr->token->type == FDEC)
          {
-            // TODO: check return type here
             if (curr->token->retType == VOID)
             {
                node->left = copy_node(node);
@@ -642,7 +646,102 @@ void build_ir()
 #endif
 }
 
-void optimize_ir() {}
+static void unuse(Node *node)
+{
+   if (!node || !node->token) return;
+
+   if (node->left  && node->left->token)  { if (node->left->token->used  > 0) node->left->token->used--;  }
+   if (node->right && node->right->token) { if (node->right->token->used > 0) node->right->token->used--; }
+   for (int i = 0; i < node->cpos; i++)
+      if (node->children[i] && node->children[i]->token)
+         if (node->children[i]->token->used > 0) node->children[i]->token->used--;
+}
+
+Node *optimize_ir(Node *node)
+{
+   if (!node || found_error) return NULL;
+
+   node->left  = optimize_ir(node->left);
+   node->right = optimize_ir(node->right);
+
+   if (node->cpos)
+   {
+      int j = 0;
+      Node **new_children = allocate(node->clen, sizeof(Node*));
+      for (int i = 0; i < node->cpos; i++)
+      {
+         Node *child = optimize_ir(node->children[i]);
+         if (child) new_children[j++] = child;
+      }
+      node->cpos     = j;
+      node->children = new_children;
+   }
+
+   if (!node->token) return node;
+
+   switch (node->token->type)
+   {
+   case FDEC: case PROTO:
+   {
+      if (node->token->used == 0 && strcmp(node->token->name, "main") != 0)
+      {
+         debug(RED "remove %k\n" RESET, node->token);
+         unuse(node);
+         free_node(node);
+         return NULL;
+      }
+      break;
+   }
+
+   // Variable declaration never read after being set
+   case INT: case BOOL: case CHAR: case FLOAT:
+   case LONG: case CHARS: case PTR: case STRUCT_CALL:
+   {
+      if (node->token->is_dec && node->token->used == 0)
+      {
+         debug(RED "remove unused var %k\n" RESET, node->token);
+         unuse(node);
+         free_node(node);
+         return NULL;
+      }
+      break;
+   }
+
+   // Pure math/logic with unused result
+   case ADD: case SUB: case MUL: case DIV: case MOD:
+   case AND: case OR: case NOT:
+   case EQUAL: case NOT_EQUAL:
+   case LESS: case GREAT: case LESS_EQUAL: case GREAT_EQUAL:
+   {
+      if (node->token->used == 0)
+      {
+         debug(RED "remove unused op %k\n" RESET, node->token);
+         unuse(node);
+         free_node(node);
+         return NULL;
+      }
+      break;
+   }
+
+   // Assignment to a variable nobody reads
+   case ASSIGN:
+   {
+      if (node->left && node->left->token && node->left->token->used == 0 && is_data_type(node->left->token))
+      {
+         debug(RED "remove unused assign %k\n" RESET, node->token);
+         unuse(node);
+         free_node(node);
+         return NULL;
+      }
+      break;
+   }
+
+   default: break;
+   }
+
+   return node;
+}
+
 
 void code_gen(char *filename)
 {
@@ -661,7 +760,6 @@ void code_gen(char *filename)
 #endif
 }
 
-
 void compile(char *filename)
 {
    tokenize(filename);
@@ -677,11 +775,23 @@ void compile(char *filename)
 
    build_ir();
    debug(GREEN BOLD SPLIT RESET);
-   debug(GREEN BOLD"PRINT IR:\n" RESET);
+   debug(GREEN BOLD"PRINT IR (BEFORE OPTIMIZE):\n" RESET);
    for (int i = 0; !found_error && i < global->cpos; i++)
       pnode(global->children[i], "");
 
-   optimize_ir();
+   #if OPTIMIZE
+   bool removed_something = false;
+   do {
+      removed_something = false;
+      global = optimize_ir(global);
+   } while (removed_something);
+   #endif
+
+   debug(GREEN BOLD SPLIT RESET);
+   debug(GREEN BOLD"PRINT IR (AFTER OPTIMIZE):\n" RESET);
+   for (int i = 0; !found_error && i < global->cpos; i++)
+      pnode(global->children[i], "");
+
    code_gen(filename);
 }
 

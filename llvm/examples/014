@@ -1,0 +1,15 @@
+protoFunc int printf(chars fmt, ...args)
+
+struct User:
+    chars name
+    int age
+end
+
+def int main():
+   User user
+   user.name = "user"
+   user.age = 30
+   printf("user (%s) has %d years\n", user.name, user.age)
+   return user.age
+end
+

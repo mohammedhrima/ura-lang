@@ -81,9 +81,23 @@ enum Type {
    TRY, CATCH, THROW,
    USE,
    DOT, MEMBER_ACCESS,
+   STRUCT_DEF, STRUCT,
 
    END,
 };
+
+typedef struct StructField {
+   char *name;
+   Type  type;
+   int   index;
+} StructField;
+
+typedef struct StructDef {
+   char        *name;
+   TypeRef      llvm_type;
+   StructField *fields;
+   int          field_count;
+} StructDef;
 
 struct Token
 {
@@ -98,7 +112,8 @@ struct Token
    bool has_ref;
    int space;
    bool is_loaded;
-   
+   int used;
+
    struct
    {
       Value array_size;
@@ -116,8 +131,9 @@ struct Token
       struct { char *value; } Chars;
       struct { char value; } Char;
       struct { Type retType; Token **args; int len; bool is_variadic; } Fdec;
-      struct { Token **args; int len; } Fcall;
+      struct { Token **args; Node **nodes; int len; } Fcall;
       struct { Type type; char *name; } Catch;
+      struct { char *struct_name; } Struct;
    };
 };
 
@@ -147,23 +163,29 @@ struct Node
    Node **functions;
    int fpos;
    int flen;
+
+   StructDef *struct_def;
 };
 
+extern char *importedFiles[100];
+extern int importedFileCount;
+extern int block_counter;
+extern Token *tokens[1000];
+extern int tk_pos;
+extern int exe_pos;
+extern char *input;
 extern Context context;
 extern Module module;
 extern Builder builder;
 extern TypeRef vd, f32, i1, i8, i16, i32, i64, p8, p32;
 
-extern Value boundsCheckFunc;
-extern Value nullCheckFunc;
-extern Value vaStartFunc;
-extern Value vaEndFunc;
-extern char *importedFiles[100];
-extern int importedFileCount;
-extern int block_counter;
-extern Token *tokens[1000];
+extern Node *Gscoop[100];
+extern int scoop_pos;
+extern Node *curr_scoop;
 extern bool enable_bounds_check;
-extern char*input_file;
+
+extern StructDef struct_defs[100];
+extern int       struct_def_count;
 
 Node *expr_node();
 Node *assign_node();
@@ -207,4 +229,3 @@ void generate_ir(Node *node);
 void exit_scoop();
 void _branch(Block bloc);
 void enter_scoop(Node *node);
-
