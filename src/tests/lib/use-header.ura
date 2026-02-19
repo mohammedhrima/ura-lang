@@ -1,0 +1,14 @@
+use "@/header"
+
+struct User:
+    age int
+    name chars
+
+main():
+    user User
+    user.age = 28
+    user.name = calloc(1, 10)
+    strcpy(user.name, "mohammed")
+    printf("hello %s has %d\n", user.name, user.age)
+    free(user.name)
+    return user.age

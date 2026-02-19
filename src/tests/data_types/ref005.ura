@@ -5,7 +5,7 @@ main():
     val3 int = 30
     
     // Reference to val1
-    current ref int = val1
+    current int ref = val1
     
     // Modify through reference
     current = 15        // val1 = 15

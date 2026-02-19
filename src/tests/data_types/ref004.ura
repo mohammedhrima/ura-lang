@@ -3,7 +3,7 @@ main():
     b int = 2
     choice int = 1
     
-    r ref int
+    r int ref
     if choice == 1:
         r = a
     else:

@@ -40,8 +40,7 @@ Value llvm_build_srem(Value lhs, Value rhs, char *name)
    return LLVMBuildSRem(builder, lhs, rhs, name);
 }
 
-Value llvm_build_icmp(LLVMIntPredicate op, Value lhs, Value rhs,
-                      char *name)
+Value llvm_build_icmp(LLVMIntPredicate op, Value lhs, Value rhs, char *name)
 {
    return LLVMBuildICmp(builder, op, lhs, rhs, name);
 }
@@ -167,9 +166,9 @@ TypeRef llvm_array_type(TypeRef element_type, unsigned element_count)
    return LLVMArrayType(element_type, element_count);
 }
 
-Value llvm_const_int(TypeRef int_type, unsigned long long n, int sign_extend)
+Value llvm_const_int(TypeRef ref_type, unsigned long long n, int sign_extend)
 {
-   return LLVMConstInt(int_type, n, sign_extend);
+   return LLVMConstInt(ref_type, n, sign_extend);
 }
 
 Value llvm_get_named_function(char *name)
@@ -227,9 +226,9 @@ TypeKind llvm_get_type_kind(TypeRef ty)
    return LLVMGetTypeKind(ty);
 }
 
-unsigned llvm_get_int_type_width(TypeRef int_ty)
+unsigned llvm_get_int_type_width(TypeRef ref_ty)
 {
-   return LLVMGetIntTypeWidth(int_ty);
+   return LLVMGetIntTypeWidth(ref_ty);
 }
 
 TypeRef llvm_get_type_by_name2(char *name)
