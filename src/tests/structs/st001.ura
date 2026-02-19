@@ -1,0 +1,12 @@
+proto fn puts(fmt chars) int
+
+struct User:
+    age int
+    name chars
+
+main():
+    user User
+    user.age = 1
+    user.name = "abc"
+    puts(user.name)
+    return user.age

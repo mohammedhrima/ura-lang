@@ -50,7 +50,7 @@ typedef struct _IO_FILE *File;
 #endif
 
 #if ASM
-#define OPTIMIZE 1
+#define OPTIMIZE 0
 #else
 #define OPTIMIZE 1
 #endif
@@ -135,7 +135,7 @@ enum Type
    END_BLOC,
 
    // Functions
-   FDEC, FCALL, PROTO,
+   FDEC, FCALL, PROTO, ARGS, CHILDREN,
 
    // Built ins
    STACK,
@@ -144,6 +144,8 @@ enum Type
    END,
 };
 
+// TODO: make struct points to LLVM
+// create array of LLVMs (similar to how I'm using tokens)
 struct LLVM
 {
    bool is_set;
@@ -152,6 +154,7 @@ struct LLVM
    Value elem;
    Block bloc;
    TypeRef funcType;
+   TypeRef stType;
    Value va_count;
    Value error_flag;
    Value error_value;
@@ -190,9 +193,6 @@ struct Token
 
    bool is_cond;
 
-   // TODO: to be fixed later, has_ref
-   // must depends on scoop position
-   // bool has_ref;
    bool is_ref;
 
    bool is_dec;
@@ -217,10 +217,11 @@ struct Token
       struct { bool value; } Bool;
       struct { char *value; } Chars;
       struct { char value; } Char;
-      struct { char *name; Token **attrs; int size; int pos; int index; } Struct;
-      // struct { Token *ptr; int index; } Param;
-      struct { Token *ptr; } Fcall;
-      // struct { bool is_variadic; } Fdec;
+      // TODO: replace Token*ptr to Node*ptr
+      // so i can access directly to children
+      // without calling get_struct again and again
+      struct { int index; Token *ptr; } Struct;
+      struct { Node *ptr; } Fcall;
       struct { Token *ptr; Token *start; Token *end; } Statement;
       struct { Type type; char *name; } Catch;
    };
@@ -244,7 +245,7 @@ struct Node
    int fpos;
    int flen;
 
-   Token **structs;
+   Node **structs;
    int spos;
    int slen;
 };
@@ -312,15 +313,16 @@ Token *new_variable(Token *token);
 void free_node(Node *node);
 Token *copy_token(Token *token);
 Node *copy_node(Node *node);
-Token *new_struct(Token *token);
-Token *get_struct(char *name);
+Node *new_struct(Node *node);
+Node *get_struct(char *name);
 Token *is_struct(Token *token);
 void add_attribute(Token *obj, Token *attr);
 Node* add_child(Node *node, Node *child);
 void add_variable(Node *bloc, Token *token);
-void add_struct(Node *bloc, Token *token);
+void add_struct(Node *scoop, Node *node);
 Token *syntax_error_token();
 Node *syntax_error_node();
+bool is_data_type(Token *token);
 
 // ----------------------------------------------------------------------------
 // Code Generation
@@ -356,7 +358,7 @@ Value create_null_check_function();
 // Logs
 // ----------------------------------------------------------------------------
 int debug_(char *conv, ...);
-int pnode(Node *node, char *indent);
+void pnode(Node *node, char *indent);
 int ptoken(Token *token);
 int print_escaped(char *str) ;
 int print_value(Token *token);
@@ -400,7 +402,7 @@ Value llvm_build_global_string_ptr_raw(char *str, char *name);
 TypeRef llvm_pointer_type(TypeRef element_ty, unsigned address_space);
 TypeRef llvm_function_type(TypeRef retType, TypeRef *types, int param_count, int is_var_arg);
 TypeRef llvm_array_type(TypeRef element_type, unsigned element_count);
-Value llvm_const_int(TypeRef int_type, unsigned long long n, int sign_extend);
+Value llvm_const_int(TypeRef ref_type, unsigned long long n, int sign_extend);
 Value llvm_get_named_function(char *name);
 Value llvm_add_function(char *name, TypeRef function_type);
 Value llvm_get_param(Value fn, unsigned index);
@@ -412,7 +414,7 @@ void _position_at(Block block);
 Value llvm_get_basic_block_terminator(Block block);
 TypeRef llvm_type_of(Value val);
 TypeKind llvm_get_type_kind(TypeRef ty);
-unsigned llvm_get_int_type_width(TypeRef int_ty);
+unsigned llvm_get_int_type_width(TypeRef ref_ty);
 TypeRef llvm_get_type_by_name2(char *name);
 TypeRef llvm_struct_type_in_context(TypeRef *types, unsigned count, int packed);
 TypeRef llvm_global_get_value_type(Value global);
@@ -429,3 +431,4 @@ Value check_null(Token *token);
 Value deref_or_load(Token *token);
 Value getNullCheckFunc();
 Value getRefAssignFunc();
+TypeRef llvm_struct_type_in_context(TypeRef *element_types, unsigned element_count, int packed);

@@ -1,7 +1,7 @@
 main():
     x int = 5
-    r1 ref int = x
-    r2 ref int = x
+    r1 int ref = x
+    r2 int ref = x
     r1 = 10
     r2 = 15
     return x
