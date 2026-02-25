@@ -15,6 +15,8 @@ target triple = "arm64-apple-darwin25.3.0"
 @STR10 = private unnamed_addr constant [4 x i8] c"doe\00", align 1
 @STR11 = private unnamed_addr constant [18 x i8] c"full name: %s %s\0A\00", align 1
 
+declare i32 @puts(ptr)
+
 declare i32 @printf(ptr, i32, ...)
 
 define i32 @main() {
