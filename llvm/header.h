@@ -223,7 +223,7 @@ void finalize();
 Token *copy_token(Token *token);
 Token *get_function(char *name);
 Block _append_block(char *name);
-void load_if_neccessary(Node *node);
+void load_if_necessary(Node *node);
 void add_variable(Token *token);
 void generate_ir(Node *node);
 void exit_scoop();
