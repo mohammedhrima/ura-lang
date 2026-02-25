@@ -1,0 +1,26 @@
+use "ura-optimize"
+use "@/io"
+
+struct Model:
+    name chars
+    year int
+
+struct Company:
+    name chars
+
+struct Car:
+    model Model
+    company Company
+
+struct User:
+    name chars
+    age int
+    car Car
+
+main():
+    user User
+    user.name = "hello"
+    user.age = 123
+    user.car.model.name = "car"
+    printf("%s\n", user.car.model.name)
+    return user.age
