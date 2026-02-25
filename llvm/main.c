@@ -766,7 +766,7 @@ Token *get_variable(char *name)
    return NULL;
 }
 
-void load_if_neccessary(Node *node)
+void load_if_necessary(Node *node)
 {
    Token *token = node->token;
 
@@ -914,9 +914,9 @@ void generate_ir(Node *node)
    case GREAT: case EQUAL: case LESS_EQUAL: case GREAT_EQUAL:
    {
       generate_ir(node->left);
-      load_if_neccessary(node->left);
+      load_if_necessary(node->left);
       generate_ir(node->right);
-      load_if_neccessary(node->right);
+      load_if_necessary(node->right);
       _op(node->token, node->left->token, node->right->token);
       node->token->type = node->left->token->type;
       break;
@@ -943,7 +943,7 @@ void generate_ir(Node *node)
             node->token->llvm.elem = left->llvm.elem;
          }
          else {
-            load_if_neccessary(node->right);
+            load_if_necessary(node->right);
             llvm_build_store(node->token, right->llvm.elem, left->llvm.elem);
             right->llvm.elem = left->llvm.elem;
          }
@@ -958,20 +958,20 @@ void generate_ir(Node *node)
             node->token->llvm.elem = left->llvm.elem;
             /* A CHARS ref bound to a direct pointer value (e.g. stack()/literal)
                has no pointer-to-pointer indirection — clear is_ref so
-               load_if_neccessary won't try to load through the pointer. */
+               load_if_necessary won't try to load through the pointer. */
             if (left->type == CHARS)
                left->is_ref = false;
          }
          else
          {
-            load_if_neccessary(node->right);
+            load_if_necessary(node->right);
             llvm_build_store(node->token, right->llvm.elem, left->llvm.elem);
             node->token->llvm.elem = left->llvm.elem;
          }
       }
       else if (!left->is_ref && right->is_ref)
       {
-         load_if_neccessary(node->right);
+         load_if_necessary(node->right);
          llvm_build_store(node->token, node->right->token->llvm.elem, left->llvm.elem);
          node->token->llvm.elem = left->llvm.elem;
       }
@@ -1144,12 +1144,12 @@ void generate_ir(Node *node)
             should_load = !funcToken->Fdec.args[i]->is_ref;
          }
          else {
-            // Defer to load_if_neccessary: it handles literals vs refs correctly
+            // Defer to load_if_necessary: it handles literals vs refs correctly
             should_load = true;
          }
 
          if (should_load) {
-            load_if_neccessary(nodeArg);
+            load_if_necessary(nodeArg);
          }
 
          node->token->Fcall.args[i] = nodeArg->token;
@@ -1388,7 +1388,7 @@ void generate_ir(Node *node)
    {
       // Evaluate the expression to throw
       generate_ir(node->left);
-      load_if_neccessary(node->left);
+      load_if_necessary(node->left);
 
       Token *throw_token = node->left->token;
       Type throw_type = throw_token->type;
@@ -1520,7 +1520,7 @@ void generate_ir(Node *node)
       }
 
       generate_ir(node->left);
-      load_if_neccessary(node->left);
+      load_if_necessary(node->left);
 
       Token *source = node->left->token;
       Token *result = copy_token(source);
@@ -1535,7 +1535,7 @@ void generate_ir(Node *node)
    case RETURN:
    {
       generate_ir(node->left);
-      load_if_neccessary(node->left);
+      load_if_necessary(node->left);
 
       ExcepCTX *ctx = get_current_exception_context();
       if (ctx && ctx->in_catch) {
@@ -1551,11 +1551,11 @@ void generate_ir(Node *node)
       generate_ir(node->left);
 
       if (node->left->token->type != CHARS) {
-         load_if_neccessary(node->left);
+         load_if_necessary(node->left);
       }
 
       generate_ir(node->right);
-      load_if_neccessary(node->right);
+      load_if_necessary(node->right);
       _access(node->token, node->left->token, node->right->token);
       node->token->is_ref = true;
       node->token->has_ref = true;

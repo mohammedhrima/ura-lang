@@ -49,21 +49,12 @@ typedef struct _IO_FILE *File;
 #define DEBUG 1
 #endif
 
-#if ASM
-#define OPTIMIZE 0
-#else
-#define OPTIMIZE 1
-#endif
-
-#define allocate(len, size) \
-   allocate_func(LINE, len, size)
-#define check(cond, fmt, ...) \
-   check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)
-// #define to_string(type) to_string_(FILE, LINE, type)
+#define allocate(len, size) allocate_func(LINE, len, size)
+#define check(cond, fmt, ...) check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)
 #define todo(cond, fmt, ...) \
    if (check_error(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)) \
       exit(1);
-#define seg() raise(SIGSEGV);
+#define seg() raise(SIGSEGV)
 
 #if DEBUG
 #define debug(fmt, ...) debug_(fmt, ##__VA_ARGS__)
@@ -76,9 +67,9 @@ typedef struct _IO_FILE *File;
 #define MATH_TYPE ADD, SUB, MUL, DIV, MOD
 
 #define AST_NODE(name, child_func, ...) \
-Node *name() { \
-   Node *left = child_func(); \
-   Token *token; \
+Node* name() { \
+   Node* left = child_func(); \
+   Token* token; \
    while ((token = find(__VA_ARGS__, 0))) { \
       Node *node = new_node(token); \
       node->left = left; \
@@ -88,13 +79,15 @@ Node *name() { \
    return left; \
 }
 
-// enums / structs
+// ----------------------------------------------------------------------------
+// Type definitions
+// ----------------------------------------------------------------------------
 typedef struct Token Token;
 typedef struct Node Node;
 typedef struct LLVM LLVM;
+typedef struct ExcepCTX ExcepCTX;
 typedef enum Type Type;
 typedef enum LogType LogType;
-typedef struct ExcepCTX ExcepCTX;
 
 typedef LLVMTypeRef TypeRef;
 typedef LLVMContextRef Context;
@@ -105,16 +98,17 @@ typedef LLVMValueRef Value;
 typedef LLVMTargetDataRef TargetData;
 typedef LLVMTypeKind TypeKind;
 
+// ----------------------------------------------------------------------------
+// Enums
+// ----------------------------------------------------------------------------
 enum Type
 {
    ID = 1,
    // Data types
    VOID, INT, FLOAT, LONG, SHORT, BOOL, CHAR, CHARS, PTR,
    VARIADIC, REF,
-
    // Structures
    STRUCT_DEF, STRUCT_CALL,
-
    // Assignment
    ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,
    // Comparison
@@ -123,29 +117,25 @@ enum Type
    ADD, SUB, MUL, DIV, MOD,
    // Logical
    AND, OR, NOT,
-
    // Punctuation and Syntax
    LPAR, RPAR, LBRA, RBRA, COMA, DOT, DOTS, ACCESS,
    AS, TYPEOF,
-
    // Control Flow
    RETURN,
    IF, ELIF, ELSE, END_IF,
    WHILE, CONTINUE, BREAK,
    END_BLOC,
-
    // Functions
    FDEC, FCALL, PROTO, ARGS, CHILDREN,
-
-   // Built ins
+   // Built-ins
    STACK,
-
    SYNTAX_ERROR,
    END,
 };
 
-// TODO: make struct points to LLVM
-// create array of LLVMs (similar to how I'm using tokens)
+// ----------------------------------------------------------------------------
+// Structs
+// ----------------------------------------------------------------------------
 struct LLVM
 {
    bool is_set;
@@ -183,8 +173,7 @@ struct Token
    Type retType;
    Type assign_type;
 
-   char *name;
-   char *llvm_name;
+   char* name;
    int space;
    bool remove;
 
@@ -192,9 +181,7 @@ struct Token
    int pos;
 
    bool is_cond;
-
    bool is_ref;
-
    bool is_dec;
    bool is_arg;
    bool is_param;
@@ -202,71 +189,69 @@ struct Token
    bool is_variadic;
    bool is_proto;
 
-   char *filename;
+   char* filename;
    int line;
 
    LLVM llvm;
 
    struct
    {
-
       struct { long value; } Int;
       struct { int value; } Short;
       struct { long long value; } Long;
       struct { float value; } Float;
       struct { bool value; } Bool;
-      struct { char *value; } Chars;
+      struct { char* value; } Chars;
       struct { char value; } Char;
-      // TODO: replace Token*ptr to Node*ptr
-      // so i can access directly to children
-      // without calling get_struct again and again
-      struct { int index; Token *ptr; } Struct;
-      struct { Node *ptr; } Fcall;
-      struct { Token *ptr; Token *start; Token *end; } Statement;
-      struct { Type type; char *name; } Catch;
+      struct { int index; Node* ptr; } Struct;
+      struct { Node* ptr; } Fcall;
+      struct { Token* ptr; Token* start; Token* end; } Statement;
+      struct { Type type; char* name; } Catch;
    };
 };
 
 struct Node
 {
-   Node *left;
-   Node *right;
-   Token *token;
+   Node* left;
+   Node* right;
+   Token* token;
 
-   Node **children;
+   Node** children;
    int cpos;
    int clen;
 
-   Token **variables;
+   Token** variables;
    int vpos;
    int vlen;
 
-   Node **functions;
+   Node** functions;
    int fpos;
    int flen;
 
-   Node **structs;
+   Node** structs;
    int spos;
    int slen;
 };
 
-// GLOBAL
+// ----------------------------------------------------------------------------
+// Globals
+// ----------------------------------------------------------------------------
 extern bool found_error;
 
-extern Token **tokens;
+extern Token** tokens;
 extern int tk_pos;
 extern int tk_len;
 
-extern Node *global;
+extern Node* global;
 extern int exe_pos;
 
-extern Node **Gscoop;
-extern Node *scoop;
-extern int scoopSize;
+extern Node** Gscoop;
+extern Node* scoop;
+extern int scoop_len;
 extern int scoop_pos;
 
-extern char **used_files;
-extern int used_size;
+extern char** used_files;
+extern int used_len;
 extern int used_pos;
 
 extern Context context;
@@ -277,158 +262,194 @@ extern File asm_fd;
 
 extern bool enable_bounds_check;
 extern Value boundsCheckFunc;
-// extern Value nullCheckFunc;
 extern Value vaStartFunc;
 extern Value vaEndFunc;
 extern bool using_refs;
-// extern Value refAssignFunc;
+extern bool enable_optimize;
+
+// ----------------------------------------------------------------------------
+// File Management
+// ----------------------------------------------------------------------------
+char* open_file(char* filename);
+char* resolve_path(char* path);
+bool add_file(char* filename);
+
+// ----------------------------------------------------------------------------
+// Memory
+// ----------------------------------------------------------------------------
+void* allocate_func(int line, int len, int size);
+void free_token(Token* token);
+void free_node(Node* node);
+void free_memory();
+Token* copy_token(Token* token);
+Node* copy_node(Node* node);
+
+// ----------------------------------------------------------------------------
+// Error Handling
+// ----------------------------------------------------------------------------
+bool check_error(char* filename, char* funcname, int line, bool cond, char* fmt, ...);
 
 // ----------------------------------------------------------------------------
 // Parsing
 // ----------------------------------------------------------------------------
-void tokenize(char *filename);
+void tokenize(char* filename);
 Token* new_token(Type type, int space);
-Token* parse_token(char *filename, int line, char *input, int s, int e, Type type, int space);
-void add_token(Token *token);
-Node *expr_node();
-Node *assign_node();
-Node *logic_node();
-Node *equality_node();
-Node *comparison_node();
-Node *add_sub_node();
-Node *mul_div_node();
-Node *dot_node();
-Node *sign_node();
-Node *brackets_node();
-Node *cast_node();
-Node *prime_node();
-Node *new_node(Token *token);
-bool includes(Type to_find, ...);
-Token *find(Type type, ...);
-Token* expect_token(Type type, char *error_msg, ...);
-Node *new_function(Node *node);
-Node *get_function(char *name);
-Token *get_variable(char *name);
-Token *new_variable(Token *token);
-void free_node(Node *node);
-Token *copy_token(Token *token);
-Node *copy_node(Node *node);
-Node *new_struct(Node *node);
-Node *get_struct(char *name);
-Token *is_struct(Token *token);
-void add_attribute(Token *obj, Token *attr);
-Node* add_child(Node *node, Node *child);
-void add_variable(Node *bloc, Token *token);
-void add_struct(Node *scoop, Node *node);
-Token *syntax_error_token();
-Node *syntax_error_node();
-bool is_data_type(Token *token);
-
-// ----------------------------------------------------------------------------
-// Code Generation
-// ----------------------------------------------------------------------------
-void enter_scoop(Node *node);
+Token* parse_token(char* filename, int line, char* input, int s, int e, Type type, int space);
+void add_token(Token* token);
+Node* new_node(Token* token);
+Node* add_child(Node* node, Node* child);
+void enter_scoop(Node* node);
 void exit_scoop();
-bool compatible(Token *left, Token *right);
-void gen_ir(Node *node);
-TypeRef get_llvm_type(Token* token);
-void init(char *name);
-void finalize(char *moduleName);
-TypeRef get_llvm_type(Token *token);
-Value allocate_stack(Value size, TypeRef elementType, char *name);
-void _load(Token *to, Token *from);
-void gen_asm(Node *node);
-
-// ----------------------------------------------------------------------------
-// Utilities
-// ----------------------------------------------------------------------------
-char* open_file(char *filename);
-bool add_file(char *filename);
-char *to_string(Type type);
-void setName(Token *token, char *name);
+bool includes(Type to_find, ...);
+void setName(Token* token, char* name);
+char* to_string(Type type);
+Token* find(Type type, ...);
+Token* expect_token(Type type, char* error_msg, ...);
 bool within(int space);
-bool check_error(char *filename, char *funcname, int line, bool cond, char *fmt, ...);
-void free_memory();
-void *allocate_func(int line, int len, int size);
-char *strjoin(char *str0, char *str1, char *str2);
-char* resolve_path(char* path);
-Value create_null_check_function();
+bool is_data_type(Token* token);
+
+void add_struct(Node* b, Node* node);
+Node* new_struct(Node* node);
+Node* get_struct(char* name);
+Token* is_struct(Token* token);
+void add_attribute(Token* obj, Token* attr);
+Node* syntax_error_node();
+Token* syntax_error_token();
+
+Node* expr_node();
+Node* assign_node();
+Node* logic_node();
+Node* equality_node();
+Node* comparison_node();
+Node* add_sub_node();
+Node* mul_div_node();
+Node* dot_node();
+Node* brackets_node();
+Node* sign_node();
+Node* cast_node();
+Node* prime_node();
+Node* func_call(Node* node);
+Node* func_dec(Node* node);
+Node* func_main(Node* node);
+Node* symbol(Token* token);
+Node* struct_def(Node* node);
+Node* if_node(Node* node);
+Node* while_node(Node* node);
 
 // ----------------------------------------------------------------------------
-// Logs
+// IR / Scope / Variable Management
 // ----------------------------------------------------------------------------
-int debug_(char *conv, ...);
-void pnode(Node *node, char *indent);
-int ptoken(Token *token);
-int print_escaped(char *str) ;
-int print_value(Token *token);
+void gen_ir(Node* node);
+void add_variable(Node* b, Token* token);
+Token* new_variable(Token* token);
+Token* get_variable(char* name);
+void add_function(Node* b, Node* node);
+Node* new_function(Node* node);
+Node* get_function(char* name);
+
+// ----------------------------------------------------------------------------
+// ASM / Code Generation
+// ----------------------------------------------------------------------------
+void gen_asm(Node* node);
+void init(char* name);
+void finalize(char* output);
+void load_if_necessary(Node* node);
+void _alloca(Token* token);
+void initialize_variable(Token* token);
+TypeRef get_llvm_type(Token* token);
+void _const_value(Token* token);
+void _entry(Token* token);
+Value _get_default_value(Token* token);
+Value _build_return(Token* token);
+Value _get_param_with_name(Token* fn, int index, char* name);
+void _load(Token* to, Token* from);
+Value _load2(Token* token);
+Value allocate_stack(Value size, TypeRef elementType, char* name);
+bool compatible(Token* left, Token* right);
+
+// ----------------------------------------------------------------------------
+// Debugging
+// ----------------------------------------------------------------------------
+int debug_(char* conv, ...);
+void pnode(Node* node, char* indent);
+int ptoken(Token* token);
+int print_escaped(char* str);
+int print_value(Token* token);
+
+// ----------------------------------------------------------------------------
+// String Utilities
+// ----------------------------------------------------------------------------
+char* strjoin(char* str0, char* str1, char* str2);
 
 // ----------------------------------------------------------------------------
 // LLVM Wrappers
 // ----------------------------------------------------------------------------
-// Builder operations
-Value llvm_build_store(Value val, Value ptr);
-Value llvm_build_load2(TypeRef ty, Value ptr, char *name);
-Value llvm_build_alloca(TypeRef ty, char *name);
-Value llvm_build_add(Value lhs, Value rhs, char *name);
-Value llvm_build_sub(Value lhs, Value rhs, char *name);
-Value llvm_build_mul(Value lhs, Value rhs, char *name);
-Value llvm_build_sdiv(Value lhs, Value rhs, char *name);
-Value llvm_build_srem(Value lhs, Value rhs, char *name);
-Value llvm_build_icmp(LLVMIntPredicate op, Value lhs, Value rhs, char *name);
-Value llvm_build_and(Value lhs, Value rhs, char *name);
-Value llvm_build_or(Value lhs, Value rhs, char *name);
-Value llvm_build_ret(Value val);
-Value llvm_build_ret_void();
+Value _build_store(Value val, Value ptr);
+Value _build_load2(TypeRef ty, Value ptr, char* name);
+Value _build_alloca(TypeRef ty, char* name);
+Value _build_add(Value lhs, Value rhs, char* name);
+Value _build_sub(Value lhs, Value rhs, char* name);
+Value _build_mul(Value lhs, Value rhs, char* name);
+Value _build_sdiv(Value lhs, Value rhs, char* name);
+Value _build_srem(Value lhs, Value rhs, char* name);
+Value _build_icmp(LLVMIntPredicate op, Value lhs, Value rhs, char* name);
+Value _build_and(Value lhs, Value rhs, char* name);
+Value _build_or(Value lhs, Value rhs, char* name);
+Value _build_ret(Value val);
+Value _build_ret_void();
 void _branch(Block bloc);
 void _condition(Value cond, Block then_block, Block else_block);
-Block _append_block(char *name);
-Value llvm_build_call2(TypeRef ty, Value fn, Value *args, unsigned num_args, char *name);
-Value llvm_build_global_string_ptr(char *str, char *name);
-Value llvm_build_gep2(TypeRef ty, Value ptr, Value *indices, unsigned num_indices, char *name);
-Value llvm_build_bit_cast(Value val, TypeRef dest_ty, char *name);
-Value llvm_build_sext(Value val, TypeRef dest_ty, char *name);
-Value llvm_build_trunc(Value val, TypeRef dest_ty, char *name);
-Value llvm_build_int_to_ptr(Value val, TypeRef dest_ty, char *name);
-Value llvm_build_ptr_to_int(Value val, TypeRef dest_ty, char *name);
-Value llvm_build_array_alloca(TypeRef ty, Value val, char *name);
-Value llvm_build_invoke2(TypeRef ty, Value fn, Value *args, unsigned num_args, Block then_block, Block catch_block, char *name);
-Value llvm_build_landing_pad(TypeRef ty, Value pers_fn, unsigned num_clauses, char *name);
-Value llvm_build_extract_value(Value agg_val, unsigned index, char *name);
-Value llvm_build_va_arg(Value list, TypeRef ty, char *name);
-Value llvm_build_unreachable();
-Value llvm_build_global_string_ptr_raw(char *str, char *name);
+Block _append_block(char* name);
+Value _build_call2(TypeRef ty, Value fn, Value* args, unsigned num_args, char* name);
+Value _const_chars(char* str, char* name);
+Value _build_gep2(TypeRef ty, Value ptr, Value* indices, unsigned indece, char* name);
+Value _build_bit_cast(Value val, TypeRef dest_ty, char* name);
+Value _build_sext(Value val, TypeRef dest_ty, char* name);
+Value _build_trunc(Value val, TypeRef dest_ty, char* name);
+Value _build_int_to_ptr(Value val, TypeRef dest_ty, char* name);
+Value _build_ptr_to_int(Value val, TypeRef dest_ty, char* name);
+Value _build_array_alloca(TypeRef ty, Value val, char* name);
+Value _build_invoke2(TypeRef ty, Value fn, Value* args, unsigned num_args, Block then_block, Block catch_block, char* name);
+Value _build_landing_pad(TypeRef ty, Value pers_fn, unsigned num_clauses, char* name);
+Value _build_extract_value(Value agg_val, unsigned index, char* name);
+Value _build_va_arg(Value list, TypeRef ty, char* name);
+Value _build_unreachable();
+Value _build_not(Token* token);
+Value _build_memcpy(Value dest, Value src, Value size);
 
-TypeRef llvm_pointer_type(TypeRef element_ty, unsigned address_space);
-TypeRef llvm_function_type(TypeRef retType, TypeRef *types, int param_count, int is_var_arg);
-TypeRef llvm_array_type(TypeRef element_type, unsigned element_count);
-Value llvm_const_int(TypeRef ref_type, unsigned long long n, int sign_extend);
-Value llvm_get_named_function(char *name);
-Value llvm_add_function(char *name, TypeRef function_type);
-Value llvm_get_param(Value fn, unsigned index);
-Block llvm_append_basic_block_in_context(Value func, char *name);
-Block llvm_get_insert_block();
-Value llvm_get_basic_block_parent(Block block);
-Block llvm_get_entry_basic_block(Value func);
+Value _const_int(TypeRef ref_type, unsigned long long n, int sign_extend);
+Value _const_null(TypeRef ty);
+
+TypeRef _pointer_type(TypeRef element_ty, unsigned address_space);
+TypeRef _function_type(TypeRef retType, TypeRef* types, int count, int is_variadic);
+TypeRef _array_type(TypeRef element_type, unsigned element_count);
+TypeRef _struct_type_in_context(TypeRef* element_types, unsigned element_count, int packed);
+
+Value _get_named_function(char* name);
+Value _add_function(char* name, TypeRef function_type);
+Value _get_param(Value fn, unsigned index);
+Block _append_basic_block_in_context(Value func, char* name);
+Block _get_insert_block();
+Value _get_basic_block_parent(Block block);
+Block _get_entry_basic_block(Value func);
 void _position_at(Block block);
-Value llvm_get_basic_block_terminator(Block block);
-TypeRef llvm_type_of(Value val);
-TypeKind llvm_get_type_kind(TypeRef ty);
-unsigned llvm_get_int_type_width(TypeRef ref_ty);
-TypeRef llvm_get_type_by_name2(char *name);
-TypeRef llvm_struct_type_in_context(TypeRef *types, unsigned count, int packed);
-TypeRef llvm_global_get_value_type(Value global);
-TypeRef llvm_get_return_type(TypeRef function_type);
-const char *llvm_get_target(Module m);
-void llvm_set_personality_fn(Value func, Value pers_fn);
-void llvm_add_clause(Value landing_pad, Value clause_val);
-size_t llvm_abi_size_of_type(TargetData td, TypeRef ty);
-TargetData llvm_get_module_data_layout(Module m);
-Value llvm_build_not(Token *token);
-Value llvm_const_null(TypeRef ty);
-TypeRef get_llvm_type(Token *token);
-Value check_null(Token *token);
-Value deref_or_load(Token *token);
+Value _get_basic_block_terminator(Block block);
+TypeRef _type_of(Value val);
+TypeKind _get_type_kind(TypeRef ty);
+unsigned _get_int_type_width(TypeRef ref_ty);
+TypeRef _get_type_by_name2(char* name);
+TypeRef _global_get_value_type(Value global);
+TypeRef _get_return_type(TypeRef function_type);
+const char* _get_target(Module m);
+void _set_personality_fn(Value func, Value pers_fn);
+void _add_clause(Value landing_pad, Value clause_val);
+size_t _abi_size_of_type(TargetData td, TypeRef ty);
+TargetData _get_module_data_layout(Module m);
+
+Value check_null(Token* token);
+Value deref_or_load(Token* token);
 Value getNullCheckFunc();
 Value getRefAssignFunc();
-TypeRef llvm_struct_type_in_context(TypeRef *element_types, unsigned element_count, int packed);
+Value create_null_check_function();
+void set_ret_type(Node *node);
+void** resize_array(void** array, int* len, int pos, int element_size);
