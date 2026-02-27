@@ -1,0 +1,8 @@
+use "-O1"
+
+fn square(n int) int:
+    return n * n
+
+main():
+    val int = square(5)
+    return val

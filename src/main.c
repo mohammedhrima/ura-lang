@@ -1,40 +1,42 @@
 #include "header.h"
 // #include "llvm.c"
 
-bool found_error;
+bool    found_error;
 
 Token **tokens;
-int tk_pos;
-int tk_len;
+int     tk_pos;
+int     tk_len;
 
-Node *global;
-int exe_pos;
+Node   *global;
+int     exe_pos;
 
-Node **Gscoop;
-Node *scoop;
-int scoop_len;
-int scoop_pos;
+Node  **Gscoop;
+Node   *scoop;
+int     scoop_len;
+int     scoop_pos;
 
-char **used_files;
-int used_len;
-int used_pos;
+char  **used_files;
+int     used_len;
+int     used_pos;
 
 Context context;
-Module module;
+Module  module;
 Builder builder;
 TypeRef vd, f32, i1, i8, i16, i32, i64, p8, p32;
-File asm_fd;
+File    asm_fd;
 
-Value boundsCheckFunc;
-Value nullCheckFunc;
-Value vaStartFunc;
-Value vaEndFunc;
-Value refAssignFunc;
+Value   boundsCheckFunc;
+Value   nullCheckFunc;
+Value   vaStartFunc;
+Value   vaEndFunc;
+Value   refAssignFunc;
 
-bool enable_bounds_check;
-bool using_refs;
-bool enable_optimize;
-bool is_method_call;
+bool    enable_bounds_check = false;
+bool    using_refs;
+bool    is_method_call;
+bool    enable_asan;
+
+char   *passes;
 
 // PARSING
 void tokenize(char *filename)
@@ -43,7 +45,7 @@ void tokenize(char *filename)
    if (found_error) return;
 
    static bool calling_use = false;
-   debug(GREEN BOLD"TOKENIZE: [%s]\n" RESET, filename);
+   debug(GREEN BOLD "TOKENIZE: [%s]\n" RESET, filename);
 
    struct { char *value; Type type; } specials[] =
    {
@@ -57,14 +59,14 @@ void tokenize(char *filename)
       {0, (Type)0}
    };
 
-   int space = 0;
-   int line = 1;
+   int  space    = 0;
+   int  line     = 1;
    bool new_line = true;
 
    if (!add_file(filename)) return;
    for (int i = 0; input[i] && !found_error; )
    {
-      int s = i;
+      int  s = i;
       char c = input[i];
 
       if (isspace(c))
@@ -73,7 +75,7 @@ void tokenize(char *filename)
          {
             line++;
             new_line = true;
-            space = 0;
+            space    = 0;
          }
          else if (new_line) space += (c == '\t') ? TAB : 1;
          i++;
@@ -134,35 +136,57 @@ void tokenize(char *filename)
             char *use = strndup(input + s, i - s);
             i++;
 
-            if (strcmp(use, "ura-optimize") == 0)
+
+            char *use_filename = NULL;
+            if (use[0] == '@')
             {
-               enable_optimize = true;
+               char *lib      = getenv("URA_LIB");
+               check(!lib, "URA_LIB environment variable not set");
+               char *resolved = strjoin(lib, use + 1, NULL);
                free(use);
+               use          = resolved;
+               use_filename = strdup(use);
+            }
+            else if (strcmp(use, "-O0") == 0)
+            {
+               passes = PASSES_O0;
+               continue;
+            }
+            else if (strcmp(use, "-O1") == 0)
+            {
+               passes = PASSES_O1;
+               continue;
+            }
+            else if (strcmp(use, "-O2") == 0)
+            {
+               passes = PASSES_O2;
+               continue;
+            }
+            else if (strcmp(use, "-O3") == 0)
+            {
+               passes = PASSES_O3;
+               continue;
+            }
+            else if (strcmp(use, "-Os") == 0)
+            {
+               passes = PASSES_Os;
+               continue;
+            }
+            else if (strcmp(use, "-Oz") == 0)
+            {
+               passes = PASSES_Oz;
+               continue;
             }
             else
-            {
-               char *use_filename = NULL;
-               if (use[0] == '@')
-               {
-                  char *lib = getenv("URA_LIB");
-                  check(!lib, "URA_LIB environment variable not set");
-                  char *resolved = strjoin(lib, use + 1, NULL);
-                  free(use);
-                  use = resolved;
-                  use_filename = strdup(use);
-               }
-               else
-                  use_filename = strjoin(dirname(filename), "/", use);
+               use_filename = strjoin(dirname(filename), "/", use);
 
-               free(use);
-               use = strjoin(use_filename, ".ura", NULL);
-               bool old = calling_use;
-               calling_use = true;
-               tokenize(use);
-               calling_use = old;
-               free(use_filename);
-            }
-
+            free(use);
+            use         = strjoin(use_filename, ".ura", NULL);
+            bool old = calling_use;
+            calling_use = true;
+            tokenize(use);
+            calling_use = old;
+            free(use_filename);
          }
          else parse_token(filename, line, input, s, i, ID, space);
          continue;
@@ -180,7 +204,7 @@ void tokenize(char *filename)
          if (strncmp(specials[j].value, input + i, len) == 0)
          {
             parse_token(filename, line, NULL, 0, 0, specials[j].type, space);
-            i += len;
+            i    += len;
             if (includes(specials[j].type, DOTS, 0)) space += TAB;
             found = true;
             break;
@@ -204,7 +228,7 @@ AST_NODE(mul_div_node, dot_node, MUL, DIV, MOD, 0);
 
 Node *dot_node()
 {
-   Node *left = brackets_node();
+   Node  *left = brackets_node();
    Token *token;
    while ((token = find(DOT, 0)))
    {
@@ -241,12 +265,12 @@ Node *dot_node()
       // }
       // else
       {
-         Node *node = new_node(token);
+         Node  *node = new_node(token);
          node->left = left;
-         Token *rhs = find(ID, 0);
+         Token *rhs  = find(ID, 0);
          todo(!rhs, "expected id after dot");
          node->right = new_node(rhs);
-         left = node;
+         left        = node;
       }
    }
    return left;
@@ -254,12 +278,12 @@ Node *dot_node()
 
 Node *brackets_node()
 {
-   Node *left = sign_node();
+   Node  *left = sign_node();
    Token *token;
    if ((token = find(LBRA, 0)))
    {
       Node *node = new_node(token);
-      node->left = left;
+      node->left  = left;
       node->right = brackets_node();
       expect_token(RBRA, 0, "expected right bracket");
       return node;
@@ -275,7 +299,7 @@ Node *sign_node()
       // TODO: left should be a number
       Node *node = new_node(token);
       token->type = MUL;
-      node->left = cast_node();
+      node->left  = cast_node();
       node->right = new_node(new_token(INT, node->left->token->space));
       node->right->token->Int.value = -1;
       return node;
@@ -285,18 +309,18 @@ Node *sign_node()
 
 Node *cast_node()
 {
-   Node *node = prime_node();
+   Node  *node = prime_node();
    Token *token;
    if ((token = find(AS, 0)))
    {
-      Node *left = node;
+      Node  *left = node;
       node = new_node(token);
-      Token *to = find(DATA_TYPES, 0);
+      Token *to   = find(DATA_TYPES, 0);
       if (check(to == NULL || !to->is_dec, "expected data type after to"))
          return syntax_error_node();
-      to->is_dec = false;
+      to->is_dec  = false;
       node->right = new_node(to);
-      node->left = left;
+      node->left  = left;
       return node;
    }
    return node;
@@ -309,7 +333,7 @@ Node *func_call(Node *node)
    //       + children: Parameters
    node->token->type = FCALL;
    Token *arg = NULL;
-   node->left = new_node(new_token(ARGS, node->token->space));
+   node->left        = new_node(new_token(ARGS, node->token->space));
 
    while (!found_error && !(arg = find(RPAR, END, 0)))
    {
@@ -352,12 +376,12 @@ Node *func_dec(Node *node)
    {
       Token *self_tok = new_token(STRUCT_CALL, node->token->space);
       setName(self_tok, "self");
-      Node *st_node = NULL;
+      Node  *st_node  = NULL;
       for (int i = scoop_pos; i > 0; i--)
          if (Gscoop[i]->token->type == STRUCT_CALL) { st_node = Gscoop[i]; break; }
       self_tok->Struct.ptr = st_node;
-      self_tok->is_dec = true;
-      self_tok->is_ref = true;   // ← ADD THIS: self is always passed by pointer
+      self_tok->is_dec     = true;
+      self_tok->is_ref     = true; // ← ADD THIS: self is always passed by pointer
       add_child(node->left, new_node(self_tok));
    }
 
@@ -377,7 +401,7 @@ Node *func_dec(Node *node)
          if (check(!name, "expected identifier in function argument %s", fname->name))
             return syntax_error_node();
 
-         bool is_ref = find(REF, 0) != NULL;
+         bool   is_ref    = find(REF, 0) != NULL;
          Token *data_type = find(DATA_TYPES, ID, 0);
          if (check(!data_type, "expected data type in function argument")) break;
          if (data_type->type == ID)
@@ -392,14 +416,14 @@ Node *func_dec(Node *node)
             if (check(!st, "Unknown struct type '%s'", data_type->name)) break;
             data_type->Struct.ptr = st;
             curr = new_node(data_type);
-            data_type->is_ref = is_ref;
+            data_type->is_ref     = is_ref;
             setName(data_type, name->name);
          }
          else
          {
-            curr = new_node(name);
+            curr         = new_node(name);
             name->is_ref = is_ref;
-            name->type = data_type->type;
+            name->type   = data_type->type;
          }
          curr->token->is_dec = true;
          add_child(node->left, curr);
@@ -423,9 +447,9 @@ Node *func_dec(Node *node)
 
    if (!node->token->is_proto)
    {
-      Token *next = find(DOTS, 0);
+      Token *next  = find(DOTS, 0);
       check(!found_error && !next, "Expected : after function declaration");
-      Node *child = NULL;
+      Node  *child = NULL;
 
       if (next->type == DOTS)
          while (within(node->token->space)) child = add_child(node, expr_node());
@@ -433,9 +457,9 @@ Node *func_dec(Node *node)
       {
          Token *retToken = copy_token(next);
          retToken->type = RETURN;
-         Node *retNode = new_node(retToken);
-         retNode->left = expr_node();
-         child = add_child(node, retNode);
+         Node  *retNode  = new_node(retToken);
+         retNode->left  = expr_node();
+         child          = add_child(node, retNode);
       }
       if (next->type == DOTS)
       {
@@ -463,9 +487,9 @@ Node *func_main(Node *node)
    expect_token(DOTS, 0, "expected : after main() declaration");
 
    enter_scoop(node);
-   node->token->type = FDEC;
+   node->token->type    = FDEC;
    node->token->retType = INT;
-   node->left = new_node(new_token(ARGS, node->token->space));
+   node->left           = new_node(new_token(ARGS, node->token->space));
 
    Node *last = NULL;
    while (within(node->token->space))
@@ -475,12 +499,23 @@ Node *func_main(Node *node)
    }
    if (!last || last->token->type != RETURN)
    {
-      last = new_node(new_token(RETURN, node->token->space + TAB));
+      last       = new_node(new_token(RETURN, node->token->space + TAB));
       last->left = new_node(new_token(INT, node->token->space + TAB));
       add_child(node, last);
    }
    exit_scoop();
    return node;
+}
+
+Node *assign_default(Token *token)
+{
+#if 1
+   return new_node(token);
+#else
+   Node *assign = new_node(new_token(DEFAULT, token->space));
+   assign->left = new_node(token);
+   return assign;
+#endif
 }
 
 Node *symbol(Token *token)
@@ -490,7 +525,7 @@ Node *symbol(Token *token)
    // value example: "hello", 1, 'c'
    if (token->type != ID && !token->is_dec) return new_node(token);
    // int, char, chars, etc...
-   else if (token->is_dec)
+   if (token->is_dec)
    {
       check(1, "unxpected token %s", to_string(token->type));
       return syntax_error_node();
@@ -498,12 +533,12 @@ Node *symbol(Token *token)
    // variable declaration
    if (token->type == ID && is_data_type(tokens[exe_pos]))
    {
-      Token *tmp = find(DATA_TYPES, 0); // skip data type
-      bool is_ref = find(REF, 0) != NULL;
+      Token *tmp    = find(DATA_TYPES, 0); // skip data type
+      bool   is_ref = find(REF, 0) != NULL;
       setName(tmp, token->name);
       tmp->is_dec = true;
       tmp->is_ref = is_ref;
-      return new_node(tmp);
+      return assign_default(tmp);
    }
    // variable declaration (struct variable)
    bool cond = token->type == ID && tokens[exe_pos]->type == ID;
@@ -511,26 +546,26 @@ Node *symbol(Token *token)
    {
       find(ID, 0); // skip struct data type
       bool is_ref = find(REF, 0) != NULL;
-      token->type = STRUCT_CALL;
-      token->is_dec = true;
-      token->is_ref = is_ref;
+      token->type       = STRUCT_CALL;
+      token->is_dec     = true;
+      token->is_ref     = is_ref;
       token->Struct.ptr = st_dec;
-      return new_node(token);
+      return assign_default(token);
    }
-   else if (token->type == ID && find(LPAR, 0))
+   if (token->type == ID && find(LPAR, 0))
    {
       node = new_node(token);
       if (strcmp(token->name, "main") == 0) return func_main(node);
       return func_call(node);
    }
-   else if (token->type == ID && find(LBRA, 0))
+   if (token->type == ID && find(LBRA, 0))
    {
       node = new_node(copy_token(token));
       node->token->type = ACCESS;
       Node *index = prime_node();
       check(!index || !index->token, "expected index after left bracket");
       expect_token(RBRA, 0, "expected right bracket");
-      node->left = new_node(token);
+      node->left  = new_node(token);
       node->right = index;
       return node;
    }
@@ -548,14 +583,14 @@ Node *struct_def(Node *node)
    return NULL;
 
    setName(node->token, st_name->name);
-   node->token->type = STRUCT_CALL;
+   node->token->type       = STRUCT_CALL;
    node->token->Struct.ptr = node;
    enter_scoop(node);
 
    // Collect methods to hoist AFTER the struct is registered
-   Node **methods = NULL;
-   int method_count = 0;
-   int method_cap = 0;
+   Node **methods      = NULL;
+   int    method_count = 0;
+   int    method_cap   = 0;
 
    while (within(node->token->space))
    {
@@ -563,13 +598,13 @@ Node *struct_def(Node *node)
       if (peek->type == FDEC)
       {
          Token *fn_tok = find(FDEC, 0);
-         Node *method = func_dec(new_node(fn_tok));
+         Node  *method = func_dec(new_node(fn_tok));
          if (method && !found_error)
          {
             if (method_count >= method_cap)
             {
                method_cap = method_cap ? method_cap * 2 : 4;
-               methods = realloc(methods, method_cap * sizeof(Node*));
+               methods    = realloc(methods, method_cap * sizeof(Node*));
             }
             methods[method_count++] = method;
          }
@@ -621,7 +656,7 @@ Node *if_node(Node *node)
       Token *token = find(ELSE, ELIF, 0);
 
       curr->right = new_node(token);
-      curr = curr->right;
+      curr        = curr->right;
 
       if (token->type == ELIF)
       {
@@ -664,7 +699,7 @@ Node *while_node(Node *node)
 
 Node *prime_node()
 {
-   Node *node = NULL;
+   Node  *node = NULL;
    Token *token;
    if ((token = find(ID, DATA_TYPES, 0)))
       return symbol(token);
@@ -673,14 +708,14 @@ Node *prime_node()
       node = new_node(token);
       Token *tk_type = find(DATA_TYPES, 0);
       check(!tk_type, "Expected data type after TYPEOF");
-      node->token->type = CHARS;
-      node->token->retType = CHARS;
+      node->token->type        = CHARS;
+      node->token->retType     = CHARS;
       node->token->Chars.value = strdup(to_string(tk_type->type));
       return node;
    }
    if ((token = find(NOT, 0)))
    {
-      node = new_node(token);
+      node       = new_node(token);
       node->left = expr_node();
       return node;
    }
@@ -754,7 +789,7 @@ Node *optimize_ir(Node *node, bool *changed)
 
    if (node->cpos)
    {
-      int j = 0;
+      int    j            = 0;
       Node **new_children = allocate(node->clen, sizeof(Node*));
       for (int i = 0; i < node->cpos; i++)
       {
@@ -834,76 +869,157 @@ Node *optimize_ir(Node *node, bool *changed)
    return node;
 }
 
-void compile(char* filename)
+// returns the .ll path (caller must free)
+char *compile(char *filename)
 {
+   // reset global state for each file
+   found_error = false;
+   tk_pos      = 0; exe_pos = 0;
+   scoop_pos   = 0; scoop = NULL;
+   global      = NULL;
+
    tokenize(filename);
-   if (found_error) return;
-   debug(GREEN BOLD SPLIT RESET);
-   debug(GREEN BOLD"PRINT TOKENS:\n" RESET);
-   for (int i = 0; tokens[i]; i++) debug("%k\n", tokens[i]);
+   if (found_error) return NULL;
 
 #if AST
-   if (found_error) return;
+   if (found_error) return NULL;
    global = new_node(new_token(ID, -TAB));
    setName(global->token, "ura-scoop");
    enter_scoop(global);
    while (!find(END, 0) && !found_error)
       add_child(global, expr_node());
-
-   if (found_error) return;
-   debug(GREEN BOLD SPLIT RESET);
-   debug(GREEN BOLD"PRINT AST:\n" RESET);
-   for (int i = 0; !found_error && i < global->cpos; i++)
-      pnode(global->children[i], "");
+   if (found_error) return NULL;
 #endif
 
 #if IR
-   if (found_error) return;
+   if (found_error) return NULL;
    for (int i = 0; !found_error && i < global->cpos; i++)
       gen_ir(global->children[i]);
-
-   if (found_error) return;
-   debug(GREEN BOLD SPLIT RESET);
-   debug(GREEN BOLD"PRINT IR:\n" RESET);
-   for (int i = 0; !found_error && i < global->cpos; i++)
-      pnode(global->children[i], "");
+   if (found_error) return NULL;
 #endif
 
 #if ASM
-   if (found_error) return;
+   if (found_error) return NULL;
+
+   // build/  directory next to the source file
+   char *dir  = dirname(strdup(filename));
+   char *base = basename(strdup(filename));
+   // strip .ura extension
+   char *dot  = strrchr(base, '.');
+   if (dot) *dot = '\0';
+
+   // mkdir build/
+   char *build_dir = strjoin(dir, "/build", NULL);
+   mkdir(build_dir, 0755);
+
+   char *ll_path    = strjoin(build_dir, "/", strjoin(base, ".ll", NULL));
+
    char *moduleName = resolve_path(filename);
    init(moduleName);
+   free(moduleName);
 
    for (int i = 0; !found_error && i < global->cpos; i++)
       gen_asm(global->children[i]);
 
-   int len = strlen(moduleName);
-   strcpy(moduleName + len - 3, "ll");
-   moduleName[len - 1] = '\0';
-   finalize(moduleName);
-   free(moduleName);
+   finalize(ll_path);
+   free(build_dir);
+   return found_error ? NULL : ll_path;
 #endif
+   return NULL;
 }
 
 int main(int argc, char **argv)
 {
-   check(argc < 2, "require argument, usage ura <file.ura>");
-   compile(argv[1]);
-   free_memory();
-#if !IR
-   debug(RED"NO IR GENERATION\n"RESET);
-#endif
-#if !ASM
-   debug(RED"NO ASSEMBLY GENERATION\n"RESET);
-#endif
-   return (found_error || !ASM || !IR);
+   check(argc < 2, "usage: ura <file.ura> [file2.ura ...] [-O0|-O1|-O2|-O3|-Os|-Oz] [-asan] [-o output]");
+
+   char  *output    = "exe.out";
+   char **src_files = NULL;
+   int    src_count = 0;
+
+   for (int i = 1; i < argc; i++)
+   {
+      if      (strcmp(argv[i], "-O0")   == 0) passes = PASSES_O0;
+      else if (strcmp(argv[i], "-O1")   == 0) passes = PASSES_O1;
+      else if (strcmp(argv[i], "-O2")   == 0) passes = PASSES_O2;
+      else if (strcmp(argv[i], "-O3")   == 0) passes = PASSES_O3;
+      else if (strcmp(argv[i], "-Os")   == 0) passes = PASSES_Os;
+      else if (strcmp(argv[i], "-Oz")   == 0) passes = PASSES_Oz;
+      else if (strcmp(argv[i], "-asan") == 0) enable_asan = true;
+      else if (strcmp(argv[i], "-o")    == 0)
+      {
+         check(i + 1 >= argc, "-o requires an argument");
+         output = argv[++i];
+      }
+      else if (argv[i][0] != '-')
+      {
+         src_files = realloc(src_files, (src_count + 1) * sizeof(char *));
+         src_files[src_count++] = argv[i];
+      }
+      else
+         fprintf(stderr, "unknown flag: %s\n", argv[i]);
+   }
+
+   check(src_count == 0, "no input files");
+
+   // compile each file → .ll → .s
+   char **s_files = calloc(src_count, sizeof(char *));
+   int    s_count = 0;
+
+   for (int i = 0; i < src_count; i++)
+   {
+      char *ll = compile(src_files[i]);
+      if (!ll) { found_error = true; break; }
+
+      // derive .s path from .ll path
+      char *s   = strdup(ll);
+      char *dot = strrchr(s, '.');
+      if (dot) strcpy(dot, ".s");
+
+      // llc ll → s
+      char cmd[4096];
+      snprintf(cmd, sizeof(cmd), "llc \"%s\" -o \"%s\"", ll, s);
+      if (system(cmd) != 0)
+      {
+         fprintf(stderr, RED "llc failed for %s\n" RESET, ll);
+         found_error = true;
+         free(s); free(ll);
+         break;
+      }
+      s_files[s_count++] = s;
+      free(ll);
+      free_memory();
+   }
+
+   // link all .s files
+   if (!found_error && s_count > 0)
+   {
+      // build link command: clang a.s b.s [-fsanitize=address] -lc++ -o output
+      char cmd[8192];
+      int  pos = 0;
+      pos += snprintf(cmd + pos, sizeof(cmd) - pos, "clang");
+      for (int i = 0; i < s_count; i++)
+         pos += snprintf(cmd + pos, sizeof(cmd) - pos, " \"%s\"", s_files[i]);
+      if (enable_asan)
+         pos += snprintf(cmd + pos, sizeof(cmd) - pos, " -fsanitize=address");
+      pos += snprintf(cmd + pos, sizeof(cmd) - pos, " -lc++ -o \"%s\"", output);
+
+      if (system(cmd) != 0)
+         fprintf(stderr, RED "linking failed\n" RESET);
+      else
+         fprintf(stderr, GREEN "-> %s\n" RESET, output);
+   }
+
+   for (int i = 0; i < s_count; i++) free(s_files[i]);
+   free(s_files);
+   free(src_files);
+   return found_error;
 }
 
 // GENERATE
 // ASSEMBLY GENERATION
 Value build_binary_op(Type op_type, Value lref, Value rref)
 {
-   char* op = to_string(op_type);
+   char *op = to_string(op_type);
    switch (op_type)
    {
    case LESS:        return LLVMBuildICmp(builder, LLVMIntSLT, lref, rref, op);
@@ -933,9 +1049,9 @@ Value allocate_stack(Value size, TypeRef elementType, char *name)
 
    if (LLVMIsConstant(size))
    {
-      unsigned long long constSize = LLVMConstIntGetZExtValue(size);
-      TypeRef arrayType = LLVMArrayType(elementType, constSize);
-      Value array_alloca = LLVMBuildAlloca(builder, arrayType, name);
+      unsigned long long constSize    = LLVMConstIntGetZExtValue(size);
+      TypeRef            arrayType    = LLVMArrayType(elementType, constSize);
+      Value              array_alloca = LLVMBuildAlloca(builder, arrayType, name);
       return LLVMBuildGEP2(builder, arrayType, array_alloca, indices, 2, name);
    }
 
@@ -948,7 +1064,7 @@ Value get_store_ptr(Token *token)
    // Regular variable - return its alloca'd address
    if (!token->is_ref) return token->llvm.elem;
    // Reference - need to load the pointer it points to
-   TypeRef type = get_llvm_type(token);
+   TypeRef type     = get_llvm_type(token);
    TypeRef ptr_type = LLVMPointerType(type, 0);
    return _build_load2(ptr_type, token->llvm.elem, "store_ptr");
 }
@@ -956,7 +1072,7 @@ Value get_store_ptr(Token *token)
 Value struct_field_ptr(Token *struct_tok, int field_index, char *name)
 {
    TypeRef struct_type = get_llvm_type(struct_tok);   // the struct's LLVM type
-   Value indices[] =
+   Value   indices[]   =
    {
       LLVMConstInt(i32, 0, 0),            // deref the alloca pointer
       LLVMConstInt(i32, field_index, 0),  // pick the field
@@ -970,19 +1086,25 @@ void build_ref_assign(Token *ref_token, Value value, TypeRef type)
    Value temp = _build_alloca(type, "ref_temp");
    _build_store(value, temp);
 
-   TargetData td  = _get_module_data_layout(module);
-   size_t size    = _abi_size_of_type(td, type);
+   TargetData td        = _get_module_data_layout(module);
+   size_t     size      = _abi_size_of_type(td, type);
 
-   Value ref_cast  = _build_bit_cast(ref_token->llvm.elem, p8, "ref");
-   Value temp_cast = _build_bit_cast(temp, p8, "val");
-   Value args[]    = {ref_cast, temp_cast, _const_int(i32, size, 0)};
+   Value      ref_cast  = _build_bit_cast(ref_token->llvm.elem, p8, "ref");
+   Value      temp_cast = _build_bit_cast(temp, p8, "val");
+   Value      args[]    = {ref_cast, temp_cast, _const_int(i32, size, 0)};
    _build_call2(_global_get_value_type(func), func, args, 3, "");
+}
+
+void store_through_ref(Token *ref_token, Value value, TypeRef type)
+{
+   Value ptr = _build_load2(_pointer_type(type, 0), ref_token->llvm.elem, "ref_ptr");
+   _build_store(value, ptr);
 }
 
 void gen_asm(Node *node)
 {
    // debug("Processing: %k\n", inst->token);
-   Node *left = node->left;
+   Node *left  = node->left;
    Node *right = node->right;
 
    if (check(node->token->llvm.is_set, "already set")) return;
@@ -995,7 +1117,7 @@ void gen_asm(Node *node)
          if (node->token->is_ref)
          {
             TypeRef type = get_llvm_type(node->token);
-            Value null = LLVMConstNull(LLVMPointerType(type, 0));
+            Value   null = LLVMConstNull(LLVMPointerType(type, 0));
             _build_store(null, node->token->llvm.elem);
          }
          else
@@ -1013,12 +1135,6 @@ void gen_asm(Node *node)
       if (node->token->is_dec)
       {
          _alloca(node->token);
-         if (node->token->is_ref)
-         {
-            TypeRef type = get_llvm_type(node->token);
-            Value null = LLVMConstNull(LLVMPointerType(type, 0));
-            _build_store(null, node->token->llvm.elem);
-         }
          node->token->is_dec = false;
          return;
       }
@@ -1029,50 +1145,44 @@ void gen_asm(Node *node)
    }
    case ASSIGN:
    {
+      if (left->token->type == DEFAULT)
+      {
+         Token *var = left->left->token;
+         _alloca(var);
+         var->is_dec = false;
+         left->token = var;
+         left->left  = NULL;
+      }
+
       gen_asm(left);
       gen_asm(right);
       TypeRef type = get_llvm_type(right->token);
 
-      // Case 1: Neither is ref - simple assignment
       if (!left->token->is_ref && !right->token->is_ref)
       {
          load_if_necessary(right);
          _build_store(right->token->llvm.elem, left->token->llvm.elem);
       }
-      // Case 2: Left is ref, right is not ref - use ref_assign builtin
-      // Case 2: Left is ref, right is not ref
       else if (left->token->is_ref && !right->token->is_ref)
       {
-
-         // Check if right is a simple variable (for direct binding)
-         bool is_variable = (right->token->name != NULL &&
-                             !right->token->llvm.is_loaded &&
-                             right->token->type != CHARS);
-
-         if (is_variable)
-         {
-            // INITIALIZATION: Direct binding - store address of variable
+         Token *rtk = right->token;
+         if (rtk->name && !rtk->llvm.is_loaded && rtk->type != CHARS)
             _build_store(right->token->llvm.elem, left->token->llvm.elem);
-         }
          else
          {
+            // store the address
             load_if_necessary(right);
             build_ref_assign(left->token, right->token->llvm.elem, get_llvm_type(right->token));
          }
       }
-      // Case 3: Both are refs - copy reference pointer
-      // Case 3: Both are refs - copy VALUE, not pointer
       else if (left->token->is_ref && right->token->is_ref)
       {
-         Value right_ptr = check_null(right->token);
-         Value value     = _build_load2(type, right_ptr, "ref_val");
+         Value value = _build_load2(type, check_null(right->token), "ref_val");
          build_ref_assign(left->token, value, type);
       }
-      // Case 4: Left is not ref, right is ref - dereference right
       else
       {
-         Value ptr = check_null(right->token);
-         Value val = _build_load2(type, ptr, "val");
+         Value val = _build_load2(type, check_null(right->token), "val");
          _build_store(val, left->token->llvm.elem);
       }
       break;
@@ -1083,27 +1193,16 @@ void gen_asm(Node *node)
       gen_asm(right);
 
       TypeRef type = get_llvm_type(left->token);
-      Value current_val;
+      Value   current_val;
 
-      // Load current value from left
       if (left->token->is_ref)
-      {
-         check_null(left->token);
-         Value ptr_holder = left->token->llvm.elem;
-         Value ptr = _build_load2(_pointer_type(type, 0), ptr_holder, "ptr");
-         current_val = _build_load2(type, ptr, "current");
-      }
+         current_val = _build_load2(type, check_null(left->token), "current");
       else
          current_val = _build_load2(type, left->token->llvm.elem, "current");
 
-      // Load right value
       Value right_val;
       if (right->token->is_ref)
-      {
-         check_null(right->token);
-         Value ptr = check_null(right->token);
-         right_val = _build_load2(type, ptr, "rval");
-      }
+         right_val = _build_load2(type, check_null(right->token), "rval");
       else
       {
          load_if_necessary(right);
@@ -1123,7 +1222,7 @@ void gen_asm(Node *node)
       }
 
       if (left->token->is_ref)
-         build_ref_assign(left->token, result, type);
+         store_through_ref(left->token, result, type);
       else
          _build_store(result, left->token->llvm.elem);
       break;
@@ -1149,7 +1248,7 @@ void gen_asm(Node *node)
       Value rref = right->token->llvm.elem;
 
       node->token->llvm.elem = build_binary_op(node->token->type, lref, rref);
-      node->token->retType = left->token->retType ? left->token->retType : left->token->type;
+      node->token->retType   = left->token->retType ? left->token->retType : left->token->type;
       break;
    }
    case STACK:
@@ -1158,7 +1257,7 @@ void gen_asm(Node *node)
       load_if_necessary(node->left->children[0]);
       Value elem = node->left->children[0]->token->llvm.elem;
 
-      node->token->llvm.elem = allocate_stack(elem, i8, "stack");
+      node->token->llvm.elem   = allocate_stack(elem, i8, "stack");
       node->token->llvm.is_set = true;
 
       // Store size in the token itself
@@ -1171,18 +1270,18 @@ void gen_asm(Node *node)
    }
    case FCALL:
    {
-      LLVM srcFunc = node->token->Fcall.ptr->token->llvm;
-      bool is_variadic = node->token->Fcall.ptr->token->is_variadic;
-      int count = node->left->cpos;
-      Node **argNodes = node->left->children;
-      Node *dec_args = node->token->Fcall.ptr->left;
-      Value *args = NULL;
+      LLVM   srcFunc     = node->token->Fcall.ptr->token->llvm;
+      bool   is_variadic = node->token->Fcall.ptr->token->is_variadic;
+      int    count       = node->left->cpos;
+      Node **argNodes    = node->left->children;
+      Node  *dec_args    = node->token->Fcall.ptr->left;
+      Value *args        = NULL;
       if (count)
       {
          args = allocate(count + 3, sizeof(Value));
          if (is_variadic)
          {
-            int fixed_params = node->token->Fcall.ptr->left->cpos;
+            int fixed_params   = node->token->Fcall.ptr->left->cpos;
             int variadic_count = count - fixed_params;
             for (int i = 0; i < fixed_params; i++)
             {
@@ -1221,9 +1320,9 @@ void gen_asm(Node *node)
             }
          }
       }
-      char *name = node->token->Fcall.ptr->token->retType != VOID ? node->token->name : "";
+      char   *name     = node->token->Fcall.ptr->token->retType != VOID ? node->token->name : "";
       TypeRef funcType = srcFunc.funcType;
-      Value elem = srcFunc.elem;
+      Value   elem     = srcFunc.elem;
       node->token->llvm.elem = LLVMBuildCall2(builder, funcType, elem, args, count, name);
       free(args);
       break;
@@ -1231,11 +1330,11 @@ void gen_asm(Node *node)
    case FDEC:
    {
       enter_scoop(node);
-      TypeRef retType = get_llvm_type(node->token);
-      TypeRef *paramTypes = NULL;
-      int param_count  = node->left->cpos;   // total declared params (including ...args)
-      int fixed_count  = param_count;         // regular params passed to LLVM
-      int _count   = param_count;         // what LLVM sees (fixed + hidden i32)
+      TypeRef  retType     = get_llvm_type(node->token);
+      TypeRef *paramTypes  = NULL;
+      int      param_count = node->left->cpos; // total declared params (including ...args)
+      int      fixed_count = param_count;     // regular params passed to LLVM
+      int      _count      = param_count; // what LLVM sees (fixed + hidden i32)
 
       if (node->token->is_variadic)
       {
@@ -1251,18 +1350,18 @@ void gen_asm(Node *node)
          {
             Token *param = node->left->children[i]->token;
             if (param->is_ref) paramTypes[i] = _pointer_type(get_llvm_type(param), 0);
-            else               paramTypes[i] = get_llvm_type(param);
+            else paramTypes[i] = get_llvm_type(param);
          }
 
          if (node->token->is_variadic)
             paramTypes[fixed_count] = i32;
       }
 
-      TypeRef funcType = _function_type(retType, paramTypes, _count, node->token->is_variadic);
-      char *fname = node->token->name;
-      Value existingFunc = _get_named_function(fname);
+      TypeRef funcType     = _function_type(retType, paramTypes, _count, node->token->is_variadic);
+      char   *fname        = node->token->name;
+      Value   existingFunc = _get_named_function(fname);
       if (existingFunc) node->token->llvm.elem = existingFunc;
-      else              node->token->llvm.elem = _add_function(fname, funcType);
+      else node->token->llvm.elem = _add_function(fname, funcType);
       node->token->llvm.funcType = funcType;
 
       if (!node->token->is_proto)
@@ -1273,7 +1372,7 @@ void gen_asm(Node *node)
          for (int i = 0; i < fixed_count; i++)
          {
             Token *param_token = node->left->children[i]->token;
-            Value param = LLVMGetParam(node->token->llvm.elem, param_idx++);
+            Value  param       = LLVMGetParam(node->token->llvm.elem, param_idx++);
             LLVMSetValueName(param, param_token->name);
             _alloca(param_token);
             param_token->is_dec = false;
@@ -1290,13 +1389,13 @@ void gen_asm(Node *node)
    {
       enter_scoop(node);
       Block start = _append_block("while.start");
-      Block then = _append_block("while.then");
-      Block end = _append_block("while.end");
+      Block then  = _append_block("while.then");
+      Block end   = _append_block("while.end");
 
       // Store blocks for break/continue
       node->token->llvm.start = start;
-      node->token->llvm.then = then;
-      node->token->llvm.end = end;
+      node->token->llvm.then  = then;
+      node->token->llvm.end   = end;
 
       _branch(start);
 
@@ -1319,11 +1418,11 @@ void gen_asm(Node *node)
       enter_scoop(node);
 
       Block if_start = _append_block("if.start");
-      Block end = _append_block("if.end");
+      Block end      = _append_block("if.end");
 
       // Store blocks for potential break/continue
       node->token->llvm.start = if_start;
-      node->token->llvm.end = end;
+      node->token->llvm.end   = end;
 
       _branch(if_start);
 
@@ -1340,12 +1439,12 @@ void gen_asm(Node *node)
             if (curr->token->type == IF)
             {
                start = if_start;
-               then = _append_block("if.then");
+               then  = _append_block("if.then");
             }
             else
             {
                start = curr->token->llvm.bloc;
-               then = _append_block("elif.then");
+               then  = _append_block("elif.then");
             }
 
             // Store then block
@@ -1425,14 +1524,14 @@ void gen_asm(Node *node)
       gen_asm(left);
       load_if_necessary(left);
 
-      Value source = left->token->llvm.elem;
-      TypeRef sourceType = LLVMTypeOf(source);
-      TypeRef targetType = get_llvm_type(node->right->token);
+      Value    source     = left->token->llvm.elem;
+      TypeRef  sourceType = LLVMTypeOf(source);
+      TypeRef  targetType = get_llvm_type(node->right->token);
 
       TypeKind sourceKind = LLVMGetTypeKind(sourceType);
       TypeKind targetKind = LLVMGetTypeKind(targetType);
 
-      Value result;
+      Value    result;
 
       // Pointer to integer
       if (sourceKind == LLVMPointerTypeKind && targetKind == LLVMIntegerTypeKind)
@@ -1463,14 +1562,14 @@ void gen_asm(Node *node)
          result = source;
       }
 
-      node->token->llvm.elem = result;
+      node->token->llvm.elem      = result;
       node->token->llvm.is_loaded = true;
       break;
    }
    case STRUCT_DEF:
    {
       // Build LLVM field types
-      int pos = node->cpos;
+      int      pos   = node->cpos;
       TypeRef *types = calloc(pos + 1, sizeof(TypeRef));
       for (int i = 0; i < pos; i++)
       {
@@ -1488,8 +1587,8 @@ void gen_asm(Node *node)
    {
       gen_asm(node->left);
 
-      Token *struct_tok = node->left->token;
-      int field_index   = node->right->token->Struct.index;
+      Token *struct_tok  = node->left->token;
+      int    field_index = node->right->token->Struct.index;
 
       // If the struct is a ref, we need to load the pointer first
       // before indexing into it, otherwise we GEP into the alloca
@@ -1497,19 +1596,19 @@ void gen_asm(Node *node)
       if (struct_tok->is_ref)
       {
          TypeRef struct_type = get_llvm_type(struct_tok);
-         Value struct_ptr = _build_load2(
-                               _pointer_type(struct_type, 0),
-                               struct_tok->llvm.elem,
-                               struct_tok->name
-                            );
+         Value   struct_ptr  = _build_load2(
+            _pointer_type(struct_type, 0),
+            struct_tok->llvm.elem,
+            struct_tok->name
+            );
          Value indices[] =
          {
             _const_int(i32, 0, 0),
             _const_int(i32, field_index, 0),
          };
          node->token->llvm.elem = _build_gep2(
-                                     struct_type, struct_ptr, indices, 2, node->right->token->name
-                                  );
+            struct_type, struct_ptr, indices, 2, node->right->token->name
+            );
       }
       else
       {
@@ -1525,14 +1624,14 @@ void gen_asm(Node *node)
 
       if (node->left->token->type == STRUCT_CALL)
       {
-         Token *struct_tok = node->left->token;
-         int field_index   = node->right->token->Struct.index;
+         Token *struct_tok  = node->left->token;
+         int    field_index = node->right->token->Struct.index;
 
-         Value field_ptr = struct_field_ptr(struct_tok, field_index, node->right->token->name);
+         Value  field_ptr   = struct_field_ptr(struct_tok, field_index, node->right->token->name);
 
          node->token->llvm.elem = field_ptr;
          /* retType already set by gen_ir; mark as NOT loaded so
-         load_if_necessary() will emit the load when reading. */
+            load_if_necessary() will emit the load when reading. */
          break;
       }
 
@@ -1551,8 +1650,8 @@ void gen_asm(Node *node)
          leftValue = node->left->token->llvm.elem;
          TypeKind kind = LLVMGetTypeKind(LLVMTypeOf(leftValue));
          if (kind == LLVMPointerTypeKind && node->left->token->name &&
-               !node->left->token->llvm.is_loaded &&
-               node->left->token->type != STACK)
+             !node->left->token->llvm.is_loaded &&
+             node->left->token->type != STACK)
          {
             leftValue = _build_load2(p8, leftValue, "ptr_load");
          }
@@ -1560,17 +1659,17 @@ void gen_asm(Node *node)
 
       // Load the index (handles refs)
       load_if_necessary(node->right);
-      Value rightRef = node->right->token->llvm.elem;
+      Value   rightRef = node->right->token->llvm.elem;
 
       TypeRef element_type;
       if (node->left->token->type == CHARS)
       {
-         element_type = i8;
+         element_type         = i8;
          node->token->retType = CHAR;
       }
       else
       {
-         element_type = get_llvm_type(left->token);
+         element_type         = get_llvm_type(left->token);
          node->token->retType = left->token->type;
       }
 
@@ -1597,7 +1696,7 @@ void gen_asm(Node *node)
                   strlen_func = _add_function("strlen", strlen_type);
                }
                Value strlen_result = _build_call2(_global_get_value_type(strlen_func), strlen_func,
-               (Value[]) {leftValue}, 1, "strlen");
+                                                  (Value[]) {leftValue}, 1, "strlen");
                size_val = _build_trunc(strlen_result, i32, "size");
             }
             else if (node->left->token->llvm.array_size)
@@ -1642,12 +1741,12 @@ void gen_asm(Node *node)
             // Call bounds check: __bounds_check(index, size, line, filename)
             Value line_val = _const_int(i32, node->token->line, 0);
             _build_call2(_global_get_value_type(bounds_check), bounds_check,
-            (Value[]) {rightRef, size_val, line_val, filename_str}, 4, "");
+                         (Value[]) {rightRef, size_val, line_val, filename_str}, 4, "");
          }
       }
 
       Value indices[] = { rightRef };
-      Value gep = _build_gep2(element_type, leftValue, indices, 1, "ACCESS");
+      Value gep       = _build_gep2(element_type, leftValue, indices, 1, "ACCESS");
       node->token->llvm.elem = gep;
 
       break;
@@ -1661,10 +1760,15 @@ void gen_asm(Node *node)
 void gen_ir(Node * node)
 {
    if (found_error) return;
-   Node *left = node->left;
+   Node *left  = node->left;
    Node *right = node->right;
    switch (node->token->type)
    {
+   case DEFAULT:
+   {
+      gen_ir(node->left);
+      break;
+   }
    case ID:
    {
       Token *find = get_variable(node->token->name);
@@ -1803,13 +1907,14 @@ void gen_ir(Node * node)
       if (strcmp(node->token->name, "stack") == 0)
       {
          node->token->retType = CHARS;
-         node->token->type = STACK;
+         node->token->type    = STACK;
 
-         Node *call_args = node->left;
-         Node *carg = call_args->children[0];
+         Node  *call_args = node->left;
+         Node  *carg      = call_args->children[0];
          gen_ir(carg);
-         Token *src = carg->token;
-         if (check(src->type == ID, "Indeclared variable %s", carg->token->name)) break;
+         Token *src       = carg->token;
+         if (check(src->type == ID, "Indeclared variable %s", carg->token->name))
+            break;
       }
       else
       {
@@ -1853,7 +1958,7 @@ void gen_ir(Node * node)
          func = copy_node(func);
 
          Node *call_args = node->left;
-         Node *dec_args = func->left;
+         Node *dec_args  = func->left;
 
          for (int i = 0; !found_error && call_args && i < call_args->cpos; i++)
          {
@@ -1897,8 +2002,8 @@ void gen_ir(Node * node)
             {
                retType = child->token->type;
                node->right->token->Struct.index = i;
-               node->right->token->type    = child->token->type;
-               node->right->token->retType = child->token->retType;
+               node->right->token->type         = child->token->type;
+               node->right->token->retType      = child->token->retType;
                if (child->token->type == STRUCT_CALL)
                   node->right->token->Struct.ptr = child->token->Struct.ptr;
                break;
@@ -1957,25 +2062,25 @@ void gen_ir(Node * node)
 }
 
 // FILE MANAGEMENT
-char* open_file(char* filename)
+char *open_file(char* filename)
 {
    if (found_error) return NULL;
 
    File file = fopen(filename, "r");
    if (check(!file, "openning %s", filename)) return NULL;
    fseek(file, 0, SEEK_END);
-   int size = ftell(file);
+   int   size  = ftell(file);
    fseek(file, 0, SEEK_SET);
-   char* input = allocate((size + 1), sizeof(char));
+   char *input = allocate((size + 1), sizeof(char));
    if (input) fread(input, size, sizeof(char), file);
    fclose(file);
    return input;
 }
 
-char* resolve_path(char* path)
+char *resolve_path(char* path)
 {
    if (path == NULL) return NULL;
-   char* cleaned = allocate(strlen(path) + 5, 1);
+   char  *cleaned = allocate(strlen(path) + 5, 1);
    if (!cleaned) return NULL;
    size_t i = 0, j = 0;
    while (path[i])
@@ -1994,7 +2099,8 @@ char* resolve_path(char* path)
 
 bool add_file(char *filename)
 {
-   used_files = (char**)resize_array((void**)used_files, &used_len, used_pos, sizeof(char *));
+   used_files = (char**)resize_array((void**)used_files,
+                                     &used_len, used_pos, sizeof(char *));
    for (int i = 0; i < used_pos; i++)
    {
       if (strcmp(filename, used_files[i]) == 0)
@@ -2005,14 +2111,14 @@ bool add_file(char *filename)
 }
 
 // MEMORY
-void* allocate_func(int line, int len, int size)
+void *allocate_func(int line, int len, int size)
 {
-   void* res = calloc(len, size);
+   void *res = calloc(len, size);
    check(!res, "allocate did failed in line %d", line);
    return res;
 }
 
-void** resize_array(void** array, int* len, int pos, int element_size)
+void **resize_array(void** array, int* len, int pos, int element_size)
 {
    if (array == NULL)
    {
@@ -2057,18 +2163,20 @@ void free_memory()
       free_token(tokens[i]);
       tokens[i] = NULL;
    }
-   tk_pos = 0;
+   tk_pos  = 0;
    exe_pos = 0;
 }
 
 // ERROR HANDLING
-bool check_error(char* filename, char* funcname, int line, bool cond, char* fmt, ...)
+bool check_error(char* filename, char* funcname,
+                 int line, bool cond, char* fmt, ...)
 {
    if (!cond) return cond;
    found_error = true;
    va_list ap;
    va_start(ap, fmt);
-   fprintf(stderr, BOLD RED"ura_error: %s:%s:%d "RESET, filename, funcname, line);
+   fprintf(stderr, BOLD RED "ura_error: %s %s:%d "RESET,
+           funcname, filename, line);
    vfprintf(stderr, fmt, ap);
    fprintf(stderr, "\n");
    va_end(ap);
@@ -2078,14 +2186,15 @@ bool check_error(char* filename, char* funcname, int line, bool cond, char* fmt,
 // PARSING
 void add_token(Token *token)
 {
-   tokens = (Token**)resize_array((void**)tokens, &tk_len, tk_pos, sizeof(Token *));
+   tokens           = (Token**)resize_array((void**)tokens,
+                                            &tk_len, tk_pos, sizeof(Token *));
    tokens[tk_pos++] = token;
 }
 
-Token* new_token(Type type, int space)
+Token *new_token(Type type, int space)
 {
    Token* token = allocate(1, sizeof(Token));
-   token->type = type;
+   token->type  = type;
    token->space = ((space + TAB / 2) / TAB) * TAB;
    add_token(token);
    return token;
@@ -2094,9 +2203,9 @@ Token* new_token(Type type, int space)
 Token *parse_token(char *filename, int line, char *input, int s, int e,  Type type, int space)
 {
    Token *new = new_token(type, space);
-   new->line = line;
+   new->line     = line;
    new->filename = filename;
-   new->pos = tk_pos;
+   new->pos      = tk_pos;
 
    switch (type)
    {
@@ -2120,7 +2229,7 @@ Token *parse_token(char *filename, int line, char *input, int s, int e,  Type ty
          if (strcmp(new->name, bools[i].name) == 0)
          {
             setName(new, NULL);
-            new->type = BOOL;
+            new->type       = BOOL;
             new->Bool.value = bools[i].value;
             break;
          }
@@ -2139,7 +2248,7 @@ Token *parse_token(char *filename, int line, char *input, int s, int e,  Type ty
          if (strcmp(dataTypes[i].name, new->name) == 0)
          {
             setName(new, NULL);
-            new->type = dataTypes[i].type;
+            new->type   = dataTypes[i].type;
             new->is_dec = true;
             break;
          }
@@ -2192,10 +2301,10 @@ Token *parse_token(char *filename, int line, char *input, int s, int e,  Type ty
    case CHARS:
    {
       if (e <= s) break;
-      int len = e - s;
+      int   len   = e - s;
       new->Chars.value = allocate(len + 1, sizeof(char));
       char *value = new->Chars.value;
-      int j = 0;
+      int   j     = 0;
 
       for (int i = 0; i < len && s < e; i++, s++)
       {
@@ -2203,18 +2312,18 @@ Token *parse_token(char *filename, int line, char *input, int s, int e,  Type ty
          {
             switch (input[s + 1])
             {
-            case 'n': value[j++] = '\n'; s++; break;  // newline
-            case 't': value[j++] = '\t'; s++; break;  // tab
-            case 'r': value[j++] = '\r'; s++; break;  // carriage return
-            case 'b': value[j++] = '\b'; s++; break;  // backspace
-            case 'f': value[j++] = '\f'; s++; break;  // form feed
-            case 'v': value[j++] = '\v'; s++; break;  // vertical tab
-            case 'a': value[j++] = '\a'; s++; break;  // alert (bell)
-            case '0': value[j++] = '\0'; s++; break;  // null character
+            case 'n': value[j++]  = '\n'; s++; break; // newline
+            case 't': value[j++]  = '\t'; s++; break; // tab
+            case 'r': value[j++]  = '\r'; s++; break; // carriage return
+            case 'b': value[j++]  = '\b'; s++; break; // backspace
+            case 'f': value[j++]  = '\f'; s++; break; // form feed
+            case 'v': value[j++]  = '\v'; s++; break; // vertical tab
+            case 'a': value[j++]  = '\a'; s++; break; // alert (bell)
+            case '0': value[j++]  = '\0'; s++; break; // null character
             case '\\': value[j++] = '\\'; s++; break; // backslash
-            case '"': value[j++] = '"'; s++; break;   // double quote
+            case '"': value[j++]  = '"'; s++; break;  // double quote
             case '\'': value[j++] = '\''; s++; break; // single quote
-            case '?': value[j++] = '\?'; s++; break;  // question mark (for trigraphs)
+            case '?': value[j++]  = '\?'; s++; break; // question mark (for trigraphs)
             // three digit octal
             case '1': case '2': case '3': case '4': case '5': case '6': case '7':
             {
@@ -2232,7 +2341,7 @@ Token *parse_token(char *filename, int line, char *input, int s, int e,  Type ty
                {
                   int octal = (input[s + 1] - '0') * 8 + (input[s + 2] - '0');
                   value[j++] = (char)octal;
-                  s += 2;
+                  s         += 2;
                }
                // single digit octal
                else
@@ -2246,9 +2355,9 @@ Token *parse_token(char *filename, int line, char *input, int s, int e,  Type ty
             {
                if (s + 3 < e && isxdigit(input[s + 2]) && isxdigit(input[s + 3]))
                {
-                  int hex = 0;
-                  char c1 = input[s + 2];
-                  char c2 = input[s + 3];
+                  int  hex = 0;
+                  char c1  = input[s + 2];
+                  char c2  = input[s + 3];
                   // convert first hex digit
                   if (c1 >= '0' && c1 <= '9') hex += (c1 - '0') * 16;
                   else if (c1 >= 'a' && c1 <= 'f') hex += (c1 - 'a' + 10) * 16;
@@ -2258,7 +2367,7 @@ Token *parse_token(char *filename, int line, char *input, int s, int e,  Type ty
                   else if (c2 >= 'a' && c2 <= 'f') hex += (c2 - 'a' + 10);
                   else if (c2 >= 'A' && c2 <= 'F') hex += (c2 - 'A' + 10);
                   value[j++] = (char)hex;
-                  s += 3;
+                  s         += 3;
                }
                else value[j++] = input[s]; // invalid hex escape, keep backslash
                break;
@@ -2323,30 +2432,35 @@ Node *new_node(Token *token)
    return new;
 }
 
-Node* add_child(Node *node, Node *child)
+Node *add_child(Node *node, Node *child)
 {
-   node->children = (Node**)resize_array((void**)node->children, &node->clen, node->cpos, sizeof(Node *));
-   child->token->space = node->token->space + TAB;
-   node->children[node->cpos++] = child;
+   if (child)
+   {
+      node->children               = (Node**)resize_array((void**)node->children,
+                                                          &node->clen,node->cpos,sizeof(Node *));
+      child->token->space          = node->token->space + TAB;
+      node->children[node->cpos++] = child;
+   }
    return child;
 }
 
 void enter_scoop(Node *node)
 {
    debug(CYAN "Enter Scoop: %k index %d\n" RESET, node->token, scoop_pos + 1);
-   Gscoop = (Node**)resize_array((void**)Gscoop, &scoop_len, scoop_pos, sizeof(Node*));
+   Gscoop = (Node**)resize_array((void**)Gscoop,
+                                 &scoop_len, scoop_pos, sizeof(Node*));
    scoop_pos++;
    Gscoop[scoop_pos] = node;
-   scoop = Gscoop[scoop_pos];
+   scoop             = Gscoop[scoop_pos];
 }
 
 void exit_scoop()
 {
    if (check(scoop_pos < 0, "No active scoop to exit")) return;
-   debug(CYAN "Exit Scoop: %k index %d\n" RESET, Gscoop[scoop_pos]->token, scoop_pos);
+   debug("%sExit Scoop: %k index %d%s\n", CYAN, Gscoop[scoop_pos]->token, scoop_pos, RESET);
    Gscoop[scoop_pos] = NULL;
    scoop_pos--;
-   scoop = Gscoop[scoop_pos];
+   scoop             = Gscoop[scoop_pos];
 }
 
 bool includes(Type to_find, ...)
@@ -2358,6 +2472,22 @@ bool includes(Type to_find, ...)
    return false;
 }
 
+Token *expect_token(Type type, char *error_msg, ...)
+{
+   Token *token = find(type, 0);
+   if (!token)
+   {
+      va_list args;
+      va_start(args, error_msg);
+      char    buffer[256];
+      vsnprintf(buffer, sizeof(buffer), error_msg, args);
+      va_end(args);
+      check(1, "%s", buffer);
+      return syntax_error_token();
+   }
+   return token;
+}
+
 void setName(Token *token, char *name)
 {
    if (token->name) free(token->name);
@@ -2366,36 +2496,36 @@ void setName(Token *token, char *name)
 
 char *to_string(Type type)
 {
-   char* res[END + 1] =
+   char *res[END + 1] =
    {
-      [ID] = "ID", [CHAR] = "CHAR", [CHARS] = "CHARS", [VOID] = "VOID",
-      [INT] = "INT", [BOOL] = "BOOL", [LONG] = "LONG", [FLOAT] = "FLOAT",
-      [FDEC] = "FDEC",
-      [FCALL] = "CALL", [END] = "END", [LPAR] = "LPAR", [RPAR] = "RPAR",
-      [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
-      [WHILE] = "WHILE", [BREAK] = "BRK", [CONTINUE] = "CONT",
-      [RETURN] = "RET",
-      [ADD] = "ADD",
-      [SUB] = "SUB", [MUL] = "MUL", [DIV] = "DIV", [ASSIGN] = "ASSIGN",
-      [ADD_ASSIGN] = "ADD_ASS", [SUB_ASSIGN] = "SUB_ASS",
-      [MUL_ASSIGN] = "MUL_ASS", [DIV_ASSIGN] = "DIV_ASS",
-      [MOD_ASSIGN] = "MOD_ASS", [ACCESS] = "ACC",
-      [MOD] = "MOD", [COMA] = "COMA", [REF] = "REF",
-      [EQUAL] = "EQ", [NOT_EQUAL] = "NEQ", [LESS] = "LT",
-      [GREAT] = "GT", [LESS_EQUAL] = "LE", [NOT] = "NOT",
+      [ID]          = "ID", [CHAR] = "CHAR", [CHARS] = "CHARS", [VOID] = "VOID",
+      [INT]         = "INT", [BOOL] = "BOOL", [LONG] = "LONG", [FLOAT] = "FLOAT",
+      [FDEC]        = "FDEC",
+      [FCALL]       = "CALL", [END] = "END", [LPAR] = "LPAR", [RPAR] = "RPAR",
+      [IF]          = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
+      [WHILE]       = "WHILE", [BREAK] = "BRK", [CONTINUE] = "CONT",
+      [RETURN]      = "RET",
+      [ADD]         = "ADD",
+      [SUB]         = "SUB", [MUL] = "MUL", [DIV] = "DIV", [ASSIGN] = "ASSIGN",
+      [ADD_ASSIGN]  = "ADD_ASS", [SUB_ASSIGN] = "SUB_ASS",
+      [MUL_ASSIGN]  = "MUL_ASS", [DIV_ASSIGN] = "DIV_ASS",
+      [MOD_ASSIGN]  = "MOD_ASS", [ACCESS] = "ACC",
+      [MOD]         = "MOD", [COMA] = "COMA", [REF] = "REF",
+      [EQUAL]       = "EQ", [NOT_EQUAL] = "NEQ", [LESS] = "LT",
+      [GREAT]       = "GT", [LESS_EQUAL] = "LE", [NOT] = "NOT",
       [GREAT_EQUAL] = "GE", [AND] = "AND", [OR] = "OR",
-      [DOTS] = "DOTS",  [PROTO] = "PROT", [VARIADIC] = "VAR",
-      [TYPEOF] = "TYPEOF", [ARGS] = "ARGS", [CHILDREN] = "CHILDREN",
-      [AS] = "AS", [STACK] = "STCK",
+      [DOTS]        = "DOTS",  [PROTO] = "PROT", [VARIADIC] = "VAR",
+      [TYPEOF]      = "TYPEOF", [ARGS] = "ARGS", [CHILDREN] = "CHILDREN",
+      [AS]          = "AS", [STACK] = "STCK", [DEFAULT] = "DEFAULT",
       //[TRY] = "TRY", [CATCH] = "CATCH", [THROW] = "THROW", [USE] = "USE",
-      [STRUCT_DEF] = "STRUCT_DEF", [STRUCT_CALL] = "STRUCT_CALL",
-      [LBRA] = "LBRA", [RBRA] = "RBRA",
-      [DOT] = "DOT", [SYNTAX_ERROR] = "SYNTAX_ERROR",
+      [STRUCT_DEF]  = "STRUCT_DEF", [STRUCT_CALL] = "STRUCT_CALL",
+      [LBRA]        = "LBRA", [RBRA] = "RBRA",
+      [DOT]         = "DOT", [SYNTAX_ERROR] = "SYNTAX_ERROR",
    };
 
    if (!res[type])
    {
-      printf("%s:%d handle this case %d\n", __FILE__, __LINE__, type);
+      printf("%s:%d handle this case %d\n", FILE, LINE, type);
       seg();
       exit(1);
    }
@@ -2423,7 +2553,8 @@ bool within(int space)
 
 void add_struct(Node *b, Node *node)
 {
-   b->structs = (Node**)resize_array((void**)b->structs, &b->slen, b->spos, sizeof(Node*));
+   b->structs            = (Node**)resize_array((void**)b->structs,
+                                                &b->slen, b->spos, sizeof(Node*));
    b->structs[b->spos++] = node;
 }
 
@@ -2433,7 +2564,7 @@ Node *new_struct(Node *node)
    for (int i = 0; i < scoop->spos; i++)
    {
       Token *curr = scoop->structs[i]->token;
-      bool cond = (strcmp(curr->name, node->token->name) == 0);
+      bool   cond = (strcmp(curr->name, node->token->name) == 0);
       check(cond, "Redefinition of %s", node->token->name);
    }
    add_struct(scoop, node);
@@ -2446,7 +2577,7 @@ Node *get_struct(char *name)
    for (int j = scoop_pos; j > 0; j--)
    {
       Node *node = Gscoop[j];
-      todo(node == NULL, RED"Error accessing NULL, %d"RESET, j);
+      todo(node == NULL, RED "Error accessing NULL, %d"RESET, j);
       for (int i = 0; i < node->spos; i++)
          if (strcmp(node->structs[i]->token->name, name) == 0)
             return node->structs[i];
@@ -2470,7 +2601,7 @@ Node *syntax_error_node()
 // IR GENERATION
 void add_variable(Node *b, Token *token)
 {
-   b->variables = (Token**)resize_array((void**)b->variables, &b->vlen, b->vpos, sizeof(Token *));
+   b->variables            = (Token**)resize_array((void**)b->variables, &b->vlen, b->vpos, sizeof(Token *));
    b->variables[b->vpos++] = token;
 }
 
@@ -2480,7 +2611,7 @@ Token *new_variable(Token *token)
    for (int i = 0; i < scoop->vpos; i++)
    {
       Token *curr = scoop->variables[i];
-      bool cond = (strcmp(curr->name, token->name) == 0);
+      bool   cond = (strcmp(curr->name, token->name) == 0);
       check(cond, "Redefinition of %s", token->name);
    }
    add_variable(scoop, token);
@@ -2503,7 +2634,8 @@ Token *get_variable(char *name)
 
 void add_function(Node *b, Node *node)
 {
-   b->functions = (Node**)resize_array((void**)b->functions, &b->flen, b->fpos, sizeof(Node*));
+   b->functions            = (Node**)resize_array((void**)b->functions,
+                                                  &b->flen, b->fpos, sizeof(Node*));
    b->functions[b->fpos++] = node;
 }
 
@@ -2512,7 +2644,7 @@ Node *new_function(Node *node)
    for (int i = 0; i < scoop->fpos; i++)
    {
       Node *func = scoop->functions[i];
-      bool cond = strcmp(func->token->name, node->token->name) == 0;
+      bool  cond = strcmp(func->token->name, node->token->name) == 0;
       check(cond, "Redefinition of %s", node->token->name);
    }
    add_function(scoop, node);
@@ -2536,18 +2668,18 @@ Node *get_function(char *name)
 void init(char *name)
 {
    context = LLVMContextCreate();
-   module = LLVMModuleCreateWithNameInContext(name, context);
+   module  = LLVMModuleCreateWithNameInContext(name, context);
    builder = LLVMCreateBuilderInContext(context);
 
-   vd = LLVMVoidTypeInContext(context);
-   f32 = LLVMFloatTypeInContext(context);
-   i1 = LLVMInt1TypeInContext(context);
-   i8 = LLVMInt8TypeInContext(context);
-   i16 = LLVMInt16TypeInContext(context);
-   i32 = LLVMInt32TypeInContext(context);
-   i64 = LLVMInt64TypeInContext(context);
-   p8 = _pointer_type(i8, 0);
-   p32 = _pointer_type(i32, 0);
+   vd      = LLVMVoidTypeInContext(context);
+   f32     = LLVMFloatTypeInContext(context);
+   i1      = LLVMInt1TypeInContext(context);
+   i8      = LLVMInt8TypeInContext(context);
+   i16     = LLVMInt16TypeInContext(context);
+   i32     = LLVMInt32TypeInContext(context);
+   i64     = LLVMInt64TypeInContext(context);
+   p8      = _pointer_type(i8, 0);
+   p32     = _pointer_type(i32, 0);
 
    LLVMInitializeAllTargetInfos();
    LLVMInitializeAllTargets();
@@ -2564,11 +2696,40 @@ void finalize(char *output)
    char *error = NULL;
    if (LLVMVerifyModule(module, LLVMReturnStatusAction, &error))
    {
-      fprintf(stderr, RED"Module verification failed:\n%s\n"RESET, error);
+      fprintf(stderr, "Module verification failed:\n%s\n", error);
       LLVMDisposeMessage(error);
+      return;
    }
-   LLVMPrintModuleToFile(module, output, NULL);
 
+   LLVMInitializeNativeTarget();
+   LLVMInitializeNativeAsmPrinter();
+
+   LLVMPassBuilderOptionsRef options = LLVMCreatePassBuilderOptions();
+
+   if (passes)
+   {
+      LLVMErrorRef err = LLVMRunPasses(module, passes, NULL, options);
+      if (err)
+      {
+         char *msg = LLVMGetErrorMessage(err);
+         fprintf(stderr, RED "Optimizer Error: %s\n" RESET, msg);
+         LLVMDisposeErrorMessage(msg);
+      }
+   }
+
+   if (enable_asan)
+   {
+      LLVMErrorRef err = LLVMRunPasses(module, "module(asan)", NULL, options);
+      if (err)
+      {
+         char *msg = LLVMGetErrorMessage(err);
+         fprintf(stderr, RED "ASan Error: %s\n" RESET, msg);
+         LLVMDisposeErrorMessage(msg);
+      }
+   }
+
+   LLVMDisposePassBuilderOptions(options);
+   LLVMPrintModuleToFile(module, output, NULL);
    LLVMDisposeBuilder(builder);
    LLVMDisposeModule(module);
    LLVMContextDispose(context);
@@ -2589,7 +2750,7 @@ Token *copy_token(Token *token)
 // DEBUGING
 int debug_(char *conv, ...)
 {
-   int res = 0;
+   int     res = 0;
    va_list args;
    va_start(args, conv);
 
@@ -2629,7 +2790,7 @@ int debug_(char *conv, ...)
          else if (strncmp(conv + i, "lld", 3) == 0)
          {
             res += fprintf(stdout, "%lld", va_arg(args, long long));
-            i += 2;
+            i   += 2;
          }
          else
          {
@@ -2719,14 +2880,16 @@ int debug_(char *conv, ...)
 void pnode(Node *node, char *indent)
 {
    if (!node || !node->token) return;
-   Node **subs    = NULL;
-   int    count   = 0;
+   Node **subs     = NULL;
+   int    count    = 0;
    int    capacity = 0;
 
 #define push(n) do { \
-      subs = (Node **)resize_array((void **)subs, &capacity, count, sizeof(Node *)); \
-      subs[count++] = (n); \
-   } while(0)
+           subs = (Node **)resize_array( \
+              (void **)subs, \
+              &capacity, count, sizeof(Node *)); \
+           subs[count++] = (n); \
+} while(0)
 
    debug("%k\n", node->token);
    if (includes(node->token->type, IF, ELIF, ELSE, 0))
@@ -2750,7 +2913,7 @@ void pnode(Node *node, char *indent)
       const char *connector = is_last ? "└──" : "├──";
       const char *bar       = is_last ? "   " : "│  ";
 
-      char new_indent[4096];
+      char        new_indent[4096];
       snprintf(new_indent, sizeof(new_indent), "%s%s", indent, bar);
 
       printf("%s%s", indent, connector);
@@ -2774,7 +2937,7 @@ int print_escaped(char *str)
       case '\r': r += debug("\\r"); break;
       case '\\': r += debug("\\\\"); break;
       case '\"': r += debug("\\\""); break;
-      default: r += putchar(str[i]); break;
+      default: r   += putchar(str[i]); break;
       }
    }
    r += debug("\"");
@@ -2845,10 +3008,10 @@ int ptoken(Token *token)
 // STRING
 char *strjoin(char *str0, char *str1, char *str2)
 {
-   int len0 = str0 ? strlen(str0) : 0;
-   int len1 = str1 ? strlen(str1) : 0;
-   int len2 = str2 ? strlen(str2) : 0;
-   char *res = allocate(len0 + len1 + len2 + 1, 1);
+   int   len0 = str0 ? strlen(str0) : 0;
+   int   len1 = str1 ? strlen(str1) : 0;
+   int   len2 = str2 ? strlen(str2) : 0;
+   char *res  = allocate(len0 + len1 + len2 + 1, 1);
    if (str0) strcpy(res, str0);
    if (str1) strcpy(res + len0, str1);
    if (str2) strcpy(res + len0 + len1, str2);
@@ -2856,22 +3019,6 @@ char *strjoin(char *str0, char *str1, char *str2)
 }
 
 // TO BE USED LATER
-
-Token* expect_token(Type type, char *error_msg, ...)
-{
-   Token *token = find(type, 0);
-   if (!token)
-   {
-      va_list args;
-      va_start(args, error_msg);
-      char buffer[256];
-      vsnprintf(buffer, sizeof(buffer), error_msg, args);
-      va_end(args);
-      check(1, "%s", buffer);
-      return syntax_error_token();
-   }
-   return token;
-}
 
 bool is_data_type(Token *token)
 {
@@ -2895,9 +3042,9 @@ Node *copy_node(Node *node)
 
 bool compatible(Token *left, Token *right)
 {
-   Type left_type = left->type;
-   Type right_type = right->type;
-   Type left_ret_type = left->retType;
+   Type left_type      = left->type;
+   Type right_type     = right->type;
+   Type left_ret_type  = left->retType;
    Type right_ret_type = right->retType;
    if (left_type == CHARS && (right_type == PTR || right_ret_type == PTR))
       return true;
@@ -2921,14 +3068,16 @@ Type get_ret_type(Node *node)
       return token->type;
    case FCALL: return token->Fcall.ptr ? token->Fcall.ptr->token->retType : 0;
    case CHARS:  case STRUCT_CALL: return token->type;
-   case ASSIGN: case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN:
-   case MOD_ASSIGN: case ADD: case SUB: case MUL: case DIV: case MOD:
+   case ASSIGN: case ADD_ASSIGN: case SUB_ASSIGN:
+   case MUL_ASSIGN: case DIV_ASSIGN: case MOD_ASSIGN:
+   case ADD: case SUB: case MUL: case DIV: case MOD:
       return get_ret_type(left);
    case EQUAL: case NOT_EQUAL: case LESS: case GREAT: case LESS_EQUAL:
    case GREAT_EQUAL: case AND: case OR: case NOT:
       return BOOL;
    case AS:
-      return right ? (right->token->retType ? right->token->retType : right->token->type) : 0;
+      return right ? (right->token->retType ?
+                      right->token->retType : right->token->type) : 0;
    case RETURN: return get_ret_type(left);
    case DOT: return get_ret_type(right);
    case ACCESS:
@@ -2957,8 +3106,7 @@ void set_ret_type(Node *node)
    Type t = get_ret_type(node);
    if (t) node->token->retType = t;
 
-   if (node->token->type == DOT && node->token->retType == STRUCT_CALL && node->right)
+   if (node->token->type == DOT &&
+       node->token->retType == STRUCT_CALL && node->right)
       node->token->Struct.ptr = node->right->token->Struct.ptr;
 }
-
-

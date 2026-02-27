@@ -1,10 +1,8 @@
+use "@/io"
+use "@/string"
+
 main():
-    base int = 100
-    ref1 int ref = base
-    ref2 int ref = base
-    
-    ref1 += 20      // base becomes 120
-    ref2 -= 10      // base becomes 110
-    
-    result int = ref1 + ref2  // 110 + 110 = 220
-    return result
+    str chars = stack(13) as chars
+    strcpy(str, "Hello world\n")
+    printf("%s", str)
+    return 0

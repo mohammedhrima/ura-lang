@@ -1,3 +1,5 @@
+use "-O1"
+
 proto fn puts(fmt chars) int
 proto fn printf(fmt chars, ...) int
 
