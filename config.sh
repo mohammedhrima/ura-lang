@@ -62,70 +62,18 @@ CFLAGS=("${SAN_FLAGS[@]}" "${WARN_FLAGS[@]}" "${LLVM_CFLAGS[@]}" "${LLVM_LDFLAGS
 # =========================================================
 #  Export Variables for Shell Access
 # =========================================================
-export CFLAGS SRC_FILES ROOT_DIR SRC_DIR BUILD_DIR TESTS_DIR LLVM_DIR
+export CFLAGS SRC_FILES ROOT_DIR SRC_DIR BUILD_DIR TESTS_DIR LLVM_DIR PATH=$PATH:$BUILD_DIR
 
 # =========================================================
 #  Build Functions
 # =========================================================
 build() {
     mkdir -p "$BUILD_DIR"
-    rm -rf "$BUILD_DIR"/ura* "$BUILD_DIR"/*.ll "$BUILD_DIR"/*.s "$BUILD_DIR"/*.out
-
     clang "${SRC_FILES[@]}" "${CFLAGS[@]}" -o "$URA_COMPILER" || {
         echo -e "${RED}Build failed${RESET}"
         return 1
     }
     echo -e "${GREEN}Built compiler${RESET}"
-}
-
-ir() {
-    if [[ ! -f "$SRC_DIR/file.ura" ]]; then
-        echo -e "${RED}file.ura not found in $SRC_DIR${RESET}"
-        return 1
-    fi
-
-    "$URA_COMPILER" "$SRC_DIR/file.ura" || {
-        echo -e "${RED}Compilation to IR failed${RESET}"
-        return 1
-    }
-
-    # Move all .ll files generated alongside .ura in src/ to build/
-    for ll in "$SRC_DIR"/*.ll; do
-        [[ -e "$ll" ]] || continue
-        mv "$ll" "$BUILD_DIR/$(basename "$ll")"
-        echo -e "${GREEN}Moved $(basename "$ll") -> $BUILD_DIR/${RESET}"
-    done
-}
-
-asm() {
-    local ll_file="$BUILD_DIR/file.ll"
-    local s_file="$BUILD_DIR/file.s"
-
-    if [[ ! -f "$ll_file" ]]; then
-        echo -e "${RED}$ll_file not found. Run 'ir' first${RESET}"
-        return 1
-    fi
-
-    llc "$ll_file" -o "$s_file" || {
-        echo -e "${RED}Assembly generation failed${RESET}"
-        return 1
-    }
-
-    clang "$s_file" -lc++ -o "$BUILD_DIR/exe.out" || {
-        echo -e "${RED}Linking failed${RESET}"
-        return 1
-    }
-
-    echo -e "${GREEN}Generated assembly -> $s_file${RESET}"
-    echo -e "${GREEN}Linked executable  -> $BUILD_DIR/exe.out${RESET}"
-}
-
-comp() {
-    build && ir && asm
-}
-
-run() {
-    comp && "$BUILD_DIR/exe.out"
 }
 
 # =========================================================
@@ -153,15 +101,15 @@ copy() {
 
     mkdir -p "$test_dir"
 
-    # Build with OPTIMIZE=0 so saved .ll matches what tests() generates
-    clang "${SRC_FILES[@]}" "${CFLAGS[@]}" -DOPTIMIZE=0 -o "$URA_COMPILER" || {
-        echo -e "${RED}Build failed${RESET}"
+    build || return 1
+
+    # compile — ura puts .ll in src/build/
+    "$URA_COMPILER" "$ura_src_file" || {
+        echo -e "${RED}Compilation failed${RESET}"
         return 1
     }
 
-    ir || return 1
-
-    local ll_src="$BUILD_DIR/file.ll"
+    local ll_src="$SRC_DIR/build/file.ll"
     if [[ ! -f "$ll_src" ]]; then
         echo -e "${RED}Generated IR not found at $ll_src${RESET}"
         return 1
@@ -180,83 +128,66 @@ copy() {
     echo -e "${GREEN}Saved test:${RESET}"
     echo "  $ura_dest"
     echo "  $ll_dest"
-
-    # Rebuild normally so the dev compiler stays with default flags
-    build
 }
 
 tests() {
     echo -e "${YELLOW}Running tests...${RESET}"
-    mkdir -p "$BUILD_DIR"
 
-    # Build with OPTIMIZE=0 for deterministic IR comparison
-    clang "${SRC_FILES[@]}" "${CFLAGS[@]}" -DOPTIMIZE=0 -o "$URA_COMPILER" || {
-        echo -e "${RED}Build failed${RESET}"
-        return 1
-    }
+    build || return 1
 
     local failed=0
     local passed=0
     local folder_filter="${1:-.}"
+    local base_name dir_name ll_expected tmp_dir tmp_ura ll_got
 
     for ura_file in "$TESTS_DIR"/$folder_filter/**/*.ura; do
         [[ -e "$ura_file" ]] || continue
 
-        local base_name=$(basename "$ura_file" .ura)
-        local dir_name=$(basename "$(dirname "$ura_file")")
-        local ll_file="$(dirname "$ura_file")/${base_name}.ll"
+        base_name=$(basename "$ura_file" .ura)
+        dir_name=$(basename "$(dirname "$ura_file")")
+        ll_expected="$(dirname "$ura_file")/${base_name}.ll"
+        tmp_dir=$(mktemp -d 2>/dev/null)
+        tmp_ura="$tmp_dir/${base_name}.ura"
 
-        cp "$ura_file" "$BUILD_DIR/test.ura"
+        cp "$ura_file" "$tmp_ura"
 
-        if ! "$URA_COMPILER" "$BUILD_DIR/test.ura" > /dev/null 2>&1; then
+        if ! "$URA_COMPILER" "$tmp_ura" > /dev/null 2>&1; then
             echo -e "  ${RED}FAIL $dir_name/$base_name (compilation error)${RESET}"
-            ((failed++))
-            continue
+            ((failed++)); rm -rf "$tmp_dir"; continue
         fi
 
-        # Move any .ll files the compiler dropped in build/ (named after test.ura)
-        for ll in "$BUILD_DIR"/*.ll; do
-            [[ -e "$ll" ]] || continue
-            [[ "$(basename "$ll")" == "test.ll" ]] && continue
-            mv "$ll" "$BUILD_DIR/test.ll"
-        done
+        ll_got="$tmp_dir/build/${base_name}.ll"
 
-        if [[ ! -f "$BUILD_DIR/test.ll" ]]; then
+        if [[ ! -f "$ll_got" ]]; then
             echo -e "  ${RED}FAIL $dir_name/$base_name (no IR generated)${RESET}"
-            ((failed++))
-            continue
+            ((failed++)); rm -rf "$tmp_dir"; continue
         fi
 
-        if [[ ! -f "$ll_file" ]]; then
+        if [[ ! -f "$ll_expected" ]]; then
             echo -e "  ${RED}FAIL $dir_name/$base_name (expected .ll not found)${RESET}"
-            ((failed++))
-            continue
+            ((failed++)); rm -rf "$tmp_dir"; continue
         fi
 
-        if diff -q <(tail -n +4 "$BUILD_DIR/test.ll") <(tail -n +4 "$ll_file") > /dev/null 2>&1; then
+        if diff -q <(tail -n +4 "$ll_got") <(tail -n +4 "$ll_expected") > /dev/null 2>&1; then
             echo -e "  ${GREEN}PASS $dir_name/$base_name${RESET}"
             ((passed++))
         else
             echo -e "  ${RED}FAIL $dir_name/$base_name (IR mismatch)${RESET}"
-            # diff <(tail -n +4 "$BUILD_DIR/test.ll") <(tail -n +4 "$ll_file") | head -20
             ((failed++))
         fi
-    done
 
-    rm -f "$BUILD_DIR/test.ura" "$BUILD_DIR/test.ll"
+        rm -rf "$tmp_dir"
+    done
 
     echo ""
     echo -e "${GREEN}Passed: $passed${RESET}"
     [[ $failed -gt 0 ]] && echo -e "${RED}Failed: $failed${RESET}"
 
-    # Rebuild with default flags so dev compiler is restored
-    build > /dev/null 2>&1
-
     return $failed
 }
 
 # =========================================================
-#  LLVM Sandbox (llvm/ subfolder)
+#  LLVM Sandbox
 # =========================================================
 llvm_build() {
     mkdir -p "$LLVM_DIR/build"
@@ -273,30 +204,12 @@ llvm_build() {
 #  Formatting
 # =========================================================
 indent() {
-    echo -e "${YELLOW}Formatting source files...${RESET}"
-
-    # Make sure SRC_DIR is set
+    echo -e "${YELLOW}Formatting with Uncrustify...${RESET}"
     if [ -z "$SRC_DIR" ]; then
         echo "SRC_DIR is not set!"
         return 1
     fi
-
-    # Format C source and header files
-    astyle \
-        --mode=c \
-        --style=allman \
-        --indent=spaces=3 \
-        --pad-oper \
-        --pad-header \
-        --keep-one-line-statements \
-        --keep-one-line-blocks \
-        --convert-tabs \
-        --max-code-length=150 \
-        --break-after-logical \
-        --suffix=none \
-        "$SRC_DIR"/*.c "$SRC_DIR"/*.h
-
-    echo -e "${GREEN}Code formatted successfully!${RESET}"
+    uncrustify -c uncrustify.cfg --no-backup "$SRC_DIR"/*.c "$SRC_DIR"/*.h
 }
 
 # =========================================================
@@ -306,6 +219,48 @@ update() {
     echo -e "${YELLOW}Reloading config...${RESET}"
     source "$CONFIG_FILE"
     echo -e "${GREEN}Config reloaded${RESET}"
+}
+
+# =========================================================
+#  Help
+# =========================================================
+help() {
+    echo -e "${BOLD}Ura Environment Commands:${RESET}"
+    echo ""
+    echo -e "  ${GREEN}build${RESET}                        Build the ura compiler"
+    echo -e "  ${GREEN}copy <folder> <name>${RESET}         Save src/file.ura + its IR to tests/<folder>/<name>"
+    echo -e "  ${GREEN}tests [folder]${RESET}               Run all tests (optionally filter by folder)"
+    echo -e "  ${GREEN}indent${RESET}                       Format all .c and .h files in src/"
+    echo -e "  ${GREEN}update${RESET}                       Reload config.sh"
+    echo -e "  ${GREEN}llvm_build${RESET}                   Build the LLVM sandbox"
+    echo ""
+    echo -e "${BOLD}Ura Compiler Usage:${RESET}"
+    echo ""
+    echo -e "  ${GREEN}ura <file.ura> [options]${RESET}"
+    echo ""
+    echo -e "  ${CYAN}Optimization:${RESET}"
+    echo -e "    -O0   No optimization (debug)"
+    echo -e "    -O1   Basic optimization (mem2reg, instcombine)"
+    echo -e "    -O2   Standard optimization (default for production)"
+    echo -e "    -O3   Aggressive optimization"
+    echo -e "    -Os   Optimize for size"
+    echo -e "    -Oz   Minimize size"
+    echo ""
+    echo -e "  ${CYAN}Sanitizers:${RESET}"
+    echo -e "    -asan  Enable AddressSanitizer (detects memory errors)"
+    echo -e "           Link with: clang -fsanitize=address"
+    echo ""
+    echo -e "  ${CYAN}Output:${RESET}"
+    echo -e "    -o <name>  Set executable name (default: exe.out)"
+    echo ""
+    echo -e "${BOLD}Examples:${RESET}"
+    echo ""
+    echo -e "  ${YELLOW}\$URA_COMPILER src/file.ura${RESET}"
+    echo -e "  ${YELLOW}\$URA_COMPILER src/file.ura -O2 -o myapp${RESET}"
+    echo -e "  ${YELLOW}\$URA_COMPILER src/file.ura -asan -o myapp${RESET}"
+    echo -e "  ${YELLOW}\$URA_COMPILER a.ura b.ura -O2 -o myapp${RESET}"
+    echo ""
+    echo -e "  Intermediate files go to ${CYAN}build/${RESET} next to each source file."
 }
 
 # =========================================================
