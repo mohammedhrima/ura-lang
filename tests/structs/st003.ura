@@ -3,7 +3,7 @@ use "@/io"
 struct User:
     id int
 
-fn foo(n ref User) void:
+fn foo(n User ref) void:
     n.id = 2
 
 main():
