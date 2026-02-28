@@ -533,8 +533,10 @@ Node *symbol(Token *token)
    }
    if (token->type == ID && find(LBRA, 0))
    {
-      node = new_node(copy_token(token));
-      node->token->type = ACCESS;
+      Token *access_tok = copy_token(token);
+      access_tok->type = ACCESS;
+      access_tok->line = tokens[exe_pos - 1]->line; // line of the [ token
+      node             = new_node(access_tok);
       Node *index = prime_node();
       check(!index || !index->token, "expected index after left bracket");
       expect_token(RBRA, 0, "expected right bracket");
@@ -732,6 +734,17 @@ Node *prime_node()
       return node;
    }
    if ((token = find(BREAK, CONTINUE, 0))) return new_node(token);
+   if ((token = find(SUB, ADD, 0)))
+   {
+      node        = new_node(token);
+      node->left  = expr_node();
+      node->right = new_node(new_token(INT, token->space));
+      node->right->token->filename  = token->filename;
+      node->right->token->line      = token->line;
+      node->right->token->Int.value = token->type == SUB ? -1 : 1;
+      node->token->type             = MUL;
+      return node;
+   }
    check(1, "Unexpected token has type %s", to_string(tokens[exe_pos]->type));
    return syntax_error_node();
 }
@@ -906,7 +919,7 @@ char *compile(char *filename)
 
 int main(int argc, char **argv)
 {
-   check(argc < 2, "usage: ura <file.ura> [file2.ura ...] [-O0|-O1|-O2|-O3|-Os|-Oz] [-asan] [-o output]");
+   check(argc < 2, "usage: ura <file.ura> [file2.ura ...] [-O0|-O1|-O2|-O3|-Os|-Oz] [-san] [-o output]");
 
    char  *output    = "exe.out";
    char **src_files = NULL;
@@ -914,14 +927,14 @@ int main(int argc, char **argv)
 
    for (int i = 1; i < argc; i++)
    {
-      if      (strcmp(argv[i], "-O0")   == 0) passes = PASSES_O0;
-      else if (strcmp(argv[i], "-O1")   == 0) passes = PASSES_O1;
-      else if (strcmp(argv[i], "-O2")   == 0) passes = PASSES_O2;
-      else if (strcmp(argv[i], "-O3")   == 0) passes = PASSES_O3;
-      else if (strcmp(argv[i], "-Os")   == 0) passes = PASSES_Os;
-      else if (strcmp(argv[i], "-Oz")   == 0) passes = PASSES_Oz;
-      else if (strcmp(argv[i], "-asan") == 0) enable_asan = true;
-      else if (strcmp(argv[i], "-o")    == 0)
+      if      (strcmp(argv[i], "-O0")  == 0) passes = PASSES_O0;
+      else if (strcmp(argv[i], "-O1")  == 0) passes = PASSES_O1;
+      else if (strcmp(argv[i], "-O2")  == 0) passes = PASSES_O2;
+      else if (strcmp(argv[i], "-O3")  == 0) passes = PASSES_O3;
+      else if (strcmp(argv[i], "-Os")  == 0) passes = PASSES_Os;
+      else if (strcmp(argv[i], "-Oz")  == 0) passes = PASSES_Oz;
+      else if (strcmp(argv[i], "-san") == 0) enable_asan = true;
+      else if (strcmp(argv[i], "-o")   == 0)
       {
          check(i + 1 >= argc, "-o requires an argument");
          output = argv[++i];
@@ -937,77 +950,81 @@ int main(int argc, char **argv)
 
    check(src_count == 0, "no input files");
 
-   // compile each file → .ll → .s
-   char **s_files = calloc(src_count, sizeof(char *));
-   int    s_count = 0;
+   bool link_ok = true;
+   char final_cmd[8192];
+   int  pos     = 0;
 
-   for (int i = 0; i < src_count; i++)
+   pos += snprintf(final_cmd + pos, sizeof(final_cmd) - pos, "clang");
+   if (enable_asan)
+      pos += snprintf(final_cmd + pos, sizeof(final_cmd) - pos,
+                      " -fsanitize=address,undefined -fno-omit-frame-pointer -g");
+
+   for (int i = 0; i < src_count && link_ok; i++)
    {
       char *ll = compile(src_files[i]);
-      if (!ll) { found_error = true; break; }
+      if (!ll ) { link_ok = false; break; }
 
-      // derive .s path from .ll path
-      char *s   = strdup(ll);
-      char *dot = strrchr(s, '.');
-      if (dot) strcpy(dot, ".s");
-
-      // llc ll → s
-      char cmd[4096];
-      snprintf(cmd, sizeof(cmd), "llc \"%s\" -o \"%s\"", ll, s);
-      if (system(cmd) != 0)
+      if (enable_asan)
       {
-         fprintf(stderr, RED "llc failed for %s\n" RESET, ll);
-         found_error = true;
-         free(s); free(ll);
-         break;
+         pos += snprintf(final_cmd + pos, sizeof(final_cmd) - pos, " \"%s\"", ll);
       }
-      s_files[s_count++] = s;
+      else
+      {
+         char  s[4096];
+         snprintf(s, sizeof(s), "%s", ll);
+         char *dot = strrchr(s, '.');
+         if (dot) strcpy(dot, ".s");
+
+         char llc_cmd[4096];
+         snprintf(llc_cmd, sizeof(llc_cmd), "llc \"%s\" -o \"%s\"", ll, s);
+         if (system(llc_cmd) != 0)
+         {
+            fprintf(stderr, RED "llc failed for %s\n" RESET, ll);
+            link_ok = false;
+            free(ll);
+            break;
+         }
+         pos += snprintf(final_cmd + pos, sizeof(final_cmd) - pos, " \"%s\"", s);
+      }
+
       free(ll);
       free_memory();
    }
 
-   // link all .s files
-   if (!found_error && s_count > 0)
+   if (link_ok)
    {
-      char cmd[8192];
-      int  pos = 0;
-      pos += snprintf(cmd + pos, sizeof(cmd) - pos, "clang");
-      if (enable_asan)
-         pos += snprintf(cmd + pos, sizeof(cmd) - pos, " -g");
-      for (int i = 0; i < s_count; i++)
-         pos += snprintf(cmd + pos, sizeof(cmd) - pos, " \"%s\"", s_files[i]);
-      if (enable_asan)
-         pos += snprintf(cmd + pos, sizeof(cmd) - pos, " -fsanitize=address -g3");
-      pos += snprintf(cmd + pos, sizeof(cmd) - pos, " -lc++ -o \"%s\"", output);
+      pos += snprintf(final_cmd + pos, sizeof(final_cmd) - pos, " -lc++ -o \"%s\"", output);
 
-      if (system(cmd) != 0)
+      if (system(final_cmd) != 0)
          fprintf(stderr, RED "linking failed\n" RESET);
       else
       {
-         fprintf(stderr, GREEN "-> %s\n" RESET, output);
+         fprintf(stderr, GREEN "running %s...\n" RESET, output);
+
+         char full[4096];
+         realpath(output, full);
+
+         char run[8192];
          if (enable_asan)
          {
-            char  run[8192];
             char *asan_file = getenv("ASAN_FILE");
             if (asan_file)
                snprintf(run, sizeof(run),
-                        "ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=\"%s\" \"./%s\"",
-                        asan_file, output);
+                        "ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=\"%s\" \"%s\"",
+                        asan_file, full);
             else
-            {
-               check(1, "not found");
                snprintf(run, sizeof(run),
-                        "ASAN_OPTIONS=detect_leaks=1 \"./%s\"", output);
-            }
-            system(run);
+                        "ASAN_OPTIONS=detect_leaks=1 \"%s\"", full);
          }
+         else
+            snprintf(run, sizeof(run), "\"%s\"", full);
+
+         system(run);
       }
    }
 
-   for (int i = 0; i < s_count; i++) free(s_files[i]);
-   free(s_files);
    free(src_files);
-   return found_error;
+   return found_error || !link_ok;
 }
 
 // GENERATE
@@ -1099,7 +1116,8 @@ void store_through_ref(Token *ref_token, Value value, TypeRef type)
 void gen_asm(Node *node)
 {
    // debug("Processing: %k\n", inst->token);
-   set_debug_location(node->token);
+   if (node->token->type != FDEC)
+      set_debug_location(node->token);
    Node *left  = node->left;
    Node *right = node->right;
 
@@ -1361,9 +1379,13 @@ void gen_asm(Node *node)
       else node->token->llvm.elem = _add_function(fname, funcType);
       node->token->llvm.funcType = funcType;
 
+
       if (!node->token->is_proto)
       {
-         _entry(node->token);
+         if (enable_asan)
+            LLVMAddAttributeAtIndex(node->token->llvm.elem, LLVMAttributeFunctionIndex,
+                                    LLVMCreateEnumAttribute(context,
+                                                            LLVMGetEnumAttributeKindForName("sanitize_address", 16), 0));
 
          // Debug info for this function
          LLVMMetadataRef di_func_type = LLVMDIBuilderCreateSubroutineType(
@@ -1385,6 +1407,12 @@ void gen_asm(Node *node)
             );
          LLVMSetSubprogram(node->token->llvm.elem, di_func);
          di_current_scope = di_func;
+         _entry(node->token);
+
+// set a valid location for param allocas
+         LLVMMetadataRef entry_loc = LLVMDIBuilderCreateDebugLocation(
+            context, node->token->line, 0, di_func, NULL);
+         LLVMSetCurrentDebugLocation2(builder, entry_loc);
 
          int param_idx = 0;
          for (int i = 0; i < fixed_count; i++)
@@ -2706,9 +2734,15 @@ void init(char *name)
    LLVMInitializeAllTargetMCs();
    LLVMInitializeAllAsmParsers();
    LLVMInitializeAllAsmPrinters();
+   #if defined(__APPLE__)
+   LLVMSetTarget(module, "arm64-apple-macosx16.0.0");
+   #elif defined(__linux__)
+   LLVMSetTarget(module, "x86_64-pc-linux-gnu");
+   #else
    LLVMSetTarget(module, LLVMGetDefaultTargetTriple());
+   #endif
 
-   if (enable_asan)
+   // if (enable_asan)
    {
       LLVMAddModuleFlag(module, LLVMModuleFlagBehaviorWarning, "Debug Info Version", 18, LLVMValueAsMetadata(LLVMConstInt(i32, 3, 0)));
       LLVMAddModuleFlag(module, LLVMModuleFlagBehaviorWarning, "Dwarf Version", 13, LLVMValueAsMetadata(LLVMConstInt(i32, 4, 0)));
@@ -2721,12 +2755,14 @@ void init(char *name)
    char  dir[1024]     = ".";
    if (base) { size_t len = base - name; strncpy(dir, name, len); dir[len] = '\0'; }
 
-   di_file = LLVMDIBuilderCreateFile(di_builder,
-                                     filename_only, strlen(filename_only), dir, strlen(dir));
+   di_file = LLVMDIBuilderCreateFile(
+      di_builder, filename_only,
+      strlen(filename_only), dir, strlen(dir));
 
-   di_compile_unit = LLVMDIBuilderCreateCompileUnit(di_builder,
-                                                    LLVMDWARFSourceLanguageC, di_file, "ura", 3,
-                                                    0, "", 0, 0, "", 0, LLVMDWARFEmissionFull, 0, 0, 0, "", 0, "", 0);
+   di_compile_unit = LLVMDIBuilderCreateCompileUnit(
+      di_builder, LLVMDWARFSourceLanguageC,
+      di_file, "ura", 3, 0, "", 0, 0, "", 0,
+      LLVMDWARFEmissionFull, 0, 0, 0, "", 0, "", 0);
 
    di_current_scope = di_compile_unit;
 
@@ -2737,17 +2773,23 @@ void init(char *name)
 void finalize(char *output)
 {
    char *error = NULL;
-   if (LLVMVerifyModule(module, LLVMReturnStatusAction, &error))
-   {
-      fprintf(stderr, "Module verification failed:\n%s\n", error);
-      LLVMDisposeMessage(error);
-      return;
-   }
 
    LLVMInitializeNativeTarget();
    LLVMInitializeNativeAsmPrinter();
 
    LLVMPassBuilderOptionsRef options = LLVMCreatePassBuilderOptions();
+
+   // if (enable_asan)
+   // {
+   //    // LLVMErrorRef err = LLVMRunPasses(module, "asan-module,asan", NULL, options);
+   //    LLVMErrorRef err = LLVMRunPasses(module, "asan,asan-stack", NULL, options);
+   //    if (err)
+   //    {
+   //       char *msg = LLVMGetErrorMessage(err);
+   //       fprintf(stderr, RED "ASan Error: %s\n" RESET, msg);
+   //       LLVMDisposeErrorMessage(msg);
+   //    }
+   // }
 
    if (passes)
    {
@@ -2757,22 +2799,23 @@ void finalize(char *output)
          char *msg = LLVMGetErrorMessage(err);
          fprintf(stderr, RED "Optimizer Error: %s\n" RESET, msg);
          LLVMDisposeErrorMessage(msg);
+         found_error = true;
+         return;
       }
    }
 
-   if (enable_asan)
-   {
-      LLVMErrorRef err = LLVMRunPasses(module, "asan", NULL, options);
-      if (err)
-      {
-         char *msg = LLVMGetErrorMessage(err);
-         fprintf(stderr, RED "ASan Error: %s\n" RESET, msg);
-         LLVMDisposeErrorMessage(msg);
-      }
-   }
    LLVMDIBuilderFinalize(di_builder);
    LLVMDisposeDIBuilder(di_builder);
    di_builder = NULL;
+
+   if (LLVMVerifyModule(module, LLVMReturnStatusAction, &error))
+   {
+      fprintf(stderr, "Module verification failed:\n%s\n", error);
+      LLVMDisposeMessage(error);
+      LLVMDisposePassBuilderOptions(options);
+      found_error = true;
+      return;
+   }
 
    LLVMDisposePassBuilderOptions(options);
    LLVMPrintModuleToFile(module, output, NULL);

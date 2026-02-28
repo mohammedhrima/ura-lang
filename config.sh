@@ -10,6 +10,7 @@ BUILD_DIR="$ROOT_DIR/build"
 TESTS_DIR="$ROOT_DIR/tests"
 LLVM_DIR="$ROOT_DIR/llvm"
 export URA_LIB="$SRC_DIR/ura-lib"
+export ASAN_FILE="$SRC_DIR/lsan.supp"
 
 # =========================================================
 #  Color Definitions
@@ -209,7 +210,7 @@ indent() {
         echo "SRC_DIR is not set!"
         return 1
     fi
-    uncrustify -c uncrustify.cfg --no-backup "$SRC_DIR"/*.c "$SRC_DIR"/*.h
+    uncrustify -c $ROOT_DIR/uncrustify.cfg --no-backup "$SRC_DIR"/*.c "$SRC_DIR"/*.h
 }
 
 # =========================================================
@@ -219,6 +220,17 @@ update() {
     echo -e "${YELLOW}Reloading config...${RESET}"
     source "$CONFIG_FILE"
     echo -e "${GREEN}Config reloaded${RESET}"
+}
+
+# =========================================================
+#  Leak Checking
+# =========================================================
+check_leaks() {
+    if [[ $# -lt 1 ]]; then
+        echo -e "${RED}Usage: check_leaks <executable>${RESET}"
+        return 1
+    fi
+    ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions="$SRC_DIR/lsan.supp" "$1"
 }
 
 # =========================================================
@@ -247,7 +259,7 @@ help() {
     echo -e "    -Oz   Minimize size"
     echo ""
     echo -e "  ${CYAN}Sanitizers:${RESET}"
-    echo -e "    -asan  Enable AddressSanitizer (detects memory errors)"
+    echo -e "    -san  Enable AddressSanitizer (detects memory errors)"
     echo -e "           Link with: clang -fsanitize=address"
     echo ""
     echo -e "  ${CYAN}Output:${RESET}"
@@ -257,7 +269,7 @@ help() {
     echo ""
     echo -e "  ${YELLOW}\$URA_COMPILER src/file.ura${RESET}"
     echo -e "  ${YELLOW}\$URA_COMPILER src/file.ura -O2 -o myapp${RESET}"
-    echo -e "  ${YELLOW}\$URA_COMPILER src/file.ura -asan -o myapp${RESET}"
+    echo -e "  ${YELLOW}\$URA_COMPILER src/file.ura -san -o myapp${RESET}"
     echo -e "  ${YELLOW}\$URA_COMPILER a.ura b.ura -O2 -o myapp${RESET}"
     echo ""
     echo -e "  Intermediate files go to ${CYAN}build/${RESET} next to each source file."
@@ -275,5 +287,5 @@ fi
 # =========================================================
 #  Initialization
 # =========================================================
-cd "$ROOT_DIR" 2>/dev/null
+# cd "$ROOT_DIR" 2>/dev/null
 echo -e "${GREEN}Ura environment loaded!${RESET}"

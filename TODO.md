@@ -8,5 +8,3 @@
     + for functions (FDEC, FCALL)
     + for structs
 
-+ protect free unallocated memery, double free
-    + use malloc_error_break
