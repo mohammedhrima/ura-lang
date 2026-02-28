@@ -1,42 +1,45 @@
 #include "header.h"
-// #include "llvm.c"
 
-bool    found_error;
+bool             found_error;
 
-Token **tokens;
-int     tk_pos;
-int     tk_len;
+Token          **tokens;
+int              tk_pos;
+int              tk_len;
 
-Node   *global;
-int     exe_pos;
+Node            *global;
+int              exe_pos;
 
-Node  **Gscoop;
-Node   *scoop;
-int     scoop_len;
-int     scoop_pos;
+Node           **Gscoop;
+Node            *scoop;
+int              scoop_len;
+int              scoop_pos;
 
-char  **used_files;
-int     used_len;
-int     used_pos;
+char           **used_files;
+int              used_len;
+int              used_pos;
 
-Context context;
-Module  module;
-Builder builder;
-TypeRef vd, f32, i1, i8, i16, i32, i64, p8, p32;
-File    asm_fd;
+Context          context;
+Module           module;
+Builder          builder;
+TypeRef          vd, f32, i1, i8, i16, i32, i64, p8, p32;
+File             asm_fd;
 
-Value   boundsCheckFunc;
-Value   nullCheckFunc;
-Value   vaStartFunc;
-Value   vaEndFunc;
-Value   refAssignFunc;
+Value            boundsCheckFunc;
+Value            nullCheckFunc;
+Value            vaStartFunc;
+Value            vaEndFunc;
+Value            refAssignFunc;
 
-bool    enable_bounds_check = false;
-bool    using_refs;
-bool    is_method_call;
-bool    enable_asan;
+bool             enable_bounds_check = false;
+bool             using_refs;
+bool             is_method_call;
+char            *passes;
+bool             enable_asan;
 
-char   *passes;
+LLVMDIBuilderRef di_builder;
+LLVMMetadataRef  di_compile_unit;
+LLVMMetadataRef  di_file;
+LLVMMetadataRef  di_current_scope;
 
 // PARSING
 void tokenize(char *filename)
@@ -146,36 +149,6 @@ void tokenize(char *filename)
                free(use);
                use          = resolved;
                use_filename = strdup(use);
-            }
-            else if (strcmp(use, "-O0") == 0)
-            {
-               passes = PASSES_O0;
-               continue;
-            }
-            else if (strcmp(use, "-O1") == 0)
-            {
-               passes = PASSES_O1;
-               continue;
-            }
-            else if (strcmp(use, "-O2") == 0)
-            {
-               passes = PASSES_O2;
-               continue;
-            }
-            else if (strcmp(use, "-O3") == 0)
-            {
-               passes = PASSES_O3;
-               continue;
-            }
-            else if (strcmp(use, "-Os") == 0)
-            {
-               passes = PASSES_Os;
-               continue;
-            }
-            else if (strcmp(use, "-Oz") == 0)
-            {
-               passes = PASSES_Oz;
-               continue;
             }
             else
                use_filename = strjoin(dirname(filename), "/", use);
@@ -896,6 +869,9 @@ char *compile(char *filename)
    for (int i = 0; !found_error && i < global->cpos; i++)
       gen_ir(global->children[i]);
    if (found_error) return NULL;
+
+   for (int i = 0; !found_error && i < global->cpos; i++)
+      pnode(global->children[i], "");
 #endif
 
 #if ASM
@@ -993,20 +969,39 @@ int main(int argc, char **argv)
    // link all .s files
    if (!found_error && s_count > 0)
    {
-      // build link command: clang a.s b.s [-fsanitize=address] -lc++ -o output
       char cmd[8192];
       int  pos = 0;
       pos += snprintf(cmd + pos, sizeof(cmd) - pos, "clang");
+      if (enable_asan)
+         pos += snprintf(cmd + pos, sizeof(cmd) - pos, " -g");
       for (int i = 0; i < s_count; i++)
          pos += snprintf(cmd + pos, sizeof(cmd) - pos, " \"%s\"", s_files[i]);
       if (enable_asan)
-         pos += snprintf(cmd + pos, sizeof(cmd) - pos, " -fsanitize=address");
+         pos += snprintf(cmd + pos, sizeof(cmd) - pos, " -fsanitize=address -g3");
       pos += snprintf(cmd + pos, sizeof(cmd) - pos, " -lc++ -o \"%s\"", output);
 
       if (system(cmd) != 0)
          fprintf(stderr, RED "linking failed\n" RESET);
       else
+      {
          fprintf(stderr, GREEN "-> %s\n" RESET, output);
+         if (enable_asan)
+         {
+            char  run[8192];
+            char *asan_file = getenv("ASAN_FILE");
+            if (asan_file)
+               snprintf(run, sizeof(run),
+                        "ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=\"%s\" \"./%s\"",
+                        asan_file, output);
+            else
+            {
+               check(1, "not found");
+               snprintf(run, sizeof(run),
+                        "ASAN_OPTIONS=detect_leaks=1 \"./%s\"", output);
+            }
+            system(run);
+         }
+      }
    }
 
    for (int i = 0; i < s_count; i++) free(s_files[i]);
@@ -1104,6 +1099,7 @@ void store_through_ref(Token *ref_token, Value value, TypeRef type)
 void gen_asm(Node *node)
 {
    // debug("Processing: %k\n", inst->token);
+   set_debug_location(node->token);
    Node *left  = node->left;
    Node *right = node->right;
 
@@ -1323,6 +1319,10 @@ void gen_asm(Node *node)
       char   *name     = node->token->Fcall.ptr->token->retType != VOID ? node->token->name : "";
       TypeRef funcType = srcFunc.funcType;
       Value   elem     = srcFunc.elem;
+      if (check(!srcFunc.funcType, "FCALL: funcType is NULL for '%s'", node->token->name))
+         break;
+      if (check(!srcFunc.elem, "FCALL: elem is NULL for '%s'", node->token->name))
+         break;
       node->token->llvm.elem = LLVMBuildCall2(builder, funcType, elem, args, count, name);
       free(args);
       break;
@@ -1332,15 +1332,12 @@ void gen_asm(Node *node)
       enter_scoop(node);
       TypeRef  retType     = get_llvm_type(node->token);
       TypeRef *paramTypes  = NULL;
-      int      param_count = node->left->cpos; // total declared params (including ...args)
-      int      fixed_count = param_count;     // regular params passed to LLVM
-      int      _count      = param_count; // what LLVM sees (fixed + hidden i32)
+      int      param_count = node->left->cpos;
+      int      fixed_count = param_count;
+      int      _count      = param_count;
 
       if (node->token->is_variadic)
-      {
-         // fixed_count--;                       // exclude the ...args token
-         _count = fixed_count + 1;        // add hidden i32 count param
-      }
+         _count = fixed_count + 1;
 
       if (param_count)
       {
@@ -1368,6 +1365,27 @@ void gen_asm(Node *node)
       {
          _entry(node->token);
 
+         // Debug info for this function
+         LLVMMetadataRef di_func_type = LLVMDIBuilderCreateSubroutineType(
+            di_builder, di_file, NULL, 0, LLVMDIFlagZero);
+
+         LLVMMetadataRef di_func = LLVMDIBuilderCreateFunction(
+            di_builder,
+            di_compile_unit,
+            fname, strlen(fname),
+            fname, strlen(fname),
+            di_file,
+            node->token->line,
+            di_func_type,
+            0,
+            1,
+            node->token->line,
+            LLVMDIFlagZero,
+            0
+            );
+         LLVMSetSubprogram(node->token->llvm.elem, di_func);
+         di_current_scope = di_func;
+
          int param_idx = 0;
          for (int i = 0; i < fixed_count; i++)
          {
@@ -1383,6 +1401,7 @@ void gen_asm(Node *node)
             gen_asm(node->children[i]);
       }
       exit_scoop();
+      di_current_scope = di_compile_unit;
       break;
    }
    case WHILE:
@@ -2671,15 +2690,16 @@ void init(char *name)
    module  = LLVMModuleCreateWithNameInContext(name, context);
    builder = LLVMCreateBuilderInContext(context);
 
-   vd      = LLVMVoidTypeInContext(context);
-   f32     = LLVMFloatTypeInContext(context);
-   i1      = LLVMInt1TypeInContext(context);
-   i8      = LLVMInt8TypeInContext(context);
-   i16     = LLVMInt16TypeInContext(context);
-   i32     = LLVMInt32TypeInContext(context);
-   i64     = LLVMInt64TypeInContext(context);
-   p8      = _pointer_type(i8, 0);
-   p32     = _pointer_type(i32, 0);
+
+   vd  = LLVMVoidTypeInContext(context);
+   f32 = LLVMFloatTypeInContext(context);
+   i1  = LLVMInt1TypeInContext(context);
+   i8  = LLVMInt8TypeInContext(context);
+   i16 = LLVMInt16TypeInContext(context);
+   i32 = LLVMInt32TypeInContext(context);
+   i64 = LLVMInt64TypeInContext(context);
+   p8  = _pointer_type(i8, 0);
+   p32 = _pointer_type(i32, 0);
 
    LLVMInitializeAllTargetInfos();
    LLVMInitializeAllTargets();
@@ -2687,6 +2707,29 @@ void init(char *name)
    LLVMInitializeAllAsmParsers();
    LLVMInitializeAllAsmPrinters();
    LLVMSetTarget(module, LLVMGetDefaultTargetTriple());
+
+   if (enable_asan)
+   {
+      LLVMAddModuleFlag(module, LLVMModuleFlagBehaviorWarning, "Debug Info Version", 18, LLVMValueAsMetadata(LLVMConstInt(i32, 3, 0)));
+      LLVMAddModuleFlag(module, LLVMModuleFlagBehaviorWarning, "Dwarf Version", 13, LLVMValueAsMetadata(LLVMConstInt(i32, 4, 0)));
+   }
+
+   // Debug info
+   di_builder = LLVMCreateDIBuilder(module);
+   char *base          = strrchr(name, '/');
+   char *filename_only = base ? base + 1 : name;
+   char  dir[1024]     = ".";
+   if (base) { size_t len = base - name; strncpy(dir, name, len); dir[len] = '\0'; }
+
+   di_file = LLVMDIBuilderCreateFile(di_builder,
+                                     filename_only, strlen(filename_only), dir, strlen(dir));
+
+   di_compile_unit = LLVMDIBuilderCreateCompileUnit(di_builder,
+                                                    LLVMDWARFSourceLanguageC, di_file, "ura", 3,
+                                                    0, "", 0, 0, "", 0, LLVMDWARFEmissionFull, 0, 0, 0, "", 0, "", 0);
+
+   di_current_scope = di_compile_unit;
+
    if (using_refs) getRefAssignFunc();
    if (enable_bounds_check) getNullCheckFunc();
 }
@@ -2719,7 +2762,7 @@ void finalize(char *output)
 
    if (enable_asan)
    {
-      LLVMErrorRef err = LLVMRunPasses(module, "module(asan)", NULL, options);
+      LLVMErrorRef err = LLVMRunPasses(module, "asan", NULL, options);
       if (err)
       {
          char *msg = LLVMGetErrorMessage(err);
@@ -2727,6 +2770,9 @@ void finalize(char *output)
          LLVMDisposeErrorMessage(msg);
       }
    }
+   LLVMDIBuilderFinalize(di_builder);
+   LLVMDisposeDIBuilder(di_builder);
+   di_builder = NULL;
 
    LLVMDisposePassBuilderOptions(options);
    LLVMPrintModuleToFile(module, output, NULL);
@@ -2863,7 +2909,7 @@ int debug_(char *conv, ...)
             case 'k':
             {
                Token *token = va_arg(args, Token *);
-               res += token ? ptoken(token) : fprintf(stdout, "(null)");
+               token ? ptoken(token) : fprintf(stdout, "(null)");
                break;
             }
             default: todo(1, "invalid format specifier [%c]", conv[i]);
@@ -2923,86 +2969,84 @@ void pnode(Node *node, char *indent)
 #undef push
 }
 
-int print_escaped(char *str)
+void print_escaped(char *str)
 {
-   if (!str) return 0;
-   int r = 0;
-   r += debug("\"");
+   if (!str) return;
+   debug("\"");
    for (int i = 0; str[i]; i++)
    {
       switch (str[i])
       {
-      case '\n': r += debug("\\n"); break;
-      case '\t': r += debug("\\t"); break;
-      case '\r': r += debug("\\r"); break;
-      case '\\': r += debug("\\\\"); break;
-      case '\"': r += debug("\\\""); break;
-      default: r   += putchar(str[i]); break;
+      case '\n':  debug("\\n"); break;
+      case '\t':  debug("\\t"); break;
+      case '\r':  debug("\\r"); break;
+      case '\\':  debug("\\\\"); break;
+      case '\"':  debug("\\\""); break;
+      default: putchar(str[i]); break;
       }
    }
-   r += debug("\"");
-   return r;
+   debug("\"");
+   return;
 }
 
-int print_value(Token *token)
+void print_value(Token *token)
 {
    switch (token->type)
    {
-   case INT: return debug("[%lld] ", token->Int.value);
-   case LONG: return debug("[%lld] ", token->Long.value);
-   case BOOL: return debug("[%s] ", token->Bool.value ? "True" : "False");
-   case FLOAT: return debug("[%f] ", token->Float.value);
+   case INT: debug("[%lld] ", token->Int.value); break;
+   case LONG: debug("[%lld] ", token->Long.value); break;
+   case BOOL: debug("[%s] ", token->Bool.value ? "True" : "False"); break;
+   case FLOAT: debug("[%f] ", token->Float.value); break;
    case CHAR:
    {
-      int r = 0;
-      r += debug("[");
-      r += print_escaped(&token->Char.value);
-      r += debug("]");
-      return r;
+      debug("[");
+      print_escaped(&token->Char.value);
+      debug("]");
+      return;
    }
    case CHARS:
    {
-      int r = 0;
-      r += debug("[");
-      r += print_escaped(token->Chars.value);
-      r += debug("]");
-      return r;
+      debug("[");
+      print_escaped(token->Chars.value);
+      debug("]");
+      return;
    }
-   case ADD: case SUB: case NOT_EQUAL: return debug("%t ", token->type); break;
+   case ADD: case SUB: case NOT_EQUAL: debug("%t ", token->type); break;
    case VOID: break;
    default: check(1, "handle this case [%s]", to_string(token->type));
    }
-   return 0;
 }
 
-int ptoken(Token *token)
+void ptoken(Token *token)
 {
-   int res = 0;
-   if (!token) return debug("null token");
-   res += debug("[%s] ", to_string(token->type));
+   if (!token)
+   {
+      debug("null token");
+      return;
+   }
+   debug("[%s] ", to_string(token->type));
    switch (token->type)
    {
    case VOID: case CHARS: case CHAR: case INT:
    case BOOL: case FLOAT: case LONG:
    {
-      if (token->name) res += debug("%s ", token->name);
+      if (token->name) debug("%s ", token->name);
       else if (token->type != VOID) print_value(token);
       break;
    }
    case STRUCT_CALL:
    {
-      res += debug("name [%s] ", token->name);
-      res += debug("st_name [%s] ", token->Struct.ptr->token->name);
+      debug("name [%s] ", token->name);
+      debug("st_name [%s] ", token->Struct.ptr->token->name);
       break;
    }
    case STRUCT_DEF:
-   case FCALL: case FDEC: case ID: res += debug("%s ", token->name); break;
+   case FCALL: case FDEC: case ID: debug("%s ", token->name); break;
    default: break;
    }
    if (token->is_ref) debug("ref ");
-   if (token->retType) res += debug("ret [%t] ", token->retType);
-   if (token->is_variadic) res += debug("variadic ");
-   return res;
+   if (token->retType) debug("ret [%t] ", token->retType);
+   if (token->is_variadic) debug("variadic ");
 }
 
 // STRING
