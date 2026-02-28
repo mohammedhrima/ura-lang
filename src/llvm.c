@@ -211,6 +211,7 @@ Value _build_return(Token *token)
 
 void _entry(Token *token)
 {
+
    Block entry = _append_basic_block_in_context(token->llvm.elem, "entry");
    _position_at(entry);
 }
@@ -432,6 +433,20 @@ Value _add_function(char *name, TypeRef function_type)
    if (f)
       return f;
    return LLVMAddFunction(module, name, function_type);
+}
+
+void set_debug_location(Token *token)
+{
+   if (!token || !di_builder || !di_current_scope) return;
+
+   LLVMMetadataRef loc = LLVMDIBuilderCreateDebugLocation(
+      context,
+      token->line,
+      0,
+      di_current_scope,
+      NULL
+      );
+   LLVMSetCurrentDebugLocation2(builder, loc);
 }
 
 Value _get_param(Value fn, unsigned index) { return LLVMGetParam(fn, index); }

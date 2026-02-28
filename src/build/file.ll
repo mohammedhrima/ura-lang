@@ -1,9 +1,9 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura'
-source_filename = "/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura"
+; ModuleID = 'file.ura'
+source_filename = "file.ura"
 target triple = "arm64-apple-darwin25.3.0"
 
-@STR0 = private unnamed_addr constant [13 x i8] c"Hello world\0A\00", align 1
-@STR1 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@llvm.used = appending global [1 x ptr] [ptr @asan.module_ctor], section "llvm.metadata"
+@llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 1, ptr @asan.module_ctor, ptr null }]
 
 declare ptr @fopen(ptr, ptr)
 
@@ -109,6 +109,90 @@ declare i32 @vfscanf(ptr, ptr, ptr)
 
 declare i32 @vsscanf(ptr, ptr, ptr)
 
+declare ptr @malloc(i32)
+
+declare ptr @calloc(i32, i32)
+
+declare ptr @realloc(ptr, i32)
+
+declare void @free(ptr)
+
+declare ptr @aligned_alloc(i32, i32)
+
+declare ptr @signal(i32, ptr)
+
+declare i32 @raise(i32)
+
+declare i32 @kill(i32, i32)
+
+declare i32 @sigaction(i32, ptr, ptr)
+
+declare i32 @sigprocmask(i32, ptr, ptr)
+
+declare i32 @sigsuspend(ptr)
+
+declare void @abort()
+
+declare void @exit(i32)
+
+declare void @quick_exit(i32)
+
+declare void @_Exit(i32)
+
+declare ptr @getenv(ptr)
+
+declare i32 @setenv(ptr, ptr, i32)
+
+declare i32 @unsetenv(ptr)
+
+declare i32 @putenv(ptr)
+
+declare i32 @system(ptr)
+
+declare i32 @rand()
+
+declare void @srand(i32)
+
+declare ptr @bsearch(ptr, ptr, i32, i32, ptr)
+
+declare void @qsort(ptr, i32, i32, ptr)
+
+declare i32 @abs(i32)
+
+declare i64 @labs(i64)
+
+declare ptr @div(i32, i32)
+
+declare ptr @ldiv(i64, i64)
+
+declare i32 @atoi(ptr)
+
+declare i64 @atol(ptr)
+
+declare float @atof(ptr)
+
+declare i64 @strtol(ptr, ptr, i32)
+
+declare i64 @strtoul(ptr, ptr, i32)
+
+declare float @strtof(ptr, ptr)
+
+declare float @strtod(ptr, ptr)
+
+declare i64 @strtoll(ptr, ptr, i32)
+
+declare i64 @strtoull(ptr, ptr, i32)
+
+declare i32 @mblen(ptr, i32)
+
+declare i32 @mbtowc(ptr, ptr, i32)
+
+declare i32 @wctomb(ptr, i32)
+
+declare i32 @mbstowcs(ptr, ptr, i32)
+
+declare i32 @wcstombs(ptr, ptr, i32)
+
 declare i32 @strlen(ptr)
 
 declare i32 @strnlen(ptr, i32)
@@ -181,16 +265,85 @@ declare ptr @strsignal(i32)
 
 declare ptr @memset_s(ptr, i32, i32, i32)
 
-define i32 @main() {
+declare i64 @time(ptr)
+
+declare float @difftime(i64, i64)
+
+declare i64 @clock()
+
+declare ptr @gmtime(ptr)
+
+declare ptr @localtime(ptr)
+
+declare i64 @mktime(ptr)
+
+declare i32 @strftime(ptr, i32, ptr, ptr)
+
+declare ptr @asctime(ptr)
+
+declare ptr @ctime(ptr)
+
+declare i32 @clock_gettime(i32, ptr)
+
+declare i32 @clock_settime(i32, ptr)
+
+declare i32 @nanosleep(ptr, ptr)
+
+define i32 @main() !dbg !5 {
 entry:
-  %str = alloca ptr, align 8
-  store ptr null, ptr %str, align 8
-  %stack = alloca [13 x i8], align 1
-  %stack1 = getelementptr [13 x i8], ptr %stack, i32 0, i32 0
-  store ptr %stack1, ptr %str, align 8
-  %str2 = load ptr, ptr %str, align 8
-  %strcpy = call ptr @strcpy(ptr %str2, ptr @STR0)
-  %str3 = load ptr, ptr %str, align 8
-  %printf = call i32 (ptr, i32, ...) @printf(ptr @STR1, i32 1, ptr %str3)
-  ret i32 0
+  %str = alloca ptr, align 8, !dbg !8
+  store ptr null, ptr %str, align 8, !dbg !8
+  %calloc = call ptr @calloc(i32 1, i32 1), !dbg !8
+  store ptr %calloc, ptr %str, align 8, !dbg !8
+  %c = alloca i8, align 1, !dbg !9
+  store i8 0, ptr %c, align 1, !dbg !9
+  %str1 = load ptr, ptr %str, align 8, !dbg !9
+  %ACCESS = getelementptr i8, ptr %str1, i32 11, !dbg !9
+  %str2 = load i8, ptr %ACCESS, align 1, !dbg !9
+  store i8 %str2, ptr %c, align 1, !dbg !9
+  ret i32 0, !dbg !10
 }
+
+declare void @__asan_before_dynamic_init(i64)
+
+declare void @__asan_after_dynamic_init()
+
+declare void @__asan_register_globals(i64, i64)
+
+declare void @__asan_unregister_globals(i64, i64)
+
+declare void @__asan_register_image_globals(i64)
+
+declare void @__asan_unregister_image_globals(i64)
+
+declare void @__asan_register_elf_globals(i64, i64, i64)
+
+declare void @__asan_unregister_elf_globals(i64, i64, i64)
+
+declare void @__asan_init()
+
+; Function Attrs: nounwind
+define internal void @asan.module_ctor() #0 {
+  call void @__asan_init()
+  call void @__asan_version_mismatch_check_v8()
+  ret void
+}
+
+declare void @__asan_version_mismatch_check_v8()
+
+attributes #0 = { nounwind }
+
+!llvm.module.flags = !{!0, !1, !2}
+!llvm.dbg.cu = !{!3}
+
+!0 = !{i32 2, !"Debug Info Version", i32 3}
+!1 = !{i32 2, !"Dwarf Version", i32 4}
+!2 = !{i32 4, !"nosanitize_address", i32 1}
+!3 = distinct !DICompileUnit(language: DW_LANG_C, file: !4, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
+!4 = !DIFile(filename: "file.ura", directory: ".")
+!5 = distinct !DISubprogram(name: "main", linkageName: "main", scope: null, file: !4, line: 4, type: !6, scopeLine: 4, spFlags: DISPFlagDefinition, unit: !3)
+!6 = !DISubroutineType(types: !7)
+!7 = !{}
+!8 = !DILocation(line: 5, scope: !5)
+!9 = !DILocation(line: 7, scope: !5)
+!10 = !DILocation(line: 0, scope: !5)

@@ -1,8 +1,8 @@
-use "@/io"
-use "@/string"
+use "@/header"
+
 
 main():
-    str chars = stack(13) as chars
-    strcpy(str, "Hello world\n")
-    printf("%s", str)
-    return 0
+    str chars = calloc(1, 1)
+    // strcpy(str, "e")
+    c char = str[11]
+    // free(str)

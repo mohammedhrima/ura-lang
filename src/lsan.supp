@@ -1,0 +1,5 @@
+leak:_malloc_type_malloc_outlined
+leak:_fetchInitializingClassList
+leak:_libxpc_initializer
+leak:libSystem_initializer
+leak:dyld
