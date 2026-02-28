@@ -1,3 +1,5 @@
+use "@/io"
+
 main():
     val1 int = 10
     val2 int = 20
@@ -17,4 +19,4 @@ main():
     
     // Calculate with references
     result int = r1 + r2 + r3  // 15 + 40 + 25
-    return result
+    printf("<%d>\n", result)

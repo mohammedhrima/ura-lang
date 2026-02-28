@@ -10,7 +10,7 @@ BUILD_DIR="$ROOT_DIR/build"
 TESTS_DIR="$ROOT_DIR/tests"
 LLVM_DIR="$ROOT_DIR/llvm"
 export URA_LIB="$SRC_DIR/ura-lib"
-export ASAN_FILE="$SRC_DIR/lsan.supp"
+export ASAN_FILE="$ROOT_DIR/lsan.supp"
 
 # =========================================================
 #  Color Definitions
@@ -138,46 +138,52 @@ tests() {
 
     local failed=0
     local passed=0
-    local folder_filter="${1:-.}"
-    local base_name dir_name ll_expected tmp_dir tmp_ura ll_got
 
-    for ura_file in "$TESTS_DIR"/$folder_filter/**/*.ura; do
-        [[ -e "$ura_file" ]] || continue
+    local folders=("$@")
+    if [[ ${#folders[@]} -eq 0 ]]; then
+        folders=($(ls -d "$TESTS_DIR"/*/))
+    fi
 
-        base_name=$(basename "$ura_file" .ura)
-        dir_name=$(basename "$(dirname "$ura_file")")
-        ll_expected="$(dirname "$ura_file")/${base_name}.ll"
-        tmp_dir=$(mktemp -d 2>/dev/null)
-        tmp_ura="$tmp_dir/${base_name}.ura"
+    for folder in "${folders[@]}"; do
+        [[ -d "$TESTS_DIR/$folder" ]] && folder="$TESTS_DIR/$folder"
 
-        cp "$ura_file" "$tmp_ura"
+        for ura_file in "$folder"/*.ura; do
+            [[ -e "$ura_file" ]] || continue
 
-        if ! "$URA_COMPILER" "$tmp_ura" > /dev/null 2>&1; then
-            echo -e "  ${RED}FAIL $dir_name/$base_name (compilation error)${RESET}"
-            ((failed++)); rm -rf "$tmp_dir"; continue
-        fi
+            local base_name=$(basename "$ura_file" .ura)
+            local dir_name=$(basename "$folder")
+            local ll_expected="$folder/${base_name}.ll"
+            local ll_got="$folder/build/${base_name}.ll"
 
-        ll_got="$tmp_dir/build/${base_name}.ll"
+            if [[ ! -f "$ll_expected" ]]; then
+                echo -e "  ${RED}FAIL $dir_name/$base_name (expected .ll not found)${RESET}"
+                ((failed++))
+                continue
+            fi
 
-        if [[ ! -f "$ll_got" ]]; then
-            echo -e "  ${RED}FAIL $dir_name/$base_name (no IR generated)${RESET}"
-            ((failed++)); rm -rf "$tmp_dir"; continue
-        fi
+            if ! "$URA_COMPILER" "$ura_file" -testing > /dev/null 2>&1; then
+                echo -e "  ${RED}FAIL $dir_name/$base_name (compilation error)${RESET}"
+                ((failed++))
+                continue
+            fi
 
-        if [[ ! -f "$ll_expected" ]]; then
-            echo -e "  ${RED}FAIL $dir_name/$base_name (expected .ll not found)${RESET}"
-            ((failed++)); rm -rf "$tmp_dir"; continue
-        fi
+            if [[ ! -f "$ll_got" ]]; then
+                echo -e "  ${RED}FAIL $dir_name/$base_name (no IR generated)${RESET}"
+                ((failed++))
+                continue
+            fi
 
-        if diff -q <(tail -n +4 "$ll_got") <(tail -n +4 "$ll_expected") > /dev/null 2>&1; then
-            echo -e "  ${GREEN}PASS $dir_name/$base_name${RESET}"
-            ((passed++))
-        else
-            echo -e "  ${RED}FAIL $dir_name/$base_name (IR mismatch)${RESET}"
-            ((failed++))
-        fi
-
-        rm -rf "$tmp_dir"
+            if if diff -q \
+    <(tail -n +4 "$ll_got" | grep -v "DIFile\|DICompileUnit\|source_filename\|ModuleID") \
+    <(tail -n +4 "$ll_expected" | grep -v "DIFile\|DICompileUnit\|source_filename\|ModuleID") \
+    > /dev/null 2>&1; then
+                echo -e "  ${GREEN}PASS $dir_name/$base_name${RESET}"
+                ((passed++))
+            else
+                echo -e "  ${RED}FAIL $dir_name/$base_name (IR mismatch)${RESET}"
+                ((failed++))
+            fi
+        done
     done
 
     echo ""

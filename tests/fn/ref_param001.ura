@@ -1,0 +1,9 @@
+use "@/io"
+
+fn foo(n ref int) void:
+    n = 2
+
+main():
+    a int = 1
+    foo(a)
+    printf("<%d>\n",  a)

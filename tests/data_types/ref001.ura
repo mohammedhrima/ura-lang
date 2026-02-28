@@ -1,5 +1,7 @@
+use "@/io"
+
 main():
     a int = 10
     b int ref = a
     b = 20
-    return a
+    printf("<%d>\n", a)

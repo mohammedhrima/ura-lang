@@ -1,5 +1,5 @@
-use "ura-optimize"
 use "@/io"
+use "@/memory"
 
 struct Model:
     name chars
@@ -23,4 +23,3 @@ main():
     user.age = 123
     user.car.model.name = "car"
     printf("%s\n", user.car.model.name)
-    return user.age
