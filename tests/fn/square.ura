@@ -1,8 +1,8 @@
-use "-O1"
+use "@/io"
 
 fn square(n int) int:
     return n * n
 
 main():
     val int = square(5)
-    return val
+    printf("<%d>\n", val)

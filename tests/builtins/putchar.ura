@@ -1,4 +1,3 @@
-use "-O1"
 proto fn write(fd int, ptr chars, len int) int
 
 fn putchar(c char) int:

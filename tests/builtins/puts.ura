@@ -1,5 +1,3 @@
-use "-O1"
-
 proto fn puts(str chars) int
 
 fn isdigit(c char) bool:

@@ -1,0 +1,160 @@
+; ModuleID = '/Users/hrimamohammed/Desktop/Personal/ura-lang/tests/libft/isalpha.ura'
+source_filename = "/Users/hrimamohammed/Desktop/Personal/ura-lang/tests/libft/isalpha.ura"
+target triple = "arm64-apple-macosx16.0.0"
+
+@STR0 = private unnamed_addr constant [10 x i8] c"is alpha\0A\00", align 1
+@STR1 = private unnamed_addr constant [14 x i8] c"is not alpha\0A\00", align 1
+
+declare ptr @fopen(ptr, ptr)
+
+declare ptr @freopen(ptr, ptr, ptr)
+
+declare i32 @fclose(ptr)
+
+declare i32 @fflush(ptr)
+
+declare i32 @fgetc(ptr)
+
+declare i32 @fputc(i32, ptr)
+
+declare i32 @getc(ptr)
+
+declare i32 @putc(i32, ptr)
+
+declare i32 @getchar()
+
+declare i32 @putchar(i8)
+
+declare i32 @ungetc(i32, ptr)
+
+declare ptr @fgets(ptr, i32, ptr)
+
+declare i32 @fputs(ptr, ptr)
+
+declare i32 @puts(ptr)
+
+declare ptr @gets(ptr)
+
+declare i32 @fread(ptr, i32, i32, ptr)
+
+declare i32 @fwrite(ptr, i32, i32, ptr)
+
+declare i32 @write(i32, ptr, i32)
+
+declare i32 @read(i32, ptr, i32)
+
+declare i32 @fseek(ptr, i64, i32)
+
+declare i64 @ftell(ptr)
+
+declare void @rewind(ptr)
+
+declare i32 @fgetpos(ptr, ptr)
+
+declare i32 @fsetpos(ptr, ptr)
+
+declare i32 @feof(ptr)
+
+declare i32 @ferror(ptr)
+
+declare void @clearerr(ptr)
+
+declare void @perror(ptr)
+
+declare i32 @setvbuf(ptr, ptr, i32, i32)
+
+declare void @setbuf(ptr, ptr)
+
+declare i32 @remove(ptr)
+
+declare i32 @rename(ptr, ptr)
+
+declare ptr @tmpfile()
+
+declare ptr @tmpnam(ptr)
+
+declare i32 @fileno(ptr)
+
+declare ptr @fdopen(i32, ptr)
+
+declare i32 @printf(ptr, i32, ...)
+
+declare i32 @fprintf(ptr, ptr)
+
+declare i32 @sprintf(ptr, ptr)
+
+declare i32 @snprintf(ptr, i32, ptr)
+
+declare i32 @dprintf(i32, ptr)
+
+declare i32 @vprintf(ptr, ptr)
+
+declare i32 @vfprintf(ptr, ptr, ptr)
+
+declare i32 @vsprintf(ptr, ptr, ptr)
+
+declare i32 @vsnprintf(ptr, i32, ptr, ptr)
+
+declare i32 @vdprintf(i32, ptr, ptr)
+
+declare i32 @scanf(ptr)
+
+declare i32 @fscanf(ptr, ptr)
+
+declare i32 @sscanf(ptr, ptr)
+
+declare i32 @vscanf(ptr, ptr)
+
+declare i32 @vfscanf(ptr, ptr, ptr)
+
+declare i32 @vsscanf(ptr, ptr, ptr)
+
+define i1 @isalpha(i8 %c) !dbg !4 {
+entry:
+  %c1 = alloca i8, align 1, !dbg !7
+  store i8 0, ptr %c1, align 1, !dbg !7
+  store i8 %c, ptr %c1, align 1, !dbg !7
+  %c2 = load i8, ptr %c1, align 1, !dbg !7
+  %GE = icmp sge i8 %c2, 97, !dbg !7
+  %c3 = load i8, ptr %c1, align 1, !dbg !7
+  %LE = icmp sle i8 %c3, 122, !dbg !7
+  %AND = and i1 %GE, %LE, !dbg !7
+  ret i1 %AND, !dbg !7
+}
+
+define i32 @main() !dbg !8 {
+entry:
+  br label %if.start, !dbg !9
+
+if.start:                                         ; preds = %entry
+  %isalpha = call i1 @isalpha(i8 49), !dbg !10
+  br i1 %isalpha, label %if.then, label %if.else, !dbg !10
+
+if.end:                                           ; preds = %if.else, %if.then
+  ret i32 0, !dbg !11
+
+if.then:                                          ; preds = %if.start
+  %printf = call i32 (ptr, i32, ...) @printf(ptr @STR0, i32 0), !dbg !12
+  br label %if.end, !dbg !12
+
+if.else:                                          ; preds = %if.start
+  %printf1 = call i32 (ptr, i32, ...) @printf(ptr @STR1, i32 0), !dbg !11
+  br label %if.end, !dbg !11
+}
+
+!llvm.module.flags = !{!0, !1}
+!llvm.dbg.cu = !{!2}
+
+!0 = !{i32 2, !"Debug Info Version", i32 3}
+!1 = !{i32 2, !"Dwarf Version", i32 4}
+!2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
+!3 = !DIFile(filename: "isalpha.ura", directory: "/Users/hrimamohammed/Desktop/Personal/ura-lang/tests/libft")
+!4 = distinct !DISubprogram(name: "isalpha", linkageName: "isalpha", scope: null, file: !3, line: 3, type: !5, scopeLine: 3, spFlags: DISPFlagDefinition, unit: !2)
+!5 = !DISubroutineType(types: !6)
+!6 = !{}
+!7 = !DILocation(line: 3, scope: !4)
+!8 = distinct !DISubprogram(name: "main", linkageName: "main", scope: null, file: !3, line: 5, type: !5, scopeLine: 5, spFlags: DISPFlagDefinition, unit: !2)
+!9 = !DILocation(line: 5, scope: !8)
+!10 = !DILocation(line: 6, scope: !8)
+!11 = !DILocation(line: 9, scope: !8)
+!12 = !DILocation(line: 7, scope: !8)

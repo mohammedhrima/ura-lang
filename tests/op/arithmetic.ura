@@ -1,0 +1,75 @@
+use "@/io"
+
+fn foo() int:
+    return 5
+
+fn bar() int:
+    return 10
+
+fn print_int(label chars, val int) void:
+    printf("%s%d\n", label, val)
+
+main():
+    a int = 20
+    b int = 4
+
+    // ADD
+    print_int("add var+var:   ", a + b)
+    print_int("add var+val:   ", a + 15)
+    print_int("add var+fn:    ", a + foo())
+    print_int("add val+var:   ", 25 + b)
+    print_int("add val+val:   ", 30 + 40)
+    print_int("add val+fn:    ", 50 + bar())
+    print_int("add fn+var:    ", foo() + a)
+    print_int("add fn+val:    ", bar() + 100)
+    print_int("add fn+fn:     ", foo() + bar())
+
+    // SUB
+    print_int("sub var-var:   ", a - b)
+    print_int("sub var-val:   ", a - 5)
+    print_int("sub var-fn:    ", a - foo())
+    print_int("sub val-var:   ", 30 - b)
+    print_int("sub val-val:   ", 50 - 15)
+    print_int("sub val-fn:    ", 40 - bar())
+    print_int("sub fn-var:    ", foo() - b)
+    print_int("sub fn-val:    ", bar() - 3)
+    print_int("sub fn-fn:     ", bar() - foo())
+
+    // MUL
+    print_int("mul var*var:   ", a * b)
+    print_int("mul var*val:   ", a * 3)
+    print_int("mul var*fn:    ", a * foo())
+    print_int("mul val*var:   ", 7 * b)
+    print_int("mul val*val:   ", 8 * 9)
+    print_int("mul val*fn:    ", 2 * bar())
+    print_int("mul fn*var:    ", foo() * a)
+    print_int("mul fn*val:    ", bar() * 5)
+    print_int("mul fn*fn:     ", foo() * bar())
+
+    // DIV
+    print_int("div var/var:   ", a / b)
+    print_int("div var/val:   ", a / 2)
+    print_int("div var/fn:    ", a / foo())
+    print_int("div val/var:   ", 100 / b)
+    print_int("div val/val:   ", 50 / 10)
+    print_int("div val/fn:    ", 30 / foo())
+    print_int("div fn/var:    ", bar() / b)
+    print_int("div fn/val:    ", bar() / 2)
+    print_int("div fn/fn:     ", bar() / foo())
+
+    // MOD
+    print_int("mod var%var:   ", a % b)
+    print_int("mod var%val:   ", a % 3)
+    print_int("mod var%fn:    ", a % foo())
+    print_int("mod val%var:   ", 50 % b)
+    print_int("mod val%val:   ", 17 % 6)
+    print_int("mod val%fn:    ", 33 % foo())
+    print_int("mod fn%var:    ", bar() % b)
+    print_int("mod fn%val:    ", bar() % 3)
+    print_int("mod fn%fn:     ", bar() % foo())
+
+    // CHAINED
+    print_int("chain a+b*2:   ", a + b * 2)
+    print_int("chain (a+b)*2: ", (a + b) * 2)
+    print_int("chain a-b+foo: ", a - b + foo())
+    print_int("chain nested:  ", foo() * bar() + a - b)

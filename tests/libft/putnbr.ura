@@ -38,7 +38,6 @@ fn putnbr(n int) void:
         n = n / 10
         i -= 1
     
-    // Print all digits at once
     i = 0
     while i < digit_count:
         putchar(buffer[i])
@@ -54,4 +53,3 @@ main():
     putchar('\n')
     putnbr(0)
     putchar('\n')
-    return 0

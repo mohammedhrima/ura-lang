@@ -1,3 +1,5 @@
+use "@/io"
+
 main():
     // Initialize values
     val1 int = 10
@@ -20,4 +22,4 @@ main():
     
     // Sum all values
     sum int = val1 + val2 + val3
-    return sum
+    printf("<%d>\n", sum)
