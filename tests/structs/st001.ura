@@ -1,4 +1,6 @@
-proto fn puts(fmt chars) int
+use "@/io"
+use "@/memory"
+use "@/string"
 
 struct User:
     age int
@@ -6,7 +8,8 @@ struct User:
 
 main():
     user User
-    user.age = 1
-    user.name = "abc"
-    puts(user.name)
-    return user.age
+    user.age = 28
+    name chars = calloc(1, 10)
+    strcpy(name, "mohammed")
+    printf("hello %s has %d\n", name, user.age)
+    free(name)

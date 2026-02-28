@@ -1,3 +1,5 @@
+use "@/header"
+
 main():
     base int = 100
     ref1 int ref = base
@@ -7,4 +9,4 @@ main():
     ref2 -= 10      // base becomes 110
     
     result int = ref1 + ref2  // 110 + 110 = 220
-    return result
+    printf("<%d>\n", result)

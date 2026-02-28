@@ -554,11 +554,10 @@ Node *struct_def(Node *node)
    Token *st_name;
    if (check(!(st_name = find(ID, 0)), "expected identifier after struct definition"))
       return NULL;
-   expect_token(DOTS, 0, "expected dots after struct definition");
-   return NULL;
+   expect_token(DOTS, 0, "expected dots after struct definition\n");
 
    setName(node->token, st_name->name);
-   node->token->type       = STRUCT_CALL;
+   node->token->type       = STRUCT_CALL; // keep it, it's changed at the bottom
    node->token->Struct.ptr = node;
    enter_scoop(node);
 
@@ -700,7 +699,7 @@ Node *prime_node()
    {
       if (includes(tokens[exe_pos]->type, FDEC, STRUCT_DEF, 0))
          tokens[exe_pos]->is_proto = true;
-      else check(1, "expected fn or struct after proto");
+      else check(1, "expected <fn> or <struct> after proto");
       return expr_node();
    }
    if ((token = find(FDEC, 0))) return func_dec(new_node(token));
@@ -874,6 +873,11 @@ char *compile(char *filename)
    enter_scoop(global);
    while (!find(END, 0) && !found_error)
       add_child(global, expr_node());
+   debug("%s===========================================\n", GREEN);
+   debug("AFTER PARSING\n");
+   debug("===========================================\n%s",RESET);
+   for (int i = 0; !found_error && i < global->cpos; i++)
+      pnode(global->children[i], "");
    if (found_error) return NULL;
 #endif
 
@@ -882,7 +886,9 @@ char *compile(char *filename)
    for (int i = 0; !found_error && i < global->cpos; i++)
       gen_ir(global->children[i]);
    if (found_error) return NULL;
-
+   debug("%s===========================================\n", GREEN);
+   debug("AFTER IR\n");
+   debug("===========================================\n%s",RESET);
    for (int i = 0; !found_error && i < global->cpos; i++)
       pnode(global->children[i], "");
 #endif
@@ -921,20 +927,22 @@ int main(int argc, char **argv)
 {
    check(argc < 2, "usage: ura <file.ura> [file2.ura ...] [-O0|-O1|-O2|-O3|-Os|-Oz] [-san] [-o output]");
 
-   char  *output    = "exe.out";
-   char **src_files = NULL;
-   int    src_count = 0;
+   char  *output       = "exe.out";
+   char **src_files    = NULL;
+   int    src_count    = 0;
+   bool   testing_mode = false;
 
    for (int i = 1; i < argc; i++)
    {
-      if      (strcmp(argv[i], "-O0")  == 0) passes = PASSES_O0;
-      else if (strcmp(argv[i], "-O1")  == 0) passes = PASSES_O1;
-      else if (strcmp(argv[i], "-O2")  == 0) passes = PASSES_O2;
-      else if (strcmp(argv[i], "-O3")  == 0) passes = PASSES_O3;
-      else if (strcmp(argv[i], "-Os")  == 0) passes = PASSES_Os;
-      else if (strcmp(argv[i], "-Oz")  == 0) passes = PASSES_Oz;
-      else if (strcmp(argv[i], "-san") == 0) enable_asan = true;
-      else if (strcmp(argv[i], "-o")   == 0)
+      if      (strcmp(argv[i], "-O0")     == 0) passes = PASSES_O0;
+      else if (strcmp(argv[i], "-O1")     == 0) passes = PASSES_O1;
+      else if (strcmp(argv[i], "-O2")     == 0) passes = PASSES_O2;
+      else if (strcmp(argv[i], "-O3")     == 0) passes = PASSES_O3;
+      else if (strcmp(argv[i], "-Os")     == 0) passes = PASSES_Os;
+      else if (strcmp(argv[i], "-Oz")     == 0) passes = PASSES_Oz;
+      else if (strcmp(argv[i], "-san")    == 0) enable_asan = true;
+      else if (strcmp(argv[i], "-testing") == 0) testing_mode = true;
+      else if (strcmp(argv[i], "-o")      == 0)
       {
          check(i + 1 >= argc, "-o requires an argument");
          output = argv[++i];
@@ -962,7 +970,13 @@ int main(int argc, char **argv)
    for (int i = 0; i < src_count && link_ok; i++)
    {
       char *ll = compile(src_files[i]);
-      if (!ll ) { link_ok = false; break; }
+      if (!ll) { link_ok = false; break; }
+      if (testing_mode)
+      {
+         free(ll);
+         free_memory();
+         continue;
+      }
 
       if (enable_asan)
       {
@@ -991,35 +1005,38 @@ int main(int argc, char **argv)
       free_memory();
    }
 
-   if (link_ok)
+   if (!testing_mode && link_ok)
    {
-      pos += snprintf(final_cmd + pos, sizeof(final_cmd) - pos, " -lc++ -o \"%s\"", output);
+      pos += snprintf(final_cmd + pos, sizeof(final_cmd) - pos, " -o \"%s\"", output);
 
       if (system(final_cmd) != 0)
          fprintf(stderr, RED "linking failed\n" RESET);
       else
       {
-         fprintf(stderr, GREEN "running %s...\n" RESET, output);
-
          char full[4096];
          realpath(output, full);
 
-         char run[8192];
          if (enable_asan)
          {
             char *asan_file = getenv("ASAN_FILE");
             if (asan_file)
-               snprintf(run, sizeof(run),
-                        "ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=\"%s\" \"%s\"",
-                        asan_file, full);
+               setenv("ASAN_OPTIONS", "detect_leaks=1", 1),
+               setenv("LSAN_OPTIONS", strjoin("suppressions=", asan_file, NULL), 1);
             else
-               snprintf(run, sizeof(run),
-                        "ASAN_OPTIONS=detect_leaks=1 \"%s\"", full);
+               setenv("ASAN_OPTIONS", "detect_leaks=1", 1);
          }
-         else
-            snprintf(run, sizeof(run), "\"%s\"", full);
 
-         system(run);
+         fprintf(stderr, GREEN "running %s...\n" RESET, full);
+
+         char run[8192];
+         snprintf(run, sizeof(run), "\"%s\"", full);
+
+         int status    = system(run);
+         int exit_code = WEXITSTATUS(status);
+
+         fprintf(stderr, exit_code == 0
+                 ? GREEN "exit code: %d\n" RESET
+                 : RED   "exit code: %d\n" RESET, exit_code);
       }
    }
 
@@ -1115,9 +1132,7 @@ void store_through_ref(Token *ref_token, Value value, TypeRef type)
 
 void gen_asm(Node *node)
 {
-   // debug("Processing: %k\n", inst->token);
-   if (node->token->type != FDEC)
-      set_debug_location(node->token);
+   set_debug_location(node->token);
    Node *left  = node->left;
    Node *right = node->right;
 
@@ -1184,9 +1199,8 @@ void gen_asm(Node *node)
             _build_store(right->token->llvm.elem, left->token->llvm.elem);
          else
          {
-            // store the address
             load_if_necessary(right);
-            build_ref_assign(left->token, right->token->llvm.elem, get_llvm_type(right->token));
+            store_through_ref(left->token, right->token->llvm.elem, get_llvm_type(right->token));
          }
       }
       else if (left->token->is_ref && right->token->is_ref)
@@ -1862,9 +1876,11 @@ void gen_ir(Node * node)
    }
    case NOT:
    {
+      // TODO: left must be boolean
       gen_ir(left);
       node->token->used++;
       node->left->token->used++;
+      node->token->retType = BOOL;
       break;
    }
    case ADD: case SUB: case MUL: case DIV: case EQUAL:
@@ -2036,32 +2052,34 @@ void gen_ir(Node * node)
       gen_ir(node->left);
       if (found_error) break;
       node->left->token->used++;
-      Type retType = 0;
-      switch (node->left->token->type)
+      Type  retType = 0;
+
+      Node *src     = NULL;
+      if (node->left->token->type == STRUCT_CALL)
+         src = get_struct(node->left->token->Struct.ptr->token->name);
+      else if (node->left->token->retType == STRUCT_CALL && node->left->token->Struct.ptr)
+         src = get_struct(node->left->token->Struct.ptr->token->name);
+      else
       {
-      case STRUCT_CALL:
-      {
-         Node *src = get_struct(node->left->token->Struct.ptr->token->name);
-         for (int i = 0; i < src->cpos; i++)
-         {
-            Node *child = src->children[i];
-            if (strcmp(child->token->name, node->right->token->name) == 0)
-            {
-               retType = child->token->type;
-               node->right->token->Struct.index = i;
-               node->right->token->type         = child->token->type;
-               node->right->token->retType      = child->token->retType;
-               if (child->token->type == STRUCT_CALL)
-                  node->right->token->Struct.ptr = child->token->Struct.ptr;
-               break;
-            }
-         }
-         break;
-      }
-      default:
          check(1, "handle this case %s", to_string(node->left->token->type));
          break;
       }
+
+      for (int i = 0; src && i < src->cpos; i++)
+      {
+         Node *child = src->children[i];
+         if (strcmp(child->token->name, node->right->token->name) == 0)
+         {
+            retType = child->token->type;
+            node->right->token->Struct.index = i;
+            node->right->token->type         = child->token->type;
+            node->right->token->retType      = child->token->retType;
+            if (child->token->type == STRUCT_CALL)
+               node->right->token->Struct.ptr = child->token->Struct.ptr;
+            break;
+         }
+      }
+
       node->token->retType = retType;
       if (retType == STRUCT_CALL)
          node->token->Struct.ptr = node->right->token->Struct.ptr;
@@ -2729,11 +2747,9 @@ void init(char *name)
    p8  = _pointer_type(i8, 0);
    p32 = _pointer_type(i32, 0);
 
-   LLVMInitializeAllTargetInfos();
-   LLVMInitializeAllTargets();
-   LLVMInitializeAllTargetMCs();
-   LLVMInitializeAllAsmParsers();
-   LLVMInitializeAllAsmPrinters();
+   LLVMInitializeNativeTarget();
+   LLVMInitializeNativeAsmPrinter();
+   LLVMInitializeNativeAsmParser();
    #if defined(__APPLE__)
    LLVMSetTarget(module, "arm64-apple-macosx16.0.0");
    #elif defined(__linux__)
@@ -2968,7 +2984,7 @@ int debug_(char *conv, ...)
 
 void pnode(Node *node, char *indent)
 {
-   if (!node || !node->token) return;
+   if (!node || !node->token || !DEBUG) return;
    Node **subs     = NULL;
    int    count    = 0;
    int    capacity = 0;
@@ -3090,6 +3106,7 @@ void ptoken(Token *token)
    if (token->is_ref) debug("ref ");
    if (token->retType) debug("ret [%t] ", token->retType);
    if (token->is_variadic) debug("variadic ");
+   //debug("line %d ", token->line);
 }
 
 // STRING

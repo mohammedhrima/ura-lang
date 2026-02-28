@@ -1,36 +1,48 @@
 ; ModuleID = '/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura'
 source_filename = "/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura"
-target triple = "arm64-apple-darwin25.3.0"
+target triple = "arm64-apple-macosx16.0.0"
 
-declare i32 @write(i32, ptr, i32) local_unnamed_addr
+declare i32 @write(i32, ptr, i32)
 
-define noundef i32 @putchar(i8 %c) local_unnamed_addr {
+define i32 @putchar(i8 %c) !dbg !4 {
 entry:
-  %stack = alloca [2 x i8], align 1
-  store i8 %c, ptr %stack, align 1
-  %write = call i32 @write(i32 1, ptr nonnull %stack, i32 1)
-  ret i32 0
+  %c1 = alloca i8, align 1, !dbg !7
+  store i8 0, ptr %c1, align 1, !dbg !7
+  store i8 %c, ptr %c1, align 1, !dbg !7
+  %str = alloca ptr, align 8, !dbg !7
+  store ptr null, ptr %str, align 8, !dbg !7
+  %stack = alloca [2 x i8], align 1, !dbg !7
+  %stack2 = getelementptr [2 x i8], ptr %stack, i32 0, i32 0, !dbg !7
+  store ptr %stack2, ptr %str, align 8, !dbg !7
+  %str3 = load ptr, ptr %str, align 8, !dbg !8
+  %ACCESS = getelementptr i8, ptr %str3, i32 0, !dbg !8
+  %c4 = load i8, ptr %c1, align 1, !dbg !8
+  store i8 %c4, ptr %ACCESS, align 1, !dbg !8
+  %str5 = load ptr, ptr %str, align 8, !dbg !9
+  %write = call i32 @write(i32 1, ptr %str5, i32 1), !dbg !9
+  ret i32 0, !dbg !9
 }
 
-define noundef i32 @main() local_unnamed_addr {
+define i32 @main() !dbg !10 {
 entry:
-  %stack.i2 = alloca [2 x i8], align 1
-  %stack.i = alloca [2 x i8], align 1
-  call void @llvm.lifetime.start.p0(i64 2, ptr nonnull %stack.i)
-  store i8 97, ptr %stack.i, align 1
-  %write.i = call i32 @write(i32 1, ptr nonnull %stack.i, i32 1)
-  call void @llvm.lifetime.end.p0(i64 2, ptr nonnull %stack.i)
-  call void @llvm.lifetime.start.p0(i64 2, ptr nonnull %stack.i2)
-  store i8 10, ptr %stack.i2, align 1
-  %write.i3 = call i32 @write(i32 1, ptr nonnull %stack.i2, i32 1)
-  call void @llvm.lifetime.end.p0(i64 2, ptr nonnull %stack.i2)
-  ret i32 0
+  %putchar = call i32 @putchar(i8 97), !dbg !11
+  %putchar1 = call i32 @putchar(i8 10), !dbg !12
+  ret i32 0, !dbg !12
 }
 
-; Function Attrs: nocallback nofree nosync nounwind willreturn memory(argmem: readwrite)
-declare void @llvm.lifetime.start.p0(i64 immarg, ptr nocapture) #0
+!llvm.module.flags = !{!0, !1}
+!llvm.dbg.cu = !{!2}
 
-; Function Attrs: nocallback nofree nosync nounwind willreturn memory(argmem: readwrite)
-declare void @llvm.lifetime.end.p0(i64 immarg, ptr nocapture) #0
-
-attributes #0 = { nocallback nofree nosync nounwind willreturn memory(argmem: readwrite) }
+!0 = !{i32 2, !"Debug Info Version", i32 3}
+!1 = !{i32 2, !"Dwarf Version", i32 4}
+!2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
+!3 = !DIFile(filename: "file.ura", directory: "/Users/hrimamohammed/Desktop/Personal/ura-lang/src")
+!4 = distinct !DISubprogram(name: "putchar", linkageName: "putchar", scope: null, file: !3, line: 3, type: !5, scopeLine: 3, spFlags: DISPFlagDefinition, unit: !2)
+!5 = !DISubroutineType(types: !6)
+!6 = !{}
+!7 = !DILocation(line: 3, scope: !4)
+!8 = !DILocation(line: 5, scope: !4)
+!9 = !DILocation(line: 6, scope: !4)
+!10 = distinct !DISubprogram(name: "main", linkageName: "main", scope: null, file: !3, line: 9, type: !5, scopeLine: 9, spFlags: DISPFlagDefinition, unit: !2)
+!11 = !DILocation(line: 10, scope: !10)
+!12 = !DILocation(line: 11, scope: !10)
