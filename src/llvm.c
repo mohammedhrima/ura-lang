@@ -32,7 +32,8 @@ Value check_null(Token *token)
 
 Value _load2(Token *token)
 {
-   if (token->llvm.is_loaded || (!token->name && !token->is_ref))
+   if (token->llvm.is_loaded) return token->llvm.elem;
+   if (!token->name && !token->is_ref && !includes(token->type, DOT, ACCESS, 0))
       return token->llvm.elem;
 
    TypeRef type = get_llvm_type(token);
@@ -44,8 +45,8 @@ Value _load2(Token *token)
    }
 
    char *name = token->name;
-   if (token->type == DOT)
-      name = to_string(DOT);
+   if (token->type == DOT)    name = to_string(DOT);
+   if (token->type == ACCESS) name = to_string(ACCESS);
    if (check(name == NULL, "name is NULL"))
    {
       debug(RED);
@@ -105,7 +106,6 @@ TypeRef get_llvm_type(Token *token)
       [FLOAT]  = f32,
       [ACCESS] = i8,
    };
-
    check(!res[type], "handle this case [%s]", to_string(type));
    return res[type];
 }
@@ -211,7 +211,6 @@ Value _build_return(Token *token)
 
 void _entry(Token *token)
 {
-
    Block entry = _append_basic_block_in_context(token->llvm.elem, "entry");
    _position_at(entry);
 }
@@ -438,7 +437,7 @@ Value _add_function(char *name, TypeRef function_type)
 void set_debug_location(Token *token)
 {
    if (!token || !di_builder || !di_current_scope) return;
-
+   if (!includes(token->type, ACCESS, FDEC, PROTO, FCALL, 0)) return;
    LLVMMetadataRef loc = LLVMDIBuilderCreateDebugLocation(
       context,
       token->line,

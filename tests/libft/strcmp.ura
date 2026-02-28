@@ -1,3 +1,5 @@
+use "@/io"
+
 fn strcmp(left chars, right chars) int:
     i int = 0
     while left[i] == right[i] and left[i] != '\0':
@@ -6,4 +8,4 @@ fn strcmp(left chars, right chars) int:
 
 main():
     len int = strcmp("d", "a")
-    return len
+    printf("<%d>\n", len)

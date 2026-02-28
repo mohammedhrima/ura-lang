@@ -1,0 +1,8 @@
+use "@/io"
+
+main():
+    a int = 1
+    while a < 10:
+        a = a + 1
+    printf("<%d>\n", a)
+    

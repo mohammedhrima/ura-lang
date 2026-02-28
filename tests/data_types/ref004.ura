@@ -1,3 +1,5 @@
+use "@/header"
+
 main():
     a int = 1
     b int = 2
@@ -11,4 +13,4 @@ main():
     
     r = 100
     
-    return a + b
+    printf("<%d>\n", a + b)
