@@ -374,8 +374,8 @@ Node *func_dec(Node *node)
          if (check(!name, "expected identifier in function argument %s", fname->name))
             return syntax_error_node();
 
-         bool   is_ref    = find(REF, 0) != NULL;
          Token *data_type = find(DATA_TYPES, ID, 0);
+         bool   is_ref    = find(REF, 0) != NULL;
          if (check(!data_type, "expected data type in function argument")) break;
          if (data_type->type == ID)
          {
@@ -401,7 +401,7 @@ Node *func_dec(Node *node)
          curr->token->is_dec = true;
          add_child(node->left, curr);
       }
-      if (tokens[exe_pos]->type != RPAR) expect_token(COMA, 0, "expected coma");
+      if (tokens[exe_pos]->type != RPAR) expect_token(COMA, "expected coma");
    }
    check(!found_error && last->type != RPAR, "expected ) after function declaration");
 
