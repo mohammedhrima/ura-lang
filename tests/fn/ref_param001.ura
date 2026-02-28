@@ -1,6 +1,6 @@
 use "@/io"
 
-fn foo(n ref int) void:
+fn foo(n int ref) void:
     n = 2
 
 main():
