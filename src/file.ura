@@ -1,8 +1,12 @@
-use "@/header"
+proto fn write(fd int, ptr chars, len int) int
 
+fn putchar(c char) int:
+    str chars = stack(2) as chars
+    str[10] = c
+    write(1, str, 1)
+    return 0
 
 main():
-    str chars = calloc(1, 1)
-    // strcpy(str, "e")
-    c char = str[11]
-    // free(str)
+    putchar('a')
+    putchar('\n')
+    return 0
