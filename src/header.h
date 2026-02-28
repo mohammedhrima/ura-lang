@@ -11,6 +11,7 @@
 #include <llvm-c/Target.h>
 #include <llvm-c/TargetMachine.h>
 #include <llvm-c/Transforms/PassBuilder.h>
+#include <llvm-c/DebugInfo.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -39,7 +40,10 @@ typedef struct _IO_FILE *File;
 
 #define LINE __LINE__
 #define FUNC (char *)__func__
-#define FILE (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__))
+#define FILE (strrchr(__FILE__, '/') ? \
+              strrchr(__FILE__, '/') + 1 : \
+              (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 \
+    : __FILE__))
 
 #define TOKENIZE 1
 #define TAB 3
@@ -125,75 +129,31 @@ enum Type
 {
    ID = 1,
    // Data types
-   VOID,
-   INT,
-   FLOAT,
-   LONG,
-   SHORT,
-   BOOL,
-   CHAR,
-   CHARS,
-   PTR,
-   VARIADIC,
-   REF,
+   VOID, INT, FLOAT, LONG, SHORT, BOOL, CHAR,
+   CHARS, PTR, VARIADIC, REF,
    // Structures
-   STRUCT_DEF,
-   STRUCT_CALL,
+   STRUCT_DEF, STRUCT_CALL,
    // Assignment
-   ASSIGN,
-   ADD_ASSIGN,
-   SUB_ASSIGN,
-   MUL_ASSIGN,
-   DIV_ASSIGN,
-   MOD_ASSIGN,
+   ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN,
+   DIV_ASSIGN, MOD_ASSIGN,
    // Comparison
-   EQUAL,
-   NOT_EQUAL,
-   LESS_EQUAL,
-   GREAT_EQUAL,
-   LESS,
-   GREAT,
+   EQUAL, NOT_EQUAL, LESS_EQUAL, GREAT,
+   GREAT_EQUAL, LESS,
    // Arithmetic
-   ADD,
-   SUB,
-   MUL,
-   DIV,
-   MOD,
+   ADD, SUB, MUL, DIV, MOD,
    // Logical
-   AND,
-   OR,
-   NOT,
+   AND, OR, NOT,
    // Punctuation and Syntax
-   LPAR,
-   RPAR,
-   LBRA,
-   RBRA,
-   COMA,
-   DOT,
-   DOTS,
-   ACCESS,
-   AS,
-   TYPEOF,
+   LPAR, RPAR, LBRA, RBRA, COMA, DOT,
+   DOTS, ACCESS, AS, TYPEOF,
    // Control Flow
-   RETURN,
-   IF,
-   ELIF,
-   ELSE,
-   END_IF,
-   WHILE,
-   CONTINUE,
-   BREAK,
-   END_BLOC,
+   RETURN, IF, ELIF, ELSE, END_IF,
+   WHILE, CONTINUE, BREAK, END_BLOC,
    // Functions
-   FDEC,
-   FCALL,
-   PROTO,
-   ARGS,
-   CHILDREN,
+   FDEC, FCALL, PROTO, ARGS, CHILDREN,
    // Built-ins
-   STACK,
-   DEFAULT,
-   SYNTAX_ERROR,
+   STACK, DEFAULT, SYNTAX_ERROR,
+   // end
    END,
 };
 
@@ -260,54 +220,17 @@ struct Token
 
    struct
    {
-      struct
-      {
-         long value;
-      } Int;
-      struct
-      {
-         int value;
-      } Short;
-      struct
-      {
-         long long value;
-      } Long;
-      struct
-      {
-         float value;
-      } Float;
-      struct
-      {
-         bool value;
-      } Bool;
-      struct
-      {
-         char *value;
-      } Chars;
-      struct
-      {
-         char value;
-      } Char;
-      struct
-      {
-         int index;
-         Node *ptr;
-      } Struct;
-      struct
-      {
-         Node *ptr;
-      } Fcall;
-      struct
-      {
-         Token *ptr;
-         Token *start;
-         Token *end;
-      } Statement;
-      struct
-      {
-         Type type;
-         char *name;
-      } Catch;
+      struct { long value;} Int;
+      struct { int value;} Short;
+      struct { long long value;} Long;
+      struct { float value;} Float;
+      struct { bool value;} Bool;
+      struct { char *value;} Chars;
+      struct { char value;} Char;
+      struct { int index; Node *ptr; } Struct;
+      struct { Node *ptr; } Fcall;
+      struct { Token *ptr; Token *start; Token *end; } Statement;
+      struct { Type type; char *name; } Catch;
    };
 };
 
@@ -337,37 +260,42 @@ struct Node
 // ----------------------------------------------------------------------------
 // Globals
 // ----------------------------------------------------------------------------
-extern bool    found_error;
+extern bool             found_error;
 
-extern Token **tokens;
-extern int     tk_pos;
-extern int     tk_len;
+extern Token          **tokens;
+extern int              tk_pos;
+extern int              tk_len;
 
-extern Node   *global;
-extern int     exe_pos;
+extern Node            *global;
+extern int              exe_pos;
 
-extern Node  **Gscoop;
-extern Node   *scoop;
-extern int     scoop_len;
-extern int     scoop_pos;
+extern Node           **Gscoop;
+extern Node            *scoop;
+extern int              scoop_len;
+extern int              scoop_pos;
 
-extern char  **used_files;
-extern int     used_len;
-extern int     used_pos;
+extern char           **used_files;
+extern int              used_len;
+extern int              used_pos;
 
-extern Context context;
-extern Module  module;
-extern Builder builder;
-extern TypeRef vd, f32, i1, i8, i16, i32, i64, p8, p32;
-extern File    asm_fd;
+extern Context          context;
+extern Module           module;
+extern Builder          builder;
+extern TypeRef          vd, f32, i1, i8, i16, i32, i64, p8, p32;
+extern File             asm_fd;
 
-extern bool    enable_bounds_check;
-extern Value   boundsCheckFunc;
-extern Value   vaStartFunc;
-extern Value   vaEndFunc;
-extern bool    using_refs;
-extern char   *passes;
-extern bool    enable_asan;
+extern bool             enable_bounds_check;
+extern Value            boundsCheckFunc;
+extern Value            vaStartFunc;
+extern Value            vaEndFunc;
+extern bool             using_refs;
+extern char            *passes;
+extern bool             enable_asan;
+
+extern LLVMDIBuilderRef di_builder;
+extern LLVMMetadataRef  di_compile_unit;
+extern LLVMMetadataRef  di_file;
+extern LLVMMetadataRef  di_current_scope;
 
 // ----------------------------------------------------------------------------
 // File Management
@@ -474,9 +402,9 @@ bool    compatible(Token *left, Token *right);
 // ----------------------------------------------------------------------------
 int  debug_(char *conv, ...);
 void pnode(Node *node, char *indent);
-int  ptoken(Token *token);
-int  print_escaped(char *str);
-int  print_value(Token *token);
+void  ptoken(Token *token);
+void  print_escaped(char *str);
+void  print_value(Token *token);
 
 // ----------------------------------------------------------------------------
 // String Utilities
@@ -555,3 +483,4 @@ Value  getRefAssignFunc();
 Value  create_null_check_function();
 void   set_ret_type(Node *node);
 void **resize_array(void **array, int *len, int pos, int element_size);
+void set_debug_location(Token *token);
