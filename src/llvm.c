@@ -127,7 +127,7 @@ void _const_value(Token *token)
    TypeRef   type      = get_llvm_type(token);
    long long value     = 0;
    char     *processed = NULL;
-   char      name[20];
+   char      name[200];
 
    switch (token->type)
    {
