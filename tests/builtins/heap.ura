@@ -2,12 +2,10 @@ proto fn write(fd int, ptr chars, len int) int
 proto fn strcpy(dist chars, src chars) void
 proto fn strlen(str chars) int
 proto fn free(str chars) void
-proto fn printf(fmt chars, ...) int
 
 main():
-    str array[char] = heap[char](20)
+    str chars = heap[char](20)
     strcpy(str, "Hello world\n")
-    str[0] = 'r'
-    printf(str)
+    write(1, str, strlen("Hello world\n"))
     free(str)
     return 0
