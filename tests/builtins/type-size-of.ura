@@ -1,0 +1,7 @@
+use "@/io"
+
+main():
+    type chars = typeof("hello world\n")
+    size int = sizeof(type)
+    printf("type %s, size %d\n", type, size)
+    return 0

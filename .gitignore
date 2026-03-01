@@ -1,8 +1,24 @@
-**/ura
-**/*.dSYM
-**/*/*.dSYM
-**/*.out
+# Compiler build output
+build/
+
+# Generated files
 **/*.s
-**/.DS_Store
-*/.DS_Store
+**/*.out
+**/*.dSYM
+
+# macOS
 .DS_Store
+**/.DS_Store
+
+# Test generated IR (keep expected .ll, ignore build/ subdirs)
+tests/**/build/
+
+# LLVM sandbox build
+llvm/build/
+
+# Src build
+src/build/
+
+# Others
+examples.ura
+.vscode

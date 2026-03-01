@@ -3,7 +3,7 @@ proto fn strcpy(dist chars, src chars) void
 proto fn strlen(str chars) int
 
 main():
-    str chars = stack(20) as chars
-    strcpy(str, "Hello world")
-    write(1, str, strlen("Hello world"))
+    str chars = stack[char](20)
+    strcpy(str, "Hello world\n")
+    write(1, str, strlen("Hello world\n"))
     return 0
