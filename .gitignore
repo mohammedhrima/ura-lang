@@ -18,3 +18,7 @@ llvm/build/
 
 # Src build
 src/build/
+
+# Others
+examples.ura
+.vscode
