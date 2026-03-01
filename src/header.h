@@ -145,14 +145,14 @@ enum Type
    AND, OR, NOT,
    // Punctuation and Syntax
    LPAR, RPAR, LBRA, RBRA, COMA, DOT,
-   DOTS, ACCESS, AS, TYPEOF,
+   DOTS, ACCESS, AS,
    // Control Flow
    RETURN, IF, ELIF, ELSE, END_IF,
    WHILE, CONTINUE, BREAK, END_BLOC,
    // Functions
    FDEC, FCALL, PROTO, ARGS, CHILDREN,
    // Built-ins
-   STACK, DEFAULT, SYNTAX_ERROR,
+   STACK, TYPEOF, SIZEOF, DEFAULT, SYNTAX_ERROR,
    // end
    END,
 };
