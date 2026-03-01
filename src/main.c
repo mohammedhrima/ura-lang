@@ -290,7 +290,7 @@ Node *cast_node()
       node = new_node(token);
       Token *to   = find(DATA_TYPES, 0);
       if (check(to == NULL || !to->is_dec, "expected data type after to"))
-         return syntax_error_node();
+         return syntax_error();
       to->is_dec  = false;
       node->right = new_node(to);
       node->left  = left;
@@ -326,7 +326,7 @@ Node *func_dec(Node *node)
    //    + children     : code block
    Token *fname = find(ID, 0);
    if (check(!fname, "expected identifier after fn declaration"))
-      return syntax_error_node();
+      return syntax_error();
 
    // Check if we're inside a struct scope
    Token *struct_owner = NULL;
@@ -372,7 +372,7 @@ Node *func_dec(Node *node)
       {
          Token *name = find(ID, 0);
          if (check(!name, "expected identifier in function argument %s", fname->name))
-            return syntax_error_node();
+            return syntax_error();
 
          Token *data_type = find(DATA_TYPES, ID, 0);
          bool   is_ref    = find(REF, 0) != NULL;
@@ -496,18 +496,31 @@ Node *symbol(Token *token)
    Node *node;
    Node *st_dec = NULL;
    // value example: "hello", 1, 'c'
-   if (token->type != ID && !token->is_dec) return new_node(token);
+   if (token->type != ID && !token->is_dec && !token->name) return new_node(token);
    // int, char, chars, etc...
    if (token->is_dec)
    {
-      check(1, "unxpected token %s", to_string(token->type));
-      return syntax_error_node();
+      check(1, "unexpected token %s", to_string(token->type));
+      return syntax_error();
    }
    // variable declaration
    if (token->type == ID && is_data_type(tokens[exe_pos]))
    {
       Token *tmp    = find(DATA_TYPES, 0); // skip data type
       bool   is_ref = find(REF, 0) != NULL;
+      if (tmp->type == ARRAY_TYPE)
+      {
+         expect_token(LBRA, "expected [ after array");
+         int    depth     = 1;
+         while (find(LBRA, 0)) depth++;
+         Token *elem_type = find(DATA_TYPES, ID, 0);
+         check(!elem_type, "expected element type in array type");
+         for (int i = 0; i < depth; i++)
+            expect_token(RBRA, "expected ] in array type");
+         tmp->Array.elem_type = elem_type->type;
+         tmp->Array.depth     = depth;
+         tmp->retType         = ARRAY_TYPE;
+      }
       setName(tmp, token->name);
       tmp->is_dec = true;
       tmp->is_ref = is_ref;
@@ -590,7 +603,7 @@ Node *struct_def(Node *node)
          {
             exit_scoop();
             free(methods);
-            return syntax_error_node();
+            return syntax_error();
          }
          id_node->token->is_dec = false;
          add_child(node, id_node);
@@ -677,6 +690,31 @@ Node *prime_node()
    Token *token;
    if ((token = find(ID, DATA_TYPES, 0)))
       return symbol(token);
+   else if ((token = find(STACK, HEAP, 0)))
+   {
+      expect_token(LBRA, "expected [ after stack");
+
+      int depth = 1;
+      while (find(LBRA, 0)) depth++;
+
+      Token *elem_type = find(DATA_TYPES, ID, 0);
+      check(!elem_type, "expected element type in stack");
+
+      for (int i = 0; i < depth; i++)
+         expect_token(RBRA, "expected ] in stack type");
+
+      expect_token(LPAR, "expected ( after stack[type]");
+
+      token->retType         = ARRAY;
+      token->Array.elem_type = elem_type->type;
+      token->Array.depth     = depth;
+
+      // stack[[char]](10)
+      Node *node = new_node(token);
+      node->left = expr_node();
+      expect_token(RPAR, "expected ) after stack size");
+      return node;
+   }
    if ((token = find(TYPEOF, SIZEOF, 0)))
    {
       char *msg  = token->type == TYPEOF ? "typeof" : "sizeof";
@@ -746,7 +784,7 @@ Node *prime_node()
       return node;
    }
    check(1, "Unexpected token has type %s", to_string(tokens[exe_pos]->type));
-   return syntax_error_node();
+   return syntax_error();
 }
 
 void unuse(Node *node)
@@ -1089,6 +1127,24 @@ Value allocate_stack(Value size, TypeRef elementType, char *name)
    return LLVMBuildGEP2(builder, elementType, array_alloca, indices, 2, name);
 }
 
+Value allocate_heap(Value count, TypeRef elementType, char *name)
+{
+   Value calloc_func = _get_named_function("calloc");
+   if (!calloc_func)
+   {
+      TypeRef params[]  = {i64, i64};
+      TypeRef func_type = _function_type(p8, params, 2, 0);
+      calloc_func = _add_function("calloc", func_type);
+   }
+   TargetData td          = _get_module_data_layout(module);
+   size_t     elem_size   = _abi_size_of_type(td, elementType);
+   Value      count_i64   = LLVMBuildZExt(builder, count, i64, "count");
+   Value      size_i64    = _const_int(i64, elem_size, 0);
+   Value      args[]      = {count_i64, size_i64};
+   TypeRef    calloc_type = _global_get_value_type(calloc_func);
+   return _build_call2(calloc_type, calloc_func, args, 2, name);
+}
+
 Value get_store_ptr(Token *token)
 {
    // Regular variable - return its alloca'd address
@@ -1160,7 +1216,7 @@ void gen_asm(Node *node)
       }
       break;
    }
-   case INT: case CHARS: case CHAR: case BOOL:
+   case INT: case CHARS: case CHAR: case BOOL: case ARRAY_TYPE:
    {
       if (node->token->is_dec)
       {
@@ -1282,19 +1338,42 @@ void gen_asm(Node *node)
    }
    case STACK:
    {
-      gen_asm(node->left->children[0]);
-      load_if_necessary(node->left->children[0]);
-      Value elem = node->left->children[0]->token->llvm.elem;
+      gen_asm(node->left);
+      load_if_necessary(node->left);
+      Value elem_count = node->left->token->llvm.elem;
 
-      node->token->llvm.elem   = allocate_stack(elem, i8, "stack");
-      node->token->llvm.is_set = true;
+      // base type
+      Token   tmp    = {.type = node->token->Array.elem_type};
+      TypeRef elem_t = get_llvm_type(&tmp);
 
-      // Store size in the token itself
-      node->token->llvm.array_size = elem;
-      // if (LLVMIsConstant(elem)) {
-      //    curr->Array.const_size = LLVMConstIntGetZExtValue(elem);
-      // }
+      // depth > 1 means each element is a pointer
+      // [char]=i8, [[char]]=ptr, [[[char]]]=ptr (ptr to ptr semantically)
+      if (node->token->Array.depth > 1)
+         elem_t = p8; // pointer-sized elements
 
+      TargetData td        = _get_module_data_layout(module);
+      size_t     elem_size = _abi_size_of_type(td, elem_t);
+      Value      total     = _build_mul(elem_count, _const_int(i32, (unsigned)elem_size, 0), "bytes");
+
+      node->token->llvm.elem       = allocate_stack(total, elem_t, "stack");
+      node->token->llvm.is_set     = true;
+      node->token->llvm.array_size = elem_count;
+      break;
+   }
+   case HEAP:
+   {
+      gen_asm(node->left);
+      load_if_necessary(node->left);
+      Value   elem_count = node->left->token->llvm.elem;
+
+      Token   tmp        = {.type = node->token->Array.elem_type};
+      TypeRef elem_t     = get_llvm_type(&tmp);
+      if (node->token->Array.depth > 1)
+         elem_t = p8;
+
+      node->token->llvm.elem       = allocate_heap(elem_count, elem_t, "heap");
+      node->token->llvm.is_set     = true;
+      node->token->llvm.array_size = elem_count;
       break;
    }
    case FCALL:
@@ -1868,7 +1947,7 @@ void gen_ir(Node * node)
       node->token->used++;
       break;
    }
-   case INT: case BOOL: case CHAR:
+   case INT: case BOOL: case CHAR: case ARRAY_TYPE:
    case FLOAT: case LONG: case CHARS: case PTR: case VOID:
    {
       if (node->token->is_dec) new_variable(node->token);
@@ -1989,15 +2068,16 @@ void gen_ir(Node * node)
    {
       if (strcmp(node->token->name, "stack") == 0)
       {
-         node->token->retType = CHARS;
-         node->token->type    = STACK;
+         check(1, "error");
+         // node->token->retType = CHARS;
+         // node->token->type    = STACK;
 
-         Node  *call_args = node->left;
-         Node  *carg      = call_args->children[0];
-         gen_ir(carg);
-         Token *src       = carg->token;
-         if (check(src->type == ID, "Indeclared variable %s", carg->token->name))
-            break;
+         // Node  *call_args = node->left;
+         // Node  *carg      = call_args->children[0];
+         // gen_ir(carg);
+         // Token *src       = carg->token;
+         // if (check(src->type == ID, "Indeclared variable %s", carg->token->name))
+         //    break;
       }
       // else if (strcmp(node->token->name, "stack") == 0)
       // {
@@ -2129,6 +2209,12 @@ void gen_ir(Node * node)
       switch (node->left->token->type)
       {
       case CHARS: retType = CHAR; break;
+      // TODO: handle multiple [[[]]] 
+      case STACK: case HEAP: case ARRAY_TYPE: 
+      {
+         retType = node->left->token->Array.elem_type;
+         break;
+      }
       default:
          check(1, "handle this case %s", to_string(node->left->token->type));
          break;
@@ -2160,6 +2246,14 @@ void gen_ir(Node * node)
          node->token->Int.value = 0; // placeholder
       }
       node->token->used++;
+      break;
+   }
+   case STACK: case HEAP:
+   {
+      // TODO; left must be an integer
+      gen_ir(node->left);
+      node->token->used++;
+      node->left->token->used++;
       break;
    }
    case STRUCT_DEF:
@@ -2394,6 +2488,7 @@ Token *parse_token(char *filename, int line, char *input, int s, int e,  Type ty
       {
          {"and", AND}, {"or", OR}, {"is", EQUAL},
          {"not", NOT}, {"typeof", TYPEOF}, {"sizeof", SIZEOF},
+         {"stack", STACK}, {"heap", HEAP}, {"array", ARRAY_TYPE},
          {0, 0},
       };
       for (i = 0; keywords2[i].name; i++)
@@ -2588,22 +2683,6 @@ bool includes(Type to_find, ...)
    return false;
 }
 
-Token *expect_token(Type type, char *error_msg, ...)
-{
-   Token *token = find(type, 0);
-   if (!token)
-   {
-      va_list args;
-      va_start(args, error_msg);
-      char    buffer[256];
-      vsnprintf(buffer, sizeof(buffer), error_msg, args);
-      va_end(args);
-      check(1, "%s", buffer);
-      return syntax_error_token();
-   }
-   return token;
-}
-
 void setName(Token *token, char *name)
 {
    if (token->name) free(token->name);
@@ -2633,10 +2712,11 @@ char *to_string(Type type)
       [DOTS]       = "DOTS",  [PROTO] = "PROT", [VARIADIC] = "VAR",
       [TYPEOF]     = "TYPEOF", [SIZEOF] = "SIZEOF", [ARGS] = "ARGS",
       [CHILDREN]   = "CHILDREN",
-      [AS]         = "AS", [STACK] = "STCK", [DEFAULT] = "DEFAULT",
+      [AS]         = "AS", [STACK] = "STACK", [HEAP] = "HEAP",
+      [DEFAULT]    = "DEFAULT", [ARRAY_TYPE] = "ARRAY_TYPE",
       //[TRY] = "TRY", [CATCH] = "CATCH", [THROW] = "THROW", [USE] = "USE",
       [STRUCT_DEF] = "STRUCT_DEF", [STRUCT_CALL] = "STRUCT_CALL",
-      [LBRA]       = "LBRA", [RBRA] = "RBRA",
+      [LBRA]       = "LBRA", [RBRA] = "RBRA", [ARRAY] = "ARRAY",
       [DOT]        = "DOT", [SYNTAX_ERROR] = "SYNTAX_ERROR",
    };
 
@@ -2702,17 +2782,13 @@ Node *get_struct(char *name)
    return NULL;
 }
 
-Token *syntax_error_token()
+Node *syntax_error()
 {
    found_error = true;
-   static Token *token;
-   if (token == NULL) token = new_token(SYNTAX_ERROR, -1);
-   return token;
-}
-
-Node *syntax_error_node()
-{
-   return new_node(syntax_error_token());
+   static Node *node;
+   if (node == NULL) node = new_node(new_token(SYNTAX_ERROR, -1));
+   return node;
+   return node;
 }
 
 // IR GENERATION
@@ -2746,7 +2822,7 @@ Token *get_variable(char *name)
             return scoop->variables[i];
    }
    check(1, "%s not found", name);
-   return syntax_error_token();
+   return syntax_error()->token;
 }
 
 void add_function(Node *b, Node *node)
@@ -2778,7 +2854,7 @@ Node *get_function(char *name)
             return scoop->functions[i];
    }
    check(1, "'%s' Not found", name);
-   return syntax_error_node();
+   return syntax_error();
 }
 
 // ASM GENERATION
