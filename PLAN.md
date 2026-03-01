@@ -97,6 +97,8 @@
             ret i32 11
             br label %end_if
 
+- later use "direnv" to instead of config.sh
+
 - allocate function paramater only if it got modified inside the function
 - use llvm optimizer: opt -O2
 
