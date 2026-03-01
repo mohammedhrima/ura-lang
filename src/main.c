@@ -677,14 +677,15 @@ Node *prime_node()
    Token *token;
    if ((token = find(ID, DATA_TYPES, 0)))
       return symbol(token);
-   if ((token = find(TYPEOF, 0)))
+   if ((token = find(TYPEOF, SIZEOF, 0)))
    {
-      node = new_node(token);
-      Token *tk_type = find(DATA_TYPES, 0);
-      check(!tk_type, "Expected data type after TYPEOF");
-      node->token->type        = CHARS;
-      node->token->retType     = CHARS;
-      node->token->Chars.value = strdup(to_string(tk_type->type));
+      char *msg  = token->type == TYPEOF ? "typeof" : "sizeof";
+      Type  type = token->type == TYPEOF ? CHARS : INT;
+      node                 = new_node(token);
+      expect_token(LPAR, "%s: Expected (", msg);
+      node->left           = prime_node();
+      expect_token(RPAR, "%s: Expected )", msg);
+      node->token->retType = type;
       return node;
    }
    if ((token = find(NOT, 0)))
@@ -1812,6 +1813,25 @@ void gen_asm(Node *node)
 
       break;
    }
+   case TYPEOF: case SIZEOF:
+   {
+      Token *type_tok = node->left->token;
+      if (node->token->type == TYPEOF)
+      {
+         node->token->llvm.elem      = _const_chars(node->token->Chars.value, "typeof");
+         node->token->llvm.is_loaded = true;
+      }
+      else
+      {
+         TypeRef    type = get_llvm_type(type_tok);
+         TargetData td   = _get_module_data_layout(module);
+         size_t     size = _abi_size_of_type(td, type);
+         node->token->Int.value      = (long long)size;
+         node->token->llvm.elem      = _const_int(i32, size, 0);
+         node->token->llvm.is_loaded = true;
+      }
+      break;
+   }
    default:
       todo(1, "handle this case %s", to_string(node->token->type));
       break;
@@ -1979,6 +1999,18 @@ void gen_ir(Node * node)
          if (check(src->type == ID, "Indeclared variable %s", carg->token->name))
             break;
       }
+      // else if (strcmp(node->token->name, "stack") == 0)
+      // {
+      //    node->token->retType = CHARS;
+      //    node->token->type    = STACK;
+
+      //    Node  *call_args = node->left;
+      //    Node  *carg      = call_args->children[0];
+      //    gen_ir(carg);
+      //    Token *src       = carg->token;
+      //    if (check(src->type == ID, "Indeclared variable %s", carg->token->name))
+      //       break;
+      // }
       else
       {
          // if (node->token->is_method_call && node->left && node->left->cpos > 0)
@@ -2109,6 +2141,25 @@ void gen_ir(Node * node)
       gen_ir(node->left);
       node->token->retType = node->left->token->type;
       node->left->token->used++;
+      break;
+   }
+   case TYPEOF: case SIZEOF:
+   {
+      gen_ir(node->left);
+      Token *type_tok = node->left->token;
+      Type   type     = type_tok->type ? type_tok->type : type_tok->retType;
+
+      if (node->token->type == TYPEOF)
+      {
+         node->token->retType     = CHARS;
+         node->token->Chars.value = strdup(to_string(type));
+      }
+      else
+      {
+         node->token->retType   = INT;
+         node->token->Int.value = 0; // placeholder
+      }
+      node->token->used++;
       break;
    }
    case STRUCT_DEF:
@@ -2342,7 +2393,7 @@ Token *parse_token(char *filename, int line, char *input, int s, int e,  Type ty
       struct { char *name; Type type; } keywords2[] =
       {
          {"and", AND}, {"or", OR}, {"is", EQUAL},
-         {"not", NOT}, {"typeof", TYPEOF},
+         {"not", NOT}, {"typeof", TYPEOF}, {"sizeof", SIZEOF},
          {0, 0},
       };
       for (i = 0; keywords2[i].name; i++)
@@ -2563,29 +2614,30 @@ char *to_string(Type type)
 {
    char *res[END + 1] =
    {
-      [ID]          = "ID", [CHAR] = "CHAR", [CHARS] = "CHARS", [VOID] = "VOID",
-      [INT]         = "INT", [BOOL] = "BOOL", [LONG] = "LONG", [FLOAT] = "FLOAT",
-      [FDEC]        = "FDEC",
-      [FCALL]       = "CALL", [END] = "END", [LPAR] = "LPAR", [RPAR] = "RPAR",
-      [IF]          = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
-      [WHILE]       = "WHILE", [BREAK] = "BRK", [CONTINUE] = "CONT",
-      [RETURN]      = "RET",
-      [ADD]         = "ADD",
-      [SUB]         = "SUB", [MUL] = "MUL", [DIV] = "DIV", [ASSIGN] = "ASSIGN",
-      [ADD_ASSIGN]  = "ADD_ASS", [SUB_ASSIGN] = "SUB_ASS",
-      [MUL_ASSIGN]  = "MUL_ASS", [DIV_ASSIGN] = "DIV_ASS",
-      [MOD_ASSIGN]  = "MOD_ASS", [ACCESS] = "ACC",
-      [MOD]         = "MOD", [COMA] = "COMA", [REF] = "REF",
-      [EQUAL]       = "EQ", [NOT_EQUAL] = "NEQ", [LESS] = "LT",
-      [GREAT]       = "GT", [LESS_EQUAL] = "LE", [NOT] = "NOT",
-      [GREAT_EQUAL] = "GE", [AND] = "AND", [OR] = "OR",
-      [DOTS]        = "DOTS",  [PROTO] = "PROT", [VARIADIC] = "VAR",
-      [TYPEOF]      = "TYPEOF", [ARGS] = "ARGS", [CHILDREN] = "CHILDREN",
-      [AS]          = "AS", [STACK] = "STCK", [DEFAULT] = "DEFAULT",
+      [ID]         = "ID", [CHAR] = "CHAR", [CHARS] = "CHARS", [VOID] = "VOID",
+      [INT]        = "INT", [BOOL] = "BOOL", [LONG] = "LONG", [FLOAT] = "FLOAT",
+      [FDEC]       = "FDEC",
+      [FCALL]      = "CALL", [END] = "END", [LPAR] = "LPAR", [RPAR] = "RPAR",
+      [IF]         = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
+      [WHILE]      = "WHILE", [BREAK] = "BRK", [CONTINUE] = "CONT",
+      [RETURN]     = "RET",
+      [ADD]        = "ADD",
+      [SUB]        = "SUB", [MUL] = "MUL", [DIV] = "DIV", [ASSIGN] = "ASSIGN",
+      [ADD_ASSIGN] = "ADD_ASS", [SUB_ASSIGN] = "SUB_ASS",
+      [MUL_ASSIGN] = "MUL_ASS", [DIV_ASSIGN] = "DIV_ASS",
+      [MOD_ASSIGN] = "MOD_ASS", [ACCESS] = "ACC",
+      [MOD]        = "MOD", [COMA] = "COMA", [REF] = "REF",
+      [EQUAL]      = "EQ", [NOT_EQUAL] = "NEQ", [LESS] = "LT",
+      [GREAT]      = "GT", [LESS_EQUAL] = "LE", [NOT] = "NOT",
+      [GREAT_EQUAL]= "GE", [AND] = "AND", [OR] = "OR",
+      [DOTS]       = "DOTS",  [PROTO] = "PROT", [VARIADIC] = "VAR",
+      [TYPEOF]     = "TYPEOF", [SIZEOF] = "SIZEOF", [ARGS] = "ARGS",
+      [CHILDREN]   = "CHILDREN",
+      [AS]         = "AS", [STACK] = "STCK", [DEFAULT] = "DEFAULT",
       //[TRY] = "TRY", [CATCH] = "CATCH", [THROW] = "THROW", [USE] = "USE",
-      [STRUCT_DEF]  = "STRUCT_DEF", [STRUCT_CALL] = "STRUCT_CALL",
-      [LBRA]        = "LBRA", [RBRA] = "RBRA",
-      [DOT]         = "DOT", [SYNTAX_ERROR] = "SYNTAX_ERROR",
+      [STRUCT_DEF] = "STRUCT_DEF", [STRUCT_CALL] = "STRUCT_CALL",
+      [LBRA]       = "LBRA", [RBRA] = "RBRA",
+      [DOT]        = "DOT", [SYNTAX_ERROR] = "SYNTAX_ERROR",
    };
 
    if (!res[type])
@@ -3191,15 +3243,8 @@ Type get_ret_type(Node *node)
       return left_type;
    }
    case ID: return token->type != ID ? token->type : 0;
-   case IF: case ELIF: case ELSE: case WHILE:
-   case BREAK: case CONTINUE:
-   case STRUCT_DEF:
-   case FDEC: case PROTO: case ARGS:
-   case STACK:
-      return 0;
-
    default:
-      todo(1, "get_ret_type: unhandled case [%s]", to_string(token->type));
+      todo(1, "handled this case [%s]", to_string(token->type));
       return 0;
    }
 }
