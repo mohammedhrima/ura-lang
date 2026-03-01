@@ -208,6 +208,49 @@ llvm_build() {
 }
 
 # =========================================================
+#  Examples Generation
+# =========================================================
+examples() {
+    echo -e "${YELLOW}Generating examples.ura...${RESET}"
+    
+    local output_file="$ROOT_DIR/examples.ura"
+    
+    # Create header
+    cat > "$output_file" << 'EOF'
+// ============================================================================
+// URA LANGUAGE EXAMPLES
+// ============================================================================
+// This file contains all test examples from the Ura language test suite.
+// Each section demonstrates different features and capabilities of the language.
+// ============================================================================
+
+EOF
+
+    # Find and process all .ura files
+    local count=0
+    for file in $(find "$TESTS_DIR" -name "*.ura" -type f | sort); do
+        local category=$(dirname "$file" | sed "s|$TESTS_DIR/||")
+        local filename=$(basename "$file" .ura)
+        local relative_path=$(echo "$file" | sed "s|$ROOT_DIR/||")
+        
+        cat >> "$output_file" << EOF
+
+// ============================================================================
+// $(echo $category | tr '[:lower:]' '[:upper:]'): $filename
+// File: $relative_path
+// ============================================================================
+
+EOF
+        cat "$file" >> "$output_file"
+        echo "" >> "$output_file"
+        ((count++))
+    done
+    
+    echo -e "${GREEN}Generated examples.ura with $count examples${RESET}"
+    echo -e "  Output: $output_file"
+}
+
+# =========================================================
 #  Formatting
 # =========================================================
 indent() {
@@ -248,6 +291,7 @@ help() {
     echo -e "  ${GREEN}build${RESET}                        Build the ura compiler"
     echo -e "  ${GREEN}copy <folder> <name>${RESET}         Save src/file.ura + its IR to tests/<folder>/<name>"
     echo -e "  ${GREEN}tests [folder]${RESET}               Run all tests (optionally filter by folder)"
+    echo -e "  ${GREEN}examples${RESET}                     Generate examples.ura from all test files"
     echo -e "  ${GREEN}indent${RESET}                       Format all .c and .h files in src/"
     echo -e "  ${GREEN}update${RESET}                       Reload config.sh"
     echo -e "  ${GREEN}llvm_build${RESET}                   Build the LLVM sandbox"

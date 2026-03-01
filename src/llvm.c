@@ -62,7 +62,7 @@ void load_if_necessary(Node *node)
 
    if (includes(token->type, MATH_TYPE, 0) || (includes(token->type, DATA_TYPES, 0) && !token->name))
       return;
-   if (token->llvm.is_loaded || includes(token->type, STACK, 0))
+   if (token->llvm.is_loaded || includes(token->type, STACK, HEAP, 0))
       return;
    if (token->type == FCALL)
       return;
@@ -94,6 +94,14 @@ TypeRef get_llvm_type(Token *token)
       return token->llvm.stType;
    if (type == STRUCT_CALL)
       return get_llvm_type(token->Struct.ptr->token);
+   if (includes(type, ARRAY, ARRAY_TYPE, 0))
+   {
+      Token   tmp  = {.type = token->Array.elem_type};
+      TypeRef base = get_llvm_type(&tmp);
+      for (int i = 0; i < token->Array.depth; i++)
+         base = _pointer_type(base, 0);
+      return base;
+   }
    // if (type == FCALL)
    //    return get_llvm_type(token->Fcall.ptr->token);
    TypeRef res[END] = {
@@ -131,7 +139,7 @@ void _const_value(Token *token)
 
    switch (token->type)
    {
-   case INT: value  = (long long)token->Int.value; break;
+   case INT:  value = (long long)token->Int.value; break;
    case BOOL: value = (long long)token->Bool.value; break;
    case CHAR: value = (int)token->Char.value; break;
    case CHARS:
@@ -146,35 +154,14 @@ void _const_value(Token *token)
          {
             switch (token->Chars.value[i + 1])
             {
-            case 'n':
-               processed[j++] = '\n';
-               i++;
-               break;
-            case 't':
-               processed[j++] = '\t';
-               i++;
-               break;
-            case 'r':
-               processed[j++] = '\r';
-               i++;
-               break;
-            case '0':
-               processed[j++] = '\0';
-               i++;
-               break;
-            case '\\':
-               processed[j++] = '\\';
-               i++;
-               break;
-            case '\"':
-               processed[j++] = '\"';
-               i++;
-               break;
-            case '\'':
-               processed[j++] = '\'';
-               i++;
-               break;
-            default: processed[j++] = token->Chars.value[i]; break;
+            case 'n': processed[j++]  = '\n'; i++; break;
+            case 't': processed[j++]  = '\t'; i++; break;
+            case 'r': processed[j++]  = '\r'; i++; break;
+            case '0': processed[j++]  = '\0'; i++; break;
+            case '\\': processed[j++] = '\\'; i++; break;
+            case '\"': processed[j++] = '\"'; i++; break;
+            case '\'': processed[j++] = '\''; i++; break;
+            default: processed[j++]   = token->Chars.value[i]; break;
             }
          }
          else
@@ -439,11 +426,8 @@ void set_debug_location(Token *token)
    if (!token || !di_builder || !di_current_scope) return;
    if (!includes(token->type, ACCESS, FDEC, PROTO, FCALL, 0)) return;
    LLVMMetadataRef loc = LLVMDIBuilderCreateDebugLocation(
-      context,
-      token->line,
-      0,
-      di_current_scope,
-      NULL
+      context, token->line,0,
+      di_current_scope, NULL
       );
    LLVMSetCurrentDebugLocation2(builder, loc);
 }
