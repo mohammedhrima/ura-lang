@@ -1,51 +1,24 @@
-- add attribute "int used" in Token struct to check how manny times a function or variables is used so it can be removed if used is still 0 in the optimization step
-
-+ forbid math operations for char
+- forbid math operations for char
 
 - declare:
-   + int, float, long, double, char, chars
-   - arrays
-   - reference to variables
    - global variables
    - const / immutable variables
    - type inference
    - modules / namespaces
 
 - operators:
-   + math operators (+, -, *, /, %, **)
-   + logic operators (&&, ||, !, <, <=, >, >=, ==, !=)
-   - override operation in structs
    - [] (index operator)
    - assignment operators (+=, -=, *=, /=, etc.)
 
 - conditions, loops:
-   + while
-   + break, continue
-   + if, elif, else
    - for loop
    - switch/case
    - try/catch
 
-- assignment:
-   + id = id
-   + id = value
-   + id = func return
-   - id = ref
-   - ref = id
-   - ref = value
-   - ref = ref
-   - ref = func return
-
 - functions:
    + built in functions:
       + output
-   + declare function
-   + function call
-   + function return
-   + function takes arguments
-   - variadic functions
    - polymorphism (overloading)
-   - recursion optimization (tail call)
 
 - structs:
    + structs
@@ -91,16 +64,7 @@
    - threads
    - atomic operations
 
-+ skip br in if: in case last instruction was ret:
-    + example:
-        if:
-            ret i32 11
-            br label %end_if
-
 - later use "direnv" to instead of config.sh
-
-- allocate function paramater only if it got modified inside the function
-- use llvm optimizer: opt -O2
 
 - projects:
    - 42 libft

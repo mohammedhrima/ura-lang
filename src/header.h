@@ -61,6 +61,16 @@ typedef struct _IO_FILE *File;
         if (check_error(FILE, FUNC, LINE, cond, fmt, ## __VA_ARGS__)) \
         exit(1);
 #define seg() raise(SIGSEGV)
+#define expect_token(type, fmt, ...) \
+        { \
+           Token *find_token = find(type, 0); \
+           if (!find_token) \
+           { \
+              check(1, fmt, ## __VA_ARGS__); \
+              return syntax_error(); \
+           } \
+        }
+
 
 #if DEBUG
 #define debug(fmt, ...) debug_(fmt, ## __VA_ARGS__)
@@ -71,7 +81,7 @@ typedef struct _IO_FILE *File;
         } while (0)
 #endif
 
-#define DATA_TYPES INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT
+#define DATA_TYPES INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT, ARRAY_TYPE
 #define LOGIC_TYPE AND, OR
 #define MATH_TYPE ADD, SUB, MUL, DIV, MOD
 
@@ -130,7 +140,7 @@ enum Type
    ID = 1,
    // Data types
    VOID, INT, FLOAT, LONG, SHORT, BOOL, CHAR,
-   CHARS, PTR, VARIADIC, REF,
+   CHARS, PTR, VARIADIC, REF, ARRAY, ARRAY_TYPE,
    // Structures
    STRUCT_DEF, STRUCT_CALL,
    // Assignment
@@ -152,7 +162,7 @@ enum Type
    // Functions
    FDEC, FCALL, PROTO, ARGS, CHILDREN,
    // Built-ins
-   STACK, TYPEOF, SIZEOF, DEFAULT, SYNTAX_ERROR,
+   STACK, HEAP, TYPEOF, SIZEOF, DEFAULT, SYNTAX_ERROR,
    // end
    END,
 };
@@ -228,6 +238,7 @@ struct Token
       struct { char *value;} Chars;
       struct { char value;} Char;
       struct { int index; Node *ptr; } Struct;
+      struct { Type elem_type; int depth; } Array;
       struct { Node *ptr; } Fcall;
       struct { Token *ptr; Token *start; Token *end; } Statement;
       struct { Type type; char *name; } Catch;
@@ -303,6 +314,8 @@ extern LLVMMetadataRef  di_current_scope;
 char *open_file(char *filename);
 char *resolve_path(char *path);
 bool  add_file(char *filename);
+Node *syntax_error();
+
 
 // ----------------------------------------------------------------------------
 // Memory
@@ -334,7 +347,6 @@ bool   includes(Type to_find, ...);
 void   setName(Token *token, char *name);
 char  *to_string(Type type);
 Token *find(Type type, ...);
-Token *expect_token(Type type, char *error_msg, ...);
 bool   within(int space);
 bool   is_data_type(Token *token);
 
@@ -343,8 +355,7 @@ Node  *new_struct(Node *node);
 Node  *get_struct(char *name);
 Token *is_struct(Token *token);
 void   add_attribute(Token *obj, Token *attr);
-Node  *syntax_error_node();
-Token *syntax_error_token();
+Node  *syntax_error();
 
 Node *expr_node();
 Node *assign_node();
@@ -395,6 +406,7 @@ Value   _get_param_with_name(Token *fn, int index, char *name);
 void    _load(Token *to, Token *from);
 Value   _load2(Token *token);
 Value   allocate_stack(Value size, TypeRef elementType, char *name);
+Value allocate_heap(Value count, TypeRef elementType, char *name);
 bool    compatible(Token *left, Token *right);
 
 // ----------------------------------------------------------------------------
