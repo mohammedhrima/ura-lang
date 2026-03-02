@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura'
-source_filename = "/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/Personal/ura-lang/tests/builtins/printf.ura'
+source_filename = "/Users/hrimamohammed/Desktop/Personal/ura-lang/tests/builtins/printf.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 @STR0 = private unnamed_addr constant [13 x i8] c"hello world\0A\00", align 1
@@ -14,8 +14,6 @@ target triple = "arm64-apple-macosx16.0.0"
 @STR9 = private unnamed_addr constant [5 x i8] c"john\00", align 1
 @STR10 = private unnamed_addr constant [4 x i8] c"doe\00", align 1
 @STR11 = private unnamed_addr constant [18 x i8] c"full name: %s %s\0A\00", align 1
-
-declare i32 @puts(ptr)
 
 declare i32 @printf(ptr, i32, ...)
 
@@ -74,7 +72,7 @@ entry:
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "file.ura", directory: "/Users/hrimamohammed/Desktop/Personal/ura-lang/src")
+!3 = !DIFile(filename: "printf.ura", directory: "/Users/hrimamohammed/Desktop/Personal/ura-lang/tests/builtins")
 !4 = distinct !DISubprogram(name: "main", linkageName: "main", scope: null, file: !3, line: 4, type: !5, scopeLine: 4, spFlags: DISPFlagDefinition, unit: !2)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura'
-source_filename = "/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/Personal/ura-lang/tests/builtins/putchar.ura'
+source_filename = "/Users/hrimamohammed/Desktop/Personal/ura-lang/tests/builtins/putchar.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 declare i32 @write(i32, ptr, i32)
@@ -7,10 +7,10 @@ declare i32 @write(i32, ptr, i32)
 define i32 @putchar(i8 %c) !dbg !4 {
 entry:
   %c1 = alloca i8, align 1, !dbg !7
-  store i8 0, ptr %c1, align 1, !dbg !7
-  store i8 %c, ptr %c1, align 1, !dbg !7
   %str = alloca ptr, align 8, !dbg !7
   store ptr null, ptr %str, align 8, !dbg !7
+  store i8 0, ptr %c1, align 1, !dbg !7
+  store i8 %c, ptr %c1, align 1, !dbg !7
   %stack = alloca [2 x i8], align 1, !dbg !7
   %stack2 = getelementptr [2 x i8], ptr %stack, i32 0, i32 0, !dbg !7
   store ptr %stack2, ptr %str, align 8, !dbg !7
@@ -36,7 +36,7 @@ entry:
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "file.ura", directory: "/Users/hrimamohammed/Desktop/Personal/ura-lang/src")
+!3 = !DIFile(filename: "putchar.ura", directory: "/Users/hrimamohammed/Desktop/Personal/ura-lang/tests/builtins")
 !4 = distinct !DISubprogram(name: "putchar", linkageName: "putchar", scope: null, file: !3, line: 3, type: !5, scopeLine: 3, spFlags: DISPFlagDefinition, unit: !2)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

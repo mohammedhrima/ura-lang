@@ -1,0 +1,105 @@
+use "../utils"
+
+fn banner() void:
+    log("\033[0;32m")
+    log("  ██████╗██╗  ██╗ █████╗ ████████╗\n")
+    log(" ██╔════╝██║  ██║██╔══██╗╚══██╔══╝\n")
+    log(" ██║     ███████║███████║   ██║   \n")
+    log(" ██║     ██╔══██║██╔══██║   ██║   \n")
+    log(" ╚██████╗██║  ██║██║  ██║   ██║   \n")
+    log("  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   \n")
+    log("\033[0m")
+    log("\033[0;90m─────────────────────────────────\033[0m\n")
+    log("\033[0;32m  URA Chat Server  \033[0;90m│\033[0m port \033[0;33m17000\033[0m\n")
+    log("\033[0;90m─────────────────────────────────\033[0m\n\n")
+    return
+
+struct Server:
+    fd int
+    client_fd int
+    buf chars
+    rbuf chars
+
+    fn init() void:
+        self.fd        = socket(2, 1, 0)
+        if self.fd < 0:
+            log("failed to create server socket")
+            exit(1)
+        self.client_fd = 0
+        self.buf       = heap[char](1024)
+        self.rbuf      = heap[char](1024)
+        bzero(self.buf, 1024 as long)
+        bzero(self.rbuf, 1024 as long)
+
+    fn set_reuse() void:
+        opt chars = stack[char](4)
+        opt[0] = 1 as char
+        setsockopt(self.fd, 65535, 4, opt, 4)
+        setsockopt(self.fd, 65535, 512, opt, 4)
+
+    fn handle_client() void:
+        r int = 0
+        pid2 int = fork()
+        if pid2 == 0:
+            while True:
+                r = read(self.client_fd, self.buf, 1023)
+                if r <= 0:
+                    log_ts("\033[0;31m", "[server]", "client disconnected")
+                    break
+                self.buf[r] = 0 as char
+                log("\r\033[2K")
+                log_ts("\033[0;36m", "[client]", self.buf)
+                log("\033[0;32m[server]\033[0m > ")
+            return
+
+        log("\033[0;32m[server]\033[0m > ")
+        while True:
+            r = read(0, self.rbuf, 1023)
+            if r <= 0:
+                break
+            self.rbuf[r - 1] = 0 as char
+            write(self.client_fd, self.rbuf, r - 1)
+            log("\033[0;32m[server]\033[0m > ")
+
+        close(self.client_fd)
+
+main():
+    banner()
+
+    addr SockAddr
+    port int = 17000
+    addr.set_port(port)
+    addr.set_ip(0, 0, 0, 0)
+
+    srv Server
+    if srv.fd < 0:
+        log_ts("\033[0;31m", "[server]", "socket failed")
+        return 1
+
+    srv.set_reuse()
+
+    result int = bind(srv.fd, addr.data, 16)
+    if result < 0:
+        log_ts("\033[0;31m", "[server]", "bind failed")
+        return 1
+
+    listen(srv.fd, 5)
+    log_ts("\033[0;32m", "[server]", "listening on port 17000...")
+
+    while True:
+        srv.client_fd = accept(srv.fd, 0 as chars, 0 as chars)
+        if srv.client_fd < 0:
+            continue
+
+        log_ts("\033[0;32m", "[server]", "client connected")
+
+        pid int = fork()
+        if pid == 0:
+            close(srv.fd)
+            srv.handle_client()
+            return 0
+
+        close(srv.client_fd)
+
+    addr.clean()
+    return 0

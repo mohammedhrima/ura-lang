@@ -7,3 +7,5 @@ main():
     a int = 1
     foo(a)
     printf("<%d>\n",  a)
+
+

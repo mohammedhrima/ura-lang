@@ -1,0 +1,60 @@
+use "@/header"
+
+fn log(msg chars) void:
+    write(1, msg, strlen(msg))
+
+main():
+    fd int = socket(2, 1, 0)
+    if fd < 0:
+        log("\033[0;31m[client] socket failed\033[0m\n")
+        return 1
+
+    addr chars = calloc(16, 1)
+    addr[0] = 16 as char
+    addr[1] = 2 as char
+    addr[2] = 31 as char
+    addr[3] = 144 as char
+    addr[4] = 127 as char
+    addr[5] = 0 as char
+    addr[6] = 0 as char
+    addr[7] = 1 as char
+
+    result int = connect(fd, addr, 16)
+    if result < 0:
+        log("\033[0;31m[client] connect failed\033[0m\n")
+        return 1
+
+    log("\033[0;36m[client]\033[0m connected to server on port 8080\n")
+
+    buf chars = calloc(1024, 1)
+    rbuf chars = calloc(1024, 1)
+    r int = 0
+
+    pid int = fork()
+    if pid == 0:
+        while True:
+            r = read(fd, rbuf, 1023)
+            if r <= 0:
+                log("\033[0;31m[client]\033[0m server disconnected\n")
+                break
+            rbuf[r] = 0 as char
+            log("\r\033[2K")                        // clear current line (erases prompt)
+            log("\033[0;33m[server]\033[0m ")
+            log(rbuf)
+            log("\n")
+            log("\033[0;36m[client]\033[0m > ")    // reprint prompt
+        return 0
+
+    while True:
+        log("\033[0;36m[client]\033[0m > ")
+        r = read(0, buf, 1023)
+        if r <= 0:
+            break
+        buf[r - 1] = 0 as char
+        write(fd, buf, r - 1)
+
+    close(fd)
+    free(buf)
+    free(rbuf)
+    free(addr)
+    return 0

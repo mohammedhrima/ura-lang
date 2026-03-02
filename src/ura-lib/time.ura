@@ -5,7 +5,7 @@ proto fn clock() long
 
 // Time conversion
 proto fn gmtime(timer pointer) pointer
-proto fn localtime(timer pointer) pointer
+proto fn localtime(timer long ref) pointer
 proto fn mktime(timeptr pointer) long
 
 // Time formatting
