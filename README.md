@@ -173,10 +173,28 @@ main():
 | Category   | Operators                             |
 |------------|---------------------------------------|
 | Arithmetic | `+`  `-`  `*`  `/`  `%`              |
+| Bitwise    | `&`  `\|`  `^`  `~`  `<<`  `>>`      |
 | Comparison | `==` `!=` `<` `>` `<=` `>=` `is`     |
 | Logical    | `and` `or` `not` `&&` `\|\|` `!`     |
 | Assignment | `=` `+=` `-=` `*=` `/=` `%=`         |
 | Cast       | `as`                                  |
+
+**Bitwise operations:**
+
+```ura
+use "@/io"
+
+main():
+    a int = 60   // 0011 1100
+    b int = 13   // 0000 1101
+
+    printf("AND: %d\n", a & b)    // 12  (0000 1100)
+    printf("OR:  %d\n", a | b)    // 61  (0011 1101)
+    printf("XOR: %d\n", a ^ b)    // 49  (0011 0001)
+    printf("NOT: %d\n", ~a)       // -61 (two's complement)
+    printf("LEFT SHIFT:  %d\n", 1 << 3)   // 8
+    printf("RIGHT SHIFT: %d\n", 60 >> 2)  // 15
+```
 
 ---
 
@@ -273,6 +291,33 @@ main():
     print_point(p)
 ```
 
+**Struct methods:**
+
+Structs can have methods with a special `self` parameter that refers to the instance:
+
+```ura
+proto fn printf(fmt chars, ...) int
+
+struct User:
+    name array[char]
+    age int
+
+    fn init() void:
+        self.name = "new name"
+        self.age = 10
+
+    fn greet() void:
+        printf("hello from %s, age %d\n", self.name, self.age)
+
+main():
+    user User
+    user.greet()   // hello from new name, age 10
+```
+
+The `init()` method is a special constructor that runs automatically when a struct is declared.
+
+**Nested structs:**
+
 Structs can be nested at any depth:
 
 ```ura
@@ -293,6 +338,8 @@ main():
     dev.address.street = "Rue des Compilateurs"
     printf("%s lives in %s\n", dev.name, dev.address.city)
 ```
+
+**Struct references:**
 
 Struct references let functions modify the caller's data:
 
@@ -392,7 +439,70 @@ use "@/math"     // sqrt, pow, abs ...
 use "@/stdlib"   // atoi, rand, exit ...
 use "@/time"     // time, clock, difftime ...
 use "@/signals"  // signal, raise ...
+use "@/net"      // socket, bind, listen, accept, connect, send, recv ...
 use "@/header"   // imports all of the above at once
+```
+
+---
+
+### Networking
+
+Ura provides direct access to POSIX socket APIs through the `@/net` module:
+
+```ura
+use "@/header"
+
+main():
+    server_fd int = socket(2, 1, 0)  // AF_INET, SOCK_STREAM, 0
+    if server_fd < 0:
+        printf("socket failed\n")
+        return 1
+
+    port int = 8080
+    addr chars = calloc(16, 1)
+    addr[0] = 2 as char      // sin_family low byte  (AF_INET = 2)
+    addr[1] = 0 as char      // sin_family high byte
+    addr[2] = 31 as char     // sin_port high byte   (8080 >> 8 = 31)
+    addr[3] = 144 as char    // sin_port low byte    (8080 & 255 = 144)
+    // addr[4..7] = 0 from calloc = INADDR_ANY
+
+    result int = bind(server_fd, addr, 16)
+    if result < 0:
+        printf("bind failed\n")
+        return 1
+
+    listen(server_fd, 5)
+    printf("listening on port 8080...\n")
+
+    buf chars = calloc(1024, 1)
+    client_fd int = accept(server_fd, 0 as chars, 0)
+    if client_fd >= 0:
+        r int = read(client_fd, buf, 1023)
+        if r > 0:
+            printf("received: %s\n", buf)
+            write(client_fd, "hello from server\n", 18)
+        close(client_fd)
+
+    free(buf)
+    free(addr)
+    return 0
+```
+
+**Real-world TCP examples:**
+
+The `projects/tcp/` directory contains complete working examples:
+
+- **basic/** - Simple chat room with bidirectional messaging between server and client
+- **cmd/** - Command-based server supporting `/help`, `/time`, `/whoami`, `/exit` commands
+- **utils.ura** - Shared utilities including `SockAddr` struct for address management and timestamped logging
+
+Run the examples:
+```bash
+# Terminal 1: Start server
+ura projects/tcp/basic/server.ura
+
+# Terminal 2: Connect client
+ura projects/tcp/basic/client.ura
 ```
 
 ---
@@ -623,7 +733,8 @@ The compiler generates a `build/` directory next to each source file. The execut
 | `build`             | Compile the Ura compiler                         |
 | `ura <file>`        | Compile and run a `.ura` file                    |
 | `tests [folder]`    | Run the test suite (optionally filter by folder) |
-| `copy <folder> <n>` | Save `src/file.ura` as a named test              |
+| `copy <file.ura>`   | Save a test (reads destination from first line)  |
+| `examples`          | Generate examples.ura from all test files        |
 | `indent`            | Auto-format all C source files                   |
 | `update`            | Reload `config.sh`                               |
 
@@ -652,7 +763,8 @@ It also defines these shell functions:
 |---------------------|----------------------------------------------------------------------------------------------------------|
 | `build`             | Compiles the compiler from source using clang with LLVM flags                                            |
 | `tests [folder]`    | Builds the compiler once, then compiles every `.ura` file in `tests/`. Pass a folder name to filter      |
-| `copy <folder> <n>` | Compiles `src/file.ura` and saves it as `tests/<folder>/<n>.ura`                                         |
+| `copy <file.ura>`   | Compiles a `.ura` file and saves it as a test (reads destination from first line comment)                |
+| `examples`          | Generates `examples.ura` containing all test files from the test suite                                   |
 | `indent`            | Formats all `.c` and `.h` files using uncrustify                                                         |
 | `update`            | Reloads `config.sh` without opening a new shell                                                          |
 
@@ -677,16 +789,27 @@ ura-lang/
 │       ├── math.ura
 │       ├── stdlib.ura
 │       ├── time.ura
-│       └── signals.ura
+│       ├── signals.ura
+│       └── net.ura         # socket, bind, listen, accept, connect
 ├── tests/
 │   ├── builtins/       # printf, puts, stack, heap, typeof, sizeof
 │   ├── data_types/     # references, arrays
 │   ├── fn/             # functions, parameters, return values
 │   ├── if/             # conditionals
 │   ├── while/          # loops, break, continue
-│   ├── op/             # arithmetic, logical, comparison operators
-│   ├── structs/        # structs, nested structs, struct references
+│   ├── op/             # arithmetic, logical, comparison, bitwise operators
+│   ├── structs/        # structs, nested structs, struct methods
+│   ├── net/            # TCP client/server examples
 │   └── libft/          # strlen, strcmp, putnbr, isalpha ...
+├── projects/
+│   └── tcp/            # Real-world TCP networking examples
+│       ├── basic/      # Simple chat room (bidirectional messaging)
+│       │   ├── server.ura
+│       │   └── client.ura
+│       ├── cmd/        # Command-based server with /help, /time, /whoami
+│       │   ├── server.ura
+│       │   └── client.ura
+│       └── utils.ura   # Shared utilities (SockAddr, logging, timestamps)
 ├── build/              # Compiler executable
 ├── config.sh           # Build system and dev commands
 └── README.md
@@ -706,14 +829,16 @@ Ura is under active development. Here's where things stand:
 - Functions, variadic functions, single-line functions
 - Function prototypes for C interop (`proto`)
 - References and reference parameters
-- Structs, nested structs at any depth, struct references
+- Structs, nested structs at any depth, struct methods with `self` parameter
+- Struct `init()` constructor
 - If / elif / else
 - While loops with break and continue
-- All standard operators and compound assignment variants
+- All standard operators: arithmetic, bitwise, logical, comparison, assignment
 - Type casting with `as`
 - `typeof` and `sizeof`
 - Module imports with `use` (`@` for stdlib, relative path for local files)
 - Multi-file compilation
+- Networking support via POSIX socket APIs
 - Optimization levels (-O0 → -O3, -Os, -Oz) via LLVM pass pipeline
 - AddressSanitizer + memory leak detection (`-san`)
 
@@ -721,7 +846,6 @@ Ura is under active development. Here's where things stand:
 
 - For loops
 - Global variables
-- Struct methods
 - Enums
 - Switch / case
 - Type inference

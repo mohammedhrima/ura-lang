@@ -1,0 +1,49 @@
+// Socket creation and connection
+proto fn socket(domain int, type int, protocol int) int
+proto fn bind(fd int, addr pointer, addrlen int) int
+proto fn listen(fd int, backlog int) int
+proto fn accept(fd int, addr chars, addrlen int ref) int
+proto fn connect(fd int, addr pointer, addrlen int) int
+proto fn close(fd int) int
+proto fn shutdown(fd int, how int) int
+
+// Socket I/O
+proto fn send(fd int, buf pointer, len int, flags int) int
+proto fn recv(fd int, buf pointer, len int, flags int) int
+proto fn sendto(fd int, buf pointer, len int, flags int, addr pointer, addrlen int) int
+proto fn recvfrom(fd int, buf pointer, len int, flags int, addr pointer, addrlen pointer) int
+proto fn sendmsg(fd int, msg pointer, flags int) int
+proto fn recvmsg(fd int, msg pointer, flags int) int
+
+// Socket options
+proto fn setsockopt(fd int, level int, optname int, optval pointer, optlen int) int
+proto fn getsockopt(fd int, level int, optname int, optval pointer, optlen pointer) int
+proto fn getsockname(fd int, addr pointer, addrlen pointer) int
+proto fn getpeername(fd int, addr pointer, addrlen pointer) int
+
+// Name resolution
+proto fn gethostbyname(name chars) pointer
+proto fn gethostbyaddr(addr pointer, len int, type int) pointer
+proto fn getaddrinfo(node chars, service chars, hints pointer, res pointer) int
+proto fn freeaddrinfo(res pointer) void
+proto fn gai_strerror(errcode int) chars
+proto fn getnameinfo(addr pointer, addrlen int, host chars, hostlen int, serv chars, servlen int, flags int) int
+
+// File descriptor control
+proto fn fcntl(fd int, cmd int, arg int) int
+proto fn ioctl(fd int, request int, arg pointer) int
+
+// I/O multiplexing
+proto fn select(nfds int, readfds pointer, writefds pointer, exceptfds pointer, timeout pointer) int
+proto fn poll(fds pointer, nfds int, timeout int) int
+
+// Process
+proto fn getpid() int
+proto fn getppid() int
+proto fn fork() int
+proto fn pipe(pipefd pointer) int
+proto fn dup(oldfd int) int
+proto fn dup2(oldfd int, newfd int) int
+
+// Buffering
+// proto fn fflush(stream int) int
