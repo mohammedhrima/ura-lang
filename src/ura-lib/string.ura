@@ -43,6 +43,7 @@ proto fn memcpy(dest pointer, src pointer, n int) pointer
 proto fn memmove(dest pointer, src pointer, n int) pointer
 proto fn memset(ptr pointer, value int, n int) pointer
 proto fn memccpy(dest pointer, src pointer, c int, n int) pointer
+proto fn bzero(s chars, size long) void
 
 // BSD string functions (safer alternatives)
 proto fn strlcpy(dest chars, src chars, size int) int

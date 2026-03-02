@@ -81,22 +81,48 @@ build() {
 #  Test Helpers
 # =========================================================
 copy() {
-    if [[ $# -lt 2 ]]; then
-        echo -e "${RED}Usage: copy <folder> <filename>${RESET}"
-        echo "  folder:   test folder name (e.g., builtins, op, data_types)"
-        echo "  filename: file name without .ura extension"
+    if [[ $# -lt 1 ]]; then
+        echo -e "${RED}Usage: copy <file.ura>${RESET}"
+        echo -e "${YELLOW}The file must have a first line comment: // <folder>/<filename>${RESET}"
+        echo -e "${YELLOW}Example: // builtins/printf${RESET}"
         return 1
     fi
 
-    local folder="$1"
-    local filename="$2"
-    local test_dir="$TESTS_DIR/$folder"
-    local ura_src_file="$SRC_DIR/file.ura"
-    local ura_dest="$test_dir/${filename}.ura"
-    local ll_dest="$test_dir/${filename}.ll"
+    local ura_src_file="$1"
+
+    # Handle relative paths
+    if [[ ! "$ura_src_file" = /* ]]; then
+        ura_src_file="$SRC_DIR/$ura_src_file"
+    fi
 
     if [[ ! -f "$ura_src_file" ]]; then
         echo -e "${RED}$ura_src_file not found${RESET}"
+        return 1
+    fi
+
+    # Read the first line and extract the path pattern
+    local first_line=$(head -n 1 "$ura_src_file")
+    echo "first_line: '$first_line'"
+    local folder="${match[1]}"
+    local filename="${match[2]}"
+    
+    # Check if first line matches pattern: // <folder>/<filename>
+    if [[ "$first_line" =~ ^//[[:space:]]*([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+) ]]; then
+        local folder="${match[1]}"
+        local filename="${match[2]}"
+        
+        # Remove .ura extension if present
+        filename="${filename%.ura}"
+
+        local test_dir="$TESTS_DIR/$folder"
+        local ura_dest="$test_dir/${filename}.ura"
+        local ll_dest="$test_dir/${filename}.ll"
+
+        echo -e "${YELLOW}Detected path: $folder/$filename${RESET}"
+    else
+        echo -e "${RED}Invalid or missing path comment in first line${RESET}"
+        echo -e "${YELLOW}Expected format: // <folder>/<filename>${RESET}"
+        echo -e "${YELLOW}Example: // builtins/printf${RESET}"
         return 1
     fi
 
@@ -104,13 +130,17 @@ copy() {
 
     build || return 1
 
-    # compile — ura puts .ll in src/build/
-    "$URA_COMPILER" "$ura_src_file" || {
+    # compile — ura puts .ll in src/build/ or relative to source
+    "$URA_COMPILER" "$ura_src_file" -no-exec || {
         echo -e "${RED}Compilation failed${RESET}"
         return 1
     }
 
-    local ll_src="$SRC_DIR/build/file.ll"
+    # Determine where the .ll file was generated
+    local src_dir=$(dirname "$ura_src_file")
+    local src_basename=$(basename "$ura_src_file" .ura)
+    local ll_src="$src_dir/build/${src_basename}.ll"
+    
     if [[ ! -f "$ll_src" ]]; then
         echo -e "${RED}Generated IR not found at $ll_src${RESET}"
         return 1
@@ -161,7 +191,7 @@ tests() {
                 continue
             fi
 
-            if ! "$URA_COMPILER" "$ura_file" -testing > /dev/null 2>&1; then
+            if ! "$URA_COMPILER" "$ura_file" -testing -no-exec > /dev/null 2>&1; then
                 echo -e "  ${RED}FAIL $dir_name/$base_name (compilation error)${RESET}"
                 ((failed++))
                 continue
@@ -177,10 +207,10 @@ tests() {
     <(tail -n +4 "$ll_got" | grep -v "DIFile\|DICompileUnit\|source_filename\|ModuleID") \
     <(tail -n +4 "$ll_expected" | grep -v "DIFile\|DICompileUnit\|source_filename\|ModuleID") \
     > /dev/null 2>&1; then
-                echo -e "  ${GREEN}PASS $dir_name/$base_name${RESET}"
+                echo -e "  ${GREEN}PASS $dir_name/$base_name.ll${RESET}"
                 ((passed++))
             else
-                echo -e "  ${RED}FAIL $dir_name/$base_name (IR mismatch)${RESET}"
+                echo -e "  ${RED}FAIL $dir_name/$base_name.ll (IR mismatch)${RESET}"
                 ((failed++))
             fi
         done
@@ -191,6 +221,41 @@ tests() {
     [[ $failed -gt 0 ]] && echo -e "${RED}Failed: $failed${RESET}"
 
     return $failed
+}
+
+update_tests() {
+    echo -e "${YELLOW}Updating all test .ll files...${RESET}"
+    build || return 1
+
+    local failed=0
+    local passed=0
+
+    for ura_file in $(find "$TESTS_DIR" -name "*.ura" -not -path "*/build/*"); do
+        local dir=$(dirname "$ura_file")
+        local base=$(basename "$ura_file" .ura)
+        local ll_expected="$dir/${base}.ll"
+        local ll_generated="$dir/build/${base}.ll"
+
+        if ! "$URA_COMPILER" "$ura_file" -no-exec > /dev/null 2>&1; then
+            echo -e "  ${RED}FAIL $base (compilation error)${RESET}"
+            ((failed++))
+            continue
+        fi
+
+        if [[ ! -f "$ll_generated" ]]; then
+            echo -e "  ${RED}FAIL $base (no IR generated)${RESET}"
+            ((failed++))
+            continue
+        fi
+
+        cp "$ll_generated" "$ll_expected"
+        echo -e "  ${GREEN}UPDATED $base.ll${RESET}"
+        ((passed++))
+    done
+
+    echo ""
+    echo -e "${GREEN}Updated: $passed${RESET}"
+    [[ $failed -gt 0 ]] && echo -e "${RED}Failed: $failed${RESET}"
 }
 
 # =========================================================
@@ -289,7 +354,7 @@ help() {
     echo -e "${BOLD}Ura Environment Commands:${RESET}"
     echo ""
     echo -e "  ${GREEN}build${RESET}                        Build the ura compiler"
-    echo -e "  ${GREEN}copy <folder> <name>${RESET}         Save src/file.ura + its IR to tests/<folder>/<name>"
+    echo -e "  ${GREEN}copy${RESET}                         Save src/file.ura + its IR (reads path from first line comment)"
     echo -e "  ${GREEN}tests [folder]${RESET}               Run all tests (optionally filter by folder)"
     echo -e "  ${GREEN}examples${RESET}                     Generate examples.ura from all test files"
     echo -e "  ${GREEN}indent${RESET}                       Format all .c and .h files in src/"

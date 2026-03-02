@@ -1,13 +1,16 @@
-proto fn write(fd int, ptr chars, len int) int
-proto fn strcpy(dist chars, src chars) void
-proto fn strlen(str chars) int
-proto fn free(str chars) void
-proto fn printf(fmt chars, ...) int
+use "@/header"
+
+struct User:
+    name array[char]
+    age int
+
+    fn init() void:
+        self.name = "new name"
+        self.age = 10
+
+    fn greed() void:
+        printf("hello from %s has %d\n", self.name, self.age)
 
 main():
-    str array[char] = heap[char](20)
-    strcpy(str, "Hello world\n")
-    str[0] = 'r'
-    printf(str)
-    free(str)
-    return 0
+    user User
+    user.greed()
