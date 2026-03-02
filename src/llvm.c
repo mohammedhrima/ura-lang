@@ -81,8 +81,33 @@ void _alloca(Token *token)
    TypeRef type = get_llvm_type(token);
    if (token->is_ref)
       type = _pointer_type(type, 0);
+
+   Block current     = _get_insert_block();
+   Value func        = _get_basic_block_parent(current);
+   Block entry       = _get_entry_basic_block(func);
+   Value last_alloca = NULL;
+   Value inst        = LLVMGetFirstInstruction(entry);
+   while (inst && LLVMGetInstructionOpcode(inst) == LLVMAlloca)
+   {
+      last_alloca = inst;
+      inst        = LLVMGetNextInstruction(inst);
+   }
+
+   if (last_alloca)
+   {
+      Value next = LLVMGetNextInstruction(last_alloca);
+      if (next)
+         LLVMPositionBuilderBefore(builder, next);
+      else
+         _position_at(entry);
+   }
+   else
+      _position_at(entry);
+
    token->llvm.elem = _build_alloca(type, token->name);
    _build_store(LLVMConstNull(type), token->llvm.elem);
+
+   _position_at(current);
 }
 
 TypeRef get_llvm_type(Token *token)
@@ -114,7 +139,10 @@ TypeRef get_llvm_type(Token *token)
       [FLOAT]  = f32,
       [ACCESS] = i8,
    };
-   check(!res[type], "handle this case [%s]", to_string(type));
+   if(check(!res[type], "handle this case [%s]", to_string(type)))
+   {
+      seg();
+   }
    return res[type];
 }
 
@@ -384,7 +412,7 @@ Value _build_va_arg(Value list, TypeRef ty, char *name) { return LLVMBuildVAArg(
 
 Value _build_unreachable() { return LLVMBuildUnreachable(builder); }
 
-Value _build_not(Token *token) { return LLVMBuildNot(builder, token->llvm.elem, to_string(NOT)); }
+Value _build_not(Token *token, char *name) { return LLVMBuildNot(builder, token->llvm.elem, name); }
 
 Value _build_memcpy(Value dest, Value src, Value size) { return LLVMBuildMemCpy(builder, dest, 0, src, 0, size); }
 
