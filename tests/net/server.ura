@@ -1,0 +1,82 @@
+use "@/header"
+
+fn log(msg chars) void:
+    write(1, msg, strlen(msg))
+
+main():
+    server_fd int = socket(2, 1, 0)
+    if server_fd < 0:
+        log("\033[0;31m[server] socket failed\033[0m\n")
+        return 1
+
+    opt chars = calloc(4, 1)
+    opt[0] = 1 as char
+    setsockopt(server_fd, 65535, 4, opt, 4)
+    setsockopt(server_fd, 65535, 512, opt, 4)
+    free(opt)
+
+    addr chars = calloc(16, 1)
+    addr[0] = 16 as char
+    addr[1] = 2 as char
+    addr[2] = 31 as char
+    addr[3] = 144 as char
+
+    result int = bind(server_fd, addr, 16)
+    if result < 0:
+        log("\033[0;31m[server] bind failed\033[0m\n")
+        return 1
+
+    listen(server_fd, 5)
+    log("\033[0;32m[server]\033[0m listening on port 8080...\n")
+
+    buf chars = calloc(1024, 1)
+    rbuf chars = calloc(1024, 1)
+    client_fd int = 0
+    r int = 0
+
+    while True:
+        client_fd = accept(server_fd, 0 as chars, 0)
+        if client_fd < 0:
+            continue
+
+        log("\033[0;32m[server]\033[0m client connected\n")
+
+        pid int = fork()
+        if pid == 0:
+            close(server_fd)
+
+            // grandchild: reads from client and prints
+            pid2 int = fork()
+            if pid2 == 0:
+                while True:
+                    r = read(client_fd, buf, 1023)
+                    if r <= 0:
+                        log("\033[0;31m[server]\033[0m client disconnected\n")
+                        break
+                    buf[r] = 0 as char
+                    log("\r\033[2K")
+                    log("\033[0;36m[client]\033[0m ")
+                    log(buf)
+                    log("\n")
+                    log("\033[0;32m[server]\033[0m > ")
+                return 0
+
+            // child: reads from stdin and sends to client
+            while True:
+                log("\033[0;32m[server]\033[0m > ")
+                r = read(0, rbuf, 1023)
+                if r <= 0:
+                    break
+                rbuf[r - 1] = 0 as char
+                write(client_fd, rbuf, r - 1)
+
+            close(client_fd)
+            return 0
+
+        // parent: close client and keep accepting
+        close(client_fd)
+
+    free(buf)
+    free(rbuf)
+    free(addr)
+    return 0

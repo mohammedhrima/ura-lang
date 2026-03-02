@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura'
-source_filename = "/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/Personal/ura-lang/tests/libft/putnbr.ura'
+source_filename = "/Users/hrimamohammed/Desktop/Personal/ura-lang/tests/libft/putnbr.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 @STR0 = private unnamed_addr constant [11 x i8] c"0123456789\00", align 1
@@ -13,10 +13,10 @@ declare i32 @free(ptr)
 define i32 @putchar(i8 %c) !dbg !4 {
 entry:
   %c1 = alloca i8, align 1, !dbg !7
-  store i8 0, ptr %c1, align 1, !dbg !7
-  store i8 %c, ptr %c1, align 1, !dbg !7
   %str = alloca ptr, align 8, !dbg !7
   store ptr null, ptr %str, align 8, !dbg !7
+  store i8 0, ptr %c1, align 1, !dbg !7
+  store i8 %c, ptr %c1, align 1, !dbg !7
   %calloc = call ptr @calloc(i32 2, i32 1), !dbg !8
   store ptr %calloc, ptr %str, align 8, !dbg !8
   %str2 = load ptr, ptr %str, align 8, !dbg !9
@@ -33,6 +33,18 @@ entry:
 define void @putnbr(i32 %n) !dbg !12 {
 entry:
   %n1 = alloca i32, align 4, !dbg !13
+  %digits = alloca ptr, align 8, !dbg !13
+  %temp = alloca i32, align 4, !dbg !13
+  %digit_count = alloca i32, align 4, !dbg !13
+  %buffer = alloca ptr, align 8, !dbg !13
+  %i = alloca i32, align 4, !dbg !13
+  %digit = alloca i32, align 4, !dbg !13
+  store i32 0, ptr %digit, align 4, !dbg !13
+  store i32 0, ptr %i, align 4, !dbg !13
+  store ptr null, ptr %buffer, align 8, !dbg !13
+  store i32 0, ptr %digit_count, align 4, !dbg !13
+  store i32 0, ptr %temp, align 4, !dbg !13
+  store ptr null, ptr %digits, align 8, !dbg !13
   store i32 0, ptr %n1, align 4, !dbg !13
   store i32 %n, ptr %n1, align 4, !dbg !13
   br label %if.start, !dbg !13
@@ -58,61 +70,49 @@ if.start4:                                        ; preds = %if.end
   br i1 %EQ, label %if.then6, label %if.end5, !dbg !14
 
 if.end5:                                          ; preds = %if.start4
-  %digits = alloca ptr, align 8, !dbg !15
-  store ptr null, ptr %digits, align 8, !dbg !15
-  store ptr @STR0, ptr %digits, align 8, !dbg !15
-  %temp = alloca i32, align 4, !dbg !15
-  store i32 0, ptr %temp, align 4, !dbg !15
-  %n9 = load i32, ptr %n1, align 4, !dbg !15
-  store i32 %n9, ptr %temp, align 4, !dbg !15
-  %digit_count = alloca i32, align 4, !dbg !15
-  store i32 0, ptr %digit_count, align 4, !dbg !15
-  store i32 0, ptr %digit_count, align 4, !dbg !15
-  br label %while.start, !dbg !15
+  store ptr @STR0, ptr %digits, align 8, !dbg !13
+  %n9 = load i32, ptr %n1, align 4, !dbg !13
+  store i32 %n9, ptr %temp, align 4, !dbg !13
+  store i32 0, ptr %digit_count, align 4, !dbg !13
+  br label %while.start, !dbg !13
 
 if.then6:                                         ; preds = %if.start4
   %putchar8 = call i32 @putchar(i8 48), !dbg !15
   ret void, !dbg !15
 
 while.start:                                      ; preds = %while.then, %if.end5
-  %temp10 = load i32, ptr %temp, align 4, !dbg !15
-  %GT = icmp sgt i32 %temp10, 0, !dbg !15
-  br i1 %GT, label %while.then, label %while.end, !dbg !15
+  %temp10 = load i32, ptr %temp, align 4, !dbg !13
+  %GT = icmp sgt i32 %temp10, 0, !dbg !13
+  br i1 %GT, label %while.then, label %while.end, !dbg !13
 
 while.then:                                       ; preds = %while.start
-  %current = load i32, ptr %digit_count, align 4, !dbg !15
-  %ADD = add i32 %current, 1, !dbg !15
-  store i32 %ADD, ptr %digit_count, align 4, !dbg !15
-  %temp11 = load i32, ptr %temp, align 4, !dbg !15
-  %DIV = sdiv i32 %temp11, 10, !dbg !15
-  store i32 %DIV, ptr %temp, align 4, !dbg !15
-  br label %while.start, !dbg !15
+  %current = load i32, ptr %digit_count, align 4, !dbg !13
+  %ADD = add i32 %current, 1, !dbg !13
+  store i32 %ADD, ptr %digit_count, align 4, !dbg !13
+  %temp11 = load i32, ptr %temp, align 4, !dbg !13
+  %DIV = sdiv i32 %temp11, 10, !dbg !13
+  store i32 %DIV, ptr %temp, align 4, !dbg !13
+  br label %while.start, !dbg !13
 
 while.end:                                        ; preds = %while.start
-  %buffer = alloca ptr, align 8, !dbg !15
-  store ptr null, ptr %buffer, align 8, !dbg !15
   %digit_count12 = load i32, ptr %digit_count, align 4, !dbg !16
   %ADD13 = add i32 %digit_count12, 1, !dbg !16
   %calloc = call ptr @calloc(i32 %ADD13, i32 1), !dbg !16
   store ptr %calloc, ptr %buffer, align 8, !dbg !16
-  %i = alloca i32, align 4, !dbg !16
-  store i32 0, ptr %i, align 4, !dbg !16
-  %digit_count14 = load i32, ptr %digit_count, align 4, !dbg !16
-  %SUB = sub i32 %digit_count14, 1, !dbg !16
-  store i32 %SUB, ptr %i, align 4, !dbg !16
-  br label %while.start15, !dbg !16
+  %digit_count14 = load i32, ptr %digit_count, align 4, !dbg !13
+  %SUB = sub i32 %digit_count14, 1, !dbg !13
+  store i32 %SUB, ptr %i, align 4, !dbg !13
+  br label %while.start15, !dbg !13
 
 while.start15:                                    ; preds = %while.then16, %while.end
-  %i18 = load i32, ptr %i, align 4, !dbg !16
-  %GE = icmp sge i32 %i18, 0, !dbg !16
-  br i1 %GE, label %while.then16, label %while.end17, !dbg !16
+  %i18 = load i32, ptr %i, align 4, !dbg !13
+  %GE = icmp sge i32 %i18, 0, !dbg !13
+  br i1 %GE, label %while.then16, label %while.end17, !dbg !13
 
 while.then16:                                     ; preds = %while.start15
-  %digit = alloca i32, align 4, !dbg !16
-  store i32 0, ptr %digit, align 4, !dbg !16
-  %n19 = load i32, ptr %n1, align 4, !dbg !16
-  %MOD = srem i32 %n19, 10, !dbg !16
-  store i32 %MOD, ptr %digit, align 4, !dbg !16
+  %n19 = load i32, ptr %n1, align 4, !dbg !13
+  %MOD = srem i32 %n19, 10, !dbg !13
+  store i32 %MOD, ptr %digit, align 4, !dbg !13
   %buffer20 = load ptr, ptr %buffer, align 8, !dbg !17
   %i21 = load i32, ptr %i, align 4, !dbg !17
   %ACCESS = getelementptr i8, ptr %buffer20, i32 %i21, !dbg !17
@@ -173,7 +173,7 @@ entry:
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "file.ura", directory: "/Users/hrimamohammed/Desktop/Personal/ura-lang/src")
+!3 = !DIFile(filename: "putnbr.ura", directory: "/Users/hrimamohammed/Desktop/Personal/ura-lang/tests/libft")
 !4 = distinct !DISubprogram(name: "putchar", linkageName: "putchar", scope: null, file: !3, line: 5, type: !5, scopeLine: 5, spFlags: DISPFlagDefinition, unit: !2)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

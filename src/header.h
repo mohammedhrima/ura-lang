@@ -49,10 +49,11 @@ typedef struct _IO_FILE *File;
 #define TAB 3
 #define AST 1
 #define IR 1
+#define OPTIMIZE 1
 #define ASM 1
 
 #ifndef DEBUG
-#define DEBUG 1
+#define DEBUG 0
 #endif
 
 #define allocate(len, size) allocate_func(LINE, len, size)
@@ -83,7 +84,7 @@ typedef struct _IO_FILE *File;
 
 #define DATA_TYPES INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT, ARRAY_TYPE
 #define LOGIC_TYPE AND, OR
-#define MATH_TYPE ADD, SUB, MUL, DIV, MOD
+#define MATH_TYPE ADD, SUB, MUL, DIV, MOD, BAND, BOR, BXOR, LSHIFT, RSHIFT
 
 // O0 is basically "Literal Translation" (Debug Mode)
 #define PASSES_O0 "default<O0>"
@@ -163,6 +164,8 @@ enum Type
    FDEC, FCALL, PROTO, ARGS, CHILDREN,
    // Built-ins
    STACK, HEAP, TYPEOF, SIZEOF, DEFAULT, SYNTAX_ERROR,
+   // Bitwise
+   BAND, BOR, BXOR, BNOT, LSHIFT, RSHIFT,
    // end
    END,
 };
@@ -222,6 +225,8 @@ struct Token
    bool is_cast;
    bool is_variadic;
    bool is_proto;
+   bool is_init;
+   bool is_method_call;
 
    char *filename;
    int line;
@@ -266,6 +271,10 @@ struct Node
    Node **structs;
    int spos;
    int slen;
+
+   Node **methods;
+   int mlen;
+   int mpos;
 };
 
 // ----------------------------------------------------------------------------
@@ -353,29 +362,28 @@ bool   is_data_type(Token *token);
 void   add_struct(Node *b, Node *node);
 Node  *new_struct(Node *node);
 Node  *get_struct(char *name);
+void add_method(Node *b, Node *node);
 Token *is_struct(Token *token);
 void   add_attribute(Token *obj, Token *attr);
 Node  *syntax_error();
 
 Node *expr_node();
 Node *assign_node();
-Node *logic_node();
+Node *logic_and_node();
+Node *logic_or_node();
+Node *bitor_node();
+Node *bitxor_node();
+Node *bitnot_node();
+Node *bitand_node();
 Node *equality_node();
 Node *comparison_node();
+Node *shift_node();
 Node *add_sub_node();
 Node *mul_div_node();
-Node *dot_node();
-Node *brackets_node();
-Node *sign_node();
-Node *cast_node();
+Node *as_node();
+Node *unary_node();
+Node *access_node();
 Node *prime_node();
-Node *func_call(Node *node);
-Node *func_dec(Node *node);
-Node *func_main(Node *node);
-Node *symbol(Token *token);
-Node *struct_def(Node *node);
-Node *if_node(Node *node);
-Node *while_node(Node *node);
 
 // ----------------------------------------------------------------------------
 // IR / Scope / Variable Management
@@ -405,8 +413,6 @@ Value   _build_return(Token *token);
 Value   _get_param_with_name(Token *fn, int index, char *name);
 void    _load(Token *to, Token *from);
 Value   _load2(Token *token);
-Value   allocate_stack(Value size, TypeRef elementType, char *name);
-Value allocate_heap(Value count, TypeRef elementType, char *name);
 bool    compatible(Token *left, Token *right);
 
 // ----------------------------------------------------------------------------
@@ -456,7 +462,7 @@ Value _build_landing_pad(TypeRef ty, Value pers_fn, unsigned num_clauses, char *
 Value _build_extract_value(Value agg_val, unsigned index, char *name);
 Value _build_va_arg(Value list, TypeRef ty, char *name);
 Value _build_unreachable();
-Value _build_not(Token *token);
+Value _build_not(Token *token, char*name);
 Value _build_memcpy(Value dest, Value src, Value size);
 
 Value _const_int(TypeRef ref_type, unsigned long long n, int sign_extend);
@@ -487,6 +493,13 @@ void        _set_personality_fn(Value func, Value pers_fn);
 void        _add_clause(Value landing_pad, Value clause_val);
 size_t      _abi_size_of_type(TargetData td, TypeRef ty);
 TargetData  _get_module_data_layout(Module m);
+Value   build_binary_op(Type op_type, Value lref, Value rref);
+Value   allocate_stack(Value size, TypeRef elementType, char *name);
+Value   allocate_heap(Value count, TypeRef elementType, char *name);
+Value   get_store_ptr(Token *token);
+Value   struct_field_ptr(Token *struct_tok, int field_index, char *name);
+void    build_ref_assign(Token *ref_token, Value value, TypeRef type);
+void    store_through_ref(Token *ref_token, Value value, TypeRef type);
 
 Value  check_null(Token *token);
 Value  deref_or_load(Token *token);

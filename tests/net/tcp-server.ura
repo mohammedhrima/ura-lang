@@ -1,0 +1,43 @@
+use "@/header"
+
+main():
+    server_fd int = socket(2, 1, 0)
+    if server_fd < 0:
+        printf("socket failed\n")
+        return 1
+
+    port int = 8080
+    addr chars = calloc(16, 1)
+    addr[0] = 2 as char    // sin_family low byte  (AF_INET = 2)
+    addr[1] = 0 as char    // sin_family high byte
+    addr[2] = 31 as char   // sin_port high byte   (8080 >> 8 = 31)
+    addr[3] = 144 as char  // sin_port low byte    (8080 & 255 = 144)
+    // addr[4..7] = 0 from calloc = INADDR_ANY
+
+    result int = bind(server_fd, addr, 16)
+    if result < 0:
+        printf("bind failed\n")
+        return 1
+
+    listen(server_fd, 5)
+    printf("listening on port 8080...\n")
+
+    buf chars = calloc(1024, 1)
+    client_fd int = 0
+    r int = 0
+    while True:
+        client_fd = accept(server_fd, 0 as chars, 0)
+        if client_fd < 0:
+            continue
+        printf("new client\n")
+        r = read(client_fd, buf, 1023)
+        if r > 0:
+            printf("received: %s\n", buf)
+            write(client_fd, "hello from server\n", 18)
+        elif r < 0:
+            printf("read failed\n")
+        close(client_fd)
+
+    free(buf)
+    free(addr)
+    return 0
