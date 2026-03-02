@@ -1,0 +1,16 @@
+proto fn printf(fmt chars, ...) int
+
+struct User:
+    name array[char]
+    age int
+
+    fn init() void:
+        self.name = "new name"
+        self.age = 10
+
+    fn greed() void:
+        printf("hello from %s has %d\n", self.name, self.age)
+
+main():
+    user User
+    user.greed()
