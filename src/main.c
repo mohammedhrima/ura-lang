@@ -194,75 +194,11 @@ void tokenize(char *filename)
 
 Node *expr_node() { return assign_node(); }
 
-Node *assign_node() // =, +=, -=, *=, /=
-{
-   Node  *left = logic_and_node();
-   Token *token;
-   while ((token = find(ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN, 0)))
-   {
-      Node *node = new_node(token);
-      node->left  = left;
-      node->right = logic_and_node();
-      left        = node;
-   }
-   return left;
-}
-
-Node *logic_and_node() // and
-{
-   Node  *left = logic_or_node();
-   Token *token;
-   while ((token = find(AND, 0)))
-   {
-      Node *node = new_node(token);
-      node->left  = left;
-      node->right = logic_or_node();
-      left        = node;
-   }
-   return left;
-}
-
-Node *logic_or_node() // or
-{
-   Node  *left = bitor_node();
-   Token *token;
-   while ((token = find(OR, 0)))
-   {
-      Node *node = new_node(token);
-      node->left  = left;
-      node->right = bitor_node();
-      left        = node;
-   }
-   return left;
-}
-
-Node *bitor_node() // |
-{
-   Node  *left = bitxor_node();
-   Token *token;
-   while ((token = find(BOR, 0)))
-   {
-      Node *node = new_node(token);
-      node->left  = left;
-      node->right = bitxor_node();
-      left        = node;
-   }
-   return left;
-}
-
-Node *bitxor_node() // ^
-{
-   Node  *left = bitnot_node();
-   Token *token;
-   while ((token = find(BXOR, 0)))
-   {
-      Node *node = new_node(token);
-      node->left  = left;
-      node->right = bitnot_node();
-      left        = node;
-   }
-   return left;
-}
+AST_NODE(assign_node, logic_and_node, ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN)
+AST_NODE(logic_and_node, logic_or_node, AND)
+AST_NODE(logic_or_node, bitor_node, OR)
+AST_NODE(bitor_node, bitxor_node, BOR)
+AST_NODE(bitxor_node, bitnot_node, BXOR)
 
 Node *bitnot_node() // ~
 {
@@ -276,89 +212,12 @@ Node *bitnot_node() // ~
    return bitand_node();
 }
 
-Node *bitand_node() // &
-{
-   Node  *left = equality_node();
-   Token *token;
-   while ((token = find(BAND, 0)))
-   {
-      Node *node = new_node(token);
-      node->left  = left;
-      node->right = equality_node();
-      left        = node;
-   }
-   return left;
-}
-
-Node *equality_node() // == !=
-{
-   Node  *left = comparison_node();
-   Token *token;
-   while ((token = find(EQUAL, NOT_EQUAL, 0)))
-   {
-      Node *node = new_node(token);
-      node->left  = left;
-      node->right = comparison_node();
-      left        = node;
-   }
-   return left;
-}
-
-Node *comparison_node() // < > <= >=
-{
-   Node  *left = shift_node();
-   Token *token;
-   while ((token = find(LESS, GREAT, LESS_EQUAL, GREAT_EQUAL, 0)))
-   {
-      Node *node = new_node(token);
-      node->left  = left;
-      node->right = shift_node();
-      left        = node;
-   }
-   return left;
-}
-
-Node *shift_node() // << >>
-{
-   Node  *left = add_sub_node();
-   Token *token;
-   while ((token = find(LSHIFT, RSHIFT, 0)))
-   {
-      Node *node = new_node(token);
-      node->left  = left;
-      node->right = add_sub_node();
-      left        = node;
-   }
-   return left;
-}
-
-Node *add_sub_node() // + -
-{
-   Node  *left = mul_div_node();
-   Token *token;
-   while ((token = find(ADD, SUB, 0)))
-   {
-      Node *node = new_node(token);
-      node->left  = left;
-      node->right = mul_div_node();
-      left        = node;
-   }
-   return left;
-}
-
-Node *mul_div_node() // * / %
-{
-   Node  *left = as_node();
-   Token *token;
-   while ((token = find(MUL, DIV, MOD, 0)))
-   {
-      Node *node = new_node(token);
-      node->left  = left;
-      node->right = as_node();
-      left        = node;
-   }
-   return left;
-}
+AST_NODE(bitand_node, equality_node, BAND)
+AST_NODE(equality_node, comparison_node, EQUAL, NOT_EQUAL)
+AST_NODE(comparison_node, shift_node, LESS, GREAT, LESS_EQUAL, GREAT_EQUAL)
+AST_NODE(shift_node, add_sub_node, LSHIFT, RSHIFT)
+AST_NODE(add_sub_node, mul_div_node, ADD, SUB)
+AST_NODE(mul_div_node, as_node, MUL, DIV, MOD)
 
 Node *as_node() // as
 {
