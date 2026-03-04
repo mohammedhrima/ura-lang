@@ -1,0 +1,13 @@
+// fn/param/ref/003.ura
+use "@/io"
+
+fn add(a int ref, b int ref) int:
+    result int = a + b
+    return result
+
+main():
+    x int = 3
+    y int = 4
+    z int 
+    z = add(x, y)
+    printf("<%d>\n", z)  // <7>

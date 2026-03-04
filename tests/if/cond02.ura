@@ -1,8 +1,0 @@
-use "@/io"
-
-main():
-    a int = 2
-    if a == 1:
-        printf("is one\n")
-    else:
-        printf("is not one\n")
