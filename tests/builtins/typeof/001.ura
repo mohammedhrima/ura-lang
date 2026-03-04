@@ -1,0 +1,7 @@
+// builtins/typeof/001.ura
+use "@/io"
+
+main():
+    type chars = typeof("hello world\n")
+    printf("type %s\n", type)
+    return 0
