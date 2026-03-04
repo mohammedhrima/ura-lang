@@ -53,39 +53,41 @@ typedef struct _IO_FILE *File;
 #define ASM 1
 
 #ifndef DEBUG
-#define DEBUG 0
+#define DEBUG 1
 #endif
 
 #define allocate(len, size) allocate_func(LINE, len, size)
-#define check(cond, fmt, ...) check_error(FILE, FUNC, LINE, cond, fmt, ## __VA_ARGS__)
-#define todo(cond, fmt, ...)                                    \
+#define check(cond, fmt, ...) \
+        check_error(FILE, FUNC, LINE, cond, fmt, ## __VA_ARGS__)
+#define todo(cond, fmt, ...)                                          \
         if (check_error(FILE, FUNC, LINE, cond, fmt, ## __VA_ARGS__)) \
         exit(1);
 #define seg() raise(SIGSEGV)
-#define expect_token(type, fmt, ...) \
-        { \
+#define expect_token(type, fmt, ...)          \
+        {                                     \
            Token *find_token = find(type, 0); \
-           if (!find_token) \
-           { \
-              check(1, fmt, ## __VA_ARGS__); \
-              return syntax_error(); \
-           } \
+           if (!find_token)                   \
+           {                                  \
+              check(1, fmt, ## __VA_ARGS__);  \
+              return syntax_error();          \
+           }                                  \
         }
 
 
 #if DEBUG
 #define debug(fmt, ...) debug_(fmt, ## __VA_ARGS__)
 #else
-#define debug(fmt, ...) \
+#define debug(fmt, ...)      \
         do                   \
         {                    \
         } while (0)
 #endif
 
-#define DATA_TYPES INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT, ARRAY_TYPE
+#define DATA_TYPES INT, BOOL, CHARS, CHAR, FLOAT, VOID, \
+        LONG, PTR, SHORT, ARRAY_TYPE
 #define LOGIC_TYPE AND, OR
 #define MATH_TYPE ADD, SUB, MUL, DIV, MOD, BAND, BOR, BXOR, LSHIFT, RSHIFT
-
+#define USING_HOIST false
 // O0 is basically "Literal Translation" (Debug Mode)
 #define PASSES_O0 "default<O0>"
 // Removes basic redundancies and promotes memory to registers (mem2reg).
@@ -99,14 +101,14 @@ typedef struct _IO_FILE *File;
 // Shrinks the code as much as possible, even if it makes it slower.
 #define PASSES_Oz "default<Oz>"
 
-#define AST_NODE(name, child_func, ...)      \
+#define AST_NODE(name, child_func, ...)           \
         Node *name()                              \
         {                                         \
            Node  *left = child_func();            \
            Token *token;                          \
            while ((token = find(__VA_ARGS__, 0))) \
            {                                      \
-              Node *node = new_node(token);      \
+              Node *node = new_node(token);       \
               node->left  = left;                 \
               node->right = child_func();         \
               left        = node;                 \
@@ -133,6 +135,11 @@ typedef LLVMValueRef Value;
 typedef LLVMTargetDataRef TargetData;
 typedef LLVMTypeKind TypeKind;
 
+#define PointerTypeKind LLVMPointerTypeKind
+#define IntegerTypeKind LLVMIntegerTypeKind
+#define VoidTypeKind    LLVMVoidTypeKind
+#define FunctionTypeKind LLVMFunctionTypeKind
+#define StructTypeKind  LLVMStructTypeKind
 // ----------------------------------------------------------------------------
 // Enums
 // ----------------------------------------------------------------------------
@@ -220,13 +227,15 @@ struct Token
    bool is_cond;
    bool is_ref;
    bool is_dec;
-   bool is_arg;
    bool is_param;
    bool is_cast;
    bool is_variadic;
    bool is_proto;
    bool is_init;
    bool is_method_call;
+
+   bool ir_bound;
+   bool asm_bound;
 
    char *filename;
    int line;
@@ -280,35 +289,30 @@ struct Node
 // ----------------------------------------------------------------------------
 // Globals
 // ----------------------------------------------------------------------------
-extern bool             found_error;
+extern bool    found_error;
 
-extern Token          **tokens;
-extern int              tk_pos;
-extern int              tk_len;
+extern Token **tokens;
+extern int     tk_pos;
+extern int     tk_len;
 
-extern Node            *global;
-extern int              exe_pos;
+extern Node   *global;
+extern int     exe_pos;
 
-extern Node           **Gscoop;
-extern Node            *scoop;
-extern int              scoop_len;
-extern int              scoop_pos;
+extern Node  **Gscoop;
+extern Node   *scoop;
+extern int     scoop_len;
+extern int     scoop_pos;
 
-extern char           **used_files;
-extern int              used_len;
-extern int              used_pos;
+extern char  **used_files;
+extern int     used_len;
+extern int     used_pos;
 
-extern Context          context;
-extern Module           module;
-extern Builder          builder;
-extern TypeRef          vd, f32, i1, i8, i16, i32, i64, p8, p32;
-extern File             asm_fd;
+extern Context context;
+extern Module  module;
+extern Builder builder;
+extern TypeRef vd, f32, i1, i8, i16, i32, i64, p8, p32;
+extern File    asm_fd;
 
-extern bool             enable_bounds_check;
-extern Value            boundsCheckFunc;
-extern Value            vaStartFunc;
-extern Value            vaEndFunc;
-extern bool             using_refs;
 extern char            *passes;
 extern bool             enable_asan;
 
@@ -420,9 +424,6 @@ bool    compatible(Token *left, Token *right);
 // ----------------------------------------------------------------------------
 int  debug_(char *conv, ...);
 void pnode(Node *node, char *indent);
-void  ptoken(Token *token);
-void  print_escaped(char *str);
-void  print_value(Token *token);
 
 // ----------------------------------------------------------------------------
 // String Utilities
@@ -498,14 +499,6 @@ Value   allocate_stack(Value size, TypeRef elementType, char *name);
 Value   allocate_heap(Value count, TypeRef elementType, char *name);
 Value   get_store_ptr(Token *token);
 Value   struct_field_ptr(Token *struct_tok, int field_index, char *name);
-void    build_ref_assign(Token *ref_token, Value value, TypeRef type);
-void    store_through_ref(Token *ref_token, Value value, TypeRef type);
-
-Value  check_null(Token *token);
-Value  deref_or_load(Token *token);
-Value  getNullCheckFunc();
-Value  getRefAssignFunc();
-Value  create_null_check_function();
 void   set_ret_type(Node *node);
 void **resize_array(void **array, int *len, int pos, int element_size);
 void set_debug_location(Token *token);

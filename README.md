@@ -25,7 +25,6 @@ Ura started as a passion project: a love for C's raw performance and Python's re
 - [Real Examples](#real-examples)
   - [Fibonacci](#fibonacci)
   - [String Length](#string-length)
-  - [putnbr](#putnbr--print-a-number-without-printf)
   - [strcmp](#strcmp)
   - [Word Counter](#word-counter)
 - [How It Works](#how-it-works)
@@ -95,7 +94,7 @@ Use `use` to import modules. The `@` prefix resolves to the built-in standard li
 
 ```ura
 use "@/io"        // standard library: printf, puts, file I/O ...
-use "@/memory"    // malloc, calloc, free ...
+use "@/memory"    // malloc, free ...
 use "@/string"    // strlen, strcmp, strcpy ...
 use "@/header"    // imports all standard modules at once
 
@@ -227,7 +226,7 @@ main():
 
 ### References
 
-References bind to an existing variable — all writes go through to the original:
+References bind to an existing variable at declaration time (C++ style) — all writes go through to the original:
 
 ```ura
 use "@/io"
@@ -250,7 +249,7 @@ Before: x=10, y=20
 After:  x=20, y=10
 ```
 
-References can also be declared without an immediate binding:
+References must be initialized when declared:
 
 ```ura
 use "@/io"
@@ -258,16 +257,11 @@ use "@/io"
 main():
     a int = 1
     b int = 2
-    choice int = 1
-
-    r int ref
-    if choice == 1:
-        r = a
-    else:
-        r = b
-
-    r = 100
-    printf("%d\n", a + b)   // 102
+    
+    r int ref = a    // Must bind at declaration
+    r = 100          // Modifies a through the reference
+    
+    printf("%d\n", a)   // 100
 ```
 
 ---
@@ -433,7 +427,7 @@ The standard library modules wrap the most common ones:
 
 ```ura
 use "@/io"       // printf, puts, fopen, fclose, write, read ...
-use "@/memory"   // malloc, calloc, free, realloc ...
+use "@/memory"   // malloc, heap, stack, free, realloc ...
 use "@/string"   // strlen, strcmp, strcpy, strcat, strdup ...
 use "@/math"     // sqrt, pow, abs ...
 use "@/stdlib"   // atoi, rand, exit ...
@@ -459,12 +453,12 @@ main():
         return 1
 
     port int = 8080
-    addr chars = calloc(16, 1)
-    addr[0] = 2 as char      // sin_family low byte  (AF_INET = 2)
-    addr[1] = 0 as char      // sin_family high byte
-    addr[2] = 31 as char     // sin_port high byte   (8080 >> 8 = 31)
-    addr[3] = 144 as char    // sin_port low byte    (8080 & 255 = 144)
-    // addr[4..7] = 0 from calloc = INADDR_ANY
+    addr chars = heap[char](16)
+    addr[0] = 16 as char     // length
+    addr[1] = 2 as char      // sin_family (AF_INET = 2)
+    addr[2] = (port >> 8) as char     // sin_port high byte
+    addr[3] = (port & 255) as char    // sin_port low byte
+    // addr[4..7] = 0 (INADDR_ANY)
 
     result int = bind(server_fd, addr, 16)
     if result < 0:
@@ -474,7 +468,7 @@ main():
     listen(server_fd, 5)
     printf("listening on port 8080...\n")
 
-    buf chars = calloc(1024, 1)
+    buf chars = heap[char](1024)
     client_fd int = accept(server_fd, 0 as chars, 0)
     if client_fd >= 0:
         r int = read(client_fd, buf, 1023)
@@ -564,52 +558,6 @@ main():
     printf("length: %d\n", strlen("Hello, Ura!"))
 ```
 
-### putnbr — print a number without printf
-
-```ura
-proto fn calloc(len int, size int) chars
-proto fn write(fd int, ptr chars, len int) int
-proto fn free(ptr chars) int
-
-fn putchar(c char) int:
-    str chars = calloc(2, 1)
-    str[0] = c
-    write(1, str, 1)
-    free(str)
-    return 0
-
-fn putnbr(n int) void:
-    if n < 0:
-        putchar('-')
-        n = -n
-    if n == 0:
-        putchar('0')
-        return
-    digits chars = "0123456789"
-    temp   int   = n
-    count  int   = 0
-    while temp > 0:
-        count += 1
-        temp = temp / 10
-    buffer chars = calloc(count + 1, 1)
-    i int = count - 1
-    while i >= 0:
-        buffer[i] = digits[n % 10]
-        n = n / 10
-        i -= 1
-    i = 0
-    while i < count:
-        putchar(buffer[i])
-        i += 1
-    free(buffer)
-
-main():
-    putnbr(123)
-    putchar('\n')
-    putnbr(-456)
-    putchar('\n')
-```
-
 ### strcmp
 
 ```ura
@@ -623,6 +571,7 @@ fn strcmp(left chars, right chars) int:
 
 main():
     printf("%d\n", strcmp("d", "a"))   // 3
+```
 ```
 
 ### Word Counter
@@ -732,8 +681,8 @@ The compiler generates a `build/` directory next to each source file. The execut
 |---------------------|--------------------------------------------------|
 | `build`             | Compile the Ura compiler                         |
 | `ura <file>`        | Compile and run a `.ura` file                    |
-| `tests [folder]`    | Run the test suite (optionally filter by folder) |
-| `copy <file.ura>`   | Save a test (reads destination from first line)  |
+| `tests [folder]`    | Run test suite recursively (optionally filter)   |
+| `copy <file.ura>`   | Save test (reads `// folder/filename` from line 1) |
 | `examples`          | Generate examples.ura from all test files        |
 | `indent`            | Auto-format all C source files                   |
 | `update`            | Reload `config.sh`                               |
@@ -762,8 +711,8 @@ It also defines these shell functions:
 | Function            | Description                                                                                              |
 |---------------------|----------------------------------------------------------------------------------------------------------|
 | `build`             | Compiles the compiler from source using clang with LLVM flags                                            |
-| `tests [folder]`    | Builds the compiler once, then compiles every `.ura` file in `tests/`. Pass a folder name to filter      |
-| `copy <file.ura>`   | Compiles a `.ura` file and saves it as a test (reads destination from first line comment)                |
+| `tests [folder]`    | Recursively scans and runs all tests in `tests/`. Pass a folder name to filter                           |
+| `copy <file.ura>`   | Compiles a `.ura` file and saves it as a test (reads `// folder/filename` from first line)               |
 | `examples`          | Generates `examples.ura` containing all test files from the test suite                                   |
 | `indent`            | Formats all `.c` and `.h` files using uncrustify                                                         |
 | `update`            | Reloads `config.sh` without opening a new shell                                                          |
@@ -792,15 +741,22 @@ ura-lang/
 │       ├── signals.ura
 │       └── net.ura         # socket, bind, listen, accept, connect
 ├── tests/
-│   ├── builtins/       # printf, puts, stack, heap, typeof, sizeof
-│   ├── data_types/     # references, arrays
-│   ├── fn/             # functions, parameters, return values
-│   ├── if/             # conditionals
-│   ├── while/          # loops, break, continue
-│   ├── op/             # arithmetic, logical, comparison, bitwise operators
-│   ├── structs/        # structs, nested structs, struct methods
+│   ├── builtins/       # Built-in functions and memory
+│   │   ├── c-funcs/    # C function prototypes (printf, puts, etc.)
+│   │   ├── memory/     # Stack and heap allocation
+│   │   ├── sizeof/     # sizeof operator tests
+│   │   └── typeof/     # typeof operator tests
+│   ├── cond/           # Conditional statements (if/elif/else)
+│   ├── data_types/     # Arrays and data types
+│   ├── fn/             # Functions
+│   │   └── param/      # Function parameters and references
+│   ├── vars/           # Variables
+│   │   └── ref/        # Reference tests
+│   ├── while/          # Loops, break, continue
+│   ├── op/             # Operators (arithmetic, logical, comparison, bitwise)
+│   ├── structs/        # Structs, nested structs, struct methods
 │   ├── net/            # TCP client/server examples
-│   └── libft/          # strlen, strcmp, putnbr, isalpha ...
+│   └── libft/          # String functions (strlen, strcmp, isalpha, etc.)
 ├── projects/
 │   └── tcp/            # Real-world TCP networking examples
 │       ├── basic/      # Simple chat room (bidirectional messaging)
@@ -856,8 +812,10 @@ Ura is under active development. Here's where things stand:
 ## Requirements
 
 - Clang or GCC
-- LLVM 14+ with `llvm-config`
+- LLVM 14 with `llvm-config-14` (for readable pointer syntax: `i32*`, `i32**`)
 - macOS or Linux
+
+**Note:** LLVM 14 is specifically required for explicit pointer type notation in generated IR, which improves debugging and readability compared to the generic `ptr` type in newer LLVM versions.
 
 ---
 

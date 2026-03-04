@@ -1,0 +1,7 @@
+// builtins/sizeof/001.ura
+use "@/io"
+
+main():
+    size int = sizeof("hello world\n")
+    printf("size %d\n", size)
+    return 0

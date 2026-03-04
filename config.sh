@@ -25,23 +25,11 @@ RESET="\033[0m"
 # =========================================================
 URA_COMPILER="$BUILD_DIR/ura"
 
-TMP_FLAG=1
+SRC_FILES=(
+    "$SRC_DIR/main.c"
+    "$SRC_DIR/llvm.c"
+)
 
-if [ "$TMP_FLAG" -eq 0 ]; then
-    SRC_FILES=(
-        "$SRC_DIR/main.c"
-        "$SRC_DIR/utils.c"
-        "$SRC_DIR/gen.c"
-        "$SRC_DIR/llvm.c"
-    )
-else
-    SRC_FILES=(
-        "$SRC_DIR/main.c"
-        "$SRC_DIR/llvm.c"
-    )
-fi
-
-# Compiler Flags
 SAN_FLAGS=(
     -fsanitize=address
     -fsanitize=null
@@ -55,8 +43,8 @@ WARN_FLAGS=(
     -Werror=int-conversion
 )
 
-LLVM_CFLAGS=( $(llvm-config --cflags) )
-LLVM_LDFLAGS=( $(llvm-config --ldflags --libs core) )
+LLVM_CFLAGS=( $(llvm-config-14 --cflags) )
+LLVM_LDFLAGS=( $(llvm-config-14 --ldflags --libs core) )
 
 CFLAGS=("${SAN_FLAGS[@]}" "${WARN_FLAGS[@]}" "${LLVM_CFLAGS[@]}" "${LLVM_LDFLAGS[@]}")
 
@@ -100,19 +88,18 @@ copy() {
         return 1
     fi
 
-    # Read the first line and extract the path pattern
+    # Read the first line and extract the path
     local first_line=$(head -n 1 "$ura_src_file")
     echo "first_line: '$first_line'"
-    local folder="${match[1]}"
-    local filename="${match[2]}"
-    
-    # Check if first line matches pattern: // <folder>/<filename>
-    if [[ "$first_line" =~ ^//[[:space:]]*([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+) ]]; then
-        local folder="${match[1]}"
-        local filename="${match[2]}"
-        
-        # Remove .ura extension if present
-        filename="${filename%.ura}"
+
+    # Match: // any/depth/of/path optionally ending in .ura
+    if [[ "$first_line" =~ ^//[[:space:]]*([a-zA-Z0-9_/-]+) ]]; then
+        local full_path="${match[1]}"
+        # Remove trailing .ura if present
+        full_path="${full_path%.ura}"
+
+        local folder="${full_path%/*}"    # everything before last /
+        local filename="${full_path##*/}" # everything after last /
 
         local test_dir="$TESTS_DIR/$folder"
         local ura_dest="$test_dir/${filename}.ura"
@@ -130,17 +117,15 @@ copy() {
 
     build || return 1
 
-    # compile — ura puts .ll in src/build/ or relative to source
     "$URA_COMPILER" "$ura_src_file" -no-exec || {
         echo -e "${RED}Compilation failed${RESET}"
         return 1
     }
 
-    # Determine where the .ll file was generated
     local src_dir=$(dirname "$ura_src_file")
     local src_basename=$(basename "$ura_src_file" .ura)
     local ll_src="$src_dir/build/${src_basename}.ll"
-    
+
     if [[ ! -f "$ll_src" ]]; then
         echo -e "${RED}Generated IR not found at $ll_src${RESET}"
         return 1
@@ -169,51 +154,63 @@ tests() {
     local failed=0
     local passed=0
 
-    local folders=("$@")
-    if [[ ${#folders[@]} -eq 0 ]]; then
-        folders=($(ls -d "$TESTS_DIR"/*/))
+    local targets=("$@")
+    local ura_files=()
+
+    if [[ ${#targets[@]} -eq 0 ]]; then
+        # find all .ura files recursively
+        while IFS= read -r f; do
+            ura_files+=("$f")
+        done < <(find "$TESTS_DIR" -name "*.ura" | sort)
+    else
+        for target in "${targets[@]}"; do
+            local dir="$target"
+            [[ ! "$dir" = /* ]] && dir="$TESTS_DIR/$target"
+            while IFS= read -r f; do
+                ura_files+=("$f")
+            done < <(find "$dir" -name "*.ura" | sort)
+        done
     fi
 
-    for folder in "${folders[@]}"; do
-        [[ -d "$TESTS_DIR/$folder" ]] && folder="$TESTS_DIR/$folder"
+    for ura_file in "${ura_files[@]}"; do
+        [[ -e "$ura_file" ]] || continue
 
-        for ura_file in "$folder"/*.ura; do
-            [[ -e "$ura_file" ]] || continue
+        local base_name=$(basename "$ura_file" .ura)
+        local dir=$(dirname "$ura_file")
+        local rel_path="${ura_file#$TESTS_DIR/}"   # e.g. vars/ref/001
+        rel_path="${rel_path%.ura}"
 
-            local base_name=$(basename "$ura_file" .ura)
-            local dir_name=$(basename "$folder")
-            local ll_expected="$folder/${base_name}.ll"
-            local ll_got="$folder/build/${base_name}.ll"
+        local ll_expected="$dir/${base_name}.ll"
+        local ll_got="$dir/build/${base_name}.ll"
 
-            if [[ ! -f "$ll_expected" ]]; then
-                echo -e "  ${RED}FAIL $dir_name/$base_name (expected .ll not found)${RESET}"
-                ((failed++))
-                continue
-            fi
+        if [[ ! -f "$ll_expected" ]]; then
+            echo -e "  ${RED}FAIL $rel_path (expected .ll not found)${RESET}"
+            ((failed++))
+            continue
+        fi
 
-            if ! "$URA_COMPILER" "$ura_file" -testing -no-exec > /dev/null 2>&1; then
-                echo -e "  ${RED}FAIL $dir_name/$base_name (compilation error)${RESET}"
-                ((failed++))
-                continue
-            fi
+        if ! "$URA_COMPILER" "$ura_file" -testing -no-exec > /dev/null 2>&1; then
+            echo -e "  ${RED}FAIL $rel_path (compilation error)${RESET}"
+            ((failed++))
+            continue
+        fi
 
-            if [[ ! -f "$ll_got" ]]; then
-                echo -e "  ${RED}FAIL $dir_name/$base_name (no IR generated)${RESET}"
-                ((failed++))
-                continue
-            fi
+        if [[ ! -f "$ll_got" ]]; then
+            echo -e "  ${RED}FAIL $rel_path (no IR generated)${RESET}"
+            ((failed++))
+            continue
+        fi
 
-            if if diff -q \
-    <(tail -n +4 "$ll_got" | grep -v "DIFile\|DICompileUnit\|source_filename\|ModuleID") \
-    <(tail -n +4 "$ll_expected" | grep -v "DIFile\|DICompileUnit\|source_filename\|ModuleID") \
-    > /dev/null 2>&1; then
-                echo -e "  ${GREEN}PASS $dir_name/$base_name.ll${RESET}"
-                ((passed++))
-            else
-                echo -e "  ${RED}FAIL $dir_name/$base_name.ll (IR mismatch)${RESET}"
-                ((failed++))
-            fi
-        done
+        if diff -q \
+            <(tail -n +4 "$ll_got"      | grep -v "DIFile\|DICompileUnit\|source_filename\|ModuleID") \
+            <(tail -n +4 "$ll_expected" | grep -v "DIFile\|DICompileUnit\|source_filename\|ModuleID") \
+            > /dev/null 2>&1; then
+            echo -e "  ${GREEN}PASS $rel_path${RESET}"
+            ((passed++))
+        else
+            echo -e "  ${RED}FAIL $rel_path (IR mismatch)${RESET}"
+            ((failed++))
+        fi
     done
 
     echo ""
