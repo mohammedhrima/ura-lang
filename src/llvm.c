@@ -3,68 +3,31 @@
 // ----------------------------------------------------------------------------
 // Utility / High-level helpers
 // ----------------------------------------------------------------------------
-
-Value check_null(Token *token)
-{
-   TypeRef type     = get_llvm_type(token);
-   TypeRef ptr_type = _pointer_type(type, 0);
-
-   Value   ptr      = _build_load2(ptr_type, token->llvm.elem, "ptr");
-
-   if (enable_bounds_check)
-   {
-      Value   nullCheckFunc = getNullCheckFunc();
-      TypeRef nullCheckType = _global_get_value_type(nullCheckFunc);
-
-      Value   line_val      = _const_int(i32, token->line, 0);
-      char   *filename      = token->filename ? token->filename : "unknown";
-      Value   file_str      = _const_chars(filename, "file");
-
-      Value   ptr_as_p8     = _build_bit_cast(ptr, p8, "ptr_cast");
-      Value   args[]        = {ptr_as_p8, line_val, file_str};
-      Value   result        = _build_call2(nullCheckType, nullCheckFunc, args, 3, "");
-
-      ptr = _build_bit_cast(result, ptr_type, "ptr_back");
-   }
-
-   return ptr;
-}
-
 Value _load2(Token *token)
 {
    if (token->llvm.is_loaded) return token->llvm.elem;
-   if (!token->name && !token->is_ref && !includes(token->type, DOT, ACCESS, 0))
+   if (!token->name && !includes(token->type, DOT, ACCESS, 0))
       return token->llvm.elem;
-
-   TypeRef type = get_llvm_type(token);
-
-   if (token->is_ref)
-   {
-      Value ptr = check_null(token);
-      return _build_load2(type, ptr, token->name ? token->name : "deref");
-   }
 
    char *name = token->name;
    if (token->type == DOT)    name = to_string(DOT);
    if (token->type == ACCESS) name = to_string(ACCESS);
-   if (check(name == NULL, "name is NULL"))
-   {
-      debug(RED);
-      ptoken(token);
-      debug(RESET);
-   }
-   return _build_load2(type, token->llvm.elem, name);
+   return _build_load2(get_llvm_type(token), token->llvm.elem, name);
 }
 
 void load_if_necessary(Node *node)
 {
    Token *token = node->token;
 
-   if (includes(token->type, MATH_TYPE, 0) || (includes(token->type, DATA_TYPES, 0) && !token->name))
+   if (token->is_ref)
       return;
-   if (token->llvm.is_loaded || includes(token->type, STACK, HEAP, 0))
+   if (includes(token->type, MATH_TYPE, 0))
       return;
-   if (token->type == FCALL)
+   if (includes(token->type, DATA_TYPES, 0) && !token->name)
+      return;
+   if (token->llvm.is_loaded)
+      return;
+   if (includes(token->type, STACK, HEAP, FCALL, 0))
       return;
 
    if (token->name || includes(token->type, ACCESS, DOT, 0))
@@ -96,20 +59,16 @@ void _alloca(Token *token)
    if (last_alloca)
    {
       Value next = LLVMGetNextInstruction(last_alloca);
-      if (next)
-         LLVMPositionBuilderBefore(builder, next);
-      else
-         _position_at(entry);
+      if (next) LLVMPositionBuilderBefore(builder, next);
+      else _position_at(entry);
    }
    else
       _position_at(entry);
 
    token->llvm.elem = _build_alloca(type, token->name);
-   _build_store(LLVMConstNull(type), token->llvm.elem);
 
    _position_at(current);
 }
-
 TypeRef get_llvm_type(Token *token)
 {
    Type type = token->type;
@@ -237,99 +196,6 @@ Value _get_param_with_name(Token *fn, int index, char *name)
    return param;
 }
 
-// ----------------------------------------------------------------------------
-// Special runtime functions
-// ----------------------------------------------------------------------------
-
-Value getRefAssignFunc()
-{
-   static Value func;
-   if (func)
-      return func;
-
-   TypeRef param_types[] = {p8, p8, i32};
-   TypeRef func_type     = _function_type(vd, param_types, 3, 0);
-   func = _add_function("ref_assign", func_type);
-
-   Block entry       = _append_basic_block_in_context(func, "entry");
-   Block bind        = _append_basic_block_in_context(func, "bind");
-   Block store_block = _append_basic_block_in_context(func, "store");
-   Block ret         = _append_basic_block_in_context(func, "ret");
-
-   _position_at(entry);
-
-   Value left      = _get_param(func, 0);
-   Value right     = _get_param(func, 1);
-   Value size      = _get_param(func, 2);
-
-   Value bound_ptr = _build_load2(p8, left, "current");
-   Value is_null   = _build_icmp(LLVMIntEQ, bound_ptr, _const_null(p8), "is_null");
-   _condition(is_null, bind, store_block);
-
-   _position_at(bind);
-   _build_store(right, left); // store the pointer itself (binding)
-   _branch(ret);
-
-   _position_at(store_block);
-   Value dest = _build_load2(p8, left, "bound");
-   // size tells us the type width — use memcpy, it's correct for ANY type including structs
-   _build_memcpy(dest, right, size);
-   _branch(ret);
-
-   _position_at(ret);
-   _build_return(new_token(VOID, 0));
-
-   return func;
-}
-
-Value getNullCheckFunc()
-{
-   static Value func;
-   if (func)
-      return func;
-
-   // Use p8 (ptr to i8) as the generic pointer type — works for ANY ref type
-   TypeRef params[] = {p8, i32, p8};
-   TypeRef funcType = _function_type(p8, params, 3, 0);
-   func = _add_function("__null_check", funcType);
-
-   Block entry      = _append_basic_block_in_context(func, "entry");
-   Block null_block = _append_basic_block_in_context(func, "is_null");
-   Block ok_block   = _append_basic_block_in_context(func, "not_null");
-
-   _position_at(entry);
-   Value ptr  = _get_param(func, 0); // p8 - the pointer being checked
-   Value line = _get_param(func, 1); // i32 - line number
-   Value file = _get_param(func, 2); // p8 - filename string
-
-   // Check if pointer is null by comparing to null
-   Value is_null = _build_icmp(LLVMIntEQ, _build_ptr_to_int(ptr, i64, "ptrint"), _const_int(i64, 0, 0), "isnull");
-   _condition(is_null, null_block, ok_block);
-
-   _position_at(null_block);
-   TypeRef printf_type = _function_type(i32, (TypeRef[]){p8}, 1, 1);
-   Value   printf_func = _get_named_function("printf");
-   if (!printf_func)
-      printf_func = _add_function("printf", printf_type);
-
-   Value fmt        = _const_chars("\n\033[0;31mRuntime Error: \033[0mNull pointer dereference at %s:%d\n", "null_fmt");
-   Value fmt_args[] = {fmt, file, line};
-   _build_call2(printf_type, printf_func, fmt_args, 3, "");
-
-   TypeRef exit_type = _function_type(vd, (TypeRef[]){i32}, 1, 0);
-   Value   exit_func = _get_named_function("exit");
-   if (!exit_func)
-      exit_func = _add_function("exit", exit_type);
-   Value exit_args[] = {_const_int(i32, 1, 0)};
-   _build_call2(exit_type, exit_func, exit_args, 1, "");
-   _build_unreachable();
-
-   _position_at(ok_block);
-   // Return the pointer unchanged — caller casts back to the right type
-   _build_ret(ptr);
-
-   return func;
-}
 
 // ----------------------------------------------------------------------------
 // LLVM Builder wrappers

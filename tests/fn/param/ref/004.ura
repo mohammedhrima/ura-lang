@@ -1,0 +1,13 @@
+// fn/param/ref/004.ura
+use "@/io"
+
+fn increment(n int ref) void:
+    n += 1
+
+main():
+    counter int = 0
+    i int = 0
+    while i < 5:
+        increment(counter)
+        i += 1
+    printf("<%d>\n", counter)  // <5>

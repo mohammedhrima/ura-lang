@@ -1,0 +1,10 @@
+// fn/param/ref/005.ura
+use "@/io"
+
+fn print_val(n int) void:
+    printf("<%d>\n", n)
+
+main():
+    a int = 42
+    r int ref = a
+    print_val(r)   // <42>

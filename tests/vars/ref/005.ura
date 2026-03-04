@@ -1,0 +1,31 @@
+// vars/ref/005.ura
+use "@/io"
+
+fn print(num int) void: printf("%d\n", num)
+
+
+main():
+    val1 int = 10
+    val2 int = 20
+    val3 int = 30
+
+    current int ref = val1
+    current = 15           // val1 = 15
+    print(val1)    // 15
+    print(current) // 15
+    
+    current = val2      // val1 = 20
+    print(val1)     // 20
+    print(current)  // 20
+    current = 25        // val1 = 25
+    print(val1)     // 25
+    print(current)  // 25
+
+    current = val3      // val1 = 30
+    current += 5        // val1 = 35
+    print(val1)     // 35
+    print(current)  // 35
+    
+    sum int = val1 + val2 + val3 // 35 + 20 + 30
+    print(sum)
+

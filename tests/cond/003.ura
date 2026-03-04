@@ -1,0 +1,11 @@
+// cond/003.ura
+use "@/io"
+
+main():
+    a int = 2
+    if a == 1:
+        printf("is 1\n")
+    elif a == 2:
+        printf("not 1 but 2\n")
+    else:
+        printf("not 1, not 2\n")

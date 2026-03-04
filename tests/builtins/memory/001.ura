@@ -1,8 +1,9 @@
-// builtins/memory/002.ura
+// builtins/memory/001.ura
 use "@/header"
 
 main():
-    str chars = stack[char](20)
+    str chars = heap[char](20)
     strcpy(str, "Hello world\n")
     write(1, str, strlen("Hello world\n"))
+    free(str)
     return 0
