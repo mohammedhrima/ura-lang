@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash -c 'source config.sh; echo \"\"ROOT_DIR=$ROOT_DIR\"\"; echo \"\"OS_TYPE=$OS_TYPE\"\"')",
+      "Bash(bash -c 'source config.sh')",
+      "Bash(source config.sh)",
+      "Bash(build)",
+      "Bash($URA_COMPILER src/file.ura)",
+      "Bash($URA_COMPILER src/file.ura -no-exec)",
+      "Bash(build/ura src/file.ura -no-exec)",
+      "Bash(eval '$URA_COMPILER src/file.ura -no-exec')"
+    ]
+  }
+}

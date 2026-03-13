@@ -20,3 +20,4 @@
 + assembly cod  need to be cheked and well confirmed
 
 + sizeof("hello world") return sizeof(CHARS): needs to be checked
++ implement output builtin
