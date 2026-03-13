@@ -60,8 +60,7 @@ typedef struct _IO_FILE *File;
 #define check(cond, fmt, ...) \
         check_error(FILE, FUNC, LINE, cond, fmt, ## __VA_ARGS__)
 #define todo(cond, fmt, ...)                                          \
-        if (check_error(FILE, FUNC, LINE, cond, fmt, ## __VA_ARGS__)) \
-        exit(1);
+        if (check_error(FILE, FUNC, LINE, cond, fmt, ## __VA_ARGS__)) exit(1);
 #define seg() raise(SIGSEGV)
 #define expect_token(type, fmt, ...)          \
         {                                     \
@@ -289,29 +288,29 @@ struct Node
 // ----------------------------------------------------------------------------
 // Globals
 // ----------------------------------------------------------------------------
-extern bool    found_error;
+extern bool             found_error;
 
-extern Token **tokens;
-extern int     tk_pos;
-extern int     tk_len;
+extern Token          **tokens;
+extern int              tk_pos;
+extern int              tk_len;
 
-extern Node   *global;
-extern int     exe_pos;
+extern Node            *global;
+extern int              exe_pos;
 
-extern Node  **Gscoop;
-extern Node   *scoop;
-extern int     scoop_len;
-extern int     scoop_pos;
+extern Node           **Gscoop;
+extern Node            *scoop;
+extern int              scoop_len;
+extern int              scoop_pos;
 
-extern char  **used_files;
-extern int     used_len;
-extern int     used_pos;
+extern char           **used_files;
+extern int              used_len;
+extern int              used_pos;
 
-extern Context context;
-extern Module  module;
-extern Builder builder;
-extern TypeRef vd, f32, i1, i8, i16, i32, i64, p8, p32;
-extern File    asm_fd;
+extern Context          context;
+extern Module           module;
+extern Builder          builder;
+extern TypeRef          vd, f32, i1, i8, i16, i32, i64, p8, p32;
+extern File             asm_fd;
 
 extern char            *passes;
 extern bool             enable_asan;
