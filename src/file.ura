@@ -2,7 +2,9 @@
 use "@/header"
 
 main():
-    str chars = stack[char](20)
+    str array[char] = heap[char](20)
     strcpy(str, "Hello world\n")
-    write(1, str, strlen("Hello world\n"))
+    str[0] = 'r'
+    printf(str)
+    free(str)
     return 0
