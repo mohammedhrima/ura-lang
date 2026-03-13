@@ -36,6 +36,7 @@ Ura started as a passion project: a love for C's raw performance and Python's re
   - [Options](#options)
   - [Build Commands](#build-commands)
   - [config.sh](#configsh)
+  - [setup.sh / setup.ps1](#setupsh--setupps1)
 - [Project Structure](#project-structure)
 - [Status](#status)
 - [Requirements](#requirements)
@@ -61,18 +62,18 @@ Ura started as a passion project: a love for C's raw performance and Python's re
 git clone https://github.com/mohammedhrima/ura-lang
 cd ura-lang
 
-# 2. Install LLVM (if not already installed)
-brew install llvm          # macOS
-sudo apt install llvm-dev  # Ubuntu/Debian
+# 2. Install all dependencies (once per machine)
+bash setup.sh          # macOS / Linux
+# Windows: run setup.ps1 in PowerShell as admin, then open MSYS2
 
-# 3. Load the environment
+# 3. Load the environment (every session)
 source config.sh
 
 # 4. Build the compiler
 build
 
 # 5. Write and run your first program
-ura src/file.ura
+$URA_COMPILER src/file.ura
 ```
 
 **Hello World:**
@@ -677,47 +678,90 @@ The compiler generates a `build/` directory next to each source file. The execut
 
 ### Build Commands
 
-| Command             | Description                                      |
-|---------------------|--------------------------------------------------|
-| `build`             | Compile the Ura compiler                         |
-| `ura <file>`        | Compile and run a `.ura` file                    |
-| `tests [folder]`    | Run test suite recursively (optionally filter)   |
-| `copy <file.ura>`   | Save test (reads `// folder/filename` from line 1) |
-| `examples`          | Generate examples.ura from all test files        |
-| `indent`            | Auto-format all C source files                   |
-| `update`            | Reload `config.sh`                               |
+| Command              | Description                                        |
+|----------------------|----------------------------------------------------|
+| `build`              | Compile the Ura compiler                           |
+| `$URA_COMPILER <f>`  | Compile and run a `.ura` file                      |
+| `tests [folder]`     | Run test suite (optionally filter by folder)       |
+| `update_tests`       | Regenerate all expected `.ll` snapshot files       |
+| `copy <file.ura>`    | Save test (reads `// folder/filename` from line 1) |
+| `check`              | Re-run dependency check                            |
+| `install`            | Install missing dependencies for this platform     |
+| `examples`           | Generate examples.ura from all test files          |
+| `indent`             | Auto-format all C source files                     |
+| `update`             | Reload `config.sh`                                 |
 
 
 ---
 
 ### config.sh
 
-`config.sh` is the development environment for Ura. Source it once and it sets up paths, environment variables, and shell functions so you can build, test, and run the compiler with short commands.
+`config.sh` is the development environment for Ura. Source it at the start of every session — it detects your OS, checks dependencies, sets up paths, and gives you short shell commands for every development task.
 
 ```bash
-source config.sh
+source config.sh   # every session
 ```
 
-It sets the following environment variables:
+On first source (or after a fresh install) it automatically runs a dependency check:
 
-| Variable     | Description                                   |
-|--------------|-----------------------------------------------|
-| `$URA_LIB`   | Path to the standard library (`src/ura-lib/`) |
-| `$ASAN_FILE` | Path to the LeakSanitizer suppression file    |
-| `$PATH`      | Adds `build/` so `ura` is available directly  |
+```
+  ╔══════════════════════════════╗
+  ║     Ura Development Env      ║
+  ╚══════════════════════════════╝
 
-It also defines these shell functions:
+  Dependency Check
+  ────────────────────────────────────
+  ✓  clang              clang 14.0.6
+  ✓  llvm-config-14     LLVM 14.0.6
+  ✓  llc                14.0.6
+  ✓  uncrustify         0.82.0
 
-| Function            | Description                                                                                              |
-|---------------------|----------------------------------------------------------------------------------------------------------|
-| `build`             | Compiles the compiler from source using clang with LLVM flags                                            |
-| `tests [folder]`    | Recursively scans and runs all tests in `tests/`. Pass a folder name to filter                           |
-| `copy <file.ura>`   | Compiles a `.ura` file and saves it as a test (reads `// folder/filename` from first line)               |
-| `examples`          | Generates `examples.ura` containing all test files from the test suite                                   |
-| `indent`            | Formats all `.c` and `.h` files using uncrustify                                                         |
-| `update`            | Reloads `config.sh` without opening a new shell                                                          |
+  All good!  Commands: build  copy  tests  check  install  help
+```
 
-The compiler itself is built with AddressSanitizer and strict warning flags enabled by default during development, so memory bugs surface immediately while working on the compiler source.
+**Environment variables set:**
+
+| Variable       | Description                                   |
+|----------------|-----------------------------------------------|
+| `$URA_LIB`     | Path to the standard library (`src/ura-lib/`) |
+| `$URA_COMPILER`| Path to the compiled compiler binary          |
+| `$PATH`        | Adds `build/` so `ura` is available directly  |
+
+**Shell commands:**
+
+| Command              | Description                                                                      |
+|----------------------|----------------------------------------------------------------------------------|
+| `build`              | Compile the Ura compiler from source                                             |
+| `tests [folder]`     | Run all tests (optionally filter by folder name)                                 |
+| `update_tests`       | Regenerate all expected `.ll` snapshot files                                     |
+| `copy <file.ura>`    | Compile a `.ura` file and save it as a test (reads path from first-line comment) |
+| `examples`           | Generate `examples.ura` from all test files                                      |
+| `indent`             | Auto-format all `.c` and `.h` files with uncrustify                              |
+| `check`              | Re-run the dependency check manually                                             |
+| `install`            | Install all missing dependencies for the current platform                        |
+| `update`             | Reload `config.sh` without opening a new shell                                   |
+| `help`               | Show all commands and compiler flags                                             |
+
+The compiler is built with AddressSanitizer and strict warning flags by default during development, so memory bugs surface immediately while working on the compiler source.
+
+### setup.sh / setup.ps1
+
+One-time bootstrap scripts for fresh machines. Run them once, then use `config.sh` for every session after.
+
+**macOS / Linux:**
+```bash
+bash setup.sh
+```
+
+Detects your OS and package manager, installs all missing tools (`llvm-14`, `clang`, `llc`, `uncrustify`), creates any needed symlinks, and verifies everything works.
+
+**Windows:**
+```powershell
+# In PowerShell as Administrator:
+powershell -ExecutionPolicy Bypass -File setup.ps1
+```
+
+Installs MSYS2 via `winget`, updates the package database, and runs `setup.sh` inside MSYS2 automatically. Then open the **MSYS2 MinGW x64** terminal and `source config.sh` as usual.
 
 ---
 
@@ -767,7 +811,9 @@ ura-lang/
 │       │   └── client.ura
 │       └── utils.ura   # Shared utilities (SockAddr, logging, timestamps)
 ├── build/              # Compiler executable
-├── config.sh           # Build system and dev commands
+├── config.sh           # Development environment (source this every session)
+├── setup.sh            # One-time setup: installs all deps (macOS / Linux / MSYS2)
+├── setup.ps1           # One-time setup for Windows: installs MSYS2 + runs setup.sh
 └── README.md
 ```
 
@@ -811,11 +857,15 @@ Ura is under active development. Here's where things stand:
 
 ## Requirements
 
-- Clang or GCC
-- LLVM 14 with `llvm-config-14` (for readable pointer syntax: `i32*`, `i32**`)
-- macOS or Linux
+| Platform | Requirements |
+|----------|-------------|
+| macOS | Homebrew, LLVM 14 (`brew install llvm@14`), uncrustify |
+| Linux | clang-14, llvm-14, llvm-14-tools, uncrustify |
+| Windows | MSYS2 with MinGW64, then `mingw-w64-x86_64-llvm` + `mingw-w64-x86_64-clang` |
 
-**Note:** LLVM 14 is specifically required for explicit pointer type notation in generated IR, which improves debugging and readability compared to the generic `ptr` type in newer LLVM versions.
+Run `bash setup.sh` (or `powershell setup.ps1` on Windows) to install everything automatically.
+
+**Why LLVM 14?** It uses explicit pointer types (`i32*`, `i32**`) in generated IR instead of the opaque `ptr` from LLVM 15+, which makes debugging and reading the IR significantly easier.
 
 ---
 

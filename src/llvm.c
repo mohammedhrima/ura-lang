@@ -239,28 +239,55 @@ Block _append_block(char *name)
    return _append_basic_block_in_context(parent, name);
 }
 
-void _condition(Value cond, Block then_block, Block else_block) { LLVMBuildCondBr(builder, cond, then_block, else_block); }
+void _condition(Value cond, Block then_block, Block else_block)
+{
+   LLVMBuildCondBr(builder, cond, then_block, else_block);
+}
 
-Value _build_call2(TypeRef ty, Value fn, Value *args, unsigned num_args, char *name) { return LLVMBuildCall2(builder, ty, fn, args, num_args, name); }
+Value _build_call2(TypeRef ty, Value fn, Value *args, unsigned num_args, char *name)
+{
+   return LLVMBuildCall2(builder, ty, fn, args, num_args, name);
+}
 
-Value _const_chars(char *str, char *name) { return LLVMBuildGlobalStringPtr(builder, str, name); }
+Value _const_chars(char *str, char *name)
+{
+   return LLVMBuildGlobalStringPtr(builder, str, name);
+}
 
 Value _build_gep2(TypeRef ty, Value ptr, Value *indices, unsigned indece, char *name)
 {
    return LLVMBuildGEP2(builder, ty, ptr, indices, indece, name);
 }
 
-Value _build_bit_cast(Value val, TypeRef dest_ty, char *name) { return LLVMBuildBitCast(builder, val, dest_ty, name); }
+Value _build_bit_cast(Value val, TypeRef dest_ty, char *name)
+{
+   return LLVMBuildBitCast(builder, val, dest_ty, name);
+}
 
-Value _build_sext(Value val, TypeRef dest_ty, char *name) { return LLVMBuildSExt(builder, val, dest_ty, name); }
+Value _build_sext(Value val, TypeRef dest_ty, char *name)
+{
+   return LLVMBuildSExt(builder, val, dest_ty, name);
+}
 
-Value _build_trunc(Value val, TypeRef dest_ty, char *name) { return LLVMBuildTrunc(builder, val, dest_ty, name); }
+Value _build_trunc(Value val, TypeRef dest_ty, char *name)
+{
+   return LLVMBuildTrunc(builder, val, dest_ty, name);
+}
 
-Value _build_int_to_ptr(Value val, TypeRef dest_ty, char *name) { return LLVMBuildIntToPtr(builder, val, dest_ty, name); }
+Value _build_int_to_ptr(Value val, TypeRef dest_ty, char *name)
+{
+   return LLVMBuildIntToPtr(builder, val, dest_ty, name);
+}
 
-Value _build_ptr_to_int(Value val, TypeRef dest_ty, char *name) { return LLVMBuildPtrToInt(builder, val, dest_ty, name); }
+Value _build_ptr_to_int(Value val, TypeRef dest_ty, char *name)
+{
+   return LLVMBuildPtrToInt(builder, val, dest_ty, name);
+}
 
-Value _build_array_alloca(TypeRef ty, Value val, char *name) { return LLVMBuildArrayAlloca(builder, ty, val, name); }
+Value _build_array_alloca(TypeRef ty, Value val, char *name)
+{
+   return LLVMBuildArrayAlloca(builder, ty, val, name);
+}
 
 Value _build_invoke2(TypeRef ty, Value fn, Value *args, unsigned num_args, Block then_block, Block catch_block, char *name)
 {
@@ -272,46 +299,78 @@ Value _build_landing_pad(TypeRef ty, Value pers_fn, unsigned num_clauses, char *
    return LLVMBuildLandingPad(builder, ty, pers_fn, num_clauses, name);
 }
 
-Value _build_extract_value(Value agg_val, unsigned index, char *name) { return LLVMBuildExtractValue(builder, agg_val, index, name); }
+Value _build_extract_value(Value agg_val, unsigned index, char *name)
+{
+   return LLVMBuildExtractValue(builder, agg_val, index, name);
+}
 
-Value _build_va_arg(Value list, TypeRef ty, char *name) { return LLVMBuildVAArg(builder, list, ty, name); }
+Value _build_va_arg(Value list, TypeRef ty, char *name)
+{
+   return LLVMBuildVAArg(builder, list, ty, name);
+}
 
-Value _build_unreachable() { return LLVMBuildUnreachable(builder); }
+Value _build_unreachable()
+{
+   return LLVMBuildUnreachable(builder);
+}
 
-Value _build_not(Token *token, char *name) { return LLVMBuildNot(builder, token->llvm.elem, name); }
+Value _build_not(Token *token, char *name)
+{
+   return LLVMBuildNot(builder, token->llvm.elem, name);
+}
 
-Value _build_memcpy(Value dest, Value src, Value size) { return LLVMBuildMemCpy(builder, dest, 0, src, 0, size); }
+Value _build_memcpy(Value dest, Value src, Value size)
+{
+   return LLVMBuildMemCpy(builder, dest, 0, src, 0, size);
+}
 
 // ----------------------------------------------------------------------------
 // LLVM Type / Constant wrappers
 // ----------------------------------------------------------------------------
 
-TypeRef _pointer_type(TypeRef element_ty, unsigned address_space) { return LLVMPointerType(element_ty, address_space); }
+TypeRef _pointer_type(TypeRef element_ty, unsigned address_space)
+{
+   return LLVMPointerType(element_ty, address_space);
+}
 
-TypeRef _function_type(TypeRef retType, TypeRef *types, int count, int is_variadic) { return LLVMFunctionType(retType, types, count, is_variadic); }
+TypeRef _function_type(TypeRef retType, TypeRef *types, int count, int is_variadic)
+{
+   return LLVMFunctionType(retType, types, count, is_variadic);
+}
 
-TypeRef _array_type(TypeRef element_type, unsigned element_count) { return LLVMArrayType(element_type, element_count); }
+TypeRef _array_type(TypeRef element_type, unsigned element_count)
+{
+   return LLVMArrayType(element_type, element_count);
+}
 
 TypeRef _struct_type_in_context(TypeRef *element_types, unsigned element_count, int packed)
 {
    return LLVMStructTypeInContext(context, element_types, element_count, packed);
 }
 
-Value _const_int(TypeRef ref_type, unsigned long long n, int sign_extend) { return LLVMConstInt(ref_type, n, sign_extend); }
+Value _const_int(TypeRef ref_type, unsigned long long n, int sign_extend)
+{
+   return LLVMConstInt(ref_type, n, sign_extend);
+}
 
-Value _const_null(TypeRef ty) { return LLVMConstNull(ty); }
+Value _const_null(TypeRef ty)
+{
+   return LLVMConstNull(ty);
+}
 
 // ----------------------------------------------------------------------------
 // LLVM Module / Function / Block wrappers
 // ----------------------------------------------------------------------------
 
-Value _get_named_function(char *name) { return LLVMGetNamedFunction(module, name); }
+Value _get_named_function(char *name)
+{
+   return LLVMGetNamedFunction(module, name);
+}
 
 Value _add_function(char *name, TypeRef function_type)
 {
    Value f = LLVMGetNamedFunction(module, name);
-   if (f)
-      return f;
+   if (f) return f;
    return LLVMAddFunction(module, name, function_type);
 }
 
@@ -326,42 +385,96 @@ void set_debug_location(Token *token)
    LLVMSetCurrentDebugLocation2(builder, loc);
 }
 
-Value _get_param(Value fn, unsigned index) { return LLVMGetParam(fn, index); }
+Value _get_param(Value fn, unsigned index)
+{
+   return LLVMGetParam(fn, index);
+}
 
-Block _append_basic_block_in_context(Value func, char *name) { return LLVMAppendBasicBlockInContext(context, func, name); }
+Block _append_basic_block_in_context(Value func, char *name)
+{
+   return LLVMAppendBasicBlockInContext(context, func, name);
+}
 
-Block _get_insert_block() { return LLVMGetInsertBlock(builder); }
+Block _get_insert_block()
+{
+   return LLVMGetInsertBlock(builder);
+}
 
-Value _get_basic_block_parent(Block block) { return LLVMGetBasicBlockParent(block); }
+Value _get_basic_block_parent(Block block)
+{
+   return LLVMGetBasicBlockParent(block);
+}
 
-Block _get_entry_basic_block(Value func) { return LLVMGetEntryBasicBlock(func); }
+Block _get_entry_basic_block(Value func)
+{
+   return LLVMGetEntryBasicBlock(func);
+}
 
-void _position_at(Block block) { LLVMPositionBuilderAtEnd(builder, block); }
+void _position_at(Block block)
+{
+   LLVMPositionBuilderAtEnd(builder, block);
+}
 
-Value _get_basic_block_terminator(Block block) { return LLVMGetBasicBlockTerminator(block); }
+Value _get_basic_block_terminator(Block block)
+{
+   return LLVMGetBasicBlockTerminator(block);
+}
 
-TypeRef _global_get_value_type(Value global) { return LLVMGlobalGetValueType(global); }
+TypeRef _global_get_value_type(Value global)
+{
+   return LLVMGlobalGetValueType(global);
+}
 
 // ----------------------------------------------------------------------------
 // LLVM Introspection wrappers
 // ----------------------------------------------------------------------------
 
-TypeRef _type_of(Value val) { return LLVMTypeOf(val); }
+TypeRef _type_of(Value val)
+{
+   return LLVMTypeOf(val);
+}
 
-TypeKind _get_type_kind(TypeRef ty) { return LLVMGetTypeKind(ty); }
+TypeKind _get_type_kind(TypeRef ty)
+{
+   return LLVMGetTypeKind(ty);
+}
 
-unsigned _get_int_type_width(TypeRef ref_ty) { return LLVMGetIntTypeWidth(ref_ty); }
+unsigned _get_int_type_width(TypeRef ref_ty)
+{
+   return LLVMGetIntTypeWidth(ref_ty);
+}
 
-TypeRef _get_type_by_name2(char *name) { return LLVMGetTypeByName2(context, name); }
+TypeRef _get_type_by_name2(char *name)
+{
+   return LLVMGetTypeByName2(context, name);
+}
 
-TypeRef _get_return_type(TypeRef function_type) { return LLVMGetReturnType(function_type); }
+TypeRef _get_return_type(TypeRef function_type)
+{
+   return LLVMGetReturnType(function_type);
+}
 
-const char *_get_target(Module m) { return LLVMGetTarget(m); }
+const char *_get_target(Module m)
+{
+   return LLVMGetTarget(m);
+}
 
-void _set_personality_fn(Value func, Value pers_fn) { LLVMSetPersonalityFn(func, pers_fn); }
+void _set_personality_fn(Value func, Value pers_fn)
+{
+   LLVMSetPersonalityFn(func, pers_fn);
+}
 
-void _add_clause(Value landing_pad, Value clause_val) { LLVMAddClause(landing_pad, clause_val); }
+void _add_clause(Value landing_pad, Value clause_val)
+{
+   LLVMAddClause(landing_pad, clause_val);
+}
 
-size_t _abi_size_of_type(TargetData td, TypeRef ty) { return LLVMABISizeOfType(td, ty); }
+size_t _abi_size_of_type(TargetData td, TypeRef ty)
+{
+   return LLVMABISizeOfType(td, ty);
+}
 
-TargetData _get_module_data_layout(Module m) { return LLVMGetModuleDataLayout(m); }
+TargetData _get_module_data_layout(Module m)
+{
+   return LLVMGetModuleDataLayout(m);
+}

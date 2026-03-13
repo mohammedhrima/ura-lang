@@ -1,33 +1,29 @@
 #include "header.h"
 
-bool    found_error;
+bool             found_error;
 
-Token **tokens;
-int     tk_pos;
-int     tk_len;
+Token          **tokens;
+int              tk_pos;
+int              tk_len;
 
-Node   *global;
-int     exe_pos;
+Node            *global;
+int              exe_pos;
 
-Node  **Gscoop;
-Node   *scoop;
-int     scoop_len;
-int     scoop_pos;
+Node           **Gscoop;
+Node            *scoop;
+int              scoop_len;
+int              scoop_pos;
 
-char  **used_files;
-int     used_len;
-int     used_pos;
+char           **used_files;
+int              used_len;
+int              used_pos;
 
-Context context;
-Module  module;
-Builder builder;
-TypeRef vd, f32, i1, i8, i16, i32, i64, p8, p32;
-File    asm_fd;
-
-
-bool enable_bounds_check = false;
-// bool             using_refs;
-// bool             is_method_call;
+Context          context;
+Module           module;
+Builder          builder;
+TypeRef          vd, f32, i1, i8, i16, i32, i64, p8, p32;
+File             asm_fd;
+bool             enable_bounds_check = false;
 char            *passes;
 bool             enable_asan;
 
@@ -1122,8 +1118,8 @@ Value allocate_heap(Value count, TypeRef elementType, char *name)
    else
       count_i64 = count;
 
-   Value   size_i64      = _const_int(i64, elem_size, 0);
-   Value   args[]        = {count_i64, size_i64};
+   Value   size_i64    = _const_int(i64, elem_size, 0);
+   Value   args[]      = {count_i64, size_i64};
    TypeRef calloc_type = _global_get_value_type(calloc_func);
    return _build_call2(calloc_type, calloc_func, args, 2, name);
 }
@@ -1941,10 +1937,23 @@ void gen_asm(Node *node)
          element_type         = i8;
          node->token->retType = CHAR;
       }
+      else if (left_elem_type == ARRAY_TYPE || left_elem_type == ARRAY)
+      {
+         Token tmp = {.type = node->left->token->Array.elem_type};
+         element_type         = get_llvm_type(&tmp);
+         node->token->retType = node->left->token->Array.elem_type;
+      }
+      else if (node->left->token->type == HEAP || node->left->token->type == ARRAY)
+      {
+         check(1, "hello");
+         Token tmp = {.type = node->left->token->Array.elem_type};
+         element_type         = get_llvm_type(&tmp);
+         node->token->retType = node->left->token->Array.elem_type;
+      }
       else
       {
-         element_type         = get_llvm_type(left->token);
-         node->token->retType = left->token->type;
+         element_type         = get_llvm_type(node->left->token);
+         node->token->retType = node->left->token->type;
       }
 
       // Add bounds checking if enabled
@@ -3123,18 +3132,6 @@ void finalize(char *output)
    LLVMInitializeNativeAsmPrinter();
 
    LLVMPassBuilderOptionsRef options = LLVMCreatePassBuilderOptions();
-
-   // if (enable_asan)
-   // {
-   //    // LLVMErrorRef err = LLVMRunPasses(module, "asan-module,asan", NULL, options);
-   //    LLVMErrorRef err = LLVMRunPasses(module, "asan,asan-stack", NULL, options);
-   //    if (err)
-   //    {
-   //       char *msg = LLVMGetErrorMessage(err);
-   //       fprintf(stderr, RED "ASan Error: %s\n" RESET, msg);
-   //       LLVMDisposeErrorMessage(msg);
-   //    }
-   // }
 
    if (passes)
    {
