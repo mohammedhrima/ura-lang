@@ -48,20 +48,14 @@ void _alloca(Token *token)
    Block current     = _get_insert_block();
    Value func        = _get_basic_block_parent(current);
    Block entry       = _get_entry_basic_block(func);
-   Value last_alloca = NULL;
-   Value inst        = LLVMGetFirstInstruction(entry);
+   // Walk past leading allocas to find the insertion point
+   Value inst = LLVMGetFirstInstruction(entry);
    while (inst && LLVMGetInstructionOpcode(inst) == LLVMAlloca)
-   {
-      last_alloca = inst;
-      inst        = LLVMGetNextInstruction(inst);
-   }
+      inst = LLVMGetNextInstruction(inst);
 
-   if (last_alloca)
-   {
-      Value next = LLVMGetNextInstruction(last_alloca);
-      if (next) LLVMPositionBuilderBefore(builder, next);
-      else _position_at(entry);
-   }
+   // Position before the first non-alloca instruction (safe even when it's a terminator)
+   if (inst)
+      LLVMPositionBuilderBefore(builder, inst);
    else
       _position_at(entry);
 
