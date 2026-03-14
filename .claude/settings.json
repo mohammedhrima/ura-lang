@@ -45,7 +45,14 @@
       "Read(//Users/hrimamohammed/Desktop/Personal/projects/tcp/basic/**)",
       "Read(//Users/hrimamohammed/Desktop/Personal/**)",
       "Bash(URA_LIB=/Users/hrimamohammed/Desktop/Personal/ura-lang/src/ura-lib ./build/ura projects/tcp/basic/server.ura)",
-      "Bash(ura projects/tcp/basic/server.ura)"
+      "Bash(ura projects/tcp/basic/server.ura)",
+      "Bash(ura projects/tcp/basic/client.ura)",
+      "Bash(chmod +x /Users/hrimamohammed/Desktop/personal/ura-lang/.git/hooks/pre-push)",
+      "Bash(git remote:*)",
+      "Bash(git subtree:*)"
+    ],
+    "additionalDirectories": [
+      "/Users/hrimamohammed/Desktop/personal/ura-lang/projects/tcp"
     ]
   }
 }

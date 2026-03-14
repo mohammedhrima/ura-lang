@@ -1,7 +1,0 @@
-.git
-build
-**/build
-**/.DS_Store
-*.ll
-*.s
-*.out

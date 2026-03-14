@@ -3,14 +3,15 @@
 # =========================================================
 #  Root Detection (no hardcoded paths)
 # =========================================================
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+ROOT_DIR="$SCRIPT_DIR"
 SRC_DIR="$ROOT_DIR/src"
 BUILD_DIR="$ROOT_DIR/build"
 TESTS_DIR="$ROOT_DIR/tests"
 LLVM_DIR="$ROOT_DIR/llvm"
-CONFIG_FILE="$ROOT_DIR/config.sh"
+CONFIG_FILE="$SCRIPT_DIR/config.sh"
 export URA_LIB="$SRC_DIR/ura-lib"
-export ASAN_FILE="$ROOT_DIR/lsan.supp"
+export ASAN_FILE="$ROOT_DIR/config/lsan.supp"
 
 # =========================================================
 #  OS Detection
@@ -496,7 +497,7 @@ indent() {
         echo -e "${RED}uncrustify not found.${RESET} Install it and re-run."
         return 1
     fi
-    uncrustify -c "$ROOT_DIR/uncrustify.cfg" --no-backup "$SRC_DIR"/*.c "$SRC_DIR"/*.h
+    uncrustify -c "$ROOT_DIR/config/uncrustify.cfg" --no-backup "$SRC_DIR"/*.c "$SRC_DIR"/*.h
 }
 
 # =========================================================
