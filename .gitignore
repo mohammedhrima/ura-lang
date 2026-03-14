@@ -1,5 +1,6 @@
 # Compiler build output
-build/
+build/*
+!build/ura
 
 # Generated files
 **/*.s
@@ -18,10 +19,6 @@ llvm/build/
 
 # Src build
 src/build/
-
-# Project bundled executables (updated on main push)
-!tests/projects/ura-libft/ura
-!tests/projects/ura-tcp-server/ura
 
 # Others
 examples.ura

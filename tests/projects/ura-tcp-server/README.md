@@ -2,17 +2,18 @@
 
 A TCP chat server and client implemented in [Ura](https://github.com/mohammedhrima/ura-lang) — a compiled, statically-typed language with Python-like syntax.
 
-## Requirements
+## Getting the compiler
 
-No installation needed. The `ura` compiler binary is bundled in this repo.
+```bash
+curl -L https://github.com/mohammedhrima/ura-lang/raw/main/build/ura -o ura
+chmod +x ura
+```
 
 ## Usage
 
 ```bash
 ./ura <file.ura>
 ```
-
-This compiles and immediately runs the file.
 
 ## Running the server and client
 
