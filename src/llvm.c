@@ -3,6 +3,102 @@
 // ----------------------------------------------------------------------------
 // Utility / High-level helpers
 // ----------------------------------------------------------------------------
+Value allocate_stack(Value size, TypeRef elementType, char *name)
+{
+   Value indices[] =
+   {
+      LLVMConstInt(i32, 0, 0),
+      LLVMConstInt(i32, 0, 0)
+   };
+
+   if (LLVMIsConstant(size))
+   {
+      unsigned long long constSize    = LLVMConstIntGetZExtValue(size);
+      TypeRef            arrayType    = LLVMArrayType(elementType, constSize);
+      Value              array_alloca = LLVMBuildAlloca(builder, arrayType, name);
+      return LLVMBuildGEP2(builder, arrayType, array_alloca, indices, 2, name);
+   }
+
+   Value array_alloca = LLVMBuildArrayAlloca(builder, elementType, size, name);
+   return LLVMBuildGEP2(builder, elementType, array_alloca, indices, 2, name);
+}
+
+Value allocate_heap(Value count, TypeRef elementType, char *name)
+{
+   Value calloc_func = _get_named_function("calloc");
+   if (!calloc_func)
+   {
+      TypeRef params[]  = {i64, i64};
+      TypeRef func_type = _function_type(p8, params, 2, 0);
+      calloc_func = _add_function("calloc", func_type);
+   }
+   TargetData td        = _get_module_data_layout(module);
+   size_t     elem_size = _abi_size_of_type(td, elementType);
+
+   Value      count_i64;
+   unsigned   width = LLVMGetIntTypeWidth(LLVMTypeOf(count));
+   if (width < 64)
+      count_i64 = LLVMBuildZExt(builder, count, i64, "count");
+   else if (width > 64)
+      count_i64 = LLVMBuildTrunc(builder, count, i64, "count");
+   else
+      count_i64 = count;
+
+   Value   size_i64    = _const_int(i64, elem_size, 0);
+   Value   args[]      = {count_i64, size_i64};
+   TypeRef calloc_type = _global_get_value_type(calloc_func);
+   return _build_call2(calloc_type, calloc_func, args, 2, name);
+}
+
+Value get_store_ptr(Token *token)
+{
+   // Regular variable - return its alloca'd address
+   if (!token->is_ref) return token->llvm.elem;
+   // Reference - need to load the pointer it points to
+   TypeRef type     = get_llvm_type(token);
+   TypeRef ptr_type = LLVMPointerType(type, 0);
+   return _build_load2(ptr_type, token->llvm.elem, "store_ptr");
+}
+
+Value struct_field_ptr(Token *struct_tok, int field_index, char *name)
+{
+   TypeRef struct_type = get_llvm_type(struct_tok);   // the struct's LLVM type
+   Value   indices[]   =
+   {
+      LLVMConstInt(i32, 0, 0),            // deref the alloca pointer
+      LLVMConstInt(i32, field_index, 0),  // pick the field
+   };
+   return _build_gep2(struct_type, struct_tok->llvm.elem, indices, 2, name);
+}
+
+void hoist_allocas(Node *node)
+{
+   if (!node) return;
+   Token *tok = node->token;
+
+   // don't recurse into nested functions
+   if (tok->type == FDEC) return;
+
+   if (includes(tok->type, INT, LONG, SHORT, CHARS, CHAR, BOOL, ARRAY_TYPE, 0) && tok->is_dec)
+   {
+      if (!tok->llvm.elem)
+         _alloca(tok);
+   }
+   else if (tok->type == STRUCT_CALL && tok->is_dec && !tok->is_ref)
+   {
+      if (!tok->llvm.elem)
+      {
+         TypeRef struct_type = get_llvm_type(tok);
+         tok->llvm.elem = _build_alloca(struct_type, tok->name);
+      }
+   }
+
+   if (node->left)  hoist_allocas(node->left);
+   if (node->right) hoist_allocas(node->right);
+   for (int i = 0; i < node->cpos; i++)
+      hoist_allocas(node->children[i]);
+}
+
 Value _load2(Token *token)
 {
    if (token->llvm.is_loaded) return token->llvm.elem;
@@ -45,11 +141,11 @@ void _alloca(Token *token)
    if (token->is_ref)
       type = _pointer_type(type, 0);
 
-   Block current     = _get_insert_block();
-   Value func        = _get_basic_block_parent(current);
-   Block entry       = _get_entry_basic_block(func);
+   Block current = _get_insert_block();
+   Value func    = _get_basic_block_parent(current);
+   Block entry   = _get_entry_basic_block(func);
    // Walk past leading allocas to find the insertion point
-   Value inst = LLVMGetFirstInstruction(entry);
+   Value inst    = LLVMGetFirstInstruction(entry);
    while (inst && LLVMGetInstructionOpcode(inst) == LLVMAlloca)
       inst = LLVMGetNextInstruction(inst);
 

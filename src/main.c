@@ -9,10 +9,10 @@ int              tk_len;
 Node            *global;
 int              exe_pos;
 
-Node           **Gscoop;
-Node            *scoop;
-int              scoop_len;
-int              scoop_pos;
+Node           **Gscope;
+Node            *scope;
+int              scope_len;
+int              scope_pos;
 
 char           **used_files;
 int              used_len;
@@ -352,7 +352,7 @@ Node *prime_node() // primary
             expect_token(RPAR, "expected ) after main declaration");
             expect_token(DOTS, "expected : after main() declaration");
 
-            enter_scoop(node);
+            enter_scope(node);
             node->token->type    = FDEC;
             node->token->retType = INT;
             node->left           = new_node(new_token(ARGS, node->token->space));
@@ -369,7 +369,7 @@ Node *prime_node() // primary
                last->left = new_node(new_token(INT, node->token->space + TAB));
                add_child(node, last);
             }
-            exit_scoop();
+            exit_scope();
          }
          else
          {
@@ -406,7 +406,7 @@ Node *prime_node() // primary
       node->token->type       = STRUCT_DEF; // keep it, it's changed at the bottom
       node->token->Struct.ptr = node;
       new_struct(node);
-      enter_scoop(node);
+      enter_scope(node);
 
       // Collect methods to hoist AFTER the struct is registered
       Node **methods      = NULL;
@@ -427,7 +427,7 @@ Node *prime_node() // primary
          {
             if (check(!child->token->is_dec, "invalid attribute"))
             {
-               exit_scoop();
+               exit_scope();
                free(methods);
                return syntax_error();
             }
@@ -436,7 +436,7 @@ Node *prime_node() // primary
          }
       }
 
-      exit_scoop();
+      exit_scope();
 
       // Hoist methods AFTER struct is registered so gen_asm sees STRUCT_DEF first
       for (int i = 0; i < method_count; i++)
@@ -486,7 +486,7 @@ Node *prime_node() // primary
       //    + children: code bloc
       //    + right   : elif/else Layout
       node = new_node(token);
-      enter_scoop(node);
+      enter_scope(node);
 
       node->left = expr_node();
 
@@ -505,22 +505,22 @@ Node *prime_node() // primary
 
          if (token->type == ELIF)
          {
-            enter_scoop(curr);
+            enter_scope(curr);
             curr->left = expr_node();
             expect_token(DOTS, "expected : after elif condition");
             while (within(token->space)) add_child(curr, expr_node());
-            exit_scoop();
+            exit_scope();
          }
          else if (token->type == ELSE)
          {
-            enter_scoop(curr);
+            enter_scope(curr);
             expect_token(DOTS, "expected : after else");
             while (within(token->space)) add_child(curr, expr_node());
-            exit_scoop();
+            exit_scope();
             break;
          }
       }
-      exit_scoop();
+      exit_scope();
       return node;
    }
    if ((token = find(WHILE, 0)))
@@ -529,7 +529,7 @@ Node *prime_node() // primary
       // while Layout:
       //    + left    : condition
       //    + children: code bloc
-      enter_scoop(node);
+      enter_scope(node);
 
       node->left = expr_node();
       // node->left->token->space = node->token->space;
@@ -538,7 +538,7 @@ Node *prime_node() // primary
       // code bloc
       while (within(node->token->space)) add_child(node, expr_node());
 
-      exit_scoop();
+      exit_scope();
       return node;
    }
    if ((token = find(BREAK, CONTINUE, 0)))
@@ -618,11 +618,11 @@ Node *prime_node() // primary
 
       // Check if we're inside a struct scope
       Node *struct_owner = NULL;
-      Node *parent       = Gscoop[scoop_pos];
+      Node *parent       = Gscope[scope_pos];
       if (parent && parent->token->type == STRUCT_DEF)
          struct_owner = parent;
 
-      enter_scoop(node);
+      enter_scope(node);
       expect_token(LPAR, "expected ( after function declaration");
 
       node->left = new_node(new_token(ARGS, node->token->space));
@@ -737,17 +737,17 @@ Node *prime_node() // primary
             }
          }
       }
-      exit_scoop();
+      exit_scope();
       return node;
    }
    if ((token = find(RETURN, 0)))
    {
       // TODO: check if return type is compatible with function
-      // in current scoop, must be done inside gen_ir
+      // in current scope, must be done inside gen_ir
       node = new_node(token);
-      for (int i = scoop_pos; i >= 0; i--)
+      for (int i = scope_pos; i >= 0; i--)
       {
-         Node *curr = Gscoop[i];
+         Node *curr = Gscope[i];
          if (curr->token->type == FDEC)
          {
             if (curr->token->retType == VOID)
@@ -895,7 +895,7 @@ char *compile(char *filename)
    // reset global state for each file
    found_error = false;
    tk_pos      = 0; exe_pos = 0;
-   scoop_pos   = 0; scoop = NULL;
+   scope_pos   = 0; scope = NULL;
    global      = NULL;
 
    tokenize(filename);
@@ -904,8 +904,8 @@ char *compile(char *filename)
 #if AST
    if (found_error) return NULL;
    global = new_node(new_token(ID, -TAB));
-   setName(global->token, "ura-scoop");
-   enter_scoop(global);
+   setName(global->token, "ura-scope");
+   enter_scope(global);
    while (!find(END, 0) && !found_error)
       add_child(global, expr_node());
    debug("%s===========================================\n", GREEN);
@@ -1108,102 +1108,6 @@ int main(int argc, char **argv)
 
 // GENERATE
 // ASSEMBLY GENERATION
-Value allocate_stack(Value size, TypeRef elementType, char *name)
-{
-   Value indices[] =
-   {
-      LLVMConstInt(i32, 0, 0),
-      LLVMConstInt(i32, 0, 0)
-   };
-
-   if (LLVMIsConstant(size))
-   {
-      unsigned long long constSize    = LLVMConstIntGetZExtValue(size);
-      TypeRef            arrayType    = LLVMArrayType(elementType, constSize);
-      Value              array_alloca = LLVMBuildAlloca(builder, arrayType, name);
-      return LLVMBuildGEP2(builder, arrayType, array_alloca, indices, 2, name);
-   }
-
-   Value array_alloca = LLVMBuildArrayAlloca(builder, elementType, size, name);
-   return LLVMBuildGEP2(builder, elementType, array_alloca, indices, 2, name);
-}
-
-Value allocate_heap(Value count, TypeRef elementType, char *name)
-{
-   Value calloc_func = _get_named_function("calloc");
-   if (!calloc_func)
-   {
-      TypeRef params[]  = {i64, i64};
-      TypeRef func_type = _function_type(p8, params, 2, 0);
-      calloc_func = _add_function("calloc", func_type);
-   }
-   TargetData td        = _get_module_data_layout(module);
-   size_t     elem_size = _abi_size_of_type(td, elementType);
-
-   Value      count_i64;
-   unsigned   width = LLVMGetIntTypeWidth(LLVMTypeOf(count));
-   if (width < 64)
-      count_i64 = LLVMBuildZExt(builder, count, i64, "count");
-   else if (width > 64)
-      count_i64 = LLVMBuildTrunc(builder, count, i64, "count");
-   else
-      count_i64 = count;
-
-   Value   size_i64    = _const_int(i64, elem_size, 0);
-   Value   args[]      = {count_i64, size_i64};
-   TypeRef calloc_type = _global_get_value_type(calloc_func);
-   return _build_call2(calloc_type, calloc_func, args, 2, name);
-}
-
-Value get_store_ptr(Token *token)
-{
-   // Regular variable - return its alloca'd address
-   if (!token->is_ref) return token->llvm.elem;
-   // Reference - need to load the pointer it points to
-   TypeRef type     = get_llvm_type(token);
-   TypeRef ptr_type = LLVMPointerType(type, 0);
-   return _build_load2(ptr_type, token->llvm.elem, "store_ptr");
-}
-
-Value struct_field_ptr(Token *struct_tok, int field_index, char *name)
-{
-   TypeRef struct_type = get_llvm_type(struct_tok);   // the struct's LLVM type
-   Value   indices[]   =
-   {
-      LLVMConstInt(i32, 0, 0),            // deref the alloca pointer
-      LLVMConstInt(i32, field_index, 0),  // pick the field
-   };
-   return _build_gep2(struct_type, struct_tok->llvm.elem, indices, 2, name);
-}
-
-void hoist_allocas(Node *node)
-{
-   if (!node) return;
-   Token *tok = node->token;
-
-   // don't recurse into nested functions
-   if (tok->type == FDEC) return;
-
-   if (includes(tok->type, INT, LONG, SHORT, CHARS, CHAR, BOOL, ARRAY_TYPE, 0) && tok->is_dec)
-   {
-      if (!tok->llvm.elem)
-         _alloca(tok);
-   }
-   else if (tok->type == STRUCT_CALL && tok->is_dec && !tok->is_ref)
-   {
-      if (!tok->llvm.elem)
-      {
-         TypeRef struct_type = get_llvm_type(tok);
-         tok->llvm.elem = _build_alloca(struct_type, tok->name);
-      }
-   }
-
-   if (node->left)  hoist_allocas(node->left);
-   if (node->right) hoist_allocas(node->right);
-   for (int i = 0; i < node->cpos; i++)
-      hoist_allocas(node->children[i]);
-}
-
 void emit_scope_clean(Node *scope, int from)
 {
    for (int i = from; i < scope->vpos; i++)
@@ -1211,9 +1115,9 @@ void emit_scope_clean(Node *scope, int from)
       Token *var = scope->variables[i];
       if (var->type != STRUCT_CALL || !var->llvm.elem) continue;
       if (var->is_ref) continue;  // refs are borrowed, not owned — caller cleans up
-      Node *sd = var->Struct.ptr;
-      char  *qname    = strjoin(sd->token->name, ".clean", NULL);
-      Value  clean_fn = _get_named_function(qname);
+      Node *sd       = var->Struct.ptr;
+      char *qname    = strjoin(sd->token->name, ".clean", NULL);
+      Value clean_fn = _get_named_function(qname);
       free(qname);
       if (!clean_fn) continue;
       Value args[] = { var->llvm.elem };
@@ -1258,20 +1162,20 @@ void append_output_arg(Token *tok, char *fmt, int *fpos, Value *args, int *nargs
    switch (type)
    {
    case INT: case SHORT: case BOOL:
-      fmt[(*fpos)++] = '%'; fmt[(*fpos)++] = 'd';
+      fmt[(*fpos)++]   = '%'; fmt[(*fpos)++] = 'd';
       args[(*nargs)++] = _build_load2(get_llvm_type(tok), tok->llvm.elem, tok->name ? tok->name : "");
       break;
    case LONG:
-      fmt[(*fpos)++] = '%'; fmt[(*fpos)++] = 'l';
-      fmt[(*fpos)++] = 'l'; fmt[(*fpos)++] = 'd';
+      fmt[(*fpos)++]   = '%'; fmt[(*fpos)++] = 'l';
+      fmt[(*fpos)++]   = 'l'; fmt[(*fpos)++] = 'd';
       args[(*nargs)++] = _build_load2(get_llvm_type(tok), tok->llvm.elem, tok->name ? tok->name : "");
       break;
    case CHAR:
-      fmt[(*fpos)++] = '%'; fmt[(*fpos)++] = 'c';
+      fmt[(*fpos)++]   = '%'; fmt[(*fpos)++] = 'c';
       args[(*nargs)++] = _build_load2(get_llvm_type(tok), tok->llvm.elem, tok->name ? tok->name : "");
       break;
    case CHARS:
-      fmt[(*fpos)++] = '%'; fmt[(*fpos)++] = 's';
+      fmt[(*fpos)++]   = '%'; fmt[(*fpos)++] = 's';
       args[(*nargs)++] = _build_load2(get_llvm_type(tok), tok->llvm.elem, tok->name ? tok->name : "");
       break;
    case FLOAT:
@@ -1292,7 +1196,7 @@ void append_output_arg(Token *tok, char *fmt, int *fpos, Value *args, int *nargs
          int    flen  = strlen(field->name);
          memcpy(fmt + *fpos, field->name, flen); *fpos += flen;
          fmt[(*fpos)++] = ':'; fmt[(*fpos)++] = ' ';
-         Token ftok     = *field;
+         Token ftok = *field;
          ftok.llvm.elem = struct_field_ptr(tok, i, field->name);
          append_output_arg(&ftok, fmt, fpos, args, nargs);
          if (i < sd->cpos - 1) { fmt[(*fpos)++] = ','; fmt[(*fpos)++] = ' '; }
@@ -1332,9 +1236,9 @@ void gen_asm(Node *node)
             TypeRef struct_type = get_llvm_type(node->token);
             _build_store(LLVMConstNull(struct_type), node->token->llvm.elem);
 
-            Node  *src     = node->token->Struct.ptr;
-            char  *qname   = strjoin(src->token->name, ".init", NULL);
-            Value  init_fn = _get_named_function(qname);
+            Node *src     = node->token->Struct.ptr;
+            char *qname   = strjoin(src->token->name, ".init", NULL);
+            Value init_fn = _get_named_function(qname);
             free(qname);
             if (init_fn)
             {
@@ -1641,7 +1545,7 @@ void gen_asm(Node *node)
       // debug("================================\n");
       // pnode(node, "");
       // debug("\n================================\n");
-      enter_scoop(node);
+      enter_scope(node);
       TypeRef retType;
       if (node->token->retType == STRUCT_CALL && node->token->is_ref)
          retType = _pointer_type(get_llvm_type(node->token), 0);
@@ -1774,13 +1678,13 @@ void gen_asm(Node *node)
          }
 
       }
-      exit_scoop();
+      exit_scope();
       di_current_scope = di_compile_unit;
       break;
    }
    case WHILE:
    {
-      enter_scoop(node);
+      enter_scope(node);
       Block start = _append_block("while.start");
       Block then  = _append_block("while.then");
       Block end   = _append_block("while.end");
@@ -1807,12 +1711,12 @@ void gen_asm(Node *node)
       _branch(start);
 
       _position_at(end);
-      exit_scoop();
+      exit_scope();
       break;
    }
    case IF:
    {
-      enter_scoop(node);
+      enter_scope(node);
 
       Block if_start = _append_block("if.start");
       Block end      = _append_block("if.end");
@@ -1885,16 +1789,16 @@ void gen_asm(Node *node)
          curr = curr->right;
       }
       _position_at(end);
-      exit_scoop();
+      exit_scope();
       break;
    }
    case BREAK:
    {
-      for (int i = scoop_pos; i > 0; i--)
+      for (int i = scope_pos; i > 0; i--)
       {
-         if (Gscoop[i]->token->type == WHILE)
+         if (Gscope[i]->token->type == WHILE)
          {
-            _branch(Gscoop[i]->token->llvm.end);
+            _branch(Gscope[i]->token->llvm.end);
             return;
          }
       }
@@ -1903,11 +1807,11 @@ void gen_asm(Node *node)
    }
    case CONTINUE:
    {
-      for (int i = scoop_pos; i > 0; i--)
+      for (int i = scope_pos; i > 0; i--)
       {
-         if (Gscoop[i]->token->type == WHILE)
+         if (Gscope[i]->token->type == WHILE)
          {
-            _branch(Gscoop[i]->token->llvm.start);
+            _branch(Gscope[i]->token->llvm.start);
             return;
          }
       }
@@ -1916,14 +1820,14 @@ void gen_asm(Node *node)
    }
    case RETURN:
    {
-      emit_scope_clean(scoop, 0);
+      emit_scope_clean(scope, 0);
 
       // Auto-insert nested field clean calls for .clean methods before return
       {
          Node *fdec = NULL;
-         for (int i = scoop_pos; i >= 0; i--)
-            if (Gscoop[i] && Gscoop[i]->token->type == FDEC)
-            { fdec = Gscoop[i]; break; }
+         for (int i = scope_pos; i >= 0; i--)
+            if (Gscope[i] && Gscope[i]->token->type == FDEC)
+            { fdec = Gscope[i]; break; }
          if (fdec)
          {
             char *fn_name    = fdec->token->name;
@@ -1965,9 +1869,9 @@ void gen_asm(Node *node)
 
          // Find the enclosing FDEC to check its return type
          Node *fdec = NULL;
-         for (int i = scoop_pos; i >= 0; i--)
-            if (Gscoop[i] && Gscoop[i]->token->type == FDEC)
-            { fdec = Gscoop[i]; break; }
+         for (int i = scope_pos; i >= 0; i--)
+            if (Gscope[i] && Gscope[i]->token->type == FDEC)
+            { fdec = Gscope[i]; break; }
 
          bool fdec_returns_ref    = fdec && fdec->token->is_ref;
          bool fdec_returns_struct = fdec && fdec->token->retType == STRUCT_CALL;
@@ -2061,13 +1965,13 @@ void gen_asm(Node *node)
 
       if (!node->token->is_init)
       {
-         char  *fname = strjoin(node->token->name, ".init", NULL);
-         Value  fn    = _add_function(fname, lc_fn_type);
+         char *fname = strjoin(node->token->name, ".init", NULL);
+         Value fn    = _add_function(fname, lc_fn_type);
          free(fname);
-         Block  entry = _append_basic_block_in_context(fn, "entry");
+         Block entry = _append_basic_block_in_context(fn, "entry");
          _position_at(entry);
          LLVMSetCurrentDebugLocation2(builder, NULL);
-         Value  self  = LLVMGetParam(fn, 0);
+         Value self = LLVMGetParam(fn, 0);
          LLVMBuildStore(builder, LLVMConstNull(st_type), self);
          for (int i = 0; i < node->cpos; i++)
          {
@@ -2089,13 +1993,13 @@ void gen_asm(Node *node)
 
       if (!node->token->is_clean)
       {
-         char  *fname = strjoin(node->token->name, ".clean", NULL);
-         Value  fn    = _add_function(fname, lc_fn_type);
+         char *fname = strjoin(node->token->name, ".clean", NULL);
+         Value fn    = _add_function(fname, lc_fn_type);
          free(fname);
-         Block  entry = _append_basic_block_in_context(fn, "entry");
+         Block entry = _append_basic_block_in_context(fn, "entry");
          _position_at(entry);
          LLVMSetCurrentDebugLocation2(builder, NULL);
-         Value  self  = LLVMGetParam(fn, 0);
+         Value self = LLVMGetParam(fn, 0);
          for (int i = 0; i < node->cpos; i++)
          {
             Token *field = node->children[i]->token;
@@ -2326,8 +2230,8 @@ void gen_asm(Node *node)
    }
    case OUTPUT:
    {
-      int    argc  = node->left->cpos;
-      Node **argv  = node->left->children;
+      int    argc = node->left->cpos;
+      Node **argv = node->left->children;
 
       // Compute format string capacity: literals + format specifiers + struct expansion
       int fmt_cap = 64;
@@ -2353,9 +2257,9 @@ void gen_asm(Node *node)
       TypeRef printf_ft = _global_get_value_type(printf_fn);
       // Follow the language's variadic calling convention: insert arg count between
       // fixed params and variadic args — same as FCALL does for variadic functions
-      Value  *call_args = allocate(nargs + 3, sizeof(Value));
-      call_args[0]      = LLVMBuildGlobalStringPtr(builder, fmt, "output_fmt");
-      call_args[1]      = _const_int(i32, nargs, 0);
+      Value *call_args = allocate(nargs + 3, sizeof(Value));
+      call_args[0] = LLVMBuildGlobalStringPtr(builder, fmt, "output_fmt");
+      call_args[1] = _const_int(i32, nargs, 0);
       memcpy(call_args + 2, args, nargs * sizeof(Value));
       LLVMBuildCall2(builder, printf_ft, printf_fn, call_args, nargs + 2, "");
       free(fmt); free(args); free(call_args);
@@ -2400,7 +2304,7 @@ void gen_ir(Node * node)
             free(qname);
             if (init_fn) init_fn->token->used++;
          }
-         
+
       }
       break;
    }
@@ -2492,18 +2396,18 @@ void gen_ir(Node * node)
    }
    case WHILE:
    {
-      enter_scoop(node);
+      enter_scope(node);
       gen_ir(node->left); // condition
       node->left->token->used++;
       // code bloc
       for (int i = 0; i < node->cpos; i++) gen_ir(node->children[i]);
-      exit_scoop();
+      exit_scope();
       node->token->used++;
       break;
    }
    case IF:
    {
-      enter_scoop(node);
+      enter_scope(node);
       Node *curr = node;
       while (curr && includes(curr->token->type, IF, ELIF, ELSE, 0))
       {
@@ -2519,14 +2423,14 @@ void gen_ir(Node * node)
          curr = curr->right;
       }
 
-      exit_scoop();
+      exit_scope();
       node->token->used++;
       break;
    }
    case FDEC:
    {
       new_function(node);
-      enter_scoop(node);
+      enter_scope(node);
 
       // parameters
       Node **params = (node->left ? node->left->children : NULL);
@@ -2543,7 +2447,7 @@ void gen_ir(Node * node)
          Node *child = node->children[i];
          gen_ir(child);
       }
-      exit_scoop();
+      exit_scope();
       break;
    }
    case FCALL:
@@ -2622,8 +2526,8 @@ void gen_ir(Node * node)
                as_tok->retType = param_type;
                Node  *tgt_node = new_node(new_token(param_type, src->space));
                Node  *as_node  = new_node(as_tok);
-               as_node->left   = carg;
-               as_node->right  = tgt_node;
+               as_node->left          = carg;
+               as_node->right         = tgt_node;
                call_args->children[i] = as_node;
             }
          }
@@ -3179,24 +3083,24 @@ Node *add_child(Node *node, Node *child)
    return child;
 }
 
-void enter_scoop(Node *node)
+void enter_scope(Node *node)
 {
-   debug(CYAN "Enter Scoop: %k index %d\n" RESET, node->token, scoop_pos + 1);
-   Gscoop = (Node**)resize_array(
-      (void**)Gscoop,
-      &scoop_len, scoop_pos, sizeof(Node*));
-   scoop_pos++;
-   Gscoop[scoop_pos] = node;
-   scoop             = Gscoop[scoop_pos];
+   debug(CYAN "Enter Scope: %k index %d\n" RESET, node->token, scope_pos + 1);
+   Gscope = (Node**)resize_array(
+      (void**)Gscope,
+      &scope_len, scope_pos, sizeof(Node*));
+   scope_pos++;
+   Gscope[scope_pos] = node;
+   scope             = Gscope[scope_pos];
 }
 
-void exit_scoop()
+void exit_scope()
 {
-   if (check(scoop_pos < 0, "No active scoop to exit")) return;
-   debug("%sExit Scoop: %k index %d%s\n", CYAN, Gscoop[scoop_pos]->token, scoop_pos, RESET);
-   Gscoop[scoop_pos] = NULL;
-   scoop_pos--;
-   scoop             = Gscoop[scoop_pos];
+   if (check(scope_pos < 0, "No active scope to exit")) return;
+   debug("%sExit Scope: %k index %d%s\n", CYAN, Gscope[scope_pos]->token, scope_pos, RESET);
+   Gscope[scope_pos] = NULL;
+   scope_pos--;
+   scope             = Gscope[scope_pos];
 }
 
 bool includes(Type to_find, ...)
@@ -3285,23 +3189,23 @@ void add_struct(Node *b, Node *node)
 
 Node *new_struct(Node *node)
 {
-   debug(CYAN "new struct [%s] in scoop %k\n" RESET, node->token->name, scoop->token);
-   for (int i = 0; i < scoop->spos; i++)
+   debug(CYAN "new struct [%s] in scope %k\n" RESET, node->token->name, scope->token);
+   for (int i = 0; i < scope->spos; i++)
    {
-      Token *curr = scoop->structs[i]->token;
+      Token *curr = scope->structs[i]->token;
       bool   cond = (strcmp(curr->name, node->token->name) == 0);
       check(cond, "Redefinition of %s", node->token->name);
    }
-   add_struct(scoop, node);
+   add_struct(scope, node);
    return node;
 }
 
 Node *get_struct(char *name)
 {
-   debug(CYAN "get struct [%s] from scoop %k\n"RESET, name, scoop->token);
-   for (int j = scoop_pos; j > 0; j--)
+   debug(CYAN "get struct [%s] from scope %k\n"RESET, name, scope->token);
+   for (int j = scope_pos; j > 0; j--)
    {
-      Node *node = Gscoop[j];
+      Node *node = Gscope[j];
       todo(node == NULL, RED "Error accessing NULL, %d"RESET, j);
       for (int i = 0; i < node->spos; i++)
          if (strcmp(node->structs[i]->token->name, name) == 0)
@@ -3338,26 +3242,26 @@ void add_variable(Node *b, Token *token)
 
 Token *new_variable(Token *token)
 {
-   debug(CYAN "new variable [%k] in scoop %k\n" RESET, token, scoop->token);
-   for (int i = 0; i < scoop->vpos; i++)
+   debug(CYAN "new variable [%k] in scope %k\n" RESET, token, scope->token);
+   for (int i = 0; i < scope->vpos; i++)
    {
-      Token *curr = scoop->variables[i];
+      Token *curr = scope->variables[i];
       bool   cond = (strcmp(curr->name, token->name) == 0);
       check(cond, "Redefinition of %s", token->name);
    }
-   add_variable(scoop, token);
+   add_variable(scope, token);
    return token;
 }
 
 Token *get_variable(char *name)
 {
-   debug(CYAN "get variable [%s] from scoop %k\n" RESET, name, scoop->token);
-   for (int j = scoop_pos; j > 0; j--)
+   debug(CYAN "get variable [%s] from scope %k\n" RESET, name, scope->token);
+   for (int j = scope_pos; j > 0; j--)
    {
-      Node *scoop = Gscoop[j];
-      for (int i = 0; i < scoop->vpos; i++)
-         if (strcmp(scoop->variables[i]->name, name) == 0)
-            return scoop->variables[i];
+      Node *scope = Gscope[j];
+      for (int i = 0; i < scope->vpos; i++)
+         if (strcmp(scope->variables[i]->name, name) == 0)
+            return scope->variables[i];
    }
    check(1, "%s not found", name);
    return syntax_error()->token;
@@ -3373,24 +3277,24 @@ void add_function(Node *b, Node *node)
 
 Node *new_function(Node *node)
 {
-   for (int i = 0; i < scoop->fpos; i++)
+   for (int i = 0; i < scope->fpos; i++)
    {
-      Node *func = scoop->functions[i];
+      Node *func = scope->functions[i];
       bool  cond = strcmp(func->token->name, node->token->name) == 0;
       check(cond, "Redefinition of %s", node->token->name);
    }
-   add_function(scoop, node);
+   add_function(scope, node);
    return node;
 }
 
 Node *get_function(char *name)
 {
-   for (int j = scoop_pos; j > 0; j--)
+   for (int j = scope_pos; j > 0; j--)
    {
-      Node *scoop = Gscoop[j];
-      for (int i = 0; i < scoop->fpos; i++)
-         if (strcmp(scoop->functions[i]->token->name, name) == 0)
-            return scoop->functions[i];
+      Node *scope = Gscope[j];
+      for (int i = 0; i < scope->fpos; i++)
+         if (strcmp(scope->functions[i]->token->name, name) == 0)
+            return scope->functions[i];
    }
    check(1, "'%s' Not found", name);
    return syntax_error();

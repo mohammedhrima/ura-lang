@@ -28,8 +28,6 @@ struct Server:
         self.client_fd = 0
         self.buf       = heap[char](1024)
         self.rbuf      = heap[char](1024)
-        bzero(self.buf, 1024 as long)
-        bzero(self.rbuf, 1024 as long)
 
     fn set_reuse() void:
         opt chars = stack[char](4)
@@ -72,10 +70,6 @@ main():
     addr.set_ip(0, 0, 0, 0)
 
     srv Server
-    if srv.fd < 0:
-        log_ts("\033[0;31m", "[server]", "socket failed")
-        return 1
-
     srv.set_reuse()
 
     result int = bind(srv.fd, addr.data, 16)
@@ -87,7 +81,8 @@ main():
     log_ts("\033[0;32m", "[server]", "listening on port 17000...")
 
     while True:
-        srv.client_fd = accept(srv.fd, 0 as chars, 0 as chars)
+        addrlen int = 0
+        srv.client_fd = accept(srv.fd, 0 as chars, addrlen)
         if srv.client_fd < 0:
             continue
 

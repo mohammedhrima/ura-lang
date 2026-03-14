@@ -1,6 +1,6 @@
 use "../utils"
 
-fn banner() void:
+fn banner(port int) void:
     log("\033[0;32m")
     log("  ██████╗██╗  ██╗ █████╗ ████████╗\n")
     log(" ██╔════╝██║  ██║██╔══██╗╚══██╔══╝\n")
@@ -10,9 +10,8 @@ fn banner() void:
     log("  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   \n")
     log("\033[0m")
     log("\033[0;90m─────────────────────────────────\033[0m\n")
-    log("\033[0;32m  URA Chat Server  \033[0;90m│\033[0m port \033[0;33m17000\033[0m\n")
+    output("\033[0;32m  URA Chat Server  \033[0;90m│\033[0m port \033[0;33m", port, "\033[0m\n")
     log("\033[0;90m─────────────────────────────────\033[0m\n\n")
-    return
 
 struct Server:
     fd int
@@ -23,7 +22,7 @@ struct Server:
     fn init() void:
         self.fd        = socket(2, 1, 0)
         if self.fd < 0:
-            log("failed to create server socket")
+            log("failed to create server socket\n")
             exit(1)
         self.client_fd = 0
         self.buf       = heap[char](1024)
@@ -64,18 +63,14 @@ struct Server:
         close(self.client_fd)
 
 main():
-    banner()
+    port int = 17000
+    banner(port)
 
     addr SockAddr
-    port int = 17000
     addr.set_port(port)
     addr.set_ip(0, 0, 0, 0)
 
     srv Server
-    if srv.fd < 0:
-        log_ts("\033[0;31m", "[server]", "socket failed")
-        return 1
-
     srv.set_reuse()
 
     result int = bind(srv.fd, addr.data, 16)
@@ -84,7 +79,7 @@ main():
         return 1
 
     listen(srv.fd, 5)
-    log_ts("\033[0;32m", "[server]", "listening on port 17000...")
+    log_ts("\033[0;32m", "[server]", "listening...")
 
     while True:
         srv.client_fd = accept(srv.fd, 0 as chars, 0 as chars)
@@ -101,5 +96,4 @@ main():
 
         close(srv.client_fd)
 
-    addr.clean()
     return 0

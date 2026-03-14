@@ -1,8 +1,0 @@
-protoFunc int putchar(char a)
-
-def int main():
-   chars str = "abcd"
-   char c = str[1]
-   putchar(c)
-   return 0
-end

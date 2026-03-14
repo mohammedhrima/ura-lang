@@ -1,4 +1,6 @@
 - forbid math operations for char
++ declaring variable with name self is forbiden
+
 
 - declare:
    - global variables

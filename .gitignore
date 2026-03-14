@@ -19,6 +19,10 @@ llvm/build/
 # Src build
 src/build/
 
+# Project bundled executables (updated on main push)
+!tests/projects/ura-libft/ura
+!tests/projects/ura-tcp-server/ura
+
 # Others
 examples.ura
 .vscode

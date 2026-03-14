@@ -1,0 +1,49 @@
+# ura-tcp-server
+
+A TCP chat server and client implemented in [Ura](https://github.com/mohammedhrima/ura-lang) — a compiled, statically-typed language with Python-like syntax.
+
+## Requirements
+
+No installation needed. The `ura` compiler binary is bundled in this repo.
+
+## Usage
+
+```bash
+./ura <file.ura>
+```
+
+This compiles and immediately runs the file.
+
+## Running the server and client
+
+Open two terminals:
+
+**Terminal 1 — start the server:**
+```bash
+./ura basic/server.ura
+# Listens on port 17000
+```
+
+**Terminal 2 — connect a client:**
+```bash
+./ura basic/client.ura
+# Connects to localhost:17000
+```
+
+Type messages in either terminal and they will be echoed to the other side.
+
+## Project structure
+
+```
+basic/
+  server.ura    TCP server (accepts one client, bidirectional messaging)
+  client.ura    TCP client
+cmd/
+  server.ura    Command-based server variant
+  client.ura    Command-based client variant
+utils.ura       Shared networking utilities (SockAddr, logging helpers)
+```
+
+## About Ura
+
+Ura is a compiled language that targets native code via LLVM. Source: [github.com/mohammedhrima/ura-lang](https://github.com/mohammedhrima/ura-lang)
