@@ -13,6 +13,7 @@ entry:
   %tmp = alloca i32, align 4, !dbg !7
   store i32* %a, i32** %a1, align 8, !dbg !7
   store i32* %b, i32** %b2, align 8, !dbg !7
+  store i32 0, i32* %tmp, align 4, !dbg !7
   %ref_ptr = load i32*, i32** %a1, align 8, !dbg !7
   %ref_val = load i32, i32* %ref_ptr, align 4, !dbg !7
   store i32 %ref_val, i32* %tmp, align 4, !dbg !7
@@ -30,7 +31,9 @@ define i32 @main() !dbg !8 {
 entry:
   %x = alloca i32, align 4, !dbg !9
   %y = alloca i32, align 4, !dbg !9
+  store i32 0, i32* %x, align 4, !dbg !9
   store i32 10, i32* %x, align 4, !dbg !9
+  store i32 0, i32* %y, align 4, !dbg !9
   store i32 20, i32* %y, align 4, !dbg !9
   call void @swap(i32* %x, i32* %y), !dbg !10
   %x1 = load i32, i32* %x, align 4, !dbg !11

@@ -69,6 +69,7 @@ void _alloca(Token *token)
 
    _position_at(current);
 }
+
 TypeRef get_llvm_type(Token *token)
 {
    Type type = token->type;
@@ -107,14 +108,24 @@ TypeRef get_llvm_type(Token *token)
 
 Value _get_default_value(Token *token)
 {
+   TypeRef type = get_llvm_type(token);
+
    if (token->is_ref)
+      return LLVMConstNull(_pointer_type(type, 0));
+
+   switch (token->type)
    {
-      TypeRef type = get_llvm_type(token);
-      Value   null = LLVMConstNull(_pointer_type(type, 0));
-      return null;
+   case INT: case LONG: case SHORT: case CHAR: case BOOL:
+      return LLVMConstInt(type, 0, false);
+   case FLOAT:
+      return LLVMConstReal(type, 0.0);
+   case CHARS:
+   case ARRAY_TYPE:
+      return LLVMConstNull(type);
+   default:
+      check(1, "handle this case %s", to_string(token->type));
+      return NULL;
    }
-   check(1, "handle this case %s", to_string(token->type));
-   return NULL;
 }
 
 void _const_value(Token *token)
@@ -346,6 +357,13 @@ TypeRef _array_type(TypeRef element_type, unsigned element_count)
 TypeRef _struct_type_in_context(TypeRef *element_types, unsigned element_count, int packed)
 {
    return LLVMStructTypeInContext(context, element_types, element_count, packed);
+}
+
+TypeRef _named_struct_type(char *name, TypeRef *element_types, unsigned element_count, int packed)
+{
+   TypeRef type = LLVMStructCreateNamed(context, name);
+   LLVMStructSetBody(type, element_types, element_count, packed);
+   return type;
 }
 
 Value _const_int(TypeRef ref_type, unsigned long long n, int sign_extend)

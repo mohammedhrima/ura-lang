@@ -10,6 +10,7 @@ define i32 @main() !dbg !4 {
 entry:
   %a = alloca i32, align 4, !dbg !7
   %b = alloca i32*, align 8, !dbg !7
+  store i32 0, i32* %a, align 4, !dbg !7
   store i32 10, i32* %a, align 4, !dbg !7
   store i32* %a, i32** %b, align 8, !dbg !7
   %ref_ptr = load i32*, i32** %b, align 8, !dbg !7

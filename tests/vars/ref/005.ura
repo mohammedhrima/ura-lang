@@ -3,29 +3,26 @@ use "@/io"
 
 fn print(num int) void: printf("%d\n", num)
 
-
 main():
     val1 int = 10
     val2 int = 20
     val3 int = 30
-
-    current int ref = val1
-    current = 15           // val1 = 15
-    print(val1)    // 15
-    print(current) // 15
     
-    current = val2      // val1 = 20
-    print(val1)     // 20
-    print(current)  // 20
-    current = 25        // val1 = 25
-    print(val1)     // 25
-    print(current)  // 25
-
-    current = val3      // val1 = 30
-    current += 5        // val1 = 35
-    print(val1)     // 35
-    print(current)  // 35
+    r1 int ref = val1
+    r1 = 15       
+    print(val1) // 15
+    print(r1)   // 15
     
-    sum int = val1 + val2 + val3 // 35 + 20 + 30
-    print(sum)
+    r2 int ref = val2
+    r2 *= 2        
+    print(val2) // 40
+    print(r2)   // 40
+    
+    r3 int ref = val3
+    r3 -= 5        
+    print(val3) // 25
+    print(r3)   // 25
+
+    result int = r1 + r2 + r3  // 15 + 40 + 25
+    print(result)
 

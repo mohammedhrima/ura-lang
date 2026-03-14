@@ -9,6 +9,7 @@ declare i32 @printf(i8*, i32, ...)
 define i32 @main() !dbg !4 {
 entry:
   %size = alloca i32, align 4, !dbg !7
+  store i32 0, i32* %size, align 4, !dbg !7
   store i32 8, i32* %size, align 4, !dbg !7
   %size1 = load i32, i32* %size, align 4, !dbg !8
   %printf = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @STR0, i32 0, i32 0), i32 1, i32 %size1), !dbg !8
