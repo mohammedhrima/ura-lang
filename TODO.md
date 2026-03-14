@@ -1,7 +1,3 @@
-+ sudo ln -s /opt/homebrew/Cellar/llvm@14/14.0.6/bin/llvm-config /usr/local/bin/llvm-config-14
-+ llvm-config-14 --includedir
-
-
 + structures can be defined in llvm ir, check 1:01:48
 
 + specify pointers types use i32* instead of ptr because it's ambiguous
@@ -21,3 +17,6 @@
 
 + sizeof("hello world") return sizeof(CHARS): needs to be checked
 + implement output builtin
++ declaring variable with name self is forbiden
+
+this is the link git@github.com:mohammedhrima/ura-vscode-extension.git, where hte extension is saved in github, when pushing to ura-lang github I must like push onlt the ura-lang code wihtout getting errors, and the extension code has it's own repo to push to it,

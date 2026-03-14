@@ -1,3 +1,4 @@
+// libft/putnbr
 proto fn calloc(len int, size int) chars
 proto fn write(fd int, ptr chars, len int) int
 proto fn free(ptr chars) int

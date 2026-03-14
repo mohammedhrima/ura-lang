@@ -15,6 +15,7 @@ entry:
   %r1 = alloca i32*, align 8, !dbg !7
   %r2 = alloca i32*, align 8, !dbg !7
   %y = alloca i32, align 4, !dbg !7
+  store i32 0, i32* %x, align 4, !dbg !7
   store i32 5, i32* %x, align 4, !dbg !7
   store i32* %x, i32** %r1, align 8, !dbg !7
   store i32* %x, i32** %r2, align 8, !dbg !7
@@ -22,6 +23,7 @@ entry:
   store i32 10, i32* %ref_ptr, align 4, !dbg !7
   %ref_ptr1 = load i32*, i32** %r2, align 8, !dbg !7
   store i32 15, i32* %ref_ptr1, align 4, !dbg !7
+  store i32 0, i32* %y, align 4, !dbg !7
   %ref_ptr2 = load i32*, i32** %r1, align 8, !dbg !7
   %ref_val = load i32, i32* %ref_ptr2, align 4, !dbg !7
   store i32 %ref_val, i32* %y, align 4, !dbg !7

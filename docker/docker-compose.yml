@@ -1,0 +1,6 @@
+services:
+  linux:
+    build:
+      context: ..                   # repo root as build context
+      dockerfile: docker/Dockerfile
+    image: ura-linux-test

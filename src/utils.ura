@@ -1,0 +1,56 @@
+use "@/header"
+
+fn log(msg chars) void:
+    write(1, msg, strlen(msg))
+
+fn get_time() chars:
+    buf chars = heap[char](16)
+    t long = time(0 as pointer)
+    tm pointer = localtime(t)
+    strftime(buf, 16, "%H:%M:%S", tm)
+    return buf
+
+fn log_ts(color chars, tag chars, msg chars) void:
+    tbuf chars = get_time()
+    log("\033[0;90m[")
+    log(tbuf)
+    log("]\033[0m ")
+    log(color)
+    log(tag)
+    log("\033[0m ")
+    log(msg)
+    log("\n")
+    free(tbuf)
+
+fn log_ts_right(color chars, tag chars, msg chars) void:
+    tbuf chars = get_time()
+    log("                    \033[0;90m[")
+    log(tbuf)
+    log("]\033[0m ")
+    log(color)
+    log(tag)
+    log("\033[0m ")
+    log(msg)
+    log("\n")
+    free(tbuf)
+
+struct SockAddr:
+    data chars
+
+    fn init() void:
+        self.data = heap[char](16)
+        self.data[0] = 16 as char
+        self.data[1] = 2 as char
+
+    fn set_port(port int) void:
+        self.data[2] = (port >> 8) as char
+        self.data[3] = (port & 255) as char
+
+    fn set_ip(a int, b int, c int, d int) void:
+        self.data[4] = a as char
+        self.data[5] = b as char
+        self.data[6] = c as char
+        self.data[7] = d as char
+
+    fn clean() void:
+        free(self.data)

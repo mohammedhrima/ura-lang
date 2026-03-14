@@ -1,3 +1,4 @@
+// libft/strcmp
 use "@/io"
 
 fn strcmp(left chars, right chars) int:

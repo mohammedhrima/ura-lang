@@ -11,6 +11,7 @@ define i32 @main() !dbg !4 {
 entry:
   %a = alloca i32, align 4, !dbg !7
   %r = alloca i32*, align 8, !dbg !7
+  store i32 0, i32* %a, align 4, !dbg !7
   store i32 10, i32* %a, align 4, !dbg !7
   store i32* %a, i32** %r, align 8, !dbg !7
   br label %if.start, !dbg !7

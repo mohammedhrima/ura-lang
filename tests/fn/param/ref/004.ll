@@ -23,6 +23,8 @@ entry:
   %counter = alloca i32, align 4, !dbg !9
   %i = alloca i32, align 4, !dbg !9
   store i32 0, i32* %counter, align 4, !dbg !9
+  store i32 0, i32* %counter, align 4, !dbg !9
+  store i32 0, i32* %i, align 4, !dbg !9
   store i32 0, i32* %i, align 4, !dbg !9
   br label %while.start, !dbg !9
 

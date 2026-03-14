@@ -22,4 +22,6 @@ src/build/
 # Others
 examples.ura
 .vscode
+.vscode-extension
 TMP.md
+.claude
