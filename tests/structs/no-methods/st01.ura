@@ -1,6 +1,5 @@
-use "@/io"
-use "@/memory"
-use "@/string"
+// structs/no-methods/st01.ura
+use "@/header"
 
 struct User:
     age int

@@ -1,3 +1,4 @@
+// libft/isalpha
 use "@/io"
 
 fn isalpha(c char) bool: return c >= 'a' and c <= 'z'
@@ -7,3 +8,4 @@ main():
         printf("is alpha\n")
     else:
         printf("is not alpha\n")
+

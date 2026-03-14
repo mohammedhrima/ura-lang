@@ -1,0 +1,74 @@
+use "utils"
+
+fn banner() void:
+    log("\033[0;36m")
+    log("  ██████╗██╗     ██╗███████╗███╗   ██╗████████╗\n")
+    log(" ██╔════╝██║     ██║██╔════╝████╗  ██║╚══██╔══╝\n")
+    log(" ██║     ██║     ██║█████╗  ██╔██╗ ██║   ██║   \n")
+    log(" ██║     ██║     ██║██╔══╝  ██║╚██╗██║   ██║   \n")
+    log(" ╚██████╗███████╗██║███████╗██║ ╚████║   ██║   \n")
+    log("  ╚═════╝╚══════╝╚═╝╚══════╝╚═╝  ╚═══╝   ╚═╝   \n")
+    log("\033[0m")
+    log("\033[0;90m─────────────────────────────────────────────\033[0m\n")
+    log("\033[0;36m  URA Chat Client  \033[0;90m│\033[0m connecting to \033[0;33m127.0.0.1:17000\033[0m\n")
+    log("\033[0;90m─────────────────────────────────────────────\033[0m\n\n")
+
+struct Client:
+    fd int
+    buf chars
+    rbuf chars
+
+    fn init() void:
+        self.fd   = socket(2, 1, 0)
+        if self.fd < 0:
+            log("failed to create client socket")
+            exit(1)
+        self.buf  = heap[char](1024)
+        self.rbuf = heap[char](1024)
+        bzero(self.buf, 1024 as long)
+        bzero(self.rbuf, 1024 as long)
+
+main():
+    banner()
+
+    addr SockAddr
+    port int = 17000
+    addr.set_port(port)
+    addr.set_ip(127, 0, 0, 1)
+
+    cli Client
+    if cli.fd < 0:
+        log_ts("\033[0;31m", "[client]", "socket failed")
+        return 1
+
+    result int = connect(cli.fd, addr.data, 16)
+    if result < 0:
+        log_ts("\033[0;31m", "[client]", "connect failed")
+        return 1
+
+    log_ts("\033[0;36m", "[client]", "connected to server")
+
+    r int = 0
+    pid int = fork()
+    if pid == 0:
+        while True:
+            r = read(cli.fd, cli.rbuf, 1023)
+            if r <= 0:
+                log_ts("\033[0;31m", "[client]", "server disconnected")
+                break
+            cli.rbuf[r] = 0 as char
+            log("\r\033[2K")
+            log_ts("\033[0;33m", "[server]", cli.rbuf)
+            log("\033[0;36m[client]\033[0m > ")
+        return 0
+
+    log("\033[0;36m[client]\033[0m > ")
+    while True:
+        r = read(0, cli.buf, 1023)
+        if r <= 0:
+            break
+        cli.buf[r - 1] = 0 as char
+        write(cli.fd, cli.buf, r - 1)
+        log("\033[0;36m[client]\033[0m > ")
+
+    close(cli.fd)

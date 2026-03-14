@@ -1,3 +1,4 @@
+// libft/strlen
 use "@/io"
 
 fn strlen(str chars) int:

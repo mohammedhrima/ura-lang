@@ -9,6 +9,7 @@ entry:
   %c1 = alloca i8, align 1, !dbg !7
   %str = alloca i8*, align 8, !dbg !7
   store i8 %c, i8* %c1, align 1, !dbg !7
+  store i8* null, i8** %str, align 8, !dbg !7
   %stack = alloca [2 x i8], align 1, !dbg !7
   %stack2 = getelementptr [2 x i8], [2 x i8]* %stack, i32 0, i32 0, !dbg !7
   store i8* %stack2, i8** %str, align 8, !dbg !7

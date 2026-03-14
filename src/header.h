@@ -169,7 +169,7 @@ enum Type
    // Functions
    FDEC, FCALL, PROTO, ARGS, CHILDREN,
    // Built-ins
-   STACK, HEAP, TYPEOF, SIZEOF, DEFAULT, SYNTAX_ERROR,
+   STACK, HEAP, TYPEOF, SIZEOF, OUTPUT, DEFAULT, SYNTAX_ERROR,
    // Bitwise
    BAND, BOR, BXOR, BNOT, LSHIFT, RSHIFT,
    // end
@@ -231,6 +231,7 @@ struct Token
    bool is_variadic;
    bool is_proto;
    bool is_init;
+   bool is_clean;
    bool is_method_call;
 
    bool ir_bound;
@@ -472,6 +473,7 @@ TypeRef _pointer_type(TypeRef element_ty, unsigned address_space);
 TypeRef _function_type(TypeRef retType, TypeRef *types, int count, int is_variadic);
 TypeRef _array_type(TypeRef element_type, unsigned element_count);
 TypeRef _struct_type_in_context(TypeRef *element_types, unsigned element_count, int packed);
+TypeRef _named_struct_type(char *name, TypeRef *element_types, unsigned element_count, int packed);
 
 Value       _get_named_function(char *name);
 Value       _add_function(char *name, TypeRef function_type);

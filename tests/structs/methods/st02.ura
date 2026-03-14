@@ -1,7 +1,8 @@
-proto fn printf(fmt chars, ...) int
+// structs/methods/st02.ura
+use "@/header"
 
 struct User:
-    name array[char]
+    name chars
     age int
 
     fn greed() void:

@@ -456,6 +456,20 @@ Node *prime_node() // primary
             }
             node->token->is_init = true;
          }
+         else if (strcmp(mt->name, "clean") == 0)
+         {
+            if (check(mt->retType != VOID, "struct '%s': clean() must return void", node->token->name))
+            {
+               free(methods);
+               return syntax_error();
+            }
+            if (check(methods[i]->left->cpos != 1, "struct '%s': clean() must take no parameters", node->token->name))
+            {
+               free(methods);
+               return syntax_error();
+            }
+            node->token->is_clean = true;
+         }
          char *qualified = strjoin(node->token->name, ".", mt->name);
          setName(mt, qualified);
          free(qualified);
@@ -565,6 +579,23 @@ Node *prime_node() // primary
       node->left           = prime_node();
       expect_token(RPAR, "%s: expected )", msg);
       node->token->retType = type;
+      return node;
+   }
+   if ((token = find(OUTPUT, 0)))
+   {
+      node       = new_node(token);
+      expect_token(LPAR, "output: expected (");
+      node->left = new_node(new_token(ARGS, token->space));
+      Token *end_tok = NULL;
+      while (!found_error && !(end_tok = find(RPAR, END, 0)))
+      {
+         Node *curr = expr_node();
+         add_child(node->left, curr);
+         find(COMA, 0);
+      }
+      if (check(!found_error && end_tok->type != RPAR, "output: expected )"))
+         return syntax_error();
+      node->token->retType = VOID;
       return node;
    }
    if ((token = find(PROTO, 0)))
@@ -1173,6 +1204,109 @@ void hoist_allocas(Node *node)
       hoist_allocas(node->children[i]);
 }
 
+void emit_scope_clean(Node *scope, int from)
+{
+   for (int i = from; i < scope->vpos; i++)
+   {
+      Token *var = scope->variables[i];
+      if (var->type != STRUCT_CALL || !var->llvm.elem) continue;
+      if (var->is_ref) continue;  // refs are borrowed, not owned — caller cleans up
+      Node *sd = var->Struct.ptr;
+      char  *qname    = strjoin(sd->token->name, ".clean", NULL);
+      Value  clean_fn = _get_named_function(qname);
+      free(qname);
+      if (!clean_fn) continue;
+      Value args[] = { var->llvm.elem };
+      _build_call2(_global_get_value_type(clean_fn), clean_fn, args, 1, "");
+
+   }
+}
+
+void append_output_arg(Token *tok, char *fmt, int *fpos, Value *args, int *nargs)
+{
+   Type type = tok->type ? tok->type : tok->retType;
+
+   // String literal: embed directly in the format string (escape % → %%)
+   if (type == CHARS && !tok->name)
+   {
+      const char *s = tok->Chars.value;
+      for (int i = 0; s[i]; i++)
+      {
+         if (s[i] == '%')
+         {
+            fmt[(*fpos)++] = '%'; // double % for printf
+            fmt[(*fpos)++] = '%';
+         }
+         else if (s[i] == '\\' && s[i + 1])
+         {
+            switch (s[++i])
+            {
+            case 'n':  fmt[(*fpos)++] = '\n'; break;
+            case 't':  fmt[(*fpos)++] = '\t'; break;
+            case 'r':  fmt[(*fpos)++] = '\r'; break;
+            case '\\': fmt[(*fpos)++] = '\\'; break;
+            case '"':  fmt[(*fpos)++] = '"';  break;
+            default:   fmt[(*fpos)++] = '\\'; fmt[(*fpos)++] = s[i]; break;
+            }
+         }
+         else
+            fmt[(*fpos)++] = s[i];
+      }
+      return;
+   }
+
+   switch (type)
+   {
+   case INT: case SHORT: case BOOL:
+      fmt[(*fpos)++] = '%'; fmt[(*fpos)++] = 'd';
+      args[(*nargs)++] = _build_load2(get_llvm_type(tok), tok->llvm.elem, tok->name ? tok->name : "");
+      break;
+   case LONG:
+      fmt[(*fpos)++] = '%'; fmt[(*fpos)++] = 'l';
+      fmt[(*fpos)++] = 'l'; fmt[(*fpos)++] = 'd';
+      args[(*nargs)++] = _build_load2(get_llvm_type(tok), tok->llvm.elem, tok->name ? tok->name : "");
+      break;
+   case CHAR:
+      fmt[(*fpos)++] = '%'; fmt[(*fpos)++] = 'c';
+      args[(*nargs)++] = _build_load2(get_llvm_type(tok), tok->llvm.elem, tok->name ? tok->name : "");
+      break;
+   case CHARS:
+      fmt[(*fpos)++] = '%'; fmt[(*fpos)++] = 's';
+      args[(*nargs)++] = _build_load2(get_llvm_type(tok), tok->llvm.elem, tok->name ? tok->name : "");
+      break;
+   case FLOAT:
+      fmt[(*fpos)++] = '%'; fmt[(*fpos)++] = 'f';
+      {
+         Value v = _build_load2(get_llvm_type(tok), tok->llvm.elem, tok->name ? tok->name : "");
+         args[(*nargs)++] = LLVMBuildFPExt(builder, v, LLVMDoubleTypeInContext(context), "f2d");
+      }
+      break;
+   case STRUCT_CALL:
+   {
+      fmt[(*fpos)++] = '{';
+      fmt[(*fpos)++] = ' ';
+      Node *sd = tok->Struct.ptr;
+      for (int i = 0; i < sd->cpos; i++)
+      {
+         Token *field = sd->children[i]->token;
+         int    flen  = strlen(field->name);
+         memcpy(fmt + *fpos, field->name, flen); *fpos += flen;
+         fmt[(*fpos)++] = ':'; fmt[(*fpos)++] = ' ';
+         Token ftok     = *field;
+         ftok.llvm.elem = struct_field_ptr(tok, i, field->name);
+         append_output_arg(&ftok, fmt, fpos, args, nargs);
+         if (i < sd->cpos - 1) { fmt[(*fpos)++] = ','; fmt[(*fpos)++] = ' '; }
+      }
+      fmt[(*fpos)++] = ' ';
+      fmt[(*fpos)++] = '}';
+      break;
+   }
+   default:
+      fmt[(*fpos)++] = '?';
+      break;
+   }
+}
+
 void gen_asm(Node *node)
 {
    set_debug_location(node->token);
@@ -1182,7 +1316,6 @@ void gen_asm(Node *node)
    if (check(node->token->llvm.is_set, "already set")) return;
    switch (node->token->type)
    {
-#if 0
    case STRUCT_CALL:
    {
       if (node->token->is_dec)
@@ -1195,20 +1328,18 @@ void gen_asm(Node *node)
          }
          else
          {
+            _alloca(node->token);
             TypeRef struct_type = get_llvm_type(node->token);
             _build_store(LLVMConstNull(struct_type), node->token->llvm.elem);
 
-            Node *src = node->token->Struct.ptr;
-            if (src->token->is_init)
+            Node  *src     = node->token->Struct.ptr;
+            char  *qname   = strjoin(src->token->name, ".init", NULL);
+            Value  init_fn = _get_named_function(qname);
+            free(qname);
+            if (init_fn)
             {
-               char *qname   = strjoin(src->token->name, ".init", NULL);
-               Value init_fn = _get_named_function(qname);
-               free(qname);
-               if (init_fn)
-               {
-                  Value args[] = { node->token->llvm.elem };
-                  _build_call2(_global_get_value_type(init_fn), init_fn, args, 1, "");
-               }
+               Value args[] = { node->token->llvm.elem };
+               _build_call2(_global_get_value_type(init_fn), init_fn, args, 1, "");
             }
          }
          node->token->is_dec = false;
@@ -1216,13 +1347,14 @@ void gen_asm(Node *node)
       }
       break;
    }
-#endif
    case INT: case LONG: case SHORT: case CHARS:
    case CHAR: case BOOL: case ARRAY_TYPE:
    {
       if (node->token->is_dec)
       {
          _alloca(node->token);
+         Value defval = _get_default_value(node->token);
+         _build_store(defval, node->token->llvm.elem);
          node->token->is_dec = false;
          return;
       }
@@ -1598,6 +1730,37 @@ void gen_asm(Node *node)
             LLVMBuildStore(builder, param, param_token->llvm.elem);
          }
 
+         // Auto-insert nested struct field init calls before user body
+         {
+            int  flen       = strlen(fname);
+            bool is_init_fn = flen > 5 && strcmp(fname + flen - 5, ".init") == 0;
+            if (is_init_fn && fixed_count >= 1)
+            {
+               Token *self_tok = node->left->children[0]->token;
+               if (self_tok->type == STRUCT_CALL && self_tok->is_ref)
+               {
+                  Node   *sd       = self_tok->Struct.ptr;
+                  TypeRef st_type  = sd->token->llvm.stType;
+                  TypeRef ptr_type = _pointer_type(st_type, 0);
+                  Value   self_ptr = _build_load2(ptr_type, self_tok->llvm.elem, "self");
+                  for (int i = 0; i < sd->cpos; i++)
+                  {
+                     Token *field = sd->children[i]->token;
+                     if (field->type != STRUCT_CALL) continue;
+                     Node  *fsd   = field->Struct.ptr;
+                     char  *qname = strjoin(fsd->token->name, ".init", NULL);
+                     Value  ffn   = _get_named_function(qname);
+                     free(qname);
+                     if (!ffn) continue;
+                     Value indices[] = { _const_int(i32, 0, 0), _const_int(i32, i, 0) };
+                     Value field_ptr = _build_gep2(st_type, self_ptr, indices, 2, field->name);
+                     Value args[]    = { field_ptr };
+                     _build_call2(_global_get_value_type(ffn), ffn, args, 1, "");
+                  }
+               }
+            }
+         }
+
          #if USING_HOIST
          for (int i = 0; i < node->cpos; i++)
             hoist_allocas(node->children[i]);
@@ -1609,6 +1772,7 @@ void gen_asm(Node *node)
             if (_get_basic_block_terminator(_get_insert_block()))
                break;
          }
+
       }
       exit_scoop();
       di_current_scope = di_compile_unit;
@@ -1752,6 +1916,48 @@ void gen_asm(Node *node)
    }
    case RETURN:
    {
+      emit_scope_clean(scoop, 0);
+
+      // Auto-insert nested field clean calls for .clean methods before return
+      {
+         Node *fdec = NULL;
+         for (int i = scoop_pos; i >= 0; i--)
+            if (Gscoop[i] && Gscoop[i]->token->type == FDEC)
+            { fdec = Gscoop[i]; break; }
+         if (fdec)
+         {
+            char *fn_name    = fdec->token->name;
+            int   fn_len     = strlen(fn_name);
+            bool  is_clean_f = fn_len > 6 && strcmp(fn_name + fn_len - 6, ".clean") == 0;
+            int   fxd_count  = fdec->left->cpos;
+            if (is_clean_f && fxd_count >= 1)
+            {
+               Token *self_tok = fdec->left->children[0]->token;
+               if (self_tok->type == STRUCT_CALL && self_tok->is_ref)
+               {
+                  Node   *sd       = self_tok->Struct.ptr;
+                  TypeRef st_type  = sd->token->llvm.stType;
+                  TypeRef ptr_type = _pointer_type(st_type, 0);
+                  Value   self_ptr = _build_load2(ptr_type, self_tok->llvm.elem, "self");
+                  for (int i = 0; i < sd->cpos; i++)
+                  {
+                     Token *field = sd->children[i]->token;
+                     if (field->type != STRUCT_CALL) continue;
+                     Node  *fsd   = field->Struct.ptr;
+                     char  *qname = strjoin(fsd->token->name, ".clean", NULL);
+                     Value  ffn   = _get_named_function(qname);
+                     free(qname);
+                     if (!ffn) continue;
+                     Value indices[] = { _const_int(i32, 0, 0), _const_int(i32, i, 0) };
+                     Value field_ptr = _build_gep2(st_type, self_ptr, indices, 2, field->name);
+                     Value args[]    = { field_ptr };
+                     _build_call2(_global_get_value_type(ffn), ffn, args, 1, "");
+                  }
+               }
+            }
+         }
+      }
+
       if (node->left->token->type != VOID)
       {
          gen_asm(node->left);
@@ -1843,8 +2049,70 @@ void gen_asm(Node *node)
       int      j     = 0;
       for (int i = 0; i < pos; i++)
          types[j++] = get_llvm_type(node->children[i]->token);
-      node->token->llvm.stType = _struct_type_in_context(types, j, 0);
+      char *struct_name = strjoin("struct.", node->token->name, NULL);
+      node->token->llvm.stType = _named_struct_type(struct_name, types, j, 0);
+      free(struct_name);
       free(types);
+
+      TypeRef st_type     = node->token->llvm.stType;
+      TypeRef ptr_type    = _pointer_type(st_type, 0);
+      TypeRef lc_params[] = { ptr_type };
+      TypeRef lc_fn_type  = _function_type(vd, lc_params, 1, 0);
+
+      if (!node->token->is_init)
+      {
+         char  *fname = strjoin(node->token->name, ".init", NULL);
+         Value  fn    = _add_function(fname, lc_fn_type);
+         free(fname);
+         Block  entry = _append_basic_block_in_context(fn, "entry");
+         _position_at(entry);
+         LLVMSetCurrentDebugLocation2(builder, NULL);
+         Value  self  = LLVMGetParam(fn, 0);
+         LLVMBuildStore(builder, LLVMConstNull(st_type), self);
+         for (int i = 0; i < node->cpos; i++)
+         {
+            Token *field = node->children[i]->token;
+            if (field->type != STRUCT_CALL) continue;
+            Node  *fsd   = field->Struct.ptr;
+            char  *qname = strjoin(fsd->token->name, ".init", NULL);
+            Value  ffn   = _get_named_function(qname);
+            free(qname);
+            if (!ffn) continue;
+            Value indices[] = { _const_int(i32, 0, 0), _const_int(i32, i, 0) };
+            Value field_ptr = _build_gep2(st_type, self, indices, 2, field->name);
+            Value args[]    = { field_ptr };
+            _build_call2(_global_get_value_type(ffn), ffn, args, 1, "");
+         }
+         LLVMBuildRetVoid(builder);
+         node->token->is_init = true;
+      }
+
+      if (!node->token->is_clean)
+      {
+         char  *fname = strjoin(node->token->name, ".clean", NULL);
+         Value  fn    = _add_function(fname, lc_fn_type);
+         free(fname);
+         Block  entry = _append_basic_block_in_context(fn, "entry");
+         _position_at(entry);
+         LLVMSetCurrentDebugLocation2(builder, NULL);
+         Value  self  = LLVMGetParam(fn, 0);
+         for (int i = 0; i < node->cpos; i++)
+         {
+            Token *field = node->children[i]->token;
+            if (field->type != STRUCT_CALL) continue;
+            Node  *fsd   = field->Struct.ptr;
+            char  *qname = strjoin(fsd->token->name, ".clean", NULL);
+            Value  ffn   = _get_named_function(qname);
+            free(qname);
+            if (!ffn) continue;
+            Value indices[] = { _const_int(i32, 0, 0), _const_int(i32, i, 0) };
+            Value field_ptr = _build_gep2(st_type, self, indices, 2, field->name);
+            Value args[]    = { field_ptr };
+            _build_call2(_global_get_value_type(ffn), ffn, args, 1, "");
+         }
+         LLVMBuildRetVoid(builder);
+         node->token->is_clean = true;
+      }
 
       for (int i = 0; i < node->mpos; i++)
          gen_asm(node->methods[i]);
@@ -2056,6 +2324,43 @@ void gen_asm(Node *node)
       }
       break;
    }
+   case OUTPUT:
+   {
+      int    argc  = node->left->cpos;
+      Node **argv  = node->left->children;
+
+      // Compute format string capacity: literals + format specifiers + struct expansion
+      int fmt_cap = 64;
+      for (int i = 0; i < argc; i++)
+         if (argv[i]->token->type == CHARS && !argv[i]->token->name)
+            fmt_cap += strlen(argv[i]->token->Chars.value) * 2 + 4;
+         else
+            fmt_cap += 128;
+
+      char  *fmt   = allocate(fmt_cap, 1);
+      Value *args  = allocate(256, sizeof(Value));
+      int    fpos  = 0;
+      int    nargs = 0;
+
+      for (int i = 0; i < argc; i++)
+      {
+         gen_asm(argv[i]);
+         append_output_arg(argv[i]->token, fmt, &fpos, args, &nargs);
+      }
+      fmt[fpos] = '\0';
+
+      Value   printf_fn = _get_named_function("printf");
+      TypeRef printf_ft = _global_get_value_type(printf_fn);
+      // Follow the language's variadic calling convention: insert arg count between
+      // fixed params and variadic args — same as FCALL does for variadic functions
+      Value  *call_args = allocate(nargs + 3, sizeof(Value));
+      call_args[0]      = LLVMBuildGlobalStringPtr(builder, fmt, "output_fmt");
+      call_args[1]      = _const_int(i32, nargs, 0);
+      memcpy(call_args + 2, args, nargs * sizeof(Value));
+      LLVMBuildCall2(builder, printf_ft, printf_fn, call_args, nargs + 2, "");
+      free(fmt); free(args); free(call_args);
+      break;
+   }
    default:
       pnode(node, "");
       todo(1, "handle this case %s", to_string(node->token->type));
@@ -2095,6 +2400,7 @@ void gen_ir(Node * node)
             free(qname);
             if (init_fn) init_fn->token->used++;
          }
+         
       }
       break;
    }
@@ -2305,6 +2611,21 @@ void gen_ir(Node * node)
                          "'%s': ref parameter requires a named variable",
                          dec_args->children[i]->token->name))
                   break;
+
+            Type param_type   = dec_args->children[i]->token->type;
+            Type arg_type     = src->type;
+            bool param_is_int = includes(param_type, INT, LONG, SHORT, CHAR, 0);
+            bool arg_is_int   = includes(arg_type,   INT, LONG, SHORT, CHAR, 0);
+            if (param_is_int && arg_is_int && param_type != arg_type)
+            {
+               Token *as_tok   = new_token(AS, src->space);
+               as_tok->retType = param_type;
+               Node  *tgt_node = new_node(new_token(param_type, src->space));
+               Node  *as_node  = new_node(as_tok);
+               as_node->left   = carg;
+               as_node->right  = tgt_node;
+               call_args->children[i] = as_node;
+            }
          }
       }
       free_node(func);
@@ -2406,6 +2727,16 @@ void gen_ir(Node * node)
       if (node->left->token->type == STRUCT_CALL)
          node->token->Struct.ptr = node->left->token->Struct.ptr;
       node->left->token->used++;
+      break;
+   }
+   case OUTPUT:
+   {
+      for (int i = 0; i < node->left->cpos; i++)
+         gen_ir(node->left->children[i]);
+      // output() compiles to printf — ensure printf is not dead-code-eliminated
+      Node *printf_node = get_function("printf");
+      if (printf_node) printf_node->token->used++;
+      node->token->retType = VOID;
       break;
    }
    case TYPEOF: case SIZEOF:
@@ -2652,7 +2983,7 @@ Token *parse_token(char *filename, int line, char *input, int s, int e,  Type ty
       struct { char *name; Type type; } keywords2[] =
       {
          {"and", AND}, {"or", OR}, {"is", EQUAL},
-         {"not", NOT}, {"typeof", TYPEOF}, {"sizeof", SIZEOF},
+         {"not", NOT}, {"typeof", TYPEOF}, {"sizeof", SIZEOF}, {"output", OUTPUT},
          {"stack", STACK}, {"heap", HEAP}, {"array", ARRAY_TYPE},
          {0, 0},
       };
@@ -2906,7 +3237,7 @@ char *to_string(Type type)
       [GREAT]      = "GT", [LESS_EQUAL] = "LE", [NOT] = "NOT",
       [GREAT_EQUAL]= "GE", [AND] = "AND", [OR] = "OR",
       [DOTS]       = "DOTS",  [PROTO] = "PROT", [VARIADIC] = "VAR",
-      [TYPEOF]     = "TYPEOF", [SIZEOF] = "SIZEOF", [ARGS] = "ARGS",
+      [TYPEOF]     = "TYPEOF", [SIZEOF] = "SIZEOF", [OUTPUT] = "OUTPUT", [ARGS] = "ARGS",
       [CHILDREN]   = "CHILDREN",
       [AS]         = "AS", [STACK] = "STACK", [HEAP] = "HEAP",
       [ARRAY_TYPE] = "ARRAY_TYPE",

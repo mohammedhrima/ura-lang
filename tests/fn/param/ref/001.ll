@@ -18,6 +18,7 @@ entry:
 define i32 @main() !dbg !8 {
 entry:
   %a = alloca i32, align 4, !dbg !9
+  store i32 0, i32* %a, align 4, !dbg !9
   store i32 1, i32* %a, align 4, !dbg !9
   call void @foo(i32* %a), !dbg !10
   %a1 = load i32, i32* %a, align 4, !dbg !11
