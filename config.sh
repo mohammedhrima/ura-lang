@@ -260,6 +260,66 @@ build() {
 }
 
 # =========================================================
+#  Release
+# =========================================================
+release() {
+    # ── 1. Build binary ──────────────────────────────────────────
+    mkdir -p "$BUILD_DIR"
+    local _tmp
+    _tmp=$(mktemp)
+    echo -e "${YELLOW}Building release binary (no sanitizers, -O2)...${RESET}"
+    if ! clang "${SRC_FILES[@]}" "${WARN_FLAGS[@]}" "${LLVM_CFLAGS[@]}" "${LLVM_LDFLAGS[@]}" \
+        -O2 -DDEBUG=0 -o "$URA_COMPILER" 2>"$_tmp"; then
+        cat "$_tmp" >&2
+        rm -f "$_tmp"
+        echo -e "${RED}Release build failed${RESET}"
+        return 1
+    fi
+    grep -v "^ld: warning:" "$_tmp" >&2 || true
+    rm -f "$_tmp"
+    echo -e "${GREEN}Binary ready: $URA_COMPILER${RESET}"
+
+    # ── 2. Sync ura-lib to its own repo ──────────────────────────
+    echo -e "${YELLOW}Syncing ura-lib to github.com/mohammedhrima/ura-lib...${RESET}"
+    local _lib_tmp
+    _lib_tmp=$(mktemp -d)
+    if ! git clone --quiet git@github.com:mohammedhrima/ura-lib.git "$_lib_tmp"; then
+        echo -e "${RED}Failed to clone ura-lib repo${RESET}"
+        rm -rf "$_lib_tmp"
+        return 1
+    fi
+
+    # Replace contents (keep .git)
+    find "$_lib_tmp" -mindepth 1 -not -path "$_lib_tmp/.git*" -delete
+    cp -r "$SRC_DIR/ura-lib/." "$_lib_tmp/"
+
+    local _changed
+    _changed=$(git -C "$_lib_tmp" status --porcelain)
+    if [[ -z "$_changed" ]]; then
+        echo -e "${DIM}ura-lib unchanged, nothing to push${RESET}"
+    else
+        local _tag
+        _tag=$(date +%Y-%m-%d)
+        git -C "$_lib_tmp" add -A
+        git -C "$_lib_tmp" commit -m "sync: ura-lib $_tag"
+        git -C "$_lib_tmp" push --quiet
+        echo -e "${GREEN}ura-lib pushed (commit: sync: ura-lib $_tag)${RESET}"
+    fi
+    rm -rf "$_lib_tmp"
+
+    # ── 3. Commit binary in ura-lang ─────────────────────────────
+    echo ""
+    echo -e "  ${BOLD}Next steps (binary):${RESET}"
+    echo "    git add build/ura"
+    echo "    git commit -m 'chore: release $(date +%Y-%m-%d)'"
+    echo "    git push"
+    echo ""
+    echo -e "  ${BOLD}Install anywhere:${RESET}"
+    echo "    curl -L https://raw.githubusercontent.com/mohammedhrima/ura-lang/main/build/ura -o ura && chmod +x ura"
+    echo "    git clone https://github.com/mohammedhrima/ura-lib ura-lib"
+}
+
+# =========================================================
 #  Test Helpers
 # =========================================================
 copy() {
@@ -527,7 +587,8 @@ help() {
     echo -e "  ${BOLD}Ura Environment Commands${RESET}"
     echo -e "  ${DIM}────────────────────────────────────${RESET}"
     echo ""
-    echo -e "  ${CYAN}build${RESET}                   Build the ura compiler"
+    echo -e "  ${CYAN}build${RESET}                   Build the ura compiler (with sanitizers)"
+  echo -e "  ${CYAN}release${RESET}                 Build a release binary to build/ura (no sanitizers, git-tracked)"
     echo -e "  ${CYAN}copy <file.ura>${RESET}         Save file + IR as a test (reads path from first line comment)"
     echo -e "  ${CYAN}tests [folder]${RESET}          Run all tests (optionally filter by folder)"
     echo -e "  ${CYAN}update_tests${RESET}            Regenerate all expected .ll files"

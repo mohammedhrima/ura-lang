@@ -5,8 +5,9 @@ A collection of standard C library utility functions implemented in [Ura](https:
 ## Getting the compiler
 
 ```bash
-curl -L https://github.com/mohammedhrima/ura-lang/raw/main/build/ura -o ura
+curl -L https://raw.githubusercontent.com/mohammedhrima/ura-lang/main/build/ura -o ura
 chmod +x ura
+git clone https://github.com/mohammedhrima/ura-lib ura-lib
 ```
 
 ## Usage
