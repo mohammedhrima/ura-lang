@@ -15,7 +15,7 @@ fn banner() void:
 
 struct Client:
     fd int
-    buf chars
+    wbuf chars
     rbuf chars
 
     fn init() void:
@@ -23,10 +23,31 @@ struct Client:
         if self.fd < 0:
             log("failed to create client socket")
             exit(1)
-        self.buf  = heap[char](1024)
+        self.wbuf  = heap[char](1024)
         self.rbuf = heap[char](1024)
-        bzero(self.buf, 1024 as long)
-        bzero(self.rbuf, 1024 as long)
+    
+    fn connect(data chars) void:
+        if connect(self.fd, data, 16) < 0:
+            log_ts("\033[0;31m", "[client]", "connect failed")
+            exit(1)
+    
+    fn read_rbuf(size int) int:
+        r int = read(self.fd, self.rbuf, size)
+        if r >= 0: self.rbuf[r] = 0 as char
+        return r
+
+    fn read_wbuf(size int) int:
+        r int = read(0, self.wbuf, size)
+        if r > 0: self.wbuf[r - 1] = 0 as char
+        return r
+
+    fn write(size int) int:
+        return write(self.fd, self.wbuf, size)
+        
+    fn clean() void:
+        close(self.fd)
+        free(self.wbuf)
+        free(self.rbuf)
 
 main():
     banner()
@@ -37,14 +58,7 @@ main():
     addr.set_ip(127, 0, 0, 1)
 
     cli Client
-    if cli.fd < 0:
-        log_ts("\033[0;31m", "[client]", "socket failed")
-        return 1
-
-    result int = connect(cli.fd, addr.data, 16)
-    if result < 0:
-        log_ts("\033[0;31m", "[client]", "connect failed")
-        return 1
+    cli.connect(addr.data)
 
     log_ts("\033[0;36m", "[client]", "connected to server")
 
@@ -52,11 +66,10 @@ main():
     pid int = fork()
     if pid == 0:
         while True:
-            r = read(cli.fd, cli.rbuf, 1023)
+            r = cli.read_rbuf(1023)
             if r <= 0:
                 log_ts("\033[0;31m", "[client]", "server disconnected")
                 break
-            cli.rbuf[r] = 0 as char
             log("\r\033[2K")
             log_ts("\033[0;33m", "[server]", cli.rbuf)
             log("\033[0;36m[client]\033[0m > ")
@@ -64,11 +77,8 @@ main():
 
     log("\033[0;36m[client]\033[0m > ")
     while True:
-        r = read(0, cli.buf, 1023)
-        if r <= 0:
-            break
-        cli.buf[r - 1] = 0 as char
-        write(cli.fd, cli.buf, r - 1)
+        r = cli.read_wbuf(1023)
+        if r <= 0: break
+        cli.write(r - 1)
         log("\033[0;36m[client]\033[0m > ")
 
-    close(cli.fd)

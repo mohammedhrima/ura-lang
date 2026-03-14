@@ -298,10 +298,10 @@ extern int              tk_len;
 extern Node            *global;
 extern int              exe_pos;
 
-extern Node           **Gscoop;
-extern Node            *scoop;
-extern int              scoop_len;
-extern int              scoop_pos;
+extern Node           **Gscope;
+extern Node            *scope;
+extern int              scope_len;
+extern int              scope_pos;
 
 extern char           **used_files;
 extern int              used_len;
@@ -354,8 +354,8 @@ Token *parse_token(char *filename, int line, char *input, int s, int e, Type typ
 void   add_token(Token *token);
 Node  *new_node(Token *token);
 Node  *add_child(Node *node, Node *child);
-void   enter_scoop(Node *node);
-void   exit_scoop();
+void   enter_scope(Node *node);
+void   exit_scope();
 bool   includes(Type to_find, ...);
 void   setName(Token *token, char *name);
 char  *to_string(Type type);
