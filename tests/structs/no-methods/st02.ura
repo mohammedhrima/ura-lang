@@ -1,5 +1,5 @@
-use "@/io"
-use "@/memory"
+// structs/no-methods/st02.ura
+use "@/header"
 
 struct Model:
     name chars

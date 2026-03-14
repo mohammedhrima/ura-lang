@@ -14,6 +14,7 @@ declare i8* @strcpy(i8*, i8*)
 define i32 @main() !dbg !4 {
 entry:
   %str = alloca i8*, align 8, !dbg !7
+  store i8* null, i8** %str, align 8, !dbg !7
   %stack = alloca [20 x i8], align 1, !dbg !7
   %stack1 = getelementptr [20 x i8], [20 x i8]* %stack, i32 0, i32 0, !dbg !7
   store i8* %stack1, i8** %str, align 8, !dbg !7

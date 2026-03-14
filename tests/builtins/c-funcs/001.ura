@@ -1,6 +1,5 @@
 // builtins/c-funcs/001.ura
-proto fn puts(fmt chars) int
-proto fn printf(fmt chars, ...) int
+use "@/header"
 
 main():
     printf("hello world\n")

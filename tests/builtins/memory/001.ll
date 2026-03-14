@@ -16,6 +16,7 @@ declare i8* @strcpy(i8*, i8*)
 define i32 @main() !dbg !4 {
 entry:
   %str = alloca i8*, align 8, !dbg !7
+  store i8* null, i8** %str, align 8, !dbg !7
   %heap = call i8* @calloc(i64 20, i64 1), !dbg !7
   store i8* %heap, i8** %str, align 8, !dbg !7
   %str1 = load i8*, i8** %str, align 8, !dbg !8

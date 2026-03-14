@@ -1,4 +1,5 @@
-proto fn printf(fmt chars, ...) int
+// op/bitwise.ura
+use "@/io"
 
 main():
     a int = 60

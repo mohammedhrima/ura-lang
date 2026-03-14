@@ -19,6 +19,7 @@ entry:
 define i32 @main() !dbg !8 {
 entry:
   %val = alloca i32, align 4, !dbg !9
+  store i32 0, i32* %val, align 4, !dbg !9
   %square = call i32 @square(i32 5), !dbg !10
   store i32 %square, i32* %val, align 4, !dbg !10
   %val1 = load i32, i32* %val, align 4, !dbg !11

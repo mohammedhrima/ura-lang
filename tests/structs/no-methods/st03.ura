@@ -1,4 +1,5 @@
-use "@/io"
+// structs/no-methods/st03.ura
+use "@/header"
 
 struct User:
     id int
