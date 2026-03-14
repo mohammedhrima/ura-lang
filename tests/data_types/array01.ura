@@ -1,3 +1,4 @@
+// data_types/array01.ura
 proto fn write(fd int, ptr chars, len int) int
 proto fn strcpy(dist chars, src chars) void
 proto fn strlen(str chars) int

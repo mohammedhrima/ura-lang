@@ -10,6 +10,7 @@ declare i32 @printf(i8*, i32, ...)
 define i32 @main() !dbg !4 {
 entry:
   %a = alloca i32, align 4, !dbg !7
+  store i32 0, i32* %a, align 4, !dbg !7
   store i32 2, i32* %a, align 4, !dbg !7
   br label %if.start, !dbg !7
 
