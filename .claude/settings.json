@@ -44,7 +44,8 @@
       "Bash(URA_LIB=/Users/hrimamohammed/Desktop/Personal/ura-lang/src/ura-lib ./build/ura src/file.ura)",
       "Read(//Users/hrimamohammed/Desktop/Personal/projects/tcp/basic/**)",
       "Read(//Users/hrimamohammed/Desktop/Personal/**)",
-      "Bash(URA_LIB=/Users/hrimamohammed/Desktop/Personal/ura-lang/src/ura-lib ./build/ura projects/tcp/basic/server.ura)"
+      "Bash(URA_LIB=/Users/hrimamohammed/Desktop/Personal/ura-lang/src/ura-lib ./build/ura projects/tcp/basic/server.ura)",
+      "Bash(ura projects/tcp/basic/server.ura)"
     ]
   }
 }
