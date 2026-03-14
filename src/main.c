@@ -26,6 +26,7 @@ File             asm_fd;
 bool             enable_bounds_check = false;
 char            *passes;
 bool             enable_asan;
+char            *g_argv0;
 
 LLVMDIBuilderRef di_builder;
 LLVMMetadataRef  di_compile_unit;
@@ -136,8 +137,24 @@ void tokenize(char *filename)
             char *use_filename = NULL;
             if (use[0] == '@')
             {
-               char *lib      = getenv("URA_LIB");
-               check(!lib, "URA_LIB environment variable not set");
+               char *lib = getenv("URA_LIB");
+               if (!lib && g_argv0)
+               {
+                  char resolved[PATH_MAX];
+                  if (realpath(g_argv0, resolved))
+                  {
+                     char resolved_copy[PATH_MAX];
+                     strncpy(resolved_copy, resolved, PATH_MAX - 1);
+                     resolved_copy[PATH_MAX - 1] = '\0';
+                     char           *bin_dir     = dirname(resolved_copy);
+                     static char     fallback[PATH_MAX];
+                     snprintf(fallback, sizeof(fallback), "%s/ura-lib", bin_dir);
+                     struct stat st;
+                     if (stat(fallback, &st) == 0 && S_ISDIR(st.st_mode))
+                        lib = fallback;
+                  }
+               }
+               check(!lib, "URA_LIB not set and no ura-lib/ found next to binary");
                char *resolved = strjoin(lib, use + 1, NULL);
                free(use);
                use          = resolved;
@@ -978,6 +995,7 @@ char *compile(char *filename)
 
 int main(int argc, char **argv)
 {
+   g_argv0 = argv[0];
    if(check(argc < 2, "usage: ura <file.ura> [file2.ura ...]"
             "[-O0|-O1|-O2|-O3|-Os|-Oz] [-san] [-o output]"))
       return 1;
