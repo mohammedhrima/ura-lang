@@ -38,6 +38,25 @@ static inline LLVMIntPredicate icmp_predicate(Type op)
    }
 }
 
+static inline LLVMRealPredicate fcmp_predicate(Type op)
+{
+   switch (op)
+   {
+   case LESS:        return LLVMRealOLT;
+   case GREAT:       return LLVMRealOGT;
+   case EQUAL:       return LLVMRealOEQ;
+   case LESS_EQUAL:  return LLVMRealOLE;
+   case GREAT_EQUAL: return LLVMRealOGE;
+   default:          return LLVMRealONE; // NOT_EQUAL
+   }
+}
+
+static inline int is_float_value(Value v)
+{
+   LLVMTypeKind k = LLVMGetTypeKind(LLVMTypeOf(v));
+   return k == LLVMFloatTypeKind || k == LLVMDoubleTypeKind;
+}
+
 static inline Type assign_base_op(Type assign_op)
 {
    switch (assign_op)
@@ -53,6 +72,19 @@ static inline Type assign_base_op(Type assign_op)
 static inline Value build_binary_op(Type op, Value l, Value r)
 {
    char *name = to_string(op);
+   if (is_float_value(l))
+   {
+      if (includes(op, COMPARISON_OPS, 0))
+         return LLVMBuildFCmp(builder, fcmp_predicate(op), l, r, name);
+      switch (op)
+      {
+      case ADD: return LLVMBuildFAdd(builder, l, r, name);
+      case SUB: return LLVMBuildFSub(builder, l, r, name);
+      case MUL: return LLVMBuildFMul(builder, l, r, name);
+      case DIV: return LLVMBuildFDiv(builder, l, r, name);
+      default:  todo(1, "build_binary_op: unhandled float op %s", name); return NULL;
+      }
+   }
    if (includes(op, COMPARISON_OPS, 0))
       return _build_icmp(icmp_predicate(op), l, r, name);
    switch (op)
