@@ -1,0 +1,12 @@
+// refs/005.ura - multiply and subtract through refs: double shield, pay mana
+
+main():
+    shield int = 10
+    mp     int = 80
+
+    s int ref = shield
+    m int ref = mp
+    s *= 2
+    m -= 25
+
+    output("<", shield, " ", mp, ">\n")

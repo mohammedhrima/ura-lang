@@ -1,0 +1,11 @@
+// variables/001.ura - hero stats: declare all common types
+
+main():
+    name  chars = "Aldric"
+    hp    int   = 100
+    mp    int   = 50
+    alive bool  = True
+    speed float = 1.5
+    output("=== ", name, " enters the dungeon ===\n")
+    output("HP: ", hp, " | MP: ", mp, " | Speed: ", speed, "\n")
+    output("Alive: ", alive, "\n")

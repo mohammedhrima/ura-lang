@@ -1,0 +1,13 @@
+// functions/basic/002.ura - fn with return value + single-line fns
+
+fn victory_bonus(floor int) int:
+    return floor * 50
+
+fn is_alive(hp int) bool: return hp > 0
+fn is_boss_floor(floor int) bool: return floor == 10
+
+main():
+    bonus int = victory_bonus(3)
+    output("Floor 3 bonus: ", bonus, "\n")
+    output("Hero alive:    ", is_alive(80), "\n")
+    output("Boss floor:    ", is_boss_floor(10), "\n")

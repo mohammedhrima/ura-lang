@@ -1,8 +1,0 @@
-// fn/param/vars/001.ura
-
-fn square(n int) int:
-    return n * n
-
-main():
-    val int = square(5)
-    output("<", val, ">\n")

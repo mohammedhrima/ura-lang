@@ -1,0 +1,13 @@
+// refs/004.ura - separate refs to different vars: hp ref and mp ref
+
+main():
+    hp int = 100
+    mp int = 50
+
+    shield int ref = hp
+    shield = shield - 30
+    output("HP after hit:   ", hp, "\n")
+
+    mana int ref = mp
+    mana = mana - 20
+    output("MP after spell: ", mp, "\n")

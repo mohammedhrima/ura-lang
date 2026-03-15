@@ -1,0 +1,37 @@
+// operators/bitwise/001.ura - status effect bit flags: &, |, ^, ~, <<, >>
+
+POISONED int = 1
+FROZEN   int = 2
+BURNING  int = 4
+SHIELDED int = 8
+
+main():
+    status int = 0
+
+    // OR: apply effects
+    status = status | POISONED
+    status = status | BURNING
+    output("After apply:  ", status, "\n")   // 5
+
+    // AND: check effect
+    output("Has POISONED: ", status & POISONED, "\n")  // 1
+    output("Has FROZEN:   ", status & FROZEN,   "\n")  // 0
+
+    // XOR: toggle BURNING off
+    status = status ^ BURNING
+    output("After toggle: ", status, "\n")   // 1
+
+    // NOT + AND: remove POISONED
+    status = status & ~POISONED
+    output("After cure:   ", status, "\n")   // 0
+
+    // Shift: next tier has doubled values
+    tier2 int = SHIELDED << 1
+    output("Tier2 shield: ", tier2, "\n")    // 16
+
+    // Right shift
+    output("tier2 >> 2:   ", tier2 >> 2, "\n")  // 4
+
+    // Combined
+    combo int = (POISONED & BURNING) | (1 << 3)
+    output("combo:        ", combo, "\n")    // 8

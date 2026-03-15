@@ -25,14 +25,14 @@ while.start:                                      ; preds = %while.then, %entry
   br i1 %NEQ, label %while.then, label %while.end, !dbg !8
 
 while.then:                                       ; preds = %while.start
-  %current = load i32, i32* %i, align 4, !dbg !8
-  %ADD = add i32 %current, 1, !dbg !8
+  %i4 = load i32, i32* %i, align 4, !dbg !8
+  %ADD = add i32 %i4, 1, !dbg !8
   store i32 %ADD, i32* %i, align 4, !dbg !8
   br label %while.start, !dbg !8
 
 while.end:                                        ; preds = %while.start
-  %i4 = load i32, i32* %i, align 4, !dbg !8
-  ret i32 %i4, !dbg !8
+  %i5 = load i32, i32* %i, align 4, !dbg !8
+  ret i32 %i5, !dbg !8
 }
 
 define i32 @main() !dbg !9 {

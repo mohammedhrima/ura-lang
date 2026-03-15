@@ -1,0 +1,8 @@
+// conditionals/002.ura - if-else: alive or dead check
+
+main():
+    hp int = 0
+    if hp > 0:
+        output("Hero is alive\n")
+    else:
+        output("Hero has fallen\n")

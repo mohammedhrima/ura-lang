@@ -1,9 +1,0 @@
-// fn/param/ref/001.ura
-
-fn foo(n int ref) void:
-    n = 2
-
-main():
-    a int = 1
-    foo(a)
-    output("<", a, ">\n")

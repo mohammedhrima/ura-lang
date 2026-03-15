@@ -1,0 +1,23 @@
+// structs/basic/001.ura - Player and Enemy structs: declare, assign, output
+
+struct Player:
+    name  chars
+    hp    int
+    mp    int
+
+struct Enemy:
+    name  chars
+    hp    int
+    atk   int
+
+main():
+    hero  Player
+    orc   Enemy
+    hero.name = "Aldric"
+    hero.hp   = 100
+    hero.mp   = 50
+    orc.name  = "Orc Grunt"
+    orc.hp    = 60
+    orc.atk   = 14
+    output(hero.name, " faces ", orc.name, "\n")
+    output("Hero HP: ", hero.hp, " | Orc HP: ", orc.hp, "\n")

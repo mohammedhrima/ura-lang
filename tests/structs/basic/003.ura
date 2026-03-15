@@ -1,0 +1,15 @@
+// structs/basic/003.ura - struct reference: buff_player mutates caller's struct
+
+struct Player:
+    name chars
+    hp   int
+
+fn buff_player(p Player ref) void:
+    p.hp += 20
+
+main():
+    hero  Player
+    hero.name = "Aldric"
+    hero.hp   = 80
+    buff_player(hero)
+    output("id: ", hero.hp, "\n")

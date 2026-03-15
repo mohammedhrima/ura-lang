@@ -1,0 +1,18 @@
+// variables/003.ura - all primitive types in one place
+
+main():
+    name   chars = "Aldric"
+    hp     int   = 100
+    xp     long  = 999999
+    level  short = 12
+    grade  char  = 'S'
+    alive  bool  = True
+    ratio  float = 0.85
+
+    output("name:  ", name,  "\n")
+    output("hp:    ", hp,    "\n")
+    output("xp:    ", xp,    "\n")
+    output("level: ", level, "\n")
+    output("grade: ", grade, "\n")
+    output("alive: ", alive, "\n")
+    output("ratio: ", ratio, "\n")

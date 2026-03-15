@@ -1,6 +1,11 @@
-// builtins/typeof/001.ura
+// builtins/typeof/001.ura - typeof on hero stats
 
 main():
-    type chars = typeof("hello world\n")
-    output("type ", type, "\n")
-    return 0
+    hp    int   = 100
+    speed float = 1.5
+    name  chars = "Aldric"
+    alive bool  = True
+    output("typeof hp:    ", typeof(hp),    "\n")
+    output("typeof speed: ", typeof(speed), "\n")
+    output("typeof name:  ", typeof(name),  "\n")
+    output("typeof alive: ", typeof(alive), "\n")

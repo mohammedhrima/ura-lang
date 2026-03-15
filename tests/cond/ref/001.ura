@@ -1,9 +1,0 @@
-// cond/ref/001.ura
-
-main():
-    a int = 10
-    r int ref = a
-    if r > 5:
-        output("<yes>\n")  // <yes>
-    else:
-        output("<no>\n")

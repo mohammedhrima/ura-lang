@@ -1,0 +1,11 @@
+// refs/003.ura - compound assignment through ref in a loop
+
+main():
+    xp      int = 0
+    xp_gain int = 50
+    r       int ref = xp
+    i       int = 0
+    while i < 4:
+        r += xp_gain
+        i = i + 1
+    output("<", xp, ">\n")

@@ -1,6 +1,0 @@
-// cond/001.ura
-
-main():
-    a int = 1
-    if a == 1:
-        output("is one\n")
