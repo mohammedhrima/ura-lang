@@ -28,6 +28,18 @@ char            *passes;
 bool             enable_asan;
 char            *g_argv0;
 
+char            *link_keys[64];
+int              link_key_count;
+
+void add_link_key(char *key)
+{
+   // deduplicate
+   for (int i = 0; i < link_key_count; i++)
+      if (strcmp(link_keys[i], key) == 0) return;
+   if (link_key_count < 64)
+      link_keys[link_key_count++] = strdup(key);
+}
+
 LLVMDIBuilderRef di_builder;
 LLVMMetadataRef  di_compile_unit;
 LLVMMetadataRef  di_file;
@@ -213,6 +225,16 @@ int main(int argc, char **argv)
       #endif
 
       free_memory();
+   }
+
+   // append link flags from link directives (e.g. link "@/raylib")
+   for (int i = 0; i < link_key_count; i++)
+   {
+      char env_name[128];
+      snprintf(env_name, sizeof(env_name), "URA_LINK_%s", link_keys[i]);
+      char *flags = getenv(env_name);
+      if (flags)
+         pos += snprintf(final_cmd + pos, sizeof(final_cmd) - pos, " %s", flags);
    }
 
    if (!testing_mode && link_ok && !no_exec)
