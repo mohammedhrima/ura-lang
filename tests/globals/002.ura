@@ -1,8 +1,12 @@
-// globals/002.ura
+// globals/002.ura - initialized globals: floor, lives, max_floor
 
-max int = 100
-flag bool = True
+floor     int  = 1
+lives     int  = 3
+max_floor int  = 10
+hardcore  bool = True
 
 main():
-    if flag:
-        output("max is ", max, "\n")
+    output("Floor:     ", floor,     "\n")
+    output("Lives:     ", lives,     "\n")
+    output("Max floor: ", max_floor, "\n")
+    output("Hardcore:  ", hardcore,  "\n")

@@ -2,9 +2,10 @@
 source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/tuples/001.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
-@STR0 = private unnamed_addr constant [2 x i8] c" \00", align 1
-@STR1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@output_fmt = private unnamed_addr constant [7 x i8] c"%d %d\0A\00", align 1
+@STR0 = private unnamed_addr constant [2 x i8] c"<\00", align 1
+@STR1 = private unnamed_addr constant [2 x i8] c" \00", align 1
+@STR2 = private unnamed_addr constant [3 x i8] c">\0A\00", align 1
+@output_fmt = private unnamed_addr constant [9 x i8] c"<%d %d>\0A\00", align 1
 
 define { i32, i32 } @swap(i32 %a, i32 %b) !dbg !4 {
 entry:
@@ -32,7 +33,7 @@ entry:
   store i32 %y2, i32* %y, align 4, !dbg !9
   %x3 = load i32, i32* %x, align 4, !dbg !9
   %y4 = load i32, i32* %y, align 4, !dbg !9
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @output_fmt, i32 0, i32 0), i32 2, i32 %x3, i32 %y4), !dbg !9
+  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @output_fmt, i32 0, i32 0), i32 2, i32 %x3, i32 %y4), !dbg !9
   ret i32 0, !dbg !9
 }
 

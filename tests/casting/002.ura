@@ -1,0 +1,8 @@
+// casting/002.ura - int to float: dungeon completion percentage
+
+main():
+    score     int = 847
+    max_score int = 1000
+    pct float = score as float / max_score as float * 100.0
+    output("Score:      ", score, " / ", max_score, "\n")
+    output("Completion: ", pct, "%\n")

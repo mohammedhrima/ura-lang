@@ -1,0 +1,14 @@
+// output/003.ura - output all supported types in one block
+
+main():
+    name  chars = "Aldric"
+    hp    int   = 100
+    grade char  = 'S'
+    alive bool  = True
+    speed float = 1.75
+
+    output("Name:  ", name,  "\n")
+    output("HP:    ", hp,    "\n")
+    output("Grade: ", grade, "\n")
+    output("Alive: ", alive, "\n")
+    output("Speed: ", speed, "\n")

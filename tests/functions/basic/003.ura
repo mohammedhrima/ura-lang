@@ -1,0 +1,19 @@
+// functions/basic/003.ura - multi-fn: clamp, damage, is_dead
+
+fn clamp(val int, lo int, hi int) int:
+    if val < lo:
+        return lo
+    if val > hi:
+        return hi
+    return val
+
+fn damage(atk int, def int) int:
+    return clamp(atk - def, 0, 999)
+
+fn is_dead(hp int) bool:
+    return hp <= 0
+
+main():
+    d int = damage(25, 8)
+    output("Orc takes ", d, " damage\n")
+    output("Orc dead: ", is_dead(d - 60), "\n")

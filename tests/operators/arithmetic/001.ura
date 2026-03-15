@@ -1,0 +1,30 @@
+// operators/arithmetic/001.ura - all arithmetic ops in dungeon combat context
+
+fn base_atk() int:
+    return 10
+
+main():
+    atk     int = 25
+    def     int = 8
+    kills   int = 3
+    total   int = 100
+    count   int = 4
+    xp_cap  int = 70
+
+    // var + var
+    output("atk + def:       ", atk + def,       "\n")
+    // var - var
+    output("atk - def:       ", atk - def,       "\n")
+    // var * var
+    output("kills * 50:      ", kills * 50,      "\n")
+    // var / var
+    output("total / count:   ", total / count,   "\n")
+    // var % var
+    output("atk % xp_cap:    ", atk % xp_cap,    "\n")
+    // val + val
+    output("10 + 5:          ", 10 + 5,           "\n")
+    // fn + var
+    output("base_atk + atk:  ", base_atk() + atk,"\n")
+    // chained with precedence
+    output("2 + 3 * 4:       ", 2 + 3 * 4,       "\n")
+    output("(2 + 3) * 4:     ", (2 + 3) * 4,     "\n")

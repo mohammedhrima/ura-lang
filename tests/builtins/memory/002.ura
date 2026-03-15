@@ -1,8 +1,0 @@
-// builtins/memory/002.ura
-use "@/header"
-
-main():
-    str chars = stack[char](20)
-    strcpy(str, "Hello world\n")
-    write(1, str, strlen("Hello world\n"))
-    return 0
