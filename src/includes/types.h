@@ -62,6 +62,8 @@ enum Type
    STACK, HEAP, TYPEOF, SIZEOF, OUTPUT, DEFAULT, SYNTAX_ERROR,
    // Bitwise
    BAND, BOR, BXOR, BNOT, LSHIFT, RSHIFT,
+   // Literals
+   NULL_LIT,
    // end
    END,
 };
@@ -145,7 +147,7 @@ struct Token
       struct { char *value;} Chars;
       struct { char value;} Char;
       struct { int index; Node *ptr; } Struct;
-      struct { Type elem_type; int depth; } Array;
+      struct { Type elem_type; int depth; Node *struct_ptr; } Array;
       struct { Token *types[8]; int count; } Tuple;
       struct { Node *ptr; } Fcall;
       struct { Token *ptr; Token *start; Token *end; } Statement;
