@@ -1,6 +1,10 @@
-whenver we 
-inside it whenever we build we should preserve a copy of the ura executable there (it will be nice if we can dot )
-and
 
-those are the links
 
++ add enums
++ implement templates
++ implement operator eveloading, to beused for exmaple in matrxes math operations, so we can implment string struct that work similar to modern languages works
++ switch/case ()
++ try/catch they should be allowed to throw a cosutm struct we well be building named
++ fileput, input, file read or something
+
++ add extension code in ura-lang code
