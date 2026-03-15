@@ -1,0 +1,11 @@
+// globals/001.ura
+
+count int
+
+fn increment() void:
+    count += 1
+
+main():
+    increment()
+    increment()
+    output(count, "\n")

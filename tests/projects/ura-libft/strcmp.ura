@@ -1,5 +1,4 @@
 // libft/strcmp
-use "@/io"
 
 fn strcmp(left chars, right chars) int:
     i int = 0
@@ -9,4 +8,4 @@ fn strcmp(left chars, right chars) int:
 
 main():
     len int = strcmp("d", "a")
-    printf("<%d>\n", len)
+    output("<", len, ">\n")
