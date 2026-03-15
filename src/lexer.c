@@ -174,7 +174,7 @@ Token *parse_token(char *filename, int line, char *input, int s, int e, Type typ
          {"if", IF},  {"elif", ELIF}, {"else", ELSE},
          {"while", WHILE},  {"fn", FDEC}, {"return", RETURN},
          {"break", BREAK}, {"continue", CONTINUE}, {"ref", REF},
-         {"struct", STRUCT_DEF}, {"proto", PROTO}, {"as", AS},
+         {"struct", STRUCT_DEF}, {"enum", ENUM_DEF}, {"proto", PROTO}, {"as", AS},
          {0, 0},
       };
       for (i = 0; keywords[i].name; i++)
@@ -268,6 +268,27 @@ Token *parse_token(char *filename, int line, char *input, int s, int e, Type typ
 // ----------------------------------------------------------------------------
 // `use` import handler — resolves and tokenizes an imported module
 // ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// `link` directive handler — collects native library link keys
+// ----------------------------------------------------------------------------
+static void handle_link_directive(char *input, int *i)
+{
+   while (isspace(input[*i])) (*i)++;
+   if (input[*i] != '\"') return;
+   (*i)++;
+   int s = *i;
+   while (input[*i] && input[*i] != '\"') (*i)++;
+   if (input[*i] != '\"') return;
+
+   char *raw = strndup(input + s, *i - s);
+   (*i)++;
+
+   // strip "@/" prefix to get the key name
+   char *key = (raw[0] == '@' && raw[1] == '/') ? raw + 2 : raw;
+   add_link_key(key);
+   free(raw);
+}
+
 static bool s_calling_use = false; // file-level so handle_use_import can toggle it
 
 static void handle_use_import(char *filename, char *input, int *i, int line)
@@ -413,6 +434,8 @@ void tokenize(char *filename)
          while (input[i] && (isalnum(input[i]) || strchr("@$_", input[i]))) i++;
          if (i - s == 3 && strncmp(input + s, "use", 3) == 0 && isspace(input[i]))
             handle_use_import(filename, input, &i, line);
+         else if (i - s == 4 && strncmp(input + s, "link", 4) == 0 && isspace(input[i]))
+            handle_link_directive(input, &i);
          else
             parse_token(filename, line, input, s, i, ID, space);
          continue;
