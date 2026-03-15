@@ -192,6 +192,7 @@ Token *parse_token(char *filename, int line, char *input, int s, int e, Type typ
          {"and", AND}, {"or", OR}, {"is", EQUAL},
          {"not", NOT}, {"typeof", TYPEOF}, {"sizeof", SIZEOF}, {"output", OUTPUT},
          {"stack", STACK}, {"heap", HEAP}, {"array", ARRAY_TYPE},
+         {"null", NULL_LIT},
          {0, 0},
       };
       for (i = 0; keywords2[i].name; i++)

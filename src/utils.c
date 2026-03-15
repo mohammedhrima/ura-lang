@@ -684,4 +684,10 @@ void set_ret_type(Node *node)
    if (node->token->type == DOT &&
        node->token->retType == STRUCT_CALL && node->right)
       node->token->Struct.ptr = node->right->token->Struct.ptr;
+
+   // For FCALL returning struct, copy Struct.ptr from the function declaration
+   if (node->token->type == FCALL &&
+       node->token->retType == STRUCT_CALL &&
+       node->token->Fcall.ptr)
+      node->token->Struct.ptr = node->token->Fcall.ptr->token->Struct.ptr;
 }
