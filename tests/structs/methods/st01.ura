@@ -4,25 +4,25 @@ use "@/header"
 struct Name:
     value chars
     fn init() void:
-        printf("call Name.init\n")
-    
+        output("call Name.init\n")
+
     fn setValue(value chars) void:
         self.value = strdup(value)
 
     fn clean() void:
-        printf("call Name.clean\n")
+        output("call Name.clean\n")
         free(self.value)
 
 struct User:
     age int
     name Name
     fn init() void:
-        printf("call User.init\n")
+        output("call User.init\n")
         self.age = 10
         self.name.setValue("user")
     fn clean() void:
-        printf("call User.clean\n")
+        output("call User.clean\n")
 
 main():
     user User
-    printf("hello %s has %d\n", user.name.value, user.age)
+    output("hello ", user.name.value, " has ", user.age, "\n")

@@ -1,8 +1,7 @@
 // fn/param/ref/005.ura
-use "@/io"
 
 fn print_val(n int) void:
-    printf("<%d>\n", n)
+    output("<", n, ">\n")
 
 main():
     a int = 42

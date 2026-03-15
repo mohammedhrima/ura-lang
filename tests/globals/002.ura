@@ -1,0 +1,8 @@
+// globals/002.ura
+
+max int = 100
+flag bool = True
+
+main():
+    if flag:
+        output("max is ", max, "\n")

@@ -22,6 +22,7 @@ Ura started as a passion project: a love for C's raw performance and Python's re
   - [Memory](#memory)
   - [C Interoperability](#c-interoperability)
   - [Type Introspection](#type-introspection)
+  - [Output Builtin](#output-builtin)
 - [Real Examples](#real-examples)
   - [Fibonacci](#fibonacci)
   - [String Length](#string-length)
@@ -311,6 +312,28 @@ main():
 
 The `init()` method is a special constructor that runs automatically when a struct is declared.
 
+The `clean()` method is a special destructor that runs automatically when the struct goes out of scope (freeing heap memory, closing handles, etc.):
+
+```ura
+use "@/header"
+
+struct Buffer:
+    data chars
+    size int
+
+    fn init() void:
+        self.size = 64
+        self.data = heap[char](self.size)
+
+    fn clean() void:
+        free(self.data)
+
+main():
+    buf Buffer
+    strcpy(buf.data, "hello")
+    output(buf.data, "\n")
+```
+
 **Nested structs:**
 
 Structs can be nested at any depth:
@@ -494,10 +517,10 @@ The `projects/tcp/` directory contains complete working examples:
 Run the examples:
 ```bash
 # Terminal 1: Start server
-ura projects/tcp/basic/server.ura
+ura tests/projects/ura-tcp-server/basic/server.ura
 
 # Terminal 2: Connect client
-ura projects/tcp/basic/client.ura
+ura tests/projects/ura-tcp-server/basic/client.ura
 ```
 
 ---
@@ -522,6 +545,47 @@ main():
     printf("%d\n", sizeof(42))     // 4  (size of INT)
     printf("%d\n", sizeof('a'))    // 1  (size of CHAR)
 ```
+
+---
+
+### Output Builtin
+
+`output` is a built-in variadic function that prints values to stdout. It accepts any number of arguments and concatenates them — no format string needed:
+
+```ura
+main():
+    name chars = "Ura"
+    n    int   = 42
+
+    output("hello\n")                      // hello
+    output("name: ", name, "\n")           // name: Ura
+    output("n = ", n, "\n")               // n = 42
+    output(n, " * 2 = ", n * 2, "\n")     // 42 * 2 = 84
+```
+
+It can also print structs directly, recursively expanding all fields:
+
+```ura
+struct Point:
+    x int
+    y int
+
+main():
+    p Point
+    p.x = 3
+    p.y = 4
+    output(p)
+    // { x: 3, y: 4 }
+```
+
+Nested structs are expanded too:
+
+```ura
+output(app)
+// { logger: { file: { path: app.log, handle:  }, prefix: [APP]  }, name: UraApp }
+```
+
+For formatted output (like `%d`, `%s`, `%f`), use `printf` from `@/io` instead.
 
 ---
 
@@ -800,16 +864,16 @@ ura-lang/
 │   ├── op/             # Operators (arithmetic, logical, comparison, bitwise)
 │   ├── structs/        # Structs, nested structs, struct methods
 │   ├── net/            # TCP client/server examples
-│   └── libft/          # String functions (strlen, strcmp, isalpha, etc.)
-├── projects/
-│   └── tcp/            # Real-world TCP networking examples
-│       ├── basic/      # Simple chat room (bidirectional messaging)
-│       │   ├── server.ura
-│       │   └── client.ura
-│       ├── cmd/        # Command-based server with /help, /time, /whoami
-│       │   ├── server.ura
-│       │   └── client.ura
-│       └── utils.ura   # Shared utilities (SockAddr, logging, timestamps)
+│   └── projects/       # Real-world programs written in Ura
+│       ├── ura-libft/  # Classic libc functions (strlen, strcmp, isalpha, ...)
+│       └── ura-tcp-server/   # TCP networking examples
+│           ├── basic/        # Simple chat room (bidirectional messaging)
+│           │   ├── server.ura
+│           │   └── client.ura
+│           ├── cmd/          # Command-based server (/help, /time, /whoami, /exit)
+│           │   ├── server.ura
+│           │   └── client.ura
+│           └── utils.ura     # Shared utilities (SockAddr, logging, timestamps)
 ├── build/              # Compiler executable
 ├── config.sh           # Development environment (source this every session)
 ├── setup.sh            # One-time setup: installs all deps (macOS / Linux / MSYS2)
@@ -846,11 +910,13 @@ Ura is under active development. Here's where things stand:
 
 **Coming next:**
 
-- For loops
+- For loops (range-based: `for i in 0..10`)
 - Global variables
-- Enums
+- Enums + pattern matching
 - Switch / case
 - Type inference
+- Type aliases (`type Byte = char`)
+- Default parameter values
 - Exception handling
 
 ---

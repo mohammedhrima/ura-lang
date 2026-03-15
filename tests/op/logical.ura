@@ -1,5 +1,4 @@
 // op/logical.ura
-use "@/io"
 
 fn t() bool:
     return True
@@ -8,10 +7,7 @@ fn f() bool:
     return False
 
 fn print_bool(label chars, val bool) void:
-    if val:
-        printf("%sTrue\n", label)
-    else:
-        printf("%sFalse\n", label)
+    output(label, val, "\n")
 
 main():
     a bool = True
@@ -65,8 +61,8 @@ main():
 
     // WITH IF
     if a && !b:
-        printf("if a&&!b: True\n")
+        output("if a&&!b: True\n")
     if !a || b:
-        printf("if !a||b: should not print\n")
+        output("if !a||b: should not print\n")
     else:
-        printf("if !a||b: False (correct)\n")
+        output("if !a||b: False (correct)\n")

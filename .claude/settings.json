@@ -49,7 +49,8 @@
       "Bash(ura projects/tcp/basic/client.ura)",
       "Bash(chmod +x /Users/hrimamohammed/Desktop/personal/ura-lang/.git/hooks/pre-push)",
       "Bash(git remote:*)",
-      "Bash(git subtree:*)"
+      "Bash(git subtree:*)",
+      "Bash(xargs ls:*)"
     ],
     "additionalDirectories": [
       "/Users/hrimamohammed/Desktop/personal/ura-lang/projects/tcp"

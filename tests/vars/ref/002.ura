@@ -8,7 +8,7 @@ main():
     r1 = 10
     r2 = 15
     y int = r1
-    printf("x:  %d\n", x)
-    printf("y:  %d\n", y)
+    output("x:  ", x, "\n")
+    output("y:  ", y, "\n")
     printf("r1: %p\n", r1)
     printf("r2: %p\n", r2)

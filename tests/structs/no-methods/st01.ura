@@ -10,5 +10,5 @@ main():
     user.age = 28
     name chars = calloc(1, 10)
     strcpy(name, "mohammed")
-    printf("hello %s has %d\n", name, user.age)
+    output("hello ", name, " has ", user.age, "\n")
     free(name)

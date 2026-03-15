@@ -41,7 +41,11 @@ URA_COMPILER="$BUILD_DIR/ura"
 
 SRC_FILES=(
     "$SRC_DIR/main.c"
-    "$SRC_DIR/llvm.c"
+    "$SRC_DIR/lexer.c"
+    "$SRC_DIR/parser.c"
+    "$SRC_DIR/ir.c"
+    "$SRC_DIR/codegen.c"
+    "$SRC_DIR/utils.c"
 )
 
 SAN_FLAGS=(
@@ -260,6 +264,82 @@ build() {
 }
 
 # =========================================================
+#  Release helpers
+# =========================================================
+
+# _sync_repo <local_src_dir> <git_remote> <label>
+_sync_repo() {
+    local src="$1" remote="$2" label="$3"
+    echo -e "${YELLOW}Syncing $label...${RESET}"
+    local _tmp
+    _tmp=$(mktemp -d)
+    if ! git clone --quiet "$remote" "$_tmp"; then
+        echo -e "${RED}Failed to clone $label${RESET}"
+        rm -rf "$_tmp"
+        return 1
+    fi
+    find "$_tmp" -mindepth 1 -not -path "$_tmp/.git*" -delete
+    cp -r "$src/." "$_tmp/"
+    local _changed
+    _changed=$(git -C "$_tmp" status --porcelain)
+    if [[ -z "$_changed" ]]; then
+        echo -e "${DIM}$label unchanged, nothing to push${RESET}"
+    else
+        git -C "$_tmp" add -A
+        git -C "$_tmp" commit -m "sync: $label $(date +%Y-%m-%d)"
+        git -C "$_tmp" push --quiet
+        echo -e "${GREEN}$label pushed${RESET}"
+    fi
+    rm -rf "$_tmp"
+}
+
+release_projects() {
+    local projects_dir="$ROOT_DIR/tests/projects"
+    if [[ ! -d "$projects_dir" ]]; then
+        echo -e "${RED}No tests/projects directory found${RESET}"
+        return 1
+    fi
+    for project_dir in "$projects_dir"/*/; do
+        local name
+        name=$(basename "$project_dir")
+        _sync_repo "$project_dir" "git@github.com:mohammedhrima/$name.git" "$name"
+    done
+}
+
+release_extension() {
+    _sync_repo "$ROOT_DIR/config/vscode-extension" "git@github.com:mohammedhrima/ura-vscode-extension.git" "vscode-extension"
+}
+
+update_projects() {
+    local projects_dir="$ROOT_DIR/tests/projects"
+    local updated=0
+    while IFS= read -r ura_file; do
+        local rel="${ura_file#$ROOT_DIR/tests/}"
+        rel="${rel%.ura}"
+        local expected="// $rel"
+        local first_line
+        first_line=$(head -n 1 "$ura_file")
+        if [[ "$first_line" == "$expected" ]]; then
+            continue
+        fi
+        if [[ "$first_line" == //* ]]; then
+            # Replace existing comment
+            local rest
+            rest=$(tail -n +2 "$ura_file")
+            printf '%s\n%s\n' "$expected" "$rest" > "$ura_file"
+        else
+            # Prepend comment
+            local content
+            content=$(cat "$ura_file")
+            printf '%s\n%s\n' "$expected" "$content" > "$ura_file"
+        fi
+        echo -e "  ${GREEN}updated${RESET} $rel"
+        ((updated++))
+    done < <(find "$projects_dir" -name "*.ura" | sort)
+    echo -e "${GREEN}Done: $updated file(s) updated${RESET}"
+}
+
+# =========================================================
 #  Release
 # =========================================================
 release() {
@@ -279,33 +359,10 @@ release() {
     rm -f "$_tmp"
     echo -e "${GREEN}Binary ready: $URA_COMPILER${RESET}"
 
-    # ── 2. Sync ura-lib to its own repo ──────────────────────────
-    echo -e "${YELLOW}Syncing ura-lib to github.com/mohammedhrima/ura-lib...${RESET}"
-    local _lib_tmp
-    _lib_tmp=$(mktemp -d)
-    if ! git clone --quiet git@github.com:mohammedhrima/ura-lib.git "$_lib_tmp"; then
-        echo -e "${RED}Failed to clone ura-lib repo${RESET}"
-        rm -rf "$_lib_tmp"
-        return 1
-    fi
-
-    # Replace contents (keep .git)
-    find "$_lib_tmp" -mindepth 1 -not -path "$_lib_tmp/.git*" -delete
-    cp -r "$SRC_DIR/ura-lib/." "$_lib_tmp/"
-
-    local _changed
-    _changed=$(git -C "$_lib_tmp" status --porcelain)
-    if [[ -z "$_changed" ]]; then
-        echo -e "${DIM}ura-lib unchanged, nothing to push${RESET}"
-    else
-        local _tag
-        _tag=$(date +%Y-%m-%d)
-        git -C "$_lib_tmp" add -A
-        git -C "$_lib_tmp" commit -m "sync: ura-lib $_tag"
-        git -C "$_lib_tmp" push --quiet
-        echo -e "${GREEN}ura-lib pushed (commit: sync: ura-lib $_tag)${RESET}"
-    fi
-    rm -rf "$_lib_tmp"
+    # ── 2. Sync ura-lib + projects + vscode extension ────────────
+    _sync_repo "$SRC_DIR/ura-lib" "git@github.com:mohammedhrima/ura-lib.git" "ura-lib"
+    release_projects
+    release_extension
 
     # ── 3. Commit binary in ura-lang ─────────────────────────────
     echo ""
@@ -343,7 +400,6 @@ copy() {
 
     local first_line
     first_line=$(head -n 1 "$ura_src_file")
-    echo "first_line: '$first_line'"
 
     if [[ "$first_line" =~ ^//[[:space:]]*([a-zA-Z0-9_/-]+) ]]; then
         local full_path="${match[1]}"
@@ -419,8 +475,17 @@ tests() {
         done
     fi
 
+    local skipped=0
     for ura_file in "${ura_files[@]}"; do
         [[ -e "$ura_file" ]] || continue
+
+        if [[ "$(head -n 1 "$ura_file")" != //* ]]; then
+            local rel_skip="${ura_file#$TESTS_DIR/}"
+            rel_skip="${rel_skip%.ura}"
+            echo -e "  ${YELLOW}SKIP $rel_skip${RESET}"
+            ((skipped++))
+            continue
+        fi
 
         local base_name=$(basename "$ura_file" .ura)
         local test_dir=$(dirname "$ura_file")
@@ -463,6 +528,7 @@ tests() {
     echo ""
     echo -e "${GREEN}Passed: $passed${RESET}"
     [[ $failed -gt 0 ]] && echo -e "${RED}Failed: $failed${RESET}"
+    [[ $skipped -gt 0 ]] && echo -e "${YELLOW}Skipped: $skipped${RESET}"
 
     return $failed
 }
@@ -588,7 +654,10 @@ help() {
     echo -e "  ${DIM}────────────────────────────────────${RESET}"
     echo ""
     echo -e "  ${CYAN}build${RESET}                   Build the ura compiler (with sanitizers)"
-  echo -e "  ${CYAN}release${RESET}                 Build a release binary to build/ura (no sanitizers, git-tracked)"
+    echo -e "  ${CYAN}release${RESET}                 Build binary + sync ura-lib + sync all projects"
+    echo -e "  ${CYAN}release_projects${RESET}        Sync tests/projects/* to their GitHub repos"
+    echo -e "  ${CYAN}release_extension${RESET}       Sync config/vscode-extension to its GitHub repo"
+    echo -e "  ${CYAN}update_projects${RESET}         Fix first-line path comment in all tests/projects/*.ura files"
     echo -e "  ${CYAN}copy <file.ura>${RESET}         Save file + IR as a test (reads path from first line comment)"
     echo -e "  ${CYAN}tests [folder]${RESET}          Run all tests (optionally filter by folder)"
     echo -e "  ${CYAN}update_tests${RESET}            Regenerate all expected .ll files"

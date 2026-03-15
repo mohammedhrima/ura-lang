@@ -1,5 +1,4 @@
 // fn/param/ref/001.ura
-use "@/io"
 
 fn foo(n int ref) void:
     n = 2
@@ -7,6 +6,4 @@ fn foo(n int ref) void:
 main():
     a int = 1
     foo(a)
-    printf("<%d>\n",  a)
-
-
+    output("<", a, ">\n")

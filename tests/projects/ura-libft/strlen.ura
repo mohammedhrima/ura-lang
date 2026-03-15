@@ -1,5 +1,4 @@
 // libft/strlen
-use "@/io"
 
 fn strlen(str chars) int:
     i int = 0
@@ -9,4 +8,4 @@ fn strlen(str chars) int:
 
 main():
     len int = strlen("abc")
-    printf("<%d>\n", len)
+    output("<", len, ">\n")

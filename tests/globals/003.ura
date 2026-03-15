@@ -1,0 +1,27 @@
+// globals/003.ura
+use "@/header"
+
+struct Counter:
+    value int
+    label chars
+
+    fn init() void:
+        self.value = 0
+        self.label = strdup("counter")
+
+    fn tick() void:
+        self.value += 1
+
+    fn print() void:
+        output(self.label,":",self.value, "\n")
+
+    fn clean() void:
+        free(self.label)
+
+c Counter
+
+main():
+    c.tick()
+    c.tick()
+    c.tick()
+    c.print()

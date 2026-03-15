@@ -1,10 +1,11 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura'
-source_filename = "/Users/hrimamohammed/Desktop/Personal/ura-lang/src/file.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/fn/param/ref/002.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/fn/param/ref/002.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
-@STR0 = private unnamed_addr constant [11 x i8] c"<%d> <%d>\0A\00", align 1
-
-declare i32 @printf(i8*, i32, ...)
+@STR0 = private unnamed_addr constant [2 x i8] c"<\00", align 1
+@STR1 = private unnamed_addr constant [4 x i8] c"> <\00", align 1
+@STR2 = private unnamed_addr constant [3 x i8] c">\0A\00", align 1
+@output_fmt = private unnamed_addr constant [11 x i8] c"<%d> <%d>\0A\00", align 1
 
 define void @swap(i32* %a, i32* %b) !dbg !4 {
 entry:
@@ -36,11 +37,13 @@ entry:
   store i32 0, i32* %y, align 4, !dbg !9
   store i32 20, i32* %y, align 4, !dbg !9
   call void @swap(i32* %x, i32* %y), !dbg !10
-  %x1 = load i32, i32* %x, align 4, !dbg !11
-  %y2 = load i32, i32* %y, align 4, !dbg !11
-  %printf = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @STR0, i32 0, i32 0), i32 2, i32 %x1, i32 %y2), !dbg !11
-  ret i32 0, !dbg !11
+  %x1 = load i32, i32* %x, align 4, !dbg !10
+  %y2 = load i32, i32* %y, align 4, !dbg !10
+  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @output_fmt, i32 0, i32 0), i32 2, i32 %x1, i32 %y2), !dbg !10
+  ret i32 0, !dbg !10
 }
+
+declare i32 @printf(i8*, i32, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -48,12 +51,11 @@ entry:
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "file.ura", directory: "/Users/hrimamohammed/Desktop/Personal/ura-lang/src")
-!4 = distinct !DISubprogram(name: "swap", linkageName: "swap", scope: null, file: !3, line: 4, type: !5, scopeLine: 4, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!3 = !DIFile(filename: "002.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/fn/param/ref")
+!4 = distinct !DISubprogram(name: "swap", linkageName: "swap", scope: null, file: !3, line: 3, type: !5, scopeLine: 3, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}
-!7 = !DILocation(line: 4, scope: !4)
-!8 = distinct !DISubprogram(name: "main", linkageName: "main", scope: null, file: !3, line: 9, type: !5, scopeLine: 9, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!9 = !DILocation(line: 9, scope: !8)
-!10 = !DILocation(line: 12, scope: !8)
-!11 = !DILocation(line: 13, scope: !8)
+!7 = !DILocation(line: 3, scope: !4)
+!8 = distinct !DISubprogram(name: "main", linkageName: "main", scope: null, file: !3, line: 8, type: !5, scopeLine: 8, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!9 = !DILocation(line: 8, scope: !8)
+!10 = !DILocation(line: 11, scope: !8)

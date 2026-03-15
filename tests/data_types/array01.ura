@@ -1,14 +1,12 @@
 // data_types/array01.ura
-proto fn write(fd int, ptr chars, len int) int
 proto fn strcpy(dist chars, src chars) void
 proto fn strlen(str chars) int
 proto fn free(str chars) void
-proto fn printf(fmt chars, ...) int
 
 main():
     str array[char] = heap[char](20)
     strcpy(str, "Hello world\n")
     str[0] = 'r'
-    printf(str)
+    output(str)
     free(str)
     return 0

@@ -1,10 +1,9 @@
 // cond/ref/001.ura
-use "@/io"
 
 main():
     a int = 10
     r int ref = a
     if r > 5:
-        printf("<yes>\n")  // <yes>
+        output("<yes>\n")  // <yes>
     else:
-        printf("<no>\n")
+        output("<no>\n")
