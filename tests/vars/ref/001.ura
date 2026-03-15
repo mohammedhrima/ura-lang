@@ -1,7 +1,0 @@
-// vars/ref/001.ura
-
-main():
-    a int = 10
-    b int ref = a
-    b = 20
-    output("<", a, ">\n")

@@ -1,4 +1,5 @@
-// os/001.ura
+// os/001.ura - hero name from argv[1], argc check
+
 use "@/header"
 
 main():

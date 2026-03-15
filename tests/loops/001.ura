@@ -1,0 +1,7 @@
+// loops/001.ura - basic while: count enemy kills
+
+main():
+    kills int = 0
+    while kills < 5:
+        kills = kills + 1
+    output("<", kills, ">\n")

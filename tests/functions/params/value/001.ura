@@ -1,0 +1,8 @@
+// functions/params/value/001.ura - value parameters: take_damage
+
+fn take_damage(hp int, atk int) int:
+    return hp - atk
+
+main():
+    result int = take_damage(100, 18)
+    output("<", result, ">\n")
