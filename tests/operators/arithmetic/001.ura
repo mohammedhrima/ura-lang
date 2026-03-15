@@ -3,6 +3,11 @@
 fn base_atk() int:
     return 10
 
+fn clamp(t float) float:
+    if t < 0.05:
+        return 0.05
+    return t
+
 main():
     atk     int = 25
     def     int = 8
@@ -28,3 +33,20 @@ main():
     // chained with precedence
     output("2 + 3 * 4:       ", 2 + 3 * 4,       "\n")
     output("(2 + 3) * 4:     ", (2 + 3) * 4,     "\n")
+
+    a float = 1.5
+    b float = 0.3
+
+    output("add:  ", a + b, "\n")  // 1.8
+    output("sub:  ", a - b, "\n")  // 1.2
+    output("mul:  ", a * b, "\n")  // 0.45
+    output("div:  ", a / b, "\n")  // 5.0
+
+    output("lt:   ", a < b,  "\n")  // 0 (false)
+    output("gt:   ", a > b,  "\n")  // 1 (true)
+    output("lte:  ", a <= b, "\n")  // 0
+    output("gte:  ", a >= b, "\n")  // 1
+
+    t float = 0.8 - 0.28
+    output("clamp(0.52): ", clamp(t), "\n")  // 0.52
+    output("clamp(0.01): ", clamp(0.01), "\n")  // 0.05

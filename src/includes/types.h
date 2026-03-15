@@ -36,6 +36,8 @@ enum Type
    CHARS, PTR, VARIADIC, REF, ARRAY, ARRAY_TYPE,
    // Structures
    STRUCT_DEF, STRUCT_CALL,
+   // Enums
+   ENUM_DEF, ENUM_CALL,
    // Tuples
    TUPLE, TUPLE_UNPACK,
    // Assignment
@@ -73,6 +75,8 @@ struct LLVM
    bool is_loaded;
    Value array_size;
    Value elem;
+   Value dim_sizes[4];
+   int   dim_count;
    Block bloc;
    TypeRef funcType;
    TypeRef stType;

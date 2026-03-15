@@ -1,0 +1,17 @@
+// enum/001.ura - confirm enum declaration and variant access
+
+enum PieceType:
+    I, O, T
+    S, Z, J, L
+
+main():
+    output("I=", I, " O=", O, " T=", T, "\n")
+    output("S=", S, " Z=", Z, " J=", J, " L=", L, "\n")
+
+    p int = T
+    if p == T:
+        output("piece is T\n")
+    // expected:
+    // I=0 O=1 T=2
+    // S=3 Z=4 J=5 L=6
+    // piece is T

@@ -1,0 +1,14 @@
+// link/raylib/001.ura - confirm link directive is parsed and proto fns are declared
+
+use "@/raylib"
+
+main():
+    // key constants are accessible
+    output("KEY_LEFT=",  KEY_LEFT,  "\n")
+    output("KEY_RIGHT=", KEY_RIGHT, "\n")
+    output("KEY_SPACE=", KEY_SPACE, "\n")
+
+    // expected:
+    // KEY_LEFT=263
+    // KEY_RIGHT=262
+    // KEY_SPACE=32

@@ -201,6 +201,7 @@ char *to_string(Type type)
       [ARRAY_TYPE] = "ARRAY_TYPE",
       //[TRY] = "TRY", [CATCH] = "CATCH", [THROW] = "THROW", [USE] = "USE",
       [STRUCT_DEF] = "STRUCT_DEF", [STRUCT_CALL] = "STRUCT_CALL",
+      [ENUM_DEF]   = "ENUM_DEF",   [ENUM_CALL]   = "ENUM_CALL",
       [TUPLE]      = "TUPLE",      [TUPLE_UNPACK] = "TUPLE_UNPACK",
       [LBRA]       = "LBRA", [RBRA] = "RBRA", [ARRAY] = "ARRAY",
       [DOT]        = "DOT", [SYNTAX_ERROR] = "SYNTAX_ERROR",

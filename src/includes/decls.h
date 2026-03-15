@@ -7,6 +7,7 @@ char *open_file(char *filename);
 char *resolve_path(char *path);
 bool  add_file(char *filename);
 Node *syntax_error();
+void  add_link_key(char *key);
 
 
 // ----------------------------------------------------------------------------
