@@ -138,6 +138,11 @@ static Node *parse_var_dec(Token *token)
          tmp->Array.elem_type = elem_type->type;
          tmp->Array.depth     = depth;
          tmp->retType         = ARRAY_TYPE;
+         if (elem_type->type == ID)
+         {
+            Node *sd = get_struct(elem_type->name);
+            if (sd) { tmp->Array.elem_type = STRUCT_CALL; tmp->Array.struct_ptr = sd; }
+         }
       }
       setName(tmp, token->name);
       tmp->is_dec = true;
@@ -175,6 +180,11 @@ static Node *parse_var_dec(Token *token)
                ntype->Array.elem_type = elem_type->type;
                ntype->Array.depth     = depth;
                ntype->retType         = ARRAY_TYPE;
+               if (elem_type->type == ID)
+               {
+                  Node *sd = get_struct(elem_type->name);
+                  if (sd) { ntype->Array.elem_type = STRUCT_CALL; ntype->Array.struct_ptr = sd; }
+               }
             }
             setName(ntype, nname->name);
             ntype->is_dec = true;
@@ -559,6 +569,11 @@ static Node *parse_fdec(Token *token)
             expect_token(RBRA, "expected ] in tuple array type");
             t->Array.elem_type             = et->type;
             t->retType                     = ARRAY_TYPE;
+            if (et->type == ID)
+            {
+               Node *sd = get_struct(et->name);
+               if (sd) { t->Array.elem_type = STRUCT_CALL; t->Array.struct_ptr = sd; }
+            }
             node->token->Tuple.types[tc++] = t;
          }
          else if (tokens[exe_pos]->type == ID)
@@ -725,6 +740,11 @@ Node *prime_node()
       node->token->retType         = ARRAY;
       node->token->Array.elem_type = elem_type->type;
       node->token->Array.depth     = depth;
+      if (elem_type->type == ID)
+      {
+         Node *sd = get_struct(elem_type->name);
+         if (sd) { node->token->Array.elem_type = STRUCT_CALL; node->token->Array.struct_ptr = sd; }
+      }
 
       for (int i = 0; i < depth; i++)
       {
@@ -786,7 +806,7 @@ Node *prime_node()
       expect_token(RPAR, "expected right )");
       return node;
    }
-
+   debug("%k\n", tokens[exe_pos - 1]);
    check(1, "Unexpected token has type %s line %d", to_string(tokens[exe_pos]->type), tokens[exe_pos]->line);
    return syntax_error();
 }
