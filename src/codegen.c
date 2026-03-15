@@ -144,9 +144,7 @@ TypeRef get_llvm_type(Token *token)
    {
       Token   tmp  = {.type = token->Array.elem_type};
       TypeRef base = get_llvm_type(&tmp);
-      for (int i = 0; i < token->Array.depth; i++)
-         base = _pointer_type(base, 0);
-      return base;
+      return _pointer_type(base, 0);   // flat allocation: always single ptr to base
    }
    // if (type == FCALL)
    //    return get_llvm_type(token->Fcall.ptr->token);
@@ -563,7 +561,7 @@ void gen_asm(Node *node)
       {
          gen_asm(left);
          gen_asm(right);
-         if (right->token->llvm.elem && LLVMIsConstant(right->token->llvm.elem))
+         if (left->token->llvm.elem && right->token->llvm.elem && LLVMIsConstant(right->token->llvm.elem))
             LLVMSetInitializer(left->token->llvm.elem, right->token->llvm.elem);
          return;
       }
@@ -580,6 +578,14 @@ void gen_asm(Node *node)
 
       gen_asm(left);
       gen_asm(right);
+
+      // propagate multi-dim info from stack/heap allocation to the variable
+      if (includes(right->token->type, STACK, HEAP, 0) && right->token->llvm.dim_count > 1)
+      {
+         left->token->llvm.dim_count = right->token->llvm.dim_count;
+         for (int i = 0; i < right->token->llvm.dim_count; i++)
+            left->token->llvm.dim_sizes[i] = right->token->llvm.dim_sizes[i];
+      }
 
       TypeRef type = get_llvm_type(right->token);
 
@@ -662,47 +668,63 @@ void gen_asm(Node *node)
          rref = load_value(right->token);
 
       node->token->llvm.elem = build_binary_op(node->token->type, lref, rref);
-      node->token->retType   = left->token->retType ? left->token->retType : left->token->type;
+      if (includes(node->token->type, COMPARISON_OPS, 0))
+         node->token->retType = BOOL;
+      else
+         node->token->retType = left->token->retType ? left->token->retType : left->token->type;
       break;
    }
    case STACK:
    {
-      gen_asm(node->left);
-      load_if_necessary(node->left);
-      Value elem_count = node->left->token->llvm.elem;
-
-      // base type
       Token   tmp    = {.type = node->token->Array.elem_type};
       TypeRef elem_t = get_llvm_type(&tmp);
+      int     depth  = node->token->Array.depth;
 
-      // depth > 1 means each element is a pointer
-      // [char]=i8, [[char]]=ptr, [[[char]]]=ptr (ptr to ptr semantically)
-      if (node->token->Array.depth > 1)
-         elem_t = p8; // pointer-sized elements
+      // evaluate each dimension, compute total element count, store dim_sizes
+      Value total = _const_int(i32, 1, 0);
+      for (int i = 0; i < depth; i++)
+      {
+         gen_asm(node->children[i]);
+         load_if_necessary(node->children[i]);
+         Value dv = node->children[i]->token->llvm.elem;
+         node->token->llvm.dim_sizes[i] = dv;
+         total                          = _build_mul(total, dv, "dim");
+      }
+      node->token->llvm.dim_count = depth;
 
       TargetData td        = _get_module_data_layout(module);
       size_t     elem_size = _abi_size_of_type(td, elem_t);
-      Value      total     = _build_mul(elem_count, _const_int(i32, (unsigned)elem_size, 0), "bytes");
+      Value      total_bytes = _build_mul(total, _const_int(i32, (unsigned)elem_size, 0), "bytes");
 
-      node->token->llvm.elem       = allocate_stack(total, elem_t, "stack");
+      node->token->llvm.elem       = allocate_stack(total_bytes, elem_t, "stack");
       node->token->llvm.is_set     = true;
-      node->token->llvm.array_size = elem_count;
+      node->token->llvm.array_size = total;
       break;
    }
    case HEAP:
    {
-      gen_asm(node->left);
-      load_if_necessary(node->left);
-      Value   elem_count = node->left->token->llvm.elem;
+      Token   tmp   = {.type = node->token->Array.elem_type};
+      TypeRef elem_t = get_llvm_type(&tmp);
+      int     depth  = node->token->Array.depth;
 
-      Token   tmp        = {.type = node->token->Array.elem_type};
-      TypeRef elem_t     = get_llvm_type(&tmp);
-      if (node->token->Array.depth > 1)
-         elem_t = p8;
+      Value total = _const_int(i32, 1, 0);
+      for (int i = 0; i < depth; i++)
+      {
+         gen_asm(node->children[i]);
+         load_if_necessary(node->children[i]);
+         Value dv = node->children[i]->token->llvm.elem;
+         node->token->llvm.dim_sizes[i] = dv;
+         total                          = _build_mul(total, dv, "dim");
+      }
+      node->token->llvm.dim_count = depth;
 
-      node->token->llvm.elem       = allocate_heap(elem_count, elem_t, "heap");
+      TargetData td        = _get_module_data_layout(module);
+      size_t     elem_size = _abi_size_of_type(td, elem_t);
+      Value      total_bytes = _build_mul(total, _const_int(i32, (unsigned)elem_size, 0), "bytes");
+
+      node->token->llvm.elem       = allocate_heap(total_bytes, elem_t, "heap");
       node->token->llvm.is_set     = true;
-      node->token->llvm.array_size = elem_count;
+      node->token->llvm.array_size = total;
       break;
    }
    case FCALL:
@@ -748,6 +770,20 @@ void gen_asm(Node *node)
                // non-ref → non-ref: normal load
                load_if_necessary(argNodes[i]);
                args[i] = argNodes[i]->token->llvm.elem;
+
+               // ARM64 ABI: proto calls pass small structs as i64 via memcpy
+               bool is_proto_call  = node->token->Fcall.ptr->token->is_proto;
+               bool param_is_struct = (i < dec_args->cpos)
+                  && includes(dec_args->children[i]->token->type, STRUCT_CALL, STRUCT_DEF, 0);
+               if (is_proto_call && param_is_struct)
+               {
+                  TypeRef st_type = get_llvm_type(dec_args->children[i]->token);
+                  Value   st_ptr  = _build_alloca(st_type, "st_slot");
+                  _build_store(argNodes[i]->token->llvm.elem, st_ptr);
+                  Value   i64p    = _build_alloca(i64, "i64_slot");
+                  _build_memcpy(i64p, st_ptr, _const_int(i64, 4, 0));
+                  args[i] = LLVMBuildLoad2(builder, i64, i64p, "i64_arg");
+               }
             }
          }
 
@@ -774,6 +810,20 @@ void gen_asm(Node *node)
          break;
       node->token->llvm.elem = LLVMBuildCall2(builder, funcType, elem, args, count, name);
       free(args);
+
+      // ARM64 ABI: proto returning struct actually returns i64; convert back to struct
+      bool proto_returns_struct = node->token->Fcall.ptr->token->is_proto
+         && node->token->Fcall.ptr->token->retType == STRUCT_CALL;
+      if (proto_returns_struct)
+      {
+         Value   i64_ret = node->token->llvm.elem;
+         TypeRef st_type = get_llvm_type(node->token);
+         Value   i64p    = _build_alloca(i64, "ret_i64");
+         _build_store(i64_ret, i64p);
+         Value   st_ptr  = _build_alloca(st_type, "ret_struct");
+         _build_memcpy(st_ptr, i64p, _const_int(i64, 4, 0));
+         node->token->llvm.elem = LLVMBuildLoad2(builder, st_type, st_ptr, "ret_struct_val");
+      }
       break;
    }
    case FDEC:
@@ -793,6 +843,8 @@ void gen_asm(Node *node)
          node->token->llvm.stType = retType;
          free(ft);
       }
+      else if (node->token->is_proto && node->token->retType == STRUCT_CALL)
+         retType = i64;
       else if (node->token->retType == STRUCT_CALL && node->token->is_ref)
          retType = _pointer_type(get_llvm_type(node->token), 0);
       else
@@ -813,7 +865,9 @@ void gen_asm(Node *node)
          for (int i = 0; i < fixed_count; i++)
          {
             Token *param = node->left->children[i]->token;
-            if (param->is_ref) paramTypes[i] = _pointer_type(get_llvm_type(param), 0);
+            if (node->token->is_proto && includes(param->type, STRUCT_CALL, STRUCT_DEF, 0))
+               paramTypes[i] = i64;
+            else if (param->is_ref) paramTypes[i] = _pointer_type(get_llvm_type(param), 0);
             else paramTypes[i] = get_llvm_type(param);
          }
 
@@ -1305,6 +1359,20 @@ void gen_asm(Node *node)
       node->token->llvm.is_loaded = true;
       break;
    }
+   case ENUM_DEF:
+   {
+      for (int i = 0; i < node->cpos; i++)
+      {
+         Token *var = node->children[i]->token;
+         Value  g   = LLVMAddGlobal(module, i32, var->name);
+         LLVMSetInitializer(g, _const_int(i32, (unsigned)var->Int.value, 0));
+         LLVMSetGlobalConstant(g, 1);
+         var->llvm.elem   = g;
+         // var->llvm.is_set = true;
+         var->is_dec      = false;
+      }
+      break;
+   }
    case STRUCT_DEF:
    {
       if (node->token->used == 0) return;
@@ -1469,6 +1537,29 @@ void gen_asm(Node *node)
       // Load the index (handles refs)
       load_if_necessary(node->right);
       Value   rightRef = node->right->token->llvm.elem;
+
+      // multi-dim flat array: compute stride, emit GEP to sub-array, propagate dims
+      int left_depth = node->left->token->llvm.dim_count;
+      if (left_depth > 1)
+      {
+         Value stride = _const_int(i32, 1, 0);
+         for (int d = 1; d < left_depth; d++)
+            stride = _build_mul(stride, node->left->token->llvm.dim_sizes[d], "stride");
+         Value flat_idx = _build_mul(rightRef, stride, "flat_idx");
+
+         Token   tmp      = {.type = node->left->token->Array.elem_type};
+         TypeRef base_t   = get_llvm_type(&tmp);
+         Value   indices[] = {flat_idx};
+         node->token->llvm.elem      = _build_gep2(base_t, leftValue, indices, 1, "row");
+         node->token->llvm.is_loaded = true;
+         node->token->retType        = ARRAY;
+         node->token->Array.elem_type = node->left->token->Array.elem_type;
+         node->token->Array.depth    = left_depth - 1;
+         node->token->llvm.dim_count = left_depth - 1;
+         for (int d = 1; d < left_depth; d++)
+            node->token->llvm.dim_sizes[d - 1] = node->left->token->llvm.dim_sizes[d];
+         break;
+      }
 
       TypeRef element_type;
       Type    left_elem_type = node->left->token->retType

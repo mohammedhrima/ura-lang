@@ -14,6 +14,12 @@ export URA_LIB="$SRC_DIR/ura-lib"
 export ASAN_FILE="$ROOT_DIR/config/lsan.supp"
 
 # =========================================================
+#  Native Library Link Flags (used by `link "@/<key>"`)
+# =========================================================
+_URA_SDK=$(xcrun --show-sdk-path 2>/dev/null)
+export URA_LINK_raylib="-I/opt/homebrew/include -L/opt/homebrew/lib -lraylib -framework CoreVideo -framework IOKit -framework Cocoa -framework GLUT -framework OpenGL -isysroot $_URA_SDK -F$_URA_SDK/System/Library/Frameworks -L$_URA_SDK/usr/lib"
+
+# =========================================================
 #  OS Detection
 # =========================================================
 case "$(uname -s 2>/dev/null)" in

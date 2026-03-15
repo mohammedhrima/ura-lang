@@ -407,12 +407,20 @@ void gen_ir(Node *node)
       node->right->token->used++;
       Type retType = 0;
       Type type    = node->left->token->retType ? node->left->token->retType : node->left->token->type;
+      int  depth   = node->left->token->Array.depth;
       switch (type)
       {
       case CHARS: retType = CHAR; break;
-      // TODO: handle multiple [[[]]]
-      case STACK: case HEAP: case ARRAY_TYPE:
-         retType = node->left->token->Array.elem_type;
+      case STACK: case HEAP: case ARRAY_TYPE: case ARRAY:
+         if (depth > 1)
+         {
+            // still multi-dim: return sub-array type, depth-1
+            retType                      = ARRAY;
+            node->token->Array.elem_type = node->left->token->Array.elem_type;
+            node->token->Array.depth     = depth - 1;
+         }
+         else
+            retType = node->left->token->Array.elem_type;
          break;
       default:
          check(1, "handle this case %s", to_string(node->left->token->type));
@@ -480,10 +488,12 @@ void gen_ir(Node *node)
    // └──left: size expr               └──left: count expr
    case STACK: case HEAP:
    {
-      // TODO: left must be an integer
-      gen_ir(node->left);
+      for (int i = 0; i < node->cpos; i++)
+      {
+         gen_ir(node->children[i]);
+         node->children[i]->token->used++;
+      }
       node->token->used++;
-      node->left->token->used++;
       break;
    }
    // [STRUCT_DEF] Name
@@ -494,6 +504,15 @@ void gen_ir(Node *node)
    {
       for (int i = 0; node && i < node->mpos; i++)
          gen_ir(node->methods[i]);
+      break;
+   }
+   // [ENUM_DEF] Name
+   // ├──[INT] VariantA  (global constant)
+   // └──...
+   case ENUM_DEF:
+   {
+      for (int i = 0; i < node->cpos; i++)
+         node->children[i]->token->used++;
       break;
    }
    // [BREAK]    [CONTINUE]

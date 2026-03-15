@@ -1,0 +1,15 @@
+// link/raylib/002.ura - open window
+
+use "@/raylib"
+
+main():
+    InitWindow(800, 600, "Hello from Ura!")
+    SetTargetFPS(60)
+
+    while WindowShouldClose() == False:
+        BeginDrawing()
+        ClearBackground(setColor(20, 20, 20, 255))
+        DrawText("Hello from Ura!", 250, 270, 40, setColor(255, 255, 255, 255))
+        EndDrawing()
+
+    CloseWindow()
