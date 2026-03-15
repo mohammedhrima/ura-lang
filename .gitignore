@@ -20,6 +20,10 @@ llvm/build/
 # Src build
 src/build/
 
+# VSCode extension
+config/vscode-extension/node_modules/
+config/vscode-extension/*.vsix
+
 # Others
 examples.ura
 .vscode

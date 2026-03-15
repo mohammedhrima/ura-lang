@@ -1,0 +1,8 @@
+// memory/002.ura - stack: hero name buffer, no manual free needed
+
+use "@/header"
+
+main():
+    name chars = stack[char](32)
+    strcpy(name, "Aldric")
+    output("Hero: ", name, "\n")

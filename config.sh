@@ -279,7 +279,8 @@ _sync_repo() {
         return 1
     fi
     find "$_tmp" -mindepth 1 -not -path "$_tmp/.git*" -delete
-    cp -r "$src/." "$_tmp/"
+    # Exclude .git from source — src may itself be a git repo
+    rsync -a --exclude='.git' "$src/" "$_tmp/"
     local _changed
     _changed=$(git -C "$_tmp" status --porcelain)
     if [[ -z "$_changed" ]]; then

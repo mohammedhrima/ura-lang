@@ -1,0 +1,24 @@
+// structs/basic/002.ura - nested structs: Room -> Enemy -> Weapon
+
+struct Weapon:
+    name   chars
+    damage int
+
+struct Enemy:
+    name   chars
+    hp     int
+    weapon Weapon
+
+struct Room:
+    floor int
+    enemy Enemy
+
+main():
+    r Room
+    r.floor              = 3
+    r.enemy.name         = "Orc Shaman"
+    r.enemy.hp           = 80
+    r.enemy.weapon.name   = "Staff of Pain"
+    r.enemy.weapon.damage = 22
+    output("Floor ", r.floor, ": ", r.enemy.name, " wields ", r.enemy.weapon.name, "\n")
+    output("Weapon damage: ", r.enemy.weapon.damage, "\n")

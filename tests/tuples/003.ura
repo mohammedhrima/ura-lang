@@ -1,0 +1,10 @@
+// tuples/003.ura - tuple with logic: attack returns (damage, is_crit)
+
+fn attack(atk int, def int) (int, bool):
+    dmg    int  = atk - def
+    is_crit bool = dmg > 15
+    return dmg, is_crit
+
+main():
+    damage int, crit bool = attack(20, 4)
+    output("Damage: ", damage, " | Crit: ", crit, "\n")

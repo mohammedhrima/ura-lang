@@ -1,0 +1,7 @@
+// output/002.ura - output with expressions: arithmetic inline
+
+main():
+    output("Damage dealt: ", 25 - 8, "\n")
+    output("XP gained:    ", 3 * 50, "\n")
+    output("Gold split:   ", 120 / 4, "\n")
+    output("Bonus:        ", 7 + 3 * 10, "\n")

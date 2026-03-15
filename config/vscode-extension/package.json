@@ -1,0 +1,79 @@
+{
+  "name": "ura-lang",
+  "displayName": "Ura Language Support",
+  "description": "Syntax highlighting and smart indentation for Ura programming language (.ura files)",
+  "version": "0.0.1",
+  "publisher": "mohamedhrima",
+  "author": {
+    "name": "Hrima Mohammed"
+  },
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.103.0"
+  },
+  "main": "./out/extension.js",
+  "icon": "icons/icon.png",
+  "categories": [
+    "Programming Languages",
+    "Themes"
+  ],
+  "keywords": [
+    "ura",
+    "programming language",
+    "syntax highlighting",
+    "language support"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mohamedhrima/ura-vscode-extension"
+  },
+  "bugs": {
+    "url": "https://github.com/mohamedhrima/ura-vscode-extension/issues"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.103.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "@vscode/vsce": "^3.0.0"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "ura",
+        "aliases": [
+          "Ura",
+          "ura"
+        ],
+        "extensions": [
+          ".ura"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ura",
+        "scopeName": "source.ura",
+        "path": "./syntaxes/ura.tmLanguage.json"
+      }
+    ],
+    "iconThemes": [
+      {
+        "id": "ura-icons",
+        "label": "Ura Icons",
+        "path": "./icons/file.json"
+      }
+    ],
+    "configurationDefaults": {
+      "[ura]": {
+        "editor.autoIndent": "advanced",
+        "editor.insertSpaces": true,
+        "editor.tabSize": 4,
+        "editor.indentSize": 4,
+        "editor.detectIndentation": false,
+        "editor.trimAutoWhitespace": true,
+        "editor.useTabStops": true
+      }
+    }
+  }
+}

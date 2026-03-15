@@ -1,0 +1,15 @@
+// variables/002.ura - reassignment: hp loss, xp gain, mp drain
+
+main():
+    hp int = 100
+    mp int = 50
+    xp int = 0
+
+    hp = hp - 12
+    mp -= 10
+    xp += 50
+
+    output("After combat:\n")
+    output("HP: ", hp, "\n")
+    output("MP: ", mp, "\n")
+    output("XP: ", xp, "\n")

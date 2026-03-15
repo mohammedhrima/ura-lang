@@ -13,21 +13,21 @@ Ura started as a passion project: a love for C's raw performance and Python's re
 - [Language Tour](#language-tour)
   - [Imports](#imports)
   - [Variables](#variables)
+  - [Globals](#globals)
   - [Functions](#functions)
+  - [Tuples](#tuples)
   - [Control Flow](#control-flow)
+  - [Structs](#structs)
+  - [References](#references)
+  - [Memory](#memory)
   - [Operators](#operators)
   - [Type Casting](#type-casting)
-  - [References](#references)
-  - [Structs](#structs)
-  - [Memory](#memory)
-  - [C Interoperability](#c-interoperability)
   - [Type Introspection](#type-introspection)
+  - [C Interoperability](#c-interoperability)
+  - [OS Module](#os-module)
+  - [Networking](#networking)
   - [Output Builtin](#output-builtin)
-- [Real Examples](#real-examples)
-  - [Fibonacci](#fibonacci)
-  - [String Length](#string-length)
-  - [strcmp](#strcmp)
-  - [Word Counter](#word-counter)
+- [The Dungeon — Real Programs](#the-dungeon--real-programs)
 - [How It Works](#how-it-works)
   - [Compilation Pipeline](#compilation-pipeline)
   - [Source Files](#source-files)
@@ -64,8 +64,8 @@ git clone https://github.com/mohammedhrima/ura-lang
 cd ura-lang
 
 # 2. Install all dependencies (once per machine)
-bash setup.sh          # macOS / Linux
-# Windows: run setup.ps1 in PowerShell as admin, then open MSYS2
+bash config/setup.sh          # macOS / Linux
+# Windows: run config/setup.ps1 in PowerShell as admin, then open MSYS2
 
 # 3. Load the environment (every session)
 source config.sh
@@ -74,67 +74,119 @@ source config.sh
 build
 
 # 5. Write and run your first program
-$URA_COMPILER src/file.ura
+ura src/file.ura
 ```
 
 **Hello World:**
 
 ```ura
-use "@/io"
-
 main():
-    printf("Hello, World!\n")
+    output("Hello, World!\n")
 ```
+
+No imports needed — `output` is a built-in.
 
 ---
 
 ## Language Tour
 
+The examples below follow one story: building a dungeon crawler step by step. Each section adds a new feature. By the end, you have a fully fledged game.
+
+---
+
 ### Imports
 
-Use `use` to import modules. The `@` prefix resolves to the built-in standard library (`$URA_LIB`). You can also import relative local files:
+Use `use` to import modules. The `@` prefix resolves to the built-in standard library (`$URA_LIB`):
 
 ```ura
-use "@/io"        // standard library: printf, puts, file I/O ...
-use "@/memory"    // malloc, free ...
-use "@/string"    // strlen, strcmp, strcpy ...
-use "@/header"    // imports all standard modules at once
-
-use "mymodule"    // relative import from the same directory
+use "@/io"        // printf, puts, file I/O, ...
+use "@/memory"    // malloc, free, ...
+use "@/string"    // strlen, strcmp, strcpy, ...
+use "@/stdlib"    // atoi, rand, exit, ...
+use "@/time"      // time, clock, difftime, ...
+use "@/signals"   // signal, raise, ...
+use "@/net"       // socket, bind, listen, accept, connect, send, recv, ...
+use "@/os"        // os.argc, os.argv
+use "@/header"    // imports all of the above at once
 ```
+
+Most examples only need `output()`, which is built-in and requires no import. Use `use "@/header"` when you need C functions (`printf`, `strcpy`, `rand`, etc.) or the OS module.
 
 ---
 
 ### Variables
 
-Variables are declared as `name type = value`:
+Every hero needs stats. Variables are declared as `name type = value`:
 
 ```ura
 main():
-    name   chars = "Alice"
-    age    int   = 30
-    active bool  = True
-    letter char  = 'A'
-    score  float = 9.5
+    name  chars = "Aldric"
+    hp    int   = 100
+    mp    int   = 50
+    alive bool  = True
+    speed float = 1.5
+    output("=== ", name, " enters the dungeon ===\n")
+    output("HP: ", hp, " | MP: ", mp, " | Speed: ", speed, "\n")
 ```
+
+```
+=== Aldric enters the dungeon ===
+HP: 100 | MP: 50 | Speed: 1.5
+```
+
+---
+
+### Globals
+
+The dungeon keeps track of progress across the whole run:
+
+```ura
+score int = 0
+floor int = 1
+lives int = 3
+
+main():
+    output("Floor ", floor, " | Score: ", score, " | Lives: ", lives, "\n")
+    score = score + 100
+    output("After first kill — Score: ", score, "\n")
+```
+
+```
+Floor 1 | Score: 0 | Lives: 3
+After first kill — Score: 100
+```
+
+Global variables are declared at the top level, before any function. They are visible to every function in the file.
 
 ---
 
 ### Functions
 
+Time to add combat math. `clamp` keeps damage in range, `damage` uses it, `is_dead` checks the result:
+
 ```ura
-use "@/io"
+fn clamp(val int, lo int, hi int) int:
+    if val < lo:
+        return lo
+    if val > hi:
+        return hi
+    return val
 
-fn greet(name chars) void:
-    printf("Hello, %s!\n", name)
+fn damage(atk int, def int) int:
+    return clamp(atk - def, 0, 999)
 
-fn add(a int, b int) int:
-    return a + b
+fn is_dead(hp int) bool:
+    return hp <= 0
 
 main():
-    greet("Ura")
-    result int = add(10, 32)
-    printf("Result: %d\n", result)
+    d int = damage(25, 8)
+    output("Orc takes ", d, " damage\n")
+    output("Orc dead: ", is_dead(d - 60), "\n")
+```
+
+```
+Orc takes 17 damage
+Orc dead: False
 ```
 
 Single-line functions:
@@ -146,201 +198,138 @@ fn is_digit(c char) bool: return c >= '0' and c <= '9'
 
 ---
 
+### Tuples
+
+Some dungeon chests drop both an item and a gold value. Tuples let one function return both:
+
+```ura
+fn roll_loot(floor int) (chars, int):
+    item  chars = "Iron Sword"
+    value int   = floor * 15
+    return item, value
+
+main():
+    item chars, gold int = roll_loot(3)
+    output("Loot: ", item, " worth ", gold, " gold\n")
+```
+
+```
+Loot: Iron Sword worth 45 gold
+```
+
+Return multiple values by listing types in parentheses: `(chars, int)`. Unpack them at the call site with a matching declaration: `item chars, gold int = roll_loot(3)`.
+
+---
+
 ### Control Flow
 
-```ura
-use "@/io"
-
-main():
-    a int = 2
-    if a == 1:
-        printf("is 1\n")
-    elif a == 2:
-        printf("not 1 but 2\n")
-    else:
-        printf("neither\n")
-
-    i int = 0
-    while i < 5:
-        if i == 3: break
-        i += 1
-    printf("stopped at: %d\n", i)
-```
-
----
-
-### Operators
-
-| Category   | Operators                             |
-|------------|---------------------------------------|
-| Arithmetic | `+`  `-`  `*`  `/`  `%`              |
-| Bitwise    | `&`  `\|`  `^`  `~`  `<<`  `>>`      |
-| Comparison | `==` `!=` `<` `>` `<=` `>=` `is`     |
-| Logical    | `and` `or` `not` `&&` `\|\|` `!`     |
-| Assignment | `=` `+=` `-=` `*=` `/=` `%=`         |
-| Cast       | `as`                                  |
-
-**Bitwise operations:**
+The heart of every fight — a round-by-round battle loop:
 
 ```ura
-use "@/io"
+fn simulate_combat(hero_hp int, orc_hp int) void:
+    round int = 0
+    while hero_hp > 0:
+        if orc_hp <= 0:
+            output("Victory in round ", round, "!\n")
+            return
+        hero_hp = hero_hp - 10
+        orc_hp  = orc_hp  - 18
+        round   = round + 1
+        if round > 20:
+            output("Timeout — stalemate\n")
+            return
+    output("Hero fell in round ", round, "\n")
 
 main():
-    a int = 60   // 0011 1100
-    b int = 13   // 0000 1101
-
-    printf("AND: %d\n", a & b)    // 12  (0000 1100)
-    printf("OR:  %d\n", a | b)    // 61  (0011 1101)
-    printf("XOR: %d\n", a ^ b)    // 49  (0011 0001)
-    printf("NOT: %d\n", ~a)       // -61 (two's complement)
-    printf("LEFT SHIFT:  %d\n", 1 << 3)   // 8
-    printf("RIGHT SHIFT: %d\n", 60 >> 2)  // 15
-```
-
----
-
-### Type Casting
-
-Use `as` to convert between types:
-
-```ura
-use "@/io"
-
-main():
-    // char to int
-    c char = 'A'
-    n int  = c as int
-    printf("char '%c' as int: %d\n", c, n)   // 65
-
-    // int to char
-    code   int  = 66
-    letter char = code as char
-    printf("int %d as char: %c\n", code, letter)   // B
-
-    // used in expressions
-    left  chars = "d"
-    right chars = "a"
-    diff  int   = left[0] as int - right[0] as int
-    printf("diff: %d\n", diff)   // 3
-```
-
----
-
-### References
-
-References bind to an existing variable at declaration time (C++ style) — all writes go through to the original:
-
-```ura
-use "@/io"
-
-fn swap(a int ref, b int ref) void:
-    temp int = a
-    a = b
-    b = temp
-
-main():
-    x int = 10
-    y int = 20
-    printf("Before: x=%d, y=%d\n", x, y)
-    swap(x, y)
-    printf("After:  x=%d, y=%d\n", x, y)
+    simulate_combat(100, 60)
 ```
 
 ```
-Before: x=10, y=20
-After:  x=20, y=10
+Victory in round 4!
 ```
 
-References must be initialized when declared:
-
-```ura
-use "@/io"
-
-main():
-    a int = 1
-    b int = 2
-    
-    r int ref = a    // Must bind at declaration
-    r = 100          // Modifies a through the reference
-    
-    printf("%d\n", a)   // 100
-```
+| Keyword | Purpose |
+|---------|---------|
+| `if` / `elif` / `else` | Branching |
+| `while` | Loop while condition holds |
+| `break` | Exit the loop immediately |
+| `continue` | Skip to the next iteration |
+| `return` | Exit a function (with or without a value) |
 
 ---
 
 ### Structs
 
-```ura
-use "@/io"
-
-struct Point:
-    x int
-    y int
-
-fn print_point(p Point ref) void:
-    printf("(%d, %d)\n", p.x, p.y)
-
-main():
-    p Point
-    p.x = 3
-    p.y = 4
-    print_point(p)
-```
-
-**Struct methods:**
-
-Structs can have methods with a special `self` parameter that refers to the instance:
+The hero and every enemy are their own struct. No methods yet — just data:
 
 ```ura
-proto fn printf(fmt chars, ...) int
+struct Player:
+    name  chars
+    hp    int
+    mp    int
 
-struct User:
-    name array[char]
-    age int
-
-    fn init() void:
-        self.name = "new name"
-        self.age = 10
-
-    fn greet() void:
-        printf("hello from %s, age %d\n", self.name, self.age)
+struct Enemy:
+    name  chars
+    hp    int
+    atk   int
 
 main():
-    user User
-    user.greet()   // hello from new name, age 10
+    hero  Player
+    orc   Enemy
+    hero.name = "Aldric"
+    hero.hp   = 100
+    hero.mp   = 50
+    orc.name  = "Orc Grunt"
+    orc.hp    = 60
+    orc.atk   = 14
+    output(hero.name, " faces ", orc.name, "\n")
+    output("Hero HP: ", hero.hp, " | Orc HP: ", orc.hp, "\n")
 ```
 
-The `init()` method is a special constructor that runs automatically when a struct is declared.
+```
+Aldric faces Orc Grunt
+Hero HP: 100 | Orc HP: 60
+```
 
-The `clean()` method is a special destructor that runs automatically when the struct goes out of scope (freeing heap memory, closing handles, etc.):
+**Struct methods** — add behaviour directly to the type. The special `fn init()` runs automatically at declaration; `fn clean()` runs at scope exit:
 
 ```ura
 use "@/header"
 
-struct Buffer:
-    data chars
-    size int
+struct Hero:
+    name  chars
+    title chars
 
     fn init() void:
-        self.size = 64
-        self.data = heap[char](self.size)
+        self.name  = heap[char](32)
+        self.title = heap[char](32)
+
+    fn setup(name chars, title chars) void:
+        strcpy(self.name,  name)
+        strcpy(self.title, title)
+
+    fn announce() void:
+        output(self.title, " ", self.name, " enters!\n")
 
     fn clean() void:
-        free(self.data)
+        free(self.name)
+        free(self.title)
 
 main():
-    buf Buffer
-    strcpy(buf.data, "hello")
-    output(buf.data, "\n")
+    hero Hero
+    hero.setup("Aldric", "The Bold")
+    hero.announce()
 ```
 
-**Nested structs:**
+```
+The Bold Aldric enters!
+```
 
-Structs can be nested at any depth:
+`self` inside a method refers to the current instance. `init()` is a constructor (auto-called on declaration). `clean()` is a destructor (auto-called on scope exit — no manual free needed at the call site).
+
+**Nested structs** are supported at any depth:
 
 ```ura
-use "@/io"
-
 struct Address:
     city   chars
     street chars
@@ -354,51 +343,88 @@ main():
     dev.name           = "Mohammed"
     dev.address.city   = "Casablanca"
     dev.address.street = "Rue des Compilateurs"
-    printf("%s lives in %s\n", dev.name, dev.address.city)
+    output(dev.name, " lives in ", dev.address.city, "\n")
 ```
 
-**Struct references:**
+---
 
-Struct references let functions modify the caller's data:
+### References
+
+Surviving a dungeon floor earns a level-up. References let `level_up` modify the caller's variables directly — no copies, no return value needed:
 
 ```ura
-use "@/io"
-
-struct User:
-    id int
-
-fn update(u User ref) void:
-    u.id = 99
+fn level_up(level int ref, hp int ref, mp int ref) void:
+    level = level + 1
+    hp    = hp + 20
+    mp    = mp + 10
+    output("Level up! Now level ", level, "\n")
 
 main():
-    user User
-    user.id = 1
-    update(user)
-    printf("id: %d\n", user.id)   // 99
+    lv int = 1
+    hp int = 100
+    mp int = 50
+    level_up(lv, hp, mp)
+    output("Stats: HP=", hp, " MP=", mp, "\n")
+```
+
+```
+Level up! Now level 2
+Stats: HP=120 MP=60
+```
+
+A reference parameter is marked `ref` after the type. The caller passes the variable as-is — no `&` needed. All writes inside the function go directly to the original.
+
+References can also be declared locally:
+
+```ura
+main():
+    a int = 1
+    r int ref = a   // must bind at declaration
+    r = 100         // modifies a
+    output(a, "\n") // 100
 ```
 
 ---
 
 ### Memory
 
-Ura gives you direct control over where memory lives:
+The dungeon map lives on the heap — size determined at runtime, hand-crafted tile by tile:
 
 ```ura
-use "@/io"
-use "@/memory"
-use "@/string"
+use "@/header"
 
 main():
-    // Stack — fast, freed automatically when the function returns
-    local chars = stack[char](64)
-    strcpy(local, "stack allocated")
-    printf("%s\n", local)
+    map  chars = heap[char](50)
+    i    int   = 0
+    while i < 49:
+        map[i] = '.'
+        i = i + 1
+    map[24] = '@'
+    map[49] = 0 as char
+    output("Map: ", map, "\n")
+    output("Hero '@' at centre — memory freed\n")
+    free(map)
+```
 
-    // Heap — survives the function, must be freed manually
-    buffer chars = heap[char](256)
-    strcpy(buffer, "heap allocated")
-    printf("%s\n", buffer)
-    free(buffer)
+```
+Map: ........................@........................
+Hero '@' at centre — memory freed
+```
+
+| | `stack[type](n)` | `heap[type](n)` |
+|---|---|---|
+| Cleanup | Automatic | Manual (`free`) |
+| Speed | Faster | Slightly slower |
+| Capacity | Limited | Large |
+| Lifetime | Function scope | Until `free()` |
+
+```ura
+// Stack allocation — freed automatically when the function returns
+local chars = stack[char](64)
+
+// Heap allocation — you control when it's freed
+buffer chars = heap[char](256)
+free(buffer)
 ```
 
 You can also use the `array` type annotation for clarity:
@@ -409,57 +435,188 @@ str[0] = 'H'
 str[1] = 'i'
 ```
 
-Multi-level allocation is supported:
+---
+
+### Operators
+
+Status effects are packed into a single integer using bit flags. One `int` holds four conditions at once:
 
 ```ura
-matrix array[[int]]   = heap[[int]](10)    // array of int pointers
-cube   array[[[int]]] = heap[[[int]]](5)   // one level deeper
+POISONED int = 1
+FROZEN   int = 2
+BURNING  int = 4
+SHIELDED int = 8
+
+fn has_effect(status int, effect int) bool:
+    return (status & effect) != 0
+
+fn apply(status int, effect int) int:
+    return status | effect
+
+fn remove(status int, effect int) int:
+    return status & ~effect
+
+main():
+    status int = 0
+    status = apply(status, POISONED)
+    status = apply(status, BURNING)
+    output("Poisoned: ", has_effect(status, POISONED), "\n")
+    output("Frozen:   ", has_effect(status, FROZEN),   "\n")
+    output("Burning:  ", has_effect(status, BURNING),  "\n")
+    status = remove(status, POISONED)
+    output("Cured — Poisoned: ", has_effect(status, POISONED), "\n")
 ```
 
-| | `stack[type](n)` | `heap[type](n)` |
-|---|---|---|
-| Cleanup | Automatic | Manual (`free`) |
-| Speed | Faster | Slower |
-| Capacity | Limited | Large |
-| Lifetime | Function scope | Until freed |
+```
+Poisoned: True
+Frozen:   False
+Burning:  True
+Cured — Poisoned: False
+```
+
+| Category   | Operators                             |
+|------------|---------------------------------------|
+| Arithmetic | `+`  `-`  `*`  `/`  `%`              |
+| Bitwise    | `&`  `\|`  `^`  `~`  `<<`  `>>`      |
+| Comparison | `==` `!=` `<` `>` `<=` `>=`          |
+| Logical    | `and` `or` `not` `&&` `\|\|` `!`     |
+| Assignment | `=` `+=` `-=` `*=` `/=` `%=`         |
+| Cast       | `as`                                  |
+
+---
+
+### Type Casting
+
+The end-of-floor scoreboard converts the raw score to a percentage. `as` handles the conversion:
+
+```ura
+main():
+    score     int = 847
+    max_score int = 1000
+    pct float = score as float / max_score as float * 100.0
+    output("Score: ", score, " / ", max_score, "\n")
+    output("Percentage: ", pct, "%\n")
+    grade char = 'A'
+    code  int  = grade as int
+    output("'A' as int = ", code, "\n")
+```
+
+```
+Score: 847 / 1000
+Percentage: 84.7%
+'A' as int = 65
+```
+
+---
+
+### Type Introspection
+
+Need to debug the hero's stat block at runtime? `typeof` and `sizeof` expose the type system:
+
+```ura
+main():
+    hp    int   = 100
+    speed float = 1.5
+    name  chars = "Aldric"
+    output("typeof hp:    ", typeof(hp),    "\n")
+    output("typeof speed: ", typeof(speed), "\n")
+    output("typeof name:  ", typeof(name),  "\n")
+    output("sizeof name:  ", sizeof(name),  "\n")
+```
+
+```
+typeof hp:    INT
+typeof speed: FLOAT
+typeof name:  CHARS
+sizeof name:  8
+```
 
 ---
 
 ### C Interoperability
 
-Declare any C function with `proto` and call it immediately:
+Random enemy encounters use `rand()` from the C standard library — brought in with `use "@/header"`:
+
+```ura
+use "@/header"
+
+fn random_encounter() chars:
+    roll int = rand() % 4
+    if roll == 0:
+        return "Giant Spider"
+    if roll == 1:
+        return "Orc Shaman"
+    if roll == 2:
+        return "Stone Golem"
+    return "Shadow Wraith"
+
+main():
+    srand(42)
+    output("Encounter 1: ", random_encounter(), "\n")
+    output("Encounter 2: ", random_encounter(), "\n")
+    output("Encounter 3: ", random_encounter(), "\n")
+```
+
+```
+Encounter 1: Orc Shaman
+Encounter 2: Shadow Wraith
+Encounter 3: Giant Spider
+```
+
+For full control, declare any C function yourself with `proto`:
 
 ```ura
 proto fn strlen(s chars) int
 proto fn write(fd int, ptr chars, len int) int
+proto fn printf(format chars, ...) int   // variadic
 
 main():
     n int = strlen("hello")
     write(1, "hi\n", 3)
-```
-
-Variadic functions work too:
-
-```ura
-proto fn printf(format chars, ...) int
-
-main():
-    printf("name: %s, age: %d\n", "Alice", 30)
+    printf("length: %d\n", n)
 ```
 
 The standard library modules wrap the most common ones:
 
 ```ura
-use "@/io"       // printf, puts, fopen, fclose, write, read ...
-use "@/memory"   // malloc, heap, stack, free, realloc ...
-use "@/string"   // strlen, strcmp, strcpy, strcat, strdup ...
-use "@/math"     // sqrt, pow, abs ...
-use "@/stdlib"   // atoi, rand, exit ...
-use "@/time"     // time, clock, difftime ...
-use "@/signals"  // signal, raise ...
-use "@/net"      // socket, bind, listen, accept, connect, send, recv ...
+use "@/io"       // printf, puts, fopen, fclose, write, read, ...
+use "@/memory"   // malloc, heap, stack, free, realloc, ...
+use "@/string"   // strlen, strcmp, strcpy, strcat, strdup, ...
+use "@/stdlib"   // atoi, rand, exit, ...
+use "@/time"     // time, clock, difftime, ...
+use "@/signals"  // signal, raise, ...
+use "@/net"      // socket, bind, listen, accept, connect, send, recv, ...
 use "@/header"   // imports all of the above at once
 ```
+
+---
+
+### OS Module
+
+The player's name comes from the command line. `os.argc` and `os.argv` are available automatically when you `use "@/header"`:
+
+```ura
+use "@/header"
+
+main():
+    if os.argc < 2:
+        output("Usage: dungeon <hero_name>\n")
+        return
+    name chars = os.argv[1]
+    output("=== Welcome, ", name, "! ===\n")
+    output("Your quest begins on floor 1.\n")
+```
+
+```bash
+ura dungeon.ura
+# Usage: dungeon <hero_name>
+
+ura dungeon.ura Aldric
+# === Welcome, Aldric! ===
+# Your quest begins on floor 1.
+```
+
+`os` is a global `Os` struct — `os.argc` is the argument count, `os.argv` is the argument array. Both are auto-populated by the runtime before `main()` runs.
 
 ---
 
@@ -473,129 +630,79 @@ use "@/header"
 main():
     server_fd int = socket(2, 1, 0)  // AF_INET, SOCK_STREAM, 0
     if server_fd < 0:
-        printf("socket failed\n")
-        return 1
+        output("socket failed\n")
+        return
 
     port int = 8080
     addr chars = heap[char](16)
-    addr[0] = 16 as char     // length
-    addr[1] = 2 as char      // sin_family (AF_INET = 2)
-    addr[2] = (port >> 8) as char     // sin_port high byte
-    addr[3] = (port & 255) as char    // sin_port low byte
-    // addr[4..7] = 0 (INADDR_ANY)
+    addr[0] = 16 as char             // length
+    addr[1] = 2 as char              // sin_family (AF_INET = 2)
+    addr[2] = (port >> 8) as char    // sin_port high byte
+    addr[3] = (port & 255) as char   // sin_port low byte
 
-    result int = bind(server_fd, addr, 16)
-    if result < 0:
-        printf("bind failed\n")
-        return 1
-
+    bind(server_fd, addr, 16)
     listen(server_fd, 5)
-    printf("listening on port 8080...\n")
+    output("listening on port 8080...\n")
 
     buf chars = heap[char](1024)
     client_fd int = accept(server_fd, 0 as chars, 0)
     if client_fd >= 0:
         r int = read(client_fd, buf, 1023)
         if r > 0:
-            printf("received: %s\n", buf)
+            output("received: ", buf, "\n")
             write(client_fd, "hello from server\n", 18)
         close(client_fd)
 
     free(buf)
     free(addr)
-    return 0
 ```
 
-**Real-world TCP examples:**
+**Real-world TCP examples** are in `tests/projects/ura-tcp-server/`:
 
-The `projects/tcp/` directory contains complete working examples:
+- **basic/** — Simple chat room with bidirectional messaging
+- **cmd/** — Command-based server supporting `/help`, `/time`, `/whoami`, `/exit`
+- **utils.ura** — Shared `SockAddr` struct and timestamped logging
 
-- **basic/** - Simple chat room with bidirectional messaging between server and client
-- **cmd/** - Command-based server supporting `/help`, `/time`, `/whoami`, `/exit` commands
-- **utils.ura** - Shared utilities including `SockAddr` struct for address management and timestamped logging
-
-Run the examples:
 ```bash
-# Terminal 1: Start server
+# Terminal 1
 ura tests/projects/ura-tcp-server/basic/server.ura
 
-# Terminal 2: Connect client
+# Terminal 2
 ura tests/projects/ura-tcp-server/basic/client.ura
-```
-
----
-
-### Type Introspection
-
-`typeof` returns the type name as a string. `sizeof` returns the byte size:
-
-```ura
-use "@/io"
-
-main():
-    type chars = typeof("hello world\n")
-    size int   = sizeof(type)
-    printf("type: %s, size: %d bytes\n", type, size)
-    // type: CHARS, size: 8 bytes
-
-    printf("%s\n", typeof(42))     // INT
-    printf("%s\n", typeof('a'))    // CHAR
-    printf("%s\n", typeof(True))   // BOOL
-
-    printf("%d\n", sizeof(42))     // 4  (size of INT)
-    printf("%d\n", sizeof('a'))    // 1  (size of CHAR)
 ```
 
 ---
 
 ### Output Builtin
 
-`output` is a built-in variadic function that prints values to stdout. It accepts any number of arguments and concatenates them — no format string needed:
+`output` is a built-in that prints any number of values to stdout — no format string, no import needed:
 
 ```ura
 main():
     name chars = "Ura"
     n    int   = 42
+    flag bool  = True
 
-    output("hello\n")                      // hello
-    output("name: ", name, "\n")           // name: Ura
-    output("n = ", n, "\n")               // n = 42
-    output(n, " * 2 = ", n * 2, "\n")     // 42 * 2 = 84
+    output("hello\n")                       // hello
+    output("name: ", name, "\n")            // name: Ura
+    output("n = ", n, "\n")                 // n = 42
+    output("flag: ", flag, "\n")            // flag: True
+    output(n, " * 2 = ", n * 2, "\n")       // 42 * 2 = 84
 ```
 
-It can also print structs directly, recursively expanding all fields:
+Supported types: `int`, `long`, `short`, `float`, `char`, `chars`, `bool`.
 
-```ura
-struct Point:
-    x int
-    y int
-
-main():
-    p Point
-    p.x = 3
-    p.y = 4
-    output(p)
-    // { x: 3, y: 4 }
-```
-
-Nested structs are expanded too:
-
-```ura
-output(app)
-// { logger: { file: { path: app.log, handle:  }, prefix: [APP]  }, name: UraApp }
-```
-
-For formatted output (like `%d`, `%s`, `%f`), use `printf` from `@/io` instead.
+For formatted output (`%d`, `%c`, `%f`, padding, etc.), use `printf` from `@/io`.
 
 ---
 
-## Real Examples
+## The Dungeon — Real Programs
 
-### Fibonacci
+The dungeon is complete. Here are self-contained Ura programs that bring everything together.
+
+### Recursive Fibonacci
 
 ```ura
-use "@/io"
-
 fn fib(n int) int:
     if n <= 1:
         return n
@@ -604,15 +711,13 @@ fn fib(n int) int:
 main():
     i int = 0
     while i < 10:
-        printf("fib(%d) = %d\n", i, fib(i))
+        output("fib(", i, ") = ", fib(i), "\n")
         i += 1
 ```
 
-### String Length
+### strlen in Ura (no C imports)
 
 ```ura
-use "@/io"
-
 fn strlen(s chars) int:
     i int = 0
     while s[i] != '\0':
@@ -620,14 +725,12 @@ fn strlen(s chars) int:
     return i
 
 main():
-    printf("length: %d\n", strlen("Hello, Ura!"))
+    output("length: ", strlen("Hello, Ura!"), "\n")   // 11
 ```
 
-### strcmp
+### strcmp in Ura
 
 ```ura
-use "@/io"
-
 fn strcmp(left chars, right chars) int:
     i int = 0
     while left[i] == right[i] and left[i] != '\0':
@@ -635,15 +738,48 @@ fn strcmp(left chars, right chars) int:
     return left[i] as int - right[i] as int
 
 main():
-    printf("%d\n", strcmp("d", "a"))   // 3
+    output(strcmp("d", "a"), "\n")   // 3
 ```
+
+### Combat Simulator (tuples + control flow + globals)
+
+```ura
+score int = 0
+floor int = 1
+
+fn roll_loot(f int) (chars, int):
+    return "Health Potion", f * 10
+
+fn simulate(hero_hp int, orc_hp int) void:
+    round int = 0
+    while hero_hp > 0:
+        if orc_hp <= 0:
+            score = score + 50 * round
+            output("Floor ", floor, " cleared! Score: ", score, "\n")
+            item chars, gold int = roll_loot(floor)
+            output("Loot: ", item, " (+", gold, " gold)\n")
+            return
+        hero_hp = hero_hp - 10
+        orc_hp  = orc_hp  - 18
+        round   = round + 1
+    output("Hero fell on floor ", floor, "\n")
+
+main():
+    simulate(100, 60)
+    floor = floor + 1
+    simulate(120, 80)
+```
+
+```
+Floor 1 cleared! Score: 200
+Loot: Health Potion (+10 gold)
+Floor 2 cleared! Score: 450
+Loot: Health Potion (+20 gold)
 ```
 
 ### Word Counter
 
 ```ura
-use "@/io"
-
 fn count_words(s chars) int:
     count   int  = 0
     in_word bool = False
@@ -659,7 +795,7 @@ fn count_words(s chars) int:
     return count
 
 main():
-    printf("words: %d\n", count_words("the quick brown fox"))   // 4
+    output("words: ", count_words("the quick brown fox"), "\n")   // 4
 ```
 
 ---
@@ -699,17 +835,16 @@ source.ura
 
 ### Source Files
 
-**`src/main.c`** is the heart of the compiler. It contains everything except the LLVM wrappers:
+The compiler is split into focused C source files:
 
-- **Tokenizer** — reads the source file character by character and produces a flat list of typed tokens. Handles strings, escape sequences, comments, indentation, keywords, and the `use` import system.
-- **Parser** — a hand-written recursive descent parser that builds the AST top-down. Operator precedence is encoded directly in the call chain (`expr → assign → logic → equality → comparison → add/sub → mul/div → dot → ...`).
-- **`gen_ir()`** — a first pass over the AST that resolves identifiers, registers variables and functions in their scopes, and annotates every node with its return type. After this pass the tree is fully typed and ready for code generation.
-- **`gen_asm()`** — a second pass that walks the typed AST and emits LLVM IR instructions using the LLVM C API. At the end it writes a `.ll` file to `build/`.
-- **`main()`** — orchestrates everything: parses CLI flags, calls `compile()` for each source file, runs `llc` to produce `.s`, then `clang` to link the final executable, and immediately runs it.
-
-**`src/llvm.c`** contains thin wrappers around the LLVM C API (`LLVMBuildAdd`, `LLVMBuildStore`, `LLVMBuildGEP2`, ...) plus higher-level helpers like `allocate_stack`, `allocate_heap`, and the `ref_assign` runtime function. Keeping LLVM calls isolated here makes `main.c` readable without knowing the LLVM API.
-
-**`src/header.h`** defines the `Token` and `Node` structs that the entire compiler operates on, the `Type` enum (every token type from `INT` to `STRUCT_CALL`), all global variable declarations, and every function prototype.
+- **`src/lexer.c`** — reads the source file character by character and produces a flat list of typed tokens. Handles strings, escape sequences, comments, indentation, keywords, and the `use` import system.
+- **`src/parser.c`** — a hand-written recursive descent parser that builds the AST top-down. Operator precedence is encoded directly in the call chain (`expr → assign → logic → equality → comparison → add/sub → mul/div → dot → ...`).
+- **`src/ir.c`** — a first pass over the AST (`gen_ir`) that resolves identifiers, registers variables and functions in their scopes, and annotates every node with its return type. After this pass the tree is fully typed and ready for code generation.
+- **`src/codegen.c`** — a second pass (`gen_asm`) that walks the typed AST and emits LLVM IR instructions using the LLVM C API. Writes the final `.ll` file to `build/`.
+- **`src/utils.c`** — shared helpers: error reporting, scope management, string utilities.
+- **`src/ura.h`** — thin `static inline` wrappers around the LLVM C API (`LLVMBuildAdd`, `LLVMBuildStore`, `LLVMBuildGEP2`, ...) and higher-level helpers like `allocate_stack` and `allocate_heap`. Keeping LLVM calls isolated here makes the other files readable without knowing the LLVM API.
+- **`src/header.h`** — defines the `Token` and `Node` structs that the entire compiler operates on, the `Type` enum (every token type from `INT` to `STRUCT_CALL`), all global variable declarations, and every function prototype.
+- **`src/main.c`** — orchestrates everything: parses CLI flags, calls `compile()` for each source file, runs `llc` to produce `.s`, then `clang` to link the final executable, and immediately runs it.
 
 ### Why LLVM?
 
@@ -745,7 +880,7 @@ The compiler generates a `build/` directory next to each source file. The execut
 | Command              | Description                                        |
 |----------------------|----------------------------------------------------|
 | `build`              | Compile the Ura compiler                           |
-| `$URA_COMPILER <f>`  | Compile and run a `.ura` file                      |
+| `ura <file>`         | Compile and run a `.ura` file                      |
 | `tests [folder]`     | Run test suite (optionally filter by folder)       |
 | `update_tests`       | Regenerate all expected `.ll` snapshot files       |
 | `copy <file.ura>`    | Save test (reads `// folder/filename` from line 1) |
@@ -754,7 +889,6 @@ The compiler generates a `build/` directory next to each source file. The execut
 | `examples`           | Generate examples.ura from all test files          |
 | `indent`             | Auto-format all C source files                     |
 | `update`             | Reload `config.sh`                                 |
-
 
 ---
 
@@ -785,11 +919,11 @@ On first source (or after a fresh install) it automatically runs a dependency ch
 
 **Environment variables set:**
 
-| Variable       | Description                                   |
-|----------------|-----------------------------------------------|
-| `$URA_LIB`     | Path to the standard library (`src/ura-lib/`) |
-| `$URA_COMPILER`| Path to the compiled compiler binary          |
-| `$PATH`        | Adds `build/` so `ura` is available directly  |
+| Variable        | Description                                   |
+|-----------------|-----------------------------------------------|
+| `$URA_LIB`      | Path to the standard library (`src/ura-lib/`) |
+| `$URA_COMPILER` | Path to the compiled compiler binary          |
+| `$PATH`         | Adds `build/` so `ura` is available directly  |
 
 **Shell commands:**
 
@@ -814,7 +948,7 @@ One-time bootstrap scripts for fresh machines. Run them once, then use `config.s
 
 **macOS / Linux:**
 ```bash
-bash setup.sh
+bash config/setup.sh
 ```
 
 Detects your OS and package manager, installs all missing tools (`llvm-14`, `clang`, `llc`, `uncrustify`), creates any needed symlinks, and verifies everything works.
@@ -822,7 +956,7 @@ Detects your OS and package manager, installs all missing tools (`llvm-14`, `cla
 **Windows:**
 ```powershell
 # In PowerShell as Administrator:
-powershell -ExecutionPolicy Bypass -File setup.ps1
+powershell -ExecutionPolicy Bypass -File config/setup.ps1
 ```
 
 Installs MSYS2 via `winget`, updates the package database, and runs `setup.sh` inside MSYS2 automatically. Then open the **MSYS2 MinGW x64** terminal and `source config.sh` as usual.
@@ -834,8 +968,13 @@ Installs MSYS2 via `winget`, updates the package database, and runs `setup.sh` i
 ```
 ura-lang/
 ├── src/
-│   ├── main.c          # Tokenizer, parser, gen_ir, gen_asm, main
-│   ├── llvm.c          # LLVM C API wrappers and helpers
+│   ├── main.c          # Entry point: CLI, compile(), llc + clang pipeline
+│   ├── lexer.c         # Tokenizer: source → flat token list
+│   ├── parser.c        # Recursive descent parser: tokens → AST
+│   ├── ir.c            # gen_ir(): name resolution, type checking
+│   ├── codegen.c       # gen_asm(): typed AST → LLVM IR (.ll)
+│   ├── utils.c         # Shared helpers: errors, scopes, strings
+│   ├── ura.h           # LLVM C API wrappers and inline helpers
 │   ├── header.h        # Token, Node, Type enum, globals, declarations
 │   ├── file.ura        # Development scratch file
 │   └── ura-lib/        # Standard library
@@ -843,41 +982,46 @@ ura-lang/
 │       ├── io.ura
 │       ├── memory.ura
 │       ├── string.ura
-│       ├── math.ura
 │       ├── stdlib.ura
 │       ├── time.ura
 │       ├── signals.ura
-│       └── net.ura         # socket, bind, listen, accept, connect
+│       ├── os.ura
+│       └── net.ura
 ├── tests/
 │   ├── builtins/       # Built-in functions and memory
 │   │   ├── c-funcs/    # C function prototypes (printf, puts, etc.)
 │   │   ├── memory/     # Stack and heap allocation
-│   │   ├── sizeof/     # sizeof operator tests
-│   │   └── typeof/     # typeof operator tests
+│   │   ├── output/     # output() builtin
+│   │   ├── sizeof/     # sizeof operator
+│   │   └── typeof/     # typeof operator
 │   ├── cond/           # Conditional statements (if/elif/else)
 │   ├── data_types/     # Arrays and data types
-│   ├── fn/             # Functions
-│   │   └── param/      # Function parameters and references
-│   ├── vars/           # Variables
-│   │   └── ref/        # Reference tests
+│   ├── fn/             # Functions and parameters
+│   │   └── param/      # Value and reference parameters
+│   ├── globals/        # Global variables
+│   ├── vars/           # Variables and references
 │   ├── while/          # Loops, break, continue
 │   ├── op/             # Operators (arithmetic, logical, comparison, bitwise)
-│   ├── structs/        # Structs, nested structs, struct methods
-│   ├── net/            # TCP client/server examples
+│   ├── structs/        # Structs, nested structs, methods
+│   ├── tuples/         # Tuple types and multi-return
+│   ├── os/             # OS module (argc, argv)
+│   ├── net/            # TCP client/server
 │   └── projects/       # Real-world programs written in Ura
 │       ├── ura-libft/  # Classic libc functions (strlen, strcmp, isalpha, ...)
-│       └── ura-tcp-server/   # TCP networking examples
-│           ├── basic/        # Simple chat room (bidirectional messaging)
+│       └── ura-tcp-server/
+│           ├── basic/        # Simple chat room
 │           │   ├── server.ura
 │           │   └── client.ura
 │           ├── cmd/          # Command-based server (/help, /time, /whoami, /exit)
 │           │   ├── server.ura
 │           │   └── client.ura
-│           └── utils.ura     # Shared utilities (SockAddr, logging, timestamps)
-├── build/              # Compiler executable
-├── config.sh           # Development environment (source this every session)
-├── setup.sh            # One-time setup: installs all deps (macOS / Linux / MSYS2)
-├── setup.ps1           # One-time setup for Windows: installs MSYS2 + runs setup.sh
+│           └── utils.ura     # Shared utilities (SockAddr, logging)
+├── config/
+│   ├── setup.sh              # One-time setup: installs all deps (macOS / Linux / MSYS2)
+│   ├── setup.ps1             # One-time setup for Windows
+│   └── vscode-extension/     # VS Code syntax highlighting + language features
+├── build/              # Compiler executable and compiled outputs
+├── config.sh           # Development environment (source every session)
 └── README.md
 ```
 
@@ -892,26 +1036,29 @@ Ura is under active development. Here's where things stand:
 - Primitive types: `int` `long` `short` `char` `chars` `bool` `float` `void`
 - Array type declarations: `array[type]`, `array[[type]]`, ...
 - Stack and heap allocation: `stack[type](n)`, `heap[type](n)`
+- Global variables and global structs
 - Functions, variadic functions, single-line functions
+- **Tuples** — multi-value returns `(type, type)` with destructuring at the call site
 - Function prototypes for C interop (`proto`)
 - References and reference parameters
-- Structs, nested structs at any depth, struct methods with `self` parameter
-- Struct `init()` constructor
+- Structs, nested structs at any depth, struct methods with `self`
+- Struct `init()` constructor and `clean()` destructor (auto-called at scope exit)
 - If / elif / else
 - While loops with break and continue
 - All standard operators: arithmetic, bitwise, logical, comparison, assignment
 - Type casting with `as`
 - `typeof` and `sizeof`
+- `output()` builtin — prints any value without format strings or imports
 - Module imports with `use` (`@` for stdlib, relative path for local files)
+- OS module — `os.argc` and `os.argv` for command-line argument access
 - Multi-file compilation
-- Networking support via POSIX socket APIs
+- Networking via POSIX socket APIs (`@/net`)
 - Optimization levels (-O0 → -O3, -Os, -Oz) via LLVM pass pipeline
 - AddressSanitizer + memory leak detection (`-san`)
 
 **Coming next:**
 
 - For loops (range-based: `for i in 0..10`)
-- Global variables
 - Enums + pattern matching
 - Switch / case
 - Type inference
@@ -929,7 +1076,7 @@ Ura is under active development. Here's where things stand:
 | Linux | clang-14, llvm-14, llvm-14-tools, uncrustify |
 | Windows | MSYS2 with MinGW64, then `mingw-w64-x86_64-llvm` + `mingw-w64-x86_64-clang` |
 
-Run `bash setup.sh` (or `powershell setup.ps1` on Windows) to install everything automatically.
+Run `bash config/setup.sh` (or `powershell config/setup.ps1` on Windows) to install everything automatically.
 
 **Why LLVM 14?** It uses explicit pointer types (`i32*`, `i32**`) in generated IR instead of the opaque `ptr` from LLVM 15+, which makes debugging and reading the IR significantly easier.
 

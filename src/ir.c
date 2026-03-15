@@ -79,8 +79,8 @@ static void ir_regular_call(Node *node)
 
          Type param_type   = dec_args->children[i]->token->type;
          Type arg_type     = src->type;
-         bool param_is_int = includes(param_type, INT, LONG, SHORT, CHAR, 0);
-         bool arg_is_int   = includes(arg_type,   INT, LONG, SHORT, CHAR, 0);
+         bool param_is_int = includes(param_type, NUMERIC_TYPES, 0);
+         bool arg_is_int   = includes(arg_type,   NUMERIC_TYPES, 0);
          if (param_is_int && arg_is_int && param_type != arg_type)
          {
             Token *as_tok   = new_token(AS, src->space);
@@ -108,9 +108,9 @@ static void ir_dot(Node *node)
    // Also mark the struct definition itself as used
    if (node->left->token->Struct.ptr)
       node->left->token->Struct.ptr->token->used++;
-   Type retType = 0;
+   Type  retType = 0;
 
-   Node *src = NULL;
+   Node *src     = NULL;
    if (node->left->token->type == STRUCT_CALL)
       src = get_struct(node->left->token->Struct.ptr->token->name);
    else if (node->left->token->retType == STRUCT_CALL && node->left->token->Struct.ptr)
@@ -298,15 +298,10 @@ void gen_ir(Node *node)
       gen_ir(right);
       check(!left || !left->token, "error in assignment, left is NULL");
       check(!right || !right->token, "error in assignment, right is NULL");
-      switch (node->token->type)
-      {
-      case ADD: case SUB: case MUL: case DIV: case MOD:
-         node->token->retType = left->token->retType; break;
-      case AND: case OR: case NOT_EQUAL: case EQUAL: case LESS:
-      case GREAT: case LESS_EQUAL: case GREAT_EQUAL:
-         node->token->retType = BOOL; break;
-      default: break;
-      }
+      if (includes(node->token->type, ADD, SUB, MUL, DIV, MOD, 0))
+         node->token->retType = left->token->retType;
+      else if (includes(node->token->type, COMPARISON_OPS, AND, OR, 0))
+         node->token->retType = BOOL;
       node->token->used++;
       node->left->token->used++;
       node->right->token->used++;

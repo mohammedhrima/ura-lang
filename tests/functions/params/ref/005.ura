@@ -1,0 +1,9 @@
+// functions/params/ref/005.ura - ref-to-value: passing a ref where value is expected
+
+fn show_hp(hp int) void:
+    output("HP: ", hp, "\n")
+
+main():
+    hero_hp int = 75
+    r int ref = hero_hp
+    show_hp(r)

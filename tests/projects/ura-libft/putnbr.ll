@@ -81,76 +81,76 @@ while.start:                                      ; preds = %while.then, %if.end
   br i1 %GT, label %while.then, label %while.end, !dbg !13
 
 while.then:                                       ; preds = %while.start
-  %current = load i32, i32* %digit_count, align 4, !dbg !13
-  %ADD = add i32 %current, 1, !dbg !13
+  %digit_count11 = load i32, i32* %digit_count, align 4, !dbg !13
+  %ADD = add i32 %digit_count11, 1, !dbg !13
   store i32 %ADD, i32* %digit_count, align 4, !dbg !13
-  %temp11 = load i32, i32* %temp, align 4, !dbg !13
-  %DIV = sdiv i32 %temp11, 10, !dbg !13
+  %temp12 = load i32, i32* %temp, align 4, !dbg !13
+  %DIV = sdiv i32 %temp12, 10, !dbg !13
   store i32 %DIV, i32* %temp, align 4, !dbg !13
   br label %while.start, !dbg !13
 
 while.end:                                        ; preds = %while.start
   store i8* null, i8** %buffer, align 8, !dbg !13
-  %digit_count12 = load i32, i32* %digit_count, align 4, !dbg !16
-  %ADD13 = add i32 %digit_count12, 1, !dbg !16
-  %calloc = call i8* @calloc(i32 %ADD13, i32 1), !dbg !16
+  %digit_count13 = load i32, i32* %digit_count, align 4, !dbg !16
+  %ADD14 = add i32 %digit_count13, 1, !dbg !16
+  %calloc = call i8* @calloc(i32 %ADD14, i32 1), !dbg !16
   store i8* %calloc, i8** %buffer, align 8, !dbg !16
   store i32 0, i32* %i, align 4, !dbg !13
-  %digit_count14 = load i32, i32* %digit_count, align 4, !dbg !13
-  %SUB = sub i32 %digit_count14, 1, !dbg !13
+  %digit_count15 = load i32, i32* %digit_count, align 4, !dbg !13
+  %SUB = sub i32 %digit_count15, 1, !dbg !13
   store i32 %SUB, i32* %i, align 4, !dbg !13
-  br label %while.start15, !dbg !13
+  br label %while.start16, !dbg !13
 
-while.start15:                                    ; preds = %while.then16, %while.end
-  %i18 = load i32, i32* %i, align 4, !dbg !13
-  %GE = icmp sge i32 %i18, 0, !dbg !13
-  br i1 %GE, label %while.then16, label %while.end17, !dbg !13
+while.start16:                                    ; preds = %while.then17, %while.end
+  %i19 = load i32, i32* %i, align 4, !dbg !13
+  %GE = icmp sge i32 %i19, 0, !dbg !13
+  br i1 %GE, label %while.then17, label %while.end18, !dbg !13
 
-while.then16:                                     ; preds = %while.start15
+while.then17:                                     ; preds = %while.start16
   store i32 0, i32* %digit, align 4, !dbg !13
-  %n19 = load i32, i32* %n1, align 4, !dbg !13
-  %MOD = srem i32 %n19, 10, !dbg !13
+  %n20 = load i32, i32* %n1, align 4, !dbg !13
+  %MOD = srem i32 %n20, 10, !dbg !13
   store i32 %MOD, i32* %digit, align 4, !dbg !13
-  %buffer20 = load i8*, i8** %buffer, align 8, !dbg !17
-  %i21 = load i32, i32* %i, align 4, !dbg !17
-  %ACCESS = getelementptr i8, i8* %buffer20, i32 %i21, !dbg !17
-  %digits22 = load i8*, i8** %digits, align 8, !dbg !17
-  %digit23 = load i32, i32* %digit, align 4, !dbg !17
-  %ACCESS24 = getelementptr i8, i8* %digits22, i32 %digit23, !dbg !17
-  %ACC = load i8, i8* %ACCESS24, align 1, !dbg !17
+  %buffer21 = load i8*, i8** %buffer, align 8, !dbg !17
+  %i22 = load i32, i32* %i, align 4, !dbg !17
+  %ACCESS = getelementptr i8, i8* %buffer21, i32 %i22, !dbg !17
+  %digits23 = load i8*, i8** %digits, align 8, !dbg !17
+  %digit24 = load i32, i32* %digit, align 4, !dbg !17
+  %ACCESS25 = getelementptr i8, i8* %digits23, i32 %digit24, !dbg !17
+  %ACC = load i8, i8* %ACCESS25, align 1, !dbg !17
   store i8 %ACC, i8* %ACCESS, align 1, !dbg !17
-  %n25 = load i32, i32* %n1, align 4, !dbg !17
-  %DIV26 = sdiv i32 %n25, 10, !dbg !17
-  store i32 %DIV26, i32* %n1, align 4, !dbg !17
-  %current27 = load i32, i32* %i, align 4, !dbg !17
-  %SUB28 = sub i32 %current27, 1, !dbg !17
-  store i32 %SUB28, i32* %i, align 4, !dbg !17
-  br label %while.start15, !dbg !17
+  %n26 = load i32, i32* %n1, align 4, !dbg !17
+  %DIV27 = sdiv i32 %n26, 10, !dbg !17
+  store i32 %DIV27, i32* %n1, align 4, !dbg !17
+  %i28 = load i32, i32* %i, align 4, !dbg !17
+  %SUB29 = sub i32 %i28, 1, !dbg !17
+  store i32 %SUB29, i32* %i, align 4, !dbg !17
+  br label %while.start16, !dbg !17
 
-while.end17:                                      ; preds = %while.start15
+while.end18:                                      ; preds = %while.start16
   store i32 0, i32* %i, align 4, !dbg !17
-  br label %while.start29, !dbg !17
+  br label %while.start30, !dbg !17
 
-while.start29:                                    ; preds = %while.then30, %while.end17
-  %i32 = load i32, i32* %i, align 4, !dbg !17
-  %digit_count33 = load i32, i32* %digit_count, align 4, !dbg !17
-  %LT34 = icmp slt i32 %i32, %digit_count33, !dbg !17
-  br i1 %LT34, label %while.then30, label %while.end31, !dbg !17
+while.start30:                                    ; preds = %while.then31, %while.end18
+  %i33 = load i32, i32* %i, align 4, !dbg !17
+  %digit_count34 = load i32, i32* %digit_count, align 4, !dbg !17
+  %LT35 = icmp slt i32 %i33, %digit_count34, !dbg !17
+  br i1 %LT35, label %while.then31, label %while.end32, !dbg !17
 
-while.then30:                                     ; preds = %while.start29
-  %buffer35 = load i8*, i8** %buffer, align 8, !dbg !18
-  %i36 = load i32, i32* %i, align 4, !dbg !18
-  %ACCESS37 = getelementptr i8, i8* %buffer35, i32 %i36, !dbg !18
-  %ACC38 = load i8, i8* %ACCESS37, align 1, !dbg !18
-  %putchar39 = call i32 @putchar(i8 %ACC38), !dbg !18
-  %current40 = load i32, i32* %i, align 4, !dbg !18
-  %ADD41 = add i32 %current40, 1, !dbg !18
-  store i32 %ADD41, i32* %i, align 4, !dbg !18
-  br label %while.start29, !dbg !18
+while.then31:                                     ; preds = %while.start30
+  %buffer36 = load i8*, i8** %buffer, align 8, !dbg !18
+  %i37 = load i32, i32* %i, align 4, !dbg !18
+  %ACCESS38 = getelementptr i8, i8* %buffer36, i32 %i37, !dbg !18
+  %ACC39 = load i8, i8* %ACCESS38, align 1, !dbg !18
+  %putchar40 = call i32 @putchar(i8 %ACC39), !dbg !18
+  %i41 = load i32, i32* %i, align 4, !dbg !18
+  %ADD42 = add i32 %i41, 1, !dbg !18
+  store i32 %ADD42, i32* %i, align 4, !dbg !18
+  br label %while.start30, !dbg !18
 
-while.end31:                                      ; preds = %while.start29
-  %buffer42 = load i8*, i8** %buffer, align 8, !dbg !19
-  %free = call i32 @free(i8* %buffer42), !dbg !19
+while.end32:                                      ; preds = %while.start30
+  %buffer43 = load i8*, i8** %buffer, align 8, !dbg !19
+  %free = call i32 @free(i8* %buffer43), !dbg !19
   ret void, !dbg !19
 }
 

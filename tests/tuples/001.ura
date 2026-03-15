@@ -1,8 +1,8 @@
-// tuples/001.ura - basic tuple return and unpack
+// tuples/001.ura - basic tuple return: swap hero and enemy atk stats
 
 fn swap(a int, b int) (int, int):
     return b, a
 
 main():
     x int, y int = swap(3, 7)
-    output(x, " ", y, "\n")
+    output("<", x, " ", y, ">\n")

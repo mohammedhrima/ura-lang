@@ -115,9 +115,6 @@ Node *access_node() // . []
 //    └──arg2
 static Node *parse_var_dec(Token *token)
 {
-   Node *node   = NULL;
-   Node *st_dec = NULL;
-
    // Literal value: "hello", 1, 'c'
    if (token->type != ID && !token->is_dec && !token->name)
       return new_node(token);
@@ -191,7 +188,8 @@ static Node *parse_var_dec(Token *token)
    }
 
    // variable declaration (struct type): name StructName [ref] [= ...]
-   bool cond = token->type == ID && tokens[exe_pos]->type == ID;
+   Node *st_dec = NULL;
+   bool  cond   = token->type == ID && tokens[exe_pos]->type == ID;
    if (cond && (st_dec = get_struct(tokens[exe_pos]->name)))
    {
       find(ID, 0); // skip struct data type
@@ -212,7 +210,7 @@ static Node *parse_var_dec(Token *token)
    // function call or main declaration
    if (token->type == ID && find(LPAR, 0))
    {
-      node = new_node(token);
+      Node *node = new_node(token);
       if (strcmp(token->name, "main") == 0)
       {
          // Function main:
@@ -245,7 +243,7 @@ static Node *parse_var_dec(Token *token)
          //    + left:
          //       + children: parameters
          node->token->type = FCALL;
-         Token *arg        = NULL;
+         Token *arg = NULL;
          node->left        = new_node(new_token(ARGS, node->token->space));
 
          while (!found_error && !(arg = find(RPAR, END, 0)))
@@ -417,7 +415,7 @@ static Node *parse_fdec(Token *token)
    //    + left:
    //       + children: arguments
    //    + children: code block
-   Node  *node = new_node(token);
+   Node  *node  = new_node(token);
    Token *fname = find(ID, 0);
    if (check(!fname, "expected identifier after fn declaration"))
       return syntax_error();
@@ -464,7 +462,7 @@ static Node *parse_fdec(Token *token)
             if (check(!st, "Unknown struct type '%s'", data_type->name)) break;
             data_type->Struct.ptr = st;
             curr = new_node(data_type);
-            data_type->is_ref = is_ref;
+            data_type->is_ref     = is_ref;
             setName(data_type, name->name);
          }
          else
@@ -566,10 +564,10 @@ static Node *parse_fdec(Token *token)
       else
       {
          Token *retToken = copy_token(next);
-         retToken->type  = RETURN;
+         retToken->type = RETURN;
          Node  *retNode  = new_node(retToken);
-         retNode->left   = expr_node();
-         child           = add_child(node, retNode);
+         retNode->left  = expr_node();
+         child          = add_child(node, retNode);
       }
       if (next->type == DOTS)
       {
@@ -608,7 +606,7 @@ static Node *parse_return(Token *token)
       {
          if (curr->token->retType == VOID)
          {
-            node->left              = copy_node(node);
+            node->left = copy_node(node);
             node->left->token->type = VOID;
          }
          else if (curr->token->retType == TUPLE)
@@ -644,7 +642,7 @@ Node *prime_node()
       // while layout:
       //    + left    : condition
       //    + children: code bloc
-      node = new_node(token);
+      node       = new_node(token);
       enter_scope(node);
       node->left = expr_node();
       expect_token(DOTS, "expected : after if condition");

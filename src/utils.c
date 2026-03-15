@@ -626,8 +626,8 @@ bool compatible(Token *left, Token *right)
    if (lt == ARRAY_TYPE && rt == ARRAY) return true;
    if (lt == ARRAY      && rt == ARRAY_TYPE) return true;
 
-   bool lt_numeric = includes(lt, INT, LONG, SHORT, BOOL, CHAR, 0);
-   bool rt_numeric = includes(rt, INT, LONG, SHORT, BOOL, CHAR, 0);
+   bool lt_numeric = includes(lt, NUMERIC_TYPES, 0);
+   bool rt_numeric = includes(rt, NUMERIC_TYPES, 0);
    if (lt_numeric && rt_numeric) return true;
 
    if (lt == VOID || rt == VOID) return false;
@@ -647,36 +647,31 @@ Type get_ret_type(Node *node)
 
    if (token->retType) return token->retType;
 
-   switch (token->type)
-   {
-   case INT: case BOOL: case CHAR: case FLOAT: case LONG: case VOID: case PTR:
+   // Scalar types and struct return themselves
+   if (includes(token->type, INT, BOOL, CHAR, FLOAT, LONG, VOID, PTR, CHARS, STRUCT_CALL, 0))
       return token->type;
-   case FCALL: return token->Fcall.ptr ? token->Fcall.ptr->token->retType : 0;
-   case CHARS:  case STRUCT_CALL: return token->type;
-   case ASSIGN: case ADD_ASSIGN: case SUB_ASSIGN:
-   case MUL_ASSIGN: case DIV_ASSIGN: case MOD_ASSIGN:
-   case ADD: case SUB: case MUL: case DIV: case MOD:
-   case BAND: case BOR: case BXOR: case LSHIFT: case RSHIFT:
+   if (token->type == FCALL)
+      return token->Fcall.ptr ? token->Fcall.ptr->token->retType : 0;
+   // Arithmetic, bitwise, and assign ops inherit the left operand type
+   if (includes(token->type, MATH_TYPE, ASSIGN, ASSIGNS_OP, 0))
       return get_ret_type(left);
-   case EQUAL: case NOT_EQUAL: case LESS: case GREAT: case LESS_EQUAL:
-   case GREAT_EQUAL: case AND: case OR: case NOT: case BNOT:
+   // Comparison and logical ops always yield bool
+   if (includes(token->type, COMPARISON_OPS, AND, OR, NOT, BNOT, 0))
       return BOOL;
-   case AS:
+   if (token->type == AS)
       return right ? (right->token->retType ?
                       right->token->retType : right->token->type) : 0;
-   case RETURN: return get_ret_type(left);
-   case DOT: return get_ret_type(right);
-   case ACCESS:
+   if (token->type == RETURN) return get_ret_type(left);
+   if (token->type == DOT)    return get_ret_type(right);
+   if (token->type == ACCESS)
    {
       Type left_type = get_ret_type(left);
       if (left_type == CHARS || left_type == STACK) return CHAR;
       return left_type;
    }
-   case ID: return token->type != ID ? token->type : 0;
-   default:
-      todo(1, "handled this case [%s]", to_string(token->type));
-      return 0;
-   }
+   if (token->type == ID) return token->type != ID ? token->type : 0;
+   todo(1, "handled this case [%s]", to_string(token->type));
+   return 0;
 }
 
 void set_ret_type(Node *node)

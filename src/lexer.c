@@ -19,13 +19,13 @@ static int parse_escape_seq(char *input, int s, int e, char *buf, int *j)
 {
    switch (input[s + 1])
    {
-   case 'n': buf[(*j)++] = '\n'; return s + 1;  // newline
-   case 't': buf[(*j)++] = '\t'; return s + 1;  // tab
-   case 'r': buf[(*j)++] = '\r'; return s + 1;  // carriage return
-   case 'b': buf[(*j)++] = '\b'; return s + 1;  // backspace
-   case 'f': buf[(*j)++] = '\f'; return s + 1;  // form feed
-   case 'v': buf[(*j)++] = '\v'; return s + 1;  // vertical tab
-   case 'a': buf[(*j)++] = '\a'; return s + 1;  // alert (bell)
+   case 'n': buf[(*j)++]  = '\n'; return s + 1; // newline
+   case 't': buf[(*j)++]  = '\t'; return s + 1; // tab
+   case 'r': buf[(*j)++]  = '\r'; return s + 1; // carriage return
+   case 'b': buf[(*j)++]  = '\b'; return s + 1; // backspace
+   case 'f': buf[(*j)++]  = '\f'; return s + 1; // form feed
+   case 'v': buf[(*j)++]  = '\v'; return s + 1; // vertical tab
+   case 'a': buf[(*j)++]  = '\a'; return s + 1; // alert (bell)
    case '\\': buf[(*j)++] = '\\'; return s + 1; // backslash
    case '"':  buf[(*j)++] = '"';  return s + 1; // double quote
    case '\'': buf[(*j)++] = '\''; return s + 1; // single quote
@@ -117,6 +117,15 @@ Token *parse_token(char *filename, int line, char *input, int s, int e, Type typ
    case INT:
    {
       while (s < e) new->Int.value = new->Int.value * 10 + input[s++] - '0';
+      break;
+   }
+   case FLOAT:
+   {
+      char buf[64] = {0};
+      int  len     = e - s;
+      if (len > 63) len = 63;
+      strncpy(buf, input + s, len);
+      new->Float.value = (float)atof(buf);
       break;
    }
    case ID:
@@ -302,12 +311,13 @@ static void handle_use_import(char *filename, char *input, int *i, int line)
    else
       use_filename = strjoin(dirname(filename), "/", use);
 
+   bool old;
    free(use);
-   use              = strjoin(use_filename, ".ura", NULL);
-   bool old         = s_calling_use;
-   s_calling_use    = true;
+   use           = strjoin(use_filename, ".ura", NULL);
+   old           = s_calling_use;
+   s_calling_use = true;
    tokenize(use);
-   s_calling_use    = old;
+   s_calling_use = old;
    free(use_filename);
 }
 
@@ -410,7 +420,16 @@ void tokenize(char *filename)
       if (isdigit(c))
       {
          while (isdigit(input[i])) i++;
-         parse_token(filename, line, input, s, i, INT, space);
+         if (input[i] == '.' && isdigit(input[i + 1]))
+         {
+            i++; // consume '.'
+            while (isdigit(input[i])) i++;
+            parse_token(filename, line, input, s, i, FLOAT, space);
+         }
+         else
+         {
+            parse_token(filename, line, input, s, i, INT, space);
+         }
          continue;
       }
       bool found = false;

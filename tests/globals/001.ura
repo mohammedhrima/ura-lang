@@ -1,11 +1,11 @@
-// globals/001.ura
+// globals/001.ura - global score modified by fn
 
-count int
+score int
 
-fn increment() void:
-    count += 1
+fn kill_enemy() void:
+    score += 100
 
 main():
-    increment()
-    increment()
-    output(count, "\n")
+    kill_enemy()
+    kill_enemy()
+    output(score, "\n")

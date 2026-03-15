@@ -1,0 +1,11 @@
+{
+  "iconDefinitions": {
+    "ura-file": {
+      "iconPath": "./icon.svg"
+    }
+  },
+  "fileExtensions": {
+    "ura": "ura-file"
+  },
+  "extends": "material-icon-theme"
+}

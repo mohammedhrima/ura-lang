@@ -1,27 +1,28 @@
-// globals/003.ura
+// globals/003.ura - global struct: kill counter with init/clean
+
 use "@/header"
 
-struct Counter:
+struct KillCounter:
     value int
     label chars
 
     fn init() void:
         self.value = 0
-        self.label = strdup("counter")
+        self.label = strdup("kills")
 
     fn tick() void:
         self.value += 1
 
     fn print() void:
-        output(self.label,":",self.value, "\n")
+        output(self.label, ": ", self.value, "\n")
 
     fn clean() void:
         free(self.label)
 
-c Counter
+counter KillCounter
 
 main():
-    c.tick()
-    c.tick()
-    c.tick()
-    c.print()
+    counter.tick()
+    counter.tick()
+    counter.tick()
+    counter.print()

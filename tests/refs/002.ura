@@ -1,0 +1,9 @@
+// refs/002.ura - aliasing: two refs to same hp, both see mutations
+
+main():
+    hp int = 100
+    a  int ref = hp
+    b  int ref = hp
+    a = 80
+    b = b - 10
+    output("<", hp, ">\n")

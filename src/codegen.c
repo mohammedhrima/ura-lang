@@ -98,7 +98,7 @@ void load_if_necessary(Node *node)
    if (token->name || includes(token->type, ACCESS, DOT, 0))
    {
       Token *new = copy_token(token);
-      new->llvm.elem      = _load2(token);
+      new->llvm.elem      = load_value(token);
       new->llvm.is_loaded = true;
       node->token         = new;
    }
@@ -174,35 +174,36 @@ Value _get_default_value(Token *token)
    if (token->is_ref)
       return LLVMConstNull(_pointer_type(type, 0));
 
-   switch (token->type)
-   {
-   case INT: case LONG: case SHORT: case CHAR: case BOOL:
+   if (includes(token->type, NUMERIC_TYPES, 0))
       return LLVMConstInt(type, 0, false);
-   case FLOAT:
+   if (token->type == FLOAT)
       return LLVMConstReal(type, 0.0);
-   case CHARS:
-   case ARRAY_TYPE:
+   if (includes(token->type, CHARS, ARRAY_TYPE, 0))
       return LLVMConstNull(type);
-   default:
-      check(1, "handle this case %s", to_string(token->type));
-      return NULL;
-   }
+   check(1, "handle this case %s", to_string(token->type));
+   return NULL;
 }
 
 void _const_value(Token *token)
 {
-   TypeRef   type      = get_llvm_type(token);
-   long long value     = 0;
-   char     *processed = NULL;
-   char      name[200];
+   TypeRef   type  = get_llvm_type(token);
+   long long value = 0;
 
    switch (token->type)
    {
    case INT:  value = (long long)token->Int.value; break;
    case BOOL: value = (long long)token->Bool.value; break;
    case CHAR: value = (int)token->Char.value; break;
+   case FLOAT:
+   {
+      token->llvm.elem      = LLVMConstReal(type, (double)token->Float.value);
+      token->llvm.is_loaded = true;
+      return;
+   }
    case CHARS:
    {
+      char       name[200];
+      char      *processed;
       static int index = 0;
       snprintf(name, sizeof(name), "STR%d", index++);
       processed = allocate(strlen(token->Chars.value) * 2 + 1, 1);
@@ -228,15 +229,13 @@ void _const_value(Token *token)
             processed[j++] = token->Chars.value[i];
          }
       }
-      break;
+      token->llvm.elem = _const_chars(processed, name);
+      free(processed);
+      return;
    }
    default: check(1, "handle this case %s", to_string(token->type)); return;
    }
-   if (token->type == CHARS)
-      token->llvm.elem = _const_chars(processed, name);
-   else
-      token->llvm.elem = _const_int(type, value, 0);
-   free(processed);
+   token->llvm.elem = _const_int(type, value, 0);
 }
 
 Value _build_return(Token *token)
@@ -419,6 +418,9 @@ void append_output_arg(Token *tok, char *fmt, int *fpos, Value *args, int *nargs
    case INT: case LONG: case SHORT: case CHAR: case CHARS:
    case BOOL: case FLOAT: case STRUCT_CALL:
       break;
+   case FCALL:
+      type = tok->retType;
+      break;
    default:
       if (tok->retType) type = tok->retType;
       break;
@@ -428,36 +430,33 @@ void append_output_arg(Token *tok, char *fmt, int *fpos, Value *args, int *nargs
    {
    case INT: case SHORT:
       fmt[(*fpos)++]   = '%'; fmt[(*fpos)++] = 'd';
-      args[(*nargs)++] = _build_load2(get_llvm_type(tok), tok->llvm.elem, tok->name ? tok->name : "");
+      args[(*nargs)++] = load_value(tok);
       break;
    case BOOL:
    {
-      Value bool_val  = _build_load2(i1, tok->llvm.elem, tok->name ? tok->name : "");
+      Value bool_val  = load_value(tok);
       Value true_str  = _const_chars("True",  "true_str");
       Value false_str = _const_chars("False", "false_str");
-      fmt[(*fpos)++]  = '%'; fmt[(*fpos)++] = 's';
+      fmt[(*fpos)++]   = '%'; fmt[(*fpos)++] = 's';
       args[(*nargs)++] = LLVMBuildSelect(builder, bool_val, true_str, false_str, "bool_str");
       break;
    }
    case LONG:
       fmt[(*fpos)++]   = '%'; fmt[(*fpos)++] = 'l';
       fmt[(*fpos)++]   = 'l'; fmt[(*fpos)++] = 'd';
-      args[(*nargs)++] = _build_load2(get_llvm_type(tok), tok->llvm.elem, tok->name ? tok->name : "");
+      args[(*nargs)++] = load_value(tok);
       break;
    case CHAR:
       fmt[(*fpos)++]   = '%'; fmt[(*fpos)++] = 'c';
-      args[(*nargs)++] = _build_load2(get_llvm_type(tok), tok->llvm.elem, tok->name ? tok->name : "");
+      args[(*nargs)++] = load_value(tok);
       break;
    case CHARS:
       fmt[(*fpos)++]   = '%'; fmt[(*fpos)++] = 's';
-      args[(*nargs)++] = _build_load2(get_llvm_type(tok), tok->llvm.elem, tok->name ? tok->name : "");
+      args[(*nargs)++] = load_value(tok);
       break;
    case FLOAT:
-      fmt[(*fpos)++] = '%'; fmt[(*fpos)++] = 'f';
-      {
-         Value v = _build_load2(get_llvm_type(tok), tok->llvm.elem, tok->name ? tok->name : "");
-         args[(*nargs)++] = LLVMBuildFPExt(builder, v, LLVMDoubleTypeInContext(context), "f2d");
-      }
+      fmt[(*fpos)++]   = '%'; fmt[(*fpos)++] = 'f';
+      args[(*nargs)++] = LLVMBuildFPExt(builder, load_value(tok), LLVMDoubleTypeInContext(context), "f2d");
       break;
    case STRUCT_CALL:
    {
@@ -533,7 +532,7 @@ void gen_asm(Node *node)
       break;
    }
    case INT: case LONG: case SHORT: case CHARS:
-   case CHAR: case BOOL: case ARRAY_TYPE:
+   case CHAR: case BOOL: case ARRAY_TYPE: case FLOAT:
    {
       if (node->token->is_dec)
       {
@@ -586,10 +585,7 @@ void gen_asm(Node *node)
 
       Value   val;
       if (right->token->is_ref)
-      {
-         Value ptr = _build_load2(_pointer_type(type, 0), right->token->llvm.elem, "ref_ptr");
-         val = _build_load2(type, ptr, "ref_val");
-      }
+         val = load_value(right->token);
       else
       {
          load_if_necessary(right);
@@ -598,7 +594,7 @@ void gen_asm(Node *node)
 
       if (left->token->is_ref)
       {
-         Value ptr = _build_load2(_pointer_type(type, 0), left->token->llvm.elem, "ref_ptr");
+         Value ptr = LLVMBuildLoad2(builder, _pointer_type(type, 0), left->token->llvm.elem, "ref_ptr");
          _build_store(val, ptr);
       }
       else
@@ -611,45 +607,23 @@ void gen_asm(Node *node)
       gen_asm(left);
       gen_asm(right);
 
-      TypeRef type = get_llvm_type(left->token);
-      Value   current_val;
-
-      if (left->token->is_ref)
-      {
-         // TODD: check it later
-         Value ptr = _build_load2(_pointer_type(type, 0), left->token->llvm.elem, "ref_ptr");
-         current_val = _build_load2(type, ptr, "current");
-      }
-      else
-         current_val = _build_load2(type, left->token->llvm.elem, "current");
+      TypeRef type        = get_llvm_type(left->token);
+      Value   current_val = load_value(left->token);
 
       Value right_val;
       if (right->token->is_ref)
-      {
-         Value ptr = _build_load2(_pointer_type(type, 0), right->token->llvm.elem, "ref_ptr");
-         right_val = _build_load2(type, ptr, "rval");
-      }
+         right_val = load_value(right->token);
       else
       {
          load_if_necessary(right);
          right_val = right->token->llvm.elem;
       }
 
-      // Perform operation
-      Value result;
-      switch (node->token->type)
-      {
-      case ADD_ASSIGN: result = _build_add(current_val, right_val, to_string(ADD)); break;
-      case SUB_ASSIGN: result = _build_sub(current_val, right_val, to_string(SUB)); break;
-      case MUL_ASSIGN: result = _build_mul(current_val, right_val, to_string(MUL)); break;
-      case DIV_ASSIGN: result = _build_sdiv(current_val, right_val, to_string(DIV)); break;
-      case MOD_ASSIGN: result = _build_srem(current_val, right_val, to_string(MOD)); break;
-      default: break;
-      }
+      Value result = build_binary_op(assign_base_op(node->token->type), current_val, right_val);
 
       if (left->token->is_ref)
       {
-         Value ptr = _build_load2(_pointer_type(type, 0), left->token->llvm.elem, "ref_ptr");
+         Value ptr = LLVMBuildLoad2(builder, _pointer_type(type, 0), left->token->llvm.elem, "ref_ptr");
          _build_store(result, ptr);
       }
       else
@@ -662,9 +636,7 @@ void gen_asm(Node *node)
       load_if_necessary(left);
       if (left->token->is_ref)
       {
-         TypeRef type = get_llvm_type(left->token);
-         Value   ptr  = _build_load2(_pointer_type(type, 0), left->token->llvm.elem, "ref_ptr");
-         left->token->llvm.elem      = _build_load2(type, ptr, "ref_val");
+         left->token->llvm.elem      = load_value(left->token);
          left->token->llvm.is_loaded = true;
       }
       node->token->llvm.elem = _build_not(left->token, to_string(node->token->type));
@@ -685,44 +657,11 @@ void gen_asm(Node *node)
       Value rref = right->token->llvm.elem;
 
       if (left->token->is_ref && !left->token->llvm.is_loaded)
-      {
-         TypeRef type = get_llvm_type(left->token);
-         Value   ptr  = _build_load2(_pointer_type(type, 0), left->token->llvm.elem, "ref_ptr");
-         lref = _build_load2(type, ptr, "ref_val");
-      }
+         lref = load_value(left->token);
       if (right->token->is_ref && !right->token->llvm.is_loaded)
-      {
-         TypeRef type = get_llvm_type(right->token);
-         Value   ptr  = _build_load2(_pointer_type(type, 0), right->token->llvm.elem, "ref_ptr");
-         rref = _build_load2(type, ptr, "ref_val");
-      }
+         rref = load_value(right->token);
 
-      Value elem = NULL;
-      char *op   = to_string(node->token->type);
-      switch (node->token->type)
-      {
-      case LESS:        elem = LLVMBuildICmp(builder, LLVMIntSLT, lref, rref, op); break;
-      case GREAT:       elem = LLVMBuildICmp(builder, LLVMIntSGT, lref, rref, op); break;
-      case EQUAL:       elem = LLVMBuildICmp(builder, LLVMIntEQ,  lref, rref, op); break;
-      case LESS_EQUAL:  elem = LLVMBuildICmp(builder, LLVMIntSLE, lref, rref, op); break;
-      case GREAT_EQUAL: elem = LLVMBuildICmp(builder, LLVMIntSGE, lref, rref, op); break;
-      case NOT_EQUAL:   elem = LLVMBuildICmp(builder, LLVMIntNE,  lref, rref, op); break;
-      case ADD:         elem = LLVMBuildAdd(builder,  lref, rref, op); break;
-      case SUB:         elem = LLVMBuildSub(builder,  lref, rref, op); break;
-      case MUL:         elem = LLVMBuildMul(builder,  lref, rref, op); break;
-      case DIV:         elem = LLVMBuildSDiv(builder, lref, rref, op); break;
-      case MOD:         elem = LLVMBuildSRem(builder, lref, rref, op); break;
-      case AND:         elem = LLVMBuildAnd(builder,  lref, rref, op); break;
-      case OR:          elem = LLVMBuildOr(builder,   lref, rref, op); break;
-      case BAND:        elem = LLVMBuildAnd(builder,  lref, rref, op); break;
-      case BOR:         elem = LLVMBuildOr(builder,   lref, rref, op); break;
-      case BXOR:        elem = LLVMBuildXor(builder,  lref, rref, op); break;
-      case LSHIFT:      elem = LLVMBuildShl(builder,  lref, rref, op); break;
-      case RSHIFT:      elem = LLVMBuildAShr(builder, lref, rref, op); break;
-      default:          todo(1, "handle this %s", op); break;
-      }
-
-      node->token->llvm.elem = elem;
+      node->token->llvm.elem = build_binary_op(node->token->type, lref, rref);
       node->token->retType   = left->token->retType ? left->token->retType : left->token->type;
       break;
    }
@@ -792,7 +731,7 @@ void gen_asm(Node *node)
             {
                // ref → ref: load the pointer out of the ref's slot and pass it
                TypeRef type = get_llvm_type(argNodes[i]->token);
-               args[i] = _build_load2(_pointer_type(type, 0), argNodes[i]->token->llvm.elem, "ref_arg");
+               args[i] = LLVMBuildLoad2(builder, _pointer_type(type, 0), argNodes[i]->token->llvm.elem, "ref_arg");
             }
             else if (param_is_ref && !arg_is_ref)
             {
@@ -802,9 +741,7 @@ void gen_asm(Node *node)
             else if (!param_is_ref && arg_is_ref)
             {
                // ref → non-ref param: double dereference to get the value
-               TypeRef type = get_llvm_type(argNodes[i]->token);
-               Value   ptr  = _build_load2(_pointer_type(type, 0), argNodes[i]->token->llvm.elem, "ref_ptr");
-               args[i] = _build_load2(type, ptr, "ref_val");
+               args[i] = load_value(argNodes[i]->token);
             }
             else
             {
@@ -977,7 +914,7 @@ void gen_asm(Node *node)
                   Node   *sd       = self_tok->Struct.ptr;
                   TypeRef st_type  = sd->token->llvm.stType;
                   TypeRef ptr_type = _pointer_type(st_type, 0);
-                  Value   self_ptr = _build_load2(ptr_type, self_tok->llvm.elem, "self");
+                  Value   self_ptr = LLVMBuildLoad2(builder, ptr_type, self_tok->llvm.elem, "self");
                   for (int i = 0; i < sd->cpos; i++)
                   {
                      Token *field = sd->children[i]->token;
@@ -1220,7 +1157,7 @@ void gen_asm(Node *node)
                   Node   *sd       = self_tok->Struct.ptr;
                   TypeRef st_type  = sd->token->llvm.stType;
                   TypeRef ptr_type = _pointer_type(st_type, 0);
-                  Value   self_ptr = _build_load2(ptr_type, self_tok->llvm.elem, "self");
+                  Value   self_ptr = LLVMBuildLoad2(builder, ptr_type, self_tok->llvm.elem, "self");
                   for (int i = 0; i < sd->cpos; i++)
                   {
                      Token *field = sd->children[i]->token;
@@ -1301,8 +1238,7 @@ void gen_asm(Node *node)
          if (fdec_returns_struct && !fdec_returns_ref)
          {
             // return by value: load the full struct
-            TypeRef st_type = ret_tok->Struct.ptr->token->llvm.stType;
-            Value   val     = _build_load2(st_type, ret_tok->llvm.elem, "ret_struct");
+            Value val = load_value(ret_tok);
             LLVMBuildRet(builder, val);
             break;
          }
@@ -1312,7 +1248,7 @@ void gen_asm(Node *node)
             // self is stored as alloca of ptr, so load the ptr
             TypeRef st_type  = get_llvm_type(ret_tok);
             TypeRef ptr_type = _pointer_type(st_type, 0);
-            Value   ptr      = _build_load2(ptr_type, ret_tok->llvm.elem, "ret_ptr");
+            Value   ptr      = LLVMBuildLoad2(builder, ptr_type, ret_tok->llvm.elem, "ret_ptr");
             LLVMBuildRet(builder, ptr);
             break;
          }
@@ -1469,11 +1405,11 @@ void gen_asm(Node *node)
       if (struct_tok->is_ref)
       {
          TypeRef struct_type = get_llvm_type(struct_tok);
-         Value   struct_ptr  = _build_load2(
-            _pointer_type(struct_type, 0),
-            struct_tok->llvm.elem,
-            struct_tok->name
-            );
+         Value   struct_ptr  = LLVMBuildLoad2(builder,
+                                              _pointer_type(struct_type, 0),
+                                              struct_tok->llvm.elem,
+                                              struct_tok->name
+                                              );
          Value indices[] =
          {
             _const_int(i32, 0, 0),
@@ -1514,7 +1450,7 @@ void gen_asm(Node *node)
       {
          todo(1, "stop");
          // If left is a ref, dereference it to get the actual array
-         leftValue = _load2(node->left->token);
+         leftValue = load_value(node->left->token);
       }
       else
       {
@@ -1526,7 +1462,7 @@ void gen_asm(Node *node)
              !node->left->token->llvm.is_loaded &&
              node->left->token->type != STACK)
          {
-            leftValue = _build_load2(p8, leftValue, "ptr_load");
+            leftValue = LLVMBuildLoad2(builder, p8, leftValue, "ptr_load");
          }
       }
 

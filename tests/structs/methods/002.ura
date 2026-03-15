@@ -1,0 +1,28 @@
+// structs/methods/002.ura - Inventory with heap buffer, add/print/clean methods
+
+use "@/header"
+
+struct Inventory:
+    last  chars
+    count int
+
+    fn init() void:
+        self.last  = heap[char](32)
+        self.count = 0
+
+    fn add(item chars) void:
+        strcpy(self.last, item)
+        self.count = self.count + 1
+
+    fn print() void:
+        output("Items: ", self.count, " | Last: ", self.last, "\n")
+
+    fn clean() void:
+        free(self.last)
+
+main():
+    inv Inventory
+    inv.add("Health Potion")
+    inv.add("Iron Sword")
+    inv.add("Gold Key")
+    inv.print()

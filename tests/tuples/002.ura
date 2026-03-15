@@ -1,0 +1,10 @@
+// tuples/002.ura - mixed-type tuple: loot drop returns item name and gold value
+
+fn roll_loot(floor int) (chars, int):
+    item  chars = "Iron Sword"
+    value int   = floor * 15
+    return item, value
+
+main():
+    item chars, gold int = roll_loot(3)
+    output("Loot: ", item, " worth ", gold, " gold\n")

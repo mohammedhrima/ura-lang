@@ -1,0 +1,12 @@
+// functions/params/ref/003.ura - refs used in expression, return result
+
+fn add_xp(a int ref, b int ref) int:
+    result int = a + b
+    return result
+
+main():
+    kill_xp  int = 30
+    bonus_xp int = 20
+    z        int
+    z = add_xp(kill_xp, bonus_xp)
+    output("<", z, ">\n")
