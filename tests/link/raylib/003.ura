@@ -1,0 +1,12 @@
+// link/raylib/003.ura - draw a simple rectangle
+
+use "@/raylib"
+
+main():
+    InitWindow(800, 600, "Ura Raylib")
+    while True:
+        BeginDrawing()
+        ClearBackground(setColor(30, 30, 150, 255))
+        DrawRectangle(350, 250, 100, 100, setColor(255, 220, 0, 255))
+        EndDrawing()
+    CloseWindow()

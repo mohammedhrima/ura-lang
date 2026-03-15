@@ -1,0 +1,35 @@
+// variables/005.ura - confirm stack[[[int]]](x,y,z) 3D allocation + indexing
+
+main():
+    cube array[[[int]]] = stack[[[int]]](2, 3, 4)
+
+    x int = 0
+    while x < 2:
+        y int = 0
+        while y < 3:
+            z int = 0
+            while z < 4:
+                cube[x][y][z] = x * 12 + y * 4 + z
+                z = z + 1
+            y = y + 1
+        x = x + 1
+
+    x = 0
+    while x < 2:
+        y int = 0
+        while y < 3:
+            z int = 0
+            while z < 4:
+                output(cube[x][y][z], " ")
+                z = z + 1
+            output("\n")
+            y = y + 1
+        x = x + 1
+
+    // expected:
+    // 0 1 2 3
+    // 4 5 6 7
+    // 8 9 10 11
+    // 12 13 14 15
+    // 16 17 18 19
+    // 20 21 22 23

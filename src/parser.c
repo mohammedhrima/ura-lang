@@ -348,6 +348,58 @@ static Node *parse_struct_def(Token *token)
    return node;
 }
 
+// [ENUM_DEF] Name
+// ├──[INT] VariantA  (value=0, is_global)
+// ├──[INT] VariantB  (value=1, is_global)
+// └──...
+static Node *parse_enum_def(Token *token)
+{
+   Token *ename;
+   if (check(!(ename = find(ID, 0)), "expected identifier after enum"))
+      return NULL;
+   if (check(!find(DOTS, 0), "expected ':' after enum name"))
+      return NULL;
+
+   setName(token, ename->name);
+   token->type = ENUM_DEF;
+   Node *node  = new_node(token);
+
+   int counter = 0;
+   while (within(token->space))
+   {
+      Token *var_tok = find(ID, 0);
+      if (!var_tok) break;
+      // Create a synthetic global INT constant for this variant
+      Token *var = allocate(1, sizeof(Token));
+      var->type      = INT;
+      var->name      = strdup(var_tok->name);
+      var->is_global = true;
+      var->is_dec    = true;
+      var->Int.value = counter++;
+      var->line      = var_tok->line;
+      var->filename  = var_tok->filename;
+      new_variable(var);
+      add_child(node, new_node(var));
+      // Consume any commas and additional variants on the same line
+      while (find(COMA, 0))
+      {
+         var_tok = find(ID, 0);
+         if (!var_tok) break;
+         var = allocate(1, sizeof(Token));
+         var->type      = INT;
+         var->name      = strdup(var_tok->name);
+         var->is_global = true;
+         var->is_dec    = true;
+         var->Int.value = counter++;
+         var->line      = var_tok->line;
+         var->filename  = var_tok->filename;
+         new_variable(var);
+         add_child(node, new_node(var));
+      }
+   }
+   return node;
+}
+
 // [IF]
 // ├──left:     condition
 // ├──children: body stmts
@@ -635,6 +687,7 @@ Node *prime_node()
 
    if ((token = find(ID, DATA_TYPES, 0))) return parse_var_dec(token);
    if ((token = find(STRUCT_DEF, 0)))     return parse_struct_def(token);
+   if ((token = find(ENUM_DEF, 0)))       return parse_enum_def(token);
    if ((token = find(IF, 0)))             return parse_if(token);
 
    if ((token = find(WHILE, 0)))
@@ -673,7 +726,12 @@ Node *prime_node()
       node->token->Array.elem_type = elem_type->type;
       node->token->Array.depth     = depth;
 
-      node->left = expr_node();
+      for (int i = 0; i < depth; i++)
+      {
+         add_child(node, expr_node());
+         if (i < depth - 1)
+            expect_token(COMA, "expected , between dimensions");
+      }
       expect_token(RPAR, "expected ) after stack size");
       return node;
    }

@@ -1,0 +1,25 @@
+// variables/004.ura - confirm stack[[int]](rows, cols) 2D allocation + indexing
+
+main():
+    board array[[int]] = stack[[int]](4, 3)
+    r int = 0
+    while r < 4:
+        c int = 0
+        while c < 3:
+            board[r][c] = r * 3 + c
+            c = c + 1
+        r = r + 1
+
+    r = 0
+    while r < 4:
+        c int = 0
+        while c < 3:
+            output(board[r][c], " ")
+            c = c + 1
+        output("\n")
+        r = r + 1
+    // expected:
+    // 0 1 2
+    // 3 4 5
+    // 6 7 8
+    // 9 10 11
