@@ -1,13 +1,12 @@
 // vars/ref/003.ura
-use "@/io"
 
 main():
     base int = 100
     ref1 int ref = base
     ref2 int ref = base
-    
+
     ref1 += 20      // base becomes 120
     ref2 -= 10      // base becomes 110
-    
+
     result int = ref1 + ref2  // 110 + 110 = 220
-    printf("<%d>\n", result)
+    output("<", result, ">\n")

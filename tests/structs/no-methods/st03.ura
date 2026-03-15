@@ -11,4 +11,4 @@ main():
     user User
     user.id = 1
     foo(user)
-    printf("<%d>\n",  user.id)
+    output("<", user.id, ">\n")

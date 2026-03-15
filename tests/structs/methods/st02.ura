@@ -6,7 +6,7 @@ struct User:
     age int
 
     fn greed() void:
-        printf("hello from %s\n", self.name)
+        output("hello from ", self.name, "\n")
 
 main():
     user User

@@ -1,11 +1,8 @@
 // libft/isalpha
-use "@/io"
-
 fn isalpha(c char) bool: return c >= 'a' and c <= 'z'
 
 main():
     if isalpha('1'):
-        printf("is alpha\n")
+        output("is alpha\n")
     else:
-        printf("is not alpha\n")
-
+        output("is not alpha\n")

@@ -1,10 +1,10 @@
-// builtins/c-funcs/001.ura
-use "@/header"
+// tuples/001.ura - basic tuple return and unpack
+use "@/io"
+
+fn swap(a int, b int) (int, int):
+    return b, a
 
 main():
-    a int = 10
-    if a == 10:
-        a int = 3
-        output(a, "\n")
-    output(a, "\n")
-    return 0
+    x int, y int = swap(3, 7)
+    printf("%d %d\n", x, y)
+

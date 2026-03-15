@@ -1,0 +1,6 @@
+// os/001.ura
+use "@/header"
+
+main():
+    output("argc: ", os.argc, "\n")
+    output("argv[0]: ", os.argv[0], "\n")

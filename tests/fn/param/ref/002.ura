@@ -1,5 +1,4 @@
 // fn/param/ref/002.ura
-use "@/io"
 
 fn swap(a int ref, b int ref) void:
     tmp int = a
@@ -10,4 +9,4 @@ main():
     x int = 10
     y int = 20
     swap(x, y)
-    printf("<%d> <%d>\n", x, y)  // <20> <10>
+    output("<", x, "> <", y, ">\n")  // <20> <10>

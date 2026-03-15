@@ -150,6 +150,8 @@ enum Type
    CHARS, PTR, VARIADIC, REF, ARRAY, ARRAY_TYPE,
    // Structures
    STRUCT_DEF, STRUCT_CALL,
+   // Tuples
+   TUPLE, TUPLE_UNPACK,
    // Assignment
    ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN,
    DIV_ASSIGN, MOD_ASSIGN,
@@ -226,6 +228,7 @@ struct Token
    bool is_cond;
    bool is_ref;
    bool is_dec;
+   bool is_global;
    bool is_param;
    bool is_cast;
    bool is_variadic;
@@ -253,6 +256,7 @@ struct Token
       struct { char value;} Char;
       struct { int index; Node *ptr; } Struct;
       struct { Type elem_type; int depth; } Array;
+      struct { Token *types[8]; int count; } Tuple;
       struct { Node *ptr; } Fcall;
       struct { Token *ptr; Token *start; Token *end; } Statement;
       struct { Type type; char *name; } Catch;

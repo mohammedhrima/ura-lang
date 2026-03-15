@@ -1,10 +1,9 @@
 // vars/ref/006.ura
-use "@/io"
 
 main():
     a int = 10
     r int ref = a
     r += 5
-    printf("<%d>\n", a)   // <15>
+    output("<", a, ">\n")   // <15>
     r *= 2
-    printf("<%d>\n", a)   // <30>
+    output("<", a, ">\n")   // <30>

@@ -1,0 +1,5 @@
+struct Os:
+    argc int
+    argv array[chars]
+
+os Os

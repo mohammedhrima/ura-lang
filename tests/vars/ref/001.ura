@@ -1,8 +1,7 @@
 // vars/ref/001.ura
-use "@/io"
 
 main():
     a int = 10
     b int ref = a
     b = 20
-    printf("<%d>\n", a)
+    output("<", a, ">\n")

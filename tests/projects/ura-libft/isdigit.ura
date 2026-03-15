@@ -1,10 +1,8 @@
 // libft/isdigit
-use "@/io"
-
 fn isdigit(c char) bool: return c >= '1' and c <= '9'
 
 main():
     if isdigit('1'):
-        printf("is alnum\n")
+        output("is alnum\n")
     else:
-        printf("is not alnum\n")
+        output("is not alnum\n")
