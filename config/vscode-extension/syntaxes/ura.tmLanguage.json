@@ -46,6 +46,15 @@
             "1": { "name": "keyword.library.ura" },
             "2": { "name": "string.quoted.double.import.ura" }
           }
+        },
+        {
+          "comment": "link \"@/module\" or link \"./module\" — highlight path distinctly",
+          "name": "meta.import.ura",
+          "match": "\\b(link)\\s+(\"[^\"]+\")",
+          "captures": {
+            "1": { "name": "keyword.library.ura" },
+            "2": { "name": "string.quoted.double.import.ura" }
+          }
         }
       ]
     },
@@ -136,7 +145,7 @@
       "patterns": [
         {
           "name": "keyword.library.ura",
-          "match": "\\b(use|proto)\\b"
+          "match": "\\b(use|proto|link)\\b"
         }
       ]
     },

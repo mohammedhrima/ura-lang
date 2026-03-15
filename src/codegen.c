@@ -139,11 +139,22 @@ TypeRef get_llvm_type(Token *token)
    if (type == TUPLE)
       return token->llvm.stType;
    if (type == STRUCT_CALL)
+   {
+      if (check(!token->Struct.ptr, "STRUCT_CALL: Struct.ptr is NULL for token '%s' type=%d retType=%d",
+                token->name ? token->name : "(null)", token->type, token->retType))
+         return LLVMVoidTypeInContext(context);
       return get_llvm_type(token->Struct.ptr->token);
+   }
    if (includes(type, ARRAY, ARRAY_TYPE, 0))
    {
-      Token   tmp  = {.type = token->Array.elem_type};
-      TypeRef base = get_llvm_type(&tmp);
+      TypeRef base;
+      if (token->Array.elem_type == STRUCT_CALL && token->Array.struct_ptr)
+         base = get_llvm_type(token->Array.struct_ptr->token);
+      else
+      {
+         Token tmp = {.type = token->Array.elem_type};
+         base = get_llvm_type(&tmp);
+      }
       return _pointer_type(base, 0);   // flat allocation: always single ptr to base
    }
    // if (type == FCALL)
@@ -529,6 +540,11 @@ void gen_asm(Node *node)
       }
       break;
    }
+   case NULL_LIT:
+   {
+      node->token->llvm.elem = LLVMConstNull(p8);
+      break;
+   }
    case INT: case LONG: case SHORT: case CHARS:
    case CHAR: case BOOL: case ARRAY_TYPE: case FLOAT:
    {
@@ -789,15 +805,30 @@ void gen_asm(Node *node)
 
          if (is_variadic)
          {
-            int variadic_count = count - fixed_params;
-            args[fixed_params] = _const_int(i32, variadic_count, 0);
-            for (int i = fixed_params; i < count; i++)
+            bool is_proto_call  = node->token->Fcall.ptr->token->is_proto;
+            int  variadic_count = count - fixed_params;
+            if (!is_proto_call)
             {
-               gen_asm(argNodes[i]);
-               load_if_necessary(argNodes[i]);
-               args[i + 1] = argNodes[i]->token->llvm.elem;
+               // Ura-style: insert count before variadic args
+               args[fixed_params] = _const_int(i32, variadic_count, 0);
+               for (int i = fixed_params; i < count; i++)
+               {
+                  gen_asm(argNodes[i]);
+                  load_if_necessary(argNodes[i]);
+                  args[i + 1] = argNodes[i]->token->llvm.elem;
+               }
+               count++;
             }
-            count++;
+            else
+            {
+               // C-style: pass variadic args directly, no count
+               for (int i = fixed_params; i < count; i++)
+               {
+                  gen_asm(argNodes[i]);
+                  load_if_necessary(argNodes[i]);
+                  args[i] = argNodes[i]->token->llvm.elem;
+               }
+            }
          }
       }
 
@@ -855,7 +886,8 @@ void gen_asm(Node *node)
       int      fixed_count = param_count;
       int      _count      = param_count;
 
-      if (node->token->is_variadic)
+      // Proto variadic functions (C interop) don't use the Ura count slot
+      if (node->token->is_variadic && !node->token->is_proto)
          _count = fixed_count + 1;
 
       if (param_count)
@@ -871,7 +903,7 @@ void gen_asm(Node *node)
             else paramTypes[i] = get_llvm_type(param);
          }
 
-         if (node->token->is_variadic)
+         if (node->token->is_variadic && !node->token->is_proto)
             paramTypes[fixed_count] = i32;
       }
 
@@ -1547,13 +1579,20 @@ void gen_asm(Node *node)
             stride = _build_mul(stride, node->left->token->llvm.dim_sizes[d], "stride");
          Value flat_idx = _build_mul(rightRef, stride, "flat_idx");
 
-         Token   tmp      = {.type = node->left->token->Array.elem_type};
-         TypeRef base_t   = get_llvm_type(&tmp);
+         TypeRef base_t;
+         if (node->left->token->Array.elem_type == STRUCT_CALL && node->left->token->Array.struct_ptr)
+            base_t = get_llvm_type(node->left->token->Array.struct_ptr->token);
+         else
+         {
+            Token tmp = {.type = node->left->token->Array.elem_type};
+            base_t = get_llvm_type(&tmp);
+         }
          Value   indices[] = {flat_idx};
          node->token->llvm.elem      = _build_gep2(base_t, leftValue, indices, 1, "row");
          node->token->llvm.is_loaded = true;
          node->token->retType        = ARRAY;
-         node->token->Array.elem_type = node->left->token->Array.elem_type;
+         node->token->Array.elem_type  = node->left->token->Array.elem_type;
+         node->token->Array.struct_ptr = node->left->token->Array.struct_ptr;
          node->token->Array.depth    = left_depth - 1;
          node->token->llvm.dim_count = left_depth - 1;
          for (int d = 1; d < left_depth; d++)
@@ -1572,16 +1611,34 @@ void gen_asm(Node *node)
       }
       else if (left_elem_type == ARRAY_TYPE || left_elem_type == ARRAY)
       {
-         Token tmp = {.type = node->left->token->Array.elem_type};
-         element_type         = get_llvm_type(&tmp);
-         node->token->retType = node->left->token->Array.elem_type;
+         Type et = node->left->token->Array.elem_type;
+         if (et == STRUCT_CALL && node->left->token->Array.struct_ptr)
+         {
+            element_type = get_llvm_type(node->left->token->Array.struct_ptr->token);
+            node->token->Struct.ptr = node->left->token->Array.struct_ptr;
+         }
+         else
+         {
+            Token tmp = {.type = et};
+            element_type = get_llvm_type(&tmp);
+         }
+         node->token->retType = et;
       }
       else if (node->left->token->type == HEAP || node->left->token->type == ARRAY)
       {
          check(1, "hello");
-         Token tmp = {.type = node->left->token->Array.elem_type};
-         element_type         = get_llvm_type(&tmp);
-         node->token->retType = node->left->token->Array.elem_type;
+         Type et = node->left->token->Array.elem_type;
+         if (et == STRUCT_CALL && node->left->token->Array.struct_ptr)
+         {
+            element_type = get_llvm_type(node->left->token->Array.struct_ptr->token);
+            node->token->Struct.ptr = node->left->token->Array.struct_ptr;
+         }
+         else
+         {
+            Token tmp = {.type = et};
+            element_type = get_llvm_type(&tmp);
+         }
+         node->token->retType = et;
       }
       else
       {

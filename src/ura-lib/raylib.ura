@@ -29,6 +29,9 @@ proto fn DrawText(text chars, x int, y int, size int, color Color) void
 proto fn MeasureText(text chars, size int) int
 proto fn IsKeyPressed(key int) bool
 proto fn ColorBrightness(color Color, factor float) Color
+proto fn TextFormat(fmt chars, ...) chars
+proto fn SetRandomSeed(seed int) void
+proto fn GetRandomValue(min int, max int) int
 
 KEY_LEFT  int = 263
 KEY_RIGHT int = 262
