@@ -54,35 +54,35 @@ while.start:                                      ; preds = %while.then, %if.end
   br i1 %AND18, label %while.then, label %while.end, !dbg !8
 
 while.then:                                       ; preds = %while.start
-  %current = load i32, i32* %i, align 4, !dbg !8
-  %ADD = add i32 %current, 1, !dbg !8
+  %i19 = load i32, i32* %i, align 4, !dbg !8
+  %ADD = add i32 %i19, 1, !dbg !8
   store i32 %ADD, i32* %i, align 4, !dbg !8
   br label %while.start, !dbg !8
 
 while.end:                                        ; preds = %while.start
-  br label %if.start19, !dbg !8
+  br label %if.start20, !dbg !8
 
-if.start19:                                       ; preds = %while.end
-  %i22 = load i32, i32* %i, align 4, !dbg !8
-  %n23 = load i32, i32* %n3, align 4, !dbg !8
-  %EQ24 = icmp eq i32 %i22, %n23, !dbg !8
-  br i1 %EQ24, label %if.then21, label %if.end20, !dbg !8
+if.start20:                                       ; preds = %while.end
+  %i23 = load i32, i32* %i, align 4, !dbg !8
+  %n24 = load i32, i32* %n3, align 4, !dbg !8
+  %EQ25 = icmp eq i32 %i23, %n24, !dbg !8
+  br i1 %EQ25, label %if.then22, label %if.end21, !dbg !8
 
-if.end20:                                         ; preds = %if.start19
-  %left25 = load i8*, i8** %left1, align 8, !dbg !9
-  %i26 = load i32, i32* %i, align 4, !dbg !9
-  %ACCESS27 = getelementptr i8, i8* %left25, i32 %i26, !dbg !9
-  %ACC28 = load i8, i8* %ACCESS27, align 1, !dbg !9
-  %as = sext i8 %ACC28 to i32, !dbg !9
-  %right29 = load i8*, i8** %right2, align 8, !dbg !9
-  %i30 = load i32, i32* %i, align 4, !dbg !9
-  %ACCESS31 = getelementptr i8, i8* %right29, i32 %i30, !dbg !9
-  %ACC32 = load i8, i8* %ACCESS31, align 1, !dbg !9
-  %as33 = sext i8 %ACC32 to i32, !dbg !9
-  %SUB = sub i32 %as, %as33, !dbg !9
+if.end21:                                         ; preds = %if.start20
+  %left26 = load i8*, i8** %left1, align 8, !dbg !9
+  %i27 = load i32, i32* %i, align 4, !dbg !9
+  %ACCESS28 = getelementptr i8, i8* %left26, i32 %i27, !dbg !9
+  %ACC29 = load i8, i8* %ACCESS28, align 1, !dbg !9
+  %as = sext i8 %ACC29 to i32, !dbg !9
+  %right30 = load i8*, i8** %right2, align 8, !dbg !9
+  %i31 = load i32, i32* %i, align 4, !dbg !9
+  %ACCESS32 = getelementptr i8, i8* %right30, i32 %i31, !dbg !9
+  %ACC33 = load i8, i8* %ACCESS32, align 1, !dbg !9
+  %as34 = sext i8 %ACC33 to i32, !dbg !9
+  %SUB = sub i32 %as, %as34, !dbg !9
   ret i32 %SUB, !dbg !9
 
-if.then21:                                        ; preds = %if.start19
+if.then22:                                        ; preds = %if.start20
   ret i32 0, !dbg !8
 }
 

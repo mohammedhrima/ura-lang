@@ -1,0 +1,18 @@
+// casting/001.ura - char <-> int casting: hero grade code
+
+main():
+    // int to char
+    code  int  = 65
+    grade char = code as char
+    output("code ", code, " as char: ", grade, "\n")   // A
+
+    // char to int
+    c    char = 'S'
+    n    int  = c as int
+    output("'S' as int: ", n, "\n")   // 83
+
+    // used in expression: char difference
+    left  chars = "d"
+    right chars = "a"
+    diff  int   = left[0] as int - right[0] as int
+    output("'d' - 'a' = ", diff, "\n")   // 3

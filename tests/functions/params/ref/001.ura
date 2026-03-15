@@ -1,0 +1,9 @@
+// functions/params/ref/001.ura - single ref param: buff hero hp
+
+fn buff(hp int ref) void:
+    hp = hp + 20
+
+main():
+    hero_hp int = 80
+    buff(hero_hp)
+    output("<", hero_hp, ">\n")
