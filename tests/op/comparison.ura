@@ -1,5 +1,4 @@
 // op/comparison.ura
-use "@/io"
 
 fn foo() int:
     return 10
@@ -8,10 +7,7 @@ fn bar() int:
     return 20
 
 fn print_bool(label chars, val bool) void:
-    if val:
-        printf("%sTrue\n", label)
-    else:
-        printf("%sFalse\n", label)
+    output(label, val, "\n")
 
 main():
     a int = 10
@@ -71,4 +67,4 @@ main():
     // CHAINED comparisons via if
     if a < b:
         if a == foo():
-            printf("chain: a<b and a==foo: True\n")
+            output("chain: a<b and a==foo: True\n")

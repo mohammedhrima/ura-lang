@@ -2,7 +2,7 @@
 proto fn socket(domain int, type int, protocol int) int
 proto fn bind(fd int, addr pointer, addrlen int) int
 proto fn listen(fd int, backlog int) int
-proto fn accept(fd int, addr chars, addrlen int ref) int
+proto fn accept(fd int, addr chars, addrlen chars) int
 proto fn connect(fd int, addr pointer, addrlen int) int
 proto fn close(fd int) int
 proto fn shutdown(fd int, how int) int
