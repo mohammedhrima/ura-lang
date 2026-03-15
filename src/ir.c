@@ -415,12 +415,17 @@ void gen_ir(Node *node)
          if (depth > 1)
          {
             // still multi-dim: return sub-array type, depth-1
-            retType                      = ARRAY;
-            node->token->Array.elem_type = node->left->token->Array.elem_type;
-            node->token->Array.depth     = depth - 1;
+            retType                          = ARRAY;
+            node->token->Array.elem_type     = node->left->token->Array.elem_type;
+            node->token->Array.depth         = depth - 1;
+            node->token->Array.struct_ptr    = node->left->token->Array.struct_ptr;
          }
          else
+         {
             retType = node->left->token->Array.elem_type;
+            if (retType == STRUCT_CALL)
+               node->token->Struct.ptr = node->left->token->Array.struct_ptr;
+         }
          break;
       default:
          check(1, "handle this case %s", to_string(node->left->token->type));
