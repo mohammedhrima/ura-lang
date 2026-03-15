@@ -1,0 +1,39 @@
+link "@/raylib"
+
+struct Color:
+    r char
+    g char
+    b char
+    a char
+
+fn setColor(r int, g int, b int, a int) Color:
+    c Color
+    c.r = r as char
+    c.g = g as char
+    c.b = b as char
+    c.a = a as char
+    return c
+
+proto fn InitWindow(width int, height int, title chars) void
+proto fn CloseWindow() void
+proto fn WindowShouldClose() bool
+proto fn SetTargetFPS(fps int) void
+proto fn GetFrameTime() float
+proto fn BeginDrawing() void
+proto fn EndDrawing() void
+proto fn ClearBackground(color Color) void
+proto fn DrawRectangle(x int, y int, w int, h int, color Color) void
+proto fn DrawRectangleLines(x int, y int, w int, h int, color Color) void
+proto fn DrawLine(x1 int, y1 int, x2 int, y2 int, color Color) void
+proto fn DrawText(text chars, x int, y int, size int, color Color) void
+proto fn MeasureText(text chars, size int) int
+proto fn IsKeyPressed(key int) bool
+proto fn ColorBrightness(color Color, factor float) Color
+
+KEY_LEFT  int = 263
+KEY_RIGHT int = 262
+KEY_UP    int = 265
+KEY_DOWN  int = 264
+KEY_SPACE int = 32
+KEY_P     int = 80
+KEY_R     int = 82
