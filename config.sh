@@ -45,13 +45,17 @@ RESET="\033[0m"
 # =========================================================
 URA_COMPILER="$BUILD_DIR/ura"
 
+# SRC_FILES=(
+#     "$SRC_DIR/main.c"
+#     "$SRC_DIR/lexer.c"
+#     "$SRC_DIR/parser.c"
+#     "$SRC_DIR/ir.c"
+#     "$SRC_DIR/codegen.c"
+#     "$SRC_DIR/utils.c"
+# )
+
 SRC_FILES=(
-    "$SRC_DIR/main.c"
-    "$SRC_DIR/lexer.c"
-    "$SRC_DIR/parser.c"
-    "$SRC_DIR/ir.c"
-    "$SRC_DIR/codegen.c"
-    "$SRC_DIR/utils.c"
+    "$SRC_DIR/full.c"
 )
 
 SAN_FLAGS=(
@@ -630,7 +634,7 @@ indent() {
         echo -e "${RED}uncrustify not found.${RESET} Install it and re-run."
         return 1
     fi
-    uncrustify -c "$ROOT_DIR/config/uncrustify.cfg" --no-backup "$SRC_DIR"/*.c "$SRC_DIR"/*.h
+    uncrustify -c "$ROOT_DIR/config/uncrustify.cfg" --no-backup "$SRC_DIR"/**/*.c #"$SRC_DIR"/*/*.h
 }
 
 # =========================================================
