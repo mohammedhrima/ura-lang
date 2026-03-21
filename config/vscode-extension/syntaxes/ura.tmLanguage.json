@@ -136,7 +136,7 @@
       "patterns": [
         {
           "name": "keyword.declaration.ura",
-          "match": "\\b(struct|fn|as)\\b"
+          "match": "\\b(struct|fn|as|enum)\\b"
         }
       ]
     },
@@ -164,6 +164,14 @@
         {
           "name": "entity.name.type.struct.ura",
           "match": "(?<=\\bstruct\\s{1,64})([A-Z][a-zA-Z0-9_]*)(?=\\s*:)"
+        }
+      ]
+    },
+     "enum_definitions": {
+      "patterns": [
+        {
+          "name": "entity.name.type.enum.ura",
+          "match": "(?<=\\benum\\s{1,64})([A-Z][a-zA-Z0-9_]*)(?=\\s*:)"
         }
       ]
     },
