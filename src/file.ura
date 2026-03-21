@@ -1,19 +1,15 @@
-// link/raylib/004.ura - draw a moving rectangle
+// builtins/c-funcs/001.ura - printf: hero stats with format strings
 
-use "@/raylib"
+// use "@/header"
 
 main():
-    InitWindow(800, 600, "Moving Rectangle")
-    SetTargetFPS(60)
-    x int = 0
-    speed int = 3
-    while WindowShouldClose() == False:
-        x = x + speed
-        if x > 800:
-            x = 0
-        BeginDrawing()
-        ClearBackground(setColor(30, 30, 150, 255))
-        DrawRectangle(x, 250, 100, 100, setColor(255, 220, 0, 255))
-        DrawText("Moving!", 320, 20, 30, setColor(255, 255, 255, 255))
-        EndDrawing()
-    CloseWindow()
+    name  chars = "Aldr\nic"
+    hp    int   = 100
+    grade char  = 'S'
+    speed float = 1.75
+
+    // printf("Hero:  %s\n",  name)
+    // printf("HP:    %d\n",  hp)
+    // printf("Grade: %c\n",  grade)
+    // printf("Speed: %f\n",  speed)
+    // printf("%s — HP %d, Grade %c\n", name, hp, grade)
