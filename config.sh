@@ -141,13 +141,13 @@ check() {
         ((missing++))
     fi
 
-    # uncrustify (optional)
-    if command -v uncrustify &>/dev/null; then
-        local uv
-        uv=$(uncrustify --version 2>&1 | head -1)
-        echo -e "  ${GREEN}✓${RESET}  uncrustify         ${DIM}$uv${RESET}"
+    # clang-format (optional)
+    if command -v clang-format &>/dev/null; then
+        local cfv
+        cfv=$(clang-format --version 2>&1 | head -1)
+        echo -e "  ${GREEN}✓${RESET}  clang-format       ${DIM}$cfv${RESET}"
     else
-        echo -e "  ${YELLOW}–${RESET}  uncrustify         ${DIM}not found (optional, needed for indent)${RESET}"
+        echo -e "  ${YELLOW}–${RESET}  clang-format       ${DIM}not found (optional, needed for indent)${RESET}"
     fi
 
     echo ""
@@ -178,7 +178,7 @@ install() {
                 echo -e "  ${CYAN}/bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"${RESET}"
                 return 1
             fi
-            brew install llvm@14 uncrustify
+            brew install llvm@14 clang-format
 
             # llvm@14 is keg-only — add its bin to PATH now and persist it
             local llvm_prefix
@@ -208,7 +208,7 @@ install() {
             ;;
         linux)
             if command -v apt-get &>/dev/null; then
-                sudo apt-get update && sudo apt-get install -y llvm-14 clang-14 llvm-14-tools uncrustify
+                sudo apt-get update && sudo apt-get install -y llvm-14 clang-14 llvm-14-tools clang-format
                 # Point all unversioned commands to the -14 versions
                 for tool in clang clang++ llc llvm-config; do
                     local versioned="${tool}-14"
@@ -218,17 +218,17 @@ install() {
                     fi
                 done
             elif command -v pacman &>/dev/null; then
-                sudo pacman -S --noconfirm llvm clang uncrustify
+                sudo pacman -S --noconfirm llvm clang clang-format
             elif command -v dnf &>/dev/null; then
-                sudo dnf install -y llvm14 clang uncrustify
+                sudo dnf install -y llvm14 clang clang-format
             else
-                echo -e "${RED}Unknown package manager.${RESET} Install llvm-14, clang, and uncrustify manually."
+                echo -e "${RED}Unknown package manager.${RESET} Install llvm-14, clang, and clang-format manually."
                 return 1
             fi
             ;;
         windows)
             if command -v pacman &>/dev/null; then
-                pacman -S --noconfirm mingw-w64-x86_64-llvm mingw-w64-x86_64-clang mingw-w64-x86_64-uncrustify
+                pacman -S --noconfirm mingw-w64-x86_64-llvm mingw-w64-x86_64-clang mingw-w64-x86_64-clang-tools-extra
                 # MSYS2 installs llvm-config (unversioned) — create llvm-config-14 symlink
                 for tool in llvm-config llc clang; do
                     local versioned="${tool}-14"
@@ -246,7 +246,7 @@ install() {
             fi
             ;;
         *)
-            echo -e "${RED}Unknown OS.${RESET} Install llvm-14, clang, and uncrustify manually."
+            echo -e "${RED}Unknown OS.${RESET} Install llvm-14, clang, and clang-format manually."
             return 1
             ;;
     esac
@@ -630,12 +630,14 @@ EOF
 #  Formatting
 # =========================================================
 indent() {
-    echo -e "${YELLOW}Formatting with Uncrustify...${RESET}"
-    if ! command -v uncrustify &>/dev/null; then
-        echo -e "${RED}uncrustify not found.${RESET} Install it and re-run."
+    echo -e "${YELLOW}Formatting...${RESET}"
+    if ! command -v clang-format &>/dev/null; then
+        echo -e "${RED}clang-format not found.${RESET} Install it and re-run."
         return 1
     fi
-    uncrustify -c "$ROOT_DIR/config/uncrustify.cfg" --no-backup "$SRC_DIR"/**/*.c #"$SRC_DIR"/*/*.h
+    local files=("$SRC_DIR"/**/*.c "$SRC_DIR"/**/*.h)
+    clang-format -i "${files[@]}"
+    python3 "$ROOT_DIR/config/merge_cases.py" "${files[@]}"
 }
 
 # =========================================================
