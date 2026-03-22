@@ -1,15 +1,15 @@
 // builtins/c-funcs/001.ura - printf: hero stats with format strings
 
-// use "@/header"
+use "@/header"
 
 main():
-    name  chars = "Aldr\nic"
+    name  chars = "Aldric"
     hp    int   = 100
     grade char  = 'S'
     speed float = 1.75
 
-    // printf("Hero:  %s\n",  name)
-    // printf("HP:    %d\n",  hp)
-    // printf("Grade: %c\n",  grade)
-    // printf("Speed: %f\n",  speed)
-    // printf("%s — HP %d, Grade %c\n", name, hp, grade)
+    printf("Hero:  %s\n",  name)
+    printf("HP:    %d\n",  hp)
+    printf("Grade: %c\n",  grade)
+    printf("Speed: %f\n",  speed)
+    printf("%s — HP %d, Grade %c\n", name, hp, grade)

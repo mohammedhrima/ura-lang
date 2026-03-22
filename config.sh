@@ -55,7 +55,8 @@ URA_COMPILER="$BUILD_DIR/ura"
 # )
 
 SRC_FILES=(
-    "$SRC_DIR/full.c"
+    "$SRC_DIR/main.c"
+    "$SRC_DIR/utils.c"
 )
 
 SAN_FLAGS=(
