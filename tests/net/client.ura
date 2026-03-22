@@ -1,3 +1,4 @@
+// net/client
 use "@/header"
 
 fn log(msg chars) void:

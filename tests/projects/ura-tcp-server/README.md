@@ -13,7 +13,8 @@ git clone https://github.com/mohammedhrima/ura-lib ura-lib
 ## Usage
 
 ```bash
-./ura <file.ura>
+./ura <file.ura>          # compiles and runs — executable named after source file
+./ura <file.ura> -o app   # custom output name
 ```
 
 ## Running the server and client
@@ -22,13 +23,13 @@ Open two terminals:
 
 **Terminal 1 — start the server:**
 ```bash
-./ura basic/server.ura
+./ura basic/server.ura   # compiles to ./server and runs it
 # Listens on port 17000
 ```
 
 **Terminal 2 — connect a client:**
 ```bash
-./ura basic/client.ura
+./ura basic/client.ura   # compiles to ./client and runs it
 # Connects to localhost:17000
 ```
 
@@ -40,10 +41,12 @@ Type messages in either terminal and they will be echoed to the other side.
 basic/
   server.ura    TCP server (accepts one client, bidirectional messaging)
   client.ura    TCP client
+  utils.ura       Shared networking utilities (SockAddr, logging helpers)
 cmd/
   server.ura    Command-based server variant
   client.ura    Command-based client variant
-utils.ura       Shared networking utilities (SockAddr, logging helpers)
+  utils.ura       Shared networking utilities (SockAddr, logging helpers)
+
 ```
 
 ## About Ura

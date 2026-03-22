@@ -3,8 +3,8 @@
 main():
     name   chars = "Aldric"
     hp     int   = 100
-    xp     long  = 999999
-    level  short = 12
+    xp     long  = 999999 as long
+    level  short = 12 as short
     grade  char  = 'S'
     alive  bool  = True
     ratio  float = 0.85

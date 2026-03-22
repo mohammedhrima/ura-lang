@@ -29,3 +29,5 @@
     + the cherno
     + cppcon
     + Jason turner
+
++ output should no longer hardcode declar printf

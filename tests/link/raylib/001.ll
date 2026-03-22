@@ -2,7 +2,7 @@
 source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/file.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
-%struct.Color = type { i32, i32, i32, i32 }
+%struct.Color = type { i8, i8, i8, i8 }
 
 @KEY_LEFT = global i32 263
 @KEY_RIGHT = global i32 262
@@ -19,7 +19,7 @@ target triple = "arm64-apple-macosx16.0.0"
 
 define void @Color.init(%struct.Color* %0) {
 entry:
-  store %struct.Color zeroinitializer, %struct.Color* %0, align 4
+  store %struct.Color zeroinitializer, %struct.Color* %0, align 1
   ret void
 }
 

@@ -1,3 +1,4 @@
+// net/tcp-server
 use "@/header"
 
 main():
@@ -26,7 +27,7 @@ main():
     client_fd int = 0
     r int = 0
     while True:
-        client_fd = accept(server_fd, 0 as chars, 0)
+        client_fd = accept(server_fd, null, null)
         if client_fd < 0:
             continue
         output("new client\n")

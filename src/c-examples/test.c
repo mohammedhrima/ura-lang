@@ -1,7 +1,6 @@
 #include "raylib.h"
 
-int main()
-{
+int main() {
 	InitWindow(800, 600, "Ura Raylib");
 	SetTargetFPS(60);
 	while (!WindowShouldClose()) {

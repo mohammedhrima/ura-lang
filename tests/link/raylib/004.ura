@@ -17,4 +17,3 @@ main():
         DrawText("Moving!", 320, 20, 30, setColor(255, 255, 255, 255))
         EndDrawing()
     CloseWindow()
-≠≠≠
