@@ -1,4 +1,5 @@
-use "../utils"
+// projects/ura-tcp-server/cmd/client
+use "./utils"
 
 fn banner() void:
     log("\033[0;36m")

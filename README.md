@@ -14,6 +14,7 @@ Ura started as a passion project: a love for C's raw performance and Python's re
   - [Imports](#imports)
   - [Variables](#variables)
   - [Globals](#globals)
+  - [Enums](#enums)
   - [Functions](#functions)
   - [Tuples](#tuples)
   - [Control Flow](#control-flow)
@@ -24,6 +25,7 @@ Ura started as a passion project: a love for C's raw performance and Python's re
   - [Type Casting](#type-casting)
   - [Type Introspection](#type-introspection)
   - [C Interoperability](#c-interoperability)
+  - [External Libraries](#external-libraries)
   - [OS Module](#os-module)
   - [Networking](#networking)
   - [Output Builtin](#output-builtin)
@@ -38,6 +40,7 @@ Ura started as a passion project: a love for C's raw performance and Python's re
   - [Build Commands](#build-commands)
   - [config.sh](#configsh)
   - [setup.sh / setup.ps1](#setupsh--setupps1)
+- [VS Code Extension](#vs-code-extension)
 - [Project Structure](#project-structure)
 - [Status](#status)
 - [Requirements](#requirements)
@@ -74,7 +77,8 @@ source config.sh
 build
 
 # 5. Write and run your first program
-ura src/file.ura
+ura src/file.ura          # produces ./file (named after source file)
+ura src/file.ura -o app   # custom output name
 ```
 
 **Hello World:**
@@ -134,6 +138,35 @@ main():
 HP: 100 | MP: 50 | Speed: 1.5
 ```
 
+`null` is a built-in literal for an empty pointer. Use it when a `chars` variable has no value yet:
+
+```ura
+use "@/header"
+
+fn find_weapon(chest int) chars:
+    if chest == 1: return "Iron Sword"
+    if chest == 2: return "Magic Staff"
+    return null   // chest is empty
+
+main():
+    loot chars = find_weapon(1)
+    if loot != null:
+        output("Found: ", loot, "\n")
+    else:
+        output("Chest is empty\n")
+
+    loot = find_weapon(99)
+    if loot != null:
+        output("Found: ", loot, "\n")
+    else:
+        output("Chest is empty\n")
+```
+
+```
+Found: Iron Sword
+Chest is empty
+```
+
 ---
 
 ### Globals
@@ -157,6 +190,52 @@ After first kill — Score: 100
 ```
 
 Global variables are declared at the top level, before any function. They are visible to every function in the file.
+
+---
+
+### Enums
+
+Enums give names to integer constants — perfect for enemy types, damage categories, or dungeon directions:
+
+```ura
+enum EnemyType:
+    ORC, SPIDER, DRAGON, GOLEM
+
+enum DamageType:
+    PHYSICAL, FIRE, ICE, POISON
+
+fn describe(enemy int, dtype int) void:
+    if enemy == DRAGON:
+        output("Dragon — ")
+    elif enemy == ORC:
+        output("Orc — ")
+    elif enemy == SPIDER:
+        output("Spider — ")
+    else:
+        output("Golem — ")
+
+    if dtype == FIRE:
+        output("fire attack!\n")
+    elif dtype == ICE:
+        output("ice attack!\n")
+    elif dtype == POISON:
+        output("poison attack!\n")
+    else:
+        output("physical attack!\n")
+
+main():
+    describe(DRAGON, FIRE)
+    describe(ORC,    PHYSICAL)
+    describe(SPIDER, POISON)
+```
+
+```
+Dragon — fire attack!
+Orc — physical attack!
+Spider — poison attack!
+```
+
+Enum variants are global `int` constants numbered from `0`. `DRAGON = 2`, `GOLEM = 3`, and so on. You can use them anywhere an `int` is expected.
 
 ---
 
@@ -591,6 +670,46 @@ use "@/header"   // imports all of the above at once
 
 ---
 
+### External Libraries
+
+Ura can link against any native library using the `link` directive. The `@/raylib` module ships pre-configured — just tell the compiler where raylib lives:
+
+```bash
+export URA_LINK_raylib="/opt/homebrew/lib/libraylib.a"   # macOS (Homebrew)
+export URA_LINK_raylib="/usr/local/lib/libraylib.a"      # Linux
+```
+
+Then in your Ura file:
+
+```ura
+use "@/raylib"
+
+main():
+    InitWindow(800, 600, "Dungeon — Floor 1")
+    SetTargetFPS(60)
+    hero_x int = 100
+    speed  int = 3
+    while WindowShouldClose() == False:
+        hero_x = hero_x + speed
+        if hero_x > 800:
+            hero_x = 0
+        BeginDrawing()
+        ClearBackground(setColor(20, 20, 40, 255))
+        DrawRectangle(hero_x, 300, 40, 60, setColor(180, 100, 255, 255))
+        DrawText("Dungeon Hero", 10, 10, 24, setColor(255, 220, 0, 255))
+        EndDrawing()
+    CloseWindow()
+```
+
+```bash
+ura dungeon.ura        # links raylib automatically, produces ./dungeon
+./dungeon
+```
+
+The compiler resolves `link "@/raylib"` by reading `URA_LINK_raylib` from the environment and passes it as an extra linker argument to clang. Any library can be linked this way — define `URA_LINK_<name>` and `use "@/<name>"` with appropriate `proto` declarations.
+
+---
+
 ### OS Module
 
 The player's name comes from the command line. `os.argc` and `os.argv` are available automatically when you `use "@/header"`:
@@ -645,7 +764,7 @@ main():
     output("listening on port 8080...\n")
 
     buf chars = heap[char](1024)
-    client_fd int = accept(server_fd, 0 as chars, 0)
+    client_fd int = accept(server_fd, null, null)
     if client_fd >= 0:
         r int = read(client_fd, buf, 1023)
         if r > 0:
@@ -657,7 +776,7 @@ main():
     free(addr)
 ```
 
-**Real-world TCP examples** are in `tests/projects/ura-tcp-server/`:
+**Real-world TCP examples** are in `tests/projects/ura-tcp-server/` ([github.com/mohammedhrima/ura-tcp-server](https://github.com/mohammedhrima/ura-tcp-server)):
 
 - **basic/** — Simple chat room with bidirectional messaging
 - **cmd/** — Command-based server supporting `/help`, `/time`, `/whoami`, `/exit`
@@ -830,21 +949,17 @@ source.ura
   clang              assembles and links: .s → executable
     │
     ▼
-  exe.out            runs automatically after a successful build
+  file               runs automatically after a successful build
+                     (executable is named after the source file)
 ```
 
 ### Source Files
 
-The compiler is split into focused C source files:
+The compiler lives in three files:
 
-- **`src/lexer.c`** — reads the source file character by character and produces a flat list of typed tokens. Handles strings, escape sequences, comments, indentation, keywords, and the `use` import system.
-- **`src/parser.c`** — a hand-written recursive descent parser that builds the AST top-down. Operator precedence is encoded directly in the call chain (`expr → assign → logic → equality → comparison → add/sub → mul/div → dot → ...`).
-- **`src/ir.c`** — a first pass over the AST (`gen_ir`) that resolves identifiers, registers variables and functions in their scopes, and annotates every node with its return type. After this pass the tree is fully typed and ready for code generation.
-- **`src/codegen.c`** — a second pass (`gen_asm`) that walks the typed AST and emits LLVM IR instructions using the LLVM C API. Writes the final `.ll` file to `build/`.
-- **`src/utils.c`** — shared helpers: error reporting, scope management, string utilities.
-- **`src/ura.h`** — thin `static inline` wrappers around the LLVM C API (`LLVMBuildAdd`, `LLVMBuildStore`, `LLVMBuildGEP2`, ...) and higher-level helpers like `allocate_stack` and `allocate_heap`. Keeping LLVM calls isolated here makes the other files readable without knowing the LLVM API.
-- **`src/header.h`** — defines the `Token` and `Node` structs that the entire compiler operates on, the `Type` enum (every token type from `INT` to `STRUCT_CALL`), all global variable declarations, and every function prototype.
-- **`src/main.c`** — orchestrates everything: parses CLI flags, calls `compile()` for each source file, runs `llc` to produce `.s`, then `clang` to link the final executable, and immediately runs it.
+- **`src/main.c`** (~3500 lines) — everything in one place: tokenizer, recursive descent parser, `gen_ir()` (name resolution + type checking), `gen_asm()` (LLVM IR emission), and the CLI + build pipeline (`llc` → `clang`). Operator precedence is encoded directly in the parser call chain (`expr → assign → logic_or → logic_and → bitor → bitxor → bitand → equality → comparison → shift → add/sub → mul/div → as → unary → ...`).
+- **`src/utils.c`** — LLVM type resolution (`get_llvm_type`), default value generation, scope helpers, debug printing, and `to_string`.
+- **`src/header.h`** — defines the `Token` and `Node` structs that the entire compiler operates on, the `Type` enum (every token type from `INT` to `NULLABLE`), all global variable declarations, and every function prototype.
 
 ### Why LLVM?
 
@@ -860,7 +975,7 @@ Writing a code generator that targets x86, ARM, and other architectures directly
 ura <file.ura> [options]
 ```
 
-The compiler generates a `build/` directory next to each source file. The executable is placed there as `exe.out` by default, or at the path specified with `-o`.
+The compiler generates a `build/` directory next to each source file. The executable is named after the source file by default (`file.ura` → `./file`), or at the path specified with `-o`.
 
 ### Options
 
@@ -873,7 +988,7 @@ The compiler generates a `build/` directory next to each source file. The execut
 | `-Os`      | Optimize for size                                 |
 | `-Oz`      | Minimize binary size                              |
 | `-san`     | Enable AddressSanitizer + debug info (`-g`)       |
-| `-o <n>`   | Output executable name (default: `build/exe.out`) |
+| `-o <n>`   | Output executable name (default: basename of source file) |
 
 ### Build Commands
 
@@ -963,21 +1078,38 @@ Installs MSYS2 via `winget`, updates the package database, and runs `setup.sh` i
 
 ---
 
+## VS Code Extension
+
+Ura has a dedicated VS Code extension with syntax highlighting and basic language support.
+
+**Install from source:**
+```bash
+git clone https://github.com/mohammedhrima/ura-vscode-extension
+cd ura-vscode-extension
+npm install
+npm run package        # produces ura-lang-*.vsix
+code --install-extension ura-lang-*.vsix
+```
+
+Or grab the latest release directly from the [GitHub repository](https://github.com/mohammedhrima/ura-vscode-extension).
+
+The extension provides:
+- Syntax highlighting for `.ura` files
+- Keyword, type, operator, and string/comment coloring
+- Bracket matching and indentation hints
+
+---
+
 ## Project Structure
 
 ```
 ura-lang/
 ├── src/
-│   ├── main.c          # Entry point: CLI, compile(), llc + clang pipeline
-│   ├── lexer.c         # Tokenizer: source → flat token list
-│   ├── parser.c        # Recursive descent parser: tokens → AST
-│   ├── ir.c            # gen_ir(): name resolution, type checking
-│   ├── codegen.c       # gen_asm(): typed AST → LLVM IR (.ll)
-│   ├── utils.c         # Shared helpers: errors, scopes, strings
-│   ├── ura.h           # LLVM C API wrappers and inline helpers
+│   ├── main.c          # Tokenizer, parser, gen_ir(), gen_asm(), CLI (~3500 lines)
+│   ├── utils.c         # LLVM type resolution, debug printing, scope helpers
 │   ├── header.h        # Token, Node, Type enum, globals, declarations
 │   ├── file.ura        # Development scratch file
-│   └── ura-lib/        # Standard library
+│   └── ura-lib/        # Standard library (github.com/mohammedhrima/ura-lib)
 │       ├── header.ura  # Imports all modules
 │       ├── io.ura
 │       ├── memory.ura
@@ -986,7 +1118,8 @@ ura-lang/
 │       ├── time.ura
 │       ├── signals.ura
 │       ├── os.ura
-│       └── net.ura
+│       ├── net.ura
+│       └── raylib.ura
 ├── tests/
 │   ├── builtins/       # Built-in functions and memory
 │   │   ├── c-funcs/    # C function prototypes (printf, puts, etc.)
@@ -994,21 +1127,26 @@ ura-lang/
 │   │   ├── output/     # output() builtin
 │   │   ├── sizeof/     # sizeof operator
 │   │   └── typeof/     # typeof operator
-│   ├── cond/           # Conditional statements (if/elif/else)
-│   ├── data_types/     # Arrays and data types
-│   ├── fn/             # Functions and parameters
-│   │   └── param/      # Value and reference parameters
+│   ├── casting/        # Type casting with `as`
+│   ├── conditionals/   # if / elif / else
+│   ├── enum/           # Enum declarations and usage
+│   ├── functions/      # Functions and parameters
 │   ├── globals/        # Global variables
-│   ├── vars/           # Variables and references
-│   ├── while/          # Loops, break, continue
-│   ├── op/             # Operators (arithmetic, logical, comparison, bitwise)
+│   ├── link/           # External library linking
+│   │   └── raylib/     # Raylib graphics demos
+│   ├── loops/          # While loops, break, continue
+│   ├── memory/         # Stack and heap allocation
+│   ├── net/            # TCP client/server
+│   ├── operators/      # Arithmetic, logical, comparison, bitwise
+│   ├── os/             # OS module (argc, argv)
+│   ├── output/         # output() builtin
+│   ├── refs/           # References and reference parameters
 │   ├── structs/        # Structs, nested structs, methods
 │   ├── tuples/         # Tuple types and multi-return
-│   ├── os/             # OS module (argc, argv)
-│   ├── net/            # TCP client/server
+│   ├── variables/      # Variable declarations and types
 │   └── projects/       # Real-world programs written in Ura
-│       ├── ura-libft/  # Classic libc functions (strlen, strcmp, isalpha, ...)
-│       └── ura-tcp-server/
+│       ├── ura-libft/  # Classic libc functions (github.com/mohammedhrima/ura-libft)
+│       └── ura-tcp-server/  # (github.com/mohammedhrima/ura-tcp-server)
 │           ├── basic/        # Simple chat room
 │           │   ├── server.ura
 │           │   └── client.ura
@@ -1019,7 +1157,7 @@ ura-lang/
 ├── config/
 │   ├── setup.sh              # One-time setup: installs all deps (macOS / Linux / MSYS2)
 │   ├── setup.ps1             # One-time setup for Windows
-│   └── vscode-extension/     # VS Code syntax highlighting + language features
+│   └── vscode-extension/     # VS Code syntax highlighting (github.com/mohammedhrima/ura-vscode-extension)
 ├── build/              # Compiler executable and compiled outputs
 ├── config.sh           # Development environment (source every session)
 └── README.md
@@ -1034,6 +1172,8 @@ Ura is under active development. Here's where things stand:
 **Working today:**
 
 - Primitive types: `int` `long` `short` `char` `chars` `bool` `float` `void`
+- `null` literal — null pointer constant, compatible with any `chars` or pointer type
+- Enums — named integer constants (`enum Direction: NORTH, SOUTH, EAST, WEST`)
 - Array type declarations: `array[type]`, `array[[type]]`, ...
 - Stack and heap allocation: `stack[type](n)`, `heap[type](n)`
 - Global variables and global structs
@@ -1045,8 +1185,8 @@ Ura is under active development. Here's where things stand:
 - Struct `init()` constructor and `clean()` destructor (auto-called at scope exit)
 - If / elif / else
 - While loops with break and continue
-- All standard operators: arithmetic, bitwise, logical, comparison, assignment
-- Type casting with `as`
+- All standard operators: arithmetic, bitwise (`&` `|` `^` `~` `<<` `>>`), logical, comparison, assignment
+- Type casting with `as` — all numeric, pointer, and float↔int combinations
 - `typeof` and `sizeof`
 - `output()` builtin — prints any value without format strings or imports
 - Module imports with `use` (`@` for stdlib, relative path for local files)
@@ -1059,8 +1199,7 @@ Ura is under active development. Here's where things stand:
 **Coming next:**
 
 - For loops (range-based: `for i in 0..10`)
-- Enums + pattern matching
-- Switch / case
+- Switch / case + pattern matching
 - Type inference
 - Type aliases (`type Byte = char`)
 - Default parameter values
