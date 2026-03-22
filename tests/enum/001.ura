@@ -1,7 +1,7 @@
 // enum/001.ura - confirm enum declaration and variant access
 
 enum PieceType:
-    I, O, T
+    I, O, T,
     S, Z, J, L
 
 main():

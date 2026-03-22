@@ -1,5 +1,5 @@
 // projects/ura-tcp-server/basic/server.ura
-use "../utils"
+use "./utils"
 
 fn banner(port int) void:
     log("\033[0;32m")
@@ -83,7 +83,7 @@ main():
     log_ts("\033[0;32m", "[server]", "listening...")
 
     while True:
-        srv.client_fd = accept(srv.fd, 0 as chars, 0 as chars)
+        srv.client_fd = accept(srv.fd, null, null)
         if srv.client_fd < 0:
             continue
 
