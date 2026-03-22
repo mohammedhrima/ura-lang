@@ -1,5 +1,5 @@
 // projects/ura-tcp-server/basic/client.ura
-use "../utils"
+use "./utils"
 
 fn banner(host chars, port int) void:
     log("\033[0;36m")
