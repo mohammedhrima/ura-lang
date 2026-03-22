@@ -14,6 +14,7 @@
     { "include": "#library" },
     { "include": "#types" },
     { "include": "#struct_definitions" },
+    { "include": "#enum_definitions" },
     { "include": "#custom_types" },
     { "include": "#booleans" },
     { "include": "#builtins" },
@@ -42,6 +43,15 @@
           "comment": "use \"@/module\" or use \"./module\" — highlight path distinctly",
           "name": "meta.import.ura",
           "match": "\\b(use)\\s+(\"[^\"]+\")",
+          "captures": {
+            "1": { "name": "keyword.library.ura" },
+            "2": { "name": "string.quoted.double.import.ura" }
+          }
+        },
+        {
+          "comment": "link \"@/module\" or link \"./module\" — highlight path distinctly",
+          "name": "meta.import.ura",
+          "match": "\\b(link)\\s+(\"[^\"]+\")",
           "captures": {
             "1": { "name": "keyword.library.ura" },
             "2": { "name": "string.quoted.double.import.ura" }
@@ -127,7 +137,7 @@
       "patterns": [
         {
           "name": "keyword.declaration.ura",
-          "match": "\\b(struct|fn|as)\\b"
+          "match": "\\b(struct|fn|as|enum)\\b"
         }
       ]
     },
@@ -136,7 +146,7 @@
       "patterns": [
         {
           "name": "keyword.library.ura",
-          "match": "\\b(use|proto)\\b"
+          "match": "\\b(use|proto|link)\\b"
         }
       ]
     },
@@ -158,6 +168,14 @@
         }
       ]
     },
+     "enum_definitions": {
+      "patterns": [
+        {
+          "name": "entity.name.type.enum.ura",
+          "match": "(?<=\\benum\\s{1,64})([A-Z][a-zA-Z0-9_]*)(?=\\s*:)"
+        }
+      ]
+    },
 
     "custom_types": {
       "patterns": [
@@ -176,7 +194,7 @@
       "patterns": [
         {
           "name": "constant.language.boolean.ura",
-          "match": "\\b(True|False|NULL)\\b"
+          "match": "\\b(True|False|null)\\b"
         }
       ]
     },
