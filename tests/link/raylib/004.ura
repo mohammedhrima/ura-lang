@@ -1,0 +1,19 @@
+// link/raylib/004.ura - draw a moving rectangle
+
+use "@/raylib"
+
+main():
+    InitWindow(800, 600, "Moving Rectangle")
+    SetTargetFPS(60)
+    x int = 0
+    speed int = 3
+    while WindowShouldClose() == False:
+        x = x + speed
+        if x > 800:
+            x = 0
+        BeginDrawing()
+        ClearBackground(setColor(30, 30, 150, 255))
+        DrawRectangle(x, 250, 100, 100, setColor(255, 220, 0, 255))
+        DrawText("Moving!", 320, 20, 30, setColor(255, 255, 255, 255))
+        EndDrawing()
+    CloseWindow()

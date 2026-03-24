@@ -1,0 +1,13 @@
+// loops/003.ura - continue: skip wall tiles '#', count open spaces
+
+main():
+    tiles chars = "#.#..#.@.#"
+    open  int   = 0
+    i     int   = 0
+    while i < 10:
+        if tiles[i] == '#':
+            i = i + 1
+            continue
+        open = open + 1
+        i = i + 1
+    output("Open tiles: ", open, "\n")

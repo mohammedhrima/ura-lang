@@ -1,0 +1,10 @@
+// loops/002.ura - break: stop packing when bag is full at slot 5
+
+main():
+    slot int = 0
+    while slot < 8:
+        if slot == 5:
+            output("Bag full at slot ", slot, " — stop\n")
+            break
+        output("Packing slot ", slot, "\n")
+        slot = slot + 1

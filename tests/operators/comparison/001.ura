@@ -1,0 +1,26 @@
+// operators/comparison/001.ura - all comparison ops on hero/enemy stats
+
+fn enemy_atk() int:
+    return 18
+
+main():
+    hero_hp  int = 100
+    orc_hp   int = 60
+    min_hp   int = 100
+
+    output("hero_hp == min_hp: ", hero_hp == min_hp, "\n")   // True
+    output("hero_hp != orc_hp: ", hero_hp != orc_hp, "\n")   // True
+    output("orc_hp < hero_hp:  ", orc_hp < hero_hp,  "\n")   // True
+    output("orc_hp > hero_hp:  ", orc_hp > hero_hp,  "\n")   // False
+    output("orc_hp <= 60:      ", orc_hp <= 60,       "\n")   // True
+    output("hero_hp >= 100:    ", hero_hp >= 100,      "\n")   // True
+
+    // comparison with fn call
+    if enemy_atk() > 15:
+        output("strong enemy\n")
+    else:
+        output("weak enemy\n")
+
+    // chained via if
+    if hero_hp == 100 and orc_hp < hero_hp:
+        output("hero is at full health and winning\n")
