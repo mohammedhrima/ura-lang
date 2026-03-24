@@ -177,6 +177,8 @@ enum Type
 	BAND, BOR, BXOR, BNOT, LSHIFT, RSHIFT,
 	// Literals
 	NULLABLE,
+	// Modules
+	MODULE,
 	// end
 	END,
 };
@@ -310,6 +312,10 @@ struct Node {
 	Node  **structs;
 	int     structs_count;
 	int     structs_size;
+
+	Node **modules;
+	int modules_count;
+	int modules_size;
 };
 
 // globals.h
@@ -377,7 +383,7 @@ Node  *copy_node(Node *node);
 void   unuse(Node *node);
 
 // tokenizer / parser helpers
-void   tokenize(char *filename);
+void   tokenize(char *filename, int default_space);
 Token *new_token(Type type, int space);
 Token *parse_token(char *filename, int line, char *input, int s, int e, Type type, int space);
 void   add_token(Token *token);
