@@ -30,3 +30,6 @@ examples.ura
 .vscode-extension
 TMP.md
 .claude
+
+# Tests (main branch only — kept on dev)
+tests/
