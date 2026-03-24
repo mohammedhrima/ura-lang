@@ -11,7 +11,7 @@
 
 
 + instead of using struct ptr let's uss and index
-+ use pritnf("%*s", string_len, string): * to set how many charters to print (usefull fpr string struct)
++ use printf("%*s", string_len, string): * to set how many charters to print (usefull fpr string struct)
 
 + use i8, i4 ... instead of int
 + use dynamic/statis (for standart libraries)
@@ -31,3 +31,11 @@
     + Jason turner
 
 + output should no longer hardcode declar printf
++ ref in struct must not require assignement
++ string (builtin)
++ array must have attribute len
++ auto free heap
++ importi only functions instead use
++ import loop when some of the files is importing main file
++ reference just no be assigned to null
++ build ura-lang using ura-lang compiler

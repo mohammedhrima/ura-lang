@@ -241,11 +241,11 @@ char *to_string(Type type) {
 	    [INT] = "INT", [BOOL] = "BOOL", [LONG] = "LONG", [FLOAT] = "FLOAT",
 	    [FDEC] = "FDEC", [FCALL] = "CALL", [END] = "END", [LPAR] = "LPAR",
 	    [RPAR] = "RPAR", [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
-	    [WHILE] = "WHILE", [BREAK] = "BRK", [CONTINUE] = "CONT", [SHORT] = "SHORT",
-	    [RETURN] = "RET", [BAND] = "BAND", [BOR] = "BOR", [BXOR] = "BXOR",
-	    [BNOT] = "BNOT", [LSHIFT] = "LSHIFT", [RSHIFT] = "RSHIFT",
-	    [ADD] = "ADD", [SUB] = "SUB", [MUL] = "MUL", [DIV] = "DIV",
-	    [ASSIGN] = "ASSIGN", [ADD_ASSIGN] = "ADD_ASS",
+	    [WHILE] = "WHILE", [BREAK] = "BRK", [CONTINUE] = "CONT",
+	    [SHORT] = "SHORT", [RETURN] = "RET", [BAND] = "BAND", [BOR] = "BOR",
+	    [BXOR] = "BXOR", [BNOT] = "BNOT", [LSHIFT] = "LSHIFT",
+	    [RSHIFT] = "RSHIFT", [ADD] = "ADD", [SUB] = "SUB", [MUL] = "MUL",
+	    [DIV] = "DIV", [ASSIGN] = "ASSIGN", [ADD_ASSIGN] = "ADD_ASS",
 	    [SUB_ASSIGN] = "SUB_ASS", [MUL_ASSIGN] = "MUL_ASS",
 	    [DIV_ASSIGN] = "DIV_ASS", [MOD_ASSIGN] = "MOD_ASS", [ACCESS] = "ACC",
 	    [MOD] = "MOD", [COMA] = "COMA", [REF] = "REF", [EQUAL] = "EQ",
@@ -261,6 +261,7 @@ char *to_string(Type type) {
 	    [ENUM_DEF] = "ENUM_DEF", [ENUM_CALL] = "ENUM_CALL", [TUPLE] = "TUPLE",
 	    [TUPLE_UNPACK] = "TUPLE_UNPACK", [LBRA] = "LBRA", [RBRA] = "RBRA",
 	    [ARRAY] = "ARRAY", [DOT] = "DOT", [SYNTAX_ERROR] = "SYNTAX_ERROR",
+	    [MODULE] = "MODULE",
 	};
 
 	if (check(!res[type], "handle this case %d\n", type)) {
@@ -497,6 +498,7 @@ bool _check(char *filename, char *funcname, int line, bool cond, char *fmt, ...)
 	vprint_(stderr, fmt, ap);
 	va_end(ap);
 	fprintf(stderr, "\n");
+	// seg();
 	return cond;
 }
 
@@ -662,9 +664,8 @@ TypeRef get_llvm_type(Token *token) {
 	// if (type == FCALL)
 	//    return get_llvm_type(token->Fcall.ptr->token);
 	TypeRef res[END] = {
-	    [INT] = i32, [CHAR] = i8,  [CHARS] = p8,  [BOOL] = i1,
-	    [VOID] = vd, [LONG] = i64, [FLOAT] = f32, [ACCESS] = i8,
-	    [SHORT] = i2, [NULLABLE] = p8,
+	    [INT] = i32,  [CHAR] = i8,   [CHARS] = p8,  [BOOL] = i1,  [VOID] = vd,
+	    [LONG] = i64, [FLOAT] = f32, [ACCESS] = i8, [SHORT] = i2, [NULLABLE] = p8,
 	};
 	if (check(!res[type], "handle this case [%s]", to_string(type))) {
 		seg();

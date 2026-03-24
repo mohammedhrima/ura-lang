@@ -28,6 +28,7 @@ bool             enable_san;
 char            *argv0;
 char            *ura_lib;
 int              calling_use;
+char            *current_gen_module;
 
 char           **links;
 int              lcount;
@@ -88,9 +89,9 @@ static int parse_escape_seq(char *input, int s, int e, char *buf, int *j) {
 	case 'f':  buf[(*j)++] = '\f'; return s + 1;  // form feed
 	case 'v':  buf[(*j)++] = '\v'; return s + 1;  // vertical tab
 	case 'a':  buf[(*j)++] = '\a'; return s + 1;  // alert (bell)
-	case '\\': buf[(*j)++] = '\\'; return s + 1;  // backslash
+	case '\\': buf[(*j)++] = '\\'; return s + 1; // backslash
 	case '"':  buf[(*j)++] = '"'; return s + 1;   // double quote
-	case '\'': buf[(*j)++] = '\''; return s + 1;  // single quote
+	case '\'': buf[(*j)++] = '\''; return s + 1; // single quote
 	case '?':  buf[(*j)++] = '\?'; return s + 1;  // question mark (trigraph)
 	case '0':  {
 		// three-digit octal: \0NN
@@ -217,13 +218,12 @@ Token *parse_token(char *filename, int line, char *input, int s, int e, Type typ
 		                      {"short", SHORT}, {0, 0}};
 		if (match_table(new, new->name, data_types, true)) goto id_done;
 
-		Types keywords[] = {{"if", IF},         {"elif", ELIF},
-		                    {"else", ELSE},     {"while", WHILE},
-		                    {"fn", FDEC},       {"return", RETURN},
-		                    {"break", BREAK},   {"continue", CONTINUE},
-		                    {"ref", REF},       {"struct", STRUCT_DEF},
-		                    {"enum", ENUM_DEF}, {"proto", PROTO},
-		                    {"as", AS},         {0, 0}};
+		Types keywords[] = {{"if", IF},
+		                    {"elif", ELIF}, {"else", ELSE}, {"while", WHILE}, {"fn", FDEC},
+		                    {"return", RETURN}, {"break", BREAK}, {"continue", CONTINUE}, {"ref", REF},
+		                    {"struct", STRUCT_DEF}, {"enum", ENUM_DEF}, {"proto", PROTO}, {"mod", MODULE},
+		                    {"as", AS},
+		                    {0, 0}};
 		if (match_table(new, new->name, keywords, false)) goto id_done;
 
 		Types keywords2[] = {{"and", AND},          {"or", OR},         {"is", EQUAL},
@@ -285,7 +285,7 @@ Token *parse_token(char *filename, int line, char *input, int s, int e, Type typ
 // ----------------------------------------------------------------------------
 // Tokenizer
 // ----------------------------------------------------------------------------
-void tokenize(char *file_name) {
+void tokenize(char *file_name, int default_space) {
 	if (found_error) return;
 	char *filename = realpath(file_name, NULL);
 	File  file     = fopen(filename, "r");
@@ -314,7 +314,7 @@ void tokenize(char *file_name) {
 	    {"^", BXOR},        {"~", BNOT},        {0, (Type)0},
 	};
 
-	int  space    = 0;
+	int  space    = default_space;
 	int  line     = 1;
 	bool new_line = true;
 
@@ -332,7 +332,7 @@ void tokenize(char *file_name) {
 			if (c == '\n') {
 				line++;
 				new_line = true;
-				space    = 0;
+				space    = default_space;
 			} else if (new_line) space += (c == '\t') ? TAB : 1;
 			i++;
 			continue;
@@ -399,7 +399,7 @@ void tokenize(char *file_name) {
 					use = tmp;
 				}
 				calling_use++;
-				tokenize(use);
+				tokenize(use, space);
 				calling_use--;
 			} else if (i - s == 4 && strncmp(input + s, "link", 4) == 0 && isspace(input[i])) {
 				while (isspace(input[i]))
@@ -506,7 +506,8 @@ Node *access_node() // . []
 	Token *token;
 	while ((token = find(DOT, LBRA, 0))) {
 		Node *node = new_node(token);
-		if (token->type == DOT) {
+		switch (token->type) {
+		case DOT: {
 			node->left  = left;
 			node->right = prime_node();
 
@@ -519,43 +520,37 @@ Node *access_node() // . []
 				node->left  = NULL;
 				node        = func;
 			}
-		} else // LBRA
-		{
+			break;
+		}
+		case LBRA: {
 			node->token->type = ACCESS;
 			node->left        = left;
 			node->right       = expr_node();
 			check(!node->right, "expected something between []");
 			expect_token(RBRA, "expected right bracket");
+			break;
 		}
+		default: {
+			check(1, "Unexpected %k line %d", token, token->line);
+			return syntax_error();
+		}
+		}
+
 		left = node;
 	}
 	return left;
 }
 
-// ----------------------------------------------------------------------------
-// prime_node sub-parsers (token already consumed by caller)
-// ----------------------------------------------------------------------------
-
-// [INT/CHARS/…] varname               variable declaration
-// [INT] [42]                           literal value
-// [STRUCT_CALL] varname → StructType  struct variable declaration
-// [TUPLE_UNPACK]                       a int, b chars = fn()
-// ├──[INT] a
-// ├──[CHARS] b
-// └──left: [FCALL] fn ret [TUPLE]
-// [FCALL] name ret [TYPE]             function call
-// └──[ARGS]
-//    ├──arg1
-//    └──arg2
 static Node *parse_var_dec(Token *token) {
 	// Literal value: "hello", 1, 'c'
 	if (token->type != ID && !token->is_dec && !token->name) return new_node(token);
 	// int, char, chars, etc. declaration keyword
-	if (token->is_dec) return new_node(token);
+	// if (token->is_dec) return new_node(token);
+	// TODO: this one should expected using expect
 
 	// variable declaration: name type [ref] [= ...]
 	if (token->type == ID && is_data_type(tokens[ecount])) {
-		Token *tmp    = find(DATA_TYPES, 0); // skip data type
+		Token *tmp    = tokens[ecount++]; // skip data type
 		bool   is_ref = find(REF, 0) != NULL;
 		if (tmp->type == ARRAY_TYPE) {
 			expect_token(LBRA, "expected [ after array");
@@ -670,7 +665,9 @@ static Node *parse_var_dec(Token *token) {
 				last->left = new_node(new_token(INT, node->token->space + TAB));
 				add_child(node, last);
 			}
+
 			exit_scope();
+			return node;
 		} else {
 			// Function call:
 			//    + left:
@@ -688,17 +685,14 @@ static Node *parse_var_dec(Token *token) {
 		}
 		return node;
 	}
-	return new_node(token);
+	// just an ID
+	if (token->type == ID) return new_node(token);
+	check(1, "Unexpected token has type %s line %d", to_string(tokens[ecount]->type),
+	      tokens[ecount]->line);
+	return syntax_error();
 }
 
-// [STRUCT_DEF] Name
-// ├──[FIELD_TYPE] field1
-// ├──[FIELD_TYPE] field2
-// └──methods[]: [FDEC] Name.method …
 static Node *parse_struct_def(Token *token) {
-	// Struct def layout:
-	//    + children: attributes
-	//    + methods[]: method FDEC nodes
 	Node  *node = new_node(token);
 	Token *st_name;
 	if (check(!(st_name = find(ID, 0)), "expected identifier after struct definition")) return NULL;
@@ -749,10 +743,6 @@ static Node *parse_struct_def(Token *token) {
 	return node;
 }
 
-// [ENUM_DEF] Name
-// ├──[INT] VariantA  (value=0, is_global)
-// ├──[INT] VariantB  (value=1, is_global)
-// └──...
 static Node *parse_enum_def(Token *token) {
 	Token *ename;
 	if (check(!(ename = find(ID, 0)), "expected identifier after enum")) return NULL;
@@ -782,19 +772,7 @@ static Node *parse_enum_def(Token *token) {
 	return node;
 }
 
-// [IF]
-// ├──left:     condition
-// ├──children: body stmts
-// └──right: [ELIF]
-//           ├──left:     condition
-//           ├──children: body stmts
-//           └──right: [ELSE]
-//                     └──children: body stmts
 static Node *parse_if(Token *token) {
-	// if/elif/else layout:
-	//    + left    : condition
-	//    + children: code bloc
-	//    + right   : elif/else node (same layout)
 	Node *node = new_node(token);
 	enter_scope(node);
 
@@ -831,21 +809,7 @@ static Node *parse_if(Token *token) {
 	return node;
 }
 
-// [FDEC] name ret [TYPE]
-// ├──[ARGS]
-// │  ├──[TYPE] param1
-// │  └──[STRUCT_CALL] param2    (struct param)
-// └──children: body stmts
-//
-// [FDEC] name ret [TUPLE]       (tuple return)
-// ├──[ARGS]
-// │  └──…
-// └──children: body stmts
 static Node *parse_fdec(Token *token) {
-	// Function declaration layout:
-	//    + left:
-	//       + children: arguments
-	//    + children: code block
 	Node  *node  = new_node(token);
 	Token *fname = find(ID, 0);
 	if (check(!fname, "expected identifier after fn declaration")) return syntax_error();
@@ -995,15 +959,6 @@ static Node *parse_fdec(Token *token) {
 	return node;
 }
 
-// [RETURN] ret [TYPE]        (single value)
-// └──left: expr
-//
-// [RETURN] ret [TUPLE]       (multiple values)
-// ├──expr1
-// └──expr2
-//
-// [RETURN] ret [VOID]        (void function — left = [VOID] copy)
-// └──left: [VOID]
 static Node *parse_return(Token *token) {
 	// TODO: check if return type is compatible with function in current scope (done in gen_ir)
 	Node *node = new_node(token);
@@ -1034,9 +989,28 @@ Node *prime_node() {
 	Token *token;
 
 	if ((token = find(ID, DATA_TYPES, 0))) return parse_var_dec(token);
-	if ((token = find(STRUCT_DEF, 0)))     return parse_struct_def(token);
-	if ((token = find(ENUM_DEF, 0)))       return parse_enum_def(token);
-	if ((token = find(IF, 0)))             return parse_if(token);
+	if ((token = find(MODULE, 0))){
+		Token *id = find(ID, 0);
+		check(!id, "expect module identifier after 'mod'");
+		expect_token(DOTS, "expect DOTs after mod name");
+		setName(token, id->name);
+		node = new_node(token);
+		enter_scope(node);
+		while (within(token->space)) {
+			Node  *curr   = prime_node();
+			Token *ctoken = curr->token;
+			check(!includes(ctoken->type, STRUCT_DEF, FDEC, 0) && !ctoken->is_dec,
+			      "only functions declaration"
+			      "are allowed within module");
+			add_child(node, curr);
+		}
+		exit_scope();
+
+		return node;
+	}
+	if ((token = find(STRUCT_DEF, 0))) return parse_struct_def(token);
+	if ((token = find(ENUM_DEF, 0)))   return parse_enum_def(token);
+	if ((token = find(IF, 0)))         return parse_if(token);
 
 	if ((token = find(WHILE, 0))) {
 		// while layout:
@@ -1130,7 +1104,7 @@ Node *prime_node() {
 		node->left = prime_node();
 		return node;
 	}
-	if ((token = find(NULLABLE, 0))) return new_node(token);
+	if ((token = find(NULLABLE, 0)))   return new_node(token);
 	if ((token = find(LPAR, 0)))       {
 		if (tokens[ecount]->type != RPAR) node = expr_node();
 		expect_token(RPAR, "expected right )");
@@ -1379,19 +1353,20 @@ void gen_ir(Node *node) {
 	Node *left  = node->left;
 	Node *right = node->right;
 	switch (node->token->type) {
-	// [ID] varname   → resolved to declared token (type, llvm.elem, etc.)
+
 	case ID: {
 		Token *find = get_variable(node->token->name);
 		if (find) node->token = find;
 		break;
 	}
-	// [STRUCT_CALL] varname → StructType   (is_dec = declaration | usage)
+
 	case STRUCT_CALL: {
 		Node *src               = get_struct(node->token->Struct.ptr->token->name);
 		node->token->Struct.ptr = src;
 		if (node->token->is_dec) {
-			if (sccount == 1)       node->token->is_global = true;
-			else src->token->used++; // local declaration → always emit struct def
+			if (sccount == 1)       {
+				node->token->is_global = true;
+			} else src->token->used++; // local declaration → always emit struct def
 			new_variable(node->token);
 			if (src->token->has_init) {
 				// TODO: to be checked later
@@ -1403,8 +1378,7 @@ void gen_ir(Node *node) {
 		}
 		break;
 	}
-	// [INT/BOOL/CHAR/CHARS/FLOAT/LONG/VOID] name   (is_dec → register var)
-	// [INT] [42]                                     (literal → mark used)
+
 	case NULLABLE: {
 		node->token->retType = CHARS; // null is a null chars (i8*) pointer
 		node->token->used++;
@@ -1413,7 +1387,10 @@ void gen_ir(Node *node) {
 	case INT:   case BOOL: case CHAR: case ARRAY_TYPE: case FLOAT: case LONG:
 	case CHARS: case PTR: case VOID: case SHORT: {
 		if (node->token->is_dec) {
-			if (sccount == 1)       node->token->is_global = true;
+			if (sccount == 1)       {
+				check(1, "hello");
+				node->token->is_global = true;
+			}
 			new_variable(node->token);
 		} else node->token->used++;
 		break;
@@ -1443,8 +1420,8 @@ void gen_ir(Node *node) {
 		gen_ir(left);
 		gen_ir(right);
 		if (!compatible(left->token, right->token)) {
-			check(1, "type mismatch: cannot assign %k to %k — use '%k as %s'",
-			      right->token, left->token, right->token, to_string(left->token->type));
+			check(1, "type mismatch: cannot assign %k to %k — use '%k as %s'", right->token,
+			      left->token, right->token, to_string(left->token->type));
 			break;
 		}
 		bool error_op = !left->token->is_param && (left->token->is_ref && !left->token->ir_bound) &&
@@ -1672,6 +1649,21 @@ void gen_ir(Node *node) {
 	// ├──[FIELD_TYPE] field1
 	// ├──[FIELD_TYPE] field2
 	// └──methods[]: [FDEC] ...
+	case MODULE: {
+		char *mname        = node->token->name;
+		char *saved        = current_gen_module;
+		current_gen_module = mname;
+		for (int i = 0; i < node->functions_count; i++) {
+			Node *fn    = node->functions[i];
+			char *qname = strjoin(mname, ".", fn->token->name);
+			setName(fn->token, qname);
+			free(qname);
+		}
+		for (int i = 0; i < node->functions_count; i++)
+			gen_ir(node->functions[i]);
+		current_gen_module = saved;
+		break;
+	}
 	case STRUCT_DEF: {
 		for (int i = 0; node && i < node->functions_count; i++)
 			gen_ir(node->functions[i]);
@@ -1741,11 +1733,15 @@ Node *get_struct(char *name) {
 // IR / SCOPE / VARIABLE MANAGEMENT
 
 Token *get_variable(char *name) {
-	debug(CYAN("get variable [%s] from scope %k\n"), name, scope->token);
+	debug(CYAN("get variable [%s] from scope %k, has %d vars\n"), name, scope->token,
+	      scope->variables_count);
 	for (int j = sccount; j > 0; j--) {
 		Node *scope = level_scope[j];
-		for (int i = 0; i < scope->variables_count; i++)
+		for (int i = 0; i < scope->variables_count; i++) {
+			check(scope->variables[i] == NULL, "unexpected error variables");
+			check(scope->variables[i]->name == NULL, "unexpected error name");
 			if (strcmp(scope->variables[i]->name, name) == 0) return scope->variables[i];
+		}
 	}
 	check(1, "%s not found", name);
 	// seg();
@@ -1769,9 +1765,22 @@ Node *new_function(Node *node) {
 
 Node *get_function(char *name) {
 	for (int j = sccount; j > 0; j--) {
-		Node *scope = level_scope[j];
-		for (int i = 0; i < scope->functions_count; i++)
-			if (strcmp(scope->functions[i]->token->name, name) == 0) return scope->functions[i];
+		Node *sc = level_scope[j];
+		for (int i = 0; i < sc->functions_count; i++)
+			if (strcmp(sc->functions[i]->token->name, name) == 0) return sc->functions[i];
+	}
+	if (current_gen_module) {
+		char *qname = strjoin(current_gen_module, ".", name);
+		for (int j = sccount; j > 0; j--) {
+			Node *sc = level_scope[j];
+			for (int i = 0; i < sc->functions_count; i++) {
+				if (strcmp(sc->functions[i]->token->name, qname) == 0) {
+					free(qname);
+					return sc->functions[i];
+				}
+			}
+		}
+		free(qname);
 	}
 	check(1, "'%s' Not found", name);
 	return syntax_error();
@@ -2899,21 +2908,20 @@ void gen_asm(Node *node) {
 		TypeKind sourceKind = LLVMGetTypeKind(sourceType);
 		TypeKind targetKind = LLVMGetTypeKind(targetType);
 
-		Value result;
+		Value    result;
 
-		bool srcIsFloat = (sourceKind == FloatType || sourceKind == DoubleType);
-		bool tgtIsFloat = (targetKind == FloatType || targetKind == DoubleType);
+		bool     srcIsFloat = (sourceKind == FloatType || sourceKind == DoubleType);
+		bool     tgtIsFloat = (targetKind == FloatType || targetKind == DoubleType);
 
 		// Same type — no-op
-		if (sourceType == targetType)
-			result = source;
+		if (sourceType == targetType) result = source;
 		// Integer → Integer (trunc / sign-extend / same)
 		else if (sourceKind == IntegerType && targetKind == IntegerType) {
 			unsigned srcBits = LLVMGetIntTypeWidth(sourceType);
 			unsigned tgtBits = LLVMGetIntTypeWidth(targetType);
-			if      (srcBits > tgtBits) result = LLVMBuildTrunc(builder, source, targetType, "as");
+			if (srcBits > tgtBits)      result = LLVMBuildTrunc(builder, source, targetType, "as");
 			else if (srcBits < tgtBits) result = LLVMBuildSExt(builder, source, targetType, "as");
-			else                        result = source;
+			else result = source;
 		}
 		// Integer → Float / Double  (signed)
 		else if (sourceKind == IntegerType && tgtIsFloat)
@@ -2923,8 +2931,8 @@ void gen_asm(Node *node) {
 			result = LLVMBuildFPToSI(builder, source, targetType, "as");
 		// Float ↔ Double
 		else if (srcIsFloat && tgtIsFloat) {
-			if   (sourceKind == FloatType) result = LLVMBuildFPExt(builder, source, targetType, "as");
-			else                           result = LLVMBuildFPTrunc(builder, source, targetType, "as");
+			if (sourceKind == FloatType)      result = LLVMBuildFPExt(builder, source, targetType, "as");
+			else result = LLVMBuildFPTrunc(builder, source, targetType, "as");
 		}
 		// Integer → Pointer
 		else if (sourceKind == IntegerType && targetKind == PointerType)
@@ -2954,6 +2962,11 @@ void gen_asm(Node *node) {
 			// var->llvm.is_set = true;
 			var->is_dec = false;
 		}
+		break;
+	}
+	case MODULE: {
+		for (int i = 0; i < node->functions_count; i++)
+			gen_asm(node->functions[i]);
 		break;
 	}
 	case STRUCT_DEF: {
@@ -3304,7 +3317,7 @@ char *compile(char *path_name) {
 
 	char *file_name = realpath(path_name, NULL);
 	if (check(file_name == NULL, "error resolving %s\n", path_name)) return NULL;
-	tokenize(file_name);
+	tokenize(file_name, 0);
 
 	for (int i = 0; tokens[i]; i++)
 		debug(GREEN("%k\n"), tokens[i]);
@@ -3439,7 +3452,7 @@ int main(int argc, char **argv) {
 	for (int i = 0; i < src_count && !found_error; i++) {
 		char *ll = compile(src_files[i]);
 #if ASM
-		if (!testing_mode) {
+		if (!testing_mode && !found_error) {
 			if (enable_san)   pos += snprintf(final_cmd + pos, sizeof(final_cmd) - pos, " \"%s\"", ll);
 			else {
 				char s[URA_MAX_SIZE];
@@ -3461,7 +3474,7 @@ int main(int argc, char **argv) {
 		free_local_memory();
 	}
 #if ASM
-	for (int i = 0; i < lcount; i++) {
+	for (int i = 0; i < lcount && !found_error; i++) {
 		char env_name[URA_MAX_SIZE];
 		snprintf(env_name, sizeof(env_name), "URA_LINK_%s", links[i]);
 		char *flags = getenv(env_name);

@@ -2,7 +2,6 @@
 
 main():
     cube array[[[int]]] = stack[[[int]]](2, 3, 4)
-
     x int = 0
     while x < 2:
         y int = 0

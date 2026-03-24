@@ -1,6 +1,5 @@
 + declaring variable with name self is forbidden
 
-
 - declare:
    + global variables (primitives + structs; init/clean auto-called in main)
    - const / immutable variables
