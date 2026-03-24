@@ -1,0 +1,9 @@
+// conditionals/ref/001.ura - reference value used in conditional
+
+main():
+    hp int = 75
+    r  int ref = hp
+    if r > 50:
+        output("healthy\n")
+    else:
+        output("critical\n")

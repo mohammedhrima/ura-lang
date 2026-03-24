@@ -1,0 +1,10 @@
+// conditionals/003.ura - if-elif-else: floor difficulty rating
+
+main():
+    floor int = 6
+    if floor < 3:
+        output("Easy\n")
+    elif floor < 7:
+        output("Normal\n")
+    else:
+        output("Hard\n")

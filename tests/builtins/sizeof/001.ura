@@ -1,0 +1,5 @@
+// builtins/sizeof/001.ura - sizeof on dungeon room name string
+
+main():
+    size int = sizeof("Throne Room\n")
+    output("size ", size, "\n")

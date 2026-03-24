@@ -1,0 +1,14 @@
+// memory/001.ura - heap: dungeon map, fill with '.', place '@', free
+
+use "@/header"
+
+main():
+    map chars = heap[char](50)
+    i   int   = 0
+    while i < 49:
+        map[i] = '.'
+        i = i + 1
+    map[24] = '@'
+    map[49] = 0 as char
+    output("Map: ", map, "\n")
+    free(map)

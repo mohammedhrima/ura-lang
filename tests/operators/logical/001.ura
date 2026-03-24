@@ -1,0 +1,37 @@
+// operators/logical/001.ura - logical ops: &&, ||, !, and, or, not
+
+fn is_alive(hp int) bool:
+    return hp > 0
+
+fn has_key(keys int) bool:
+    return keys > 0
+
+main():
+    hp       int  = 60
+    keys     int  = 1
+    exhausted bool = False
+
+    // &&
+    can_proceed bool = is_alive(hp) && has_key(keys) && !exhausted
+    output("can_proceed: ", can_proceed, "\n")   // True
+
+    // ||
+    escape bool = hp < 10 || keys == 0
+    output("escape:      ", escape,      "\n")   // False
+
+    // !
+    blocked bool = !can_proceed
+    output("blocked:     ", blocked,     "\n")   // False
+
+    // and / or / not keywords
+    if is_alive(hp) and not exhausted:
+        output("hero fights\n")
+
+    if hp < 10 or keys == 0:
+        output("hero retreats\n")
+    else:
+        output("hero advances\n")
+
+    // double negation
+    alive bool = is_alive(hp)
+    output("!!alive: ", !(!alive), "\n")   // True
