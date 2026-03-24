@@ -1,0 +1,14 @@
+use "@/header"
+
+mod math:
+    fn add(a int, b int) int:
+        return a + b
+
+    fn mul(a int, b int) int:
+        return a * b
+
+main():
+    result int = math.add(3, 4)
+    printf("%d\n", result)
+    printf("%d\n", math.mul(3, 4))
+    return 0

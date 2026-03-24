@@ -1,0 +1,12 @@
+// functions/basic/001.ura - void fn: announce dungeon floor
+
+fn announce_floor(floor int) void:
+    output("=== Entering floor ", floor, " ===\n")
+
+fn announce_boss(name chars) void:
+    output("BOSS: ", name, " appears!\n")
+
+main():
+    announce_floor(1)
+    announce_floor(5)
+    announce_boss("The Lich King")

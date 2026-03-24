@@ -1,0 +1,7 @@
+// refs/001.ura - basic ref: bind to hp, write through ref
+
+main():
+    hp int = 100
+    r  int ref = hp
+    r = 0
+    output("<", hp, ">\n")

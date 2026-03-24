@@ -1,0 +1,12 @@
+// functions/params/ref/004.ura - compound assign through ref in a loop
+
+fn tick(kills int ref) void:
+    kills += 1
+
+main():
+    kills int = 0
+    i     int = 0
+    while i < 5:
+        tick(kills)
+        i = i + 1
+    output("<", kills, ">\n")

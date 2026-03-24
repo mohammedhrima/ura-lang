@@ -1,0 +1,16 @@
+// memory/003.ura - array indexing: write chars to spell a word, output, free
+
+use "@/header"
+
+main():
+    str array[char] = heap[char](8)
+    str[0] = 'D'
+    str[1] = 'U'
+    str[2] = 'N'
+    str[3] = 'G'
+    str[4] = 'E'
+    str[5] = 'O'
+    str[6] = 'N'
+    str[7] = 0 as char
+    output(str, "\n")
+    free(str)

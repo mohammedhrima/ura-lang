@@ -1,0 +1,8 @@
+// output/001.ura - basic output: strings, ints, floats, bools
+
+main():
+    output("=== Aldric enters the dungeon ===\n")
+    output("Floor: ", 1, "\n")
+    output("Alive: ", True, "\n")
+    output("Speed: ", 1.5, "\n")
+    output("Ready to fight!\n")
