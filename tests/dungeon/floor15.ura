@@ -1,0 +1,12 @@
+// dungeon/floor15.ura
+use "@/header"
+
+fn run() void:
+    if os.argc < 2:
+        output("Usage: dungeon <hero_name>\n")
+        return
+    output("=== Welcome, ", os.argv[1], "! ===\n")
+    output("Your quest begins on floor 1.\n")
+
+main():
+    run()

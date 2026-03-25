@@ -1,0 +1,12 @@
+// dungeon/floor05.ura
+fn roll_loot(f int) (chars, int):
+    item  chars = "Iron Sword"
+    value int   = f * 15
+    return item, value
+
+main():
+    item chars, gold int = roll_loot(3)
+    output("Floor 3 loot: ", item, " worth ", gold, " gold\n")
+
+    item2 chars, bonus int = roll_loot(5)
+    output("Bonus gold: ", bonus, "\n")
