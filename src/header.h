@@ -179,6 +179,8 @@ enum Type
 	NULLABLE,
 	// Modules
 	MODULE,
+	// Operator overloading keyword
+	OPERATOR,
 	// end
 	END,
 };
@@ -197,8 +199,9 @@ struct LLVM {
 	bool    is_loaded;
 	Value   array_size;
 	Value   elem;
-	Value   dim_sizes[4];
-	int     dim_count;
+	Value  *dims;
+	int     dims_count;
+	int     dims_size;
 	Block   bloc;
 	TypeRef funcType;
 	TypeRef stType;
@@ -313,9 +316,9 @@ struct Node {
 	int     structs_count;
 	int     structs_size;
 
-	Node **modules;
-	int modules_count;
-	int modules_size;
+	Node  **modules;
+	int     modules_count;
+	int     modules_size;
 };
 
 // globals.h

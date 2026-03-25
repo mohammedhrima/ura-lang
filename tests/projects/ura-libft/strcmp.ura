@@ -1,4 +1,4 @@
-// libft/strcmp
+// libft/strcmp.ura
 
 fn strcmp(left chars, right chars) int:
     i int = 0

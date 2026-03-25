@@ -100,7 +100,7 @@ def align_if_chain(lines):
             body = line[cond_end:].strip()
             chain.append((line, cond_end, body))
             j += 1
-            if not body:   # condition with block body — ends the chain
+            if not body or body == '{':   # condition with block body — ends the chain
                 break
 
         # No progress — emit the line as-is and move on

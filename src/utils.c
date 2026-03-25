@@ -119,10 +119,10 @@ void unuse(Node *node) {
 	if (!node || !node->token) return;
 
 	if (node->left && node->left->token) {
-		if (node->left->token->used > 0)    node->left->token->used--;
+		if (node->left->token->used > 0) node->left->token->used--;
 	}
 	if (node->right && node->right->token) {
-		if (node->right->token->used > 0)     node->right->token->used--;
+		if (node->right->token->used > 0) node->right->token->used--;
 	}
 	for (int i = 0; i < node->children_count; i++)
 		if (node->children[i] && node->children[i]->token)
@@ -158,6 +158,7 @@ void *allocate_func(int line, int len, int size) {
 void free_token(Token *token) {
 	free(token->name);
 	free(token->Chars.value);
+	free(token->llvm.dims);
 	free(token);
 }
 
@@ -261,7 +262,7 @@ char *to_string(Type type) {
 	    [ENUM_DEF] = "ENUM_DEF", [ENUM_CALL] = "ENUM_CALL", [TUPLE] = "TUPLE",
 	    [TUPLE_UNPACK] = "TUPLE_UNPACK", [LBRA] = "LBRA", [RBRA] = "RBRA",
 	    [ARRAY] = "ARRAY", [DOT] = "DOT", [SYNTAX_ERROR] = "SYNTAX_ERROR",
-	    [MODULE] = "MODULE",
+	    [MODULE] = "MODULE", [OPERATOR] = "OPERATOR_KW",
 	};
 
 	if (check(!res[type], "handle this case %d\n", type)) {
@@ -325,6 +326,13 @@ Token *copy_token(Token *token) {
 	new->name = NULL;
 	if (token->name)        setName(new, token->name);
 	if (token->Chars.value) new->Chars.value = strdup(token->Chars.value);
+	new->llvm.dims       = NULL;
+	new->llvm.dims_count = 0;
+	new->llvm.dims_size  = 0;
+	for (int i = 0; i < token->llvm.dims_count; i++) {
+		resize_array(new->llvm.dims, Value, new->llvm.dims_size, new->llvm.dims_count);
+		new->llvm.dims[new->llvm.dims_count++] = token->llvm.dims[i];
+	}
 	add_token(new);
 	return new;
 }
@@ -517,7 +525,7 @@ void pnode(Node *node, char *indent) {
 
 	debug("%k\n", node->token);
 	if (includes(node->token->type, IF, ELIF, ELSE, 0)) {
-		if (node->left)                                    push(node->left);
+		if (node->left) push(node->left);
 		for (int i = 0; i < node->children_count; i++)
 			push(node->children[i]);
 		if (node->right) push(node->right);
@@ -527,6 +535,12 @@ void pnode(Node *node, char *indent) {
 		for (int i = 0; i < node->children_count; i++)
 			push(node->children[i]);
 	}
+	for (int i = 0; i < node->modules_count; i++)
+		push(node->modules[i]);
+	for (int i = 0; i < node->structs_count; i++)
+		push(node->structs[i]);
+	for (int i = 0; i < node->functions_count; i++)
+		push(node->functions[i]);
 	for (int i = 0; i < count; i++) {
 		Node *child = subs[i];
 		if (!child || !child->token || !child->token->type) continue;
@@ -584,7 +598,7 @@ void hoist_allocas(Node *node) {
 	if (tok->type == FDEC) return;
 
 	if (includes(tok->type, INT, LONG, SHORT, CHARS, CHAR, BOOL, ARRAY_TYPE, 0) && tok->is_dec) {
-		if (!tok->llvm.elem)                                                                       _alloca(tok);
+		if (!tok->llvm.elem) _alloca(tok);
 	} else if (tok->type == STRUCT_CALL && tok->is_dec && !tok->is_ref) {
 		if (!tok->llvm.elem) {
 			TypeRef struct_type = get_llvm_type(tok);

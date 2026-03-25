@@ -1,0 +1,19 @@
+// dungeon/floor11.ura
+POISONED int = 1
+FROZEN   int = 2
+BURNING  int = 4
+SHIELDED int = 8
+
+fn has(status int, flag int) bool:  return (status & flag) != 0
+fn add(status int, flag int) int:   return status | flag
+fn rem(status int, flag int) int:   return status & ~flag
+
+main():
+    s int = 0
+    s = add(s, POISONED)
+    s = add(s, BURNING)
+    output("Poisoned: ", has(s, POISONED), "\n")
+    output("Frozen:   ", has(s, FROZEN),   "\n")
+    output("Burning:  ", has(s, BURNING),  "\n")
+    s = rem(s, POISONED)
+    output("Cured:    ", has(s, POISONED), "\n")

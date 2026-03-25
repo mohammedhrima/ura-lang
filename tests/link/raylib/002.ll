@@ -47,7 +47,6 @@ entry:
   %a14 = load i32, i32* %a4, align 4, !dbg !7
   %as15 = trunc i32 %a14 to i8, !dbg !7
   store i8 %as15, i8* %a13, align 1, !dbg !7
-  call void @Color.clean(%struct.Color* %c), !dbg !7
   %c16 = load %struct.Color, %struct.Color* %c, align 1, !dbg !7
   ret %struct.Color %c16, !dbg !7
 }

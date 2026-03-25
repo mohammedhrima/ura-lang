@@ -1,0 +1,48 @@
+// dungeon/floor13a.ura
+struct Vec2:
+    x int
+    y int
+
+    fn init() void:
+        self.x = 0
+        self.y = 0
+
+    operator = (v Vec2 ref) void:
+        self.x = v.x
+        self.y = v.y
+
+    operator + (v Vec2 ref) Vec2:
+        res Vec2
+        res.x = self.x + v.x
+        res.y = self.y + v.y
+        return res
+
+    operator == (v Vec2 ref) bool:
+        return self.x == v.x and self.y == v.y
+
+    fn print() void:
+        output("(", self.x, ", ", self.y, ")\n")
+
+fn walk(steps int, dir Vec2) Vec2:
+    pos Vec2
+    i   int = 0
+    while i < steps:
+        pos = pos + dir
+        i   = i + 1
+    return pos
+
+main():
+    north Vec2
+    north.x = 0
+    north.y = 1
+
+    east Vec2
+    east.x = 1
+    east.y = 0
+
+    pos Vec2 = walk(3, north)
+    pos = pos + east
+    pos.print()
+
+    origin Vec2
+    output("at origin: ", pos == origin, "\n")

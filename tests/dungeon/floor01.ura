@@ -1,0 +1,11 @@
+// dungeon/floor01.ura
+main():
+    hero  chars = "Aldric"
+    hp    int   = 100
+    mp    int   = 50
+    alive bool  = True
+    speed float = 1.5
+
+    output("=== ", hero, " enters the dungeon ===\n")
+    output("HP: ", hp, "  MP: ", mp, "  Speed: ", speed, "\n")
+    output("typeof hp: ", typeof(hp), "  sizeof chars ptr: ", sizeof(hero), "\n")

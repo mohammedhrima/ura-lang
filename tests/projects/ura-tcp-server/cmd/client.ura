@@ -1,4 +1,4 @@
-// projects/ura-tcp-server/cmd/client
+// projects/ura-tcp-server/cmd/client.ura
 use "./utils"
 
 fn banner() void:

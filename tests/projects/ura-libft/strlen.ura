@@ -1,4 +1,4 @@
-// libft/strlen
+// libft/strlen.ura
 
 fn strlen(str chars) int:
     i int = 0

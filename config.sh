@@ -468,81 +468,132 @@ tests() {
 
     build || return 1
 
-    local failed=0
-    local passed=0
     local targets=("$@")
     local ura_files=()
 
     if [[ ${#targets[@]} -eq 0 ]]; then
         while IFS= read -r f; do
             ura_files+=("$f")
-        done < <(find "$TESTS_DIR" -name "*.ura" | sort)
+        done < <(find "$TESTS_DIR" -name "*.ura" -not -path "*/build/*" | sort)
     else
         for target in "${targets[@]}"; do
             local target_dir="$target"
             [[ ! "$target_dir" = /* ]] && target_dir="$TESTS_DIR/$target"
             while IFS= read -r f; do
                 ura_files+=("$f")
-            done < <(find "$target_dir" -name "*.ura" | sort)
+            done < <(find "$target_dir" -name "*.ura" -not -path "*/build/*" | sort)
         done
     fi
 
-    local skipped=0
+    # Suppress job-control notifications (config.sh is sourced in interactive shell)
+    { set +m; } 2>/dev/null
+
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    local max_jobs=3
+
+    # Launch all tests in parallel (throttled to max_jobs)
+    local i=0
     for ura_file in "${ura_files[@]}"; do
-        [[ -e "$ura_file" ]] || continue
+        while (( $(jobs -rp 2>/dev/null | wc -l) >= max_jobs )); do
+            wait -n 2>/dev/null || sleep 0.05
+        done
 
-        if [[ "$(head -n 1 "$ura_file")" != //* ]]; then
-            local rel_skip="${ura_file#$TESTS_DIR/}"
-            rel_skip="${rel_skip%.ura}"
-            echo -e "  ${YELLOW}SKIP $rel_skip${RESET}"
-            ((skipped++))
-            continue
-        fi
+        local result_file="$tmpdir/$i"
+        (
+            local rel="${ura_file#$TESTS_DIR/}"
+            rel="${rel%.ura}"
 
-        local base_name=$(basename "$ura_file" .ura)
-        local test_dir=$(dirname "$ura_file")
-        local rel_path="${ura_file#$TESTS_DIR/}"
-        rel_path="${rel_path%.ura}"
+            if [[ "$(head -n 1 "$ura_file")" != //* ]]; then
+                printf 'SKIP\t%s\t\n' "$rel" > "$result_file"
+                exit 0
+            fi
 
-        local ll_expected="$test_dir/${base_name}.ll"
-        local ll_got="$test_dir/build/${base_name}.ll"
+            local base_name
+            base_name=$(basename "$ura_file" .ura)
+            local test_dir
+            test_dir=$(dirname "$ura_file")
+            local ll_expected="$test_dir/${base_name}.ll"
+            local ll_got="$test_dir/build/${base_name}.ll"
 
-        if [[ ! -f "$ll_expected" ]]; then
-            echo -e "  ${RED}FAIL $rel_path (expected .ll not found)${RESET}"
-            ((failed++))
-            continue
-        fi
+            if [[ ! -f "$ll_expected" ]]; then
+                printf 'FAIL\t%s\tno .ll reference\n' "$rel" > "$result_file"
+                exit 0
+            fi
 
-        if ! "$URA_COMPILER" "$ura_file" -testing -no-exec > /dev/null 2>&1; then
-            echo -e "  ${RED}FAIL $rel_path (compilation error)${RESET}"
-            ((failed++))
-            continue
-        fi
+            if ! "$URA_COMPILER" "$ura_file" -testing -no-exec > /dev/null 2>&1; then
+                printf 'FAIL\t%s\tcompilation error\n' "$rel" > "$result_file"
+                exit 0
+            fi
 
-        if [[ ! -f "$ll_got" ]]; then
-            echo -e "  ${RED}FAIL $rel_path (no IR generated)${RESET}"
-            ((failed++))
-            continue
-        fi
+            if [[ ! -f "$ll_got" ]]; then
+                printf 'FAIL\t%s\tno IR generated\n' "$rel" > "$result_file"
+                exit 0
+            fi
 
-        if diff -q \
-            <(tail -n +4 "$ll_got"      | grep -v "DIFile\|DICompileUnit\|source_filename\|ModuleID") \
-            <(tail -n +4 "$ll_expected" | grep -v "DIFile\|DICompileUnit\|source_filename\|ModuleID") \
-            > /dev/null 2>&1; then
-            echo -e "  ${GREEN}PASS $rel_path${RESET}"
-            ((passed++))
-        else
-            echo -e "  ${RED}FAIL $rel_path (IR mismatch)${RESET}"
-            ((failed++))
-        fi
+            if diff -q \
+                <(tail -n +4 "$ll_got"      | grep -v "DIFile\|DICompileUnit\|source_filename\|ModuleID") \
+                <(tail -n +4 "$ll_expected" | grep -v "DIFile\|DICompileUnit\|source_filename\|ModuleID") \
+                > /dev/null 2>&1; then
+                printf 'PASS\t%s\t\n' "$rel" > "$result_file"
+            else
+                printf 'FAIL\t%s\tIR mismatch\n' "$rel" > "$result_file"
+            fi
+        ) &
+
+        (( i++ ))
     done
 
-    echo ""
-    echo -e "${GREEN}Passed: $passed${RESET}"
-    [[ $failed -gt 0 ]] && echo -e "${RED}Failed: $failed${RESET}"
-    [[ $skipped -gt 0 ]] && echo -e "${YELLOW}Skipped: $skipped${RESET}"
+    wait
+    { set -m; } 2>/dev/null
 
-    return $failed
+    # Display via Python3 — immune to zsh xtrace no matter where it points
+    python3 - "$tmpdir" "$i" << 'PYEOF'
+import sys, os
+
+G = '\033[0;32m'  # green
+R = '\033[0;31m'  # red
+Y = '\033[1;33m'  # yellow
+E = '\033[0m'     # reset
+
+tmpdir, n = sys.argv[1], int(sys.argv[2])
+passed = failed = skipped = 0
+
+for j in range(n):
+    path = os.path.join(tmpdir, str(j))
+    if not os.path.exists(path):
+        continue
+    with open(path) as f:
+        parts = f.readline().rstrip('\n').split('\t', 2)
+    status = parts[0] if parts else ''
+    rel    = parts[1] if len(parts) > 1 else ''
+    reason = parts[2].strip() if len(parts) > 2 else ''
+
+    if status == 'PASS':
+        print(f"{G}  PASS {rel}{E}")
+        passed += 1
+    elif status == 'FAIL':
+        print(f"{R}  FAIL {rel} ({reason}){E}")
+        failed += 1
+    elif status == 'SKIP':
+        print(f"{Y}  SKIP {rel}{E}")
+        skipped += 1
+
+print()
+print(f"{G}Passed: {passed}{E}")
+if failed:
+    print(f"{R}Failed: {failed}{E}")
+if skipped:
+    print(f"{Y}Skipped: {skipped}{E}")
+
+with open(os.path.join(tmpdir, '_ret'), 'w') as f:
+    f.write(str(failed))
+PYEOF
+
+    local _ret
+    _ret=$(cat "$tmpdir/_ret" 2>/dev/null || echo 0)
+    rm -rf "$tmpdir"
+    return $_ret
 }
 
 update_tests() {
