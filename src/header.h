@@ -177,6 +177,10 @@ enum Type
 	BAND, BOR, BXOR, BNOT, LSHIFT, RSHIFT,
 	// Literals
 	NULLABLE,
+	// Modules
+	MODULE,
+	// Operator overloading keyword
+	OPERATOR,
 	// end
 	END,
 };
@@ -195,8 +199,9 @@ struct LLVM {
 	bool    is_loaded;
 	Value   array_size;
 	Value   elem;
-	Value   dim_sizes[4];
-	int     dim_count;
+	Value  *dims;
+	int     dims_count;
+	int     dims_size;
 	Block   bloc;
 	TypeRef funcType;
 	TypeRef stType;
@@ -310,6 +315,10 @@ struct Node {
 	Node  **structs;
 	int     structs_count;
 	int     structs_size;
+
+	Node  **modules;
+	int     modules_count;
+	int     modules_size;
 };
 
 // globals.h
@@ -377,7 +386,7 @@ Node  *copy_node(Node *node);
 void   unuse(Node *node);
 
 // tokenizer / parser helpers
-void   tokenize(char *filename);
+void   tokenize(char *filename, int default_space);
 Token *new_token(Type type, int space);
 Token *parse_token(char *filename, int line, char *input, int s, int e, Type type, int space);
 void   add_token(Token *token);

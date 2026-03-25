@@ -1,4 +1,4 @@
-// net/server
+// net/server.ura
 use "@/header"
 
 fn log(msg chars) void:

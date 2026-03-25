@@ -20,6 +20,7 @@
     { "include": "#builtins" },
     { "include": "#operators" },
     { "include": "#functions" },
+    { "include": "#enum_values" },
     { "include": "#variables" }
   ],
   "repository": {
@@ -137,7 +138,7 @@
       "patterns": [
         {
           "name": "keyword.declaration.ura",
-          "match": "\\b(struct|fn|as|enum)\\b"
+          "match": "\\b(struct|fn|as|enum|operator|mod)\\b"
         }
       ]
     },
@@ -231,6 +232,16 @@
         {
           "name": "entity.name.function.ura",
           "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*(?=\\()"
+        }
+      ]
+    },
+
+    "enum_values": {
+      "patterns": [
+        {
+          "comment": "ALL_CAPS identifiers are enum constants — unique color distinct from type names",
+          "name": "constant.other.enum-member.ura",
+          "match": "\\b([A-Z][A-Z0-9_]+)\\b"
         }
       ]
     },

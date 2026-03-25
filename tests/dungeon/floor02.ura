@@ -1,0 +1,13 @@
+// dungeon/floor02.ura
+score int = 0
+floor int = 1
+lives int = 3
+
+fn earn(pts int) void:
+    score = score + pts
+
+main():
+    output("Floor ", floor, " | Score: ", score, " | Lives: ", lives, "\n")
+    earn(100)
+    earn(50)
+    output("After two kills — Score: ", score, "\n")

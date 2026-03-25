@@ -2,8 +2,10 @@ import re
 import sys
 
 COL = 75
+COL_INIT = 100   # column limit for struct-init packing (matches .clang-format ColumnLimit)
 
 ENUM_VAL_RE  = re.compile(r'^(\t+)(\w+)(,?)\s*$')
+STRUCT_ENTRY_RE = re.compile(r'^(\s+)(\{[^{}]+\},?)\s*$')
 CASE_RE      = re.compile(r'(case\s+\S+\s*:)')
 SINGLE_RE    = re.compile(r'^\s*case\s+\S+\s*:(\s*\{)?\s*$')
 IF_RE        = re.compile(r'^(\s*)((?:else\s+)?if)\s*(\()')
@@ -98,7 +100,7 @@ def align_if_chain(lines):
             body = line[cond_end:].strip()
             chain.append((line, cond_end, body))
             j += 1
-            if not body:   # condition with block body — ends the chain
+            if not body or body == '{':   # condition with block body — ends the chain
                 break
 
         # No progress — emit the line as-is and move on
@@ -267,10 +269,42 @@ def pack_designated_init(lines):
     return out
 
 
+# ── struct initializer packing ───────────────────────────────────────────────
+
+def pack_struct_init(lines):
+    """Pack one-per-line {key, VAL} struct initializer entries onto lines <= COL_INIT."""
+    out = []
+    i = 0
+    while i < len(lines):
+        m = STRUCT_ENTRY_RE.match(lines[i])
+        if not m:
+            out.append(lines[i])
+            i += 1
+            continue
+        indent_str = m.group(1)
+        entries = []
+        while i < len(lines):
+            m2 = STRUCT_ENTRY_RE.match(lines[i])
+            if not m2 or m2.group(1) != indent_str:
+                break
+            entries.append(m2.group(2))
+            i += 1
+        cur = indent_str
+        for entry in entries:
+            piece = entry + ' '
+            if len((cur + piece).rstrip()) > COL_INIT and cur.strip():
+                out.append(cur.rstrip() + '\n')
+                cur = indent_str
+            cur += piece
+        if cur.strip():
+            out.append(cur.rstrip() + '\n')
+    return out
+
+
 # ── pipeline ──────────────────────────────────────────────────────────────────
 
 def merge(lines):
-    return pack_designated_init(pack_enum_values(align_if_chain(align_case_chain(merge_case_bodies(pack(normalize(lines)))))))
+    return pack_struct_init(pack_designated_init(pack_enum_values(align_if_chain(align_case_chain(merge_case_bodies(pack(normalize(lines))))))))
 
 
 for path in sys.argv[1:]:

@@ -1,0 +1,31 @@
+// operators/overloading/007.ura
+
+struct HP:
+    val int
+
+    fn init() void:
+        self.val = 0
+
+    operator = (n int) void:
+        self.val = n
+
+    operator > (h HP ref) bool:
+        return self.val > h.val
+
+    operator == (h HP ref) bool:
+        return self.val == h.val
+
+main():
+    dead HP
+    dead.val = 0
+
+    hero HP
+    hero = 30
+
+    while hero > dead:
+        hero.val = hero.val - 10
+
+    if hero == dead:
+        output("hero is dead\n")
+    else:
+        output("hero survived\n")

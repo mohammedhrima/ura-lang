@@ -1,0 +1,29 @@
+// operators/overloading/003.ura
+struct Counter:
+    val int
+
+    fn init() void:
+        self.val = 0
+
+    operator =  (n int) void:
+        self.val = n
+
+    operator += (n int) void:
+        self.val = self.val + n
+
+    operator -= (n int) void:
+        self.val = self.val - n
+
+    operator *= (n int) void:
+        self.val = self.val * n
+
+main():
+    c Counter
+    c = 10
+    output("after =  10: ", c.val, "\n")
+    c += 5
+    output("after += 5:  ", c.val, "\n")
+    c -= 3
+    output("after -= 3:  ", c.val, "\n")
+    c *= 2
+    output("after *= 2:  ", c.val, "\n")

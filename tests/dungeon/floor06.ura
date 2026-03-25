@@ -1,0 +1,20 @@
+// dungeon/floor06.ura
+fn simulate(hero_hp int, orc_hp int) void:
+    round int = 0
+    while hero_hp > 0:
+        round = round + 1
+        if orc_hp <= 0:
+            output("Victory in round ", round - 1, "!\n")
+            return
+        if round > 20:
+            output("Stalemate\n")
+            break
+        hero_hp = hero_hp - 10
+        orc_hp  = orc_hp  - 18
+
+    if hero_hp <= 0:
+        output("Hero fell in round ", round, "\n")
+
+main():
+    simulate(100, 60)
+    simulate(30,  90)
