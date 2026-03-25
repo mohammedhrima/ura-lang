@@ -1,0 +1,23 @@
+// dungeon/floor09a.ura
+fn level_up(level int ref, hp int ref, mp int ref) void:
+    level = level + 1
+    hp    = hp + 20
+    mp    = mp + 10
+    output("★ Level ", level, "! HP+20 MP+10\n")
+
+fn swap(a int ref, b int ref) void:
+    tmp int = a
+    a   = b
+    b   = tmp
+
+main():
+    lv int = 1
+    hp int = 100
+    mp int = 50
+    level_up(lv, hp, mp)
+    output("Stats: HP=", hp, " MP=", mp, "\n")
+
+    x int = 3
+    y int = 7
+    swap(x, y)
+    output("x=", x, " y=", y, "\n")

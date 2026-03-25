@@ -347,7 +347,10 @@ const completionProvider: vscode.CompletionItemProvider = {
       "**/*.ura",
       "{**/build/**,**/.git/**}"
     );
+    const libDir = getUraLibDir();
     for (const uri of uris) {
+      // Skip ura-lib files — they're handled by the libIndex loop below
+      if (libDir && uri.fsPath.startsWith(libDir)) continue;
       const isSameFile = uri.fsPath === document.uri.fsPath;
       const relPath = path.relative(wsRoot, uri.fsPath).replace(/\\/g, "/");
       const text = (await vscode.workspace.fs.readFile(uri)).toString();
