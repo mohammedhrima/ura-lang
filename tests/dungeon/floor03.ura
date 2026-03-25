@@ -1,0 +1,22 @@
+// dungeon/floor03.ura
+enum EnemyType:
+    ORC, SPIDER, DRAGON, GOLEM
+
+enum DamageType:
+    PHYSICAL, FIRE, ICE, POISON
+
+fn announce(enemy int, dtype int) void:
+    if enemy == DRAGON:      output("Dragon")
+    elif enemy == ORC:       output("Orc")
+    elif enemy == SPIDER:    output("Spider")
+    else:                    output("Golem")
+    output(" — ")
+    if dtype == FIRE:        output("fire\n")
+    elif dtype == ICE:       output("ice\n")
+    elif dtype == POISON:    output("poison\n")
+    else:                    output("physical\n")
+
+main():
+    announce(DRAGON, FIRE)
+    announce(ORC,    PHYSICAL)
+    announce(SPIDER, POISON)

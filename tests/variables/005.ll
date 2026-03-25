@@ -159,5 +159,5 @@ declare i32 @printf(i8*, i32, ...)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}
 !7 = !DILocation(line: 3, scope: !4)
-!8 = !DILocation(line: 12, scope: !4)
-!9 = !DILocation(line: 23, scope: !4)
+!8 = !DILocation(line: 11, scope: !4)
+!9 = !DILocation(line: 22, scope: !4)
