@@ -218,18 +218,18 @@ Token *parse_token(char *filename, int line, char *input, int s, int e, Type typ
 		                      {"short", SHORT}, {0, 0}};
 		if (match_table(new, new->name, data_types, true)) goto id_done;
 
-		Types keywords[] = {{"if", IF},
-		                    {"elif", ELIF}, {"else", ELSE}, {"while", WHILE}, {"fn", FDEC},
-		                    {"return", RETURN}, {"break", BREAK}, {"continue", CONTINUE}, {"ref", REF},
-		                    {"struct", STRUCT_DEF}, {"enum", ENUM_DEF}, {"proto", PROTO}, {"mod", MODULE},
-		                    {"as", AS},
-		                    {0, 0}};
+		Types keywords[] = {
+		    {"if", IF},      {"elif", ELIF},         {"else", ELSE},     {"while", WHILE},
+		    {"fn", FDEC},    {"return", RETURN},     {"break", BREAK},   {"continue", CONTINUE},
+		    {"ref", REF},    {"struct", STRUCT_DEF}, {"enum", ENUM_DEF}, {"proto", PROTO},
+		    {"mod", MODULE}, {"operator", OPERATOR}, {"as", AS},         {0, 0}};
 		if (match_table(new, new->name, keywords, false)) goto id_done;
 
-		Types keywords2[] = {{"and", AND},          {"or", OR},         {"is", EQUAL},
-		                     {"not", NOT},          {"typeof", TYPEOF}, {"sizeof", SIZEOF},
-		                     {"output", OUTPUT},    {"stack", STACK},   {"heap", HEAP},
-		                     {"array", ARRAY_TYPE}, {"null", NULLABLE}, {0, 0}};
+		Types keywords2[] = {{"and", AND},
+		                     {"or", OR}, {"is", EQUAL}, {"not", NOT}, {"typeof", TYPEOF},
+		                     {"sizeof", SIZEOF}, {"stack", STACK}, {"heap", HEAP}, {"array", ARRAY_TYPE},
+		                     {"null", NULLABLE},
+		                     {0, 0}};
 		if (match_table(new, new->name, keywords2, false)) setName(new, NULL);
 	id_done:
 		break;
@@ -477,7 +477,7 @@ Node *as_node() // as
 		node->left  = left;
 		node->right = unary_node();
 		Token *to   = node->right->token;
-		if (check(to == NULL || !to->is_dec, "expected data type after to")) return syntax_error();
+		if (check(to == NULL || !to->is_dec, "expected data type after as")) return syntax_error();
 		to->is_dec = false;
 		left       = node;
 	}
@@ -545,11 +545,16 @@ static Node *parse_var_dec(Token *token) {
 	// Literal value: "hello", 1, 'c'
 	if (token->type != ID && !token->is_dec && !token->name) return new_node(token);
 	// int, char, chars, etc. declaration keyword
-	// if (token->is_dec) return new_node(token);
+	if (token->is_dec) {
+		if (check(tokens[ecount]->type == ID && tokens[ecount]->line == token->line,
+		          "Unexpected id after data type %k", tokens[ecount]))
+			return syntax_error();
+		return new_node(token);
+	}
 	// TODO: this one should expected using expect
 
 	// variable declaration: name type [ref] [= ...]
-	if (token->type == ID && is_data_type(tokens[ecount])) {
+	if (token->type == ID && is_data_type(tokens[ecount]) && tokens[ecount]->line == token->line) {
 		Token *tmp    = tokens[ecount++]; // skip data type
 		bool   is_ref = find(REF, 0) != NULL;
 		if (tmp->type == ARRAY_TYPE) {
@@ -668,6 +673,20 @@ static Node *parse_var_dec(Token *token) {
 
 			exit_scope();
 			return node;
+		} else if (strcmp(token->name, "output") == 0) {
+			node              = new_node(token);
+			node->token->type = OUTPUT;
+			node->left        = new_node(new_token(ARGS, token->space));
+			Token *end_tok    = NULL;
+			while (!found_error && !(end_tok = find(RPAR, END, 0))) {
+				Node *curr = expr_node();
+				add_child(node->left, curr);
+				find(COMA, 0);
+			}
+			if (check(!found_error && end_tok->type != RPAR, "output: expected )"))
+				return syntax_error();
+			node->token->retType = VOID;
+			return node;
 		} else {
 			// Function call:
 			//    + left:
@@ -687,10 +706,11 @@ static Node *parse_var_dec(Token *token) {
 	}
 	// just an ID
 	if (token->type == ID) return new_node(token);
-	check(1, "Unexpected token has type %s line %d", to_string(tokens[ecount]->type),
-	      tokens[ecount]->line);
+	check(1, "Unexpected token has type %k line %d", tokens[ecount], tokens[ecount]->line);
 	return syntax_error();
 }
+
+static Node *parse_fdec(Token *token);
 
 static Node *parse_struct_def(Token *token) {
 	Node  *node = new_node(token);
@@ -705,6 +725,39 @@ static Node *parse_struct_def(Token *token) {
 	enter_scope(node);
 
 	while (within(node->token->space)) {
+		Token *op_kw;
+		if ((op_kw = find(OPERATOR, 0))) {
+			Token *op_tok = find(ASSIGN, ADD, SUB, MUL, DIV, MOD, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN,
+			                     DIV_ASSIGN, MOD_ASSIGN, EQUAL, NOT_EQUAL, LESS, GREAT, LESS_EQUAL,
+			                     GREAT_EQUAL, AND, OR, BAND, BOR, BXOR, LSHIFT, RSHIFT, 0);
+			if (check(!op_tok, "struct '%s': expected operator symbol after 'operator'",
+			          node->token->name)) {
+				exit_scope();
+				return syntax_error();
+			}
+			char  *op_base  = strjoin("operator.", to_string(op_tok->type), "");
+			Token *fdec_tok = new_token(FDEC, op_kw->space);
+			setName(fdec_tok, op_base);
+			free(op_base);
+			Node *child = parse_fdec(fdec_tok);
+			// suffix with first param type for unique overload names
+			// e.g. "operator.ASSIGN.CHARS" or "operator.ASSIGN.String"
+			char *op_named;
+			if (child->left && child->left->children_count >= 2) {
+				Token *p      = child->left->children[0]->token;
+				char  *suffix = (p->type == STRUCT_CALL && p->Struct.ptr) ? p->Struct.ptr->token->name
+				                                                          : to_string(p->type);
+				op_named      = strjoin(child->token->name, ".", suffix);
+			} else {
+				op_named = strjoin(child->token->name, "", "");
+			}
+			char *qualified = strjoin(node->token->name, ".", op_named);
+			free(op_named);
+			setName(child->token, qualified);
+			free(qualified);
+			new_function(child);
+			continue;
+		}
 		Node *child = prime_node();
 		if (!child)                     return syntax_error();
 		if (child->token->type == FDEC) {
@@ -810,9 +863,12 @@ static Node *parse_if(Token *token) {
 }
 
 static Node *parse_fdec(Token *token) {
-	Node  *node  = new_node(token);
-	Token *fname = find(ID, 0);
-	if (check(!fname, "expected identifier after fn declaration")) return syntax_error();
+	Node *node = new_node(token);
+	if (!node->token->name || strcmp(node->token->name, "fn") == 0) {
+		Token *fname = find(ID, 0);
+		if (check(!fname, "expected identifier after fn declaration")) return syntax_error();
+		setName(node->token, fname->name);
+	}
 
 	// Check if we're inside a struct scope (method)
 	Node *struct_owner = NULL;
@@ -833,7 +889,7 @@ static Node *parse_fdec(Token *token) {
 			break;
 		} else {
 			Token *name = find(ID, 0);
-			if (check(!name, "expected identifier in function argument %s", fname->name))
+			if (check(!name, "expected identifier in function argument %s", node->token->name))
 				return syntax_error();
 
 			Token *data_type = find(DATA_TYPES, ID, 0);
@@ -926,7 +982,6 @@ static Node *parse_fdec(Token *token) {
 		} else node->token->retType = ret_tok->type;
 	}
 	node->token->is_ref = find(REF, 0) != NULL;
-	setName(node->token, fname->name);
 
 	if (!node->token->is_proto) {
 		Token *next = find(DOTS, 0);
@@ -964,7 +1019,7 @@ static Node *parse_return(Token *token) {
 	Node *node = new_node(token);
 	for (int i = sccount; i >= 0; i--) {
 		Node *curr = level_scope[i];
-		if (curr->token->type == FDEC)     {
+		if (curr->token->type == FDEC) {
 			if (curr->token->retType == VOID) {
 				node->left              = copy_node(node);
 				node->left->token->type = VOID;
@@ -989,7 +1044,7 @@ Node *prime_node() {
 	Token *token;
 
 	if ((token = find(ID, DATA_TYPES, 0))) return parse_var_dec(token);
-	if ((token = find(MODULE, 0))){
+	if ((token = find(MODULE, 0)))         {
 		Token *id = find(ID, 0);
 		check(!id, "expect module identifier after 'mod'");
 		expect_token(DOTS, "expect DOTs after mod name");
@@ -1071,21 +1126,7 @@ Node *prime_node() {
 		node->token->retType = type;
 		return node;
 	}
-	if ((token = find(OUTPUT, 0))) {
-		node = new_node(token);
-		expect_token(LPAR, "output: expected (");
-		node->left     = new_node(new_token(ARGS, token->space));
-		Token *end_tok = NULL;
-		while (!found_error && !(end_tok = find(RPAR, END, 0))) {
-			Node *curr = expr_node();
-			add_child(node->left, curr);
-			find(COMA, 0);
-		}
-		if (check(!found_error && end_tok->type != RPAR, "output: expected )")) return syntax_error();
-		node->token->retType = VOID;
-		return node;
-	}
-	if ((token = find(PROTO, 0)))                             {
+	if ((token = find(PROTO, 0))) {
 		if (includes(tokens[ecount]->type, FDEC, STRUCT_DEF, 0)) tokens[ecount]->is_proto = true;
 		else check(1, "expected <fn> or <struct> after proto");
 		return expr_node();
@@ -1104,8 +1145,8 @@ Node *prime_node() {
 		node->left = prime_node();
 		return node;
 	}
-	if ((token = find(NULLABLE, 0)))   return new_node(token);
-	if ((token = find(LPAR, 0)))       {
+	if ((token = find(NULLABLE, 0))) return new_node(token);
+	if ((token = find(LPAR, 0)))     {
 		if (tokens[ecount]->type != RPAR) node = expr_node();
 		expect_token(RPAR, "expected right )");
 		return node;
@@ -1117,6 +1158,7 @@ Node *prime_node() {
 }
 
 Node *optimize_ir(Node *node, bool *changed) {
+	// TODO: remove unsed attributes
 	if (!node || found_error) return NULL;
 
 	node->left  = optimize_ir(node->left, changed);
@@ -1229,11 +1271,33 @@ static void ir_method_call(Node *node) {
 
 	// first arg already gen_ir'd (obj), do rest
 	obj_node->token->used++;
+	Node *dec_args = func->left;
 	for (int i = 0; !found_error && i < node->left->children_count - 1; i++) {
 		Node *carg = node->left->children[i];
 		gen_ir(carg);
-		if (check(carg->token->type == ID, "Indeclared variable %s", carg->token->name)) break;
+		if (check(carg->token->type == ID, "Undeclared variable %s", carg->token->name)) break;
 		carg->token->used++;
+
+		Token *src = carg->token;
+		if (i < dec_args->children_count - 1) { // -1: last dec_arg is implicit self
+			Type param_type   = dec_args->children[i]->token->type;
+			Type arg_type     = src->type;
+			bool param_is_int = includes(param_type, NUMERIC_TYPES, 0);
+			bool arg_is_int   = includes(arg_type, NUMERIC_TYPES, 0);
+			if (param_is_int && arg_is_int && param_type != arg_type) {
+				Token *as_tok           = new_token(AS, src->space);
+				as_tok->retType         = param_type;
+				Node *tgt_node          = new_node(new_token(param_type, src->space));
+				Node *as_node_          = new_node(as_tok);
+				as_node_->left          = carg;
+				as_node_->right         = tgt_node;
+				node->left->children[i] = as_node_;
+			} else if (arg_type != 0 && !compatible(dec_args->children[i]->token, src)) {
+				check(1, "'%s' argument %d: cannot pass %s as %s", node->token->name, i + 1,
+				      to_string(arg_type), to_string(param_type));
+				break;
+			}
+		}
 	}
 	free_node(func);
 	set_ret_type(node);
@@ -1364,7 +1428,7 @@ void gen_ir(Node *node) {
 		Node *src               = get_struct(node->token->Struct.ptr->token->name);
 		node->token->Struct.ptr = src;
 		if (node->token->is_dec) {
-			if (sccount == 1)       {
+			if (sccount == 1) {
 				node->token->is_global = true;
 			} else src->token->used++; // local declaration → always emit struct def
 			new_variable(node->token);
@@ -1387,8 +1451,7 @@ void gen_ir(Node *node) {
 	case INT:   case BOOL: case CHAR: case ARRAY_TYPE: case FLOAT: case LONG:
 	case CHARS: case PTR: case VOID: case SHORT: {
 		if (node->token->is_dec) {
-			if (sccount == 1)       {
-				check(1, "hello");
+			if (sccount == 1) {
 				node->token->is_global = true;
 			}
 			new_variable(node->token);
@@ -1404,7 +1467,7 @@ void gen_ir(Node *node) {
 		for (int i = 0; i < node->children_count; i++) {
 			Node *lhs = node->children[i];
 			if (lhs->token->is_dec) {
-				if (sccount == 1)      lhs->token->is_global = true;
+				if (sccount == 1) lhs->token->is_global = true;
 				new_variable(lhs->token);
 			}
 		}
@@ -1419,6 +1482,25 @@ void gen_ir(Node *node) {
 		// TODO: add all ir_bound checks in &ll places
 		gen_ir(left);
 		gen_ir(right);
+		// Struct operator overload: check for StructName.operator.ASSIGN.PARAMTYPE
+		Type lt = left->token->retType ? left->token->retType : left->token->type;
+		if (lt == STRUCT_CALL && left->token->Struct.ptr) {
+			Type  rt           = right->token->retType ? right->token->retType : right->token->type;
+			char *param_suffix = (rt == STRUCT_CALL && right->token->Struct.ptr)
+			                         ? right->token->Struct.ptr->token->name
+			                         : to_string(rt);
+			char *op_base =
+			    strjoin(left->token->Struct.ptr->token->name, ".operator.", to_string(ASSIGN));
+			char *op_name = strjoin(op_base, ".", param_suffix);
+			free(op_base);
+			Node *func = get_function(op_name);
+			free(op_name);
+			if (func) {
+				node->token->Fcall.ptr = func;
+				func->token->used++;
+				break;
+			}
+		}
 		if (!compatible(left->token, right->token)) {
 			check(1, "type mismatch: cannot assign %k to %k — use '%k as %s'", right->token,
 			      left->token, right->token, to_string(left->token->type));
@@ -1444,6 +1526,27 @@ void gen_ir(Node *node) {
 		node->token->used++;
 		node->left->token->used++;
 		node->right->token->used++;
+		// Struct compound-assign operator overload dispatch
+		{
+			Type lt = left->token->retType ? left->token->retType : left->token->type;
+			if (lt == STRUCT_CALL && left->token->Struct.ptr) {
+				Type  rt           = right->token->retType ? right->token->retType : right->token->type;
+				char *param_suffix = (rt == STRUCT_CALL && right->token->Struct.ptr)
+				                         ? right->token->Struct.ptr->token->name
+				                         : to_string(rt);
+				char *op_base = strjoin(left->token->Struct.ptr->token->name, ".operator.",
+				                        to_string(node->token->type));
+				char *op_name = strjoin(op_base, ".", param_suffix);
+				free(op_base);
+				Node *func = get_function(op_name);
+				free(op_name);
+				if (func) {
+					node->token->Fcall.ptr = func;
+					func->token->used++;
+					node->token->retType = func->token->retType;
+				}
+			}
+		}
 		break;
 	}
 	// [NOT] ret [BOOL]        [BNOT] ret [LEFT_TYPE]
@@ -1476,6 +1579,32 @@ void gen_ir(Node *node) {
 		node->left->token->used++;
 		node->right->token->used++;
 		set_ret_type(node);
+		// Struct binary operator overload dispatch
+		{
+			Type lt = left->token->retType ? left->token->retType : left->token->type;
+			if (lt == STRUCT_CALL && left->token->Struct.ptr) {
+				Type  rt           = right->token->retType ? right->token->retType : right->token->type;
+				char *param_suffix = (rt == STRUCT_CALL && right->token->Struct.ptr)
+				                         ? right->token->Struct.ptr->token->name
+				                         : to_string(rt);
+				char *op_base      = strjoin(left->token->Struct.ptr->token->name, ".operator.",
+				                             to_string(node->token->type));
+				char *op_name      = strjoin(op_base, ".", param_suffix);
+				free(op_base);
+				Node *func = get_function(op_name);
+				free(op_name);
+				if (func) {
+					node->token->Fcall.ptr = func;
+					func->token->used++;
+					if (func->token->retType == STRUCT_CALL) {
+						node->token->retType    = STRUCT_CALL;
+						node->token->Struct.ptr = func->token->Struct.ptr;
+					} else {
+						node->token->retType = func->token->retType;
+					}
+				}
+			}
+		}
 		break;
 	}
 	// [WHILE]
@@ -1802,7 +1931,7 @@ bool compatible(Token *left, Token *right) {
 
 	if (lt == CHARS && includes(rt, ARRAY_TYPE, ARRAY, 0) && right->Array.elem_type == CHAR)
 		return true;
-	if (rt == CHARS && includes(rt, ARRAY_TYPE, ARRAY, 0) && left->Array.elem_type == CHAR)
+	if (rt == CHARS && includes(lt, ARRAY_TYPE, ARRAY, 0) && left->Array.elem_type == CHAR)
 		return true;
 
 	if (lt == ARRAY_TYPE && rt == ARRAY) return true;
@@ -2056,13 +2185,15 @@ void finalize(char *output) {
 	LLVMContextDispose(context);
 }
 
-void emit_scope_clean(Node *scope, int from) {
+void emit_scope_clean(Node *scope, int from, Token *skip) {
 	for (int i = from; i < scope->variables_count; i++) {
 		Token *var = scope->variables[i];
+		if (var == skip)                                 continue; // returned — ownership transferred to caller
 		if (var->type != STRUCT_CALL || !var->llvm.elem) continue;
 		if (var->is_ref)                                 continue; // refs are borrowed, not owned — caller cleans up
-		Node *sd       = var->Struct.ptr;
-		char *qname    = strjoin(sd->token->name, ".clean", NULL);
+		Node *sd    = var->Struct.ptr;
+		char *qname = strjoin(sd->token->name, ".clean", NULL);
+
 		Value clean_fn = LLVMGetNamedFunction(module, qname);
 		free(qname);
 		if (!clean_fn) continue;
@@ -2182,8 +2313,8 @@ void gen_asm(Node *node) {
 	if (check(node->token->llvm.is_set, "already set")) return;
 	switch (node->token->type) {
 	case STRUCT_CALL: {
-		if (node->token->is_dec)      {
-			if (node->token->is_global)  {
+		if (node->token->is_dec) {
+			if (node->token->is_global) {
 				if (node->token->used == 0) {
 					node->token->is_dec = false;
 					return;
@@ -2220,8 +2351,8 @@ void gen_asm(Node *node) {
 	}
 	case INT:        case LONG: case SHORT: case CHARS: case CHAR: case BOOL:
 	case ARRAY_TYPE: case FLOAT: {
-		if (node->token->is_dec)      {
-			if (node->token->is_global)  {
+		if (node->token->is_dec) {
+			if (node->token->is_global) {
 				if (node->token->used == 0) {
 					node->token->is_dec = false;
 					return;
@@ -2241,6 +2372,42 @@ void gen_asm(Node *node) {
 		break;
 	}
 	case ASSIGN: {
+		// Struct operator overload dispatch
+		if (node->token->Fcall.ptr) {
+			Node *func    = node->token->Fcall.ptr;
+			LLVM  srcFunc = func->token->llvm;
+			if (check(!srcFunc.funcType, "operator: funcType NULL for '%s'", node->token->name)) break;
+			if (check(!srcFunc.elem, "operator: elem NULL for '%s'", node->token->name))         break;
+			gen_asm(left);
+			gen_asm(right);
+			// Mirror FCALL ref/non-ref logic for the first (rhs) param
+			bool param_is_ref =
+			    func->left->children_count >= 2 && func->left->children[0]->token->is_ref;
+			bool  arg_is_ref = right->token->is_ref;
+			Value rhs_val;
+			if (param_is_ref && arg_is_ref) {
+				TypeRef type = get_llvm_type(right->token);
+				rhs_val = LLVMBuildLoad2(builder, LLVMPointerType(type, 0), right->token->llvm.elem,
+				                         "ref_arg");
+			} else if (param_is_ref && !arg_is_ref) {
+				// if already a pointer (alloca) pass directly, else spill return value to temp
+				if (LLVMGetTypeKind(LLVMTypeOf(right->token->llvm.elem)) == LLVMPointerTypeKind) {
+					rhs_val = right->token->llvm.elem;
+				} else {
+					TypeRef type = get_llvm_type(right->token);
+					Value   tmp  = LLVMBuildAlloca(builder, type, "tmp_op");
+					LLVMBuildStore(builder, right->token->llvm.elem, tmp);
+					rhs_val = tmp;
+				}
+			} else {
+				load_if_necessary(right);
+				rhs_val = right->token->llvm.elem;
+			}
+			// args: [rhs, self]  (self is last param per parse_fdec convention)
+			Value args[2] = {rhs_val, left->token->llvm.elem};
+			LLVMBuildCall2(builder, srcFunc.funcType, srcFunc.elem, args, 2, "");
+			break;
+		}
 		if (left->token->is_global && left->token->is_dec) {
 			gen_asm(left);
 			gen_asm(right);
@@ -2250,7 +2417,7 @@ void gen_asm(Node *node) {
 			return;
 		}
 		if (left->token->is_ref && !left->token->asm_bound && !left->token->is_param) {
-			if (!left->token->llvm.elem)                                                 _alloca(left->token);
+			if (!left->token->llvm.elem) _alloca(left->token);
 			gen_asm(right);
 			LLVMBuildStore(builder, right->token->llvm.elem, left->token->llvm.elem);
 			left->token->asm_bound = true;
@@ -2262,10 +2429,13 @@ void gen_asm(Node *node) {
 		gen_asm(right);
 
 		// propagate multi-dim info from stack/heap allocation to the variable
-		if (includes(right->token->type, STACK, HEAP, 0) && right->token->llvm.dim_count > 1) {
-			left->token->llvm.dim_count = right->token->llvm.dim_count;
-			for (int i = 0; i < right->token->llvm.dim_count; i++)
-				left->token->llvm.dim_sizes[i] = right->token->llvm.dim_sizes[i];
+		if (includes(right->token->type, STACK, HEAP, 0) && right->token->llvm.dims_count > 1) {
+			left->token->llvm.dims_count = 0;
+			for (int i = 0; i < right->token->llvm.dims_count; i++) {
+				resize_array(left->token->llvm.dims, Value, left->token->llvm.dims_size,
+				             left->token->llvm.dims_count);
+				left->token->llvm.dims[left->token->llvm.dims_count++] = right->token->llvm.dims[i];
+			}
 		}
 
 		TypeRef type = get_llvm_type(right->token);
@@ -2287,6 +2457,39 @@ void gen_asm(Node *node) {
 	}
 	case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN:
 	case MOD_ASSIGN: {
+		// Struct compound-assign operator overload dispatch
+		if (node->token->Fcall.ptr) {
+			Node *func    = node->token->Fcall.ptr;
+			LLVM  srcFunc = func->token->llvm;
+			if (check(!srcFunc.funcType, "operator: funcType NULL for '%s'", node->token->name)) break;
+			if (check(!srcFunc.elem, "operator: elem NULL for '%s'", node->token->name))         break;
+			gen_asm(left);
+			gen_asm(right);
+			bool  param_is_ref =
+			    func->left->children_count >= 2 && func->left->children[0]->token->is_ref;
+			bool  arg_is_ref = right->token->is_ref;
+			Value rhs_val;
+			if (param_is_ref && arg_is_ref) {
+				TypeRef type = get_llvm_type(right->token);
+				rhs_val = LLVMBuildLoad2(builder, LLVMPointerType(type, 0), right->token->llvm.elem,
+				                         "ref_arg");
+			} else if (param_is_ref && !arg_is_ref) {
+				if (LLVMGetTypeKind(LLVMTypeOf(right->token->llvm.elem)) == LLVMPointerTypeKind)
+					rhs_val = right->token->llvm.elem;
+				else {
+					TypeRef type = get_llvm_type(right->token);
+					Value   tmp  = LLVMBuildAlloca(builder, type, "tmp_op");
+					LLVMBuildStore(builder, right->token->llvm.elem, tmp);
+					rhs_val = tmp;
+				}
+			} else {
+				load_if_necessary(right);
+				rhs_val = right->token->llvm.elem;
+			}
+			Value args[2] = {rhs_val, left->token->llvm.elem};
+			LLVMBuildCall2(builder, srcFunc.funcType, srcFunc.elem, args, 2, "");
+			break;
+		}
 		gen_asm(left);
 		gen_asm(right);
 
@@ -2324,6 +2527,83 @@ void gen_asm(Node *node) {
 	case LESS:   case GREAT: case LESS_EQUAL: case GREAT_EQUAL: case MOD:
 	case AND:    case OR: case BAND: case BOR: case BXOR: case LSHIFT:
 	case RSHIFT: {
+		// Struct binary operator overload dispatch
+		if (node->token->Fcall.ptr) {
+			Node *func    = node->token->Fcall.ptr;
+			LLVM  srcFunc = func->token->llvm;
+			if (check(!srcFunc.funcType, "operator: funcType NULL for '%s'", node->token->name)) break;
+			if (check(!srcFunc.elem, "operator: elem NULL for '%s'", node->token->name))         break;
+			gen_asm(left);
+			gen_asm(right);
+			// right = operand (first param), left = self (last param)
+			bool param_is_ref =
+			    func->left->children_count >= 2 && func->left->children[0]->token->is_ref;
+			bool  arg_is_ref = right->token->is_ref;
+			Value rhs_val;
+			if (param_is_ref && arg_is_ref) {
+				TypeRef type = get_llvm_type(right->token);
+				rhs_val = LLVMBuildLoad2(builder, LLVMPointerType(type, 0), right->token->llvm.elem,
+				                         "ref_arg");
+			} else if (param_is_ref && !arg_is_ref) {
+				if (LLVMGetTypeKind(LLVMTypeOf(right->token->llvm.elem)) == LLVMPointerTypeKind)
+					rhs_val = right->token->llvm.elem;
+				else {
+					TypeRef type = get_llvm_type(right->token);
+					Value   tmp  = LLVMBuildAlloca(builder, type, "tmp_op");
+					LLVMBuildStore(builder, right->token->llvm.elem, tmp);
+					rhs_val = tmp;
+				}
+			} else {
+				// non-ref param: use copy-constructor if struct has operator=
+				bool param_is_struct_v = func->left->children_count >= 2 &&
+				                         func->left->children[0]->token->type == STRUCT_CALL;
+				bool arg_is_struct =
+				    right->token->type == STRUCT_CALL || right->token->retType == STRUCT_CALL;
+				bool did_copy = false;
+				if (param_is_struct_v && arg_is_struct) {
+					Node *st_node = func->left->children[0]->token->Struct.ptr;
+					char *cp_name =
+					    strjoin(st_node->token->name, ".operator.ASSIGN.", st_node->token->name);
+					Value copy_op = LLVMGetNamedFunction(module, cp_name);
+					free(cp_name);
+					if (copy_op) {
+						TypeRef st_type = get_llvm_type(func->left->children[0]->token);
+						Value   tmp     = LLVMBuildAlloca(builder, st_type, "copy");
+						LLVMBuildStore(builder, LLVMConstNull(st_type), tmp);
+						char *in_name = strjoin(st_node->token->name, ".init", NULL);
+						Value init_fn = LLVMGetNamedFunction(module, in_name);
+						free(in_name);
+						if (init_fn) {
+							Value iargs[] = {tmp};
+							LLVMBuildCall2(builder, LLVMGlobalGetValueType(init_fn), init_fn, iargs, 1,
+							               "");
+						}
+						Value src_ptr;
+						if (LLVMGetTypeKind(LLVMTypeOf(right->token->llvm.elem)) == LLVMPointerTypeKind)
+							src_ptr = right->token->llvm.elem;
+						else {
+							Value spill = LLVMBuildAlloca(builder, st_type, "spill");
+							LLVMBuildStore(builder, right->token->llvm.elem, spill);
+							src_ptr = spill;
+						}
+						Value cargs[] = {src_ptr, tmp};
+						LLVMBuildCall2(builder, LLVMGlobalGetValueType(copy_op), copy_op, cargs, 2, "");
+						rhs_val  = LLVMBuildLoad2(builder, st_type, tmp, "copy_val");
+						did_copy = true;
+					}
+				}
+				if (!did_copy) {
+					load_if_necessary(right);
+					rhs_val = right->token->llvm.elem;
+				}
+			}
+			Value args[2] = {rhs_val, left->token->llvm.elem};
+			node->token->llvm.elem =
+			    LLVMBuildCall2(builder, srcFunc.funcType, srcFunc.elem, args, 2, "");
+			if (func->token->retType != STRUCT_CALL && func->token->retType != VOID)
+				node->token->llvm.is_loaded = true;
+			break;
+		}
 		gen_asm(left);
 		gen_asm(right);
 
@@ -2336,7 +2616,16 @@ void gen_asm(Node *node) {
 		if (left->token->is_ref && !left->token->llvm.is_loaded)   lref = load_value(left->token);
 		if (right->token->is_ref && !right->token->llvm.is_loaded) rref = load_value(right->token);
 
-		node->token->llvm.elem = build_binary_op(node->token->type, lref, rref);
+		// Pointer arithmetic: chars/ptr + int → GEP instead of add
+		if (node->token->type == ADD && LLVMGetTypeKind(LLVMTypeOf(lref)) == LLVMPointerTypeKind) {
+			Value idx              = LLVMGetTypeKind(LLVMTypeOf(rref)) == LLVMIntegerTypeKind &&
+                             LLVMGetIntTypeWidth(LLVMTypeOf(rref)) < 64
+			                             ? LLVMBuildSExt(builder, rref, i64, "idx")
+			                             : rref;
+			node->token->llvm.elem = LLVMBuildGEP2(builder, i8, lref, &idx, 1, "ADD");
+		} else {
+			node->token->llvm.elem = build_binary_op(node->token->type, lref, rref);
+		}
 		if (includes(node->token->type, COMPARISON_OPS, 0)) node->token->retType = BOOL;
 		else node->token->retType = left->token->retType ? left->token->retType : left->token->type;
 		break;
@@ -2346,16 +2635,17 @@ void gen_asm(Node *node) {
 		TypeRef elem_t = get_llvm_type(&tmp);
 		int     depth  = node->token->Array.depth;
 
-		// evaluate each dimension, compute total element count, store dim_sizes
+		// evaluate each dimension, compute total element count, store dims
 		Value total = LLVMConstInt(i32, 1, 0);
 		for (int i = 0; i < depth; i++) {
 			gen_asm(node->children[i]);
 			load_if_necessary(node->children[i]);
-			Value dv                       = node->children[i]->token->llvm.elem;
-			node->token->llvm.dim_sizes[i] = dv;
-			total                          = LLVMBuildMul(builder, total, dv, "dim");
+			Value dv = node->children[i]->token->llvm.elem;
+			resize_array(node->token->llvm.dims, Value, node->token->llvm.dims_size,
+			             node->token->llvm.dims_count);
+			node->token->llvm.dims[node->token->llvm.dims_count++] = dv;
+			total = LLVMBuildMul(builder, total, dv, "dim");
 		}
-		node->token->llvm.dim_count = depth;
 
 		TargetData td        = LLVMGetModuleDataLayout(module);
 		size_t     elem_size = LLVMABISizeOfType(td, elem_t);
@@ -2376,11 +2666,12 @@ void gen_asm(Node *node) {
 		for (int i = 0; i < depth; i++) {
 			gen_asm(node->children[i]);
 			load_if_necessary(node->children[i]);
-			Value dv                       = node->children[i]->token->llvm.elem;
-			node->token->llvm.dim_sizes[i] = dv;
-			total                          = LLVMBuildMul(builder, total, dv, "dim");
+			Value dv = node->children[i]->token->llvm.elem;
+			resize_array(node->token->llvm.dims, Value, node->token->llvm.dims_size,
+			             node->token->llvm.dims_count);
+			node->token->llvm.dims[node->token->llvm.dims_count++] = dv;
+			total = LLVMBuildMul(builder, total, dv, "dim");
 		}
-		node->token->llvm.dim_count = depth;
 
 		TargetData td        = LLVMGetModuleDataLayout(module);
 		size_t     elem_size = LLVMABISizeOfType(td, elem_t);
@@ -2424,9 +2715,53 @@ void gen_asm(Node *node) {
 					// ref → non-ref param: double dereference to get the value
 					args[i] = load_value(argNodes[i]->token);
 				} else {
-					// non-ref → non-ref: normal load
-					load_if_necessary(argNodes[i]);
-					args[i] = argNodes[i]->token->llvm.elem;
+					// non-ref → non-ref
+					// C++ copy-constructor semantics: if passing struct by value and a copy operator
+					// exists, use it to deep-copy instead of a shallow bitcopy
+					bool did_copy          = false;
+					bool param_is_struct_v = (i < dec_args->children_count) &&
+					                         dec_args->children[i]->token->type == STRUCT_CALL;
+					bool arg_is_struct = argNodes[i]->token->type == STRUCT_CALL ||
+					                     argNodes[i]->token->retType == STRUCT_CALL;
+					if (param_is_struct_v && arg_is_struct) {
+						Node *st_node = dec_args->children[i]->token->Struct.ptr;
+						char *op_name =
+						    strjoin(st_node->token->name, ".operator.ASSIGN.", st_node->token->name);
+						Value copy_op = LLVMGetNamedFunction(module, op_name);
+						free(op_name);
+						if (copy_op) {
+							TypeRef st_type = get_llvm_type(dec_args->children[i]->token);
+							Value   tmp     = LLVMBuildAlloca(builder, st_type, "copy");
+							LLVMBuildStore(builder, LLVMConstNull(st_type), tmp);
+							char *init_name = strjoin(st_node->token->name, ".init", NULL);
+							Value init_fn   = LLVMGetNamedFunction(module, init_name);
+							free(init_name);
+							if (init_fn) {
+								Value iargs[] = {tmp};
+								LLVMBuildCall2(builder, LLVMGlobalGetValueType(init_fn), init_fn, iargs, 1,
+								               "");
+							}
+							// get source pointer — spill to alloca if it's a raw value (e.g. fn return)
+							Value src_ptr;
+							if (LLVMGetTypeKind(LLVMTypeOf(argNodes[i]->token->llvm.elem)) ==
+							    LLVMPointerTypeKind) {
+								src_ptr = argNodes[i]->token->llvm.elem;
+							} else {
+								Value spill = LLVMBuildAlloca(builder, st_type, "spill");
+								LLVMBuildStore(builder, argNodes[i]->token->llvm.elem, spill);
+								src_ptr = spill;
+							}
+							Value cargs[] = {src_ptr, tmp};
+							LLVMBuildCall2(builder, LLVMGlobalGetValueType(copy_op), copy_op, cargs, 2,
+							               "");
+							args[i]  = LLVMBuildLoad2(builder, st_type, tmp, "copy_val");
+							did_copy = true;
+						}
+					}
+					if (!did_copy) {
+						load_if_necessary(argNodes[i]);
+						args[i] = argNodes[i]->token->llvm.elem;
+					}
 
 					// ARM64 ABI: proto calls pass small structs as i64 via memcpy
 					bool is_proto_call = node->token->Fcall.ptr->token->is_proto;
@@ -2436,7 +2771,7 @@ void gen_asm(Node *node) {
 					if (is_proto_call && param_is_struct) {
 						TypeRef st_type = get_llvm_type(dec_args->children[i]->token);
 						Value   st_ptr  = LLVMBuildAlloca(builder, st_type, "st_slot");
-						LLVMBuildStore(builder, argNodes[i]->token->llvm.elem, st_ptr);
+						LLVMBuildStore(builder, args[i], st_ptr);
 						Value i64p = LLVMBuildAlloca(builder, i64, "i64_slot");
 						LLVMBuildMemCpy(builder, i64p, 0, st_ptr, 0, LLVMConstInt(i64, 4, 0));
 						args[i] = LLVMBuildLoad2(builder, i64, i64p, "i64_arg");
@@ -2723,7 +3058,7 @@ void gen_asm(Node *node) {
 				// Store then block
 				curr->token->llvm.then = then;
 
-				if (curr->right)                       {
+				if (curr->right) {
 					if (curr->right->token->type == ELSE) next = _append_block("if.else");
 					else next = _append_block("elif.start");
 				} else next = end;
@@ -2777,7 +3112,11 @@ void gen_asm(Node *node) {
 		break;
 	}
 	case RETURN: {
-		emit_scope_clean(scope, 0);
+		Token *ret_skip =
+		    (node->left && node->left->token->type == STRUCT_CALL && !node->left->token->is_ref)
+		        ? node->left->token
+		        : NULL;
+		emit_scope_clean(scope, 0, ret_skip);
 
 		// Auto-insert nested field clean calls for .clean methods before return
 		{
@@ -2931,7 +3270,7 @@ void gen_asm(Node *node) {
 			result = LLVMBuildFPToSI(builder, source, targetType, "as");
 		// Float ↔ Double
 		else if (srcIsFloat && tgtIsFloat) {
-			if (sourceKind == FloatType)      result = LLVMBuildFPExt(builder, source, targetType, "as");
+			if (sourceKind == FloatType) result = LLVMBuildFPExt(builder, source, targetType, "as");
 			else result = LLVMBuildFPTrunc(builder, source, targetType, "as");
 		}
 		// Integer → Pointer
@@ -3112,11 +3451,11 @@ void gen_asm(Node *node) {
 		Value rightRef = node->right->token->llvm.elem;
 
 		// multi-dim flat array: compute stride, emit GEP to sub-array, propagate dims
-		int left_depth = node->left->token->llvm.dim_count;
+		int left_depth = node->left->token->llvm.dims_count;
 		if (left_depth > 1) {
 			Value stride = LLVMConstInt(i32, 1, 0);
 			for (int d = 1; d < left_depth; d++)
-				stride = LLVMBuildMul(builder, stride, node->left->token->llvm.dim_sizes[d], "stride");
+				stride = LLVMBuildMul(builder, stride, node->left->token->llvm.dims[d], "stride");
 			Value   flat_idx = LLVMBuildMul(builder, rightRef, stride, "flat_idx");
 
 			TypeRef base_t;
@@ -3134,9 +3473,13 @@ void gen_asm(Node *node) {
 			node->token->Array.elem_type  = node->left->token->Array.elem_type;
 			node->token->Array.struct_ptr = node->left->token->Array.struct_ptr;
 			node->token->Array.depth      = left_depth - 1;
-			node->token->llvm.dim_count   = left_depth - 1;
-			for (int d = 1; d < left_depth; d++)
-				node->token->llvm.dim_sizes[d - 1] = node->left->token->llvm.dim_sizes[d];
+			node->token->llvm.dims_count  = 0;
+			for (int d = 1; d < left_depth; d++) {
+				resize_array(node->token->llvm.dims, Value, node->token->llvm.dims_size,
+				             node->token->llvm.dims_count);
+				node->token->llvm.dims[node->token->llvm.dims_count++] =
+				    node->left->token->llvm.dims[d];
+			}
 			break;
 		}
 
@@ -3453,7 +3796,7 @@ int main(int argc, char **argv) {
 		char *ll = compile(src_files[i]);
 #if ASM
 		if (!testing_mode && !found_error) {
-			if (enable_san)   pos += snprintf(final_cmd + pos, sizeof(final_cmd) - pos, " \"%s\"", ll);
+			if (enable_san) pos += snprintf(final_cmd + pos, sizeof(final_cmd) - pos, " \"%s\"", ll);
 			else {
 				char s[URA_MAX_SIZE];
 				snprintf(s, sizeof(s), "%s", ll);

@@ -1,0 +1,15 @@
+// dungeon/floor07b.ura
+struct Room:
+    name  chars
+    floor int
+
+struct Dungeon:
+    name  chars
+    entry Room
+
+main():
+    d Dungeon
+    d.name        = "The Abyss"
+    d.entry.name  = "Gate Hall"
+    d.entry.floor = 1
+    output("Welcome to ", d.name, " — enter via ", d.entry.name, "\n")

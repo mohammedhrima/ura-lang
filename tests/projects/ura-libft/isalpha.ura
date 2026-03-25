@@ -1,4 +1,4 @@
-// libft/isalpha
+// libft/isalpha.ura
 fn isalpha(c char) bool: return c >= 'a' and c <= 'z'
 
 main():

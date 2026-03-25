@@ -1,0 +1,9 @@
+// dungeon/floor14a.ura
+proto fn strlen(s chars) int
+proto fn write(fd int, ptr chars, len int) int
+proto fn printf(fmt chars, ...) int
+
+main():
+    n int = strlen("dungeon")
+    write(1, "hi\n", 3)
+    printf("length: %d\n", n)

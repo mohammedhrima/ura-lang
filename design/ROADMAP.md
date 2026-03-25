@@ -211,7 +211,7 @@
 ## Distribution
 
 + install for macOS
-+ install for Linux
+- install for Linux
 - install for Windows (partial via MSYS2)
 - package manager / registry
 - cross-compilation
@@ -229,3 +229,4 @@
 - HTTP server
 - WebGPU / OpenGL demo
 - stock trading simulation (C++ reference)
+- build ura-lang compiler using ura-lang language
