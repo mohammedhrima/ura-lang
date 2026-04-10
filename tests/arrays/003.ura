@@ -1,0 +1,16 @@
+// arrays/003 — int array literal
+use "@/header"
+
+main():
+    v array[int] = [10, 20, 30, 40, 50]
+    output(v[0], " ", v[1], " ", v[2], " ", v[3], " ", v[4], "\n")
+
+    single array[int] = [42]
+    output(single[0], "\n")
+
+    w array[int] = [1, 2, 3]
+    i int = 0
+    while i < 3:
+        output(w[i], " ")
+        i += 1
+    output("\n")

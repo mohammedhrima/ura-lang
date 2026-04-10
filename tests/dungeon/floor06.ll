@@ -1,5 +1,5 @@
-; ModuleID = 'tests/dungeon/floor06.ura'
-source_filename = "tests/dungeon/floor06.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon/floor06.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon/floor06.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 @STR0 = private unnamed_addr constant [18 x i8] c"Victory in round \00", align 1
@@ -97,7 +97,7 @@ entry:
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "floor06.ura", directory: "tests/dungeon")
+!3 = !DIFile(filename: "floor06.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon")
 !4 = distinct !DISubprogram(name: "simulate", linkageName: "simulate", scope: null, file: !3, line: 2, type: !5, scopeLine: 2, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

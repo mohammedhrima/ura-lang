@@ -5,5 +5,5 @@ fn show_hp(hp int) void:
 
 main():
     hero_hp int = 75
-    r int ref = hero_hp
+    r int ref = ref hero_hp
     show_hp(r)

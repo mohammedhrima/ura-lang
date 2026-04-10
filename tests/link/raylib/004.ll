@@ -7,13 +7,7 @@ target triple = "arm64-apple-macosx16.0.0"
 @STR0 = private unnamed_addr constant [17 x i8] c"Moving Rectangle\00", align 1
 @STR1 = private unnamed_addr constant [8 x i8] c"Moving!\00", align 1
 
-define void @Color.init(%struct.Color* %0) {
-entry:
-  store %struct.Color zeroinitializer, %struct.Color* %0, align 1
-  ret void
-}
-
-define void @Color.clean(%struct.Color* %0) {
+define void @Color.delete(%struct.Color* %0) {
 entry:
   ret void
 }
@@ -30,7 +24,6 @@ entry:
   store i32 %b, i32* %b3, align 4, !dbg !7
   store i32 %a, i32* %a4, align 4, !dbg !7
   store %struct.Color zeroinitializer, %struct.Color* %c, align 1, !dbg !7
-  call void @Color.init(%struct.Color* %c), !dbg !7
   %r5 = getelementptr %struct.Color, %struct.Color* %c, i32 0, i32 0, !dbg !7
   %r6 = load i32, i32* %r1, align 4, !dbg !7
   %as = trunc i32 %r6 to i8, !dbg !7
@@ -105,6 +98,8 @@ if.start:                                         ; preds = %while.then
 if.end:                                           ; preds = %if.then, %if.start
   call void @BeginDrawing(), !dbg !13
   %setColor = call %struct.Color @setColor(i32 30, i32 30, i32 150, i32 255), !dbg !14
+  %tmp_struct = alloca %struct.Color, align 8, !dbg !14
+  store %struct.Color %setColor, %struct.Color* %tmp_struct, align 1, !dbg !14
   %st_slot = alloca %struct.Color, align 8, !dbg !14
   store %struct.Color %setColor, %struct.Color* %st_slot, align 1, !dbg !14
   %i64_slot = alloca i64, align 8, !dbg !14
@@ -115,23 +110,27 @@ if.end:                                           ; preds = %if.then, %if.start
   call void @ClearBackground(i64 %i64_arg), !dbg !14
   %x4 = load i32, i32* %x, align 4, !dbg !15
   %setColor5 = call %struct.Color @setColor(i32 255, i32 220, i32 0, i32 255), !dbg !15
-  %st_slot6 = alloca %struct.Color, align 8, !dbg !15
-  store %struct.Color %setColor5, %struct.Color* %st_slot6, align 1, !dbg !15
-  %i64_slot7 = alloca i64, align 8, !dbg !15
-  %2 = bitcast i64* %i64_slot7 to i8*, !dbg !15
-  %3 = bitcast %struct.Color* %st_slot6 to i8*, !dbg !15
+  %tmp_struct6 = alloca %struct.Color, align 8, !dbg !15
+  store %struct.Color %setColor5, %struct.Color* %tmp_struct6, align 1, !dbg !15
+  %st_slot7 = alloca %struct.Color, align 8, !dbg !15
+  store %struct.Color %setColor5, %struct.Color* %st_slot7, align 1, !dbg !15
+  %i64_slot8 = alloca i64, align 8, !dbg !15
+  %2 = bitcast i64* %i64_slot8 to i8*, !dbg !15
+  %3 = bitcast %struct.Color* %st_slot7 to i8*, !dbg !15
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %2, i8* %3, i64 4, i1 false), !dbg !15
-  %i64_arg8 = load i64, i64* %i64_slot7, align 4, !dbg !15
-  call void @DrawRectangle(i32 %x4, i32 250, i32 100, i32 100, i64 %i64_arg8), !dbg !15
-  %setColor9 = call %struct.Color @setColor(i32 255, i32 255, i32 255, i32 255), !dbg !16
-  %st_slot10 = alloca %struct.Color, align 8, !dbg !16
-  store %struct.Color %setColor9, %struct.Color* %st_slot10, align 1, !dbg !16
-  %i64_slot11 = alloca i64, align 8, !dbg !16
-  %4 = bitcast i64* %i64_slot11 to i8*, !dbg !16
-  %5 = bitcast %struct.Color* %st_slot10 to i8*, !dbg !16
+  %i64_arg9 = load i64, i64* %i64_slot8, align 4, !dbg !15
+  call void @DrawRectangle(i32 %x4, i32 250, i32 100, i32 100, i64 %i64_arg9), !dbg !15
+  %setColor10 = call %struct.Color @setColor(i32 255, i32 255, i32 255, i32 255), !dbg !16
+  %tmp_struct11 = alloca %struct.Color, align 8, !dbg !16
+  store %struct.Color %setColor10, %struct.Color* %tmp_struct11, align 1, !dbg !16
+  %st_slot12 = alloca %struct.Color, align 8, !dbg !16
+  store %struct.Color %setColor10, %struct.Color* %st_slot12, align 1, !dbg !16
+  %i64_slot13 = alloca i64, align 8, !dbg !16
+  %4 = bitcast i64* %i64_slot13 to i8*, !dbg !16
+  %5 = bitcast %struct.Color* %st_slot12 to i8*, !dbg !16
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %4, i8* %5, i64 4, i1 false), !dbg !16
-  %i64_arg12 = load i64, i64* %i64_slot11, align 4, !dbg !16
-  call void @DrawText(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @STR1, i32 0, i32 0), i32 320, i32 20, i32 30, i64 %i64_arg12), !dbg !16
+  %i64_arg14 = load i64, i64* %i64_slot13, align 4, !dbg !16
+  call void @DrawText(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @STR1, i32 0, i32 0), i32 320, i32 20, i32 30, i64 %i64_arg14), !dbg !16
   call void @EndDrawing(), !dbg !17
   br label %while.start, !dbg !17
 

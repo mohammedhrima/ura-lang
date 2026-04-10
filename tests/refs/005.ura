@@ -4,8 +4,8 @@ main():
     shield int = 10
     mp     int = 80
 
-    s int ref = shield
-    m int ref = mp
+    s int ref = ref shield
+    m int ref = ref mp
     s *= 2
     m -= 25
 

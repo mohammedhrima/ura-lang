@@ -9,13 +9,7 @@ target triple = "arm64-apple-macosx16.0.0"
 @STR2 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @output_fmt = private unnamed_addr constant [8 x i8] c"id: %d\0A\00", align 1
 
-define void @Player.init(%struct.Player* %0) {
-entry:
-  store %struct.Player zeroinitializer, %struct.Player* %0, align 8
-  ret void
-}
-
-define void @Player.clean(%struct.Player* %0) {
+define void @Player.delete(%struct.Player* %0) {
 entry:
   ret void
 }
@@ -36,7 +30,6 @@ define i32 @main() !dbg !8 {
 entry:
   %hero = alloca %struct.Player, align 8, !dbg !9
   store %struct.Player zeroinitializer, %struct.Player* %hero, align 8, !dbg !9
-  call void @Player.init(%struct.Player* %hero), !dbg !9
   %name = getelementptr %struct.Player, %struct.Player* %hero, i32 0, i32 0, !dbg !9
   store i8* getelementptr inbounds ([7 x i8], [7 x i8]* @STR0, i32 0, i32 0), i8** %name, align 8, !dbg !9
   %hp = getelementptr %struct.Player, %struct.Player* %hero, i32 0, i32 1, !dbg !9
@@ -45,7 +38,7 @@ entry:
   %hp1 = getelementptr %struct.Player, %struct.Player* %hero, i32 0, i32 1, !dbg !10
   %DOT = load i32, i32* %hp1, align 4, !dbg !10
   %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @output_fmt, i32 0, i32 0), i32 1, i32 %DOT), !dbg !10
-  call void @Player.clean(%struct.Player* %hero), !dbg !10
+  call void @Player.delete(%struct.Player* %hero), !dbg !10
   ret i32 0, !dbg !10
 }
 

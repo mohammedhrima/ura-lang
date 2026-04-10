@@ -42,6 +42,10 @@ main():
 - [Floor 15 — Command Line](#floor-15--command-line)
 - [Floor 16 — Graphics](#floor-16--graphics)
 - [Floor 17 — Network](#floor-17--network)
+- [Floor 18 — The Scroll of Words](#floor-18--the-scroll-of-words)
+- [Floor 19 — Loot Tables](#floor-19--loot-tables)
+- [Floor 20 — The Hero's Identity](#floor-20--the-heros-identity)
+- [Floor 21 — The Armory](#floor-21--the-armory)
 - [Boss Room — The Full Game](#boss-room--the-full-game)
 - [How It Works](#how-it-works)
 - [Compiler Reference](#compiler-reference)
@@ -243,7 +247,7 @@ Hero fell in round 3
 
 ## Floor 7 — The Hero
 
-Structs group related data. Fields are declared inside the struct body, one per line:
+Structs group related data. Fields are declared inside the struct body, one per line. Structs are **zero-initialized** by default:
 
 ```ura
 struct Player:
@@ -309,7 +313,7 @@ Welcome to The Abyss — enter via Gate Hall
 
 ## Floor 8 — Hero Abilities
 
-Add methods directly to a struct. `fn init()` runs automatically at declaration. `fn clean()` runs at scope exit (destructor). `self` refers to the current instance:
+`pub fn` declares a **static method** — no `self`, called with `Type::method()`. Use it as an explicit constructor. `operator delete()` is the destructor — auto-called when the variable goes out of scope. `self` refers to the current instance in regular methods:
 
 ```ura
 use "@/header"
@@ -319,10 +323,12 @@ struct Hero:
     title chars
     hp    int
 
-    fn init() void:
-        self.name  = heap[char](32)
-        self.title = heap[char](32)
-        self.hp    = 100
+    pub fn new() Hero:
+        h Hero
+        h.name  = heap[char](32)
+        h.title = heap[char](32)
+        h.hp    = 100
+        return h
 
     fn setup(name chars, title chars) void:
         strcpy(self.name,  name)
@@ -334,17 +340,17 @@ struct Hero:
     fn heal(amount int) void:
         self.hp = self.hp + amount
 
-    fn clean() void:
+    operator delete() void:
         free(self.name)
         free(self.title)
 
 main():
-    hero Hero                           // init() called here
+    hero Hero = Hero::new()              // pub fn — static call
     hero.setup("Aldric", "The Bold")
     hero.announce()
     hero.heal(20)
     hero.announce()
-                                        // clean() called here automatically
+                                         // operator delete() called here automatically
 ```
 
 ```
@@ -352,7 +358,13 @@ The Bold Aldric — HP: 100
 The Bold Aldric — HP: 120
 ```
 
-`init()` → constructor, called on declaration. `clean()` → destructor, called on scope exit. No manual `free` at the call site.
+| Concept | Syntax | Notes |
+|---------|--------|-------|
+| Static method | `pub fn new() Hero:` | No `self`, called as `Hero::new()` |
+| Instance method | `fn heal(amount int) void:` | Has implicit `self` ref |
+| Destructor | `operator delete() void:` | Auto-called at scope exit |
+| Static dispatch | `Hero::new()` | `::` calls a `pub fn` |
+| Forward references | methods can call each other in any order | No declaration-before-use restriction within a struct |
 
 ---
 
@@ -559,21 +571,17 @@ struct Vec2:
     x int
     y int
 
-    fn init() void:
-        self.x = 0
-        self.y = 0
-
-    operator = (v Vec2 ref) void:      // Vec2.operator.ASSIGN.Vec2
+    operator = (v Vec2 ref) void:
         self.x = v.x
         self.y = v.y
 
-    operator + (v Vec2 ref) Vec2:      // Vec2.operator.ADD.Vec2
+    operator + (v Vec2 ref) Vec2:
         res Vec2
         res.x = self.x + v.x
         res.y = self.y + v.y
         return res
 
-    operator == (v Vec2 ref) bool:     // Vec2.operator.EQUAL.Vec2
+    operator == (v Vec2 ref) bool:
         return self.x == v.x and self.y == v.y
 
     fn print() void:
@@ -583,7 +591,7 @@ fn walk(steps int, dir Vec2) Vec2:
     pos Vec2
     i   int = 0
     while i < steps:
-        pos = pos + dir   // dispatches to Vec2.operator.ADD.Vec2
+        pos = pos + dir
         i   = i + 1
     return pos
 
@@ -596,8 +604,8 @@ main():
     east.x = 1
     east.y = 0
 
-    pos Vec2 = walk(3, north)   // (0, 3)
-    pos = pos + east            // (1, 3)
+    pos Vec2 = walk(3, north)
+    pos = pos + east
     pos.print()
 
     origin Vec2
@@ -618,25 +626,27 @@ struct Label:
     value chars
     len   int
 
-    fn init() void:
-        self.value = heap[char](64)
-        self.len   = 0
+    pub fn new() Label:
+        l Label
+        l.value = heap[char](64)
+        l.len   = 0
+        return l
 
-    fn clean() void:
+    operator delete() void:
         free(self.value)
 
     fn set(s chars) void:
         strcpy(self.value, s)
         self.len = strlen(s) as int
 
-    operator = (s chars) void:        // Label.operator.ASSIGN.CHARS
+    operator = (s chars) void:
         self.set(s)
 
-    operator = (v Label ref) void:    // Label.operator.ASSIGN.Label  (deep copy)
+    operator = (v Label ref) void:
         self.set(v.value)
 
-    operator + (v Label ref) Label:   // Label.operator.ADD.Label
-        res Label
+    operator + (v Label ref) Label:
+        res Label = Label::new()
         strcpy(res.value, self.value)
         strcat(res.value, v.value)
         res.len = self.len + v.len
@@ -646,13 +656,13 @@ struct Label:
         output(self.value, " (", self.len, " chars)\n")
 
 main():
-    title Label
-    title = "Shadow"       // ASSIGN.CHARS
+    title Label = Label::new()
+    title = "Shadow"
 
-    name Label
-    name = "Aldric"        // ASSIGN.CHARS
+    name Label = Label::new()
+    name = "Aldric"
 
-    full Label = title + name   // ADD.Label
+    full Label = title + name
     full.print()
 ```
 
@@ -670,7 +680,7 @@ fn rename(hero Label, suffix chars) void:
     output("inside: ", hero.value, "\n")
 
 main():
-    hero Label
+    hero Label = Label::new()
     hero = "Aldric"
     rename(hero, " the Brave")   // hero is deep-copied for the call
     output("after:  ", hero.value, "\n")
@@ -690,6 +700,7 @@ after:  Aldric
 | `operator + (v Hero ref)` | `Hero.operator.ADD.Hero` |
 | `operator == (v Hero ref)` | `Hero.operator.EQUAL.Hero` |
 | `operator < (v Hero ref)` | `Hero.operator.LESS.Hero` |
+| `operator delete()` | `Hero.delete` |
 
 ---
 
@@ -700,7 +711,7 @@ after:  Aldric
 ```ura
 use "@/io"       // printf, puts, fopen, fclose, write, read, ...
 use "@/memory"   // malloc, free, realloc, ...
-use "@/string"   // strlen, strcmp, strcpy, strcat, strdup, ...
+use "@/string"   // strlen, strcmp, strcpy, strcat, strdup, String struct, ...
 use "@/stdlib"   // atoi, rand, exit, ...
 use "@/time"     // time, clock, difftime, ...
 use "@/signals"  // signal, raise, ...
@@ -866,6 +877,286 @@ ura tests/projects/ura-tcp-server/basic/client.ura
 
 ---
 
+## Floor 18 — The Scroll of Words
+
+The standard library includes a full-featured `String` struct. `use "@/header"` (or `use "@/string"`) imports it. Construct with `String::new()`, `String::from()`, or `String::from_int()`. Destruction is automatic:
+
+```ura
+use "@/header"
+
+main():
+    // construct
+    greeting String = String::from("Hello, Dungeon!")
+    output(greeting.value, " (len: ", greeting.len(), ")\n")
+
+    // search
+    output("found 'Dungeon' at: ", greeting.find("Dungeon"), "\n")
+    output("starts with Hello: ", greeting.starts_with("Hello"), "\n")
+
+    // transform
+    shout String = greeting.upper()
+    output(shout.value, "\n")
+
+    whisper String = greeting.lower()
+    output(whisper.value, "\n")
+
+    word String = greeting.substr(7, 7)
+    output("substr: ", word.value, "\n")
+
+    // mutate
+    msg String = String::new()
+    msg.push('H')
+    msg.push('P')
+    output("pushed: ", msg.value, "\n")
+
+    // operators
+    first String = String::from("Shadow")
+    last  String = String::from(" Blade")
+    name  String = first + last
+    output("name: ", name.value, "\n")
+
+    first += last
+    output("+=:   ", first.value, "\n")
+
+    a String = String::from("abc")
+    b String = String::from("abc")
+    output("equal: ", a == b, "\n")
+
+    // convert
+    hp_str String = String::from_int(100)
+    output("HP: ", hp_str.value, "\n")
+
+    num String = String::from("42")
+    output("parsed: ", num.to_int(), "\n")
+
+    // more transforms
+    padded  String = String::from("  trimmed  ")
+    trimmed String = padded.trim()
+    output("trim: '", trimmed.value, "'\n")
+
+    orig    String = String::from("orc orc orc")
+    swapped String = orig.replace("orc", "elf")
+    output("replace: ", swapped.value, "\n")
+
+    ha  String = String::from("ha")
+    ha3 String = ha.repeat(3)
+    output("repeat: ", ha3.value, "\n")
+
+    rev String = String::from("dragon")
+    output("reverse: ", rev.reverse().value, "\n")
+```
+
+```
+Hello, Dungeon! (len: 15)
+found 'Dungeon' at: 7
+starts with Hello: True
+HELLO, DUNGEON!
+hello, dungeon!
+substr: Dungeon
+pushed: HP
+name: Shadow Blade
++=:   Shadow Blade
+equal: True
+HP: 100
+parsed: 42
+trim: 'trimmed'
+replace: elf elf elf
+repeat: hahaha
+reverse: nogard
+```
+
+**String API:**
+
+| Category | Methods |
+|----------|---------|
+| Constructors | `String::new()` `String::from(str)` `String::from_int(n)` |
+| Accessors | `.len()` `.empty()` `.at(i)` `.c_str()` |
+| Mutators | `.assign(str)` `.join(str)` `.push(c)` `.pop()` `.clear()` |
+| Search | `.find(str)` `.contains(str)` `.starts_with(str)` `.ends_with(str)` |
+| Transform | `.substr(i, n)` `.upper()` `.lower()` `.trim()` `.replace(old, new)` `.repeat(n)` `.reverse()` |
+| Convert | `.to_int()` `.compare(other)` |
+| Operators | `=` `+` `+=` `==` `!=` `<` `>` (both `String` and `chars` overloads) |
+
+---
+
+## Floor 19 — Loot Tables
+
+Array literals let you initialize arrays inline with `[value, value, ...]`:
+
+```ura
+use "@/header"
+
+main():
+    enemies array[chars] = ["Orc", "Spider", "Dragon"]
+    loot    array[int]   = [15, 30, 100]
+
+    output("Enemies: ", enemies[0], ", ", enemies[1], ", ", enemies[2], "\n")
+    output("Loot:    ", loot[0], ", ", loot[1], ", ", loot[2], " gold\n")
+
+    roll int = 4
+    output("Roll ", roll, ": ", enemies[roll % 3], "\n")
+
+    hits array[int] = [12, 8, 15, 20]
+    total int = 0
+    i int = 0
+    while i < 4:
+        total += hits[i]
+        i += 1
+    output("Total damage: ", total, "\n")
+```
+
+```
+Enemies: Orc, Spider, Dragon
+Loot:    15, 30, 100 gold
+Roll 4: Spider
+Total damage: 55
+```
+
+Elements can be any expression — variables, arithmetic, function calls:
+
+```ura
+fn double(n int) int:
+    return n * 2
+
+main():
+    x int = 5
+    v array[int] = [x, x + 1, x * 2, double(x)]
+    output(v[0], " ", v[1], " ", v[2], " ", v[3], "\n")   // 5 6 10 10
+```
+
+---
+
+## Floor 20 — The Hero's Identity
+
+Structs print as `{ field: value, ... }` by default. Define `operator output()` to customize how a struct appears in `output()`:
+
+```ura
+use "@/header"
+
+struct Hero:
+    name  chars
+    level int
+    hp    int
+
+    pub fn new(name chars) Hero:
+        h Hero
+        h.name  = name
+        h.level = 1
+        h.hp    = 100
+        return h
+
+    operator output() String:
+        s String = String::from(self.name)
+        s.join(" lv")
+        n String = String::from_int(self.level)
+        s.join(n.value)
+        s.join(" HP:")
+        hp String = String::from_int(self.hp)
+        s.join(hp.value)
+        return s
+
+struct Loot:
+    name  chars
+    value int
+
+main():
+    hero Hero = Hero::new("Aldric")
+    output("Hero: ", hero, "\n")
+
+    loot Loot
+    loot.name  = "Iron Sword"
+    loot.value = 50
+    output("Loot: ", loot, "\n")
+
+    s String = String::from("Fireball")
+    output("Spell: ", s, "\n")
+```
+
+```
+Hero: Aldric lv1 HP:100
+Loot: { name: Iron Sword, value: 50 }
+Spell: Fireball
+```
+
+- **Hero** has `operator output()` → returns a formatted `String` → the compiler chains to `String`'s `operator output()` which returns `self.value` (chars)
+- **Loot** has no `operator output()` → uses default `{ field: value }` printing
+- **String** has `operator output() chars:` → returns `self.value` directly
+
+The returned `String` from `operator output()` is a temporary — the compiler auto-frees it after `output()` finishes. No memory leak.
+
+| Return type | Behavior |
+|-------------|----------|
+| `chars` | Used directly as `%s` in printf |
+| `String` (or any struct) | Compiler chains — calls that struct's `operator output()` recursively |
+| *(not defined)* | Default `{ field: value, ... }` printing |
+
+---
+
+## Floor 21 — The Armory
+
+`List[T]` is a built-in dynamic array — push, pop, grow automatically. Works for any type. Requires `use "@/memory"`:
+
+```ura
+use "@/memory"
+
+main():
+    loot List[int]
+    loot.push(15)
+    loot.push(30)
+    loot.push(100)
+
+    output("Items: ", loot.len(), "\n")
+    output("Loot: ", loot[0], ", ", loot[1], ", ", loot[2], "\n")
+
+    total int = 0
+    i int = 0
+    while i < loot.len():
+        total += loot[i]
+        i += 1
+    output("Total gold: ", total, "\n")
+
+    dropped int = loot.pop()
+    output("Dropped ", dropped, " gold. Remaining: ", loot.len(), "\n")
+```
+
+```
+Items: 3
+Loot: 15, 30, 100
+Total gold: 145
+Dropped 100 gold. Remaining: 2
+```
+
+| Method | Description |
+|--------|-------------|
+| `v.push(e)` | Append element (auto-grows) |
+| `v.pop()` | Remove and return last element |
+| `v.len()` | Current element count |
+| `v.cap()` | Allocated capacity |
+| `v[i]` | Access element at index |
+| `v.data` | Raw `array[T]` pointer (for C interop) |
+
+Pass `v.data` to functions expecting `array[T]`:
+
+```ura
+fn sum(arr array[int], n int) int:
+    s int = 0
+    i int = 0
+    while i < n:
+        s += arr[i]
+        i += 1
+    return s
+
+main():
+    v List[int]
+    v.push(10)
+    v.push(20)
+    output("sum=", sum(v.data, v.len()), "\n")   // sum=30
+```
+
+`List[T]` is implemented via template monomorphization — the compiler generates a struct `__list_int` (or `__list_char`, etc.) with push/pop/len/cap methods. No generics syntax in the language; the compiler handles it internally. Use `-prep` to see the expanded code.
+
+---
+
 ## Boss Room — The Full Game
 
 All the skills. One program. The dungeon is alive:
@@ -887,12 +1178,14 @@ struct Hero:
     stats Stats
     level int
 
-    fn init() void:
-        self.name       = "Aldric"
-        self.stats.hp   = 100
-        self.stats.atk  = 20
-        self.stats.def  = 5
-        self.level      = 1
+    pub fn new() Hero:
+        h Hero
+        h.name       = "Aldric"
+        h.stats.hp   = 100
+        h.stats.atk  = 20
+        h.stats.def  = 5
+        h.level      = 1
+        return h
 
     fn is_alive() bool:
         return self.stats.hp > 0
@@ -944,7 +1237,7 @@ fn fight(hero Hero ref, enemy int) bool:
     return False
 
 main():
-    hero Hero
+    hero Hero = Hero::new()
     output("=== ", hero.name, " enters the dungeon ===\n")
     hero.status()
 
@@ -996,22 +1289,25 @@ The compiler is written entirely in C. LLVM handles only the final step — conv
 ```
 source.ura
     │
-    ▼  tokenize()       flat list of tokens
+    ▼  tokenize()                flat list of tokens
     │
-    ▼  AST              recursive descent parser → syntax tree
+    ▼  instantiate_list_types()  monomorphize List[T] → __list_T structs
     │
-    ▼  gen_ir()         name resolution, type checking,
-    │                   operator overload dispatch
-    ▼  gen_asm()        LLVM IR emission via LLVM C API → build/file.ll
+    ▼  AST                      recursive descent parser → syntax tree
     │
-    ▼  llc              .ll → .s  (native assembly)
+    ▼  gen_ir()                  name resolution, type checking,
+    │                            operator overload dispatch
+    ▼  gen_asm()                 LLVM IR emission via LLVM C API → build/file.ll
     │
-    ▼  clang            .s → executable
+    ▼  llc                      .ll → .s  (native assembly)
+    │
+    ▼  clang                    .s → executable
 ```
 
 ### Source Files
 
-- **`src/main.c`** (~3500 lines) — tokenizer, recursive descent parser, `gen_ir()`, `gen_asm()`, CLI. Operator precedence is encoded in the call chain: `expr → assign → logic_or → … → as → unary → access → prime`.
+- **`src/main.c`** (~4500 lines) — tokenizer, recursive descent parser, `gen_ir()`, `gen_asm()`, CLI, `-prep` serializer. Operator precedence is encoded in the call chain: `expr → assign → logic_or → … → as → unary → access → prime`.
+- **`src/builtins.c`** — template code generation for generic containers (`List[T]` → `__list_T` struct source).
 - **`src/utils.c`** — LLVM type helpers, scope management, debug printing, `copy_token` (deep-copies LLVM metadata).
 - **`src/header.h`** — `Token`, `Node`, `Type` enum, all global declarations and prototypes.
 
@@ -1037,6 +1333,9 @@ ura src/game.ura -O2 -o dungeon
 | `-Os` | Optimize for size |
 | `-Oz` | Minimize binary size |
 | `-san` | AddressSanitizer + debug info |
+| `-no-exec` | Compile only — generate .ll and .s but don't link/run |
+| `-no-debug` | Suppress debug output |
+| `-prep` | Generate preprocessed `.prep.ura` — expanded generics, resolved operators, inlined imports |
 | `-o <name>` | Output name (default: source basename) |
 
 ### config.sh
@@ -1051,7 +1350,8 @@ source config.sh
 |---------|-------------|
 | `build` | Compile the Ura compiler |
 | `ura <file>` | Compile + run a `.ura` file |
-| `tests [folder]` | Run test suite |
+| `tests [folder]` | Run test suite (parallel, IR comparison) |
+| `update_tests` | Regenerate all `.ll` reference files |
 | `copy <file.ura>` | Save file as a test (reads path from line-1 comment) |
 | `check` | Re-run dependency check |
 | `install` | Install missing dependencies |
@@ -1070,7 +1370,7 @@ bash config/setup.sh           # macOS / Linux
 
 ## VS Code Extension
 
-Syntax highlighting for `.ura` files — keywords, types, operators, strings, comments.
+Syntax highlighting for `.ura` files — keywords, types, operators, strings, comments, `pub fn`, `operator delete`, `Type::method()` static dispatch.
 
 ```bash
 git clone https://github.com/mohammedhrima/ura-vscode-extension
@@ -1086,11 +1386,18 @@ code --install-extension ura-lang-*.vsix
 - All primitive types: `int` `long` `short` `char` `chars` `bool` `float` `void`
 - `null` literal, enums, global variables
 - Functions, variadic functions, single-line functions
+- Forward references — functions and struct methods can be called before declaration
 - Tuples — multi-value returns with destructuring
 - `while` loops, `if`/`elif`/`else`, `break`, `continue`
-- Structs, nested structs, methods with `self`, `init()` + `clean()` lifecycle
-- **Operator overloading** — `operator OP (params) retType:` with per-type dispatch
+- Structs, nested structs, methods with `self`
+- `pub fn` — static methods, called via `Type::method()` (explicit constructors)
+- `operator delete()` — destructor, auto-called at scope exit
+- **Operator overloading** — `=` `+` `-` `*` `/` `%` `==` `!=` `<` `>` `<=` `>=` `+=` `-=` `*=` `/=` `%=` `&` `|` `^` `<<` `>>`
 - **Copy-constructor semantics** — struct by-value args auto-deep-copy via `operator =`
+- **`operator output()`** — custom struct printing, returns `chars` or `String` (chains recursively)
+- **Auto-free temp structs** — struct values returned from functions and not assigned are auto-freed at scope exit
+- **Built-in String type** — constructors, search, transforms, operators, `operator output()`
+- **Array literals** — `[1, 2, 3]` inline array initialization
 - References and reference parameters
 - Stack/heap allocation: `stack[type](n)`, `heap[type](n)`
 - **Multi-dimensional arrays** — `stack[[int]](rows, cols)`, chained `[r][c]` indexing
@@ -1106,10 +1413,13 @@ code --install-extension ura-lang-*.vsix
 - Networking via POSIX socket APIs
 - LLVM optimization passes (-O0 → -O3, -Os, -Oz)
 - AddressSanitizer support (`-san`)
+- **`List[T]`** — generic dynamic array (push, pop, len, cap, `v[i]`, auto-free)
+- **`-prep` flag** — preprocessed source output (expanded generics, resolved operators)
 
 **Coming next:**
 - For loops (`for i in 0..10`)
 - Switch / case
+- More container types (Map, Set)
 - Type inference
 - Type aliases
 - Default parameter values

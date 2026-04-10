@@ -2,7 +2,7 @@
 
 main():
     score int = 0
-    r     int ref = score
+    r     int ref = ref score
     r += 100
     r += 50
     r *= 2

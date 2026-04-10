@@ -52,5 +52,5 @@ struct SockAddr:
         self.data[6] = c as char
         self.data[7] = d as char
 
-    fn clean() void:
+    operator delete() void:
         free(self.data)

@@ -6,9 +6,11 @@ struct KillCounter:
     value int
     label chars
 
-    fn init() void:
-        self.value = 0
-        self.label = strdup("kills")
+    pub fn new() KillCounter:
+        k KillCounter
+        k.value = 0
+        k.label = strdup("kills")
+        return k
 
     fn tick() void:
         self.value += 1
@@ -16,12 +18,13 @@ struct KillCounter:
     fn print() void:
         output(self.label, ": ", self.value, "\n")
 
-    fn clean() void:
+    operator delete() void:
         free(self.label)
 
 counter KillCounter
 
 main():
+    counter.label = strdup("kills")
     counter.tick()
     counter.tick()
     counter.tick()

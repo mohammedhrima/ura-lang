@@ -54,10 +54,6 @@ typedef struct _IO_FILE *File;
 #define OPTIMIZE 1
 #define ASM      1
 
-#ifndef DEBUG
-#define DEBUG 1
-#endif
-
 #define allocate(len, size)   allocate_func(LINE, len, size)
 #define check(cond, fmt, ...) _check(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)
 #define todo(cond, fmt, ...)                                                                       \
@@ -72,15 +68,10 @@ typedef struct _IO_FILE *File;
 		}                                                                                            \
 	}
 
-#if DEBUG
-#define debug(fmt, ...) _debug(fmt, ##__VA_ARGS__)
-#else
 #define debug(fmt, ...)                                                                            \
-	do {                                                                                            \
-	} while (0)
-#endif
+	if (enable_debug) _debug(fmt, ##__VA_ARGS__)
 
-#define DATA_TYPES     INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT, ARRAY_TYPE
+#define DATA_TYPES     INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT, ARRAY_TYPE, LIST_TYPE
 #define LOGIC_TYPE     AND, OR
 #define MATH_TYPE      ADD, SUB, MUL, DIV, MOD, BAND, BOR, BXOR, LSHIFT, RSHIFT
 #define COMPARISON_OPS EQUAL, NOT_EQUAL, LESS, GREAT, LESS_EQUAL, GREAT_EQUAL
@@ -150,7 +141,7 @@ enum Type
 	ID = 1,
 	// Data types
 	VOID, INT, FLOAT, LONG, SHORT, BOOL, CHAR, CHARS, PTR, VARIADIC, REF,
-	ARRAY, ARRAY_TYPE,
+	ARRAY, ARRAY_TYPE, ARRAY_LIT, LIST, LIST_TYPE,
 	// Structures
 	STRUCT_DEF, STRUCT_CALL,
 	// Enums
@@ -181,6 +172,8 @@ enum Type
 	MODULE,
 	// Operator overloading keyword
 	OPERATOR,
+	// Static dispatch / pub
+	PUB, DOUBLE_DOTS, DELETE,
 	// end
 	END,
 };
@@ -233,12 +226,10 @@ struct Token {
 	bool  is_param;
 	bool  is_variadic;
 	bool  is_proto;
-	bool  has_init;
 	bool  has_clean;
 	bool  is_method_call;
-
-	bool  ir_bound;
-	bool  asm_bound;
+	bool  is_pub;
+	bool  is_static_call;
 
 	char *filename;
 	int   line;
@@ -319,10 +310,16 @@ struct Node {
 	Node  **modules;
 	int     modules_count;
 	int     modules_size;
+
+	Value  *temps;
+	Node  **temp_defs;
+	int     temps_count;
+	int     temps_size;
 };
 
 // globals.h
 extern bool             found_error;
+extern bool             prep_mode;
 
 extern Token          **tokens;
 extern int              tcount;
@@ -346,6 +343,7 @@ extern Builder          builder;
 extern TypeRef          vd, f32, i1, i2, i4, i8, i16, i32, i64, p8, p32;
 extern char            *op_flags;
 extern bool             enable_san;
+extern bool             enable_debug;
 extern char            *argv0;
 extern char            *ura_lib;
 extern int              calling_use;
@@ -387,6 +385,9 @@ void   unuse(Node *node);
 
 // tokenizer / parser helpers
 void   tokenize(char *filename, int default_space);
+void   tokenize_string(char *input, char *fake_name, int default_space);
+void   instantiate_list_types(void);
+char  *generate_list_source(const char *elem_type_name, const char *struct_name);
 Token *new_token(Type type, int space);
 Token *parse_token(char *filename, int line, char *input, int s, int e, Type type, int space);
 void   add_token(Token *token);

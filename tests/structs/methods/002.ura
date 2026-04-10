@@ -6,9 +6,11 @@ struct Inventory:
     last  chars
     count int
 
-    fn init() void:
-        self.last  = heap[char](32)
-        self.count = 0
+    pub fn new() Inventory:
+        inv Inventory
+        inv.last  = heap[char](32)
+        inv.count = 0
+        return inv
 
     fn add(item chars) void:
         strcpy(self.last, item)
@@ -17,11 +19,11 @@ struct Inventory:
     fn print() void:
         output("Items: ", self.count, " | Last: ", self.last, "\n")
 
-    fn clean() void:
+    operator delete() void:
         free(self.last)
 
 main():
-    inv Inventory
+    inv Inventory = Inventory::new()
     inv.add("Health Potion")
     inv.add("Iron Sword")
     inv.add("Gold Key")

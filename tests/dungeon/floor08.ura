@@ -6,10 +6,12 @@ struct Hero:
     title chars
     hp    int
 
-    fn init() void:
-        self.name  = heap[char](32)
-        self.title = heap[char](32)
-        self.hp    = 100
+    pub fn new() Hero:
+        h Hero
+        h.name  = heap[char](32)
+        h.title = heap[char](32)
+        h.hp    = 100
+        return h
 
     fn setup(name chars, title chars) void:
         strcpy(self.name,  name)
@@ -21,12 +23,12 @@ struct Hero:
     fn heal(amount int) void:
         self.hp = self.hp + amount
 
-    fn clean() void:
+    operator delete() void:
         free(self.name)
         free(self.title)
 
 main():
-    hero Hero
+    hero Hero = Hero::new()
     hero.setup("Aldric", "The Bold")
     hero.announce()
     hero.heal(20)
