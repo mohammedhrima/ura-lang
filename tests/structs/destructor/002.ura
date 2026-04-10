@@ -1,0 +1,24 @@
+// structs/destructor/002 — operator delete with heap cleanup
+use "@/header"
+
+struct Buffer:
+    data chars
+    size int
+
+    pub fn new(n int) Buffer:
+        b Buffer
+        b.size = n
+        b.data = calloc(n as long, 1 as long)
+        return b
+
+    fn set(s chars) void:
+        strcpy(self.data, s)
+
+    operator delete() void:
+        free(self.data)
+        output("freed\n")
+
+main():
+    b Buffer = Buffer::new(64)
+    b.set("hello")
+    output(b.data, "\n")

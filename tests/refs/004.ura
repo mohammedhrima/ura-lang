@@ -4,10 +4,10 @@ main():
     hp int = 100
     mp int = 50
 
-    shield int ref = hp
+    shield int ref = ref hp
     shield = shield - 30
     output("HP after hit:   ", hp, "\n")
 
-    mana int ref = mp
+    mana int ref = ref mp
     mana = mana - 20
     output("MP after spell: ", mp, "\n")

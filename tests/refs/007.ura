@@ -1,0 +1,9 @@
+// refs/007 — reference in conditional
+
+main():
+    hp int = 75
+    r  int ref = ref hp
+    if r > 50:
+        output("healthy\n")
+    else:
+        output("critical\n")

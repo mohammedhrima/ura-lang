@@ -1,0 +1,36 @@
+// string/006 — to_int, compare, chained operations
+use "@/header"
+
+main():
+    s1 String = String::from("12345")
+    output(s1.to_int(), "\n")
+
+    s2 String = String::from("-99")
+    output(s2.to_int(), "\n")
+
+    s3 String = String::from("0")
+    output(s3.to_int(), "\n")
+
+    a String = String::from("apple")
+    b String = String::from("banana")
+    output(a.compare(b), "\n")
+    output(b.compare(a), "\n")
+    output(a.compare(a), "\n")
+
+    s String = String::from("Hello World")
+    r String = s.upper()
+    r2 String = r.reverse()
+    output(r2.value, "\n")
+
+    big String = String::from("aaaa")
+    i int = 0
+    while i < 5:
+        big.join("bbbb")
+        i += 1
+    output(big.len(), "\n")
+
+    n1 String = String::from_int(1000000)
+    output(n1.value, "\n")
+
+    n2 String = String::from_int(-2000000)
+    output(n2.value, "\n")

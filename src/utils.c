@@ -256,13 +256,16 @@ char *to_string(Type type) {
 	    [VARIADIC] = "VAR", [TYPEOF] = "TYPEOF", [SIZEOF] = "SIZEOF",
 	    [OUTPUT] = "OUTPUT", [ARGS] = "ARGS", [CHILDREN] = "CHILDREN",
 	    [AS] = "AS", [STACK] = "STACK", [HEAP] = "HEAP",
-	    [ARRAY_TYPE] = "ARRAY_TYPE", [NULLABLE] = "NULLABLE",
+	    [ARRAY_TYPE] = "ARRAY_TYPE", [ARRAY_LIT] = "ARRAY_LIT",
+	    [NULLABLE] = "NULLABLE",
 	    //[TRY] = "TRY", [CATCH] = "CATCH", [THROW] = "THROW", [USE] = "USE",
 	    [STRUCT_DEF] = "STRUCT_DEF", [STRUCT_CALL] = "STRUCT_CALL",
 	    [ENUM_DEF] = "ENUM_DEF", [ENUM_CALL] = "ENUM_CALL", [TUPLE] = "TUPLE",
 	    [TUPLE_UNPACK] = "TUPLE_UNPACK", [LBRA] = "LBRA", [RBRA] = "RBRA",
-	    [ARRAY] = "ARRAY", [DOT] = "DOT", [SYNTAX_ERROR] = "SYNTAX_ERROR",
-	    [MODULE] = "MODULE", [OPERATOR] = "OPERATOR_KW",
+	    [ARRAY] = "ARRAY", [LIST] = "LIST", [LIST_TYPE] = "LIST_TYPE",
+	    [DOT] = "DOT", [SYNTAX_ERROR] = "SYNTAX_ERROR", [MODULE] = "MODULE",
+	    [OPERATOR] = "OPERATOR_KW", [PUB] = "PUB",
+	    [DOUBLE_DOTS] = "DOUBLE_DOTS", [DELETE] = "DELETE",
 	};
 
 	if (check(!res[type], "handle this case %d\n", type)) {
@@ -475,7 +478,6 @@ int vprint_(File out, char *conv, va_list args) {
 				}
 
 				if (token->is_ref)      fprintf(out, "ref ");
-				if (token->ir_bound)    fprintf(out, "bound ");
 				if (token->retType)     fprintf(out, "ret [%s] ", to_string(token->retType));
 				if (token->is_variadic) fprintf(out, "variadic ");
 				break;
@@ -512,7 +514,7 @@ bool _check(char *filename, char *funcname, int line, bool cond, char *fmt, ...)
 
 // pnode
 void pnode(Node *node, char *indent) {
-	if (!node || !node->token || !DEBUG) return;
+	if (!node || !node->token || !enable_debug) return;
 	Node **subs     = NULL;
 	int    count    = 0;
 	int    capacity = 0;
@@ -548,7 +550,7 @@ void pnode(Node *node, char *indent) {
 		int         is_last = (i == count - 1);
 		const char *bar     = is_last ? "   " : "│  ";
 
-		char        new_indent[4096];
+		char        new_indent[4096]; // TODO: to be fixed later
 		snprintf(new_indent, sizeof(new_indent), "%s%s", indent, bar);
 
 		char *connector = is_last ? "└──" : "├──";

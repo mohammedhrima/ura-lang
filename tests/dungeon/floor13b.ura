@@ -5,11 +5,13 @@ struct Label:
     value chars
     len   int
 
-    fn init() void:
-        self.value = heap[char](64)
-        self.len   = 0
+    pub fn new() Label:
+        l Label
+        l.value = heap[char](64)
+        l.len   = 0
+        return l
 
-    fn clean() void:
+    operator delete() void:
         free(self.value)
 
     fn set(s chars) void:
@@ -23,7 +25,7 @@ struct Label:
         self.set(v.value)
 
     operator + (v Label ref) Label:
-        res Label
+        res Label = Label::new()
         strcpy(res.value, self.value)
         strcat(res.value, v.value)
         res.len = self.len + v.len
@@ -33,10 +35,10 @@ struct Label:
         output(self.value, " (", self.len, " chars)\n")
 
 main():
-    title Label
+    title Label = Label::new()
     title = "Shadow"
 
-    name Label
+    name Label = Label::new()
     name = "Aldric"
 
     full Label = title + name
