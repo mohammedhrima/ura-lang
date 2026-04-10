@@ -57,6 +57,7 @@ URA_COMPILER="$BUILD_DIR/ura"
 SRC_FILES=(
     "$SRC_DIR/main.c"
     "$SRC_DIR/utils.c"
+    "$SRC_DIR/builtins.c"
 )
 
 SAN_FLAGS=(
@@ -432,7 +433,7 @@ copy() {
 
     build || return 1
 
-    "$URA_COMPILER" "$ura_src_file" -no-exec || {
+    "$URA_COMPILER" "$ura_src_file" -no-exec -no-debug || {
         echo -e "${RED}Compilation failed${RESET}"
         return 1
     }
@@ -521,7 +522,7 @@ tests() {
                 exit 0
             fi
 
-            if ! "$URA_COMPILER" "$ura_file" -testing -no-exec > /dev/null 2>&1; then
+            if ! "$URA_COMPILER" "$ura_file" -no-exec -no-debug > /dev/null 2>&1; then
                 printf 'FAIL\t%s\tcompilation error\n' "$rel" > "$result_file"
                 exit 0
             fi
@@ -611,7 +612,7 @@ update_tests() {
         local ll_expected="$dir/${base}.ll"
         local ll_generated="$dir/build/${base}.ll"
 
-        if ! "$URA_COMPILER" "$ura_file" -no-exec > /dev/null 2>&1; then
+        if ! "$URA_COMPILER" "$ura_file" -no-exec -no-debug > /dev/null 2>&1; then
             echo -e "  ${RED}FAIL $base (compilation error)${RESET}"
             ((failed++))
             continue

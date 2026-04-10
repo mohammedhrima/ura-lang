@@ -3,9 +3,6 @@
 struct Flags:
     bits int
 
-    fn init() void:
-        self.bits = 0
-
     operator = (n int) void:
         self.bits = n
 

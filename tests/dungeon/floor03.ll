@@ -1,5 +1,5 @@
-; ModuleID = 'tests/dungeon/floor03.ura'
-source_filename = "tests/dungeon/floor03.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon/floor03.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon/floor03.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 @ORC = constant i32 0
@@ -135,7 +135,7 @@ entry:
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "floor03.ura", directory: "tests/dungeon")
+!3 = !DIFile(filename: "floor03.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon")
 !4 = distinct !DISubprogram(name: "announce", linkageName: "announce", scope: null, file: !3, line: 8, type: !5, scopeLine: 8, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

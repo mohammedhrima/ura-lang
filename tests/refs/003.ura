@@ -3,7 +3,7 @@
 main():
     xp      int = 0
     xp_gain int = 50
-    r       int ref = xp
+    r       int ref = ref xp
     i       int = 0
     while i < 4:
         r += xp_gain

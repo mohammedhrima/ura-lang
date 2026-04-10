@@ -18,8 +18,7 @@
 
 + zakaria feedbacks:
     + output should no longer hardcode declar printf
-    + ref attribute in struct must not require assignement
-    + string (builtin)
+    + ref attribute in struct must not require assignementI
     + array must have attribute len
     + auto free heap
     + importi only functions instead use
@@ -29,4 +28,15 @@
 + use printf("%*s", string_len, string): * to set how many charters to print (usefull fpr string struct)
 + find a way to handle diferent versions of libraries (check github package release)
 
++ in README link keyword is explained wrong
++ test output struct type
++ use dlopen: https://www.youtube.com/watch?v=0o8Ex8mXigU
++ check this protfolio https://wmbolles.com/
 
++ I had enough of bash and python, build my own scripting engine to handle stuff
+
++ remove all .init in code base
+
++ foreach item in items:
+    // do something
++ use match instead of switch, (no need for break keyword)

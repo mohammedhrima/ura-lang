@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/file.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/file.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/link/raylib/001.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/link/raylib/001.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 %struct.Color = type { i8, i8, i8, i8 }
@@ -17,13 +17,7 @@ target triple = "arm64-apple-macosx16.0.0"
 @STR5 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @output_fmt.2 = private unnamed_addr constant [14 x i8] c"KEY_SPACE=%d\0A\00", align 1
 
-define void @Color.init(%struct.Color* %0) {
-entry:
-  store %struct.Color zeroinitializer, %struct.Color* %0, align 1
-  ret void
-}
-
-define void @Color.clean(%struct.Color* %0) {
+define void @Color.delete(%struct.Color* %0) {
 entry:
   ret void
 }
@@ -47,7 +41,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "file.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src")
+!3 = !DIFile(filename: "001.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/link/raylib")
 !4 = distinct !DISubprogram(name: "main", linkageName: "main", scope: null, file: !3, line: 5, type: !5, scopeLine: 5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

@@ -5,10 +5,12 @@ use "@/header"
 struct Buffer:
     value chars
 
-    fn init() void:
-        self.value = heap[char](64)
+    pub fn new() Buffer:
+        b Buffer
+        b.value = heap[char](64)
+        return b
 
-    fn clean() void:
+    operator delete() void:
         free(self.value)
 
     operator = (s chars) void:
@@ -18,10 +20,10 @@ struct Buffer:
         strcpy(self.value, b.value)
 
 main():
-    b1 Buffer
+    b1 Buffer = Buffer::new()
     b1 = "hello"
 
-    b2 Buffer
+    b2 Buffer = Buffer::new()
     b2 = b1
 
     strcpy(b2.value, "world")

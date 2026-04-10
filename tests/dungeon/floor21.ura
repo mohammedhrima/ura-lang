@@ -1,0 +1,41 @@
+// tests/dungeon/floor21.ura
+use "@/memory"
+
+fn print_inventory(items array[int], count int) void:
+    output("Inventory (", count, " items): ")
+    i int = 0
+    while i < count:
+        if i > 0: output(", ")
+        output(items[i])
+        i += 1
+    output(" gold\n")
+
+main():
+    loot List[int]
+    loot.push(15)
+    loot.push(30)
+    loot.push(100)
+    loot.push(8)
+
+    print_inventory(loot.data, loot.len())
+
+    total int = 0
+    i int = 0
+    while i < loot.len():
+        total += loot[i]
+        i += 1
+    output("Total gold: ", total, "\n")
+
+    dropped int = loot.pop()
+    output("Dropped ", dropped, " gold\n")
+
+    sold int = loot.pop()
+    output("Sold item worth ", sold, " gold\n")
+
+    output("Remaining: ", loot.len(), " items, ")
+    remaining int = 0
+    i = 0
+    while i < loot.len():
+        remaining += loot[i]
+        i += 1
+    output(remaining, " gold\n")

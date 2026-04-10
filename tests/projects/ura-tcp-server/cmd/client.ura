@@ -27,7 +27,7 @@ struct Client:
         self.buf = heap[char](1024)
         self.rbuf = heap[char](1024)
     
-    fn clean() void:
+    operator delete() void:
         close(self.fd)
         free(self.buf)
         free(self.rbuf)
@@ -77,6 +77,4 @@ main():
 
         log("\033[0;36m[client]\033[0m > ")
 
-    cli.clean()
-    addr.clean()
     return 0

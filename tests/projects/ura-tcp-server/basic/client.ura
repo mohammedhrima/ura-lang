@@ -74,5 +74,4 @@ main():
         log("\033[0;36m[client]\033[0m > ")
 
     close(cli.fd)
-    addr.clean()
     return 0

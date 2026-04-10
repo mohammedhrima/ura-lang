@@ -1,0 +1,16 @@
+// structs/output/002 — operator output returning chars
+use "@/header"
+
+struct Name:
+    first chars
+    last  chars
+
+    operator output() chars:
+        return self.first
+
+main():
+    n Name
+    n.first = "Aldric"
+    n.last  = "Smith"
+    output("name: ", n, "\n")
+    output(n, " the Brave\n")

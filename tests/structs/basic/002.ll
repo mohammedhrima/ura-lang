@@ -17,44 +17,22 @@ target triple = "arm64-apple-macosx16.0.0"
 @STR7 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @output_fmt.1 = private unnamed_addr constant [19 x i8] c"Weapon damage: %d\0A\00", align 1
 
-define void @Weapon.init(%struct.Weapon* %0) {
-entry:
-  store %struct.Weapon zeroinitializer, %struct.Weapon* %0, align 8
-  ret void
-}
-
-define void @Weapon.clean(%struct.Weapon* %0) {
+define void @Weapon.delete(%struct.Weapon* %0) {
 entry:
   ret void
 }
 
-define void @Enemy.init(%struct.Enemy* %0) {
-entry:
-  store %struct.Enemy zeroinitializer, %struct.Enemy* %0, align 8
-  %weapon = getelementptr %struct.Enemy, %struct.Enemy* %0, i32 0, i32 2
-  call void @Weapon.init(%struct.Weapon* %weapon)
-  ret void
-}
-
-define void @Enemy.clean(%struct.Enemy* %0) {
+define void @Enemy.delete(%struct.Enemy* %0) {
 entry:
   %weapon = getelementptr %struct.Enemy, %struct.Enemy* %0, i32 0, i32 2
-  call void @Weapon.clean(%struct.Weapon* %weapon)
+  call void @Weapon.delete(%struct.Weapon* %weapon)
   ret void
 }
 
-define void @Room.init(%struct.Room* %0) {
-entry:
-  store %struct.Room zeroinitializer, %struct.Room* %0, align 8
-  %enemy = getelementptr %struct.Room, %struct.Room* %0, i32 0, i32 1
-  call void @Enemy.init(%struct.Enemy* %enemy)
-  ret void
-}
-
-define void @Room.clean(%struct.Room* %0) {
+define void @Room.delete(%struct.Room* %0) {
 entry:
   %enemy = getelementptr %struct.Room, %struct.Room* %0, i32 0, i32 1
-  call void @Enemy.clean(%struct.Enemy* %enemy)
+  call void @Enemy.delete(%struct.Enemy* %enemy)
   ret void
 }
 
@@ -62,7 +40,6 @@ define i32 @main() !dbg !4 {
 entry:
   %r = alloca %struct.Room, align 8, !dbg !7
   store %struct.Room zeroinitializer, %struct.Room* %r, align 8, !dbg !7
-  call void @Room.init(%struct.Room* %r), !dbg !7
   %floor = getelementptr %struct.Room, %struct.Room* %r, i32 0, i32 0, !dbg !7
   store i32 3, i32* %floor, align 4, !dbg !7
   %enemy = getelementptr %struct.Room, %struct.Room* %r, i32 0, i32 1, !dbg !7
@@ -94,7 +71,7 @@ entry:
   %damage16 = getelementptr %struct.Weapon, %struct.Weapon* %weapon15, i32 0, i32 1, !dbg !7
   %DOT17 = load i32, i32* %damage16, align 4, !dbg !7
   %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @output_fmt.1, i32 0, i32 0), i32 1, i32 %DOT17), !dbg !7
-  call void @Room.clean(%struct.Room* %r), !dbg !7
+  call void @Room.delete(%struct.Room* %r), !dbg !7
   ret i32 0, !dbg !7
 }
 

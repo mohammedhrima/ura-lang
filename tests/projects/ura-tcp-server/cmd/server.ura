@@ -91,7 +91,7 @@ struct Server:
 
         close(self.client_fd)
 
-    fn clean() void:
+    operator delete() void:
         free(self.buf)
         free(self.rbuf)
 
@@ -129,6 +129,4 @@ main():
 
         close(srv.client_fd)
 
-    srv.clean()
-    addr.clean()
     return 0

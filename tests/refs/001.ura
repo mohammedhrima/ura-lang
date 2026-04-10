@@ -2,6 +2,6 @@
 
 main():
     hp int = 100
-    r  int ref = hp
+    r  int ref = ref hp
     r = 0
     output("<", hp, ">\n")

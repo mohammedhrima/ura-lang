@@ -6,13 +6,7 @@ target triple = "arm64-apple-macosx16.0.0"
 
 @STR0 = private unnamed_addr constant [11 x i8] c"Ura Raylib\00", align 1
 
-define void @Color.init(%struct.Color* %0) {
-entry:
-  store %struct.Color zeroinitializer, %struct.Color* %0, align 1
-  ret void
-}
-
-define void @Color.clean(%struct.Color* %0) {
+define void @Color.delete(%struct.Color* %0) {
 entry:
   ret void
 }
@@ -29,7 +23,6 @@ entry:
   store i32 %b, i32* %b3, align 4, !dbg !7
   store i32 %a, i32* %a4, align 4, !dbg !7
   store %struct.Color zeroinitializer, %struct.Color* %c, align 1, !dbg !7
-  call void @Color.init(%struct.Color* %c), !dbg !7
   %r5 = getelementptr %struct.Color, %struct.Color* %c, i32 0, i32 0, !dbg !7
   %r6 = load i32, i32* %r1, align 4, !dbg !7
   %as = trunc i32 %r6 to i8, !dbg !7
@@ -73,6 +66,8 @@ while.start:                                      ; preds = %while.then, %entry
 while.then:                                       ; preds = %while.start
   call void @BeginDrawing(), !dbg !10
   %setColor = call %struct.Color @setColor(i32 30, i32 30, i32 150, i32 255), !dbg !11
+  %tmp_struct = alloca %struct.Color, align 8, !dbg !11
+  store %struct.Color %setColor, %struct.Color* %tmp_struct, align 1, !dbg !11
   %st_slot = alloca %struct.Color, align 8, !dbg !11
   store %struct.Color %setColor, %struct.Color* %st_slot, align 1, !dbg !11
   %i64_slot = alloca i64, align 8, !dbg !11
@@ -82,14 +77,16 @@ while.then:                                       ; preds = %while.start
   %i64_arg = load i64, i64* %i64_slot, align 4, !dbg !11
   call void @ClearBackground(i64 %i64_arg), !dbg !11
   %setColor1 = call %struct.Color @setColor(i32 255, i32 220, i32 0, i32 255), !dbg !12
-  %st_slot2 = alloca %struct.Color, align 8, !dbg !12
-  store %struct.Color %setColor1, %struct.Color* %st_slot2, align 1, !dbg !12
-  %i64_slot3 = alloca i64, align 8, !dbg !12
-  %2 = bitcast i64* %i64_slot3 to i8*, !dbg !12
-  %3 = bitcast %struct.Color* %st_slot2 to i8*, !dbg !12
+  %tmp_struct2 = alloca %struct.Color, align 8, !dbg !12
+  store %struct.Color %setColor1, %struct.Color* %tmp_struct2, align 1, !dbg !12
+  %st_slot3 = alloca %struct.Color, align 8, !dbg !12
+  store %struct.Color %setColor1, %struct.Color* %st_slot3, align 1, !dbg !12
+  %i64_slot4 = alloca i64, align 8, !dbg !12
+  %2 = bitcast i64* %i64_slot4 to i8*, !dbg !12
+  %3 = bitcast %struct.Color* %st_slot3 to i8*, !dbg !12
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %2, i8* %3, i64 4, i1 false), !dbg !12
-  %i64_arg4 = load i64, i64* %i64_slot3, align 4, !dbg !12
-  call void @DrawRectangle(i32 350, i32 250, i32 100, i32 100, i64 %i64_arg4), !dbg !12
+  %i64_arg5 = load i64, i64* %i64_slot4, align 4, !dbg !12
+  call void @DrawRectangle(i32 350, i32 250, i32 100, i32 100, i64 %i64_arg5), !dbg !12
   call void @EndDrawing(), !dbg !13
   br label %while.start, !dbg !13
 

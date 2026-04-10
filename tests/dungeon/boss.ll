@@ -1,5 +1,5 @@
-; ModuleID = 'tests/dungeon/boss.ura'
-source_filename = "tests/dungeon/boss.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon/boss.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon/boss.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 %struct.Stats = type { i32, i32, i32 }
@@ -41,50 +41,37 @@ target triple = "arm64-apple-macosx16.0.0"
 @STR22 = private unnamed_addr constant [6 x i8] c" ===\0A\00", align 1
 @output_fmt.6 = private unnamed_addr constant [46 x i8] c"=== Run complete | Score: %d | Floor: %d ===\0A\00", align 1
 
-define void @Stats.init(%struct.Stats* %0) {
-entry:
-  store %struct.Stats zeroinitializer, %struct.Stats* %0, align 4
-  ret void
-}
-
-define void @Stats.clean(%struct.Stats* %0) {
+define void @Stats.delete(%struct.Stats* %0) {
 entry:
   ret void
 }
 
-define void @Hero.clean(%struct.Hero* %0) {
+define void @Hero.delete(%struct.Hero* %0) {
 entry:
   %stats = getelementptr %struct.Hero, %struct.Hero* %0, i32 0, i32 1
-  call void @Stats.clean(%struct.Stats* %stats)
+  call void @Stats.delete(%struct.Stats* %stats)
   ret void
 }
 
-define void @Hero.init(%struct.Hero* %self) !dbg !4 {
+define %struct.Hero @Hero.new() !dbg !4 {
 entry:
-  %self1 = alloca %struct.Hero*, align 8, !dbg !7
-  store %struct.Hero* %self, %struct.Hero** %self1, align 8, !dbg !7
-  %self2 = load %struct.Hero*, %struct.Hero** %self1, align 8, !dbg !7
-  %stats = getelementptr %struct.Hero, %struct.Hero* %self2, i32 0, i32 1, !dbg !7
-  call void @Stats.init(%struct.Stats* %stats), !dbg !7
-  %self3 = load %struct.Hero*, %struct.Hero** %self1, align 8, !dbg !7
-  %name = getelementptr %struct.Hero, %struct.Hero* %self3, i32 0, i32 0, !dbg !7
+  %h = alloca %struct.Hero, align 8, !dbg !7
+  store %struct.Hero zeroinitializer, %struct.Hero* %h, align 8, !dbg !7
+  %name = getelementptr %struct.Hero, %struct.Hero* %h, i32 0, i32 0, !dbg !7
   store i8* getelementptr inbounds ([7 x i8], [7 x i8]* @STR0, i32 0, i32 0), i8** %name, align 8, !dbg !7
-  %self4 = load %struct.Hero*, %struct.Hero** %self1, align 8, !dbg !7
-  %stats5 = getelementptr %struct.Hero, %struct.Hero* %self4, i32 0, i32 1, !dbg !7
-  %hp = getelementptr %struct.Stats, %struct.Stats* %stats5, i32 0, i32 0, !dbg !7
+  %stats = getelementptr %struct.Hero, %struct.Hero* %h, i32 0, i32 1, !dbg !7
+  %hp = getelementptr %struct.Stats, %struct.Stats* %stats, i32 0, i32 0, !dbg !7
   store i32 100, i32* %hp, align 4, !dbg !7
-  %self6 = load %struct.Hero*, %struct.Hero** %self1, align 8, !dbg !7
-  %stats7 = getelementptr %struct.Hero, %struct.Hero* %self6, i32 0, i32 1, !dbg !7
-  %atk = getelementptr %struct.Stats, %struct.Stats* %stats7, i32 0, i32 1, !dbg !7
+  %stats1 = getelementptr %struct.Hero, %struct.Hero* %h, i32 0, i32 1, !dbg !7
+  %atk = getelementptr %struct.Stats, %struct.Stats* %stats1, i32 0, i32 1, !dbg !7
   store i32 20, i32* %atk, align 4, !dbg !7
-  %self8 = load %struct.Hero*, %struct.Hero** %self1, align 8, !dbg !7
-  %stats9 = getelementptr %struct.Hero, %struct.Hero* %self8, i32 0, i32 1, !dbg !7
-  %def = getelementptr %struct.Stats, %struct.Stats* %stats9, i32 0, i32 2, !dbg !7
+  %stats2 = getelementptr %struct.Hero, %struct.Hero* %h, i32 0, i32 1, !dbg !7
+  %def = getelementptr %struct.Stats, %struct.Stats* %stats2, i32 0, i32 2, !dbg !7
   store i32 5, i32* %def, align 4, !dbg !7
-  %self10 = load %struct.Hero*, %struct.Hero** %self1, align 8, !dbg !7
-  %level = getelementptr %struct.Hero, %struct.Hero* %self10, i32 0, i32 2, !dbg !7
+  %level = getelementptr %struct.Hero, %struct.Hero* %h, i32 0, i32 2, !dbg !7
   store i32 1, i32* %level, align 4, !dbg !7
-  ret void, !dbg !7
+  %h3 = load %struct.Hero, %struct.Hero* %h, align 8, !dbg !7
+  ret %struct.Hero %h3, !dbg !7
 }
 
 define i1 @Hero.is_alive(%struct.Hero* %self) !dbg !8 {
@@ -386,11 +373,14 @@ entry:
   %enemy = alloca i32, align 4, !dbg !31
   %won = alloca i1, align 1, !dbg !31
   store %struct.Hero zeroinitializer, %struct.Hero* %hero, align 8, !dbg !31
-  call void @Hero.init(%struct.Hero* %hero), !dbg !31
-  %name = getelementptr %struct.Hero, %struct.Hero* %hero, i32 0, i32 0, !dbg !31
-  %DOT = load i8*, i8** %name, align 8, !dbg !31
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([31 x i8], [31 x i8]* @output_fmt.2, i32 0, i32 0), i32 1, i8* %DOT), !dbg !31
-  call void @Hero.status(%struct.Hero* %hero), !dbg !32
+  %0 = call %struct.Hero @Hero.new(), !dbg !32
+  %tmp_struct = alloca %struct.Hero, align 8, !dbg !32
+  store %struct.Hero %0, %struct.Hero* %tmp_struct, align 8, !dbg !32
+  store %struct.Hero %0, %struct.Hero* %hero, align 8, !dbg !32
+  %name = getelementptr %struct.Hero, %struct.Hero* %hero, i32 0, i32 0, !dbg !32
+  %DOT = load i8*, i8** %name, align 8, !dbg !32
+  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([31 x i8], [31 x i8]* @output_fmt.2, i32 0, i32 0), i32 1, i8* %DOT), !dbg !32
+  call void @Hero.status(%struct.Hero* %hero), !dbg !33
   store i32 0, i32* %encounters, align 4, !dbg !31
   store i32 3, i32* %encounters, align 4, !dbg !31
   store i32 0, i32* %i, align 4, !dbg !31
@@ -401,9 +391,9 @@ while.start:                                      ; preds = %if.end, %entry
   %i1 = load i32, i32* %i, align 4, !dbg !31
   %encounters2 = load i32, i32* %encounters, align 4, !dbg !31
   %LT = icmp slt i32 %i1, %encounters2, !dbg !31
-  %Hero.is_alive = call i1 @Hero.is_alive(%struct.Hero* %hero), !dbg !33
-  %AND = and i1 %LT, %Hero.is_alive, !dbg !33
-  br i1 %AND, label %while.then, label %while.end, !dbg !33
+  %Hero.is_alive = call i1 @Hero.is_alive(%struct.Hero* %hero), !dbg !34
+  %AND = and i1 %LT, %Hero.is_alive, !dbg !34
+  br i1 %AND, label %while.then, label %while.end, !dbg !34
 
 while.then:                                       ; preds = %while.start
   store i32 0, i32* %enemy, align 4, !dbg !31
@@ -413,55 +403,56 @@ while.then:                                       ; preds = %while.start
   %floor = load i32, i32* @floor, align 4, !dbg !31
   %i4 = load i32, i32* %i, align 4, !dbg !31
   %ADD = add i32 %i4, 1, !dbg !31
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([24 x i8], [24 x i8]* @output_fmt.3, i32 0, i32 0), i32 2, i32 %floor, i32 %ADD), !dbg !31
+  %2 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([24 x i8], [24 x i8]* @output_fmt.3, i32 0, i32 0), i32 2, i32 %floor, i32 %ADD), !dbg !31
   store i1 false, i1* %won, align 1, !dbg !31
-  %enemy5 = load i32, i32* %enemy, align 4, !dbg !34
-  %fight = call i1 @fight(%struct.Hero* %hero, i32 %enemy5), !dbg !34
-  store i1 %fight, i1* %won, align 1, !dbg !34
-  br label %if.start, !dbg !34
+  %enemy5 = load i32, i32* %enemy, align 4, !dbg !35
+  %fight = call i1 @fight(%struct.Hero* %hero, i32 %enemy5), !dbg !35
+  store i1 %fight, i1* %won, align 1, !dbg !35
+  br label %if.start, !dbg !35
 
 while.end:                                        ; preds = %while.start
-  %score = load i32, i32* @score, align 4, !dbg !35
-  %floor16 = load i32, i32* @floor, align 4, !dbg !35
-  %2 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([46 x i8], [46 x i8]* @output_fmt.6, i32 0, i32 0), i32 2, i32 %score, i32 %floor16), !dbg !35
-  call void @Hero.clean(%struct.Hero* %hero), !dbg !35
-  ret i32 0, !dbg !35
+  %score = load i32, i32* @score, align 4, !dbg !36
+  %floor16 = load i32, i32* @floor, align 4, !dbg !36
+  %3 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([46 x i8], [46 x i8]* @output_fmt.6, i32 0, i32 0), i32 2, i32 %score, i32 %floor16), !dbg !36
+  call void @Hero.delete(%struct.Hero* %hero), !dbg !36
+  call void @Hero.delete(%struct.Hero* %tmp_struct), !dbg !36
+  ret i32 0, !dbg !36
 
 if.start:                                         ; preds = %while.then
-  %won6 = load i1, i1* %won, align 1, !dbg !34
-  br i1 %won6, label %if.then, label %if.else, !dbg !34
+  %won6 = load i1, i1* %won, align 1, !dbg !35
+  br i1 %won6, label %if.then, label %if.else, !dbg !35
 
 if.end:                                           ; preds = %if.else, %if.end8
-  call void @Hero.status(%struct.Hero* %hero), !dbg !35
-  %i14 = load i32, i32* %i, align 4, !dbg !35
-  %ADD15 = add i32 %i14, 1, !dbg !35
-  store i32 %ADD15, i32* %i, align 4, !dbg !35
-  br label %while.start, !dbg !35
+  call void @Hero.status(%struct.Hero* %hero), !dbg !36
+  %i14 = load i32, i32* %i, align 4, !dbg !36
+  %ADD15 = add i32 %i14, 1, !dbg !36
+  store i32 %ADD15, i32* %i, align 4, !dbg !36
+  br label %while.start, !dbg !36
 
 if.then:                                          ; preds = %if.start
-  %3 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt.4, i32 0, i32 0), i32 0), !dbg !34
-  br label %if.start7, !dbg !34
+  %4 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt.4, i32 0, i32 0), i32 0), !dbg !35
+  br label %if.start7, !dbg !35
 
 if.else:                                          ; preds = %if.start
-  %4 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @output_fmt.5, i32 0, i32 0), i32 0), !dbg !36
-  br label %if.end, !dbg !36
+  %5 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @output_fmt.5, i32 0, i32 0), i32 0), !dbg !37
+  br label %if.end, !dbg !37
 
 if.start7:                                        ; preds = %if.then
-  %encounters10 = load i32, i32* %encounters, align 4, !dbg !34
-  %SUB = sub i32 %encounters10, 1, !dbg !34
-  %i11 = load i32, i32* %i, align 4, !dbg !34
-  %EQ = icmp eq i32 %i11, %SUB, !dbg !34
-  br i1 %EQ, label %if.then9, label %if.end8, !dbg !34
+  %encounters10 = load i32, i32* %encounters, align 4, !dbg !35
+  %SUB = sub i32 %encounters10, 1, !dbg !35
+  %i11 = load i32, i32* %i, align 4, !dbg !35
+  %EQ = icmp eq i32 %i11, %SUB, !dbg !35
+  br i1 %EQ, label %if.then9, label %if.end8, !dbg !35
 
 if.end8:                                          ; preds = %if.then9, %if.start7
-  br label %if.end, !dbg !36
+  br label %if.end, !dbg !37
 
 if.then9:                                         ; preds = %if.start7
-  call void @Hero.level_up(%struct.Hero* %hero), !dbg !36
-  %floor12 = load i32, i32* @floor, align 4, !dbg !36
-  %ADD13 = add i32 %floor12, 1, !dbg !36
-  store i32 %ADD13, i32* @floor, align 4, !dbg !36
-  br label %if.end8, !dbg !36
+  call void @Hero.level_up(%struct.Hero* %hero), !dbg !37
+  %floor12 = load i32, i32* @floor, align 4, !dbg !37
+  %ADD13 = add i32 %floor12, 1, !dbg !37
+  store i32 %ADD13, i32* @floor, align 4, !dbg !37
+  br label %if.end8, !dbg !37
 }
 
 !llvm.module.flags = !{!0, !1}
@@ -470,37 +461,38 @@ if.then9:                                         ; preds = %if.start7
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "boss.ura", directory: "tests/dungeon")
-!4 = distinct !DISubprogram(name: "Hero.init", linkageName: "Hero.init", scope: null, file: !3, line: 18, type: !5, scopeLine: 18, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!3 = !DIFile(filename: "boss.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon")
+!4 = distinct !DISubprogram(name: "Hero.new", linkageName: "Hero.new", scope: null, file: !3, line: 18, type: !5, scopeLine: 18, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}
 !7 = !DILocation(line: 18, scope: !4)
-!8 = distinct !DISubprogram(name: "Hero.is_alive", linkageName: "Hero.is_alive", scope: null, file: !3, line: 25, type: !5, scopeLine: 25, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!9 = !DILocation(line: 25, scope: !8)
-!10 = distinct !DISubprogram(name: "Hero.take_hit", linkageName: "Hero.take_hit", scope: null, file: !3, line: 28, type: !5, scopeLine: 28, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!11 = !DILocation(line: 28, scope: !10)
-!12 = distinct !DISubprogram(name: "Hero.level_up", linkageName: "Hero.level_up", scope: null, file: !3, line: 33, type: !5, scopeLine: 33, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!13 = !DILocation(line: 33, scope: !12)
-!14 = distinct !DISubprogram(name: "Hero.status", linkageName: "Hero.status", scope: null, file: !3, line: 39, type: !5, scopeLine: 39, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!15 = !DILocation(line: 39, scope: !14)
-!16 = distinct !DISubprogram(name: "enemy_hp", linkageName: "enemy_hp", scope: null, file: !3, line: 44, type: !5, scopeLine: 44, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!17 = !DILocation(line: 44, scope: !16)
-!18 = distinct !DISubprogram(name: "enemy_atk", linkageName: "enemy_atk", scope: null, file: !3, line: 49, type: !5, scopeLine: 49, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!19 = !DILocation(line: 49, scope: !18)
-!20 = distinct !DISubprogram(name: "enemy_name", linkageName: "enemy_name", scope: null, file: !3, line: 54, type: !5, scopeLine: 54, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!21 = !DILocation(line: 54, scope: !20)
-!22 = distinct !DISubprogram(name: "fight", linkageName: "fight", scope: null, file: !3, line: 59, type: !5, scopeLine: 59, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!23 = !DILocation(line: 59, scope: !22)
-!24 = !DILocation(line: 60, scope: !22)
-!25 = !DILocation(line: 61, scope: !22)
-!26 = !DILocation(line: 62, scope: !22)
-!27 = !DILocation(line: 64, scope: !22)
-!28 = !DILocation(line: 68, scope: !22)
-!29 = !DILocation(line: 69, scope: !22)
-!30 = distinct !DISubprogram(name: "main", linkageName: "main", scope: null, file: !3, line: 74, type: !5, scopeLine: 74, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!31 = !DILocation(line: 74, scope: !30)
+!8 = distinct !DISubprogram(name: "Hero.is_alive", linkageName: "Hero.is_alive", scope: null, file: !3, line: 27, type: !5, scopeLine: 27, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!9 = !DILocation(line: 27, scope: !8)
+!10 = distinct !DISubprogram(name: "Hero.take_hit", linkageName: "Hero.take_hit", scope: null, file: !3, line: 30, type: !5, scopeLine: 30, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!11 = !DILocation(line: 30, scope: !10)
+!12 = distinct !DISubprogram(name: "Hero.level_up", linkageName: "Hero.level_up", scope: null, file: !3, line: 35, type: !5, scopeLine: 35, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!13 = !DILocation(line: 35, scope: !12)
+!14 = distinct !DISubprogram(name: "Hero.status", linkageName: "Hero.status", scope: null, file: !3, line: 41, type: !5, scopeLine: 41, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!15 = !DILocation(line: 41, scope: !14)
+!16 = distinct !DISubprogram(name: "enemy_hp", linkageName: "enemy_hp", scope: null, file: !3, line: 46, type: !5, scopeLine: 46, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!17 = !DILocation(line: 46, scope: !16)
+!18 = distinct !DISubprogram(name: "enemy_atk", linkageName: "enemy_atk", scope: null, file: !3, line: 51, type: !5, scopeLine: 51, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!19 = !DILocation(line: 51, scope: !18)
+!20 = distinct !DISubprogram(name: "enemy_name", linkageName: "enemy_name", scope: null, file: !3, line: 56, type: !5, scopeLine: 56, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!21 = !DILocation(line: 56, scope: !20)
+!22 = distinct !DISubprogram(name: "fight", linkageName: "fight", scope: null, file: !3, line: 61, type: !5, scopeLine: 61, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!23 = !DILocation(line: 61, scope: !22)
+!24 = !DILocation(line: 62, scope: !22)
+!25 = !DILocation(line: 63, scope: !22)
+!26 = !DILocation(line: 64, scope: !22)
+!27 = !DILocation(line: 66, scope: !22)
+!28 = !DILocation(line: 70, scope: !22)
+!29 = !DILocation(line: 71, scope: !22)
+!30 = distinct !DISubprogram(name: "main", linkageName: "main", scope: null, file: !3, line: 76, type: !5, scopeLine: 76, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!31 = !DILocation(line: 76, scope: !30)
 !32 = !DILocation(line: 77, scope: !30)
-!33 = !DILocation(line: 81, scope: !30)
-!34 = !DILocation(line: 84, scope: !30)
-!35 = !DILocation(line: 92, scope: !30)
-!36 = !DILocation(line: 88, scope: !30)
+!33 = !DILocation(line: 79, scope: !30)
+!34 = !DILocation(line: 83, scope: !30)
+!35 = !DILocation(line: 86, scope: !30)
+!36 = !DILocation(line: 94, scope: !30)
+!37 = !DILocation(line: 90, scope: !30)

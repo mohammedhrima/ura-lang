@@ -1,0 +1,10 @@
+// arrays/004 — chars and bool array literal
+use "@/header"
+
+main():
+    names array[chars] = ["Aldric", "Orc", "Dragon"]
+    output(names[0], " vs ", names[1], "\n")
+    output(names[2], " approaches!\n")
+
+    bools array[bool] = [True, False, True]
+    output(bools[0], " ", bools[1], " ", bools[2], "\n")

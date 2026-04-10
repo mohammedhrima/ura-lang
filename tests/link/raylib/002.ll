@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/file.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/file.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/link/raylib/002.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/link/raylib/002.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 %struct.Color = type { i8, i8, i8, i8 }
@@ -7,13 +7,7 @@ target triple = "arm64-apple-macosx16.0.0"
 @STR0 = private unnamed_addr constant [16 x i8] c"Hello from Ura!\00", align 1
 @STR1 = private unnamed_addr constant [16 x i8] c"Hello from Ura!\00", align 1
 
-define void @Color.init(%struct.Color* %0) {
-entry:
-  store %struct.Color zeroinitializer, %struct.Color* %0, align 1
-  ret void
-}
-
-define void @Color.clean(%struct.Color* %0) {
+define void @Color.delete(%struct.Color* %0) {
 entry:
   ret void
 }
@@ -30,7 +24,6 @@ entry:
   store i32 %b, i32* %b3, align 4, !dbg !7
   store i32 %a, i32* %a4, align 4, !dbg !7
   store %struct.Color zeroinitializer, %struct.Color* %c, align 1, !dbg !7
-  call void @Color.init(%struct.Color* %c), !dbg !7
   %r5 = getelementptr %struct.Color, %struct.Color* %c, i32 0, i32 0, !dbg !7
   %r6 = load i32, i32* %r1, align 4, !dbg !7
   %as = trunc i32 %r6 to i8, !dbg !7
@@ -81,6 +74,8 @@ while.start:                                      ; preds = %while.then, %entry
 while.then:                                       ; preds = %while.start
   call void @BeginDrawing(), !dbg !12
   %setColor = call %struct.Color @setColor(i32 20, i32 20, i32 20, i32 255), !dbg !13
+  %tmp_struct = alloca %struct.Color, align 8, !dbg !13
+  store %struct.Color %setColor, %struct.Color* %tmp_struct, align 1, !dbg !13
   %st_slot = alloca %struct.Color, align 8, !dbg !13
   store %struct.Color %setColor, %struct.Color* %st_slot, align 1, !dbg !13
   %i64_slot = alloca i64, align 8, !dbg !13
@@ -90,14 +85,16 @@ while.then:                                       ; preds = %while.start
   %i64_arg = load i64, i64* %i64_slot, align 4, !dbg !13
   call void @ClearBackground(i64 %i64_arg), !dbg !13
   %setColor1 = call %struct.Color @setColor(i32 255, i32 255, i32 255, i32 255), !dbg !14
-  %st_slot2 = alloca %struct.Color, align 8, !dbg !14
-  store %struct.Color %setColor1, %struct.Color* %st_slot2, align 1, !dbg !14
-  %i64_slot3 = alloca i64, align 8, !dbg !14
-  %2 = bitcast i64* %i64_slot3 to i8*, !dbg !14
-  %3 = bitcast %struct.Color* %st_slot2 to i8*, !dbg !14
+  %tmp_struct2 = alloca %struct.Color, align 8, !dbg !14
+  store %struct.Color %setColor1, %struct.Color* %tmp_struct2, align 1, !dbg !14
+  %st_slot3 = alloca %struct.Color, align 8, !dbg !14
+  store %struct.Color %setColor1, %struct.Color* %st_slot3, align 1, !dbg !14
+  %i64_slot4 = alloca i64, align 8, !dbg !14
+  %2 = bitcast i64* %i64_slot4 to i8*, !dbg !14
+  %3 = bitcast %struct.Color* %st_slot3 to i8*, !dbg !14
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %2, i8* %3, i64 4, i1 false), !dbg !14
-  %i64_arg4 = load i64, i64* %i64_slot3, align 4, !dbg !14
-  call void @DrawText(i8* getelementptr inbounds ([16 x i8], [16 x i8]* @STR1, i32 0, i32 0), i32 250, i32 270, i32 40, i64 %i64_arg4), !dbg !14
+  %i64_arg5 = load i64, i64* %i64_slot4, align 4, !dbg !14
+  call void @DrawText(i8* getelementptr inbounds ([16 x i8], [16 x i8]* @STR1, i32 0, i32 0), i32 250, i32 270, i32 40, i64 %i64_arg5), !dbg !14
   call void @EndDrawing(), !dbg !15
   br label %while.start, !dbg !15
 
@@ -117,7 +114,7 @@ attributes #0 = { argmemonly nofree nounwind willreturn }
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "file.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src")
+!3 = !DIFile(filename: "002.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/link/raylib")
 !4 = distinct !DISubprogram(name: "setColor", linkageName: "setColor", scope: null, file: !3, line: 9, type: !5, scopeLine: 9, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

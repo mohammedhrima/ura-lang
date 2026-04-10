@@ -4,10 +4,6 @@ struct Vec2:
     x int
     y int
 
-    fn init() void:
-        self.x = 0
-        self.y = 0
-
     operator = (v Vec2 ref) void:
         self.x = v.x
         self.y = v.y

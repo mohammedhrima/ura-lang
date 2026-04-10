@@ -3,9 +3,6 @@
 struct Score:
     val int
 
-    fn init() void:
-        self.val = 0
-
     operator = (n int) void:
         self.val = n
 

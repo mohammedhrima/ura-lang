@@ -2,8 +2,8 @@
 
 main():
     hp int = 100
-    a  int ref = hp
-    b  int ref = hp
+    a  int ref = ref hp
+    b  int ref = ref hp
     a = 80
     b = b - 10
     output("<", hp, ">\n")
