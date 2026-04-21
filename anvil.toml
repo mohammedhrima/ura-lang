@@ -1,0 +1,28 @@
+# anvil.toml — flat, one line per thing.
+# Paths are relative to this file.
+
+source  = "src"
+build   = "build"
+output  = "build/ura"
+ura_lib = "src/ura-lib"
+
+# compiler
+llvm    = 14
+compile = ["main.c", "utils.c", "builtins.c"]
+
+# flags
+warn    = ["-Wall", "-Wextra", "-Werror=incompatible-pointer-types", "-Werror=int-conversion"]
+san     = ["-fsanitize=address", "-fsanitize=undefined", "-fsanitize=null", "-g3"]
+release = ["-O2", "-DDEBUG=0"]
+
+# tests
+tests        = "src/tests"
+max_parallel = 3
+ignore_ir    = ["DIFile", "DICompileUnit", "source_filename", "ModuleID"]
+
+# sync
+anvil_repo     = "git@github.com:mohammedhrima/anvil.git"
+ura_lib_repo   = "git@github.com:mohammedhrima/ura-lib.git"
+extension_repo = "git@github.com:mohammedhrima/ura-vscode-extension.git"
+projects_dir   = "src/tests/projects"
+project_url    = "git@github.com:mohammedhrima/{name}.git"

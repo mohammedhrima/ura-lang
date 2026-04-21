@@ -1,4 +1,478 @@
-#include "header.h"
+#ifndef HEADER_H
+#define HEADER_H
+
+// ============================================================
+// HEADERS
+// ============================================================
+#include <ctype.h>
+#include <fcntl.h>
+#include <libgen.h>
+#include <limits.h>
+#include <llvm-c/Analysis.h>
+#include <llvm-c/BitWriter.h>
+#include <llvm-c/Core.h>
+#include <llvm-c/DebugInfo.h>
+#include <llvm-c/Target.h>
+#include <llvm-c/TargetMachine.h>
+#include <llvm-c/Transforms/PassBuilder.h>
+#include <signal.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#if defined(__APPLE__)
+typedef struct __sFILE *File;
+#elif defined(__linux__)
+typedef struct _IO_FILE *File;
+#endif
+
+#define SPLIT      "=================================================\n"
+#define RESET      "\033[0m"
+#define BOLD       "\e[1m"
+#define GREEN(fmt) BOLD "\033[0;32m" fmt RESET
+#define RED(fmt)   BOLD "\033[0;31m" fmt RESET
+#define CYAN(fmt)  BOLD "\033[0;36m" fmt RESET
+#define BLUE(fmt)  BOLD "\x1b[34m" fmt RESET
+
+#define LINE __LINE__
+#define FUNC (char *)__func__
+#define FILE                                                                                       \
+	(strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1                                            \
+	                        : (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__))
+#define URA_MAX_SIZE 999999
+
+#define TOKENIZE 1
+#define TAB      3
+#define AST      1
+#define IR       1
+#define OPTIMIZE 1
+#define ASM      1
+
+#define allocate(len, size)   allocate_func(LINE, len, size)
+#define check(cond, fmt, ...) _check(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)
+#define todo(cond, fmt, ...)                                                                       \
+	if (_check(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)) exit(1);
+#define seg() raise(SIGSEGV)
+#define expect_token(type, fmt, ...)                                                               \
+	{                                                                                               \
+		Token *find_token = find(type, 0);                                                           \
+		if (!find_token) {                                                                           \
+			check(1, fmt, ##__VA_ARGS__);                                                             \
+			return syntax_error();                                                                    \
+		}                                                                                            \
+	}
+
+#define debug(fmt, ...)                                                                            \
+	if (enable_debug) _debug(fmt, ##__VA_ARGS__)
+
+#define DATA_TYPES     INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT, ARRAY_TYPE, LIST_TYPE
+#define LOGIC_TYPE     AND, OR
+#define MATH_TYPE      ADD, SUB, MUL, DIV, MOD, BAND, BOR, BXOR, LSHIFT, RSHIFT
+#define COMPARISON_OPS EQUAL, NOT_EQUAL, LESS, GREAT, LESS_EQUAL, GREAT_EQUAL
+#define BINARY_OPS     MATH_TYPE, AND, OR, COMPARISON_OPS
+#define NUMERIC_TYPES  INT, LONG, SHORT, BOOL, CHAR
+#define ASSIGNS_OP     ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN
+#define USING_HOIST    false
+// O0 is basically "Literal Translation" (Debug Mode)
+#define PASSES_O0 "default<O0>"
+// Removes basic redundancies and promotes memory to registers (mem2reg).
+#define PASSES_O1 "default<O1>"
+// Most production code uses this. Adds vectorization and aggressive inlining.
+#define PASSES_O2 "default<O2>"
+// Maximum speed optimizations, including heavy loop unrolling.
+#define PASSES_O3 "default<O3>"
+// Similar to O2, but disables optimizations that increase binary size.
+#define PASSES_Os "default<Os>"
+// Shrinks the code as much as possible, even if it makes it slower.
+#define PASSES_Oz "default<Oz>"
+
+#define AST_NODE(name, child_func, ...)                                                            \
+	Node *name() {                                                                                  \
+		Node  *left = child_func();                                                                  \
+		Token *token;                                                                                \
+		while ((token = find(__VA_ARGS__, 0))) {                                                     \
+			Node *node  = new_node(token);                                                            \
+			node->left  = left;                                                                       \
+			node->right = child_func();                                                               \
+			left        = node;                                                                       \
+		}                                                                                            \
+		return left;                                                                                 \
+	}
+
+// ----------------------------------------------------------------------------
+// Type definitions
+// ----------------------------------------------------------------------------
+typedef struct Token      Token;
+typedef struct Types      Types;
+typedef struct Node       Node;
+typedef struct LLVM       LLVM;
+typedef struct ExcepCTX   ExcepCTX;
+typedef enum Type         Type;
+typedef enum LogType      LogType;
+
+typedef LLVMTypeRef       TypeRef;
+typedef LLVMContextRef    Context;
+typedef LLVMModuleRef     Module;
+typedef LLVMBuilderRef    Builder;
+typedef LLVMBasicBlockRef Block;
+typedef LLVMValueRef      Value;
+typedef LLVMTargetDataRef TargetData;
+typedef LLVMTypeKind      TypeKind;
+
+#define PointerType  LLVMPointerTypeKind
+#define IntegerType  LLVMIntegerTypeKind
+#define FloatType    LLVMFloatTypeKind
+#define DoubleType   LLVMDoubleTypeKind
+#define VoidType     LLVMVoidTypeKind
+#define FunctionType LLVMFunctionTypeKind
+#define StructType   LLVMStructTypeKind
+
+// ----------------------------------------------------------------------------
+// Enums
+// ----------------------------------------------------------------------------
+enum Type
+{
+	ID = 1,
+	// Data types
+	VOID, INT, FLOAT, LONG, SHORT, BOOL, CHAR, CHARS, PTR, VARIADIC, REF,
+	ARRAY, ARRAY_TYPE, ARRAY_LIT, LIST, LIST_TYPE,
+	// Structures
+	STRUCT_DEF, STRUCT_CALL,
+	// Enums
+	ENUM_DEF, ENUM_CALL,
+	// Tuples
+	TUPLE, TUPLE_UNPACK,
+	// Assignment
+	ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,
+	// Comparison
+	EQUAL, NOT_EQUAL, LESS_EQUAL, GREAT, GREAT_EQUAL, LESS,
+	// Arithmetic
+	ADD, SUB, MUL, DIV, MOD,
+	// Logical
+	AND, OR, NOT,
+	// Punctuation and Syntax
+	LPAR, RPAR, LBRA, RBRA, COMA, DOT, DOTS, ACCESS, AS,
+	// Control Flow
+	RETURN, IF, ELIF, ELSE, WHILE, CONTINUE, BREAK,
+	// Functions
+	FDEC, FCALL, PROTO, ARGS, CHILDREN,
+	// Built-ins
+	STACK, HEAP, TYPEOF, SIZEOF, OUTPUT, SYNTAX_ERROR,
+	// Bitwise
+	BAND, BOR, BXOR, BNOT, LSHIFT, RSHIFT,
+	// Literals
+	NULLABLE,
+	// Modules
+	MODULE,
+	// Operator overloading keyword
+	OPERATOR,
+	// Static dispatch / pub
+	PUB, DOUBLE_DOTS, DELETE,
+	// end
+	END,
+};
+
+// ----------------------------------------------------------------------------
+// Structs
+// ----------------------------------------------------------------------------
+
+struct Types {
+	char *name;
+	Type  type;
+};
+
+struct LLVM {
+	bool    is_set;
+	bool    is_loaded;
+	Value   array_size;
+	Value   elem;
+	Value  *dims;
+	int     dims_count;
+	int     dims_size;
+	Block   bloc;
+	TypeRef funcType;
+	TypeRef stType;
+	Value   va_count;
+	Value   error_flag;
+	Value   error_value;
+	Block   Catch;
+	Block   lpad;
+
+	// statements/loops
+	Block start;
+	Block then;
+	Block end;
+};
+
+struct Token {
+	Type  type;
+	Type  retType;
+
+	char *name;
+	int   space;
+
+	int   used;
+	int   pos;
+
+	bool  is_ref;
+	bool  is_dec;
+	bool  is_global;
+	bool  is_param;
+	bool  is_variadic;
+	bool  is_proto;
+	bool  has_clean;
+	bool  is_method_call;
+	bool  is_pub;
+	bool  is_static_call;
+
+	char *filename;
+	int   line;
+
+	LLVM  llvm;
+
+	struct {
+		struct {
+			long value;
+		} Int;
+		struct {
+			int value;
+		} Short;
+		struct {
+			long long value;
+		} Long;
+		struct {
+			float value;
+		} Float;
+		struct {
+			bool value;
+		} Bool;
+		struct {
+			char *value;
+		} Chars;
+		struct {
+			char value;
+		} Char;
+		struct {
+			int   index;
+			Node *ptr;
+		} Struct;
+		struct {
+			Type  elem_type;
+			int   depth;
+			Node *struct_ptr;
+		} Array;
+		struct {
+			Token *types[8];
+			int    count;
+		} Tuple;
+		struct {
+			Node *ptr;
+		} Fcall;
+		struct {
+			Token *ptr;
+			Token *start;
+			Token *end;
+		} Statement;
+		struct {
+			Type  type;
+			char *name;
+		} Catch;
+	};
+};
+
+struct Node {
+	Node   *left;
+	Node   *right;
+	Token  *token;
+
+	Node  **children;
+	int     children_count;
+	int     children_size;
+
+	Token **variables;
+	int     variables_count;
+	int     variables_size;
+
+	Node  **functions;
+	int     functions_count;
+	int     functions_size;
+
+	Node  **structs;
+	int     structs_count;
+	int     structs_size;
+
+	Node  **modules;
+	int     modules_count;
+	int     modules_size;
+
+	Value  *temps;
+	Node  **temp_defs;
+	int     temps_count;
+	int     temps_size;
+};
+
+// globals.h
+// extern bool             found_error;
+// extern bool             prep_mode;
+
+// extern Token          **tokens;
+// extern int              tcount;
+// extern int              tsize;
+// extern int              ecount;
+
+// extern Node            *ura_scope;
+// extern Node            *scope;
+// extern Node           **level_scope;
+
+// extern int              sccount;
+// extern int              scsize;
+
+// extern char           **used_files;
+// extern int              ucount;
+// extern int              usize;
+
+// extern Context          context;
+// extern Module           module;
+// extern Builder          builder;
+// extern TypeRef          vd, f32, i1, i2, i4, i8, i16, i32, i64, p8, p32;
+// extern char            *op_flags;
+// extern bool             enable_san;
+// extern bool             enable_debug;
+// extern char            *argv0;
+// extern char            *ura_lib;
+// extern int              calling_use;
+
+// extern char           **links;
+// extern int              lcount;
+// extern int              lsize;
+
+// extern LLVMDIBuilderRef debug_builder;
+// extern LLVMMetadataRef  debug_compile_unit;
+// extern LLVMMetadataRef  debug_file;
+// extern LLVMMetadataRef  debug_scope;
+
+#define resize_array(array, type, size, count)                                                     \
+	{                                                                                               \
+		if (array == NULL) {                                                                         \
+			size  = 10;                                                                               \
+			array = allocate(size, sizeof(type));                                                     \
+		} else if (count + 5 >= size) {                                                              \
+			type *tmp = allocate(size *= 2, sizeof(type));                                            \
+			memcpy(tmp, array, count * sizeof(type));                                                 \
+			free(array);                                                                              \
+			array = tmp;                                                                              \
+		}                                                                                            \
+	}
+
+// ----------------------------------------------------------------------------
+// Forward declarations — full.c functions
+// ----------------------------------------------------------------------------
+// memory
+void  *allocate_func(int line, int len, int size);
+void   free_token(Token *token);
+void   free_node(Node *node);
+void   free_local_memory();
+void   free_global_memory();
+Token *copy_token(Token *token);
+Node  *copy_node(Node *node);
+void   unuse(Node *node);
+
+// tokenizer / parser helpers
+void   tokenize(char *filename, int default_space);
+void   tokenize_string(char *input, char *fake_name, int default_space);
+void   instantiate_list_types(void);
+char  *generate_list_source(const char *elem_type_name, const char *struct_name);
+Token *new_token(Type type, int space);
+Token *parse_token(char *filename, int line, char *input, int s, int e, Type type, int space);
+void   add_token(Token *token);
+Node  *new_node(Token *token);
+Node  *add_child(Node *node, Node *child);
+void   enter_scope(Node *node);
+void   exit_scope();
+Token *find(Type type, ...);
+bool   within(int space);
+bool   includes(Type to_find, ...);
+void   setName(Token *token, char *name);
+char  *to_string(Type type);
+bool   is_data_type(Token *token);
+char  *resolve_path(char *path);
+Node  *syntax_error();
+
+// variables / functions / structs
+Token *new_variable(Token *token);
+void   add_variable(Node *b, Token *token);
+Token *get_variable(char *name);
+Node  *new_function(Node *node);
+void   add_function(Node *b, Node *node);
+Node  *get_function(char *name);
+Node  *new_struct(Node *node);
+void   add_struct(Node *b, Node *node);
+Node  *get_struct(char *name);
+
+// parser nodes
+Node *expr_node();
+Node *assign_node();
+Node *logic_and_node();
+Node *logic_or_node();
+Node *bitor_node();
+Node *bitxor_node();
+Node *bitnot_node();
+Node *bitand_node();
+Node *equality_node();
+Node *comparison_node();
+Node *shift_node();
+Node *add_sub_node();
+Node *mul_div_node();
+Node *as_node();
+Node *unary_node();
+Node *access_node();
+Node *prime_node();
+Node *optimize_ir(Node *node, bool *changed);
+
+// IR / codegen
+void    gen_ir(Node *node);
+void    gen_asm(Node *node);
+void    init(char *name);
+void    finalize(char *output);
+void    load_if_necessary(Node *node);
+void    _alloca(Token *token);
+void    hoist_allocas(Node *node);
+TypeRef get_llvm_type(Token *token);
+void    _const_value(Token *token);
+Value   _get_default_value(Token *token);
+Value   _build_return(Token *token);
+Value   load_value(Token *token);
+Value   struct_field_ptr(Token *struct_tok, int field_index, char *name);
+Value   allocate_stack(Value size, TypeRef elementType, char *name);
+Value   allocate_heap(Value count, TypeRef elementType, char *name);
+bool    compatible(Token *left, Token *right);
+void    set_ret_type(Node *node);
+void    _branch(Block bloc);
+Block   _append_block(char *name);
+Value   _add_function(char *name, TypeRef function_type);
+TypeRef _named_struct_type(char *name, TypeRef *element_types, unsigned element_count, int packed);
+void    set_debug_location(Token *token);
+
+// LLVM helpers
+LLVMIntPredicate  icmp_predicate(Type op);
+LLVMRealPredicate fcmp_predicate(Type op);
+int               is_float_value(Value v);
+Type              assign_base_op(Type assign_op);
+
+// debug / utils
+bool  _check(char *filename, char *funcname, int line, bool cond, char *fmt, ...);
+int   _debug(char *conv, ...);
+void  pnode(Node *node, char *indent);
+char *strjoin(char *str0, char *str1, char *str2);
+int   vprint_(File out, char *conv, va_list args);
+
+#endif /* HEADER_H */
 
 // Global variable definitions
 bool             found_error;
@@ -29,9 +503,6 @@ bool             enable_san;
 bool             enable_debug = true;
 char            *argv0;
 char            *ura_lib;
-char           **module_paths;
-int              mp_count;
-int              mp_size;
 int              calling_use;
 char            *current_gen_module;
 
@@ -47,19 +518,779 @@ LLVMMetadataRef  debug_compile_unit;
 LLVMMetadataRef  debug_file;
 LLVMMetadataRef  debug_scope;
 
-const char      *type_to_ura_name(Type type) {
-   switch (type) {
-   case INT:   return "int";
-   case LONG:  return "long";
-   case SHORT: return "short";
-   case CHAR:  return "char";
-   case CHARS: return "chars";
-   case BOOL:  return "bool";
-   case FLOAT: return "float";
-   case PTR:   return "pointer";
-   case VOID:  return "void";
-   default:    return NULL;
-   }
+// generate_list_source — generates Ura source code for a list struct.
+// elem_type_name: the element type as it appears in Ura source (e.g., "int", "__list_int")
+// struct_name:    the struct name to generate (e.g., "__list_int")
+// Returns a heap-allocated string that must be freed by the caller.
+char *generate_list_source(const char *elem_type_name, const char *struct_name) {
+	char *src = allocate(4096, sizeof(char));
+	int   pos = 0;
+
+	bool  elem_is_struct =
+	    (elem_type_name[0] == '_') || (elem_type_name[0] >= 'A' && elem_type_name[0] <= 'Z');
+
+	// struct __list_T:
+	pos += snprintf(src + pos, 4096 - pos, "struct %s:\n", struct_name);
+
+	// fields — data, __len, __cap
+	if (elem_is_struct)
+		pos += snprintf(src + pos, 4096 - pos, "   data array[%s]\n", elem_type_name);
+	else pos += snprintf(src + pos, 4096 - pos, "   data array[%s]\n", elem_type_name);
+	pos += snprintf(src + pos, 4096 - pos, "   __len int\n");
+	pos += snprintf(src + pos, 4096 - pos, "   __cap int\n");
+	pos += snprintf(src + pos, 4096 - pos, "\n");
+
+	// operator delete
+	pos += snprintf(src + pos, 4096 - pos, "   operator delete() void:\n");
+	pos += snprintf(src + pos, 4096 - pos, "      free(self.data as pointer)\n");
+	pos += snprintf(src + pos, 4096 - pos, "\n");
+
+	// fn push(e T) void
+	pos += snprintf(src + pos, 4096 - pos, "   fn push(e %s) void:\n", elem_type_name);
+	pos += snprintf(src + pos, 4096 - pos, "      if self.__len >= self.__cap:\n");
+	pos += snprintf(src + pos, 4096 - pos, "         if self.__cap == 0: self.__cap = 8\n");
+	pos += snprintf(src + pos, 4096 - pos, "         else: self.__cap *= 2\n");
+	pos += snprintf(src + pos, 4096 - pos,
+	                "         self.data = realloc(self.data as pointer, self.__cap * sizeof(%s))\n",
+	                elem_type_name);
+	pos += snprintf(src + pos, 4096 - pos, "      self.data[self.__len] = e\n");
+	pos += snprintf(src + pos, 4096 - pos, "      self.__len += 1\n");
+	pos += snprintf(src + pos, 4096 - pos, "\n");
+
+	// fn pop() T
+	pos += snprintf(src + pos, 4096 - pos, "   fn pop() %s:\n", elem_type_name);
+	pos += snprintf(src + pos, 4096 - pos, "      self.__len -= 1\n");
+	pos += snprintf(src + pos, 4096 - pos, "      return self.data[self.__len]\n");
+	pos += snprintf(src + pos, 4096 - pos, "\n");
+
+	// fn len() int
+	pos += snprintf(src + pos, 4096 - pos, "   fn len() int:\n");
+	pos += snprintf(src + pos, 4096 - pos, "      return self.__len\n");
+	pos += snprintf(src + pos, 4096 - pos, "\n");
+
+	// fn cap() int
+	pos += snprintf(src + pos, 4096 - pos, "   fn cap() int:\n");
+	pos += snprintf(src + pos, 4096 - pos, "      return self.__cap\n");
+	pos += snprintf(src + pos, 4096 - pos, "\n");
+
+	return src;
+}
+
+// icmp_predicate
+LLVMIntPredicate icmp_predicate(Type op) {
+	switch (op) {
+	case LESS:        return LLVMIntSLT;
+	case GREAT:       return LLVMIntSGT;
+	case EQUAL:       return LLVMIntEQ;
+	case LESS_EQUAL:  return LLVMIntSLE;
+	case GREAT_EQUAL: return LLVMIntSGE;
+	default:          return LLVMIntNE; // NOT_EQUAL
+	}
+}
+
+// fcmp_predicate
+LLVMRealPredicate fcmp_predicate(Type op) {
+	switch (op) {
+	case LESS:        return LLVMRealOLT;
+	case GREAT:       return LLVMRealOGT;
+	case EQUAL:       return LLVMRealOEQ;
+	case LESS_EQUAL:  return LLVMRealOLE;
+	case GREAT_EQUAL: return LLVMRealOGE;
+	default:          return LLVMRealONE; // NOT_EQUAL
+	}
+}
+
+// is_float_value
+int is_float_value(Value v) {
+	LLVMTypeKind k = LLVMGetTypeKind(LLVMTypeOf(v));
+	return k == LLVMFloatTypeKind || k == LLVMDoubleTypeKind;
+}
+
+// assign_base_op
+Type assign_base_op(Type assign_op) {
+	switch (assign_op) {
+	case ADD_ASSIGN: return ADD;
+	case SUB_ASSIGN: return SUB;
+	case MUL_ASSIGN: return MUL;
+	case DIV_ASSIGN: return DIV;
+	default:         return MOD; // MOD_ASSIGN
+	}
+}
+
+// _branch
+void _branch(Block bloc) {
+	if (!LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder))) LLVMBuildBr(builder, bloc);
+}
+
+// _append_block
+Block _append_block(char *name) {
+	Value parent = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
+	return LLVMAppendBasicBlockInContext(context, parent, name);
+}
+
+// _named_struct_type
+TypeRef _named_struct_type(char *name, TypeRef *element_types, unsigned element_count, int packed) {
+	TypeRef type = LLVMStructCreateNamed(context, name);
+	LLVMStructSetBody(type, element_types, element_count, packed);
+	return type;
+}
+
+// _add_function
+Value _add_function(char *name, TypeRef function_type) {
+	Value f = LLVMGetNamedFunction(module, name);
+	if (f) return f;
+	return LLVMAddFunction(module, name, function_type);
+}
+
+// set_debug_location
+void set_debug_location(Token *token) {
+	if (!token || !debug_builder || !debug_scope)              return;
+	if (!includes(token->type, ACCESS, FDEC, PROTO, FCALL, 0)) return;
+	LLVMMetadataRef loc =
+	    LLVMDIBuilderCreateDebugLocation(context, token->line, 0, debug_scope, NULL);
+	LLVMSetCurrentDebugLocation2(builder, loc);
+}
+
+// struct_field_ptr
+Value struct_field_ptr(Token *struct_tok, int field_index, char *name) {
+	TypeRef struct_type = get_llvm_type(struct_tok);
+	Value   indices[]   = {
+       LLVMConstInt(i32, 0, 0),
+       LLVMConstInt(i32, field_index, 0),
+   };
+	return LLVMBuildGEP2(builder, struct_type, struct_tok->llvm.elem, indices, 2, name);
+}
+
+// load_value
+Value load_value(Token *token) {
+	if (token->llvm.is_loaded) return token->llvm.elem;
+	// Already-computed values: function returns, literals, allocated buffers
+	if (includes(token->type, MATH_TYPE, FCALL, STACK, HEAP, 0)) return token->llvm.elem;
+	if (!token->name && !includes(token->type, DOT, ACCESS, 0))  return token->llvm.elem;
+
+	// Scalar ref: double-deref (alloca-of-ptr → ptr → value)
+	if (token->is_ref && token->type != STRUCT_CALL) {
+		TypeRef type = get_llvm_type(token);
+		Value   ptr  = LLVMBuildLoad2(builder, LLVMPointerType(type, 0), token->llvm.elem, "ref_ptr");
+		return LLVMBuildLoad2(builder, type, ptr, "ref_val");
+	}
+
+	char *name = token->name;
+	if (token->type == DOT)    name = to_string(DOT);
+	if (token->type == ACCESS) name = to_string(ACCESS);
+	return LLVMBuildLoad2(builder, get_llvm_type(token), token->llvm.elem, name ? name : "");
+}
+
+// new_token
+Token *new_token(Type type, int space) {
+	Token *token = allocate(1, sizeof(Token));
+	token->type  = type;
+	token->space = ((space + TAB / 2) / TAB) * TAB;
+	add_token(token);
+	return token;
+}
+
+// unuse
+void unuse(Node *node) {
+	if (!node || !node->token) return;
+
+	if (node->left && node->left->token) {
+		if (node->left->token->used > 0) node->left->token->used--;
+	}
+	if (node->right && node->right->token) {
+		if (node->right->token->used > 0) node->right->token->used--;
+	}
+	for (int i = 0; i < node->children_count; i++)
+		if (node->children[i] && node->children[i]->token)
+			if (node->children[i]->token->used > 0) node->children[i]->token->used--;
+}
+
+// resolve_path
+char *resolve_path(char *path) {
+	if (path == NULL) return NULL;
+	char *cleaned = allocate(strlen(path) + 5, 1);
+	if (!cleaned) return NULL;
+	size_t i = 0, j = 0;
+	while (path[i]) {
+		cleaned[j++] = path[i++];
+		while (path[i] == '/') {
+			if (cleaned[j - 1] != '/') cleaned[j++] = '/';
+			i++;
+		}
+	}
+	if (j > 1 && cleaned[j - 1] == '/') j--;
+	cleaned[j] = '\0';
+	return cleaned;
+}
+
+// allocate_func
+void *allocate_func(int line, int len, int size) {
+	void *res = calloc(len, size);
+	check(!res, "allocate did failed in line %d", line);
+	return res;
+}
+
+// free_token
+void free_token(Token *token) {
+	free(token->name);
+	free(token->Chars.value);
+	free(token->llvm.dims);
+	free(token);
+}
+
+// free_node
+void free_node(Node *node) {
+	if (!node) return;
+	for (int i = 0; i < node->children_count; i++)
+		free_node(node->children[i]);
+	free_node(node->left);
+	free_node(node->right);
+	free(node->children);
+	free(node->functions);
+	free(node->variables);
+	free(node->structs);
+	free(node);
+}
+
+// free_local_memory
+void free_local_memory() {
+	for (int i = 0; tokens && tokens[i]; i++) {
+		free_token(tokens[i]);
+		tokens[i] = NULL;
+	}
+	tcount = 0;
+	ecount = 0;
+}
+
+void free_global_memory() {
+	for (int i = 0; links && links[i]; i++) {
+		free(links[i]);
+		links[i] = NULL;
+	}
+	lcount = 0;
+}
+
+// add_token
+void add_token(Token *token) {
+	resize_array(tokens, Token *, tsize, tcount);
+	tokens[tcount++] = token;
+}
+
+// new_node
+Node *new_node(Token *token) {
+	debug("new node: %k\n", token);
+	Node *new  = allocate(1, sizeof(Node));
+	new->token = token;
+	return new;
+}
+
+// add_child
+Node *add_child(Node *node, Node *child) {
+	if (child) {
+		resize_array(node->children, Node *, node->children_size, node->children_count);
+		child->token->space                    = node->token->space + TAB;
+		node->children[node->children_count++] = child;
+	}
+	return child;
+}
+
+// includes
+bool includes(Type to_find, ...) {
+	if (found_error) return false;
+	va_list ap;
+	Type    current;
+	va_start(ap, to_find);
+	while ((current = va_arg(ap, Type)) != 0)
+		if (current == to_find) return true;
+	return false;
+}
+
+// setName
+void setName(Token *token, char *name) {
+	if (token->name) free(token->name);
+	token->name = name ? strdup(name) : NULL;
+}
+
+// to_string
+char *to_string(Type type) {
+	char *res[END + 1] = {
+	    [ID] = "ID", [CHAR] = "CHAR", [CHARS] = "CHARS", [VOID] = "VOID",
+	    [INT] = "INT", [BOOL] = "BOOL", [LONG] = "LONG", [FLOAT] = "FLOAT",
+	    [FDEC] = "FDEC", [FCALL] = "CALL", [END] = "END", [LPAR] = "LPAR",
+	    [RPAR] = "RPAR", [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
+	    [WHILE] = "WHILE", [BREAK] = "BRK", [CONTINUE] = "CONT",
+	    [SHORT] = "SHORT", [RETURN] = "RET", [BAND] = "BAND", [BOR] = "BOR",
+	    [BXOR] = "BXOR", [BNOT] = "BNOT", [LSHIFT] = "LSHIFT",
+	    [RSHIFT] = "RSHIFT", [ADD] = "ADD", [SUB] = "SUB", [MUL] = "MUL",
+	    [DIV] = "DIV", [ASSIGN] = "ASSIGN", [ADD_ASSIGN] = "ADD_ASS",
+	    [SUB_ASSIGN] = "SUB_ASS", [MUL_ASSIGN] = "MUL_ASS",
+	    [DIV_ASSIGN] = "DIV_ASS", [MOD_ASSIGN] = "MOD_ASS", [ACCESS] = "ACC",
+	    [MOD] = "MOD", [COMA] = "COMA", [REF] = "REF", [EQUAL] = "EQ",
+	    [NOT_EQUAL] = "NEQ", [LESS] = "LT", [GREAT] = "GT",
+	    [LESS_EQUAL] = "LE", [NOT] = "NOT", [GREAT_EQUAL] = "GE",
+	    [AND] = "AND", [OR] = "OR", [DOTS] = "DOTS", [PROTO] = "PROT",
+	    [VARIADIC] = "VAR", [TYPEOF] = "TYPEOF", [SIZEOF] = "SIZEOF",
+	    [OUTPUT] = "OUTPUT", [ARGS] = "ARGS", [CHILDREN] = "CHILDREN",
+	    [AS] = "AS", [STACK] = "STACK", [HEAP] = "HEAP",
+	    [ARRAY_TYPE] = "ARRAY_TYPE", [ARRAY_LIT] = "ARRAY_LIT",
+	    [NULLABLE] = "NULLABLE",
+	    //[TRY] = "TRY", [CATCH] = "CATCH", [THROW] = "THROW", [USE] = "USE",
+	    [STRUCT_DEF] = "STRUCT_DEF", [STRUCT_CALL] = "STRUCT_CALL",
+	    [ENUM_DEF] = "ENUM_DEF", [ENUM_CALL] = "ENUM_CALL", [TUPLE] = "TUPLE",
+	    [TUPLE_UNPACK] = "TUPLE_UNPACK", [LBRA] = "LBRA", [RBRA] = "RBRA",
+	    [ARRAY] = "ARRAY", [LIST] = "LIST", [LIST_TYPE] = "LIST_TYPE",
+	    [DOT] = "DOT", [SYNTAX_ERROR] = "SYNTAX_ERROR", [MODULE] = "MODULE",
+	    [OPERATOR] = "OPERATOR_KW", [PUB] = "PUB",
+	    [DOUBLE_DOTS] = "DOUBLE_DOTS", [DELETE] = "DELETE",
+	};
+
+	if (check(!res[type], "handle this case %d\n", type)) {
+		// seg();
+		exit(1);
+	}
+	return res[type];
+}
+
+// new_struct
+Node *new_struct(Node *node) {
+	debug(CYAN("new struct [%s] in scope %k\n"), node->token->name, scope->token);
+	for (int i = 0; i < scope->structs_count; i++) {
+		Token *curr = scope->structs[i]->token;
+		bool   cond = (strcmp(curr->name, node->token->name) == 0);
+		check(cond, "Redefinition of %s", node->token->name);
+	}
+	resize_array(scope->structs, Node *, scope->structs_size, scope->structs_count);
+	scope->structs[scope->structs_count++] = node;
+	return node;
+}
+
+// add_struct
+void add_struct(Node *parent, Node *node) {
+	resize_array(parent->structs, Node *, parent->structs_size, parent->structs_count);
+	parent->structs[parent->structs_count++] = node;
+}
+
+// syntax_error
+Node *syntax_error() {
+	found_error = true;
+	static Node *node;
+	if (node == NULL) node = new_node(new_token(SYNTAX_ERROR, -1));
+	return node;
+	return node;
+}
+
+// add_variable
+void add_variable(Node *parent, Token *token) {
+	resize_array(parent->variables, Token *, parent->variables_size, parent->variables_count);
+	parent->variables[parent->variables_count++] = token;
+}
+
+// new_variable
+Token *new_variable(Token *token) {
+	debug(CYAN("new variable [%k] in scope %k\n"), token, scope->token);
+	for (int i = 0; i < scope->variables_count; i++) {
+		Token *curr = scope->variables[i];
+		bool   cond = (strcmp(curr->name, token->name) == 0);
+		check(cond, "Redefinition of %s", token->name);
+	}
+	add_variable(scope, token);
+	return token;
+}
+
+// copy_token
+Token *copy_token(Token *token) {
+	if (token == NULL) return NULL;
+	Token *new = allocate(1, sizeof(Token));
+	memcpy(new, token, sizeof(Token));
+	new->name = NULL;
+	if (token->name)        setName(new, token->name);
+	if (token->Chars.value) new->Chars.value = strdup(token->Chars.value);
+	new->llvm.dims       = NULL;
+	new->llvm.dims_count = 0;
+	new->llvm.dims_size  = 0;
+	for (int i = 0; i < token->llvm.dims_count; i++) {
+		resize_array(new->llvm.dims, Value, new->llvm.dims_size, new->llvm.dims_count);
+		new->llvm.dims[new->llvm.dims_count++] = token->llvm.dims[i];
+	}
+	add_token(new);
+	return new;
+}
+
+// vprint_
+int vprint_(File out, char *conv, va_list args) {
+	int res = 0;
+
+	for (int i = 0; conv[i]; i++) {
+		if (conv[i] != '%') {
+			res += fprintf(out, "%c", conv[i]);
+			continue;
+		}
+		i++;
+		int left_align = 0;
+		if (conv[i] == '-') {
+			left_align = 1;
+			i++;
+		}
+		int width = 0;
+		while (isdigit(conv[i])) {
+			width = width * 10 + (conv[i] - '0');
+			i++;
+		}
+		int prec = -1;
+		if (conv[i] == '.') {
+			i++;
+			prec = 0;
+			while (conv[i] >= '0' && conv[i] <= '9') {
+				prec = prec * 10 + (conv[i] - '0');
+				i++;
+			}
+		}
+		if (strncmp(conv + i, "zu", 2) == 0) {
+			res += fprintf(out, "%d", va_arg(args, int));
+			i++;
+		} else if (strncmp(conv + i, "lld", 3) == 0) {
+			res += fprintf(out, "%lld", va_arg(args, long long));
+			i += 2;
+		} else {
+			switch (conv[i]) {
+			case 'c': res += fprintf(out, "%c", va_arg(args, int)); break;
+			case 's': {
+				char *str = va_arg(args, char *);
+				if (!str) str = "(null_str)";
+				if (left_align)
+					res += (prec >= 0) ? fprintf(out, "%-*.*s", width, prec, str)
+					                   : fprintf(out, "%-*s", width, str);
+				else
+					res += (prec >= 0) ? fprintf(out, "%*.*s", width, prec, str)
+					                   : fprintf(out, "%*s", width, str);
+				break;
+			}
+			case 'p': res += fprintf(out, "%p", va_arg(args, void *)); break;
+			case 'x':
+				res += (prec >= 0) ? fprintf(out, "%.*x", prec, va_arg(args, unsigned int))
+				                   : fprintf(out, "%x", va_arg(args, unsigned int));
+				break;
+			case 'X':
+				res += (prec >= 0) ? fprintf(out, "%.*X", prec, va_arg(args, unsigned int))
+				                   : fprintf(out, "%X", va_arg(args, unsigned int));
+				break;
+			case 'd':
+				res += (prec >= 0) ? fprintf(out, "%.*d", prec, va_arg(args, int))
+				                   : fprintf(out, "%d", va_arg(args, int));
+				break;
+			case 'f':
+				res += (prec >= 0) ? fprintf(out, "%.*f", prec, va_arg(args, double))
+				                   : fprintf(out, "%f", va_arg(args, double));
+				break;
+			case '%': res += fprintf(out, "%%"); break;
+			case 't': res += fprintf(out, "%s", to_string((Type)va_arg(args, Type))); break;
+			case 'k': {
+				Token *token = va_arg(args, Token *);
+				if (!token) {
+					fprintf(out, "(null)");
+					break;
+				}
+
+				fprintf(out, "[%s] ", to_string(token->type));
+
+				switch (token->type) {
+				case VOID: case CHARS: case CHAR: case INT: case BOOL: case FLOAT:
+				case LONG: {
+					if (token->name) {
+						fprintf(out, "%s ", token->name);
+						break;
+					}
+					if (token->type == VOID) break;
+					// print_value inline
+					switch (token->type) {
+					case INT:   fprintf(out, "[%lld] ", (long long)token->Int.value); break;
+					case LONG:  fprintf(out, "[%lld] ", token->Long.value); break;
+					case BOOL:  fprintf(out, "[%s] ", token->Bool.value ? "True" : "False"); break;
+					case FLOAT: fprintf(out, "[%f] ", token->Float.value); break;
+					case CHAR:  {
+						fprintf(out, "[");
+						char c = token->Char.value;
+						switch (c) {
+						case '\n': fprintf(out, "\\n"); break;
+						case '\t': fprintf(out, "\\t"); break;
+						case '\r': fprintf(out, "\\r"); break;
+						case '\\': fprintf(out, "\\\\"); break;
+						case '\"': fprintf(out, "\\\""); break;
+						default:   fprintf(out, "%c", c); break;
+						}
+						fprintf(out, "] ");
+						break;
+					}
+					case CHARS: {
+						fprintf(out, "[\"");
+						char *str = token->Chars.value;
+						if (str)
+							for (int j = 0; str[j]; j++) {
+								switch (str[j]) {
+								case '\n': fprintf(out, "\\n"); break;
+								case '\t': fprintf(out, "\\t"); break;
+								case '\r': fprintf(out, "\\r"); break;
+								case '\\': fprintf(out, "\\\\"); break;
+								case '\"': fprintf(out, "\\\""); break;
+								default:   fprintf(out, "%c", str[j]); break;
+								}
+							}
+						fprintf(out, "\"] ");
+						break;
+					}
+					case ADD:       case SUB:
+					case NOT_EQUAL: fprintf(out, "%s ", to_string(token->type)); break;
+					default:        break;
+					}
+					break;
+				}
+				case STRUCT_CALL:
+					fprintf(out, "name [%s] ", token->name);
+					fprintf(out, "st_name [%s] ", token->Struct.ptr->token->name);
+					break;
+				case STRUCT_DEF: case FCALL: case FDEC:
+				case ID:         fprintf(out, "%s ", token->name); break;
+				default:         break;
+				}
+
+				if (token->is_ref)      fprintf(out, "ref ");
+				if (token->retType)     fprintf(out, "ret [%s] ", to_string(token->retType));
+				if (token->is_variadic) fprintf(out, "variadic ");
+				break;
+			}
+			default: todo(1, "invalid format specifier [%c]", conv[i]); break;
+			}
+		}
+	}
+	return res;
+}
+
+// _debug
+int _debug(char *conv, ...) {
+	va_list args;
+	va_start(args, conv);
+	int res = vprint_(stdout, conv, args);
+	va_end(args);
+	return res;
+}
+
+// _check
+bool _check(char *filename, char *funcname, int line, bool cond, char *fmt, ...) {
+	if (!cond) return cond;
+	found_error = true;
+	fprintf(stderr, RED("ura_error: %s %s:%d "), funcname, filename, line);
+	va_list ap;
+	va_start(ap, fmt);
+	vprint_(stderr, fmt, ap);
+	va_end(ap);
+	fprintf(stderr, "\n");
+	// seg();
+	return cond;
+}
+
+// pnode
+void pnode(Node *node, char *indent) {
+	if (!node || !node->token || !enable_debug) return;
+	Node **subs     = NULL;
+	int    count    = 0;
+	int    capacity = 0;
+
+#define push(n)                                                                                    \
+	do {                                                                                            \
+		resize_array(subs, Node *, capacity, count);                                                 \
+		subs[count++] = (n);                                                                         \
+	} while (0)
+
+	debug("%k\n", node->token);
+	if (includes(node->token->type, IF, ELIF, ELSE, 0)) {
+		if (node->left) push(node->left);
+		for (int i = 0; i < node->children_count; i++)
+			push(node->children[i]);
+		if (node->right) push(node->right);
+	} else {
+		if (node->left)  push(node->left);
+		if (node->right) push(node->right);
+		for (int i = 0; i < node->children_count; i++)
+			push(node->children[i]);
+	}
+	for (int i = 0; i < node->modules_count; i++)
+		push(node->modules[i]);
+	for (int i = 0; i < node->structs_count; i++)
+		push(node->structs[i]);
+	for (int i = 0; i < node->functions_count; i++)
+		push(node->functions[i]);
+	for (int i = 0; i < count; i++) {
+		Node *child = subs[i];
+		if (!child || !child->token || !child->token->type) continue;
+
+		int         is_last = (i == count - 1);
+		const char *bar     = is_last ? "   " : "│  ";
+
+		char        new_indent[4096]; // TODO: to be fixed later
+		snprintf(new_indent, sizeof(new_indent), "%s%s", indent, bar);
+
+		char *connector = is_last ? "└──" : "├──";
+		debug("%s%s", indent, connector);
+		pnode(child, new_indent);
+	}
+	free(subs);
+#undef push
+}
+
+// strjoin
+char *strjoin(char *str0, char *str1, char *str2) {
+	int   len0 = str0 ? strlen(str0) : 0;
+	int   len1 = str1 ? strlen(str1) : 0;
+	int   len2 = str2 ? strlen(str2) : 0;
+	char *res  = allocate(len0 + len1 + len2 + 1, 1);
+	if (str0) strcpy(res, str0);
+	if (str1) strcpy(res + len0, str1);
+	if (str2) strcpy(res + len0 + len1, str2);
+	return res;
+}
+
+// is_data_type
+bool is_data_type(Token *token) { return includes(token->type, DATA_TYPES, 0); }
+
+// copy_node
+Node *copy_node(Node *node) {
+	Node *new  = allocate(1, sizeof(Node));
+	new->token = copy_token(node->token);
+	if (node->left)  new->left = copy_node(node->left);
+	if (node->right) new->right = copy_node(node->right);
+	for (int i = 0; i < node->children_count; i++)
+		add_child(new, copy_node(node->children[i]));
+	for (int i = 0; i < node->structs_count; i++)
+		add_struct(new, node->structs[i]);
+	for (int i = 0; i < node->variables_count; i++)
+		add_variable(new, copy_token(node->variables[i]));
+	return new;
+}
+
+// hoist_allocas
+void hoist_allocas(Node *node) {
+	if (!node) return;
+	Token *tok = node->token;
+
+	// don't recurse into nested functions
+	if (tok->type == FDEC) return;
+
+	if (includes(tok->type, INT, LONG, SHORT, CHARS, CHAR, BOOL, ARRAY_TYPE, 0) && tok->is_dec) {
+		if (!tok->llvm.elem) _alloca(tok);
+	} else if (tok->type == STRUCT_CALL && tok->is_dec && !tok->is_ref) {
+		if (!tok->llvm.elem) {
+			TypeRef struct_type = get_llvm_type(tok);
+			tok->llvm.elem      = LLVMBuildAlloca(builder, struct_type, tok->name);
+		}
+	}
+
+	if (node->left)  hoist_allocas(node->left);
+	if (node->right) hoist_allocas(node->right);
+	for (int i = 0; i < node->children_count; i++)
+		hoist_allocas(node->children[i]);
+}
+
+// load_if_necessary
+void load_if_necessary(Node *node) {
+	Token *token = node->token;
+
+	if (token->is_ref)                                        return;
+	if (includes(token->type, MATH_TYPE, 0))                  return;
+	if (includes(token->type, DATA_TYPES, 0) && !token->name) return;
+	if (token->llvm.is_loaded)                                return;
+	if (includes(token->type, STACK, HEAP, FCALL, 0))         return;
+
+	if (token->name || includes(token->type, ACCESS, DOT, 0)) {
+		Token *new          = copy_token(token);
+		new->llvm.elem      = load_value(token);
+		new->llvm.is_loaded = true;
+		node->token         = new;
+	}
+}
+
+// _alloca
+void _alloca(Token *token) {
+	TypeRef type = get_llvm_type(token);
+	if (token->is_ref) type = LLVMPointerType(type, 0);
+
+	Block current = LLVMGetInsertBlock(builder);
+	Value func    = LLVMGetBasicBlockParent(current);
+	Block entry   = LLVMGetEntryBasicBlock(func);
+	// Walk past leading allocas to find the insertion point
+	Value inst = LLVMGetFirstInstruction(entry);
+	while (inst && LLVMGetInstructionOpcode(inst) == LLVMAlloca)
+		inst = LLVMGetNextInstruction(inst);
+
+	// Position before the first non-alloca instruction (safe even when it's a terminator)
+	if (inst) LLVMPositionBuilderBefore(builder, inst);
+	else LLVMPositionBuilderAtEnd(builder, entry);
+
+	token->llvm.elem = LLVMBuildAlloca(builder, type, token->name);
+
+	LLVMPositionBuilderAtEnd(builder, current);
+}
+
+// get_llvm_type
+TypeRef get_llvm_type(Token *token) {
+	Type type = token->type;
+	if (token->retType)      type = token->retType;
+	if (type == STRUCT_DEF)  return token->llvm.stType;
+	if (type == TUPLE)       return token->llvm.stType;
+	if (type == STRUCT_CALL) {
+		if (check(!token->Struct.ptr,
+		          "STRUCT_CALL: Struct.ptr is NULL for token '%s' type=%d retType=%d",
+		          token->name ? token->name : "(null)", token->type, token->retType))
+			return LLVMVoidTypeInContext(context);
+		return get_llvm_type(token->Struct.ptr->token);
+	}
+	if (includes(type, ARRAY, ARRAY_TYPE, 0)) {
+		TypeRef base;
+		if (token->Array.elem_type == STRUCT_CALL && token->Array.struct_ptr)
+			base = get_llvm_type(token->Array.struct_ptr->token);
+		else {
+			Token tmp = {.type = token->Array.elem_type};
+			base      = get_llvm_type(&tmp);
+		}
+		return LLVMPointerType(base, 0); // flat allocation: always single ptr to base
+	}
+	// if (type == FCALL)
+	//    return get_llvm_type(token->Fcall.ptr->token);
+	TypeRef res[END] = {
+	    [INT] = i32,  [CHAR] = i8,   [CHARS] = p8,  [BOOL] = i1,  [VOID] = vd,
+	    [LONG] = i64, [FLOAT] = f32, [ACCESS] = i8, [SHORT] = i2, [NULLABLE] = p8,
+	};
+	if (check(!res[type], "handle this case [%s]", to_string(type))) {
+		seg();
+	}
+	return res[type];
+}
+
+// _get_default_value
+Value _get_default_value(Token *token) {
+	TypeRef type = get_llvm_type(token);
+
+	if (token->is_ref) return LLVMConstNull(LLVMPointerType(type, 0));
+
+	if (includes(token->type, NUMERIC_TYPES, 0))     return LLVMConstInt(type, 0, false);
+	if (token->type == FLOAT)                        return LLVMConstReal(type, 0.0);
+	if (includes(token->type, CHARS, ARRAY_TYPE, 0)) return LLVMConstNull(type);
+	check(1, "handle this case %s", to_string(token->type));
+	return NULL;
+}
+
+const char *type_to_ura_name(Type type) {
+	switch (type) {
+	case INT:   return "int";
+	case LONG:  return "long";
+	case SHORT: return "short";
+	case CHAR:  return "char";
+	case CHARS: return "chars";
+	case BOOL:  return "bool";
+	case FLOAT: return "float";
+	case PTR:   return "pointer";
+	case VOID:  return "void";
+	default:    return NULL;
+	}
 }
 
 //
@@ -311,7 +1542,6 @@ Token *parse_token(char *filename, int line, char *input, int s, int e, Type typ
 void tokenize(char *file_name, int default_space) {
 	if (found_error) return;
 	char *filename = realpath(file_name, NULL);
-	if (check(!filename, "openning %s", file_name)) return;
 	File  file     = fopen(filename, "r");
 	if (check(!file, "openning %s", file_name)) return;
 	fseek(file, 0, SEEK_END);
@@ -413,21 +1643,12 @@ void tokenize(char *file_name, int default_space) {
 				free(use);
 				use = tmp;
 				if (use[0] == '@') {
-					// Try each -L<path> in order, fall back to URA_LIB.
-					char *resolved = NULL;
-					for (int mi = 0; mi < mp_count && !resolved; mi++) {
-						char *cand = strjoin(module_paths[mi], "/", use + 1);
-						if (access(cand, R_OK) == 0) resolved = cand;
-						else                          free(cand);
-					}
-					if (!resolved) resolved = strjoin(ura_lib, "/", use + 1);
+					tmp = strjoin(ura_lib, "/", use + 1);
 					free(use);
-					use = resolved;
+					use = tmp;
 				} else if (use[0] != '/') {
-					char *path_copy = strdup(file_name);
-					char *dir_name  = dirname(path_copy);
-					tmp             = strjoin(dir_name, "/", use);
-					free(path_copy);
+					char *dir_name = dirname(file_name);
+					tmp            = strjoin(dir_name, "/", use);
 					free(use);
 					use = tmp;
 				}
@@ -4815,10 +6036,6 @@ int main(int argc, char **argv) {
 		else if (strcmp(argv[i], "-o") == 0)        {
 			check(i + 1 >= argc, "-o requires an argument");
 			output = argv[++i];
-		} else if (strcmp(argv[i], "-L") == 0) {
-			check(i + 1 >= argc, "-L requires an argument");
-			resize_array(module_paths, char *, mp_size, mp_count);
-			module_paths[mp_count++] = argv[++i];
 		} else if (argv[i][0] != '-' && strlen(argv[i]) > 4 &&
 		           strcmp(argv[i] + strlen(argv[i]) - 4, ".ura") == 0) {
 			resize_array(src_files, char *, src_size, src_count);

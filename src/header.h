@@ -346,6 +346,9 @@ extern bool             enable_san;
 extern bool             enable_debug;
 extern char            *argv0;
 extern char            *ura_lib;
+extern char           **module_paths;       // extra -L search dirs
+extern int              mp_count;
+extern int              mp_size;
 extern int              calling_use;
 
 extern char           **links;
