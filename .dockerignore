@@ -1,0 +1,8 @@
+.git
+build/
+llvm/
+**/build/
+*.o
+*.ll
+*.s
+exe.out
