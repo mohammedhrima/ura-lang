@@ -10,11 +10,19 @@ No braces. No semicolons. Indentation-based like Python, fast like C. Each floor
 
 ```bash
 git clone https://github.com/mohammedhrima/ura-lang && cd ura-lang
-bash config/setup.sh     # install deps once (macOS/Linux)
-source config.sh         # every session
-build                    # compile the compiler
-ura src/file.ura         # compile + run
+
+make -C config/anvil install   # build + install `anvil` to /usr/local/bin (one time)
+anvil install                  # install LLVM/clang deps (once per machine)
+anvil build                    # compile the ura compiler
+anvil test                     # run the test suite
 ```
+
+Dev workflow is driven by **[anvil](config/anvil/README.md)** — a
+Makefile-style CLI. Run `anvil` with no args to see every command
+(`build`, `test`, `indent`, `release`, `shell`, …).
+
+For writing Ura projects, use **[avatar](src/tools/avatar/README.md)** — a
+package manager (`avatar new myapp`, `avatar build`, `avatar run`).
 
 ```ura
 main():
@@ -1338,33 +1346,23 @@ ura src/game.ura -O2 -o dungeon
 | `-prep` | Generate preprocessed `.prep.ura` — expanded generics, resolved operators, inlined imports |
 | `-o <name>` | Output name (default: source basename) |
 
-### config.sh
+### anvil
 
-Source once per session. Sets `$URA_LIB`, `$URA_COMPILER`, and adds `build/` to `$PATH`.
-
-```bash
-source config.sh
-```
-
-| Command | Description |
-|---------|-------------|
-| `build` | Compile the Ura compiler |
-| `ura <file>` | Compile + run a `.ura` file |
-| `tests [folder]` | Run test suite (parallel, IR comparison) |
-| `update_tests` | Regenerate all `.ll` reference files |
-| `copy <file.ura>` | Save file as a test (reads path from line-1 comment) |
-| `check` | Re-run dependency check |
-| `install` | Install missing dependencies |
-| `indent` | Auto-format all C source files |
-
-### setup.sh / setup.ps1
-
-One-time bootstrap. Run once, then use `config.sh` every session:
+Dev tool for the compiler (replaces `config.sh`). See
+[config/anvil/README.md](config/anvil/README.md) for the full command list.
 
 ```bash
-bash config/setup.sh           # macOS / Linux
-# Windows: powershell -ExecutionPolicy Bypass -File config/setup.ps1
+make -C config/anvil install   # one-time install
+anvil                          # list commands
+anvil build                    # compile the ura compiler
+anvil test                     # run the test suite
+anvil install                  # install LLVM/clang deps
+anvil indent                   # clang-format the C sources
+anvil shell                    # drop into the Linux dev container
+anvil release --confirm        # build + sync everything
 ```
+
+Config lives in [anvil.toml](anvil.toml) at the repo root.
 
 ---
 
@@ -1434,7 +1432,7 @@ code --install-extension ura-lang-*.vsix
 | Linux | `clang-14` + `llvm-14` + `llvm-14-tools` |
 | Windows | MSYS2 MinGW64 + `mingw-w64-x86_64-llvm` + clang |
 
-Run `bash config/setup.sh` to install everything automatically.
+Run `anvil install` to install everything automatically.
 
 > **Why LLVM 14?** It uses explicit pointer types (`i32*`) in IR instead of the opaque `ptr` from LLVM 15+, making the generated `.ll` files much easier to read and debug.
 
