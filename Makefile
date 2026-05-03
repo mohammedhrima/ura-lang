@@ -1,15 +1,33 @@
-IMAGE := ura-dev
+IMAGE     := ura-dev
+CONTAINER := ura-lang
+MOUNT     := /ura-lang
+PLATFORM  := linux/amd64
 
-.PHONY: image shell anvil
+.PHONY: image rebuild shell stop clean
 
+# Build the image only if it doesn't exist. Use `make rebuild` to force.
 image:
-	docker build --platform linux/amd64 -t $(IMAGE) .
+	@docker image inspect $(IMAGE) >/dev/null 2>&1 || \
+	    docker build --platform $(PLATFORM) -t $(IMAGE) .
 
+rebuild:
+	docker build --platform $(PLATFORM) -t $(IMAGE) .
+
+# Create the container once; reuse it on subsequent `make shell` calls.
 shell: image
-	docker run --platform linux/amd64 --rm -it -v "$(CURDIR):/workspace" $(IMAGE)
+	@if docker container inspect $(CONTAINER) >/dev/null 2>&1; then \
+	    docker start -ai $(CONTAINER); \
+	else \
+	    docker run --platform $(PLATFORM) -it \
+	        --name $(CONTAINER) \
+	        -v "$(CURDIR):$(MOUNT)" \
+	        -w $(MOUNT) \
+	        $(IMAGE); \
+	fi
 
-# Rebuild anvil inside the container from the mounted source and reinstall it.
-# Handy when iterating on anvil C++ without re-baking the whole image.
-anvil:
-	docker run --platform linux/amd64 --rm -v "$(CURDIR):/workspace" $(IMAGE) \
-	    sh -c 'make -C /workspace/config/anvil && install -m 755 /workspace/config/anvil/anvil /usr/local/bin/anvil'
+stop:
+	-docker stop $(CONTAINER)
+
+clean:
+	-docker rm -f $(CONTAINER)
+	-docker rmi $(IMAGE)

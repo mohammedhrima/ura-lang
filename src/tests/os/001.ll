@@ -1,12 +1,10 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/os/001.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/os/001.ura"
-target triple = "arm64-apple-macosx16.0.0"
+; ModuleID = 'src/tests/os/001.ura'
+source_filename = "src/tests/os/001.ura"
+target triple = "x86_64-pc-linux-gnu"
 
-%struct.Os = type { i32, i8** }
 %struct.String = type { i8*, i32, i32 }
 
 @STR0 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
-@os = global %struct.Os zeroinitializer
 @STR1 = private unnamed_addr constant [7 x i8] c"argc: \00", align 1
 @STR2 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @output_fmt = private unnamed_addr constant [10 x i8] c"argc: %d\0A\00", align 1
@@ -1668,22 +1666,18 @@ entry:
   ret i8* %DOT, !dbg !159
 }
 
-define void @Os.delete(%struct.Os* %0) {
+define i32 @main(i32 %argc, i8** %argv) !dbg !160 {
 entry:
-  ret void
-}
-
-define i32 @main(i32 %0, i8** %1) !dbg !160 {
-entry:
-  store i32 %0, i32* getelementptr inbounds (%struct.Os, %struct.Os* @os, i32 0, i32 0), align 4, !dbg !161
-  store i8** %1, i8*** getelementptr inbounds (%struct.Os, %struct.Os* @os, i32 0, i32 1), align 8, !dbg !161
-  %DOT = load i32, i32* getelementptr inbounds (%struct.Os, %struct.Os* @os, i32 0, i32 0), align 4, !dbg !161
-  %2 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt, i32 0, i32 0), i32 1, i32 %DOT), !dbg !161
-  %DOT1 = load i8**, i8*** getelementptr inbounds (%struct.Os, %struct.Os* @os, i32 0, i32 1), align 8, !dbg !162
-  %ACCESS = getelementptr i8*, i8** %DOT1, i32 0, !dbg !162
+  %argc1 = alloca i32, align 4, !dbg !161
+  %argv2 = alloca i8**, align 8, !dbg !161
+  store i32 %argc, i32* %argc1, align 4, !dbg !161
+  store i8** %argv, i8*** %argv2, align 8, !dbg !161
+  %argc3 = load i32, i32* %argc1, align 4, !dbg !161
+  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt, i32 0, i32 0), i32 1, i32 %argc3), !dbg !161
+  %argv4 = load i8**, i8*** %argv2, align 8, !dbg !162
+  %ACCESS = getelementptr i8*, i8** %argv4, i32 0, !dbg !162
   %ACC = load i8*, i8** %ACCESS, align 8, !dbg !162
-  %3 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @output_fmt.1, i32 0, i32 0), i32 1, i8* %ACC), !dbg !162
-  call void @Os.delete(%struct.Os* @os), !dbg !162
+  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @output_fmt.1, i32 0, i32 0), i32 1, i8* %ACC), !dbg !162
   ret i32 0, !dbg !162
 }
 
@@ -1695,7 +1689,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "001.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/os")
+!3 = !DIFile(filename: "001.ura", directory: "src/tests/os")
 !4 = distinct !DISubprogram(name: "strjoin", linkageName: "strjoin", scope: null, file: !3, line: 58, type: !5, scopeLine: 58, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}
