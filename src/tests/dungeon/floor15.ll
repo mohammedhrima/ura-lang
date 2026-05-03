@@ -1,12 +1,10 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon/floor15.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon/floor15.ura"
-target triple = "arm64-apple-macosx16.0.0"
+; ModuleID = 'src/tests/dungeon/floor15.ura'
+source_filename = "src/tests/dungeon/floor15.ura"
+target triple = "x86_64-pc-linux-gnu"
 
-%struct.Os = type { i32, i8** }
 %struct.String = type { i8*, i32, i32 }
 
 @STR0 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
-@os = global %struct.Os zeroinitializer
 @STR1 = private unnamed_addr constant [28 x i8] c"Usage: dungeon <hero_name>\0A\00", align 1
 @output_fmt = private unnamed_addr constant [28 x i8] c"Usage: dungeon <hero_name>\0A\00", align 1
 @STR2 = private unnamed_addr constant [14 x i8] c"=== Welcome, \00", align 1
@@ -1669,23 +1667,22 @@ entry:
   ret i8* %DOT, !dbg !159
 }
 
-define void @Os.delete(%struct.Os* %0) {
+define void @run(i32 %argc, i8** %argv) !dbg !160 {
 entry:
-  ret void
-}
-
-define void @run() !dbg !160 {
-entry:
+  %argc1 = alloca i32, align 4, !dbg !161
+  %argv2 = alloca i8**, align 8, !dbg !161
+  store i32 %argc, i32* %argc1, align 4, !dbg !161
+  store i8** %argv, i8*** %argv2, align 8, !dbg !161
   br label %if.start, !dbg !161
 
 if.start:                                         ; preds = %entry
-  %DOT = load i32, i32* getelementptr inbounds (%struct.Os, %struct.Os* @os, i32 0, i32 0), align 4, !dbg !161
-  %LT = icmp slt i32 %DOT, 2, !dbg !161
+  %argc3 = load i32, i32* %argc1, align 4, !dbg !161
+  %LT = icmp slt i32 %argc3, 2, !dbg !161
   br i1 %LT, label %if.then, label %if.end, !dbg !161
 
 if.end:                                           ; preds = %if.start
-  %DOT1 = load i8**, i8*** getelementptr inbounds (%struct.Os, %struct.Os* @os, i32 0, i32 1), align 8, !dbg !162
-  %ACCESS = getelementptr i8*, i8** %DOT1, i32 1, !dbg !162
+  %argv4 = load i8**, i8*** %argv2, align 8, !dbg !162
+  %ACCESS = getelementptr i8*, i8** %argv4, i32 1, !dbg !162
   %ACC = load i8*, i8** %ACCESS, align 8, !dbg !162
   %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([22 x i8], [22 x i8]* @output_fmt.1, i32 0, i32 0), i32 1, i8* %ACC), !dbg !162
   %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([31 x i8], [31 x i8]* @output_fmt.2, i32 0, i32 0), i32 0), !dbg !162
@@ -1698,12 +1695,15 @@ if.then:                                          ; preds = %if.start
 
 declare i32 @printf(i8*, i32, ...)
 
-define i32 @main(i32 %0, i8** %1) !dbg !163 {
+define i32 @main(i32 %argc, i8** %argv) !dbg !163 {
 entry:
-  store i32 %0, i32* getelementptr inbounds (%struct.Os, %struct.Os* @os, i32 0, i32 0), align 4, !dbg !164
-  store i8** %1, i8*** getelementptr inbounds (%struct.Os, %struct.Os* @os, i32 0, i32 1), align 8, !dbg !164
-  call void @run(), !dbg !165
-  call void @Os.delete(%struct.Os* @os), !dbg !165
+  %argc1 = alloca i32, align 4, !dbg !164
+  %argv2 = alloca i8**, align 8, !dbg !164
+  store i32 %argc, i32* %argc1, align 4, !dbg !164
+  store i8** %argv, i8*** %argv2, align 8, !dbg !164
+  %argc3 = load i32, i32* %argc1, align 4, !dbg !165
+  %argv4 = load i8**, i8*** %argv2, align 8, !dbg !165
+  call void @run(i32 %argc3, i8** %argv4), !dbg !165
   ret i32 0, !dbg !165
 }
 
@@ -1713,7 +1713,7 @@ entry:
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "floor15.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon")
+!3 = !DIFile(filename: "floor15.ura", directory: "src/tests/dungeon")
 !4 = distinct !DISubprogram(name: "strjoin", linkageName: "strjoin", scope: null, file: !3, line: 58, type: !5, scopeLine: 58, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

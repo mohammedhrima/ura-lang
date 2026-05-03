@@ -1,11 +1,4 @@
-use "@/memory"
 
 main():
-    v List[int]
-    v.push(1)
-    v.push(2)
-    v.push(3)
-    output(v[0], " ", v[1], " ", v[2], "\n")
-    output("len=", v.len(), " cap=", v.cap(), "\n")
-    x int = v.pop()
-    output("popped=", x, " len=", v.len(), "\n")
+    a int = 10
+    a = 5

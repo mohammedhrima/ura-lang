@@ -1,9 +1,6 @@
 #ifndef HEADER_H
 #define HEADER_H
 
-// ============================================================
-// HEADERS
-// ============================================================
 #include <ctype.h>
 #include <fcntl.h>
 #include <libgen.h>
@@ -42,9 +39,8 @@ typedef struct _IO_FILE *File;
 
 #define LINE __LINE__
 #define FUNC (char *)__func__
-#define FILE                                                                                       \
-	(strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1                                            \
-	                        : (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__))
+#define FILE (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+
 #define URA_MAX_SIZE 999999
 
 #define TOKENIZE 1
@@ -54,43 +50,20 @@ typedef struct _IO_FILE *File;
 #define OPTIMIZE 1
 #define ASM      1
 
-#define allocate(len, size)   allocate_func(LINE, len, size)
-#define check(cond, fmt, ...) _check(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)
-#define todo(cond, fmt, ...)                                                                       \
+#define CHECK(cond, fmt, ...) _check(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)
+#define TODO(cond, fmt, ...)                                                                       \
 	if (_check(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)) exit(1);
-#define seg() raise(SIGSEGV)
-#define expect_token(type, fmt, ...)                                                               \
+#define debug(fmt, ...)                                                                            \
+	if (enable_debug) _debug(fmt, ##__VA_ARGS__)
+#define SEG() raise(SIGSEGV)
+#define EXPECT_TOKEN(type, fmt, ...)                                                               \
 	{                                                                                               \
 		Token *find_token = find(type, 0);                                                           \
 		if (!find_token) {                                                                           \
-			check(1, fmt, ##__VA_ARGS__);                                                             \
+			CHECK(1, fmt, ##__VA_ARGS__);                                                             \
 			return syntax_error();                                                                    \
 		}                                                                                            \
 	}
-
-#define debug(fmt, ...)                                                                            \
-	if (enable_debug) _debug(fmt, ##__VA_ARGS__)
-
-#define DATA_TYPES     INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT, ARRAY_TYPE, LIST_TYPE
-#define LOGIC_TYPE     AND, OR
-#define MATH_TYPE      ADD, SUB, MUL, DIV, MOD, BAND, BOR, BXOR, LSHIFT, RSHIFT
-#define COMPARISON_OPS EQUAL, NOT_EQUAL, LESS, GREAT, LESS_EQUAL, GREAT_EQUAL
-#define BINARY_OPS     MATH_TYPE, AND, OR, COMPARISON_OPS
-#define NUMERIC_TYPES  INT, LONG, SHORT, BOOL, CHAR
-#define ASSIGNS_OP     ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN
-#define USING_HOIST    false
-// O0 is basically "Literal Translation" (Debug Mode)
-#define PASSES_O0 "default<O0>"
-// Removes basic redundancies and promotes memory to registers (mem2reg).
-#define PASSES_O1 "default<O1>"
-// Most production code uses this. Adds vectorization and aggressive inlining.
-#define PASSES_O2 "default<O2>"
-// Maximum speed optimizations, including heavy loop unrolling.
-#define PASSES_O3 "default<O3>"
-// Similar to O2, but disables optimizations that increase binary size.
-#define PASSES_Os "default<Os>"
-// Shrinks the code as much as possible, even if it makes it slower.
-#define PASSES_Oz "default<Oz>"
 
 #define AST_NODE(name, child_func, ...)                                                            \
 	Node *name() {                                                                                  \
@@ -105,16 +78,50 @@ typedef struct _IO_FILE *File;
 		return left;                                                                                 \
 	}
 
-// ----------------------------------------------------------------------------
-// Type definitions
-// ----------------------------------------------------------------------------
+#define EXPAND(type, name)                                                                         \
+	type name;                                                                                      \
+	int  name##_count;                                                                              \
+	int  name##_size
+
+#define resize_array(array, type, size, count)                                                     \
+	{                                                                                               \
+		if (array == NULL) {                                                                         \
+			size  = 10;                                                                               \
+			array = allocate(size, sizeof(type));                                                     \
+		} else if (count + 5 >= size) {                                                              \
+			type *tmp = allocate(size *= 2, sizeof(type));                                            \
+			memcpy(tmp, array, count * sizeof(type));                                                 \
+			free(array);                                                                              \
+			array = tmp;                                                                              \
+		}                                                                                            \
+	}
+
+#define DATA_TYPES     INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT, ARRAY_TYPE, LIST_TYPE
+#define LOGIC_TYPE     AND, OR
+#define MATH_TYPE      ADD, SUB, MUL, DIV, MOD, BAND, BOR, BXOR, LSHIFT, RSHIFT
+#define COMPARISON_OPS EQUAL, NOT_EQUAL, LESS, GREAT, LESS_EQUAL, GREAT_EQUAL
+#define BINARY_OPS     MATH_TYPE, AND, OR, COMPARISON_OPS
+#define NUMERIC_TYPES  INT, LONG, SHORT, BOOL, CHAR
+#define ASSIGNS_OP     ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN
+
+// No optimization (Debug Mode)
+#define PASSES_O0 "default<O0>"
+// Light optimizations
+#define PASSES_O1 "default<O1>"
+// Balanced speed and size
+#define PASSES_O2 "default<O2>"
+// Aggressive speed, inlining, vectorization, loop unrolling
+#define PASSES_O3 "default<O3>"
+// Optimize for small binary, like O2 + limiting the size of the executable
+#define PASSES_Os "default<Os>"
+// Smallest binary possible, may sacrifice speed
+#define PASSES_Oz "default<Oz>"
+
 typedef struct Token      Token;
-typedef struct Types      Types;
+typedef struct Keyword    Keyword;
 typedef struct Node       Node;
 typedef struct LLVM       LLVM;
-typedef struct ExcepCTX   ExcepCTX;
 typedef enum Type         Type;
-typedef enum LogType      LogType;
 
 typedef LLVMTypeRef       TypeRef;
 typedef LLVMContextRef    Context;
@@ -124,6 +131,8 @@ typedef LLVMBasicBlockRef Block;
 typedef LLVMValueRef      Value;
 typedef LLVMTargetDataRef TargetData;
 typedef LLVMTypeKind      TypeKind;
+typedef LLVMAttributeRef AttributeRef;
+typedef LLVMMetadataRef MetadataRef;
 
 #define PointerType  LLVMPointerTypeKind
 #define IntegerType  LLVMIntegerTypeKind
@@ -133,9 +142,6 @@ typedef LLVMTypeKind      TypeKind;
 #define FunctionType LLVMFunctionTypeKind
 #define StructType   LLVMStructTypeKind
 
-// ----------------------------------------------------------------------------
-// Enums
-// ----------------------------------------------------------------------------
 enum Type
 {
 	ID = 1,
@@ -178,41 +184,37 @@ enum Type
 	END,
 };
 
-// ----------------------------------------------------------------------------
-// Structs
-// ----------------------------------------------------------------------------
-
-struct Types {
+struct Keyword {
 	char *name;
 	Type  type;
+	bool  is_dec;
+	bool  clear_name;
 };
 
 struct LLVM {
-	bool    is_set;
-	bool    is_loaded;
-	Value   array_size;
-	Value   elem;
-	Value  *dims;
-	int     dims_count;
-	int     dims_size;
-	Block   bloc;
-	TypeRef funcType;
-	TypeRef stType;
-	Value   va_count;
-	Value   error_flag;
-	Value   error_value;
-	Block   Catch;
-	Block   lpad;
-
+	bool is_set;
+	bool is_loaded;
+	//	Value   array_size;
+	Value elem;
+	//	Value  *dims;
+	//	int     dims_count;
+	//	int     dims_size;
+	//	Block   bloc;
+	TypeRef func_type;
+	TypeRef struct_type;
+	//	Value   va_count;
+	//	Value   error_flag;
+	//	Value   error_value;
+	//	Block   _catch;
+	//	Block   lpad;
 	// statements/loops
 	Block start;
 	Block then;
 	Block end;
 };
-
 struct Token {
 	Type  type;
-	Type  retType;
+	Type  ret_type;
 
 	char *name;
 	int   space;
@@ -236,148 +238,42 @@ struct Token {
 
 	LLVM  llvm;
 
+	// clang-format off
 	struct {
-		struct {
-			long value;
-		} Int;
-		struct {
-			int value;
-		} Short;
-		struct {
-			long long value;
-		} Long;
-		struct {
-			float value;
-		} Float;
-		struct {
-			bool value;
-		} Bool;
-		struct {
-			char *value;
-		} Chars;
-		struct {
-			char value;
-		} Char;
-		struct {
-			int   index;
-			Node *ptr;
-		} Struct;
-		struct {
-			Type  elem_type;
-			int   depth;
-			Node *struct_ptr;
-		} Array;
-		struct {
-			Token *types[8];
-			int    count;
-		} Tuple;
-		struct {
-			Node *ptr;
-		} Fcall;
-		struct {
-			Token *ptr;
-			Token *start;
-			Token *end;
-		} Statement;
-		struct {
-			Type  type;
-			char *name;
-		} Catch;
+		struct { long value; } Int;
+		struct { int value; } Short;
+		struct { long long value; } Long;
+		struct { float value; } Float;
+		struct { bool value; } Bool;
+		struct { char *value; } Chars;
+		struct { char value; } Char;
+		struct { int index; Node *ptr; } Struct;
+		struct { Type  sub_type; int   depth; Node *struct_ptr; } Array;
+		struct { EXPAND(Token*, types); } Tuple;
+		struct { Node *ptr; } Fcall;
+		struct { Token *ptr; Token *start; Token *end; } Statement;
+		struct { Type  type; char *name; } Catch;
 	};
+	// clang-format on
 };
 
 struct Node {
-	Node   *left;
-	Node   *right;
-	Token  *token;
+	Node  *left;
+	Node  *right;
+	Token *token;
 
-	Node  **children;
-	int     children_count;
-	int     children_size;
-
-	Token **variables;
-	int     variables_count;
-	int     variables_size;
-
-	Node  **functions;
-	int     functions_count;
-	int     functions_size;
-
-	Node  **structs;
-	int     structs_count;
-	int     structs_size;
-
-	Node  **modules;
-	int     modules_count;
-	int     modules_size;
-
-	Value  *temps;
-	Node  **temp_defs;
-	int     temps_count;
-	int     temps_size;
+	EXPAND(Node **, children);
+	EXPAND(Token **, variables);
+	EXPAND(Node **, functions);
+	EXPAND(Node **, structs);
+	EXPAND(Node **, modules);
 };
 
-// globals.h
-extern bool             found_error;
-extern bool             prep_mode;
-
-extern Token          **tokens;
-extern int              tcount;
-extern int              tsize;
-extern int              ecount;
-
-extern Node            *ura_scope;
-extern Node            *scope;
-extern Node           **level_scope;
-
-extern int              sccount;
-extern int              scsize;
-
-extern char           **used_files;
-extern int              ucount;
-extern int              usize;
-
-extern Context          context;
-extern Module           module;
-extern Builder          builder;
-extern TypeRef          vd, f32, i1, i2, i4, i8, i16, i32, i64, p8, p32;
-extern char            *op_flags;
-extern bool             enable_san;
-extern bool             enable_debug;
-extern char            *argv0;
-extern char            *ura_lib;
-extern char           **module_paths;       // extra -L search dirs
-extern int              mp_count;
-extern int              mp_size;
-extern int              calling_use;
-
-extern char           **links;
-extern int              lcount;
-extern int              lsize;
-
-extern LLVMDIBuilderRef debug_builder;
-extern LLVMMetadataRef  debug_compile_unit;
-extern LLVMMetadataRef  debug_file;
-extern LLVMMetadataRef  debug_scope;
-
-#define resize_array(array, type, size, count)                                                     \
-	{                                                                                               \
-		if (array == NULL) {                                                                         \
-			size  = 10;                                                                               \
-			array = allocate(size, sizeof(type));                                                     \
-		} else if (count + 5 >= size) {                                                              \
-			type *tmp = allocate(size *= 2, sizeof(type));                                            \
-			memcpy(tmp, array, count * sizeof(type));                                                 \
-			free(array);                                                                              \
-			array = tmp;                                                                              \
-		}                                                                                            \
-	}
-
 // ----------------------------------------------------------------------------
-// Forward declarations — full.c functions
+// Forward declarations
 // ----------------------------------------------------------------------------
 // memory
-void  *allocate_func(int line, int len, int size);
+void  *_allocate(int line, int len, int size);
 void   free_token(Token *token);
 void   free_node(Node *node);
 void   free_local_memory();
@@ -419,19 +315,11 @@ void   add_struct(Node *b, Node *node);
 Node  *get_struct(char *name);
 
 // parser nodes
-Node *expr_node();
-Node *assign_node();
-Node *logic_and_node();
-Node *logic_or_node();
-Node *bitor_node();
-Node *bitxor_node();
-Node *bitnot_node();
-Node *bitand_node();
-Node *equality_node();
-Node *comparison_node();
+Node *expr_node(), *assign_node(), *and_node(), *or_node();
+Node *bitor_node(), *bitxor_node(), *bitnot_node(), *bitand_node();
+Node *equality_node(), *comparison_node();
 Node *shift_node();
-Node *add_sub_node();
-Node *mul_div_node();
+Node *add_sub_node(), *mul_div_node();
 Node *as_node();
 Node *unary_node();
 Node *access_node();
@@ -443,14 +331,14 @@ void    gen_ir(Node *node);
 void    gen_asm(Node *node);
 void    init(char *name);
 void    finalize(char *output);
-void    load_if_necessary(Node *node);
+void    ensure_loaded(Node *node);
 void    _alloca(Token *token);
 void    hoist_allocas(Node *node);
 TypeRef get_llvm_type(Token *token);
 void    _const_value(Token *token);
 Value   _get_default_value(Token *token);
-Value   _build_return(Token *token);
-Value   load_value(Token *token);
+Value   read_value(Token *token);
+void    write_value(Token *token, Value val);
 Value   struct_field_ptr(Token *struct_tok, int field_index, char *name);
 Value   allocate_stack(Value size, TypeRef elementType, char *name);
 Value   allocate_heap(Value count, TypeRef elementType, char *name);
@@ -475,4 +363,4 @@ void  pnode(Node *node, char *indent);
 char *strjoin(char *str0, char *str1, char *str2);
 int   vprint_(File out, char *conv, va_list args);
 
-#endif /* HEADER_H */
+#endif

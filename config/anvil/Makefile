@@ -1,17 +1,7 @@
 CXX      ?= clang++
-CC       ?= clang
+CXXFLAGS := -std=c++17 -O2 -Wall -Wextra -Isrc
 
-CXXFLAGS := -std=c++17 -O2 -Wall -Wextra -Isrc -Ivendor
-CFLAGS   := -O2 -Wall -Ivendor
-LDFLAGS  :=
-
-CPP_SRCS := $(wildcard src/*.cpp) $(wildcard src/commands/*.cpp)
-C_SRCS   := vendor/toml.c
-
-BUILD    := build
-CPP_OBJS := $(patsubst %.cpp,$(BUILD)/%.o,$(CPP_SRCS))
-C_OBJS   := $(patsubst %.c,$(BUILD)/%.o,$(C_SRCS))
-OBJS     := $(CPP_OBJS) $(C_OBJS)
+SRCS     := src/anvil.cpp src/commands.cpp
 
 BIN      := anvil
 PREFIX   ?= /usr/local
@@ -20,19 +10,11 @@ PREFIX   ?= /usr/local
 
 all: $(BIN)
 
-$(BIN): $(OBJS)
-	$(CXX) $(OBJS) $(LDFLAGS) -o $@
-
-$(BUILD)/%.o: %.cpp
-	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-$(BUILD)/%.o: %.c
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+$(BIN): $(SRCS)
+	$(CXX) $(CXXFLAGS) $(SRCS) -o $@
 
 clean:
-	rm -rf $(BUILD) $(BIN)
+	rm -f $(BIN)
 
 install: $(BIN)
 	install -d $(DESTDIR)$(PREFIX)/bin

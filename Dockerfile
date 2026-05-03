@@ -29,10 +29,10 @@ RUN for t in clang clang++ llc llvm-config clang-format lld ld.lld; do \
         fi; \
     done
 
-WORKDIR /workspace
+WORKDIR /ura-lang
 
 # Build anvil and avatar at image time, install both to PATH. Sources are
-# baked in; the mounted /workspace copy stays available for rebuilds.
+# baked in; the mounted /ura-lang copy stays available for rebuilds.
 COPY config/anvil /opt/anvil
 RUN make -C /opt/anvil \
     && install -m 755 /opt/anvil/anvil /usr/local/bin/anvil \
@@ -48,6 +48,14 @@ RUN make -C /opt/avatar \
 RUN printf '%s\n' \
         '[[ $- == *i* ]] || return' \
         'alias clean="clear && printf '\''\e[3J'\''"' \
+        'export PATH=$PATH:/ura-lang/build' \
+        'export TERM=xterm-256color' \
+        'PS1='\''${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '\''' \
+        'alias ls="ls --color=auto"' \
+        'alias grep="grep --color=auto"' \
+        'alias ll="ls -alF --color=auto"' \
+        'alias la="ls -A --color=auto"' \
+        'alias l="ls -CF --color=auto"' \
         >> /root/.bashrc
 
 CMD ["bash"]
