@@ -2,6 +2,6 @@
 
 use "@/header"
 
-main():
-    output("argc: ", os.argc, "\n")
-    output("argv[0]: ", os.argv[0], "\n")
+main(argc int, argv array[chars]):
+    output("argc: ", argc, "\n")
+    output("argv[0]: ", argv[0], "\n")

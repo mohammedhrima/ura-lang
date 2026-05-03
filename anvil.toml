@@ -8,7 +8,7 @@ ura_lib = "src/ura-lib"
 
 # compiler
 llvm    = 14
-compile = ["main.c", "utils.c", "builtins.c"]
+compile = ["main.c"]
 
 # flags
 warn    = ["-Wall", "-Wextra", "-Werror=incompatible-pointer-types", "-Werror=int-conversion"]

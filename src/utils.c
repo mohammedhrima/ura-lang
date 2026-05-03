@@ -1,168 +1,63 @@
 #include "header.h"
 
-// icmp_predicate
-LLVMIntPredicate icmp_predicate(Type op) {
-	switch (op) {
-	case LESS:        return LLVMIntSLT;
-	case GREAT:       return LLVMIntSGT;
-	case EQUAL:       return LLVMIntEQ;
-	case LESS_EQUAL:  return LLVMIntSLE;
-	case GREAT_EQUAL: return LLVMIntSGE;
-	default:          return LLVMIntNE; // NOT_EQUAL
-	}
-}
+bool  found_error;
+bool  enable_debug = true;
+bool  enable_san;
+bool  enable_prep;
+char *flags;
 
-// fcmp_predicate
-LLVMRealPredicate fcmp_predicate(Type op) {
-	switch (op) {
-	case LESS:        return LLVMRealOLT;
-	case GREAT:       return LLVMRealOGT;
-	case EQUAL:       return LLVMRealOEQ;
-	case LESS_EQUAL:  return LLVMRealOLE;
-	case GREAT_EQUAL: return LLVMRealOGE;
-	default:          return LLVMRealONE; // NOT_EQUAL
-	}
-}
+EXPAND(char **, files);
+EXPAND(Token **, tokens);
+int exe_count;
+EXPAND(Node **, scopes);
+Node            *scope;
 
-// is_float_value
-int is_float_value(Value v) {
-	LLVMTypeKind k = LLVMGetTypeKind(LLVMTypeOf(v));
-	return k == LLVMFloatTypeKind || k == LLVMDoubleTypeKind;
-}
+Node            *ura_scope;
 
-// assign_base_op
-Type assign_base_op(Type assign_op) {
-	switch (assign_op) {
-	case ADD_ASSIGN: return ADD;
-	case SUB_ASSIGN: return SUB;
-	case MUL_ASSIGN: return MUL;
-	case DIV_ASSIGN: return DIV;
-	default:         return MOD; // MOD_ASSIGN
-	}
-}
+// Per-file path state, populated by setup_paths(), released by free_paths().
+char *dir;
+char *base;
+char *build_dir;
+char *ll_path;
 
-// _branch
-void _branch(Block bloc) {
-	if (!LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder))) LLVMBuildBr(builder, bloc);
-}
+Context          context;
+Module           module;
+Builder          builder;
+TypeRef          vd, f32, i1, i2, i4, i8, i16, i32, i64, p8, p32;
 
-// _append_block
-Block _append_block(char *name) {
-	Value parent = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
-	return LLVMAppendBasicBlockInContext(context, parent, name);
-}
+LLVMDIBuilderRef debug_builder;
+LLVMMetadataRef  debug_compile_unit;
+LLVMMetadataRef  debug_file;
+LLVMMetadataRef  debug_scope;
 
-// _named_struct_type
-TypeRef _named_struct_type(char *name, TypeRef *element_types, unsigned element_count, int packed) {
-	TypeRef type = LLVMStructCreateNamed(context, name);
-	LLVMStructSetBody(type, element_types, element_count, packed);
-	return type;
-}
-
-// _add_function
-Value _add_function(char *name, TypeRef function_type) {
-	Value f = LLVMGetNamedFunction(module, name);
-	if (f) return f;
-	return LLVMAddFunction(module, name, function_type);
-}
-
-// set_debug_location
-void set_debug_location(Token *token) {
-	if (!token || !debug_builder || !debug_scope)              return;
-	if (!includes(token->type, ACCESS, FDEC, PROTO, FCALL, 0)) return;
-	LLVMMetadataRef loc =
-	    LLVMDIBuilderCreateDebugLocation(context, token->line, 0, debug_scope, NULL);
-	LLVMSetCurrentDebugLocation2(builder, loc);
-}
-
-// struct_field_ptr
-Value struct_field_ptr(Token *struct_tok, int field_index, char *name) {
-	TypeRef struct_type = get_llvm_type(struct_tok);
-	Value   indices[]   = {
-       LLVMConstInt(i32, 0, 0),
-       LLVMConstInt(i32, field_index, 0),
-   };
-	return LLVMBuildGEP2(builder, struct_type, struct_tok->llvm.elem, indices, 2, name);
-}
-
-// load_value
-Value load_value(Token *token) {
-	if (token->llvm.is_loaded) return token->llvm.elem;
-	// Already-computed values: function returns, literals, allocated buffers
-	if (includes(token->type, MATH_TYPE, FCALL, STACK, HEAP, 0)) return token->llvm.elem;
-	if (!token->name && !includes(token->type, DOT, ACCESS, 0))  return token->llvm.elem;
-
-	// Scalar ref: double-deref (alloca-of-ptr → ptr → value)
-	if (token->is_ref && token->type != STRUCT_CALL) {
-		TypeRef type = get_llvm_type(token);
-		Value   ptr  = LLVMBuildLoad2(builder, LLVMPointerType(type, 0), token->llvm.elem, "ref_ptr");
-		return LLVMBuildLoad2(builder, type, ptr, "ref_val");
-	}
-
-	char *name = token->name;
-	if (token->type == DOT)    name = to_string(DOT);
-	if (token->type == ACCESS) name = to_string(ACCESS);
-	return LLVMBuildLoad2(builder, get_llvm_type(token), token->llvm.elem, name ? name : "");
-}
-
-// new_token
-Token *new_token(Type type, int space) {
-	Token *token = allocate(1, sizeof(Token));
-	token->type  = type;
-	token->space = ((space + TAB / 2) / TAB) * TAB;
-	add_token(token);
-	return token;
-}
-
-// unuse
-void unuse(Node *node) {
-	if (!node || !node->token) return;
-
-	if (node->left && node->left->token) {
-		if (node->left->token->used > 0) node->left->token->used--;
-	}
-	if (node->right && node->right->token) {
-		if (node->right->token->used > 0) node->right->token->used--;
-	}
-	for (int i = 0; i < node->children_count; i++)
-		if (node->children[i] && node->children[i]->token)
-			if (node->children[i]->token->used > 0) node->children[i]->token->used--;
-}
-
-// resolve_path
-char *resolve_path(char *path) {
-	if (path == NULL) return NULL;
-	char *cleaned = allocate(strlen(path) + 5, 1);
-	if (!cleaned) return NULL;
-	size_t i = 0, j = 0;
-	while (path[i]) {
-		cleaned[j++] = path[i++];
-		while (path[i] == '/') {
-			if (cleaned[j - 1] != '/') cleaned[j++] = '/';
-			i++;
-		}
-	}
-	if (j > 1 && cleaned[j - 1] == '/') j--;
-	cleaned[j] = '\0';
-	return cleaned;
-}
-
-// allocate_func
-void *allocate_func(int line, int len, int size) {
+// Error check, debuging, memory
+void *allocate(int len, int size) {
 	void *res = calloc(len, size);
-	check(!res, "allocate did failed in line %d", line);
+	TODO(!res, "allocate did failed");
 	return res;
 }
 
-// free_token
+char *open_file(char *path_name) {
+	char *file_name = realpath(path_name, NULL);
+	if (CHECK(!file_name, "resolving path %s", path_name)) return NULL;
+	File file = fopen(file_name, "r");
+	if (CHECK(!file, "openning %s", file_name)) return NULL;
+	fseek(file, 0, SEEK_END);
+	int size = ftell(file);
+	fseek(file, 0, SEEK_SET);
+	char *input = allocate((size + 1), sizeof(char));
+	fread(input, size, sizeof(char), file);
+	fclose(file);
+	return input;
+}
+
 void free_token(Token *token) {
 	free(token->name);
 	free(token->Chars.value);
-	free(token->llvm.dims);
+	// free(token->llvm.dims);
 	free(token);
 }
 
-// free_node
 void free_node(Node *node) {
 	if (!node) return;
 	for (int i = 0; i < node->children_count; i++)
@@ -176,172 +71,39 @@ void free_node(Node *node) {
 	free(node);
 }
 
-// free_local_memory
-void free_local_memory() {
-	for (int i = 0; tokens && tokens[i]; i++) {
+void setup_paths(char *path_name) {
+	char *tmp_dir  = strdup(path_name);
+	char *tmp_base = strdup(path_name);
+	dir            = strdup(dirname(tmp_dir));
+	base           = strdup(basename(tmp_base));
+	free(tmp_dir);
+	free(tmp_base);
+
+	char *dot_ext = strrchr(base, '.');
+	if (dot_ext) *dot_ext = '\0';
+
+	build_dir       = strjoin(dir, "/build", NULL);
+	mkdir(build_dir, 0755);
+	char *base_ll   = strjoin(base, ".ll", NULL);
+	ll_path         = strjoin(build_dir, "/", base_ll);
+	free(base_ll);
+}
+
+void free_memory() {
+	for (int i = 0; tokens && i < tokens_count; i++) {
 		free_token(tokens[i]);
-		tokens[i] = NULL;
 	}
-	tcount = 0;
-	ecount = 0;
+	free(tokens);
+	free(scopes);
+	free_node(ura_scope);
+	free(dir);       
+	free(base);      
+	free(build_dir); 
+	free(ll_path);  
+	free(files);
 }
 
-void free_global_memory() {
-	for (int i = 0; links && links[i]; i++) {
-		free(links[i]);
-		links[i] = NULL;
-	}
-	lcount = 0;
-}
-
-// add_token
-void add_token(Token *token) {
-	resize_array(tokens, Token *, tsize, tcount);
-	tokens[tcount++] = token;
-}
-
-// new_node
-Node *new_node(Token *token) {
-	debug("new node: %k\n", token);
-	Node *new  = allocate(1, sizeof(Node));
-	new->token = token;
-	return new;
-}
-
-// add_child
-Node *add_child(Node *node, Node *child) {
-	if (child) {
-		resize_array(node->children, Node *, node->children_size, node->children_count);
-		child->token->space                    = node->token->space + TAB;
-		node->children[node->children_count++] = child;
-	}
-	return child;
-}
-
-// includes
-bool includes(Type to_find, ...) {
-	if (found_error) return false;
-	va_list ap;
-	Type    current;
-	va_start(ap, to_find);
-	while ((current = va_arg(ap, Type)) != 0)
-		if (current == to_find) return true;
-	return false;
-}
-
-// setName
-void setName(Token *token, char *name) {
-	if (token->name) free(token->name);
-	token->name = name ? strdup(name) : NULL;
-}
-
-// to_string
-char *to_string(Type type) {
-	char *res[END + 1] = {
-	    [ID] = "ID", [CHAR] = "CHAR", [CHARS] = "CHARS", [VOID] = "VOID",
-	    [INT] = "INT", [BOOL] = "BOOL", [LONG] = "LONG", [FLOAT] = "FLOAT",
-	    [FDEC] = "FDEC", [FCALL] = "CALL", [END] = "END", [LPAR] = "LPAR",
-	    [RPAR] = "RPAR", [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
-	    [WHILE] = "WHILE", [BREAK] = "BRK", [CONTINUE] = "CONT",
-	    [SHORT] = "SHORT", [RETURN] = "RET", [BAND] = "BAND", [BOR] = "BOR",
-	    [BXOR] = "BXOR", [BNOT] = "BNOT", [LSHIFT] = "LSHIFT",
-	    [RSHIFT] = "RSHIFT", [ADD] = "ADD", [SUB] = "SUB", [MUL] = "MUL",
-	    [DIV] = "DIV", [ASSIGN] = "ASSIGN", [ADD_ASSIGN] = "ADD_ASS",
-	    [SUB_ASSIGN] = "SUB_ASS", [MUL_ASSIGN] = "MUL_ASS",
-	    [DIV_ASSIGN] = "DIV_ASS", [MOD_ASSIGN] = "MOD_ASS", [ACCESS] = "ACC",
-	    [MOD] = "MOD", [COMA] = "COMA", [REF] = "REF", [EQUAL] = "EQ",
-	    [NOT_EQUAL] = "NEQ", [LESS] = "LT", [GREAT] = "GT",
-	    [LESS_EQUAL] = "LE", [NOT] = "NOT", [GREAT_EQUAL] = "GE",
-	    [AND] = "AND", [OR] = "OR", [DOTS] = "DOTS", [PROTO] = "PROT",
-	    [VARIADIC] = "VAR", [TYPEOF] = "TYPEOF", [SIZEOF] = "SIZEOF",
-	    [OUTPUT] = "OUTPUT", [ARGS] = "ARGS", [CHILDREN] = "CHILDREN",
-	    [AS] = "AS", [STACK] = "STACK", [HEAP] = "HEAP",
-	    [ARRAY_TYPE] = "ARRAY_TYPE", [ARRAY_LIT] = "ARRAY_LIT",
-	    [NULLABLE] = "NULLABLE",
-	    //[TRY] = "TRY", [CATCH] = "CATCH", [THROW] = "THROW", [USE] = "USE",
-	    [STRUCT_DEF] = "STRUCT_DEF", [STRUCT_CALL] = "STRUCT_CALL",
-	    [ENUM_DEF] = "ENUM_DEF", [ENUM_CALL] = "ENUM_CALL", [TUPLE] = "TUPLE",
-	    [TUPLE_UNPACK] = "TUPLE_UNPACK", [LBRA] = "LBRA", [RBRA] = "RBRA",
-	    [ARRAY] = "ARRAY", [LIST] = "LIST", [LIST_TYPE] = "LIST_TYPE",
-	    [DOT] = "DOT", [SYNTAX_ERROR] = "SYNTAX_ERROR", [MODULE] = "MODULE",
-	    [OPERATOR] = "OPERATOR_KW", [PUB] = "PUB",
-	    [DOUBLE_DOTS] = "DOUBLE_DOTS", [DELETE] = "DELETE",
-	};
-
-	if (check(!res[type], "handle this case %d\n", type)) {
-		// seg();
-		exit(1);
-	}
-	return res[type];
-}
-
-// new_struct
-Node *new_struct(Node *node) {
-	debug(CYAN("new struct [%s] in scope %k\n"), node->token->name, scope->token);
-	for (int i = 0; i < scope->structs_count; i++) {
-		Token *curr = scope->structs[i]->token;
-		bool   cond = (strcmp(curr->name, node->token->name) == 0);
-		check(cond, "Redefinition of %s", node->token->name);
-	}
-	resize_array(scope->structs, Node *, scope->structs_size, scope->structs_count);
-	scope->structs[scope->structs_count++] = node;
-	return node;
-}
-
-// add_struct
-void add_struct(Node *parent, Node *node) {
-	resize_array(parent->structs, Node *, parent->structs_size, parent->structs_count);
-	parent->structs[parent->structs_count++] = node;
-}
-
-// syntax_error
-Node *syntax_error() {
-	found_error = true;
-	static Node *node;
-	if (node == NULL) node = new_node(new_token(SYNTAX_ERROR, -1));
-	return node;
-	return node;
-}
-
-// add_variable
-void add_variable(Node *parent, Token *token) {
-	resize_array(parent->variables, Token *, parent->variables_size, parent->variables_count);
-	parent->variables[parent->variables_count++] = token;
-}
-
-// new_variable
-Token *new_variable(Token *token) {
-	debug(CYAN("new variable [%k] in scope %k\n"), token, scope->token);
-	for (int i = 0; i < scope->variables_count; i++) {
-		Token *curr = scope->variables[i];
-		bool   cond = (strcmp(curr->name, token->name) == 0);
-		check(cond, "Redefinition of %s", token->name);
-	}
-	add_variable(scope, token);
-	return token;
-}
-
-// copy_token
-Token *copy_token(Token *token) {
-	if (token == NULL) return NULL;
-	Token *new = allocate(1, sizeof(Token));
-	memcpy(new, token, sizeof(Token));
-	new->name = NULL;
-	if (token->name)        setName(new, token->name);
-	if (token->Chars.value) new->Chars.value = strdup(token->Chars.value);
-	new->llvm.dims       = NULL;
-	new->llvm.dims_count = 0;
-	new->llvm.dims_size  = 0;
-	for (int i = 0; i < token->llvm.dims_count; i++) {
-		resize_array(new->llvm.dims, Value, new->llvm.dims_size, new->llvm.dims_count);
-		new->llvm.dims[new->llvm.dims_count++] = token->llvm.dims[i];
-	}
-	add_token(new);
-	return new;
-}
-
-// vprint_
-int vprint_(File out, char *conv, va_list args) {
+int _vprint(File out, char *conv, va_list args) {
 	int res = 0;
 
 	for (int i = 0; conv[i]; i++) {
@@ -425,7 +187,6 @@ int vprint_(File out, char *conv, va_list args) {
 						break;
 					}
 					if (token->type == VOID) break;
-					// print_value inline
 					switch (token->type) {
 					case INT:   fprintf(out, "[%lld] ", (long long)token->Int.value); break;
 					case LONG:  fprintf(out, "[%lld] ", token->Long.value); break;
@@ -478,41 +239,37 @@ int vprint_(File out, char *conv, va_list args) {
 				}
 
 				if (token->is_ref)      fprintf(out, "ref ");
-				if (token->retType)     fprintf(out, "ret [%s] ", to_string(token->retType));
+				if (token->ret_type)    fprintf(out, "ret [%s] ", to_string(token->ret_type));
 				if (token->is_variadic) fprintf(out, "variadic ");
 				break;
 			}
-			default: todo(1, "invalid format specifier [%c]", conv[i]); break;
+			default: TODO(1, "invalid format specifier [%c]", conv[i]); break;
 			}
 		}
 	}
 	return res;
 }
 
-// _debug
-int _debug(char *conv, ...) {
-	va_list args;
-	va_start(args, conv);
-	int res = vprint_(stdout, conv, args);
-	va_end(args);
-	return res;
-}
-
-// _check
 bool _check(char *filename, char *funcname, int line, bool cond, char *fmt, ...) {
 	if (!cond) return cond;
 	found_error = true;
 	fprintf(stderr, RED("ura_error: %s %s:%d "), funcname, filename, line);
 	va_list ap;
 	va_start(ap, fmt);
-	vprint_(stderr, fmt, ap);
+	_vprint(stderr, fmt, ap);
 	va_end(ap);
 	fprintf(stderr, "\n");
-	// seg();
 	return cond;
 }
 
-// pnode
+int _debug(char *conv, ...) {
+	va_list args;
+	va_start(args, conv);
+	int res = _vprint(stdout, conv, args);
+	va_end(args);
+	return res;
+}
+
 void pnode(Node *node, char *indent) {
 	if (!node || !node->token || !enable_debug) return;
 	Node **subs     = NULL;
@@ -550,7 +307,7 @@ void pnode(Node *node, char *indent) {
 		int         is_last = (i == count - 1);
 		const char *bar     = is_last ? "   " : "│  ";
 
-		char        new_indent[4096]; // TODO: to be fixed later
+		char        new_indent[URA_MAX_SIZE];
 		snprintf(new_indent, sizeof(new_indent), "%s%s", indent, bar);
 
 		char *connector = is_last ? "└──" : "├──";
@@ -561,7 +318,92 @@ void pnode(Node *node, char *indent) {
 #undef push
 }
 
-// strjoin
+// Parsing
+int parse_escape_seq(char *input, int s, int e, char *buf, int *j) {
+	switch (input[s + 1]) {
+	case 'n':  buf[(*j)++] = '\n'; return s + 1;  // newline
+	case 't':  buf[(*j)++] = '\t'; return s + 1;  // tab
+	case 'r':  buf[(*j)++] = '\r'; return s + 1;  // carriage return
+	case 'b':  buf[(*j)++] = '\b'; return s + 1;  // backspace
+	case 'f':  buf[(*j)++] = '\f'; return s + 1;  // form feed
+	case 'v':  buf[(*j)++] = '\v'; return s + 1;  // vertical tab
+	case 'a':  buf[(*j)++] = '\a'; return s + 1;  // alert (bell)
+	case '\\': buf[(*j)++] = '\\'; return s + 1; // backslash
+	case '"':  buf[(*j)++] = '"'; return s + 1;   // double quote
+	case '\'': buf[(*j)++] = '\''; return s + 1; // single quote
+	case '?':  buf[(*j)++] = '\?'; return s + 1;  // question mark (trigraph)
+	case '0':  {
+		// three-digit octal: \0NN
+		if (s + 2 < e && isdigit(input[s + 2]) && isdigit(input[s + 3])) {
+			int octal = (input[s + 1] - '0') * 64 + (input[s + 2] - '0') * 8 + (input[s + 3] - '0');
+			if (octal <= 255) {
+				buf[(*j)++] = (char)octal;
+				return s + 3;
+			}
+			buf[(*j)++] = '\0';
+			return s + 1;
+		}
+		// two-digit octal: \0N
+		else if (s + 1 < e && isdigit(input[s + 2])) {
+			int octal   = (input[s + 1] - '0') * 8 + (input[s + 2] - '0');
+			buf[(*j)++] = (char)octal;
+			return s + 2;
+		}
+		// plain null
+		buf[(*j)++] = '\0';
+		return s + 1;
+	}
+	case '1': case '2': case '3': case '4': case '5': case '6': case '7': {
+		// three-digit octal: \NNN
+		if (s + 3 < e && isdigit(input[s + 2]) && isdigit(input[s + 3])) {
+			int octal = (input[s + 1] - '0') * 64 + (input[s + 2] - '0') * 8 + (input[s + 3] - '0');
+			if (octal <= 255) {
+				buf[(*j)++] = (char)octal;
+				return s + 3;
+			}
+			buf[(*j)++] = input[s];
+			return s + 1; // invalid, keep backslash
+		}
+		// two-digit octal
+		else if (s + 2 < e && isdigit(input[s + 2])) {
+			int octal   = (input[s + 1] - '0') * 8 + (input[s + 2] - '0');
+			buf[(*j)++] = (char)octal;
+			return s + 2;
+		}
+		// single-digit octal
+		buf[(*j)++] = (char)(input[s + 1] - '0');
+		return s + 1;
+	}
+	case 'x': // Hexadecimal: \xFF
+	{
+		if (s + 3 < e && isxdigit(input[s + 2]) && isxdigit(input[s + 3])) {
+			int  hex = 0;
+			char c1  = input[s + 2];
+			char c2  = input[s + 3];
+			if (c1 >= '0' && c1 <= '9')      hex += (c1 - '0') * 16;
+			else if (c1 >= 'a' && c1 <= 'f') hex += (c1 - 'a' + 10) * 16;
+			else if (c1 >= 'A' && c1 <= 'F') hex += (c1 - 'A' + 10) * 16;
+			if (c2 >= '0' && c2 <= '9')      hex += (c2 - '0');
+			else if (c2 >= 'a' && c2 <= 'f') hex += (c2 - 'a' + 10);
+			else if (c2 >= 'A' && c2 <= 'F') hex += (c2 - 'A' + 10);
+			buf[(*j)++] = (char)hex;
+			return s + 3;
+		}
+		buf[(*j)++] = input[s]; // invalid hex escape, keep backslash
+		return s + 1;
+	}
+	case 'u': // \uXXXX — not fully implemented yet
+		buf[(*j)++] = input[s];
+		return s + 1;
+	case 'U': // \UXXXXXXXX — not fully implemented yet
+		buf[(*j)++] = input[s];
+		return s + 1;
+	default:
+		buf[(*j)++] = input[s]; // unknown escape, keep backslash
+		return s + 1;
+	}
+}
+
 char *strjoin(char *str0, char *str1, char *str2) {
 	int   len0 = str0 ? strlen(str0) : 0;
 	int   len1 = str1 ? strlen(str1) : 0;
@@ -573,49 +415,421 @@ char *strjoin(char *str0, char *str1, char *str2) {
 	return res;
 }
 
-// is_data_type
-bool is_data_type(Token *token) { return includes(token->type, DATA_TYPES, 0); }
+char *to_string(Type type) {
+	char *res[END + 1] = {
+	    [ID] = "ID", [CHAR] = "CHAR", [CHARS] = "CHARS", [VOID] = "VOID",
+	    [INT] = "INT", [BOOL] = "BOOL", [LONG] = "LONG", [FLOAT] = "FLOAT",
+	    [FDEC] = "FDEC", [FCALL] = "CALL", [END] = "END", [LPAR] = "LPAR",
+	    [RPAR] = "RPAR", [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
+	    [WHILE] = "WHILE", [BREAK] = "BRK", [CONTINUE] = "CONT",
+	    [SHORT] = "SHORT", [RETURN] = "RET", [BAND] = "BAND", [BOR] = "BOR",
+	    [BXOR] = "BXOR", [BNOT] = "BNOT", [LSHIFT] = "LSHIFT",
+	    [RSHIFT] = "RSHIFT", [ADD] = "ADD", [SUB] = "SUB", [MUL] = "MUL",
+	    [DIV] = "DIV", [ASSIGN] = "ASSIGN", [ADD_ASSIGN] = "ADD_ASS",
+	    [SUB_ASSIGN] = "SUB_ASS", [MUL_ASSIGN] = "MUL_ASS",
+	    [DIV_ASSIGN] = "DIV_ASS", [MOD_ASSIGN] = "MOD_ASS", [ACCESS] = "ACC",
+	    [MOD] = "MOD", [COMA] = "COMA", [REF] = "REF", [EQUAL] = "EQ",
+	    [NOT_EQUAL] = "NEQ", [LESS] = "LT", [GREAT] = "GT",
+	    [LESS_EQUAL] = "LE", [NOT] = "NOT", [GREAT_EQUAL] = "GE",
+	    [AND] = "AND", [OR] = "OR", [DOTS] = "DOTS", [PROTO] = "PROT",
+	    [VARIADIC] = "VAR", [TYPEOF] = "TYPEOF", [SIZEOF] = "SIZEOF",
+	    [OUTPUT] = "OUTPUT", [ARGS] = "ARGS", [CHILDREN] = "CHILDREN",
+	    [AS] = "AS", [STACK] = "STACK", [HEAP] = "HEAP",
+	    [ARRAY_TYPE] = "ARRAY_TYPE", [ARRAY_LIT] = "ARRAY_LIT",
+	    [NULLABLE] = "NULLABLE",
+	    //[TRY] = "TRY", [CATCH] = "CATCH", [THROW] = "THROW", [USE] = "USE",
+	    [STRUCT_DEF] = "STRUCT_DEF", [STRUCT_CALL] = "STRUCT_CALL",
+	    [ENUM_DEF] = "ENUM_DEF", [ENUM_CALL] = "ENUM_CALL", [TUPLE] = "TUPLE",
+	    [TUPLE_UNPACK] = "TUPLE_UNPACK", [LBRA] = "LBRA", [RBRA] = "RBRA",
+	    [ARRAY] = "ARRAY", [LIST] = "LIST", [LIST_TYPE] = "LIST_TYPE",
+	    [DOT] = "DOT", [SYNTAX_ERROR] = "SYNTAX_ERROR", [MODULE] = "MODULE",
+	    [OPERATOR] = "OPERATOR_KW", [PUB] = "PUB",
+	    [DOUBLE_DOTS] = "DOUBLE_DOTS", [DELETE] = "DELETE",
+	};
 
-// copy_node
-Node *copy_node(Node *node) {
-	Node *new  = allocate(1, sizeof(Node));
-	new->token = copy_token(node->token);
-	if (node->left)  new->left = copy_node(node->left);
-	if (node->right) new->right = copy_node(node->right);
-	for (int i = 0; i < node->children_count; i++)
-		add_child(new, copy_node(node->children[i]));
-	for (int i = 0; i < node->structs_count; i++)
-		add_struct(new, node->structs[i]);
-	for (int i = 0; i < node->variables_count; i++)
-		add_variable(new, copy_token(node->variables[i]));
+	if (CHECK(!res[type], "handle this case %d\n", type)) {
+		// SEG();
+		exit(1);
+	}
+	return res[type];
+}
+
+bool includes(Type to_find, ...) {
+	if (found_error) return false;
+	va_list ap;
+	Type    current;
+	va_start(ap, to_find);
+	while ((current = va_arg(ap, Type)) != 0)
+		if (current == to_find) return true;
+	return false;
+}
+
+void setName(Token *token, char *name) {
+	if (token->name) free(token->name);
+	token->name = name ? strdup(name) : NULL;
+}
+
+void add_token(Token *token) {
+	resize_array(tokens, Token *, tokens_size, tokens_count);
+	tokens[tokens_count++] = token;
+}
+
+Token *new_token(Type type, int space) {
+	Token *token = allocate(1, sizeof(Token));
+	token->type  = type;
+	token->space = ((space + TAB / 2) / TAB) * TAB;
+	add_token(token);
+	return token;
+}
+
+Token *copy_token(Token *token) {
+	if (token == NULL) return NULL;
+	Token *new = allocate(1, sizeof(Token));
+	memcpy(new, token, sizeof(Token));
+	new->name = NULL;
+	if (token->name)        setName(new, token->name);
+	if (token->Chars.value) new->Chars.value = strdup(token->Chars.value);
+	// new->llvm.dims       = NULL;
+	// new->llvm.dims_count = 0;
+	// new->llvm.dims_size  = 0;
+	// for (int i = 0; i < token->llvm.dims_count; i++) {
+	// 	resize_array(new->llvm.dims, Value, new->llvm.dims_size, new->llvm.dims_count);
+	// 	new->llvm.dims[new->llvm.dims_count++] = token->llvm.dims[i];
+	// }
+	add_token(new);
 	return new;
 }
 
-// hoist_allocas
-void hoist_allocas(Node *node) {
-	if (!node) return;
-	Token *tok = node->token;
+Node *new_node(Token *token) {
+	debug("new node: %k\n", token);
+	Node *new  = allocate(1, sizeof(Node));
+	new->token = token;
+	return new;
+}
 
-	// don't recurse into nested functions
-	if (tok->type == FDEC) return;
+Node *add_child(Node *node, Node *child) {
+	if (child) {
+		resize_array(node->children, Node *, node->children_size, node->children_count);
+		child->token->space                    = node->token->space + TAB;
+		node->children[node->children_count++] = child;
+	}
+	return child;
+}
 
-	if (includes(tok->type, INT, LONG, SHORT, CHARS, CHAR, BOOL, ARRAY_TYPE, 0) && tok->is_dec) {
-		if (!tok->llvm.elem) _alloca(tok);
-	} else if (tok->type == STRUCT_CALL && tok->is_dec && !tok->is_ref) {
-		if (!tok->llvm.elem) {
-			TypeRef struct_type = get_llvm_type(tok);
-			tok->llvm.elem      = LLVMBuildAlloca(builder, struct_type, tok->name);
+Node *syntax_error() {
+	found_error = true;
+	static Node *node;
+	if (node == NULL) node = new_node(new_token(SYNTAX_ERROR, -1));
+	return node;
+	return node;
+}
+
+Token *find(Type type, ...) {
+	if (found_error) return NULL;
+	va_list ap;
+	va_start(ap, type);
+	while (type) {
+		if (type == tokens[exe_count]->type) return tokens[exe_count++];
+		type = va_arg(ap, Type);
+	}
+	return NULL;
+};
+
+bool within(int space) {
+	Token *curr = tokens[exe_count];
+	return !found_error && curr->space > space && curr->type != END;
+}
+
+bool is_data_type(Token *token) { return includes(token->type, DATA_TYPES, 0); }
+
+void enter_scope(Node *node) {
+	scopes_count++;
+	debug(CYAN("Enter Scope: %k index %d\n"), node->token, scopes_count);
+	resize_array(scopes, Node *, scopes_size, scopes_count);
+	scopes[scopes_count] = node;
+	scope                = scopes[scopes_count];
+}
+
+void exit_scope() {
+	if (CHECK(scopes_count < 0, "No active scope to exit")) return;
+	debug(CYAN("Exit Scope: %k index %d\n"), scopes[scopes_count]->token, scopes_count);
+	scopes[scopes_count] = NULL;
+	scopes_count--;
+	scope = scopes[scopes_count];
+}
+
+// INTERMEDIATE REPRESENTATION
+void add_variable(Node *parent, Token *token) {
+	resize_array(parent->variables, Token *, parent->variables_size, parent->variables_count);
+	parent->variables[parent->variables_count++] = token;
+}
+
+Token *new_variable(Token *token) {
+	debug(CYAN("new variable [%k] in scope %k\n"), token, scope->token);
+	for (int i = 0; i < scope->variables_count; i++) {
+		Token *curr = scope->variables[i];
+		bool   cond = (strcmp(curr->name, token->name) == 0);
+		CHECK(cond, "Redefinition of %s", token->name);
+	}
+	if (scopes_count == 1) token->is_global = true;
+	add_variable(scope, token);
+	return token;
+}
+
+Token *get_variable(char *name) {
+	debug(CYAN("get variable [%s] from scope %k, has %d vars\n"), name, scope->token,
+	      scope->variables_count);
+	for (int j = scopes_count; j > 0; j--) {
+		Node *scope = scopes[j];
+		for (int i = 0; i < scope->variables_count; i++) {
+			CHECK(scope->variables[i] == NULL, "unexpected error variables");
+			CHECK(scope->variables[i]->name == NULL, "unexpected error name");
+			if (strcmp(scope->variables[i]->name, name) == 0) return scope->variables[i];
+		}
+	}
+	CHECK(1, "%s not found", name);
+	return syntax_error()->token;
+}
+
+void add_function(Node *parent, Node *node) {
+	resize_array(parent->functions, Node *, parent->functions_size, parent->functions_count);
+	parent->functions[parent->functions_count++] = node;
+}
+
+Node *new_function(Node *node) {
+	for (int i = 0; i < scope->functions_count; i++) {
+		Node *func = scope->functions[i];
+		bool  cond = strcmp(func->token->name, node->token->name) == 0;
+		CHECK(cond, "Redefinition of %s", node->token->name);
+	}
+	add_function(scope, node);
+	return node;
+}
+
+Node *find_function(char *name) {
+	for (int j = scopes_count; j > 0; j--) {
+		Node *sc = scopes[j];
+		for (int i = 0; i < sc->functions_count; i++)
+			if (strcmp(sc->functions[i]->token->name, name) == 0) return sc->functions[i];
+	}
+	// if (current_gen_module) {
+	// 	char *qname = strjoin(current_gen_module, ".", name);
+	// 	for (int j = scopes_count; j > 0; j--) {
+	// 		Node *sc = scopes[j];
+	// 		for (int i = 0; i < sc->functions_count; i++) {
+	// 			if (strcmp(sc->functions[i]->token->name, qname) == 0) {
+	// 				free(qname);
+	// 				return sc->functions[i];
+	// 			}
+	// 		}
+	// 	}
+	// 	free(qname);
+	// }
+	return NULL;
+}
+
+Node *get_function(char *name) {
+	Node *f = find_function(name);
+	if (f) return f;
+	CHECK(1, "'%s' Not found", name);
+	return syntax_error();
+}
+
+bool compatible(Token *left, Token *right) {
+	Type lt = left->ret_type ? left->ret_type : left->type;
+	Type rt = right->ret_type ? right->ret_type : right->type;
+
+	if (lt == rt)                                                 return true;
+	if ((lt == CHARS && rt == PTR) || (lt == PTR && rt == CHARS)) return true;
+	if (lt == CHARS && includes(rt, ARRAY_TYPE, ARRAY, 0) && right->Array.sub_type == CHAR)
+		return true;
+	if (rt == CHARS && includes(lt, ARRAY_TYPE, ARRAY, 0) && left->Array.sub_type == CHAR)
+		return true;
+	if (lt == ARRAY_TYPE && rt == ARRAY) return true;
+	if (lt == ARRAY && rt == ARRAY_TYPE) return true;
+	// pointer/chars <-> array[T]: all pointers at LLVM level
+	// TODO: yet it should be checked
+	if ((includes(lt, PTR, CHARS, 0) && includes(rt, ARRAY_TYPE, ARRAY, 0)) ||
+	    (includes(rt, PTR, CHARS, 0) && includes(lt, ARRAY_TYPE, ARRAY, 0)))
+		return true;
+	bool lt_numeric = includes(lt, NUMERIC_TYPES, 0);
+	bool rt_numeric = includes(rt, NUMERIC_TYPES, 0);
+	if (lt_numeric && rt_numeric && lt == rt)   return true;
+	if (lt == STRUCT_CALL && rt == STRUCT_CALL) return left->Struct.ptr == right->Struct.ptr;
+	return false;
+}
+
+// ASSEMBLY GENERATION
+void init(char *name) {
+	context = LLVMContextCreate();
+	module  = LLVMModuleCreateWithNameInContext(name, context);
+	builder = LLVMCreateBuilderInContext(context);
+
+	vd  = LLVMVoidTypeInContext(context);
+	f32 = LLVMFloatTypeInContext(context);
+	i1  = LLVMInt1TypeInContext(context);
+	i2  = LLVMIntTypeInContext(context, 2);
+	i4  = LLVMIntTypeInContext(context, 4);
+	i8  = LLVMInt8TypeInContext(context);
+	i16 = LLVMInt16TypeInContext(context);
+	i32 = LLVMInt32TypeInContext(context);
+	i64 = LLVMInt64TypeInContext(context);
+	p8  = LLVMPointerType(i8, 0);
+	p32 = LLVMPointerType(i32, 0);
+
+	LLVMInitializeNativeTarget();
+	LLVMInitializeNativeAsmPrinter();
+	LLVMInitializeNativeAsmParser();
+#if defined(__APPLE__)
+	LLVMSetTarget(module, "arm64-apple-macosx16.0.0");
+#elif defined(__linux__)
+	LLVMSetTarget(module, "x86_64-pc-linux-gnu");
+#else
+	LLVMSetTarget(module, LLVMGetDefaultTargetTriple());
+#endif
+
+	// if (enable_san)
+	// {
+	LLVMAddModuleFlag(module, LLVMModuleFlagBehaviorWarning, "Debug Info Version", 18,
+	                  LLVMValueAsMetadata(LLVMConstInt(i32, 3, 0)));
+	LLVMAddModuleFlag(module, LLVMModuleFlagBehaviorWarning, "Dwarf Version", 13,
+	                  LLVMValueAsMetadata(LLVMConstInt(i32, 4, 0)));
+	// }
+
+	// Debug info
+	debug_builder           = LLVMCreateDIBuilder(module);
+	char *base              = strrchr(name, '/');
+	char *filename_only     = base ? base + 1 : name;
+	char  dir[URA_MAX_SIZE] = ".";
+	if (base) {
+		size_t len = base - name;
+		strncpy(dir, name, len);
+		dir[len] = '\0';
+	}
+	debug_file = LLVMDIBuilderCreateFile(debug_builder, filename_only, strlen(filename_only), dir,
+	                                     strlen(dir));
+	debug_compile_unit = LLVMDIBuilderCreateCompileUnit(
+	    debug_builder, LLVMDWARFSourceLanguageC, debug_file, "ura", 3, 0, "", 0, 0, "", 0,
+	    LLVMDWARFEmissionFull, 0, 0, 0, "", 0, "", 0);
+
+	debug_scope = debug_compile_unit;
+}
+
+void finalize(char *output) {
+	char *error = NULL;
+
+	LLVMInitializeNativeTarget();
+	LLVMInitializeNativeAsmPrinter();
+
+	LLVMPassBuilderOptionsRef options = LLVMCreatePassBuilderOptions();
+
+	if (flags) {
+		LLVMErrorRef err = LLVMRunPasses(module, flags, NULL, options);
+		if (err) {
+			char *msg = LLVMGetErrorMessage(err);
+			CHECK(1, "Optimizer Error: %s\n", msg);
+			LLVMDisposeErrorMessage(msg);
+			found_error = true;
+			return;
 		}
 	}
 
-	if (node->left)  hoist_allocas(node->left);
-	if (node->right) hoist_allocas(node->right);
-	for (int i = 0; i < node->children_count; i++)
-		hoist_allocas(node->children[i]);
+	LLVMDIBuilderFinalize(debug_builder);
+	LLVMDisposeDIBuilder(debug_builder);
+	debug_builder = NULL;
+
+	if (LLVMVerifyModule(module, LLVMReturnStatusAction, &error)) {
+		CHECK(1, "Module verification failed:\n%s\n", error);
+		LLVMDisposeMessage(error);
+		LLVMDisposePassBuilderOptions(options);
+		found_error = true;
+	} else {
+		LLVMDisposePassBuilderOptions(options);
+	}
+
+	LLVMPrintModuleToFile(module, output, NULL);
+	LLVMDisposeBuilder(builder);
+	LLVMDisposeModule(module);
+	LLVMContextDispose(context);
 }
 
-// load_if_necessary
-void load_if_necessary(Node *node) {
+void set_debug_location(Token *token) {
+	if (!token || !debug_builder || !debug_scope)              return;
+	if (!includes(token->type, ACCESS, FDEC, PROTO, FCALL, 0)) return;
+	LLVMMetadataRef loc = LLVMDIBuilderCreateDebugLocation(context, token->line, 0, debug_scope, NULL);
+	LLVMSetCurrentDebugLocation2(builder, loc);
+}
+
+TypeRef get_llvm_type(Token *token) {
+	Type type = token->type;
+	if (token->ret_type)     type = token->ret_type;
+	if (type == STRUCT_DEF)  return token->llvm.struct_type;
+	if (type == TUPLE)       return token->llvm.struct_type;
+	if (type == STRUCT_CALL) {
+		if (CHECK(!token->Struct.ptr, "STRUCT_CALL: Struct.ptr is NULL for %k", token))
+			return LLVMVoidTypeInContext(context);
+		return get_llvm_type(token->Struct.ptr->token);
+	}
+	if (includes(type, ARRAY, ARRAY_TYPE, 0)) {
+		TypeRef base;
+		if (token->Array.sub_type == STRUCT_CALL && token->Array.struct_ptr)
+			base = get_llvm_type(token->Array.struct_ptr->token);
+		else {
+			Token tmp = {.type = token->Array.sub_type};
+			base      = get_llvm_type(&tmp);
+		}
+		return LLVMPointerType(base, 0);
+	}
+	// if (type == FCALL) return get_llvm_type(token->Fcall.ptr->token);
+	TypeRef res[END] = {
+	    [INT] = i32,  [CHAR] = i8,   [CHARS] = p8,  [BOOL] = i1,  [VOID] = vd,
+	    [LONG] = i64, [FLOAT] = f32, [ACCESS] = i8, [SHORT] = i2, [NULLABLE] = p8,
+	};
+	TODO(!res[type], "handle this case %k", token);
+	return res[type];
+}
+
+Value _get_default_value(Token *token) {
+	TypeRef type = get_llvm_type(token);
+
+	if (token->is_ref) return LLVMConstNull(LLVMPointerType(type, 0));
+
+	if (includes(token->type, NUMERIC_TYPES, 0))     return LLVMConstInt(type, 0, false);
+	if (token->type == FLOAT)                        return LLVMConstReal(type, 0.0);
+	if (includes(token->type, CHARS, ARRAY_TYPE, 0)) return LLVMConstNull(type);
+	TODO(1, "handle this case %k", token);
+	return NULL;
+}
+
+Value read_value(Token *token) {
+	if (token->llvm.is_loaded) return token->llvm.elem;
+	// Already computed values: function returns, literals, allocated buffers
+	if (includes(token->type, MATH_TYPE, FCALL, STACK, HEAP, 0)) return token->llvm.elem;
+	if (!token->name && !includes(token->type, DOT, ACCESS, 0))  return token->llvm.elem;
+
+	// Scalar ref: double-deref (alloca-of-ptr → ptr → value)
+	if (token->is_ref && token->type != STRUCT_CALL) {
+		TypeRef type = get_llvm_type(token);
+		Value   ptr  = LLVMBuildLoad2(builder, LLVMPointerType(type, 0), token->llvm.elem, "ref_ptr");
+		return LLVMBuildLoad2(builder, type, ptr, "ref_val");
+	}
+
+	char *name = token->name;
+	if (token->type == DOT)    name = to_string(DOT);
+	if (token->type == ACCESS) name = to_string(ACCESS);
+	return LLVMBuildLoad2(builder, get_llvm_type(token), token->llvm.elem, name ? name : "");
+}
+
+void write_value(Token *token, Value val) {
+	Value dest = token->llvm.elem;
+	if (token->is_ref) {
+		TypeRef type = get_llvm_type(token);
+		dest = LLVMBuildLoad2(builder, LLVMPointerType(type, 0), token->llvm.elem, "ref_ptr");
+	}
+	LLVMBuildStore(builder, val, dest);
+}
+
+void ensure_loaded(Node *node) {
 	Token *token = node->token;
 
 	if (token->is_ref)                                        return;
@@ -626,13 +840,58 @@ void load_if_necessary(Node *node) {
 
 	if (token->name || includes(token->type, ACCESS, DOT, 0)) {
 		Token *new          = copy_token(token);
-		new->llvm.elem      = load_value(token);
+		new->llvm.elem      = read_value(token);
 		new->llvm.is_loaded = true;
 		node->token         = new;
 	}
 }
 
-// _alloca
+void _const_value(Token *token) {
+	TypeRef   type  = get_llvm_type(token);
+	long long value = 0;
+
+	switch (token->type) {
+	case INT:   value = (long long)token->Int.value; break;
+	case BOOL:  value = (long long)token->Bool.value; break;
+	case CHAR:  value = (int)token->Char.value; break;
+	case FLOAT: {
+		token->llvm.elem      = LLVMConstReal(type, (double)token->Float.value);
+		token->llvm.is_loaded = true;
+		return;
+	}
+	case CHARS: {
+		// TODO: to be checked
+		char       name[200];
+		char      *processed;
+		static int index = 0;
+		snprintf(name, sizeof(name), "STR%d", index++);
+		processed = allocate(strlen(token->Chars.value) * 2 + 1, 1);
+		int j     = 0;
+		for (int i = 0; token->Chars.value[i]; i++) {
+			if (token->Chars.value[i] == '\\' && token->Chars.value[i + 1]) {
+				switch (token->Chars.value[i + 1]) {
+				case 'n':  processed[j++] = '\n'; i++; break;
+				case 't':  processed[j++] = '\t'; i++; break;
+				case 'r':  processed[j++] = '\r'; i++; break;
+				case '0':  processed[j++] = '\0'; i++; break;
+				case '\\': processed[j++] = '\\'; i++; break;
+				case '\"': processed[j++] = '\"'; i++; break;
+				case '\'': processed[j++] = '\''; i++; break;
+				default:   processed[j++] = token->Chars.value[i]; break;
+				}
+			} else {
+				processed[j++] = token->Chars.value[i];
+			}
+		}
+		token->llvm.elem = LLVMBuildGlobalStringPtr(builder, processed, name);
+		free(processed);
+		return;
+	}
+	default: CHECK(1, "handle this case %s", to_string(token->type)); return;
+	}
+	token->llvm.elem = LLVMConstInt(type, value, 0);
+}
+
 void _alloca(Token *token) {
 	TypeRef type = get_llvm_type(token);
 	if (token->is_ref) type = LLVMPointerType(type, 0);
@@ -654,50 +913,110 @@ void _alloca(Token *token) {
 	LLVMPositionBuilderAtEnd(builder, current);
 }
 
-// get_llvm_type
-TypeRef get_llvm_type(Token *token) {
-	Type type = token->type;
-	if (token->retType)      type = token->retType;
-	if (type == STRUCT_DEF)  return token->llvm.stType;
-	if (type == TUPLE)       return token->llvm.stType;
-	if (type == STRUCT_CALL) {
-		if (check(!token->Struct.ptr,
-		          "STRUCT_CALL: Struct.ptr is NULL for token '%s' type=%d retType=%d",
-		          token->name ? token->name : "(null)", token->type, token->retType))
-			return LLVMVoidTypeInContext(context);
-		return get_llvm_type(token->Struct.ptr->token);
+TypeRef func_ret_type(Token *token) {
+	if (token->ret_type == TUPLE) {
+		TODO(1, "handle this case");
+	#if 0
+		int      n  = token->Tuple.count;
+		TypeRef *ft = allocate(n, sizeof(TypeRef));
+		for (int i = 0; i < n; i++) ft[i] = get_llvm_type(token->Tuple.types[i]);
+		TypeRef st              = LLVMStructTypeInContext(context, ft, n, 0);
+		token->llvm.struct_type = st;
+		free(ft);
+		return st;
+#endif
 	}
-	if (includes(type, ARRAY, ARRAY_TYPE, 0)) {
-		TypeRef base;
-		if (token->Array.elem_type == STRUCT_CALL && token->Array.struct_ptr)
-			base = get_llvm_type(token->Array.struct_ptr->token);
-		else {
-			Token tmp = {.type = token->Array.elem_type};
-			base      = get_llvm_type(&tmp);
-		}
-		return LLVMPointerType(base, 0); // flat allocation: always single ptr to base
-	}
-	// if (type == FCALL)
-	//    return get_llvm_type(token->Fcall.ptr->token);
-	TypeRef res[END] = {
-	    [INT] = i32,  [CHAR] = i8,   [CHARS] = p8,  [BOOL] = i1,  [VOID] = vd,
-	    [LONG] = i64, [FLOAT] = f32, [ACCESS] = i8, [SHORT] = i2, [NULLABLE] = p8,
-	};
-	if (check(!res[type], "handle this case [%s]", to_string(type))) {
-		seg();
-	}
-	return res[type];
+	if (token->is_proto && token->ret_type == STRUCT_CALL) return i64;
+	if (token->ret_type == STRUCT_CALL && token->is_ref)
+		return LLVMPointerType(get_llvm_type(token), 0);
+	return get_llvm_type(token);
 }
 
-// _get_default_value
-Value _get_default_value(Token *token) {
-	TypeRef type = get_llvm_type(token);
+TypeRef *func_param_types(Node *fdec, int *out_count) {
+	Token *token       = fdec->token;
+	int    fixed_count = fdec->left->children_count;
+	int    total       = fixed_count + (token->is_variadic ? 1 : 0);
+	*out_count         = total;
+	if (fixed_count == 0) return NULL;
 
-	if (token->is_ref) return LLVMConstNull(LLVMPointerType(type, 0));
+	TypeRef *types = allocate(total + 2, sizeof(TypeRef));
+	for (int i = 0; i < fixed_count; i++) {
+		Token *param = fdec->left->children[i]->token;
+		if (token->is_proto && includes(param->type, STRUCT_CALL, STRUCT_DEF, 0))
+			types[i] = i64;
+		else if (param->is_ref) types[i] = LLVMPointerType(get_llvm_type(param), 0);
+		else types[i] = get_llvm_type(param);
+	}
+	if (token->is_variadic) types[fixed_count] = i32;
+	return types;
+}
 
-	if (includes(token->type, NUMERIC_TYPES, 0))     return LLVMConstInt(type, 0, false);
-	if (token->type == FLOAT)                        return LLVMConstReal(type, 0.0);
-	if (includes(token->type, CHARS, ARRAY_TYPE, 0)) return LLVMConstNull(type);
-	check(1, "handle this case %s", to_string(token->type));
+// TODO: delete this one because I'm already handling function existence
+Value _add_function(char *name, TypeRef function_type) {
+	Value f = LLVMGetNamedFunction(module, name);
+	if (f) return f;
+	return LLVMAddFunction(module, name, function_type);
+}
+
+void resolve_func_type(Node *fdec) {
+	Token *token = fdec->token;
+	if (token->llvm.func_type) return;
+
+	TypeRef  ret_type    = func_ret_type(token);
+	int      pcount;
+	TypeRef *param_types = func_param_types(fdec, &pcount);
+	TypeRef  func_type   = LLVMFunctionType(ret_type, param_types, pcount, token->is_variadic);
+
+	Value existing        = LLVMGetNamedFunction(module, token->name);
+	token->llvm.elem      = existing ? existing : _add_function(token->name, func_type);
+	token->llvm.func_type = func_type;
+}
+
+void emit_func_body(Node *fdec) {
+	Token *token = fdec->token;
+	if (token->is_proto) return;
+
+	if (enable_san) {
+		unsigned int kind = LLVMGetEnumAttributeKindForName("sanitize_address", 16);
+		AttributeRef attr = LLVMCreateEnumAttribute(context, kind, 0);
+		LLVMAddAttributeAtIndex(token->llvm.elem, LLVMAttributeFunctionIndex, attr);
+	}
+
+	char           *fname   = token->name;
+	MetadataRef di_type = LLVMDIBuilderCreateSubroutineType(debug_builder, debug_file, NULL, 0,
+	                                                            LLVMDIFlagZero);
+	MetadataRef di_func =
+	    LLVMDIBuilderCreateFunction(debug_builder, debug_compile_unit, fname, strlen(fname), fname,
+	                                strlen(fname), debug_file, token->line, di_type, 0, 1, token->line,
+	                                LLVMDIFlagZero, 0);
+	LLVMSetSubprogram(token->llvm.elem, di_func);
+	debug_scope = di_func;
+	Block entry = LLVMAppendBasicBlockInContext(context, token->llvm.elem, "entry");
+	LLVMPositionBuilderAtEnd(builder, entry);
+	MetadataRef debug_location = LLVMDIBuilderCreateDebugLocation(context, token->line, 0, di_func, NULL);
+	LLVMSetCurrentDebugLocation2(builder, debug_location);
+
+	for (int i = 0; i < fdec->left->children_count; i++) {
+		Token *p     = fdec->left->children[i]->token;
+		Value  param = LLVMGetParam(token->llvm.elem, i);
+		LLVMSetValueName(param, p->name);
+		_alloca(p);
+		p->is_dec = false;
+		LLVMBuildStore(builder, param, p->llvm.elem);
+	}
+
+#if USING_HOIST
+	for (int i = 0; i < fdec->children_count; i++)
+		hoist_allocas(fdec->children[i]);
+#endif
+	for (int i = 0; i < fdec->children_count; i++) {
+		gen_asm(fdec->children[i]);
+		if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder))) break;
+	}
+}
+
+Node *find_enclosing(Type type) {
+	for (int i = scopes_count; i >= 0; i--)
+		if (scopes[i] && scopes[i]->token->type == type) return scopes[i];
 	return NULL;
 }

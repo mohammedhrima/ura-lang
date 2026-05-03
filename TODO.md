@@ -40,3 +40,4 @@
 + foreach item in items:
     // do something
 + use match instead of switch, (no need for break keyword)
++ clean the header file when you finish
