@@ -21,9 +21,6 @@ Dev workflow is driven by **[anvil](config/anvil/README.md)** — a
 Makefile-style CLI. Run `anvil` with no args to see every command
 (`build`, `test`, `indent`, `release`, `shell`, …).
 
-For writing Ura projects, use **[avatar](src/tools/avatar/README.md)** — a
-package manager (`avatar new myapp`, `avatar build`, `avatar run`).
-
 ```ura
 main():
     output("Hello, Dungeon!\n")
@@ -1299,7 +1296,7 @@ source.ura
     │
     ▼  tokenize()                flat list of tokens
     │
-    ▼  instantiate_list_types()  monomorphize List[T] → __list_T structs
+    ▼  synth_list_structs()     monomorphize List[T] → __list_T structs
     │
     ▼  AST                      recursive descent parser → syntax tree
     │
@@ -1314,10 +1311,11 @@ source.ura
 
 ### Source Files
 
-- **`src/main.c`** (~4500 lines) — tokenizer, recursive descent parser, `gen_ir()`, `gen_asm()`, CLI, `-prep` serializer. Operator precedence is encoded in the call chain: `expr → assign → logic_or → … → as → unary → access → prime`.
-- **`src/builtins.c`** — template code generation for generic containers (`List[T]` → `__list_T` struct source).
-- **`src/utils.c`** — LLVM type helpers, scope management, debug printing, `copy_token` (deep-copies LLVM metadata).
-- **`src/header.h`** — `Token`, `Node`, `Type` enum, all global declarations and prototypes.
+- **`src/main.c`** (~130 lines) — `compile()` pipeline orchestration and `int main()` argument parsing.
+- **`src/parse.c`** (~1200 lines) — tokenizer (`parse_token`, `tokenize`), recursive descent parser, `synth_list_structs` (monomorphizes `List[T]` → `__list_T` struct sources), `generate_list_source` template emitter. Operator precedence is encoded in the call chain: `expr → assign → logic_or → … → as → unary → access → prime`.
+- **`src/gen.c`** (~830 lines) — `gen_ir()` (semantic pass: name resolution, type checking, operator overload dispatch) and `gen_asm()` (LLVM IR emission). One thin per-case helper (`ir_<case>` / `asm_<case>`) per AST node kind.
+- **`src/utils.c`** (~2470 lines) — LLVM type helpers, scope management, IR/ASM support helpers, debug printing (`pnode`, `_vprint`), `copy_token` (deep-copies LLVM metadata), and the `-prep` serializer (`emit_prep_file` and friends).
+- **`src/header.h`** (~530 lines) — `Token`, `Node`, `Type` enum, all global declarations and prototypes.
 
 ---
 
@@ -1407,7 +1405,7 @@ code --install-extension ura-lang-*.vsix
 - `use` module system (`@` for stdlib, relative for local files)
 - `proto` for C interop, variadic supported
 - OS module — `os.argc`, `os.argv`
-- Multi-file compilation
+- Multi-file imports via `use` (single `.ura` entry point on the CLI)
 - Networking via POSIX socket APIs
 - LLVM optimization passes (-O0 → -O3, -Os, -Oz)
 - AddressSanitizer support (`-san`)
