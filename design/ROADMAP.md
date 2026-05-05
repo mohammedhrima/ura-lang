@@ -27,16 +27,16 @@
 
 + primitive types: int, long, short, char, chars, bool, float, void
 + arrays: array[type]  (stack and heap)
-+ global variables (primitives + structs; init/clean auto-called in main)
++ global variables (primitives + structs)
 + type casting: x as int
 + sizeof, typeof builtins
 + enums (enum Name: V1, V2 ...)
 + tuples / multiple return values: (int, int)
++ built-in String type (struct with len, push, pop, find, upper, lower, trim, replace, reverse, operators)
 - const / immutable variables
 - type inference (auto keyword or :=)
 - type aliases (type Byte = char)
 - string interpolation ("Hello, {name}!")
-- built-in string type (struct with len, data, operator overloads)
 - nullable / optional types
 
 ---
@@ -50,7 +50,8 @@
 + assignment: = += -= *= /= %=
 + index: []
 + access: . (struct field / method)
-- operator overloading (for structs like matrix, string)
++ operator overloading (=, +, -, *, /, %, ==, !=, <, >, <=, >=, +=, -=, *=, /=, %=, &, |, ^, <<, >>)
++ static dispatch: :: (Type::method())
 - range operator: 0..10
 
 ---
@@ -72,10 +73,11 @@
 
 + declaration: fn name(params) ret:
 + value parameters
-+ reference parameters (&)
++ reference parameters (ref)
 + multiple return values (tuples)
 + variadic functions (proto only, for C interop)
-+ forward function use (function used before declaration in same file)
++ forward references (functions/methods can be called before declaration)
++ pub fn: static methods inside structs (no self, called via Type::method())
 - function overloading / polymorphism
 - default parameter values (fn greet(name chars = "World") void)
 - closures / lambdas
@@ -87,14 +89,17 @@
 
 + struct declaration
 + struct fields
-+ struct methods (fn method(self &StructName))
-+ fn init() constructor (auto-called on allocation)
++ struct methods (fn method() with implicit self ref)
++ pub fn new() explicit constructor (static, called via Type::new())
++ operator delete() destructor (auto-called at scope exit)
++ operator overloading (=, +, -, *, /, ==, !=, <, >, +=, etc.)
++ static dispatch: Type::method() for pub fn
 + nested structs (struct as field of another struct)
-+ global struct instances (init auto-called in main)
-- operator overloading (==, +, etc. on struct)
++ global struct instances
++ zero-initialization by default (no auto-init, use pub fn new() for explicit construction)
++ forward method references (methods can call each other regardless of declaration order)
 - inheritance / struct embedding
-- templates (fn foo[T](v T))
-- generics (if not templates)
+- templates / generics
 - clone (deep copy) vs assign (shallow copy)
 
 ---
@@ -105,6 +110,7 @@
 + mod block: functions namespaced as "module.fn"
 + intra-module calls (call sibling without qualification)
 + use "file" imports file as flat namespace (pre-module)
+- module static dispatch: std::strlen() (planned, use :: syntax)
 - nested modules: mod outer: mod inner: fn foo() -> "outer.inner.foo"
 - mod-qualified struct types: p math.Point
 - re-export: use inside mod inherits module namespace
@@ -117,12 +123,13 @@
 
 + stack allocation: stack[type](n)
 + heap allocation: heap[type](n)
-+ references: & (C++ style, bind at declaration)
++ references: ref (C++ style, bind at declaration)
 + pointers: ptr
 + manual free
-- auto-free for heap (scope-based or ref-counted)
++ auto-destructor: operator delete() called at scope exit for struct variables
 - smart pointers
 - garbage collection (optional / opt-in)
+- strict mode, to protect user from doing stupid stuff like declaring null structs
 
 ---
 
@@ -153,7 +160,8 @@
 + io (fopen, fclose, printf, scanf, ...)
 + math (floor, ceil, sqrt, ...)
 + memory (malloc, free, memset, ...)
-+ string (strlen, strcmp, strcpy, ...)
++ string (strlen, strcmp, strcpy, strjoin, ...)
++ String struct (new, from, from_int, assign, join, push, pop, find, contains, starts_with, ends_with, substr, upper, lower, trim, replace, repeat, reverse, to_int, compare, operators)
 + time (clock, time, ...)
 + net (socket, bind, listen, accept, ...)
 + os (argc, argv, exit, getenv, ...)
@@ -197,9 +205,11 @@
 ## Tooling
 
 + compiler (ura <file>)
-+ build system (config.sh: build, tests, install)
-+ VS Code extension (syntax highlighting)
-+ test runner (tests command with IR comparison)
++ build system (config.sh: build, tests, update_tests, copy, install)
++ VS Code extension (syntax highlighting for pub fn, operator delete, ::, etc.)
++ test runner (parallel, with IR comparison)
++ -no-debug flag (suppress debug output)
++ -no-exec flag (compile only, no execution)
 - formatter (auto-format .ura files)
 - language server / LSP (autocomplete, go-to-def)
 - REPL (interactive interpreter)
@@ -224,6 +234,7 @@
 + TCP server: basic chat variant
 + TCP server: command-based variant
 + raylib demos (window, shapes, textures, animation)
++ String test suite (constructors, mutators, search, transforms, operators, conversions)
 - donut renderer
 - sample CLI tool
 - HTTP server

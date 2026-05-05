@@ -115,11 +115,28 @@
     "special_methods": {
       "patterns": [
         {
-          "comment": "fn init / fn clean — constructor/destructor methods",
-          "match": "\\b(fn)\\s+(init|clean)\\b",
+          "comment": "pub fn — static method declaration",
+          "match": "\\b(pub)\\s+(fn)\\b",
+          "captures": {
+            "1": { "name": "keyword.declaration.ura" },
+            "2": { "name": "keyword.declaration.ura" }
+          }
+        },
+        {
+          "comment": "operator delete / operator + etc. — operator overloading",
+          "match": "\\b(operator)\\s+(delete|[+\\-*/%=<>!&|^~]+)\\b",
           "captures": {
             "1": { "name": "keyword.declaration.ura" },
             "2": { "name": "keyword.other.special-method.ura" }
+          }
+        },
+        {
+          "comment": "Type::method() — static dispatch",
+          "match": "\\b([A-Z][a-zA-Z0-9_]*)(::)([a-zA-Z_][a-zA-Z0-9_]*)\\s*(?=\\()",
+          "captures": {
+            "1": { "name": "entity.name.type.ura" },
+            "2": { "name": "keyword.operator.ura" },
+            "3": { "name": "entity.name.function.ura" }
           }
         }
       ]
@@ -129,7 +146,7 @@
       "patterns": [
         {
           "name": "keyword.control.ura",
-          "match": "\\b(if|elif|else|while|for|return|break|continue|and|or|is|not|self)\\b"
+          "match": "\\b(if|elif|else|while|for|return|break|continue|and|or|is|not|self|pub)\\b"
         }
       ]
     },
@@ -138,7 +155,7 @@
       "patterns": [
         {
           "name": "keyword.declaration.ura",
-          "match": "\\b(struct|fn|as|enum|operator|mod)\\b"
+          "match": "\\b(struct|fn|as|enum|operator|mod|pub)\\b"
         }
       ]
     },
@@ -181,6 +198,13 @@
     "custom_types": {
       "patterns": [
         {
+          "comment": "Return type after ) — fn foo() TypeName:",
+          "match": "\\)\\s+([A-Z][a-zA-Z0-9_]*)\\b",
+          "captures": {
+            "1": { "name": "entity.name.type.ura" }
+          }
+        },
+        {
           "comment": "Variable declaration with custom type: 'varname TypeName'",
           "match": "\\b([a-z_][a-zA-Z0-9_]*)\\s+([A-Z][a-zA-Z0-9_]*)\\b",
           "captures": {
@@ -222,7 +246,7 @@
       "patterns": [
         {
           "name": "keyword.operator.ura",
-          "match": "==|!=|<=|>=|<<|>>|\\+=|-=|\\*=|/=|%=|&&|\\|\\||[!~^]|[&|]|[+\\-*/<>%=]"
+          "match": "::|==|!=|<=|>=|<<|>>|\\+=|-=|\\*=|/=|%=|&&|\\|\\||[!~^]|[&|]|[+\\-*/<>%=]"
         }
       ]
     },

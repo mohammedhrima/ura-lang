@@ -1,0 +1,57 @@
+// dungeon/floor18.ura
+use "@/header"
+
+main():
+    greeting String = String::from("Hello, Dungeon!")
+    output(greeting.value, " (len: ", greeting.len(), ")\n")
+
+    output("found 'Dungeon' at: ", greeting.find("Dungeon"), "\n")
+    output("starts with Hello: ", greeting.starts_with("Hello"), "\n")
+
+    shout String = greeting.upper()
+    output(shout.value, "\n")
+
+    whisper String = greeting.lower()
+    output(whisper.value, "\n")
+
+    word String = greeting.substr(7, 7)
+    output("substr: ", word.value, "\n")
+
+    msg String = String::new()
+    msg.push('H')
+    msg.push('P')
+    output("pushed: ", msg.value, "\n")
+
+    first String = String::from("Shadow")
+    last  String = String::from(" Blade")
+    name  String = first + last
+    output("name: ", name.value, "\n")
+
+    first += last
+    output("+=:   ", first.value, "\n")
+
+    a String = String::from("abc")
+    b String = String::from("abc")
+    output("equal: ", a == b, "\n")
+
+    hp_str String = String::from_int(100)
+    output("HP: ", hp_str.value, "\n")
+
+    num String = String::from("42")
+    output("parsed: ", num.to_int(), "\n")
+
+    padded  String = String::from("  trimmed  ")
+    trimmed String = padded.trim()
+    output("trim: '", trimmed.value, "'\n")
+
+    orig    String = String::from("orc orc orc")
+    swapped String = orig.replace("orc", "elf")
+    output("replace: ", swapped.value, "\n")
+
+    ha  String = String::from("ha")
+    ha3 String = ha.repeat(3)
+    output("repeat: ", ha3.value, "\n")
+
+    rev String = String::from("dragon")
+    r String = rev.reverse()
+    output("reverse: ", r.value, "\n")

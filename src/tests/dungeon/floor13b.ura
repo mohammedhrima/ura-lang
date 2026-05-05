@@ -1,0 +1,45 @@
+// dungeon/floor13b.ura
+use "@/header"
+
+struct Label:
+    value chars
+    len   int
+
+    pub fn new() Label:
+        l Label
+        l.value = heap[char](64)
+        l.len   = 0
+        return l
+
+    operator delete() void:
+        free(self.value)
+
+    fn set(s chars) void:
+        strcpy(self.value, s)
+        self.len = strlen(s) as int
+
+    operator = (s chars) void:
+        self.set(s)
+
+    operator = (v Label ref) void:
+        self.set(v.value)
+
+    operator + (v Label ref) Label:
+        res Label = Label::new()
+        strcpy(res.value, self.value)
+        strcat(res.value, v.value)
+        res.len = self.len + v.len
+        return res
+
+    fn print() void:
+        output(self.value, " (", self.len, " chars)\n")
+
+main():
+    title Label = Label::new()
+    title = "Shadow"
+
+    name Label = Label::new()
+    name = "Aldric"
+
+    full Label = title + name
+    full.print()

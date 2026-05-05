@@ -12,13 +12,16 @@ build/*
 **/.DS_Store
 
 # Test generated IR (keep expected .ll, ignore build/ subdirs)
-tests/**/build/
+src/tests/**/build/
 
 # LLVM sandbox build
 llvm/build/
 
 # Src build
 src/build/
+
+# anvil build outputs (per-OS)
+config/anvil/build/
 
 # VSCode extension
 config/vscode-extension/node_modules/

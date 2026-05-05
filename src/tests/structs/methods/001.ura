@@ -1,0 +1,29 @@
+// structs/methods/001.ura - Hero with init/clean: heap name+title, setup, announce
+
+use "@/header"
+
+struct Hero:
+    name  chars
+    title chars
+
+    pub fn new() Hero:
+        h Hero
+        h.name  = heap[char](32)
+        h.title = heap[char](32)
+        return h
+
+    fn setup(name chars, title chars) void:
+        strcpy(self.name,  name)
+        strcpy(self.title, title)
+
+    fn announce() void:
+        output(self.title, " ", self.name, " enters!\n")
+
+    operator delete() void:
+        free(self.name)
+        free(self.title)
+
+main():
+    hero Hero = Hero::new()
+    hero.setup("Aldric", "The Bold")
+    hero.announce()

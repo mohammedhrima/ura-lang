@@ -1,0 +1,7 @@
+// os/001.ura - hero name from argv[1], argc check
+
+use "@/header"
+
+main(argc int, argv array[chars]):
+    output("argc: ", argc, "\n")
+    output("argv[0]: ", argv[0], "\n")
