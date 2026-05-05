@@ -1,0 +1,8 @@
+// parse_errors/013 — `fn` declaration missing trailing `:`
+use "@/header"
+
+fn answer() int
+    return 42
+
+main():
+    output(answer(), "\n")

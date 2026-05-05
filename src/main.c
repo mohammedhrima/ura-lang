@@ -34,8 +34,19 @@ void compile(char *path_name) {
 	ura_scope = new_node(new_token(ID, -TAB));
 	setName(ura_scope->token, "ura-scope");
 	enter_scope(ura_scope);
-	while (!find(END, 0) && !found_error)
-		add_child(ura_scope, expr_node());
+	while (!find(END, 0) && !found_error) {
+		Node *child = expr_node();
+		if (found_error) break;
+		Token *t = child->token;
+		Token *anchor = (t->type == ASSIGN && child->left) ? child->left->token : t;
+		bool ok = includes(anchor->type, FDEC, STRUCT_DEF, ENUM_DEF, MODULE, PROTO, 0)
+		       || anchor->is_dec;
+		if (!ok) {
+			parse_error(t, "only declarations are allowed at top level");
+			break;
+		}
+		add_child(ura_scope, child);
+	}
 
 	debug(GREEN("===========================================\n"));
 	debug(GREEN("AFTER PARSING\n"));
@@ -63,8 +74,8 @@ void compile(char *path_name) {
 	setup_paths(path_name);
 
 	if (enable_prep) {
-		char *prep_path = strjoin(build_dir, "/", base);
-		char *full_path = strjoin(prep_path, ".prep.ura", "");
+		char *prep_path = format("%s/%s", build_dir, base);
+		char *full_path = format("%s.prep.ura", prep_path);
 		free(prep_path);
 		emit_prep_file(ura_scope, full_path);
 		free(full_path);
@@ -89,6 +100,7 @@ int main(int argc, char **argv) {
 		return 1;
 
 	char *output  = NULL;
+	char *entry   = NULL;
 	bool  no_exec = false;
 	(void)no_exec;
 	for (int i = 1; i < argc && !found_error; i++) {
@@ -98,7 +110,7 @@ int main(int argc, char **argv) {
 		var = val;                                                                                   \
 		continue;                                                                                    \
 	}
-		MATCH("-san", enable_san, true); MATCH("-O0", flags, PASSES_O0); 
+		MATCH("-san", enable_san, true); MATCH("-O0", flags, PASSES_O0);
 		MATCH("-no-exec", no_exec, true) MATCH("-O1", flags, PASSES_O1);
 		MATCH("-no-debug", enable_debug, false);
 		MATCH("-O2", flags, PASSES_O2); MATCH("-O3", flags, PASSES_O3);
@@ -111,26 +123,24 @@ int main(int argc, char **argv) {
 		} else if (a[0] != '-') {
 			size_t n = strlen(a);
 			CHECK(n <= 4 || strcmp(a + n - 4, ".ura") != 0, "invalid file: %s\n", a);
-			CHECK(files_count > 0, "you can compile only one file"
-			                       "try importing them in one files");
-			resize_array(files, char *, files_size, files_count);
-			files[files_count++] = a;
+			CHECK(entry != NULL, "you can compile only one file"
+			                     "try importing them in one files");
+			entry = a;
 		} else {
 			CHECK(true, "unknown flag: %s\n", a);
 		}
 	}
-	if (CHECK(files_count == 0, "required .ura files as arguments to compile")) return 1;
-	if (found_error)                                                            return 1;
+	if (CHECK(!entry, "required .ura files as arguments to compile")) return 1;
+	if (found_error)                                                  return 1;
 
 	if (!output) output = "exe.out";
 
-	compile(files[0]);
+	compile(entry);
 
 #if ASM
 	if (ll_path && !no_exec && !found_error) {
 		char *san = enable_san ? " -fsanitize=address,undefined -fno-omit-frame-pointer -g" : "";
-		char *cmd = allocate(URA_MAX_SIZE, 1);
-		snprintf(cmd, URA_MAX_SIZE, "clang%s \"%s\" -o \"%s\"", san, ll_path, output);
+		char *cmd = format("clang%s \"%s\" -o \"%s\"", san, ll_path, output);
 		CHECK(system(cmd) != 0, "linking failed\n");
 		free(cmd);
 	}

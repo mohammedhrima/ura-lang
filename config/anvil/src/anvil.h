@@ -52,8 +52,7 @@ struct AnvilConfig {
     std::vector<std::string> compile;
 
     
-    std::vector<std::string> warn;
-    std::vector<std::string> san;
+    std::vector<std::string> flags;
     std::vector<std::string> release;
 
     

@@ -50,9 +50,9 @@ typedef struct _IO_FILE *File;
 #define TOKENIZE 1
 #define TAB      3
 #define AST      1
-#define IR       1
+#define IR       0
 #define OPTIMIZE 0
-#define ASM      1
+#define ASM      0
 
 #define CHECK(cond, fmt, ...) _check(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)
 #define TODO(cond, fmt, ...)                                                                       \
@@ -60,20 +60,20 @@ typedef struct _IO_FILE *File;
 #define debug(fmt, ...)                                                                            \
 	if (enable_debug) _debug(fmt, ##__VA_ARGS__)
 #define SEG() raise(SIGSEGV)
-#define EXPECT_TOKEN(type, fmt, ...)                                                               \
+#define EXPECT_TOKEN(anchor, type, fmt, ...)                                                       \
 	{                                                                                               \
 		Token *find_token = find(type, 0);                                                           \
 		if (!find_token) {                                                                           \
-			CHECK(1, fmt, ##__VA_ARGS__);                                                             \
+			parse_error(anchor, fmt, ##__VA_ARGS__);                                                  \
 			return syntax_error();                                                                    \
 		}                                                                                            \
 	}
 
-#define EXPECT_TOKEN_VOID(type, fmt, ...)                                                          \
+#define EXPECT_TOKEN_VOID(anchor, type, fmt, ...)                                                  \
 	{                                                                                               \
 		Token *find_token = find(type, 0);                                                           \
 		if (!find_token) {                                                                           \
-			CHECK(1, fmt, ##__VA_ARGS__);                                                             \
+			parse_error(anchor, fmt, ##__VA_ARGS__);                                                  \
 			syntax_error();                                                                           \
 			return;                                                                                   \
 		}                                                                                            \
@@ -137,6 +137,7 @@ typedef struct Node       Node;
 typedef struct LLVM       LLVM;
 typedef struct AutoClean  AutoClean;
 typedef enum Type         Type;
+typedef struct Source     Source;
 
 typedef LLVMTypeRef       TypeRef;
 typedef LLVMContextRef    Context;
@@ -232,15 +233,22 @@ struct AutoClean {
 	Node *type;
 };
 
+struct Source {
+	char *filename;
+	char *content;
+};
+
 struct Token {
 	Type  type;
 	Type  ret_type;
+	Source *source;
 
 	char *name;
 	int   space;
 
 	int   used;
-	int   pos;
+	int   start_index;
+	int	end_index; // TODO: meybe it needs to be removed
 
 	bool  is_ref;
 	bool  is_dec;
@@ -253,7 +261,6 @@ struct Token {
 	bool  is_pub;
 	bool  is_static_call;
 
-	char *filename;
 	int   line;
 
 	LLVM  llvm;
@@ -300,9 +307,9 @@ extern bool             enable_prep;
 extern char            *flags;
 extern char            *ura_lib;
 
-extern char           **files;
-extern int              files_count;
-extern int              files_size;
+extern Source         **sources;
+extern int              sources_count;
+extern int              sources_size;
 extern Token          **tokens;
 extern int              tokens_count;
 extern int              tokens_size;
@@ -344,12 +351,13 @@ Node  *copy_node(Node *node);
 void   unuse(Node *node);
 
 // tokenizer / parser helpers
+Source *new_source(char *file_name);
 void   tokenize(char *filename, int default_space);
 void   tokenize_string(char *input, char *fake_name, int default_space);
 void   instantiate_list_types(void);
 char  *generate_list_source(const char *elem_type_name, const char *struct_name);
 Token *new_token(Type type, int space);
-Token *parse_token(char *filename, int line, char *input, int s, int e, Type type, int space);
+Token *parse_token(Source *src, int line, int s, int e, Type type, int space);
 void   add_token(Token *token);
 Node  *new_node(Token *token);
 Node  *add_child(Node *node, Node *child);
@@ -401,7 +409,7 @@ Node *tuple_unpack_node(Token *token);
 Node *array_lit_node(Token *token);
 
 // parser nodes — struct internals
-Node *pub_node(Node *struct_node);
+Node *pub_node(Node *struct_node, Token *pub_tok);
 Node *operator_node(Node *struct_node, Token *op_kw);
 Node *delete_node(Node *struct_node, Token *op_kw);
 
@@ -508,9 +516,11 @@ Type              assign_base_op(Type assign_op);
 
 // debug / utils
 bool  _check(char *filename, char *funcname, int line, bool cond, char *fmt, ...);
+void  parse_error(Token *token, const char *fmt, ...);
+void  tokenize_error(Source *src, int line, int s, int e, const char *fmt, ...);
 int   _debug(char *conv, ...);
 void  pnode(Node *node, char *indent);
-char *strjoin(char *str0, char *str1, char *str2);
+char *format(const char *fmt, ...);
 int   vprint_(File out, char *conv, va_list args);
 void *allocate(int len, int size);
 char *open_file(char *path_name);

@@ -375,8 +375,7 @@ static void load() {
 
     if (auto v = t.num("llvm")) g_cfg.llvm = *v;
     g_cfg.compile = t.arr("compile");
-    g_cfg.warn    = t.arr("warn");
-    g_cfg.san     = t.arr("san");
+    g_cfg.flags   = t.arr("flags");
     g_cfg.release = t.arr("release");
 
     if (auto v = t.num("max_parallel")) g_cfg.max_parallel = *v;
@@ -405,7 +404,7 @@ void invalidate_config() {
 }
 
 static const std::vector<Command> g_commands = {
-    {"build",             cmd_build,             "Compile the ura compiler (flags: --san, --release)"},
+    {"build",             cmd_build,             "Compile the ura compiler (flags: --release)"},
     {"test",              cmd_test,              "Run the test suite (optionally filter by folder)"},
     {"copy",              cmd_copy,              "Save a .ura file and its IR as a test reference"},
     {"update-tests",      cmd_update_tests,      "Regenerate every .ll reference file"},

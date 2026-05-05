@@ -1,0 +1,7 @@
+// parse_errors/022 — only declarations allowed at top level
+use "@/header"
+
+42
+
+main():
+    output("hi\n")
