@@ -1,0 +1,9 @@
+// parse_errors/020 — `mod` declaration missing identifier
+use "@/header"
+
+mod:
+    fn ping() void:
+        return
+
+main():
+    output("hi\n")

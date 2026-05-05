@@ -1,0 +1,6 @@
+// parse_errors/010 — empty index expression `[]`
+use "@/header"
+
+main():
+    arr array[int] = stack[int](3)
+    x int = arr[]
