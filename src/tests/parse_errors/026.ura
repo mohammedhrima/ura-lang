@@ -1,0 +1,8 @@
+// parse_errors/026 — use un existing file
+use "@/headerd"
+
+fn greet():
+    output("hi\n")
+
+main():
+    greet()

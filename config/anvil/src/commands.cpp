@@ -61,11 +61,9 @@ static std::string filter_ld_warnings(const std::string& s) {
 }
 
 int cmd_build(const std::vector<std::string>& args) {
-    bool want_san     = false;
     bool want_release = false;
     for (const auto& a : args) {
-        if      (a == "--san"     || a == "-san")     want_san     = true;
-        else if (a == "--release" || a == "-release") want_release = true;
+        if (a == "--release" || a == "-release") want_release = true;
         else {
             fprintf(stderr, ANSI_RED "build: unknown flag '%s'" ANSI_RESET "\n", a.c_str());
             return 1;
@@ -81,12 +79,11 @@ int cmd_build(const std::vector<std::string>& args) {
         return 1;
     }
 
-    
+
     std::vector<std::string> argv = {"clang"};
     for (const auto& s : cfg.compile) argv.push_back(resolve(cfg.source + "/" + s));
-    argv.insert(argv.end(), cfg.warn.begin(), cfg.warn.end());
-    if      (want_release) argv.insert(argv.end(), cfg.release.begin(), cfg.release.end());
-    else if (want_san)     argv.insert(argv.end(), cfg.san.begin(),     cfg.san.end());
+    if (want_release) argv.insert(argv.end(), cfg.release.begin(), cfg.release.end());
+    else              argv.insert(argv.end(), cfg.flags.begin(),   cfg.flags.end());
     argv.insert(argv.end(), llvm_cflags.begin(),  llvm_cflags.end());
     argv.insert(argv.end(), llvm_ldflags.begin(), llvm_ldflags.end());
 
@@ -190,7 +187,15 @@ int run_compiler_silent(const std::string& ura_bin, const std::string& file) {
     if (rel.size() >= 4 && rel.substr(rel.size() - 4) == ".ura")
         rel = rel.substr(0, rel.size() - 4);
 
-    
+    bool is_negative = ura_file.find("/parse_errors/") != std::string::npos;
+    if (is_negative) {
+        int rc = run_compiler_silent(ura_bin, ura_file);
+        if (rc == 0)        write_result(result_path, "FAIL", rel, "expected parse error, none fired");
+        else if (rc >= 128) write_result(result_path, "FAIL", rel, "crashed (signal)");
+        else                write_result(result_path, "PASS", rel, "");
+        _exit(0);
+    }
+
     std::string head = read_file(ura_file);
     bool has_comment = head.size() >= 2 && head[0] == '/' && head[1] == '/';
     if (!has_comment) {

@@ -1,0 +1,5 @@
+// parse_errors/004 — unknown character in source
+use "@/header"
+
+main():
+    a int = 5 # 1

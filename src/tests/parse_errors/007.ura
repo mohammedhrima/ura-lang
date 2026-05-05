@@ -1,0 +1,5 @@
+// parse_errors/007 — `as` cast missing target type
+use "@/header"
+
+main():
+    a int = 5 as

@@ -1,0 +1,8 @@
+// parse_errors/025 — only function declarations allowed inside `mod`
+use "@/header"
+
+mod util:
+    x int = 5
+
+main():
+    output("hi\n")

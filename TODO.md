@@ -43,3 +43,33 @@
 + clean the header file when you finish
 
 + you can do clang file.ll -o exe.out
++ use "atexit" function
++ check the closing for (), [], {} in tokenize
+
++ check those functions:
+    + strncasecmp, isxdigit, strtoul, open_memstream
+    + use stuff like "char *loc;" to see thelocaton of failed + token in case of wanting to print something
+    + __attribute__((format(printf, 1, 2)))
+
++ run_compiler
++ run_parser
++ run_linker 
++ etc ...
+
+
+
++ base de donner (psql):
+    + jointure
+    + procedure
+    + fonctions
+    + index
+
++ C#:
+    + 
+
++ ne pas balancer on arabe
++ xslt (maybe it's xsql)
++ portfolio
++ SOLID principals
+
+

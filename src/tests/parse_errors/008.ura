@@ -1,0 +1,8 @@
+// parse_errors/008 — `pub fn` outside a struct definition
+use "@/header"
+
+pub fn helper() void:
+    return
+
+main():
+    helper()
