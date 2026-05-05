@@ -327,7 +327,7 @@ void ir_module(Node *node) {
 	current_gen_module = mname;
 	for (int i = 0; i < node->functions_count; i++) {
 		Node *fn    = node->functions[i];
-		char *qname = strjoin(mname, ".", fn->token->name);
+		char *qname = format("%s.%s", mname, fn->token->name);
 		setName(fn->token, qname);
 		free(qname);
 	}

@@ -1,0 +1,9 @@
+// parse_errors/023 — unknown struct used as return type
+use "@/header"
+
+fn make() Widget:
+    w Widget
+    return w
+
+main():
+    output("hi\n")

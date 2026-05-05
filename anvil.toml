@@ -11,8 +11,8 @@ llvm    = 14
 compile = ["main.c", "parse.c", "gen.c", "utils.c"]
 
 # flags
-warn    = ["-Wall", "-Wextra", "-Werror=incompatible-pointer-types", "-Werror=int-conversion"]
-san     = ["-fsanitize=address", "-fsanitize=undefined", "-fsanitize=null", "-g3"]
+flags   = ["-Wall", "-Wextra", "-Werror=incompatible-pointer-types", "-Werror=int-conversion",
+           "-fsanitize=address", "-fsanitize=undefined", "-fsanitize=null", "-g3"]
 release = ["-O2", "-DDEBUG=0"]
 
 # tests

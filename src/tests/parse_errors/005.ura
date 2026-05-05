@@ -1,0 +1,5 @@
+// parse_errors/005 — `use` missing opening quote
+use @/header
+
+main():
+    output("hi\n")
