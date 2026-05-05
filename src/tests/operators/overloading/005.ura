@@ -1,0 +1,58 @@
+// operators/overloading/005.ura
+
+struct HP:
+    val int
+
+    operator = (n int) void:
+        self.val = n
+
+    operator = (h HP ref) void:
+        self.val = h.val
+
+    operator + (h HP ref) HP:
+        res HP
+        res.val = self.val + h.val
+        return res
+
+    operator + (n int) HP:
+        res HP
+        res.val = self.val + n
+        return res
+
+    operator - (h HP ref) HP:
+        res HP
+        res.val = self.val - h.val
+        return res
+
+    operator - (n int) HP:
+        res HP
+        res.val = self.val - n
+        return res
+
+    operator == (h HP ref) bool:
+        return self.val == h.val
+
+    operator == (n int) bool:
+        return self.val == n
+
+main():
+    hero HP
+    hero = 100
+
+    bonus HP
+    bonus = 50
+
+    combined HP = hero + bonus
+    output("hero + bonus: ", combined.val, "\n")
+
+    boosted HP = hero + 25
+    output("hero + 25:   ", boosted.val, "\n")
+
+    reduced HP = hero - bonus
+    output("hero - bonus: ", reduced.val, "\n")
+
+    trimmed HP = hero - 10
+    output("hero - 10:   ", trimmed.val, "\n")
+
+    output("hero == bonus: ", hero == bonus, "\n")
+    output("hero == 100:   ", hero == 100,   "\n")
