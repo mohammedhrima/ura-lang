@@ -1,0 +1,41 @@
+// string/005 — operators: =, +, +=, ==, !=, <, >
+use "@/header"
+
+main():
+    a String = String::from("hello")
+    b String = String::from(" world")
+    c String = a + b
+    output(c.value, "\n")
+
+    d String = a + " there"
+    output(d.value, "\n")
+
+    a += b
+    output(a.value, "\n")
+
+    e String = String::from("test")
+    e += "ing"
+    output(e.value, "\n")
+
+    x String = String::from("abc")
+    y String = String::from("abc")
+    z String = String::from("xyz")
+
+    output(x == y, "\n")
+    output(x == z, "\n")
+    output(x != z, "\n")
+    output(x != y, "\n")
+    output(x < z, "\n")
+    output(z < x, "\n")
+    output(z > x, "\n")
+    output(x > z, "\n")
+
+    output(x == "abc", "\n")
+    output(x == "xyz", "\n")
+    output(x != "xyz", "\n")
+    output(x != "abc", "\n")
+
+    f String = String::new()
+    g String = String::new()
+    f = y
+    output(f.value, " ", f == y, "\n")

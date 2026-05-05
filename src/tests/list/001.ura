@@ -1,0 +1,10 @@
+// tests/list/001.ura
+use "@/memory"
+
+main():
+    v List[int]
+    v.push(10)
+    v.push(20)
+    v.push(30)
+    output(v[0], " ", v[1], " ", v[2], "\n")
+    output("len=", v.len(), " cap=", v.cap(), "\n")

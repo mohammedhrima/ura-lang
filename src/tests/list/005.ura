@@ -1,0 +1,17 @@
+// tests/list/005.ura
+use "@/memory"
+
+fn sum(arr array[int], n int) int:
+    s int = 0
+    i int = 0
+    while i < n:
+        s += arr[i]
+        i += 1
+    return s
+
+main():
+    v List[int]
+    v.push(10)
+    v.push(20)
+    v.push(30)
+    output("sum=", sum(v.data, v.len()), "\n")

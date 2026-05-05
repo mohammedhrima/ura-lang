@@ -1,21 +1,9 @@
 Language: Cpp
 BasedOnStyle: LLVM
 
-AlignConsecutiveAssignments:
-  Enabled: true
-  AcrossEmptyLines: false
-  AcrossComments: false
-  PadOperators: true
-
-AlignConsecutiveDeclarations:
-  Enabled: true
-  AcrossEmptyLines: true
-  AcrossComments: false
-
-AlignConsecutiveMacros:
-  Enabled: true
-  AcrossEmptyLines: false
-  AcrossComments: false
+AlignConsecutiveAssignments: Consecutive
+AlignConsecutiveDeclarations: AcrossEmptyLines
+AlignConsecutiveMacros: Consecutive
 
 IndentWidth: 3
 TabWidth: 3

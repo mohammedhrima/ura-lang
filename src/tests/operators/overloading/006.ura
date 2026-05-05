@@ -1,0 +1,32 @@
+// operators/overloading/006.ura
+
+use "@/header"
+
+struct Buffer:
+    value chars
+
+    pub fn new() Buffer:
+        b Buffer
+        b.value = heap[char](64)
+        return b
+
+    operator delete() void:
+        free(self.value)
+
+    operator = (s chars) void:
+        strcpy(self.value, s)
+
+    operator = (b Buffer ref) void:
+        strcpy(self.value, b.value)
+
+main():
+    b1 Buffer = Buffer::new()
+    b1 = "hello"
+
+    b2 Buffer = Buffer::new()
+    b2 = b1
+
+    strcpy(b2.value, "world")
+
+    output("b1: ", b1.value, "\n")
+    output("b2: ", b2.value, "\n")

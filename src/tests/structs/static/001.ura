@@ -1,0 +1,24 @@
+// structs/static/001 — pub fn and static dispatch
+use "@/header"
+
+struct Point:
+    x int
+    y int
+
+    pub fn new(x int, y int) Point:
+        p Point
+        p.x = x
+        p.y = y
+        return p
+
+    pub fn origin() Point:
+        return Point::new(0, 0)
+
+    fn print() void:
+        output("(", self.x, ", ", self.y, ")\n")
+
+main():
+    p Point = Point::new(3, 4)
+    p.print()
+    o Point = Point::origin()
+    o.print()
