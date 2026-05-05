@@ -1,0 +1,5 @@
+// parse_errors/002 — unterminated char literal
+use "@/header"
+
+main():
+    c char = 'a

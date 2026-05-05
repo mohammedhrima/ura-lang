@@ -7,7 +7,7 @@ bool  enable_prep;
 char *flags;
 char *ura_lib;
 
-EXPAND(char **, files);
+EXPAND(Source **, sources);
 EXPAND(Token **, tokens);
 int exe_count;
 EXPAND(Node **, scopes);
@@ -75,16 +75,33 @@ char *generate_list_source(const char *elem, const char *sname) {
 
 char *open_file(char *path_name) {
 	char *file_name = realpath(path_name, NULL);
-	if (CHECK(!file_name, "resolving path %s", path_name)) return NULL;
+	if (!file_name) {
+		parse_error(NULL, "cannot find file '%s'", path_name);
+		return NULL;
+	}
 	File file = fopen(file_name, "r");
-	if (CHECK(!file, "openning %s", file_name)) return NULL;
+	if (!file) {
+		parse_error(NULL, "cannot open file '%s'", file_name);
+		free(file_name);
+		return NULL;
+	}
 	fseek(file, 0, SEEK_END);
 	int size = ftell(file);
 	fseek(file, 0, SEEK_SET);
 	char *input = allocate((size + 1), sizeof(char));
 	fread(input, size, sizeof(char), file);
 	fclose(file);
+	free(file_name);
 	return input;
+}
+
+Source *new_source(char *file_name) {
+	Source *src   = allocate(1, sizeof(Source));
+	src->filename = file_name;
+	src->content  = open_file(file_name);
+	resize_array(sources, Source *, sources_size, sources_count);
+	sources[sources_count++] = src;
+	return src;
 }
 
 void free_token(Token *token) {
@@ -119,8 +136,12 @@ void free_memory() {
 	free(dir);       
 	free(base);      
 	free(build_dir); 
-	free(ll_path);  
-	free(files);
+	free(ll_path);
+	for (int i = 0; sources && i < sources_count; i++) {
+		free(sources[i]->content);
+		free(sources[i]);
+	}
+	free(sources);
 }
 
 int _vprint(File out, char *conv, va_list args) {
@@ -282,6 +303,69 @@ bool _check(char *filename, char *funcname, int line, bool cond, char *fmt, ...)
 	return cond;
 }
 
+void parse_error(Token *token, const char *fmt, ...) {
+	found_error = true;
+
+	fprintf(stderr, RED("error: "));
+	va_list ap;
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	fputc('\n', stderr);
+
+	if (!token || !token->source || !token->source->content) return;
+
+	char *content = token->source->content;
+	int   s       = token->start_index;
+	int   e       = token->end_index;
+	if (e <= s) e = s + 1;
+
+	int line_start = s;
+	while (line_start > 0 && content[line_start - 1] != '\n') line_start--;
+	int line_end = e;
+	while (content[line_end] && content[line_end] != '\n') line_end++;
+
+	int col     = s - line_start + 1;
+	int span    = e - s;
+	int line_no = token->line;
+	int gutter  = 1;
+	for (int n = line_no; n >= 10; n /= 10) gutter++;
+
+	fprintf(stderr, "%*s " BLUE("-->") " %s:%d:%d\n",
+	        gutter, "", token->source->filename, line_no, col);
+	fprintf(stderr, "%*s " BLUE("|") "\n", gutter, "");
+	fprintf(stderr, BLUE("%*d |") " %.*s\n",
+	        gutter, line_no, line_end - line_start, content + line_start);
+	fprintf(stderr, "%*s " BLUE("|") " ", gutter, "");
+	for (int i = 0; i < col - 1; i++)
+		fputc(content[line_start + i] == '\t' ? '\t' : ' ', stderr);
+	fprintf(stderr, "\033[1;31m");
+	for (int i = 0; i < span; i++) fputc('^', stderr);
+	fprintf(stderr, RESET "\n");
+}
+
+void tokenize_error(Source *src, int line, int s, int e, const char *fmt, ...) {
+	Token tok    = {0};
+	tok.source      = src;
+	tok.line        = line;
+	tok.start_index = s;
+	tok.end_index   = e;
+
+	va_list ap;
+	va_start(ap, fmt);
+	char *msg = NULL;
+	int   len = vsnprintf(NULL, 0, fmt, ap);
+	va_end(ap);
+	if (len >= 0) {
+		msg = allocate(len + 1, sizeof(char));
+		va_start(ap, fmt);
+		vsnprintf(msg, len + 1, fmt, ap);
+		va_end(ap);
+	}
+	parse_error(&tok, "%s", msg ? msg : fmt);
+	free(msg);
+}
+
 int _debug(char *conv, ...) {
 	va_list args;
 	va_start(args, conv);
@@ -327,8 +411,7 @@ void pnode(Node *node, char *indent) {
 		int         is_last = (i == count - 1);
 		const char *bar     = is_last ? "   " : "│  ";
 
-		char *new_indent = allocate(URA_MAX_SIZE, 1);
-		snprintf(new_indent, URA_MAX_SIZE, "%s%s", indent, bar);
+		char *new_indent = format("%s%s", indent, bar);
 
 		char *connector = is_last ? "└──" : "├──";
 		debug("%s%s", indent, connector);
@@ -427,15 +510,18 @@ int parse_escape_seq(char *input, int s, int e, char *buf, int *j) {
 	}
 }
 
-char *strjoin(char *str0, char *str1, char *str2) {
-	int   len0 = str0 ? strlen(str0) : 0;
-	int   len1 = str1 ? strlen(str1) : 0;
-	int   len2 = str2 ? strlen(str2) : 0;
-	char *res  = allocate(len0 + len1 + len2 + 1, 1);
-	if (str0) strcpy(res, str0);
-	if (str1) strcpy(res + len0, str1);
-	if (str2) strcpy(res + len0 + len1, str2);
-	return res;
+char *format(const char *fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	int len = vsnprintf(NULL, 0, fmt, ap);
+	va_end(ap);
+	if (CHECK(len < 0, "format: vsnprintf measure failed")) return NULL;
+
+	char *buf = allocate(len + 1, sizeof(char));
+	va_start(ap, fmt);
+	vsnprintf(buf, len + 1, fmt, ap);
+	va_end(ap);
+	return buf;
 }
 
 char *to_string(Type type) {
@@ -499,8 +585,10 @@ Token *new_variable(Token *token) {
 	debug(CYAN("new variable [%k] in scope %k\n"), token, scope->token);
 	for (int i = 0; i < scope->variables_count; i++) {
 		Token *curr = scope->variables[i];
-		bool   cond = (strcmp(curr->name, token->name) == 0);
-		CHECK(cond, "Redefinition of %s", token->name);
+		if (strcmp(curr->name, token->name) == 0) {
+			parse_error(token, "redefinition of '%s'", token->name);
+			return token;
+		}
 	}
 	if (scopes_count == 1) token->is_global = true;
 	add_variable(scope, token);
@@ -518,7 +606,7 @@ Token *get_variable(char *name) {
 			if (strcmp(scope->variables[i]->name, name) == 0) return scope->variables[i];
 		}
 	}
-	CHECK(1, "%s not found", name);
+	parse_error(NULL, "'%s' not found", name);
 	return syntax_error()->token;
 }
 
@@ -530,8 +618,10 @@ void add_function(Node *parent, Node *node) {
 Node *new_function(Node *node) {
 	for (int i = 0; i < scope->functions_count; i++) {
 		Node *func = scope->functions[i];
-		bool  cond = strcmp(func->token->name, node->token->name) == 0;
-		CHECK(cond, "Redefinition of %s", node->token->name);
+		if (strcmp(func->token->name, node->token->name) == 0) {
+			parse_error(node->token, "redefinition of function '%s'", node->token->name);
+			return node;
+		}
 	}
 	add_function(scope, node);
 	return node;
@@ -544,7 +634,7 @@ Node *find_function(char *name) {
 			if (strcmp(sc->functions[i]->token->name, name) == 0) return sc->functions[i];
 	}
 	if (current_gen_module) {
-		char *qname = strjoin(current_gen_module, ".", name);
+		char *qname = format("%s.%s", current_gen_module, name);
 		for (int j = scopes_count; j > 0; j--) {
 			Node *sc = scopes[j];
 			for (int i = 0; i < sc->functions_count; i++) {
@@ -562,7 +652,7 @@ Node *find_function(char *name) {
 Node *get_function(char *name) {
 	Node *f = find_function(name);
 	if (f) return f;
-	CHECK(1, "'%s' Not found", name);
+	parse_error(NULL, "function '%s' not found", name);
 	return syntax_error();
 }
 
@@ -570,8 +660,10 @@ Node *new_struct(Node *node) {
 	debug(CYAN("new struct [%s] in scope %k\n"), node->token->name, scope->token);
 	for (int i = 0; i < scope->structs_count; i++) {
 		Token *curr = scope->structs[i]->token;
-		bool   cond = (strcmp(curr->name, node->token->name) == 0);
-		CHECK(cond, "Redefinition of %s", node->token->name);
+		if (strcmp(curr->name, node->token->name) == 0) {
+			parse_error(node->token, "redefinition of struct '%s'", node->token->name);
+			return node;
+		}
 	}
 	resize_array(scope->structs, Node *, scope->structs_size, scope->structs_count);
 	scope->structs[scope->structs_count++] = node;
@@ -691,10 +783,10 @@ void setup_paths(char *path_name) {
 	char *dot_ext = strrchr(base, '.');
 	if (dot_ext) *dot_ext = '\0';
 
-	build_dir     = strjoin(dir, "/build", NULL);
+	build_dir     = format("%s/build", dir);
 	mkdir(build_dir, 0755);
-	char *base_ll = strjoin(base, ".ll", NULL);
-	ll_path       = strjoin(build_dir, "/", base_ll);
+	char *base_ll = format("%s.ll", base);
+	ll_path       = format("%s/%s", build_dir, base_ll);
 	free(base_ll);
 }
 
@@ -1192,8 +1284,8 @@ Node *find_op_overload(Token *left, Token *right, Type op) {
 	Type rt = right->ret_type ? right->ret_type : right->type;
 	char *suffix =
 	    (rt == STRUCT_CALL && right->Struct.ptr) ? right->Struct.ptr->token->name : to_string(rt);
-	char *base = strjoin(left->Struct.ptr->token->name, OP_PREFIX, to_string(op));
-	char *name = strjoin(base, ".", suffix);
+	char *base = format("%s" OP_PREFIX "%s", left->Struct.ptr->token->name, to_string(op));
+	char *name = format("%s.%s", base, suffix);
 	free(base);
 	Node *func = find_function(name);
 	free(name);
@@ -1234,7 +1326,11 @@ void ir_method_call_args(Node *node, Node *func) {
 	for (int i = 0; !found_error && i < node->left->children_count - 1; i++) {
 		Node *carg = node->left->children[i];
 		gen_ir(carg);
-		if (CHECK(carg->token->type == ID, "Undeclared variable %s", carg->token->name)) break;
+		if (carg->token->type == ID) {
+			parse_error(carg->token, "undeclared variable '%s'", carg->token->name);
+			syntax_error();
+			break;
+		}
 		carg->token->used++;
 		Token *src = carg->token;
 		if (i >= dec_args->children_count - 1) continue;
@@ -1251,8 +1347,9 @@ void ir_method_call_args(Node *node, Node *func) {
 			as_n->right              = tgt;
 			node->left->children[i] = as_n;
 		} else if (arg_type != 0 && !compatible(dec_args->children[i]->token, src)) {
-			CHECK(1, "'%s' argument %d: cannot pass %s as %s", node->token->name, i + 1,
-			      to_string(arg_type), to_string(param_type));
+			parse_error(carg->token, "'%s' argument %d: cannot pass %s as %s",
+			            node->token->name, i + 1, to_string(arg_type), to_string(param_type));
+			syntax_error();
 			break;
 		}
 	}
@@ -1265,14 +1362,15 @@ void ir_method_call(Node *node) {
 	Token *obj = obj_node->token;
 	obj->Struct.ptr->token->used++;
 	char *struct_name = obj->Struct.ptr->token->name;
-	char *qname       = strjoin(struct_name, ".", node->token->name);
+	char *qname       = format("%s.%s", struct_name, node->token->name);
 	setName(node->token, qname);
 	free(qname);
 	node->token->is_method_call = false;
 	Node *func                  = get_function(node->token->name);
 	if (!func) return;
 	if (func->token->is_pub) {
-		CHECK(1, "'%s' is a pub fn — use '::'", node->token->name);
+		parse_error(node->token, "'%s' is a `pub fn` — call it with '::' instead of '.'", node->token->name);
+		syntax_error();
 		return;
 	}
 	func->token->used++;
@@ -1292,14 +1390,20 @@ void ir_regular_call_args(Node *node, Node *func) {
 		gen_ir(carg);
 		carg->token->used++;
 		Token *src = carg->token;
-		if (CHECK(src->type == ID, "Undeclared variable %s", carg->token->name)) break;
+		if (src->type == ID) {
+			parse_error(carg->token, "undeclared variable '%s'", carg->token->name);
+			syntax_error();
+			break;
+		}
 		if (i >= dec_args->children_count) continue;
 		bool param_is_ref = dec_args->children[i]->token->is_ref;
 		if (param_is_ref &&
-		    CHECK(src->type == FCALL || (src->type != DOT && src->type != ACCESS && !src->name),
-		          "'%s': ref parameter requires a named variable",
-		          dec_args->children[i]->token->name))
+		    (src->type == FCALL || (src->type != DOT && src->type != ACCESS && !src->name))) {
+			parse_error(carg->token, "'%s': ref parameter requires a named variable",
+			            dec_args->children[i]->token->name);
+			syntax_error();
 			break;
+		}
 		Type param_type   = dec_args->children[i]->token->type;
 		Type arg_type     = src->type;
 		bool param_is_int = includes(param_type, NUMERIC_TYPES, 0);
@@ -1313,9 +1417,10 @@ void ir_regular_call_args(Node *node, Node *func) {
 			as_n->right            = tgt;
 			call_args->children[i] = as_n;
 		} else if (arg_type != 0 && !compatible(dec_args->children[i]->token, src)) {
-			CHECK(1, "'%s' argument %d: cannot pass %s as %s — use 'value as %s'",
-			      node->token->name, i + 1, to_string(arg_type), to_string(param_type),
-			      to_string(param_type));
+			parse_error(carg->token, "'%s' argument %d: cannot pass %s as %s — use 'value as %s'",
+			            node->token->name, i + 1, to_string(arg_type), to_string(param_type),
+			            to_string(param_type));
+			syntax_error();
 			break;
 		}
 	}
@@ -1334,10 +1439,17 @@ void ir_regular_call(Node *node) {
 
 void ir_static_call(Node *node) {
 	Node *func = get_function(node->token->name);
-	if (CHECK(!func, "no pub fn '%s'", node->token->name)) return;
-	if (CHECK(!func->token->is_pub, "'%s' is not a pub fn — use '.' for instance calls",
-	          node->token->name))
+	if (!func) {
+		parse_error(node->token, "no `pub fn` '%s'", node->token->name);
+		syntax_error();
 		return;
+	}
+	if (!func->token->is_pub) {
+		parse_error(node->token, "'%s' is not a `pub fn` — call it with '.' instead of '::'",
+		            node->token->name);
+		syntax_error();
+		return;
+	}
 	func->token->used++;
 	node->token->Fcall.ptr = func;
 	if (func->token->ret_type == STRUCT_CALL) {
@@ -1352,7 +1464,7 @@ bool try_module_call(Node *node) {
 	if (!node->token->is_method_call || !node->left || node->left->children_count == 0) return false;
 	Node *last = node->left->children[node->left->children_count - 1];
 	if (last->token->type != ID || !last->token->name) return false;
-	char *qname = strjoin(last->token->name, ".", node->token->name);
+	char *qname = format("%s.%s", last->token->name, node->token->name);
 	Node *func  = find_function(qname);
 	if (!func) { free(qname); return false; }
 	setName(node->token, qname);
@@ -1427,7 +1539,7 @@ Value emit_copy_construct(Token *param, Token *arg) {
 	if (!arg_is_struct) return NULL;
 	Node *st_node = param->Struct.ptr;
 	if (!st_node) return NULL;
-	char *cp_name = strjoin(st_node->token->name, OP_PREFIX "ASSIGN.", st_node->token->name);
+	char *cp_name = format("%s" OP_PREFIX "ASSIGN.%s", st_node->token->name, st_node->token->name);
 	Value copy_op = LLVMGetNamedFunction(module, cp_name);
 	free(cp_name);
 	if (!copy_op) return NULL;
@@ -1665,7 +1777,7 @@ void schedule_temp_cleanup(Token *token) {
 }
 
 void call_delete(char *type_name, Value self_ptr) {
-	char *qname = strjoin(type_name, ".delete", NULL);
+	char *qname = format("%s.delete", type_name);
 	Value fn    = LLVMGetNamedFunction(module, qname);
 	free(qname);
 	if (!fn) return;
@@ -1887,7 +1999,7 @@ void append_output_arg(Token *tok, char *fmt, int *fc, Value *args, int *nargs) 
 		return;
 	case STRUCT_CALL: {
 		Node *sd       = tok->Struct.ptr;
-		char *out_name = strjoin(sd->token->name, OP_PREFIX "output", NULL);
+		char *out_name = format("%s" OP_PREFIX "output", sd->token->name);
 		Value out_fn   = LLVMGetNamedFunction(module, out_name);
 		free(out_name);
 		if (out_fn) append_struct_with_output_op(tok, fmt, fc, args, nargs, sd, out_fn);
@@ -2027,7 +2139,7 @@ void gen_struct_build_type(Node *node) {
 	int      pos   = node->children_count;
 	TypeRef *types = allocate(pos + 1, sizeof(TypeRef));
 	for (int i = 0; i < pos; i++) types[i] = get_llvm_type(node->children[i]->token);
-	char *struct_name             = strjoin("struct.", node->token->name, NULL);
+	char *struct_name             = format("struct.%s", node->token->name);
 	node->token->llvm.struct_type = _named_struct_type(struct_name, types, pos, 0);
 	free(struct_name);
 	free(types);
@@ -2039,7 +2151,7 @@ void gen_struct_emit_delete(Node *node) {
 	TypeRef ptr_type    = LLVMPointerType(st_type, 0);
 	TypeRef lc_params[] = {ptr_type};
 	TypeRef lc_fn_type  = LLVMFunctionType(vd, lc_params, 1, 0);
-	char   *fname       = strjoin(node->token->name, ".delete", NULL);
+	char   *fname       = format("%s.delete", node->token->name);
 	Value   fn          = _add_function(fname, lc_fn_type);
 	free(fname);
 	Block entry = LLVMAppendBasicBlockInContext(context, fn, "entry");

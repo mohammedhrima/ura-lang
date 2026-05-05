@@ -1,0 +1,10 @@
+// parse_errors/017 — `ref` variable must be initialized at declaration
+use "@/header"
+
+struct Point:
+    x int
+    y int
+
+main():
+    p Point
+    r Point ref
