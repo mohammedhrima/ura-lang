@@ -1,5 +1,4 @@
-// All anvil command implementations. Each cmd_* function is registered in
-// the dispatch table inside anvil.cpp.
+
 
 #include "anvil.h"
 
@@ -18,12 +17,6 @@
 #include <unistd.h>
 #include <vector>
 
-
-// ============================================================================
-// build
-// ============================================================================
-
-
 #include <cstdio>
 #include <cstdlib>
 #include <sstream>
@@ -32,18 +25,15 @@
 #include <vector>
 
 static void mkdirs(const std::string& p) {
-    // One level of mkdir is enough — build/ sits at repo root.
+    
     mkdir(p.c_str(), 0755);
 }
 
-// Returns e.g. "llvm-config-14" if llvm_version > 0, else "llvm-config".
 static std::string llvm_config_bin(int version) {
     if (version <= 0) return "llvm-config";
     return "llvm-config-" + std::to_string(version);
 }
 
-// Run `llvm-config --flags...` and return the token list.
-// Dies on failure so we don't silently build without LLVM flags.
 static std::vector<std::string> llvm_flags(const std::string& bin,
                                            const std::vector<std::string>& args) {
     std::vector<std::string> argv = {bin};
@@ -57,7 +47,6 @@ static std::vector<std::string> llvm_flags(const std::string& bin,
     return split_ws(r.stdout_);
 }
 
-// Strip ld's "ld: warning:" lines from linker stderr — config.sh did this.
 static std::string filter_ld_warnings(const std::string& s) {
     std::string out;
     std::size_t i = 0;
@@ -92,7 +81,7 @@ int cmd_build(const std::vector<std::string>& args) {
         return 1;
     }
 
-    // Assemble: clang sources warn san/release llvm-cflags llvm-ldflags -o output
+    
     std::vector<std::string> argv = {"clang"};
     for (const auto& s : cfg.compile) argv.push_back(resolve(cfg.source + "/" + s));
     argv.insert(argv.end(), cfg.warn.begin(), cfg.warn.end());
@@ -118,11 +107,6 @@ int cmd_build(const std::vector<std::string>& args) {
     return 0;
 }
 
-// ============================================================================
-// test
-// ============================================================================
-
-
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
@@ -145,9 +129,6 @@ struct TestResult {
     std::string  reason;
 };
 
-// ---- IR diff --------------------------------------------------------------
-// Read `path`, drop first 3 lines, drop any line containing any of the
-// `ignores` substrings, return the remainder as a single string.
 std::string normalize_ir(const std::string& path, const std::vector<std::string>& ignores) {
     std::string raw = read_file(path);
     std::string out;
@@ -170,7 +151,6 @@ std::string normalize_ir(const std::string& path, const std::vector<std::string>
     return out;
 }
 
-// ---- child worker ---------------------------------------------------------
 void write_result(const std::string& path, const char* status,
                   const std::string& rel, const std::string& reason) {
     FILE* f = fopen(path.c_str(), "w");
@@ -179,7 +159,6 @@ void write_result(const std::string& path, const char* status,
     fclose(f);
 }
 
-// Run ura compiler silently (stdout/stderr redirected to /dev/null), return code.
 int run_compiler_silent(const std::string& ura_bin, const std::string& file) {
     pid_t pid = fork();
     if (pid < 0) return 127;
@@ -199,20 +178,19 @@ int run_compiler_silent(const std::string& ura_bin, const std::string& file) {
     return -1;
 }
 
-// Whole per-test flow that runs in the forked child. Never returns (calls _exit).
 [[noreturn]] void run_one_test(const std::string& ura_file,
                                const std::string& tests_root,
                                const std::string& ura_bin,
                                const std::vector<std::string>& ignores,
                                const std::string& result_path) {
-    // Relative name used in result lines
+    
     std::string rel = ura_file;
     std::string root_with_slash = tests_root + "/";
     if (rel.rfind(root_with_slash, 0) == 0) rel = rel.substr(root_with_slash.size());
     if (rel.size() >= 4 && rel.substr(rel.size() - 4) == ".ura")
         rel = rel.substr(0, rel.size() - 4);
 
-    // 1. First-line sentinel
+    
     std::string head = read_file(ura_file);
     bool has_comment = head.size() >= 2 && head[0] == '/' && head[1] == '/';
     if (!has_comment) {
@@ -220,7 +198,7 @@ int run_compiler_silent(const std::string& ura_bin, const std::string& file) {
         _exit(0);
     }
 
-    // 2. Check reference .ll exists
+    
     std::string dir  = dirname_of(ura_file);
     std::string base = stem(ura_file);
     std::string ll_expected = dir + base + ".ll";
@@ -230,7 +208,7 @@ int run_compiler_silent(const std::string& ura_bin, const std::string& file) {
         _exit(0);
     }
 
-    // 3. Compile
+    
     int rc = run_compiler_silent(ura_bin, ura_file);
     if (rc != 0) {
         write_result(result_path, "FAIL", rel, "compilation error");
@@ -241,7 +219,7 @@ int run_compiler_silent(const std::string& ura_bin, const std::string& file) {
         _exit(0);
     }
 
-    // 4. Diff
+    
     std::string a = normalize_ir(ll_got,      ignores);
     std::string b = normalize_ir(ll_expected, ignores);
     if (a == b) write_result(result_path, "PASS", rel, "");
@@ -249,19 +227,18 @@ int run_compiler_silent(const std::string& ura_bin, const std::string& file) {
     _exit(0);
 }
 
-// ---- parent: gather + throttle --------------------------------------------
 TestResult parse_result(const std::string& path) {
     TestResult r{Status::FAIL, "", "missing result"};
     std::string s = read_file(path);
     if (s.empty()) return r;
-    // Format: STATUS\tREL\tREASON\n
+    
     auto t1 = s.find('\t');
     if (t1 == std::string::npos) return r;
     auto t2 = s.find('\t', t1 + 1);
     std::string status = s.substr(0, t1);
     std::string rel    = (t2 == std::string::npos) ? s.substr(t1 + 1) : s.substr(t1 + 1, t2 - t1 - 1);
     std::string reason = (t2 == std::string::npos) ? "" : s.substr(t2 + 1);
-    // trim trailing \n
+    
     while (!reason.empty() && (reason.back() == '\n' || reason.back() == '\r')) reason.pop_back();
     if (status == "PASS") r.status = Status::PASS;
     else if (status == "SKIP") r.status = Status::SKIP;
@@ -271,22 +248,20 @@ TestResult parse_result(const std::string& path) {
     return r;
 }
 
-} // namespace
+} 
 
 int cmd_test(const std::vector<std::string>& args) {
     const AnvilConfig& cfg = config();
     std::string ura_bin    = resolve(cfg.output);
     std::string tests_root = resolve(cfg.tests);
-    std::string ura_lib    = resolve(cfg.ura_lib);
 
     if (!is_file(ura_bin)) {
         fprintf(stderr, ANSI_RED "test: compiler not built (%s). Run `build` first." ANSI_RESET "\n",
                 ura_bin.c_str());
         return 1;
     }
-    setenv("URA_LIB", ura_lib.c_str(), 1);
 
-    // Collect .ura files. If `args` is non-empty, each arg selects a subdir under tests/.
+    
     std::vector<std::string> files;
     auto collect = [&](const std::string& p) {
         if (p.size() >= 4 && p.substr(p.size() - 4) == ".ura") files.push_back(p);
@@ -308,7 +283,7 @@ int cmd_test(const std::vector<std::string>& args) {
 
     printf(ANSI_YELLOW "Running %zu tests..." ANSI_RESET "\n", files.size());
 
-    // Tmpdir for result files
+    
     char tdir_tpl[] = "/tmp/anvil_test.XXXXXX";
     if (!mkdtemp(tdir_tpl)) {
         fprintf(stderr, ANSI_RED "test: mkdtemp failed" ANSI_RESET "\n");
@@ -333,13 +308,13 @@ int cmd_test(const std::vector<std::string>& args) {
         if (pid == 0) {
             std::string out = tdir + "/" + std::to_string(i);
             run_one_test(files[i], tests_root, ura_bin, cfg.ignore_ir, out);
-            // unreachable
+            
         }
         running.insert(pid);
     }
     while (!running.empty()) reap_one();
 
-    // Aggregate results in original order
+    
     int p = 0, f = 0, s = 0;
     for (std::size_t i = 0; i < files.size(); i++) {
         TestResult r = parse_result(tdir + "/" + std::to_string(i));
@@ -356,7 +331,7 @@ int cmd_test(const std::vector<std::string>& args) {
         }
     }
 
-    // Cleanup tmpdir
+    
     for (std::size_t i = 0; i < files.size(); i++) unlink((tdir + "/" + std::to_string(i)).c_str());
     rmdir(tdir.c_str());
 
@@ -367,11 +342,6 @@ int cmd_test(const std::vector<std::string>& args) {
     return f;
 }
 
-// ============================================================================
-// check
-// ============================================================================
-
-
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -380,14 +350,14 @@ namespace {
 
 struct Check {
     const char* name;
-    const char* probe;      // `<name> --version` style; first line is printed
+    const char* probe;      
     bool        required;
 };
 
 void print_tool(const Check& c, int& missing) {
     CaptureResult r = run_capture({"/bin/sh", "-c", std::string(c.probe) + " 2>&1 | head -1"});
     if (r.code == 0 && !r.stdout_.empty()) {
-        // Strip trailing newline
+        
         std::string ver = r.stdout_;
         while (!ver.empty() && (ver.back() == '\n' || ver.back() == '\r')) ver.pop_back();
         printf("  " ANSI_GREEN "✓" ANSI_RESET "  %-18s " ANSI_DIM "%s" ANSI_RESET "\n",
@@ -400,7 +370,7 @@ void print_tool(const Check& c, int& missing) {
     }
 }
 
-} // namespace
+} 
 
 int cmd_check(const std::vector<std::string>&) {
     const AnvilConfig& cfg = config();
@@ -427,11 +397,6 @@ int cmd_check(const std::vector<std::string>&) {
     }
     return missing == 0 ? 0 : 1;
 }
-
-// ============================================================================
-// install
-// ============================================================================
-
 
 #include <cstdio>
 #include <cstdlib>
@@ -471,7 +436,7 @@ int cmd_install(const std::vector<std::string>&) {
                         + " clang-" + vstr + " llvm-" + vstr + "-tools clang-format";
         int rc = run_sh(cmd);
         if (rc != 0) return rc;
-        // Link unversioned tools → -N variants so the compiler build sees them.
+        
         for (const char* t : {"clang", "clang++", "llc", "llvm-config"}) {
             std::string v = std::string(t) + "-" + vstr;
             if (has_tool(v)) {
@@ -493,13 +458,6 @@ int cmd_install(const std::vector<std::string>&) {
     return 1;
 }
 
-// ============================================================================
-// manage
-// ============================================================================
-
-// copy, update-tests, update-projects — commands that manage test artifacts.
-
-
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
@@ -511,7 +469,6 @@ int cmd_install(const std::vector<std::string>&) {
 #include <unistd.h>
 #include <vector>
 
-// ---- shared helpers -------------------------------------------------------
 namespace {
 
 int mkdir_p(const std::string& path) {
@@ -523,7 +480,6 @@ int mkdir_p(const std::string& path) {
     return mkdir(path.c_str(), 0755);
 }
 
-// Copy a file byte-for-byte. Returns 0 on success.
 int copy_file(const std::string& src, const std::string& dst) {
     FILE* in  = fopen(src.c_str(), "rb");
     if (!in) return -1;
@@ -538,8 +494,6 @@ int copy_file(const std::string& src, const std::string& dst) {
     return 0;
 }
 
-// Run the ura compiler on `ura_file` with -no-exec -no-debug, streaming output
-// to /dev/null. Returns the exit code.
 int compile_silent(const std::string& ura_bin, const std::string& ura_file) {
     pid_t pid = fork();
     if (pid < 0) return 127;
@@ -559,9 +513,6 @@ int compile_silent(const std::string& ura_bin, const std::string& ura_file) {
     return -1;
 }
 
-// Extract the path string from a first-line comment:
-//   "// folder/name" → "folder/name"
-// Matches [a-zA-Z0-9_/-]+. Returns empty string if no match.
 std::string parse_path_comment(const std::string& content) {
     std::size_t i = 0;
     if (content.size() < 2 || content[0] != '/' || content[1] != '/') return "";
@@ -575,14 +526,13 @@ std::string parse_path_comment(const std::string& content) {
         i++;
     }
     std::string p = content.substr(start, i - start);
-    // Strip trailing ".ura" if present
+    
     if (p.size() >= 4 && p.substr(p.size() - 4) == ".ura") p.resize(p.size() - 4);
     return p;
 }
 
-} // namespace
+} 
 
-// ---- copy -----------------------------------------------------------------
 int cmd_copy(const std::vector<std::string>& args) {
     if (args.empty()) {
         fprintf(stderr, ANSI_RED "usage: copy <file.ura>" ANSI_RESET
@@ -627,7 +577,7 @@ int cmd_copy(const std::vector<std::string>& args) {
         return 1;
     }
 
-    // Generated .ll lives next to the source under build/<basename>.ll
+    
     std::string src_dir  = dirname_of(ura_src);
     std::string src_stem = stem(ura_src);
     std::string ll_src   = src_dir + "build/" + src_stem + ".ll";
@@ -647,7 +597,6 @@ int cmd_copy(const std::vector<std::string>& args) {
     return 0;
 }
 
-// ---- update-tests ---------------------------------------------------------
 int cmd_update_tests(const std::vector<std::string>&) {
     const AnvilConfig& cfg = config();
     std::string ura_bin = resolve(cfg.output);
@@ -692,9 +641,6 @@ int cmd_update_tests(const std::vector<std::string>&) {
     return failed;
 }
 
-// ---- update-projects ------------------------------------------------------
-// Rewrite the first-line path comment in every projects/*.ura to match its
-// location. Mirrors config.sh update_projects().
 int cmd_update_projects(const std::vector<std::string>&) {
     const AnvilConfig& cfg = config();
     std::string projects_dir = resolve(cfg.projects_dir);
@@ -708,7 +654,7 @@ int cmd_update_projects(const std::vector<std::string>&) {
 
     int updated = 0;
     for (const auto& path : files) {
-        // expected first line: "// <rel-from-tests>-without-.ura>"
+        
         std::string rel = path;
         if (rel.rfind(tests_dir + "/", 0) == 0) rel = rel.substr(tests_dir.size() + 1);
         if (rel.size() >= 4 && rel.substr(rel.size() - 4) == ".ura")
@@ -723,10 +669,10 @@ int cmd_update_projects(const std::vector<std::string>&) {
         std::string rest = (nl == std::string::npos) ? "" : body.substr(nl + 1);
         std::string new_body;
         if (first.size() >= 2 && first[0] == '/' && first[1] == '/') {
-            // Replace existing comment
+            
             new_body = expected + "\n" + rest;
         } else {
-            // Prepend comment
+            
             new_body = expected + "\n" + body;
         }
         FILE* f = fopen(path.c_str(), "w");
@@ -739,14 +685,6 @@ int cmd_update_projects(const std::vector<std::string>&) {
     printf(ANSI_GREEN "Done: %d file(s) updated" ANSI_RESET "\n", updated);
     return 0;
 }
-
-// ============================================================================
-// release
-// ============================================================================
-
-// release, release-projects, release-extension — repo syncing.
-// Default: dry-run (prints the plan). Pass --confirm to actually push.
-
 
 #include <cstdio>
 #include <cstdlib>
@@ -762,7 +700,6 @@ bool flag_set(const std::vector<std::string>& args, const char* name) {
     return false;
 }
 
-// Re-implementation of config.sh:_sync_repo. Returns 0 on success.
 int sync_repo(const std::string& src_dir,
               const std::string& remote,
               const std::string& label,
@@ -776,7 +713,7 @@ int sync_repo(const std::string& src_dir,
         return 0;
     }
 
-    // mktemp + trap rm -rf behavior, all in one shell line so we get cleanup.
+    
     std::string cmd =
         "set -e; "
         "tmp=$(mktemp -d); "
@@ -795,9 +732,8 @@ int sync_repo(const std::string& src_dir,
     return run_sh(cmd);
 }
 
-} // namespace
+} 
 
-// ---- release-anvil --------------------------------------------------------
 int cmd_release_anvil(const std::vector<std::string>& args) {
     bool confirm = flag_set(args, "--confirm");
     std::string src    = project_root() + "/config/anvil";
@@ -809,7 +745,6 @@ int cmd_release_anvil(const std::vector<std::string>& args) {
     return sync_repo(src, remote, "anvil", confirm);
 }
 
-// ---- release-extension ----------------------------------------------------
 int cmd_release_extension(const std::vector<std::string>& args) {
     bool confirm = flag_set(args, "--confirm");
     std::string src    = project_root() + "/config/vscode-extension";
@@ -821,7 +756,6 @@ int cmd_release_extension(const std::vector<std::string>& args) {
     return sync_repo(src, remote, "vscode-extension", confirm);
 }
 
-// ---- release-projects -----------------------------------------------------
 int cmd_release_projects(const std::vector<std::string>& args) {
     bool confirm = flag_set(args, "--confirm");
     const AnvilConfig& cfg = config();
@@ -847,7 +781,6 @@ int cmd_release_projects(const std::vector<std::string>& args) {
     return rc;
 }
 
-// Build avatar (release mode) and return its binary path, or empty on failure.
 static std::string build_avatar() {
     printf(ANSI_YELLOW "Building avatar..." ANSI_RESET "\n");
     std::string dir = project_root() + "/src/tools/avatar";
@@ -856,13 +789,12 @@ static std::string build_avatar() {
     return dir + "/avatar";
 }
 
-// Create build/ura-release-<date>.tar.gz with ura + avatar + ura-lib/.
 static int package_release(const std::string& ura_bin,
                            const std::string& avatar_bin,
                            const std::string& ura_lib_dir)
 {
     std::string tarball = project_root() + "/build/ura-release-" + today_string() + ".tar.gz";
-    // Stage files in a scratch dir so the tarball has clean layout.
+    
     std::string cmd =
         "set -e; "
         "stage=$(mktemp -d); "
@@ -887,12 +819,6 @@ static int package_release(const std::string& ura_bin,
     return run_sh(cmd);
 }
 
-// ---- release --------------------------------------------------------------
-// Full release pipeline:
-//   1. build release ura compiler
-//   2. build release avatar
-//   3. package tarball
-//   4. sync ura-lib + projects + extension (only with --confirm)
 int cmd_release(const std::vector<std::string>& args) {
     bool confirm = flag_set(args, "--confirm");
     const AnvilConfig& cfg = config();
@@ -929,30 +855,21 @@ int cmd_release(const std::vector<std::string>& args) {
     return 0;
 }
 
-// ============================================================================
-// simple
-// ============================================================================
-
-// Collection of short, shell-wrapper commands: reload, leaks, indent, examples.
-
-
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <string>
 #include <vector>
 
-// ---- reload ---------------------------------------------------------------
 int cmd_reload(const std::vector<std::string>&) {
     invalidate_config();
-    (void)config();   // reload now so errors surface immediately
+    (void)config();
+    const char *ura_lib = getenv("URA_LIB");
     printf(ANSI_GREEN "Config reloaded" ANSI_RESET "\n");
+    printf("URA_LIB=%s\n", ura_lib ? ura_lib : "(unset)");
     return 0;
 }
 
-// ---- leaks ----------------------------------------------------------------
-// Matches config.sh check_leaks(): runs <exe> with LSan enabled and a
-// suppression file at config/lsan.supp.
 int cmd_leaks(const std::vector<std::string>& args) {
     if (args.empty()) {
         fprintf(stderr, ANSI_RED "usage: leaks <executable> [args...]" ANSI_RESET "\n");
@@ -964,8 +881,6 @@ int cmd_leaks(const std::vector<std::string>& args) {
     return run_sh(cmd);
 }
 
-// ---- indent ---------------------------------------------------------------
-// Shells out to clang-format + merge_cases.py, matching config.sh indent().
 int cmd_indent(const std::vector<std::string>&) {
     if (!has_tool("clang-format")) {
         fprintf(stderr, ANSI_RED "indent: clang-format not found" ANSI_RESET "\n");
@@ -973,7 +888,7 @@ int cmd_indent(const std::vector<std::string>&) {
     }
     printf(ANSI_YELLOW "Formatting..." ANSI_RESET "\n");
     std::string src = resolve(config().source);
-    // Collect .c and .h files
+    
     std::vector<std::string> files;
     walk(src, [&](const std::string& p) {
         if ((p.size() >= 2 && p.substr(p.size() - 2) == ".c") ||
@@ -987,15 +902,12 @@ int cmd_indent(const std::vector<std::string>&) {
     if (rc != 0) return rc;
 
     std::string mc = project_root() + "/config/merge_cases.py";
-    if (!is_file(mc)) return 0;             // optional, silently skip
+    if (!is_file(mc)) return 0;             
     argv = {"python3", mc};
     argv.insert(argv.end(), files.begin(), files.end());
     return run_stream(argv);
 }
 
-// ---- examples -------------------------------------------------------------
-// Concatenate all test .ura files into <root>/examples.ura with headers,
-// mirroring config.sh examples().
 int cmd_examples(const std::vector<std::string>&) {
     std::string tests = resolve(config().tests);
     std::string out   = project_root() + "/examples.ura";
@@ -1017,7 +929,7 @@ int cmd_examples(const std::vector<std::string>&) {
     int count = 0;
     for (const auto& p : files) {
         std::string body = read_file(p);
-        // "category" = dirname relative to tests root
+        
         std::string rel = p;
         if (rel.rfind(tests + "/", 0) == 0) rel = rel.substr(tests.size() + 1);
         auto slash = rel.find_last_of('/');
@@ -1043,14 +955,6 @@ int cmd_examples(const std::vector<std::string>&) {
     return 0;
 }
 
-// ============================================================================
-// docker
-// ============================================================================
-
-// shell, docker-build — Docker integration for running the Linux x86_64
-// toolchain (ASan works here, unlike on macOS 26).
-
-
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -1074,18 +978,14 @@ int build_image_if_needed() {
     return run_sh(cmd);
 }
 
-} // namespace
+} 
 
-// ---- docker-build ---------------------------------------------------------
 int cmd_docker_build(const std::vector<std::string>&) {
     std::string cmd = "docker build --platform linux/amd64 -t ";
     cmd += IMAGE; cmd += " '"; cmd += project_root(); cmd += "'";
     return run_sh(cmd);
 }
 
-// ---- shell ----------------------------------------------------------------
-// Launch an interactive Linux shell inside the ura-dev container with the
-// repo mounted at /workspace.
 int cmd_shell(const std::vector<std::string>&) {
     if (!has_tool("docker")) {
         fprintf(stderr, ANSI_RED "shell: docker not found in PATH" ANSI_RESET "\n");

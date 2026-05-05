@@ -845,7 +845,6 @@ Node *syntax_error() {
 	static Node *node;
 	if (node == NULL) node = new_node(new_token(SYNTAX_ERROR, -1));
 	return node;
-	return node;
 }
 
 // add_variable
@@ -1872,9 +1871,9 @@ Node *access_node() // . []
 	return left;
 }
 
-static void parse_func_params(Node *node);
+static void params_node(Node *node);
 
-static Node *parse_var_dec(Token *token) {
+static Node *var_dec_node(Token *token) {
 	// Literal value: "hello", 1, 'c'
 	if (token->type != ID && !token->is_dec && !token->name) return new_node(token);
 	// int, char, chars, etc. declaration keyword
@@ -2021,7 +2020,7 @@ static Node *parse_var_dec(Token *token) {
 			node->token->type     = FDEC;
 			node->token->ret_type = INT;
 
-			parse_func_params(node);
+			params_node(node);
 			if (found_error) return syntax_error();
 
 			EXPECT_TOKEN(DOTS, "expected : after main() declaration");
@@ -2073,9 +2072,9 @@ static Node *parse_var_dec(Token *token) {
 	return syntax_error();
 }
 
-static Node *parse_fdec(Token *token);
+static Node *fdec_node(Token *token);
 
-static Node *parse_struct_def(Token *token) {
+static Node *struct_def_node(Token *token) {
 	Node  *node = new_node(token);
 	Token *st_name;
 	if (CHECK(!(st_name = find(ID, 0)), "expected identifier after struct definition")) return NULL;
@@ -2096,8 +2095,8 @@ static Node *parse_struct_def(Token *token) {
 				exit_scope();
 				return syntax_error();
 			}
-			fdec_tok->is_pub = true; // set before parse_fdec so self is NOT injected
-			Node *child      = parse_fdec(fdec_tok);
+			fdec_tok->is_pub = true; // set before fdec_node so self is NOT injected
+			Node *child      = fdec_node(fdec_tok);
 			if (!child || child->token->type != FDEC) {
 				CHECK(1, "struct '%s': expected fn after pub", node->token->name);
 				exit_scope();
@@ -2130,7 +2129,7 @@ static Node *parse_struct_def(Token *token) {
 			if (op_tok->type == DELETE) {
 				Token *fdec_tok = new_token(FDEC, op_kw->space);
 				setName(fdec_tok, "delete");
-				Node *child = parse_fdec(fdec_tok);
+				Node *child = fdec_node(fdec_tok);
 				if (CHECK(child->token->ret_type != VOID,
 				          "struct '%s': operator delete must return void", node->token->name)) {
 					exit_scope();
@@ -2152,7 +2151,7 @@ static Node *parse_struct_def(Token *token) {
 			if (op_tok->type == OUTPUT) {
 				Token *fdec_tok = new_token(FDEC, op_kw->space);
 				setName(fdec_tok, "output");
-				Node *child     = parse_fdec(fdec_tok);
+				Node *child     = fdec_node(fdec_tok);
 				char *qualified = strjoin(node->token->name, ".operator.output", "");
 				setName(child->token, qualified);
 				free(qualified);
@@ -2163,7 +2162,7 @@ static Node *parse_struct_def(Token *token) {
 			Token *fdec_tok = new_token(FDEC, op_kw->space);
 			setName(fdec_tok, op_base);
 			free(op_base);
-			Node *child = parse_fdec(fdec_tok);
+			Node *child = fdec_node(fdec_tok);
 			// suffix with first param type for unique overload names
 			// e.g. "operator.ASSIGN.CHARS" or "operator.ASSIGN.String"
 			char *op_named;
@@ -2203,7 +2202,7 @@ static Node *parse_struct_def(Token *token) {
 	return node;
 }
 
-static Node *parse_enum_def(Token *token) {
+static Node *enum_def_node(Token *token) {
 	Token *ename;
 	if (CHECK(!(ename = find(ID, 0)), "expected identifier after enum")) return NULL;
 	if (CHECK(!find(DOTS, 0), "expected ':' after enum name"))           return NULL;
@@ -2232,7 +2231,7 @@ static Node *parse_enum_def(Token *token) {
 	return node;
 }
 
-static Node *parse_if(Token *token) {
+static Node *if_node(Token *token) {
 	Node *node = new_node(token);
 	enter_scope(node);
 
@@ -2283,8 +2282,8 @@ static Node *parse_if(Token *token) {
 
 // Parse a function's parameter list (caller has already consumed `(`). Walks
 // up to and including the closing `)`. On any error, sets found_error via
-// syntax_error() and returns. Used by parse_fdec and the `main` declaration.
-static void parse_func_params(Node *node) {
+// syntax_error() and returns. Used by fdec_node and the `main` declaration.
+static void params_node(Node *node) {
 	node->left = new_node(new_token(ARGS, node->token->space));
 
 	Token *last;
@@ -2378,7 +2377,7 @@ static void parse_func_params(Node *node) {
 	CHECK(!found_error && last && last->type != RPAR, "expected ) after function declaration");
 }
 
-static Node *parse_fdec(Token *token) {
+static Node *fdec_node(Token *token) {
 	Node *node = new_node(token);
 	if (!node->token->name || strcmp(node->token->name, "fn") == 0) {
 		Token *fname = find(ID, 0);
@@ -2393,7 +2392,7 @@ static Node *parse_fdec(Token *token) {
 
 	enter_scope(node);
 	EXPECT_TOKEN(LPAR, "expected ( after function declaration");
-	parse_func_params(node);
+	params_node(node);
 	if (found_error) return syntax_error();
 
 	// If inside a struct, prepend implicit 'self' parameter (skip for pub/static fns)
@@ -2505,7 +2504,7 @@ static Node *parse_fdec(Token *token) {
 	return node;
 }
 
-static Node *parse_return(Token *token) {
+static Node *return_node(Token *token) {
 	// TODO: check if return type is compatible with function in current scope (done in gen_ir)
 	Node *node = new_node(token);
 	for (int i = scopes_count; i >= 0; i--) {
@@ -2538,7 +2537,7 @@ Node *prime_node() {
 		CHECK(1, "'pub' is only valid inside struct definitions");
 		return syntax_error();
 	}
-	if ((token = find(ID, DATA_TYPES, 0))) return parse_var_dec(token);
+	if ((token = find(ID, DATA_TYPES, 0))) return var_dec_node(token);
 	if ((token = find(MODULE, 0)))         {
 		Token *id = find(ID, 0);
 		CHECK(!id, "expect module identifier after 'mod'");
@@ -2558,9 +2557,9 @@ Node *prime_node() {
 
 		return node;
 	}
-	if ((token = find(STRUCT_DEF, 0))) return parse_struct_def(token);
-	if ((token = find(ENUM_DEF, 0)))   return parse_enum_def(token);
-	if ((token = find(IF, 0)))         return parse_if(token);
+	if ((token = find(STRUCT_DEF, 0))) return struct_def_node(token);
+	if ((token = find(ENUM_DEF, 0)))   return enum_def_node(token);
+	if ((token = find(IF, 0)))         return if_node(token);
 
 	if ((token = find(WHILE, 0))) {
 		// while layout:
@@ -2628,8 +2627,8 @@ Node *prime_node() {
 		return expr_node();
 	}
 
-	if ((token = find(FDEC, 0)))   return parse_fdec(token);
-	if ((token = find(RETURN, 0))) return parse_return(token);
+	if ((token = find(FDEC, 0)))   return fdec_node(token);
+	if ((token = find(RETURN, 0))) return return_node(token);
 
 	// ref expr — take address of variable
 	if ((token = find(REF, 0))) {

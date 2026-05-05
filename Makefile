@@ -2,19 +2,31 @@ IMAGE     := ura-dev
 CONTAINER := ura-lang
 MOUNT     := /ura-lang
 PLATFORM  := linux/amd64
+ANVIL_BIN := config/anvil/build/linux/anvil
 
-.PHONY: image rebuild shell stop clean
+.PHONY: image re shell stop clean anvil
 
-# Build the image only if it doesn't exist. Use `make rebuild` to force.
 image:
 	@docker image inspect $(IMAGE) >/dev/null 2>&1 || \
 	    docker build --platform $(PLATFORM) -t $(IMAGE) .
 
-rebuild:
+re:
+	-docker rm -f $(CONTAINER)
 	docker build --platform $(PLATFORM) -t $(IMAGE) .
 
-# Create the container once; reuse it on subsequent `make shell` calls.
-shell: image
+$(ANVIL_BIN): | image
+	docker run --rm --platform $(PLATFORM) \
+	    -v "$(CURDIR):$(MOUNT)" \
+	    -w $(MOUNT)/config/anvil \
+	    $(IMAGE) make
+
+anvil: image
+	docker run --rm --platform $(PLATFORM) \
+	    -v "$(CURDIR):$(MOUNT)" \
+	    -w $(MOUNT)/config/anvil \
+	    $(IMAGE) make re
+
+shell: image $(ANVIL_BIN)
 	@if docker container inspect $(CONTAINER) >/dev/null 2>&1; then \
 	    docker start -ai $(CONTAINER); \
 	else \

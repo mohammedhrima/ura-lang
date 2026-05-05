@@ -31,24 +31,15 @@ RUN for t in clang clang++ llc llvm-config clang-format lld ld.lld; do \
 
 WORKDIR /ura-lang
 
-# Build anvil and avatar at image time, install both to PATH. Sources are
-# baked in; the mounted /ura-lang copy stays available for rebuilds.
-COPY config/anvil /opt/anvil
-RUN make -C /opt/anvil \
-    && install -m 755 /opt/anvil/anvil /usr/local/bin/anvil \
-    && rm -rf /opt/anvil
-
-COPY src/tools/avatar /opt/avatar
-RUN make -C /opt/avatar \
-    && install -m 755 /opt/avatar/avatar /usr/local/bin/avatar \
-    && rm -rf /opt/avatar
-
-# Minimal interactive shell setup: a friendly alias, no config.sh sourcing
-# (config.sh is gone — anvil replaces it).
+# anvil is NOT baked into the image. It is built into the mounted volume
+# (config/anvil/build/linux/anvil) so source edits on the host are visible
+# both ways. The top-level Makefile ensures the binary exists before
+# `make shell`. PATH below picks it up.
 RUN printf '%s\n' \
         '[[ $- == *i* ]] || return' \
         'alias clean="clear && printf '\''\e[3J'\''"' \
-        'export PATH=$PATH:/ura-lang/build' \
+        'export PATH=/ura-lang/config/anvil/build/linux:$PATH:/ura-lang/build' \
+        'export URA_LIB=/ura-lang/src/ura-lib' \
         'export TERM=xterm-256color' \
         'PS1='\''${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '\''' \
         'alias ls="ls --color=auto"' \

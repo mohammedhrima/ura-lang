@@ -41,3 +41,5 @@
     // do something
 + use match instead of switch, (no need for break keyword)
 + clean the header file when you finish
+
++ you can do clang file.ll -o exe.out
