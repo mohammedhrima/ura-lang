@@ -20,6 +20,9 @@ llvm/build/
 # Src build
 src/build/
 
+# anvil build outputs (per-OS)
+config/anvil/build/
+
 # VSCode extension
 config/vscode-extension/node_modules/
 config/vscode-extension/*.vsix

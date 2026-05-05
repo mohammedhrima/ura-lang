@@ -1,7 +1,3 @@
-// anvil — single-binary build tool for the Ura language project.
-// All shared code (util, fs, paths, exec, config, command dispatch, main).
-// Per-command implementations live in commands.cpp.
-
 #include "anvil.h"
 
 #include <cctype>
@@ -22,13 +18,6 @@
 #include <unistd.h>
 
 extern char** environ;
-
-
-// ============================================================================
-// util — OS detection, today's date
-// ============================================================================
-
-
 
 const std::string& detect_os() {
     static std::string cached;
@@ -56,12 +45,6 @@ std::string today_string() {
     return buf;
 }
 
-// ============================================================================
-// fs — filesystem helpers + project-path resolution
-// ============================================================================
-
-
-
 void walk(const std::string& root, const std::function<void(const std::string&)>& cb) {
     DIR* d = opendir(root.c_str());
     if (!d) return;
@@ -71,7 +54,7 @@ void walk(const std::string& root, const std::function<void(const std::string&)>
         struct stat st;
         if (lstat(full.c_str(), &st) != 0) continue;
         if (S_ISDIR(st.st_mode)) {
-            if (std::strcmp(e->d_name, "build") == 0) continue;     // prune
+            if (std::strcmp(e->d_name, "build") == 0) continue;     
             walk(full, cb);
         } else if (S_ISREG(st.st_mode)) {
             cb(full);
@@ -109,10 +92,6 @@ std::string stem(const std::string& path) {
     return dot == std::string::npos ? base : base.substr(0, dot);
 }
 
-// ----------------------------------------------------------------------------
-// Project paths (anvil.toml resolution)
-// ----------------------------------------------------------------------------
-
 static std::string g_root;
 static std::string g_toml;
 static bool        g_resolved = false;
@@ -122,8 +101,6 @@ static std::string realpath_or(const std::string& p) {
     return realpath(p.c_str(), buf) ? std::string(buf) : p;
 }
 
-// Discover: is there an anvil.toml in the current working directory?
-// Unlike cargo/git, we do NOT walk up — match the `make` convention.
 static void resolve_cwd() {
     char buf[4096];
     if (!getcwd(buf, sizeof(buf))) return;
@@ -157,13 +134,6 @@ std::string resolve(const std::string& rel) {
     const auto& r = project_root();
     return r.empty() ? rel : (r + "/" + rel);
 }
-
-// ============================================================================
-// exec — process execution + small string helpers
-// ============================================================================
-
-
-
 
 static std::vector<char*> to_argv(const std::vector<std::string>& argv) {
     std::vector<char*> out;
@@ -272,12 +242,6 @@ bool has_tool(const std::string& tool) {
     return r.code == 0;
 }
 
-// ============================================================================
-// config — anvil.toml parser + AnvilConfig struct
-// ============================================================================
-
-
-
 static AnvilConfig g_cfg;
 static bool        g_loaded = false;
 
@@ -288,10 +252,6 @@ static bool        g_loaded = false;
 
 namespace {
 
-// Tiny TOML reader for the subset anvil.toml uses:
-//   - top-level keys only (no [tables])
-//   - values: "string" | integer | ["string", ...]
-//   - line comments starting with #
 struct Toml {
     std::map<std::string, std::string>              strs;
     std::map<std::string, int>                      ints;
@@ -314,7 +274,6 @@ struct Toml {
     }
 };
 
-// Skip whitespace and # comments to the next meaningful character.
 static void skip_ws(const std::string& s, size_t& i) {
     while (i < s.size()) {
         if (std::isspace(static_cast<unsigned char>(s[i]))) { i++; continue; }
@@ -323,8 +282,6 @@ static void skip_ws(const std::string& s, size_t& i) {
     }
 }
 
-// Read a "quoted" string starting at the opening quote. Advances i past the
-// closing quote. Supports the basic escapes: \\ \" \n \t \r.
 static std::string read_quoted(const std::string& s, size_t& i, const std::string& path) {
     if (i >= s.size() || s[i] != '"') die("expected '\"' in " + path);
     i++;
@@ -345,7 +302,7 @@ static std::string read_quoted(const std::string& s, size_t& i, const std::strin
         }
     }
     if (i >= s.size()) die("unterminated string in " + path);
-    i++; // consume closing "
+    i++; 
     return out;
 }
 
@@ -361,7 +318,7 @@ void Toml::parse(const std::string& path) {
         skip_ws(s, i);
         if (i >= s.size()) break;
 
-        // key (alnum + _ - .)
+        
         size_t k0 = i;
         while (i < s.size() &&
                (std::isalnum(static_cast<unsigned char>(s[i])) || s[i] == '_' ||
@@ -401,7 +358,7 @@ void Toml::parse(const std::string& path) {
     }
 }
 
-} // namespace
+} 
 
 static void load() {
     const std::string& path = anvil_toml_path();
@@ -431,6 +388,9 @@ static void load() {
     g_cfg.projects_dir   = t.str("projects_dir");
     g_cfg.project_url    = t.str("project_url");
 
+    if (!g_cfg.ura_lib.empty())
+        setenv("URA_LIB", resolve(g_cfg.ura_lib).c_str(), 1);
+
     g_loaded = true;
 }
 
@@ -443,30 +403,6 @@ void invalidate_config() {
     g_loaded = false;
     g_cfg    = {};
 }
-
-// ============================================================================
-// commands — dispatch table
-// ============================================================================
-
-
-int cmd_help(const std::vector<std::string>& args);
-int cmd_build(const std::vector<std::string>& args);
-int cmd_test(const std::vector<std::string>& args);
-int cmd_reload(const std::vector<std::string>& args);
-int cmd_leaks(const std::vector<std::string>& args);
-int cmd_indent(const std::vector<std::string>& args);
-int cmd_examples(const std::vector<std::string>& args);
-int cmd_check(const std::vector<std::string>& args);
-int cmd_install(const std::vector<std::string>& args);
-int cmd_copy(const std::vector<std::string>& args);
-int cmd_update_tests(const std::vector<std::string>& args);
-int cmd_update_projects(const std::vector<std::string>& args);
-int cmd_release(const std::vector<std::string>& args);
-int cmd_release_projects(const std::vector<std::string>& args);
-int cmd_release_extension(const std::vector<std::string>& args);
-int cmd_release_anvil(const std::vector<std::string>& args);
-int cmd_shell(const std::vector<std::string>& args);
-int cmd_docker_build(const std::vector<std::string>& args);
 
 static const std::vector<Command> g_commands = {
     {"build",             cmd_build,             "Compile the ura compiler (flags: --san, --release)"},
@@ -495,12 +431,6 @@ const Command* find_command(const std::string& name) {
     return nullptr;
 }
 
-// ============================================================================
-// main — entry point
-// ============================================================================
-
-
-
 static int print_usage(int rc) {
     printf("\n  " ANSI_BOLD "anvil" ANSI_RESET "  ura-lang dev tool\n\n");
     printf("  " ANSI_DIM "usage: anvil [-f <anvil.toml>] <command> [args]" ANSI_RESET "\n\n");
@@ -514,7 +444,6 @@ static int print_usage(int rc) {
 int cmd_help(const std::vector<std::string>&) { return print_usage(0); }
 
 int main(int argc, char** argv) {
-    // Strip `-f <path>` wherever it appears; everything else is the command.
     std::vector<std::string> cleaned;
     cleaned.reserve(argc);
     for (int i = 1; i < argc; i++) {

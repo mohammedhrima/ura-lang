@@ -41,13 +41,17 @@ typedef struct _IO_FILE *File;
 #define FUNC (char *)__func__
 #define FILE (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
-#define URA_MAX_SIZE 999999
+#define URA_MAX_SIZE       999999
+#define LIST_NAME_MAX      256
+#define LIST_SOURCE_MAX    4096
+#define LIST_STRUCT_PREFIX "__list_"
+#define OP_PREFIX          ".operator."
 
 #define TOKENIZE 1
 #define TAB      3
 #define AST      1
 #define IR       1
-#define OPTIMIZE 1
+#define OPTIMIZE 0
 #define ASM      1
 
 #define CHECK(cond, fmt, ...) _check(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)
@@ -62,6 +66,16 @@ typedef struct _IO_FILE *File;
 		if (!find_token) {                                                                           \
 			CHECK(1, fmt, ##__VA_ARGS__);                                                             \
 			return syntax_error();                                                                    \
+		}                                                                                            \
+	}
+
+#define EXPECT_TOKEN_VOID(type, fmt, ...)                                                          \
+	{                                                                                               \
+		Token *find_token = find(type, 0);                                                           \
+		if (!find_token) {                                                                           \
+			CHECK(1, fmt, ##__VA_ARGS__);                                                             \
+			syntax_error();                                                                           \
+			return;                                                                                   \
 		}                                                                                            \
 	}
 
@@ -121,6 +135,7 @@ typedef struct Token      Token;
 typedef struct Keyword    Keyword;
 typedef struct Node       Node;
 typedef struct LLVM       LLVM;
+typedef struct AutoClean  AutoClean;
 typedef enum Type         Type;
 
 typedef LLVMTypeRef       TypeRef;
@@ -192,26 +207,31 @@ struct Keyword {
 };
 
 struct LLVM {
-	bool is_set;
-	bool is_loaded;
-	//	Value   array_size;
-	Value elem;
-	//	Value  *dims;
-	//	int     dims_count;
-	//	int     dims_size;
-	//	Block   bloc;
+	bool    is_set;
+	bool    is_loaded;
+	Value   array_size;
+	Value   elem;
+	Value  *dims;
+	int     dims_count;
+	int     dims_size;
+	Block   bloc;
 	TypeRef func_type;
 	TypeRef struct_type;
-	//	Value   va_count;
-	//	Value   error_flag;
-	//	Value   error_value;
-	//	Block   _catch;
-	//	Block   lpad;
-	// statements/loops
-	Block start;
-	Block then;
-	Block end;
+	Value   va_count;
+	Value   error_flag;
+	Value   error_value;
+	Block   _catch;
+	Block   lpad;
+	Block   start;
+	Block   then;
+	Block   end;
 };
+
+struct AutoClean {
+	Value value;
+	Node *type;
+};
+
 struct Token {
 	Type  type;
 	Type  ret_type;
@@ -249,7 +269,7 @@ struct Token {
 		struct { char value; } Char;
 		struct { int index; Node *ptr; } Struct;
 		struct { Type  sub_type; int   depth; Node *struct_ptr; } Array;
-		struct { EXPAND(Token*, types); } Tuple;
+		struct { EXPAND(Token**, types); } Tuple;
 		struct { Node *ptr; } Fcall;
 		struct { Token *ptr; Token *start; Token *end; } Statement;
 		struct { Type  type; char *name; } Catch;
@@ -262,12 +282,54 @@ struct Node {
 	Node  *right;
 	Token *token;
 
-	EXPAND(Node **, children);
-	EXPAND(Token **, variables);
-	EXPAND(Node **, functions);
-	EXPAND(Node **, structs);
-	EXPAND(Node **, modules);
+	EXPAND(Node      **, children);
+	EXPAND(Token     **, variables);
+	EXPAND(Node      **, functions);
+	EXPAND(Node      **, structs);
+	EXPAND(Node      **, modules);
+	EXPAND(AutoClean *, auto_cleans);
 };
+
+// ----------------------------------------------------------------------------
+// Globals (defined in utils.c)
+// ----------------------------------------------------------------------------
+extern bool             found_error;
+extern bool             enable_debug;
+extern bool             enable_san;
+extern bool             enable_prep;
+extern char            *flags;
+extern char            *ura_lib;
+
+extern char           **files;
+extern int              files_count;
+extern int              files_size;
+extern Token          **tokens;
+extern int              tokens_count;
+extern int              tokens_size;
+extern int              exe_count;
+extern char *synth_list_paths[];
+extern int   synth_list_count;
+extern Node           **scopes;
+extern int              scopes_count;
+extern int              scopes_size;
+extern Node            *scope;
+extern Node            *ura_scope;
+extern char            *current_gen_module;
+
+extern char            *dir;
+extern char            *base;
+extern char            *build_dir;
+extern char            *ll_path;
+
+extern Context          context;
+extern Module           module;
+extern Builder          builder;
+extern TypeRef          vd, f32, i1, i2, i4, i8, i16, i32, i64, p8, p32;
+extern LLVMDIBuilderRef debug_builder;
+extern LLVMMetadataRef  debug_compile_unit;
+extern LLVMMetadataRef  debug_file;
+extern LLVMMetadataRef  debug_scope;
+
 
 // ----------------------------------------------------------------------------
 // Forward declarations
@@ -276,8 +338,7 @@ struct Node {
 void  *_allocate(int line, int len, int size);
 void   free_token(Token *token);
 void   free_node(Node *node);
-void   free_local_memory();
-void   free_global_memory();
+void   free_memory();
 Token *copy_token(Token *token);
 Node  *copy_node(Node *node);
 void   unuse(Node *node);
@@ -308,13 +369,15 @@ Token *new_variable(Token *token);
 void   add_variable(Node *b, Token *token);
 Token *get_variable(char *name);
 Node  *new_function(Node *node);
+Node  *find_function(char *name);
 void   add_function(Node *b, Node *node);
 Node  *get_function(char *name);
-Node  *new_struct(Node *node);
-void   add_struct(Node *b, Node *node);
-Node  *get_struct(char *name);
+Node       *new_struct(Node *node);
+void        add_struct(Node *b, Node *node);
+Node       *get_struct(char *name);
+const char *type_to_ura_name(Type type);
 
-// parser nodes
+// parser nodes — precedence chain
 Node *expr_node(), *assign_node(), *and_node(), *or_node();
 Node *bitor_node(), *bitxor_node(), *bitnot_node(), *bitand_node();
 Node *equality_node(), *comparison_node();
@@ -323,7 +386,35 @@ Node *add_sub_node(), *mul_div_node();
 Node *as_node();
 Node *unary_node();
 Node *access_node();
+Node *keyword_node();
 Node *prime_node();
+
+// parser nodes — statement / value builders
+Node *fdec_node(Token *token);
+Node *return_node(Token *token);
+Node *if_node(Token *token);
+Node *while_node(Token *token);
+Node *struct_def_node(Token *token);
+Node *enum_def_node(Token *token);
+Node *module_node(Token *token);
+Node *tuple_unpack_node(Token *token);
+Node *array_lit_node(Token *token);
+
+// parser nodes — struct internals
+Node *pub_node(Node *struct_node);
+Node *operator_node(Node *struct_node, Token *op_kw);
+Node *delete_node(Node *struct_node, Token *op_kw);
+
+// parser nodes — helpers / atom dispatch
+void  params_node(Node *fdec);
+void  array_list_type_setup(Token *data_type);
+void  synth_list_structs();
+char *generate_list_source(const char *elem, const char *sname);
+
+Node *main_node(Token *token);
+Node *output_node(Token *token);
+Node *fcall_node(Token *token);
+
 Node *optimize_ir(Node *node, bool *changed);
 
 // IR / codegen
@@ -343,10 +434,69 @@ Value   struct_field_ptr(Token *struct_tok, int field_index, char *name);
 Value   allocate_stack(Value size, TypeRef elementType, char *name);
 Value   allocate_heap(Value count, TypeRef elementType, char *name);
 bool    compatible(Token *left, Token *right);
+Type    get_ret_type(Node *node);
 void    set_ret_type(Node *node);
+
+// IR/ASM support helpers (defined in utils.c, called from gen.c case dispatchers)
+Node   *find_op_overload(Token *left, Token *right, Type op);
+void    ir_access_list_struct(Node *node, Node *st);
+void    ir_method_call_args(Node *node, Node *func);
+void    ir_method_call(Node *node);
+void    ir_regular_call_args(Node *node, Node *func);
+void    ir_regular_call(Node *node);
+void    ir_static_call(Node *node);
+bool    try_module_call(Node *node);
+void    gen_struct_declaration(Token *token);
+void    gen_primitive_declaration(Token *token);
+void    propagate_dims(Token *dst, Token *src, Node *lhs_node);
+Value   emit_copy_construct(Token *param, Token *arg);
+Value   marshal_arg_for_op(Token *param, Node *arg);
+Value   gen_operator_call(Node *node, Node *left, Node *right, bool try_copy_ctor);
+Value   asm_assign_cast(Node *left, Node *right, Value val);
+Value   asm_as_int_to_int(Value src, TypeRef stype, TypeRef ttype);
+Value   asm_collect_dims(Node *node);
+Value   asm_total_bytes(Value total, TypeRef elem_t);
+TypeRef asm_array_lit_elem_type(Node *node);
+void    asm_dot_propagate_field_dims(Token *struct_tok, int field_index, Token *target);
+void    asm_access_struct_field(Node *node);
+bool    asm_access_multidim(Node *node, Value left_value, Value right_ref);
+TypeRef asm_access_element_type(Node *node);
+Value   asm_access_left_value(Node *node);
+Value   marshal_fcall_arg(Token *param, Node *arg, bool is_proto_call);
+void    schedule_temp_cleanup(Token *token);
+void    call_delete(char *type_name, Value self_ptr);
+void    emit_scope_clean(Node *scope_node, int from, Token *skip);
+void    asm_fcall_static(Node *node);
+void    asm_fcall_marshal_args(Node *node, Value *args, int *count_out, bool is_proto);
+void    asm_fcall_unpack_proto_struct(Node *node);
+void    asm_fcall_instance(Node *node);
+void    append_string_literal_to_fmt(const char *s, char *fmt, int *fc);
+void    append_struct_with_output_op(Token *tok, char *fmt, int *fc, Value *args, int *nargs,
+                                     Node *sd, Value out_fn);
+void    append_struct_default_fmt(Token *tok, char *fmt, int *fc, Value *args, int *nargs, Node *sd);
+Type    append_resolve_type(Token *tok);
+void    append_output_arg(Token *tok, char *fmt, int *fc, Value *args, int *nargs);
+int     output_format_capacity(int argc, Node **argv);
+void    if_chain_branch(Node *curr, Block if_start, Block end);
+void    if_chain_else(Node *curr, Block end);
+void    gen_if_chain(Node *node, Block if_start, Block end);
+void    asm_return_delete_chain(Node *fdec);
+void    asm_return_main_globals(void);
+void    asm_return_tuple(Node *node, Node *fdec);
+void    asm_return_value(Node *node, Node *fdec);
+void    gen_struct_emit_nested(Node *node);
+void    gen_struct_build_type(Node *node);
+void    gen_struct_emit_delete(Node *node);
+void    gen_struct_predeclare_methods(Node *node);
+void    emit_prep_file(Node *scope_node, char *path);
 void    _branch(Block bloc);
 Block   _append_block(char *name);
 Value   _add_function(char *name, TypeRef function_type);
+Value   build_binary_op(Type op, Value l, Value r);
+void    add_auto_clean(Node *parent, Value value, Node *type);
+void    schedule_temp_cleanup(Token *token);
+void    call_delete(char *type_name, Value self_ptr);
+void    emit_scope_clean(Node *scope_node, int from, Token *skip);
 TypeRef _named_struct_type(char *name, TypeRef *element_types, unsigned element_count, int packed);
 void    set_debug_location(Token *token);
 
@@ -362,5 +512,18 @@ int   _debug(char *conv, ...);
 void  pnode(Node *node, char *indent);
 char *strjoin(char *str0, char *str1, char *str2);
 int   vprint_(File out, char *conv, va_list args);
+void *allocate(int len, int size);
+char *open_file(char *path_name);
+int   parse_escape_seq(char *input, int s, int e, char *buf, int *j);
+void  setup_paths(char *path_name);
+
+// codegen helpers (gated callers — declarations always available)
+void  resolve_func_type(Node *fdec);
+void  emit_func_body(Node *fdec);
+Node *find_enclosing(Type type);
+
+// keyword sub-helpers in parse.c
+Node *stack_heap_node(Token *token);
+Node *typeof_sizeof_node(Token *token);
 
 #endif
