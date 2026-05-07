@@ -1,0 +1,8 @@
+// errors/syntax/017 — `enum` missing identifier
+use "@/header"
+
+enum:
+    RED, GREEN, BLUE
+
+main():
+    output("hi\n")

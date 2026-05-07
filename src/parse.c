@@ -1,18 +1,25 @@
 #include "header.h"
 
 const Keyword keywords[] = {
-   {"int", INT, 1, 1}, {"bool", BOOL, 1, 1}, {"chars", CHARS, 1, 1}, {"char", CHAR, 1, 1},
-   {"float", FLOAT, 1, 1}, {"void", VOID, 1, 1}, {"long", LONG, 1, 1}, {"pointer", CHARS, 1, 1},
-   {"short", SHORT, 1, 1},
-   {"if", IF, 0, 0}, {"elif", ELIF, 0, 0}, {"else", ELSE, 0, 0}, {"while", WHILE, 0, 0},
-   {"fn", FDEC, 0, 0}, {"return", RETURN, 0, 0}, {"break", BREAK, 0, 0},
-   {"continue", CONTINUE, 0, 0}, {"ref", REF, 0, 0}, {"struct", STRUCT_DEF, 0, 0},
-   {"enum", ENUM_DEF, 0, 0}, {"proto", PROTO, 0, 0}, {"mod", MODULE, 0, 0},
-   {"operator", OPERATOR, 0, 0}, {"as", AS, 0, 0}, {"pub", PUB, 0, 0}, {"delete", DELETE, 0, 0},
-   {"and", AND, 0, 1}, {"or", OR, 0, 1}, {"is", EQUAL, 0, 1}, {"not", NOT, 0, 1},
-   {"typeof", TYPEOF, 0, 1}, {"sizeof", SIZEOF, 0, 1}, {"stack", STACK, 0, 1},
-   {"heap", HEAP, 0, 1}, {"array", ARRAY_TYPE, 0, 1}, {"List", LIST_TYPE, 0, 1},
-   {"null", NULLABLE, 0, 1},
+    {"int", INT, 1, 1},           {"bool", BOOL, 1, 1},
+    {"chars", CHARS, 1, 1},       {"char", CHAR, 1, 1},
+    {"float", FLOAT, 1, 1},       {"void", VOID, 1, 1},
+    {"long", LONG, 1, 1},         {"pointer", CHARS, 1, 1},
+    {"short", SHORT, 1, 1},       {"if", IF, 0, 0},
+    {"elif", ELIF, 0, 0},         {"else", ELSE, 0, 0},
+    {"while", WHILE, 0, 0},       {"fn", FDEC, 0, 0},
+    {"return", RETURN, 0, 0},     {"break", BREAK, 0, 0},
+    {"continue", CONTINUE, 0, 0}, {"ref", REF, 0, 0},
+    {"struct", STRUCT_DEF, 0, 0}, {"enum", ENUM_DEF, 0, 0},
+    {"proto", PROTO, 0, 0},       {"mod", MODULE, 0, 0},
+    {"operator", OPERATOR, 0, 0}, {"as", AS, 0, 0},
+    {"pub", PUB, 0, 0},           {"delete", DELETE, 0, 0},
+    {"and", AND, 0, 1},           {"or", OR, 0, 1},
+    {"is", EQUAL, 0, 1},          {"not", NOT, 0, 1},
+    {"typeof", TYPEOF, 0, 1},     {"sizeof", SIZEOF, 0, 1},
+    {"stack", STACK, 0, 1},       {"heap", HEAP, 0, 1},
+    {"array", ARRAY_TYPE, 0, 1},  {"List", LIST_TYPE, 0, 1},
+    {"null", NULLABLE, 0, 1},
 };
 
 const Keyword specials[] = {
@@ -33,7 +40,7 @@ const Keyword specials[] = {
 // TODO: use default_space in int s, int e
 Token *parse_token(Source *src, int line, int s, int e, Type type, int space) {
 	Token *new       = new_token(type, space);
-	char  *input     = src->content;
+	char *input      = src->content;
 	new->line        = line;
 	new->source      = src;
 	new->start_index = s;
@@ -108,8 +115,7 @@ Token *parse_token(Source *src, int line, int s, int e, Type type, int space) {
 		} else {
 			parse_escape_seq(input, s, e, buf, &j);
 			if (buf[0] == '\\' && input[s + 1] != '\\')
-				tokenize_error(src, line, s, e, "unknown escape character: \\%c",
-				               input[s + 1]);
+				tokenize_error(src, line, s, e, "unknown escape character: \\%c", input[s + 1]);
 		}
 		new->Char.value = buf[0];
 		break;
@@ -123,17 +129,17 @@ void tokenize(char *file_name, int default_space) {
 	debug(GREEN("TOKENIZE: [%s]\n"), file_name);
 	Source *src = new_source(file_name);
 	if (found_error) return;
-	char *input = src->content;
+	char      *input = src->content;
 
 	int        space    = default_space;
 	int        line     = 1;
 	bool       new_line = true;
 	static int calling_use;
 
-	int i = 0;
-	int s = i;
+	int        i = 0;
+	int        s = i;
 	for (; input[i] && !found_error;) {
-		s = i;
+		s      = i;
 		char c = input[i];
 
 		if (isspace(c)) {
@@ -181,9 +187,9 @@ void tokenize(char *file_name, int default_space) {
 		}
 		if (c == '\'') {
 			i++;
-			if (input[i] == '\\' && input[i + 1])            i++;
-			if (input[i] && input[i] != '\'')                i++;
-			if (input[i] != '\'') {
+			if (input[i] == '\\' && input[i + 1]) i++;
+			if (input[i] && input[i] != '\'')     i++;
+			if (input[i] != '\'')                 {
 				tokenize_error(src, line, s, s + 1, "unterminated character literal, expected \"'\"");
 				break;
 			}
@@ -217,7 +223,8 @@ void tokenize(char *file_name, int default_space) {
 				while (input[i] && input[i] != '\"' && input[i] != '\n')
 					i++;
 				if (input[i] != '\"') {
-					tokenize_error(src, line, s - 1, s, "unterminated `use` path, expected closing '\"'");
+					tokenize_error(src, line, s - 1, s,
+					               "unterminated `use` path, expected closing '\"'");
 					break;
 				}
 				i++;
@@ -241,16 +248,19 @@ void tokenize(char *file_name, int default_space) {
 				tokenize(use, space);
 				calling_use--;
 			} else if (i - s == 4 && strncmp(input + s, "link", 4) == 0 && isspace(input[i])) {
-				while (isspace(input[i])) i++;
+				while (isspace(input[i]))
+					i++;
 				if (input[i] != '\"') {
 					tokenize_error(src, line, i, i + 1, "expected '\"' after `link`");
 					break;
 				}
 				i++;
 				int link_s = i;
-				while (input[i] && input[i] != '\"' && input[i] != '\n') i++;
+				while (input[i] && input[i] != '\"' && input[i] != '\n')
+					i++;
 				if (input[i] != '\"') {
-					tokenize_error(src, line, link_s - 1, link_s, "unterminated `link` path, expected closing '\"'");
+					tokenize_error(src, line, link_s - 1, link_s,
+					               "unterminated `link` path, expected closing '\"'");
 					break;
 				}
 				i++;
@@ -331,7 +341,7 @@ Node *add_child(Node *node, Node *child) {
 Node *copy_node(Node *node) {
 	Node *new  = allocate(1, sizeof(Node));
 	new->token = copy_token(node->token);
-	if (node->left)  new->left  = copy_node(node->left);
+	if (node->left)  new->left = copy_node(node->left);
 	if (node->right) new->right = copy_node(node->right);
 	for (int i = 0; i < node->children_count; i++)
 		add_child(new, copy_node(node->children[i]));
@@ -346,8 +356,8 @@ Node *syntax_error() {
 	found_error = true;
 	static Node *node;
 	if (node == NULL) node = new_node(new_token(SYNTAX_ERROR, -1));
-	node->token->source = tokens[exe_count]->source;
-	TODO(node->token->source == NULL, "crash");
+	if (exe_count >= 0 && exe_count < tokens_count && tokens[exe_count] && tokens[exe_count]->source)
+		node->token->source = tokens[exe_count]->source;
 	return node;
 }
 
@@ -447,9 +457,9 @@ Node *access_node() // . [] ::
 			node->left  = left;
 			node->right = keyword_node();
 
-			if (!node->right) { 
-				parse_error(token, "expected attribute or method name after '.'"); 
-				return syntax_error(); 
+			if (!node->right) {
+				parse_error(token, "expected attribute or method name after '.'");
+				return syntax_error();
 			}
 			if (node->right->token->type == FCALL) {
 				Node *func                  = node->right;
@@ -465,9 +475,9 @@ Node *access_node() // . [] ::
 			node->token->type = ACCESS;
 			node->left        = left;
 			node->right       = expr_node();
-			if (!node->right) { 
-				parse_error(token, "expected expression between '[' and ']'"); 
-				return syntax_error(); 
+			if (!node->right) {
+				parse_error(token, "expected expression between '[' and ']'");
+				return syntax_error();
 			}
 			EXPECT_TOKEN(token, RBRA, "expected ']' to close index access");
 			break;
@@ -504,17 +514,17 @@ Node *keyword_node() {
 		return syntax_error();
 	}
 
-	if ((token = find(MODULE, 0)))     return module_node(token);
-	if ((token = find(STRUCT_DEF, 0))) return struct_def_node(token);
-	if ((token = find(ENUM_DEF, 0)))   return enum_def_node(token);
-	if ((token = find(IF, 0)))         return if_node(token);
-	if ((token = find(WHILE, 0)))      return while_node(token);
-	if ((token = find(FDEC, 0)))       return fdec_node(token);
-	if ((token = find(RETURN, 0)))     return return_node(token);
+	if ((token = find(MODULE, 0)))                    return module_node(token);
+	if ((token = find(STRUCT_DEF, 0)))                return struct_def_node(token);
+	if ((token = find(ENUM_DEF, 0)))                  return enum_def_node(token);
+	if ((token = find(IF, 0)))                        return if_node(token);
+	if ((token = find(WHILE, 0)))                     return while_node(token);
+	if ((token = find(FDEC, 0)))                      return fdec_node(token);
+	if ((token = find(RETURN, 0)))                    return return_node(token);
 	if ((token = find(BREAK, CONTINUE, NULLABLE, 0))) return new_node(token);
-   if ((token = find(STACK, HEAP, 0))) return stack_heap_node(token);
-   if ((token = find(TYPEOF, SIZEOF, 0))) return typeof_sizeof_node(token);
-   if ((token = find(LBRA, 0))) return array_lit_node(token);
+	if ((token = find(STACK, HEAP, 0)))               return stack_heap_node(token);
+	if ((token = find(TYPEOF, SIZEOF, 0)))            return typeof_sizeof_node(token);
+	if ((token = find(LBRA, 0)))                      return array_lit_node(token);
 
 	if ((token = find(REF, 0))) {
 		node       = new_node(token);
@@ -539,9 +549,9 @@ Node *keyword_node() {
 	if ((token = find(PROTO, 0))) {
 		if (includes(tokens[exe_count]->type, FDEC, STRUCT_DEF, 0))
 			tokens[exe_count]->is_proto = true;
-		else { 
+		else {
 			parse_error(token, "expected `fn` or `struct` after `proto`");
-			return syntax_error(); 
+			return syntax_error();
 		}
 		return expr_node();
 	}
@@ -555,16 +565,14 @@ Node *prime_node() {
 		return syntax_error();
 	}
 
-	if (includes(token->type, DATA_TYPES) && !token->name && !token->is_dec)
-		return new_node(token);
-	if (token->is_dec) return new_node(token);
+	if (includes(token->type, DATA_TYPES) && !token->name && !token->is_dec) return new_node(token);
+	if (token->is_dec)                                                       return new_node(token);
 
 	if (token->type == ID && is_data_type(tokens[exe_count]) &&
 	    tokens[exe_count]->line == token->line) {
 		Token *data_type = tokens[exe_count++];
 		bool   is_ref    = find(REF, 0) != NULL;
-		if (includes(data_type->type, ARRAY_TYPE, LIST_TYPE, 0))
-			array_list_type_setup(data_type);
+		if (includes(data_type->type, ARRAY_TYPE, LIST_TYPE, 0)) array_list_type_setup(data_type);
 		setName(data_type, token->name);
 		data_type->is_dec = true;
 		data_type->is_ref = is_ref;
@@ -591,7 +599,7 @@ Node *prime_node() {
 	}
 
 	if (token->type == ID && find(LPAR, 0)) {
-		if      (strcmp(token->name, "main")   == 0) return main_node(token);
+		if (strcmp(token->name, "main") == 0)        return main_node(token);
 		else if (strcmp(token->name, "output") == 0) return output_node(token);
 		return fcall_node(token);
 	}
@@ -622,10 +630,10 @@ void fdec_tuple_elem(Node *node) {
 			char        sname[LIST_NAME_MAX];
 			snprintf(sname, sizeof(sname), LIST_STRUCT_PREFIX "%s", ename);
 			Node *list_st = get_struct(sname);
-			if (!list_st) { 
-				parse_error(token2, "list struct '%s' not found", sname); 
-				syntax_error(); 
-				return; 
+			if (!list_st) {
+				parse_error(token2, "list struct '%s' not found", sname);
+				syntax_error();
+				return;
 			}
 			token2->type       = STRUCT_CALL;
 			token2->Struct.ptr = list_st;
@@ -657,8 +665,8 @@ void fdec_tuple_elem(Node *node) {
 		syntax_error();
 		return;
 	}
-	resize_array(node->token->Tuple.types, Token *,
-	             node->token->Tuple.types_size, node->token->Tuple.types_count);
+	resize_array(node->token->Tuple.types, Token *, node->token->Tuple.types_size,
+	             node->token->Tuple.types_count);
 	node->token->Tuple.types[node->token->Tuple.types_count++] = token2;
 }
 
@@ -667,7 +675,7 @@ void fdec_tuple_ret(Node *node) {
 	node->token->ret_type = TUPLE;
 	while (!found_error && tokens[exe_count]->type != RPAR) {
 		fdec_tuple_elem(node);
-		if (found_error) return;
+		if (found_error)                     return;
 		if (tokens[exe_count]->type == COMA) exe_count++;
 	}
 	EXPECT_TOKEN_VOID(node->token, RPAR, "expected ')' to close tuple return type list");
@@ -682,10 +690,10 @@ void fdec_single_ret(Node *node) {
 	Token *ret_tok = tokens[exe_count++];
 	if (ret_tok->type == ID) {
 		Node *st = get_struct(ret_tok->name);
-		if (!st) { 
-			parse_error(ret_tok, "unknown return type '%s'", ret_tok->name); 
-			syntax_error(); 
-			return; 
+		if (!st) {
+			parse_error(ret_tok, "unknown return type '%s'", ret_tok->name);
+			syntax_error();
+			return;
 		}
 		node->token->ret_type   = STRUCT_CALL;
 		node->token->Struct.ptr = st;
@@ -718,8 +726,7 @@ void fdec_body(Node *node) {
 				syntax_error();
 				return;
 			}
-		}
-		else {
+		} else {
 			Node *ret = new_node(new_token(RETURN, node->token->space + TAB));
 			ret->left = new_node(new_token(VOID, node->token->space + TAB));
 			add_child(node, ret);
@@ -731,9 +738,9 @@ Node *fdec_node(Token *token) {
 	Node *node = new_node(token);
 	if (!node->token->name || strcmp(node->token->name, "fn") == 0) {
 		Token *fname = find(ID, 0);
-		if (!fname) { 
-			parse_error(token, "expected identifier after `fn` keyword"); 
-			return syntax_error(); 
+		if (!fname) {
+			parse_error(token, "expected identifier after `fn` keyword");
+			return syntax_error();
 		}
 		setName(node->token, fname->name);
 	}
@@ -757,12 +764,12 @@ Node *fdec_node(Token *token) {
 	}
 
 	if (tokens[exe_count]->type == LPAR) fdec_tuple_ret(node);
-	else                                 fdec_single_ret(node);
+	else fdec_single_ret(node);
 	if (found_error) return syntax_error();
 
 	node->token->is_ref = find(REF, 0) != NULL;
 	if (!node->token->is_proto) fdec_body(node);
-	if (found_error) return syntax_error();
+	if (found_error)            return syntax_error();
 	exit_scope();
 	return node;
 }
@@ -792,11 +799,12 @@ Node *stack_heap_node(Token *token) {
 	Node *node = new_node(token);
 	EXPECT_TOKEN(token, LBRA, "expected '[' after %s", to_string(token->type));
 	int depth = 1;
-	while (find(LBRA, 0)) depth++;
+	while (find(LBRA, 0))
+		depth++;
 	Token *elem_type = find(DATA_TYPES, ID, 0);
-	if (!elem_type) { 
-		parse_error(token, "expected element type after %s[", to_string(token->type)); 
-		return syntax_error(); 
+	if (!elem_type) {
+		parse_error(token, "expected element type after %s[", to_string(token->type));
+		return syntax_error();
 	}
 	for (int i = 0; i < depth; i++)
 		EXPECT_TOKEN(token, RBRA, "expected ']' in %s type", to_string(token->type));
@@ -810,7 +818,7 @@ Node *stack_heap_node(Token *token) {
 			node->token->Array.sub_type   = STRUCT_CALL;
 			node->token->Array.struct_ptr = sd;
 		}
-         // TODO: check if struct doesn not exists
+		// TODO: check if struct doesn not exists
 	}
 	for (int i = 0; i < depth; i++) {
 		add_child(node, expr_node());
@@ -886,17 +894,26 @@ Node *struct_def_node(Token *token) {
 		Token *pub_tok = find(PUB, 0);
 		if (pub_tok) {
 			pub_node(node, pub_tok);
-			if (found_error) { exit_scope(); return syntax_error(); }
+			if (found_error) {
+				exit_scope();
+				return syntax_error();
+			}
 			continue;
 		}
 		Token *op_kw;
 		if ((op_kw = find(OPERATOR, 0))) {
 			operator_node(node, op_kw);
-			if (found_error) { exit_scope(); return syntax_error(); }
+			if (found_error) {
+				exit_scope();
+				return syntax_error();
+			}
 			continue;
 		}
 		Node *child = keyword_node();
-		if (found_error) { exit_scope(); return syntax_error(); }
+		if (found_error) {
+			exit_scope();
+			return syntax_error();
+		}
 		if (child->token->type == FDEC) {
 			resize_array(child->functions, Node *, child->functions_size, child->functions_count);
 			char *qualified = format("%s.%s", node->token->name, child->token->name);
@@ -932,7 +949,7 @@ Node *enum_def_node(Token *token) {
 	token->type = ENUM_DEF;
 	Node *node  = new_node(token);
 
-	int counter = 0;
+	int   counter = 0;
 	do {
 		if (!within(token->space)) break;
 		Token *var = find(ID, 0);
@@ -956,9 +973,11 @@ Node *enum_def_node(Token *token) {
 
 void array_list_type_setup(Token *data_type) {
 	Type container = data_type->type;
-	EXPECT_TOKEN_VOID(data_type, LBRA, "expected '[' after %s", container == LIST_TYPE ? "list" : "array");
+	EXPECT_TOKEN_VOID(data_type, LBRA, "expected '[' after %s",
+	                  container == LIST_TYPE ? "list" : "array");
 	int depth = 1;
-	while (find(LBRA, 0)) depth++;
+	while (find(LBRA, 0))
+		depth++;
 	Token *elem_type = find(DATA_TYPES, ID, 0);
 	if (!elem_type) {
 		parse_error(data_type, "expected element type in %s type",
@@ -980,10 +999,10 @@ void array_list_type_setup(Token *data_type) {
 			snprintf(sname, sizeof(sname), "%s", tn);
 		}
 		Node *list_st = get_struct(sname);
-		if (!list_st) { 
-			parse_error(data_type, "list struct '%s' not found", sname); 
-			syntax_error(); 
-			return; 
+		if (!list_st) {
+			parse_error(elem_type, "unknown type '%s' in list element type", ename);
+			syntax_error();
+			return;
 		}
 		data_type->type       = STRUCT_CALL;
 		data_type->Struct.ptr = list_st;
@@ -993,18 +1012,21 @@ void array_list_type_setup(Token *data_type) {
 		data_type->ret_type       = container;
 		if (elem_type->type == ID) {
 			Node *sd = get_struct(elem_type->name);
-			if (sd) {
-				data_type->Array.sub_type   = STRUCT_CALL;
-				data_type->Array.struct_ptr = sd;
+			if (!sd) {
+				parse_error(elem_type, "unknown type '%s' in array element type", elem_type->name);
+				syntax_error();
+				return;
 			}
+			data_type->Array.sub_type   = STRUCT_CALL;
+			data_type->Array.struct_ptr = sd;
 		}
 	}
 }
 
 #define MAX_LIST_SYNTHS 64
 
-char *synth_list_paths[MAX_LIST_SYNTHS];
-int   synth_list_count;
+char       *synth_list_paths[MAX_LIST_SYNTHS];
+int         synth_list_count;
 
 static void list_struct_names(const char *base, int depth, char *elem, char *sname) {
 	snprintf(elem, LIST_NAME_MAX, "%s", base);
@@ -1018,18 +1040,27 @@ static void list_struct_names(const char *base, int depth, char *elem, char *sna
 }
 
 void synth_list_structs() {
-	struct { const char *base; int max_depth; } specs[MAX_LIST_SYNTHS];
+	struct {
+		const char *base;
+		int         max_depth;
+	} specs[MAX_LIST_SYNTHS];
 	int n = 0;
 	for (int i = 0; i < tokens_count; i++) {
 		if (tokens[i]->type != LIST_TYPE) continue;
 		int j = i + 1, depth = 0;
-		while (j < tokens_count && tokens[j]->type == LBRA) { depth++; j++; }
+		while (j < tokens_count && tokens[j]->type == LBRA) {
+			depth++;
+			j++;
+		}
 		if (j >= tokens_count) continue;
 		const char *name = tokens[j]->name ? tokens[j]->name : type_to_ura_name(tokens[j]->type);
 		if (!name) continue;
 		int idx = -1;
 		for (int k = 0; k < n; k++)
-			if (strcmp(specs[k].base, name) == 0) { idx = k; break; }
+			if (strcmp(specs[k].base, name) == 0) {
+				idx = k;
+				break;
+			}
 		if (idx == -1) {
 			if (n < MAX_LIST_SYNTHS) {
 				specs[n].base      = name;
@@ -1046,8 +1077,12 @@ void synth_list_structs() {
 			list_struct_names(specs[b].base, d, elem, sname);
 			char *src  = generate_list_source(elem, sname);
 			char *path = format("/tmp/__ura_%s.ura", sname);
-			File f = fopen(path, "w");
-			if (!f) { free(path); free(src); continue; }
+			File  f    = fopen(path, "w");
+			if (!f) {
+				free(path);
+				free(src);
+				continue;
+			}
 			if (synth_list_count == 0) fputs("use \"@/memory\"\n\n", f);
 			fputs(src, f);
 			fclose(f);
@@ -1065,10 +1100,10 @@ void params_node(Node *node) {
 		if (find(VARIADIC, 0)) {
 			node->token->is_variadic = true;
 			last                     = find(RPAR, 0);
-			if (!last) { 
-				parse_error(node->token, "expected ')' after `...` in variadic function"); 
-				syntax_error(); 
-				return; 
+			if (!last) {
+				parse_error(node->token, "expected ')' after `...` in variadic function");
+				syntax_error();
+				return;
 			}
 			break;
 		}
@@ -1105,10 +1140,10 @@ void params_node(Node *node) {
 		Node *curr;
 		if (data_type->type == STRUCT_CALL) {
 			Node *st = get_struct(data_type->name);
-			if (!st) { 
-				parse_error(data_type, "unknown struct type '%s'", data_type->name); 
-				syntax_error(); 
-				break; 
+			if (!st) {
+				parse_error(data_type, "unknown struct type '%s'", data_type->name);
+				syntax_error();
+				break;
 			}
 			data_type->Struct.ptr = st;
 			curr                  = new_node(data_type);
@@ -1129,7 +1164,7 @@ void params_node(Node *node) {
 		curr->token->is_param = true;
 		add_child(node->left, curr);
 
-		if (tokens[exe_count]->type != RPAR) 
+		if (tokens[exe_count]->type != RPAR)
 			EXPECT_TOKEN_VOID(name, COMA, "expected ',' between function parameters");
 	}
 	if (!found_error && last && last->type != RPAR) {
@@ -1151,9 +1186,9 @@ Node *while_node(Token *token) {
 
 Node *module_node(Token *token) {
 	Token *id = find(ID, 0);
-	if (!id) { 
-		parse_error(token, "expected module identifier after `mod`"); 
-		return syntax_error(); 
+	if (!id) {
+		parse_error(token, "expected module identifier after `mod`");
+		return syntax_error();
 	}
 	EXPECT_TOKEN(token, DOTS, "expected ':' after `mod` name");
 	setName(token, id->name);
@@ -1168,7 +1203,7 @@ Node *module_node(Token *token) {
 			break;
 		}
 		if (ctoken->type == FDEC) add_function(node, curr);
-		else                      add_child(node, curr);
+		else add_child(node, curr);
 	}
 	exit_scope();
 	return node;
@@ -1196,7 +1231,8 @@ Node *tuple_unpack_node(Token *first_decl) {
 		Token *ntype = find(DATA_TYPES, 0);
 		if (includes(ntype->type, ARRAY_TYPE, LIST_TYPE, 0)) {
 			Type container = ntype->type;
-			EXPECT_TOKEN(ntype, LBRA, "expected '[' after %s", container == LIST_TYPE ? "list" : "array");
+			EXPECT_TOKEN(ntype, LBRA, "expected '[' after %s",
+			             container == LIST_TYPE ? "list" : "array");
 			int depth = 1;
 			while (find(LBRA, 0))
 				depth++;
@@ -1273,11 +1309,12 @@ Node *delete_node(Node *struct_node, Token *op_kw) {
 	setName(fdec_tok, "delete");
 	Node *child = fdec_node(fdec_tok);
 	if (child->token->ret_type != VOID) {
-		parse_error(child->token, "struct '%s': operator delete must return void", struct_node->token->name);
+		parse_error(op_kw, "struct '%s': operator delete must return void", struct_node->token->name);
 		return syntax_error();
 	}
 	if (child->left->children_count != 1) {
-		parse_error(child->token, "struct '%s': operator delete takes no parameters", struct_node->token->name);
+		parse_error(op_kw, "struct '%s': operator delete takes no parameters",
+		            struct_node->token->name);
 		return syntax_error();
 	}
 	char *qualified = format("%s.delete", struct_node->token->name);
@@ -1292,13 +1329,13 @@ Node *operator_node(Node *struct_node, Token *op_kw) {
 	Token *op_tok = find(ASSIGN, ADD, SUB, MUL, DIV, MOD, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN,
 	                     DIV_ASSIGN, MOD_ASSIGN, EQUAL, NOT_EQUAL, LESS, GREAT, LESS_EQUAL,
 	                     GREAT_EQUAL, AND, OR, BAND, BOR, BXOR, LSHIFT, RSHIFT, DELETE, 0);
-	if (!op_tok && tokens[exe_count]->type == ID &&
-	    strcmp(tokens[exe_count]->name, "output") == 0) {
+	if (!op_tok && tokens[exe_count]->type == ID && strcmp(tokens[exe_count]->name, "output") == 0) {
 		op_tok       = tokens[exe_count++];
 		op_tok->type = OUTPUT;
 	}
 	if (!op_tok) {
-		parse_error(op_kw, "struct '%s': expected operator symbol after `operator`", struct_node->token->name);
+		parse_error(op_kw, "struct '%s': expected operator symbol after `operator`",
+		            struct_node->token->name);
 		return syntax_error();
 	}
 

@@ -1,0 +1,6 @@
+// errors/lexer/011 — unknown escape sequence in char literal
+use "@/header"
+
+main():
+    c char = '\q'
+    output(c, "\n")

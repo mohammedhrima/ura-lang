@@ -1,0 +1,15 @@
+// errors/structs/006 — `pub fn` called via `.` instead of `::`
+use "@/header"
+
+struct Maker:
+    n int
+
+    pub fn make() Maker:
+        m Maker
+        m.n = 1
+        return m
+
+main():
+    m Maker
+    m.n = 0
+    m.make()

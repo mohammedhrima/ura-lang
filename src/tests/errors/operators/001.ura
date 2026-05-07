@@ -1,0 +1,8 @@
+// errors/operators/001 — `operator` outside a struct definition
+use "@/header"
+
+operator + (a int, b int) int:
+    return a + b
+
+main():
+    output("hi\n")

@@ -71,5 +71,8 @@
 + xslt (maybe it's xsql)
 + portfolio
 + SOLID principals
++ type of tests (one to one ...)
 
+
++ check 'smoke tests', all type of tests
 

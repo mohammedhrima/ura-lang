@@ -1,0 +1,5 @@
+// errors/functions/002 — calling an undefined function
+use "@/header"
+
+main():
+    do_something(1, 2)
