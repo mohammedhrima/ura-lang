@@ -1,0 +1,11 @@
+// errors/types/005 — assigning struct value to int variable
+use "@/header"
+
+struct Point:
+    x int
+    y int
+
+main():
+    p Point
+    n int = p
+    output(n, "\n")

@@ -14,7 +14,7 @@ void ir_struct_call(Node *node) {
 	node->token->Struct.ptr = src;
 	if (node->token->is_dec) {
 		if (scopes_count == 1) node->token->is_global = true;
-		else                   src->token->used++;
+		else src->token->used++;
 		new_variable(node->token);
 	}
 }
@@ -33,7 +33,9 @@ void ir_primitive(Node *node) {
 
 void ir_assign(Node *node) {
 	gen_ir(node->left);
+	if (found_error) return;
 	gen_ir(node->right);
+	if (found_error) return;
 	Type lt = node->left->token->ret_type ? node->left->token->ret_type : node->left->token->type;
 	if (lt == STRUCT_CALL) {
 		Node *func = find_op_overload(node->left->token, node->right->token, ASSIGN);
@@ -44,8 +46,10 @@ void ir_assign(Node *node) {
 		}
 	}
 	if (!compatible(node->left->token, node->right->token)) {
-		CHECK(1, "type mismatch: cannot assign %k to %k — use '%k as %s'", node->right->token,
-		      node->left->token, node->right->token, to_string(node->left->token->type));
+		Type rt =
+		    node->right->token->ret_type ? node->right->token->ret_type : node->right->token->type;
+		parse_error(node->token, "type mismatch: cannot assign %s to %s", to_string(rt),
+		            to_string(lt));
 		return;
 	}
 	node->token->ret_type = node->left->token->ret_type;
@@ -74,8 +78,9 @@ void ir_unary_op(Node *node) {
 	node->token->used++;
 	node->left->token->used++;
 	if (node->token->type == NOT) node->token->ret_type = BOOL;
-	else node->token->ret_type =
-	    node->left->token->ret_type ? node->left->token->ret_type : node->left->token->type;
+	else
+		node->token->ret_type =
+		    node->left->token->ret_type ? node->left->token->ret_type : node->left->token->type;
 }
 
 void ir_binary_op(Node *node) {
@@ -85,8 +90,7 @@ void ir_binary_op(Node *node) {
 	CHECK(!node->right || !node->right->token, "right is NULL");
 	if (includes(node->token->type, ADD, SUB, MUL, DIV, MOD, 0))
 		node->token->ret_type = node->left->token->ret_type;
-	else if (includes(node->token->type, COMPARISON_OPS, AND, OR, 0))
-		node->token->ret_type = BOOL;
+	else if (includes(node->token->type, COMPARISON_OPS, AND, OR, 0)) node->token->ret_type = BOOL;
 	node->token->used++;
 	node->left->token->used++;
 	node->right->token->used++;
@@ -94,27 +98,37 @@ void ir_binary_op(Node *node) {
 	Type lt = node->left->token->ret_type ? node->left->token->ret_type : node->left->token->type;
 	if (lt == STRUCT_CALL) {
 		Node *func = find_op_overload(node->left->token, node->right->token, node->token->type);
-		if (func) {
-			node->token->Fcall.ptr = func;
-			func->token->used++;
-			if (func->token->ret_type == STRUCT_CALL) {
-				node->token->ret_type   = STRUCT_CALL;
-				node->token->Struct.ptr = func->token->Struct.ptr;
-			} else node->token->ret_type = func->token->ret_type;
+		if (!func) {
+			parse_error(
+			    node->token, "no `operator %s` overload for struct '%s'", to_string(node->token->type),
+			    node->left->token->Struct.ptr ? node->left->token->Struct.ptr->token->name : "?");
+			return;
 		}
+		node->token->Fcall.ptr = func;
+		func->token->used++;
+		if (func->token->ret_type == STRUCT_CALL) {
+			node->token->ret_type   = STRUCT_CALL;
+			node->token->Struct.ptr = func->token->Struct.ptr;
+		} else node->token->ret_type = func->token->ret_type;
 	}
 }
 
 void ir_as(Node *node) {
 	gen_ir(node->left);
-	node->token->ret_type = node->right->token->type;
+	if (found_error) return;
+	Type src = node->left->token->ret_type ? node->left->token->ret_type : node->left->token->type;
+	Type dst = node->right->token->type;
+	if (src == STRUCT_CALL || dst == STRUCT_CALL) {
+		parse_error(node->token, "cannot cast %s to %s", to_string(src), to_string(dst));
+		return;
+	}
+	node->token->ret_type = dst;
 }
 
 void ir_ref(Node *node) {
 	gen_ir(node->left);
 	node->token->is_ref = true;
-	Type lt =
-	    node->left->token->ret_type ? node->left->token->ret_type : node->left->token->type;
+	Type lt = node->left->token->ret_type ? node->left->token->ret_type : node->left->token->type;
 	node->token->ret_type = lt;
 }
 
@@ -130,7 +144,8 @@ void ir_dot(Node *node) {
 	else if (node->left->token->ret_type == STRUCT_CALL && node->left->token->Struct.ptr)
 		src = get_struct(node->left->token->Struct.ptr->token->name);
 	else {
-		CHECK(1, "handle this case %s", to_string(node->left->token->type));
+		parse_error(node->left->token, "cannot access field of non-struct value (%s)",
+		            to_string(node->left->token->type));
 		return;
 	}
 
@@ -153,12 +168,14 @@ void ir_dot(Node *node) {
 		}
 		break;
 	}
-	if (CHECK(!found, "")) {
-		debug(RED("%k doesn't have attribute %k\n"), node->left->token, node->right->token);
+	if (!found) {
+		parse_error(node->right->token, "'%s' has no field '%s'",
+		            src ? src->token->name : "(unknown)",
+		            node->right->token->name ? node->right->token->name : "?");
 		return;
 	}
 	node->token->ret_type = ret_type;
-	if (ret_type == STRUCT_CALL) node->token->Struct.ptr = node->right->token->Struct.ptr;
+	if (ret_type == STRUCT_CALL)     node->token->Struct.ptr = node->right->token->Struct.ptr;
 	else if (ret_type == ARRAY_TYPE) {
 		node->token->Array.sub_type   = node->right->token->Array.sub_type;
 		node->token->Array.depth      = node->right->token->Array.depth;
@@ -171,9 +188,8 @@ void ir_access(Node *node) {
 	gen_ir(node->right);
 	if (found_error) return;
 	node->right->token->used++;
-	Type type =
-	    node->left->token->ret_type ? node->left->token->ret_type : node->left->token->type;
-	int  depth    = node->left->token->Array.depth;
+	Type type  = node->left->token->ret_type ? node->left->token->ret_type : node->left->token->type;
+	int  depth = node->left->token->Array.depth;
 	Type ret_type = 0;
 	switch (type) {
 	case CHARS: ret_type = CHAR; break;
@@ -185,8 +201,7 @@ void ir_access(Node *node) {
 			node->token->Array.struct_ptr = node->left->token->Array.struct_ptr;
 		} else {
 			ret_type = node->left->token->Array.sub_type;
-			if (ret_type == STRUCT_CALL)
-				node->token->Struct.ptr = node->left->token->Array.struct_ptr;
+			if (ret_type == STRUCT_CALL) node->token->Struct.ptr = node->left->token->Array.struct_ptr;
 		}
 		break;
 	case STRUCT_CALL: {
@@ -204,10 +219,10 @@ void ir_access(Node *node) {
 }
 
 void ir_fcall(Node *node) {
-	if (try_module_call(node)) return;
-	if (node->token->is_static_call)              ir_static_call(node);
+	if (try_module_call(node))                          return;
+	if (node->token->is_static_call)                    ir_static_call(node);
 	else if (node->token->is_method_call && node->left) ir_method_call(node);
-	else                                          ir_regular_call(node);
+	else ir_regular_call(node);
 }
 
 void ir_output(Node *node) {
@@ -256,19 +271,61 @@ void ir_tuple_unpack(Node *node) {
 		}
 	}
 	gen_ir(node->left);
+	if (found_error) return;
+
+	Token *rhs  = node->left->token;
+	Node  *func = rhs->Fcall.ptr;
+	if (!func || func->token->ret_type != TUPLE) {
+		parse_error(node->token, "tuple unpack requires a tuple-returning function call");
+		return;
+	}
+	int got = node->children_count;
+	int exp = func->token->Tuple.types_count;
+	if (got != exp) {
+		parse_error(node->token, "tuple unpack expects %d values, got %d names", exp, got);
+		return;
+	}
+	for (int i = 0; i < got; i++) {
+		Token *lhs_tok = node->children[i]->token;
+		Token *rhs_tok = func->token->Tuple.types[i];
+		Type   lt      = lhs_tok->ret_type ? lhs_tok->ret_type : lhs_tok->type;
+		Type   rt      = rhs_tok->ret_type ? rhs_tok->ret_type : rhs_tok->type;
+		if (lt != rt) {
+			parse_error(lhs_tok, "tuple unpack element %d: expected %s, got %s", i + 1, to_string(rt),
+			            to_string(lt));
+			return;
+		}
+	}
 }
 
 void ir_return(Node *node) {
 	if (node->children_count > 0) {
-		for (int i = 0; i < node->children_count; i++) gen_ir(node->children[i]);
+		for (int i = 0; i < node->children_count; i++)
+			gen_ir(node->children[i]);
 		node->token->ret_type = TUPLE;
 		return;
 	}
+	if (!node->left) return;
 	gen_ir(node->left);
+	if (found_error) return;
 	node->token->ret_type = node->left->token->type;
 	if (node->left->token->type == STRUCT_CALL)
 		node->token->Struct.ptr = node->left->token->Struct.ptr;
 	node->left->token->used++;
+
+	Node *fdec = NULL;
+	for (int j = scopes_count; j > 0; j--) {
+		if (scopes[j]->token->type == FDEC) {
+			fdec = scopes[j];
+			break;
+		}
+	}
+	if (fdec && !compatible(fdec->token, node->left->token)) {
+		Type got =
+		    node->left->token->ret_type ? node->left->token->ret_type : node->left->token->type;
+		parse_error(node->left->token, "return type mismatch in '%s': expected %s, got %s",
+		            fdec->token->name, to_string(fdec->token->ret_type), to_string(got));
+	}
 }
 
 void ir_if(Node *node) {
@@ -280,7 +337,8 @@ void ir_if(Node *node) {
 			gen_ir(curr->left);
 			curr->left->token->used++;
 		}
-		for (int i = 0; i < curr->children_count; i++) gen_ir(curr->children[i]);
+		for (int i = 0; i < curr->children_count; i++)
+			gen_ir(curr->children[i]);
 		curr = curr->right;
 	}
 	exit_scope();
@@ -291,13 +349,19 @@ void ir_while(Node *node) {
 	enter_scope(node);
 	gen_ir(node->left);
 	node->left->token->used++;
-	for (int i = 0; i < node->children_count; i++) gen_ir(node->children[i]);
+	for (int i = 0; i < node->children_count; i++)
+		gen_ir(node->children[i]);
 	exit_scope();
 	node->token->used++;
 }
 
 void ir_fdec(Node *node) {
-	if (!find_function(node->token->name)) new_function(node);
+	Node *existing = find_function(node->token->name);
+	if (existing && existing != node) {
+		parse_error(node->token, "redefinition of function '%s'", node->token->name);
+		return;
+	}
+	if (!existing) new_function(node);
 	enter_scope(node);
 	Node **params = (node->left ? node->left->children : NULL);
 	for (int i = 0; params && i < node->left->children_count && !found_error; i++) {
@@ -314,11 +378,13 @@ void ir_struct_def(Node *node) {
 		Node *fn = node->functions[i];
 		if (!find_function(fn->token->name)) add_function(scope, fn);
 	}
-	for (int i = 0; node && i < node->functions_count; i++) gen_ir(node->functions[i]);
+	for (int i = 0; node && i < node->functions_count; i++)
+		gen_ir(node->functions[i]);
 }
 
 void ir_enum_def(Node *node) {
-	for (int i = 0; i < node->children_count; i++) node->children[i]->token->used++;
+	for (int i = 0; i < node->children_count; i++)
+		node->children[i]->token->used++;
 }
 
 void ir_module(Node *node) {
@@ -331,12 +397,14 @@ void ir_module(Node *node) {
 		setName(fn->token, qname);
 		free(qname);
 	}
-	for (int i = 0; i < node->functions_count; i++) gen_ir(node->functions[i]);
+	for (int i = 0; i < node->functions_count; i++)
+		gen_ir(node->functions[i]);
 	current_gen_module = saved;
 }
 
 void ir_array_lit(Node *node) {
-	for (int i = 0; i < node->children_count; i++) gen_ir(node->children[i]);
+	for (int i = 0; i < node->children_count; i++)
+		gen_ir(node->children[i]);
 	if (node->children_count == 0) return;
 	Token *first             = node->children[0]->token;
 	Type   ft                = first->ret_type ? first->ret_type : first->type;
@@ -355,39 +423,43 @@ void ir_array_lit(Node *node) {
 void gen_ir(Node *node) {
 	if (found_error) return;
 	switch (node->token->type) {
-	case ID:           ir_id(node);            break;
-	case STRUCT_CALL:  ir_struct_call(node);   break;
-	case NULLABLE:     ir_nullable(node);      break;
-	case INT:    case BOOL: case CHAR: case ARRAY_TYPE: case FLOAT: case LONG:
-	case CHARS:  case PTR:  case VOID: case SHORT:
-	                   ir_primitive(node);     break;
-	case TUPLE_UNPACK: ir_tuple_unpack(node);  break;
-	case ASSIGN:       ir_assign(node);        break;
-	case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN: case MOD_ASSIGN:
-	                   ir_compound_assign(node); break;
-	case NOT: case BNOT: ir_unary_op(node);    break;
-	case ADD: case SUB: case MUL: case DIV: case MOD:
-	case EQUAL: case NOT_EQUAL: case LESS: case GREAT: case LESS_EQUAL: case GREAT_EQUAL:
-	case AND: case OR: case BAND: case BOR: case BXOR: case LSHIFT: case RSHIFT:
-	                   ir_binary_op(node);     break;
-	case AS:           ir_as(node);            break;
-	case REF:          ir_ref(node);           break;
-	case DOT:          ir_dot(node);           break;
-	case ACCESS:       ir_access(node);        break;
-	case FCALL:        ir_fcall(node);         break;
-	case OUTPUT:       ir_output(node);        break;
-	case TYPEOF: case SIZEOF: ir_typeof_sizeof(node); break;
-	case STACK: case HEAP:    ir_stack_heap(node);    break;
-	case RETURN:       ir_return(node);        break;
-	case IF:           ir_if(node);            break;
-	case WHILE:        ir_while(node);         break;
-	case FDEC:         ir_fdec(node);          break;
-	case STRUCT_DEF:   ir_struct_def(node);    break;
-	case ENUM_DEF:     ir_enum_def(node);      break;
-	case MODULE:       ir_module(node);        break;
-	case ARRAY_LIT:    ir_array_lit(node);     break;
-	case BREAK: case CONTINUE: break;
-	default: TODO(1, "handle this case %s", to_string(node->token->type)); break;
+	case ID:           ir_id(node); break;
+	case STRUCT_CALL:  ir_struct_call(node); break;
+	case NULLABLE:     ir_nullable(node); break;
+	case INT:          case BOOL: case CHAR: case ARRAY_TYPE: case FLOAT: case LONG:
+	case CHARS:        case PTR: case VOID:
+	case SHORT:        ir_primitive(node); break;
+	case TUPLE_UNPACK: ir_tuple_unpack(node); break;
+	case ASSIGN:       ir_assign(node); break;
+	case ADD_ASSIGN:   case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN:
+	case MOD_ASSIGN:   ir_compound_assign(node); break;
+	case NOT:
+	case BNOT:      ir_unary_op(node); break;
+	case ADD:       case SUB: case MUL: case DIV: case MOD: case EQUAL:
+	case NOT_EQUAL: case LESS: case GREAT: case LESS_EQUAL: case GREAT_EQUAL:
+	case AND:       case OR: case BAND: case BOR: case BXOR: case LSHIFT:
+	case RSHIFT:    ir_binary_op(node); break;
+	case AS:        ir_as(node); break;
+	case REF:       ir_ref(node); break;
+	case DOT:       ir_dot(node); break;
+	case ACCESS:    ir_access(node); break;
+	case FCALL:     ir_fcall(node); break;
+	case OUTPUT:    ir_output(node); break;
+	case TYPEOF:
+	case SIZEOF: ir_typeof_sizeof(node); break;
+	case STACK:
+	case HEAP:       ir_stack_heap(node); break;
+	case RETURN:     ir_return(node); break;
+	case IF:         ir_if(node); break;
+	case WHILE:      ir_while(node); break;
+	case FDEC:       ir_fdec(node); break;
+	case STRUCT_DEF: ir_struct_def(node); break;
+	case ENUM_DEF:   ir_enum_def(node); break;
+	case MODULE:     ir_module(node); break;
+	case ARRAY_LIT:  ir_array_lit(node); break;
+	case BREAK:
+	case CONTINUE: break;
+	default:       TODO(1, "handle this case %s", to_string(node->token->type)); break;
 	}
 }
 
@@ -492,18 +564,17 @@ void asm_binary_op(Node *node) {
 	ensure_loaded(right);
 	Value lref = left->token->llvm.elem;
 	Value rref = right->token->llvm.elem;
-	if (left->token->is_ref && !left->token->llvm.is_loaded)   lref = read_value(left->token);
-	if (right->token->is_ref && !right->token->llvm.is_loaded) rref = read_value(right->token);
+	if (left->token->is_ref && !left->token->llvm.is_loaded)                                  lref = read_value(left->token);
+	if (right->token->is_ref && !right->token->llvm.is_loaded)                                rref = read_value(right->token);
 	if (node->token->type == ADD && LLVMGetTypeKind(LLVMTypeOf(lref)) == LLVMPointerTypeKind) {
-		Value idx = LLVMGetTypeKind(LLVMTypeOf(rref)) == LLVMIntegerTypeKind &&
-		                    LLVMGetIntTypeWidth(LLVMTypeOf(rref)) < 64
-		                ? LLVMBuildSExt(builder, rref, i64, "idx")
-		                : rref;
+		Value idx              = LLVMGetTypeKind(LLVMTypeOf(rref)) == LLVMIntegerTypeKind &&
+                          LLVMGetIntTypeWidth(LLVMTypeOf(rref)) < 64
+		                             ? LLVMBuildSExt(builder, rref, i64, "idx")
+		                             : rref;
 		node->token->llvm.elem = LLVMBuildGEP2(builder, i8, lref, &idx, 1, "ADD");
 	} else node->token->llvm.elem = build_binary_op(node->token->type, lref, rref);
 	if (includes(node->token->type, COMPARISON_OPS, 0)) node->token->ret_type = BOOL;
-	else node->token->ret_type =
-	    left->token->ret_type ? left->token->ret_type : left->token->type;
+	else node->token->ret_type = left->token->ret_type ? left->token->ret_type : left->token->type;
 }
 
 void asm_as(Node *node) {
@@ -519,16 +590,19 @@ void asm_as(Node *node) {
 	bool     tf     = (tk == FloatType || tk == DoubleType);
 	Value    result;
 	if (stype == ttype) result = source;
-	else if (sk == IntegerType && tk == IntegerType) result = asm_as_int_to_int(source, stype, ttype);
-	else if (sk == IntegerType && tf)                result = LLVMBuildSIToFP(builder, source, ttype, "as");
-	else if (sf && tk == IntegerType)                result = LLVMBuildFPToSI(builder, source, ttype, "as");
-	else if (sf && tf) {
+	else if (sk == IntegerType && tk == IntegerType)
+		result = asm_as_int_to_int(source, stype, ttype);
+	else if (sk == IntegerType && tf) result = LLVMBuildSIToFP(builder, source, ttype, "as");
+	else if (sf && tk == IntegerType) result = LLVMBuildFPToSI(builder, source, ttype, "as");
+	else if (sf && tf)                {
 		if (sk == FloatType) result = LLVMBuildFPExt(builder, source, ttype, "as");
-		else                 result = LLVMBuildFPTrunc(builder, source, ttype, "as");
-	}
-	else if (sk == IntegerType && tk == PointerType) result = LLVMBuildIntToPtr(builder, source, ttype, "as");
-	else if (sk == PointerType && tk == IntegerType) result = LLVMBuildPtrToInt(builder, source, ttype, "as");
-	else if (sk == PointerType && tk == PointerType) result = LLVMBuildBitCast(builder, source, ttype, "as");
+		else result = LLVMBuildFPTrunc(builder, source, ttype, "as");
+	} else if (sk == IntegerType && tk == PointerType)
+		result = LLVMBuildIntToPtr(builder, source, ttype, "as");
+	else if (sk == PointerType && tk == IntegerType)
+		result = LLVMBuildPtrToInt(builder, source, ttype, "as");
+	else if (sk == PointerType && tk == PointerType)
+		result = LLVMBuildBitCast(builder, source, ttype, "as");
 	else {
 		CHECK(1, "unsupported cast from %d to %d", sk, tk);
 		result = source;
@@ -543,20 +617,20 @@ void asm_ref(Node *node) {
 }
 
 void asm_stack(Node *node) {
-	Token   tmp    = {.type = node->token->Array.sub_type};
-	TypeRef elem_t = get_llvm_type(&tmp);
-	Value   total  = asm_collect_dims(node);
-	Value   bytes  = asm_total_bytes(total, elem_t);
+	Token   tmp                  = {.type = node->token->Array.sub_type};
+	TypeRef elem_t               = get_llvm_type(&tmp);
+	Value   total                = asm_collect_dims(node);
+	Value   bytes                = asm_total_bytes(total, elem_t);
 	node->token->llvm.elem       = allocate_stack(bytes, elem_t, "stack");
 	node->token->llvm.is_set     = true;
 	node->token->llvm.array_size = total;
 }
 
 void asm_heap(Node *node) {
-	Token   tmp    = {.type = node->token->Array.sub_type};
-	TypeRef elem_t = get_llvm_type(&tmp);
-	Value   total  = asm_collect_dims(node);
-	Value   bytes  = asm_total_bytes(total, elem_t);
+	Token   tmp                  = {.type = node->token->Array.sub_type};
+	TypeRef elem_t               = get_llvm_type(&tmp);
+	Value   total                = asm_collect_dims(node);
+	Value   bytes                = asm_total_bytes(total, elem_t);
 	node->token->llvm.elem       = allocate_heap(bytes, elem_t, "heap");
 	node->token->llvm.is_set     = true;
 	node->token->llvm.array_size = total;
@@ -593,8 +667,7 @@ void asm_dot(Node *node) {
 		node->token->llvm.elem =
 		    LLVMBuildGEP2(builder, struct_type, struct_ptr, indices, 2, node->right->token->name);
 	} else {
-		node->token->llvm.elem =
-		    struct_field_ptr(struct_tok, field_index, node->right->token->name);
+		node->token->llvm.elem = struct_field_ptr(struct_tok, field_index, node->right->token->name);
 	}
 	asm_dot_propagate_field_dims(struct_tok, field_index, node->token);
 }
@@ -610,15 +683,14 @@ void asm_access(Node *node) {
 	ensure_loaded(node->right);
 	Value right_ref = node->right->token->llvm.elem;
 	if (asm_access_multidim(node, left_value, right_ref)) return;
-	TypeRef element_type = asm_access_element_type(node);
-	Value   indices[]    = {right_ref};
-	node->token->llvm.elem =
-	    LLVMBuildGEP2(builder, element_type, left_value, indices, 1, "ACCESS");
+	TypeRef element_type   = asm_access_element_type(node);
+	Value   indices[]      = {right_ref};
+	node->token->llvm.elem = LLVMBuildGEP2(builder, element_type, left_value, indices, 1, "ACCESS");
 }
 
 void asm_fcall(Node *node) {
 	if (node->token->is_static_call) asm_fcall_static(node);
-	else                             asm_fcall_instance(node);
+	else asm_fcall_instance(node);
 }
 
 void asm_typeof_sizeof(Node *node) {
@@ -629,27 +701,27 @@ void asm_typeof_sizeof(Node *node) {
 		node->token->llvm.is_loaded = true;
 		return;
 	}
-	TypeRef    type = get_llvm_type(type_tok);
-	TargetData td   = LLVMGetModuleDataLayout(module);
-	size_t     size = LLVMABISizeOfType(td, type);
+	TypeRef    type             = get_llvm_type(type_tok);
+	TargetData td               = LLVMGetModuleDataLayout(module);
+	size_t     size             = LLVMABISizeOfType(td, type);
 	node->token->Int.value      = (long long)size;
 	node->token->llvm.elem      = LLVMConstInt(i32, size, 0);
 	node->token->llvm.is_loaded = true;
 }
 
 void asm_output(Node *node) {
-	int    argc = node->left->children_count;
-	Node **argv = node->left->children;
-	int    cap  = output_format_capacity(argc, argv);
-	char  *fmt  = allocate(cap, 1);
-	Value *args = allocate(256, sizeof(Value));
-	int    fc   = 0;
+	int    argc  = node->left->children_count;
+	Node **argv  = node->left->children;
+	int    cap   = output_format_capacity(argc, argv);
+	char  *fmt   = allocate(cap, 1);
+	Value *args  = allocate(256, sizeof(Value));
+	int    fc    = 0;
 	int    nargs = 0;
 	for (int i = 0; i < argc; i++) {
 		gen_asm(argv[i]);
 		append_output_arg(argv[i]->token, fmt, &fc, args, &nargs);
 	}
-	fmt[fc] = '\0';
+	fmt[fc]         = '\0';
 	Value printf_fn = LLVMGetNamedFunction(module, "printf");
 	if (!printf_fn) {
 		TypeRef params[]  = {p8, i32};
@@ -657,7 +729,7 @@ void asm_output(Node *node) {
 		printf_fn         = _add_function("printf", printf_ft);
 	}
 	TypeRef printf_ft = LLVMGlobalGetValueType(printf_fn);
-	Value *call_args  = allocate(nargs + 3, sizeof(Value));
+	Value  *call_args = allocate(nargs + 3, sizeof(Value));
 	call_args[0]      = LLVMBuildGlobalStringPtr(builder, fmt, "output_fmt");
 	call_args[1]      = LLVMConstInt(i32, nargs, 0);
 	memcpy(call_args + 2, args, nargs * sizeof(Value));
@@ -680,9 +752,9 @@ void asm_tuple_unpack(Node *node) {
 
 void asm_while(Node *node) {
 	enter_scope(node);
-	Block start = _append_block("while.start");
-	Block then  = _append_block("while.then");
-	Block end   = _append_block("while.end");
+	Block start             = _append_block("while.start");
+	Block then              = _append_block("while.then");
+	Block end               = _append_block("while.end");
 	node->token->llvm.start = start;
 	node->token->llvm.then  = then;
 	node->token->llvm.end   = end;
@@ -741,9 +813,8 @@ void asm_return(Node *node) {
 	if (CHECK(!fdec, "can not return outside function")) return;
 	char *fn_name = fdec->token->name;
 	int   fn_len  = strlen(fn_name);
-	if (fn_len > 7 && strcmp(fn_name + fn_len - 7, ".delete") == 0)
-		asm_return_delete_chain(fdec);
-	if (strcmp(fdec->token->name, "main") == 0) asm_return_main_globals();
+	if (fn_len > 7 && strcmp(fn_name + fn_len - 7, ".delete") == 0) asm_return_delete_chain(fdec);
+	if (strcmp(fdec->token->name, "main") == 0)                     asm_return_main_globals();
 	if (fdec->token->ret_type == TUPLE && node->children_count > 0) {
 		asm_return_tuple(node, fdec);
 		return;
@@ -777,7 +848,8 @@ void asm_enum_def(Node *node) {
 }
 
 void asm_module(Node *node) {
-	for (int i = 0; i < node->functions_count; i++) gen_asm(node->functions[i]);
+	for (int i = 0; i < node->functions_count; i++)
+		gen_asm(node->functions[i]);
 }
 
 void asm_struct_def(Node *node) {
@@ -786,7 +858,8 @@ void asm_struct_def(Node *node) {
 	gen_struct_build_type(node);
 	gen_struct_emit_delete(node);
 	gen_struct_predeclare_methods(node);
-	for (int i = 0; i < node->functions_count; i++) gen_asm(node->functions[i]);
+	for (int i = 0; i < node->functions_count; i++)
+		gen_asm(node->functions[i]);
 }
 
 void gen_asm(Node *node) {
@@ -794,37 +867,40 @@ void gen_asm(Node *node) {
 	if (CHECK(node->token->llvm.is_set, "already set")) return;
 	switch (node->token->type) {
 	case STRUCT_CALL: asm_struct_call(node); break;
-	case NULLABLE:    asm_nullable(node);    break;
-	case INT: case LONG: case SHORT: case CHARS: case CHAR: case BOOL:
-	case ARRAY_TYPE: case FLOAT: asm_primitive(node); break;
-	case ASSIGN:      asm_assign(node);          break;
-	case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN: case MOD_ASSIGN:
-	                  asm_compound_assign(node); break;
-	case NOT: case BNOT: asm_unary_op(node);     break;
-	case ADD: case SUB: case MUL: case DIV: case MOD:
-	case EQUAL: case NOT_EQUAL: case LESS: case GREAT: case LESS_EQUAL: case GREAT_EQUAL:
-	case AND: case OR: case BAND: case BOR: case BXOR: case LSHIFT: case RSHIFT:
-	                  asm_binary_op(node);       break;
-	case AS:          asm_as(node);              break;
-	case REF:         asm_ref(node);             break;
-	case STACK:       asm_stack(node);           break;
-	case HEAP:        asm_heap(node);            break;
-	case ARRAY_LIT:   asm_array_lit(node);       break;
-	case DOT:         asm_dot(node);             break;
-	case ACCESS:      asm_access(node);          break;
-	case FCALL:       asm_fcall(node);           break;
-	case OUTPUT:      asm_output(node);          break;
-	case TYPEOF: case SIZEOF: asm_typeof_sizeof(node); break;
-	case TUPLE_UNPACK: asm_tuple_unpack(node);   break;
-	case RETURN:      asm_return(node);          break;
-	case IF:          asm_if(node);              break;
-	case WHILE:       asm_while(node);           break;
-	case BREAK:       asm_break();               break;
-	case CONTINUE:    asm_continue();            break;
-	case FDEC:        asm_fdec(node);            break;
-	case STRUCT_DEF:  asm_struct_def(node);      break;
-	case ENUM_DEF:    asm_enum_def(node);        break;
-	case MODULE:      asm_module(node);          break;
-	default: TODO(1, "handle this case %k", node->token); break;
+	case NULLABLE:    asm_nullable(node); break;
+	case INT:         case LONG: case SHORT: case CHARS: case CHAR: case BOOL:
+	case ARRAY_TYPE:
+	case FLOAT:      asm_primitive(node); break;
+	case ASSIGN:     asm_assign(node); break;
+	case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN:
+	case MOD_ASSIGN: asm_compound_assign(node); break;
+	case NOT:
+	case BNOT:      asm_unary_op(node); break;
+	case ADD:       case SUB: case MUL: case DIV: case MOD: case EQUAL:
+	case NOT_EQUAL: case LESS: case GREAT: case LESS_EQUAL: case GREAT_EQUAL:
+	case AND:       case OR: case BAND: case BOR: case BXOR: case LSHIFT:
+	case RSHIFT:    asm_binary_op(node); break;
+	case AS:        asm_as(node); break;
+	case REF:       asm_ref(node); break;
+	case STACK:     asm_stack(node); break;
+	case HEAP:      asm_heap(node); break;
+	case ARRAY_LIT: asm_array_lit(node); break;
+	case DOT:       asm_dot(node); break;
+	case ACCESS:    asm_access(node); break;
+	case FCALL:     asm_fcall(node); break;
+	case OUTPUT:    asm_output(node); break;
+	case TYPEOF:
+	case SIZEOF:       asm_typeof_sizeof(node); break;
+	case TUPLE_UNPACK: asm_tuple_unpack(node); break;
+	case RETURN:       asm_return(node); break;
+	case IF:           asm_if(node); break;
+	case WHILE:        asm_while(node); break;
+	case BREAK:        asm_break(); break;
+	case CONTINUE:     asm_continue(); break;
+	case FDEC:         asm_fdec(node); break;
+	case STRUCT_DEF:   asm_struct_def(node); break;
+	case ENUM_DEF:     asm_enum_def(node); break;
+	case MODULE:       asm_module(node); break;
+	default:           TODO(1, "handle this case %k", node->token); break;
 	}
 }
