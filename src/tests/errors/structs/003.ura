@@ -1,0 +1,12 @@
+// errors/structs/003 — destructor must take no parameters
+use "@/header"
+
+struct Box:
+    value int
+
+    operator delete(extra int) void:
+        return
+
+main():
+    b Box
+    b.value = 1

@@ -1,0 +1,9 @@
+// errors/tuples/002 — tuple unpack type mismatch
+use "@/header"
+
+fn pair() (int, int):
+    return 1, 2
+
+main():
+    a int, b chars = pair()
+    output(a, "\n")
