@@ -1,0 +1,6 @@
+// errors/lexer/010 — char literal containing more than one character
+use "@/header"
+
+main():
+    c char = 'ab'
+    output(c, "\n")

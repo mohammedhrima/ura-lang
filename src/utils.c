@@ -11,16 +11,16 @@ EXPAND(Source **, sources);
 EXPAND(Token **, tokens);
 int exe_count;
 EXPAND(Node **, scopes);
-Node            *scope;
+Node *scope;
 
-Node            *ura_scope;
-char            *current_gen_module;
+Node *ura_scope;
+char *current_gen_module;
 
 // Per-file path state, populated by setup_paths(), released by free_memory().
-char *dir;
-char *base;
-char *build_dir;
-char *ll_path;
+char            *dir;
+char            *base;
+char            *build_dir;
+char            *ll_path;
 
 Context          context;
 Module           module;
@@ -133,9 +133,9 @@ void free_memory() {
 	free(tokens);
 	free(scopes);
 	free_node(ura_scope);
-	free(dir);       
-	free(base);      
-	free(build_dir); 
+	free(dir);
+	free(base);
+	free(build_dir);
 	free(ll_path);
 	for (int i = 0; sources && i < sources_count; i++) {
 		free(sources[i]->content);
@@ -321,31 +321,35 @@ void parse_error(Token *token, const char *fmt, ...) {
 	if (e <= s) e = s + 1;
 
 	int line_start = s;
-	while (line_start > 0 && content[line_start - 1] != '\n') line_start--;
+	while (line_start > 0 && content[line_start - 1] != '\n')
+		line_start--;
 	int line_end = e;
-	while (content[line_end] && content[line_end] != '\n') line_end++;
+	while (content[line_end] && content[line_end] != '\n')
+		line_end++;
 
 	int col     = s - line_start + 1;
 	int span    = e - s;
 	int line_no = token->line;
 	int gutter  = 1;
-	for (int n = line_no; n >= 10; n /= 10) gutter++;
+	for (int n = line_no; n >= 10; n /= 10)
+		gutter++;
 
-	fprintf(stderr, "%*s " BLUE("-->") " %s:%d:%d\n",
-	        gutter, "", token->source->filename, line_no, col);
+	fprintf(stderr, "%*s " BLUE("-->") " %s:%d:%d\n", gutter, "", token->source->filename, line_no,
+	        col);
 	fprintf(stderr, "%*s " BLUE("|") "\n", gutter, "");
-	fprintf(stderr, BLUE("%*d |") " %.*s\n",
-	        gutter, line_no, line_end - line_start, content + line_start);
+	fprintf(stderr, BLUE("%*d |") " %.*s\n", gutter, line_no, line_end - line_start,
+	        content + line_start);
 	fprintf(stderr, "%*s " BLUE("|") " ", gutter, "");
 	for (int i = 0; i < col - 1; i++)
 		fputc(content[line_start + i] == '\t' ? '\t' : ' ', stderr);
 	fprintf(stderr, "\033[1;31m");
-	for (int i = 0; i < span; i++) fputc('^', stderr);
+	for (int i = 0; i < span; i++)
+		fputc('^', stderr);
 	fprintf(stderr, RESET "\n");
 }
 
 void tokenize_error(Source *src, int line, int s, int e, const char *fmt, ...) {
-	Token tok    = {0};
+	Token tok       = {0};
 	tok.source      = src;
 	tok.line        = line;
 	tok.start_index = s;
@@ -411,9 +415,9 @@ void pnode(Node *node, char *indent) {
 		int         is_last = (i == count - 1);
 		const char *bar     = is_last ? "   " : "│  ";
 
-		char *new_indent = format("%s%s", indent, bar);
+		char       *new_indent = format("%s%s", indent, bar);
 
-		char *connector = is_last ? "└──" : "├──";
+		char       *connector = is_last ? "└──" : "├──";
 		debug("%s%s", indent, connector);
 		pnode(child, new_indent);
 		free(new_indent);
@@ -590,6 +594,16 @@ Token *new_variable(Token *token) {
 			return token;
 		}
 	}
+	for (int j = scopes_count - 1; j > 0; j--) {
+		Node *outer = scopes[j];
+		for (int i = 0; i < outer->variables_count; i++) {
+			Token *curr = outer->variables[i];
+			if (curr->is_global && strcmp(curr->name, token->name) == 0) {
+				parse_error(token, "'%s' shadows a global of the same name", token->name);
+				return token;
+			}
+		}
+	}
 	if (scopes_count == 1) token->is_global = true;
 	add_variable(scope, token);
 	return token;
@@ -607,7 +621,7 @@ Token *get_variable(char *name) {
 		}
 	}
 	parse_error(NULL, "'%s' not found", name);
-	return syntax_error()->token;
+	return NULL;
 }
 
 void add_function(Node *parent, Node *node) {
@@ -653,7 +667,7 @@ Node *get_function(char *name) {
 	Node *f = find_function(name);
 	if (f) return f;
 	parse_error(NULL, "function '%s' not found", name);
-	return syntax_error();
+	return NULL;
 }
 
 Node *new_struct(Node *node) {
@@ -717,8 +731,8 @@ Type get_ret_type(Node *node) {
 	if (token->ret_type) return token->ret_type;
 	if (includes(token->type, INT, BOOL, CHAR, FLOAT, LONG, VOID, PTR, CHARS, STRUCT_CALL, 0))
 		return token->type;
-	if (token->type == FCALL)  return token->Fcall.ptr ? token->Fcall.ptr->token->ret_type : 0;
-	if (includes(token->type, MATH_TYPE, ASSIGN, ASSIGNS_OP, 0)) return get_ret_type(left);
+	if (token->type == FCALL)                                         return token->Fcall.ptr ? token->Fcall.ptr->token->ret_type : 0;
+	if (includes(token->type, MATH_TYPE, ASSIGN, ASSIGNS_OP, 0))      return get_ret_type(left);
 	if (includes(token->type, COMPARISON_OPS, AND, OR, NOT, BNOT, 0)) return BOOL;
 	if (token->type == AS)
 		return right ? (right->token->ret_type ? right->token->ret_type : right->token->type) : 0;
@@ -783,7 +797,7 @@ void setup_paths(char *path_name) {
 	char *dot_ext = strrchr(base, '.');
 	if (dot_ext) *dot_ext = '\0';
 
-	build_dir     = format("%s/build", dir);
+	build_dir = format("%s/build", dir);
 	mkdir(build_dir, 0755);
 	char *base_ll = format("%s.ll", base);
 	ll_path       = format("%s/%s", build_dir, base_ll);
@@ -827,7 +841,7 @@ void init(char *name) {
 	// }
 
 	// Debug info
-	debug_builder           = LLVMCreateDIBuilder(module);
+	debug_builder       = LLVMCreateDIBuilder(module);
 	char *base          = strrchr(name, '/');
 	char *filename_only = base ? base + 1 : name;
 	char *dir           = allocate(URA_MAX_SIZE, 1);
@@ -888,7 +902,8 @@ void finalize(char *output) {
 void set_debug_location(Token *token) {
 	if (!token || !debug_builder || !debug_scope)              return;
 	if (!includes(token->type, ACCESS, FDEC, PROTO, FCALL, 0)) return;
-	LLVMMetadataRef loc = LLVMDIBuilderCreateDebugLocation(context, token->line, 0, debug_scope, NULL);
+	LLVMMetadataRef loc =
+	    LLVMDIBuilderCreateDebugLocation(context, token->line, 0, debug_scope, NULL);
 	LLVMSetCurrentDebugLocation2(builder, loc);
 }
 
@@ -956,7 +971,7 @@ void write_value(Token *token, Value val) {
 	Value dest = token->llvm.elem;
 	if (token->is_ref) {
 		TypeRef type = get_llvm_type(token);
-		dest = LLVMBuildLoad2(builder, LLVMPointerType(type, 0), token->llvm.elem, "ref_ptr");
+		dest         = LLVMBuildLoad2(builder, LLVMPointerType(type, 0), token->llvm.elem, "ref_ptr");
 	}
 	LLVMBuildStore(builder, val, dest);
 }
@@ -1049,7 +1064,8 @@ TypeRef func_ret_type(Token *token) {
 	if (token->ret_type == TUPLE) {
 		int      n  = token->Tuple.types_count;
 		TypeRef *ft = allocate(n, sizeof(TypeRef));
-		for (int i = 0; i < n; i++) ft[i] = get_llvm_type(token->Tuple.types[i]);
+		for (int i = 0; i < n; i++)
+			ft[i] = get_llvm_type(token->Tuple.types[i]);
 		TypeRef st              = LLVMStructTypeInContext(context, ft, n, 0);
 		token->llvm.struct_type = st;
 		free(ft);
@@ -1071,9 +1087,8 @@ TypeRef *func_param_types(Node *fdec, int *out_count) {
 	TypeRef *types = allocate(total + 2, sizeof(TypeRef));
 	for (int i = 0; i < fixed_count; i++) {
 		Token *param = fdec->left->children[i]->token;
-		if (token->is_proto && includes(param->type, STRUCT_CALL, STRUCT_DEF, 0))
-			types[i] = i64;
-		else if (param->is_ref) types[i] = LLVMPointerType(get_llvm_type(param), 0);
+		if (token->is_proto && includes(param->type, STRUCT_CALL, STRUCT_DEF, 0)) types[i] = i64;
+		else if (param->is_ref)                                                   types[i] = LLVMPointerType(get_llvm_type(param), 0);
 		else types[i] = get_llvm_type(param);
 	}
 	if (token->is_variadic) types[fixed_count] = i32;
@@ -1142,9 +1157,9 @@ Block _append_block(char *name) {
 Value struct_field_ptr(Token *struct_tok, int field_index, char *name) {
 	TypeRef struct_type = get_llvm_type(struct_tok);
 	Value   indices[]   = {
-	    LLVMConstInt(i32, 0, 0),
-	    LLVMConstInt(i32, field_index, 0),
-	};
+	        LLVMConstInt(i32, 0, 0),
+	        LLVMConstInt(i32, field_index, 0),
+   };
 	return LLVMBuildGEP2(builder, struct_type, struct_tok->llvm.elem, indices, 2, name);
 }
 
@@ -1173,7 +1188,7 @@ Value allocate_heap(Value count, TypeRef element_type, char *name) {
 	unsigned   width = LLVMGetIntTypeWidth(LLVMTypeOf(count));
 	if (width < 64)      count_i64 = LLVMBuildZExt(builder, count, i64, "count");
 	else if (width > 64) count_i64 = LLVMBuildTrunc(builder, count, i64, "count");
-	else                 count_i64 = count;
+	else count_i64 = count;
 	Value   size_i64    = LLVMConstInt(i64, elem_size, 0);
 	Value   args[]      = {count_i64, size_i64};
 	TypeRef calloc_type = LLVMGlobalGetValueType(calloc_func);
@@ -1216,12 +1231,12 @@ void resolve_func_type(Node *fdec) {
 	Token *token = fdec->token;
 	if (token->llvm.func_type) return;
 
-	TypeRef  ret_type    = func_ret_type(token);
+	TypeRef  ret_type = func_ret_type(token);
 	int      pcount;
 	TypeRef *param_types = func_param_types(fdec, &pcount);
 	TypeRef  func_type   = LLVMFunctionType(ret_type, param_types, pcount, token->is_variadic);
 
-	Value existing        = LLVMGetNamedFunction(module, token->name);
+	Value    existing     = LLVMGetNamedFunction(module, token->name);
 	token->llvm.elem      = existing ? existing : _add_function(token->name, func_type);
 	token->llvm.func_type = func_type;
 }
@@ -1236,18 +1251,18 @@ void emit_func_body(Node *fdec) {
 		LLVMAddAttributeAtIndex(token->llvm.elem, LLVMAttributeFunctionIndex, attr);
 	}
 
-	char           *fname   = token->name;
-	MetadataRef di_type = LLVMDIBuilderCreateSubroutineType(debug_builder, debug_file, NULL, 0,
-	                                                            LLVMDIFlagZero);
-	MetadataRef di_func =
-	    LLVMDIBuilderCreateFunction(debug_builder, debug_compile_unit, fname, strlen(fname), fname,
-	                                strlen(fname), debug_file, token->line, di_type, 0, 1, token->line,
-	                                LLVMDIFlagZero, 0);
+	char       *fname = token->name;
+	MetadataRef di_type =
+	    LLVMDIBuilderCreateSubroutineType(debug_builder, debug_file, NULL, 0, LLVMDIFlagZero);
+	MetadataRef di_func = LLVMDIBuilderCreateFunction(
+	    debug_builder, debug_compile_unit, fname, strlen(fname), fname, strlen(fname), debug_file,
+	    token->line, di_type, 0, 1, token->line, LLVMDIFlagZero, 0);
 	LLVMSetSubprogram(token->llvm.elem, di_func);
 	debug_scope = di_func;
 	Block entry = LLVMAppendBasicBlockInContext(context, token->llvm.elem, "entry");
 	LLVMPositionBuilderAtEnd(builder, entry);
-	MetadataRef debug_location = LLVMDIBuilderCreateDebugLocation(context, token->line, 0, di_func, NULL);
+	MetadataRef debug_location =
+	    LLVMDIBuilderCreateDebugLocation(context, token->line, 0, di_func, NULL);
 	LLVMSetCurrentDebugLocation2(builder, debug_location);
 
 	for (int i = 0; i < fdec->left->children_count; i++) {
@@ -1281,7 +1296,7 @@ Node *find_enclosing(Type type) {
 
 Node *find_op_overload(Token *left, Token *right, Type op) {
 	if (!left->Struct.ptr) return NULL;
-	Type rt = right->ret_type ? right->ret_type : right->type;
+	Type  rt = right->ret_type ? right->ret_type : right->type;
 	char *suffix =
 	    (rt == STRUCT_CALL && right->Struct.ptr) ? right->Struct.ptr->token->name : to_string(rt);
 	char *base = format("%s" OP_PREFIX "%s", left->Struct.ptr->token->name, to_string(op));
@@ -1293,12 +1308,12 @@ Node *find_op_overload(Token *left, Token *right, Type op) {
 }
 
 void ir_access_list_struct(Node *node, Node *st) {
-	Token *dot_tok          = new_token(DOT, node->left->token->space);
-	Node  *dot              = new_node(dot_tok);
-	dot->left               = node->left;
-	Token *field_tok        = copy_token(st->children[0]->token);
-	field_tok->Struct.index = 0;
-	dot->right              = new_node(field_tok);
+	Token *dot_tok               = new_token(DOT, node->left->token->space);
+	Node  *dot                   = new_node(dot_tok);
+	dot->left                    = node->left;
+	Token *field_tok             = copy_token(st->children[0]->token);
+	field_tok->Struct.index      = 0;
+	dot->right                   = new_node(field_tok);
 	dot->token->ret_type         = st->children[0]->token->ret_type;
 	dot->token->type             = DOT;
 	dot->token->Array.sub_type   = st->children[0]->token->Array.sub_type;
@@ -1309,7 +1324,7 @@ void ir_access_list_struct(Node *node, Node *st) {
 	Type type  = dot->token->ret_type ? dot->token->ret_type : dot->token->type;
 	int  depth = dot->token->Array.depth;
 	if (!includes(type, ARRAY_TYPE, ARRAY, 0)) return;
-	if (depth > 1) {
+	if (depth > 1)                             {
 		node->token->ret_type         = ARRAY;
 		node->token->Array.sub_type   = dot->token->Array.sub_type;
 		node->token->Array.depth      = depth - 1;
@@ -1323,12 +1338,23 @@ void ir_access_list_struct(Node *node, Node *st) {
 
 void ir_method_call_args(Node *node, Node *func) {
 	Node *dec_args = func->left;
+	if (dec_args && node->left) {
+		int  got = node->left->children_count - 1; // exclude obj
+		int  exp = dec_args->children_count - 1;   // exclude self
+		bool ok  = func->token->is_variadic ? (got >= exp) : (got == exp);
+		if (!ok) {
+			parse_error(node->token,
+			            func->token->is_variadic ? "'%s' expects at least %d arguments, got %d"
+			                                     : "'%s' expects %d arguments, got %d",
+			            node->token->name, exp, got);
+			return;
+		}
+	}
 	for (int i = 0; !found_error && i < node->left->children_count - 1; i++) {
 		Node *carg = node->left->children[i];
 		gen_ir(carg);
 		if (carg->token->type == ID) {
 			parse_error(carg->token, "undeclared variable '%s'", carg->token->name);
-			syntax_error();
 			break;
 		}
 		carg->token->used++;
@@ -1341,15 +1367,14 @@ void ir_method_call_args(Node *node, Node *func) {
 		if (param_is_int && arg_is_int && param_type != arg_type) {
 			Token *as_tok           = new_token(AS, src->space);
 			as_tok->ret_type        = param_type;
-			Node *tgt                = new_node(new_token(param_type, src->space));
-			Node *as_n               = new_node(as_tok);
-			as_n->left               = carg;
-			as_n->right              = tgt;
+			Node *tgt               = new_node(new_token(param_type, src->space));
+			Node *as_n              = new_node(as_tok);
+			as_n->left              = carg;
+			as_n->right             = tgt;
 			node->left->children[i] = as_n;
 		} else if (arg_type != 0 && !compatible(dec_args->children[i]->token, src)) {
-			parse_error(carg->token, "'%s' argument %d: cannot pass %s as %s",
-			            node->token->name, i + 1, to_string(arg_type), to_string(param_type));
-			syntax_error();
+			parse_error(carg->token, "'%s' argument %d: cannot pass %s as %s", node->token->name,
+			            i + 1, to_string(arg_type), to_string(param_type));
 			break;
 		}
 	}
@@ -1367,10 +1392,10 @@ void ir_method_call(Node *node) {
 	free(qname);
 	node->token->is_method_call = false;
 	Node *func                  = get_function(node->token->name);
-	if (!func) return;
+	if (!func)               return;
 	if (func->token->is_pub) {
-		parse_error(node->token, "'%s' is a `pub fn` — call it with '::' instead of '.'", node->token->name);
-		syntax_error();
+		parse_error(node->token, "'%s' is a `pub fn` — call it with '::' instead of '.'",
+		            node->token->name);
 		return;
 	}
 	func->token->used++;
@@ -1385,6 +1410,18 @@ void ir_method_call(Node *node) {
 void ir_regular_call_args(Node *node, Node *func) {
 	Node *call_args = node->left;
 	Node *dec_args  = func->left;
+	if (call_args && dec_args) {
+		int  got = call_args->children_count;
+		int  exp = dec_args->children_count;
+		bool ok  = func->token->is_variadic ? (got >= exp) : (got == exp);
+		if (!ok) {
+			parse_error(node->token,
+			            func->token->is_variadic ? "'%s' expects at least %d arguments, got %d"
+			                                     : "'%s' expects %d arguments, got %d",
+			            node->token->name, exp, got);
+			return;
+		}
+	}
 	for (int i = 0; !found_error && call_args && i < call_args->children_count; i++) {
 		Node *carg = call_args->children[i];
 		gen_ir(carg);
@@ -1392,7 +1429,6 @@ void ir_regular_call_args(Node *node, Node *func) {
 		Token *src = carg->token;
 		if (src->type == ID) {
 			parse_error(carg->token, "undeclared variable '%s'", carg->token->name);
-			syntax_error();
 			break;
 		}
 		if (i >= dec_args->children_count) continue;
@@ -1401,7 +1437,6 @@ void ir_regular_call_args(Node *node, Node *func) {
 		    (src->type == FCALL || (src->type != DOT && src->type != ACCESS && !src->name))) {
 			parse_error(carg->token, "'%s': ref parameter requires a named variable",
 			            dec_args->children[i]->token->name);
-			syntax_error();
 			break;
 		}
 		Type param_type   = dec_args->children[i]->token->type;
@@ -1420,7 +1455,6 @@ void ir_regular_call_args(Node *node, Node *func) {
 			parse_error(carg->token, "'%s' argument %d: cannot pass %s as %s — use 'value as %s'",
 			            node->token->name, i + 1, to_string(arg_type), to_string(param_type),
 			            to_string(param_type));
-			syntax_error();
 			break;
 		}
 	}
@@ -1439,15 +1473,10 @@ void ir_regular_call(Node *node) {
 
 void ir_static_call(Node *node) {
 	Node *func = get_function(node->token->name);
-	if (!func) {
-		parse_error(node->token, "no `pub fn` '%s'", node->token->name);
-		syntax_error();
-		return;
-	}
+	if (!func)                return;
 	if (!func->token->is_pub) {
 		parse_error(node->token, "'%s' is not a `pub fn` — call it with '.' instead of '::'",
 		            node->token->name);
-		syntax_error();
 		return;
 	}
 	func->token->used++;
@@ -1466,7 +1495,10 @@ bool try_module_call(Node *node) {
 	if (last->token->type != ID || !last->token->name) return false;
 	char *qname = format("%s.%s", last->token->name, node->token->name);
 	Node *func  = find_function(qname);
-	if (!func) { free(qname); return false; }
+	if (!func) {
+		free(qname);
+		return false;
+	}
 	setName(node->token, qname);
 	free(qname);
 	node->token->is_method_call = false;
@@ -1476,7 +1508,7 @@ bool try_module_call(Node *node) {
 }
 
 void gen_struct_declaration(Token *token) {
-	if (!token->is_dec) return;
+	if (!token->is_dec)   return;
 	if (token->is_global) {
 		if (token->used == 0) {
 			token->is_dec = false;
@@ -1586,9 +1618,9 @@ Value gen_operator_call(Node *node, Node *left, Node *right, bool try_copy_ctor)
 	if (CHECK(!srcFunc.elem, "operator: elem NULL for '%s'", node->token->name)) return NULL;
 	gen_asm(left);
 	gen_asm(right);
-	Token *param = func->left->children_count >= 2 ? func->left->children[0]->token : NULL;
-	Value rhs_val     = NULL;
-	bool  param_is_ref = param ? param->is_ref : false;
+	Token *param        = func->left->children_count >= 2 ? func->left->children[0]->token : NULL;
+	Value  rhs_val      = NULL;
+	bool   param_is_ref = param ? param->is_ref : false;
 	if (try_copy_ctor && !param_is_ref && !right->token->is_ref)
 		rhs_val = emit_copy_construct(param, right->token);
 	if (!rhs_val) rhs_val = marshal_arg_for_op(param, right);
@@ -1666,8 +1698,8 @@ void asm_dot_propagate_field_dims(Token *struct_tok, int field_index, Token *tar
 }
 
 void asm_access_struct_field(Node *node) {
-	Token *struct_tok = node->left->token;
-	int    field_idx  = node->right->token->Struct.index;
+	Token *struct_tok      = node->left->token;
+	int    field_idx       = node->right->token->Struct.index;
 	node->token->llvm.elem = struct_field_ptr(struct_tok, field_idx, node->right->token->name);
 }
 
@@ -1708,8 +1740,8 @@ TypeRef asm_access_element_type(Node *node) {
 		node->token->ret_type = CHAR;
 		return i8;
 	}
-	if (left_elem == ARRAY_TYPE || left_elem == ARRAY ||
-	    node->left->token->type == HEAP || node->left->token->type == ARRAY) {
+	if (left_elem == ARRAY_TYPE || left_elem == ARRAY || node->left->token->type == HEAP ||
+	    node->left->token->type == ARRAY) {
 		Type    et = node->left->token->Array.sub_type;
 		TypeRef element_type;
 		if (et == STRUCT_CALL && node->left->token->Array.struct_ptr) {
@@ -1733,8 +1765,8 @@ Value asm_access_left_value(Node *node) {
 		lv = read_value(node->left->token);
 	} else {
 		ensure_loaded(node->left);
-		lv             = node->left->token->llvm.elem;
-		TypeKind kind  = LLVMGetTypeKind(LLVMTypeOf(lv));
+		lv            = node->left->token->llvm.elem;
+		TypeKind kind = LLVMGetTypeKind(LLVMTypeOf(lv));
 		if (kind == PointerType && node->left->token->name && !node->left->token->llvm.is_loaded &&
 		    node->left->token->type != STACK && node->left->token->type != DOT)
 			lv = LLVMBuildLoad2(builder, p8, lv, "ptr_load");
@@ -1788,22 +1820,20 @@ void call_delete(char *type_name, Value self_ptr) {
 void emit_scope_clean(Node *scope_node, int from, Token *skip) {
 	for (int i = from; i < scope_node->variables_count; i++) {
 		Token *var = scope_node->variables[i];
-		if (var == skip)     continue;
-		if (!var->llvm.elem) continue;
-		if (var->is_ref)     continue;
-		if (var->type == STRUCT_CALL)
-			call_delete(var->Struct.ptr->token->name, var->llvm.elem);
+		if (var == skip)              continue;
+		if (!var->llvm.elem)          continue;
+		if (var->is_ref)              continue;
+		if (var->type == STRUCT_CALL) call_delete(var->Struct.ptr->token->name, var->llvm.elem);
 	}
 	for (int i = 0; i < scope_node->auto_cleans_count; i++)
-		call_delete(scope_node->auto_cleans[i].type->token->name,
-		            scope_node->auto_cleans[i].value);
+		call_delete(scope_node->auto_cleans[i].type->token->name, scope_node->auto_cleans[i].value);
 	scope_node->auto_cleans_count = 0;
 }
 
 void asm_fcall_static(Node *node) {
-	Node *func   = node->token->Fcall.ptr;
-	LLVM  srcFn  = func->token->llvm;
-	int   argc   = node->left->children_count;
+	Node  *func  = node->token->Fcall.ptr;
+	LLVM   srcFn = func->token->llvm;
+	int    argc  = node->left->children_count;
 	Value *args  = allocate(argc + 1, sizeof(Value));
 	for (int i = 0; i < argc; i++) {
 		gen_asm(node->left->children[i]);
@@ -1829,7 +1859,7 @@ void asm_fcall_marshal_args(Node *node, Value *args, int *count_out, bool is_pro
 	}
 	if (is_variadic) {
 		int variadic_count = count - fixed;
-		args[fixed] = LLVMConstInt(i32, variadic_count, 0);
+		args[fixed]        = LLVMConstInt(i32, variadic_count, 0);
 		for (int i = fixed; i < count; i++) {
 			gen_asm(argNodes[i]);
 			ensure_loaded(argNodes[i]);
@@ -1851,19 +1881,21 @@ void asm_fcall_unpack_proto_struct(Node *node) {
 }
 
 void asm_fcall_instance(Node *node) {
-	LLVM srcFunc     = node->token->Fcall.ptr->token->llvm;
-	bool is_proto    = node->token->Fcall.ptr->token->is_proto;
-	int  count       = node->left->children_count;
-	Value *args      = NULL;
+	LLVM   srcFunc  = node->token->Fcall.ptr->token->llvm;
+	bool   is_proto = node->token->Fcall.ptr->token->is_proto;
+	int    count    = node->left->children_count;
+	Value *args     = NULL;
 	if (count) {
 		args = allocate(count + 3, sizeof(Value));
 		asm_fcall_marshal_args(node, args, &count, is_proto);
 	}
 	if (CHECK(!srcFunc.func_type, "FCALL: func_type NULL '%s'", node->token->name)) {
-		free(args); return;
+		free(args);
+		return;
 	}
 	if (CHECK(!srcFunc.elem, "FCALL: elem NULL '%s'", node->token->name)) {
-		free(args); return;
+		free(args);
+		return;
 	}
 	char *name = node->token->Fcall.ptr->token->ret_type != VOID ? node->token->name : "";
 	node->token->llvm.elem =
@@ -1885,7 +1917,7 @@ void append_string_literal_to_fmt(const char *s, char *fmt, int *fc) {
 			case 't':  fmt[(*fc)++] = '\t'; break;
 			case 'r':  fmt[(*fc)++] = '\r'; break;
 			case '\\': fmt[(*fc)++] = '\\'; break;
-			case '"':  fmt[(*fc)++] = '"';  break;
+			case '"':  fmt[(*fc)++] = '"'; break;
 			default:
 				fmt[(*fc)++] = '\\';
 				fmt[(*fc)++] = s[i];
@@ -1895,15 +1927,15 @@ void append_string_literal_to_fmt(const char *s, char *fmt, int *fc) {
 	}
 }
 
-void append_struct_with_output_op(Token *tok, char *fmt, int *fc, Value *args, int *nargs,
-                                  Node *sd, Value out_fn) {
+void append_struct_with_output_op(Token *tok, char *fmt, int *fc, Value *args, int *nargs, Node *sd,
+                                  Value out_fn) {
 	Value   self_ptr = tok->llvm.elem;
 	TypeRef fn_type  = LLVMGlobalGetValueType(out_fn);
 	Value   result   = LLVMBuildCall2(builder, fn_type, out_fn, &self_ptr, 1, "output_op");
 	TypeRef ret_type = LLVMGetReturnType(fn_type);
 	if (LLVMGetTypeKind(ret_type) == PointerType) {
-		fmt[(*fc)++]    = '%';
-		fmt[(*fc)++]    = 's';
+		fmt[(*fc)++]     = '%';
+		fmt[(*fc)++]     = 's';
 		args[(*nargs)++] = result;
 		return;
 	}
@@ -1935,10 +1967,10 @@ void append_struct_default_fmt(Token *tok, char *fmt, int *fc, Value *args, int 
 		int    field_name_len = strlen(field->name);
 		memcpy(fmt + *fc, field->name, field_name_len);
 		*fc += field_name_len;
-		fmt[(*fc)++] = ':';
-		fmt[(*fc)++] = ' ';
-		Token ftok      = *field;
-		ftok.llvm.elem  = struct_field_ptr(tok, i, field->name);
+		fmt[(*fc)++]   = ':';
+		fmt[(*fc)++]   = ' ';
+		Token ftok     = *field;
+		ftok.llvm.elem = struct_field_ptr(tok, i, field->name);
 		append_output_arg(&ftok, fmt, fc, args, nargs);
 		if (i < sd->children_count - 1) {
 			fmt[(*fc)++] = ',';
@@ -1953,9 +1985,10 @@ Type append_resolve_type(Token *tok) {
 	Type type = tok->type ? tok->type : tok->ret_type;
 	switch (type) {
 	case INT: case LONG: case SHORT: case CHAR: case CHARS: case BOOL:
-	case FLOAT: case STRUCT_CALL: return type;
-	case FCALL:                   return tok->ret_type;
-	default:                      return tok->ret_type ? tok->ret_type : type;
+	case FLOAT:
+	case STRUCT_CALL: return type;
+	case FCALL:       return tok->ret_type;
+	default:          return tok->ret_type ? tok->ret_type : type;
 	}
 }
 
@@ -1967,33 +2000,39 @@ void append_output_arg(Token *tok, char *fmt, int *fc, Value *args, int *nargs) 
 	Type type = append_resolve_type(tok);
 	switch (type) {
 	case INT: case SHORT:
-		fmt[(*fc)++]   = '%';
-		fmt[(*fc)++]   = 'd';
+		fmt[(*fc)++]     = '%';
+		fmt[(*fc)++]     = 'd';
 		args[(*nargs)++] = read_value(tok);
 		return;
 	case BOOL: {
-		Value bv  = read_value(tok);
-		Value ts  = LLVMBuildGlobalStringPtr(builder, "True",  "true_str");
-		Value fs  = LLVMBuildGlobalStringPtr(builder, "False", "false_str");
-		fmt[(*fc)++]   = '%';
-		fmt[(*fc)++]   = 's';
+		Value bv         = read_value(tok);
+		Value ts         = LLVMBuildGlobalStringPtr(builder, "True", "true_str");
+		Value fs         = LLVMBuildGlobalStringPtr(builder, "False", "false_str");
+		fmt[(*fc)++]     = '%';
+		fmt[(*fc)++]     = 's';
 		args[(*nargs)++] = LLVMBuildSelect(builder, bv, ts, fs, "bool_str");
 		return;
 	}
 	case LONG:
-		fmt[(*fc)++] = '%'; fmt[(*fc)++] = 'l'; fmt[(*fc)++] = 'l'; fmt[(*fc)++] = 'd';
+		fmt[(*fc)++]     = '%';
+		fmt[(*fc)++]     = 'l';
+		fmt[(*fc)++]     = 'l';
+		fmt[(*fc)++]     = 'd';
 		args[(*nargs)++] = read_value(tok);
 		return;
 	case CHAR:
-		fmt[(*fc)++] = '%'; fmt[(*fc)++] = 'c';
+		fmt[(*fc)++]     = '%';
+		fmt[(*fc)++]     = 'c';
 		args[(*nargs)++] = read_value(tok);
 		return;
 	case CHARS:
-		fmt[(*fc)++] = '%'; fmt[(*fc)++] = 's';
+		fmt[(*fc)++]     = '%';
+		fmt[(*fc)++]     = 's';
 		args[(*nargs)++] = read_value(tok);
 		return;
 	case FLOAT:
-		fmt[(*fc)++] = '%'; fmt[(*fc)++] = 'f';
+		fmt[(*fc)++] = '%';
+		fmt[(*fc)++] = 'f';
 		args[(*nargs)++] =
 		    LLVMBuildFPExt(builder, read_value(tok), LLVMDoubleTypeInContext(context), "f2d");
 		return;
@@ -2003,7 +2042,7 @@ void append_output_arg(Token *tok, char *fmt, int *fc, Value *args, int *nargs) 
 		Value out_fn   = LLVMGetNamedFunction(module, out_name);
 		free(out_name);
 		if (out_fn) append_struct_with_output_op(tok, fmt, fc, args, nargs, sd, out_fn);
-		else        append_struct_default_fmt(tok, fmt, fc, args, nargs, sd);
+		else append_struct_default_fmt(tok, fmt, fc, args, nargs, sd);
 		return;
 	}
 	default: fmt[(*fc)++] = '?'; return;
@@ -2138,7 +2177,8 @@ void gen_struct_emit_nested(Node *node) {
 void gen_struct_build_type(Node *node) {
 	int      pos   = node->children_count;
 	TypeRef *types = allocate(pos + 1, sizeof(TypeRef));
-	for (int i = 0; i < pos; i++) types[i] = get_llvm_type(node->children[i]->token);
+	for (int i = 0; i < pos; i++)
+		types[i] = get_llvm_type(node->children[i]->token);
 	char *struct_name             = format("struct.%s", node->token->name);
 	node->token->llvm.struct_type = _named_struct_type(struct_name, types, pos, 0);
 	free(struct_name);
@@ -2179,7 +2219,8 @@ void gen_struct_predeclare_methods(Node *node) {
 // ============================================================================
 
 static void emit_indent(File f, int depth) {
-	for (int i = 0; i < depth * TAB; i++) fputc(' ', f);
+	for (int i = 0; i < depth * TAB; i++)
+		fputc(' ', f);
 }
 
 static const char *op_symbol(Type type) {
@@ -2219,18 +2260,18 @@ static void emit_expr(File f, Node *node);
 static void emit_type_name(File f, Token *tok) {
 	Type t = tok->ret_type ? tok->ret_type : tok->type;
 	switch (t) {
-	case INT:   fprintf(f, "int");     break;
-	case LONG:  fprintf(f, "long");    break;
-	case SHORT: fprintf(f, "short");   break;
-	case CHAR:  fprintf(f, "char");    break;
-	case CHARS: fprintf(f, "chars");   break;
-	case BOOL:  fprintf(f, "bool");    break;
-	case FLOAT: fprintf(f, "float");   break;
-	case VOID:  fprintf(f, "void");    break;
+	case INT:   fprintf(f, "int"); break;
+	case LONG:  fprintf(f, "long"); break;
+	case SHORT: fprintf(f, "short"); break;
+	case CHAR:  fprintf(f, "char"); break;
+	case CHARS: fprintf(f, "chars"); break;
+	case BOOL:  fprintf(f, "bool"); break;
+	case FLOAT: fprintf(f, "float"); break;
+	case VOID:  fprintf(f, "void"); break;
 	case PTR:   fprintf(f, "pointer"); break;
 	case STRUCT_CALL:
 		if (tok->Struct.ptr) fprintf(f, "%s", tok->Struct.ptr->token->name);
-		else                 fprintf(f, "%s", tok->name ? tok->name : "?");
+		else fprintf(f, "%s", tok->name ? tok->name : "?");
 		break;
 	case ARRAY_TYPE: case ARRAY: {
 		fprintf(f, "array[");
@@ -2319,20 +2360,34 @@ static void emit_expr(File f, Node *node) {
 	if (!node || !node->token) return;
 	Token *tok = node->token;
 	switch (tok->type) {
-	case INT:   if (tok->name) fprintf(f, "%s", tok->name);
-	            else fprintf(f, "%lld", (long long)tok->Int.value); break;
-	case LONG:  if (tok->name) fprintf(f, "%s", tok->name);
-	            else fprintf(f, "%lld", tok->Long.value); break;
-	case SHORT: if (tok->name) fprintf(f, "%s", tok->name);
-	            else fprintf(f, "%d", tok->Short.value); break;
-	case FLOAT: if (tok->name) fprintf(f, "%s", tok->name);
-	            else fprintf(f, "%f", tok->Float.value); break;
-	case BOOL:  if (tok->name) fprintf(f, "%s", tok->name);
-	            else fprintf(f, "%s", tok->Bool.value ? "true" : "false"); break;
-	case CHAR:  if (tok->name) fprintf(f, "%s", tok->name);
-	            else fprintf(f, "'%c'", tok->Char.value); break;
-	case CHARS: if (tok->name) fprintf(f, "%s", tok->name);
-	            else emit_chars_literal(f, tok->Chars.value ? tok->Chars.value : ""); break;
+	case INT:
+		if (tok->name) fprintf(f, "%s", tok->name);
+		else fprintf(f, "%lld", (long long)tok->Int.value);
+		break;
+	case LONG:
+		if (tok->name) fprintf(f, "%s", tok->name);
+		else fprintf(f, "%lld", tok->Long.value);
+		break;
+	case SHORT:
+		if (tok->name) fprintf(f, "%s", tok->name);
+		else fprintf(f, "%d", tok->Short.value);
+		break;
+	case FLOAT:
+		if (tok->name) fprintf(f, "%s", tok->name);
+		else fprintf(f, "%f", tok->Float.value);
+		break;
+	case BOOL:
+		if (tok->name) fprintf(f, "%s", tok->name);
+		else fprintf(f, "%s", tok->Bool.value ? "true" : "false");
+		break;
+	case CHAR:
+		if (tok->name) fprintf(f, "%s", tok->name);
+		else fprintf(f, "'%c'", tok->Char.value);
+		break;
+	case CHARS:
+		if (tok->name) fprintf(f, "%s", tok->name);
+		else emit_chars_literal(f, tok->Chars.value ? tok->Chars.value : "");
+		break;
 	case NULLABLE:    fprintf(f, "null"); break;
 	case VOID:        fprintf(f, "void"); break;
 	case STRUCT_CALL: fprintf(f, "%s", tok->name ? tok->name : "?"); break;
@@ -2360,7 +2415,7 @@ static void emit_expr(File f, Node *node) {
 		emit_type_name(f, node->right->token);
 		break;
 	case NOT:  fprintf(f, "not "); emit_expr(f, node->left); break;
-	case BNOT: fprintf(f, "~");    emit_expr(f, node->left); break;
+	case BNOT: fprintf(f, "~"); emit_expr(f, node->left); break;
 	case TYPEOF:
 		fprintf(f, "typeof(");
 		emit_expr(f, node->left);
@@ -2371,18 +2426,17 @@ static void emit_expr(File f, Node *node) {
 		if (node->left && node->left->token) {
 			const char *tn = type_to_ura_name(node->left->token->type);
 			if (tn) fprintf(f, "%s", tn);
-			else    emit_expr(f, node->left);
+			else emit_expr(f, node->left);
 		}
 		fprintf(f, ")");
 		break;
-	case REF: fprintf(f, "ref "); emit_expr(f, node->left); break;
-	case ADD: case SUB: case MUL: case DIV: case MOD: case EQUAL:
+	case REF:       fprintf(f, "ref "); emit_expr(f, node->left); break;
+	case ADD:       case SUB: case MUL: case DIV: case MOD: case EQUAL:
 	case NOT_EQUAL: case LESS: case GREAT: case LESS_EQUAL: case GREAT_EQUAL:
-	case AND: case OR: case BAND: case BOR: case BXOR: case LSHIFT: case RSHIFT:
-		emit_expr_binop(f, node, tok);
-		break;
-	case FCALL: emit_expr_call(f, node, tok); break;
-	case HEAP: case STACK:
+	case AND:       case OR: case BAND: case BOR: case BXOR: case LSHIFT:
+	case RSHIFT:    emit_expr_binop(f, node, tok); break;
+	case FCALL:     emit_expr_call(f, node, tok); break;
+	case HEAP:      case STACK:
 		fprintf(f, "%s[", tok->type == HEAP ? "heap" : "stack");
 		emit_type_name(f, tok);
 		fprintf(f, "](");
@@ -2413,9 +2467,9 @@ static bool prep_fdec_has_self(Node *node) {
 static void emit_node(File f, Node *node, int depth);
 
 static void emit_fdec(File f, Node *node, int depth) {
-	Token *tok      = node->token;
-	bool   has_self = prep_fdec_has_self(node);
-	const char *fn_name = tok->name;
+	Token      *tok      = node->token;
+	bool        has_self = prep_fdec_has_self(node);
+	const char *fn_name  = tok->name;
 	if (has_self) {
 		char *dot = strrchr(tok->name, '.');
 		if (dot) fn_name = dot + 1;
@@ -2428,7 +2482,7 @@ static void emit_fdec(File f, Node *node, int depth) {
 	}
 	emit_indent(f, depth);
 	if (tok->is_proto) fprintf(f, "proto ");
-	if (is_operator) fprintf(f, "operator %s(", fn_name);
+	if (is_operator)   fprintf(f, "operator %s(", fn_name);
 	else {
 		if (tok->is_pub) fprintf(f, "pub ");
 		fprintf(f, "fn %s(", fn_name);
@@ -2452,9 +2506,13 @@ static void emit_fdec(File f, Node *node, int depth) {
 		const char *tn = type_to_ura_name(tok->ret_type);
 		fprintf(f, "%s", tn ? tn : to_string(tok->ret_type));
 	}
-	if (tok->is_proto) { fprintf(f, "\n"); return; }
+	if (tok->is_proto) {
+		fprintf(f, "\n");
+		return;
+	}
 	fprintf(f, ":\n");
-	for (int i = 0; i < node->children_count; i++) emit_node(f, node->children[i], depth + 1);
+	for (int i = 0; i < node->children_count; i++)
+		emit_node(f, node->children[i], depth + 1);
 	fprintf(f, "\n");
 }
 
@@ -2503,8 +2561,8 @@ static void emit_node(File f, Node *node, int depth) {
 	case PROTO:
 		if (node->left && node->left->token->type == FDEC) emit_node(f, node->left, depth);
 		break;
-	case FDEC:       emit_fdec(f, node, depth);        break;
-	case STRUCT_DEF: emit_struct_def(f, node, depth);  break;
+	case FDEC:       emit_fdec(f, node, depth); break;
+	case STRUCT_DEF: emit_struct_def(f, node, depth); break;
 	case STRUCT_CALL:
 		if (tok->is_dec) {
 			emit_indent(f, depth);
@@ -2514,9 +2572,10 @@ static void emit_node(File f, Node *node, int depth) {
 		}
 		break;
 	case ASSIGN: case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN:
-	case DIV_ASSIGN: case MOD_ASSIGN: emit_assign_node(f, node, depth); break;
-	case INT:   case LONG: case SHORT: case FLOAT: case BOOL: case CHAR:
-	case CHARS: case ARRAY_TYPE: case PTR:
+	case DIV_ASSIGN:
+	case MOD_ASSIGN: emit_assign_node(f, node, depth); break;
+	case INT:        case LONG: case SHORT: case FLOAT: case BOOL: case CHAR:
+	case CHARS:      case ARRAY_TYPE: case PTR:
 		if (tok->is_dec) {
 			emit_indent(f, depth);
 			fprintf(f, "%s ", tok->name);
@@ -2537,22 +2596,25 @@ static void emit_node(File f, Node *node, int depth) {
 		fprintf(f, "%s ", tok->type == IF ? "if" : "elif");
 		emit_expr(f, node->left);
 		fprintf(f, ":\n");
-		for (int i = 0; i < node->children_count; i++) emit_node(f, node->children[i], depth + 1);
+		for (int i = 0; i < node->children_count; i++)
+			emit_node(f, node->children[i], depth + 1);
 		if (node->right) emit_node(f, node->right, depth);
 		break;
 	case ELSE:
 		emit_indent(f, depth);
 		fprintf(f, "else:\n");
-		for (int i = 0; i < node->children_count; i++) emit_node(f, node->children[i], depth + 1);
+		for (int i = 0; i < node->children_count; i++)
+			emit_node(f, node->children[i], depth + 1);
 		break;
 	case WHILE:
 		emit_indent(f, depth);
 		fprintf(f, "while ");
 		emit_expr(f, node->left);
 		fprintf(f, ":\n");
-		for (int i = 0; i < node->children_count; i++) emit_node(f, node->children[i], depth + 1);
+		for (int i = 0; i < node->children_count; i++)
+			emit_node(f, node->children[i], depth + 1);
 		break;
-	case BREAK:    emit_indent(f, depth); fprintf(f, "break\n");    break;
+	case BREAK:    emit_indent(f, depth); fprintf(f, "break\n"); break;
 	case CONTINUE: emit_indent(f, depth); fprintf(f, "continue\n"); break;
 	case FCALL:
 		emit_indent(f, depth);
@@ -2580,6 +2642,7 @@ static void emit_node(File f, Node *node, int depth) {
 void emit_prep_file(Node *scope_node, char *path) {
 	File f = fopen(path, "w");
 	if (CHECK(!f, "cannot open %s for writing", path)) return;
-	for (int i = 0; i < scope_node->children_count; i++) emit_node(f, scope_node->children[i], 0);
+	for (int i = 0; i < scope_node->children_count; i++)
+		emit_node(f, scope_node->children[i], 0);
 	fclose(f);
 }

@@ -1,6 +1,5 @@
 #include "header.h"
 
-
 void compile(char *path_name) {
 	debug(RED("===========================================\n"));
 	debug(RED("START COMPILATION\n"));
@@ -13,9 +12,9 @@ void compile(char *path_name) {
 	if (synth_list_count > 0) {
 		Token **user_tokens = tokens;
 		int     user_count  = tokens_count;
-		tokens       = NULL;
-		tokens_count = 0;
-		tokens_size  = 0;
+		tokens              = NULL;
+		tokens_count        = 0;
+		tokens_size         = 0;
 		for (int i = 0; i < synth_list_count; i++)
 			tokenize(synth_list_paths[i], 0);
 		if (tokens_count > 0 && tokens[tokens_count - 1]->type == END) tokens_count--;
@@ -37,10 +36,10 @@ void compile(char *path_name) {
 	while (!find(END, 0) && !found_error) {
 		Node *child = expr_node();
 		if (found_error) break;
-		Token *t = child->token;
+		Token *t      = child->token;
 		Token *anchor = (t->type == ASSIGN && child->left) ? child->left->token : t;
-		bool ok = includes(anchor->type, FDEC, STRUCT_DEF, ENUM_DEF, MODULE, PROTO, 0)
-		       || anchor->is_dec;
+		bool   ok =
+		    includes(anchor->type, FDEC, STRUCT_DEF, ENUM_DEF, MODULE, PROTO, 0) || anchor->is_dec;
 		if (!ok) {
 			parse_error(t, "only declarations are allowed at top level");
 			break;
@@ -110,11 +109,14 @@ int main(int argc, char **argv) {
 		var = val;                                                                                   \
 		continue;                                                                                    \
 	}
-		MATCH("-san", enable_san, true); MATCH("-O0", flags, PASSES_O0);
+		MATCH("-san", enable_san, true);
+		MATCH("-O0", flags, PASSES_O0);
 		MATCH("-no-exec", no_exec, true) MATCH("-O1", flags, PASSES_O1);
 		MATCH("-no-debug", enable_debug, false);
-		MATCH("-O2", flags, PASSES_O2); MATCH("-O3", flags, PASSES_O3);
-		MATCH("-Os", flags, PASSES_Os); MATCH("-Oz", flags, PASSES_Oz);
+		MATCH("-O2", flags, PASSES_O2);
+		MATCH("-O3", flags, PASSES_O3);
+		MATCH("-Os", flags, PASSES_Os);
+		MATCH("-Oz", flags, PASSES_Oz);
 		MATCH("-prep", enable_prep, true);
 #undef MATCH
 		if (strcmp(a, "-o") == 0) {

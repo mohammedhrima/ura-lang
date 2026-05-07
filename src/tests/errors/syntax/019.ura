@@ -1,0 +1,10 @@
+// errors/syntax/019 — `enum` field declared at wrong indent (missing comma)
+use "@/header"
+
+enum Color:
+    RED
+    GREEN
+    BLUE
+
+main():
+    output("hi\n")

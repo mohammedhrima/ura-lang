@@ -1,0 +1,7 @@
+// errors/syntax/016 — `proto` not followed by `fn` or `struct`
+use "@/header"
+
+proto x int
+
+main():
+    output("hi\n")

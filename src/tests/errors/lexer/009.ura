@@ -1,0 +1,5 @@
+// errors/lexer/009 — `link` with unclosed quote
+link "header.h
+
+main():
+    output("hi\n")

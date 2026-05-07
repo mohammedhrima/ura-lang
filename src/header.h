@@ -50,9 +50,9 @@ typedef struct _IO_FILE *File;
 #define TOKENIZE 1
 #define TAB      3
 #define AST      1
-#define IR       0
-#define OPTIMIZE 0
-#define ASM      0
+#define IR       1
+#define OPTIMIZE 1
+#define ASM      1
 
 #define CHECK(cond, fmt, ...) _check(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)
 #define TODO(cond, fmt, ...)                                                                       \
@@ -147,8 +147,8 @@ typedef LLVMBasicBlockRef Block;
 typedef LLVMValueRef      Value;
 typedef LLVMTargetDataRef TargetData;
 typedef LLVMTypeKind      TypeKind;
-typedef LLVMAttributeRef AttributeRef;
-typedef LLVMMetadataRef MetadataRef;
+typedef LLVMAttributeRef  AttributeRef;
+typedef LLVMMetadataRef   MetadataRef;
 
 #define PointerType  LLVMPointerTypeKind
 #define IntegerType  LLVMIntegerTypeKind
@@ -239,31 +239,31 @@ struct Source {
 };
 
 struct Token {
-	Type  type;
-	Type  ret_type;
+	Type    type;
+	Type    ret_type;
 	Source *source;
 
-	char *name;
-	int   space;
+	char   *name;
+	int     space;
 
-	int   used;
-	int   start_index;
-	int	end_index; // TODO: meybe it needs to be removed
+	int     used;
+	int     start_index;
+	int     end_index; // TODO: meybe it needs to be removed
 
-	bool  is_ref;
-	bool  is_dec;
-	bool  is_global;
-	bool  is_param;
-	bool  is_variadic;
-	bool  is_proto;
-	bool  has_clean;
-	bool  is_method_call;
-	bool  is_pub;
-	bool  is_static_call;
+	bool    is_ref;
+	bool    is_dec;
+	bool    is_global;
+	bool    is_param;
+	bool    is_variadic;
+	bool    is_proto;
+	bool    has_clean;
+	bool    is_method_call;
+	bool    is_pub;
+	bool    is_static_call;
 
-	int   line;
+	int     line;
 
-	LLVM  llvm;
+	LLVM    llvm;
 
 	// clang-format off
 	struct {
@@ -289,11 +289,11 @@ struct Node {
 	Node  *right;
 	Token *token;
 
-	EXPAND(Node      **, children);
-	EXPAND(Token     **, variables);
-	EXPAND(Node      **, functions);
-	EXPAND(Node      **, structs);
-	EXPAND(Node      **, modules);
+	EXPAND(Node **, children);
+	EXPAND(Token **, variables);
+	EXPAND(Node **, functions);
+	EXPAND(Node **, structs);
+	EXPAND(Node **, modules);
 	EXPAND(AutoClean *, auto_cleans);
 };
 
@@ -314,8 +314,8 @@ extern Token          **tokens;
 extern int              tokens_count;
 extern int              tokens_size;
 extern int              exe_count;
-extern char *synth_list_paths[];
-extern int   synth_list_count;
+extern char            *synth_list_paths[];
+extern int              synth_list_count;
 extern Node           **scopes;
 extern int              scopes_count;
 extern int              scopes_size;
@@ -337,7 +337,6 @@ extern LLVMMetadataRef  debug_compile_unit;
 extern LLVMMetadataRef  debug_file;
 extern LLVMMetadataRef  debug_scope;
 
-
 // ----------------------------------------------------------------------------
 // Forward declarations
 // ----------------------------------------------------------------------------
@@ -352,34 +351,34 @@ void   unuse(Node *node);
 
 // tokenizer / parser helpers
 Source *new_source(char *file_name);
-void   tokenize(char *filename, int default_space);
-void   tokenize_string(char *input, char *fake_name, int default_space);
-void   instantiate_list_types(void);
-char  *generate_list_source(const char *elem_type_name, const char *struct_name);
-Token *new_token(Type type, int space);
-Token *parse_token(Source *src, int line, int s, int e, Type type, int space);
-void   add_token(Token *token);
-Node  *new_node(Token *token);
-Node  *add_child(Node *node, Node *child);
-void   enter_scope(Node *node);
-void   exit_scope();
-Token *find(Type type, ...);
-bool   within(int space);
-bool   includes(Type to_find, ...);
-void   setName(Token *token, char *name);
-char  *to_string(Type type);
-bool   is_data_type(Token *token);
-char  *resolve_path(char *path);
-Node  *syntax_error();
+void    tokenize(char *filename, int default_space);
+void    tokenize_string(char *input, char *fake_name, int default_space);
+void    instantiate_list_types(void);
+char   *generate_list_source(const char *elem_type_name, const char *struct_name);
+Token  *new_token(Type type, int space);
+Token  *parse_token(Source *src, int line, int s, int e, Type type, int space);
+void    add_token(Token *token);
+Node   *new_node(Token *token);
+Node   *add_child(Node *node, Node *child);
+void    enter_scope(Node *node);
+void    exit_scope();
+Token  *find(Type type, ...);
+bool    within(int space);
+bool    includes(Type to_find, ...);
+void    setName(Token *token, char *name);
+char   *to_string(Type type);
+bool    is_data_type(Token *token);
+char   *resolve_path(char *path);
+Node   *syntax_error();
 
 // variables / functions / structs
-Token *new_variable(Token *token);
-void   add_variable(Node *b, Token *token);
-Token *get_variable(char *name);
-Node  *new_function(Node *node);
-Node  *find_function(char *name);
-void   add_function(Node *b, Node *node);
-Node  *get_function(char *name);
+Token      *new_variable(Token *token);
+void        add_variable(Node *b, Token *token);
+Token      *get_variable(char *name);
+Node       *new_function(Node *node);
+Node       *find_function(char *name);
+void        add_function(Node *b, Node *node);
+Node       *get_function(char *name);
 Node       *new_struct(Node *node);
 void        add_struct(Node *b, Node *node);
 Node       *get_struct(char *name);
@@ -479,25 +478,25 @@ void    asm_fcall_marshal_args(Node *node, Value *args, int *count_out, bool is_
 void    asm_fcall_unpack_proto_struct(Node *node);
 void    asm_fcall_instance(Node *node);
 void    append_string_literal_to_fmt(const char *s, char *fmt, int *fc);
-void    append_struct_with_output_op(Token *tok, char *fmt, int *fc, Value *args, int *nargs,
-                                     Node *sd, Value out_fn);
-void    append_struct_default_fmt(Token *tok, char *fmt, int *fc, Value *args, int *nargs, Node *sd);
-Type    append_resolve_type(Token *tok);
-void    append_output_arg(Token *tok, char *fmt, int *fc, Value *args, int *nargs);
-int     output_format_capacity(int argc, Node **argv);
-void    if_chain_branch(Node *curr, Block if_start, Block end);
-void    if_chain_else(Node *curr, Block end);
-void    gen_if_chain(Node *node, Block if_start, Block end);
-void    asm_return_delete_chain(Node *fdec);
-void    asm_return_main_globals(void);
-void    asm_return_tuple(Node *node, Node *fdec);
-void    asm_return_value(Node *node, Node *fdec);
-void    gen_struct_emit_nested(Node *node);
-void    gen_struct_build_type(Node *node);
-void    gen_struct_emit_delete(Node *node);
-void    gen_struct_predeclare_methods(Node *node);
-void    emit_prep_file(Node *scope_node, char *path);
-void    _branch(Block bloc);
+void append_struct_with_output_op(Token *tok, char *fmt, int *fc, Value *args, int *nargs, Node *sd,
+                                  Value out_fn);
+void append_struct_default_fmt(Token *tok, char *fmt, int *fc, Value *args, int *nargs, Node *sd);
+Type append_resolve_type(Token *tok);
+void append_output_arg(Token *tok, char *fmt, int *fc, Value *args, int *nargs);
+int  output_format_capacity(int argc, Node **argv);
+void if_chain_branch(Node *curr, Block if_start, Block end);
+void if_chain_else(Node *curr, Block end);
+void gen_if_chain(Node *node, Block if_start, Block end);
+void asm_return_delete_chain(Node *fdec);
+void asm_return_main_globals(void);
+void asm_return_tuple(Node *node, Node *fdec);
+void asm_return_value(Node *node, Node *fdec);
+void gen_struct_emit_nested(Node *node);
+void gen_struct_build_type(Node *node);
+void gen_struct_emit_delete(Node *node);
+void gen_struct_predeclare_methods(Node *node);
+void emit_prep_file(Node *scope_node, char *path);
+void _branch(Block bloc);
 Block   _append_block(char *name);
 Value   _add_function(char *name, TypeRef function_type);
 Value   build_binary_op(Type op, Value l, Value r);
