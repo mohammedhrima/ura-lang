@@ -1,0 +1,7 @@
+// errors/refs/002 — ref of mismatched type
+use "@/header"
+
+main():
+    x int = 5
+    y chars ref = x
+    output(y, "\n")

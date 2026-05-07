@@ -1,0 +1,6 @@
+// errors/variables/003 — assigning to a variable that was never declared
+use "@/header"
+
+main():
+    score = 100
+    output(score, "\n")

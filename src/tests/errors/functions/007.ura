@@ -1,0 +1,8 @@
+// errors/functions/007 — duplicate parameter name
+use "@/header"
+
+fn add(a int, a int) int:
+    return a
+
+main():
+    output(add(1, 2), "\n")
