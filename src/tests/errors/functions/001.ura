@@ -1,0 +1,11 @@
+// errors/functions/001 — function redefinition
+use "@/header"
+
+fn greet() void:
+    output("hi\n")
+
+fn greet() void:
+    output("hello\n")
+
+main():
+    greet()

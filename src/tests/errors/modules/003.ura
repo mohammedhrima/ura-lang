@@ -1,0 +1,9 @@
+// errors/modules/003 — calling a function that doesn't exist on a module
+use "@/header"
+
+mod util:
+    fn ping() void:
+        output("pong\n")
+
+main():
+    util.unknown()

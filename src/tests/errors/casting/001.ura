@@ -1,0 +1,11 @@
+// errors/casting/001 — cannot cast a struct value to int via `as`
+use "@/header"
+
+struct Point:
+    x int
+    y int
+
+main():
+    p Point
+    n int = p as int
+    output(n, "\n")

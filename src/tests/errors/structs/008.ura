@@ -1,0 +1,11 @@
+// errors/structs/008 — calling undefined method on struct
+use "@/header"
+
+struct Point:
+    x int
+    y int
+
+main():
+    p Point
+    p.x = 1
+    p.normalize()
