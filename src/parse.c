@@ -330,6 +330,10 @@ Node *new_node(Token *token) {
 }
 
 Node *add_child(Node *node, Node *child) {
+	// Skip the SYNTAX_ERROR sentinel — it's a single static node returned
+	// by every failed parse, so adding it as a child more than once would
+	// UAF on free_memory (same pointer freed twice).
+	if (child == syntax_error_node) return child;
 	if (child) {
 		resize_array(node->children, Node *, node->children_size, node->children_count);
 		child->token->space                    = node->token->space + TAB;
@@ -352,13 +356,31 @@ Node *copy_node(Node *node) {
 	return new;
 }
 
+Node *syntax_error_node;
+
 Node *syntax_error() {
-	found_error = true;
-	static Node *node;
-	if (node == NULL) node = new_node(new_token(SYNTAX_ERROR, -1));
+	// Note: do NOT set found_error here. parse_error() already records the
+	// error in error_count and sets found_error; the caller has typically
+	// already invoked parser_recover() to clear that flag and skip past
+	// the bad tokens. Setting found_error again here would re-block
+	// find()/within() and prevent further error reporting.
+	if (syntax_error_node == NULL)
+		syntax_error_node = new_node(new_token(SYNTAX_ERROR, -1));
 	if (exe_count >= 0 && exe_count < tokens_count && tokens[exe_count] && tokens[exe_count]->source)
-		node->token->source = tokens[exe_count]->source;
-	return node;
+		syntax_error_node->token->source = tokens[exe_count]->source;
+	return syntax_error_node;
+}
+
+// DEMO: skip tokens until we reach a "sync point" — a token at the same
+// or shallower indent than `indent`. After recovery we clear found_error
+// so subsequent find()/within() calls behave normally and we can keep
+// parsing the rest of the file.
+void parser_recover(int indent) {
+	while (exe_count < tokens_count
+	       && tokens[exe_count]->type != END
+	       && tokens[exe_count]->space > indent)
+		exe_count++;
+	found_error = false;
 }
 
 Token *find(Type type, ...) {
@@ -422,6 +444,7 @@ Node *as_node() {
 		// TODO: casting to struct type
 		if (!to->is_dec) {
 			parse_error(token, "expected data type after 'as'");
+			parser_recover(token->space);
 			return syntax_error();
 		}
 		to->is_dec = false;
@@ -459,6 +482,7 @@ Node *access_node() // . [] ::
 
 			if (!node->right) {
 				parse_error(token, "expected attribute or method name after '.'");
+				parser_recover(token->space);
 				return syntax_error();
 			}
 			if (node->right->token->type == FCALL) {
@@ -477,6 +501,7 @@ Node *access_node() // . [] ::
 			node->right       = expr_node();
 			if (!node->right) {
 				parse_error(token, "expected expression between '[' and ']'");
+				parser_recover(token->space);
 				return syntax_error();
 			}
 			EXPECT_TOKEN(token, RBRA, "expected ']' to close index access");
@@ -486,6 +511,7 @@ Node *access_node() // . [] ::
 			Node *call = keyword_node();
 			if (!call || call->token->type != FCALL) {
 				parse_error(token, "expected function call after '::'");
+				parser_recover(token->space);
 				return syntax_error();
 			}
 			char *name = format("%s.%s", left->token->name, call->token->name);
@@ -511,6 +537,7 @@ Node *keyword_node() {
 
 	if ((token = find(PUB, 0))) {
 		parse_error(token, "'pub' is only valid inside struct definitions");
+		parser_recover(token->space);
 		return syntax_error();
 	}
 
@@ -551,6 +578,7 @@ Node *keyword_node() {
 			tokens[exe_count]->is_proto = true;
 		else {
 			parse_error(token, "expected `fn` or `struct` after `proto`");
+			parser_recover(token->space);
 			return syntax_error();
 		}
 		return expr_node();
@@ -561,7 +589,9 @@ Node *keyword_node() {
 Node *prime_node() {
 	Token *token = find(ID, DATA_TYPES, 0);
 	if (!token) {
-		parse_error(tokens[exe_count], "unexpected token in expression");
+		Token *cur = tokens[exe_count];
+		parse_error(cur, "unexpected token in expression");
+		parser_recover(cur->space);
 		return syntax_error();
 	}
 
@@ -740,6 +770,7 @@ Node *fdec_node(Token *token) {
 		Token *fname = find(ID, 0);
 		if (!fname) {
 			parse_error(token, "expected identifier after `fn` keyword");
+			parser_recover(token->space);
 			return syntax_error();
 		}
 		setName(node->token, fname->name);
@@ -804,6 +835,7 @@ Node *stack_heap_node(Token *token) {
 	Token *elem_type = find(DATA_TYPES, ID, 0);
 	if (!elem_type) {
 		parse_error(token, "expected element type after %s[", to_string(token->type));
+		parser_recover(token->space);
 		return syntax_error();
 	}
 	for (int i = 0; i < depth; i++)
@@ -880,6 +912,7 @@ Node *struct_def_node(Token *token) {
 	Token *st_name;
 	if (!(st_name = find(ID, 0))) {
 		parse_error(token, "expected identifier after `struct`");
+		parser_recover(token->space);
 		return syntax_error();
 	}
 	EXPECT_TOKEN(token, DOTS, "expected ':' after struct name");
@@ -938,10 +971,12 @@ Node *enum_def_node(Token *token) {
 	Token *ename;
 	if (!(ename = find(ID, 0))) {
 		parse_error(token, "expected identifier after `enum`");
+		parser_recover(token->space);
 		return syntax_error();
 	}
 	if (!find(DOTS, 0)) {
 		parse_error(ename, "expected ':' after enum name");
+		parser_recover(token->space);
 		return syntax_error();
 	}
 
@@ -1188,6 +1223,7 @@ Node *module_node(Token *token) {
 	Token *id = find(ID, 0);
 	if (!id) {
 		parse_error(token, "expected module identifier after `mod`");
+		parser_recover(token->space);
 		return syntax_error();
 	}
 	EXPECT_TOKEN(token, DOTS, "expected ':' after `mod` name");
@@ -1258,6 +1294,7 @@ Node *tuple_unpack_node(Token *first_decl) {
 				Node *list_st = get_struct(sname);
 				if (!list_st) {
 					parse_error(ntype, "list struct '%s' not found", sname);
+					parser_recover(ntype->space);
 					return syntax_error();
 				}
 				ntype->type       = STRUCT_CALL;
@@ -1288,12 +1325,14 @@ Node *pub_node(Node *struct_node, Token *pub_tok) {
 	Token *fdec_tok = find(FDEC, 0);
 	if (!fdec_tok) {
 		parse_error(pub_tok, "struct '%s': expected `fn` after `pub`", struct_node->token->name);
+		parser_recover(pub_tok->space);
 		return syntax_error();
 	}
 	fdec_tok->is_pub = true;
 	Node *child      = fdec_node(fdec_tok);
 	if (!child || child->token->type != FDEC) {
 		parse_error(pub_tok, "struct '%s': expected `fn` after `pub`", struct_node->token->name);
+		parser_recover(pub_tok->space);
 		return syntax_error();
 	}
 	child->token->is_pub = true;
@@ -1310,11 +1349,13 @@ Node *delete_node(Node *struct_node, Token *op_kw) {
 	Node *child = fdec_node(fdec_tok);
 	if (child->token->ret_type != VOID) {
 		parse_error(op_kw, "struct '%s': operator delete must return void", struct_node->token->name);
+		parser_recover(op_kw->space);
 		return syntax_error();
 	}
 	if (child->left->children_count != 1) {
 		parse_error(op_kw, "struct '%s': operator delete takes no parameters",
 		            struct_node->token->name);
+		parser_recover(op_kw->space);
 		return syntax_error();
 	}
 	char *qualified = format("%s.delete", struct_node->token->name);
@@ -1336,6 +1377,7 @@ Node *operator_node(Node *struct_node, Token *op_kw) {
 	if (!op_tok) {
 		parse_error(op_kw, "struct '%s': expected operator symbol after `operator`",
 		            struct_node->token->name);
+		parser_recover(op_kw->space);
 		return syntax_error();
 	}
 
@@ -1410,6 +1452,7 @@ Node *output_node(Token *token) {
 	}
 	if (!found_error && end->type != RPAR) {
 		parse_error(token, "expected ')' to close `output(...)` call");
+		parser_recover(token->space);
 		return syntax_error();
 	}
 	node->token->ret_type = VOID;
