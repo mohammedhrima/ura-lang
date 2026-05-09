@@ -1,6 +1,6 @@
-; ModuleID = '/ura-lang/src/tests/modules/001.ura'
-source_filename = "/ura-lang/src/tests/modules/001.ura"
-target triple = "x86_64-pc-linux-gnu"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/modules/001.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/modules/001.ura"
+target triple = "arm64-apple-macosx16.0.0"
 
 %struct.String = type { i8*, i32, i32 }
 
@@ -1692,12 +1692,12 @@ define i32 @main() !dbg !164 {
 entry:
   %result = alloca i32, align 4, !dbg !165
   store i32 0, i32* %result, align 4, !dbg !165
-  %math.add = call i32 @math.add(i32 3, i32 4), !dbg !166
-  store i32 %math.add, i32* %result, align 4, !dbg !166
+  %0 = call i32 @math.add(i32 3, i32 4), !dbg !166
+  store i32 %0, i32* %result, align 4, !dbg !166
   %result1 = load i32, i32* %result, align 4, !dbg !167
   %printf = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @STR1, i32 0, i32 0), i32 1, i32 %result1), !dbg !167
-  %math.mul = call i32 @math.mul(i32 3, i32 4), !dbg !168
-  %printf2 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @STR2, i32 0, i32 0), i32 1, i32 %math.mul), !dbg !168
+  %1 = call i32 @math.mul(i32 3, i32 4), !dbg !168
+  %printf2 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @STR2, i32 0, i32 0), i32 1, i32 %1), !dbg !168
   ret i32 0, !dbg !168
 }
 
@@ -1707,7 +1707,7 @@ entry:
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "001.ura", directory: "/ura-lang/src/tests/modules")
+!3 = !DIFile(filename: "001.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/modules")
 !4 = distinct !DISubprogram(name: "strjoin", linkageName: "strjoin", scope: null, file: !3, line: 58, type: !5, scopeLine: 58, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

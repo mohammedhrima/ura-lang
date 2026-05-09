@@ -358,7 +358,18 @@ void ir_while(Node *node) {
 void ir_fdec(Node *node) {
 	Node *existing = find_function(node->token->name);
 	if (existing && existing != node) {
-		parse_error(node->token, "redefinition of function '%s'", node->token->name);
+		// Same name, different Node. Two cases:
+		//   (a) duplicate parse — the same source location got tokenized
+		//       twice (e.g. memory.ura pulled in by both the user and a
+		//       synthesized list-struct file). Silently skip.
+		//   (b) genuine redefinition — user wrote `fn foo` twice. Error.
+		bool same_loc =
+		    existing->token->source && node->token->source
+		    && existing->token->source->filename && node->token->source->filename
+		    && strcmp(existing->token->source->filename, node->token->source->filename) == 0
+		    && existing->token->line == node->token->line;
+		if (!same_loc)
+			parse_error(node->token, "redefinition of function '%s'", node->token->name);
 		return;
 	}
 	if (!existing) new_function(node);
@@ -396,6 +407,10 @@ void ir_module(Node *node) {
 		char *qname = format("%s.%s", mname, fn->token->name);
 		setName(fn->token, qname);
 		free(qname);
+		// Module functions are dispatched via `::`, just like struct
+		// `pub fn` static methods. Marking them is_pub lets ir_static_call
+		// accept them and lets try_module_call reject the `.` form.
+		fn->token->is_pub = true;
 	}
 	for (int i = 0; i < node->functions_count; i++)
 		gen_ir(node->functions[i]);
