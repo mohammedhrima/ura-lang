@@ -60,11 +60,18 @@ typedef struct _IO_FILE *File;
 #define debug(fmt, ...)                                                                            \
 	if (enable_debug) _debug(fmt, ##__VA_ARGS__)
 #define SEG() raise(SIGSEGV)
+// EXPECT_TOKEN: report the error, recover to the anchor's indent so
+// the OUTER loop (e.g. fdec_body's statement loop, the top-level loop)
+// can keep parsing. This function still returns the SYNTAX_ERROR
+// sentinel — its own construct couldn't complete — but the recovery
+// puts exe_count somewhere safe so the caller's next iteration
+// doesn't trip on the same broken tokens.
 #define EXPECT_TOKEN(anchor, type, fmt, ...)                                                       \
 	{                                                                                               \
 		Token *find_token = find(type, 0);                                                           \
 		if (!find_token) {                                                                           \
 			parse_error(anchor, fmt, ##__VA_ARGS__);                                                  \
+			parser_recover((anchor)->space);                                                          \
 			return syntax_error();                                                                    \
 		}                                                                                            \
 	}
@@ -74,6 +81,7 @@ typedef struct _IO_FILE *File;
 		Token *find_token = find(type, 0);                                                           \
 		if (!find_token) {                                                                           \
 			parse_error(anchor, fmt, ##__VA_ARGS__);                                                  \
+			parser_recover((anchor)->space);                                                          \
 			syntax_error();                                                                           \
 			return;                                                                                   \
 		}                                                                                            \
@@ -301,6 +309,9 @@ struct Node {
 // Globals (defined in utils.c)
 // ----------------------------------------------------------------------------
 extern bool             found_error;
+extern int              error_count;
+extern int              max_errors;
+extern Node            *syntax_error_node;
 extern bool             enable_debug;
 extern bool             enable_san;
 extern bool             enable_prep;
@@ -370,6 +381,7 @@ char   *to_string(Type type);
 bool    is_data_type(Token *token);
 char   *resolve_path(char *path);
 Node   *syntax_error();
+void    parser_recover(int indent);
 
 // variables / functions / structs
 Token      *new_variable(Token *token);
