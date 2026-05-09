@@ -187,7 +187,10 @@ int run_compiler_silent(const std::string& ura_bin, const std::string& file) {
     if (rel.size() >= 4 && rel.substr(rel.size() - 4) == ".ura")
         rel = rel.substr(0, rel.size() - 4);
 
-    bool is_negative = ura_file.find("/errors/") != std::string::npos;
+    const AnvilConfig& cfg = config();
+    std::string errors_root = cfg.errors.empty() ? "" : resolve(cfg.errors);
+    bool is_negative = !errors_root.empty()
+                       && ura_file.rfind(errors_root, 0) == 0;
     if (is_negative) {
         int rc = run_compiler_silent(ura_bin, ura_file);
         if (rc == 0)        write_result(result_path, "FAIL", rel, "expected parse error, none fired");

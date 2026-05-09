@@ -6,7 +6,7 @@ void compile(char *path_name) {
 	debug(RED("===========================================\n"));
 
 	tokenize(path_name, 0);
-	if (found_error) return;
+	if (error_count > 0) return;
 
 	synth_list_structs();
 	if (synth_list_count > 0) {
@@ -25,50 +25,54 @@ void compile(char *path_name) {
 		free(user_tokens);
 	}
 
-	for (int i = 0; !found_error && tokens[i]; i++)
+	for (int i = 0; tokens[i]; i++)
 		debug(GREEN("%k\n"), tokens[i]);
-	if (found_error) return;
 
 #if AST
 	ura_scope = new_node(new_token(ID, -TAB));
 	setName(ura_scope->token, "ura-scope");
 	enter_scope(ura_scope);
-	while (!find(END, 0) && !found_error) {
+	while (!find(END, 0)) {
 		Node *child = expr_node();
-		if (found_error) break;
+		// after expr_node, EXPECT_TOKEN/parse_error sites have already
+		// called parser_recover(), so found_error is back to false here.
+		// We just check whether the node we got is the SYNTAX_ERROR
+		// sentinel — if so, skip it and keep parsing the next statement.
+		if (!child || child == syntax_error_node) continue;
 		Token *t      = child->token;
 		Token *anchor = (t->type == ASSIGN && child->left) ? child->left->token : t;
 		bool   ok =
 		    includes(anchor->type, FDEC, STRUCT_DEF, ENUM_DEF, MODULE, PROTO, 0) || anchor->is_dec;
 		if (!ok) {
 			parse_error(t, "only declarations are allowed at top level");
-			break;
+			parser_recover(t->space);
+			continue;
 		}
 		add_child(ura_scope, child);
 	}
 
+	if (error_count > 0) return;
 	debug(GREEN("===========================================\n"));
 	debug(GREEN("AFTER PARSING\n"));
 	debug(GREEN("===========================================\n"));
-	for (int i = 0; !found_error && i < ura_scope->children_count; i++)
+	for (int i = 0; i < ura_scope->children_count; i++)
 		pnode(ura_scope->children[i], "");
-	if (found_error) return;
 #endif
 
 #if IR
 	debug(GREEN("===========================================\n"));
 	debug(GREEN("GENERATE INTERMEDIATE REPRESENTATION\n"));
 	debug(GREEN("===========================================\n"));
-	for (int i = 0; !found_error && i < ura_scope->children_count; i++)
+	for (int i = 0; i < ura_scope->children_count; i++)
 		gen_ir(ura_scope->children[i]);
 #endif
 
+	if (error_count > 0) return;
 	debug(GREEN("===========================================\n"));
 	debug(GREEN("AFTER IR GENERATION\n"));
 	debug(GREEN("===========================================\n"));
-	for (int i = 0; !found_error && i < ura_scope->children_count; i++)
+	for (int i = 0; i < ura_scope->children_count; i++)
 		pnode(ura_scope->children[i], "");
-	if (found_error) return;
 
 	setup_paths(path_name);
 
@@ -82,9 +86,9 @@ void compile(char *path_name) {
 
 #if ASM
 	init(path_name);
-	for (int i = 0; !found_error && i < ura_scope->children_count; i++)
+	for (int i = 0; error_count == 0 && i < ura_scope->children_count; i++)
 		gen_asm(ura_scope->children[i]);
-	finalize(ll_path);
+	if (error_count == 0) finalize(ll_path);
 #endif
 }
 
@@ -148,5 +152,5 @@ int main(int argc, char **argv) {
 	}
 #endif
 	free_memory();
-	return found_error;
+	return error_count > 0 ? 1 : 0;
 }

@@ -1,23 +1,6 @@
 // operators/overloading/009.ura
 use "@/header"
 
-fn strjoin(left chars, right chars) chars:
-    len int = 0
-    len1 int = 0
-    len2 int = 0
-    if left != null: len1 += strlen(left)
-    if right != null: len2 += strlen(right)
-    str chars = calloc((len1 + len2 + 1) as long, 1)
-    i int = 0
-    while i < len1:
-        str[i] = left[i]
-        i += 1
-    j int = 0
-    while j < len2:
-        str[i + j] = right[j]
-        j += 1
-    return str
-
 struct String2:
     value chars
     count int
