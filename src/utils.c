@@ -1,6 +1,8 @@
 #include "header.h"
 
-bool  found_error;
+bool  found_error;        // scoped: "current parse path is broken" (cleared by parser_recover)
+int   error_count;        // persistent: total errors reported across the run
+int   max_errors = 25;    // cap before bailing entirely
 bool  enable_debug = true;
 bool  enable_san;
 bool  enable_prep;
@@ -113,6 +115,10 @@ void free_token(Token *token) {
 
 void free_node(Node *node) {
 	if (!node) return;
+	// SYNTAX_ERROR is a shared static sentinel — pointer-compare so we
+	// don't dereference node->token, which has already been freed by
+	// free_memory()'s earlier free_token() loop.
+	if (node == syntax_error_node) return;
 	for (int i = 0; i < node->children_count; i++)
 		free_node(node->children[i]);
 	free_node(node->left);
@@ -294,6 +300,7 @@ int _vprint(File out, char *conv, va_list args) {
 bool _check(char *filename, char *funcname, int line, bool cond, char *fmt, ...) {
 	if (!cond) return cond;
 	found_error = true;
+	error_count++;
 	fprintf(stderr, RED("ura_error: %s %s:%d "), funcname, filename, line);
 	va_list ap;
 	va_start(ap, fmt);
@@ -305,6 +312,11 @@ bool _check(char *filename, char *funcname, int line, bool cond, char *fmt, ...)
 
 void parse_error(Token *token, const char *fmt, ...) {
 	found_error = true;
+	error_count++;
+	if (error_count > max_errors) {
+		fprintf(stderr, RED("error: ") "too many errors, stopping\n");
+		exit(1);
+	}
 
 	fprintf(stderr, RED("error: "));
 	va_list ap;
@@ -1499,11 +1511,12 @@ bool try_module_call(Node *node) {
 		free(qname);
 		return false;
 	}
-	setName(node->token, qname);
+	// Module functions are accessed via `::`, not `.`. Same rule as
+	// struct `pub fn`. Reject the dot form here so the user gets a
+	// helpful message instead of a silent dispatch.
+	parse_error(node->token,
+	            "'%s' is a module function — call it with '::' instead of '.'", qname);
 	free(qname);
-	node->token->is_method_call = false;
-	node->left->children_count--;
-	ir_regular_call(node);
 	return true;
 }
 

@@ -372,6 +372,7 @@ static void load() {
     g_cfg.output  = t.str("output");
     g_cfg.ura_lib = t.str("ura_lib");
     g_cfg.tests   = t.str("tests");
+    g_cfg.errors  = t.str("errors");
 
     if (auto v = t.num("llvm")) g_cfg.llvm = *v;
     g_cfg.compile = t.arr("compile");

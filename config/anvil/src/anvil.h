@@ -46,6 +46,7 @@ struct AnvilConfig {
     std::string output;
     std::string ura_lib;
     std::string tests;
+    std::string errors;     // tests under this subtree are expected to fail compilation
 
     
     int                      llvm = 14;
