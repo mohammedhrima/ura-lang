@@ -76,3 +76,8 @@
 
 + check 'smoke tests', all type of tests
 
+
+struct User:
+    bug_attribute User
+
++ i want to be able to access funcitons even though they are declared in later
