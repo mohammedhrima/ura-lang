@@ -17,6 +17,7 @@ release = ["-O2", "-DDEBUG=0"]
 
 # tests
 tests        = "src/tests"
+errors       = "src/tests/errors"
 max_parallel = 3
 ignore_ir    = ["DIFile", "DICompileUnit", "source_filename", "ModuleID"]
 

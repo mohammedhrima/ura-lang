@@ -9,7 +9,7 @@ mod math:
         return a * b
 
 main():
-    result int = math.add(3, 4)
+    result int = math::add(3, 4)
     printf("%d\n", result)
-    printf("%d\n", math.mul(3, 4))
+    printf("%d\n", math::mul(3, 4))
     return 0

@@ -1,6 +1,9 @@
 # Ura Language Roadmap
 
-> `+` implemented · `-` not yet
+> See [README.md](README.md) for the full picture (status, navigation, links).
+> See [IMPROVEMENTS.md](IMPROVEMENTS.md) for architectural workstreams.
+
+> `+` implemented · `-` not yet · `~` partial · `⊘` deferred
 
 ## Table of Contents
 
@@ -241,3 +244,15 @@
 - WebGPU / OpenGL demo
 - stock trading simulation (C++ reference)
 - build ura-lang compiler using ura-lang language
+
+---
+
+## Architectural Improvements
+
+Higher-level cleanups that take the compiler from ~70/100 to ~85. Detail in [IMPROVEMENTS.md](IMPROVEMENTS.md).
+
++ ① error recovery (multi-error per run with `parser_recover` at sync points)
+~ ② exhaustive semantic checks (7 done — return types, arg counts, struct casts, fn redefinition, etc.)
+- ③ multi-pass architecture (split gen_ir into resolve / typecheck / codegen)
+- ④ language spec (grammar.ebnf, tour.md, stdlib.md)
+⊘ ⑤ incremental compilation (deferred — not useful at current scale)
