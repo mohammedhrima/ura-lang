@@ -118,7 +118,7 @@ typedef struct _IO_FILE *File;
 		}                                                                                            \
 	}
 
-#define DATA_TYPES     INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT, ARRAY_TYPE, LIST_TYPE
+#define DATA_TYPES     INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT, ARRAY_TYPE, LIST_TYPE, FN_TYPE
 #define LOGIC_TYPE     AND, OR
 #define MATH_TYPE      ADD, SUB, MUL, DIV, MOD, BAND, BOR, BXOR, LSHIFT, RSHIFT
 #define COMPARISON_OPS EQUAL, NOT_EQUAL, LESS, GREAT, LESS_EQUAL, GREAT_EQUAL
@@ -172,6 +172,7 @@ enum Type
 	// Data types
 	VOID, INT, FLOAT, LONG, SHORT, BOOL, CHAR, CHARS, PTR, VARIADIC, REF,
 	ARRAY, ARRAY_TYPE, ARRAY_LIT, LIST, LIST_TYPE,
+	FN_TYPE,
 	// Structures
 	STRUCT_DEF, STRUCT_CALL,
 	// Enums
@@ -190,6 +191,7 @@ enum Type
 	LPAR, RPAR, LBRA, RBRA, COMA, DOT, DOTS, ACCESS, AS,
 	// Control Flow
 	RETURN, IF, ELIF, ELSE, WHILE, CONTINUE, BREAK,
+	FOR, TO, STEP, IN,
 	// Functions
 	FDEC, FCALL, PROTO, ARGS, CHILDREN,
 	// Built-ins
@@ -256,7 +258,7 @@ struct Token {
 
 	int     used;
 	int     start_index;
-	int     end_index; // TODO: meybe it needs to be removed
+	int     end_index; // TODO: maybe it needs to be removed
 
 	bool    is_ref;
 	bool    is_dec;
@@ -288,6 +290,7 @@ struct Token {
 		struct { Node *ptr; } Fcall;
 		struct { Token *ptr; Token *start; Token *end; } Statement;
 		struct { Type  type; char *name; } Catch;
+		struct { EXPAND(Token**, params); Token *ret; } Fn;
 	};
 	// clang-format on
 };
@@ -413,6 +416,7 @@ Node *fdec_node(Token *token);
 Node *return_node(Token *token);
 Node *if_node(Token *token);
 Node *while_node(Token *token);
+Node *for_node(Token *token);
 Node *struct_def_node(Token *token);
 Node *enum_def_node(Token *token);
 Node *module_node(Token *token);

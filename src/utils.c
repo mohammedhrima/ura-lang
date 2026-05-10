@@ -546,7 +546,8 @@ char *to_string(Type type) {
 	    [INT] = "INT", [BOOL] = "BOOL", [LONG] = "LONG", [FLOAT] = "FLOAT",
 	    [FDEC] = "FDEC", [FCALL] = "CALL", [END] = "END", [LPAR] = "LPAR",
 	    [RPAR] = "RPAR", [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
-	    [WHILE] = "WHILE", [BREAK] = "BRK", [CONTINUE] = "CONT",
+	    [WHILE] = "WHILE", [FOR] = "FOR", [TO] = "TO",
+	    [STEP] = "STEP", [IN] = "IN", [BREAK] = "BRK", [CONTINUE] = "CONT",
 	    [SHORT] = "SHORT", [RETURN] = "RET", [BAND] = "BAND", [BOR] = "BOR",
 	    [BXOR] = "BXOR", [BNOT] = "BNOT", [LSHIFT] = "LSHIFT",
 	    [RSHIFT] = "RSHIFT", [ADD] = "ADD", [SUB] = "SUB", [MUL] = "MUL",
@@ -567,6 +568,7 @@ char *to_string(Type type) {
 	    [ENUM_DEF] = "ENUM_DEF", [ENUM_CALL] = "ENUM_CALL", [TUPLE] = "TUPLE",
 	    [TUPLE_UNPACK] = "TUPLE_UNPACK", [LBRA] = "LBRA", [RBRA] = "RBRA",
 	    [ARRAY] = "ARRAY", [LIST] = "LIST", [LIST_TYPE] = "LIST_TYPE",
+	    [FN_TYPE] = "FN_TYPE",
 	    [DOT] = "DOT", [SYNTAX_ERROR] = "SYNTAX_ERROR", [MODULE] = "MODULE",
 	    [OPERATOR] = "OPERATOR_KW", [PUB] = "PUB",
 	    [DOUBLE_DOTS] = "DOUBLE_DOTS", [DELETE] = "DELETE",
@@ -621,6 +623,9 @@ Token *new_variable(Token *token) {
 	return token;
 }
 
+// Silent lookup — returns NULL on miss without firing an error.
+// Caller (typically ir_id) decides whether to error or fall back to a
+// function-reference lookup.
 Token *get_variable(char *name) {
 	debug(CYAN("get variable [%s] from scope %k, has %d vars\n"), name, scope->token,
 	      scope->variables_count);
@@ -632,7 +637,6 @@ Token *get_variable(char *name) {
 			if (strcmp(scope->variables[i]->name, name) == 0) return scope->variables[i];
 		}
 	}
-	parse_error(NULL, "'%s' not found", name);
 	return NULL;
 }
 
@@ -791,6 +795,15 @@ bool compatible(Token *left, Token *right) {
 	bool rt_numeric = includes(rt, NUMERIC_TYPES, 0);
 	if (lt_numeric && rt_numeric && lt == rt)   return true;
 	if (lt == STRUCT_CALL && rt == STRUCT_CALL) return left->Struct.ptr == right->Struct.ptr;
+	if (lt == FN_TYPE && rt == FN_TYPE) {
+		if (left->Fn.params_count != right->Fn.params_count) return false;
+		for (int i = 0; i < left->Fn.params_count; i++)
+			if (!compatible(left->Fn.params[i], right->Fn.params[i])) return false;
+		// ret may be NULL if void; treat both-NULL as compatible
+		if (!left->Fn.ret && !right->Fn.ret) return true;
+		if (!left->Fn.ret || !right->Fn.ret) return false;
+		return compatible(left->Fn.ret, right->Fn.ret);
+	}
 	return false;
 }
 
@@ -939,6 +952,18 @@ TypeRef get_llvm_type(Token *token) {
 		}
 		return LLVMPointerType(base, 0);
 	}
+	if (type == FN_TYPE) {
+		TypeRef ret_t = token->Fn.ret ? get_llvm_type(token->Fn.ret) : vd;
+		int n = token->Fn.params_count;
+		TypeRef *ptypes = NULL;
+		if (n > 0) {
+			ptypes = allocate(n, sizeof(TypeRef));
+			for (int i = 0; i < n; i++) ptypes[i] = get_llvm_type(token->Fn.params[i]);
+		}
+		TypeRef ft = LLVMFunctionType(ret_t, ptypes, n, 0);
+		free(ptypes);
+		return LLVMPointerType(ft, 0);
+	}
 	// if (type == FCALL) return get_llvm_type(token->Fcall.ptr->token);
 	TypeRef res[END] = {
 	    [INT] = i32,  [CHAR] = i8,   [CHARS] = p8,  [BOOL] = i1,  [VOID] = vd,
@@ -956,6 +981,7 @@ Value _get_default_value(Token *token) {
 	if (includes(token->type, NUMERIC_TYPES, 0))     return LLVMConstInt(type, 0, false);
 	if (token->type == FLOAT)                        return LLVMConstReal(type, 0.0);
 	if (includes(token->type, CHARS, ARRAY_TYPE, 0)) return LLVMConstNull(type);
+	if (token->type == FN_TYPE)                      return LLVMConstNull(type);
 	TODO(1, "handle this case %k", token);
 	return NULL;
 }
