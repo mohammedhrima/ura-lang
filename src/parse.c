@@ -7,7 +7,9 @@ const Keyword keywords[] = {
     {"long", LONG, 1, 1},         {"pointer", CHARS, 1, 1},
     {"short", SHORT, 1, 1},       {"if", IF, 0, 0},
     {"elif", ELIF, 0, 0},         {"else", ELSE, 0, 0},
-    {"while", WHILE, 0, 0},       {"fn", FDEC, 0, 0},
+    {"while", WHILE, 0, 0},       {"for", FOR, 0, 0},
+    {"to", TO, 0, 0},             {"step", STEP, 0, 0},
+    {"in", IN, 0, 0},             {"fn", FDEC, 0, 0},
     {"return", RETURN, 0, 0},     {"break", BREAK, 0, 0},
     {"continue", CONTINUE, 0, 0}, {"ref", REF, 0, 0},
     {"struct", STRUCT_DEF, 0, 0}, {"enum", ENUM_DEF, 0, 0},
@@ -371,15 +373,20 @@ Node *syntax_error() {
 	return syntax_error_node;
 }
 
-// DEMO: skip tokens until we reach a "sync point" — a token at the same
-// or shallower indent than `indent`. After recovery we clear found_error
-// so subsequent find()/within() calls behave normally and we can keep
-// parsing the rest of the file.
+// Advance to a sync point and clear the scoped-error flag.
+// A sync point is the next token that is BOTH at-or-shallower than
+// `indent` AND on a different line from where we currently are. This
+// guarantees we always cross at least one newline and skip the broken
+// remainder of the current statement (otherwise we'd loop forever
+// when the error fires mid-line on a token at the target indent —
+// e.g. `operator () Vec:` where `(` shares the indent with `operator`).
 void parser_recover(int indent) {
-	while (exe_count < tokens_count
-	       && tokens[exe_count]->type != END
-	       && tokens[exe_count]->space > indent)
+	int start_line = (exe_count < tokens_count) ? tokens[exe_count]->line : -1;
+	while (exe_count < tokens_count && tokens[exe_count]->type != END) {
+		Token *t = tokens[exe_count];
+		if (t->space <= indent && t->line != start_line) break;
 		exe_count++;
+	}
 	found_error = false;
 }
 
@@ -400,6 +407,64 @@ bool within(int space) {
 }
 
 bool is_data_type(Token *token) { return includes(token->type, DATA_TYPES, 0); }
+
+bool is_type_starter(Token *token) {
+	return is_data_type(token) || token->type == FDEC;
+}
+
+Token *parse_type_in_signature(int anchor_space);
+
+Token *parse_fn_type(int anchor_space) {
+	Token *fn_kw = find(FDEC, 0);
+	if (!fn_kw) return NULL;
+
+	Token *ftype       = new_token(FN_TYPE, fn_kw->space);
+	ftype->source      = fn_kw->source;
+	ftype->line        = fn_kw->line;
+	ftype->start_index = fn_kw->start_index;
+	ftype->end_index   = fn_kw->end_index;
+
+	if (!find(LPAR, 0)) {
+		parse_error(fn_kw, "expected '(' after `fn` in type");
+		parser_recover(anchor_space);
+		return NULL;
+	}
+
+	// Parse comma-separated parameter types.
+	while (tokens[exe_count]->type != RPAR && tokens[exe_count]->type != END) {
+		Token *param_t = parse_type_in_signature(anchor_space);
+		if (!param_t) return NULL;
+		resize_array(ftype->Fn.params, Token *, ftype->Fn.params_size, ftype->Fn.params_count);
+		ftype->Fn.params[ftype->Fn.params_count++] = param_t;
+		if (tokens[exe_count]->type == COMA) exe_count++;
+		else if (tokens[exe_count]->type != RPAR) {
+			parse_error(fn_kw, "expected ',' or ')' in fn-type parameter list");
+			parser_recover(anchor_space);
+			return NULL;
+		}
+	}
+	if (!find(RPAR, 0)) {
+		parse_error(fn_kw, "expected ')' to close fn-type parameter list");
+		parser_recover(anchor_space);
+		return NULL;
+	}
+
+	ftype->Fn.ret = parse_type_in_signature(anchor_space);
+	if (!ftype->Fn.ret) return NULL;
+	return ftype;
+}
+
+Token *parse_type_in_signature(int anchor_space) {
+	if (tokens[exe_count]->type == FDEC) return parse_fn_type(anchor_space);
+	Token *t = find(DATA_TYPES, ID, 0);
+	if (!t) {
+		parse_error(tokens[exe_count], "expected type");
+		parser_recover(anchor_space);
+		return NULL;
+	}
+	if (includes(t->type, ARRAY_TYPE, LIST_TYPE, 0)) array_list_type_setup(t);
+	return t;
+}
 
 void enter_scope(Node *node) {
 	scopes_count++;
@@ -546,6 +611,7 @@ Node *keyword_node() {
 	if ((token = find(ENUM_DEF, 0)))                  return enum_def_node(token);
 	if ((token = find(IF, 0)))                        return if_node(token);
 	if ((token = find(WHILE, 0)))                     return while_node(token);
+	if ((token = find(FOR, 0)))                       return for_node(token);
 	if ((token = find(FDEC, 0)))                      return fdec_node(token);
 	if ((token = find(RETURN, 0)))                    return return_node(token);
 	if ((token = find(BREAK, CONTINUE, NULLABLE, 0))) return new_node(token);
@@ -598,11 +664,18 @@ Node *prime_node() {
 	if (includes(token->type, DATA_TYPES) && !token->name && !token->is_dec) return new_node(token);
 	if (token->is_dec)                                                       return new_node(token);
 
-	if (token->type == ID && is_data_type(tokens[exe_count]) &&
+	if (token->type == ID && is_type_starter(tokens[exe_count]) &&
 	    tokens[exe_count]->line == token->line) {
-		Token *data_type = tokens[exe_count++];
-		bool   is_ref    = find(REF, 0) != NULL;
-		if (includes(data_type->type, ARRAY_TYPE, LIST_TYPE, 0)) array_list_type_setup(data_type);
+		Token *data_type;
+		if (tokens[exe_count]->type == FDEC) {
+			data_type = parse_fn_type(token->space);
+			if (!data_type) return syntax_error();
+		} else {
+			data_type = tokens[exe_count++];
+			if (includes(data_type->type, ARRAY_TYPE, LIST_TYPE, 0))
+				array_list_type_setup(data_type);
+		}
+		bool is_ref = find(REF, 0) != NULL;
 		setName(data_type, token->name);
 		data_type->is_dec = true;
 		data_type->is_ref = is_ref;
@@ -1150,18 +1223,23 @@ void params_node(Node *node) {
 			return;
 		}
 
-		Token *data_type = find(DATA_TYPES, ID, 0);
-		bool   is_ref    = find(REF, 0) != NULL;
-		if (!data_type) {
-			parse_error(name, "expected type for parameter '%s'", name->name);
-			syntax_error();
-			break;
+		Token *data_type;
+		if (tokens[exe_count]->type == FDEC) {
+			data_type = parse_fn_type(name->space);
+			if (!data_type) break;
+		} else {
+			data_type = find(DATA_TYPES, ID, 0);
+			if (!data_type) {
+				parse_error(name, "expected type for parameter '%s'", name->name);
+				syntax_error();
+				break;
+			}
+			if (includes(data_type->type, ARRAY_TYPE, LIST_TYPE, 0)) {
+				array_list_type_setup(data_type);
+				if (found_error) break;
+			}
 		}
-
-		if (includes(data_type->type, ARRAY_TYPE, LIST_TYPE, 0)) {
-			array_list_type_setup(data_type);
-			if (found_error) break;
-		}
+		bool is_ref = find(REF, 0) != NULL;
 		if (data_type->type == ID) {
 			Node *to_find = get_struct(data_type->name);
 			if (to_find) data_type->type = STRUCT_CALL;
@@ -1213,6 +1291,49 @@ Node *while_node(Token *token) {
 	enter_scope(node);
 	node->left = expr_node();
 	EXPECT_TOKEN(token, DOTS, "expected ':' after `while` condition");
+	while (within(node->token->space))
+		add_child(node, expr_node());
+	exit_scope();
+	return node;
+}
+
+Node *for_node(Token *token) {
+	Node *node = new_node(token);
+	enter_scope(node);
+
+	Token *iter = find(ID, 0);
+	if (!iter) {
+		parse_error(token, "expected loop variable name after `for`");
+		parser_recover(token->space);
+		return syntax_error();
+	}
+	iter->type   = INT;
+	iter->is_dec = true;
+	node->left   = new_node(iter);
+
+	Token *from_kw = find(ID, 0);
+	if (!from_kw || !from_kw->name || strcmp(from_kw->name, "from") != 0) {
+		parse_error(token, "expected `from` after `for %s`", iter->name);
+		parser_recover(token->space);
+		return syntax_error();
+	}
+
+	Node *from_expr = expr_node();
+	EXPECT_TOKEN(token, TO, "expected `to` after `for %s from <expr>`", iter->name);
+	Node *to_expr   = expr_node();
+	Node *step_expr = NULL;
+	if (find(STEP, 0)) step_expr = expr_node();
+	if (!step_expr) {
+		Token *one     = new_token(INT, token->space);
+		one->Int.value = 1;
+		step_expr      = new_node(one);
+	}
+	EXPECT_TOKEN(token, DOTS, "expected ':' after `for ... to <expr>`");
+
+	add_child(node, from_expr);
+	add_child(node, to_expr);
+	add_child(node, step_expr);
+
 	while (within(node->token->space))
 		add_child(node, expr_node());
 	exit_scope();

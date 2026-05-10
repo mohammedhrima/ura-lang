@@ -5,8 +5,35 @@
 // ============================================================================
 
 void ir_id(Node *node) {
+	// Variable in any active scope (preferred — masks fn name in inner scope).
 	Token *find = get_variable(node->token->name);
-	if (find) node->token = find;
+	if (find) {
+		node->token = find;
+		return;
+	}
+	// Fall back: bare ID resolves to a top-level function → function pointer value.
+	Node *func = find_function(node->token->name);
+	if (func) {
+		Token *t      = node->token;
+		t->type       = FN_TYPE;
+		t->ret_type   = FN_TYPE;
+		t->Fcall.ptr  = func;
+		// Build the Fn signature on this token from the function's declaration.
+		Node *params  = func->left;
+		if (params) {
+			for (int i = 0; i < params->children_count; i++) {
+				Token *p = params->children[i]->token;
+				resize_array(t->Fn.params, Token *, t->Fn.params_size, t->Fn.params_count);
+				t->Fn.params[t->Fn.params_count++] = p;
+			}
+		}
+		Token *ret_t = new_token(func->token->ret_type, 0);
+		if (func->token->ret_type == STRUCT_CALL)
+			ret_t->Struct.ptr = func->token->Struct.ptr;
+		t->Fn.ret = ret_t;
+		return;
+	}
+	parse_error(node->token, "'%s' not found", node->token->name);
 }
 
 void ir_struct_call(Node *node) {
@@ -355,14 +382,20 @@ void ir_while(Node *node) {
 	node->token->used++;
 }
 
+void ir_for(Node *node) {
+	enter_scope(node);
+	if (scopes_count == 1) node->left->token->is_global = true;
+	new_variable(node->left->token);
+	node->token->used++;
+	node->left->token->used++;
+	for (int i = 0; i < node->children_count; i++)
+		gen_ir(node->children[i]);
+	exit_scope();
+}
+
 void ir_fdec(Node *node) {
 	Node *existing = find_function(node->token->name);
 	if (existing && existing != node) {
-		// Same name, different Node. Two cases:
-		//   (a) duplicate parse — the same source location got tokenized
-		//       twice (e.g. memory.ura pulled in by both the user and a
-		//       synthesized list-struct file). Silently skip.
-		//   (b) genuine redefinition — user wrote `fn foo` twice. Error.
 		bool same_loc =
 		    existing->token->source && node->token->source
 		    && existing->token->source->filename && node->token->source->filename
@@ -407,9 +440,6 @@ void ir_module(Node *node) {
 		char *qname = format("%s.%s", mname, fn->token->name);
 		setName(fn->token, qname);
 		free(qname);
-		// Module functions are dispatched via `::`, just like struct
-		// `pub fn` static methods. Marking them is_pub lets ir_static_call
-		// accept them and lets try_module_call reject the `.` form.
 		fn->token->is_pub = true;
 	}
 	for (int i = 0; i < node->functions_count; i++)
@@ -467,6 +497,7 @@ void gen_ir(Node *node) {
 	case RETURN:     ir_return(node); break;
 	case IF:         ir_if(node); break;
 	case WHILE:      ir_while(node); break;
+	case FOR:        ir_for(node); break;
 	case FDEC:       ir_fdec(node); break;
 	case STRUCT_DEF: ir_struct_def(node); break;
 	case ENUM_DEF:   ir_enum_def(node); break;
@@ -487,6 +518,22 @@ void asm_struct_call(Node *node) { gen_struct_declaration(node->token); }
 void asm_nullable(Node *node) { node->token->llvm.elem = LLVMConstNull(p8); }
 
 void asm_primitive(Node *node) { gen_primitive_declaration(node->token); }
+
+// Function reference: a bare top-level fn name used as a value.
+// Produces a function pointer that can be stored, passed, or invoked.
+void asm_fn_ref(Node *node) {
+	if (node->token->is_dec) {
+		// Declaring a fn-typed local: allocate space for the pointer.
+		gen_primitive_declaration(node->token);
+		return;
+	}
+	Node *func = node->token->Fcall.ptr;
+	if (!func || !func->token->name) return;
+	Value fn_val = LLVMGetNamedFunction(module, func->token->name);
+	if (!fn_val) return;
+	node->token->llvm.elem      = fn_val;
+	node->token->llvm.is_loaded = true; // pointer constant — no load required
+}
 
 void asm_assign(Node *node) {
 	Node *left  = node->left;
@@ -788,6 +835,67 @@ void asm_while(Node *node) {
 	exit_scope();
 }
 
+void asm_for(Node *node) {
+	enter_scope(node);
+
+	gen_primitive_declaration(node->left->token);
+	Value i_ptr = node->left->token->llvm.elem;
+
+	// from / to / step
+	gen_asm(node->children[0]);
+	ensure_loaded(node->children[0]);
+	Value from_v = node->children[0]->token->llvm.elem;
+	LLVMBuildStore(builder, from_v, i_ptr);
+
+	gen_asm(node->children[1]);
+	ensure_loaded(node->children[1]);
+	Value to_v = node->children[1]->token->llvm.elem;
+
+	gen_asm(node->children[2]);
+	ensure_loaded(node->children[2]);
+	Value step_v = node->children[2]->token->llvm.elem;
+
+	// asc = from < to (i1)
+	Value asc = LLVMBuildICmp(builder, LLVMIntSLT, from_v, to_v, "asc");
+	// signed_step = asc ? step : -step
+	Value zero       = LLVMConstInt(i32, 0, 1);
+	Value neg_step   = LLVMBuildSub(builder, zero, step_v, "neg_step");
+	Value sstep      = LLVMBuildSelect(builder, asc, step_v, neg_step, "sstep");
+
+	Block cond_blk          = _append_block("for.cond");
+	Block body_blk          = _append_block("for.body");
+	Block step_blk          = _append_block("for.step");
+	Block end_blk           = _append_block("for.end");
+	node->token->llvm.start = step_blk; // continue → step
+	node->token->llvm.then  = body_blk;
+	node->token->llvm.end   = end_blk;  // break → end
+
+	_branch(cond_blk);
+
+	LLVMPositionBuilderAtEnd(builder, cond_blk);
+	Value iv  = LLVMBuildLoad2(builder, i32, i_ptr, "iv");
+	Value lt  = LLVMBuildICmp(builder, LLVMIntSLT, iv, to_v, "lt");
+	Value gt  = LLVMBuildICmp(builder, LLVMIntSGT, iv, to_v, "gt");
+	Value keep = LLVMBuildSelect(builder, asc, lt, gt, "keep");
+	LLVMBuildCondBr(builder, keep, body_blk, end_blk);
+
+	LLVMPositionBuilderAtEnd(builder, body_blk);
+	for (int i = 3; i < node->children_count; i++) {
+		if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder))) break;
+		gen_asm(node->children[i]);
+	}
+	_branch(step_blk);
+
+	LLVMPositionBuilderAtEnd(builder, step_blk);
+	Value cur  = LLVMBuildLoad2(builder, i32, i_ptr, "iv2");
+	Value next = LLVMBuildAdd(builder, cur, sstep, "next");
+	LLVMBuildStore(builder, next, i_ptr);
+	_branch(cond_blk);
+
+	LLVMPositionBuilderAtEnd(builder, end_blk);
+	exit_scope();
+}
+
 void asm_if(Node *node) {
 	enter_scope(node);
 	Block if_start          = _append_block("if.start");
@@ -802,7 +910,7 @@ void asm_if(Node *node) {
 
 void asm_break(void) {
 	for (int i = scopes_count; i > 0; i--)
-		if (scopes[i]->token->type == WHILE) {
+		if (scopes[i]->token->type == WHILE || scopes[i]->token->type == FOR) {
 			_branch(scopes[i]->token->llvm.end);
 			return;
 		}
@@ -811,7 +919,7 @@ void asm_break(void) {
 
 void asm_continue(void) {
 	for (int i = scopes_count; i > 0; i--)
-		if (scopes[i]->token->type == WHILE) {
+		if (scopes[i]->token->type == WHILE || scopes[i]->token->type == FOR) {
 			_branch(scopes[i]->token->llvm.start);
 			return;
 		}
@@ -886,6 +994,7 @@ void gen_asm(Node *node) {
 	case INT:         case LONG: case SHORT: case CHARS: case CHAR: case BOOL:
 	case ARRAY_TYPE:
 	case FLOAT:      asm_primitive(node); break;
+	case FN_TYPE:    asm_fn_ref(node); break;
 	case ASSIGN:     asm_assign(node); break;
 	case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN:
 	case MOD_ASSIGN: asm_compound_assign(node); break;
@@ -910,6 +1019,7 @@ void gen_asm(Node *node) {
 	case RETURN:       asm_return(node); break;
 	case IF:           asm_if(node); break;
 	case WHILE:        asm_while(node); break;
+	case FOR:          asm_for(node); break;
 	case BREAK:        asm_break(); break;
 	case CONTINUE:     asm_continue(); break;
 	case FDEC:         asm_fdec(node); break;
