@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/operators/overloading/002.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/operators/overloading/002.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/operators/overloading/002.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/operators/overloading/002.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 %struct.Score = type { i32 }
@@ -161,28 +161,28 @@ entry:
   store i32 80, i32* %val1, align 4, !dbg !21
   %0 = call i1 @Score.operator.EQ.Score(%struct.Score* %b, %struct.Score* %a), !dbg !21
   %bool_str = select i1 %0, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str, i32 0, i32 0), !dbg !21
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt, i32 0, i32 0), i32 1, i8* %bool_str), !dbg !21
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt, i32 0, i32 0), i8* %bool_str), !dbg !21
   %2 = call i1 @Score.operator.NEQ.Score(%struct.Score* %b, %struct.Score* %a), !dbg !21
   %bool_str2 = select i1 %2, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str.1, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str.2, i32 0, i32 0), !dbg !21
-  %3 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt.3, i32 0, i32 0), i32 1, i8* %bool_str2), !dbg !21
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt.3, i32 0, i32 0), i8* %bool_str2), !dbg !21
   %4 = call i1 @Score.operator.LT.Score(%struct.Score* %b, %struct.Score* %a), !dbg !21
   %bool_str3 = select i1 %4, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str.4, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str.5, i32 0, i32 0), !dbg !21
-  %5 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt.6, i32 0, i32 0), i32 1, i8* %bool_str3), !dbg !21
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt.6, i32 0, i32 0), i8* %bool_str3), !dbg !21
   %6 = call i1 @Score.operator.GT.Score(%struct.Score* %b, %struct.Score* %a), !dbg !21
   %bool_str4 = select i1 %6, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str.7, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str.8, i32 0, i32 0), !dbg !21
-  %7 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt.9, i32 0, i32 0), i32 1, i8* %bool_str4), !dbg !21
+  %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt.9, i32 0, i32 0), i8* %bool_str4), !dbg !21
   %8 = call i1 @Score.operator.LE.Score(%struct.Score* %b, %struct.Score* %a), !dbg !21
   %bool_str5 = select i1 %8, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str.10, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str.11, i32 0, i32 0), !dbg !21
-  %9 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt.12, i32 0, i32 0), i32 1, i8* %bool_str5), !dbg !21
+  %9 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt.12, i32 0, i32 0), i8* %bool_str5), !dbg !21
   %10 = call i1 @Score.operator.GE.Score(%struct.Score* %b, %struct.Score* %a), !dbg !21
   %bool_str6 = select i1 %10, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str.13, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str.14, i32 0, i32 0), !dbg !21
-  %11 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt.15, i32 0, i32 0), i32 1, i8* %bool_str6), !dbg !21
+  %11 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt.15, i32 0, i32 0), i8* %bool_str6), !dbg !21
   call void @Score.delete(%struct.Score* %a), !dbg !21
   call void @Score.delete(%struct.Score* %b), !dbg !21
   ret i32 0, !dbg !21
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -190,7 +190,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "002.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/operators/overloading")
+!3 = !DIFile(filename: "002.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/operators/overloading")
 !4 = distinct !DISubprogram(name: "Score.operator.ASSIGN.INT", linkageName: "Score.operator.ASSIGN.INT", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

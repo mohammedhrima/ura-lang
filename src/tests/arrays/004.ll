@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/arrays/004.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/arrays/004.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/arrays/004.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/arrays/004.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 %struct.String = type { i8*, i32, i32 }
@@ -24,1659 +24,1659 @@ target triple = "arm64-apple-macosx16.0.0"
 @STR9 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @output_fmt.6 = private unnamed_addr constant [10 x i8] c"%s %s %s\0A\00", align 1
 
-declare i8* @calloc(i64, i64)
+define void @String.delete(%struct.String* %self) !dbg !4 {
+entry:
+  %self1 = alloca %struct.String*, align 8, !dbg !7
+  store %struct.String* %self, %struct.String** %self1, align 8, !dbg !7
+  %self2 = load %struct.String*, %struct.String** %self1, align 8, !dbg !8
+  %value = getelementptr %struct.String, %struct.String* %self2, i32 0, i32 0, !dbg !8
+  %DOT = load i8*, i8** %value, align 8, !dbg !8
+  call void @free(i8* %DOT), !dbg !8
+  %self3 = load %struct.String*, %struct.String** %self1, align 8, !dbg !8
+  ret void, !dbg !8
+}
 
-declare i8* @realloc(i8*, i32)
+define void @String.assign(i8* %str, %struct.String* %self) !dbg !9 {
+entry:
+  %str1 = alloca i8*, align 8, !dbg !10
+  %self2 = alloca %struct.String*, align 8, !dbg !10
+  %len = alloca i32, align 4, !dbg !10
+  store i8* %str, i8** %str1, align 8, !dbg !10
+  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !10
+  br label %if.start, !dbg !10
+
+if.start:                                         ; preds = %entry
+  %str3 = load i8*, i8** %str1, align 8, !dbg !10
+  %EQ = icmp eq i8* %str3, null, !dbg !10
+  br i1 %EQ, label %if.then, label %if.end, !dbg !10
+
+if.end:                                           ; preds = %if.then, %if.start
+  store i32 0, i32* %len, align 4, !dbg !10
+  %str4 = load i8*, i8** %str1, align 8, !dbg !11
+  %strlen = call i32 @strlen(i8* %str4), !dbg !11
+  store i32 %strlen, i32* %len, align 4, !dbg !11
+  br label %if.start5, !dbg !11
+
+if.then:                                          ; preds = %if.start
+  store i8* getelementptr inbounds ([1 x i8], [1 x i8]* @STR0, i32 0, i32 0), i8** %str1, align 8, !dbg !10
+  br label %if.end, !dbg !10
+
+if.start5:                                        ; preds = %if.end
+  %self8 = load %struct.String*, %struct.String** %self2, align 8, !dbg !11
+  %value = getelementptr %struct.String, %struct.String* %self8, i32 0, i32 0, !dbg !11
+  %DOT = load i8*, i8** %value, align 8, !dbg !11
+  %EQ9 = icmp eq i8* %DOT, null, !dbg !11
+  %self10 = load %struct.String*, %struct.String** %self2, align 8, !dbg !11
+  %size = getelementptr %struct.String, %struct.String* %self10, i32 0, i32 2, !dbg !11
+  %DOT11 = load i32, i32* %size, align 4, !dbg !11
+  %len12 = load i32, i32* %len, align 4, !dbg !11
+  %LE = icmp sle i32 %DOT11, %len12, !dbg !11
+  %OR = or i1 %EQ9, %LE, !dbg !11
+  br i1 %OR, label %if.then7, label %if.end6, !dbg !11
+
+if.end6:                                          ; preds = %while.end, %if.start5
+  %self38 = load %struct.String*, %struct.String** %self2, align 8, !dbg !12
+  %value39 = getelementptr %struct.String, %struct.String* %self38, i32 0, i32 0, !dbg !12
+  %DOT40 = load i8*, i8** %value39, align 8, !dbg !12
+  %str41 = load i8*, i8** %str1, align 8, !dbg !12
+  %strcpy = call i8* @strcpy(i8* %DOT40, i8* %str41), !dbg !12
+  %self42 = load %struct.String*, %struct.String** %self2, align 8, !dbg !13
+  %value43 = getelementptr %struct.String, %struct.String* %self42, i32 0, i32 0, !dbg !13
+  %DOT44 = load i8*, i8** %value43, align 8, !dbg !13
+  %len45 = load i32, i32* %len, align 4, !dbg !13
+  %idx = sext i32 %len45 to i64, !dbg !13
+  %ADD = getelementptr i8, i8* %DOT44, i64 %idx, !dbg !13
+  %self46 = load %struct.String*, %struct.String** %self2, align 8, !dbg !13
+  %size47 = getelementptr %struct.String, %struct.String* %self46, i32 0, i32 2, !dbg !13
+  %DOT48 = load i32, i32* %size47, align 4, !dbg !13
+  %len49 = load i32, i32* %len, align 4, !dbg !13
+  %SUB = sub i32 %DOT48, %len49, !dbg !13
+  %as = sext i32 %SUB to i64, !dbg !13
+  call void @bzero(i8* %ADD, i64 %as), !dbg !13
+  %self50 = load %struct.String*, %struct.String** %self2, align 8, !dbg !13
+  %count = getelementptr %struct.String, %struct.String* %self50, i32 0, i32 1, !dbg !13
+  %len51 = load i32, i32* %len, align 4, !dbg !13
+  store i32 %len51, i32* %count, align 4, !dbg !13
+  ret void, !dbg !13
+
+if.then7:                                         ; preds = %if.start5
+  br label %if.start13, !dbg !11
+
+if.start13:                                       ; preds = %if.then7
+  %self16 = load %struct.String*, %struct.String** %self2, align 8, !dbg !11
+  %size17 = getelementptr %struct.String, %struct.String* %self16, i32 0, i32 2, !dbg !11
+  %DOT18 = load i32, i32* %size17, align 4, !dbg !11
+  %EQ19 = icmp eq i32 %DOT18, 0, !dbg !11
+  br i1 %EQ19, label %if.then15, label %if.end14, !dbg !11
+
+if.end14:                                         ; preds = %if.then15, %if.start13
+  br label %while.start, !dbg !11
+
+if.then15:                                        ; preds = %if.start13
+  %self20 = load %struct.String*, %struct.String** %self2, align 8, !dbg !11
+  %size21 = getelementptr %struct.String, %struct.String* %self20, i32 0, i32 2, !dbg !11
+  store i32 10, i32* %size21, align 4, !dbg !11
+  br label %if.end14, !dbg !11
+
+while.start:                                      ; preds = %while.then, %if.end14
+  %self22 = load %struct.String*, %struct.String** %self2, align 8, !dbg !11
+  %size23 = getelementptr %struct.String, %struct.String* %self22, i32 0, i32 2, !dbg !11
+  %DOT24 = load i32, i32* %size23, align 4, !dbg !11
+  %len25 = load i32, i32* %len, align 4, !dbg !11
+  %LE26 = icmp sle i32 %DOT24, %len25, !dbg !11
+  br i1 %LE26, label %while.then, label %while.end, !dbg !11
+
+while.then:                                       ; preds = %while.start
+  %self27 = load %struct.String*, %struct.String** %self2, align 8, !dbg !11
+  %size28 = getelementptr %struct.String, %struct.String* %self27, i32 0, i32 2, !dbg !11
+  %DOT29 = load i32, i32* %size28, align 4, !dbg !11
+  %MUL = mul i32 %DOT29, 2, !dbg !11
+  store i32 %MUL, i32* %size28, align 4, !dbg !11
+  br label %while.start, !dbg !11
+
+while.end:                                        ; preds = %while.start
+  %self30 = load %struct.String*, %struct.String** %self2, align 8, !dbg !11
+  %value31 = getelementptr %struct.String, %struct.String* %self30, i32 0, i32 0, !dbg !11
+  %self32 = load %struct.String*, %struct.String** %self2, align 8, !dbg !14
+  %value33 = getelementptr %struct.String, %struct.String* %self32, i32 0, i32 0, !dbg !14
+  %DOT34 = load i8*, i8** %value33, align 8, !dbg !14
+  %self35 = load %struct.String*, %struct.String** %self2, align 8, !dbg !14
+  %size36 = getelementptr %struct.String, %struct.String* %self35, i32 0, i32 2, !dbg !14
+  %DOT37 = load i32, i32* %size36, align 4, !dbg !14
+  %realloc = call i8* @realloc(i8* %DOT34, i32 %DOT37), !dbg !14
+  store i8* %realloc, i8** %value31, align 8, !dbg !14
+  br label %if.end6, !dbg !14
+}
+
+define void @String.join(i8* %str, %struct.String* %self) !dbg !15 {
+entry:
+  %str1 = alloca i8*, align 8, !dbg !16
+  %self2 = alloca %struct.String*, align 8, !dbg !16
+  %res = alloca i8*, align 8, !dbg !16
+  store i8* %str, i8** %str1, align 8, !dbg !16
+  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !16
+  br label %if.start, !dbg !16
+
+if.start:                                         ; preds = %entry
+  %str3 = load i8*, i8** %str1, align 8, !dbg !16
+  %EQ = icmp eq i8* %str3, null, !dbg !16
+  br i1 %EQ, label %if.then, label %if.end, !dbg !16
+
+if.end:                                           ; preds = %if.start
+  store i8* null, i8** %res, align 8, !dbg !16
+  %self4 = load %struct.String*, %struct.String** %self2, align 8, !dbg !17
+  %value = getelementptr %struct.String, %struct.String* %self4, i32 0, i32 0, !dbg !17
+  %DOT = load i8*, i8** %value, align 8, !dbg !17
+  %str5 = load i8*, i8** %str1, align 8, !dbg !17
+  %strjoin = call i8* @strjoin(i8* %DOT, i8* %str5), !dbg !17
+  store i8* %strjoin, i8** %res, align 8, !dbg !17
+  %res6 = load i8*, i8** %res, align 8, !dbg !18
+  %ref_arg = load %struct.String*, %struct.String** %self2, align 8, !dbg !18
+  call void @String.assign(i8* %res6, %struct.String* %ref_arg), !dbg !18
+  %res7 = load i8*, i8** %res, align 8, !dbg !19
+  call void @free(i8* %res7), !dbg !19
+  ret void, !dbg !19
+
+if.then:                                          ; preds = %if.start
+  ret void, !dbg !16
+}
+
+define void @String.clear(%struct.String* %self) !dbg !20 {
+entry:
+  %self1 = alloca %struct.String*, align 8, !dbg !21
+  store %struct.String* %self, %struct.String** %self1, align 8, !dbg !21
+  %self2 = load %struct.String*, %struct.String** %self1, align 8, !dbg !22
+  %value = getelementptr %struct.String, %struct.String* %self2, i32 0, i32 0, !dbg !22
+  %DOT = load i8*, i8** %value, align 8, !dbg !22
+  %self3 = load %struct.String*, %struct.String** %self1, align 8, !dbg !22
+  %size = getelementptr %struct.String, %struct.String* %self3, i32 0, i32 2, !dbg !22
+  %DOT4 = load i32, i32* %size, align 4, !dbg !22
+  %as = sext i32 %DOT4 to i64, !dbg !22
+  call void @bzero(i8* %DOT, i64 %as), !dbg !22
+  %self5 = load %struct.String*, %struct.String** %self1, align 8, !dbg !22
+  %count = getelementptr %struct.String, %struct.String* %self5, i32 0, i32 1, !dbg !22
+  store i32 0, i32* %count, align 4, !dbg !22
+  ret void, !dbg !22
+}
+
+define void @String.push(i8 %c, %struct.String* %self) !dbg !23 {
+entry:
+  %c1 = alloca i8, align 1, !dbg !24
+  %self2 = alloca %struct.String*, align 8, !dbg !24
+  store i8 %c, i8* %c1, align 1, !dbg !24
+  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !24
+  br label %if.start, !dbg !24
+
+if.start:                                         ; preds = %entry
+  %self3 = load %struct.String*, %struct.String** %self2, align 8, !dbg !24
+  %count = getelementptr %struct.String, %struct.String* %self3, i32 0, i32 1, !dbg !24
+  %DOT = load i32, i32* %count, align 4, !dbg !24
+  %ADD = add i32 %DOT, 1, !dbg !24
+  %self4 = load %struct.String*, %struct.String** %self2, align 8, !dbg !24
+  %size = getelementptr %struct.String, %struct.String* %self4, i32 0, i32 2, !dbg !24
+  %DOT5 = load i32, i32* %size, align 4, !dbg !24
+  %GE = icmp sge i32 %ADD, %DOT5, !dbg !24
+  br i1 %GE, label %if.then, label %if.end, !dbg !24
+
+if.end:                                           ; preds = %if.end7, %if.start
+  %self24 = load %struct.String*, %struct.String** %self2, align 8, !dbg !25
+  %value25 = getelementptr %struct.String, %struct.String* %self24, i32 0, i32 0, !dbg !25
+  %self26 = load %struct.String*, %struct.String** %self2, align 8, !dbg !25
+  %count27 = getelementptr %struct.String, %struct.String* %self26, i32 0, i32 1, !dbg !25
+  %DOT28 = load i8*, i8** %value25, align 8, !dbg !25
+  %DOT29 = load i32, i32* %count27, align 4, !dbg !25
+  %ACCESS = getelementptr i8, i8* %DOT28, i32 %DOT29, !dbg !25
+  %c30 = load i8, i8* %c1, align 1, !dbg !25
+  store i8 %c30, i8* %ACCESS, align 1, !dbg !25
+  %self31 = load %struct.String*, %struct.String** %self2, align 8, !dbg !25
+  %count32 = getelementptr %struct.String, %struct.String* %self31, i32 0, i32 1, !dbg !25
+  %DOT33 = load i32, i32* %count32, align 4, !dbg !25
+  %ADD34 = add i32 %DOT33, 1, !dbg !25
+  store i32 %ADD34, i32* %count32, align 4, !dbg !25
+  %self35 = load %struct.String*, %struct.String** %self2, align 8, !dbg !26
+  %value36 = getelementptr %struct.String, %struct.String* %self35, i32 0, i32 0, !dbg !26
+  %self37 = load %struct.String*, %struct.String** %self2, align 8, !dbg !26
+  %count38 = getelementptr %struct.String, %struct.String* %self37, i32 0, i32 1, !dbg !26
+  %DOT39 = load i8*, i8** %value36, align 8, !dbg !26
+  %DOT40 = load i32, i32* %count38, align 4, !dbg !26
+  %ACCESS41 = getelementptr i8, i8* %DOT39, i32 %DOT40, !dbg !26
+  store i8 0, i8* %ACCESS41, align 1, !dbg !26
+  ret void, !dbg !26
+
+if.then:                                          ; preds = %if.start
+  br label %if.start6, !dbg !24
+
+if.start6:                                        ; preds = %if.then
+  %self9 = load %struct.String*, %struct.String** %self2, align 8, !dbg !24
+  %size10 = getelementptr %struct.String, %struct.String* %self9, i32 0, i32 2, !dbg !24
+  %DOT11 = load i32, i32* %size10, align 4, !dbg !24
+  %EQ = icmp eq i32 %DOT11, 0, !dbg !24
+  br i1 %EQ, label %if.then8, label %if.else, !dbg !24
+
+if.end7:                                          ; preds = %if.else, %if.then8
+  %self17 = load %struct.String*, %struct.String** %self2, align 8, !dbg !24
+  %value = getelementptr %struct.String, %struct.String* %self17, i32 0, i32 0, !dbg !24
+  %self18 = load %struct.String*, %struct.String** %self2, align 8, !dbg !27
+  %value19 = getelementptr %struct.String, %struct.String* %self18, i32 0, i32 0, !dbg !27
+  %DOT20 = load i8*, i8** %value19, align 8, !dbg !27
+  %self21 = load %struct.String*, %struct.String** %self2, align 8, !dbg !27
+  %size22 = getelementptr %struct.String, %struct.String* %self21, i32 0, i32 2, !dbg !27
+  %DOT23 = load i32, i32* %size22, align 4, !dbg !27
+  %realloc = call i8* @realloc(i8* %DOT20, i32 %DOT23), !dbg !27
+  store i8* %realloc, i8** %value, align 8, !dbg !27
+  br label %if.end, !dbg !27
+
+if.then8:                                         ; preds = %if.start6
+  %self12 = load %struct.String*, %struct.String** %self2, align 8, !dbg !24
+  %size13 = getelementptr %struct.String, %struct.String* %self12, i32 0, i32 2, !dbg !24
+  store i32 10, i32* %size13, align 4, !dbg !24
+  br label %if.end7, !dbg !24
+
+if.else:                                          ; preds = %if.start6
+  %self14 = load %struct.String*, %struct.String** %self2, align 8, !dbg !24
+  %size15 = getelementptr %struct.String, %struct.String* %self14, i32 0, i32 2, !dbg !24
+  %DOT16 = load i32, i32* %size15, align 4, !dbg !24
+  %MUL = mul i32 %DOT16, 2, !dbg !24
+  store i32 %MUL, i32* %size15, align 4, !dbg !24
+  br label %if.end7, !dbg !24
+}
+
+define i8 @String.pop(%struct.String* %self) !dbg !28 {
+entry:
+  %self1 = alloca %struct.String*, align 8, !dbg !29
+  %c = alloca i8, align 1, !dbg !29
+  store %struct.String* %self, %struct.String** %self1, align 8, !dbg !29
+  br label %if.start, !dbg !29
+
+if.start:                                         ; preds = %entry
+  %self2 = load %struct.String*, %struct.String** %self1, align 8, !dbg !29
+  %count = getelementptr %struct.String, %struct.String* %self2, i32 0, i32 1, !dbg !29
+  %DOT = load i32, i32* %count, align 4, !dbg !29
+  %EQ = icmp eq i32 %DOT, 0, !dbg !29
+  br i1 %EQ, label %if.then, label %if.end, !dbg !29
+
+if.end:                                           ; preds = %if.start
+  %self3 = load %struct.String*, %struct.String** %self1, align 8, !dbg !29
+  %count4 = getelementptr %struct.String, %struct.String* %self3, i32 0, i32 1, !dbg !29
+  %DOT5 = load i32, i32* %count4, align 4, !dbg !29
+  %SUB = sub i32 %DOT5, 1, !dbg !29
+  store i32 %SUB, i32* %count4, align 4, !dbg !29
+  store i8 0, i8* %c, align 1, !dbg !29
+  %self6 = load %struct.String*, %struct.String** %self1, align 8, !dbg !30
+  %value = getelementptr %struct.String, %struct.String* %self6, i32 0, i32 0, !dbg !30
+  %self7 = load %struct.String*, %struct.String** %self1, align 8, !dbg !30
+  %count8 = getelementptr %struct.String, %struct.String* %self7, i32 0, i32 1, !dbg !30
+  %DOT9 = load i8*, i8** %value, align 8, !dbg !30
+  %DOT10 = load i32, i32* %count8, align 4, !dbg !30
+  %ACCESS = getelementptr i8, i8* %DOT9, i32 %DOT10, !dbg !30
+  %ACC = load i8, i8* %ACCESS, align 1, !dbg !30
+  store i8 %ACC, i8* %c, align 1, !dbg !30
+  %self11 = load %struct.String*, %struct.String** %self1, align 8, !dbg !31
+  %value12 = getelementptr %struct.String, %struct.String* %self11, i32 0, i32 0, !dbg !31
+  %self13 = load %struct.String*, %struct.String** %self1, align 8, !dbg !31
+  %count14 = getelementptr %struct.String, %struct.String* %self13, i32 0, i32 1, !dbg !31
+  %DOT15 = load i8*, i8** %value12, align 8, !dbg !31
+  %DOT16 = load i32, i32* %count14, align 4, !dbg !31
+  %ACCESS17 = getelementptr i8, i8* %DOT15, i32 %DOT16, !dbg !31
+  store i8 0, i8* %ACCESS17, align 1, !dbg !31
+  %c18 = load i8, i8* %c, align 1, !dbg !31
+  ret i8 %c18, !dbg !31
+
+if.then:                                          ; preds = %if.start
+  ret i8 0, !dbg !29
+}
+
+define %struct.String @String.new() !dbg !32 {
+entry:
+  %s = alloca %struct.String, align 8, !dbg !33
+  store %struct.String zeroinitializer, %struct.String* %s, align 8, !dbg !33
+  %size = getelementptr %struct.String, %struct.String* %s, i32 0, i32 2, !dbg !33
+  store i32 10, i32* %size, align 4, !dbg !33
+  %value = getelementptr %struct.String, %struct.String* %s, i32 0, i32 0, !dbg !33
+  %calloc = call i8* @calloc(i64 10, i64 1), !dbg !34
+  store i8* %calloc, i8** %value, align 8, !dbg !34
+  %s1 = load %struct.String, %struct.String* %s, align 8, !dbg !34
+  ret %struct.String %s1, !dbg !34
+}
+
+define %struct.String @String.from(i8* %str) !dbg !35 {
+entry:
+  %str1 = alloca i8*, align 8, !dbg !36
+  %s = alloca %struct.String, align 8, !dbg !36
+  store i8* %str, i8** %str1, align 8, !dbg !36
+  store %struct.String zeroinitializer, %struct.String* %s, align 8, !dbg !36
+  %0 = call %struct.String @String.new(), !dbg !37
+  %tmp_struct = alloca %struct.String, align 8, !dbg !37
+  store %struct.String %0, %struct.String* %tmp_struct, align 8, !dbg !37
+  %tmp_op = alloca %struct.String, align 8, !dbg !37
+  store %struct.String %0, %struct.String* %tmp_op, align 8, !dbg !37
+  call void @String.operator.ASSIGN.String(%struct.String* %tmp_op, %struct.String* %s), !dbg !37
+  %str2 = load i8*, i8** %str1, align 8, !dbg !38
+  call void @String.assign(i8* %str2, %struct.String* %s), !dbg !38
+  call void @String.delete(%struct.String* %tmp_struct), !dbg !38
+  %s3 = load %struct.String, %struct.String* %s, align 8, !dbg !38
+  ret %struct.String %s3, !dbg !38
+}
+
+define %struct.String @String.from_int(i32 %n) !dbg !39 {
+entry:
+  %n1 = alloca i32, align 4, !dbg !40
+  %s = alloca %struct.String, align 8, !dbg !40
+  %neg = alloca i1, align 1, !dbg !40
+  %num = alloca i32, align 4, !dbg !40
+  %buf = alloca i8*, align 8, !dbg !40
+  %i = alloca i32, align 4, !dbg !40
+  %j = alloca i32, align 4, !dbg !40
+  store i32 %n, i32* %n1, align 4, !dbg !40
+  store %struct.String zeroinitializer, %struct.String* %s, align 8, !dbg !40
+  %0 = call %struct.String @String.new(), !dbg !41
+  %tmp_struct = alloca %struct.String, align 8, !dbg !41
+  store %struct.String %0, %struct.String* %tmp_struct, align 8, !dbg !41
+  %tmp_op = alloca %struct.String, align 8, !dbg !41
+  store %struct.String %0, %struct.String* %tmp_op, align 8, !dbg !41
+  call void @String.operator.ASSIGN.String(%struct.String* %tmp_op, %struct.String* %s), !dbg !41
+  br label %if.start, !dbg !41
+
+if.start:                                         ; preds = %entry
+  %n2 = load i32, i32* %n1, align 4, !dbg !41
+  %EQ = icmp eq i32 %n2, 0, !dbg !41
+  br i1 %EQ, label %if.then, label %if.end, !dbg !41
+
+if.end:                                           ; preds = %if.start
+  store i1 false, i1* %neg, align 1, !dbg !40
+  store i1 false, i1* %neg, align 1, !dbg !40
+  store i32 0, i32* %num, align 4, !dbg !40
+  %n4 = load i32, i32* %n1, align 4, !dbg !40
+  store i32 %n4, i32* %num, align 4, !dbg !40
+  br label %if.start5, !dbg !40
+
+if.then:                                          ; preds = %if.start
+  call void @String.push(i8 48, %struct.String* %s), !dbg !42
+  %s3 = load %struct.String, %struct.String* %s, align 8, !dbg !42
+  ret %struct.String %s3, !dbg !42
+
+if.start5:                                        ; preds = %if.end
+  %num8 = load i32, i32* %num, align 4, !dbg !40
+  %LT = icmp slt i32 %num8, 0, !dbg !40
+  br i1 %LT, label %if.then7, label %if.end6, !dbg !40
+
+if.end6:                                          ; preds = %if.then7, %if.start5
+  store i8* null, i8** %buf, align 8, !dbg !40
+  %stack = alloca [20 x i8], align 1, !dbg !40
+  %stack10 = getelementptr [20 x i8], [20 x i8]* %stack, i32 0, i32 0, !dbg !40
+  store i8* %stack10, i8** %buf, align 8, !dbg !40
+  store i32 0, i32* %i, align 4, !dbg !40
+  store i32 0, i32* %i, align 4, !dbg !40
+  br label %while.start, !dbg !40
+
+if.then7:                                         ; preds = %if.start5
+  store i1 true, i1* %neg, align 1, !dbg !40
+  %num9 = load i32, i32* %num, align 4, !dbg !40
+  %SUB = sub i32 0, %num9, !dbg !40
+  store i32 %SUB, i32* %num, align 4, !dbg !40
+  br label %if.end6, !dbg !40
+
+while.start:                                      ; preds = %while.then, %if.end6
+  %num11 = load i32, i32* %num, align 4, !dbg !40
+  %GT = icmp sgt i32 %num11, 0, !dbg !40
+  br i1 %GT, label %while.then, label %while.end, !dbg !40
+
+while.then:                                       ; preds = %while.start
+  %buf12 = load i8*, i8** %buf, align 8, !dbg !43
+  %i13 = load i32, i32* %i, align 4, !dbg !43
+  %ACCESS = getelementptr i8, i8* %buf12, i32 %i13, !dbg !43
+  %num14 = load i32, i32* %num, align 4, !dbg !43
+  %MOD = srem i32 %num14, 10, !dbg !43
+  %ADD = add i32 %MOD, 48, !dbg !43
+  %as = trunc i32 %ADD to i8, !dbg !43
+  store i8 %as, i8* %ACCESS, align 1, !dbg !43
+  %num15 = load i32, i32* %num, align 4, !dbg !43
+  %DIV = sdiv i32 %num15, 10, !dbg !43
+  store i32 %DIV, i32* %num, align 4, !dbg !43
+  %i16 = load i32, i32* %i, align 4, !dbg !43
+  %ADD17 = add i32 %i16, 1, !dbg !43
+  store i32 %ADD17, i32* %i, align 4, !dbg !43
+  br label %while.start, !dbg !43
+
+while.end:                                        ; preds = %while.start
+  br label %if.start18, !dbg !43
+
+if.start18:                                       ; preds = %while.end
+  %neg21 = load i1, i1* %neg, align 1, !dbg !43
+  br i1 %neg21, label %if.then20, label %if.end19, !dbg !43
+
+if.end19:                                         ; preds = %if.then20, %if.start18
+  store i32 0, i32* %j, align 4, !dbg !40
+  %i22 = load i32, i32* %i, align 4, !dbg !40
+  %SUB23 = sub i32 %i22, 1, !dbg !40
+  store i32 %SUB23, i32* %j, align 4, !dbg !40
+  br label %while.start24, !dbg !40
+
+if.then20:                                        ; preds = %if.start18
+  call void @String.push(i8 45, %struct.String* %s), !dbg !44
+  br label %if.end19, !dbg !44
+
+while.start24:                                    ; preds = %while.then25, %if.end19
+  %j27 = load i32, i32* %j, align 4, !dbg !40
+  %GE = icmp sge i32 %j27, 0, !dbg !40
+  br i1 %GE, label %while.then25, label %while.end26, !dbg !40
+
+while.then25:                                     ; preds = %while.start24
+  %buf28 = load i8*, i8** %buf, align 8, !dbg !45
+  %j29 = load i32, i32* %j, align 4, !dbg !45
+  %ACCESS30 = getelementptr i8, i8* %buf28, i32 %j29, !dbg !45
+  %ACC = load i8, i8* %ACCESS30, align 1, !dbg !45
+  call void @String.push(i8 %ACC, %struct.String* %s), !dbg !45
+  %j31 = load i32, i32* %j, align 4, !dbg !45
+  %SUB32 = sub i32 %j31, 1, !dbg !45
+  store i32 %SUB32, i32* %j, align 4, !dbg !45
+  br label %while.start24, !dbg !45
+
+while.end26:                                      ; preds = %while.start24
+  call void @String.delete(%struct.String* %tmp_struct), !dbg !45
+  %s33 = load %struct.String, %struct.String* %s, align 8, !dbg !45
+  ret %struct.String %s33, !dbg !45
+}
+
+define i32 @String.len(%struct.String* %self) !dbg !46 {
+entry:
+  %self1 = alloca %struct.String*, align 8, !dbg !47
+  store %struct.String* %self, %struct.String** %self1, align 8, !dbg !47
+  %self2 = load %struct.String*, %struct.String** %self1, align 8, !dbg !47
+  %count = getelementptr %struct.String, %struct.String* %self2, i32 0, i32 1, !dbg !47
+  %DOT = load i32, i32* %count, align 4, !dbg !47
+  ret i32 %DOT, !dbg !47
+}
+
+define i1 @String.empty(%struct.String* %self) !dbg !48 {
+entry:
+  %self1 = alloca %struct.String*, align 8, !dbg !49
+  store %struct.String* %self, %struct.String** %self1, align 8, !dbg !49
+  %self2 = load %struct.String*, %struct.String** %self1, align 8, !dbg !49
+  %count = getelementptr %struct.String, %struct.String* %self2, i32 0, i32 1, !dbg !49
+  %DOT = load i32, i32* %count, align 4, !dbg !49
+  %EQ = icmp eq i32 %DOT, 0, !dbg !49
+  ret i1 %EQ, !dbg !49
+}
+
+define i8* @String.c_str(%struct.String* %self) !dbg !50 {
+entry:
+  %self1 = alloca %struct.String*, align 8, !dbg !51
+  store %struct.String* %self, %struct.String** %self1, align 8, !dbg !51
+  %self2 = load %struct.String*, %struct.String** %self1, align 8, !dbg !51
+  %value = getelementptr %struct.String, %struct.String* %self2, i32 0, i32 0, !dbg !51
+  %DOT = load i8*, i8** %value, align 8, !dbg !51
+  ret i8* %DOT, !dbg !51
+}
+
+define i8 @String.at(i32 %i, %struct.String* %self) !dbg !52 {
+entry:
+  %i1 = alloca i32, align 4, !dbg !53
+  %self2 = alloca %struct.String*, align 8, !dbg !53
+  store i32 %i, i32* %i1, align 4, !dbg !53
+  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !53
+  br label %if.start, !dbg !53
+
+if.start:                                         ; preds = %entry
+  %i3 = load i32, i32* %i1, align 4, !dbg !53
+  %LT = icmp slt i32 %i3, 0, !dbg !53
+  %self4 = load %struct.String*, %struct.String** %self2, align 8, !dbg !53
+  %count = getelementptr %struct.String, %struct.String* %self4, i32 0, i32 1, !dbg !53
+  %i5 = load i32, i32* %i1, align 4, !dbg !53
+  %DOT = load i32, i32* %count, align 4, !dbg !53
+  %GE = icmp sge i32 %i5, %DOT, !dbg !53
+  %OR = or i1 %LT, %GE, !dbg !53
+  br i1 %OR, label %if.then, label %if.end, !dbg !53
+
+if.end:                                           ; preds = %if.start
+  %self6 = load %struct.String*, %struct.String** %self2, align 8, !dbg !54
+  %value = getelementptr %struct.String, %struct.String* %self6, i32 0, i32 0, !dbg !54
+  %DOT7 = load i8*, i8** %value, align 8, !dbg !54
+  %i8 = load i32, i32* %i1, align 4, !dbg !54
+  %ACCESS = getelementptr i8, i8* %DOT7, i32 %i8, !dbg !54
+  %ACC = load i8, i8* %ACCESS, align 1, !dbg !54
+  ret i8 %ACC, !dbg !54
+
+if.then:                                          ; preds = %if.start
+  ret i8 0, !dbg !53
+}
+
+define i32 @String.find(i8* %needle, %struct.String* %self) !dbg !55 {
+entry:
+  %needle1 = alloca i8*, align 8, !dbg !56
+  %self2 = alloca %struct.String*, align 8, !dbg !56
+  %i = alloca i32, align 4, !dbg !56
+  %nlen = alloca i32, align 4, !dbg !56
+  store i8* %needle, i8** %needle1, align 8, !dbg !56
+  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !56
+  br label %if.start, !dbg !56
+
+if.start:                                         ; preds = %entry
+  %needle3 = load i8*, i8** %needle1, align 8, !dbg !56
+  %EQ = icmp eq i8* %needle3, null, !dbg !56
+  br i1 %EQ, label %if.then, label %if.end, !dbg !56
+
+if.end:                                           ; preds = %if.start
+  store i32 0, i32* %i, align 4, !dbg !56
+  store i32 0, i32* %i, align 4, !dbg !56
+  store i32 0, i32* %nlen, align 4, !dbg !56
+  %needle4 = load i8*, i8** %needle1, align 8, !dbg !57
+  %strlen = call i32 @strlen(i8* %needle4), !dbg !57
+  store i32 %strlen, i32* %nlen, align 4, !dbg !57
+  br label %if.start5, !dbg !57
+
+if.then:                                          ; preds = %if.start
+  ret i32 -1, !dbg !56
+
+if.start5:                                        ; preds = %if.end
+  %nlen8 = load i32, i32* %nlen, align 4, !dbg !57
+  %EQ9 = icmp eq i32 %nlen8, 0, !dbg !57
+  br i1 %EQ9, label %if.then7, label %if.end6, !dbg !57
+
+if.end6:                                          ; preds = %if.start5
+  br label %while.start, !dbg !57
+
+if.then7:                                         ; preds = %if.start5
+  ret i32 0, !dbg !57
+
+while.start:                                      ; preds = %if.end14, %if.end6
+  %self10 = load %struct.String*, %struct.String** %self2, align 8, !dbg !57
+  %count = getelementptr %struct.String, %struct.String* %self10, i32 0, i32 1, !dbg !57
+  %DOT = load i32, i32* %count, align 4, !dbg !57
+  %nlen11 = load i32, i32* %nlen, align 4, !dbg !57
+  %SUB = sub i32 %DOT, %nlen11, !dbg !57
+  %i12 = load i32, i32* %i, align 4, !dbg !57
+  %LE = icmp sle i32 %i12, %SUB, !dbg !57
+  br i1 %LE, label %while.then, label %while.end, !dbg !57
+
+while.then:                                       ; preds = %while.start
+  br label %if.start13, !dbg !57
+
+while.end:                                        ; preds = %while.start
+  ret i32 -1, !dbg !58
+
+if.start13:                                       ; preds = %while.then
+  %self16 = load %struct.String*, %struct.String** %self2, align 8, !dbg !58
+  %value = getelementptr %struct.String, %struct.String* %self16, i32 0, i32 0, !dbg !58
+  %DOT17 = load i8*, i8** %value, align 8, !dbg !58
+  %i18 = load i32, i32* %i, align 4, !dbg !58
+  %idx = sext i32 %i18 to i64, !dbg !58
+  %ADD = getelementptr i8, i8* %DOT17, i64 %idx, !dbg !58
+  %needle19 = load i8*, i8** %needle1, align 8, !dbg !58
+  %nlen20 = load i32, i32* %nlen, align 4, !dbg !58
+  %strncmp = call i32 @strncmp(i8* %ADD, i8* %needle19, i32 %nlen20), !dbg !58
+  %EQ21 = icmp eq i32 %strncmp, 0, !dbg !58
+  br i1 %EQ21, label %if.then15, label %if.end14, !dbg !58
+
+if.end14:                                         ; preds = %if.start13
+  %i23 = load i32, i32* %i, align 4, !dbg !58
+  %ADD24 = add i32 %i23, 1, !dbg !58
+  store i32 %ADD24, i32* %i, align 4, !dbg !58
+  br label %while.start, !dbg !58
+
+if.then15:                                        ; preds = %if.start13
+  %i22 = load i32, i32* %i, align 4, !dbg !58
+  ret i32 %i22, !dbg !58
+}
+
+define i1 @String.contains(i8* %needle, %struct.String* %self) !dbg !59 {
+entry:
+  %needle1 = alloca i8*, align 8, !dbg !60
+  %self2 = alloca %struct.String*, align 8, !dbg !60
+  store i8* %needle, i8** %needle1, align 8, !dbg !60
+  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !60
+  %needle3 = load i8*, i8** %needle1, align 8, !dbg !61
+  %ref_arg = load %struct.String*, %struct.String** %self2, align 8, !dbg !61
+  %String.find = call i32 @String.find(i8* %needle3, %struct.String* %ref_arg), !dbg !61
+  %NEQ = icmp ne i32 %String.find, -1, !dbg !61
+  ret i1 %NEQ, !dbg !61
+}
+
+define i1 @String.starts_with(i8* %prefix, %struct.String* %self) !dbg !62 {
+entry:
+  %prefix1 = alloca i8*, align 8, !dbg !63
+  %self2 = alloca %struct.String*, align 8, !dbg !63
+  %plen = alloca i32, align 4, !dbg !63
+  store i8* %prefix, i8** %prefix1, align 8, !dbg !63
+  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !63
+  br label %if.start, !dbg !63
+
+if.start:                                         ; preds = %entry
+  %prefix3 = load i8*, i8** %prefix1, align 8, !dbg !63
+  %EQ = icmp eq i8* %prefix3, null, !dbg !63
+  br i1 %EQ, label %if.then, label %if.end, !dbg !63
+
+if.end:                                           ; preds = %if.start
+  store i32 0, i32* %plen, align 4, !dbg !63
+  %prefix4 = load i8*, i8** %prefix1, align 8, !dbg !64
+  %strlen = call i32 @strlen(i8* %prefix4), !dbg !64
+  store i32 %strlen, i32* %plen, align 4, !dbg !64
+  br label %if.start5, !dbg !64
+
+if.then:                                          ; preds = %if.start
+  ret i1 true, !dbg !63
+
+if.start5:                                        ; preds = %if.end
+  %self8 = load %struct.String*, %struct.String** %self2, align 8, !dbg !64
+  %count = getelementptr %struct.String, %struct.String* %self8, i32 0, i32 1, !dbg !64
+  %plen9 = load i32, i32* %plen, align 4, !dbg !64
+  %DOT = load i32, i32* %count, align 4, !dbg !64
+  %GT = icmp sgt i32 %plen9, %DOT, !dbg !64
+  br i1 %GT, label %if.then7, label %if.end6, !dbg !64
+
+if.end6:                                          ; preds = %if.start5
+  %self10 = load %struct.String*, %struct.String** %self2, align 8, !dbg !65
+  %value = getelementptr %struct.String, %struct.String* %self10, i32 0, i32 0, !dbg !65
+  %DOT11 = load i8*, i8** %value, align 8, !dbg !65
+  %prefix12 = load i8*, i8** %prefix1, align 8, !dbg !65
+  %plen13 = load i32, i32* %plen, align 4, !dbg !65
+  %strncmp = call i32 @strncmp(i8* %DOT11, i8* %prefix12, i32 %plen13), !dbg !65
+  %EQ14 = icmp eq i32 %strncmp, 0, !dbg !65
+  ret i1 %EQ14, !dbg !65
+
+if.then7:                                         ; preds = %if.start5
+  ret i1 false, !dbg !64
+}
+
+define i1 @String.ends_with(i8* %suffix, %struct.String* %self) !dbg !66 {
+entry:
+  %suffix1 = alloca i8*, align 8, !dbg !67
+  %self2 = alloca %struct.String*, align 8, !dbg !67
+  %slen = alloca i32, align 4, !dbg !67
+  %offset = alloca i32, align 4, !dbg !67
+  store i8* %suffix, i8** %suffix1, align 8, !dbg !67
+  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !67
+  br label %if.start, !dbg !67
+
+if.start:                                         ; preds = %entry
+  %suffix3 = load i8*, i8** %suffix1, align 8, !dbg !67
+  %EQ = icmp eq i8* %suffix3, null, !dbg !67
+  br i1 %EQ, label %if.then, label %if.end, !dbg !67
+
+if.end:                                           ; preds = %if.start
+  store i32 0, i32* %slen, align 4, !dbg !67
+  %suffix4 = load i8*, i8** %suffix1, align 8, !dbg !68
+  %strlen = call i32 @strlen(i8* %suffix4), !dbg !68
+  store i32 %strlen, i32* %slen, align 4, !dbg !68
+  br label %if.start5, !dbg !68
+
+if.then:                                          ; preds = %if.start
+  ret i1 true, !dbg !67
+
+if.start5:                                        ; preds = %if.end
+  %self8 = load %struct.String*, %struct.String** %self2, align 8, !dbg !68
+  %count = getelementptr %struct.String, %struct.String* %self8, i32 0, i32 1, !dbg !68
+  %slen9 = load i32, i32* %slen, align 4, !dbg !68
+  %DOT = load i32, i32* %count, align 4, !dbg !68
+  %GT = icmp sgt i32 %slen9, %DOT, !dbg !68
+  br i1 %GT, label %if.then7, label %if.end6, !dbg !68
+
+if.end6:                                          ; preds = %if.start5
+  store i32 0, i32* %offset, align 4, !dbg !67
+  %self10 = load %struct.String*, %struct.String** %self2, align 8, !dbg !67
+  %count11 = getelementptr %struct.String, %struct.String* %self10, i32 0, i32 1, !dbg !67
+  %DOT12 = load i32, i32* %count11, align 4, !dbg !67
+  %slen13 = load i32, i32* %slen, align 4, !dbg !67
+  %SUB = sub i32 %DOT12, %slen13, !dbg !67
+  store i32 %SUB, i32* %offset, align 4, !dbg !67
+  %self14 = load %struct.String*, %struct.String** %self2, align 8, !dbg !69
+  %value = getelementptr %struct.String, %struct.String* %self14, i32 0, i32 0, !dbg !69
+  %DOT15 = load i8*, i8** %value, align 8, !dbg !69
+  %offset16 = load i32, i32* %offset, align 4, !dbg !69
+  %idx = sext i32 %offset16 to i64, !dbg !69
+  %ADD = getelementptr i8, i8* %DOT15, i64 %idx, !dbg !69
+  %suffix17 = load i8*, i8** %suffix1, align 8, !dbg !69
+  %slen18 = load i32, i32* %slen, align 4, !dbg !69
+  %strncmp = call i32 @strncmp(i8* %ADD, i8* %suffix17, i32 %slen18), !dbg !69
+  %EQ19 = icmp eq i32 %strncmp, 0, !dbg !69
+  ret i1 %EQ19, !dbg !69
+
+if.then7:                                         ; preds = %if.start5
+  ret i1 false, !dbg !68
+}
+
+define %struct.String @String.substr(i32 %start, i32 %length, %struct.String* %self) !dbg !70 {
+entry:
+  %start1 = alloca i32, align 4, !dbg !71
+  %length2 = alloca i32, align 4, !dbg !71
+  %self3 = alloca %struct.String*, align 8, !dbg !71
+  %res = alloca %struct.String, align 8, !dbg !71
+  %end = alloca i32, align 4, !dbg !71
+  %i = alloca i32, align 4, !dbg !71
+  store i32 %start, i32* %start1, align 4, !dbg !71
+  store i32 %length, i32* %length2, align 4, !dbg !71
+  store %struct.String* %self, %struct.String** %self3, align 8, !dbg !71
+  store %struct.String zeroinitializer, %struct.String* %res, align 8, !dbg !71
+  %0 = call %struct.String @String.new(), !dbg !72
+  %tmp_struct = alloca %struct.String, align 8, !dbg !72
+  store %struct.String %0, %struct.String* %tmp_struct, align 8, !dbg !72
+  %tmp_op = alloca %struct.String, align 8, !dbg !72
+  store %struct.String %0, %struct.String* %tmp_op, align 8, !dbg !72
+  call void @String.operator.ASSIGN.String(%struct.String* %tmp_op, %struct.String* %res), !dbg !72
+  br label %if.start, !dbg !72
+
+if.start:                                         ; preds = %entry
+  %start4 = load i32, i32* %start1, align 4, !dbg !72
+  %LT = icmp slt i32 %start4, 0, !dbg !72
+  %self5 = load %struct.String*, %struct.String** %self3, align 8, !dbg !72
+  %count = getelementptr %struct.String, %struct.String* %self5, i32 0, i32 1, !dbg !72
+  %start6 = load i32, i32* %start1, align 4, !dbg !72
+  %DOT = load i32, i32* %count, align 4, !dbg !72
+  %GE = icmp sge i32 %start6, %DOT, !dbg !72
+  %OR = or i1 %LT, %GE, !dbg !72
+  br i1 %OR, label %if.then, label %if.end, !dbg !72
+
+if.end:                                           ; preds = %if.start
+  store i32 0, i32* %end, align 4, !dbg !71
+  %start8 = load i32, i32* %start1, align 4, !dbg !71
+  %length9 = load i32, i32* %length2, align 4, !dbg !71
+  %ADD = add i32 %start8, %length9, !dbg !71
+  store i32 %ADD, i32* %end, align 4, !dbg !71
+  br label %if.start10, !dbg !71
+
+if.then:                                          ; preds = %if.start
+  %res7 = load %struct.String, %struct.String* %res, align 8, !dbg !72
+  ret %struct.String %res7, !dbg !72
+
+if.start10:                                       ; preds = %if.end
+  %self13 = load %struct.String*, %struct.String** %self3, align 8, !dbg !71
+  %count14 = getelementptr %struct.String, %struct.String* %self13, i32 0, i32 1, !dbg !71
+  %end15 = load i32, i32* %end, align 4, !dbg !71
+  %DOT16 = load i32, i32* %count14, align 4, !dbg !71
+  %GT = icmp sgt i32 %end15, %DOT16, !dbg !71
+  br i1 %GT, label %if.then12, label %if.end11, !dbg !71
+
+if.end11:                                         ; preds = %if.then12, %if.start10
+  store i32 0, i32* %i, align 4, !dbg !71
+  %start20 = load i32, i32* %start1, align 4, !dbg !71
+  store i32 %start20, i32* %i, align 4, !dbg !71
+  br label %while.start, !dbg !71
+
+if.then12:                                        ; preds = %if.start10
+  %self17 = load %struct.String*, %struct.String** %self3, align 8, !dbg !71
+  %count18 = getelementptr %struct.String, %struct.String* %self17, i32 0, i32 1, !dbg !71
+  %DOT19 = load i32, i32* %count18, align 4, !dbg !71
+  store i32 %DOT19, i32* %end, align 4, !dbg !71
+  br label %if.end11, !dbg !71
+
+while.start:                                      ; preds = %while.then, %if.end11
+  %i21 = load i32, i32* %i, align 4, !dbg !71
+  %end22 = load i32, i32* %end, align 4, !dbg !71
+  %LT23 = icmp slt i32 %i21, %end22, !dbg !71
+  br i1 %LT23, label %while.then, label %while.end, !dbg !71
+
+while.then:                                       ; preds = %while.start
+  %self24 = load %struct.String*, %struct.String** %self3, align 8, !dbg !73
+  %value = getelementptr %struct.String, %struct.String* %self24, i32 0, i32 0, !dbg !73
+  %DOT25 = load i8*, i8** %value, align 8, !dbg !73
+  %i26 = load i32, i32* %i, align 4, !dbg !73
+  %ACCESS = getelementptr i8, i8* %DOT25, i32 %i26, !dbg !73
+  %ACC = load i8, i8* %ACCESS, align 1, !dbg !73
+  call void @String.push(i8 %ACC, %struct.String* %res), !dbg !73
+  %i27 = load i32, i32* %i, align 4, !dbg !73
+  %ADD28 = add i32 %i27, 1, !dbg !73
+  store i32 %ADD28, i32* %i, align 4, !dbg !73
+  br label %while.start, !dbg !73
+
+while.end:                                        ; preds = %while.start
+  call void @String.delete(%struct.String* %tmp_struct), !dbg !73
+  %res29 = load %struct.String, %struct.String* %res, align 8, !dbg !73
+  ret %struct.String %res29, !dbg !73
+}
+
+define %struct.String @String.upper(%struct.String* %self) !dbg !74 {
+entry:
+  %self1 = alloca %struct.String*, align 8, !dbg !75
+  %res = alloca %struct.String, align 8, !dbg !75
+  %i = alloca i32, align 4, !dbg !75
+  %c = alloca i8, align 1, !dbg !75
+  %v = alloca i32, align 4, !dbg !75
+  store %struct.String* %self, %struct.String** %self1, align 8, !dbg !75
+  store %struct.String zeroinitializer, %struct.String* %res, align 8, !dbg !75
+  %0 = call %struct.String @String.new(), !dbg !76
+  %tmp_struct = alloca %struct.String, align 8, !dbg !76
+  store %struct.String %0, %struct.String* %tmp_struct, align 8, !dbg !76
+  %tmp_op = alloca %struct.String, align 8, !dbg !76
+  store %struct.String %0, %struct.String* %tmp_op, align 8, !dbg !76
+  call void @String.operator.ASSIGN.String(%struct.String* %tmp_op, %struct.String* %res), !dbg !76
+  store i32 0, i32* %i, align 4, !dbg !75
+  store i32 0, i32* %i, align 4, !dbg !75
+  br label %while.start, !dbg !75
+
+while.start:                                      ; preds = %if.end, %entry
+  %self2 = load %struct.String*, %struct.String** %self1, align 8, !dbg !75
+  %count = getelementptr %struct.String, %struct.String* %self2, i32 0, i32 1, !dbg !75
+  %i3 = load i32, i32* %i, align 4, !dbg !75
+  %DOT = load i32, i32* %count, align 4, !dbg !75
+  %LT = icmp slt i32 %i3, %DOT, !dbg !75
+  br i1 %LT, label %while.then, label %while.end, !dbg !75
+
+while.then:                                       ; preds = %while.start
+  store i8 0, i8* %c, align 1, !dbg !75
+  %self4 = load %struct.String*, %struct.String** %self1, align 8, !dbg !77
+  %value = getelementptr %struct.String, %struct.String* %self4, i32 0, i32 0, !dbg !77
+  %DOT5 = load i8*, i8** %value, align 8, !dbg !77
+  %i6 = load i32, i32* %i, align 4, !dbg !77
+  %ACCESS = getelementptr i8, i8* %DOT5, i32 %i6, !dbg !77
+  %ACC = load i8, i8* %ACCESS, align 1, !dbg !77
+  store i8 %ACC, i8* %c, align 1, !dbg !77
+  br label %if.start, !dbg !77
+
+while.end:                                        ; preds = %while.start
+  call void @String.delete(%struct.String* %tmp_struct), !dbg !78
+  %res14 = load %struct.String, %struct.String* %res, align 8, !dbg !78
+  ret %struct.String %res14, !dbg !78
+
+if.start:                                         ; preds = %while.then
+  %c7 = load i8, i8* %c, align 1, !dbg !77
+  %GE = icmp sge i8 %c7, 97, !dbg !77
+  %c8 = load i8, i8* %c, align 1, !dbg !77
+  %LE = icmp sle i8 %c8, 122, !dbg !77
+  %AND = and i1 %GE, %LE, !dbg !77
+  br i1 %AND, label %if.then, label %if.else, !dbg !77
+
+if.end:                                           ; preds = %if.else, %if.then
+  %i13 = load i32, i32* %i, align 4, !dbg !78
+  %ADD = add i32 %i13, 1, !dbg !78
+  store i32 %ADD, i32* %i, align 4, !dbg !78
+  br label %while.start, !dbg !78
+
+if.then:                                          ; preds = %if.start
+  store i32 0, i32* %v, align 4, !dbg !75
+  %c9 = load i8, i8* %c, align 1, !dbg !75
+  %as = sext i8 %c9 to i32, !dbg !75
+  %SUB = sub i32 %as, 32, !dbg !75
+  store i32 %SUB, i32* %v, align 4, !dbg !75
+  %v10 = load i32, i32* %v, align 4, !dbg !79
+  %as11 = trunc i32 %v10 to i8, !dbg !79
+  call void @String.push(i8 %as11, %struct.String* %res), !dbg !79
+  br label %if.end, !dbg !79
+
+if.else:                                          ; preds = %if.start
+  %c12 = load i8, i8* %c, align 1, !dbg !78
+  call void @String.push(i8 %c12, %struct.String* %res), !dbg !78
+  br label %if.end, !dbg !78
+}
+
+define %struct.String @String.lower(%struct.String* %self) !dbg !80 {
+entry:
+  %self1 = alloca %struct.String*, align 8, !dbg !81
+  %res = alloca %struct.String, align 8, !dbg !81
+  %i = alloca i32, align 4, !dbg !81
+  %c = alloca i8, align 1, !dbg !81
+  %v = alloca i32, align 4, !dbg !81
+  store %struct.String* %self, %struct.String** %self1, align 8, !dbg !81
+  store %struct.String zeroinitializer, %struct.String* %res, align 8, !dbg !81
+  %0 = call %struct.String @String.new(), !dbg !82
+  %tmp_struct = alloca %struct.String, align 8, !dbg !82
+  store %struct.String %0, %struct.String* %tmp_struct, align 8, !dbg !82
+  %tmp_op = alloca %struct.String, align 8, !dbg !82
+  store %struct.String %0, %struct.String* %tmp_op, align 8, !dbg !82
+  call void @String.operator.ASSIGN.String(%struct.String* %tmp_op, %struct.String* %res), !dbg !82
+  store i32 0, i32* %i, align 4, !dbg !81
+  store i32 0, i32* %i, align 4, !dbg !81
+  br label %while.start, !dbg !81
+
+while.start:                                      ; preds = %if.end, %entry
+  %self2 = load %struct.String*, %struct.String** %self1, align 8, !dbg !81
+  %count = getelementptr %struct.String, %struct.String* %self2, i32 0, i32 1, !dbg !81
+  %i3 = load i32, i32* %i, align 4, !dbg !81
+  %DOT = load i32, i32* %count, align 4, !dbg !81
+  %LT = icmp slt i32 %i3, %DOT, !dbg !81
+  br i1 %LT, label %while.then, label %while.end, !dbg !81
+
+while.then:                                       ; preds = %while.start
+  store i8 0, i8* %c, align 1, !dbg !81
+  %self4 = load %struct.String*, %struct.String** %self1, align 8, !dbg !83
+  %value = getelementptr %struct.String, %struct.String* %self4, i32 0, i32 0, !dbg !83
+  %DOT5 = load i8*, i8** %value, align 8, !dbg !83
+  %i6 = load i32, i32* %i, align 4, !dbg !83
+  %ACCESS = getelementptr i8, i8* %DOT5, i32 %i6, !dbg !83
+  %ACC = load i8, i8* %ACCESS, align 1, !dbg !83
+  store i8 %ACC, i8* %c, align 1, !dbg !83
+  br label %if.start, !dbg !83
+
+while.end:                                        ; preds = %while.start
+  call void @String.delete(%struct.String* %tmp_struct), !dbg !84
+  %res15 = load %struct.String, %struct.String* %res, align 8, !dbg !84
+  ret %struct.String %res15, !dbg !84
+
+if.start:                                         ; preds = %while.then
+  %c7 = load i8, i8* %c, align 1, !dbg !83
+  %GE = icmp sge i8 %c7, 65, !dbg !83
+  %c8 = load i8, i8* %c, align 1, !dbg !83
+  %LE = icmp sle i8 %c8, 90, !dbg !83
+  %AND = and i1 %GE, %LE, !dbg !83
+  br i1 %AND, label %if.then, label %if.else, !dbg !83
+
+if.end:                                           ; preds = %if.else, %if.then
+  %i13 = load i32, i32* %i, align 4, !dbg !84
+  %ADD14 = add i32 %i13, 1, !dbg !84
+  store i32 %ADD14, i32* %i, align 4, !dbg !84
+  br label %while.start, !dbg !84
+
+if.then:                                          ; preds = %if.start
+  store i32 0, i32* %v, align 4, !dbg !81
+  %c9 = load i8, i8* %c, align 1, !dbg !81
+  %as = sext i8 %c9 to i32, !dbg !81
+  %ADD = add i32 %as, 32, !dbg !81
+  store i32 %ADD, i32* %v, align 4, !dbg !81
+  %v10 = load i32, i32* %v, align 4, !dbg !85
+  %as11 = trunc i32 %v10 to i8, !dbg !85
+  call void @String.push(i8 %as11, %struct.String* %res), !dbg !85
+  br label %if.end, !dbg !85
+
+if.else:                                          ; preds = %if.start
+  %c12 = load i8, i8* %c, align 1, !dbg !84
+  call void @String.push(i8 %c12, %struct.String* %res), !dbg !84
+  br label %if.end, !dbg !84
+}
+
+define %struct.String @String.trim(%struct.String* %self) !dbg !86 {
+entry:
+  %self1 = alloca %struct.String*, align 8, !dbg !87
+  %start = alloca i32, align 4, !dbg !87
+  %c = alloca i8, align 1, !dbg !87
+  %end = alloca i32, align 4, !dbg !87
+  %c25 = alloca i8, align 1, !dbg !87
+  store %struct.String* %self, %struct.String** %self1, align 8, !dbg !87
+  store i32 0, i32* %start, align 4, !dbg !87
+  store i32 0, i32* %start, align 4, !dbg !87
+  br label %while.start, !dbg !87
+
+while.start:                                      ; preds = %if.end, %entry
+  %self2 = load %struct.String*, %struct.String** %self1, align 8, !dbg !87
+  %count = getelementptr %struct.String, %struct.String* %self2, i32 0, i32 1, !dbg !87
+  %start3 = load i32, i32* %start, align 4, !dbg !87
+  %DOT = load i32, i32* %count, align 4, !dbg !87
+  %LT = icmp slt i32 %start3, %DOT, !dbg !87
+  br i1 %LT, label %while.then, label %while.end, !dbg !87
+
+while.then:                                       ; preds = %while.start
+  store i8 0, i8* %c, align 1, !dbg !87
+  %self4 = load %struct.String*, %struct.String** %self1, align 8, !dbg !88
+  %value = getelementptr %struct.String, %struct.String* %self4, i32 0, i32 0, !dbg !88
+  %DOT5 = load i8*, i8** %value, align 8, !dbg !88
+  %start6 = load i32, i32* %start, align 4, !dbg !88
+  %ACCESS = getelementptr i8, i8* %DOT5, i32 %start6, !dbg !88
+  %ACC = load i8, i8* %ACCESS, align 1, !dbg !88
+  store i8 %ACC, i8* %c, align 1, !dbg !88
+  br label %if.start, !dbg !88
+
+while.end:                                        ; preds = %if.else, %while.start
+  store i32 0, i32* %end, align 4, !dbg !87
+  %self17 = load %struct.String*, %struct.String** %self1, align 8, !dbg !87
+  %count18 = getelementptr %struct.String, %struct.String* %self17, i32 0, i32 1, !dbg !87
+  %DOT19 = load i32, i32* %count18, align 4, !dbg !87
+  store i32 %DOT19, i32* %end, align 4, !dbg !87
+  br label %while.start20, !dbg !87
+
+if.start:                                         ; preds = %while.then
+  %c7 = load i8, i8* %c, align 1, !dbg !88
+  %EQ = icmp eq i8 %c7, 32, !dbg !88
+  %c8 = load i8, i8* %c, align 1, !dbg !88
+  %EQ9 = icmp eq i8 %c8, 9, !dbg !88
+  %OR = or i1 %EQ, %EQ9, !dbg !88
+  %c10 = load i8, i8* %c, align 1, !dbg !88
+  %EQ11 = icmp eq i8 %c10, 10, !dbg !88
+  %OR12 = or i1 %OR, %EQ11, !dbg !88
+  %c13 = load i8, i8* %c, align 1, !dbg !88
+  %EQ14 = icmp eq i8 %c13, 13, !dbg !88
+  %OR15 = or i1 %OR12, %EQ14, !dbg !88
+  br i1 %OR15, label %if.then, label %if.else, !dbg !88
+
+if.end:                                           ; preds = %if.then
+  br label %while.start, !dbg !88
+
+if.then:                                          ; preds = %if.start
+  %start16 = load i32, i32* %start, align 4, !dbg !88
+  %ADD = add i32 %start16, 1, !dbg !88
+  store i32 %ADD, i32* %start, align 4, !dbg !88
+  br label %if.end, !dbg !88
+
+if.else:                                          ; preds = %if.start
+  br label %while.end, !dbg !88
+
+while.start20:                                    ; preds = %if.end33, %while.end
+  %end23 = load i32, i32* %end, align 4, !dbg !87
+  %start24 = load i32, i32* %start, align 4, !dbg !87
+  %GT = icmp sgt i32 %end23, %start24, !dbg !87
+  br i1 %GT, label %while.then21, label %while.end22, !dbg !87
+
+while.then21:                                     ; preds = %while.start20
+  store i8 0, i8* %c25, align 1, !dbg !87
+  %self26 = load %struct.String*, %struct.String** %self1, align 8, !dbg !89
+  %value27 = getelementptr %struct.String, %struct.String* %self26, i32 0, i32 0, !dbg !89
+  %end28 = load i32, i32* %end, align 4, !dbg !89
+  %SUB = sub i32 %end28, 1, !dbg !89
+  %DOT29 = load i8*, i8** %value27, align 8, !dbg !89
+  %ACCESS30 = getelementptr i8, i8* %DOT29, i32 %SUB, !dbg !89
+  %ACC31 = load i8, i8* %ACCESS30, align 1, !dbg !89
+  store i8 %ACC31, i8* %c25, align 1, !dbg !89
+  br label %if.start32, !dbg !89
+
+while.end22:                                      ; preds = %if.else35, %while.start20
+  %start49 = load i32, i32* %start, align 4, !dbg !90
+  %end50 = load i32, i32* %end, align 4, !dbg !90
+  %start51 = load i32, i32* %start, align 4, !dbg !90
+  %SUB52 = sub i32 %end50, %start51, !dbg !90
+  %ref_arg = load %struct.String*, %struct.String** %self1, align 8, !dbg !90
+  %String.substr = call %struct.String @String.substr(i32 %start49, i32 %SUB52, %struct.String* %ref_arg), !dbg !90
+  %tmp_struct = alloca %struct.String, align 8, !dbg !90
+  store %struct.String %String.substr, %struct.String* %tmp_struct, align 8, !dbg !90
+  ret %struct.String %String.substr, !dbg !90
+
+if.start32:                                       ; preds = %while.then21
+  %c36 = load i8, i8* %c25, align 1, !dbg !89
+  %EQ37 = icmp eq i8 %c36, 32, !dbg !89
+  %c38 = load i8, i8* %c25, align 1, !dbg !89
+  %EQ39 = icmp eq i8 %c38, 9, !dbg !89
+  %OR40 = or i1 %EQ37, %EQ39, !dbg !89
+  %c41 = load i8, i8* %c25, align 1, !dbg !89
+  %EQ42 = icmp eq i8 %c41, 10, !dbg !89
+  %OR43 = or i1 %OR40, %EQ42, !dbg !89
+  %c44 = load i8, i8* %c25, align 1, !dbg !89
+  %EQ45 = icmp eq i8 %c44, 13, !dbg !89
+  %OR46 = or i1 %OR43, %EQ45, !dbg !89
+  br i1 %OR46, label %if.then34, label %if.else35, !dbg !89
+
+if.end33:                                         ; preds = %if.then34
+  br label %while.start20, !dbg !89
+
+if.then34:                                        ; preds = %if.start32
+  %end47 = load i32, i32* %end, align 4, !dbg !89
+  %SUB48 = sub i32 %end47, 1, !dbg !89
+  store i32 %SUB48, i32* %end, align 4, !dbg !89
+  br label %if.end33, !dbg !89
+
+if.else35:                                        ; preds = %if.start32
+  br label %while.end22, !dbg !89
+}
+
+define %struct.String @String.replace(i8* %old, i8* %replacement, %struct.String* %self) !dbg !91 {
+entry:
+  %old1 = alloca i8*, align 8, !dbg !92
+  %replacement2 = alloca i8*, align 8, !dbg !92
+  %self3 = alloca %struct.String*, align 8, !dbg !92
+  %res = alloca %struct.String, align 8, !dbg !92
+  %olen = alloca i32, align 4, !dbg !92
+  %i = alloca i32, align 4, !dbg !92
+  store i8* %old, i8** %old1, align 8, !dbg !92
+  store i8* %replacement, i8** %replacement2, align 8, !dbg !92
+  store %struct.String* %self, %struct.String** %self3, align 8, !dbg !92
+  store %struct.String zeroinitializer, %struct.String* %res, align 8, !dbg !92
+  %0 = call %struct.String @String.new(), !dbg !93
+  %tmp_struct = alloca %struct.String, align 8, !dbg !93
+  store %struct.String %0, %struct.String* %tmp_struct, align 8, !dbg !93
+  %tmp_op = alloca %struct.String, align 8, !dbg !93
+  store %struct.String %0, %struct.String* %tmp_op, align 8, !dbg !93
+  call void @String.operator.ASSIGN.String(%struct.String* %tmp_op, %struct.String* %res), !dbg !93
+  store i32 0, i32* %olen, align 4, !dbg !92
+  %old4 = load i8*, i8** %old1, align 8, !dbg !94
+  %strlen = call i32 @strlen(i8* %old4), !dbg !94
+  store i32 %strlen, i32* %olen, align 4, !dbg !94
+  br label %if.start, !dbg !94
+
+if.start:                                         ; preds = %entry
+  %olen5 = load i32, i32* %olen, align 4, !dbg !94
+  %EQ = icmp eq i32 %olen5, 0, !dbg !94
+  br i1 %EQ, label %if.then, label %if.end, !dbg !94
+
+if.end:                                           ; preds = %if.start
+  store i32 0, i32* %i, align 4, !dbg !92
+  store i32 0, i32* %i, align 4, !dbg !92
+  br label %while.start, !dbg !92
+
+if.then:                                          ; preds = %if.start
+  %self6 = load %struct.String*, %struct.String** %self3, align 8, !dbg !95
+  %value = getelementptr %struct.String, %struct.String* %self6, i32 0, i32 0, !dbg !95
+  %DOT = load i8*, i8** %value, align 8, !dbg !95
+  call void @String.assign(i8* %DOT, %struct.String* %res), !dbg !95
+  %res7 = load %struct.String, %struct.String* %res, align 8, !dbg !95
+  ret %struct.String %res7, !dbg !95
+
+while.start:                                      ; preds = %if.end12, %if.end
+  %self8 = load %struct.String*, %struct.String** %self3, align 8, !dbg !92
+  %count = getelementptr %struct.String, %struct.String* %self8, i32 0, i32 1, !dbg !92
+  %i9 = load i32, i32* %i, align 4, !dbg !92
+  %DOT10 = load i32, i32* %count, align 4, !dbg !92
+  %LT = icmp slt i32 %i9, %DOT10, !dbg !92
+  br i1 %LT, label %while.then, label %while.end, !dbg !92
+
+while.then:                                       ; preds = %while.start
+  br label %if.start11, !dbg !92
+
+while.end:                                        ; preds = %while.start
+  call void @String.delete(%struct.String* %tmp_struct), !dbg !96
+  %res36 = load %struct.String, %struct.String* %res, align 8, !dbg !96
+  ret %struct.String %res36, !dbg !96
+
+if.start11:                                       ; preds = %while.then
+  %self14 = load %struct.String*, %struct.String** %self3, align 8, !dbg !92
+  %count15 = getelementptr %struct.String, %struct.String* %self14, i32 0, i32 1, !dbg !92
+  %DOT16 = load i32, i32* %count15, align 4, !dbg !92
+  %olen17 = load i32, i32* %olen, align 4, !dbg !92
+  %SUB = sub i32 %DOT16, %olen17, !dbg !92
+  %i18 = load i32, i32* %i, align 4, !dbg !92
+  %LE = icmp sle i32 %i18, %SUB, !dbg !92
+  %self19 = load %struct.String*, %struct.String** %self3, align 8, !dbg !97
+  %value20 = getelementptr %struct.String, %struct.String* %self19, i32 0, i32 0, !dbg !97
+  %DOT21 = load i8*, i8** %value20, align 8, !dbg !97
+  %i22 = load i32, i32* %i, align 4, !dbg !97
+  %idx = sext i32 %i22 to i64, !dbg !97
+  %ADD = getelementptr i8, i8* %DOT21, i64 %idx, !dbg !97
+  %old23 = load i8*, i8** %old1, align 8, !dbg !97
+  %olen24 = load i32, i32* %olen, align 4, !dbg !97
+  %strncmp = call i32 @strncmp(i8* %ADD, i8* %old23, i32 %olen24), !dbg !97
+  %EQ25 = icmp eq i32 %strncmp, 0, !dbg !97
+  %AND = and i1 %LE, %EQ25, !dbg !97
+  br i1 %AND, label %if.then13, label %if.else, !dbg !97
+
+if.end12:                                         ; preds = %if.else, %if.then13
+  br label %while.start, !dbg !96
+
+if.then13:                                        ; preds = %if.start11
+  %replacement26 = load i8*, i8** %replacement2, align 8, !dbg !98
+  call void @String.join(i8* %replacement26, %struct.String* %res), !dbg !98
+  %i27 = load i32, i32* %i, align 4, !dbg !98
+  %olen28 = load i32, i32* %olen, align 4, !dbg !98
+  %ADD29 = add i32 %i27, %olen28, !dbg !98
+  store i32 %ADD29, i32* %i, align 4, !dbg !98
+  br label %if.end12, !dbg !98
+
+if.else:                                          ; preds = %if.start11
+  %self30 = load %struct.String*, %struct.String** %self3, align 8, !dbg !96
+  %value31 = getelementptr %struct.String, %struct.String* %self30, i32 0, i32 0, !dbg !96
+  %DOT32 = load i8*, i8** %value31, align 8, !dbg !96
+  %i33 = load i32, i32* %i, align 4, !dbg !96
+  %ACCESS = getelementptr i8, i8* %DOT32, i32 %i33, !dbg !96
+  %ACC = load i8, i8* %ACCESS, align 1, !dbg !96
+  call void @String.push(i8 %ACC, %struct.String* %res), !dbg !96
+  %i34 = load i32, i32* %i, align 4, !dbg !96
+  %ADD35 = add i32 %i34, 1, !dbg !96
+  store i32 %ADD35, i32* %i, align 4, !dbg !96
+  br label %if.end12, !dbg !96
+}
+
+define %struct.String @String.repeat(i32 %n, %struct.String* %self) !dbg !99 {
+entry:
+  %n1 = alloca i32, align 4, !dbg !100
+  %self2 = alloca %struct.String*, align 8, !dbg !100
+  %res = alloca %struct.String, align 8, !dbg !100
+  %i = alloca i32, align 4, !dbg !100
+  store i32 %n, i32* %n1, align 4, !dbg !100
+  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !100
+  store %struct.String zeroinitializer, %struct.String* %res, align 8, !dbg !100
+  %0 = call %struct.String @String.new(), !dbg !101
+  %tmp_struct = alloca %struct.String, align 8, !dbg !101
+  store %struct.String %0, %struct.String* %tmp_struct, align 8, !dbg !101
+  %tmp_op = alloca %struct.String, align 8, !dbg !101
+  store %struct.String %0, %struct.String* %tmp_op, align 8, !dbg !101
+  call void @String.operator.ASSIGN.String(%struct.String* %tmp_op, %struct.String* %res), !dbg !101
+  store i32 0, i32* %i, align 4, !dbg !100
+  store i32 0, i32* %i, align 4, !dbg !100
+  br label %while.start, !dbg !100
+
+while.start:                                      ; preds = %while.then, %entry
+  %i3 = load i32, i32* %i, align 4, !dbg !100
+  %n4 = load i32, i32* %n1, align 4, !dbg !100
+  %LT = icmp slt i32 %i3, %n4, !dbg !100
+  br i1 %LT, label %while.then, label %while.end, !dbg !100
+
+while.then:                                       ; preds = %while.start
+  %self5 = load %struct.String*, %struct.String** %self2, align 8, !dbg !102
+  %value = getelementptr %struct.String, %struct.String* %self5, i32 0, i32 0, !dbg !102
+  %DOT = load i8*, i8** %value, align 8, !dbg !102
+  call void @String.join(i8* %DOT, %struct.String* %res), !dbg !102
+  %i6 = load i32, i32* %i, align 4, !dbg !102
+  %ADD = add i32 %i6, 1, !dbg !102
+  store i32 %ADD, i32* %i, align 4, !dbg !102
+  br label %while.start, !dbg !102
+
+while.end:                                        ; preds = %while.start
+  call void @String.delete(%struct.String* %tmp_struct), !dbg !102
+  %res7 = load %struct.String, %struct.String* %res, align 8, !dbg !102
+  ret %struct.String %res7, !dbg !102
+}
+
+define %struct.String @String.reverse(%struct.String* %self) !dbg !103 {
+entry:
+  %self1 = alloca %struct.String*, align 8, !dbg !104
+  %res = alloca %struct.String, align 8, !dbg !104
+  %i = alloca i32, align 4, !dbg !104
+  store %struct.String* %self, %struct.String** %self1, align 8, !dbg !104
+  store %struct.String zeroinitializer, %struct.String* %res, align 8, !dbg !104
+  %0 = call %struct.String @String.new(), !dbg !105
+  %tmp_struct = alloca %struct.String, align 8, !dbg !105
+  store %struct.String %0, %struct.String* %tmp_struct, align 8, !dbg !105
+  %tmp_op = alloca %struct.String, align 8, !dbg !105
+  store %struct.String %0, %struct.String* %tmp_op, align 8, !dbg !105
+  call void @String.operator.ASSIGN.String(%struct.String* %tmp_op, %struct.String* %res), !dbg !105
+  store i32 0, i32* %i, align 4, !dbg !104
+  %self2 = load %struct.String*, %struct.String** %self1, align 8, !dbg !104
+  %count = getelementptr %struct.String, %struct.String* %self2, i32 0, i32 1, !dbg !104
+  %DOT = load i32, i32* %count, align 4, !dbg !104
+  %SUB = sub i32 %DOT, 1, !dbg !104
+  store i32 %SUB, i32* %i, align 4, !dbg !104
+  br label %while.start, !dbg !104
+
+while.start:                                      ; preds = %while.then, %entry
+  %i3 = load i32, i32* %i, align 4, !dbg !104
+  %GE = icmp sge i32 %i3, 0, !dbg !104
+  br i1 %GE, label %while.then, label %while.end, !dbg !104
+
+while.then:                                       ; preds = %while.start
+  %self4 = load %struct.String*, %struct.String** %self1, align 8, !dbg !106
+  %value = getelementptr %struct.String, %struct.String* %self4, i32 0, i32 0, !dbg !106
+  %DOT5 = load i8*, i8** %value, align 8, !dbg !106
+  %i6 = load i32, i32* %i, align 4, !dbg !106
+  %ACCESS = getelementptr i8, i8* %DOT5, i32 %i6, !dbg !106
+  %ACC = load i8, i8* %ACCESS, align 1, !dbg !106
+  call void @String.push(i8 %ACC, %struct.String* %res), !dbg !106
+  %i7 = load i32, i32* %i, align 4, !dbg !106
+  %SUB8 = sub i32 %i7, 1, !dbg !106
+  store i32 %SUB8, i32* %i, align 4, !dbg !106
+  br label %while.start, !dbg !106
+
+while.end:                                        ; preds = %while.start
+  call void @String.delete(%struct.String* %tmp_struct), !dbg !106
+  %res9 = load %struct.String, %struct.String* %res, align 8, !dbg !106
+  ret %struct.String %res9, !dbg !106
+}
+
+define i32 @String.compare(%struct.String* %other, %struct.String* %self) !dbg !107 {
+entry:
+  %other1 = alloca %struct.String*, align 8, !dbg !108
+  %self2 = alloca %struct.String*, align 8, !dbg !108
+  store %struct.String* %other, %struct.String** %other1, align 8, !dbg !108
+  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !108
+  %self3 = load %struct.String*, %struct.String** %self2, align 8, !dbg !109
+  %value = getelementptr %struct.String, %struct.String* %self3, i32 0, i32 0, !dbg !109
+  %DOT = load i8*, i8** %value, align 8, !dbg !109
+  %other4 = load %struct.String*, %struct.String** %other1, align 8, !dbg !109
+  %value5 = getelementptr %struct.String, %struct.String* %other4, i32 0, i32 0, !dbg !109
+  %DOT6 = load i8*, i8** %value5, align 8, !dbg !109
+  %strcmp = call i32 @strcmp(i8* %DOT, i8* %DOT6), !dbg !109
+  ret i32 %strcmp, !dbg !109
+}
+
+define i32 @String.to_int(%struct.String* %self) !dbg !110 {
+entry:
+  %self1 = alloca %struct.String*, align 8, !dbg !111
+  store %struct.String* %self, %struct.String** %self1, align 8, !dbg !111
+  %self2 = load %struct.String*, %struct.String** %self1, align 8, !dbg !112
+  %value = getelementptr %struct.String, %struct.String* %self2, i32 0, i32 0, !dbg !112
+  %DOT = load i8*, i8** %value, align 8, !dbg !112
+  %atoi = call i32 @atoi(i8* %DOT), !dbg !112
+  ret i32 %atoi, !dbg !112
+}
+
+define void @String.operator.ASSIGN.CHARS(i8* %str, %struct.String* %self) !dbg !113 {
+entry:
+  %str1 = alloca i8*, align 8, !dbg !114
+  %self2 = alloca %struct.String*, align 8, !dbg !114
+  store i8* %str, i8** %str1, align 8, !dbg !114
+  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !114
+  %str3 = load i8*, i8** %str1, align 8, !dbg !115
+  %ref_arg = load %struct.String*, %struct.String** %self2, align 8, !dbg !115
+  call void @String.assign(i8* %str3, %struct.String* %ref_arg), !dbg !115
+  ret void, !dbg !115
+}
+
+define void @String.operator.ASSIGN.String(%struct.String* %v, %struct.String* %self) !dbg !116 {
+entry:
+  %v1 = alloca %struct.String*, align 8, !dbg !117
+  %self2 = alloca %struct.String*, align 8, !dbg !117
+  store %struct.String* %v, %struct.String** %v1, align 8, !dbg !117
+  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !117
+  %v3 = load %struct.String*, %struct.String** %v1, align 8, !dbg !118
+  %value = getelementptr %struct.String, %struct.String* %v3, i32 0, i32 0, !dbg !118
+  %DOT = load i8*, i8** %value, align 8, !dbg !118
+  %ref_arg = load %struct.String*, %struct.String** %self2, align 8, !dbg !118
+  call void @String.assign(i8* %DOT, %struct.String* %ref_arg), !dbg !118
+  ret void, !dbg !118
+}
+
+define %struct.String @String.operator.ADD.String(%struct.String* %v, %struct.String* %self) !dbg !119 {
+entry:
+  %v1 = alloca %struct.String*, align 8, !dbg !120
+  %self2 = alloca %struct.String*, align 8, !dbg !120
+  %res = alloca %struct.String, align 8, !dbg !120
+  store %struct.String* %v, %struct.String** %v1, align 8, !dbg !120
+  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !120
+  store %struct.String zeroinitializer, %struct.String* %res, align 8, !dbg !120
+  %0 = call %struct.String @String.new(), !dbg !121
+  %tmp_struct = alloca %struct.String, align 8, !dbg !121
+  store %struct.String %0, %struct.String* %tmp_struct, align 8, !dbg !121
+  %tmp_op = alloca %struct.String, align 8, !dbg !121
+  store %struct.String %0, %struct.String* %tmp_op, align 8, !dbg !121
+  call void @String.operator.ASSIGN.String(%struct.String* %tmp_op, %struct.String* %res), !dbg !121
+  %self3 = load %struct.String*, %struct.String** %self2, align 8, !dbg !122
+  %value = getelementptr %struct.String, %struct.String* %self3, i32 0, i32 0, !dbg !122
+  %DOT = load i8*, i8** %value, align 8, !dbg !122
+  %v4 = load %struct.String*, %struct.String** %v1, align 8, !dbg !122
+  %value5 = getelementptr %struct.String, %struct.String* %v4, i32 0, i32 0, !dbg !122
+  %DOT6 = load i8*, i8** %value5, align 8, !dbg !122
+  %strjoin = call i8* @strjoin(i8* %DOT, i8* %DOT6), !dbg !122
+  call void @String.operator.ASSIGN.CHARS(i8* %strjoin, %struct.String* %res), !dbg !122
+  call void @String.delete(%struct.String* %tmp_struct), !dbg !122
+  %res7 = load %struct.String, %struct.String* %res, align 8, !dbg !122
+  ret %struct.String %res7, !dbg !122
+}
+
+define %struct.String @String.operator.ADD.CHARS(i8* %str, %struct.String* %self) !dbg !123 {
+entry:
+  %str1 = alloca i8*, align 8, !dbg !124
+  %self2 = alloca %struct.String*, align 8, !dbg !124
+  %res = alloca %struct.String, align 8, !dbg !124
+  store i8* %str, i8** %str1, align 8, !dbg !124
+  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !124
+  store %struct.String zeroinitializer, %struct.String* %res, align 8, !dbg !124
+  %0 = call %struct.String @String.new(), !dbg !125
+  %tmp_struct = alloca %struct.String, align 8, !dbg !125
+  store %struct.String %0, %struct.String* %tmp_struct, align 8, !dbg !125
+  %tmp_op = alloca %struct.String, align 8, !dbg !125
+  store %struct.String %0, %struct.String* %tmp_op, align 8, !dbg !125
+  call void @String.operator.ASSIGN.String(%struct.String* %tmp_op, %struct.String* %res), !dbg !125
+  %self3 = load %struct.String*, %struct.String** %self2, align 8, !dbg !126
+  %value = getelementptr %struct.String, %struct.String* %self3, i32 0, i32 0, !dbg !126
+  %DOT = load i8*, i8** %value, align 8, !dbg !126
+  %str4 = load i8*, i8** %str1, align 8, !dbg !126
+  %strjoin = call i8* @strjoin(i8* %DOT, i8* %str4), !dbg !126
+  call void @String.operator.ASSIGN.CHARS(i8* %strjoin, %struct.String* %res), !dbg !126
+  call void @String.delete(%struct.String* %tmp_struct), !dbg !126
+  %res5 = load %struct.String, %struct.String* %res, align 8, !dbg !126
+  ret %struct.String %res5, !dbg !126
+}
+
+define void @String.operator.ADD_ASS.String(%struct.String* %v, %struct.String* %self) !dbg !127 {
+entry:
+  %v1 = alloca %struct.String*, align 8, !dbg !128
+  %self2 = alloca %struct.String*, align 8, !dbg !128
+  store %struct.String* %v, %struct.String** %v1, align 8, !dbg !128
+  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !128
+  %v3 = load %struct.String*, %struct.String** %v1, align 8, !dbg !129
+  %value = getelementptr %struct.String, %struct.String* %v3, i32 0, i32 0, !dbg !129
+  %DOT = load i8*, i8** %value, align 8, !dbg !129
+  %ref_arg = load %struct.String*, %struct.String** %self2, align 8, !dbg !129
+  call void @String.join(i8* %DOT, %struct.String* %ref_arg), !dbg !129
+  ret void, !dbg !129
+}
+
+define void @String.operator.ADD_ASS.CHARS(i8* %str, %struct.String* %self) !dbg !130 {
+entry:
+  %str1 = alloca i8*, align 8, !dbg !131
+  %self2 = alloca %struct.String*, align 8, !dbg !131
+  store i8* %str, i8** %str1, align 8, !dbg !131
+  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !131
+  %str3 = load i8*, i8** %str1, align 8, !dbg !132
+  %ref_arg = load %struct.String*, %struct.String** %self2, align 8, !dbg !132
+  call void @String.join(i8* %str3, %struct.String* %ref_arg), !dbg !132
+  ret void, !dbg !132
+}
+
+define i1 @String.operator.EQ.String(%struct.String* %v, %struct.String* %self) !dbg !133 {
+entry:
+  %v1 = alloca %struct.String*, align 8, !dbg !134
+  %self2 = alloca %struct.String*, align 8, !dbg !134
+  store %struct.String* %v, %struct.String** %v1, align 8, !dbg !134
+  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !134
+  %self3 = load %struct.String*, %struct.String** %self2, align 8, !dbg !135
+  %value = getelementptr %struct.String, %struct.String* %self3, i32 0, i32 0, !dbg !135
+  %DOT = load i8*, i8** %value, align 8, !dbg !135
+  %v4 = load %struct.String*, %struct.String** %v1, align 8, !dbg !135
+  %value5 = getelementptr %struct.String, %struct.String* %v4, i32 0, i32 0, !dbg !135
+  %DOT6 = load i8*, i8** %value5, align 8, !dbg !135
+  %strcmp = call i32 @strcmp(i8* %DOT, i8* %DOT6), !dbg !135
+  %EQ = icmp eq i32 %strcmp, 0, !dbg !135
+  ret i1 %EQ, !dbg !135
+}
+
+define i1 @String.operator.EQ.CHARS(i8* %str, %struct.String* %self) !dbg !136 {
+entry:
+  %str1 = alloca i8*, align 8, !dbg !137
+  %self2 = alloca %struct.String*, align 8, !dbg !137
+  store i8* %str, i8** %str1, align 8, !dbg !137
+  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !137
+  br label %if.start, !dbg !137
+
+if.start:                                         ; preds = %entry
+  %str3 = load i8*, i8** %str1, align 8, !dbg !137
+  %EQ = icmp eq i8* %str3, null, !dbg !137
+  br i1 %EQ, label %if.then, label %if.end, !dbg !137
+
+if.end:                                           ; preds = %if.start
+  %self6 = load %struct.String*, %struct.String** %self2, align 8, !dbg !138
+  %value = getelementptr %struct.String, %struct.String* %self6, i32 0, i32 0, !dbg !138
+  %DOT7 = load i8*, i8** %value, align 8, !dbg !138
+  %str8 = load i8*, i8** %str1, align 8, !dbg !138
+  %strcmp = call i32 @strcmp(i8* %DOT7, i8* %str8), !dbg !138
+  %EQ9 = icmp eq i32 %strcmp, 0, !dbg !138
+  ret i1 %EQ9, !dbg !138
+
+if.then:                                          ; preds = %if.start
+  %self4 = load %struct.String*, %struct.String** %self2, align 8, !dbg !137
+  %count = getelementptr %struct.String, %struct.String* %self4, i32 0, i32 1, !dbg !137
+  %DOT = load i32, i32* %count, align 4, !dbg !137
+  %EQ5 = icmp eq i32 %DOT, 0, !dbg !137
+  ret i1 %EQ5, !dbg !137
+}
+
+define i1 @String.operator.NEQ.String(%struct.String* %v, %struct.String* %self) !dbg !139 {
+entry:
+  %v1 = alloca %struct.String*, align 8, !dbg !140
+  %self2 = alloca %struct.String*, align 8, !dbg !140
+  store %struct.String* %v, %struct.String** %v1, align 8, !dbg !140
+  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !140
+  %self3 = load %struct.String*, %struct.String** %self2, align 8, !dbg !141
+  %value = getelementptr %struct.String, %struct.String* %self3, i32 0, i32 0, !dbg !141
+  %DOT = load i8*, i8** %value, align 8, !dbg !141
+  %v4 = load %struct.String*, %struct.String** %v1, align 8, !dbg !141
+  %value5 = getelementptr %struct.String, %struct.String* %v4, i32 0, i32 0, !dbg !141
+  %DOT6 = load i8*, i8** %value5, align 8, !dbg !141
+  %strcmp = call i32 @strcmp(i8* %DOT, i8* %DOT6), !dbg !141
+  %NEQ = icmp ne i32 %strcmp, 0, !dbg !141
+  ret i1 %NEQ, !dbg !141
+}
+
+define i1 @String.operator.NEQ.CHARS(i8* %str, %struct.String* %self) !dbg !142 {
+entry:
+  %str1 = alloca i8*, align 8, !dbg !143
+  %self2 = alloca %struct.String*, align 8, !dbg !143
+  store i8* %str, i8** %str1, align 8, !dbg !143
+  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !143
+  br label %if.start, !dbg !143
+
+if.start:                                         ; preds = %entry
+  %str3 = load i8*, i8** %str1, align 8, !dbg !143
+  %EQ = icmp eq i8* %str3, null, !dbg !143
+  br i1 %EQ, label %if.then, label %if.end, !dbg !143
+
+if.end:                                           ; preds = %if.start
+  %self5 = load %struct.String*, %struct.String** %self2, align 8, !dbg !144
+  %value = getelementptr %struct.String, %struct.String* %self5, i32 0, i32 0, !dbg !144
+  %DOT6 = load i8*, i8** %value, align 8, !dbg !144
+  %str7 = load i8*, i8** %str1, align 8, !dbg !144
+  %strcmp = call i32 @strcmp(i8* %DOT6, i8* %str7), !dbg !144
+  %NEQ8 = icmp ne i32 %strcmp, 0, !dbg !144
+  ret i1 %NEQ8, !dbg !144
+
+if.then:                                          ; preds = %if.start
+  %self4 = load %struct.String*, %struct.String** %self2, align 8, !dbg !143
+  %count = getelementptr %struct.String, %struct.String* %self4, i32 0, i32 1, !dbg !143
+  %DOT = load i32, i32* %count, align 4, !dbg !143
+  %NEQ = icmp ne i32 %DOT, 0, !dbg !143
+  ret i1 %NEQ, !dbg !143
+}
+
+define i1 @String.operator.LT.String(%struct.String* %v, %struct.String* %self) !dbg !145 {
+entry:
+  %v1 = alloca %struct.String*, align 8, !dbg !146
+  %self2 = alloca %struct.String*, align 8, !dbg !146
+  store %struct.String* %v, %struct.String** %v1, align 8, !dbg !146
+  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !146
+  %self3 = load %struct.String*, %struct.String** %self2, align 8, !dbg !147
+  %value = getelementptr %struct.String, %struct.String* %self3, i32 0, i32 0, !dbg !147
+  %DOT = load i8*, i8** %value, align 8, !dbg !147
+  %v4 = load %struct.String*, %struct.String** %v1, align 8, !dbg !147
+  %value5 = getelementptr %struct.String, %struct.String* %v4, i32 0, i32 0, !dbg !147
+  %DOT6 = load i8*, i8** %value5, align 8, !dbg !147
+  %strcmp = call i32 @strcmp(i8* %DOT, i8* %DOT6), !dbg !147
+  %LT = icmp slt i32 %strcmp, 0, !dbg !147
+  ret i1 %LT, !dbg !147
+}
+
+define i1 @String.operator.GT.String(%struct.String* %v, %struct.String* %self) !dbg !148 {
+entry:
+  %v1 = alloca %struct.String*, align 8, !dbg !149
+  %self2 = alloca %struct.String*, align 8, !dbg !149
+  store %struct.String* %v, %struct.String** %v1, align 8, !dbg !149
+  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !149
+  %self3 = load %struct.String*, %struct.String** %self2, align 8, !dbg !150
+  %value = getelementptr %struct.String, %struct.String* %self3, i32 0, i32 0, !dbg !150
+  %DOT = load i8*, i8** %value, align 8, !dbg !150
+  %v4 = load %struct.String*, %struct.String** %v1, align 8, !dbg !150
+  %value5 = getelementptr %struct.String, %struct.String* %v4, i32 0, i32 0, !dbg !150
+  %DOT6 = load i8*, i8** %value5, align 8, !dbg !150
+  %strcmp = call i32 @strcmp(i8* %DOT, i8* %DOT6), !dbg !150
+  %GT = icmp sgt i32 %strcmp, 0, !dbg !150
+  ret i1 %GT, !dbg !150
+}
+
+define i8* @String.operator.output(%struct.String* %self) !dbg !151 {
+entry:
+  %self1 = alloca %struct.String*, align 8, !dbg !152
+  store %struct.String* %self, %struct.String** %self1, align 8, !dbg !152
+  %self2 = load %struct.String*, %struct.String** %self1, align 8, !dbg !152
+  %value = getelementptr %struct.String, %struct.String* %self2, i32 0, i32 0, !dbg !152
+  %DOT = load i8*, i8** %value, align 8, !dbg !152
+  ret i8* %DOT, !dbg !152
+}
 
 declare void @free(i8*)
 
-declare i32 @atoi(i8*)
-
 declare i32 @strlen(i8*)
 
-declare i32 @strcmp(i8*, i8*)
-
-declare i32 @strncmp(i8*, i8*, i32)
+declare i8* @realloc(i8*, i32)
 
 declare i8* @strcpy(i8*, i8*)
 
 declare void @bzero(i8*, i64)
 
-define i8* @strjoin(i8* %left, i8* %right) !dbg !4 {
+define i8* @strjoin(i8* %left, i8* %right) !dbg !153 {
 entry:
-  %left1 = alloca i8*, align 8, !dbg !7
-  %right2 = alloca i8*, align 8, !dbg !7
-  %len1 = alloca i32, align 4, !dbg !7
-  %len2 = alloca i32, align 4, !dbg !7
-  %str = alloca i8*, align 8, !dbg !7
-  %i = alloca i32, align 4, !dbg !7
-  %j = alloca i32, align 4, !dbg !7
-  store i8* %left, i8** %left1, align 8, !dbg !7
-  store i8* %right, i8** %right2, align 8, !dbg !7
-  store i32 0, i32* %len1, align 4, !dbg !7
-  store i32 0, i32* %len1, align 4, !dbg !7
-  store i32 0, i32* %len2, align 4, !dbg !7
-  store i32 0, i32* %len2, align 4, !dbg !7
-  br label %if.start, !dbg !7
+  %left1 = alloca i8*, align 8, !dbg !154
+  %right2 = alloca i8*, align 8, !dbg !154
+  %len1 = alloca i32, align 4, !dbg !154
+  %len2 = alloca i32, align 4, !dbg !154
+  %str = alloca i8*, align 8, !dbg !154
+  %i = alloca i32, align 4, !dbg !154
+  %j = alloca i32, align 4, !dbg !154
+  store i8* %left, i8** %left1, align 8, !dbg !154
+  store i8* %right, i8** %right2, align 8, !dbg !154
+  store i32 0, i32* %len1, align 4, !dbg !154
+  store i32 0, i32* %len1, align 4, !dbg !154
+  store i32 0, i32* %len2, align 4, !dbg !154
+  store i32 0, i32* %len2, align 4, !dbg !154
+  br label %if.start, !dbg !154
 
 if.start:                                         ; preds = %entry
-  %left3 = load i8*, i8** %left1, align 8, !dbg !7
-  %NEQ = icmp ne i8* %left3, null, !dbg !7
-  br i1 %NEQ, label %if.then, label %if.end, !dbg !7
+  %left3 = load i8*, i8** %left1, align 8, !dbg !154
+  %NEQ = icmp ne i8* %left3, null, !dbg !154
+  br i1 %NEQ, label %if.then, label %if.end, !dbg !154
 
 if.end:                                           ; preds = %if.then, %if.start
-  br label %if.start5, !dbg !8
+  br label %if.start5, !dbg !155
 
 if.then:                                          ; preds = %if.start
-  %left4 = load i8*, i8** %left1, align 8, !dbg !8
-  %strlen = call i32 @strlen(i8* %left4), !dbg !8
-  store i32 %strlen, i32* %len1, align 4, !dbg !8
-  br label %if.end, !dbg !8
+  %left4 = load i8*, i8** %left1, align 8, !dbg !155
+  %strlen = call i32 @strlen(i8* %left4), !dbg !155
+  store i32 %strlen, i32* %len1, align 4, !dbg !155
+  br label %if.end, !dbg !155
 
 if.start5:                                        ; preds = %if.end
-  %right8 = load i8*, i8** %right2, align 8, !dbg !8
-  %NEQ9 = icmp ne i8* %right8, null, !dbg !8
-  br i1 %NEQ9, label %if.then7, label %if.end6, !dbg !8
+  %right8 = load i8*, i8** %right2, align 8, !dbg !155
+  %NEQ9 = icmp ne i8* %right8, null, !dbg !155
+  br i1 %NEQ9, label %if.then7, label %if.end6, !dbg !155
 
 if.end6:                                          ; preds = %if.then7, %if.start5
-  store i8* null, i8** %str, align 8, !dbg !7
-  %len112 = load i32, i32* %len1, align 4, !dbg !9
-  %len213 = load i32, i32* %len2, align 4, !dbg !9
-  %ADD = add i32 %len112, %len213, !dbg !9
-  %ADD14 = add i32 %ADD, 1, !dbg !9
-  %as = sext i32 %ADD14 to i64, !dbg !9
-  %calloc = call i8* @calloc(i64 %as, i64 1), !dbg !9
-  store i8* %calloc, i8** %str, align 8, !dbg !9
-  store i32 0, i32* %i, align 4, !dbg !7
-  store i32 0, i32* %i, align 4, !dbg !7
-  br label %while.start, !dbg !7
+  store i8* null, i8** %str, align 8, !dbg !154
+  %len112 = load i32, i32* %len1, align 4, !dbg !156
+  %len213 = load i32, i32* %len2, align 4, !dbg !156
+  %ADD = add i32 %len112, %len213, !dbg !156
+  %ADD14 = add i32 %ADD, 1, !dbg !156
+  %as = sext i32 %ADD14 to i64, !dbg !156
+  %calloc = call i8* @calloc(i64 %as, i64 1), !dbg !156
+  store i8* %calloc, i8** %str, align 8, !dbg !156
+  store i32 0, i32* %i, align 4, !dbg !154
+  store i32 0, i32* %i, align 4, !dbg !154
+  br label %while.start, !dbg !154
 
 if.then7:                                         ; preds = %if.start5
-  %right10 = load i8*, i8** %right2, align 8, !dbg !10
-  %strlen11 = call i32 @strlen(i8* %right10), !dbg !10
-  store i32 %strlen11, i32* %len2, align 4, !dbg !10
-  br label %if.end6, !dbg !10
+  %right10 = load i8*, i8** %right2, align 8, !dbg !157
+  %strlen11 = call i32 @strlen(i8* %right10), !dbg !157
+  store i32 %strlen11, i32* %len2, align 4, !dbg !157
+  br label %if.end6, !dbg !157
 
 while.start:                                      ; preds = %while.then, %if.end6
-  %i15 = load i32, i32* %i, align 4, !dbg !7
-  %len116 = load i32, i32* %len1, align 4, !dbg !7
-  %LT = icmp slt i32 %i15, %len116, !dbg !7
-  br i1 %LT, label %while.then, label %while.end, !dbg !7
+  %i15 = load i32, i32* %i, align 4, !dbg !154
+  %len116 = load i32, i32* %len1, align 4, !dbg !154
+  %LT = icmp slt i32 %i15, %len116, !dbg !154
+  br i1 %LT, label %while.then, label %while.end, !dbg !154
 
 while.then:                                       ; preds = %while.start
-  %str17 = load i8*, i8** %str, align 8, !dbg !11
-  %i18 = load i32, i32* %i, align 4, !dbg !11
-  %ACCESS = getelementptr i8, i8* %str17, i32 %i18, !dbg !11
-  %left19 = load i8*, i8** %left1, align 8, !dbg !11
-  %i20 = load i32, i32* %i, align 4, !dbg !11
-  %ACCESS21 = getelementptr i8, i8* %left19, i32 %i20, !dbg !11
-  %ACC = load i8, i8* %ACCESS21, align 1, !dbg !11
-  store i8 %ACC, i8* %ACCESS, align 1, !dbg !11
-  %i22 = load i32, i32* %i, align 4, !dbg !11
-  %ADD23 = add i32 %i22, 1, !dbg !11
-  store i32 %ADD23, i32* %i, align 4, !dbg !11
-  br label %while.start, !dbg !11
+  %str17 = load i8*, i8** %str, align 8, !dbg !158
+  %i18 = load i32, i32* %i, align 4, !dbg !158
+  %ACCESS = getelementptr i8, i8* %str17, i32 %i18, !dbg !158
+  %left19 = load i8*, i8** %left1, align 8, !dbg !158
+  %i20 = load i32, i32* %i, align 4, !dbg !158
+  %ACCESS21 = getelementptr i8, i8* %left19, i32 %i20, !dbg !158
+  %ACC = load i8, i8* %ACCESS21, align 1, !dbg !158
+  store i8 %ACC, i8* %ACCESS, align 1, !dbg !158
+  %i22 = load i32, i32* %i, align 4, !dbg !158
+  %ADD23 = add i32 %i22, 1, !dbg !158
+  store i32 %ADD23, i32* %i, align 4, !dbg !158
+  br label %while.start, !dbg !158
 
 while.end:                                        ; preds = %while.start
-  store i32 0, i32* %j, align 4, !dbg !7
-  store i32 0, i32* %j, align 4, !dbg !7
-  br label %while.start24, !dbg !7
+  store i32 0, i32* %j, align 4, !dbg !154
+  store i32 0, i32* %j, align 4, !dbg !154
+  br label %while.start24, !dbg !154
 
 while.start24:                                    ; preds = %while.then25, %while.end
-  %j27 = load i32, i32* %j, align 4, !dbg !7
-  %len228 = load i32, i32* %len2, align 4, !dbg !7
-  %LT29 = icmp slt i32 %j27, %len228, !dbg !7
-  br i1 %LT29, label %while.then25, label %while.end26, !dbg !7
+  %j27 = load i32, i32* %j, align 4, !dbg !154
+  %len228 = load i32, i32* %len2, align 4, !dbg !154
+  %LT29 = icmp slt i32 %j27, %len228, !dbg !154
+  br i1 %LT29, label %while.then25, label %while.end26, !dbg !154
 
 while.then25:                                     ; preds = %while.start24
-  %i30 = load i32, i32* %i, align 4, !dbg !12
-  %j31 = load i32, i32* %j, align 4, !dbg !12
-  %ADD32 = add i32 %i30, %j31, !dbg !12
-  %str33 = load i8*, i8** %str, align 8, !dbg !12
-  %ACCESS34 = getelementptr i8, i8* %str33, i32 %ADD32, !dbg !12
-  %right35 = load i8*, i8** %right2, align 8, !dbg !12
-  %j36 = load i32, i32* %j, align 4, !dbg !12
-  %ACCESS37 = getelementptr i8, i8* %right35, i32 %j36, !dbg !12
-  %ACC38 = load i8, i8* %ACCESS37, align 1, !dbg !12
-  store i8 %ACC38, i8* %ACCESS34, align 1, !dbg !12
-  %j39 = load i32, i32* %j, align 4, !dbg !12
-  %ADD40 = add i32 %j39, 1, !dbg !12
-  store i32 %ADD40, i32* %j, align 4, !dbg !12
-  br label %while.start24, !dbg !12
+  %i30 = load i32, i32* %i, align 4, !dbg !159
+  %j31 = load i32, i32* %j, align 4, !dbg !159
+  %ADD32 = add i32 %i30, %j31, !dbg !159
+  %str33 = load i8*, i8** %str, align 8, !dbg !159
+  %ACCESS34 = getelementptr i8, i8* %str33, i32 %ADD32, !dbg !159
+  %right35 = load i8*, i8** %right2, align 8, !dbg !159
+  %j36 = load i32, i32* %j, align 4, !dbg !159
+  %ACCESS37 = getelementptr i8, i8* %right35, i32 %j36, !dbg !159
+  %ACC38 = load i8, i8* %ACCESS37, align 1, !dbg !159
+  store i8 %ACC38, i8* %ACCESS34, align 1, !dbg !159
+  %j39 = load i32, i32* %j, align 4, !dbg !159
+  %ADD40 = add i32 %j39, 1, !dbg !159
+  store i32 %ADD40, i32* %j, align 4, !dbg !159
+  br label %while.start24, !dbg !159
 
 while.end26:                                      ; preds = %while.start24
-  %str41 = load i8*, i8** %str, align 8, !dbg !12
-  ret i8* %str41, !dbg !12
+  %str41 = load i8*, i8** %str, align 8, !dbg !159
+  ret i8* %str41, !dbg !159
 }
 
-define void @String.delete(%struct.String* %self) !dbg !13 {
-entry:
-  %self1 = alloca %struct.String*, align 8, !dbg !14
-  store %struct.String* %self, %struct.String** %self1, align 8, !dbg !14
-  %self2 = load %struct.String*, %struct.String** %self1, align 8, !dbg !15
-  %value = getelementptr %struct.String, %struct.String* %self2, i32 0, i32 0, !dbg !15
-  %DOT = load i8*, i8** %value, align 8, !dbg !15
-  call void @free(i8* %DOT), !dbg !15
-  %self3 = load %struct.String*, %struct.String** %self1, align 8, !dbg !15
-  ret void, !dbg !15
-}
+declare i8* @calloc(i64, i64)
 
-define void @String.assign(i8* %str, %struct.String* %self) !dbg !16 {
-entry:
-  %str1 = alloca i8*, align 8, !dbg !17
-  %self2 = alloca %struct.String*, align 8, !dbg !17
-  %len = alloca i32, align 4, !dbg !17
-  store i8* %str, i8** %str1, align 8, !dbg !17
-  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !17
-  br label %if.start, !dbg !17
+declare i32 @strncmp(i8*, i8*, i32)
 
-if.start:                                         ; preds = %entry
-  %str3 = load i8*, i8** %str1, align 8, !dbg !17
-  %EQ = icmp eq i8* %str3, null, !dbg !17
-  br i1 %EQ, label %if.then, label %if.end, !dbg !17
+declare i32 @strcmp(i8*, i8*)
 
-if.end:                                           ; preds = %if.then, %if.start
-  store i32 0, i32* %len, align 4, !dbg !17
-  %str4 = load i8*, i8** %str1, align 8, !dbg !18
-  %strlen = call i32 @strlen(i8* %str4), !dbg !18
-  store i32 %strlen, i32* %len, align 4, !dbg !18
-  br label %if.start5, !dbg !18
-
-if.then:                                          ; preds = %if.start
-  store i8* getelementptr inbounds ([1 x i8], [1 x i8]* @STR0, i32 0, i32 0), i8** %str1, align 8, !dbg !17
-  br label %if.end, !dbg !17
-
-if.start5:                                        ; preds = %if.end
-  %self8 = load %struct.String*, %struct.String** %self2, align 8, !dbg !18
-  %value = getelementptr %struct.String, %struct.String* %self8, i32 0, i32 0, !dbg !18
-  %DOT = load i8*, i8** %value, align 8, !dbg !18
-  %EQ9 = icmp eq i8* %DOT, null, !dbg !18
-  %self10 = load %struct.String*, %struct.String** %self2, align 8, !dbg !18
-  %size = getelementptr %struct.String, %struct.String* %self10, i32 0, i32 2, !dbg !18
-  %DOT11 = load i32, i32* %size, align 4, !dbg !18
-  %len12 = load i32, i32* %len, align 4, !dbg !18
-  %LE = icmp sle i32 %DOT11, %len12, !dbg !18
-  %OR = or i1 %EQ9, %LE, !dbg !18
-  br i1 %OR, label %if.then7, label %if.end6, !dbg !18
-
-if.end6:                                          ; preds = %while.end, %if.start5
-  %self38 = load %struct.String*, %struct.String** %self2, align 8, !dbg !19
-  %value39 = getelementptr %struct.String, %struct.String* %self38, i32 0, i32 0, !dbg !19
-  %DOT40 = load i8*, i8** %value39, align 8, !dbg !19
-  %str41 = load i8*, i8** %str1, align 8, !dbg !19
-  %strcpy = call i8* @strcpy(i8* %DOT40, i8* %str41), !dbg !19
-  %self42 = load %struct.String*, %struct.String** %self2, align 8, !dbg !20
-  %value43 = getelementptr %struct.String, %struct.String* %self42, i32 0, i32 0, !dbg !20
-  %DOT44 = load i8*, i8** %value43, align 8, !dbg !20
-  %len45 = load i32, i32* %len, align 4, !dbg !20
-  %idx = sext i32 %len45 to i64, !dbg !20
-  %ADD = getelementptr i8, i8* %DOT44, i64 %idx, !dbg !20
-  %self46 = load %struct.String*, %struct.String** %self2, align 8, !dbg !20
-  %size47 = getelementptr %struct.String, %struct.String* %self46, i32 0, i32 2, !dbg !20
-  %DOT48 = load i32, i32* %size47, align 4, !dbg !20
-  %len49 = load i32, i32* %len, align 4, !dbg !20
-  %SUB = sub i32 %DOT48, %len49, !dbg !20
-  %as = sext i32 %SUB to i64, !dbg !20
-  call void @bzero(i8* %ADD, i64 %as), !dbg !20
-  %self50 = load %struct.String*, %struct.String** %self2, align 8, !dbg !20
-  %count = getelementptr %struct.String, %struct.String* %self50, i32 0, i32 1, !dbg !20
-  %len51 = load i32, i32* %len, align 4, !dbg !20
-  store i32 %len51, i32* %count, align 4, !dbg !20
-  ret void, !dbg !20
-
-if.then7:                                         ; preds = %if.start5
-  br label %if.start13, !dbg !18
-
-if.start13:                                       ; preds = %if.then7
-  %self16 = load %struct.String*, %struct.String** %self2, align 8, !dbg !18
-  %size17 = getelementptr %struct.String, %struct.String* %self16, i32 0, i32 2, !dbg !18
-  %DOT18 = load i32, i32* %size17, align 4, !dbg !18
-  %EQ19 = icmp eq i32 %DOT18, 0, !dbg !18
-  br i1 %EQ19, label %if.then15, label %if.end14, !dbg !18
-
-if.end14:                                         ; preds = %if.then15, %if.start13
-  br label %while.start, !dbg !18
-
-if.then15:                                        ; preds = %if.start13
-  %self20 = load %struct.String*, %struct.String** %self2, align 8, !dbg !18
-  %size21 = getelementptr %struct.String, %struct.String* %self20, i32 0, i32 2, !dbg !18
-  store i32 10, i32* %size21, align 4, !dbg !18
-  br label %if.end14, !dbg !18
-
-while.start:                                      ; preds = %while.then, %if.end14
-  %self22 = load %struct.String*, %struct.String** %self2, align 8, !dbg !18
-  %size23 = getelementptr %struct.String, %struct.String* %self22, i32 0, i32 2, !dbg !18
-  %DOT24 = load i32, i32* %size23, align 4, !dbg !18
-  %len25 = load i32, i32* %len, align 4, !dbg !18
-  %LE26 = icmp sle i32 %DOT24, %len25, !dbg !18
-  br i1 %LE26, label %while.then, label %while.end, !dbg !18
-
-while.then:                                       ; preds = %while.start
-  %self27 = load %struct.String*, %struct.String** %self2, align 8, !dbg !18
-  %size28 = getelementptr %struct.String, %struct.String* %self27, i32 0, i32 2, !dbg !18
-  %DOT29 = load i32, i32* %size28, align 4, !dbg !18
-  %MUL = mul i32 %DOT29, 2, !dbg !18
-  store i32 %MUL, i32* %size28, align 4, !dbg !18
-  br label %while.start, !dbg !18
-
-while.end:                                        ; preds = %while.start
-  %self30 = load %struct.String*, %struct.String** %self2, align 8, !dbg !18
-  %value31 = getelementptr %struct.String, %struct.String* %self30, i32 0, i32 0, !dbg !18
-  %self32 = load %struct.String*, %struct.String** %self2, align 8, !dbg !21
-  %value33 = getelementptr %struct.String, %struct.String* %self32, i32 0, i32 0, !dbg !21
-  %DOT34 = load i8*, i8** %value33, align 8, !dbg !21
-  %self35 = load %struct.String*, %struct.String** %self2, align 8, !dbg !21
-  %size36 = getelementptr %struct.String, %struct.String* %self35, i32 0, i32 2, !dbg !21
-  %DOT37 = load i32, i32* %size36, align 4, !dbg !21
-  %realloc = call i8* @realloc(i8* %DOT34, i32 %DOT37), !dbg !21
-  store i8* %realloc, i8** %value31, align 8, !dbg !21
-  br label %if.end6, !dbg !21
-}
-
-define void @String.join(i8* %str, %struct.String* %self) !dbg !22 {
-entry:
-  %str1 = alloca i8*, align 8, !dbg !23
-  %self2 = alloca %struct.String*, align 8, !dbg !23
-  %res = alloca i8*, align 8, !dbg !23
-  store i8* %str, i8** %str1, align 8, !dbg !23
-  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !23
-  br label %if.start, !dbg !23
-
-if.start:                                         ; preds = %entry
-  %str3 = load i8*, i8** %str1, align 8, !dbg !23
-  %EQ = icmp eq i8* %str3, null, !dbg !23
-  br i1 %EQ, label %if.then, label %if.end, !dbg !23
-
-if.end:                                           ; preds = %if.start
-  store i8* null, i8** %res, align 8, !dbg !23
-  %self4 = load %struct.String*, %struct.String** %self2, align 8, !dbg !24
-  %value = getelementptr %struct.String, %struct.String* %self4, i32 0, i32 0, !dbg !24
-  %DOT = load i8*, i8** %value, align 8, !dbg !24
-  %str5 = load i8*, i8** %str1, align 8, !dbg !24
-  %strjoin = call i8* @strjoin(i8* %DOT, i8* %str5), !dbg !24
-  store i8* %strjoin, i8** %res, align 8, !dbg !24
-  %res6 = load i8*, i8** %res, align 8, !dbg !25
-  %ref_arg = load %struct.String*, %struct.String** %self2, align 8, !dbg !25
-  call void @String.assign(i8* %res6, %struct.String* %ref_arg), !dbg !25
-  %res7 = load i8*, i8** %res, align 8, !dbg !26
-  call void @free(i8* %res7), !dbg !26
-  ret void, !dbg !26
-
-if.then:                                          ; preds = %if.start
-  ret void, !dbg !23
-}
-
-define void @String.clear(%struct.String* %self) !dbg !27 {
-entry:
-  %self1 = alloca %struct.String*, align 8, !dbg !28
-  store %struct.String* %self, %struct.String** %self1, align 8, !dbg !28
-  %self2 = load %struct.String*, %struct.String** %self1, align 8, !dbg !29
-  %value = getelementptr %struct.String, %struct.String* %self2, i32 0, i32 0, !dbg !29
-  %DOT = load i8*, i8** %value, align 8, !dbg !29
-  %self3 = load %struct.String*, %struct.String** %self1, align 8, !dbg !29
-  %size = getelementptr %struct.String, %struct.String* %self3, i32 0, i32 2, !dbg !29
-  %DOT4 = load i32, i32* %size, align 4, !dbg !29
-  %as = sext i32 %DOT4 to i64, !dbg !29
-  call void @bzero(i8* %DOT, i64 %as), !dbg !29
-  %self5 = load %struct.String*, %struct.String** %self1, align 8, !dbg !29
-  %count = getelementptr %struct.String, %struct.String* %self5, i32 0, i32 1, !dbg !29
-  store i32 0, i32* %count, align 4, !dbg !29
-  ret void, !dbg !29
-}
-
-define void @String.push(i8 %c, %struct.String* %self) !dbg !30 {
-entry:
-  %c1 = alloca i8, align 1, !dbg !31
-  %self2 = alloca %struct.String*, align 8, !dbg !31
-  store i8 %c, i8* %c1, align 1, !dbg !31
-  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !31
-  br label %if.start, !dbg !31
-
-if.start:                                         ; preds = %entry
-  %self3 = load %struct.String*, %struct.String** %self2, align 8, !dbg !31
-  %count = getelementptr %struct.String, %struct.String* %self3, i32 0, i32 1, !dbg !31
-  %DOT = load i32, i32* %count, align 4, !dbg !31
-  %ADD = add i32 %DOT, 1, !dbg !31
-  %self4 = load %struct.String*, %struct.String** %self2, align 8, !dbg !31
-  %size = getelementptr %struct.String, %struct.String* %self4, i32 0, i32 2, !dbg !31
-  %DOT5 = load i32, i32* %size, align 4, !dbg !31
-  %GE = icmp sge i32 %ADD, %DOT5, !dbg !31
-  br i1 %GE, label %if.then, label %if.end, !dbg !31
-
-if.end:                                           ; preds = %if.end7, %if.start
-  %self24 = load %struct.String*, %struct.String** %self2, align 8, !dbg !32
-  %value25 = getelementptr %struct.String, %struct.String* %self24, i32 0, i32 0, !dbg !32
-  %self26 = load %struct.String*, %struct.String** %self2, align 8, !dbg !32
-  %count27 = getelementptr %struct.String, %struct.String* %self26, i32 0, i32 1, !dbg !32
-  %DOT28 = load i8*, i8** %value25, align 8, !dbg !32
-  %DOT29 = load i32, i32* %count27, align 4, !dbg !32
-  %ACCESS = getelementptr i8, i8* %DOT28, i32 %DOT29, !dbg !32
-  %c30 = load i8, i8* %c1, align 1, !dbg !32
-  store i8 %c30, i8* %ACCESS, align 1, !dbg !32
-  %self31 = load %struct.String*, %struct.String** %self2, align 8, !dbg !32
-  %count32 = getelementptr %struct.String, %struct.String* %self31, i32 0, i32 1, !dbg !32
-  %DOT33 = load i32, i32* %count32, align 4, !dbg !32
-  %ADD34 = add i32 %DOT33, 1, !dbg !32
-  store i32 %ADD34, i32* %count32, align 4, !dbg !32
-  %self35 = load %struct.String*, %struct.String** %self2, align 8, !dbg !33
-  %value36 = getelementptr %struct.String, %struct.String* %self35, i32 0, i32 0, !dbg !33
-  %self37 = load %struct.String*, %struct.String** %self2, align 8, !dbg !33
-  %count38 = getelementptr %struct.String, %struct.String* %self37, i32 0, i32 1, !dbg !33
-  %DOT39 = load i8*, i8** %value36, align 8, !dbg !33
-  %DOT40 = load i32, i32* %count38, align 4, !dbg !33
-  %ACCESS41 = getelementptr i8, i8* %DOT39, i32 %DOT40, !dbg !33
-  store i8 0, i8* %ACCESS41, align 1, !dbg !33
-  ret void, !dbg !33
-
-if.then:                                          ; preds = %if.start
-  br label %if.start6, !dbg !31
-
-if.start6:                                        ; preds = %if.then
-  %self9 = load %struct.String*, %struct.String** %self2, align 8, !dbg !31
-  %size10 = getelementptr %struct.String, %struct.String* %self9, i32 0, i32 2, !dbg !31
-  %DOT11 = load i32, i32* %size10, align 4, !dbg !31
-  %EQ = icmp eq i32 %DOT11, 0, !dbg !31
-  br i1 %EQ, label %if.then8, label %if.else, !dbg !31
-
-if.end7:                                          ; preds = %if.else, %if.then8
-  %self17 = load %struct.String*, %struct.String** %self2, align 8, !dbg !31
-  %value = getelementptr %struct.String, %struct.String* %self17, i32 0, i32 0, !dbg !31
-  %self18 = load %struct.String*, %struct.String** %self2, align 8, !dbg !34
-  %value19 = getelementptr %struct.String, %struct.String* %self18, i32 0, i32 0, !dbg !34
-  %DOT20 = load i8*, i8** %value19, align 8, !dbg !34
-  %self21 = load %struct.String*, %struct.String** %self2, align 8, !dbg !34
-  %size22 = getelementptr %struct.String, %struct.String* %self21, i32 0, i32 2, !dbg !34
-  %DOT23 = load i32, i32* %size22, align 4, !dbg !34
-  %realloc = call i8* @realloc(i8* %DOT20, i32 %DOT23), !dbg !34
-  store i8* %realloc, i8** %value, align 8, !dbg !34
-  br label %if.end, !dbg !34
-
-if.then8:                                         ; preds = %if.start6
-  %self12 = load %struct.String*, %struct.String** %self2, align 8, !dbg !31
-  %size13 = getelementptr %struct.String, %struct.String* %self12, i32 0, i32 2, !dbg !31
-  store i32 10, i32* %size13, align 4, !dbg !31
-  br label %if.end7, !dbg !31
-
-if.else:                                          ; preds = %if.start6
-  %self14 = load %struct.String*, %struct.String** %self2, align 8, !dbg !31
-  %size15 = getelementptr %struct.String, %struct.String* %self14, i32 0, i32 2, !dbg !31
-  %DOT16 = load i32, i32* %size15, align 4, !dbg !31
-  %MUL = mul i32 %DOT16, 2, !dbg !31
-  store i32 %MUL, i32* %size15, align 4, !dbg !31
-  br label %if.end7, !dbg !31
-}
-
-define i8 @String.pop(%struct.String* %self) !dbg !35 {
-entry:
-  %self1 = alloca %struct.String*, align 8, !dbg !36
-  %c = alloca i8, align 1, !dbg !36
-  store %struct.String* %self, %struct.String** %self1, align 8, !dbg !36
-  br label %if.start, !dbg !36
-
-if.start:                                         ; preds = %entry
-  %self2 = load %struct.String*, %struct.String** %self1, align 8, !dbg !36
-  %count = getelementptr %struct.String, %struct.String* %self2, i32 0, i32 1, !dbg !36
-  %DOT = load i32, i32* %count, align 4, !dbg !36
-  %EQ = icmp eq i32 %DOT, 0, !dbg !36
-  br i1 %EQ, label %if.then, label %if.end, !dbg !36
-
-if.end:                                           ; preds = %if.start
-  %self3 = load %struct.String*, %struct.String** %self1, align 8, !dbg !36
-  %count4 = getelementptr %struct.String, %struct.String* %self3, i32 0, i32 1, !dbg !36
-  %DOT5 = load i32, i32* %count4, align 4, !dbg !36
-  %SUB = sub i32 %DOT5, 1, !dbg !36
-  store i32 %SUB, i32* %count4, align 4, !dbg !36
-  store i8 0, i8* %c, align 1, !dbg !36
-  %self6 = load %struct.String*, %struct.String** %self1, align 8, !dbg !37
-  %value = getelementptr %struct.String, %struct.String* %self6, i32 0, i32 0, !dbg !37
-  %self7 = load %struct.String*, %struct.String** %self1, align 8, !dbg !37
-  %count8 = getelementptr %struct.String, %struct.String* %self7, i32 0, i32 1, !dbg !37
-  %DOT9 = load i8*, i8** %value, align 8, !dbg !37
-  %DOT10 = load i32, i32* %count8, align 4, !dbg !37
-  %ACCESS = getelementptr i8, i8* %DOT9, i32 %DOT10, !dbg !37
-  %ACC = load i8, i8* %ACCESS, align 1, !dbg !37
-  store i8 %ACC, i8* %c, align 1, !dbg !37
-  %self11 = load %struct.String*, %struct.String** %self1, align 8, !dbg !38
-  %value12 = getelementptr %struct.String, %struct.String* %self11, i32 0, i32 0, !dbg !38
-  %self13 = load %struct.String*, %struct.String** %self1, align 8, !dbg !38
-  %count14 = getelementptr %struct.String, %struct.String* %self13, i32 0, i32 1, !dbg !38
-  %DOT15 = load i8*, i8** %value12, align 8, !dbg !38
-  %DOT16 = load i32, i32* %count14, align 4, !dbg !38
-  %ACCESS17 = getelementptr i8, i8* %DOT15, i32 %DOT16, !dbg !38
-  store i8 0, i8* %ACCESS17, align 1, !dbg !38
-  %c18 = load i8, i8* %c, align 1, !dbg !38
-  ret i8 %c18, !dbg !38
-
-if.then:                                          ; preds = %if.start
-  ret i8 0, !dbg !36
-}
-
-define %struct.String @String.new() !dbg !39 {
-entry:
-  %s = alloca %struct.String, align 8, !dbg !40
-  store %struct.String zeroinitializer, %struct.String* %s, align 8, !dbg !40
-  %size = getelementptr %struct.String, %struct.String* %s, i32 0, i32 2, !dbg !40
-  store i32 10, i32* %size, align 4, !dbg !40
-  %value = getelementptr %struct.String, %struct.String* %s, i32 0, i32 0, !dbg !40
-  %calloc = call i8* @calloc(i64 10, i64 1), !dbg !41
-  store i8* %calloc, i8** %value, align 8, !dbg !41
-  %s1 = load %struct.String, %struct.String* %s, align 8, !dbg !41
-  ret %struct.String %s1, !dbg !41
-}
-
-define %struct.String @String.from(i8* %str) !dbg !42 {
-entry:
-  %str1 = alloca i8*, align 8, !dbg !43
-  %s = alloca %struct.String, align 8, !dbg !43
-  store i8* %str, i8** %str1, align 8, !dbg !43
-  store %struct.String zeroinitializer, %struct.String* %s, align 8, !dbg !43
-  %0 = call %struct.String @String.new(), !dbg !44
-  %tmp_struct = alloca %struct.String, align 8, !dbg !44
-  store %struct.String %0, %struct.String* %tmp_struct, align 8, !dbg !44
-  %tmp_op = alloca %struct.String, align 8, !dbg !44
-  store %struct.String %0, %struct.String* %tmp_op, align 8, !dbg !44
-  call void @String.operator.ASSIGN.String(%struct.String* %tmp_op, %struct.String* %s), !dbg !44
-  %str2 = load i8*, i8** %str1, align 8, !dbg !45
-  call void @String.assign(i8* %str2, %struct.String* %s), !dbg !45
-  call void @String.delete(%struct.String* %tmp_struct), !dbg !45
-  %s3 = load %struct.String, %struct.String* %s, align 8, !dbg !45
-  ret %struct.String %s3, !dbg !45
-}
-
-define %struct.String @String.from_int(i32 %n) !dbg !46 {
-entry:
-  %n1 = alloca i32, align 4, !dbg !47
-  %s = alloca %struct.String, align 8, !dbg !47
-  %neg = alloca i1, align 1, !dbg !47
-  %num = alloca i32, align 4, !dbg !47
-  %buf = alloca i8*, align 8, !dbg !47
-  %i = alloca i32, align 4, !dbg !47
-  %j = alloca i32, align 4, !dbg !47
-  store i32 %n, i32* %n1, align 4, !dbg !47
-  store %struct.String zeroinitializer, %struct.String* %s, align 8, !dbg !47
-  %0 = call %struct.String @String.new(), !dbg !48
-  %tmp_struct = alloca %struct.String, align 8, !dbg !48
-  store %struct.String %0, %struct.String* %tmp_struct, align 8, !dbg !48
-  %tmp_op = alloca %struct.String, align 8, !dbg !48
-  store %struct.String %0, %struct.String* %tmp_op, align 8, !dbg !48
-  call void @String.operator.ASSIGN.String(%struct.String* %tmp_op, %struct.String* %s), !dbg !48
-  br label %if.start, !dbg !48
-
-if.start:                                         ; preds = %entry
-  %n2 = load i32, i32* %n1, align 4, !dbg !48
-  %EQ = icmp eq i32 %n2, 0, !dbg !48
-  br i1 %EQ, label %if.then, label %if.end, !dbg !48
-
-if.end:                                           ; preds = %if.start
-  store i1 false, i1* %neg, align 1, !dbg !47
-  store i1 false, i1* %neg, align 1, !dbg !47
-  store i32 0, i32* %num, align 4, !dbg !47
-  %n4 = load i32, i32* %n1, align 4, !dbg !47
-  store i32 %n4, i32* %num, align 4, !dbg !47
-  br label %if.start5, !dbg !47
-
-if.then:                                          ; preds = %if.start
-  call void @String.push(i8 48, %struct.String* %s), !dbg !49
-  %s3 = load %struct.String, %struct.String* %s, align 8, !dbg !49
-  ret %struct.String %s3, !dbg !49
-
-if.start5:                                        ; preds = %if.end
-  %num8 = load i32, i32* %num, align 4, !dbg !47
-  %LT = icmp slt i32 %num8, 0, !dbg !47
-  br i1 %LT, label %if.then7, label %if.end6, !dbg !47
-
-if.end6:                                          ; preds = %if.then7, %if.start5
-  store i8* null, i8** %buf, align 8, !dbg !47
-  %stack = alloca [20 x i8], align 1, !dbg !47
-  %stack10 = getelementptr [20 x i8], [20 x i8]* %stack, i32 0, i32 0, !dbg !47
-  store i8* %stack10, i8** %buf, align 8, !dbg !47
-  store i32 0, i32* %i, align 4, !dbg !47
-  store i32 0, i32* %i, align 4, !dbg !47
-  br label %while.start, !dbg !47
-
-if.then7:                                         ; preds = %if.start5
-  store i1 true, i1* %neg, align 1, !dbg !47
-  %num9 = load i32, i32* %num, align 4, !dbg !47
-  %SUB = sub i32 0, %num9, !dbg !47
-  store i32 %SUB, i32* %num, align 4, !dbg !47
-  br label %if.end6, !dbg !47
-
-while.start:                                      ; preds = %while.then, %if.end6
-  %num11 = load i32, i32* %num, align 4, !dbg !47
-  %GT = icmp sgt i32 %num11, 0, !dbg !47
-  br i1 %GT, label %while.then, label %while.end, !dbg !47
-
-while.then:                                       ; preds = %while.start
-  %buf12 = load i8*, i8** %buf, align 8, !dbg !50
-  %i13 = load i32, i32* %i, align 4, !dbg !50
-  %ACCESS = getelementptr i8, i8* %buf12, i32 %i13, !dbg !50
-  %num14 = load i32, i32* %num, align 4, !dbg !50
-  %MOD = srem i32 %num14, 10, !dbg !50
-  %ADD = add i32 %MOD, 48, !dbg !50
-  %as = trunc i32 %ADD to i8, !dbg !50
-  store i8 %as, i8* %ACCESS, align 1, !dbg !50
-  %num15 = load i32, i32* %num, align 4, !dbg !50
-  %DIV = sdiv i32 %num15, 10, !dbg !50
-  store i32 %DIV, i32* %num, align 4, !dbg !50
-  %i16 = load i32, i32* %i, align 4, !dbg !50
-  %ADD17 = add i32 %i16, 1, !dbg !50
-  store i32 %ADD17, i32* %i, align 4, !dbg !50
-  br label %while.start, !dbg !50
-
-while.end:                                        ; preds = %while.start
-  br label %if.start18, !dbg !50
-
-if.start18:                                       ; preds = %while.end
-  %neg21 = load i1, i1* %neg, align 1, !dbg !50
-  br i1 %neg21, label %if.then20, label %if.end19, !dbg !50
-
-if.end19:                                         ; preds = %if.then20, %if.start18
-  store i32 0, i32* %j, align 4, !dbg !47
-  %i22 = load i32, i32* %i, align 4, !dbg !47
-  %SUB23 = sub i32 %i22, 1, !dbg !47
-  store i32 %SUB23, i32* %j, align 4, !dbg !47
-  br label %while.start24, !dbg !47
-
-if.then20:                                        ; preds = %if.start18
-  call void @String.push(i8 45, %struct.String* %s), !dbg !51
-  br label %if.end19, !dbg !51
-
-while.start24:                                    ; preds = %while.then25, %if.end19
-  %j27 = load i32, i32* %j, align 4, !dbg !47
-  %GE = icmp sge i32 %j27, 0, !dbg !47
-  br i1 %GE, label %while.then25, label %while.end26, !dbg !47
-
-while.then25:                                     ; preds = %while.start24
-  %buf28 = load i8*, i8** %buf, align 8, !dbg !52
-  %j29 = load i32, i32* %j, align 4, !dbg !52
-  %ACCESS30 = getelementptr i8, i8* %buf28, i32 %j29, !dbg !52
-  %ACC = load i8, i8* %ACCESS30, align 1, !dbg !52
-  call void @String.push(i8 %ACC, %struct.String* %s), !dbg !52
-  %j31 = load i32, i32* %j, align 4, !dbg !52
-  %SUB32 = sub i32 %j31, 1, !dbg !52
-  store i32 %SUB32, i32* %j, align 4, !dbg !52
-  br label %while.start24, !dbg !52
-
-while.end26:                                      ; preds = %while.start24
-  call void @String.delete(%struct.String* %tmp_struct), !dbg !52
-  %s33 = load %struct.String, %struct.String* %s, align 8, !dbg !52
-  ret %struct.String %s33, !dbg !52
-}
-
-define i32 @String.len(%struct.String* %self) !dbg !53 {
-entry:
-  %self1 = alloca %struct.String*, align 8, !dbg !54
-  store %struct.String* %self, %struct.String** %self1, align 8, !dbg !54
-  %self2 = load %struct.String*, %struct.String** %self1, align 8, !dbg !54
-  %count = getelementptr %struct.String, %struct.String* %self2, i32 0, i32 1, !dbg !54
-  %DOT = load i32, i32* %count, align 4, !dbg !54
-  ret i32 %DOT, !dbg !54
-}
-
-define i1 @String.empty(%struct.String* %self) !dbg !55 {
-entry:
-  %self1 = alloca %struct.String*, align 8, !dbg !56
-  store %struct.String* %self, %struct.String** %self1, align 8, !dbg !56
-  %self2 = load %struct.String*, %struct.String** %self1, align 8, !dbg !56
-  %count = getelementptr %struct.String, %struct.String* %self2, i32 0, i32 1, !dbg !56
-  %DOT = load i32, i32* %count, align 4, !dbg !56
-  %EQ = icmp eq i32 %DOT, 0, !dbg !56
-  ret i1 %EQ, !dbg !56
-}
-
-define i8* @String.c_str(%struct.String* %self) !dbg !57 {
-entry:
-  %self1 = alloca %struct.String*, align 8, !dbg !58
-  store %struct.String* %self, %struct.String** %self1, align 8, !dbg !58
-  %self2 = load %struct.String*, %struct.String** %self1, align 8, !dbg !58
-  %value = getelementptr %struct.String, %struct.String* %self2, i32 0, i32 0, !dbg !58
-  %DOT = load i8*, i8** %value, align 8, !dbg !58
-  ret i8* %DOT, !dbg !58
-}
-
-define i8 @String.at(i32 %i, %struct.String* %self) !dbg !59 {
-entry:
-  %i1 = alloca i32, align 4, !dbg !60
-  %self2 = alloca %struct.String*, align 8, !dbg !60
-  store i32 %i, i32* %i1, align 4, !dbg !60
-  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !60
-  br label %if.start, !dbg !60
-
-if.start:                                         ; preds = %entry
-  %i3 = load i32, i32* %i1, align 4, !dbg !60
-  %LT = icmp slt i32 %i3, 0, !dbg !60
-  %self4 = load %struct.String*, %struct.String** %self2, align 8, !dbg !60
-  %count = getelementptr %struct.String, %struct.String* %self4, i32 0, i32 1, !dbg !60
-  %i5 = load i32, i32* %i1, align 4, !dbg !60
-  %DOT = load i32, i32* %count, align 4, !dbg !60
-  %GE = icmp sge i32 %i5, %DOT, !dbg !60
-  %OR = or i1 %LT, %GE, !dbg !60
-  br i1 %OR, label %if.then, label %if.end, !dbg !60
-
-if.end:                                           ; preds = %if.start
-  %self6 = load %struct.String*, %struct.String** %self2, align 8, !dbg !61
-  %value = getelementptr %struct.String, %struct.String* %self6, i32 0, i32 0, !dbg !61
-  %DOT7 = load i8*, i8** %value, align 8, !dbg !61
-  %i8 = load i32, i32* %i1, align 4, !dbg !61
-  %ACCESS = getelementptr i8, i8* %DOT7, i32 %i8, !dbg !61
-  %ACC = load i8, i8* %ACCESS, align 1, !dbg !61
-  ret i8 %ACC, !dbg !61
-
-if.then:                                          ; preds = %if.start
-  ret i8 0, !dbg !60
-}
-
-define i32 @String.find(i8* %needle, %struct.String* %self) !dbg !62 {
-entry:
-  %needle1 = alloca i8*, align 8, !dbg !63
-  %self2 = alloca %struct.String*, align 8, !dbg !63
-  %i = alloca i32, align 4, !dbg !63
-  %nlen = alloca i32, align 4, !dbg !63
-  store i8* %needle, i8** %needle1, align 8, !dbg !63
-  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !63
-  br label %if.start, !dbg !63
-
-if.start:                                         ; preds = %entry
-  %needle3 = load i8*, i8** %needle1, align 8, !dbg !63
-  %EQ = icmp eq i8* %needle3, null, !dbg !63
-  br i1 %EQ, label %if.then, label %if.end, !dbg !63
-
-if.end:                                           ; preds = %if.start
-  store i32 0, i32* %i, align 4, !dbg !63
-  store i32 0, i32* %i, align 4, !dbg !63
-  store i32 0, i32* %nlen, align 4, !dbg !63
-  %needle4 = load i8*, i8** %needle1, align 8, !dbg !64
-  %strlen = call i32 @strlen(i8* %needle4), !dbg !64
-  store i32 %strlen, i32* %nlen, align 4, !dbg !64
-  br label %if.start5, !dbg !64
-
-if.then:                                          ; preds = %if.start
-  ret i32 -1, !dbg !63
-
-if.start5:                                        ; preds = %if.end
-  %nlen8 = load i32, i32* %nlen, align 4, !dbg !64
-  %EQ9 = icmp eq i32 %nlen8, 0, !dbg !64
-  br i1 %EQ9, label %if.then7, label %if.end6, !dbg !64
-
-if.end6:                                          ; preds = %if.start5
-  br label %while.start, !dbg !64
-
-if.then7:                                         ; preds = %if.start5
-  ret i32 0, !dbg !64
-
-while.start:                                      ; preds = %if.end14, %if.end6
-  %self10 = load %struct.String*, %struct.String** %self2, align 8, !dbg !64
-  %count = getelementptr %struct.String, %struct.String* %self10, i32 0, i32 1, !dbg !64
-  %DOT = load i32, i32* %count, align 4, !dbg !64
-  %nlen11 = load i32, i32* %nlen, align 4, !dbg !64
-  %SUB = sub i32 %DOT, %nlen11, !dbg !64
-  %i12 = load i32, i32* %i, align 4, !dbg !64
-  %LE = icmp sle i32 %i12, %SUB, !dbg !64
-  br i1 %LE, label %while.then, label %while.end, !dbg !64
-
-while.then:                                       ; preds = %while.start
-  br label %if.start13, !dbg !64
-
-while.end:                                        ; preds = %while.start
-  ret i32 -1, !dbg !65
-
-if.start13:                                       ; preds = %while.then
-  %self16 = load %struct.String*, %struct.String** %self2, align 8, !dbg !65
-  %value = getelementptr %struct.String, %struct.String* %self16, i32 0, i32 0, !dbg !65
-  %DOT17 = load i8*, i8** %value, align 8, !dbg !65
-  %i18 = load i32, i32* %i, align 4, !dbg !65
-  %idx = sext i32 %i18 to i64, !dbg !65
-  %ADD = getelementptr i8, i8* %DOT17, i64 %idx, !dbg !65
-  %needle19 = load i8*, i8** %needle1, align 8, !dbg !65
-  %nlen20 = load i32, i32* %nlen, align 4, !dbg !65
-  %strncmp = call i32 @strncmp(i8* %ADD, i8* %needle19, i32 %nlen20), !dbg !65
-  %EQ21 = icmp eq i32 %strncmp, 0, !dbg !65
-  br i1 %EQ21, label %if.then15, label %if.end14, !dbg !65
-
-if.end14:                                         ; preds = %if.start13
-  %i23 = load i32, i32* %i, align 4, !dbg !65
-  %ADD24 = add i32 %i23, 1, !dbg !65
-  store i32 %ADD24, i32* %i, align 4, !dbg !65
-  br label %while.start, !dbg !65
-
-if.then15:                                        ; preds = %if.start13
-  %i22 = load i32, i32* %i, align 4, !dbg !65
-  ret i32 %i22, !dbg !65
-}
-
-define i1 @String.contains(i8* %needle, %struct.String* %self) !dbg !66 {
-entry:
-  %needle1 = alloca i8*, align 8, !dbg !67
-  %self2 = alloca %struct.String*, align 8, !dbg !67
-  store i8* %needle, i8** %needle1, align 8, !dbg !67
-  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !67
-  %needle3 = load i8*, i8** %needle1, align 8, !dbg !68
-  %ref_arg = load %struct.String*, %struct.String** %self2, align 8, !dbg !68
-  %String.find = call i32 @String.find(i8* %needle3, %struct.String* %ref_arg), !dbg !68
-  %NEQ = icmp ne i32 %String.find, -1, !dbg !68
-  ret i1 %NEQ, !dbg !68
-}
-
-define i1 @String.starts_with(i8* %prefix, %struct.String* %self) !dbg !69 {
-entry:
-  %prefix1 = alloca i8*, align 8, !dbg !70
-  %self2 = alloca %struct.String*, align 8, !dbg !70
-  %plen = alloca i32, align 4, !dbg !70
-  store i8* %prefix, i8** %prefix1, align 8, !dbg !70
-  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !70
-  br label %if.start, !dbg !70
-
-if.start:                                         ; preds = %entry
-  %prefix3 = load i8*, i8** %prefix1, align 8, !dbg !70
-  %EQ = icmp eq i8* %prefix3, null, !dbg !70
-  br i1 %EQ, label %if.then, label %if.end, !dbg !70
-
-if.end:                                           ; preds = %if.start
-  store i32 0, i32* %plen, align 4, !dbg !70
-  %prefix4 = load i8*, i8** %prefix1, align 8, !dbg !71
-  %strlen = call i32 @strlen(i8* %prefix4), !dbg !71
-  store i32 %strlen, i32* %plen, align 4, !dbg !71
-  br label %if.start5, !dbg !71
-
-if.then:                                          ; preds = %if.start
-  ret i1 true, !dbg !70
-
-if.start5:                                        ; preds = %if.end
-  %self8 = load %struct.String*, %struct.String** %self2, align 8, !dbg !71
-  %count = getelementptr %struct.String, %struct.String* %self8, i32 0, i32 1, !dbg !71
-  %plen9 = load i32, i32* %plen, align 4, !dbg !71
-  %DOT = load i32, i32* %count, align 4, !dbg !71
-  %GT = icmp sgt i32 %plen9, %DOT, !dbg !71
-  br i1 %GT, label %if.then7, label %if.end6, !dbg !71
-
-if.end6:                                          ; preds = %if.start5
-  %self10 = load %struct.String*, %struct.String** %self2, align 8, !dbg !72
-  %value = getelementptr %struct.String, %struct.String* %self10, i32 0, i32 0, !dbg !72
-  %DOT11 = load i8*, i8** %value, align 8, !dbg !72
-  %prefix12 = load i8*, i8** %prefix1, align 8, !dbg !72
-  %plen13 = load i32, i32* %plen, align 4, !dbg !72
-  %strncmp = call i32 @strncmp(i8* %DOT11, i8* %prefix12, i32 %plen13), !dbg !72
-  %EQ14 = icmp eq i32 %strncmp, 0, !dbg !72
-  ret i1 %EQ14, !dbg !72
-
-if.then7:                                         ; preds = %if.start5
-  ret i1 false, !dbg !71
-}
-
-define i1 @String.ends_with(i8* %suffix, %struct.String* %self) !dbg !73 {
-entry:
-  %suffix1 = alloca i8*, align 8, !dbg !74
-  %self2 = alloca %struct.String*, align 8, !dbg !74
-  %slen = alloca i32, align 4, !dbg !74
-  %offset = alloca i32, align 4, !dbg !74
-  store i8* %suffix, i8** %suffix1, align 8, !dbg !74
-  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !74
-  br label %if.start, !dbg !74
-
-if.start:                                         ; preds = %entry
-  %suffix3 = load i8*, i8** %suffix1, align 8, !dbg !74
-  %EQ = icmp eq i8* %suffix3, null, !dbg !74
-  br i1 %EQ, label %if.then, label %if.end, !dbg !74
-
-if.end:                                           ; preds = %if.start
-  store i32 0, i32* %slen, align 4, !dbg !74
-  %suffix4 = load i8*, i8** %suffix1, align 8, !dbg !75
-  %strlen = call i32 @strlen(i8* %suffix4), !dbg !75
-  store i32 %strlen, i32* %slen, align 4, !dbg !75
-  br label %if.start5, !dbg !75
-
-if.then:                                          ; preds = %if.start
-  ret i1 true, !dbg !74
-
-if.start5:                                        ; preds = %if.end
-  %self8 = load %struct.String*, %struct.String** %self2, align 8, !dbg !75
-  %count = getelementptr %struct.String, %struct.String* %self8, i32 0, i32 1, !dbg !75
-  %slen9 = load i32, i32* %slen, align 4, !dbg !75
-  %DOT = load i32, i32* %count, align 4, !dbg !75
-  %GT = icmp sgt i32 %slen9, %DOT, !dbg !75
-  br i1 %GT, label %if.then7, label %if.end6, !dbg !75
-
-if.end6:                                          ; preds = %if.start5
-  store i32 0, i32* %offset, align 4, !dbg !74
-  %self10 = load %struct.String*, %struct.String** %self2, align 8, !dbg !74
-  %count11 = getelementptr %struct.String, %struct.String* %self10, i32 0, i32 1, !dbg !74
-  %DOT12 = load i32, i32* %count11, align 4, !dbg !74
-  %slen13 = load i32, i32* %slen, align 4, !dbg !74
-  %SUB = sub i32 %DOT12, %slen13, !dbg !74
-  store i32 %SUB, i32* %offset, align 4, !dbg !74
-  %self14 = load %struct.String*, %struct.String** %self2, align 8, !dbg !76
-  %value = getelementptr %struct.String, %struct.String* %self14, i32 0, i32 0, !dbg !76
-  %DOT15 = load i8*, i8** %value, align 8, !dbg !76
-  %offset16 = load i32, i32* %offset, align 4, !dbg !76
-  %idx = sext i32 %offset16 to i64, !dbg !76
-  %ADD = getelementptr i8, i8* %DOT15, i64 %idx, !dbg !76
-  %suffix17 = load i8*, i8** %suffix1, align 8, !dbg !76
-  %slen18 = load i32, i32* %slen, align 4, !dbg !76
-  %strncmp = call i32 @strncmp(i8* %ADD, i8* %suffix17, i32 %slen18), !dbg !76
-  %EQ19 = icmp eq i32 %strncmp, 0, !dbg !76
-  ret i1 %EQ19, !dbg !76
-
-if.then7:                                         ; preds = %if.start5
-  ret i1 false, !dbg !75
-}
-
-define %struct.String @String.substr(i32 %start, i32 %length, %struct.String* %self) !dbg !77 {
-entry:
-  %start1 = alloca i32, align 4, !dbg !78
-  %length2 = alloca i32, align 4, !dbg !78
-  %self3 = alloca %struct.String*, align 8, !dbg !78
-  %res = alloca %struct.String, align 8, !dbg !78
-  %end = alloca i32, align 4, !dbg !78
-  %i = alloca i32, align 4, !dbg !78
-  store i32 %start, i32* %start1, align 4, !dbg !78
-  store i32 %length, i32* %length2, align 4, !dbg !78
-  store %struct.String* %self, %struct.String** %self3, align 8, !dbg !78
-  store %struct.String zeroinitializer, %struct.String* %res, align 8, !dbg !78
-  %0 = call %struct.String @String.new(), !dbg !79
-  %tmp_struct = alloca %struct.String, align 8, !dbg !79
-  store %struct.String %0, %struct.String* %tmp_struct, align 8, !dbg !79
-  %tmp_op = alloca %struct.String, align 8, !dbg !79
-  store %struct.String %0, %struct.String* %tmp_op, align 8, !dbg !79
-  call void @String.operator.ASSIGN.String(%struct.String* %tmp_op, %struct.String* %res), !dbg !79
-  br label %if.start, !dbg !79
-
-if.start:                                         ; preds = %entry
-  %start4 = load i32, i32* %start1, align 4, !dbg !79
-  %LT = icmp slt i32 %start4, 0, !dbg !79
-  %self5 = load %struct.String*, %struct.String** %self3, align 8, !dbg !79
-  %count = getelementptr %struct.String, %struct.String* %self5, i32 0, i32 1, !dbg !79
-  %start6 = load i32, i32* %start1, align 4, !dbg !79
-  %DOT = load i32, i32* %count, align 4, !dbg !79
-  %GE = icmp sge i32 %start6, %DOT, !dbg !79
-  %OR = or i1 %LT, %GE, !dbg !79
-  br i1 %OR, label %if.then, label %if.end, !dbg !79
-
-if.end:                                           ; preds = %if.start
-  store i32 0, i32* %end, align 4, !dbg !78
-  %start8 = load i32, i32* %start1, align 4, !dbg !78
-  %length9 = load i32, i32* %length2, align 4, !dbg !78
-  %ADD = add i32 %start8, %length9, !dbg !78
-  store i32 %ADD, i32* %end, align 4, !dbg !78
-  br label %if.start10, !dbg !78
-
-if.then:                                          ; preds = %if.start
-  %res7 = load %struct.String, %struct.String* %res, align 8, !dbg !79
-  ret %struct.String %res7, !dbg !79
-
-if.start10:                                       ; preds = %if.end
-  %self13 = load %struct.String*, %struct.String** %self3, align 8, !dbg !78
-  %count14 = getelementptr %struct.String, %struct.String* %self13, i32 0, i32 1, !dbg !78
-  %end15 = load i32, i32* %end, align 4, !dbg !78
-  %DOT16 = load i32, i32* %count14, align 4, !dbg !78
-  %GT = icmp sgt i32 %end15, %DOT16, !dbg !78
-  br i1 %GT, label %if.then12, label %if.end11, !dbg !78
-
-if.end11:                                         ; preds = %if.then12, %if.start10
-  store i32 0, i32* %i, align 4, !dbg !78
-  %start20 = load i32, i32* %start1, align 4, !dbg !78
-  store i32 %start20, i32* %i, align 4, !dbg !78
-  br label %while.start, !dbg !78
-
-if.then12:                                        ; preds = %if.start10
-  %self17 = load %struct.String*, %struct.String** %self3, align 8, !dbg !78
-  %count18 = getelementptr %struct.String, %struct.String* %self17, i32 0, i32 1, !dbg !78
-  %DOT19 = load i32, i32* %count18, align 4, !dbg !78
-  store i32 %DOT19, i32* %end, align 4, !dbg !78
-  br label %if.end11, !dbg !78
-
-while.start:                                      ; preds = %while.then, %if.end11
-  %i21 = load i32, i32* %i, align 4, !dbg !78
-  %end22 = load i32, i32* %end, align 4, !dbg !78
-  %LT23 = icmp slt i32 %i21, %end22, !dbg !78
-  br i1 %LT23, label %while.then, label %while.end, !dbg !78
-
-while.then:                                       ; preds = %while.start
-  %self24 = load %struct.String*, %struct.String** %self3, align 8, !dbg !80
-  %value = getelementptr %struct.String, %struct.String* %self24, i32 0, i32 0, !dbg !80
-  %DOT25 = load i8*, i8** %value, align 8, !dbg !80
-  %i26 = load i32, i32* %i, align 4, !dbg !80
-  %ACCESS = getelementptr i8, i8* %DOT25, i32 %i26, !dbg !80
-  %ACC = load i8, i8* %ACCESS, align 1, !dbg !80
-  call void @String.push(i8 %ACC, %struct.String* %res), !dbg !80
-  %i27 = load i32, i32* %i, align 4, !dbg !80
-  %ADD28 = add i32 %i27, 1, !dbg !80
-  store i32 %ADD28, i32* %i, align 4, !dbg !80
-  br label %while.start, !dbg !80
-
-while.end:                                        ; preds = %while.start
-  call void @String.delete(%struct.String* %tmp_struct), !dbg !80
-  %res29 = load %struct.String, %struct.String* %res, align 8, !dbg !80
-  ret %struct.String %res29, !dbg !80
-}
-
-define %struct.String @String.upper(%struct.String* %self) !dbg !81 {
-entry:
-  %self1 = alloca %struct.String*, align 8, !dbg !82
-  %res = alloca %struct.String, align 8, !dbg !82
-  %i = alloca i32, align 4, !dbg !82
-  %c = alloca i8, align 1, !dbg !82
-  %v = alloca i32, align 4, !dbg !82
-  store %struct.String* %self, %struct.String** %self1, align 8, !dbg !82
-  store %struct.String zeroinitializer, %struct.String* %res, align 8, !dbg !82
-  %0 = call %struct.String @String.new(), !dbg !83
-  %tmp_struct = alloca %struct.String, align 8, !dbg !83
-  store %struct.String %0, %struct.String* %tmp_struct, align 8, !dbg !83
-  %tmp_op = alloca %struct.String, align 8, !dbg !83
-  store %struct.String %0, %struct.String* %tmp_op, align 8, !dbg !83
-  call void @String.operator.ASSIGN.String(%struct.String* %tmp_op, %struct.String* %res), !dbg !83
-  store i32 0, i32* %i, align 4, !dbg !82
-  store i32 0, i32* %i, align 4, !dbg !82
-  br label %while.start, !dbg !82
-
-while.start:                                      ; preds = %if.end, %entry
-  %self2 = load %struct.String*, %struct.String** %self1, align 8, !dbg !82
-  %count = getelementptr %struct.String, %struct.String* %self2, i32 0, i32 1, !dbg !82
-  %i3 = load i32, i32* %i, align 4, !dbg !82
-  %DOT = load i32, i32* %count, align 4, !dbg !82
-  %LT = icmp slt i32 %i3, %DOT, !dbg !82
-  br i1 %LT, label %while.then, label %while.end, !dbg !82
-
-while.then:                                       ; preds = %while.start
-  store i8 0, i8* %c, align 1, !dbg !82
-  %self4 = load %struct.String*, %struct.String** %self1, align 8, !dbg !84
-  %value = getelementptr %struct.String, %struct.String* %self4, i32 0, i32 0, !dbg !84
-  %DOT5 = load i8*, i8** %value, align 8, !dbg !84
-  %i6 = load i32, i32* %i, align 4, !dbg !84
-  %ACCESS = getelementptr i8, i8* %DOT5, i32 %i6, !dbg !84
-  %ACC = load i8, i8* %ACCESS, align 1, !dbg !84
-  store i8 %ACC, i8* %c, align 1, !dbg !84
-  br label %if.start, !dbg !84
-
-while.end:                                        ; preds = %while.start
-  call void @String.delete(%struct.String* %tmp_struct), !dbg !85
-  %res14 = load %struct.String, %struct.String* %res, align 8, !dbg !85
-  ret %struct.String %res14, !dbg !85
-
-if.start:                                         ; preds = %while.then
-  %c7 = load i8, i8* %c, align 1, !dbg !84
-  %GE = icmp sge i8 %c7, 97, !dbg !84
-  %c8 = load i8, i8* %c, align 1, !dbg !84
-  %LE = icmp sle i8 %c8, 122, !dbg !84
-  %AND = and i1 %GE, %LE, !dbg !84
-  br i1 %AND, label %if.then, label %if.else, !dbg !84
-
-if.end:                                           ; preds = %if.else, %if.then
-  %i13 = load i32, i32* %i, align 4, !dbg !85
-  %ADD = add i32 %i13, 1, !dbg !85
-  store i32 %ADD, i32* %i, align 4, !dbg !85
-  br label %while.start, !dbg !85
-
-if.then:                                          ; preds = %if.start
-  store i32 0, i32* %v, align 4, !dbg !82
-  %c9 = load i8, i8* %c, align 1, !dbg !82
-  %as = sext i8 %c9 to i32, !dbg !82
-  %SUB = sub i32 %as, 32, !dbg !82
-  store i32 %SUB, i32* %v, align 4, !dbg !82
-  %v10 = load i32, i32* %v, align 4, !dbg !86
-  %as11 = trunc i32 %v10 to i8, !dbg !86
-  call void @String.push(i8 %as11, %struct.String* %res), !dbg !86
-  br label %if.end, !dbg !86
-
-if.else:                                          ; preds = %if.start
-  %c12 = load i8, i8* %c, align 1, !dbg !85
-  call void @String.push(i8 %c12, %struct.String* %res), !dbg !85
-  br label %if.end, !dbg !85
-}
-
-define %struct.String @String.lower(%struct.String* %self) !dbg !87 {
-entry:
-  %self1 = alloca %struct.String*, align 8, !dbg !88
-  %res = alloca %struct.String, align 8, !dbg !88
-  %i = alloca i32, align 4, !dbg !88
-  %c = alloca i8, align 1, !dbg !88
-  %v = alloca i32, align 4, !dbg !88
-  store %struct.String* %self, %struct.String** %self1, align 8, !dbg !88
-  store %struct.String zeroinitializer, %struct.String* %res, align 8, !dbg !88
-  %0 = call %struct.String @String.new(), !dbg !89
-  %tmp_struct = alloca %struct.String, align 8, !dbg !89
-  store %struct.String %0, %struct.String* %tmp_struct, align 8, !dbg !89
-  %tmp_op = alloca %struct.String, align 8, !dbg !89
-  store %struct.String %0, %struct.String* %tmp_op, align 8, !dbg !89
-  call void @String.operator.ASSIGN.String(%struct.String* %tmp_op, %struct.String* %res), !dbg !89
-  store i32 0, i32* %i, align 4, !dbg !88
-  store i32 0, i32* %i, align 4, !dbg !88
-  br label %while.start, !dbg !88
-
-while.start:                                      ; preds = %if.end, %entry
-  %self2 = load %struct.String*, %struct.String** %self1, align 8, !dbg !88
-  %count = getelementptr %struct.String, %struct.String* %self2, i32 0, i32 1, !dbg !88
-  %i3 = load i32, i32* %i, align 4, !dbg !88
-  %DOT = load i32, i32* %count, align 4, !dbg !88
-  %LT = icmp slt i32 %i3, %DOT, !dbg !88
-  br i1 %LT, label %while.then, label %while.end, !dbg !88
-
-while.then:                                       ; preds = %while.start
-  store i8 0, i8* %c, align 1, !dbg !88
-  %self4 = load %struct.String*, %struct.String** %self1, align 8, !dbg !90
-  %value = getelementptr %struct.String, %struct.String* %self4, i32 0, i32 0, !dbg !90
-  %DOT5 = load i8*, i8** %value, align 8, !dbg !90
-  %i6 = load i32, i32* %i, align 4, !dbg !90
-  %ACCESS = getelementptr i8, i8* %DOT5, i32 %i6, !dbg !90
-  %ACC = load i8, i8* %ACCESS, align 1, !dbg !90
-  store i8 %ACC, i8* %c, align 1, !dbg !90
-  br label %if.start, !dbg !90
-
-while.end:                                        ; preds = %while.start
-  call void @String.delete(%struct.String* %tmp_struct), !dbg !91
-  %res15 = load %struct.String, %struct.String* %res, align 8, !dbg !91
-  ret %struct.String %res15, !dbg !91
-
-if.start:                                         ; preds = %while.then
-  %c7 = load i8, i8* %c, align 1, !dbg !90
-  %GE = icmp sge i8 %c7, 65, !dbg !90
-  %c8 = load i8, i8* %c, align 1, !dbg !90
-  %LE = icmp sle i8 %c8, 90, !dbg !90
-  %AND = and i1 %GE, %LE, !dbg !90
-  br i1 %AND, label %if.then, label %if.else, !dbg !90
-
-if.end:                                           ; preds = %if.else, %if.then
-  %i13 = load i32, i32* %i, align 4, !dbg !91
-  %ADD14 = add i32 %i13, 1, !dbg !91
-  store i32 %ADD14, i32* %i, align 4, !dbg !91
-  br label %while.start, !dbg !91
-
-if.then:                                          ; preds = %if.start
-  store i32 0, i32* %v, align 4, !dbg !88
-  %c9 = load i8, i8* %c, align 1, !dbg !88
-  %as = sext i8 %c9 to i32, !dbg !88
-  %ADD = add i32 %as, 32, !dbg !88
-  store i32 %ADD, i32* %v, align 4, !dbg !88
-  %v10 = load i32, i32* %v, align 4, !dbg !92
-  %as11 = trunc i32 %v10 to i8, !dbg !92
-  call void @String.push(i8 %as11, %struct.String* %res), !dbg !92
-  br label %if.end, !dbg !92
-
-if.else:                                          ; preds = %if.start
-  %c12 = load i8, i8* %c, align 1, !dbg !91
-  call void @String.push(i8 %c12, %struct.String* %res), !dbg !91
-  br label %if.end, !dbg !91
-}
-
-define %struct.String @String.trim(%struct.String* %self) !dbg !93 {
-entry:
-  %self1 = alloca %struct.String*, align 8, !dbg !94
-  %start = alloca i32, align 4, !dbg !94
-  %c = alloca i8, align 1, !dbg !94
-  %end = alloca i32, align 4, !dbg !94
-  %c25 = alloca i8, align 1, !dbg !94
-  store %struct.String* %self, %struct.String** %self1, align 8, !dbg !94
-  store i32 0, i32* %start, align 4, !dbg !94
-  store i32 0, i32* %start, align 4, !dbg !94
-  br label %while.start, !dbg !94
-
-while.start:                                      ; preds = %if.end, %entry
-  %self2 = load %struct.String*, %struct.String** %self1, align 8, !dbg !94
-  %count = getelementptr %struct.String, %struct.String* %self2, i32 0, i32 1, !dbg !94
-  %start3 = load i32, i32* %start, align 4, !dbg !94
-  %DOT = load i32, i32* %count, align 4, !dbg !94
-  %LT = icmp slt i32 %start3, %DOT, !dbg !94
-  br i1 %LT, label %while.then, label %while.end, !dbg !94
-
-while.then:                                       ; preds = %while.start
-  store i8 0, i8* %c, align 1, !dbg !94
-  %self4 = load %struct.String*, %struct.String** %self1, align 8, !dbg !95
-  %value = getelementptr %struct.String, %struct.String* %self4, i32 0, i32 0, !dbg !95
-  %DOT5 = load i8*, i8** %value, align 8, !dbg !95
-  %start6 = load i32, i32* %start, align 4, !dbg !95
-  %ACCESS = getelementptr i8, i8* %DOT5, i32 %start6, !dbg !95
-  %ACC = load i8, i8* %ACCESS, align 1, !dbg !95
-  store i8 %ACC, i8* %c, align 1, !dbg !95
-  br label %if.start, !dbg !95
-
-while.end:                                        ; preds = %if.else, %while.start
-  store i32 0, i32* %end, align 4, !dbg !94
-  %self17 = load %struct.String*, %struct.String** %self1, align 8, !dbg !94
-  %count18 = getelementptr %struct.String, %struct.String* %self17, i32 0, i32 1, !dbg !94
-  %DOT19 = load i32, i32* %count18, align 4, !dbg !94
-  store i32 %DOT19, i32* %end, align 4, !dbg !94
-  br label %while.start20, !dbg !94
-
-if.start:                                         ; preds = %while.then
-  %c7 = load i8, i8* %c, align 1, !dbg !95
-  %EQ = icmp eq i8 %c7, 32, !dbg !95
-  %c8 = load i8, i8* %c, align 1, !dbg !95
-  %EQ9 = icmp eq i8 %c8, 9, !dbg !95
-  %OR = or i1 %EQ, %EQ9, !dbg !95
-  %c10 = load i8, i8* %c, align 1, !dbg !95
-  %EQ11 = icmp eq i8 %c10, 10, !dbg !95
-  %OR12 = or i1 %OR, %EQ11, !dbg !95
-  %c13 = load i8, i8* %c, align 1, !dbg !95
-  %EQ14 = icmp eq i8 %c13, 13, !dbg !95
-  %OR15 = or i1 %OR12, %EQ14, !dbg !95
-  br i1 %OR15, label %if.then, label %if.else, !dbg !95
-
-if.end:                                           ; preds = %if.then
-  br label %while.start, !dbg !95
-
-if.then:                                          ; preds = %if.start
-  %start16 = load i32, i32* %start, align 4, !dbg !95
-  %ADD = add i32 %start16, 1, !dbg !95
-  store i32 %ADD, i32* %start, align 4, !dbg !95
-  br label %if.end, !dbg !95
-
-if.else:                                          ; preds = %if.start
-  br label %while.end, !dbg !95
-
-while.start20:                                    ; preds = %if.end33, %while.end
-  %end23 = load i32, i32* %end, align 4, !dbg !94
-  %start24 = load i32, i32* %start, align 4, !dbg !94
-  %GT = icmp sgt i32 %end23, %start24, !dbg !94
-  br i1 %GT, label %while.then21, label %while.end22, !dbg !94
-
-while.then21:                                     ; preds = %while.start20
-  store i8 0, i8* %c25, align 1, !dbg !94
-  %self26 = load %struct.String*, %struct.String** %self1, align 8, !dbg !96
-  %value27 = getelementptr %struct.String, %struct.String* %self26, i32 0, i32 0, !dbg !96
-  %end28 = load i32, i32* %end, align 4, !dbg !96
-  %SUB = sub i32 %end28, 1, !dbg !96
-  %DOT29 = load i8*, i8** %value27, align 8, !dbg !96
-  %ACCESS30 = getelementptr i8, i8* %DOT29, i32 %SUB, !dbg !96
-  %ACC31 = load i8, i8* %ACCESS30, align 1, !dbg !96
-  store i8 %ACC31, i8* %c25, align 1, !dbg !96
-  br label %if.start32, !dbg !96
-
-while.end22:                                      ; preds = %if.else35, %while.start20
-  %start49 = load i32, i32* %start, align 4, !dbg !97
-  %end50 = load i32, i32* %end, align 4, !dbg !97
-  %start51 = load i32, i32* %start, align 4, !dbg !97
-  %SUB52 = sub i32 %end50, %start51, !dbg !97
-  %ref_arg = load %struct.String*, %struct.String** %self1, align 8, !dbg !97
-  %String.substr = call %struct.String @String.substr(i32 %start49, i32 %SUB52, %struct.String* %ref_arg), !dbg !97
-  %tmp_struct = alloca %struct.String, align 8, !dbg !97
-  store %struct.String %String.substr, %struct.String* %tmp_struct, align 8, !dbg !97
-  ret %struct.String %String.substr, !dbg !97
-
-if.start32:                                       ; preds = %while.then21
-  %c36 = load i8, i8* %c25, align 1, !dbg !96
-  %EQ37 = icmp eq i8 %c36, 32, !dbg !96
-  %c38 = load i8, i8* %c25, align 1, !dbg !96
-  %EQ39 = icmp eq i8 %c38, 9, !dbg !96
-  %OR40 = or i1 %EQ37, %EQ39, !dbg !96
-  %c41 = load i8, i8* %c25, align 1, !dbg !96
-  %EQ42 = icmp eq i8 %c41, 10, !dbg !96
-  %OR43 = or i1 %OR40, %EQ42, !dbg !96
-  %c44 = load i8, i8* %c25, align 1, !dbg !96
-  %EQ45 = icmp eq i8 %c44, 13, !dbg !96
-  %OR46 = or i1 %OR43, %EQ45, !dbg !96
-  br i1 %OR46, label %if.then34, label %if.else35, !dbg !96
-
-if.end33:                                         ; preds = %if.then34
-  br label %while.start20, !dbg !96
-
-if.then34:                                        ; preds = %if.start32
-  %end47 = load i32, i32* %end, align 4, !dbg !96
-  %SUB48 = sub i32 %end47, 1, !dbg !96
-  store i32 %SUB48, i32* %end, align 4, !dbg !96
-  br label %if.end33, !dbg !96
-
-if.else35:                                        ; preds = %if.start32
-  br label %while.end22, !dbg !96
-}
-
-define %struct.String @String.replace(i8* %old, i8* %replacement, %struct.String* %self) !dbg !98 {
-entry:
-  %old1 = alloca i8*, align 8, !dbg !99
-  %replacement2 = alloca i8*, align 8, !dbg !99
-  %self3 = alloca %struct.String*, align 8, !dbg !99
-  %res = alloca %struct.String, align 8, !dbg !99
-  %olen = alloca i32, align 4, !dbg !99
-  %i = alloca i32, align 4, !dbg !99
-  store i8* %old, i8** %old1, align 8, !dbg !99
-  store i8* %replacement, i8** %replacement2, align 8, !dbg !99
-  store %struct.String* %self, %struct.String** %self3, align 8, !dbg !99
-  store %struct.String zeroinitializer, %struct.String* %res, align 8, !dbg !99
-  %0 = call %struct.String @String.new(), !dbg !100
-  %tmp_struct = alloca %struct.String, align 8, !dbg !100
-  store %struct.String %0, %struct.String* %tmp_struct, align 8, !dbg !100
-  %tmp_op = alloca %struct.String, align 8, !dbg !100
-  store %struct.String %0, %struct.String* %tmp_op, align 8, !dbg !100
-  call void @String.operator.ASSIGN.String(%struct.String* %tmp_op, %struct.String* %res), !dbg !100
-  store i32 0, i32* %olen, align 4, !dbg !99
-  %old4 = load i8*, i8** %old1, align 8, !dbg !101
-  %strlen = call i32 @strlen(i8* %old4), !dbg !101
-  store i32 %strlen, i32* %olen, align 4, !dbg !101
-  br label %if.start, !dbg !101
-
-if.start:                                         ; preds = %entry
-  %olen5 = load i32, i32* %olen, align 4, !dbg !101
-  %EQ = icmp eq i32 %olen5, 0, !dbg !101
-  br i1 %EQ, label %if.then, label %if.end, !dbg !101
-
-if.end:                                           ; preds = %if.start
-  store i32 0, i32* %i, align 4, !dbg !99
-  store i32 0, i32* %i, align 4, !dbg !99
-  br label %while.start, !dbg !99
-
-if.then:                                          ; preds = %if.start
-  %self6 = load %struct.String*, %struct.String** %self3, align 8, !dbg !102
-  %value = getelementptr %struct.String, %struct.String* %self6, i32 0, i32 0, !dbg !102
-  %DOT = load i8*, i8** %value, align 8, !dbg !102
-  call void @String.assign(i8* %DOT, %struct.String* %res), !dbg !102
-  %res7 = load %struct.String, %struct.String* %res, align 8, !dbg !102
-  ret %struct.String %res7, !dbg !102
-
-while.start:                                      ; preds = %if.end12, %if.end
-  %self8 = load %struct.String*, %struct.String** %self3, align 8, !dbg !99
-  %count = getelementptr %struct.String, %struct.String* %self8, i32 0, i32 1, !dbg !99
-  %i9 = load i32, i32* %i, align 4, !dbg !99
-  %DOT10 = load i32, i32* %count, align 4, !dbg !99
-  %LT = icmp slt i32 %i9, %DOT10, !dbg !99
-  br i1 %LT, label %while.then, label %while.end, !dbg !99
-
-while.then:                                       ; preds = %while.start
-  br label %if.start11, !dbg !99
-
-while.end:                                        ; preds = %while.start
-  call void @String.delete(%struct.String* %tmp_struct), !dbg !103
-  %res36 = load %struct.String, %struct.String* %res, align 8, !dbg !103
-  ret %struct.String %res36, !dbg !103
-
-if.start11:                                       ; preds = %while.then
-  %self14 = load %struct.String*, %struct.String** %self3, align 8, !dbg !99
-  %count15 = getelementptr %struct.String, %struct.String* %self14, i32 0, i32 1, !dbg !99
-  %DOT16 = load i32, i32* %count15, align 4, !dbg !99
-  %olen17 = load i32, i32* %olen, align 4, !dbg !99
-  %SUB = sub i32 %DOT16, %olen17, !dbg !99
-  %i18 = load i32, i32* %i, align 4, !dbg !99
-  %LE = icmp sle i32 %i18, %SUB, !dbg !99
-  %self19 = load %struct.String*, %struct.String** %self3, align 8, !dbg !104
-  %value20 = getelementptr %struct.String, %struct.String* %self19, i32 0, i32 0, !dbg !104
-  %DOT21 = load i8*, i8** %value20, align 8, !dbg !104
-  %i22 = load i32, i32* %i, align 4, !dbg !104
-  %idx = sext i32 %i22 to i64, !dbg !104
-  %ADD = getelementptr i8, i8* %DOT21, i64 %idx, !dbg !104
-  %old23 = load i8*, i8** %old1, align 8, !dbg !104
-  %olen24 = load i32, i32* %olen, align 4, !dbg !104
-  %strncmp = call i32 @strncmp(i8* %ADD, i8* %old23, i32 %olen24), !dbg !104
-  %EQ25 = icmp eq i32 %strncmp, 0, !dbg !104
-  %AND = and i1 %LE, %EQ25, !dbg !104
-  br i1 %AND, label %if.then13, label %if.else, !dbg !104
-
-if.end12:                                         ; preds = %if.else, %if.then13
-  br label %while.start, !dbg !103
-
-if.then13:                                        ; preds = %if.start11
-  %replacement26 = load i8*, i8** %replacement2, align 8, !dbg !105
-  call void @String.join(i8* %replacement26, %struct.String* %res), !dbg !105
-  %i27 = load i32, i32* %i, align 4, !dbg !105
-  %olen28 = load i32, i32* %olen, align 4, !dbg !105
-  %ADD29 = add i32 %i27, %olen28, !dbg !105
-  store i32 %ADD29, i32* %i, align 4, !dbg !105
-  br label %if.end12, !dbg !105
-
-if.else:                                          ; preds = %if.start11
-  %self30 = load %struct.String*, %struct.String** %self3, align 8, !dbg !103
-  %value31 = getelementptr %struct.String, %struct.String* %self30, i32 0, i32 0, !dbg !103
-  %DOT32 = load i8*, i8** %value31, align 8, !dbg !103
-  %i33 = load i32, i32* %i, align 4, !dbg !103
-  %ACCESS = getelementptr i8, i8* %DOT32, i32 %i33, !dbg !103
-  %ACC = load i8, i8* %ACCESS, align 1, !dbg !103
-  call void @String.push(i8 %ACC, %struct.String* %res), !dbg !103
-  %i34 = load i32, i32* %i, align 4, !dbg !103
-  %ADD35 = add i32 %i34, 1, !dbg !103
-  store i32 %ADD35, i32* %i, align 4, !dbg !103
-  br label %if.end12, !dbg !103
-}
-
-define %struct.String @String.repeat(i32 %n, %struct.String* %self) !dbg !106 {
-entry:
-  %n1 = alloca i32, align 4, !dbg !107
-  %self2 = alloca %struct.String*, align 8, !dbg !107
-  %res = alloca %struct.String, align 8, !dbg !107
-  %i = alloca i32, align 4, !dbg !107
-  store i32 %n, i32* %n1, align 4, !dbg !107
-  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !107
-  store %struct.String zeroinitializer, %struct.String* %res, align 8, !dbg !107
-  %0 = call %struct.String @String.new(), !dbg !108
-  %tmp_struct = alloca %struct.String, align 8, !dbg !108
-  store %struct.String %0, %struct.String* %tmp_struct, align 8, !dbg !108
-  %tmp_op = alloca %struct.String, align 8, !dbg !108
-  store %struct.String %0, %struct.String* %tmp_op, align 8, !dbg !108
-  call void @String.operator.ASSIGN.String(%struct.String* %tmp_op, %struct.String* %res), !dbg !108
-  store i32 0, i32* %i, align 4, !dbg !107
-  store i32 0, i32* %i, align 4, !dbg !107
-  br label %while.start, !dbg !107
-
-while.start:                                      ; preds = %while.then, %entry
-  %i3 = load i32, i32* %i, align 4, !dbg !107
-  %n4 = load i32, i32* %n1, align 4, !dbg !107
-  %LT = icmp slt i32 %i3, %n4, !dbg !107
-  br i1 %LT, label %while.then, label %while.end, !dbg !107
-
-while.then:                                       ; preds = %while.start
-  %self5 = load %struct.String*, %struct.String** %self2, align 8, !dbg !109
-  %value = getelementptr %struct.String, %struct.String* %self5, i32 0, i32 0, !dbg !109
-  %DOT = load i8*, i8** %value, align 8, !dbg !109
-  call void @String.join(i8* %DOT, %struct.String* %res), !dbg !109
-  %i6 = load i32, i32* %i, align 4, !dbg !109
-  %ADD = add i32 %i6, 1, !dbg !109
-  store i32 %ADD, i32* %i, align 4, !dbg !109
-  br label %while.start, !dbg !109
-
-while.end:                                        ; preds = %while.start
-  call void @String.delete(%struct.String* %tmp_struct), !dbg !109
-  %res7 = load %struct.String, %struct.String* %res, align 8, !dbg !109
-  ret %struct.String %res7, !dbg !109
-}
-
-define %struct.String @String.reverse(%struct.String* %self) !dbg !110 {
-entry:
-  %self1 = alloca %struct.String*, align 8, !dbg !111
-  %res = alloca %struct.String, align 8, !dbg !111
-  %i = alloca i32, align 4, !dbg !111
-  store %struct.String* %self, %struct.String** %self1, align 8, !dbg !111
-  store %struct.String zeroinitializer, %struct.String* %res, align 8, !dbg !111
-  %0 = call %struct.String @String.new(), !dbg !112
-  %tmp_struct = alloca %struct.String, align 8, !dbg !112
-  store %struct.String %0, %struct.String* %tmp_struct, align 8, !dbg !112
-  %tmp_op = alloca %struct.String, align 8, !dbg !112
-  store %struct.String %0, %struct.String* %tmp_op, align 8, !dbg !112
-  call void @String.operator.ASSIGN.String(%struct.String* %tmp_op, %struct.String* %res), !dbg !112
-  store i32 0, i32* %i, align 4, !dbg !111
-  %self2 = load %struct.String*, %struct.String** %self1, align 8, !dbg !111
-  %count = getelementptr %struct.String, %struct.String* %self2, i32 0, i32 1, !dbg !111
-  %DOT = load i32, i32* %count, align 4, !dbg !111
-  %SUB = sub i32 %DOT, 1, !dbg !111
-  store i32 %SUB, i32* %i, align 4, !dbg !111
-  br label %while.start, !dbg !111
-
-while.start:                                      ; preds = %while.then, %entry
-  %i3 = load i32, i32* %i, align 4, !dbg !111
-  %GE = icmp sge i32 %i3, 0, !dbg !111
-  br i1 %GE, label %while.then, label %while.end, !dbg !111
-
-while.then:                                       ; preds = %while.start
-  %self4 = load %struct.String*, %struct.String** %self1, align 8, !dbg !113
-  %value = getelementptr %struct.String, %struct.String* %self4, i32 0, i32 0, !dbg !113
-  %DOT5 = load i8*, i8** %value, align 8, !dbg !113
-  %i6 = load i32, i32* %i, align 4, !dbg !113
-  %ACCESS = getelementptr i8, i8* %DOT5, i32 %i6, !dbg !113
-  %ACC = load i8, i8* %ACCESS, align 1, !dbg !113
-  call void @String.push(i8 %ACC, %struct.String* %res), !dbg !113
-  %i7 = load i32, i32* %i, align 4, !dbg !113
-  %SUB8 = sub i32 %i7, 1, !dbg !113
-  store i32 %SUB8, i32* %i, align 4, !dbg !113
-  br label %while.start, !dbg !113
-
-while.end:                                        ; preds = %while.start
-  call void @String.delete(%struct.String* %tmp_struct), !dbg !113
-  %res9 = load %struct.String, %struct.String* %res, align 8, !dbg !113
-  ret %struct.String %res9, !dbg !113
-}
-
-define i32 @String.compare(%struct.String* %other, %struct.String* %self) !dbg !114 {
-entry:
-  %other1 = alloca %struct.String*, align 8, !dbg !115
-  %self2 = alloca %struct.String*, align 8, !dbg !115
-  store %struct.String* %other, %struct.String** %other1, align 8, !dbg !115
-  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !115
-  %self3 = load %struct.String*, %struct.String** %self2, align 8, !dbg !116
-  %value = getelementptr %struct.String, %struct.String* %self3, i32 0, i32 0, !dbg !116
-  %DOT = load i8*, i8** %value, align 8, !dbg !116
-  %other4 = load %struct.String*, %struct.String** %other1, align 8, !dbg !116
-  %value5 = getelementptr %struct.String, %struct.String* %other4, i32 0, i32 0, !dbg !116
-  %DOT6 = load i8*, i8** %value5, align 8, !dbg !116
-  %strcmp = call i32 @strcmp(i8* %DOT, i8* %DOT6), !dbg !116
-  ret i32 %strcmp, !dbg !116
-}
-
-define i32 @String.to_int(%struct.String* %self) !dbg !117 {
-entry:
-  %self1 = alloca %struct.String*, align 8, !dbg !118
-  store %struct.String* %self, %struct.String** %self1, align 8, !dbg !118
-  %self2 = load %struct.String*, %struct.String** %self1, align 8, !dbg !119
-  %value = getelementptr %struct.String, %struct.String* %self2, i32 0, i32 0, !dbg !119
-  %DOT = load i8*, i8** %value, align 8, !dbg !119
-  %atoi = call i32 @atoi(i8* %DOT), !dbg !119
-  ret i32 %atoi, !dbg !119
-}
-
-define void @String.operator.ASSIGN.CHARS(i8* %str, %struct.String* %self) !dbg !120 {
-entry:
-  %str1 = alloca i8*, align 8, !dbg !121
-  %self2 = alloca %struct.String*, align 8, !dbg !121
-  store i8* %str, i8** %str1, align 8, !dbg !121
-  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !121
-  %str3 = load i8*, i8** %str1, align 8, !dbg !122
-  %ref_arg = load %struct.String*, %struct.String** %self2, align 8, !dbg !122
-  call void @String.assign(i8* %str3, %struct.String* %ref_arg), !dbg !122
-  ret void, !dbg !122
-}
-
-define void @String.operator.ASSIGN.String(%struct.String* %v, %struct.String* %self) !dbg !123 {
-entry:
-  %v1 = alloca %struct.String*, align 8, !dbg !124
-  %self2 = alloca %struct.String*, align 8, !dbg !124
-  store %struct.String* %v, %struct.String** %v1, align 8, !dbg !124
-  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !124
-  %v3 = load %struct.String*, %struct.String** %v1, align 8, !dbg !125
-  %value = getelementptr %struct.String, %struct.String* %v3, i32 0, i32 0, !dbg !125
-  %DOT = load i8*, i8** %value, align 8, !dbg !125
-  %ref_arg = load %struct.String*, %struct.String** %self2, align 8, !dbg !125
-  call void @String.assign(i8* %DOT, %struct.String* %ref_arg), !dbg !125
-  ret void, !dbg !125
-}
-
-define %struct.String @String.operator.ADD.String(%struct.String* %v, %struct.String* %self) !dbg !126 {
-entry:
-  %v1 = alloca %struct.String*, align 8, !dbg !127
-  %self2 = alloca %struct.String*, align 8, !dbg !127
-  %res = alloca %struct.String, align 8, !dbg !127
-  store %struct.String* %v, %struct.String** %v1, align 8, !dbg !127
-  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !127
-  store %struct.String zeroinitializer, %struct.String* %res, align 8, !dbg !127
-  %0 = call %struct.String @String.new(), !dbg !128
-  %tmp_struct = alloca %struct.String, align 8, !dbg !128
-  store %struct.String %0, %struct.String* %tmp_struct, align 8, !dbg !128
-  %tmp_op = alloca %struct.String, align 8, !dbg !128
-  store %struct.String %0, %struct.String* %tmp_op, align 8, !dbg !128
-  call void @String.operator.ASSIGN.String(%struct.String* %tmp_op, %struct.String* %res), !dbg !128
-  %self3 = load %struct.String*, %struct.String** %self2, align 8, !dbg !129
-  %value = getelementptr %struct.String, %struct.String* %self3, i32 0, i32 0, !dbg !129
-  %DOT = load i8*, i8** %value, align 8, !dbg !129
-  %v4 = load %struct.String*, %struct.String** %v1, align 8, !dbg !129
-  %value5 = getelementptr %struct.String, %struct.String* %v4, i32 0, i32 0, !dbg !129
-  %DOT6 = load i8*, i8** %value5, align 8, !dbg !129
-  %strjoin = call i8* @strjoin(i8* %DOT, i8* %DOT6), !dbg !129
-  call void @String.operator.ASSIGN.CHARS(i8* %strjoin, %struct.String* %res), !dbg !129
-  call void @String.delete(%struct.String* %tmp_struct), !dbg !129
-  %res7 = load %struct.String, %struct.String* %res, align 8, !dbg !129
-  ret %struct.String %res7, !dbg !129
-}
-
-define %struct.String @String.operator.ADD.CHARS(i8* %str, %struct.String* %self) !dbg !130 {
-entry:
-  %str1 = alloca i8*, align 8, !dbg !131
-  %self2 = alloca %struct.String*, align 8, !dbg !131
-  %res = alloca %struct.String, align 8, !dbg !131
-  store i8* %str, i8** %str1, align 8, !dbg !131
-  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !131
-  store %struct.String zeroinitializer, %struct.String* %res, align 8, !dbg !131
-  %0 = call %struct.String @String.new(), !dbg !132
-  %tmp_struct = alloca %struct.String, align 8, !dbg !132
-  store %struct.String %0, %struct.String* %tmp_struct, align 8, !dbg !132
-  %tmp_op = alloca %struct.String, align 8, !dbg !132
-  store %struct.String %0, %struct.String* %tmp_op, align 8, !dbg !132
-  call void @String.operator.ASSIGN.String(%struct.String* %tmp_op, %struct.String* %res), !dbg !132
-  %self3 = load %struct.String*, %struct.String** %self2, align 8, !dbg !133
-  %value = getelementptr %struct.String, %struct.String* %self3, i32 0, i32 0, !dbg !133
-  %DOT = load i8*, i8** %value, align 8, !dbg !133
-  %str4 = load i8*, i8** %str1, align 8, !dbg !133
-  %strjoin = call i8* @strjoin(i8* %DOT, i8* %str4), !dbg !133
-  call void @String.operator.ASSIGN.CHARS(i8* %strjoin, %struct.String* %res), !dbg !133
-  call void @String.delete(%struct.String* %tmp_struct), !dbg !133
-  %res5 = load %struct.String, %struct.String* %res, align 8, !dbg !133
-  ret %struct.String %res5, !dbg !133
-}
-
-define void @String.operator.ADD_ASS.String(%struct.String* %v, %struct.String* %self) !dbg !134 {
-entry:
-  %v1 = alloca %struct.String*, align 8, !dbg !135
-  %self2 = alloca %struct.String*, align 8, !dbg !135
-  store %struct.String* %v, %struct.String** %v1, align 8, !dbg !135
-  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !135
-  %v3 = load %struct.String*, %struct.String** %v1, align 8, !dbg !136
-  %value = getelementptr %struct.String, %struct.String* %v3, i32 0, i32 0, !dbg !136
-  %DOT = load i8*, i8** %value, align 8, !dbg !136
-  %ref_arg = load %struct.String*, %struct.String** %self2, align 8, !dbg !136
-  call void @String.join(i8* %DOT, %struct.String* %ref_arg), !dbg !136
-  ret void, !dbg !136
-}
-
-define void @String.operator.ADD_ASS.CHARS(i8* %str, %struct.String* %self) !dbg !137 {
-entry:
-  %str1 = alloca i8*, align 8, !dbg !138
-  %self2 = alloca %struct.String*, align 8, !dbg !138
-  store i8* %str, i8** %str1, align 8, !dbg !138
-  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !138
-  %str3 = load i8*, i8** %str1, align 8, !dbg !139
-  %ref_arg = load %struct.String*, %struct.String** %self2, align 8, !dbg !139
-  call void @String.join(i8* %str3, %struct.String* %ref_arg), !dbg !139
-  ret void, !dbg !139
-}
-
-define i1 @String.operator.EQ.String(%struct.String* %v, %struct.String* %self) !dbg !140 {
-entry:
-  %v1 = alloca %struct.String*, align 8, !dbg !141
-  %self2 = alloca %struct.String*, align 8, !dbg !141
-  store %struct.String* %v, %struct.String** %v1, align 8, !dbg !141
-  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !141
-  %self3 = load %struct.String*, %struct.String** %self2, align 8, !dbg !142
-  %value = getelementptr %struct.String, %struct.String* %self3, i32 0, i32 0, !dbg !142
-  %DOT = load i8*, i8** %value, align 8, !dbg !142
-  %v4 = load %struct.String*, %struct.String** %v1, align 8, !dbg !142
-  %value5 = getelementptr %struct.String, %struct.String* %v4, i32 0, i32 0, !dbg !142
-  %DOT6 = load i8*, i8** %value5, align 8, !dbg !142
-  %strcmp = call i32 @strcmp(i8* %DOT, i8* %DOT6), !dbg !142
-  %EQ = icmp eq i32 %strcmp, 0, !dbg !142
-  ret i1 %EQ, !dbg !142
-}
-
-define i1 @String.operator.EQ.CHARS(i8* %str, %struct.String* %self) !dbg !143 {
-entry:
-  %str1 = alloca i8*, align 8, !dbg !144
-  %self2 = alloca %struct.String*, align 8, !dbg !144
-  store i8* %str, i8** %str1, align 8, !dbg !144
-  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !144
-  br label %if.start, !dbg !144
-
-if.start:                                         ; preds = %entry
-  %str3 = load i8*, i8** %str1, align 8, !dbg !144
-  %EQ = icmp eq i8* %str3, null, !dbg !144
-  br i1 %EQ, label %if.then, label %if.end, !dbg !144
-
-if.end:                                           ; preds = %if.start
-  %self6 = load %struct.String*, %struct.String** %self2, align 8, !dbg !145
-  %value = getelementptr %struct.String, %struct.String* %self6, i32 0, i32 0, !dbg !145
-  %DOT7 = load i8*, i8** %value, align 8, !dbg !145
-  %str8 = load i8*, i8** %str1, align 8, !dbg !145
-  %strcmp = call i32 @strcmp(i8* %DOT7, i8* %str8), !dbg !145
-  %EQ9 = icmp eq i32 %strcmp, 0, !dbg !145
-  ret i1 %EQ9, !dbg !145
-
-if.then:                                          ; preds = %if.start
-  %self4 = load %struct.String*, %struct.String** %self2, align 8, !dbg !144
-  %count = getelementptr %struct.String, %struct.String* %self4, i32 0, i32 1, !dbg !144
-  %DOT = load i32, i32* %count, align 4, !dbg !144
-  %EQ5 = icmp eq i32 %DOT, 0, !dbg !144
-  ret i1 %EQ5, !dbg !144
-}
-
-define i1 @String.operator.NEQ.String(%struct.String* %v, %struct.String* %self) !dbg !146 {
-entry:
-  %v1 = alloca %struct.String*, align 8, !dbg !147
-  %self2 = alloca %struct.String*, align 8, !dbg !147
-  store %struct.String* %v, %struct.String** %v1, align 8, !dbg !147
-  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !147
-  %self3 = load %struct.String*, %struct.String** %self2, align 8, !dbg !148
-  %value = getelementptr %struct.String, %struct.String* %self3, i32 0, i32 0, !dbg !148
-  %DOT = load i8*, i8** %value, align 8, !dbg !148
-  %v4 = load %struct.String*, %struct.String** %v1, align 8, !dbg !148
-  %value5 = getelementptr %struct.String, %struct.String* %v4, i32 0, i32 0, !dbg !148
-  %DOT6 = load i8*, i8** %value5, align 8, !dbg !148
-  %strcmp = call i32 @strcmp(i8* %DOT, i8* %DOT6), !dbg !148
-  %NEQ = icmp ne i32 %strcmp, 0, !dbg !148
-  ret i1 %NEQ, !dbg !148
-}
-
-define i1 @String.operator.NEQ.CHARS(i8* %str, %struct.String* %self) !dbg !149 {
-entry:
-  %str1 = alloca i8*, align 8, !dbg !150
-  %self2 = alloca %struct.String*, align 8, !dbg !150
-  store i8* %str, i8** %str1, align 8, !dbg !150
-  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !150
-  br label %if.start, !dbg !150
-
-if.start:                                         ; preds = %entry
-  %str3 = load i8*, i8** %str1, align 8, !dbg !150
-  %EQ = icmp eq i8* %str3, null, !dbg !150
-  br i1 %EQ, label %if.then, label %if.end, !dbg !150
-
-if.end:                                           ; preds = %if.start
-  %self5 = load %struct.String*, %struct.String** %self2, align 8, !dbg !151
-  %value = getelementptr %struct.String, %struct.String* %self5, i32 0, i32 0, !dbg !151
-  %DOT6 = load i8*, i8** %value, align 8, !dbg !151
-  %str7 = load i8*, i8** %str1, align 8, !dbg !151
-  %strcmp = call i32 @strcmp(i8* %DOT6, i8* %str7), !dbg !151
-  %NEQ8 = icmp ne i32 %strcmp, 0, !dbg !151
-  ret i1 %NEQ8, !dbg !151
-
-if.then:                                          ; preds = %if.start
-  %self4 = load %struct.String*, %struct.String** %self2, align 8, !dbg !150
-  %count = getelementptr %struct.String, %struct.String* %self4, i32 0, i32 1, !dbg !150
-  %DOT = load i32, i32* %count, align 4, !dbg !150
-  %NEQ = icmp ne i32 %DOT, 0, !dbg !150
-  ret i1 %NEQ, !dbg !150
-}
-
-define i1 @String.operator.LT.String(%struct.String* %v, %struct.String* %self) !dbg !152 {
-entry:
-  %v1 = alloca %struct.String*, align 8, !dbg !153
-  %self2 = alloca %struct.String*, align 8, !dbg !153
-  store %struct.String* %v, %struct.String** %v1, align 8, !dbg !153
-  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !153
-  %self3 = load %struct.String*, %struct.String** %self2, align 8, !dbg !154
-  %value = getelementptr %struct.String, %struct.String* %self3, i32 0, i32 0, !dbg !154
-  %DOT = load i8*, i8** %value, align 8, !dbg !154
-  %v4 = load %struct.String*, %struct.String** %v1, align 8, !dbg !154
-  %value5 = getelementptr %struct.String, %struct.String* %v4, i32 0, i32 0, !dbg !154
-  %DOT6 = load i8*, i8** %value5, align 8, !dbg !154
-  %strcmp = call i32 @strcmp(i8* %DOT, i8* %DOT6), !dbg !154
-  %LT = icmp slt i32 %strcmp, 0, !dbg !154
-  ret i1 %LT, !dbg !154
-}
-
-define i1 @String.operator.GT.String(%struct.String* %v, %struct.String* %self) !dbg !155 {
-entry:
-  %v1 = alloca %struct.String*, align 8, !dbg !156
-  %self2 = alloca %struct.String*, align 8, !dbg !156
-  store %struct.String* %v, %struct.String** %v1, align 8, !dbg !156
-  store %struct.String* %self, %struct.String** %self2, align 8, !dbg !156
-  %self3 = load %struct.String*, %struct.String** %self2, align 8, !dbg !157
-  %value = getelementptr %struct.String, %struct.String* %self3, i32 0, i32 0, !dbg !157
-  %DOT = load i8*, i8** %value, align 8, !dbg !157
-  %v4 = load %struct.String*, %struct.String** %v1, align 8, !dbg !157
-  %value5 = getelementptr %struct.String, %struct.String* %v4, i32 0, i32 0, !dbg !157
-  %DOT6 = load i8*, i8** %value5, align 8, !dbg !157
-  %strcmp = call i32 @strcmp(i8* %DOT, i8* %DOT6), !dbg !157
-  %GT = icmp sgt i32 %strcmp, 0, !dbg !157
-  ret i1 %GT, !dbg !157
-}
-
-define i8* @String.operator.output(%struct.String* %self) !dbg !158 {
-entry:
-  %self1 = alloca %struct.String*, align 8, !dbg !159
-  store %struct.String* %self, %struct.String** %self1, align 8, !dbg !159
-  %self2 = load %struct.String*, %struct.String** %self1, align 8, !dbg !159
-  %value = getelementptr %struct.String, %struct.String* %self2, i32 0, i32 0, !dbg !159
-  %DOT = load i8*, i8** %value, align 8, !dbg !159
-  ret i8* %DOT, !dbg !159
-}
+declare i32 @atoi(i8*)
 
 define i32 @main() !dbg !160 {
 entry:
@@ -1698,11 +1698,11 @@ entry:
   %names4 = load i8**, i8*** %names, align 8, !dbg !162
   %ACCESS5 = getelementptr i8*, i8** %names4, i32 1, !dbg !162
   %ACC6 = load i8*, i8** %ACCESS5, align 8, !dbg !162
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt, i32 0, i32 0), i32 2, i8* %ACC, i8* %ACC6), !dbg !162
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt, i32 0, i32 0), i8* %ACC, i8* %ACC6), !dbg !162
   %names7 = load i8**, i8*** %names, align 8, !dbg !163
   %ACCESS8 = getelementptr i8*, i8** %names7, i32 2, !dbg !163
   %ACC9 = load i8*, i8** %ACCESS8, align 8, !dbg !163
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([16 x i8], [16 x i8]* @output_fmt.1, i32 0, i32 0), i32 1, i8* %ACC9), !dbg !163
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([16 x i8], [16 x i8]* @output_fmt.1, i32 0, i32 0), i8* %ACC9), !dbg !163
   store i1* null, i1** %bools, align 8, !dbg !161
   %array_lit10 = call i8* @calloc(i64 3, i64 1), !dbg !161
   %lit_data11 = bitcast i8* %array_lit10 to i1*, !dbg !161
@@ -1725,11 +1725,11 @@ entry:
   %ACCESS23 = getelementptr i1, i1* %bools22, i32 2, !dbg !164
   %ACC24 = load i1, i1* %ACCESS23, align 1, !dbg !164
   %bool_str25 = select i1 %ACC24, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str.4, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str.5, i32 0, i32 0), !dbg !164
-  %2 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt.6, i32 0, i32 0), i32 3, i8* %bool_str, i8* %bool_str21, i8* %bool_str25), !dbg !164
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt.6, i32 0, i32 0), i8* %bool_str, i8* %bool_str21, i8* %bool_str25), !dbg !164
   ret i32 0, !dbg !164
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -1737,163 +1737,163 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "004.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/arrays")
-!4 = distinct !DISubprogram(name: "strjoin", linkageName: "strjoin", scope: null, file: !3, line: 58, type: !5, scopeLine: 58, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!3 = !DIFile(filename: "004.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/arrays")
+!4 = distinct !DISubprogram(name: "String.delete", linkageName: "String.delete", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}
-!7 = !DILocation(line: 58, scope: !4)
-!8 = !DILocation(line: 61, scope: !4)
-!9 = !DILocation(line: 63, scope: !4)
-!10 = !DILocation(line: 62, scope: !4)
-!11 = !DILocation(line: 66, scope: !4)
-!12 = !DILocation(line: 70, scope: !4)
-!13 = distinct !DISubprogram(name: "String.delete", linkageName: "String.delete", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!14 = !DILocation(line: 0, scope: !13)
-!15 = !DILocation(line: 82, scope: !13)
-!16 = distinct !DISubprogram(name: "String.assign", linkageName: "String.assign", scope: null, file: !3, line: 86, type: !5, scopeLine: 86, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!17 = !DILocation(line: 86, scope: !16)
-!18 = !DILocation(line: 88, scope: !16)
-!19 = !DILocation(line: 95, scope: !16)
-!20 = !DILocation(line: 96, scope: !16)
-!21 = !DILocation(line: 94, scope: !16)
-!22 = distinct !DISubprogram(name: "String.join", linkageName: "String.join", scope: null, file: !3, line: 99, type: !5, scopeLine: 99, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!23 = !DILocation(line: 99, scope: !22)
-!24 = !DILocation(line: 101, scope: !22)
-!25 = !DILocation(line: 102, scope: !22)
-!26 = !DILocation(line: 103, scope: !22)
-!27 = distinct !DISubprogram(name: "String.clear", linkageName: "String.clear", scope: null, file: !3, line: 105, type: !5, scopeLine: 105, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!28 = !DILocation(line: 105, scope: !27)
-!29 = !DILocation(line: 106, scope: !27)
-!30 = distinct !DISubprogram(name: "String.push", linkageName: "String.push", scope: null, file: !3, line: 109, type: !5, scopeLine: 109, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!31 = !DILocation(line: 109, scope: !30)
-!32 = !DILocation(line: 116, scope: !30)
-!33 = !DILocation(line: 118, scope: !30)
-!34 = !DILocation(line: 115, scope: !30)
-!35 = distinct !DISubprogram(name: "String.pop", linkageName: "String.pop", scope: null, file: !3, line: 120, type: !5, scopeLine: 120, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!36 = !DILocation(line: 120, scope: !35)
-!37 = !DILocation(line: 124, scope: !35)
-!38 = !DILocation(line: 125, scope: !35)
-!39 = distinct !DISubprogram(name: "String.new", linkageName: "String.new", scope: null, file: !3, line: 130, type: !5, scopeLine: 130, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!40 = !DILocation(line: 130, scope: !39)
-!41 = !DILocation(line: 133, scope: !39)
-!42 = distinct !DISubprogram(name: "String.from", linkageName: "String.from", scope: null, file: !3, line: 136, type: !5, scopeLine: 136, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!43 = !DILocation(line: 136, scope: !42)
-!44 = !DILocation(line: 137, scope: !42)
-!45 = !DILocation(line: 138, scope: !42)
-!46 = distinct !DISubprogram(name: "String.from_int", linkageName: "String.from_int", scope: null, file: !3, line: 141, type: !5, scopeLine: 141, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!47 = !DILocation(line: 141, scope: !46)
-!48 = !DILocation(line: 142, scope: !46)
-!49 = !DILocation(line: 144, scope: !46)
-!50 = !DILocation(line: 154, scope: !46)
-!51 = !DILocation(line: 158, scope: !46)
-!52 = !DILocation(line: 161, scope: !46)
-!53 = distinct !DISubprogram(name: "String.len", linkageName: "String.len", scope: null, file: !3, line: 167, type: !5, scopeLine: 167, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!54 = !DILocation(line: 167, scope: !53)
-!55 = distinct !DISubprogram(name: "String.empty", linkageName: "String.empty", scope: null, file: !3, line: 170, type: !5, scopeLine: 170, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!56 = !DILocation(line: 170, scope: !55)
-!57 = distinct !DISubprogram(name: "String.c_str", linkageName: "String.c_str", scope: null, file: !3, line: 173, type: !5, scopeLine: 173, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!58 = !DILocation(line: 173, scope: !57)
-!59 = distinct !DISubprogram(name: "String.at", linkageName: "String.at", scope: null, file: !3, line: 176, type: !5, scopeLine: 176, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!60 = !DILocation(line: 176, scope: !59)
-!61 = !DILocation(line: 179, scope: !59)
-!62 = distinct !DISubprogram(name: "String.find", linkageName: "String.find", scope: null, file: !3, line: 183, type: !5, scopeLine: 183, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!63 = !DILocation(line: 183, scope: !62)
-!64 = !DILocation(line: 186, scope: !62)
-!65 = !DILocation(line: 189, scope: !62)
-!66 = distinct !DISubprogram(name: "String.contains", linkageName: "String.contains", scope: null, file: !3, line: 194, type: !5, scopeLine: 194, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!67 = !DILocation(line: 194, scope: !66)
-!68 = !DILocation(line: 195, scope: !66)
-!69 = distinct !DISubprogram(name: "String.starts_with", linkageName: "String.starts_with", scope: null, file: !3, line: 197, type: !5, scopeLine: 197, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!70 = !DILocation(line: 197, scope: !69)
-!71 = !DILocation(line: 199, scope: !69)
-!72 = !DILocation(line: 201, scope: !69)
-!73 = distinct !DISubprogram(name: "String.ends_with", linkageName: "String.ends_with", scope: null, file: !3, line: 203, type: !5, scopeLine: 203, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!74 = !DILocation(line: 203, scope: !73)
-!75 = !DILocation(line: 205, scope: !73)
-!76 = !DILocation(line: 208, scope: !73)
-!77 = distinct !DISubprogram(name: "String.substr", linkageName: "String.substr", scope: null, file: !3, line: 212, type: !5, scopeLine: 212, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!78 = !DILocation(line: 212, scope: !77)
-!79 = !DILocation(line: 213, scope: !77)
-!80 = !DILocation(line: 221, scope: !77)
-!81 = distinct !DISubprogram(name: "String.upper", linkageName: "String.upper", scope: null, file: !3, line: 225, type: !5, scopeLine: 225, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!82 = !DILocation(line: 225, scope: !81)
-!83 = !DILocation(line: 226, scope: !81)
-!84 = !DILocation(line: 229, scope: !81)
-!85 = !DILocation(line: 234, scope: !81)
-!86 = !DILocation(line: 232, scope: !81)
-!87 = distinct !DISubprogram(name: "String.lower", linkageName: "String.lower", scope: null, file: !3, line: 238, type: !5, scopeLine: 238, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!88 = !DILocation(line: 238, scope: !87)
-!89 = !DILocation(line: 239, scope: !87)
-!90 = !DILocation(line: 242, scope: !87)
-!91 = !DILocation(line: 247, scope: !87)
-!92 = !DILocation(line: 245, scope: !87)
-!93 = distinct !DISubprogram(name: "String.trim", linkageName: "String.trim", scope: null, file: !3, line: 251, type: !5, scopeLine: 251, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!94 = !DILocation(line: 251, scope: !93)
-!95 = !DILocation(line: 254, scope: !93)
-!96 = !DILocation(line: 261, scope: !93)
-!97 = !DILocation(line: 266, scope: !93)
-!98 = distinct !DISubprogram(name: "String.replace", linkageName: "String.replace", scope: null, file: !3, line: 268, type: !5, scopeLine: 268, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!99 = !DILocation(line: 268, scope: !98)
-!100 = !DILocation(line: 269, scope: !98)
-!101 = !DILocation(line: 270, scope: !98)
-!102 = !DILocation(line: 272, scope: !98)
-!103 = !DILocation(line: 280, scope: !98)
-!104 = !DILocation(line: 276, scope: !98)
-!105 = !DILocation(line: 277, scope: !98)
-!106 = distinct !DISubprogram(name: "String.repeat", linkageName: "String.repeat", scope: null, file: !3, line: 284, type: !5, scopeLine: 284, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!107 = !DILocation(line: 284, scope: !106)
-!108 = !DILocation(line: 285, scope: !106)
-!109 = !DILocation(line: 288, scope: !106)
-!110 = distinct !DISubprogram(name: "String.reverse", linkageName: "String.reverse", scope: null, file: !3, line: 292, type: !5, scopeLine: 292, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!111 = !DILocation(line: 292, scope: !110)
-!112 = !DILocation(line: 293, scope: !110)
-!113 = !DILocation(line: 296, scope: !110)
-!114 = distinct !DISubprogram(name: "String.compare", linkageName: "String.compare", scope: null, file: !3, line: 302, type: !5, scopeLine: 302, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!115 = !DILocation(line: 302, scope: !114)
-!116 = !DILocation(line: 303, scope: !114)
-!117 = distinct !DISubprogram(name: "String.to_int", linkageName: "String.to_int", scope: null, file: !3, line: 307, type: !5, scopeLine: 307, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!118 = !DILocation(line: 307, scope: !117)
-!119 = !DILocation(line: 308, scope: !117)
-!120 = distinct !DISubprogram(name: "String.operator.ASSIGN.CHARS", linkageName: "String.operator.ASSIGN.CHARS", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!121 = !DILocation(line: 0, scope: !120)
-!122 = !DILocation(line: 313, scope: !120)
-!123 = distinct !DISubprogram(name: "String.operator.ASSIGN.String", linkageName: "String.operator.ASSIGN.String", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!7 = !DILocation(line: 0, scope: !4)
+!8 = !DILocation(line: 82, scope: !4)
+!9 = distinct !DISubprogram(name: "String.assign", linkageName: "String.assign", scope: null, file: !3, line: 86, type: !5, scopeLine: 86, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!10 = !DILocation(line: 86, scope: !9)
+!11 = !DILocation(line: 88, scope: !9)
+!12 = !DILocation(line: 95, scope: !9)
+!13 = !DILocation(line: 96, scope: !9)
+!14 = !DILocation(line: 94, scope: !9)
+!15 = distinct !DISubprogram(name: "String.join", linkageName: "String.join", scope: null, file: !3, line: 99, type: !5, scopeLine: 99, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!16 = !DILocation(line: 99, scope: !15)
+!17 = !DILocation(line: 101, scope: !15)
+!18 = !DILocation(line: 102, scope: !15)
+!19 = !DILocation(line: 103, scope: !15)
+!20 = distinct !DISubprogram(name: "String.clear", linkageName: "String.clear", scope: null, file: !3, line: 105, type: !5, scopeLine: 105, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!21 = !DILocation(line: 105, scope: !20)
+!22 = !DILocation(line: 106, scope: !20)
+!23 = distinct !DISubprogram(name: "String.push", linkageName: "String.push", scope: null, file: !3, line: 109, type: !5, scopeLine: 109, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!24 = !DILocation(line: 109, scope: !23)
+!25 = !DILocation(line: 116, scope: !23)
+!26 = !DILocation(line: 118, scope: !23)
+!27 = !DILocation(line: 115, scope: !23)
+!28 = distinct !DISubprogram(name: "String.pop", linkageName: "String.pop", scope: null, file: !3, line: 120, type: !5, scopeLine: 120, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!29 = !DILocation(line: 120, scope: !28)
+!30 = !DILocation(line: 124, scope: !28)
+!31 = !DILocation(line: 125, scope: !28)
+!32 = distinct !DISubprogram(name: "String.new", linkageName: "String.new", scope: null, file: !3, line: 130, type: !5, scopeLine: 130, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!33 = !DILocation(line: 130, scope: !32)
+!34 = !DILocation(line: 133, scope: !32)
+!35 = distinct !DISubprogram(name: "String.from", linkageName: "String.from", scope: null, file: !3, line: 136, type: !5, scopeLine: 136, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!36 = !DILocation(line: 136, scope: !35)
+!37 = !DILocation(line: 137, scope: !35)
+!38 = !DILocation(line: 138, scope: !35)
+!39 = distinct !DISubprogram(name: "String.from_int", linkageName: "String.from_int", scope: null, file: !3, line: 141, type: !5, scopeLine: 141, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!40 = !DILocation(line: 141, scope: !39)
+!41 = !DILocation(line: 142, scope: !39)
+!42 = !DILocation(line: 144, scope: !39)
+!43 = !DILocation(line: 154, scope: !39)
+!44 = !DILocation(line: 158, scope: !39)
+!45 = !DILocation(line: 161, scope: !39)
+!46 = distinct !DISubprogram(name: "String.len", linkageName: "String.len", scope: null, file: !3, line: 167, type: !5, scopeLine: 167, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!47 = !DILocation(line: 167, scope: !46)
+!48 = distinct !DISubprogram(name: "String.empty", linkageName: "String.empty", scope: null, file: !3, line: 170, type: !5, scopeLine: 170, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!49 = !DILocation(line: 170, scope: !48)
+!50 = distinct !DISubprogram(name: "String.c_str", linkageName: "String.c_str", scope: null, file: !3, line: 173, type: !5, scopeLine: 173, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!51 = !DILocation(line: 173, scope: !50)
+!52 = distinct !DISubprogram(name: "String.at", linkageName: "String.at", scope: null, file: !3, line: 176, type: !5, scopeLine: 176, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!53 = !DILocation(line: 176, scope: !52)
+!54 = !DILocation(line: 179, scope: !52)
+!55 = distinct !DISubprogram(name: "String.find", linkageName: "String.find", scope: null, file: !3, line: 183, type: !5, scopeLine: 183, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!56 = !DILocation(line: 183, scope: !55)
+!57 = !DILocation(line: 186, scope: !55)
+!58 = !DILocation(line: 189, scope: !55)
+!59 = distinct !DISubprogram(name: "String.contains", linkageName: "String.contains", scope: null, file: !3, line: 194, type: !5, scopeLine: 194, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!60 = !DILocation(line: 194, scope: !59)
+!61 = !DILocation(line: 195, scope: !59)
+!62 = distinct !DISubprogram(name: "String.starts_with", linkageName: "String.starts_with", scope: null, file: !3, line: 197, type: !5, scopeLine: 197, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!63 = !DILocation(line: 197, scope: !62)
+!64 = !DILocation(line: 199, scope: !62)
+!65 = !DILocation(line: 201, scope: !62)
+!66 = distinct !DISubprogram(name: "String.ends_with", linkageName: "String.ends_with", scope: null, file: !3, line: 203, type: !5, scopeLine: 203, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!67 = !DILocation(line: 203, scope: !66)
+!68 = !DILocation(line: 205, scope: !66)
+!69 = !DILocation(line: 208, scope: !66)
+!70 = distinct !DISubprogram(name: "String.substr", linkageName: "String.substr", scope: null, file: !3, line: 212, type: !5, scopeLine: 212, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!71 = !DILocation(line: 212, scope: !70)
+!72 = !DILocation(line: 213, scope: !70)
+!73 = !DILocation(line: 221, scope: !70)
+!74 = distinct !DISubprogram(name: "String.upper", linkageName: "String.upper", scope: null, file: !3, line: 225, type: !5, scopeLine: 225, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!75 = !DILocation(line: 225, scope: !74)
+!76 = !DILocation(line: 226, scope: !74)
+!77 = !DILocation(line: 229, scope: !74)
+!78 = !DILocation(line: 234, scope: !74)
+!79 = !DILocation(line: 232, scope: !74)
+!80 = distinct !DISubprogram(name: "String.lower", linkageName: "String.lower", scope: null, file: !3, line: 238, type: !5, scopeLine: 238, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!81 = !DILocation(line: 238, scope: !80)
+!82 = !DILocation(line: 239, scope: !80)
+!83 = !DILocation(line: 242, scope: !80)
+!84 = !DILocation(line: 247, scope: !80)
+!85 = !DILocation(line: 245, scope: !80)
+!86 = distinct !DISubprogram(name: "String.trim", linkageName: "String.trim", scope: null, file: !3, line: 251, type: !5, scopeLine: 251, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!87 = !DILocation(line: 251, scope: !86)
+!88 = !DILocation(line: 254, scope: !86)
+!89 = !DILocation(line: 261, scope: !86)
+!90 = !DILocation(line: 266, scope: !86)
+!91 = distinct !DISubprogram(name: "String.replace", linkageName: "String.replace", scope: null, file: !3, line: 268, type: !5, scopeLine: 268, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!92 = !DILocation(line: 268, scope: !91)
+!93 = !DILocation(line: 269, scope: !91)
+!94 = !DILocation(line: 270, scope: !91)
+!95 = !DILocation(line: 272, scope: !91)
+!96 = !DILocation(line: 280, scope: !91)
+!97 = !DILocation(line: 276, scope: !91)
+!98 = !DILocation(line: 277, scope: !91)
+!99 = distinct !DISubprogram(name: "String.repeat", linkageName: "String.repeat", scope: null, file: !3, line: 284, type: !5, scopeLine: 284, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!100 = !DILocation(line: 284, scope: !99)
+!101 = !DILocation(line: 285, scope: !99)
+!102 = !DILocation(line: 288, scope: !99)
+!103 = distinct !DISubprogram(name: "String.reverse", linkageName: "String.reverse", scope: null, file: !3, line: 292, type: !5, scopeLine: 292, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!104 = !DILocation(line: 292, scope: !103)
+!105 = !DILocation(line: 293, scope: !103)
+!106 = !DILocation(line: 296, scope: !103)
+!107 = distinct !DISubprogram(name: "String.compare", linkageName: "String.compare", scope: null, file: !3, line: 302, type: !5, scopeLine: 302, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!108 = !DILocation(line: 302, scope: !107)
+!109 = !DILocation(line: 303, scope: !107)
+!110 = distinct !DISubprogram(name: "String.to_int", linkageName: "String.to_int", scope: null, file: !3, line: 307, type: !5, scopeLine: 307, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!111 = !DILocation(line: 307, scope: !110)
+!112 = !DILocation(line: 308, scope: !110)
+!113 = distinct !DISubprogram(name: "String.operator.ASSIGN.CHARS", linkageName: "String.operator.ASSIGN.CHARS", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!114 = !DILocation(line: 0, scope: !113)
+!115 = !DILocation(line: 313, scope: !113)
+!116 = distinct !DISubprogram(name: "String.operator.ASSIGN.String", linkageName: "String.operator.ASSIGN.String", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!117 = !DILocation(line: 0, scope: !116)
+!118 = !DILocation(line: 316, scope: !116)
+!119 = distinct !DISubprogram(name: "String.operator.ADD.String", linkageName: "String.operator.ADD.String", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!120 = !DILocation(line: 0, scope: !119)
+!121 = !DILocation(line: 321, scope: !119)
+!122 = !DILocation(line: 322, scope: !119)
+!123 = distinct !DISubprogram(name: "String.operator.ADD.CHARS", linkageName: "String.operator.ADD.CHARS", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !124 = !DILocation(line: 0, scope: !123)
-!125 = !DILocation(line: 316, scope: !123)
-!126 = distinct !DISubprogram(name: "String.operator.ADD.String", linkageName: "String.operator.ADD.String", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!127 = !DILocation(line: 0, scope: !126)
-!128 = !DILocation(line: 321, scope: !126)
-!129 = !DILocation(line: 322, scope: !126)
-!130 = distinct !DISubprogram(name: "String.operator.ADD.CHARS", linkageName: "String.operator.ADD.CHARS", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!125 = !DILocation(line: 326, scope: !123)
+!126 = !DILocation(line: 327, scope: !123)
+!127 = distinct !DISubprogram(name: "String.operator.ADD_ASS.String", linkageName: "String.operator.ADD_ASS.String", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!128 = !DILocation(line: 0, scope: !127)
+!129 = !DILocation(line: 331, scope: !127)
+!130 = distinct !DISubprogram(name: "String.operator.ADD_ASS.CHARS", linkageName: "String.operator.ADD_ASS.CHARS", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !131 = !DILocation(line: 0, scope: !130)
-!132 = !DILocation(line: 326, scope: !130)
-!133 = !DILocation(line: 327, scope: !130)
-!134 = distinct !DISubprogram(name: "String.operator.ADD_ASS.String", linkageName: "String.operator.ADD_ASS.String", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!135 = !DILocation(line: 0, scope: !134)
-!136 = !DILocation(line: 331, scope: !134)
-!137 = distinct !DISubprogram(name: "String.operator.ADD_ASS.CHARS", linkageName: "String.operator.ADD_ASS.CHARS", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!138 = !DILocation(line: 0, scope: !137)
-!139 = !DILocation(line: 334, scope: !137)
-!140 = distinct !DISubprogram(name: "String.operator.EQ.String", linkageName: "String.operator.EQ.String", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!141 = !DILocation(line: 0, scope: !140)
-!142 = !DILocation(line: 339, scope: !140)
-!143 = distinct !DISubprogram(name: "String.operator.EQ.CHARS", linkageName: "String.operator.EQ.CHARS", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!144 = !DILocation(line: 0, scope: !143)
-!145 = !DILocation(line: 343, scope: !143)
-!146 = distinct !DISubprogram(name: "String.operator.NEQ.String", linkageName: "String.operator.NEQ.String", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!147 = !DILocation(line: 0, scope: !146)
-!148 = !DILocation(line: 346, scope: !146)
-!149 = distinct !DISubprogram(name: "String.operator.NEQ.CHARS", linkageName: "String.operator.NEQ.CHARS", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!150 = !DILocation(line: 0, scope: !149)
-!151 = !DILocation(line: 350, scope: !149)
-!152 = distinct !DISubprogram(name: "String.operator.LT.String", linkageName: "String.operator.LT.String", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!153 = !DILocation(line: 0, scope: !152)
-!154 = !DILocation(line: 353, scope: !152)
-!155 = distinct !DISubprogram(name: "String.operator.GT.String", linkageName: "String.operator.GT.String", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!156 = !DILocation(line: 0, scope: !155)
-!157 = !DILocation(line: 356, scope: !155)
-!158 = distinct !DISubprogram(name: "String.operator.output", linkageName: "String.operator.output", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!159 = !DILocation(line: 0, scope: !158)
+!132 = !DILocation(line: 334, scope: !130)
+!133 = distinct !DISubprogram(name: "String.operator.EQ.String", linkageName: "String.operator.EQ.String", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!134 = !DILocation(line: 0, scope: !133)
+!135 = !DILocation(line: 339, scope: !133)
+!136 = distinct !DISubprogram(name: "String.operator.EQ.CHARS", linkageName: "String.operator.EQ.CHARS", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!137 = !DILocation(line: 0, scope: !136)
+!138 = !DILocation(line: 343, scope: !136)
+!139 = distinct !DISubprogram(name: "String.operator.NEQ.String", linkageName: "String.operator.NEQ.String", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!140 = !DILocation(line: 0, scope: !139)
+!141 = !DILocation(line: 346, scope: !139)
+!142 = distinct !DISubprogram(name: "String.operator.NEQ.CHARS", linkageName: "String.operator.NEQ.CHARS", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!143 = !DILocation(line: 0, scope: !142)
+!144 = !DILocation(line: 350, scope: !142)
+!145 = distinct !DISubprogram(name: "String.operator.LT.String", linkageName: "String.operator.LT.String", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!146 = !DILocation(line: 0, scope: !145)
+!147 = !DILocation(line: 353, scope: !145)
+!148 = distinct !DISubprogram(name: "String.operator.GT.String", linkageName: "String.operator.GT.String", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!149 = !DILocation(line: 0, scope: !148)
+!150 = !DILocation(line: 356, scope: !148)
+!151 = distinct !DISubprogram(name: "String.operator.output", linkageName: "String.operator.output", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!152 = !DILocation(line: 0, scope: !151)
+!153 = distinct !DISubprogram(name: "strjoin", linkageName: "strjoin", scope: null, file: !3, line: 58, type: !5, scopeLine: 58, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!154 = !DILocation(line: 58, scope: !153)
+!155 = !DILocation(line: 61, scope: !153)
+!156 = !DILocation(line: 63, scope: !153)
+!157 = !DILocation(line: 62, scope: !153)
+!158 = !DILocation(line: 66, scope: !153)
+!159 = !DILocation(line: 70, scope: !153)
 !160 = distinct !DISubprogram(name: "main", linkageName: "main", scope: null, file: !3, line: 4, type: !5, scopeLine: 4, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !161 = !DILocation(line: 4, scope: !160)
 !162 = !DILocation(line: 6, scope: !160)

@@ -6,10 +6,10 @@ struct HP:
     operator = (n int) void:
         self.val = n
 
-    operator > (h HP ref) bool:
+    operator > (ref h HP) bool:
         return self.val > h.val
 
-    operator == (h HP ref) bool:
+    operator == (ref h HP) bool:
         return self.val == h.val
 
 main():

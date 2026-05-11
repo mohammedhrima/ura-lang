@@ -1,6 +1,6 @@
+// use "@/header"
+
 
 main():
-    a int = 1
-
-    output("this is a ", a, "\n")
+    output(100)
 

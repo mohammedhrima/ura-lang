@@ -55,7 +55,7 @@ ERROR RECOVERY
 │   │
 │   ├── (5) SYNTAX_ERROR node = silent poison
 │   │   └── example:
-│   │       void gen_ir(Node *node) {
+│   │       void ir_gen(Node *node) {
 │   │           if (node->token->type == SYNTAX_ERROR) return;  ← skip
 │   │           ...
 │   │       }
@@ -179,7 +179,7 @@ MULTI-PASS — separate the responsibilities
 │   │       └── example:
 │   │           node->token->ret_type = ...
 │   │           node->token->Fcall.ptr = func
-│   │           these fields get read later by gen_asm
+│   │           these fields get read later by asm_gen
 │   │
 │   └── All three mixed together = pain:
 │       │
@@ -187,7 +187,7 @@ MULTI-PASS — separate the responsibilities
 │       │   └── example:
 │       │       I add a new check inside ir_assign,
 │       │       accidentally I return before setting ret_type,
-│       │       gen_asm later segfaults because ret_type=0
+│       │       asm_gen later segfaults because ret_type=0
 │       │
 │       ├── No "type-check only" mode
 │       │   └── example:
@@ -244,7 +244,7 @@ MULTI-PASS — separate the responsibilities
 │   │       // src/header.h - struct Node
 │   │       Type resolved_type;       ← canonical after typecheck
 │   │
-│   ├── (2) Create resolve_pass() before gen_ir
+│   ├── (2) Create resolve_pass() before ir_gen
 │   │   └── example:
 │   │       // src/resolve.c (new)
 │   │       void resolve(Node *node) {
@@ -253,7 +253,7 @@ MULTI-PASS — separate the responsibilities
 │   │           ...
 │   │       }
 │   │
-│   ├── (3) In gen_ir, read the pointer instead of looking up
+│   ├── (3) In ir_gen, read the pointer instead of looking up
 │   │   └── example:
 │   │       // before
 │   │       Token *find = get_variable(node->token->name);
@@ -263,8 +263,8 @@ MULTI-PASS — separate the responsibilities
 │   ├── (4) Create typecheck_pass() after resolve
 │   │   └── move compatible() / count checks / etc. here
 │   │
-│   └── (5) gen_ir progressively empties out
-│       └── eventually fold into gen_asm
+│   └── (5) ir_gen progressively empties out
+│       └── eventually fold into asm_gen
 │
 ├── PAYOFF
 │   ├── -typecheck-only flag (fast, no LLVM)
@@ -481,7 +481,7 @@ DONE WHEN…
 │
 ├── ① a file with 10 errors → 10 messages in 1 run, non-zero exit, no crash
 ├── ② every test in tests/errors/ passes + 30 new ones added and stable
-├── ③ gen_asm has no get_variable / get_function calls; -typecheck-only flag works
+├── ③ asm_gen has no get_variable / get_function calls; -typecheck-only flag works
 ├── ④ docs/grammar.ebnf and docs/tour.md exist; a newcomer can write 30 lines
 └── ⑤ ura on a stdlib-heavy project: warm build 5–10× faster than cold
 ```

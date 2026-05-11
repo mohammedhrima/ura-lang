@@ -7,4 +7,4 @@ struct Point:
 
 main():
     p Point
-    r Point ref
+    ref r Point

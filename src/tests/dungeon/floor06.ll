@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon/floor06.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon/floor06.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon/floor06.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon/floor06.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 @STR0 = private unnamed_addr constant [18 x i8] c"Victory in round \00", align 1
@@ -47,7 +47,7 @@ if.end:                                           ; preds = %if.start
 if.then:                                          ; preds = %if.start
   %round6 = load i32, i32* %round, align 4, !dbg !7
   %SUB = sub i32 %round6, 1, !dbg !7
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([22 x i8], [22 x i8]* @output_fmt, i32 0, i32 0), i32 1, i32 %SUB), !dbg !7
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([22 x i8], [22 x i8]* @output_fmt, i32 0, i32 0), i32 %SUB), !dbg !7
   ret void, !dbg !7
 
 if.start7:                                        ; preds = %if.end
@@ -65,7 +65,7 @@ if.end8:                                          ; preds = %if.start7
   br label %while.start, !dbg !7
 
 if.then9:                                         ; preds = %if.start7
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @output_fmt.1, i32 0, i32 0), i32 0), !dbg !7
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @output_fmt.1, i32 0, i32 0)), !dbg !7
   br label %while.end, !dbg !7
 
 if.start16:                                       ; preds = %while.end
@@ -78,11 +78,9 @@ if.end17:                                         ; preds = %if.then18, %if.star
 
 if.then18:                                        ; preds = %if.start16
   %round21 = load i32, i32* %round, align 4, !dbg !7
-  %2 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([23 x i8], [23 x i8]* @output_fmt.2, i32 0, i32 0), i32 1, i32 %round21), !dbg !7
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([23 x i8], [23 x i8]* @output_fmt.2, i32 0, i32 0), i32 %round21), !dbg !7
   br label %if.end17, !dbg !7
 }
-
-declare i32 @printf(i8*, i32, ...)
 
 define i32 @main() !dbg !8 {
 entry:
@@ -91,13 +89,15 @@ entry:
   ret i32 0, !dbg !10
 }
 
+declare i32 @printf(i8*, ...)
+
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
 
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "floor06.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon")
+!3 = !DIFile(filename: "floor06.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon")
 !4 = distinct !DISubprogram(name: "simulate", linkageName: "simulate", scope: null, file: !3, line: 2, type: !5, scopeLine: 2, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

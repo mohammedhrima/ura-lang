@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon/floor13a.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon/floor13a.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon/floor13a.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon/floor13a.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 %struct.Vec2 = type { i32, i32 }
@@ -104,11 +104,11 @@ entry:
   %self3 = load %struct.Vec2*, %struct.Vec2** %self1, align 8, !dbg !13
   %y = getelementptr %struct.Vec2, %struct.Vec2* %self3, i32 0, i32 1, !dbg !13
   %DOT4 = load i32, i32* %y, align 4, !dbg !13
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt, i32 0, i32 0), i32 2, i32 %DOT, i32 %DOT4), !dbg !13
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt, i32 0, i32 0), i32 %DOT, i32 %DOT4), !dbg !13
   ret void, !dbg !13
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 define %struct.Vec2 @walk(i32 %steps, %struct.Vec2 %dir) !dbg !14 {
 entry:
@@ -180,7 +180,7 @@ entry:
   store %struct.Vec2 zeroinitializer, %struct.Vec2* %origin, align 4, !dbg !17
   %1 = call i1 @Vec2.operator.EQ.Vec2(%struct.Vec2* %origin, %struct.Vec2* %pos), !dbg !17
   %bool_str = select i1 %1, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str, i32 0, i32 0), !dbg !17
-  %2 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @output_fmt.1, i32 0, i32 0), i32 1, i8* %bool_str), !dbg !17
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @output_fmt.1, i32 0, i32 0), i8* %bool_str), !dbg !17
   call void @Vec2.delete(%struct.Vec2* %north), !dbg !17
   call void @Vec2.delete(%struct.Vec2* %east), !dbg !17
   call void @Vec2.delete(%struct.Vec2* %pos), !dbg !17
@@ -195,7 +195,7 @@ entry:
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "floor13a.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon")
+!3 = !DIFile(filename: "floor13a.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon")
 !4 = distinct !DISubprogram(name: "Vec2.operator.ASSIGN.Vec2", linkageName: "Vec2.operator.ASSIGN.Vec2", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

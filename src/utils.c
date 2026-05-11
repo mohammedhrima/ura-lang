@@ -70,8 +70,14 @@ char *generate_list_source(const char *elem, const char *sname) {
 	         "      return self.__len\n"
 	         "\n"
 	         "   fn cap() int:\n"
-	         "      return self.__cap\n",
-	         sname, elem, elem, elem, elem);
+	         "      return self.__cap\n"
+	         "\n"
+	         "   fn foreach(cb fn(%s) void) void:\n"
+	         "      i int = 0\n"
+	         "      while i < self.__len:\n"
+	         "         cb(self.data[i])\n"
+	         "         i += 1\n",
+	         sname, elem, elem, elem, elem, elem);
 	return src;
 }
 
@@ -1118,9 +1124,13 @@ TypeRef func_ret_type(Token *token) {
 TypeRef *func_param_types(Node *fdec, int *out_count) {
 	Token *token       = fdec->token;
 	int    fixed_count = fdec->left->children_count;
-	int    total       = fixed_count + (token->is_variadic ? 1 : 0);
+	// Ura-defined variadics carry an extra i32 arg-count slot; libc protos
+	// use their real signature (no count slot) because the count would be
+	// consumed by the callee's first vararg slot under SysV ABI.
+	bool   add_count   = token->is_variadic && !token->is_proto;
+	int    total       = fixed_count + (add_count ? 1 : 0);
 	*out_count         = total;
-	if (fixed_count == 0) return NULL;
+	if (fixed_count == 0 && !add_count) return NULL;
 
 	TypeRef *types = allocate(total + 2, sizeof(TypeRef));
 	for (int i = 0; i < fixed_count; i++) {
@@ -1129,7 +1139,7 @@ TypeRef *func_param_types(Node *fdec, int *out_count) {
 		else if (param->is_ref)                                                   types[i] = LLVMPointerType(get_llvm_type(param), 0);
 		else types[i] = get_llvm_type(param);
 	}
-	if (token->is_variadic) types[fixed_count] = i32;
+	if (add_count) types[fixed_count] = i32;
 	return types;
 }
 
@@ -1265,6 +1275,12 @@ Value build_binary_op(Type op, Value l, Value r) {
 	}
 }
 
+static LLVM ensure_func_resolved(Node *callee) {
+	if (callee && callee->token && !callee->token->llvm.func_type)
+		resolve_func_type(callee);
+	return callee->token->llvm;
+}
+
 void resolve_func_type(Node *fdec) {
 	Token *token = fdec->token;
 	if (token->llvm.func_type) return;
@@ -1317,7 +1333,7 @@ void emit_func_body(Node *fdec) {
 		hoist_allocas(fdec->children[i]);
 #endif
 	for (int i = 0; i < fdec->children_count; i++) {
-		gen_asm(fdec->children[i]);
+		asm_gen(fdec->children[i]);
 		if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder))) break;
 	}
 }
@@ -1390,7 +1406,7 @@ void ir_method_call_args(Node *node, Node *func) {
 	}
 	for (int i = 0; !found_error && i < node->left->children_count - 1; i++) {
 		Node *carg = node->left->children[i];
-		gen_ir(carg);
+		ir_gen(carg);
 		if (carg->token->type == ID) {
 			parse_error(carg->token, "undeclared variable '%s'", carg->token->name);
 			break;
@@ -1420,7 +1436,7 @@ void ir_method_call_args(Node *node, Node *func) {
 
 void ir_method_call(Node *node) {
 	Node *obj_node = node->left->children[node->left->children_count - 1];
-	gen_ir(obj_node);
+	ir_gen(obj_node);
 	if (found_error) return;
 	Token *obj = obj_node->token;
 	obj->Struct.ptr->token->used++;
@@ -1462,7 +1478,7 @@ void ir_regular_call_args(Node *node, Node *func) {
 	}
 	for (int i = 0; !found_error && call_args && i < call_args->children_count; i++) {
 		Node *carg = call_args->children[i];
-		gen_ir(carg);
+		ir_gen(carg);
 		carg->token->used++;
 		Token *src = carg->token;
 		if (src->type == ID) {
@@ -1509,6 +1525,40 @@ void ir_regular_call(Node *node) {
 	set_ret_type(node);
 }
 
+void ir_indirect_call(Node *node, Token *fn_var) {
+	node->token->is_method_call = false;
+	node->token->is_static_call = false;
+	// Stash the fn variable so codegen can load it.
+	node->token->Statement.ptr  = fn_var;
+
+	int got = node->left ? node->left->children_count : 0;
+	int exp = fn_var->Fn.params_count;
+	if (got != exp) {
+		parse_error(node->token, "'%s' expects %d arguments, got %d", node->token->name, exp, got);
+		return;
+	}
+
+	for (int i = 0; i < got; i++) {
+		Node  *carg = node->left->children[i];
+		ir_gen(carg);
+		if (found_error) return;
+		Token *src   = carg->token;
+		Token *param = fn_var->Fn.params[i];
+		if (!compatible(param, src)) {
+			parse_error(carg->token, "'%s' arg %d: cannot pass %s as %s", node->token->name, i + 1,
+			            to_string(src->ret_type ? src->ret_type : src->type),
+			            to_string(param->ret_type ? param->ret_type : param->type));
+			return;
+		}
+	}
+
+	// Set return type from signature
+	if (fn_var->Fn.ret) {
+		node->token->ret_type = fn_var->Fn.ret->ret_type ? fn_var->Fn.ret->ret_type
+		                                                  : fn_var->Fn.ret->type;
+	}
+}
+
 void ir_static_call(Node *node) {
 	Node *func = get_function(node->token->name);
 	if (!func)                return;
@@ -1524,7 +1574,7 @@ void ir_static_call(Node *node) {
 		node->token->Struct.ptr = func->token->Struct.ptr;
 	} else node->token->ret_type = func->token->ret_type;
 	for (int i = 0; i < node->left->children_count; i++)
-		gen_ir(node->left->children[i]);
+		ir_gen(node->left->children[i]);
 }
 
 bool try_module_call(Node *node) {
@@ -1651,12 +1701,12 @@ Value marshal_arg_for_op(Token *param, Node *arg) {
 
 Value gen_operator_call(Node *node, Node *left, Node *right, bool try_copy_ctor) {
 	Node *func    = node->token->Fcall.ptr;
-	LLVM  srcFunc = func->token->llvm;
+	LLVM  srcFunc = ensure_func_resolved(func);
 	if (CHECK(!srcFunc.func_type, "operator: func_type NULL for '%s'", node->token->name))
 		return NULL;
 	if (CHECK(!srcFunc.elem, "operator: elem NULL for '%s'", node->token->name)) return NULL;
-	gen_asm(left);
-	gen_asm(right);
+	asm_gen(left);
+	asm_gen(right);
 	Token *param        = func->left->children_count >= 2 ? func->left->children[0]->token : NULL;
 	Value  rhs_val      = NULL;
 	bool   param_is_ref = param ? param->is_ref : false;
@@ -1692,7 +1742,7 @@ Value asm_collect_dims(Node *node) {
 	Value total = LLVMConstInt(i32, 1, 0);
 	int   depth = node->token->Array.depth;
 	for (int i = 0; i < depth; i++) {
-		gen_asm(node->children[i]);
+		asm_gen(node->children[i]);
 		ensure_loaded(node->children[i]);
 		Value dv = node->children[i]->token->llvm.elem;
 		resize_array(node->token->llvm.dims, Value, node->token->llvm.dims_size,
@@ -1871,11 +1921,11 @@ void emit_scope_clean(Node *scope_node, int from, Token *skip) {
 
 void asm_fcall_static(Node *node) {
 	Node  *func  = node->token->Fcall.ptr;
-	LLVM   srcFn = func->token->llvm;
+	LLVM   srcFn = ensure_func_resolved(func);
 	int    argc  = node->left->children_count;
 	Value *args  = allocate(argc + 1, sizeof(Value));
 	for (int i = 0; i < argc; i++) {
-		gen_asm(node->left->children[i]);
+		asm_gen(node->left->children[i]);
 		ensure_loaded(node->left->children[i]);
 		args[i] = node->left->children[i]->token->llvm.elem;
 	}
@@ -1892,19 +1942,26 @@ void asm_fcall_marshal_args(Node *node, Value *args, int *count_out, bool is_pro
 	Node  *dec_args    = node->token->Fcall.ptr->left;
 	int    fixed       = is_variadic ? dec_args->children_count : count;
 	for (int i = 0; i < fixed; i++) {
-		gen_asm(argNodes[i]);
+		asm_gen(argNodes[i]);
 		Token *param = (i < dec_args->children_count) ? dec_args->children[i]->token : NULL;
 		args[i]      = marshal_fcall_arg(param, argNodes[i], is_proto);
 	}
 	if (is_variadic) {
-		int variadic_count = count - fixed;
-		args[fixed]        = LLVMConstInt(i32, variadic_count, 0);
-		for (int i = fixed; i < count; i++) {
-			gen_asm(argNodes[i]);
-			ensure_loaded(argNodes[i]);
-			args[i + 1] = argNodes[i]->token->llvm.elem;
+		// Ura-defined variadics: prepend the i32 arg-count so the callee can
+		// walk its varargs. Libc protos (printf/scanf/etc.) use real C ABI —
+		// no count, varargs go straight after the fixed args.
+		bool add_count     = !is_proto;
+		int  variadic_count = count - fixed;
+		int  out_idx       = fixed;
+		if (add_count) {
+			args[out_idx++] = LLVMConstInt(i32, variadic_count, 0);
 		}
-		count++;
+		for (int i = fixed; i < count; i++) {
+			asm_gen(argNodes[i]);
+			ensure_loaded(argNodes[i]);
+			args[out_idx++] = argNodes[i]->token->llvm.elem;
+		}
+		if (add_count) count++;
 	}
 	*count_out = count;
 }
@@ -1919,8 +1976,47 @@ void asm_fcall_unpack_proto_struct(Node *node) {
 	node->token->llvm.elem = LLVMBuildLoad2(builder, st_type, st_ptr, "ret_struct_val");
 }
 
+// Indirect call: callee is a fn-typed local variable (Statement.ptr).
+// Build the LLVM function type from the variable's FN_TYPE signature,
+// load the stored function pointer, and dispatch.
+void asm_fcall_indirect(Node *node) {
+	Token *fn_var = node->token->Statement.ptr;
+	if (!fn_var || !fn_var->llvm.elem) return;
+
+	// Build LLVM function type from the signature.
+	int      n      = fn_var->Fn.params_count;
+	TypeRef  ret_t  = fn_var->Fn.ret ? get_llvm_type(fn_var->Fn.ret) : vd;
+	TypeRef *ptypes = NULL;
+	if (n > 0) {
+		ptypes = allocate(n, sizeof(TypeRef));
+		for (int i = 0; i < n; i++) ptypes[i] = get_llvm_type(fn_var->Fn.params[i]);
+	}
+	TypeRef ftype = LLVMFunctionType(ret_t, ptypes, n, 0);
+
+	// Load fn pointer from the variable's storage.
+	Value fn_ptr = LLVMBuildLoad2(builder, LLVMPointerType(ftype, 0), fn_var->llvm.elem, "fn_ptr");
+
+	// Marshal args.
+	int    arg_count = node->left ? node->left->children_count : 0;
+	Value *args      = NULL;
+	if (arg_count > 0) {
+		args = allocate(arg_count, sizeof(Value));
+		for (int i = 0; i < arg_count; i++) {
+			Node *carg = node->left->children[i];
+			asm_gen(carg);
+			ensure_loaded(carg);
+			args[i] = carg->token->llvm.elem;
+		}
+	}
+
+	const char *name      = (ret_t != vd) ? "indirect_call" : "";
+	node->token->llvm.elem = LLVMBuildCall2(builder, ftype, fn_ptr, args, arg_count, name);
+	free(args);
+	free(ptypes);
+}
+
 void asm_fcall_instance(Node *node) {
-	LLVM   srcFunc  = node->token->Fcall.ptr->token->llvm;
+	LLVM   srcFunc  = ensure_func_resolved(node->token->Fcall.ptr);
 	bool   is_proto = node->token->Fcall.ptr->token->is_proto;
 	int    count    = node->left->children_count;
 	Value *args     = NULL;
@@ -1968,7 +2064,16 @@ void append_string_literal_to_fmt(const char *s, char *fmt, int *fc) {
 
 void append_struct_with_output_op(Token *tok, char *fmt, int *fc, Value *args, int *nargs, Node *sd,
                                   Value out_fn) {
+	// If `tok` came from an FCALL/op result, llvm.elem holds a struct VALUE
+	// rather than a pointer. The output overload expects `ref self`, so we
+	// need an addressable temp whenever the operand is a literal struct value.
 	Value   self_ptr = tok->llvm.elem;
+	if (self_ptr && LLVMGetTypeKind(LLVMTypeOf(self_ptr)) == StructType) {
+		TypeRef val_type = LLVMTypeOf(self_ptr);
+		Value   tmp      = LLVMBuildAlloca(builder, val_type, "out_arg_tmp");
+		LLVMBuildStore(builder, self_ptr, tmp);
+		self_ptr = tmp;
+	}
 	TypeRef fn_type  = LLVMGlobalGetValueType(out_fn);
 	Value   result   = LLVMBuildCall2(builder, fn_type, out_fn, &self_ptr, 1, "output_op");
 	TypeRef ret_type = LLVMGetReturnType(fn_type);
@@ -2076,10 +2181,25 @@ void append_output_arg(Token *tok, char *fmt, int *fc, Value *args, int *nargs) 
 		    LLVMBuildFPExt(builder, read_value(tok), LLVMDoubleTypeInContext(context), "f2d");
 		return;
 	case STRUCT_CALL: {
-		Node *sd       = tok->Struct.ptr;
-		char *out_name = format("%s" OP_PREFIX "output", sd->token->name);
-		Value out_fn   = LLVMGetNamedFunction(module, out_name);
+		Node *sd        = tok->Struct.ptr;
+		char *out_name  = format("%s" OP_PREFIX "output", sd->token->name);
+		Value out_fn    = LLVMGetNamedFunction(module, out_name);
 		free(out_name);
+		// Fallback: prep files emit the output overload as a flat `<Struct>_output`.
+		// The flat fn may not be pre-declared in LLVM (used=0 at IR time since
+		// the formatter is the only caller) — resolve it on demand from scope.
+		if (!out_fn) {
+			char *flat_name = format("%s_output", sd->token->name);
+			out_fn          = LLVMGetNamedFunction(module, flat_name);
+			if (!out_fn) {
+				Node *fn = find_function(flat_name);
+				if (fn) {
+					resolve_func_type(fn);
+					out_fn = LLVMGetNamedFunction(module, flat_name);
+				}
+			}
+			free(flat_name);
+		}
 		if (out_fn) append_struct_with_output_op(tok, fmt, fc, args, nargs, sd, out_fn);
 		else append_struct_default_fmt(tok, fmt, fc, args, nargs, sd);
 		return;
@@ -2107,12 +2227,12 @@ void if_chain_branch(Node *curr, Block if_start, Block end) {
 	else next = end;
 	curr->token->llvm.then = then;
 	LLVMPositionBuilderAtEnd(builder, start);
-	gen_asm(curr->left);
+	asm_gen(curr->left);
 	ensure_loaded(curr->left);
 	LLVMBuildCondBr(builder, curr->left->token->llvm.elem, then, next);
 	LLVMPositionBuilderAtEnd(builder, then);
 	for (int i = 0; i < curr->children_count; i++) {
-		gen_asm(curr->children[i]);
+		asm_gen(curr->children[i]);
 		if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder))) break;
 	}
 	_branch(end);
@@ -2123,7 +2243,7 @@ void if_chain_branch(Node *curr, Block if_start, Block end) {
 void if_chain_else(Node *curr, Block end) {
 	LLVMPositionBuilderAtEnd(builder, curr->token->llvm.bloc);
 	for (int i = 0; i < curr->children_count; i++) {
-		gen_asm(curr->children[i]);
+		asm_gen(curr->children[i]);
 		if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder))) break;
 	}
 	_branch(end);
@@ -2168,7 +2288,7 @@ void asm_return_tuple(Node *node, Node *fdec) {
 	TypeRef tuple_type = fdec->token->llvm.struct_type;
 	Value   agg        = LLVMGetUndef(tuple_type);
 	for (int i = 0; i < node->children_count; i++) {
-		gen_asm(node->children[i]);
+		asm_gen(node->children[i]);
 		ensure_loaded(node->children[i]);
 		agg = LLVMBuildInsertValue(builder, agg, node->children[i]->token->llvm.elem, i, "");
 	}
@@ -2182,7 +2302,7 @@ void asm_return_value(Node *node, Node *fdec) {
 		LLVMBuildRetVoid(builder);
 		return;
 	}
-	gen_asm(node->left);
+	asm_gen(node->left);
 	if (fdec->token->ret_type == STRUCT_CALL && !fdec->token->is_ref) {
 		LLVMBuildRet(builder, read_value(ret_tok));
 		return;
@@ -2203,12 +2323,12 @@ void gen_struct_emit_nested(Node *node) {
 		Token *ft = node->children[i]->token;
 		if (ft->type == STRUCT_CALL && ft->Struct.ptr && ft->Struct.ptr->token->used == 0) {
 			ft->Struct.ptr->token->used++;
-			gen_asm(ft->Struct.ptr);
+			asm_gen(ft->Struct.ptr);
 		}
 		if (includes(ft->type, ARRAY_TYPE, ARRAY, 0) && ft->Array.sub_type == STRUCT_CALL &&
 		    ft->Array.struct_ptr && ft->Array.struct_ptr->token->used == 0) {
 			ft->Array.struct_ptr->token->used++;
-			gen_asm(ft->Array.struct_ptr);
+			asm_gen(ft->Array.struct_ptr);
 		}
 	}
 }
@@ -2255,6 +2375,16 @@ void gen_struct_predeclare_methods(Node *node) {
 
 // ============================================================================
 // PREPROCESSED SOURCE OUTPUT (-prep flag)
+//
+// The -prep dump is meant to be a flat, C-style, re-parseable Ura source.
+// Conventions:
+//   * Struct methods are HOISTED to free functions named `<Struct>_<method>`.
+//   * Operator overloads become `<Struct>_<op>_<RHS>` with a uniform RHS suffix.
+//   * Method calls are flattened: `s.assign(x)` -> `String_assign(ref s, x)`.
+//   * Operator infix is flattened: `a + b` -> `String_add_String(ref a, ref b)`.
+//   * `output(s)` for any struct with operator output is wrapped:
+//       `output(String_output(ref s))`.
+//   * Ref params/locals are written `ref name type`.
 // ============================================================================
 
 static void emit_indent(File f, int depth) {
@@ -2294,6 +2424,103 @@ static const char *op_symbol(Type type) {
 	}
 }
 
+// Lowercase op suffix used in flat operator function names: ADD -> "add", LT -> "lt".
+// Look up an operator overload registered on a struct by op-type and RHS-type-name.
+// Returns the matching function node, or NULL if none.
+static Node *prep_find_struct_op(Node *struct_def, const char *op_kw, const char *rhs_id) {
+	if (!struct_def) return NULL;
+	for (int i = 0; i < struct_def->functions_count; i++) {
+		Node *fn = struct_def->functions[i];
+		if (!fn->token->name) continue;
+		if (op_kw && rhs_id) {
+			char *want = format("%s" OP_PREFIX "%s.%s",
+			    struct_def->token->name, op_kw, rhs_id);
+			if (strcmp(fn->token->name, want) == 0) { free(want); return fn; }
+			free(want);
+		}
+	}
+	return NULL;
+}
+
+// Decode an IR-mangled fdec name into the prep flat name.
+// Inputs like:
+//   "String.assign"                      -> "String_assign"
+//   "String.delete"                      -> "String_delete"
+//   "String.operator.output"             -> "String_output"
+//   "String.operator.ASSIGN.String"      -> "String_assign_String"
+//   "String.operator.ADD.CHARS"          -> "String_add_chars"
+// Caller frees the returned string.
+static char *prep_fn_flat_name(const char *mangled) {
+	if (!mangled) return strdup("?");
+	// Find ".operator." substring.
+	const char *opmark = strstr(mangled, OP_PREFIX);
+	if (!opmark) {
+		// Plain method: "<Struct>.<method>" -> "<Struct>_<method>"
+		char *copy = strdup(mangled);
+		for (char *p = copy; *p; p++) if (*p == '.') *p = '_';
+		return copy;
+	}
+	// Split: <struct> ".operator." <op_kw> [ "." <rhs> ]
+	int   struct_len = (int)(opmark - mangled);
+	char *struct_part = strndup(mangled, struct_len);
+	const char *after = opmark + strlen(OP_PREFIX);
+	const char *dot   = strchr(after, '.');
+	char *op_kw       = dot ? strndup(after, dot - after) : strdup(after);
+	const char *rhs   = dot ? dot + 1 : NULL;
+
+	// Lowercase op_kw to suffix form.
+	// op_kw arrives as the to_string() name (e.g. "ASSIGN", "ADD", "LT", "EQ"...).
+	const char *suffix = NULL;
+	if      (strcmp(op_kw, "ASSIGN")  == 0) suffix = "assign";
+	else if (strcmp(op_kw, "ADD")     == 0) suffix = "add";
+	else if (strcmp(op_kw, "SUB")     == 0) suffix = "sub";
+	else if (strcmp(op_kw, "MUL")     == 0) suffix = "mul";
+	else if (strcmp(op_kw, "DIV")     == 0) suffix = "div";
+	else if (strcmp(op_kw, "MOD")     == 0) suffix = "mod";
+	else if (strcmp(op_kw, "EQ")      == 0) suffix = "eq";
+	else if (strcmp(op_kw, "NEQ")     == 0) suffix = "ne";
+	else if (strcmp(op_kw, "LT")      == 0) suffix = "lt";
+	else if (strcmp(op_kw, "GT")      == 0) suffix = "gt";
+	else if (strcmp(op_kw, "LE")      == 0) suffix = "le";
+	else if (strcmp(op_kw, "GE")      == 0) suffix = "ge";
+	else if (strcmp(op_kw, "BAND")    == 0) suffix = "band";
+	else if (strcmp(op_kw, "BOR")     == 0) suffix = "bor";
+	else if (strcmp(op_kw, "BXOR")    == 0) suffix = "bxor";
+	else if (strcmp(op_kw, "LSHIFT")  == 0) suffix = "lshift";
+	else if (strcmp(op_kw, "RSHIFT")  == 0) suffix = "rshift";
+	else if (strcmp(op_kw, "ADD_ASS") == 0) suffix = "add_assign";
+	else if (strcmp(op_kw, "SUB_ASS") == 0) suffix = "sub_assign";
+	else if (strcmp(op_kw, "MUL_ASS") == 0) suffix = "mul_assign";
+	else if (strcmp(op_kw, "DIV_ASS") == 0) suffix = "div_assign";
+	else if (strcmp(op_kw, "MOD_ASS") == 0) suffix = "mod_assign";
+	else if (strcmp(op_kw, "output")  == 0) suffix = "output";
+	else if (strcmp(op_kw, "delete")  == 0) suffix = "delete";
+	else                                    suffix = op_kw;
+
+	// Lowercase RHS only for primitive type names; STRUCT_CALL stays original case.
+	char *rhs_norm = NULL;
+	if (rhs) {
+		if      (strcmp(rhs, "INT")   == 0) rhs_norm = strdup("int");
+		else if (strcmp(rhs, "LONG")  == 0) rhs_norm = strdup("long");
+		else if (strcmp(rhs, "SHORT") == 0) rhs_norm = strdup("short");
+		else if (strcmp(rhs, "CHAR")  == 0) rhs_norm = strdup("char");
+		else if (strcmp(rhs, "CHARS") == 0) rhs_norm = strdup("chars");
+		else if (strcmp(rhs, "BOOL")  == 0) rhs_norm = strdup("bool");
+		else if (strcmp(rhs, "FLOAT") == 0) rhs_norm = strdup("float");
+		else if (strcmp(rhs, "PTR")   == 0) rhs_norm = strdup("pointer");
+		else                                rhs_norm = strdup(rhs);
+	}
+
+	char *out = rhs_norm
+	    ? format("%s_%s_%s", struct_part, suffix, rhs_norm)
+	    : format("%s_%s", struct_part, suffix);
+
+	free(struct_part);
+	free(op_kw);
+	free(rhs_norm);
+	return out;
+}
+
 static void emit_expr(File f, Node *node);
 
 static void emit_type_name(File f, Token *tok) {
@@ -2313,12 +2540,25 @@ static void emit_type_name(File f, Token *tok) {
 		else fprintf(f, "%s", tok->name ? tok->name : "?");
 		break;
 	case ARRAY_TYPE: case ARRAY: {
-		fprintf(f, "array[");
+		fprintf(f, "array");
+		int depth = tok->Array.depth > 0 ? tok->Array.depth : 1;
+		for (int i = 0; i < depth; i++) fputc('[', f);
 		const char *en = type_to_ura_name(tok->Array.sub_type);
 		if (en) fprintf(f, "%s", en);
 		else if (tok->Array.sub_type == STRUCT_CALL && tok->Array.struct_ptr)
 			fprintf(f, "%s", tok->Array.struct_ptr->token->name);
-		fprintf(f, "]");
+		for (int i = 0; i < depth; i++) fputc(']', f);
+		break;
+	}
+	case FN_TYPE: {
+		fprintf(f, "fn(");
+		for (int i = 0; i < tok->Fn.params_count; i++) {
+			if (i > 0) fprintf(f, ", ");
+			emit_type_name(f, tok->Fn.params[i]);
+		}
+		fprintf(f, ") ");
+		if (tok->Fn.ret) emit_type_name(f, tok->Fn.ret);
+		else fprintf(f, "void");
 		break;
 	}
 	default: fprintf(f, "%s", to_string(t)); break;
@@ -2340,31 +2580,50 @@ static void emit_chars_literal(File f, const char *s) {
 	fprintf(f, "\"");
 }
 
+static void emit_char_literal(File f, int c) {
+	fprintf(f, "'");
+	switch (c) {
+	case '\n': fprintf(f, "\\n"); break;
+	case '\t': fprintf(f, "\\t"); break;
+	case '\r': fprintf(f, "\\r"); break;
+	case '\\': fprintf(f, "\\\\"); break;
+	case '\'': fprintf(f, "\\'"); break;
+	case '\0': fprintf(f, "\\0"); break;
+	default:   fputc(c, f); break;
+	}
+	fprintf(f, "'");
+}
+
 static void emit_expr_call(File f, Node *node, Token *tok) {
+	// Method call: `<recv>.method(args)` -> `<Struct>_method(ref <recv>, args...)`.
+	// In the post-IR AST, the call's last argument is the receiver (STRUCT_CALL),
+	// and tok->name is the IR-mangled `<Struct>.<method>` form.
 	if (node->left && tok->name && strchr(tok->name, '.') && !tok->is_static_call) {
 		int last = node->left->children_count - 1;
 		if (last >= 0 && node->left->children[last]->token->type == STRUCT_CALL) {
+			char *flat = prep_fn_flat_name(tok->name);
+			fprintf(f, "%s(ref ", flat);
 			emit_expr(f, node->left->children[last]);
-			char *dot = strrchr(tok->name, '.');
-			fprintf(f, ".%s(", dot ? dot + 1 : tok->name);
 			for (int i = 0; i < last; i++) {
-				if (i > 0) fprintf(f, ", ");
+				fprintf(f, ", ");
 				emit_expr(f, node->left->children[i]);
 			}
 			fprintf(f, ")");
+			free(flat);
 			return;
 		}
 	}
+	// Static dispatch: `Type::method(args)` -> `Type_method(args)`.
 	if (tok->is_static_call && tok->name && strchr(tok->name, '.')) {
-		char *dotpos     = strchr(tok->name, '.');
-		int   prefix_len = (int)(dotpos - tok->name);
-		fprintf(f, "%.*s::%s(", prefix_len, tok->name, dotpos + 1);
+		char *flat = prep_fn_flat_name(tok->name);
+		fprintf(f, "%s(", flat);
 		if (node->left)
 			for (int i = 0; i < node->left->children_count; i++) {
 				if (i > 0) fprintf(f, ", ");
 				emit_expr(f, node->left->children[i]);
 			}
 		fprintf(f, ")");
+		free(flat);
 		return;
 	}
 	fprintf(f, "%s(", tok->name);
@@ -2376,23 +2635,40 @@ static void emit_expr_call(File f, Node *node, Token *tok) {
 	fprintf(f, ")");
 }
 
+// Always-parenthesize binary-op operand when it's itself a binary op. This
+// preserves precedence after the prep round-trip without maintaining a full
+// precedence table — slightly noisier output, but unambiguous.
+static bool is_binop_token_type(Type t) {
+	return includes(t,
+	    ADD, SUB, MUL, DIV, MOD,
+	    EQUAL, NOT_EQUAL, LESS, GREAT, LESS_EQUAL, GREAT_EQUAL,
+	    AND, OR, BAND, BOR, BXOR, LSHIFT, RSHIFT, 0);
+}
+
+static void emit_binop_operand(File f, Node *child) {
+	bool wrap = child && child->token && is_binop_token_type(child->token->type)
+	    && !child->token->Fcall.ptr;
+	if (wrap) fprintf(f, "(");
+	emit_expr(f, child);
+	if (wrap) fprintf(f, ")");
+}
+
 static void emit_expr_binop(File f, Node *node, Token *tok) {
 	if (tok->Fcall.ptr) {
-		char *oname = tok->Fcall.ptr->token->name;
-		char *dot   = strchr(oname, '.');
-		if (dot) {
-			int plen = (int)(dot - oname);
-			fprintf(f, "%.*s::%s(", plen, oname, dot + 1);
-		} else fprintf(f, "%s(", oname);
-		emit_expr(f, node->right);
-		fprintf(f, ", ");
+		// Operator overload resolved by typechecker.
+		// Emit `<Struct>_<op>_<RHS>(ref lhs, rhs)`.
+		char *flat = prep_fn_flat_name(tok->Fcall.ptr->token->name);
+		fprintf(f, "%s(ref ", flat);
 		emit_expr(f, node->left);
+		fprintf(f, ", ");
+		emit_expr(f, node->right);
 		fprintf(f, ")");
+		free(flat);
 		return;
 	}
-	emit_expr(f, node->left);
+	emit_binop_operand(f, node->left);
 	fprintf(f, " %s ", op_symbol(tok->type));
-	emit_expr(f, node->right);
+	emit_binop_operand(f, node->right);
 }
 
 static void emit_expr(File f, Node *node) {
@@ -2417,11 +2693,11 @@ static void emit_expr(File f, Node *node) {
 		break;
 	case BOOL:
 		if (tok->name) fprintf(f, "%s", tok->name);
-		else fprintf(f, "%s", tok->Bool.value ? "true" : "false");
+		else fprintf(f, "%s", tok->Bool.value ? "True" : "False");
 		break;
 	case CHAR:
 		if (tok->name) fprintf(f, "%s", tok->name);
-		else fprintf(f, "'%c'", tok->Char.value);
+		else emit_char_literal(f, (unsigned char)tok->Char.value);
 		break;
 	case CHARS:
 		if (tok->name) fprintf(f, "%s", tok->name);
@@ -2432,6 +2708,14 @@ static void emit_expr(File f, Node *node) {
 	case STRUCT_CALL: fprintf(f, "%s", tok->name ? tok->name : "?"); break;
 	case ARRAY_TYPE:  if (tok->name) fprintf(f, "%s", tok->name); break;
 	case ID:          fprintf(f, "%s", tok->name ? tok->name : "?"); break;
+	case FN_TYPE:
+		// Fn-typed value: either a local variable (use its name) or a top-level
+		// function reference resolved by ir_id (use the resolved fn's name).
+		if (tok->Fcall.ptr && tok->Fcall.ptr->token->name)
+			fprintf(f, "%s", tok->Fcall.ptr->token->name);
+		else if (tok->name) fprintf(f, "%s", tok->name);
+		else fprintf(f, "?");
+		break;
 	case DOT:
 		emit_expr(f, node->left);
 		fprintf(f, ".");
@@ -2444,15 +2728,26 @@ static void emit_expr(File f, Node *node) {
 		fprintf(f, "]");
 		break;
 	case DOUBLE_DOTS:
+		// `Type::method` becomes `Type_method` in the flat prep form.
 		emit_expr(f, node->left);
-		fprintf(f, "::");
+		fprintf(f, "_");
 		emit_expr(f, node->right);
 		break;
-	case AS:
+	case AS: {
+		// Parenthesize the value if it's any binary op so `(a+b) as long`
+		// doesn't degrade into `a+b as long` (which would cast only `b`).
+		bool needs_parens = node->left && node->left->token && includes(
+		    node->left->token->type,
+		    ADD, SUB, MUL, DIV, MOD,
+		    EQUAL, NOT_EQUAL, LESS, GREAT, LESS_EQUAL, GREAT_EQUAL,
+		    AND, OR, BAND, BOR, BXOR, LSHIFT, RSHIFT, 0);
+		if (needs_parens) fprintf(f, "(");
 		emit_expr(f, node->left);
+		if (needs_parens) fprintf(f, ")");
 		fprintf(f, " as ");
 		emit_type_name(f, node->right->token);
 		break;
+	}
 	case NOT:  fprintf(f, "not "); emit_expr(f, node->left); break;
 	case BNOT: fprintf(f, "~"); emit_expr(f, node->left); break;
 	case TYPEOF:
@@ -2475,16 +2770,26 @@ static void emit_expr(File f, Node *node) {
 	case AND:       case OR: case BAND: case BOR: case BXOR: case LSHIFT:
 	case RSHIFT:    emit_expr_binop(f, node, tok); break;
 	case FCALL:     emit_expr_call(f, node, tok); break;
-	case HEAP:      case STACK:
-		fprintf(f, "%s[", tok->type == HEAP ? "heap" : "stack");
-		emit_type_name(f, tok);
-		fprintf(f, "](");
+	case HEAP:      case STACK: {
+		// `stack[T](dims)` with `Array.depth` opening/closing brackets — preserves
+		// the multi-dimensional form: depth=2 -> `stack[[T]](r, c)`.
+		fprintf(f, "%s", tok->type == HEAP ? "heap" : "stack");
+		int depth = tok->Array.depth > 0 ? tok->Array.depth : 1;
+		for (int i = 0; i < depth; i++) fputc('[', f);
+		const char *en = type_to_ura_name(tok->Array.sub_type);
+		if (en) fprintf(f, "%s", en);
+		else if (tok->Array.sub_type == STRUCT_CALL && tok->Array.struct_ptr)
+			fprintf(f, "%s", tok->Array.struct_ptr->token->name);
+		else fprintf(f, "?");
+		for (int i = 0; i < depth; i++) fputc(']', f);
+		fprintf(f, "(");
 		for (int i = 0; i < node->children_count; i++) {
 			if (i > 0) fprintf(f, ", ");
 			emit_expr(f, node->children[i]);
 		}
 		fprintf(f, ")");
 		break;
+	}
 	case ARRAY_LIT:
 		fprintf(f, "[");
 		for (int i = 0; i < node->children_count; i++) {
@@ -2503,43 +2808,88 @@ static bool prep_fdec_has_self(Node *node) {
 	return last->type == STRUCT_CALL && last->name && strcmp(last->name, "self") == 0;
 }
 
+// Print a parameter or local declaration name + type, using `ref name type` form
+// when is_ref is set.
+static void emit_param_decl(File f, Token *p) {
+	if (p->is_ref) fprintf(f, "ref %s ", p->name);
+	else fprintf(f, "%s ", p->name);
+	emit_type_name(f, p);
+}
+
+// Emit destructor calls for every struct-typed local in `scope_node` that has a
+// destructor defined. Skip the variable in `skip` (used when returning a
+// struct so the caller owns the result). Mirrors emit_scope_clean in the asm
+// path, but emitted as visible Ura source.
+static void emit_struct_destructors(File f, Node *scope_node, int depth, Token *skip) {
+	for (int i = 0; i < scope_node->variables_count; i++) {
+		Token *v = scope_node->variables[i];
+		if (!v || v == skip)                                     continue;
+		if (v->is_ref || v->is_param)                            continue;
+		if (v->type != STRUCT_CALL || !v->Struct.ptr)            continue;
+		if (!v->Struct.ptr->token->has_clean)                    continue;
+		emit_indent(f, depth);
+		fprintf(f, "%s_delete(ref %s)\n", v->Struct.ptr->token->name, v->name);
+	}
+}
+
 static void emit_node(File f, Node *node, int depth);
 
-static void emit_fdec(File f, Node *node, int depth) {
-	Token      *tok      = node->token;
-	bool        has_self = prep_fdec_has_self(node);
-	const char *fn_name  = tok->name;
-	if (has_self) {
-		char *dot = strrchr(tok->name, '.');
-		if (dot) fn_name = dot + 1;
-	}
-	bool is_operator = false;
-	if (has_self && fn_name) {
-		if (strcmp(fn_name, "delete") == 0 || strcmp(fn_name, "output") == 0 ||
-		    strncmp(fn_name, "operator", 8) == 0)
-			is_operator = true;
-	}
+// Emit one fdec.
+//   `flat_name`: when non-NULL, emit this flat name instead of decoding tok->name
+//                (used when the caller is hoisting a struct method to top level).
+//   `struct_owner`: when non-NULL, this fdec was a struct method. If it had self,
+//                   inject `ref self <Struct>` as the first parameter.
+static void emit_fdec(File f, Node *node, int depth,
+                      const char *flat_name, Node *struct_owner) {
+	Token *tok      = node->token;
+	bool   has_self = prep_fdec_has_self(node);
 	emit_indent(f, depth);
 	if (tok->is_proto) fprintf(f, "proto ");
-	if (is_operator)   fprintf(f, "operator %s(", fn_name);
-	else {
-		if (tok->is_pub) fprintf(f, "pub ");
-		fprintf(f, "fn %s(", fn_name);
+
+	const char *name_to_emit;
+	char       *owned = NULL;
+	if (flat_name) {
+		name_to_emit = flat_name;
+	} else if (struct_owner) {
+		owned        = prep_fn_flat_name(tok->name);
+		name_to_emit = owned;
+	} else if (tok->name && strchr(tok->name, '.')) {
+		owned        = prep_fn_flat_name(tok->name);
+		name_to_emit = owned;
+	} else {
+		name_to_emit = tok->name ? tok->name : "?";
+	}
+	fprintf(f, "fn %s(", name_to_emit);
+
+	int  printed = 0;
+	bool need_self_inject = struct_owner && has_self;
+	if (need_self_inject) {
+		fprintf(f, "ref self %s", struct_owner->token->name);
+		printed = 1;
 	}
 	if (node->left) {
-		int end     = node->left->children_count - (has_self ? 1 : 0);
-		int printed = 0;
+		int end = node->left->children_count - (has_self ? 1 : 0);
 		for (int i = 0; i < end; i++) {
 			Token *p = node->left->children[i]->token;
 			if (printed > 0) fprintf(f, ", ");
-			fprintf(f, "%s ", p->name);
-			emit_type_name(f, p);
-			if (p->is_ref) fprintf(f, " ref");
+			emit_param_decl(f, p);
 			printed++;
 		}
 	}
+	if (tok->is_variadic) {
+		if (printed > 0) fprintf(f, ", ");
+		fprintf(f, "...");
+	}
 	fprintf(f, ") ");
-	if (tok->ret_type == STRUCT_CALL && tok->Struct.ptr)
+	if (tok->is_ref) fprintf(f, "ref ");
+	if (tok->ret_type == TUPLE) {
+		fprintf(f, "(");
+		for (int i = 0; i < tok->Tuple.types_count; i++) {
+			if (i > 0) fprintf(f, ", ");
+			emit_type_name(f, tok->Tuple.types[i]);
+		}
+		fprintf(f, ")");
+	} else if (tok->ret_type == STRUCT_CALL && tok->Struct.ptr)
 		fprintf(f, "%s", tok->Struct.ptr->token->name);
 	else if (tok->ret_type) {
 		const char *tn = type_to_ura_name(tok->ret_type);
@@ -2547,50 +2897,156 @@ static void emit_fdec(File f, Node *node, int depth) {
 	}
 	if (tok->is_proto) {
 		fprintf(f, "\n");
+		free(owned);
 		return;
 	}
 	fprintf(f, ":\n");
-	for (int i = 0; i < node->children_count; i++)
-		emit_node(f, node->children[i], depth + 1);
+	// Emit body. Inject struct-destructor calls right before any `return`
+	// statement we encounter, and once more at the very end if the function
+	// fell through (void / implicit return).
+	bool ends_with_return = false;
+	for (int i = 0; i < node->children_count; i++) {
+		Node *child = node->children[i];
+		if (child && child->token && child->token->type == RETURN) {
+			// Determine which struct local (if any) is being returned — skip
+			// its destructor since ownership transfers to the caller.
+			Token *ret_skip = NULL;
+			if (child->left && child->left->token
+			    && child->left->token->type == STRUCT_CALL)
+				ret_skip = child->left->token;
+			emit_struct_destructors(f, node, depth + 1, ret_skip);
+			ends_with_return = (i == node->children_count - 1);
+		}
+		emit_node(f, child, depth + 1);
+	}
+	if (!ends_with_return)
+		emit_struct_destructors(f, node, depth + 1, NULL);
 	fprintf(f, "\n");
+	free(owned);
 }
 
+// Emit only struct fields. Methods are hoisted; the caller emits them after.
 static void emit_struct_def(File f, Node *node, int depth) {
 	emit_indent(f, depth);
 	fprintf(f, "struct %s:\n", node->token->name);
 	for (int i = 0; i < node->children_count; i++) {
 		Token *field = node->children[i]->token;
 		emit_indent(f, depth + 1);
-		fprintf(f, "%s ", field->name);
-		emit_type_name(f, field);
+		emit_param_decl(f, field);
 		fprintf(f, "\n");
 	}
 	fprintf(f, "\n");
-	for (int i = 0; i < node->functions_count; i++)
-		emit_node(f, node->functions[i], depth + 1);
-	fprintf(f, "\n");
+}
+
+// Emit hoisted methods (if any) for a struct as top-level free functions.
+static void emit_struct_methods(File f, Node *struct_def) {
+	for (int i = 0; i < struct_def->functions_count; i++)
+		emit_fdec(f, struct_def->functions[i], 0, NULL, struct_def);
 }
 
 static void emit_assign_node(File f, Node *node, int depth) {
-	Token *tok = node->token;
+	Token *tok  = node->token;
+	Node  *left = node->left;
 	emit_indent(f, depth);
-	if (tok->Fcall.ptr) {
-		char *oname = tok->Fcall.ptr->token->name;
-		char *dot   = strchr(oname, '.');
-		if (dot) {
-			int plen = (int)(dot - oname);
-			fprintf(f, "%.*s::%s(", plen, oname, dot + 1);
-		} else fprintf(f, "%s(", oname);
+
+	// LHS is a declaration: emit `name type [= rhs]`.
+	// `tok->is_dec` is stamped at parse time when this ASSIGN's LHS was a fresh
+	// declaration (not a re-assignment). is_dec on the LHS token alone is
+	// unreliable post-IR because ir_id re-points re-uses to the decl token.
+	if (tok->type == ASSIGN && tok->is_dec && left && left->token) {
+		Token *lt = left->token;
+		if (lt->is_ref) fprintf(f, "ref %s ", lt->name);
+		else fprintf(f, "%s ", lt->name);
+		emit_type_name(f, lt);
+		fprintf(f, " = ");
 		emit_expr(f, node->right);
-		fprintf(f, ", ");
-		emit_expr(f, node->left);
-		fprintf(f, ")\n");
+		fprintf(f, "\n");
 		return;
 	}
+
+	// Operator-overloaded assign: always emit as a flat call. The op's RHS
+	// param is ref-typed, and the parser rejects `ref <fcall_result>`. When
+	// the RHS isn't a "simple" named lvalue (literal, ID, field, index), we
+	// hoist it into a fresh `__prep_tmpN <type>` local first and pass the
+	// temp by ref.
+	Token *rt = node->right ? node->right->token : NULL;
+	bool rhs_simple = rt && (
+	    rt->name != NULL
+	    || includes(rt->type,
+	        INT, LONG, SHORT, FLOAT, BOOL, CHAR, CHARS, NULLABLE, DOT, ACCESS, 0));
+	if (tok->Fcall.ptr && rt && rt->type == FCALL) rhs_simple = false;
+	if (tok->Fcall.ptr && includes(rt ? rt->type : 0,
+	    ADD, SUB, MUL, DIV, MOD,
+	    EQUAL, NOT_EQUAL, LESS, GREAT, LESS_EQUAL, GREAT_EQUAL,
+	    AND, OR, BAND, BOR, BXOR, LSHIFT, RSHIFT, AS, 0))
+		rhs_simple = false;
+
+	if (tok->Fcall.ptr) {
+		char *flat = prep_fn_flat_name(tok->Fcall.ptr->token->name);
+		if (rhs_simple) {
+			fprintf(f, "%s(ref ", flat);
+			emit_expr(f, node->left);
+			fprintf(f, ", ");
+			emit_expr(f, node->right);
+			fprintf(f, ")\n");
+		} else {
+			// Resolve the RHS function's second-parameter type for the temp
+			// decl. tok->Fcall.ptr->left->children = [rhs_param, self].
+			Node  *op_fn   = tok->Fcall.ptr;
+			Token *rhs_param = NULL;
+			if (op_fn->left && op_fn->left->children_count >= 1)
+				rhs_param = op_fn->left->children[0]->token;
+			static int prep_tmp_id = 0;
+			char *tmp_name = format("__prep_tmp%d", prep_tmp_id++);
+			fprintf(f, "%s ", tmp_name);
+			if (rhs_param) emit_type_name(f, rhs_param);
+			else fprintf(f, "chars");
+			fprintf(f, " = ");
+			emit_expr(f, node->right);
+			fprintf(f, "\n");
+			emit_indent(f, depth);
+			fprintf(f, "%s(ref ", flat);
+			emit_expr(f, node->left);
+			fprintf(f, ", %s)\n", tmp_name);
+			free(tmp_name);
+		}
+		free(flat);
+		return;
+	}
+
+	// Plain assign / compound-assign on existing variables.
 	emit_expr(f, node->left);
 	fprintf(f, " %s ", op_symbol(tok->type));
 	emit_expr(f, node->right);
 	fprintf(f, "\n");
+}
+
+static void emit_output_arg(File f, Node *arg) {
+	Token *t = arg->token;
+	if (t->type == STRUCT_CALL && t->Struct.ptr) {
+		Node *out_fn = prep_find_struct_op(t->Struct.ptr, "output", NULL);
+		if (!out_fn) {
+			// Try generic search by name suffix.
+			char *want = format("%s" OP_PREFIX "output", t->Struct.ptr->token->name);
+			for (int i = 0; i < t->Struct.ptr->functions_count; i++) {
+				Node *fn = t->Struct.ptr->functions[i];
+				if (fn->token->name && strcmp(fn->token->name, want) == 0) {
+					out_fn = fn;
+					break;
+				}
+			}
+			free(want);
+		}
+		if (out_fn) {
+			char *flat = prep_fn_flat_name(out_fn->token->name);
+			fprintf(f, "%s(ref ", flat);
+			emit_expr(f, arg);
+			fprintf(f, ")");
+			free(flat);
+			return;
+		}
+	}
+	emit_expr(f, arg);
 }
 
 static void emit_node(File f, Node *node, int depth) {
@@ -2598,15 +3054,18 @@ static void emit_node(File f, Node *node, int depth) {
 	Token *tok = node->token;
 	switch (tok->type) {
 	case PROTO:
-		if (node->left && node->left->token->type == FDEC) emit_node(f, node->left, depth);
+		if (node->left && node->left->token->type == FDEC)
+			emit_node(f, node->left, depth);
 		break;
-	case FDEC:       emit_fdec(f, node, depth); break;
-	case STRUCT_DEF: emit_struct_def(f, node, depth); break;
+	case FDEC:       emit_fdec(f, node, depth, NULL, NULL); break;
+	case STRUCT_DEF:
+		emit_struct_def(f, node, depth);
+		emit_struct_methods(f, node);
+		break;
 	case STRUCT_CALL:
 		if (tok->is_dec) {
 			emit_indent(f, depth);
-			fprintf(f, "%s %s", tok->name, tok->Struct.ptr->token->name);
-			if (tok->is_ref) fprintf(f, " ref");
+			emit_param_decl(f, tok);
 			fprintf(f, "\n");
 		}
 		break;
@@ -2617,16 +3076,37 @@ static void emit_node(File f, Node *node, int depth) {
 	case CHARS:      case ARRAY_TYPE: case PTR:
 		if (tok->is_dec) {
 			emit_indent(f, depth);
-			fprintf(f, "%s ", tok->name);
-			emit_type_name(f, tok);
-			if (tok->is_ref) fprintf(f, " ref");
+			emit_param_decl(f, tok);
 			fprintf(f, "\n");
 		}
 		break;
 	case RETURN:
 		emit_indent(f, depth);
-		if (node->left && node->left->token && node->left->token->type == VOID) break;
+		// Tuple return: children hold each returned value.
+		if (node->children_count > 0) {
+			fprintf(f, "return ");
+			for (int i = 0; i < node->children_count; i++) {
+				if (i > 0) fprintf(f, ", ");
+				emit_expr(f, node->children[i]);
+			}
+			fprintf(f, "\n");
+			break;
+		}
+		if (node->left && node->left->token && node->left->token->type == VOID) {
+			fprintf(f, "return\n");
+			break;
+		}
 		fprintf(f, "return ");
+		emit_expr(f, node->left);
+		fprintf(f, "\n");
+		break;
+	case TUPLE_UNPACK:
+		emit_indent(f, depth);
+		for (int i = 0; i < node->children_count; i++) {
+			if (i > 0) fprintf(f, ", ");
+			emit_param_decl(f, node->children[i]->token);
+		}
+		fprintf(f, " = ");
 		emit_expr(f, node->left);
 		fprintf(f, "\n");
 		break;
@@ -2653,8 +3133,47 @@ static void emit_node(File f, Node *node, int depth) {
 		for (int i = 0; i < node->children_count; i++)
 			emit_node(f, node->children[i], depth + 1);
 		break;
+	case FOR: {
+		// children[0..2]: from, to, step ; children[3..]: body
+		emit_indent(f, depth);
+		fprintf(f, "for %s from ", node->left->token->name);
+		if (node->children_count > 0) emit_expr(f, node->children[0]);
+		fprintf(f, " to ");
+		if (node->children_count > 1) emit_expr(f, node->children[1]);
+		bool default_step = node->children_count > 2
+		    && node->children[2]->token->type == INT
+		    && node->children[2]->token->name == NULL
+		    && node->children[2]->token->Int.value == 1;
+		if (node->children_count > 2 && !default_step) {
+			fprintf(f, " step ");
+			emit_expr(f, node->children[2]);
+		}
+		fprintf(f, ":\n");
+		for (int i = 3; i < node->children_count; i++)
+			emit_node(f, node->children[i], depth + 1);
+		break;
+	}
 	case BREAK:    emit_indent(f, depth); fprintf(f, "break\n"); break;
 	case CONTINUE: emit_indent(f, depth); fprintf(f, "continue\n"); break;
+	case ENUM_DEF:
+		emit_indent(f, depth);
+		fprintf(f, "enum %s:\n", tok->name);
+		emit_indent(f, depth + 1);
+		for (int i = 0; i < node->children_count; i++) {
+			if (i > 0) fprintf(f, ", ");
+			fprintf(f, "%s", node->children[i]->token->name);
+		}
+		fprintf(f, "\n");
+		break;
+	case MODULE:
+		// Modules dissolve into flat top-level functions named `<mod>_<fn>`,
+		// matching the call-site mangling in emit_expr_call. The `mod`
+		// keyword itself disappears in the prep.
+		for (int i = 0; i < node->children_count; i++)
+			emit_node(f, node->children[i], depth);
+		for (int i = 0; i < node->functions_count; i++)
+			emit_fdec(f, node->functions[i], depth, NULL, NULL);
+		break;
 	case FCALL:
 		emit_indent(f, depth);
 		emit_expr(f, node);
@@ -2666,7 +3185,7 @@ static void emit_node(File f, Node *node, int depth) {
 		if (node->left) {
 			for (int i = 0; i < node->left->children_count; i++) {
 				if (i > 0) fprintf(f, ", ");
-				emit_expr(f, node->left->children[i]);
+				emit_output_arg(f, node->left->children[i]);
 			}
 		}
 		fprintf(f, ")\n");

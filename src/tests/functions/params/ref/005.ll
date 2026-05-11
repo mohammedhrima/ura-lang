@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/functions/params/ref/005.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/functions/params/ref/005.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/functions/params/ref/005.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/functions/params/ref/005.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 @STR0 = private unnamed_addr constant [5 x i8] c"HP: \00", align 1
@@ -11,11 +11,9 @@ entry:
   %hp1 = alloca i32, align 4, !dbg !7
   store i32 %hp, i32* %hp1, align 4, !dbg !7
   %hp2 = load i32, i32* %hp1, align 4, !dbg !7
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @output_fmt, i32 0, i32 0), i32 1, i32 %hp2), !dbg !7
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @output_fmt, i32 0, i32 0), i32 %hp2), !dbg !7
   ret void, !dbg !7
 }
-
-declare i32 @printf(i8*, i32, ...)
 
 define i32 @main() !dbg !8 {
 entry:
@@ -30,13 +28,15 @@ entry:
   ret i32 0, !dbg !10
 }
 
+declare i32 @printf(i8*, ...)
+
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
 
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "005.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/functions/params/ref")
+!3 = !DIFile(filename: "005.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/functions/params/ref")
 !4 = distinct !DISubprogram(name: "show_hp", linkageName: "show_hp", scope: null, file: !3, line: 3, type: !5, scopeLine: 3, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

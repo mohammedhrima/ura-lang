@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/operators/logical/001.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/operators/logical/001.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/operators/logical/001.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/operators/logical/001.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 @STR0 = private unnamed_addr constant [14 x i8] c"can_proceed: \00", align 1
@@ -74,7 +74,7 @@ entry:
   store i1 %AND4, i1* %can_proceed, align 1, !dbg !12
   %can_proceed5 = load i1, i1* %can_proceed, align 1, !dbg !12
   %bool_str = select i1 %can_proceed5, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str, i32 0, i32 0), !dbg !12
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt, i32 0, i32 0), i32 1, i8* %bool_str), !dbg !12
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt, i32 0, i32 0), i8* %bool_str), !dbg !12
   store i1 false, i1* %escape, align 1, !dbg !11
   %hp6 = load i32, i32* %hp, align 4, !dbg !11
   %LT = icmp slt i32 %hp6, 10, !dbg !11
@@ -84,14 +84,14 @@ entry:
   store i1 %OR, i1* %escape, align 1, !dbg !11
   %escape8 = load i1, i1* %escape, align 1, !dbg !11
   %bool_str9 = select i1 %escape8, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str.1, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str.2, i32 0, i32 0), !dbg !11
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt.3, i32 0, i32 0), i32 1, i8* %bool_str9), !dbg !11
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt.3, i32 0, i32 0), i8* %bool_str9), !dbg !11
   store i1 false, i1* %blocked, align 1, !dbg !11
   %can_proceed10 = load i1, i1* %can_proceed, align 1, !dbg !11
   %NOT11 = xor i1 %can_proceed10, true, !dbg !11
   store i1 %NOT11, i1* %blocked, align 1, !dbg !11
   %blocked12 = load i1, i1* %blocked, align 1, !dbg !11
   %bool_str13 = select i1 %blocked12, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str.4, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str.5, i32 0, i32 0), !dbg !11
-  %2 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt.6, i32 0, i32 0), i32 1, i8* %bool_str13), !dbg !11
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt.6, i32 0, i32 0), i8* %bool_str13), !dbg !11
   br label %if.start, !dbg !11
 
 if.start:                                         ; preds = %entry
@@ -106,7 +106,7 @@ if.end:                                           ; preds = %if.then, %if.start
   br label %if.start19, !dbg !13
 
 if.then:                                          ; preds = %if.start
-  %3 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @output_fmt.7, i32 0, i32 0), i32 0), !dbg !13
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @output_fmt.7, i32 0, i32 0)), !dbg !13
   br label %if.end, !dbg !13
 
 if.start19:                                       ; preds = %if.end
@@ -126,19 +126,19 @@ if.end20:                                         ; preds = %if.else, %if.then21
   %NOT30 = xor i1 %alive29, true, !dbg !14
   %NOT31 = xor i1 %NOT30, true, !dbg !14
   %bool_str32 = select i1 %NOT31, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str.10, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str.11, i32 0, i32 0), !dbg !14
-  %4 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @output_fmt.12, i32 0, i32 0), i32 1, i8* %bool_str32), !dbg !14
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @output_fmt.12, i32 0, i32 0), i8* %bool_str32), !dbg !14
   ret i32 0, !dbg !14
 
 if.then21:                                        ; preds = %if.start19
-  %5 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @output_fmt.8, i32 0, i32 0), i32 0), !dbg !13
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @output_fmt.8, i32 0, i32 0)), !dbg !13
   br label %if.end20, !dbg !13
 
 if.else:                                          ; preds = %if.start19
-  %6 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @output_fmt.9, i32 0, i32 0), i32 0), !dbg !13
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @output_fmt.9, i32 0, i32 0)), !dbg !13
   br label %if.end20, !dbg !13
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -146,7 +146,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "001.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/operators/logical")
+!3 = !DIFile(filename: "001.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/operators/logical")
 !4 = distinct !DISubprogram(name: "is_alive", linkageName: "is_alive", scope: null, file: !3, line: 3, type: !5, scopeLine: 3, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

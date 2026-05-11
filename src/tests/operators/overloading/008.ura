@@ -4,11 +4,11 @@ struct Vec2:
     x int
     y int
 
-    operator = (v Vec2 ref) void:
+    operator = (ref v Vec2) void:
         self.x = v.x
         self.y = v.y
 
-    operator * (v Vec2 ref) int:
+    operator * (ref v Vec2) int:
         return self.x * v.x + self.y * v.y
 
 main():
