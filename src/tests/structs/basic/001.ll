@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/structs/basic/001.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/structs/basic/001.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/structs/basic/001.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/structs/basic/001.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 %struct.Player = type { i8*, i32, i32 }
@@ -47,18 +47,18 @@ entry:
   %DOT = load i8*, i8** %name3, align 8, !dbg !7
   %name4 = getelementptr %struct.Enemy, %struct.Enemy* %orc, i32 0, i32 0, !dbg !7
   %DOT5 = load i8*, i8** %name4, align 8, !dbg !7
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @output_fmt, i32 0, i32 0), i32 2, i8* %DOT, i8* %DOT5), !dbg !7
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @output_fmt, i32 0, i32 0), i8* %DOT, i8* %DOT5), !dbg !7
   %hp6 = getelementptr %struct.Player, %struct.Player* %hero, i32 0, i32 1, !dbg !7
   %DOT7 = load i32, i32* %hp6, align 4, !dbg !7
   %hp8 = getelementptr %struct.Enemy, %struct.Enemy* %orc, i32 0, i32 1, !dbg !7
   %DOT9 = load i32, i32* %hp8, align 4, !dbg !7
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([26 x i8], [26 x i8]* @output_fmt.1, i32 0, i32 0), i32 2, i32 %DOT7, i32 %DOT9), !dbg !7
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([26 x i8], [26 x i8]* @output_fmt.1, i32 0, i32 0), i32 %DOT7, i32 %DOT9), !dbg !7
   call void @Player.delete(%struct.Player* %hero), !dbg !7
   call void @Enemy.delete(%struct.Enemy* %orc), !dbg !7
   ret i32 0, !dbg !7
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -66,7 +66,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "001.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/structs/basic")
+!3 = !DIFile(filename: "001.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/structs/basic")
 !4 = distinct !DISubprogram(name: "main", linkageName: "main", scope: null, file: !3, line: 13, type: !5, scopeLine: 13, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

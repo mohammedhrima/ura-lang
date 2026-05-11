@@ -4,7 +4,7 @@ struct Player:
     name chars
     hp   int
 
-fn buff_player(p Player ref) void:
+fn buff_player(ref p Player) void:
     p.hp += 20
 
 main():

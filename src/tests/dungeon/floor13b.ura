@@ -21,10 +21,10 @@ struct Label:
     operator = (s chars) void:
         self.set(s)
 
-    operator = (v Label ref) void:
+    operator = (ref v Label) void:
         self.set(v.value)
 
-    operator + (v Label ref) Label:
+    operator + (ref v Label) Label:
         res Label = Label::new()
         strcpy(res.value, self.value)
         strcat(res.value, v.value)

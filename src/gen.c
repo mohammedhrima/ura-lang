@@ -5,8 +5,37 @@
 // ============================================================================
 
 void ir_id(Node *node) {
+	// Variable in any active scope (preferred — masks fn name in inner scope).
 	Token *find = get_variable(node->token->name);
-	if (find) node->token = find;
+	if (find) {
+		node->token = find;
+		return;
+	}
+	// Fall back: bare ID resolves to a top-level function → function pointer value.
+	Node *func = find_function(node->token->name);
+	if (func) {
+		Token *t      = node->token;
+		t->type       = FN_TYPE;
+		t->ret_type   = FN_TYPE;
+		t->Fcall.ptr  = func;
+		// Mark the referenced function as used so asm_fdec emits it.
+		func->token->used++;
+		// Build the Fn signature on this token from the function's declaration.
+		Node *params  = func->left;
+		if (params) {
+			for (int i = 0; i < params->children_count; i++) {
+				Token *p = params->children[i]->token;
+				resize_array(t->Fn.params, Token *, t->Fn.params_size, t->Fn.params_count);
+				t->Fn.params[t->Fn.params_count++] = p;
+			}
+		}
+		Token *ret_t = new_token(func->token->ret_type, 0);
+		if (func->token->ret_type == STRUCT_CALL)
+			ret_t->Struct.ptr = func->token->Struct.ptr;
+		t->Fn.ret = ret_t;
+		return;
+	}
+	parse_error(node->token, "'%s' not found", node->token->name);
 }
 
 void ir_struct_call(Node *node) {
@@ -32,9 +61,9 @@ void ir_primitive(Node *node) {
 }
 
 void ir_assign(Node *node) {
-	gen_ir(node->left);
+	ir_gen(node->left);
 	if (found_error) return;
-	gen_ir(node->right);
+	ir_gen(node->right);
 	if (found_error) return;
 	Type lt = node->left->token->ret_type ? node->left->token->ret_type : node->left->token->type;
 	if (lt == STRUCT_CALL) {
@@ -56,8 +85,8 @@ void ir_assign(Node *node) {
 }
 
 void ir_compound_assign(Node *node) {
-	gen_ir(node->left);
-	gen_ir(node->right);
+	ir_gen(node->left);
+	ir_gen(node->right);
 	node->token->ret_type = node->left->token->ret_type;
 	node->token->used++;
 	node->left->token->used++;
@@ -74,7 +103,7 @@ void ir_compound_assign(Node *node) {
 }
 
 void ir_unary_op(Node *node) {
-	gen_ir(node->left);
+	ir_gen(node->left);
 	node->token->used++;
 	node->left->token->used++;
 	if (node->token->type == NOT) node->token->ret_type = BOOL;
@@ -84,8 +113,8 @@ void ir_unary_op(Node *node) {
 }
 
 void ir_binary_op(Node *node) {
-	gen_ir(node->left);
-	gen_ir(node->right);
+	ir_gen(node->left);
+	ir_gen(node->right);
 	CHECK(!node->left || !node->left->token, "left is NULL");
 	CHECK(!node->right || !node->right->token, "right is NULL");
 	if (includes(node->token->type, ADD, SUB, MUL, DIV, MOD, 0))
@@ -114,7 +143,7 @@ void ir_binary_op(Node *node) {
 }
 
 void ir_as(Node *node) {
-	gen_ir(node->left);
+	ir_gen(node->left);
 	if (found_error) return;
 	Type src = node->left->token->ret_type ? node->left->token->ret_type : node->left->token->type;
 	Type dst = node->right->token->type;
@@ -126,14 +155,15 @@ void ir_as(Node *node) {
 }
 
 void ir_ref(Node *node) {
-	gen_ir(node->left);
+	ir_gen(node->left);
 	node->token->is_ref = true;
 	Type lt = node->left->token->ret_type ? node->left->token->ret_type : node->left->token->type;
 	node->token->ret_type = lt;
+	if (lt == STRUCT_CALL) node->token->Struct.ptr = node->left->token->Struct.ptr;
 }
 
 void ir_dot(Node *node) {
-	gen_ir(node->left);
+	ir_gen(node->left);
 	if (found_error) return;
 	node->left->token->used++;
 	if (node->left->token->Struct.ptr) node->left->token->Struct.ptr->token->used++;
@@ -184,8 +214,8 @@ void ir_dot(Node *node) {
 }
 
 void ir_access(Node *node) {
-	gen_ir(node->left);
-	gen_ir(node->right);
+	ir_gen(node->left);
+	ir_gen(node->right);
 	if (found_error) return;
 	node->right->token->used++;
 	Type type  = node->left->token->ret_type ? node->left->token->ret_type : node->left->token->type;
@@ -222,13 +252,37 @@ void ir_fcall(Node *node) {
 	if (try_module_call(node))                          return;
 	if (node->token->is_static_call)                    ir_static_call(node);
 	else if (node->token->is_method_call && node->left) ir_method_call(node);
-	else ir_regular_call(node);
+	else {
+		Token *var = get_variable(node->token->name);
+		if (var && (var->ret_type == FN_TYPE || var->type == FN_TYPE)) {
+			ir_indirect_call(node, var);
+			return;
+		}
+		ir_regular_call(node);
+	}
 }
 
 void ir_output(Node *node) {
 	for (int i = 0; i < node->left->children_count; i++) {
-		gen_ir(node->left->children[i]);
-		node->left->children[i]->token->used++;
+		ir_gen(node->left->children[i]);
+		Token *arg = node->left->children[i]->token;
+		arg->used++;
+		// For struct args, the printf formatter dispatches to a `<Struct>_output`
+		// flat function (or `<Struct>.operator.output`). Mark it used so the
+		// codegen actually emits the body.
+		Type t = arg->ret_type ? arg->ret_type : arg->type;
+		if (t == STRUCT_CALL && arg->Struct.ptr) {
+			const char *sname = arg->Struct.ptr->token->name;
+			char *qualified   = format("%s" OP_PREFIX "output", sname);
+			Node *fn          = find_function(qualified);
+			free(qualified);
+			if (!fn) {
+				char *flat = format("%s_output", sname);
+				fn         = find_function(flat);
+				free(flat);
+			}
+			if (fn) fn->token->used++;
+		}
 	}
 	node->token->ret_type = VOID;
 }
@@ -241,7 +295,14 @@ void ir_typeof_sizeof(Node *node) {
 			node->left->token->Struct.ptr = st;
 		}
 	}
-	gen_ir(node->left);
+	// Bare type-name forms like `sizeof(chars)` come from the prep emitter.
+	// Primitive type keywords tokenize with is_dec=1, which would cause
+	// ir_primitive to register them as variables — but we just want the type.
+	if (node->left && node->left->token && node->left->token->is_dec
+	    && !node->left->token->name
+	    && includes(node->left->token->type, DATA_TYPES, 0))
+		node->left->token->is_dec = false;
+	ir_gen(node->left);
 	Token *type_tok = node->left->token;
 	Type   type     = type_tok->type ? type_tok->type : type_tok->ret_type;
 	if (node->token->type == TYPEOF) {
@@ -256,7 +317,7 @@ void ir_typeof_sizeof(Node *node) {
 
 void ir_stack_heap(Node *node) {
 	for (int i = 0; i < node->children_count; i++) {
-		gen_ir(node->children[i]);
+		ir_gen(node->children[i]);
 		node->children[i]->token->used++;
 	}
 	node->token->used++;
@@ -270,7 +331,7 @@ void ir_tuple_unpack(Node *node) {
 			new_variable(lhs->token);
 		}
 	}
-	gen_ir(node->left);
+	ir_gen(node->left);
 	if (found_error) return;
 
 	Token *rhs  = node->left->token;
@@ -301,12 +362,12 @@ void ir_tuple_unpack(Node *node) {
 void ir_return(Node *node) {
 	if (node->children_count > 0) {
 		for (int i = 0; i < node->children_count; i++)
-			gen_ir(node->children[i]);
+			ir_gen(node->children[i]);
 		node->token->ret_type = TUPLE;
 		return;
 	}
 	if (!node->left) return;
-	gen_ir(node->left);
+	ir_gen(node->left);
 	if (found_error) return;
 	node->token->ret_type = node->left->token->type;
 	if (node->left->token->type == STRUCT_CALL)
@@ -334,11 +395,11 @@ void ir_if(Node *node) {
 	while (curr && includes(curr->token->type, IF, ELIF, ELSE, 0)) {
 		if (includes(curr->token->type, IF, ELIF, 0)) {
 			CHECK(curr->left == NULL, "error");
-			gen_ir(curr->left);
+			ir_gen(curr->left);
 			curr->left->token->used++;
 		}
 		for (int i = 0; i < curr->children_count; i++)
-			gen_ir(curr->children[i]);
+			ir_gen(curr->children[i]);
 		curr = curr->right;
 	}
 	exit_scope();
@@ -347,28 +408,37 @@ void ir_if(Node *node) {
 
 void ir_while(Node *node) {
 	enter_scope(node);
-	gen_ir(node->left);
+	ir_gen(node->left);
 	node->left->token->used++;
 	for (int i = 0; i < node->children_count; i++)
-		gen_ir(node->children[i]);
+		ir_gen(node->children[i]);
 	exit_scope();
 	node->token->used++;
+}
+
+void ir_for(Node *node) {
+	enter_scope(node);
+	if (scopes_count == 1) node->left->token->is_global = true;
+	new_variable(node->left->token);
+	node->token->used++;
+	node->left->token->used++;
+	for (int i = 0; i < node->children_count; i++)
+		ir_gen(node->children[i]);
+	exit_scope();
 }
 
 void ir_fdec(Node *node) {
 	Node *existing = find_function(node->token->name);
 	if (existing && existing != node) {
-		// Same name, different Node. Two cases:
-		//   (a) duplicate parse — the same source location got tokenized
-		//       twice (e.g. memory.ura pulled in by both the user and a
-		//       synthesized list-struct file). Silently skip.
-		//   (b) genuine redefinition — user wrote `fn foo` twice. Error.
+		// Two protos for the same C symbol (e.g. malloc) are always
+		// interchangeable — accept silently even across different source files.
+		bool both_proto = existing->token->is_proto && node->token->is_proto;
 		bool same_loc =
 		    existing->token->source && node->token->source
 		    && existing->token->source->filename && node->token->source->filename
 		    && strcmp(existing->token->source->filename, node->token->source->filename) == 0
 		    && existing->token->line == node->token->line;
-		if (!same_loc)
+		if (!both_proto && !same_loc)
 			parse_error(node->token, "redefinition of function '%s'", node->token->name);
 		return;
 	}
@@ -376,11 +446,11 @@ void ir_fdec(Node *node) {
 	enter_scope(node);
 	Node **params = (node->left ? node->left->children : NULL);
 	for (int i = 0; params && i < node->left->children_count && !found_error; i++) {
-		gen_ir(params[i]);
+		ir_gen(params[i]);
 		params[i]->token->used++;
 	}
 	for (int i = 0; !node->token->is_proto && i < node->children_count; i++)
-		gen_ir(node->children[i]);
+		ir_gen(node->children[i]);
 	exit_scope();
 }
 
@@ -390,7 +460,7 @@ void ir_struct_def(Node *node) {
 		if (!find_function(fn->token->name)) add_function(scope, fn);
 	}
 	for (int i = 0; node && i < node->functions_count; i++)
-		gen_ir(node->functions[i]);
+		ir_gen(node->functions[i]);
 }
 
 void ir_enum_def(Node *node) {
@@ -407,19 +477,16 @@ void ir_module(Node *node) {
 		char *qname = format("%s.%s", mname, fn->token->name);
 		setName(fn->token, qname);
 		free(qname);
-		// Module functions are dispatched via `::`, just like struct
-		// `pub fn` static methods. Marking them is_pub lets ir_static_call
-		// accept them and lets try_module_call reject the `.` form.
 		fn->token->is_pub = true;
 	}
 	for (int i = 0; i < node->functions_count; i++)
-		gen_ir(node->functions[i]);
+		ir_gen(node->functions[i]);
 	current_gen_module = saved;
 }
 
 void ir_array_lit(Node *node) {
 	for (int i = 0; i < node->children_count; i++)
-		gen_ir(node->children[i]);
+		ir_gen(node->children[i]);
 	if (node->children_count == 0) return;
 	Token *first             = node->children[0]->token;
 	Type   ft                = first->ret_type ? first->ret_type : first->type;
@@ -435,7 +502,7 @@ void ir_array_lit(Node *node) {
 	}
 }
 
-void gen_ir(Node *node) {
+void ir_gen(Node *node) {
 	if (found_error) return;
 	switch (node->token->type) {
 	case ID:           ir_id(node); break;
@@ -444,6 +511,7 @@ void gen_ir(Node *node) {
 	case INT:          case BOOL: case CHAR: case ARRAY_TYPE: case FLOAT: case LONG:
 	case CHARS:        case PTR: case VOID:
 	case SHORT:        ir_primitive(node); break;
+	case FN_TYPE:      ir_primitive(node); break;
 	case TUPLE_UNPACK: ir_tuple_unpack(node); break;
 	case ASSIGN:       ir_assign(node); break;
 	case ADD_ASSIGN:   case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN:
@@ -467,6 +535,7 @@ void gen_ir(Node *node) {
 	case RETURN:     ir_return(node); break;
 	case IF:         ir_if(node); break;
 	case WHILE:      ir_while(node); break;
+	case FOR:        ir_for(node); break;
 	case FDEC:       ir_fdec(node); break;
 	case STRUCT_DEF: ir_struct_def(node); break;
 	case ENUM_DEF:   ir_enum_def(node); break;
@@ -488,6 +557,22 @@ void asm_nullable(Node *node) { node->token->llvm.elem = LLVMConstNull(p8); }
 
 void asm_primitive(Node *node) { gen_primitive_declaration(node->token); }
 
+// Function reference: a bare top-level fn name used as a value.
+// Produces a function pointer that can be stored, passed, or invoked.
+void asm_fn_ref(Node *node) {
+	if (node->token->is_dec) {
+		gen_primitive_declaration(node->token);
+		return;
+	}
+	Node *func = node->token->Fcall.ptr;
+	if (!func) return;
+	if (CHECK(!func->token->name, "asm_fn_ref: resolved fn has no name")) return;
+	Value fn_val = LLVMGetNamedFunction(module, func->token->name);
+	if (CHECK(!fn_val, "asm_fn_ref: '%s' not found in module", func->token->name)) return;
+	node->token->llvm.elem      = fn_val;
+	node->token->llvm.is_loaded = true; // pointer constant — no load required
+}
+
 void asm_assign(Node *node) {
 	Node *left  = node->left;
 	Node *right = node->right;
@@ -497,8 +582,8 @@ void asm_assign(Node *node) {
 		return;
 	}
 	if (left->token->is_global && left->token->is_dec) {
-		gen_asm(left);
-		gen_asm(right);
+		asm_gen(left);
+		asm_gen(right);
 		if (left->token->llvm.elem && right->token->llvm.elem &&
 		    LLVMIsConstant(right->token->llvm.elem))
 			LLVMSetInitializer(left->token->llvm.elem, right->token->llvm.elem);
@@ -506,13 +591,26 @@ void asm_assign(Node *node) {
 	}
 	if (left->token->is_ref && right->token->type == REF) {
 		if (!left->token->llvm.elem) _alloca(left->token);
-		gen_asm(right);
+		asm_gen(right);
 		LLVMBuildStore(builder, right->token->llvm.elem, left->token->llvm.elem);
 		left->token->is_dec = false;
 		return;
 	}
-	gen_asm(left);
-	gen_asm(right);
+	// `ref b T = a` — declaration form takes the address of the RHS implicitly.
+	// Without this we'd fall through to a value-store that writes a's int into
+	// the null pointer currently held in b's slot (segv writing to 0x0).
+	if (left->token->is_ref && left->token->is_dec) {
+		if (!left->token->llvm.elem) _alloca(left->token);
+		asm_gen(right);
+		Value addr = right->token->is_ref
+		                 ? read_value(right->token)   // collapse ref-of-ref to underlying target
+		                 : right->token->llvm.elem;   // alloca of the named/field/index lvalue
+		LLVMBuildStore(builder, addr, left->token->llvm.elem);
+		left->token->is_dec = false;
+		return;
+	}
+	asm_gen(left);
+	asm_gen(right);
 	if (includes(right->token->type, STACK, HEAP, 0) && right->token->llvm.dims_count > 1)
 		propagate_dims(left->token, right->token, left);
 	Value val;
@@ -534,8 +632,8 @@ void asm_compound_assign(Node *node) {
 		if (result) node->token->llvm.elem = result;
 		return;
 	}
-	gen_asm(left);
-	gen_asm(right);
+	asm_gen(left);
+	asm_gen(right);
 	Value current_val = read_value(left->token);
 	Value right_val;
 	if (right->token->is_ref) right_val = read_value(right->token);
@@ -550,7 +648,7 @@ void asm_compound_assign(Node *node) {
 
 void asm_unary_op(Node *node) {
 	Node *left = node->left;
-	gen_asm(left);
+	asm_gen(left);
 	ensure_loaded(left);
 	if (left->token->is_ref) {
 		left->token->llvm.elem      = read_value(left->token);
@@ -573,8 +671,8 @@ void asm_binary_op(Node *node) {
 		}
 		return;
 	}
-	gen_asm(left);
-	gen_asm(right);
+	asm_gen(left);
+	asm_gen(right);
 	ensure_loaded(left);
 	ensure_loaded(right);
 	Value lref = left->token->llvm.elem;
@@ -594,7 +692,7 @@ void asm_binary_op(Node *node) {
 
 void asm_as(Node *node) {
 	Node *left = node->left;
-	gen_asm(left);
+	asm_gen(left);
 	ensure_loaded(left);
 	Value    source = left->token->llvm.elem;
 	TypeRef  stype  = LLVMTypeOf(source);
@@ -627,7 +725,7 @@ void asm_as(Node *node) {
 }
 
 void asm_ref(Node *node) {
-	gen_asm(node->left);
+	asm_gen(node->left);
 	node->token->llvm.elem = node->left->token->llvm.elem;
 }
 
@@ -658,7 +756,7 @@ void asm_array_lit(Node *node) {
 	Value   raw_data = allocate_heap(cnt, elem_t, "array_lit");
 	Value   data     = LLVMBuildBitCast(builder, raw_data, LLVMPointerType(elem_t, 0), "lit_data");
 	for (int i = 0; i < count; i++) {
-		gen_asm(node->children[i]);
+		asm_gen(node->children[i]);
 		ensure_loaded(node->children[i]);
 		Value idx       = LLVMConstInt(i32, i, 0);
 		Value indices[] = {idx};
@@ -671,7 +769,7 @@ void asm_array_lit(Node *node) {
 }
 
 void asm_dot(Node *node) {
-	gen_asm(node->left);
+	asm_gen(node->left);
 	Token *struct_tok  = node->left->token;
 	int    field_index = node->right->token->Struct.index;
 	if (struct_tok->is_ref) {
@@ -688,12 +786,12 @@ void asm_dot(Node *node) {
 }
 
 void asm_access(Node *node) {
-	gen_asm(node->left);
+	asm_gen(node->left);
 	if (node->left->token->type == STRUCT_CALL) {
 		asm_access_struct_field(node);
 		return;
 	}
-	gen_asm(node->right);
+	asm_gen(node->right);
 	Value left_value = asm_access_left_value(node);
 	ensure_loaded(node->right);
 	Value right_ref = node->right->token->llvm.elem;
@@ -704,7 +802,8 @@ void asm_access(Node *node) {
 }
 
 void asm_fcall(Node *node) {
-	if (node->token->is_static_call) asm_fcall_static(node);
+	if (node->token->Statement.ptr) asm_fcall_indirect(node);
+	else if (node->token->is_static_call) asm_fcall_static(node);
 	else asm_fcall_instance(node);
 }
 
@@ -733,33 +832,36 @@ void asm_output(Node *node) {
 	int    fc    = 0;
 	int    nargs = 0;
 	for (int i = 0; i < argc; i++) {
-		gen_asm(argv[i]);
+		asm_gen(argv[i]);
 		append_output_arg(argv[i]->token, fmt, &fc, args, &nargs);
 	}
 	fmt[fc]         = '\0';
+	// Declare printf with its real libc signature: (i8*, ...). Passing an extra
+	// fixed arg before the varargs (the previous design) corrupted output on
+	// SysV-ABI platforms (Linux x86_64) where varargs ride in registers and the
+	// real printf reads %d from rsi — the bogus arg-count slot.
 	Value printf_fn = LLVMGetNamedFunction(module, "printf");
 	if (!printf_fn) {
-		TypeRef params[]  = {p8, i32};
-		TypeRef printf_ft = LLVMFunctionType(i32, params, 2, 1);
+		TypeRef params[]  = {p8};
+		TypeRef printf_ft = LLVMFunctionType(i32, params, 1, 1);
 		printf_fn         = _add_function("printf", printf_ft);
 	}
 	TypeRef printf_ft = LLVMGlobalGetValueType(printf_fn);
-	Value  *call_args = allocate(nargs + 3, sizeof(Value));
+	Value  *call_args = allocate(nargs + 2, sizeof(Value));
 	call_args[0]      = LLVMBuildGlobalStringPtr(builder, fmt, "output_fmt");
-	call_args[1]      = LLVMConstInt(i32, nargs, 0);
-	memcpy(call_args + 2, args, nargs * sizeof(Value));
-	LLVMBuildCall2(builder, printf_ft, printf_fn, call_args, nargs + 2, "");
+	memcpy(call_args + 1, args, nargs * sizeof(Value));
+	LLVMBuildCall2(builder, printf_ft, printf_fn, call_args, nargs + 1, "");
 	free(fmt);
 	free(args);
 	free(call_args);
 }
 
 void asm_tuple_unpack(Node *node) {
-	gen_asm(node->left);
+	asm_gen(node->left);
 	Value tuple_val = node->left->token->llvm.elem;
 	for (int i = 0; i < node->children_count; i++) {
 		Node *lhs = node->children[i];
-		gen_asm(lhs);
+		asm_gen(lhs);
 		Value field = LLVMBuildExtractValue(builder, tuple_val, i, lhs->token->name);
 		LLVMBuildStore(builder, field, lhs->token->llvm.elem);
 	}
@@ -775,16 +877,77 @@ void asm_while(Node *node) {
 	node->token->llvm.end   = end;
 	_branch(start);
 	LLVMPositionBuilderAtEnd(builder, start);
-	gen_asm(node->left);
+	asm_gen(node->left);
 	ensure_loaded(node->left);
 	LLVMBuildCondBr(builder, node->left->token->llvm.elem, then, end);
 	LLVMPositionBuilderAtEnd(builder, then);
 	for (int i = 0; i < node->children_count; i++) {
 		if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder))) break;
-		gen_asm(node->children[i]);
+		asm_gen(node->children[i]);
 	}
 	_branch(start);
 	LLVMPositionBuilderAtEnd(builder, end);
+	exit_scope();
+}
+
+void asm_for(Node *node) {
+	enter_scope(node);
+
+	gen_primitive_declaration(node->left->token);
+	Value i_ptr = node->left->token->llvm.elem;
+
+	// from / to / step
+	asm_gen(node->children[0]);
+	ensure_loaded(node->children[0]);
+	Value from_v = node->children[0]->token->llvm.elem;
+	LLVMBuildStore(builder, from_v, i_ptr);
+
+	asm_gen(node->children[1]);
+	ensure_loaded(node->children[1]);
+	Value to_v = node->children[1]->token->llvm.elem;
+
+	asm_gen(node->children[2]);
+	ensure_loaded(node->children[2]);
+	Value step_v = node->children[2]->token->llvm.elem;
+
+	// asc = from < to (i1)
+	Value asc = LLVMBuildICmp(builder, LLVMIntSLT, from_v, to_v, "asc");
+	// signed_step = asc ? step : -step
+	Value zero       = LLVMConstInt(i32, 0, 1);
+	Value neg_step   = LLVMBuildSub(builder, zero, step_v, "neg_step");
+	Value sstep      = LLVMBuildSelect(builder, asc, step_v, neg_step, "sstep");
+
+	Block cond_blk          = _append_block("for.cond");
+	Block body_blk          = _append_block("for.body");
+	Block step_blk          = _append_block("for.step");
+	Block end_blk           = _append_block("for.end");
+	node->token->llvm.start = step_blk; // continue → step
+	node->token->llvm.then  = body_blk;
+	node->token->llvm.end   = end_blk;  // break → end
+
+	_branch(cond_blk);
+
+	LLVMPositionBuilderAtEnd(builder, cond_blk);
+	Value iv  = LLVMBuildLoad2(builder, i32, i_ptr, "iv");
+	Value lt  = LLVMBuildICmp(builder, LLVMIntSLT, iv, to_v, "lt");
+	Value gt  = LLVMBuildICmp(builder, LLVMIntSGT, iv, to_v, "gt");
+	Value keep = LLVMBuildSelect(builder, asc, lt, gt, "keep");
+	LLVMBuildCondBr(builder, keep, body_blk, end_blk);
+
+	LLVMPositionBuilderAtEnd(builder, body_blk);
+	for (int i = 3; i < node->children_count; i++) {
+		if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder))) break;
+		asm_gen(node->children[i]);
+	}
+	_branch(step_blk);
+
+	LLVMPositionBuilderAtEnd(builder, step_blk);
+	Value cur  = LLVMBuildLoad2(builder, i32, i_ptr, "iv2");
+	Value next = LLVMBuildAdd(builder, cur, sstep, "next");
+	LLVMBuildStore(builder, next, i_ptr);
+	_branch(cond_blk);
+
+	LLVMPositionBuilderAtEnd(builder, end_blk);
 	exit_scope();
 }
 
@@ -802,7 +965,7 @@ void asm_if(Node *node) {
 
 void asm_break(void) {
 	for (int i = scopes_count; i > 0; i--)
-		if (scopes[i]->token->type == WHILE) {
+		if (scopes[i]->token->type == WHILE || scopes[i]->token->type == FOR) {
 			_branch(scopes[i]->token->llvm.end);
 			return;
 		}
@@ -811,7 +974,7 @@ void asm_break(void) {
 
 void asm_continue(void) {
 	for (int i = scopes_count; i > 0; i--)
-		if (scopes[i]->token->type == WHILE) {
+		if (scopes[i]->token->type == WHILE || scopes[i]->token->type == FOR) {
 			_branch(scopes[i]->token->llvm.start);
 			return;
 		}
@@ -864,7 +1027,7 @@ void asm_enum_def(Node *node) {
 
 void asm_module(Node *node) {
 	for (int i = 0; i < node->functions_count; i++)
-		gen_asm(node->functions[i]);
+		asm_gen(node->functions[i]);
 }
 
 void asm_struct_def(Node *node) {
@@ -874,10 +1037,10 @@ void asm_struct_def(Node *node) {
 	gen_struct_emit_delete(node);
 	gen_struct_predeclare_methods(node);
 	for (int i = 0; i < node->functions_count; i++)
-		gen_asm(node->functions[i]);
+		asm_gen(node->functions[i]);
 }
 
-void gen_asm(Node *node) {
+void asm_gen(Node *node) {
 	set_debug_location(node->token);
 	if (CHECK(node->token->llvm.is_set, "already set")) return;
 	switch (node->token->type) {
@@ -886,6 +1049,7 @@ void gen_asm(Node *node) {
 	case INT:         case LONG: case SHORT: case CHARS: case CHAR: case BOOL:
 	case ARRAY_TYPE:
 	case FLOAT:      asm_primitive(node); break;
+	case FN_TYPE:    asm_fn_ref(node); break;
 	case ASSIGN:     asm_assign(node); break;
 	case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN:
 	case MOD_ASSIGN: asm_compound_assign(node); break;
@@ -910,6 +1074,7 @@ void gen_asm(Node *node) {
 	case RETURN:       asm_return(node); break;
 	case IF:           asm_if(node); break;
 	case WHILE:        asm_while(node); break;
+	case FOR:          asm_for(node); break;
 	case BREAK:        asm_break(); break;
 	case CONTINUE:     asm_continue(); break;
 	case FDEC:         asm_fdec(node); break;

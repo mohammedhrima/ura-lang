@@ -4,17 +4,17 @@ struct Vec2:
     x int
     y int
 
-    operator = (v Vec2 ref) void:
+    operator = (ref v Vec2) void:
         self.x = v.x
         self.y = v.y
 
-    operator + (v Vec2 ref) Vec2:
+    operator + (ref v Vec2) Vec2:
         res Vec2
         res.x = self.x + v.x
         res.y = self.y + v.y
         return res
 
-    operator - (v Vec2 ref) Vec2:
+    operator - (ref v Vec2) Vec2:
         res Vec2
         res.x = self.x - v.x
         res.y = self.y - v.y

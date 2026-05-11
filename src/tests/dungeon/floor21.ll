@@ -1,5 +1,5 @@
-; ModuleID = 'tests/dungeon/floor21.ura'
-source_filename = "tests/dungeon/floor21.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon/floor21.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon/floor21.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 %struct.__list_int = type { i32*, i32, i32 }
@@ -26,10 +26,6 @@ target triple = "arm64-apple-macosx16.0.0"
 @output_fmt.7 = private unnamed_addr constant [22 x i8] c"Remaining: %d items, \00", align 1
 @STR12 = private unnamed_addr constant [7 x i8] c" gold\0A\00", align 1
 @output_fmt.8 = private unnamed_addr constant [9 x i8] c"%d gold\0A\00", align 1
-
-declare i8* @realloc(i8*, i32)
-
-declare void @free(i8*)
 
 define void @__list_int.delete(%struct.__list_int* %self) !dbg !4 {
 entry:
@@ -160,144 +156,185 @@ entry:
   ret i32 %DOT, !dbg !19
 }
 
-define void @print_inventory(i32* %items, i32 %count) !dbg !20 {
+define void @__list_int.foreach(void (i32)* %cb, %struct.__list_int* %self) !dbg !20 {
 entry:
-  %items1 = alloca i32*, align 8, !dbg !21
-  %count2 = alloca i32, align 4, !dbg !21
+  %cb1 = alloca void (i32)*, align 8, !dbg !21
+  %self2 = alloca %struct.__list_int*, align 8, !dbg !21
   %i = alloca i32, align 4, !dbg !21
-  store i32* %items, i32** %items1, align 8, !dbg !21
-  store i32 %count, i32* %count2, align 4, !dbg !21
-  %count3 = load i32, i32* %count2, align 4, !dbg !21
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([23 x i8], [23 x i8]* @output_fmt, i32 0, i32 0), i32 1, i32 %count3), !dbg !21
+  store void (i32)* %cb, void (i32)** %cb1, align 8, !dbg !21
+  store %struct.__list_int* %self, %struct.__list_int** %self2, align 8, !dbg !21
   store i32 0, i32* %i, align 4, !dbg !21
   store i32 0, i32* %i, align 4, !dbg !21
   br label %while.start, !dbg !21
 
-while.start:                                      ; preds = %if.end, %entry
+while.start:                                      ; preds = %while.then, %entry
+  %self3 = load %struct.__list_int*, %struct.__list_int** %self2, align 8, !dbg !21
+  %__len = getelementptr %struct.__list_int, %struct.__list_int* %self3, i32 0, i32 1, !dbg !21
   %i4 = load i32, i32* %i, align 4, !dbg !21
-  %count5 = load i32, i32* %count2, align 4, !dbg !21
-  %LT = icmp slt i32 %i4, %count5, !dbg !21
+  %DOT = load i32, i32* %__len, align 4, !dbg !21
+  %LT = icmp slt i32 %i4, %DOT, !dbg !21
   br i1 %LT, label %while.then, label %while.end, !dbg !21
 
 while.then:                                       ; preds = %while.start
-  br label %if.start, !dbg !21
-
-while.end:                                        ; preds = %while.start
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @output_fmt.3, i32 0, i32 0), i32 0), !dbg !22
-  ret void, !dbg !22
-
-if.start:                                         ; preds = %while.then
-  %i6 = load i32, i32* %i, align 4, !dbg !21
-  %GT = icmp sgt i32 %i6, 0, !dbg !21
-  br i1 %GT, label %if.then, label %if.end, !dbg !21
-
-if.end:                                           ; preds = %if.then, %if.start
-  %items7 = load i32*, i32** %items1, align 8, !dbg !22
-  %i8 = load i32, i32* %i, align 4, !dbg !22
-  %ACCESS = getelementptr i32, i32* %items7, i32 %i8, !dbg !22
+  %fn_ptr = load void (i32)*, void (i32)** %cb1, align 8, !dbg !22
+  %self5 = load %struct.__list_int*, %struct.__list_int** %self2, align 8, !dbg !22
+  %data = getelementptr %struct.__list_int, %struct.__list_int* %self5, i32 0, i32 0, !dbg !22
+  %DOT6 = load i32*, i32** %data, align 8, !dbg !22
+  %i7 = load i32, i32* %i, align 4, !dbg !22
+  %ACCESS = getelementptr i32, i32* %DOT6, i32 %i7, !dbg !22
   %ACC = load i32, i32* %ACCESS, align 4, !dbg !22
-  %2 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @output_fmt.2, i32 0, i32 0), i32 1, i32 %ACC), !dbg !22
-  %i9 = load i32, i32* %i, align 4, !dbg !22
-  %ADD = add i32 %i9, 1, !dbg !22
+  call void %fn_ptr(i32 %ACC), !dbg !22
+  %i8 = load i32, i32* %i, align 4, !dbg !22
+  %ADD = add i32 %i8, 1, !dbg !22
   store i32 %ADD, i32* %i, align 4, !dbg !22
   br label %while.start, !dbg !22
 
-if.then:                                          ; preds = %if.start
-  %3 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @output_fmt.1, i32 0, i32 0), i32 0), !dbg !21
-  br label %if.end, !dbg !21
+while.end:                                        ; preds = %while.start
+  ret void, !dbg !22
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare void @free(i8*)
 
-define i32 @main() !dbg !23 {
+declare i8* @realloc(i8*, i32)
+
+define void @print_inventory(i32* %items, i32 %count) !dbg !23 {
 entry:
-  %loot = alloca %struct.__list_int, align 8, !dbg !24
-  %total = alloca i32, align 4, !dbg !24
+  %items1 = alloca i32*, align 8, !dbg !24
+  %count2 = alloca i32, align 4, !dbg !24
   %i = alloca i32, align 4, !dbg !24
-  %dropped = alloca i32, align 4, !dbg !24
-  %sold = alloca i32, align 4, !dbg !24
-  %remaining = alloca i32, align 4, !dbg !24
-  store %struct.__list_int zeroinitializer, %struct.__list_int* %loot, align 8, !dbg !24
-  call void @__list_int.push(i32 15, %struct.__list_int* %loot), !dbg !25
-  call void @__list_int.push(i32 30, %struct.__list_int* %loot), !dbg !26
-  call void @__list_int.push(i32 100, %struct.__list_int* %loot), !dbg !27
-  call void @__list_int.push(i32 8, %struct.__list_int* %loot), !dbg !28
-  %data = getelementptr %struct.__list_int, %struct.__list_int* %loot, i32 0, i32 0, !dbg !29
-  %DOT = load i32*, i32** %data, align 8, !dbg !29
-  %__list_int.len = call i32 @__list_int.len(%struct.__list_int* %loot), !dbg !29
-  call void @print_inventory(i32* %DOT, i32 %__list_int.len), !dbg !29
-  store i32 0, i32* %total, align 4, !dbg !24
-  store i32 0, i32* %total, align 4, !dbg !24
+  store i32* %items, i32** %items1, align 8, !dbg !24
+  store i32 %count, i32* %count2, align 4, !dbg !24
+  %count3 = load i32, i32* %count2, align 4, !dbg !24
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([23 x i8], [23 x i8]* @output_fmt, i32 0, i32 0), i32 %count3), !dbg !24
   store i32 0, i32* %i, align 4, !dbg !24
   store i32 0, i32* %i, align 4, !dbg !24
   br label %while.start, !dbg !24
 
-while.start:                                      ; preds = %while.then, %entry
-  %__list_int.len1 = call i32 @__list_int.len(%struct.__list_int* %loot), !dbg !30
-  %i2 = load i32, i32* %i, align 4, !dbg !30
-  %LT = icmp slt i32 %i2, %__list_int.len1, !dbg !30
-  br i1 %LT, label %while.then, label %while.end, !dbg !30
+while.start:                                      ; preds = %if.end, %entry
+  %i4 = load i32, i32* %i, align 4, !dbg !24
+  %count5 = load i32, i32* %count2, align 4, !dbg !24
+  %LT = icmp slt i32 %i4, %count5, !dbg !24
+  br i1 %LT, label %while.then, label %while.end, !dbg !24
 
 while.then:                                       ; preds = %while.start
-  %data3 = getelementptr %struct.__list_int, %struct.__list_int* %loot, i32 0, i32 0, !dbg !31
-  %DOT4 = load i32*, i32** %data3, align 8, !dbg !31
-  %i5 = load i32, i32* %i, align 4, !dbg !31
-  %ACCESS = getelementptr i32, i32* %DOT4, i32 %i5, !dbg !31
-  %total6 = load i32, i32* %total, align 4, !dbg !31
-  %ACC = load i32, i32* %ACCESS, align 4, !dbg !31
-  %ADD = add i32 %total6, %ACC, !dbg !31
-  store i32 %ADD, i32* %total, align 4, !dbg !31
-  %i7 = load i32, i32* %i, align 4, !dbg !31
-  %ADD8 = add i32 %i7, 1, !dbg !31
-  store i32 %ADD8, i32* %i, align 4, !dbg !31
-  br label %while.start, !dbg !31
+  br label %if.start, !dbg !24
 
 while.end:                                        ; preds = %while.start
-  %total9 = load i32, i32* %total, align 4, !dbg !31
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([16 x i8], [16 x i8]* @output_fmt.4, i32 0, i32 0), i32 1, i32 %total9), !dbg !31
-  store i32 0, i32* %dropped, align 4, !dbg !24
-  %__list_int.pop = call i32 @__list_int.pop(%struct.__list_int* %loot), !dbg !32
-  store i32 %__list_int.pop, i32* %dropped, align 4, !dbg !32
-  %dropped10 = load i32, i32* %dropped, align 4, !dbg !32
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt.5, i32 0, i32 0), i32 1, i32 %dropped10), !dbg !32
-  store i32 0, i32* %sold, align 4, !dbg !24
-  %__list_int.pop11 = call i32 @__list_int.pop(%struct.__list_int* %loot), !dbg !33
-  store i32 %__list_int.pop11, i32* %sold, align 4, !dbg !33
-  %sold12 = load i32, i32* %sold, align 4, !dbg !33
-  %2 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([25 x i8], [25 x i8]* @output_fmt.6, i32 0, i32 0), i32 1, i32 %sold12), !dbg !33
-  %__list_int.len13 = call i32 @__list_int.len(%struct.__list_int* %loot), !dbg !34
-  %3 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([22 x i8], [22 x i8]* @output_fmt.7, i32 0, i32 0), i32 1, i32 %__list_int.len13), !dbg !34
-  store i32 0, i32* %remaining, align 4, !dbg !24
-  store i32 0, i32* %remaining, align 4, !dbg !24
-  store i32 0, i32* %i, align 4, !dbg !24
-  br label %while.start14, !dbg !24
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @output_fmt.3, i32 0, i32 0)), !dbg !25
+  ret void, !dbg !25
+
+if.start:                                         ; preds = %while.then
+  %i6 = load i32, i32* %i, align 4, !dbg !24
+  %GT = icmp sgt i32 %i6, 0, !dbg !24
+  br i1 %GT, label %if.then, label %if.end, !dbg !24
+
+if.end:                                           ; preds = %if.then, %if.start
+  %items7 = load i32*, i32** %items1, align 8, !dbg !25
+  %i8 = load i32, i32* %i, align 4, !dbg !25
+  %ACCESS = getelementptr i32, i32* %items7, i32 %i8, !dbg !25
+  %ACC = load i32, i32* %ACCESS, align 4, !dbg !25
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @output_fmt.2, i32 0, i32 0), i32 %ACC), !dbg !25
+  %i9 = load i32, i32* %i, align 4, !dbg !25
+  %ADD = add i32 %i9, 1, !dbg !25
+  store i32 %ADD, i32* %i, align 4, !dbg !25
+  br label %while.start, !dbg !25
+
+if.then:                                          ; preds = %if.start
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @output_fmt.1, i32 0, i32 0)), !dbg !24
+  br label %if.end, !dbg !24
+}
+
+define i32 @main() !dbg !26 {
+entry:
+  %loot = alloca %struct.__list_int, align 8, !dbg !27
+  %total = alloca i32, align 4, !dbg !27
+  %i = alloca i32, align 4, !dbg !27
+  %dropped = alloca i32, align 4, !dbg !27
+  %sold = alloca i32, align 4, !dbg !27
+  %remaining = alloca i32, align 4, !dbg !27
+  store %struct.__list_int zeroinitializer, %struct.__list_int* %loot, align 8, !dbg !27
+  call void @__list_int.push(i32 15, %struct.__list_int* %loot), !dbg !28
+  call void @__list_int.push(i32 30, %struct.__list_int* %loot), !dbg !29
+  call void @__list_int.push(i32 100, %struct.__list_int* %loot), !dbg !30
+  call void @__list_int.push(i32 8, %struct.__list_int* %loot), !dbg !31
+  %data = getelementptr %struct.__list_int, %struct.__list_int* %loot, i32 0, i32 0, !dbg !32
+  %DOT = load i32*, i32** %data, align 8, !dbg !32
+  %__list_int.len = call i32 @__list_int.len(%struct.__list_int* %loot), !dbg !32
+  call void @print_inventory(i32* %DOT, i32 %__list_int.len), !dbg !32
+  store i32 0, i32* %total, align 4, !dbg !27
+  store i32 0, i32* %total, align 4, !dbg !27
+  store i32 0, i32* %i, align 4, !dbg !27
+  store i32 0, i32* %i, align 4, !dbg !27
+  br label %while.start, !dbg !27
+
+while.start:                                      ; preds = %while.then, %entry
+  %__list_int.len1 = call i32 @__list_int.len(%struct.__list_int* %loot), !dbg !33
+  %i2 = load i32, i32* %i, align 4, !dbg !33
+  %LT = icmp slt i32 %i2, %__list_int.len1, !dbg !33
+  br i1 %LT, label %while.then, label %while.end, !dbg !33
+
+while.then:                                       ; preds = %while.start
+  %data3 = getelementptr %struct.__list_int, %struct.__list_int* %loot, i32 0, i32 0, !dbg !34
+  %DOT4 = load i32*, i32** %data3, align 8, !dbg !34
+  %i5 = load i32, i32* %i, align 4, !dbg !34
+  %ACCESS = getelementptr i32, i32* %DOT4, i32 %i5, !dbg !34
+  %total6 = load i32, i32* %total, align 4, !dbg !34
+  %ACC = load i32, i32* %ACCESS, align 4, !dbg !34
+  %ADD = add i32 %total6, %ACC, !dbg !34
+  store i32 %ADD, i32* %total, align 4, !dbg !34
+  %i7 = load i32, i32* %i, align 4, !dbg !34
+  %ADD8 = add i32 %i7, 1, !dbg !34
+  store i32 %ADD8, i32* %i, align 4, !dbg !34
+  br label %while.start, !dbg !34
+
+while.end:                                        ; preds = %while.start
+  %total9 = load i32, i32* %total, align 4, !dbg !34
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([16 x i8], [16 x i8]* @output_fmt.4, i32 0, i32 0), i32 %total9), !dbg !34
+  store i32 0, i32* %dropped, align 4, !dbg !27
+  %__list_int.pop = call i32 @__list_int.pop(%struct.__list_int* %loot), !dbg !35
+  store i32 %__list_int.pop, i32* %dropped, align 4, !dbg !35
+  %dropped10 = load i32, i32* %dropped, align 4, !dbg !35
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt.5, i32 0, i32 0), i32 %dropped10), !dbg !35
+  store i32 0, i32* %sold, align 4, !dbg !27
+  %__list_int.pop11 = call i32 @__list_int.pop(%struct.__list_int* %loot), !dbg !36
+  store i32 %__list_int.pop11, i32* %sold, align 4, !dbg !36
+  %sold12 = load i32, i32* %sold, align 4, !dbg !36
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([25 x i8], [25 x i8]* @output_fmt.6, i32 0, i32 0), i32 %sold12), !dbg !36
+  %__list_int.len13 = call i32 @__list_int.len(%struct.__list_int* %loot), !dbg !37
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([22 x i8], [22 x i8]* @output_fmt.7, i32 0, i32 0), i32 %__list_int.len13), !dbg !37
+  store i32 0, i32* %remaining, align 4, !dbg !27
+  store i32 0, i32* %remaining, align 4, !dbg !27
+  store i32 0, i32* %i, align 4, !dbg !27
+  br label %while.start14, !dbg !27
 
 while.start14:                                    ; preds = %while.then15, %while.end
-  %__list_int.len17 = call i32 @__list_int.len(%struct.__list_int* %loot), !dbg !35
-  %i18 = load i32, i32* %i, align 4, !dbg !35
-  %LT19 = icmp slt i32 %i18, %__list_int.len17, !dbg !35
-  br i1 %LT19, label %while.then15, label %while.end16, !dbg !35
+  %__list_int.len17 = call i32 @__list_int.len(%struct.__list_int* %loot), !dbg !38
+  %i18 = load i32, i32* %i, align 4, !dbg !38
+  %LT19 = icmp slt i32 %i18, %__list_int.len17, !dbg !38
+  br i1 %LT19, label %while.then15, label %while.end16, !dbg !38
 
 while.then15:                                     ; preds = %while.start14
-  %data20 = getelementptr %struct.__list_int, %struct.__list_int* %loot, i32 0, i32 0, !dbg !36
-  %DOT21 = load i32*, i32** %data20, align 8, !dbg !36
-  %i22 = load i32, i32* %i, align 4, !dbg !36
-  %ACCESS23 = getelementptr i32, i32* %DOT21, i32 %i22, !dbg !36
-  %remaining24 = load i32, i32* %remaining, align 4, !dbg !36
-  %ACC25 = load i32, i32* %ACCESS23, align 4, !dbg !36
-  %ADD26 = add i32 %remaining24, %ACC25, !dbg !36
-  store i32 %ADD26, i32* %remaining, align 4, !dbg !36
-  %i27 = load i32, i32* %i, align 4, !dbg !36
-  %ADD28 = add i32 %i27, 1, !dbg !36
-  store i32 %ADD28, i32* %i, align 4, !dbg !36
-  br label %while.start14, !dbg !36
+  %data20 = getelementptr %struct.__list_int, %struct.__list_int* %loot, i32 0, i32 0, !dbg !39
+  %DOT21 = load i32*, i32** %data20, align 8, !dbg !39
+  %i22 = load i32, i32* %i, align 4, !dbg !39
+  %ACCESS23 = getelementptr i32, i32* %DOT21, i32 %i22, !dbg !39
+  %remaining24 = load i32, i32* %remaining, align 4, !dbg !39
+  %ACC25 = load i32, i32* %ACCESS23, align 4, !dbg !39
+  %ADD26 = add i32 %remaining24, %ACC25, !dbg !39
+  store i32 %ADD26, i32* %remaining, align 4, !dbg !39
+  %i27 = load i32, i32* %i, align 4, !dbg !39
+  %ADD28 = add i32 %i27, 1, !dbg !39
+  store i32 %ADD28, i32* %i, align 4, !dbg !39
+  br label %while.start14, !dbg !39
 
 while.end16:                                      ; preds = %while.start14
-  %remaining29 = load i32, i32* %remaining, align 4, !dbg !36
-  %4 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @output_fmt.8, i32 0, i32 0), i32 1, i32 %remaining29), !dbg !36
-  call void @__list_int.delete(%struct.__list_int* %loot), !dbg !36
-  ret i32 0, !dbg !36
+  %remaining29 = load i32, i32* %remaining, align 4, !dbg !39
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @output_fmt.8, i32 0, i32 0), i32 %remaining29), !dbg !39
+  call void @__list_int.delete(%struct.__list_int* %loot), !dbg !39
+  ret i32 0, !dbg !39
 }
+
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -305,7 +342,7 @@ while.end16:                                      ; preds = %while.start14
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "floor21.ura", directory: "tests/dungeon")
+!3 = !DIFile(filename: "floor21.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon")
 !4 = distinct !DISubprogram(name: "__list_int.delete", linkageName: "__list_int.delete", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}
@@ -322,20 +359,23 @@ while.end16:                                      ; preds = %while.start14
 !17 = !DILocation(line: 23, scope: !16)
 !18 = distinct !DISubprogram(name: "__list_int.cap", linkageName: "__list_int.cap", scope: null, file: !3, line: 26, type: !5, scopeLine: 26, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !19 = !DILocation(line: 26, scope: !18)
-!20 = distinct !DISubprogram(name: "print_inventory", linkageName: "print_inventory", scope: null, file: !3, line: 4, type: !5, scopeLine: 4, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!21 = !DILocation(line: 4, scope: !20)
-!22 = !DILocation(line: 9, scope: !20)
-!23 = distinct !DISubprogram(name: "main", linkageName: "main", scope: null, file: !3, line: 13, type: !5, scopeLine: 13, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!24 = !DILocation(line: 13, scope: !23)
-!25 = !DILocation(line: 15, scope: !23)
-!26 = !DILocation(line: 16, scope: !23)
-!27 = !DILocation(line: 17, scope: !23)
-!28 = !DILocation(line: 18, scope: !23)
-!29 = !DILocation(line: 20, scope: !23)
-!30 = !DILocation(line: 24, scope: !23)
-!31 = !DILocation(line: 25, scope: !23)
-!32 = !DILocation(line: 29, scope: !23)
-!33 = !DILocation(line: 32, scope: !23)
-!34 = !DILocation(line: 35, scope: !23)
-!35 = !DILocation(line: 38, scope: !23)
-!36 = !DILocation(line: 39, scope: !23)
+!20 = distinct !DISubprogram(name: "__list_int.foreach", linkageName: "__list_int.foreach", scope: null, file: !3, line: 29, type: !5, scopeLine: 29, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!21 = !DILocation(line: 29, scope: !20)
+!22 = !DILocation(line: 32, scope: !20)
+!23 = distinct !DISubprogram(name: "print_inventory", linkageName: "print_inventory", scope: null, file: !3, line: 4, type: !5, scopeLine: 4, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!24 = !DILocation(line: 4, scope: !23)
+!25 = !DILocation(line: 9, scope: !23)
+!26 = distinct !DISubprogram(name: "main", linkageName: "main", scope: null, file: !3, line: 13, type: !5, scopeLine: 13, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!27 = !DILocation(line: 13, scope: !26)
+!28 = !DILocation(line: 15, scope: !26)
+!29 = !DILocation(line: 16, scope: !26)
+!30 = !DILocation(line: 17, scope: !26)
+!31 = !DILocation(line: 18, scope: !26)
+!32 = !DILocation(line: 20, scope: !26)
+!33 = !DILocation(line: 24, scope: !26)
+!34 = !DILocation(line: 25, scope: !26)
+!35 = !DILocation(line: 29, scope: !26)
+!36 = !DILocation(line: 32, scope: !26)
+!37 = !DILocation(line: 35, scope: !26)
+!38 = !DILocation(line: 38, scope: !26)
+!39 = !DILocation(line: 39, scope: !26)
