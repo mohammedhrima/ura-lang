@@ -253,6 +253,6 @@ Higher-level cleanups that take the compiler from ~70/100 to ~85. Detail in [IMP
 
 + ① error recovery (multi-error per run with `parser_recover` at sync points)
 ~ ② exhaustive semantic checks (7 done — return types, arg counts, struct casts, fn redefinition, etc.)
-- ③ multi-pass architecture (split gen_ir into resolve / typecheck / codegen)
+- ③ multi-pass architecture (split ir_gen into resolve / typecheck / codegen)
 - ④ language spec (grammar.ebnf, tour.md, stdlib.md)
 ⊘ ⑤ incremental compilation (deferred — not useful at current scale)

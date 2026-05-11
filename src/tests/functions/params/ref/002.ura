@@ -1,6 +1,6 @@
 // functions/params/ref/002.ura - swap two weapon damage values via refs
 
-fn swap_weapons(a int ref, b int ref) void:
+fn swap_weapons(ref a int, ref b int) void:
     temp int = a
     a = b
     b = temp

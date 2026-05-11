@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/structs/output/001.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/structs/output/001.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/structs/output/001.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/structs/output/001.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 %struct.Point = type { i32, i32 }
@@ -33,7 +33,7 @@ entry:
   %x2 = load i32, i32* %x1, align 4, !dbg !7
   %y3 = getelementptr %struct.Point, %struct.Point* %p, i32 0, i32 1, !dbg !7
   %y4 = load i32, i32* %y3, align 4, !dbg !7
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @output_fmt, i32 0, i32 0), i32 2, i32 %x2, i32 %y4), !dbg !7
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @output_fmt, i32 0, i32 0), i32 %x2, i32 %y4), !dbg !7
   store %struct.Color zeroinitializer, %struct.Color* %c, align 4, !dbg !7
   %r = getelementptr %struct.Color, %struct.Color* %c, i32 0, i32 0, !dbg !7
   store i32 255, i32* %r, align 4, !dbg !7
@@ -47,13 +47,13 @@ entry:
   %g8 = load i32, i32* %g7, align 4, !dbg !7
   %b9 = getelementptr %struct.Color, %struct.Color* %c, i32 0, i32 2, !dbg !7
   %b10 = load i32, i32* %b9, align 4, !dbg !7
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([25 x i8], [25 x i8]* @output_fmt.1, i32 0, i32 0), i32 3, i32 %r6, i32 %g8, i32 %b10), !dbg !7
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([25 x i8], [25 x i8]* @output_fmt.1, i32 0, i32 0), i32 %r6, i32 %g8, i32 %b10), !dbg !7
   call void @Point.delete(%struct.Point* %p), !dbg !7
   call void @Color.delete(%struct.Color* %c), !dbg !7
   ret i32 0, !dbg !7
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -61,7 +61,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "001.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/structs/output")
+!3 = !DIFile(filename: "001.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/structs/output")
 !4 = distinct !DISubprogram(name: "main", linkageName: "main", scope: null, file: !3, line: 12, type: !5, scopeLine: 12, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

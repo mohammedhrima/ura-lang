@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/operators/overloading/008.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/operators/overloading/008.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/operators/overloading/008.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/operators/overloading/008.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 %struct.Vec2 = type { i32, i32 }
@@ -83,7 +83,7 @@ entry:
   %0 = call i32 @Vec2.operator.MUL.Vec2(%struct.Vec2* %b, %struct.Vec2* %a), !dbg !11
   store i32 %0, i32* %dot, align 4, !dbg !11
   %dot3 = load i32, i32* %dot, align 4, !dbg !11
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt, i32 0, i32 0), i32 1, i32 %dot3), !dbg !11
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt, i32 0, i32 0), i32 %dot3), !dbg !11
   store %struct.Vec2 zeroinitializer, %struct.Vec2* %c, align 4, !dbg !11
   %x4 = getelementptr %struct.Vec2, %struct.Vec2* %c, i32 0, i32 0, !dbg !11
   store i32 1, i32* %x4, align 4, !dbg !11
@@ -98,7 +98,7 @@ entry:
   %2 = call i32 @Vec2.operator.MUL.Vec2(%struct.Vec2* %d, %struct.Vec2* %c), !dbg !11
   store i32 %2, i32* %perp, align 4, !dbg !11
   %perp8 = load i32, i32* %perp, align 4, !dbg !11
-  %3 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @output_fmt.1, i32 0, i32 0), i32 1, i32 %perp8), !dbg !11
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @output_fmt.1, i32 0, i32 0), i32 %perp8), !dbg !11
   call void @Vec2.delete(%struct.Vec2* %a), !dbg !11
   call void @Vec2.delete(%struct.Vec2* %b), !dbg !11
   call void @Vec2.delete(%struct.Vec2* %c), !dbg !11
@@ -106,7 +106,7 @@ entry:
   ret i32 0, !dbg !11
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -114,7 +114,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "008.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/operators/overloading")
+!3 = !DIFile(filename: "008.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/operators/overloading")
 !4 = distinct !DISubprogram(name: "Vec2.operator.ASSIGN.Vec2", linkageName: "Vec2.operator.ASSIGN.Vec2", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

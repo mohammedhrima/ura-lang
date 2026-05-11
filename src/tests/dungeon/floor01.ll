@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon/floor01.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon/floor01.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon/floor01.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon/floor01.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 @STR0 = private unnamed_addr constant [7 x i8] c"Aldric\00", align 1
@@ -35,17 +35,17 @@ entry:
   store float 0.000000e+00, float* %speed, align 4, !dbg !7
   store float 1.500000e+00, float* %speed, align 4, !dbg !7
   %hero1 = load i8*, i8** %hero, align 8, !dbg !7
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([31 x i8], [31 x i8]* @output_fmt, i32 0, i32 0), i32 1, i8* %hero1), !dbg !7
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([31 x i8], [31 x i8]* @output_fmt, i32 0, i32 0), i8* %hero1), !dbg !7
   %hp2 = load i32, i32* %hp, align 4, !dbg !7
   %mp3 = load i32, i32* %mp, align 4, !dbg !7
   %speed4 = load float, float* %speed, align 4, !dbg !7
   %f2d = fpext float %speed4 to double, !dbg !7
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @output_fmt.1, i32 0, i32 0), i32 3, i32 %hp2, i32 %mp3, double %f2d), !dbg !7
-  %2 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([37 x i8], [37 x i8]* @output_fmt.2, i32 0, i32 0), i32 2, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @typeof, i32 0, i32 0), i32 8), !dbg !7
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @output_fmt.1, i32 0, i32 0), i32 %hp2, i32 %mp3, double %f2d), !dbg !7
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([37 x i8], [37 x i8]* @output_fmt.2, i32 0, i32 0), i8* getelementptr inbounds ([4 x i8], [4 x i8]* @typeof, i32 0, i32 0), i32 8), !dbg !7
   ret i32 0, !dbg !7
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -53,7 +53,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "floor01.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon")
+!3 = !DIFile(filename: "floor01.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon")
 !4 = distinct !DISubprogram(name: "main", linkageName: "main", scope: null, file: !3, line: 2, type: !5, scopeLine: 2, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

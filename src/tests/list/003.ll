@@ -1,5 +1,5 @@
-; ModuleID = 'tests/list/003.ura'
-source_filename = "tests/list/003.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/list/003.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/list/003.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 %struct.__list_int = type { i32*, i32, i32 }
@@ -12,10 +12,6 @@ target triple = "arm64-apple-macosx16.0.0"
 @STR4 = private unnamed_addr constant [6 x i8] c" len=\00", align 1
 @STR5 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @output_fmt.1 = private unnamed_addr constant [18 x i8] c"popped=%d len=%d\0A\00", align 1
-
-declare i8* @realloc(i8*, i32)
-
-declare void @free(i8*)
 
 define void @__list_int.delete(%struct.__list_int* %self) !dbg !4 {
 entry:
@@ -146,32 +142,73 @@ entry:
   ret i32 %DOT, !dbg !19
 }
 
-define i32 @main() !dbg !20 {
+define void @__list_int.foreach(void (i32)* %cb, %struct.__list_int* %self) !dbg !20 {
 entry:
-  %v = alloca %struct.__list_int, align 8, !dbg !21
-  %x = alloca i32, align 4, !dbg !21
-  %y = alloca i32, align 4, !dbg !21
-  store %struct.__list_int zeroinitializer, %struct.__list_int* %v, align 8, !dbg !21
-  call void @__list_int.push(i32 1, %struct.__list_int* %v), !dbg !22
-  call void @__list_int.push(i32 2, %struct.__list_int* %v), !dbg !23
-  call void @__list_int.push(i32 3, %struct.__list_int* %v), !dbg !24
-  store i32 0, i32* %x, align 4, !dbg !21
-  %__list_int.pop = call i32 @__list_int.pop(%struct.__list_int* %v), !dbg !25
-  store i32 %__list_int.pop, i32* %x, align 4, !dbg !25
-  %x1 = load i32, i32* %x, align 4, !dbg !25
-  %__list_int.len = call i32 @__list_int.len(%struct.__list_int* %v), !dbg !26
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @output_fmt, i32 0, i32 0), i32 2, i32 %x1, i32 %__list_int.len), !dbg !26
-  store i32 0, i32* %y, align 4, !dbg !21
-  %__list_int.pop2 = call i32 @__list_int.pop(%struct.__list_int* %v), !dbg !27
-  store i32 %__list_int.pop2, i32* %y, align 4, !dbg !27
-  %y3 = load i32, i32* %y, align 4, !dbg !27
-  %__list_int.len4 = call i32 @__list_int.len(%struct.__list_int* %v), !dbg !28
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @output_fmt.1, i32 0, i32 0), i32 2, i32 %y3, i32 %__list_int.len4), !dbg !28
-  call void @__list_int.delete(%struct.__list_int* %v), !dbg !28
-  ret i32 0, !dbg !28
+  %cb1 = alloca void (i32)*, align 8, !dbg !21
+  %self2 = alloca %struct.__list_int*, align 8, !dbg !21
+  %i = alloca i32, align 4, !dbg !21
+  store void (i32)* %cb, void (i32)** %cb1, align 8, !dbg !21
+  store %struct.__list_int* %self, %struct.__list_int** %self2, align 8, !dbg !21
+  store i32 0, i32* %i, align 4, !dbg !21
+  store i32 0, i32* %i, align 4, !dbg !21
+  br label %while.start, !dbg !21
+
+while.start:                                      ; preds = %while.then, %entry
+  %self3 = load %struct.__list_int*, %struct.__list_int** %self2, align 8, !dbg !21
+  %__len = getelementptr %struct.__list_int, %struct.__list_int* %self3, i32 0, i32 1, !dbg !21
+  %i4 = load i32, i32* %i, align 4, !dbg !21
+  %DOT = load i32, i32* %__len, align 4, !dbg !21
+  %LT = icmp slt i32 %i4, %DOT, !dbg !21
+  br i1 %LT, label %while.then, label %while.end, !dbg !21
+
+while.then:                                       ; preds = %while.start
+  %fn_ptr = load void (i32)*, void (i32)** %cb1, align 8, !dbg !22
+  %self5 = load %struct.__list_int*, %struct.__list_int** %self2, align 8, !dbg !22
+  %data = getelementptr %struct.__list_int, %struct.__list_int* %self5, i32 0, i32 0, !dbg !22
+  %DOT6 = load i32*, i32** %data, align 8, !dbg !22
+  %i7 = load i32, i32* %i, align 4, !dbg !22
+  %ACCESS = getelementptr i32, i32* %DOT6, i32 %i7, !dbg !22
+  %ACC = load i32, i32* %ACCESS, align 4, !dbg !22
+  call void %fn_ptr(i32 %ACC), !dbg !22
+  %i8 = load i32, i32* %i, align 4, !dbg !22
+  %ADD = add i32 %i8, 1, !dbg !22
+  store i32 %ADD, i32* %i, align 4, !dbg !22
+  br label %while.start, !dbg !22
+
+while.end:                                        ; preds = %while.start
+  ret void, !dbg !22
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare void @free(i8*)
+
+declare i8* @realloc(i8*, i32)
+
+define i32 @main() !dbg !23 {
+entry:
+  %v = alloca %struct.__list_int, align 8, !dbg !24
+  %x = alloca i32, align 4, !dbg !24
+  %y = alloca i32, align 4, !dbg !24
+  store %struct.__list_int zeroinitializer, %struct.__list_int* %v, align 8, !dbg !24
+  call void @__list_int.push(i32 1, %struct.__list_int* %v), !dbg !25
+  call void @__list_int.push(i32 2, %struct.__list_int* %v), !dbg !26
+  call void @__list_int.push(i32 3, %struct.__list_int* %v), !dbg !27
+  store i32 0, i32* %x, align 4, !dbg !24
+  %__list_int.pop = call i32 @__list_int.pop(%struct.__list_int* %v), !dbg !28
+  store i32 %__list_int.pop, i32* %x, align 4, !dbg !28
+  %x1 = load i32, i32* %x, align 4, !dbg !28
+  %__list_int.len = call i32 @__list_int.len(%struct.__list_int* %v), !dbg !29
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @output_fmt, i32 0, i32 0), i32 %x1, i32 %__list_int.len), !dbg !29
+  store i32 0, i32* %y, align 4, !dbg !24
+  %__list_int.pop2 = call i32 @__list_int.pop(%struct.__list_int* %v), !dbg !30
+  store i32 %__list_int.pop2, i32* %y, align 4, !dbg !30
+  %y3 = load i32, i32* %y, align 4, !dbg !30
+  %__list_int.len4 = call i32 @__list_int.len(%struct.__list_int* %v), !dbg !31
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @output_fmt.1, i32 0, i32 0), i32 %y3, i32 %__list_int.len4), !dbg !31
+  call void @__list_int.delete(%struct.__list_int* %v), !dbg !31
+  ret i32 0, !dbg !31
+}
+
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -179,7 +216,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "003.ura", directory: "tests/list")
+!3 = !DIFile(filename: "003.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/list")
 !4 = distinct !DISubprogram(name: "__list_int.delete", linkageName: "__list_int.delete", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}
@@ -196,12 +233,15 @@ declare i32 @printf(i8*, i32, ...)
 !17 = !DILocation(line: 23, scope: !16)
 !18 = distinct !DISubprogram(name: "__list_int.cap", linkageName: "__list_int.cap", scope: null, file: !3, line: 26, type: !5, scopeLine: 26, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !19 = !DILocation(line: 26, scope: !18)
-!20 = distinct !DISubprogram(name: "main", linkageName: "main", scope: null, file: !3, line: 4, type: !5, scopeLine: 4, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
-!21 = !DILocation(line: 4, scope: !20)
-!22 = !DILocation(line: 6, scope: !20)
-!23 = !DILocation(line: 7, scope: !20)
-!24 = !DILocation(line: 8, scope: !20)
-!25 = !DILocation(line: 10, scope: !20)
-!26 = !DILocation(line: 11, scope: !20)
-!27 = !DILocation(line: 13, scope: !20)
-!28 = !DILocation(line: 14, scope: !20)
+!20 = distinct !DISubprogram(name: "__list_int.foreach", linkageName: "__list_int.foreach", scope: null, file: !3, line: 29, type: !5, scopeLine: 29, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!21 = !DILocation(line: 29, scope: !20)
+!22 = !DILocation(line: 32, scope: !20)
+!23 = distinct !DISubprogram(name: "main", linkageName: "main", scope: null, file: !3, line: 4, type: !5, scopeLine: 4, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
+!24 = !DILocation(line: 4, scope: !23)
+!25 = !DILocation(line: 6, scope: !23)
+!26 = !DILocation(line: 7, scope: !23)
+!27 = !DILocation(line: 8, scope: !23)
+!28 = !DILocation(line: 10, scope: !23)
+!29 = !DILocation(line: 11, scope: !23)
+!30 = !DILocation(line: 13, scope: !23)
+!31 = !DILocation(line: 14, scope: !23)

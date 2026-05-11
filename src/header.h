@@ -60,12 +60,7 @@ typedef struct _IO_FILE *File;
 #define debug(fmt, ...)                                                                            \
 	if (enable_debug) _debug(fmt, ##__VA_ARGS__)
 #define SEG() raise(SIGSEGV)
-// EXPECT_TOKEN: report the error, recover to the anchor's indent so
-// the OUTER loop (e.g. fdec_body's statement loop, the top-level loop)
-// can keep parsing. This function still returns the SYNTAX_ERROR
-// sentinel — its own construct couldn't complete — but the recovery
-// puts exe_count somewhere safe so the caller's next iteration
-// doesn't trip on the same broken tokens.
+
 #define EXPECT_TOKEN(anchor, type, fmt, ...)                                                       \
 	{                                                                                               \
 		Token *find_token = find(type, 0);                                                           \
@@ -118,7 +113,7 @@ typedef struct _IO_FILE *File;
 		}                                                                                            \
 	}
 
-#define DATA_TYPES     INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT, ARRAY_TYPE, LIST_TYPE
+#define DATA_TYPES     INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT, ARRAY_TYPE, LIST_TYPE, FN_TYPE
 #define LOGIC_TYPE     AND, OR
 #define MATH_TYPE      ADD, SUB, MUL, DIV, MOD, BAND, BOR, BXOR, LSHIFT, RSHIFT
 #define COMPARISON_OPS EQUAL, NOT_EQUAL, LESS, GREAT, LESS_EQUAL, GREAT_EQUAL
@@ -172,6 +167,7 @@ enum Type
 	// Data types
 	VOID, INT, FLOAT, LONG, SHORT, BOOL, CHAR, CHARS, PTR, VARIADIC, REF,
 	ARRAY, ARRAY_TYPE, ARRAY_LIT, LIST, LIST_TYPE,
+	FN_TYPE,
 	// Structures
 	STRUCT_DEF, STRUCT_CALL,
 	// Enums
@@ -190,6 +186,7 @@ enum Type
 	LPAR, RPAR, LBRA, RBRA, COMA, DOT, DOTS, ACCESS, AS,
 	// Control Flow
 	RETURN, IF, ELIF, ELSE, WHILE, CONTINUE, BREAK,
+	FOR, TO, STEP, IN,
 	// Functions
 	FDEC, FCALL, PROTO, ARGS, CHILDREN,
 	// Built-ins
@@ -256,7 +253,7 @@ struct Token {
 
 	int     used;
 	int     start_index;
-	int     end_index; // TODO: meybe it needs to be removed
+	int     end_index; // TODO: maybe it needs to be removed
 
 	bool    is_ref;
 	bool    is_dec;
@@ -288,6 +285,7 @@ struct Token {
 		struct { Node *ptr; } Fcall;
 		struct { Token *ptr; Token *start; Token *end; } Statement;
 		struct { Type  type; char *name; } Catch;
+		struct { EXPAND(Token**, params); Token *ret; } Fn;
 	};
 	// clang-format on
 };
@@ -413,6 +411,7 @@ Node *fdec_node(Token *token);
 Node *return_node(Token *token);
 Node *if_node(Token *token);
 Node *while_node(Token *token);
+Node *for_node(Token *token);
 Node *struct_def_node(Token *token);
 Node *enum_def_node(Token *token);
 Node *module_node(Token *token);
@@ -437,8 +436,8 @@ Node *fcall_node(Token *token);
 Node *optimize_ir(Node *node, bool *changed);
 
 // IR / codegen
-void    gen_ir(Node *node);
-void    gen_asm(Node *node);
+void    ir_gen(Node *node);
+void    asm_gen(Node *node);
 void    init(char *name);
 void    finalize(char *output);
 void    ensure_loaded(Node *node);
@@ -464,6 +463,7 @@ void    ir_method_call(Node *node);
 void    ir_regular_call_args(Node *node, Node *func);
 void    ir_regular_call(Node *node);
 void    ir_static_call(Node *node);
+void    ir_indirect_call(Node *node, Token *fn_var);
 bool    try_module_call(Node *node);
 void    gen_struct_declaration(Token *token);
 void    gen_primitive_declaration(Token *token);
@@ -489,6 +489,7 @@ void    asm_fcall_static(Node *node);
 void    asm_fcall_marshal_args(Node *node, Value *args, int *count_out, bool is_proto);
 void    asm_fcall_unpack_proto_struct(Node *node);
 void    asm_fcall_instance(Node *node);
+void    asm_fcall_indirect(Node *node);
 void    append_string_literal_to_fmt(const char *s, char *fmt, int *fc);
 void append_struct_with_output_op(Token *tok, char *fmt, int *fc, Value *args, int *nargs, Node *sd,
                                   Value out_fn);

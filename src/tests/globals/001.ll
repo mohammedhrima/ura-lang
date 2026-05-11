@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/globals/001.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/globals/001.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/globals/001.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/globals/001.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 @score = global i32 0
@@ -19,11 +19,11 @@ entry:
   call void @kill_enemy(), !dbg !9
   call void @kill_enemy(), !dbg !10
   %score = load i32, i32* @score, align 4, !dbg !10
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @output_fmt, i32 0, i32 0), i32 1, i32 %score), !dbg !10
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @output_fmt, i32 0, i32 0), i32 %score), !dbg !10
   ret i32 0, !dbg !10
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -31,7 +31,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "001.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/globals")
+!3 = !DIFile(filename: "001.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/globals")
 !4 = distinct !DISubprogram(name: "kill_enemy", linkageName: "kill_enemy", scope: null, file: !3, line: 5, type: !5, scopeLine: 5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

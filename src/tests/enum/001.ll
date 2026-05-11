@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/enum/001.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/enum/001.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/enum/001.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/enum/001.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 @I = constant i32 0
@@ -29,12 +29,12 @@ entry:
   %I = load i32, i32* @I, align 4, !dbg !7
   %O = load i32, i32* @O, align 4, !dbg !7
   %T = load i32, i32* @T, align 4, !dbg !7
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([16 x i8], [16 x i8]* @output_fmt, i32 0, i32 0), i32 3, i32 %I, i32 %O, i32 %T), !dbg !7
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([16 x i8], [16 x i8]* @output_fmt, i32 0, i32 0), i32 %I, i32 %O, i32 %T), !dbg !7
   %S = load i32, i32* @S, align 4, !dbg !7
   %Z = load i32, i32* @Z, align 4, !dbg !7
   %J = load i32, i32* @J, align 4, !dbg !7
   %L = load i32, i32* @L, align 4, !dbg !7
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @output_fmt.1, i32 0, i32 0), i32 4, i32 %S, i32 %Z, i32 %J, i32 %L), !dbg !7
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @output_fmt.1, i32 0, i32 0), i32 %S, i32 %Z, i32 %J, i32 %L), !dbg !7
   store i32 0, i32* %p, align 4, !dbg !7
   %T1 = load i32, i32* @T, align 4, !dbg !7
   store i32 %T1, i32* %p, align 4, !dbg !7
@@ -50,11 +50,11 @@ if.end:                                           ; preds = %if.then, %if.start
   ret i32 0, !dbg !7
 
 if.then:                                          ; preds = %if.start
-  %2 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt.2, i32 0, i32 0), i32 0), !dbg !7
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt.2, i32 0, i32 0)), !dbg !7
   br label %if.end, !dbg !7
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -62,7 +62,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "001.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/enum")
+!3 = !DIFile(filename: "001.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/enum")
 !4 = distinct !DISubprogram(name: "main", linkageName: "main", scope: null, file: !3, line: 7, type: !5, scopeLine: 7, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

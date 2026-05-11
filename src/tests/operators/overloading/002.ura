@@ -6,22 +6,22 @@ struct Score:
     operator = (n int) void:
         self.val = n
 
-    operator == (s Score ref) bool:
+    operator == (ref s Score) bool:
         return self.val == s.val
 
-    operator != (s Score ref) bool:
+    operator != (ref s Score) bool:
         return self.val != s.val
 
-    operator < (s Score ref) bool:
+    operator < (ref s Score) bool:
         return self.val < s.val
 
-    operator > (s Score ref) bool:
+    operator > (ref s Score) bool:
         return self.val > s.val
 
-    operator <= (s Score ref) bool:
+    operator <= (ref s Score) bool:
         return self.val <= s.val
 
-    operator >= (s Score ref) bool:
+    operator >= (ref s Score) bool:
         return self.val >= s.val
 
 main():

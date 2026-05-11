@@ -58,7 +58,7 @@ fn enemy_name(t int) chars:
     if t == SPIDER: return "Spider"
     return "Orc"
 
-fn fight(hero Hero ref, enemy int) bool:
+fn fight(ref hero Hero, enemy int) bool:
     ehp  int = enemy_hp(enemy)
     eatk int = enemy_atk(enemy)
     output("  [", enemy_name(enemy), " — HP:", ehp, " ATK:", eatk, "]\n")

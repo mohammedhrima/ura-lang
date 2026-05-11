@@ -1,15 +1,10 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon/boss.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon/boss.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon/boss.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon/boss.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 %struct.Stats = type { i32, i32, i32 }
 %struct.Hero = type { i8*, %struct.Stats, i32 }
 
-@score = global i32 0
-@floor = global i32 1
-@ORC = constant i32 0
-@SPIDER = constant i32 1
-@DRAGON = constant i32 2
 @STR0 = private unnamed_addr constant [7 x i8] c"Aldric\00", align 1
 @STR1 = private unnamed_addr constant [3 x i8] c"  \00", align 1
 @STR2 = private unnamed_addr constant [4 x i8] c" lv\00", align 1
@@ -17,6 +12,11 @@ target triple = "arm64-apple-macosx16.0.0"
 @STR4 = private unnamed_addr constant [7 x i8] c"  ATK:\00", align 1
 @STR5 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @output_fmt = private unnamed_addr constant [26 x i8] c"  %s lv%d  HP:%d  ATK:%d\0A\00", align 1
+@score = global i32 0
+@floor = global i32 1
+@ORC = constant i32 0
+@SPIDER = constant i32 1
+@DRAGON = constant i32 2
 @STR6 = private unnamed_addr constant [7 x i8] c"Dragon\00", align 1
 @STR7 = private unnamed_addr constant [7 x i8] c"Spider\00", align 1
 @STR8 = private unnamed_addr constant [4 x i8] c"Orc\00", align 1
@@ -185,11 +185,11 @@ entry:
   %stats8 = getelementptr %struct.Hero, %struct.Hero* %self7, i32 0, i32 1, !dbg !15
   %atk = getelementptr %struct.Stats, %struct.Stats* %stats8, i32 0, i32 1, !dbg !15
   %DOT9 = load i32, i32* %atk, align 4, !dbg !15
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([26 x i8], [26 x i8]* @output_fmt, i32 0, i32 0), i32 4, i8* %DOT, i32 %DOT4, i32 %DOT6, i32 %DOT9), !dbg !15
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([26 x i8], [26 x i8]* @output_fmt, i32 0, i32 0), i8* %DOT, i32 %DOT4, i32 %DOT6, i32 %DOT9), !dbg !15
   ret void, !dbg !15
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 define i32 @enemy_hp(i32 %t) !dbg !16 {
 entry:
@@ -305,7 +305,7 @@ entry:
   %enemy_name = call i8* @enemy_name(i32 %enemy5), !dbg !26
   %ehp6 = load i32, i32* %ehp, align 4, !dbg !26
   %eatk7 = load i32, i32* %eatk, align 4, !dbg !26
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([25 x i8], [25 x i8]* @output_fmt.1, i32 0, i32 0), i32 3, i8* %enemy_name, i32 %ehp6, i32 %eatk7), !dbg !26
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([25 x i8], [25 x i8]* @output_fmt.1, i32 0, i32 0), i8* %enemy_name, i32 %ehp6, i32 %eatk7), !dbg !26
   store i32 0, i32* %round, align 4, !dbg !23
   store i32 0, i32* %round, align 4, !dbg !23
   br label %while.start, !dbg !23
@@ -379,7 +379,7 @@ entry:
   store %struct.Hero %0, %struct.Hero* %hero, align 8, !dbg !32
   %name = getelementptr %struct.Hero, %struct.Hero* %hero, i32 0, i32 0, !dbg !32
   %DOT = load i8*, i8** %name, align 8, !dbg !32
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([31 x i8], [31 x i8]* @output_fmt.2, i32 0, i32 0), i32 1, i8* %DOT), !dbg !32
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([31 x i8], [31 x i8]* @output_fmt.2, i32 0, i32 0), i8* %DOT), !dbg !32
   call void @Hero.status(%struct.Hero* %hero), !dbg !33
   store i32 0, i32* %encounters, align 4, !dbg !31
   store i32 3, i32* %encounters, align 4, !dbg !31
@@ -403,7 +403,7 @@ while.then:                                       ; preds = %while.start
   %floor = load i32, i32* @floor, align 4, !dbg !31
   %i4 = load i32, i32* %i, align 4, !dbg !31
   %ADD = add i32 %i4, 1, !dbg !31
-  %2 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([24 x i8], [24 x i8]* @output_fmt.3, i32 0, i32 0), i32 2, i32 %floor, i32 %ADD), !dbg !31
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([24 x i8], [24 x i8]* @output_fmt.3, i32 0, i32 0), i32 %floor, i32 %ADD), !dbg !31
   store i1 false, i1* %won, align 1, !dbg !31
   %enemy5 = load i32, i32* %enemy, align 4, !dbg !35
   %fight = call i1 @fight(%struct.Hero* %hero, i32 %enemy5), !dbg !35
@@ -413,7 +413,7 @@ while.then:                                       ; preds = %while.start
 while.end:                                        ; preds = %while.start
   %score = load i32, i32* @score, align 4, !dbg !36
   %floor16 = load i32, i32* @floor, align 4, !dbg !36
-  %3 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([46 x i8], [46 x i8]* @output_fmt.6, i32 0, i32 0), i32 2, i32 %score, i32 %floor16), !dbg !36
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([46 x i8], [46 x i8]* @output_fmt.6, i32 0, i32 0), i32 %score, i32 %floor16), !dbg !36
   call void @Hero.delete(%struct.Hero* %hero), !dbg !36
   call void @Hero.delete(%struct.Hero* %tmp_struct), !dbg !36
   ret i32 0, !dbg !36
@@ -430,11 +430,11 @@ if.end:                                           ; preds = %if.else, %if.end8
   br label %while.start, !dbg !36
 
 if.then:                                          ; preds = %if.start
-  %4 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt.4, i32 0, i32 0), i32 0), !dbg !35
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt.4, i32 0, i32 0)), !dbg !35
   br label %if.start7, !dbg !35
 
 if.else:                                          ; preds = %if.start
-  %5 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @output_fmt.5, i32 0, i32 0), i32 0), !dbg !37
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @output_fmt.5, i32 0, i32 0)), !dbg !37
   br label %if.end, !dbg !37
 
 if.start7:                                        ; preds = %if.then
@@ -461,7 +461,7 @@ if.then9:                                         ; preds = %if.start7
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "boss.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon")
+!3 = !DIFile(filename: "boss.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon")
 !4 = distinct !DISubprogram(name: "Hero.new", linkageName: "Hero.new", scope: null, file: !3, line: 18, type: !5, scopeLine: 18, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

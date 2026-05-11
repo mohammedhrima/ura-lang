@@ -9,7 +9,7 @@ The full picture in one page. Everything that exists, everything we're planning.
 Ura is a compiled, statically-typed language with Python-style indented syntax. Programs go through a hand-written tokenizer + recursive-descent parser, an IR pass that does name resolution and type checking, then an LLVM backend that emits native code via `clang`. Written in C, lives in `src/`.
 
 ```
-source.ura  →  tokenize  →  parse (AST)  →  gen_ir  →  LLVM IR  →  native binary
+source.ura  →  tokenize  →  parse (AST)  →  ir_gen  →  LLVM IR  →  native binary
 ```
 
 ---
@@ -64,7 +64,7 @@ Five workstreams that take Ura from ~70/100 to ~85. Full detail in [IMPROVEMENTS
 |---|---|---|
 | ① | [Error Recovery](IMPROVEMENTS.md) — multi-error per run, `parser_recover` at sync points | **Done** |
 | ② | [Exhaustive Semantic Checks](IMPROVEMENTS.md) — bool conditions, infinite types, break-outside-loop, etc. | Partial (7 done, ~10 remaining) |
-| ③ | [Multi-Pass Architecture](IMPROVEMENTS.md) — split gen_ir into resolve + typecheck + codegen | Not started |
+| ③ | [Multi-Pass Architecture](IMPROVEMENTS.md) — split ir_gen into resolve + typecheck + codegen | Not started |
 | ④ | [Language Spec](IMPROVEMENTS.md) — grammar.ebnf, tour.md, stdlib.md | Not started |
 | ⑤ | [Incremental Compilation](IMPROVEMENTS.md) — module-level caching | Deferred |
 

@@ -63,8 +63,20 @@ void compile(char *path_name) {
 	debug(GREEN("===========================================\n"));
 	debug(GREEN("GENERATE INTERMEDIATE REPRESENTATION\n"));
 	debug(GREEN("===========================================\n"));
+	// Pre-register every top-level FDEC so forward references work across
+	// flat top-level functions (already worked for struct methods via
+	// ir_struct_def's pre-pass; same idea, top-level scope).
+	for (int i = 0; i < ura_scope->children_count; i++) {
+		Node *child = ura_scope->children[i];
+		Node *fn    = NULL;
+		if (child->token->type == FDEC)                                  fn = child;
+		else if (child->token->type == PROTO && child->left
+		         && child->left->token->type == FDEC)                    fn = child->left;
+		if (fn && fn->token->name && !find_function(fn->token->name))
+			add_function(scope, fn);
+	}
 	for (int i = 0; i < ura_scope->children_count; i++)
-		gen_ir(ura_scope->children[i]);
+		ir_gen(ura_scope->children[i]);
 #endif
 
 	if (error_count > 0) return;
@@ -86,8 +98,33 @@ void compile(char *path_name) {
 
 #if ASM
 	init(path_name);
-	for (int i = 0; error_count == 0 && i < ura_scope->children_count; i++)
-		gen_asm(ura_scope->children[i]);
+	// Two passes so calls reference fully-typed callees:
+	// 1) Generate STRUCT_DEFs first (so STRUCT_CALL params have llvm.struct_type).
+	// 2) Pre-declare every top-level FDEC's signature.
+	// 3) Emit the rest of the top-level tree (fn bodies + globals).
+	for (int i = 0; error_count == 0 && i < ura_scope->children_count; i++) {
+		Node *child = ura_scope->children[i];
+		if (child->token->type == STRUCT_DEF)
+			asm_gen(child);
+	}
+	for (int i = 0; error_count == 0 && i < ura_scope->children_count; i++) {
+		Node *child = ura_scope->children[i];
+		Node *fn    = NULL;
+		if (child->token->type == FDEC)                                  fn = child;
+		else if (child->token->type == PROTO && child->left
+		         && child->left->token->type == FDEC)                    fn = child->left;
+		if (fn && fn->token->name) {
+			bool is_method = strchr(fn->token->name, '.') != NULL;
+			bool is_main   = strcmp(fn->token->name, "main") == 0;
+			if (fn->token->used > 0 || is_method || is_main)
+				resolve_func_type(fn);
+		}
+	}
+	for (int i = 0; error_count == 0 && i < ura_scope->children_count; i++) {
+		Node *child = ura_scope->children[i];
+		if (child->token->type == STRUCT_DEF) continue;
+		asm_gen(child);
+	}
 	if (error_count == 0) finalize(ll_path);
 #endif
 }
@@ -129,7 +166,7 @@ int main(int argc, char **argv) {
 		} else if (a[0] != '-') {
 			size_t n = strlen(a);
 			CHECK(n <= 4 || strcmp(a + n - 4, ".ura") != 0, "invalid file: %s\n", a);
-			CHECK(entry != NULL, "you can compile only one file"
+			CHECK(entry != NULL, "you can compile only one file "
 			                     "try importing them in one files");
 			entry = a;
 		} else {

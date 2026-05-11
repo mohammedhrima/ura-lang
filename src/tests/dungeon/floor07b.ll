@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon/floor07b.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon/floor07b.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon/floor07b.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon/floor07b.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 %struct.Room = type { i8*, i32 }
@@ -41,12 +41,12 @@ entry:
   %entry5 = getelementptr %struct.Dungeon, %struct.Dungeon* %d, i32 0, i32 1, !dbg !7
   %name6 = getelementptr %struct.Room, %struct.Room* %entry5, i32 0, i32 0, !dbg !7
   %DOT7 = load i8*, i8** %name6, align 8, !dbg !7
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([32 x i8], [32 x i8]* @output_fmt, i32 0, i32 0), i32 2, i8* %DOT, i8* %DOT7), !dbg !7
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([32 x i8], [32 x i8]* @output_fmt, i32 0, i32 0), i8* %DOT, i8* %DOT7), !dbg !7
   call void @Dungeon.delete(%struct.Dungeon* %d), !dbg !7
   ret i32 0, !dbg !7
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -54,7 +54,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "floor07b.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon")
+!3 = !DIFile(filename: "floor07b.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon")
 !4 = distinct !DISubprogram(name: "main", linkageName: "main", scope: null, file: !3, line: 10, type: !5, scopeLine: 10, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

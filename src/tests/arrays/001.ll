@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/arrays/001.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/arrays/001.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/arrays/001.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/arrays/001.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 @STR0 = private unnamed_addr constant [2 x i8] c" \00", align 1
@@ -89,21 +89,21 @@ while.then24:                                     ; preds = %while.start23
   %c32 = load i32, i32* %c22, align 4, !dbg !9
   %ACCESS33 = getelementptr i32, i32* %row31, i32 %c32, !dbg !9
   %ACC = load i32, i32* %ACCESS33, align 4, !dbg !9
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @output_fmt, i32 0, i32 0), i32 1, i32 %ACC), !dbg !9
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @output_fmt, i32 0, i32 0), i32 %ACC), !dbg !9
   %c34 = load i32, i32* %c22, align 4, !dbg !9
   %ADD35 = add i32 %c34, 1, !dbg !9
   store i32 %ADD35, i32* %c22, align 4, !dbg !9
   br label %while.start23, !dbg !9
 
 while.end25:                                      ; preds = %while.start23
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @output_fmt.1, i32 0, i32 0), i32 0), !dbg !9
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @output_fmt.1, i32 0, i32 0)), !dbg !9
   %r36 = load i32, i32* %r, align 4, !dbg !9
   %ADD37 = add i32 %r36, 1, !dbg !9
   store i32 %ADD37, i32* %r, align 4, !dbg !9
   br label %while.start17, !dbg !9
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -111,7 +111,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "001.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/arrays")
+!3 = !DIFile(filename: "001.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/arrays")
 !4 = distinct !DISubprogram(name: "main", linkageName: "main", scope: null, file: !3, line: 3, type: !5, scopeLine: 3, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}
