@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/projects/ura-libft/strncmp.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/projects/ura-libft/strncmp.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/projects/ura-libft/strncmp.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/projects/ura-libft/strncmp.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 @STR0 = private unnamed_addr constant [4 x i8] c"abd\00", align 1
@@ -93,11 +93,11 @@ entry:
   %strncmp = call i32 @strncmp(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @STR0, i32 0, i32 0), i8* getelementptr inbounds ([4 x i8], [4 x i8]* @STR1, i32 0, i32 0), i32 4), !dbg !12
   store i32 %strncmp, i32* %len, align 4, !dbg !12
   %len1 = load i32, i32* %len, align 4, !dbg !12
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @output_fmt, i32 0, i32 0), i32 1, i32 %len1), !dbg !12
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @output_fmt, i32 0, i32 0), i32 %len1), !dbg !12
   ret i32 0, !dbg !12
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -105,7 +105,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "strncmp.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/projects/ura-libft")
+!3 = !DIFile(filename: "strncmp.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/projects/ura-libft")
 !4 = distinct !DISubprogram(name: "strncmp", linkageName: "strncmp", scope: null, file: !3, line: 5, type: !5, scopeLine: 5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

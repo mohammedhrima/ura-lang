@@ -128,7 +128,7 @@ main():
 | `time` | `(timer pointer) long` | Current Unix timestamp |
 | `clock` | `() long` | CPU time used |
 | `difftime` | `(t1 long, t0 long) float` | Seconds between two times |
-| `localtime` | `(timer long ref) pointer` | Convert timestamp to local time struct |
+| `localtime` | `(ref timer long) pointer` | Convert timestamp to local time struct |
 | `strftime` | `(s chars, max int, fmt chars, tp pointer) int` | Format time struct to string |
 | `nanosleep` | `(req pointer, rem pointer) int` | Sleep with nanosecond precision |
 

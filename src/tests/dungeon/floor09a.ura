@@ -1,11 +1,11 @@
 // dungeon/floor09a.ura
-fn level_up(level int ref, hp int ref, mp int ref) void:
+fn level_up(ref level int, ref hp int, ref mp int) void:
     level = level + 1
     hp    = hp + 20
     mp    = mp + 10
     output("★ Level ", level, "! HP+20 MP+10\n")
 
-fn swap(a int ref, b int ref) void:
+fn swap(ref a int, ref b int) void:
     tmp int = a
     a   = b
     b   = tmp

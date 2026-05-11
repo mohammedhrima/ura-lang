@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/loops/002.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/loops/002.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/loops/002.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/loops/002.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 @STR0 = private unnamed_addr constant [18 x i8] c"Bag full at slot \00", align 1
@@ -34,7 +34,7 @@ if.start:                                         ; preds = %while.then
 
 if.end:                                           ; preds = %if.start
   %slot4 = load i32, i32* %slot, align 4, !dbg !7
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt.1, i32 0, i32 0), i32 1, i32 %slot4), !dbg !7
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt.1, i32 0, i32 0), i32 %slot4), !dbg !7
   %slot5 = load i32, i32* %slot, align 4, !dbg !7
   %ADD = add i32 %slot5, 1, !dbg !7
   store i32 %ADD, i32* %slot, align 4, !dbg !7
@@ -42,11 +42,11 @@ if.end:                                           ; preds = %if.start
 
 if.then:                                          ; preds = %if.start
   %slot3 = load i32, i32* %slot, align 4, !dbg !7
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([30 x i8], [30 x i8]* @output_fmt, i32 0, i32 0), i32 1, i32 %slot3), !dbg !7
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([30 x i8], [30 x i8]* @output_fmt, i32 0, i32 0), i32 %slot3), !dbg !7
   br label %while.end, !dbg !7
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -54,7 +54,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "002.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/loops")
+!3 = !DIFile(filename: "002.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/loops")
 !4 = distinct !DISubprogram(name: "main", linkageName: "main", scope: null, file: !3, line: 3, type: !5, scopeLine: 3, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/structs/forward_ref/001.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/structs/forward_ref/001.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/structs/forward_ref/001.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/structs/forward_ref/001.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 %struct.Calc = type { i32 }
@@ -70,13 +70,13 @@ entry:
   store %struct.Calc %0, %struct.Calc* %c, align 4, !dbg !18
   call void @Calc.double(%struct.Calc* %c), !dbg !19
   %Calc.get = call i32 @Calc.get(%struct.Calc* %c), !dbg !20
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @output_fmt, i32 0, i32 0), i32 1, i32 %Calc.get), !dbg !20
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @output_fmt, i32 0, i32 0), i32 %Calc.get), !dbg !20
   call void @Calc.delete(%struct.Calc* %c), !dbg !20
   call void @Calc.delete(%struct.Calc* %tmp_struct), !dbg !20
   ret i32 0, !dbg !20
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -84,7 +84,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "001.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/structs/forward_ref")
+!3 = !DIFile(filename: "001.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/structs/forward_ref")
 !4 = distinct !DISubprogram(name: "Calc.new", linkageName: "Calc.new", scope: null, file: !3, line: 6, type: !5, scopeLine: 6, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

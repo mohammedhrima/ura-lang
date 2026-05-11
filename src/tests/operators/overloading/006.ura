@@ -16,7 +16,7 @@ struct Buffer:
     operator = (s chars) void:
         strcpy(self.value, s)
 
-    operator = (b Buffer ref) void:
+    operator = (ref b Buffer) void:
         strcpy(self.value, b.value)
 
 main():

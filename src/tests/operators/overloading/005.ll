@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/operators/overloading/005.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/operators/overloading/005.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/operators/overloading/005.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/operators/overloading/005.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 %struct.HP = type { i32 }
@@ -189,7 +189,7 @@ entry:
   call void @HP.operator.ASSIGN.HP(%struct.HP* %tmp_op, %struct.HP* %combined), !dbg !23
   %val = getelementptr %struct.HP, %struct.HP* %combined, i32 0, i32 0, !dbg !23
   %DOT = load i32, i32* %val, align 4, !dbg !23
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @output_fmt, i32 0, i32 0), i32 1, i32 %DOT), !dbg !23
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @output_fmt, i32 0, i32 0), i32 %DOT), !dbg !23
   store %struct.HP zeroinitializer, %struct.HP* %boosted, align 4, !dbg !23
   %2 = call %struct.HP @HP.operator.ADD.INT(i32 25, %struct.HP* %hero), !dbg !23
   %tmp_op1 = alloca %struct.HP, align 8, !dbg !23
@@ -197,7 +197,7 @@ entry:
   call void @HP.operator.ASSIGN.HP(%struct.HP* %tmp_op1, %struct.HP* %boosted), !dbg !23
   %val2 = getelementptr %struct.HP, %struct.HP* %boosted, i32 0, i32 0, !dbg !23
   %DOT3 = load i32, i32* %val2, align 4, !dbg !23
-  %3 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt.1, i32 0, i32 0), i32 1, i32 %DOT3), !dbg !23
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt.1, i32 0, i32 0), i32 %DOT3), !dbg !23
   store %struct.HP zeroinitializer, %struct.HP* %reduced, align 4, !dbg !23
   %4 = call %struct.HP @HP.operator.SUB.HP(%struct.HP* %bonus, %struct.HP* %hero), !dbg !23
   %tmp_op4 = alloca %struct.HP, align 8, !dbg !23
@@ -205,7 +205,7 @@ entry:
   call void @HP.operator.ASSIGN.HP(%struct.HP* %tmp_op4, %struct.HP* %reduced), !dbg !23
   %val5 = getelementptr %struct.HP, %struct.HP* %reduced, i32 0, i32 0, !dbg !23
   %DOT6 = load i32, i32* %val5, align 4, !dbg !23
-  %5 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @output_fmt.2, i32 0, i32 0), i32 1, i32 %DOT6), !dbg !23
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @output_fmt.2, i32 0, i32 0), i32 %DOT6), !dbg !23
   store %struct.HP zeroinitializer, %struct.HP* %trimmed, align 4, !dbg !23
   %6 = call %struct.HP @HP.operator.SUB.INT(i32 10, %struct.HP* %hero), !dbg !23
   %tmp_op7 = alloca %struct.HP, align 8, !dbg !23
@@ -213,13 +213,13 @@ entry:
   call void @HP.operator.ASSIGN.HP(%struct.HP* %tmp_op7, %struct.HP* %trimmed), !dbg !23
   %val8 = getelementptr %struct.HP, %struct.HP* %trimmed, i32 0, i32 0, !dbg !23
   %DOT9 = load i32, i32* %val8, align 4, !dbg !23
-  %7 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt.3, i32 0, i32 0), i32 1, i32 %DOT9), !dbg !23
+  %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt.3, i32 0, i32 0), i32 %DOT9), !dbg !23
   %8 = call i1 @HP.operator.EQ.HP(%struct.HP* %bonus, %struct.HP* %hero), !dbg !23
   %bool_str = select i1 %8, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str, i32 0, i32 0), !dbg !23
-  %9 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @output_fmt.4, i32 0, i32 0), i32 1, i8* %bool_str), !dbg !23
+  %9 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @output_fmt.4, i32 0, i32 0), i8* %bool_str), !dbg !23
   %10 = call i1 @HP.operator.EQ.INT(i32 100, %struct.HP* %hero), !dbg !23
   %bool_str10 = select i1 %10, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str.5, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str.6, i32 0, i32 0), !dbg !23
-  %11 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @output_fmt.7, i32 0, i32 0), i32 1, i8* %bool_str10), !dbg !23
+  %11 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @output_fmt.7, i32 0, i32 0), i8* %bool_str10), !dbg !23
   call void @HP.delete(%struct.HP* %hero), !dbg !23
   call void @HP.delete(%struct.HP* %bonus), !dbg !23
   call void @HP.delete(%struct.HP* %combined), !dbg !23
@@ -229,7 +229,7 @@ entry:
   ret i32 0, !dbg !23
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -237,7 +237,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "005.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/operators/overloading")
+!3 = !DIFile(filename: "005.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/operators/overloading")
 !4 = distinct !DISubprogram(name: "HP.operator.ASSIGN.INT", linkageName: "HP.operator.ASSIGN.INT", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

@@ -81,3 +81,8 @@ struct User:
     bug_attribute User
 
 + i want to be able to access funcitons even though they are declared in later
++ throw error if struct has no attirbute or find a way to use a struct even though it has no attirbute
++ use $ to .ll to name funcitons inside struct or module
+
+
++ .ura -> tokens -> AST -> IR -> LOWER IR -> codegen

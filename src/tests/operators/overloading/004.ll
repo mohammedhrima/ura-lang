@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/operators/overloading/004.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/operators/overloading/004.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/operators/overloading/004.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/operators/overloading/004.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 %struct.Flags = type { i32 }
@@ -174,7 +174,7 @@ entry:
   call void @Flags.operator.ASSIGN.Flags(%struct.Flags* %tmp_op, %struct.Flags* %band), !dbg !21
   %bits = getelementptr %struct.Flags, %struct.Flags* %band, i32 0, i32 0, !dbg !21
   %DOT = load i32, i32* %bits, align 4, !dbg !21
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt, i32 0, i32 0), i32 1, i32 %DOT), !dbg !21
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt, i32 0, i32 0), i32 %DOT), !dbg !21
   store %struct.Flags zeroinitializer, %struct.Flags* %bor, align 4, !dbg !21
   %2 = call %struct.Flags @Flags.operator.BOR.Flags(%struct.Flags* %b, %struct.Flags* %a), !dbg !21
   %tmp_op1 = alloca %struct.Flags, align 8, !dbg !21
@@ -182,7 +182,7 @@ entry:
   call void @Flags.operator.ASSIGN.Flags(%struct.Flags* %tmp_op1, %struct.Flags* %bor), !dbg !21
   %bits2 = getelementptr %struct.Flags, %struct.Flags* %bor, i32 0, i32 0, !dbg !21
   %DOT3 = load i32, i32* %bits2, align 4, !dbg !21
-  %3 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt.1, i32 0, i32 0), i32 1, i32 %DOT3), !dbg !21
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt.1, i32 0, i32 0), i32 %DOT3), !dbg !21
   store %struct.Flags zeroinitializer, %struct.Flags* %bxor, align 4, !dbg !21
   %4 = call %struct.Flags @Flags.operator.BXOR.Flags(%struct.Flags* %b, %struct.Flags* %a), !dbg !21
   %tmp_op4 = alloca %struct.Flags, align 8, !dbg !21
@@ -190,7 +190,7 @@ entry:
   call void @Flags.operator.ASSIGN.Flags(%struct.Flags* %tmp_op4, %struct.Flags* %bxor), !dbg !21
   %bits5 = getelementptr %struct.Flags, %struct.Flags* %bxor, i32 0, i32 0, !dbg !21
   %DOT6 = load i32, i32* %bits5, align 4, !dbg !21
-  %5 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt.2, i32 0, i32 0), i32 1, i32 %DOT6), !dbg !21
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt.2, i32 0, i32 0), i32 %DOT6), !dbg !21
   store %struct.Flags zeroinitializer, %struct.Flags* %lsh, align 4, !dbg !21
   %6 = call %struct.Flags @Flags.operator.LSHIFT.INT(i32 2, %struct.Flags* %a), !dbg !21
   %tmp_op7 = alloca %struct.Flags, align 8, !dbg !21
@@ -198,7 +198,7 @@ entry:
   call void @Flags.operator.ASSIGN.Flags(%struct.Flags* %tmp_op7, %struct.Flags* %lsh), !dbg !21
   %bits8 = getelementptr %struct.Flags, %struct.Flags* %lsh, i32 0, i32 0, !dbg !21
   %DOT9 = load i32, i32* %bits8, align 4, !dbg !21
-  %7 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt.3, i32 0, i32 0), i32 1, i32 %DOT9), !dbg !21
+  %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt.3, i32 0, i32 0), i32 %DOT9), !dbg !21
   store %struct.Flags zeroinitializer, %struct.Flags* %rsh, align 4, !dbg !21
   %8 = call %struct.Flags @Flags.operator.RSHIFT.INT(i32 1, %struct.Flags* %a), !dbg !21
   %tmp_op10 = alloca %struct.Flags, align 8, !dbg !21
@@ -206,7 +206,7 @@ entry:
   call void @Flags.operator.ASSIGN.Flags(%struct.Flags* %tmp_op10, %struct.Flags* %rsh), !dbg !21
   %bits11 = getelementptr %struct.Flags, %struct.Flags* %rsh, i32 0, i32 0, !dbg !21
   %DOT12 = load i32, i32* %bits11, align 4, !dbg !21
-  %9 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt.4, i32 0, i32 0), i32 1, i32 %DOT12), !dbg !21
+  %9 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @output_fmt.4, i32 0, i32 0), i32 %DOT12), !dbg !21
   call void @Flags.delete(%struct.Flags* %a), !dbg !21
   call void @Flags.delete(%struct.Flags* %b), !dbg !21
   call void @Flags.delete(%struct.Flags* %band), !dbg !21
@@ -217,7 +217,7 @@ entry:
   ret i32 0, !dbg !21
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -225,7 +225,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "004.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/operators/overloading")
+!3 = !DIFile(filename: "004.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/operators/overloading")
 !4 = distinct !DISubprogram(name: "Flags.operator.ASSIGN.INT", linkageName: "Flags.operator.ASSIGN.INT", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

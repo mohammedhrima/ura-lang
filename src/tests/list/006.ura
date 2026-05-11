@@ -1,0 +1,14 @@
+// list/006.ura - List.foreach with a top-level fn callback
+
+use "@/header"
+
+fn print_doubled(n int) void:
+    output(n * 2, " ")
+
+main():
+    items List[int]
+    items.push(1)
+    items.push(2)
+    items.push(3)
+    items.foreach(print_doubled)
+    output("\n")

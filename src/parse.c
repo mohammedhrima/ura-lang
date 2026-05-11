@@ -7,7 +7,9 @@ const Keyword keywords[] = {
     {"long", LONG, 1, 1},         {"pointer", CHARS, 1, 1},
     {"short", SHORT, 1, 1},       {"if", IF, 0, 0},
     {"elif", ELIF, 0, 0},         {"else", ELSE, 0, 0},
-    {"while", WHILE, 0, 0},       {"fn", FDEC, 0, 0},
+    {"while", WHILE, 0, 0},       {"for", FOR, 0, 0},
+    {"to", TO, 0, 0},             {"step", STEP, 0, 0},
+    {"in", IN, 0, 0},             {"fn", FDEC, 0, 0},
     {"return", RETURN, 0, 0},     {"break", BREAK, 0, 0},
     {"continue", CONTINUE, 0, 0}, {"ref", REF, 0, 0},
     {"struct", STRUCT_DEF, 0, 0}, {"enum", ENUM_DEF, 0, 0},
@@ -233,7 +235,9 @@ void tokenize(char *file_name, int default_space) {
 				free(use);
 				use = tmp;
 				if (use[0] == '@') {
-					tmp = format("%s/%s", ura_lib, use + 1);
+					char *rest = use + 1;
+					if (*rest == '/') rest++;
+					tmp = format("%s/%s", ura_lib, rest);
 					free(use);
 					use = tmp;
 				} else if (use[0] != '/') {
@@ -371,20 +375,38 @@ Node *syntax_error() {
 	return syntax_error_node;
 }
 
-// DEMO: skip tokens until we reach a "sync point" — a token at the same
-// or shallower indent than `indent`. After recovery we clear found_error
-// so subsequent find()/within() calls behave normally and we can keep
-// parsing the rest of the file.
+// Advance to a sync point and clear the scoped-error flag.
+// A sync point is the next token that is BOTH at-or-shallower than
+// `indent` AND on a different line from where we currently are. This
+// guarantees we always cross at least one newline and skip the broken
+// remainder of the current statement (otherwise we'd loop forever
+// when the error fires mid-line on a token at the target indent —
+// e.g. `operator () Vec:` where `(` shares the indent with `operator`).
 void parser_recover(int indent) {
-	while (exe_count < tokens_count
-	       && tokens[exe_count]->type != END
-	       && tokens[exe_count]->space > indent)
+	int start_line = (exe_count < tokens_count) ? tokens[exe_count]->line : -1;
+	while (exe_count < tokens_count && tokens[exe_count]->type != END) {
+		Token *t = tokens[exe_count];
+		if (t->space <= indent && t->line != start_line) break;
 		exe_count++;
+	}
 	found_error = false;
 }
 
 Token *find(Type type, ...) {
 	if (found_error) return NULL;
+	// Past-the-end: treat as if we hit END so callers don't deref a NULL slot
+	// and the top-level `while (!find(END, 0))` loop terminates.
+	if (exe_count >= tokens_count) {
+		va_list ap;
+		va_start(ap, type);
+		bool wants_end = (type == END);
+		while (!wants_end && type) {
+			type      = va_arg(ap, Type);
+			wants_end = (type == END);
+		}
+		if (wants_end && tokens_count > 0) return tokens[tokens_count - 1];
+		return NULL;
+	}
 	va_list ap;
 	va_start(ap, type);
 	while (type) {
@@ -400,6 +422,64 @@ bool within(int space) {
 }
 
 bool is_data_type(Token *token) { return includes(token->type, DATA_TYPES, 0); }
+
+bool is_type_starter(Token *token) {
+	return is_data_type(token) || token->type == FDEC;
+}
+
+Token *parse_type_in_signature(int anchor_space);
+
+Token *parse_fn_type(int anchor_space) {
+	Token *fn_kw = find(FDEC, 0);
+	if (!fn_kw) return NULL;
+
+	Token *ftype       = new_token(FN_TYPE, fn_kw->space);
+	ftype->source      = fn_kw->source;
+	ftype->line        = fn_kw->line;
+	ftype->start_index = fn_kw->start_index;
+	ftype->end_index   = fn_kw->end_index;
+
+	if (!find(LPAR, 0)) {
+		parse_error(fn_kw, "expected '(' after `fn` in type");
+		parser_recover(anchor_space);
+		return NULL;
+	}
+
+	// Parse comma-separated parameter types.
+	while (tokens[exe_count]->type != RPAR && tokens[exe_count]->type != END) {
+		Token *param_t = parse_type_in_signature(anchor_space);
+		if (!param_t) return NULL;
+		resize_array(ftype->Fn.params, Token *, ftype->Fn.params_size, ftype->Fn.params_count);
+		ftype->Fn.params[ftype->Fn.params_count++] = param_t;
+		if (tokens[exe_count]->type == COMA) exe_count++;
+		else if (tokens[exe_count]->type != RPAR) {
+			parse_error(fn_kw, "expected ',' or ')' in fn-type parameter list");
+			parser_recover(anchor_space);
+			return NULL;
+		}
+	}
+	if (!find(RPAR, 0)) {
+		parse_error(fn_kw, "expected ')' to close fn-type parameter list");
+		parser_recover(anchor_space);
+		return NULL;
+	}
+
+	ftype->Fn.ret = parse_type_in_signature(anchor_space);
+	if (!ftype->Fn.ret) return NULL;
+	return ftype;
+}
+
+Token *parse_type_in_signature(int anchor_space) {
+	if (tokens[exe_count]->type == FDEC) return parse_fn_type(anchor_space);
+	Token *t = find(DATA_TYPES, ID, 0);
+	if (!t) {
+		parse_error(tokens[exe_count], "expected type");
+		parser_recover(anchor_space);
+		return NULL;
+	}
+	if (includes(t->type, ARRAY_TYPE, LIST_TYPE, 0)) array_list_type_setup(t);
+	return t;
+}
 
 void enter_scope(Node *node) {
 	scopes_count++;
@@ -421,7 +501,28 @@ void exit_scope() {
 // AST BUILDERS
 // ============================================================================
 Node *expr_node() { return assign_node(); }
-AST_NODE(assign_node, or_node, ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN)
+
+// Hand-rolled equivalent of AST_NODE for assign_node, with one extra step:
+// when the LHS is a primitive/struct declaration (is_dec on the operand), we
+// stamp `is_dec` on the ASSIGN token itself so the -prep emitter can later
+// distinguish a typed declaration (`x int = 1`) from a re-assignment (`x = 1`).
+// ir_id replaces the LHS node->token with the canonical variable Token, which
+// preserves is_dec on the operand — so we can't tell decl vs use from the
+// operand alone after IR.
+Node *assign_node() {
+	Node  *left = or_node();
+	Token *token;
+	while ((token = find(ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN,
+	                     DIV_ASSIGN, MOD_ASSIGN, 0))) {
+		Node *node  = new_node(token);
+		node->left  = left;
+		node->right = or_node();
+		if (token->type == ASSIGN && left && left->token && left->token->is_dec)
+			token->is_dec = true;
+		left = node;
+	}
+	return left;
+}
 AST_NODE(or_node, and_node, OR)
 AST_NODE(and_node, bitor_node, AND)
 AST_NODE(bitor_node, bitxor_node, BOR)
@@ -546,6 +647,7 @@ Node *keyword_node() {
 	if ((token = find(ENUM_DEF, 0)))                  return enum_def_node(token);
 	if ((token = find(IF, 0)))                        return if_node(token);
 	if ((token = find(WHILE, 0)))                     return while_node(token);
+	if ((token = find(FOR, 0)))                       return for_node(token);
 	if ((token = find(FDEC, 0)))                      return fdec_node(token);
 	if ((token = find(RETURN, 0)))                    return return_node(token);
 	if ((token = find(BREAK, CONTINUE, NULLABLE, 0))) return new_node(token);
@@ -554,6 +656,32 @@ Node *keyword_node() {
 	if ((token = find(LBRA, 0)))                      return array_lit_node(token);
 
 	if ((token = find(REF, 0))) {
+		// Leading-ref declaration: `ref name type [= init]` for primitives,
+		// `ref name Struct = init` for structs, `ref name fn(...) ret` for fn-types.
+		// Anything else after REF is the unary ref-of expression form (`p = ref x`).
+		bool is_decl = false;
+		if (exe_count + 1 < tokens_count
+		    && tokens[exe_count]->type == ID
+		    && tokens[exe_count]->line == token->line
+		    && (is_data_type(tokens[exe_count + 1])
+		        || tokens[exe_count + 1]->type == FDEC
+		        || (tokens[exe_count + 1]->type == ID
+		            && get_struct(tokens[exe_count + 1]->name)))) {
+			is_decl = true;
+		}
+		if (is_decl) {
+			Node *decl = prime_node();
+			if (decl && decl != syntax_error_node && decl->token) {
+				decl->token->is_ref = true;
+				if (decl->token->type == STRUCT_CALL) {
+					EXPECT_TOKEN(token, ASSIGN,
+					    "'%s': ref must be initialized at declaration",
+					    decl->token->name);
+					exe_count--;
+				}
+			}
+			return decl;
+		}
 		node       = new_node(token);
 		node->left = prime_node();
 		return node;
@@ -598,15 +726,30 @@ Node *prime_node() {
 	if (includes(token->type, DATA_TYPES) && !token->name && !token->is_dec) return new_node(token);
 	if (token->is_dec)                                                       return new_node(token);
 
-	if (token->type == ID && is_data_type(tokens[exe_count]) &&
+	if (token->type == ID && is_type_starter(tokens[exe_count]) &&
 	    tokens[exe_count]->line == token->line) {
-		Token *data_type = tokens[exe_count++];
-		bool   is_ref    = find(REF, 0) != NULL;
-		if (includes(data_type->type, ARRAY_TYPE, LIST_TYPE, 0)) array_list_type_setup(data_type);
+		Token *data_type;
+		if (tokens[exe_count]->type == FDEC) {
+			data_type = parse_fn_type(token->space);
+			if (!data_type) return syntax_error();
+		} else {
+			data_type = tokens[exe_count++];
+			if (includes(data_type->type, ARRAY_TYPE, LIST_TYPE, 0))
+				array_list_type_setup(data_type);
+		}
+		if (tokens[exe_count]->type == REF) {
+			parse_error(tokens[exe_count],
+			    "trailing `ref` is no longer supported; write `ref %s %s` instead",
+			    token->name,
+			    data_type->type == STRUCT_CALL && data_type->Struct.ptr
+			        ? data_type->Struct.ptr->token->name
+			        : to_string(data_type->type));
+			parser_recover(token->space);
+			return syntax_error();
+		}
 		setName(data_type, token->name);
 		data_type->is_dec = true;
-		data_type->is_ref = is_ref;
-		if (!is_ref && tokens[exe_count]->type == COMA && exe_count + 2 < tokens_count &&
+		if (tokens[exe_count]->type == COMA && exe_count + 2 < tokens_count &&
 		    tokens[exe_count + 1]->type == ID && is_data_type(tokens[exe_count + 2]))
 			return tuple_unpack_node(data_type);
 		return new_node(data_type);
@@ -616,14 +759,15 @@ Node *prime_node() {
 	if (token->type == ID && tokens[exe_count]->type == ID &&
 	    (st_dec = get_struct(tokens[exe_count]->name))) {
 		find(ID, 0);
-		bool is_ref = find(REF, 0) != NULL;
-		if (is_ref) {
-			EXPECT_TOKEN(token, ASSIGN, "'%s': ref must be initialized at declaration", token->name);
-			exe_count--;
+		if (tokens[exe_count]->type == REF) {
+			parse_error(tokens[exe_count],
+			    "trailing `ref` is no longer supported; write `ref %s %s` instead",
+			    token->name, st_dec->token->name);
+			parser_recover(token->space);
+			return syntax_error();
 		}
 		token->type       = STRUCT_CALL;
 		token->is_dec     = true;
-		token->is_ref     = is_ref;
 		token->Struct.ptr = st_dec;
 		return new_node(token);
 	}
@@ -712,6 +856,11 @@ void fdec_tuple_ret(Node *node) {
 }
 
 void fdec_single_ret(Node *node) {
+	bool is_ref_ret = false;
+	if (tokens[exe_count]->type == REF) {
+		is_ref_ret = true;
+		exe_count++;
+	}
 	if (!is_data_type(tokens[exe_count]) && tokens[exe_count]->type != ID) {
 		parse_error(node->token, "expected return type after function declaration");
 		syntax_error();
@@ -728,6 +877,7 @@ void fdec_single_ret(Node *node) {
 		node->token->ret_type   = STRUCT_CALL;
 		node->token->Struct.ptr = st;
 	} else node->token->ret_type = ret_tok->type;
+	node->token->is_ref = is_ref_ret;
 }
 
 void fdec_body(Node *node) {
@@ -798,7 +948,12 @@ Node *fdec_node(Token *token) {
 	else fdec_single_ret(node);
 	if (found_error) return syntax_error();
 
-	node->token->is_ref = find(REF, 0) != NULL;
+	if (tokens[exe_count]->type == REF) {
+		parse_error(tokens[exe_count],
+		    "trailing `ref` on return type is no longer supported; write `ref <type>` before the type");
+		syntax_error();
+		return node;
+	}
 	if (!node->token->is_proto) fdec_body(node);
 	if (found_error)            return syntax_error();
 	exit_scope();
@@ -1111,7 +1266,7 @@ void synth_list_structs() {
 			char elem[LIST_NAME_MAX], sname[LIST_NAME_MAX];
 			list_struct_names(specs[b].base, d, elem, sname);
 			char *src  = generate_list_source(elem, sname);
-			char *path = format("/tmp/__ura_%s.ura", sname);
+			char *path = format("/tmp/__ura_%d_%s.ura", (int)getpid(), sname);
 			File  f    = fopen(path, "w");
 			if (!f) {
 				free(path);
@@ -1143,6 +1298,12 @@ void params_node(Node *node) {
 			break;
 		}
 
+		bool is_ref = false;
+		if (tokens[exe_count]->type == REF) {
+			is_ref = true;
+			exe_count++;
+		}
+
 		Token *name = find(ID, 0);
 		if (!name) {
 			parse_error(node->token, "expected parameter name in function '%s'", node->token->name);
@@ -1150,17 +1311,28 @@ void params_node(Node *node) {
 			return;
 		}
 
-		Token *data_type = find(DATA_TYPES, ID, 0);
-		bool   is_ref    = find(REF, 0) != NULL;
-		if (!data_type) {
-			parse_error(name, "expected type for parameter '%s'", name->name);
+		Token *data_type;
+		if (tokens[exe_count]->type == FDEC) {
+			data_type = parse_fn_type(name->space);
+			if (!data_type) break;
+		} else {
+			data_type = find(DATA_TYPES, ID, 0);
+			if (!data_type) {
+				parse_error(name, "expected type for parameter '%s'", name->name);
+				syntax_error();
+				break;
+			}
+			if (includes(data_type->type, ARRAY_TYPE, LIST_TYPE, 0)) {
+				array_list_type_setup(data_type);
+				if (found_error) break;
+			}
+		}
+		if (tokens[exe_count]->type == REF) {
+			parse_error(tokens[exe_count],
+			    "trailing `ref` is no longer supported; write `ref %s <type>` before the name",
+			    name->name);
 			syntax_error();
 			break;
-		}
-
-		if (includes(data_type->type, ARRAY_TYPE, LIST_TYPE, 0)) {
-			array_list_type_setup(data_type);
-			if (found_error) break;
 		}
 		if (data_type->type == ID) {
 			Node *to_find = get_struct(data_type->name);
@@ -1193,6 +1365,12 @@ void params_node(Node *node) {
 				name->Array.sub_type   = data_type->Array.sub_type;
 				name->Array.depth      = data_type->Array.depth;
 				name->Array.struct_ptr = data_type->Array.struct_ptr;
+			} else if (data_type->type == FN_TYPE) {
+				name->ret_type     = FN_TYPE;
+				name->Fn.params    = data_type->Fn.params;
+				name->Fn.params_count = data_type->Fn.params_count;
+				name->Fn.params_size  = data_type->Fn.params_size;
+				name->Fn.ret       = data_type->Fn.ret;
 			}
 		}
 		curr->token->is_dec   = true;
@@ -1219,6 +1397,49 @@ Node *while_node(Token *token) {
 	return node;
 }
 
+Node *for_node(Token *token) {
+	Node *node = new_node(token);
+	enter_scope(node);
+
+	Token *iter = find(ID, 0);
+	if (!iter) {
+		parse_error(token, "expected loop variable name after `for`");
+		parser_recover(token->space);
+		return syntax_error();
+	}
+	iter->type   = INT;
+	iter->is_dec = true;
+	node->left   = new_node(iter);
+
+	Token *from_kw = find(ID, 0);
+	if (!from_kw || !from_kw->name || strcmp(from_kw->name, "from") != 0) {
+		parse_error(token, "expected `from` after `for %s`", iter->name);
+		parser_recover(token->space);
+		return syntax_error();
+	}
+
+	Node *from_expr = expr_node();
+	EXPECT_TOKEN(token, TO, "expected `to` after `for %s from <expr>`", iter->name);
+	Node *to_expr   = expr_node();
+	Node *step_expr = NULL;
+	if (find(STEP, 0)) step_expr = expr_node();
+	if (!step_expr) {
+		Token *one     = new_token(INT, token->space);
+		one->Int.value = 1;
+		step_expr      = new_node(one);
+	}
+	EXPECT_TOKEN(token, DOTS, "expected ':' after `for ... to <expr>`");
+
+	add_child(node, from_expr);
+	add_child(node, to_expr);
+	add_child(node, step_expr);
+
+	while (within(node->token->space))
+		add_child(node, expr_node());
+	exit_scope();
+	return node;
+}
+
 Node *module_node(Token *token) {
 	Token *id = find(ID, 0);
 	if (!id) {
@@ -1233,7 +1454,12 @@ Node *module_node(Token *token) {
 	while (within(token->space)) {
 		Node  *curr   = expr_node();
 		Token *ctoken = curr->token;
-		if (!includes(ctoken->type, STRUCT_DEF, FDEC, 0) && !ctoken->is_dec) {
+		// `assign_node` stamps is_dec onto the ASSIGN itself when the LHS is
+		// a typed declaration — so we must look through ASSIGN to find the
+		// real anchor (mirrors the top-level guard in main.c).
+		Token *anchor =
+		    (ctoken->type == ASSIGN && curr->left) ? curr->left->token : ctoken;
+		if (!includes(anchor->type, STRUCT_DEF, FDEC, 0)) {
 			parse_error(ctoken, "only function/struct declarations are allowed inside `mod`");
 			syntax_error();
 			break;

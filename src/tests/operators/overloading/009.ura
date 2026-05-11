@@ -38,10 +38,10 @@ struct String2:
     operator = (str chars) void:
         self.assign(str)
 
-    operator = (v String2 ref) void:
+    operator = (ref v String2) void:
         self.assign(v.value)
 
-fn add (v String2 ref, w String2 ref) String2:
+fn add (ref v String2, ref w String2) String2:
     output("v    -> ", v.value, "\n")
     output("self -> ", w.value, "\n")
     res String2 = String2::new()
