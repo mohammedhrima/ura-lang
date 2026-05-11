@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/projects/ura-libft/isalpha.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/projects/ura-libft/isalpha.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/projects/ura-libft/isalpha.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/projects/ura-libft/isalpha.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 @STR0 = private unnamed_addr constant [10 x i8] c"is alpha\0A\00", align 1
@@ -31,15 +31,15 @@ if.end:                                           ; preds = %if.else, %if.then
   ret i32 0, !dbg !10
 
 if.then:                                          ; preds = %if.start
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt, i32 0, i32 0), i32 0), !dbg !10
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt, i32 0, i32 0)), !dbg !10
   br label %if.end, !dbg !10
 
 if.else:                                          ; preds = %if.start
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @output_fmt.1, i32 0, i32 0), i32 0), !dbg !10
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @output_fmt.1, i32 0, i32 0)), !dbg !10
   br label %if.end, !dbg !10
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -47,7 +47,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "isalpha.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/projects/ura-libft")
+!3 = !DIFile(filename: "isalpha.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/projects/ura-libft")
 !4 = distinct !DISubprogram(name: "isalpha", linkageName: "isalpha", scope: null, file: !3, line: 2, type: !5, scopeLine: 2, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

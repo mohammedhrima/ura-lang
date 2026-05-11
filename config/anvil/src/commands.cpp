@@ -9,6 +9,7 @@
 #include <cstring>
 #include <dirent.h>
 #include <fcntl.h>
+#include <map>
 #include <set>
 #include <sstream>
 #include <string>
@@ -156,16 +157,24 @@ void write_result(const std::string& path, const char* status,
     fclose(f);
 }
 
-int run_compiler_silent(const std::string& ura_bin, const std::string& file) {
+int run_compiler_silent(const std::string& ura_bin, const std::string& file,
+                        bool emit_prep = false) {
     pid_t pid = fork();
     if (pid < 0) return 127;
     if (pid == 0) {
         int devnull = open("/dev/null", O_WRONLY);
         if (devnull >= 0) { dup2(devnull, 1); dup2(devnull, 2); close(devnull); }
-        const char* argv[] = {
-            ura_bin.c_str(), file.c_str(), "-no-exec", "-no-debug", nullptr
-        };
-        execvp(argv[0], const_cast<char* const*>(argv));
+        if (emit_prep) {
+            const char* argv[] = {
+                ura_bin.c_str(), file.c_str(), "-no-exec", "-no-debug", "-prep", nullptr
+            };
+            execvp(argv[0], const_cast<char* const*>(argv));
+        } else {
+            const char* argv[] = {
+                ura_bin.c_str(), file.c_str(), "-no-exec", "-no-debug", nullptr
+            };
+            execvp(argv[0], const_cast<char* const*>(argv));
+        }
         _exit(127);
     }
     int status = 0;
@@ -175,12 +184,33 @@ int run_compiler_silent(const std::string& ura_bin, const std::string& file) {
     return -1;
 }
 
+// True if `ura_file` matches any entry in `cfg.skip`. Skip entries are paths
+// relative to `cfg.tests` (e.g. "projects/" for a whole folder, or
+// "structs/output/003.ura" for a single file). Match is prefix-based after
+// resolving, so trailing slash makes the entry folder-scoped.
+static bool is_skipped(const std::string& ura_file,
+                       const std::string& tests_root,
+                       const std::vector<std::string>& patterns) {
+    if (patterns.empty()) return false;
+    std::string root_with_slash = tests_root + "/";
+    for (const auto& p : patterns) {
+        if (p.empty()) continue;
+        std::string full = (p[0] == '/') ? p : (root_with_slash + p);
+        if (ura_file == full)               return true;
+        if (ura_file.rfind(full, 0) == 0
+            && full.size() < ura_file.size()
+            && (full.back() == '/' || ura_file[full.size()] == '/'))
+            return true;
+    }
+    return false;
+}
+
 [[noreturn]] void run_one_test(const std::string& ura_file,
                                const std::string& tests_root,
                                const std::string& ura_bin,
                                const std::vector<std::string>& ignores,
                                const std::string& result_path) {
-    
+
     std::string rel = ura_file;
     std::string root_with_slash = tests_root + "/";
     if (rel.rfind(root_with_slash, 0) == 0) rel = rel.substr(root_with_slash.size());
@@ -188,6 +218,10 @@ int run_compiler_silent(const std::string& ura_bin, const std::string& file) {
         rel = rel.substr(0, rel.size() - 4);
 
     const AnvilConfig& cfg = config();
+    if (is_skipped(ura_file, tests_root, cfg.skip)) {
+        write_result(result_path, "SKIP", rel, "skipped by anvil.toml");
+        _exit(0);
+    }
     std::string errors_root = cfg.errors.empty() ? "" : resolve(cfg.errors);
     bool is_negative = !errors_root.empty()
                        && ura_file.rfind(errors_root, 0) == 0;
@@ -210,16 +244,26 @@ int run_compiler_silent(const std::string& ura_bin, const std::string& file) {
     std::string dir  = dirname_of(ura_file);
     std::string base = stem(ura_file);
     std::string ll_expected = dir + base + ".ll";
+    std::string prep_path   = dir + "build/" + base + ".prep.ura";
     std::string ll_got      = dir + "build/" + base + ".ll";
     if (!is_file(ll_expected)) {
         write_result(result_path, "FAIL", rel, "no .ll reference");
         _exit(0);
     }
 
-    
-    int rc = run_compiler_silent(ura_bin, ura_file);
+    // Pipeline: <source>.ura -> build/<base>.prep.ura -> build/<base>.ll
+    int rc = run_compiler_silent(ura_bin, ura_file, /*emit_prep=*/true);
     if (rc != 0) {
-        write_result(result_path, "FAIL", rel, "compilation error");
+        write_result(result_path, "FAIL", rel, "prep generation error");
+        _exit(0);
+    }
+    if (!is_file(prep_path)) {
+        write_result(result_path, "FAIL", rel, "no prep generated");
+        _exit(0);
+    }
+    rc = run_compiler_silent(ura_bin, prep_path);
+    if (rc != 0) {
+        write_result(result_path, "FAIL", rel, "compilation error (prep stage)");
         _exit(0);
     }
     if (!is_file(ll_got)) {
@@ -227,7 +271,7 @@ int run_compiler_silent(const std::string& ura_bin, const std::string& file) {
         _exit(0);
     }
 
-    
+
     std::string a = normalize_ir(ll_got,      ignores);
     std::string b = normalize_ir(ll_expected, ignores);
     if (a == b) write_result(result_path, "PASS", rel, "");
@@ -238,7 +282,15 @@ int run_compiler_silent(const std::string& ura_bin, const std::string& file) {
 TestResult parse_result(const std::string& path) {
     TestResult r{Status::FAIL, "", "missing result"};
     std::string s = read_file(path);
-    if (s.empty()) return r;
+    if (s.empty()) {
+        struct stat st;
+        if (::stat(path.c_str(), &st) == 0) {
+            r.reason = "empty result file (size " + std::to_string(st.st_size) + ")";
+        } else {
+            r.reason = "no result file (path " + path + ")";
+        }
+        return r;
+    }
     
     auto t1 = s.find('\t');
     if (t1 == std::string::npos) return r;
@@ -300,44 +352,92 @@ int cmd_test(const std::vector<std::string>& args) {
     std::string tdir = tdir_tpl;
 
     int max_parallel = std::max(1, cfg.max_parallel);
-    std::set<pid_t> running;
+    // Map pid → index so we know which test slot finished when reap_one returns.
+    std::map<pid_t, std::size_t> running;
+    std::vector<bool> done(files.size(), false);
 
     auto reap_one = [&]() {
         int status = 0;
         pid_t pid = waitpid(-1, &status, 0);
-        if (pid > 0) running.erase(pid);
+        if (pid > 0) {
+            auto it = running.find(pid);
+            if (it != running.end()) {
+                done[it->second] = true;
+                running.erase(it);
+            }
+        }
     };
 
-    for (std::size_t i = 0; i < files.size(); i++) {
-        while ((int)running.size() >= max_parallel) reap_one();
+    int p = 0, f = 0, s = 0;
+    std::size_t next_launch = 0;
+    std::size_t next_print  = 0;
 
-        pid_t pid = fork();
-        if (pid < 0) { fprintf(stderr, "fork failed\n"); break; }
-        if (pid == 0) {
-            std::string out = tdir + "/" + std::to_string(i);
-            run_one_test(files[i], tests_root, ura_bin, cfg.ignore_ir, out);
-            
+    // When `flush_missing` is true, advance past indices whose result file
+    // didn't get written — those are tests that crashed before writing.
+    // Otherwise we stop at the first not-yet-ready slot so output stays in order.
+    // Compute the test name from a file path so we always have a label even
+    // when the result file is missing or malformed.
+    auto label = [&](std::size_t idx) {
+        std::string rel = files[idx];
+        std::string rws = tests_root + "/";
+        if (rel.rfind(rws, 0) == 0) rel = rel.substr(rws.size());
+        if (rel.size() >= 4 && rel.substr(rel.size() - 4) == ".ura")
+            rel = rel.substr(0, rel.size() - 4);
+        return rel;
+    };
+
+    auto drain_ready = [&](bool flush_missing) {
+        while (next_print < files.size()) {
+            // Only consume slots whose worker has been reaped — otherwise we'd
+            // race against the child's still-pending fopen/fprintf/fclose.
+            if (!done[next_print]) break;
+            std::string out = tdir + "/" + std::to_string(next_print);
+            if (!is_file(out)) {
+                if (!flush_missing) break;
+                printf(ANSI_RED "  FAIL %s (no result file written)" ANSI_RESET "\n",
+                       label(next_print).c_str());
+                fflush(stdout);
+                f++;
+                next_print++;
+                continue;
+            }
+            TestResult r = parse_result(out);
+            std::string rel_owned = r.rel.empty() ? label(next_print) : r.rel;
+            const char *rel_str   = rel_owned.c_str();
+            switch (r.status) {
+                case Status::PASS:
+                    printf(ANSI_GREEN  "  PASS %s" ANSI_RESET "\n", rel_str); p++; break;
+                case Status::FAIL:
+                    printf(ANSI_RED    "  FAIL %s (%s)" ANSI_RESET "\n", rel_str, r.reason.c_str()); f++; break;
+                case Status::SKIP:
+                    printf(ANSI_YELLOW "  SKIP %s" ANSI_RESET "\n", rel_str); s++; break;
+            }
+            fflush(stdout);
+            next_print++;
         }
-        running.insert(pid);
+    };
+
+    while (next_print < files.size()) {
+        // Keep the worker pool full.
+        while (next_launch < files.size() && (int)running.size() < max_parallel) {
+            pid_t pid = fork();
+            if (pid < 0) { fprintf(stderr, "fork failed\n"); break; }
+            if (pid == 0) {
+                std::string out = tdir + "/" + std::to_string(next_launch);
+                run_one_test(files[next_launch], tests_root, ura_bin, cfg.ignore_ir, out);
+            }
+            running[pid] = next_launch;
+            next_launch++;
+        }
+
+        drain_ready(/*flush_missing=*/false);
+
+        // If the next-to-print isn't ready, block on any worker finishing.
+        if (next_print < files.size() && !running.empty()) reap_one();
+        else if (next_print < files.size()) break;  // nothing running, nothing to launch → bail to flush
     }
     while (!running.empty()) reap_one();
-
-    
-    int p = 0, f = 0, s = 0;
-    for (std::size_t i = 0; i < files.size(); i++) {
-        TestResult r = parse_result(tdir + "/" + std::to_string(i));
-        switch (r.status) {
-            case Status::PASS:
-                printf(ANSI_GREEN "  PASS %s" ANSI_RESET "\n", r.rel.c_str());
-                p++; break;
-            case Status::FAIL:
-                printf(ANSI_RED   "  FAIL %s (%s)" ANSI_RESET "\n", r.rel.c_str(), r.reason.c_str());
-                f++; break;
-            case Status::SKIP:
-                printf(ANSI_YELLOW"  SKIP %s" ANSI_RESET "\n", r.rel.c_str());
-                s++; break;
-        }
-    }
+    drain_ready(/*flush_missing=*/true);
 
     
     for (std::size_t i = 0; i < files.size(); i++) unlink((tdir + "/" + std::to_string(i)).c_str());
@@ -502,16 +602,24 @@ int copy_file(const std::string& src, const std::string& dst) {
     return 0;
 }
 
-int compile_silent(const std::string& ura_bin, const std::string& ura_file) {
+int compile_silent(const std::string& ura_bin, const std::string& ura_file,
+                   bool emit_prep = false) {
     pid_t pid = fork();
     if (pid < 0) return 127;
     if (pid == 0) {
         int devnull = open("/dev/null", O_WRONLY);
         if (devnull >= 0) { dup2(devnull, 1); dup2(devnull, 2); close(devnull); }
-        const char* argv[] = {
-            ura_bin.c_str(), ura_file.c_str(), "-no-exec", "-no-debug", nullptr
-        };
-        execvp(argv[0], const_cast<char* const*>(argv));
+        if (emit_prep) {
+            const char* argv[] = {
+                ura_bin.c_str(), ura_file.c_str(), "-no-exec", "-no-debug", "-prep", nullptr
+            };
+            execvp(argv[0], const_cast<char* const*>(argv));
+        } else {
+            const char* argv[] = {
+                ura_bin.c_str(), ura_file.c_str(), "-no-exec", "-no-debug", nullptr
+            };
+            execvp(argv[0], const_cast<char* const*>(argv));
+        }
         _exit(127);
     }
     int status = 0;
@@ -614,9 +722,14 @@ int cmd_update_tests(const std::vector<std::string>&) {
     }
 
     std::string tests = resolve(cfg.tests);
+    std::string errors_root = cfg.errors.empty() ? "" : resolve(cfg.errors);
     std::vector<std::string> files;
     walk(tests, [&](const std::string& p) {
-        if (p.size() >= 4 && p.substr(p.size() - 4) == ".ura") files.push_back(p);
+        if (p.size() < 4 || p.substr(p.size() - 4) != ".ura") return;
+        // Negative tests have no .ll reference — they assert the compiler errors.
+        if (!errors_root.empty() && p.rfind(errors_root, 0) == 0) return;
+        if (is_skipped(p, tests, cfg.skip))                      return;
+        files.push_back(p);
     });
     std::sort(files.begin(), files.end());
 
@@ -626,11 +739,22 @@ int cmd_update_tests(const std::vector<std::string>&) {
         std::string d = dirname_of(ura_file);
         std::string b = stem(ura_file);
         std::string ll_expected  = d + b + ".ll";
+        std::string prep_path    = d + "build/" + b + ".prep.ura";
         std::string ll_generated = d + "build/" + b + ".ll";
 
-        int rc = compile_silent(ura_bin, ura_file);
+        // Pipeline: <source>.ura -> build/<base>.prep.ura -> build/<base>.ll
+        int rc = compile_silent(ura_bin, ura_file, /*emit_prep=*/true);
         if (rc != 0) {
-            printf("  " ANSI_RED "FAIL %s (compilation error)" ANSI_RESET "\n", b.c_str());
+            printf("  " ANSI_RED "FAIL %s (prep generation error)" ANSI_RESET "\n", b.c_str());
+            failed++; continue;
+        }
+        if (!is_file(prep_path)) {
+            printf("  " ANSI_RED "FAIL %s (no prep generated)" ANSI_RESET "\n", b.c_str());
+            failed++; continue;
+        }
+        rc = compile_silent(ura_bin, prep_path);
+        if (rc != 0) {
+            printf("  " ANSI_RED "FAIL %s (compilation error from prep)" ANSI_RESET "\n", b.c_str());
             failed++; continue;
         }
         if (!is_file(ll_generated)) {

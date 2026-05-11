@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon/floor14a.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon/floor14a.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon/floor14a.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon/floor14a.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 @STR0 = private unnamed_addr constant [8 x i8] c"dungeon\00", align 1
@@ -10,7 +10,7 @@ declare i32 @strlen(i8*)
 
 declare i32 @write(i32, i8*, i32)
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 define i32 @main() !dbg !4 {
 entry:
@@ -20,7 +20,7 @@ entry:
   store i32 %strlen, i32* %n, align 4, !dbg !8
   %write = call i32 @write(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @STR1, i32 0, i32 0), i32 3), !dbg !9
   %n1 = load i32, i32* %n, align 4, !dbg !10
-  %printf = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @STR2, i32 0, i32 0), i32 1, i32 %n1), !dbg !10
+  %printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @STR2, i32 0, i32 0), i32 %n1), !dbg !10
   ret i32 0, !dbg !10
 }
 
@@ -30,7 +30,7 @@ entry:
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "floor14a.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon")
+!3 = !DIFile(filename: "floor14a.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon")
 !4 = distinct !DISubprogram(name: "main", linkageName: "main", scope: null, file: !3, line: 6, type: !5, scopeLine: 6, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

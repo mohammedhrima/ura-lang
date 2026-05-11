@@ -1,6 +1,6 @@
 // dungeon/floor09b.ura
 main():
     hp  int     = 80
-    r   int ref = ref hp
+    ref r int = ref hp
     r   = 100
     output(hp, "\n")

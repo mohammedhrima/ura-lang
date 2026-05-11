@@ -2,7 +2,7 @@
 
 main():
     hp int = 75
-    r  int ref = ref hp
+    ref r int = ref hp
     if r > 50:
         output("healthy\n")
     else:

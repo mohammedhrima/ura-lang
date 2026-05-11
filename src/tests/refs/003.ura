@@ -1,9 +1,9 @@
-// refs/003.ura - compound assignment through ref in a loop
+// refs/003.ura - compound ref assignment through in a loop
 
 main():
     xp      int = 0
     xp_gain int = 50
-    r       int ref = ref xp
+    ref r int = ref xp
     i       int = 0
     while i < 4:
         r += xp_gain
