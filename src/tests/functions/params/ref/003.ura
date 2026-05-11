@@ -1,6 +1,6 @@
 // functions/params/ref/003.ura - refs used in expression, return result
 
-fn add_xp(a int ref, b int ref) int:
+fn add_xp(ref a int, ref b int) int:
     result int = a + b
     return result
 

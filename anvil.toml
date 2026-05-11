@@ -18,8 +18,11 @@ release = ["-O2", "-DDEBUG=0"]
 # tests
 tests        = "src/tests"
 errors       = "src/tests/errors"
-max_parallel = 3
+max_parallel = 4
 ignore_ir    = ["DIFile", "DICompileUnit", "source_filename", "ModuleID"]
+# Skip these tests entirely. Entries are paths relative to `tests`.
+# Trailing "/" matches a whole folder; a full filename matches one file.
+skip         = []
 
 # sync
 anvil_repo     = "git@github.com:mohammedhrima/anvil.git"

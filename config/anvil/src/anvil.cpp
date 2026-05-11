@@ -381,6 +381,7 @@ static void load() {
 
     if (auto v = t.num("max_parallel")) g_cfg.max_parallel = *v;
     g_cfg.ignore_ir = t.arr("ignore_ir");
+    g_cfg.skip      = t.arr("skip");
 
     g_cfg.anvil_repo     = t.str("anvil_repo");
     g_cfg.ura_lib_repo   = t.str("ura_lib_repo");

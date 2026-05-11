@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/link/raylib/003.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/link/raylib/003.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/link/raylib/003.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/link/raylib/003.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 %struct.Color = type { i8, i8, i8, i8 }
@@ -106,7 +106,7 @@ attributes #0 = { argmemonly nofree nounwind willreturn }
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "003.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/link/raylib")
+!3 = !DIFile(filename: "003.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/link/raylib")
 !4 = distinct !DISubprogram(name: "setColor", linkageName: "setColor", scope: null, file: !3, line: 9, type: !5, scopeLine: 9, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

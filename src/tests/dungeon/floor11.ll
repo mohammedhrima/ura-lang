@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon/floor11.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon/floor11.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon/floor11.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon/floor11.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 @POISONED = global i32 1
@@ -81,17 +81,17 @@ entry:
   %POISONED5 = load i32, i32* @POISONED, align 4, !dbg !16
   %has = call i1 @has(i32 %s4, i32 %POISONED5), !dbg !16
   %bool_str = select i1 %has, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str, i32 0, i32 0), !dbg !16
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @output_fmt, i32 0, i32 0), i32 1, i8* %bool_str), !dbg !16
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @output_fmt, i32 0, i32 0), i8* %bool_str), !dbg !16
   %s6 = load i32, i32* %s, align 4, !dbg !17
   %FROZEN = load i32, i32* @FROZEN, align 4, !dbg !17
   %has7 = call i1 @has(i32 %s6, i32 %FROZEN), !dbg !17
   %bool_str8 = select i1 %has7, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str.1, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str.2, i32 0, i32 0), !dbg !17
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @output_fmt.3, i32 0, i32 0), i32 1, i8* %bool_str8), !dbg !17
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @output_fmt.3, i32 0, i32 0), i8* %bool_str8), !dbg !17
   %s9 = load i32, i32* %s, align 4, !dbg !18
   %BURNING10 = load i32, i32* @BURNING, align 4, !dbg !18
   %has11 = call i1 @has(i32 %s9, i32 %BURNING10), !dbg !18
   %bool_str12 = select i1 %has11, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str.4, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str.5, i32 0, i32 0), !dbg !18
-  %2 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @output_fmt.6, i32 0, i32 0), i32 1, i8* %bool_str12), !dbg !18
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @output_fmt.6, i32 0, i32 0), i8* %bool_str12), !dbg !18
   %s13 = load i32, i32* %s, align 4, !dbg !19
   %POISONED14 = load i32, i32* @POISONED, align 4, !dbg !19
   %rem = call i32 @rem(i32 %s13, i32 %POISONED14), !dbg !19
@@ -100,11 +100,11 @@ entry:
   %POISONED16 = load i32, i32* @POISONED, align 4, !dbg !20
   %has17 = call i1 @has(i32 %s15, i32 %POISONED16), !dbg !20
   %bool_str18 = select i1 %has17, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str.7, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str.8, i32 0, i32 0), !dbg !20
-  %3 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @output_fmt.9, i32 0, i32 0), i32 1, i8* %bool_str18), !dbg !20
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @output_fmt.9, i32 0, i32 0), i8* %bool_str18), !dbg !20
   ret i32 0, !dbg !20
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -112,7 +112,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "floor11.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon")
+!3 = !DIFile(filename: "floor11.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon")
 !4 = distinct !DISubprogram(name: "has", linkageName: "has", scope: null, file: !3, line: 7, type: !5, scopeLine: 7, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

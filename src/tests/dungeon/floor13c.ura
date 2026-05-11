@@ -21,7 +21,7 @@ struct Label:
     operator = (s chars) void:
         self.set(s)
 
-    operator = (v Label ref) void:
+    operator = (ref v Label) void:
         self.set(v.value)
 
     fn print() void:

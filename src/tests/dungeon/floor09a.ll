@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon/floor09a.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon/floor09a.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon/floor09a.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon/floor09a.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 @STR0 = private unnamed_addr constant [11 x i8] c"\E2\98\85 Level \00", align 1
@@ -39,11 +39,9 @@ entry:
   store i32 %ADD11, i32* %ref_ptr12, align 4, !dbg !7
   %ref_ptr13 = load i32*, i32** %level1, align 8, !dbg !7
   %ref_val14 = load i32, i32* %ref_ptr13, align 4, !dbg !7
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @output_fmt, i32 0, i32 0), i32 1, i32 %ref_val14), !dbg !7
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @output_fmt, i32 0, i32 0), i32 %ref_val14), !dbg !7
   ret void, !dbg !7
 }
-
-declare i32 @printf(i8*, i32, ...)
 
 define void @swap(i32* %a, i32* %b) !dbg !8 {
 entry:
@@ -82,7 +80,7 @@ entry:
   call void @level_up(i32* %lv, i32* %hp, i32* %mp), !dbg !12
   %hp1 = load i32, i32* %hp, align 4, !dbg !12
   %mp2 = load i32, i32* %mp, align 4, !dbg !12
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([20 x i8], [20 x i8]* @output_fmt.1, i32 0, i32 0), i32 2, i32 %hp1, i32 %mp2), !dbg !12
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([20 x i8], [20 x i8]* @output_fmt.1, i32 0, i32 0), i32 %hp1, i32 %mp2), !dbg !12
   store i32 0, i32* %x, align 4, !dbg !11
   store i32 3, i32* %x, align 4, !dbg !11
   store i32 0, i32* %y, align 4, !dbg !11
@@ -90,9 +88,11 @@ entry:
   call void @swap(i32* %x, i32* %y), !dbg !13
   %x3 = load i32, i32* %x, align 4, !dbg !13
   %y4 = load i32, i32* %y, align 4, !dbg !13
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @output_fmt.2, i32 0, i32 0), i32 2, i32 %x3, i32 %y4), !dbg !13
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @output_fmt.2, i32 0, i32 0), i32 %x3, i32 %y4), !dbg !13
   ret i32 0, !dbg !13
 }
+
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -100,7 +100,7 @@ entry:
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "floor09a.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/dungeon")
+!3 = !DIFile(filename: "floor09a.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/dungeon")
 !4 = distinct !DISubprogram(name: "level_up", linkageName: "level_up", scope: null, file: !3, line: 2, type: !5, scopeLine: 2, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

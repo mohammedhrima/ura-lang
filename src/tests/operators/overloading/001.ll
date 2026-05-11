@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/operators/overloading/001.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/operators/overloading/001.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/operators/overloading/001.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/operators/overloading/001.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 %struct.Vec2 = type { i32, i32 }
@@ -186,7 +186,7 @@ entry:
   %DOT = load i32, i32* %x3, align 4, !dbg !17
   %y4 = getelementptr %struct.Vec2, %struct.Vec2* %add, i32 0, i32 1, !dbg !17
   %DOT5 = load i32, i32* %y4, align 4, !dbg !17
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @output_fmt, i32 0, i32 0), i32 2, i32 %DOT, i32 %DOT5), !dbg !17
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @output_fmt, i32 0, i32 0), i32 %DOT, i32 %DOT5), !dbg !17
   store %struct.Vec2 zeroinitializer, %struct.Vec2* %sub, align 4, !dbg !17
   %2 = call %struct.Vec2 @Vec2.operator.SUB.Vec2(%struct.Vec2* %b, %struct.Vec2* %a), !dbg !17
   %tmp_op6 = alloca %struct.Vec2, align 8, !dbg !17
@@ -196,7 +196,7 @@ entry:
   %DOT8 = load i32, i32* %x7, align 4, !dbg !17
   %y9 = getelementptr %struct.Vec2, %struct.Vec2* %sub, i32 0, i32 1, !dbg !17
   %DOT10 = load i32, i32* %y9, align 4, !dbg !17
-  %3 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @output_fmt.1, i32 0, i32 0), i32 2, i32 %DOT8, i32 %DOT10), !dbg !17
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @output_fmt.1, i32 0, i32 0), i32 %DOT8, i32 %DOT10), !dbg !17
   store %struct.Vec2 zeroinitializer, %struct.Vec2* %mul, align 4, !dbg !17
   %4 = call %struct.Vec2 @Vec2.operator.MUL.INT(i32 2, %struct.Vec2* %a), !dbg !17
   %tmp_op11 = alloca %struct.Vec2, align 8, !dbg !17
@@ -206,7 +206,7 @@ entry:
   %DOT13 = load i32, i32* %x12, align 4, !dbg !17
   %y14 = getelementptr %struct.Vec2, %struct.Vec2* %mul, i32 0, i32 1, !dbg !17
   %DOT15 = load i32, i32* %y14, align 4, !dbg !17
-  %5 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @output_fmt.2, i32 0, i32 0), i32 2, i32 %DOT13, i32 %DOT15), !dbg !17
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @output_fmt.2, i32 0, i32 0), i32 %DOT13, i32 %DOT15), !dbg !17
   store %struct.Vec2 zeroinitializer, %struct.Vec2* %div, align 4, !dbg !17
   %6 = call %struct.Vec2 @Vec2.operator.DIV.INT(i32 2, %struct.Vec2* %b), !dbg !17
   %tmp_op16 = alloca %struct.Vec2, align 8, !dbg !17
@@ -216,7 +216,7 @@ entry:
   %DOT18 = load i32, i32* %x17, align 4, !dbg !17
   %y19 = getelementptr %struct.Vec2, %struct.Vec2* %div, i32 0, i32 1, !dbg !17
   %DOT20 = load i32, i32* %y19, align 4, !dbg !17
-  %7 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @output_fmt.3, i32 0, i32 0), i32 2, i32 %DOT18, i32 %DOT20), !dbg !17
+  %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @output_fmt.3, i32 0, i32 0), i32 %DOT18, i32 %DOT20), !dbg !17
   call void @Vec2.delete(%struct.Vec2* %a), !dbg !17
   call void @Vec2.delete(%struct.Vec2* %b), !dbg !17
   call void @Vec2.delete(%struct.Vec2* %add), !dbg !17
@@ -226,7 +226,7 @@ entry:
   ret i32 0, !dbg !17
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -234,7 +234,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "001.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/operators/overloading")
+!3 = !DIFile(filename: "001.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/operators/overloading")
 !4 = distinct !DISubprogram(name: "Vec2.operator.ASSIGN.Vec2", linkageName: "Vec2.operator.ASSIGN.Vec2", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

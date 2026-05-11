@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/structs/basic/003.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/structs/basic/003.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/structs/basic/003.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/structs/basic/003.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 %struct.Player = type { i8*, i32 }
@@ -37,12 +37,12 @@ entry:
   call void @buff_player(%struct.Player* %hero), !dbg !10
   %hp1 = getelementptr %struct.Player, %struct.Player* %hero, i32 0, i32 1, !dbg !10
   %DOT = load i32, i32* %hp1, align 4, !dbg !10
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @output_fmt, i32 0, i32 0), i32 1, i32 %DOT), !dbg !10
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @output_fmt, i32 0, i32 0), i32 %DOT), !dbg !10
   call void @Player.delete(%struct.Player* %hero), !dbg !10
   ret i32 0, !dbg !10
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -50,7 +50,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "003.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/structs/basic")
+!3 = !DIFile(filename: "003.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/structs/basic")
 !4 = distinct !DISubprogram(name: "buff_player", linkageName: "buff_player", scope: null, file: !3, line: 7, type: !5, scopeLine: 7, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

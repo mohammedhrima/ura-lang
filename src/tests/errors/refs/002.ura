@@ -3,5 +3,5 @@ use "@/header"
 
 main():
     x int = 5
-    y chars ref = x
+    ref y chars = x
     output(y, "\n")

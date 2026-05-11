@@ -299,7 +299,7 @@ struct String:
 
     // ── Comparison ──
 
-    fn compare(other String ref) int:
+    fn compare(ref other String) int:
         return strcmp(self.value, other.value)
 
     // ── Conversion ──
@@ -312,12 +312,12 @@ struct String:
     operator = (str chars) void:
         self.assign(str)
 
-    operator = (v String ref) void:
+    operator = (ref v String) void:
         self.assign(v.value)
 
     // ── Concatenation operators ──
 
-    operator + (v String ref) String:
+    operator + (ref v String) String:
         res String = String::new()
         res = strjoin(self.value, v.value)
         return res
@@ -327,7 +327,7 @@ struct String:
         res = strjoin(self.value, str)
         return res
 
-    operator += (v String ref) void:
+    operator += (ref v String) void:
         self.join(v.value)
 
     operator += (str chars) void:
@@ -335,24 +335,24 @@ struct String:
 
     // ── Comparison operators ──
 
-    operator == (v String ref) bool:
+    operator == (ref v String) bool:
         return strcmp(self.value, v.value) == 0
 
     operator == (str chars) bool:
         if str == null: return self.count == 0
         return strcmp(self.value, str) == 0
 
-    operator != (v String ref) bool:
+    operator != (ref v String) bool:
         return strcmp(self.value, v.value) != 0
 
     operator != (str chars) bool:
         if str == null: return self.count != 0
         return strcmp(self.value, str) != 0
 
-    operator < (v String ref) bool:
+    operator < (ref v String) bool:
         return strcmp(self.value, v.value) < 0
 
-    operator > (v String ref) bool:
+    operator > (ref v String) bool:
         return strcmp(self.value, v.value) > 0
     
     operator output() chars:

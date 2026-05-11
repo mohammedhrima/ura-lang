@@ -1,8 +1,8 @@
-// refs/006.ura - chain of compound mutations through a ref
+// refs/006.ura - chain of compound mutations ref through a
 
 main():
     score int = 0
-    r     int ref = ref score
+    ref r int = ref score
     r += 100
     r += 50
     r *= 2

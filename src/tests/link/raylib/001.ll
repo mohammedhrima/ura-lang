@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/link/raylib/001.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/link/raylib/001.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/link/raylib/001.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/link/raylib/001.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 %struct.Color = type { i8, i8, i8, i8 }
@@ -25,15 +25,15 @@ entry:
 define i32 @main() !dbg !4 {
 entry:
   %KEY_LEFT = load i32, i32* @KEY_LEFT, align 4, !dbg !7
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @output_fmt, i32 0, i32 0), i32 1, i32 %KEY_LEFT), !dbg !7
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @output_fmt, i32 0, i32 0), i32 %KEY_LEFT), !dbg !7
   %KEY_RIGHT = load i32, i32* @KEY_RIGHT, align 4, !dbg !7
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @output_fmt.1, i32 0, i32 0), i32 1, i32 %KEY_RIGHT), !dbg !7
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @output_fmt.1, i32 0, i32 0), i32 %KEY_RIGHT), !dbg !7
   %KEY_SPACE = load i32, i32* @KEY_SPACE, align 4, !dbg !7
-  %2 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @output_fmt.2, i32 0, i32 0), i32 1, i32 %KEY_SPACE), !dbg !7
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @output_fmt.2, i32 0, i32 0), i32 %KEY_SPACE), !dbg !7
   ret i32 0, !dbg !7
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -41,7 +41,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "001.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/link/raylib")
+!3 = !DIFile(filename: "001.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/link/raylib")
 !4 = distinct !DISubprogram(name: "main", linkageName: "main", scope: null, file: !3, line: 5, type: !5, scopeLine: 5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

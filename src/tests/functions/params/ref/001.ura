@@ -1,6 +1,6 @@
 // functions/params/ref/001.ura - single ref param: buff hero hp
 
-fn buff(hp int ref) void:
+fn buff(ref hp int) void:
     hp = hp + 20
 
 main():

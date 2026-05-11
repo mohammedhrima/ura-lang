@@ -1300,9 +1300,9 @@ source.ura
     │
     ▼  AST                      recursive descent parser → syntax tree
     │
-    ▼  gen_ir()                  name resolution, type checking,
+    ▼  ir_gen()                  name resolution, type checking,
     │                            operator overload dispatch
-    ▼  gen_asm()                 LLVM IR emission via LLVM C API → build/file.ll
+    ▼  asm_gen()                 LLVM IR emission via LLVM C API → build/file.ll
     │
     ▼  llc                      .ll → .s  (native assembly)
     │
@@ -1313,7 +1313,7 @@ source.ura
 
 - **`src/main.c`** (~130 lines) — `compile()` pipeline orchestration and `int main()` argument parsing.
 - **`src/parse.c`** (~1200 lines) — tokenizer (`parse_token`, `tokenize`), recursive descent parser, `synth_list_structs` (monomorphizes `List[T]` → `__list_T` struct sources), `generate_list_source` template emitter. Operator precedence is encoded in the call chain: `expr → assign → logic_or → … → as → unary → access → prime`.
-- **`src/gen.c`** (~830 lines) — `gen_ir()` (semantic pass: name resolution, type checking, operator overload dispatch) and `gen_asm()` (LLVM IR emission). One thin per-case helper (`ir_<case>` / `asm_<case>`) per AST node kind.
+- **`src/gen.c`** (~830 lines) — `ir_gen()` (semantic pass: name resolution, type checking, operator overload dispatch) and `asm_gen()` (LLVM IR emission). One thin per-case helper (`ir_<case>` / `asm_<case>`) per AST node kind.
 - **`src/utils.c`** (~2470 lines) — LLVM type helpers, scope management, IR/ASM support helpers, debug printing (`pnode`, `_vprint`), `copy_token` (deep-copies LLVM metadata), and the `-prep` serializer (`emit_prep_file` and friends).
 - **`src/header.h`** (~530 lines) — `Token`, `Node`, `Type` enum, all global declarations and prototypes.
 

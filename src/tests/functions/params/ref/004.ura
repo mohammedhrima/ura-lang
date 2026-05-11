@@ -1,6 +1,6 @@
-// functions/params/ref/004.ura - compound assign through ref in a loop
+// functions/params/ref/004.ura - compound ref assign through in a loop
 
-fn tick(kills int ref) void:
+fn tick(ref kills int) void:
     kills += 1
 
 main():

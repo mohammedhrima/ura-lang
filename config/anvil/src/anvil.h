@@ -59,6 +59,7 @@ struct AnvilConfig {
     
     int                      max_parallel = 3;
     std::vector<std::string> ignore_ir;
+    std::vector<std::string> skip;
 
     
     std::string anvil_repo;

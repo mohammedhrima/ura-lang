@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/builtins/c-funcs/002.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/builtins/c-funcs/002.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/builtins/c-funcs/002.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/builtins/c-funcs/002.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 declare i32 @write(i32, i8*, i32)
@@ -41,7 +41,7 @@ entry:
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "002.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/builtins/c-funcs")
+!3 = !DIFile(filename: "002.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/builtins/c-funcs")
 !4 = distinct !DISubprogram(name: "putchar", linkageName: "putchar", scope: null, file: !3, line: 5, type: !5, scopeLine: 5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

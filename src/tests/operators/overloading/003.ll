@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/operators/overloading/003.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/operators/overloading/003.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/operators/overloading/003.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/operators/overloading/003.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 %struct.Counter = type { i32 }
@@ -93,24 +93,24 @@ entry:
   call void @Counter.operator.ASSIGN.INT(i32 10, %struct.Counter* %c), !dbg !15
   %val = getelementptr %struct.Counter, %struct.Counter* %c, i32 0, i32 0, !dbg !15
   %DOT = load i32, i32* %val, align 4, !dbg !15
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt, i32 0, i32 0), i32 1, i32 %DOT), !dbg !15
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt, i32 0, i32 0), i32 %DOT), !dbg !15
   call void @Counter.operator.ADD_ASS.INT(i32 5, %struct.Counter* %c), !dbg !15
   %val1 = getelementptr %struct.Counter, %struct.Counter* %c, i32 0, i32 0, !dbg !15
   %DOT2 = load i32, i32* %val1, align 4, !dbg !15
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt.1, i32 0, i32 0), i32 1, i32 %DOT2), !dbg !15
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt.1, i32 0, i32 0), i32 %DOT2), !dbg !15
   call void @Counter.operator.SUB_ASS.INT(i32 3, %struct.Counter* %c), !dbg !15
   %val3 = getelementptr %struct.Counter, %struct.Counter* %c, i32 0, i32 0, !dbg !15
   %DOT4 = load i32, i32* %val3, align 4, !dbg !15
-  %2 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt.2, i32 0, i32 0), i32 1, i32 %DOT4), !dbg !15
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt.2, i32 0, i32 0), i32 %DOT4), !dbg !15
   call void @Counter.operator.MUL_ASS.INT(i32 2, %struct.Counter* %c), !dbg !15
   %val5 = getelementptr %struct.Counter, %struct.Counter* %c, i32 0, i32 0, !dbg !15
   %DOT6 = load i32, i32* %val5, align 4, !dbg !15
-  %3 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt.3, i32 0, i32 0), i32 1, i32 %DOT6), !dbg !15
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt.3, i32 0, i32 0), i32 %DOT6), !dbg !15
   call void @Counter.delete(%struct.Counter* %c), !dbg !15
   ret i32 0, !dbg !15
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -118,7 +118,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "003.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/operators/overloading")
+!3 = !DIFile(filename: "003.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/operators/overloading")
 !4 = distinct !DISubprogram(name: "Counter.operator.ASSIGN.INT", linkageName: "Counter.operator.ASSIGN.INT", scope: null, file: !3, type: !5, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}

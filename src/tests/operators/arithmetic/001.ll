@@ -1,5 +1,5 @@
-; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/tests/operators/arithmetic/001.ura'
-source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/operators/arithmetic/001.ura"
+; ModuleID = '/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/operators/arithmetic/001.ura'
+source_filename = "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/operators/arithmetic/001.ura"
 target triple = "arm64-apple-macosx16.0.0"
 
 @STR0 = private unnamed_addr constant [18 x i8] c"atk + def:       \00", align 1
@@ -118,29 +118,29 @@ entry:
   %atk1 = load i32, i32* %atk, align 4, !dbg !11
   %def2 = load i32, i32* %def, align 4, !dbg !11
   %ADD = add i32 %atk1, %def2, !dbg !11
-  %0 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @output_fmt, i32 0, i32 0), i32 1, i32 %ADD), !dbg !11
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @output_fmt, i32 0, i32 0), i32 %ADD), !dbg !11
   %atk3 = load i32, i32* %atk, align 4, !dbg !11
   %def4 = load i32, i32* %def, align 4, !dbg !11
   %SUB = sub i32 %atk3, %def4, !dbg !11
-  %1 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @output_fmt.1, i32 0, i32 0), i32 1, i32 %SUB), !dbg !11
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @output_fmt.1, i32 0, i32 0), i32 %SUB), !dbg !11
   %kills5 = load i32, i32* %kills, align 4, !dbg !11
   %MUL = mul i32 %kills5, 50, !dbg !11
-  %2 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @output_fmt.2, i32 0, i32 0), i32 1, i32 %MUL), !dbg !11
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @output_fmt.2, i32 0, i32 0), i32 %MUL), !dbg !11
   %total6 = load i32, i32* %total, align 4, !dbg !11
   %count7 = load i32, i32* %count, align 4, !dbg !11
   %DIV = sdiv i32 %total6, %count7, !dbg !11
-  %3 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @output_fmt.3, i32 0, i32 0), i32 1, i32 %DIV), !dbg !11
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @output_fmt.3, i32 0, i32 0), i32 %DIV), !dbg !11
   %atk8 = load i32, i32* %atk, align 4, !dbg !11
   %xp_cap9 = load i32, i32* %xp_cap, align 4, !dbg !11
   %MOD = srem i32 %atk8, %xp_cap9, !dbg !11
-  %4 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([22 x i8], [22 x i8]* @output_fmt.4, i32 0, i32 0), i32 1, i32 %MOD), !dbg !11
-  %5 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @output_fmt.5, i32 0, i32 0), i32 1, i32 15), !dbg !11
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([22 x i8], [22 x i8]* @output_fmt.4, i32 0, i32 0), i32 %MOD), !dbg !11
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @output_fmt.5, i32 0, i32 0), i32 15), !dbg !11
   %base_atk = call i32 @base_atk(), !dbg !12
   %atk10 = load i32, i32* %atk, align 4, !dbg !12
   %ADD11 = add i32 %base_atk, %atk10, !dbg !12
-  %6 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @output_fmt.6, i32 0, i32 0), i32 1, i32 %ADD11), !dbg !12
-  %7 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @output_fmt.7, i32 0, i32 0), i32 1, i32 14), !dbg !12
-  %8 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @output_fmt.8, i32 0, i32 0), i32 1, i32 20), !dbg !12
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @output_fmt.6, i32 0, i32 0), i32 %ADD11), !dbg !12
+  %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @output_fmt.7, i32 0, i32 0), i32 14), !dbg !12
+  %8 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @output_fmt.8, i32 0, i32 0), i32 20), !dbg !12
   store float 0.000000e+00, float* %a, align 4, !dbg !11
   store float 1.500000e+00, float* %a, align 4, !dbg !11
   store float 0.000000e+00, float* %b, align 4, !dbg !11
@@ -149,55 +149,55 @@ entry:
   %b13 = load float, float* %b, align 4, !dbg !11
   %ADD14 = fadd float %a12, %b13, !dbg !11
   %f2d = fpext float %ADD14 to double, !dbg !11
-  %9 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt.9, i32 0, i32 0), i32 1, double %f2d), !dbg !11
+  %9 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt.9, i32 0, i32 0), double %f2d), !dbg !11
   %a15 = load float, float* %a, align 4, !dbg !11
   %b16 = load float, float* %b, align 4, !dbg !11
   %SUB17 = fsub float %a15, %b16, !dbg !11
   %f2d18 = fpext float %SUB17 to double, !dbg !11
-  %10 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt.10, i32 0, i32 0), i32 1, double %f2d18), !dbg !11
+  %10 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt.10, i32 0, i32 0), double %f2d18), !dbg !11
   %a19 = load float, float* %a, align 4, !dbg !11
   %b20 = load float, float* %b, align 4, !dbg !11
   %MUL21 = fmul float %a19, %b20, !dbg !11
   %f2d22 = fpext float %MUL21 to double, !dbg !11
-  %11 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt.11, i32 0, i32 0), i32 1, double %f2d22), !dbg !11
+  %11 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt.11, i32 0, i32 0), double %f2d22), !dbg !11
   %a23 = load float, float* %a, align 4, !dbg !11
   %b24 = load float, float* %b, align 4, !dbg !11
   %DIV25 = fdiv float %a23, %b24, !dbg !11
   %f2d26 = fpext float %DIV25 to double, !dbg !11
-  %12 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt.12, i32 0, i32 0), i32 1, double %f2d26), !dbg !11
+  %12 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt.12, i32 0, i32 0), double %f2d26), !dbg !11
   %a27 = load float, float* %a, align 4, !dbg !11
   %b28 = load float, float* %b, align 4, !dbg !11
   %LT = fcmp olt float %a27, %b28, !dbg !11
   %bool_str = select i1 %LT, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str, i32 0, i32 0), !dbg !11
-  %13 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt.13, i32 0, i32 0), i32 1, i8* %bool_str), !dbg !11
+  %13 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt.13, i32 0, i32 0), i8* %bool_str), !dbg !11
   %a29 = load float, float* %a, align 4, !dbg !11
   %b30 = load float, float* %b, align 4, !dbg !11
   %GT = fcmp ogt float %a29, %b30, !dbg !11
   %bool_str31 = select i1 %GT, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str.14, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str.15, i32 0, i32 0), !dbg !11
-  %14 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt.16, i32 0, i32 0), i32 1, i8* %bool_str31), !dbg !11
+  %14 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt.16, i32 0, i32 0), i8* %bool_str31), !dbg !11
   %a32 = load float, float* %a, align 4, !dbg !11
   %b33 = load float, float* %b, align 4, !dbg !11
   %LE = fcmp ole float %a32, %b33, !dbg !11
   %bool_str34 = select i1 %LE, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str.17, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str.18, i32 0, i32 0), !dbg !11
-  %15 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt.19, i32 0, i32 0), i32 1, i8* %bool_str34), !dbg !11
+  %15 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt.19, i32 0, i32 0), i8* %bool_str34), !dbg !11
   %a35 = load float, float* %a, align 4, !dbg !11
   %b36 = load float, float* %b, align 4, !dbg !11
   %GE = fcmp oge float %a35, %b36, !dbg !11
   %bool_str37 = select i1 %GE, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str.20, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str.21, i32 0, i32 0), !dbg !11
-  %16 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt.22, i32 0, i32 0), i32 1, i8* %bool_str37), !dbg !11
+  %16 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @output_fmt.22, i32 0, i32 0), i8* %bool_str37), !dbg !11
   store float 0.000000e+00, float* %t, align 4, !dbg !11
   store float 0x3FE0A3D700000000, float* %t, align 4, !dbg !11
   %t38 = load float, float* %t, align 4, !dbg !13
   %clamp = call float @clamp(float %t38), !dbg !13
   %f2d39 = fpext float %clamp to double, !dbg !13
-  %17 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt.23, i32 0, i32 0), i32 1, double %f2d39), !dbg !13
+  %17 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt.23, i32 0, i32 0), double %f2d39), !dbg !13
   %clamp40 = call float @clamp(float 0x3F847AE140000000), !dbg !14
   %f2d41 = fpext float %clamp40 to double, !dbg !14
-  %18 = call i32 (i8*, i32, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt.24, i32 0, i32 0), i32 1, double %f2d41), !dbg !14
+  %18 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @output_fmt.24, i32 0, i32 0), double %f2d41), !dbg !14
   ret i32 0, !dbg !14
 }
 
-declare i32 @printf(i8*, i32, ...)
+declare i32 @printf(i8*, ...)
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
@@ -205,7 +205,7 @@ declare i32 @printf(i8*, i32, ...)
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "ura", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!3 = !DIFile(filename: "001.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/tests/operators/arithmetic")
+!3 = !DIFile(filename: "001.ura", directory: "/Users/hrimamohammed/Desktop/personal/ura-lang/src/tests/operators/arithmetic")
 !4 = distinct !DISubprogram(name: "base_atk", linkageName: "base_atk", scope: null, file: !3, line: 3, type: !5, scopeLine: 3, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !6)
 !5 = !DISubroutineType(types: !6)
 !6 = !{}
