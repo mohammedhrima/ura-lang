@@ -43,7 +43,7 @@ void ir_struct_call(Node *node) {
 	node->token->Struct.ptr = src;
 	if (node->token->is_dec) {
 		if (scopes_count == 1) node->token->is_global = true;
-		else src->token->used++;
+		else if (scope && scope->token && !scope->token->is_proto) src->token->used++;
 		new_variable(node->token);
 	}
 }
@@ -438,9 +438,23 @@ void ir_fdec(Node *node) {
 		    && existing->token->source->filename && node->token->source->filename
 		    && strcmp(existing->token->source->filename, node->token->source->filename) == 0
 		    && existing->token->line == node->token->line;
-		if (!both_proto && !same_loc)
-			parse_error(node->token, "redefinition of function '%s'", node->token->name);
-		return;
+		// A user-defined fn is allowed to shadow a stdlib `proto fn` with
+		// the same name (common case: tests defining a local `log`/`open`
+		// wrapper that happens to match a libc symbol). Swap the entry in
+		// the function table so callers resolve to the user definition.
+		bool shadows_proto = existing->token->is_proto && !node->token->is_proto;
+		if (shadows_proto) {
+			for (int j = scopes_count; j > 0; j--) {
+				Node *sc = scopes[j];
+				for (int k = 0; k < sc->functions_count; k++)
+					if (sc->functions[k] == existing) { sc->functions[k] = node; break; }
+			}
+			// Fall through and re-process body so locals/params register.
+		} else {
+			if (!both_proto && !same_loc)
+				parse_error(node->token, "redefinition of function '%s'", node->token->name);
+			return;
+		}
 	}
 	if (!existing) new_function(node);
 	enter_scope(node);

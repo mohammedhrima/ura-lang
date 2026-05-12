@@ -127,6 +127,32 @@ Token *parse_token(Source *src, int line, int s, int e, Type type, int space) {
 	return new;
 }
 
+// Conditional-compile frame stack. `@if linux:` pushes; `@elif`/`@else` updates
+// the top frame; a non-directive line at indent <= the frame's @if-indent pops.
+// `active` means tokens inside this frame are emitted; `any_matched` records
+// whether any branch in the chain has already been chosen (so later branches
+// don't double-fire even if their condition is true).
+typedef struct CondFrame {
+	int  indent;
+	bool active;
+	bool any_matched;
+} CondFrame;
+
+#define MAX_COND_DEPTH 32
+static CondFrame cond_stack[MAX_COND_DEPTH];
+static int       cond_top = -1;
+
+static bool cond_emitting(void) {
+	for (int j = 0; j <= cond_top; j++)
+		if (!cond_stack[j].active) return false;
+	return true;
+}
+static bool cond_outer_active(void) {
+	for (int j = 0; j < cond_top; j++)
+		if (!cond_stack[j].active) return false;
+	return true;
+}
+
 void tokenize(char *file_name, int default_space) {
 	debug(GREEN("TOKENIZE: [%s]\n"), file_name);
 	Source *src = new_source(file_name);
@@ -170,6 +196,103 @@ void tokenize(char *file_name, int default_space) {
 			while (input[i] && input[i] != '\n')
 				i++;
 			continue;
+		}
+
+		// === Conditional compilation: `@if name:` / `@elif name:` / `@else:`
+		// Runs once per line at the first non-whitespace char. `space` is the
+		// current line's indent. Three jobs:
+		//   1. Pop any frames we've dedented out of (unless the current line is
+		//      `@elif`/`@else` matching the top frame's indent — that's a
+		//      continuation, not an exit).
+		//   2. Handle a directive line: push (@if) / update (@elif, @else) the
+		//      top frame, then consume the rest of the line.
+		//   3. If we're inside an inactive branch, skip the line.
+		if (new_line) {
+			bool starts_elif_or_else =
+			    input[i] == '@'
+			    && (strncmp(input + i, "@elif", 5) == 0 || strncmp(input + i, "@else", 5) == 0);
+			while (cond_top >= 0 && space <= cond_stack[cond_top].indent
+			       && !(starts_elif_or_else && space == cond_stack[cond_top].indent))
+				cond_top--;
+
+			if (input[i] == '@' && strncmp(input + i, "@if", 3) == 0
+			    && (input[i + 3] == ' ' || input[i + 3] == '\t')) {
+				i += 3;
+				while (input[i] == ' ' || input[i] == '\t') i++;
+				int ns = i;
+				while (isalnum(input[i]) || input[i] == '_') i++;
+				char *name = strndup(input + ns, i - ns);
+				while (input[i] == ' ' || input[i] == '\t') i++;
+				if (input[i] != ':') {
+					tokenize_error(src, line, ns, i, "expected ':' after @if name");
+					free(name);
+					break;
+				}
+				i++;
+				while (input[i] && input[i] != '\n') i++;
+				if (cond_top + 1 >= MAX_COND_DEPTH) {
+					tokenize_error(src, line, ns, i, "too many nested @if directives");
+					free(name);
+					break;
+				}
+				bool match = (ura_target_os && strcmp(name, ura_target_os) == 0);
+				free(name);
+				cond_top++;
+				cond_stack[cond_top].indent      = space;
+				cond_stack[cond_top].active      = match && cond_outer_active();
+				cond_stack[cond_top].any_matched = match;
+				continue;
+			}
+			if (input[i] == '@' && strncmp(input + i, "@elif", 5) == 0
+			    && (input[i + 5] == ' ' || input[i + 5] == '\t')) {
+				if (cond_top < 0 || space != cond_stack[cond_top].indent) {
+					tokenize_error(src, line, i, i + 5, "@elif without matching @if at same indent");
+					break;
+				}
+				i += 5;
+				while (input[i] == ' ' || input[i] == '\t') i++;
+				int ns = i;
+				while (isalnum(input[i]) || input[i] == '_') i++;
+				char *name = strndup(input + ns, i - ns);
+				while (input[i] == ' ' || input[i] == '\t') i++;
+				if (input[i] != ':') {
+					tokenize_error(src, line, ns, i, "expected ':' after @elif name");
+					free(name);
+					break;
+				}
+				i++;
+				while (input[i] && input[i] != '\n') i++;
+				bool match = (ura_target_os && strcmp(name, ura_target_os) == 0);
+				free(name);
+				if (cond_stack[cond_top].any_matched) {
+					cond_stack[cond_top].active = false;
+				} else {
+					cond_stack[cond_top].active      = match && cond_outer_active();
+					cond_stack[cond_top].any_matched = match;
+				}
+				continue;
+			}
+			if (input[i] == '@' && strncmp(input + i, "@else", 5) == 0
+			    && (input[i + 5] == ':' || input[i + 5] == ' ' || input[i + 5] == '\t')) {
+				if (cond_top < 0 || space != cond_stack[cond_top].indent) {
+					tokenize_error(src, line, i, i + 5, "@else without matching @if at same indent");
+					break;
+				}
+				while (input[i] && input[i] != ':' && input[i] != '\n') i++;
+				if (input[i] == ':') i++;
+				while (input[i] && input[i] != '\n') i++;
+				if (cond_stack[cond_top].any_matched) cond_stack[cond_top].active = false;
+				else {
+					cond_stack[cond_top].active      = cond_outer_active();
+					cond_stack[cond_top].any_matched = true;
+				}
+				continue;
+			}
+
+			if (!cond_emitting()) {
+				while (input[i] && input[i] != '\n') i++;
+				continue;
+			}
 		}
 
 		new_line = false;
