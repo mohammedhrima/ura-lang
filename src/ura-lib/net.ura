@@ -1,25 +1,115 @@
-// Socket creation and connection
+// sys/socket.h + netinet/in.h + netdb.h + arpa/inet.h
+//
+// Linux glibc and macOS differ in one important place: macOS sockaddr_in (and
+// all sockaddr variants) starts with a 1-byte `sin_len` length field before
+// the family. On Linux there is no length field; sin_family is i16 directly.
+// Same total size (16 bytes) — but the field layout differs.
+//
+// Pthread/select/poll types follow at the bottom.
+
+// ── sockaddr_in (IPv4) ─────────────────────────────────────────────────────
+@if linux:
+    struct In_addr:
+        s_addr  int             // uint32_t (network byte order)
+
+    struct Sockaddr_in:
+        sin_family  short       // sa_family_t (uint16_t)
+        sin_port    short       // in_port_t (uint16_t, network byte order)
+        sin_addr    In_addr     // 4 bytes
+        sin_zero0   long        // 8 bytes padding
+                                // total = 2 + 2 + 4 + 8 = 16
+
+@elif macos:
+    struct In_addr:
+        s_addr  int             // in_addr_t (uint32_t, network byte order)
+
+    struct Sockaddr_in:
+        sin_len     char        // __uint8_t (Darwin only — total struct size, 16)
+        sin_family  char        // sa_family_t (__uint8_t on Darwin)
+        sin_port    short       // in_port_t (__uint16_t)
+        sin_addr    In_addr     // 4 bytes
+        sin_zero0   long        // 8 bytes padding
+                                // total = 1 + 1 + 2 + 4 + 8 = 16
+
+// ── Generic sockaddr (used by accept/bind/connect when family is unknown) ──
+// Both platforms keep total at 16 bytes for the generic header.
+@if linux:
+    struct Sockaddr:
+        sa_family  short
+        sa_data0   char         // start of 14-byte raw payload buffer
+        sa_data1   char
+        sa_data2   char
+        sa_data3   char
+        sa_data4   char
+        sa_data5   char
+        sa_data6   char
+        sa_data7   char
+        sa_data8   char
+        sa_data9   char
+        sa_data10  char
+        sa_data11  char
+        sa_data12  char
+        sa_data13  char
+
+@elif macos:
+    struct Sockaddr:
+        sa_len     char
+        sa_family  char
+        sa_data0   char
+        sa_data1   char
+        sa_data2   char
+        sa_data3   char
+        sa_data4   char
+        sa_data5   char
+        sa_data6   char
+        sa_data7   char
+        sa_data8   char
+        sa_data9   char
+        sa_data10  char
+        sa_data11  char
+        sa_data12  char
+        sa_data13  char
+
+// ── pollfd ─ same layout on both ───────────────────────────────────────────
+struct Pollfd:
+    fd       int
+    events   short
+    revents  short
+
+// ── Socket creation and connection ─────────────────────────────────────────
+// Sockaddr args are typed `pointer` so callers can pass `ref Sockaddr_in`,
+// `ref Sockaddr` or a raw chars buffer interchangeably. The struct defs above
+// are there for users who want to lay out the bytes by hand.
 proto fn socket(domain int, type int, protocol int) int
 proto fn bind(fd int, addr pointer, addrlen int) int
 proto fn listen(fd int, backlog int) int
-proto fn accept(fd int, addr chars, addrlen chars) int
+proto fn accept(fd int, addr pointer, addrlen pointer) int
 proto fn connect(fd int, addr pointer, addrlen int) int
-proto fn close(fd int) int
 proto fn shutdown(fd int, how int) int
 
 // Socket I/O
-proto fn send(fd int, buf pointer, len int, flags int) int
-proto fn recv(fd int, buf pointer, len int, flags int) int
-proto fn sendto(fd int, buf pointer, len int, flags int, addr pointer, addrlen int) int
-proto fn recvfrom(fd int, buf pointer, len int, flags int, addr pointer, addrlen pointer) int
-proto fn sendmsg(fd int, msg pointer, flags int) int
-proto fn recvmsg(fd int, msg pointer, flags int) int
+proto fn send(fd int, buf pointer, len long, flags int) long
+proto fn recv(fd int, buf pointer, len long, flags int) long
+proto fn sendto(fd int, buf pointer, len long, flags int, addr pointer, addrlen int) long
+proto fn recvfrom(fd int, buf pointer, len long, flags int, addr pointer, addrlen pointer) long
+proto fn sendmsg(fd int, msg pointer, flags int) long
+proto fn recvmsg(fd int, msg pointer, flags int) long
 
 // Socket options
 proto fn setsockopt(fd int, level int, optname int, optval pointer, optlen int) int
 proto fn getsockopt(fd int, level int, optname int, optval pointer, optlen pointer) int
 proto fn getsockname(fd int, addr pointer, addrlen pointer) int
 proto fn getpeername(fd int, addr pointer, addrlen pointer) int
+
+// Byte-order conversion (inet equivalents) — both platforms
+proto fn htons(hostshort int) int
+proto fn htonl(hostlong int) int
+proto fn ntohs(netshort int) int
+proto fn ntohl(netlong int) int
+proto fn inet_addr(cp chars) int            // returns in_addr_t (uint32_t)
+proto fn inet_ntoa(addr In_addr) chars
+proto fn inet_pton(af int, src chars, dst pointer) int
+proto fn inet_ntop(af int, src pointer, dst chars, size int) chars
 
 // Name resolution
 proto fn gethostbyname(name chars) pointer
@@ -29,21 +119,88 @@ proto fn freeaddrinfo(res pointer) void
 proto fn gai_strerror(errcode int) chars
 proto fn getnameinfo(addr pointer, addrlen int, host chars, hostlen int, serv chars, servlen int, flags int) int
 
-// File descriptor control
-proto fn fcntl(fd int, cmd int, arg int) int
-proto fn ioctl(fd int, request int, arg pointer) int
-
 // I/O multiplexing
 proto fn select(nfds int, readfds pointer, writefds pointer, exceptfds pointer, timeout pointer) int
 proto fn poll(fds pointer, nfds int, timeout int) int
 
-// Process
-proto fn getpid() int
-proto fn getppid() int
-proto fn fork() int
-proto fn pipe(pipefd pointer) int
-proto fn dup(oldfd int) int
-proto fn dup2(oldfd int, newfd int) int
+// File descriptor control (kept here for compatibility with old callers; see
+// fcntl.ura / unistd.ura for the canonical declarations).
+proto fn ioctl(fd int, request int, arg pointer) int
 
-// Buffering
-// proto fn fflush(stream int) int
+// ── Address families ──────────────────────────────────────────────────────
+@if linux:
+    AF_UNSPEC int = 0
+    AF_UNIX   int = 1
+    AF_INET   int = 2
+    AF_INET6  int = 10
+@elif macos:
+    AF_UNSPEC int = 0
+    AF_UNIX   int = 1
+    AF_INET   int = 2
+    AF_INET6  int = 30
+
+// PF_* are aliases for AF_*
+@if linux:
+    PF_UNSPEC int = 0
+    PF_UNIX   int = 1
+    PF_INET   int = 2
+    PF_INET6  int = 10
+@elif macos:
+    PF_UNSPEC int = 0
+    PF_UNIX   int = 1
+    PF_INET   int = 2
+    PF_INET6  int = 30
+
+// ── Socket types ──────────────────────────────────────────────────────────
+@if linux:
+    SOCK_STREAM    int = 1
+    SOCK_DGRAM     int = 2
+    SOCK_RAW       int = 3
+    SOCK_SEQPACKET int = 5
+@elif macos:
+    SOCK_STREAM    int = 1
+    SOCK_DGRAM     int = 2
+    SOCK_RAW       int = 3
+    SOCK_SEQPACKET int = 5
+
+// ── setsockopt levels & options ───────────────────────────────────────────
+@if linux:
+    SOL_SOCKET    int = 1
+    SO_REUSEADDR  int = 2
+    SO_KEEPALIVE  int = 9
+    SO_BROADCAST  int = 6
+    SO_LINGER     int = 13
+    SO_RCVBUF     int = 8
+    SO_SNDBUF     int = 7
+@elif macos:
+    SOL_SOCKET    int = 65535      // 0xffff
+    SO_REUSEADDR  int = 4
+    SO_KEEPALIVE  int = 8
+    SO_BROADCAST  int = 32
+    SO_LINGER     int = 128
+    SO_RCVBUF     int = 4098
+    SO_SNDBUF     int = 4097
+
+// ── IP protocol numbers (assigned by IANA; same on both) ──────────────────
+IPPROTO_IP   int = 0
+IPPROTO_TCP  int = 6
+IPPROTO_UDP  int = 17
+IPPROTO_IPV6 int = 41
+
+// ── shutdown() how ────────────────────────────────────────────────────────
+SHUT_RD   int = 0
+SHUT_WR   int = 1
+SHUT_RDWR int = 2
+
+// ── poll() events ─────────────────────────────────────────────────────────
+POLLIN    int = 1
+POLLPRI   int = 2
+POLLOUT   int = 4
+POLLERR   int = 8
+POLLHUP   int = 16
+POLLNVAL  int = 32
+
+// ── INADDR_ANY / loopback ─────────────────────────────────────────────────
+INADDR_ANY       int = 0
+INADDR_LOOPBACK  int = 2130706433  // 0x7f000001 — 127.0.0.1 (host byte order)
+INADDR_BROADCAST int = -1          // 0xffffffff

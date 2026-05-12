@@ -2169,24 +2169,24 @@ entry:
   store i8* %localtime, i8** %tm, align 8, !dbg !235
   %buf1 = load i8*, i8** %buf, align 8, !dbg !236
   %tm2 = load i8*, i8** %tm, align 8, !dbg !236
-  %strftime = call i32 @strftime(i8* %buf1, i32 16, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @STR19, i32 0, i32 0), i8* %tm2), !dbg !236
+  %strftime = call i64 @strftime(i8* %buf1, i64 16, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @STR19, i32 0, i32 0), i8* %tm2), !dbg !236
   %buf3 = load i8*, i8** %buf, align 8, !dbg !236
   ret i8* %buf3, !dbg !236
 }
 
 declare i32 @close(i32)
 
-declare i64 @time(i8*)
-
-declare i8* @localtime(i64*)
-
-declare i32 @strftime(i8*, i32, i8*, i8*)
-
 declare i32 @bind(i32, i8*, i32)
 
 declare i32 @listen(i32, i32)
 
 declare i32 @accept(i32, i8*, i8*)
+
+declare i64 @time(i8*)
+
+declare i8* @localtime(i64*)
+
+declare i64 @strftime(i8*, i64, i8*, i8*)
 
 define void @banner() !dbg !237 {
 entry:

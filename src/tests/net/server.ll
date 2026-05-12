@@ -1682,11 +1682,11 @@ declare i32 @listen(i32, i32)
 
 declare i32 @accept(i32, i8*, i8*)
 
-declare i32 @close(i32)
-
 declare i32 @setsockopt(i32, i32, i32, i8*, i32)
 
 declare i32 @fork()
+
+declare i32 @close(i32)
 
 define void @log(i8* %msg) !dbg !160 {
 entry:
