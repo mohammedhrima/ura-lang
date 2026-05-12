@@ -1,0 +1,60 @@
+// math.h — floating-point math. Identical signatures on Linux and macOS.
+
+// Trigonometric (radians)
+proto fn sin(x float) float
+proto fn cos(x float) float
+proto fn tan(x float) float
+proto fn asin(x float) float
+proto fn acos(x float) float
+proto fn atan(x float) float
+proto fn atan2(y float, x float) float
+
+// Hyperbolic
+proto fn sinh(x float) float
+proto fn cosh(x float) float
+proto fn tanh(x float) float
+proto fn asinh(x float) float
+proto fn acosh(x float) float
+proto fn atanh(x float) float
+
+// Exponential and logarithmic
+proto fn exp(x float) float
+proto fn exp2(x float) float
+proto fn expm1(x float) float
+proto fn log(x float) float
+proto fn log2(x float) float
+proto fn log10(x float) float
+proto fn log1p(x float) float
+
+// Power / roots
+proto fn pow(x float, y float) float
+proto fn sqrt(x float) float
+proto fn cbrt(x float) float
+proto fn hypot(x float, y float) float
+
+// Rounding and remainder
+proto fn ceil(x float) float
+proto fn floor(x float) float
+proto fn trunc(x float) float
+proto fn round(x float) float
+proto fn fmod(x float, y float) float
+proto fn remainder(x float, y float) float
+
+// Absolute, sign, min/max
+proto fn fabs(x float) float
+proto fn copysign(x float, y float) float
+proto fn fmax(x float, y float) float
+proto fn fmin(x float, y float) float
+proto fn fdim(x float, y float) float
+
+// Classification (returns int)
+proto fn isnan(x float) int
+proto fn isinf(x float) int
+proto fn isfinite(x float) int
+proto fn signbit(x float) int
+
+// Gamma and error functions
+proto fn tgamma(x float) float
+proto fn lgamma(x float) float
+proto fn erf(x float) float
+proto fn erfc(x float) float

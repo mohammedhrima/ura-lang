@@ -367,9 +367,29 @@ static void load() {
     Toml t;
     t.parse(path);
 
+    // Host-OS short name used to expand `{os}` in toml strings — keeps the
+    // Mac and Linux compiler binaries side-by-side instead of clobbering each
+    // other in a shared bind-mounted directory.
+    const char *host_os =
+#if defined(__APPLE__)
+        "mac";
+#elif defined(__linux__)
+        "linux";
+#else
+        "unknown";
+#endif
+    auto expand_os = [&](std::string s) {
+        std::string out;
+        for (std::size_t i = 0; i < s.size();) {
+            if (s.compare(i, 4, "{os}") == 0) { out += host_os; i += 4; }
+            else                              { out += s[i];     i += 1; }
+        }
+        return out;
+    };
+
     g_cfg.source  = t.str("source");
-    g_cfg.build   = t.str("build");
-    g_cfg.output  = t.str("output");
+    g_cfg.build   = expand_os(t.str("build"));
+    g_cfg.output  = expand_os(t.str("output"));
     g_cfg.ura_lib = t.str("ura_lib");
     g_cfg.tests   = t.str("tests");
     g_cfg.errors  = t.str("errors");
@@ -378,6 +398,10 @@ static void load() {
     g_cfg.compile = t.arr("compile");
     g_cfg.flags   = t.arr("flags");
     g_cfg.release = t.arr("release");
+    // Per-OS flag append (`flags_mac` / `flags_linux`). Concatenated onto
+    // `flags` for the host platform only.
+    std::string per_os_key = std::string("flags_") + host_os;
+    g_cfg.flags_extra      = t.arr(per_os_key.c_str());
 
     if (auto v = t.num("max_parallel")) g_cfg.max_parallel = *v;
     g_cfg.ignore_ir = t.arr("ignore_ir");

@@ -8,6 +8,14 @@ bool  enable_san;
 bool  enable_prep;
 char *flags;
 char *ura_lib;
+const char *ura_target_os =
+#if defined(__APPLE__)
+    "macos";
+#elif defined(__linux__)
+    "linux";
+#else
+    "unknown";
+#endif
 
 EXPAND(Source **, sources);
 EXPAND(Token **, tokens);

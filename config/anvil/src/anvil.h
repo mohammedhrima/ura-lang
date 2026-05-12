@@ -52,8 +52,12 @@ struct AnvilConfig {
     int                      llvm = 14;
     std::vector<std::string> compile;
 
-    
+
     std::vector<std::string> flags;
+    // Host-OS-specific extras appended to `flags` at load time, so things like
+    // `-fsanitize=address` can be Linux-only (macOS 14+ has a known ASan-init
+    // deadlock that hangs every binary before main runs).
+    std::vector<std::string> flags_extra;
     std::vector<std::string> release;
 
     

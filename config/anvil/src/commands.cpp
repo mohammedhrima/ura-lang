@@ -26,7 +26,13 @@
 #include <vector>
 
 static void mkdirs(const std::string& p) {
-    
+    // Recursive mkdir -p so `build/mac` (with `build/` not yet existing) works.
+    if (p.empty()) return;
+    std::size_t pos = 1;
+    while ((pos = p.find('/', pos)) != std::string::npos) {
+        mkdir(p.substr(0, pos).c_str(), 0755);
+        pos++;
+    }
     mkdir(p.c_str(), 0755);
 }
 
@@ -83,8 +89,11 @@ int cmd_build(const std::vector<std::string>& args) {
 
     std::vector<std::string> argv = {"clang"};
     for (const auto& s : cfg.compile) argv.push_back(resolve(cfg.source + "/" + s));
-    if (want_release) argv.insert(argv.end(), cfg.release.begin(), cfg.release.end());
-    else              argv.insert(argv.end(), cfg.flags.begin(),   cfg.flags.end());
+    if (want_release) argv.insert(argv.end(), cfg.release.begin(),     cfg.release.end());
+    else {
+        argv.insert(argv.end(), cfg.flags.begin(),       cfg.flags.end());
+        argv.insert(argv.end(), cfg.flags_extra.begin(), cfg.flags_extra.end());
+    }
     argv.insert(argv.end(), llvm_cflags.begin(),  llvm_cflags.end());
     argv.insert(argv.end(), llvm_ldflags.begin(), llvm_ldflags.end());
 
@@ -913,34 +922,23 @@ int cmd_release_projects(const std::vector<std::string>& args) {
     return rc;
 }
 
-static std::string build_avatar() {
-    printf(ANSI_YELLOW "Building avatar..." ANSI_RESET "\n");
-    std::string dir = project_root() + "/src/tools/avatar";
-    std::string cmd = "make -C '" + dir + "' clean && make -C '" + dir + "'";
-    if (run_sh(cmd) != 0) return {};
-    return dir + "/avatar";
-}
-
 static int package_release(const std::string& ura_bin,
-                           const std::string& avatar_bin,
                            const std::string& ura_lib_dir)
 {
     std::string tarball = project_root() + "/build/ura-release-" + today_string() + ".tar.gz";
-    
     std::string cmd =
         "set -e; "
         "stage=$(mktemp -d); "
         "trap 'rm -rf \"$stage\"' EXIT; "
         "mkdir -p \"$stage/bin\" \"$stage/share/ura\"; "
-        "cp '" + ura_bin    + "' \"$stage/bin/ura\"; "
-        "cp '" + avatar_bin + "' \"$stage/bin/avatar\"; "
+        "cp '" + ura_bin + "' \"$stage/bin/ura\"; "
         "cp -R '" + ura_lib_dir + "' \"$stage/share/ura/lib\"; "
         "cat > \"$stage/install.sh\" <<'EOF'\n"
         "#!/bin/sh\n"
         "set -e\n"
         "PREFIX=\"${PREFIX:-$HOME/.local}\"\n"
         "mkdir -p \"$PREFIX/bin\" \"$PREFIX/share/ura\"\n"
-        "cp bin/ura bin/avatar \"$PREFIX/bin/\"\n"
+        "cp bin/ura \"$PREFIX/bin/\"\n"
         "cp -R share/ura/lib \"$PREFIX/share/ura/\"\n"
         "echo \"installed to $PREFIX\"\n"
         "echo \"export URA_LIB=$PREFIX/share/ura/lib   # add to your shell rc\"\n"
@@ -960,11 +958,8 @@ int cmd_release(const std::vector<std::string>& args) {
     int rc = cmd_build({"--release"});
     if (rc != 0) return rc;
 
-    std::string avatar_bin = build_avatar();
-    if (avatar_bin.empty()) return 1;
-
     std::string ura_lib = resolve(cfg.ura_lib);
-    rc = package_release(resolve(cfg.output), avatar_bin, ura_lib);
+    rc = package_release(resolve(cfg.output), ura_lib);
     if (rc != 0) return rc;
 
     if (!cfg.anvil_repo.empty())
@@ -980,7 +975,7 @@ int cmd_release(const std::vector<std::string>& args) {
         return 0;
     }
     printf("\n  " ANSI_BOLD "Next steps (binary):" ANSI_RESET "\n"
-           "    git add %s src/tools/avatar/avatar\n"
+           "    git add %s\n"
            "    git commit -m 'chore: release %s'\n"
            "    git push\n",
            cfg.output.c_str(), today_string().c_str());

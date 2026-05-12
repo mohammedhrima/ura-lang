@@ -1868,17 +1868,17 @@ declare i32 @write(i32, i8*, i32)
 
 declare i32 @read(i32, i8*, i32)
 
+declare i32 @connect(i32, i8*, i32)
+
 declare i64 @time(i8*)
 
 declare i8* @localtime(i64*)
 
-declare i32 @strftime(i8*, i32, i8*, i8*)
-
-declare i32 @connect(i32, i8*, i32)
-
-declare i32 @close(i32)
+declare i64 @strftime(i8*, i64, i8*, i8*)
 
 declare i32 @fork()
+
+declare i32 @close(i32)
 
 define i8* @get_time() !dbg !187 {
 entry:
@@ -1896,7 +1896,7 @@ entry:
   store i8* %localtime, i8** %tm, align 8, !dbg !190
   %buf1 = load i8*, i8** %buf, align 8, !dbg !191
   %tm2 = load i8*, i8** %tm, align 8, !dbg !191
-  %strftime = call i32 @strftime(i8* %buf1, i32 16, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @STR2, i32 0, i32 0), i8* %tm2), !dbg !191
+  %strftime = call i64 @strftime(i8* %buf1, i64 16, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @STR2, i32 0, i32 0), i8* %tm2), !dbg !191
   %buf3 = load i8*, i8** %buf, align 8, !dbg !191
   ret i8* %buf3, !dbg !191
 }

@@ -1,0 +1,104 @@
+// sys/stat.h — file metadata.
+//
+// `struct stat` layout differs significantly between Linux glibc x86_64 and
+// macOS arm64 / Darwin. Fields are kept here in the SAME order/types as the
+// C definitions so layout matches when LLVM packs the Ura struct.
+//
+// Cross-platform notes (mode_t is the biggest gotcha):
+//   * Linux glibc:  mode_t = unsigned int (4 bytes)
+//   * macOS Darwin: mode_t = unsigned short (2 bytes)
+// We use `int` vs `short` accordingly.
+
+@if linux:
+    struct Timespec_stat:
+        tv_sec   long
+        tv_nsec  long
+
+    struct Stat:
+        st_dev      long      // dev_t
+        st_ino      long      // ino_t
+        st_nlink    long      // nlink_t (glibc bumped to 8 bytes on x86_64)
+        st_mode     int       // mode_t
+        st_uid      int       // uid_t
+        st_gid      int       // gid_t
+        __pad0      int       // glibc padding
+        st_rdev     long      // dev_t
+        st_size     long      // off_t
+        st_blksize  long      // blksize_t (glibc i64 on x86_64)
+        st_blocks   long      // blkcnt_t
+        st_atim     Timespec_stat
+        st_mtim     Timespec_stat
+        st_ctim     Timespec_stat
+        __reserved0 long
+        __reserved1 long
+        __reserved2 long
+
+@elif macos:
+    struct Timespec_stat:
+        tv_sec   long
+        tv_nsec  long
+
+    struct Stat:
+        st_dev          int             // dev_t (i32 on Darwin)
+        st_mode         short           // mode_t (i16 on Darwin)
+        st_nlink        short           // nlink_t (i16)
+        st_ino          long            // ino_t (i64, __darwin_ino64_t)
+        st_uid          int             // uid_t
+        st_gid          int             // gid_t
+        st_rdev         int             // dev_t
+        st_atimespec    Timespec_stat
+        st_mtimespec    Timespec_stat
+        st_ctimespec    Timespec_stat
+        st_birthtimespec Timespec_stat  // Darwin-only
+        st_size         long            // off_t
+        st_blocks       long            // blkcnt_t
+        st_blksize      int             // blksize_t (i32 on Darwin)
+        st_flags        int             // uint32_t
+        st_gen          int             // uint32_t
+        st_lspare       int             // i32 padding
+        st_qspare0      long
+        st_qspare1      long
+
+// stat / fstat / lstat — these have wrapper symbols on glibc (__xstat / __fxstat
+// on older glibc; just stat/fstat/lstat on newer glibc and on Darwin). Buffer
+// is typed `pointer` so callers can pass `ref my_stat` or a raw byte buffer.
+proto fn stat(path chars, buf pointer) int
+proto fn fstat(fd int, buf pointer) int
+proto fn lstat(path chars, buf pointer) int
+
+// Directory and mode operations
+proto fn mkdir(path chars, mode int) int
+proto fn chmod(path chars, mode int) int
+proto fn fchmod(fd int, mode int) int
+proto fn umask(cmask int) int
+
+// ── File type constants (st_mode & S_IFMT) ─────────────────────────────────
+// Values are identical between Linux and macOS for these.
+S_IFMT   int = 61440   // 0o170000  — type mask
+S_IFSOCK int = 49152   // 0o140000  — socket
+S_IFLNK  int = 40960   // 0o120000  — symlink
+S_IFREG  int = 32768   // 0o100000  — regular file
+S_IFBLK  int = 24576   // 0o060000  — block device
+S_IFDIR  int = 16384   // 0o040000  — directory
+S_IFCHR  int = 8192    // 0o020000  — character device
+S_IFIFO  int = 4096    // 0o010000  — FIFO / pipe
+
+// ── Permission bits (POSIX, identical on both) ─────────────────────────────
+S_ISUID  int = 2048    // 0o4000   — set-user-ID
+S_ISGID  int = 1024    // 0o2000   — set-group-ID
+S_ISVTX  int = 512     // 0o1000   — sticky bit
+
+S_IRWXU  int = 448     // 0o700
+S_IRUSR  int = 256     // 0o400
+S_IWUSR  int = 128     // 0o200
+S_IXUSR  int = 64      // 0o100
+
+S_IRWXG  int = 56      // 0o70
+S_IRGRP  int = 32      // 0o40
+S_IWGRP  int = 16      // 0o20
+S_IXGRP  int = 8       // 0o10
+
+S_IRWXO  int = 7       // 0o7
+S_IROTH  int = 4       // 0o4
+S_IWOTH  int = 2       // 0o2
+S_IXOTH  int = 1       // 0o1

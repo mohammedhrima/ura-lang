@@ -4,3 +4,58 @@ proto fn kill(pid int, sig int) int
 proto fn sigaction(sig int, act pointer, oldact pointer) int
 proto fn sigprocmask(how int, set pointer, oldset pointer) int
 proto fn sigsuspend(mask pointer) int
+proto fn strsignal(sig int) chars
+
+// ── Signal numbers ────────────────────────────────────────────────────────
+// SIGHUP..SIGTERM are identical on Linux and macOS; SIGUSR/SIGCHLD/SIGBUS
+// and a few others diverge.
+SIGHUP    int = 1
+SIGINT    int = 2
+SIGQUIT   int = 3
+SIGILL    int = 4
+SIGTRAP   int = 5
+SIGABRT   int = 6
+SIGFPE    int = 8
+SIGKILL   int = 9
+SIGSEGV   int = 11
+SIGPIPE   int = 13
+SIGALRM   int = 14
+SIGTERM   int = 15
+
+@if linux:
+    SIGUSR1   int = 10
+    SIGUSR2   int = 12
+    SIGCHLD   int = 17
+    SIGCONT   int = 18
+    SIGSTOP   int = 19
+    SIGTSTP   int = 20
+    SIGBUS    int = 7
+    SIGSYS    int = 31
+    SIGURG    int = 23
+    SIGWINCH  int = 28
+    SIGIO     int = 29
+@elif macos:
+    SIGUSR1   int = 30
+    SIGUSR2   int = 31
+    SIGCHLD   int = 20
+    SIGCONT   int = 19
+    SIGSTOP   int = 17
+    SIGTSTP   int = 18
+    SIGBUS    int = 10
+    SIGSYS    int = 12
+    SIGURG    int = 16
+    SIGWINCH  int = 28
+    SIGIO     int = 23
+
+// ── sigprocmask() how ─────────────────────────────────────────────────────
+@if linux:
+    SIG_BLOCK   int = 0
+    SIG_UNBLOCK int = 1
+    SIG_SETMASK int = 2
+@elif macos:
+    SIG_BLOCK   int = 1
+    SIG_UNBLOCK int = 2
+    SIG_SETMASK int = 3
+
+// ── Special handler values (cast to pointer at use site) ──────────────────
+// SIG_DFL = 0, SIG_IGN = 1 on both platforms.

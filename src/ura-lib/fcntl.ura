@@ -1,0 +1,62 @@
+// fcntl.h — file control.
+//
+// Function signatures are identical on Linux + macOS. Flag constants differ.
+
+proto fn open(path chars, flags int, mode int) int
+proto fn openat(dirfd int, path chars, flags int, mode int) int
+proto fn creat(path chars, mode int) int
+proto fn fcntl(fd int, cmd int, arg int) int
+
+// ── open() access modes (same on both) ─────────────────────────────────────
+O_RDONLY int = 0
+O_WRONLY int = 1
+O_RDWR   int = 2
+
+// ── open() creation / status flags (values DIFFER between Linux and macOS) ─
+@if linux:
+    O_CREAT     int = 64       // 0o100
+    O_EXCL      int = 128      // 0o200
+    O_NOCTTY    int = 256      // 0o400
+    O_TRUNC     int = 512      // 0o1000
+    O_APPEND    int = 1024     // 0o2000
+    O_NONBLOCK  int = 2048     // 0o4000
+    O_DSYNC     int = 4096
+    O_DIRECTORY int = 65536    // 0o200000
+    O_NOFOLLOW  int = 131072   // 0o400000
+    O_CLOEXEC   int = 524288   // 0o2000000
+
+@elif macos:
+    O_CREAT     int = 512      // 0x0200
+    O_EXCL      int = 2048     // 0x0800
+    O_NOCTTY    int = 131072   // 0x20000
+    O_TRUNC     int = 1024     // 0x0400
+    O_APPEND    int = 8        // 0x0008
+    O_NONBLOCK  int = 4        // 0x0004
+    O_DSYNC     int = 4194304  // 0x400000
+    O_DIRECTORY int = 1048576  // 0x100000
+    O_NOFOLLOW  int = 256      // 0x0100
+    O_CLOEXEC   int = 16777216 // 0x1000000
+
+// ── fcntl() commands ───────────────────────────────────────────────────────
+@if linux:
+    F_DUPFD  int = 0
+    F_GETFD  int = 1
+    F_SETFD  int = 2
+    F_GETFL  int = 3
+    F_SETFL  int = 4
+@elif macos:
+    F_DUPFD  int = 0
+    F_GETFD  int = 1
+    F_SETFD  int = 2
+    F_GETFL  int = 3
+    F_SETFL  int = 4
+    // (Darwin happens to match Linux for these basic commands.)
+
+// FD_CLOEXEC = 1 on both
+FD_CLOEXEC int = 1
+
+// ── AT_FDCWD for *at functions ─────────────────────────────────────────────
+@if linux:
+    AT_FDCWD int = -100
+@elif macos:
+    AT_FDCWD int = -2

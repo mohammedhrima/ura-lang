@@ -315,6 +315,7 @@ extern bool             enable_san;
 extern bool             enable_prep;
 extern char            *flags;
 extern char            *ura_lib;
+extern const char      *ura_target_os;
 
 extern Source         **sources;
 extern int              sources_count;
