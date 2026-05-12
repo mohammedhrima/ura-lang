@@ -1,0 +1,74 @@
+// unistd.h — POSIX OS calls. Linux + macOS both POSIX-compatible here.
+
+// Process IDs
+proto fn getpid() int
+proto fn getppid() int
+proto fn getuid() int
+proto fn geteuid() int
+proto fn getgid() int
+proto fn getegid() int
+proto fn setuid(uid int) int
+proto fn setgid(gid int) int
+
+// Process control
+proto fn fork() int
+proto fn execv(path chars, argv pointer) int
+proto fn execve(path chars, argv pointer, envp pointer) int
+proto fn execvp(file chars, argv pointer) int
+proto fn _exit(code int) void
+
+// Working directory
+proto fn getcwd(buf chars, size long) chars
+proto fn chdir(path chars) int
+proto fn fchdir(fd int) int
+
+// File system: paths
+proto fn access(path chars, mode int) int
+proto fn unlink(path chars) int
+proto fn rmdir(path chars) int
+proto fn link(oldpath chars, newpath chars) int
+proto fn symlink(target chars, linkpath chars) int
+proto fn readlink(path chars, buf chars, bufsize long) long
+proto fn rename(oldpath chars, newpath chars) int
+proto fn truncate(path chars, length long) int
+proto fn ftruncate(fd int, length long) int
+
+// File descriptors
+proto fn close(fd int) int
+proto fn dup(fd int) int
+proto fn dup2(oldfd int, newfd int) int
+proto fn pipe(pipefd pointer) int
+proto fn lseek(fd int, offset long, whence int) long
+proto fn isatty(fd int) int
+proto fn ttyname(fd int) chars
+
+// Sleep
+proto fn sleep(seconds int) int
+proto fn usleep(microseconds int) int
+
+// Host info
+proto fn gethostname(name chars, len long) int
+proto fn sethostname(name chars, len long) int
+
+// Misc
+proto fn alarm(seconds int) int
+proto fn pause() int
+proto fn sync() void
+proto fn fsync(fd int) int
+proto fn fdatasync(fd int) int
+
+// ── access() mode constants (POSIX, identical on Linux and macOS) ──────────
+F_OK int = 0
+X_OK int = 1
+W_OK int = 2
+R_OK int = 4
+
+// ── lseek() whence constants ───────────────────────────────────────────────
+SEEK_SET int = 0
+SEEK_CUR int = 1
+SEEK_END int = 2
+
+// ── stdin/stdout/stderr file descriptors ───────────────────────────────────
+STDIN_FILENO  int = 0
+STDOUT_FILENO int = 1
+STDERR_FILENO int = 2
