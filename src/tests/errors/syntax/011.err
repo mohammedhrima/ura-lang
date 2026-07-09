@@ -1,0 +1,15 @@
+[1m[0;31merror: [0mexpected ')' to close function call
+  [1m[34m-->[0m src/tests/errors/syntax/011.ura:8:13
+  [1m[34m|[0m
+[1m[34m8 |[0m     x int = add(1, 2
+  [1m[34m|[0m             [1;31m^^^[0m
+[1m[0;31merror: [0monly declarations are allowed at top level
+  [1m[34m-->[0m src/tests/errors/syntax/011.ura:7:1
+  [1m[34m|[0m
+[1m[34m7 |[0m main():
+  [1m[34m|[0m [1;31m^^^^[0m
+[1m[0;31merror: [0monly declarations are allowed at top level
+    [1m[34m-->[0m src/ura-lib/net.ura:206:1
+    [1m[34m|[0m
+[1m[34m206 |[0m // sys/socket.h + netinet/in.h + netdb.h + arpa/inet.h
+    [1m[34m|[0m [1;31m^[0m
