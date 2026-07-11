@@ -1,0 +1,5 @@
+[1m[0;31merror: [0mtype mismatch: cannot assign INT to CHARS
+  [1m[34m-->[0m src/tests/errors/refs/002.ura:6:17
+  [1m[34m|[0m
+[1m[34m6 |[0m     ref y chars = x
+  [1m[34m|[0m                 [1;31m^[0m

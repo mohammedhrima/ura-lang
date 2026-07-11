@@ -981,7 +981,7 @@ TypeRef get_llvm_type(Token *token) {
 	// if (type == FCALL) return get_llvm_type(token->Fcall.ptr->token);
 	TypeRef res[END] = {
 	    [INT] = i32,  [CHAR] = i8,   [CHARS] = p8,  [BOOL] = i1,  [VOID] = vd,
-	    [LONG] = i64, [FLOAT] = f32, [ACCESS] = i8, [SHORT] = i2, [NULLABLE] = p8,
+	    [LONG] = i64, [FLOAT] = f32, [ACCESS] = i8, [SHORT] = i4, [NULLABLE] = p8,
 	};
 	TODO(!res[type], "handle this case %k", token);
 	return res[type];

@@ -1,0 +1,93 @@
+setenv("URA_LIB", "src/ura-lib")
+
+build_dir = "build"
+output = build_dir + "/ura"
+tests_dir = "src/tests"
+ignores = ["DIFile", "DICompileUnit", "source_filename", "ModuleID"]
+
+fn check() {
+    Cmd(["command -v clang >/dev/null && command -v llvm-config-14 >/dev/null"]).on(
+        success = { okput("check: clang + llvm-config-14 present") },
+        failure = { errput("check: missing clang or llvm-config-14 (run install)") }
+    )
+}
+
+fn build() {
+    Cmd(["mkdir -p " + build_dir + " && clang src/main.c src/parse.c src/gen.c src/utils.c $(llvm-config-14 --cflags --ldflags --libs core) -o " + output]).on(
+        success = { okput("build: ok -> " + output) },
+        failure = { errput("build: failed") }
+    )
+}
+
+fn test(folder) {
+    pass = 0
+    fail = 0
+    skip = 0
+    for ura in walk(folder, ".ura", ["build", "errors", "projects"]) {
+        Cmd(["head -1 " + ura + " | grep -q '^//'"]).on(
+            success = {
+                exp = read(replace(ura, ".ura", ".ll"))
+                got = Cmd(["u=" + ura + "; d=$(dirname $u); b=$(basename $u .ura); " + output + " $u -no-exec -no-debug -prep >/dev/null 2>&1; " + output + " $d/build/$b.prep.ura -no-exec -no-debug >/dev/null 2>&1; cat $d/build/$b.ll 2>/dev/null"]).on()
+                diff(got.out, exp.out, ignores).on(
+                    success = { pass = pass + 1  okput("PASS " + ura) },
+                    failure = { fail = fail + 1  errput("FAIL " + ura) }
+                )
+            },
+            failure = { skip = skip + 1  warnput("SKIP " + ura) }
+        )
+    }
+    output("Passed: " + pass + "  Failed: " + fail + "  Skipped: " + skip)
+}
+
+fn update_errors() {
+    for ura in walk(tests_dir + "/errors", ".ura", ["build"]) {
+        got = Cmd([output + " " + ura + " -no-exec -no-debug"]).on()
+        write(replace(ura, ".ura", ".err"), got.err)
+        okput("wrote " + replace(ura, ".ura", ".err"))
+    }
+}
+
+fn test_errors(folder) {
+    pass = 0
+    fail = 0
+    for ura in walk(folder, ".ura", ["build"]) {
+        got = Cmd([output + " " + ura + " -no-exec -no-debug"]).on()
+        ref = read(replace(ura, ".ura", ".err"))
+        got.on(
+            success = { fail = fail + 1  errput("FAIL " + ura + " (compiled, expected error)") },
+            failure = {
+                diff(got.err, ref.out, []).on(
+                    success = { pass = pass + 1  okput("PASS " + ura) },
+                    failure = { fail = fail + 1  errput("FAIL " + ura + " (error message differs)") }
+                )
+            }
+        )
+    }
+    output("Errors -> Passed: " + pass + "  Failed: " + fail)
+}
+
+fn tests() {
+    test(tests_dir)
+    test_errors(tests_dir + "/errors")
+}
+
+fn copy(file) {
+    Cmd(["f=" + file + "; dest=$(head -1 $f | sed 's|^// *||'); mkdir -p " + tests_dir + "/$(dirname $dest); cp $f " + tests_dir + "/$dest.ura; cp ${f%.ura}.ll " + tests_dir + "/$dest.ll 2>/dev/null || true"]).on(
+        success = { okput("copy: filed " + file) },
+        failure = { errput("copy: failed " + file) }
+    )
+}
+
+fn install() {
+    Cmd(["command -v clang >/dev/null"]).on(
+        success = { okput("install: clang present") },
+        failure = {
+            Cmd(["if command -v brew >/dev/null; then brew install llvm@14 clang-format; elif command -v apt-get >/dev/null; then sudo apt-get install -y llvm-14 clang-14 clang-format; else echo no package manager; fi"]).on(
+                success = { okput("install: done") },
+                failure = { errput("install: failed") }
+            )
+        }
+    )
+}
+
+loop

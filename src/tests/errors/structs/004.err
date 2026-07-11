@@ -1,0 +1,15 @@
+[1m[0;31merror: [0mstruct 'Box': operator delete must return void
+  [1m[34m-->[0m src/tests/errors/structs/004.ura:7:5
+  [1m[34m|[0m
+[1m[34m7 |[0m     operator delete() int:
+  [1m[34m|[0m     [1;31m^^^^^^^^[0m
+[1m[0;31merror: [0minvalid struct attribute
+   [1m[34m-->[0m src/tests/errors/structs/004.ura:12:5
+   [1m[34m|[0m
+[1m[34m12 |[0m     b.value = 1
+   [1m[34m|[0m     [1;31m^[0m
+[1m[0;31merror: [0munexpected token in expression
+   [1m[34m-->[0m src/tests/errors/structs/004.ura:12:6
+   [1m[34m|[0m
+[1m[34m12 |[0m     b.value = 1
+   [1m[34m|[0m      [1;31m^[0m

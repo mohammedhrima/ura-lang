@@ -11,15 +11,20 @@ No braces. No semicolons. Indentation-based like Python, fast like C. Each floor
 ```bash
 git clone https://github.com/mohammedhrima/ura-lang && cd ura-lang
 
-make -C config/anvil install   # build + install `anvil` to /usr/local/bin (one time)
-anvil install                  # install LLVM/clang deps (once per machine)
-anvil build                    # compile the ura compiler
-anvil test                     # run the test suite
+# anvil — the dev tool — is a small scripting interpreter in its own repo.
+# Clone and build it once (puts `anvil` on your PATH via ~/.local/bin):
+git clone https://github.com/mohammedhrima/anvil && make -C anvil
+
+anvil anvil.an                 # open the anvil prompt for this project, then:
+#   install    install LLVM/clang deps (once per machine)
+#   build      compile the ura compiler
+#   tests      run the whole suite   (or:  test <folder>)
 ```
 
-Dev workflow is driven by **[anvil](config/anvil/README.md)** — a
-Makefile-style CLI. Run `anvil` with no args to see every command
-(`build`, `test`, `indent`, `release`, `shell`, …).
+Dev workflow is driven by **[anvil](https://github.com/mohammedhrima/anvil)** —
+a small scripting interpreter. This project's commands live in
+[anvil.an](anvil.an); run `anvil anvil.an` and type a command at the prompt
+(`check`, `install`, `build`, `test <folder>`, `tests`, `copy <file>`).
 
 ```ura
 main():
@@ -1346,21 +1351,23 @@ ura src/game.ura -O2 -o dungeon
 
 ### anvil
 
-Dev tool for the compiler (replaces `config.sh`). See
-[config/anvil/README.md](config/anvil/README.md) for the full command list.
+Dev tool for the compiler — a small scripting interpreter in its own repo:
+[github.com/mohammedhrima/anvil](https://github.com/mohammedhrima/anvil). Clone
+and build it once, then run this project's [anvil.an](anvil.an):
 
 ```bash
-make -C config/anvil install   # one-time install
-anvil                          # list commands
-anvil build                    # compile the ura compiler
-anvil test                     # run the test suite
-anvil install                  # install LLVM/clang deps
-anvil indent                   # clang-format the C sources
-anvil shell                    # drop into the Linux dev container
-anvil release --confirm        # build + sync everything
+git clone https://github.com/mohammedhrima/anvil && make -C anvil   # one-time
+anvil anvil.an                 # open the prompt, then type a command:
+#   check       verify clang + llvm-config-14
+#   install     install LLVM/clang deps
+#   build       compile the ura compiler -> build/ura
+#   test <dir>  run tests under a folder     tests   run them all
+#   copy <f>    file a .ura + its .ll as a new test
+#   reload      re-read anvil.an after edits
 ```
 
-Config lives in [anvil.toml](anvil.toml) at the repo root.
+Each command is defined in [anvil.an](anvil.an) at the repo root — edit that file
+to change what a command does or add new ones.
 
 ---
 
