@@ -1,0 +1,3 @@
+# Expected-IR snapshots for the test suite: generated output, not source.
+# Excludes them from GitHub's language stats and collapses them in diffs.
+*.ll linguist-generated=true
