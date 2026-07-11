@@ -1,0 +1,5 @@
+[1m[0;31merror: [0m'x' not found
+  [1m[34m-->[0m src/tests/errors/types/003.ura:5:5
+  [1m[34m|[0m
+[1m[34m5 |[0m     x Widget
+  [1m[34m|[0m     [1;31m^[0m
