@@ -1,0 +1,8 @@
+// 010: a void function with a ref parameter
+// expect: 6
+fn bump(ref n int) void:
+    n = n + 1
+main():
+    n int = 5
+    bump(n)
+    return n

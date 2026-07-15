@@ -1,0 +1,6 @@
+// 007: forward reference — call a function declared later
+// expect: 42
+main():
+    return dbl(21)
+fn dbl(n int) int:
+    return n + n

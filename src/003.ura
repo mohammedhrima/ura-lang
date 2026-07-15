@@ -1,0 +1,4 @@
+// 003: arithmetic with correct precedence  (2*3 + 20/4 - 1)
+// expect: 10
+main():
+    return 2 * 3 + 20 / 4 - 1

@@ -1,0 +1,4 @@
+// 001: return an integer literal
+// expect: 42
+main():
+    return 42

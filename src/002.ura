@@ -1,0 +1,5 @@
+// 002: declare a variable and return it
+// expect: 7
+main():
+    a int = 7
+    return a
