@@ -215,7 +215,7 @@ void pnode(Node *node, char *indent) {
 
 #define push(n)                                                                                    \
 	do {                                                                                            \
-		resize_array(subs, Node *, subs_size, subs_count);                                           \
+		resize_array(subs, Node *);                                           \
 		subs[subs_count++] = (n);                                                                    \
 	} while (0)
 
@@ -372,7 +372,7 @@ void new_source(char *file_name) {
 	fclose(file);
 	free(file_name);
 
-	resize_array(ura.sources, Source *, ura.sources_size, ura.sources_count);
+	resize_array(ura.sources, Source *);
 	ura.sources[ura.sources_count++] = src;
 	ura.sources_pos++;
 }
@@ -708,7 +708,7 @@ Token *new_token(Type type, int indent) {
 	Token *token = allocate(1, sizeof(Token));
 	token->type  = type;
 	token->indent = ((indent + TAB / 2) / TAB) * TAB;
-	resize_array(ura.tokens, Token *, ura.tokens_size, ura.tokens_count);
+	resize_array(ura.tokens, Token *);
 	ura.tokens[ura.tokens_count++] = token;
 	return token;
 }
@@ -883,7 +883,7 @@ Node *syntax_error() {
 void enter_scope(Node *node) {
 	ura.scopes_count++;
 	debug(CYAN("Enter Scope: %k index %d\n"), node->token, ura.scopes_count);
-	resize_array(ura.scopes, Node *, ura.scopes_size, ura.scopes_count);
+	resize_array(ura.scopes, Node *);
 	ura.scopes[ura.scopes_count] = node;
 	ura.scope                = ura.scopes[ura.scopes_count];
 }
@@ -898,11 +898,11 @@ void exit_scope() {
 
 void declare_variable(Token *token) {
 	for (int v = 0; v < ura.scope->variables_count; v++)
-		if (CHECK(strcmp(ura.scope->variables[v]->name, token->name) == 0,
-		          "redeclaration of variable '%s'", token->name))
+		if (strcmp(ura.scope->variables[v]->name, token->name) == 0) {
+			parse_error(token, "redeclaration of variable '%s'", token->name);
 			return;
-	resize_array(ura.scope->variables, Token *, ura.scope->variables_size,
-	             ura.scope->variables_count);
+		}
+	resize_array(ura.scope->variables, Token *);
 	ura.scope->variables[ura.scope->variables_count++] = token;
 }
 
@@ -924,11 +924,11 @@ Token *find_variable(char *name, bool *captured) {
 
 void declare_function(Node *fn) {
 	for (int f = 0; f < ura.scope->functions_count; f++)
-		if (CHECK(strcmp(ura.scope->functions[f]->token->name, fn->token->name) == 0,
-		          "redeclaration of function '%s'", fn->token->name))
+		if (strcmp(ura.scope->functions[f]->token->name, fn->token->name) == 0) {
+			parse_error(fn->token, "redeclaration of function '%s'", fn->token->name);
 			return;
-	resize_array(ura.scope->functions, Node *, ura.scope->functions_size,
-	             ura.scope->functions_count);
+		}
+	resize_array(ura.scope->functions, Node *);
 	ura.scope->functions[ura.scope->functions_count++] = fn;
 }
 
@@ -954,8 +954,7 @@ void parse_type(Token *target) {
 		while (!ura.error_count && peek(0)->type != RPAR) {
 			Token *param = new_token(ID, 0);
 			parse_type(param);
-			resize_array(target->Fn.params, Token *, target->Fn.params_size,
-			             target->Fn.params_count);
+			resize_array(target->Fn.params, Token *);
 			target->Fn.params[target->Fn.params_count++] = param;
 			while (find(COMA, 0));
 		}
@@ -986,8 +985,7 @@ Node *fdec_node(Node *node) {
 		param->is_param = true;
 		param->is_dec   = true;
 		param->is_ref   = is_ref;
-		resize_array(node->token->Fn.params, Token *, node->token->Fn.params_size,
-		             node->token->Fn.params_count);
+		resize_array(node->token->Fn.params, Token *);
 		node->token->Fn.params[node->token->Fn.params_count++] = param;
 		while (find(COMA, 0));
 	}
@@ -1007,7 +1005,7 @@ Node *fdec_node(Node *node) {
 		parse_error(node->token, "expected ':' after function %s", node->token->name);
 
 	while(within(node->token->indent)) {
-		resize_array(node->children, Node*, node->children_size, node->children_count);
+		resize_array(node->children, Node*);
 		node->children[node->children_count++] = expr_node(0);
 	}
 
@@ -1020,7 +1018,7 @@ Node *fcall_node(Node *node) {
 	if (!find(LPAR, 0))
 		parse_error(node->token, "expected '(' after %s", node->token->name);
 	while (!ura.error_count && peek(0)->type != RPAR) {
-		resize_array(node->children, Node *, node->children_size, node->children_count);
+		resize_array(node->children, Node *);
 		node->children[node->children_count++] = expr_node(0);
 		while (find(COMA, 0));
 	}
