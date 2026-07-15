@@ -213,7 +213,7 @@ struct Token {
 
 	int     used;
 	int     start_index;
-	int     end_index; // TODO: maybe it needs to be removed
+	int     end_index; 
 
 	bool    is_ref;
 	bool    is_dec;
@@ -346,15 +346,34 @@ void exit_scope();
 Token *find(Type type, ...);
 Token *find_variable(char *name);
 void declare_variable(Token *token);
+Node *find_function(char *name);
+void declare_function(Node *fn);
 Token *new_token(Type type, int indent);
 Node *new_node(Token *token);
 Node *syntax_error();
 void pnode(Node *node, char *indent);
 Node *fdec_node(Node *node);
+Node *fcall_node(Node *node);
 
 
 Token *next();
+Token *peek(int index);
 Node *prime_node();
 Node *expr_node(int min_op);
+int get_operation_precedence(Type type);
+
+char *to_string(Type type);
+int _vprint(File out, const char *conv, va_list args);
+int parse_escape_seq(char *input, int s, int e, char *buf, int *ptr);
+bool within(int indent);
+bool is_data_type(Token *token);
+
+TypeRef to_llvm_type(Type type);
+void init_module(char *name);
+void finalize_module(char *ll_path);
+
+void free_token(Token *token);
+void free_node(Node *node);
+void free_memory();
 
 #endif
