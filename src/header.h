@@ -254,7 +254,7 @@ struct UraGlobal {
     int              max_errors;
     // Node            *syntax_error_node;
     bool             enable_debug;
-    bool             enable_exec;
+   //  bool             enable_exec;
     bool             enable_san;
     // bool             enable_prep;
     char            *flags;
@@ -364,6 +364,8 @@ void finalize_module(char *ll_path);
 void debug_enter_function(Token *token);
 void debug_exit_function(Token *token);
 void set_debug_location(Token *token);
+Value get_or_declare(char *name, TypeRef fn_type);
+void guard_nonzero(Token *op, Value divisor);
 
 void free_token(Token *token);
 void free_node(Node *node);
