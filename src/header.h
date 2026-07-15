@@ -242,7 +242,7 @@ struct Token {
 		struct { int index; Node *ptr; } Struct;
 		struct { Type  sub_type; int   depth; Node *struct_ptr; } Array;
 		struct { EXPAND(Token**, types); } Tuple;
-		struct { Node *ptr; } Fcall;
+		struct { Node *ptr; Token *var; } Fcall;
 		struct { Token *ptr; Token *start; Token *end; } Statement;
 		struct { Type  type; char *name; } Catch;
 		struct { EXPAND(Token**, params); Token *ret; } Fn;
