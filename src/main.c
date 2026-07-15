@@ -160,6 +160,14 @@ void resolve(Node *node) {
          break;
       }
       case FCALL: {
+         Token *var = find_variable(token->name);
+         if (var && var->ret_type == FN_TYPE) {
+            token->Fcall.var = var;
+            for (int i = 0; i < node->children_count; i++)
+               resolve(node->children[i]);
+            token->ret_type = var->Fn.ret->ret_type;
+            break;
+         }
          Node *fn = find_function(token->name);
          if (CHECK(!fn, "undeclared function '%s'", token->name)) return;
          token->Fcall.ptr = fn;
@@ -196,7 +204,8 @@ void typecheck(Node *node) {
          break;
       }
       case FCALL: {
-         Token *fn = token->Fcall.ptr->token;
+         bool   indirect = token->Fcall.var != NULL;
+         Token *fn       = indirect ? token->Fcall.var : token->Fcall.ptr->token;
          for (int i = 0; i < node->children_count; i++)
             typecheck(node->children[i]);
          if (CHECK(node->children_count != fn->Fn.params_count,
@@ -211,7 +220,7 @@ void typecheck(Node *node) {
                       "argument %d to '%s' must be a variable (ref parameter)", i + 1, token->name))
                return;
          }
-         token->ret_type = fn->ret_type;
+         token->ret_type = indirect ? fn->Fn.ret->ret_type : fn->ret_type;
          break;
       }
       default: {
@@ -272,6 +281,8 @@ void codegen(Node *node) {
          }
          for (int i = 0; i < node->children_count; i++)
             codegen(node->children[i]);
+         if (token->ret_type == VOID && !LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ura.builder)))
+            LLVMBuildRetVoid(ura.builder);
          exit_scope();
          break;
       }
@@ -304,8 +315,9 @@ void codegen(Node *node) {
          break;
       }
       case FCALL: {
-         codegen_fn_signature(token->Fcall.ptr);
-         Token *fn   = token->Fcall.ptr->token;
+         bool   indirect = token->Fcall.var != NULL;
+         Token *fn       = indirect ? token->Fcall.var : token->Fcall.ptr->token;
+         if (!indirect) codegen_fn_signature(token->Fcall.ptr);
          int    n    = node->children_count;
          Value *args = NULL;
          if (n > 0) {
@@ -319,8 +331,15 @@ void codegen(Node *node) {
                }
             }
          }
-         char *name       = fn->ret_type == VOID ? "" : "call";
-         token->llvm.elem = LLVMBuildCall2(ura.builder, fn->llvm.func_type, fn->llvm.elem, args, n, name);
+         if (indirect) {
+            TypeRef ptr_type = llvm_type_of(fn);
+            Value   fn_ptr   = LLVMBuildLoad2(ura.builder, ptr_type, fn->llvm.elem, "fn");
+            char   *name     = fn->Fn.ret->ret_type == VOID ? "" : "call";
+            token->llvm.elem = LLVMBuildCall2(ura.builder, LLVMGetElementType(ptr_type), fn_ptr, args, n, name);
+         } else {
+            char *name       = fn->ret_type == VOID ? "" : "call";
+            token->llvm.elem = LLVMBuildCall2(ura.builder, fn->llvm.func_type, fn->llvm.elem, args, n, name);
+         }
          free(args);
          break;
       }
