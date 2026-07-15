@@ -938,6 +938,33 @@ Node *find_function(char *name) {
 	return NULL;
 }
 
+void parse_type(Token *target) {
+	if (peek(0)->type == FDEC) {
+		next();
+		target->ret_type = FN_TYPE;
+		if (!find(LPAR, 0)) {
+			parse_error(peek(0), "expected '(' in function type");
+			return;
+		}
+		while (!ura.error_count && peek(0)->type != RPAR) {
+			Token *param = new_token(ID, 0);
+			parse_type(param);
+			resize_array(target->Fn.params, Token *, target->Fn.params_size,
+			             target->Fn.params_count);
+			target->Fn.params[target->Fn.params_count++] = param;
+			while (find(COMA, 0));
+		}
+		if (!find(RPAR, 0))
+			parse_error(peek(0), "expected ')' in function type");
+		target->Fn.ret = new_token(ID, 0);
+		parse_type(target->Fn.ret);
+	} else if (is_data_type(peek(0))) {
+		target->ret_type = next()->type;
+	} else {
+		parse_error(peek(0), "expected a type");
+	}
+}
+
 Node *fdec_node(Node *node) {
 	node->token->type = FDEC;
 	enter_scope(node);
@@ -950,11 +977,7 @@ Node *fdec_node(Node *node) {
 			parse_error(node->token, "expected parameter name in function %s", node->token->name);
 			break;
 		}
-		if (!is_data_type(peek(0))) {
-			parse_error(param, "expected data type for parameter %s", param->name);
-			break;
-		}
-		param->ret_type = next()->type;
+		parse_type(param);
 		param->is_param = true;
 		param->is_dec   = true;
 		param->is_ref   = is_ref;
@@ -1015,6 +1038,16 @@ TypeRef to_llvm_type(Type type) {
    case VOID:  return ura.vd;
    default: TODO(1, "to_llvm_type: unhandled type %t", type); return NULL;
    }
+}
+
+TypeRef llvm_type_of(Token *token) {
+   if (token->ret_type != FN_TYPE) return to_llvm_type(token->ret_type);
+   int      n      = token->Fn.params_count;
+   TypeRef *params = n ? allocate(n, sizeof(TypeRef)) : NULL;
+   for (int i = 0; i < n; i++) params[i] = llvm_type_of(token->Fn.params[i]);
+   TypeRef ft = LLVMFunctionType(llvm_type_of(token->Fn.ret), params, n, 0);
+   free(params);
+   return LLVMPointerType(ft, 0);
 }
 
 void init_module(char *name) {

@@ -69,11 +69,10 @@ Node *prime_node() {
             return fdec_node(new_node(token));
          return fcall_node(new_node(token));
       }
-      if (is_data_type(peek(0)))
+      if (is_data_type(peek(0)) || (peek(0)->type == FDEC && peek(1)->type == LPAR))
       {
-         token->ret_type = peek(0)->type; // declared type
          token->is_dec = true;
-         next(); // skip data type
+         parse_type(token);
       }
       return new_node(token);
    }
@@ -137,12 +136,22 @@ void resolve(Node *node) {
          break;
       }
       case ID: {
-         if (token->is_dec) declare_variable(token);
-         else {
-            Token *decl = find_variable(token->name);
-            if (CHECK(!decl, "undeclared variable '%s'", token->name)) return;
+         if (token->is_dec) { declare_variable(token); break; }
+         Token *decl = find_variable(token->name);
+         if (decl) {
             token->ret_type = decl->ret_type;
+            if (decl->ret_type == FN_TYPE) token->Fn = decl->Fn;
+            break;
          }
+         Node *fn = find_function(token->name);
+         if (CHECK(!fn, "undeclared variable '%s'", token->name)) return;
+         token->type             = FN_TYPE;
+         token->ret_type         = FN_TYPE;
+         token->Fcall.ptr        = fn;
+         token->Fn.params        = fn->token->Fn.params;
+         token->Fn.params_count  = fn->token->Fn.params_count;
+         token->Fn.ret           = new_token(ID, 0);
+         token->Fn.ret->ret_type = fn->token->ret_type;
          break;
       }
       case INT: break;
@@ -181,6 +190,7 @@ void typecheck(Node *node) {
          break;
       }
       case ID: break;
+      case FN_TYPE: break;
       case RETURN: {
          typecheck(node->left);
          break;
@@ -225,7 +235,7 @@ void codegen_fn_signature(Node *fn) {
    if (n > 0) {
       params = allocate(n, sizeof(TypeRef));
       for (int i = 0; i < n; i++) {
-         TypeRef pt = to_llvm_type(token->Fn.params[i]->ret_type);
+         TypeRef pt = llvm_type_of(token->Fn.params[i]);
          params[i] = token->Fn.params[i]->is_ref ? LLVMPointerType(pt, 0) : pt;
       }
    }
@@ -237,7 +247,7 @@ void codegen_fn_signature(Node *fn) {
 Value address_of(Node *node) {
    Token *token = node->token;
    if (token->is_dec)
-      return token->llvm.elem = LLVMBuildAlloca(ura.builder, to_llvm_type(token->ret_type), token->name);
+      return token->llvm.elem = LLVMBuildAlloca(ura.builder, llvm_type_of(token), token->name);
    Token *decl = find_variable(token->name);
    if (decl->is_ref)
       return LLVMBuildLoad2(ura.builder, LLVMPointerType(to_llvm_type(decl->ret_type), 0), decl->llvm.elem, "ref");
@@ -255,7 +265,7 @@ void codegen(Node *node) {
          enter_scope(node);
          for (int i = 0; i < token->Fn.params_count; i++) {
             Token  *param = token->Fn.params[i];
-            TypeRef pt    = to_llvm_type(param->ret_type);
+            TypeRef pt    = llvm_type_of(param);
             if (param->is_ref) pt = LLVMPointerType(pt, 0);
             param->llvm.elem = LLVMBuildAlloca(ura.builder, pt, param->name);
             LLVMBuildStore(ura.builder, LLVMGetParam(token->llvm.elem, i), param->llvm.elem);
@@ -271,16 +281,21 @@ void codegen(Node *node) {
       }
       case ID: {
          if (token->is_dec)
-            token->llvm.elem = LLVMBuildAlloca(ura.builder, to_llvm_type(token->ret_type), token->name);
+            token->llvm.elem = LLVMBuildAlloca(ura.builder, llvm_type_of(token), token->name);
          else {
             Token  *decl = find_variable(token->name);
-            TypeRef t    = to_llvm_type(decl->ret_type);
+            TypeRef t    = llvm_type_of(decl);
             if (decl->is_ref) {
                Value ptr = LLVMBuildLoad2(ura.builder, LLVMPointerType(t, 0), decl->llvm.elem, "ref");
                token->llvm.elem = LLVMBuildLoad2(ura.builder, t, ptr, token->name);
             } else
                token->llvm.elem = LLVMBuildLoad2(ura.builder, t, decl->llvm.elem, token->name);
          }
+         break;
+      }
+      case FN_TYPE: {
+         codegen_fn_signature(token->Fcall.ptr);
+         token->llvm.elem = token->Fcall.ptr->token->llvm.elem;
          break;
       }
       case RETURN: {
