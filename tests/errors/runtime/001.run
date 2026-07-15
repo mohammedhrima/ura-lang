@@ -1,0 +1,2 @@
+tests/errors/runtime/001.ura:6: division by zero
+exit: 1
