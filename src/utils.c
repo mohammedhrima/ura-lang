@@ -1100,6 +1100,22 @@ void init_module(char *name) {
    char *triple = LLVMGetDefaultTargetTriple();
    LLVMSetTarget(ura.module, triple);
    LLVMDisposeMessage(triple);
+
+   if (!ura.enable_san) return;
+   LLVMAddModuleFlag(ura.module, LLVMModuleFlagBehaviorWarning, "Debug Info Version", 18,
+                     LLVMValueAsMetadata(LLVMConstInt(ura.i32, 3, 0)));
+   LLVMAddModuleFlag(ura.module, LLVMModuleFlagBehaviorWarning, "Dwarf Version", 13,
+                     LLVMValueAsMetadata(LLVMConstInt(ura.i32, 4, 0)));
+   ura.debug_builder = LLVMCreateDIBuilder(ura.module);
+   char *src   = ura.sources[0]->filename;
+   char *slash = strrchr(src, '/');
+   char *file  = slash ? slash + 1 : src;
+   ura.debug_file = LLVMDIBuilderCreateFile(ura.debug_builder, file, strlen(file),
+                                            ura.dir, strlen(ura.dir));
+   ura.debug_compile_unit = LLVMDIBuilderCreateCompileUnit(
+       ura.debug_builder, LLVMDWARFSourceLanguageC, ura.debug_file, "ura", 3, 0, "", 0, 0, "", 0,
+       LLVMDWARFEmissionFull, 0, 0, 0, "", 0, "", 0);
+   ura.debug_scope = ura.debug_compile_unit;
 }
 
 void finalize_module(char *ll_path) {
@@ -1113,11 +1129,53 @@ void finalize_module(char *ll_path) {
          LLVMDisposeErrorMessage(msg);
       }
    }
+   if (ura.debug_builder) {
+      LLVMDIBuilderFinalize(ura.debug_builder);
+      LLVMDisposeDIBuilder(ura.debug_builder);
+      ura.debug_builder = NULL;
+   }
    if (LLVMVerifyModule(ura.module, LLVMReturnStatusAction, &error))
       CHECK(1, "module verification failed:\n%s", error);
    LLVMDisposeMessage(error);
    LLVMDisposePassBuilderOptions(opts);
    LLVMPrintModuleToFile(ura.module, ll_path, NULL);
+}
+
+void debug_enter_function(Token *token) {
+   token->llvm.prev_block = LLVMGetInsertBlock(ura.builder);
+   token->llvm.prev_scope = ura.debug_scope;
+   token->llvm.prev_loc   = ura.debug_builder ? LLVMGetCurrentDebugLocation2(ura.builder) : NULL;
+   Block entry = LLVMAppendBasicBlockInContext(ura.context, token->llvm.elem, "entry");
+   LLVMPositionBuilderAtEnd(ura.builder, entry);
+   if (ura.enable_san) {
+      unsigned kind = LLVMGetEnumAttributeKindForName("sanitize_address", 16);
+      LLVMAddAttributeAtIndex(token->llvm.elem, LLVMAttributeFunctionIndex,
+                              LLVMCreateEnumAttribute(ura.context, kind, 0));
+   }
+   if (!ura.debug_builder) return;
+   MetadataRef di_type = LLVMDIBuilderCreateSubroutineType(
+       ura.debug_builder, ura.debug_file, NULL, 0, LLVMDIFlagZero);
+   MetadataRef di_func = LLVMDIBuilderCreateFunction(
+       ura.debug_builder, ura.debug_compile_unit, token->name, strlen(token->name),
+       token->name, strlen(token->name), ura.debug_file, token->line, di_type, 0, 1,
+       token->line, LLVMDIFlagZero, 0);
+   LLVMSetSubprogram(token->llvm.elem, di_func);
+   ura.debug_scope = di_func;
+   MetadataRef loc = LLVMDIBuilderCreateDebugLocation(ura.context, token->line, 0, di_func, NULL);
+   LLVMSetCurrentDebugLocation2(ura.builder, loc);
+}
+
+void debug_exit_function(Token *token) {
+   if (token->llvm.prev_block) LLVMPositionBuilderAtEnd(ura.builder, token->llvm.prev_block);
+   if (!ura.debug_builder) return;
+   ura.debug_scope = token->llvm.prev_scope;
+   LLVMSetCurrentDebugLocation2(ura.builder, token->llvm.prev_loc);
+}
+
+void set_debug_location(Token *token) {
+   if (!ura.debug_builder || !ura.debug_scope) return;
+   MetadataRef loc = LLVMDIBuilderCreateDebugLocation(ura.context, token->line, 0, ura.debug_scope, NULL);
+   LLVMSetCurrentDebugLocation2(ura.builder, loc);
 }
 
 void free_token(Token *token) {
