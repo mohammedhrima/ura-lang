@@ -57,38 +57,16 @@ typedef struct _IO_FILE *File;
 #define CHECK(cond, fmt, ...) _check(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)
 #define TODO(cond, fmt, ...) if (_check(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)) exit(1);
 #define debug(fmt, ...) if (ura.enable_debug) _debug(fmt, ##__VA_ARGS__)
-
-#define EXPECT_TOKEN(anchor, type, fmt, ...) \
-	{ \
-		Token *find_token = find(type, 0); \
-		if (!find_token) { \
-			parse_error(anchor, fmt, ##__VA_ARGS__); \
-			parser_recover((anchor)->space); \
-			return syntax_error(); \
-		} \
-	}
-
-#define EXPECT_TOKEN_VOID(anchor, type, fmt, ...) \
-	{ \
-		Token *find_token = find(type, 0); \
-		if (!find_token) { \
-			parse_error(anchor, fmt, ##__VA_ARGS__); \
-			parser_recover((anchor)->space); \
-			syntax_error(); \
-			return; \
-		} \
-	}
-
 #define EXPAND(type, name) type name; int  name##_count; int  name##_size;
 
-#define resize_array(array, type, size, count) \
+#define resize_array(array, type) \
 	{ \
 		if (array == NULL) { \
-			size  = 10; \
-			array = allocate(size, sizeof(type)); \
-		} else if (count + 5 >= size) { \
-			type *tmp = allocate(size *= 2, sizeof(type)); \
-			memcpy(tmp, array, count * sizeof(type)); \
+			array##_size = 10; \
+			array = allocate(array##_size, sizeof(type)); \
+		} else if (array##_count + 5 >= array##_size) { \
+			type *tmp = allocate(array##_size *= 2, sizeof(type)); \
+			memcpy(tmp, array, array##_count * sizeof(type)); \
 			free(array); \
 			array = tmp; \
 		} \
@@ -326,6 +304,7 @@ bool _check(char *filename, char *funcname, int line, bool cond, char *fmt, ...)
 void *allocate(int len, int size);
 void new_source(char *file_name);
 void exit_source();
+void parse_error(Token *token, const char *fmt, ...);
 void tokenize_error(int line, int s, int e, const char *fmt, ...);
 Token *parse_token(int line, int s, int e, Type type, int space);
 bool includes(Type to_find, ...);

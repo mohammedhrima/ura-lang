@@ -109,7 +109,7 @@ void generate_ast() {
    ura.head = head;
    enter_scope(head);
    while (!find(END, 0) && !ura.error_count) {
-      resize_array(head->children, Node *, head->children_size, head->children_count);
+      resize_array(head->children, Node *);
       head->children[head->children_count++] = expr_node(0);
       // TODO: only function declarations and 
       // struct declaration are allowed here
@@ -143,14 +143,16 @@ void resolve(Node *node) {
          bool   captured = false;
          Token *decl     = find_variable(token->name, &captured);
          if (decl) {
-            if (CHECK(captured, "cannot use '%s' from an enclosing function - pass it as a parameter", token->name))
+            if (captured) {
+               parse_error(token, "cannot use '%s' from an enclosing function - pass it as a parameter", token->name);
                return;
+            }
             token->ret_type = decl->ret_type;
             if (decl->ret_type == FN_TYPE) token->Fn = decl->Fn;
             break;
          }
          Node *fn = find_function(token->name);
-         if (CHECK(!fn, "undeclared variable '%s'", token->name)) return;
+         if (!fn) { parse_error(token, "undeclared variable '%s'", token->name); return; }
          token->type             = FN_TYPE;
          token->ret_type         = FN_TYPE;
          token->Fcall.ptr        = fn;
@@ -175,7 +177,7 @@ void resolve(Node *node) {
             break;
          }
          Node *fn = find_function(token->name);
-         if (CHECK(!fn, "undeclared function '%s'", token->name)) return;
+         if (!fn) { parse_error(token, "undeclared function '%s'", token->name); return; }
          token->Fcall.ptr = fn;
          for (int i = 0; i < node->children_count; i++)
             resolve(node->children[i]);
@@ -214,17 +216,19 @@ void typecheck(Node *node) {
          Token *fn       = indirect ? token->Fcall.var : token->Fcall.ptr->token;
          for (int i = 0; i < node->children_count; i++)
             typecheck(node->children[i]);
-         if (CHECK(node->children_count != fn->Fn.params_count,
-                   "wrong number of arguments to '%s'", token->name))
+         if (node->children_count != fn->Fn.params_count) {
+            parse_error(token, "wrong number of arguments to '%s'", token->name);
             return;
+         }
          for (int i = 0; i < node->children_count; i++) {
-            if (CHECK(node->children[i]->token->ret_type != fn->Fn.params[i]->ret_type,
-                      "argument %d type mismatch in call to '%s'", i + 1, token->name))
+            if (node->children[i]->token->ret_type != fn->Fn.params[i]->ret_type) {
+               parse_error(node->children[i]->token, "argument %d type mismatch in call to '%s'", i + 1, token->name);
                return;
-            if (fn->Fn.params[i]->is_ref &&
-                CHECK(node->children[i]->token->type != ID,
-                      "argument %d to '%s' must be a variable (ref parameter)", i + 1, token->name))
+            }
+            if (fn->Fn.params[i]->is_ref && node->children[i]->token->type != ID) {
+               parse_error(node->children[i]->token, "argument %d to '%s' must be a variable (ref parameter)", i + 1, token->name);
                return;
+            }
          }
          token->ret_type = indirect ? fn->Fn.ret->ret_type : fn->ret_type;
          break;
@@ -232,10 +236,10 @@ void typecheck(Node *node) {
       default: {
          typecheck(node->left);
          typecheck(node->right);
-         if (CHECK(
-            node->left->token->ret_type != node->right->token->ret_type,
-            "type mismatch between operands"))
+         if (node->left->token->ret_type != node->right->token->ret_type) {
+            parse_error(token, "type mismatch between operands");
             return;
+         }
          token->ret_type = node->left->token->ret_type;
          break;
       }
@@ -410,7 +414,7 @@ void generate_asm() {
 
 int main(int argc, char**argv) {
    ura.max_errors = 20;
-   ura.enable_debug = true;
+   ura.enable_debug = false;
    parse_arguments(argc, argv);
    tokenize(0);
    generate_ast();
