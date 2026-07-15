@@ -1,0 +1,10 @@
+// 008: ref parameter mutates the caller (a counter)
+// expect: 2
+fn tick(ref n int) int:
+    n = n + 1
+    return n
+main():
+    n int = 0
+    tick(n)
+    tick(n)
+    return n

@@ -1,0 +1,6 @@
+// 004: reassign an existing variable  (2*10 + 3)
+// expect: 23
+main():
+    a int = 2
+    a = a * 10 + 3
+    return a

@@ -1,0 +1,7 @@
+// 015: no-capture rule — a nested fn may NOT use an enclosing function's local
+// expect: error  (cannot use 'x' from an enclosing function)
+main():
+    x int = 10
+    fn bad() int:
+        return x
+    return bad()

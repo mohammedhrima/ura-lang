@@ -1,0 +1,4 @@
+// 005: modulo
+// expect: 2
+main():
+    return 17 % 5
