@@ -1,0 +1,6 @@
+// errors/functions/012 — wrong number of arguments to a call
+
+fn f(a int) int:
+    return a
+main():
+    return f(1, 2)

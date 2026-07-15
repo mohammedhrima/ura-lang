@@ -1,0 +1,4 @@
+// operators/arithmetic/004.ura - modulo
+
+main():
+    return 17 % 5

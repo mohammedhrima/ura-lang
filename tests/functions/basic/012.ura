@@ -1,5 +1,5 @@
-// 013: everything together — fn value + ref + void + arithmetic
-// expect: 42
+// functions/basic/012.ura - everything: fn value + ref + void + arithmetic
+
 fn twice(n int) int:
     return n + n
 fn apply(f fn(int) int, x int) int:

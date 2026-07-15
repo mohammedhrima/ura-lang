@@ -1,0 +1,4 @@
+// functions/basic/006.ura - return an integer literal
+
+main():
+    return 42

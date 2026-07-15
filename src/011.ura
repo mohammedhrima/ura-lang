@@ -1,7 +1,0 @@
-// 011: store a function in a fn-typed variable, then call it
-// expect: 42
-fn twice(n int) int:
-    return n + n
-main():
-    f fn(int) int = twice
-    return f(21)

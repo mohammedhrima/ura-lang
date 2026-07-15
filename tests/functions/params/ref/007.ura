@@ -1,0 +1,8 @@
+// functions/params/ref/007.ura - a void function with a ref parameter
+
+fn bump(ref n int) void:
+    n = n + 1
+main():
+    n int = 5
+    bump(n)
+    return n
