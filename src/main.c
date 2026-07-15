@@ -9,13 +9,13 @@ void parse_arguments(int argc, char **argv)
    ura.output = "exe.out";
    
    // TODO: compile only 1 file, if alot import them with each others
-   for(int i = 1; i < argc && !ura.error_count; i++) {
+   for (int i = 1; i < argc && !ura.error_count; i++) {
       char *arg = argv[i];
       size_t n = strlen(arg);
       CHECK(n <= 4 || strcmp(arg + n - 4, ".ura") != 0, "invalid file: %s\n", arg);
       new_source(arg);
    }
-   if(ura.error_count) return;
+   if (ura.error_count) return;
    // TODO: error if there is no input
 }
 
@@ -56,10 +56,12 @@ Node *prime_node() {
    case INT: return new_node(token);
    case FDEC: {
       Node *node = new_node(token);
-      // if(!peek(0))
-   	Token *fname = find(ID, 0);
-	   // TODO: check if name does not exists
-	   set_name(node->token, fname->name);
+      Token *fname = find(ID, 0);
+      if (!fname) {
+         parse_error(token, "expected a function name after 'fn'");
+         return syntax_error();
+      }
+      set_name(node->token, fname->name);
       return fdec_node(node);
    }
    case ID: {
@@ -91,7 +93,7 @@ Node *prime_node() {
 Node *expr_node(int min_op) {
    Node *left = prime_node();
 
-   while(true)
+   while (true)
    {
       int op = get_operation_precedence(ura.tokens[ura.exe_pos]->type);
       if(op <= min_op) break;
@@ -108,10 +110,17 @@ void generate_ast() {
    Node *head = new_node(new_token(ID, -TAB));
    ura.head = head;
    enter_scope(head);
-   while (!find(END, 0) && !ura.error_count) {
+   while (!find(END, 0)) {
+      int before = ura.error_count;
+      Node *child = expr_node(0);
+      if (ura.error_count > before) {
+         parser_recover(0);
+         if (ura.error_count > ura.max_errors) break;
+         continue;
+      }
       resize_array(head->children, Node *);
-      head->children[head->children_count++] = expr_node(0);
-      // TODO: only function declarations and 
+      head->children[head->children_count++] = child;
+      // TODO: only function declarations and
       // struct declaration are allowed here
    }
    if (ura.error_count > 0) return;
@@ -123,7 +132,7 @@ void generate_ast() {
 }
 
 void resolve(Node *node) {
-   if (!node || ura.error_count) return;
+   if (!node) return;
    Token *token = node->token;
    switch (token->type) {
       case FDEC: {
@@ -184,16 +193,19 @@ void resolve(Node *node) {
          token->ret_type = fn->token->ret_type;
          break;
       }
-      default: {
+      case ASSIGN: case ADD: case SUB: case MUL: case DIV: case MOD: {
          resolve(node->left);
          resolve(node->right);
          break;
       }
+      default:
+         CHECK(1, "resolve: unhandled node '%s'", to_string(token->type));
+         break;
    }
 }
 
 void typecheck(Node *node) {
-   if (!node || ura.error_count) return;
+   if (!node) return;
    Token *token = node->token;
    switch (token->type) {
       case FDEC: {
@@ -212,8 +224,9 @@ void typecheck(Node *node) {
          break;
       }
       case FCALL: {
-         bool   indirect = token->Fcall.var != NULL;
-         Token *fn       = indirect ? token->Fcall.var : token->Fcall.ptr->token;
+         bool indirect = token->Fcall.var != NULL;
+         if (!indirect && !token->Fcall.ptr) return;
+         Token *fn = indirect ? token->Fcall.var : token->Fcall.ptr->token;
          for (int i = 0; i < node->children_count; i++)
             typecheck(node->children[i]);
          if (node->children_count != fn->Fn.params_count) {
@@ -221,7 +234,8 @@ void typecheck(Node *node) {
             return;
          }
          for (int i = 0; i < node->children_count; i++) {
-            if (node->children[i]->token->ret_type != fn->Fn.params[i]->ret_type) {
+            if (node->children[i]->token->ret_type &&
+                node->children[i]->token->ret_type != fn->Fn.params[i]->ret_type) {
                parse_error(node->children[i]->token, "argument %d type mismatch in call to '%s'", i + 1, token->name);
                return;
             }
@@ -233,16 +247,21 @@ void typecheck(Node *node) {
          token->ret_type = indirect ? fn->Fn.ret->ret_type : fn->ret_type;
          break;
       }
-      default: {
+      case ASSIGN: case ADD: case SUB: case MUL: case DIV: case MOD: {
          typecheck(node->left);
          typecheck(node->right);
-         if (node->left->token->ret_type != node->right->token->ret_type) {
+         Type lt = node->left->token->ret_type;
+         Type rt = node->right->token->ret_type;
+         if (lt && rt && lt != rt) {
             parse_error(token, "type mismatch between operands");
             return;
          }
-         token->ret_type = node->left->token->ret_type;
+         token->ret_type = lt;
          break;
       }
+      default:
+         CHECK(1, "typecheck: unhandled node '%s'", to_string(token->type));
+         break;
    }
 }
 
@@ -292,8 +311,10 @@ void codegen(Node *node) {
          }
          for (int i = 0; i < node->children_count; i++)
             codegen(node->children[i]);
-         if (token->ret_type == VOID && !LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ura.builder)))
-            LLVMBuildRetVoid(ura.builder);
+         if (!LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ura.builder))) {
+            if (token->ret_type == VOID) LLVMBuildRetVoid(ura.builder);
+            else LLVMBuildRet(ura.builder, default_value(token));
+         }
          exit_scope();
          if (prev) LLVMPositionBuilderAtEnd(ura.builder, prev);
          break;
@@ -306,7 +327,7 @@ void codegen(Node *node) {
          if (token->is_dec) {
             TypeRef t        = llvm_type_of(token);
             token->llvm.elem = LLVMBuildAlloca(ura.builder, t, token->name);
-            LLVMBuildStore(ura.builder, LLVMConstNull(t), token->llvm.elem);
+            LLVMBuildStore(ura.builder, default_value(token), token->llvm.elem);
          }
          else {
             Token  *decl = find_variable(token->name, NULL);

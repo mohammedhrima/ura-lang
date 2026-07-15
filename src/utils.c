@@ -213,10 +213,10 @@ void pnode(Node *node, char *indent) {
 	int    subs_count    = 0;
 	int    subs_size = 0;
 
-#define push(n)                                                                                    \
-	do {                                                                                            \
+#define push(n)                                                             \
+	do {                                                                     \
 		resize_array(subs, Node *);                                           \
-		subs[subs_count++] = (n);                                                                    \
+		subs[subs_count++] = (n);                                             \
 	} while (0)
 
 	debug("%k\n", node->token);
@@ -269,6 +269,7 @@ bool _check(char *filename, char *funcname, int line, bool cond, char *fmt, ...)
 
 void parse_error(Token *token, const char *fmt, ...) {
 	ura.error_count++;
+	ura.found_error = true;
 	if (ura.error_count > ura.max_errors) {
 		fprintf(stderr, RED("error: ") "too many errors, stopping\n");
 		return;
@@ -828,7 +829,6 @@ Token *next() { return ura.tokens[ura.exe_pos++]; }
 Token *peek(int index) { return ura.tokens[ura.exe_pos + index];}
 
 Token *find(Type type, ...) {
-	if (ura.error_count) return NULL;
 	va_list ap;
 	va_start(ap, type);
 	while (type && ura.tokens[ura.exe_pos]) {
@@ -855,7 +855,6 @@ int get_operation_precedence(Type type)
 }
 
 bool includes(Type to_find, ...) {
-	if (ura.error_count) return false;
 	va_list ap;
 	Type    current;
 	va_start(ap, to_find);
@@ -866,7 +865,17 @@ bool includes(Type to_find, ...) {
 
 bool within(int indent) {
 	Token *curr = ura.tokens[ura.exe_pos];
-	return !ura.error_count && curr->indent > indent && curr->type != END;
+	return !ura.found_error && curr->indent > indent && curr->type != END;
+}
+
+void parser_recover(int indent) {
+	int start_line = ura.exe_pos < ura.tokens_count ? ura.tokens[ura.exe_pos]->line : -1;
+	while (ura.exe_pos < ura.tokens_count && ura.tokens[ura.exe_pos]->type != END) {
+		Token *t = ura.tokens[ura.exe_pos];
+		if (t->indent <= indent && t->line != start_line) break;
+		ura.exe_pos++;
+	}
+	ura.found_error = false;
 }
 
 Node *new_node(Token *token) {
@@ -951,7 +960,7 @@ void parse_type(Token *target) {
 			parse_error(peek(0), "expected '(' in function type");
 			return;
 		}
-		while (!ura.error_count && peek(0)->type != RPAR) {
+		while (!ura.found_error && peek(0)->type != RPAR) {
 			Token *param = new_token(ID, 0);
 			parse_type(param);
 			resize_array(target->Fn.params, Token *);
@@ -974,7 +983,7 @@ Node *fdec_node(Node *node) {
 	enter_scope(node);
 	if (!find(LPAR, 0))
 		parse_error(node->token, "expected '(' after function %s", node->token->name);
-	while (!ura.error_count && peek(0)->type != RPAR) {
+	while (!ura.found_error && peek(0)->type != RPAR) {
 		bool   is_ref = find(REF, 0) != NULL;
 		Token *param  = find(ID, 0);
 		if (!param) {
@@ -1017,7 +1026,7 @@ Node *fcall_node(Node *node) {
 	node->token->type = FCALL;
 	if (!find(LPAR, 0))
 		parse_error(node->token, "expected '(' after %s", node->token->name);
-	while (!ura.error_count && peek(0)->type != RPAR) {
+	while (!ura.found_error && peek(0)->type != RPAR) {
 		resize_array(node->children, Node *);
 		node->children[node->children_count++] = expr_node(0);
 		while (find(COMA, 0));
@@ -1051,6 +1060,12 @@ TypeRef llvm_type_of(Token *token) {
    TypeRef ft = LLVMFunctionType(llvm_type_of(token->Fn.ret), params, n, 0);
    free(params);
    return LLVMPointerType(ft, 0);
+}
+
+Value default_value(Token *token) {
+   if (includes(token->ret_type, NUMERIC_TYPES, 0)) return LLVMConstInt(llvm_type_of(token), 0, false);
+   if (token->ret_type == FLOAT)                    return LLVMConstReal(llvm_type_of(token), 0.0);
+   return LLVMConstNull(llvm_type_of(token));
 }
 
 void init_module(char *name) {

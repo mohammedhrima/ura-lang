@@ -242,7 +242,7 @@ struct Node {
 };
 
 struct UraGlobal {
-    // bool             found_error;
+    bool             found_error;
 	//  char 				*input;
 	 char 				*output;
     int              error_count;
@@ -305,6 +305,7 @@ void *allocate(int len, int size);
 void new_source(char *file_name);
 void exit_source();
 void parse_error(Token *token, const char *fmt, ...);
+void parser_recover(int indent);
 void tokenize_error(int line, int s, int e, const char *fmt, ...);
 Token *parse_token(int line, int s, int e, Type type, int space);
 bool includes(Type to_find, ...);
@@ -350,6 +351,7 @@ bool is_data_type(Token *token);
 
 TypeRef to_llvm_type(Type type);
 TypeRef llvm_type_of(Token *token);
+Value default_value(Token *token);
 void init_module(char *name);
 void finalize_module(char *ll_path);
 
