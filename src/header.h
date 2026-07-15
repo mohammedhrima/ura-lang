@@ -55,62 +55,43 @@ typedef struct _IO_FILE *File;
 #define ASM      1
 
 #define CHECK(cond, fmt, ...) _check(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)
-#define TODO(cond, fmt, ...)                                                                       \
-	if (_check(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)) exit(1);
-#define debug(fmt, ...)                                                                            \
-	if (enable_debug) _debug(fmt, ##__VA_ARGS__)
-#define SEG() raise(SIGSEGV)
+#define TODO(cond, fmt, ...) if (_check(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)) exit(1);
+#define debug(fmt, ...) if (ura.enable_debug) _debug(fmt, ##__VA_ARGS__)
 
-#define EXPECT_TOKEN(anchor, type, fmt, ...)                                                       \
-	{                                                                                               \
-		Token *find_token = find(type, 0);                                                           \
-		if (!find_token) {                                                                           \
-			parse_error(anchor, fmt, ##__VA_ARGS__);                                                  \
-			parser_recover((anchor)->space);                                                          \
-			return syntax_error();                                                                    \
-		}                                                                                            \
+#define EXPECT_TOKEN(anchor, type, fmt, ...) \
+	{ \
+		Token *find_token = find(type, 0); \
+		if (!find_token) { \
+			parse_error(anchor, fmt, ##__VA_ARGS__); \
+			parser_recover((anchor)->space); \
+			return syntax_error(); \
+		} \
 	}
 
-#define EXPECT_TOKEN_VOID(anchor, type, fmt, ...)                                                  \
-	{                                                                                               \
-		Token *find_token = find(type, 0);                                                           \
-		if (!find_token) {                                                                           \
-			parse_error(anchor, fmt, ##__VA_ARGS__);                                                  \
-			parser_recover((anchor)->space);                                                          \
-			syntax_error();                                                                           \
-			return;                                                                                   \
-		}                                                                                            \
+#define EXPECT_TOKEN_VOID(anchor, type, fmt, ...) \
+	{ \
+		Token *find_token = find(type, 0); \
+		if (!find_token) { \
+			parse_error(anchor, fmt, ##__VA_ARGS__); \
+			parser_recover((anchor)->space); \
+			syntax_error(); \
+			return; \
+		} \
 	}
 
-#define AST_NODE(name, child_func, ...)                                                            \
-	Node *name() {                                                                                  \
-		Node  *left = child_func();                                                                  \
-		Token *token;                                                                                \
-		while ((token = find(__VA_ARGS__, 0))) {                                                     \
-			Node *node  = new_node(token);                                                            \
-			node->left  = left;                                                                       \
-			node->right = child_func();                                                               \
-			left        = node;                                                                       \
-		}                                                                                            \
-		return left;                                                                                 \
-	}
+#define EXPAND(type, name) type name; int  name##_count; int  name##_size;
 
-#define EXPAND(type, name)                                                                         \
-	type name;                                                                                      \
-	int  name##_count;                                                                              \
-	int  name##_size
-
-#define resize_array(array, type, size, count)                                                     \
-	{                                                                                               \
-		if (array == NULL) {                                                                         \
-			size  = 10;                                                                               \
-			array = allocate(size, sizeof(type));                                                     \
-		} else if (count + 5 >= size) {                                                              \
-			type *tmp = allocate(size *= 2, sizeof(type));                                            \
-			memcpy(tmp, array, count * sizeof(type));                                                 \
-			free(array);                                                                              \
-			array = tmp;                                                                              \
-		}                                                                                            \
+#define resize_array(array, type, size, count) \
+	{ \
+		if (array == NULL) { \
+			size  = 10; \
+			array = allocate(size, sizeof(type)); \
+		} else if (count + 5 >= size) { \
+			type *tmp = allocate(size *= 2, sizeof(type)); \
+			memcpy(tmp, array, count * sizeof(type)); \
+			free(array); \
+			array = tmp; \
+		} \
 	}
 
 #define DATA_TYPES     INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT, ARRAY_TYPE, LIST_TYPE, FN_TYPE
@@ -121,18 +102,12 @@ typedef struct _IO_FILE *File;
 #define NUMERIC_TYPES  INT, LONG, SHORT, BOOL, CHAR
 #define ASSIGNS_OP     ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN
 
-// No optimization (Debug Mode)
-#define PASSES_O0 "default<O0>"
-// Light optimizations
-#define PASSES_O1 "default<O1>"
-// Balanced speed and size
-#define PASSES_O2 "default<O2>"
-// Aggressive speed, inlining, vectorization, loop unrolling
-#define PASSES_O3 "default<O3>"
-// Optimize for small binary, like O2 + limiting the size of the executable
-#define PASSES_Os "default<Os>"
-// Smallest binary possible, may sacrifice speed
-#define PASSES_Oz "default<Oz>"
+#define PASSES_O0 "default<O0>" // No optimization (Debug Mode)
+#define PASSES_O1 "default<O1>" // Light optimizations
+#define PASSES_O2 "default<O2>" // Balanced speed and size
+#define PASSES_O3 "default<O3>" // Aggressive speed, inlining, vectorization, loop unrolling
+#define PASSES_Os "default<Os>" // Optimize for small binary, like O2 + limiting the size of the executable
+#define PASSES_Oz "default<Oz>" // Smallest binary possible, may sacrifice speed
 
 typedef struct Token      Token;
 typedef struct Keyword    Keyword;
@@ -141,6 +116,7 @@ typedef struct LLVM       LLVM;
 typedef struct AutoClean  AutoClean;
 typedef enum Type         Type;
 typedef struct Source     Source;
+typedef struct UraGlobal UraGlobal;
 
 typedef LLVMTypeRef       TypeRef;
 typedef LLVMContextRef    Context;
@@ -164,45 +140,27 @@ typedef LLVMMetadataRef   MetadataRef;
 enum Type
 {
 	ID = 1,
-	// Data types
-	VOID, INT, FLOAT, LONG, SHORT, BOOL, CHAR, CHARS, PTR, VARIADIC, REF,
+	VOID, INT, FLOAT, LONG, SHORT, BOOL, CHAR, CHARS, PTR, VARIADIC, REF, // Data types
 	ARRAY, ARRAY_TYPE, ARRAY_LIT, LIST, LIST_TYPE,
 	FN_TYPE,
-	// Structures
-	STRUCT_DEF, STRUCT_CALL,
-	// Enums
-	ENUM_DEF, ENUM_CALL,
-	// Tuples
-	TUPLE, TUPLE_UNPACK,
-	// Assignment
-	ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,
-	// Comparison
-	EQUAL, NOT_EQUAL, LESS_EQUAL, GREAT, GREAT_EQUAL, LESS,
-	// Arithmetic
-	ADD, SUB, MUL, DIV, MOD,
-	// Logical
-	AND, OR, NOT,
-	// Punctuation and Syntax
-	LPAR, RPAR, LBRA, RBRA, COMA, DOT, DOTS, ACCESS, AS,
-	// Control Flow
-	RETURN, IF, ELIF, ELSE, WHILE, CONTINUE, BREAK,
+	STRUCT_DEF, STRUCT_CALL, // Structures
+	ENUM_DEF, ENUM_CALL, // Enums
+	TUPLE, TUPLE_UNPACK, // Tuples
+	ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN, // Assignment
+	EQUAL, NOT_EQUAL, LESS_EQUAL, GREAT, GREAT_EQUAL, LESS, // Comparison
+	ADD, SUB, MUL, DIV, MOD, // Arithmetic
+	AND, OR, NOT, // Logical
+	LPAR, RPAR, LBRA, RBRA, COMA, DOT, DOTS, ACCESS, AS, // Punctuation and Syntax
+	RETURN, IF, ELIF, ELSE, WHILE, CONTINUE, BREAK, // Control Flow
 	FOR, TO, STEP, IN,
-	// Functions
-	FDEC, FCALL, PROTO, ARGS, CHILDREN,
-	// Built-ins
-	STACK, HEAP, TYPEOF, SIZEOF, OUTPUT, SYNTAX_ERROR,
-	// Bitwise
-	BAND, BOR, BXOR, BNOT, LSHIFT, RSHIFT,
-	// Literals
-	NULLABLE,
-	// Modules
-	MODULE,
-	// Operator overloading keyword
-	OPERATOR,
-	// Static dispatch / pub
-	PUB, DOUBLE_DOTS, DELETE,
-	// end
-	END,
+	FDEC, FCALL, PROTO, ARGS, CHILDREN, // Functions
+	STACK, HEAP, TYPEOF, SIZEOF, OUTPUT, SYNTAX_ERROR, // Built-ins
+	BAND, BOR, BXOR, BNOT, LSHIFT, RSHIFT, // Bitwise
+	NULLABLE, // Literals
+	MODULE, // Modules
+	OPERATOR, // Operator overloading keyword
+	PUB, DOUBLE_DOTS, DELETE, // Static dispatch / pub
+	END, // end
 };
 
 struct Keyword {
@@ -210,6 +168,12 @@ struct Keyword {
 	Type  type;
 	bool  is_dec;
 	bool  clear_name;
+};
+
+struct Source {
+	char *filename;
+	char *dirname;
+	char *content;
 };
 
 struct LLVM {
@@ -233,15 +197,11 @@ struct LLVM {
 	Block   end;
 };
 
-struct AutoClean {
-	Value value;
-	Node *type;
-};
+// struct AutoClean {
+// 	Value value;
+// 	Node *type;
+// };
 
-struct Source {
-	char *filename;
-	char *content;
-};
 
 struct Token {
 	Type    type;
@@ -249,7 +209,7 @@ struct Token {
 	Source *source;
 
 	char   *name;
-	int     space;
+	int     indent;
 
 	int     used;
 	int     start_index;
@@ -300,253 +260,101 @@ struct Node {
 	EXPAND(Node **, functions);
 	EXPAND(Node **, structs);
 	EXPAND(Node **, modules);
-	EXPAND(AutoClean *, auto_cleans);
+	// EXPAND(AutoClean *, auto_cleans);
 };
 
-// ----------------------------------------------------------------------------
-// Globals (defined in utils.c)
-// ----------------------------------------------------------------------------
-extern bool             found_error;
-extern int              error_count;
-extern int              max_errors;
-extern Node            *syntax_error_node;
-extern bool             enable_debug;
-extern bool             enable_san;
-extern bool             enable_prep;
-extern char            *flags;
-extern char            *ura_lib;
-extern const char      *ura_target_os;
+struct UraGlobal {
+    // bool             found_error;
+	//  char 				*input;
+	 char 				*output;
+    int              error_count;
+    int              max_errors;
+    // Node            *syntax_error_node;
+    bool             enable_debug;
+    // bool             enable_san;
+    // bool             enable_prep;
+    // char            *flags;
+    char            *lib;
+    // const char      *ura_target_os;
+    
+    // Token          **tokens;
+    // int              tokens_count;
+    // int              tokens_size;
+    // int              exe_count;
+    // // char            *synth_list_paths[];
+    // // int              synth_list_count;
+    // Node           **scopes;
+    // int              scopes_count;
+    // int              scopes_size;
+    // Node            *scope;
+    // Node            *ura_scope;
+    // char            *current_gen_module;
+    
+    // char            *dir;
+    // char            *base;
+    // char            *build_dir;
+    // char            *ll_path;
+    
+    // Context          context;
+    // Module           module;
+    // Builder          builder;
+    // TypeRef          vd, f32, i1, i2, i4, i8, i16, i32, i64, p8, p32;
+    // LLVMDIBuilderRef debug_builder;
+    // LLVMMetadataRef  debug_compile_unit;
+    // LLVMMetadataRef  debug_file;
+    // LLVMMetadataRef  debug_scope;
+	 EXPAND(Node**, scopes);
+	 EXPAND(Token **, tokens);
+	 EXPAND(Source **, sources);
+	 int					sources_pos;
+	 int					calling_use;
+	 Node					*scope;
+	 Node					*head;
+	 int					exe_pos;
 
-extern Source         **sources;
-extern int              sources_count;
-extern int              sources_size;
-extern Token          **tokens;
-extern int              tokens_count;
-extern int              tokens_size;
-extern int              exe_count;
-extern char            *synth_list_paths[];
-extern int              synth_list_count;
-extern Node           **scopes;
-extern int              scopes_count;
-extern int              scopes_size;
-extern Node            *scope;
-extern Node            *ura_scope;
-extern char            *current_gen_module;
+	 Context				context;
+	 Module					module;
+	 Builder				builder;
+	 TypeRef				vd, i1, i8, i16, i32, i64;
+};
 
-extern char            *dir;
-extern char            *base;
-extern char            *build_dir;
-extern char            *ll_path;
+extern UraGlobal ura;
 
-extern Context          context;
-extern Module           module;
-extern Builder          builder;
-extern TypeRef          vd, f32, i1, i2, i4, i8, i16, i32, i64, p8, p32;
-extern LLVMDIBuilderRef debug_builder;
-extern LLVMMetadataRef  debug_compile_unit;
-extern LLVMMetadataRef  debug_file;
-extern LLVMMetadataRef  debug_scope;
-
-// ----------------------------------------------------------------------------
-// Forward declarations
-// ----------------------------------------------------------------------------
-// memory
-void  *_allocate(int line, int len, int size);
-void   free_token(Token *token);
-void   free_node(Node *node);
-void   free_memory();
-Token *copy_token(Token *token);
-Node  *copy_node(Node *node);
-void   unuse(Node *node);
-
-// tokenizer / parser helpers
-Source *new_source(char *file_name);
-void    tokenize(char *filename, int default_space);
-void    tokenize_string(char *input, char *fake_name, int default_space);
-void    instantiate_list_types(void);
-char   *generate_list_source(const char *elem_type_name, const char *struct_name);
-Token  *new_token(Type type, int space);
-Token  *parse_token(Source *src, int line, int s, int e, Type type, int space);
-void    add_token(Token *token);
-Node   *new_node(Token *token);
-Node   *add_child(Node *node, Node *child);
-void    enter_scope(Node *node);
-void    exit_scope();
-Token  *find(Type type, ...);
-bool    within(int space);
-bool    includes(Type to_find, ...);
-void    setName(Token *token, char *name);
-char   *to_string(Type type);
-bool    is_data_type(Token *token);
-char   *resolve_path(char *path);
-Node   *syntax_error();
-void    parser_recover(int indent);
-
-// variables / functions / structs
-Token      *new_variable(Token *token);
-void        add_variable(Node *b, Token *token);
-Token      *get_variable(char *name);
-Node       *new_function(Node *node);
-Node       *find_function(char *name);
-void        add_function(Node *b, Node *node);
-Node       *get_function(char *name);
-Node       *new_struct(Node *node);
-void        add_struct(Node *b, Node *node);
-Node       *get_struct(char *name);
-const char *type_to_ura_name(Type type);
-
-// parser nodes — precedence chain
-Node *expr_node(), *assign_node(), *and_node(), *or_node();
-Node *bitor_node(), *bitxor_node(), *bitnot_node(), *bitand_node();
-Node *equality_node(), *comparison_node();
-Node *shift_node();
-Node *add_sub_node(), *mul_div_node();
-Node *as_node();
-Node *unary_node();
-Node *access_node();
-Node *keyword_node();
-Node *prime_node();
-
-// parser nodes — statement / value builders
-Node *fdec_node(Token *token);
-Node *return_node(Token *token);
-Node *if_node(Token *token);
-Node *while_node(Token *token);
-Node *for_node(Token *token);
-Node *struct_def_node(Token *token);
-Node *enum_def_node(Token *token);
-Node *module_node(Token *token);
-Node *tuple_unpack_node(Token *token);
-Node *array_lit_node(Token *token);
-
-// parser nodes — struct internals
-Node *pub_node(Node *struct_node, Token *pub_tok);
-Node *operator_node(Node *struct_node, Token *op_kw);
-Node *delete_node(Node *struct_node, Token *op_kw);
-
-// parser nodes — helpers / atom dispatch
-void  params_node(Node *fdec);
-void  array_list_type_setup(Token *data_type);
-void  synth_list_structs();
-char *generate_list_source(const char *elem, const char *sname);
-
-Node *main_node(Token *token);
-Node *output_node(Token *token);
-Node *fcall_node(Token *token);
-
-Node *optimize_ir(Node *node, bool *changed);
-
-// IR / codegen
-void    ir_gen(Node *node);
-void    asm_gen(Node *node);
-void    init(char *name);
-void    finalize(char *output);
-void    ensure_loaded(Node *node);
-void    _alloca(Token *token);
-void    hoist_allocas(Node *node);
-TypeRef get_llvm_type(Token *token);
-void    _const_value(Token *token);
-Value   _get_default_value(Token *token);
-Value   read_value(Token *token);
-void    write_value(Token *token, Value val);
-Value   struct_field_ptr(Token *struct_tok, int field_index, char *name);
-Value   allocate_stack(Value size, TypeRef elementType, char *name);
-Value   allocate_heap(Value count, TypeRef elementType, char *name);
-bool    compatible(Token *left, Token *right);
-Type    get_ret_type(Node *node);
-void    set_ret_type(Node *node);
-
-// IR/ASM support helpers (defined in utils.c, called from gen.c case dispatchers)
-Node   *find_op_overload(Token *left, Token *right, Type op);
-void    ir_access_list_struct(Node *node, Node *st);
-void    ir_method_call_args(Node *node, Node *func);
-void    ir_method_call(Node *node);
-void    ir_regular_call_args(Node *node, Node *func);
-void    ir_regular_call(Node *node);
-void    ir_static_call(Node *node);
-void    ir_indirect_call(Node *node, Token *fn_var);
-bool    try_module_call(Node *node);
-void    gen_struct_declaration(Token *token);
-void    gen_primitive_declaration(Token *token);
-void    propagate_dims(Token *dst, Token *src, Node *lhs_node);
-Value   emit_copy_construct(Token *param, Token *arg);
-Value   marshal_arg_for_op(Token *param, Node *arg);
-Value   gen_operator_call(Node *node, Node *left, Node *right, bool try_copy_ctor);
-Value   asm_assign_cast(Node *left, Node *right, Value val);
-Value   asm_as_int_to_int(Value src, TypeRef stype, TypeRef ttype);
-Value   asm_collect_dims(Node *node);
-Value   asm_total_bytes(Value total, TypeRef elem_t);
-TypeRef asm_array_lit_elem_type(Node *node);
-void    asm_dot_propagate_field_dims(Token *struct_tok, int field_index, Token *target);
-void    asm_access_struct_field(Node *node);
-bool    asm_access_multidim(Node *node, Value left_value, Value right_ref);
-TypeRef asm_access_element_type(Node *node);
-Value   asm_access_left_value(Node *node);
-Value   marshal_fcall_arg(Token *param, Node *arg, bool is_proto_call);
-void    schedule_temp_cleanup(Token *token);
-void    call_delete(char *type_name, Value self_ptr);
-void    emit_scope_clean(Node *scope_node, int from, Token *skip);
-void    asm_fcall_static(Node *node);
-void    asm_fcall_marshal_args(Node *node, Value *args, int *count_out, bool is_proto);
-void    asm_fcall_unpack_proto_struct(Node *node);
-void    asm_fcall_instance(Node *node);
-void    asm_fcall_indirect(Node *node);
-void    append_string_literal_to_fmt(const char *s, char *fmt, int *fc);
-void append_struct_with_output_op(Token *tok, char *fmt, int *fc, Value *args, int *nargs, Node *sd,
-                                  Value out_fn);
-void append_struct_default_fmt(Token *tok, char *fmt, int *fc, Value *args, int *nargs, Node *sd);
-Type append_resolve_type(Token *tok);
-void append_output_arg(Token *tok, char *fmt, int *fc, Value *args, int *nargs);
-int  output_format_capacity(int argc, Node **argv);
-void if_chain_branch(Node *curr, Block if_start, Block end);
-void if_chain_else(Node *curr, Block end);
-void gen_if_chain(Node *node, Block if_start, Block end);
-void asm_return_delete_chain(Node *fdec);
-void asm_return_main_globals(void);
-void asm_return_tuple(Node *node, Node *fdec);
-void asm_return_value(Node *node, Node *fdec);
-void gen_struct_emit_nested(Node *node);
-void gen_struct_build_type(Node *node);
-void gen_struct_emit_delete(Node *node);
-void gen_struct_predeclare_methods(Node *node);
-void emit_prep_file(Node *scope_node, char *path);
-void _branch(Block bloc);
-Block   _append_block(char *name);
-Value   _add_function(char *name, TypeRef function_type);
-Value   build_binary_op(Type op, Value l, Value r);
-void    add_auto_clean(Node *parent, Value value, Node *type);
-void    schedule_temp_cleanup(Token *token);
-void    call_delete(char *type_name, Value self_ptr);
-void    emit_scope_clean(Node *scope_node, int from, Token *skip);
-TypeRef _named_struct_type(char *name, TypeRef *element_types, unsigned element_count, int packed);
-void    set_debug_location(Token *token);
-
-// LLVM helpers
-LLVMIntPredicate  icmp_predicate(Type op);
-LLVMRealPredicate fcmp_predicate(Type op);
-int               is_float_value(Value v);
-Type              assign_base_op(Type assign_op);
-
-// debug / utils
-bool  _check(char *filename, char *funcname, int line, bool cond, char *fmt, ...);
-void  parse_error(Token *token, const char *fmt, ...);
-void  tokenize_error(Source *src, int line, int s, int e, const char *fmt, ...);
-int   _debug(char *conv, ...);
-void  pnode(Node *node, char *indent);
+int _debug(char *conv, ...);
 char *format(const char *fmt, ...);
-int   vprint_(File out, char *conv, va_list args);
+bool _check(char *filename, char *funcname, int line, bool cond, char *fmt, ...);
 void *allocate(int len, int size);
-char *open_file(char *path_name);
-int   parse_escape_seq(char *input, int s, int e, char *buf, int *j);
-void  setup_paths(char *path_name);
+void new_source(char *file_name);
+void exit_source();
+void tokenize_error(int line, int s, int e, const char *fmt, ...);
+Token *parse_token(int line, int s, int e, Type type, int space);
+bool includes(Type to_find, ...);
+bool lex_spaces(char *content, int *i, int *line, int *indent, int default_indent);
+bool lex_multi_coment(char *content, int *i, int *line, int indent, int default_indent);
+bool lex_coment(char *content, int *i, int line, int indent, int default_indent);
+bool lex_chars(char *content, int *i, int line, int indent, int default_indent);
+bool lex_char(char *content, int *i, int line, int indent, int default_indent);
+bool lex_number(char *content, int *i, int line, int indent, int default_indent);
+bool lex_use(char *content, int *i, int s, int line, int indent, int default_indent);
+bool lex_link(char *content, int *i, int s, int line, int indent, int default_indent);
+bool lex_identifier(char *content, int *i, int line, int indent, int default_indent);
+void tokenize(int default_indent);
+bool lex_symbol(char *content, int *i, int line, int *indent, int default_indent);
+void set_name(Token *token, char *name);
+void enter_scope(Node *node);
+void exit_scope();
+Token *find(Type type, ...);
+Token *find_variable(char *name);
+void declare_variable(Token *token);
+Token *new_token(Type type, int indent);
+Node *new_node(Token *token);
+Node *syntax_error();
+void pnode(Node *node, char *indent);
+Node *fdec_node(Node *node);
 
-// codegen helpers (gated callers — declarations always available)
-void  resolve_func_type(Node *fdec);
-void  emit_func_body(Node *fdec);
-Node *find_enclosing(Type type);
 
-// keyword sub-helpers in parse.c
-Node *stack_heap_node(Token *token);
-Node *typeof_sizeof_node(Token *token);
+Token *next();
+Node *prime_node();
+Node *expr_node(int min_op);
 
 #endif

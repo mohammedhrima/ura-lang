@@ -1,193 +1,349 @@
 #include "header.h"
 
-void compile(char *path_name) {
-	debug(RED("===========================================\n"));
-	debug(RED("START COMPILATION\n"));
-	debug(RED("===========================================\n"));
+UraGlobal ura;
 
-	tokenize(path_name, 0);
-	if (error_count > 0) return;
+void parse_arguments(int argc, char **argv)
+{
+   // ura.lib = getenv("URA_LIB");
+   // if (CHECK(!ura.lib, "URA_LIB not set")) return;
+   ura.output = "exe.out";
+   
+   // TODO: compile only 1 file, if alot import them with each others
+   for(int i = 1; i < argc && !ura.error_count; i++) {
+      char *arg = argv[i];
+      size_t n = strlen(arg);
+      CHECK(n <= 4 || strcmp(arg + n - 4, ".ura") != 0, "invalid file: %s\n", arg);
+      new_source(arg);
+   }
+   if(ura.error_count) return;
+   // TODO: error if there is no input
+}
 
-	synth_list_structs();
-	if (synth_list_count > 0) {
-		Token **user_tokens = tokens;
-		int     user_count  = tokens_count;
-		tokens              = NULL;
-		tokens_count        = 0;
-		tokens_size         = 0;
-		for (int i = 0; i < synth_list_count; i++)
-			tokenize(synth_list_paths[i], 0);
-		if (tokens_count > 0 && tokens[tokens_count - 1]->type == END) tokens_count--;
-		for (int i = 0; i < user_count; i++) {
-			resize_array(tokens, Token *, tokens_size, tokens_count);
-			tokens[tokens_count++] = user_tokens[i];
-		}
-		free(user_tokens);
-	}
+void tokenize(int default_indent) {
+   if (ura.error_count || !ura.sources) return;
+   Source *src = ura.sources[ura.sources_pos - 1];
+   char *content = src->content;
+   int line = 1;
+   int indent = default_indent;
+   
+   int s, i = 0;
+   while (content && content[i] && !ura.error_count) {
+      s = i;
+      char c = content[i];
+      if (lex_spaces(content, &i, &line, &indent, default_indent)) continue;
+      if (lex_multi_coment(content, &i, &line, indent, default_indent)) continue;
+      if (lex_coment(content, &i, line, indent, default_indent)) continue;
+      if (lex_chars(content, &i, line, indent, default_indent)) continue;
+      if (lex_char(content, &i, line, indent, default_indent)) continue;
+      if (lex_number(content, &i, line, indent, default_indent)) continue;
+      if (lex_identifier(content, &i, line, indent, default_indent)) continue;
+      if (lex_symbol(content, &i, line, &indent, default_indent)) continue;
+      tokenize_error(line, i, i + 1, "unexpected character '%c'", c);
+   }
+   if (!ura.calling_use)
+   {
+      parse_token(line, s, i, END, -1);
+      for(int i = 0; i < ura.tokens_count; i++)
+         debug("token %k\n", ura.tokens[i]);
+   }
+   exit_source();
+}
 
-	for (int i = 0; tokens[i]; i++)
-		debug(GREEN("%k\n"), tokens[i]);
+int MAX_OP = 1000;
+int get_operation_precedence(Type type)
+{
+   switch(type)
+   {
+   case ASSIGN: return 10;
+   case ADD:    return 20;
+   case SUB:    return 20;
+   case MUL:    return 30;
+   case DIV:    return 30;
+   case MOD:    return 30;
+   default:
+      break;
+   }
+   return 0;
+}
 
-#if AST
-	ura_scope = new_node(new_token(ID, -TAB));
-	setName(ura_scope->token, "ura-scope");
-	enter_scope(ura_scope);
-	while (!find(END, 0)) {
-		Node *child = expr_node();
-		// after expr_node, EXPECT_TOKEN/parse_error sites have already
-		// called parser_recover(), so found_error is back to false here.
-		// We just check whether the node we got is the SYNTAX_ERROR
-		// sentinel — if so, skip it and keep parsing the next statement.
-		if (!child || child == syntax_error_node) continue;
-		Token *t      = child->token;
-		Token *anchor = (t->type == ASSIGN && child->left) ? child->left->token : t;
-		bool   ok =
-		    includes(anchor->type, FDEC, STRUCT_DEF, ENUM_DEF, MODULE, PROTO, 0) || anchor->is_dec;
-		if (!ok) {
-			parse_error(t, "only declarations are allowed at top level");
-			parser_recover(t->space);
-			continue;
-		}
-		add_child(ura_scope, child);
-	}
+Token *next() { return ura.tokens[ura.exe_pos++]; }
+Token *peek(int index) { return ura.tokens[ura.exe_pos + index];}
 
-	if (error_count > 0) return;
+Node *prime_node() {
+   Token *token = next();
+   switch(token->type)
+   {
+   case INT: return new_node(token);
+   case FDEC: {
+      Node *node = new_node(token);
+   	Token *fname = find(ID, 0);
+	   // TODO: check if name does not exists
+	   set_name(node->token, fname->name);
+      return fdec_node(node);
+   }
+   case ID: {
+      if (peek(0)->type != LPAR)
+      {
+         if (includes(peek(0)->type, INT, 0))
+         {
+            token->ret_type = peek(0)->type; // declared type
+            token->is_dec = true;
+            next(); // skip data type
+         }
+         return new_node(token);
+      }
+      if (strcmp(token->name, "main") == 0) // main func
+         return fdec_node(new_node(token));
+      // fcall
+      break;
+   }
+   case RETURN: {
+      Node *node = new_node(token);
+      node->left = expr_node(MAX_OP);
+      return node;
+   }
+   default:
+      break;
+   }
+   debug(RED("Unexpected token %k\n"), token);
+   return syntax_error();
+}
+
+Node *expr_node(int min_op) {
+   Node *left = prime_node();
+
+   while(true)
+   {
+      int op = get_operation_precedence(ura.tokens[ura.exe_pos]->type);
+      if(op <= min_op) break;
+      Node *node = new_node(next());
+      node->left = left;
+      node->right = expr_node(op);
+      left = node;
+   }
+   return left;
+}
+
+void generate_ast() {
+   if(ura.error_count) return;
+   Node *head = new_node(new_token(ID, -TAB));
+   ura.head = head;
+   enter_scope(head);
+   while (!find(END, 0)) {
+      resize_array(head->children, Node *, head->children_size, head->children_count);
+      head->children[head->children_count++] = expr_node(0);
+      // TODO: only function declarations and 
+      // struct declaration are allowed here
+   }
+   if (ura.error_count > 0) return;
 	debug(GREEN("===========================================\n"));
 	debug(GREEN("AFTER PARSING\n"));
 	debug(GREEN("===========================================\n"));
-	for (int i = 0; i < ura_scope->children_count; i++)
-		pnode(ura_scope->children[i], "");
-#endif
-
-#if IR
-	debug(GREEN("===========================================\n"));
-	debug(GREEN("GENERATE INTERMEDIATE REPRESENTATION\n"));
-	debug(GREEN("===========================================\n"));
-	// Pre-register every top-level FDEC so forward references work across
-	// flat top-level functions (already worked for struct methods via
-	// ir_struct_def's pre-pass; same idea, top-level scope).
-	for (int i = 0; i < ura_scope->children_count; i++) {
-		Node *child = ura_scope->children[i];
-		Node *fn    = NULL;
-		if (child->token->type == FDEC)                                  fn = child;
-		else if (child->token->type == PROTO && child->left
-		         && child->left->token->type == FDEC)                    fn = child->left;
-		if (fn && fn->token->name && !find_function(fn->token->name))
-			add_function(scope, fn);
-	}
-	for (int i = 0; i < ura_scope->children_count; i++)
-		ir_gen(ura_scope->children[i]);
-#endif
-
-	if (error_count > 0) return;
-	debug(GREEN("===========================================\n"));
-	debug(GREEN("AFTER IR GENERATION\n"));
-	debug(GREEN("===========================================\n"));
-	for (int i = 0; i < ura_scope->children_count; i++)
-		pnode(ura_scope->children[i], "");
-
-	setup_paths(path_name);
-
-	if (enable_prep) {
-		char *prep_path = format("%s/%s", build_dir, base);
-		char *full_path = format("%s.prep.ura", prep_path);
-		free(prep_path);
-		emit_prep_file(ura_scope, full_path);
-		free(full_path);
-	}
-
-#if ASM
-	init(path_name);
-	// Two passes so calls reference fully-typed callees:
-	// 1) Generate STRUCT_DEFs first (so STRUCT_CALL params have llvm.struct_type).
-	// 2) Pre-declare every top-level FDEC's signature.
-	// 3) Emit the rest of the top-level tree (fn bodies + globals).
-	for (int i = 0; error_count == 0 && i < ura_scope->children_count; i++) {
-		Node *child = ura_scope->children[i];
-		if (child->token->type == STRUCT_DEF)
-			asm_gen(child);
-	}
-	for (int i = 0; error_count == 0 && i < ura_scope->children_count; i++) {
-		Node *child = ura_scope->children[i];
-		Node *fn    = NULL;
-		if (child->token->type == FDEC)                                  fn = child;
-		else if (child->token->type == PROTO && child->left
-		         && child->left->token->type == FDEC)                    fn = child->left;
-		if (fn && fn->token->name) {
-			bool is_method = strchr(fn->token->name, '.') != NULL;
-			bool is_main   = strcmp(fn->token->name, "main") == 0;
-			if (fn->token->used > 0 || is_method || is_main)
-				resolve_func_type(fn);
-		}
-	}
-	for (int i = 0; error_count == 0 && i < ura_scope->children_count; i++) {
-		Node *child = ura_scope->children[i];
-		if (child->token->type == STRUCT_DEF) continue;
-		asm_gen(child);
-	}
-	if (error_count == 0) finalize(ll_path);
-#endif
+	for (int i = 0; i < head->children_count; i++)
+		pnode(head->children[i], "");
 }
 
-// ============================================================================
-// MAIN
-// ============================================================================
-int main(int argc, char **argv) {
-	ura_lib = getenv("URA_LIB");
-	if (CHECK(!ura_lib, "URA_LIB not set")) return 1;
-	if (CHECK(argc < 2, "usage: ura <file.ura> [-O0|-O1|-O2|-O3|-Os|-Oz] [-san]"
-	                    " [-o output]"))
-		return 1;
+void resolve(Node *node) {
+   if (!node || ura.error_count) return;
+   Token *token = node->token;
+   switch (token->type) {
+      case FDEC: {
+         enter_scope(node);
+         for (int i = 0; i < node->children_count; i++)
+            resolve(node->children[i]);
+         exit_scope();
+         break;
+      }
+      case ID: {
+         if (token->is_dec) declare_variable(token);
+         else {
+            Token *decl = find_variable(token->name);
+            if (CHECK(!decl, "undeclared variable '%s'", token->name)) return;
+            token->ret_type = decl->ret_type;
+         }
+         break;
+      }
+      case INT: break;
+      case RETURN: {
+         resolve(node->left);
+         break;
+      }
+      default: {
+         resolve(node->left);
+         resolve(node->right);
+         break;
+      }
+   }
+}
 
-	char *output  = NULL;
-	char *entry   = NULL;
-	bool  no_exec = false;
-	(void)no_exec;
-	for (int i = 1; i < argc && !found_error; i++) {
-		char *a = argv[i];
-#define MATCH(name, var, val)                                                                      \
-	if (strcmp(a, name) == 0) {                                                                     \
-		var = val;                                                                                   \
-		continue;                                                                                    \
-	}
-		MATCH("-san", enable_san, true);
-		MATCH("-O0", flags, PASSES_O0);
-		MATCH("-no-exec", no_exec, true) MATCH("-O1", flags, PASSES_O1);
-		MATCH("-no-debug", enable_debug, false);
-		MATCH("-O2", flags, PASSES_O2);
-		MATCH("-O3", flags, PASSES_O3);
-		MATCH("-Os", flags, PASSES_Os);
-		MATCH("-Oz", flags, PASSES_Oz);
-		MATCH("-prep", enable_prep, true);
-#undef MATCH
-		if (strcmp(a, "-o") == 0) {
-			CHECK(i + 1 >= argc, "-o requires an argument");
-			output = argv[++i];
-		} else if (a[0] != '-') {
-			size_t n = strlen(a);
-			CHECK(n <= 4 || strcmp(a + n - 4, ".ura") != 0, "invalid file: %s\n", a);
-			CHECK(entry != NULL, "you can compile only one file "
-			                     "try importing them in one files");
-			entry = a;
-		} else {
-			CHECK(true, "unknown flag: %s\n", a);
-		}
-	}
-	if (CHECK(!entry, "required .ura files as arguments to compile")) return 1;
-	if (found_error)                                                  return 1;
+void typecheck(Node *node) {
+   if (!node || ura.error_count) return;
+   Token *token = node->token;
+   switch (token->type) {
+      case FDEC: {
+         for (int i = 0; i < node->children_count; i++)
+            typecheck(node->children[i]);
+         break;
+      }
+      case INT: {
+         token->ret_type = INT;
+         break;
+      }
+      case ID: break;
+      case RETURN: {
+         typecheck(node->left);
+         break;
+      }
+      default: {
+         typecheck(node->left);
+         typecheck(node->right);
+         if (CHECK(
+            node->left->token->ret_type != node->right->token->ret_type, 
+            "type mismatch in assignment"))
+            return;
+         token->ret_type = node->left->token->ret_type;
+         break;
+      }
+   }
+}
 
-	if (!output) output = "exe.out";
+void init_module(char *name) {
+   ura.context = LLVMContextCreate();
+   ura.module  = LLVMModuleCreateWithNameInContext(name, ura.context);
+   ura.builder = LLVMCreateBuilderInContext(ura.context);
+   ura.vd  = LLVMVoidTypeInContext(ura.context);
+   ura.i1  = LLVMInt1TypeInContext(ura.context);
+   ura.i8  = LLVMInt8TypeInContext(ura.context);
+   ura.i16 = LLVMInt16TypeInContext(ura.context);
+   ura.i32 = LLVMInt32TypeInContext(ura.context);
+   ura.i64 = LLVMInt64TypeInContext(ura.context);
+}
 
-	compile(entry);
+void codegen(Node *node) {
+   if (!node || ura.error_count) return;
+   Token *token = node->token;
+   switch (token->type) {
+      case FDEC: {
+         TypeRef fn_type  = LLVMFunctionType(ura.i32, NULL, 0, 0);
+         token->llvm.elem = LLVMAddFunction(ura.module, token->name, fn_type);
+         Block entry      = LLVMAppendBasicBlockInContext(ura.context, token->llvm.elem, "entry");
+         LLVMPositionBuilderAtEnd(ura.builder, entry);
+         enter_scope(node);
+         for (int i = 0; i < node->children_count; i++)
+            codegen(node->children[i]);
+         exit_scope();
+         break;
+      }
+      case INT: {
+         token->llvm.elem = LLVMConstInt(ura.i32, token->Int.value, 0);
+         break;
+      }
+      case ID: {
+         if (token->is_dec)
+            token->llvm.elem = LLVMBuildAlloca(ura.builder, ura.i32, token->name);
+         else {
+            Token *decl      = find_variable(token->name);
+            token->llvm.elem = LLVMBuildLoad2(ura.builder, ura.i32, decl->llvm.elem, token->name);
+         }
+         break;
+      }
+      case RETURN: {
+         codegen(node->left);
+         token->llvm.elem = LLVMBuildRet(ura.builder, node->left->token->llvm.elem);
+         break;
+      }
+      default: {
+         codegen(node->left);
+         codegen(node->right);
+         LLVMBuildStore(ura.builder, node->right->token->llvm.elem, node->left->token->llvm.elem);
+         token->llvm.elem = node->right->token->llvm.elem;
+         break;
+      }
+   }
+}
 
-#if ASM
-	if (ll_path && !no_exec && !found_error) {
-		char *san = enable_san ? " -fsanitize=address,undefined -fno-omit-frame-pointer -g" : "";
-		char *cmd = format("clang%s \"%s\" -o \"%s\"", san, ll_path, output);
-		CHECK(system(cmd) != 0, "linking failed\n");
-		free(cmd);
-	}
-#endif
-	free_memory();
-	return error_count > 0 ? 1 : 0;
+void finalize_module(char *ll_path) {
+   char *error = NULL;
+   if (LLVMVerifyModule(ura.module, LLVMReturnStatusAction, &error))
+      CHECK(1, "module verification failed:\n%s", error);
+   LLVMDisposeMessage(error);
+   LLVMPrintModuleToFile(ura.module, ll_path, NULL);
+}
+
+void generate_ir(){
+   if(ura.error_count || !ura.head) return;
+   for (int i = 0; i < ura.head->children_count; i++)
+      resolve(ura.head->children[i]);
+   for (int i = 0; i < ura.head->children_count; i++)
+      typecheck(ura.head->children[i]);
+}
+
+void generate_asm(){
+   if(ura.error_count || !ura.head) return;
+   init_module(ura.output);
+   for (int i = 0; i < ura.head->children_count; i++)
+      codegen(ura.head->children[i]);
+   mkdir("build", 0755);
+   finalize_module("build/out.ll");
+   if (ura.error_count) return;
+   char *cmd = format("clang build/out.ll -o %s 2>/dev/null", ura.output);
+   system(cmd);
+   free(cmd);
+   debug(GREEN("compiled -> %s\n"), ura.output);
+}
+
+void free_node(Node *node) {
+   if (!node) return;
+   free_node(node->left);
+   free_node(node->right);
+   for (int i = 0; i < node->children_count; i++)
+      free_node(node->children[i]);
+   free(node->children);
+   free(node->variables);
+   free(node->functions);
+   free(node->structs);
+   free(node->modules);
+   free(node);
+}
+
+void free_token(Token *token) {
+   if (!token) return;
+   free(token->name);
+   free(token->Chars.value);
+   free(token->llvm.dims);
+   free(token);
+}
+
+void free_memory() {
+   free_node(ura.head);
+
+   for (int i = 0; i < ura.tokens_count; i++)
+      free_token(ura.tokens[i]);
+   free(ura.tokens);
+
+   for (int i = 0; i < ura.sources_count; i++) {
+      free(ura.sources[i]->content);
+      free(ura.sources[i]);
+   }
+   free(ura.sources);
+
+   free(ura.scopes);
+
+   if (ura.context) {
+      LLVMDisposeBuilder(ura.builder);
+      LLVMDisposeModule(ura.module);
+      LLVMContextDispose(ura.context);
+   }
+}
+
+int main(int argc, char**argv) {
+   ura.max_errors = 20;
+   ura.enable_debug = true;
+   parse_arguments(argc, argv);
+   tokenize(0);
+   generate_ast();
+   generate_ir();
+   generate_asm();
+   free_memory();
+   return ura.error_count != 0;
 }
