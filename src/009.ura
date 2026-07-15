@@ -1,9 +1,0 @@
-// 009: a by-value parameter does NOT change the caller
-// expect: 5
-fn inc(n int) int:
-    n = n + 1
-    return n
-main():
-    n int = 5
-    inc(n)
-    return n

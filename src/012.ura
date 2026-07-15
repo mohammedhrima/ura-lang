@@ -1,8 +1,0 @@
-// 012: pass a function as an argument (higher-order function)
-// expect: 42
-fn twice(n int) int:
-    return n + n
-fn apply(f fn(int) int, x int) int:
-    return f(x)
-main():
-    return apply(twice, 21)

@@ -1,0 +1,6 @@
+// errors/operators/004 — type mismatch between operands
+
+fn twice(n int) int:
+    return n + n
+main():
+    return twice + 1

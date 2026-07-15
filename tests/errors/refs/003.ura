@@ -1,0 +1,7 @@
+// errors/refs/003 — passing a literal to a ref parameter
+
+fn tick(ref n int) int:
+    n = n + 1
+    return n
+main():
+    return tick(5)

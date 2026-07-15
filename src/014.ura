@@ -1,6 +1,0 @@
-// 014: nested non-capturing helper function
-// expect: 42
-main():
-    fn dbl(k int) int:
-        return k + k
-    return dbl(21)

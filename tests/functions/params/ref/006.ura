@@ -1,5 +1,5 @@
-// 008: ref parameter mutates the caller (a counter)
-// expect: 2
+// functions/params/ref/006.ura - ref parameter mutates the caller (counter)
+
 fn tick(ref n int) int:
     n = n + 1
     return n
