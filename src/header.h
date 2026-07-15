@@ -344,7 +344,7 @@ void set_name(Token *token, char *name);
 void enter_scope(Node *node);
 void exit_scope();
 Token *find(Type type, ...);
-Token *find_variable(char *name);
+Token *find_variable(char *name, bool *captured);
 void declare_variable(Token *token);
 Node *find_function(char *name);
 void declare_function(Node *fn);

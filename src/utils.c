@@ -906,14 +906,19 @@ void declare_variable(Token *token) {
 	ura.scope->variables[ura.scope->variables_count++] = token;
 }
 
-Token *find_variable(char *name) {
+Token *find_variable(char *name, bool *captured) {
+	bool passed_function = false;
 	for (int s = ura.scopes_count; s >= 0; s--) {
 		Node *scope = ura.scopes[s];
 		if (!scope) continue;
 		for (int v = 0; v < scope->variables_count; v++)
-			if (scope->variables[v]->name && strcmp(scope->variables[v]->name, name) == 0)
+			if (scope->variables[v]->name && strcmp(scope->variables[v]->name, name) == 0) {
+				if (captured) *captured = passed_function && scope->token->type == FDEC;
 				return scope->variables[v];
+			}
+		if (scope->token->type == FDEC) passed_function = true;
 	}
+	if (captured) *captured = false;
 	return NULL;
 }
 

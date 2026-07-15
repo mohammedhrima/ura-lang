@@ -131,14 +131,20 @@ void resolve(Node *node) {
          for (int i = 0; i < token->Fn.params_count; i++)
             declare_variable(token->Fn.params[i]);
          for (int i = 0; i < node->children_count; i++)
+            if (node->children[i]->token->type == FDEC)
+               declare_function(node->children[i]);
+         for (int i = 0; i < node->children_count; i++)
             resolve(node->children[i]);
          exit_scope();
          break;
       }
       case ID: {
          if (token->is_dec) { declare_variable(token); break; }
-         Token *decl = find_variable(token->name);
+         bool   captured = false;
+         Token *decl     = find_variable(token->name, &captured);
          if (decl) {
+            if (CHECK(captured, "cannot use '%s' from an enclosing function - pass it as a parameter", token->name))
+               return;
             token->ret_type = decl->ret_type;
             if (decl->ret_type == FN_TYPE) token->Fn = decl->Fn;
             break;
@@ -160,7 +166,7 @@ void resolve(Node *node) {
          break;
       }
       case FCALL: {
-         Token *var = find_variable(token->name);
+         Token *var = find_variable(token->name, NULL);
          if (var && var->ret_type == FN_TYPE) {
             token->Fcall.var = var;
             for (int i = 0; i < node->children_count; i++)
@@ -257,7 +263,7 @@ Value address_of(Node *node) {
    Token *token = node->token;
    if (token->is_dec)
       return token->llvm.elem = LLVMBuildAlloca(ura.builder, llvm_type_of(token), token->name);
-   Token *decl = find_variable(token->name);
+   Token *decl = find_variable(token->name, NULL);
    if (decl->is_ref)
       return LLVMBuildLoad2(ura.builder, LLVMPointerType(to_llvm_type(decl->ret_type), 0), decl->llvm.elem, "ref");
    return decl->llvm.elem;
@@ -268,6 +274,7 @@ void codegen(Node *node) {
    Token *token = node->token;
    switch (token->type) {
       case FDEC: {
+         Block prev = LLVMGetInsertBlock(ura.builder);
          codegen_fn_signature(node);
          Block entry = LLVMAppendBasicBlockInContext(ura.context, token->llvm.elem, "entry");
          LLVMPositionBuilderAtEnd(ura.builder, entry);
@@ -284,6 +291,7 @@ void codegen(Node *node) {
          if (token->ret_type == VOID && !LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ura.builder)))
             LLVMBuildRetVoid(ura.builder);
          exit_scope();
+         if (prev) LLVMPositionBuilderAtEnd(ura.builder, prev);
          break;
       }
       case INT: {
@@ -291,10 +299,13 @@ void codegen(Node *node) {
          break;
       }
       case ID: {
-         if (token->is_dec)
-            token->llvm.elem = LLVMBuildAlloca(ura.builder, llvm_type_of(token), token->name);
+         if (token->is_dec) {
+            TypeRef t        = llvm_type_of(token);
+            token->llvm.elem = LLVMBuildAlloca(ura.builder, t, token->name);
+            LLVMBuildStore(ura.builder, LLVMConstNull(t), token->llvm.elem);
+         }
          else {
-            Token  *decl = find_variable(token->name);
+            Token  *decl = find_variable(token->name, NULL);
             TypeRef t    = llvm_type_of(decl);
             if (decl->is_ref) {
                Value ptr = LLVMBuildLoad2(ura.builder, LLVMPointerType(t, 0), decl->llvm.elem, "ref");
