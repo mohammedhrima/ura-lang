@@ -50,24 +50,6 @@ void tokenize(int default_indent) {
 }
 
 int MAX_OP = 1000;
-int get_operation_precedence(Type type)
-{
-   switch(type)
-   {
-   case ASSIGN: return 10;
-   case ADD:    return 20;
-   case SUB:    return 20;
-   case MUL:    return 30;
-   case DIV:    return 30;
-   case MOD:    return 30;
-   default:
-      break;
-   }
-   return 0;
-}
-
-Token *next() { return ura.tokens[ura.exe_pos++]; }
-Token *peek(int index) { return ura.tokens[ura.exe_pos + index];}
 
 Node *prime_node() {
    Token *token = next();
@@ -82,20 +64,19 @@ Node *prime_node() {
       return fdec_node(node);
    }
    case ID: {
-      if (peek(0)->type != LPAR)
+      if (peek(0)->type == LPAR)
       {
-         if (includes(peek(0)->type, INT, 0))
-         {
-            token->ret_type = peek(0)->type; // declared type
-            token->is_dec = true;
-            next(); // skip data type
-         }
-         return new_node(token);
+         if (strcmp(token->name, "main") == 0) // main func
+            return fdec_node(new_node(token));
+         return fcall_node(new_node(token));
       }
-      if (strcmp(token->name, "main") == 0) // main func
-         return fdec_node(new_node(token));
-      // fcall
-      break;
+      if (is_data_type(peek(0)))
+      {
+         token->ret_type = peek(0)->type; // declared type
+         token->is_dec = true;
+         next(); // skip data type
+      }
+      return new_node(token);
    }
    case RETURN: {
       Node *node = new_node(token);
@@ -129,7 +110,7 @@ void generate_ast() {
    Node *head = new_node(new_token(ID, -TAB));
    ura.head = head;
    enter_scope(head);
-   while (!find(END, 0)) {
+   while (!find(END, 0) && !ura.error_count) {
       resize_array(head->children, Node *, head->children_size, head->children_count);
       head->children[head->children_count++] = expr_node(0);
       // TODO: only function declarations and 
@@ -149,6 +130,8 @@ void resolve(Node *node) {
    switch (token->type) {
       case FDEC: {
          enter_scope(node);
+         for (int i = 0; i < token->Fn.params_count; i++)
+            declare_variable(token->Fn.params[i]);
          for (int i = 0; i < node->children_count; i++)
             resolve(node->children[i]);
          exit_scope();
@@ -166,6 +149,15 @@ void resolve(Node *node) {
       case INT: break;
       case RETURN: {
          resolve(node->left);
+         break;
+      }
+      case FCALL: {
+         Node *fn = find_function(token->name);
+         if (CHECK(!fn, "undeclared function '%s'", token->name)) return;
+         token->Fcall.ptr = fn;
+         for (int i = 0; i < node->children_count; i++)
+            resolve(node->children[i]);
+         token->ret_type = fn->token->ret_type;
          break;
       }
       default: {
@@ -194,6 +186,20 @@ void typecheck(Node *node) {
          typecheck(node->left);
          break;
       }
+      case FCALL: {
+         Token *fn = token->Fcall.ptr->token;
+         for (int i = 0; i < node->children_count; i++)
+            typecheck(node->children[i]);
+         if (CHECK(node->children_count != fn->Fn.params_count,
+                   "wrong number of arguments to '%s'", token->name))
+            return;
+         for (int i = 0; i < node->children_count; i++)
+            if (CHECK(node->children[i]->token->ret_type != fn->Fn.params[i]->ret_type,
+                      "argument %d type mismatch in call to '%s'", i + 1, token->name))
+               return;
+         token->ret_type = fn->ret_type;
+         break;
+      }
       default: {
          typecheck(node->left);
          typecheck(node->right);
@@ -207,16 +213,19 @@ void typecheck(Node *node) {
    }
 }
 
-void init_module(char *name) {
-   ura.context = LLVMContextCreate();
-   ura.module  = LLVMModuleCreateWithNameInContext(name, ura.context);
-   ura.builder = LLVMCreateBuilderInContext(ura.context);
-   ura.vd  = LLVMVoidTypeInContext(ura.context);
-   ura.i1  = LLVMInt1TypeInContext(ura.context);
-   ura.i8  = LLVMInt8TypeInContext(ura.context);
-   ura.i16 = LLVMInt16TypeInContext(ura.context);
-   ura.i32 = LLVMInt32TypeInContext(ura.context);
-   ura.i64 = LLVMInt64TypeInContext(ura.context);
+void codegen_fn_signature(Node *fn) {
+   Token *token = fn->token;
+   if (token->llvm.func_type) return;
+   int      n      = token->Fn.params_count;
+   TypeRef *params = NULL;
+   if (n > 0) {
+      params = allocate(n, sizeof(TypeRef));
+      for (int i = 0; i < n; i++)
+         params[i] = to_llvm_type(token->Fn.params[i]->ret_type);
+   }
+   token->llvm.func_type = LLVMFunctionType(to_llvm_type(token->ret_type), params, n, 0);
+   token->llvm.elem      = LLVMAddFunction(ura.module, token->name, token->llvm.func_type);
+   free(params);
 }
 
 void codegen(Node *node) {
@@ -224,32 +233,53 @@ void codegen(Node *node) {
    Token *token = node->token;
    switch (token->type) {
       case FDEC: {
-         TypeRef fn_type  = LLVMFunctionType(ura.i32, NULL, 0, 0);
-         token->llvm.elem = LLVMAddFunction(ura.module, token->name, fn_type);
-         Block entry      = LLVMAppendBasicBlockInContext(ura.context, token->llvm.elem, "entry");
+         codegen_fn_signature(node);
+         Block entry = LLVMAppendBasicBlockInContext(ura.context, token->llvm.elem, "entry");
          LLVMPositionBuilderAtEnd(ura.builder, entry);
          enter_scope(node);
+         for (int i = 0; i < token->Fn.params_count; i++) {
+            Token *param     = token->Fn.params[i];
+            param->llvm.elem = LLVMBuildAlloca(ura.builder, to_llvm_type(param->ret_type), param->name);
+            LLVMBuildStore(ura.builder, LLVMGetParam(token->llvm.elem, i), param->llvm.elem);
+         }
          for (int i = 0; i < node->children_count; i++)
             codegen(node->children[i]);
          exit_scope();
          break;
       }
       case INT: {
-         token->llvm.elem = LLVMConstInt(ura.i32, token->Int.value, 0);
+         token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Int.value, 0);
          break;
       }
       case ID: {
          if (token->is_dec)
-            token->llvm.elem = LLVMBuildAlloca(ura.builder, ura.i32, token->name);
+            token->llvm.elem = LLVMBuildAlloca(ura.builder, to_llvm_type(token->ret_type), token->name);
          else {
             Token *decl      = find_variable(token->name);
-            token->llvm.elem = LLVMBuildLoad2(ura.builder, ura.i32, decl->llvm.elem, token->name);
+            token->llvm.elem = LLVMBuildLoad2(ura.builder, to_llvm_type(decl->ret_type), decl->llvm.elem, token->name);
          }
          break;
       }
       case RETURN: {
          codegen(node->left);
          token->llvm.elem = LLVMBuildRet(ura.builder, node->left->token->llvm.elem);
+         break;
+      }
+      case FCALL: {
+         codegen_fn_signature(token->Fcall.ptr);
+         Token *fn   = token->Fcall.ptr->token;
+         int    n    = node->children_count;
+         Value *args = NULL;
+         if (n > 0) {
+            args = allocate(n, sizeof(Value));
+            for (int i = 0; i < n; i++) {
+               codegen(node->children[i]);
+               args[i] = node->children[i]->token->llvm.elem;
+            }
+         }
+         char *name       = fn->ret_type == VOID ? "" : "call";
+         token->llvm.elem = LLVMBuildCall2(ura.builder, fn->llvm.func_type, fn->llvm.elem, args, n, name);
+         free(args);
          break;
       }
       default: {
@@ -262,16 +292,11 @@ void codegen(Node *node) {
    }
 }
 
-void finalize_module(char *ll_path) {
-   char *error = NULL;
-   if (LLVMVerifyModule(ura.module, LLVMReturnStatusAction, &error))
-      CHECK(1, "module verification failed:\n%s", error);
-   LLVMDisposeMessage(error);
-   LLVMPrintModuleToFile(ura.module, ll_path, NULL);
-}
-
 void generate_ir(){
    if(ura.error_count || !ura.head) return;
+   for (int i = 0; i < ura.head->children_count; i++)
+      if (ura.head->children[i]->token->type == FDEC)
+         declare_function(ura.head->children[i]);
    for (int i = 0; i < ura.head->children_count; i++)
       resolve(ura.head->children[i]);
    for (int i = 0; i < ura.head->children_count; i++)
@@ -290,50 +315,6 @@ void generate_asm(){
    system(cmd);
    free(cmd);
    debug(GREEN("compiled -> %s\n"), ura.output);
-}
-
-void free_node(Node *node) {
-   if (!node) return;
-   free_node(node->left);
-   free_node(node->right);
-   for (int i = 0; i < node->children_count; i++)
-      free_node(node->children[i]);
-   free(node->children);
-   free(node->variables);
-   free(node->functions);
-   free(node->structs);
-   free(node->modules);
-   free(node);
-}
-
-void free_token(Token *token) {
-   if (!token) return;
-   free(token->name);
-   free(token->Chars.value);
-   free(token->llvm.dims);
-   free(token);
-}
-
-void free_memory() {
-   free_node(ura.head);
-
-   for (int i = 0; i < ura.tokens_count; i++)
-      free_token(ura.tokens[i]);
-   free(ura.tokens);
-
-   for (int i = 0; i < ura.sources_count; i++) {
-      free(ura.sources[i]->content);
-      free(ura.sources[i]);
-   }
-   free(ura.sources);
-
-   free(ura.scopes);
-
-   if (ura.context) {
-      LLVMDisposeBuilder(ura.builder);
-      LLVMDisposeModule(ura.module);
-      LLVMContextDispose(ura.context);
-   }
 }
 
 int main(int argc, char**argv) {

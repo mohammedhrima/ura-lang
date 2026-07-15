@@ -1,3 +1,9 @@
+fn hello() int:
+    return 1
+
+fn hello() int:
+    return 1
+
 main():
     a int = 1
     return a

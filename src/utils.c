@@ -185,18 +185,6 @@ int _vprint(File out, const char *conv, va_list args) {
 	return res;
 }
 
-bool _check(char *filename, char *funcname, int line, bool cond, char *fmt, ...) {
-	if (!cond) return cond;
-	ura.error_count++;
-	fprintf(stderr, RED("ura error: %s %s:%d "), funcname, filename, line);
-	va_list ap;
-	va_start(ap, fmt);
-	_vprint(stderr, fmt, ap);
-	va_end(ap);
-	fprintf(stderr, "\n");
-	return cond;
-}
-
 int _debug(char *conv, ...) {
 	va_list args;
 	va_start(args, conv);
@@ -205,16 +193,30 @@ int _debug(char *conv, ...) {
 	return res;
 }
 
+char *format(const char *fmt, ...) {
+	char  *buf  = NULL;
+	size_t size = 0;
+	File   out  = open_memstream(&buf, &size);
+	if (CHECK(!out, "format: open_memstream failed")) return NULL;
+
+	va_list ap;
+	va_start(ap, fmt);
+	_vprint(out, fmt, ap);
+	va_end(ap);
+	fclose(out);
+	return buf;
+}
+
 void pnode(Node *node, char *indent) {
 	if (!node || !node->token || !ura.enable_debug) return;
 	Node **subs     = NULL;
-	int    count    = 0;
-	int    capacity = 0;
+	int    subs_count    = 0;
+	int    subs_size = 0;
 
 #define push(n)                                                                                    \
 	do {                                                                                            \
-		resize_array(subs, Node *, capacity, count);                                                 \
-		subs[count++] = (n);                                                                         \
+		resize_array(subs, Node *, subs_size, subs_count);                                           \
+		subs[subs_count++] = (n);                                                                    \
 	} while (0)
 
 	debug("%k\n", node->token);
@@ -235,11 +237,11 @@ void pnode(Node *node, char *indent) {
 		push(node->structs[i]);
 	for (int i = 0; i < node->functions_count; i++)
 		push(node->functions[i]);
-	for (int i = 0; i < count; i++) {
+	for (int i = 0; i < subs_count; i++) {
 		Node *child = subs[i];
 		if (!child || !child->token || !child->token->type) continue;
 
-		int         is_last = (i == count - 1);
+		int         is_last = (i == subs_count - 1);
 		const char *bar     = is_last ? "   " : "│  ";
 
 		char       *new_indent = format("%s%s", indent, bar);
@@ -253,18 +255,16 @@ void pnode(Node *node, char *indent) {
 #undef push
 }
 
-char *format(const char *fmt, ...) {
-	char  *buf  = NULL;
-	size_t size = 0;
-	File   out  = open_memstream(&buf, &size);
-	if (CHECK(!out, "format: open_memstream failed")) return NULL;
-
+bool _check(char *filename, char *funcname, int line, bool cond, char *fmt, ...) {
+	if (!cond) return cond;
+	ura.error_count++;
+	fprintf(stderr, RED("ura error: %s %s:%d "), funcname, filename, line);
 	va_list ap;
 	va_start(ap, fmt);
-	_vprint(out, fmt, ap);
+	_vprint(stderr, fmt, ap);
 	va_end(ap);
-	fclose(out);
-	return buf;
+	fprintf(stderr, "\n");
+	return cond;
 }
 
 void parse_error(Token *token, const char *fmt, ...) {
@@ -379,6 +379,102 @@ void new_source(char *file_name) {
 
 void exit_source() {
 	ura.sources_pos--;
+}
+
+int parse_escape_seq(char *input, int s, int e, char *buf, int *ptr) {
+	int j   = *ptr;
+	int ret = s + 1;
+	switch (input[s + 1]) {
+	case 'n':  buf[j++] = '\n'; break;  // newline
+	case 't':  buf[j++] = '\t'; break;  // tab
+	case 'r':  buf[j++] = '\r'; break;  // carriage return
+	case 'b':  buf[j++] = '\b'; break;  // backspace
+	case 'f':  buf[j++] = '\f'; break;  // form feed
+	case 'v':  buf[j++] = '\v'; break;  // vertical tab
+	case 'a':  buf[j++] = '\a'; break;  // alert (bell)
+	case '\\': buf[j++] = '\\'; break; 	// backslash
+	case '"':  buf[j++] = '"' ; break;  // double quote
+	case '\'': buf[j++] = '\''; break; 	// single quote
+	case '?':  buf[j++] = '\?'; break;  // question mark (trigraph)
+	case '0': {
+		// three-digit octal: \0NN
+		if (s + 2 < e && isdigit(input[s + 2]) && isdigit(input[s + 3])) {
+			int octal = (input[s + 1] - '0') * 64 + (input[s + 2] - '0') * 8 + (input[s + 3] - '0');
+			if (octal <= 255) {
+				buf[j++] = (char)octal;
+				ret      = s + 3;
+				break;
+			}
+			buf[j++] = '\0';
+			break;
+		}
+		// two-digit octal: \0N
+		else if (s + 1 < e && isdigit(input[s + 2])) {
+			int octal = (input[s + 1] - '0') * 8 + (input[s + 2] - '0');
+			buf[j++]  = (char)octal;
+			ret       = s + 2;
+			break;
+		}
+		// plain null
+		buf[j++] = '\0';
+		break;
+	}
+	case '1': case '2': case '3': case '4': case '5': case '6': case '7': {
+		// three-digit octal: \NNN
+		if (s + 3 < e && isdigit(input[s + 2]) && isdigit(input[s + 3])) {
+			int octal = (input[s + 1] - '0') * 64 + (input[s + 2] - '0') * 8 + (input[s + 3] - '0');
+			if (octal <= 255) {
+				buf[j++] = (char)octal;
+				ret      = s + 3;
+				break;
+			}
+			buf[j++] = input[s];
+			break; // invalid, keep backslash
+		}
+		// two-digit octal
+		else if (s + 2 < e && isdigit(input[s + 2])) {
+			int octal = (input[s + 1] - '0') * 8 + (input[s + 2] - '0');
+			buf[j++]  = (char)octal;
+			ret       = s + 2;
+			break;
+		}
+		// single-digit octal
+		buf[j++] = (char)(input[s + 1] - '0');
+		break;
+	}
+	case 'x': { // Hexadecimal: \xFF
+		if (s + 3 < e && isxdigit(input[s + 2]) && isxdigit(input[s + 3])) {
+			int  hex = 0;
+			char c1  = input[s + 2];
+			char c2  = input[s + 3];
+			if (c1 >= '0' && c1 <= '9')      hex += (c1 - '0') * 16;
+			else if (c1 >= 'a' && c1 <= 'f') hex += (c1 - 'a' + 10) * 16;
+			else if (c1 >= 'A' && c1 <= 'F') hex += (c1 - 'A' + 10) * 16;
+			if (c2 >= '0' && c2 <= '9')      hex += (c2 - '0');
+			else if (c2 >= 'a' && c2 <= 'f') hex += (c2 - 'a' + 10);
+			else if (c2 >= 'A' && c2 <= 'F') hex += (c2 - 'A' + 10);
+			buf[j++] = (char)hex;
+			ret      = s + 3;
+			break;
+		}
+		buf[j++] = input[s]; // invalid hex escape, keep backslash
+		break;
+	}
+	case 'u': { // \uXXXX — not fully implemented yet
+		buf[j++] = input[s];
+		break;
+	}
+	case 'U': { // \UXXXXXXXX — not fully implemented yet
+		buf[j++] = input[s];
+		break;
+	}
+	default: { // unknown escape, keep backslash
+		buf[j++] = input[s]; 
+		break;
+	}
+	}
+	*ptr = j;
+	return ret;
 }
 
 bool lex_spaces(char *content, int *i, int *line, int *indent, int default_indent)
@@ -617,102 +713,6 @@ Token *new_token(Type type, int indent) {
 	return token;
 }
 
-int parse_escape_seq(char *input, int s, int e, char *buf, int *ptr) {
-	int j   = *ptr;
-	int ret = s + 1;
-	switch (input[s + 1]) {
-	case 'n':  buf[j++] = '\n'; break;  // newline
-	case 't':  buf[j++] = '\t'; break;  // tab
-	case 'r':  buf[j++] = '\r'; break;  // carriage return
-	case 'b':  buf[j++] = '\b'; break;  // backspace
-	case 'f':  buf[j++] = '\f'; break;  // form feed
-	case 'v':  buf[j++] = '\v'; break;  // vertical tab
-	case 'a':  buf[j++] = '\a'; break;  // alert (bell)
-	case '\\': buf[j++] = '\\'; break; 	// backslash
-	case '"':  buf[j++] = '"' ; break;  // double quote
-	case '\'': buf[j++] = '\''; break; 	// single quote
-	case '?':  buf[j++] = '\?'; break;  // question mark (trigraph)
-	case '0': {
-		// three-digit octal: \0NN
-		if (s + 2 < e && isdigit(input[s + 2]) && isdigit(input[s + 3])) {
-			int octal = (input[s + 1] - '0') * 64 + (input[s + 2] - '0') * 8 + (input[s + 3] - '0');
-			if (octal <= 255) {
-				buf[j++] = (char)octal;
-				ret      = s + 3;
-				break;
-			}
-			buf[j++] = '\0';
-			break;
-		}
-		// two-digit octal: \0N
-		else if (s + 1 < e && isdigit(input[s + 2])) {
-			int octal = (input[s + 1] - '0') * 8 + (input[s + 2] - '0');
-			buf[j++]  = (char)octal;
-			ret       = s + 2;
-			break;
-		}
-		// plain null
-		buf[j++] = '\0';
-		break;
-	}
-	case '1': case '2': case '3': case '4': case '5': case '6': case '7': {
-		// three-digit octal: \NNN
-		if (s + 3 < e && isdigit(input[s + 2]) && isdigit(input[s + 3])) {
-			int octal = (input[s + 1] - '0') * 64 + (input[s + 2] - '0') * 8 + (input[s + 3] - '0');
-			if (octal <= 255) {
-				buf[j++] = (char)octal;
-				ret      = s + 3;
-				break;
-			}
-			buf[j++] = input[s];
-			break; // invalid, keep backslash
-		}
-		// two-digit octal
-		else if (s + 2 < e && isdigit(input[s + 2])) {
-			int octal = (input[s + 1] - '0') * 8 + (input[s + 2] - '0');
-			buf[j++]  = (char)octal;
-			ret       = s + 2;
-			break;
-		}
-		// single-digit octal
-		buf[j++] = (char)(input[s + 1] - '0');
-		break;
-	}
-	case 'x': { // Hexadecimal: \xFF
-		if (s + 3 < e && isxdigit(input[s + 2]) && isxdigit(input[s + 3])) {
-			int  hex = 0;
-			char c1  = input[s + 2];
-			char c2  = input[s + 3];
-			if (c1 >= '0' && c1 <= '9')      hex += (c1 - '0') * 16;
-			else if (c1 >= 'a' && c1 <= 'f') hex += (c1 - 'a' + 10) * 16;
-			else if (c1 >= 'A' && c1 <= 'F') hex += (c1 - 'A' + 10) * 16;
-			if (c2 >= '0' && c2 <= '9')      hex += (c2 - '0');
-			else if (c2 >= 'a' && c2 <= 'f') hex += (c2 - 'a' + 10);
-			else if (c2 >= 'A' && c2 <= 'F') hex += (c2 - 'A' + 10);
-			buf[j++] = (char)hex;
-			ret      = s + 3;
-			break;
-		}
-		buf[j++] = input[s]; // invalid hex escape, keep backslash
-		break;
-	}
-	case 'u': { // \uXXXX — not fully implemented yet
-		buf[j++] = input[s];
-		break;
-	}
-	case 'U': { // \UXXXXXXXX — not fully implemented yet
-		buf[j++] = input[s];
-		break;
-	}
-	default: { // unknown escape, keep backslash
-		buf[j++] = input[s]; 
-		break;
-	}
-	}
-	*ptr = j;
-	return ret;
-}
-
 Token *parse_token(int line, int s, int e, Type type, int indent) {
 	Source *src = ura.sources[ura.sources_pos - 1];
 	Token *new       = new_token(type, indent);
@@ -823,11 +823,61 @@ void set_name(Token *token, char *name) {
 	token->name = name ? strdup(name) : NULL;
 }
 
+Token *next() { return ura.tokens[ura.exe_pos++]; }
+
+Token *peek(int index) { return ura.tokens[ura.exe_pos + index];}
+
+Token *find(Type type, ...) {
+	if (ura.error_count) return NULL;
+	va_list ap;
+	va_start(ap, type);
+	while (type && ura.tokens[ura.exe_pos]) {
+		if (type == ura.tokens[ura.exe_pos]->type) return ura.tokens[ura.exe_pos++];
+		type = va_arg(ap, Type);
+	}
+	return NULL;
+}
+
+int get_operation_precedence(Type type)
+{
+   switch(type)
+   {
+   case ASSIGN: return 10;
+   case ADD:    return 20;
+   case SUB:    return 20;
+   case MUL:    return 30;
+   case DIV:    return 30;
+   case MOD:    return 30;
+   default:
+      break;
+   }
+   return 0;
+}
+
+bool includes(Type to_find, ...) {
+	if (ura.error_count) return false;
+	va_list ap;
+	Type    current;
+	va_start(ap, to_find);
+	while ((current = va_arg(ap, Type)) != 0)
+		if (current == to_find) return true;
+	return false;
+}
+
+bool within(int indent) {
+	Token *curr = ura.tokens[ura.exe_pos];
+	return !ura.error_count && curr->indent > indent && curr->type != END;
+}
+
 Node *new_node(Token *token) {
 	debug("new node: %k\n", token);
 	Node *new  = allocate(1, sizeof(Node));
 	new->token = token;
 	return new;
+}
+
+Node *syntax_error() {
+	 return new_node(new_token(SYNTAX_ERROR, -1));
 }
 
 void enter_scope(Node *node) {
@@ -846,15 +896,14 @@ void exit_scope() {
 	ura.scope = ura.scopes[ura.scopes_count];
 }
 
-Token *find(Type type, ...) {
-	if (ura.error_count) return NULL;
-	va_list ap;
-	va_start(ap, type);
-	while (type) {
-		if (type == ura.tokens[ura.exe_pos]->type) return ura.tokens[ura.exe_pos++];
-		type = va_arg(ap, Type);
-	}
-	return NULL;
+void declare_variable(Token *token) {
+	for (int v = 0; v < ura.scope->variables_count; v++)
+		if (CHECK(strcmp(ura.scope->variables[v]->name, token->name) == 0,
+		          "redeclaration of variable '%s'", token->name))
+			return;
+	resize_array(ura.scope->variables, Token *, ura.scope->variables_size,
+	             ura.scope->variables_count);
+	ura.scope->variables[ura.scope->variables_count++] = token;
 }
 
 Token *find_variable(char *name) {
@@ -868,33 +917,25 @@ Token *find_variable(char *name) {
 	return NULL;
 }
 
-void declare_variable(Token *token) {
-	for (int v = 0; v < ura.scope->variables_count; v++)
-		if (CHECK(strcmp(ura.scope->variables[v]->name, token->name) == 0,
-		          "redeclaration of variable '%s'", token->name))
+void declare_function(Node *fn) {
+	for (int f = 0; f < ura.scope->functions_count; f++)
+		if (CHECK(strcmp(ura.scope->functions[f]->token->name, fn->token->name) == 0,
+		          "redeclaration of function '%s'", fn->token->name))
 			return;
-	resize_array(ura.scope->variables, Token *, ura.scope->variables_size,
-	             ura.scope->variables_count);
-	ura.scope->variables[ura.scope->variables_count++] = token;
+	resize_array(ura.scope->functions, Node *, ura.scope->functions_size,
+	             ura.scope->functions_count);
+	ura.scope->functions[ura.scope->functions_count++] = fn;
 }
 
-bool includes(Type to_find, ...) {
-	if (ura.error_count) return false;
-	va_list ap;
-	Type    current;
-	va_start(ap, to_find);
-	while ((current = va_arg(ap, Type)) != 0)
-		if (current == to_find) return true;
-	return false;
-}
-
-Node *syntax_error() {
-	 return new_node(new_token(SYNTAX_ERROR, -1));
-}
-
-bool within(int indent) {
-	Token *curr = ura.tokens[ura.exe_pos];
-	return !ura.error_count && curr->indent > indent && curr->type != END;
+Node *find_function(char *name) {
+	for (int s = ura.scopes_count; s >= 0; s--) {
+		Node *scope = ura.scopes[s];
+		if (!scope) continue;
+		for (int f = 0; f < scope->functions_count; f++)
+			if (scope->functions[f]->token->name && strcmp(scope->functions[f]->token->name, name) == 0)
+				return scope->functions[f];
+	}
+	return NULL;
 }
 
 Node *fdec_node(Node *node) {
@@ -902,15 +943,36 @@ Node *fdec_node(Node *node) {
 	enter_scope(node);
 	if (!find(LPAR, 0))
 		parse_error(node->token, "expected '(' after function %s", node->token->name);
-	if (!find(RPAR, 0)) 
+	while (!ura.error_count && peek(0)->type != RPAR) {
+		Token *param = find(ID, 0);
+		if (!param) {
+			parse_error(node->token, "expected parameter name in function %s", node->token->name);
+			break;
+		}
+		if (!is_data_type(peek(0))) {
+			parse_error(param, "expected data type for parameter %s", param->name);
+			break;
+		}
+		param->ret_type = next()->type;
+		param->is_param = true;
+		param->is_dec   = true;
+		resize_array(node->token->Fn.params, Token *, node->token->Fn.params_size,
+		             node->token->Fn.params_count);
+		node->token->Fn.params[node->token->Fn.params_count++] = param;
+		while (find(COMA, 0));
+	}
+	if (!find(RPAR, 0))
 		parse_error(node->token, "expected ')' after function %s", node->token->name);
-	// if(strcmp(fname->name, "main")) {
-	// 	// TODO: add other data types, and structs
-	// 	Token *ret = find(INT, 0);
-	// 	node->token->ret_type = ret->type;
-	// }
-	// else
-	node->token->ret_type = INT;
+
+	if(strcmp(node->token->name, "main") == 0) {
+		node->token->ret_type = INT;
+	}
+	// TODO: expect data type
+	else if(is_data_type(peek(0))) {
+		node->token->ret_type = next()->type;
+	}
+	else
+		parse_error(node->token, "expected <data type> after function %s", node->token->name);
 	if (!find(DOTS, 0))
 		parse_error(node->token, "expected ':' after function %s", node->token->name);
 
@@ -921,4 +983,98 @@ Node *fdec_node(Node *node) {
 
 	exit_scope();
 	return node;
+}
+
+Node *fcall_node(Node *node) {
+	node->token->type = FCALL;
+	if (!find(LPAR, 0))
+		parse_error(node->token, "expected '(' after %s", node->token->name);
+	while (!ura.error_count && peek(0)->type != RPAR) {
+		resize_array(node->children, Node *, node->children_size, node->children_count);
+		node->children[node->children_count++] = expr_node(0);
+		while (find(COMA, 0));
+	}
+	if (!find(RPAR, 0))
+		parse_error(node->token, "expected ')' after %s arguments", node->token->name);
+	return node;
+}
+
+bool is_data_type(Token *token) {
+	return token->is_dec && includes(token->type, DATA_TYPES, 0); 
+}
+
+TypeRef to_llvm_type(Type type) {
+   switch (type) {
+   case INT:   return ura.i32;
+   case LONG:  return ura.i64;
+   case SHORT: return ura.i16;
+   case CHAR:  return ura.i8;
+   case BOOL:  return ura.i1;
+   case VOID:  return ura.vd;
+   default: TODO(1, "to_llvm_type: unhandled type %t", type); return NULL;
+   }
+}
+
+void init_module(char *name) {
+   ura.context = LLVMContextCreate();
+   ura.module  = LLVMModuleCreateWithNameInContext(name, ura.context);
+   ura.builder = LLVMCreateBuilderInContext(ura.context);
+   ura.vd  = LLVMVoidTypeInContext(ura.context);
+   ura.i1  = LLVMInt1TypeInContext(ura.context);
+   ura.i8  = LLVMInt8TypeInContext(ura.context);
+   ura.i16 = LLVMInt16TypeInContext(ura.context);
+   ura.i32 = LLVMInt32TypeInContext(ura.context);
+   ura.i64 = LLVMInt64TypeInContext(ura.context);
+}
+
+void finalize_module(char *ll_path) {
+   char *error = NULL;
+   if (LLVMVerifyModule(ura.module, LLVMReturnStatusAction, &error))
+      CHECK(1, "module verification failed:\n%s", error);
+   LLVMDisposeMessage(error);
+   LLVMPrintModuleToFile(ura.module, ll_path, NULL);
+}
+
+void free_token(Token *token) {
+   if (!token) return;
+   free(token->name);
+   free(token->Chars.value);
+   free(token->llvm.dims);
+   free(token);
+}
+
+void free_node(Node *node) {
+   if (!node) return;
+   free_node(node->left);
+   free_node(node->right);
+   for (int i = 0; i < node->children_count; i++)
+      free_node(node->children[i]);
+   free(node->children);
+   free(node->variables);
+   free(node->functions);
+   free(node->structs);
+   free(node->modules);
+   free(node);
+}
+
+void free_memory() {
+   free_node(ura.head);
+
+   for (int i = 0; i < ura.tokens_count; i++)
+      free_token(ura.tokens[i]);
+   free(ura.tokens);
+
+   for (int i = 0; i < ura.sources_count; i++) {
+      free(ura.sources[i]->content);
+      free(ura.sources[i]);
+   }
+   free(ura.sources);
+
+   free(ura.scopes);
+
+   if (ura.context) {
+      LLVMDisposeBuilder(ura.builder);
+      LLVMDisposeModule(ura.module);
+      LLVMContextDispose(ura.context);
+   }
 }
