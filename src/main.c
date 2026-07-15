@@ -49,8 +49,6 @@ void tokenize(int default_indent) {
    exit_source();
 }
 
-int MAX_OP = 1000;
-
 Node *prime_node() {
    Token *token = next();
    switch(token->type)
@@ -58,6 +56,7 @@ Node *prime_node() {
    case INT: return new_node(token);
    case FDEC: {
       Node *node = new_node(token);
+      // if(!peek(0))
    	Token *fname = find(ID, 0);
 	   // TODO: check if name does not exists
 	   set_name(node->token, fname->name);
@@ -80,7 +79,7 @@ Node *prime_node() {
    }
    case RETURN: {
       Node *node = new_node(token);
-      node->left = expr_node(MAX_OP);
+      node->left = expr_node(0);
       return node;
    }
    default:
@@ -204,8 +203,8 @@ void typecheck(Node *node) {
          typecheck(node->left);
          typecheck(node->right);
          if (CHECK(
-            node->left->token->ret_type != node->right->token->ret_type, 
-            "type mismatch in assignment"))
+            node->left->token->ret_type != node->right->token->ret_type,
+            "type mismatch between operands"))
             return;
          token->ret_type = node->left->token->ret_type;
          break;
@@ -226,6 +225,13 @@ void codegen_fn_signature(Node *fn) {
    token->llvm.func_type = LLVMFunctionType(to_llvm_type(token->ret_type), params, n, 0);
    token->llvm.elem      = LLVMAddFunction(ura.module, token->name, token->llvm.func_type);
    free(params);
+}
+
+Value address_of(Node *node) {
+   Token *token = node->token;
+   if (token->is_dec)
+      return token->llvm.elem = LLVMBuildAlloca(ura.builder, to_llvm_type(token->ret_type), token->name);
+   return find_variable(token->name)->llvm.elem;
 }
 
 void codegen(Node *node) {
@@ -282,17 +288,36 @@ void codegen(Node *node) {
          free(args);
          break;
       }
-      default: {
+      case ASSIGN: {
+         Value dest = address_of(node->left);
+         codegen(node->right);
+         LLVMBuildStore(ura.builder, node->right->token->llvm.elem, dest);
+         token->llvm.elem = node->right->token->llvm.elem;
+         break;
+      }
+      case ADD: case SUB: case MUL: case DIV: case MOD: {
          codegen(node->left);
          codegen(node->right);
-         LLVMBuildStore(ura.builder, node->right->token->llvm.elem, node->left->token->llvm.elem);
-         token->llvm.elem = node->right->token->llvm.elem;
+         Value left  = node->left->token->llvm.elem;
+         Value right = node->right->token->llvm.elem;
+         switch (token->type) {
+            case ADD: token->llvm.elem = LLVMBuildAdd(ura.builder, left, right, "add");  break;
+            case SUB: token->llvm.elem = LLVMBuildSub(ura.builder, left, right, "sub");  break;
+            case MUL: token->llvm.elem = LLVMBuildMul(ura.builder, left, right, "mul");  break;
+            case DIV: token->llvm.elem = LLVMBuildSDiv(ura.builder, left, right, "div"); break;
+            case MOD: token->llvm.elem = LLVMBuildSRem(ura.builder, left, right, "mod"); break;
+            default: break;
+         }
+         break;
+      }
+      default: {
+         CHECK(1, "codegen: unhandled node '%s'", to_string(token->type));
          break;
       }
    }
 }
 
-void generate_ir(){
+void generate_ir() {
    if(ura.error_count || !ura.head) return;
    for (int i = 0; i < ura.head->children_count; i++)
       if (ura.head->children[i]->token->type == FDEC)
@@ -303,7 +328,7 @@ void generate_ir(){
       typecheck(ura.head->children[i]);
 }
 
-void generate_asm(){
+void generate_asm() {
    if(ura.error_count || !ura.head) return;
    init_module(ura.output);
    for (int i = 0; i < ura.head->children_count; i++)
