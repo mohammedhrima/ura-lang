@@ -944,7 +944,8 @@ Node *fdec_node(Node *node) {
 	if (!find(LPAR, 0))
 		parse_error(node->token, "expected '(' after function %s", node->token->name);
 	while (!ura.error_count && peek(0)->type != RPAR) {
-		Token *param = find(ID, 0);
+		bool   is_ref = find(REF, 0) != NULL;
+		Token *param  = find(ID, 0);
 		if (!param) {
 			parse_error(node->token, "expected parameter name in function %s", node->token->name);
 			break;
@@ -956,6 +957,7 @@ Node *fdec_node(Node *node) {
 		param->ret_type = next()->type;
 		param->is_param = true;
 		param->is_dec   = true;
+		param->is_ref   = is_ref;
 		resize_array(node->token->Fn.params, Token *, node->token->Fn.params_size,
 		             node->token->Fn.params_count);
 		node->token->Fn.params[node->token->Fn.params_count++] = param;
