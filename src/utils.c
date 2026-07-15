@@ -1178,6 +1178,41 @@ void set_debug_location(Token *token) {
    LLVMSetCurrentDebugLocation2(ura.builder, loc);
 }
 
+Value get_or_declare(char *name, TypeRef fn_type) {
+   Value fn = LLVMGetNamedFunction(ura.module, name);
+   if (!fn) fn = LLVMAddFunction(ura.module, name, fn_type);
+   return fn;
+}
+
+void guard_nonzero(Token *op, Value divisor) {
+   Value fn     = LLVMGetBasicBlockParent(LLVMGetInsertBlock(ura.builder));
+   Block trap   = LLVMAppendBasicBlockInContext(ura.context, fn, "divzero");
+   Block cont   = LLVMAppendBasicBlockInContext(ura.context, fn, "cont");
+   Value zero   = LLVMConstInt(LLVMTypeOf(divisor), 0, 0);
+   Value iszero = LLVMBuildICmp(ura.builder, LLVMIntEQ, divisor, zero, "iszero");
+   LLVMBuildCondBr(ura.builder, iszero, trap, cont);
+
+   LLVMPositionBuilderAtEnd(ura.builder, trap);
+   char   *what = (op->type == MOD) ? "modulo" : "division";
+   char   *text = format("%s:%d: %s by zero\n", ura.sources[0]->filename, op->line, what);
+   Value   msg  = LLVMBuildGlobalStringPtr(ura.builder, text, "divzero_msg");
+   TypeRef i8p  = LLVMPointerType(ura.i8, 0);
+
+   TypeRef write_params[3] = { ura.i32, i8p, ura.i64 };
+   TypeRef write_ty        = LLVMFunctionType(ura.i64, write_params, 3, 0);
+   Value   write_fn        = get_or_declare("write", write_ty);
+   Value   write_args[3]   = { LLVMConstInt(ura.i32, 2, 0), msg, LLVMConstInt(ura.i64, strlen(text), 0) };
+   LLVMBuildCall2(ura.builder, write_ty, write_fn, write_args, 3, "");
+
+   TypeRef exit_ty      = LLVMFunctionType(ura.vd, (TypeRef[]){ ura.i32 }, 1, 0);
+   Value   exit_fn      = get_or_declare("exit", exit_ty);
+   Value   exit_args[1] = { LLVMConstInt(ura.i32, 1, 0) };
+   LLVMBuildCall2(ura.builder, exit_ty, exit_fn, exit_args, 1, "");
+
+   LLVMBuildUnreachable(ura.builder);
+   LLVMPositionBuilderAtEnd(ura.builder, cont);
+}
+
 void free_token(Token *token) {
    if (!token) return;
    free(token->name);

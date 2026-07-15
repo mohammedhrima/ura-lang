@@ -12,7 +12,7 @@ void parse_arguments(int argc, char **argv)
       char *arg = argv[i];
 #define MATCH(name, field, val) if (strcmp(arg, name) == 0) { field = val; continue; }
       MATCH("-debug", ura.enable_debug, true);
-      MATCH("-exec",  ura.enable_exec,  true);
+      // MATCH("-exec",  ura.enable_exec,  true);
       MATCH("-san",   ura.enable_san,   true);
       MATCH("-O0", ura.flags, PASSES_O0);   
       MATCH("-O1", ura.flags, PASSES_O1);
@@ -409,6 +409,7 @@ void codegen(Node *node) {
          codegen(node->right);
          Value left  = node->left->token->llvm.elem;
          Value right = node->right->token->llvm.elem;
+         if (token->type == DIV || token->type == MOD) guard_nonzero(token, right);
          switch (token->type) {
             case ADD: token->llvm.elem = LLVMBuildAdd(ura.builder, left, right, "add");  break;
             case SUB: token->llvm.elem = LLVMBuildSub(ura.builder, left, right, "sub");  break;
@@ -444,7 +445,7 @@ void generate_asm() {
    for (int i = 0; i < ura.head->children_count; i++)
       codegen(ura.head->children[i]);
    finalize_module(ura.ll_path);
-   if (ura.error_count || !ura.enable_exec) return;
+   if (ura.error_count) return;
    char *cc  = ura.enable_san ? "/usr/bin/clang" : "clang";
    char *san = ura.enable_san ? " -fsanitize=address,undefined -fno-omit-frame-pointer -g" : "";
    char *cmd = format("%s%s %s -o %s 2>/dev/null", cc, san, ura.ll_path, ura.output);
