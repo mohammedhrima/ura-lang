@@ -175,6 +175,9 @@ struct LLVM {
 	Block   start;
 	Block   then;
 	Block   end;
+	Block       prev_block;
+	MetadataRef prev_scope;
+	MetadataRef prev_loc;
 };
 
 // struct AutoClean {
@@ -280,10 +283,10 @@ struct UraGlobal {
     // Module           module;
     // Builder          builder;
     // TypeRef          vd, f32, i1, i2, i4, i8, i16, i32, i64, p8, p32;
-    // LLVMDIBuilderRef debug_builder;
-    // LLVMMetadataRef  debug_compile_unit;
-    // LLVMMetadataRef  debug_file;
-    // LLVMMetadataRef  debug_scope;
+    LLVMDIBuilderRef debug_builder;
+    MetadataRef      debug_compile_unit;
+    MetadataRef      debug_file;
+    MetadataRef      debug_scope;
 	 EXPAND(Node**, scopes);
 	 EXPAND(Token **, tokens);
 	 EXPAND(Source **, sources);
@@ -294,7 +297,7 @@ struct UraGlobal {
 	 int					exe_pos;
 
 	 Context				context;
-	 Module				module;
+	 Module				    module;
 	 Builder				builder;
 	 TypeRef				vd, i1, i8, i16, i32, i64;
 };
@@ -358,6 +361,9 @@ Value default_value(Token *token);
 void setup_paths(char *path_name);
 void init_module(char *name);
 void finalize_module(char *ll_path);
+void debug_enter_function(Token *token);
+void debug_exit_function(Token *token);
+void set_debug_location(Token *token);
 
 void free_token(Token *token);
 void free_node(Node *node);

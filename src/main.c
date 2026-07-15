@@ -313,10 +313,9 @@ void codegen(Node *node) {
    Token *token = node->token;
    switch (token->type) {
       case FDEC: {
-         Block prev = LLVMGetInsertBlock(ura.builder);
          codegen_fn_signature(node);
-         Block entry = LLVMAppendBasicBlockInContext(ura.context, token->llvm.elem, "entry");
-         LLVMPositionBuilderAtEnd(ura.builder, entry);
+        
+         debug_enter_function(token);
          enter_scope(node);
          for (int i = 0; i < token->Fn.params_count; i++) {
             Token  *param = token->Fn.params[i];
@@ -325,14 +324,17 @@ void codegen(Node *node) {
             param->llvm.elem = LLVMBuildAlloca(ura.builder, pt, param->name);
             LLVMBuildStore(ura.builder, LLVMGetParam(token->llvm.elem, i), param->llvm.elem);
          }
-         for (int i = 0; i < node->children_count; i++)
+         for (int i = 0; i < node->children_count; i++) {
+            set_debug_location(node->children[i]->token);
             codegen(node->children[i]);
+         }
          if (!LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ura.builder))) {
             if (token->ret_type == VOID) LLVMBuildRetVoid(ura.builder);
             else LLVMBuildRet(ura.builder, default_value(token));
          }
          exit_scope();
-         if (prev) LLVMPositionBuilderAtEnd(ura.builder, prev);
+
+         debug_exit_function(token);
          break;
       }
       case INT: {
@@ -437,10 +439,10 @@ void generate_ir() {
 
 void generate_asm() {
    if(ura.error_count || !ura.head) return;
+   setup_paths(ura.sources[0]->filename);
    init_module(ura.output);
    for (int i = 0; i < ura.head->children_count; i++)
       codegen(ura.head->children[i]);
-   setup_paths(ura.sources[0]->filename);
    finalize_module(ura.ll_path);
    if (ura.error_count || !ura.enable_exec) return;
    char *cc  = ura.enable_san ? "/usr/bin/clang" : "clang";
