@@ -192,10 +192,15 @@ void typecheck(Node *node) {
          if (CHECK(node->children_count != fn->Fn.params_count,
                    "wrong number of arguments to '%s'", token->name))
             return;
-         for (int i = 0; i < node->children_count; i++)
+         for (int i = 0; i < node->children_count; i++) {
             if (CHECK(node->children[i]->token->ret_type != fn->Fn.params[i]->ret_type,
                       "argument %d type mismatch in call to '%s'", i + 1, token->name))
                return;
+            if (fn->Fn.params[i]->is_ref &&
+                CHECK(node->children[i]->token->type != ID,
+                      "argument %d to '%s' must be a variable (ref parameter)", i + 1, token->name))
+               return;
+         }
          token->ret_type = fn->ret_type;
          break;
       }
@@ -219,8 +224,10 @@ void codegen_fn_signature(Node *fn) {
    TypeRef *params = NULL;
    if (n > 0) {
       params = allocate(n, sizeof(TypeRef));
-      for (int i = 0; i < n; i++)
-         params[i] = to_llvm_type(token->Fn.params[i]->ret_type);
+      for (int i = 0; i < n; i++) {
+         TypeRef pt = to_llvm_type(token->Fn.params[i]->ret_type);
+         params[i] = token->Fn.params[i]->is_ref ? LLVMPointerType(pt, 0) : pt;
+      }
    }
    token->llvm.func_type = LLVMFunctionType(to_llvm_type(token->ret_type), params, n, 0);
    token->llvm.elem      = LLVMAddFunction(ura.module, token->name, token->llvm.func_type);
@@ -231,7 +238,10 @@ Value address_of(Node *node) {
    Token *token = node->token;
    if (token->is_dec)
       return token->llvm.elem = LLVMBuildAlloca(ura.builder, to_llvm_type(token->ret_type), token->name);
-   return find_variable(token->name)->llvm.elem;
+   Token *decl = find_variable(token->name);
+   if (decl->is_ref)
+      return LLVMBuildLoad2(ura.builder, LLVMPointerType(to_llvm_type(decl->ret_type), 0), decl->llvm.elem, "ref");
+   return decl->llvm.elem;
 }
 
 void codegen(Node *node) {
@@ -244,8 +254,10 @@ void codegen(Node *node) {
          LLVMPositionBuilderAtEnd(ura.builder, entry);
          enter_scope(node);
          for (int i = 0; i < token->Fn.params_count; i++) {
-            Token *param     = token->Fn.params[i];
-            param->llvm.elem = LLVMBuildAlloca(ura.builder, to_llvm_type(param->ret_type), param->name);
+            Token  *param = token->Fn.params[i];
+            TypeRef pt    = to_llvm_type(param->ret_type);
+            if (param->is_ref) pt = LLVMPointerType(pt, 0);
+            param->llvm.elem = LLVMBuildAlloca(ura.builder, pt, param->name);
             LLVMBuildStore(ura.builder, LLVMGetParam(token->llvm.elem, i), param->llvm.elem);
          }
          for (int i = 0; i < node->children_count; i++)
@@ -261,8 +273,13 @@ void codegen(Node *node) {
          if (token->is_dec)
             token->llvm.elem = LLVMBuildAlloca(ura.builder, to_llvm_type(token->ret_type), token->name);
          else {
-            Token *decl      = find_variable(token->name);
-            token->llvm.elem = LLVMBuildLoad2(ura.builder, to_llvm_type(decl->ret_type), decl->llvm.elem, token->name);
+            Token  *decl = find_variable(token->name);
+            TypeRef t    = to_llvm_type(decl->ret_type);
+            if (decl->is_ref) {
+               Value ptr = LLVMBuildLoad2(ura.builder, LLVMPointerType(t, 0), decl->llvm.elem, "ref");
+               token->llvm.elem = LLVMBuildLoad2(ura.builder, t, ptr, token->name);
+            } else
+               token->llvm.elem = LLVMBuildLoad2(ura.builder, t, decl->llvm.elem, token->name);
          }
          break;
       }
@@ -279,8 +296,12 @@ void codegen(Node *node) {
          if (n > 0) {
             args = allocate(n, sizeof(Value));
             for (int i = 0; i < n; i++) {
-               codegen(node->children[i]);
-               args[i] = node->children[i]->token->llvm.elem;
+               if (fn->Fn.params[i]->is_ref)
+                  args[i] = address_of(node->children[i]);
+               else {
+                  codegen(node->children[i]);
+                  args[i] = node->children[i]->token->llvm.elem;
+               }
             }
          }
          char *name       = fn->ret_type == VOID ? "" : "call";
