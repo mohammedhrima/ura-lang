@@ -313,7 +313,7 @@ struct UraGlobal {
 	 int					exe_pos;
 
 	 Context				context;
-	 Module					module;
+	 Module				module;
 	 Builder				builder;
 	 TypeRef				vd, i1, i8, i16, i32, i64;
 };
@@ -354,6 +354,7 @@ Node *syntax_error();
 void pnode(Node *node, char *indent);
 Node *fdec_node(Node *node);
 Node *fcall_node(Node *node);
+void parse_type(Token *target);
 
 
 Token *next();
@@ -369,6 +370,7 @@ bool within(int indent);
 bool is_data_type(Token *token);
 
 TypeRef to_llvm_type(Type type);
+TypeRef llvm_type_of(Token *token);
 void init_module(char *name);
 void finalize_module(char *ll_path);
 
