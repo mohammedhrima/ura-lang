@@ -1004,7 +1004,6 @@ Node *fdec_node(Node *node) {
 	if(strcmp(node->token->name, "main") == 0) {
 		node->token->ret_type = INT;
 	}
-	// TODO: expect data type
 	else if(is_data_type(peek(0))) {
 		node->token->ret_type = next()->type;
 	}
@@ -1068,6 +1067,23 @@ Value default_value(Token *token) {
    return LLVMConstNull(llvm_type_of(token));
 }
 
+void setup_paths(char *path_name) {
+   char *slash = strrchr(path_name, '/');
+   if (slash) {
+      ura.dir = strdup(path_name);
+      ura.dir[slash - path_name] = '\0';
+      ura.base = strdup(slash + 1);
+   } else {
+      ura.dir = strdup(".");
+      ura.base = strdup(path_name);
+   }
+   char *dot = strrchr(ura.base, '.');
+   if (dot) *dot = '\0';
+   ura.build_dir = format("%s/build", ura.dir);
+   mkdir(ura.build_dir, 0755);
+   ura.ll_path = format("%s/%s.ll", ura.build_dir, ura.base);
+}
+
 void init_module(char *name) {
    ura.context = LLVMContextCreate();
    ura.module  = LLVMModuleCreateWithNameInContext(name, ura.context);
@@ -1078,13 +1094,29 @@ void init_module(char *name) {
    ura.i16 = LLVMInt16TypeInContext(ura.context);
    ura.i32 = LLVMInt32TypeInContext(ura.context);
    ura.i64 = LLVMInt64TypeInContext(ura.context);
+   LLVMInitializeNativeTarget();
+   LLVMInitializeNativeAsmPrinter();
+   LLVMInitializeNativeAsmParser();
+   char *triple = LLVMGetDefaultTargetTriple();
+   LLVMSetTarget(ura.module, triple);
+   LLVMDisposeMessage(triple);
 }
 
 void finalize_module(char *ll_path) {
    char *error = NULL;
+   PassBuilderOptions opts = LLVMCreatePassBuilderOptions();
+   if (ura.flags) {
+      Error err = LLVMRunPasses(ura.module, ura.flags, NULL, opts);
+      if (err) {
+         char *msg = LLVMGetErrorMessage(err);
+         CHECK(1, "optimizer error: %s", msg);
+         LLVMDisposeErrorMessage(msg);
+      }
+   }
    if (LLVMVerifyModule(ura.module, LLVMReturnStatusAction, &error))
       CHECK(1, "module verification failed:\n%s", error);
    LLVMDisposeMessage(error);
+   LLVMDisposePassBuilderOptions(opts);
    LLVMPrintModuleToFile(ura.module, ll_path, NULL);
 }
 
