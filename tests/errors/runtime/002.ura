@@ -1,0 +1,5 @@
+// errors/runtime/002 — calling a null (zero-init) function value crashes
+
+main():
+    f fn(int) int
+    return f(21)
