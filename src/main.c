@@ -8,15 +8,31 @@ void parse_arguments(int argc, char **argv)
    // if (CHECK(!ura.lib, "URA_LIB not set")) return;
    ura.output = "exe.out";
    
-   // TODO: compile only 1 file, if alot import them with each others
    for (int i = 1; i < argc && !ura.error_count; i++) {
       char *arg = argv[i];
-      size_t n = strlen(arg);
-      CHECK(n <= 4 || strcmp(arg + n - 4, ".ura") != 0, "invalid file: %s\n", arg);
-      new_source(arg);
+#define MATCH(name, field, val) if (strcmp(arg, name) == 0) { field = val; continue; }
+      MATCH("-debug", ura.enable_debug, true);
+      MATCH("-exec",  ura.enable_exec,  true);
+      MATCH("-san",   ura.enable_san,   true);
+      MATCH("-O0", ura.flags, PASSES_O0);   
+      MATCH("-O1", ura.flags, PASSES_O1);
+      MATCH("-O2", ura.flags, PASSES_O2);   
+      MATCH("-O3", ura.flags, PASSES_O3);
+      MATCH("-Os", ura.flags, PASSES_Os);   
+      MATCH("-Oz", ura.flags, PASSES_Oz);
+#undef MATCH
+      if (strcmp(arg, "-o") == 0) {
+         if (i + 1 >= argc) { parse_error(NULL, "'-o' requires an argument"); return; }
+         ura.output = argv[++i];
+      } else if (arg[0] == '-') {
+         parse_error(NULL, "unknown flag '%s'", arg);
+      } else {
+         size_t n = strlen(arg);
+         if (n <= 4 || strcmp(arg + n - 4, ".ura") != 0) parse_error(NULL, "invalid file '%s'", arg);
+         else new_source(arg);
+      }
    }
    if (ura.error_count) return;
-   // TODO: error if there is no input
 }
 
 void tokenize(int default_indent) {
@@ -424,10 +440,12 @@ void generate_asm() {
    init_module(ura.output);
    for (int i = 0; i < ura.head->children_count; i++)
       codegen(ura.head->children[i]);
-   mkdir("build", 0755);
-   finalize_module("build/out.ll");
-   if (ura.error_count) return;
-   char *cmd = format("clang build/out.ll -o %s 2>/dev/null", ura.output);
+   setup_paths(ura.sources[0]->filename);
+   finalize_module(ura.ll_path);
+   if (ura.error_count || !ura.enable_exec) return;
+   char *cc  = ura.enable_san ? "/usr/bin/clang" : "clang";
+   char *san = ura.enable_san ? " -fsanitize=address,undefined -fno-omit-frame-pointer -g" : "";
+   char *cmd = format("%s%s %s -o %s 2>/dev/null", cc, san, ura.ll_path, ura.output);
    system(cmd);
    free(cmd);
    debug(GREEN("compiled -> %s\n"), ura.output);

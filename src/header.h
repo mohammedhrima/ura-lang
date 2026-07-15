@@ -106,6 +106,8 @@ typedef LLVMTargetDataRef TargetData;
 typedef LLVMTypeKind      TypeKind;
 typedef LLVMAttributeRef  AttributeRef;
 typedef LLVMMetadataRef   MetadataRef;
+typedef LLVMErrorRef      Error;
+typedef LLVMPassBuilderOptionsRef PassBuilderOptions;
 
 #define PointerType  LLVMPointerTypeKind
 #define IntegerType  LLVMIntegerTypeKind
@@ -249,9 +251,10 @@ struct UraGlobal {
     int              max_errors;
     // Node            *syntax_error_node;
     bool             enable_debug;
-    // bool             enable_san;
+    bool             enable_exec;
+    bool             enable_san;
     // bool             enable_prep;
-    // char            *flags;
+    char            *flags;
     char            *lib;
     // const char      *ura_target_os;
     
@@ -268,10 +271,10 @@ struct UraGlobal {
     // Node            *ura_scope;
     // char            *current_gen_module;
     
-    // char            *dir;
-    // char            *base;
-    // char            *build_dir;
-    // char            *ll_path;
+    char            *dir;
+    char            *base;
+    char            *build_dir;
+    char            *ll_path;
     
     // Context          context;
     // Module           module;
@@ -352,6 +355,7 @@ bool is_data_type(Token *token);
 TypeRef to_llvm_type(Type type);
 TypeRef llvm_type_of(Token *token);
 Value default_value(Token *token);
+void setup_paths(char *path_name);
 void init_module(char *name);
 void finalize_module(char *ll_path);
 
