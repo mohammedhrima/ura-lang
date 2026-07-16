@@ -195,6 +195,7 @@ void analyze(Node *node) {
             analyze(node->children[i]);
          break;
       case ASSIGN: case ADD: case SUB: case MUL: case DIV: case MOD:
+      case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN: case MOD_ASSIGN:
       case EQUAL: case NOT_EQUAL: case LESS: case GREAT: case LESS_EQUAL: case GREAT_EQUAL:
       case AND: case OR:
          analyze(node->left);
@@ -243,6 +244,7 @@ void type_check(Node *node) {
          break;
       }
       case ASSIGN: case ADD: case SUB: case MUL: case DIV: case MOD:
+      case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN: case MOD_ASSIGN:
       case EQUAL: case NOT_EQUAL: case LESS: case GREAT: case LESS_EQUAL: case GREAT_EQUAL:
       case AND: case OR:
          type_check_binop(node); break;
@@ -282,6 +284,10 @@ void code_gen(Node *node) {
                                               to_llvm_type(token->ret_type), 1, "cast");
          break;
       case ASSIGN: code_gen_assign(node); break;
+      case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: 
+      case DIV_ASSIGN: case MOD_ASSIGN:
+         code_gen_compound(node); 
+         break;
       case ADD: case SUB: case MUL: case DIV: case MOD:
       case EQUAL: case NOT_EQUAL: case LESS: case GREAT:
       case LESS_EQUAL: case GREAT_EQUAL:

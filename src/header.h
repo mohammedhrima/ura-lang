@@ -391,6 +391,7 @@ void code_gen_fcall(Node *node);
 void code_gen_assign(Node *node);
 void code_gen_binop(Node *node);
 void code_gen_output(Node *node);
+void code_gen_compound(Node *node);
 
 void free_token(Token *token);
 void free_node(Node *node);
