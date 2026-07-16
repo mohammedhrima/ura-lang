@@ -71,6 +71,12 @@ Node *prime_node() {
    switch(token->type)
    {
    case INT: case BOOL: case CHARS: return new_node(token);
+   case LPAR: {
+      Node *node = expr_node(0);
+      if (!find(RPAR, 0))
+         parse_error(token, "expected ')' after expression");
+      return node;
+   }
    case PROTO:
       if (peek(0)->type != FDEC) {
          parse_error(token, "expected 'fn' after 'proto'");
@@ -107,6 +113,17 @@ Node *prime_node() {
    case RETURN: {
       Node *node = new_node(token);
       node->left = expr_node(0);
+      return node;
+   }
+   case NOT: case BNOT: {           
+      Node *node = new_node(token);
+      node->left = prime_node();
+      return node;
+   }
+   case SUB: {                     
+      Node *node  = new_node(token);
+      node->left  = new_node(new_token(INT, token->indent));
+      node->right = prime_node();
       return node;
    }
    default:
@@ -166,6 +183,7 @@ void analyze(Node *node) {
       case INT: case BOOL: case CHARS: break;
       case RETURN: analyze(node->left); break;
       case FCALL:  analyze_fcall(node); break;
+      case NOT: case BNOT: analyze(node->left); break;
       case OUTPUT:
          for (int i = 0; i < node->children_count; i++)
             analyze(node->children[i]);
@@ -202,6 +220,12 @@ void type_check(Node *node) {
             type_check(node->children[i]);
          token->ret_type = VOID;
          break;
+      case NOT: case BNOT:
+         type_check(node->left);
+         if (token->type == NOT && node->left->token->ret_type != BOOL)
+            parse_error(token, "'not' needs a bool operand");
+         token->ret_type = (token->type == NOT) ? BOOL : node->left->token->ret_type;
+         break;
       case ASSIGN: case ADD: case SUB: case MUL: case DIV: case MOD:
       case EQUAL: case NOT_EQUAL: case LESS: case GREAT: case LESS_EQUAL: case GREAT_EQUAL:
       case AND: case OR:
@@ -231,6 +255,10 @@ void code_gen(Node *node) {
          break;
       case FCALL:  code_gen_fcall(node); break;
       case OUTPUT: code_gen_output(node); break;
+      case NOT: case BNOT:
+         code_gen(node->left);
+         token->llvm.elem = LLVMBuildNot(ura.builder, node->left->token->llvm.elem, "not");
+         break;
       case ASSIGN: code_gen_assign(node); break;
       case ADD: case SUB: case MUL: case DIV: case MOD:
       case EQUAL: case NOT_EQUAL: case LESS: case GREAT:
