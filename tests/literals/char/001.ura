@@ -1,0 +1,12 @@
+// literals/char/001.ura - char literals: declare, print, escapes, in a function
+
+fn grade() char:
+    return 'A'
+
+main():
+    c char = 'z'
+    output(c, "\n")
+    output('!', "\n")
+    output(grade(), "\n")
+    output('\n')
+    return 0
