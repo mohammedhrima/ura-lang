@@ -302,7 +302,7 @@ struct UraGlobal {
 	 Context				context;
 	 Module				    module;
 	 Builder				builder;
-	 TypeRef				vd, i1, i8, i16, i32, i64;
+	 TypeRef				vd, f32, i1, i8, i16, i32, i64;
 };
 
 extern UraGlobal ura;
