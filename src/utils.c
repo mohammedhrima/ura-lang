@@ -868,18 +868,23 @@ int get_operation_precedence(Type type)
    case MOD_ASSIGN:  return 1;
    case OR:          return 2;
    case AND:         return 3;
-   case EQUAL:       return 4;
-   case NOT_EQUAL:   return 4;
-   case LESS:        return 5;
-   case GREAT:       return 5;
-   case LESS_EQUAL:  return 5;
-   case GREAT_EQUAL: return 5;
-   case ADD:         return 6;
-   case SUB:         return 6;
-   case MUL:         return 7;
-   case DIV:         return 7;
-   case MOD:         return 7;
-   case AS:          return 8;
+   case BOR:         return 4;
+   case BXOR:        return 5;
+   case BAND:        return 6;
+   case EQUAL:       return 7;
+   case NOT_EQUAL:   return 7;
+   case LESS:        return 8;
+   case GREAT:       return 8;
+   case LESS_EQUAL:  return 8;
+   case GREAT_EQUAL: return 8;
+   case LSHIFT:      return 9;
+   case RSHIFT:      return 9;
+   case ADD:         return 10;
+   case SUB:         return 10;
+   case MUL:         return 11;
+   case DIV:         return 11;
+   case MOD:         return 11;
+   case AS:          return 12;
    default:
       break;
    }
@@ -1509,6 +1514,11 @@ void code_gen_binop(Node *node) {
       case GREAT_EQUAL: token->llvm.elem = LLVMBuildICmp(ura.builder, LLVMIntSGE, left, right, "ge"); break;
       case AND: token->llvm.elem = LLVMBuildAnd(ura.builder, left, right, "and"); break;
       case OR:  token->llvm.elem = LLVMBuildOr(ura.builder,  left, right, "or");  break;
+      case BAND:   token->llvm.elem = LLVMBuildAnd(ura.builder, left, right, "band"); break;
+      case BOR:    token->llvm.elem = LLVMBuildOr(ura.builder,  left, right, "bor");  break;
+      case BXOR:   token->llvm.elem = LLVMBuildXor(ura.builder, left, right, "bxor"); break;
+      case LSHIFT: token->llvm.elem = LLVMBuildShl(ura.builder, left, right, "shl");  break;
+      case RSHIFT: token->llvm.elem = LLVMBuildAShr(ura.builder, left, right, "shr"); break;
       default: break;
    }
 }
