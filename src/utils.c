@@ -861,17 +861,19 @@ int get_operation_precedence(Type type)
    switch(type)
    {
    case ASSIGN:      return 1;
-   case EQUAL:       return 2;
-   case NOT_EQUAL:   return 2;
-   case LESS:        return 3;
-   case GREAT:       return 3;
-   case LESS_EQUAL:  return 3;
-   case GREAT_EQUAL: return 3;
-   case ADD:         return 4;
-   case SUB:         return 4;
-   case MUL:         return 5;
-   case DIV:         return 5;
-   case MOD:         return 5;
+   case OR:          return 2;
+   case AND:         return 3;
+   case EQUAL:       return 4;
+   case NOT_EQUAL:   return 4;
+   case LESS:        return 5;
+   case GREAT:       return 5;
+   case LESS_EQUAL:  return 5;
+   case GREAT_EQUAL: return 5;
+   case ADD:         return 6;
+   case SUB:         return 6;
+   case MUL:         return 7;
+   case DIV:         return 7;
+   case MOD:         return 7;
    default:
       break;
    }
@@ -1361,7 +1363,14 @@ void type_check_binop(Node *node) {
       parse_error(token, "type mismatch between operands");
       return;
    }
-   token->ret_type = includes(token->type, COMPARISON_OPS, 0) ? BOOL : lt;
+   if (includes(token->type, LOGIC_TYPE, 0)) {
+      if (lt != BOOL || rt != BOOL) {
+         parse_error(token, "'and'/'or' need bool operands");
+         return;
+      }
+      token->ret_type = BOOL;
+   } else
+      token->ret_type = includes(token->type, COMPARISON_OPS, 0) ? BOOL : lt;
 }
 
 void emit_signature(Node *fn) {
@@ -1492,6 +1501,8 @@ void code_gen_binop(Node *node) {
       case GREAT:       token->llvm.elem = LLVMBuildICmp(ura.builder, LLVMIntSGT, left, right, "gt"); break;
       case LESS_EQUAL:  token->llvm.elem = LLVMBuildICmp(ura.builder, LLVMIntSLE, left, right, "le"); break;
       case GREAT_EQUAL: token->llvm.elem = LLVMBuildICmp(ura.builder, LLVMIntSGE, left, right, "ge"); break;
+      case AND: token->llvm.elem = LLVMBuildAnd(ura.builder, left, right, "and"); break;
+      case OR:  token->llvm.elem = LLVMBuildOr(ura.builder,  left, right, "or");  break;
       default: break;
    }
 }
