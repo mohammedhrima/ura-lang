@@ -1,4 +1,4 @@
-[1m[0;31merror: [0mwrong number of arguments to 'printf'
+[1m[0;31merror: [0mWrong number of arguments to 'printf'
   [2mtests/errors/functions/014.ura:6:5[0m
   [1m[34m|[0m
 [1m[34m6 |[0m     printf()
