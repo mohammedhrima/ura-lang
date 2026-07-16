@@ -1105,6 +1105,7 @@ TypeRef to_llvm_type(Type type) {
    case CHAR:  return ura.i8;
    case BOOL:  return ura.i1;
    case CHARS: return LLVMPointerType(ura.i8, 0);
+   case FLOAT: return ura.f32;
    case VOID:  return ura.vd;
    default: TODO(1, "to_llvm_type: unhandled type %t", type); return NULL;
    }
@@ -1153,6 +1154,7 @@ void init_module(char *name) {
    ura.i16 = LLVMInt16TypeInContext(ura.context);
    ura.i32 = LLVMInt32TypeInContext(ura.context);
    ura.i64 = LLVMInt64TypeInContext(ura.context);
+   ura.f32 = LLVMFloatTypeInContext(ura.context);
    LLVMInitializeNativeTarget();
    LLVMInitializeNativeAsmPrinter();
    LLVMInitializeNativeAsmParser();

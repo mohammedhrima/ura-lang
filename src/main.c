@@ -70,7 +70,7 @@ Node *prime_node() {
    Token *token = next();
    switch(token->type)
    {
-   case INT: case BOOL: case CHARS: case CHAR: return new_node(token);
+   case INT: case BOOL: case CHARS: case CHAR: case FLOAT: return new_node(token);
    case LPAR: {
       Node *node = expr_node(0);
       if (!find(RPAR, 0))
@@ -185,7 +185,7 @@ void analyze(Node *node) {
    switch (token->type) {
       case FDEC:   analyze_fdec(node); break;
       case ID:     analyze_id(node); break;
-      case INT: case BOOL: case CHARS: case CHAR: break;
+      case INT: case BOOL: case CHARS: case CHAR: case FLOAT: break;
       case RETURN: analyze(node->left); break;
       case FCALL:  analyze_fcall(node); break;
       case NOT: case BNOT: analyze(node->left); break;
@@ -220,6 +220,7 @@ void type_check(Node *node) {
       case BOOL:    token->ret_type = BOOL; break;
       case CHARS:   token->ret_type = CHARS; break;
       case CHAR:    token->ret_type = CHAR; break;
+      case FLOAT:   token->ret_type = FLOAT; break;
       case ID:      break;
       case FN_TYPE: break;
       case RETURN:  type_check(node->left); break;
@@ -265,6 +266,7 @@ void code_gen(Node *node) {
       case BOOL:   token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Bool.value, 0); break;
       case CHARS:  token->llvm.elem = LLVMBuildGlobalStringPtr(ura.builder, token->Chars.value, "str"); break;
       case CHAR:   token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Char.value, 0); break;
+      case FLOAT:  token->llvm.elem = LLVMConstReal(to_llvm_type(token->ret_type), token->Float.value); break;
       case ID:     code_gen_id(node); break;
       case FN_TYPE:
          emit_signature(token->Fcall.ptr);
