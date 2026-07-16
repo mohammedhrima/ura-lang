@@ -500,7 +500,7 @@ bool lex_spaces(char *content, int *i, int *line, int *indent, int default_inden
 	return true;
 }
 
-bool lex_multi_coment(char *content, int *i, int *line, int indent, int default_indent)
+bool lex_multi_comment(char *content, int *i, int *line, int indent, int default_indent)
 {
 	(void)indent;
 	(void)default_indent;
@@ -521,7 +521,7 @@ bool lex_multi_coment(char *content, int *i, int *line, int indent, int default_
 	return true;
 }
 
-bool lex_coment(char *content, int *i, int line, int indent, int default_indent)
+bool lex_comment(char *content, int *i, int line, int indent, int default_indent)
 {
 	(void)line;
 	(void)indent;
@@ -1211,6 +1211,224 @@ void guard_nonzero(Token *op, Value divisor) {
 
    LLVMBuildUnreachable(ura.builder);
    LLVMPositionBuilderAtEnd(ura.builder, cont);
+}
+
+void analyze_fdec(Node *node) {
+   Token *token = node->token;
+   enter_scope(node);
+   for (int i = 0; i < token->Fn.params_count; i++)
+      declare_variable(token->Fn.params[i]);
+   for (int i = 0; i < node->children_count; i++)
+      if (node->children[i]->token->type == FDEC)
+         declare_function(node->children[i]);
+   for (int i = 0; i < node->children_count; i++)
+      analyze(node->children[i]);
+   exit_scope();
+}
+
+void analyze_id(Node *node) {
+   Token *token = node->token;
+   if (token->is_dec) { declare_variable(token); return; }
+   bool   captured = false;
+   Token *decl     = find_variable(token->name, &captured);
+   if (decl) {
+      if (captured) {
+         parse_error(token, "cannot use '%s' from an enclosing function - pass it as a parameter", token->name);
+         return;
+      }
+      token->ret_type = decl->ret_type;
+      if (decl->ret_type == FN_TYPE) token->Fn = decl->Fn;
+      return;
+   }
+   Node *fn = find_function(token->name);
+   if (!fn) { parse_error(token, "undeclared variable '%s'", token->name); return; }
+   token->type             = FN_TYPE;
+   token->ret_type         = FN_TYPE;
+   token->Fcall.ptr        = fn;
+   token->Fn.params        = fn->token->Fn.params;
+   token->Fn.params_count  = fn->token->Fn.params_count;
+   token->Fn.ret           = new_token(ID, 0);
+   token->Fn.ret->ret_type = fn->token->ret_type;
+}
+
+void analyze_fcall(Node *node) {
+   Token *token = node->token;
+   Token *var = find_variable(token->name, NULL);
+   if (var && var->ret_type == FN_TYPE) {
+      token->Fcall.var = var;
+      for (int i = 0; i < node->children_count; i++)
+         analyze(node->children[i]);
+      token->ret_type = var->Fn.ret->ret_type;
+      return;
+   }
+   Node *fn = find_function(token->name);
+   if (!fn) { parse_error(token, "undeclared function '%s'", token->name); return; }
+   token->Fcall.ptr = fn;
+   for (int i = 0; i < node->children_count; i++)
+      analyze(node->children[i]);
+   token->ret_type = fn->token->ret_type;
+}
+
+void type_check_fcall(Node *node) {
+   Token *token = node->token;
+   bool indirect = token->Fcall.var != NULL;
+   if (!indirect && !token->Fcall.ptr) return;
+   Token *fn = indirect ? token->Fcall.var : token->Fcall.ptr->token;
+   for (int i = 0; i < node->children_count; i++)
+      type_check(node->children[i]);
+   if (node->children_count != fn->Fn.params_count) {
+      parse_error(token, "wrong number of arguments to '%s'", token->name);
+      return;
+   }
+   for (int i = 0; i < node->children_count; i++) {
+      if (node->children[i]->token->ret_type &&
+         node->children[i]->token->ret_type != fn->Fn.params[i]->ret_type) {
+         parse_error(node->children[i]->token, "argument %d type mismatch in call to '%s'", i + 1, token->name);
+         return;
+      }
+      if (fn->Fn.params[i]->is_ref && node->children[i]->token->type != ID) {
+         parse_error(node->children[i]->token, "argument %d to '%s' must be a variable (ref parameter)", i + 1, token->name);
+         return;
+      }
+   }
+   token->ret_type = indirect ? fn->Fn.ret->ret_type : fn->ret_type;
+}
+
+void type_check_binop(Node *node) {
+   Token *token = node->token;
+   type_check(node->left);
+   type_check(node->right);
+   Type lt = node->left->token->ret_type;
+   Type rt = node->right->token->ret_type;
+   if (lt && rt && lt != rt) {
+      parse_error(token, "type mismatch between operands");
+      return;
+   }
+   token->ret_type = lt;
+}
+
+void emit_signature(Node *fn) {
+   Token *token = fn->token;
+   if (token->llvm.func_type) return;
+   int      n      = token->Fn.params_count;
+   TypeRef *params = NULL;
+   if (n > 0) {
+      params = allocate(n, sizeof(TypeRef));
+      for (int i = 0; i < n; i++) {
+         TypeRef pt = llvm_type_of(token->Fn.params[i]);
+         params[i] = token->Fn.params[i]->is_ref ? LLVMPointerType(pt, 0) : pt;
+      }
+   }
+   token->llvm.func_type = LLVMFunctionType(to_llvm_type(token->ret_type), params, n, 0);
+   token->llvm.elem      = LLVMAddFunction(ura.module, token->name, token->llvm.func_type);
+   free(params);
+}
+
+Value address_of(Node *node) {
+   Token *token = node->token;
+   if (token->is_dec)
+      return token->llvm.elem = LLVMBuildAlloca(ura.builder, llvm_type_of(token), token->name);
+   Token *decl = find_variable(token->name, NULL);
+   if (decl->is_ref)
+      return LLVMBuildLoad2(ura.builder, LLVMPointerType(to_llvm_type(decl->ret_type), 0), decl->llvm.elem, "ref");
+   return decl->llvm.elem;
+}
+
+void code_gen_fdec(Node *node) {
+   Token *token = node->token;
+   emit_signature(node);
+   debug_enter_function(token);
+   enter_scope(node);
+   for (int i = 0; i < token->Fn.params_count; i++) {
+      Token  *param = token->Fn.params[i];
+      TypeRef pt    = llvm_type_of(param);
+      if (param->is_ref) pt = LLVMPointerType(pt, 0);
+      param->llvm.elem = LLVMBuildAlloca(ura.builder, pt, param->name);
+      LLVMBuildStore(ura.builder, LLVMGetParam(token->llvm.elem, i), param->llvm.elem);
+   }
+   for (int i = 0; i < node->children_count; i++) {
+      set_debug_location(node->children[i]->token);
+      code_gen(node->children[i]);
+   }
+   if (!LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ura.builder))) {
+      if (token->ret_type == VOID) LLVMBuildRetVoid(ura.builder);
+      else LLVMBuildRet(ura.builder, default_value(token));
+   }
+   exit_scope();
+   debug_exit_function(token);
+}
+
+void code_gen_id(Node *node) {
+   Token *token = node->token;
+   if (token->is_dec) {
+      TypeRef t        = llvm_type_of(token);
+      token->llvm.elem = LLVMBuildAlloca(ura.builder, t, token->name);
+      LLVMBuildStore(ura.builder, default_value(token), token->llvm.elem);
+   }
+   else {
+      Token  *decl = find_variable(token->name, NULL);
+      TypeRef t    = llvm_type_of(decl);
+      if (decl->is_ref) {
+         Value ptr = LLVMBuildLoad2(ura.builder, LLVMPointerType(t, 0), decl->llvm.elem, "ref");
+         token->llvm.elem = LLVMBuildLoad2(ura.builder, t, ptr, token->name);
+      } else
+         token->llvm.elem = LLVMBuildLoad2(ura.builder, t, decl->llvm.elem, token->name);
+   }
+}
+
+void code_gen_fcall(Node *node) {
+   Token *token    = node->token;
+   bool   indirect = token->Fcall.var != NULL;
+   Token *fn       = indirect ? token->Fcall.var : token->Fcall.ptr->token;
+   if (!indirect) emit_signature(token->Fcall.ptr);
+   int    n    = node->children_count;
+   Value *args = NULL;
+   if (n > 0) {
+      args = allocate(n, sizeof(Value));
+      for (int i = 0; i < n; i++) {
+         if (fn->Fn.params[i]->is_ref)
+            args[i] = address_of(node->children[i]);
+         else {
+            code_gen(node->children[i]);
+            args[i] = node->children[i]->token->llvm.elem;
+         }
+      }
+   }
+   if (indirect) {
+      TypeRef ptr_type = llvm_type_of(fn);
+      Value   fn_ptr   = LLVMBuildLoad2(ura.builder, ptr_type, fn->llvm.elem, "fn");
+      char   *name     = fn->Fn.ret->ret_type == VOID ? "" : "call";
+      token->llvm.elem = LLVMBuildCall2(ura.builder, LLVMGetElementType(ptr_type), fn_ptr, args, n, name);
+   } else {
+      char *name       = fn->ret_type == VOID ? "" : "call";
+      token->llvm.elem = LLVMBuildCall2(ura.builder, fn->llvm.func_type, fn->llvm.elem, args, n, name);
+   }
+   free(args);
+}
+
+void code_gen_assign(Node *node) {
+   Token *token = node->token;
+   Value dest = address_of(node->left);
+   code_gen(node->right);
+   LLVMBuildStore(ura.builder, node->right->token->llvm.elem, dest);
+   token->llvm.elem = node->right->token->llvm.elem;
+}
+
+void code_gen_binop(Node *node) {
+   Token *token = node->token;
+   code_gen(node->left);
+   code_gen(node->right);
+   Value left  = node->left->token->llvm.elem;
+   Value right = node->right->token->llvm.elem;
+   if (token->type == DIV || token->type == MOD) guard_nonzero(token, right);
+   switch (token->type) {
+      case ADD: token->llvm.elem = LLVMBuildAdd(ura.builder, left, right, "add");  break;
+      case SUB: token->llvm.elem = LLVMBuildSub(ura.builder, left, right, "sub");  break;
+      case MUL: token->llvm.elem = LLVMBuildMul(ura.builder, left, right, "mul");  break;
+      case DIV: token->llvm.elem = LLVMBuildSDiv(ura.builder, left, right, "div"); break;
+      case MOD: token->llvm.elem = LLVMBuildSRem(ura.builder, left, right, "mod"); break;
+      default: break;
+   }
 }
 
 void free_token(Token *token) {
