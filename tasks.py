@@ -47,9 +47,9 @@ except ImportError:
 def _c(cls, s):  # raw ANSI wrap (fallback output)
     return f"{ANSI[cls]}{s}{ANSI['reset']}"
 
-def ok(m):   console.print(f"[ok]✓[/] {m}")   if RICH else print(_c("ok", "✓ " + m))
-def err(m):  console.print(f"[fail]✗[/] {m}")  if RICH else print(_c("fail", "✗ " + m))
-def warn(m): console.print(f"[warn]‼[/] {m}")  if RICH else print(_c("branch", "‼ " + m))
+def ok(m):   console.print(f"[ok]{m}[/]")   if RICH else print(_c("ok", m))
+def err(m):  console.print(f"[fail]{m}[/]")  if RICH else print(_c("fail", m))
+def warn(m): console.print(f"[warn]{m}[/]")  if RICH else print(_c("branch", m))
 
 def report(title, results):
     """results: list of (status, label) with status in {'pass','fail','skip'}."""
@@ -62,7 +62,7 @@ def report(title, results):
             t = Table(box=box.SIMPLE_HEAD, show_header=False, pad_edge=False)
             t.add_column(no_wrap=True); t.add_column(overflow="fold")
             for s, label in rows:
-                t.add_row("[ok]✓ PASS[/]" if s == "pass" else "[fail]✗ FAIL[/]", label)
+                t.add_row("[ok]PASS[/]" if s == "pass" else "[fail]FAIL[/]", label)
             console.print(t)
         summary = f"[env]{title}[/]  [ok]{p} passed[/] · " + (f"[fail]{f} failed[/]" if f else "[dim]0 failed[/]")
         if sk:
@@ -70,7 +70,7 @@ def report(title, results):
         console.print(summary)
     else:
         for s, label in rows:
-            print(_c("ok", "✓ PASS") + " " + label if s == "pass" else _c("fail", "✗ FAIL") + " " + label)
+            print(_c("ok", "PASS") + " " + label if s == "pass" else _c("fail", "FAIL") + " " + label)
         line = _c("env", title) + "  " + _c("ok", f"{p} passed") + " · " + \
                (_c("fail", f"{f} failed") if f else _c("dim", "0 failed"))
         if sk:
@@ -326,7 +326,7 @@ def refresh_context():
     STATE["fresh"] = ura_fresh()
 
 def banner():
-    clang = "✓" if shutil.which("clang") else "✗"
+    clang = "yes" if shutil.which("clang") else "no"
     if RICH:
         body = (f"[dim]LLVM[/] {llvm_version()} · [dim]clang[/] {clang} · [dim]git[/] {git_branch() or '—'}\n\n"
                 f"[env]tasks[/]  " + " · ".join(TASKS) + "\n"
@@ -431,7 +431,7 @@ def ura_shell():
     def toolbar():
         s = STATE
         return (f" ura-lang · git:{s['branch'] or '—'} · build/ura {'fresh' if s['fresh'] else 'stale'} · "
-                f"LLVM {s['llvm']} · clang {'✓' if s['clang'] else '✗'}    Tab ⇥ · ↑ history · ^D exit ")
+                f"LLVM {s['llvm']} · clang {'yes' if s['clang'] else 'no'}    Tab ⇥ · ↑ history · ^D exit ")
 
     style = Style.from_dict({
         "env": "bold cyan", "path": "ansiblue", "branch": "ansiyellow",
