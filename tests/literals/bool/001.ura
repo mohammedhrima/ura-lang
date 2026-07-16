@@ -1,0 +1,11 @@
+// literals/bool/001.ura - bool literals: declare, zero-init, bool function, reassign
+
+fn flag() bool:
+    return True
+
+main():
+    b bool = flag()
+    c bool = False
+    d bool
+    c = True
+    return 9

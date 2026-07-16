@@ -1,5 +1,5 @@
 [1m[0;31merror: [0margument 1 type mismatch in call to 'apply'
-  [1m[34m-->[0m tests/errors/functions/013.ura:8:18
+  [2mtests/errors/functions/013.ura:8:18[0m
   [1m[34m|[0m
 [1m[34m8 |[0m     return apply(5, 21)
   [1m[34m|[0m                  [1;31m^[0m

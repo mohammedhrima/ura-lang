@@ -1,0 +1,5 @@
+// errors/types/006 — assigning an int literal to a bool variable
+
+main():
+    b bool = 5
+    return 0

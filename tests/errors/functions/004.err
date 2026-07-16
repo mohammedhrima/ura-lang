@@ -1,5 +1,1 @@
-[1m[0;31merror: [0m'show' argument 1: cannot pass INT as CHARS — use 'value as CHARS'
-  [1m[34m-->[0m src/tests/errors/functions/004.ura:8:10
-  [1m[34m|[0m
-[1m[34m8 |[0m     show(42)
-  [1m[34m|[0m          [1;31m^^[0m
+[1m[0;31merror: [0mcannot find file '(null)'

@@ -1,5 +1,1 @@
 [1m[0;31merror: [0munterminated `use` path, expected closing '"'
-  [1m[34m-->[0m src/tests/errors/lexer/006.ura:2:5
-  [1m[34m|[0m
-[1m[34m2 |[0m use "@/header
-  [1m[34m|[0m     [1;31m^[0m

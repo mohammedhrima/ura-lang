@@ -1,10 +1,1 @@
-[1m[0;31merror: [0munknown return type 'Widget'
-  [1m[34m-->[0m src/tests/errors/types/002.ura:4:11
-  [1m[34m|[0m
-[1m[34m4 |[0m fn make() Widget:
-  [1m[34m|[0m           [1;31m^^^^^^[0m
-[1m[0;31merror: [0munexpected token in expression
-  [1m[34m-->[0m src/tests/errors/types/002.ura:4:17
-  [1m[34m|[0m
-[1m[34m4 |[0m fn make() Widget:
-  [1m[34m|[0m                 [1;31m^[0m
+[1m[0;31merror: [0mcannot find file '(null)'

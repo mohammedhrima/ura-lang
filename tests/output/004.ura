@@ -1,0 +1,8 @@
+// output/004.ura - output() auto-formats each argument by its type
+
+main():
+    name chars = "ura"
+    n int = 42
+    ok bool = True
+    output("hello ", name, " ", n, " ", ok, "\n")
+    return 0

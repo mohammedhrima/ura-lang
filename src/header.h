@@ -21,6 +21,8 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 
 #if defined(__APPLE__)
@@ -254,11 +256,12 @@ struct UraGlobal {
     int              max_errors;
     // Node            *syntax_error_node;
     bool             enable_debug;
-   //  bool             enable_exec;
+    bool             enable_exec;
     bool             enable_san;
     // bool             enable_prep;
     char            *flags;
     char            *lib;
+    double           t_start;
     // const char      *ura_target_os;
     
     // Token          **tokens;
@@ -306,6 +309,8 @@ extern UraGlobal ura;
 
 int _debug(char *conv, ...);
 char *format(const char *fmt, ...);
+double clock_now();
+char *signal_name(int sig);
 bool _check(char *filename, char *funcname, int line, bool cond, char *fmt, ...);
 void *allocate(int len, int size);
 void new_source(char *file_name);
@@ -340,6 +345,7 @@ Node *syntax_error();
 void pnode(Node *node, char *indent);
 Node *fdec_node(Node *node);
 Node *fcall_node(Node *node);
+Node *output_node(Node *node);
 void parse_type(Token *target);
 
 
@@ -365,7 +371,9 @@ void debug_enter_function(Token *token);
 void debug_exit_function(Token *token);
 void set_debug_location(Token *token);
 Value get_or_declare(char *name, TypeRef fn_type);
+void guard(Token *op, Value is_bad, char *what);
 void guard_nonzero(Token *op, Value divisor);
+void guard_nonnull(Token *op, Value ptr);
 
 void analyze(Node *node);
 void analyze_fdec(Node *node);
@@ -382,6 +390,7 @@ void code_gen_id(Node *node);
 void code_gen_fcall(Node *node);
 void code_gen_assign(Node *node);
 void code_gen_binop(Node *node);
+void code_gen_output(Node *node);
 
 void free_token(Token *token);
 void free_node(Node *node);

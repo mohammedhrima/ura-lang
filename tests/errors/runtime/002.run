@@ -1,1 +1,2 @@
-exit: 139
+[1m[0;31mruntime error: [0mtests/errors/runtime/002.ura:5: call to a null function value
+exit: 1
