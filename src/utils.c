@@ -276,7 +276,7 @@ void pnode(Node *node, char *indent) {
 bool _check(char *filename, char *funcname, int line, bool cond, char *fmt, ...) {
 	if (!cond) return cond;
 	ura.error_count++;
-	fprintf(stderr, RED("ura error: %s %s:%d "), funcname, filename, line);
+	fprintf(stderr, RED("ura error: %s:%s:%d "), filename, funcname, line);
 	va_list ap;
 	va_start(ap, fmt);
 	_vprint(stderr, fmt, ap);
@@ -289,7 +289,7 @@ void parse_error(Token *token, const char *fmt, ...) {
 	ura.error_count++;
 	ura.found_error = true;
 	if (ura.error_count > ura.max_errors) {
-		fprintf(stderr, RED("error: ") "too many errors, stopping\n");
+		fprintf(stderr, RED("error: ") "Too many errors, stopping\n");
 		return;
 	}
 
@@ -374,12 +374,12 @@ void new_source(char *file_name) {
 
 	file_name = realpath(file_name, NULL);
 	if (!file_name) {
-		parse_error(NULL, "cannot find file '%s'", file_name);
+		parse_error(NULL, "Cannot find file '%s'", file_name);
 		return;
 	}
 	File file = fopen(file_name, "r");
 	if (!file) {
-		parse_error(NULL, "cannot open file '%s'", file_name);
+		parse_error(NULL, "Cannot open file '%s'", file_name);
 		free(file_name);
 		return;
 	}
@@ -532,7 +532,7 @@ bool lex_multi_comment(char *content, int *i, int *line, int indent, int default
 		(*i)++;
 	}
 	if (strncmp(content + (*i), "*/", 2) != 0) {
-		tokenize_error((*line), s, s + 2, "unterminated block comment, expected '*/'");
+		tokenize_error((*line), s, s + 2, "Unterminated block comment, expected '*/'");
 		return true;
 	}
 	(*i) += 2;
@@ -565,7 +565,7 @@ bool lex_chars(char *content, int *i, int line, int indent, int default_indent)
 		(*i)++;
 	}
 	if (content[(*i)] != '\"') {
-		tokenize_error(line, s, s + 1, "unterminated string literal, expected '\"'");
+		tokenize_error(line, s, s + 1, "Unterminated string literal, expected '\"'");
 		return true;
 	}
 	(*i)++;
@@ -584,7 +584,7 @@ bool lex_char(char *content, int *i, int line, int indent, int default_indent)
 	if (content[(*i)] == '\\' && content[(*i) + 1]) (*i)++;
 	if (content[(*i)] && content[(*i)] != '\'')     (*i)++;
 	if (content[(*i)] != '\'')                 {
-		tokenize_error(line, s, s + 1, "unterminated character literal, expected \"'\"");
+		tokenize_error(line, s, s + 1, "Unterminated character literal, expected \"'\"");
 		return true;
 	}
 	(*i)++;
@@ -617,7 +617,7 @@ bool lex_use(char *content, int *i, int s, int line, int indent, int default_ind
 	while (isspace(content[(*i)]))
 		(*i)++;
 	if (content[(*i)] != '\"') {
-		tokenize_error(line, (*i), (*i) + 1, "expected '\"' after `use`");
+		tokenize_error(line, (*i), (*i) + 1, "Expected '\"' after `use`");
 		return true;
 	}
 	(*i)++;
@@ -626,7 +626,7 @@ bool lex_use(char *content, int *i, int s, int line, int indent, int default_ind
 		while (content[(*i)] && content[(*i)] != '\"' && content[(*i)] != '\n')
 			(*i)++;
 		if (content[(*i)] != '\"') {
-			tokenize_error(line, start - 1, start, "unterminated `use` path, expected closing '\"'");
+			tokenize_error(line, start - 1, start, "Unterminated `use` path, expected closing '\"'");
 			return true;
 		}
 		(*i)++;
@@ -659,7 +659,7 @@ bool lex_link(char *content, int *i, int s, int line, int indent, int default_in
 	while (isspace(content[(*i)]))
 		(*i)++;
 	if (content[(*i)] != '\"') {
-		tokenize_error(line, (*i), (*i) + 1, "expected '\"' after `link`");
+		tokenize_error(line, (*i), (*i) + 1, "Expected '\"' after `link`");
 		return true;
 	}
 	(*i)++;
@@ -668,7 +668,7 @@ bool lex_link(char *content, int *i, int s, int line, int indent, int default_in
 		(*i)++;
 	if (content[(*i)] != '\"') {
 		tokenize_error(line, link_s - 1, link_s,
-							"unterminated `link` path, expected closing '\"'");
+							"Unterminated `link` path, expected closing '\"'");
 		return true;
 	}
 	(*i)++;
@@ -827,7 +827,7 @@ Token *parse_token(int line, int s, int e, Type type, int indent) {
 		} else {
 			parse_escape_seq(input, s, e, buf, &j);
 			if (buf[0] == '\\' && input[s + 1] != '\\')
-				tokenize_error(line, s, e, "unknown escape character: \\%c", input[s + 1]);
+				tokenize_error(line, s, e, "Unknown escape character: \\%c", input[s + 1]);
 		}
 		new->Char.value = buf[0];
 		break;
@@ -945,7 +945,7 @@ void exit_scope() {
 void declare_variable(Token *token) {
 	for (int v = 0; v < ura.scope->variables_count; v++)
 		if (strcmp(ura.scope->variables[v]->name, token->name) == 0) {
-			parse_error(token, "redeclaration of variable '%s'", token->name);
+			parse_error(token, "Redeclaration of variable '%s'", token->name);
 			return;
 		}
 	resize_array(ura.scope->variables, Token *);
@@ -971,7 +971,7 @@ Token *find_variable(char *name, bool *captured) {
 void declare_function(Node *fn) {
 	for (int f = 0; f < ura.scope->functions_count; f++)
 		if (strcmp(ura.scope->functions[f]->token->name, fn->token->name) == 0) {
-			parse_error(fn->token, "redeclaration of function '%s'", fn->token->name);
+			parse_error(fn->token, "Redeclaration of function '%s'", fn->token->name);
 			return;
 		}
 	resize_array(ura.scope->functions, Node *);
@@ -994,7 +994,7 @@ void parse_type(Token *target) {
 		next();
 		target->ret_type = FN_TYPE;
 		if (!find(LPAR, 0)) {
-			parse_error(peek(0), "expected '(' in function type");
+			parse_error(peek(0), "Expected '(' in function type");
 			return;
 		}
 		while (!ura.found_error && peek(0)->type != RPAR) {
@@ -1005,13 +1005,13 @@ void parse_type(Token *target) {
 			while (find(COMA, 0));
 		}
 		if (!find(RPAR, 0))
-			parse_error(peek(0), "expected ')' in function type");
+			parse_error(peek(0), "Expected ')' in function type");
 		target->Fn.ret = new_token(ID, 0);
 		parse_type(target->Fn.ret);
 	} else if (is_data_type(peek(0))) {
 		target->ret_type = next()->type;
 	} else {
-		parse_error(peek(0), "expected a type");
+		parse_error(peek(0), "Expected a type");
 	}
 }
 
@@ -1019,7 +1019,7 @@ Node *fdec_node(Node *node) {
 	node->token->type = FDEC;
 	enter_scope(node);
 	if (!find(LPAR, 0))
-		parse_error(node->token, "expected '(' after function %s", node->token->name);
+		parse_error(node->token, "Expected '(' after function %s", node->token->name);
 	while (!ura.found_error && peek(0)->type != RPAR) {
 		if (find(VARIADIC, 0)) {
 			node->token->is_variadic = true;
@@ -1028,7 +1028,7 @@ Node *fdec_node(Node *node) {
 		bool   is_ref = find(REF, 0) != NULL;
 		Token *param  = find(ID, 0);
 		if (!param) {
-			parse_error(node->token, "expected parameter name in function %s", node->token->name);
+			parse_error(node->token, "Expected parameter name in function %s", node->token->name);
 			break;
 		}
 		parse_type(param);
@@ -1040,7 +1040,7 @@ Node *fdec_node(Node *node) {
 		while (find(COMA, 0));
 	}
 	if (!find(RPAR, 0))
-		parse_error(node->token, "expected ')' after function %s", node->token->name);
+		parse_error(node->token, "Expected ')' after function %s", node->token->name);
 
 	if(strcmp(node->token->name, "main") == 0) {
 		node->token->ret_type = INT;
@@ -1049,10 +1049,10 @@ Node *fdec_node(Node *node) {
 		node->token->ret_type = next()->type;
 	}
 	else
-		parse_error(node->token, "expected <data type> after function %s", node->token->name);
+		parse_error(node->token, "Expected <data type> after function %s", node->token->name);
 	if (!node->token->is_proto) {
 		if (!find(DOTS, 0))
-			parse_error(node->token, "expected ':' after function %s", node->token->name);
+			parse_error(node->token, "Expected ':' after function %s", node->token->name);
 
 		while(within(node->token->indent)) {
 			resize_array(node->children, Node*);
@@ -1067,14 +1067,14 @@ Node *fdec_node(Node *node) {
 Node *fcall_node(Node *node) {
 	node->token->type = FCALL;
 	if (!find(LPAR, 0))
-		parse_error(node->token, "expected '(' after %s", node->token->name);
+		parse_error(node->token, "Expected '(' after %s", node->token->name);
 	while (!ura.found_error && peek(0)->type != RPAR) {
 		resize_array(node->children, Node *);
 		node->children[node->children_count++] = expr_node(0);
 		while (find(COMA, 0));
 	}
 	if (!find(RPAR, 0))
-		parse_error(node->token, "expected ')' after %s arguments", node->token->name);
+		parse_error(node->token, "Expected ')' after %s arguments", node->token->name);
 	return node;
 }
 
@@ -1082,14 +1082,14 @@ Node *output_node(Node *node) {
 	node->token->type     = OUTPUT;
 	node->token->ret_type = VOID;
 	if (!find(LPAR, 0))
-		parse_error(node->token, "expected '(' after output");
+		parse_error(node->token, "Expected '(' after output");
 	while (!ura.found_error && peek(0)->type != RPAR) {
 		resize_array(node->children, Node *);
 		node->children[node->children_count++] = expr_node(0);
 		while (find(COMA, 0));
 	}
 	if (!find(RPAR, 0))
-		parse_error(node->token, "expected ')' after output arguments");
+		parse_error(node->token, "Expected ')' after output arguments");
 	return node;
 }
 
@@ -1272,13 +1272,13 @@ void guard(Token *op, Value is_bad, char *what) {
 void guard_nonzero(Token *op, Value divisor) {
    Value zero   = LLVMConstInt(LLVMTypeOf(divisor), 0, 0);
    Value iszero = LLVMBuildICmp(ura.builder, LLVMIntEQ, divisor, zero, "iszero");
-   guard(op, iszero, (op->type == MOD) ? "modulo by zero" : "division by zero");
+   guard(op, iszero, (op->type == MOD) ? "Modulo by zero" : "Division by zero");
 }
 
 void guard_nonnull(Token *op, Value ptr) {
    Value null   = LLVMConstNull(LLVMTypeOf(ptr));
    Value isnull = LLVMBuildICmp(ura.builder, LLVMIntEQ, ptr, null, "isnull");
-   guard(op, isnull, "call to a null function value");
+   guard(op, isnull, "Call to a null function value");
 }
 
 void analyze_fdec(Node *node) {
@@ -1301,7 +1301,7 @@ void analyze_id(Node *node) {
    Token *decl     = find_variable(token->name, &captured);
    if (decl) {
       if (captured) {
-         parse_error(token, "cannot use '%s' from an enclosing function - pass it as a parameter", token->name);
+         parse_error(token, "Cannot use '%s' from an enclosing function - pass it as a parameter", token->name);
          return;
       }
       token->ret_type = decl->ret_type;
@@ -1309,7 +1309,7 @@ void analyze_id(Node *node) {
       return;
    }
    Node *fn = find_function(token->name);
-   if (!fn) { parse_error(token, "undeclared variable '%s'", token->name); return; }
+   if (!fn) { parse_error(token, "Undeclared variable '%s'", token->name); return; }
    token->type             = FN_TYPE;
    token->ret_type         = FN_TYPE;
    token->Fcall.ptr        = fn;
@@ -1330,7 +1330,7 @@ void analyze_fcall(Node *node) {
       return;
    }
    Node *fn = find_function(token->name);
-   if (!fn) { parse_error(token, "undeclared function '%s'", token->name); return; }
+   if (!fn) { parse_error(token, "Undeclared function '%s'", token->name); return; }
    token->Fcall.ptr = fn;
    for (int i = 0; i < node->children_count; i++)
       analyze(node->children[i]);
@@ -1347,17 +1347,17 @@ void type_check_fcall(Node *node) {
    bool bad_count = fn->is_variadic ? node->children_count < fn->Fn.params_count
                                     : node->children_count != fn->Fn.params_count;
    if (bad_count) {
-      parse_error(token, "wrong number of arguments to '%s'", token->name);
+      parse_error(token, "Wrong number of arguments to '%s'", token->name);
       return;
    }
    for (int i = 0; i < fn->Fn.params_count; i++) {
       if (node->children[i]->token->ret_type &&
          node->children[i]->token->ret_type != fn->Fn.params[i]->ret_type) {
-         parse_error(node->children[i]->token, "argument %d type mismatch in call to '%s'", i + 1, token->name);
+         parse_error(node->children[i]->token, "Argument %d type mismatch in call to '%s'", i + 1, token->name);
          return;
       }
       if (fn->Fn.params[i]->is_ref && node->children[i]->token->type != ID) {
-         parse_error(node->children[i]->token, "argument %d to '%s' must be a variable (ref parameter)", i + 1, token->name);
+         parse_error(node->children[i]->token, "Argument %d to '%s' must be a variable (ref parameter)", i + 1, token->name);
          return;
       }
    }
@@ -1371,12 +1371,12 @@ void type_check_binop(Node *node) {
    Type lt = node->left->token->ret_type;
    Type rt = node->right->token->ret_type;
    if (lt && rt && lt != rt) {
-      parse_error(token, "type mismatch between operands");
+      parse_error(token, "Type mismatch between operands");
       return;
    }
    if (includes(token->type, LOGIC_TYPE, 0)) {
       if (lt != BOOL || rt != BOOL) {
-         parse_error(token, "'and'/'or' need bool operands");
+         parse_error(token, "Operators 'and'/'or' need bool operands");
          return;
       }
       token->ret_type = BOOL;

@@ -22,18 +22,18 @@ void parse_arguments(int argc, char **argv)
       MATCH("-Oz", ura.flags, PASSES_Oz);
 #undef MATCH
       if (strcmp(arg, "-o") == 0) {
-         if (i + 1 >= argc) { parse_error(NULL, "'-o' requires an argument"); return; }
+         if (i + 1 >= argc) { parse_error(NULL, "Missing argument for '-o'"); return; }
          ura.output = argv[++i];
       } else if (arg[0] == '-') {
-         parse_error(NULL, "unknown flag '%s'", arg);
+         parse_error(NULL, "Unknown flag '%s'", arg);
       } else {
          size_t n = strlen(arg);
-         if (n <= 4 || strcmp(arg + n - 4, ".ura") != 0) parse_error(NULL, "invalid file '%s'", arg);
+         if (n <= 4 || strcmp(arg + n - 4, ".ura") != 0) parse_error(NULL, "Invalid file '%s'", arg);
          else new_source(arg);
       }
    }
    if (ura.error_count) return;
-   if (!ura.sources) parse_error(NULL, "no input file (usage: ura <file.ura> [-o out] [-O0..-Oz] [-san] [-debug])");
+   if (!ura.sources) parse_error(NULL, "No input file (usage: ura <file.ura> [-o out] [-O0..-Oz] [-san] [-debug])");
 }
 
 void tokenize(int default_indent) {
@@ -55,7 +55,7 @@ void tokenize(int default_indent) {
       if (lex_number(content, &i, line, indent, default_indent)) continue;
       if (lex_identifier(content, &i, line, indent, default_indent)) continue;
       if (lex_symbol(content, &i, line, &indent, default_indent)) continue;
-      tokenize_error(line, i, i + 1, "unexpected character '%c'", c);
+      tokenize_error(line, i, i + 1, "Unexpected character '%c'", c);
    }
    if (!ura.calling_use)
    {
@@ -74,12 +74,12 @@ Node *prime_node() {
    case LPAR: {
       Node *node = expr_node(0);
       if (!find(RPAR, 0))
-         parse_error(token, "expected ')' after expression");
+         parse_error(token, "Expected ')' after expression");
       return node;
    }
    case PROTO:
       if (peek(0)->type != FDEC) {
-         parse_error(token, "expected 'fn' after 'proto'");
+         parse_error(token, "Expected 'fn' after 'proto'");
          return syntax_error();
       }
       peek(0)->is_proto = true;
@@ -88,7 +88,7 @@ Node *prime_node() {
       Node *node = new_node(token);
       Token *fname = find(ID, 0);
       if (!fname) {
-         parse_error(token, "expected a function name after 'fn'");
+         parse_error(token, "Expected a function name after 'fn'");
          return syntax_error();
       }
       set_name(node->token, fname->name);
@@ -129,7 +129,7 @@ Node *prime_node() {
    default:
       break;
    }
-   debug(RED("Unexpected token %k\n"), token);
+   parse_error(token, "Unexpected token");
    return syntax_error();
 }
 
@@ -232,7 +232,7 @@ void type_check(Node *node) {
       case NOT: case BNOT:
          type_check(node->left);
          if (token->type == NOT && node->left->token->ret_type != BOOL)
-            parse_error(token, "'not' needs a bool operand");
+            parse_error(token, "Operator 'not' needs a bool operand");
          token->ret_type = (token->type == NOT) ? BOOL : node->left->token->ret_type;
          break;
       case AS: {
@@ -240,7 +240,7 @@ void type_check(Node *node) {
          Type src = node->left->token->ret_type;
          Type dst = node->right->token->ret_type;
          if ((src && !includes(src, NUMERIC_TYPES, 0)) || !includes(dst, NUMERIC_TYPES, 0))
-            parse_error(token, "cannot cast %s to %s", to_string(src), to_string(dst));
+            parse_error(token, "Cannot cast %s to %s", to_string(src), to_string(dst));
          token->ret_type = dst;
          break;
       }
