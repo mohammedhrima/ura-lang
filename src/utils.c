@@ -874,6 +874,7 @@ int get_operation_precedence(Type type)
    case MUL:         return 7;
    case DIV:         return 7;
    case MOD:         return 7;
+   case AS:          return 8;
    default:
       break;
    }
@@ -1518,9 +1519,10 @@ void code_gen_output(Node *node) {
       code_gen(arg);
       Value v = arg->token->llvm.elem;
       switch (arg->token->ret_type) {
-         case INT: case SHORT: fmt[fc++] = '%'; fmt[fc++] = 'd'; args[nargs++] = v; break;
+         case INT: fmt[fc++] = '%'; fmt[fc++] = 'd'; args[nargs++] = v; break;
+         case SHORT: fmt[fc++] = '%'; fmt[fc++] = 'd'; args[nargs++] = LLVMBuildSExt(ura.builder, v, ura.i32, "s2i"); break;
          case LONG: fmt[fc++] = '%'; fmt[fc++] = 'l'; fmt[fc++] = 'l'; fmt[fc++] = 'd'; args[nargs++] = v; break;
-         case CHAR: fmt[fc++] = '%'; fmt[fc++] = 'c'; args[nargs++] = v; break;
+         case CHAR: fmt[fc++] = '%'; fmt[fc++] = 'c'; args[nargs++] = LLVMBuildSExt(ura.builder, v, ura.i32, "c2i"); break;
          case CHARS: fmt[fc++] = '%'; fmt[fc++] = 's'; args[nargs++] = v; break;
          case BOOL: {
             Value ts = LLVMBuildGlobalStringPtr(ura.builder, "True", "true_str");

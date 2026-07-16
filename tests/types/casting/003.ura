@@ -1,0 +1,12 @@
+// types/casting/003.ura - `as` casting + long / short via explicit cast
+
+main():
+    a int   = 300
+    big long  = a as long
+    small short = a as short
+    c int   = big as int
+    output(big, "\n")
+    output(small, "\n")
+    output(c, "\n")
+    output(5 as long, "\n")
+    return 0
