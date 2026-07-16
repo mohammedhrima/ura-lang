@@ -861,6 +861,11 @@ int get_operation_precedence(Type type)
    switch(type)
    {
    case ASSIGN:      return 1;
+   case ADD_ASSIGN:  return 1;
+   case SUB_ASSIGN:  return 1;
+   case MUL_ASSIGN:  return 1;
+   case DIV_ASSIGN:  return 1;
+   case MOD_ASSIGN:  return 1;
    case OR:          return 2;
    case AND:         return 3;
    case EQUAL:       return 4;
@@ -1506,6 +1511,25 @@ void code_gen_binop(Node *node) {
       case OR:  token->llvm.elem = LLVMBuildOr(ura.builder,  left, right, "or");  break;
       default: break;
    }
+}
+
+void code_gen_compound(Node *node) {
+   Value   dest = address_of(node->left);
+   code_gen(node->right);
+   Value   r   = node->right->token->llvm.elem;
+   TypeRef t   = to_llvm_type(node->left->token->ret_type);
+   Value   cur = LLVMBuildLoad2(ura.builder, t, dest, "cur");
+   Value   res;
+   switch (node->token->type) {
+      case ADD_ASSIGN: res = LLVMBuildAdd(ura.builder, cur, r, "add"); break;
+      case SUB_ASSIGN: res = LLVMBuildSub(ura.builder, cur, r, "sub"); break;
+      case MUL_ASSIGN: res = LLVMBuildMul(ura.builder, cur, r, "mul"); break;
+      case DIV_ASSIGN: guard_nonzero(node->token, r); res = LLVMBuildSDiv(ura.builder, cur, r, "div"); break;
+      case MOD_ASSIGN: guard_nonzero(node->token, r); res = LLVMBuildSRem(ura.builder, cur, r, "mod"); break;
+      default: res = r; break;
+   }
+   LLVMBuildStore(ura.builder, res, dest);
+   node->token->llvm.elem = res;
 }
 
 void code_gen_output(Node *node) {
