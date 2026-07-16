@@ -18,15 +18,16 @@ Rewrite ura-lang feature by feature, full pipeline each. Nothing gets skipped, n
 - [x] `-san` (ASan/UBSan + DWARF per-statement lines) · `-exec` (run + cargo-style timing)
 
 ## M1 — scalar core (everything depends on this)
-- [ ] bool literals — `True`/`False` already lexed (lex_identifier special case); remaining: parser → type_check → code_gen (i1) → tests (2)
-- [ ] comparison `== != < > <= >=` + `is` → BOOL (precedence + icmp) (2)
-- [ ] logical `and or not` with short-circuit blocks (3)
-- [ ] unary `- not ~` in prime_node (2)
-- [ ] long/short end-to-end + design: int-literal widening rules (2)
-- [ ] float literals end-to-end (f32 in to_llvm_type, fadd/fcmp) (3)
-- [ ] char literals end-to-end (2)
-- [ ] compound assignment `+= -= *= /= %=` (desugar to binop + store) (2)
-- [ ] bitwise `& | ^ ~ << >>` (2)
+- [x] bool literals — `True`/`False`, i1, end-to-end
+- [x] comparison `== != < > <= >=` → BOOL (precedence + icmp)
+- [x] logical `and or not` (eager LLVMBuildAnd/Or)
+- [x] unary `- not ~` in prime_node + parenthesized grouping
+- [x] long/short end-to-end + design: int-literal widening → require explicit cast
+- [x] float literals — declare/print/return/zero-init, f32 in to_llvm_type
+- [ ] float arithmetic + comparison — int-vs-float split in binop (fadd/fsub/fmul/fdiv, fcmp) (2)
+- [x] char literals end-to-end
+- [x] compound assignment `+= -= *= /= %=` (load-modify-store, reuses guard_nonzero)
+- [x] bitwise `& | ^ ~ << >>`
 - [ ] precedence table complete for ALL ops + mixed-precedence golden (1)
 
 ## M2 — control flow
@@ -97,7 +98,7 @@ Rewrite ura-lang feature by feature, full pipeline each. Nothing gets skipped, n
 
 ## Design decisions ledger
 - closures: **stays dropped** — explicit-state model; capture is a compile error
-- int-literal widening (long/short/float targets) — decide at M1
+- int-literal widening (long/short/float targets) — **decided: require explicit cast** (M1)
 - local refs / ref returns — decide at M4
 - explicit stack/heap keywords vs implicit — decide at M4
 - try/catch vs Result/Option — decide at M8
