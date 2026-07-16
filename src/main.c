@@ -198,6 +198,7 @@ void analyze(Node *node) {
       case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN: case MOD_ASSIGN:
       case EQUAL: case NOT_EQUAL: case LESS: case GREAT: case LESS_EQUAL: case GREAT_EQUAL:
       case AND: case OR:
+      case BAND: case BOR: case BXOR: case LSHIFT: case RSHIFT:
          analyze(node->left);
          analyze(node->right);
          break;
@@ -247,6 +248,7 @@ void type_check(Node *node) {
       case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN: case MOD_ASSIGN:
       case EQUAL: case NOT_EQUAL: case LESS: case GREAT: case LESS_EQUAL: case GREAT_EQUAL:
       case AND: case OR:
+      case BAND: case BOR: case BXOR: case LSHIFT: case RSHIFT:
          type_check_binop(node); break;
       default:
          CHECK(1, "type_check: unhandled node '%s'", to_string(token->type));
@@ -292,6 +294,7 @@ void code_gen(Node *node) {
       case EQUAL: case NOT_EQUAL: case LESS: case GREAT:
       case LESS_EQUAL: case GREAT_EQUAL:
       case AND: case OR:
+      case BAND: case BOR: case BXOR: case LSHIFT: case RSHIFT:
          code_gen_binop(node);
          break;
       default:
