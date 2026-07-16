@@ -323,7 +323,7 @@ void generate_asm() {
    finalize_module(ura.ll_path);
    if (ura.error_count) return;
    if (ura.enable_exec)
-      fprintf(stderr, CYAN("❯ %-9s") " " BLUE("%s (%s)") "\n",
+      fprintf(stderr, CYAN("%-9s") " " BLUE("%s (%s)") "\n",
               "Compiling", ura.base, ura.sources[0]->filename);
    char *cc  = ura.enable_san ? "/usr/bin/clang" : "clang";
    char *san = ura.enable_san ? " -fsanitize=address,undefined -fno-omit-frame-pointer -g" : "";
@@ -334,11 +334,11 @@ void generate_asm() {
 
    char *opt = ura.flags ? "optimized" : "unoptimized";
    char *tag = ura.enable_san ? " + sanitized" : "";
-   fprintf(stderr, CYAN("❯ %-9s") " \033[2m[%s%s]\033[0m in %.2fs\n",
+   fprintf(stderr, CYAN("%-9s") " \033[2m[%s%s]\033[0m in %.2fs\n",
            "Finished", opt, tag, clock_now() - ura.t_start);
 
    char  *run = strchr(ura.output, '/') ? ura.output : format("./%s", ura.output);
-   fprintf(stderr, CYAN("❯ %-9s") " " BLUE("%s") "\n", "Running", run);
+   fprintf(stderr, CYAN("%-9s") " " BLUE("%s") "\n", "Running", run);
    double e0  = clock_now();
    pid_t  pid = fork();
    if (pid == 0) {
@@ -350,10 +350,10 @@ void generate_asm() {
    waitpid(pid, &status, 0);
    double exec = clock_now() - e0;
    if (WIFSIGNALED(status))
-      fprintf(stderr, CYAN("❯ ") RED("%-9s") " %s (signal %d) in %.2fs\n",
+      fprintf(stderr, RED("%-9s") " %s (signal %d) in %.2fs\n",
               "Crashed", signal_name(WTERMSIG(status)), WTERMSIG(status), exec);
    else
-      fprintf(stderr, CYAN("❯ %-9s") " with code %d in %.2fs\n",
+      fprintf(stderr, CYAN("%-9s") " with code %d in %.2fs\n",
               "Exited", WEXITSTATUS(status), exec);
 }
 
