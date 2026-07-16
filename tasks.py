@@ -261,7 +261,9 @@ DESC = {
 }
 BUILTINS = {
     "cd": "change directory", "pwd": "print working directory", "help": "list commands",
-    "reload": "reload tasks.py", "clear": "clear the screen", "quit": "leave the ura shell",
+    "clear": "clear the visible screen (scrollback kept)",
+    "clean": "clear screen + scrollback (no scroll-back)",
+    "reload": "reload tasks.py", "quit": "leave the ura shell",
 }
 STATE = {"last_ok": True, "cwd": "", "branch": "", "fresh": False, "llvm": "?", "clang": False}
 
@@ -305,6 +307,9 @@ def run_line(line):
         show_help(); STATE["last_ok"] = True; return
     if cmd == "clear":
         os.system("cls" if os.name == "nt" else "clear"); return
+    if cmd == "clean":
+        # wipe screen AND scrollback (\033[3J), so there's nothing to scroll back to
+        sys.stdout.write("\033[3J\033[2J\033[H"); sys.stdout.flush(); return
     if cmd == "reload":
         os.execv(sys.executable, [sys.executable, SCRIPT])
     if cmd in TASKS:
@@ -357,7 +362,12 @@ def _setup_readline():
     readline.set_completer_delims(" \t\n")
     def completer(text, state):
         buf = readline.get_line_buffer()
-        opts = sorted(glob.glob(text + "*")) if " " in buf else [n for n in list(TASKS) + list(BUILTINS) if n.startswith(text)]
+        first = " " not in buf
+        path_like = text.startswith((".", "/", "~")) or "/" in text
+        if first and not path_like:
+            opts = [n for n in list(TASKS) + list(BUILTINS) if n.startswith(text)]
+        else:
+            opts = sorted(glob.glob(os.path.expanduser(text) + "*"))
         return opts[state] if state < len(opts) else None
     readline.set_completer(completer)
     readline.parse_and_bind("bind ^I rl_complete" if "libedit" in (readline.__doc__ or "") else "tab: complete")
@@ -400,13 +410,14 @@ def ura_shell():
             self.paths = PathCompleter(expanduser=True)
         def get_completions(self, document, complete_event):
             text = document.text_before_cursor
-            if " " not in text.lstrip():
-                word = text.lstrip()
+            word = document.get_word_before_cursor(WORD=True)
+            first = " " not in text.lstrip()
+            path_like = word.startswith((".", "/", "~")) or "/" in word
+            if first and not path_like:
                 for name in list(TASKS) + list(BUILTINS):
                     if name.startswith(word):
                         yield Completion(name, -len(word), display_meta=DESC.get(name) or BUILTINS.get(name, ""))
             else:
-                word = document.get_word_before_cursor(WORD=True)
                 yield from self.paths.get_completions(Document(word, len(word)), complete_event)
 
     def prompt_text():
@@ -457,7 +468,14 @@ def plain_loop():
         except _Quit:
             break
 
+def activate_env():
+    """Put build/ura's directory on PATH so `ura` runs like a command (venv-style)."""
+    bdir = str((Path(SCRIPT).parent / "build").resolve())
+    if bdir not in os.environ.get("PATH", "").split(os.pathsep):
+        os.environ["PATH"] = bdir + os.pathsep + os.environ.get("PATH", "")
+
 if __name__ == "__main__":
+    activate_env()
     if not RICH:
         print(_c("dim", "tip: run `uv run tasks.py` (not python3) for colors + the full shell"), file=sys.stderr)
     if len(sys.argv) > 1:
