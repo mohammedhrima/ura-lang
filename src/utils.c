@@ -193,6 +193,24 @@ int _debug(char *conv, ...) {
 	return res;
 }
 
+double clock_now() {
+   struct timespec ts;
+   clock_gettime(CLOCK_MONOTONIC, &ts);
+   return ts.tv_sec + ts.tv_nsec / 1e9;
+}
+
+char *signal_name(int sig) {
+   switch (sig) {
+      case SIGSEGV: return "SIGSEGV";
+      case SIGABRT: return "SIGABRT";
+      case SIGTRAP: return "SIGTRAP";
+      case SIGILL:  return "SIGILL";
+      case SIGFPE:  return "SIGFPE";
+      case SIGBUS:  return "SIGBUS";
+      default:      return "signal";
+   }
+}
+
 char *format(const char *fmt, ...) {
 	char  *buf  = NULL;
 	size_t size = 0;
@@ -304,7 +322,7 @@ void parse_error(Token *token, const char *fmt, ...) {
 	for (int n = line_no; n >= 10; n /= 10)
 		gutter++;
 
-	fprintf(stderr, "%*s " BLUE("-->") " %s:%d:%d\n", gutter, "", token->source->filename, line_no,
+	fprintf(stderr, "%*s \033[2m%s:%d:%d\033[0m\n", gutter, "", token->source->filename, line_no,
 	        col);
 	fprintf(stderr, "%*s " BLUE("|") "\n", gutter, "");
 	fprintf(stderr, BLUE("%*d |") " %.*s\n", gutter, line_no, line_end - line_start,
@@ -842,12 +860,18 @@ int get_operation_precedence(Type type)
 {
    switch(type)
    {
-   case ASSIGN: return 10;
-   case ADD:    return 20;
-   case SUB:    return 20;
-   case MUL:    return 30;
-   case DIV:    return 30;
-   case MOD:    return 30;
+   case ASSIGN:      return 1;
+   case EQUAL:       return 2;
+   case NOT_EQUAL:   return 2;
+   case LESS:        return 3;
+   case GREAT:       return 3;
+   case LESS_EQUAL:  return 3;
+   case GREAT_EQUAL: return 3;
+   case ADD:         return 4;
+   case SUB:         return 4;
+   case MUL:         return 5;
+   case DIV:         return 5;
+   case MOD:         return 5;
    default:
       break;
    }
@@ -984,6 +1008,10 @@ Node *fdec_node(Node *node) {
 	if (!find(LPAR, 0))
 		parse_error(node->token, "expected '(' after function %s", node->token->name);
 	while (!ura.found_error && peek(0)->type != RPAR) {
+		if (find(VARIADIC, 0)) {
+			node->token->is_variadic = true;
+			break;
+		}
 		bool   is_ref = find(REF, 0) != NULL;
 		Token *param  = find(ID, 0);
 		if (!param) {
@@ -1009,12 +1037,14 @@ Node *fdec_node(Node *node) {
 	}
 	else
 		parse_error(node->token, "expected <data type> after function %s", node->token->name);
-	if (!find(DOTS, 0))
-		parse_error(node->token, "expected ':' after function %s", node->token->name);
+	if (!node->token->is_proto) {
+		if (!find(DOTS, 0))
+			parse_error(node->token, "expected ':' after function %s", node->token->name);
 
-	while(within(node->token->indent)) {
-		resize_array(node->children, Node*);
-		node->children[node->children_count++] = expr_node(0);
+		while(within(node->token->indent)) {
+			resize_array(node->children, Node*);
+			node->children[node->children_count++] = expr_node(0);
+		}
 	}
 
 	exit_scope();
@@ -1035,6 +1065,21 @@ Node *fcall_node(Node *node) {
 	return node;
 }
 
+Node *output_node(Node *node) {
+	node->token->type     = OUTPUT;
+	node->token->ret_type = VOID;
+	if (!find(LPAR, 0))
+		parse_error(node->token, "expected '(' after output");
+	while (!ura.found_error && peek(0)->type != RPAR) {
+		resize_array(node->children, Node *);
+		node->children[node->children_count++] = expr_node(0);
+		while (find(COMA, 0));
+	}
+	if (!find(RPAR, 0))
+		parse_error(node->token, "expected ')' after output arguments");
+	return node;
+}
+
 bool is_data_type(Token *token) {
 	return token->is_dec && includes(token->type, DATA_TYPES, 0); 
 }
@@ -1046,6 +1091,7 @@ TypeRef to_llvm_type(Type type) {
    case SHORT: return ura.i16;
    case CHAR:  return ura.i8;
    case BOOL:  return ura.i1;
+   case CHARS: return LLVMPointerType(ura.i8, 0);
    case VOID:  return ura.vd;
    default: TODO(1, "to_llvm_type: unhandled type %t", type); return NULL;
    }
@@ -1184,18 +1230,15 @@ Value get_or_declare(char *name, TypeRef fn_type) {
    return fn;
 }
 
-void guard_nonzero(Token *op, Value divisor) {
-   Value fn     = LLVMGetBasicBlockParent(LLVMGetInsertBlock(ura.builder));
-   Block trap   = LLVMAppendBasicBlockInContext(ura.context, fn, "divzero");
-   Block cont   = LLVMAppendBasicBlockInContext(ura.context, fn, "cont");
-   Value zero   = LLVMConstInt(LLVMTypeOf(divisor), 0, 0);
-   Value iszero = LLVMBuildICmp(ura.builder, LLVMIntEQ, divisor, zero, "iszero");
-   LLVMBuildCondBr(ura.builder, iszero, trap, cont);
+void guard(Token *op, Value is_bad, char *what) {
+   Value fn   = LLVMGetBasicBlockParent(LLVMGetInsertBlock(ura.builder));
+   Block trap = LLVMAppendBasicBlockInContext(ura.context, fn, "trap");
+   Block cont = LLVMAppendBasicBlockInContext(ura.context, fn, "cont");
+   LLVMBuildCondBr(ura.builder, is_bad, trap, cont);
 
    LLVMPositionBuilderAtEnd(ura.builder, trap);
-   char   *what = (op->type == MOD) ? "modulo" : "division";
-   char   *text = format("%s:%d: %s by zero\n", ura.sources[0]->filename, op->line, what);
-   Value   msg  = LLVMBuildGlobalStringPtr(ura.builder, text, "divzero_msg");
+   char   *text = format(RED("runtime error: ") "%s:%d: %s\n", ura.sources[0]->filename, op->line, what);
+   Value   msg  = LLVMBuildGlobalStringPtr(ura.builder, text, "trap_msg");
    TypeRef i8p  = LLVMPointerType(ura.i8, 0);
 
    TypeRef write_params[3] = { ura.i32, i8p, ura.i64 };
@@ -1211,6 +1254,18 @@ void guard_nonzero(Token *op, Value divisor) {
 
    LLVMBuildUnreachable(ura.builder);
    LLVMPositionBuilderAtEnd(ura.builder, cont);
+}
+
+void guard_nonzero(Token *op, Value divisor) {
+   Value zero   = LLVMConstInt(LLVMTypeOf(divisor), 0, 0);
+   Value iszero = LLVMBuildICmp(ura.builder, LLVMIntEQ, divisor, zero, "iszero");
+   guard(op, iszero, (op->type == MOD) ? "modulo by zero" : "division by zero");
+}
+
+void guard_nonnull(Token *op, Value ptr) {
+   Value null   = LLVMConstNull(LLVMTypeOf(ptr));
+   Value isnull = LLVMBuildICmp(ura.builder, LLVMIntEQ, ptr, null, "isnull");
+   guard(op, isnull, "call to a null function value");
 }
 
 void analyze_fdec(Node *node) {
@@ -1276,11 +1331,13 @@ void type_check_fcall(Node *node) {
    Token *fn = indirect ? token->Fcall.var : token->Fcall.ptr->token;
    for (int i = 0; i < node->children_count; i++)
       type_check(node->children[i]);
-   if (node->children_count != fn->Fn.params_count) {
+   bool bad_count = fn->is_variadic ? node->children_count < fn->Fn.params_count
+                                    : node->children_count != fn->Fn.params_count;
+   if (bad_count) {
       parse_error(token, "wrong number of arguments to '%s'", token->name);
       return;
    }
-   for (int i = 0; i < node->children_count; i++) {
+   for (int i = 0; i < fn->Fn.params_count; i++) {
       if (node->children[i]->token->ret_type &&
          node->children[i]->token->ret_type != fn->Fn.params[i]->ret_type) {
          parse_error(node->children[i]->token, "argument %d type mismatch in call to '%s'", i + 1, token->name);
@@ -1304,7 +1361,7 @@ void type_check_binop(Node *node) {
       parse_error(token, "type mismatch between operands");
       return;
    }
-   token->ret_type = lt;
+   token->ret_type = includes(token->type, COMPARISON_OPS, 0) ? BOOL : lt;
 }
 
 void emit_signature(Node *fn) {
@@ -1319,7 +1376,7 @@ void emit_signature(Node *fn) {
          params[i] = token->Fn.params[i]->is_ref ? LLVMPointerType(pt, 0) : pt;
       }
    }
-   token->llvm.func_type = LLVMFunctionType(to_llvm_type(token->ret_type), params, n, 0);
+   token->llvm.func_type = LLVMFunctionType(to_llvm_type(token->ret_type), params, n, token->is_variadic);
    token->llvm.elem      = LLVMAddFunction(ura.module, token->name, token->llvm.func_type);
    free(params);
 }
@@ -1337,6 +1394,7 @@ Value address_of(Node *node) {
 void code_gen_fdec(Node *node) {
    Token *token = node->token;
    emit_signature(node);
+   if (token->is_proto) return;
    debug_enter_function(token);
    enter_scope(node);
    for (int i = 0; i < token->Fn.params_count; i++) {
@@ -1386,7 +1444,7 @@ void code_gen_fcall(Node *node) {
    if (n > 0) {
       args = allocate(n, sizeof(Value));
       for (int i = 0; i < n; i++) {
-         if (fn->Fn.params[i]->is_ref)
+         if (i < fn->Fn.params_count && fn->Fn.params[i]->is_ref)
             args[i] = address_of(node->children[i]);
          else {
             code_gen(node->children[i]);
@@ -1397,6 +1455,7 @@ void code_gen_fcall(Node *node) {
    if (indirect) {
       TypeRef ptr_type = llvm_type_of(fn);
       Value   fn_ptr   = LLVMBuildLoad2(ura.builder, ptr_type, fn->llvm.elem, "fn");
+      guard_nonnull(token, fn_ptr);
       char   *name     = fn->Fn.ret->ret_type == VOID ? "" : "call";
       token->llvm.elem = LLVMBuildCall2(ura.builder, LLVMGetElementType(ptr_type), fn_ptr, args, n, name);
    } else {
@@ -1427,8 +1486,56 @@ void code_gen_binop(Node *node) {
       case MUL: token->llvm.elem = LLVMBuildMul(ura.builder, left, right, "mul");  break;
       case DIV: token->llvm.elem = LLVMBuildSDiv(ura.builder, left, right, "div"); break;
       case MOD: token->llvm.elem = LLVMBuildSRem(ura.builder, left, right, "mod"); break;
+      case EQUAL:       token->llvm.elem = LLVMBuildICmp(ura.builder, LLVMIntEQ,  left, right, "eq"); break;
+      case NOT_EQUAL:   token->llvm.elem = LLVMBuildICmp(ura.builder, LLVMIntNE,  left, right, "ne"); break;
+      case LESS:        token->llvm.elem = LLVMBuildICmp(ura.builder, LLVMIntSLT, left, right, "lt"); break;
+      case GREAT:       token->llvm.elem = LLVMBuildICmp(ura.builder, LLVMIntSGT, left, right, "gt"); break;
+      case LESS_EQUAL:  token->llvm.elem = LLVMBuildICmp(ura.builder, LLVMIntSLE, left, right, "le"); break;
+      case GREAT_EQUAL: token->llvm.elem = LLVMBuildICmp(ura.builder, LLVMIntSGE, left, right, "ge"); break;
       default: break;
    }
+}
+
+void code_gen_output(Node *node) {
+   char  *fmt   = allocate(node->children_count * 4 + 8, 1);
+   int    fc    = 0;
+   Value *args  = allocate(node->children_count + 1, sizeof(Value));
+   int    nargs = 0;
+
+   for (int i = 0; i < node->children_count; i++) {
+      Node *arg = node->children[i];
+      code_gen(arg);
+      Value v = arg->token->llvm.elem;
+      switch (arg->token->ret_type) {
+         case INT: case SHORT: fmt[fc++] = '%'; fmt[fc++] = 'd'; args[nargs++] = v; break;
+         case LONG: fmt[fc++] = '%'; fmt[fc++] = 'l'; fmt[fc++] = 'l'; fmt[fc++] = 'd'; args[nargs++] = v; break;
+         case CHAR: fmt[fc++] = '%'; fmt[fc++] = 'c'; args[nargs++] = v; break;
+         case CHARS: fmt[fc++] = '%'; fmt[fc++] = 's'; args[nargs++] = v; break;
+         case BOOL: {
+            Value ts = LLVMBuildGlobalStringPtr(ura.builder, "True", "true_str");
+            Value fs = LLVMBuildGlobalStringPtr(ura.builder, "False", "false_str");
+            fmt[fc++] = '%'; fmt[fc++] = 's';
+            args[nargs++] = LLVMBuildSelect(ura.builder, v, ts, fs, "bool_str");
+            break;
+         }
+         case FLOAT:
+            fmt[fc++] = '%'; fmt[fc++] = 'f';
+            args[nargs++] = LLVMBuildFPExt(ura.builder, v, LLVMDoubleTypeInContext(ura.context), "f2d");
+            break;
+         default: fmt[fc++] = '?'; break;
+      }
+   }
+
+   TypeRef i8p       = LLVMPointerType(ura.i8, 0);
+   TypeRef printf_ty = LLVMFunctionType(ura.i32, (TypeRef[]){ i8p }, 1, 1);
+   Value   printf_fn = get_or_declare("printf", printf_ty);
+   Value  *call_args = allocate(nargs + 1, sizeof(Value));
+   call_args[0]      = LLVMBuildGlobalStringPtr(ura.builder, fmt, "fmt");
+   memcpy(call_args + 1, args, nargs * sizeof(Value));
+   node->token->llvm.elem = LLVMBuildCall2(ura.builder, printf_ty, printf_fn, call_args, nargs + 1, "");
+   free(fmt);
+   free(args);
+   free(call_args);
 }
 
 void free_token(Token *token) {

@@ -1,0 +1,8 @@
+// builtins/c-funcs/004.ura - proto printf: hello world with a format string
+
+proto fn printf(fmt chars, ...) int
+
+main():
+    s chars = "ura"
+    printf("hello %s %d\n", s, 42)
+    return 0

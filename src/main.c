@@ -12,7 +12,7 @@ void parse_arguments(int argc, char **argv)
       char *arg = argv[i];
 #define MATCH(name, field, val) if (strcmp(arg, name) == 0) { field = val; continue; }
       MATCH("-debug", ura.enable_debug, true);
-      // MATCH("-exec",  ura.enable_exec,  true);
+      MATCH("-exec",  ura.enable_exec,  true);
       MATCH("-san",   ura.enable_san,   true);
       MATCH("-O0", ura.flags, PASSES_O0);   
       MATCH("-O1", ura.flags, PASSES_O1);
@@ -33,6 +33,7 @@ void parse_arguments(int argc, char **argv)
       }
    }
    if (ura.error_count) return;
+   if (!ura.sources) parse_error(NULL, "no input file (usage: ura <file.ura> [-o out] [-O0..-Oz] [-san] [-debug])");
 }
 
 void tokenize(int default_indent) {
@@ -69,7 +70,14 @@ Node *prime_node() {
    Token *token = next();
    switch(token->type)
    {
-   case INT: return new_node(token);
+   case INT: case BOOL: case CHARS: return new_node(token);
+   case PROTO:
+      if (peek(0)->type != FDEC) {
+         parse_error(token, "expected 'fn' after 'proto'");
+         return syntax_error();
+      }
+      peek(0)->is_proto = true;
+      return prime_node();
    case FDEC: {
       Node *node = new_node(token);
       Token *fname = find(ID, 0);
@@ -85,6 +93,8 @@ Node *prime_node() {
       {
          if (strcmp(token->name, "main") == 0) // main func
             return fdec_node(new_node(token));
+         if (strcmp(token->name, "output") == 0)
+            return output_node(new_node(token));
          return fcall_node(new_node(token));
       }
       if (is_data_type(peek(0)) || (peek(0)->type == FDEC && peek(1)->type == LPAR))
@@ -153,10 +163,15 @@ void analyze(Node *node) {
    switch (token->type) {
       case FDEC:   analyze_fdec(node); break;
       case ID:     analyze_id(node); break;
-      case INT:    break;
+      case INT: case BOOL: case CHARS: break;
       case RETURN: analyze(node->left); break;
       case FCALL:  analyze_fcall(node); break;
+      case OUTPUT:
+         for (int i = 0; i < node->children_count; i++)
+            analyze(node->children[i]);
+         break;
       case ASSIGN: case ADD: case SUB: case MUL: case DIV: case MOD:
+      case EQUAL: case NOT_EQUAL: case LESS: case GREAT: case LESS_EQUAL: case GREAT_EQUAL:
          analyze(node->left);
          analyze(node->right);
          break;
@@ -175,11 +190,19 @@ void type_check(Node *node) {
             type_check(node->children[i]);
          break;
       case INT:     token->ret_type = INT; break;
+      case BOOL:    token->ret_type = BOOL; break;
+      case CHARS:   token->ret_type = CHARS; break;
       case ID:      break;
       case FN_TYPE: break;
       case RETURN:  type_check(node->left); break;
       case FCALL:   type_check_fcall(node); break;
+      case OUTPUT:
+         for (int i = 0; i < node->children_count; i++)
+            type_check(node->children[i]);
+         token->ret_type = VOID;
+         break;
       case ASSIGN: case ADD: case SUB: case MUL: case DIV: case MOD:
+      case EQUAL: case NOT_EQUAL: case LESS: case GREAT: case LESS_EQUAL: case GREAT_EQUAL:
          type_check_binop(node); break;
       default:
          CHECK(1, "type_check: unhandled node '%s'", to_string(token->type));
@@ -193,6 +216,8 @@ void code_gen(Node *node) {
    switch (token->type) {
       case FDEC:   code_gen_fdec(node); break;
       case INT:    token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Int.value, 0); break;
+      case BOOL:   token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Bool.value, 0); break;
+      case CHARS:  token->llvm.elem = LLVMBuildGlobalStringPtr(ura.builder, token->Chars.value, "str"); break;
       case ID:     code_gen_id(node); break;
       case FN_TYPE:
          emit_signature(token->Fcall.ptr);
@@ -203,8 +228,13 @@ void code_gen(Node *node) {
          token->llvm.elem = LLVMBuildRet(ura.builder, node->left->token->llvm.elem);
          break;
       case FCALL:  code_gen_fcall(node); break;
+      case OUTPUT: code_gen_output(node); break;
       case ASSIGN: code_gen_assign(node); break;
-      case ADD: case SUB: case MUL: case DIV: case MOD: code_gen_binop(node); break;
+      case ADD: case SUB: case MUL: case DIV: case MOD:
+      case EQUAL: case NOT_EQUAL: case LESS: case GREAT:
+      case LESS_EQUAL: case GREAT_EQUAL:
+         code_gen_binop(node); 
+         break;
       default:
          CHECK(1, "code_gen: unhandled node '%s'", to_string(token->type));
          break;
@@ -230,15 +260,43 @@ void generate_asm() {
       code_gen(ura.head->children[i]);
    finalize_module(ura.ll_path);
    if (ura.error_count) return;
+   if (ura.enable_exec)
+      fprintf(stderr, CYAN("❯ %-9s") " " BLUE("%s (%s)") "\n",
+              "Compiling", ura.base, ura.sources[0]->filename);
    char *cc  = ura.enable_san ? "/usr/bin/clang" : "clang";
    char *san = ura.enable_san ? " -fsanitize=address,undefined -fno-omit-frame-pointer -g" : "";
    char *cmd = format("%s%s %s -o %s 2>/dev/null", cc, san, ura.ll_path, ura.output);
    system(cmd);
    free(cmd);
-   debug(GREEN("compiled -> %s\n"), ura.output);
+   if (!ura.enable_exec) return;
+
+   char *opt = ura.flags ? "optimized" : "unoptimized";
+   char *tag = ura.enable_san ? " + sanitized" : "";
+   fprintf(stderr, CYAN("❯ %-9s") " \033[2m[%s%s]\033[0m in %.2fs\n",
+           "Finished", opt, tag, clock_now() - ura.t_start);
+
+   char  *run = strchr(ura.output, '/') ? ura.output : format("./%s", ura.output);
+   fprintf(stderr, CYAN("❯ %-9s") " " BLUE("%s") "\n", "Running", run);
+   double e0  = clock_now();
+   pid_t  pid = fork();
+   if (pid == 0) {
+      execl(run, run, NULL);
+      _exit(127);
+   }
+   if (pid < 0) return;
+   int status = 0;
+   waitpid(pid, &status, 0);
+   double exec = clock_now() - e0;
+   if (WIFSIGNALED(status))
+      fprintf(stderr, CYAN("❯ ") RED("%-9s") " %s (signal %d) in %.2fs\n",
+              "Crashed", signal_name(WTERMSIG(status)), WTERMSIG(status), exec);
+   else
+      fprintf(stderr, CYAN("❯ %-9s") " with code %d in %.2fs\n",
+              "Exited", WEXITSTATUS(status), exec);
 }
 
 int main(int argc, char**argv) {
+   ura.t_start = clock_now();
    ura.max_errors = 20;
    ura.enable_debug = false;
    parse_arguments(argc, argv);

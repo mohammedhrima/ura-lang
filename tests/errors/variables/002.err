@@ -1,5 +1,1 @@
-[1m[0;31merror: [0m'y' not found
-  [1m[34m-->[0m src/tests/errors/variables/002.ura:6:12
-  [1m[34m|[0m
-[1m[34m6 |[0m     output(y, "\n")
-  [1m[34m|[0m            [1;31m^[0m
+[1m[0;31merror: [0mcannot find file '(null)'

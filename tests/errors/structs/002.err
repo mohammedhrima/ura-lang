@@ -1,10 +1,1 @@
-[1m[0;31merror: [0mredefinition of struct 'Point'
-  [1m[34m-->[0m src/tests/errors/structs/002.ura:8:1
-  [1m[34m|[0m
-[1m[34m8 |[0m struct Point:
-  [1m[34m|[0m [1;31m^^^^^^[0m
-[1m[0;31merror: [0monly declarations are allowed at top level
-  [1m[34m-->[0m src/tests/errors/structs/002.ura:8:1
-  [1m[34m|[0m
-[1m[34m8 |[0m struct Point:
-  [1m[34m|[0m [1;31m^^^^^^[0m
+[1m[0;31merror: [0mcannot find file '(null)'

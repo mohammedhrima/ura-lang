@@ -1,5 +1,5 @@
 [1m[0;31merror: [0margument 1 to 'tick' must be a variable (ref parameter)
-  [1m[34m-->[0m tests/errors/refs/003.ura:7:17
+  [2mtests/errors/refs/003.ura:7:17[0m
   [1m[34m|[0m
 [1m[34m7 |[0m     return tick(5)
   [1m[34m|[0m                 [1;31m^[0m

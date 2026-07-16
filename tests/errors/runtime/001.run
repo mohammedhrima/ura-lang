@@ -1,2 +1,2 @@
-tests/errors/runtime/001.ura:6: division by zero
+[1m[0;31mruntime error: [0mtests/errors/runtime/001.ura:6: division by zero
 exit: 1
