@@ -142,7 +142,12 @@ Node *expr_node(int min_op) {
       if(op <= min_op) break;
       Node *node = new_node(next());
       node->left = left;
-      node->right = expr_node(op);
+      if (node->token->type == AS) {
+         Token *type_tok = new_token(ID, 0);
+         parse_type(type_tok);
+         node->right = new_node(type_tok);
+      } else
+         node->right = expr_node(op);
       left = node;
    }
    return left;
@@ -184,6 +189,7 @@ void analyze(Node *node) {
       case RETURN: analyze(node->left); break;
       case FCALL:  analyze_fcall(node); break;
       case NOT: case BNOT: analyze(node->left); break;
+      case AS: analyze(node->left); break;
       case OUTPUT:
          for (int i = 0; i < node->children_count; i++)
             analyze(node->children[i]);
@@ -226,6 +232,15 @@ void type_check(Node *node) {
             parse_error(token, "'not' needs a bool operand");
          token->ret_type = (token->type == NOT) ? BOOL : node->left->token->ret_type;
          break;
+      case AS: {
+         type_check(node->left);
+         Type src = node->left->token->ret_type;
+         Type dst = node->right->token->ret_type;
+         if ((src && !includes(src, NUMERIC_TYPES, 0)) || !includes(dst, NUMERIC_TYPES, 0))
+            parse_error(token, "cannot cast %s to %s", to_string(src), to_string(dst));
+         token->ret_type = dst;
+         break;
+      }
       case ASSIGN: case ADD: case SUB: case MUL: case DIV: case MOD:
       case EQUAL: case NOT_EQUAL: case LESS: case GREAT: case LESS_EQUAL: case GREAT_EQUAL:
       case AND: case OR:
@@ -258,6 +273,11 @@ void code_gen(Node *node) {
       case NOT: case BNOT:
          code_gen(node->left);
          token->llvm.elem = LLVMBuildNot(ura.builder, node->left->token->llvm.elem, "not");
+         break;
+      case AS:
+         code_gen(node->left);
+         token->llvm.elem = LLVMBuildIntCast2(ura.builder, node->left->token->llvm.elem,
+                                              to_llvm_type(token->ret_type), 1, "cast");
          break;
       case ASSIGN: code_gen_assign(node); break;
       case ADD: case SUB: case MUL: case DIV: case MOD:
