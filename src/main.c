@@ -14,6 +14,7 @@ void parse_arguments(int argc, char **argv)
       MATCH("-debug", ura.enable_debug, true);
       MATCH("-exec",  ura.enable_exec,  true);
       MATCH("-san",   ura.enable_san,   true);
+      MATCH("-testing", ura.no_color,   true);
       MATCH("-O0", ura.flags, PASSES_O0);   
       MATCH("-O1", ura.flags, PASSES_O1);
       MATCH("-O2", ura.flags, PASSES_O2);   
