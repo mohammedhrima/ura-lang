@@ -1,6 +1,0 @@
-// functions/basic/013.ura - nested non-capturing helper function
-
-main():
-    fn dbl(k int) int:
-        return k + k
-    return dbl(21)

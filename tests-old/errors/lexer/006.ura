@@ -1,5 +1,0 @@
-// parse_errors/006 — `use` with unclosed quote
-use "@/header
-
-main():
-    output("hi\n")

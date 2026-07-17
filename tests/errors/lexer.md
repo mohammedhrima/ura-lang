@@ -21,7 +21,7 @@ main():
 ```
 
 ```err
-error: Expected '"' after `use`
+error: Expected '"' after 'use'
 ```
 
 ```ll
@@ -41,7 +41,7 @@ main():
 ```
 
 ```err
-error: Unterminated `use` path, expected closing '"'
+error: Unterminated 'use' path, expected closing '"'
 ```
 
 ```ll
@@ -61,7 +61,7 @@ main():
 ```
 
 ```err
-error: Expected '"' after `link`
+error: Expected '"' after 'link'
 ```
 
 ```ll
@@ -81,7 +81,7 @@ main():
 ```
 
 ```err
-error: Unterminated `link` path, expected closing '"'
+error: Unterminated 'link' path, expected closing '"'
 ```
 
 ```ll

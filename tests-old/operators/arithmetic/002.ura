@@ -1,4 +1,0 @@
-// operators/arithmetic/002.ura - arithmetic with precedence (2*3 + 20/4 - 1)
-
-main():
-    return 2 * 3 + 20 / 4 - 1

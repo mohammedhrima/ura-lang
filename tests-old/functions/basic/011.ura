@@ -1,8 +1,0 @@
-// functions/basic/011.ura - pass a function as an argument (higher-order)
-
-fn twice(n int) int:
-    return n + n
-fn apply(f fn(int) int, x int) int:
-    return f(x)
-main():
-    return apply(twice, 21)

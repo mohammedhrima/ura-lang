@@ -1,8 +1,0 @@
-// functions/basic/014.ura - a call used as an argument to another call
-
-fn square(n int) int:
-    return n * n
-fn add(a int, b int) int:
-    return a + b
-main():
-    return add(square(5), 3)

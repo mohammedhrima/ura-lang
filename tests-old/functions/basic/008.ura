@@ -1,6 +1,0 @@
-// functions/basic/008.ura - function parameters and a direct call
-
-fn add(a int, b int) int:
-    return a + b
-main():
-    return add(40, 2)

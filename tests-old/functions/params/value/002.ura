@@ -1,9 +1,0 @@
-// functions/params/value/002.ura - a by-value parameter does not change the caller
-
-fn inc(n int) int:
-    n = n + 1
-    return n
-main():
-    n int = 5
-    inc(n)
-    return n

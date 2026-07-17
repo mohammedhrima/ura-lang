@@ -638,7 +638,7 @@ bool lex_use(char *content, int *i, int s, int line, int indent, int default_ind
 	while (isspace(content[(*i)]))
 		(*i)++;
 	if (content[(*i)] != '\"') {
-		tokenize_error(line, (*i), (*i) + 1, "Expected '\"' after `use`");
+		tokenize_error(line, (*i), (*i) + 1, "Expected '\"' after 'use'");
 		return true;
 	}
 	(*i)++;
@@ -647,7 +647,7 @@ bool lex_use(char *content, int *i, int s, int line, int indent, int default_ind
 		while (content[(*i)] && content[(*i)] != '\"' && content[(*i)] != '\n')
 			(*i)++;
 		if (content[(*i)] != '\"') {
-			tokenize_error(line, start - 1, start, "Unterminated `use` path, expected closing '\"'");
+			tokenize_error(line, start - 1, start, "Unterminated 'use' path, expected closing '\"'");
 			return true;
 		}
 		(*i)++;
@@ -680,7 +680,7 @@ bool lex_link(char *content, int *i, int s, int line, int indent, int default_in
 	while (isspace(content[(*i)]))
 		(*i)++;
 	if (content[(*i)] != '\"') {
-		tokenize_error(line, (*i), (*i) + 1, "Expected '\"' after `link`");
+		tokenize_error(line, (*i), (*i) + 1, "Expected '\"' after 'link'");
 		return true;
 	}
 	(*i)++;
@@ -689,7 +689,7 @@ bool lex_link(char *content, int *i, int s, int line, int indent, int default_in
 		(*i)++;
 	if (content[(*i)] != '\"') {
 		tokenize_error(line, link_s - 1, link_s,
-							"Unterminated `link` path, expected closing '\"'");
+							"Unterminated 'link' path, expected closing '\"'");
 		return true;
 	}
 	(*i)++;
