@@ -964,6 +964,34 @@ void exit_scope() {
 	ura.scope = ura.scopes[ura.scopes_count];
 }
 
+Node *enclosing_loop() {
+	for (int i = ura.scopes_count; i >= 1; i--) {
+		if (!ura.scopes[i]) continue;
+		if (ura.scopes[i]->token->type == WHILE) return ura.scopes[i];
+		if (ura.scopes[i]->token->type == FDEC)  return NULL;
+	}
+	return NULL;
+}
+
+void analyze_block(Node *node) {
+	analyze(node->left);
+	enter_scope(node);
+	for (int i = 0; i < node->children_count; i++)
+		analyze(node->children[i]);
+	exit_scope();
+	analyze(node->right);
+}
+
+void type_check_block(Node *node) {
+	type_check(node->left);
+	if (node->left && node->left->token->ret_type != BOOL)
+		parse_error(node->token, "The '%s' condition must be a bool, got %s",
+		            node->token->name, to_string(node->left->token->ret_type));
+	for (int i = 0; i < node->children_count; i++)
+		type_check(node->children[i]);
+	type_check(node->right);
+}
+
 void declare_variable(Token *token) {
 	for (int v = 0; v < ura.scope->variables_count; v++)
 		if (strcmp(ura.scope->variables[v]->name, token->name) == 0) {
@@ -1554,12 +1582,41 @@ void code_gen_fcall(Node *node) {
    free(args);
 }
 
+void code_gen_body(Node *node) {
+   for (int i = 0; i < node->children_count; i++) {
+      code_gen(node->children[i]);
+      if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ura.builder))) break;
+   }
+}
+
+void code_gen_while(Node *node) {
+   Value fn   = LLVMGetBasicBlockParent(LLVMGetInsertBlock(ura.builder));
+   Block cond = LLVMAppendBasicBlockInContext(ura.context, fn, "while.cond");
+   Block body = LLVMAppendBasicBlockInContext(ura.context, fn, "while.body");
+   Block end  = LLVMAppendBasicBlockInContext(ura.context, fn, "while.end");
+   node->token->llvm.start = cond;   
+   node->token->llvm.end   = end;    
+   LLVMBuildBr(ura.builder, cond);
+   LLVMPositionBuilderAtEnd(ura.builder, cond);
+   code_gen(node->left);
+   LLVMBuildCondBr(ura.builder, node->left->token->llvm.elem, body, end);
+   LLVMPositionBuilderAtEnd(ura.builder, body);
+   enter_scope(node);
+   code_gen_body(node);
+   exit_scope();
+   if (!LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ura.builder)))
+      LLVMBuildBr(ura.builder, cond);
+   LLVMPositionBuilderAtEnd(ura.builder, end);
+}
+
 void code_gen_if(Node *node) {
    Value fn  = LLVMGetBasicBlockParent(LLVMGetInsertBlock(ura.builder));
    Block end = LLVMAppendBasicBlockInContext(ura.context, fn, "endif");
    for (Node *cur = node; cur; cur = cur->right) {
       if (cur->token->type == ELSE) {
-         for (int i = 0; i < cur->children_count; i++) code_gen(cur->children[i]);
+         enter_scope(cur);
+         code_gen_body(cur);
+         exit_scope();
          if (!LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ura.builder)))
             LLVMBuildBr(ura.builder, end);
          break;
@@ -1570,7 +1627,9 @@ void code_gen_if(Node *node) {
       code_gen(cur->left);
       LLVMBuildCondBr(ura.builder, cur->left->token->llvm.elem, body, next);
       LLVMPositionBuilderAtEnd(ura.builder, body);
-      for (int i = 0; i < cur->children_count; i++) code_gen(cur->children[i]);
+      enter_scope(cur);
+      code_gen_body(cur);
+      exit_scope();
       if (!LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ura.builder)))
          LLVMBuildBr(ura.builder, end);
       LLVMPositionBuilderAtEnd(ura.builder, next);

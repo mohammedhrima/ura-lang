@@ -179,6 +179,16 @@ Node *prime_node() {
    case ELIF: case ELSE:
       parse_error(token, "'%s' without a matching 'if'", token->name);
       return syntax_error();
+   case WHILE: {
+      Node *node = new_node(token);
+      node->left = expr_node(0);
+      if (!find(DOTS, 0))
+         parse_error(token, "Expected ':' to open the 'while' body");
+      parse_block(node, token->indent);
+      return node;
+   }
+   case BREAK: case CONTINUE:
+      return new_node(token);
    default:
       break;
    }
@@ -248,11 +258,13 @@ void analyze(Node *node) {
          if (node->left->token->type != ID)
             parse_error(node->token, "Cannot take a reference to a non-variable");
          break;
-      case IF: case ELIF: case ELSE:
-         analyze(node->left);
-         for (int i = 0; i < node->children_count; i++)
-            analyze(node->children[i]);
-         analyze(node->right);
+      case IF: case ELIF: case ELSE: case WHILE:
+         analyze_block(node);
+         break;
+      case BREAK: case CONTINUE:
+         node->left = enclosing_loop();
+         if (!node->left)
+            parse_error(node->token, "'%s' outside a loop", node->token->name);
          break;
       case OUTPUT:
          for (int i = 0; i < node->children_count; i++)
@@ -313,15 +325,10 @@ void type_check(Node *node) {
          type_check(node->left);
          token->ret_type = node->left->token->ret_type;
          break;
-      case IF: case ELIF: case ELSE:
-         type_check(node->left);
-         if (node->left && node->left->token->ret_type != BOOL)
-            parse_error(node->token, "The '%s' condition must be a bool, got %s",
-                        node->token->name, to_string(node->left->token->ret_type));
-         for (int i = 0; i < node->children_count; i++)
-            type_check(node->children[i]);
-         type_check(node->right);
+      case IF: case ELIF: case ELSE: case WHILE:
+         type_check_block(node);
          break;
+      case BREAK: case CONTINUE: break;
       case ASSIGN: case ADD: case SUB: case MUL: case DIV: case MOD:
       case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN: case MOD_ASSIGN:
       case EQUAL: case NOT_EQUAL: case LESS: case GREAT: case LESS_EQUAL: case GREAT_EQUAL:
@@ -366,6 +373,9 @@ void code_gen(Node *node) {
          break;
       case REF:    token->llvm.elem = address_of(node->left); break;
       case IF:     code_gen_if(node); break;
+      case WHILE:  code_gen_while(node); break;
+      case BREAK:    LLVMBuildBr(ura.builder, node->left->token->llvm.end);   break;
+      case CONTINUE: LLVMBuildBr(ura.builder, node->left->token->llvm.start); break;
       case ASSIGN: code_gen_assign(node); break;
       case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: 
       case DIV_ASSIGN: case MOD_ASSIGN:
