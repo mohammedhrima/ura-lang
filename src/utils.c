@@ -1117,6 +1117,112 @@ void parse_block(Node *node, int indent) {
 	}
 }
 
+Node *match_node(Node *node) {
+	Token *token = node->token;
+	node->left = expr_node(0);
+	if (!find(DOTS, 0))
+		parse_error(token, "Expected ':' to open the 'match' body");
+	while (within(token->indent) && includes(peek(0)->type, CASE, DEFAULT, 0)) {
+		Token *keyword = next();
+		Node  *branch  = new_node(keyword);
+		if (keyword->type == CASE) {
+			Node *values = new_node(keyword);
+			while (!ura.found_error && peek(0)->type != DOTS) {
+				resize_array(values->children, Node *);
+				values->children[values->children_count++] = expr_node(0);
+				if (!find(COMA, 0)) break;
+			}
+			if (values->children_count == 0)
+				parse_error(keyword, "Expected an expression after 'case'");
+			branch->left = values;
+		}
+		if (!find(DOTS, 0))
+			parse_error(keyword, "Expected ':' to open the '%s' body", keyword->name);
+		parse_block(branch, keyword->indent);
+		resize_array(node->children, Node *);
+		node->children[node->children_count++] = branch;
+		if (keyword->type == DEFAULT) break;
+	}
+	return node;
+}
+
+Node *if_node(Node *node) {
+	Token *token = node->token;
+	node->left = expr_node(0);
+	if (!find(DOTS, 0))
+		parse_error(token, "Expected ':' to open the 'if' body");
+	parse_block(node, token->indent);
+	Node *tail = node;
+	while (includes(peek(0)->type, ELIF, ELSE, 0) && peek(0)->indent == token->indent) {
+		Token *keyword = next();
+		Node  *branch  = new_node(keyword);
+		if (keyword->type == ELIF)
+			branch->left = expr_node(0);
+		if (!find(DOTS, 0))
+			parse_error(keyword, "Expected ':' to open the '%s' body", keyword->name);
+		parse_block(branch, keyword->indent);
+		tail->right = branch;
+		tail        = branch;
+		if (keyword->type == ELSE) break;
+	}
+	return node;
+}
+
+Node *while_node(Node *node) {
+	Token *token = node->token;
+	node->left = expr_node(0);
+	if (!find(DOTS, 0))
+		parse_error(token, "Expected ':' to open the 'while' body");
+	parse_block(node, token->indent);
+	return node;
+}
+
+Node *ref_node(Node *node) {
+	Token *token = node->token;
+	bool nullable = peek(0)->type == OPTIONAL;
+	if (nullable) find(OPTIONAL, 0);
+	Token *name = peek(0);
+	if (!name || name->type != ID) {
+		parse_error(token, "Expected a variable after 'ref'");
+		return syntax_error();
+	}
+	if (is_data_type(peek(1)) || (peek(1)->type == FDEC && peek(2)->type == LPAR)) {
+		find(ID, 0);
+		name->is_dec      = true;
+		name->is_ref      = true;
+		name->is_nullable = nullable;
+		parse_type(name);
+		if (!nullable && peek(0)->type != ASSIGN) {
+			parse_error(name, "A reference must be bound when declared (use 'ref?' for an optional reference)");
+			return syntax_error();
+		}
+		node->token = name;
+		return node;
+	}
+	node->left = prime_node();
+	return node;
+}
+
+Node *id_node(Node *node) {
+	Token *token = node->token;
+	if (peek(0)->type == LPAR) {
+		if (strcmp(token->name, "main") == 0)
+			return fdec_node(node);
+		if (strcmp(token->name, "output") == 0)
+			return output_node(node);
+		return fcall_node(node);
+	}
+	if (is_data_type(peek(0)) || (peek(0)->type == FDEC && peek(1)->type == LPAR)) {
+		token->is_dec = true;
+		parse_type(token);
+	}
+	if (!token->is_dec && peek(0)->type == OPTIONAL) {
+		find(OPTIONAL, 0);
+		token->is_nullable = true;
+	}
+	return node;
+}
+
 Node *fdec_node(Node *node) {
 	node->token->type = FDEC;
 	enter_scope(node);

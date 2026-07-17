@@ -349,6 +349,11 @@ void pnode(Node *node, char *indent);
 Node *fdec_node(Node *node);
 Node *fcall_node(Node *node);
 Node *output_node(Node *node);
+Node *match_node(Node *node);
+Node *if_node(Node *node);
+Node *while_node(Node *node);
+Node *ref_node(Node *node);
+Node *id_node(Node *node);
 void parse_type(Token *target);
 
 
