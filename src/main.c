@@ -73,7 +73,12 @@ Node *prime_node() {
    Token *token = next();
    switch(token->type)
    {
-   case INT: case BOOL: case CHARS: case CHAR: case FLOAT: return new_node(token);
+   case INT: case BOOL: case CHARS: case CHAR: case FLOAT:
+   case LONG: case SHORT:
+      if (token->is_dec && peek(0)->type == LBRA)
+         return array_ctor_node(new_node(token));
+      return new_node(token);
+   case LBRA: return array_lit_node(new_node(token));
    case LPAR: {
       Node *node = expr_node(0);
       if (!find(RPAR, 0))
@@ -213,6 +218,15 @@ void analyze(Node *node) {
          for (int i = 0; i < node->children_count; i++)
             analyze(node->children[i]);
          break;
+      case ARRAY_LIT:
+         for (int i = 0; i < node->children_count; i++)
+            analyze(node->children[i]);
+         break;
+      case ACCESS: analyze_binop(node); break;
+      case ARRAY:
+         for (int i = 0; i < node->children_count; i++)
+            analyze(node->children[i]);
+         break;
       case ASSIGN: case ADD: case SUB: case MUL: case DIV: case MOD:
       case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN: case MOD_ASSIGN:
       case EQUAL: case NOT_EQUAL: case LESS: case GREAT: case LESS_EQUAL: case GREAT_EQUAL:
@@ -268,6 +282,9 @@ void type_check(Node *node) {
          type_check_block(node);
          break;
       case MATCH: type_check_match(node); break;
+      case ARRAY_LIT: type_check_array_lit(node); break;
+      case ACCESS:    type_check_access(node); break;
+      case ARRAY:     type_check_array_ctor(node); break;
       case BREAK: case CONTINUE: break;
       case ASSIGN: case ADD: case SUB: case MUL: case DIV: case MOD:
       case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN: case MOD_ASSIGN:
@@ -298,6 +315,9 @@ void code_gen(Node *node) {
          break;
       case FCALL:  code_gen_fcall(node); break;
       case OUTPUT: code_gen_output(node); break;
+      case ARRAY_LIT: code_gen_array_lit(node); break;
+      case ACCESS:    code_gen_access(node); break;
+      case ARRAY:     code_gen_array_ctor(node); break;
       case NOT: case BNOT:
          code_gen(node->left);
          token->llvm.elem = LLVMBuildNot(ura.builder, node->left->token->llvm.elem, "not");

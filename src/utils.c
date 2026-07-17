@@ -1272,6 +1272,17 @@ void parse_type(Token *target) {
 		parse_type(target->Fn.ret);
 	} else if (is_data_type(peek(0))) {
 		target->ret_type = next()->type;
+		int depth = 0;
+		while (peek(0)->type == LBRA && peek(1)->type == RBRA) {
+			find(LBRA, 0);
+			find(RBRA, 0);
+			depth++;
+		}
+		if (depth > 0) {
+			target->Array.sub_type = target->ret_type;
+			target->Array.depth    = depth;
+			target->ret_type       = ARRAY_TYPE;
+		}
 	} else {
 		parse_error(peek(0), "Expected a type");
 	}
@@ -1379,6 +1390,8 @@ Node *id_node(Node *node) {
 			return output_node(node);
 		return fcall_node(node);
 	}
+	if (peek(0)->type == LBRA)
+		return access_node(node);
 	if (is_data_type(peek(0)) || (peek(0)->type == FDEC && peek(1)->type == LPAR)) {
 		token->is_dec = true;
 		parse_type(token);
@@ -1465,6 +1478,51 @@ Node *output_node(Node *node) {
 	return node;
 }
 
+Node *access_node(Node *node) {
+	while (peek(0)->type == LBRA) {
+		Token *bracket = next();
+		bracket->type  = ACCESS;
+		Node  *access  = new_node(bracket);
+		access->left   = node;
+		access->right  = expr_node(0);
+		if (!find(RBRA, 0))
+			parse_error(bracket, "Expected ']' after array index");
+		node = access;
+	}
+	return node;
+}
+
+Node *array_lit_node(Node *node) {
+	node->token->type = ARRAY_LIT;
+	while (!ura.found_error && peek(0)->type != RBRA) {
+		resize_array(node->children, Node *);
+		node->children[node->children_count++] = expr_node(0);
+		while (find(COMA, 0));
+	}
+	if (!find(RBRA, 0))
+		parse_error(node->token, "Expected ']' to close array literal");
+	return node;
+}
+
+Node *array_ctor_node(Node *node) {
+	Type sub = node->token->type;
+	node->token->type           = ARRAY;
+	node->token->is_dec         = false;
+	node->token->ret_type       = ARRAY_TYPE;
+	node->token->Array.sub_type = sub;
+	int depth = 0;
+	while (peek(0)->type == LBRA) {
+		find(LBRA, 0);
+		resize_array(node->children, Node *);
+		node->children[node->children_count++] = expr_node(0);
+		if (!find(RBRA, 0))
+			parse_error(node->token, "Expected ']' after array size");
+		depth++;
+	}
+	node->token->Array.depth = depth;
+	return node;
+}
+
 bool is_data_type(Token *token) {
 	return token->is_dec && includes(token->type, DATA_TYPES, 0); 
 }
@@ -1483,7 +1541,14 @@ TypeRef to_llvm_type(Type type) {
    }
 }
 
+TypeRef array_type(Type sub, int depth) {
+   TypeRef elem      = depth <= 1 ? to_llvm_type(sub) : array_type(sub, depth - 1);
+   TypeRef fields[2] = { LLVMPointerType(elem, 0), ura.i64 };
+   return LLVMStructTypeInContext(ura.context, fields, 2, 0);
+}
+
 TypeRef llvm_type_of(Token *token) {
+   if (token->ret_type == ARRAY_TYPE) return array_type(token->Array.sub_type, token->Array.depth);
    if (token->ret_type != FN_TYPE) return to_llvm_type(token->ret_type);
    int      n      = token->Fn.params_count;
    TypeRef *params = n ? allocate(n, sizeof(TypeRef)) : NULL;
@@ -1703,6 +1768,7 @@ void analyze_id(Node *node) {
       }
       token->ret_type = decl->ret_type;
       if (decl->ret_type == FN_TYPE) token->Fn = decl->Fn;
+      if (decl->ret_type == ARRAY_TYPE) token->Array = decl->Array;
       return;
    }
    Node *fn = find_function(token->name);
@@ -1821,6 +1887,7 @@ void emit_signature(Node *fn) {
 
 Value address_of(Node *node) {
    Token *token = node->token;
+   if (token->type == ACCESS) return access_ptr(node);
    if (token->is_dec) {
       TypeRef t = llvm_type_of(token);
       if (token->is_ref) t = LLVMPointerType(t, 0);
@@ -1833,6 +1900,147 @@ Value address_of(Node *node) {
       return ptr;
    }
    return decl->llvm.elem;
+}
+
+Value access_ptr(Node *node) {
+   code_gen(node->left);
+   Value   slice = node->left->token->llvm.elem;
+   Value   data  = LLVMBuildExtractValue(ura.builder, slice, 0, "arr.data");
+   code_gen(node->right);
+   Value   idx   = node->right->token->llvm.elem;
+   Token  *arr   = node->left->token;
+   TypeRef elem  = arr->Array.depth > 1 ? array_type(arr->Array.sub_type, arr->Array.depth - 1)
+                                        : to_llvm_type(arr->Array.sub_type);
+   return LLVMBuildGEP2(ura.builder, elem, data, &idx, 1, "arr.at");
+}
+
+void code_gen_access(Node *node) {
+   Value   ptr  = access_ptr(node);
+   TypeRef elem = node->token->ret_type == ARRAY_TYPE
+                  ? array_type(node->token->Array.sub_type, node->token->Array.depth)
+                  : to_llvm_type(node->token->ret_type);
+   node->token->llvm.elem = LLVMBuildLoad2(ura.builder, elem, ptr, "idx");
+}
+
+void code_gen_array_lit(Node *node) {
+   Token  *token = node->token;
+   int     n     = node->children_count;
+   int     depth = token->Array.depth;
+   TypeRef elem  = depth > 1 ? array_type(token->Array.sub_type, depth - 1)
+                             : to_llvm_type(token->Array.sub_type);
+   Value   len   = LLVMConstInt(ura.i64, n, 0);
+   Value   data  = LLVMBuildArrayAlloca(ura.builder, elem, len, "arr");
+   for (int i = 0; i < n; i++) {
+      code_gen(node->children[i]);
+      Value idx = LLVMConstInt(ura.i64, i, 0);
+      Value gep = LLVMBuildGEP2(ura.builder, elem, data, &idx, 1, "arr.init");
+      LLVMBuildStore(ura.builder, node->children[i]->token->llvm.elem, gep);
+   }
+   TypeRef slice = array_type(token->Array.sub_type, depth);
+   Value   agg   = LLVMGetUndef(slice);
+   agg = LLVMBuildInsertValue(ura.builder, agg, data, 0, "arr.ptr");
+   agg = LLVMBuildInsertValue(ura.builder, agg, len,  1, "arr.len");
+   token->llvm.elem = agg;
+}
+
+void type_check_array_lit(Node *node) {
+   if (node->children_count == 0) {
+      parse_error(node->token, "Empty array literal has no element type");
+      return;
+   }
+   for (int i = 0; i < node->children_count; i++)
+      type_check(node->children[i]);
+   Token *first = node->children[0]->token;
+   for (int i = 1; i < node->children_count; i++) {
+      Token *e = node->children[i]->token;
+      if (e->ret_type != first->ret_type ||
+          (first->ret_type == ARRAY_TYPE &&
+           (e->Array.sub_type != first->Array.sub_type || e->Array.depth != first->Array.depth)))
+         parse_error(e, "Array elements must all be the same type");
+   }
+   node->token->ret_type = ARRAY_TYPE;
+   if (first->ret_type == ARRAY_TYPE) {
+      node->token->Array.sub_type = first->Array.sub_type;
+      node->token->Array.depth    = first->Array.depth + 1;
+   } else {
+      node->token->Array.sub_type = first->ret_type;
+      node->token->Array.depth    = 1;
+   }
+}
+
+void type_check_access(Node *node) {
+   type_check(node->left);
+   type_check(node->right);
+   Token *arr = node->left->token;
+   if (arr->ret_type != ARRAY_TYPE) {
+      parse_error(node->token, "Cannot index '%s', it is not an array", to_string(arr->ret_type));
+      return;
+   }
+   if (!includes(node->right->token->ret_type, NUMERIC_TYPES, 0))
+      parse_error(node->token, "Array index must be an integer, got %s", to_string(node->right->token->ret_type));
+   node->token->Array.sub_type = arr->Array.sub_type;
+   node->token->Array.depth    = arr->Array.depth - 1;
+   node->token->ret_type       = node->token->Array.depth > 0 ? ARRAY_TYPE : arr->Array.sub_type;
+}
+
+void type_check_array_ctor(Node *node) {
+   for (int i = 0; i < node->children_count; i++) {
+      type_check(node->children[i]);
+      if (!includes(node->children[i]->token->ret_type, NUMERIC_TYPES, 0))
+         parse_error(node->children[i]->token, "Array size must be an integer");
+   }
+}
+
+Value make_slice(Type sub, int depth, Value data, Value len) {
+   Value agg = LLVMGetUndef(array_type(sub, depth));
+   agg = LLVMBuildInsertValue(ura.builder, agg, data, 0, "arr.ptr");
+   agg = LLVMBuildInsertValue(ura.builder, agg, len,  1, "arr.len");
+   return agg;
+}
+
+Value build_array(Type sub, Value *dims, int depth) {
+   Value n = dims[0];
+   if (depth == 1) {
+      TypeRef elem  = to_llvm_type(sub);
+      Value   data  = LLVMBuildArrayAlloca(ura.builder, elem, n, "arr");
+      Value   esz   = LLVMConstInt(ura.i64, LLVMABISizeOfType(LLVMGetModuleDataLayout(ura.module), elem), 0);
+      Value   bytes = LLVMBuildMul(ura.builder, n, esz, "bytes");
+      LLVMBuildMemSet(ura.builder, data, LLVMConstInt(ura.i8, 0, 0), bytes, 0);
+      return make_slice(sub, 1, data, n);
+   }
+   TypeRef inner = array_type(sub, depth - 1);
+   Value   data  = LLVMBuildArrayAlloca(ura.builder, inner, n, "arr");
+   Value   fn    = LLVMGetBasicBlockParent(LLVMGetInsertBlock(ura.builder));
+   Value   slot  = LLVMBuildAlloca(ura.builder, ura.i64, "i");
+   LLVMBuildStore(ura.builder, LLVMConstInt(ura.i64, 0, 0), slot);
+   Block   cond  = LLVMAppendBasicBlockInContext(ura.context, fn, "arr.cond");
+   Block   body  = LLVMAppendBasicBlockInContext(ura.context, fn, "arr.body");
+   Block   end   = LLVMAppendBasicBlockInContext(ura.context, fn, "arr.end");
+   LLVMBuildBr(ura.builder, cond);
+   LLVMPositionBuilderAtEnd(ura.builder, cond);
+   Value   i     = LLVMBuildLoad2(ura.builder, ura.i64, slot, "i");
+   LLVMBuildCondBr(ura.builder, LLVMBuildICmp(ura.builder, LLVMIntSLT, i, n, "more"), body, end);
+   LLVMPositionBuilderAtEnd(ura.builder, body);
+   Value   sub_arr = build_array(sub, dims + 1, depth - 1);
+   i = LLVMBuildLoad2(ura.builder, ura.i64, slot, "i");
+   Value   gep = LLVMBuildGEP2(ura.builder, inner, data, &i, 1, "arr.slot");
+   LLVMBuildStore(ura.builder, sub_arr, gep);
+   LLVMBuildStore(ura.builder, LLVMBuildAdd(ura.builder, i, LLVMConstInt(ura.i64, 1, 0), "next"), slot);
+   LLVMBuildBr(ura.builder, cond);
+   LLVMPositionBuilderAtEnd(ura.builder, end);
+   return make_slice(sub, depth, data, n);
+}
+
+void code_gen_array_ctor(Node *node) {
+   Token *token = node->token;
+   int    depth = token->Array.depth;
+   Value *dims  = allocate(depth, sizeof(Value));
+   for (int i = 0; i < depth; i++) {
+      code_gen(node->children[i]);
+      dims[i] = LLVMBuildIntCast2(ura.builder, node->children[i]->token->llvm.elem, ura.i64, 1, "n");
+   }
+   token->llvm.elem = build_array(token->Array.sub_type, dims, depth);
+   free(dims);
 }
 
 void code_gen_literal(Node *node) {
