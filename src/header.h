@@ -260,6 +260,7 @@ struct UraGlobal {
     bool             enable_debug;
     bool             enable_exec;
     bool             enable_san;
+    bool             no_color;
     // bool             enable_prep;
     char            *flags;
     char            *lib;
@@ -374,6 +375,7 @@ void debug_exit_function(Token *token);
 void set_debug_location(Token *token);
 Value get_or_declare(char *name, TypeRef fn_type);
 void render_caret(File out, Token *token);
+void decolor(char *s);
 void guard(Token *op, Value is_bad, char *what);
 void guard_nonzero(Token *op, Value divisor);
 void guard_nonnull(Token *op, Value ptr);

@@ -285,6 +285,19 @@ bool _check(char *filename, char *funcname, int line, bool cond, char *fmt, ...)
 	return cond;
 }
 
+void decolor(char *s) {
+	int w = 0;
+	for (int i = 0; s[i]; ) {
+		if (s[i] == '\033' && s[i + 1] == '[') {
+			i += 2;
+			while (s[i] && s[i] != 'm') i++;
+			if (s[i] == 'm') i++;
+		} else
+			s[w++] = s[i++];
+	}
+	s[w] = '\0';
+}
+
 void render_caret(File out, Token *token) {
 	if (!token || !token->source || !token->source->content) return;
 
@@ -327,14 +340,21 @@ void parse_error(Token *token, const char *fmt, ...) {
 		return;
 	}
 
-	fprintf(stderr, RED("error: "));
+	char  *buf = NULL;
+	size_t len = 0;
+	File   ms  = open_memstream(&buf, &len);
+	fprintf(ms, RED("error: "));
 	va_list ap;
 	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
+	vfprintf(ms, fmt, ap);
 	va_end(ap);
-	fputc('\n', stderr);
+	fputc('\n', ms);
+	render_caret(ms, token);
+	fclose(ms);
 
-	render_caret(stderr, token);
+	if (ura.no_color) decolor(buf);
+	fputs(buf, stderr);
+	free(buf);
 }
 
 void tokenize_error(int line, int s, int e, const char *fmt, ...) {
@@ -1260,13 +1280,14 @@ void guard(Token *op, Value is_bad, char *what) {
    fprintf(ms, RED("runtime error: ") "%s\n", what);
    render_caret(ms, op);
    fclose(ms);
+   if (ura.no_color) decolor(text);
    Value   msg  = LLVMBuildGlobalStringPtr(ura.builder, text, "trap_msg");
    TypeRef i8p  = LLVMPointerType(ura.i8, 0);
 
    TypeRef write_params[3] = { ura.i32, i8p, ura.i64 };
    TypeRef write_ty        = LLVMFunctionType(ura.i64, write_params, 3, 0);
    Value   write_fn        = get_or_declare("write", write_ty);
-   Value   write_args[3]   = { LLVMConstInt(ura.i32, 2, 0), msg, LLVMConstInt(ura.i64, tlen, 0) };
+   Value   write_args[3]   = { LLVMConstInt(ura.i32, 2, 0), msg, LLVMConstInt(ura.i64, strlen(text), 0) };
    LLVMBuildCall2(ura.builder, write_ty, write_fn, write_args, 3, "");
    free(text);
 
