@@ -22,6 +22,41 @@ main():
     output("Alive: ", alive, "\n")
 ```
 
+```tree
+fn main() : int
+├─ = : chars
+│  ├─ name : chars
+│  └─ chars "Aldric"
+├─ = : int
+│  ├─ hp : int
+│  └─ int 100
+├─ = : int
+│  ├─ mp : int
+│  └─ int 50
+├─ = : bool
+│  ├─ alive : bool
+│  └─ bool True
+├─ = : float
+│  ├─ speed : float
+│  └─ float 1.5
+├─ output : void
+│  ├─ chars "=== "
+│  ├─ name : chars
+│  └─ chars " enters the dungeon ===\n"
+├─ output : void
+│  ├─ chars "HP: "
+│  ├─ hp : int
+│  ├─ chars " | MP: "
+│  ├─ mp : int
+│  ├─ chars " | Speed: "
+│  ├─ speed : float
+│  └─ chars "\n"
+└─ output : void
+   ├─ chars "Alive: "
+   ├─ alive : bool
+   └─ chars "\n"
+```
+
 ```out
 === Aldric enters the dungeon ===
 HP: 100 | MP: 50 | Speed: 1.500000
@@ -94,6 +129,44 @@ main():
     output("HP: ", hp, "\n")
     output("MP: ", mp, "\n")
     output("XP: ", xp, "\n")
+```
+
+```tree
+fn main() : int
+├─ = : int
+│  ├─ hp : int
+│  └─ int 100
+├─ = : int
+│  ├─ mp : int
+│  └─ int 50
+├─ = : int
+│  ├─ xp : int
+│  └─ int 0
+├─ = : int
+│  ├─ hp : int
+│  └─ - : int
+│     ├─ hp : int
+│     └─ int 12
+├─ -= : int
+│  ├─ mp : int
+│  └─ int 10
+├─ += : int
+│  ├─ xp : int
+│  └─ int 50
+├─ output : void
+│  └─ chars "After combat:\n"
+├─ output : void
+│  ├─ chars "HP: "
+│  ├─ hp : int
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "MP: "
+│  ├─ mp : int
+│  └─ chars "\n"
+└─ output : void
+   ├─ chars "XP: "
+   ├─ xp : int
+   └─ chars "\n"
 ```
 
 ```out
@@ -171,6 +244,61 @@ main():
     output("grade: ", grade, "\n")
     output("alive: ", alive, "\n")
     output("ratio: ", ratio, "\n")
+```
+
+```tree
+fn main() : int
+├─ = : chars
+│  ├─ name : chars
+│  └─ chars "Aldric"
+├─ = : int
+│  ├─ hp : int
+│  └─ int 100
+├─ = : long
+│  ├─ xp : long
+│  └─ cast : long
+│     └─ int 999999
+├─ = : short
+│  ├─ level : short
+│  └─ cast : short
+│     └─ int 12
+├─ = : char
+│  ├─ grade : char
+│  └─ char 'S'
+├─ = : bool
+│  ├─ alive : bool
+│  └─ bool True
+├─ = : float
+│  ├─ ratio : float
+│  └─ float 0.85
+├─ output : void
+│  ├─ chars "name:  "
+│  ├─ name : chars
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "hp:    "
+│  ├─ hp : int
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "xp:    "
+│  ├─ xp : long
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "level: "
+│  ├─ level : short
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "grade: "
+│  ├─ grade : char
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "alive: "
+│  ├─ alive : bool
+│  └─ chars "\n"
+└─ output : void
+   ├─ chars "ratio: "
+   ├─ ratio : float
+   └─ chars "\n"
 ```
 
 ```out

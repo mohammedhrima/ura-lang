@@ -20,6 +20,26 @@ main():
     output("Ready to fight!\n")
 ```
 
+```tree
+fn main() : int
+├─ output : void
+│  └─ chars "=== Aldric enters the dungeon ===\n"
+├─ output : void
+│  ├─ chars "Floor: "
+│  ├─ int 1
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "Alive: "
+│  ├─ bool True
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "Speed: "
+│  ├─ float 1.5
+│  └─ chars "\n"
+└─ output : void
+   └─ chars "Ready to fight!\n"
+```
+
 ```out
 === Aldric enters the dungeon ===
 Floor: 1
@@ -72,6 +92,36 @@ main():
     output("XP gained:    ", 3 * 50, "\n")
     output("Gold split:   ", 120 / 4, "\n")
     output("Bonus:        ", 7 + 3 * 10, "\n")
+```
+
+```tree
+fn main() : int
+├─ output : void
+│  ├─ chars "Damage dealt: "
+│  ├─ - : int
+│  │  ├─ int 25
+│  │  └─ int 8
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "XP gained:    "
+│  ├─ * : int
+│  │  ├─ int 3
+│  │  └─ int 50
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "Gold split:   "
+│  ├─ / : int
+│  │  ├─ int 120
+│  │  └─ int 4
+│  └─ chars "\n"
+└─ output : void
+   ├─ chars "Bonus:        "
+   ├─ + : int
+   │  ├─ int 7
+   │  └─ * : int
+   │     ├─ int 3
+   │     └─ int 10
+   └─ chars "\n"
 ```
 
 ```out
@@ -141,6 +191,45 @@ main():
     output("Grade: ", grade, "\n")
     output("Alive: ", alive, "\n")
     output("Speed: ", speed, "\n")
+```
+
+```tree
+fn main() : int
+├─ = : chars
+│  ├─ name : chars
+│  └─ chars "Aldric"
+├─ = : int
+│  ├─ hp : int
+│  └─ int 100
+├─ = : char
+│  ├─ grade : char
+│  └─ char 'S'
+├─ = : bool
+│  ├─ alive : bool
+│  └─ bool True
+├─ = : float
+│  ├─ speed : float
+│  └─ float 1.75
+├─ output : void
+│  ├─ chars "Name:  "
+│  ├─ name : chars
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "HP:    "
+│  ├─ hp : int
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "Grade: "
+│  ├─ grade : char
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "Alive: "
+│  ├─ alive : bool
+│  └─ chars "\n"
+└─ output : void
+   ├─ chars "Speed: "
+   ├─ speed : float
+   └─ chars "\n"
 ```
 
 ```out
@@ -217,6 +306,29 @@ main():
     ok bool = True
     output("hello ", name, " ", n, " ", ok, "\n")
     return 0
+```
+
+```tree
+fn main() : int
+├─ = : chars
+│  ├─ name : chars
+│  └─ chars "ura"
+├─ = : int
+│  ├─ n : int
+│  └─ int 42
+├─ = : bool
+│  ├─ ok : bool
+│  └─ bool True
+├─ output : void
+│  ├─ chars "hello "
+│  ├─ name : chars
+│  ├─ chars " "
+│  ├─ n : int
+│  ├─ chars " "
+│  ├─ ok : bool
+│  └─ chars "\n"
+└─ return
+   └─ int 0
 ```
 
 ```out

@@ -17,6 +17,9 @@ main():
     output("hi\n")
 ```
 
+```tree
+```
+
 ```out
 ```
 
@@ -35,6 +38,9 @@ use "@/header
 
 main():
     output("hi\n")
+```
+
+```tree
 ```
 
 ```out
@@ -57,6 +63,9 @@ main():
     output("hi\n")
 ```
 
+```tree
+```
+
 ```out
 ```
 
@@ -75,6 +84,9 @@ link "header.h
 
 main():
     output("hi\n")
+```
+
+```tree
 ```
 
 ```out

@@ -16,6 +16,26 @@ main():
     output("<", kills, ">\n")
 ```
 
+```tree
+fn main() : int
+├─ = : int
+│  ├─ kills : int
+│  └─ int 0
+├─ while
+│  ├─ condition < : bool
+│  │  ├─ kills : int
+│  │  └─ int 5
+│  └─ = : int
+│     ├─ kills : int
+│     └─ + : int
+│        ├─ kills : int
+│        └─ int 1
+└─ output : void
+   ├─ chars "<"
+   ├─ kills : int
+   └─ chars ">\n"
+```
+
 ```out
 <5>
 ```

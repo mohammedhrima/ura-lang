@@ -22,6 +22,22 @@ main():
             output("other\n")
 ```
 
+```tree
+fn main() : int
+├─ = : int
+│  ├─ a : int
+│  └─ int 1
+└─ match
+   ├─ subject a : int
+   ├─ case
+   │  ├─ value int 1
+   │  └─ output : void
+   │     └─ chars "one\n"
+   └─ default
+      └─ output : void
+         └─ chars "other\n"
+```
+
 ```out
 one
 ```
@@ -70,6 +86,24 @@ main():
             output("small\n")
         default:
             output("big\n")
+```
+
+```tree
+fn main() : int
+├─ = : int
+│  ├─ a : int
+│  └─ int 3
+└─ match
+   ├─ subject a : int
+   ├─ case
+   │  ├─ value int 1
+   │  ├─ value int 2
+   │  ├─ value int 3
+   │  └─ output : void
+   │     └─ chars "small\n"
+   └─ default
+      └─ output : void
+         └─ chars "big\n"
 ```
 
 ```out
@@ -126,6 +160,22 @@ main():
             output("fallback\n")
 ```
 
+```tree
+fn main() : int
+├─ = : int
+│  ├─ a : int
+│  └─ int 99
+└─ match
+   ├─ subject a : int
+   ├─ case
+   │  ├─ value int 1
+   │  └─ output : void
+   │     └─ chars "one\n"
+   └─ default
+      └─ output : void
+         └─ chars "fallback\n"
+```
+
 ```out
 fallback
 ```
@@ -176,6 +226,22 @@ main():
             output("after\n")
 ```
 
+```tree
+fn main() : int
+├─ = : int
+│  ├─ a : int
+│  └─ int 1
+└─ match
+   ├─ subject a : int
+   └─ case
+      ├─ value int 1
+      ├─ output : void
+      │  └─ chars "before\n"
+      ├─ break
+      └─ output : void
+         └─ chars "after\n"
+```
+
 ```out
 before
 ```
@@ -219,6 +285,30 @@ main():
             case 2:
                 break
         output(i, "\n")
+```
+
+```tree
+fn main() : int
+├─ = : int
+│  ├─ i : int
+│  └─ int 0
+└─ while
+   ├─ condition < : bool
+   │  ├─ i : int
+   │  └─ int 3
+   ├─ = : int
+   │  ├─ i : int
+   │  └─ + : int
+   │     ├─ i : int
+   │     └─ int 1
+   ├─ match
+   │  ├─ subject i : int
+   │  └─ case
+   │     ├─ value int 2
+   │     └─ break
+   └─ output : void
+      ├─ i : int
+      └─ chars "\n"
 ```
 
 ```out
@@ -281,6 +371,30 @@ main():
             case 2:
                 continue
         output(i, "\n")
+```
+
+```tree
+fn main() : int
+├─ = : int
+│  ├─ i : int
+│  └─ int 0
+└─ while
+   ├─ condition < : bool
+   │  ├─ i : int
+   │  └─ int 3
+   ├─ = : int
+   │  ├─ i : int
+   │  └─ + : int
+   │     ├─ i : int
+   │     └─ int 1
+   ├─ match
+   │  ├─ subject i : int
+   │  └─ case
+   │     ├─ value int 2
+   │     └─ continue
+   └─ output : void
+      ├─ i : int
+      └─ chars "\n"
 ```
 
 ```out

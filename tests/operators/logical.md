@@ -47,6 +47,97 @@ main():
     output("!!alive: ", !(!alive), "\n")   // True
 ```
 
+```tree
+fn is_alive(hp : int) : bool
+└─ return
+   └─ > : bool
+      ├─ hp : int
+      └─ int 0
+
+fn has_key(keys : int) : bool
+└─ return
+   └─ > : bool
+      ├─ keys : int
+      └─ int 0
+
+fn main() : int
+├─ = : int
+│  ├─ hp : int
+│  └─ int 60
+├─ = : int
+│  ├─ keys : int
+│  └─ int 1
+├─ = : bool
+│  ├─ exhausted : bool
+│  └─ bool False
+├─ = : bool
+│  ├─ can_proceed : bool
+│  └─ and : bool
+│     ├─ and : bool
+│     │  ├─ call is_alive : bool
+│     │  │  └─ hp : int
+│     │  └─ call has_key : bool
+│     │     └─ keys : int
+│     └─ not : bool
+│        └─ exhausted : bool
+├─ output : void
+│  ├─ chars "can_proceed: "
+│  ├─ can_proceed : bool
+│  └─ chars "\n"
+├─ = : bool
+│  ├─ escape : bool
+│  └─ or : bool
+│     ├─ < : bool
+│     │  ├─ hp : int
+│     │  └─ int 10
+│     └─ == : bool
+│        ├─ keys : int
+│        └─ int 0
+├─ output : void
+│  ├─ chars "escape:      "
+│  ├─ escape : bool
+│  └─ chars "\n"
+├─ = : bool
+│  ├─ blocked : bool
+│  └─ not : bool
+│     └─ can_proceed : bool
+├─ output : void
+│  ├─ chars "blocked:     "
+│  ├─ blocked : bool
+│  └─ chars "\n"
+├─ if
+│  ├─ condition and : bool
+│  │  ├─ call is_alive : bool
+│  │  │  └─ hp : int
+│  │  └─ not : bool
+│  │     └─ exhausted : bool
+│  └─ output : void
+│     └─ chars "hero fights\n"
+├─ if
+│  ├─ condition or : bool
+│  │  ├─ < : bool
+│  │  │  ├─ hp : int
+│  │  │  └─ int 10
+│  │  └─ == : bool
+│  │     ├─ keys : int
+│  │     └─ int 0
+│  ├─ output : void
+│  │  └─ chars "hero retreats\n"
+│  └─ else
+│     └─ output : void
+│        └─ chars "hero advances\n"
+├─ = : bool
+│  ├─ alive : bool
+│  └─ call is_alive : bool
+│     └─ hp : int
+└─ output : void
+   ├─ chars "!!alive: "
+   ├─ not : bool
+   │  └─ not : bool
+   │     └─ alive : bool
+   └─ chars "\n"
+```
+
 ```out
 can_proceed: True
 escape:      False
@@ -200,6 +291,54 @@ main():
     output(a < b and a > b, "\n")
     output(a < b or a > b, "\n")
     return 0
+```
+
+```tree
+fn main() : int
+├─ = : int
+│  ├─ a : int
+│  └─ int 5
+├─ = : int
+│  ├─ b : int
+│  └─ int 9
+├─ output : void
+│  ├─ and : bool
+│  │  ├─ < : bool
+│  │  │  ├─ a : int
+│  │  │  └─ b : int
+│  │  └─ == : bool
+│  │     ├─ b : int
+│  │     └─ int 9
+│  └─ chars "\n"
+├─ output : void
+│  ├─ or : bool
+│  │  ├─ > : bool
+│  │  │  ├─ a : int
+│  │  │  └─ b : int
+│  │  └─ == : bool
+│  │     ├─ b : int
+│  │     └─ int 9
+│  └─ chars "\n"
+├─ output : void
+│  ├─ and : bool
+│  │  ├─ < : bool
+│  │  │  ├─ a : int
+│  │  │  └─ b : int
+│  │  └─ > : bool
+│  │     ├─ a : int
+│  │     └─ b : int
+│  └─ chars "\n"
+├─ output : void
+│  ├─ or : bool
+│  │  ├─ < : bool
+│  │  │  ├─ a : int
+│  │  │  └─ b : int
+│  │  └─ > : bool
+│  │     ├─ a : int
+│  │     └─ b : int
+│  └─ chars "\n"
+└─ return
+   └─ int 0
 ```
 
 ```out

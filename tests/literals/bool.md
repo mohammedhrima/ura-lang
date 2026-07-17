@@ -20,6 +20,26 @@ main():
     return 9
 ```
 
+```tree
+fn flag() : bool
+└─ return
+   └─ bool True
+
+fn main() : int
+├─ = : bool
+│  ├─ b : bool
+│  └─ call flag : bool
+├─ = : bool
+│  ├─ c : bool
+│  └─ bool False
+├─ d : bool
+├─ = : bool
+│  ├─ c : bool
+│  └─ bool True
+└─ return
+   └─ int 9
+```
+
 ```out
 ```
 

@@ -21,6 +21,46 @@ main():
         output("is not alnum\n")
 ```
 
+```tree
+fn isalpha(c : char) : bool
+└─ return
+   └─ and : bool
+      ├─ >= : bool
+      │  ├─ c : char
+      │  └─ char 'a'
+      └─ <= : bool
+         ├─ c : char
+         └─ char 'z'
+
+fn isdigit(c : char) : bool
+└─ return
+   └─ and : bool
+      ├─ >= : bool
+      │  ├─ c : char
+      │  └─ char '1'
+      └─ <= : bool
+         ├─ c : char
+         └─ char '9'
+
+fn isalnum(c : char) : bool
+└─ return
+   └─ or : bool
+      ├─ call isalpha : bool
+      │  └─ c : char
+      └─ call isdigit : bool
+         └─ c : char
+
+fn main() : int
+└─ if
+   ├─ condition call isalnum : bool
+   │  └─ char '1'
+   ├─ output : void
+   │  └─ chars "is alnum\n"
+   └─ else
+      └─ output : void
+         └─ chars "is not alnum\n"
+```
+
 ```out
 is alnum
 ```
@@ -104,6 +144,28 @@ main():
         output("is not alpha\n")
 ```
 
+```tree
+fn isalpha(c : char) : bool
+└─ return
+   └─ and : bool
+      ├─ >= : bool
+      │  ├─ c : char
+      │  └─ char 'a'
+      └─ <= : bool
+         ├─ c : char
+         └─ char 'z'
+
+fn main() : int
+└─ if
+   ├─ condition call isalpha : bool
+   │  └─ char '1'
+   ├─ output : void
+   │  └─ chars "is alpha\n"
+   └─ else
+      └─ output : void
+         └─ chars "is not alpha\n"
+```
+
 ```out
 is not alpha
 ```
@@ -161,6 +223,28 @@ main():
         output("is alnum\n")
     else:
         output("is not alnum\n")
+```
+
+```tree
+fn isdigit(c : char) : bool
+└─ return
+   └─ and : bool
+      ├─ >= : bool
+      │  ├─ c : char
+      │  └─ char '1'
+      └─ <= : bool
+         ├─ c : char
+         └─ char '9'
+
+fn main() : int
+└─ if
+   ├─ condition call isdigit : bool
+   │  └─ char '1'
+   ├─ output : void
+   │  └─ chars "is alnum\n"
+   └─ else
+      └─ output : void
+         └─ chars "is not alnum\n"
 ```
 
 ```out

@@ -64,6 +64,169 @@ main():
     output("clamp(0.01): ", clamp(0.01), "\n")  // 0.05
 ```
 
+```tree
+fn base_atk() : int
+└─ return
+   └─ int 10
+
+fn clamp(t : float) : float
+├─ if
+│  ├─ condition < : bool
+│  │  ├─ t : float
+│  │  └─ float 0.05
+│  └─ return
+│     └─ float 0.05
+└─ return
+   └─ t : float
+
+fn main() : int
+├─ = : int
+│  ├─ atk : int
+│  └─ int 25
+├─ = : int
+│  ├─ def : int
+│  └─ int 8
+├─ = : int
+│  ├─ kills : int
+│  └─ int 3
+├─ = : int
+│  ├─ total : int
+│  └─ int 100
+├─ = : int
+│  ├─ count : int
+│  └─ int 4
+├─ = : int
+│  ├─ xp_cap : int
+│  └─ int 70
+├─ output : void
+│  ├─ chars "atk + def:       "
+│  ├─ + : int
+│  │  ├─ atk : int
+│  │  └─ def : int
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "atk - def:       "
+│  ├─ - : int
+│  │  ├─ atk : int
+│  │  └─ def : int
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "kills * 50:      "
+│  ├─ * : int
+│  │  ├─ kills : int
+│  │  └─ int 50
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "total / count:   "
+│  ├─ / : int
+│  │  ├─ total : int
+│  │  └─ count : int
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "atk % xp_cap:    "
+│  ├─ % : int
+│  │  ├─ atk : int
+│  │  └─ xp_cap : int
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "10 + 5:          "
+│  ├─ + : int
+│  │  ├─ int 10
+│  │  └─ int 5
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "base_atk + atk:  "
+│  ├─ + : int
+│  │  ├─ call base_atk : int
+│  │  └─ atk : int
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "2 + 3 * 4:       "
+│  ├─ + : int
+│  │  ├─ int 2
+│  │  └─ * : int
+│  │     ├─ int 3
+│  │     └─ int 4
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "(2 + 3) * 4:     "
+│  ├─ * : int
+│  │  ├─ + : int
+│  │  │  ├─ int 2
+│  │  │  └─ int 3
+│  │  └─ int 4
+│  └─ chars "\n"
+├─ = : float
+│  ├─ a : float
+│  └─ float 1.5
+├─ = : float
+│  ├─ b : float
+│  └─ float 0.3
+├─ output : void
+│  ├─ chars "add:  "
+│  ├─ + : float
+│  │  ├─ a : float
+│  │  └─ b : float
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "sub:  "
+│  ├─ - : float
+│  │  ├─ a : float
+│  │  └─ b : float
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "mul:  "
+│  ├─ * : float
+│  │  ├─ a : float
+│  │  └─ b : float
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "div:  "
+│  ├─ / : float
+│  │  ├─ a : float
+│  │  └─ b : float
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "lt:   "
+│  ├─ < : bool
+│  │  ├─ a : float
+│  │  └─ b : float
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "gt:   "
+│  ├─ > : bool
+│  │  ├─ a : float
+│  │  └─ b : float
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "lte:  "
+│  ├─ <= : bool
+│  │  ├─ a : float
+│  │  └─ b : float
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "gte:  "
+│  ├─ >= : bool
+│  │  ├─ a : float
+│  │  └─ b : float
+│  └─ chars "\n"
+├─ = : float
+│  ├─ t : float
+│  └─ - : float
+│     ├─ float 0.8
+│     └─ float 0.28
+├─ output : void
+│  ├─ chars "clamp(0.52): "
+│  ├─ call clamp : float
+│  │  └─ t : float
+│  └─ chars "\n"
+└─ output : void
+   ├─ chars "clamp(0.01): "
+   ├─ call clamp : float
+   │  └─ float 0.01
+   └─ chars "\n"
+```
+
 ```out
 atk + def:       33
 atk - def:       17
@@ -320,6 +483,20 @@ main():
     return 2 * 3 + 20 / 4 - 1
 ```
 
+```tree
+fn main() : int
+└─ return
+   └─ - : int
+      ├─ + : int
+      │  ├─ * : int
+      │  │  ├─ int 2
+      │  │  └─ int 3
+      │  └─ / : int
+      │     ├─ int 20
+      │     └─ int 4
+      └─ int 1
+```
+
 ```out
 ```
 
@@ -360,6 +537,22 @@ main():
     return a
 ```
 
+```tree
+fn main() : int
+├─ = : int
+│  ├─ a : int
+│  └─ int 2
+├─ = : int
+│  ├─ a : int
+│  └─ + : int
+│     ├─ * : int
+│     │  ├─ a : int
+│     │  └─ int 10
+│     └─ int 3
+└─ return
+   └─ a : int
+```
+
 ```out
 ```
 
@@ -389,6 +582,14 @@ entry:
 
 main():
     return 17 % 5
+```
+
+```tree
+fn main() : int
+└─ return
+   └─ % : int
+      ├─ int 17
+      └─ int 5
 ```
 
 ```out

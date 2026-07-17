@@ -17,6 +17,19 @@ main():
         output("Fresh start\n")
 ```
 
+```tree
+fn main() : int
+├─ = : int
+│  ├─ floor : int
+│  └─ int 1
+└─ if
+   ├─ condition == : bool
+   │  ├─ floor : int
+   │  └─ int 1
+   └─ output : void
+      └─ chars "Fresh start\n"
+```
+
 ```out
 Fresh start
 ```
@@ -59,6 +72,22 @@ main():
         output("Hero is alive\n")
     else:
         output("Hero has fallen\n")
+```
+
+```tree
+fn main() : int
+├─ = : int
+│  ├─ hp : int
+│  └─ int 0
+└─ if
+   ├─ condition > : bool
+   │  ├─ hp : int
+   │  └─ int 0
+   ├─ output : void
+   │  └─ chars "Hero is alive\n"
+   └─ else
+      └─ output : void
+         └─ chars "Hero has fallen\n"
 ```
 
 ```out
@@ -111,6 +140,28 @@ main():
         output("Normal\n")
     else:
         output("Hard\n")
+```
+
+```tree
+fn main() : int
+├─ = : int
+│  ├─ floor : int
+│  └─ int 6
+└─ if
+   ├─ condition < : bool
+   │  ├─ floor : int
+   │  └─ int 3
+   ├─ output : void
+   │  └─ chars "Easy\n"
+   └─ elif
+      ├─ condition < : bool
+      │  ├─ floor : int
+      │  └─ int 7
+      ├─ output : void
+      │  └─ chars "Normal\n"
+      └─ else
+         └─ output : void
+            └─ chars "Hard\n"
 ```
 
 ```out

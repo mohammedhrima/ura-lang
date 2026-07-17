@@ -23,6 +23,32 @@ main():
     return 0
 ```
 
+```tree
+fn half() : float
+└─ return
+   └─ float 0.5
+
+fn main() : int
+├─ = : float
+│  ├─ x : float
+│  └─ float 3.14
+├─ output : void
+│  ├─ x : float
+│  └─ chars "\n"
+├─ output : void
+│  ├─ float 2.71
+│  └─ chars "\n"
+├─ output : void
+│  ├─ call half : float
+│  └─ chars "\n"
+├─ y : float
+├─ output : void
+│  ├─ y : float
+│  └─ chars "\n"
+└─ return
+   └─ int 0
+```
+
 ```out
 3.140000
 2.710000
@@ -90,6 +116,60 @@ main():
     a *= 2.0
     output(a, "\n")
     return 0
+```
+
+```tree
+fn main() : int
+├─ = : float
+│  ├─ a : float
+│  └─ float 3
+├─ = : float
+│  ├─ b : float
+│  └─ float 2
+├─ output : void
+│  ├─ + : float
+│  │  ├─ a : float
+│  │  └─ b : float
+│  └─ chars "\n"
+├─ output : void
+│  ├─ - : float
+│  │  ├─ a : float
+│  │  └─ b : float
+│  └─ chars "\n"
+├─ output : void
+│  ├─ * : float
+│  │  ├─ a : float
+│  │  └─ b : float
+│  └─ chars "\n"
+├─ output : void
+│  ├─ / : float
+│  │  ├─ a : float
+│  │  └─ b : float
+│  └─ chars "\n"
+├─ output : void
+│  ├─ > : bool
+│  │  ├─ a : float
+│  │  └─ b : float
+│  └─ chars "\n"
+├─ output : void
+│  ├─ == : bool
+│  │  ├─ a : float
+│  │  └─ b : float
+│  └─ chars "\n"
+├─ += : float
+│  ├─ a : float
+│  └─ float 1.5
+├─ output : void
+│  ├─ a : float
+│  └─ chars "\n"
+├─ *= : float
+│  ├─ a : float
+│  └─ float 2
+├─ output : void
+│  ├─ a : float
+│  └─ chars "\n"
+└─ return
+   └─ int 0
 ```
 
 ```out

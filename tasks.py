@@ -88,7 +88,7 @@ def build():
     flags = run("llvm-config-14", "--cflags", "--ldflags", "--libs", "core").stdout.split()
     r = run("clang", "src/main.c", "src/utils.c", *flags, "-o", URA)
     if r.returncode == 0:
-        ok(f"build ok → {URA}")
+        ok(f"build ok: {URA}")
     else:
         err("build failed"); print(r.stderr)
 
@@ -120,7 +120,7 @@ def _actual(src, stem, is_error):
     """Compile+run one source under -testing → always {ll, out, err} (empty when N/A).
     The unstable temp path (baked into @trap_msg + diagnostics) is normalized to <stem>.ura
     so goldens are deterministic AND portable across machines."""
-    res = {"ll": "", "out": "", "err": ""}
+    res = {"ll": "", "out": "", "err": "", "tree": ""}
     with tempfile.TemporaryDirectory() as d:
         p = Path(d) / f"{stem}.ura"
         p.write_text(src.rstrip() + "\n")
@@ -129,10 +129,11 @@ def _actual(src, stem, is_error):
             for pp in paths: s = s.replace(pp, f"{stem}.ura")
             return s
         exe = Path(d) / "exe"
-        c = run(URA, p, "-o", exe, "-testing")
+        c = run(URA, p, "-o", exe, "-testing", "-tree")
         if c.returncode != 0:                               # compile failed
             if is_error: res["err"] = norm(c.stderr)
             return res                                       # success-group fail → all empty → skip
+        res["tree"] = norm(c.stdout)                         # -tree prints the AST to stdout during compile
         ll = p.parent / "build" / f"{stem}.ll"
         if ll.exists():
             res["ll"] = norm("\n".join(l for l in ll.read_text().splitlines()
@@ -243,7 +244,7 @@ def _resolve(target):
 
 def _run_case(case, is_error):
     got = _actual(case['ura'], case['name'].split()[0], is_error)
-    bad = next((t for t in ("ll", "out", "err") if got[t].strip() != case.get(t, "").strip()), None)
+    bad = next((t for t in ("ll", "out", "err", "tree") if got[t].strip() != case.get(t, "").strip()), None)
     return case, bad
 
 def tests(target=None):
@@ -279,7 +280,7 @@ def update(target="tests"):
         for c in parse_md(md):
             got = _actual(c['ura'], c['name'].split()[0], is_error)
             index.append(f"- {c['name']}")
-            blocks = [_fence("ura", c['ura'])] + [_fence(t, got[t]) for t in ("out", "err", "ll")]
+            blocks = [_fence("ura", c['ura']), _fence("tree", got["tree"])] + [_fence(t, got[t]) for t in ("out", "err", "ll")]
             sections.append(f"## {c['name']}\n\n" + "\n\n".join(blocks))
         rel = Path(*md.parts[1:]).with_suffix("")
         md.write_text(f"# {str(rel).replace('/', ' / ')}\n\n## index\n\n" + "\n".join(index)
@@ -308,7 +309,7 @@ TASKS = {
 }
 DESC = {
     "check":   "verify clang + llvm-config-14 are installed",
-    "build":   "compile the ura compiler → build/ura",
+    "build":   "compile the ura compiler: build/ura",
     "install": "install clang + llvm@14 via brew/apt",
     "tests":   "run .md tests — no arg = all · a dir or .md file = subset",
     "update":  "regenerate a group's out/err/ll goldens",

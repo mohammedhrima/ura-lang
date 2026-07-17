@@ -226,6 +226,165 @@ char *format(const char *fmt, ...) {
 	return buf;
 }
 
+void print_escaped(char c) {
+	switch (c) {
+	case '\n': fputs("\\n", stdout); break;
+	case '\t': fputs("\\t", stdout); break;
+	case '\r': fputs("\\r", stdout); break;
+	case '\\': fputs("\\\\", stdout); break;
+	case '"':  fputs("\\\"", stdout); break;
+	default:   putchar(c);
+	}
+}
+
+void print_node_label(Node *node) {
+	char *spelling[END + 1] = {
+		[INT] = "int", [LONG] = "long", [SHORT] = "short", [BOOL] = "bool",
+		[CHAR] = "char", [CHARS] = "chars", [FLOAT] = "float", [VOID] = "void",
+		[ADD] = "+", [SUB] = "-", [MUL] = "*", [DIV] = "/", [MOD] = "%",
+		[EQUAL] = "==", [NOT_EQUAL] = "!=", [LESS] = "<", [GREAT] = ">", [LESS_EQUAL] = "<=", [GREAT_EQUAL] = ">=",
+		[AND] = "and", [OR] = "or", [NOT] = "not", [BAND] = "&", [BOR] = "|", [BXOR] = "^", [BNOT] = "~", [LSHIFT] = "<<", [RSHIFT] = ">>",
+		[ASSIGN] = "=", [ADD_ASSIGN] = "+=", [SUB_ASSIGN] = "-=", [MUL_ASSIGN] = "*=", [DIV_ASSIGN] = "/=", [MOD_ASSIGN] = "%=",
+		[IF] = "if", [ELIF] = "elif", [ELSE] = "else", [WHILE] = "while", [MATCH] = "match", [CASE] = "case", [DEFAULT] = "default",
+		[BREAK] = "break", [CONTINUE] = "continue", [RETURN] = "return", [OUTPUT] = "output", [REF] = "ref", [AS] = "cast",
+	};
+	Token *token = node->token;
+	switch (token->type) {
+	case INT:   printf("int %lld", (long long)token->Int.value); return;
+	case LONG:  printf("long %lld", token->Long.value); return;
+	case SHORT: printf("short %d", token->Short.value); return;
+	case FLOAT: printf("float %g", token->Float.value); return;
+	case BOOL:  printf("bool %s", token->Bool.value ? "True" : "False"); return;
+	case CHAR: {
+		printf("char '");
+		print_escaped(token->Char.value);
+		printf("'");
+		return;
+	}
+	case CHARS: {
+		printf("chars \"");
+		char *value = token->Chars.value;
+		for (int i = 0; value[i]; i++)
+			print_escaped(value[i]);
+		printf("\"");
+		return;
+	}
+	case ID:    printf("%s", token->name); break;
+	case FCALL: printf("call %s", token->name); break;
+	case FDEC: {
+		printf("fn %s(", token->name);
+		for (int i = 0; i < token->Fn.params_count; i++) {
+			Token *param = token->Fn.params[i];
+			printf("%s%s", i ? ", " : "", param->name);
+			if (param->ret_type)
+				printf(" : %s", spelling[param->ret_type] ? spelling[param->ret_type] : to_string(param->ret_type));
+		}
+		printf(")");
+		break;
+	}
+	default:    printf("%s", spelling[token->type] ? spelling[token->type] : to_string(token->type));
+	}
+	if (token->ret_type)
+		printf(" : %s", spelling[token->ret_type] ? spelling[token->ret_type] : to_string(token->ret_type));
+}
+
+void print_subtree(Node *node, char *prefix, bool is_last, char *role) {
+	printf("%s%s", prefix, is_last ? "└─ " : "├─ ");
+	if (role) printf("%s ", role);
+	print_node_label(node);
+	putchar('\n');
+	char *child_prefix = format("%s%s", prefix, is_last ? "   " : "│  ");
+	print_children(node, child_prefix);
+	free(child_prefix);
+}
+
+void print_children(Node *node, char *prefix) {
+	int    capacity = node->children_count + (node->left ? node->left->children_count : 0) + 2;
+	Node  *edge_node[capacity];
+	char  *edge_role[capacity];
+	int    count = 0;
+	Token *token = node->token;
+	switch (token->type) {
+	case IF:
+	case ELIF: {
+		edge_role[count] = "condition";
+		edge_node[count++] = node->left;
+		for (int i = 0; i < node->children_count; i++) {
+			edge_role[count] = NULL;
+			edge_node[count++] = node->children[i];
+		}
+		if (node->right) {
+			edge_role[count] = NULL;
+			edge_node[count++] = node->right;
+		}
+		break;
+	}
+	case WHILE: {
+		edge_role[count] = "condition";
+		edge_node[count++] = node->left;
+		for (int i = 0; i < node->children_count; i++) {
+			edge_role[count] = NULL;
+			edge_node[count++] = node->children[i];
+		}
+		break;
+	}
+	case MATCH: {
+		edge_role[count] = "subject";
+		edge_node[count++] = node->left;
+		for (int i = 0; i < node->children_count; i++) {
+			edge_role[count] = NULL;
+			edge_node[count++] = node->children[i];
+		}
+		break;
+	}
+	case CASE: {
+		for (int i = 0; node->left && i < node->left->children_count; i++) {
+			edge_role[count] = "value";
+			edge_node[count++] = node->left->children[i];
+		}
+		for (int i = 0; i < node->children_count; i++) {
+			edge_role[count] = NULL;
+			edge_node[count++] = node->children[i];
+		}
+		break;
+	}
+	case BREAK:
+	case CONTINUE:
+		break;
+	case AS: {
+		edge_role[count] = NULL;
+		edge_node[count++] = node->left;
+		break;
+	}
+	default: {
+		if (node->left) {
+			edge_role[count] = NULL;
+			edge_node[count++] = node->left;
+		}
+		if (node->right) {
+			edge_role[count] = NULL;
+			edge_node[count++] = node->right;
+		}
+		for (int i = 0; i < node->children_count; i++) {
+			edge_role[count] = NULL;
+			edge_node[count++] = node->children[i];
+		}
+	}
+	}
+	for (int i = 0; i < count; i++)
+		print_subtree(edge_node[i], prefix, i == count - 1, edge_role[i]);
+}
+
+void print_ast(Node *head) {
+	for (int i = 0; i < head->children_count; i++) {
+		print_node_label(head->children[i]);
+		putchar('\n');
+		print_children(head->children[i], "");
+		if (i < head->children_count - 1)
+			putchar('\n');
+	}
+}
+
 void pnode(Node *node, char *indent) {
 	if (!node || !node->token || !ura.enable_debug) return;
 	Node **subs     = NULL;

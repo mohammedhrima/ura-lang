@@ -26,6 +26,24 @@ main():
     output("<", hp, ">\n")
 ```
 
+```tree
+fn main() : int
+├─ = : int
+│  ├─ hp : int
+│  └─ int 100
+├─ = : int
+│  ├─ r : int
+│  └─ ref : int
+│     └─ hp : int
+├─ = : int
+│  ├─ r : int
+│  └─ int 0
+└─ output : void
+   ├─ chars "<"
+   ├─ hp : int
+   └─ chars ">\n"
+```
+
 ```out
 <0>
 ```
@@ -67,6 +85,33 @@ main():
     a = 80
     b = b - 10
     output("<", hp, ">\n")
+```
+
+```tree
+fn main() : int
+├─ = : int
+│  ├─ hp : int
+│  └─ int 100
+├─ = : int
+│  ├─ a : int
+│  └─ ref : int
+│     └─ hp : int
+├─ = : int
+│  ├─ b : int
+│  └─ ref : int
+│     └─ hp : int
+├─ = : int
+│  ├─ a : int
+│  └─ int 80
+├─ = : int
+│  ├─ b : int
+│  └─ - : int
+│     ├─ b : int
+│     └─ int 10
+└─ output : void
+   ├─ chars "<"
+   ├─ hp : int
+   └─ chars ">\n"
 ```
 
 ```out
@@ -119,6 +164,39 @@ main():
         r += xp_gain
         i = i + 1
     output("<", xp, ">\n")
+```
+
+```tree
+fn main() : int
+├─ = : int
+│  ├─ xp : int
+│  └─ int 0
+├─ = : int
+│  ├─ xp_gain : int
+│  └─ int 50
+├─ = : int
+│  ├─ r : int
+│  └─ ref : int
+│     └─ xp : int
+├─ = : int
+│  ├─ i : int
+│  └─ int 0
+├─ while
+│  ├─ condition < : bool
+│  │  ├─ i : int
+│  │  └─ int 4
+│  ├─ += : int
+│  │  ├─ r : int
+│  │  └─ xp_gain : int
+│  └─ = : int
+│     ├─ i : int
+│     └─ + : int
+│        ├─ i : int
+│        └─ int 1
+└─ output : void
+   ├─ chars "<"
+   ├─ xp : int
+   └─ chars ">\n"
 ```
 
 ```out
@@ -189,6 +267,42 @@ main():
     output("MP after spell: ", mp, "\n")
 ```
 
+```tree
+fn main() : int
+├─ = : int
+│  ├─ hp : int
+│  └─ int 100
+├─ = : int
+│  ├─ mp : int
+│  └─ int 50
+├─ = : int
+│  ├─ shield : int
+│  └─ ref : int
+│     └─ hp : int
+├─ = : int
+│  ├─ shield : int
+│  └─ - : int
+│     ├─ shield : int
+│     └─ int 30
+├─ output : void
+│  ├─ chars "HP after hit:   "
+│  ├─ hp : int
+│  └─ chars "\n"
+├─ = : int
+│  ├─ mana : int
+│  └─ ref : int
+│     └─ mp : int
+├─ = : int
+│  ├─ mana : int
+│  └─ - : int
+│     ├─ mana : int
+│     └─ int 20
+└─ output : void
+   ├─ chars "MP after spell: "
+   ├─ mp : int
+   └─ chars "\n"
+```
+
 ```out
 HP after hit:   70
 MP after spell: 30
@@ -253,6 +367,36 @@ main():
     output("<", shield, " ", mp, ">\n")
 ```
 
+```tree
+fn main() : int
+├─ = : int
+│  ├─ shield : int
+│  └─ int 10
+├─ = : int
+│  ├─ mp : int
+│  └─ int 80
+├─ = : int
+│  ├─ s : int
+│  └─ ref : int
+│     └─ shield : int
+├─ = : int
+│  ├─ m : int
+│  └─ ref : int
+│     └─ mp : int
+├─ *= : int
+│  ├─ s : int
+│  └─ int 2
+├─ -= : int
+│  ├─ m : int
+│  └─ int 25
+└─ output : void
+   ├─ chars "<"
+   ├─ shield : int
+   ├─ chars " "
+   ├─ mp : int
+   └─ chars ">\n"
+```
+
 ```out
 <20 55>
 ```
@@ -307,6 +451,33 @@ main():
     r *= 2
     r -= 30
     output("<", score, ">\n")
+```
+
+```tree
+fn main() : int
+├─ = : int
+│  ├─ score : int
+│  └─ int 0
+├─ = : int
+│  ├─ r : int
+│  └─ ref : int
+│     └─ score : int
+├─ += : int
+│  ├─ r : int
+│  └─ int 100
+├─ += : int
+│  ├─ r : int
+│  └─ int 50
+├─ *= : int
+│  ├─ r : int
+│  └─ int 2
+├─ -= : int
+│  ├─ r : int
+│  └─ int 30
+└─ output : void
+   ├─ chars "<"
+   ├─ score : int
+   └─ chars ">\n"
 ```
 
 ```out
@@ -364,6 +535,26 @@ main():
         output("healthy\n")
     else:
         output("critical\n")
+```
+
+```tree
+fn main() : int
+├─ = : int
+│  ├─ hp : int
+│  └─ int 75
+├─ = : int
+│  ├─ r : int
+│  └─ ref : int
+│     └─ hp : int
+└─ if
+   ├─ condition > : bool
+   │  ├─ r : int
+   │  └─ int 50
+   ├─ output : void
+   │  └─ chars "healthy\n"
+   └─ else
+      └─ output : void
+         └─ chars "critical\n"
 ```
 
 ```out
@@ -428,6 +619,73 @@ main():
     output(~r, "\n")
     output(twice(r), "\n")
     return 0
+```
+
+```tree
+fn twice(n : int) : int
+└─ return
+   └─ * : int
+      ├─ n : int
+      └─ int 2
+
+fn main() : int
+├─ = : int
+│  ├─ x : int
+│  └─ int 12
+├─ = : int
+│  ├─ r : int
+│  └─ ref : int
+│     └─ x : int
+├─ output : void
+│  ├─ + : int
+│  │  ├─ r : int
+│  │  └─ int 3
+│  └─ chars "\n"
+├─ output : void
+│  ├─ - : int
+│  │  ├─ r : int
+│  │  └─ int 5
+│  └─ chars "\n"
+├─ output : void
+│  ├─ * : int
+│  │  ├─ r : int
+│  │  └─ int 2
+│  └─ chars "\n"
+├─ output : void
+│  ├─ > : bool
+│  │  ├─ r : int
+│  │  └─ int 10
+│  └─ chars "\n"
+├─ output : void
+│  ├─ == : bool
+│  │  ├─ r : int
+│  │  └─ int 12
+│  └─ chars "\n"
+├─ output : void
+│  ├─ & : int
+│  │  ├─ r : int
+│  │  └─ int 10
+│  └─ chars "\n"
+├─ output : void
+│  ├─ << : int
+│  │  ├─ r : int
+│  │  └─ int 1
+│  └─ chars "\n"
+├─ output : void
+│  ├─ - : int
+│  │  ├─ int 0
+│  │  └─ r : int
+│  └─ chars "\n"
+├─ output : void
+│  ├─ ~ : int
+│  │  └─ r : int
+│  └─ chars "\n"
+├─ output : void
+│  ├─ call twice : int
+│  │  └─ r : int
+│  └─ chars "\n"
+└─ return
+   └─ int 0
 ```
 
 ```out
@@ -550,6 +808,28 @@ main():
     return 0
 ```
 
+```tree
+fn main() : int
+├─ = : int
+│  ├─ x : int
+│  └─ int 42
+├─ = : int
+│  ├─ m : int
+│  └─ ref : int
+│     └─ x : int
+├─ output : void
+│  ├─ m : int
+│  └─ chars "\n"
+├─ = : int
+│  ├─ m : int
+│  └─ int 7
+├─ output : void
+│  ├─ x : int
+│  └─ chars "\n"
+└─ return
+   └─ int 0
+```
+
 ```out
 42
 7
@@ -596,6 +876,27 @@ main():
     bump(ref x)
     output(x, "\n")
     return 0
+```
+
+```tree
+fn main() : int
+├─ = : int
+│  ├─ x : int
+│  └─ int 5
+├─ fn bump(n : int) : void
+│  └─ = : int
+│     ├─ n : int
+│     └─ + : int
+│        ├─ n : int
+│        └─ int 1
+├─ call bump : void
+│  └─ ref : int
+│     └─ x : int
+├─ output : void
+│  ├─ x : int
+│  └─ chars "\n"
+└─ return
+   └─ int 0
 ```
 
 ```out
@@ -659,6 +960,89 @@ main():
     output(b or False, "\n")
     output(not b, "\n")
     return 0
+```
+
+```tree
+fn main() : int
+├─ = : int
+│  ├─ a : int
+│  └─ int 20
+├─ = : int
+│  ├─ r : int
+│  └─ ref : int
+│     └─ a : int
+├─ output : void
+│  ├─ / : int
+│  │  ├─ r : int
+│  │  └─ int 6
+│  └─ chars "\n"
+├─ output : void
+│  ├─ % : int
+│  │  ├─ r : int
+│  │  └─ int 6
+│  └─ chars "\n"
+├─ output : void
+│  ├─ != : bool
+│  │  ├─ r : int
+│  │  └─ int 20
+│  └─ chars "\n"
+├─ output : void
+│  ├─ < : bool
+│  │  ├─ r : int
+│  │  └─ int 25
+│  └─ chars "\n"
+├─ output : void
+│  ├─ <= : bool
+│  │  ├─ r : int
+│  │  └─ int 20
+│  └─ chars "\n"
+├─ output : void
+│  ├─ >= : bool
+│  │  ├─ r : int
+│  │  └─ int 21
+│  └─ chars "\n"
+├─ output : void
+│  ├─ | : int
+│  │  ├─ r : int
+│  │  └─ int 3
+│  └─ chars "\n"
+├─ output : void
+│  ├─ ^ : int
+│  │  ├─ r : int
+│  │  └─ int 4
+│  └─ chars "\n"
+├─ output : void
+│  ├─ >> : int
+│  │  ├─ r : int
+│  │  └─ int 2
+│  └─ chars "\n"
+├─ output : void
+│  ├─ cast : long
+│  │  └─ r : int
+│  └─ chars "\n"
+├─ = : bool
+│  ├─ flag : bool
+│  └─ bool True
+├─ = : bool
+│  ├─ b : bool
+│  └─ ref : bool
+│     └─ flag : bool
+├─ output : void
+│  ├─ and : bool
+│  │  ├─ b : bool
+│  │  └─ bool False
+│  └─ chars "\n"
+├─ output : void
+│  ├─ or : bool
+│  │  ├─ b : bool
+│  │  └─ bool False
+│  └─ chars "\n"
+├─ output : void
+│  ├─ not : bool
+│  │  └─ b : bool
+│  └─ chars "\n"
+└─ return
+   └─ int 0
 ```
 
 ```out
