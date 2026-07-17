@@ -163,21 +163,52 @@ Node *prime_node() {
       parse_block(node, token->indent);
       Node *tail = node;
       while (includes(peek(0)->type, ELIF, ELSE, 0) && peek(0)->indent == token->indent) {
-         Token *kw = next();
-         Node  *br = new_node(kw);
-         if (kw->type == ELIF)
-            br->left = expr_node(0);
+         Token *keyword = next();
+         Node  *branch  = new_node(keyword);
+         if (keyword->type == ELIF)
+            branch->left = expr_node(0);
          if (!find(DOTS, 0))
-            parse_error(kw, "Expected ':' to open the '%s' body", kw->name);
-         parse_block(br, kw->indent);
-         tail->right = br;
-         tail        = br;
-         if (kw->type == ELSE) break;
+            parse_error(keyword, "Expected ':' to open the '%s' body", keyword->name);
+         parse_block(branch, keyword->indent);
+         tail->right = branch;
+         tail        = branch;
+         if (keyword->type == ELSE) break;
       }
       return node;
    }
    case ELIF: case ELSE:
       parse_error(token, "'%s' without a matching 'if'", token->name);
+      return syntax_error();
+   case MATCH: {
+      Node *node = new_node(token);
+      node->left = expr_node(0);
+      if (!find(DOTS, 0))
+         parse_error(token, "Expected ':' to open the 'match' body");
+      while (within(token->indent) && includes(peek(0)->type, CASE, DEFAULT, 0)) {
+         Token *keyword = next();
+         Node  *branch  = new_node(keyword);
+         if (keyword->type == CASE) {
+            Node *values = new_node(keyword);
+            while (!ura.found_error && peek(0)->type != DOTS) {
+               resize_array(values->children, Node *);
+               values->children[values->children_count++] = expr_node(0);
+               if (!find(COMA, 0)) break;
+            }
+            if (values->children_count == 0)
+               parse_error(keyword, "Expected an expression after 'case'");
+            branch->left = values;
+         }
+         if (!find(DOTS, 0))
+            parse_error(keyword, "Expected ':' to open the '%s' body", keyword->name);
+         parse_block(branch, keyword->indent);
+         resize_array(node->children, Node *);
+         node->children[node->children_count++] = branch;
+         if (keyword->type == DEFAULT) break;
+      }
+      return node;
+   }
+   case CASE: case DEFAULT:
+      parse_error(token, "'%s' without a matching 'match'", token->name);
       return syntax_error();
    case WHILE: {
       Node *node = new_node(token);
@@ -261,10 +292,16 @@ void analyze(Node *node) {
       case IF: case ELIF: case ELSE: case WHILE:
          analyze_block(node);
          break;
-      case BREAK: case CONTINUE:
-         node->left = enclosing_loop();
+      case MATCH: analyze_match(node); break;
+      case BREAK:
+         node->left = enclosing_break();
          if (!node->left)
-            parse_error(node->token, "'%s' outside a loop", node->token->name);
+            parse_error(node->token, "'break' outside a loop or match");
+         break;
+      case CONTINUE:
+         node->left = enclosing_continue();
+         if (!node->left)
+            parse_error(node->token, "'continue' outside a loop");
          break;
       case OUTPUT:
          for (int i = 0; i < node->children_count; i++)
@@ -328,6 +365,7 @@ void type_check(Node *node) {
       case IF: case ELIF: case ELSE: case WHILE:
          type_check_block(node);
          break;
+      case MATCH: type_check_match(node); break;
       case BREAK: case CONTINUE: break;
       case ASSIGN: case ADD: case SUB: case MUL: case DIV: case MOD:
       case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN: case MOD_ASSIGN:
@@ -374,6 +412,7 @@ void code_gen(Node *node) {
       case REF:    token->llvm.elem = address_of(node->left); break;
       case IF:     code_gen_if(node); break;
       case WHILE:  code_gen_while(node); break;
+      case MATCH:  code_gen_match(node); break;
       case BREAK:    LLVMBuildBr(ura.builder, node->left->token->llvm.end);   break;
       case CONTINUE: LLVMBuildBr(ura.builder, node->left->token->llvm.start); break;
       case ASSIGN: code_gen_assign(node); break;

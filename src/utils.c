@@ -8,6 +8,7 @@ char *to_string(Type type) {
 	    [RPAR] = "RPAR", [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
 	    [WHILE] = "WHILE", [FOR] = "FOR", [TO] = "TO",
 	    [STEP] = "STEP", [IN] = "IN", [BREAK] = "BRK", [CONTINUE] = "CONT",
+	    [MATCH] = "MATCH", [CASE] = "CASE", [DEFAULT] = "DEFAULT",
 	    [SHORT] = "SHORT", [RETURN] = "RET", [BAND] = "BAND", [BOR] = "BOR",
 	    [BXOR] = "BXOR", [BNOT] = "BNOT", [LSHIFT] = "LSHIFT",
 	    [RSHIFT] = "RSHIFT", [ADD] = "ADD", [SUB] = "SUB", [MUL] = "MUL",
@@ -796,7 +797,8 @@ Token *parse_token(int line, int s, int e, Type type, int indent) {
 			{"if", IF, 0, 0},					{"elif", ELIF, 0, 0},         {"else", ELSE, 0, 0},
 			{"while", WHILE, 0, 0},       {"for", FOR, 0, 0},				{"to", TO, 0, 0},
 			{"step", STEP, 0, 0},			{"in", IN, 0, 0},             {"fn", FDEC, 0, 0},
-			{"return", RETURN, 0, 0},     {"break", BREAK, 0, 0},			{"continue", CONTINUE, 0, 0}, 
+			{"return", RETURN, 0, 0},     {"break", BREAK, 0, 0},			{"continue", CONTINUE, 0, 0},
+			{"match", MATCH, 0, 0},			{"case", CASE, 0, 0},         {"default", DEFAULT, 0, 0},
 			{"ref", REF, 0, 0},				{"struct", STRUCT_DEF, 0, 0}, {"enum", ENUM_DEF, 0, 0},
 			{"proto", PROTO, 0, 0},       {"mod", MODULE, 0, 0},			{"operator", OPERATOR, 0, 0}, 
 			{"as", AS, 0, 0},					{"pub", PUB, 0, 0},           {"delete", DELETE, 0, 0},
@@ -964,11 +966,20 @@ void exit_scope() {
 	ura.scope = ura.scopes[ura.scopes_count];
 }
 
-Node *enclosing_loop() {
+Node *enclosing_continue() {
 	for (int i = ura.scopes_count; i >= 1; i--) {
 		if (!ura.scopes[i]) continue;
 		if (ura.scopes[i]->token->type == WHILE) return ura.scopes[i];
 		if (ura.scopes[i]->token->type == FDEC)  return NULL;
+	}
+	return NULL;
+}
+
+Node *enclosing_break() {
+	for (int i = ura.scopes_count; i >= 1; i--) {
+		if (!ura.scopes[i]) continue;
+		if (includes(ura.scopes[i]->token->type, WHILE, MATCH, 0)) return ura.scopes[i];
+		if (ura.scopes[i]->token->type == FDEC) return NULL;
 	}
 	return NULL;
 }
@@ -982,6 +993,22 @@ void analyze_block(Node *node) {
 	analyze(node->right);
 }
 
+void analyze_match(Node *node) {
+	analyze(node->left);
+	enter_scope(node);
+	for (int i = 0; i < node->children_count; i++) {
+		Node *branch = node->children[i];
+		if (branch->left)
+			for (int v = 0; v < branch->left->children_count; v++)
+				analyze(branch->left->children[v]);
+		enter_scope(branch);
+		for (int s = 0; s < branch->children_count; s++)
+			analyze(branch->children[s]);
+		exit_scope();
+	}
+	exit_scope();
+}
+
 void type_check_block(Node *node) {
 	type_check(node->left);
 	if (node->left && node->left->token->ret_type != BOOL)
@@ -990,6 +1017,24 @@ void type_check_block(Node *node) {
 	for (int i = 0; i < node->children_count; i++)
 		type_check(node->children[i]);
 	type_check(node->right);
+}
+
+void type_check_match(Node *node) {
+	type_check(node->left);
+	Type subject = node->left->token->ret_type;
+	for (int i = 0; i < node->children_count; i++) {
+		Node *branch = node->children[i];
+		if (branch->left)
+			for (int v = 0; v < branch->left->children_count; v++) {
+				Node *value = branch->left->children[v];
+				type_check(value);
+				if (subject && value->token->ret_type && value->token->ret_type != subject)
+					parse_error(value->token, "This case value is %s but the subject is %s; they must be the same type",
+					            to_string(value->token->ret_type), to_string(subject));
+			}
+		for (int s = 0; s < branch->children_count; s++)
+			type_check(branch->children[s]);
+	}
 }
 
 void declare_variable(Token *token) {
@@ -1609,6 +1654,43 @@ void code_gen_while(Node *node) {
    LLVMPositionBuilderAtEnd(ura.builder, end);
 }
 
+void code_gen_match(Node *node) {
+   Value fn   = LLVMGetBasicBlockParent(LLVMGetInsertBlock(ura.builder));
+   Block end  = LLVMAppendBasicBlockInContext(ura.context, fn, "match.end");
+   node->token->llvm.end = end;                       // break target
+   code_gen(node->left);                              
+   Value subject = node->left->token->llvm.elem;
+   bool  fp      = node->left->token->ret_type == FLOAT;
+   enter_scope(node);
+   for (int i = 0; i < node->children_count; i++) {
+      Node *branch = node->children[i];
+      if (branch->token->type == DEFAULT) {
+         enter_scope(branch); code_gen_body(branch); exit_scope();
+         if (!LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ura.builder)))
+            LLVMBuildBr(ura.builder, end);
+         break;
+      }
+      Block body = LLVMAppendBasicBlockInContext(ura.context, fn, "case.body");
+      Block next = i + 1 < node->children_count ? LLVMAppendBasicBlockInContext(ura.context, fn, "case.next") : end;
+      Value cond = NULL;
+      for (int j = 0; j < branch->left->children_count; j++) {
+         code_gen(branch->left->children[j]);
+         Value val = branch->left->children[j]->token->llvm.elem;
+         Value eq  = fp ? LLVMBuildFCmp(ura.builder, LLVMRealOEQ, subject, val, "feq")
+                        : LLVMBuildICmp(ura.builder, LLVMIntEQ, subject, val, "eq");
+         cond = cond ? LLVMBuildOr(ura.builder, cond, eq, "case.or") : eq;
+      }
+      LLVMBuildCondBr(ura.builder, cond, body, next);
+      LLVMPositionBuilderAtEnd(ura.builder, body);
+      enter_scope(branch); code_gen_body(branch); exit_scope();
+      if (!LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ura.builder)))
+         LLVMBuildBr(ura.builder, end);
+      LLVMPositionBuilderAtEnd(ura.builder, next);
+   }
+   exit_scope();
+   LLVMPositionBuilderAtEnd(ura.builder, end);
+}
+
 void code_gen_if(Node *node) {
    Value fn  = LLVMGetBasicBlockParent(LLVMGetInsertBlock(ura.builder));
    Block end = LLVMAppendBasicBlockInContext(ura.context, fn, "endif");
@@ -1751,7 +1833,8 @@ void free_token(Token *token) {
 
 void free_node(Node *node) {
    if (!node) return;
-   free_node(node->left);
+   if (!includes(node->token->type, BREAK, CONTINUE, 0))
+      free_node(node->left);
    free_node(node->right);
    for (int i = 0; i < node->children_count; i++)
       free_node(node->children[i]);

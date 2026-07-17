@@ -134,7 +134,7 @@ enum Type
 	ADD, SUB, MUL, DIV, MOD, // Arithmetic
 	AND, OR, NOT, // Logical
 	LPAR, RPAR, LBRA, RBRA, COMA, DOT, DOTS, ACCESS, AS, // Punctuation and Syntax
-	RETURN, IF, ELIF, ELSE, WHILE, CONTINUE, BREAK, // Control Flow
+	RETURN, IF, ELIF, ELSE, WHILE, CONTINUE, BREAK, MATCH, CASE, DEFAULT, // Control Flow
 	FOR, TO, STEP, IN,
 	FDEC, FCALL, PROTO, ARGS, CHILDREN, // Functions
 	STACK, HEAP, TYPEOF, SIZEOF, OUTPUT, SYNTAX_ERROR, // Built-ins
@@ -377,11 +377,15 @@ Value get_or_declare(char *name, TypeRef fn_type);
 void render_caret(File out, Token *token);
 void decolor(char *s);
 void parse_block(Node *node, int indent);
-Node *enclosing_loop();
+Node *enclosing_continue();
+Node *enclosing_break();
 void analyze_block(Node *node);
+void analyze_match(Node *node);
 void type_check_block(Node *node);
+void type_check_match(Node *node);
 void code_gen_if(Node *node);
 void code_gen_while(Node *node);
+void code_gen_match(Node *node);
 void guard(Token *op, Value is_bad, char *what);
 void guard_nonzero(Token *op, Value divisor);
 void guard_nonnull(Token *op, Value ptr);
