@@ -1,1 +1,5 @@
-[1m[0;31merror: [0mCannot find file '(null)'
+[1m[0;31merror: [0mA reference must be bound when declared (use 'ref?' for an optional reference)
+  [2mtests/errors/refs/001.ura:4:9[0m
+  [1m[34m|[0m
+[1m[34m4 |[0m     ref r int
+  [1m[34m|[0m         [1;31m^[0m

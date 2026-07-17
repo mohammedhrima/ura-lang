@@ -1,0 +1,5 @@
+// errors/refs/004 — cannot take a reference to a literal
+
+main():
+    ref r int = ref 5
+    return 0

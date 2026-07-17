@@ -1,7 +1,6 @@
-// errors/refs/002 — ref of mismatched type
-use "@/header"
+// errors/refs/002 — a reference's type must match its target
 
 main():
     x int = 5
-    ref y chars = x
-    output(y, "\n")
+    ref y chars = ref x
+    return 0
