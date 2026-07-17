@@ -1,5 +1,0 @@
-// functions/basic/007.ura - declare a variable and return it
-
-main():
-    a int = 7
-    return a

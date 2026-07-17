@@ -1,6 +1,0 @@
-// functions/basic/009.ura - forward reference: call a function declared later
-
-main():
-    return dbl(21)
-fn dbl(n int) int:
-    return n + n

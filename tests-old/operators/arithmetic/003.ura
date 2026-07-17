@@ -1,6 +1,0 @@
-// operators/arithmetic/003.ura - reassign an existing variable (2*10 + 3)
-
-main():
-    a int = 2
-    a = a * 10 + 3
-    return a

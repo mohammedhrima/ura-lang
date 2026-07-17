@@ -326,6 +326,23 @@ def rebuild(src="tests-old"):
     n = sum(migrate(d) for d in leaves)
     ok(f"rebuilt tests/ — {n} implemented cases across {len(leaves)} source groups")
 
+def prune(src="tests-old"):
+    """Delete from <src> every case that now lives in tests/ (migrated → implemented). Repeat as
+    features land, until tests-old is empty and can be removed."""
+    removed = 0
+    for md in sorted(Path("tests").rglob("*.md")):
+        olddir = Path(src) / Path(*md.parts[1:]).with_suffix("")
+        for c in parse_md(md):
+            stem = c['name'].split()[0]
+            for f in list(olddir.glob(f"{stem}.*")) + list(olddir.glob(f"build/{stem}.ll")):
+                if f.is_file(): f.unlink(); removed += 1
+    for d in sorted((p for p in Path(src).rglob("*") if p.is_dir()),
+                    key=lambda p: len(p.parts), reverse=True):
+        try:
+            if not any(d.iterdir()): d.rmdir()
+        except OSError: pass
+    ok(f"pruned {removed} migrated files from {src}")
+
 def mdtest(target="tests"):
     mds = [Path(target)] if str(target).endswith(".md") else sorted(Path(target).rglob("*.md"))
     results = []
@@ -375,7 +392,7 @@ TASKS = {
     "check": check, "build": build, "install": install, "copy": copy,
     "test": test, "test_errors": test_errors, "test_runtime": test_runtime, "tests": tests,
     "update_errors": update_errors, "update_runtime": update_runtime, "update_ll": update_ll,
-    "migrate": migrate, "rebuild": rebuild, "mdtest": mdtest, "update": update,
+    "migrate": migrate, "rebuild": rebuild, "prune": prune, "mdtest": mdtest, "update": update,
     "show": show, "index": index,
 }
 DESC = {

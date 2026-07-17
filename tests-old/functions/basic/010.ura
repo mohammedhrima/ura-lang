@@ -1,7 +1,0 @@
-// functions/basic/010.ura - store a function in a fn-typed variable, then call it
-
-fn twice(n int) int:
-    return n + n
-main():
-    f fn(int) int = twice
-    return f(21)

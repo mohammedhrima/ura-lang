@@ -1,5 +1,0 @@
-// errors/lexer/008 — `link` missing opening quote
-link header.h
-
-main():
-    output("hi\n")

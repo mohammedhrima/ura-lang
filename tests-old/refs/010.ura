@@ -1,9 +1,0 @@
-// refs/010 — nested fn shares an enclosing var through a ref parameter (the sanctioned path)
-
-main():
-    x int = 5
-    fn bump(ref n int) void:
-        n = n + 1
-    bump(ref x)
-    output(x, "\n")
-    return 0
