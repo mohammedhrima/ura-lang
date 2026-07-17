@@ -1,0 +1,8 @@
+// errors/refs/005 — a by-value parameter does not accept a reference
+
+fn twice(n int) int:
+    return n * 2
+
+main():
+    x int = 5
+    return twice(ref x)

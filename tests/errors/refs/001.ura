@@ -1,10 +1,5 @@
-// parse_errors/017 — `ref` variable must be initialized at declaration
-use "@/header"
-
-struct Point:
-    x int
-    y int
+// errors/refs/001 — a plain reference must be bound at its declaration
 
 main():
-    p Point
-    ref r Point
+    ref r int
+    return 0

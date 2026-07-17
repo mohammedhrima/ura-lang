@@ -1,0 +1,5 @@
+// errors/refs/006 — cannot reference an undeclared variable
+
+main():
+    ref r int = ref ghost
+    return 0
