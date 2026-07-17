@@ -33,11 +33,11 @@ typedef struct _IO_FILE *File;
 
 #define SPLIT      "=================================================\n"
 #define RESET      "\033[0m"
-#define BOLD       "\e[1m"
+#define BOLD       "\033[1m"
 #define GREEN(fmt) BOLD "\033[0;32m" fmt RESET
 #define RED(fmt)   BOLD "\033[0;31m" fmt RESET
 #define CYAN(fmt)  BOLD "\033[0;36m" fmt RESET
-#define BLUE(fmt)  BOLD "\x1b[34m" fmt RESET
+#define BLUE(fmt)  BOLD "\033[34m" fmt RESET
 
 #define LINE __LINE__
 #define FUNC (char *)__func__
@@ -49,12 +49,13 @@ typedef struct _IO_FILE *File;
 #define LIST_STRUCT_PREFIX "__list_"
 #define OP_PREFIX          ".operator."
 
+#define TAB 3
+
 #define TOKENIZE 1
-#define TAB      3
-#define AST      1
-#define IR       1
-#define OPTIMIZE 1
-#define ASM      1
+#define AST      (TOKENIZE & 1)
+#define IR       (AST      & 1)
+#define OPTIMIZE (IR       & 1)
+#define ASM      (IR       & 1)
 
 #define CHECK(cond, fmt, ...) _check(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)
 #define TODO(cond, fmt, ...) if (_check(FILE, FUNC, LINE, cond, fmt, ##__VA_ARGS__)) exit(1);
@@ -94,7 +95,7 @@ typedef struct Token      Token;
 typedef struct Keyword    Keyword;
 typedef struct Node       Node;
 typedef struct LLVM       LLVM;
-typedef struct AutoClean  AutoClean;
+// typedef struct AutoClean  AutoClean;
 typedef enum Type         Type;
 typedef struct Source     Source;
 typedef struct UraGlobal UraGlobal;
@@ -251,62 +252,60 @@ struct Node {
 };
 
 struct UraGlobal {
-    bool             found_error;
-	//  char 				*input;
-	 char 				*output;
-    int              error_count;
-    int              max_errors;
-    // Node            *syntax_error_node;
-    bool             enable_debug;
-    bool             enable_exec;
-    bool             enable_san;
-    bool             enable_tree;
-    bool             no_color;
-    // bool             enable_prep;
-    char            *flags;
-    char            *lib;
-    double           t_start;
-    // const char      *ura_target_os;
-    
-    // Token          **tokens;
-    // int              tokens_count;
-    // int              tokens_size;
-    // int              exe_count;
-    // // char            *synth_list_paths[];
-    // // int              synth_list_count;
-    // Node           **scopes;
-    // int              scopes_count;
-    // int              scopes_size;
-    // Node            *scope;
-    // Node            *ura_scope;
-    // char            *current_gen_module;
-    
-    char            *dir;
-    char            *base;
-    char            *build_dir;
-    char            *ll_path;
-    
-    // Context          context;
-    // Module           module;
-    // Builder          builder;
-    // TypeRef          vd, f32, i1, i2, i4, i8, i16, i32, i64, p8, p32;
-    LLVMDIBuilderRef debug_builder;
-    MetadataRef      debug_compile_unit;
-    MetadataRef      debug_file;
-    MetadataRef      debug_scope;
-	 EXPAND(Node**, scopes);
-	 EXPAND(Token **, tokens);
-	 EXPAND(Source **, sources);
-	 int					sources_pos;
-	 int					calling_use;
-	 Node					*scope;
-	 Node					*head;
-	 int					exe_pos;
+	bool             found_error;
+	char            *output;
+	int              error_count;
+	int              max_errors;
+	bool             enable_debug;
+	bool             enable_exec;
+	bool             enable_san;
+	bool             enable_tree;
+	bool             no_color;
+	// bool             enable_prep;
+	char            *flags;
+	char            *lib;
+	double           time_start;
+	// const char      *ura_target_os;
 
-	 Context				context;
-	 Module				    module;
-	 Builder				builder;
-	 TypeRef				vd, f32, i1, i8, i16, i32, i64;
+	// Token          **tokens;
+	// int              tokens_count;
+	// int              tokens_size;
+	// int              exe_count;
+	// // char            *synth_list_paths[];
+	// // int              synth_list_count;
+	// Node           **scopes;
+	// int              scopes_count;
+	// int              scopes_size;
+	// Node            *scope;
+	// Node            *ura_scope;
+	// char            *current_gen_module;
+
+	char            *dir;
+	char            *base;
+	char            *build_dir;
+	char            *ll_path;
+
+	// Context          context;
+	// Module           module;
+	// Builder          builder;
+	// TypeRef          vd, f32, i1, i2, i4, i8, i16, i32, i64, p8, p32;
+	LLVMDIBuilderRef debug_builder;
+	MetadataRef      debug_compile_unit;
+	MetadataRef      debug_file;
+	MetadataRef      debug_scope;
+	EXPAND(Node **, scopes);
+	EXPAND(Token **, tokens);
+	EXPAND(Source **, sources);
+	int              sources_pos;
+	int              calling_use;
+	Node            *scope;
+	Node            *head;
+	int              exe_pos;
+
+	Context          context;
+	Module           module;
+	Builder          builder;
+	TypeRef          vd, f32, i1, i8, i16, i32, i64;
 };
 
 extern UraGlobal ura;
@@ -406,13 +405,16 @@ void analyze(Node *node);
 void analyze_fdec(Node *node);
 void analyze_id(Node *node);
 void analyze_fcall(Node *node);
+void analyze_binop(Node *node);
 void type_check(Node *node);
+void type_check_fdec(Node *node);
 void type_check_fcall(Node *node);
 void type_check_binop(Node *node);
 void emit_signature(Node *fn);
 Value address_of(Node *node);
 void code_gen(Node *node);
 void code_gen_fdec(Node *node);
+void code_gen_literal(Node *node);
 void code_gen_id(Node *node);
 void code_gen_fcall(Node *node);
 void code_gen_assign(Node *node);

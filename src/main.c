@@ -45,7 +45,8 @@ void tokenize(int default_indent) {
    int line = 1;
    int indent = default_indent;
    
-   int s, i = 0;
+   int s = 0;
+   int i = 0;
    while (content && content[i] && !ura.error_count) {
       s = i;
       char c = content[i];
@@ -217,8 +218,7 @@ void analyze(Node *node) {
       case EQUAL: case NOT_EQUAL: case LESS: case GREAT: case LESS_EQUAL: case GREAT_EQUAL:
       case AND: case OR:
       case BAND: case BOR: case BXOR: case LSHIFT: case RSHIFT:
-         analyze(node->left);
-         analyze(node->right);
+         analyze_binop(node);
          break;
       default:
          CHECK(1, "analyze: unhandled node '%s'", to_string(token->type));
@@ -230,10 +230,7 @@ void type_check(Node *node) {
    if (!node) return;
    Token *token = node->token;
    switch (token->type) {
-      case FDEC:
-         for (int i = 0; i < node->children_count; i++)
-            type_check(node->children[i]);
-         break;
+      case FDEC:   type_check_fdec(node); break;
       case INT:     token->ret_type = INT; break;
       case BOOL:    token->ret_type = BOOL; break;
       case CHARS:   token->ret_type = CHARS; break;
@@ -289,11 +286,7 @@ void code_gen(Node *node) {
    Token *token = node->token;
    switch (token->type) {
       case FDEC:   code_gen_fdec(node); break;
-      case INT:    token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Int.value, 0); break;
-      case BOOL:   token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Bool.value, 0); break;
-      case CHARS:  token->llvm.elem = LLVMBuildGlobalStringPtr(ura.builder, token->Chars.value, "str"); break;
-      case CHAR:   token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Char.value, 0); break;
-      case FLOAT:  token->llvm.elem = LLVMConstReal(to_llvm_type(token->ret_type), token->Float.value); break;
+      case INT: case BOOL: case CHARS: case CHAR: case FLOAT: code_gen_literal(node); break;
       case ID:     code_gen_id(node); break;
       case FN_TYPE:
          emit_signature(token->Fcall.ptr);
@@ -352,31 +345,36 @@ void generate_ir() {
 }
 
 void generate_asm() {
-   if(ura.error_count || !ura.head) return;
+   if (ura.error_count || !ura.head) return;
    setup_paths(ura.sources[0]->filename);
    init_module(ura.output);
    for (int i = 0; i < ura.head->children_count; i++)
       code_gen(ura.head->children[i]);
    finalize_module(ura.ll_path);
-   if (ura.error_count) return;
-   if (ura.enable_exec)
-      fprintf(stderr, CYAN("%-9s") " " BLUE("%s (%s)") "\n",
-              "Compiling", ura.base, ura.sources[0]->filename);
+}
+
+void compile_executable() {
+   if (ura.error_count || !ura.head) return;
+
+   fprintf(stderr, CYAN("%-9s") " " BLUE("%s (%s)") "\n", 
+         "Compiling", ura.base, ura.sources[0]->filename);
    char *cc  = ura.enable_san ? "/usr/bin/clang" : "clang";
    char *san = ura.enable_san ? " -fsanitize=address,undefined -fno-omit-frame-pointer -g" : "";
    char *cmd = format("%s%s %s -o %s 2>/dev/null", cc, san, ura.ll_path, ura.output);
    system(cmd);
    free(cmd);
    if (!ura.enable_exec) return;
-
    char *opt = ura.flags ? "optimized" : "unoptimized";
    char *tag = ura.enable_san ? " + sanitized" : "";
    fprintf(stderr, CYAN("%-9s") " \033[2m[%s%s]\033[0m in %.2fs\n",
-           "Finished", opt, tag, clock_now() - ura.t_start);
+           "Finished", opt, tag, clock_now() - ura.time_start);
+}
 
+void run_executable() {
+   if (!ura.enable_exec || ura.error_count || !ura.head) return;
    char  *run = strchr(ura.output, '/') ? ura.output : format("./%s", ura.output);
    fprintf(stderr, CYAN("%-9s") " " BLUE("%s") "\n", "Running", run);
-   double e0  = clock_now();
+   double start = clock_now();
    pid_t  pid = fork();
    if (pid == 0) {
       execl(run, run, NULL);
@@ -385,7 +383,7 @@ void generate_asm() {
    if (pid < 0) return;
    int status = 0;
    waitpid(pid, &status, 0);
-   double exec = clock_now() - e0;
+   double exec = clock_now() - start;
    if (WIFSIGNALED(status))
       fprintf(stderr, RED("%-9s") " %s (signal %d) in %.2fs\n",
               "Crashed", signal_name(WTERMSIG(status)), WTERMSIG(status), exec);
@@ -395,14 +393,24 @@ void generate_asm() {
 }
 
 int main(int argc, char**argv) {
-   ura.t_start = clock_now();
+   ura.time_start = clock_now();
    ura.max_errors = 20;
    ura.enable_debug = false;
    parse_arguments(argc, argv);
+#if TOKENIZE
    tokenize(0);
+#endif
+#if AST
    generate_ast();
+#endif
+#if IR
    generate_ir();
+#endif
+#if ASM
    generate_asm();
+   compile_executable();
+   run_executable();
+#endif
    free_memory();
    return ura.error_count != 0;
 }

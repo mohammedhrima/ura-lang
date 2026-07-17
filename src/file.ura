@@ -1,9 +1,14 @@
-fn hello() int:
-    return 1
-
-fn hello() int:
-    return 1
+fn add(a int, b int) int:
+    return a + b * 2
 
 main():
-    a int = 1
-    return a
+    x int = 5
+    if x > 5:
+        output("big\n")
+    else:
+        output("small\n")
+    match x:
+        case 1, 2, 3:
+            output("low\n")
+        default:
+            output("hi\n")
