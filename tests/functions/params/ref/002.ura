@@ -8,5 +8,5 @@ fn swap_weapons(ref a int, ref b int) void:
 main():
     sword  int = 30
     dagger int = 15
-    swap_weapons(sword, dagger)
+    swap_weapons(ref sword, ref dagger)
     output("<", sword, " ", dagger, ">\n")

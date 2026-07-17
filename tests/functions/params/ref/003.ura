@@ -8,5 +8,5 @@ main():
     kill_xp  int = 30
     bonus_xp int = 20
     z        int
-    z = add_xp(kill_xp, bonus_xp)
+    z = add_xp(ref kill_xp, ref bonus_xp)
     output("<", z, ">\n")

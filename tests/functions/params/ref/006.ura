@@ -5,6 +5,6 @@ fn tick(ref n int) int:
     return n
 main():
     n int = 0
-    tick(n)
-    tick(n)
+    tick(ref n)
+    tick(ref n)
     return n

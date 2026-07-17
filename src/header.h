@@ -139,7 +139,7 @@ enum Type
 	FDEC, FCALL, PROTO, ARGS, CHILDREN, // Functions
 	STACK, HEAP, TYPEOF, SIZEOF, OUTPUT, SYNTAX_ERROR, // Built-ins
 	BAND, BOR, BXOR, BNOT, LSHIFT, RSHIFT, // Bitwise
-	NULLABLE, // Literals
+	NULLABLE, OPTIONAL, // Literals 
 	MODULE, // Modules
 	OPERATOR, // Operator overloading keyword
 	PUB, DOUBLE_DOTS, DELETE, // Static dispatch / pub
@@ -202,6 +202,7 @@ struct Token {
 	int     end_index; 
 
 	bool    is_ref;
+	bool    is_nullable;
 	bool    is_dec;
 	bool    is_global;
 	bool    is_param;
@@ -372,9 +373,11 @@ void debug_enter_function(Token *token);
 void debug_exit_function(Token *token);
 void set_debug_location(Token *token);
 Value get_or_declare(char *name, TypeRef fn_type);
+void render_caret(File out, Token *token);
 void guard(Token *op, Value is_bad, char *what);
 void guard_nonzero(Token *op, Value divisor);
 void guard_nonnull(Token *op, Value ptr);
+void guard_bound(Token *op, Value ptr);
 
 void analyze(Node *node);
 void analyze_fdec(Node *node);

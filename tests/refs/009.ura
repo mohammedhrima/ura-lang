@@ -1,0 +1,9 @@
+// refs/009 — ref? nullable: bound at declaration, guarded reads pass, write-through works
+
+main():
+    x int = 42
+    ref? m int = ref x
+    output(m, "\n")
+    m = 7
+    output(x, "\n")
+    return 0

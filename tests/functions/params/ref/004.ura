@@ -7,6 +7,6 @@ main():
     kills int = 0
     i     int = 0
     while i < 5:
-        tick(kills)
+        tick(ref kills)
         i = i + 1
     output("<", kills, ">\n")

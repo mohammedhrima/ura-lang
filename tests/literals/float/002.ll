@@ -7,7 +7,7 @@ source_filename = "exe.out"
 @fmt.2 = private unnamed_addr constant [5 x i8] c"%f%s\00", align 1
 @str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt.4 = private unnamed_addr constant [5 x i8] c"%f%s\00", align 1
-@trap_msg = private unnamed_addr constant [80 x i8] c"\1B[1m\1B[0;31mruntime error: \1B[0mtests/literals/float/002.ura:9: Division by zero\0A\00", align 1
+@trap_msg = private unnamed_addr constant [193 x i8] c"\1B[1m\1B[0;31mruntime error: \1B[0mDivision by zero\0A  \1B[2mtests/literals/float/002.ura:9:14\1B[0m\0A  \1B[1m\1B[34m|\1B[0m\0A\1B[1m\1B[34m9 |\1B[0m     output(a / b, \22\\n\22)\0A  \1B[1m\1B[34m|\1B[0m              \1B[1;31m^\1B[0m\0A\00", align 1
 @str.5 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt.6 = private unnamed_addr constant [5 x i8] c"%f%s\00", align 1
 @true_str = private unnamed_addr constant [5 x i8] c"True\00", align 1
@@ -50,7 +50,7 @@ entry:
   br i1 %iszero, label %trap, label %cont
 
 trap:                                             ; preds = %entry
-  %3 = call i64 @write(i32 2, i8* getelementptr inbounds ([80 x i8], [80 x i8]* @trap_msg, i32 0, i32 0), i64 79)
+  %3 = call i64 @write(i32 2, i8* getelementptr inbounds ([193 x i8], [193 x i8]* @trap_msg, i32 0, i32 0), i64 192)
   call void @exit(i32 1)
   unreachable
 
