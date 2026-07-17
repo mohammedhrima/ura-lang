@@ -28,16 +28,16 @@ Rewrite ura-lang feature by feature, full pipeline each. Nothing gets skipped, n
 - [x] char literals end-to-end
 - [x] compound assignment `+= -= *= /= %=` (load-modify-store, reuses guard_nonzero)
 - [x] bitwise `& | ^ ~ << >>`
-- [ ] precedence table complete for ALL ops + mixed-precedence golden (1)
+- [x] precedence table complete for ALL ops + mixed-precedence golden (1)
 
 ## M2 — control flow
-- [ ] if / elif / else (3)
-- [ ] while (2)
-- [ ] break / continue (2)
-- [ ] for (to/step) (3)
-- [ ] block scoping + shadowing golden (1)
+- [x] if / elif / else (3)
+- [x] while (2)
+- [x] break / continue (2)
+- [ ] for (to/step) (3) — deferred until arrays land (M5)
+- [ ] block scoping + shadowing golden (1) — scoping works (per-block scopes); shadowing golden still missing
 - [ ] NEW range op `0..10` (`..` not lexed yet) + range-for (3)
-- [ ] NEW switch / case (no keywords yet) (3)
+- [x] match / case / default — scalar switch, multi-value cases, `break` exits match (3)
 
 ## M3 — strings & I/O (the real hello-world; do EARLY)
 - [ ] chars (string) literals end-to-end (global constants) (2)
@@ -102,3 +102,8 @@ Rewrite ura-lang feature by feature, full pipeline each. Nothing gets skipped, n
 - local refs / ref returns — decide at M4
 - explicit stack/heap keywords vs implicit — decide at M4
 - try/catch vs Result/Option — decide at M8
+- the guard should throw an error
+- check if all feautres are implmented
+- use keyword:
+    - preprocessing macros
+    - structs ...

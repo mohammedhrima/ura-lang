@@ -477,7 +477,7 @@ void render_caret(File out, Token *token) {
 	int span    = e - s;
 	int line_no = token->line;
 	int gutter  = 1;
-	for (int n = line_no; n >= 10; n /= 10)
+	for (int i = line_no; i >= 10; i /= 10)
 		gutter++;
 
 	fprintf(out, "%*s \033[2m%s:%d:%d\033[0m\n", gutter, "", token->source->filename, line_no, col);
@@ -1025,9 +1025,17 @@ void set_name(Token *token, char *name) {
 	token->name = name ? strdup(name) : NULL;
 }
 
-Token *next() { return ura.tokens[ura.exe_pos++]; }
+Token *next() {
+	Token *token = peek(0);
+	if (ura.exe_pos + 1 < ura.tokens_count) ura.exe_pos++;
+	return token;
+}
 
-Token *peek(int index) { return ura.tokens[ura.exe_pos + index];}
+Token *peek(int index) {
+	int pos = ura.exe_pos + index;
+	if (pos >= ura.tokens_count) pos = ura.tokens_count - 1;
+	return ura.tokens[pos];
+}
 
 Token *find(Type type, ...) {
 	va_list ap;
@@ -1158,11 +1166,11 @@ void analyze_match(Node *node) {
 	for (int i = 0; i < node->children_count; i++) {
 		Node *branch = node->children[i];
 		if (branch->left)
-			for (int v = 0; v < branch->left->children_count; v++)
-				analyze(branch->left->children[v]);
+			for (int j = 0; j < branch->left->children_count; j++)
+				analyze(branch->left->children[j]);
 		enter_scope(branch);
-		for (int s = 0; s < branch->children_count; s++)
-			analyze(branch->children[s]);
+		for (int j = 0; j < branch->children_count; j++)
+			analyze(branch->children[j]);
 		exit_scope();
 	}
 	exit_scope();
@@ -1184,21 +1192,21 @@ void type_check_match(Node *node) {
 	for (int i = 0; i < node->children_count; i++) {
 		Node *branch = node->children[i];
 		if (branch->left)
-			for (int v = 0; v < branch->left->children_count; v++) {
-				Node *value = branch->left->children[v];
+			for (int j = 0; j < branch->left->children_count; j++) {
+				Node *value = branch->left->children[j];
 				type_check(value);
 				if (subject && value->token->ret_type && value->token->ret_type != subject)
 					parse_error(value->token, "This case value is %s but the subject is %s; they must be the same type",
 					            to_string(value->token->ret_type), to_string(subject));
 			}
-		for (int s = 0; s < branch->children_count; s++)
-			type_check(branch->children[s]);
+		for (int j = 0; j < branch->children_count; j++)
+			type_check(branch->children[j]);
 	}
 }
 
 void declare_variable(Token *token) {
-	for (int v = 0; v < ura.scope->variables_count; v++)
-		if (strcmp(ura.scope->variables[v]->name, token->name) == 0) {
+	for (int i = 0; i < ura.scope->variables_count; i++)
+		if (strcmp(ura.scope->variables[i]->name, token->name) == 0) {
 			parse_error(token, "Redeclaration of variable '%s'", token->name);
 			return;
 		}
@@ -1208,13 +1216,13 @@ void declare_variable(Token *token) {
 
 Token *find_variable(char *name, bool *captured) {
 	bool passed_function = false;
-	for (int s = ura.scopes_count; s >= 0; s--) {
-		Node *scope = ura.scopes[s];
+	for (int i = ura.scopes_count; i >= 0; i--) {
+		Node *scope = ura.scopes[i];
 		if (!scope) continue;
-		for (int v = 0; v < scope->variables_count; v++)
-			if (scope->variables[v]->name && strcmp(scope->variables[v]->name, name) == 0) {
+		for (int j = 0; j < scope->variables_count; j++)
+			if (scope->variables[j]->name && strcmp(scope->variables[j]->name, name) == 0) {
 				if (captured) *captured = passed_function && scope->token->type == FDEC;
-				return scope->variables[v];
+				return scope->variables[j];
 			}
 		if (scope->token->type == FDEC) passed_function = true;
 	}
@@ -1223,8 +1231,8 @@ Token *find_variable(char *name, bool *captured) {
 }
 
 void declare_function(Node *fn) {
-	for (int f = 0; f < ura.scope->functions_count; f++)
-		if (strcmp(ura.scope->functions[f]->token->name, fn->token->name) == 0) {
+	for (int i = 0; i < ura.scope->functions_count; i++)
+		if (strcmp(ura.scope->functions[i]->token->name, fn->token->name) == 0) {
 			parse_error(fn->token, "Redeclaration of function '%s'", fn->token->name);
 			return;
 		}
@@ -1233,12 +1241,12 @@ void declare_function(Node *fn) {
 }
 
 Node *find_function(char *name) {
-	for (int s = ura.scopes_count; s >= 0; s--) {
-		Node *scope = ura.scopes[s];
+	for (int i = ura.scopes_count; i >= 0; i--) {
+		Node *scope = ura.scopes[i];
 		if (!scope) continue;
-		for (int f = 0; f < scope->functions_count; f++)
-			if (scope->functions[f]->token->name && strcmp(scope->functions[f]->token->name, name) == 0)
-				return scope->functions[f];
+		for (int j = 0; j < scope->functions_count; j++)
+			if (scope->functions[j]->token->name && strcmp(scope->functions[j]->token->name, name) == 0)
+				return scope->functions[j];
 	}
 	return NULL;
 }
@@ -1660,7 +1668,14 @@ void guard_nonnull(Token *op, Value ptr) {
 void guard_bound(Token *op, Value ptr) {
    Value null   = LLVMConstNull(LLVMTypeOf(ptr));
    Value isnull = LLVMBuildICmp(ura.builder, LLVMIntEQ, ptr, null, "unbound");
-   guard(op, isnull, format("reference '%s' used before it was bound - assign '%s = ref <target>' first", op->name, op->name));
+   char *msg    = format("reference '%s' used before it was bound - assign '%s = ref <target>' first", op->name, op->name);
+   guard(op, isnull, msg);
+   free(msg);
+}
+
+void analyze_binop(Node *node) {
+   analyze(node->left);
+   analyze(node->right);
 }
 
 void analyze_fdec(Node *node) {
@@ -1750,6 +1765,11 @@ void type_check_fcall(Node *node) {
    token->ret_type = indirect ? fn->Fn.ret->ret_type : fn->ret_type;
 }
 
+void type_check_fdec(Node *node) {
+   for (int i = 0; i < node->children_count; i++)
+      type_check(node->children[i]);
+}
+
 void type_check_binop(Node *node) {
    Token *token = node->token;
    type_check(node->left);
@@ -1815,6 +1835,17 @@ Value address_of(Node *node) {
    return decl->llvm.elem;
 }
 
+void code_gen_literal(Node *node) {
+   Token *token = node->token;
+   switch (token->type) {
+      case INT:   token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Int.value, 0); break;
+      case BOOL:  token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Bool.value, 0); break;
+      case CHARS: token->llvm.elem = LLVMBuildGlobalStringPtr(ura.builder, token->Chars.value, "str"); break;
+      case CHAR:  token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Char.value, 0); break;
+      case FLOAT: token->llvm.elem = LLVMConstReal(to_llvm_type(token->ret_type), token->Float.value); break;
+   }
+}
+
 void code_gen_fdec(Node *node) {
    Token *token = node->token;
    emit_signature(node);
@@ -1844,25 +1875,21 @@ void code_gen_id(Node *node) {
    Token *token = node->token;
    if (token->is_dec) {
       TypeRef t = llvm_type_of(token);
-      if (token->is_ref) {
-         t = LLVMPointerType(t, 0);
-         token->llvm.elem = LLVMBuildAlloca(ura.builder, t, token->name);
-         LLVMBuildStore(ura.builder, LLVMConstNull(t), token->llvm.elem);
-      } else {
-         token->llvm.elem = LLVMBuildAlloca(ura.builder, t, token->name);
-         LLVMBuildStore(ura.builder, default_value(token), token->llvm.elem);
-      }
+      if (token->is_ref) t = LLVMPointerType(t, 0);
+      token->llvm.elem = LLVMBuildAlloca(ura.builder, t, token->name);
+      Value init = token->is_ref ? LLVMConstNull(t) : default_value(token);
+      LLVMBuildStore(ura.builder, init, token->llvm.elem);
+      return;
    }
-   else {
-      Token  *decl = find_variable(token->name, NULL);
-      TypeRef t    = llvm_type_of(decl);
-      if (decl->is_ref) {
-         Value ptr = LLVMBuildLoad2(ura.builder, LLVMPointerType(t, 0), decl->llvm.elem, "ref");
-         if (token->is_nullable) guard_bound(token, ptr);
-         token->llvm.elem = LLVMBuildLoad2(ura.builder, t, ptr, token->name);
-      } else
-         token->llvm.elem = LLVMBuildLoad2(ura.builder, t, decl->llvm.elem, token->name);
+   Token  *decl = find_variable(token->name, NULL);
+   TypeRef t    = llvm_type_of(decl);
+   if (!decl->is_ref) {
+      token->llvm.elem = LLVMBuildLoad2(ura.builder, t, decl->llvm.elem, token->name);
+      return;
    }
+   Value ptr = LLVMBuildLoad2(ura.builder, LLVMPointerType(t, 0), decl->llvm.elem, "ref");
+   if (token->is_nullable) guard_bound(token, ptr);
+   token->llvm.elem = LLVMBuildLoad2(ura.builder, t, ptr, token->name);
 }
 
 void code_gen_fcall(Node *node) {
@@ -2113,19 +2140,15 @@ void free_node(Node *node) {
 
 void free_memory() {
    free_node(ura.head);
-
    for (int i = 0; i < ura.tokens_count; i++)
       free_token(ura.tokens[i]);
    free(ura.tokens);
-
    for (int i = 0; i < ura.sources_count; i++) {
       free(ura.sources[i]->content);
       free(ura.sources[i]);
    }
    free(ura.sources);
-
    free(ura.scopes);
-
    if (ura.context) {
       LLVMDisposeBuilder(ura.builder);
       LLVMDisposeModule(ura.module);
