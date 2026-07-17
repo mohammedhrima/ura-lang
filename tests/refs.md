@@ -4,6 +4,7 @@
 
 - 001 — basic ref: bind to hp, ref write through
 - 002 — aliasing: two refs to same hp, both see mutations
+- 003 — compound ref assignment through in a loop
 - 004 — separate refs to different vars: hp ref ref and mp
 - 005 — multiply and subtract through refs: double shield, pay mana
 - 006 — chain of compound mutations ref through a
@@ -98,6 +99,72 @@ entry:
   store i32 %sub, i32* %ref1, align 4
   %hp4 = load i32, i32* %hp, align 4
   %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0), i32 %hp4, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.1, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 003 — compound ref assignment through in a loop
+
+```ura
+// refs/003.ura - compound ref assignment through in a loop
+
+main():
+    xp      int = 0
+    xp_gain int = 50
+    ref r int = ref xp
+    i       int = 0
+    while i < 4:
+        r += xp_gain
+        i = i + 1
+    output("<", xp, ">\n")
+```
+
+```out
+<200>
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [2 x i8] c"<\00", align 1
+@str.1 = private unnamed_addr constant [3 x i8] c">\0A\00", align 1
+@fmt = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+
+define i32 @main() {
+entry:
+  %xp = alloca i32, align 4
+  store i32 0, i32* %xp, align 4
+  %xp_gain = alloca i32, align 4
+  store i32 50, i32* %xp_gain, align 4
+  %r = alloca i32*, align 8
+  store i32* %xp, i32** %r, align 8
+  %i = alloca i32, align 4
+  store i32 0, i32* %i, align 4
+  br label %while.cond
+
+while.cond:                                       ; preds = %while.body, %entry
+  %i1 = load i32, i32* %i, align 4
+  %lt = icmp slt i32 %i1, 4
+  br i1 %lt, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %ref = load i32*, i32** %r, align 8
+  %xp_gain2 = load i32, i32* %xp_gain, align 4
+  %cur = load i32, i32* %ref, align 4
+  %add = add i32 %cur, %xp_gain2
+  store i32 %add, i32* %ref, align 4
+  %i3 = load i32, i32* %i, align 4
+  %add4 = add i32 %i3, 1
+  store i32 %add4, i32* %i, align 4
+  br label %while.cond
+
+while.end:                                        ; preds = %while.cond
+  %xp5 = load i32, i32* %xp, align 4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0), i32 %xp5, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.1, i32 0, i32 0))
   ret i32 0
 }
 
