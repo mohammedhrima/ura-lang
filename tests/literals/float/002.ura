@@ -1,0 +1,16 @@
+// literals/float/002.ura - float arithmetic + comparison, compound assignment
+
+main():
+    a float = 3.0
+    b float = 2.0
+    output(a + b, "\n")
+    output(a - b, "\n")
+    output(a * b, "\n")
+    output(a / b, "\n")
+    output(a > b, "\n")
+    output(a == b, "\n")
+    a += 1.5
+    output(a, "\n")
+    a *= 2.0
+    output(a, "\n")
+    return 0

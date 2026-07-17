@@ -1,0 +1,2 @@
+[1m[0;31mruntime error: [0mtests/errors/runtime/004.ura:6: Division by zero
+exit: 1
