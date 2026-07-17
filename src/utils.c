@@ -32,7 +32,7 @@ char *to_string(Type type) {
 	    [FN_TYPE] = "FN_TYPE",
 	    [DOT] = "DOT", [SYNTAX_ERROR] = "SYNTAX_ERROR", [MODULE] = "MODULE",
 	    [OPERATOR] = "OPERATOR_KW", [PUB] = "PUB",
-	    [DOUBLE_DOTS] = "DOUBLE_DOTS", [DELETE] = "DELETE",
+	    [DOUBLE_DOTS] = "DOUBLE_DOTS", [CLEAN] = "CLEAN", [NEW] = "NEW",
 	};
 
 	TODO(!res[type], "handle this case %d\n", type);
@@ -960,11 +960,11 @@ Token *parse_token(int line, int s, int e, Type type, int indent) {
 			{"match", MATCH, 0, 0},			{"case", CASE, 0, 0},         {"default", DEFAULT, 0, 0},
 			{"ref", REF, 0, 0},				{"struct", STRUCT_DEF, 0, 0}, {"enum", ENUM_DEF, 0, 0},
 			{"proto", PROTO, 0, 0},       {"mod", MODULE, 0, 0},			{"operator", OPERATOR, 0, 0}, 
-			{"as", AS, 0, 0},					{"pub", PUB, 0, 0},           {"delete", DELETE, 0, 0},
-			{"and", AND, 0, 1},           {"or", OR, 0, 1},					{"is", EQUAL, 0, 1},          
-			{"not", NOT, 0, 1},				{"typeof", TYPEOF, 0, 1},     {"sizeof", SIZEOF, 0, 1},
-			{"stack", STACK, 0, 1},       {"heap", HEAP, 0, 1},			{"array", ARRAY_TYPE, 0, 1},  
-			{"List", LIST_TYPE, 0, 1},		{"null", NULLABLE, 0, 1},
+			{"as", AS, 0, 0},					{"pub", PUB, 0, 0},           {"clean", CLEAN, 0, 0},       
+			{"new", NEW, 0, 0},				{"and", AND, 0, 1},           {"or", OR, 0, 1},					
+			{"is", EQUAL, 0, 1},          {"not", NOT, 0, 1},				{"typeof", TYPEOF, 0, 1},     
+			{"sizeof", SIZEOF, 0, 1},		{"stack", STACK, 0, 1},       {"heap", HEAP, 0, 1},			
+			{"array", ARRAY_TYPE, 0, 1},  {"List", LIST_TYPE, 0, 1},		{"null", NULLABLE, 0, 1},
 		};
 
 		for (size_t i = 0; i < sizeof(keywords) / sizeof(*keywords); i++) {
@@ -2000,6 +2000,8 @@ void type_check_array_ctor(Node *node) {
       if (!includes(node->children[i]->token->ret_type, NUMERIC_TYPES, 0))
          parse_error(node->children[i]->token, "Array size must be an integer");
    }
+   if (node->token->is_heap && node->token->Array.depth > 1)
+      parse_error(node->token, "Multi-dimensional heap arrays (new int[N][M]) not yet supported");
 }
 
 Value make_slice(Type sub, int depth, Value data, Value len) {
@@ -2009,18 +2011,27 @@ Value make_slice(Type sub, int depth, Value data, Value len) {
    return agg;
 }
 
-Value build_array(Type sub, Value *dims, int depth) {
-   Value n = dims[0];
+Value array_calloc(TypeRef elem, Value count, Value esz) {
+   TypeRef i8p = LLVMPointerType(ura.i8, 0);
+   TypeRef cty = LLVMFunctionType(i8p, (TypeRef[]){ ura.i64, ura.i64 }, 2, 0);
+   Value   mem = LLVMBuildCall2(ura.builder, cty, get_or_declare("calloc", cty), (Value[]){ count, esz }, 2, "heap");
+   return LLVMBuildBitCast(ura.builder, mem, LLVMPointerType(elem, 0), "arr");
+}
+
+Value build_array(Type sub, Value *dims, int depth, bool heap) {
+   Value   n    = dims[0];
+   TypeRef elem = depth == 1 ? to_llvm_type(sub) : array_type(sub, depth - 1);
+   Value   esz  = LLVMConstInt(ura.i64, LLVMABISizeOfType(LLVMGetModuleDataLayout(ura.module), elem), 0);
    if (depth == 1) {
-      TypeRef elem  = to_llvm_type(sub);
-      Value   data  = LLVMBuildArrayAlloca(ura.builder, elem, n, "arr");
-      Value   esz   = LLVMConstInt(ura.i64, LLVMABISizeOfType(LLVMGetModuleDataLayout(ura.module), elem), 0);
-      Value   bytes = LLVMBuildMul(ura.builder, n, esz, "bytes");
+      if (heap) return make_slice(sub, 1, array_calloc(elem, n, esz), n);
+      Value data  = LLVMBuildArrayAlloca(ura.builder, elem, n, "arr");
+      Value bytes = LLVMBuildMul(ura.builder, n, esz, "bytes");
       LLVMBuildMemSet(ura.builder, data, LLVMConstInt(ura.i8, 0, 0), bytes, 0);
       return make_slice(sub, 1, data, n);
    }
-   TypeRef inner = array_type(sub, depth - 1);
-   Value   data  = LLVMBuildArrayAlloca(ura.builder, inner, n, "arr");
+   TypeRef inner = elem;
+   Value   data  = heap ? array_calloc(inner, n, esz)
+                        : LLVMBuildArrayAlloca(ura.builder, inner, n, "arr");
    Value   fn    = LLVMGetBasicBlockParent(LLVMGetInsertBlock(ura.builder));
    Value   slot  = LLVMBuildAlloca(ura.builder, ura.i64, "i");
    LLVMBuildStore(ura.builder, LLVMConstInt(ura.i64, 0, 0), slot);
@@ -2032,7 +2043,7 @@ Value build_array(Type sub, Value *dims, int depth) {
    Value   i     = LLVMBuildLoad2(ura.builder, ura.i64, slot, "i");
    LLVMBuildCondBr(ura.builder, LLVMBuildICmp(ura.builder, LLVMIntSLT, i, n, "more"), body, end);
    LLVMPositionBuilderAtEnd(ura.builder, body);
-   Value   sub_arr = build_array(sub, dims + 1, depth - 1);
+   Value   sub_arr = build_array(sub, dims + 1, depth - 1, heap);
    i = LLVMBuildLoad2(ura.builder, ura.i64, slot, "i");
    Value   gep = LLVMBuildGEP2(ura.builder, inner, data, &i, 1, "arr.slot");
    LLVMBuildStore(ura.builder, sub_arr, gep);
@@ -2050,8 +2061,20 @@ void code_gen_array_ctor(Node *node) {
       code_gen(node->children[i]);
       dims[i] = LLVMBuildIntCast2(ura.builder, node->children[i]->token->llvm.elem, ura.i64, 1, "n");
    }
-   token->llvm.elem = build_array(token->Array.sub_type, dims, depth);
+   token->llvm.elem = build_array(token->Array.sub_type, dims, depth, token->is_heap);
    free(dims);
+}
+
+void code_gen_clean(Node *node) {
+   Token  *arr   = node->left->token;
+   Value   slot  = address_of(node->left);
+   TypeRef sty   = array_type(arr->Array.sub_type, arr->Array.depth);
+   Value   slice = LLVMBuildLoad2(ura.builder, sty, slot, "arr");
+   Value   data  = LLVMBuildExtractValue(ura.builder, slice, 0, "arr.data");
+   Value   ptr   = LLVMBuildBitCast(ura.builder, data, LLVMPointerType(ura.i8, 0), "free.ptr");
+   TypeRef fty   = LLVMFunctionType(ura.vd, (TypeRef[]){ LLVMPointerType(ura.i8, 0) }, 1, 0);
+   LLVMBuildCall2(ura.builder, fty, get_or_declare("free", fty), (Value[]){ ptr }, 1, "");
+   LLVMBuildStore(ura.builder, LLVMConstNull(sty), slot);
 }
 
 void code_gen_literal(Node *node) {

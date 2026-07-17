@@ -103,6 +103,21 @@ Node *prime_node() {
       return fdec_node(node);
    }
    case ID: return id_node(new_node(token));
+   case NEW: {
+      Token *type = next();
+      if (!is_data_type(type) || peek(0)->type != LBRA) {
+         parse_error(token, "Expected an array type after 'new' (e.g. new int[n])");
+         return syntax_error();
+      }
+      Node *arr = array_ctor_node(new_node(type));
+      arr->token->is_heap = true;
+      return arr;
+   }
+   case CLEAN: {
+      Node *clean = new_node(token);
+      clean->left = expr_node(0);
+      return clean;
+   }
    case RETURN: {
       Node *node = new_node(token);
       node->left = expr_node(0);
@@ -227,6 +242,7 @@ void analyze(Node *node) {
          for (int i = 0; i < node->children_count; i++)
             analyze(node->children[i]);
          break;
+      case CLEAN: analyze(node->left); break;
       case ASSIGN: case ADD: case SUB: case MUL: case DIV: case MOD:
       case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN: case MOD_ASSIGN:
       case EQUAL: case NOT_EQUAL: case LESS: case GREAT: case LESS_EQUAL: case GREAT_EQUAL:
@@ -285,6 +301,12 @@ void type_check(Node *node) {
       case ARRAY_LIT: type_check_array_lit(node); break;
       case ACCESS:    type_check_access(node); break;
       case ARRAY:     type_check_array_ctor(node); break;
+      case CLEAN:
+         type_check(node->left);
+         if (node->left->token->ret_type != ARRAY_TYPE)
+            parse_error(node->token, "'clean' expects an array");
+         node->token->ret_type = VOID;
+         break;
       case BREAK: case CONTINUE: break;
       case ASSIGN: case ADD: case SUB: case MUL: case DIV: case MOD:
       case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN: case MOD_ASSIGN:
@@ -318,6 +340,7 @@ void code_gen(Node *node) {
       case ARRAY_LIT: code_gen_array_lit(node); break;
       case ACCESS:    code_gen_access(node); break;
       case ARRAY:     code_gen_array_ctor(node); break;
+      case CLEAN:     code_gen_clean(node); break;
       case NOT: case BNOT:
          code_gen(node->left);
          token->llvm.elem = LLVMBuildNot(ura.builder, node->left->token->llvm.elem, "not");

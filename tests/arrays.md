@@ -12,6 +12,9 @@
 - 008 — 3D sized array with runtime size
 - 009 — ? bounds guard: in-bounds access is fine
 - 010 — ? bounds guard: out-of-bounds access traps at runtime
+- 011 — heap array: new int[N], zero-init, write, clean
+- 012 — heap array with runtime size (new int[n]) + clean
+- 013 — clean nulls the array; a[i]? then traps (no use-after-free)
 
 ## 001 — 1D int array: literal, index read, indexed write
 
@@ -1151,6 +1154,276 @@ cont:                                             ; preds = %entry
   %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt, i32 0, i32 0), i32 %idx)
   ret i32 0
 }
+
+declare i64 @write(i32, i8*, i64)
+
+declare void @exit(i32)
+
+declare i32 @printf(i8*, ...)
+```
+
+## 011 — heap array: new int[N], zero-init, write, clean
+
+```ura
+// arrays/011.ura - heap array: new int[N], zero-init, write, clean
+
+main():
+    a int[] = new int[5]
+    a[2] = 42
+    output("a[0]=", a[0], " a[2]=", a[2], "\n")
+    clean a
+```
+
+```tree
+fn main() : int
+├─ = : ARRAY_TYPE
+│  ├─ a : ARRAY_TYPE
+│  └─ ARRAY : ARRAY_TYPE
+│     └─ int 5
+├─ = : int
+│  ├─ ACC : int
+│  │  ├─ a : ARRAY_TYPE
+│  │  └─ int 2
+│  └─ int 42
+├─ output : void
+│  ├─ chars "a[0]="
+│  ├─ ACC : int
+│  │  ├─ a : ARRAY_TYPE
+│  │  └─ int 0
+│  ├─ chars " a[2]="
+│  ├─ ACC : int
+│  │  ├─ a : ARRAY_TYPE
+│  │  └─ int 2
+│  └─ chars "\n"
+└─ CLEAN : void
+   └─ a : ARRAY_TYPE
+```
+
+```out
+a[0]=0 a[2]=42
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [6 x i8] c"a[0]=\00", align 1
+@str.1 = private unnamed_addr constant [7 x i8] c" a[2]=\00", align 1
+@str.2 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [11 x i8] c"%s%d%s%d%s\00", align 1
+
+define i32 @main() {
+entry:
+  %a = alloca { i32*, i64 }, align 8
+  %heap = call i8* @calloc(i64 5, i64 4)
+  %arr = bitcast i8* %heap to i32*
+  %arr.ptr = insertvalue { i32*, i64 } undef, i32* %arr, 0
+  %arr.len = insertvalue { i32*, i64 } %arr.ptr, i64 5, 1
+  store { i32*, i64 } %arr.len, { i32*, i64 }* %a, align 8
+  %a1 = load { i32*, i64 }, { i32*, i64 }* %a, align 8
+  %arr.data = extractvalue { i32*, i64 } %a1, 0
+  %arr.at = getelementptr i32, i32* %arr.data, i32 2
+  store i32 42, i32* %arr.at, align 4
+  %a2 = load { i32*, i64 }, { i32*, i64 }* %a, align 8
+  %arr.data3 = extractvalue { i32*, i64 } %a2, 0
+  %arr.at4 = getelementptr i32, i32* %arr.data3, i32 0
+  %idx = load i32, i32* %arr.at4, align 4
+  %a5 = load { i32*, i64 }, { i32*, i64 }* %a, align 8
+  %arr.data6 = extractvalue { i32*, i64 } %a5, 0
+  %arr.at7 = getelementptr i32, i32* %arr.data6, i32 2
+  %idx8 = load i32, i32* %arr.at7, align 4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str, i32 0, i32 0), i32 %idx, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.1, i32 0, i32 0), i32 %idx8, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0))
+  %arr9 = load { i32*, i64 }, { i32*, i64 }* %a, align 8
+  %arr.data10 = extractvalue { i32*, i64 } %arr9, 0
+  %free.ptr = bitcast i32* %arr.data10 to i8*
+  call void @free(i8* %free.ptr)
+  store { i32*, i64 } zeroinitializer, { i32*, i64 }* %a, align 8
+  ret i32 0
+}
+
+declare i8* @calloc(i64, i64)
+
+declare i32 @printf(i8*, ...)
+
+declare void @free(i8*)
+```
+
+## 012 — heap array with runtime size (new int[n]) + clean
+
+```ura
+// arrays/012.ura - heap array with runtime size (new int[n]) + clean
+
+main():
+    n int = 3
+    a int[] = new int[n * 2]
+    a[5] = 7
+    output("a[5]=", a[5], " a[0]=", a[0], "\n")
+    clean a
+```
+
+```tree
+fn main() : int
+├─ = : int
+│  ├─ n : int
+│  └─ int 3
+├─ = : ARRAY_TYPE
+│  ├─ a : ARRAY_TYPE
+│  └─ ARRAY : ARRAY_TYPE
+│     └─ * : int
+│        ├─ n : int
+│        └─ int 2
+├─ = : int
+│  ├─ ACC : int
+│  │  ├─ a : ARRAY_TYPE
+│  │  └─ int 5
+│  └─ int 7
+├─ output : void
+│  ├─ chars "a[5]="
+│  ├─ ACC : int
+│  │  ├─ a : ARRAY_TYPE
+│  │  └─ int 5
+│  ├─ chars " a[0]="
+│  ├─ ACC : int
+│  │  ├─ a : ARRAY_TYPE
+│  │  └─ int 0
+│  └─ chars "\n"
+└─ CLEAN : void
+   └─ a : ARRAY_TYPE
+```
+
+```out
+a[5]=7 a[0]=0
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [6 x i8] c"a[5]=\00", align 1
+@str.1 = private unnamed_addr constant [7 x i8] c" a[0]=\00", align 1
+@str.2 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [11 x i8] c"%s%d%s%d%s\00", align 1
+
+define i32 @main() {
+entry:
+  %n = alloca i32, align 4
+  store i32 3, i32* %n, align 4
+  %a = alloca { i32*, i64 }, align 8
+  %n1 = load i32, i32* %n, align 4
+  %mul = mul i32 %n1, 2
+  %n2 = sext i32 %mul to i64
+  %heap = call i8* @calloc(i64 %n2, i64 4)
+  %arr = bitcast i8* %heap to i32*
+  %arr.ptr = insertvalue { i32*, i64 } undef, i32* %arr, 0
+  %arr.len = insertvalue { i32*, i64 } %arr.ptr, i64 %n2, 1
+  store { i32*, i64 } %arr.len, { i32*, i64 }* %a, align 8
+  %a3 = load { i32*, i64 }, { i32*, i64 }* %a, align 8
+  %arr.data = extractvalue { i32*, i64 } %a3, 0
+  %arr.at = getelementptr i32, i32* %arr.data, i32 5
+  store i32 7, i32* %arr.at, align 4
+  %a4 = load { i32*, i64 }, { i32*, i64 }* %a, align 8
+  %arr.data5 = extractvalue { i32*, i64 } %a4, 0
+  %arr.at6 = getelementptr i32, i32* %arr.data5, i32 5
+  %idx = load i32, i32* %arr.at6, align 4
+  %a7 = load { i32*, i64 }, { i32*, i64 }* %a, align 8
+  %arr.data8 = extractvalue { i32*, i64 } %a7, 0
+  %arr.at9 = getelementptr i32, i32* %arr.data8, i32 0
+  %idx10 = load i32, i32* %arr.at9, align 4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str, i32 0, i32 0), i32 %idx, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.1, i32 0, i32 0), i32 %idx10, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0))
+  %arr11 = load { i32*, i64 }, { i32*, i64 }* %a, align 8
+  %arr.data12 = extractvalue { i32*, i64 } %arr11, 0
+  %free.ptr = bitcast i32* %arr.data12 to i8*
+  call void @free(i8* %free.ptr)
+  store { i32*, i64 } zeroinitializer, { i32*, i64 }* %a, align 8
+  ret i32 0
+}
+
+declare i8* @calloc(i64, i64)
+
+declare i32 @printf(i8*, ...)
+
+declare void @free(i8*)
+```
+
+## 013 — clean nulls the array; a[i]? then traps (no use-after-free)
+
+```ura
+// arrays/013.ura - clean nulls the array; a[i]? then traps instead of use-after-free
+
+main():
+    a int[] = new int[5]
+    clean a
+    output(a[0]?)
+```
+
+```tree
+fn main() : int
+├─ = : ARRAY_TYPE
+│  ├─ a : ARRAY_TYPE
+│  └─ ARRAY : ARRAY_TYPE
+│     └─ int 5
+├─ CLEAN : void
+│  └─ a : ARRAY_TYPE
+└─ output : void
+   └─ ACC : int
+      ├─ a : ARRAY_TYPE
+      └─ int 0
+```
+
+```out
+```
+
+```err
+runtime error: array index out of bounds
+  013.ura:6:13
+  |
+6 |     output(a[0]?)
+  |             ^
+exit: 1
+```
+
+```ll
+
+@trap_msg = private unnamed_addr constant [162 x i8] c"runtime error: array index out of bounds\0A  013.ura:6:13\0A  |\0A6 |     output(a[0]?)\0A  |             ^\0A\00", align 1
+@fmt = private unnamed_addr constant [3 x i8] c"%d\00", align 1
+
+define i32 @main() {
+entry:
+  %a = alloca { i32*, i64 }, align 8
+  %heap = call i8* @calloc(i64 5, i64 4)
+  %arr = bitcast i8* %heap to i32*
+  %arr.ptr = insertvalue { i32*, i64 } undef, i32* %arr, 0
+  %arr.len = insertvalue { i32*, i64 } %arr.ptr, i64 5, 1
+  store { i32*, i64 } %arr.len, { i32*, i64 }* %a, align 8
+  %arr1 = load { i32*, i64 }, { i32*, i64 }* %a, align 8
+  %arr.data = extractvalue { i32*, i64 } %arr1, 0
+  %free.ptr = bitcast i32* %arr.data to i8*
+  call void @free(i8* %free.ptr)
+  store { i32*, i64 } zeroinitializer, { i32*, i64 }* %a, align 8
+  %a2 = load { i32*, i64 }, { i32*, i64 }* %a, align 8
+  %arr.data3 = extractvalue { i32*, i64 } %a2, 0
+  %arr.len4 = extractvalue { i32*, i64 } %a2, 1
+  %oob.high = icmp sge i64 0, %arr.len4
+  %oob = or i1 false, %oob.high
+  br i1 %oob, label %trap, label %cont
+
+trap:                                             ; preds = %entry
+  %0 = call i64 @write(i32 2, i8* getelementptr inbounds ([162 x i8], [162 x i8]* @trap_msg, i32 0, i32 0), i64 161)
+  call void @exit(i32 1)
+  unreachable
+
+cont:                                             ; preds = %entry
+  %arr.at = getelementptr i32, i32* %arr.data3, i32 0
+  %idx = load i32, i32* %arr.at, align 4
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt, i32 0, i32 0), i32 %idx)
+  ret i32 0
+}
+
+declare i8* @calloc(i64, i64)
+
+declare void @free(i8*)
 
 declare i64 @write(i32, i8*, i64)
 
