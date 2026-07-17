@@ -1272,9 +1272,12 @@ void guard(Token *op, Value is_bad, char *what) {
 }
 
 void guard_nonzero(Token *op, Value divisor) {
-   Value zero   = LLVMConstInt(LLVMTypeOf(divisor), 0, 0);
-   Value iszero = LLVMBuildICmp(ura.builder, LLVMIntEQ, divisor, zero, "iszero");
-   guard(op, iszero, (op->type == MOD) ? "Modulo by zero" : "Division by zero");
+   TypeRef ty     = LLVMTypeOf(divisor);
+   bool    fp     = LLVMGetTypeKind(ty) == FloatType || LLVMGetTypeKind(ty) == DoubleType;
+   Value   iszero = fp
+      ? LLVMBuildFCmp(ura.builder, LLVMRealOEQ, divisor, LLVMConstReal(ty, 0.0), "iszero")
+      : LLVMBuildICmp(ura.builder, LLVMIntEQ,   divisor, LLVMConstInt(ty, 0, 0), "iszero");
+   guard(op, iszero, includes(op->type, MOD, MOD_ASSIGN, 0) ? "Modulo by zero" : "Division by zero");
 }
 
 void guard_nonnull(Token *op, Value ptr) {
@@ -1374,6 +1377,10 @@ void type_check_binop(Node *node) {
    Type rt = node->right->token->ret_type;
    if (lt && rt && lt != rt) {
       parse_error(token, "Type mismatch between operands");
+      return;
+   }
+   if (lt == FLOAT && includes(token->type, BITWISE_TYPE, 0)) {
+      parse_error(token, "Bitwise and shift operators require integer operands");
       return;
    }
    if (includes(token->type, LOGIC_TYPE, 0)) {
@@ -1501,28 +1508,31 @@ void code_gen_binop(Node *node) {
    code_gen(node->right);
    Value left  = node->left->token->llvm.elem;
    Value right = node->right->token->llvm.elem;
-   if (token->type == DIV || token->type == MOD) guard_nonzero(token, right);
+   Value res   = NULL;
+   bool  fp    = node->left->token->ret_type == FLOAT;
+   if (includes(token->type, DIV, MOD, 0)) guard_nonzero(token, right);
    switch (token->type) {
-      case ADD: token->llvm.elem = LLVMBuildAdd(ura.builder, left, right, "add");  break;
-      case SUB: token->llvm.elem = LLVMBuildSub(ura.builder, left, right, "sub");  break;
-      case MUL: token->llvm.elem = LLVMBuildMul(ura.builder, left, right, "mul");  break;
-      case DIV: token->llvm.elem = LLVMBuildSDiv(ura.builder, left, right, "div"); break;
-      case MOD: token->llvm.elem = LLVMBuildSRem(ura.builder, left, right, "mod"); break;
-      case EQUAL:       token->llvm.elem = LLVMBuildICmp(ura.builder, LLVMIntEQ,  left, right, "eq"); break;
-      case NOT_EQUAL:   token->llvm.elem = LLVMBuildICmp(ura.builder, LLVMIntNE,  left, right, "ne"); break;
-      case LESS:        token->llvm.elem = LLVMBuildICmp(ura.builder, LLVMIntSLT, left, right, "lt"); break;
-      case GREAT:       token->llvm.elem = LLVMBuildICmp(ura.builder, LLVMIntSGT, left, right, "gt"); break;
-      case LESS_EQUAL:  token->llvm.elem = LLVMBuildICmp(ura.builder, LLVMIntSLE, left, right, "le"); break;
-      case GREAT_EQUAL: token->llvm.elem = LLVMBuildICmp(ura.builder, LLVMIntSGE, left, right, "ge"); break;
-      case AND: token->llvm.elem = LLVMBuildAnd(ura.builder, left, right, "and"); break;
-      case OR:  token->llvm.elem = LLVMBuildOr(ura.builder,  left, right, "or");  break;
-      case BAND:   token->llvm.elem = LLVMBuildAnd(ura.builder, left, right, "band"); break;
-      case BOR:    token->llvm.elem = LLVMBuildOr(ura.builder,  left, right, "bor");  break;
-      case BXOR:   token->llvm.elem = LLVMBuildXor(ura.builder, left, right, "bxor"); break;
-      case LSHIFT: token->llvm.elem = LLVMBuildShl(ura.builder, left, right, "shl");  break;
-      case RSHIFT: token->llvm.elem = LLVMBuildAShr(ura.builder, left, right, "shr"); break;
+      case ADD: res = fp ? LLVMBuildFAdd(ura.builder, left, right, "fadd") : LLVMBuildAdd(ura.builder, left, right, "add"); break;
+      case SUB: res = fp ? LLVMBuildFSub(ura.builder, left, right, "fsub") : LLVMBuildSub(ura.builder, left, right, "sub"); break;
+      case MUL: res = fp ? LLVMBuildFMul(ura.builder, left, right, "fmul") : LLVMBuildMul(ura.builder, left, right, "mul"); break;
+      case DIV: res = fp ? LLVMBuildFDiv(ura.builder, left, right, "fdiv") : LLVMBuildSDiv(ura.builder, left, right, "div"); break;
+      case MOD: res = fp ? LLVMBuildFRem(ura.builder, left, right, "frem") : LLVMBuildSRem(ura.builder, left, right, "mod"); break;
+      case EQUAL:       res = fp ? LLVMBuildFCmp(ura.builder, LLVMRealOEQ, left, right, "feq") : LLVMBuildICmp(ura.builder, LLVMIntEQ,  left, right, "eq"); break;
+      case NOT_EQUAL:   res = fp ? LLVMBuildFCmp(ura.builder, LLVMRealUNE, left, right, "fne") : LLVMBuildICmp(ura.builder, LLVMIntNE,  left, right, "ne"); break;
+      case LESS:        res = fp ? LLVMBuildFCmp(ura.builder, LLVMRealOLT, left, right, "flt") : LLVMBuildICmp(ura.builder, LLVMIntSLT, left, right, "lt"); break;
+      case GREAT:       res = fp ? LLVMBuildFCmp(ura.builder, LLVMRealOGT, left, right, "fgt") : LLVMBuildICmp(ura.builder, LLVMIntSGT, left, right, "gt"); break;
+      case LESS_EQUAL:  res = fp ? LLVMBuildFCmp(ura.builder, LLVMRealOLE, left, right, "fle") : LLVMBuildICmp(ura.builder, LLVMIntSLE, left, right, "le"); break;
+      case GREAT_EQUAL: res = fp ? LLVMBuildFCmp(ura.builder, LLVMRealOGE, left, right, "fge") : LLVMBuildICmp(ura.builder, LLVMIntSGE, left, right, "ge"); break;
+      case AND: res = LLVMBuildAnd(ura.builder, left, right, "and"); break;
+      case OR:  res = LLVMBuildOr(ura.builder,  left, right, "or"); break;
+      case BAND:   res = LLVMBuildAnd(ura.builder, left, right, "band"); break;
+      case BOR:    res = LLVMBuildOr(ura.builder,  left, right, "bor"); break;
+      case BXOR:   res = LLVMBuildXor(ura.builder, left, right, "bxor"); break;
+      case LSHIFT: res = LLVMBuildShl(ura.builder, left, right, "shl"); break;
+      case RSHIFT: res = LLVMBuildAShr(ura.builder, left, right, "shr"); break;
       default: break;
    }
+   token->llvm.elem = res;
 }
 
 void code_gen_compound(Node *node) {
@@ -1532,12 +1542,13 @@ void code_gen_compound(Node *node) {
    TypeRef t   = to_llvm_type(node->left->token->ret_type);
    Value   cur = LLVMBuildLoad2(ura.builder, t, dest, "cur");
    Value   res;
+   bool    fp  = node->left->token->ret_type == FLOAT;
    switch (node->token->type) {
-      case ADD_ASSIGN: res = LLVMBuildAdd(ura.builder, cur, r, "add"); break;
-      case SUB_ASSIGN: res = LLVMBuildSub(ura.builder, cur, r, "sub"); break;
-      case MUL_ASSIGN: res = LLVMBuildMul(ura.builder, cur, r, "mul"); break;
-      case DIV_ASSIGN: guard_nonzero(node->token, r); res = LLVMBuildSDiv(ura.builder, cur, r, "div"); break;
-      case MOD_ASSIGN: guard_nonzero(node->token, r); res = LLVMBuildSRem(ura.builder, cur, r, "mod"); break;
+      case ADD_ASSIGN: res = fp ? LLVMBuildFAdd(ura.builder, cur, r, "fadd") : LLVMBuildAdd(ura.builder, cur, r, "add"); break;
+      case SUB_ASSIGN: res = fp ? LLVMBuildFSub(ura.builder, cur, r, "fsub") : LLVMBuildSub(ura.builder, cur, r, "sub"); break;
+      case MUL_ASSIGN: res = fp ? LLVMBuildFMul(ura.builder, cur, r, "fmul") : LLVMBuildMul(ura.builder, cur, r, "mul"); break;
+      case DIV_ASSIGN: guard_nonzero(node->token, r); res = fp ? LLVMBuildFDiv(ura.builder, cur, r, "fdiv") : LLVMBuildSDiv(ura.builder, cur, r, "div"); break;
+      case MOD_ASSIGN: guard_nonzero(node->token, r); res = fp ? LLVMBuildFRem(ura.builder, cur, r, "frem") : LLVMBuildSRem(ura.builder, cur, r, "mod"); break;
       default: res = r; break;
    }
    LLVMBuildStore(ura.builder, res, dest);

@@ -24,7 +24,7 @@ Rewrite ura-lang feature by feature, full pipeline each. Nothing gets skipped, n
 - [x] unary `- not ~` in prime_node + parenthesized grouping
 - [x] long/short end-to-end + design: int-literal widening → require explicit cast
 - [x] float literals — declare/print/return/zero-init, f32 in to_llvm_type
-- [ ] float arithmetic + comparison — int-vs-float split in binop (fadd/fsub/fmul/fdiv, fcmp) (2)
+- [x] float arithmetic + comparison — fadd/fsub/fmul/fdiv/frem, ordered fcmp; float ÷0 traps; bitwise stays int-only
 - [x] char literals end-to-end
 - [x] compound assignment `+= -= *= /= %=` (load-modify-store, reuses guard_nonzero)
 - [x] bitwise `& | ^ ~ << >>`
