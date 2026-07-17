@@ -408,6 +408,7 @@ void guard(Token *op, Value is_bad, char *what);
 void guard_nonzero(Token *op, Value divisor);
 void guard_nonnull(Token *op, Value ptr);
 void guard_bound(Token *op, Value ptr);
+void guard_index(Token *op, Value idx, Value slice);
 
 void analyze(Node *node);
 void analyze_fdec(Node *node);
