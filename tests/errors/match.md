@@ -19,6 +19,9 @@ main():
             output("x\n")
 ```
 
+```tree
+```
+
 ```out
 ```
 
@@ -44,6 +47,9 @@ main():
             output("x\n")
 ```
 
+```tree
+```
+
 ```out
 ```
 
@@ -65,6 +71,9 @@ error: This case value is CHARS but the subject is INT; they must be the same ty
 main():
     case 1:
         output("x\n")
+```
+
+```tree
 ```
 
 ```out
@@ -90,6 +99,9 @@ main():
         output("x\n")
 ```
 
+```tree
+```
+
 ```out
 ```
 
@@ -110,6 +122,9 @@ error: 'default' without a matching 'match'
 // errors/match/005 — break needs a loop or match
 main():
     break
+```
+
+```tree
 ```
 
 ```out

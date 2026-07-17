@@ -24,6 +24,27 @@ main():
     output("<", hero_hp, ">\n")
 ```
 
+```tree
+fn buff(hp : int) : void
+└─ = : int
+   ├─ hp : int
+   └─ + : int
+      ├─ hp : int
+      └─ int 20
+
+fn main() : int
+├─ = : int
+│  ├─ hero_hp : int
+│  └─ int 80
+├─ call buff : void
+│  └─ ref : int
+│     └─ hero_hp : int
+└─ output : void
+   ├─ chars "<"
+   ├─ hero_hp : int
+   └─ chars ">\n"
+```
+
 ```out
 <100>
 ```
@@ -77,6 +98,38 @@ main():
     dagger int = 15
     swap_weapons(ref sword, ref dagger)
     output("<", sword, " ", dagger, ">\n")
+```
+
+```tree
+fn swap_weapons(a : int, b : int) : void
+├─ = : int
+│  ├─ temp : int
+│  └─ a : int
+├─ = : int
+│  ├─ a : int
+│  └─ b : int
+└─ = : int
+   ├─ b : int
+   └─ temp : int
+
+fn main() : int
+├─ = : int
+│  ├─ sword : int
+│  └─ int 30
+├─ = : int
+│  ├─ dagger : int
+│  └─ int 15
+├─ call swap_weapons : void
+│  ├─ ref : int
+│  │  └─ sword : int
+│  └─ ref : int
+│     └─ dagger : int
+└─ output : void
+   ├─ chars "<"
+   ├─ sword : int
+   ├─ chars " "
+   ├─ dagger : int
+   └─ chars ">\n"
 ```
 
 ```out
@@ -146,6 +199,37 @@ main():
     output("<", z, ">\n")
 ```
 
+```tree
+fn add_xp(a : int, b : int) : int
+├─ = : int
+│  ├─ result : int
+│  └─ + : int
+│     ├─ a : int
+│     └─ b : int
+└─ return
+   └─ result : int
+
+fn main() : int
+├─ = : int
+│  ├─ kill_xp : int
+│  └─ int 30
+├─ = : int
+│  ├─ bonus_xp : int
+│  └─ int 20
+├─ z : int
+├─ = : int
+│  ├─ z : int
+│  └─ call add_xp : int
+│     ├─ ref : int
+│     │  └─ kill_xp : int
+│     └─ ref : int
+│        └─ bonus_xp : int
+└─ output : void
+   ├─ chars "<"
+   ├─ z : int
+   └─ chars ">\n"
+```
+
 ```out
 <50>
 ```
@@ -209,6 +293,37 @@ main():
         tick(ref kills)
         i = i + 1
     output("<", kills, ">\n")
+```
+
+```tree
+fn tick(kills : int) : void
+└─ += : int
+   ├─ kills : int
+   └─ int 1
+
+fn main() : int
+├─ = : int
+│  ├─ kills : int
+│  └─ int 0
+├─ = : int
+│  ├─ i : int
+│  └─ int 0
+├─ while
+│  ├─ condition < : bool
+│  │  ├─ i : int
+│  │  └─ int 5
+│  ├─ call tick : void
+│  │  └─ ref : int
+│  │     └─ kills : int
+│  └─ = : int
+│     ├─ i : int
+│     └─ + : int
+│        ├─ i : int
+│        └─ int 1
+└─ output : void
+   ├─ chars "<"
+   ├─ kills : int
+   └─ chars ">\n"
 ```
 
 ```out
@@ -278,6 +393,25 @@ main():
     show_hp(r)
 ```
 
+```tree
+fn show_hp(hp : int) : void
+└─ output : void
+   ├─ chars "HP: "
+   ├─ hp : int
+   └─ chars "\n"
+
+fn main() : int
+├─ = : int
+│  ├─ hero_hp : int
+│  └─ int 75
+├─ = : int
+│  ├─ r : int
+│  └─ ref : int
+│     └─ hero_hp : int
+└─ call show_hp : void
+   └─ r : int
+```
+
 ```out
 HP: 75
 ```
@@ -330,6 +464,30 @@ main():
     return n
 ```
 
+```tree
+fn tick(n : int) : int
+├─ = : int
+│  ├─ n : int
+│  └─ + : int
+│     ├─ n : int
+│     └─ int 1
+└─ return
+   └─ n : int
+
+fn main() : int
+├─ = : int
+│  ├─ n : int
+│  └─ int 0
+├─ call tick : int
+│  └─ ref : int
+│     └─ n : int
+├─ call tick : int
+│  └─ ref : int
+│     └─ n : int
+└─ return
+   └─ n : int
+```
+
 ```out
 ```
 
@@ -375,6 +533,25 @@ main():
     n int = 5
     bump(ref n)
     return n
+```
+
+```tree
+fn bump(n : int) : void
+└─ = : int
+   ├─ n : int
+   └─ + : int
+      ├─ n : int
+      └─ int 1
+
+fn main() : int
+├─ = : int
+│  ├─ n : int
+│  └─ int 5
+├─ call bump : void
+│  └─ ref : int
+│     └─ n : int
+└─ return
+   └─ n : int
 ```
 
 ```out

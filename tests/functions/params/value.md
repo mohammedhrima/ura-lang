@@ -18,6 +18,25 @@ main():
     output("<", result, ">\n")
 ```
 
+```tree
+fn take_damage(hp : int, atk : int) : int
+└─ return
+   └─ - : int
+      ├─ hp : int
+      └─ atk : int
+
+fn main() : int
+├─ = : int
+│  ├─ result : int
+│  └─ call take_damage : int
+│     ├─ int 100
+│     └─ int 18
+└─ output : void
+   ├─ chars "<"
+   ├─ result : int
+   └─ chars ">\n"
+```
+
 ```out
 <82>
 ```
@@ -68,6 +87,26 @@ main():
     n int = 5
     inc(n)
     return n
+```
+
+```tree
+fn inc(n : int) : int
+├─ = : int
+│  ├─ n : int
+│  └─ + : int
+│     ├─ n : int
+│     └─ int 1
+└─ return
+   └─ n : int
+
+fn main() : int
+├─ = : int
+│  ├─ n : int
+│  └─ int 5
+├─ call inc : int
+│  └─ n : int
+└─ return
+   └─ n : int
 ```
 
 ```out

@@ -21,6 +21,40 @@ main():
     return 0
 ```
 
+```tree
+fn main() : int
+├─ = : int
+│  ├─ a : int
+│  └─ int 300
+├─ = : long
+│  ├─ big : long
+│  └─ cast : long
+│     └─ a : int
+├─ = : short
+│  ├─ small : short
+│  └─ cast : short
+│     └─ a : int
+├─ = : int
+│  ├─ c : int
+│  └─ cast : int
+│     └─ big : long
+├─ output : void
+│  ├─ big : long
+│  └─ chars "\n"
+├─ output : void
+│  ├─ small : short
+│  └─ chars "\n"
+├─ output : void
+│  ├─ c : int
+│  └─ chars "\n"
+├─ output : void
+│  ├─ cast : long
+│  │  └─ int 5
+│  └─ chars "\n"
+└─ return
+   └─ int 0
+```
+
 ```out
 300
 300

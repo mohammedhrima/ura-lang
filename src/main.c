@@ -15,6 +15,7 @@ void parse_arguments(int argc, char **argv)
       MATCH("-exec",  ura.enable_exec,  true);
       MATCH("-san",   ura.enable_san,   true);
       MATCH("-testing", ura.no_color,   true);
+      MATCH("-tree",  ura.enable_tree,  true);
       MATCH("-O0", ura.flags, PASSES_O0);   
       MATCH("-O1", ura.flags, PASSES_O1);
       MATCH("-O2", ura.flags, PASSES_O2);   
@@ -34,7 +35,7 @@ void parse_arguments(int argc, char **argv)
       }
    }
    if (ura.error_count) return;
-   if (!ura.sources) parse_error(NULL, "No input file (usage: ura <file.ura> [-o out] [-O0..-Oz] [-san] [-debug])");
+   if (!ura.sources) parse_error(NULL, "No input file (usage: ura <file.ura> [-o out] [-O0..-Oz] [-san] [-debug] [-tree])");
 }
 
 void tokenize(int default_indent) {
@@ -61,7 +62,7 @@ void tokenize(int default_indent) {
    if (!ura.calling_use)
    {
       parse_token(line, s, i, END, -1);
-      for(int i = 0; i < ura.tokens_count; i++)
+      for(int i = 0; i < ura.tokens_count && ura.enable_debug; i++)
          debug("token %k\n", ura.tokens[i]);
    }
    exit_source();
@@ -169,7 +170,7 @@ void generate_ast() {
       // TODO: only function declarations and
       // struct declaration are allowed here
    }
-   if (ura.error_count > 0) return;
+   if (ura.error_count > 0 || !ura.enable_debug) return;
 	debug(GREEN("===========================================\n"));
 	debug(GREEN("AFTER PARSING\n"));
 	debug(GREEN("===========================================\n"));
@@ -346,6 +347,8 @@ void generate_ir() {
       analyze(ura.head->children[i]);
    for (int i = 0; i < ura.head->children_count; i++)
       type_check(ura.head->children[i]);
+   if (!ura.enable_tree) return;
+   print_ast(ura.head);
 }
 
 void generate_asm() {

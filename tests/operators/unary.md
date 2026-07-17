@@ -20,6 +20,44 @@ main():
     return 0
 ```
 
+```tree
+fn main() : int
+├─ = : int
+│  ├─ a : int
+│  └─ int 5
+├─ = : bool
+│  ├─ t : bool
+│  └─ bool True
+├─ output : void
+│  ├─ - : int
+│  │  ├─ int 0
+│  │  └─ a : int
+│  └─ chars "\n"
+├─ output : void
+│  ├─ not : bool
+│  │  └─ t : bool
+│  └─ chars "\n"
+├─ output : void
+│  ├─ ~ : int
+│  │  └─ a : int
+│  └─ chars "\n"
+├─ output : void
+│  ├─ not : bool
+│  │  └─ < : bool
+│  │     ├─ a : int
+│  │     └─ int 3
+│  └─ chars "\n"
+├─ output : void
+│  ├─ + : int
+│  │  ├─ - : int
+│  │  │  ├─ int 0
+│  │  │  └─ a : int
+│  │  └─ int 10
+│  └─ chars "\n"
+└─ return
+   └─ int 0
+```
+
 ```out
 -5
 False

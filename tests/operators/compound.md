@@ -24,6 +24,45 @@ main():
     return 0
 ```
 
+```tree
+fn main() : int
+├─ = : int
+│  ├─ x : int
+│  └─ int 10
+├─ += : int
+│  ├─ x : int
+│  └─ int 5
+├─ output : void
+│  ├─ x : int
+│  └─ chars "\n"
+├─ -= : int
+│  ├─ x : int
+│  └─ int 3
+├─ output : void
+│  ├─ x : int
+│  └─ chars "\n"
+├─ *= : int
+│  ├─ x : int
+│  └─ int 4
+├─ output : void
+│  ├─ x : int
+│  └─ chars "\n"
+├─ /= : int
+│  ├─ x : int
+│  └─ int 6
+├─ output : void
+│  ├─ x : int
+│  └─ chars "\n"
+├─ %= : int
+│  ├─ x : int
+│  └─ int 5
+├─ output : void
+│  ├─ x : int
+│  └─ chars "\n"
+└─ return
+   └─ int 0
+```
+
 ```out
 15
 12

@@ -30,6 +30,76 @@ main():
     output("4 squared: ", square(4), "\n")
 ```
 
+```tree
+fn clamp(val : int, lo : int, hi : int) : int
+├─ if
+│  ├─ condition < : bool
+│  │  ├─ val : int
+│  │  └─ lo : int
+│  └─ return
+│     └─ lo : int
+├─ if
+│  ├─ condition > : bool
+│  │  ├─ val : int
+│  │  └─ hi : int
+│  └─ return
+│     └─ hi : int
+└─ return
+   └─ val : int
+
+fn damage(atk : int, def : int) : int
+└─ return
+   └─ call clamp : int
+      ├─ - : int
+      │  ├─ atk : int
+      │  └─ def : int
+      ├─ int 0
+      └─ int 999
+
+fn is_dead(hp : int) : bool
+└─ return
+   └─ <= : bool
+      ├─ hp : int
+      └─ int 0
+
+fn square(n : int) : int
+└─ return
+   └─ * : int
+      ├─ n : int
+      └─ n : int
+
+fn is_digit(c : char) : bool
+└─ return
+   └─ and : bool
+      ├─ >= : bool
+      │  ├─ c : char
+      │  └─ char '0'
+      └─ <= : bool
+         ├─ c : char
+         └─ char '9'
+
+fn main() : int
+├─ = : int
+│  ├─ d : int
+│  └─ call damage : int
+│     ├─ int 25
+│     └─ int 8
+├─ output : void
+│  ├─ chars "Orc takes "
+│  ├─ d : int
+│  ├─ chars " damage — dead: "
+│  ├─ call is_dead : bool
+│  │  └─ - : int
+│  │     ├─ d : int
+│  │     └─ int 60
+│  └─ chars "\n"
+└─ output : void
+   ├─ chars "4 squared: "
+   ├─ call square : int
+   │  └─ int 4
+   └─ chars "\n"
+```
+
 ```out
 Orc takes 17 damage — dead: True
 4 squared: 16
@@ -156,6 +226,23 @@ main():
     output(hp, "\n")
 ```
 
+```tree
+fn main() : int
+├─ = : int
+│  ├─ hp : int
+│  └─ int 80
+├─ = : int
+│  ├─ r : int
+│  └─ ref : int
+│     └─ hp : int
+├─ = : int
+│  ├─ r : int
+│  └─ int 100
+└─ output : void
+   ├─ hp : int
+   └─ chars "\n"
+```
+
 ```out
 100
 ```
@@ -196,6 +283,27 @@ main():
     n int = strlen("dungeon")
     write(1, "hi\n", 3)
     printf("length: %d\n", n)
+```
+
+```tree
+fn strlen(s : chars) : int
+
+fn write(fd : int, ptr : chars, len : int) : int
+
+fn printf(fmt : chars) : int
+
+fn main() : int
+├─ = : int
+│  ├─ n : int
+│  └─ call strlen : int
+│     └─ chars "dungeon"
+├─ call write : int
+│  ├─ int 1
+│  ├─ chars "hi\n"
+│  └─ int 3
+└─ call printf : int
+   ├─ chars "length: %d\n"
+   └─ n : int
 ```
 
 ```out

@@ -36,6 +36,78 @@ main():
         output("hero is at full health and winning\n")
 ```
 
+```tree
+fn enemy_atk() : int
+└─ return
+   └─ int 18
+
+fn main() : int
+├─ = : int
+│  ├─ hero_hp : int
+│  └─ int 100
+├─ = : int
+│  ├─ orc_hp : int
+│  └─ int 60
+├─ = : int
+│  ├─ min_hp : int
+│  └─ int 100
+├─ output : void
+│  ├─ chars "hero_hp == min_hp: "
+│  ├─ == : bool
+│  │  ├─ hero_hp : int
+│  │  └─ min_hp : int
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "hero_hp != orc_hp: "
+│  ├─ != : bool
+│  │  ├─ hero_hp : int
+│  │  └─ orc_hp : int
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "orc_hp < hero_hp:  "
+│  ├─ < : bool
+│  │  ├─ orc_hp : int
+│  │  └─ hero_hp : int
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "orc_hp > hero_hp:  "
+│  ├─ > : bool
+│  │  ├─ orc_hp : int
+│  │  └─ hero_hp : int
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "orc_hp <= 60:      "
+│  ├─ <= : bool
+│  │  ├─ orc_hp : int
+│  │  └─ int 60
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "hero_hp >= 100:    "
+│  ├─ >= : bool
+│  │  ├─ hero_hp : int
+│  │  └─ int 100
+│  └─ chars "\n"
+├─ if
+│  ├─ condition > : bool
+│  │  ├─ call enemy_atk : int
+│  │  └─ int 15
+│  ├─ output : void
+│  │  └─ chars "strong enemy\n"
+│  └─ else
+│     └─ output : void
+│        └─ chars "weak enemy\n"
+└─ if
+   ├─ condition and : bool
+   │  ├─ == : bool
+   │  │  ├─ hero_hp : int
+   │  │  └─ int 100
+   │  └─ < : bool
+   │     ├─ orc_hp : int
+   │     └─ hero_hp : int
+   └─ output : void
+      └─ chars "hero is at full health and winning\n"
+```
+
 ```out
 hero_hp == min_hp: True
 hero_hp != orc_hp: True
@@ -179,6 +251,62 @@ main():
     z bool = a is 5
     m bool = a + 1 < b * 2
     return 3
+```
+
+```tree
+fn main() : int
+├─ = : int
+│  ├─ a : int
+│  └─ int 5
+├─ = : int
+│  ├─ b : int
+│  └─ int 9
+├─ = : bool
+│  ├─ t : bool
+│  └─ < : bool
+│     ├─ a : int
+│     └─ b : int
+├─ = : bool
+│  ├─ u : bool
+│  └─ == : bool
+│     ├─ a : int
+│     └─ int 5
+├─ = : bool
+│  ├─ v : bool
+│  └─ != : bool
+│     ├─ b : int
+│     └─ a : int
+├─ = : bool
+│  ├─ w : bool
+│  └─ >= : bool
+│     ├─ b : int
+│     └─ int 9
+├─ = : bool
+│  ├─ x : bool
+│  └─ <= : bool
+│     ├─ a : int
+│     └─ int 4
+├─ = : bool
+│  ├─ y : bool
+│  └─ > : bool
+│     ├─ a : int
+│     └─ b : int
+├─ = : bool
+│  ├─ z : bool
+│  └─ == : bool
+│     ├─ a : int
+│     └─ int 5
+├─ = : bool
+│  ├─ m : bool
+│  └─ < : bool
+│     ├─ + : int
+│     │  ├─ a : int
+│     │  └─ int 1
+│     └─ * : int
+│        ├─ b : int
+│        └─ int 2
+└─ return
+   └─ int 3
 ```
 
 ```out

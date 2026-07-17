@@ -21,6 +21,30 @@ main():
     return 0
 ```
 
+```tree
+fn grade() : char
+└─ return
+   └─ char 'A'
+
+fn main() : int
+├─ = : char
+│  ├─ c : char
+│  └─ char 'z'
+├─ output : void
+│  ├─ c : char
+│  └─ chars "\n"
+├─ output : void
+│  ├─ char '!'
+│  └─ chars "\n"
+├─ output : void
+│  ├─ call grade : char
+│  └─ chars "\n"
+├─ output : void
+│  └─ char '\n'
+└─ return
+   └─ int 0
+```
+
 ```out
 z
 !

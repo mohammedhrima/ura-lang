@@ -33,6 +33,28 @@ main():
     announce_boss("The Lich King")
 ```
 
+```tree
+fn announce_floor(floor : int) : void
+└─ output : void
+   ├─ chars "=== Entering floor "
+   ├─ floor : int
+   └─ chars " ===\n"
+
+fn announce_boss(name : chars) : void
+└─ output : void
+   ├─ chars "BOSS: "
+   ├─ name : chars
+   └─ chars " appears!\n"
+
+fn main() : int
+├─ call announce_floor : void
+│  └─ int 1
+├─ call announce_floor : void
+│  └─ int 5
+└─ call announce_boss : void
+   └─ chars "The Lich King"
+```
+
 ```out
 === Entering floor 1 ===
 === Entering floor 5 ===
@@ -97,6 +119,46 @@ main():
     output("Floor 3 bonus: ", bonus, "\n")
     output("Hero alive:    ", is_alive(80), "\n")
     output("Boss floor:    ", is_boss_floor(10), "\n")
+```
+
+```tree
+fn victory_bonus(floor : int) : int
+└─ return
+   └─ * : int
+      ├─ floor : int
+      └─ int 50
+
+fn is_alive(hp : int) : bool
+└─ return
+   └─ > : bool
+      ├─ hp : int
+      └─ int 0
+
+fn is_boss_floor(floor : int) : bool
+└─ return
+   └─ == : bool
+      ├─ floor : int
+      └─ int 10
+
+fn main() : int
+├─ = : int
+│  ├─ bonus : int
+│  └─ call victory_bonus : int
+│     └─ int 3
+├─ output : void
+│  ├─ chars "Floor 3 bonus: "
+│  ├─ bonus : int
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "Hero alive:    "
+│  ├─ call is_alive : bool
+│  │  └─ int 80
+│  └─ chars "\n"
+└─ output : void
+   ├─ chars "Boss floor:    "
+   ├─ call is_boss_floor : bool
+   │  └─ int 10
+   └─ chars "\n"
 ```
 
 ```out
@@ -192,6 +254,57 @@ main():
     d int = damage(25, 8)
     output("Orc takes ", d, " damage\n")
     output("Orc dead: ", is_dead(d - 60), "\n")
+```
+
+```tree
+fn clamp(val : int, lo : int, hi : int) : int
+├─ if
+│  ├─ condition < : bool
+│  │  ├─ val : int
+│  │  └─ lo : int
+│  └─ return
+│     └─ lo : int
+├─ if
+│  ├─ condition > : bool
+│  │  ├─ val : int
+│  │  └─ hi : int
+│  └─ return
+│     └─ hi : int
+└─ return
+   └─ val : int
+
+fn damage(atk : int, def : int) : int
+└─ return
+   └─ call clamp : int
+      ├─ - : int
+      │  ├─ atk : int
+      │  └─ def : int
+      ├─ int 0
+      └─ int 999
+
+fn is_dead(hp : int) : bool
+└─ return
+   └─ <= : bool
+      ├─ hp : int
+      └─ int 0
+
+fn main() : int
+├─ = : int
+│  ├─ d : int
+│  └─ call damage : int
+│     ├─ int 25
+│     └─ int 8
+├─ output : void
+│  ├─ chars "Orc takes "
+│  ├─ d : int
+│  └─ chars " damage\n"
+└─ output : void
+   ├─ chars "Orc dead: "
+   ├─ call is_dead : bool
+   │  └─ - : int
+   │     ├─ d : int
+   │     └─ int 60
+   └─ chars "\n"
 ```
 
 ```out
@@ -304,6 +417,38 @@ main():
     output(op(10, 4), "\n")
 ```
 
+```tree
+fn add(a : int, b : int) : int
+└─ return
+   └─ + : int
+      ├─ a : int
+      └─ b : int
+
+fn sub(a : int, b : int) : int
+└─ return
+   └─ - : int
+      ├─ a : int
+      └─ b : int
+
+fn main() : int
+├─ = : FN_TYPE
+│  ├─ op : FN_TYPE
+│  └─ FN_TYPE : FN_TYPE
+├─ output : void
+│  ├─ call op : int
+│  │  ├─ int 2
+│  │  └─ int 3
+│  └─ chars "\n"
+├─ = : FN_TYPE
+│  ├─ op : FN_TYPE
+│  └─ FN_TYPE : FN_TYPE
+└─ output : void
+   ├─ call op : int
+   │  ├─ int 10
+   │  └─ int 4
+   └─ chars "\n"
+```
+
 ```out
 5
 6
@@ -403,6 +548,37 @@ main():
     output(apply(triple_it, 7), "\n")
 ```
 
+```tree
+fn double_it(n : int) : int
+└─ return
+   └─ * : int
+      ├─ n : int
+      └─ int 2
+
+fn triple_it(n : int) : int
+└─ return
+   └─ * : int
+      ├─ n : int
+      └─ int 3
+
+fn apply(cb : FN_TYPE, x : int) : int
+└─ return
+   └─ call cb : int
+      └─ x : int
+
+fn main() : int
+├─ output : void
+│  ├─ call apply : int
+│  │  ├─ FN_TYPE : FN_TYPE
+│  │  └─ int 21
+│  └─ chars "\n"
+└─ output : void
+   ├─ call apply : int
+   │  ├─ FN_TYPE : FN_TYPE
+   │  └─ int 7
+   └─ chars "\n"
+```
+
 ```out
 42
 21
@@ -483,6 +659,12 @@ main():
     return 42
 ```
 
+```tree
+fn main() : int
+└─ return
+   └─ int 42
+```
+
 ```out
 ```
 
@@ -506,6 +688,15 @@ entry:
 main():
     a int = 7
     return a
+```
+
+```tree
+fn main() : int
+├─ = : int
+│  ├─ a : int
+│  └─ int 7
+└─ return
+   └─ a : int
 ```
 
 ```out
@@ -535,6 +726,20 @@ fn add(a int, b int) int:
     return a + b
 main():
     return add(40, 2)
+```
+
+```tree
+fn add(a : int, b : int) : int
+└─ return
+   └─ + : int
+      ├─ a : int
+      └─ b : int
+
+fn main() : int
+└─ return
+   └─ call add : int
+      ├─ int 40
+      └─ int 2
 ```
 
 ```out
@@ -576,6 +781,19 @@ fn dbl(n int) int:
     return n + n
 ```
 
+```tree
+fn main() : int
+└─ return
+   └─ call dbl : int
+      └─ int 21
+
+fn dbl(n : int) : int
+└─ return
+   └─ + : int
+      ├─ n : int
+      └─ n : int
+```
+
 ```out
 ```
 
@@ -612,6 +830,22 @@ fn twice(n int) int:
 main():
     f fn(int) int = twice
     return f(21)
+```
+
+```tree
+fn twice(n : int) : int
+└─ return
+   └─ + : int
+      ├─ n : int
+      └─ n : int
+
+fn main() : int
+├─ = : FN_TYPE
+│  ├─ f : FN_TYPE
+│  └─ FN_TYPE : FN_TYPE
+└─ return
+   └─ call f : int
+      └─ int 21
 ```
 
 ```out
@@ -669,6 +903,25 @@ fn apply(f fn(int) int, x int) int:
     return f(x)
 main():
     return apply(twice, 21)
+```
+
+```tree
+fn twice(n : int) : int
+└─ return
+   └─ + : int
+      ├─ n : int
+      └─ n : int
+
+fn apply(f : FN_TYPE, x : int) : int
+└─ return
+   └─ call f : int
+      └─ x : int
+
+fn main() : int
+└─ return
+   └─ call apply : int
+      ├─ FN_TYPE : FN_TYPE
+      └─ int 21
 ```
 
 ```out
@@ -735,6 +988,18 @@ main():
     return dbl(21)
 ```
 
+```tree
+fn main() : int
+├─ fn dbl(k : int) : int
+│  └─ return
+│     └─ + : int
+│        ├─ k : int
+│        └─ k : int
+└─ return
+   └─ call dbl : int
+      └─ int 21
+```
+
 ```out
 ```
 
@@ -772,6 +1037,27 @@ fn add(a int, b int) int:
     return a + b
 main():
     return add(square(5), 3)
+```
+
+```tree
+fn square(n : int) : int
+└─ return
+   └─ * : int
+      ├─ n : int
+      └─ n : int
+
+fn add(a : int, b : int) : int
+└─ return
+   └─ + : int
+      ├─ a : int
+      └─ b : int
+
+fn main() : int
+└─ return
+   └─ call add : int
+      ├─ call square : int
+      │  └─ int 5
+      └─ int 3
 ```
 
 ```out

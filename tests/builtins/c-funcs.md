@@ -23,6 +23,29 @@ main():
         puts("keep training")
 ```
 
+```tree
+fn puts(str : chars) : int
+
+fn is_s_rank(grade : char) : bool
+└─ return
+   └─ == : bool
+      ├─ grade : char
+      └─ char 'S'
+
+fn main() : int
+├─ = : char
+│  ├─ grade : char
+│  └─ char 'S'
+└─ if
+   ├─ condition call is_s_rank : bool
+   │  └─ grade : char
+   ├─ call puts : int
+   │  └─ chars "S-rank hero — unstoppable"
+   └─ else
+      └─ call puts : int
+         └─ chars "keep training"
+```
+
 ```out
 S-rank hero — unstoppable
 ```
@@ -78,6 +101,21 @@ main():
     s chars = "ura"
     printf("hello %s %d\n", s, 42)
     return 0
+```
+
+```tree
+fn printf(fmt : chars) : int
+
+fn main() : int
+├─ = : chars
+│  ├─ s : chars
+│  └─ chars "ura"
+├─ call printf : int
+│  ├─ chars "hello %s %d\n"
+│  ├─ s : chars
+│  └─ int 42
+└─ return
+   └─ int 0
 ```
 
 ```out
