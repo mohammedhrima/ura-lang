@@ -1487,6 +1487,8 @@ Node *access_node(Node *node) {
 		access->right  = expr_node(0);
 		if (!find(RBRA, 0))
 			parse_error(bracket, "Expected ']' after array index");
+		if (find(OPTIONAL, 0))
+			bracket->is_nullable = true;
 		node = access;
 	}
 	return node;
@@ -1738,6 +1740,14 @@ void guard_bound(Token *op, Value ptr) {
    free(msg);
 }
 
+void guard_index(Token *op, Value idx, Value slice) {
+   Value len   = LLVMBuildExtractValue(ura.builder, slice, 1, "arr.len");
+   Value idx64 = LLVMBuildIntCast2(ura.builder, idx, ura.i64, 1, "idx");
+   Value low   = LLVMBuildICmp(ura.builder, LLVMIntSLT, idx64, LLVMConstInt(ura.i64, 0, 0), "oob.low");
+   Value high  = LLVMBuildICmp(ura.builder, LLVMIntSGE, idx64, len, "oob.high");
+   guard(op, LLVMBuildOr(ura.builder, low, high, "oob"), "array index out of bounds");
+}
+
 void analyze_binop(Node *node) {
    analyze(node->left);
    analyze(node->right);
@@ -1908,6 +1918,7 @@ Value access_ptr(Node *node) {
    Value   data  = LLVMBuildExtractValue(ura.builder, slice, 0, "arr.data");
    code_gen(node->right);
    Value   idx   = node->right->token->llvm.elem;
+   if (node->token->is_nullable) guard_index(node->token, idx, slice);
    Token  *arr   = node->left->token;
    TypeRef elem  = arr->Array.depth > 1 ? array_type(arr->Array.sub_type, arr->Array.depth - 1)
                                         : to_llvm_type(arr->Array.sub_type);

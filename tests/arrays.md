@@ -10,6 +10,8 @@
 - 006 — 2D array literal and nested indexing
 - 007 — sized 2D matrix int[N][M], zero-init and writes
 - 008 — 3D sized array with runtime size
+- 009 — ? bounds guard: in-bounds access is fine
+- 010 — ? bounds guard: out-of-bounds access traps at runtime
 
 ## 001 — 1D int array: literal, index read, indexed write
 
@@ -987,4 +989,172 @@ declare void @llvm.memset.p0i8.i64(i8* nocapture writeonly, i8, i64, i1 immarg) 
 declare i32 @printf(i8*, ...)
 
 attributes #0 = { argmemonly nofree nounwind willreturn writeonly }
+```
+
+## 009 — ? bounds guard: in-bounds access is fine
+
+```ura
+// arrays/009.ura - ? bounds guard: in-bounds access is fine
+
+main():
+    a int[] = [10, 20, 30]
+    i int = 2
+    output("a[i]?=", a[i]?, "\n")
+```
+
+```tree
+fn main() : int
+├─ = : ARRAY_TYPE
+│  ├─ a : ARRAY_TYPE
+│  └─ ARRAY_LIT : ARRAY_TYPE
+│     ├─ int 10
+│     ├─ int 20
+│     └─ int 30
+├─ = : int
+│  ├─ i : int
+│  └─ int 2
+└─ output : void
+   ├─ chars "a[i]?="
+   ├─ ACC : int
+   │  ├─ a : ARRAY_TYPE
+   │  └─ i : int
+   └─ chars "\n"
+```
+
+```out
+a[i]?=30
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [7 x i8] c"a[i]?=\00", align 1
+@trap_msg = private unnamed_addr constant [188 x i8] c"runtime error: array index out of bounds\0A  009.ura:6:23\0A  |\0A6 |     output(\22a[i]?=\22, a[i]?, \22\\n\22)\0A  |                       ^\0A\00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+
+define i32 @main() {
+entry:
+  %a = alloca { i32*, i64 }, align 8
+  %arr = alloca i32, i64 3, align 4
+  %arr.init = getelementptr i32, i32* %arr, i64 0
+  store i32 10, i32* %arr.init, align 4
+  %arr.init1 = getelementptr i32, i32* %arr, i64 1
+  store i32 20, i32* %arr.init1, align 4
+  %arr.init2 = getelementptr i32, i32* %arr, i64 2
+  store i32 30, i32* %arr.init2, align 4
+  %arr.ptr = insertvalue { i32*, i64 } undef, i32* %arr, 0
+  %arr.len = insertvalue { i32*, i64 } %arr.ptr, i64 3, 1
+  store { i32*, i64 } %arr.len, { i32*, i64 }* %a, align 8
+  %i = alloca i32, align 4
+  store i32 2, i32* %i, align 4
+  %a3 = load { i32*, i64 }, { i32*, i64 }* %a, align 8
+  %arr.data = extractvalue { i32*, i64 } %a3, 0
+  %i4 = load i32, i32* %i, align 4
+  %arr.len5 = extractvalue { i32*, i64 } %a3, 1
+  %idx = sext i32 %i4 to i64
+  %oob.low = icmp slt i64 %idx, 0
+  %oob.high = icmp sge i64 %idx, %arr.len5
+  %oob = or i1 %oob.low, %oob.high
+  br i1 %oob, label %trap, label %cont
+
+trap:                                             ; preds = %entry
+  %0 = call i64 @write(i32 2, i8* getelementptr inbounds ([188 x i8], [188 x i8]* @trap_msg, i32 0, i32 0), i64 187)
+  call void @exit(i32 1)
+  unreachable
+
+cont:                                             ; preds = %entry
+  %arr.at = getelementptr i32, i32* %arr.data, i32 %i4
+  %idx6 = load i32, i32* %arr.at, align 4
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i32 %idx6, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i64 @write(i32, i8*, i64)
+
+declare void @exit(i32)
+
+declare i32 @printf(i8*, ...)
+```
+
+## 010 — ? bounds guard: out-of-bounds access traps at runtime
+
+```ura
+// arrays/010.ura - ? bounds guard: out-of-bounds access traps at runtime
+
+main():
+    a int[] = [10, 20, 30]
+    output(a[5]?)
+```
+
+```tree
+fn main() : int
+├─ = : ARRAY_TYPE
+│  ├─ a : ARRAY_TYPE
+│  └─ ARRAY_LIT : ARRAY_TYPE
+│     ├─ int 10
+│     ├─ int 20
+│     └─ int 30
+└─ output : void
+   └─ ACC : int
+      ├─ a : ARRAY_TYPE
+      └─ int 5
+```
+
+```out
+```
+
+```err
+runtime error: array index out of bounds
+  010.ura:5:13
+  |
+5 |     output(a[5]?)
+  |             ^
+exit: 1
+```
+
+```ll
+
+@trap_msg = private unnamed_addr constant [162 x i8] c"runtime error: array index out of bounds\0A  010.ura:5:13\0A  |\0A5 |     output(a[5]?)\0A  |             ^\0A\00", align 1
+@fmt = private unnamed_addr constant [3 x i8] c"%d\00", align 1
+
+define i32 @main() {
+entry:
+  %a = alloca { i32*, i64 }, align 8
+  %arr = alloca i32, i64 3, align 4
+  %arr.init = getelementptr i32, i32* %arr, i64 0
+  store i32 10, i32* %arr.init, align 4
+  %arr.init1 = getelementptr i32, i32* %arr, i64 1
+  store i32 20, i32* %arr.init1, align 4
+  %arr.init2 = getelementptr i32, i32* %arr, i64 2
+  store i32 30, i32* %arr.init2, align 4
+  %arr.ptr = insertvalue { i32*, i64 } undef, i32* %arr, 0
+  %arr.len = insertvalue { i32*, i64 } %arr.ptr, i64 3, 1
+  store { i32*, i64 } %arr.len, { i32*, i64 }* %a, align 8
+  %a3 = load { i32*, i64 }, { i32*, i64 }* %a, align 8
+  %arr.data = extractvalue { i32*, i64 } %a3, 0
+  %arr.len4 = extractvalue { i32*, i64 } %a3, 1
+  %oob.high = icmp sge i64 5, %arr.len4
+  %oob = or i1 false, %oob.high
+  br i1 %oob, label %trap, label %cont
+
+trap:                                             ; preds = %entry
+  %0 = call i64 @write(i32 2, i8* getelementptr inbounds ([162 x i8], [162 x i8]* @trap_msg, i32 0, i32 0), i64 161)
+  call void @exit(i32 1)
+  unreachable
+
+cont:                                             ; preds = %entry
+  %arr.at = getelementptr i32, i32* %arr.data, i32 5
+  %idx = load i32, i32* %arr.at, align 4
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt, i32 0, i32 0), i32 %idx)
+  ret i32 0
+}
+
+declare i64 @write(i32, i8*, i64)
+
+declare void @exit(i32)
+
+declare i32 @printf(i8*, ...)
 ```
