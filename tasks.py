@@ -12,7 +12,7 @@ Run it with uv (this loads rich + prompt_toolkit automatically):
 
 Do NOT run `uv run python3 tasks.py` — that skips the declared deps (no colors, no shell).
 """
-import os, sys, subprocess, shutil, tempfile
+import os, sys, subprocess, shutil, tempfile, re
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from pathlib import Path
@@ -185,9 +185,7 @@ def test_runtime(target="tests/errors/runtime"):
     report("runtime", parallel(ura_files(target, skip=("build",)), one))
 
 def tests():
-    test("tests")
-    test_errors("tests/errors")
-    test_runtime("tests/errors/runtime")
+    mdtest("tests")
 
 def update_errors(target="tests/errors"):
     for ura in ura_files(target, skip=("build", "runtime")):
@@ -239,12 +237,146 @@ def install():
     else:
         err("no package manager")
 
+# ---------------------------------------------------------------- consolidated .md tests
+
+def _desc(src):
+    first = (src.splitlines() or [""])[0]
+    if not first.startswith("//"): return ""
+    t = first.lstrip("/").strip()
+    for sep in (" - ", " — "):
+        if sep in t: return t.split(sep, 1)[1].strip()
+    return ""
+
+def _fence(tag, body):
+    body = body.rstrip("\n")
+    return f"```{tag}\n{body}\n```" if body else f"```{tag}\n```"
+
+def _actual(src, stem, is_error):
+    """Compile+run one source under -testing → always {ll, out, err} (empty when N/A).
+    The unstable temp path (baked into @trap_msg + diagnostics) is normalized to <stem>.ura
+    so goldens are deterministic AND portable across machines."""
+    res = {"ll": "", "out": "", "err": ""}
+    with tempfile.TemporaryDirectory() as d:
+        p = Path(d) / f"{stem}.ura"
+        p.write_text(src.rstrip() + "\n")
+        paths = (str(p), os.path.realpath(p))
+        def norm(s):
+            for pp in paths: s = s.replace(pp, f"{stem}.ura")
+            return s
+        exe = Path(d) / "exe"
+        c = run(URA, p, "-o", exe, "-testing")
+        if c.returncode != 0:                               # compile failed
+            if is_error: res["err"] = norm(c.stderr)
+            return res                                       # success-group fail → all empty → skip
+        ll = p.parent / "build" / f"{stem}.ll"
+        if ll.exists():
+            res["ll"] = norm("\n".join(l for l in ll.read_text().splitlines()
+                                       if not any(ig in l for ig in IGNORE)))
+        r = run(exe)
+        res["out"] = r.stdout
+        if r.stderr or exit_code(r): res["err"] = norm(r.stderr) + f"exit: {exit_code(r)}\n"
+        return res
+
+def parse_md(path):
+    """One group .md → [{name, ura, out?, err?, ll?}] (skips the ## index section)."""
+    cases = []
+    for part in re.split(r'(?m)^## ', Path(path).read_text())[1:]:
+        head, _, body = part.partition('\n')
+        if head.strip().lower() == 'index': continue
+        blocks = dict(re.findall(r'(?ms)^```([a-z]+)\n(.*?)^```$', body))
+        if 'ura' in blocks:
+            cases.append({'name': head.strip(), **blocks})
+    return cases
+
+def _decolor(s):
+    return re.sub(r'\x1b\[[0-9;]*m', '', s)
+
+def migrate(dirpath):
+    """One leaf dir → tests/<group>.md, keeping ONLY cases the current compiler implements
+    (success = compiles+runs; error = its recorded .err still reproduces)."""
+    d = Path(dirpath)
+    is_error = "errors" in d.parts
+    index, sections = [], []
+    for ura in sorted(d.glob("*.ura")):
+        src = ura.read_text()
+        got = _actual(src, ura.stem, is_error)
+        if is_error:
+            old = ura.with_suffix(".err")
+            if not old.exists() or got["err"].strip() != _decolor(old.read_text()).strip():
+                continue                                 # error path not implemented yet → stays in tests-old
+        elif not got["ll"]:
+            continue                                     # doesn't compile yet → stays in tests-old
+        name = f"{ura.stem} — {_desc(src)}".rstrip(" —")
+        index.append(f"- {name}")
+        blocks = [_fence("ura", src)] + [_fence(t, got[t]) for t in ("out", "err", "ll")]
+        sections.append(f"## {name}\n\n" + "\n\n".join(blocks))
+    if not sections:
+        return 0
+    rel = Path(*d.parts[1:])                             # strip leading tests/ or tests-old/
+    out = (Path("tests") / rel).with_suffix(".md")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    title = str(rel).replace("/", " / ")
+    out.write_text(f"# {title}\n\n## index\n\n" + "\n".join(index) + "\n\n" + "\n\n".join(sections) + "\n")
+    ok(f"wrote {out} ({len(index)} cases)")
+    return len(index)
+
+def rebuild(src="tests-old"):
+    """Regenerate a fresh tests/ from <src>: one .md per leaf dir, implemented cases only."""
+    leaves = sorted({u.parent for u in Path(src).rglob("*.ura") if "build" not in u.parts})
+    n = sum(migrate(d) for d in leaves)
+    ok(f"rebuilt tests/ — {n} implemented cases across {len(leaves)} source groups")
+
+def mdtest(target="tests"):
+    mds = [Path(target)] if str(target).endswith(".md") else sorted(Path(target).rglob("*.md"))
+    results = []
+    for md in mds:
+        is_error = "errors" in md.parts
+        for case in parse_md(md):
+            want = {t: case.get(t, "").strip() for t in ("ll", "out", "err")}
+            if not any(want.values()):
+                results.append(("skip", case['name'])); continue
+            got = _actual(case['ura'], case['name'].split()[0], is_error)
+            bad = next((t for t in ("ll", "out", "err") if got[t].strip() != want[t]), None)
+            results.append(("fail", f"{case['name']} ({bad})") if bad else ("pass", case['name']))
+    report("mdtest", results)
+
+def update(target="tests"):
+    """Regenerate out/err/ll goldens in place for every case in the target .md file(s)."""
+    mds = [Path(target)] if str(target).endswith(".md") else sorted(Path(target).rglob("*.md"))
+    for md in mds:
+        is_error = "errors" in md.parts
+        index, sections = [], []
+        for c in parse_md(md):
+            got = _actual(c['ura'], c['name'].split()[0], is_error)
+            index.append(f"- {c['name']}")
+            blocks = [_fence("ura", c['ura'])] + [_fence(t, got[t]) for t in ("out", "err", "ll")]
+            sections.append(f"## {c['name']}\n\n" + "\n\n".join(blocks))
+        rel = Path(*md.parts[1:]).with_suffix("")
+        md.write_text(f"# {str(rel).replace('/', ' / ')}\n\n## index\n\n" + "\n".join(index)
+                      + "\n\n" + "\n\n".join(sections) + "\n")
+        ok(f"updated {md} ({len(index)} cases)")
+
+def show(spec):
+    """show <group>:<NNN>  — print one case (jump straight to it, no scrolling the .md)."""
+    group, _, which = spec.partition(":")
+    for c in parse_md(Path("tests") / f"{group}.md"):
+        if not which or c['name'].split()[0] == which or which in c['name']:
+            print(f"## {c['name']}\n")
+            for tag in ('ura', 'out', 'err', 'll'):
+                if tag in c: print(_fence(tag, c[tag]) + "\n")
+
+def index(group):
+    """index <group>  — list the case names in a group .md."""
+    for c in parse_md(Path("tests") / f"{group}.md"): print(c['name'])
+
 # ---------------------------------------------------------------- dispatch + shell
 
 TASKS = {
     "check": check, "build": build, "install": install, "copy": copy,
     "test": test, "test_errors": test_errors, "test_runtime": test_runtime, "tests": tests,
     "update_errors": update_errors, "update_runtime": update_runtime, "update_ll": update_ll,
+    "migrate": migrate, "rebuild": rebuild, "mdtest": mdtest, "update": update,
+    "show": show, "index": index,
 }
 DESC = {
     "check": "verify clang + llvm-config-14 are installed",
