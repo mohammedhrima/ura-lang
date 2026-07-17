@@ -7,6 +7,7 @@
 - 004 — separate refs to different vars: hp ref ref and mp
 - 005 — multiply and subtract through refs: double shield, pay mana
 - 006 — chain of compound mutations ref through a
+- 007 — reference in conditional
 - 008 — a ref reads correctly through every operator + as a by-value arg
 - 009 — ref? nullable: bound at declaration, guarded reads pass, write-through works
 - 010 — nested fn shares an enclosing var through a ref parameter (the sanctioned path)
@@ -279,6 +280,60 @@ entry:
   %score8 = load i32, i32* %score, align 4
   %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0), i32 %score8, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.1, i32 0, i32 0))
   ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 007 — reference in conditional
+
+```ura
+// refs/007 — reference in conditional
+
+main():
+    hp int = 75
+    ref r int = ref hp
+    if r > 50:
+        output("healthy\n")
+    else:
+        output("critical\n")
+```
+
+```out
+healthy
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [9 x i8] c"healthy\0A\00", align 1
+@fmt = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@str.1 = private unnamed_addr constant [10 x i8] c"critical\0A\00", align 1
+@fmt.2 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+
+define i32 @main() {
+entry:
+  %hp = alloca i32, align 4
+  store i32 75, i32* %hp, align 4
+  %r = alloca i32*, align 8
+  store i32* %hp, i32** %r, align 8
+  %ref = load i32*, i32** %r, align 8
+  %r1 = load i32, i32* %ref, align 4
+  %gt = icmp sgt i32 %r1, 50
+  br i1 %gt, label %then, label %next
+
+endif:                                            ; preds = %next, %then
+  ret i32 0
+
+then:                                             ; preds = %entry
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str, i32 0, i32 0))
+  br label %endif
+
+next:                                             ; preds = %entry
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.2, i32 0, i32 0), i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.1, i32 0, i32 0))
+  br label %endif
 }
 
 declare i32 @printf(i8*, ...)

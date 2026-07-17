@@ -155,6 +155,30 @@ Node *prime_node() {
       node->left  = prime_node();
       return node;
    }
+   case IF: {
+      Node *node = new_node(token);
+      node->left = expr_node(0);
+      if (!find(DOTS, 0))
+         parse_error(token, "Expected ':' to open the 'if' body");
+      parse_block(node, token->indent);
+      Node *tail = node;
+      while (includes(peek(0)->type, ELIF, ELSE, 0) && peek(0)->indent == token->indent) {
+         Token *kw = next();
+         Node  *br = new_node(kw);
+         if (kw->type == ELIF)
+            br->left = expr_node(0);
+         if (!find(DOTS, 0))
+            parse_error(kw, "Expected ':' to open the '%s' body", kw->name);
+         parse_block(br, kw->indent);
+         tail->right = br;
+         tail        = br;
+         if (kw->type == ELSE) break;
+      }
+      return node;
+   }
+   case ELIF: case ELSE:
+      parse_error(token, "'%s' without a matching 'if'", token->name);
+      return syntax_error();
    default:
       break;
    }
@@ -224,6 +248,12 @@ void analyze(Node *node) {
          if (node->left->token->type != ID)
             parse_error(node->token, "Cannot take a reference to a non-variable");
          break;
+      case IF: case ELIF: case ELSE:
+         analyze(node->left);
+         for (int i = 0; i < node->children_count; i++)
+            analyze(node->children[i]);
+         analyze(node->right);
+         break;
       case OUTPUT:
          for (int i = 0; i < node->children_count; i++)
             analyze(node->children[i]);
@@ -283,6 +313,15 @@ void type_check(Node *node) {
          type_check(node->left);
          token->ret_type = node->left->token->ret_type;
          break;
+      case IF: case ELIF: case ELSE:
+         type_check(node->left);
+         if (node->left && node->left->token->ret_type != BOOL)
+            parse_error(node->token, "The '%s' condition must be a bool, got %s",
+                        node->token->name, to_string(node->left->token->ret_type));
+         for (int i = 0; i < node->children_count; i++)
+            type_check(node->children[i]);
+         type_check(node->right);
+         break;
       case ASSIGN: case ADD: case SUB: case MUL: case DIV: case MOD:
       case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN: case MOD_ASSIGN:
       case EQUAL: case NOT_EQUAL: case LESS: case GREAT: case LESS_EQUAL: case GREAT_EQUAL:
@@ -326,6 +365,7 @@ void code_gen(Node *node) {
                                               to_llvm_type(token->ret_type), 1, "cast");
          break;
       case REF:    token->llvm.elem = address_of(node->left); break;
+      case IF:     code_gen_if(node); break;
       case ASSIGN: code_gen_assign(node); break;
       case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: 
       case DIV_ASSIGN: case MOD_ASSIGN:

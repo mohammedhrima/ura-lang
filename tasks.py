@@ -292,33 +292,38 @@ def _decolor(s):
     return re.sub(r'\x1b\[[0-9;]*m', '', s)
 
 def migrate(dirpath):
-    """One leaf dir → tests/<group>.md, keeping ONLY cases the current compiler implements
-    (success = compiles+runs; error = its recorded .err still reproduces)."""
+    """ADD newly-implemented cases from <dir> into tests/<group>.md, PRESERVING already-migrated
+    ones (success = compiles+runs; error = its recorded .err still reproduces). Run `prune` after."""
     d = Path(dirpath)
     is_error = "errors" in d.parts
-    index, sections = [], []
+    rel = Path(*d.parts[1:])                             # strip leading tests-old/
+    out = (Path("tests") / rel).with_suffix(".md")
+    cases = {c['name'].split()[0]: c for c in (parse_md(out) if out.exists() else [])}
+    added = 0
     for ura in sorted(d.glob("*.ura")):
+        if ura.stem in cases: continue
         src = ura.read_text()
         got = _actual(src, ura.stem, is_error)
         if is_error:
             old = ura.with_suffix(".err")
             if not old.exists() or got["err"].strip() != _decolor(old.read_text()).strip():
-                continue                                 # error path not implemented yet → stays in tests-old
+                continue                                 # error path not implemented yet
         elif not got["ll"]:
-            continue                                     # doesn't compile yet → stays in tests-old
-        name = f"{ura.stem} — {_desc(src)}".rstrip(" —")
-        index.append(f"- {name}")
-        blocks = [_fence("ura", src)] + [_fence(t, got[t]) for t in ("out", "err", "ll")]
-        sections.append(f"## {name}\n\n" + "\n\n".join(blocks))
-    if not sections:
+            continue                                     # doesn't compile yet
+        cases[ura.stem] = {'name': f"{ura.stem} — {_desc(src)}".rstrip(" —"), 'ura': src, **got}
+        added += 1
+    if not cases:
         return 0
-    rel = Path(*d.parts[1:])                             # strip leading tests/ or tests-old/
-    out = (Path("tests") / rel).with_suffix(".md")
+    index, sections = [], []
+    for c in (cases[k] for k in sorted(cases)):
+        index.append(f"- {c['name']}")
+        blocks = [_fence("ura", c['ura'])] + [_fence(t, c.get(t, "")) for t in ("out", "err", "ll")]
+        sections.append(f"## {c['name']}\n\n" + "\n\n".join(blocks))
     out.parent.mkdir(parents=True, exist_ok=True)
-    title = str(rel).replace("/", " / ")
-    out.write_text(f"# {title}\n\n## index\n\n" + "\n".join(index) + "\n\n" + "\n\n".join(sections) + "\n")
-    ok(f"wrote {out} ({len(index)} cases)")
-    return len(index)
+    out.write_text(f"# {str(rel).replace('/', ' / ')}\n\n## index\n\n" + "\n".join(index)
+                   + "\n\n" + "\n\n".join(sections) + "\n")
+    if added: ok(f"{out}: +{added} case(s) → {len(cases)} total")
+    return added
 
 def rebuild(src="tests-old"):
     """Regenerate a fresh tests/ from <src>: one .md per leaf dir, implemented cases only."""
