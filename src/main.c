@@ -108,6 +108,10 @@ Node *prime_node() {
          token->is_dec = true;
          parse_type(token);
       }
+      if (!token->is_dec && peek(0)->type == OPTIONAL) {
+         find(OPTIONAL, 0);
+         token->is_nullable = true;
+      }
       return new_node(token);
    }
    case RETURN: {
@@ -124,6 +128,30 @@ Node *prime_node() {
       Node *node  = new_node(token);
       node->left  = new_node(new_token(INT, token->indent));
       node->right = prime_node();
+      return node;
+   }
+   case REF: {
+      bool nullable = peek(0)->type == OPTIONAL;
+      if (nullable) find(OPTIONAL, 0);
+      Token *name = peek(0);
+      if (!name || name->type != ID) {
+         parse_error(token, "Expected a variable after 'ref'");
+         return syntax_error();
+      }
+      if (is_data_type(peek(1)) || (peek(1)->type == FDEC && peek(2)->type == LPAR)) {
+         find(ID, 0);
+         name->is_dec      = true;
+         name->is_ref      = true;
+         name->is_nullable = nullable;
+         parse_type(name);
+         if (!nullable && peek(0)->type != ASSIGN) {
+            parse_error(name, "A reference must be bound when declared (use 'ref?' for an optional reference)");
+            return syntax_error();
+         }
+         return new_node(name);
+      }
+      Node *node  = new_node(token);
+      node->left  = prime_node();
       return node;
    }
    default:
@@ -190,6 +218,11 @@ void analyze(Node *node) {
       case FCALL:  analyze_fcall(node); break;
       case NOT: case BNOT: analyze(node->left); break;
       case AS: analyze(node->left); break;
+      case REF:
+         analyze(node->left);
+         if (node->left->token->type != ID)
+            parse_error(node->token, "Cannot take a reference to a non-variable");
+         break;
       case OUTPUT:
          for (int i = 0; i < node->children_count; i++)
             analyze(node->children[i]);
@@ -245,6 +278,10 @@ void type_check(Node *node) {
          token->ret_type = dst;
          break;
       }
+      case REF:
+         type_check(node->left);
+         token->ret_type = node->left->token->ret_type;
+         break;
       case ASSIGN: case ADD: case SUB: case MUL: case DIV: case MOD:
       case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN: case MOD_ASSIGN:
       case EQUAL: case NOT_EQUAL: case LESS: case GREAT: case LESS_EQUAL: case GREAT_EQUAL:
@@ -287,6 +324,7 @@ void code_gen(Node *node) {
          token->llvm.elem = LLVMBuildIntCast2(ura.builder, node->left->token->llvm.elem,
                                               to_llvm_type(token->ret_type), 1, "cast");
          break;
+      case REF:    token->llvm.elem = address_of(node->left); break;
       case ASSIGN: code_gen_assign(node); break;
       case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: 
       case DIV_ASSIGN: case MOD_ASSIGN:

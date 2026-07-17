@@ -22,7 +22,7 @@ char *to_string(Type type) {
 	    [OUTPUT] = "OUTPUT", [ARGS] = "ARGS", [CHILDREN] = "CHILDREN",
 	    [AS] = "AS", [STACK] = "STACK", [HEAP] = "HEAP",
 	    [ARRAY_TYPE] = "ARRAY_TYPE", [ARRAY_LIT] = "ARRAY_LIT",
-	    [NULLABLE] = "NULLABLE",
+	    [NULLABLE] = "NULLABLE", [OPTIONAL] = "OPTIONAL",
 	    //[TRY] = "TRY", [CATCH] = "CATCH", [THROW] = "THROW", [USE] = "USE",
 	    [STRUCT_DEF] = "STRUCT_DEF", [STRUCT_CALL] = "STRUCT_CALL",
 	    [ENUM_DEF] = "ENUM_DEF", [ENUM_CALL] = "ENUM_CALL", [TUPLE] = "TUPLE",
@@ -285,21 +285,7 @@ bool _check(char *filename, char *funcname, int line, bool cond, char *fmt, ...)
 	return cond;
 }
 
-void parse_error(Token *token, const char *fmt, ...) {
-	ura.error_count++;
-	ura.found_error = true;
-	if (ura.error_count > ura.max_errors) {
-		fprintf(stderr, RED("error: ") "Too many errors, stopping\n");
-		return;
-	}
-
-	fprintf(stderr, RED("error: "));
-	va_list ap;
-	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
-	va_end(ap);
-	fputc('\n', stderr);
-
+void render_caret(File out, Token *token) {
 	if (!token || !token->source || !token->source->content) return;
 
 	char *content = token->source->content;
@@ -318,22 +304,37 @@ void parse_error(Token *token, const char *fmt, ...) {
 	int span    = e - s;
 	int line_no = token->line;
 	int gutter  = 1;
-	// TODO: understand this logic
 	for (int n = line_no; n >= 10; n /= 10)
 		gutter++;
 
-	fprintf(stderr, "%*s \033[2m%s:%d:%d\033[0m\n", gutter, "", token->source->filename, line_no,
-	        col);
-	fprintf(stderr, "%*s " BLUE("|") "\n", gutter, "");
-	fprintf(stderr, BLUE("%*d |") " %.*s\n", gutter, line_no, line_end - line_start,
-	        content + line_start);
-	fprintf(stderr, "%*s " BLUE("|") " ", gutter, "");
+	fprintf(out, "%*s \033[2m%s:%d:%d\033[0m\n", gutter, "", token->source->filename, line_no, col);
+	fprintf(out, "%*s " BLUE("|") "\n", gutter, "");
+	fprintf(out, BLUE("%*d |") " %.*s\n", gutter, line_no, line_end - line_start, content + line_start);
+	fprintf(out, "%*s " BLUE("|") " ", gutter, "");
 	for (int i = 0; i < col - 1; i++)
-		fputc(content[line_start + i] == '\t' ? '\t' : ' ', stderr);
-	fprintf(stderr, "\033[1;31m");
+		fputc(content[line_start + i] == '\t' ? '\t' : ' ', out);
+	fprintf(out, "\033[1;31m");
 	for (int i = 0; i < span; i++)
-		fputc('^', stderr);
-	fprintf(stderr, RESET "\n");
+		fputc('^', out);
+	fprintf(out, RESET "\n");
+}
+
+void parse_error(Token *token, const char *fmt, ...) {
+	ura.error_count++;
+	ura.found_error = true;
+	if (ura.error_count > ura.max_errors) {
+		fprintf(stderr, RED("error: ") "Too many errors, stopping\n");
+		return;
+	}
+
+	fprintf(stderr, RED("error: "));
+	va_list ap;
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	fputc('\n', stderr);
+
+	render_caret(stderr, token);
 }
 
 void tokenize_error(int line, int s, int e, const char *fmt, ...) {
@@ -374,7 +375,7 @@ void new_source(char *file_name) {
 
 	file_name = realpath(file_name, NULL);
 	if (!file_name) {
-		parse_error(NULL, "Cannot find file '%s'", file_name);
+		parse_error(NULL, "Cannot find file '%s'", src->filename);
 		return;
 	}
 	File file = fopen(file_name, "r");
@@ -710,6 +711,7 @@ bool lex_symbol(char *content, int *i, int line, int *indent, int default_indent
 		{"]", RBRA, 0, 0},         {",", COMA, 0, 0},        {"&&", AND, 0, 0},
 		{"||", OR, 0, 0},          {"&", BAND, 0, 0},        {"|", BOR, 0, 0},
 		{"^", BXOR, 0, 0},         {"~", BNOT, 0, 0},
+		{"?", OPTIONAL, 0, 0},
 	};
 	for (size_t j = 0; j < sizeof(specials) / sizeof(*specials); j++) {
 		size_t len = strlen(specials[j].name);
@@ -1252,15 +1254,21 @@ void guard(Token *op, Value is_bad, char *what) {
    LLVMBuildCondBr(ura.builder, is_bad, trap, cont);
 
    LLVMPositionBuilderAtEnd(ura.builder, trap);
-   char   *text = format(RED("runtime error: ") "%s:%d: %s\n", ura.sources[0]->filename, op->line, what);
+   char  *text = NULL;
+   size_t tlen = 0;
+   File   ms   = open_memstream(&text, &tlen);
+   fprintf(ms, RED("runtime error: ") "%s\n", what);
+   render_caret(ms, op);
+   fclose(ms);
    Value   msg  = LLVMBuildGlobalStringPtr(ura.builder, text, "trap_msg");
    TypeRef i8p  = LLVMPointerType(ura.i8, 0);
 
    TypeRef write_params[3] = { ura.i32, i8p, ura.i64 };
    TypeRef write_ty        = LLVMFunctionType(ura.i64, write_params, 3, 0);
    Value   write_fn        = get_or_declare("write", write_ty);
-   Value   write_args[3]   = { LLVMConstInt(ura.i32, 2, 0), msg, LLVMConstInt(ura.i64, strlen(text), 0) };
+   Value   write_args[3]   = { LLVMConstInt(ura.i32, 2, 0), msg, LLVMConstInt(ura.i64, tlen, 0) };
    LLVMBuildCall2(ura.builder, write_ty, write_fn, write_args, 3, "");
+   free(text);
 
    TypeRef exit_ty      = LLVMFunctionType(ura.vd, (TypeRef[]){ ura.i32 }, 1, 0);
    Value   exit_fn      = get_or_declare("exit", exit_ty);
@@ -1284,6 +1292,12 @@ void guard_nonnull(Token *op, Value ptr) {
    Value null   = LLVMConstNull(LLVMTypeOf(ptr));
    Value isnull = LLVMBuildICmp(ura.builder, LLVMIntEQ, ptr, null, "isnull");
    guard(op, isnull, "Call to a null function value");
+}
+
+void guard_bound(Token *op, Value ptr) {
+   Value null   = LLVMConstNull(LLVMTypeOf(ptr));
+   Value isnull = LLVMBuildICmp(ura.builder, LLVMIntEQ, ptr, null, "unbound");
+   guard(op, isnull, format("reference '%s' used before it was bound - assign '%s = ref <target>' first", op->name, op->name));
 }
 
 void analyze_fdec(Node *node) {
@@ -1361,8 +1375,12 @@ void type_check_fcall(Node *node) {
          parse_error(node->children[i]->token, "Argument %d type mismatch in call to '%s'", i + 1, token->name);
          return;
       }
-      if (fn->Fn.params[i]->is_ref && node->children[i]->token->type != ID) {
-         parse_error(node->children[i]->token, "Argument %d to '%s' must be a variable (ref parameter)", i + 1, token->name);
+      if (fn->Fn.params[i]->is_ref && node->children[i]->token->type != REF) {
+         parse_error(node->children[i]->token, "Argument %d to '%s' must be passed by reference (ref x)", i + 1, token->name);
+         return;
+      }
+      if (!fn->Fn.params[i]->is_ref && node->children[i]->token->type == REF) {
+         parse_error(node->children[i]->token, "Argument %d to '%s' does not take a reference", i + 1, token->name);
          return;
       }
    }
@@ -1375,6 +1393,14 @@ void type_check_binop(Node *node) {
    type_check(node->right);
    Type lt = node->left->token->ret_type;
    Type rt = node->right->token->ret_type;
+   if (node->left->token->is_dec && node->left->token->is_ref) {
+      if (node->right->token->type != REF)
+         parse_error(token, "A reference must be bound to a variable (ref x)");
+      else if (lt && rt && lt != rt)
+         parse_error(token, "Reference type mismatch: expected %s, got %s", to_string(lt), to_string(rt));
+      token->ret_type = lt;
+      return;
+   }
    if (lt && rt && lt != rt) {
       parse_error(token, "Type mismatch between operands");
       return;
@@ -1412,11 +1438,17 @@ void emit_signature(Node *fn) {
 
 Value address_of(Node *node) {
    Token *token = node->token;
-   if (token->is_dec)
-      return token->llvm.elem = LLVMBuildAlloca(ura.builder, llvm_type_of(token), token->name);
+   if (token->is_dec) {
+      TypeRef t = llvm_type_of(token);
+      if (token->is_ref) t = LLVMPointerType(t, 0);
+      return token->llvm.elem = LLVMBuildAlloca(ura.builder, t, token->name);
+   }
    Token *decl = find_variable(token->name, NULL);
-   if (decl->is_ref)
-      return LLVMBuildLoad2(ura.builder, LLVMPointerType(to_llvm_type(decl->ret_type), 0), decl->llvm.elem, "ref");
+   if (decl->is_ref) {
+      Value ptr = LLVMBuildLoad2(ura.builder, LLVMPointerType(to_llvm_type(decl->ret_type), 0), decl->llvm.elem, "ref");
+      if (token->is_nullable) guard_bound(token, ptr);
+      return ptr;
+   }
    return decl->llvm.elem;
 }
 
@@ -1448,15 +1480,22 @@ void code_gen_fdec(Node *node) {
 void code_gen_id(Node *node) {
    Token *token = node->token;
    if (token->is_dec) {
-      TypeRef t        = llvm_type_of(token);
-      token->llvm.elem = LLVMBuildAlloca(ura.builder, t, token->name);
-      LLVMBuildStore(ura.builder, default_value(token), token->llvm.elem);
+      TypeRef t = llvm_type_of(token);
+      if (token->is_ref) {
+         t = LLVMPointerType(t, 0);
+         token->llvm.elem = LLVMBuildAlloca(ura.builder, t, token->name);
+         LLVMBuildStore(ura.builder, LLVMConstNull(t), token->llvm.elem);
+      } else {
+         token->llvm.elem = LLVMBuildAlloca(ura.builder, t, token->name);
+         LLVMBuildStore(ura.builder, default_value(token), token->llvm.elem);
+      }
    }
    else {
       Token  *decl = find_variable(token->name, NULL);
       TypeRef t    = llvm_type_of(decl);
       if (decl->is_ref) {
          Value ptr = LLVMBuildLoad2(ura.builder, LLVMPointerType(t, 0), decl->llvm.elem, "ref");
+         if (token->is_nullable) guard_bound(token, ptr);
          token->llvm.elem = LLVMBuildLoad2(ura.builder, t, ptr, token->name);
       } else
          token->llvm.elem = LLVMBuildLoad2(ura.builder, t, decl->llvm.elem, token->name);
@@ -1473,12 +1512,8 @@ void code_gen_fcall(Node *node) {
    if (n > 0) {
       args = allocate(n, sizeof(Value));
       for (int i = 0; i < n; i++) {
-         if (i < fn->Fn.params_count && fn->Fn.params[i]->is_ref)
-            args[i] = address_of(node->children[i]);
-         else {
-            code_gen(node->children[i]);
-            args[i] = node->children[i]->token->llvm.elem;
-         }
+         code_gen(node->children[i]);
+         args[i] = node->children[i]->token->llvm.elem;
       }
    }
    if (indirect) {

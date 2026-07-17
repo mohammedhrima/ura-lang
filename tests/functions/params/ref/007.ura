@@ -4,5 +4,5 @@ fn bump(ref n int) void:
     n = n + 1
 main():
     n int = 5
-    bump(n)
+    bump(ref n)
     return n

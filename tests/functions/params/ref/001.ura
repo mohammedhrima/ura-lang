@@ -5,5 +5,5 @@ fn buff(ref hp int) void:
 
 main():
     hero_hp int = 80
-    buff(hero_hp)
+    buff(ref hero_hp)
     output("<", hero_hp, ">\n")
