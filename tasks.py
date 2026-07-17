@@ -8,12 +8,12 @@ Run it with uv (this loads rich + prompt_toolkit automatically):
 
     uv run tasks.py            # enter the interactive ura shell
     uv run tasks.py build      # run one task
-    uv run tasks.py test tests
+    uv run tasks.py tests      # run all .md tests (or: tests match · tests errors/lexer.md)
 
 Do NOT run `uv run python3 tasks.py` — that skips the declared deps (no colors, no shell).
 """
 import os, sys, subprocess, shutil, tempfile, re
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import lru_cache
 from pathlib import Path
 
@@ -32,10 +32,8 @@ ANSI = {"env": "\033[1;36m", "path": "\033[34m", "branch": "\033[33m",
 
 try:
     from rich.console import Console
-    from rich.table import Table
     from rich.panel import Panel
     from rich.theme import Theme
-    from rich import box
     console = Console(theme=Theme({
         "ok": "bold green", "fail": "bold red", "warn": "yellow", "skip": "dim",
         "env": "bold cyan", "path": "blue", "branch": "yellow", "dim": "dim",
@@ -51,32 +49,6 @@ def ok(m):   console.print(f"[ok]{m}[/]")   if RICH else print(_c("ok", m))
 def err(m):  console.print(f"[fail]{m}[/]")  if RICH else print(_c("fail", m))
 def warn(m): console.print(f"[warn]{m}[/]")  if RICH else print(_c("branch", m))
 
-def report(title, results):
-    """results: list of (status, label) with status in {'pass','fail','skip'}."""
-    p = sum(1 for s, _ in results if s == "pass")
-    f = sum(1 for s, _ in results if s == "fail")
-    sk = sum(1 for s, _ in results if s == "skip")
-    rows = [(s, l) for s, l in results if s != "skip"]  # never list the skips
-    if RICH:
-        if rows:
-            t = Table(box=box.SIMPLE_HEAD, show_header=False, pad_edge=False)
-            t.add_column(no_wrap=True); t.add_column(overflow="fold")
-            for s, label in rows:
-                t.add_row("[ok]PASS[/]" if s == "pass" else "[fail]FAIL[/]", label)
-            console.print(t)
-        summary = f"[env]{title}[/]  [ok]{p} passed[/] · " + (f"[fail]{f} failed[/]" if f else "[dim]0 failed[/]")
-        if sk:
-            summary += f" · [dim]{sk} skipped[/]"
-        console.print(summary)
-    else:
-        for s, label in rows:
-            print(_c("ok", "PASS") + " " + label if s == "pass" else _c("fail", "FAIL") + " " + label)
-        line = _c("env", title) + "  " + _c("ok", f"{p} passed") + " · " + \
-               (_c("fail", f"{f} failed") if f else _c("dim", "0 failed"))
-        if sk:
-            line += " · " + _c("dim", f"{sk} skipped")
-        print(line)
-
 # ---------------------------------------------------------------- helpers
 
 def run(*args):
@@ -85,22 +57,6 @@ def run(*args):
 def exit_code(proc):
     # subprocess returns -signal when killed by a signal; show it as 128+signal
     return proc.returncode if proc.returncode >= 0 else 128 - proc.returncode
-
-def strip(text):
-    return [l for l in text.splitlines() if not any(ig in l for ig in IGNORE)]
-
-def ura_files(target, skip=()):
-    p = Path(target)
-    if p.is_file():
-        return [p]
-    return [u for u in sorted(p.rglob("*.ura")) if not any(s in u.parts for s in skip)]
-
-def parallel(files, fn):
-    with ThreadPoolExecutor() as ex:
-        return list(ex.map(fn, files))
-
-def tmp_out():
-    return tempfile.mktemp(suffix=".out")
 
 @lru_cache
 def llvm_version():
@@ -135,97 +91,6 @@ def build():
         ok(f"build ok → {URA}")
     else:
         err("build failed"); print(r.stderr)
-
-def test(target="tests"):
-    def one(ura):
-        first = ura.read_text().splitlines()[:1]
-        if not first or not first[0].startswith("//"):
-            return ("skip", str(ura))
-        golden = ura.with_suffix(".ll")
-        if not golden.exists():
-            return ("skip", str(ura))
-        out = tmp_out()
-        r = run(URA, ura, "-o", out)
-        try: os.unlink(out)
-        except OSError: pass
-        got = ura.parent / "build" / f"{ura.stem}.ll"
-        if r.returncode != 0 or not got.exists():
-            return ("skip", str(ura))  # rewrite can't build it yet → not a failure
-        good = strip(got.read_text()) == strip(golden.read_text())
-        return ("pass" if good else "fail", str(ura))
-    report("test", parallel(ura_files(target, skip=("build", "errors", "projects")), one))
-
-def test_errors(target="tests/errors"):
-    def one(ura):
-        golden = ura.with_suffix(".err")
-        out = tmp_out()
-        r = run(URA, ura, "-o", out)
-        try: os.unlink(out)
-        except OSError: pass
-        if r.returncode == 0:
-            return ("fail", f"{ura} (compiled, expected error)")
-        if golden.exists() and r.stderr.splitlines() == golden.read_text().splitlines():
-            return ("pass", str(ura))
-        return ("skip", str(ura))  # errors, but not this message → unimplemented feature
-    report("errors", parallel(ura_files(target, skip=("build", "runtime")), one))
-
-def test_runtime(target="tests/errors/runtime"):
-    def one(ura):
-        golden = ura.with_suffix(".run")
-        exe = tmp_out()
-        c = run(URA, ura, "-o", exe)
-        if c.returncode != 0:
-            return ("fail", f"{ura} (did not compile)")
-        r = run(exe)
-        try: os.unlink(exe)
-        except OSError: pass
-        actual = r.stderr + f"exit: {exit_code(r)}\n"
-        good = golden.exists() and actual == golden.read_text()
-        return ("pass" if good else "fail", str(ura))
-    report("runtime", parallel(ura_files(target, skip=("build",)), one))
-
-def tests():
-    mdtest("tests")
-
-def update_errors(target="tests/errors"):
-    for ura in ura_files(target, skip=("build", "runtime")):
-        ura.with_suffix(".err").write_text(run(URA, ura).stderr)
-        ok(f"wrote {ura.with_suffix('.err')}")
-
-def update_runtime(target="tests/errors/runtime"):
-    for ura in ura_files(target, skip=("build",)):
-        exe = tmp_out()
-        if run(URA, ura, "-o", exe).returncode != 0:
-            warn(f"skip {ura} (did not compile)"); continue
-        r = run(exe)
-        try: os.unlink(exe)
-        except OSError: pass
-        ura.with_suffix(".run").write_text(r.stderr + f"exit: {exit_code(r)}\n")
-        ok(f"wrote {ura.with_suffix('.run')}")
-
-def update_ll(target="tests"):
-    for ura in ura_files(target, skip=("build", "errors", "projects")):
-        golden = ura.with_suffix(".ll")
-        if not golden.exists():
-            continue
-        run(URA, ura)
-        got = ura.parent / "build" / f"{ura.stem}.ll"
-        if not got.exists():
-            continue
-        golden.write_text("\n".join(l for l in got.read_text().splitlines()
-                                    if not l.startswith("target triple")) + "\n")
-        ok(f"wrote {golden}")
-
-def copy(file):
-    src = Path(file)
-    dest = src.read_text().splitlines()[0].removeprefix("//").strip()
-    target = Path("tests") / f"{dest}.ura"
-    target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy(src, target)
-    ll = src.with_suffix(".ll")
-    if ll.exists():
-        shutil.copy(ll, Path("tests") / f"{dest}.ll")
-    ok(f"copy: filed {file}")
 
 def install():
     if shutil.which("clang"):
@@ -348,19 +213,62 @@ def prune(src="tests-old"):
         except OSError: pass
     ok(f"pruned {removed} migrated files from {src}")
 
-def mdtest(target="tests"):
-    mds = [Path(target)] if str(target).endswith(".md") else sorted(Path(target).rglob("*.md"))
-    results = []
+def _group_header(md):
+    rel = md.relative_to("tests").with_suffix("") if "tests" in md.parts else md.with_suffix("").name
+    console.print(f"[env]{rel}[/]") if RICH else print(_c("env", str(rel)))
+
+def _row(status, label):
+    tag = ("[ok]PASS[/]" if status == "pass" else "[fail]FAIL[/]") if RICH else \
+          (_c("ok", "PASS") if status == "pass" else _c("fail", "FAIL"))
+    (console.print if RICH else print)(f"  {tag}  {label}")
+
+def _summary(p, f, sk):
+    passed = f"[ok]{p} passed[/]" if RICH else _c("ok", f"{p} passed")
+    failed = (f"[fail]{f} failed[/]" if f else "[dim]0 failed[/]") if RICH else \
+             (_c("fail", f"{f} failed") if f else _c("dim", "0 failed"))
+    head = "[env]tests[/]" if RICH else _c("env", "tests")
+    line = f"{head}  {passed} · {failed}"
+    if sk:
+        line += f" · [dim]{sk} skipped[/]" if RICH else " · " + _c("dim", f"{sk} skipped")
+    (console.print if RICH else print)(line)
+
+def _resolve(target):
+    if not target:
+        return Path("tests")
+    for cand in (Path(target), Path(target).with_suffix(".md"),
+                 Path("tests") / target, (Path("tests") / target).with_suffix(".md")):
+        if cand.exists():
+            return cand
+    return None
+
+def _run_case(case, is_error):
+    got = _actual(case['ura'], case['name'].split()[0], is_error)
+    bad = next((t for t in ("ll", "out", "err") if got[t].strip() != case.get(t, "").strip()), None)
+    return case, bad
+
+def tests(target=None):
+    """run .md tests — no arg = all of tests/ · a dir = its .md files · a .md file = just that one."""
+    root = _resolve(target)
+    if root is None:
+        err(f"no such test path: {target}"); return
+    mds = [root] if root.suffix == ".md" else sorted(root.rglob("*.md"))
+    p = f = sk = 0
     for md in mds:
         is_error = "errors" in md.parts
-        for case in parse_md(md):
-            want = {t: case.get(t, "").strip() for t in ("ll", "out", "err")}
-            if not any(want.values()):
-                results.append(("skip", case['name'])); continue
-            got = _actual(case['ura'], case['name'].split()[0], is_error)
-            bad = next((t for t in ("ll", "out", "err") if got[t].strip() != want[t]), None)
-            results.append(("fail", f"{case['name']} ({bad})") if bad else ("pass", case['name']))
-    report("mdtest", results)
+        cases = parse_md(md)
+        runnable = [c for c in cases if any(c.get(t, "").strip() for t in ("ll", "out", "err"))]
+        sk += len(cases) - len(runnable)
+        if not runnable:
+            continue
+        _group_header(md)
+        with ThreadPoolExecutor() as ex:
+            for fut in as_completed([ex.submit(_run_case, c, is_error) for c in runnable]):
+                case, bad = fut.result()
+                if bad:
+                    f += 1; _row("fail", f"{case['name']} ({bad})")
+                else:
+                    p += 1; _row("pass", case['name'])
+    _summary(p, f, sk)
 
 def update(target="tests"):
     """Regenerate out/err/ll goldens in place for every case in the target .md file(s)."""
@@ -394,24 +302,27 @@ def index(group):
 # ---------------------------------------------------------------- dispatch + shell
 
 TASKS = {
-    "check": check, "build": build, "install": install, "copy": copy,
-    "test": test, "test_errors": test_errors, "test_runtime": test_runtime, "tests": tests,
-    "update_errors": update_errors, "update_runtime": update_runtime, "update_ll": update_ll,
-    "migrate": migrate, "rebuild": rebuild, "prune": prune, "mdtest": mdtest, "update": update,
-    "show": show, "index": index,
+    "check": check, "build": build, "install": install, "tests": tests,
+    "update": update, "show": show, "index": index,
+    "migrate": migrate, "rebuild": rebuild, "prune": prune,
 }
 DESC = {
-    "check": "verify clang + llvm-config-14 are installed",
-    "build": "compile the ura compiler → build/ura",
-    "test": "diff .ll output vs goldens (unimplemented tests are skipped)",
-    "test_errors": "check compile-error messages vs .err goldens",
-    "test_runtime": "run programs, check stderr+exit vs .run goldens",
-    "tests": "run test + test_errors + test_runtime",
-    "update_errors": "regenerate .err goldens",
-    "update_runtime": "regenerate .run goldens",
-    "update_ll": "regenerate .ll goldens (file or folder)",
-    "copy": "file a scratch .ura+.ll into tests/ by its // header",
+    "check":   "verify clang + llvm-config-14 are installed",
+    "build":   "compile the ura compiler → build/ura",
     "install": "install clang + llvm@14 via brew/apt",
+    "tests":   "run .md tests — no arg = all · a dir or .md file = subset",
+    "update":  "regenerate a group's out/err/ll goldens",
+    "show":    "print one case — show <group>:<NNN>",
+    "index":   "list the case names in a group",
+    "migrate": "add newly-passing tests-old cases into tests/",
+    "rebuild": "migrate every tests-old group at once",
+    "prune":   "drop already-migrated cases from tests-old",
+}
+GROUPS = {
+    "build":   ["check", "build", "install"],
+    "test":    ["tests"],
+    "author":  ["update", "show", "index"],
+    "backlog": ["migrate", "rebuild", "prune"],
 }
 BUILTINS = {
     "cd": "change directory", "pwd": "print working directory", "help": "list commands",
@@ -431,17 +342,19 @@ def dispatch(name, *args):
     fn(*args)
 
 def show_help():
+    shell = " · ".join(BUILTINS) + " · (else → your shell)"
     if RICH:
-        t = Table(box=box.SIMPLE, header_style="env")
-        t.add_column("command"); t.add_column("what it does", style="dim")
-        for name in TASKS:
-            t.add_row(name, DESC.get(name, ""))
-        for name, d in BUILTINS.items():
-            t.add_row(f"[dim]{name}[/]", d)
-        console.print(t)
+        for group, names in GROUPS.items():
+            console.print(f"[env]{group}[/]")
+            for name in names:
+                console.print(f"  [ok]{name:9}[/] [dim]{DESC.get(name, '')}[/]")
+        console.print(f"[env]shell[/]\n  [dim]{shell}[/]")
     else:
-        for name in list(TASKS) + list(BUILTINS):
-            print(f"{name:16} {DESC.get(name) or BUILTINS.get(name, '')}")
+        for group, names in GROUPS.items():
+            print(_c("env", group))
+            for name in names:
+                print(f"  {_c('ok', f'{name:9}')} {_c('dim', DESC.get(name, ''))}")
+        print(_c("env", "shell") + "\n  " + _c("dim", shell))
 
 def run_line(line):
     parts = line.split()
@@ -480,18 +393,19 @@ def refresh_context():
     STATE["fresh"] = ura_fresh()
 
 def banner():
-    clang = "yes" if shutil.which("clang") else "no"
+    clang = "✓" if shutil.which("clang") else "✗"
+    meta = f"LLVM {llvm_version()} · clang {clang} · git {git_branch() or '—'}"
+    keys = "⇥ complete · ↑ history · ^D exit · type help"
     if RICH:
-        body = (f"[dim]LLVM[/] {llvm_version()} · [dim]clang[/] {clang} · [dim]git[/] {git_branch() or '—'}\n\n"
-                f"[env]tasks[/]  " + " · ".join(TASKS) + "\n"
-                f"[env]shell[/]  cd · pwd · git · clang … run as commands\n"
-                f"[env]keys[/]   Tab complete · ↑ history · Ctrl-D exit")
-        console.print(Panel(body, title="ura-lang task shell", border_style="env", expand=False))
+        rows = "\n".join(f"[env]{g:8}[/] {' · '.join(names)}" for g, names in GROUPS.items())
+        body = f"[dim]{meta}[/]\n\n{rows}\n\n[dim]{keys}[/]"
+        console.print(Panel(body, title="ura · task shell", border_style="env", expand=False))
     else:
         e, d, r = ANSI["env"], ANSI["dim"], ANSI["reset"]
-        print(f"{e}ura-lang task shell{r}  {d}LLVM {llvm_version()} · clang {clang} · git {git_branch() or '—'}{r}")
-        print(f"{e}tasks{r}  " + " · ".join(TASKS))
-        print(f"{d}cd · pwd · git … run as commands · type help · quit{r}")
+        print(f"{e}ura · task shell{r}  {d}{meta}{r}")
+        for g, names in GROUPS.items():
+            print(f"{e}{g:8}{r} " + " · ".join(names))
+        print(f"{d}{keys}{r}")
 
 def goodbye():
     console.print("[dim]left the ura environment[/]") if RICH else print(_c("dim", "left the ura environment"))
@@ -631,7 +545,7 @@ def activate_env():
 if __name__ == "__main__":
     activate_env()
     if not RICH:
-        print(_c("dim", "tip: run `uv run tasks.py` (not python3) for colors + the full shell"), file=sys.stderr)
+        print(_c("dim", "tip: launch with `uv run tasks.py` for colors + the interactive shell"), file=sys.stderr)
     if len(sys.argv) > 1:
         dispatch(*sys.argv[1:])
     elif sys.stdin.isatty():
