@@ -4,6 +4,7 @@
 
 - 001 — void fn: announce dungeon floor
 - 002 — fn with return value + single-line fns
+- 003 — multi-fn: clamp, damage, is_dead
 - 004 — fn-typed value: assign top-level fn to a local, call indirectly
 - 005 — fn-typed parameter: callback passed to higher-order fn
 - 006 — return an integer literal
@@ -163,6 +164,121 @@ entry:
   %call3 = call i1 @is_boss_floor(i32 10)
   %bool_str4 = select i1 %call3, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str.6, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str.7, i32 0, i32 0)
   %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.9, i32 0, i32 0), i8* getelementptr inbounds ([16 x i8], [16 x i8]* @str.5, i32 0, i32 0), i8* %bool_str4, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.8, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 003 — multi-fn: clamp, damage, is_dead
+
+```ura
+// functions/basic/003.ura - multi-fn: clamp, damage, is_dead
+
+fn clamp(val int, lo int, hi int) int:
+    if val < lo:
+        return lo
+    if val > hi:
+        return hi
+    return val
+
+fn damage(atk int, def int) int:
+    return clamp(atk - def, 0, 999)
+
+fn is_dead(hp int) bool:
+    return hp <= 0
+
+main():
+    d int = damage(25, 8)
+    output("Orc takes ", d, " damage\n")
+    output("Orc dead: ", is_dead(d - 60), "\n")
+```
+
+```out
+Orc takes 17 damage
+Orc dead: True
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [11 x i8] c"Orc takes \00", align 1
+@str.1 = private unnamed_addr constant [9 x i8] c" damage\0A\00", align 1
+@fmt = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@str.2 = private unnamed_addr constant [11 x i8] c"Orc dead: \00", align 1
+@true_str = private unnamed_addr constant [5 x i8] c"True\00", align 1
+@false_str = private unnamed_addr constant [6 x i8] c"False\00", align 1
+@str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.4 = private unnamed_addr constant [7 x i8] c"%s%s%s\00", align 1
+
+define i32 @clamp(i32 %0, i32 %1, i32 %2) {
+entry:
+  %val = alloca i32, align 4
+  store i32 %0, i32* %val, align 4
+  %lo = alloca i32, align 4
+  store i32 %1, i32* %lo, align 4
+  %hi = alloca i32, align 4
+  store i32 %2, i32* %hi, align 4
+  %val1 = load i32, i32* %val, align 4
+  %lo2 = load i32, i32* %lo, align 4
+  %lt = icmp slt i32 %val1, %lo2
+  br i1 %lt, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %val6 = load i32, i32* %val, align 4
+  %hi7 = load i32, i32* %hi, align 4
+  %gt = icmp sgt i32 %val6, %hi7
+  br i1 %gt, label %then5, label %endif4
+
+then:                                             ; preds = %entry
+  %lo3 = load i32, i32* %lo, align 4
+  ret i32 %lo3
+
+endif4:                                           ; preds = %endif
+  %val9 = load i32, i32* %val, align 4
+  ret i32 %val9
+
+then5:                                            ; preds = %endif
+  %hi8 = load i32, i32* %hi, align 4
+  ret i32 %hi8
+}
+
+define i32 @damage(i32 %0, i32 %1) {
+entry:
+  %atk = alloca i32, align 4
+  store i32 %0, i32* %atk, align 4
+  %def = alloca i32, align 4
+  store i32 %1, i32* %def, align 4
+  %atk1 = load i32, i32* %atk, align 4
+  %def2 = load i32, i32* %def, align 4
+  %sub = sub i32 %atk1, %def2
+  %call = call i32 @clamp(i32 %sub, i32 0, i32 999)
+  ret i32 %call
+}
+
+define i1 @is_dead(i32 %0) {
+entry:
+  %hp = alloca i32, align 4
+  store i32 %0, i32* %hp, align 4
+  %hp1 = load i32, i32* %hp, align 4
+  %le = icmp sle i32 %hp1, 0
+  ret i1 %le
+}
+
+define i32 @main() {
+entry:
+  %d = alloca i32, align 4
+  %call = call i32 @damage(i32 25, i32 8)
+  store i32 %call, i32* %d, align 4
+  %d1 = load i32, i32* %d, align 4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str, i32 0, i32 0), i32 %d1, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.1, i32 0, i32 0))
+  %d2 = load i32, i32* %d, align 4
+  %sub = sub i32 %d2, 60
+  %call3 = call i1 @is_dead(i32 %sub)
+  %bool_str = select i1 %call3, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str, i32 0, i32 0)
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.4, i32 0, i32 0), i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.2, i32 0, i32 0), i8* %bool_str, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
   ret i32 0
 }
 

@@ -1037,6 +1037,13 @@ void parse_type(Token *target) {
 	}
 }
 
+void parse_block(Node *node, int indent) {
+	while (within(indent)) {
+		resize_array(node->children, Node*);
+		node->children[node->children_count++] = expr_node(0);
+	}
+}
+
 Node *fdec_node(Node *node) {
 	node->token->type = FDEC;
 	enter_scope(node);
@@ -1076,10 +1083,7 @@ Node *fdec_node(Node *node) {
 		if (!find(DOTS, 0))
 			parse_error(node->token, "Expected ':' after function %s", node->token->name);
 
-		while(within(node->token->indent)) {
-			resize_array(node->children, Node*);
-			node->children[node->children_count++] = expr_node(0);
-		}
+		parse_block(node, node->token->indent);
 	}
 
 	exit_scope();
@@ -1548,6 +1552,30 @@ void code_gen_fcall(Node *node) {
       token->llvm.elem = LLVMBuildCall2(ura.builder, fn->llvm.func_type, fn->llvm.elem, args, n, name);
    }
    free(args);
+}
+
+void code_gen_if(Node *node) {
+   Value fn  = LLVMGetBasicBlockParent(LLVMGetInsertBlock(ura.builder));
+   Block end = LLVMAppendBasicBlockInContext(ura.context, fn, "endif");
+   for (Node *cur = node; cur; cur = cur->right) {
+      if (cur->token->type == ELSE) {
+         for (int i = 0; i < cur->children_count; i++) code_gen(cur->children[i]);
+         if (!LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ura.builder)))
+            LLVMBuildBr(ura.builder, end);
+         break;
+      }
+		// elif
+      Block body = LLVMAppendBasicBlockInContext(ura.context, fn, "then");
+      Block next = cur->right ? LLVMAppendBasicBlockInContext(ura.context, fn, "next") : end;
+      code_gen(cur->left);
+      LLVMBuildCondBr(ura.builder, cur->left->token->llvm.elem, body, next);
+      LLVMPositionBuilderAtEnd(ura.builder, body);
+      for (int i = 0; i < cur->children_count; i++) code_gen(cur->children[i]);
+      if (!LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ura.builder)))
+         LLVMBuildBr(ura.builder, end);
+      LLVMPositionBuilderAtEnd(ura.builder, next);
+   }
+   LLVMPositionBuilderAtEnd(ura.builder, end);
 }
 
 void code_gen_assign(Node *node) {

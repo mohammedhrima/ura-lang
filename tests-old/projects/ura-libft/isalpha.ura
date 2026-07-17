@@ -1,8 +1,0 @@
-// libft/isalpha.ura
-fn isalpha(c char) bool: return c >= 'a' and c <= 'z'
-
-main():
-    if isalpha('1'):
-        output("is alpha\n")
-    else:
-        output("is not alpha\n")
