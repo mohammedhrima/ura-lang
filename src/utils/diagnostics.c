@@ -279,6 +279,7 @@ void print_node_label(Node *node) {
 		printf(")");
 		break;
 	}
+	case STRUCT_DEF: printf("struct %s", token->name); return;
 	case DOT:   printf(".%s", token->name); break;
 	default:    printf("%s", spelling[token->type] ? spelling[token->type] : to_string(token->type));
 	}

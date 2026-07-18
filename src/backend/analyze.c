@@ -74,11 +74,13 @@ Token *find_variable(char *name, bool *captured) {
 	for (int i = ura.scopes_count; i >= 0; i--) {
 		Node *scope = ura.scopes[i];
 		if (!scope) continue;
-		for (int j = 0; j < scope->variables_count; j++)
-			if (scope->variables[j]->name && strcmp(scope->variables[j]->name, name) == 0) {
-				if (captured) *captured = passed_function && scope->token->type == FDEC;
-				return scope->variables[j];
-			}
+		for (int j = 0; j < scope->variables_count; j++) {
+			char *current = scope->variables[j]->name;
+			if (!current || strcmp(current, name) != 0) continue;
+			bool from_outer_fn = passed_function && scope->token->type == FDEC;
+			if (captured) *captured = from_outer_fn;
+			return scope->variables[j];
+		}
 		if (scope->token->type == FDEC) passed_function = true;
 	}
 	if (captured) *captured = false;
@@ -95,13 +97,39 @@ void declare_function(Node *fn) {
 	ura.scope->functions[ura.scope->functions_count++] = fn;
 }
 
+void declare_struct(Node *node) {
+	Token *token = node->token;
+	for (int i = 0; i < ura.scope->structs_count; i++)
+		if (strcmp(ura.scope->structs[i]->token->name, token->name) == 0) {
+			parse_error(token, "Redeclaration of struct '%s'", token->name);
+			return;
+		}
+	resize_array(ura.scope->structs, Node *);
+	ura.scope->structs[ura.scope->structs_count++] = node;
+}
+
+Node *find_struct(char *name) {
+	for (int i = ura.scopes_count; i >= 0; i--) {
+		Node *scope = ura.scopes[i];
+		if (!scope) continue;
+		for (int j = 0; j < scope->structs_count; j++) {
+			char *current = scope->structs[j]->token->name;
+			if (current && strcmp(current, name) == 0)
+				return scope->structs[j];
+		}
+	}
+	return NULL;
+}
+
 Node *find_function(char *name) {
 	for (int i = ura.scopes_count; i >= 0; i--) {
 		Node *scope = ura.scopes[i];
 		if (!scope) continue;
-		for (int j = 0; j < scope->functions_count; j++)
-			if (scope->functions[j]->token->name && strcmp(scope->functions[j]->token->name, name) == 0)
+		for (int j = 0; j < scope->functions_count; j++) {
+			char *current = scope->functions[j]->token->name;
+			if (current && strcmp(current, name) == 0)
 				return scope->functions[j];
+		}
 	}
 	return NULL;
 }
@@ -119,6 +147,13 @@ void analyze_fdec(Node *node) {
    for (int i = 0; i < node->children_count; i++)
       if (node->children[i]->token->type == FDEC)
          declare_function(node->children[i]);
+   for (int i = 0; i < node->children_count; i++)
+      analyze(node->children[i]);
+   exit_scope();
+}
+
+void analyze_struct(Node *node) {
+   enter_scope(node);
    for (int i = 0; i < node->children_count; i++)
       analyze(node->children[i]);
    exit_scope();
@@ -161,7 +196,10 @@ void analyze_fcall(Node *node) {
       return;
    }
    Node *fn = find_function(token->name);
-   if (!fn) { parse_error(token, "Undeclared function '%s'", token->name); return; }
+   if (!fn) { 
+      parse_error(token, "Undeclared function '%s'", token->name); 
+      return; 
+   }
    token->Fcall.ptr = fn;
    for (int i = 0; i < node->children_count; i++)
       analyze(node->children[i]);
@@ -191,6 +229,7 @@ void analyze(Node *node) {
    Token *token = node->token;
    switch (token->type) {
       case FDEC:   analyze_fdec(node); break;
+      case STRUCT_DEF: analyze_struct(node); break;
       case ID:     analyze_id(node); break;
       case INT: case BOOL: case CHARS: case CHAR: case FLOAT: break;
       case RETURN: analyze(node->left); break;
