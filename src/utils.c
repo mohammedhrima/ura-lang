@@ -6,7 +6,7 @@ char *to_string(Type type) {
 	    [INT] = "INT", [BOOL] = "BOOL", [LONG] = "LONG", [FLOAT] = "FLOAT",
 	    [FDEC] = "FDEC", [FCALL] = "CALL", [END] = "END", [LPAR] = "LPAR",
 	    [RPAR] = "RPAR", [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
-	    [WHILE] = "WHILE", [FOR] = "FOR", [TO] = "TO",
+	    [WHILE] = "WHILE", [FOR] = "FOR", [TO] = "TO", [LOOP] = "LOOP",
 	    [STEP] = "STEP", [IN] = "IN", [BREAK] = "BRK", [CONTINUE] = "CONT",
 	    [MATCH] = "MATCH", [CASE] = "CASE", [DEFAULT] = "DEFAULT",
 	    [SHORT] = "SHORT", [RETURN] = "RET", [BAND] = "BAND", [BOR] = "BOR",
@@ -966,21 +966,24 @@ Token *parse_token(int line, int s, int e, Type type, int indent) {
 		}
 
 		static const Keyword keywords[] = {
-			{"int", INT, 1, 1},           {"bool", BOOL, 1, 1},			{"chars", CHARS, 1, 1},       
-			{"char", CHAR, 1, 1},			{"float", FLOAT, 1, 1},       {"void", VOID, 1, 1},
-			{"long", LONG, 1, 1},         {"pointer", CHARS, 1, 1},		{"short", SHORT, 1, 1},       
-			{"if", IF, 0, 0},					{"elif", ELIF, 0, 0},         {"else", ELSE, 0, 0},
-			{"while", WHILE, 0, 0},       {"for", FOR, 0, 0},				{"to", TO, 0, 0},
-			{"step", STEP, 0, 0},			{"in", IN, 0, 0},             {"fn", FDEC, 0, 0},
-			{"return", RETURN, 0, 0},     {"break", BREAK, 0, 0},			{"continue", CONTINUE, 0, 0},
-			{"match", MATCH, 0, 0},			{"case", CASE, 0, 0},         {"default", DEFAULT, 0, 0},
-			{"ref", REF, 0, 0},				{"struct", STRUCT_DEF, 0, 0}, {"enum", ENUM_DEF, 0, 0},
-			{"proto", PROTO, 0, 0},       {"mod", MODULE, 0, 0},			{"operator", OPERATOR, 0, 0}, 
-			{"as", AS, 0, 0},					{"pub", PUB, 0, 0},           {"clean", CLEAN, 0, 0},       
-			{"new", NEW, 0, 0},				{"and", AND, 0, 1},           {"or", OR, 0, 1},					
-			{"is", EQUAL, 0, 1},          {"not", NOT, 0, 1},				{"typeof", TYPEOF, 0, 1},     
-			{"sizeof", SIZEOF, 0, 1},		{"stack", STACK, 0, 1},       {"heap", HEAP, 0, 1},			
-			{"array", ARRAY_TYPE, 0, 1},  {"List", LIST_TYPE, 0, 1},		{"null", NULLABLE, 0, 1},
+			{"int", INT, 1, 1}, {"bool", BOOL, 1, 1}, {"chars", CHARS, 1, 1},
+			{"char", CHAR, 1, 1}, {"float", FLOAT, 1, 1}, {"void", VOID, 1, 1},
+			{"long", LONG, 1, 1}, {"pointer", CHARS, 1, 1}, {"short", SHORT, 1, 1},
+			{"if", IF, 0, 0}, {"elif", ELIF, 0, 0}, {"else", ELSE, 0, 0},
+			{"while", WHILE, 0, 0}, {"loop", LOOP, 0, 0}, {"for", FOR, 0, 0},
+			{"to", TO, 0, 0}, {"step", STEP, 0, 0}, {"in", IN, 0, 0},
+			{"fn", FDEC, 0, 0}, {"return", RETURN, 0, 0}, {"break", BREAK, 0, 0},
+			{"continue", CONTINUE, 0, 0}, {"match", MATCH, 0, 0},
+			{"case", CASE, 0, 0}, {"default", DEFAULT, 0, 0}, {"ref", REF, 0, 0},
+			{"struct", STRUCT_DEF, 0, 0}, {"enum", ENUM_DEF, 0, 0},
+			{"proto", PROTO, 0, 0}, {"mod", MODULE, 0, 0},
+			{"operator", OPERATOR, 0, 0}, {"as", AS, 0, 0}, {"pub", PUB, 0, 0},
+			{"clean", CLEAN, 0, 0}, {"new", NEW, 0, 0}, {"and", AND, 0, 1},
+			{"or", OR, 0, 1}, {"is", EQUAL, 0, 1}, {"not", NOT, 0, 1},
+			{"typeof", TYPEOF, 0, 1}, {"sizeof", SIZEOF, 0, 1},
+			{"stack", STACK, 0, 1}, {"heap", HEAP, 0, 1},
+			{"array", ARRAY_TYPE, 0, 1}, {"List", LIST_TYPE, 0, 1},
+			{"null", NULLABLE, 0, 1},
 		};
 
 		for (size_t i = 0; i < sizeof(keywords) / sizeof(*keywords); i++) {
@@ -1074,6 +1077,7 @@ int get_operation_precedence(Type type)
    case DIV_ASSIGN:  return 1;
    case MOD_ASSIGN:  return 1;
    case OR:          return 2;
+   case RANGE:       return 2;
    case AND:         return 3;
    case BOR:         return 4;
    case BXOR:        return 5;
@@ -1152,7 +1156,7 @@ void exit_scope() {
 Node *enclosing_continue() {
 	for (int i = ura.scopes_count; i >= 1; i--) {
 		if (!ura.scopes[i]) continue;
-		if (ura.scopes[i]->token->type == WHILE) return ura.scopes[i];
+		if (includes(ura.scopes[i]->token->type, WHILE, LOOP, FOR, 0)) return ura.scopes[i];
 		if (ura.scopes[i]->token->type == FDEC)  return NULL;
 	}
 	return NULL;
@@ -1161,7 +1165,7 @@ Node *enclosing_continue() {
 Node *enclosing_break() {
 	for (int i = ura.scopes_count; i >= 1; i--) {
 		if (!ura.scopes[i]) continue;
-		if (includes(ura.scopes[i]->token->type, WHILE, MATCH, 0)) return ura.scopes[i];
+		if (includes(ura.scopes[i]->token->type, WHILE, LOOP, FOR, MATCH, 0)) return ura.scopes[i];
 		if (ura.scopes[i]->token->type == FDEC) return NULL;
 	}
 	return NULL;
@@ -1371,6 +1375,24 @@ Node *while_node(Node *node) {
 	return node;
 }
 
+Node *for_node(Node *node) {
+	Token *token = node->token;
+	Token *iter  = find(ID, 0);
+	if (!iter) {
+		parse_error(token, "Expected a loop variable after 'for'");
+		return syntax_error();
+	}
+	iter->is_dec = true;
+	node->left   = new_node(iter);
+	if (!find(IN, 0))
+		parse_error(token, "Expected 'in' after 'for %s'", iter->name);
+	node->right = expr_node(0);
+	if (!find(DOTS, 0))
+		parse_error(token, "Expected ':' to open the 'for' body");
+	parse_block(node, token->indent);
+	return node;
+}
+
 Node *ref_node(Node *node) {
 	Token *token = node->token;
 	bool nullable = peek(0)->type == OPTIONAL;
@@ -1501,12 +1523,6 @@ Node *access_node(Node *node) {
 		Node  *access  = new_node(bracket);
 		access->left   = node;
 		access->right  = expr_node(0);
-		if (peek(0)->type == RANGE) {
-			Node *range   = new_node(next());
-			range->left   = access->right;
-			range->right  = expr_node(0);
-			access->right = range;
-		}
 		if (!find(RBRA, 0))
 			parse_error(bracket, "Expected ']' after array index");
 		if (find(OPTIONAL, 0))
@@ -2147,6 +2163,17 @@ void free_array(Value slice, Type sub, int depth) {
    LLVMBuildCall2(ura.builder, fty, get_or_declare("free", fty), (Value[]){ ptr }, 1, "");
 }
 
+void code_gen_typeof(Node *node) {
+   char *name = type_name(node->left->token->ret_type);
+   node->token->llvm.elem = LLVMBuildGlobalStringPtr(ura.builder, name, "typeof");
+}
+
+void code_gen_sizeof(Node *node) {
+   TypeRef t = llvm_type_of(node->left->token);
+   unsigned long long sz = LLVMABISizeOfType(LLVMGetModuleDataLayout(ura.module), t);
+   node->token->llvm.elem = LLVMConstInt(ura.i32, sz, 0);
+}
+
 void code_gen_clean(Node *node) {
    Token  *arr   = node->left->token;
    Value   slot  = address_of(node->left);
@@ -2245,6 +2272,125 @@ void code_gen_body(Node *node) {
       code_gen(node->children[i]);
       if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ura.builder))) break;
    }
+}
+
+void code_gen_loop(Node *node) {
+   Value fn   = LLVMGetBasicBlockParent(LLVMGetInsertBlock(ura.builder));
+   Block body = LLVMAppendBasicBlockInContext(ura.context, fn, "loop.body");
+   Block end  = LLVMAppendBasicBlockInContext(ura.context, fn, "loop.end");
+   node->token->llvm.start = body;
+   node->token->llvm.end   = end;
+   LLVMBuildBr(ura.builder, body);
+   LLVMPositionBuilderAtEnd(ura.builder, body);
+   enter_scope(node);
+   code_gen_body(node);
+   exit_scope();
+   if (!LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ura.builder)))
+      LLVMBuildBr(ura.builder, body);
+   LLVMPositionBuilderAtEnd(ura.builder, end);
+}
+
+void analyze_for(Node *node) {
+   enter_scope(node);
+   analyze(node->right);
+   Token *var = node->left->token;
+   Token *it  = node->right->token;
+   if (it->type == RANGE)
+      var->ret_type = INT;
+   else if (it->ret_type == ARRAY_TYPE) {
+      var->Array       = it->Array;
+      var->Array.depth = it->Array.depth - 1;
+      var->ret_type    = it->Array.depth > 1 ? ARRAY_TYPE : it->Array.sub_type;
+   }
+   declare_variable(var);
+   for (int i = 0; i < node->children_count; i++)
+      analyze(node->children[i]);
+   exit_scope();
+}
+
+void type_check_for(Node *node) {
+   type_check(node->right);
+   Token *iter = node->right->token;
+   if (iter->type != RANGE && iter->ret_type != ARRAY_TYPE)
+      parse_error(node->token, "'for %s in ...' expects a range (a..b) or an array", node->left->token->name);
+   for (int i = 0; i < node->children_count; i++)
+      type_check(node->children[i]);
+}
+
+void code_gen_for_array(Node *node) {
+   Token  *var  = node->left->token;
+   Token  *arr  = node->right->token;
+   code_gen(node->right);
+   Value   slice = arr->llvm.elem;
+   Value   data  = LLVMBuildExtractValue(ura.builder, slice, 0, "arr.data");
+   Value   len   = LLVMBuildExtractValue(ura.builder, slice, 1, "arr.len");
+   TypeRef elem  = arr->Array.depth > 1 ? array_type(arr->Array.sub_type, arr->Array.depth - 1)
+                                        : to_llvm_type(arr->Array.sub_type);
+   Value   fn    = LLVMGetBasicBlockParent(LLVMGetInsertBlock(ura.builder));
+   Value   idx   = LLVMBuildAlloca(ura.builder, ura.i64, "idx");
+   LLVMBuildStore(ura.builder, LLVMConstInt(ura.i64, 0, 0), idx);
+   Value   xslot = LLVMBuildAlloca(ura.builder, elem, var->name);
+   var->llvm.elem = xslot;
+   Block   cond  = LLVMAppendBasicBlockInContext(ura.context, fn, "for.cond");
+   Block   body  = LLVMAppendBasicBlockInContext(ura.context, fn, "for.body");
+   Block   inc   = LLVMAppendBasicBlockInContext(ura.context, fn, "for.inc");
+   Block   end   = LLVMAppendBasicBlockInContext(ura.context, fn, "for.end");
+   node->token->llvm.start = inc;
+   node->token->llvm.end   = end;
+   LLVMBuildBr(ura.builder, cond);
+   LLVMPositionBuilderAtEnd(ura.builder, cond);
+   Value   i = LLVMBuildLoad2(ura.builder, ura.i64, idx, "i");
+   LLVMBuildCondBr(ura.builder, LLVMBuildICmp(ura.builder, LLVMIntSLT, i, len, "more"), body, end);
+   LLVMPositionBuilderAtEnd(ura.builder, body);
+   Value   gep = LLVMBuildGEP2(ura.builder, elem, data, &i, 1, "elem");
+   LLVMBuildStore(ura.builder, LLVMBuildLoad2(ura.builder, elem, gep, "x"), xslot);
+   enter_scope(node);
+   code_gen_body(node);
+   exit_scope();
+   if (!LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ura.builder)))
+      LLVMBuildBr(ura.builder, inc);
+   LLVMPositionBuilderAtEnd(ura.builder, inc);
+   Value   iv = LLVMBuildLoad2(ura.builder, ura.i64, idx, "i");
+   LLVMBuildStore(ura.builder, LLVMBuildAdd(ura.builder, iv, LLVMConstInt(ura.i64, 1, 0), "next"), idx);
+   LLVMBuildBr(ura.builder, cond);
+   LLVMPositionBuilderAtEnd(ura.builder, end);
+}
+
+void code_gen_for(Node *node) {
+   if (node->right->token->type != RANGE) { code_gen_for_array(node); return; }
+   Token *var   = node->left->token;
+   Node  *range = node->right;
+   code_gen(range->left);
+   code_gen(range->right);
+   Value a    = LLVMBuildIntCast2(ura.builder, range->left->token->llvm.elem, ura.i32, 1, "a");
+   Value b    = LLVMBuildIntCast2(ura.builder, range->right->token->llvm.elem, ura.i32, 1, "b");
+   Value asc  = LLVMBuildICmp(ura.builder, LLVMIntSLT, a, b, "asc");
+   Value step = LLVMBuildSelect(ura.builder, asc, LLVMConstInt(ura.i32, 1, 0), LLVMConstInt(ura.i32, -1, 1), "step");
+   Value fn   = LLVMGetBasicBlockParent(LLVMGetInsertBlock(ura.builder));
+   Value slot = LLVMBuildAlloca(ura.builder, ura.i32, var->name);
+   LLVMBuildStore(ura.builder, a, slot);
+   var->llvm.elem = slot;
+   Block cond = LLVMAppendBasicBlockInContext(ura.context, fn, "for.cond");
+   Block body = LLVMAppendBasicBlockInContext(ura.context, fn, "for.body");
+   Block inc  = LLVMAppendBasicBlockInContext(ura.context, fn, "for.inc");
+   Block end  = LLVMAppendBasicBlockInContext(ura.context, fn, "for.end");
+   node->token->llvm.start = inc;
+   node->token->llvm.end   = end;
+   LLVMBuildBr(ura.builder, cond);
+   LLVMPositionBuilderAtEnd(ura.builder, cond);
+   Value i = LLVMBuildLoad2(ura.builder, ura.i32, slot, var->name);
+   LLVMBuildCondBr(ura.builder, LLVMBuildICmp(ura.builder, LLVMIntNE, i, b, "more"), body, end);
+   LLVMPositionBuilderAtEnd(ura.builder, body);
+   enter_scope(node);
+   code_gen_body(node);
+   exit_scope();
+   if (!LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ura.builder)))
+      LLVMBuildBr(ura.builder, inc);
+   LLVMPositionBuilderAtEnd(ura.builder, inc);
+   Value iv = LLVMBuildLoad2(ura.builder, ura.i32, slot, var->name);
+   LLVMBuildStore(ura.builder, LLVMBuildAdd(ura.builder, iv, step, "next"), slot);
+   LLVMBuildBr(ura.builder, cond);
+   LLVMPositionBuilderAtEnd(ura.builder, end);
 }
 
 void code_gen_while(Node *node) {
