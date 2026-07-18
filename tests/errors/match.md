@@ -54,7 +54,7 @@ main():
 ```
 
 ```err
-error: This case value is CHARS but the subject is INT; they must be the same type
+error: This case value is chars but the subject is int; they must be the same type
   002.ura:5:15
   |
 5 |         case "x":

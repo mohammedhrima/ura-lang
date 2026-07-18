@@ -15,6 +15,7 @@
 - 011 — heap array: new int[N], zero-init, write, clean
 - 012 — heap array with runtime size (new int[n]) + clean
 - 013 — clean nulls the array; a[i]? then traps (no use-after-free)
+- 014 — multi-dim heap: new int[N][M] + recursive clean
 
 ## 001 — 1D int array: literal, index read, indexed write
 
@@ -1430,4 +1431,180 @@ declare i64 @write(i32, i8*, i64)
 declare void @exit(i32)
 
 declare i32 @printf(i8*, ...)
+```
+
+## 014 — multi-dim heap: new int[N][M] + recursive clean
+
+```ura
+// arrays/014.ura - multi-dim heap: new int[N][M] + recursive clean
+
+main():
+    m int[][] = new int[2][3]
+    m[0][0] = 1
+    m[1][2] = 9
+    output("m[0][0]=", m[0][0], " m[1][2]=", m[1][2], " m[0][1]=", m[0][1], "\n")
+    clean m
+```
+
+```tree
+fn main() : int
+├─ = : ARRAY_TYPE
+│  ├─ m : ARRAY_TYPE
+│  └─ ARRAY : ARRAY_TYPE
+│     ├─ int 2
+│     └─ int 3
+├─ = : int
+│  ├─ ACC : int
+│  │  ├─ ACC : ARRAY_TYPE
+│  │  │  ├─ m : ARRAY_TYPE
+│  │  │  └─ int 0
+│  │  └─ int 0
+│  └─ int 1
+├─ = : int
+│  ├─ ACC : int
+│  │  ├─ ACC : ARRAY_TYPE
+│  │  │  ├─ m : ARRAY_TYPE
+│  │  │  └─ int 1
+│  │  └─ int 2
+│  └─ int 9
+├─ output : void
+│  ├─ chars "m[0][0]="
+│  ├─ ACC : int
+│  │  ├─ ACC : ARRAY_TYPE
+│  │  │  ├─ m : ARRAY_TYPE
+│  │  │  └─ int 0
+│  │  └─ int 0
+│  ├─ chars " m[1][2]="
+│  ├─ ACC : int
+│  │  ├─ ACC : ARRAY_TYPE
+│  │  │  ├─ m : ARRAY_TYPE
+│  │  │  └─ int 1
+│  │  └─ int 2
+│  ├─ chars " m[0][1]="
+│  ├─ ACC : int
+│  │  ├─ ACC : ARRAY_TYPE
+│  │  │  ├─ m : ARRAY_TYPE
+│  │  │  └─ int 0
+│  │  └─ int 1
+│  └─ chars "\n"
+└─ CLEAN : void
+   └─ m : ARRAY_TYPE
+```
+
+```out
+m[0][0]=1 m[1][2]=9 m[0][1]=0
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [9 x i8] c"m[0][0]=\00", align 1
+@str.1 = private unnamed_addr constant [10 x i8] c" m[1][2]=\00", align 1
+@str.2 = private unnamed_addr constant [10 x i8] c" m[0][1]=\00", align 1
+@str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [15 x i8] c"%s%d%s%d%s%d%s\00", align 1
+
+define i32 @main() {
+entry:
+  %m = alloca { { i32*, i64 }*, i64 }, align 8
+  %heap = call i8* @calloc(i64 2, i64 16)
+  %arr = bitcast i8* %heap to { i32*, i64 }*
+  %i = alloca i64, align 8
+  store i64 0, i64* %i, align 4
+  br label %arr.cond
+
+arr.cond:                                         ; preds = %arr.body, %entry
+  %i1 = load i64, i64* %i, align 4
+  %more = icmp slt i64 %i1, 2
+  br i1 %more, label %arr.body, label %arr.end
+
+arr.body:                                         ; preds = %arr.cond
+  %heap2 = call i8* @calloc(i64 3, i64 4)
+  %arr3 = bitcast i8* %heap2 to i32*
+  %arr.ptr = insertvalue { i32*, i64 } undef, i32* %arr3, 0
+  %arr.len = insertvalue { i32*, i64 } %arr.ptr, i64 3, 1
+  %i4 = load i64, i64* %i, align 4
+  %arr.slot = getelementptr { i32*, i64 }, { i32*, i64 }* %arr, i64 %i4
+  store { i32*, i64 } %arr.len, { i32*, i64 }* %arr.slot, align 8
+  %next = add i64 %i4, 1
+  store i64 %next, i64* %i, align 4
+  br label %arr.cond
+
+arr.end:                                          ; preds = %arr.cond
+  %arr.ptr5 = insertvalue { { i32*, i64 }*, i64 } undef, { i32*, i64 }* %arr, 0
+  %arr.len6 = insertvalue { { i32*, i64 }*, i64 } %arr.ptr5, i64 2, 1
+  store { { i32*, i64 }*, i64 } %arr.len6, { { i32*, i64 }*, i64 }* %m, align 8
+  %m7 = load { { i32*, i64 }*, i64 }, { { i32*, i64 }*, i64 }* %m, align 8
+  %arr.data = extractvalue { { i32*, i64 }*, i64 } %m7, 0
+  %arr.at = getelementptr { i32*, i64 }, { i32*, i64 }* %arr.data, i32 0
+  %idx = load { i32*, i64 }, { i32*, i64 }* %arr.at, align 8
+  %arr.data8 = extractvalue { i32*, i64 } %idx, 0
+  %arr.at9 = getelementptr i32, i32* %arr.data8, i32 0
+  store i32 1, i32* %arr.at9, align 4
+  %m10 = load { { i32*, i64 }*, i64 }, { { i32*, i64 }*, i64 }* %m, align 8
+  %arr.data11 = extractvalue { { i32*, i64 }*, i64 } %m10, 0
+  %arr.at12 = getelementptr { i32*, i64 }, { i32*, i64 }* %arr.data11, i32 1
+  %idx13 = load { i32*, i64 }, { i32*, i64 }* %arr.at12, align 8
+  %arr.data14 = extractvalue { i32*, i64 } %idx13, 0
+  %arr.at15 = getelementptr i32, i32* %arr.data14, i32 2
+  store i32 9, i32* %arr.at15, align 4
+  %m16 = load { { i32*, i64 }*, i64 }, { { i32*, i64 }*, i64 }* %m, align 8
+  %arr.data17 = extractvalue { { i32*, i64 }*, i64 } %m16, 0
+  %arr.at18 = getelementptr { i32*, i64 }, { i32*, i64 }* %arr.data17, i32 0
+  %idx19 = load { i32*, i64 }, { i32*, i64 }* %arr.at18, align 8
+  %arr.data20 = extractvalue { i32*, i64 } %idx19, 0
+  %arr.at21 = getelementptr i32, i32* %arr.data20, i32 0
+  %idx22 = load i32, i32* %arr.at21, align 4
+  %m23 = load { { i32*, i64 }*, i64 }, { { i32*, i64 }*, i64 }* %m, align 8
+  %arr.data24 = extractvalue { { i32*, i64 }*, i64 } %m23, 0
+  %arr.at25 = getelementptr { i32*, i64 }, { i32*, i64 }* %arr.data24, i32 1
+  %idx26 = load { i32*, i64 }, { i32*, i64 }* %arr.at25, align 8
+  %arr.data27 = extractvalue { i32*, i64 } %idx26, 0
+  %arr.at28 = getelementptr i32, i32* %arr.data27, i32 2
+  %idx29 = load i32, i32* %arr.at28, align 4
+  %m30 = load { { i32*, i64 }*, i64 }, { { i32*, i64 }*, i64 }* %m, align 8
+  %arr.data31 = extractvalue { { i32*, i64 }*, i64 } %m30, 0
+  %arr.at32 = getelementptr { i32*, i64 }, { i32*, i64 }* %arr.data31, i32 0
+  %idx33 = load { i32*, i64 }, { i32*, i64 }* %arr.at32, align 8
+  %arr.data34 = extractvalue { i32*, i64 } %idx33, 0
+  %arr.at35 = getelementptr i32, i32* %arr.data34, i32 1
+  %idx36 = load i32, i32* %arr.at35, align 4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str, i32 0, i32 0), i32 %idx22, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.1, i32 0, i32 0), i32 %idx29, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.2, i32 0, i32 0), i32 %idx36, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
+  %arr37 = load { { i32*, i64 }*, i64 }, { { i32*, i64 }*, i64 }* %m, align 8
+  %arr.data38 = extractvalue { { i32*, i64 }*, i64 } %arr37, 0
+  %arr.len39 = extractvalue { { i32*, i64 }*, i64 } %arr37, 1
+  %i40 = alloca i64, align 8
+  store i64 0, i64* %i40, align 4
+  br label %free.cond
+
+free.cond:                                        ; preds = %free.body, %arr.end
+  %i41 = load i64, i64* %i40, align 4
+  %more42 = icmp slt i64 %i41, %arr.len39
+  br i1 %more42, label %free.body, label %free.end
+
+free.body:                                        ; preds = %free.cond
+  %free.slot = getelementptr { i32*, i64 }, { i32*, i64 }* %arr.data38, i64 %i41
+  %inner = load { i32*, i64 }, { i32*, i64 }* %free.slot, align 8
+  %arr.data43 = extractvalue { i32*, i64 } %inner, 0
+  %free.ptr = bitcast i32* %arr.data43 to i8*
+  call void @free(i8* %free.ptr)
+  %i44 = load i64, i64* %i40, align 4
+  %next45 = add i64 %i44, 1
+  store i64 %next45, i64* %i40, align 4
+  br label %free.cond
+
+free.end:                                         ; preds = %free.cond
+  %free.ptr46 = bitcast { i32*, i64 }* %arr.data38 to i8*
+  call void @free(i8* %free.ptr46)
+  store { { i32*, i64 }*, i64 } zeroinitializer, { { i32*, i64 }*, i64 }* %m, align 8
+  ret i32 0
+}
+
+declare i8* @calloc(i64, i64)
+
+declare i32 @printf(i8*, ...)
+
+declare void @free(i8*)
 ```

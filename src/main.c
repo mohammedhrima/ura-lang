@@ -286,7 +286,7 @@ void type_check(Node *node) {
          Type src = node->left->token->ret_type;
          Type dst = node->right->token->ret_type;
          if ((src && !includes(src, NUMERIC_TYPES, 0)) || !includes(dst, NUMERIC_TYPES, 0))
-            parse_error(token, "Cannot cast %s to %s", to_string(src), to_string(dst));
+            parse_error(token, "Cannot cast %s to %s", type_name(src), type_name(dst));
          token->ret_type = dst;
          break;
       }

@@ -361,6 +361,7 @@ Node *array_lit_node(Node *node);
 Node *array_ctor_node(Node *node);
 void type_check_array_ctor(Node *node);
 void code_gen_array_ctor(Node *node);
+void free_array(Value slice, Type sub, int depth);
 void code_gen_clean(Node *node);
 Value make_slice(Type sub, int depth, Value data, Value len);
 Value build_array(Type sub, Value *dims, int depth, bool heap);
@@ -379,6 +380,7 @@ Node *expr_node(int min_op);
 int get_operation_precedence(Type type);
 
 char *to_string(Type type);
+char *type_name(Type type);
 int _vprint(File out, const char *conv, va_list args);
 int parse_escape_seq(char *input, int s, int e, char *buf, int *ptr);
 bool within(int indent);
