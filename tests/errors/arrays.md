@@ -11,6 +11,8 @@
 - 007 — missing closing bracket on index
 - 008 — empty array literal has no element type
 - 009 — range bounds must be integers
+- 010 — .len on a non-array
+- 011 — unknown member
 
 ## 001 — indexing a non-array
 
@@ -228,6 +230,56 @@ error: Range bounds must be integers
   |
 3 |     mid int[] = a[1.5..3]
   |                      ^^
+```
+
+```ll
+```
+
+## 010 — .len on a non-array
+
+```ura
+main():
+    x int = 5
+    output(x.len)
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: '.len' is only valid on an array, not int
+  010.ura:3:13
+  |
+3 |     output(x.len)
+  |             ^
+```
+
+```ll
+```
+
+## 011 — unknown member
+
+```ura
+main():
+    a int[] = [1, 2, 3]
+    output(a.size)
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Unknown member '.size'
+  011.ura:3:13
+  |
+3 |     output(a.size)
+  |             ^
 ```
 
 ```ll

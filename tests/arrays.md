@@ -18,6 +18,7 @@
 - 014 — multi-dim heap: new int[N][M] + recursive clean
 - 015 — slice a[1..4] is a view (shared storage, exclusive end)
 - 016 — ? on a slice traps when the range is out of bounds
+- 017 — arr.len on stack, heap, slice, and multi-dim
 
 ## 001 — 1D int array: literal, index read, indexed write
 
@@ -1833,4 +1834,162 @@ declare i64 @write(i32, i8*, i64)
 declare void @exit(i32)
 
 declare i32 @printf(i8*, ...)
+```
+
+## 017 — arr.len on stack, heap, slice, and multi-dim
+
+```ura
+// arrays/017.ura - arr.len reads the fat-pointer length (int)
+
+main():
+    nums int[] = [10, 20, 30, 40]
+    output("len = ", nums.len, "\n")
+    mid int[] = nums[1..3]
+    output("slice len = ", mid.len, "\n")
+    grid int[][] = int[3][4]
+    output("rows = ", grid.len, " cols = ", grid[0].len, "\n")
+```
+
+```tree
+fn main() : int
+├─ = : ARRAY_TYPE
+│  ├─ nums : ARRAY_TYPE
+│  └─ ARRAY_LIT : ARRAY_TYPE
+│     ├─ int 10
+│     ├─ int 20
+│     ├─ int 30
+│     └─ int 40
+├─ output : void
+│  ├─ chars "len = "
+│  ├─ DOT : int
+│  │  └─ nums : ARRAY_TYPE
+│  └─ chars "\n"
+├─ = : ARRAY_TYPE
+│  ├─ mid : ARRAY_TYPE
+│  └─ ACC : ARRAY_TYPE
+│     ├─ nums : ARRAY_TYPE
+│     └─ RANGE : int
+│        ├─ int 1
+│        └─ int 3
+├─ output : void
+│  ├─ chars "slice len = "
+│  ├─ DOT : int
+│  │  └─ mid : ARRAY_TYPE
+│  └─ chars "\n"
+├─ = : ARRAY_TYPE
+│  ├─ grid : ARRAY_TYPE
+│  └─ ARRAY : ARRAY_TYPE
+│     ├─ int 3
+│     └─ int 4
+└─ output : void
+   ├─ chars "rows = "
+   ├─ DOT : int
+   │  └─ grid : ARRAY_TYPE
+   ├─ chars " cols = "
+   ├─ DOT : int
+   │  └─ ACC : ARRAY_TYPE
+   │     ├─ grid : ARRAY_TYPE
+   │     └─ int 0
+   └─ chars "\n"
+```
+
+```out
+len = 4
+slice len = 2
+rows = 3 cols = 4
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [7 x i8] c"len = \00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@str.2 = private unnamed_addr constant [13 x i8] c"slice len = \00", align 1
+@str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.4 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@str.5 = private unnamed_addr constant [8 x i8] c"rows = \00", align 1
+@str.6 = private unnamed_addr constant [9 x i8] c" cols = \00", align 1
+@str.7 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.8 = private unnamed_addr constant [11 x i8] c"%s%d%s%d%s\00", align 1
+
+define i32 @main() {
+entry:
+  %nums = alloca { i32*, i64 }, align 8
+  %arr = alloca i32, i64 4, align 4
+  %arr.init = getelementptr i32, i32* %arr, i64 0
+  store i32 10, i32* %arr.init, align 4
+  %arr.init1 = getelementptr i32, i32* %arr, i64 1
+  store i32 20, i32* %arr.init1, align 4
+  %arr.init2 = getelementptr i32, i32* %arr, i64 2
+  store i32 30, i32* %arr.init2, align 4
+  %arr.init3 = getelementptr i32, i32* %arr, i64 3
+  store i32 40, i32* %arr.init3, align 4
+  %arr.ptr = insertvalue { i32*, i64 } undef, i32* %arr, 0
+  %arr.len = insertvalue { i32*, i64 } %arr.ptr, i64 4, 1
+  store { i32*, i64 } %arr.len, { i32*, i64 }* %nums, align 8
+  %nums4 = load { i32*, i64 }, { i32*, i64 }* %nums, align 8
+  %len = extractvalue { i32*, i64 } %nums4, 1
+  %len5 = trunc i64 %len to i32
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i32 %len5, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  %mid = alloca { i32*, i64 }, align 8
+  %nums6 = load { i32*, i64 }, { i32*, i64 }* %nums, align 8
+  %arr.data = extractvalue { i32*, i64 } %nums6, 0
+  %slice.data = getelementptr i32, i32* %arr.data, i64 1
+  %arr.ptr7 = insertvalue { i32*, i64 } undef, i32* %slice.data, 0
+  %arr.len8 = insertvalue { i32*, i64 } %arr.ptr7, i64 2, 1
+  store { i32*, i64 } %arr.len8, { i32*, i64 }* %mid, align 8
+  %mid9 = load { i32*, i64 }, { i32*, i64 }* %mid, align 8
+  %len10 = extractvalue { i32*, i64 } %mid9, 1
+  %len11 = trunc i64 %len10 to i32
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.4, i32 0, i32 0), i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str.2, i32 0, i32 0), i32 %len11, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
+  %grid = alloca { { i32*, i64 }*, i64 }, align 8
+  %arr12 = alloca { i32*, i64 }, i64 3, align 8
+  %i = alloca i64, align 8
+  store i64 0, i64* %i, align 4
+  br label %arr.cond
+
+arr.cond:                                         ; preds = %arr.body, %entry
+  %i13 = load i64, i64* %i, align 4
+  %more = icmp slt i64 %i13, 3
+  br i1 %more, label %arr.body, label %arr.end
+
+arr.body:                                         ; preds = %arr.cond
+  %arr14 = alloca i32, i64 4, align 4
+  %2 = bitcast i32* %arr14 to i8*
+  call void @llvm.memset.p0i8.i64(i8* %2, i8 0, i64 16, i1 false)
+  %arr.ptr15 = insertvalue { i32*, i64 } undef, i32* %arr14, 0
+  %arr.len16 = insertvalue { i32*, i64 } %arr.ptr15, i64 4, 1
+  %i17 = load i64, i64* %i, align 4
+  %arr.slot = getelementptr { i32*, i64 }, { i32*, i64 }* %arr12, i64 %i17
+  store { i32*, i64 } %arr.len16, { i32*, i64 }* %arr.slot, align 8
+  %next = add i64 %i17, 1
+  store i64 %next, i64* %i, align 4
+  br label %arr.cond
+
+arr.end:                                          ; preds = %arr.cond
+  %arr.ptr18 = insertvalue { { i32*, i64 }*, i64 } undef, { i32*, i64 }* %arr12, 0
+  %arr.len19 = insertvalue { { i32*, i64 }*, i64 } %arr.ptr18, i64 3, 1
+  store { { i32*, i64 }*, i64 } %arr.len19, { { i32*, i64 }*, i64 }* %grid, align 8
+  %grid20 = load { { i32*, i64 }*, i64 }, { { i32*, i64 }*, i64 }* %grid, align 8
+  %len21 = extractvalue { { i32*, i64 }*, i64 } %grid20, 1
+  %len22 = trunc i64 %len21 to i32
+  %grid23 = load { { i32*, i64 }*, i64 }, { { i32*, i64 }*, i64 }* %grid, align 8
+  %arr.data24 = extractvalue { { i32*, i64 }*, i64 } %grid23, 0
+  %arr.at = getelementptr { i32*, i64 }, { i32*, i64 }* %arr.data24, i32 0
+  %idx = load { i32*, i64 }, { i32*, i64 }* %arr.at, align 8
+  %len25 = extractvalue { i32*, i64 } %idx, 1
+  %len26 = trunc i64 %len25 to i32
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.8, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.5, i32 0, i32 0), i32 %len22, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.6, i32 0, i32 0), i32 %len26, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.7, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+
+; Function Attrs: argmemonly nofree nounwind willreturn writeonly
+declare void @llvm.memset.p0i8.i64(i8* nocapture writeonly, i8, i64, i1 immarg) #0
+
+attributes #0 = { argmemonly nofree nounwind willreturn writeonly }
 ```

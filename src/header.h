@@ -445,6 +445,7 @@ void code_gen_binop(Node *node);
 void code_gen_output(Node *node);
 Value access_ptr(Node *node);
 void code_gen_slice(Node *node);
+void code_gen_dot(Node *node);
 void code_gen_access(Node *node);
 void code_gen_array_lit(Node *node);
 void type_check_array_lit(Node *node);

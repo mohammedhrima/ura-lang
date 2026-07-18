@@ -258,6 +258,7 @@ void analyze(Node *node) {
          break;
       case ACCESS: analyze_binop(node); break;
       case RANGE:  analyze_binop(node); break;
+      case DOT:    analyze(node->left); break;
       case TYPEOF: case SIZEOF: analyze(node->left); break;
       case ARRAY:
          for (int i = 0; i < node->children_count; i++)
@@ -322,6 +323,15 @@ void type_check(Node *node) {
       case MATCH: type_check_match(node); break;
       case ARRAY_LIT: type_check_array_lit(node); break;
       case ACCESS:    type_check_access(node); break;
+      case DOT:
+         type_check(node->left);
+         if (strcmp(node->token->name, "len") != 0)
+            parse_error(node->token, "Unknown member '.%s'", node->token->name);
+         else if (node->left->token->ret_type != ARRAY_TYPE)
+            parse_error(node->token, "'.len' is only valid on an array, not %s", type_name(node->left->token->ret_type));
+         else
+            node->token->ret_type = INT;
+         break;
       case RANGE:
          type_check(node->left);
          type_check(node->right);
@@ -373,6 +383,7 @@ void code_gen(Node *node) {
       case OUTPUT: code_gen_output(node); break;
       case ARRAY_LIT: code_gen_array_lit(node); break;
       case ACCESS:    code_gen_access(node); break;
+      case DOT:       code_gen_dot(node); break;
       case ARRAY:     code_gen_array_ctor(node); break;
       case TYPEOF:    code_gen_typeof(node); break;
       case SIZEOF:    code_gen_sizeof(node); break;
