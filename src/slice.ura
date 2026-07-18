@@ -1,6 +1,0 @@
-main():
-    a int[] = [10, 20, 30, 40, 50]
-    mid int[] = a[1..4]
-    output("mid = a[1..4]: ", mid[0], " ", mid[1], " ", mid[2], "\n")
-    mid[0] = 99
-    output("a[1] after mid[0]=99 (shared view): ", a[1], "\n")

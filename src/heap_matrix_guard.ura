@@ -1,4 +1,0 @@
-main():
-    m int[][] = new int[2][3]
-    clean m
-    output(m[0]?[0]?)
