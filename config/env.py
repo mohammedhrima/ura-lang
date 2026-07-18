@@ -12,6 +12,11 @@ BUILD  = ROOT / "build"
 URA    = BUILD / "ura"
 # substrings of .ll lines that vary per run / machine — ignored when diffing goldens
 IGNORE = ("target triple", "source_filename", "ModuleID", "DIFile", "DICompileUnit")
+# dev builds of the compiler itself are sanitized, so a NULL deref reports a file
+# and line instead of dying as a silent SIGSEGV. `build release` opts out.
+# NOT address: -fsanitize=address deadlocks this binary at startup on macOS/arm64
+# (it hangs before main, even with no arguments). undefined alone is fine and fast.
+SAN = ["-fsanitize=undefined", "-fno-omit-frame-pointer", "-g", "-O0"]
 
 def run(*args):
     return subprocess.run([str(a) for a in args], capture_output=True, text=True)
@@ -43,12 +48,13 @@ def check():
     have = shutil.which("clang") and shutil.which("llvm-config-14")
     (ok if have else err)("clang + llvm-config-14 present" if have else "missing clang or llvm-config-14")
 
-def build():
+def build(mode="dev"):
     BUILD.mkdir(exist_ok=True)
     flags = run("llvm-config-14", "--cflags", "--ldflags", "--libs", "core").stdout.split()
-    r = run("clang", "src/main.c", *flags, "-o", URA)
+    san = [] if mode == "release" else SAN
+    r = run("clang", "src/main.c", *flags, *san, "-o", URA)
     if r.returncode == 0:
-        ok(f"build ok: {URA.relative_to(ROOT)}")
+        ok(f"build ok: {URA.relative_to(ROOT)}{'' if san else ' (release, no sanitizers)'}")
     else:
         err("build failed"); print(r.stderr)
 
