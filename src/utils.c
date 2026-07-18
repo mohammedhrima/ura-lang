@@ -39,6 +39,22 @@ char *to_string(Type type) {
 	return res[type];
 }
 
+char *type_name(Type type) {
+	switch (type) {
+	case INT:        return "int";
+	case LONG:       return "long";
+	case SHORT:      return "short";
+	case CHAR:       return "char";
+	case CHARS:      return "chars";
+	case BOOL:       return "bool";
+	case FLOAT:      return "float";
+	case VOID:       return "void";
+	case ARRAY_TYPE: return "array";
+	case FN_TYPE:    return "fn";
+	default:         return to_string(type);
+	}
+}
+
 int _vprint(File out, const char *conv, va_list args) {
 	int res = 0;
 
@@ -1180,7 +1196,7 @@ void type_check_block(Node *node) {
 	type_check(node->left);
 	if (node->left && node->left->token->ret_type != BOOL)
 		parse_error(node->token, "The '%s' condition must be a bool, got %s",
-		            node->token->name, to_string(node->left->token->ret_type));
+		            node->token->name, type_name(node->left->token->ret_type));
 	for (int i = 0; i < node->children_count; i++)
 		type_check(node->children[i]);
 	type_check(node->right);
@@ -1197,7 +1213,7 @@ void type_check_match(Node *node) {
 				type_check(value);
 				if (subject && value->token->ret_type && value->token->ret_type != subject)
 					parse_error(value->token, "This case value is %s but the subject is %s; they must be the same type",
-					            to_string(value->token->ret_type), to_string(subject));
+					            type_name(value->token->ret_type), type_name(subject));
 			}
 		for (int j = 0; j < branch->children_count; j++)
 			type_check(branch->children[j]);
@@ -1856,7 +1872,7 @@ void type_check_binop(Node *node) {
       if (node->right->token->type != REF)
          parse_error(token, "A reference must be bound to a variable (ref x)");
       else if (lt && rt && lt != rt)
-         parse_error(token, "Reference type mismatch: expected %s, got %s", to_string(lt), to_string(rt));
+         parse_error(token, "Reference type mismatch: expected %s, got %s", type_name(lt), type_name(rt));
       token->ret_type = lt;
       return;
    }
@@ -1984,11 +2000,11 @@ void type_check_access(Node *node) {
    type_check(node->right);
    Token *arr = node->left->token;
    if (arr->ret_type != ARRAY_TYPE) {
-      parse_error(node->token, "Cannot index '%s', it is not an array", to_string(arr->ret_type));
+      parse_error(node->token, "Cannot index '%s', it is not an array", type_name(arr->ret_type));
       return;
    }
    if (!includes(node->right->token->ret_type, NUMERIC_TYPES, 0))
-      parse_error(node->token, "Array index must be an integer, got %s", to_string(node->right->token->ret_type));
+      parse_error(node->token, "Array index must be an integer, got %s", type_name(node->right->token->ret_type));
    node->token->Array.sub_type = arr->Array.sub_type;
    node->token->Array.depth    = arr->Array.depth - 1;
    node->token->ret_type       = node->token->Array.depth > 0 ? ARRAY_TYPE : arr->Array.sub_type;
@@ -2000,8 +2016,6 @@ void type_check_array_ctor(Node *node) {
       if (!includes(node->children[i]->token->ret_type, NUMERIC_TYPES, 0))
          parse_error(node->children[i]->token, "Array size must be an integer");
    }
-   if (node->token->is_heap && node->token->Array.depth > 1)
-      parse_error(node->token, "Multi-dimensional heap arrays (new int[N][M]) not yet supported");
 }
 
 Value make_slice(Type sub, int depth, Value data, Value len) {
@@ -2065,15 +2079,40 @@ void code_gen_array_ctor(Node *node) {
    free(dims);
 }
 
+void free_array(Value slice, Type sub, int depth) {
+   Value data = LLVMBuildExtractValue(ura.builder, slice, 0, "arr.data");
+   if (depth > 1) {
+      Value   len   = LLVMBuildExtractValue(ura.builder, slice, 1, "arr.len");
+      TypeRef inner = array_type(sub, depth - 1);
+      Value   fn    = LLVMGetBasicBlockParent(LLVMGetInsertBlock(ura.builder));
+      Value   slot  = LLVMBuildAlloca(ura.builder, ura.i64, "i");
+      LLVMBuildStore(ura.builder, LLVMConstInt(ura.i64, 0, 0), slot);
+      Block   cond  = LLVMAppendBasicBlockInContext(ura.context, fn, "free.cond");
+      Block   body  = LLVMAppendBasicBlockInContext(ura.context, fn, "free.body");
+      Block   end   = LLVMAppendBasicBlockInContext(ura.context, fn, "free.end");
+      LLVMBuildBr(ura.builder, cond);
+      LLVMPositionBuilderAtEnd(ura.builder, cond);
+      Value   i     = LLVMBuildLoad2(ura.builder, ura.i64, slot, "i");
+      LLVMBuildCondBr(ura.builder, LLVMBuildICmp(ura.builder, LLVMIntSLT, i, len, "more"), body, end);
+      LLVMPositionBuilderAtEnd(ura.builder, body);
+      Value   gep   = LLVMBuildGEP2(ura.builder, inner, data, &i, 1, "free.slot");
+      free_array(LLVMBuildLoad2(ura.builder, inner, gep, "inner"), sub, depth - 1);
+      i = LLVMBuildLoad2(ura.builder, ura.i64, slot, "i");
+      LLVMBuildStore(ura.builder, LLVMBuildAdd(ura.builder, i, LLVMConstInt(ura.i64, 1, 0), "next"), slot);
+      LLVMBuildBr(ura.builder, cond);
+      LLVMPositionBuilderAtEnd(ura.builder, end);
+   }
+   Value   ptr = LLVMBuildBitCast(ura.builder, data, LLVMPointerType(ura.i8, 0), "free.ptr");
+   TypeRef fty = LLVMFunctionType(ura.vd, (TypeRef[]){ LLVMPointerType(ura.i8, 0) }, 1, 0);
+   LLVMBuildCall2(ura.builder, fty, get_or_declare("free", fty), (Value[]){ ptr }, 1, "");
+}
+
 void code_gen_clean(Node *node) {
    Token  *arr   = node->left->token;
    Value   slot  = address_of(node->left);
    TypeRef sty   = array_type(arr->Array.sub_type, arr->Array.depth);
    Value   slice = LLVMBuildLoad2(ura.builder, sty, slot, "arr");
-   Value   data  = LLVMBuildExtractValue(ura.builder, slice, 0, "arr.data");
-   Value   ptr   = LLVMBuildBitCast(ura.builder, data, LLVMPointerType(ura.i8, 0), "free.ptr");
-   TypeRef fty   = LLVMFunctionType(ura.vd, (TypeRef[]){ LLVMPointerType(ura.i8, 0) }, 1, 0);
-   LLVMBuildCall2(ura.builder, fty, get_or_declare("free", fty), (Value[]){ ptr }, 1, "");
+   free_array(slice, arr->Array.sub_type, arr->Array.depth);
    LLVMBuildStore(ura.builder, LLVMConstNull(sty), slot);
 }
 
