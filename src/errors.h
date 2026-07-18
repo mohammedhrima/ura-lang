@@ -41,3 +41,72 @@
 
 #define ERR_LEN_NOT_ARRAY \
 	"'.len' is only valid on an array, not %s"
+
+#define ERR_UNTERM_BLOCK_COMMENT \
+	"Unterminated block comment, expected '*/'"
+
+#define ERR_UNTERM_STRING_LITERAL \
+	"Unterminated string literal, expected '\"'"
+
+#define ERR_UNTERM_CHAR_LITERAL \
+	"Unterminated character literal, expected \"'\""
+
+#define ERR_UNTERM_USE_PATH \
+	"Unterminated 'use' path, expected closing '\"'"
+
+#define ERR_UNTERM_LINK_PATH \
+	"Unterminated 'link' path, expected closing '\"'"
+
+#define ERR_UNKNOWN_ESCAPE "Unknown escape character: \\%c"
+
+#define ERR_FN_EXPECTED_LPAREN "Expected '(' after function %s"
+
+#define ERR_FN_EXPECTED_RPAREN "Expected ')' after function %s"
+
+#define ERR_FN_EXPECTED_COLON "Expected ':' after function %s"
+
+#define ERR_FN_EXPECTED_PARAM_NAME \
+	"Expected parameter name in function %s"
+
+#define ERR_FN_EXPECTED_RET_TYPE \
+	"Expected <data type> after function %s"
+
+#define ERR_EXPECTED_BODY_COLON "Expected ':' to open the '%s' body"
+
+#define ERR_CALL_EXPECTED_RPAREN "Expected ')' after %s arguments"
+
+#define ERR_STRUCT_EXPECTED_COLON "Expected ':' after struct %s"
+
+#define ERR_STRUCT_EMPTY \
+	"Struct %s must declare at least one field"
+
+#define ERR_REF_MUST_BE_BOUND \
+	"A reference must be bound when declared" \
+	" (use 'ref?' for an optional reference)"
+
+#define ERR_NEW_EXPECTED_ARRAY_TYPE \
+	"Expected an array type after 'new' (e.g. new int[n])"
+
+#define ERR_REDECL_FUNCTION "Redeclaration of function '%s'"
+
+#define ERR_UNDECLARED_VARIABLE "Undeclared variable '%s'"
+
+#define ERR_REF_TO_NON_VARIABLE \
+	"Cannot take a reference to a non-variable"
+
+#define ERR_CAPTURE_NOT_ALLOWED \
+	"Cannot use '%s' from an enclosing function" \
+	" - pass it as a parameter"
+
+#define ERR_WRONG_ARG_COUNT "Wrong number of arguments to '%s'"
+
+#define ERR_REF_NEEDS_VARIABLE \
+	"A reference must be bound to a variable (ref x)"
+
+#define ERR_ARRAY_SIZE_NOT_INT "Array size must be an integer"
+
+#define ERR_UNKNOWN_MEMBER "Unknown member '.%s'"
+
+#define ASSERT_TYPECHECK_NODE "type_check: unhandled node '%s'"
+
+#define ASSERT_CODEGEN_NODE "code_gen: unhandled node '%s'"

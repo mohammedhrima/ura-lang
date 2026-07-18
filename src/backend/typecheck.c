@@ -83,7 +83,7 @@ void type_check_fcall(Node *node) {
    bool bad_count = fn->is_variadic ? node->children_count < fn->Fn.params_count
                                     : node->children_count != fn->Fn.params_count;
    if (bad_count) {
-      parse_error(token, "Wrong number of arguments to '%s'", token->name);
+      parse_error(token, ERR_WRONG_ARG_COUNT, token->name);
       return;
    }
    for (int i = 0; i < fn->Fn.params_count; i++) {
@@ -126,7 +126,7 @@ void type_check_binop(Node *node) {
    Type rt = node->right->token->ret_type;
    if (node->left->token->is_dec && node->left->token->is_ref) {
       if (node->right->token->type != REF)
-         parse_error(token, "A reference must be bound to a variable (ref x)");
+         parse_error(token, ERR_REF_NEEDS_VARIABLE);
       else if (lt && rt && lt != rt)
          parse_error(token, ERR_REF_TYPE_MISMATCH, type_name(lt), type_name(rt));
       token->ret_type = lt;
@@ -203,7 +203,7 @@ void type_check_array_ctor(Node *node) {
    for (int i = 0; i < node->children_count; i++) {
       type_check(node->children[i]);
       if (!includes(node->children[i]->token->ret_type, NUMERIC_TYPES, 0))
-         parse_error(node->children[i]->token, "Array size must be an integer");
+         parse_error(node->children[i]->token, ERR_ARRAY_SIZE_NOT_INT);
    }
 }
 
@@ -269,7 +269,7 @@ void type_check(Node *node) {
       case DOT:
          type_check(node->left);
          if (strcmp(node->token->name, "len") != 0)
-            parse_error(node->token, "Unknown member '.%s'", node->token->name);
+            parse_error(node->token, ERR_UNKNOWN_MEMBER, node->token->name);
          else if (node->left->token->ret_type != ARRAY_TYPE)
             parse_error(node->token, ERR_LEN_NOT_ARRAY, type_name(node->left->token->ret_type));
          else
@@ -303,7 +303,7 @@ void type_check(Node *node) {
       case BAND: case BOR: case BXOR: case LSHIFT: case RSHIFT:
          type_check_binop(node); break;
       default:
-         CHECK(1, "type_check: unhandled node '%s'", to_string(token->type));
+         CHECK(1, ASSERT_TYPECHECK_NODE, to_string(token->type));
          break;
    }
 }

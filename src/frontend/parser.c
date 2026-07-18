@@ -141,7 +141,7 @@ Node *match_node(Node *node) {
 			branch->left = values;
 		}
 		if (!find(DOTS, 0))
-			parse_error(keyword, "Expected ':' to open the '%s' body", keyword->name);
+			parse_error(keyword, ERR_EXPECTED_BODY_COLON, keyword->name);
 		parse_block(branch, keyword->indent);
 		resize_array(node->children, Node *);
 		node->children[node->children_count++] = branch;
@@ -163,7 +163,7 @@ Node *if_node(Node *node) {
 		if (keyword->type == ELIF)
 			branch->left = expr_node(0);
 		if (!find(DOTS, 0))
-			parse_error(keyword, "Expected ':' to open the '%s' body", keyword->name);
+			parse_error(keyword, ERR_EXPECTED_BODY_COLON, keyword->name);
 		parse_block(branch, keyword->indent);
 		tail->right = branch;
 		tail        = branch;
@@ -218,7 +218,7 @@ Node *ref_node(Node *node) {
 		name->is_nullable = nullable;
 		parse_type(name);
 		if (!nullable && peek(0)->type != ASSIGN) {
-			parse_error(name, "A reference must be bound when declared (use 'ref?' for an optional reference)");
+			parse_error(name, ERR_REF_MUST_BE_BOUND);
 			return syntax_error();
 		}
 		node->token = name;
@@ -256,7 +256,7 @@ Node *fdec_node(Node *node) {
 	node->token->type = FDEC;
 	enter_scope(node);
 	if (!find(LPAR, 0))
-		parse_error(node->token, "Expected '(' after function %s", node->token->name);
+		parse_error(node->token, ERR_FN_EXPECTED_LPAREN, node->token->name);
 	while (!ura.found_error && peek(0)->type != RPAR) {
 		if (find(VARIADIC, 0)) {
 			node->token->is_variadic = true;
@@ -265,7 +265,7 @@ Node *fdec_node(Node *node) {
 		bool   is_ref = find(REF, 0) != NULL;
 		Token *param  = find(ID, 0);
 		if (!param) {
-			parse_error(node->token, "Expected parameter name in function %s", node->token->name);
+			parse_error(node->token, ERR_FN_EXPECTED_PARAM_NAME, node->token->name);
 			break;
 		}
 		parse_type(param);
@@ -277,7 +277,7 @@ Node *fdec_node(Node *node) {
 		while (find(COMA, 0));
 	}
 	if (!find(RPAR, 0))
-		parse_error(node->token, "Expected ')' after function %s", node->token->name);
+		parse_error(node->token, ERR_FN_EXPECTED_RPAREN, node->token->name);
 
 	if(strcmp(node->token->name, "main") == 0) {
 		node->token->ret_type = INT;
@@ -286,10 +286,10 @@ Node *fdec_node(Node *node) {
 		node->token->ret_type = next()->type;
 	}
 	else
-		parse_error(node->token, "Expected <data type> after function %s", node->token->name);
+		parse_error(node->token, ERR_FN_EXPECTED_RET_TYPE, node->token->name);
 	if (!node->token->is_proto) {
 		if (!find(DOTS, 0))
-			parse_error(node->token, "Expected ':' after function %s", node->token->name);
+			parse_error(node->token, ERR_FN_EXPECTED_COLON, node->token->name);
 
 		parse_block(node, node->token->indent);
 	}
@@ -302,10 +302,10 @@ Node *struct_node(Node *node) {
 	node->token->type = STRUCT_DEF;
 	enter_scope(node);
 	if (!find(DOTS, 0))
-		parse_error(node->token, "Expected ':' after struct %s", node->token->name);
+		parse_error(node->token, ERR_STRUCT_EXPECTED_COLON, node->token->name);
 	parse_block(node, node->token->indent);
 	if (!node->children_count)
-		parse_error(node->token, "Struct %s must declare at least one field", node->token->name);
+		parse_error(node->token, ERR_STRUCT_EMPTY, node->token->name);
 	exit_scope();
 	return node;
 }
@@ -320,7 +320,7 @@ Node *fcall_node(Node *node) {
 		while (find(COMA, 0));
 	}
 	if (!find(RPAR, 0))
-		parse_error(node->token, "Expected ')' after %s arguments", node->token->name);
+		parse_error(node->token, ERR_CALL_EXPECTED_RPAREN, node->token->name);
 	return node;
 }
 
@@ -446,7 +446,7 @@ Node *prime_node() {
    case NEW: {
       Token *type = next();
       if (!is_data_type(type) || peek(0)->type != LBRA) {
-         parse_error(token, "Expected an array type after 'new' (e.g. new int[n])");
+         parse_error(token, ERR_NEW_EXPECTED_ARRAY_TYPE);
          return syntax_error();
       }
       Node *arr = array_ctor_node(new_node(type));
