@@ -25,6 +25,10 @@ main():
 
 ```err
 error: Expected '"' after 'use'
+  001.ura:2:5
+  |
+2 | use @/header
+  |     ^
 ```
 
 ```ll
@@ -48,6 +52,10 @@ main():
 
 ```err
 error: Unterminated 'use' path, expected closing '"'
+  002.ura:2:5
+  |
+2 | use "@/header
+  |     ^
 ```
 
 ```ll
@@ -71,6 +79,10 @@ main():
 
 ```err
 error: Expected '"' after 'link'
+  003.ura:2:6
+  |
+2 | link header.h
+  |      ^
 ```
 
 ```ll
@@ -94,6 +106,10 @@ main():
 
 ```err
 error: Unterminated 'link' path, expected closing '"'
+  004.ura:2:6
+  |
+2 | link "header.h
+  |      ^
 ```
 
 ```ll

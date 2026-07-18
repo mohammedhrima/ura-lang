@@ -1,0 +1,28 @@
+// libcheck.ura - does the (now commented-down) standard library parse?
+//
+// Run each `use` line on its own by uncommenting one at a time. They are
+// separate because a diamond/duplicate import is still unguarded, so several
+// together may collide on purpose (see ura-lib/header.ura).
+//
+// These four are the ones expected to work today:
+
+use "@/memory"
+// use "@/ctype"
+// use "@/io"
+// use "@/stdlib"
+
+// These are commented down to their usable parts - they should parse, but
+// most of their contents is disabled pending @if, globals, or f64:
+// use "@/errno"
+// use "@/fcntl"
+// use "@/net"
+// use "@/signals"
+// use "@/stat"
+// use "@/unistd"
+// use "@/string"
+// use "@/math"
+// use "@/os"
+// use "@/time"
+
+main():
+    output("stdlib parsed\n")

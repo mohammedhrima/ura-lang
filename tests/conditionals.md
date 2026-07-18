@@ -18,6 +18,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 fn main() : int
 ├─ = : int
 │  ├─ floor : int
@@ -75,6 +85,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 fn main() : int
 ├─ = : int
 │  ├─ hp : int
@@ -143,6 +163,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 fn main() : int
 ├─ = : int
 │  ├─ floor : int

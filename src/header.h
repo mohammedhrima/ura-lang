@@ -27,6 +27,7 @@
 #include "errors.h"
 
 #if defined(__APPLE__)
+#include <mach-o/dyld.h>
 typedef struct __sFILE *File;
 #elif defined(__linux__)
 typedef struct _IO_FILE *File;
@@ -39,6 +40,7 @@ typedef struct _IO_FILE *File;
 #define RED(fmt)   BOLD "\033[0;31m" fmt RESET
 #define CYAN(fmt)  BOLD "\033[0;36m" fmt RESET
 #define BLUE(fmt)  BOLD "\033[34m" fmt RESET
+#define YELLOW(fmt) BOLD "\033[0;33m" fmt RESET
 
 #define LINE __LINE__
 #define FUNC (char *)__func__
@@ -159,6 +161,8 @@ struct Source {
 	char *filename;
 	char *dirname;
 	char *content;
+	char *pathname;
+	bool  loading;
 };
 
 struct LLVM {
@@ -299,7 +303,7 @@ struct UraGlobal {
 	EXPAND(Node **, scopes);
 	EXPAND(Token **, tokens);
 	EXPAND(Source **, sources);
-	int              sources_pos;
+	Source          *current;
 	int              calling_use;
 	Node            *scope;
 	Node            *head;

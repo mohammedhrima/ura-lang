@@ -12,8 +12,8 @@ UraGlobal ura;
 
 void parse_arguments(int argc, char **argv)
 {
-   // ura.lib = getenv("URA_LIB");
-   // if (CHECK(!ura.lib, "URA_LIB not set")) return;
+   ura.lib = getenv("URA_LIB");
+   if (!is_dir(ura.lib)) ura.lib = find_ura_lib();
    ura.output = "exe.out";
    
    for (int i = 1; i < argc && !ura.error_count; i++) {
@@ -51,10 +51,28 @@ void parse_arguments(int argc, char **argv)
    if (!ura.sources) parse_error(NULL, ERR_NO_INPUT);
 }
 
+void load_common() {
+   if (!ura.lib) {
+      parse_error(NULL, ERR_NO_STDLIB);
+      return;
+   }
+   char *path   = format("%s/common.ura", ura.lib);
+   int   before = ura.sources_count;
+   new_source(path);
+   free(path);
+   if (ura.error_count || ura.sources_count == before) return;
+   ura.calling_use++;
+   tokenize(0);
+   ura.calling_use--;
+}
+
 void tokenize(int default_indent) {
    if (ura.error_count || !ura.sources) return;
-   Source *src = ura.sources[ura.sources_pos - 1];
-   char *content = src->content;
+   Source *prev = ura.current;
+   ura.current  = ura.sources[ura.sources_count - 1];
+   ura.current->loading = true;
+   if (!ura.calling_use) load_common();
+   char *content = ura.current->content;
    int line = 1;
    int indent = default_indent;
    
@@ -79,7 +97,8 @@ void tokenize(int default_indent) {
       for(int i = 0; i < ura.tokens_count && ura.enable_debug; i++)
          debug("token %k\n", ura.tokens[i]);
    }
-   exit_source();
+   ura.current->loading = false;
+   ura.current = prev;
 }
 
 void generate_ast() {

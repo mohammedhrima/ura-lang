@@ -22,8 +22,11 @@ proto fn gets(buffer chars) chars
 // Block I/O
 proto fn fread(ptr pointer, size int, nmemb int, file pointer) int
 proto fn fwrite(ptr pointer, size int, nmemb int, file pointer) int
-proto fn write(fd int, ptr pointer, len int) int
-proto fn read(fd int, ptr pointer, len int) int
+// ssize_t write(int, const void *, size_t) - long, not int, on 64-bit.
+// This must match what codegen emits for runtime traps, or a program that
+// imports io and also trips a guard fails LLVM module verification.
+proto fn write(fd int, ptr pointer, len long) long
+proto fn read(fd int, ptr pointer, len long) long
 
 // File positioning
 proto fn fseek(file pointer, offset long, whence int) int
@@ -56,10 +59,10 @@ proto fn fdopen(fd int, mode chars) pointer
 
 // Formatted output
 proto fn printf(format chars, ...) int
-proto fn fprintf(file pointer, format chars) int
-proto fn sprintf(buffer chars, format chars) int
-proto fn snprintf(buffer chars, size int, format chars) int
-proto fn dprintf(fd int, format chars) int
+proto fn fprintf(file pointer, format chars, ...) int
+proto fn sprintf(buffer chars, format chars, ...) int
+proto fn snprintf(buffer chars, size int, format chars, ...) int
+proto fn dprintf(fd int, format chars, ...) int
 
 // Variadic formatted output
 proto fn vprintf(format chars, args pointer) int
@@ -69,9 +72,9 @@ proto fn vsnprintf(buffer chars, size int, format chars, args pointer) int
 proto fn vdprintf(fd int, format chars, args pointer) int
 
 // Formatted input
-proto fn scanf(format chars) int
-proto fn fscanf(file pointer, format chars) int
-proto fn sscanf(buffer chars, format chars) int
+proto fn scanf(format chars, ...) int
+proto fn fscanf(file pointer, format chars, ...) int
+proto fn sscanf(buffer chars, format chars, ...) int
 
 // Variadic formatted input
 proto fn vscanf(format chars, args pointer) int

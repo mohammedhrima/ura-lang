@@ -32,11 +32,14 @@ proto fn ldiv(numer long, denom long) pointer
 // String to number conversion
 proto fn atoi(str chars) int
 proto fn atol(str chars) long
-proto fn atof(str chars) float
+// BLOCKED (needs f64): atof/strtod return C `double`, and ura `float` is f32.
+// The declaration links against the real symbol and silently truncates.
+// proto fn atof(str chars) float
 proto fn strtol(str chars, endptr pointer, base int) long
 proto fn strtoul(str chars, endptr pointer, base int) long
 proto fn strtof(str chars, endptr pointer) float
-proto fn strtod(str chars, endptr pointer) float
+// BLOCKED (needs f64): strtod returns C `double`.
+// proto fn strtod(str chars, endptr pointer) float
 proto fn strtoll(str chars, endptr pointer, base int) long
 proto fn strtoull(str chars, endptr pointer, base int) long
 

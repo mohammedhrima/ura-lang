@@ -98,12 +98,26 @@ Token *find_variable(char *name, bool *captured) {
 	return NULL;
 }
 
+bool same_signature(Token *a, Token *b) {
+	if (a->ret_type != b->ret_type) return false;
+	if (a->is_variadic != b->is_variadic) return false;
+	if (a->Fn.params_count != b->Fn.params_count) return false;
+	for (int i = 0; i < a->Fn.params_count; i++)
+		if (a->Fn.params[i]->ret_type != b->Fn.params[i]->ret_type)
+			return false;
+	return true;
+}
+
 void declare_function(Node *fn) {
-	for (int i = 0; i < ura.scope->functions_count; i++)
-		if (strcmp(ura.scope->functions[i]->token->name, fn->token->name) == 0) {
-			parse_error(fn->token, ERR_REDECL_FUNCTION, fn->token->name);
+	Token *new = fn->token;
+	for (int i = 0; i < ura.scope->functions_count; i++) {
+		Token *old = ura.scope->functions[i]->token;
+		if (strcmp(old->name, new->name) != 0) continue;
+		if (old->is_proto && new->is_proto && same_signature(old, new))
 			return;
-		}
+		parse_error(new, ERR_REDECL_FUNCTION, new->name);
+		return;
+	}
 	resize_array(ura.scope->functions, Node *);
 	ura.scope->functions[ura.scope->functions_count++] = fn;
 }

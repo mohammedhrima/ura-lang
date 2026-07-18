@@ -55,305 +55,311 @@ proto fn strsignal(sig int) chars
 // Explicit zeroing (C11)
 proto fn memset_s(ptr pointer, size int, value int, n int) pointer
 
-fn strjoin(left chars, right chars) chars:
-    len1 int = 0
-    len2 int = 0
-    if left != null:  len1 = strlen(left)
-    if right != null: len2 = strlen(right)
-    str chars = calloc((len1 + len2 + 1) as long, 1)
-    i int = 0
-    while i < len1:
-        str[i] = left[i]
-        i += 1
-    j int = 0
-    while j < len2:
-        str[i + j] = right[j]
-        j += 1
-    return str
+// BLOCKED: everything below needs features that are not implemented yet.
+//   - indexing a `chars` (str[i]) - chars is i8*, not an array type, so
+//     type_check_access rejects it with ERR_NOT_AN_ARRAY
+//   - struct methods, `operator delete`, `pub`, and `String::new()`:
+//     PUB / OPERATOR / DOUBLE_DOTS all lex but have no parser handling
+// The 37 `proto` declarations above are usable today.
+// fn strjoin(left chars, right chars) chars:
+//     len1 int = 0
+//     len2 int = 0
+//     if left != null:  len1 = strlen(left)
+//     if right != null: len2 = strlen(right)
+//     str chars = calloc((len1 + len2 + 1) as long, 1)
+//     i int = 0
+//     while i < len1:
+//         str[i] = left[i]
+//         i += 1
+//     j int = 0
+//     while j < len2:
+//         str[i + j] = right[j]
+//         j += 1
+//     return str
 
-struct String:
-    value chars
-    count int
-    size  int
+// struct String:
+//     value chars
+//     count int
+//     size  int
 
-    // ── Destructor ──
+//     // ── Destructor ──
 
-    operator delete() void:
-        free(self.value)
+//     operator delete() void:
+//         free(self.value)
 
-    // ── Core mutators ──
+//     // ── Core mutators ──
 
-    fn assign(str chars) void:
-        if str == null: str = ""
-        len int = strlen(str)
-        if self.value == null or self.size <= len:
-            if self.size == 0:
-                self.size = 10
-            while self.size <= len:
-                self.size *= 2
-            self.value = realloc(self.value, self.size)
-        strcpy(self.value, str)
-        bzero(self.value + len, (self.size - len) as long)
-        self.count = len
+//     fn assign(str chars) void:
+//         if str == null: str = ""
+//         len int = strlen(str)
+//         if self.value == null or self.size <= len:
+//             if self.size == 0:
+//                 self.size = 10
+//             while self.size <= len:
+//                 self.size *= 2
+//             self.value = realloc(self.value, self.size)
+//         strcpy(self.value, str)
+//         bzero(self.value + len, (self.size - len) as long)
+//         self.count = len
 
-    fn join(str chars) void:
-        if str == null: return
-        res chars = strjoin(self.value, str)
-        self.assign(res)
-        free(res)
+//     fn join(str chars) void:
+//         if str == null: return
+//         res chars = strjoin(self.value, str)
+//         self.assign(res)
+//         free(res)
 
-    fn clear() void:
-        bzero(self.value, self.size as long)
-        self.count = 0
+//     fn clear() void:
+//         bzero(self.value, self.size as long)
+//         self.count = 0
 
-    fn push(c char) void:
-        if self.count + 1 >= self.size:
-            if self.size == 0:
-                self.size = 10
-            else:
-                self.size *= 2
-            self.value = realloc(self.value, self.size)
-        self.value[self.count] = c
-        self.count += 1
-        self.value[self.count] = 0 as char
+//     fn push(c char) void:
+//         if self.count + 1 >= self.size:
+//             if self.size == 0:
+//                 self.size = 10
+//             else:
+//                 self.size *= 2
+//             self.value = realloc(self.value, self.size)
+//         self.value[self.count] = c
+//         self.count += 1
+//         self.value[self.count] = 0 as char
 
-    fn pop() char:
-        if self.count == 0:
-            return 0 as char
-        self.count -= 1
-        c char = self.value[self.count]
-        self.value[self.count] = 0 as char
-        return c
+//     fn pop() char:
+//         if self.count == 0:
+//             return 0 as char
+//         self.count -= 1
+//         c char = self.value[self.count]
+//         self.value[self.count] = 0 as char
+//         return c
 
-    // ── Constructors ──
+//     // ── Constructors ──
 
-    pub fn new() String:
-        s String
-        s.size  = 10
-        s.value = calloc(10 as long, 1 as long)
-        return s
+//     pub fn new() String:
+//         s String
+//         s.size  = 10
+//         s.value = calloc(10 as long, 1 as long)
+//         return s
 
-    pub fn from(str chars) String:
-        s String = String::new()
-        s.assign(str)
-        return s
+//     pub fn from(str chars) String:
+//         s String = String::new()
+//         s.assign(str)
+//         return s
 
-    pub fn from_int(n int) String:
-        s String = String::new()
-        if n == 0:
-            s.push('0')
-            return s
-        neg bool = False
-        num int = n
-        if num < 0:
-            neg = True
-            num = 0 - num
-        buf array[char] = stack[char](20)
-        i int = 0
-        while num > 0:
-            buf[i] = (num % 10 + 48) as char
-            num = num / 10
-            i += 1
-        if neg:
-            s.push('-')
-        j int = i - 1
-        while j >= 0:
-            s.push(buf[j])
-            j -= 1
-        return s
+//     pub fn from_int(n int) String:
+//         s String = String::new()
+//         if n == 0:
+//             s.push('0')
+//             return s
+//         neg bool = False
+//         num int = n
+//         if num < 0:
+//             neg = True
+//             num = 0 - num
+//         buf array[char] = stack[char](20)
+//         i int = 0
+//         while num > 0:
+//             buf[i] = (num % 10 + 48) as char
+//             num = num / 10
+//             i += 1
+//         if neg:
+//             s.push('-')
+//         j int = i - 1
+//         while j >= 0:
+//             s.push(buf[j])
+//             j -= 1
+//         return s
 
-    // ── Accessors ──
+//     // ── Accessors ──
 
-    fn len() int:
-        return self.count
+//     fn len() int:
+//         return self.count
 
-    fn empty() bool:
-        return self.count == 0
+//     fn empty() bool:
+//         return self.count == 0
 
-    fn c_str() chars:
-        return self.value
+//     fn c_str() chars:
+//         return self.value
 
-    fn at(i int) char:
-        if i < 0 or i >= self.count:
-            return 0 as char
-        return self.value[i]
+//     fn at(i int) char:
+//         if i < 0 or i >= self.count:
+//             return 0 as char
+//         return self.value[i]
 
-    // ── Search ──
+//     // ── Search ──
 
-    fn find(needle chars) int:
-        if needle == null: return -1
-        i int = 0
-        nlen int = strlen(needle)
-        if nlen == 0: return 0
-        while i <= self.count - nlen:
-            if strncmp(self.value + i, needle, nlen) == 0:
-                return i
-            i += 1
-        return -1
+//     fn find(needle chars) int:
+//         if needle == null: return -1
+//         i int = 0
+//         nlen int = strlen(needle)
+//         if nlen == 0: return 0
+//         while i <= self.count - nlen:
+//             if strncmp(self.value + i, needle, nlen) == 0:
+//                 return i
+//             i += 1
+//         return -1
 
-    fn contains(needle chars) bool:
-        return self.find(needle) != -1
+//     fn contains(needle chars) bool:
+//         return self.find(needle) != -1
 
-    fn starts_with(prefix chars) bool:
-        if prefix == null: return True
-        plen int = strlen(prefix)
-        if plen > self.count: return False
-        return strncmp(self.value, prefix, plen) == 0
+//     fn starts_with(prefix chars) bool:
+//         if prefix == null: return True
+//         plen int = strlen(prefix)
+//         if plen > self.count: return False
+//         return strncmp(self.value, prefix, plen) == 0
 
-    fn ends_with(suffix chars) bool:
-        if suffix == null: return True
-        slen int = strlen(suffix)
-        if slen > self.count: return False
-        offset int = self.count - slen
-        return strncmp(self.value + offset, suffix, slen) == 0
+//     fn ends_with(suffix chars) bool:
+//         if suffix == null: return True
+//         slen int = strlen(suffix)
+//         if slen > self.count: return False
+//         offset int = self.count - slen
+//         return strncmp(self.value + offset, suffix, slen) == 0
 
-    // ── Transformations (return new String) ──
+//     // ── Transformations (return new String) ──
 
-    fn substr(start int, length int) String:
-        res String = String::new()
-        if start < 0 or start >= self.count:
-            return res
-        end int = start + length
-        if end > self.count:
-            end = self.count
-        i int = start
-        while i < end:
-            res.push(self.value[i])
-            i += 1
-        return res
+//     fn substr(start int, length int) String:
+//         res String = String::new()
+//         if start < 0 or start >= self.count:
+//             return res
+//         end int = start + length
+//         if end > self.count:
+//             end = self.count
+//         i int = start
+//         while i < end:
+//             res.push(self.value[i])
+//             i += 1
+//         return res
 
-    fn upper() String:
-        res String = String::new()
-        i int = 0
-        while i < self.count:
-            c char = self.value[i]
-            if c >= 'a' and c <= 'z':
-                v int = c as int - 32
-                res.push(v as char)
-            else:
-                res.push(c)
-            i += 1
-        return res
+//     fn upper() String:
+//         res String = String::new()
+//         i int = 0
+//         while i < self.count:
+//             c char = self.value[i]
+//             if c >= 'a' and c <= 'z':
+//                 v int = c as int - 32
+//                 res.push(v as char)
+//             else:
+//                 res.push(c)
+//             i += 1
+//         return res
 
-    fn lower() String:
-        res String = String::new()
-        i int = 0
-        while i < self.count:
-            c char = self.value[i]
-            if c >= 'A' and c <= 'Z':
-                v int = c as int + 32
-                res.push(v as char)
-            else:
-                res.push(c)
-            i += 1
-        return res
+//     fn lower() String:
+//         res String = String::new()
+//         i int = 0
+//         while i < self.count:
+//             c char = self.value[i]
+//             if c >= 'A' and c <= 'Z':
+//                 v int = c as int + 32
+//                 res.push(v as char)
+//             else:
+//                 res.push(c)
+//             i += 1
+//         return res
 
-    fn trim() String:
-        start int = 0
-        while start < self.count:
-            c char = self.value[start]
-            if c == ' ' or c == '\t' or c == '\n' or c == '\r':
-                start += 1
-            else:
-                break
-        end int = self.count
-        while end > start:
-            c char = self.value[end - 1]
-            if c == ' ' or c == '\t' or c == '\n' or c == '\r':
-                end -= 1
-            else:
-                break
-        return self.substr(start, end - start)
+//     fn trim() String:
+//         start int = 0
+//         while start < self.count:
+//             c char = self.value[start]
+//             if c == ' ' or c == '\t' or c == '\n' or c == '\r':
+//                 start += 1
+//             else:
+//                 break
+//         end int = self.count
+//         while end > start:
+//             c char = self.value[end - 1]
+//             if c == ' ' or c == '\t' or c == '\n' or c == '\r':
+//                 end -= 1
+//             else:
+//                 break
+//         return self.substr(start, end - start)
 
-    fn replace(old chars, replacement chars) String:
-        res String = String::new()
-        olen int = strlen(old)
-        if olen == 0:
-            res.assign(self.value)
-            return res
-        i int = 0
-        while i < self.count:
-            if i <= self.count - olen and strncmp(self.value + i, old, olen) == 0:
-                res.join(replacement)
-                i += olen
-            else:
-                res.push(self.value[i])
-                i += 1
-        return res
+//     fn replace(old chars, replacement chars) String:
+//         res String = String::new()
+//         olen int = strlen(old)
+//         if olen == 0:
+//             res.assign(self.value)
+//             return res
+//         i int = 0
+//         while i < self.count:
+//             if i <= self.count - olen and strncmp(self.value + i, old, olen) == 0:
+//                 res.join(replacement)
+//                 i += olen
+//             else:
+//                 res.push(self.value[i])
+//                 i += 1
+//         return res
 
-    fn repeat(n int) String:
-        res String = String::new()
-        i int = 0
-        while i < n:
-            res.join(self.value)
-            i += 1
-        return res
+//     fn repeat(n int) String:
+//         res String = String::new()
+//         i int = 0
+//         while i < n:
+//             res.join(self.value)
+//             i += 1
+//         return res
 
-    fn reverse() String:
-        res String = String::new()
-        i int = self.count - 1
-        while i >= 0:
-            res.push(self.value[i])
-            i -= 1
-        return res
+//     fn reverse() String:
+//         res String = String::new()
+//         i int = self.count - 1
+//         while i >= 0:
+//             res.push(self.value[i])
+//             i -= 1
+//         return res
 
-    // ── Comparison ──
+//     // ── Comparison ──
 
-    fn compare(ref other String) int:
-        return strcmp(self.value, other.value)
+//     fn compare(ref other String) int:
+//         return strcmp(self.value, other.value)
 
-    // ── Conversion ──
+//     // ── Conversion ──
 
-    fn to_int() int:
-        return atoi(self.value)
+//     fn to_int() int:
+//         return atoi(self.value)
 
-    // ── Assignment operators ──
+//     // ── Assignment operators ──
 
-    operator = (str chars) void:
-        self.assign(str)
+//     operator = (str chars) void:
+//         self.assign(str)
 
-    operator = (ref v String) void:
-        self.assign(v.value)
+//     operator = (ref v String) void:
+//         self.assign(v.value)
 
-    // ── Concatenation operators ──
+//     // ── Concatenation operators ──
 
-    operator + (ref v String) String:
-        res String = String::new()
-        res = strjoin(self.value, v.value)
-        return res
+//     operator + (ref v String) String:
+//         res String = String::new()
+//         res = strjoin(self.value, v.value)
+//         return res
 
-    operator + (str chars) String:
-        res String = String::new()
-        res = strjoin(self.value, str)
-        return res
+//     operator + (str chars) String:
+//         res String = String::new()
+//         res = strjoin(self.value, str)
+//         return res
 
-    operator += (ref v String) void:
-        self.join(v.value)
+//     operator += (ref v String) void:
+//         self.join(v.value)
 
-    operator += (str chars) void:
-        self.join(str)
+//     operator += (str chars) void:
+//         self.join(str)
 
-    // ── Comparison operators ──
+//     // ── Comparison operators ──
 
-    operator == (ref v String) bool:
-        return strcmp(self.value, v.value) == 0
+//     operator == (ref v String) bool:
+//         return strcmp(self.value, v.value) == 0
 
-    operator == (str chars) bool:
-        if str == null: return self.count == 0
-        return strcmp(self.value, str) == 0
+//     operator == (str chars) bool:
+//         if str == null: return self.count == 0
+//         return strcmp(self.value, str) == 0
 
-    operator != (ref v String) bool:
-        return strcmp(self.value, v.value) != 0
+//     operator != (ref v String) bool:
+//         return strcmp(self.value, v.value) != 0
 
-    operator != (str chars) bool:
-        if str == null: return self.count != 0
-        return strcmp(self.value, str) != 0
+//     operator != (str chars) bool:
+//         if str == null: return self.count != 0
+//         return strcmp(self.value, str) != 0
 
-    operator < (ref v String) bool:
-        return strcmp(self.value, v.value) < 0
+//     operator < (ref v String) bool:
+//         return strcmp(self.value, v.value) < 0
 
-    operator > (ref v String) bool:
-        return strcmp(self.value, v.value) > 0
+//     operator > (ref v String) bool:
+//         return strcmp(self.value, v.value) > 0
     
-    operator output() chars:
-        return self.value
+//     operator output() chars:
+//         return self.value

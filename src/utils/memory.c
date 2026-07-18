@@ -38,39 +38,92 @@ void *allocate(int len, int size) {
 	return res;
 }
 
-void new_source(char *file_name) {
-	// TODO: handle imported same file in multiple files
-	Source *src   = allocate(1, sizeof(Source));
-	src->filename = file_name;
-	src->dirname = dirname(file_name);
-	debug("open file %s\n", file_name);
+bool is_dir(char *path) {
+	struct stat st;
+	return path && stat(path, &st) == 0 && S_ISDIR(st.st_mode);
+}
 
-	file_name = realpath(file_name, NULL);
-	if (!file_name) {
-		parse_error(NULL, "Cannot find file '%s'", src->filename);
+char *exe_dir() {
+	char buf[PATH_MAX] = {0};
+#if defined(__APPLE__)
+	uint32_t size = sizeof(buf);
+	if (_NSGetExecutablePath(buf, &size) != 0) return NULL;
+#elif defined(__linux__)
+	ssize_t n = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+	if (n <= 0) return NULL;
+	buf[n] = '\0';
+#endif
+	char *full = realpath(buf, NULL);
+	if (!full) return NULL;
+	char *copy = strdup(full);
+	char *dir  = strdup(dirname(copy));
+	free(copy);
+	free(full);
+	return dir;
+}
+
+char *find_ura_lib() {
+	char *dir = exe_dir();
+	if (!dir) return NULL;
+	char *beside = format("%s/ura-lib", dir);
+	if (is_dir(beside)) { free(dir); return beside; }
+	free(beside);
+	char *above = format("%s/../ura-lib", dir);
+	free(dir);
+	if (is_dir(above)) return above;
+	free(above);
+	return NULL;
+}
+
+void ura_lib_missing(int line, int s, int e) {
+	char *env   = getenv("URA_LIB");
+	char *dir   = exe_dir();
+	char *one   = env ? strdup(env) : strdup("$URA_LIB (not set)");
+	char *two   = dir ? format("%s/ura-lib", dir) : strdup("<unknown>");
+	char *three = dir ? format("%s/../ura-lib", dir) : strdup("<unknown>");
+	tokenize_error(line, s, e, ERR_NO_URA_LIB, one, two, three);
+	free(dir);
+	free(one);
+	free(two);
+	free(three);
+}
+
+void new_source(char *file_name) {
+	char *full = realpath(file_name, NULL);
+	if (!full) {
+		parse_error(NULL, "Cannot find file '%s'", file_name);
 		return;
 	}
-	File file = fopen(file_name, "r");
+	for (int i = 0; i < ura.sources_count; i++)
+		if (strcmp(ura.sources[i]->pathname, full) == 0) {
+			if (ura.sources[i]->loading)
+				parse_warn(NULL, "import cycle: '%s' imports itself through"
+				                 " '%s'", file_name, ura.current->filename);
+			free(full);
+			return;
+		}
+	File file = fopen(full, "r");
 	if (!file) {
 		parse_error(NULL, "Cannot open file '%s'", file_name);
-		free(file_name);
+		free(full);
 		return;
 	}
+	char   *dir   = strdup(full);
+	Source *src   = allocate(1, sizeof(Source));
+	src->pathname = full;
+	src->filename = strdup(file_name);
+	src->dirname  = strdup(dirname(dir));
+	free(dir);
+
 	fseek(file, 0, SEEK_END);
 	int size = ftell(file);
 	fseek(file, 0, SEEK_SET);
 	src->content = allocate((size + 1), sizeof(char));
 	fread(src->content, size, sizeof(char), file);
 	fclose(file);
-	free(file_name);
 
 	resize_array(ura.sources, Source *);
 	ura.sources[ura.sources_count++] = src;
-	ura.sources_pos++;
-}
-
-void exit_source() {
-	ura.sources_pos--;
 }
 
 bool includes(Type to_find, ...) {
@@ -112,6 +165,9 @@ void free_memory() {
    free(ura.tokens);
    for (int i = 0; i < ura.sources_count; i++) {
       free(ura.sources[i]->content);
+      free(ura.sources[i]->filename);
+      free(ura.sources[i]->dirname);
+      free(ura.sources[i]->pathname);
       free(ura.sources[i]);
    }
    free(ura.sources);

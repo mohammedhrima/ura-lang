@@ -1,0 +1,22 @@
+// common.ura — loaded into every program automatically.
+//
+// These are the C functions the compiler itself emits code for, so they must
+// always be in scope:
+//
+//   printf  output(...)
+//   calloc  new T[n]
+//   free    clean x
+//   write   runtime traps (divide by zero, bounds, unbound ref)
+//   exit    runtime traps
+//
+// Declaring them here instead of hardcoding them in codegen means the language
+// depends on this file, not on libc being baked into the compiler.
+//
+// Re-declaring any of these via use "@/io" / "@/memory" / "@/stdlib" is fine —
+// identical protos collapse to one declaration.
+
+proto fn printf(format chars, ...) int
+proto fn calloc(len long, size long) pointer
+proto fn free(ptr pointer) void
+proto fn write(fd int, ptr pointer, len long) long
+proto fn exit(code int) void

@@ -15,6 +15,28 @@ def _fence(tag, body):
     body = body.rstrip("\n")
     return f"```{tag}\n{body}\n```" if body else f"```{tag}\n```"
 
+FILES = re.compile(r"(?m)^//[ \t]*----[ \t]*(\S+)[^\n]*")
+
+STATUS = ("Compiling", "Finished", "Running", "Exited", "Crashed")
+
+def _diagnostics(text):
+    """Compile-time stderr minus the progress lines — what's left is warnings,
+    so a successful build can still record them in the err golden."""
+    kept = [l for l in _decolor(text).splitlines() if not l.startswith(STATUS)]
+    return "\n".join(kept).strip()
+
+def _split_files(src):
+    """A '// ---- name.ura' marker splits one ura block into several files, so a
+    case can exercise `use`. The LAST section is the entry point; it is written
+    as <stem>.ura like a single-file case, so diagnostics stay stable."""
+    parts = FILES.split(src)
+    if len(parts) == 1:
+        return [], src
+    names, bodies = parts[1::2], parts[2::2]
+    extra = [(n if n.endswith(".ura") else n + ".ura", b)
+             for n, b in zip(names, bodies)]
+    return extra[:-1], extra[-1][1]
+
 def _actual(src, stem):
     """Compile+run one source under -testing → always {ll, out, err} (empty when N/A).
     A case that fails to compile records its diagnostic in err — an "error test" is just
@@ -23,11 +45,18 @@ def _actual(src, stem):
     so goldens are deterministic AND portable across machines."""
     res = {"ll": "", "out": "", "err": "", "tree": ""}
     with tempfile.TemporaryDirectory() as d:
+        extra, entry = _split_files(src)
+        for name, body in extra:
+            fp = Path(d) / name
+            fp.parent.mkdir(parents=True, exist_ok=True)
+            fp.write_text(body.strip() + "\n")
         p = Path(d) / f"{stem}.ura"
-        p.write_text(src.rstrip() + "\n")
+        p.write_text(entry.rstrip() + "\n")
         paths = (str(p), os.path.realpath(p))
+        roots = (os.path.realpath(d) + os.sep, str(d) + os.sep)
         def norm(s):
             for pp in paths: s = s.replace(pp, f"{stem}.ura")
+            for rr in roots: s = s.replace(rr, "")
             return s
         exe = Path(d) / "exe"
         c = run(URA, p, "-o", exe, "-testing", "-tree")
@@ -42,6 +71,8 @@ def _actual(src, stem):
         r = run(exe)
         res["out"] = r.stdout
         if r.stderr or exit_code(r): res["err"] = norm(r.stderr) + f"exit: {exit_code(r)}\n"
+        warn = _diagnostics(norm(c.stderr))
+        if warn: res["err"] = warn + "\n" + res["err"]
         return res
 
 def parse_md(path):
