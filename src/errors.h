@@ -79,6 +79,10 @@
 
 #define ERR_UNKNOWN_TYPE "Unknown type '%s'"
 
+#define ERR_STRUCT_RECURSIVE \
+	"Struct %s cannot contain itself by value;" \
+	" use an array or a 'ref?' so the size stays finite"
+
 #define ERR_STRUCT_EMPTY \
 	"Struct %s must declare at least one field"
 

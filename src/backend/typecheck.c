@@ -112,10 +112,26 @@ void type_check_fdec(Node *node) {
       type_check(node->children[i]);
 }
 
+bool struct_contains(Node *def, Node *target, int depth) {
+   if (!def || depth > 64) return false;
+   for (int i = 0; i < def->children_count; i++) {
+      Token *field = def->children[i]->token;
+      if (field->is_ref) continue;
+      if (field->ret_type != STRUCT_CALL) continue;
+      Node *sub = field->Struct.ptr;
+      if (!sub) continue;
+      if (sub == target) return true;
+      if (struct_contains(sub, target, depth + 1)) return true;
+   }
+   return false;
+}
+
 void type_check_struct(Node *node) {
    node->token->ret_type = STRUCT_DEF;
    for (int i = 0; i < node->children_count; i++)
       type_check(node->children[i]);
+   if (struct_contains(node, node, 0))
+      parse_error(node->token, ERR_STRUCT_RECURSIVE, node->token->name);
 }
 
 void type_check_binop(Node *node) {
