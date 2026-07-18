@@ -1,0 +1,28 @@
+// struct.ura - step 1: struct declaration + fields (parse/AST only)
+
+struct Player:
+    name  chars
+    hp    int
+    mp    int
+
+struct Room:
+    name  chars
+    floor int
+
+// a struct field whose type is another struct (A6)
+struct Dungeon:
+    name  chars
+    entry Room
+
+// self-reference through an array is legal, it is a fat pointer (A9)
+struct Tree:
+    label chars
+    kids  Tree[]
+
+// structs may be declared inside a function body too (A11)
+main():
+    struct Local:
+        x int
+        y int
+
+    output("structs parsed\n")

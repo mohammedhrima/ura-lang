@@ -19,9 +19,9 @@ void type_check_match(Node *node) {
 			for (int j = 0; j < branch->left->children_count; j++) {
 				Node *value = branch->left->children[j];
 				type_check(value);
-				if (subject && value->token->ret_type && value->token->ret_type != subject)
-					parse_error(value->token, "This case value is %s but the subject is %s; they must be the same type",
-					            type_name(value->token->ret_type), type_name(subject));
+				Type ret_type = value->token->ret_type;
+				if (subject && ret_type && ret_type != subject)
+					parse_error(value->token, ERR_CASE_TYPE_MISMATCH, type_name(ret_type), type_name(subject));
 			}
 		for (int j = 0; j < branch->children_count; j++)
 			type_check(branch->children[j]);
@@ -53,8 +53,10 @@ TypeRef array_type(Type sub, int depth) {
 }
 
 TypeRef llvm_type_of(Token *token) {
-   if (token->ret_type == ARRAY_TYPE) return array_type(token->Array.sub_type, token->Array.depth);
-   if (token->ret_type != FN_TYPE) return to_llvm_type(token->ret_type);
+   if (token->ret_type == ARRAY_TYPE) 
+      return array_type(token->Array.sub_type, token->Array.depth);
+   if (token->ret_type != FN_TYPE) 
+      return to_llvm_type(token->ret_type);
    int      n      = token->Fn.params_count;
    TypeRef *params = n ? allocate(n, sizeof(TypeRef)) : NULL;
    for (int i = 0; i < n; i++) params[i] = llvm_type_of(token->Fn.params[i]);
@@ -64,8 +66,10 @@ TypeRef llvm_type_of(Token *token) {
 }
 
 Value default_value(Token *token) {
-   if (includes(token->ret_type, NUMERIC_TYPES, 0)) return LLVMConstInt(llvm_type_of(token), 0, false);
-   if (token->ret_type == FLOAT)                    return LLVMConstReal(llvm_type_of(token), 0.0);
+   if (includes(token->ret_type, NUMERIC_TYPES, 0)) 
+      return LLVMConstInt(llvm_type_of(token), 0, false);
+   if (token->ret_type == FLOAT)                    
+      return LLVMConstReal(llvm_type_of(token), 0.0);
    return LLVMConstNull(llvm_type_of(token));
 }
 
@@ -83,17 +87,20 @@ void type_check_fcall(Node *node) {
       return;
    }
    for (int i = 0; i < fn->Fn.params_count; i++) {
-      if (node->children[i]->token->ret_type &&
-         node->children[i]->token->ret_type != fn->Fn.params[i]->ret_type) {
-         parse_error(node->children[i]->token, "Argument %d type mismatch in call to '%s'", i + 1, token->name);
+      Type arg_type   = node->children[i]->token->ret_type;
+      Type param_type = fn->Fn.params[i]->ret_type;
+      if (arg_type && arg_type != param_type) {
+         parse_error(node->children[i]->token, ERR_ARG_TYPE_MISMATCH, i + 1, token->name);
          return;
       }
-      if (fn->Fn.params[i]->is_ref && node->children[i]->token->type != REF) {
-         parse_error(node->children[i]->token, "Argument %d to '%s' must be passed by reference (ref x)", i + 1, token->name);
+      bool want_ref = fn->Fn.params[i]->is_ref;
+      bool got_ref  = node->children[i]->token->type == REF;
+      if (want_ref && !got_ref) {
+         parse_error(node->children[i]->token, ERR_ARG_NEEDS_REF, i + 1, token->name);
          return;
       }
-      if (!fn->Fn.params[i]->is_ref && node->children[i]->token->type == REF) {
-         parse_error(node->children[i]->token, "Argument %d to '%s' does not take a reference", i + 1, token->name);
+      if (!want_ref && got_ref) {
+         parse_error(node->children[i]->token, ERR_ARG_NO_REF, i + 1, token->name);
          return;
       }
    }
@@ -101,6 +108,12 @@ void type_check_fcall(Node *node) {
 }
 
 void type_check_fdec(Node *node) {
+   for (int i = 0; i < node->children_count; i++)
+      type_check(node->children[i]);
+}
+
+void type_check_struct(Node *node) {
+   node->token->ret_type = STRUCT_DEF;
    for (int i = 0; i < node->children_count; i++)
       type_check(node->children[i]);
 }
@@ -115,7 +128,7 @@ void type_check_binop(Node *node) {
       if (node->right->token->type != REF)
          parse_error(token, "A reference must be bound to a variable (ref x)");
       else if (lt && rt && lt != rt)
-         parse_error(token, "Reference type mismatch: expected %s, got %s", type_name(lt), type_name(rt));
+         parse_error(token, ERR_REF_TYPE_MISMATCH, type_name(lt), type_name(rt));
       token->ret_type = lt;
       return;
    }
@@ -124,7 +137,7 @@ void type_check_binop(Node *node) {
       return;
    }
    if (lt == FLOAT && includes(token->type, BITWISE_TYPE, 0)) {
-      parse_error(token, "Bitwise and shift operators require integer operands");
+      parse_error(token, ERR_BITWISE_NEEDS_INT);
       return;
    }
    if (includes(token->type, LOGIC_TYPE, 0)) {
@@ -146,11 +159,14 @@ void type_check_array_lit(Node *node) {
       type_check(node->children[i]);
    Token *first = node->children[0]->token;
    for (int i = 1; i < node->children_count; i++) {
-      Token *e = node->children[i]->token;
-      if (e->ret_type != first->ret_type ||
-          (first->ret_type == ARRAY_TYPE &&
-           (e->Array.sub_type != first->Array.sub_type || e->Array.depth != first->Array.depth)))
-         parse_error(e, "Array elements must all be the same type");
+      Token *elem     = node->children[i]->token;
+      bool   is_array = first->ret_type == ARRAY_TYPE;
+      bool   same_type  = elem->ret_type == first->ret_type;
+      bool   same_sub   = elem->Array.sub_type == first->Array.sub_type;
+      bool   same_depth = elem->Array.depth == first->Array.depth;
+      bool   same_array = !is_array || (same_sub && same_depth);
+      if (!same_type || !same_array)
+         parse_error(elem, "Array elements must all be the same type");
    }
    node->token->ret_type = ARRAY_TYPE;
    if (first->ret_type == ARRAY_TYPE) {
@@ -167,7 +183,7 @@ void type_check_access(Node *node) {
    type_check(node->right);
    Token *arr = node->left->token;
    if (arr->ret_type != ARRAY_TYPE) {
-      parse_error(node->token, "Cannot index '%s', it is not an array", type_name(arr->ret_type));
+      parse_error(node->token, ERR_NOT_AN_ARRAY, type_name(arr->ret_type));
       return;
    }
    if (node->right->token->type == RANGE) {
@@ -177,7 +193,7 @@ void type_check_access(Node *node) {
       return;
    }
    if (!includes(node->right->token->ret_type, NUMERIC_TYPES, 0))
-      parse_error(node->token, "Array index must be an integer, got %s", type_name(node->right->token->ret_type));
+      parse_error(node->token, ERR_INDEX_NOT_INT, type_name(node->right->token->ret_type));
    node->token->Array.sub_type = arr->Array.sub_type;
    node->token->Array.depth    = arr->Array.depth - 1;
    node->token->ret_type       = node->token->Array.depth > 0 ? ARRAY_TYPE : arr->Array.sub_type;
@@ -195,9 +211,9 @@ void type_check_for(Node *node) {
    type_check(node->right);
    Token *iter = node->right->token;
    if (iter->type != RANGE && iter->ret_type != ARRAY_TYPE)
-      parse_error(node->token, "'for %s in ...' expects a range (a..b) or an array", node->left->token->name);
+      parse_error(node->token, ERR_FOR_NOT_ITERABLE, node->left->token->name);
    if (node->token->is_ref && iter->type == RANGE)
-      parse_error(node->token, "'for ref' needs an array; a range yields values, not storage");
+      parse_error(node->token, ERR_FOR_REF_NEEDS_ARRAY);
    for (int i = 0; i < node->children_count; i++)
       type_check(node->children[i]);
 }
@@ -207,6 +223,7 @@ void type_check(Node *node) {
    Token *token = node->token;
    switch (token->type) {
       case FDEC:   type_check_fdec(node); break;
+      case STRUCT_DEF: type_check_struct(node); break;
       case INT:     token->ret_type = INT; break;
       case BOOL:    token->ret_type = BOOL; break;
       case CHARS:   token->ret_type = CHARS; break;
@@ -231,8 +248,10 @@ void type_check(Node *node) {
          type_check(node->left);
          Type src = node->left->token->ret_type;
          Type dst = node->right->token->ret_type;
-         if ((src && !includes(src, NUMERIC_TYPES, 0)) || !includes(dst, NUMERIC_TYPES, 0))
-            parse_error(token, "Cannot cast %s to %s", type_name(src), type_name(dst));
+         bool bad_src = src && !includes(src, NUMERIC_TYPES, 0);
+         bool bad_dst = !includes(dst, NUMERIC_TYPES, 0);
+         if (bad_src || bad_dst)
+            parse_error(token, ERR_CANNOT_CAST, type_name(src), type_name(dst));
          token->ret_type = dst;
          break;
       }
@@ -252,15 +271,16 @@ void type_check(Node *node) {
          if (strcmp(node->token->name, "len") != 0)
             parse_error(node->token, "Unknown member '.%s'", node->token->name);
          else if (node->left->token->ret_type != ARRAY_TYPE)
-            parse_error(node->token, "'.len' is only valid on an array, not %s", type_name(node->left->token->ret_type));
+            parse_error(node->token, ERR_LEN_NOT_ARRAY, type_name(node->left->token->ret_type));
          else
             node->token->ret_type = INT;
          break;
       case RANGE:
          type_check(node->left);
          type_check(node->right);
-         if (!includes(node->left->token->ret_type, NUMERIC_TYPES, 0) ||
-             !includes(node->right->token->ret_type, NUMERIC_TYPES, 0))
+         bool left_num  = includes(node->left->token->ret_type, NUMERIC_TYPES, 0);
+         bool right_num = includes(node->right->token->ret_type, NUMERIC_TYPES, 0);
+         if (!left_num || !right_num)
             parse_error(node->token, "Range bounds must be integers");
          node->token->ret_type = INT;
          break;

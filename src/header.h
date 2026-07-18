@@ -24,6 +24,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "errors.h"
+
 #if defined(__APPLE__)
 typedef struct __sFILE *File;
 #elif defined(__linux__)
@@ -227,7 +229,7 @@ struct Token {
 		struct { bool value; } Bool;
 		struct { char *value; } Chars;
 		struct { char value; } Char;
-		struct { int index; Node *ptr; } Struct;
+		struct { int index; Node *ptr; char *name; } Struct;
 		struct { Type  sub_type; int   depth; Node *struct_ptr; } Array;
 		struct { EXPAND(Token**, types); } Tuple;
 		struct { Node *ptr; Token *var; } Fcall;

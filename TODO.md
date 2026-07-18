@@ -104,7 +104,20 @@ Rewrite ura-lang feature by feature, full pipeline each. Nothing gets skipped, n
 - try/catch vs Result/Option — decide at M8
 - the guard should throw an error
 - check if all feautres are implmented
+- structs (M5) — **decided**:
+    - copy: shallow (bitwise) until the user overloads `operator =`
+    - `ref` fields: only as nullable `ref?` (zero-init = null, guarded reads)
+    - scope: `struct` may be declared in any scope, not just top level
+    - `output(p)`: auto field dump — `Player{name: "Aldric", hp: 100}`
+    - recursive-by-value (`struct N: next N`) and mutual recursion are errors;
+      self-reference through an array (`kids N[]`) is legal
+    - a struct with no fields is an error
+    - `struct` inside a function body must work (any scope)
+    - lifetime is the user's business: no implicit deep copy, no implicit free.
+      If the user defines a destructor we call it at end of scope, nothing more
+    - global struct variables wait on M4 globals
 - use keyword:
     - preprocessing macros
     - structs ...
 - avoid calling hardcoded calloc, printf, free in code
+- handle globals

@@ -91,8 +91,13 @@ void parse_type(Token *target) {
 			parse_error(peek(0), "Expected ')' in function type");
 		target->Fn.ret = new_token(ID, 0);
 		parse_type(target->Fn.ret);
-	} else if (is_data_type(peek(0))) {
-		target->ret_type = next()->type;
+	} else if (is_data_type(peek(0)) || peek(0)->type == ID) {
+		Token *base = next();
+		if (base->type == ID) {
+			target->ret_type    = STRUCT_CALL;
+			target->Struct.name = base->name;
+		} else
+			target->ret_type = base->type;
 		int depth = 0;
 		while (peek(0)->type == LBRA && peek(1)->type == RBRA) {
 			find(LBRA, 0);
@@ -205,7 +210,8 @@ Node *ref_node(Node *node) {
 		parse_error(token, "Expected a variable after 'ref'");
 		return syntax_error();
 	}
-	if (is_data_type(peek(1)) || (peek(1)->type == FDEC && peek(2)->type == LPAR)) {
+	bool fn_type = peek(1)->type == FDEC && peek(2)->type == LPAR;
+	if (is_data_type(peek(1)) || fn_type) {
 		find(ID, 0);
 		name->is_dec      = true;
 		name->is_ref      = true;
@@ -233,7 +239,9 @@ Node *id_node(Node *node) {
 	}
 	if (peek(0)->type == LBRA || peek(0)->type == DOT)
 		return access_node(node);
-	if (is_data_type(peek(0)) || (peek(0)->type == FDEC && peek(1)->type == LPAR)) {
+	bool named   = peek(0)->type == ID && peek(0)->line == token->line;
+	bool fn_type = peek(0)->type == FDEC && peek(1)->type == LPAR;
+	if (is_data_type(peek(0)) || named || fn_type) {
 		token->is_dec = true;
 		parse_type(token);
 	}
@@ -286,6 +294,18 @@ Node *fdec_node(Node *node) {
 		parse_block(node, node->token->indent);
 	}
 
+	exit_scope();
+	return node;
+}
+
+Node *struct_node(Node *node) {
+	node->token->type = STRUCT_DEF;
+	enter_scope(node);
+	if (!find(DOTS, 0))
+		parse_error(node->token, "Expected ':' after struct %s", node->token->name);
+	parse_block(node, node->token->indent);
+	if (!node->children_count)
+		parse_error(node->token, "Struct %s must declare at least one field", node->token->name);
 	exit_scope();
 	return node;
 }
@@ -411,6 +431,16 @@ Node *prime_node() {
       }
       set_name(node->token, fname->name);
       return fdec_node(node);
+   }
+   case STRUCT_DEF: {
+      Node *node = new_node(token);
+      Token *sname = find(ID, 0);
+      if (!sname) {
+         parse_error(token, "Expected a struct name after 'struct'");
+         return syntax_error();
+      }
+      set_name(node->token, sname->name);
+      return struct_node(node);
    }
    case ID: return id_node(new_node(token));
    case NEW: {

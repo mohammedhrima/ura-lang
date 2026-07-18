@@ -780,6 +780,7 @@ void code_gen(Node *node) {
    Token *token = node->token;
    switch (token->type) {
       case FDEC:   code_gen_fdec(node); break;
+      case STRUCT_DEF: break;
       case INT: case BOOL: case CHARS: case CHAR: case FLOAT: code_gen_literal(node); break;
       case ID:     code_gen_id(node); break;
       case FN_TYPE:

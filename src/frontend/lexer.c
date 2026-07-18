@@ -212,8 +212,10 @@ bool lex_use(char *content, int *i, int s, int line, int indent, int default_ind
 {
 	(void)indent;
 	(void)default_indent;
-	if (!((*i) - s == 3 && strncmp(content + s, "use", 3) == 0 && isspace(content[(*i)])))
-		return false;
+	bool is_len   = (*i) - s == 3;
+	bool is_word  = strncmp(content + s, "use", 3) == 0;
+	bool is_space = isspace(content[(*i)]);
+	if (!is_len || !is_word || !is_space) return false;
 	while (isspace(content[(*i)]))
 		(*i)++;
 	if (content[(*i)] != '\"') {
@@ -254,8 +256,10 @@ bool lex_link(char *content, int *i, int s, int line, int indent, int default_in
 {
 	(void)indent;
 	(void)default_indent;
-	if (!((*i) - s == 4 && strncmp(content + s, "link", 4) == 0 && isspace(content[(*i)])))
-		return false;
+	bool is_len   = (*i) - s == 4;
+	bool is_word  = strncmp(content + s, "link", 4) == 0;
+	bool is_space = isspace(content[(*i)]);
+	if (!is_len || !is_word || !is_space) return false;
 	while (isspace(content[(*i)]))
 		(*i)++;
 	if (content[(*i)] != '\"') {
@@ -414,7 +418,8 @@ Token *parse_token(int line, int s, int e, Type type, int indent) {
 		char *value      = new->Chars.value;
 		int   j          = 0;
 		for (int i = 0; i < len && s < e; i++, s++) {
-			if (s + 1 < e && input[s] == '\\') s = parse_escape_seq(input, s, e, value, &j);
+			bool is_escape = s + 1 < e && input[s] == '\\';
+			if (is_escape) s = parse_escape_seq(input, s, e, value, &j);
 			else value[j++] = input[s];
 		}
 		if (j < len) {

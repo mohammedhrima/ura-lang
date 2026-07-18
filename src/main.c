@@ -32,18 +32,22 @@ void parse_arguments(int argc, char **argv)
       MATCH("-Oz", ura.flags, PASSES_Oz);
 #undef MATCH
       if (strcmp(arg, "-o") == 0) {
-         if (i + 1 >= argc) { parse_error(NULL, "Missing argument for '-o'"); return; }
+         if (i + 1 >= argc) {
+            parse_error(NULL, ERR_MISSING_O_ARG);
+            return;
+         }
          ura.output = argv[++i];
       } else if (arg[0] == '-') {
          parse_error(NULL, "Unknown flag '%s'", arg);
       } else {
          size_t n = strlen(arg);
-         if (n <= 4 || strcmp(arg + n - 4, ".ura") != 0) parse_error(NULL, "Invalid file '%s'", arg);
+         bool is_ura = n > 4 && strcmp(arg + n - 4, ".ura") == 0;
+         if (!is_ura) parse_error(NULL, "Invalid file '%s'", arg);
          else new_source(arg);
       }
    }
    if (ura.error_count) return;
-   if (!ura.sources) parse_error(NULL, "No input file (usage: ura <file.ura> [-o out] [-O0..-Oz] [-san] [-debug] [-tree])");
+   if (!ura.sources) parse_error(NULL, ERR_NO_INPUT);
 }
 
 void tokenize(int default_indent) {
@@ -77,8 +81,6 @@ void tokenize(int default_indent) {
    exit_source();
 }
 
-
-
 void generate_ast() {
    if(ura.error_count) return;
    Node *head = new_node(new_token(ID, -TAB));
@@ -104,9 +106,6 @@ void generate_ast() {
 	for (int i = 0; i < head->children_count; i++)
 		pnode(head->children[i], "");
 }
-
-
-
 
 void generate_ir() {
    if(ura.error_count || !ura.head) return;
