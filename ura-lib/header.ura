@@ -1,14 +1,34 @@
-use "ctype"
-use "errno"
-use "fcntl"
-use "io"
-use "math"
-use "memory"
-use "net"
-use "os"
-use "signals"
-use "stat"
-use "stdlib"
-use "string"
-use "time"
-use "unistd"
+// Every module at once.
+//
+// BLOCKED on two compiler gaps:
+//
+//   1. No include guard. `use` re-tokenizes a file every time it is named, so
+//      a diamond import duplicates every declaration.
+//
+//   2. Five symbols are declared in two modules each, so importing both is a
+//      Redeclaration of function error even once the include guard exists:
+//        perror      - errno + io
+//        rename      - io + unistd
+//        strerror    - errno + string
+//        strerror_r  - errno + string
+//        strsignal   - signals + string
+//      The fix is to let declare_function accept an identical re-declaration
+//      of a proto, not to delete one of the two.
+//
+// Until then import the modules you need directly. ctype, io, memory and
+// stdlib are the ones that work today.
+//
+// use "ctype"
+// use "errno"
+// use "fcntl"
+// use "io"
+// use "math"
+// use "memory"
+// use "net"
+// use "os"
+// use "signals"
+// use "stat"
+// use "stdlib"
+// use "string"
+// use "time"
+// use "unistd"

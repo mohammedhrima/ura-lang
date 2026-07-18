@@ -290,13 +290,15 @@ void print_node_label(Node *node) {
 	case ID:    printf("%s", token->name); break;
 	case FCALL: printf("call %s", token->name); break;
 	case FDEC: {
-		printf("fn %s(", token->name);
+		printf("%sfn %s(", token->is_proto ? "proto " : "", token->name);
 		for (int i = 0; i < token->Fn.params_count; i++) {
 			Token *param = token->Fn.params[i];
 			printf("%s%s", i ? ", " : "", param->name);
 			if (param->ret_type)
 				printf(" : %s", spell(param->ret_type));
 		}
+		if (token->is_variadic)
+			printf("%s...", token->Fn.params_count ? ", " : "");
 		printf(")");
 		break;
 	}
@@ -543,8 +545,26 @@ void parse_error(Token *token, const char *fmt, ...) {
 	free(buf);
 }
 
+void parse_warn(Token *token, const char *fmt, ...) {
+	char  *buf = NULL;
+	size_t len = 0;
+	File   ms  = open_memstream(&buf, &len);
+	fprintf(ms, YELLOW("warning: "));
+	va_list ap;
+	va_start(ap, fmt);
+	vfprintf(ms, fmt, ap);
+	va_end(ap);
+	fputc('\n', ms);
+	render_caret(ms, token);
+	fclose(ms);
+
+	if (ura.no_color) decolor(buf);
+	fputs(buf, stderr);
+	free(buf);
+}
+
 void tokenize_error(int line, int s, int e, const char *fmt, ...) {
-	Source *src = ura.sources[ura.sources_pos];
+	Source *src = ura.current;
 	Token tok       = {0};
 	tok.source      = src;
 	tok.line        = line;

@@ -21,6 +21,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 fn main() : int
 ├─ output : void
 │  └─ chars "=== Aldric enters the dungeon ===\n"
@@ -95,6 +105,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 fn main() : int
 ├─ output : void
 │  ├─ chars "Damage dealt: "
@@ -194,6 +214,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 fn main() : int
 ├─ = : chars
 │  ├─ name : chars
@@ -309,6 +339,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 fn main() : int
 ├─ = : chars
 │  ├─ name : chars

@@ -51,6 +51,21 @@
 #define ERR_UNTERM_CHAR_LITERAL \
 	"Unterminated character literal, expected \"'\""
 
+#define ERR_MISSING_LIB_FN \
+	"'%s' is not in scope; the standard library failed to load" \
+	" (it is declared in ura-lib/common.ura)"
+
+#define ERR_NO_STDLIB \
+	"Cannot find the ura standard library;" \
+	" set URA_LIB or put ura-lib next to the ura binary"
+
+#define ERR_NO_URA_LIB \
+	"No ura standard library found for 'use \"@/...\"'\n" \
+	"  tried: %s\n" \
+	"         %s\n" \
+	"         %s\n" \
+	"  set URA_LIB, or put ura-lib next to the ura binary"
+
 #define ERR_UNTERM_USE_PATH \
 	"Unterminated 'use' path, expected closing '\"'"
 

@@ -235,10 +235,15 @@ void set_debug_location(Token *token) {
    llvm_set_location(llvm_di_location(token->line, ura.debug_scope));
 }
 
-Value get_or_declare(char *name, TypeRef fn_type) {
-   Value fn = LLVMGetNamedFunction(ura.module, name);
-   if (!fn) fn = LLVMAddFunction(ura.module, name, fn_type);
-   return fn;
+Value lib_fn(char *name, TypeRef *type) {
+   Node *fn = find_function(name);
+   if (!fn) {
+      parse_error(NULL, ERR_MISSING_LIB_FN, name);
+      return NULL;
+   }
+   emit_signature(fn);
+   *type = fn->token->llvm.func_type;
+   return fn->token->llvm.elem;
 }
 
 void guard(Token *op, Value is_bad, char *what) {
@@ -258,17 +263,16 @@ void guard(Token *op, Value is_bad, char *what) {
    Value   msg  = llvm_string(text, "trap_msg");
    TypeRef i8p  = pointer_to(ura.i8);
 
-   TypeRef write_params[3] = { ura.i32, i8p, ura.i64 };
-   TypeRef write_ty        = LLVMFunctionType(ura.i64, write_params, 3, 0);
-   Value   write_fn        = get_or_declare("write", write_ty);
-   Value   write_args[3]   = { const_i32(2), msg, LLVMConstInt(ura.i64, strlen(text), 0) };
-   llvm_call(write_ty, write_fn, write_args, 3, "");
+   TypeRef write_ty      = NULL;
+   Value   write_fn      = lib_fn("write", &write_ty);
+   Value   write_args[3] = { const_i32(2), msg, LLVMConstInt(ura.i64, strlen(text), 0) };
+   if (write_fn) llvm_call(write_ty, write_fn, write_args, 3, "");
    free(text);
 
-   TypeRef exit_ty      = LLVMFunctionType(ura.vd, (TypeRef[]){ ura.i32 }, 1, 0);
-   Value   exit_fn      = get_or_declare("exit", exit_ty);
+   TypeRef exit_ty      = NULL;
+   Value   exit_fn      = lib_fn("exit", &exit_ty);
    Value   exit_args[1] = { const_i32(1) };
-   llvm_call(exit_ty, exit_fn, exit_args, 1, "");
+   if (exit_fn) llvm_call(exit_ty, exit_fn, exit_args, 1, "");
 
    LLVMBuildUnreachable(ura.builder);
    llvm_at(cont);
@@ -438,9 +442,10 @@ Value make_slice(Token *arr, int depth, Value data, Value len) {
 }
 
 Value array_calloc(TypeRef elem, Value count, Value esz) {
-   TypeRef i8p = pointer_to(ura.i8);
-   TypeRef cty = LLVMFunctionType(i8p, (TypeRef[]){ ura.i64, ura.i64 }, 2, 0);
-   Value   mem = llvm_call(cty, get_or_declare("calloc", cty), (Value[]){ count, esz }, 2, "heap");
+   TypeRef cty = NULL;
+   Value   fn  = lib_fn("calloc", &cty);
+   if (!fn) return LLVMConstNull(pointer_to(elem));
+   Value   mem = llvm_call(cty, fn, (Value[]){ count, esz }, 2, "heap");
    return LLVMBuildBitCast(ura.builder, mem, pointer_to(elem), "arr");
 }
 
@@ -515,8 +520,9 @@ void free_array(Token *arr, Value slice, int depth) {
       llvm_at(end);
    }
    Value   ptr = LLVMBuildBitCast(ura.builder, data, pointer_to(ura.i8), "free.ptr");
-   TypeRef fty = LLVMFunctionType(ura.vd, (TypeRef[]){ pointer_to(ura.i8) }, 1, 0);
-   llvm_call(fty, get_or_declare("free", fty), (Value[]){ ptr }, 1, "");
+   TypeRef fty = NULL;
+   Value   ffn = lib_fn("free", &fty);
+   if (ffn) llvm_call(fty, ffn, (Value[]){ ptr }, 1, "");
 }
 
 void code_gen_typeof(Node *node) {
@@ -552,8 +558,8 @@ void code_gen_literal(Node *node) {
 
 void code_gen_fdec(Node *node) {
    Token *token = node->token;
-   emit_signature(node);
    if (token->is_proto) return;
+   emit_signature(node);
    debug_enter_function(token);
    enter_scope(node);
    for (int i = 0; i < token->Fn.params_count; i++) {
@@ -887,9 +893,9 @@ void code_gen_compound(Node *node) {
 }
 
 Value emit_printf(char *fmt, Value *args, int n) {
-   TypeRef i8p       = pointer_to(ura.i8);
-   TypeRef printf_ty = LLVMFunctionType(ura.i32, (TypeRef[]){ i8p }, 1, 1);
-   Value   printf_fn = get_or_declare("printf", printf_ty);
+   TypeRef printf_ty = NULL;
+   Value   printf_fn = lib_fn("printf", &printf_ty);
+   if (!printf_fn) return NULL;
    Value  *call      = allocate(n + 1, sizeof(Value));
    call[0]           = llvm_string(fmt, "fmt");
    if (n) memcpy(call + 1, args, n * sizeof(Value));

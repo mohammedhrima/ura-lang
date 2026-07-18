@@ -24,6 +24,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 fn flag() : bool
 └─ return
    └─ bool True
@@ -89,6 +99,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 fn grade() : char
 └─ return
    └─ char 'A'
@@ -173,6 +193,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 fn half() : float
 └─ return
    └─ float 0.5
@@ -268,6 +298,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 fn main() : int
 ├─ = : float
 │  ├─ a : float

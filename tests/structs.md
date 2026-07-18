@@ -58,6 +58,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Player
 ├─ name : chars
 ├─ hp : int
@@ -113,6 +123,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Room
 ├─ name : chars
 └─ floor : int
@@ -172,6 +192,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Dungeon
 ├─ name : chars
 └─ entry : STRUCT_CALL
@@ -227,6 +257,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 fn main() : int
 ├─ struct Local
 │  ├─ x : int
@@ -277,6 +317,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 fn main() : int
 ├─ = : int
 │  ├─ n : int
@@ -342,6 +392,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 fn main() : int
 ├─ for
 │  ├─ i : int
@@ -417,6 +477,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Room
 └─ floor : int
 
@@ -474,6 +544,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Outer
 ├─ name : chars
 ├─ struct Config
@@ -526,6 +606,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Tree
 ├─ label : chars
 └─ kids : STRUCT_CALL[]
@@ -575,6 +665,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Unused
 ├─ x : int
 └─ y : int
@@ -633,6 +733,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Local
 ├─ a : char
 └─ b : char
@@ -716,6 +826,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Room
 ├─ name : chars
 └─ floor : int
@@ -820,6 +940,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Room
 ├─ name : chars
 └─ floor : int
@@ -922,6 +1052,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Room
 ├─ name : chars
 └─ floor : int
@@ -1066,6 +1206,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Room
 ├─ name : chars
 └─ floor : int
@@ -1203,6 +1353,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Room
 ├─ name : chars
 └─ floor : int
@@ -1418,6 +1578,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Room
 └─ floor : int
 
@@ -1592,6 +1762,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Room
 └─ floor : int
 
@@ -1696,6 +1876,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 fn main() : int
 ├─ = : int
 │  ├─ stack : int
@@ -1754,6 +1944,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Node
 ├─ value : int
 └─ next : STRUCT_CALL
@@ -1822,6 +2022,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Node
 ├─ value : int
 └─ next : STRUCT_CALL
@@ -1949,6 +2159,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Room
 ├─ name : chars
 └─ floor : int
@@ -2053,6 +2273,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Room
 ├─ name : chars
 └─ floor : int
@@ -2146,6 +2376,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Room
 ├─ name : chars
 └─ floor : int
@@ -2244,6 +2484,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Room
 ├─ name : chars
 └─ floor : int
@@ -2365,6 +2615,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Room
 ├─ name : chars
 └─ floor : int
@@ -2617,6 +2877,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Node
 ├─ value : int
 └─ next : STRUCT_CALL
@@ -2785,6 +3055,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Node
 ├─ value : int
 └─ next : STRUCT_CALL
@@ -2974,6 +3254,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 struct Room
 └─ floor : int
 

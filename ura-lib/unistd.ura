@@ -58,17 +58,20 @@ proto fn fsync(fd int) int
 proto fn fdatasync(fd int) int
 
 // ── access() mode constants (POSIX, identical on Linux and macOS) ──────────
-F_OK int = 0
-X_OK int = 1
-W_OK int = 2
-R_OK int = 4
+// BLOCKED (M4 globals): top-level variables are not implemented yet - a top-level declaration reaches code_gen_id with no insertion point.
+// F_OK int = 0
+// X_OK int = 1
+// W_OK int = 2
+// R_OK int = 4
 
 // ── lseek() whence constants ───────────────────────────────────────────────
-SEEK_SET int = 0
-SEEK_CUR int = 1
-SEEK_END int = 2
+// BLOCKED (M4 globals): top-level variables are not implemented yet - a top-level declaration reaches code_gen_id with no insertion point.
+// SEEK_SET int = 0
+// SEEK_CUR int = 1
+// SEEK_END int = 2
 
 // ── stdin/stdout/stderr file descriptors ───────────────────────────────────
-STDIN_FILENO  int = 0
-STDOUT_FILENO int = 1
-STDERR_FILENO int = 2
+// BLOCKED (M4 globals): top-level variables are not implemented yet - a top-level declaration reaches code_gen_id with no insertion point.
+// STDIN_FILENO  int = 0
+// STDOUT_FILENO int = 1
+// STDERR_FILENO int = 2

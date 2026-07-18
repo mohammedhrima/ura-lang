@@ -28,7 +28,17 @@ main():
 ```
 
 ```tree
-fn puts(str : chars) : int
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
+proto fn puts(str : chars) : int
 
 fn is_s_rank(grade : char) : bool
 └─ return
@@ -62,8 +72,6 @@ S-rank hero — unstoppable
 @str = private unnamed_addr constant [28 x i8] c"S-rank hero \E2\80\94 unstoppable\00", align 1
 @str.1 = private unnamed_addr constant [14 x i8] c"keep training\00", align 1
 
-declare i32 @puts(i8*)
-
 define i1 @is_s_rank(i8 %0) {
 entry:
   %grade = alloca i8, align 1
@@ -92,6 +100,8 @@ next:                                             ; preds = %entry
   %call3 = call i32 @puts(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.1, i32 0, i32 0))
   br label %endif
 }
+
+declare i32 @puts(i8*)
 ```
 
 ## 002 — proto printf: hello world with a format string
@@ -108,7 +118,17 @@ main():
 ```
 
 ```tree
-fn printf(fmt : chars) : int
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
+proto fn printf(fmt : chars, ...) : int
 
 fn main() : int
 ├─ = : chars
@@ -134,8 +154,6 @@ hello ura 42
 @str = private unnamed_addr constant [4 x i8] c"ura\00", align 1
 @str.1 = private unnamed_addr constant [13 x i8] c"hello %s %d\0A\00", align 1
 
-declare i32 @printf(i8*, ...)
-
 define i32 @main() {
 entry:
   %s = alloca i8*, align 8
@@ -144,6 +162,8 @@ entry:
   %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str.1, i32 0, i32 0), i8* %s1, i32 42)
   ret i32 0
 }
+
+declare i32 @printf(i8*, ...)
 ```
 
 ## 003 — typeof / sizeof on scalars
@@ -160,6 +180,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 fn main() : int
 ├─ = : int
 │  ├─ x : int
@@ -242,6 +272,16 @@ main():
 ```
 
 ```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
 fn main() : int
 ├─ = : array
 │  ├─ a : int[]

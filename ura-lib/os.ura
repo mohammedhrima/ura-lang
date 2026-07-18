@@ -1,5 +1,6 @@
 struct Os:
     argc int
-    argv array[chars]
+    argv chars[]
 
-os Os
+// BLOCKED (M4 globals): top-level variables are not implemented yet - a top-level declaration reaches code_gen_id with no insertion point.
+// os Os

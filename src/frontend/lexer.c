@@ -229,11 +229,16 @@ bool lex_use(char *src, int *i, int s, int line)
 		if (use[0] == '@') {
 			char *rest = use + 1;
 			if (*rest == '/') rest++;
+			if (!ura.lib) {
+				ura_lib_missing(line, start - 1, start);
+				free(use);
+				return true;
+			}
 			tmp = format("%s/%s", ura.lib, rest);
 			free(use);
 			use = tmp;
 		} else if (use[0] != '/') {
-			tmp            = format("%s/%s", ura.sources[ura.sources_pos]->dirname, use);
+			tmp            = format("%s/%s", ura.current->dirname, use);
 			free(use);
 			use = tmp;
 		}
@@ -273,8 +278,9 @@ bool lex_identifier(char *src, int *i, int line, int indent, int base)
 		return false;
 	while (src[*i] && (isalnum(src[*i]) || strchr("@$_", src[*i])))
 		(*i)++;
+	int loaded = ura.sources_count;
 	if (lex_use(src, i, s, line)) {
-		if (ura.error_count) return true;
+		if (ura.error_count || ura.sources_count == loaded) return true;
 		ura.calling_use++;
 		tokenize(indent);
 		ura.calling_use--;
@@ -324,7 +330,7 @@ Token *new_token(Type type, int indent) {
 }
 
 Token *parse_token(int line, int s, int e, Type type, int indent) {
-	Source *src = ura.sources[ura.sources_pos - 1];
+	Source *src = ura.current;
 	Token *new       = new_token(type, indent);
 	char *input      = src->content;
 	new->line        = line;
