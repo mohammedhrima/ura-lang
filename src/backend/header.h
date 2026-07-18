@@ -89,6 +89,15 @@ MetadataRef llvm_get_location();
 void llvm_set_location(MetadataRef loc);
 
 void emit_signature(Node *fn);
+Value emit_printf(char *fmt, Value *args, int n);
+Value print_adapt(Type type, Value v, char **spec);
+TypeRef out_frame_type();
+void emit_out_call(Node *def, Value ptr, Value frame);
+void emit_out_scalar(Token *info, Value slot);
+void emit_out_array(Token *field, Value slot, Value frame, int depth);
+void emit_out_field(Token *field, Value slot, Value frame);
+Value struct_printer(Node *def);
+Value struct_arg_ptr(Node *arg);
 Value field_ptr(Node *node);
 Value address_of(Node *node);
 Value access_ptr(Node *node);

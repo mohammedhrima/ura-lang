@@ -24,6 +24,13 @@
 - 020 — a 'ref?' field may refer to its own struct
 - 021 — bind, read and write through a 'ref?' field
 - 022 — struct assignment copies by value
+- 023 — a struct as a by-value parameter
+- 024 — a 'ref' struct parameter mutates the caller's struct
+- 025 — returning a struct: the create() constructor convention
+- 026 — output() prints a struct and its nested struct
+- 027 — output() follows a bound 'ref?' and prints null when unbound
+- 028 — output() prints [Circular] instead of looping forever
+- 029 — output() expands array fields, including 2D
 
 ## 001 — declare a struct and a local: named type, alloca, zero-init
 
@@ -2014,4 +2021,1423 @@ entry:
 }
 
 declare i32 @printf(i8*, ...)
+```
+
+## 023 — a struct as a by-value parameter
+
+```ura
+// structs/023.ura - a struct as a by-value parameter
+
+struct Room:
+    name  chars
+    floor int
+
+fn show(r Room) void:
+    output("room ", r.name, "@", r.floor, "\n")
+
+main():
+    a Room
+    a.name  = "hall"
+    a.floor = 2
+    show(a)
+```
+
+```tree
+struct Room
+├─ name : chars
+└─ floor : int
+
+fn show(r : STRUCT_CALL) : void
+└─ output : void
+   ├─ chars "room "
+   ├─ .name : chars
+   │  └─ r : STRUCT_CALL
+   ├─ chars "@"
+   ├─ .floor : int
+   │  └─ r : STRUCT_CALL
+   └─ chars "\n"
+
+fn main() : int
+├─ a : STRUCT_CALL
+├─ = : chars
+│  ├─ .name : chars
+│  │  └─ a : STRUCT_CALL
+│  └─ chars "hall"
+├─ = : int
+│  ├─ .floor : int
+│  │  └─ a : STRUCT_CALL
+│  └─ int 2
+└─ call show : void
+   └─ a : STRUCT_CALL
+```
+
+```out
+room hall@2
+```
+
+```err
+```
+
+```ll
+
+%Room = type { i8*, i32 }
+
+@str = private unnamed_addr constant [6 x i8] c"room \00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c"@\00", align 1
+@str.2 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [11 x i8] c"%s%s%s%d%s\00", align 1
+@str.3 = private unnamed_addr constant [5 x i8] c"hall\00", align 1
+
+define void @show(%Room %0) {
+entry:
+  %r = alloca %Room, align 8
+  store %Room %0, %Room* %r, align 8
+  %name = getelementptr %Room, %Room* %r, i32 0, i32 0
+  %name1 = load i8*, i8** %name, align 8
+  %floor = getelementptr %Room, %Room* %r, i32 0, i32 1
+  %floor2 = load i32, i32* %floor, align 4
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str, i32 0, i32 0), i8* %name1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0), i32 %floor2, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0))
+  ret void
+}
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  %a = alloca %Room, align 8
+  store %Room zeroinitializer, %Room* %a, align 8
+  %name = getelementptr %Room, %Room* %a, i32 0, i32 0
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.3, i32 0, i32 0), i8** %name, align 8
+  %floor = getelementptr %Room, %Room* %a, i32 0, i32 1
+  store i32 2, i32* %floor, align 4
+  %a1 = load %Room, %Room* %a, align 8
+  call void @show(%Room %a1)
+  ret i32 0
+}
+```
+
+## 024 — a 'ref' struct parameter mutates the caller's struct
+
+```ura
+// structs/024.ura - a 'ref' struct parameter mutates the caller's struct
+
+struct Room:
+    name  chars
+    floor int
+
+fn bump(ref r Room) void:
+    r.floor = r.floor + 1
+
+main():
+    a Room
+    a.floor = 2
+    bump(ref a)
+    output("after ", a.floor, "\n")
+```
+
+```tree
+struct Room
+├─ name : chars
+└─ floor : int
+
+fn bump(r : STRUCT_CALL) : void
+└─ = : int
+   ├─ .floor : int
+   │  └─ r : STRUCT_CALL
+   └─ + : int
+      ├─ .floor : int
+      │  └─ r : STRUCT_CALL
+      └─ int 1
+
+fn main() : int
+├─ a : STRUCT_CALL
+├─ = : int
+│  ├─ .floor : int
+│  │  └─ a : STRUCT_CALL
+│  └─ int 2
+├─ call bump : void
+│  └─ ref : STRUCT_CALL
+│     └─ a : STRUCT_CALL
+└─ output : void
+   ├─ chars "after "
+   ├─ .floor : int
+   │  └─ a : STRUCT_CALL
+   └─ chars "\n"
+```
+
+```out
+after 3
+```
+
+```err
+```
+
+```ll
+
+%Room = type { i8*, i32 }
+
+@str = private unnamed_addr constant [7 x i8] c"after \00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+
+define void @bump(%Room* %0) {
+entry:
+  %r = alloca %Room*, align 8
+  store %Room* %0, %Room** %r, align 8
+  %ref = load %Room*, %Room** %r, align 8
+  %floor = getelementptr %Room, %Room* %ref, i32 0, i32 1
+  %ref1 = load %Room*, %Room** %r, align 8
+  %floor2 = getelementptr %Room, %Room* %ref1, i32 0, i32 1
+  %floor3 = load i32, i32* %floor2, align 4
+  %add = add i32 %floor3, 1
+  store i32 %add, i32* %floor, align 4
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %a = alloca %Room, align 8
+  store %Room zeroinitializer, %Room* %a, align 8
+  %floor = getelementptr %Room, %Room* %a, i32 0, i32 1
+  store i32 2, i32* %floor, align 4
+  call void @bump(%Room* %a)
+  %floor1 = getelementptr %Room, %Room* %a, i32 0, i32 1
+  %floor2 = load i32, i32* %floor1, align 4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i32 %floor2, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 025 — returning a struct: the create() constructor convention
+
+```ura
+// structs/025.ura - returning a struct: the create() constructor convention
+
+struct Room:
+    name  chars
+    floor int
+
+fn create(f int) Room:
+    r Room
+    r.name  = "made"
+    r.floor = f
+    return r
+
+fn describe(r Room) chars:
+    return r.name
+
+main():
+    a Room = create(4)
+    output(describe(a), " ", a.floor, "\n")
+```
+
+```tree
+struct Room
+├─ name : chars
+└─ floor : int
+
+fn create(f : int) : STRUCT_CALL
+├─ r : STRUCT_CALL
+├─ = : chars
+│  ├─ .name : chars
+│  │  └─ r : STRUCT_CALL
+│  └─ chars "made"
+├─ = : int
+│  ├─ .floor : int
+│  │  └─ r : STRUCT_CALL
+│  └─ f : int
+└─ return
+   └─ r : STRUCT_CALL
+
+fn describe(r : STRUCT_CALL) : chars
+└─ return
+   └─ .name : chars
+      └─ r : STRUCT_CALL
+
+fn main() : int
+├─ = : STRUCT_CALL
+│  ├─ a : STRUCT_CALL
+│  └─ call create : STRUCT_CALL
+│     └─ int 4
+└─ output : void
+   ├─ call describe : chars
+   │  └─ a : STRUCT_CALL
+   ├─ chars " "
+   ├─ .floor : int
+   │  └─ a : STRUCT_CALL
+   └─ chars "\n"
+```
+
+```out
+made 4
+```
+
+```err
+```
+
+```ll
+
+%Room = type { i8*, i32 }
+
+@str = private unnamed_addr constant [5 x i8] c"made\00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c" \00", align 1
+@str.2 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [9 x i8] c"%s%s%d%s\00", align 1
+
+define %Room @create(i32 %0) {
+entry:
+  %f = alloca i32, align 4
+  store i32 %0, i32* %f, align 4
+  %r = alloca %Room, align 8
+  store %Room zeroinitializer, %Room* %r, align 8
+  %name = getelementptr %Room, %Room* %r, i32 0, i32 0
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str, i32 0, i32 0), i8** %name, align 8
+  %floor = getelementptr %Room, %Room* %r, i32 0, i32 1
+  %f1 = load i32, i32* %f, align 4
+  store i32 %f1, i32* %floor, align 4
+  %r2 = load %Room, %Room* %r, align 8
+  ret %Room %r2
+}
+
+define i8* @describe(%Room %0) {
+entry:
+  %r = alloca %Room, align 8
+  store %Room %0, %Room* %r, align 8
+  %name = getelementptr %Room, %Room* %r, i32 0, i32 0
+  %name1 = load i8*, i8** %name, align 8
+  ret i8* %name1
+}
+
+define i32 @main() {
+entry:
+  %a = alloca %Room, align 8
+  %call = call %Room @create(i32 4)
+  store %Room %call, %Room* %a, align 8
+  %a1 = load %Room, %Room* %a, align 8
+  %call2 = call i8* @describe(%Room %a1)
+  %floor = getelementptr %Room, %Room* %a, i32 0, i32 1
+  %floor3 = load i32, i32* %floor, align 4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @fmt, i32 0, i32 0), i8* %call2, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0), i32 %floor3, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 026 — output() prints a struct and its nested struct
+
+```ura
+// structs/026.ura - output() prints a struct and its nested struct
+
+struct Room:
+    name  chars
+    floor int
+
+struct Dungeon:
+    name  chars
+    entry Room
+
+main():
+    r Room
+    r.name  = "hall"
+    r.floor = 2
+    output("flat   ", r, "\n")
+
+    d Dungeon
+    d.name = "keep"
+    d.entry.name  = "gate"
+    d.entry.floor = 1
+    output("nested ", d, "\n")
+
+    output("two: ", r, " and ", d.entry, " done\n")
+```
+
+```tree
+struct Room
+├─ name : chars
+└─ floor : int
+
+struct Dungeon
+├─ name : chars
+└─ entry : STRUCT_CALL
+
+fn main() : int
+├─ r : STRUCT_CALL
+├─ = : chars
+│  ├─ .name : chars
+│  │  └─ r : STRUCT_CALL
+│  └─ chars "hall"
+├─ = : int
+│  ├─ .floor : int
+│  │  └─ r : STRUCT_CALL
+│  └─ int 2
+├─ output : void
+│  ├─ chars "flat   "
+│  ├─ r : STRUCT_CALL
+│  └─ chars "\n"
+├─ d : STRUCT_CALL
+├─ = : chars
+│  ├─ .name : chars
+│  │  └─ d : STRUCT_CALL
+│  └─ chars "keep"
+├─ = : chars
+│  ├─ .name : chars
+│  │  └─ .entry : STRUCT_CALL
+│  │     └─ d : STRUCT_CALL
+│  └─ chars "gate"
+├─ = : int
+│  ├─ .floor : int
+│  │  └─ .entry : STRUCT_CALL
+│  │     └─ d : STRUCT_CALL
+│  └─ int 1
+├─ output : void
+│  ├─ chars "nested "
+│  ├─ d : STRUCT_CALL
+│  └─ chars "\n"
+└─ output : void
+   ├─ chars "two: "
+   ├─ r : STRUCT_CALL
+   ├─ chars " and "
+   ├─ .entry : STRUCT_CALL
+   │  └─ d : STRUCT_CALL
+   └─ chars " done\n"
+```
+
+```out
+flat   Room{name: hall, floor: 2}
+nested Dungeon{name: keep, entry: Room{name: gate, floor: 1}}
+two: Room{name: hall, floor: 2} and Room{name: gate, floor: 1} done
+```
+
+```err
+```
+
+```ll
+
+%Room = type { i8*, i32 }
+%__out_frame = type { i8*, %__out_frame* }
+%Dungeon = type { i8*, %Room }
+
+@str = private unnamed_addr constant [5 x i8] c"hall\00", align 1
+@str.1 = private unnamed_addr constant [8 x i8] c"flat   \00", align 1
+@fmt = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt.2 = private unnamed_addr constant [11 x i8] c"[Circular]\00", align 1
+@fmt.3 = private unnamed_addr constant [6 x i8] c"Room{\00", align 1
+@fmt.4 = private unnamed_addr constant [7 x i8] c"name: \00", align 1
+@fmt.5 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt.6 = private unnamed_addr constant [10 x i8] c", floor: \00", align 1
+@fmt.7 = private unnamed_addr constant [3 x i8] c"%d\00", align 1
+@fmt.8 = private unnamed_addr constant [2 x i8] c"}\00", align 1
+@str.9 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.10 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@str.11 = private unnamed_addr constant [5 x i8] c"keep\00", align 1
+@str.12 = private unnamed_addr constant [5 x i8] c"gate\00", align 1
+@str.13 = private unnamed_addr constant [8 x i8] c"nested \00", align 1
+@fmt.14 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt.15 = private unnamed_addr constant [11 x i8] c"[Circular]\00", align 1
+@fmt.16 = private unnamed_addr constant [9 x i8] c"Dungeon{\00", align 1
+@fmt.17 = private unnamed_addr constant [7 x i8] c"name: \00", align 1
+@fmt.18 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt.19 = private unnamed_addr constant [10 x i8] c", entry: \00", align 1
+@fmt.20 = private unnamed_addr constant [2 x i8] c"}\00", align 1
+@str.21 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.22 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@str.23 = private unnamed_addr constant [6 x i8] c"two: \00", align 1
+@fmt.24 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@str.25 = private unnamed_addr constant [6 x i8] c" and \00", align 1
+@fmt.26 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@str.27 = private unnamed_addr constant [7 x i8] c" done\0A\00", align 1
+@fmt.28 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+
+define i32 @main() {
+entry:
+  %r = alloca %Room, align 8
+  store %Room zeroinitializer, %Room* %r, align 8
+  %name = getelementptr %Room, %Room* %r, i32 0, i32 0
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str, i32 0, i32 0), i8** %name, align 8
+  %floor = getelementptr %Room, %Room* %r, i32 0, i32 1
+  store i32 2, i32* %floor, align 4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.1, i32 0, i32 0))
+  call void @__out_Room(%Room* %r, %__out_frame* null)
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.10, i32 0, i32 0), i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.9, i32 0, i32 0))
+  %d = alloca %Dungeon, align 8
+  store %Dungeon zeroinitializer, %Dungeon* %d, align 8
+  %name1 = getelementptr %Dungeon, %Dungeon* %d, i32 0, i32 0
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.11, i32 0, i32 0), i8** %name1, align 8
+  %entry2 = getelementptr %Dungeon, %Dungeon* %d, i32 0, i32 1
+  %name3 = getelementptr %Room, %Room* %entry2, i32 0, i32 0
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.12, i32 0, i32 0), i8** %name3, align 8
+  %entry4 = getelementptr %Dungeon, %Dungeon* %d, i32 0, i32 1
+  %floor5 = getelementptr %Room, %Room* %entry4, i32 0, i32 1
+  store i32 1, i32* %floor5, align 4
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.14, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.13, i32 0, i32 0))
+  call void @__out_Dungeon(%Dungeon* %d, %__out_frame* null)
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.22, i32 0, i32 0), i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.21, i32 0, i32 0))
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.24, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.23, i32 0, i32 0))
+  call void @__out_Room(%Room* %r, %__out_frame* null)
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.26, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.25, i32 0, i32 0))
+  %entry6 = getelementptr %Dungeon, %Dungeon* %d, i32 0, i32 1
+  call void @__out_Room(%Room* %entry6, %__out_frame* null)
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.28, i32 0, i32 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.27, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+
+define void @__out_Room(%Room* %0, %__out_frame* %1) {
+entry:
+  %me = bitcast %Room* %0 to i8*
+  %walk = alloca %__out_frame*, align 8
+  store %__out_frame* %1, %__out_frame** %walk, align 8
+  br label %seen.cond
+
+seen.cond:                                        ; preds = %seen.next, %entry
+  %q = load %__out_frame*, %__out_frame** %walk, align 8
+  %q2i = ptrtoint %__out_frame* %q to i64
+  %atroot = icmp eq i64 %q2i, 0
+  br i1 %atroot, label %seen.fresh, label %seen.body
+
+seen.body:                                        ; preds = %seen.cond
+  %q.ptr = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 0
+  %held = load i8*, i8** %q.ptr, align 8
+  %h2i = ptrtoint i8* %held to i64
+  %m2i = ptrtoint i8* %me to i64
+  %same = icmp eq i64 %h2i, %m2i
+  br i1 %same, label %seen.hit, label %seen.next
+
+seen.hit:                                         ; preds = %seen.body
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.2, i32 0, i32 0))
+  ret void
+
+seen.next:                                        ; preds = %seen.body
+  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %up = load %__out_frame*, %__out_frame** %q.prev, align 8
+  store %__out_frame* %up, %__out_frame** %walk, align 8
+  br label %seen.cond
+
+seen.fresh:                                       ; preds = %seen.cond
+  %frame = alloca %__out_frame, align 8
+  %f.ptr = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 0
+  store i8* %me, i8** %f.ptr, align 8
+  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  store %__out_frame* %1, %__out_frame** %f.prev, align 8
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @fmt.3, i32 0, i32 0))
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.4, i32 0, i32 0))
+  %name = getelementptr %Room, %Room* %0, i32 0, i32 0
+  %f = load i8*, i8** %name, align 8
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.5, i32 0, i32 0), i8* %f)
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @fmt.6, i32 0, i32 0))
+  %floor = getelementptr %Room, %Room* %0, i32 0, i32 1
+  %f1 = load i32, i32* %floor, align 4
+  %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.7, i32 0, i32 0), i32 %f1)
+  %8 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @fmt.8, i32 0, i32 0))
+  ret void
+}
+
+define void @__out_Dungeon(%Dungeon* %0, %__out_frame* %1) {
+entry:
+  %me = bitcast %Dungeon* %0 to i8*
+  %walk = alloca %__out_frame*, align 8
+  store %__out_frame* %1, %__out_frame** %walk, align 8
+  br label %seen.cond
+
+seen.cond:                                        ; preds = %seen.next, %entry
+  %q = load %__out_frame*, %__out_frame** %walk, align 8
+  %q2i = ptrtoint %__out_frame* %q to i64
+  %atroot = icmp eq i64 %q2i, 0
+  br i1 %atroot, label %seen.fresh, label %seen.body
+
+seen.body:                                        ; preds = %seen.cond
+  %q.ptr = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 0
+  %held = load i8*, i8** %q.ptr, align 8
+  %h2i = ptrtoint i8* %held to i64
+  %m2i = ptrtoint i8* %me to i64
+  %same = icmp eq i64 %h2i, %m2i
+  br i1 %same, label %seen.hit, label %seen.next
+
+seen.hit:                                         ; preds = %seen.body
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.15, i32 0, i32 0))
+  ret void
+
+seen.next:                                        ; preds = %seen.body
+  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %up = load %__out_frame*, %__out_frame** %q.prev, align 8
+  store %__out_frame* %up, %__out_frame** %walk, align 8
+  br label %seen.cond
+
+seen.fresh:                                       ; preds = %seen.cond
+  %frame = alloca %__out_frame, align 8
+  %f.ptr = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 0
+  store i8* %me, i8** %f.ptr, align 8
+  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  store %__out_frame* %1, %__out_frame** %f.prev, align 8
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @fmt.16, i32 0, i32 0))
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.17, i32 0, i32 0))
+  %name = getelementptr %Dungeon, %Dungeon* %0, i32 0, i32 0
+  %f = load i8*, i8** %name, align 8
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.18, i32 0, i32 0), i8* %f)
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @fmt.19, i32 0, i32 0))
+  %entry1 = getelementptr %Dungeon, %Dungeon* %0, i32 0, i32 1
+  call void @__out_Room(%Room* %entry1, %__out_frame* %frame)
+  %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @fmt.20, i32 0, i32 0))
+  ret void
+}
+```
+
+## 027 — output() follows a bound 'ref?' and prints null when unbound
+
+```ura
+// structs/027.ura - output() follows a bound 'ref?' and prints null when unbound
+
+struct Node:
+    value int
+    ref? next Node
+
+main():
+    a Node
+    a.value = 1
+    output("unbound ", a, "\n")
+
+    b Node
+    b.value = 2
+    a.next = ref b
+    output("bound   ", a, "\n")
+```
+
+```tree
+struct Node
+├─ value : int
+└─ next : STRUCT_CALL
+
+fn main() : int
+├─ a : STRUCT_CALL
+├─ = : int
+│  ├─ .value : int
+│  │  └─ a : STRUCT_CALL
+│  └─ int 1
+├─ output : void
+│  ├─ chars "unbound "
+│  ├─ a : STRUCT_CALL
+│  └─ chars "\n"
+├─ b : STRUCT_CALL
+├─ = : int
+│  ├─ .value : int
+│  │  └─ b : STRUCT_CALL
+│  └─ int 2
+├─ = : STRUCT_CALL
+│  ├─ .next : STRUCT_CALL
+│  │  └─ a : STRUCT_CALL
+│  └─ ref : STRUCT_CALL
+│     └─ b : STRUCT_CALL
+└─ output : void
+   ├─ chars "bound   "
+   ├─ a : STRUCT_CALL
+   └─ chars "\n"
+```
+
+```out
+unbound Node{value: 1, next: null}
+bound   Node{value: 1, next: ref Node{value: 2, next: null}}
+```
+
+```err
+```
+
+```ll
+
+%Node = type { i32, %Node* }
+%__out_frame = type { i8*, %__out_frame* }
+
+@str = private unnamed_addr constant [9 x i8] c"unbound \00", align 1
+@fmt = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt.1 = private unnamed_addr constant [11 x i8] c"[Circular]\00", align 1
+@fmt.2 = private unnamed_addr constant [6 x i8] c"Node{\00", align 1
+@fmt.3 = private unnamed_addr constant [8 x i8] c"value: \00", align 1
+@fmt.4 = private unnamed_addr constant [3 x i8] c"%d\00", align 1
+@fmt.5 = private unnamed_addr constant [9 x i8] c", next: \00", align 1
+@fmt.6 = private unnamed_addr constant [5 x i8] c"null\00", align 1
+@fmt.7 = private unnamed_addr constant [5 x i8] c"ref \00", align 1
+@fmt.8 = private unnamed_addr constant [2 x i8] c"}\00", align 1
+@str.9 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.10 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@str.11 = private unnamed_addr constant [9 x i8] c"bound   \00", align 1
+@fmt.12 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@str.13 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.14 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+
+define i32 @main() {
+entry:
+  %a = alloca %Node, align 8
+  store %Node zeroinitializer, %Node* %a, align 8
+  %value = getelementptr %Node, %Node* %a, i32 0, i32 0
+  store i32 1, i32* %value, align 4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str, i32 0, i32 0))
+  call void @__out_Node(%Node* %a, %__out_frame* null)
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.10, i32 0, i32 0), i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.9, i32 0, i32 0))
+  %b = alloca %Node, align 8
+  store %Node zeroinitializer, %Node* %b, align 8
+  %value1 = getelementptr %Node, %Node* %b, i32 0, i32 0
+  store i32 2, i32* %value1, align 4
+  %next = getelementptr %Node, %Node* %a, i32 0, i32 1
+  store %Node* %b, %Node** %next, align 8
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.12, i32 0, i32 0), i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.11, i32 0, i32 0))
+  call void @__out_Node(%Node* %a, %__out_frame* null)
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.14, i32 0, i32 0), i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.13, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+
+define void @__out_Node(%Node* %0, %__out_frame* %1) {
+entry:
+  %me = bitcast %Node* %0 to i8*
+  %walk = alloca %__out_frame*, align 8
+  store %__out_frame* %1, %__out_frame** %walk, align 8
+  br label %seen.cond
+
+seen.cond:                                        ; preds = %seen.next, %entry
+  %q = load %__out_frame*, %__out_frame** %walk, align 8
+  %q2i = ptrtoint %__out_frame* %q to i64
+  %atroot = icmp eq i64 %q2i, 0
+  br i1 %atroot, label %seen.fresh, label %seen.body
+
+seen.body:                                        ; preds = %seen.cond
+  %q.ptr = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 0
+  %held = load i8*, i8** %q.ptr, align 8
+  %h2i = ptrtoint i8* %held to i64
+  %m2i = ptrtoint i8* %me to i64
+  %same = icmp eq i64 %h2i, %m2i
+  br i1 %same, label %seen.hit, label %seen.next
+
+seen.hit:                                         ; preds = %seen.body
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.1, i32 0, i32 0))
+  ret void
+
+seen.next:                                        ; preds = %seen.body
+  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %up = load %__out_frame*, %__out_frame** %q.prev, align 8
+  store %__out_frame* %up, %__out_frame** %walk, align 8
+  br label %seen.cond
+
+seen.fresh:                                       ; preds = %seen.cond
+  %frame = alloca %__out_frame, align 8
+  %f.ptr = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 0
+  store i8* %me, i8** %f.ptr, align 8
+  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  store %__out_frame* %1, %__out_frame** %f.prev, align 8
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @fmt.2, i32 0, i32 0))
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @fmt.3, i32 0, i32 0))
+  %value = getelementptr %Node, %Node* %0, i32 0, i32 0
+  %f = load i32, i32* %value, align 4
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.4, i32 0, i32 0), i32 %f)
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @fmt.5, i32 0, i32 0))
+  %next = getelementptr %Node, %Node* %0, i32 0, i32 1
+  %ref = load %Node*, %Node** %next, align 8
+  %p2i = ptrtoint %Node* %ref to i64
+  %isnull = icmp eq i64 %p2i, 0
+  br i1 %isnull, label %out.null, label %out.ref
+
+out.null:                                         ; preds = %seen.fresh
+  %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.6, i32 0, i32 0))
+  br label %out.refend
+
+out.ref:                                          ; preds = %seen.fresh
+  %8 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.7, i32 0, i32 0))
+  call void @__out_Node(%Node* %ref, %__out_frame* %frame)
+  br label %out.refend
+
+out.refend:                                       ; preds = %out.ref, %out.null
+  %9 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @fmt.8, i32 0, i32 0))
+  ret void
+}
+```
+
+## 028 — output() prints [Circular] instead of looping forever
+
+```ura
+// structs/028.ura - output() prints [Circular] instead of looping forever
+
+struct Node:
+    value int
+    ref? next Node
+
+main():
+    a Node
+    b Node
+    a.value = 1
+    b.value = 2
+    a.next = ref b
+    b.next = ref a
+    output("cycle ", a, "\n")
+    output("self  ", b, "\n")
+```
+
+```tree
+struct Node
+├─ value : int
+└─ next : STRUCT_CALL
+
+fn main() : int
+├─ a : STRUCT_CALL
+├─ b : STRUCT_CALL
+├─ = : int
+│  ├─ .value : int
+│  │  └─ a : STRUCT_CALL
+│  └─ int 1
+├─ = : int
+│  ├─ .value : int
+│  │  └─ b : STRUCT_CALL
+│  └─ int 2
+├─ = : STRUCT_CALL
+│  ├─ .next : STRUCT_CALL
+│  │  └─ a : STRUCT_CALL
+│  └─ ref : STRUCT_CALL
+│     └─ b : STRUCT_CALL
+├─ = : STRUCT_CALL
+│  ├─ .next : STRUCT_CALL
+│  │  └─ b : STRUCT_CALL
+│  └─ ref : STRUCT_CALL
+│     └─ a : STRUCT_CALL
+├─ output : void
+│  ├─ chars "cycle "
+│  ├─ a : STRUCT_CALL
+│  └─ chars "\n"
+└─ output : void
+   ├─ chars "self  "
+   ├─ b : STRUCT_CALL
+   └─ chars "\n"
+```
+
+```out
+cycle Node{value: 1, next: ref Node{value: 2, next: ref [Circular]}}
+self  Node{value: 2, next: ref Node{value: 1, next: ref [Circular]}}
+```
+
+```err
+```
+
+```ll
+
+%Node = type { i32, %Node* }
+%__out_frame = type { i8*, %__out_frame* }
+
+@str = private unnamed_addr constant [7 x i8] c"cycle \00", align 1
+@fmt = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt.1 = private unnamed_addr constant [11 x i8] c"[Circular]\00", align 1
+@fmt.2 = private unnamed_addr constant [6 x i8] c"Node{\00", align 1
+@fmt.3 = private unnamed_addr constant [8 x i8] c"value: \00", align 1
+@fmt.4 = private unnamed_addr constant [3 x i8] c"%d\00", align 1
+@fmt.5 = private unnamed_addr constant [9 x i8] c", next: \00", align 1
+@fmt.6 = private unnamed_addr constant [5 x i8] c"null\00", align 1
+@fmt.7 = private unnamed_addr constant [5 x i8] c"ref \00", align 1
+@fmt.8 = private unnamed_addr constant [2 x i8] c"}\00", align 1
+@str.9 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.10 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@str.11 = private unnamed_addr constant [7 x i8] c"self  \00", align 1
+@fmt.12 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@str.13 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.14 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+
+define i32 @main() {
+entry:
+  %a = alloca %Node, align 8
+  store %Node zeroinitializer, %Node* %a, align 8
+  %b = alloca %Node, align 8
+  store %Node zeroinitializer, %Node* %b, align 8
+  %value = getelementptr %Node, %Node* %a, i32 0, i32 0
+  store i32 1, i32* %value, align 4
+  %value1 = getelementptr %Node, %Node* %b, i32 0, i32 0
+  store i32 2, i32* %value1, align 4
+  %next = getelementptr %Node, %Node* %a, i32 0, i32 1
+  store %Node* %b, %Node** %next, align 8
+  %next2 = getelementptr %Node, %Node* %b, i32 0, i32 1
+  store %Node* %a, %Node** %next2, align 8
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0))
+  call void @__out_Node(%Node* %a, %__out_frame* null)
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.10, i32 0, i32 0), i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.9, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.12, i32 0, i32 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.11, i32 0, i32 0))
+  call void @__out_Node(%Node* %b, %__out_frame* null)
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.14, i32 0, i32 0), i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.13, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+
+define void @__out_Node(%Node* %0, %__out_frame* %1) {
+entry:
+  %me = bitcast %Node* %0 to i8*
+  %walk = alloca %__out_frame*, align 8
+  store %__out_frame* %1, %__out_frame** %walk, align 8
+  br label %seen.cond
+
+seen.cond:                                        ; preds = %seen.next, %entry
+  %q = load %__out_frame*, %__out_frame** %walk, align 8
+  %q2i = ptrtoint %__out_frame* %q to i64
+  %atroot = icmp eq i64 %q2i, 0
+  br i1 %atroot, label %seen.fresh, label %seen.body
+
+seen.body:                                        ; preds = %seen.cond
+  %q.ptr = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 0
+  %held = load i8*, i8** %q.ptr, align 8
+  %h2i = ptrtoint i8* %held to i64
+  %m2i = ptrtoint i8* %me to i64
+  %same = icmp eq i64 %h2i, %m2i
+  br i1 %same, label %seen.hit, label %seen.next
+
+seen.hit:                                         ; preds = %seen.body
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.1, i32 0, i32 0))
+  ret void
+
+seen.next:                                        ; preds = %seen.body
+  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %up = load %__out_frame*, %__out_frame** %q.prev, align 8
+  store %__out_frame* %up, %__out_frame** %walk, align 8
+  br label %seen.cond
+
+seen.fresh:                                       ; preds = %seen.cond
+  %frame = alloca %__out_frame, align 8
+  %f.ptr = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 0
+  store i8* %me, i8** %f.ptr, align 8
+  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  store %__out_frame* %1, %__out_frame** %f.prev, align 8
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @fmt.2, i32 0, i32 0))
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @fmt.3, i32 0, i32 0))
+  %value = getelementptr %Node, %Node* %0, i32 0, i32 0
+  %f = load i32, i32* %value, align 4
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.4, i32 0, i32 0), i32 %f)
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @fmt.5, i32 0, i32 0))
+  %next = getelementptr %Node, %Node* %0, i32 0, i32 1
+  %ref = load %Node*, %Node** %next, align 8
+  %p2i = ptrtoint %Node* %ref to i64
+  %isnull = icmp eq i64 %p2i, 0
+  br i1 %isnull, label %out.null, label %out.ref
+
+out.null:                                         ; preds = %seen.fresh
+  %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.6, i32 0, i32 0))
+  br label %out.refend
+
+out.ref:                                          ; preds = %seen.fresh
+  %8 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.7, i32 0, i32 0))
+  call void @__out_Node(%Node* %ref, %__out_frame* %frame)
+  br label %out.refend
+
+out.refend:                                       ; preds = %out.ref, %out.null
+  %9 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @fmt.8, i32 0, i32 0))
+  ret void
+}
+```
+
+## 029 — output() expands array fields, including 2D
+
+```ura
+// structs/029.ura - output() expands array fields, including 2D
+
+struct Room:
+    floor int
+
+struct Flat:
+    tag   chars
+    rooms Room[]
+
+struct Grid:
+    tag   chars
+    rooms Room[][]
+
+main():
+    f Flat
+    f.tag   = "flat"
+    f.rooms = Room[2]
+    f.rooms[0].floor = 3
+    f.rooms[1].floor = 4
+    output(f, "\n")
+
+    g Grid
+    g.tag   = "grid"
+    g.rooms = Room[2][2]
+    g.rooms[0][0].floor = 1
+    g.rooms[0][1].floor = 2
+    g.rooms[1][0].floor = 3
+    g.rooms[1][1].floor = 4
+    output(g, "\n")
+```
+
+```tree
+struct Room
+└─ floor : int
+
+struct Flat
+├─ tag : chars
+└─ rooms : STRUCT_CALL[]
+
+struct Grid
+├─ tag : chars
+└─ rooms : STRUCT_CALL[][]
+
+fn main() : int
+├─ f : STRUCT_CALL
+├─ = : chars
+│  ├─ .tag : chars
+│  │  └─ f : STRUCT_CALL
+│  └─ chars "flat"
+├─ = : array
+│  ├─ .rooms : STRUCT_CALL[]
+│  │  └─ f : STRUCT_CALL
+│  └─ array : STRUCT_CALL[]
+│     └─ int 2
+├─ = : int
+│  ├─ .floor : int
+│  │  └─ index : STRUCT_CALL
+│  │     ├─ .rooms : STRUCT_CALL[]
+│  │     │  └─ f : STRUCT_CALL
+│  │     └─ int 0
+│  └─ int 3
+├─ = : int
+│  ├─ .floor : int
+│  │  └─ index : STRUCT_CALL
+│  │     ├─ .rooms : STRUCT_CALL[]
+│  │     │  └─ f : STRUCT_CALL
+│  │     └─ int 1
+│  └─ int 4
+├─ output : void
+│  ├─ f : STRUCT_CALL
+│  └─ chars "\n"
+├─ g : STRUCT_CALL
+├─ = : chars
+│  ├─ .tag : chars
+│  │  └─ g : STRUCT_CALL
+│  └─ chars "grid"
+├─ = : array
+│  ├─ .rooms : STRUCT_CALL[][]
+│  │  └─ g : STRUCT_CALL
+│  └─ array : STRUCT_CALL[][]
+│     ├─ int 2
+│     └─ int 2
+├─ = : int
+│  ├─ .floor : int
+│  │  └─ index : STRUCT_CALL
+│  │     ├─ index : STRUCT_CALL[]
+│  │     │  ├─ .rooms : STRUCT_CALL[][]
+│  │     │  │  └─ g : STRUCT_CALL
+│  │     │  └─ int 0
+│  │     └─ int 0
+│  └─ int 1
+├─ = : int
+│  ├─ .floor : int
+│  │  └─ index : STRUCT_CALL
+│  │     ├─ index : STRUCT_CALL[]
+│  │     │  ├─ .rooms : STRUCT_CALL[][]
+│  │     │  │  └─ g : STRUCT_CALL
+│  │     │  └─ int 0
+│  │     └─ int 1
+│  └─ int 2
+├─ = : int
+│  ├─ .floor : int
+│  │  └─ index : STRUCT_CALL
+│  │     ├─ index : STRUCT_CALL[]
+│  │     │  ├─ .rooms : STRUCT_CALL[][]
+│  │     │  │  └─ g : STRUCT_CALL
+│  │     │  └─ int 1
+│  │     └─ int 0
+│  └─ int 3
+├─ = : int
+│  ├─ .floor : int
+│  │  └─ index : STRUCT_CALL
+│  │     ├─ index : STRUCT_CALL[]
+│  │     │  ├─ .rooms : STRUCT_CALL[][]
+│  │     │  │  └─ g : STRUCT_CALL
+│  │     │  └─ int 1
+│  │     └─ int 1
+│  └─ int 4
+└─ output : void
+   ├─ g : STRUCT_CALL
+   └─ chars "\n"
+```
+
+```out
+Flat{tag: flat, rooms: [Room{floor: 3}, Room{floor: 4}]}
+Grid{tag: grid, rooms: [[Room{floor: 1}, Room{floor: 2}], [Room{floor: 3}, Room{floor: 4}]]}
+```
+
+```err
+```
+
+```ll
+
+%Flat = type { i8*, { %Room*, i64 } }
+%Room = type { i32 }
+%__out_frame = type { i8*, %__out_frame* }
+%Grid = type { i8*, { { %Room*, i64 }*, i64 } }
+
+@str = private unnamed_addr constant [5 x i8] c"flat\00", align 1
+@fmt = private unnamed_addr constant [11 x i8] c"[Circular]\00", align 1
+@fmt.1 = private unnamed_addr constant [6 x i8] c"Flat{\00", align 1
+@fmt.2 = private unnamed_addr constant [6 x i8] c"tag: \00", align 1
+@fmt.3 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt.4 = private unnamed_addr constant [10 x i8] c", rooms: \00", align 1
+@fmt.5 = private unnamed_addr constant [2 x i8] c"[\00", align 1
+@fmt.6 = private unnamed_addr constant [3 x i8] c", \00", align 1
+@fmt.7 = private unnamed_addr constant [11 x i8] c"[Circular]\00", align 1
+@fmt.8 = private unnamed_addr constant [6 x i8] c"Room{\00", align 1
+@fmt.9 = private unnamed_addr constant [8 x i8] c"floor: \00", align 1
+@fmt.10 = private unnamed_addr constant [3 x i8] c"%d\00", align 1
+@fmt.11 = private unnamed_addr constant [2 x i8] c"}\00", align 1
+@fmt.12 = private unnamed_addr constant [2 x i8] c"]\00", align 1
+@fmt.13 = private unnamed_addr constant [2 x i8] c"}\00", align 1
+@str.14 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.15 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@str.16 = private unnamed_addr constant [5 x i8] c"grid\00", align 1
+@fmt.17 = private unnamed_addr constant [11 x i8] c"[Circular]\00", align 1
+@fmt.18 = private unnamed_addr constant [6 x i8] c"Grid{\00", align 1
+@fmt.19 = private unnamed_addr constant [6 x i8] c"tag: \00", align 1
+@fmt.20 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt.21 = private unnamed_addr constant [10 x i8] c", rooms: \00", align 1
+@fmt.22 = private unnamed_addr constant [2 x i8] c"[\00", align 1
+@fmt.23 = private unnamed_addr constant [3 x i8] c", \00", align 1
+@fmt.24 = private unnamed_addr constant [2 x i8] c"[\00", align 1
+@fmt.25 = private unnamed_addr constant [3 x i8] c", \00", align 1
+@fmt.26 = private unnamed_addr constant [2 x i8] c"]\00", align 1
+@fmt.27 = private unnamed_addr constant [2 x i8] c"]\00", align 1
+@fmt.28 = private unnamed_addr constant [2 x i8] c"}\00", align 1
+@str.29 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.30 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+
+define i32 @main() {
+entry:
+  %f = alloca %Flat, align 8
+  store %Flat zeroinitializer, %Flat* %f, align 8
+  %tag = getelementptr %Flat, %Flat* %f, i32 0, i32 0
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str, i32 0, i32 0), i8** %tag, align 8
+  %rooms = getelementptr %Flat, %Flat* %f, i32 0, i32 1
+  %arr = alloca %Room, i64 2, align 8
+  %0 = bitcast %Room* %arr to i8*
+  call void @llvm.memset.p0i8.i64(i8* %0, i8 0, i64 8, i1 false)
+  %arr.ptr = insertvalue { %Room*, i64 } undef, %Room* %arr, 0
+  %arr.len = insertvalue { %Room*, i64 } %arr.ptr, i64 2, 1
+  store { %Room*, i64 } %arr.len, { %Room*, i64 }* %rooms, align 8
+  %rooms1 = getelementptr %Flat, %Flat* %f, i32 0, i32 1
+  %rooms2 = load { %Room*, i64 }, { %Room*, i64 }* %rooms1, align 8
+  %arr.data = extractvalue { %Room*, i64 } %rooms2, 0
+  %arr.at = getelementptr %Room, %Room* %arr.data, i32 0
+  %floor = getelementptr %Room, %Room* %arr.at, i32 0, i32 0
+  store i32 3, i32* %floor, align 4
+  %rooms3 = getelementptr %Flat, %Flat* %f, i32 0, i32 1
+  %rooms4 = load { %Room*, i64 }, { %Room*, i64 }* %rooms3, align 8
+  %arr.data5 = extractvalue { %Room*, i64 } %rooms4, 0
+  %arr.at6 = getelementptr %Room, %Room* %arr.data5, i32 1
+  %floor7 = getelementptr %Room, %Room* %arr.at6, i32 0, i32 0
+  store i32 4, i32* %floor7, align 4
+  call void @__out_Flat(%Flat* %f, %__out_frame* null)
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.15, i32 0, i32 0), i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.14, i32 0, i32 0))
+  %g = alloca %Grid, align 8
+  store %Grid zeroinitializer, %Grid* %g, align 8
+  %tag8 = getelementptr %Grid, %Grid* %g, i32 0, i32 0
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.16, i32 0, i32 0), i8** %tag8, align 8
+  %rooms9 = getelementptr %Grid, %Grid* %g, i32 0, i32 1
+  %arr10 = alloca { %Room*, i64 }, i64 2, align 8
+  %i = alloca i64, align 8
+  store i64 0, i64* %i, align 4
+  br label %arr.cond
+
+arr.cond:                                         ; preds = %arr.body, %entry
+  %i11 = load i64, i64* %i, align 4
+  %more = icmp slt i64 %i11, 2
+  br i1 %more, label %arr.body, label %arr.end
+
+arr.body:                                         ; preds = %arr.cond
+  %arr12 = alloca %Room, i64 2, align 8
+  %2 = bitcast %Room* %arr12 to i8*
+  call void @llvm.memset.p0i8.i64(i8* %2, i8 0, i64 8, i1 false)
+  %arr.ptr13 = insertvalue { %Room*, i64 } undef, %Room* %arr12, 0
+  %arr.len14 = insertvalue { %Room*, i64 } %arr.ptr13, i64 2, 1
+  %i15 = load i64, i64* %i, align 4
+  %arr.slot = getelementptr { %Room*, i64 }, { %Room*, i64 }* %arr10, i64 %i15
+  store { %Room*, i64 } %arr.len14, { %Room*, i64 }* %arr.slot, align 8
+  %next = add i64 %i15, 1
+  store i64 %next, i64* %i, align 4
+  br label %arr.cond
+
+arr.end:                                          ; preds = %arr.cond
+  %arr.ptr16 = insertvalue { { %Room*, i64 }*, i64 } undef, { %Room*, i64 }* %arr10, 0
+  %arr.len17 = insertvalue { { %Room*, i64 }*, i64 } %arr.ptr16, i64 2, 1
+  store { { %Room*, i64 }*, i64 } %arr.len17, { { %Room*, i64 }*, i64 }* %rooms9, align 8
+  %rooms18 = getelementptr %Grid, %Grid* %g, i32 0, i32 1
+  %rooms19 = load { { %Room*, i64 }*, i64 }, { { %Room*, i64 }*, i64 }* %rooms18, align 8
+  %arr.data20 = extractvalue { { %Room*, i64 }*, i64 } %rooms19, 0
+  %arr.at21 = getelementptr { %Room*, i64 }, { %Room*, i64 }* %arr.data20, i32 0
+  %idx = load { %Room*, i64 }, { %Room*, i64 }* %arr.at21, align 8
+  %arr.data22 = extractvalue { %Room*, i64 } %idx, 0
+  %arr.at23 = getelementptr %Room, %Room* %arr.data22, i32 0
+  %floor24 = getelementptr %Room, %Room* %arr.at23, i32 0, i32 0
+  store i32 1, i32* %floor24, align 4
+  %rooms25 = getelementptr %Grid, %Grid* %g, i32 0, i32 1
+  %rooms26 = load { { %Room*, i64 }*, i64 }, { { %Room*, i64 }*, i64 }* %rooms25, align 8
+  %arr.data27 = extractvalue { { %Room*, i64 }*, i64 } %rooms26, 0
+  %arr.at28 = getelementptr { %Room*, i64 }, { %Room*, i64 }* %arr.data27, i32 0
+  %idx29 = load { %Room*, i64 }, { %Room*, i64 }* %arr.at28, align 8
+  %arr.data30 = extractvalue { %Room*, i64 } %idx29, 0
+  %arr.at31 = getelementptr %Room, %Room* %arr.data30, i32 1
+  %floor32 = getelementptr %Room, %Room* %arr.at31, i32 0, i32 0
+  store i32 2, i32* %floor32, align 4
+  %rooms33 = getelementptr %Grid, %Grid* %g, i32 0, i32 1
+  %rooms34 = load { { %Room*, i64 }*, i64 }, { { %Room*, i64 }*, i64 }* %rooms33, align 8
+  %arr.data35 = extractvalue { { %Room*, i64 }*, i64 } %rooms34, 0
+  %arr.at36 = getelementptr { %Room*, i64 }, { %Room*, i64 }* %arr.data35, i32 1
+  %idx37 = load { %Room*, i64 }, { %Room*, i64 }* %arr.at36, align 8
+  %arr.data38 = extractvalue { %Room*, i64 } %idx37, 0
+  %arr.at39 = getelementptr %Room, %Room* %arr.data38, i32 0
+  %floor40 = getelementptr %Room, %Room* %arr.at39, i32 0, i32 0
+  store i32 3, i32* %floor40, align 4
+  %rooms41 = getelementptr %Grid, %Grid* %g, i32 0, i32 1
+  %rooms42 = load { { %Room*, i64 }*, i64 }, { { %Room*, i64 }*, i64 }* %rooms41, align 8
+  %arr.data43 = extractvalue { { %Room*, i64 }*, i64 } %rooms42, 0
+  %arr.at44 = getelementptr { %Room*, i64 }, { %Room*, i64 }* %arr.data43, i32 1
+  %idx45 = load { %Room*, i64 }, { %Room*, i64 }* %arr.at44, align 8
+  %arr.data46 = extractvalue { %Room*, i64 } %idx45, 0
+  %arr.at47 = getelementptr %Room, %Room* %arr.data46, i32 1
+  %floor48 = getelementptr %Room, %Room* %arr.at47, i32 0, i32 0
+  store i32 4, i32* %floor48, align 4
+  call void @__out_Grid(%Grid* %g, %__out_frame* null)
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.30, i32 0, i32 0), i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.29, i32 0, i32 0))
+  ret i32 0
+}
+
+; Function Attrs: argmemonly nofree nounwind willreturn writeonly
+declare void @llvm.memset.p0i8.i64(i8* nocapture writeonly, i8, i64, i1 immarg) #0
+
+define void @__out_Flat(%Flat* %0, %__out_frame* %1) {
+entry:
+  %me = bitcast %Flat* %0 to i8*
+  %walk = alloca %__out_frame*, align 8
+  store %__out_frame* %1, %__out_frame** %walk, align 8
+  br label %seen.cond
+
+seen.cond:                                        ; preds = %seen.next, %entry
+  %q = load %__out_frame*, %__out_frame** %walk, align 8
+  %q2i = ptrtoint %__out_frame* %q to i64
+  %atroot = icmp eq i64 %q2i, 0
+  br i1 %atroot, label %seen.fresh, label %seen.body
+
+seen.body:                                        ; preds = %seen.cond
+  %q.ptr = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 0
+  %held = load i8*, i8** %q.ptr, align 8
+  %h2i = ptrtoint i8* %held to i64
+  %m2i = ptrtoint i8* %me to i64
+  %same = icmp eq i64 %h2i, %m2i
+  br i1 %same, label %seen.hit, label %seen.next
+
+seen.hit:                                         ; preds = %seen.body
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0))
+  ret void
+
+seen.next:                                        ; preds = %seen.body
+  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %up = load %__out_frame*, %__out_frame** %q.prev, align 8
+  store %__out_frame* %up, %__out_frame** %walk, align 8
+  br label %seen.cond
+
+seen.fresh:                                       ; preds = %seen.cond
+  %frame = alloca %__out_frame, align 8
+  %f.ptr = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 0
+  store i8* %me, i8** %f.ptr, align 8
+  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  store %__out_frame* %1, %__out_frame** %f.prev, align 8
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @fmt.1, i32 0, i32 0))
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @fmt.2, i32 0, i32 0))
+  %tag = getelementptr %Flat, %Flat* %0, i32 0, i32 0
+  %f = load i8*, i8** %tag, align 8
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.3, i32 0, i32 0), i8* %f)
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @fmt.4, i32 0, i32 0))
+  %rooms = getelementptr %Flat, %Flat* %0, i32 0, i32 1
+  %arr = load { %Room*, i64 }, { %Room*, i64 }* %rooms, align 8
+  %arr.data = extractvalue { %Room*, i64 } %arr, 0
+  %arr.len = extractvalue { %Room*, i64 } %arr, 1
+  %oi = alloca i64, align 8
+  store i64 0, i64* %oi, align 4
+  %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @fmt.5, i32 0, i32 0))
+  br label %out.arr.cond
+
+out.arr.cond:                                     ; preds = %out.arr.item, %seen.fresh
+  %i = load i64, i64* %oi, align 4
+  %more = icmp slt i64 %i, %arr.len
+  br i1 %more, label %out.arr.body, label %out.arr.end
+
+out.arr.body:                                     ; preds = %out.arr.cond
+  %notfirst = icmp sgt i64 %i, 0
+  br i1 %notfirst, label %out.arr.sep, label %out.arr.item
+
+out.arr.sep:                                      ; preds = %out.arr.body
+  %8 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.6, i32 0, i32 0))
+  br label %out.arr.item
+
+out.arr.item:                                     ; preds = %out.arr.sep, %out.arr.body
+  %at = getelementptr %Room, %Room* %arr.data, i64 %i
+  call void @__out_Room(%Room* %at, %__out_frame* %frame)
+  %n = add i64 %i, 1
+  store i64 %n, i64* %oi, align 4
+  br label %out.arr.cond
+
+out.arr.end:                                      ; preds = %out.arr.cond
+  %9 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @fmt.12, i32 0, i32 0))
+  %10 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @fmt.13, i32 0, i32 0))
+  ret void
+}
+
+declare i32 @printf(i8*, ...)
+
+define void @__out_Room(%Room* %0, %__out_frame* %1) {
+entry:
+  %me = bitcast %Room* %0 to i8*
+  %walk = alloca %__out_frame*, align 8
+  store %__out_frame* %1, %__out_frame** %walk, align 8
+  br label %seen.cond
+
+seen.cond:                                        ; preds = %seen.next, %entry
+  %q = load %__out_frame*, %__out_frame** %walk, align 8
+  %q2i = ptrtoint %__out_frame* %q to i64
+  %atroot = icmp eq i64 %q2i, 0
+  br i1 %atroot, label %seen.fresh, label %seen.body
+
+seen.body:                                        ; preds = %seen.cond
+  %q.ptr = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 0
+  %held = load i8*, i8** %q.ptr, align 8
+  %h2i = ptrtoint i8* %held to i64
+  %m2i = ptrtoint i8* %me to i64
+  %same = icmp eq i64 %h2i, %m2i
+  br i1 %same, label %seen.hit, label %seen.next
+
+seen.hit:                                         ; preds = %seen.body
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.7, i32 0, i32 0))
+  ret void
+
+seen.next:                                        ; preds = %seen.body
+  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %up = load %__out_frame*, %__out_frame** %q.prev, align 8
+  store %__out_frame* %up, %__out_frame** %walk, align 8
+  br label %seen.cond
+
+seen.fresh:                                       ; preds = %seen.cond
+  %frame = alloca %__out_frame, align 8
+  %f.ptr = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 0
+  store i8* %me, i8** %f.ptr, align 8
+  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  store %__out_frame* %1, %__out_frame** %f.prev, align 8
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @fmt.8, i32 0, i32 0))
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @fmt.9, i32 0, i32 0))
+  %floor = getelementptr %Room, %Room* %0, i32 0, i32 0
+  %f = load i32, i32* %floor, align 4
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.10, i32 0, i32 0), i32 %f)
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @fmt.11, i32 0, i32 0))
+  ret void
+}
+
+define void @__out_Grid(%Grid* %0, %__out_frame* %1) {
+entry:
+  %me = bitcast %Grid* %0 to i8*
+  %walk = alloca %__out_frame*, align 8
+  store %__out_frame* %1, %__out_frame** %walk, align 8
+  br label %seen.cond
+
+seen.cond:                                        ; preds = %seen.next, %entry
+  %q = load %__out_frame*, %__out_frame** %walk, align 8
+  %q2i = ptrtoint %__out_frame* %q to i64
+  %atroot = icmp eq i64 %q2i, 0
+  br i1 %atroot, label %seen.fresh, label %seen.body
+
+seen.body:                                        ; preds = %seen.cond
+  %q.ptr = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 0
+  %held = load i8*, i8** %q.ptr, align 8
+  %h2i = ptrtoint i8* %held to i64
+  %m2i = ptrtoint i8* %me to i64
+  %same = icmp eq i64 %h2i, %m2i
+  br i1 %same, label %seen.hit, label %seen.next
+
+seen.hit:                                         ; preds = %seen.body
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.17, i32 0, i32 0))
+  ret void
+
+seen.next:                                        ; preds = %seen.body
+  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %up = load %__out_frame*, %__out_frame** %q.prev, align 8
+  store %__out_frame* %up, %__out_frame** %walk, align 8
+  br label %seen.cond
+
+seen.fresh:                                       ; preds = %seen.cond
+  %frame = alloca %__out_frame, align 8
+  %f.ptr = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 0
+  store i8* %me, i8** %f.ptr, align 8
+  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  store %__out_frame* %1, %__out_frame** %f.prev, align 8
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @fmt.18, i32 0, i32 0))
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @fmt.19, i32 0, i32 0))
+  %tag = getelementptr %Grid, %Grid* %0, i32 0, i32 0
+  %f = load i8*, i8** %tag, align 8
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.20, i32 0, i32 0), i8* %f)
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @fmt.21, i32 0, i32 0))
+  %rooms = getelementptr %Grid, %Grid* %0, i32 0, i32 1
+  %arr = load { { %Room*, i64 }*, i64 }, { { %Room*, i64 }*, i64 }* %rooms, align 8
+  %arr.data = extractvalue { { %Room*, i64 }*, i64 } %arr, 0
+  %arr.len = extractvalue { { %Room*, i64 }*, i64 } %arr, 1
+  %oi = alloca i64, align 8
+  store i64 0, i64* %oi, align 4
+  %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @fmt.22, i32 0, i32 0))
+  br label %out.arr.cond
+
+out.arr.cond:                                     ; preds = %out.arr.end9, %seen.fresh
+  %i = load i64, i64* %oi, align 4
+  %more = icmp slt i64 %i, %arr.len
+  br i1 %more, label %out.arr.body, label %out.arr.end
+
+out.arr.body:                                     ; preds = %out.arr.cond
+  %notfirst = icmp sgt i64 %i, 0
+  br i1 %notfirst, label %out.arr.sep, label %out.arr.item
+
+out.arr.sep:                                      ; preds = %out.arr.body
+  %8 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.23, i32 0, i32 0))
+  br label %out.arr.item
+
+out.arr.item:                                     ; preds = %out.arr.sep, %out.arr.body
+  %at = getelementptr { %Room*, i64 }, { %Room*, i64 }* %arr.data, i64 %i
+  %arr1 = load { %Room*, i64 }, { %Room*, i64 }* %at, align 8
+  %arr.data2 = extractvalue { %Room*, i64 } %arr1, 0
+  %arr.len3 = extractvalue { %Room*, i64 } %arr1, 1
+  %oi4 = alloca i64, align 8
+  store i64 0, i64* %oi4, align 4
+  %9 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @fmt.24, i32 0, i32 0))
+  br label %out.arr.cond5
+
+out.arr.end:                                      ; preds = %out.arr.cond
+  %10 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @fmt.27, i32 0, i32 0))
+  %11 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @fmt.28, i32 0, i32 0))
+  ret void
+
+out.arr.cond5:                                    ; preds = %out.arr.item8, %out.arr.item
+  %i10 = load i64, i64* %oi4, align 4
+  %more11 = icmp slt i64 %i10, %arr.len3
+  br i1 %more11, label %out.arr.body6, label %out.arr.end9
+
+out.arr.body6:                                    ; preds = %out.arr.cond5
+  %notfirst12 = icmp sgt i64 %i10, 0
+  br i1 %notfirst12, label %out.arr.sep7, label %out.arr.item8
+
+out.arr.sep7:                                     ; preds = %out.arr.body6
+  %12 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.25, i32 0, i32 0))
+  br label %out.arr.item8
+
+out.arr.item8:                                    ; preds = %out.arr.sep7, %out.arr.body6
+  %at13 = getelementptr %Room, %Room* %arr.data2, i64 %i10
+  call void @__out_Room(%Room* %at13, %__out_frame* %frame)
+  %n = add i64 %i10, 1
+  store i64 %n, i64* %oi4, align 4
+  br label %out.arr.cond5
+
+out.arr.end9:                                     ; preds = %out.arr.cond5
+  %13 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @fmt.26, i32 0, i32 0))
+  %n14 = add i64 %i, 1
+  store i64 %n14, i64* %oi, align 4
+  br label %out.arr.cond
+}
+
+attributes #0 = { argmemonly nofree nounwind willreturn writeonly }
 ```

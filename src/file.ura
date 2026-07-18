@@ -3,6 +3,10 @@ struct Room:
     name  chars
     floor int
 
+struct Node:
+    value int
+    ref? next Node
+
 main():
     a Room
     a.name  = "hall"
@@ -10,4 +14,20 @@ main():
     b Room
     b = a
     b.floor = 9
-    output(b.name, " ", b.floor, " / ", a.name, " ", a.floor, "\\\\n")
+    output(b, "\n")
+
+    // circular: x -> y -> x
+    x Node
+    y Node
+    x.value = 1
+    y.value = 2
+    x.next = ref y
+    y.next = ref x
+    output("from x ", x, "\n")
+    output("from y ", y, "\n")
+
+    // self reference: z points at itself
+    z Node
+    z.value = 3
+    z.next = ref z
+    output("self   ", z, "\n")

@@ -284,6 +284,10 @@ Node *fdec_node(Node *node) {
 	else if(is_data_type(peek(0))) {
 		node->token->ret_type = next()->type;
 	}
+	else if(peek(0)->type == ID) {
+		node->token->ret_type    = STRUCT_CALL;
+		node->token->Struct.name = next()->name;
+	}
 	else
 		parse_error(node->token, ERR_FN_EXPECTED_RET_TYPE, node->token->name);
 	if (!node->token->is_proto) {

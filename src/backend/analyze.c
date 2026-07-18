@@ -152,9 +152,12 @@ void analyze_binop(Node *node) {
 
 void analyze_fdec(Node *node) {
    Token *token = node->token;
+   resolve_struct_type(token);
    enter_scope(node);
-   for (int i = 0; i < token->Fn.params_count; i++)
+   for (int i = 0; i < token->Fn.params_count; i++) {
       declare_variable(token->Fn.params[i]);
+      resolve_struct_type(token->Fn.params[i]);
+   }
    for (int i = 0; i < node->children_count; i++)
       if (node->children[i]->token->type == FDEC)
          declare_function(node->children[i]);
@@ -267,6 +270,7 @@ void analyze_fcall(Node *node) {
    for (int i = 0; i < node->children_count; i++)
       analyze(node->children[i]);
    token->ret_type = fn->token->ret_type;
+   if (token->ret_type == STRUCT_CALL) token->Struct = fn->token->Struct;
 }
 
 void analyze_for(Node *node) {
