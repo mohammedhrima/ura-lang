@@ -107,3 +107,4 @@ Rewrite ura-lang feature by feature, full pipeline each. Nothing gets skipped, n
 - use keyword:
     - preprocessing macros
     - structs ...
+- avoid calling hardcoded calloc, printf, free in code

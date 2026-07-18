@@ -1,0 +1,8 @@
+main():
+    x int = 5
+    output("typeof x = ", typeof(x), ", sizeof x = ", sizeof(x), "\n")
+    f float = 1.5
+    output("typeof f = ", typeof(f), ", sizeof f = ", sizeof(f), "\n")
+    output("sizeof int = ", sizeof(1), ", sizeof long = ", sizeof(1 as long), "\n")
+    a int[] = [1, 2, 3]
+    output("typeof a = ", typeof(a), ", sizeof a = ", sizeof(a), "\n")

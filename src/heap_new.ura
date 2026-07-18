@@ -1,0 +1,7 @@
+main():
+    a int[] = new int[5]
+    output("zero-init: a[0]=", a[0], " a[4]=", a[4], "\n")
+    a[2] = 42
+    output("a[2]=", a[2], "\n")
+    clean a
+    

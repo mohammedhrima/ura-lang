@@ -1,14 +1,6 @@
-fn add(a int, b int) int:
-    return a + b * 2
-
 main():
-    x int = 5
-    if x > 5:
-        output("big\n")
-    else:
-        output("small\n")
-    match x:
-        case 1, 2, 3:
-            output("low\n")
-        default:
-            output("hi\n")
+    a int[] = [10, 20, 30]
+    i int = 6
+    output("a[i]?=", a[i]?, "\n")
+
+

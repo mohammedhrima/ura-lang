@@ -1,0 +1,10 @@
+main():
+    i int = 0
+    loop:
+        i = i + 1
+        if i == 3:
+            continue
+        if i == 6:
+            break
+        output(i, " ")
+    output("\n")
