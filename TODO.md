@@ -3,8 +3,8 @@
 Rewrite ura-lang feature by feature, full pipeline each. Nothing gets skipped, nothing gets forgotten.
 
 **Rules**
-- Every feature = full pipeline: lexer → parser → `analyze` → `type_check` → `code_gen` (dispatcher case + helper in utils.c, like `lex_*`) → tests.
-- Tests per feature: golden `.ll` (success), `.err` (compile error), `.run` (runtime) — `uv run tasks.py tests` must stay green.
+- Every feature = full pipeline: lexer → parser → `analyze` → `type_check` → `code_gen` (dispatcher case + helper in its stage file, like `lex_*` in `frontend/lexer.c`) → tests.
+- Tests per feature: golden `.ll` (success), `.err` (compile error), `.run` (runtime) — `uv run config/tasks.py tests` must stay green.
 - Progress meter: the old suite's SKIP count (129 today) → 0.
 - Check `old.c` first for every old feature — port the intent, not the bugs (`short` was a 2-bit int; exception scaffolding was dead).
 - One feature per commit. Update README/ROADMAP when a feature lands.
