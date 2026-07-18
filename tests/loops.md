@@ -101,7 +101,7 @@ fn main() : int
 ├─ = : int
 │  ├─ i : int
 │  └─ int 0
-├─ LOOP
+├─ loop
 │  ├─ = : int
 │  │  ├─ i : int
 │  │  └─ + : int
@@ -192,9 +192,9 @@ main():
 
 ```tree
 fn main() : int
-├─ FOR
+├─ for
 │  ├─ i : int
-│  ├─ RANGE : int
+│  ├─ range : int
 │  │  ├─ int 0
 │  │  └─ int 5
 │  └─ output : void
@@ -202,9 +202,9 @@ fn main() : int
 │     └─ chars " "
 ├─ output : void
 │  └─ chars "| "
-├─ FOR
+├─ for
 │  ├─ i : int
-│  ├─ RANGE : int
+│  ├─ range : int
 │  │  ├─ int 5
 │  │  └─ int 0
 │  └─ output : void
@@ -299,18 +299,18 @@ main():
 
 ```tree
 fn main() : int
-├─ = : ARRAY_TYPE
-│  ├─ nums : ARRAY_TYPE
-│  └─ ARRAY_LIT : ARRAY_TYPE
+├─ = : array
+│  ├─ nums : int[]
+│  └─ array : int[]
 │     ├─ int 10
 │     ├─ int 20
 │     └─ int 30
 ├─ = : int
 │  ├─ total : int
 │  └─ int 0
-├─ FOR
+├─ for
 │  ├─ x : int
-│  ├─ nums : ARRAY_TYPE
+│  ├─ nums : int[]
 │  └─ = : int
 │     ├─ total : int
 │     └─ + : int
@@ -404,24 +404,24 @@ main():
 
 ```tree
 fn main() : int
-├─ = : ARRAY_TYPE
-│  ├─ nums : ARRAY_TYPE
-│  └─ ARRAY_LIT : ARRAY_TYPE
+├─ = : array
+│  ├─ nums : int[]
+│  └─ array : int[]
 │     ├─ int 1
 │     ├─ int 2
 │     ├─ int 3
 │     └─ int 4
-├─ FOR
+├─ for
 │  ├─ x : int
-│  ├─ nums : ARRAY_TYPE
+│  ├─ nums : int[]
 │  └─ = : int
 │     ├─ x : int
 │     └─ * : int
 │        ├─ x : int
 │        └─ int 2
-├─ FOR
+├─ for
 │  ├─ x : int
-│  ├─ nums : ARRAY_TYPE
+│  ├─ nums : int[]
 │  └─ output : void
 │     ├─ x : int
 │     └─ chars " "

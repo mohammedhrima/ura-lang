@@ -253,6 +253,16 @@ void print_escaped(char c) {
 	}
 }
 
+char *array_type_label(Token *token) {
+	char *s = strdup(type_name(token->Array.sub_type));
+	for (int i = 0; i < token->Array.depth; i++) {
+		char *n = format("%s[]", s);
+		free(s);
+		s = n;
+	}
+	return s;
+}
+
 void print_node_label(Node *node) {
 	char *spelling[END + 1] = {
 		[INT] = "int", [LONG] = "long", [SHORT] = "short", [BOOL] = "bool",
@@ -263,6 +273,9 @@ void print_node_label(Node *node) {
 		[ASSIGN] = "=", [ADD_ASSIGN] = "+=", [SUB_ASSIGN] = "-=", [MUL_ASSIGN] = "*=", [DIV_ASSIGN] = "/=", [MOD_ASSIGN] = "%=",
 		[IF] = "if", [ELIF] = "elif", [ELSE] = "else", [WHILE] = "while", [MATCH] = "match", [CASE] = "case", [DEFAULT] = "default",
 		[BREAK] = "break", [CONTINUE] = "continue", [RETURN] = "return", [OUTPUT] = "output", [REF] = "ref", [AS] = "cast",
+		[FOR] = "for", [LOOP] = "loop", [RANGE] = "range", [ACCESS] = "index",
+		[ARRAY] = "array", [ARRAY_LIT] = "array", [ARRAY_TYPE] = "array",
+		[TYPEOF] = "typeof", [SIZEOF] = "sizeof", [NEW] = "new", [CLEAN] = "clean",
 	};
 	Token *token = node->token;
 	switch (token->type) {
@@ -298,9 +311,14 @@ void print_node_label(Node *node) {
 		printf(")");
 		break;
 	}
+	case DOT:   printf(".%s", token->name); break;
 	default:    printf("%s", spelling[token->type] ? spelling[token->type] : to_string(token->type));
 	}
-	if (token->ret_type)
+	if (token->ret_type == ARRAY_TYPE && token->Array.sub_type) {
+		char *t = array_type_label(token);
+		printf(" : %s", t);
+		free(t);
+	} else if (token->ret_type)
 		printf(" : %s", spelling[token->ret_type] ? spelling[token->ret_type] : to_string(token->ret_type));
 }
 

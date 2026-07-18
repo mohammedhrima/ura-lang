@@ -28,23 +28,23 @@ fn main() : int
 │  └─ float 1.5
 ├─ output : void
 │  ├─ chars "typeof x = "
-│  ├─ TYPEOF : chars
+│  ├─ typeof : chars
 │  │  └─ x : int
 │  ├─ chars ", sizeof x = "
-│  ├─ SIZEOF : int
+│  ├─ sizeof : int
 │  │  └─ x : int
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "typeof f = "
-│  ├─ TYPEOF : chars
+│  ├─ typeof : chars
 │  │  └─ f : float
 │  ├─ chars ", sizeof f = "
-│  ├─ SIZEOF : int
+│  ├─ sizeof : int
 │  │  └─ f : float
 │  └─ chars "\n"
 └─ output : void
    ├─ chars "sizeof long = "
-   ├─ SIZEOF : int
+   ├─ sizeof : int
    │  └─ cast : long
    │     └─ int 1
    └─ chars "\n"
@@ -102,19 +102,19 @@ main():
 
 ```tree
 fn main() : int
-├─ = : ARRAY_TYPE
-│  ├─ a : ARRAY_TYPE
-│  └─ ARRAY_LIT : ARRAY_TYPE
+├─ = : array
+│  ├─ a : int[]
+│  └─ array : int[]
 │     ├─ int 1
 │     ├─ int 2
 │     └─ int 3
 └─ output : void
    ├─ chars "typeof a = "
-   ├─ TYPEOF : chars
-   │  └─ a : ARRAY_TYPE
+   ├─ typeof : chars
+   │  └─ a : int[]
    ├─ chars ", sizeof a = "
-   ├─ SIZEOF : int
-   │  └─ a : ARRAY_TYPE
+   ├─ sizeof : int
+   │  └─ a : int[]
    └─ chars "\n"
 ```
 
