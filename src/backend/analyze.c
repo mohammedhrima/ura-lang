@@ -183,7 +183,6 @@ void analyze_struct(Node *node) {
       Node *field = node->children[i];
       if (field->token->type == STRUCT_DEF) declare_struct(field);
       analyze(field);
-      resolve_struct_type(field->token);
    }
    exit_scope();
 }

@@ -34,6 +34,8 @@ Value default_value(Token *token);
 void type_check_fcall(Node *node);
 void type_check_fdec(Node *node);
 bool struct_contains(Node *def, Node *target, int depth);
+Token *find_field(Node *def, char *name);
+void type_check_dot(Node *node);
 void type_check_struct(Node *node);
 void type_check_binop(Node *node);
 void type_check_array_lit(Node *node);

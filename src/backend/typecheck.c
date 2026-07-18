@@ -71,7 +71,8 @@ TypeRef struct_type_of(Node *def) {
       Token *field = child->token;
       if (field->type == STRUCT_DEF) { struct_type_of(child); continue; }
       TypeRef t = llvm_type_of(field);
-      fields[n++] = field->is_ref ? pointer_to(t) : t;
+      fields[field->Struct.index] = field->is_ref ? pointer_to(t) : t;
+      n++;
    }
    LLVMStructSetBody(type, fields, n, 0);
    free(fields);
@@ -156,10 +157,57 @@ bool struct_contains(Node *def, Node *target, int depth) {
 
 void type_check_struct(Node *node) {
    node->token->ret_type = STRUCT_DEF;
-   for (int i = 0; i < node->children_count; i++)
-      type_check(node->children[i]);
+   int n = 0;
+   for (int i = 0; i < node->children_count; i++) {
+      Node *child = node->children[i];
+      type_check(child);
+      if (child->token->type != STRUCT_DEF)
+         child->token->Struct.index = n++;
+   }
    if (struct_contains(node, node, 0))
       parse_error(node->token, ERR_STRUCT_RECURSIVE, node->token->name);
+}
+
+Token *find_field(Node *def, char *name) {
+   if (!def) return NULL;
+   for (int i = 0; i < def->children_count; i++) {
+      Token *field = def->children[i]->token;
+      if (field->type == STRUCT_DEF || !field->name) continue;
+      if (strcmp(field->name, name) == 0) return field;
+   }
+   return NULL;
+}
+
+void type_check_dot(Node *node) {
+   type_check(node->left);
+   Token *token = node->token;
+   Token *left  = node->left->token;
+   if (left->ret_type == ARRAY_TYPE) {
+      if (strcmp(token->name, "len") != 0)
+         parse_error(token, ERR_UNKNOWN_MEMBER, token->name);
+      else
+         token->ret_type = INT;
+      return;
+   }
+   if (left->ret_type != STRUCT_CALL) {
+      char *tname = type_name(left->ret_type);
+      if (strcmp(token->name, "len") == 0)
+         parse_error(token, ERR_LEN_NOT_ARRAY, tname);
+      else
+         parse_error(token, ERR_TYPE_HAS_NO_FIELDS, token->name, tname);
+      return;
+   }
+   Node  *def   = left->Struct.ptr;
+   Token *field = find_field(def, token->name);
+   if (!field) {
+      if (!def) return;
+      parse_error(token, ERR_UNKNOWN_FIELD, def->token->name, token->name);
+      return;
+   }
+   token->ret_type = field->ret_type;
+   token->is_ref   = field->is_ref;
+   token->Struct   = field->Struct;
+   token->Array    = field->Array;
 }
 
 void type_check_binop(Node *node) {
@@ -310,15 +358,7 @@ void type_check(Node *node) {
       case MATCH: type_check_match(node); break;
       case ARRAY_LIT: type_check_array_lit(node); break;
       case ACCESS:    type_check_access(node); break;
-      case DOT:
-         type_check(node->left);
-         if (strcmp(node->token->name, "len") != 0)
-            parse_error(node->token, ERR_UNKNOWN_MEMBER, node->token->name);
-         else if (node->left->token->ret_type != ARRAY_TYPE)
-            parse_error(node->token, ERR_LEN_NOT_ARRAY, type_name(node->left->token->ret_type));
-         else
-            node->token->ret_type = INT;
-         break;
+      case DOT: type_check_dot(node); break;
       case RANGE:
          type_check(node->left);
          type_check(node->right);

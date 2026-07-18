@@ -1,7 +1,0 @@
-struct Player:
-	name chars
-	hp int
-	hp int
-
-main():
-	p Player
