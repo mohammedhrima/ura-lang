@@ -68,6 +68,7 @@ Value const_int(TypeRef type, long long value);
 Value const_i32(long long value);
 Value const_i64(long long value);
 TypeRef pointer_to(TypeRef type);
+Value llvm_binop(LLVMOpcode op, Value l, Value r, char *name);
 Value llvm_ret(Value value);
 Value llvm_not(Value value);
 Value llvm_int_cast(Value value, TypeRef type);
