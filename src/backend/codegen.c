@@ -830,7 +830,7 @@ void code_gen(Node *node) {
          code_gen_binop(node);
          break;
       default:
-         CHECK(1, "code_gen: unhandled node '%s'", to_string(token->type));
+         CHECK(1, ASSERT_CODEGEN_NODE, to_string(token->type));
          break;
    }
 }

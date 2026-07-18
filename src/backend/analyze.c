@@ -90,7 +90,7 @@ Token *find_variable(char *name, bool *captured) {
 void declare_function(Node *fn) {
 	for (int i = 0; i < ura.scope->functions_count; i++)
 		if (strcmp(ura.scope->functions[i]->token->name, fn->token->name) == 0) {
-			parse_error(fn->token, "Redeclaration of function '%s'", fn->token->name);
+			parse_error(fn->token, ERR_REDECL_FUNCTION, fn->token->name);
 			return;
 		}
 	resize_array(ura.scope->functions, Node *);
@@ -166,7 +166,7 @@ void analyze_id(Node *node) {
    Token *decl     = find_variable(token->name, &captured);
    if (decl) {
       if (captured) {
-         parse_error(token, "Cannot use '%s' from an enclosing function - pass it as a parameter", token->name);
+         parse_error(token, ERR_CAPTURE_NOT_ALLOWED, token->name);
          return;
       }
       token->ret_type = decl->ret_type;
@@ -175,7 +175,7 @@ void analyze_id(Node *node) {
       return;
    }
    Node *fn = find_function(token->name);
-   if (!fn) { parse_error(token, "Undeclared variable '%s'", token->name); return; }
+   if (!fn) { parse_error(token, ERR_UNDECLARED_VARIABLE, token->name); return; }
    token->type             = FN_TYPE;
    token->ret_type         = FN_TYPE;
    token->Fcall.ptr        = fn;
@@ -239,7 +239,7 @@ void analyze(Node *node) {
       case REF:
          analyze(node->left);
          if (node->left->token->type != ID)
-            parse_error(node->token, "Cannot take a reference to a non-variable");
+            parse_error(node->token, ERR_REF_TO_NON_VARIABLE);
          break;
       case IF: case ELIF: case ELSE: case WHILE: case LOOP:
          analyze_block(node);

@@ -132,7 +132,7 @@ bool lex_multi_comment(char *content, int *i, int *line, int indent, int default
 		(*i)++;
 	}
 	if (strncmp(content + (*i), "*/", 2) != 0) {
-		tokenize_error((*line), s, s + 2, "Unterminated block comment, expected '*/'");
+		tokenize_error((*line), s, s + 2, ERR_UNTERM_BLOCK_COMMENT);
 		return true;
 	}
 	(*i) += 2;
@@ -165,7 +165,7 @@ bool lex_chars(char *content, int *i, int line, int indent, int default_indent)
 		(*i)++;
 	}
 	if (content[(*i)] != '\"') {
-		tokenize_error(line, s, s + 1, "Unterminated string literal, expected '\"'");
+		tokenize_error(line, s, s + 1, ERR_UNTERM_STRING_LITERAL);
 		return true;
 	}
 	(*i)++;
@@ -184,7 +184,7 @@ bool lex_char(char *content, int *i, int line, int indent, int default_indent)
 	if (content[(*i)] == '\\' && content[(*i) + 1]) (*i)++;
 	if (content[(*i)] && content[(*i)] != '\'')     (*i)++;
 	if (content[(*i)] != '\'')                 {
-		tokenize_error(line, s, s + 1, "Unterminated character literal, expected \"'\"");
+		tokenize_error(line, s, s + 1, ERR_UNTERM_CHAR_LITERAL);
 		return true;
 	}
 	(*i)++;
@@ -228,7 +228,7 @@ bool lex_use(char *content, int *i, int s, int line, int indent, int default_ind
 		while (content[(*i)] && content[(*i)] != '\"' && content[(*i)] != '\n')
 			(*i)++;
 		if (content[(*i)] != '\"') {
-			tokenize_error(line, start - 1, start, "Unterminated 'use' path, expected closing '\"'");
+			tokenize_error(line, start - 1, start, ERR_UNTERM_USE_PATH);
 			return true;
 		}
 		(*i)++;
@@ -272,7 +272,7 @@ bool lex_link(char *content, int *i, int s, int line, int indent, int default_in
 		(*i)++;
 	if (content[(*i)] != '\"') {
 		tokenize_error(line, link_s - 1, link_s,
-							"Unterminated 'link' path, expected closing '\"'");
+							ERR_UNTERM_LINK_PATH);
 		return true;
 	}
 	(*i)++;
@@ -437,7 +437,7 @@ Token *parse_token(int line, int s, int e, Type type, int indent) {
 		} else {
 			parse_escape_seq(input, s, e, buf, &j);
 			if (buf[0] == '\\' && input[s + 1] != '\\')
-				tokenize_error(line, s, e, "Unknown escape character: \\%c", input[s + 1]);
+				tokenize_error(line, s, e, ERR_UNKNOWN_ESCAPE, input[s + 1]);
 		}
 		new->Char.value = buf[0];
 		break;
