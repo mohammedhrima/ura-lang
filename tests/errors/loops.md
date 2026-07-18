@@ -5,6 +5,7 @@
 - 001 — for without a loop variable
 - 002 — for over a non-iterable
 - 003 — loop without a colon
+- 004 — for ref over a range
 
 ## 001 — for without a loop variable
 
@@ -77,6 +78,31 @@ error: Expected ':' to open the 'loop' body
   |
 2 |     loop
   |     ^^^^
+```
+
+```ll
+```
+
+## 004 — for ref over a range
+
+```ura
+main():
+    for ref i in 0..5:
+        output(i)
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: 'for ref' needs an array; a range yields values, not storage
+  004.ura:2:5
+  |
+2 |     for ref i in 0..5:
+  |     ^^^
 ```
 
 ```ll

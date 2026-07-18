@@ -1377,13 +1377,15 @@ Node *while_node(Node *node) {
 
 Node *for_node(Node *node) {
 	Token *token = node->token;
+	bool   ref   = find(REF, 0) != NULL;
 	Token *iter  = find(ID, 0);
 	if (!iter) {
 		parse_error(token, "Expected a loop variable after 'for'");
 		return syntax_error();
 	}
-	iter->is_dec = true;
-	node->left   = new_node(iter);
+	iter->is_dec  = true;
+	token->is_ref = ref;
+	node->left    = new_node(iter);
 	if (!find(IN, 0))
 		parse_error(token, "Expected 'in' after 'for %s'", iter->name);
 	node->right = expr_node(0);
@@ -2332,12 +2334,15 @@ void type_check_for(Node *node) {
    Token *iter = node->right->token;
    if (iter->type != RANGE && iter->ret_type != ARRAY_TYPE)
       parse_error(node->token, "'for %s in ...' expects a range (a..b) or an array", node->left->token->name);
+   if (node->token->is_ref && iter->type == RANGE)
+      parse_error(node->token, "'for ref' needs an array; a range yields values, not storage");
    for (int i = 0; i < node->children_count; i++)
       type_check(node->children[i]);
 }
 
 void code_gen_for_array(Node *node) {
    Token  *var  = node->left->token;
+   bool    ref  = node->token->is_ref;
    Token  *arr  = node->right->token;
    code_gen(node->right);
    Value   slice = arr->llvm.elem;
@@ -2348,8 +2353,8 @@ void code_gen_for_array(Node *node) {
    Value   fn    = LLVMGetBasicBlockParent(LLVMGetInsertBlock(ura.builder));
    Value   idx   = LLVMBuildAlloca(ura.builder, ura.i64, "idx");
    LLVMBuildStore(ura.builder, LLVMConstInt(ura.i64, 0, 0), idx);
-   Value   xslot = LLVMBuildAlloca(ura.builder, elem, var->name);
-   var->llvm.elem = xslot;
+   Value   xslot = ref ? NULL : LLVMBuildAlloca(ura.builder, elem, var->name);
+   if (!ref) var->llvm.elem = xslot;
    Block   cond  = LLVMAppendBasicBlockInContext(ura.context, fn, "for.cond");
    Block   body  = LLVMAppendBasicBlockInContext(ura.context, fn, "for.body");
    Block   inc   = LLVMAppendBasicBlockInContext(ura.context, fn, "for.inc");
@@ -2362,7 +2367,8 @@ void code_gen_for_array(Node *node) {
    LLVMBuildCondBr(ura.builder, LLVMBuildICmp(ura.builder, LLVMIntSLT, i, len, "more"), body, end);
    LLVMPositionBuilderAtEnd(ura.builder, body);
    Value   gep = LLVMBuildGEP2(ura.builder, elem, data, &i, 1, "elem");
-   LLVMBuildStore(ura.builder, LLVMBuildLoad2(ura.builder, elem, gep, "x"), xslot);
+   if (ref) var->llvm.elem = gep;
+   else     LLVMBuildStore(ura.builder, LLVMBuildLoad2(ura.builder, elem, gep, "x"), xslot);
    enter_scope(node);
    code_gen_body(node);
    exit_scope();
