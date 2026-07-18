@@ -1,0 +1,12 @@
+main():
+    nums int[] = [1, 2, 3, 4]
+    for ref x in nums:
+        x = x * 2
+    output("doubled: ")
+    for x in nums:
+        output(x, " ")
+    output("\n")
+    grid int[][] = int[2][3]
+    for ref row in grid:
+        row[0] = 9
+    output("grid[0][0]=", grid[0][0], " grid[1][0]=", grid[1][0], "\n")
