@@ -372,9 +372,8 @@ Token *parse_token(int line, int s, int e, Type type, int indent) {
 			{"as", AS, 0, 0},         {"pub", PUB, 0, 0},         {"operator", OPERATOR, 0, 0},
 			{"new", NEW, 0, 0},       {"and", AND, 0, 1},         {"clean", CLEAN, 0, 0},
 			{"or", OR, 0, 1},         {"not", NOT, 0, 1},         {"is", EQUAL, 0, 1},
-			{"stack", STACK, 0, 1},   {"typeof", TYPEOF, 0, 1},   {"sizeof", SIZEOF, 0, 1},
-			{"heap", HEAP, 0, 1},     {"List", LIST_TYPE, 0, 1},  {"array", ARRAY_TYPE, 0, 1},
-			{"null", NULLABLE, 0, 1},
+			{"typeof", TYPEOF, 0, 1}, {"sizeof", SIZEOF, 0, 1},   {"List", LIST_TYPE, 0, 1},
+			{"array", ARRAY_TYPE, 0, 1}, {"null", NULLABLE, 0, 1},
 		};
 
 		for (size_t i = 0; i < sizeof(keywords) / sizeof(*keywords); i++) {

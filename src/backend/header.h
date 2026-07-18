@@ -17,6 +17,7 @@ Node *find_function(char *name);
 void analyze_binop(Node *node);
 void analyze_fdec(Node *node);
 void resolve_struct_type(Token *token);
+bool rewrite_struct_ctor(Node *node);
 void analyze_struct(Node *node);
 void analyze_id(Node *node);
 void analyze_fcall(Node *node);
@@ -88,6 +89,7 @@ MetadataRef llvm_get_location();
 void llvm_set_location(MetadataRef loc);
 
 void emit_signature(Node *fn);
+Value field_ptr(Node *node);
 Value address_of(Node *node);
 Value access_ptr(Node *node);
 void code_gen_slice(Node *node);

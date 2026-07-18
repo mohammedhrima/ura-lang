@@ -1,0 +1,24 @@
+// field.ura - read and write struct fields, including nested access
+
+struct Room:
+    name  chars
+    floor int
+
+struct Dungeon:
+    name  chars
+    entry Room
+
+main():
+    p Room
+    p.name = "armory"
+    p.floor = 3
+    output(p.name, " on floor ", p.floor, "\n")
+
+    d Dungeon
+    d.name = "keep"
+    d.entry.name = "gate"
+    d.entry.floor = 1
+    output(d.name, " entry ", d.entry.name, " floor ", d.entry.floor, "\n")
+
+    p.floor = p.floor + 10
+    output("floor now ", p.floor, "\n")

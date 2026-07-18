@@ -330,9 +330,20 @@ void emit_signature(Node *fn) {
    free(params);
 }
 
+Value field_ptr(Node *node) {
+   Token  *token  = node->token;
+   Token  *left   = node->left->token;
+   Value   base   = address_of(node->left);
+   TypeRef sty    = struct_type_of(left->Struct.ptr);
+   if (left->is_ref) base = llvm_load(pointer_to(sty), base, "ref");
+   Value   idx[2] = { const_i32(0), const_i32(token->Struct.index) };
+   return llvm_gep(sty, base, idx, 2, token->name);
+}
+
 Value address_of(Node *node) {
    Token *token = node->token;
    if (token->type == ACCESS) return access_ptr(node);
+   if (token->type == DOT)    return field_ptr(node);
    if (token->is_dec) {
       TypeRef t = llvm_type_of(token);
       if (token->is_ref) t = pointer_to(t);
@@ -378,9 +389,15 @@ void code_gen_slice(Node *node) {
 }
 
 void code_gen_dot(Node *node) {
+   Token *token = node->token;
+   if (node->left->token->ret_type == STRUCT_CALL) {
+      Value ptr = field_ptr(node);
+      token->llvm.elem = llvm_load(llvm_type_of(token), ptr, token->name);
+      return;
+   }
    code_gen(node->left);
    Value len = llvm_extract(node->left->token->llvm.elem, 1, "len");
-   node->token->llvm.elem = LLVMBuildIntCast2(ura.builder, len, ura.i32, 1, "len");
+   token->llvm.elem = LLVMBuildIntCast2(ura.builder, len, ura.i32, 1, "len");
 }
 
 void code_gen_access(Node *node) {
