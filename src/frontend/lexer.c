@@ -373,23 +373,21 @@ Token *parse_token(int line, int s, int e, Type type, int indent) {
 		}
 
 		static const Keyword keywords[] = {
-			{"int", INT, 1, 1}, {"bool", BOOL, 1, 1}, {"chars", CHARS, 1, 1},
-			{"char", CHAR, 1, 1}, {"float", FLOAT, 1, 1}, {"void", VOID, 1, 1},
-			{"long", LONG, 1, 1}, {"pointer", CHARS, 1, 1}, {"short", SHORT, 1, 1},
-			{"if", IF, 0, 0}, {"elif", ELIF, 0, 0}, {"else", ELSE, 0, 0},
-			{"while", WHILE, 0, 0}, {"loop", LOOP, 0, 0}, {"for", FOR, 0, 0},
-			{"to", TO, 0, 0}, {"step", STEP, 0, 0}, {"in", IN, 0, 0},
-			{"fn", FDEC, 0, 0}, {"return", RETURN, 0, 0}, {"break", BREAK, 0, 0},
-			{"continue", CONTINUE, 0, 0}, {"match", MATCH, 0, 0},
-			{"case", CASE, 0, 0}, {"default", DEFAULT, 0, 0}, {"ref", REF, 0, 0},
-			{"struct", STRUCT_DEF, 0, 0}, {"enum", ENUM_DEF, 0, 0},
-			{"proto", PROTO, 0, 0}, {"mod", MODULE, 0, 0},
-			{"operator", OPERATOR, 0, 0}, {"as", AS, 0, 0}, {"pub", PUB, 0, 0},
-			{"clean", CLEAN, 0, 0}, {"new", NEW, 0, 0}, {"and", AND, 0, 1},
-			{"or", OR, 0, 1}, {"is", EQUAL, 0, 1}, {"not", NOT, 0, 1},
-			{"typeof", TYPEOF, 0, 1}, {"sizeof", SIZEOF, 0, 1},
-			{"stack", STACK, 0, 1}, {"heap", HEAP, 0, 1},
-			{"array", ARRAY_TYPE, 0, 1}, {"List", LIST_TYPE, 0, 1},
+			{"int", INT, 1, 1},       {"bool", BOOL, 1, 1},       {"chars", CHARS, 1, 1},
+			{"char", CHAR, 1, 1},     {"void", VOID, 1, 1},       {"float", FLOAT, 1, 1},
+			{"long", LONG, 1, 1},     {"short", SHORT, 1, 1},     {"pointer", CHARS, 1, 1},
+			{"if", IF, 0, 0},         {"elif", ELIF, 0, 0},       {"else", ELSE, 0, 0},
+			{"for", FOR, 0, 0},       {"loop", LOOP, 0, 0},       {"while", WHILE, 0, 0},
+			{"to", TO, 0, 0},         {"in", IN, 0, 0},           {"step", STEP, 0, 0},
+			{"fn", FDEC, 0, 0},       {"break", BREAK, 0, 0},     {"return", RETURN, 0, 0},
+			{"case", CASE, 0, 0},     {"match", MATCH, 0, 0},     {"continue", CONTINUE, 0, 0},
+			{"ref", REF, 0, 0},       {"default", DEFAULT, 0, 0}, {"struct", STRUCT_DEF, 0, 0},
+			{"mod", MODULE, 0, 0},    {"proto", PROTO, 0, 0},     {"enum", ENUM_DEF, 0, 0},
+			{"as", AS, 0, 0},         {"pub", PUB, 0, 0},         {"operator", OPERATOR, 0, 0},
+			{"new", NEW, 0, 0},       {"and", AND, 0, 1},         {"clean", CLEAN, 0, 0},
+			{"or", OR, 0, 1},         {"not", NOT, 0, 1},         {"is", EQUAL, 0, 1},
+			{"stack", STACK, 0, 1},   {"typeof", TYPEOF, 0, 1},   {"sizeof", SIZEOF, 0, 1},
+			{"heap", HEAP, 0, 1},     {"List", LIST_TYPE, 0, 1},  {"array", ARRAY_TYPE, 0, 1},
 			{"null", NULLABLE, 0, 1},
 		};
 
@@ -397,7 +395,8 @@ Token *parse_token(int line, int s, int e, Type type, int indent) {
 			if (strcmp(new->name, keywords[i].name) != 0) continue;
 			new->type   = keywords[i].type;
 			new->is_dec = keywords[i].is_dec;
-			if (keywords[i].is_dec || keywords[i].clear_name) set_name(new, NULL);
+			if (keywords[i].is_dec || keywords[i].clear_name) 
+				set_name(new, NULL);
 			break;
 		}
 		break;
