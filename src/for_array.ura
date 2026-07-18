@@ -1,9 +1,0 @@
-main():
-    nums int[] = [10, 20, 30, 40]
-    output("elements: ")
-    for x in nums:
-        output(x, " ")
-    total int = 0
-    for x in nums:
-        total = total + x
-    output("\nsum: ", total, "\n")

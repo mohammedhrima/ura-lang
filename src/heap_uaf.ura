@@ -1,4 +1,0 @@
-main():
-    a int[] = new int[5]
-    clean a
-    output(a[0]?)
