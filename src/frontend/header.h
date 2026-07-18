@@ -2,18 +2,18 @@
 
 #include "../header.h"
 
-void tokenize(int default_indent);
+void tokenize(int base);
 int parse_escape_seq(char *input, int s, int e, char *buf, int *ptr);
-bool lex_spaces(char *content, int *i, int *line, int *indent, int default_indent);
-bool lex_multi_comment(char *content, int *i, int *line, int indent, int default_indent);
-bool lex_comment(char *content, int *i, int line, int indent, int default_indent);
-bool lex_chars(char *content, int *i, int line, int indent, int default_indent);
-bool lex_char(char *content, int *i, int line, int indent, int default_indent);
-bool lex_number(char *content, int *i, int line, int indent, int default_indent);
-bool lex_use(char *content, int *i, int s, int line, int indent, int default_indent);
-bool lex_link(char *content, int *i, int s, int line, int indent, int default_indent);
-bool lex_identifier(char *content, int *i, int line, int indent, int default_indent);
-bool lex_symbol(char *content, int *i, int line, int *indent, int default_indent);
+bool lex_spaces(char *src, int *i, int *line, int *indent, int base);
+bool lex_multi_comment(char *src, int *i, int *line);
+bool lex_comment(char *src, int *i);
+bool lex_chars(char *src, int *i, int line, int indent);
+bool lex_char(char *src, int *i, int line, int indent);
+bool lex_number(char *src, int *i, int line, int indent);
+bool lex_use(char *src, int *i, int s, int line);
+bool lex_link(char *src, int *i, int s, int line);
+bool lex_identifier(char *src, int *i, int line, int indent, int base);
+bool lex_symbol(char *src, int *i, int line, int *indent);
 Token *new_token(Type type, int indent);
 Token *parse_token(int line, int s, int e, Type type, int indent);
 void set_name(Token *token, char *name);

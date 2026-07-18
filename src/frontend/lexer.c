@@ -96,21 +96,21 @@ int parse_escape_seq(char *input, int s, int e, char *buf, int *ptr) {
 	return ret;
 }
 
-bool lex_spaces(char *content, int *i, int *line, int *indent, int default_indent)
+bool lex_spaces(char *src, int *i, int *line, int *indent, int base)
 {
-	char c = content[*i];
+	char c = src[*i];
 	if (!isspace(c)) 
 	 	return false;
 	 
 	if (c == '\n') {
 		(*line)++;
-		(*indent)    = default_indent;
+		(*indent)    = base;
 	}
 	else {
 		int j = *i;
-		while (j > 0 && (content[j - 1] == ' ' || content[j - 1] == '\t'))
+		while (j > 0 && (src[j - 1] == ' ' || src[j - 1] == '\t'))
 			j--;
-		if (j == 0 || content[j - 1] == '\n')
+		if (j == 0 || src[j - 1] == '\n')
 			(*indent) += (c == '\t') ? TAB : 1;
 	}
 	(*i)++;
@@ -118,20 +118,18 @@ bool lex_spaces(char *content, int *i, int *line, int *indent, int default_inden
 	return true;
 }
 
-bool lex_multi_comment(char *content, int *i, int *line, int indent, int default_indent)
+bool lex_multi_comment(char *src, int *i, int *line)
 {
-	(void)indent;
-	(void)default_indent;
 	int s = *i;
-	if (strncmp(content + (*i), "/*", 2) != 0)
+	if (strncmp(src + (*i), "/*", 2) != 0)
 		return false;
 	
 	(*i) += 2;
-	while (content[(*i)] && content[(*i) + 1] && strncmp(content + (*i), "*/", 2)) {
-		if (content[(*i)] == '\n') (*line)++;
+	while (src[(*i)] && src[(*i) + 1] && strncmp(src + (*i), "*/", 2)) {
+		if (src[(*i)] == '\n') (*line)++;
 		(*i)++;
 	}
-	if (strncmp(content + (*i), "*/", 2) != 0) {
+	if (strncmp(src + (*i), "*/", 2) != 0) {
 		tokenize_error((*line), s, s + 2, ERR_UNTERM_BLOCK_COMMENT);
 		return true;
 	}
@@ -139,32 +137,28 @@ bool lex_multi_comment(char *content, int *i, int *line, int indent, int default
 	return true;
 }
 
-bool lex_comment(char *content, int *i, int line, int indent, int default_indent)
+bool lex_comment(char *src, int *i)
 {
-	(void)line;
-	(void)indent;
-	(void)default_indent;
-	if (strncmp(content + (*i), "//", 2) != 0)
+	if (strncmp(src + (*i), "//", 2) != 0)
 		return false;
 
-	while (content[(*i)] && content[(*i)] != '\n')
+	while (src[(*i)] && src[(*i)] != '\n')
 		(*i)++;
 	return true;
 }
 
-bool lex_chars(char *content, int *i, int line, int indent, int default_indent)
+bool lex_chars(char *src, int *i, int line, int indent)
 {
-	(void)default_indent;
 	int s = *i;
-	if (content[(*i)] != '\"')
+	if (src[(*i)] != '\"')
 		return false;
 
 	(*i)++;
-	while (content[(*i)] && content[(*i)] != '\"') {
-		if (content[(*i)] == '\\' && content[(*i) + 1]) (*i)++;
+	while (src[(*i)] && src[(*i)] != '\"') {
+		if (src[(*i)] == '\\' && src[(*i) + 1]) (*i)++;
 		(*i)++;
 	}
-	if (content[(*i)] != '\"') {
+	if (src[(*i)] != '\"') {
 		tokenize_error(line, s, s + 1, ERR_UNTERM_STRING_LITERAL);
 		return true;
 	}
@@ -173,17 +167,16 @@ bool lex_chars(char *content, int *i, int line, int indent, int default_indent)
 	return true;
 }
 
-bool lex_char(char *content, int *i, int line, int indent, int default_indent)
+bool lex_char(char *src, int *i, int line, int indent)
 {
-	(void)default_indent;
 	int s = *i;
-	if (content[(*i)] != '\'')
+	if (src[(*i)] != '\'')
 		return false;
 
 	(*i)++;
-	if (content[(*i)] == '\\' && content[(*i) + 1]) (*i)++;
-	if (content[(*i)] && content[(*i)] != '\'')     (*i)++;
-	if (content[(*i)] != '\'')                 {
+	if (src[(*i)] == '\\' && src[(*i) + 1]) (*i)++;
+	if (src[(*i)] && src[(*i)] != '\'')     (*i)++;
+	if (src[(*i)] != '\'')                 {
 		tokenize_error(line, s, s + 1, ERR_UNTERM_CHAR_LITERAL);
 		return true;
 	}
@@ -192,15 +185,14 @@ bool lex_char(char *content, int *i, int line, int indent, int default_indent)
 	return true;
 }
 
-bool lex_number(char *content, int *i, int line, int indent, int default_indent)
+bool lex_number(char *src, int *i, int line, int indent)
 {
-	(void)default_indent;
 	int s = *i;
-	if (!isdigit(content[(*i)])) return false;
-	while (isdigit(content[(*i)])) (*i)++;
-	if (content[(*i)] == '.' && isdigit(content[(*i) + 1])) {
+	if (!isdigit(src[(*i)])) return false;
+	while (isdigit(src[(*i)])) (*i)++;
+	if (src[(*i)] == '.' && isdigit(src[(*i) + 1])) {
 		(*i)++;
-		while (isdigit(content[(*i)])) (*i)++;
+		while (isdigit(src[(*i)])) (*i)++;
 		parse_token(line, s, *i, FLOAT, indent);
 	}
 	else
@@ -208,31 +200,29 @@ bool lex_number(char *content, int *i, int line, int indent, int default_indent)
 	return true;
 }
 
-bool lex_use(char *content, int *i, int s, int line, int indent, int default_indent)
+bool lex_use(char *src, int *i, int s, int line)
 {
-	(void)indent;
-	(void)default_indent;
 	bool is_len   = (*i) - s == 3;
-	bool is_word  = strncmp(content + s, "use", 3) == 0;
-	bool is_space = isspace(content[(*i)]);
+	bool is_word  = strncmp(src + s, "use", 3) == 0;
+	bool is_space = isspace(src[(*i)]);
 	if (!is_len || !is_word || !is_space) return false;
-	while (isspace(content[(*i)]))
+	while (isspace(src[(*i)]))
 		(*i)++;
-	if (content[(*i)] != '\"') {
+	if (src[(*i)] != '\"') {
 		tokenize_error(line, (*i), (*i) + 1, "Expected '\"' after 'use'");
 		return true;
 	}
 	(*i)++;
 	{
 		int start = (*i);
-		while (content[(*i)] && content[(*i)] != '\"' && content[(*i)] != '\n')
+		while (src[(*i)] && src[(*i)] != '\"' && src[(*i)] != '\n')
 			(*i)++;
-		if (content[(*i)] != '\"') {
+		if (src[(*i)] != '\"') {
 			tokenize_error(line, start - 1, start, ERR_UNTERM_USE_PATH);
 			return true;
 		}
 		(*i)++;
-		char *use = strndup(content + start, (*i) - start - 1);
+		char *use = strndup(src + start, (*i) - start - 1);
 		char *tmp = format("%s.ura", use);
 		free(use);
 		use = tmp;
@@ -252,54 +242,50 @@ bool lex_use(char *content, int *i, int s, int line, int indent, int default_ind
 	return true;
 }
 
-bool lex_link(char *content, int *i, int s, int line, int indent, int default_indent)
+bool lex_link(char *src, int *i, int s, int line)
 {
-	(void)indent;
-	(void)default_indent;
 	bool is_len   = (*i) - s == 4;
-	bool is_word  = strncmp(content + s, "link", 4) == 0;
-	bool is_space = isspace(content[(*i)]);
+	bool is_word  = strncmp(src + s, "link", 4) == 0;
+	bool is_space = isspace(src[(*i)]);
 	if (!is_len || !is_word || !is_space) return false;
-	while (isspace(content[(*i)]))
+	while (isspace(src[(*i)]))
 		(*i)++;
-	if (content[(*i)] != '\"') {
+	if (src[(*i)] != '\"') {
 		tokenize_error(line, (*i), (*i) + 1, "Expected '\"' after 'link'");
 		return true;
 	}
 	(*i)++;
 	int link_s = (*i);
-	while (content[(*i)] && content[(*i)] != '\"' && content[(*i)] != '\n')
+	while (src[(*i)] && src[(*i)] != '\"' && src[(*i)] != '\n')
 		(*i)++;
-	if (content[(*i)] != '\"') {
-		tokenize_error(line, link_s - 1, link_s,
-							ERR_UNTERM_LINK_PATH);
+	if (src[(*i)] != '\"') {
+		tokenize_error(line, link_s - 1, link_s, ERR_UNTERM_LINK_PATH);
 		return true;
 	}
 	(*i)++;
 	return true;
 }
 
-bool lex_identifier(char *content, int *i, int line, int indent, int default_indent)
+bool lex_identifier(char *src, int *i, int line, int indent, int base)
 {
 	int s = *i;
-	if (!(isalpha(content[*i]) || strchr("@$_", content[*i])))
+	if (!(isalpha(src[*i]) || strchr("@$_", src[*i])))
 		return false;
-	while (content[*i] && (isalnum(content[*i]) || strchr("@$_", content[*i])))
+	while (src[*i] && (isalnum(src[*i]) || strchr("@$_", src[*i])))
 		(*i)++;
-	if (lex_use(content, i, s, line, indent, default_indent)) {
+	if (lex_use(src, i, s, line)) {
 		if (ura.error_count) return true;
 		ura.calling_use++;
 		tokenize(indent);
 		ura.calling_use--;
-	} else if (!lex_link(content, i, s, line, indent, default_indent)) {
+	} else if (!lex_link(src, i, s, line)) {
 		parse_token(line, s, *i, ID, indent);
 	}
 	return true;
 }
 
-bool lex_symbol(char *content, int *i, int line, int *indent, int default_indent)
+bool lex_symbol(char *src, int *i, int line, int *indent)
 {
-	(void)default_indent;
 	int s = *i;
 	static const Keyword specials[] = {
 		{"...", VARIADIC, 0, 0},   {"..", RANGE, 0, 0},       {".", DOT, 0, 0},
@@ -318,7 +304,7 @@ bool lex_symbol(char *content, int *i, int line, int *indent, int default_indent
 	};
 	for (size_t j = 0; j < sizeof(specials) / sizeof(*specials); j++) {
 		size_t len = strlen(specials[j].name);
-		if (strncmp(specials[j].name, content + (*i), len) == 0) {
+		if (strncmp(specials[j].name, src + (*i), len) == 0) {
 			(*i) += len;
 			parse_token(line, s, (*i), specials[j].type, *indent);
 			if (includes(specials[j].type, DOTS, 0)) (*indent) += TAB;

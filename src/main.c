@@ -63,13 +63,13 @@ void tokenize(int default_indent) {
       s = i;
       char c = content[i];
       if (lex_spaces(content, &i, &line, &indent, default_indent)) continue;
-      if (lex_multi_comment(content, &i, &line, indent, default_indent)) continue;
-      if (lex_comment(content, &i, line, indent, default_indent)) continue;
-      if (lex_chars(content, &i, line, indent, default_indent)) continue;
-      if (lex_char(content, &i, line, indent, default_indent)) continue;
-      if (lex_number(content, &i, line, indent, default_indent)) continue;
+      if (lex_multi_comment(content, &i, &line)) continue;
+      if (lex_comment(content, &i)) continue;
+      if (lex_chars(content, &i, line, indent)) continue;
+      if (lex_char(content, &i, line, indent)) continue;
+      if (lex_number(content, &i, line, indent)) continue;
       if (lex_identifier(content, &i, line, indent, default_indent)) continue;
-      if (lex_symbol(content, &i, line, &indent, default_indent)) continue;
+      if (lex_symbol(content, &i, line, &indent)) continue;
       tokenize_error(line, i, i + 1, "Unexpected character '%c'", c);
    }
    if (!ura.calling_use)
