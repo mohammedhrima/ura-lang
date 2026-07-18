@@ -30,17 +30,15 @@ Token *find(Type type, ...) {
 int get_operation_precedence(Type type)
 {
    static const int res[END + 1] = {
-      [ASSIGN] = 1, [ADD_ASSIGN] = 1, [SUB_ASSIGN] = 1,
+      [ASSIGN] = 1,     [ADD_ASSIGN] = 1, [SUB_ASSIGN] = 1,
       [MUL_ASSIGN] = 1, [DIV_ASSIGN] = 1, [MOD_ASSIGN] = 1,
-      [OR] = 2, [RANGE] = 2, [AND] = 3,
-      [BOR] = 4, [BXOR] = 5, [BAND] = 6,
-      [EQUAL] = 7, [NOT_EQUAL] = 7,
-      [LESS] = 8, [GREAT] = 8,
-      [LESS_EQUAL] = 8, [GREAT_EQUAL] = 8,
-      [LSHIFT] = 9, [RSHIFT] = 9,
-      [ADD] = 10, [SUB] = 10,
-      [MUL] = 11, [DIV] = 11, [MOD] = 11,
-      [AS] = 12,
+      [OR] = 2,         [AND] = 3,        [RANGE] = 2,
+      [BOR] = 4,        [BXOR] = 5,       [BAND] = 6,
+      [LESS] = 8,       [EQUAL] = 7,      [NOT_EQUAL] = 7,
+      [GREAT] = 8,      [LESS_EQUAL] = 8, [GREAT_EQUAL] = 8,
+      [ADD] = 10,       [LSHIFT] = 9,     [RSHIFT] = 9,
+      [SUB] = 10,       [MUL] = 11,       [DIV] = 11,
+      [AS] = 12,        [MOD] = 11,
    };
 
    return res[type];
