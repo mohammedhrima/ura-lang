@@ -1,14 +1,155 @@
-# builtins / type-info
+# builtins
 
 ## index
 
-- 001 — typeof / sizeof on scalars
-- 002 — typeof / sizeof on an array
+- 001 — puts: simple messages, char comparison on hero grade
+- 002 — proto printf: hello world with a format string
+- 003 — typeof / sizeof on scalars
+- 004 — typeof / sizeof on an array
+- 005 — sizeof without parentheses
+- 006 — typeof without parentheses
 
-## 001 — typeof / sizeof on scalars
+## 001 — puts: simple messages, char comparison on hero grade
 
 ```ura
-// builtins/type-info/001.ura - typeof / sizeof on scalars
+// builtins/001.ura - puts: simple messages, char comparison on hero grade
+
+proto fn puts(str chars) int
+
+fn is_s_rank(grade char) bool:
+    return grade == 'S'
+
+main():
+    grade char = 'S'
+    if is_s_rank(grade):
+        puts("S-rank hero — unstoppable")
+    else:
+        puts("keep training")
+```
+
+```tree
+fn puts(str : chars) : int
+
+fn is_s_rank(grade : char) : bool
+└─ return
+   └─ == : bool
+      ├─ grade : char
+      └─ char 'S'
+
+fn main() : int
+├─ = : char
+│  ├─ grade : char
+│  └─ char 'S'
+└─ if
+   ├─ condition call is_s_rank : bool
+   │  └─ grade : char
+   ├─ call puts : int
+   │  └─ chars "S-rank hero — unstoppable"
+   └─ else
+      └─ call puts : int
+         └─ chars "keep training"
+```
+
+```out
+S-rank hero — unstoppable
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [28 x i8] c"S-rank hero \E2\80\94 unstoppable\00", align 1
+@str.1 = private unnamed_addr constant [14 x i8] c"keep training\00", align 1
+
+declare i32 @puts(i8*)
+
+define i1 @is_s_rank(i8 %0) {
+entry:
+  %grade = alloca i8, align 1
+  store i8 %0, i8* %grade, align 1
+  %grade1 = load i8, i8* %grade, align 1
+  %eq = icmp eq i8 %grade1, 83
+  ret i1 %eq
+}
+
+define i32 @main() {
+entry:
+  %grade = alloca i8, align 1
+  store i8 83, i8* %grade, align 1
+  %grade1 = load i8, i8* %grade, align 1
+  %call = call i1 @is_s_rank(i8 %grade1)
+  br i1 %call, label %then, label %next
+
+endif:                                            ; preds = %next, %then
+  ret i32 0
+
+then:                                             ; preds = %entry
+  %call2 = call i32 @puts(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @str, i32 0, i32 0))
+  br label %endif
+
+next:                                             ; preds = %entry
+  %call3 = call i32 @puts(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.1, i32 0, i32 0))
+  br label %endif
+}
+```
+
+## 002 — proto printf: hello world with a format string
+
+```ura
+// builtins/002.ura - proto printf: hello world with a format string
+
+proto fn printf(fmt chars, ...) int
+
+main():
+    s chars = "ura"
+    printf("hello %s %d\n", s, 42)
+    return 0
+```
+
+```tree
+fn printf(fmt : chars) : int
+
+fn main() : int
+├─ = : chars
+│  ├─ s : chars
+│  └─ chars "ura"
+├─ call printf : int
+│  ├─ chars "hello %s %d\n"
+│  ├─ s : chars
+│  └─ int 42
+└─ return
+   └─ int 0
+```
+
+```out
+hello ura 42
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [4 x i8] c"ura\00", align 1
+@str.1 = private unnamed_addr constant [13 x i8] c"hello %s %d\0A\00", align 1
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  %s = alloca i8*, align 8
+  store i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i8** %s, align 8
+  %s1 = load i8*, i8** %s, align 8
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str.1, i32 0, i32 0), i8* %s1, i32 42)
+  ret i32 0
+}
+```
+
+## 003 — typeof / sizeof on scalars
+
+```ura
+// builtins/003.ura - typeof / sizeof on scalars
 
 main():
     x int   = 5
@@ -90,10 +231,10 @@ entry:
 declare i32 @printf(i8*, ...)
 ```
 
-## 002 — typeof / sizeof on an array
+## 004 — typeof / sizeof on an array
 
 ```ura
-// builtins/type-info/002.ura - typeof / sizeof on an array (fat-pointer struct)
+// builtins/004.ura - typeof / sizeof on an array (fat-pointer struct)
 
 main():
     a int[] = [1, 2, 3]
@@ -151,4 +292,64 @@ entry:
 }
 
 declare i32 @printf(i8*, ...)
+```
+
+## 005 — sizeof without parentheses
+
+```ura
+main():
+    x int = 5
+    output(sizeof x)
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Expected '(' after 'sizeof'
+  005.ura:3:12
+  |
+3 |     output(sizeof x)
+  |            ^^^^^^
+error: Expected ')' after output arguments
+  005.ura:3:5
+  |
+3 |     output(sizeof x)
+  |     ^^^^^^
+```
+
+```ll
+```
+
+## 006 — typeof without parentheses
+
+```ura
+main():
+    x int = 5
+    output(typeof x)
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Expected '(' after 'typeof'
+  006.ura:3:12
+  |
+3 |     output(typeof x)
+  |            ^^^^^^
+error: Expected ')' after output arguments
+  006.ura:3:5
+  |
+3 |     output(typeof x)
+  |     ^^^^^^
+```
+
+```ll
 ```

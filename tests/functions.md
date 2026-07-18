@@ -1,4 +1,4 @@
-# functions / basic
+# functions
 
 ## index
 
@@ -13,13 +13,22 @@
 - 009 — forward reference: call a function declared later
 - 010 — store a function in a fn-typed variable, then call it
 - 011 — pass a function as an argument (higher-order)
-- 013 — nested non-capturing helper function
-- 014 — a call used as an argument to another call
+- 012 — nested non-capturing helper function
+- 013 — a call used as an argument to another call
+- 014 — value parameters: take_damage
+- 015 — a by-value parameter does not change the caller
+- 016 — single ref param: buff hero hp
+- 017 — swap two weapon damage values via refs
+- 018 — refs used in expression, return result
+- 019 — compound ref assign through in a loop
+- 020 — ref-to-value: ref passing a where value is expected
+- 021 — ref parameter mutates the caller (counter)
+- 022 — a void function with a ref parameter
 
 ## 001 — void fn: announce dungeon floor
 
 ```ura
-// functions/basic/001.ura - void fn: announce dungeon floor
+// functions/001.ura - void fn: announce dungeon floor
 
 fn announce_floor(floor int) void:
     output("=== Entering floor ", floor, " ===\n")
@@ -106,7 +115,7 @@ entry:
 ## 002 — fn with return value + single-line fns
 
 ```ura
-// functions/basic/002.ura - fn with return value + single-line fns
+// functions/002.ura - fn with return value + single-line fns
 
 fn victory_bonus(floor int) int:
     return floor * 50
@@ -235,7 +244,7 @@ declare i32 @printf(i8*, ...)
 ## 003 — multi-fn: clamp, damage, is_dead
 
 ```ura
-// functions/basic/003.ura - multi-fn: clamp, damage, is_dead
+// functions/003.ura - multi-fn: clamp, damage, is_dead
 
 fn clamp(val int, lo int, hi int) int:
     if val < lo:
@@ -401,7 +410,7 @@ declare i32 @printf(i8*, ...)
 ## 004 — fn-typed value: assign top-level fn to a local, call indirectly
 
 ```ura
-// functions/basic/004.ura - fn-typed value: assign top-level fn to a local, call indirectly
+// functions/004.ura - fn-typed value: assign top-level fn to a local, call indirectly
 
 fn add(a int, b int) int:
     return a + b
@@ -532,7 +541,7 @@ declare i32 @printf(i8*, ...)
 ## 005 — fn-typed parameter: callback passed to higher-order fn
 
 ```ura
-// functions/basic/005.ura - fn-typed parameter: callback passed to higher-order fn
+// functions/005.ura - fn-typed parameter: callback passed to higher-order fn
 
 fn double_it(n int) int:
     return n * 2
@@ -653,7 +662,7 @@ declare i32 @printf(i8*, ...)
 ## 006 — return an integer literal
 
 ```ura
-// functions/basic/006.ura - return an integer literal
+// functions/006.ura - return an integer literal
 
 main():
     return 42
@@ -683,7 +692,7 @@ entry:
 ## 007 — declare a variable and return it
 
 ```ura
-// functions/basic/007.ura - declare a variable and return it
+// functions/007.ura - declare a variable and return it
 
 main():
     a int = 7
@@ -720,7 +729,7 @@ entry:
 ## 008 — function parameters and a direct call
 
 ```ura
-// functions/basic/008.ura - function parameters and a direct call
+// functions/008.ura - function parameters and a direct call
 
 fn add(a int, b int) int:
     return a + b
@@ -773,7 +782,7 @@ entry:
 ## 009 — forward reference: call a function declared later
 
 ```ura
-// functions/basic/009.ura - forward reference: call a function declared later
+// functions/009.ura - forward reference: call a function declared later
 
 main():
     return dbl(21)
@@ -823,7 +832,7 @@ entry:
 ## 010 — store a function in a fn-typed variable, then call it
 
 ```ura
-// functions/basic/010.ura - store a function in a fn-typed variable, then call it
+// functions/010.ura - store a function in a fn-typed variable, then call it
 
 fn twice(n int) int:
     return n + n
@@ -895,7 +904,7 @@ declare void @exit(i32)
 ## 011 — pass a function as an argument (higher-order)
 
 ```ura
-// functions/basic/011.ura - pass a function as an argument (higher-order)
+// functions/011.ura - pass a function as an argument (higher-order)
 
 fn twice(n int) int:
     return n + n
@@ -977,10 +986,10 @@ entry:
 }
 ```
 
-## 013 — nested non-capturing helper function
+## 012 — nested non-capturing helper function
 
 ```ura
-// functions/basic/013.ura - nested non-capturing helper function
+// functions/012.ura - nested non-capturing helper function
 
 main():
     fn dbl(k int) int:
@@ -1026,10 +1035,10 @@ entry:
 }
 ```
 
-## 014 — a call used as an argument to another call
+## 013 — a call used as an argument to another call
 
 ```ura
-// functions/basic/014.ura - a call used as an argument to another call
+// functions/013.ura - a call used as an argument to another call
 
 fn square(n int) int:
     return n * n
@@ -1096,5 +1105,715 @@ entry:
   %call = call i32 @square(i32 5)
   %call1 = call i32 @add(i32 %call, i32 3)
   ret i32 %call1
+}
+```
+
+## 014 — value parameters: take_damage
+
+```ura
+// functions/014.ura - value parameters: take_damage
+
+fn take_damage(hp int, atk int) int:
+    return hp - atk
+
+main():
+    result int = take_damage(100, 18)
+    output("<", result, ">\n")
+```
+
+```tree
+fn take_damage(hp : int, atk : int) : int
+└─ return
+   └─ - : int
+      ├─ hp : int
+      └─ atk : int
+
+fn main() : int
+├─ = : int
+│  ├─ result : int
+│  └─ call take_damage : int
+│     ├─ int 100
+│     └─ int 18
+└─ output : void
+   ├─ chars "<"
+   ├─ result : int
+   └─ chars ">\n"
+```
+
+```out
+<82>
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [2 x i8] c"<\00", align 1
+@str.1 = private unnamed_addr constant [3 x i8] c">\0A\00", align 1
+@fmt = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+
+define i32 @take_damage(i32 %0, i32 %1) {
+entry:
+  %hp = alloca i32, align 4
+  store i32 %0, i32* %hp, align 4
+  %atk = alloca i32, align 4
+  store i32 %1, i32* %atk, align 4
+  %hp1 = load i32, i32* %hp, align 4
+  %atk2 = load i32, i32* %atk, align 4
+  %sub = sub i32 %hp1, %atk2
+  ret i32 %sub
+}
+
+define i32 @main() {
+entry:
+  %result = alloca i32, align 4
+  %call = call i32 @take_damage(i32 100, i32 18)
+  store i32 %call, i32* %result, align 4
+  %result1 = load i32, i32* %result, align 4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0), i32 %result1, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.1, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 015 — a by-value parameter does not change the caller
+
+```ura
+// functions/015.ura - a by-value parameter does not change the caller
+
+fn inc(n int) int:
+    n = n + 1
+    return n
+main():
+    n int = 5
+    inc(n)
+    return n
+```
+
+```tree
+fn inc(n : int) : int
+├─ = : int
+│  ├─ n : int
+│  └─ + : int
+│     ├─ n : int
+│     └─ int 1
+└─ return
+   └─ n : int
+
+fn main() : int
+├─ = : int
+│  ├─ n : int
+│  └─ int 5
+├─ call inc : int
+│  └─ n : int
+└─ return
+   └─ n : int
+```
+
+```out
+```
+
+```err
+exit: 5
+```
+
+```ll
+
+define i32 @inc(i32 %0) {
+entry:
+  %n = alloca i32, align 4
+  store i32 %0, i32* %n, align 4
+  %n1 = load i32, i32* %n, align 4
+  %add = add i32 %n1, 1
+  store i32 %add, i32* %n, align 4
+  %n2 = load i32, i32* %n, align 4
+  ret i32 %n2
+}
+
+define i32 @main() {
+entry:
+  %n = alloca i32, align 4
+  store i32 5, i32* %n, align 4
+  %n1 = load i32, i32* %n, align 4
+  %call = call i32 @inc(i32 %n1)
+  %n2 = load i32, i32* %n, align 4
+  ret i32 %n2
+}
+```
+
+## 016 — single ref param: buff hero hp
+
+```ura
+// functions/016.ura - single ref param: buff hero hp
+
+fn buff(ref hp int) void:
+    hp = hp + 20
+
+main():
+    hero_hp int = 80
+    buff(ref hero_hp)
+    output("<", hero_hp, ">\n")
+```
+
+```tree
+fn buff(hp : int) : void
+└─ = : int
+   ├─ hp : int
+   └─ + : int
+      ├─ hp : int
+      └─ int 20
+
+fn main() : int
+├─ = : int
+│  ├─ hero_hp : int
+│  └─ int 80
+├─ call buff : void
+│  └─ ref : int
+│     └─ hero_hp : int
+└─ output : void
+   ├─ chars "<"
+   ├─ hero_hp : int
+   └─ chars ">\n"
+```
+
+```out
+<100>
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [2 x i8] c"<\00", align 1
+@str.1 = private unnamed_addr constant [3 x i8] c">\0A\00", align 1
+@fmt = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+
+define void @buff(i32* %0) {
+entry:
+  %hp = alloca i32*, align 8
+  store i32* %0, i32** %hp, align 8
+  %ref = load i32*, i32** %hp, align 8
+  %ref1 = load i32*, i32** %hp, align 8
+  %hp2 = load i32, i32* %ref1, align 4
+  %add = add i32 %hp2, 20
+  store i32 %add, i32* %ref, align 4
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %hero_hp = alloca i32, align 4
+  store i32 80, i32* %hero_hp, align 4
+  call void @buff(i32* %hero_hp)
+  %hero_hp1 = load i32, i32* %hero_hp, align 4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0), i32 %hero_hp1, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.1, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 017 — swap two weapon damage values via refs
+
+```ura
+// functions/017.ura - swap two weapon damage values via refs
+
+fn swap_weapons(ref a int, ref b int) void:
+    temp int = a
+    a = b
+    b = temp
+
+main():
+    sword  int = 30
+    dagger int = 15
+    swap_weapons(ref sword, ref dagger)
+    output("<", sword, " ", dagger, ">\n")
+```
+
+```tree
+fn swap_weapons(a : int, b : int) : void
+├─ = : int
+│  ├─ temp : int
+│  └─ a : int
+├─ = : int
+│  ├─ a : int
+│  └─ b : int
+└─ = : int
+   ├─ b : int
+   └─ temp : int
+
+fn main() : int
+├─ = : int
+│  ├─ sword : int
+│  └─ int 30
+├─ = : int
+│  ├─ dagger : int
+│  └─ int 15
+├─ call swap_weapons : void
+│  ├─ ref : int
+│  │  └─ sword : int
+│  └─ ref : int
+│     └─ dagger : int
+└─ output : void
+   ├─ chars "<"
+   ├─ sword : int
+   ├─ chars " "
+   ├─ dagger : int
+   └─ chars ">\n"
+```
+
+```out
+<15 30>
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [2 x i8] c"<\00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c" \00", align 1
+@str.2 = private unnamed_addr constant [3 x i8] c">\0A\00", align 1
+@fmt = private unnamed_addr constant [11 x i8] c"%s%d%s%d%s\00", align 1
+
+define void @swap_weapons(i32* %0, i32* %1) {
+entry:
+  %a = alloca i32*, align 8
+  store i32* %0, i32** %a, align 8
+  %b = alloca i32*, align 8
+  store i32* %1, i32** %b, align 8
+  %temp = alloca i32, align 4
+  %ref = load i32*, i32** %a, align 8
+  %a1 = load i32, i32* %ref, align 4
+  store i32 %a1, i32* %temp, align 4
+  %ref2 = load i32*, i32** %a, align 8
+  %ref3 = load i32*, i32** %b, align 8
+  %b4 = load i32, i32* %ref3, align 4
+  store i32 %b4, i32* %ref2, align 4
+  %ref5 = load i32*, i32** %b, align 8
+  %temp6 = load i32, i32* %temp, align 4
+  store i32 %temp6, i32* %ref5, align 4
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %sword = alloca i32, align 4
+  store i32 30, i32* %sword, align 4
+  %dagger = alloca i32, align 4
+  store i32 15, i32* %dagger, align 4
+  call void @swap_weapons(i32* %sword, i32* %dagger)
+  %sword1 = load i32, i32* %sword, align 4
+  %dagger2 = load i32, i32* %dagger, align 4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0), i32 %sword1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0), i32 %dagger2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.2, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 018 — refs used in expression, return result
+
+```ura
+// functions/018.ura - refs used in expression, return result
+
+fn add_xp(ref a int, ref b int) int:
+    result int = a + b
+    return result
+
+main():
+    kill_xp  int = 30
+    bonus_xp int = 20
+    z        int
+    z = add_xp(ref kill_xp, ref bonus_xp)
+    output("<", z, ">\n")
+```
+
+```tree
+fn add_xp(a : int, b : int) : int
+├─ = : int
+│  ├─ result : int
+│  └─ + : int
+│     ├─ a : int
+│     └─ b : int
+└─ return
+   └─ result : int
+
+fn main() : int
+├─ = : int
+│  ├─ kill_xp : int
+│  └─ int 30
+├─ = : int
+│  ├─ bonus_xp : int
+│  └─ int 20
+├─ z : int
+├─ = : int
+│  ├─ z : int
+│  └─ call add_xp : int
+│     ├─ ref : int
+│     │  └─ kill_xp : int
+│     └─ ref : int
+│        └─ bonus_xp : int
+└─ output : void
+   ├─ chars "<"
+   ├─ z : int
+   └─ chars ">\n"
+```
+
+```out
+<50>
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [2 x i8] c"<\00", align 1
+@str.1 = private unnamed_addr constant [3 x i8] c">\0A\00", align 1
+@fmt = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+
+define i32 @add_xp(i32* %0, i32* %1) {
+entry:
+  %a = alloca i32*, align 8
+  store i32* %0, i32** %a, align 8
+  %b = alloca i32*, align 8
+  store i32* %1, i32** %b, align 8
+  %result = alloca i32, align 4
+  %ref = load i32*, i32** %a, align 8
+  %a1 = load i32, i32* %ref, align 4
+  %ref2 = load i32*, i32** %b, align 8
+  %b3 = load i32, i32* %ref2, align 4
+  %add = add i32 %a1, %b3
+  store i32 %add, i32* %result, align 4
+  %result4 = load i32, i32* %result, align 4
+  ret i32 %result4
+}
+
+define i32 @main() {
+entry:
+  %kill_xp = alloca i32, align 4
+  store i32 30, i32* %kill_xp, align 4
+  %bonus_xp = alloca i32, align 4
+  store i32 20, i32* %bonus_xp, align 4
+  %z = alloca i32, align 4
+  store i32 0, i32* %z, align 4
+  %call = call i32 @add_xp(i32* %kill_xp, i32* %bonus_xp)
+  store i32 %call, i32* %z, align 4
+  %z1 = load i32, i32* %z, align 4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0), i32 %z1, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.1, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 019 — compound ref assign through in a loop
+
+```ura
+// functions/019.ura - compound ref assign through in a loop
+
+fn tick(ref kills int) void:
+    kills += 1
+
+main():
+    kills int = 0
+    i     int = 0
+    while i < 5:
+        tick(ref kills)
+        i = i + 1
+    output("<", kills, ">\n")
+```
+
+```tree
+fn tick(kills : int) : void
+└─ += : int
+   ├─ kills : int
+   └─ int 1
+
+fn main() : int
+├─ = : int
+│  ├─ kills : int
+│  └─ int 0
+├─ = : int
+│  ├─ i : int
+│  └─ int 0
+├─ while
+│  ├─ condition < : bool
+│  │  ├─ i : int
+│  │  └─ int 5
+│  ├─ call tick : void
+│  │  └─ ref : int
+│  │     └─ kills : int
+│  └─ = : int
+│     ├─ i : int
+│     └─ + : int
+│        ├─ i : int
+│        └─ int 1
+└─ output : void
+   ├─ chars "<"
+   ├─ kills : int
+   └─ chars ">\n"
+```
+
+```out
+<5>
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [2 x i8] c"<\00", align 1
+@str.1 = private unnamed_addr constant [3 x i8] c">\0A\00", align 1
+@fmt = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+
+define void @tick(i32* %0) {
+entry:
+  %kills = alloca i32*, align 8
+  store i32* %0, i32** %kills, align 8
+  %ref = load i32*, i32** %kills, align 8
+  %cur = load i32, i32* %ref, align 4
+  %add = add i32 %cur, 1
+  store i32 %add, i32* %ref, align 4
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %kills = alloca i32, align 4
+  store i32 0, i32* %kills, align 4
+  %i = alloca i32, align 4
+  store i32 0, i32* %i, align 4
+  br label %while.cond
+
+while.cond:                                       ; preds = %while.body, %entry
+  %i1 = load i32, i32* %i, align 4
+  %lt = icmp slt i32 %i1, 5
+  br i1 %lt, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  call void @tick(i32* %kills)
+  %i2 = load i32, i32* %i, align 4
+  %add = add i32 %i2, 1
+  store i32 %add, i32* %i, align 4
+  br label %while.cond
+
+while.end:                                        ; preds = %while.cond
+  %kills3 = load i32, i32* %kills, align 4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0), i32 %kills3, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.1, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 020 — ref-to-value: ref passing a where value is expected
+
+```ura
+// functions/020.ura - ref-to-value: ref passing a where value is expected
+
+fn show_hp(hp int) void:
+    output("HP: ", hp, "\n")
+
+main():
+    hero_hp int = 75
+    ref r int = ref hero_hp
+    show_hp(r)
+```
+
+```tree
+fn show_hp(hp : int) : void
+└─ output : void
+   ├─ chars "HP: "
+   ├─ hp : int
+   └─ chars "\n"
+
+fn main() : int
+├─ = : int
+│  ├─ hero_hp : int
+│  └─ int 75
+├─ = : int
+│  ├─ r : int
+│  └─ ref : int
+│     └─ hero_hp : int
+└─ call show_hp : void
+   └─ r : int
+```
+
+```out
+HP: 75
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [5 x i8] c"HP: \00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+
+define void @show_hp(i32 %0) {
+entry:
+  %hp = alloca i32, align 4
+  store i32 %0, i32* %hp, align 4
+  %hp1 = load i32, i32* %hp, align 4
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str, i32 0, i32 0), i32 %hp1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  ret void
+}
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  %hero_hp = alloca i32, align 4
+  store i32 75, i32* %hero_hp, align 4
+  %r = alloca i32*, align 8
+  store i32* %hero_hp, i32** %r, align 8
+  %ref = load i32*, i32** %r, align 8
+  %r1 = load i32, i32* %ref, align 4
+  call void @show_hp(i32 %r1)
+  ret i32 0
+}
+```
+
+## 021 — ref parameter mutates the caller (counter)
+
+```ura
+// functions/021.ura - ref parameter mutates the caller (counter)
+
+fn tick(ref n int) int:
+    n = n + 1
+    return n
+main():
+    n int = 0
+    tick(ref n)
+    tick(ref n)
+    return n
+```
+
+```tree
+fn tick(n : int) : int
+├─ = : int
+│  ├─ n : int
+│  └─ + : int
+│     ├─ n : int
+│     └─ int 1
+└─ return
+   └─ n : int
+
+fn main() : int
+├─ = : int
+│  ├─ n : int
+│  └─ int 0
+├─ call tick : int
+│  └─ ref : int
+│     └─ n : int
+├─ call tick : int
+│  └─ ref : int
+│     └─ n : int
+└─ return
+   └─ n : int
+```
+
+```out
+```
+
+```err
+exit: 2
+```
+
+```ll
+
+define i32 @tick(i32* %0) {
+entry:
+  %n = alloca i32*, align 8
+  store i32* %0, i32** %n, align 8
+  %ref = load i32*, i32** %n, align 8
+  %ref1 = load i32*, i32** %n, align 8
+  %n2 = load i32, i32* %ref1, align 4
+  %add = add i32 %n2, 1
+  store i32 %add, i32* %ref, align 4
+  %ref3 = load i32*, i32** %n, align 8
+  %n4 = load i32, i32* %ref3, align 4
+  ret i32 %n4
+}
+
+define i32 @main() {
+entry:
+  %n = alloca i32, align 4
+  store i32 0, i32* %n, align 4
+  %call = call i32 @tick(i32* %n)
+  %call1 = call i32 @tick(i32* %n)
+  %n2 = load i32, i32* %n, align 4
+  ret i32 %n2
+}
+```
+
+## 022 — a void function with a ref parameter
+
+```ura
+// functions/022.ura - a void function with a ref parameter
+
+fn bump(ref n int) void:
+    n = n + 1
+main():
+    n int = 5
+    bump(ref n)
+    return n
+```
+
+```tree
+fn bump(n : int) : void
+└─ = : int
+   ├─ n : int
+   └─ + : int
+      ├─ n : int
+      └─ int 1
+
+fn main() : int
+├─ = : int
+│  ├─ n : int
+│  └─ int 5
+├─ call bump : void
+│  └─ ref : int
+│     └─ n : int
+└─ return
+   └─ n : int
+```
+
+```out
+```
+
+```err
+exit: 6
+```
+
+```ll
+
+define void @bump(i32* %0) {
+entry:
+  %n = alloca i32*, align 8
+  store i32* %0, i32** %n, align 8
+  %ref = load i32*, i32** %n, align 8
+  %ref1 = load i32*, i32** %n, align 8
+  %n2 = load i32, i32* %ref1, align 4
+  %add = add i32 %n2, 1
+  store i32 %add, i32* %ref, align 4
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %n = alloca i32, align 4
+  store i32 5, i32* %n, align 4
+  call void @bump(i32* %n)
+  %n1 = load i32, i32* %n, align 4
+  ret i32 %n1
 }
 ```

@@ -19,6 +19,17 @@
 - 015 — slice a[1..4] is a view (shared storage, exclusive end)
 - 016 — ? on a slice traps when the range is out of bounds
 - 017 — arr.len on stack, heap, slice, and multi-dim
+- 018 — indexing a non-array
+- 019 — non-integer index
+- 020 — array literal with mixed element types
+- 021 — array size is not an integer
+- 022 — clean on a non-array
+- 023 — new without an array type
+- 024 — missing closing bracket on index
+- 025 — empty array literal has no element type
+- 026 — range bounds must be integers
+- 027 — .len on a non-array
+- 028 — unknown member
 
 ## 001 — 1D int array: literal, index read, indexed write
 
@@ -1992,4 +2003,275 @@ declare i32 @printf(i8*, ...)
 declare void @llvm.memset.p0i8.i64(i8* nocapture writeonly, i8, i64, i1 immarg) #0
 
 attributes #0 = { argmemonly nofree nounwind willreturn writeonly }
+```
+
+## 018 — indexing a non-array
+
+```ura
+main():
+    a int = 5
+    output(a[0])
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Cannot index 'int', it is not an array
+  018.ura:3:13
+  |
+3 |     output(a[0])
+  |             ^
+```
+
+```ll
+```
+
+## 019 — non-integer index
+
+```ura
+main():
+    a int[] = [1, 2, 3]
+    output(a[1.5])
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Array index must be an integer, got float
+  019.ura:3:13
+  |
+3 |     output(a[1.5])
+  |             ^
+```
+
+```ll
+```
+
+## 020 — array literal with mixed element types
+
+```ura
+main():
+    a int[] = [1, True, 3]
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Array elements must all be the same type
+  020.ura:2:19
+  |
+2 |     a int[] = [1, True, 3]
+  |                   ^^^^
+```
+
+```ll
+```
+
+## 021 — array size is not an integer
+
+```ura
+main():
+    a int[] = int[1.5]
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Array size must be an integer
+  021.ura:2:19
+  |
+2 |     a int[] = int[1.5]
+  |                   ^^^
+```
+
+```ll
+```
+
+## 022 — clean on a non-array
+
+```ura
+main():
+    x int = 5
+    clean x
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: 'clean' expects an array
+  022.ura:3:5
+  |
+3 |     clean x
+  |     ^^^^^
+```
+
+```ll
+```
+
+## 023 — new without an array type
+
+```ura
+main():
+    a int[] = new int
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Expected an array type after 'new' (e.g. new int[n])
+  023.ura:2:15
+  |
+2 |     a int[] = new int
+  |               ^^^
+```
+
+```ll
+```
+
+## 024 — missing closing bracket on index
+
+```ura
+main():
+    a int[] = [1, 2, 3]
+    output(a[0)
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Expected ']' after array index
+  024.ura:3:13
+  |
+3 |     output(a[0)
+  |             ^
+```
+
+```ll
+```
+
+## 025 — empty array literal has no element type
+
+```ura
+main():
+    a int[] = []
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Empty array literal has no element type
+  025.ura:2:15
+  |
+2 |     a int[] = []
+  |               ^
+```
+
+```ll
+```
+
+## 026 — range bounds must be integers
+
+```ura
+main():
+    a int[] = [1, 2, 3]
+    mid int[] = a[1.5..3]
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Range bounds must be integers
+  026.ura:3:22
+  |
+3 |     mid int[] = a[1.5..3]
+  |                      ^^
+```
+
+```ll
+```
+
+## 027 — .len on a non-array
+
+```ura
+main():
+    x int = 5
+    output(x.len)
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: '.len' is only valid on an array, not int
+  027.ura:3:13
+  |
+3 |     output(x.len)
+  |             ^
+```
+
+```ll
+```
+
+## 028 — unknown member
+
+```ura
+main():
+    a int[] = [1, 2, 3]
+    output(a.size)
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Unknown member '.size'
+  028.ura:3:13
+  |
+3 |     output(a.size)
+  |             ^
+```
+
+```ll
 ```

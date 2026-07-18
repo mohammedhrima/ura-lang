@@ -9,7 +9,6 @@ def migrate(dirpath):
     """ADD newly-implemented cases from <dir> into tests/<group>.md, PRESERVING already-migrated
     ones (success = compiles+runs; error = its recorded .err still reproduces). Run `prune` after."""
     d = Path(dirpath)
-    is_error = "errors" in d.parts
     rel = Path(*d.parts[1:])                             # strip leading tests-old/
     out = (Path("tests") / rel).with_suffix(".md")
     cases = {c['name'].split()[0]: c for c in (parse_md(out) if out.exists() else [])}
@@ -17,10 +16,10 @@ def migrate(dirpath):
     for ura in sorted(d.glob("*.ura")):
         if ura.stem in cases: continue
         src = ura.read_text()
-        got = _actual(src, ura.stem, is_error)
-        if is_error:
-            old = ura.with_suffix(".err")
-            if not old.exists() or got["err"].strip() != _decolor(old.read_text()).strip():
+        got = _actual(src, ura.stem)
+        old = ura.with_suffix(".err")
+        if old.exists():
+            if got["err"].strip() != _decolor(old.read_text()).strip():
                 continue                                 # error path not implemented yet
         elif not got["ll"]:
             continue                                     # doesn't compile yet
@@ -71,8 +70,8 @@ def _resolve(target):
             return cand
     return None
 
-def _run_case(case, is_error):
-    got = _actual(case['ura'], case['name'].split()[0], is_error)
+def _run_case(case):
+    got = _actual(case['ura'], case['name'].split()[0])
     bad = next((t for t in ("ll", "out", "err", "tree") if got[t].strip() != case.get(t, "").strip()), None)
     return case, bad
 
@@ -84,7 +83,6 @@ def tests(target=None):
     mds = [root] if root.suffix == ".md" else sorted(root.rglob("*.md"))
     p = f = sk = 0
     for md in mds:
-        is_error = "errors" in md.parts
         cases = parse_md(md)
         runnable = [c for c in cases if any(c.get(t, "").strip() for t in ("ll", "out", "err"))]
         sk += len(cases) - len(runnable)
@@ -92,7 +90,7 @@ def tests(target=None):
             continue
         _group_header(md)
         with ThreadPoolExecutor() as ex:
-            for fut in as_completed([ex.submit(_run_case, c, is_error) for c in runnable]):
+            for fut in as_completed([ex.submit(_run_case, c) for c in runnable]):
                 case, bad = fut.result()
                 if bad:
                     f += 1; _row("fail", f"{case['name']} ({bad})")
@@ -104,10 +102,9 @@ def update(target="tests"):
     """Regenerate out/err/ll goldens in place for every case in the target .md file(s)."""
     mds = [Path(target)] if str(target).endswith(".md") else sorted(Path(target).rglob("*.md"))
     for md in mds:
-        is_error = "errors" in md.parts
         index, sections = [], []
         for c in parse_md(md):
-            got = _actual(c['ura'], c['name'].split()[0], is_error)
+            got = _actual(c['ura'], c['name'].split()[0])
             index.append(f"- {c['name']}")
             blocks = [_fence("ura", c['ura']), _fence("tree", got["tree"])] + [_fence(t, got[t]) for t in ("out", "err", "ll")]
             sections.append(f"## {c['name']}\n\n" + "\n\n".join(blocks))

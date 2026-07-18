@@ -7,6 +7,10 @@
 - 003 — range-for both directions (a..b)
 - 004 — array-for iterates elements by value
 - 005 — for ref mutates array elements in place
+- 006 — for without a loop variable
+- 007 — for over a non-iterable
+- 008 — loop without a colon
+- 009 — for ref over a range
 
 ## 001 — basic while: count enemy kills
 
@@ -517,4 +521,105 @@ for.end15:                                        ; preds = %for.cond12
 }
 
 declare i32 @printf(i8*, ...)
+```
+
+## 006 — for without a loop variable
+
+```ura
+main():
+    for in 0..5:
+        output(1)
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Expected a loop variable after 'for'
+  006.ura:2:5
+  |
+2 |     for in 0..5:
+  |     ^^^
+```
+
+```ll
+```
+
+## 007 — for over a non-iterable
+
+```ura
+main():
+    x int = 5
+    for i in x:
+        output(i)
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: 'for i in ...' expects a range (a..b) or an array
+  007.ura:3:5
+  |
+3 |     for i in x:
+  |     ^^^
+```
+
+```ll
+```
+
+## 008 — loop without a colon
+
+```ura
+main():
+    loop
+        output(1)
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Expected ':' to open the 'loop' body
+  008.ura:2:5
+  |
+2 |     loop
+  |     ^^^^
+```
+
+```ll
+```
+
+## 009 — for ref over a range
+
+```ura
+main():
+    for ref i in 0..5:
+        output(i)
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: 'for ref' needs an array; a range yields values, not storage
+  009.ura:2:5
+  |
+2 |     for ref i in 0..5:
+  |     ^^^
+```
+
+```ll
 ```

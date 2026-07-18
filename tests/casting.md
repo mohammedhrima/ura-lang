@@ -1,13 +1,13 @@
-# types / casting
+# casting
 
 ## index
 
-- 003 — `as` casting + long / short via explicit cast
+- 001 — `as` casting + long / short via explicit cast
 
-## 003 — `as` casting + long / short via explicit cast
+## 001 — `as` casting + long / short via explicit cast
 
 ```ura
-// types/casting/003.ura - `as` casting + long / short via explicit cast
+// casting/001.ura - `as` casting + long / short via explicit cast
 
 main():
     a int   = 300

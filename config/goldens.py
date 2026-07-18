@@ -15,8 +15,10 @@ def _fence(tag, body):
     body = body.rstrip("\n")
     return f"```{tag}\n{body}\n```" if body else f"```{tag}\n```"
 
-def _actual(src, stem, is_error):
+def _actual(src, stem):
     """Compile+run one source under -testing → always {ll, out, err} (empty when N/A).
+    A case that fails to compile records its diagnostic in err — an "error test" is just
+    a case whose err block is non-empty, not a separate kind of test.
     The unstable temp path (baked into @trap_msg + diagnostics) is normalized to <stem>.ura
     so goldens are deterministic AND portable across machines."""
     res = {"ll": "", "out": "", "err": "", "tree": ""}
@@ -30,8 +32,8 @@ def _actual(src, stem, is_error):
         exe = Path(d) / "exe"
         c = run(URA, p, "-o", exe, "-testing", "-tree")
         if c.returncode != 0:                               # compile failed
-            if is_error: res["err"] = norm(c.stderr)
-            return res                                       # success-group fail → all empty → skip
+            res["err"] = norm(c.stderr)
+            return res
         res["tree"] = norm(c.stdout)                         # -tree prints the AST to stdout during compile
         ll = p.parent / "build" / f"{stem}.ll"
         if ll.exists():
