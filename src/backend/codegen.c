@@ -843,19 +843,26 @@ void code_gen_binop(Node *node) {
 void code_gen_compound(Node *node) {
    Value   dest = address_of(node->left);
    code_gen(node->right);
-   Value   r   = node->right->token->llvm.elem;
-   TypeRef t   = to_llvm_type(node->left->token->ret_type);
-   Value   cur = llvm_load(t, dest, "cur");
-   Value   res;
-   bool    fp  = node->left->token->ret_type == FLOAT;
-   switch (node->token->type) {
-      case ADD_ASSIGN: res = fp ? LLVMBuildFAdd(ura.builder, cur, r, "fadd") : LLVMBuildAdd(ura.builder, cur, r, "add"); break;
-      case SUB_ASSIGN: res = fp ? LLVMBuildFSub(ura.builder, cur, r, "fsub") : LLVMBuildSub(ura.builder, cur, r, "sub"); break;
-      case MUL_ASSIGN: res = fp ? LLVMBuildFMul(ura.builder, cur, r, "fmul") : LLVMBuildMul(ura.builder, cur, r, "mul"); break;
-      case DIV_ASSIGN: guard_nonzero(node->token, r); res = fp ? LLVMBuildFDiv(ura.builder, cur, r, "fdiv") : LLVMBuildSDiv(ura.builder, cur, r, "div"); break;
-      case MOD_ASSIGN: guard_nonzero(node->token, r); res = fp ? LLVMBuildFRem(ura.builder, cur, r, "frem") : LLVMBuildSRem(ura.builder, cur, r, "mod"); break;
-      default: res = r; break;
+   Type    op      = node->token->type;
+   Value   right   = node->right->token->llvm.elem;
+   TypeRef type    = to_llvm_type(node->left->token->ret_type);
+   Value   current = llvm_load(type, dest, "cur");
+   Value   res     = right;
+   bool    fp      = node->left->token->ret_type == FLOAT;
+   bool    divides = includes(op, DIV_ASSIGN, MOD_ASSIGN, 0);
+   if (divides) guard_nonzero(node->token, right);
+#define ARITH(fop, iop, fname, iname) res = fp \
+   ? llvm_binop(fop, current, right, fname) \
+   : llvm_binop(iop, current, right, iname)
+   switch (op) {
+      case ADD_ASSIGN: ARITH(LLVMFAdd, LLVMAdd,  "fadd", "add"); break;
+      case SUB_ASSIGN: ARITH(LLVMFSub, LLVMSub,  "fsub", "sub"); break;
+      case MUL_ASSIGN: ARITH(LLVMFMul, LLVMMul,  "fmul", "mul"); break;
+      case DIV_ASSIGN: ARITH(LLVMFDiv, LLVMSDiv, "fdiv", "div"); break;
+      case MOD_ASSIGN: ARITH(LLVMFRem, LLVMSRem, "frem", "mod"); break;
+      default: break;
    }
+#undef ARITH
    llvm_store(res, dest);
    node->token->llvm.elem = res;
 }
