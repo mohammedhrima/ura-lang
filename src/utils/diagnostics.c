@@ -106,24 +106,36 @@ int _vprint(File out, const char *conv, va_list args) {
 				break;
 			}
 			case 'p': res += fprintf(out, "%p", va_arg(args, void *)); break;
-			case 'x':
-				res += (prec >= 0) ? fprintf(out, "%.*x", prec, va_arg(args, unsigned int))
-				                   : fprintf(out, "%x", va_arg(args, unsigned int));
+			case 'x': {
+				unsigned int value = va_arg(args, unsigned int);
+				res += (prec >= 0) ? fprintf(out, "%.*x", prec, value)
+				                   : fprintf(out, "%x", value);
 				break;
-			case 'X':
-				res += (prec >= 0) ? fprintf(out, "%.*X", prec, va_arg(args, unsigned int))
-				                   : fprintf(out, "%X", va_arg(args, unsigned int));
+			}
+			case 'X': {
+				unsigned int value = va_arg(args, unsigned int);
+				res += (prec >= 0) ? fprintf(out, "%.*X", prec, value)
+				                   : fprintf(out, "%X", value);
 				break;
-			case 'd':
-				res += (prec >= 0) ? fprintf(out, "%.*d", prec, va_arg(args, int))
-				                   : fprintf(out, "%d", va_arg(args, int));
+			}
+			case 'd': {
+				int value = va_arg(args, int);
+				res += (prec >= 0) ? fprintf(out, "%.*d", prec, value)
+				                   : fprintf(out, "%d", value);
 				break;
-			case 'f':
-				res += (prec >= 0) ? fprintf(out, "%.*f", prec, va_arg(args, double))
-				                   : fprintf(out, "%f", va_arg(args, double));
+			}
+			case 'f': {
+				double value = va_arg(args, double);
+				res += (prec >= 0) ? fprintf(out, "%.*f", prec, value)
+				                   : fprintf(out, "%f", value);
 				break;
+			}
 			case '%': res += fprintf(out, "%%"); break;
-			case 't': res += fprintf(out, "%s", to_string((Type)va_arg(args, Type))); break;
+			case 't': {
+				Type type = (Type)va_arg(args, Type);
+				res += fprintf(out, "%s", to_string(type));
+				break;
+			}
 			case 'k': {
 				Token *token = va_arg(args, Token *);
 				if (!token) {
@@ -142,21 +154,18 @@ int _vprint(File out, const char *conv, va_list args) {
 					}
 					if (token->type == VOID) break;
 					switch (token->type) {
-					case INT:   fprintf(out, "[%lld] ", (long long)token->Int.value); break;
+					case INT:   fprintf(out, "[%lld] ", (long long)token->Int.value);
+						break;
 					case LONG:  fprintf(out, "[%lld] ", token->Long.value); break;
-					case BOOL:  fprintf(out, "[%s] ", token->Bool.value ? "True" : "False"); break;
+					case BOOL: {
+						char *text = token->Bool.value ? "True" : "False";
+						fprintf(out, "[%s] ", text);
+						break;
+					}
 					case FLOAT: fprintf(out, "[%f] ", token->Float.value); break;
 					case CHAR:  {
 						fprintf(out, "[");
-						char c = token->Char.value;
-						switch (c) {
-						case '\n': fprintf(out, "\\n"); break;
-						case '\t': fprintf(out, "\\t"); break;
-						case '\r': fprintf(out, "\\r"); break;
-						case '\\': fprintf(out, "\\\\"); break;
-						case '\"': fprintf(out, "\\\""); break;
-						default:   fprintf(out, "%c", c); break;
-						}
+						fprint_escaped(out, token->Char.value);
 						fprintf(out, "] ");
 						break;
 					}
@@ -164,16 +173,8 @@ int _vprint(File out, const char *conv, va_list args) {
 						fprintf(out, "[\"");
 						char *str = token->Chars.value;
 						if (str)
-							for (int j = 0; str[j]; j++) {
-								switch (str[j]) {
-								case '\n': fprintf(out, "\\n"); break;
-								case '\t': fprintf(out, "\\t"); break;
-								case '\r': fprintf(out, "\\r"); break;
-								case '\\': fprintf(out, "\\\\"); break;
-								case '\"': fprintf(out, "\\\""); break;
-								default:   fprintf(out, "%c", str[j]); break;
-								}
-							}
+							for (int j = 0; str[j]; j++)
+								fprint_escaped(out, str[j]);
 						fprintf(out, "\"] ");
 						break;
 					}
@@ -212,15 +213,19 @@ int _debug(char *conv, ...) {
 	return res;
 }
 
-void print_escaped(char c) {
+void fprint_escaped(File out, char c) {
 	switch (c) {
-	case '\n': fputs("\\n", stdout); break;
-	case '\t': fputs("\\t", stdout); break;
-	case '\r': fputs("\\r", stdout); break;
-	case '\\': fputs("\\\\", stdout); break;
-	case '"':  fputs("\\\"", stdout); break;
-	default:   putchar(c);
+	case '\n': fputs("\\n", out); break;
+	case '\t': fputs("\\t", out); break;
+	case '\r': fputs("\\r", out); break;
+	case '\\': fputs("\\\\", out); break;
+	case '"':  fputs("\\\"", out); break;
+	default:   fputc(c, out);
 	}
+}
+
+void print_escaped(char c) {
+	fprint_escaped(stdout, c);
 }
 
 char *array_type_label(Token *token) {
@@ -233,8 +238,7 @@ char *array_type_label(Token *token) {
 	return s;
 }
 
-void print_node_label(Node *node) {
-	char *spelling[END + 1] = {
+static char *spelling[END + 1] = {
 		[INT] = "int",       [LONG] = "long",       [SHORT] = "short",
 		[BOOL] = "bool",     [CHAR] = "char",       [CHARS] = "chars",
 		[ADD] = "+",         [VOID] = "void",       [FLOAT] = "float",
@@ -255,7 +259,13 @@ void print_node_label(Node *node) {
 		[ARRAY] = "array",   [ARRAY_LIT] = "array", [ARRAY_TYPE] = "array",
 		[NEW] = "new",       [TYPEOF] = "typeof",   [SIZEOF] = "sizeof",
 		[CLEAN] = "clean",
-	};
+};
+
+char *spell(Type type) {
+	return spelling[type] ? spelling[type] : to_string(type);
+}
+
+void print_node_label(Node *node) {
 	Token *token = node->token;
 	switch (token->type) {
 	case INT:   printf("int %lld", (long long)token->Int.value); return;
@@ -285,21 +295,21 @@ void print_node_label(Node *node) {
 			Token *param = token->Fn.params[i];
 			printf("%s%s", i ? ", " : "", param->name);
 			if (param->ret_type)
-				printf(" : %s", spelling[param->ret_type] ? spelling[param->ret_type] : to_string(param->ret_type));
+				printf(" : %s", spell(param->ret_type));
 		}
 		printf(")");
 		break;
 	}
 	case STRUCT_DEF: printf("struct %s", token->name); return;
 	case DOT:   printf(".%s", token->name); break;
-	default:    printf("%s", spelling[token->type] ? spelling[token->type] : to_string(token->type));
+	default:    printf("%s", spell(token->type));
 	}
 	if (token->ret_type == ARRAY_TYPE && token->Array.sub_type) {
 		char *t = array_type_label(token);
 		printf(" : %s", t);
 		free(t);
 	} else if (token->ret_type)
-		printf(" : %s", spelling[token->ret_type] ? spelling[token->ret_type] : to_string(token->ret_type));
+		printf(" : %s", spell(token->ret_type));
 }
 
 void print_subtree(Node *node, char *prefix, bool is_last, char *role) {
