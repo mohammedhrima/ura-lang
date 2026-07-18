@@ -1,0 +1,6 @@
+main():
+    a int[] = [10, 20, 30, 40, 50]
+    ok int[] = a[1..4]?
+    output("in-range ok: ", ok[0], " ", ok[2], "\n")
+    bad int[] = a[2..9]?
+    output(bad[0])

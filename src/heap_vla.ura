@@ -1,0 +1,6 @@
+main():
+    n int = 3
+    a int[] = new int[n * 2]
+    a[5] = 7
+    output("size 6, a[5]=", a[5], " a[0]=", a[0], "\n")
+    clean a
