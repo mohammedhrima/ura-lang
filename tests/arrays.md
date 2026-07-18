@@ -34,35 +34,35 @@ main():
 
 ```tree
 fn main() : int
-├─ = : ARRAY_TYPE
-│  ├─ a : ARRAY_TYPE
-│  └─ ARRAY_LIT : ARRAY_TYPE
+├─ = : array
+│  ├─ a : int[]
+│  └─ array : int[]
 │     ├─ int 10
 │     ├─ int 20
 │     └─ int 30
 ├─ output : void
 │  ├─ chars "a[0]="
-│  ├─ ACC : int
-│  │  ├─ a : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ a : int[]
 │  │  └─ int 0
 │  ├─ chars " a[1]="
-│  ├─ ACC : int
-│  │  ├─ a : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ a : int[]
 │  │  └─ int 1
 │  ├─ chars " a[2]="
-│  ├─ ACC : int
-│  │  ├─ a : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ a : int[]
 │  │  └─ int 2
 │  └─ chars "\n"
 ├─ = : int
-│  ├─ ACC : int
-│  │  ├─ a : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ a : int[]
 │  │  └─ int 1
 │  └─ int 99
 └─ output : void
    ├─ chars "after a[1]=99: "
-   ├─ ACC : int
-   │  ├─ a : ARRAY_TYPE
+   ├─ index : int
+   │  ├─ a : int[]
    │  └─ int 1
    └─ chars "\n"
 ```
@@ -141,9 +141,9 @@ main():
 
 ```tree
 fn main() : int
-├─ = : ARRAY_TYPE
-│  ├─ a : ARRAY_TYPE
-│  └─ ARRAY_LIT : ARRAY_TYPE
+├─ = : array
+│  ├─ a : int[]
+│  └─ array : int[]
 │     ├─ int 5
 │     ├─ int 10
 │     ├─ int 15
@@ -153,12 +153,12 @@ fn main() : int
 │  └─ int 3
 ├─ output : void
 │  ├─ chars "a[i]="
-│  ├─ ACC : int
-│  │  ├─ a : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ a : int[]
 │  │  └─ i : int
 │  ├─ chars " a[i-1]="
-│  ├─ ACC : int
-│  │  ├─ a : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ a : int[]
 │  │  └─ - : int
 │  │     ├─ i : int
 │  │     └─ int 1
@@ -166,11 +166,11 @@ fn main() : int
 └─ output : void
    ├─ chars "a[0]+a[3]="
    ├─ + : int
-   │  ├─ ACC : int
-   │  │  ├─ a : ARRAY_TYPE
+   │  ├─ index : int
+   │  │  ├─ a : int[]
    │  │  └─ int 0
-   │  └─ ACC : int
-   │     ├─ a : ARRAY_TYPE
+   │  └─ index : int
+   │     ├─ a : int[]
    │     └─ int 3
    └─ chars "\n"
 ```
@@ -252,36 +252,36 @@ main():
 
 ```tree
 fn main() : int
-├─ = : ARRAY_TYPE
-│  ├─ b : ARRAY_TYPE
-│  └─ ARRAY_LIT : ARRAY_TYPE
+├─ = : array
+│  ├─ b : bool[]
+│  └─ array : bool[]
 │     ├─ bool True
 │     ├─ bool False
 │     └─ bool True
-├─ = : ARRAY_TYPE
-│  ├─ c : ARRAY_TYPE
-│  └─ ARRAY_LIT : ARRAY_TYPE
+├─ = : array
+│  ├─ c : char[]
+│  └─ array : char[]
 │     ├─ char 'a'
 │     ├─ char 'b'
 │     └─ char 'c'
-├─ = : ARRAY_TYPE
-│  ├─ f : ARRAY_TYPE
-│  └─ ARRAY_LIT : ARRAY_TYPE
+├─ = : array
+│  ├─ f : float[]
+│  └─ array : float[]
 │     ├─ float 1.5
 │     ├─ float 2.5
 │     └─ float 3
 └─ output : void
    ├─ chars "b[0]="
-   ├─ ACC : bool
-   │  ├─ b : ARRAY_TYPE
+   ├─ index : bool
+   │  ├─ b : bool[]
    │  └─ int 0
    ├─ chars " c[1]="
-   ├─ ACC : char
-   │  ├─ c : ARRAY_TYPE
+   ├─ index : char
+   │  ├─ c : char[]
    │  └─ int 1
    ├─ chars " f[2]="
-   ├─ ACC : float
-   │  ├─ f : ARRAY_TYPE
+   ├─ index : float
+   │  ├─ f : float[]
    │  └─ int 2
    └─ chars "\n"
 ```
@@ -374,29 +374,29 @@ main():
 
 ```tree
 fn main() : int
-├─ = : ARRAY_TYPE
-│  ├─ a : ARRAY_TYPE
-│  └─ ARRAY : ARRAY_TYPE
+├─ = : array
+│  ├─ a : int[]
+│  └─ array : int[]
 │     └─ int 5
 ├─ output : void
 │  ├─ chars "zero-init: "
-│  ├─ ACC : int
-│  │  ├─ a : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ a : int[]
 │  │  └─ int 0
 │  ├─ chars " "
-│  ├─ ACC : int
-│  │  ├─ a : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ a : int[]
 │  │  └─ int 4
 │  └─ chars "\n"
 ├─ = : int
-│  ├─ ACC : int
-│  │  ├─ a : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ a : int[]
 │  │  └─ int 2
 │  └─ int 42
 └─ output : void
    ├─ chars "a[2]="
-   ├─ ACC : int
-   │  ├─ a : ARRAY_TYPE
+   ├─ index : int
+   │  ├─ a : int[]
    │  └─ int 2
    └─ chars "\n"
 ```
@@ -474,25 +474,25 @@ fn main() : int
 ├─ = : int
 │  ├─ n : int
 │  └─ int 4
-├─ = : ARRAY_TYPE
-│  ├─ a : ARRAY_TYPE
-│  └─ ARRAY : ARRAY_TYPE
+├─ = : array
+│  ├─ a : int[]
+│  └─ array : int[]
 │     └─ * : int
 │        ├─ n : int
 │        └─ int 2
 ├─ = : int
-│  ├─ ACC : int
-│  │  ├─ a : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ a : int[]
 │  │  └─ int 7
 │  └─ int 100
 └─ output : void
    ├─ chars "a[0]="
-   ├─ ACC : int
-   │  ├─ a : ARRAY_TYPE
+   ├─ index : int
+   │  ├─ a : int[]
    │  └─ int 0
    ├─ chars " a[7]="
-   ├─ ACC : int
-   │  ├─ a : ARRAY_TYPE
+   ├─ index : int
+   │  ├─ a : int[]
    │  └─ int 7
    └─ chars "\n"
 ```
@@ -564,41 +564,41 @@ main():
 
 ```tree
 fn main() : int
-├─ = : ARRAY_TYPE
-│  ├─ m : ARRAY_TYPE
-│  └─ ARRAY_LIT : ARRAY_TYPE
-│     ├─ ARRAY_LIT : ARRAY_TYPE
+├─ = : array
+│  ├─ m : int[][]
+│  └─ array : int[][]
+│     ├─ array : int[]
 │     │  ├─ int 1
 │     │  └─ int 2
-│     └─ ARRAY_LIT : ARRAY_TYPE
+│     └─ array : int[]
 │        ├─ int 3
 │        └─ int 4
 ├─ output : void
 │  ├─ chars "m[0][0]="
-│  ├─ ACC : int
-│  │  ├─ ACC : ARRAY_TYPE
-│  │  │  ├─ m : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ index : int[]
+│  │  │  ├─ m : int[][]
 │  │  │  └─ int 0
 │  │  └─ int 0
 │  ├─ chars " m[1][1]="
-│  ├─ ACC : int
-│  │  ├─ ACC : ARRAY_TYPE
-│  │  │  ├─ m : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ index : int[]
+│  │  │  ├─ m : int[][]
 │  │  │  └─ int 1
 │  │  └─ int 1
 │  └─ chars "\n"
 ├─ = : int
-│  ├─ ACC : int
-│  │  ├─ ACC : ARRAY_TYPE
-│  │  │  ├─ m : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ index : int[]
+│  │  │  ├─ m : int[][]
 │  │  │  └─ int 0
 │  │  └─ int 1
 │  └─ int 99
 └─ output : void
    ├─ chars "m[0][1]="
-   ├─ ACC : int
-   │  ├─ ACC : ARRAY_TYPE
-   │  │  ├─ m : ARRAY_TYPE
+   ├─ index : int
+   │  ├─ index : int[]
+   │  │  ├─ m : int[][]
    │  │  └─ int 0
    │  └─ int 1
    └─ chars "\n"
@@ -697,42 +697,42 @@ main():
 
 ```tree
 fn main() : int
-├─ = : ARRAY_TYPE
-│  ├─ g : ARRAY_TYPE
-│  └─ ARRAY : ARRAY_TYPE
+├─ = : array
+│  ├─ g : int[][]
+│  └─ array : int[][]
 │     ├─ int 3
 │     └─ int 4
 ├─ = : int
-│  ├─ ACC : int
-│  │  ├─ ACC : ARRAY_TYPE
-│  │  │  ├─ g : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ index : int[]
+│  │  │  ├─ g : int[][]
 │  │  │  └─ int 0
 │  │  └─ int 0
 │  └─ int 1
 ├─ = : int
-│  ├─ ACC : int
-│  │  ├─ ACC : ARRAY_TYPE
-│  │  │  ├─ g : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ index : int[]
+│  │  │  ├─ g : int[][]
 │  │  │  └─ int 2
 │  │  └─ int 3
 │  └─ int 99
 └─ output : void
    ├─ chars "g[0][0]="
-   ├─ ACC : int
-   │  ├─ ACC : ARRAY_TYPE
-   │  │  ├─ g : ARRAY_TYPE
+   ├─ index : int
+   │  ├─ index : int[]
+   │  │  ├─ g : int[][]
    │  │  └─ int 0
    │  └─ int 0
    ├─ chars " g[2][3]="
-   ├─ ACC : int
-   │  ├─ ACC : ARRAY_TYPE
-   │  │  ├─ g : ARRAY_TYPE
+   ├─ index : int
+   │  ├─ index : int[]
+   │  │  ├─ g : int[][]
    │  │  └─ int 2
    │  └─ int 3
    ├─ chars " g[1][1]="
-   ├─ ACC : int
-   │  ├─ ACC : ARRAY_TYPE
-   │  │  ├─ g : ARRAY_TYPE
+   ├─ index : int
+   │  ├─ index : int[]
+   │  │  ├─ g : int[][]
    │  │  └─ int 1
    │  └─ int 1
    └─ chars "\n"
@@ -847,35 +847,35 @@ fn main() : int
 ├─ = : int
 │  ├─ n : int
 │  └─ int 2
-├─ = : ARRAY_TYPE
-│  ├─ v : ARRAY_TYPE
-│  └─ ARRAY : ARRAY_TYPE
+├─ = : array
+│  ├─ v : int[][][]
+│  └─ array : int[][][]
 │     ├─ n : int
 │     ├─ n : int
 │     └─ n : int
 ├─ = : int
-│  ├─ ACC : int
-│  │  ├─ ACC : ARRAY_TYPE
-│  │  │  ├─ ACC : ARRAY_TYPE
-│  │  │  │  ├─ v : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ index : int[]
+│  │  │  ├─ index : int[][]
+│  │  │  │  ├─ v : int[][][]
 │  │  │  │  └─ int 1
 │  │  │  └─ int 1
 │  │  └─ int 1
 │  └─ int 7
 └─ output : void
    ├─ chars "v[1][1][1]="
-   ├─ ACC : int
-   │  ├─ ACC : ARRAY_TYPE
-   │  │  ├─ ACC : ARRAY_TYPE
-   │  │  │  ├─ v : ARRAY_TYPE
+   ├─ index : int
+   │  ├─ index : int[]
+   │  │  ├─ index : int[][]
+   │  │  │  ├─ v : int[][][]
    │  │  │  └─ int 1
    │  │  └─ int 1
    │  └─ int 1
    ├─ chars " v[0][0][0]="
-   ├─ ACC : int
-   │  ├─ ACC : ARRAY_TYPE
-   │  │  ├─ ACC : ARRAY_TYPE
-   │  │  │  ├─ v : ARRAY_TYPE
+   ├─ index : int
+   │  ├─ index : int[]
+   │  │  ├─ index : int[][]
+   │  │  │  ├─ v : int[][][]
    │  │  │  └─ int 0
    │  │  └─ int 0
    │  └─ int 0
@@ -1011,9 +1011,9 @@ main():
 
 ```tree
 fn main() : int
-├─ = : ARRAY_TYPE
-│  ├─ a : ARRAY_TYPE
-│  └─ ARRAY_LIT : ARRAY_TYPE
+├─ = : array
+│  ├─ a : int[]
+│  └─ array : int[]
 │     ├─ int 10
 │     ├─ int 20
 │     └─ int 30
@@ -1022,8 +1022,8 @@ fn main() : int
 │  └─ int 2
 └─ output : void
    ├─ chars "a[i]?="
-   ├─ ACC : int
-   │  ├─ a : ARRAY_TYPE
+   ├─ index : int
+   │  ├─ a : int[]
    │  └─ i : int
    └─ chars "\n"
 ```
@@ -1098,15 +1098,15 @@ main():
 
 ```tree
 fn main() : int
-├─ = : ARRAY_TYPE
-│  ├─ a : ARRAY_TYPE
-│  └─ ARRAY_LIT : ARRAY_TYPE
+├─ = : array
+│  ├─ a : int[]
+│  └─ array : int[]
 │     ├─ int 10
 │     ├─ int 20
 │     └─ int 30
 └─ output : void
-   └─ ACC : int
-      ├─ a : ARRAY_TYPE
+   └─ index : int
+      ├─ a : int[]
       └─ int 5
 ```
 
@@ -1180,27 +1180,27 @@ main():
 
 ```tree
 fn main() : int
-├─ = : ARRAY_TYPE
-│  ├─ a : ARRAY_TYPE
-│  └─ ARRAY : ARRAY_TYPE
+├─ = : array
+│  ├─ a : int[]
+│  └─ array : int[]
 │     └─ int 5
 ├─ = : int
-│  ├─ ACC : int
-│  │  ├─ a : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ a : int[]
 │  │  └─ int 2
 │  └─ int 42
 ├─ output : void
 │  ├─ chars "a[0]="
-│  ├─ ACC : int
-│  │  ├─ a : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ a : int[]
 │  │  └─ int 0
 │  ├─ chars " a[2]="
-│  ├─ ACC : int
-│  │  ├─ a : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ a : int[]
 │  │  └─ int 2
 │  └─ chars "\n"
-└─ CLEAN : void
-   └─ a : ARRAY_TYPE
+└─ clean : void
+   └─ a : int[]
 ```
 
 ```out
@@ -1271,29 +1271,29 @@ fn main() : int
 ├─ = : int
 │  ├─ n : int
 │  └─ int 3
-├─ = : ARRAY_TYPE
-│  ├─ a : ARRAY_TYPE
-│  └─ ARRAY : ARRAY_TYPE
+├─ = : array
+│  ├─ a : int[]
+│  └─ array : int[]
 │     └─ * : int
 │        ├─ n : int
 │        └─ int 2
 ├─ = : int
-│  ├─ ACC : int
-│  │  ├─ a : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ a : int[]
 │  │  └─ int 5
 │  └─ int 7
 ├─ output : void
 │  ├─ chars "a[5]="
-│  ├─ ACC : int
-│  │  ├─ a : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ a : int[]
 │  │  └─ int 5
 │  ├─ chars " a[0]="
-│  ├─ ACC : int
-│  │  ├─ a : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ a : int[]
 │  │  └─ int 0
 │  └─ chars "\n"
-└─ CLEAN : void
-   └─ a : ARRAY_TYPE
+└─ clean : void
+   └─ a : int[]
 ```
 
 ```out
@@ -1364,15 +1364,15 @@ main():
 
 ```tree
 fn main() : int
-├─ = : ARRAY_TYPE
-│  ├─ a : ARRAY_TYPE
-│  └─ ARRAY : ARRAY_TYPE
+├─ = : array
+│  ├─ a : int[]
+│  └─ array : int[]
 │     └─ int 5
-├─ CLEAN : void
-│  └─ a : ARRAY_TYPE
+├─ clean : void
+│  └─ a : int[]
 └─ output : void
-   └─ ACC : int
-      ├─ a : ARRAY_TYPE
+   └─ index : int
+      ├─ a : int[]
       └─ int 0
 ```
 
@@ -1451,47 +1451,47 @@ main():
 
 ```tree
 fn main() : int
-├─ = : ARRAY_TYPE
-│  ├─ m : ARRAY_TYPE
-│  └─ ARRAY : ARRAY_TYPE
+├─ = : array
+│  ├─ m : int[][]
+│  └─ array : int[][]
 │     ├─ int 2
 │     └─ int 3
 ├─ = : int
-│  ├─ ACC : int
-│  │  ├─ ACC : ARRAY_TYPE
-│  │  │  ├─ m : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ index : int[]
+│  │  │  ├─ m : int[][]
 │  │  │  └─ int 0
 │  │  └─ int 0
 │  └─ int 1
 ├─ = : int
-│  ├─ ACC : int
-│  │  ├─ ACC : ARRAY_TYPE
-│  │  │  ├─ m : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ index : int[]
+│  │  │  ├─ m : int[][]
 │  │  │  └─ int 1
 │  │  └─ int 2
 │  └─ int 9
 ├─ output : void
 │  ├─ chars "m[0][0]="
-│  ├─ ACC : int
-│  │  ├─ ACC : ARRAY_TYPE
-│  │  │  ├─ m : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ index : int[]
+│  │  │  ├─ m : int[][]
 │  │  │  └─ int 0
 │  │  └─ int 0
 │  ├─ chars " m[1][2]="
-│  ├─ ACC : int
-│  │  ├─ ACC : ARRAY_TYPE
-│  │  │  ├─ m : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ index : int[]
+│  │  │  ├─ m : int[][]
 │  │  │  └─ int 1
 │  │  └─ int 2
 │  ├─ chars " m[0][1]="
-│  ├─ ACC : int
-│  │  ├─ ACC : ARRAY_TYPE
-│  │  │  ├─ m : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ index : int[]
+│  │  │  ├─ m : int[][]
 │  │  │  └─ int 0
 │  │  └─ int 1
 │  └─ chars "\n"
-└─ CLEAN : void
-   └─ m : ARRAY_TYPE
+└─ clean : void
+   └─ m : int[][]
 ```
 
 ```out
@@ -1627,44 +1627,44 @@ main():
 
 ```tree
 fn main() : int
-├─ = : ARRAY_TYPE
-│  ├─ a : ARRAY_TYPE
-│  └─ ARRAY_LIT : ARRAY_TYPE
+├─ = : array
+│  ├─ a : int[]
+│  └─ array : int[]
 │     ├─ int 10
 │     ├─ int 20
 │     ├─ int 30
 │     ├─ int 40
 │     └─ int 50
-├─ = : ARRAY_TYPE
-│  ├─ mid : ARRAY_TYPE
-│  └─ ACC : ARRAY_TYPE
-│     ├─ a : ARRAY_TYPE
-│     └─ RANGE : int
+├─ = : array
+│  ├─ mid : int[]
+│  └─ index : int[]
+│     ├─ a : int[]
+│     └─ range : int
 │        ├─ int 1
 │        └─ int 4
 ├─ output : void
 │  ├─ chars "mid: "
-│  ├─ ACC : int
-│  │  ├─ mid : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ mid : int[]
 │  │  └─ int 0
 │  ├─ chars " "
-│  ├─ ACC : int
-│  │  ├─ mid : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ mid : int[]
 │  │  └─ int 1
 │  ├─ chars " "
-│  ├─ ACC : int
-│  │  ├─ mid : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ mid : int[]
 │  │  └─ int 2
 │  └─ chars "\n"
 ├─ = : int
-│  ├─ ACC : int
-│  │  ├─ mid : ARRAY_TYPE
+│  ├─ index : int
+│  │  ├─ mid : int[]
 │  │  └─ int 0
 │  └─ int 99
 └─ output : void
    ├─ chars "a[1]="
-   ├─ ACC : int
-   │  ├─ a : ARRAY_TYPE
+   ├─ index : int
+   │  ├─ a : int[]
    │  └─ int 1
    └─ chars "\n"
 ```
@@ -1753,22 +1753,22 @@ main():
 
 ```tree
 fn main() : int
-├─ = : ARRAY_TYPE
-│  ├─ a : ARRAY_TYPE
-│  └─ ARRAY_LIT : ARRAY_TYPE
+├─ = : array
+│  ├─ a : int[]
+│  └─ array : int[]
 │     ├─ int 10
 │     ├─ int 20
 │     └─ int 30
-├─ = : ARRAY_TYPE
-│  ├─ mid : ARRAY_TYPE
-│  └─ ACC : ARRAY_TYPE
-│     ├─ a : ARRAY_TYPE
-│     └─ RANGE : int
+├─ = : array
+│  ├─ mid : int[]
+│  └─ index : int[]
+│     ├─ a : int[]
+│     └─ range : int
 │        ├─ int 1
 │        └─ int 9
 └─ output : void
-   └─ ACC : int
-      ├─ mid : ARRAY_TYPE
+   └─ index : int
+      ├─ mid : int[]
       └─ int 0
 ```
 
@@ -1852,43 +1852,43 @@ main():
 
 ```tree
 fn main() : int
-├─ = : ARRAY_TYPE
-│  ├─ nums : ARRAY_TYPE
-│  └─ ARRAY_LIT : ARRAY_TYPE
+├─ = : array
+│  ├─ nums : int[]
+│  └─ array : int[]
 │     ├─ int 10
 │     ├─ int 20
 │     ├─ int 30
 │     └─ int 40
 ├─ output : void
 │  ├─ chars "len = "
-│  ├─ DOT : int
-│  │  └─ nums : ARRAY_TYPE
+│  ├─ .len : int
+│  │  └─ nums : int[]
 │  └─ chars "\n"
-├─ = : ARRAY_TYPE
-│  ├─ mid : ARRAY_TYPE
-│  └─ ACC : ARRAY_TYPE
-│     ├─ nums : ARRAY_TYPE
-│     └─ RANGE : int
+├─ = : array
+│  ├─ mid : int[]
+│  └─ index : int[]
+│     ├─ nums : int[]
+│     └─ range : int
 │        ├─ int 1
 │        └─ int 3
 ├─ output : void
 │  ├─ chars "slice len = "
-│  ├─ DOT : int
-│  │  └─ mid : ARRAY_TYPE
+│  ├─ .len : int
+│  │  └─ mid : int[]
 │  └─ chars "\n"
-├─ = : ARRAY_TYPE
-│  ├─ grid : ARRAY_TYPE
-│  └─ ARRAY : ARRAY_TYPE
+├─ = : array
+│  ├─ grid : int[][]
+│  └─ array : int[][]
 │     ├─ int 3
 │     └─ int 4
 └─ output : void
    ├─ chars "rows = "
-   ├─ DOT : int
-   │  └─ grid : ARRAY_TYPE
+   ├─ .len : int
+   │  └─ grid : int[][]
    ├─ chars " cols = "
-   ├─ DOT : int
-   │  └─ ACC : ARRAY_TYPE
-   │     ├─ grid : ARRAY_TYPE
+   ├─ .len : int
+   │  └─ index : int[]
+   │     ├─ grid : int[][]
    │     └─ int 0
    └─ chars "\n"
 ```
