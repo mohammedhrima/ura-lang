@@ -238,6 +238,7 @@ void analyze(Node *node) {
             analyze(node->children[i]);
          break;
       case ACCESS: analyze_binop(node); break;
+      case RANGE:  analyze_binop(node); break;
       case ARRAY:
          for (int i = 0; i < node->children_count; i++)
             analyze(node->children[i]);
@@ -300,6 +301,14 @@ void type_check(Node *node) {
       case MATCH: type_check_match(node); break;
       case ARRAY_LIT: type_check_array_lit(node); break;
       case ACCESS:    type_check_access(node); break;
+      case RANGE:
+         type_check(node->left);
+         type_check(node->right);
+         if (!includes(node->left->token->ret_type, NUMERIC_TYPES, 0) ||
+             !includes(node->right->token->ret_type, NUMERIC_TYPES, 0))
+            parse_error(node->token, "Range bounds must be integers");
+         node->token->ret_type = INT;
+         break;
       case ARRAY:     type_check_array_ctor(node); break;
       case CLEAN:
          type_check(node->left);

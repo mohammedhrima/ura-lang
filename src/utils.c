@@ -29,7 +29,7 @@ char *to_string(Type type) {
 	    [ENUM_DEF] = "ENUM_DEF", [ENUM_CALL] = "ENUM_CALL", [TUPLE] = "TUPLE",
 	    [TUPLE_UNPACK] = "TUPLE_UNPACK", [LBRA] = "LBRA", [RBRA] = "RBRA",
 	    [ARRAY] = "ARRAY", [LIST] = "LIST", [LIST_TYPE] = "LIST_TYPE",
-	    [FN_TYPE] = "FN_TYPE",
+	    [FN_TYPE] = "FN_TYPE", [RANGE] = "RANGE",
 	    [DOT] = "DOT", [SYNTAX_ERROR] = "SYNTAX_ERROR", [MODULE] = "MODULE",
 	    [OPERATOR] = "OPERATOR_KW", [PUB] = "PUB",
 	    [DOUBLE_DOTS] = "DOUBLE_DOTS", [CLEAN] = "CLEAN", [NEW] = "NEW",
@@ -895,18 +895,18 @@ bool lex_symbol(char *content, int *i, int line, int *indent, int default_indent
 	(void)default_indent;
 	int s = *i;
 	static const Keyword specials[] = {
-		{"...", VARIADIC, 0, 0},   {".", DOT, 0, 0},         {"::", DOUBLE_DOTS, 0, 0},
-		{":", DOTS, 0, 0},         {"+=", ADD_ASSIGN, 0, 0}, {"-=", SUB_ASSIGN, 0, 0},
-		{"*=", MUL_ASSIGN, 0, 0},  {"/=", DIV_ASSIGN, 0, 0}, {"%=", MOD_ASSIGN, 0, 0},
-		{"!=", NOT_EQUAL, 0, 0},   {"!", NOT, 0, 0},         {"==", EQUAL, 0, 0},
-		{"<<", LSHIFT, 0, 0},      {">>", RSHIFT, 0, 0},     {"<=", LESS_EQUAL, 0, 0},
-		{">=", GREAT_EQUAL, 0, 0}, {"<", LESS, 0, 0},        {">", GREAT, 0, 0},
-		{"=", ASSIGN, 0, 0},       {"+", ADD, 0, 0},         {"-", SUB, 0, 0},
-		{"*", MUL, 0, 0},          {"/", DIV, 0, 0},         {"%", MOD, 0, 0},
-		{"(", LPAR, 0, 0},         {")", RPAR, 0, 0},        {"[", LBRA, 0, 0},
-		{"]", RBRA, 0, 0},         {",", COMA, 0, 0},        {"&&", AND, 0, 0},
-		{"||", OR, 0, 0},          {"&", BAND, 0, 0},        {"|", BOR, 0, 0},
-		{"^", BXOR, 0, 0},         {"~", BNOT, 0, 0},
+		{"...", VARIADIC, 0, 0},   {"..", RANGE, 0, 0},       {".", DOT, 0, 0},
+		{"::", DOUBLE_DOTS, 0, 0}, {":", DOTS, 0, 0},         {"+=", ADD_ASSIGN, 0, 0},
+		{"-=", SUB_ASSIGN, 0, 0},  {"*=", MUL_ASSIGN, 0, 0},  {"/=", DIV_ASSIGN, 0, 0},
+		{"%=", MOD_ASSIGN, 0, 0},  {"!=", NOT_EQUAL, 0, 0},   {"!", NOT, 0, 0},
+		{"==", EQUAL, 0, 0},       {"<<", LSHIFT, 0, 0},      {">>", RSHIFT, 0, 0},
+		{"<=", LESS_EQUAL, 0, 0},  {">=", GREAT_EQUAL, 0, 0}, {"<", LESS, 0, 0},
+		{">", GREAT, 0, 0},        {"=", ASSIGN, 0, 0},       {"+", ADD, 0, 0},
+		{"-", SUB, 0, 0},          {"*", MUL, 0, 0},          {"/", DIV, 0, 0},
+		{"%", MOD, 0, 0},          {"(", LPAR, 0, 0},         {")", RPAR, 0, 0},
+		{"[", LBRA, 0, 0},         {"]", RBRA, 0, 0},         {",", COMA, 0, 0},
+		{"&&", AND, 0, 0},         {"||", OR, 0, 0},          {"&", BAND, 0, 0},
+		{"|", BOR, 0, 0},          {"^", BXOR, 0, 0},         {"~", BNOT, 0, 0},
 		{"?", OPTIONAL, 0, 0},
 	};
 	for (size_t j = 0; j < sizeof(specials) / sizeof(*specials); j++) {
@@ -1501,6 +1501,12 @@ Node *access_node(Node *node) {
 		Node  *access  = new_node(bracket);
 		access->left   = node;
 		access->right  = expr_node(0);
+		if (peek(0)->type == RANGE) {
+			Node *range   = new_node(next());
+			range->left   = access->right;
+			range->right  = expr_node(0);
+			access->right = range;
+		}
 		if (!find(RBRA, 0))
 			parse_error(bracket, "Expected ']' after array index");
 		if (find(OPTIONAL, 0))
@@ -1764,6 +1770,14 @@ void guard_index(Token *op, Value idx, Value slice) {
    guard(op, LLVMBuildOr(ura.builder, low, high, "oob"), "array index out of bounds");
 }
 
+void guard_slice(Token *op, Value start, Value end, Value len) {
+   Value lo  = LLVMBuildICmp(ura.builder, LLVMIntSLT, start, LLVMConstInt(ura.i64, 0, 0), "s.lo");
+   Value hi  = LLVMBuildICmp(ura.builder, LLVMIntSGT, end, len, "e.hi");
+   Value ord = LLVMBuildICmp(ura.builder, LLVMIntSGT, start, end, "s.gt");
+   Value bad = LLVMBuildOr(ura.builder, LLVMBuildOr(ura.builder, lo, hi, "b"), ord, "bad");
+   guard(op, bad, "slice range out of bounds");
+}
+
 void analyze_binop(Node *node) {
    analyze(node->left);
    analyze(node->right);
@@ -1941,7 +1955,27 @@ Value access_ptr(Node *node) {
    return LLVMBuildGEP2(ura.builder, elem, data, &idx, 1, "arr.at");
 }
 
+void code_gen_slice(Node *node) {
+   Token *arr   = node->left->token;
+   Node  *range = node->right;
+   code_gen(node->left);
+   Value   slice = node->left->token->llvm.elem;
+   Value   data  = LLVMBuildExtractValue(ura.builder, slice, 0, "arr.data");
+   code_gen(range->left);
+   code_gen(range->right);
+   Value   start = LLVMBuildIntCast2(ura.builder, range->left->token->llvm.elem, ura.i64, 1, "start");
+   Value   end   = LLVMBuildIntCast2(ura.builder, range->right->token->llvm.elem, ura.i64, 1, "end");
+   if (node->token->is_nullable)
+      guard_slice(node->token, start, end, LLVMBuildExtractValue(ura.builder, slice, 1, "arr.len"));
+   TypeRef elem  = arr->Array.depth > 1 ? array_type(arr->Array.sub_type, arr->Array.depth - 1)
+                                        : to_llvm_type(arr->Array.sub_type);
+   Value   ptr   = LLVMBuildGEP2(ura.builder, elem, data, &start, 1, "slice.data");
+   Value   len   = LLVMBuildSub(ura.builder, end, start, "slice.len");
+   node->token->llvm.elem = make_slice(arr->Array.sub_type, arr->Array.depth, ptr, len);
+}
+
 void code_gen_access(Node *node) {
+   if (node->right->token->type == RANGE) { code_gen_slice(node); return; }
    Value   ptr  = access_ptr(node);
    TypeRef elem = node->token->ret_type == ARRAY_TYPE
                   ? array_type(node->token->Array.sub_type, node->token->Array.depth)
@@ -2001,6 +2035,12 @@ void type_check_access(Node *node) {
    Token *arr = node->left->token;
    if (arr->ret_type != ARRAY_TYPE) {
       parse_error(node->token, "Cannot index '%s', it is not an array", type_name(arr->ret_type));
+      return;
+   }
+   if (node->right->token->type == RANGE) {
+      node->token->ret_type       = ARRAY_TYPE;
+      node->token->Array.sub_type = arr->Array.sub_type;
+      node->token->Array.depth    = arr->Array.depth;
       return;
    }
    if (!includes(node->right->token->ret_type, NUMERIC_TYPES, 0))

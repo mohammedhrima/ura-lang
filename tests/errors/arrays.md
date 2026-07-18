@@ -10,6 +10,7 @@
 - 006 — new without an array type
 - 007 — missing closing bracket on index
 - 008 — empty array literal has no element type
+- 009 — range bounds must be integers
 
 ## 001 — indexing a non-array
 
@@ -202,6 +203,31 @@ error: Empty array literal has no element type
   |
 2 |     a int[] = []
   |               ^
+```
+
+```ll
+```
+
+## 009 — range bounds must be integers
+
+```ura
+main():
+    a int[] = [1, 2, 3]
+    mid int[] = a[1.5..3]
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Range bounds must be integers
+  009.ura:3:22
+  |
+3 |     mid int[] = a[1.5..3]
+  |                      ^^
 ```
 
 ```ll
