@@ -262,6 +262,7 @@ struct UraGlobal {
 	bool             enable_exec;
 	bool             enable_san;
 	bool             enable_tree;
+	bool             enable_ll;
 	bool             no_color;
 	// bool             enable_prep;
 	char            *flags;

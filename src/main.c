@@ -24,6 +24,7 @@ void parse_arguments(int argc, char **argv)
       MATCH("-san",   ura.enable_san,   true);
       MATCH("-testing", ura.no_color,   true);
       MATCH("-tree",  ura.enable_tree,  true);
+      MATCH("-ll",    ura.enable_ll,    true);
       MATCH("-O0", ura.flags, PASSES_O0);   
       MATCH("-O1", ura.flags, PASSES_O1);
       MATCH("-O2", ura.flags, PASSES_O2);   

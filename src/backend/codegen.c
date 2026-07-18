@@ -201,6 +201,11 @@ void finalize_module(char *ll_path) {
    LLVMDisposeMessage(error);
    LLVMDisposePassBuilderOptions(opts);
    LLVMPrintModuleToFile(ura.module, ll_path, NULL);
+   if (ura.enable_ll) {
+      char *ir = LLVMPrintModuleToString(ura.module);
+      printf("%s", ir);
+      LLVMDisposeMessage(ir);
+   }
 }
 
 void debug_enter_function(Token *token) {
@@ -350,8 +355,7 @@ Value access_ptr(Node *node) {
    Value   idx   = node->right->token->llvm.elem;
    if (node->token->is_nullable) guard_index(node->token, idx, slice);
    Token  *arr   = node->left->token;
-   TypeRef elem  = arr->Array.depth > 1 ? array_type(arr->Array.sub_type, arr->Array.depth - 1)
-                                        : to_llvm_type(arr->Array.sub_type);
+   TypeRef elem  = elem_type(arr, arr->Array.depth);
    return llvm_gep(elem, data, &idx, 1, "arr.at");
 }
 
@@ -367,11 +371,10 @@ void code_gen_slice(Node *node) {
    Value   end   = LLVMBuildIntCast2(ura.builder, range->right->token->llvm.elem, ura.i64, 1, "end");
    if (node->token->is_nullable)
       guard_slice(node->token, start, end, llvm_extract(slice, 1, "arr.len"));
-   TypeRef elem  = arr->Array.depth > 1 ? array_type(arr->Array.sub_type, arr->Array.depth - 1)
-                                        : to_llvm_type(arr->Array.sub_type);
+   TypeRef elem  = elem_type(arr, arr->Array.depth);
    Value   ptr   = llvm_gep(elem, data, &start, 1, "slice.data");
    Value   len   = LLVMBuildSub(ura.builder, end, start, "slice.len");
-   node->token->llvm.elem = make_slice(arr->Array.sub_type, arr->Array.depth, ptr, len);
+   node->token->llvm.elem = make_slice(arr, arr->Array.depth, ptr, len);
 }
 
 void code_gen_dot(Node *node) {
@@ -383,9 +386,7 @@ void code_gen_dot(Node *node) {
 void code_gen_access(Node *node) {
    if (node->right->token->type == RANGE) { code_gen_slice(node); return; }
    Value   ptr  = access_ptr(node);
-   TypeRef elem = node->token->ret_type == ARRAY_TYPE
-                  ? array_type(node->token->Array.sub_type, node->token->Array.depth)
-                  : to_llvm_type(node->token->ret_type);
+   TypeRef elem = llvm_type_of(node->token);
    node->token->llvm.elem = llvm_load(elem, ptr, "idx");
 }
 
@@ -393,8 +394,7 @@ void code_gen_array_lit(Node *node) {
    Token  *token = node->token;
    int     n     = node->children_count;
    int     depth = token->Array.depth;
-   TypeRef elem  = depth > 1 ? array_type(token->Array.sub_type, depth - 1)
-                             : to_llvm_type(token->Array.sub_type);
+   TypeRef elem  = elem_type(token, depth);
    Value   len   = const_i64(n);
    Value   data  = LLVMBuildArrayAlloca(ura.builder, elem, len, "arr");
    for (int i = 0; i < n; i++) {
@@ -403,15 +403,15 @@ void code_gen_array_lit(Node *node) {
       Value gep = llvm_gep(elem, data, &idx, 1, "arr.init");
       llvm_store(node->children[i]->token->llvm.elem, gep);
    }
-   TypeRef slice = array_type(token->Array.sub_type, depth);
+   TypeRef slice = array_type(token, depth);
    Value   agg   = LLVMGetUndef(slice);
    agg = llvm_insert(agg, data, 0, "arr.ptr");
    agg = llvm_insert(agg, len,  1, "arr.len");
    token->llvm.elem = agg;
 }
 
-Value make_slice(Type sub, int depth, Value data, Value len) {
-   Value agg = LLVMGetUndef(array_type(sub, depth));
+Value make_slice(Token *arr, int depth, Value data, Value len) {
+   Value agg = LLVMGetUndef(array_type(arr, depth));
    agg = llvm_insert(agg, data, 0, "arr.ptr");
    agg = llvm_insert(agg, len,  1, "arr.len");
    return agg;
@@ -424,16 +424,16 @@ Value array_calloc(TypeRef elem, Value count, Value esz) {
    return LLVMBuildBitCast(ura.builder, mem, pointer_to(elem), "arr");
 }
 
-Value build_array(Type sub, Value *dims, int depth, bool heap) {
+Value build_array(Token *arr, Value *dims, int depth, bool heap) {
    Value   n    = dims[0];
-   TypeRef elem = depth == 1 ? to_llvm_type(sub) : array_type(sub, depth - 1);
+   TypeRef elem = elem_type(arr, depth);
    Value   esz  = LLVMConstInt(ura.i64, LLVMABISizeOfType(LLVMGetModuleDataLayout(ura.module), elem), 0);
    if (depth == 1) {
-      if (heap) return make_slice(sub, 1, array_calloc(elem, n, esz), n);
+      if (heap) return make_slice(arr, 1, array_calloc(elem, n, esz), n);
       Value data  = LLVMBuildArrayAlloca(ura.builder, elem, n, "arr");
       Value bytes = LLVMBuildMul(ura.builder, n, esz, "bytes");
       LLVMBuildMemSet(ura.builder, data, LLVMConstInt(ura.i8, 0, 0), bytes, 0);
-      return make_slice(sub, 1, data, n);
+      return make_slice(arr, 1, data, n);
    }
    TypeRef inner = elem;
    Value   data  = heap ? array_calloc(inner, n, esz)
@@ -449,14 +449,14 @@ Value build_array(Type sub, Value *dims, int depth, bool heap) {
    Value   i     = llvm_load(ura.i64, slot, "i");
    llvm_cond_br(llvm_icmp(LLVMIntSLT, i, n, "more"), body, end);
    llvm_at(body);
-   Value   sub_arr = build_array(sub, dims + 1, depth - 1, heap);
+   Value   sub_arr = build_array(arr, dims + 1, depth - 1, heap);
    i = llvm_load(ura.i64, slot, "i");
    Value   gep = llvm_gep(inner, data, &i, 1, "arr.slot");
    llvm_store(sub_arr, gep);
    llvm_store(LLVMBuildAdd(ura.builder, i, const_i64(1), "next"), slot);
    llvm_br(cond);
    llvm_at(end);
-   return make_slice(sub, depth, data, n);
+   return make_slice(arr, depth, data, n);
 }
 
 void code_gen_array_ctor(Node *node) {
@@ -467,15 +467,15 @@ void code_gen_array_ctor(Node *node) {
       code_gen(node->children[i]);
       dims[i] = LLVMBuildIntCast2(ura.builder, node->children[i]->token->llvm.elem, ura.i64, 1, "n");
    }
-   token->llvm.elem = build_array(token->Array.sub_type, dims, depth, token->is_heap);
+   token->llvm.elem = build_array(token, dims, depth, token->is_heap);
    free(dims);
 }
 
-void free_array(Value slice, Type sub, int depth) {
+void free_array(Token *arr, Value slice, int depth) {
    Value data = llvm_extract(slice, 0, "arr.data");
    if (depth > 1) {
       Value   len   = llvm_extract(slice, 1, "arr.len");
-      TypeRef inner = array_type(sub, depth - 1);
+      TypeRef inner = array_type(arr, depth - 1);
       Value   fn    = here_func();
       Value   slot  = llvm_alloca(ura.i64, "i");
       llvm_store(const_i64(0), slot);
@@ -488,7 +488,7 @@ void free_array(Value slice, Type sub, int depth) {
       llvm_cond_br(llvm_icmp(LLVMIntSLT, i, len, "more"), body, end);
       llvm_at(body);
       Value   gep   = llvm_gep(inner, data, &i, 1, "free.slot");
-      free_array(llvm_load(inner, gep, "inner"), sub, depth - 1);
+      free_array(arr, llvm_load(inner, gep, "inner"), depth - 1);
       i = llvm_load(ura.i64, slot, "i");
       llvm_store(LLVMBuildAdd(ura.builder, i, const_i64(1), "next"), slot);
       llvm_br(cond);
@@ -513,9 +513,9 @@ void code_gen_sizeof(Node *node) {
 void code_gen_clean(Node *node) {
    Token  *arr   = node->left->token;
    Value   slot  = address_of(node->left);
-   TypeRef sty   = array_type(arr->Array.sub_type, arr->Array.depth);
+   TypeRef sty   = array_type(arr, arr->Array.depth);
    Value   slice = llvm_load(sty, slot, "arr");
-   free_array(slice, arr->Array.sub_type, arr->Array.depth);
+   free_array(arr, slice, arr->Array.depth);
    llvm_store(LLVMConstNull(sty), slot);
 }
 
@@ -634,8 +634,7 @@ void code_gen_for_array(Node *node) {
    Value   slice = arr->llvm.elem;
    Value   data  = llvm_extract(slice, 0, "arr.data");
    Value   len   = llvm_extract(slice, 1, "arr.len");
-   TypeRef elem  = arr->Array.depth > 1 ? array_type(arr->Array.sub_type, arr->Array.depth - 1)
-                                        : to_llvm_type(arr->Array.sub_type);
+   TypeRef elem  = elem_type(arr, arr->Array.depth);
    Value   fn    = here_func();
    Value   idx   = llvm_alloca(ura.i64, "idx");
    llvm_store(const_i64(0), idx);
@@ -931,7 +930,7 @@ void code_gen(Node *node) {
       case FOR:        code_gen_for(node);        break;
       case MATCH:      code_gen_match(node);      break;
       case ASSIGN:     code_gen_assign(node);     break;
-      case STRUCT_DEF:                            break;
+      case STRUCT_DEF: struct_type_of(node);      break;
 
       case REF:      token->llvm.elem = address_of(node->left);   break;
       case BREAK:    llvm_br(node->left->token->llvm.end);        break;

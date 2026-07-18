@@ -46,15 +46,43 @@ TypeRef to_llvm_type(Type type) {
    }
 }
 
-TypeRef array_type(Type sub, int depth) {
-   TypeRef elem      = depth <= 1 ? to_llvm_type(sub) : array_type(sub, depth - 1);
-   TypeRef fields[2] = { LLVMPointerType(elem, 0), ura.i64 };
+TypeRef elem_type(Token *arr, int depth) {
+   if (depth > 1) return array_type(arr, depth - 1);
+   if (arr->Array.sub_type == STRUCT_CALL)
+      return struct_type_of(arr->Array.struct_ptr);
+   return to_llvm_type(arr->Array.sub_type);
+}
+
+TypeRef array_type(Token *arr, int depth) {
+   TypeRef fields[2] = { pointer_to(elem_type(arr, depth)), ura.i64 };
    return LLVMStructTypeInContext(ura.context, fields, 2, 0);
 }
 
+TypeRef struct_type_of(Node *def) {
+   if (!def) return NULL;
+   Token *token = def->token;
+   if (token->llvm.struct_type) return token->llvm.struct_type;
+   TypeRef type = LLVMStructCreateNamed(ura.context, token->name);
+   token->llvm.struct_type = type;
+   TypeRef *fields = allocate(def->children_count, sizeof(TypeRef));
+   int      n      = 0;
+   for (int i = 0; i < def->children_count; i++) {
+      Node  *child = def->children[i];
+      Token *field = child->token;
+      if (field->type == STRUCT_DEF) { struct_type_of(child); continue; }
+      TypeRef t = llvm_type_of(field);
+      fields[n++] = field->is_ref ? pointer_to(t) : t;
+   }
+   LLVMStructSetBody(type, fields, n, 0);
+   free(fields);
+   return type;
+}
+
 TypeRef llvm_type_of(Token *token) {
-   if (token->ret_type == ARRAY_TYPE) 
-      return array_type(token->Array.sub_type, token->Array.depth);
+   if (token->ret_type == STRUCT_CALL)
+      return struct_type_of(token->Struct.ptr);
+   if (token->ret_type == ARRAY_TYPE)
+      return array_type(token, token->Array.depth);
    if (token->ret_type != FN_TYPE) 
       return to_llvm_type(token->ret_type);
    int      n      = token->Fn.params_count;
