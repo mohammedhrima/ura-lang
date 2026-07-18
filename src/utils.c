@@ -1428,7 +1428,7 @@ Node *id_node(Node *node) {
 			return output_node(node);
 		return fcall_node(node);
 	}
-	if (peek(0)->type == LBRA)
+	if (peek(0)->type == LBRA || peek(0)->type == DOT)
 		return access_node(node);
 	if (is_data_type(peek(0)) || (peek(0)->type == FDEC && peek(1)->type == LPAR)) {
 		token->is_dec = true;
@@ -1517,7 +1517,20 @@ Node *output_node(Node *node) {
 }
 
 Node *access_node(Node *node) {
-	while (peek(0)->type == LBRA) {
+	while (peek(0)->type == LBRA || peek(0)->type == DOT) {
+		if (peek(0)->type == DOT) {
+			Token *dot    = next();
+			Token *member = find(ID, 0);
+			if (!member) {
+				parse_error(dot, "Expected a member name after '.'");
+				return syntax_error();
+			}
+			Node *dnode = new_node(dot);
+			dnode->left = node;
+			set_name(dnode->token, member->name);
+			node = dnode;
+			continue;
+		}
 		Token *bracket = next();
 		bracket->type  = ACCESS;
 		Node  *access  = new_node(bracket);
@@ -1988,6 +2001,12 @@ void code_gen_slice(Node *node) {
    Value   ptr   = LLVMBuildGEP2(ura.builder, elem, data, &start, 1, "slice.data");
    Value   len   = LLVMBuildSub(ura.builder, end, start, "slice.len");
    node->token->llvm.elem = make_slice(arr->Array.sub_type, arr->Array.depth, ptr, len);
+}
+
+void code_gen_dot(Node *node) {
+   code_gen(node->left);
+   Value len = LLVMBuildExtractValue(ura.builder, node->left->token->llvm.elem, 1, "len");
+   node->token->llvm.elem = LLVMBuildIntCast2(ura.builder, len, ura.i32, 1, "len");
 }
 
 void code_gen_access(Node *node) {
