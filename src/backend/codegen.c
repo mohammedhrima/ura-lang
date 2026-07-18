@@ -1,5 +1,85 @@
 #include "header.h"
 
+Block here_block() {
+   return LLVMGetInsertBlock(ura.builder);
+}
+
+Value here_func() {
+   return LLVMGetBasicBlockParent(here_block());
+}
+
+void emit_at(Block block) {
+   LLVMPositionBuilderAtEnd(ura.builder, block);
+}
+
+Block emit_block(Value fn, char *name) {
+   return LLVMAppendBasicBlockInContext(ura.context, fn, name);
+}
+
+Value emit_alloca(TypeRef type, char *name) {
+   return LLVMBuildAlloca(ura.builder, type, name);
+}
+
+Value emit_load(TypeRef type, Value ptr, char *name) {
+   return LLVMBuildLoad2(ura.builder, type, ptr, name);
+}
+
+void emit_store(Value value, Value ptr) {
+   LLVMBuildStore(ura.builder, value, ptr);
+}
+
+Value emit_gep(TypeRef type, Value ptr, Value *idx, int n, char *name) {
+   return LLVMBuildGEP2(ura.builder, type, ptr, idx, n, name);
+}
+
+Value emit_icmp(LLVMIntPredicate pred, Value l, Value r, char *name) {
+   return LLVMBuildICmp(ura.builder, pred, l, r, name);
+}
+
+Value emit_fcmp(LLVMRealPredicate pred, Value l, Value r, char *name) {
+   return LLVMBuildFCmp(ura.builder, pred, l, r, name);
+}
+
+void emit_br(Block dest) {
+   LLVMBuildBr(ura.builder, dest);
+}
+
+void emit_cond_br(Value cond, Block yes, Block no) {
+   LLVMBuildCondBr(ura.builder, cond, yes, no);
+}
+
+Value emit_call(TypeRef type, Value fn, Value *args, int n, char *name) {
+   return LLVMBuildCall2(ura.builder, type, fn, args, n, name);
+}
+
+Value emit_extract(Value agg, unsigned index, char *name) {
+   return LLVMBuildExtractValue(ura.builder, agg, index, name);
+}
+
+Value emit_insert(Value agg, Value elem, unsigned index, char *name) {
+   return LLVMBuildInsertValue(ura.builder, agg, elem, index, name);
+}
+
+Value emit_string(char *text, char *name) {
+   return LLVMBuildGlobalStringPtr(ura.builder, text, name);
+}
+
+Value const_int(TypeRef type, long long value) {
+   return LLVMConstInt(type, value, 0);
+}
+
+Value const_i32(long long value) {
+   return LLVMConstInt(ura.i32, value, 0);
+}
+
+Value const_i64(long long value) {
+   return LLVMConstInt(ura.i64, value, 0);
+}
+
+TypeRef pointer_to(TypeRef type) {
+   return LLVMPointerType(type, 0);
+}
+
 void setup_paths(char *path_name) {
    char *slash = strrchr(path_name, '/');
    if (slash) {

@@ -459,17 +459,19 @@ bool _check(char *filename, char *funcname, int line, bool cond, char *fmt, ...)
 	return cond;
 }
 
-void decolor(char *s) {
-	int w = 0;
-	for (int i = 0; s[i]; ) {
-		if (s[i] == '\033' && s[i + 1] == '[') {
-			i += 2;
-			while (s[i] && s[i] != 'm') i++;
-			if (s[i] == 'm') i++;
-		} else
-			s[w++] = s[i++];
+void decolor(char *text) {
+	int write = 0;
+	for (int read = 0; text[read]; ) {
+		bool is_escape = text[read] == '\033' && text[read + 1] == '[';
+		if (!is_escape) {
+			text[write++] = text[read++];
+			continue;
+		}
+		read += 2;
+		while (text[read] && text[read] != 'm') read++;
+		if (text[read] == 'm') read++;
 	}
-	s[w] = '\0';
+	text[write] = '\0';
 }
 
 void render_caret(File out, Token *token) {
