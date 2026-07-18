@@ -1,0 +1,43 @@
+#pragma once
+
+#include "../header.h"
+
+void tokenize(int default_indent);
+int parse_escape_seq(char *input, int s, int e, char *buf, int *ptr);
+bool lex_spaces(char *content, int *i, int *line, int *indent, int default_indent);
+bool lex_multi_comment(char *content, int *i, int *line, int indent, int default_indent);
+bool lex_comment(char *content, int *i, int line, int indent, int default_indent);
+bool lex_chars(char *content, int *i, int line, int indent, int default_indent);
+bool lex_char(char *content, int *i, int line, int indent, int default_indent);
+bool lex_number(char *content, int *i, int line, int indent, int default_indent);
+bool lex_use(char *content, int *i, int s, int line, int indent, int default_indent);
+bool lex_link(char *content, int *i, int s, int line, int indent, int default_indent);
+bool lex_identifier(char *content, int *i, int line, int indent, int default_indent);
+bool lex_symbol(char *content, int *i, int line, int *indent, int default_indent);
+Token *new_token(Type type, int indent);
+Token *parse_token(int line, int s, int e, Type type, int indent);
+void set_name(Token *token, char *name);
+Token *next();
+Token *peek(int index);
+Token *find(Type type, ...);
+int get_operation_precedence(Type type);
+bool within(int indent);
+void parser_recover(int indent);
+Node *new_node(Token *token);
+Node *syntax_error();
+void parse_type(Token *target);
+void parse_block(Node *node, int indent);
+Node *match_node(Node *node);
+Node *if_node(Node *node);
+Node *while_node(Node *node);
+Node *for_node(Node *node);
+Node *ref_node(Node *node);
+Node *id_node(Node *node);
+Node *fdec_node(Node *node);
+Node *fcall_node(Node *node);
+Node *output_node(Node *node);
+Node *access_node(Node *node);
+Node *array_lit_node(Node *node);
+Node *array_ctor_node(Node *node);
+Node *prime_node();
+Node *expr_node(int min_op);

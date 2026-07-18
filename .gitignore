@@ -23,6 +23,10 @@ src/build/
 # anvil build outputs (per-OS)
 config/anvil/build/
 
+# Python task tooling bytecode (config/)
+__pycache__/
+*.pyc
+
 # VSCode extension
 config/vscode-extension/node_modules/
 config/vscode-extension/*.vsix
