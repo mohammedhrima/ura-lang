@@ -31,6 +31,16 @@
 - 027 — output() follows a bound 'ref?' and prints null when unbound
 - 028 — output() prints [Circular] instead of looping forever
 - 029 — output() expands array fields, including 2D
+- 030 — a field declared twice
+- 031 — a field whose type does not exist
+- 032 — a struct that contains itself by value
+- 033 — two structs that contain each other by value
+- 034 — a variable of a type that was never declared
+- 035 — reading a field the struct does not have
+- 036 — reading a field from a scalar
+- 037 — '.len' on a scalar
+- 038 — a struct declared in a block is not visible outside it
+- 039 — a struct declared twice in the same scope
 
 ## 001 — declare a struct and a local: named type, alloca, zero-init
 
@@ -3440,4 +3450,305 @@ out.arr.end9:                                     ; preds = %out.arr.cond5
 }
 
 attributes #0 = { argmemonly nofree nounwind willreturn writeonly }
+```
+
+## 030 — a field declared twice
+
+```ura
+// structs/030.ura - a field declared twice
+
+struct Player:
+    name chars
+    hp   int
+    hp   int
+
+main():
+    p Player
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Field 'hp' is already declared in this struct; rename it or remove the duplicate
+  030.ura:6:5
+  |
+6 |     hp   int
+  |     ^^
+```
+
+```ll
+```
+
+## 031 — a field whose type does not exist
+
+```ura
+// structs/031.ura - a field whose type does not exist
+
+struct Dungeon:
+    entry Room
+
+main():
+    d Dungeon
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Unknown type 'Room'
+  031.ura:4:5
+  |
+4 |     entry Room
+  |     ^^^^^
+```
+
+```ll
+```
+
+## 032 — a struct that contains itself by value
+
+```ura
+// structs/032.ura - a struct that contains itself by value
+
+struct Node:
+    value int
+    next  Node
+
+main():
+    n Node
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Struct Node cannot contain itself by value; use an array or a 'ref?' so the size stays finite
+  032.ura:3:1
+  |
+3 | struct Node:
+  | ^^^^^^
+```
+
+```ll
+```
+
+## 033 — two structs that contain each other by value
+
+```ura
+// structs/033.ura - two structs that contain each other by value
+
+struct A:
+    b B
+
+struct B:
+    a A
+
+main():
+    x A
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Struct A cannot contain itself by value; use an array or a 'ref?' so the size stays finite
+  033.ura:3:1
+  |
+3 | struct A:
+  | ^^^^^^
+error: Struct B cannot contain itself by value; use an array or a 'ref?' so the size stays finite
+  033.ura:6:1
+  |
+6 | struct B:
+  | ^^^^^^
+```
+
+```ll
+```
+
+## 034 — a variable of a type that was never declared
+
+```ura
+// structs/034.ura - a variable of a type that was never declared
+
+main():
+    p Player
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Unknown type 'Player'
+  034.ura:4:5
+  |
+4 |     p Player
+  |     ^
+```
+
+```ll
+```
+
+## 035 — reading a field the struct does not have
+
+```ura
+// structs/035.ura - reading a field the struct does not have
+
+struct Player:
+    name chars
+    hp   int
+
+main():
+    p Player
+    output(p.nope)
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Struct Player has no field 'nope'; check the spelling or declare it in the struct
+  035.ura:9:13
+  |
+9 |     output(p.nope)
+  |             ^
+```
+
+```ll
+```
+
+## 036 — reading a field from a scalar
+
+```ura
+// structs/036.ura - reading a field from a scalar
+
+main():
+    x int = 3
+    output(x.foo)
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Cannot read '.foo' from int; only a struct has fields
+  036.ura:5:13
+  |
+5 |     output(x.foo)
+  |             ^
+```
+
+```ll
+```
+
+## 037 — '.len' on a scalar
+
+```ura
+// structs/037.ura - '.len' on a scalar
+
+main():
+    x int = 3
+    output(x.len)
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: '.len' is only valid on an array, not int
+  037.ura:5:13
+  |
+5 |     output(x.len)
+  |             ^
+```
+
+```ll
+```
+
+## 038 — a struct declared in a block is not visible outside it
+
+```ura
+// structs/038.ura - a struct declared in a block is not visible outside it
+
+main():
+    n int = 1
+    if n == 1:
+        struct Inner:
+            x int
+
+    i Inner
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Unknown type 'Inner'
+  038.ura:9:5
+  |
+9 |     i Inner
+  |     ^
+```
+
+```ll
+```
+
+## 039 — a struct declared twice in the same scope
+
+```ura
+// structs/039.ura - a struct declared twice in the same scope
+
+struct Player:
+    hp int
+
+struct Player:
+    mp int
+
+main():
+    p Player
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Redeclaration of struct 'Player'
+  039.ura:6:1
+  |
+6 | struct Player:
+  | ^^^^^^
+```
+
+```ll
 ```

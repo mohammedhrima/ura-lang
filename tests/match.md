@@ -8,6 +8,11 @@
 - 004 — break leaves the match early
 - 005 — break exits the match, not the enclosing loop
 - 006 — continue applies to the loop, skipping the rest of the iteration
+- 007 — a case needs at least one value
+- 008 — case value type must match the subject
+- 009 — a case with no enclosing match
+- 010 — a default with no enclosing match
+- 011 — break needs a loop or match
 
 ## 001 — a single-value case matches
 
@@ -442,4 +447,137 @@ case.body:                                        ; preds = %while.body
 }
 
 declare i32 @printf(i8*, ...)
+```
+
+## 007 — a case needs at least one value
+
+```ura
+// errors/match/001 — a case needs at least one value
+main():
+    a int = 1
+    match a:
+        case:
+            output("x\n")
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Expected an expression after 'case'
+  007.ura:5:9
+  |
+5 |         case:
+  |         ^^^^
+```
+
+```ll
+```
+
+## 008 — case value type must match the subject
+
+```ura
+// errors/match/002 — case value type must match the subject
+main():
+    a int = 1
+    match a:
+        case "x":
+            output("x\n")
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: This case value is chars but the subject is int; they must be the same type
+  008.ura:5:15
+  |
+5 |         case "x":
+  |               ^
+```
+
+```ll
+```
+
+## 009 — a case with no enclosing match
+
+```ura
+// errors/match/003 — a case with no enclosing match
+main():
+    case 1:
+        output("x\n")
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: 'case' without a matching 'match'
+  009.ura:3:5
+  |
+3 |     case 1:
+  |     ^^^^
+```
+
+```ll
+```
+
+## 010 — a default with no enclosing match
+
+```ura
+// errors/match/004 — a default with no enclosing match
+main():
+    default:
+        output("x\n")
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: 'default' without a matching 'match'
+  010.ura:3:5
+  |
+3 |     default:
+  |     ^^^^^^^
+```
+
+```ll
+```
+
+## 011 — break needs a loop or match
+
+```ura
+// errors/match/005 — break needs a loop or match
+main():
+    break
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: 'break' outside a loop or match
+  011.ura:3:5
+  |
+3 |     break
+  |     ^^^^^
+```
+
+```ll
 ```

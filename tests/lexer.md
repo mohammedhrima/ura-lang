@@ -1,13 +1,13 @@
-# errors / lexer
+# lexer
 
 ## index
 
-- 005 — `use` missing opening quote
-- 006 — `use` with unclosed quote
-- 008 — `link` missing opening quote
-- 009 — `link` with unclosed quote
+- 001 — `use` missing opening quote
+- 002 — `use` with unclosed quote
+- 003 — `link` missing opening quote
+- 004 — `link` with unclosed quote
 
-## 005 — `use` missing opening quote
+## 001 — `use` missing opening quote
 
 ```ura
 // parse_errors/005 — `use` missing opening quote
@@ -30,7 +30,7 @@ error: Expected '"' after 'use'
 ```ll
 ```
 
-## 006 — `use` with unclosed quote
+## 002 — `use` with unclosed quote
 
 ```ura
 // parse_errors/006 — `use` with unclosed quote
@@ -53,7 +53,7 @@ error: Unterminated 'use' path, expected closing '"'
 ```ll
 ```
 
-## 008 — `link` missing opening quote
+## 003 — `link` missing opening quote
 
 ```ura
 // errors/lexer/008 — `link` missing opening quote
@@ -76,7 +76,7 @@ error: Expected '"' after 'link'
 ```ll
 ```
 
-## 009 — `link` with unclosed quote
+## 004 — `link` with unclosed quote
 
 ```ura
 // errors/lexer/009 — `link` with unclosed quote

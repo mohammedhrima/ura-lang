@@ -1,14 +1,163 @@
-# literals / float
+# literals
 
 ## index
 
-- 001 — float literals: declare, print, zero-init, in a function
-- 002 — float arithmetic + comparison, compound assignment
+- 001 — bool literals: declare, zero-init, bool function, reassign
+- 002 — char literals: declare, print, escapes, in a function
+- 003 — float literals: declare, print, zero-init, in a function
+- 004 — float arithmetic + comparison, compound assignment
 
-## 001 — float literals: declare, print, zero-init, in a function
+## 001 — bool literals: declare, zero-init, bool function, reassign
 
 ```ura
-// literals/float/001.ura - float literals: declare, print, zero-init, in a function
+// literals/001.ura - bool literals: declare, zero-init, bool function, reassign
+
+fn flag() bool:
+    return True
+
+main():
+    b bool = flag()
+    c bool = False
+    d bool
+    c = True
+    return 9
+```
+
+```tree
+fn flag() : bool
+└─ return
+   └─ bool True
+
+fn main() : int
+├─ = : bool
+│  ├─ b : bool
+│  └─ call flag : bool
+├─ = : bool
+│  ├─ c : bool
+│  └─ bool False
+├─ d : bool
+├─ = : bool
+│  ├─ c : bool
+│  └─ bool True
+└─ return
+   └─ int 9
+```
+
+```out
+```
+
+```err
+exit: 9
+```
+
+```ll
+
+define i1 @flag() {
+entry:
+  ret i1 true
+}
+
+define i32 @main() {
+entry:
+  %b = alloca i1, align 1
+  %call = call i1 @flag()
+  store i1 %call, i1* %b, align 1
+  %c = alloca i1, align 1
+  store i1 false, i1* %c, align 1
+  %d = alloca i1, align 1
+  store i1 false, i1* %d, align 1
+  store i1 true, i1* %c, align 1
+  ret i32 9
+}
+```
+
+## 002 — char literals: declare, print, escapes, in a function
+
+```ura
+// literals/002.ura - char literals: declare, print, escapes, in a function
+
+fn grade() char:
+    return 'A'
+
+main():
+    c char = 'z'
+    output(c, "\n")
+    output('!', "\n")
+    output(grade(), "\n")
+    output('\n')
+    return 0
+```
+
+```tree
+fn grade() : char
+└─ return
+   └─ char 'A'
+
+fn main() : int
+├─ = : char
+│  ├─ c : char
+│  └─ char 'z'
+├─ output : void
+│  ├─ c : char
+│  └─ chars "\n"
+├─ output : void
+│  ├─ char '!'
+│  └─ chars "\n"
+├─ output : void
+│  ├─ call grade : char
+│  └─ chars "\n"
+├─ output : void
+│  └─ char '\n'
+└─ return
+   └─ int 0
+```
+
+```out
+z
+!
+A
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [5 x i8] c"%c%s\00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.2 = private unnamed_addr constant [5 x i8] c"%c%s\00", align 1
+@str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.4 = private unnamed_addr constant [5 x i8] c"%c%s\00", align 1
+@fmt.5 = private unnamed_addr constant [3 x i8] c"%c\00", align 1
+
+define i8 @grade() {
+entry:
+  ret i8 65
+}
+
+define i32 @main() {
+entry:
+  %c = alloca i8, align 1
+  store i8 122, i8* %c, align 1
+  %c1 = load i8, i8* %c, align 1
+  %c2i = sext i8 %c1 to i32
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt, i32 0, i32 0), i32 %c2i, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0))
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.2, i32 0, i32 0), i32 33, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  %call = call i8 @grade()
+  %c2i2 = sext i8 %call to i32
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.4, i32 0, i32 0), i32 %c2i2, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.5, i32 0, i32 0), i32 10)
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 003 — float literals: declare, print, zero-init, in a function
+
+```ura
+// literals/003.ura - float literals: declare, print, zero-init, in a function
 
 fn half() float:
     return 0.5
@@ -97,10 +246,10 @@ entry:
 declare i32 @printf(i8*, ...)
 ```
 
-## 002 — float arithmetic + comparison, compound assignment
+## 004 — float arithmetic + comparison, compound assignment
 
 ```ura
-// literals/float/002.ura - float arithmetic + comparison, compound assignment
+// literals/004.ura - float arithmetic + comparison, compound assignment
 
 main():
     a float = 3.0
@@ -194,7 +343,7 @@ False
 @fmt.2 = private unnamed_addr constant [5 x i8] c"%f%s\00", align 1
 @str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt.4 = private unnamed_addr constant [5 x i8] c"%f%s\00", align 1
-@trap_msg = private unnamed_addr constant [160 x i8] c"runtime error: Division by zero\0A  002.ura:9:14\0A  |\0A9 |     output(a / b, \22\\n\22)\0A  |              ^\0A\00", align 1
+@trap_msg = private unnamed_addr constant [160 x i8] c"runtime error: Division by zero\0A  004.ura:9:14\0A  |\0A9 |     output(a / b, \22\\n\22)\0A  |              ^\0A\00", align 1
 @str.5 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt.6 = private unnamed_addr constant [5 x i8] c"%f%s\00", align 1
 @true_str = private unnamed_addr constant [5 x i8] c"True\00", align 1
