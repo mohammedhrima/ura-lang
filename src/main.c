@@ -166,10 +166,10 @@ void run_executable() {
    double exec = clock_now() - start;
    if (WIFSIGNALED(status))
       fprintf(stderr, RED("%-9s") " %s (signal %d) in %.2fs\n",
-              "Crashed", signal_name(WTERMSIG(status)), WTERMSIG(status), exec);
+              "\nCrashed", signal_name(WTERMSIG(status)), WTERMSIG(status), exec);
    else
       fprintf(stderr, CYAN("%-9s") " with code %d in %.2fs\n",
-              "Exited", WEXITSTATUS(status), exec);
+              "\nExited", WEXITSTATUS(status), exec);
 }
 
 int main(int argc, char**argv) {
