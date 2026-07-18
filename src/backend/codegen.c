@@ -80,6 +80,10 @@ TypeRef pointer_to(TypeRef type) {
    return LLVMPointerType(type, 0);
 }
 
+Value llvm_binop(LLVMOpcode op, Value l, Value r, char *name) {
+   return LLVMBuildBinOp(ura.builder, op, l, r, name);
+}
+
 Value llvm_ret(Value value) {
    return LLVMBuildRet(ura.builder, value);
 }
@@ -802,27 +806,37 @@ void code_gen_binop(Node *node) {
    Value res   = NULL;
    bool  fp    = node->left->token->ret_type == FLOAT;
    if (includes(token->type, DIV, MOD, 0)) guard_nonzero(token, right);
+#define ARITH(fop, iop, fname, iname) res = fp \
+   ? llvm_binop(fop, left, right, fname) \
+   : llvm_binop(iop, left, right, iname)
+#define CMP(fpred, ipred, fname, iname) res = fp \
+   ? llvm_fcmp(fpred, left, right, fname) \
+   : llvm_icmp(ipred, left, right, iname)
    switch (token->type) {
-      case ADD: res = fp ? LLVMBuildFAdd(ura.builder, left, right, "fadd") : LLVMBuildAdd(ura.builder, left, right, "add"); break;
-      case SUB: res = fp ? LLVMBuildFSub(ura.builder, left, right, "fsub") : LLVMBuildSub(ura.builder, left, right, "sub"); break;
-      case MUL: res = fp ? LLVMBuildFMul(ura.builder, left, right, "fmul") : LLVMBuildMul(ura.builder, left, right, "mul"); break;
-      case DIV: res = fp ? LLVMBuildFDiv(ura.builder, left, right, "fdiv") : LLVMBuildSDiv(ura.builder, left, right, "div"); break;
-      case MOD: res = fp ? LLVMBuildFRem(ura.builder, left, right, "frem") : LLVMBuildSRem(ura.builder, left, right, "mod"); break;
-      case EQUAL:       res = fp ? llvm_fcmp(LLVMRealOEQ, left, right, "feq") : llvm_icmp(LLVMIntEQ,  left, right, "eq"); break;
-      case NOT_EQUAL:   res = fp ? llvm_fcmp(LLVMRealUNE, left, right, "fne") : llvm_icmp(LLVMIntNE,  left, right, "ne"); break;
-      case LESS:        res = fp ? llvm_fcmp(LLVMRealOLT, left, right, "flt") : llvm_icmp(LLVMIntSLT, left, right, "lt"); break;
-      case GREAT:       res = fp ? llvm_fcmp(LLVMRealOGT, left, right, "fgt") : llvm_icmp(LLVMIntSGT, left, right, "gt"); break;
-      case LESS_EQUAL:  res = fp ? llvm_fcmp(LLVMRealOLE, left, right, "fle") : llvm_icmp(LLVMIntSLE, left, right, "le"); break;
-      case GREAT_EQUAL: res = fp ? llvm_fcmp(LLVMRealOGE, left, right, "fge") : llvm_icmp(LLVMIntSGE, left, right, "ge"); break;
-      case AND: res = LLVMBuildAnd(ura.builder, left, right, "and"); break;
-      case OR:  res = LLVMBuildOr(ura.builder,  left, right, "or"); break;
-      case BAND:   res = LLVMBuildAnd(ura.builder, left, right, "band"); break;
-      case BOR:    res = LLVMBuildOr(ura.builder,  left, right, "bor"); break;
-      case BXOR:   res = LLVMBuildXor(ura.builder, left, right, "bxor"); break;
-      case LSHIFT: res = LLVMBuildShl(ura.builder, left, right, "shl"); break;
-      case RSHIFT: res = LLVMBuildAShr(ura.builder, left, right, "shr"); break;
+      case ADD: ARITH(LLVMFAdd, LLVMAdd,  "fadd", "add"); break;
+      case SUB: ARITH(LLVMFSub, LLVMSub,  "fsub", "sub"); break;
+      case MUL: ARITH(LLVMFMul, LLVMMul,  "fmul", "mul"); break;
+      case DIV: ARITH(LLVMFDiv, LLVMSDiv, "fdiv", "div"); break;
+      case MOD: ARITH(LLVMFRem, LLVMSRem, "frem", "mod"); break;
+
+      case EQUAL:       CMP(LLVMRealOEQ, LLVMIntEQ,  "feq", "eq"); break;
+      case NOT_EQUAL:   CMP(LLVMRealUNE, LLVMIntNE,  "fne", "ne"); break;
+      case LESS:        CMP(LLVMRealOLT, LLVMIntSLT, "flt", "lt"); break;
+      case GREAT:       CMP(LLVMRealOGT, LLVMIntSGT, "fgt", "gt"); break;
+      case LESS_EQUAL:  CMP(LLVMRealOLE, LLVMIntSLE, "fle", "le"); break;
+      case GREAT_EQUAL: CMP(LLVMRealOGE, LLVMIntSGE, "fge", "ge"); break;
+
+      case AND:    res = llvm_binop(LLVMAnd,  left, right, "and");  break;
+      case OR:     res = llvm_binop(LLVMOr,   left, right, "or");   break;
+      case BAND:   res = llvm_binop(LLVMAnd,  left, right, "band"); break;
+      case BOR:    res = llvm_binop(LLVMOr,   left, right, "bor");  break;
+      case BXOR:   res = llvm_binop(LLVMXor,  left, right, "bxor"); break;
+      case LSHIFT: res = llvm_binop(LLVMShl,  left, right, "shl");  break;
+      case RSHIFT: res = llvm_binop(LLVMAShr, left, right, "shr");  break;
       default: break;
    }
+#undef ARITH
+#undef CMP
    token->llvm.elem = res;
 }
 
