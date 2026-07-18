@@ -279,16 +279,18 @@ void type_check_access(Node *node) {
       return;
    }
    if (node->right->token->type == RANGE) {
-      node->token->ret_type       = ARRAY_TYPE;
-      node->token->Array.sub_type = arr->Array.sub_type;
-      node->token->Array.depth    = arr->Array.depth;
+      node->token->ret_type = ARRAY_TYPE;
+      node->token->Array    = arr->Array;
       return;
    }
    if (!includes(node->right->token->ret_type, NUMERIC_TYPES, 0))
       parse_error(node->token, ERR_INDEX_NOT_INT, type_name(node->right->token->ret_type));
-   node->token->Array.sub_type = arr->Array.sub_type;
-   node->token->Array.depth    = arr->Array.depth - 1;
-   node->token->ret_type       = node->token->Array.depth > 0 ? ARRAY_TYPE : arr->Array.sub_type;
+   node->token->Array       = arr->Array;
+   node->token->Array.depth = arr->Array.depth - 1;
+   bool elem = node->token->Array.depth == 0;
+   node->token->ret_type = elem ? arr->Array.sub_type : ARRAY_TYPE;
+   if (elem && arr->Array.sub_type == STRUCT_CALL)
+      node->token->Struct.ptr = arr->Array.struct_ptr;
 }
 
 void type_check_array_ctor(Node *node) {

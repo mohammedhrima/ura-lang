@@ -209,7 +209,8 @@ Node *ref_node(Node *node) {
 		return syntax_error();
 	}
 	bool fn_type = peek(1)->type == FDEC && peek(2)->type == LPAR;
-	if (is_data_type(peek(1)) || fn_type) {
+	bool named   = peek(1)->type == ID && peek(1)->line == name->line;
+	if (is_data_type(peek(1)) || named || fn_type) {
 		find(ID, 0);
 		name->is_dec      = true;
 		name->is_ref      = true;
@@ -379,11 +380,14 @@ Node *array_lit_node(Node *node) {
 }
 
 Node *array_ctor_node(Node *node) {
-	Type sub = node->token->type;
-	node->token->type           = ARRAY;
-	node->token->is_dec         = false;
-	node->token->ret_type       = ARRAY_TYPE;
-	node->token->Array.sub_type = sub;
+	Token *token   = node->token;
+	bool   is_name = token->type == ID;
+	Type   sub     = is_name ? STRUCT_CALL : token->type;
+	if (is_name) token->Struct.name = token->name;
+	token->type           = ARRAY;
+	token->is_dec         = false;
+	token->ret_type       = ARRAY_TYPE;
+	token->Array.sub_type = sub;
 	int depth = 0;
 	while (peek(0)->type == LBRA) {
 		find(LBRA, 0);
@@ -443,7 +447,8 @@ Node *prime_node() {
    case ID: return id_node(new_node(token));
    case NEW: {
       Token *type = next();
-      if (!is_data_type(type) || peek(0)->type != LBRA) {
+      bool   ok   = is_data_type(type) || type->type == ID;
+      if (!ok || peek(0)->type != LBRA) {
          parse_error(token, ERR_NEW_EXPECTED_ARRAY_TYPE);
          return syntax_error();
       }

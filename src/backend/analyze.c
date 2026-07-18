@@ -187,6 +187,36 @@ void analyze_struct(Node *node) {
    exit_scope();
 }
 
+bool rewrite_struct_ctor(Node *node) {
+   Node *base  = node;
+   int   depth = 0;
+   while (base->token->type == ACCESS) { base = base->left; depth++; }
+   Token *name = base->token;
+   if (name->type != ID || name->is_dec) return false;
+   if (find_variable(name->name, NULL)) return false;
+   Node *def = find_struct(name->name);
+   if (!def) return false;
+   Node **dims = allocate(depth, sizeof(Node *));
+   Node  *cur  = node;
+   for (int i = depth - 1; i >= 0; i--) {
+      dims[i] = cur->right;
+      cur     = cur->left;
+   }
+   Token *token           = node->token;
+   token->type            = ARRAY;
+   token->ret_type        = ARRAY_TYPE;
+   token->Struct.name     = name->name;
+   token->Array.sub_type  = STRUCT_CALL;
+   token->Array.depth     = depth;
+   token->Array.struct_ptr = def;
+   node->left             = NULL;
+   node->right            = NULL;
+   node->children         = dims;
+   node->children_count   = depth;
+   node->children_size    = depth;
+   return true;
+}
+
 void analyze_id(Node *node) {
    Token *token = node->token;
    if (token->is_dec) {
@@ -298,11 +328,16 @@ void analyze(Node *node) {
          for (int i = 0; i < node->children_count; i++)
             analyze(node->children[i]);
          break;
-      case ACCESS: analyze_binop(node); break;
+      case ACCESS:
+         if (!rewrite_struct_ctor(node)) { analyze_binop(node); break; }
+         for (int i = 0; i < node->children_count; i++)
+            analyze(node->children[i]);
+         break;
       case RANGE:  analyze_binop(node); break;
       case DOT:    analyze(node->left); break;
       case TYPEOF: case SIZEOF: analyze(node->left); break;
       case ARRAY:
+         resolve_struct_type(token);
          for (int i = 0; i < node->children_count; i++)
             analyze(node->children[i]);
          break;

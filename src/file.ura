@@ -1,6 +1,13 @@
+
+struct Room:
+    name  chars
+    floor int
+
 main():
-    a int[] = [10, 20, 30]
-    i int = 6
-    output("a[i]?=", a[i]?, "\n")
-
-
+    a Room
+    a.name  = "hall"
+    a.floor = 2
+    b Room
+    b = a
+    b.floor = 9
+    output(b.name, " ", b.floor, " / ", a.name, " ", a.floor, "\\\\n")
