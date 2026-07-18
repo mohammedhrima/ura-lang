@@ -152,10 +152,25 @@ void analyze_fdec(Node *node) {
    exit_scope();
 }
 
+void resolve_struct_type(Token *token) {
+   if (token->ret_type != STRUCT_CALL) return;
+   if (token->Array.sub_type == STRUCT_CALL) return;
+   Node *def = find_struct(token->Struct.name);
+   if (!def) {
+      parse_error(token, ERR_UNKNOWN_TYPE, token->Struct.name);
+      return;
+   }
+   token->Struct.ptr = def;
+}
+
 void analyze_struct(Node *node) {
    enter_scope(node);
-   for (int i = 0; i < node->children_count; i++)
-      analyze(node->children[i]);
+   for (int i = 0; i < node->children_count; i++) {
+      Node *field = node->children[i];
+      if (field->token->type == STRUCT_DEF) declare_struct(field);
+      analyze(field);
+      resolve_struct_type(field->token);
+   }
    exit_scope();
 }
 

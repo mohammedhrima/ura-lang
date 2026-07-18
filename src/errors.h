@@ -77,6 +77,8 @@
 
 #define ERR_STRUCT_EXPECTED_COLON "Expected ':' after struct %s"
 
+#define ERR_UNKNOWN_TYPE "Unknown type '%s'"
+
 #define ERR_STRUCT_EMPTY \
 	"Struct %s must declare at least one field"
 

@@ -14,6 +14,7 @@ void declare_function(Node *fn);
 Node *find_function(char *name);
 void analyze_binop(Node *node);
 void analyze_fdec(Node *node);
+void resolve_struct_type(Token *token);
 void analyze_struct(Node *node);
 void analyze_id(Node *node);
 void analyze_fcall(Node *node);
