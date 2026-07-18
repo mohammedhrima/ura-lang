@@ -15,14 +15,20 @@ struct Dungeon:
     entry Room
 
 // self-reference through an array is legal, it is a fat pointer (A9)
+// kids Tree[] comes back in step (b): array_type() cannot name a struct
 struct Tree:
     label chars
-    kids  Tree[]
+    d Dungeon[]
 
 // structs may be declared inside a function body too (A11)
 main():
     struct Local:
         x int
         y int
+
+    p Player
+    d Dungeon
+    l Local
+    t Tree
 
     output("structs parsed\n")

@@ -34,9 +34,16 @@ Node *enclosing_break() {
 	return NULL;
 }
 
+void declare_structs(Node *node) {
+	for (int i = 0; i < node->children_count; i++)
+		if (node->children[i]->token->type == STRUCT_DEF)
+			declare_struct(node->children[i]);
+}
+
 void analyze_block(Node *node) {
 	analyze(node->left);
 	enter_scope(node);
+	declare_structs(node);
 	for (int i = 0; i < node->children_count; i++)
 		analyze(node->children[i]);
 	exit_scope();
@@ -52,6 +59,7 @@ void analyze_match(Node *node) {
 			for (int j = 0; j < branch->left->children_count; j++)
 				analyze(branch->left->children[j]);
 		enter_scope(branch);
+		declare_structs(branch);
 		for (int j = 0; j < branch->children_count; j++)
 			analyze(branch->children[j]);
 		exit_scope();
@@ -60,13 +68,16 @@ void analyze_match(Node *node) {
 }
 
 void declare_variable(Token *token) {
-	for (int i = 0; i < ura.scope->variables_count; i++)
-		if (strcmp(ura.scope->variables[i]->name, token->name) == 0) {
-			parse_error(token, "Redeclaration of variable '%s'", token->name);
+	Node *scope     = ura.scope;
+	bool  in_struct = scope->token->type == STRUCT_DEF;
+	char *err = in_struct ? ERR_STRUCT_DUP_FIELD : ERR_REDECL_VARIABLE;
+	for (int i = 0; i < scope->variables_count; i++)
+		if (strcmp(scope->variables[i]->name, token->name) == 0) {
+			parse_error(token, err, token->name);
 			return;
 		}
-	resize_array(ura.scope->variables, Token *);
-	ura.scope->variables[ura.scope->variables_count++] = token;
+	resize_array(scope->variables, Token *);
+	scope->variables[scope->variables_count++] = token;
 }
 
 Token *find_variable(char *name, bool *captured) {
@@ -147,20 +158,23 @@ void analyze_fdec(Node *node) {
    for (int i = 0; i < node->children_count; i++)
       if (node->children[i]->token->type == FDEC)
          declare_function(node->children[i]);
+   declare_structs(node);
    for (int i = 0; i < node->children_count; i++)
       analyze(node->children[i]);
    exit_scope();
 }
 
 void resolve_struct_type(Token *token) {
-   if (token->ret_type != STRUCT_CALL) return;
-   if (token->Array.sub_type == STRUCT_CALL) return;
+   bool array = token->ret_type == ARRAY_TYPE;
+   Type type  = array ? token->Array.sub_type : token->ret_type;
+   if (type != STRUCT_CALL) return;
    Node *def = find_struct(token->Struct.name);
    if (!def) {
       parse_error(token, ERR_UNKNOWN_TYPE, token->Struct.name);
       return;
    }
-   token->Struct.ptr = def;
+   if (array) token->Array.struct_ptr = def;
+   else       token->Struct.ptr       = def;
 }
 
 void analyze_struct(Node *node) {
@@ -176,7 +190,11 @@ void analyze_struct(Node *node) {
 
 void analyze_id(Node *node) {
    Token *token = node->token;
-   if (token->is_dec) { declare_variable(token); return; }
+   if (token->is_dec) {
+      declare_variable(token);
+      resolve_struct_type(token);
+      return;
+   }
    bool   captured = false;
    Token *decl     = find_variable(token->name, &captured);
    if (decl) {
@@ -187,6 +205,7 @@ void analyze_id(Node *node) {
       token->ret_type = decl->ret_type;
       if (decl->ret_type == FN_TYPE) token->Fn = decl->Fn;
       if (decl->ret_type == ARRAY_TYPE) token->Array = decl->Array;
+      if (decl->ret_type == STRUCT_CALL) token->Struct = decl->Struct;
       return;
    }
    Node *fn = find_function(token->name);
@@ -234,6 +253,7 @@ void analyze_for(Node *node) {
       var->ret_type    = it->Array.depth > 1 ? ARRAY_TYPE : it->Array.sub_type;
    }
    declare_variable(var);
+   declare_structs(node);
    for (int i = 0; i < node->children_count; i++)
       analyze(node->children[i]);
    exit_scope();

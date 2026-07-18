@@ -86,6 +86,12 @@
 #define ERR_STRUCT_EMPTY \
 	"Struct %s must declare at least one field"
 
+#define ERR_STRUCT_DUP_FIELD \
+	"Field '%s' is already declared in this struct;" \
+	" rename it or remove the duplicate"
+
+#define ERR_REDECL_VARIABLE "Redeclaration of variable '%s'"
+
 #define ERR_REF_MUST_BE_BOUND \
 	"A reference must be bound when declared" \
 	" (use 'ref?' for an optional reference)"
