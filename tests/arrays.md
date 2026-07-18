@@ -16,6 +16,8 @@
 - 012 — heap array with runtime size (new int[n]) + clean
 - 013 — clean nulls the array; a[i]? then traps (no use-after-free)
 - 014 — multi-dim heap: new int[N][M] + recursive clean
+- 015 — slice a[1..4] is a view (shared storage, exclusive end)
+- 016 — ? on a slice traps when the range is out of bounds
 
 ## 001 — 1D int array: literal, index read, indexed write
 
@@ -1607,4 +1609,228 @@ declare i8* @calloc(i64, i64)
 declare i32 @printf(i8*, ...)
 
 declare void @free(i8*)
+```
+
+## 015 — slice a[1..4] is a view (shared storage, exclusive end)
+
+```ura
+// arrays/015.ura - slice a[1..4] is a view (shares storage, exclusive end)
+
+main():
+    a int[] = [10, 20, 30, 40, 50]
+    mid int[] = a[1..4]
+    output("mid: ", mid[0], " ", mid[1], " ", mid[2], "\n")
+    mid[0] = 99
+    output("a[1]=", a[1], "\n")
+```
+
+```tree
+fn main() : int
+├─ = : ARRAY_TYPE
+│  ├─ a : ARRAY_TYPE
+│  └─ ARRAY_LIT : ARRAY_TYPE
+│     ├─ int 10
+│     ├─ int 20
+│     ├─ int 30
+│     ├─ int 40
+│     └─ int 50
+├─ = : ARRAY_TYPE
+│  ├─ mid : ARRAY_TYPE
+│  └─ ACC : ARRAY_TYPE
+│     ├─ a : ARRAY_TYPE
+│     └─ RANGE : int
+│        ├─ int 1
+│        └─ int 4
+├─ output : void
+│  ├─ chars "mid: "
+│  ├─ ACC : int
+│  │  ├─ mid : ARRAY_TYPE
+│  │  └─ int 0
+│  ├─ chars " "
+│  ├─ ACC : int
+│  │  ├─ mid : ARRAY_TYPE
+│  │  └─ int 1
+│  ├─ chars " "
+│  ├─ ACC : int
+│  │  ├─ mid : ARRAY_TYPE
+│  │  └─ int 2
+│  └─ chars "\n"
+├─ = : int
+│  ├─ ACC : int
+│  │  ├─ mid : ARRAY_TYPE
+│  │  └─ int 0
+│  └─ int 99
+└─ output : void
+   ├─ chars "a[1]="
+   ├─ ACC : int
+   │  ├─ a : ARRAY_TYPE
+   │  └─ int 1
+   └─ chars "\n"
+```
+
+```out
+mid: 20 30 40
+a[1]=99
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [6 x i8] c"mid: \00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c" \00", align 1
+@str.2 = private unnamed_addr constant [2 x i8] c" \00", align 1
+@str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [15 x i8] c"%s%d%s%d%s%d%s\00", align 1
+@str.4 = private unnamed_addr constant [6 x i8] c"a[1]=\00", align 1
+@str.5 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.6 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+
+define i32 @main() {
+entry:
+  %a = alloca { i32*, i64 }, align 8
+  %arr = alloca i32, i64 5, align 4
+  %arr.init = getelementptr i32, i32* %arr, i64 0
+  store i32 10, i32* %arr.init, align 4
+  %arr.init1 = getelementptr i32, i32* %arr, i64 1
+  store i32 20, i32* %arr.init1, align 4
+  %arr.init2 = getelementptr i32, i32* %arr, i64 2
+  store i32 30, i32* %arr.init2, align 4
+  %arr.init3 = getelementptr i32, i32* %arr, i64 3
+  store i32 40, i32* %arr.init3, align 4
+  %arr.init4 = getelementptr i32, i32* %arr, i64 4
+  store i32 50, i32* %arr.init4, align 4
+  %arr.ptr = insertvalue { i32*, i64 } undef, i32* %arr, 0
+  %arr.len = insertvalue { i32*, i64 } %arr.ptr, i64 5, 1
+  store { i32*, i64 } %arr.len, { i32*, i64 }* %a, align 8
+  %mid = alloca { i32*, i64 }, align 8
+  %a5 = load { i32*, i64 }, { i32*, i64 }* %a, align 8
+  %arr.data = extractvalue { i32*, i64 } %a5, 0
+  %slice.data = getelementptr i32, i32* %arr.data, i64 1
+  %arr.ptr6 = insertvalue { i32*, i64 } undef, i32* %slice.data, 0
+  %arr.len7 = insertvalue { i32*, i64 } %arr.ptr6, i64 3, 1
+  store { i32*, i64 } %arr.len7, { i32*, i64 }* %mid, align 8
+  %mid8 = load { i32*, i64 }, { i32*, i64 }* %mid, align 8
+  %arr.data9 = extractvalue { i32*, i64 } %mid8, 0
+  %arr.at = getelementptr i32, i32* %arr.data9, i32 0
+  %idx = load i32, i32* %arr.at, align 4
+  %mid10 = load { i32*, i64 }, { i32*, i64 }* %mid, align 8
+  %arr.data11 = extractvalue { i32*, i64 } %mid10, 0
+  %arr.at12 = getelementptr i32, i32* %arr.data11, i32 1
+  %idx13 = load i32, i32* %arr.at12, align 4
+  %mid14 = load { i32*, i64 }, { i32*, i64 }* %mid, align 8
+  %arr.data15 = extractvalue { i32*, i64 } %mid14, 0
+  %arr.at16 = getelementptr i32, i32* %arr.data15, i32 2
+  %idx17 = load i32, i32* %arr.at16, align 4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str, i32 0, i32 0), i32 %idx, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0), i32 %idx13, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0), i32 %idx17, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
+  %mid18 = load { i32*, i64 }, { i32*, i64 }* %mid, align 8
+  %arr.data19 = extractvalue { i32*, i64 } %mid18, 0
+  %arr.at20 = getelementptr i32, i32* %arr.data19, i32 0
+  store i32 99, i32* %arr.at20, align 4
+  %a21 = load { i32*, i64 }, { i32*, i64 }* %a, align 8
+  %arr.data22 = extractvalue { i32*, i64 } %a21, 0
+  %arr.at23 = getelementptr i32, i32* %arr.data22, i32 1
+  %idx24 = load i32, i32* %arr.at23, align 4
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.6, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.4, i32 0, i32 0), i32 %idx24, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 016 — ? on a slice traps when the range is out of bounds
+
+```ura
+// arrays/016.ura - ? on a slice traps when the range is out of bounds
+
+main():
+    a int[] = [10, 20, 30]
+    mid int[] = a[1..9]?
+    output(mid[0])
+```
+
+```tree
+fn main() : int
+├─ = : ARRAY_TYPE
+│  ├─ a : ARRAY_TYPE
+│  └─ ARRAY_LIT : ARRAY_TYPE
+│     ├─ int 10
+│     ├─ int 20
+│     └─ int 30
+├─ = : ARRAY_TYPE
+│  ├─ mid : ARRAY_TYPE
+│  └─ ACC : ARRAY_TYPE
+│     ├─ a : ARRAY_TYPE
+│     └─ RANGE : int
+│        ├─ int 1
+│        └─ int 9
+└─ output : void
+   └─ ACC : int
+      ├─ mid : ARRAY_TYPE
+      └─ int 0
+```
+
+```out
+```
+
+```err
+runtime error: slice range out of bounds
+  016.ura:5:18
+  |
+5 |     mid int[] = a[1..9]?
+  |                  ^
+exit: 1
+```
+
+```ll
+
+@trap_msg = private unnamed_addr constant [174 x i8] c"runtime error: slice range out of bounds\0A  016.ura:5:18\0A  |\0A5 |     mid int[] = a[1..9]?\0A  |                  ^\0A\00", align 1
+@fmt = private unnamed_addr constant [3 x i8] c"%d\00", align 1
+
+define i32 @main() {
+entry:
+  %a = alloca { i32*, i64 }, align 8
+  %arr = alloca i32, i64 3, align 4
+  %arr.init = getelementptr i32, i32* %arr, i64 0
+  store i32 10, i32* %arr.init, align 4
+  %arr.init1 = getelementptr i32, i32* %arr, i64 1
+  store i32 20, i32* %arr.init1, align 4
+  %arr.init2 = getelementptr i32, i32* %arr, i64 2
+  store i32 30, i32* %arr.init2, align 4
+  %arr.ptr = insertvalue { i32*, i64 } undef, i32* %arr, 0
+  %arr.len = insertvalue { i32*, i64 } %arr.ptr, i64 3, 1
+  store { i32*, i64 } %arr.len, { i32*, i64 }* %a, align 8
+  %mid = alloca { i32*, i64 }, align 8
+  %a3 = load { i32*, i64 }, { i32*, i64 }* %a, align 8
+  %arr.data = extractvalue { i32*, i64 } %a3, 0
+  %arr.len4 = extractvalue { i32*, i64 } %a3, 1
+  %e.hi = icmp sgt i64 9, %arr.len4
+  %b = or i1 false, %e.hi
+  %bad = or i1 %b, false
+  br i1 %bad, label %trap, label %cont
+
+trap:                                             ; preds = %entry
+  %0 = call i64 @write(i32 2, i8* getelementptr inbounds ([174 x i8], [174 x i8]* @trap_msg, i32 0, i32 0), i64 173)
+  call void @exit(i32 1)
+  unreachable
+
+cont:                                             ; preds = %entry
+  %slice.data = getelementptr i32, i32* %arr.data, i64 1
+  %arr.ptr5 = insertvalue { i32*, i64 } undef, i32* %slice.data, 0
+  %arr.len6 = insertvalue { i32*, i64 } %arr.ptr5, i64 8, 1
+  store { i32*, i64 } %arr.len6, { i32*, i64 }* %mid, align 8
+  %mid7 = load { i32*, i64 }, { i32*, i64 }* %mid, align 8
+  %arr.data8 = extractvalue { i32*, i64 } %mid7, 0
+  %arr.at = getelementptr i32, i32* %arr.data8, i32 0
+  %idx = load i32, i32* %arr.at, align 4
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt, i32 0, i32 0), i32 %idx)
+  ret i32 0
+}
+
+declare i64 @write(i32, i8*, i64)
+
+declare void @exit(i32)
+
+declare i32 @printf(i8*, ...)
 ```

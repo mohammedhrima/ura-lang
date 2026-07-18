@@ -134,7 +134,7 @@ enum Type
 	EQUAL, NOT_EQUAL, LESS_EQUAL, GREAT, GREAT_EQUAL, LESS, // Comparison
 	ADD, SUB, MUL, DIV, MOD, // Arithmetic
 	AND, OR, NOT, // Logical
-	LPAR, RPAR, LBRA, RBRA, COMA, DOT, DOTS, ACCESS, AS, // Punctuation and Syntax
+	LPAR, RPAR, LBRA, RBRA, COMA, DOT, DOTS, RANGE, ACCESS, AS, // Punctuation and Syntax
 	RETURN, IF, ELIF, ELSE, WHILE, CONTINUE, BREAK, MATCH, CASE, DEFAULT, // Control Flow
 	FOR, TO, STEP, IN,
 	FDEC, FCALL, PROTO, ARGS, CHILDREN, // Functions
@@ -414,6 +414,7 @@ void guard_nonzero(Token *op, Value divisor);
 void guard_nonnull(Token *op, Value ptr);
 void guard_bound(Token *op, Value ptr);
 void guard_index(Token *op, Value idx, Value slice);
+void guard_slice(Token *op, Value start, Value end, Value len);
 
 void analyze(Node *node);
 void analyze_fdec(Node *node);
@@ -435,6 +436,7 @@ void code_gen_assign(Node *node);
 void code_gen_binop(Node *node);
 void code_gen_output(Node *node);
 Value access_ptr(Node *node);
+void code_gen_slice(Node *node);
 void code_gen_access(Node *node);
 void code_gen_array_lit(Node *node);
 void type_check_array_lit(Node *node);
