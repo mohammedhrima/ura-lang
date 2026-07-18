@@ -3,6 +3,9 @@
 ## index
 
 - 001 — basic while: count enemy kills
+- 002 — loop (infinite) with break + continue
+- 003 — range-for both directions (a..b)
+- 004 — array-for iterates elements by value
 
 ## 001 — basic while: count enemy kills
 
@@ -69,6 +72,315 @@ while.body:                                       ; preds = %while.cond
 while.end:                                        ; preds = %while.cond
   %kills3 = load i32, i32* %kills, align 4
   %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0), i32 %kills3, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.1, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 002 — loop (infinite) with break + continue
+
+```ura
+// loops/002.ura - loop (infinite) with break + continue
+
+main():
+    i int = 0
+    loop:
+        i = i + 1
+        if i == 3:
+            continue
+        if i == 6:
+            break
+        output(i, " ")
+    output("\n")
+```
+
+```tree
+fn main() : int
+├─ = : int
+│  ├─ i : int
+│  └─ int 0
+├─ LOOP
+│  ├─ = : int
+│  │  ├─ i : int
+│  │  └─ + : int
+│  │     ├─ i : int
+│  │     └─ int 1
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ i : int
+│  │  │  └─ int 3
+│  │  └─ continue
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ i : int
+│  │  │  └─ int 6
+│  │  └─ break
+│  └─ output : void
+│     ├─ i : int
+│     └─ chars " "
+└─ output : void
+   └─ chars "\n"
+```
+
+```out
+1 2 4 5 
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [2 x i8] c" \00", align 1
+@fmt = private unnamed_addr constant [5 x i8] c"%d%s\00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.2 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+
+define i32 @main() {
+entry:
+  %i = alloca i32, align 4
+  store i32 0, i32* %i, align 4
+  br label %loop.body
+
+loop.body:                                        ; preds = %endif3, %then, %entry
+  %i1 = load i32, i32* %i, align 4
+  %add = add i32 %i1, 1
+  store i32 %add, i32* %i, align 4
+  %i2 = load i32, i32* %i, align 4
+  %eq = icmp eq i32 %i2, 3
+  br i1 %eq, label %then, label %endif
+
+loop.end:                                         ; preds = %then4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.2, i32 0, i32 0), i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  ret i32 0
+
+endif:                                            ; preds = %loop.body
+  %i5 = load i32, i32* %i, align 4
+  %eq6 = icmp eq i32 %i5, 6
+  br i1 %eq6, label %then4, label %endif3
+
+then:                                             ; preds = %loop.body
+  br label %loop.body
+
+endif3:                                           ; preds = %endif
+  %i7 = load i32, i32* %i, align 4
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt, i32 0, i32 0), i32 %i7, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0))
+  br label %loop.body
+
+then4:                                            ; preds = %endif
+  br label %loop.end
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 003 — range-for both directions (a..b)
+
+```ura
+// loops/003.ura - range-for counts up when a<b, down when a>b (exclusive end)
+
+main():
+    for i in 0..5:
+        output(i, " ")
+    output("| ")
+    for i in 5..0:
+        output(i, " ")
+    output("\n")
+```
+
+```tree
+fn main() : int
+├─ FOR
+│  ├─ i : int
+│  ├─ RANGE : int
+│  │  ├─ int 0
+│  │  └─ int 5
+│  └─ output : void
+│     ├─ i : int
+│     └─ chars " "
+├─ output : void
+│  └─ chars "| "
+├─ FOR
+│  ├─ i : int
+│  ├─ RANGE : int
+│  │  ├─ int 5
+│  │  └─ int 0
+│  └─ output : void
+│     ├─ i : int
+│     └─ chars " "
+└─ output : void
+   └─ chars "\n"
+```
+
+```out
+0 1 2 3 4 | 5 4 3 2 1 
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [2 x i8] c" \00", align 1
+@fmt = private unnamed_addr constant [5 x i8] c"%d%s\00", align 1
+@str.1 = private unnamed_addr constant [3 x i8] c"| \00", align 1
+@fmt.2 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@str.3 = private unnamed_addr constant [2 x i8] c" \00", align 1
+@fmt.4 = private unnamed_addr constant [5 x i8] c"%d%s\00", align 1
+@str.5 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.6 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+
+define i32 @main() {
+entry:
+  %i = alloca i32, align 4
+  store i32 0, i32* %i, align 4
+  br label %for.cond
+
+for.cond:                                         ; preds = %for.inc, %entry
+  %i1 = load i32, i32* %i, align 4
+  %more = icmp ne i32 %i1, 5
+  br i1 %more, label %for.body, label %for.end
+
+for.body:                                         ; preds = %for.cond
+  %i2 = load i32, i32* %i, align 4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt, i32 0, i32 0), i32 %i2, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0))
+  br label %for.inc
+
+for.inc:                                          ; preds = %for.body
+  %i3 = load i32, i32* %i, align 4
+  %next = add i32 %i3, 1
+  store i32 %next, i32* %i, align 4
+  br label %for.cond
+
+for.end:                                          ; preds = %for.cond
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.2, i32 0, i32 0), i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.1, i32 0, i32 0))
+  %i4 = alloca i32, align 4
+  store i32 5, i32* %i4, align 4
+  br label %for.cond5
+
+for.cond5:                                        ; preds = %for.inc7, %for.end
+  %i9 = load i32, i32* %i4, align 4
+  %more10 = icmp ne i32 %i9, 0
+  br i1 %more10, label %for.body6, label %for.end8
+
+for.body6:                                        ; preds = %for.cond5
+  %i11 = load i32, i32* %i4, align 4
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.4, i32 0, i32 0), i32 %i11, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
+  br label %for.inc7
+
+for.inc7:                                         ; preds = %for.body6
+  %i12 = load i32, i32* %i4, align 4
+  %next13 = add i32 %i12, -1
+  store i32 %next13, i32* %i4, align 4
+  br label %for.cond5
+
+for.end8:                                         ; preds = %for.cond5
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.6, i32 0, i32 0), i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 004 — array-for iterates elements by value
+
+```ura
+// loops/004.ura - for x in arr iterates elements
+
+main():
+    nums int[] = [10, 20, 30]
+    total int = 0
+    for x in nums:
+        total = total + x
+    output("sum = ", total, "\n")
+```
+
+```tree
+fn main() : int
+├─ = : ARRAY_TYPE
+│  ├─ nums : ARRAY_TYPE
+│  └─ ARRAY_LIT : ARRAY_TYPE
+│     ├─ int 10
+│     ├─ int 20
+│     └─ int 30
+├─ = : int
+│  ├─ total : int
+│  └─ int 0
+├─ FOR
+│  ├─ x : int
+│  ├─ nums : ARRAY_TYPE
+│  └─ = : int
+│     ├─ total : int
+│     └─ + : int
+│        ├─ total : int
+│        └─ x : int
+└─ output : void
+   ├─ chars "sum = "
+   ├─ total : int
+   └─ chars "\n"
+```
+
+```out
+sum = 60
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [7 x i8] c"sum = \00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+
+define i32 @main() {
+entry:
+  %nums = alloca { i32*, i64 }, align 8
+  %arr = alloca i32, i64 3, align 4
+  %arr.init = getelementptr i32, i32* %arr, i64 0
+  store i32 10, i32* %arr.init, align 4
+  %arr.init1 = getelementptr i32, i32* %arr, i64 1
+  store i32 20, i32* %arr.init1, align 4
+  %arr.init2 = getelementptr i32, i32* %arr, i64 2
+  store i32 30, i32* %arr.init2, align 4
+  %arr.ptr = insertvalue { i32*, i64 } undef, i32* %arr, 0
+  %arr.len = insertvalue { i32*, i64 } %arr.ptr, i64 3, 1
+  store { i32*, i64 } %arr.len, { i32*, i64 }* %nums, align 8
+  %total = alloca i32, align 4
+  store i32 0, i32* %total, align 4
+  %nums3 = load { i32*, i64 }, { i32*, i64 }* %nums, align 8
+  %arr.data = extractvalue { i32*, i64 } %nums3, 0
+  %arr.len4 = extractvalue { i32*, i64 } %nums3, 1
+  %idx = alloca i64, align 8
+  store i64 0, i64* %idx, align 4
+  %x = alloca i32, align 4
+  br label %for.cond
+
+for.cond:                                         ; preds = %for.inc, %entry
+  %i = load i64, i64* %idx, align 4
+  %more = icmp slt i64 %i, %arr.len4
+  br i1 %more, label %for.body, label %for.end
+
+for.body:                                         ; preds = %for.cond
+  %elem = getelementptr i32, i32* %arr.data, i64 %i
+  %x5 = load i32, i32* %elem, align 4
+  store i32 %x5, i32* %x, align 4
+  %total6 = load i32, i32* %total, align 4
+  %x7 = load i32, i32* %x, align 4
+  %add = add i32 %total6, %x7
+  store i32 %add, i32* %total, align 4
+  br label %for.inc
+
+for.inc:                                          ; preds = %for.body
+  %i8 = load i64, i64* %idx, align 4
+  %next = add i64 %i8, 1
+  store i64 %next, i64* %idx, align 4
+  br label %for.cond
+
+for.end:                                          ; preds = %for.cond
+  %total9 = load i32, i32* %total, align 4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i32 %total9, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
   ret i32 0
 }
 

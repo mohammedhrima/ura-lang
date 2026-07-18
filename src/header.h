@@ -136,7 +136,7 @@ enum Type
 	AND, OR, NOT, // Logical
 	LPAR, RPAR, LBRA, RBRA, COMA, DOT, DOTS, RANGE, ACCESS, AS, // Punctuation and Syntax
 	RETURN, IF, ELIF, ELSE, WHILE, CONTINUE, BREAK, MATCH, CASE, DEFAULT, // Control Flow
-	FOR, TO, STEP, IN,
+	FOR, TO, STEP, IN, LOOP,
 	FDEC, FCALL, PROTO, ARGS, CHILDREN, // Functions
 	STACK, HEAP, TYPEOF, SIZEOF, OUTPUT, SYNTAX_ERROR, // Built-ins
 	BAND, BOR, BXOR, BNOT, LSHIFT, RSHIFT, // Bitwise
@@ -362,6 +362,8 @@ Node *array_ctor_node(Node *node);
 void type_check_array_ctor(Node *node);
 void code_gen_array_ctor(Node *node);
 void free_array(Value slice, Type sub, int depth);
+void code_gen_typeof(Node *node);
+void code_gen_sizeof(Node *node);
 void code_gen_clean(Node *node);
 Value make_slice(Type sub, int depth, Value data, Value len);
 Value build_array(Type sub, Value *dims, int depth, bool heap);
@@ -407,6 +409,12 @@ void analyze_match(Node *node);
 void type_check_block(Node *node);
 void type_check_match(Node *node);
 void code_gen_if(Node *node);
+void code_gen_loop(Node *node);
+Node *for_node(Node *node);
+void analyze_for(Node *node);
+void type_check_for(Node *node);
+void code_gen_for_array(Node *node);
+void code_gen_for(Node *node);
 void code_gen_while(Node *node);
 void code_gen_match(Node *node);
 void guard(Token *op, Value is_bad, char *what);

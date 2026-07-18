@@ -118,6 +118,16 @@ Node *prime_node() {
       clean->left = expr_node(0);
       return clean;
    }
+   case TYPEOF: case SIZEOF: {
+      char *kw   = token->type == TYPEOF ? "typeof" : "sizeof";
+      Node *node = new_node(token);
+      if (!find(LPAR, 0))
+         parse_error(token, "Expected '(' after '%s'", kw);
+      node->left = expr_node(0);
+      if (!find(RPAR, 0))
+         parse_error(token, "Expected ')' to close '%s'", kw);
+      return node;
+   }
    case RETURN: {
       Node *node = new_node(token);
       node->left = expr_node(0);
@@ -144,6 +154,14 @@ Node *prime_node() {
       parse_error(token, "'%s' without a matching 'match'", token->name);
       return syntax_error();
    case WHILE: return while_node(new_node(token));
+   case LOOP: {
+      Node *node = new_node(token);
+      if (!find(DOTS, 0))
+         parse_error(token, "Expected ':' to open the 'loop' body");
+      parse_block(node, token->indent);
+      return node;
+   }
+   case FOR: return for_node(new_node(token));
    case BREAK: case CONTINUE:
       return new_node(token);
    default:
@@ -215,9 +233,10 @@ void analyze(Node *node) {
          if (node->left->token->type != ID)
             parse_error(node->token, "Cannot take a reference to a non-variable");
          break;
-      case IF: case ELIF: case ELSE: case WHILE:
+      case IF: case ELIF: case ELSE: case WHILE: case LOOP:
          analyze_block(node);
          break;
+      case FOR: analyze_for(node); break;
       case MATCH: analyze_match(node); break;
       case BREAK:
          node->left = enclosing_break();
@@ -239,6 +258,7 @@ void analyze(Node *node) {
          break;
       case ACCESS: analyze_binop(node); break;
       case RANGE:  analyze_binop(node); break;
+      case TYPEOF: case SIZEOF: analyze(node->left); break;
       case ARRAY:
          for (int i = 0; i < node->children_count; i++)
             analyze(node->children[i]);
@@ -295,9 +315,10 @@ void type_check(Node *node) {
          type_check(node->left);
          token->ret_type = node->left->token->ret_type;
          break;
-      case IF: case ELIF: case ELSE: case WHILE:
+      case IF: case ELIF: case ELSE: case WHILE: case LOOP:
          type_check_block(node);
          break;
+      case FOR: type_check_for(node); break;
       case MATCH: type_check_match(node); break;
       case ARRAY_LIT: type_check_array_lit(node); break;
       case ACCESS:    type_check_access(node); break;
@@ -310,6 +331,10 @@ void type_check(Node *node) {
          node->token->ret_type = INT;
          break;
       case ARRAY:     type_check_array_ctor(node); break;
+      case TYPEOF: case SIZEOF:
+         type_check(node->left);
+         node->token->ret_type = token->type == TYPEOF ? CHARS : INT;
+         break;
       case CLEAN:
          type_check(node->left);
          if (node->left->token->ret_type != ARRAY_TYPE)
@@ -349,6 +374,8 @@ void code_gen(Node *node) {
       case ARRAY_LIT: code_gen_array_lit(node); break;
       case ACCESS:    code_gen_access(node); break;
       case ARRAY:     code_gen_array_ctor(node); break;
+      case TYPEOF:    code_gen_typeof(node); break;
+      case SIZEOF:    code_gen_sizeof(node); break;
       case CLEAN:     code_gen_clean(node); break;
       case NOT: case BNOT:
          code_gen(node->left);
@@ -362,6 +389,8 @@ void code_gen(Node *node) {
       case REF:    token->llvm.elem = address_of(node->left); break;
       case IF:     code_gen_if(node); break;
       case WHILE:  code_gen_while(node); break;
+      case LOOP:   code_gen_loop(node); break;
+      case FOR:    code_gen_for(node); break;
       case MATCH:  code_gen_match(node); break;
       case BREAK:    LLVMBuildBr(ura.builder, node->left->token->llvm.end);   break;
       case CONTINUE: LLVMBuildBr(ura.builder, node->left->token->llvm.start); break;
