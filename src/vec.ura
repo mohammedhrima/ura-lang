@@ -1,0 +1,86 @@
+// vec.ura - a 2D integer vector, the operator-overloading showcase
+
+struct Vec2:
+    x int
+    y int
+
+    pub fn create(a int, b int) Vec2:
+        v Vec2
+        v.x = a
+        v.y = b
+        return v
+
+    pub fn origin() Vec2:
+        return Vec2::create(0, 0)
+
+    operator +(other Vec2) Vec2:
+        return Vec2::create(self.x + other.x, self.y + other.y)
+
+    operator +(n int) Vec2:
+        return Vec2::create(self.x + n, self.y + n)
+
+    operator -(other Vec2) Vec2:
+        return Vec2::create(self.x - other.x, self.y - other.y)
+
+    operator *(n int) Vec2:
+        return Vec2::create(self.x * n, self.y * n)
+
+    operator /(n int) Vec2:
+        return Vec2::create(self.x / n, self.y / n)
+
+    operator %(n int) Vec2:
+        return Vec2::create(self.x % n, self.y % n)
+
+    operator ==(other Vec2) bool:
+        return self.x == other.x and self.y == other.y
+
+    operator !=(other Vec2) bool:
+        return self.x != other.x or self.y != other.y
+
+    operator <(other Vec2) bool:
+        return self.taxicab() < other.taxicab()
+
+    operator >(other Vec2) bool:
+        return self.taxicab() > other.taxicab()
+
+    operator <=(other Vec2) bool:
+        return self.taxicab() <= other.taxicab()
+
+    operator >=(other Vec2) bool:
+        return self.taxicab() >= other.taxicab()
+
+    operator =(other Vec2) void:
+        self.x = other.x
+        self.y = other.y
+
+    operator +=(other Vec2) void:
+        self.x = self.x + other.x
+        self.y = self.y + other.y
+
+    operator -=(other Vec2) void:
+        self.x = self.x - other.x
+        self.y = self.y - other.y
+
+    operator *=(n int) void:
+        self.x = self.x * n
+        self.y = self.y * n
+
+    operator /=(n int) void:
+        self.x = self.x / n
+        self.y = self.y / n
+
+    operator %=(n int) void:
+        self.x = self.x % n
+        self.y = self.y % n
+
+    // a method the operators above call - sibling dispatch
+    fn taxicab() int:
+        return self.abs(self.x) + self.abs(self.y)
+
+    fn abs(n int) int:
+        if n < 0:
+            return 0 - n
+        return n
+
+    fn show(label chars) void:
+        output(label, "(", self.x, ", ", self.y, ")\n")

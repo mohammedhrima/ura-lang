@@ -1,0 +1,100 @@
+// entity.ura - structs with nested struct fields, methods, and by-value
+// vs ref parameters. Depends on vec.ura for Vec2.
+
+struct Player:
+    name  chars
+    hp    int
+    mp    int
+    xp    long
+    grade char
+    speed float
+    alive bool
+    pos   Vec2
+    pack  Bag
+
+    pub fn create(n chars, hp int) Player:
+        p Player
+        p.name  = n
+        p.hp    = hp
+        p.mp    = 20
+        p.xp    = 0 as long
+        p.grade = 'C'
+        p.speed = 1.5
+        p.alive = True
+        p.pos   = Vec2::create(0, 0)
+        p.pack  = Bag::create(6, n)
+        return p
+
+    fn walk(delta Vec2) void:
+        self.pos += delta
+
+    fn hurt(amount int) void:
+        self.hp = self.hp - amount
+        if self.hp <= 0:
+            self.hp    = 0
+            self.alive = False
+
+    fn heal(amount int) void:
+        self.hp = self.clamp(self.hp + amount, 0, 100)
+
+    fn clamp(v int, lo int, hi int) int:
+        if v < lo:
+            return lo
+        if v > hi:
+            return hi
+        return v
+
+    fn reward(gold int) void:
+        self.pack += gold
+        self.xp = self.xp + (gold as long)
+        self.promote()
+
+    fn promote() void:
+        if self.xp >= 60 as long:
+            self.grade = 'A'
+        elif self.xp >= 30 as long:
+            self.grade = 'B'
+
+    fn describe() void:
+        output(self.name, " hp ", self.hp, " mp ", self.mp)
+        output(" xp ", self.xp, " grade ", self.grade)
+        output(" speed ", self.speed, " alive ", self.alive, "\n")
+        self.pos.show("  at ")
+        self.pack.show()
+
+struct Monster:
+    kind  chars
+    hp    int
+    power int
+    pos   Vec2
+
+    pub fn create(k chars, hp int, power int, at Vec2) Monster:
+        m Monster
+        m.kind  = k
+        m.hp    = hp
+        m.power = power
+        m.pos   = at
+        return m
+
+    // the same method name as Player.describe - proves mangling
+    fn describe() void:
+        output(self.kind, " hp ", self.hp, " power ", self.power)
+        self.pos.show(" at ")
+
+    fn is_dead() bool:
+        return self.hp <= 0
+
+// a by-value struct parameter: the caller's copy is untouched
+fn preview(m Monster) int:
+    m.hp = 0
+    return m.power
+
+// a ref struct parameter: the caller's struct IS mutated
+fn strike(ref m Monster, force int) void:
+    m.hp = m.hp - force
+
+// refs to scalars, and a swap
+fn swap(ref a int, ref b int) void:
+    t int = a
+    a = b
+    b = t
