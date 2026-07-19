@@ -23,6 +23,7 @@
 - 019 — every operator on one struct, and `=` from an int overload
 - 020 — drop on fall-through: an if block, each iteration, reverse order
 - 021 — a struct drops the structs it owns, at any depth, but not what it borrows
+- 022 — a temporary is destroyed at the end of its statement
 
 ## 001 — operator + on two structs
 
@@ -3054,6 +3055,449 @@ entry:
   %res = getelementptr %L3, %L3* %inner, i32 0, i32 0
   call void @Res.drop(%Res* %res)
   call void @Res.drop(%Res* %lent)
+  ret i32 0
+}
+```
+
+## 022 — a temporary is destroyed at the end of its statement
+
+```ura
+// operators_overload/022.ura - temporaries die at end of statement
+
+struct Plain:
+    x int
+
+    pub fn create(n int) Plain:
+        p Plain
+        p.x = n
+        return p
+
+struct R:
+    id int
+
+    pub fn create(n int) R:
+        r R
+        r.id = n
+        return r
+
+    operator =(other R) void:
+        self.id = other.id
+
+    operator +(other R) R:
+        return R::create(self.id + other.id)
+
+    fn show() void:
+        output("show ", self.id, "\n")
+
+    operator drop:
+        output("DROP ", self.id, "\n")
+
+fn via_return(a R, b R) int:
+    return (a + b).id
+
+main():
+    a R = R::create(1)
+    b R = R::create(2)
+    (a + b).show()
+    output("--\n")
+    output((a + b).id, "\n")
+    output("--\n")
+    // a chain makes two temporaries; both die, in reverse
+    (a + b + a).show()
+    output("--\n")
+    i int = 0
+    while i < 2:
+        (a + b).show()
+        i += 1
+    output("--\n")
+    // dropped before the ret, not after it
+    output(via_return(a, b), "\n")
+    output("--\n")
+    output(R::create(9).id, "\n")
+    output("--\n")
+    // a struct with no destructor is never recorded as a temporary
+    output(Plain::create(7).x, "\n")
+    output("end\n")
+```
+
+```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
+struct Plain
+├─ x : int
+└─ fn Plain.create(n : int) : STRUCT_CALL
+   ├─ p : STRUCT_CALL
+   ├─ = : int
+   │  ├─ .x : int
+   │  │  └─ p : STRUCT_CALL
+   │  └─ n : int
+   └─ return
+      └─ p : STRUCT_CALL
+
+struct R
+├─ id : int
+├─ fn R.create(n : int) : STRUCT_CALL
+│  ├─ r : STRUCT_CALL
+│  ├─ = : int
+│  │  ├─ .id : int
+│  │  │  └─ r : STRUCT_CALL
+│  │  └─ n : int
+│  └─ return
+│     └─ r : STRUCT_CALL
+├─ fn R.=.R(self : STRUCT_CALL, other : STRUCT_CALL) : void
+│  └─ = : int
+│     ├─ .id : int
+│     │  └─ self : STRUCT_CALL
+│     └─ .id : int
+│        └─ other : STRUCT_CALL
+├─ fn R.+.R(self : STRUCT_CALL, other : STRUCT_CALL) : STRUCT_CALL
+│  └─ return
+│     └─ call create : STRUCT_CALL
+│        └─ + : int
+│           ├─ .id : int
+│           │  └─ self : STRUCT_CALL
+│           └─ .id : int
+│              └─ other : STRUCT_CALL
+├─ fn R.show(self : STRUCT_CALL) : void
+│  └─ output : void
+│     ├─ chars "show "
+│     ├─ .id : int
+│     │  └─ self : STRUCT_CALL
+│     └─ chars "\n"
+└─ fn R.drop(self : STRUCT_CALL) : void
+   └─ output : void
+      ├─ chars "DROP "
+      ├─ .id : int
+      │  └─ self : STRUCT_CALL
+      └─ chars "\n"
+
+fn via_return(a : STRUCT_CALL, b : STRUCT_CALL) : int
+└─ return
+   └─ .id : int
+      └─ + : STRUCT_CALL
+         ├─ a : STRUCT_CALL
+         └─ b : STRUCT_CALL
+
+fn main() : int
+├─ = : STRUCT_CALL
+│  ├─ a : STRUCT_CALL
+│  └─ call create : STRUCT_CALL
+│     └─ int 1
+├─ = : STRUCT_CALL
+│  ├─ b : STRUCT_CALL
+│  └─ call create : STRUCT_CALL
+│     └─ int 2
+├─ call show : void
+│  └─ + : STRUCT_CALL
+│     ├─ a : STRUCT_CALL
+│     └─ b : STRUCT_CALL
+├─ output : void
+│  └─ chars "--\n"
+├─ output : void
+│  ├─ .id : int
+│  │  └─ + : STRUCT_CALL
+│  │     ├─ a : STRUCT_CALL
+│  │     └─ b : STRUCT_CALL
+│  └─ chars "\n"
+├─ output : void
+│  └─ chars "--\n"
+├─ call show : void
+│  └─ + : STRUCT_CALL
+│     ├─ + : STRUCT_CALL
+│     │  ├─ a : STRUCT_CALL
+│     │  └─ b : STRUCT_CALL
+│     └─ a : STRUCT_CALL
+├─ output : void
+│  └─ chars "--\n"
+├─ = : int
+│  ├─ i : int
+│  └─ int 0
+├─ while
+│  ├─ condition < : bool
+│  │  ├─ i : int
+│  │  └─ int 2
+│  ├─ call show : void
+│  │  └─ + : STRUCT_CALL
+│  │     ├─ a : STRUCT_CALL
+│  │     └─ b : STRUCT_CALL
+│  └─ += : int
+│     ├─ i : int
+│     └─ int 1
+├─ output : void
+│  └─ chars "--\n"
+├─ output : void
+│  ├─ call via_return : int
+│  │  ├─ a : STRUCT_CALL
+│  │  └─ b : STRUCT_CALL
+│  └─ chars "\n"
+├─ output : void
+│  └─ chars "--\n"
+├─ output : void
+│  ├─ .id : int
+│  │  └─ call create : STRUCT_CALL
+│  │     └─ int 9
+│  └─ chars "\n"
+├─ output : void
+│  └─ chars "--\n"
+├─ output : void
+│  ├─ .x : int
+│  │  └─ call create : STRUCT_CALL
+│  │     └─ int 7
+│  └─ chars "\n"
+└─ output : void
+   └─ chars "end\n"
+```
+
+```out
+show 3
+DROP 3
+--
+3
+DROP 3
+--
+show 4
+DROP 4
+DROP 3
+--
+show 3
+DROP 3
+show 3
+DROP 3
+--
+DROP 3
+3
+--
+9
+DROP 9
+--
+7
+end
+DROP 2
+DROP 1
+```
+
+```err
+```
+
+```ll
+
+%Plain = type { i32 }
+%R = type { i32 }
+
+@str = private unnamed_addr constant [6 x i8] c"show \00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@str.2 = private unnamed_addr constant [6 x i8] c"DROP \00", align 1
+@str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.4 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@str.5 = private unnamed_addr constant [4 x i8] c"--\0A\00", align 1
+@fmt.6 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@str.7 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.8 = private unnamed_addr constant [5 x i8] c"%d%s\00", align 1
+@str.9 = private unnamed_addr constant [4 x i8] c"--\0A\00", align 1
+@fmt.10 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@str.11 = private unnamed_addr constant [4 x i8] c"--\0A\00", align 1
+@fmt.12 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@str.13 = private unnamed_addr constant [4 x i8] c"--\0A\00", align 1
+@fmt.14 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@str.15 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.16 = private unnamed_addr constant [5 x i8] c"%d%s\00", align 1
+@str.17 = private unnamed_addr constant [4 x i8] c"--\0A\00", align 1
+@fmt.18 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@str.19 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.20 = private unnamed_addr constant [5 x i8] c"%d%s\00", align 1
+@str.21 = private unnamed_addr constant [4 x i8] c"--\0A\00", align 1
+@fmt.22 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@str.23 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.24 = private unnamed_addr constant [5 x i8] c"%d%s\00", align 1
+@str.25 = private unnamed_addr constant [5 x i8] c"end\0A\00", align 1
+@fmt.26 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+
+define %Plain @Plain.create(i32 %0) {
+entry:
+  %n = alloca i32, align 4
+  store i32 %0, i32* %n, align 4
+  %p = alloca %Plain, align 8
+  store %Plain zeroinitializer, %Plain* %p, align 4
+  %x = getelementptr %Plain, %Plain* %p, i32 0, i32 0
+  %n1 = load i32, i32* %n, align 4
+  store i32 %n1, i32* %x, align 4
+  %p2 = load %Plain, %Plain* %p, align 4
+  ret %Plain %p2
+}
+
+define %R @R.create(i32 %0) {
+entry:
+  %n = alloca i32, align 4
+  store i32 %0, i32* %n, align 4
+  %r = alloca %R, align 8
+  store %R zeroinitializer, %R* %r, align 4
+  %id = getelementptr %R, %R* %r, i32 0, i32 0
+  %n1 = load i32, i32* %n, align 4
+  store i32 %n1, i32* %id, align 4
+  %r2 = load %R, %R* %r, align 4
+  ret %R %r2
+}
+
+define void @"R.=.R"(%R* %0, %R %1) {
+entry:
+  %self = alloca %R*, align 8
+  store %R* %0, %R** %self, align 8
+  %other = alloca %R, align 8
+  store %R %1, %R* %other, align 4
+  %ref = load %R*, %R** %self, align 8
+  %id = getelementptr %R, %R* %ref, i32 0, i32 0
+  %id1 = getelementptr %R, %R* %other, i32 0, i32 0
+  %id2 = load i32, i32* %id1, align 4
+  store i32 %id2, i32* %id, align 4
+  ret void
+}
+
+define %R @"R.+.R"(%R* %0, %R %1) {
+entry:
+  %self = alloca %R*, align 8
+  store %R* %0, %R** %self, align 8
+  %other = alloca %R, align 8
+  store %R %1, %R* %other, align 4
+  %ref = load %R*, %R** %self, align 8
+  %id = getelementptr %R, %R* %ref, i32 0, i32 0
+  %id1 = load i32, i32* %id, align 4
+  %id2 = getelementptr %R, %R* %other, i32 0, i32 0
+  %id3 = load i32, i32* %id2, align 4
+  %add = add i32 %id1, %id3
+  %call = call %R @R.create(i32 %add)
+  ret %R %call
+}
+
+define void @R.show(%R* %0) {
+entry:
+  %self = alloca %R*, align 8
+  store %R* %0, %R** %self, align 8
+  %ref = load %R*, %R** %self, align 8
+  %id = getelementptr %R, %R* %ref, i32 0, i32 0
+  %id1 = load i32, i32* %id, align 4
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str, i32 0, i32 0), i32 %id1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  ret void
+}
+
+declare i32 @printf(i8*, ...)
+
+define void @R.drop(%R* %0) {
+entry:
+  %self = alloca %R*, align 8
+  store %R* %0, %R** %self, align 8
+  %ref = load %R*, %R** %self, align 8
+  %id = getelementptr %R, %R* %ref, i32 0, i32 0
+  %id1 = load i32, i32* %id, align 4
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.4, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.2, i32 0, i32 0), i32 %id1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
+  ret void
+}
+
+define i32 @via_return(%R %0, %R %1) {
+entry:
+  %a = alloca %R, align 8
+  store %R %0, %R* %a, align 4
+  %b = alloca %R, align 8
+  store %R %1, %R* %b, align 4
+  %b1 = load %R, %R* %b, align 4
+  %op = call %R @"R.+.R"(%R* %a, %R %b1)
+  %out.tmp = alloca %R, align 8
+  store %R %op, %R* %out.tmp, align 4
+  %id = getelementptr %R, %R* %out.tmp, i32 0, i32 0
+  %id2 = load i32, i32* %id, align 4
+  call void @R.drop(%R* %out.tmp)
+  ret i32 %id2
+}
+
+define i32 @main() {
+entry:
+  %a = alloca %R, align 8
+  %call = call %R @R.create(i32 1)
+  store %R %call, %R* %a, align 4
+  %b = alloca %R, align 8
+  %call1 = call %R @R.create(i32 2)
+  store %R %call1, %R* %b, align 4
+  %b2 = load %R, %R* %b, align 4
+  %op = call %R @"R.+.R"(%R* %a, %R %b2)
+  %out.tmp = alloca %R, align 8
+  store %R %op, %R* %out.tmp, align 4
+  call void @R.show(%R* %out.tmp)
+  call void @R.drop(%R* %out.tmp)
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.6, i32 0, i32 0), i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.5, i32 0, i32 0))
+  %b3 = load %R, %R* %b, align 4
+  %op4 = call %R @"R.+.R"(%R* %a, %R %b3)
+  %out.tmp5 = alloca %R, align 8
+  store %R %op4, %R* %out.tmp5, align 4
+  %id = getelementptr %R, %R* %out.tmp5, i32 0, i32 0
+  %id6 = load i32, i32* %id, align 4
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.8, i32 0, i32 0), i32 %id6, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.7, i32 0, i32 0))
+  call void @R.drop(%R* %out.tmp5)
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.10, i32 0, i32 0), i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.9, i32 0, i32 0))
+  %b7 = load %R, %R* %b, align 4
+  %op8 = call %R @"R.+.R"(%R* %a, %R %b7)
+  %out.tmp9 = alloca %R, align 8
+  store %R %op8, %R* %out.tmp9, align 4
+  %a10 = load %R, %R* %a, align 4
+  %op11 = call %R @"R.+.R"(%R* %out.tmp9, %R %a10)
+  %out.tmp12 = alloca %R, align 8
+  store %R %op11, %R* %out.tmp12, align 4
+  call void @R.show(%R* %out.tmp12)
+  call void @R.drop(%R* %out.tmp12)
+  call void @R.drop(%R* %out.tmp9)
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.12, i32 0, i32 0), i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.11, i32 0, i32 0))
+  %i = alloca i32, align 4
+  store i32 0, i32* %i, align 4
+  br label %while.cond
+
+while.cond:                                       ; preds = %while.body, %entry
+  %i13 = load i32, i32* %i, align 4
+  %lt = icmp slt i32 %i13, 2
+  br i1 %lt, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %b14 = load %R, %R* %b, align 4
+  %op15 = call %R @"R.+.R"(%R* %a, %R %b14)
+  %out.tmp16 = alloca %R, align 8
+  store %R %op15, %R* %out.tmp16, align 4
+  call void @R.show(%R* %out.tmp16)
+  call void @R.drop(%R* %out.tmp16)
+  %cur = load i32, i32* %i, align 4
+  %add = add i32 %cur, 1
+  store i32 %add, i32* %i, align 4
+  br label %while.cond
+
+while.end:                                        ; preds = %while.cond
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.14, i32 0, i32 0), i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.13, i32 0, i32 0))
+  %a17 = load %R, %R* %a, align 4
+  %b18 = load %R, %R* %b, align 4
+  %call19 = call i32 @via_return(%R %a17, %R %b18)
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.16, i32 0, i32 0), i32 %call19, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.15, i32 0, i32 0))
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.18, i32 0, i32 0), i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.17, i32 0, i32 0))
+  %call20 = call %R @R.create(i32 9)
+  %out.tmp21 = alloca %R, align 8
+  store %R %call20, %R* %out.tmp21, align 4
+  %id22 = getelementptr %R, %R* %out.tmp21, i32 0, i32 0
+  %id23 = load i32, i32* %id22, align 4
+  %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.20, i32 0, i32 0), i32 %id23, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.19, i32 0, i32 0))
+  call void @R.drop(%R* %out.tmp21)
+  %8 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.22, i32 0, i32 0), i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.21, i32 0, i32 0))
+  %call24 = call %Plain @Plain.create(i32 7)
+  %out.tmp25 = alloca %Plain, align 8
+  store %Plain %call24, %Plain* %out.tmp25, align 4
+  %x = getelementptr %Plain, %Plain* %out.tmp25, i32 0, i32 0
+  %x26 = load i32, i32* %x, align 4
+  %9 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.24, i32 0, i32 0), i32 %x26, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.23, i32 0, i32 0))
+  %10 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.26, i32 0, i32 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.25, i32 0, i32 0))
+  call void @R.drop(%R* %b)
+  call void @R.drop(%R* %a)
   ret i32 0
 }
 ```
