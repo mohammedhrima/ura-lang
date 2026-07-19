@@ -31,6 +31,16 @@
 #define ERR_INDEX_NOT_INT \
 	"Array index must be an integer, got %s"
 
+#define ERR_BY_NEEDS_RANGE \
+	"'by' sets the step of a range (a..b), so it needs one on its left"
+
+#define ERR_BY_NOT_INT \
+	"The 'by' step must be an integer, got %s"
+
+#define ERR_BY_NOT_POSITIVE \
+	"The 'by' step must be positive;" \
+	" a range counts down when its start is greater than its end"
+
 #define ERR_FOR_NOT_ITERABLE \
 	"'for %s in ...' expects a range (a..b) or an array"
 
@@ -142,12 +152,24 @@
 	"Struct %s has no method '%s';" \
 	" check the spelling or declare it in the struct"
 
+#define ERR_CANNOT_ASSIGN "Cannot assign %s to %s"
+
+#define ERR_BINOP_TYPE_MISMATCH \
+	"Cannot use '%s' with %s and %s"
+
+#define ERR_NO_OPERATOR \
+	"Struct %s has no 'operator %s' taking %s;" \
+	" declare one inside the struct"
+
+#define ERR_ARG_TYPE_MISMATCH_STRUCT \
+	"Cannot assign %s to %s; they are different structs"
+
 #define ERR_OPERATOR_OUTSIDE_STRUCT \
 	"'operator' may only be declared inside a struct"
 
 #define ERR_OPERATOR_EXPECTED \
 	"Expected an operator after 'operator'" \
-	" (one of + - * / %% == != < > <= >= = += -= *= /= %%= clean)"
+	" (one of + - * / %% == != < > <= >= = += -= *= /= %%= drop)"
 
 #define ERR_METHOD_NEEDS_RECEIVER \
 	"'%s::%s' needs a receiver;" \
@@ -160,9 +182,21 @@
 	"Cannot read '.%s' from %s;" \
 	" only a struct has fields"
 
-#define ERR_UNKNOWN_FIELD \
-	"Struct %s has no field '%s';" \
-	" check the spelling or declare it in the struct"
+#define WARN_DROP_NEEDS_ASSIGN \
+	"Struct %s has 'operator drop' but no 'operator =';" \
+	" copying it makes two owners of the same memory," \
+	" and both will be destroyed"
+
+#define ERR_CANNOT_CALL_DROP \
+	"Cannot call '%s.drop()' yourself;" \
+	" the compiler runs 'operator drop' when the value leaves scope"
+
+#define ERR_CLEAN_NEEDS_ARRAY \
+	"'clean' frees a heap array, not %s"
+
+#define ERR_CLEAN_ON_STRUCT \
+	"'clean' frees a heap array, not the struct %s;" \
+	" a struct is destroyed at end of scope by its 'operator drop'"
 
 #define ASSERT_TYPECHECK_NODE "type_check: unhandled node '%s'"
 

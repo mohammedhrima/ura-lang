@@ -194,7 +194,22 @@ void resolve_struct_type(Token *token) {
    else       token->Struct.ptr       = def;
 }
 
+bool has_assign(Node *def) {
+   char *prefix = format("%s.=", def->token->name);
+   size_t n     = strlen(prefix);
+   bool  found  = false;
+   for (int i = 0; i < def->children_count && !found; i++) {
+      Token *child = def->children[i]->token;
+      if (child->type != FDEC || !child->name) continue;
+      found = strncmp(child->name, prefix, n) == 0;
+   }
+   free(prefix);
+   return found;
+}
+
 void analyze_struct(Node *node) {
+   if (node->token->has_drop && !has_assign(node))
+      parse_warn(node->token, WARN_DROP_NEEDS_ASSIGN, node->token->name);
    enter_scope(node);
    for (int i = 0; i < node->children_count; i++)
       if (node->children[i]->token->type == FDEC)
@@ -319,12 +334,17 @@ void analyze_for(Node *node) {
    analyze(node->right);
    Token *var = node->left->token;
    Token *it  = node->right->token;
+   if (it->type != RANGE && !it->ret_type) type_check(node->right);
+   for (int i = 0; i < node->right->children_count; i++)
+      analyze(node->right->children[i]);
    if (it->type == RANGE)
       var->ret_type = INT;
    else if (it->ret_type == ARRAY_TYPE) {
       var->Array       = it->Array;
       var->Array.depth = it->Array.depth - 1;
       var->ret_type    = it->Array.depth > 1 ? ARRAY_TYPE : it->Array.sub_type;
+      if (var->ret_type == STRUCT_CALL)
+         var->Struct.ptr = it->Array.struct_ptr;
    }
    declare_variable(var);
    declare_structs(node);
@@ -345,47 +365,54 @@ void analyze(Node *node) {
       case FCALL:  analyze_fcall(node); break;
       case NOT: case BNOT: analyze(node->left); break;
       case AS: analyze(node->left); break;
-      case REF:
+      case REF: {
          analyze(node->left);
          if (node->left->token->type != ID)
-            parse_error(node->token, ERR_REF_TO_NON_VARIABLE);
+         parse_error(node->token, ERR_REF_TO_NON_VARIABLE);
          break;
+      }
       case IF: case ELIF: case ELSE: case WHILE: case LOOP:
          analyze_block(node);
          break;
       case FOR: analyze_for(node); break;
       case MATCH: analyze_match(node); break;
-      case BREAK:
+      case BREAK: {
          node->left = enclosing_break();
          if (!node->left)
-            parse_error(node->token, "'break' outside a loop or match");
+         parse_error(node->token, "'break' outside a loop or match");
          break;
-      case CONTINUE:
+      }
+      case CONTINUE: {
          node->left = enclosing_continue();
          if (!node->left)
-            parse_error(node->token, "'continue' outside a loop");
+         parse_error(node->token, "'continue' outside a loop");
          break;
-      case OUTPUT:
+      }
+      case OUTPUT: {
          for (int i = 0; i < node->children_count; i++)
-            analyze(node->children[i]);
+         analyze(node->children[i]);
          break;
-      case ARRAY_LIT:
+      }
+      case ARRAY_LIT: {
          for (int i = 0; i < node->children_count; i++)
-            analyze(node->children[i]);
+         analyze(node->children[i]);
          break;
-      case ACCESS:
+      }
+      case ACCESS: {
          if (!rewrite_struct_ctor(node)) { analyze_binop(node); break; }
          for (int i = 0; i < node->children_count; i++)
-            analyze(node->children[i]);
+         analyze(node->children[i]);
          break;
+      }
       case RANGE:  analyze_binop(node); break;
       case DOT:    analyze(node->left); break;
       case TYPEOF: case SIZEOF: analyze(node->left); break;
-      case ARRAY:
+      case ARRAY: {
          resolve_struct_type(token);
          for (int i = 0; i < node->children_count; i++)
-            analyze(node->children[i]);
+         analyze(node->children[i]);
          break;
+      }
       case CLEAN: analyze(node->left); break;
       case ASSIGN: case ADD: case SUB: case MUL: case DIV: case MOD:
       case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN: case MOD_ASSIGN:

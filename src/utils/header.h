@@ -26,7 +26,7 @@ void print_ast(Node *head);
 void pnode(Node *node, char *indent);
 bool _check(char *filename, char *funcname, int line, bool cond, char *fmt, ...);
 void decolor(char *s);
-void render_caret(File out, Token *token);
+void render_caret(File out, Token *token, const char *color);
 bool is_dir(char *path);
 char *exe_dir();
 char *find_ura_lib();

@@ -96,6 +96,20 @@ Value llvm_int_cast(Value value, TypeRef type) {
    return LLVMBuildIntCast2(ura.builder, value, type, 1, "cast");
 }
 
+Value llvm_num_cast(Value value, Type src, Type dst) {
+   if (src == dst) return value;
+   TypeRef to = to_llvm_type(dst);
+   if (src == FLOAT)
+      return LLVMBuildFPToSI(ura.builder, value, to, "cast");
+   if (dst == FLOAT && src == BOOL)
+      return LLVMBuildUIToFP(ura.builder, value, to, "cast");
+   if (dst == FLOAT)
+      return LLVMBuildSIToFP(ura.builder, value, to, "cast");
+   if (src == BOOL)
+      return LLVMBuildIntCast2(ura.builder, value, to, 0, "cast");
+   return llvm_int_cast(value, to);
+}
+
 void llvm_sanitize(Value fn) {
    unsigned     kind = LLVMGetEnumAttributeKindForName("sanitize_address", 16);
    AttributeRef attr = LLVMCreateEnumAttribute(ura.context, kind, 0);
@@ -268,7 +282,7 @@ void guard(Token *op, Value is_bad, char *what) {
    size_t tlen = 0;
    File   ms   = open_memstream(&text, &tlen);
    fprintf(ms, RED("runtime error: ") "%s\n", what);
-   render_caret(ms, op);
+   render_caret(ms, op, CARET_ERR);
    fclose(ms);
    if (ura.no_color) decolor(text);
    Value   msg  = llvm_string(text, "trap_msg");
@@ -353,7 +367,6 @@ Value field_ptr(Node *node) {
    Token  *left   = node->left->token;
    Value   base   = struct_arg_ptr(node->left);
    TypeRef sty    = struct_type_of(left->Struct.ptr);
-   if (left->is_ref) base = llvm_load(pointer_to(sty), base, "ref");
    Value   idx[2] = { const_i32(0), const_i32(token->Struct.index) };
    return llvm_gep(sty, base, idx, 2, token->name);
 }
@@ -567,6 +580,69 @@ void code_gen_literal(Node *node) {
    }
 }
 
+bool needs_drop(Node *def, int depth) {
+   if (!def || depth > 64) return false;
+   if (def->token->has_drop) return true;
+   for (int i = 0; i < def->children_count; i++) {
+      Token *field = def->children[i]->token;
+      if (!is_field(field) || field->is_ref) continue;
+      if (field->ret_type != STRUCT_CALL) continue;
+      if (needs_drop(field->Struct.ptr, depth + 1)) return true;
+   }
+   return false;
+}
+
+Node *drop_target(Token *var) {
+   if (var->is_ref || var->is_param || !var->llvm.elem) return NULL;
+   if (var->ret_type != STRUCT_CALL) return NULL;
+   Node *def = var->Struct.ptr;
+   return needs_drop(def, 0) ? def : NULL;
+}
+
+void emit_drop_value(Value ptr, Node *def, int depth) {
+   if (!def || depth > 64) return;
+   if (def->token->has_drop) {
+      Node  *fn   = find_destructor(def);
+      emit_signature(fn);
+      Token *impl = fn->token;
+      llvm_call(impl->llvm.func_type, impl->llvm.elem, &ptr, 1, "");
+   }
+   TypeRef sty = struct_type_of(def);
+   for (int i = def->children_count - 1; i >= 0; i--) {
+      Token *field = def->children[i]->token;
+      if (!is_field(field) || field->is_ref) continue;
+      if (field->ret_type != STRUCT_CALL) continue;
+      Node *sub = field->Struct.ptr;
+      if (!needs_drop(sub, 0)) continue;
+      Value idx[2] = { const_i32(0), const_i32(field->Struct.index) };
+      Value slot   = llvm_gep(sty, ptr, idx, 2, field->name);
+      emit_drop_value(slot, sub, depth + 1);
+   }
+}
+
+void emit_drops(Node *scope, Token *keep) {
+   if (!scope || LLVMGetBasicBlockTerminator(here_block())) return;
+   for (int i = scope->variables_count - 1; i >= 0; i--) {
+      Token *var = scope->variables[i];
+      Node  *def = var == keep ? NULL : drop_target(var);
+      if (def) emit_drop_value(var->llvm.elem, def, 0);
+   }
+}
+
+void emit_unwind(Node *stop, Token *keep) {
+   for (int i = ura.scopes_count; i >= 1; i--) {
+      Node *scope = ura.scopes[i];
+      if (!scope) continue;
+      emit_drops(scope, keep);
+      if (stop ? scope == stop : scope->token->type == FDEC) return;
+   }
+}
+
+void scope_out(void) {
+   emit_drops(ura.scope, NULL);
+   exit_scope();
+}
+
 void code_gen_fdec(Node *node) {
    Token *token = node->token;
    if (token->is_proto) return;
@@ -584,11 +660,11 @@ void code_gen_fdec(Node *node) {
       set_debug_location(node->children[i]->token);
       code_gen(node->children[i]);
    }
+   scope_out();
    if (!LLVMGetBasicBlockTerminator(here_block())) {
       if (token->ret_type == VOID) LLVMBuildRetVoid(ura.builder);
       else LLVMBuildRet(ura.builder, default_value(token));
    }
-   exit_scope();
    debug_exit_function(token);
 }
 
@@ -662,7 +738,7 @@ void code_gen_loop(Node *node) {
    llvm_at(body);
    enter_scope(node);
    code_gen_body(node);
-   exit_scope();
+   scope_out();
    if (!LLVMGetBasicBlockTerminator(here_block()))
       llvm_br(body);
    llvm_at(end);
@@ -698,7 +774,7 @@ void code_gen_for_array(Node *node) {
    else     llvm_store(llvm_load(elem, gep, "x"), xslot);
    enter_scope(node);
    code_gen_body(node);
-   exit_scope();
+   scope_out();
    if (!LLVMGetBasicBlockTerminator(here_block()))
       llvm_br(inc);
    llvm_at(inc);
@@ -717,7 +793,14 @@ void code_gen_for(Node *node) {
    Value a    = LLVMBuildIntCast2(ura.builder, range->left->token->llvm.elem, ura.i32, 1, "a");
    Value b    = LLVMBuildIntCast2(ura.builder, range->right->token->llvm.elem, ura.i32, 1, "b");
    Value asc  = llvm_icmp(LLVMIntSLT, a, b, "asc");
-   Value step = LLVMBuildSelect(ura.builder, asc, const_i32(1), LLVMConstInt(ura.i32, -1, 1), "step");
+   Value mag  = const_i32(1);
+   if (range->children_count) {
+      code_gen(range->children[0]);
+      Value raw = range->children[0]->token->llvm.elem;
+      mag = LLVMBuildIntCast2(ura.builder, raw, ura.i32, 1, "by");
+   }
+   Value down = LLVMBuildNeg(ura.builder, mag, "by.neg");
+   Value step = LLVMBuildSelect(ura.builder, asc, mag, down, "step");
    Value fn   = here_func();
    Value slot = llvm_alloca(ura.i32, var->name);
    llvm_store(a, slot);
@@ -731,11 +814,15 @@ void code_gen_for(Node *node) {
    llvm_br(cond);
    llvm_at(cond);
    Value i = llvm_load(ura.i32, slot, var->name);
-   llvm_cond_br(llvm_icmp(LLVMIntNE, i, b, "more"), body, end);
+   // '!=' would overshoot and never terminate once the step exceeds 1
+   Value more = LLVMBuildSelect(ura.builder, asc,
+                                llvm_icmp(LLVMIntSLT, i, b, "lt"),
+                                llvm_icmp(LLVMIntSGT, i, b, "gt"), "more");
+   llvm_cond_br(more, body, end);
    llvm_at(body);
    enter_scope(node);
    code_gen_body(node);
-   exit_scope();
+   scope_out();
    if (!LLVMGetBasicBlockTerminator(here_block()))
       llvm_br(inc);
    llvm_at(inc);
@@ -759,7 +846,7 @@ void code_gen_while(Node *node) {
    llvm_at(body);
    enter_scope(node);
    code_gen_body(node);
-   exit_scope();
+   scope_out();
    if (!LLVMGetBasicBlockTerminator(here_block()))
       llvm_br(cond);
    llvm_at(end);
@@ -776,7 +863,7 @@ void code_gen_match(Node *node) {
    for (int i = 0; i < node->children_count; i++) {
       Node *branch = node->children[i];
       if (branch->token->type == DEFAULT) {
-         enter_scope(branch); code_gen_body(branch); exit_scope();
+         enter_scope(branch); code_gen_body(branch); scope_out();
          if (!LLVMGetBasicBlockTerminator(here_block()))
             llvm_br(end);
          break;
@@ -793,12 +880,12 @@ void code_gen_match(Node *node) {
       }
       llvm_cond_br(cond, body, next);
       llvm_at(body);
-      enter_scope(branch); code_gen_body(branch); exit_scope();
+      enter_scope(branch); code_gen_body(branch); scope_out();
       if (!LLVMGetBasicBlockTerminator(here_block()))
          llvm_br(end);
       llvm_at(next);
    }
-   exit_scope();
+   scope_out();
    llvm_at(end);
 }
 
@@ -809,7 +896,7 @@ void code_gen_if(Node *node) {
       if (cur->token->type == ELSE) {
          enter_scope(cur);
          code_gen_body(cur);
-         exit_scope();
+         scope_out();
          if (!LLVMGetBasicBlockTerminator(here_block()))
             llvm_br(end);
          break;
@@ -822,7 +909,7 @@ void code_gen_if(Node *node) {
       llvm_at(body);
       enter_scope(cur);
       code_gen_body(cur);
-      exit_scope();
+      scope_out();
       if (!LLVMGetBasicBlockTerminator(here_block()))
          llvm_br(end);
       llvm_at(next);
@@ -832,14 +919,33 @@ void code_gen_if(Node *node) {
 
 void code_gen_assign(Node *node) {
    Token *token = node->token;
+   if (token->Fcall.ptr) { 
+      code_gen_operator(node); 
+      return; 
+   }
    Value dest = address_of(node->left);
    code_gen(node->right);
    llvm_store(node->right->token->llvm.elem, dest);
    token->llvm.elem = node->right->token->llvm.elem;
 }
 
+void code_gen_operator(Node *node) {
+   Token *token = node->token;
+   Node  *fn    = token->Fcall.ptr;
+   emit_signature(fn);
+   Value self = struct_arg_ptr(node->left);
+   code_gen(node->right);
+   Value args[2] = { self, node->right->token->llvm.elem };
+   char *name = fn->token->ret_type == VOID ? "" : "op";
+   token->llvm.elem = llvm_call(fn->token->llvm.func_type, fn->token->llvm.elem, args, 2, name);
+}
+
 void code_gen_binop(Node *node) {
    Token *token = node->token;
+   if (token->Fcall.ptr) { 
+      code_gen_operator(node); 
+      return; 
+   }
    code_gen(node->left);
    code_gen(node->right);
    Value left  = node->left->token->llvm.elem;
@@ -882,6 +988,10 @@ void code_gen_binop(Node *node) {
 }
 
 void code_gen_compound(Node *node) {
+   if (node->token->Fcall.ptr) { 
+      code_gen_operator(node); 
+      return; 
+   }
    Value   dest = address_of(node->left);
    code_gen(node->right);
    Type    op      = node->token->type;
@@ -1118,8 +1228,14 @@ Value struct_printer(Node *def) {
 
 Value struct_arg_ptr(Node *arg) {
    Token *token = arg->token;
-   if (includes(token->type, ID, ACCESS, DOT, 0) && !token->is_dec)
-      return address_of(arg);
+   if (includes(token->type, ID, ACCESS, DOT, 0) && !token->is_dec) {
+      Value slot = address_of(arg);
+      if (token->type != DOT || !token->is_ref) return slot;
+      TypeRef sty = pointer_to(struct_type_of(token->Struct.ptr));
+      Value   ptr = llvm_load(sty, slot, "ref");
+      if (token->is_nullable) guard_bound(token, ptr);
+      return ptr;
+   }
    code_gen(arg);
    Value tmp = llvm_alloca(struct_type_of(token->Struct.ptr), "out.tmp");
    llvm_store(token->llvm.elem, tmp);
@@ -1186,46 +1302,59 @@ void code_gen(Node *node) {
          break;
 
       case REF:      token->llvm.elem = address_of(node->left);   break;
-      case BREAK:    llvm_br(node->left->token->llvm.end);        break;
-      case CONTINUE: llvm_br(node->left->token->llvm.start);      break;
-
+      case BREAK: {
+         emit_unwind(node->left, NULL);
+         llvm_br(node->left->token->llvm.end);
+         break;
+      }
+      case CONTINUE: {
+         emit_unwind(node->left, NULL);
+         llvm_br(node->left->token->llvm.start);
+         break;
+      }
       case INT: case BOOL: case CHARS:
-      case CHAR: case FLOAT:
+      case CHAR: case FLOAT: {
          code_gen_literal(node);
          break;
-
-      case FN_TYPE:
+      }
+      case FN_TYPE: {
          emit_signature(token->Fcall.ptr);
          token->llvm.elem = token->Fcall.ptr->token->llvm.elem;
          break;
-
-      case RETURN:
+      }
+      case RETURN: {
          code_gen(node->left);
-         token->llvm.elem = llvm_ret(node->left->token->llvm.elem);
+         Token *out  = node->left->token;
+         Token *keep = out->type == ID ? find_variable(out->name, NULL) : NULL;
+         emit_unwind(NULL, keep);
+         token->llvm.elem = llvm_ret(out->llvm.elem);
          break;
-
-      case NOT: case BNOT:
+      }
+      case NOT: case BNOT: {
          code_gen(node->left);
          token->llvm.elem = llvm_not(node->left->token->llvm.elem);
          break;
-
-      case AS:
+      }
+      case AS: {
          code_gen(node->left);
-         token->llvm.elem = llvm_int_cast(node->left->token->llvm.elem,
-                                          to_llvm_type(token->ret_type));
+         token->llvm.elem = llvm_num_cast(node->left->token->llvm.elem,
+                                          node->left->token->ret_type,
+                                          token->ret_type);
          break;
-
+      }
       case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN:
-      case DIV_ASSIGN: case MOD_ASSIGN:
+      case DIV_ASSIGN: case MOD_ASSIGN: {
          code_gen_compound(node);
          break;
+      }
       case ADD: case SUB: case MUL: case DIV: case MOD:
       case EQUAL: case NOT_EQUAL: case LESS: case GREAT:
       case LESS_EQUAL: case GREAT_EQUAL:
       case AND: case OR:
-      case BAND: case BOR: case BXOR: case LSHIFT: case RSHIFT:
+      case BAND: case BOR: case BXOR: case LSHIFT: case RSHIFT: {
          code_gen_binop(node);
          break;
+      }
       default:
          CHECK(1, ASSERT_CODEGEN_NODE, to_string(token->type));
          break;

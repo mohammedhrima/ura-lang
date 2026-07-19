@@ -8,7 +8,7 @@ char *to_string(Type type) {
 	    [END] = "END",            [LPAR] = "LPAR",             [FCALL] = "CALL",
 	    [IF] = "IF",              [RPAR] = "RPAR",             [ELIF] = "ELIF",
 	    [FOR] = "FOR",            [ELSE] = "ELSE",             [WHILE] = "WHILE",
-	    [TO] = "TO",              [LOOP] = "LOOP",             [STEP] = "STEP",
+	    [BY] = "BY",              [LOOP] = "LOOP",
 	    [IN] = "IN",              [BREAK] = "BRK",             [CONTINUE] = "CONT",
 	    [CASE] = "CASE",          [MATCH] = "MATCH",           [DEFAULT] = "DEFAULT",
 	    [BAND] = "BAND",          [RETURN] = "RET",            [SHORT] = "SHORT",
@@ -486,7 +486,7 @@ void decolor(char *text) {
 	text[write] = '\0';
 }
 
-void render_caret(File out, Token *token) {
+void render_caret(File out, Token *token, const char *color) {
 	if (!token || !token->source || !token->source->content) return;
 
 	char *content = token->source->content;
@@ -514,7 +514,7 @@ void render_caret(File out, Token *token) {
 	fprintf(out, "%*s " BLUE("|") " ", gutter, "");
 	for (int i = 0; i < col - 1; i++)
 		fputc(content[line_start + i] == '\t' ? '\t' : ' ', out);
-	fprintf(out, "\033[1;31m");
+	fprintf(out, "%s", color);
 	for (int i = 0; i < span; i++)
 		fputc('^', out);
 	fprintf(out, RESET "\n");
@@ -537,7 +537,7 @@ void parse_error(Token *token, const char *fmt, ...) {
 	vfprintf(ms, fmt, ap);
 	va_end(ap);
 	fputc('\n', ms);
-	render_caret(ms, token);
+	render_caret(ms, token, CARET_ERR);
 	fclose(ms);
 
 	if (ura.no_color) decolor(buf);
@@ -555,7 +555,7 @@ void parse_warn(Token *token, const char *fmt, ...) {
 	vfprintf(ms, fmt, ap);
 	va_end(ap);
 	fputc('\n', ms);
-	render_caret(ms, token);
+	render_caret(ms, token, CARET_WARN);
 	fclose(ms);
 
 	if (ura.no_color) decolor(buf);

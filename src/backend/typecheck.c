@@ -28,6 +28,10 @@ void type_check_match(Node *node) {
 	}
 }
 
+bool is_castable(Type type) {
+	return type == FLOAT || includes(type, NUMERIC_TYPES, 0);
+}
+
 bool is_data_type(Token *token) {
 	return token->is_dec && includes(token->type, DATA_TYPES, 0); 
 }
@@ -117,6 +121,10 @@ void type_check_method_call(Node *node) {
    free(qualified);
    if (!fn) {
       parse_error(token, ERR_UNKNOWN_METHOD, def->token->name, token->name);
+      return;
+   }
+   if (def->token->has_drop && fn == find_destructor(def)) {
+      parse_error(token, ERR_CANNOT_CALL_DROP, def->token->name);
       return;
    }
    token->Fcall.ptr = fn;
@@ -270,6 +278,33 @@ void type_check_dot(Node *node) {
    token->Array    = field->Array;
 }
 
+char *struct_name_of(Token *token) {
+   if (token->ret_type == STRUCT_CALL && token->Struct.name)
+      return token->Struct.name;
+   return type_name(token->ret_type);
+}
+
+Node *find_destructor(Node *def) {
+   char *qualified = format("%s.drop", def->token->name);
+   Node *fn        = find_method(def, qualified);
+   free(qualified);
+   return fn;
+}
+
+bool find_operator(Node *node) {
+   Token *token = node->token;
+   Node  *def   = node->left->token->Struct.ptr;
+   if (!def) return false;
+   char *qualified = format("%s.%s.%s", def->token->name, spell(token->type), struct_name_of(node->right->token));
+   Node *fn = find_method(def, qualified);
+   free(qualified);
+   if (!fn) return false;
+   token->Fcall.ptr = fn;
+   token->ret_type  = fn->token->ret_type;
+   if (token->ret_type == STRUCT_CALL) token->Struct = fn->token->Struct;
+   return true;
+}
+
 void type_check_binop(Node *node) {
    Token *token = node->token;
    type_check(node->left);
@@ -284,8 +319,30 @@ void type_check_binop(Node *node) {
       token->ret_type = lt;
       return;
    }
+   if (lt == STRUCT_CALL) {
+      bool assign = token->type == ASSIGN;
+      if (!(assign && node->left->token->is_dec) && find_operator(node)) return;
+      if (!assign) {
+         parse_error(token, ERR_NO_OPERATOR, struct_name_of(node->left->token),
+                     spell(token->type), struct_name_of(node->right->token));
+         return;
+      }
+      Node *lhs_def = node->left->token->Struct.ptr;
+      Node *rhs_def = node->right->token->Struct.ptr;
+      if (rt == STRUCT_CALL && lhs_def && rhs_def && lhs_def != rhs_def) {
+         parse_error(token, ERR_ARG_TYPE_MISMATCH_STRUCT, struct_name_of(node->right->token),
+                     struct_name_of(node->left->token));
+         return;
+      }
+   }
    if (lt && rt && lt != rt) {
-      parse_error(token, "Type mismatch between operands");
+      if (token->type == ASSIGN)
+         parse_error(token, ERR_CANNOT_ASSIGN, struct_name_of(node->right->token),
+                     struct_name_of(node->left->token));
+      else
+         parse_error(token, ERR_BINOP_TYPE_MISMATCH, spell(token->type),
+                     struct_name_of(node->left->token),
+                     struct_name_of(node->right->token));
       return;
    }
    if (lt == FLOAT && includes(token->type, BITWISE_TYPE, 0)) {
@@ -368,6 +425,15 @@ void type_check_for(Node *node) {
       parse_error(node->token, ERR_FOR_NOT_ITERABLE, node->left->token->name);
    if (node->token->is_ref && iter->type == RANGE)
       parse_error(node->token, ERR_FOR_REF_NEEDS_ARRAY);
+   if (iter->type == RANGE && node->right->children_count) {
+      Node  *by = node->right->children[0];
+      type_check(by);
+      Token *bt = by->token;
+      if (!includes(bt->ret_type, NUMERIC_TYPES, 0))
+         parse_error(bt, ERR_BY_NOT_INT, type_name(bt->ret_type));
+      else if (bt->type == INT && bt->Int.value <= 0)
+         parse_error(bt, ERR_BY_NOT_POSITIVE);
+   }
    for (int i = 0; i < node->children_count; i++)
       type_check(node->children[i]);
 }
@@ -387,11 +453,12 @@ void type_check(Node *node) {
       case FN_TYPE: break;
       case RETURN:  type_check(node->left); break;
       case FCALL:   type_check_fcall(node); break;
-      case OUTPUT:
+      case OUTPUT: {
          for (int i = 0; i < node->children_count; i++)
-            type_check(node->children[i]);
+         type_check(node->children[i]);
          token->ret_type = VOID;
          break;
+      }
       case NOT: case BNOT:
          type_check(node->left);
          if (token->type == NOT && node->left->token->ret_type != BOOL)
@@ -402,45 +469,54 @@ void type_check(Node *node) {
          type_check(node->left);
          Type src = node->left->token->ret_type;
          Type dst = node->right->token->ret_type;
-         bool bad_src = src && !includes(src, NUMERIC_TYPES, 0);
-         bool bad_dst = !includes(dst, NUMERIC_TYPES, 0);
+         bool bad_src = src && !is_castable(src);
+         bool bad_dst = !is_castable(dst);
          if (bad_src || bad_dst)
             parse_error(token, ERR_CANNOT_CAST, type_name(src), type_name(dst));
          token->ret_type = dst;
          break;
       }
-      case REF:
+      case REF: {
          type_check(node->left);
          token->ret_type = node->left->token->ret_type;
          break;
-      case IF: case ELIF: case ELSE: case WHILE: case LOOP:
+      }
+      case IF: case ELIF: case ELSE: case WHILE: case LOOP: {
          type_check_block(node);
          break;
+      }
       case FOR: type_check_for(node); break;
       case MATCH: type_check_match(node); break;
       case ARRAY_LIT: type_check_array_lit(node); break;
       case ACCESS:    type_check_access(node); break;
       case DOT: type_check_dot(node); break;
-      case RANGE:
+      case RANGE: {
          type_check(node->left);
          type_check(node->right);
          bool left_num  = includes(node->left->token->ret_type, NUMERIC_TYPES, 0);
          bool right_num = includes(node->right->token->ret_type, NUMERIC_TYPES, 0);
          if (!left_num || !right_num)
-            parse_error(node->token, "Range bounds must be integers");
+         parse_error(node->token, "Range bounds must be integers");
          node->token->ret_type = INT;
          break;
+      }
       case ARRAY:     type_check_array_ctor(node); break;
       case TYPEOF: case SIZEOF:
          type_check(node->left);
          node->token->ret_type = token->type == TYPEOF ? CHARS : INT;
          break;
-      case CLEAN:
+      case CLEAN: {
          type_check(node->left);
-         if (node->left->token->ret_type != ARRAY_TYPE)
-            parse_error(node->token, "'clean' expects an array");
+         Token *target = node->left->token;
          node->token->ret_type = VOID;
+         if (target->ret_type == ARRAY_TYPE) break;
+         char *name = struct_name_of(target);
+         if (target->ret_type == STRUCT_CALL)
+            parse_error(node->token, ERR_CLEAN_ON_STRUCT, name);
+         else
+            parse_error(node->token, ERR_CLEAN_NEEDS_ARRAY, name);
          break;
+      }
       case BREAK: case CONTINUE: break;
       case ASSIGN: case ADD: case SUB: case MUL: case DIV: case MOD:
       case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN: case MOD_ASSIGN:

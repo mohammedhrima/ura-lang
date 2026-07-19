@@ -42,6 +42,9 @@ typedef struct _IO_FILE *File;
 #define BLUE(fmt)  BOLD "\033[34m" fmt RESET
 #define YELLOW(fmt) BOLD "\033[0;33m" fmt RESET
 
+#define CARET_ERR  "\033[1;31m"
+#define CARET_WARN "\033[1;33m"
+
 #define LINE __LINE__
 #define FUNC (char *)__func__
 #define FILE (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
@@ -139,7 +142,7 @@ enum Type
 	AND, OR, NOT, // Logical
 	LPAR, RPAR, LBRA, RBRA, COMA, DOT, DOTS, RANGE, ACCESS, AS, // Punctuation and Syntax
 	RETURN, IF, ELIF, ELSE, WHILE, CONTINUE, BREAK, MATCH, CASE, DEFAULT, // Control Flow
-	FOR, TO, STEP, IN, LOOP,
+	FOR, BY, IN, LOOP,
 	FDEC, FCALL, PROTO, ARGS, CHILDREN, // Functions
 	TYPEOF, SIZEOF, OUTPUT, SYNTAX_ERROR, // Built-ins
 	BAND, BOR, BXOR, BNOT, LSHIFT, RSHIFT, // Bitwise
@@ -214,7 +217,7 @@ struct Token {
 	bool    is_param;
 	bool    is_variadic;
 	bool    is_proto;
-	bool    has_clean;
+	bool    has_drop;
 	bool    is_method_call;
 	bool    is_pub;
 	bool    is_static_call;

@@ -2288,7 +2288,7 @@ main():
 ```
 
 ```err
-error: 'clean' expects an array
+error: 'clean' frees a heap array, not int
   022.ura:3:5
   |
 3 |     clean x
