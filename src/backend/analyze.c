@@ -350,7 +350,7 @@ void analyze_for(Node *node) {
    for (int i = 0; i < node->right->children_count; i++)
       analyze(node->right->children[i]);
    if (it->type == RANGE)
-      var->ret_type = INT;
+      var->ret_type = I32;
    else if (it->ret_type == ARRAY_TYPE) {
       var->Array       = it->Array;
       var->Array.depth = it->Array.depth - 1;
@@ -372,7 +372,7 @@ void analyze(Node *node) {
       case FDEC:   analyze_fdec(node); break;
       case STRUCT_DEF: analyze_struct(node); break;
       case ID:     analyze_id(node); break;
-      case INT: case BOOL: case CHARS: case CHAR: case FLOAT: break;
+      case I32: case BOOL: case CHARS: case CHAR: case F32: break;
       case RETURN: analyze(node->left); break;
       case FCALL:  analyze_fcall(node); break;
       case NOT: case BNOT: analyze(node->left); break;

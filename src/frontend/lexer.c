@@ -193,10 +193,10 @@ bool lex_number(char *src, int *i, int line, int indent)
 	if (src[(*i)] == '.' && isdigit(src[(*i) + 1])) {
 		(*i)++;
 		while (isdigit(src[(*i)])) (*i)++;
-		parse_token(line, s, *i, FLOAT, indent);
+		parse_token(line, s, *i, F32, indent);
 	}
 	else
-		parse_token(line, s, *i, INT, indent);
+		parse_token(line, s, *i, I32, indent);
 	return true;
 }
 
@@ -339,11 +339,11 @@ Token *parse_token(int line, int s, int e, Type type, int indent) {
 	new->end_index   = e;
 
 	switch (type) {
-	case INT: {
+	case I32: {
 		while (s < e) new->Int.value = new->Int.value * 10 + input[s++] - '0';
 		break;
 	}
-	case FLOAT: {
+	case F32: {
 		// TODO: to be checked
 		char buf[64] = {0};
 		int  len     = e - s;
@@ -365,10 +365,14 @@ Token *parse_token(int line, int s, int e, Type type, int indent) {
 		}
 
 		static const Keyword keywords[] = {
-			{"int", INT, 1, 1},       {"bool", BOOL, 1, 1},       {"chars", CHARS, 1, 1},
-			{"char", CHAR, 1, 1},     {"void", VOID, 1, 1},       {"float", FLOAT, 1, 1},
-			{"double", DOUBLE, 1, 1}, {"long", LONG, 1, 1},       {"short", SHORT, 1, 1},
+			{"int", I32, 1, 1},       {"bool", BOOL, 1, 1},       {"chars", CHARS, 1, 1},
+			{"char", CHAR, 1, 1},     {"void", VOID, 1, 1},       {"float", F32, 1, 1},
+			{"double", F64, 1, 1}, {"long", I64, 1, 1},       {"short", I16, 1, 1},
 			{"pointer", CHARS, 1, 1},
+			// bit-width spellings, same types - the C-style names above go
+			// away once ura-lib, the goldens and src/ have all migrated
+			{"i8", CHAR, 1, 1},       {"i16", I16, 1, 1},       {"i32", I32, 1, 1},
+			{"i64", I64, 1, 1},      {"f32", F32, 1, 1},       {"f64", F64, 1, 1},
 			{"if", IF, 0, 0},         {"elif", ELIF, 0, 0},       {"else", ELSE, 0, 0},
 			{"for", FOR, 0, 0},       {"loop", LOOP, 0, 0},       {"while", WHILE, 0, 0},
 			{"by", BY, 0, 0},         {"in", IN, 0, 0},

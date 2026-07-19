@@ -24,24 +24,24 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn help() : int
+fn help() : i32
 └─ return
    └─ int 7
 
-fn main() : int
+fn main() : i32
 └─ output : void
    ├─ chars "help() = "
-   ├─ call help : int
+   ├─ call help : i32
    └─ chars "\n"
 ```
 
@@ -99,34 +99,34 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn deep() : int
+fn deep() : i32
 └─ return
    └─ int 3
 
-fn side() : int
+fn side() : i32
 └─ return
    └─ int 4
 
-fn total() : int
+fn total() : i32
 └─ return
-   └─ + : int
-      ├─ call deep : int
-      └─ call side : int
+   └─ + : i32
+      ├─ call deep : i32
+      └─ call side : i32
 
-fn main() : int
+fn main() : i32
 └─ output : void
    ├─ chars "total() = "
-   ├─ call total : int
+   ├─ call total : i32
    └─ chars "\n"
 ```
 
@@ -199,37 +199,37 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn base() : int
+fn base() : i32
 └─ return
    └─ int 5
 
-fn one() : int
+fn one() : i32
 └─ return
-   └─ + : int
-      ├─ call base : int
+   └─ + : i32
+      ├─ call base : i32
       └─ int 1
 
-fn two() : int
+fn two() : i32
 └─ return
-   └─ + : int
-      ├─ call base : int
+   └─ + : i32
+      ├─ call base : i32
       └─ int 2
 
-fn main() : int
+fn main() : i32
 └─ output : void
-   ├─ call one : int
+   ├─ call one : i32
    ├─ chars " "
-   ├─ call two : int
+   ├─ call two : i32
    └─ chars "\n"
 ```
 
@@ -299,29 +299,29 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn pong() : int
+fn pong() : i32
 └─ return
    └─ int 2
 
-fn ping() : int
+fn ping() : i32
 └─ return
    └─ int 1
 
-fn main() : int
+fn main() : i32
 └─ output : void
-   ├─ + : int
-   │  ├─ call ping : int
-   │  └─ call pong : int
+   ├─ + : i32
+   │  ├─ call ping : i32
+   │  └─ call pong : i32
    └─ chars "\n"
 ```
 
@@ -400,171 +400,171 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
-
-proto fn free(ptr : chars) : void
-
-proto fn write(fd : int, ptr : chars, len : long) : long
-
-proto fn exit(code : int) : void
-
-proto fn malloc(size : int) : chars
-
-proto fn calloc(len : long, size : long) : chars
-
-proto fn realloc(ptr : chars, newSize : int) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn aligned_alloc(alignment : int, size : int) : chars
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn isalnum(c : int) : int
+proto fn exit(code : i32) : void
 
-proto fn isalpha(c : int) : int
+proto fn malloc(size : i32) : chars
 
-proto fn isascii(c : int) : int
+proto fn calloc(len : i64, size : i64) : chars
 
-proto fn isblank(c : int) : int
+proto fn realloc(ptr : chars, newSize : i32) : chars
 
-proto fn iscntrl(c : int) : int
+proto fn free(ptr : chars) : void
 
-proto fn isdigit(c : int) : int
+proto fn aligned_alloc(alignment : i32, size : i32) : chars
 
-proto fn isgraph(c : int) : int
+proto fn isalnum(c : i32) : i32
 
-proto fn islower(c : int) : int
+proto fn isalpha(c : i32) : i32
 
-proto fn isprint(c : int) : int
+proto fn isascii(c : i32) : i32
 
-proto fn ispunct(c : int) : int
+proto fn isblank(c : i32) : i32
 
-proto fn isspace(c : int) : int
+proto fn iscntrl(c : i32) : i32
 
-proto fn isupper(c : int) : int
+proto fn isdigit(c : i32) : i32
 
-proto fn isxdigit(c : int) : int
+proto fn isgraph(c : i32) : i32
 
-proto fn tolower(c : int) : int
+proto fn islower(c : i32) : i32
 
-proto fn toupper(c : int) : int
+proto fn isprint(c : i32) : i32
+
+proto fn ispunct(c : i32) : i32
+
+proto fn isspace(c : i32) : i32
+
+proto fn isupper(c : i32) : i32
+
+proto fn isxdigit(c : i32) : i32
+
+proto fn tolower(c : i32) : i32
+
+proto fn toupper(c : i32) : i32
 
 proto fn fopen(path : chars, mode : chars) : chars
 
 proto fn freopen(path : chars, mode : chars, file : chars) : chars
 
-proto fn fclose(file : chars) : int
+proto fn fclose(file : chars) : i32
 
-proto fn fflush(file : chars) : int
+proto fn fflush(file : chars) : i32
 
-proto fn fgetc(file : chars) : int
+proto fn fgetc(file : chars) : i32
 
-proto fn fputc(c : int, file : chars) : int
+proto fn fputc(c : i32, file : chars) : i32
 
-proto fn getc(file : chars) : int
+proto fn getc(file : chars) : i32
 
-proto fn putc(c : int, file : chars) : int
+proto fn putc(c : i32, file : chars) : i32
 
-proto fn getchar() : int
+proto fn getchar() : i32
 
-proto fn putchar(c : char) : int
+proto fn putchar(c : char) : i32
 
-proto fn ungetc(c : int, file : chars) : int
+proto fn ungetc(c : i32, file : chars) : i32
 
-proto fn fgets(buffer : chars, size : int, file : chars) : chars
+proto fn fgets(buffer : chars, size : i32, file : chars) : chars
 
-proto fn fputs(str : chars, file : chars) : int
+proto fn fputs(str : chars, file : chars) : i32
 
-proto fn puts(str : chars) : int
+proto fn puts(str : chars) : i32
 
 proto fn gets(buffer : chars) : chars
 
-proto fn fread(ptr : chars, size : int, nmemb : int, file : chars) : int
+proto fn fread(ptr : chars, size : i32, nmemb : i32, file : chars) : i32
 
-proto fn fwrite(ptr : chars, size : int, nmemb : int, file : chars) : int
+proto fn fwrite(ptr : chars, size : i32, nmemb : i32, file : chars) : i32
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn read(fd : int, ptr : chars, len : long) : long
+proto fn read(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn fseek(file : chars, offset : long, whence : int) : int
+proto fn fseek(file : chars, offset : i64, whence : i32) : i32
 
-proto fn ftell(file : chars) : long
+proto fn ftell(file : chars) : i64
 
 proto fn rewind(file : chars) : void
 
-proto fn fgetpos(file : chars, pos : chars) : int
+proto fn fgetpos(file : chars, pos : chars) : i32
 
-proto fn fsetpos(file : chars, pos : chars) : int
+proto fn fsetpos(file : chars, pos : chars) : i32
 
-proto fn feof(file : chars) : int
+proto fn feof(file : chars) : i32
 
-proto fn ferror(file : chars) : int
+proto fn ferror(file : chars) : i32
 
 proto fn clearerr(file : chars) : void
 
 proto fn perror(str : chars) : void
 
-proto fn setvbuf(file : chars, buffer : chars, mode : int, size : int) : int
+proto fn setvbuf(file : chars, buffer : chars, mode : i32, size : i32) : i32
 
 proto fn setbuf(file : chars, buffer : chars) : void
 
-proto fn remove(path : chars) : int
+proto fn remove(path : chars) : i32
 
-proto fn rename(oldpath : chars, newpath : chars) : int
+proto fn rename(oldpath : chars, newpath : chars) : i32
 
 proto fn tmpfile() : chars
 
 proto fn tmpnam(str : chars) : chars
 
-proto fn fileno(file : chars) : int
+proto fn fileno(file : chars) : i32
 
-proto fn fdopen(fd : int, mode : chars) : chars
+proto fn fdopen(fd : i32, mode : chars) : chars
 
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn fprintf(file : chars, format : chars, ...) : int
+proto fn fprintf(file : chars, format : chars, ...) : i32
 
-proto fn sprintf(buffer : chars, format : chars, ...) : int
+proto fn sprintf(buffer : chars, format : chars, ...) : i32
 
-proto fn snprintf(buffer : chars, size : int, format : chars, ...) : int
+proto fn snprintf(buffer : chars, size : i32, format : chars, ...) : i32
 
-proto fn dprintf(fd : int, format : chars, ...) : int
+proto fn dprintf(fd : i32, format : chars, ...) : i32
 
-proto fn vprintf(format : chars, args : chars) : int
+proto fn vprintf(format : chars, args : chars) : i32
 
-proto fn vfprintf(file : chars, format : chars, args : chars) : int
+proto fn vfprintf(file : chars, format : chars, args : chars) : i32
 
-proto fn vsprintf(buffer : chars, format : chars, args : chars) : int
+proto fn vsprintf(buffer : chars, format : chars, args : chars) : i32
 
-proto fn vsnprintf(buffer : chars, size : int, format : chars, args : chars) : int
+proto fn vsnprintf(buffer : chars, size : i32, format : chars, args : chars) : i32
 
-proto fn vdprintf(fd : int, format : chars, args : chars) : int
+proto fn vdprintf(fd : i32, format : chars, args : chars) : i32
 
-proto fn scanf(format : chars, ...) : int
+proto fn scanf(format : chars, ...) : i32
 
-proto fn fscanf(file : chars, format : chars, ...) : int
+proto fn fscanf(file : chars, format : chars, ...) : i32
 
-proto fn sscanf(buffer : chars, format : chars, ...) : int
+proto fn sscanf(buffer : chars, format : chars, ...) : i32
 
-proto fn vscanf(format : chars, args : chars) : int
+proto fn vscanf(format : chars, args : chars) : i32
 
-proto fn vfscanf(file : chars, format : chars, args : chars) : int
+proto fn vfscanf(file : chars, format : chars, args : chars) : i32
 
-proto fn vsscanf(buffer : chars, format : chars, args : chars) : int
+proto fn vsscanf(buffer : chars, format : chars, args : chars) : i32
 
-fn main() : int
+fn main() : i32
 ├─ output : void
 │  ├─ chars "isdigit "
-│  ├─ call isdigit : int
-│  │  └─ cast : int
+│  ├─ call isdigit : i32
+│  │  └─ cast : i32
 │  │     └─ char '7'
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "isalpha "
-│  ├─ call isalpha : int
-│  │  └─ cast : int
+│  ├─ call isalpha : i32
+│  │  └─ cast : i32
 │  │     └─ char '7'
 │  └─ chars "\n"
 └─ output : void

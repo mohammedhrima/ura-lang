@@ -44,46 +44,46 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ = : array
-│  ├─ a : int[]
-│  └─ array : int[]
+│  ├─ a : i32[]
+│  └─ array : i32[]
 │     ├─ int 10
 │     ├─ int 20
 │     └─ int 30
 ├─ output : void
 │  ├─ chars "a[0]="
-│  ├─ index : int
-│  │  ├─ a : int[]
+│  ├─ index : i32
+│  │  ├─ a : i32[]
 │  │  └─ int 0
 │  ├─ chars " a[1]="
-│  ├─ index : int
-│  │  ├─ a : int[]
+│  ├─ index : i32
+│  │  ├─ a : i32[]
 │  │  └─ int 1
 │  ├─ chars " a[2]="
-│  ├─ index : int
-│  │  ├─ a : int[]
+│  ├─ index : i32
+│  │  ├─ a : i32[]
 │  │  └─ int 2
 │  └─ chars "\n"
-├─ = : int
-│  ├─ index : int
-│  │  ├─ a : int[]
+├─ = : i32
+│  ├─ index : i32
+│  │  ├─ a : i32[]
 │  │  └─ int 1
 │  └─ int 99
 └─ output : void
    ├─ chars "after a[1]=99: "
-   ├─ index : int
-   │  ├─ a : int[]
+   ├─ index : i32
+   │  ├─ a : i32[]
    │  └─ int 1
    └─ chars "\n"
 ```
@@ -161,47 +161,47 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ = : array
-│  ├─ a : int[]
-│  └─ array : int[]
+│  ├─ a : i32[]
+│  └─ array : i32[]
 │     ├─ int 5
 │     ├─ int 10
 │     ├─ int 15
 │     └─ int 20
-├─ = : int
-│  ├─ i : int
+├─ = : i32
+│  ├─ i : i32
 │  └─ int 3
 ├─ output : void
 │  ├─ chars "a[i]="
-│  ├─ index : int
-│  │  ├─ a : int[]
-│  │  └─ i : int
+│  ├─ index : i32
+│  │  ├─ a : i32[]
+│  │  └─ i : i32
 │  ├─ chars " a[i-1]="
-│  ├─ index : int
-│  │  ├─ a : int[]
-│  │  └─ - : int
-│  │     ├─ i : int
+│  ├─ index : i32
+│  │  ├─ a : i32[]
+│  │  └─ - : i32
+│  │     ├─ i : i32
 │  │     └─ int 1
 │  └─ chars "\n"
 └─ output : void
    ├─ chars "a[0]+a[3]="
-   ├─ + : int
-   │  ├─ index : int
-   │  │  ├─ a : int[]
+   ├─ + : i32
+   │  ├─ index : i32
+   │  │  ├─ a : i32[]
    │  │  └─ int 0
-   │  └─ index : int
-   │     ├─ a : int[]
+   │  └─ index : i32
+   │     ├─ a : i32[]
    │     └─ int 3
    └─ chars "\n"
 ```
@@ -282,17 +282,17 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ = : array
 │  ├─ b : bool[]
 │  └─ array : bool[]
@@ -306,8 +306,8 @@ fn main() : int
 │     ├─ char 'b'
 │     └─ char 'c'
 ├─ = : array
-│  ├─ f : float[]
-│  └─ array : float[]
+│  ├─ f : f32[]
+│  └─ array : f32[]
 │     ├─ float 1.5
 │     ├─ float 2.5
 │     └─ float 3
@@ -321,8 +321,8 @@ fn main() : int
    │  ├─ c : char[]
    │  └─ int 1
    ├─ chars " f[2]="
-   ├─ index : float
-   │  ├─ f : float[]
+   ├─ index : f32
+   │  ├─ f : f32[]
    │  └─ int 2
    └─ chars "\n"
 ```
@@ -414,40 +414,40 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ = : array
-│  ├─ a : int[]
-│  └─ array : int[]
+│  ├─ a : i32[]
+│  └─ array : i32[]
 │     └─ int 5
 ├─ output : void
 │  ├─ chars "zero-init: "
-│  ├─ index : int
-│  │  ├─ a : int[]
+│  ├─ index : i32
+│  │  ├─ a : i32[]
 │  │  └─ int 0
 │  ├─ chars " "
-│  ├─ index : int
-│  │  ├─ a : int[]
+│  ├─ index : i32
+│  │  ├─ a : i32[]
 │  │  └─ int 4
 │  └─ chars "\n"
-├─ = : int
-│  ├─ index : int
-│  │  ├─ a : int[]
+├─ = : i32
+│  ├─ index : i32
+│  │  ├─ a : i32[]
 │  │  └─ int 2
 │  └─ int 42
 └─ output : void
    ├─ chars "a[2]="
-   ├─ index : int
-   │  ├─ a : int[]
+   ├─ index : i32
+   │  ├─ a : i32[]
    │  └─ int 2
    └─ chars "\n"
 ```
@@ -521,39 +521,39 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ n : int
+fn main() : i32
+├─ = : i32
+│  ├─ n : i32
 │  └─ int 4
 ├─ = : array
-│  ├─ a : int[]
-│  └─ array : int[]
-│     └─ * : int
-│        ├─ n : int
+│  ├─ a : i32[]
+│  └─ array : i32[]
+│     └─ * : i32
+│        ├─ n : i32
 │        └─ int 2
-├─ = : int
-│  ├─ index : int
-│  │  ├─ a : int[]
+├─ = : i32
+│  ├─ index : i32
+│  │  ├─ a : i32[]
 │  │  └─ int 7
 │  └─ int 100
 └─ output : void
    ├─ chars "a[0]="
-   ├─ index : int
-   │  ├─ a : int[]
+   ├─ index : i32
+   │  ├─ a : i32[]
    │  └─ int 0
    ├─ chars " a[7]="
-   ├─ index : int
-   │  ├─ a : int[]
+   ├─ index : i32
+   │  ├─ a : i32[]
    │  └─ int 7
    └─ chars "\n"
 ```
@@ -624,52 +624,52 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ = : array
-│  ├─ m : int[][]
-│  └─ array : int[][]
-│     ├─ array : int[]
+│  ├─ m : i32[][]
+│  └─ array : i32[][]
+│     ├─ array : i32[]
 │     │  ├─ int 1
 │     │  └─ int 2
-│     └─ array : int[]
+│     └─ array : i32[]
 │        ├─ int 3
 │        └─ int 4
 ├─ output : void
 │  ├─ chars "m[0][0]="
-│  ├─ index : int
-│  │  ├─ index : int[]
-│  │  │  ├─ m : int[][]
+│  ├─ index : i32
+│  │  ├─ index : i32[]
+│  │  │  ├─ m : i32[][]
 │  │  │  └─ int 0
 │  │  └─ int 0
 │  ├─ chars " m[1][1]="
-│  ├─ index : int
-│  │  ├─ index : int[]
-│  │  │  ├─ m : int[][]
+│  ├─ index : i32
+│  │  ├─ index : i32[]
+│  │  │  ├─ m : i32[][]
 │  │  │  └─ int 1
 │  │  └─ int 1
 │  └─ chars "\n"
-├─ = : int
-│  ├─ index : int
-│  │  ├─ index : int[]
-│  │  │  ├─ m : int[][]
+├─ = : i32
+│  ├─ index : i32
+│  │  ├─ index : i32[]
+│  │  │  ├─ m : i32[][]
 │  │  │  └─ int 0
 │  │  └─ int 1
 │  └─ int 99
 └─ output : void
    ├─ chars "m[0][1]="
-   ├─ index : int
-   │  ├─ index : int[]
-   │  │  ├─ m : int[][]
+   ├─ index : i32
+   │  ├─ index : i32[]
+   │  │  ├─ m : i32[][]
    │  │  └─ int 0
    │  └─ int 1
    └─ chars "\n"
@@ -767,53 +767,53 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ = : array
-│  ├─ g : int[][]
-│  └─ array : int[][]
+│  ├─ g : i32[][]
+│  └─ array : i32[][]
 │     ├─ int 3
 │     └─ int 4
-├─ = : int
-│  ├─ index : int
-│  │  ├─ index : int[]
-│  │  │  ├─ g : int[][]
+├─ = : i32
+│  ├─ index : i32
+│  │  ├─ index : i32[]
+│  │  │  ├─ g : i32[][]
 │  │  │  └─ int 0
 │  │  └─ int 0
 │  └─ int 1
-├─ = : int
-│  ├─ index : int
-│  │  ├─ index : int[]
-│  │  │  ├─ g : int[][]
+├─ = : i32
+│  ├─ index : i32
+│  │  ├─ index : i32[]
+│  │  │  ├─ g : i32[][]
 │  │  │  └─ int 2
 │  │  └─ int 3
 │  └─ int 99
 └─ output : void
    ├─ chars "g[0][0]="
-   ├─ index : int
-   │  ├─ index : int[]
-   │  │  ├─ g : int[][]
+   ├─ index : i32
+   │  ├─ index : i32[]
+   │  │  ├─ g : i32[][]
    │  │  └─ int 0
    │  └─ int 0
    ├─ chars " g[2][3]="
-   ├─ index : int
-   │  ├─ index : int[]
-   │  │  ├─ g : int[][]
+   ├─ index : i32
+   │  ├─ index : i32[]
+   │  │  ├─ g : i32[][]
    │  │  └─ int 2
    │  └─ int 3
    ├─ chars " g[1][1]="
-   ├─ index : int
-   │  ├─ index : int[]
-   │  │  ├─ g : int[][]
+   ├─ index : i32
+   │  ├─ index : i32[]
+   │  │  ├─ g : i32[][]
    │  │  └─ int 1
    │  └─ int 1
    └─ chars "\n"
@@ -924,49 +924,49 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ n : int
+fn main() : i32
+├─ = : i32
+│  ├─ n : i32
 │  └─ int 2
 ├─ = : array
-│  ├─ v : int[][][]
-│  └─ array : int[][][]
-│     ├─ n : int
-│     ├─ n : int
-│     └─ n : int
-├─ = : int
-│  ├─ index : int
-│  │  ├─ index : int[]
-│  │  │  ├─ index : int[][]
-│  │  │  │  ├─ v : int[][][]
+│  ├─ v : i32[][][]
+│  └─ array : i32[][][]
+│     ├─ n : i32
+│     ├─ n : i32
+│     └─ n : i32
+├─ = : i32
+│  ├─ index : i32
+│  │  ├─ index : i32[]
+│  │  │  ├─ index : i32[][]
+│  │  │  │  ├─ v : i32[][][]
 │  │  │  │  └─ int 1
 │  │  │  └─ int 1
 │  │  └─ int 1
 │  └─ int 7
 └─ output : void
    ├─ chars "v[1][1][1]="
-   ├─ index : int
-   │  ├─ index : int[]
-   │  │  ├─ index : int[][]
-   │  │  │  ├─ v : int[][][]
+   ├─ index : i32
+   │  ├─ index : i32[]
+   │  │  ├─ index : i32[][]
+   │  │  │  ├─ v : i32[][][]
    │  │  │  └─ int 1
    │  │  └─ int 1
    │  └─ int 1
    ├─ chars " v[0][0][0]="
-   ├─ index : int
-   │  ├─ index : int[]
-   │  │  ├─ index : int[][]
-   │  │  │  ├─ v : int[][][]
+   ├─ index : i32
+   │  ├─ index : i32[]
+   │  │  ├─ index : i32[][]
+   │  │  │  ├─ v : i32[][][]
    │  │  │  └─ int 0
    │  │  └─ int 0
    │  └─ int 0
@@ -1101,31 +1101,31 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ = : array
-│  ├─ a : int[]
-│  └─ array : int[]
+│  ├─ a : i32[]
+│  └─ array : i32[]
 │     ├─ int 10
 │     ├─ int 20
 │     └─ int 30
-├─ = : int
-│  ├─ i : int
+├─ = : i32
+│  ├─ i : i32
 │  └─ int 2
 └─ output : void
    ├─ chars "a[i]?="
-   ├─ index : int
-   │  ├─ a : int[]
-   │  └─ i : int
+   ├─ index : i32
+   │  ├─ a : i32[]
+   │  └─ i : i32
    └─ chars "\n"
 ```
 
@@ -1198,26 +1198,26 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ = : array
-│  ├─ a : int[]
-│  └─ array : int[]
+│  ├─ a : i32[]
+│  └─ array : i32[]
 │     ├─ int 10
 │     ├─ int 20
 │     └─ int 30
 └─ output : void
-   └─ index : int
-      ├─ a : int[]
+   └─ index : i32
+      ├─ a : i32[]
       └─ int 5
 ```
 
@@ -1290,38 +1290,38 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ = : array
-│  ├─ a : int[]
-│  └─ array : int[]
+│  ├─ a : i32[]
+│  └─ array : i32[]
 │     └─ int 5
-├─ = : int
-│  ├─ index : int
-│  │  ├─ a : int[]
+├─ = : i32
+│  ├─ index : i32
+│  │  ├─ a : i32[]
 │  │  └─ int 2
 │  └─ int 42
 ├─ output : void
 │  ├─ chars "a[0]="
-│  ├─ index : int
-│  │  ├─ a : int[]
+│  ├─ index : i32
+│  │  ├─ a : i32[]
 │  │  └─ int 0
 │  ├─ chars " a[2]="
-│  ├─ index : int
-│  │  ├─ a : int[]
+│  ├─ index : i32
+│  │  ├─ a : i32[]
 │  │  └─ int 2
 │  └─ chars "\n"
 └─ clean : void
-   └─ a : int[]
+   └─ a : i32[]
 ```
 
 ```out
@@ -1388,43 +1388,43 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ n : int
+fn main() : i32
+├─ = : i32
+│  ├─ n : i32
 │  └─ int 3
 ├─ = : array
-│  ├─ a : int[]
-│  └─ array : int[]
-│     └─ * : int
-│        ├─ n : int
+│  ├─ a : i32[]
+│  └─ array : i32[]
+│     └─ * : i32
+│        ├─ n : i32
 │        └─ int 2
-├─ = : int
-│  ├─ index : int
-│  │  ├─ a : int[]
+├─ = : i32
+│  ├─ index : i32
+│  │  ├─ a : i32[]
 │  │  └─ int 5
 │  └─ int 7
 ├─ output : void
 │  ├─ chars "a[5]="
-│  ├─ index : int
-│  │  ├─ a : int[]
+│  ├─ index : i32
+│  │  ├─ a : i32[]
 │  │  └─ int 5
 │  ├─ chars " a[0]="
-│  ├─ index : int
-│  │  ├─ a : int[]
+│  ├─ index : i32
+│  │  ├─ a : i32[]
 │  │  └─ int 0
 │  └─ chars "\n"
 └─ clean : void
-   └─ a : int[]
+   └─ a : i32[]
 ```
 
 ```out
@@ -1494,26 +1494,26 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ = : array
-│  ├─ a : int[]
-│  └─ array : int[]
+│  ├─ a : i32[]
+│  └─ array : i32[]
 │     └─ int 5
 ├─ clean : void
-│  └─ a : int[]
+│  └─ a : i32[]
 └─ output : void
-   └─ index : int
-      ├─ a : int[]
+   └─ index : i32
+      ├─ a : i32[]
       └─ int 0
 ```
 
@@ -1591,58 +1591,58 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ = : array
-│  ├─ m : int[][]
-│  └─ array : int[][]
+│  ├─ m : i32[][]
+│  └─ array : i32[][]
 │     ├─ int 2
 │     └─ int 3
-├─ = : int
-│  ├─ index : int
-│  │  ├─ index : int[]
-│  │  │  ├─ m : int[][]
+├─ = : i32
+│  ├─ index : i32
+│  │  ├─ index : i32[]
+│  │  │  ├─ m : i32[][]
 │  │  │  └─ int 0
 │  │  └─ int 0
 │  └─ int 1
-├─ = : int
-│  ├─ index : int
-│  │  ├─ index : int[]
-│  │  │  ├─ m : int[][]
+├─ = : i32
+│  ├─ index : i32
+│  │  ├─ index : i32[]
+│  │  │  ├─ m : i32[][]
 │  │  │  └─ int 1
 │  │  └─ int 2
 │  └─ int 9
 ├─ output : void
 │  ├─ chars "m[0][0]="
-│  ├─ index : int
-│  │  ├─ index : int[]
-│  │  │  ├─ m : int[][]
+│  ├─ index : i32
+│  │  ├─ index : i32[]
+│  │  │  ├─ m : i32[][]
 │  │  │  └─ int 0
 │  │  └─ int 0
 │  ├─ chars " m[1][2]="
-│  ├─ index : int
-│  │  ├─ index : int[]
-│  │  │  ├─ m : int[][]
+│  ├─ index : i32
+│  │  ├─ index : i32[]
+│  │  │  ├─ m : i32[][]
 │  │  │  └─ int 1
 │  │  └─ int 2
 │  ├─ chars " m[0][1]="
-│  ├─ index : int
-│  │  ├─ index : int[]
-│  │  │  ├─ m : int[][]
+│  ├─ index : i32
+│  │  ├─ index : i32[]
+│  │  │  ├─ m : i32[][]
 │  │  │  └─ int 0
 │  │  └─ int 1
 │  └─ chars "\n"
 └─ clean : void
-   └─ m : int[][]
+   └─ m : i32[][]
 ```
 
 ```out
@@ -1777,55 +1777,55 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ = : array
-│  ├─ a : int[]
-│  └─ array : int[]
+│  ├─ a : i32[]
+│  └─ array : i32[]
 │     ├─ int 10
 │     ├─ int 20
 │     ├─ int 30
 │     ├─ int 40
 │     └─ int 50
 ├─ = : array
-│  ├─ mid : int[]
-│  └─ index : int[]
-│     ├─ a : int[]
-│     └─ range : int
+│  ├─ mid : i32[]
+│  └─ index : i32[]
+│     ├─ a : i32[]
+│     └─ range : i32
 │        ├─ int 1
 │        └─ int 4
 ├─ output : void
 │  ├─ chars "mid: "
-│  ├─ index : int
-│  │  ├─ mid : int[]
+│  ├─ index : i32
+│  │  ├─ mid : i32[]
 │  │  └─ int 0
 │  ├─ chars " "
-│  ├─ index : int
-│  │  ├─ mid : int[]
+│  ├─ index : i32
+│  │  ├─ mid : i32[]
 │  │  └─ int 1
 │  ├─ chars " "
-│  ├─ index : int
-│  │  ├─ mid : int[]
+│  ├─ index : i32
+│  │  ├─ mid : i32[]
 │  │  └─ int 2
 │  └─ chars "\n"
-├─ = : int
-│  ├─ index : int
-│  │  ├─ mid : int[]
+├─ = : i32
+│  ├─ index : i32
+│  │  ├─ mid : i32[]
 │  │  └─ int 0
 │  └─ int 99
 └─ output : void
    ├─ chars "a[1]="
-   ├─ index : int
-   │  ├─ a : int[]
+   ├─ index : i32
+   │  ├─ a : i32[]
    │  └─ int 1
    └─ chars "\n"
 ```
@@ -1913,33 +1913,33 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ = : array
-│  ├─ a : int[]
-│  └─ array : int[]
+│  ├─ a : i32[]
+│  └─ array : i32[]
 │     ├─ int 10
 │     ├─ int 20
 │     └─ int 30
 ├─ = : array
-│  ├─ mid : int[]
-│  └─ index : int[]
-│     ├─ a : int[]
-│     └─ range : int
+│  ├─ mid : i32[]
+│  └─ index : i32[]
+│     ├─ a : i32[]
+│     └─ range : i32
 │        ├─ int 1
 │        └─ int 9
 └─ output : void
-   └─ index : int
-      ├─ mid : int[]
+   └─ index : i32
+      ├─ mid : i32[]
       └─ int 0
 ```
 
@@ -2022,54 +2022,54 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ = : array
-│  ├─ nums : int[]
-│  └─ array : int[]
+│  ├─ nums : i32[]
+│  └─ array : i32[]
 │     ├─ int 10
 │     ├─ int 20
 │     ├─ int 30
 │     └─ int 40
 ├─ output : void
 │  ├─ chars "len = "
-│  ├─ .len : int
-│  │  └─ nums : int[]
+│  ├─ .len : i32
+│  │  └─ nums : i32[]
 │  └─ chars "\n"
 ├─ = : array
-│  ├─ mid : int[]
-│  └─ index : int[]
-│     ├─ nums : int[]
-│     └─ range : int
+│  ├─ mid : i32[]
+│  └─ index : i32[]
+│     ├─ nums : i32[]
+│     └─ range : i32
 │        ├─ int 1
 │        └─ int 3
 ├─ output : void
 │  ├─ chars "slice len = "
-│  ├─ .len : int
-│  │  └─ mid : int[]
+│  ├─ .len : i32
+│  │  └─ mid : i32[]
 │  └─ chars "\n"
 ├─ = : array
-│  ├─ grid : int[][]
-│  └─ array : int[][]
+│  ├─ grid : i32[][]
+│  └─ array : i32[][]
 │     ├─ int 3
 │     └─ int 4
 └─ output : void
    ├─ chars "rows = "
-   ├─ .len : int
-   │  └─ grid : int[][]
+   ├─ .len : i32
+   │  └─ grid : i32[][]
    ├─ chars " cols = "
-   ├─ .len : int
-   │  └─ index : int[]
-   │     ├─ grid : int[][]
+   ├─ .len : i32
+   │  └─ index : i32[]
+   │     ├─ grid : i32[][]
    │     └─ int 0
    └─ chars "\n"
 ```
@@ -2190,7 +2190,7 @@ main():
 ```
 
 ```err
-error: Cannot index 'int', it is not an array
+error: Cannot index 'i32', it is not an array
   018.ura:3:13
   |
 3 |     output(a[0])
@@ -2215,7 +2215,7 @@ main():
 ```
 
 ```err
-error: Array index must be an integer, got float
+error: Array index must be an integer, got f32
   019.ura:3:13
   |
 3 |     output(a[1.5])
@@ -2288,7 +2288,7 @@ main():
 ```
 
 ```err
-error: 'clean' frees a heap array, not int
+error: 'clean' frees a heap array, not i32
   022.ura:3:5
   |
 3 |     clean x
@@ -2411,7 +2411,7 @@ main():
 ```
 
 ```err
-error: '.len' is only valid on an array, not int
+error: '.len' is only valid on an array, not i32
   027.ura:3:13
   |
 3 |     output(x.len)

@@ -42,14 +42,14 @@ bool is_data_type(Token *token) {
 
 TypeRef to_llvm_type(Type type) {
    switch (type) {
-   case INT:   return ura.i32;
-   case LONG:  return ura.i64;
-   case SHORT: return ura.i16;
+   case I32:   return ura.i32;
+   case I64:  return ura.i64;
+   case I16: return ura.i16;
    case CHAR:  return ura.i8;
    case BOOL:  return ura.i1;
    case CHARS: return LLVMPointerType(ura.i8, 0);
-   case FLOAT: return ura.f32;
-   case DOUBLE: return ura.f64;
+   case F32: return ura.f32;
+   case F64: return ura.f64;
    case VOID:  return ura.vd;
    default: TODO(1, "to_llvm_type: unhandled type %t", type); return NULL;
    }
@@ -273,7 +273,7 @@ void type_check_dot(Node *node) {
       if (strcmp(token->name, "len") != 0)
          parse_error(token, ERR_UNKNOWN_MEMBER, token->name);
       else
-         token->ret_type = INT;
+         token->ret_type = I32;
       return;
    }
    if (left->ret_type != STRUCT_CALL) {
@@ -326,7 +326,7 @@ bool find_operator(Node *node) {
 
 bool is_float_literal(Node *node) {
    if (!node) return false;
-   if (node->token->type == FLOAT) return true;
+   if (node->token->type == F32) return true;
    if (!includes(node->token->type, MATH_TYPE, 0)) return false;
    if (!is_float(node->token->ret_type)) return false;
    return is_float_literal(node->left) && is_float_literal(node->right);
@@ -467,7 +467,7 @@ void type_check_for(Node *node) {
       Token *bt = by->token;
       if (!includes(bt->ret_type, NUMERIC_TYPES, 0))
          parse_error(bt, ERR_BY_NOT_INT, type_name(bt->ret_type));
-      else if (bt->type == INT && bt->Int.value <= 0)
+      else if (bt->type == I32 && bt->Int.value <= 0)
          parse_error(bt, ERR_BY_NOT_POSITIVE);
    }
    for (int i = 0; i < node->children_count; i++)
@@ -480,11 +480,11 @@ void type_check(Node *node) {
    switch (token->type) {
       case FDEC:   type_check_fdec(node); break;
       case STRUCT_DEF: type_check_struct(node); break;
-      case INT:     token->ret_type = INT; break;
+      case I32:     token->ret_type = I32; break;
       case BOOL:    token->ret_type = BOOL; break;
       case CHARS:   token->ret_type = CHARS; break;
       case CHAR:    token->ret_type = CHAR; break;
-      case FLOAT:   token->ret_type = FLOAT; break;
+      case F32:   token->ret_type = F32; break;
       case ID:      break;
       case FN_TYPE: break;
       case RETURN:  type_check_return(node); break;
@@ -533,13 +533,13 @@ void type_check(Node *node) {
          bool right_num = includes(node->right->token->ret_type, NUMERIC_TYPES, 0);
          if (!left_num || !right_num)
          parse_error(node->token, "Range bounds must be integers");
-         node->token->ret_type = INT;
+         node->token->ret_type = I32;
          break;
       }
       case ARRAY:     type_check_array_ctor(node); break;
       case TYPEOF: case SIZEOF:
          type_check(node->left);
-         node->token->ret_type = token->type == TYPEOF ? CHARS : INT;
+         node->token->ret_type = token->type == TYPEOF ? CHARS : I32;
          break;
       case CLEAN: {
          type_check(node->left);

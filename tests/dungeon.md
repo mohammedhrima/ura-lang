@@ -31,52 +31,52 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn clamp(val : int, lo : int, hi : int) : int
+fn clamp(val : i32, lo : i32, hi : i32) : i32
 ├─ if
 │  ├─ condition < : bool
-│  │  ├─ val : int
-│  │  └─ lo : int
+│  │  ├─ val : i32
+│  │  └─ lo : i32
 │  └─ return
-│     └─ lo : int
+│     └─ lo : i32
 ├─ if
 │  ├─ condition > : bool
-│  │  ├─ val : int
-│  │  └─ hi : int
+│  │  ├─ val : i32
+│  │  └─ hi : i32
 │  └─ return
-│     └─ hi : int
+│     └─ hi : i32
 └─ return
-   └─ val : int
+   └─ val : i32
 
-fn damage(atk : int, def : int) : int
+fn damage(atk : i32, def : i32) : i32
 └─ return
-   └─ call clamp : int
-      ├─ - : int
-      │  ├─ atk : int
-      │  └─ def : int
+   └─ call clamp : i32
+      ├─ - : i32
+      │  ├─ atk : i32
+      │  └─ def : i32
       ├─ int 0
       └─ int 999
 
-fn is_dead(hp : int) : bool
+fn is_dead(hp : i32) : bool
 └─ return
    └─ <= : bool
-      ├─ hp : int
+      ├─ hp : i32
       └─ int 0
 
-fn square(n : int) : int
+fn square(n : i32) : i32
 └─ return
-   └─ * : int
-      ├─ n : int
-      └─ n : int
+   └─ * : i32
+      ├─ n : i32
+      └─ n : i32
 
 fn is_digit(c : char) : bool
 └─ return
@@ -88,24 +88,24 @@ fn is_digit(c : char) : bool
          ├─ c : char
          └─ char '9'
 
-fn main() : int
-├─ = : int
-│  ├─ d : int
-│  └─ call damage : int
+fn main() : i32
+├─ = : i32
+│  ├─ d : i32
+│  └─ call damage : i32
 │     ├─ int 25
 │     └─ int 8
 ├─ output : void
 │  ├─ chars "Orc takes "
-│  ├─ d : int
+│  ├─ d : i32
 │  ├─ chars " damage — dead: "
 │  ├─ call is_dead : bool
-│  │  └─ - : int
-│  │     ├─ d : int
+│  │  └─ - : i32
+│  │     ├─ d : i32
 │  │     └─ int 60
 │  └─ chars "\n"
 └─ output : void
    ├─ chars "4 squared: "
-   ├─ call square : int
+   ├─ call square : i32
    │  └─ int 4
    └─ chars "\n"
 ```
@@ -237,29 +237,29 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ hp : int
+fn main() : i32
+├─ = : i32
+│  ├─ hp : i32
 │  └─ int 80
-├─ = : int
-│  ├─ r : int
-│  └─ ref : int
-│     └─ hp : int
-├─ = : int
-│  ├─ r : int
+├─ = : i32
+│  ├─ r : i32
+│  └─ ref : i32
+│     └─ hp : i32
+├─ = : i32
+│  ├─ r : i32
 │  └─ int 100
 └─ output : void
-   ├─ hp : int
+   ├─ hp : i32
    └─ chars "\n"
 ```
 

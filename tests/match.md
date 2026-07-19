@@ -28,22 +28,22 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ a : int
+fn main() : i32
+├─ = : i32
+│  ├─ a : i32
 │  └─ int 1
 └─ match
-   ├─ subject a : int
+   ├─ subject a : i32
    ├─ case
    │  ├─ value int 1
    │  └─ output : void
@@ -104,22 +104,22 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ a : int
+fn main() : i32
+├─ = : i32
+│  ├─ a : i32
 │  └─ int 3
 └─ match
-   ├─ subject a : int
+   ├─ subject a : i32
    ├─ case
    │  ├─ value int 1
    │  ├─ value int 2
@@ -186,22 +186,22 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ a : int
+fn main() : i32
+├─ = : i32
+│  ├─ a : i32
 │  └─ int 99
 └─ match
-   ├─ subject a : int
+   ├─ subject a : i32
    ├─ case
    │  ├─ value int 1
    │  └─ output : void
@@ -262,22 +262,22 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ a : int
+fn main() : i32
+├─ = : i32
+│  ├─ a : i32
 │  └─ int 1
 └─ match
-   ├─ subject a : int
+   ├─ subject a : i32
    └─ case
       ├─ value int 1
       ├─ output : void
@@ -333,36 +333,36 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ i : int
+fn main() : i32
+├─ = : i32
+│  ├─ i : i32
 │  └─ int 0
 └─ while
    ├─ condition < : bool
-   │  ├─ i : int
+   │  ├─ i : i32
    │  └─ int 3
-   ├─ = : int
-   │  ├─ i : int
-   │  └─ + : int
-   │     ├─ i : int
+   ├─ = : i32
+   │  ├─ i : i32
+   │  └─ + : i32
+   │     ├─ i : i32
    │     └─ int 1
    ├─ match
-   │  ├─ subject i : int
+   │  ├─ subject i : i32
    │  └─ case
    │     ├─ value int 2
    │     └─ break
    └─ output : void
-      ├─ i : int
+      ├─ i : i32
       └─ chars "\n"
 ```
 
@@ -429,36 +429,36 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ i : int
+fn main() : i32
+├─ = : i32
+│  ├─ i : i32
 │  └─ int 0
 └─ while
    ├─ condition < : bool
-   │  ├─ i : int
+   │  ├─ i : i32
    │  └─ int 3
-   ├─ = : int
-   │  ├─ i : int
-   │  └─ + : int
-   │     ├─ i : int
+   ├─ = : i32
+   │  ├─ i : i32
+   │  └─ + : i32
+   │     ├─ i : i32
    │     └─ int 1
    ├─ match
-   │  ├─ subject i : int
+   │  ├─ subject i : i32
    │  └─ case
    │     ├─ value int 2
    │     └─ continue
    └─ output : void
-      ├─ i : int
+      ├─ i : i32
       └─ chars "\n"
 ```
 
@@ -555,7 +555,7 @@ main():
 ```
 
 ```err
-error: This case value is chars but the subject is int; they must be the same type
+error: This case value is chars but the subject is i32; they must be the same type
   008.ura:5:15
   |
 5 |         case "x":

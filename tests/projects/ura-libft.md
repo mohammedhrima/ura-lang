@@ -22,15 +22,15 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 fn isalpha(c : char) : bool
 └─ return
@@ -60,7 +60,7 @@ fn isalnum(c : char) : bool
       └─ call isdigit : bool
          └─ c : char
 
-fn main() : int
+fn main() : i32
 └─ if
    ├─ condition call isalnum : bool
    │  └─ char '1'
@@ -155,15 +155,15 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 fn isalpha(c : char) : bool
 └─ return
@@ -175,7 +175,7 @@ fn isalpha(c : char) : bool
          ├─ c : char
          └─ char 'z'
 
-fn main() : int
+fn main() : i32
 └─ if
    ├─ condition call isalpha : bool
    │  └─ char '1'
@@ -246,15 +246,15 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 fn isdigit(c : char) : bool
 └─ return
@@ -266,7 +266,7 @@ fn isdigit(c : char) : bool
          ├─ c : char
          └─ char '9'
 
-fn main() : int
+fn main() : i32
 └─ if
    ├─ condition call isdigit : bool
    │  └─ char '1'
