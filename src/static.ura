@@ -1,0 +1,36 @@
+// static.ura - `pub fn` has no self, and is called with Type::method()
+
+struct Room:
+    name  chars
+    floor int
+
+    // no self: this IS the constructor convention
+    pub fn create(f int) Room:
+        r Room
+        r.name  = "made"
+        r.floor = f
+        return r
+
+    // a normal method, for contrast: gets self
+    fn depth() int:
+        return self.floor
+
+struct Tower:
+    height int
+
+    pub fn create(h int) Tower:
+        t Tower
+        t.height = h
+        return t
+
+main():
+    r Room = Room::create(4)
+    output("room  ", r.name, " floor ", r.floor, "\n")
+    output("depth ", r.depth(), "\n")
+
+    // two structs may both have create()
+    t Tower = Tower::create(9)
+    output("tower ", t.height, "\n")
+
+    // a static call used directly as an argument
+    output("inline ", Room::create(7).floor, "\n")

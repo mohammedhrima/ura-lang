@@ -124,10 +124,37 @@ void type_check_method_call(Node *node) {
    if (token->ret_type == STRUCT_CALL) token->Struct = fn->token->Struct;
 }
 
+void type_check_static_call(Node *node) {
+   Token *token = node->token;
+   Node  *def   = find_struct(token->Struct.name);
+   if (!def) {
+      parse_error(token, ERR_UNKNOWN_TYPE, token->Struct.name);
+      return;
+   }
+   char *qualified = format("%s.%s", def->token->name, token->name);
+   Node *fn        = find_method(def, qualified);
+   free(qualified);
+   if (!fn) {
+      parse_error(token, ERR_UNKNOWN_METHOD, def->token->name, token->name);
+      return;
+   }
+   if (!fn->token->is_pub) {
+      parse_error(token, ERR_METHOD_NEEDS_RECEIVER, def->token->name, token->name);
+      return;
+   }
+   token->Fcall.ptr = fn;
+   type_check_fcall(node);
+   if (token->ret_type == STRUCT_CALL) token->Struct = fn->token->Struct;
+}
+
 void type_check_fcall(Node *node) {
    Token *token = node->token;
    if (token->is_method_call && !token->Fcall.ptr) {
       type_check_method_call(node);
+      return;
+   }
+   if (token->is_static_call && !token->Fcall.ptr) {
+      type_check_static_call(node);
       return;
    }
    bool indirect = token->Fcall.var != NULL;
@@ -174,7 +201,7 @@ bool struct_contains(Node *def, Node *target, int depth) {
    if (!def || depth > 64) return false;
    for (int i = 0; i < def->children_count; i++) {
       Token *field = def->children[i]->token;
-      if (field->is_ref) continue;
+      if (!is_field(field) || field->is_ref) continue;
       if (field->ret_type != STRUCT_CALL) continue;
       Node *sub = field->Struct.ptr;
       if (!sub) continue;

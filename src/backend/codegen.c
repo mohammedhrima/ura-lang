@@ -351,7 +351,7 @@ void emit_signature(Node *fn) {
 Value field_ptr(Node *node) {
    Token  *token  = node->token;
    Token  *left   = node->left->token;
-   Value   base   = address_of(node->left);
+   Value   base   = struct_arg_ptr(node->left);
    TypeRef sty    = struct_type_of(left->Struct.ptr);
    if (left->is_ref) base = llvm_load(pointer_to(sty), base, "ref");
    Value   idx[2] = { const_i32(0), const_i32(token->Struct.index) };

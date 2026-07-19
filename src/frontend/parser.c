@@ -227,6 +227,12 @@ Node *ref_node(Node *node) {
 	return node;
 }
 
+Node *postfix(Node *node) {
+	if (peek(0)->type == LBRA || peek(0)->type == DOT)
+		return access_node(node);
+	return node;
+}
+
 Node *id_node(Node *node) {
 	Token *token = node->token;
 	if (peek(0)->type == LPAR) {
@@ -234,7 +240,19 @@ Node *id_node(Node *node) {
 			return fdec_node(node);
 		if (strcmp(token->name, "output") == 0)
 			return output_node(node);
-		return fcall_node(node);
+		return postfix(fcall_node(node));
+	}
+	if (peek(0)->type == DOUBLE_DOTS) {
+		Token *sep    = next();
+		Token *member = find(ID, 0);
+		if (!member) {
+			parse_error(sep, "Expected a method name after '::'");
+			return syntax_error();
+		}
+		token->Struct.name    = strdup(token->name);
+		token->is_static_call = true;
+		set_name(token, member->name);
+		return postfix(fcall_node(node));
 	}
 	if (peek(0)->type == LBRA || peek(0)->type == DOT)
 		return access_node(node);
@@ -251,6 +269,33 @@ Node *id_node(Node *node) {
 	return node;
 }
 
+void inject_self(Node *fn, Node *owner) {
+	Token *self = new_token(ID, 0);
+	set_name(self, "self");
+	self->ret_type    = STRUCT_CALL;
+	self->Struct.name = owner->token->name;
+	self->Struct.ptr  = owner;
+	self->is_dec      = true;
+	self->is_ref      = true;
+	self->is_param    = true;
+	resize_array(fn->token->Fn.params, Token *);
+	fn->token->Fn.params[fn->token->Fn.params_count++] = self;
+}
+
+Node *clean_node(Node *node, Node *owner) {
+	node->token->type     = FDEC;
+	node->token->ret_type = VOID;
+	set_name(node->token, "clean");
+	enter_scope(node);
+	inject_self(node, owner);
+	if (!find(DOTS, 0))
+		parse_error(node->token, ERR_FN_EXPECTED_COLON, node->token->name);
+	parse_block(node, node->token->indent);
+	exit_scope();
+	owner->token->has_clean = true;
+	return node;
+}
+
 Node *fdec_node(Node *node) {
 	node->token->type = FDEC;
 	Node *owner  = ura.scope;
@@ -258,18 +303,7 @@ Node *fdec_node(Node *node) {
 	enter_scope(node);
 	if (!find(LPAR, 0))
 		parse_error(node->token, ERR_FN_EXPECTED_LPAREN, node->token->name);
-	if (method && !node->token->is_pub) {
-		Token *self = new_token(ID, 0);
-		set_name(self, "self");
-		self->ret_type    = STRUCT_CALL;
-		self->Struct.name = owner->token->name;
-		self->Struct.ptr  = owner;
-		self->is_dec      = true;
-		self->is_ref      = true;
-		self->is_param    = true;
-		resize_array(node->token->Fn.params, Token *);
-		node->token->Fn.params[node->token->Fn.params_count++] = self;
-	}
+	if (method && !node->token->is_pub) inject_self(node, owner);
 	while (!ura.found_error && peek(0)->type != RPAR) {
 		if (find(VARIADIC, 0)) {
 			node->token->is_variadic = true;
@@ -446,13 +480,50 @@ Node *prime_node() {
          parse_error(token, "Expected ')' after expression");
       return node;
    }
-   case PROTO:
-      if (peek(0)->type != FDEC) {
-         parse_error(token, "Expected 'fn' after 'proto'");
+   case PROTO: {
+		if (peek(0)->type != FDEC) {
+			parse_error(token, "Expected 'fn' after 'proto'");
          return syntax_error();
       }
       peek(0)->is_proto = true;
       return prime_node();
+	}
+   case OPERATOR: {
+      Node *owner = ura.scope;
+      if (!owner || owner->token->type != STRUCT_DEF) {
+         parse_error(token, ERR_OPERATOR_OUTSIDE_STRUCT);
+         return syntax_error();
+      }
+      Token *op = find(ASSIGN, ADD, SUB, MUL, DIV, MOD, EQUAL, NOT_EQUAL,
+                       LESS, GREAT, LESS_EQUAL, GREAT_EQUAL, ADD_ASSIGN,
+                       SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN, CLEAN, 0);
+      if (!op) {
+         parse_error(token, ERR_OPERATOR_EXPECTED);
+         return syntax_error();
+      }
+      Node *node = new_node(token);
+      if (op->type == CLEAN) return clean_node(node, owner);
+      set_name(node->token, spell(op->type));
+      fdec_node(node);
+      Token *fn = node->token;
+      if (fn->Fn.params_count > 1) {
+         Token *rhs  = fn->Fn.params[1];
+         char  *sub  = rhs->ret_type == STRUCT_CALL ? rhs->Struct.name
+                                                    : type_name(rhs->ret_type);
+         char  *full = format("%s.%s", fn->name, sub);
+         set_name(fn, full);
+         free(full);
+      }
+      return node;
+   }
+   case PUB: {
+		if (peek(0)->type != FDEC) {
+			parse_error(token, "Expected 'fn' after 'pub'");
+         return syntax_error();
+      }
+      peek(0)->is_pub = true;
+      return prime_node();
+	}
    case FDEC: {
       Node *node = new_node(token);
       Token *fname = find(ID, 0);
