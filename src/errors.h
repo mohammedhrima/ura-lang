@@ -142,6 +142,17 @@
 	"Struct %s has no method '%s';" \
 	" check the spelling or declare it in the struct"
 
+#define ERR_OPERATOR_OUTSIDE_STRUCT \
+	"'operator' may only be declared inside a struct"
+
+#define ERR_OPERATOR_EXPECTED \
+	"Expected an operator after 'operator'" \
+	" (one of + - * / %% == != < > <= >= = += -= *= /= %%= clean)"
+
+#define ERR_METHOD_NEEDS_RECEIVER \
+	"'%s::%s' needs a receiver;" \
+	" call it on a value, or declare it 'pub fn' to make it static"
+
 #define ERR_METHOD_ON_NON_STRUCT \
 	"Cannot call '.%s()' on %s; only a struct has methods"
 

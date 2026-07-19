@@ -36,6 +36,7 @@ Value default_value(Token *token);
 Node *find_method(Node *def, char *name);
 void analyze_method_call(Node *node);
 void type_check_method_call(Node *node);
+void type_check_static_call(Node *node);
 void type_check_fcall(Node *node);
 void type_check_fdec(Node *node);
 bool struct_contains(Node *def, Node *target, int depth);

@@ -12,6 +12,10 @@
 - 008 — calling a method the struct does not have
 - 009 — calling a method on a non-struct
 - 010 — wrong argument count to a method
+- 011 — a `pub fn` is static: no self, called with `::`
+- 012 — calling a non-pub method with `::`
+- 013 — `::` on a type that does not exist
+- 014 — chaining a field access onto a call
 
 ## 001 — a method reads self
 
@@ -879,4 +883,290 @@ error: Wrong number of arguments to 'climb'
 ```
 
 ```ll
+```
+
+## 011 — a `pub fn` is static: no self, called with `::`
+
+```ura
+// methods/011.ura - a pub fn is static, called with ::
+
+struct Room:
+    floor int
+
+    pub fn make(f int) Room:
+        r Room
+        r.floor = f
+        return r
+
+main():
+    r Room = Room::make(7)
+    output("floor = ", r.floor, "\n")
+```
+
+```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
+struct Room
+├─ floor : int
+└─ fn Room.make(f : int) : STRUCT_CALL
+   ├─ r : STRUCT_CALL
+   ├─ = : int
+   │  ├─ .floor : int
+   │  │  └─ r : STRUCT_CALL
+   │  └─ f : int
+   └─ return
+      └─ r : STRUCT_CALL
+
+fn main() : int
+├─ = : STRUCT_CALL
+│  ├─ r : STRUCT_CALL
+│  └─ call make : STRUCT_CALL
+│     └─ int 7
+└─ output : void
+   ├─ chars "floor = "
+   ├─ .floor : int
+   │  └─ r : STRUCT_CALL
+   └─ chars "\n"
+```
+
+```out
+floor = 7
+```
+
+```err
+```
+
+```ll
+
+%Room = type { i32 }
+
+@str = private unnamed_addr constant [9 x i8] c"floor = \00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+
+define %Room @Room.make(i32 %0) {
+entry:
+  %f = alloca i32, align 4
+  store i32 %0, i32* %f, align 4
+  %r = alloca %Room, align 8
+  store %Room zeroinitializer, %Room* %r, align 4
+  %floor = getelementptr %Room, %Room* %r, i32 0, i32 0
+  %f1 = load i32, i32* %f, align 4
+  store i32 %f1, i32* %floor, align 4
+  %r2 = load %Room, %Room* %r, align 4
+  ret %Room %r2
+}
+
+define i32 @main() {
+entry:
+  %r = alloca %Room, align 8
+  %call = call %Room @Room.make(i32 7)
+  store %Room %call, %Room* %r, align 4
+  %floor = getelementptr %Room, %Room* %r, i32 0, i32 0
+  %floor1 = load i32, i32* %floor, align 4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str, i32 0, i32 0), i32 %floor1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 012 — calling a non-pub method with `::`
+
+```ura
+// methods/012.ura - calling a non-pub method with ::
+
+struct Room:
+    floor int
+
+    fn depth() int:
+        return self.floor
+
+main():
+    output(Room::depth(), "\n")
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: 'Room::depth' needs a receiver; call it on a value, or declare it 'pub fn' to make it static
+   012.ura:10:12
+   |
+10 |     output(Room::depth(), "\n")
+   |            ^^^^
+```
+
+```ll
+```
+
+## 013 — `::` on a type that does not exist
+
+```ura
+// methods/013.ura - :: on a type that does not exist
+
+main():
+    output(Nope::make(), "\n")
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Unknown type 'Nope'
+  013.ura:4:12
+  |
+4 |     output(Nope::make(), "\n")
+  |            ^^^^
+```
+
+```ll
+```
+
+## 014 — chaining a field access onto a call
+
+```ura
+// methods/014.ura - chaining a field access onto a call
+
+struct Room:
+    floor int
+
+    pub fn create(f int) Room:
+        r Room
+        r.floor = f
+        return r
+
+fn make(f int) Room:
+    r Room
+    r.floor = f
+    return r
+
+main():
+    output("static ", Room::create(7).floor, "\n")
+    output("plain  ", make(3).floor, "\n")
+```
+
+```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
+struct Room
+├─ floor : int
+└─ fn Room.create(f : int) : STRUCT_CALL
+   ├─ r : STRUCT_CALL
+   ├─ = : int
+   │  ├─ .floor : int
+   │  │  └─ r : STRUCT_CALL
+   │  └─ f : int
+   └─ return
+      └─ r : STRUCT_CALL
+
+fn make(f : int) : STRUCT_CALL
+├─ r : STRUCT_CALL
+├─ = : int
+│  ├─ .floor : int
+│  │  └─ r : STRUCT_CALL
+│  └─ f : int
+└─ return
+   └─ r : STRUCT_CALL
+
+fn main() : int
+├─ output : void
+│  ├─ chars "static "
+│  ├─ .floor : int
+│  │  └─ call create : STRUCT_CALL
+│  │     └─ int 7
+│  └─ chars "\n"
+└─ output : void
+   ├─ chars "plain  "
+   ├─ .floor : int
+   │  └─ call make : STRUCT_CALL
+   │     └─ int 3
+   └─ chars "\n"
+```
+
+```out
+static 7
+plain  3
+```
+
+```err
+```
+
+```ll
+
+%Room = type { i32 }
+
+@str = private unnamed_addr constant [8 x i8] c"static \00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@str.2 = private unnamed_addr constant [8 x i8] c"plain  \00", align 1
+@str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.4 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+
+define %Room @Room.create(i32 %0) {
+entry:
+  %f = alloca i32, align 4
+  store i32 %0, i32* %f, align 4
+  %r = alloca %Room, align 8
+  store %Room zeroinitializer, %Room* %r, align 4
+  %floor = getelementptr %Room, %Room* %r, i32 0, i32 0
+  %f1 = load i32, i32* %f, align 4
+  store i32 %f1, i32* %floor, align 4
+  %r2 = load %Room, %Room* %r, align 4
+  ret %Room %r2
+}
+
+define %Room @make(i32 %0) {
+entry:
+  %f = alloca i32, align 4
+  store i32 %0, i32* %f, align 4
+  %r = alloca %Room, align 8
+  store %Room zeroinitializer, %Room* %r, align 4
+  %floor = getelementptr %Room, %Room* %r, i32 0, i32 0
+  %f1 = load i32, i32* %f, align 4
+  store i32 %f1, i32* %floor, align 4
+  %r2 = load %Room, %Room* %r, align 4
+  ret %Room %r2
+}
+
+define i32 @main() {
+entry:
+  %call = call %Room @Room.create(i32 7)
+  %out.tmp = alloca %Room, align 8
+  store %Room %call, %Room* %out.tmp, align 4
+  %floor = getelementptr %Room, %Room* %out.tmp, i32 0, i32 0
+  %floor1 = load i32, i32* %floor, align 4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str, i32 0, i32 0), i32 %floor1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  %call2 = call %Room @make(i32 3)
+  %out.tmp3 = alloca %Room, align 8
+  store %Room %call2, %Room* %out.tmp3, align 4
+  %floor4 = getelementptr %Room, %Room* %out.tmp3, i32 0, i32 0
+  %floor5 = load i32, i32* %floor4, align 4
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.4, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.2, i32 0, i32 0), i32 %floor5, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
 ```

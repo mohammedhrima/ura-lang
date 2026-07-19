@@ -285,9 +285,14 @@ void analyze_method_call(Node *node) {
 
 void analyze_fcall(Node *node) {
    Token *token = node->token;
-   if (token->is_method_call) { 
-      analyze_method_call(node); 
-      return; 
+   if (token->is_method_call) {
+      analyze_method_call(node);
+      return;
+   }
+   if (token->is_static_call) {
+      for (int i = 0; i < node->children_count; i++)
+         analyze(node->children[i]);
+      return;
    }
    Token *var = find_variable(token->name, NULL);
    if (var && var->ret_type == FN_TYPE) {
