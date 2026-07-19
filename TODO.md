@@ -34,17 +34,17 @@ Rewrite ura-lang feature by feature, full pipeline each. Nothing gets skipped, n
 - [x] if / elif / else (3)
 - [x] while (2)
 - [x] break / continue (2)
-- [ ] for (to/step) (3) — deferred until arrays land (M5)
-- [ ] block scoping + shadowing golden (1) — scoping works (per-block scopes); shadowing golden still missing
-- [ ] NEW range op `0..10` (`..` not lexed yet) + range-for (3)
+- [x] for — over a range and over an array (`for i in 0..5`, descending `5..0`, `for x in arr`, `for ref x in arr`)
+- [ ] block scoping + shadowing golden (1) — scoping works; struct shadowing is covered (structs 011), variable shadowing golden still missing
+- [x] NEW range op `0..10` + range-for
 - [x] match / case / default — scalar switch, multi-value cases, `break` exits match (3)
 
 ## M3 — strings & I/O (the real hello-world; do EARLY)
-- [ ] chars (string) literals end-to-end (global constants) (2)
-- [ ] minimal `proto` (extern fn + variadic) → printf/puts/malloc callable (3)
-- [ ] printf C-interop test, then `output()` builtin (add keyword) (4)
-- [ ] chars operations basics (3)
-- [ ] hello-world golden (closes Foundation) (1)
+- [x] chars (string) literals end-to-end (global constants)
+- [x] minimal `proto` (extern fn + variadic) → printf/calloc/free callable; emits a real LLVM declare, linked by clang
+- [x] printf C-interop test, then `output()` builtin
+- [ ] chars operations basics (3) — only via `proto` (strlen etc.); no native ops, and `chars` is not indexable
+- [x] hello-world golden (closes Foundation)
 
 ## M4 — globals, memory, type utilities
 - [ ] global variables (lift top-level fn-only restriction; LLVM globals) (3)
@@ -55,8 +55,9 @@ Rewrite ura-lang feature by feature, full pipeline each. Nothing gets skipped, n
 - [ ] design: local ref bindings + ref returns (dangling policy) (2)
 
 ## M5 — aggregates
-- [ ] arrays: 1D → multi-dim → literals → indexing + bounds design (8)
-- [ ] structs: decl + fields (3) → field access/GEP + nested (3) → forward refs/opaque (2) → methods `self` (3) → static `::` (2) → `operator =` copy (3) → `delete` destructor (3)
+- [x] arrays: 1D → multi-dim → literals → indexing + bounds (stack `T[n]`, heap `new T[n]`, slices, `clean`)
+- [x] structs: decl + fields → field access/GEP + nested → forward refs → any scope → arrays of structs (stack/heap/2D) → `ref?` fields (linked lists) → params/returns → value copy → `output(p)` field dump with cycle detection
+- [ ] structs, remaining: methods `self` (3) → static `::` (2) → `operator =` copy (3) → `delete` destructor (3)
 - [ ] enums (3)
 - [ ] tuples + destructuring (4)
 - [ ] NEW pattern matching `match` over enums (5)
@@ -68,10 +69,13 @@ Rewrite ura-lang feature by feature, full pipeline each. Nothing gets skipped, n
 - [ ] NEW string interpolation (3)
 
 ## M7 — modules & linking
-- [ ] wire lex_use into tokenize; `use "file"` multi-source (4)
-- [ ] `use "@/module"` (2)
-- [ ] mod namespaces (4)
-- [ ] wire lex_link; URA_LINK external linking (3)
+- [x] wire lex_use into tokenize; `use "file"` multi-source — resolves against the importing file, any depth
+- [x] `use "@/module"` — URA_LIB, else ura-lib beside the binary, else one level up; no system paths
+- [x] import guard: realpath identity, diamond loads once, cycle warns instead of recursing
+- [x] `common.ura` auto-loaded — printf/calloc/free/write/exit come from the stdlib, not from hardcoded get_or_declare
+- [ ] mod namespaces (4) — `mod` is a reserved word with no parser; `::` lexes but is unused. `.` is taken by field access and `a.b(...)` does not parse at all yet
+- [ ] wire lex_link; URA_LINK external linking (3) — `link "..."` parses and discards the path, so raylib cannot be linked
+- [ ] multi-file CLI: `ura a.ura b.ura` silently compiles only the last file (1)
 
 ## M8 — error handling & safety
 - [ ] assert / panic keywords on the existing trap machinery (guard_nonzero generalizes) (2)
@@ -90,8 +94,10 @@ Rewrite ura-lang feature by feature, full pipeline each. Nothing gets skipped, n
 - [ ] generics — LAST, everything monomorphizes (12)
 
 ## M10 — stdlib & tooling (continuous)
-- [ ] std core modules (io/memory/string/stdlib) compile again (8)
-- [ ] std extended modules (math/time/os/net/…) (8)
+- [x] std core: io / memory / stdlib / ctype compile again; `common.ura` added
+- [ ] std core: string (5) — needs `chars` indexing, `pub`, `operator`, `::`; commented down to its 37 protos
+- [ ] std extended modules (math/time/os/net/…) (8) — blocked, each commented with its reason:
+      `@if` (dirent, errno, fcntl, net, signals, stat) · globals (os, raylib, + 105 constants) · f64 (math, atof/strtod)
 - [ ] regression tests for old bug list (2)
 - [ ] docs refresh per milestone (3) · vscode-extension sync (2)
 - [ ] post-1.0: formatter (9) · LSP (13) · package manager on tasks.py/uv (12)
@@ -116,8 +122,16 @@ Rewrite ura-lang feature by feature, full pipeline each. Nothing gets skipped, n
     - lifetime is the user's business: no implicit deep copy, no implicit free.
       If the user defines a destructor we call it at end of scope, nothing more
     - global struct variables wait on M4 globals
-- use keyword:
-    - preprocessing macros
-    - structs ...
-- avoid calling hardcoded calloc, printf, free in code
-- handle globals
+- use keyword — **decided + done**:
+    - a lexer-level textual include, not a parser construct: the imported
+      file's tokens join the same stream
+    - bare names, no namespace at the call site (`printf`, not `io.printf`);
+      namespacing waits for `mod` and `::`
+    - a file is identified by its realpath, so it is imported once however it
+      is spelled; a repeat while still loading is a cycle and warns
+    - the stdlib is found next to the binary, never under /usr
+- avoid calling hardcoded calloc, printf, free in code — **done**: they are
+  protos in `ura-lib/common.ura`, auto-loaded, resolved via `find_function`;
+  `get_or_declare` is deleted
+- handle globals — still open, and now the single biggest blocker in ura-lib
+  (105 constants + `os`/`raylib` need it)

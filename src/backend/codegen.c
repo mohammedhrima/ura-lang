@@ -235,6 +235,17 @@ void set_debug_location(Token *token) {
    llvm_set_location(llvm_di_location(token->line, ura.debug_scope));
 }
 
+Value promote(Type type, Value v) {
+   switch (type) {
+      case FLOAT:
+         return LLVMBuildFPExt(ura.builder, v, LLVMDoubleTypeInContext(ura.context), "f2d");
+      case CHAR:
+      case SHORT: return LLVMBuildSExt(ura.builder, v, ura.i32, "i2i");
+      case BOOL:  return LLVMBuildZExt(ura.builder, v, ura.i32, "b2i");
+      default:    return v;
+   }
+}
+
 Value lib_fn(char *name, TypeRef *type) {
    Node *fn = find_function(name);
    if (!fn) {
@@ -612,8 +623,11 @@ void code_gen_fcall(Node *node) {
    if (n > 0) {
       args = allocate(n, sizeof(Value));
       for (int i = 0; i < n; i++) {
+         Token *arg = node->children[i]->token;
          code_gen(node->children[i]);
-         args[i] = node->children[i]->token->llvm.elem;
+         args[i] = arg->llvm.elem;
+         if (fn->is_variadic && i >= fn->Fn.params_count)
+            args[i] = promote(arg->ret_type, args[i]);
       }
    }
    if (indirect) {
