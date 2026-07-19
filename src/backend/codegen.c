@@ -99,11 +99,14 @@ Value llvm_int_cast(Value value, TypeRef type) {
 Value llvm_num_cast(Value value, Type src, Type dst) {
    if (src == dst) return value;
    TypeRef to = to_llvm_type(dst);
-   if (src == FLOAT)
+   if (is_float(src) && is_float(dst))
+      return dst == DOUBLE ? LLVMBuildFPExt(ura.builder, value, to, "cast")
+                           : LLVMBuildFPTrunc(ura.builder, value, to, "cast");
+   if (is_float(src))
       return LLVMBuildFPToSI(ura.builder, value, to, "cast");
-   if (dst == FLOAT && src == BOOL)
+   if (is_float(dst) && src == BOOL)
       return LLVMBuildUIToFP(ura.builder, value, to, "cast");
-   if (dst == FLOAT)
+   if (is_float(dst))
       return LLVMBuildSIToFP(ura.builder, value, to, "cast");
    if (src == BOOL)
       return LLVMBuildIntCast2(ura.builder, value, to, 0, "cast");
@@ -178,6 +181,7 @@ void init_module(char *name) {
    ura.i32 = LLVMInt32TypeInContext(ura.context);
    ura.i64 = LLVMInt64TypeInContext(ura.context);
    ura.f32 = LLVMFloatTypeInContext(ura.context);
+   ura.f64 = LLVMDoubleTypeInContext(ura.context);
    LLVMInitializeNativeTarget();
    LLVMInitializeNativeAsmPrinter();
    LLVMInitializeNativeAsmParser();
@@ -260,7 +264,7 @@ void set_debug_location(Token *token) {
 Value promote(Type type, Value v) {
    switch (type) {
       case FLOAT:
-         return LLVMBuildFPExt(ura.builder, v, LLVMDoubleTypeInContext(ura.context), "f2d");
+         return LLVMBuildFPExt(ura.builder, v, ura.f64, "f2d");
       case CHAR:
       case SHORT: return LLVMBuildSExt(ura.builder, v, ura.i32, "i2i");
       case BOOL:  return LLVMBuildZExt(ura.builder, v, ura.i32, "b2i");
@@ -903,7 +907,7 @@ void code_gen_match(Node *node) {
    node->token->llvm.end = end;                       // break target
    code_gen(node->left);                              
    Value subject = node->left->token->llvm.elem;
-   bool  fp      = node->left->token->ret_type == FLOAT;
+   bool  fp      = is_float(node->left->token->ret_type);
    enter_scope(node);
    for (int i = 0; i < node->children_count; i++) {
       Node *branch = node->children[i];
@@ -996,7 +1000,7 @@ void code_gen_binop(Node *node) {
    Value left  = node->left->token->llvm.elem;
    Value right = node->right->token->llvm.elem;
    Value res   = NULL;
-   bool  fp    = node->left->token->ret_type == FLOAT;
+   bool  fp    = is_float(node->left->token->ret_type);
    if (includes(token->type, DIV, MOD, 0)) guard_nonzero(token, right);
 #define ARITH(fop, iop, fname, iname) res = fp \
    ? llvm_binop(fop, left, right, fname) \
@@ -1044,7 +1048,7 @@ void code_gen_compound(Node *node) {
    TypeRef type    = to_llvm_type(node->left->token->ret_type);
    Value   current = llvm_load(type, dest, "cur");
    Value   res     = right;
-   bool    fp      = node->left->token->ret_type == FLOAT;
+   bool    fp      = is_float(node->left->token->ret_type);
    bool    divides = includes(op, DIV_ASSIGN, MOD_ASSIGN, 0);
    if (divides) guard_nonzero(node->token, right);
 #define ARITH(fop, iop, fname, iname) res = fp \
@@ -1088,7 +1092,8 @@ Value print_adapt(Type type, Value v, char **spec) {
          return LLVMBuildSExt(ura.builder, v, ura.i32, "c2i");
       case FLOAT:
          *spec = "%f";
-         return LLVMBuildFPExt(ura.builder, v, LLVMDoubleTypeInContext(ura.context), "f2d");
+         return LLVMBuildFPExt(ura.builder, v, ura.f64, "f2d");
+      case DOUBLE: *spec = "%f"; return v;
       case BOOL: {
          *spec    = "%s";
          Value ts = llvm_string("True", "true_str");

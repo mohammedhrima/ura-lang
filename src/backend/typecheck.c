@@ -28,8 +28,12 @@ void type_check_match(Node *node) {
 	}
 }
 
+bool is_float(Type type) {
+	return includes(type, FLOAT_TYPES, 0);
+}
+
 bool is_castable(Type type) {
-	return type == FLOAT || includes(type, NUMERIC_TYPES, 0);
+	return is_float(type) || includes(type, NUMERIC_TYPES, 0);
 }
 
 bool is_data_type(Token *token) {
@@ -45,6 +49,7 @@ TypeRef to_llvm_type(Type type) {
    case BOOL:  return ura.i1;
    case CHARS: return LLVMPointerType(ura.i8, 0);
    case FLOAT: return ura.f32;
+   case DOUBLE: return ura.f64;
    case VOID:  return ura.vd;
    default: TODO(1, "to_llvm_type: unhandled type %t", type); return NULL;
    }
@@ -102,7 +107,7 @@ TypeRef llvm_type_of(Token *token) {
 Value default_value(Token *token) {
    if (includes(token->ret_type, NUMERIC_TYPES, 0)) 
       return LLVMConstInt(llvm_type_of(token), 0, false);
-   if (token->ret_type == FLOAT)                    
+   if (is_float(token->ret_type))
       return LLVMConstReal(llvm_type_of(token), 0.0);
    return LLVMConstNull(llvm_type_of(token));
 }
@@ -180,6 +185,7 @@ void type_check_fcall(Node *node) {
    }
    for (int i = 0; i < wanted; i++) {
       Token *param    = fn->Fn.params[i + self];
+      adopt_float(node->children[i], param->ret_type);
       Type arg_type   = node->children[i]->token->ret_type;
       Type param_type = param->ret_type;
       if (arg_type && arg_type != param_type) {
@@ -200,9 +206,22 @@ void type_check_fcall(Node *node) {
    token->ret_type = indirect ? fn->Fn.ret->ret_type : fn->ret_type;
 }
 
+void type_check_return(Node *node) {
+   type_check(node->left);
+   if (!ura.fn_ret || !node->left) return;
+   Type wanted = ura.fn_ret->ret_type;
+   adopt_float(node->left, wanted);
+   Type got = node->left->token->ret_type;
+   if (got && got != wanted)
+      parse_error(node->token, ERR_RETURN_TYPE_MISMATCH, ura.fn_ret->name, type_name(wanted), type_name(got));
+}
+
 void type_check_fdec(Node *node) {
+   Token *prev = ura.fn_ret;
+   ura.fn_ret  = node->token;
    for (int i = 0; i < node->children_count; i++)
       type_check(node->children[i]);
+   ura.fn_ret = prev;
 }
 
 bool struct_contains(Node *def, Node *target, int depth) {
@@ -305,10 +324,27 @@ bool find_operator(Node *node) {
    return true;
 }
 
+bool is_float_literal(Node *node) {
+   if (!node) return false;
+   if (node->token->type == FLOAT) return true;
+   if (!includes(node->token->type, MATH_TYPE, 0)) return false;
+   if (!is_float(node->token->ret_type)) return false;
+   return is_float_literal(node->left) && is_float_literal(node->right);
+}
+
+void adopt_float(Node *node, Type target) {
+   if (!is_float(target) || !is_float_literal(node)) return;
+   node->token->ret_type = target;
+   adopt_float(node->left, target);
+   adopt_float(node->right, target);
+}
+
 void type_check_binop(Node *node) {
    Token *token = node->token;
    type_check(node->left);
    type_check(node->right);
+   adopt_float(node->left, node->right->token->ret_type);
+   adopt_float(node->right, node->left->token->ret_type);
    Type lt = node->left->token->ret_type;
    Type rt = node->right->token->ret_type;
    if (node->left->token->is_dec && node->left->token->is_ref) {
@@ -345,7 +381,7 @@ void type_check_binop(Node *node) {
                      struct_name_of(node->right->token));
       return;
    }
-   if (lt == FLOAT && includes(token->type, BITWISE_TYPE, 0)) {
+   if (is_float(lt) && includes(token->type, BITWISE_TYPE, 0)) {
       parse_error(token, ERR_BITWISE_NEEDS_INT);
       return;
    }
@@ -451,7 +487,7 @@ void type_check(Node *node) {
       case FLOAT:   token->ret_type = FLOAT; break;
       case ID:      break;
       case FN_TYPE: break;
-      case RETURN:  type_check(node->left); break;
+      case RETURN:  type_check_return(node); break;
       case FCALL:   type_check_fcall(node); break;
       case OUTPUT: {
          for (int i = 0; i < node->children_count; i++)

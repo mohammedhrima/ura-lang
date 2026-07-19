@@ -349,7 +349,7 @@ Token *parse_token(int line, int s, int e, Type type, int indent) {
 		int  len     = e - s;
 		if (len > 63) len = 63;
 		strncpy(buf, input + s, len);
-		new->Float.value = (float)atof(buf);
+		new->Float.value = atof(buf);
 		break;
 	}
 	case ID: {
@@ -367,7 +367,8 @@ Token *parse_token(int line, int s, int e, Type type, int indent) {
 		static const Keyword keywords[] = {
 			{"int", INT, 1, 1},       {"bool", BOOL, 1, 1},       {"chars", CHARS, 1, 1},
 			{"char", CHAR, 1, 1},     {"void", VOID, 1, 1},       {"float", FLOAT, 1, 1},
-			{"long", LONG, 1, 1},     {"short", SHORT, 1, 1},     {"pointer", CHARS, 1, 1},
+			{"double", DOUBLE, 1, 1}, {"long", LONG, 1, 1},       {"short", SHORT, 1, 1},
+			{"pointer", CHARS, 1, 1},
 			{"if", IF, 0, 0},         {"elif", ELIF, 0, 0},       {"else", ELSE, 0, 0},
 			{"for", FOR, 0, 0},       {"loop", LOOP, 0, 0},       {"while", WHILE, 0, 0},
 			{"by", BY, 0, 0},         {"in", IN, 0, 0},

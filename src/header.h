@@ -81,13 +81,14 @@ typedef struct _IO_FILE *File;
 		} \
 	}
 
-#define DATA_TYPES     INT, BOOL, CHARS, CHAR, FLOAT, VOID, LONG, PTR, SHORT, ARRAY_TYPE, LIST_TYPE, FN_TYPE
+#define DATA_TYPES     INT, BOOL, CHARS, CHAR, FLOAT, DOUBLE, VOID, LONG, PTR, SHORT, ARRAY_TYPE, LIST_TYPE, FN_TYPE
 #define LOGIC_TYPE     AND, OR
 #define MATH_TYPE      ADD, SUB, MUL, DIV, MOD, BAND, BOR, BXOR, LSHIFT, RSHIFT
 #define BITWISE_TYPE   BAND, BOR, BXOR, LSHIFT, RSHIFT
 #define COMPARISON_OPS EQUAL, NOT_EQUAL, LESS, GREAT, LESS_EQUAL, GREAT_EQUAL
 #define BINARY_OPS     MATH_TYPE, AND, OR, COMPARISON_OPS
 #define NUMERIC_TYPES  INT, LONG, SHORT, BOOL, CHAR
+#define FLOAT_TYPES    FLOAT, DOUBLE
 #define ASSIGNS_OP     ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN
 
 #define PASSES_O0 "default<O0>" // No optimization (Debug Mode)
@@ -129,7 +130,7 @@ typedef LLVMPassBuilderOptionsRef PassBuilderOptions;
 enum Type
 {
 	ID = 1,
-	VOID, INT, FLOAT, LONG, SHORT, BOOL, CHAR, CHARS, PTR, VARIADIC, REF, // Data types
+	VOID, INT, FLOAT, DOUBLE, LONG, SHORT, BOOL, CHAR, CHARS, PTR, VARIADIC, REF,
 	ARRAY, ARRAY_TYPE, ARRAY_LIT, LIST, LIST_TYPE,
 	FN_TYPE,
 	STRUCT_DEF, STRUCT_CALL, // Structures
@@ -224,7 +225,7 @@ struct Token {
 		struct { long value; } Int;
 		struct { int value; } Short;
 		struct { long long value; } Long;
-		struct { float value; } Float;
+		struct { double value; } Float;
 		struct { bool value; } Bool;
 		struct { char *value; } Chars;
 		struct { char value; } Char;
@@ -281,6 +282,7 @@ struct UraGlobal {
 	EXPAND(Token **, tokens);
 	EXPAND(Token **, temps);
 	EXPAND(Source **, sources);
+	Token           *fn_ret;
 	Source          *current;
 	int              calling_use;
 	Node            *scope;
@@ -290,7 +292,7 @@ struct UraGlobal {
 	Context          context;
 	Module           module;
 	Builder          builder;
-	TypeRef          vd, f32, i1, i8, i16, i32, i64;
+	TypeRef          vd, f32, f64, i1, i8, i16, i32, i64;
 };
 
 extern UraGlobal ura;
