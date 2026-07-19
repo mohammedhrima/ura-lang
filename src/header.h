@@ -220,7 +220,6 @@ struct Token {
 
 	LLVM    llvm;
 
-	// clang-format off
 	struct {
 		struct { long value; } Int;
 		struct { int value; } Short;
@@ -233,11 +232,10 @@ struct Token {
 		struct { Type  sub_type; int   depth; Node *struct_ptr; } Array;
 		struct { EXPAND(Token**, types); } Tuple;
 		struct { Node *ptr; Token *var; } Fcall;
-		struct { Token *ptr; Token *start; Token *end; } Statement;
+		struct { Token *ptr; } Decl;
 		struct { Type  type; char *name; } Catch;
 		struct { EXPAND(Token**, params); Token *ret; } Fn;
 	};
-	// clang-format on
 };
 
 struct Node {
@@ -250,7 +248,6 @@ struct Node {
 	EXPAND(Node **, functions);
 	EXPAND(Node **, structs);
 	EXPAND(Node **, modules);
-	// EXPAND(AutoClean *, auto_cleans);
 };
 
 struct UraGlobal {

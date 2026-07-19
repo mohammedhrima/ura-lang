@@ -33,11 +33,10 @@ proto fn TextFormat(fmt chars, ...) chars
 proto fn SetRandomSeed(seed int) void
 proto fn GetRandomValue(min int, max int) int
 
-// BLOCKED (M4 globals): top-level variables are not implemented yet - a top-level declaration reaches code_gen_id with no insertion point.
-// KEY_LEFT  int = 263
-// KEY_RIGHT int = 262
-// KEY_UP    int = 265
-// KEY_DOWN  int = 264
-// KEY_SPACE int = 32
-// KEY_P     int = 80
-// KEY_R     int = 82
+KEY_LEFT  int = 263
+KEY_RIGHT int = 262
+KEY_UP    int = 265
+KEY_DOWN  int = 264
+KEY_SPACE int = 32
+KEY_P     int = 80
+KEY_R     int = 82

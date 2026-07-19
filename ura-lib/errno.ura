@@ -24,39 +24,38 @@ proto fn perror(s chars) void
 // ── Common errno values ───────────────────────────────────────────────────
 // 1..34 match between Linux and macOS (POSIX defines this baseline).
 // EAGAIN/EWOULDBLOCK/EDEADLK/EOPNOTSUPP and the larger numbers diverge.
-// BLOCKED (M4 globals): top-level variables are not implemented yet - a top-level declaration reaches code_gen_id with no insertion point.
-// EPERM        int = 1
-// ENOENT       int = 2
-// ESRCH        int = 3
-// EINTR        int = 4
-// EIO          int = 5
-// ENXIO        int = 6
-// E2BIG        int = 7
-// ENOEXEC      int = 8
-// EBADF        int = 9
-// ECHILD       int = 10
-// EACCES       int = 13
-// EFAULT       int = 14
-// ENOTBLK      int = 15
-// EBUSY        int = 16
-// EEXIST       int = 17
-// EXDEV        int = 18
-// ENODEV       int = 19
-// ENOTDIR      int = 20
-// EISDIR       int = 21
-// EINVAL       int = 22
-// ENFILE       int = 23
-// EMFILE       int = 24
-// ENOTTY       int = 25
-// ETXTBSY      int = 26
-// EFBIG        int = 27
-// ENOSPC       int = 28
-// ESPIPE       int = 29
-// EROFS        int = 30
-// EMLINK       int = 31
-// EPIPE        int = 32
-// EDOM         int = 33
-// ERANGE       int = 34
+EPERM        int = 1
+ENOENT       int = 2
+ESRCH        int = 3
+EINTR        int = 4
+EIO          int = 5
+ENXIO        int = 6
+E2BIG        int = 7
+ENOEXEC      int = 8
+EBADF        int = 9
+ECHILD       int = 10
+EACCES       int = 13
+EFAULT       int = 14
+ENOTBLK      int = 15
+EBUSY        int = 16
+EEXIST       int = 17
+EXDEV        int = 18
+ENODEV       int = 19
+ENOTDIR      int = 20
+EISDIR       int = 21
+EINVAL       int = 22
+ENFILE       int = 23
+EMFILE       int = 24
+ENOTTY       int = 25
+ETXTBSY      int = 26
+EFBIG        int = 27
+ENOSPC       int = 28
+ESPIPE       int = 29
+EROFS        int = 30
+EMLINK       int = 31
+EPIPE        int = 32
+EDOM         int = 33
+ERANGE       int = 34
 
 // @if linux:
 //     EAGAIN        int = 11       // also EWOULDBLOCK on Linux

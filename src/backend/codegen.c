@@ -110,6 +110,14 @@ Value llvm_num_cast(Value value, Type src, Type dst) {
    return llvm_int_cast(value, to);
 }
 
+Value llvm_global(Token *token) {
+   TypeRef type = llvm_type_of(token);
+   Value   glob = LLVMAddGlobal(ura.module, type, token->name);
+   LLVMSetInitializer(glob, LLVMConstNull(type));
+   LLVMSetLinkage(glob, LLVMInternalLinkage);
+   return token->llvm.elem = glob;
+}
+
 void llvm_sanitize(Value fn) {
    unsigned     kind = LLVMGetEnumAttributeKindForName("sanitize_address", 16);
    AttributeRef attr = LLVMCreateEnumAttribute(ura.context, kind, 0);
@@ -376,11 +384,12 @@ Value address_of(Node *node) {
    if (token->type == ACCESS) return access_ptr(node);
    if (token->type == DOT)    return field_ptr(node);
    if (token->is_dec) {
+      if (token->is_global) return token->llvm.elem;
       TypeRef t = llvm_type_of(token);
       if (token->is_ref) t = pointer_to(t);
       return token->llvm.elem = llvm_alloca(t, token->name);
    }
-   Token *decl = find_variable(token->name, NULL);
+   Token *decl = token->Decl.ptr;
    if (decl->is_ref) {
       Value ptr = llvm_load(pointer_to(llvm_type_of(decl)), decl->llvm.elem, "ref");
       if (token->is_nullable) guard_bound(token, ptr);
@@ -634,13 +643,27 @@ void emit_unwind(Node *stop, Token *keep) {
       Node *scope = ura.scopes[i];
       if (!scope) continue;
       emit_drops(scope, keep);
-      if (stop ? scope == stop : scope->token->type == FDEC) return;
+      bool at_fdec = scope->token->type == FDEC;
+      if (stop ? scope == stop : at_fdec && !is_main(scope->token)) return;
    }
 }
 
 void scope_out() {
    emit_drops(ura.scope, NULL);
    exit_scope();
+}
+
+bool is_main(Token *token) {
+   return token->type == FDEC && strcmp(token->name, "main") == 0;
+}
+
+void init_globals() {
+   for (int i = 0; i < ura.head->children_count; i++) {
+      Node *child = ura.head->children[i];
+      if (child->token->type != ASSIGN || !global_decl(child)) continue;
+      code_gen(child);
+      drop_temps();
+   }
 }
 
 void code_gen_fdec(Node *node) {
@@ -656,12 +679,14 @@ void code_gen_fdec(Node *node) {
       param->llvm.elem = llvm_alloca(pt, param->name);
       llvm_store(LLVMGetParam(token->llvm.elem, i), param->llvm.elem);
    }
+   if (is_main(token)) init_globals();
    for (int i = 0; i < node->children_count; i++) {
       set_debug_location(node->children[i]->token);
       code_gen(node->children[i]);
       drop_temps();
    }
    scope_out();
+   if (is_main(token)) emit_drops(ura.head, NULL);
    if (!LLVMGetBasicBlockTerminator(here_block())) {
       if (token->ret_type == VOID) LLVMBuildRetVoid(ura.builder);
       else LLVMBuildRet(ura.builder, default_value(token));
@@ -672,6 +697,7 @@ void code_gen_fdec(Node *node) {
 void code_gen_id(Node *node) {
    Token *token = node->token;
    if (token->is_dec) {
+      if (token->is_global) return;
       TypeRef t = llvm_type_of(token);
       if (token->is_ref) t = pointer_to(t);
       token->llvm.elem = llvm_alloca(t, token->name);
@@ -679,7 +705,7 @@ void code_gen_id(Node *node) {
       llvm_store(init, token->llvm.elem);
       return;
    }
-   Token  *decl = find_variable(token->name, NULL);
+   Token  *decl = token->Decl.ptr;
    TypeRef t    = llvm_type_of(decl);
    if (!decl->is_ref) {
       token->llvm.elem = llvm_load(t, decl->llvm.elem, token->name);

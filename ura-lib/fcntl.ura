@@ -8,10 +8,9 @@ proto fn creat(path chars, mode int) int
 proto fn fcntl(fd int, cmd int, arg int) int
 
 // ── open() access modes (same on both) ─────────────────────────────────────
-// BLOCKED (M4 globals): top-level variables are not implemented yet - a top-level declaration reaches code_gen_id with no insertion point.
-// O_RDONLY int = 0
-// O_WRONLY int = 1
-// O_RDWR   int = 2
+O_RDONLY int = 0
+O_WRONLY int = 1
+O_RDWR   int = 2
 
 // ── open() creation / status flags (values DIFFER between Linux and macOS) ─
 // BLOCKED: `@if` conditional compilation is not implemented (TODO.md M9).
@@ -57,8 +56,7 @@ proto fn fcntl(fd int, cmd int, arg int) int
 //     // (Darwin happens to match Linux for these basic commands.)
 
 // FD_CLOEXEC = 1 on both
-// BLOCKED (M4 globals): top-level variables are not implemented yet - a top-level declaration reaches code_gen_id with no insertion point.
-// FD_CLOEXEC int = 1
+FD_CLOEXEC int = 1
 
 // ── AT_FDCWD for *at functions ─────────────────────────────────────────────
 // @if linux:

@@ -102,6 +102,8 @@ void parse_type(Token *target) {
 			find(RBRA, 0);
 			depth++;
 		}
+		if (peek(0)->type == LBRA)
+			parse_error(peek(0), ERR_ARRAY_SIZE_IN_TYPE);
 		if (depth > 0) {
 			target->Array.sub_type = target->ret_type;
 			target->Array.depth    = depth;
