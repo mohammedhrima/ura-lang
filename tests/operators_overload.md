@@ -51,46 +51,46 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Vec
-├─ x : int
-├─ y : int
-├─ fn Vec.create(a : int, b : int) : STRUCT_CALL
+├─ x : i32
+├─ y : i32
+├─ fn Vec.create(a : i32, b : i32) : STRUCT_CALL
 │  ├─ v : STRUCT_CALL
-│  ├─ = : int
-│  │  ├─ .x : int
+│  ├─ = : i32
+│  │  ├─ .x : i32
 │  │  │  └─ v : STRUCT_CALL
-│  │  └─ a : int
-│  ├─ = : int
-│  │  ├─ .y : int
+│  │  └─ a : i32
+│  ├─ = : i32
+│  │  ├─ .y : i32
 │  │  │  └─ v : STRUCT_CALL
-│  │  └─ b : int
+│  │  └─ b : i32
 │  └─ return
 │     └─ v : STRUCT_CALL
 └─ fn Vec.+.Vec(self : STRUCT_CALL, other : STRUCT_CALL) : STRUCT_CALL
    └─ return
       └─ call create : STRUCT_CALL
-         ├─ + : int
-         │  ├─ .x : int
+         ├─ + : i32
+         │  ├─ .x : i32
          │  │  └─ self : STRUCT_CALL
-         │  └─ .x : int
+         │  └─ .x : i32
          │     └─ other : STRUCT_CALL
-         └─ + : int
-            ├─ .y : int
+         └─ + : i32
+            ├─ .y : i32
             │  └─ self : STRUCT_CALL
-            └─ .y : int
+            └─ .y : i32
                └─ other : STRUCT_CALL
 
-fn main() : int
+fn main() : i32
 ├─ = : STRUCT_CALL
 │  ├─ a : STRUCT_CALL
 │  └─ call create : STRUCT_CALL
@@ -107,10 +107,10 @@ fn main() : int
 │     ├─ a : STRUCT_CALL
 │     └─ b : STRUCT_CALL
 └─ output : void
-   ├─ .x : int
+   ├─ .x : i32
    │  └─ c : STRUCT_CALL
    ├─ chars " "
-   ├─ .y : int
+   ├─ .y : i32
    │  └─ c : STRUCT_CALL
    └─ chars "\n"
 ```
@@ -219,43 +219,43 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Vec
-├─ x : int
-├─ fn Vec.create(a : int) : STRUCT_CALL
+├─ x : i32
+├─ fn Vec.create(a : i32) : STRUCT_CALL
 │  ├─ v : STRUCT_CALL
-│  ├─ = : int
-│  │  ├─ .x : int
+│  ├─ = : i32
+│  │  ├─ .x : i32
 │  │  │  └─ v : STRUCT_CALL
-│  │  └─ a : int
+│  │  └─ a : i32
 │  └─ return
 │     └─ v : STRUCT_CALL
 ├─ fn Vec.+.Vec(self : STRUCT_CALL, other : STRUCT_CALL) : STRUCT_CALL
 │  └─ return
 │     └─ call create : STRUCT_CALL
-│        └─ + : int
-│           ├─ .x : int
+│        └─ + : i32
+│           ├─ .x : i32
 │           │  └─ self : STRUCT_CALL
-│           └─ .x : int
+│           └─ .x : i32
 │              └─ other : STRUCT_CALL
-└─ fn Vec.+.int(self : STRUCT_CALL, n : int) : STRUCT_CALL
+└─ fn Vec.+.i32(self : STRUCT_CALL, n : i32) : STRUCT_CALL
    └─ return
       └─ call create : STRUCT_CALL
-         └─ + : int
-            ├─ .x : int
+         └─ + : i32
+            ├─ .x : i32
             │  └─ self : STRUCT_CALL
-            └─ n : int
+            └─ n : i32
 
-fn main() : int
+fn main() : i32
 ├─ = : STRUCT_CALL
 │  ├─ a : STRUCT_CALL
 │  └─ call create : STRUCT_CALL
@@ -265,12 +265,12 @@ fn main() : int
 │  └─ call create : STRUCT_CALL
 │     └─ int 10
 └─ output : void
-   ├─ .x : int
+   ├─ .x : i32
    │  └─ + : STRUCT_CALL
    │     ├─ a : STRUCT_CALL
    │     └─ b : STRUCT_CALL
    ├─ chars " "
-   ├─ .x : int
+   ├─ .x : i32
    │  └─ + : STRUCT_CALL
    │     ├─ a : STRUCT_CALL
    │     └─ int 5
@@ -321,7 +321,7 @@ entry:
   ret %Vec %call
 }
 
-define %Vec @"Vec.+.int"(%Vec* %0, i32 %1) {
+define %Vec @"Vec.+.i32"(%Vec* %0, i32 %1) {
 entry:
   %self = alloca %Vec*, align 8
   store %Vec* %0, %Vec** %self, align 8
@@ -350,7 +350,7 @@ entry:
   store %Vec %op, %Vec* %out.tmp, align 4
   %x = getelementptr %Vec, %Vec* %out.tmp, i32 0, i32 0
   %x3 = load i32, i32* %x, align 4
-  %op4 = call %Vec @"Vec.+.int"(%Vec* %a, i32 5)
+  %op4 = call %Vec @"Vec.+.i32"(%Vec* %a, i32 5)
   %out.tmp5 = alloca %Vec, align 8
   store %Vec %op4, %Vec* %out.tmp5, align 4
   %x6 = getelementptr %Vec, %Vec* %out.tmp5, i32 0, i32 0
@@ -386,35 +386,35 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Vec
-├─ x : int
-├─ fn Vec.create(a : int) : STRUCT_CALL
+├─ x : i32
+├─ fn Vec.create(a : i32) : STRUCT_CALL
 │  ├─ v : STRUCT_CALL
-│  ├─ = : int
-│  │  ├─ .x : int
+│  ├─ = : i32
+│  │  ├─ .x : i32
 │  │  │  └─ v : STRUCT_CALL
-│  │  └─ a : int
+│  │  └─ a : i32
 │  └─ return
 │     └─ v : STRUCT_CALL
 └─ fn Vec.==.Vec(self : STRUCT_CALL, other : STRUCT_CALL) : bool
    └─ return
       └─ == : bool
-         ├─ .x : int
+         ├─ .x : i32
          │  └─ self : STRUCT_CALL
-         └─ .x : int
+         └─ .x : i32
             └─ other : STRUCT_CALL
 
-fn main() : int
+fn main() : i32
 ├─ = : STRUCT_CALL
 │  ├─ a : STRUCT_CALL
 │  └─ call create : STRUCT_CALL
@@ -584,20 +584,20 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 └─ output : void
-   ├─ index : int
-   │  ├─ array : int[]
+   ├─ index : i32
+   │  ├─ array : i32[]
    │  │  ├─ int 10
    │  │  ├─ int 20
    │  │  └─ int 30
@@ -678,68 +678,68 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Vec
-├─ x : int
-├─ y : int
-├─ fn Vec.create(a : int, b : int) : STRUCT_CALL
+├─ x : i32
+├─ y : i32
+├─ fn Vec.create(a : i32, b : i32) : STRUCT_CALL
 │  ├─ v : STRUCT_CALL
-│  ├─ = : int
-│  │  ├─ .x : int
+│  ├─ = : i32
+│  │  ├─ .x : i32
 │  │  │  └─ v : STRUCT_CALL
-│  │  └─ a : int
-│  ├─ = : int
-│  │  ├─ .y : int
+│  │  └─ a : i32
+│  ├─ = : i32
+│  │  ├─ .y : i32
 │  │  │  └─ v : STRUCT_CALL
-│  │  └─ b : int
+│  │  └─ b : i32
 │  └─ return
 │     └─ v : STRUCT_CALL
 ├─ fn Vec.+.Vec(self : STRUCT_CALL, other : STRUCT_CALL) : STRUCT_CALL
 │  └─ return
 │     └─ call create : STRUCT_CALL
-│        ├─ + : int
-│        │  ├─ .x : int
+│        ├─ + : i32
+│        │  ├─ .x : i32
 │        │  │  └─ self : STRUCT_CALL
-│        │  └─ .x : int
+│        │  └─ .x : i32
 │        │     └─ other : STRUCT_CALL
-│        └─ + : int
-│           ├─ .y : int
+│        └─ + : i32
+│           ├─ .y : i32
 │           │  └─ self : STRUCT_CALL
-│           └─ .y : int
+│           └─ .y : i32
 │              └─ other : STRUCT_CALL
 ├─ fn Vec.==.Vec(self : STRUCT_CALL, other : STRUCT_CALL) : bool
 │  └─ return
 │     └─ and : bool
 │        ├─ == : bool
-│        │  ├─ .x : int
+│        │  ├─ .x : i32
 │        │  │  └─ self : STRUCT_CALL
-│        │  └─ .x : int
+│        │  └─ .x : i32
 │        │     └─ other : STRUCT_CALL
 │        └─ == : bool
-│           ├─ .y : int
+│           ├─ .y : i32
 │           │  └─ self : STRUCT_CALL
-│           └─ .y : int
+│           └─ .y : i32
 │              └─ other : STRUCT_CALL
 └─ fn Vec.show(self : STRUCT_CALL) : void
    └─ output : void
       ├─ chars "("
-      ├─ .x : int
+      ├─ .x : i32
       │  └─ self : STRUCT_CALL
       ├─ chars ", "
-      ├─ .y : int
+      ├─ .y : i32
       │  └─ self : STRUCT_CALL
       └─ chars ")\n"
 
-fn main() : int
+fn main() : i32
 ├─ = : STRUCT_CALL
 │  ├─ a : STRUCT_CALL
 │  └─ call create : STRUCT_CALL
@@ -963,7 +963,7 @@ main():
 ```
 
 ```err
-error: Cannot use '+' with int and chars
+error: Cannot use '+' with i32 and chars
   009.ura:6:14
   |
 6 |     output(n + s, "\n")
@@ -1001,34 +1001,34 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Vec
-├─ x : int
-├─ tag : int
+├─ x : i32
+├─ tag : i32
 └─ fn Vec.=.Vec(self : STRUCT_CALL, other : STRUCT_CALL) : void
-   ├─ = : int
-   │  ├─ .x : int
+   ├─ = : i32
+   │  ├─ .x : i32
    │  │  └─ self : STRUCT_CALL
-   │  └─ .x : int
+   │  └─ .x : i32
    │     └─ other : STRUCT_CALL
-   └─ = : int
-      ├─ .tag : int
+   └─ = : i32
+      ├─ .tag : i32
       │  └─ self : STRUCT_CALL
       └─ int 99
 
-fn main() : int
+fn main() : i32
 ├─ a : STRUCT_CALL
-├─ = : int
-│  ├─ .x : int
+├─ = : i32
+│  ├─ .x : i32
 │  │  └─ a : STRUCT_CALL
 │  └─ int 5
 ├─ = : STRUCT_CALL
@@ -1036,10 +1036,10 @@ fn main() : int
 │  └─ a : STRUCT_CALL
 ├─ output : void
 │  ├─ chars "decl   "
-│  ├─ .x : int
+│  ├─ .x : i32
 │  │  └─ b : STRUCT_CALL
 │  ├─ chars " "
-│  ├─ .tag : int
+│  ├─ .tag : i32
 │  │  └─ b : STRUCT_CALL
 │  └─ chars "\n"
 ├─ c : STRUCT_CALL
@@ -1048,10 +1048,10 @@ fn main() : int
 │  └─ a : STRUCT_CALL
 └─ output : void
    ├─ chars "assign "
-   ├─ .x : int
+   ├─ .x : i32
    │  └─ c : STRUCT_CALL
    ├─ chars " "
-   ├─ .tag : int
+   ├─ .tag : i32
    │  └─ c : STRUCT_CALL
    └─ chars "\n"
 ```
@@ -1151,45 +1151,45 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Vec
-├─ x : int
+├─ x : i32
 ├─ fn Vec.+=.Vec(self : STRUCT_CALL, other : STRUCT_CALL) : void
-│  └─ = : int
-│     ├─ .x : int
+│  └─ = : i32
+│     ├─ .x : i32
 │     │  └─ self : STRUCT_CALL
-│     └─ + : int
-│        ├─ .x : int
+│     └─ + : i32
+│        ├─ .x : i32
 │        │  └─ self : STRUCT_CALL
-│        └─ .x : int
+│        └─ .x : i32
 │           └─ other : STRUCT_CALL
-└─ fn Vec.-=.int(self : STRUCT_CALL, n : int) : void
-   └─ = : int
-      ├─ .x : int
+└─ fn Vec.-=.i32(self : STRUCT_CALL, n : i32) : void
+   └─ = : i32
+      ├─ .x : i32
       │  └─ self : STRUCT_CALL
-      └─ - : int
-         ├─ .x : int
+      └─ - : i32
+         ├─ .x : i32
          │  └─ self : STRUCT_CALL
-         └─ n : int
+         └─ n : i32
 
-fn main() : int
+fn main() : i32
 ├─ a : STRUCT_CALL
-├─ = : int
-│  ├─ .x : int
+├─ = : i32
+│  ├─ .x : i32
 │  │  └─ a : STRUCT_CALL
 │  └─ int 10
 ├─ b : STRUCT_CALL
-├─ = : int
-│  ├─ .x : int
+├─ = : i32
+│  ├─ .x : i32
 │  │  └─ b : STRUCT_CALL
 │  └─ int 4
 ├─ += : void
@@ -1197,7 +1197,7 @@ fn main() : int
 │  └─ b : STRUCT_CALL
 ├─ output : void
 │  ├─ chars "after += "
-│  ├─ .x : int
+│  ├─ .x : i32
 │  │  └─ a : STRUCT_CALL
 │  └─ chars "\n"
 ├─ -= : void
@@ -1205,7 +1205,7 @@ fn main() : int
 │  └─ int 3
 └─ output : void
    ├─ chars "after -= "
-   ├─ .x : int
+   ├─ .x : i32
    │  └─ a : STRUCT_CALL
    └─ chars "\n"
 ```
@@ -1247,7 +1247,7 @@ entry:
   ret void
 }
 
-define void @"Vec.-=.int"(%Vec* %0, i32 %1) {
+define void @"Vec.-=.i32"(%Vec* %0, i32 %1) {
 entry:
   %self = alloca %Vec*, align 8
   store %Vec* %0, %Vec** %self, align 8
@@ -1279,7 +1279,7 @@ entry:
   %x3 = getelementptr %Vec, %Vec* %a, i32 0, i32 0
   %x4 = load i32, i32* %x3, align 4
   %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str, i32 0, i32 0), i32 %x4, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
-  call void @"Vec.-=.int"(%Vec* %a, i32 3)
+  call void @"Vec.-=.i32"(%Vec* %a, i32 3)
   %x5 = getelementptr %Vec, %Vec* %a, i32 0, i32 0
   %x6 = load i32, i32* %x5, align 4
   %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.4, i32 0, i32 0), i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.2, i32 0, i32 0), i32 %x6, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
@@ -1338,29 +1338,29 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Vec
-├─ x : int
+├─ x : i32
 └─ fn Vec.drop(self : STRUCT_CALL) : void
    └─ output : void
       ├─ chars "dropping "
-      ├─ .x : int
+      ├─ .x : i32
       │  └─ self : STRUCT_CALL
       └─ chars "\n"
 
-fn main() : int
+fn main() : i32
 ├─ v : STRUCT_CALL
-├─ = : int
-│  ├─ .x : int
+├─ = : i32
+│  ├─ .x : i32
 │  │  └─ v : STRUCT_CALL
 │  └─ int 7
 └─ output : void
@@ -1512,35 +1512,35 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Vec
-├─ x : int
+├─ x : i32
 ├─ fn Vec.=.Vec(self : STRUCT_CALL, other : STRUCT_CALL) : void
-│  └─ = : int
-│     ├─ .x : int
+│  └─ = : i32
+│     ├─ .x : i32
 │     │  └─ self : STRUCT_CALL
-│     └─ .x : int
+│     └─ .x : i32
 │        └─ other : STRUCT_CALL
 └─ fn Vec.drop(self : STRUCT_CALL) : void
    └─ output : void
       ├─ chars "drop "
-      ├─ .x : int
+      ├─ .x : i32
       │  └─ self : STRUCT_CALL
       └─ chars "\n"
 
-fn main() : int
+fn main() : i32
 ├─ a : STRUCT_CALL
-├─ = : int
-│  ├─ .x : int
+├─ = : i32
+│  ├─ .x : i32
 │  │  └─ a : STRUCT_CALL
 │  └─ int 5
 └─ output : void
@@ -1642,40 +1642,40 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Tag
-├─ id : int
-├─ fn Tag.create(n : int) : STRUCT_CALL
+├─ id : i32
+├─ fn Tag.create(n : i32) : STRUCT_CALL
 │  ├─ t : STRUCT_CALL
-│  ├─ = : int
-│  │  ├─ .id : int
+│  ├─ = : i32
+│  │  ├─ .id : i32
 │  │  │  └─ t : STRUCT_CALL
-│  │  └─ n : int
+│  │  └─ n : i32
 │  └─ return
 │     └─ t : STRUCT_CALL
 ├─ fn Tag.=.Tag(self : STRUCT_CALL, other : STRUCT_CALL) : void
-│  └─ = : int
-│     ├─ .id : int
+│  └─ = : i32
+│     ├─ .id : i32
 │     │  └─ self : STRUCT_CALL
-│     └─ .id : int
+│     └─ .id : i32
 │        └─ other : STRUCT_CALL
 └─ fn Tag.drop(self : STRUCT_CALL) : void
    └─ output : void
       ├─ chars "drop "
-      ├─ .id : int
+      ├─ .id : i32
       │  └─ self : STRUCT_CALL
       └─ chars "\n"
 
-fn early() : int
+fn early() : i32
 ├─ = : STRUCT_CALL
 │  ├─ a : STRUCT_CALL
 │  └─ call create : STRUCT_CALL
@@ -1701,20 +1701,20 @@ fn giveback() : STRUCT_CALL
 └─ return
    └─ t : STRUCT_CALL
 
-fn main() : int
-├─ = : int
-│  ├─ r : int
-│  └─ call early : int
+fn main() : i32
+├─ = : i32
+│  ├─ r : i32
+│  └─ call early : i32
 ├─ output : void
 │  ├─ chars "early "
-│  ├─ r : int
+│  ├─ r : i32
 │  └─ chars "\n"
 ├─ = : STRUCT_CALL
 │  ├─ g : STRUCT_CALL
 │  └─ call giveback : STRUCT_CALL
 └─ output : void
    ├─ chars "g.id "
-   ├─ .id : int
+   ├─ .id : i32
    │  └─ g : STRUCT_CALL
    └─ chars "\n"
 ```
@@ -1868,82 +1868,82 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Tag
-├─ id : int
-├─ fn Tag.create(n : int) : STRUCT_CALL
+├─ id : i32
+├─ fn Tag.create(n : i32) : STRUCT_CALL
 │  ├─ t : STRUCT_CALL
-│  ├─ = : int
-│  │  ├─ .id : int
+│  ├─ = : i32
+│  │  ├─ .id : i32
 │  │  │  └─ t : STRUCT_CALL
-│  │  └─ n : int
+│  │  └─ n : i32
 │  └─ return
 │     └─ t : STRUCT_CALL
 ├─ fn Tag.=.Tag(self : STRUCT_CALL, other : STRUCT_CALL) : void
-│  └─ = : int
-│     ├─ .id : int
+│  └─ = : i32
+│     ├─ .id : i32
 │     │  └─ self : STRUCT_CALL
-│     └─ .id : int
+│     └─ .id : i32
 │        └─ other : STRUCT_CALL
 └─ fn Tag.drop(self : STRUCT_CALL) : void
    └─ output : void
       ├─ chars "drop "
-      ├─ .id : int
+      ├─ .id : i32
       │  └─ self : STRUCT_CALL
       └─ chars "\n"
 
-fn main() : int
-├─ = : int
-│  ├─ i : int
+fn main() : i32
+├─ = : i32
+│  ├─ i : i32
 │  └─ int 0
 ├─ while
 │  ├─ condition < : bool
-│  │  ├─ i : int
+│  │  ├─ i : i32
 │  │  └─ int 3
 │  ├─ = : STRUCT_CALL
 │  │  ├─ b : STRUCT_CALL
 │  │  └─ call create : STRUCT_CALL
-│  │     └─ + : int
+│  │     └─ + : i32
 │  │        ├─ int 100
-│  │        └─ i : int
+│  │        └─ i : i32
 │  ├─ if
 │  │  ├─ condition == : bool
-│  │  │  ├─ i : int
+│  │  │  ├─ i : i32
 │  │  │  └─ int 1
 │  │  └─ break
-│  └─ = : int
-│     ├─ i : int
-│     └─ + : int
-│        ├─ i : int
+│  └─ = : i32
+│     ├─ i : i32
+│     └─ + : i32
+│        ├─ i : i32
 │        └─ int 1
 ├─ output : void
 │  └─ chars "after break\n"
-├─ = : int
-│  ├─ k : int
+├─ = : i32
+│  ├─ k : i32
 │  └─ int 0
 ├─ while
 │  ├─ condition < : bool
-│  │  ├─ k : int
+│  │  ├─ k : i32
 │  │  └─ int 2
 │  ├─ = : STRUCT_CALL
 │  │  ├─ c : STRUCT_CALL
 │  │  └─ call create : STRUCT_CALL
-│  │     └─ + : int
+│  │     └─ + : i32
 │  │        ├─ int 200
-│  │        └─ k : int
-│  ├─ = : int
-│  │  ├─ k : int
-│  │  └─ + : int
-│  │     ├─ k : int
+│  │        └─ k : i32
+│  ├─ = : i32
+│  │  ├─ k : i32
+│  │  └─ + : i32
+│  │     ├─ k : i32
 │  │     └─ int 1
 │  └─ continue
 └─ output : void
@@ -2149,130 +2149,130 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Vec
-├─ x : int
-├─ y : int
-├─ tag : int
-├─ fn Vec.create(a : int, b : int) : STRUCT_CALL
+├─ x : i32
+├─ y : i32
+├─ tag : i32
+├─ fn Vec.create(a : i32, b : i32) : STRUCT_CALL
 │  ├─ v : STRUCT_CALL
-│  ├─ = : int
-│  │  ├─ .x : int
+│  ├─ = : i32
+│  │  ├─ .x : i32
 │  │  │  └─ v : STRUCT_CALL
-│  │  └─ a : int
-│  ├─ = : int
-│  │  ├─ .y : int
+│  │  └─ a : i32
+│  ├─ = : i32
+│  │  ├─ .y : i32
 │  │  │  └─ v : STRUCT_CALL
-│  │  └─ b : int
+│  │  └─ b : i32
 │  └─ return
 │     └─ v : STRUCT_CALL
 ├─ fn Vec.+.Vec(self : STRUCT_CALL, other : STRUCT_CALL) : STRUCT_CALL
 │  └─ return
 │     └─ call create : STRUCT_CALL
-│        ├─ + : int
-│        │  ├─ .x : int
+│        ├─ + : i32
+│        │  ├─ .x : i32
 │        │  │  └─ self : STRUCT_CALL
-│        │  └─ .x : int
+│        │  └─ .x : i32
 │        │     └─ other : STRUCT_CALL
-│        └─ + : int
-│           ├─ .y : int
+│        └─ + : i32
+│           ├─ .y : i32
 │           │  └─ self : STRUCT_CALL
-│           └─ .y : int
+│           └─ .y : i32
 │              └─ other : STRUCT_CALL
-├─ fn Vec.+.int(self : STRUCT_CALL, n : int) : STRUCT_CALL
+├─ fn Vec.+.i32(self : STRUCT_CALL, n : i32) : STRUCT_CALL
 │  └─ return
 │     └─ call create : STRUCT_CALL
-│        ├─ + : int
-│        │  ├─ .x : int
+│        ├─ + : i32
+│        │  ├─ .x : i32
 │        │  │  └─ self : STRUCT_CALL
-│        │  └─ n : int
-│        └─ + : int
-│           ├─ .y : int
+│        │  └─ n : i32
+│        └─ + : i32
+│           ├─ .y : i32
 │           │  └─ self : STRUCT_CALL
-│           └─ n : int
+│           └─ n : i32
 ├─ fn Vec.==.Vec(self : STRUCT_CALL, other : STRUCT_CALL) : bool
 │  └─ return
 │     └─ and : bool
 │        ├─ == : bool
-│        │  ├─ .x : int
+│        │  ├─ .x : i32
 │        │  │  └─ self : STRUCT_CALL
-│        │  └─ .x : int
+│        │  └─ .x : i32
 │        │     └─ other : STRUCT_CALL
 │        └─ == : bool
-│           ├─ .y : int
+│           ├─ .y : i32
 │           │  └─ self : STRUCT_CALL
-│           └─ .y : int
+│           └─ .y : i32
 │              └─ other : STRUCT_CALL
 ├─ fn Vec.=.Vec(self : STRUCT_CALL, other : STRUCT_CALL) : void
-│  ├─ = : int
-│  │  ├─ .x : int
+│  ├─ = : i32
+│  │  ├─ .x : i32
 │  │  │  └─ self : STRUCT_CALL
-│  │  └─ .x : int
+│  │  └─ .x : i32
 │  │     └─ other : STRUCT_CALL
-│  ├─ = : int
-│  │  ├─ .y : int
+│  ├─ = : i32
+│  │  ├─ .y : i32
 │  │  │  └─ self : STRUCT_CALL
-│  │  └─ .y : int
+│  │  └─ .y : i32
 │  │     └─ other : STRUCT_CALL
-│  └─ = : int
-│     ├─ .tag : int
+│  └─ = : i32
+│     ├─ .tag : i32
 │     │  └─ self : STRUCT_CALL
 │     └─ int 99
 ├─ fn Vec.+=.Vec(self : STRUCT_CALL, other : STRUCT_CALL) : void
-│  ├─ = : int
-│  │  ├─ .x : int
+│  ├─ = : i32
+│  │  ├─ .x : i32
 │  │  │  └─ self : STRUCT_CALL
-│  │  └─ + : int
-│  │     ├─ .x : int
+│  │  └─ + : i32
+│  │     ├─ .x : i32
 │  │     │  └─ self : STRUCT_CALL
-│  │     └─ .x : int
+│  │     └─ .x : i32
 │  │        └─ other : STRUCT_CALL
-│  └─ = : int
-│     ├─ .y : int
+│  └─ = : i32
+│     ├─ .y : i32
 │     │  └─ self : STRUCT_CALL
-│     └─ + : int
-│        ├─ .y : int
+│     └─ + : i32
+│        ├─ .y : i32
 │        │  └─ self : STRUCT_CALL
-│        └─ .y : int
+│        └─ .y : i32
 │           └─ other : STRUCT_CALL
-├─ fn Vec.-=.int(self : STRUCT_CALL, n : int) : void
-│  ├─ = : int
-│  │  ├─ .x : int
+├─ fn Vec.-=.i32(self : STRUCT_CALL, n : i32) : void
+│  ├─ = : i32
+│  │  ├─ .x : i32
 │  │  │  └─ self : STRUCT_CALL
-│  │  └─ - : int
-│  │     ├─ .x : int
+│  │  └─ - : i32
+│  │     ├─ .x : i32
 │  │     │  └─ self : STRUCT_CALL
-│  │     └─ n : int
-│  └─ = : int
-│     ├─ .y : int
+│  │     └─ n : i32
+│  └─ = : i32
+│     ├─ .y : i32
 │     │  └─ self : STRUCT_CALL
-│     └─ - : int
-│        ├─ .y : int
+│     └─ - : i32
+│        ├─ .y : i32
 │        │  └─ self : STRUCT_CALL
-│        └─ n : int
+│        └─ n : i32
 └─ fn Vec.show(self : STRUCT_CALL) : void
    └─ output : void
       ├─ chars "("
-      ├─ .x : int
+      ├─ .x : i32
       │  └─ self : STRUCT_CALL
       ├─ chars ", "
-      ├─ .y : int
+      ├─ .y : i32
       │  └─ self : STRUCT_CALL
       ├─ chars ") tag "
-      ├─ .tag : int
+      ├─ .tag : i32
       │  └─ self : STRUCT_CALL
       └─ chars "\n"
 
-fn main() : int
+fn main() : i32
 ├─ = : STRUCT_CALL
 │  ├─ a : STRUCT_CALL
 │  └─ call create : STRUCT_CALL
@@ -2416,7 +2416,7 @@ entry:
   ret %Vec %call
 }
 
-define %Vec @"Vec.+.int"(%Vec* %0, i32 %1) {
+define %Vec @"Vec.+.i32"(%Vec* %0, i32 %1) {
 entry:
   %self = alloca %Vec*, align 8
   store %Vec* %0, %Vec** %self, align 8
@@ -2507,7 +2507,7 @@ entry:
   ret void
 }
 
-define void @"Vec.-=.int"(%Vec* %0, i32 %1) {
+define void @"Vec.-=.i32"(%Vec* %0, i32 %1) {
 entry:
   %self = alloca %Vec*, align 8
   store %Vec* %0, %Vec** %self, align 8
@@ -2565,7 +2565,7 @@ entry:
   store %Vec %op, %Vec* %c, align 4
   call void @Vec.show(%Vec* %c)
   %d = alloca %Vec, align 8
-  %op3 = call %Vec @"Vec.+.int"(%Vec* %a, i32 5)
+  %op3 = call %Vec @"Vec.+.i32"(%Vec* %a, i32 5)
   store %Vec %op3, %Vec* %d, align 4
   call void @Vec.show(%Vec* %d)
   %a4 = load %Vec, %Vec* %a, align 4
@@ -2596,7 +2596,7 @@ entry:
   %b14 = load %Vec, %Vec* %b, align 4
   call void @"Vec.+=.Vec"(%Vec* %g, %Vec %b14)
   call void @Vec.show(%Vec* %g)
-  call void @"Vec.-=.int"(%Vec* %g, i32 3)
+  call void @"Vec.-=.i32"(%Vec* %g, i32 3)
   call void @Vec.show(%Vec* %g)
   ret i32 0
 }
@@ -2639,40 +2639,40 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Tag
-├─ id : int
-├─ fn Tag.create(n : int) : STRUCT_CALL
+├─ id : i32
+├─ fn Tag.create(n : i32) : STRUCT_CALL
 │  ├─ t : STRUCT_CALL
-│  ├─ = : int
-│  │  ├─ .id : int
+│  ├─ = : i32
+│  │  ├─ .id : i32
 │  │  │  └─ t : STRUCT_CALL
-│  │  └─ n : int
+│  │  └─ n : i32
 │  └─ return
 │     └─ t : STRUCT_CALL
 ├─ fn Tag.=.Tag(self : STRUCT_CALL, other : STRUCT_CALL) : void
-│  └─ = : int
-│     ├─ .id : int
+│  └─ = : i32
+│     ├─ .id : i32
 │     │  └─ self : STRUCT_CALL
-│     └─ .id : int
+│     └─ .id : i32
 │        └─ other : STRUCT_CALL
 └─ fn Tag.drop(self : STRUCT_CALL) : void
    └─ output : void
       ├─ chars "drop "
-      ├─ .id : int
+      ├─ .id : i32
       │  └─ self : STRUCT_CALL
       └─ chars "\n"
 
-fn main() : int
+fn main() : i32
 ├─ if
 │  ├─ condition < : bool
 │  │  ├─ int 1
@@ -2685,21 +2685,21 @@ fn main() : int
 │     └─ chars "inside\n"
 ├─ output : void
 │  └─ chars "after if\n"
-├─ = : int
-│  ├─ i : int
+├─ = : i32
+│  ├─ i : i32
 │  └─ int 0
 ├─ while
 │  ├─ condition < : bool
-│  │  ├─ i : int
+│  │  ├─ i : i32
 │  │  └─ int 3
 │  ├─ = : STRUCT_CALL
 │  │  ├─ y : STRUCT_CALL
 │  │  └─ call create : STRUCT_CALL
-│  │     └─ + : int
+│  │     └─ + : i32
 │  │        ├─ int 10
-│  │        └─ i : int
-│  └─ += : int
-│     ├─ i : int
+│  │        └─ i : i32
+│  └─ += : i32
+│     ├─ i : i32
 │     └─ int 1
 ├─ output : void
 │  └─ chars "after loop\n"
@@ -2881,36 +2881,36 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Res
-├─ id : int
-├─ fn Res.create(n : int) : STRUCT_CALL
+├─ id : i32
+├─ fn Res.create(n : i32) : STRUCT_CALL
 │  ├─ r : STRUCT_CALL
-│  ├─ = : int
-│  │  ├─ .id : int
+│  ├─ = : i32
+│  │  ├─ .id : i32
 │  │  │  └─ r : STRUCT_CALL
-│  │  └─ n : int
+│  │  └─ n : i32
 │  └─ return
 │     └─ r : STRUCT_CALL
 ├─ fn Res.=.Res(self : STRUCT_CALL, other : STRUCT_CALL) : void
-│  └─ = : int
-│     ├─ .id : int
+│  └─ = : i32
+│     ├─ .id : i32
 │     │  └─ self : STRUCT_CALL
-│     └─ .id : int
+│     └─ .id : i32
 │        └─ other : STRUCT_CALL
 └─ fn Res.drop(self : STRUCT_CALL) : void
    └─ output : void
       ├─ chars "drop "
-      ├─ .id : int
+      ├─ .id : i32
       │  └─ self : STRUCT_CALL
       └─ chars "\n"
 
@@ -2941,7 +2941,7 @@ struct Owner
    └─ return
       └─ o : STRUCT_CALL
 
-fn main() : int
+fn main() : i32
 ├─ = : STRUCT_CALL
 │  ├─ lent : STRUCT_CALL
 │  └─ call create : STRUCT_CALL
@@ -3121,72 +3121,72 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Plain
-├─ x : int
-└─ fn Plain.create(n : int) : STRUCT_CALL
+├─ x : i32
+└─ fn Plain.create(n : i32) : STRUCT_CALL
    ├─ p : STRUCT_CALL
-   ├─ = : int
-   │  ├─ .x : int
+   ├─ = : i32
+   │  ├─ .x : i32
    │  │  └─ p : STRUCT_CALL
-   │  └─ n : int
+   │  └─ n : i32
    └─ return
       └─ p : STRUCT_CALL
 
 struct R
-├─ id : int
-├─ fn R.create(n : int) : STRUCT_CALL
+├─ id : i32
+├─ fn R.create(n : i32) : STRUCT_CALL
 │  ├─ r : STRUCT_CALL
-│  ├─ = : int
-│  │  ├─ .id : int
+│  ├─ = : i32
+│  │  ├─ .id : i32
 │  │  │  └─ r : STRUCT_CALL
-│  │  └─ n : int
+│  │  └─ n : i32
 │  └─ return
 │     └─ r : STRUCT_CALL
 ├─ fn R.=.R(self : STRUCT_CALL, other : STRUCT_CALL) : void
-│  └─ = : int
-│     ├─ .id : int
+│  └─ = : i32
+│     ├─ .id : i32
 │     │  └─ self : STRUCT_CALL
-│     └─ .id : int
+│     └─ .id : i32
 │        └─ other : STRUCT_CALL
 ├─ fn R.+.R(self : STRUCT_CALL, other : STRUCT_CALL) : STRUCT_CALL
 │  └─ return
 │     └─ call create : STRUCT_CALL
-│        └─ + : int
-│           ├─ .id : int
+│        └─ + : i32
+│           ├─ .id : i32
 │           │  └─ self : STRUCT_CALL
-│           └─ .id : int
+│           └─ .id : i32
 │              └─ other : STRUCT_CALL
 ├─ fn R.show(self : STRUCT_CALL) : void
 │  └─ output : void
 │     ├─ chars "show "
-│     ├─ .id : int
+│     ├─ .id : i32
 │     │  └─ self : STRUCT_CALL
 │     └─ chars "\n"
 └─ fn R.drop(self : STRUCT_CALL) : void
    └─ output : void
       ├─ chars "DROP "
-      ├─ .id : int
+      ├─ .id : i32
       │  └─ self : STRUCT_CALL
       └─ chars "\n"
 
-fn via_return(a : STRUCT_CALL, b : STRUCT_CALL) : int
+fn via_return(a : STRUCT_CALL, b : STRUCT_CALL) : i32
 └─ return
-   └─ .id : int
+   └─ .id : i32
       └─ + : STRUCT_CALL
          ├─ a : STRUCT_CALL
          └─ b : STRUCT_CALL
 
-fn main() : int
+fn main() : i32
 ├─ = : STRUCT_CALL
 │  ├─ a : STRUCT_CALL
 │  └─ call create : STRUCT_CALL
@@ -3202,7 +3202,7 @@ fn main() : int
 ├─ output : void
 │  └─ chars "--\n"
 ├─ output : void
-│  ├─ .id : int
+│  ├─ .id : i32
 │  │  └─ + : STRUCT_CALL
 │  │     ├─ a : STRUCT_CALL
 │  │     └─ b : STRUCT_CALL
@@ -3217,38 +3217,38 @@ fn main() : int
 │     └─ a : STRUCT_CALL
 ├─ output : void
 │  └─ chars "--\n"
-├─ = : int
-│  ├─ i : int
+├─ = : i32
+│  ├─ i : i32
 │  └─ int 0
 ├─ while
 │  ├─ condition < : bool
-│  │  ├─ i : int
+│  │  ├─ i : i32
 │  │  └─ int 2
 │  ├─ call show : void
 │  │  └─ + : STRUCT_CALL
 │  │     ├─ a : STRUCT_CALL
 │  │     └─ b : STRUCT_CALL
-│  └─ += : int
-│     ├─ i : int
+│  └─ += : i32
+│     ├─ i : i32
 │     └─ int 1
 ├─ output : void
 │  └─ chars "--\n"
 ├─ output : void
-│  ├─ call via_return : int
+│  ├─ call via_return : i32
 │  │  ├─ a : STRUCT_CALL
 │  │  └─ b : STRUCT_CALL
 │  └─ chars "\n"
 ├─ output : void
 │  └─ chars "--\n"
 ├─ output : void
-│  ├─ .id : int
+│  ├─ .id : i32
 │  │  └─ call create : STRUCT_CALL
 │  │     └─ int 9
 │  └─ chars "\n"
 ├─ output : void
 │  └─ chars "--\n"
 ├─ output : void
-│  ├─ .x : int
+│  ├─ .x : i32
 │  │  └─ call create : STRUCT_CALL
 │  │     └─ int 7
 │  └─ chars "\n"

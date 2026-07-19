@@ -338,7 +338,7 @@ Node *fdec_node(Node *node) {
 		parse_error(node->token, ERR_FN_EXPECTED_RPAREN, node->token->name);
 
 	if(strcmp(node->token->name, "main") == 0) {
-		node->token->ret_type = INT;
+		node->token->ret_type = I32;
 	}
 	else if(is_data_type(peek(0))) {
 		node->token->ret_type = next()->type;
@@ -479,8 +479,8 @@ Node *prime_node() {
    Token *token = next();
    switch(token->type)
    {
-   case INT: case BOOL: case CHARS: case CHAR: case FLOAT:
-   case LONG: case SHORT:
+   case I32: case BOOL: case CHARS: case CHAR: case F32:
+   case I64: case I16:
       if (token->is_dec && peek(0)->type == LBRA)
          return array_ctor_node(new_node(token));
       return new_node(token);
@@ -598,7 +598,7 @@ Node *prime_node() {
    case SUB: {
       Node *node   = new_node(token);
       node->right  = prime_node();
-      Type kind    = node->right->token->type == FLOAT ? FLOAT : INT;
+      Type kind    = node->right->token->type == F32 ? F32 : I32;
       node->left   = new_node(new_token(kind, token->indent));
       return node;
    }

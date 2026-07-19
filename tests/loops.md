@@ -30,32 +30,32 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ kills : int
+fn main() : i32
+├─ = : i32
+│  ├─ kills : i32
 │  └─ int 0
 ├─ while
 │  ├─ condition < : bool
-│  │  ├─ kills : int
+│  │  ├─ kills : i32
 │  │  └─ int 5
-│  └─ = : int
-│     ├─ kills : int
-│     └─ + : int
-│        ├─ kills : int
+│  └─ = : i32
+│     ├─ kills : i32
+│     └─ + : i32
+│        ├─ kills : i32
 │        └─ int 1
 └─ output : void
    ├─ chars "<"
-   ├─ kills : int
+   ├─ kills : i32
    └─ chars ">\n"
 ```
 
@@ -116,38 +116,38 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ i : int
+fn main() : i32
+├─ = : i32
+│  ├─ i : i32
 │  └─ int 0
 ├─ loop
-│  ├─ = : int
-│  │  ├─ i : int
-│  │  └─ + : int
-│  │     ├─ i : int
+│  ├─ = : i32
+│  │  ├─ i : i32
+│  │  └─ + : i32
+│  │     ├─ i : i32
 │  │     └─ int 1
 │  ├─ if
 │  │  ├─ condition == : bool
-│  │  │  ├─ i : int
+│  │  │  ├─ i : i32
 │  │  │  └─ int 3
 │  │  └─ continue
 │  ├─ if
 │  │  ├─ condition == : bool
-│  │  │  ├─ i : int
+│  │  │  ├─ i : i32
 │  │  │  └─ int 6
 │  │  └─ break
 │  └─ output : void
-│     ├─ i : int
+│     ├─ i : i32
 │     └─ chars " "
 └─ output : void
    └─ chars "\n"
@@ -220,34 +220,34 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ for
-│  ├─ i : int
-│  ├─ range : int
+│  ├─ i : i32
+│  ├─ range : i32
 │  │  ├─ int 0
 │  │  └─ int 5
 │  └─ output : void
-│     ├─ i : int
+│     ├─ i : i32
 │     └─ chars " "
 ├─ output : void
 │  └─ chars "| "
 ├─ for
-│  ├─ i : int
-│  ├─ range : int
+│  ├─ i : i32
+│  ├─ range : i32
 │  │  ├─ int 5
 │  │  └─ int 0
 │  └─ output : void
-│     ├─ i : int
+│     ├─ i : i32
 │     └─ chars " "
 └─ output : void
    └─ chars "\n"
@@ -341,37 +341,37 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ = : array
-│  ├─ nums : int[]
-│  └─ array : int[]
+│  ├─ nums : i32[]
+│  └─ array : i32[]
 │     ├─ int 10
 │     ├─ int 20
 │     └─ int 30
-├─ = : int
-│  ├─ total : int
+├─ = : i32
+│  ├─ total : i32
 │  └─ int 0
 ├─ for
-│  ├─ x : int
-│  ├─ nums : int[]
-│  └─ = : int
-│     ├─ total : int
-│     └─ + : int
-│        ├─ total : int
-│        └─ x : int
+│  ├─ x : i32
+│  ├─ nums : i32[]
+│  └─ = : i32
+│     ├─ total : i32
+│     └─ + : i32
+│        ├─ total : i32
+│        └─ x : i32
 └─ output : void
    ├─ chars "sum = "
-   ├─ total : int
+   ├─ total : i32
    └─ chars "\n"
 ```
 
@@ -456,37 +456,37 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ = : array
-│  ├─ nums : int[]
-│  └─ array : int[]
+│  ├─ nums : i32[]
+│  └─ array : i32[]
 │     ├─ int 1
 │     ├─ int 2
 │     ├─ int 3
 │     └─ int 4
 ├─ for
-│  ├─ x : int
-│  ├─ nums : int[]
-│  └─ = : int
-│     ├─ x : int
-│     └─ * : int
-│        ├─ x : int
+│  ├─ x : i32
+│  ├─ nums : i32[]
+│  └─ = : i32
+│     ├─ x : i32
+│     └─ * : i32
+│        ├─ x : i32
 │        └─ int 2
 ├─ for
-│  ├─ x : int
-│  ├─ nums : int[]
+│  ├─ x : i32
+│  ├─ nums : i32[]
 │  └─ output : void
-│     ├─ x : int
+│     ├─ x : i32
 │     └─ chars " "
 └─ output : void
    └─ chars "\n"
@@ -733,28 +733,28 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Room
-└─ floor : int
+└─ floor : i32
 
 struct World
-├─ grid : int[][]
+├─ grid : i32[][]
 ├─ rooms : STRUCT_CALL[]
 ├─ fn World.create() : STRUCT_CALL
 │  ├─ w : STRUCT_CALL
 │  ├─ = : array
-│  │  ├─ .grid : int[][]
+│  │  ├─ .grid : i32[][]
 │  │  │  └─ w : STRUCT_CALL
-│  │  └─ array : int[][]
+│  │  └─ array : i32[][]
 │  │     ├─ int 2
 │  │     └─ int 3
 │  ├─ = : array
@@ -762,27 +762,27 @@ struct World
 │  │  │  └─ w : STRUCT_CALL
 │  │  └─ array : STRUCT_CALL[]
 │  │     └─ int 3
-│  ├─ = : int
-│  │  ├─ i : int
+│  ├─ = : i32
+│  │  ├─ i : i32
 │  │  └─ int 0
 │  ├─ while
 │  │  ├─ condition < : bool
-│  │  │  ├─ i : int
+│  │  │  ├─ i : i32
 │  │  │  └─ int 3
-│  │  ├─ = : int
-│  │  │  ├─ .floor : int
+│  │  ├─ = : i32
+│  │  │  ├─ .floor : i32
 │  │  │  │  └─ index : STRUCT_CALL
 │  │  │  │     ├─ .rooms : STRUCT_CALL[]
 │  │  │  │     │  └─ w : STRUCT_CALL
-│  │  │  │     └─ i : int
-│  │  │  └─ i : int
-│  │  └─ += : int
-│  │     ├─ i : int
+│  │  │  │     └─ i : i32
+│  │  │  └─ i : i32
+│  │  └─ += : i32
+│  │     ├─ i : i32
 │  │     └─ int 1
-│  ├─ = : int
-│  │  ├─ index : int
-│  │  │  ├─ index : int[]
-│  │  │  │  ├─ .grid : int[][]
+│  ├─ = : i32
+│  │  ├─ index : i32
+│  │  │  ├─ index : i32[]
+│  │  │  │  ├─ .grid : i32[][]
 │  │  │  │  │  └─ w : STRUCT_CALL
 │  │  │  │  └─ int 1
 │  │  │  └─ int 2
@@ -791,14 +791,14 @@ struct World
 │     └─ w : STRUCT_CALL
 ├─ fn World.show_grid(self : STRUCT_CALL) : void
 │  └─ for
-│     ├─ row : int[]
-│     ├─ .grid : int[][]
+│     ├─ row : i32[]
+│     ├─ .grid : i32[][]
 │     │  └─ self : STRUCT_CALL
 │     ├─ for
-│     │  ├─ v : int
-│     │  ├─ row : int[]
+│     │  ├─ v : i32
+│     │  ├─ row : i32[]
 │     │  └─ output : void
-│     │     ├─ v : int
+│     │     ├─ v : i32
 │     │     └─ chars " "
 │     └─ output : void
 │        └─ chars "\n"
@@ -808,7 +808,7 @@ struct World
    │  ├─ .rooms : STRUCT_CALL[]
    │  │  └─ self : STRUCT_CALL
    │  └─ output : void
-   │     ├─ .floor : int
+   │     ├─ .floor : i32
    │     │  └─ r : STRUCT_CALL
    │     └─ chars " "
    ├─ output : void
@@ -817,11 +817,11 @@ struct World
    │  ├─ r : STRUCT_CALL
    │  ├─ .rooms : STRUCT_CALL[]
    │  │  └─ self : STRUCT_CALL
-   │  └─ = : int
-   │     ├─ .floor : int
+   │  └─ = : i32
+   │     ├─ .floor : i32
    │     │  └─ r : STRUCT_CALL
-   │     └─ * : int
-   │        ├─ .floor : int
+   │     └─ * : i32
+   │        ├─ .floor : i32
    │        │  └─ r : STRUCT_CALL
    │        └─ int 10
    ├─ for
@@ -829,13 +829,13 @@ struct World
    │  ├─ .rooms : STRUCT_CALL[]
    │  │  └─ self : STRUCT_CALL
    │  └─ output : void
-   │     ├─ .floor : int
+   │     ├─ .floor : i32
    │     │  └─ r : STRUCT_CALL
    │     └─ chars " "
    └─ output : void
       └─ chars "\n"
 
-fn main() : int
+fn main() : i32
 ├─ = : STRUCT_CALL
 │  ├─ w : STRUCT_CALL
 │  └─ call create : STRUCT_CALL
@@ -844,7 +844,7 @@ fn main() : int
 ├─ call bump : void
 │  └─ w : STRUCT_CALL
 ├─ clean : void
-│  └─ .grid : int[][]
+│  └─ .grid : i32[][]
 │     └─ w : STRUCT_CALL
 └─ clean : void
    └─ .rooms : STRUCT_CALL[]
@@ -1219,28 +1219,28 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Room
-└─ floor : int
+└─ floor : i32
 
 struct World
-├─ grid : int[][]
+├─ grid : i32[][]
 ├─ rooms : STRUCT_CALL[]
 ├─ fn World.create() : STRUCT_CALL
 │  ├─ w : STRUCT_CALL
 │  ├─ = : array
-│  │  ├─ .grid : int[][]
+│  │  ├─ .grid : i32[][]
 │  │  │  └─ w : STRUCT_CALL
-│  │  └─ array : int[][]
+│  │  └─ array : i32[][]
 │  │     ├─ int 2
 │  │     └─ int 3
 │  ├─ = : array
@@ -1248,27 +1248,27 @@ struct World
 │  │  │  └─ w : STRUCT_CALL
 │  │  └─ array : STRUCT_CALL[]
 │  │     └─ int 3
-│  ├─ = : int
-│  │  ├─ i : int
+│  ├─ = : i32
+│  │  ├─ i : i32
 │  │  └─ int 0
 │  ├─ while
 │  │  ├─ condition < : bool
-│  │  │  ├─ i : int
+│  │  │  ├─ i : i32
 │  │  │  └─ int 3
-│  │  ├─ = : int
-│  │  │  ├─ .floor : int
+│  │  ├─ = : i32
+│  │  │  ├─ .floor : i32
 │  │  │  │  └─ index : STRUCT_CALL
 │  │  │  │     ├─ .rooms : STRUCT_CALL[]
 │  │  │  │     │  └─ w : STRUCT_CALL
-│  │  │  │     └─ i : int
-│  │  │  └─ i : int
-│  │  └─ += : int
-│  │     ├─ i : int
+│  │  │  │     └─ i : i32
+│  │  │  └─ i : i32
+│  │  └─ += : i32
+│  │     ├─ i : i32
 │  │     └─ int 1
-│  ├─ = : int
-│  │  ├─ index : int
-│  │  │  ├─ index : int[]
-│  │  │  │  ├─ .grid : int[][]
+│  ├─ = : i32
+│  │  ├─ index : i32
+│  │  │  ├─ index : i32[]
+│  │  │  │  ├─ .grid : i32[][]
 │  │  │  │  │  └─ w : STRUCT_CALL
 │  │  │  │  └─ int 1
 │  │  │  └─ int 2
@@ -1277,14 +1277,14 @@ struct World
 │     └─ w : STRUCT_CALL
 ├─ fn World.show_grid(self : STRUCT_CALL) : void
 │  └─ for
-│     ├─ row : int[]
-│     ├─ .grid : int[][]
+│     ├─ row : i32[]
+│     ├─ .grid : i32[][]
 │     │  └─ self : STRUCT_CALL
 │     ├─ for
-│     │  ├─ v : int
-│     │  ├─ row : int[]
+│     │  ├─ v : i32
+│     │  ├─ row : i32[]
 │     │  └─ output : void
-│     │     ├─ v : int
+│     │     ├─ v : i32
 │     │     └─ chars " "
 │     └─ output : void
 │        └─ chars "\n"
@@ -1294,7 +1294,7 @@ struct World
    │  ├─ .rooms : STRUCT_CALL[]
    │  │  └─ self : STRUCT_CALL
    │  └─ output : void
-   │     ├─ .floor : int
+   │     ├─ .floor : i32
    │     │  └─ r : STRUCT_CALL
    │     └─ chars " "
    ├─ output : void
@@ -1303,11 +1303,11 @@ struct World
    │  ├─ r : STRUCT_CALL
    │  ├─ .rooms : STRUCT_CALL[]
    │  │  └─ self : STRUCT_CALL
-   │  └─ = : int
-   │     ├─ .floor : int
+   │  └─ = : i32
+   │     ├─ .floor : i32
    │     │  └─ r : STRUCT_CALL
-   │     └─ * : int
-   │        ├─ .floor : int
+   │     └─ * : i32
+   │        ├─ .floor : i32
    │        │  └─ r : STRUCT_CALL
    │        └─ int 10
    ├─ for
@@ -1315,13 +1315,13 @@ struct World
    │  ├─ .rooms : STRUCT_CALL[]
    │  │  └─ self : STRUCT_CALL
    │  └─ output : void
-   │     ├─ .floor : int
+   │     ├─ .floor : i32
    │     │  └─ r : STRUCT_CALL
    │     └─ chars " "
    └─ output : void
       └─ chars "\n"
 
-fn main() : int
+fn main() : i32
 ├─ = : STRUCT_CALL
 │  ├─ w : STRUCT_CALL
 │  └─ call create : STRUCT_CALL
@@ -1330,7 +1330,7 @@ fn main() : int
 ├─ call bump : void
 │  └─ w : STRUCT_CALL
 ├─ clean : void
-│  └─ .grid : int[][]
+│  └─ .grid : i32[][]
 │     └─ w : STRUCT_CALL
 └─ clean : void
    └─ .rooms : STRUCT_CALL[]
@@ -1678,61 +1678,61 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ for
-│  ├─ i : int
-│  ├─ range : int
+│  ├─ i : i32
+│  ├─ range : i32
 │  │  ├─ int 0
 │  │  ├─ int 10
 │  │  └─ int 3
 │  └─ output : void
-│     ├─ i : int
+│     ├─ i : i32
 │     └─ chars " "
 ├─ output : void
 │  └─ chars "\n"
 ├─ for
-│  ├─ i : int
-│  ├─ range : int
+│  ├─ i : i32
+│  ├─ range : i32
 │  │  ├─ int 10
 │  │  ├─ int 0
 │  │  └─ int 3
 │  └─ output : void
-│     ├─ i : int
+│     ├─ i : i32
 │     └─ chars " "
 ├─ output : void
 │  └─ chars "\n"
-├─ = : int
-│  ├─ n : int
+├─ = : i32
+│  ├─ n : i32
 │  └─ int 4
 ├─ for
-│  ├─ i : int
-│  ├─ range : int
+│  ├─ i : i32
+│  ├─ range : i32
 │  │  ├─ int 0
 │  │  ├─ int 20
-│  │  └─ n : int
+│  │  └─ n : i32
 │  └─ output : void
-│     ├─ i : int
+│     ├─ i : i32
 │     └─ chars " "
 ├─ output : void
 │  └─ chars "\n"
 ├─ for
-│  ├─ i : int
-│  ├─ range : int
+│  ├─ i : i32
+│  ├─ range : i32
 │  │  ├─ int 0
 │  │  ├─ int 3
 │  │  └─ int 10
 │  └─ output : void
-│     ├─ i : int
+│     ├─ i : i32
 │     └─ chars " "
 └─ output : void
    └─ chars "\n"

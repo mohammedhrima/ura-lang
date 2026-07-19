@@ -18,23 +18,23 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ floor : int
+fn main() : i32
+├─ = : i32
+│  ├─ floor : i32
 │  └─ int 1
 └─ if
    ├─ condition == : bool
-   │  ├─ floor : int
+   │  ├─ floor : i32
    │  └─ int 1
    └─ output : void
       └─ chars "Fresh start\n"
@@ -85,23 +85,23 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ hp : int
+fn main() : i32
+├─ = : i32
+│  ├─ hp : i32
 │  └─ int 0
 └─ if
    ├─ condition > : bool
-   │  ├─ hp : int
+   │  ├─ hp : i32
    │  └─ int 0
    ├─ output : void
    │  └─ chars "Hero is alive\n"
@@ -163,29 +163,29 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ floor : int
+fn main() : i32
+├─ = : i32
+│  ├─ floor : i32
 │  └─ int 6
 └─ if
    ├─ condition < : bool
-   │  ├─ floor : int
+   │  ├─ floor : i32
    │  └─ int 3
    ├─ output : void
    │  └─ chars "Easy\n"
    └─ elif
       ├─ condition < : bool
-      │  ├─ floor : int
+      │  ├─ floor : i32
       │  └─ int 7
       ├─ output : void
       │  └─ chars "Normal\n"

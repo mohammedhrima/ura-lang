@@ -3,16 +3,16 @@
 char *to_string(Type type) {
 	char *res[END + 1] = {
 	    [ID] = "ID",              [CHAR] = "CHAR",             [CHARS] = "CHARS",
-	    [INT] = "INT",            [VOID] = "VOID",             [BOOL] = "BOOL",
-	    [LONG] = "LONG",          [FDEC] = "FDEC",             [FLOAT] = "FLOAT",
-	    [DOUBLE] = "DOUBLE",
-	    [END] = "END",            [LPAR] = "LPAR",             [FCALL] = "CALL",
+	    [I32] = "I32",            [VOID] = "VOID",             [BOOL] = "BOOL",
+	    [I64] = "I64",            [FDEC] = "FDEC",             [F32] = "F32",
+	    [F64] = "F64",            [END] = "END",               [LPAR] = "LPAR",
+	    [FCALL] = "CALL",
 	    [IF] = "IF",              [RPAR] = "RPAR",             [ELIF] = "ELIF",
 	    [FOR] = "FOR",            [ELSE] = "ELSE",             [WHILE] = "WHILE",
 	    [BY] = "BY",              [LOOP] = "LOOP",
 	    [IN] = "IN",              [BREAK] = "BRK",             [CONTINUE] = "CONT",
 	    [CASE] = "CASE",          [MATCH] = "MATCH",           [DEFAULT] = "DEFAULT",
-	    [BAND] = "BAND",          [RETURN] = "RET",            [SHORT] = "SHORT",
+	    [BAND] = "BAND",          [RETURN] = "RET",            [I16] = "I16",
 	    [BOR] = "BOR",            [BXOR] = "BXOR",             [BNOT] = "BNOT",
 	    [ADD] = "ADD",            [LSHIFT] = "LSHIFT",         [RSHIFT] = "RSHIFT",
 	    [SUB] = "SUB",            [MUL] = "MUL",               [DIV] = "DIV",
@@ -44,14 +44,14 @@ char *to_string(Type type) {
 
 char *type_name(Type type) {
 	switch (type) {
-	case INT:        return "int";
-	case LONG:       return "long";
-	case SHORT:      return "short";
+	case I32:        return "i32";
+	case I64:        return "i64";
+	case I16:        return "i16";
 	case CHAR:       return "char";
 	case CHARS:      return "chars";
 	case BOOL:       return "bool";
-	case FLOAT:      return "float";
-	case DOUBLE:     return "double";
+	case F32:        return "f32";
+	case F64:        return "f64";
 	case VOID:       return "void";
 	case ARRAY_TYPE: return "array";
 	case FN_TYPE:    return "fn";
@@ -148,23 +148,23 @@ int _vprint(File out, const char *conv, va_list args) {
 				fprintf(out, "[%s] ", to_string(token->type));
 
 				switch (token->type) {
-				case VOID: case CHARS: case CHAR: case INT: case BOOL: case FLOAT:
-				case LONG: {
+				case VOID: case CHARS: case CHAR: case I32: case BOOL: case F32:
+				case I64: {
 					if (token->name) {
 						fprintf(out, "%s ", token->name);
 						break;
 					}
 					if (token->type == VOID) break;
 					switch (token->type) {
-					case INT:   fprintf(out, "[%lld] ", (long long)token->Int.value);
+					case I32:   fprintf(out, "[%lld] ", (long long)token->Int.value);
 						break;
-					case LONG:  fprintf(out, "[%lld] ", token->Long.value); break;
+					case I64:  fprintf(out, "[%lld] ", token->Long.value); break;
 					case BOOL: {
 						char *text = token->Bool.value ? "True" : "False";
 						fprintf(out, "[%s] ", text);
 						break;
 					}
-					case FLOAT: fprintf(out, "[%f] ", token->Float.value); break;
+					case F32: fprintf(out, "[%f] ", token->Float.value); break;
 					case CHAR:  {
 						fprintf(out, "[");
 						fprint_escaped(out, token->Char.value);
@@ -241,11 +241,11 @@ char *array_type_label(Token *token) {
 }
 
 static char *spelling[END + 1] = {
-		[INT] = "int",       [LONG] = "long",       [SHORT] = "short",
+		[I32] = "i32",       [I64] = "i64",         [I16] = "i16",
 		[BOOL] = "bool",     [CHAR] = "char",       [CHARS] = "chars",
-		[ADD] = "+",         [VOID] = "void",       [FLOAT] = "float",
-		[DOUBLE] = "double",
-		[SUB] = "-",         [MUL] = "*",           [DIV] = "/",
+		[ADD] = "+",         [VOID] = "void",       [F32] = "f32",
+		[F64] = "f64",       [SUB] = "-",           [MUL] = "*",
+		[DIV] = "/",
 		[MOD] = "%",         [EQUAL] = "==",        [NOT_EQUAL] = "!=",
 		[LESS] = "<",        [GREAT] = ">",         [LESS_EQUAL] = "<=",
 		[OR] = "or",         [AND] = "and",         [GREAT_EQUAL] = ">=",
@@ -271,10 +271,10 @@ char *spell(Type type) {
 void print_node_label(Node *node) {
 	Token *token = node->token;
 	switch (token->type) {
-	case INT:   printf("int %lld", (long long)token->Int.value); return;
-	case LONG:  printf("long %lld", token->Long.value); return;
-	case SHORT: printf("short %d", token->Short.value); return;
-	case FLOAT: printf("float %g", token->Float.value); return;
+	case I32:   printf("int %lld", (long long)token->Int.value); return;
+	case I64:  printf("long %lld", token->Long.value); return;
+	case I16: printf("short %d", token->Short.value); return;
+	case F32: printf("float %g", token->Float.value); return;
 	case BOOL:  printf("bool %s", token->Bool.value ? "True" : "False"); return;
 	case CHAR: {
 		printf("char '");

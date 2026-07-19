@@ -72,174 +72,174 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn base_atk() : int
+fn base_atk() : i32
 └─ return
    └─ int 10
 
-fn clamp(t : float) : float
+fn clamp(t : f32) : f32
 ├─ if
 │  ├─ condition < : bool
-│  │  ├─ t : float
+│  │  ├─ t : f32
 │  │  └─ float 0.05
 │  └─ return
 │     └─ float 0.05
 └─ return
-   └─ t : float
+   └─ t : f32
 
-fn main() : int
-├─ = : int
-│  ├─ atk : int
+fn main() : i32
+├─ = : i32
+│  ├─ atk : i32
 │  └─ int 25
-├─ = : int
-│  ├─ def : int
+├─ = : i32
+│  ├─ def : i32
 │  └─ int 8
-├─ = : int
-│  ├─ kills : int
+├─ = : i32
+│  ├─ kills : i32
 │  └─ int 3
-├─ = : int
-│  ├─ total : int
+├─ = : i32
+│  ├─ total : i32
 │  └─ int 100
-├─ = : int
-│  ├─ count : int
+├─ = : i32
+│  ├─ count : i32
 │  └─ int 4
-├─ = : int
-│  ├─ xp_cap : int
+├─ = : i32
+│  ├─ xp_cap : i32
 │  └─ int 70
 ├─ output : void
 │  ├─ chars "atk + def:       "
-│  ├─ + : int
-│  │  ├─ atk : int
-│  │  └─ def : int
+│  ├─ + : i32
+│  │  ├─ atk : i32
+│  │  └─ def : i32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "atk - def:       "
-│  ├─ - : int
-│  │  ├─ atk : int
-│  │  └─ def : int
+│  ├─ - : i32
+│  │  ├─ atk : i32
+│  │  └─ def : i32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "kills * 50:      "
-│  ├─ * : int
-│  │  ├─ kills : int
+│  ├─ * : i32
+│  │  ├─ kills : i32
 │  │  └─ int 50
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "total / count:   "
-│  ├─ / : int
-│  │  ├─ total : int
-│  │  └─ count : int
+│  ├─ / : i32
+│  │  ├─ total : i32
+│  │  └─ count : i32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "atk % xp_cap:    "
-│  ├─ % : int
-│  │  ├─ atk : int
-│  │  └─ xp_cap : int
+│  ├─ % : i32
+│  │  ├─ atk : i32
+│  │  └─ xp_cap : i32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "10 + 5:          "
-│  ├─ + : int
+│  ├─ + : i32
 │  │  ├─ int 10
 │  │  └─ int 5
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "base_atk + atk:  "
-│  ├─ + : int
-│  │  ├─ call base_atk : int
-│  │  └─ atk : int
+│  ├─ + : i32
+│  │  ├─ call base_atk : i32
+│  │  └─ atk : i32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "2 + 3 * 4:       "
-│  ├─ + : int
+│  ├─ + : i32
 │  │  ├─ int 2
-│  │  └─ * : int
+│  │  └─ * : i32
 │  │     ├─ int 3
 │  │     └─ int 4
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "(2 + 3) * 4:     "
-│  ├─ * : int
-│  │  ├─ + : int
+│  ├─ * : i32
+│  │  ├─ + : i32
 │  │  │  ├─ int 2
 │  │  │  └─ int 3
 │  │  └─ int 4
 │  └─ chars "\n"
-├─ = : float
-│  ├─ a : float
+├─ = : f32
+│  ├─ a : f32
 │  └─ float 1.5
-├─ = : float
-│  ├─ b : float
+├─ = : f32
+│  ├─ b : f32
 │  └─ float 0.3
 ├─ output : void
 │  ├─ chars "add:  "
-│  ├─ + : float
-│  │  ├─ a : float
-│  │  └─ b : float
+│  ├─ + : f32
+│  │  ├─ a : f32
+│  │  └─ b : f32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "sub:  "
-│  ├─ - : float
-│  │  ├─ a : float
-│  │  └─ b : float
+│  ├─ - : f32
+│  │  ├─ a : f32
+│  │  └─ b : f32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "mul:  "
-│  ├─ * : float
-│  │  ├─ a : float
-│  │  └─ b : float
+│  ├─ * : f32
+│  │  ├─ a : f32
+│  │  └─ b : f32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "div:  "
-│  ├─ / : float
-│  │  ├─ a : float
-│  │  └─ b : float
+│  ├─ / : f32
+│  │  ├─ a : f32
+│  │  └─ b : f32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "lt:   "
 │  ├─ < : bool
-│  │  ├─ a : float
-│  │  └─ b : float
+│  │  ├─ a : f32
+│  │  └─ b : f32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "gt:   "
 │  ├─ > : bool
-│  │  ├─ a : float
-│  │  └─ b : float
+│  │  ├─ a : f32
+│  │  └─ b : f32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "lte:  "
 │  ├─ <= : bool
-│  │  ├─ a : float
-│  │  └─ b : float
+│  │  ├─ a : f32
+│  │  └─ b : f32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "gte:  "
 │  ├─ >= : bool
-│  │  ├─ a : float
-│  │  └─ b : float
+│  │  ├─ a : f32
+│  │  └─ b : f32
 │  └─ chars "\n"
-├─ = : float
-│  ├─ t : float
-│  └─ - : float
+├─ = : f32
+│  ├─ t : f32
+│  └─ - : f32
 │     ├─ float 0.8
 │     └─ float 0.28
 ├─ output : void
 │  ├─ chars "clamp(0.52): "
-│  ├─ call clamp : float
-│  │  └─ t : float
+│  ├─ call clamp : f32
+│  │  └─ t : f32
 │  └─ chars "\n"
 └─ output : void
    ├─ chars "clamp(0.01): "
-   ├─ call clamp : float
+   ├─ call clamp : f32
    │  └─ float 0.01
    └─ chars "\n"
 ```
@@ -501,24 +501,24 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 └─ return
-   └─ - : int
-      ├─ + : int
-      │  ├─ * : int
+   └─ - : i32
+      ├─ + : i32
+      │  ├─ * : i32
       │  │  ├─ int 2
       │  │  └─ int 3
-      │  └─ / : int
+      │  └─ / : i32
       │     ├─ int 20
       │     └─ int 4
       └─ int 1
@@ -565,29 +565,29 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ a : int
+fn main() : i32
+├─ = : i32
+│  ├─ a : i32
 │  └─ int 2
-├─ = : int
-│  ├─ a : int
-│  └─ + : int
-│     ├─ * : int
-│     │  ├─ a : int
+├─ = : i32
+│  ├─ a : i32
+│  └─ + : i32
+│     ├─ * : i32
+│     │  ├─ a : i32
 │     │  └─ int 10
 │     └─ int 3
 └─ return
-   └─ a : int
+   └─ a : i32
 ```
 
 ```out
@@ -622,19 +622,19 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 └─ return
-   └─ % : int
+   └─ % : i32
       ├─ int 17
       └─ int 5
 ```
@@ -685,46 +685,46 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ a : int
+fn main() : i32
+├─ = : i32
+│  ├─ a : i32
 │  └─ int 12
-├─ = : int
-│  ├─ b : int
+├─ = : i32
+│  ├─ b : i32
 │  └─ int 10
 ├─ output : void
-│  ├─ & : int
-│  │  ├─ a : int
-│  │  └─ b : int
+│  ├─ & : i32
+│  │  ├─ a : i32
+│  │  └─ b : i32
 │  └─ chars "\n"
 ├─ output : void
-│  ├─ | : int
-│  │  ├─ a : int
-│  │  └─ b : int
+│  ├─ | : i32
+│  │  ├─ a : i32
+│  │  └─ b : i32
 │  └─ chars "\n"
 ├─ output : void
-│  ├─ ^ : int
-│  │  ├─ a : int
-│  │  └─ b : int
+│  ├─ ^ : i32
+│  │  ├─ a : i32
+│  │  └─ b : i32
 │  └─ chars "\n"
 ├─ output : void
-│  ├─ << : int
-│  │  ├─ a : int
+│  ├─ << : i32
+│  │  ├─ a : i32
 │  │  └─ int 2
 │  └─ chars "\n"
 ├─ output : void
-│  ├─ >> : int
-│  │  ├─ a : int
+│  ├─ >> : i32
+│  │  ├─ a : i32
 │  │  └─ int 1
 │  └─ chars "\n"
 └─ return
@@ -817,69 +817,69 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn enemy_atk() : int
+fn enemy_atk() : i32
 └─ return
    └─ int 18
 
-fn main() : int
-├─ = : int
-│  ├─ hero_hp : int
+fn main() : i32
+├─ = : i32
+│  ├─ hero_hp : i32
 │  └─ int 100
-├─ = : int
-│  ├─ orc_hp : int
+├─ = : i32
+│  ├─ orc_hp : i32
 │  └─ int 60
-├─ = : int
-│  ├─ min_hp : int
+├─ = : i32
+│  ├─ min_hp : i32
 │  └─ int 100
 ├─ output : void
 │  ├─ chars "hero_hp == min_hp: "
 │  ├─ == : bool
-│  │  ├─ hero_hp : int
-│  │  └─ min_hp : int
+│  │  ├─ hero_hp : i32
+│  │  └─ min_hp : i32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "hero_hp != orc_hp: "
 │  ├─ != : bool
-│  │  ├─ hero_hp : int
-│  │  └─ orc_hp : int
+│  │  ├─ hero_hp : i32
+│  │  └─ orc_hp : i32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "orc_hp < hero_hp:  "
 │  ├─ < : bool
-│  │  ├─ orc_hp : int
-│  │  └─ hero_hp : int
+│  │  ├─ orc_hp : i32
+│  │  └─ hero_hp : i32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "orc_hp > hero_hp:  "
 │  ├─ > : bool
-│  │  ├─ orc_hp : int
-│  │  └─ hero_hp : int
+│  │  ├─ orc_hp : i32
+│  │  └─ hero_hp : i32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "orc_hp <= 60:      "
 │  ├─ <= : bool
-│  │  ├─ orc_hp : int
+│  │  ├─ orc_hp : i32
 │  │  └─ int 60
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "hero_hp >= 100:    "
 │  ├─ >= : bool
-│  │  ├─ hero_hp : int
+│  │  ├─ hero_hp : i32
 │  │  └─ int 100
 │  └─ chars "\n"
 ├─ if
 │  ├─ condition > : bool
-│  │  ├─ call enemy_atk : int
+│  │  ├─ call enemy_atk : i32
 │  │  └─ int 15
 │  ├─ output : void
 │  │  └─ chars "strong enemy\n"
@@ -889,11 +889,11 @@ fn main() : int
 └─ if
    ├─ condition and : bool
    │  ├─ == : bool
-   │  │  ├─ hero_hp : int
+   │  │  ├─ hero_hp : i32
    │  │  └─ int 100
    │  └─ < : bool
-   │     ├─ orc_hp : int
-   │     └─ hero_hp : int
+   │     ├─ orc_hp : i32
+   │     └─ hero_hp : i32
    └─ output : void
       └─ chars "hero is at full health and winning\n"
 ```
@@ -1044,66 +1044,66 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ a : int
+fn main() : i32
+├─ = : i32
+│  ├─ a : i32
 │  └─ int 5
-├─ = : int
-│  ├─ b : int
+├─ = : i32
+│  ├─ b : i32
 │  └─ int 9
 ├─ = : bool
 │  ├─ t : bool
 │  └─ < : bool
-│     ├─ a : int
-│     └─ b : int
+│     ├─ a : i32
+│     └─ b : i32
 ├─ = : bool
 │  ├─ u : bool
 │  └─ == : bool
-│     ├─ a : int
+│     ├─ a : i32
 │     └─ int 5
 ├─ = : bool
 │  ├─ v : bool
 │  └─ != : bool
-│     ├─ b : int
-│     └─ a : int
+│     ├─ b : i32
+│     └─ a : i32
 ├─ = : bool
 │  ├─ w : bool
 │  └─ >= : bool
-│     ├─ b : int
+│     ├─ b : i32
 │     └─ int 9
 ├─ = : bool
 │  ├─ x : bool
 │  └─ <= : bool
-│     ├─ a : int
+│     ├─ a : i32
 │     └─ int 4
 ├─ = : bool
 │  ├─ y : bool
 │  └─ > : bool
-│     ├─ a : int
-│     └─ b : int
+│     ├─ a : i32
+│     └─ b : i32
 ├─ = : bool
 │  ├─ z : bool
 │  └─ == : bool
-│     ├─ a : int
+│     ├─ a : i32
 │     └─ int 5
 ├─ = : bool
 │  ├─ m : bool
 │  └─ < : bool
-│     ├─ + : int
-│     │  ├─ a : int
+│     ├─ + : i32
+│     │  ├─ a : i32
 │     │  └─ int 1
-│     └─ * : int
-│        ├─ b : int
+│     └─ * : i32
+│        ├─ b : i32
 │        └─ int 2
 └─ return
    └─ int 3
@@ -1187,49 +1187,49 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ x : int
+fn main() : i32
+├─ = : i32
+│  ├─ x : i32
 │  └─ int 10
-├─ += : int
-│  ├─ x : int
+├─ += : i32
+│  ├─ x : i32
 │  └─ int 5
 ├─ output : void
-│  ├─ x : int
+│  ├─ x : i32
 │  └─ chars "\n"
-├─ -= : int
-│  ├─ x : int
+├─ -= : i32
+│  ├─ x : i32
 │  └─ int 3
 ├─ output : void
-│  ├─ x : int
+│  ├─ x : i32
 │  └─ chars "\n"
-├─ *= : int
-│  ├─ x : int
+├─ *= : i32
+│  ├─ x : i32
 │  └─ int 4
 ├─ output : void
-│  ├─ x : int
+│  ├─ x : i32
 │  └─ chars "\n"
-├─ /= : int
-│  ├─ x : int
+├─ /= : i32
+│  ├─ x : i32
 │  └─ int 6
 ├─ output : void
-│  ├─ x : int
+│  ├─ x : i32
 │  └─ chars "\n"
-├─ %= : int
-│  ├─ x : int
+├─ %= : i32
+│  ├─ x : i32
 │  └─ int 5
 ├─ output : void
-│  ├─ x : int
+│  ├─ x : i32
 │  └─ chars "\n"
 └─ return
    └─ int 0
@@ -1359,34 +1359,34 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn is_alive(hp : int) : bool
+fn is_alive(hp : i32) : bool
 └─ return
    └─ > : bool
-      ├─ hp : int
+      ├─ hp : i32
       └─ int 0
 
-fn has_key(keys : int) : bool
+fn has_key(keys : i32) : bool
 └─ return
    └─ > : bool
-      ├─ keys : int
+      ├─ keys : i32
       └─ int 0
 
-fn main() : int
-├─ = : int
-│  ├─ hp : int
+fn main() : i32
+├─ = : i32
+│  ├─ hp : i32
 │  └─ int 60
-├─ = : int
-│  ├─ keys : int
+├─ = : i32
+│  ├─ keys : i32
 │  └─ int 1
 ├─ = : bool
 │  ├─ exhausted : bool
@@ -1396,9 +1396,9 @@ fn main() : int
 │  └─ and : bool
 │     ├─ and : bool
 │     │  ├─ call is_alive : bool
-│     │  │  └─ hp : int
+│     │  │  └─ hp : i32
 │     │  └─ call has_key : bool
-│     │     └─ keys : int
+│     │     └─ keys : i32
 │     └─ not : bool
 │        └─ exhausted : bool
 ├─ output : void
@@ -1409,10 +1409,10 @@ fn main() : int
 │  ├─ escape : bool
 │  └─ or : bool
 │     ├─ < : bool
-│     │  ├─ hp : int
+│     │  ├─ hp : i32
 │     │  └─ int 10
 │     └─ == : bool
-│        ├─ keys : int
+│        ├─ keys : i32
 │        └─ int 0
 ├─ output : void
 │  ├─ chars "escape:      "
@@ -1429,7 +1429,7 @@ fn main() : int
 ├─ if
 │  ├─ condition and : bool
 │  │  ├─ call is_alive : bool
-│  │  │  └─ hp : int
+│  │  │  └─ hp : i32
 │  │  └─ not : bool
 │  │     └─ exhausted : bool
 │  └─ output : void
@@ -1437,10 +1437,10 @@ fn main() : int
 ├─ if
 │  ├─ condition or : bool
 │  │  ├─ < : bool
-│  │  │  ├─ hp : int
+│  │  │  ├─ hp : i32
 │  │  │  └─ int 10
 │  │  └─ == : bool
-│  │     ├─ keys : int
+│  │     ├─ keys : i32
 │  │     └─ int 0
 │  ├─ output : void
 │  │  └─ chars "hero retreats\n"
@@ -1450,7 +1450,7 @@ fn main() : int
 ├─ = : bool
 │  ├─ alive : bool
 │  └─ call is_alive : bool
-│     └─ hp : int
+│     └─ hp : i32
 └─ output : void
    ├─ chars "!!alive: "
    ├─ not : bool
@@ -1615,58 +1615,58 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ a : int
+fn main() : i32
+├─ = : i32
+│  ├─ a : i32
 │  └─ int 5
-├─ = : int
-│  ├─ b : int
+├─ = : i32
+│  ├─ b : i32
 │  └─ int 9
 ├─ output : void
 │  ├─ and : bool
 │  │  ├─ < : bool
-│  │  │  ├─ a : int
-│  │  │  └─ b : int
+│  │  │  ├─ a : i32
+│  │  │  └─ b : i32
 │  │  └─ == : bool
-│  │     ├─ b : int
+│  │     ├─ b : i32
 │  │     └─ int 9
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ or : bool
 │  │  ├─ > : bool
-│  │  │  ├─ a : int
-│  │  │  └─ b : int
+│  │  │  ├─ a : i32
+│  │  │  └─ b : i32
 │  │  └─ == : bool
-│  │     ├─ b : int
+│  │     ├─ b : i32
 │  │     └─ int 9
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ and : bool
 │  │  ├─ < : bool
-│  │  │  ├─ a : int
-│  │  │  └─ b : int
+│  │  │  ├─ a : i32
+│  │  │  └─ b : i32
 │  │  └─ > : bool
-│  │     ├─ a : int
-│  │     └─ b : int
+│  │     ├─ a : i32
+│  │     └─ b : i32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ or : bool
 │  │  ├─ < : bool
-│  │  │  ├─ a : int
-│  │  │  └─ b : int
+│  │  │  ├─ a : i32
+│  │  │  └─ b : i32
 │  │  └─ > : bool
-│  │     ├─ a : int
-│  │     └─ b : int
+│  │     ├─ a : i32
+│  │     └─ b : i32
 │  └─ chars "\n"
 └─ return
    └─ int 0
@@ -1764,47 +1764,47 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ a : int
+fn main() : i32
+├─ = : i32
+│  ├─ a : i32
 │  └─ int 5
 ├─ = : bool
 │  ├─ t : bool
 │  └─ bool True
 ├─ output : void
-│  ├─ - : int
+│  ├─ - : i32
 │  │  ├─ int 0
-│  │  └─ a : int
+│  │  └─ a : i32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ not : bool
 │  │  └─ t : bool
 │  └─ chars "\n"
 ├─ output : void
-│  ├─ ~ : int
-│  │  └─ a : int
+│  ├─ ~ : i32
+│  │  └─ a : i32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ not : bool
 │  │  └─ < : bool
-│  │     ├─ a : int
+│  │     ├─ a : i32
 │  │     └─ int 3
 │  └─ chars "\n"
 ├─ output : void
-│  ├─ + : int
-│  │  ├─ - : int
+│  ├─ + : i32
+│  │  ├─ - : i32
 │  │  │  ├─ int 0
-│  │  │  └─ a : int
+│  │  │  └─ a : i32
 │  │  └─ int 10
 │  └─ chars "\n"
 └─ return

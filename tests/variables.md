@@ -28,31 +28,31 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ = : chars
 │  ├─ name : chars
 │  └─ chars "Aldric"
-├─ = : int
-│  ├─ hp : int
+├─ = : i32
+│  ├─ hp : i32
 │  └─ int 100
-├─ = : int
-│  ├─ mp : int
+├─ = : i32
+│  ├─ mp : i32
 │  └─ int 50
 ├─ = : bool
 │  ├─ alive : bool
 │  └─ bool True
-├─ = : float
-│  ├─ speed : float
+├─ = : f32
+│  ├─ speed : f32
 │  └─ float 1.5
 ├─ output : void
 │  ├─ chars "=== "
@@ -60,11 +60,11 @@ fn main() : int
 │  └─ chars " enters the dungeon ===\n"
 ├─ output : void
 │  ├─ chars "HP: "
-│  ├─ hp : int
+│  ├─ hp : i32
 │  ├─ chars " | MP: "
-│  ├─ mp : int
+│  ├─ mp : i32
 │  ├─ chars " | Speed: "
-│  ├─ speed : float
+│  ├─ speed : f32
 │  └─ chars "\n"
 └─ output : void
    ├─ chars "Alive: "
@@ -147,50 +147,50 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ hp : int
+fn main() : i32
+├─ = : i32
+│  ├─ hp : i32
 │  └─ int 100
-├─ = : int
-│  ├─ mp : int
+├─ = : i32
+│  ├─ mp : i32
 │  └─ int 50
-├─ = : int
-│  ├─ xp : int
+├─ = : i32
+│  ├─ xp : i32
 │  └─ int 0
-├─ = : int
-│  ├─ hp : int
-│  └─ - : int
-│     ├─ hp : int
+├─ = : i32
+│  ├─ hp : i32
+│  └─ - : i32
+│     ├─ hp : i32
 │     └─ int 12
-├─ -= : int
-│  ├─ mp : int
+├─ -= : i32
+│  ├─ mp : i32
 │  └─ int 10
-├─ += : int
-│  ├─ xp : int
+├─ += : i32
+│  ├─ xp : i32
 │  └─ int 50
 ├─ output : void
 │  └─ chars "After combat:\n"
 ├─ output : void
 │  ├─ chars "HP: "
-│  ├─ hp : int
+│  ├─ hp : i32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "MP: "
-│  ├─ mp : int
+│  ├─ mp : i32
 │  └─ chars "\n"
 └─ output : void
    ├─ chars "XP: "
-   ├─ xp : int
+   ├─ xp : i32
    └─ chars "\n"
 ```
 
@@ -272,30 +272,30 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ = : chars
 │  ├─ name : chars
 │  └─ chars "Aldric"
-├─ = : int
-│  ├─ hp : int
+├─ = : i32
+│  ├─ hp : i32
 │  └─ int 100
-├─ = : long
-│  ├─ xp : long
-│  └─ cast : long
+├─ = : i64
+│  ├─ xp : i64
+│  └─ cast : i64
 │     └─ int 999999
-├─ = : short
-│  ├─ level : short
-│  └─ cast : short
+├─ = : i16
+│  ├─ level : i16
+│  └─ cast : i16
 │     └─ int 12
 ├─ = : char
 │  ├─ grade : char
@@ -303,8 +303,8 @@ fn main() : int
 ├─ = : bool
 │  ├─ alive : bool
 │  └─ bool True
-├─ = : float
-│  ├─ ratio : float
+├─ = : f32
+│  ├─ ratio : f32
 │  └─ float 0.85
 ├─ output : void
 │  ├─ chars "name:  "
@@ -312,15 +312,15 @@ fn main() : int
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "hp:    "
-│  ├─ hp : int
+│  ├─ hp : i32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "xp:    "
-│  ├─ xp : long
+│  ├─ xp : i64
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "level: "
-│  ├─ level : short
+│  ├─ level : i16
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "grade: "
@@ -332,7 +332,7 @@ fn main() : int
 │  └─ chars "\n"
 └─ output : void
    ├─ chars "ratio: "
-   ├─ ratio : float
+   ├─ ratio : f32
    └─ chars "\n"
 ```
 
@@ -442,25 +442,25 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn pick(n : int) : int
+fn pick(n : i32) : i32
 └─ return
-   └─ * : int
-      ├─ n : int
+   └─ * : i32
+      ├─ n : i32
       └─ int 2
 
-fn main() : int
-├─ = : int
-│  ├─ x : int
+fn main() : i32
+├─ = : i32
+│  ├─ x : i32
 │  └─ int 1
 ├─ if
 │  ├─ condition < : bool
@@ -468,37 +468,37 @@ fn main() : int
 │  │  └─ int 2
 │  ├─ output : void
 │  │  ├─ chars "outer "
-│  │  ├─ x : int
+│  │  ├─ x : i32
 │  │  └─ chars "\n"
-│  ├─ = : int
-│  │  ├─ x : int
+│  ├─ = : i32
+│  │  ├─ x : i32
 │  │  └─ int 2
 │  └─ output : void
 │     ├─ chars "inner "
-│     ├─ x : int
+│     ├─ x : i32
 │     └─ chars "\n"
 ├─ output : void
 │  ├─ chars "after "
-│  ├─ x : int
+│  ├─ x : i32
 │  └─ chars "\n"
-├─ = : int
-│  ├─ y : int
-│  └─ call pick : int
+├─ = : i32
+│  ├─ y : i32
+│  └─ call pick : i32
 │     └─ int 3
 └─ while
    ├─ condition > : bool
-   │  ├─ y : int
+   │  ├─ y : i32
    │  └─ int 0
    ├─ output : void
    │  ├─ chars "loop y "
-   │  ├─ y : int
+   │  ├─ y : i32
    │  └─ chars "\n"
-   ├─ = : int
-   │  ├─ y : int
+   ├─ = : i32
+   │  ├─ y : i32
    │  └─ int 0
    ├─ output : void
    │  ├─ chars "shadow y "
-   │  ├─ y : int
+   │  ├─ y : i32
    │  └─ chars "\n"
    └─ break
 ```
@@ -621,22 +621,22 @@ total int = 7
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 = : chars
 ├─ name : chars
 └─ chars "ura"
 
-= : float
-├─ ratio : float
+= : f32
+├─ ratio : f32
 └─ float 1.5
 
 = : bool
@@ -644,77 +644,77 @@ proto fn exit(code : int) : void
 └─ bool True
 
 = : array
-├─ xs : int[]
-└─ array : int[]
+├─ xs : i32[]
+└─ array : i32[]
    └─ int 3
 
 = : array
-├─ heap : int[]
-└─ array : int[]
+├─ heap : i32[]
+└─ array : i32[]
    └─ int 2
 
 fn touch() : void
-└─ += : int
-   ├─ total : int
+└─ += : i32
+   ├─ total : i32
    └─ int 1
 
-fn main() : int
+fn main() : i32
 ├─ output : void
 │  ├─ name : chars
 │  ├─ chars " "
-│  ├─ ratio : float
+│  ├─ ratio : f32
 │  ├─ chars " "
 │  ├─ flag : bool
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "total starts "
-│  ├─ total : int
+│  ├─ total : i32
 │  └─ chars "\n"
 ├─ call touch : void
 ├─ call touch : void
 ├─ output : void
 │  ├─ chars "total now "
-│  ├─ total : int
+│  ├─ total : i32
 │  └─ chars "\n"
-├─ = : int
-│  ├─ index : int
-│  │  ├─ xs : int[]
+├─ = : i32
+│  ├─ index : i32
+│  │  ├─ xs : i32[]
 │  │  └─ int 0
 │  └─ int 7
-├─ = : int
-│  ├─ index : int
-│  │  ├─ heap : int[]
+├─ = : i32
+│  ├─ index : i32
+│  │  ├─ heap : i32[]
 │  │  └─ int 1
 │  └─ int 9
 ├─ output : void
 │  ├─ chars "xs "
-│  ├─ index : int
-│  │  ├─ xs : int[]
+│  ├─ index : i32
+│  │  ├─ xs : i32[]
 │  │  └─ int 0
 │  ├─ chars " len "
-│  └─ .len : int
-│     └─ xs : int[]
+│  └─ .len : i32
+│     └─ xs : i32[]
 ├─ output : void
 │  ├─ chars "  heap "
-│  ├─ index : int
-│  │  ├─ heap : int[]
+│  ├─ index : i32
+│  │  ├─ heap : i32[]
 │  │  └─ int 1
 │  ├─ chars " len "
-│  ├─ .len : int
-│  │  └─ heap : int[]
+│  ├─ .len : i32
+│  │  └─ heap : i32[]
 │  └─ chars "\n"
 ├─ clean : void
-│  └─ heap : int[]
-├─ = : int
-│  ├─ total : int
+│  └─ heap : i32[]
+├─ = : i32
+│  ├─ total : i32
 │  └─ int 99
 └─ output : void
    ├─ chars "local total "
-   ├─ total : int
+   ├─ total : i32
    └─ chars "\n"
 
-= : int
-├─ total : int
+= : i32
+├─ total : i32
 └─ int 7
 ```
 
@@ -881,41 +881,41 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Counter
-├─ hits : int
-├─ fn Counter.create(n : int) : STRUCT_CALL
+├─ hits : i32
+├─ fn Counter.create(n : i32) : STRUCT_CALL
 │  ├─ c : STRUCT_CALL
-│  ├─ = : int
-│  │  ├─ .hits : int
+│  ├─ = : i32
+│  │  ├─ .hits : i32
 │  │  │  └─ c : STRUCT_CALL
-│  │  └─ n : int
+│  │  └─ n : i32
 │  └─ return
 │     └─ c : STRUCT_CALL
 ├─ fn Counter.=.Counter(self : STRUCT_CALL, other : STRUCT_CALL) : void
-│  └─ = : int
-│     ├─ .hits : int
+│  └─ = : i32
+│     ├─ .hits : i32
 │     │  └─ self : STRUCT_CALL
-│     └─ .hits : int
+│     └─ .hits : i32
 │        └─ other : STRUCT_CALL
 ├─ fn Counter.bump(self : STRUCT_CALL) : void
-│  └─ += : int
-│     ├─ .hits : int
+│  └─ += : i32
+│     ├─ .hits : i32
 │     │  └─ self : STRUCT_CALL
 │     └─ int 1
 └─ fn Counter.drop(self : STRUCT_CALL) : void
    └─ output : void
       ├─ chars "DROP at "
-      ├─ .hits : int
+      ├─ .hits : i32
       │  └─ self : STRUCT_CALL
       └─ chars "\n"
 
@@ -928,17 +928,17 @@ fn touch() : void
 └─ call bump : void
    └─ tally : STRUCT_CALL
 
-fn main() : int
+fn main() : i32
 ├─ output : void
 │  ├─ chars "start "
-│  ├─ .hits : int
+│  ├─ .hits : i32
 │  │  └─ tally : STRUCT_CALL
 │  └─ chars "\n"
 ├─ call touch : void
 ├─ call touch : void
 └─ output : void
    ├─ chars "after "
-   ├─ .hits : int
+   ├─ .hits : i32
    │  └─ tally : STRUCT_CALL
    └─ chars "\n"
 ```
@@ -1071,36 +1071,36 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Res
-├─ id : int
-├─ fn Res.create(n : int) : STRUCT_CALL
+├─ id : i32
+├─ fn Res.create(n : i32) : STRUCT_CALL
 │  ├─ r : STRUCT_CALL
-│  ├─ = : int
-│  │  ├─ .id : int
+│  ├─ = : i32
+│  │  ├─ .id : i32
 │  │  │  └─ r : STRUCT_CALL
-│  │  └─ n : int
+│  │  └─ n : i32
 │  └─ return
 │     └─ r : STRUCT_CALL
 ├─ fn Res.=.Res(self : STRUCT_CALL, other : STRUCT_CALL) : void
-│  └─ = : int
-│     ├─ .id : int
+│  └─ = : i32
+│     ├─ .id : i32
 │     │  └─ self : STRUCT_CALL
-│     └─ .id : int
+│     └─ .id : i32
 │        └─ other : STRUCT_CALL
 └─ fn Res.drop(self : STRUCT_CALL) : void
    └─ output : void
       ├─ chars "DROP "
-      ├─ .id : int
+      ├─ .id : i32
       │  └─ self : STRUCT_CALL
       └─ chars "\n"
 
@@ -1114,7 +1114,7 @@ struct Res
 └─ call create : STRUCT_CALL
    └─ int 2
 
-fn main() : int
+fn main() : i32
 ├─ output : void
 │  └─ chars "body\n"
 ├─ if

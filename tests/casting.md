@@ -23,43 +23,43 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ a : int
+fn main() : i32
+├─ = : i32
+│  ├─ a : i32
 │  └─ int 300
-├─ = : long
-│  ├─ big : long
-│  └─ cast : long
-│     └─ a : int
-├─ = : short
-│  ├─ small : short
-│  └─ cast : short
-│     └─ a : int
-├─ = : int
-│  ├─ c : int
-│  └─ cast : int
-│     └─ big : long
+├─ = : i64
+│  ├─ big : i64
+│  └─ cast : i64
+│     └─ a : i32
+├─ = : i16
+│  ├─ small : i16
+│  └─ cast : i16
+│     └─ a : i32
+├─ = : i32
+│  ├─ c : i32
+│  └─ cast : i32
+│     └─ big : i64
 ├─ output : void
-│  ├─ big : long
+│  ├─ big : i64
 │  └─ chars "\n"
 ├─ output : void
-│  ├─ small : short
+│  ├─ small : i16
 │  └─ chars "\n"
 ├─ output : void
-│  ├─ c : int
+│  ├─ c : i32
 │  └─ chars "\n"
 ├─ output : void
-│  ├─ cast : long
+│  ├─ cast : i64
 │  │  └─ int 5
 │  └─ chars "\n"
 └─ return
@@ -140,65 +140,65 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ i : int
+fn main() : i32
+├─ = : i32
+│  ├─ i : i32
 │  └─ int 300
-├─ = : float
-│  ├─ f : float
-│  └─ cast : float
-│     └─ i : int
+├─ = : f32
+│  ├─ f : f32
+│  └─ cast : f32
+│     └─ i : i32
 ├─ output : void
 │  ├─ chars "int->float "
-│  ├─ f : float
+│  ├─ f : f32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "float->int "
-│  ├─ cast : int
+│  ├─ cast : i32
 │  │  └─ float 2.9
 │  ├─ chars " "
-│  ├─ cast : int
-│  │  └─ - : float
+│  ├─ cast : i32
+│  │  └─ - : f32
 │  │     ├─ float 0
 │  │     └─ float 2.9
 │  └─ chars "\n"
-├─ = : long
-│  ├─ l : long
-│  └─ cast : long
+├─ = : i64
+│  ├─ l : i64
+│  └─ cast : i64
 │     └─ int 7
 ├─ output : void
 │  ├─ chars "long->float "
-│  ├─ cast : float
-│  │  └─ l : long
+│  ├─ cast : f32
+│  │  └─ l : i64
 │  └─ chars "\n"
-├─ = : short
-│  ├─ s : short
-│  └─ cast : short
+├─ = : i16
+│  ├─ s : i16
+│  └─ cast : i16
 │     └─ int 5
 ├─ output : void
 │  ├─ chars "short->float "
-│  ├─ cast : float
-│  │  └─ s : short
+│  ├─ cast : f32
+│  │  └─ s : i16
 │  └─ chars "\n"
 ├─ = : char
 │  ├─ c : char
 │  └─ char 'A'
 ├─ output : void
 │  ├─ chars "char->float "
-│  ├─ cast : float
+│  ├─ cast : f32
 │  │  └─ c : char
 │  ├─ chars " char->int "
-│  ├─ cast : int
+│  ├─ cast : i32
 │  │  └─ c : char
 │  └─ chars "\n"
 ├─ = : bool
@@ -206,21 +206,21 @@ fn main() : int
 │  └─ bool True
 ├─ output : void
 │  ├─ chars "bool->float "
-│  ├─ cast : float
+│  ├─ cast : f32
 │  │  └─ b : bool
 │  ├─ chars " bool->int "
-│  ├─ cast : int
+│  ├─ cast : i32
 │  │  └─ b : bool
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "float->long "
-│  ├─ cast : long
+│  ├─ cast : i64
 │  │  └─ float 9.75
 │  └─ chars "\n"
 └─ output : void
    ├─ chars "round trip "
-   ├─ cast : float
-   │  └─ cast : int
+   ├─ cast : f32
+   │  └─ cast : i32
    │     └─ float 4.9
    └─ chars "\n"
 ```

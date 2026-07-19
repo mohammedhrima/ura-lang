@@ -28,21 +28,21 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 fn flag() : bool
 └─ return
    └─ bool True
 
-fn main() : int
+fn main() : i32
 ├─ = : bool
 │  ├─ b : bool
 │  └─ call flag : bool
@@ -103,21 +103,21 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 fn grade() : char
 └─ return
    └─ char 'A'
 
-fn main() : int
+fn main() : i32
 ├─ = : char
 │  ├─ c : char
 │  └─ char 'z'
@@ -197,36 +197,36 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn half() : float
+fn half() : f32
 └─ return
    └─ float 0.5
 
-fn main() : int
-├─ = : float
-│  ├─ x : float
+fn main() : i32
+├─ = : f32
+│  ├─ x : f32
 │  └─ float 3.14
 ├─ output : void
-│  ├─ x : float
+│  ├─ x : f32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ float 2.71
 │  └─ chars "\n"
 ├─ output : void
-│  ├─ call half : float
+│  ├─ call half : f32
 │  └─ chars "\n"
-├─ y : float
+├─ y : f32
 ├─ output : void
-│  ├─ y : float
+│  ├─ y : f32
 │  └─ chars "\n"
 └─ return
    └─ int 0
@@ -302,64 +302,64 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : float
-│  ├─ a : float
+fn main() : i32
+├─ = : f32
+│  ├─ a : f32
 │  └─ float 3
-├─ = : float
-│  ├─ b : float
+├─ = : f32
+│  ├─ b : f32
 │  └─ float 2
 ├─ output : void
-│  ├─ + : float
-│  │  ├─ a : float
-│  │  └─ b : float
+│  ├─ + : f32
+│  │  ├─ a : f32
+│  │  └─ b : f32
 │  └─ chars "\n"
 ├─ output : void
-│  ├─ - : float
-│  │  ├─ a : float
-│  │  └─ b : float
+│  ├─ - : f32
+│  │  ├─ a : f32
+│  │  └─ b : f32
 │  └─ chars "\n"
 ├─ output : void
-│  ├─ * : float
-│  │  ├─ a : float
-│  │  └─ b : float
+│  ├─ * : f32
+│  │  ├─ a : f32
+│  │  └─ b : f32
 │  └─ chars "\n"
 ├─ output : void
-│  ├─ / : float
-│  │  ├─ a : float
-│  │  └─ b : float
+│  ├─ / : f32
+│  │  ├─ a : f32
+│  │  └─ b : f32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ > : bool
-│  │  ├─ a : float
-│  │  └─ b : float
+│  │  ├─ a : f32
+│  │  └─ b : f32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ == : bool
-│  │  ├─ a : float
-│  │  └─ b : float
+│  │  ├─ a : f32
+│  │  └─ b : f32
 │  └─ chars "\n"
-├─ += : float
-│  ├─ a : float
+├─ += : f32
+│  ├─ a : f32
 │  └─ float 1.5
 ├─ output : void
-│  ├─ a : float
+│  ├─ a : f32
 │  └─ chars "\n"
-├─ *= : float
-│  ├─ a : float
+├─ *= : f32
+│  ├─ a : f32
 │  └─ float 2
 ├─ output : void
-│  ├─ a : float
+│  ├─ a : f32
 │  └─ chars "\n"
 └─ return
    └─ int 0
@@ -495,79 +495,79 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : double
-│  ├─ d : double
+fn main() : i32
+├─ = : f64
+│  ├─ d : f64
 │  └─ float 3.14159
-├─ = : double
-│  ├─ e : double
+├─ = : f64
+│  ├─ e : f64
 │  └─ float 2
 ├─ output : void
-│  ├─ d : double
+│  ├─ d : f64
 │  ├─ chars " "
-│  ├─ e : double
+│  ├─ e : f64
 │  └─ chars "\n"
 ├─ output : void
-│  ├─ + : double
-│  │  ├─ d : double
-│  │  └─ e : double
+│  ├─ + : f64
+│  │  ├─ d : f64
+│  │  └─ e : f64
 │  ├─ chars " "
-│  ├─ - : double
-│  │  ├─ d : double
-│  │  └─ e : double
+│  ├─ - : f64
+│  │  ├─ d : f64
+│  │  └─ e : f64
 │  ├─ chars " "
-│  ├─ * : double
-│  │  ├─ d : double
-│  │  └─ e : double
+│  ├─ * : f64
+│  │  ├─ d : f64
+│  │  └─ e : f64
 │  ├─ chars " "
-│  ├─ / : double
-│  │  ├─ d : double
-│  │  └─ e : double
+│  ├─ / : f64
+│  │  ├─ d : f64
+│  │  └─ e : f64
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ > : bool
-│  │  ├─ d : double
-│  │  └─ e : double
+│  │  ├─ d : f64
+│  │  └─ e : f64
 │  ├─ chars " "
 │  ├─ == : bool
-│  │  ├─ d : double
-│  │  └─ d : double
+│  │  ├─ d : f64
+│  │  └─ d : f64
 │  ├─ chars " "
 │  ├─ != : bool
-│  │  ├─ d : double
-│  │  └─ e : double
+│  │  ├─ d : f64
+│  │  └─ e : f64
 │  └─ chars "\n"
-├─ = : double
-│  ├─ c : double
+├─ = : f64
+│  ├─ c : f64
 │  └─ float 10
-├─ += : double
-│  ├─ c : double
+├─ += : f64
+│  ├─ c : f64
 │  └─ float 2.5
-├─ -= : double
-│  ├─ c : double
+├─ -= : f64
+│  ├─ c : f64
 │  └─ float 0.5
-├─ *= : double
-│  ├─ c : double
+├─ *= : f64
+│  ├─ c : f64
 │  └─ float 2
-├─ /= : double
-│  ├─ c : double
+├─ /= : f64
+│  ├─ c : f64
 │  └─ float 4
 ├─ output : void
-│  ├─ c : double
+│  ├─ c : f64
 │  └─ chars "\n"
-├─ z : double
+├─ z : f64
 └─ output : void
-   ├─ z : double
+   ├─ z : f64
    └─ chars "\n"
 ```
 
@@ -718,52 +718,52 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn half() : double
+fn half() : f64
 └─ return
    └─ float 0.5
 
-fn scale(x : double) : double
+fn scale(x : f64) : f64
 └─ return
-   └─ * : double
-      ├─ x : double
+   └─ * : f64
+      ├─ x : f64
       └─ float 2
 
-fn main() : int
-├─ = : double
-│  ├─ d : double
+fn main() : i32
+├─ = : f64
+│  ├─ d : f64
 │  └─ float 3.14159
-├─ = : float
-│  ├─ f : float
+├─ = : f32
+│  ├─ f : f32
 │  └─ float 3.14159
 ├─ output : void
 │  ├─ == : bool
-│  │  ├─ cast : double
-│  │  │  └─ f : float
-│  │  └─ d : double
+│  │  ├─ cast : f64
+│  │  │  └─ f : f32
+│  │  └─ d : f64
 │  └─ chars "\n"
 ├─ output : void
-│  ├─ call scale : double
-│  │  └─ - : double
+│  ├─ call scale : f64
+│  │  └─ - : f64
 │  │     ├─ float 0
 │  │     └─ float 2.5
 │  ├─ chars " "
-│  ├─ call scale : double
-│  │  └─ + : double
+│  ├─ call scale : f64
+│  │  └─ + : f64
 │  │     ├─ float 1
 │  │     └─ float 0.5
 │  └─ chars "\n"
 └─ output : void
-   ├─ call half : double
+   ├─ call half : f64
    └─ chars "\n"
 ```
 
@@ -841,60 +841,60 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : double
-│  ├─ d : double
+fn main() : i32
+├─ = : f64
+│  ├─ d : f64
 │  └─ float 3.75
-├─ = : float
-│  ├─ f : float
+├─ = : f32
+│  ├─ f : f32
 │  └─ float 1.5
 ├─ output : void
 │  ├─ chars "d->float "
-│  ├─ cast : float
-│  │  └─ d : double
+│  ├─ cast : f32
+│  │  └─ d : f64
 │  ├─ chars "  f->double "
-│  ├─ cast : double
-│  │  └─ f : float
+│  ├─ cast : f64
+│  │  └─ f : f32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "d->int "
-│  ├─ cast : int
-│  │  └─ d : double
+│  ├─ cast : i32
+│  │  └─ d : f64
 │  ├─ chars "  d->long "
-│  ├─ cast : long
-│  │  └─ d : double
+│  ├─ cast : i64
+│  │  └─ d : f64
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "d->short "
-│  ├─ cast : short
-│  │  └─ d : double
+│  ├─ cast : i16
+│  │  └─ d : f64
 │  ├─ chars "  d->char "
 │  ├─ cast : char
-│  │  └─ d : double
+│  │  └─ d : f64
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "int->d "
-│  ├─ cast : double
+│  ├─ cast : f64
 │  │  └─ int 7
 │  ├─ chars "  bool->d "
-│  ├─ cast : double
+│  ├─ cast : f64
 │  │  └─ bool True
 │  └─ chars "\n"
 └─ output : void
    ├─ chars "round trip "
-   ├─ cast : double
-   │  └─ cast : int
-   │     └─ d : double
+   ├─ cast : f64
+   │  └─ cast : i32
+   │     └─ d : f64
    └─ chars "\n"
 ```
 
@@ -985,7 +985,7 @@ main():
 ```
 
 ```err
-error: 'f' returns int, but this returns float
+error: 'f' returns i32, but this returns f32
   008.ura:4:5
   |
 4 |     return 1.5

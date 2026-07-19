@@ -100,7 +100,7 @@ Value llvm_num_cast(Value value, Type src, Type dst) {
    if (src == dst) return value;
    TypeRef to = to_llvm_type(dst);
    if (is_float(src) && is_float(dst))
-      return dst == DOUBLE ? LLVMBuildFPExt(ura.builder, value, to, "cast")
+      return dst == F64 ? LLVMBuildFPExt(ura.builder, value, to, "cast")
                            : LLVMBuildFPTrunc(ura.builder, value, to, "cast");
    if (is_float(src))
       return LLVMBuildFPToSI(ura.builder, value, to, "cast");
@@ -263,10 +263,10 @@ void set_debug_location(Token *token) {
 
 Value promote(Type type, Value v) {
    switch (type) {
-      case FLOAT:
+      case F32:
          return LLVMBuildFPExt(ura.builder, v, ura.f64, "f2d");
       case CHAR:
-      case SHORT: return LLVMBuildSExt(ura.builder, v, ura.i32, "i2i");
+      case I16: return LLVMBuildSExt(ura.builder, v, ura.i32, "i2i");
       case BOOL:  return LLVMBuildZExt(ura.builder, v, ura.i32, "b2i");
       default:    return v;
    }
@@ -585,11 +585,11 @@ void code_gen_clean(Node *node) {
 void code_gen_literal(Node *node) {
    Token *token = node->token;
    switch (token->type) {
-      case INT:   token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Int.value, 0); break;
+      case I32:   token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Int.value, 0); break;
       case BOOL:  token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Bool.value, 0); break;
       case CHARS: token->llvm.elem = llvm_string(token->Chars.value, "str"); break;
       case CHAR:  token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Char.value, 0); break;
-      case FLOAT: token->llvm.elem = LLVMConstReal(to_llvm_type(token->ret_type), token->Float.value); break;
+      case F32: token->llvm.elem = LLVMConstReal(to_llvm_type(token->ret_type), token->Float.value); break;
    }
 }
 
@@ -1081,19 +1081,19 @@ Value emit_printf(char *fmt, Value *args, int n) {
 
 Value print_adapt(Type type, Value v, char **spec) {
    switch (type) {
-      case INT:   *spec = "%d";   return v;
-      case LONG:  *spec = "%lld"; return v;
+      case I32:   *spec = "%d";   return v;
+      case I64:  *spec = "%lld"; return v;
       case CHARS: *spec = "%s";   return v;
-      case SHORT:
+      case I16:
          *spec = "%d";
          return LLVMBuildSExt(ura.builder, v, ura.i32, "s2i");
       case CHAR:
          *spec = "%c";
          return LLVMBuildSExt(ura.builder, v, ura.i32, "c2i");
-      case FLOAT:
+      case F32:
          *spec = "%f";
          return LLVMBuildFPExt(ura.builder, v, ura.f64, "f2d");
-      case DOUBLE: *spec = "%f"; return v;
+      case F64: *spec = "%f"; return v;
       case BOOL: {
          *spec    = "%s";
          Value ts = llvm_string("True", "true_str");
@@ -1365,8 +1365,8 @@ void code_gen(Node *node) {
          llvm_br(node->left->token->llvm.start);
          break;
       }
-      case INT: case BOOL: case CHARS:
-      case CHAR: case FLOAT: {
+      case I32: case BOOL: case CHARS:
+      case CHAR: case F32: {
          code_gen_literal(node);
          break;
       }

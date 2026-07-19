@@ -59,22 +59,22 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Player
 ├─ name : chars
-├─ hp : int
-└─ mp : int
+├─ hp : i32
+└─ mp : i32
 
-fn main() : int
+fn main() : i32
 ├─ p : STRUCT_CALL
 └─ output : void
    └─ chars "ok\n"
@@ -124,25 +124,25 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Room
 ├─ name : chars
-└─ floor : int
+└─ floor : i32
 
 struct Dungeon
 ├─ name : chars
 └─ entry : STRUCT_CALL
 
-fn main() : int
+fn main() : i32
 ├─ d : STRUCT_CALL
 └─ output : void
    └─ chars "ok\n"
@@ -193,15 +193,15 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Dungeon
 ├─ name : chars
@@ -209,9 +209,9 @@ struct Dungeon
 
 struct Room
 ├─ name : chars
-└─ floor : int
+└─ floor : i32
 
-fn main() : int
+fn main() : i32
 ├─ d : STRUCT_CALL
 └─ output : void
    └─ chars "ok\n"
@@ -258,20 +258,20 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ struct Local
-│  ├─ x : int
-│  └─ y : int
+│  ├─ x : i32
+│  └─ y : i32
 ├─ l : STRUCT_CALL
 └─ output : void
    └─ chars "ok\n"
@@ -318,26 +318,26 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ n : int
+fn main() : i32
+├─ = : i32
+│  ├─ n : i32
 │  └─ int 1
 └─ if
    ├─ condition == : bool
-   │  ├─ n : int
+   │  ├─ n : i32
    │  └─ int 1
    ├─ struct Inner
-   │  └─ x : int
+   │  └─ x : i32
    ├─ i : STRUCT_CALL
    └─ output : void
       └─ chars "ok\n"
@@ -393,24 +393,24 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ for
-│  ├─ i : int
-│  ├─ range : int
+│  ├─ i : i32
+│  ├─ range : i32
 │  │  ├─ int 0
 │  │  └─ int 2
 │  ├─ struct Tick
-│  │  └─ n : int
+│  │  └─ n : i32
 │  └─ t : STRUCT_CALL
 └─ output : void
    └─ chars "ok\n"
@@ -480,24 +480,24 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Room
-└─ floor : int
+└─ floor : i32
 
 struct Tree
 ├─ label : chars
 └─ kids : STRUCT_CALL[]
 
-fn main() : int
+fn main() : i32
 ├─ t : STRUCT_CALL
 └─ output : void
    └─ chars "ok\n"
@@ -547,23 +547,23 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Outer
 ├─ name : chars
 ├─ struct Config
 │  └─ debug : bool
-└─ hp : int
+└─ hp : i32
 
-fn main() : int
+fn main() : i32
 ├─ o : STRUCT_CALL
 └─ output : void
    └─ chars "ok\n"
@@ -609,21 +609,21 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Tree
 ├─ label : chars
 └─ kids : STRUCT_CALL[]
 
-fn main() : int
+fn main() : i32
 ├─ t : STRUCT_CALL
 └─ output : void
    └─ chars "ok\n"
@@ -668,21 +668,21 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Unused
-├─ x : int
-└─ y : int
+├─ x : i32
+└─ y : i32
 
-fn main() : int
+fn main() : i32
 └─ output : void
    └─ chars "ok\n"
 ```
@@ -736,31 +736,31 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Local
 ├─ a : char
 └─ b : char
 
-fn main() : int
+fn main() : i32
 ├─ l0 : STRUCT_CALL
 ├─ struct Local
-│  ├─ x : int
-│  └─ y : int
-├─ = : int
-│  ├─ n : int
+│  ├─ x : i32
+│  └─ y : i32
+├─ = : i32
+│  ├─ n : i32
 │  └─ int 1
 ├─ if
 │  ├─ condition == : bool
-│  │  ├─ n : int
+│  │  ├─ n : i32
 │  │  └─ int 1
 │  ├─ struct Local
 │  │  └─ z : chars
@@ -829,47 +829,47 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Room
 ├─ name : chars
-└─ floor : int
+└─ floor : i32
 
-fn main() : int
+fn main() : i32
 ├─ p : STRUCT_CALL
 ├─ = : chars
 │  ├─ .name : chars
 │  │  └─ p : STRUCT_CALL
 │  └─ chars "armory"
-├─ = : int
-│  ├─ .floor : int
+├─ = : i32
+│  ├─ .floor : i32
 │  │  └─ p : STRUCT_CALL
 │  └─ int 3
 ├─ output : void
 │  ├─ .name : chars
 │  │  └─ p : STRUCT_CALL
 │  ├─ chars " on floor "
-│  ├─ .floor : int
+│  ├─ .floor : i32
 │  │  └─ p : STRUCT_CALL
 │  └─ chars "\n"
-├─ = : int
-│  ├─ .floor : int
+├─ = : i32
+│  ├─ .floor : i32
 │  │  └─ p : STRUCT_CALL
-│  └─ + : int
-│     ├─ .floor : int
+│  └─ + : i32
+│     ├─ .floor : i32
 │     │  └─ p : STRUCT_CALL
 │     └─ int 10
 └─ output : void
    ├─ chars "floor now "
-   ├─ .floor : int
+   ├─ .floor : i32
    │  └─ p : STRUCT_CALL
    └─ chars "\n"
 ```
@@ -943,25 +943,25 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Room
 ├─ name : chars
-└─ floor : int
+└─ floor : i32
 
 struct Dungeon
 ├─ name : chars
 └─ entry : STRUCT_CALL
 
-fn main() : int
+fn main() : i32
 ├─ d : STRUCT_CALL
 ├─ = : chars
 │  ├─ .name : chars
@@ -972,8 +972,8 @@ fn main() : int
 │  │  └─ .entry : STRUCT_CALL
 │  │     └─ d : STRUCT_CALL
 │  └─ chars "gate"
-├─ = : int
-│  ├─ .floor : int
+├─ = : i32
+│  ├─ .floor : i32
 │  │  └─ .entry : STRUCT_CALL
 │  │     └─ d : STRUCT_CALL
 │  └─ int 1
@@ -985,7 +985,7 @@ fn main() : int
    │  └─ .entry : STRUCT_CALL
    │     └─ d : STRUCT_CALL
    ├─ chars " floor "
-   ├─ .floor : int
+   ├─ .floor : i32
    │  └─ .entry : STRUCT_CALL
    │     └─ d : STRUCT_CALL
    └─ chars "\n"
@@ -1055,21 +1055,21 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Room
 ├─ name : chars
-└─ floor : int
+└─ floor : i32
 
-fn main() : int
+fn main() : i32
 ├─ = : array
 │  ├─ s : STRUCT_CALL[]
 │  └─ array : STRUCT_CALL[]
@@ -1080,8 +1080,8 @@ fn main() : int
 │  │     ├─ s : STRUCT_CALL[]
 │  │     └─ int 0
 │  └─ chars "lobby"
-├─ = : int
-│  ├─ .floor : int
+├─ = : i32
+│  ├─ .floor : i32
 │  │  └─ index : STRUCT_CALL
 │  │     ├─ s : STRUCT_CALL[]
 │  │     └─ int 0
@@ -1098,7 +1098,7 @@ fn main() : int
    │     ├─ s : STRUCT_CALL[]
    │     └─ int 0
    ├─ chars "@"
-   ├─ .floor : int
+   ├─ .floor : i32
    │  └─ index : STRUCT_CALL
    │     ├─ s : STRUCT_CALL[]
    │     └─ int 0
@@ -1108,7 +1108,7 @@ fn main() : int
    │     ├─ s : STRUCT_CALL[]
    │     └─ int 1
    ├─ chars "@"
-   ├─ .floor : int
+   ├─ .floor : i32
    │  └─ index : STRUCT_CALL
    │     ├─ s : STRUCT_CALL[]
    │     └─ int 1
@@ -1209,21 +1209,21 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Room
 ├─ name : chars
-└─ floor : int
+└─ floor : i32
 
-fn main() : int
+fn main() : i32
 ├─ = : array
 │  ├─ h : STRUCT_CALL[]
 │  └─ array : STRUCT_CALL[]
@@ -1234,14 +1234,14 @@ fn main() : int
 │  │     ├─ h : STRUCT_CALL[]
 │  │     └─ int 0
 │  └─ chars "attic"
-├─ = : int
-│  ├─ .floor : int
+├─ = : i32
+│  ├─ .floor : i32
 │  │  └─ index : STRUCT_CALL
 │  │     ├─ h : STRUCT_CALL[]
 │  │     └─ int 0
 │  └─ int 9
-├─ = : int
-│  ├─ .floor : int
+├─ = : i32
+│  ├─ .floor : i32
 │  │  └─ index : STRUCT_CALL
 │  │     ├─ h : STRUCT_CALL[]
 │  │     └─ int 1
@@ -1252,12 +1252,12 @@ fn main() : int
 │  │     ├─ h : STRUCT_CALL[]
 │  │     └─ int 0
 │  ├─ chars "@"
-│  ├─ .floor : int
+│  ├─ .floor : i32
 │  │  └─ index : STRUCT_CALL
 │  │     ├─ h : STRUCT_CALL[]
 │  │     └─ int 0
 │  ├─ chars " "
-│  ├─ .floor : int
+│  ├─ .floor : i32
 │  │  └─ index : STRUCT_CALL
 │  │     ├─ h : STRUCT_CALL[]
 │  │     └─ int 1
@@ -1356,21 +1356,21 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Room
 ├─ name : chars
-└─ floor : int
+└─ floor : i32
 
-fn main() : int
+fn main() : i32
 ├─ = : array
 │  ├─ g : STRUCT_CALL[][]
 │  └─ array : STRUCT_CALL[][]
@@ -1384,8 +1384,8 @@ fn main() : int
 │  │     │  └─ int 0
 │  │     └─ int 0
 │  └─ chars "grid-a"
-├─ = : int
-│  ├─ .floor : int
+├─ = : i32
+│  ├─ .floor : i32
 │  │  └─ index : STRUCT_CALL
 │  │     ├─ index : STRUCT_CALL[]
 │  │     │  ├─ g : STRUCT_CALL[][]
@@ -1400,8 +1400,8 @@ fn main() : int
 │  │     │  └─ int 1
 │  │     └─ int 0
 │  └─ chars "grid-b"
-├─ = : int
-│  ├─ .floor : int
+├─ = : i32
+│  ├─ .floor : i32
 │  │  └─ index : STRUCT_CALL
 │  │     ├─ index : STRUCT_CALL[]
 │  │     │  ├─ g : STRUCT_CALL[][]
@@ -1416,7 +1416,7 @@ fn main() : int
    │     │  └─ int 0
    │     └─ int 0
    ├─ chars "@"
-   ├─ .floor : int
+   ├─ .floor : i32
    │  └─ index : STRUCT_CALL
    │     ├─ index : STRUCT_CALL[]
    │     │  ├─ g : STRUCT_CALL[][]
@@ -1430,7 +1430,7 @@ fn main() : int
    │     │  └─ int 1
    │     └─ int 0
    ├─ chars "@"
-   ├─ .floor : int
+   ├─ .floor : i32
    │  └─ index : STRUCT_CALL
    │     ├─ index : STRUCT_CALL[]
    │     │  ├─ g : STRUCT_CALL[][]
@@ -1581,35 +1581,35 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Room
-└─ floor : int
+└─ floor : i32
 
-fn main() : int
+fn main() : i32
 ├─ = : array
 │  ├─ g : STRUCT_CALL[][]
 │  └─ array : STRUCT_CALL[][]
 │     ├─ int 2
 │     └─ int 2
-├─ = : int
-│  ├─ .floor : int
+├─ = : i32
+│  ├─ .floor : i32
 │  │  └─ index : STRUCT_CALL
 │  │     ├─ index : STRUCT_CALL[]
 │  │     │  ├─ g : STRUCT_CALL[][]
 │  │     │  └─ int 0
 │  │     └─ int 0
 │  └─ int 1
-├─ = : int
-│  ├─ .floor : int
+├─ = : i32
+│  ├─ .floor : i32
 │  │  └─ index : STRUCT_CALL
 │  │     ├─ index : STRUCT_CALL[]
 │  │     │  ├─ g : STRUCT_CALL[][]
@@ -1617,14 +1617,14 @@ fn main() : int
 │  │     └─ int 1
 │  └─ int 4
 ├─ output : void
-│  ├─ .floor : int
+│  ├─ .floor : i32
 │  │  └─ index : STRUCT_CALL
 │  │     ├─ index : STRUCT_CALL[]
 │  │     │  ├─ g : STRUCT_CALL[][]
 │  │     │  └─ int 0
 │  │     └─ int 0
 │  ├─ chars " "
-│  ├─ .floor : int
+│  ├─ .floor : i32
 │  │  └─ index : STRUCT_CALL
 │  │     ├─ index : STRUCT_CALL[]
 │  │     │  ├─ g : STRUCT_CALL[][]
@@ -1765,20 +1765,20 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Room
-└─ floor : int
+└─ floor : i32
 
-fn main() : int
+fn main() : i32
 ├─ = : array
 │  ├─ s : STRUCT_CALL[]
 │  └─ array : STRUCT_CALL[]
@@ -1789,10 +1789,10 @@ fn main() : int
 │     ├─ int 4
 │     └─ int 1
 └─ output : void
-   ├─ .len : int
+   ├─ .len : i32
    │  └─ s : STRUCT_CALL[]
    ├─ chars " "
-   ├─ .len : int
+   ├─ .len : i32
    │  └─ g : STRUCT_CALL[][]
    └─ chars "\n"
 ```
@@ -1879,27 +1879,27 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ stack : int
+fn main() : i32
+├─ = : i32
+│  ├─ stack : i32
 │  └─ int 5
-├─ = : int
-│  ├─ heap : int
+├─ = : i32
+│  ├─ heap : i32
 │  └─ int 7
 └─ output : void
-   ├─ stack : int
+   ├─ stack : i32
    ├─ chars " "
-   ├─ heap : int
+   ├─ heap : i32
    └─ chars "\n"
 ```
 
@@ -1947,28 +1947,28 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Node
-├─ value : int
+├─ value : i32
 └─ next : STRUCT_CALL
 
-fn main() : int
+fn main() : i32
 ├─ a : STRUCT_CALL
-├─ = : int
-│  ├─ .value : int
+├─ = : i32
+│  ├─ .value : i32
 │  │  └─ a : STRUCT_CALL
 │  └─ int 1
 └─ output : void
-   ├─ .value : int
+   ├─ .value : i32
    │  └─ a : STRUCT_CALL
    └─ chars "\n"
 ```
@@ -2025,34 +2025,34 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Node
-├─ value : int
+├─ value : i32
 └─ next : STRUCT_CALL
 
-fn main() : int
+fn main() : i32
 ├─ a : STRUCT_CALL
 ├─ b : STRUCT_CALL
 ├─ c : STRUCT_CALL
-├─ = : int
-│  ├─ .value : int
+├─ = : i32
+│  ├─ .value : i32
 │  │  └─ a : STRUCT_CALL
 │  └─ int 1
-├─ = : int
-│  ├─ .value : int
+├─ = : i32
+│  ├─ .value : i32
 │  │  └─ b : STRUCT_CALL
 │  └─ int 2
-├─ = : int
-│  ├─ .value : int
+├─ = : i32
+│  ├─ .value : i32
 │  │  └─ c : STRUCT_CALL
 │  └─ int 3
 ├─ = : STRUCT_CALL
@@ -2065,22 +2065,22 @@ fn main() : int
 │  │  └─ b : STRUCT_CALL
 │  └─ ref : STRUCT_CALL
 │     └─ c : STRUCT_CALL
-├─ = : int
-│  ├─ .value : int
+├─ = : i32
+│  ├─ .value : i32
 │  │  └─ .next : STRUCT_CALL
 │  │     └─ a : STRUCT_CALL
 │  └─ int 20
 └─ output : void
-   ├─ .value : int
+   ├─ .value : i32
    │  └─ .next : STRUCT_CALL
    │     └─ a : STRUCT_CALL
    ├─ chars " "
-   ├─ .value : int
+   ├─ .value : i32
    │  └─ .next : STRUCT_CALL
    │     └─ .next : STRUCT_CALL
    │        └─ a : STRUCT_CALL
    ├─ chars " "
-   ├─ .value : int
+   ├─ .value : i32
    │  └─ b : STRUCT_CALL
    └─ chars "\n"
 ```
@@ -2162,49 +2162,49 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Room
 ├─ name : chars
-└─ floor : int
+└─ floor : i32
 
-fn main() : int
+fn main() : i32
 ├─ a : STRUCT_CALL
 ├─ = : chars
 │  ├─ .name : chars
 │  │  └─ a : STRUCT_CALL
 │  └─ chars "hall"
-├─ = : int
-│  ├─ .floor : int
+├─ = : i32
+│  ├─ .floor : i32
 │  │  └─ a : STRUCT_CALL
 │  └─ int 2
 ├─ b : STRUCT_CALL
 ├─ = : STRUCT_CALL
 │  ├─ b : STRUCT_CALL
 │  └─ a : STRUCT_CALL
-├─ = : int
-│  ├─ .floor : int
+├─ = : i32
+│  ├─ .floor : i32
 │  │  └─ b : STRUCT_CALL
 │  └─ int 9
 └─ output : void
    ├─ .name : chars
    │  └─ b : STRUCT_CALL
    ├─ chars " "
-   ├─ .floor : int
+   ├─ .floor : i32
    │  └─ b : STRUCT_CALL
    ├─ chars " / "
    ├─ .name : chars
    │  └─ a : STRUCT_CALL
    ├─ chars " "
-   ├─ .floor : int
+   ├─ .floor : i32
    │  └─ a : STRUCT_CALL
    └─ chars "\n"
 ```
@@ -2276,19 +2276,19 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Room
 ├─ name : chars
-└─ floor : int
+└─ floor : i32
 
 fn show(r : STRUCT_CALL) : void
 └─ output : void
@@ -2296,18 +2296,18 @@ fn show(r : STRUCT_CALL) : void
    ├─ .name : chars
    │  └─ r : STRUCT_CALL
    ├─ chars "@"
-   ├─ .floor : int
+   ├─ .floor : i32
    │  └─ r : STRUCT_CALL
    └─ chars "\n"
 
-fn main() : int
+fn main() : i32
 ├─ a : STRUCT_CALL
 ├─ = : chars
 │  ├─ .name : chars
 │  │  └─ a : STRUCT_CALL
 │  └─ chars "hall"
-├─ = : int
-│  ├─ .floor : int
+├─ = : i32
+│  ├─ .floor : i32
 │  │  └─ a : STRUCT_CALL
 │  └─ int 2
 └─ call show : void
@@ -2379,33 +2379,33 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Room
 ├─ name : chars
-└─ floor : int
+└─ floor : i32
 
 fn bump(r : STRUCT_CALL) : void
-└─ = : int
-   ├─ .floor : int
+└─ = : i32
+   ├─ .floor : i32
    │  └─ r : STRUCT_CALL
-   └─ + : int
-      ├─ .floor : int
+   └─ + : i32
+      ├─ .floor : i32
       │  └─ r : STRUCT_CALL
       └─ int 1
 
-fn main() : int
+fn main() : i32
 ├─ a : STRUCT_CALL
-├─ = : int
-│  ├─ .floor : int
+├─ = : i32
+│  ├─ .floor : i32
 │  │  └─ a : STRUCT_CALL
 │  └─ int 2
 ├─ call bump : void
@@ -2413,7 +2413,7 @@ fn main() : int
 │     └─ a : STRUCT_CALL
 └─ output : void
    ├─ chars "after "
-   ├─ .floor : int
+   ├─ .floor : i32
    │  └─ a : STRUCT_CALL
    └─ chars "\n"
 ```
@@ -2487,30 +2487,30 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Room
 ├─ name : chars
-└─ floor : int
+└─ floor : i32
 
-fn create(f : int) : STRUCT_CALL
+fn create(f : i32) : STRUCT_CALL
 ├─ r : STRUCT_CALL
 ├─ = : chars
 │  ├─ .name : chars
 │  │  └─ r : STRUCT_CALL
 │  └─ chars "made"
-├─ = : int
-│  ├─ .floor : int
+├─ = : i32
+│  ├─ .floor : i32
 │  │  └─ r : STRUCT_CALL
-│  └─ f : int
+│  └─ f : i32
 └─ return
    └─ r : STRUCT_CALL
 
@@ -2519,7 +2519,7 @@ fn describe(r : STRUCT_CALL) : chars
    └─ .name : chars
       └─ r : STRUCT_CALL
 
-fn main() : int
+fn main() : i32
 ├─ = : STRUCT_CALL
 │  ├─ a : STRUCT_CALL
 │  └─ call create : STRUCT_CALL
@@ -2528,7 +2528,7 @@ fn main() : int
    ├─ call describe : chars
    │  └─ a : STRUCT_CALL
    ├─ chars " "
-   ├─ .floor : int
+   ├─ .floor : i32
    │  └─ a : STRUCT_CALL
    └─ chars "\n"
 ```
@@ -2618,32 +2618,32 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Room
 ├─ name : chars
-└─ floor : int
+└─ floor : i32
 
 struct Dungeon
 ├─ name : chars
 └─ entry : STRUCT_CALL
 
-fn main() : int
+fn main() : i32
 ├─ r : STRUCT_CALL
 ├─ = : chars
 │  ├─ .name : chars
 │  │  └─ r : STRUCT_CALL
 │  └─ chars "hall"
-├─ = : int
-│  ├─ .floor : int
+├─ = : i32
+│  ├─ .floor : i32
 │  │  └─ r : STRUCT_CALL
 │  └─ int 2
 ├─ output : void
@@ -2660,8 +2660,8 @@ fn main() : int
 │  │  └─ .entry : STRUCT_CALL
 │  │     └─ d : STRUCT_CALL
 │  └─ chars "gate"
-├─ = : int
-│  ├─ .floor : int
+├─ = : i32
+│  ├─ .floor : i32
 │  │  └─ .entry : STRUCT_CALL
 │  │     └─ d : STRUCT_CALL
 │  └─ int 1
@@ -2880,24 +2880,24 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Node
-├─ value : int
+├─ value : i32
 └─ next : STRUCT_CALL
 
-fn main() : int
+fn main() : i32
 ├─ a : STRUCT_CALL
-├─ = : int
-│  ├─ .value : int
+├─ = : i32
+│  ├─ .value : i32
 │  │  └─ a : STRUCT_CALL
 │  └─ int 1
 ├─ output : void
@@ -2905,8 +2905,8 @@ fn main() : int
 │  ├─ a : STRUCT_CALL
 │  └─ chars "\n"
 ├─ b : STRUCT_CALL
-├─ = : int
-│  ├─ .value : int
+├─ = : i32
+│  ├─ .value : i32
 │  │  └─ b : STRUCT_CALL
 │  └─ int 2
 ├─ = : STRUCT_CALL
@@ -3058,29 +3058,29 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Node
-├─ value : int
+├─ value : i32
 └─ next : STRUCT_CALL
 
-fn main() : int
+fn main() : i32
 ├─ a : STRUCT_CALL
 ├─ b : STRUCT_CALL
-├─ = : int
-│  ├─ .value : int
+├─ = : i32
+│  ├─ .value : i32
 │  │  └─ a : STRUCT_CALL
 │  └─ int 1
-├─ = : int
-│  ├─ .value : int
+├─ = : i32
+│  ├─ .value : i32
 │  │  └─ b : STRUCT_CALL
 │  └─ int 2
 ├─ = : STRUCT_CALL
@@ -3257,18 +3257,18 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Room
-└─ floor : int
+└─ floor : i32
 
 struct Flat
 ├─ tag : chars
@@ -3278,7 +3278,7 @@ struct Grid
 ├─ tag : chars
 └─ rooms : STRUCT_CALL[][]
 
-fn main() : int
+fn main() : i32
 ├─ f : STRUCT_CALL
 ├─ = : chars
 │  ├─ .tag : chars
@@ -3289,15 +3289,15 @@ fn main() : int
 │  │  └─ f : STRUCT_CALL
 │  └─ array : STRUCT_CALL[]
 │     └─ int 2
-├─ = : int
-│  ├─ .floor : int
+├─ = : i32
+│  ├─ .floor : i32
 │  │  └─ index : STRUCT_CALL
 │  │     ├─ .rooms : STRUCT_CALL[]
 │  │     │  └─ f : STRUCT_CALL
 │  │     └─ int 0
 │  └─ int 3
-├─ = : int
-│  ├─ .floor : int
+├─ = : i32
+│  ├─ .floor : i32
 │  │  └─ index : STRUCT_CALL
 │  │     ├─ .rooms : STRUCT_CALL[]
 │  │     │  └─ f : STRUCT_CALL
@@ -3317,8 +3317,8 @@ fn main() : int
 │  └─ array : STRUCT_CALL[][]
 │     ├─ int 2
 │     └─ int 2
-├─ = : int
-│  ├─ .floor : int
+├─ = : i32
+│  ├─ .floor : i32
 │  │  └─ index : STRUCT_CALL
 │  │     ├─ index : STRUCT_CALL[]
 │  │     │  ├─ .rooms : STRUCT_CALL[][]
@@ -3326,8 +3326,8 @@ fn main() : int
 │  │     │  └─ int 0
 │  │     └─ int 0
 │  └─ int 1
-├─ = : int
-│  ├─ .floor : int
+├─ = : i32
+│  ├─ .floor : i32
 │  │  └─ index : STRUCT_CALL
 │  │     ├─ index : STRUCT_CALL[]
 │  │     │  ├─ .rooms : STRUCT_CALL[][]
@@ -3335,8 +3335,8 @@ fn main() : int
 │  │     │  └─ int 0
 │  │     └─ int 1
 │  └─ int 2
-├─ = : int
-│  ├─ .floor : int
+├─ = : i32
+│  ├─ .floor : i32
 │  │  └─ index : STRUCT_CALL
 │  │     ├─ index : STRUCT_CALL[]
 │  │     │  ├─ .rooms : STRUCT_CALL[][]
@@ -3344,8 +3344,8 @@ fn main() : int
 │  │     │  └─ int 1
 │  │     └─ int 0
 │  └─ int 3
-├─ = : int
-│  ├─ .floor : int
+├─ = : i32
+│  ├─ .floor : i32
 │  │  └─ index : STRUCT_CALL
 │  │     ├─ index : STRUCT_CALL[]
 │  │     │  ├─ .rooms : STRUCT_CALL[][]
@@ -3946,7 +3946,7 @@ main():
 ```
 
 ```err
-error: Cannot read '.foo' from int; only a struct has fields
+error: Cannot read '.foo' from i32; only a struct has fields
   036.ura:5:13
   |
 5 |     output(x.foo)
@@ -3973,7 +3973,7 @@ main():
 ```
 
 ```err
-error: '.len' is only valid on an array, not int
+error: '.len' is only valid on an array, not i32
   037.ura:5:13
   |
 5 |     output(x.len)
@@ -4076,35 +4076,35 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
 struct Item
-├─ worth : int
+├─ worth : i32
 ├─ next : STRUCT_CALL
-├─ fn Item.create(w : int) : STRUCT_CALL
+├─ fn Item.create(w : i32) : STRUCT_CALL
 │  ├─ it : STRUCT_CALL
-│  ├─ = : int
-│  │  ├─ .worth : int
+│  ├─ = : i32
+│  │  ├─ .worth : i32
 │  │  │  └─ it : STRUCT_CALL
-│  │  └─ w : int
+│  │  └─ w : i32
 │  └─ return
 │     └─ it : STRUCT_CALL
 └─ fn Item.show(self : STRUCT_CALL) : void
    └─ output : void
       ├─ chars "worth "
-      ├─ .worth : int
+      ├─ .worth : i32
       │  └─ self : STRUCT_CALL
       └─ chars "\n"
 
-fn main() : int
+fn main() : i32
 ├─ = : STRUCT_CALL
 │  ├─ head : STRUCT_CALL
 │  └─ call create : STRUCT_CALL
@@ -4138,7 +4138,7 @@ fn main() : int
 │        └─ head : STRUCT_CALL
 └─ output : void
    ├─ chars "chained field "
-   ├─ .worth : int
+   ├─ .worth : i32
    │  └─ .next : STRUCT_CALL
    │     └─ .next : STRUCT_CALL
    │        └─ head : STRUCT_CALL

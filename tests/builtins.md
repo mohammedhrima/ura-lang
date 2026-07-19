@@ -29,17 +29,17 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-proto fn puts(str : chars) : int
+proto fn puts(str : chars) : i32
 
 fn is_s_rank(grade : char) : bool
 └─ return
@@ -47,17 +47,17 @@ fn is_s_rank(grade : char) : bool
       ├─ grade : char
       └─ char 'S'
 
-fn main() : int
+fn main() : i32
 ├─ = : char
 │  ├─ grade : char
 │  └─ char 'S'
 └─ if
    ├─ condition call is_s_rank : bool
    │  └─ grade : char
-   ├─ call puts : int
+   ├─ call puts : i32
    │  └─ chars "S-rank hero — unstoppable"
    └─ else
-      └─ call puts : int
+      └─ call puts : i32
          └─ chars "keep training"
 ```
 
@@ -119,23 +119,23 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-proto fn printf(fmt : chars, ...) : int
+proto fn printf(fmt : chars, ...) : i32
 
-fn main() : int
+fn main() : i32
 ├─ = : chars
 │  ├─ s : chars
 │  └─ chars "ura"
-├─ call printf : int
+├─ call printf : i32
 │  ├─ chars "hello %s %d\n"
 │  ├─ s : chars
 │  └─ int 42
@@ -181,50 +181,50 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
-├─ = : int
-│  ├─ x : int
+fn main() : i32
+├─ = : i32
+│  ├─ x : i32
 │  └─ int 5
-├─ = : float
-│  ├─ f : float
+├─ = : f32
+│  ├─ f : f32
 │  └─ float 1.5
 ├─ output : void
 │  ├─ chars "typeof x = "
 │  ├─ typeof : chars
-│  │  └─ x : int
+│  │  └─ x : i32
 │  ├─ chars ", sizeof x = "
-│  ├─ sizeof : int
-│  │  └─ x : int
+│  ├─ sizeof : i32
+│  │  └─ x : i32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "typeof f = "
 │  ├─ typeof : chars
-│  │  └─ f : float
+│  │  └─ f : f32
 │  ├─ chars ", sizeof f = "
-│  ├─ sizeof : int
-│  │  └─ f : float
+│  ├─ sizeof : i32
+│  │  └─ f : f32
 │  └─ chars "\n"
 └─ output : void
    ├─ chars "sizeof long = "
-   ├─ sizeof : int
-   │  └─ cast : long
+   ├─ sizeof : i32
+   │  └─ cast : i64
    │     └─ int 1
    └─ chars "\n"
 ```
 
 ```out
-typeof x = int, sizeof x = 4
-typeof f = float, sizeof f = 4
+typeof x = i32, sizeof x = 4
+typeof f = f32, sizeof f = 4
 sizeof long = 8
 ```
 
@@ -234,12 +234,12 @@ sizeof long = 8
 ```ll
 
 @str = private unnamed_addr constant [12 x i8] c"typeof x = \00", align 1
-@typeof = private unnamed_addr constant [4 x i8] c"int\00", align 1
+@typeof = private unnamed_addr constant [4 x i8] c"i32\00", align 1
 @str.1 = private unnamed_addr constant [14 x i8] c", sizeof x = \00", align 1
 @str.2 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt = private unnamed_addr constant [11 x i8] c"%s%s%s%d%s\00", align 1
 @str.3 = private unnamed_addr constant [12 x i8] c"typeof f = \00", align 1
-@typeof.4 = private unnamed_addr constant [6 x i8] c"float\00", align 1
+@typeof.4 = private unnamed_addr constant [4 x i8] c"f32\00", align 1
 @str.5 = private unnamed_addr constant [14 x i8] c", sizeof f = \00", align 1
 @str.6 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt.7 = private unnamed_addr constant [11 x i8] c"%s%s%s%d%s\00", align 1
@@ -254,7 +254,7 @@ entry:
   %f = alloca float, align 4
   store float 1.500000e+00, float* %f, align 4
   %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str, i32 0, i32 0), i8* getelementptr inbounds ([4 x i8], [4 x i8]* @typeof, i32 0, i32 0), i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.1, i32 0, i32 0), i32 4, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0))
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.7, i32 0, i32 0), i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.3, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @typeof.4, i32 0, i32 0), i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.5, i32 0, i32 0), i32 4, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.6, i32 0, i32 0))
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.7, i32 0, i32 0), i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.3, i32 0, i32 0), i8* getelementptr inbounds ([4 x i8], [4 x i8]* @typeof.4, i32 0, i32 0), i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.5, i32 0, i32 0), i32 4, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.6, i32 0, i32 0))
   %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.10, i32 0, i32 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @str.8, i32 0, i32 0), i32 8, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.9, i32 0, i32 0))
   ret i32 0
 }
@@ -273,30 +273,30 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ = : array
-│  ├─ a : int[]
-│  └─ array : int[]
+│  ├─ a : i32[]
+│  └─ array : i32[]
 │     ├─ int 1
 │     ├─ int 2
 │     └─ int 3
 └─ output : void
    ├─ chars "typeof a = "
    ├─ typeof : chars
-   │  └─ a : int[]
+   │  └─ a : i32[]
    ├─ chars ", sizeof a = "
-   ├─ sizeof : int
-   │  └─ a : int[]
+   ├─ sizeof : i32
+   │  └─ a : i32[]
    └─ chars "\n"
 ```
 
@@ -419,63 +419,63 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-fn main() : int
-├─ = : float
-│  ├─ f : float
+fn main() : i32
+├─ = : f32
+│  ├─ f : f32
 │  └─ float 3.5
 ├─ = : char
 │  ├─ c : char
 │  └─ char 'A'
-├─ = : short
-│  ├─ s : short
-│  └─ cast : short
+├─ = : i16
+│  ├─ s : i16
+│  └─ cast : i16
 │     └─ int 7
 ├─ = : bool
 │  ├─ b : bool
 │  └─ bool True
-├─ = : long
-│  ├─ l : long
-│  └─ cast : long
+├─ = : i64
+│  ├─ l : i64
+│  └─ cast : i64
 │     └─ int 123456789
-├─ = : int
-│  ├─ i : int
+├─ = : i32
+│  ├─ i : i32
 │  └─ int 42
-├─ call printf : int
+├─ call printf : i32
 │  ├─ chars "%.2f %c %d %d %d\n"
-│  ├─ f : float
+│  ├─ f : f32
 │  ├─ c : char
-│  ├─ s : short
+│  ├─ s : i16
 │  ├─ b : bool
-│  └─ i : int
-├─ call printf : int
+│  └─ i : i32
+├─ call printf : i32
 │  ├─ chars "%ld\n"
-│  └─ l : long
-├─ call printf : int
+│  └─ l : i64
+├─ call printf : i32
 │  ├─ chars "%.2f %c %d\n"
 │  ├─ float 2.5
 │  ├─ char 'Z'
 │  └─ int 9
-├─ call printf : int
+├─ call printf : i32
 │  ├─ chars "%.2f %d\n"
-│  ├─ + : float
-│  │  ├─ f : float
-│  │  └─ f : float
-│  └─ + : int
-│     ├─ i : int
+│  ├─ + : f32
+│  │  ├─ f : f32
+│  │  └─ f : f32
+│  └─ + : i32
+│     ├─ i : i32
 │     └─ int 1
-├─ call printf : int
+├─ call printf : i32
 │  ├─ chars "%d %d\n"
 │  ├─ < : bool
 │  │  ├─ int 1
@@ -483,7 +483,7 @@ fn main() : int
 │  └─ == : bool
 │     ├─ int 3
 │     └─ int 4
-└─ call printf : int
+└─ call printf : i32
    └─ chars "none\n"
 ```
 

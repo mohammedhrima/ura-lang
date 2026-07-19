@@ -21,17 +21,17 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ output : void
 │  └─ chars "=== Aldric enters the dungeon ===\n"
 ├─ output : void
@@ -105,40 +105,40 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ output : void
 │  ├─ chars "Damage dealt: "
-│  ├─ - : int
+│  ├─ - : i32
 │  │  ├─ int 25
 │  │  └─ int 8
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "XP gained:    "
-│  ├─ * : int
+│  ├─ * : i32
 │  │  ├─ int 3
 │  │  └─ int 50
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "Gold split:   "
-│  ├─ / : int
+│  ├─ / : i32
 │  │  ├─ int 120
 │  │  └─ int 4
 │  └─ chars "\n"
 └─ output : void
    ├─ chars "Bonus:        "
-   ├─ + : int
+   ├─ + : i32
    │  ├─ int 7
-   │  └─ * : int
+   │  └─ * : i32
    │     ├─ int 3
    │     └─ int 10
    └─ chars "\n"
@@ -214,22 +214,22 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ = : chars
 │  ├─ name : chars
 │  └─ chars "Aldric"
-├─ = : int
-│  ├─ hp : int
+├─ = : i32
+│  ├─ hp : i32
 │  └─ int 100
 ├─ = : char
 │  ├─ grade : char
@@ -237,8 +237,8 @@ fn main() : int
 ├─ = : bool
 │  ├─ alive : bool
 │  └─ bool True
-├─ = : float
-│  ├─ speed : float
+├─ = : f32
+│  ├─ speed : f32
 │  └─ float 1.75
 ├─ output : void
 │  ├─ chars "Name:  "
@@ -246,7 +246,7 @@ fn main() : int
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "HP:    "
-│  ├─ hp : int
+│  ├─ hp : i32
 │  └─ chars "\n"
 ├─ output : void
 │  ├─ chars "Grade: "
@@ -258,7 +258,7 @@ fn main() : int
 │  └─ chars "\n"
 └─ output : void
    ├─ chars "Speed: "
-   ├─ speed : float
+   ├─ speed : f32
    └─ chars "\n"
 ```
 
@@ -339,22 +339,22 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : int
+proto fn printf(format : chars, ...) : i32
 
-proto fn calloc(len : long, size : long) : chars
+proto fn calloc(len : i64, size : i64) : chars
 
 proto fn free(ptr : chars) : void
 
-proto fn write(fd : int, ptr : chars, len : long) : long
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
 
-proto fn exit(code : int) : void
+proto fn exit(code : i32) : void
 
-fn main() : int
+fn main() : i32
 ├─ = : chars
 │  ├─ name : chars
 │  └─ chars "ura"
-├─ = : int
-│  ├─ n : int
+├─ = : i32
+│  ├─ n : i32
 │  └─ int 42
 ├─ = : bool
 │  ├─ ok : bool
@@ -363,7 +363,7 @@ fn main() : int
 │  ├─ chars "hello "
 │  ├─ name : chars
 │  ├─ chars " "
-│  ├─ n : int
+│  ├─ n : i32
 │  ├─ chars " "
 │  ├─ ok : bool
 │  └─ chars "\n"
