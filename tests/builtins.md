@@ -529,9 +529,9 @@ entry:
   %s3 = load i16, i16* %s, align 2
   %i2i4 = sext i16 %s3 to i32
   %b5 = load i1, i1* %b, align 1
-  %b2i = zext i1 %b5 to i32
+  %u2i = zext i1 %b5 to i32
   %i6 = load i32, i32* %i, align 4
-  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @str, i32 0, i32 0), double %f2d, i32 %i2i, i32 %i2i4, i32 %b2i, i32 %i6)
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @str, i32 0, i32 0), double %f2d, i32 %i2i, i32 %i2i4, i32 %u2i, i32 %i6)
   %l7 = load i64, i64* %l, align 4
   %call8 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.1, i32 0, i32 0), i64 %l7)
   %call9 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.2, i32 0, i32 0), double 2.500000e+00, i32 90, i32 9)

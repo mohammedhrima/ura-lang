@@ -3,17 +3,19 @@
 char *to_string(Type type) {
 	char *res[END + 1] = {
 	    [ID] = "ID",              [CHAR] = "CHAR",             [CHARS] = "CHARS",
-	    [I32] = "I32",            [VOID] = "VOID",             [BOOL] = "BOOL",
-	    [I64] = "I64",            [FDEC] = "FDEC",             [F32] = "F32",
-	    [F64] = "F64",            [END] = "END",               [LPAR] = "LPAR",
+	    [I8] = "I8",              [I16] = "I16",               [I32] = "I32",
+	    [I64] = "I64",            [U8] = "U8",                 [U16] = "U16",
+	    [U32] = "U32",            [U64] = "U64",               [F32] = "F32",
+	    [F64] = "F64",            [VOID] = "VOID",             [BOOL] = "BOOL",
+	    [FDEC] = "FDEC",          [END] = "END",               [LPAR] = "LPAR",
 	    [FCALL] = "CALL",
 	    [IF] = "IF",              [RPAR] = "RPAR",             [ELIF] = "ELIF",
 	    [FOR] = "FOR",            [ELSE] = "ELSE",             [WHILE] = "WHILE",
 	    [BY] = "BY",              [LOOP] = "LOOP",
 	    [IN] = "IN",              [BREAK] = "BRK",             [CONTINUE] = "CONT",
 	    [CASE] = "CASE",          [MATCH] = "MATCH",           [DEFAULT] = "DEFAULT",
-	    [BAND] = "BAND",          [RETURN] = "RET",            [I16] = "I16",
-	    [BOR] = "BOR",            [BXOR] = "BXOR",             [BNOT] = "BNOT",
+	    [BAND] = "BAND",          [RETURN] = "RET",            [BOR] = "BOR",
+	    [BXOR] = "BXOR",          [BNOT] = "BNOT",
 	    [ADD] = "ADD",            [LSHIFT] = "LSHIFT",         [RSHIFT] = "RSHIFT",
 	    [SUB] = "SUB",            [MUL] = "MUL",               [DIV] = "DIV",
 	    [ASSIGN] = "ASSIGN",      [ADD_ASSIGN] = "ADD_ASS",    [SUB_ASSIGN] = "SUB_ASS",
@@ -44,9 +46,14 @@ char *to_string(Type type) {
 
 char *type_name(Type type) {
 	switch (type) {
+	case I8:         return "i8";
+	case I16:        return "i16";
 	case I32:        return "i32";
 	case I64:        return "i64";
-	case I16:        return "i16";
+	case U8:         return "u8";
+	case U16:        return "u16";
+	case U32:        return "u32";
+	case U64:        return "u64";
 	case CHAR:       return "char";
 	case CHARS:      return "chars";
 	case BOOL:       return "bool";
@@ -241,11 +248,12 @@ char *array_type_label(Token *token) {
 }
 
 static char *spelling[END + 1] = {
-		[I32] = "i32",       [I64] = "i64",         [I16] = "i16",
-		[BOOL] = "bool",     [CHAR] = "char",       [CHARS] = "chars",
-		[ADD] = "+",         [VOID] = "void",       [F32] = "f32",
-		[F64] = "f64",       [SUB] = "-",           [MUL] = "*",
-		[DIV] = "/",
+		[I8] = "i8",         [I16] = "i16",         [I32] = "i32",
+		[I64] = "i64",       [U8] = "u8",           [U16] = "u16",
+		[U32] = "u32",       [U64] = "u64",         [F32] = "f32",
+		[F64] = "f64",       [BOOL] = "bool",       [CHAR] = "char",
+		[CHARS] = "chars",   [VOID] = "void",       [ADD] = "+",
+		[SUB] = "-",         [MUL] = "*",           [DIV] = "/",
 		[MOD] = "%",         [EQUAL] = "==",        [NOT_EQUAL] = "!=",
 		[LESS] = "<",        [GREAT] = ">",         [LESS_EQUAL] = "<=",
 		[OR] = "or",         [AND] = "and",         [GREAT_EQUAL] = ">=",

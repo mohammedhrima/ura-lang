@@ -317,11 +317,6 @@ error: Redeclaration of function 'write'
   |
 3 | proto fn write(fd int, ptr chars, len int) int
   |       ^^
-error: Argument 3 type mismatch in call to 'write'
-  floor14a.ura:8:22
-  |
-8 |     write(1, "hi\n", 3)
-  |                      ^
 ```
 
 ```ll
