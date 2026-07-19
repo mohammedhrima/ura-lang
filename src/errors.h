@@ -47,6 +47,9 @@
 #define ERR_FOR_REF_NEEDS_ARRAY \
 	"'for ref' needs an array; a range yields values, not storage"
 
+#define ERR_RETURN_TYPE_MISMATCH \
+	"'%s' returns %s, but this returns %s"
+
 #define ERR_CANNOT_CAST "Cannot cast %s to %s"
 
 #define ERR_LEN_NOT_ARRAY \

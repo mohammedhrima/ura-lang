@@ -282,7 +282,10 @@ void analyze_id(Node *node) {
       return;
    }
    Node *fn = find_function(token->name);
-   if (!fn) { parse_error(token, ERR_UNDECLARED_VARIABLE, token->name); return; }
+   if (!fn) { 
+      parse_error(token, ERR_UNDECLARED_VARIABLE, token->name); 
+      return; 
+   }
    token->type             = FN_TYPE;
    token->ret_type         = FN_TYPE;
    token->Fcall.ptr        = fn;
@@ -408,7 +411,10 @@ void analyze(Node *node) {
          break;
       }
       case ACCESS: {
-         if (!rewrite_struct_ctor(node)) { analyze_binop(node); break; }
+         if (!rewrite_struct_ctor(node)) { 
+            analyze_binop(node); 
+            break; 
+         }
          for (int i = 0; i < node->children_count; i++)
          analyze(node->children[i]);
          break;

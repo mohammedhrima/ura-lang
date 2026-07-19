@@ -30,7 +30,7 @@ struct Tm:
 
 // Time manipulation
 proto fn time(timer pointer) long
-proto fn difftime(time1 long, time0 long) float
+proto fn difftime(time1 long, time0 long) double
 proto fn clock() long
 
 // Conversion (returned struct tm* points to thread-local static storage).

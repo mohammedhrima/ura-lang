@@ -595,10 +595,11 @@ Node *prime_node() {
       node->left = prime_node();
       return node;
    }
-   case SUB: {                     
-      Node *node  = new_node(token);
-      node->left  = new_node(new_token(INT, token->indent));
-      node->right = prime_node();
+   case SUB: {
+      Node *node   = new_node(token);
+      node->right  = prime_node();
+      Type kind    = node->right->token->type == FLOAT ? FLOAT : INT;
+      node->left   = new_node(new_token(kind, token->indent));
       return node;
    }
    case REF: return ref_node(new_node(token));

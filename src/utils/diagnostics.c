@@ -5,6 +5,7 @@ char *to_string(Type type) {
 	    [ID] = "ID",              [CHAR] = "CHAR",             [CHARS] = "CHARS",
 	    [INT] = "INT",            [VOID] = "VOID",             [BOOL] = "BOOL",
 	    [LONG] = "LONG",          [FDEC] = "FDEC",             [FLOAT] = "FLOAT",
+	    [DOUBLE] = "DOUBLE",
 	    [END] = "END",            [LPAR] = "LPAR",             [FCALL] = "CALL",
 	    [IF] = "IF",              [RPAR] = "RPAR",             [ELIF] = "ELIF",
 	    [FOR] = "FOR",            [ELSE] = "ELSE",             [WHILE] = "WHILE",
@@ -50,6 +51,7 @@ char *type_name(Type type) {
 	case CHARS:      return "chars";
 	case BOOL:       return "bool";
 	case FLOAT:      return "float";
+	case DOUBLE:     return "double";
 	case VOID:       return "void";
 	case ARRAY_TYPE: return "array";
 	case FN_TYPE:    return "fn";
@@ -242,6 +244,7 @@ static char *spelling[END + 1] = {
 		[INT] = "int",       [LONG] = "long",       [SHORT] = "short",
 		[BOOL] = "bool",     [CHAR] = "char",       [CHARS] = "chars",
 		[ADD] = "+",         [VOID] = "void",       [FLOAT] = "float",
+		[DOUBLE] = "double",
 		[SUB] = "-",         [MUL] = "*",           [DIV] = "/",
 		[MOD] = "%",         [EQUAL] = "==",        [NOT_EQUAL] = "!=",
 		[LESS] = "<",        [GREAT] = ">",         [LESS_EQUAL] = "<=",
