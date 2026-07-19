@@ -580,14 +580,14 @@ void code_gen_literal(Node *node) {
    }
 }
 
-bool needs_drop(Node *def, int depth) {
-   if (!def || depth > 64) return false;
+bool needs_drop(Node *def) {
+   if (!def) return false;
    if (def->token->has_drop) return true;
    for (int i = 0; i < def->children_count; i++) {
       Token *field = def->children[i]->token;
       if (!is_field(field) || field->is_ref) continue;
       if (field->ret_type != STRUCT_CALL) continue;
-      if (needs_drop(field->Struct.ptr, depth + 1)) return true;
+      if (needs_drop(field->Struct.ptr)) return true;
    }
    return false;
 }
@@ -596,11 +596,11 @@ Node *drop_target(Token *var) {
    if (var->is_ref || var->is_param || !var->llvm.elem) return NULL;
    if (var->ret_type != STRUCT_CALL) return NULL;
    Node *def = var->Struct.ptr;
-   return needs_drop(def, 0) ? def : NULL;
+   return needs_drop(def) ? def : NULL;
 }
 
-void emit_drop_value(Value ptr, Node *def, int depth) {
-   if (!def || depth > 64) return;
+void emit_drop_value(Value ptr, Node *def) {
+   if (!def) return;
    if (def->token->has_drop) {
       Node  *fn   = find_destructor(def);
       emit_signature(fn);
@@ -613,10 +613,10 @@ void emit_drop_value(Value ptr, Node *def, int depth) {
       if (!is_field(field) || field->is_ref) continue;
       if (field->ret_type != STRUCT_CALL) continue;
       Node *sub = field->Struct.ptr;
-      if (!needs_drop(sub, 0)) continue;
+      if (!needs_drop(sub)) continue;
       Value idx[2] = { const_i32(0), const_i32(field->Struct.index) };
       Value slot   = llvm_gep(sty, ptr, idx, 2, field->name);
-      emit_drop_value(slot, sub, depth + 1);
+      emit_drop_value(slot, sub);
    }
 }
 
@@ -625,7 +625,7 @@ void emit_drops(Node *scope, Token *keep) {
    for (int i = scope->variables_count - 1; i >= 0; i--) {
       Token *var = scope->variables[i];
       Node  *def = var == keep ? NULL : drop_target(var);
-      if (def) emit_drop_value(var->llvm.elem, def, 0);
+      if (def) emit_drop_value(var->llvm.elem, def);
    }
 }
 
@@ -638,7 +638,7 @@ void emit_unwind(Node *stop, Token *keep) {
    }
 }
 
-void scope_out(void) {
+void scope_out() {
    emit_drops(ura.scope, NULL);
    exit_scope();
 }
@@ -659,6 +659,7 @@ void code_gen_fdec(Node *node) {
    for (int i = 0; i < node->children_count; i++) {
       set_debug_location(node->children[i]->token);
       code_gen(node->children[i]);
+      drop_temps();
    }
    scope_out();
    if (!LLVMGetBasicBlockTerminator(here_block())) {
@@ -721,9 +722,27 @@ void code_gen_fcall(Node *node) {
    free(args);
 }
 
+void push_temp(Value ptr, Token *of) {
+   if (!needs_drop(of->Struct.ptr)) return;
+   Token *temp     = new_token(ID, of->indent);
+   temp->ret_type  = STRUCT_CALL;
+   temp->Struct    = of->Struct;
+   temp->llvm.elem = ptr;
+   resize_array(ura.temps, Token *);
+   ura.temps[ura.temps_count++] = temp;
+}
+
+void drop_temps() {
+   if (!LLVMGetBasicBlockTerminator(here_block()))
+      for (int i = ura.temps_count - 1; i >= 0; i--)
+         emit_drop_value(ura.temps[i]->llvm.elem, ura.temps[i]->Struct.ptr);
+   ura.temps_count = 0;
+}
+
 void code_gen_body(Node *node) {
    for (int i = 0; i < node->children_count; i++) {
       code_gen(node->children[i]);
+      drop_temps();
       if (LLVMGetBasicBlockTerminator(here_block())) break;
    }
 }
@@ -1239,6 +1258,7 @@ Value struct_arg_ptr(Node *arg) {
    code_gen(arg);
    Value tmp = llvm_alloca(struct_type_of(token->Struct.ptr), "out.tmp");
    llvm_store(token->llvm.elem, tmp);
+   push_temp(tmp, token);
    return tmp;
 }
 
@@ -1303,11 +1323,13 @@ void code_gen(Node *node) {
 
       case REF:      token->llvm.elem = address_of(node->left);   break;
       case BREAK: {
+         drop_temps();
          emit_unwind(node->left, NULL);
          llvm_br(node->left->token->llvm.end);
          break;
       }
       case CONTINUE: {
+         drop_temps();
          emit_unwind(node->left, NULL);
          llvm_br(node->left->token->llvm.start);
          break;
@@ -1326,6 +1348,7 @@ void code_gen(Node *node) {
          code_gen(node->left);
          Token *out  = node->left->token;
          Token *keep = out->type == ID ? find_variable(out->name, NULL) : NULL;
+         drop_temps();
          emit_unwind(NULL, keep);
          token->llvm.elem = llvm_ret(out->llvm.elem);
          break;

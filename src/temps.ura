@@ -1,0 +1,86 @@
+// temps.ura - a struct-valued temporary dies at the end of the statement
+// that created it.
+//
+// A temporary is what the compiler spills when the receiver of a call is
+// not an lvalue: (a + b).show(), output(a + b), R::create(9).id, and
+// chains like a + b + a. Nothing owns it, so codegen destroys it.
+//
+//   ura src/temps.ura -exec
+
+struct R:
+    id int
+
+    pub fn create(n int) R:
+        r R
+        r.id = n
+        return r
+
+    operator =(other R) void:
+        self.id = other.id
+
+    operator +(other R) R:
+        return R::create(self.id + other.id)
+
+    fn show() void:
+        output("  show ", self.id, "\n")
+
+    operator drop:
+        output("  DROP ", self.id, "\n")
+
+fn via_return(a R, b R) int:
+    return (a + b).id
+
+main():
+    a R = R::create(1)
+    b R = R::create(2)
+
+    output("1. a method called on a temporary\n")
+    (a + b).show()
+    output("   (statement over)\n")
+
+    output("2. a temporary inside output()\n")
+    output("  ", (a + b).id, "\n")
+    output("   (statement over)\n")
+
+    output("3. a chain makes two, both die in reverse\n")
+    (a + b + a).show()
+    output("   (statement over)\n")
+
+    output("4. once per iteration, not once per loop\n")
+    i int = 0
+    while i < 2:
+        (a + b).show()
+        i += 1
+
+    output("5. on the return path the temp dies before the ret\n")
+    output("  via_return ", via_return(a, b), "\n")
+
+    output("6. a static call is a temporary too\n")
+    output("  ", R::create(9).id, "\n")
+    output("   (statement over)\n")
+
+    output("7. break and continue drain before they branch\n")
+    j int = 0
+    loop:
+        if j >= 3:
+            break
+        j += 1
+        if j == 2:
+            (a + b).show()
+            continue
+        (a + a).show()
+
+    output("8. a temp with no destructor is never recorded\n")
+    output("  ", Vec2::create(1, 2).x, "\n")
+
+    output("end of main - a and b go last, in reverse\n")
+
+struct Vec2:
+    x int
+    y int
+
+    pub fn create(a int, b int) Vec2:
+        v Vec2
+        v.x = a
+        v.y = b
+        return v

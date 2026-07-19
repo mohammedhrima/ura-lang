@@ -101,7 +101,6 @@ typedef struct Token      Token;
 typedef struct Keyword    Keyword;
 typedef struct Node       Node;
 typedef struct LLVM       LLVM;
-// typedef struct AutoClean  AutoClean;
 typedef enum Type         Type;
 typedef struct Source     Source;
 typedef struct UraGlobal UraGlobal;
@@ -192,12 +191,6 @@ struct LLVM {
 	MetadataRef prev_loc;
 };
 
-// struct AutoClean {
-// 	Value value;
-// 	Node *type;
-// };
-
-
 struct Token {
 	Type    type;
 	Type    ret_type;
@@ -277,27 +270,11 @@ struct UraGlobal {
 	double           time_start;
 	// const char      *ura_target_os;
 
-	// Token          **tokens;
-	// int              tokens_count;
-	// int              tokens_size;
-	// int              exe_count;
-	// // char            *synth_list_paths[];
-	// // int              synth_list_count;
-	// Node           **scopes;
-	// int              scopes_count;
-	// int              scopes_size;
-	// Node            *scope;
-	// Node            *ura_scope;
-	// char            *current_gen_module;
-
 	char            *dir;
 	char            *base;
 	char            *build_dir;
 	char            *ll_path;
 
-	// Context          context;
-	// Module           module;
-	// Builder          builder;
 	// TypeRef          vd, f32, i1, i2, i4, i8, i16, i32, i64, p8, p32;
 	LLVMDIBuilderRef debug_builder;
 	MetadataRef      debug_compile_unit;
@@ -305,6 +282,7 @@ struct UraGlobal {
 	MetadataRef      debug_scope;
 	EXPAND(Node **, scopes);
 	EXPAND(Token **, tokens);
+	EXPAND(Token **, temps);
 	EXPAND(Source **, sources);
 	Source          *current;
 	int              calling_use;
