@@ -1,0 +1,14 @@
+use "@/io"
+
+main():
+    f float = 3.5
+    c char  = 'A'
+    s short = 7
+    b bool  = True
+
+    printf("float %.2f\n", f)
+    printf("char  %c\n", c)
+    printf("short %d\n", s)
+    printf("bool  %d\n", b)
+
+    output("output float ", f, "\n")
