@@ -1,0 +1,59 @@
+// util.ura - free functions: higher order, recursion, bitwise, casts.
+
+// forward reference: this calls a function declared further down
+fn seed(n int) int:
+    return mix(n, 3)
+
+fn mix(a int, b int) int:
+    return (a << b) ^ (a & 15 | b) >> 1
+
+// recursion
+fn fib(n int) int:
+    if n < 2:
+        return n
+    return fib(n - 1) + fib(n - 2)
+
+// single-line function
+fn twice(n int) int: return n * 2
+
+fn thrice(n int) int: return n * 3
+
+// higher order: takes a function as a parameter
+fn apply(f fn(int) int, v int) int:
+    return f(v)
+
+fn apply_all(f fn(int) int, xs int[]) void:
+    for x in xs:
+        output(f(x), " ")
+    output("\n")
+
+// a nested, non-capturing helper
+fn outer(n int) int:
+    fn inner(v int) int:
+        return v + 100
+    return inner(n)
+
+// every cast the language has
+fn casts() void:
+    i int   = 300
+    l long  = i as long
+    s short = i as short
+    c char  = 65 as char
+    f float = i as float
+    b bool  = True
+
+    output("int ", i, " long ", l, " short ", s)
+    output(" char ", c, " float ", f, " bool ", b, "\n")
+    output("float->int ", 2.9 as int, " char->int ", 'Z' as int, "\n")
+
+fn reflect() void:
+    n int      = 7
+    arr int[]  = [1, 2, 3]
+    output("typeof n ", typeof(n), " sizeof n ", sizeof(n), "\n")
+    output("typeof arr ", typeof(arr), " sizeof arr ", sizeof(arr), "\n")
+
+// unary operators
+fn unary() void:
+    n int  = 5
+    b bool = False
+    output("-n ", 0 - n, " ~n ", ~n, " !b ", !b, " not b ", not b, "\n")

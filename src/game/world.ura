@@ -1,0 +1,119 @@
+// game/world.ura - arrays in every form, loops, and match.
+// Imported from a subdirectory, so the path resolves against THIS file.
+
+use "../vec"
+
+struct Room:
+    floor int
+    kind  int
+    pos   Vec2
+
+    pub fn create(f int, k int) Room:
+        r Room
+        r.floor = f
+        r.kind  = k
+        r.pos   = Vec2::create(f, k)
+        return r
+
+    fn label() chars:
+        name chars = "?"
+        match self.kind:
+            case 0:
+                name = "empty"
+            case 1, 2:
+                name = "monster"
+            case 3:
+                name = "treasure"
+            default:
+                name = "sealed"
+        return name
+
+    fn show() void:
+        output("  floor ", self.floor, " ", self.label(), "\n")
+
+struct World:
+    grid  int[][]
+    rooms Room[]
+    depth int
+
+    pub fn create(depth int, width int) World:
+        w World
+        w.grid  = new int[depth][width]
+        w.rooms = new Room[depth]
+        w.depth = depth
+        i int = 0
+        while i < depth:
+            w.rooms[i] = Room::create(i, i % 4)
+            j int = 0
+            while j < width:
+                w.grid[i][j] = (i + 1) * (j + 1)
+                j += 1
+            i += 1
+        return w
+
+    fn width() int:
+        return self.grid[0].len
+
+    fn cell(r int, c int) int:
+        return self.grid[r][c]?
+
+    fn show_grid() void:
+        for row in self.grid:
+            output("  ")
+            for v in row:
+                output(v, " ")
+            output("\n")
+
+    fn double_floors() void:
+        for ref r in self.rooms:
+            r.floor = r.floor * 2
+
+    fn show_rooms() void:
+        for r in self.rooms:
+            r.show()
+
+    fn show_slice(r int, lo int, hi int) void:
+        part int[] = self.grid[r][lo..hi]
+        output("  slice [", lo, "..", hi, "] ")
+        for v in part:
+            output(v, " ")
+        output("len ", part.len, "\n")
+
+    fn total() int:
+        sum int = 0
+        for row in self.grid:
+            for v in row:
+                sum += v
+        return sum
+
+    fn first_treasure() int:
+        i int = 0
+        loop:
+            if i >= self.rooms.len:
+                break
+            if self.rooms[i].kind != 3:
+                i += 1
+                continue
+            return i
+        return 0 - 1
+
+    // World owns two heap arrays, so a copy must take its own
+    operator =(other World) void:
+        clean self.grid
+        clean self.rooms
+        self.depth = other.depth
+        self.grid  = new int[other.depth][other.width()]
+        self.rooms = new Room[other.depth]
+        i int = 0
+        while i < other.depth:
+            self.rooms[i] = other.rooms[i]
+            j int = 0
+            while j < other.width():
+                self.grid[i][j] = other.grid[i][j]
+                j += 1
+            i += 1
+
+    operator drop:
+        output("  drop world of depth ", self.depth, "\n")
+        clean self.grid
+        clean self.rooms

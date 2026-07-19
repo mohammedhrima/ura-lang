@@ -1,0 +1,77 @@
+// item.ura - a ref? linked list, and a struct that owns heap memory
+
+struct Item:
+    name  chars
+    worth int
+    ref? next Item
+
+    pub fn create(n chars, w int) Item:
+        it Item
+        it.name  = n
+        it.worth = w
+        return it
+
+    fn show() void:
+        output("  ", self.name, " worth ", self.worth, "\n")
+
+struct Bag:
+    slots int[]
+    count int
+    label chars
+
+    pub fn create(cap int, name chars) Bag:
+        b Bag
+        b.slots = new int[cap]
+        b.count = 0
+        b.label = name
+        return b
+
+    fn push(v int) void:
+        if self.count < self.slots.len:
+            self.slots[self.count] = v
+            self.count = self.count + 1
+
+    fn total() int:
+        sum int = 0
+        i   int = 0
+        while i < self.count:
+            sum += self.slots[i]
+            i   += 1
+        return sum
+
+    // guarded read: traps instead of reading past the end
+    fn at(i int) int:
+        return self.slots[i]?
+
+    fn capacity() int:
+        return self.slots.len
+
+    fn show() void:
+        output(self.label, " [")
+        i int = 0
+        while i < self.count:
+            if i > 0:
+                output(" ")
+            output(self.slots[i])
+            i += 1
+        output("] total ", self.total(), "\n")
+
+    operator =(other Bag) void:
+        clean self.slots
+        self.slots = new int[other.slots.len]
+        self.count = other.count
+        self.label = other.label
+        i int = 0
+        while i < other.count:
+            self.slots[i] = other.slots[i]
+            i += 1
+
+    operator +=(v int) void:
+        self.push(v)
+
+    operator ==(other Bag) bool:
+        return self.total() == other.total()
+
+    operator drop:
+        output("  drop bag ", self.label, "\n")
+        clean self.slots

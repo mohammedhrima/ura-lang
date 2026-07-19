@@ -97,7 +97,7 @@ Rewrite ura-lang feature by feature, full pipeline each. Nothing gets skipped, n
 - [x] std core: io / memory / stdlib / ctype compile again; `common.ura` added
 - [ ] std core: string (5) — needs `chars` indexing, `pub`, `operator`, `::`; commented down to its 37 protos
 - [ ] std extended modules (math/time/os/net/…) (8) — blocked, each commented with its reason:
-      `@if` (dirent, errno, fcntl, net, signals, stat) · globals (os, raylib, + 105 constants) · f64 (math, atof/strtod)
+      `@if` (dirent, errno, fcntl, net, signals, stat, unistd) · globals (os, raylib, + 105 constants) · f64 (math, atof/strtod) · time
 - [ ] regression tests for old bug list (2)
 - [ ] docs refresh per milestone (3) · vscode-extension sync (2)
 - [ ] post-1.0: formatter (9) · LSP (13) · package manager on tasks.py/uv (12)
