@@ -253,9 +253,23 @@ Node *id_node(Node *node) {
 
 Node *fdec_node(Node *node) {
 	node->token->type = FDEC;
+	Node *owner  = ura.scope;
+	bool  method = owner && owner->token->type == STRUCT_DEF;
 	enter_scope(node);
 	if (!find(LPAR, 0))
 		parse_error(node->token, ERR_FN_EXPECTED_LPAREN, node->token->name);
+	if (method && !node->token->is_pub) {
+		Token *self = new_token(ID, 0);
+		set_name(self, "self");
+		self->ret_type    = STRUCT_CALL;
+		self->Struct.name = owner->token->name;
+		self->Struct.ptr  = owner;
+		self->is_dec      = true;
+		self->is_ref      = true;
+		self->is_param    = true;
+		resize_array(node->token->Fn.params, Token *);
+		node->token->Fn.params[node->token->Fn.params_count++] = self;
+	}
 	while (!ura.found_error && peek(0)->type != RPAR) {
 		if (find(VARIADIC, 0)) {
 			node->token->is_variadic = true;
@@ -309,6 +323,13 @@ Node *struct_node(Node *node) {
 	parse_block(node, node->token->indent);
 	if (!node->children_count)
 		parse_error(node->token, ERR_STRUCT_EMPTY, node->token->name);
+	for (int i = 0; i < node->children_count; i++) {
+		Token *child = node->children[i]->token;
+		if (child->type != FDEC) continue;
+		char *qualified = format("%s.%s", node->token->name, child->name);
+		set_name(child, qualified);
+		free(qualified);
+	}
 	exit_scope();
 	return node;
 }
@@ -354,6 +375,10 @@ Node *access_node(Node *node) {
 			Node *dnode = new_node(dot);
 			dnode->left = node;
 			set_name(dnode->token, member->name);
+			if (peek(0)->type == LPAR) {
+				dnode = fcall_node(dnode);
+				dnode->token->is_method_call = true;
+			}
 			node = dnode;
 			continue;
 		}

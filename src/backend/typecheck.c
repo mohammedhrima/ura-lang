@@ -70,6 +70,7 @@ TypeRef struct_type_of(Node *def) {
       Node  *child = def->children[i];
       Token *field = child->token;
       if (field->type == STRUCT_DEF) { struct_type_of(child); continue; }
+      if (!is_field(field)) continue;
       TypeRef t = llvm_type_of(field);
       fields[field->Struct.index] = field->is_ref ? pointer_to(t) : t;
       n++;
@@ -102,27 +103,55 @@ Value default_value(Token *token) {
    return LLVMConstNull(llvm_type_of(token));
 }
 
+void type_check_method_call(Node *node) {
+   Token *token = node->token;
+   type_check(node->left);
+   Token *recv = node->left->token;
+   if (recv->ret_type != STRUCT_CALL || !recv->Struct.ptr) {
+      parse_error(token, ERR_METHOD_ON_NON_STRUCT, token->name, type_name(recv->ret_type));
+      return;
+   }
+   Node *def       = recv->Struct.ptr;
+   char *qualified = format("%s.%s", def->token->name, token->name);
+   Node *fn        = find_method(def, qualified);
+   free(qualified);
+   if (!fn) {
+      parse_error(token, ERR_UNKNOWN_METHOD, def->token->name, token->name);
+      return;
+   }
+   token->Fcall.ptr = fn;
+   type_check_fcall(node);
+   if (token->ret_type == STRUCT_CALL) token->Struct = fn->token->Struct;
+}
+
 void type_check_fcall(Node *node) {
    Token *token = node->token;
+   if (token->is_method_call && !token->Fcall.ptr) {
+      type_check_method_call(node);
+      return;
+   }
    bool indirect = token->Fcall.var != NULL;
    if (!indirect && !token->Fcall.ptr) return;
    Token *fn = indirect ? token->Fcall.var : token->Fcall.ptr->token;
    for (int i = 0; i < node->children_count; i++)
       type_check(node->children[i]);
-   bool bad_count = fn->is_variadic ? node->children_count < fn->Fn.params_count
-                                    : node->children_count != fn->Fn.params_count;
+   int  self      = token->is_method_call ? 1 : 0;
+   int  wanted    = fn->Fn.params_count - self;
+   bool bad_count = fn->is_variadic ? node->children_count < wanted
+                                    : node->children_count != wanted;
    if (bad_count) {
       parse_error(token, ERR_WRONG_ARG_COUNT, token->name);
       return;
    }
-   for (int i = 0; i < fn->Fn.params_count; i++) {
+   for (int i = 0; i < wanted; i++) {
+      Token *param    = fn->Fn.params[i + self];
       Type arg_type   = node->children[i]->token->ret_type;
-      Type param_type = fn->Fn.params[i]->ret_type;
+      Type param_type = param->ret_type;
       if (arg_type && arg_type != param_type) {
          parse_error(node->children[i]->token, ERR_ARG_TYPE_MISMATCH, i + 1, token->name);
          return;
       }
-      bool want_ref = fn->Fn.params[i]->is_ref;
+      bool want_ref = param->is_ref;
       bool got_ref  = node->children[i]->token->type == REF;
       if (want_ref && !got_ref) {
          parse_error(node->children[i]->token, ERR_ARG_NEEDS_REF, i + 1, token->name);
@@ -161,18 +190,22 @@ void type_check_struct(Node *node) {
    for (int i = 0; i < node->children_count; i++) {
       Node *child = node->children[i];
       type_check(child);
-      if (child->token->type != STRUCT_DEF)
+      if (is_field(child->token))
          child->token->Struct.index = n++;
    }
    if (struct_contains(node, node, 0))
       parse_error(node->token, ERR_STRUCT_RECURSIVE, node->token->name);
 }
 
+bool is_field(Token *token) {
+   return token->name && token->type != STRUCT_DEF && token->type != FDEC;
+}
+
 Token *find_field(Node *def, char *name) {
    if (!def) return NULL;
    for (int i = 0; i < def->children_count; i++) {
       Token *field = def->children[i]->token;
-      if (field->type == STRUCT_DEF || !field->name) continue;
+      if (!is_field(field)) continue;
       if (strcmp(field->name, name) == 0) return field;
    }
    return NULL;

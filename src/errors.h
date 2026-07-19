@@ -138,6 +138,13 @@
 	"Struct %s has no field '%s';" \
 	" check the spelling or declare it in the struct"
 
+#define ERR_UNKNOWN_METHOD \
+	"Struct %s has no method '%s';" \
+	" check the spelling or declare it in the struct"
+
+#define ERR_METHOD_ON_NON_STRUCT \
+	"Cannot call '.%s()' on %s; only a struct has methods"
+
 #define ERR_TYPE_HAS_NO_FIELDS \
 	"Cannot read '.%s' from %s;" \
 	" only a struct has fields"
