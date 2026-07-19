@@ -3,6 +3,7 @@
 ## index
 
 - 001 — `as` casting + long / short via explicit cast
+- 002 — `as` converts between float and the integer types
 
 ## 001 — `as` casting + long / short via explicit cast
 
@@ -110,6 +111,206 @@ entry:
   %c8 = load i32, i32* %c, align 4
   %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.4, i32 0, i32 0), i32 %c8, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
   %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.6, i32 0, i32 0), i64 5, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 002 — `as` converts between float and the integer types
+
+```ura
+// casting/002.ura - float <-> int casts
+
+main():
+    i int   = 300
+    f float = i as float
+    output("int->float ", f, "\n")
+    output("float->int ", 2.9 as int, " ", (0.0 - 2.9) as int, "\n")
+    l long  = 7 as long
+    output("long->float ", l as float, "\n")
+    s short = 5 as short
+    output("short->float ", s as float, "\n")
+    c char  = 'A'
+    output("char->float ", c as float, " char->int ", c as int, "\n")
+    b bool  = True
+    output("bool->float ", b as float, " bool->int ", b as int, "\n")
+    output("float->long ", 9.75 as long, "\n")
+    output("round trip ", 4.9 as int as float, "\n")
+```
+
+```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
+fn main() : int
+├─ = : int
+│  ├─ i : int
+│  └─ int 300
+├─ = : float
+│  ├─ f : float
+│  └─ cast : float
+│     └─ i : int
+├─ output : void
+│  ├─ chars "int->float "
+│  ├─ f : float
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "float->int "
+│  ├─ cast : int
+│  │  └─ float 2.9
+│  ├─ chars " "
+│  ├─ cast : int
+│  │  └─ - : float
+│  │     ├─ float 0
+│  │     └─ float 2.9
+│  └─ chars "\n"
+├─ = : long
+│  ├─ l : long
+│  └─ cast : long
+│     └─ int 7
+├─ output : void
+│  ├─ chars "long->float "
+│  ├─ cast : float
+│  │  └─ l : long
+│  └─ chars "\n"
+├─ = : short
+│  ├─ s : short
+│  └─ cast : short
+│     └─ int 5
+├─ output : void
+│  ├─ chars "short->float "
+│  ├─ cast : float
+│  │  └─ s : short
+│  └─ chars "\n"
+├─ = : char
+│  ├─ c : char
+│  └─ char 'A'
+├─ output : void
+│  ├─ chars "char->float "
+│  ├─ cast : float
+│  │  └─ c : char
+│  ├─ chars " char->int "
+│  ├─ cast : int
+│  │  └─ c : char
+│  └─ chars "\n"
+├─ = : bool
+│  ├─ b : bool
+│  └─ bool True
+├─ output : void
+│  ├─ chars "bool->float "
+│  ├─ cast : float
+│  │  └─ b : bool
+│  ├─ chars " bool->int "
+│  ├─ cast : int
+│  │  └─ b : bool
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "float->long "
+│  ├─ cast : long
+│  │  └─ float 9.75
+│  └─ chars "\n"
+└─ output : void
+   ├─ chars "round trip "
+   ├─ cast : float
+   │  └─ cast : int
+   │     └─ float 4.9
+   └─ chars "\n"
+```
+
+```out
+int->float 300.000000
+float->int 2 -2
+long->float 7.000000
+short->float 5.000000
+char->float 65.000000 char->int 65
+bool->float 1.000000 bool->int 1
+float->long 9
+round trip 4.000000
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [12 x i8] c"int->float \00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [7 x i8] c"%s%f%s\00", align 1
+@str.2 = private unnamed_addr constant [12 x i8] c"float->int \00", align 1
+@str.3 = private unnamed_addr constant [2 x i8] c" \00", align 1
+@str.4 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.5 = private unnamed_addr constant [11 x i8] c"%s%d%s%d%s\00", align 1
+@str.6 = private unnamed_addr constant [13 x i8] c"long->float \00", align 1
+@str.7 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.8 = private unnamed_addr constant [7 x i8] c"%s%f%s\00", align 1
+@str.9 = private unnamed_addr constant [14 x i8] c"short->float \00", align 1
+@str.10 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.11 = private unnamed_addr constant [7 x i8] c"%s%f%s\00", align 1
+@str.12 = private unnamed_addr constant [13 x i8] c"char->float \00", align 1
+@str.13 = private unnamed_addr constant [12 x i8] c" char->int \00", align 1
+@str.14 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.15 = private unnamed_addr constant [11 x i8] c"%s%f%s%d%s\00", align 1
+@str.16 = private unnamed_addr constant [13 x i8] c"bool->float \00", align 1
+@str.17 = private unnamed_addr constant [12 x i8] c" bool->int \00", align 1
+@str.18 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.19 = private unnamed_addr constant [11 x i8] c"%s%f%s%d%s\00", align 1
+@str.20 = private unnamed_addr constant [13 x i8] c"float->long \00", align 1
+@str.21 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.22 = private unnamed_addr constant [9 x i8] c"%s%lld%s\00", align 1
+@str.23 = private unnamed_addr constant [12 x i8] c"round trip \00", align 1
+@str.24 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.25 = private unnamed_addr constant [7 x i8] c"%s%f%s\00", align 1
+
+define i32 @main() {
+entry:
+  %i = alloca i32, align 4
+  store i32 300, i32* %i, align 4
+  %f = alloca float, align 4
+  %i1 = load i32, i32* %i, align 4
+  %cast = sitofp i32 %i1 to float
+  store float %cast, float* %f, align 4
+  %f2 = load float, float* %f, align 4
+  %f2d = fpext float %f2 to double
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str, i32 0, i32 0), double %f2d, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.5, i32 0, i32 0), i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.2, i32 0, i32 0), i32 2, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0), i32 -2, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.4, i32 0, i32 0))
+  %l = alloca i64, align 8
+  store i64 7, i64* %l, align 4
+  %l3 = load i64, i64* %l, align 4
+  %cast4 = sitofp i64 %l3 to float
+  %f2d5 = fpext float %cast4 to double
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.8, i32 0, i32 0), i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str.6, i32 0, i32 0), double %f2d5, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.7, i32 0, i32 0))
+  %s = alloca i16, align 2
+  store i16 5, i16* %s, align 2
+  %s6 = load i16, i16* %s, align 2
+  %cast7 = sitofp i16 %s6 to float
+  %f2d8 = fpext float %cast7 to double
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.11, i32 0, i32 0), i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.9, i32 0, i32 0), double %f2d8, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.10, i32 0, i32 0))
+  %c = alloca i8, align 1
+  store i8 65, i8* %c, align 1
+  %c9 = load i8, i8* %c, align 1
+  %cast10 = sitofp i8 %c9 to float
+  %f2d11 = fpext float %cast10 to double
+  %c12 = load i8, i8* %c, align 1
+  %cast13 = sext i8 %c12 to i32
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.15, i32 0, i32 0), i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str.12, i32 0, i32 0), double %f2d11, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.13, i32 0, i32 0), i32 %cast13, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.14, i32 0, i32 0))
+  %b = alloca i1, align 1
+  store i1 true, i1* %b, align 1
+  %b14 = load i1, i1* %b, align 1
+  %cast15 = uitofp i1 %b14 to float
+  %f2d16 = fpext float %cast15 to double
+  %b17 = load i1, i1* %b, align 1
+  %cast18 = zext i1 %b17 to i32
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.19, i32 0, i32 0), i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str.16, i32 0, i32 0), double %f2d16, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.17, i32 0, i32 0), i32 %cast18, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.18, i32 0, i32 0))
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @fmt.22, i32 0, i32 0), i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str.20, i32 0, i32 0), i64 9, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.21, i32 0, i32 0))
+  %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.25, i32 0, i32 0), i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.23, i32 0, i32 0), double 4.000000e+00, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.24, i32 0, i32 0))
   ret i32 0
 }
 

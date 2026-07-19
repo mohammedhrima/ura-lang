@@ -41,6 +41,7 @@
 - 037 — '.len' on a scalar
 - 038 — a struct declared in a block is not visible outside it
 - 039 — a struct declared twice in the same scope
+- 040 — a method and a field chain called on a `ref?` field
 
 ## 001 — declare a struct and a local: named type, alloca, zero-init
 
@@ -437,7 +438,9 @@ entry:
 
 for.cond:                                         ; preds = %for.inc, %entry
   %i1 = load i32, i32* %i, align 4
-  %more = icmp ne i32 %i1, 2
+  %lt = icmp slt i32 %i1, 2
+  %gt = icmp sgt i32 %i1, 2
+  %more = select i1 true, i1 %lt, i1 %gt
   br i1 %more, label %for.body, label %for.end
 
 for.body:                                         ; preds = %for.cond
@@ -4041,4 +4044,185 @@ error: Redeclaration of struct 'Player'
 ```
 
 ```ll
+```
+
+## 040 — a method and a field chain called on a `ref?` field
+
+```ura
+// structs/040.ura - a method called through a 'ref?' field
+
+struct Item:
+    worth int
+    ref? next Item
+
+    pub fn create(w int) Item:
+        it Item
+        it.worth = w
+        return it
+
+    fn show() void:
+        output("worth ", self.worth, "\n")
+
+main():
+    head Item = Item::create(5)
+    mid  Item = Item::create(7)
+    tail Item = Item::create(9)
+    head.next = ref mid
+    mid.next  = ref tail
+    head.show()
+    head.next.show()
+    head.next.next.show()
+    output("chained field ", head.next.next.worth, "\n")
+```
+
+```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
+struct Item
+├─ worth : int
+├─ next : STRUCT_CALL
+├─ fn Item.create(w : int) : STRUCT_CALL
+│  ├─ it : STRUCT_CALL
+│  ├─ = : int
+│  │  ├─ .worth : int
+│  │  │  └─ it : STRUCT_CALL
+│  │  └─ w : int
+│  └─ return
+│     └─ it : STRUCT_CALL
+└─ fn Item.show(self : STRUCT_CALL) : void
+   └─ output : void
+      ├─ chars "worth "
+      ├─ .worth : int
+      │  └─ self : STRUCT_CALL
+      └─ chars "\n"
+
+fn main() : int
+├─ = : STRUCT_CALL
+│  ├─ head : STRUCT_CALL
+│  └─ call create : STRUCT_CALL
+│     └─ int 5
+├─ = : STRUCT_CALL
+│  ├─ mid : STRUCT_CALL
+│  └─ call create : STRUCT_CALL
+│     └─ int 7
+├─ = : STRUCT_CALL
+│  ├─ tail : STRUCT_CALL
+│  └─ call create : STRUCT_CALL
+│     └─ int 9
+├─ = : STRUCT_CALL
+│  ├─ .next : STRUCT_CALL
+│  │  └─ head : STRUCT_CALL
+│  └─ ref : STRUCT_CALL
+│     └─ mid : STRUCT_CALL
+├─ = : STRUCT_CALL
+│  ├─ .next : STRUCT_CALL
+│  │  └─ mid : STRUCT_CALL
+│  └─ ref : STRUCT_CALL
+│     └─ tail : STRUCT_CALL
+├─ call show : void
+│  └─ head : STRUCT_CALL
+├─ call show : void
+│  └─ .next : STRUCT_CALL
+│     └─ head : STRUCT_CALL
+├─ call show : void
+│  └─ .next : STRUCT_CALL
+│     └─ .next : STRUCT_CALL
+│        └─ head : STRUCT_CALL
+└─ output : void
+   ├─ chars "chained field "
+   ├─ .worth : int
+   │  └─ .next : STRUCT_CALL
+   │     └─ .next : STRUCT_CALL
+   │        └─ head : STRUCT_CALL
+   └─ chars "\n"
+```
+
+```out
+worth 5
+worth 7
+worth 9
+chained field 9
+```
+
+```err
+```
+
+```ll
+
+%Item = type { i32, %Item* }
+
+@str = private unnamed_addr constant [7 x i8] c"worth \00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@str.2 = private unnamed_addr constant [15 x i8] c"chained field \00", align 1
+@str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.4 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+
+define %Item @Item.create(i32 %0) {
+entry:
+  %w = alloca i32, align 4
+  store i32 %0, i32* %w, align 4
+  %it = alloca %Item, align 8
+  store %Item zeroinitializer, %Item* %it, align 8
+  %worth = getelementptr %Item, %Item* %it, i32 0, i32 0
+  %w1 = load i32, i32* %w, align 4
+  store i32 %w1, i32* %worth, align 4
+  %it2 = load %Item, %Item* %it, align 8
+  ret %Item %it2
+}
+
+define void @Item.show(%Item* %0) {
+entry:
+  %self = alloca %Item*, align 8
+  store %Item* %0, %Item** %self, align 8
+  %ref = load %Item*, %Item** %self, align 8
+  %worth = getelementptr %Item, %Item* %ref, i32 0, i32 0
+  %worth1 = load i32, i32* %worth, align 4
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i32 %worth1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  ret void
+}
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  %head = alloca %Item, align 8
+  %call = call %Item @Item.create(i32 5)
+  store %Item %call, %Item* %head, align 8
+  %mid = alloca %Item, align 8
+  %call1 = call %Item @Item.create(i32 7)
+  store %Item %call1, %Item* %mid, align 8
+  %tail = alloca %Item, align 8
+  %call2 = call %Item @Item.create(i32 9)
+  store %Item %call2, %Item* %tail, align 8
+  %next = getelementptr %Item, %Item* %head, i32 0, i32 1
+  store %Item* %mid, %Item** %next, align 8
+  %next3 = getelementptr %Item, %Item* %mid, i32 0, i32 1
+  store %Item* %tail, %Item** %next3, align 8
+  call void @Item.show(%Item* %head)
+  %next4 = getelementptr %Item, %Item* %head, i32 0, i32 1
+  %ref = load %Item*, %Item** %next4, align 8
+  call void @Item.show(%Item* %ref)
+  %next5 = getelementptr %Item, %Item* %head, i32 0, i32 1
+  %ref6 = load %Item*, %Item** %next5, align 8
+  %next7 = getelementptr %Item, %Item* %ref6, i32 0, i32 1
+  %ref8 = load %Item*, %Item** %next7, align 8
+  call void @Item.show(%Item* %ref8)
+  %next9 = getelementptr %Item, %Item* %head, i32 0, i32 1
+  %ref10 = load %Item*, %Item** %next9, align 8
+  %next11 = getelementptr %Item, %Item* %ref10, i32 0, i32 1
+  %ref12 = load %Item*, %Item** %next11, align 8
+  %worth = getelementptr %Item, %Item* %ref12, i32 0, i32 0
+  %worth13 = load i32, i32* %worth, align 4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.4, i32 0, i32 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @str.2, i32 0, i32 0), i32 %worth13, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
+  ret i32 0
+}
 ```

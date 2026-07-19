@@ -8,6 +8,7 @@
 - 004 — typeof / sizeof on an array
 - 005 — sizeof without parentheses
 - 006 — typeof without parentheses
+- 007 — default argument promotion in a user variadic call
 
 ## 001 — puts: simple messages, char comparison on hero grade
 
@@ -392,4 +393,159 @@ error: Expected ')' after output arguments
 ```
 
 ```ll
+```
+
+## 007 — default argument promotion in a user variadic call
+
+```ura
+// builtins/007.ura - default argument promotion in a variadic call
+
+proto fn printf(format chars, ...) int
+
+main():
+    f float = 3.5
+    c char  = 'A'
+    s short = 7 as short
+    b bool  = True
+    l long  = 123456789 as long
+    i int   = 42
+
+    printf("%.2f %c %d %d %d\n", f, c, s, b, i)
+    printf("%ld\n", l)
+    printf("%.2f %c %d\n", 2.5, 'Z', 9)
+    printf("%.2f %d\n", f + f, i + 1)
+    printf("%d %d\n", 1 < 2, 3 == 4)
+    printf("none\n")
+```
+
+```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
+proto fn printf(format : chars, ...) : int
+
+fn main() : int
+├─ = : float
+│  ├─ f : float
+│  └─ float 3.5
+├─ = : char
+│  ├─ c : char
+│  └─ char 'A'
+├─ = : short
+│  ├─ s : short
+│  └─ cast : short
+│     └─ int 7
+├─ = : bool
+│  ├─ b : bool
+│  └─ bool True
+├─ = : long
+│  ├─ l : long
+│  └─ cast : long
+│     └─ int 123456789
+├─ = : int
+│  ├─ i : int
+│  └─ int 42
+├─ call printf : int
+│  ├─ chars "%.2f %c %d %d %d\n"
+│  ├─ f : float
+│  ├─ c : char
+│  ├─ s : short
+│  ├─ b : bool
+│  └─ i : int
+├─ call printf : int
+│  ├─ chars "%ld\n"
+│  └─ l : long
+├─ call printf : int
+│  ├─ chars "%.2f %c %d\n"
+│  ├─ float 2.5
+│  ├─ char 'Z'
+│  └─ int 9
+├─ call printf : int
+│  ├─ chars "%.2f %d\n"
+│  ├─ + : float
+│  │  ├─ f : float
+│  │  └─ f : float
+│  └─ + : int
+│     ├─ i : int
+│     └─ int 1
+├─ call printf : int
+│  ├─ chars "%d %d\n"
+│  ├─ < : bool
+│  │  ├─ int 1
+│  │  └─ int 2
+│  └─ == : bool
+│     ├─ int 3
+│     └─ int 4
+└─ call printf : int
+   └─ chars "none\n"
+```
+
+```out
+3.50 A 7 1 42
+123456789
+2.50 Z 9
+7.00 43
+1 0
+none
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [18 x i8] c"%.2f %c %d %d %d\0A\00", align 1
+@str.1 = private unnamed_addr constant [5 x i8] c"%ld\0A\00", align 1
+@str.2 = private unnamed_addr constant [12 x i8] c"%.2f %c %d\0A\00", align 1
+@str.3 = private unnamed_addr constant [9 x i8] c"%.2f %d\0A\00", align 1
+@str.4 = private unnamed_addr constant [7 x i8] c"%d %d\0A\00", align 1
+@str.5 = private unnamed_addr constant [6 x i8] c"none\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %f = alloca float, align 4
+  store float 3.500000e+00, float* %f, align 4
+  %c = alloca i8, align 1
+  store i8 65, i8* %c, align 1
+  %s = alloca i16, align 2
+  store i16 7, i16* %s, align 2
+  %b = alloca i1, align 1
+  store i1 true, i1* %b, align 1
+  %l = alloca i64, align 8
+  store i64 123456789, i64* %l, align 4
+  %i = alloca i32, align 4
+  store i32 42, i32* %i, align 4
+  %f1 = load float, float* %f, align 4
+  %f2d = fpext float %f1 to double
+  %c2 = load i8, i8* %c, align 1
+  %i2i = sext i8 %c2 to i32
+  %s3 = load i16, i16* %s, align 2
+  %i2i4 = sext i16 %s3 to i32
+  %b5 = load i1, i1* %b, align 1
+  %b2i = zext i1 %b5 to i32
+  %i6 = load i32, i32* %i, align 4
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @str, i32 0, i32 0), double %f2d, i32 %i2i, i32 %i2i4, i32 %b2i, i32 %i6)
+  %l7 = load i64, i64* %l, align 4
+  %call8 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.1, i32 0, i32 0), i64 %l7)
+  %call9 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.2, i32 0, i32 0), double 2.500000e+00, i32 90, i32 9)
+  %f10 = load float, float* %f, align 4
+  %f11 = load float, float* %f, align 4
+  %fadd = fadd float %f10, %f11
+  %f2d12 = fpext float %fadd to double
+  %i13 = load i32, i32* %i, align 4
+  %add = add i32 %i13, 1
+  %call14 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.3, i32 0, i32 0), double %f2d12, i32 %add)
+  %call15 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.4, i32 0, i32 0), i32 1, i32 0)
+  %call16 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.5, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
 ```

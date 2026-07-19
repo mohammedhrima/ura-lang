@@ -193,6 +193,15 @@ Node *for_node(Node *node) {
 	if (!find(IN, 0))
 		parse_error(token, "Expected 'in' after 'for %s'", iter->name);
 	node->right = expr_node(0);
+	if (find(BY, 0)) {
+		Node *by = expr_node(0);
+		if (node->right->token->type != RANGE)
+			parse_error(token, ERR_BY_NEEDS_RANGE);
+		else {
+			resize_array(node->right->children, Node *);
+			node->right->children[node->right->children_count++] = by;
+		}
+	}
 	if (!find(DOTS, 0))
 		parse_error(token, "Expected ':' to open the 'for' body");
 	parse_block(node, token->indent);
@@ -282,17 +291,17 @@ void inject_self(Node *fn, Node *owner) {
 	fn->token->Fn.params[fn->token->Fn.params_count++] = self;
 }
 
-Node *clean_node(Node *node, Node *owner) {
+Node *drop_node(Node *node, Node *owner) {
 	node->token->type     = FDEC;
 	node->token->ret_type = VOID;
-	set_name(node->token, "clean");
+	set_name(node->token, "drop");
 	enter_scope(node);
 	inject_self(node, owner);
 	if (!find(DOTS, 0))
 		parse_error(node->token, ERR_FN_EXPECTED_COLON, node->token->name);
 	parse_block(node, node->token->indent);
 	exit_scope();
-	owner->token->has_clean = true;
+	owner->token->has_drop = true;
 	return node;
 }
 
@@ -473,12 +482,12 @@ Node *prime_node() {
       if (token->is_dec && peek(0)->type == LBRA)
          return array_ctor_node(new_node(token));
       return new_node(token);
-   case LBRA: return array_lit_node(new_node(token));
+   case LBRA: return postfix(array_lit_node(new_node(token)));
    case LPAR: {
       Node *node = expr_node(0);
       if (!find(RPAR, 0))
          parse_error(token, "Expected ')' after expression");
-      return node;
+      return postfix(node);
    }
    case PROTO: {
 		if (peek(0)->type != FDEC) {
@@ -494,15 +503,18 @@ Node *prime_node() {
          parse_error(token, ERR_OPERATOR_OUTSIDE_STRUCT);
          return syntax_error();
       }
+      if (peek(0)->type == ID && strcmp(peek(0)->name, "drop") == 0) {
+         next();
+         return drop_node(new_node(token), owner);
+      }
       Token *op = find(ASSIGN, ADD, SUB, MUL, DIV, MOD, EQUAL, NOT_EQUAL,
                        LESS, GREAT, LESS_EQUAL, GREAT_EQUAL, ADD_ASSIGN,
-                       SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN, CLEAN, 0);
+                       SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN, 0);
       if (!op) {
          parse_error(token, ERR_OPERATOR_EXPECTED);
          return syntax_error();
       }
       Node *node = new_node(token);
-      if (op->type == CLEAN) return clean_node(node, owner);
       set_name(node->token, spell(op->type));
       fdec_node(node);
       Token *fn = node->token;

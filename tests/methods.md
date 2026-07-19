@@ -16,6 +16,7 @@
 - 012 — calling a non-pub method with `::`
 - 013 — `::` on a type that does not exist
 - 014 — chaining a field access onto a call
+- 015 — two structs declare the same `pub fn`, and statics compose
 
 ## 001 — a method reads self
 
@@ -1165,6 +1166,271 @@ entry:
   %floor4 = getelementptr %Room, %Room* %out.tmp3, i32 0, i32 0
   %floor5 = load i32, i32* %floor4, align 4
   %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.4, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.2, i32 0, i32 0), i32 %floor5, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 015 — two structs declare the same `pub fn`, and statics compose
+
+```ura
+// methods/015.ura - two structs with the same pub fn name
+
+struct Room:
+    floor int
+
+    pub fn create(f int) Room:
+        r Room
+        r.floor = f
+        return r
+
+    pub fn zero() Room:
+        return Room::create(0)
+
+    pub fn level(f int) int:
+        return f * 10
+
+    fn depth() int:
+        return self.floor
+
+struct Tower:
+    height int
+
+    pub fn create(h int) Tower:
+        t Tower
+        t.height = h
+        return t
+
+main():
+    a Room  = Room::create(3)
+    b Tower = Tower::create(9)
+    output("room ", a.floor, " tower ", b.height, "\n")
+    output("zero ", Room::zero().floor, "\n")
+    output("level ", Room::level(4), "\n")
+    output("method ", Room::create(5).depth(), "\n")
+    n int = Room::create(2).depth() + Tower::create(1).height
+    output("mixed ", n, "\n")
+```
+
+```tree
+proto fn printf(format : chars, ...) : int
+
+proto fn calloc(len : long, size : long) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : int, ptr : chars, len : long) : long
+
+proto fn exit(code : int) : void
+
+struct Room
+├─ floor : int
+├─ fn Room.create(f : int) : STRUCT_CALL
+│  ├─ r : STRUCT_CALL
+│  ├─ = : int
+│  │  ├─ .floor : int
+│  │  │  └─ r : STRUCT_CALL
+│  │  └─ f : int
+│  └─ return
+│     └─ r : STRUCT_CALL
+├─ fn Room.zero() : STRUCT_CALL
+│  └─ return
+│     └─ call create : STRUCT_CALL
+│        └─ int 0
+├─ fn Room.level(f : int) : int
+│  └─ return
+│     └─ * : int
+│        ├─ f : int
+│        └─ int 10
+└─ fn Room.depth(self : STRUCT_CALL) : int
+   └─ return
+      └─ .floor : int
+         └─ self : STRUCT_CALL
+
+struct Tower
+├─ height : int
+└─ fn Tower.create(h : int) : STRUCT_CALL
+   ├─ t : STRUCT_CALL
+   ├─ = : int
+   │  ├─ .height : int
+   │  │  └─ t : STRUCT_CALL
+   │  └─ h : int
+   └─ return
+      └─ t : STRUCT_CALL
+
+fn main() : int
+├─ = : STRUCT_CALL
+│  ├─ a : STRUCT_CALL
+│  └─ call create : STRUCT_CALL
+│     └─ int 3
+├─ = : STRUCT_CALL
+│  ├─ b : STRUCT_CALL
+│  └─ call create : STRUCT_CALL
+│     └─ int 9
+├─ output : void
+│  ├─ chars "room "
+│  ├─ .floor : int
+│  │  └─ a : STRUCT_CALL
+│  ├─ chars " tower "
+│  ├─ .height : int
+│  │  └─ b : STRUCT_CALL
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "zero "
+│  ├─ .floor : int
+│  │  └─ call zero : STRUCT_CALL
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "level "
+│  ├─ call level : int
+│  │  └─ int 4
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "method "
+│  ├─ call depth : int
+│  │  └─ call create : STRUCT_CALL
+│  │     └─ int 5
+│  └─ chars "\n"
+├─ = : int
+│  ├─ n : int
+│  └─ + : int
+│     ├─ call depth : int
+│     │  └─ call create : STRUCT_CALL
+│     │     └─ int 2
+│     └─ .height : int
+│        └─ call create : STRUCT_CALL
+│           └─ int 1
+└─ output : void
+   ├─ chars "mixed "
+   ├─ n : int
+   └─ chars "\n"
+```
+
+```out
+room 3 tower 9
+zero 0
+level 40
+method 5
+mixed 3
+```
+
+```err
+```
+
+```ll
+
+%Room = type { i32 }
+%Tower = type { i32 }
+
+@str = private unnamed_addr constant [6 x i8] c"room \00", align 1
+@str.1 = private unnamed_addr constant [8 x i8] c" tower \00", align 1
+@str.2 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [11 x i8] c"%s%d%s%d%s\00", align 1
+@str.3 = private unnamed_addr constant [6 x i8] c"zero \00", align 1
+@str.4 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.5 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@str.6 = private unnamed_addr constant [7 x i8] c"level \00", align 1
+@str.7 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.8 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@str.9 = private unnamed_addr constant [8 x i8] c"method \00", align 1
+@str.10 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.11 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@str.12 = private unnamed_addr constant [7 x i8] c"mixed \00", align 1
+@str.13 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.14 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+
+define %Room @Room.create(i32 %0) {
+entry:
+  %f = alloca i32, align 4
+  store i32 %0, i32* %f, align 4
+  %r = alloca %Room, align 8
+  store %Room zeroinitializer, %Room* %r, align 4
+  %floor = getelementptr %Room, %Room* %r, i32 0, i32 0
+  %f1 = load i32, i32* %f, align 4
+  store i32 %f1, i32* %floor, align 4
+  %r2 = load %Room, %Room* %r, align 4
+  ret %Room %r2
+}
+
+define %Room @Room.zero() {
+entry:
+  %call = call %Room @Room.create(i32 0)
+  ret %Room %call
+}
+
+define i32 @Room.level(i32 %0) {
+entry:
+  %f = alloca i32, align 4
+  store i32 %0, i32* %f, align 4
+  %f1 = load i32, i32* %f, align 4
+  %mul = mul i32 %f1, 10
+  ret i32 %mul
+}
+
+define i32 @Room.depth(%Room* %0) {
+entry:
+  %self = alloca %Room*, align 8
+  store %Room* %0, %Room** %self, align 8
+  %ref = load %Room*, %Room** %self, align 8
+  %floor = getelementptr %Room, %Room* %ref, i32 0, i32 0
+  %floor1 = load i32, i32* %floor, align 4
+  ret i32 %floor1
+}
+
+define %Tower @Tower.create(i32 %0) {
+entry:
+  %h = alloca i32, align 4
+  store i32 %0, i32* %h, align 4
+  %t = alloca %Tower, align 8
+  store %Tower zeroinitializer, %Tower* %t, align 4
+  %height = getelementptr %Tower, %Tower* %t, i32 0, i32 0
+  %h1 = load i32, i32* %h, align 4
+  store i32 %h1, i32* %height, align 4
+  %t2 = load %Tower, %Tower* %t, align 4
+  ret %Tower %t2
+}
+
+define i32 @main() {
+entry:
+  %a = alloca %Room, align 8
+  %call = call %Room @Room.create(i32 3)
+  store %Room %call, %Room* %a, align 4
+  %b = alloca %Tower, align 8
+  %call1 = call %Tower @Tower.create(i32 9)
+  store %Tower %call1, %Tower* %b, align 4
+  %floor = getelementptr %Room, %Room* %a, i32 0, i32 0
+  %floor2 = load i32, i32* %floor, align 4
+  %height = getelementptr %Tower, %Tower* %b, i32 0, i32 0
+  %height3 = load i32, i32* %height, align 4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str, i32 0, i32 0), i32 %floor2, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.1, i32 0, i32 0), i32 %height3, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0))
+  %call4 = call %Room @Room.zero()
+  %out.tmp = alloca %Room, align 8
+  store %Room %call4, %Room* %out.tmp, align 4
+  %floor5 = getelementptr %Room, %Room* %out.tmp, i32 0, i32 0
+  %floor6 = load i32, i32* %floor5, align 4
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.5, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.3, i32 0, i32 0), i32 %floor6, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.4, i32 0, i32 0))
+  %call7 = call i32 @Room.level(i32 4)
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.8, i32 0, i32 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.6, i32 0, i32 0), i32 %call7, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.7, i32 0, i32 0))
+  %call8 = call %Room @Room.create(i32 5)
+  %out.tmp9 = alloca %Room, align 8
+  store %Room %call8, %Room* %out.tmp9, align 4
+  %call10 = call i32 @Room.depth(%Room* %out.tmp9)
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.11, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.9, i32 0, i32 0), i32 %call10, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.10, i32 0, i32 0))
+  %n = alloca i32, align 4
+  %call11 = call %Room @Room.create(i32 2)
+  %out.tmp12 = alloca %Room, align 8
+  store %Room %call11, %Room* %out.tmp12, align 4
+  %call13 = call i32 @Room.depth(%Room* %out.tmp12)
+  %call14 = call %Tower @Tower.create(i32 1)
+  %out.tmp15 = alloca %Tower, align 8
+  store %Tower %call14, %Tower* %out.tmp15, align 4
+  %height16 = getelementptr %Tower, %Tower* %out.tmp15, i32 0, i32 0
+  %height17 = load i32, i32* %height16, align 4
+  %add = add i32 %call13, %height17
+  store i32 %add, i32* %n, align 4
+  %n18 = load i32, i32* %n, align 4
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.14, i32 0, i32 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.12, i32 0, i32 0), i32 %n18, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.13, i32 0, i32 0))
   ret i32 0
 }
 

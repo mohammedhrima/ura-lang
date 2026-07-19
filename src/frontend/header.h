@@ -43,4 +43,4 @@ Node *array_ctor_node(Node *node);
 Node *prime_node();
 Node *expr_node(int min_op);
 void inject_self(Node *fn, Node *owner);
-Node *clean_node(Node *node, Node *owner);
+Node *drop_node(Node *node, Node *owner);

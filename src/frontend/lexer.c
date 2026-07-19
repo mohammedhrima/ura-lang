@@ -370,7 +370,7 @@ Token *parse_token(int line, int s, int e, Type type, int indent) {
 			{"long", LONG, 1, 1},     {"short", SHORT, 1, 1},     {"pointer", CHARS, 1, 1},
 			{"if", IF, 0, 0},         {"elif", ELIF, 0, 0},       {"else", ELSE, 0, 0},
 			{"for", FOR, 0, 0},       {"loop", LOOP, 0, 0},       {"while", WHILE, 0, 0},
-			{"to", TO, 0, 0},         {"in", IN, 0, 0},           {"step", STEP, 0, 0},
+			{"by", BY, 0, 0},         {"in", IN, 0, 0},
 			{"fn", FDEC, 0, 0},       {"break", BREAK, 0, 0},     {"return", RETURN, 0, 0},
 			{"case", CASE, 0, 0},     {"match", MATCH, 0, 0},     {"continue", CONTINUE, 0, 0},
 			{"ref", REF, 0, 0},       {"default", DEFAULT, 0, 0}, {"struct", STRUCT_DEF, 0, 0},
