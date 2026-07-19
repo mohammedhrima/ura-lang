@@ -618,16 +618,18 @@ void code_gen_fcall(Node *node) {
    bool   indirect = token->Fcall.var != NULL;
    Token *fn       = indirect ? token->Fcall.var : token->Fcall.ptr->token;
    if (!indirect) emit_signature(token->Fcall.ptr);
-   int    n    = node->children_count;
+   int    self = token->is_method_call ? 1 : 0;
+   int    n    = node->children_count + self;
    Value *args = NULL;
    if (n > 0) {
       args = allocate(n, sizeof(Value));
-      for (int i = 0; i < n; i++) {
+      if (self) args[0] = struct_arg_ptr(node->left);
+      for (int i = 0; i < node->children_count; i++) {
          Token *arg = node->children[i]->token;
          code_gen(node->children[i]);
-         args[i] = arg->llvm.elem;
-         if (fn->is_variadic && i >= fn->Fn.params_count)
-            args[i] = promote(arg->ret_type, args[i]);
+         args[i + self] = arg->llvm.elem;
+         if (fn->is_variadic && i + self >= fn->Fn.params_count)
+            args[i + self] = promote(arg->ret_type, args[i + self]);
       }
    }
    if (indirect) {
@@ -1094,13 +1096,16 @@ Value struct_printer(Node *def) {
    llvm_store(me,     llvm_gep(frt, frame, pidx, 2, "f.ptr"));
    llvm_store(parent, llvm_gep(frt, frame, nidx, 2, "f.prev"));
 
-   emit_printf(format("%s{", token->name), NULL, 0);
+   char *open = format("%s{", token->name);
+   emit_printf(open, NULL, 0);
+   free(open);
    int shown = 0;
    for (int i = 0; i < def->children_count; i++) {
       Token *field = def->children[i]->token;
-      if (field->type == STRUCT_DEF) continue;
-      emit_printf(shown ? format(", %s: ", field->name)
-                        : format("%s: ", field->name), NULL, 0);
+      if (!is_field(field)) continue;
+      char *label = format(shown ? ", %s: " : "%s: ", field->name);
+      emit_printf(label, NULL, 0);
+      free(label);
       shown++;
       Value idx[2] = { const_i32(0), const_i32(field->Struct.index) };
       emit_out_field(field, llvm_gep(sty, self, idx, 2, field->name), frame);
@@ -1173,7 +1178,12 @@ void code_gen(Node *node) {
       case FOR:        code_gen_for(node);        break;
       case MATCH:      code_gen_match(node);      break;
       case ASSIGN:     code_gen_assign(node);     break;
-      case STRUCT_DEF: struct_type_of(node);      break;
+      case STRUCT_DEF:
+         struct_type_of(node);
+         for (int i = 0; i < node->children_count; i++)
+            if (node->children[i]->token->type == FDEC)
+               code_gen(node->children[i]);
+         break;
 
       case REF:      token->llvm.elem = address_of(node->left);   break;
       case BREAK:    llvm_br(node->left->token->llvm.end);        break;

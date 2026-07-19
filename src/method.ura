@@ -1,0 +1,44 @@
+// method.ura - struct methods with a `self` receiver
+
+struct Room:
+    name  chars
+    floor int
+
+    fn describe() void:
+        output("room ", self.name, " on floor ", self.floor, "\n")
+
+    fn climb(n int) void:
+        self.floor = self.floor + n
+
+    fn depth() int:
+        return self.floor
+
+// a second struct with a same-named method: proves the name mangling
+struct Tower:
+    height int
+
+    fn describe() void:
+        output("tower of height ", self.height, "\n")
+
+main():
+    r Room
+    r.name  = "hall"
+    r.floor = 2
+    r.describe()
+
+    // a method mutating through self must reach the caller's struct
+    r.climb(3)
+    output("after climb ", r.floor, " (should be 5)\n")
+
+    // a method with a return value
+    output("depth() = ", r.depth(), "\n")
+
+    t Tower
+    t.height = 9
+    t.describe()
+
+    // a method on an array element
+    rooms Room[] = Room[2]
+    rooms[0].name  = "cellar"
+    rooms[0].floor = 0
+    rooms[0].describe()

@@ -196,6 +196,9 @@ void resolve_struct_type(Token *token) {
 
 void analyze_struct(Node *node) {
    enter_scope(node);
+   for (int i = 0; i < node->children_count; i++)
+      if (node->children[i]->token->type == FDEC)
+         declare_function(node->children[i]);
    for (int i = 0; i < node->children_count; i++) {
       Node *field = node->children[i];
       if (field->token->type == STRUCT_DEF) declare_struct(field);
@@ -265,8 +268,27 @@ void analyze_id(Node *node) {
    token->Fn.ret->ret_type = fn->token->ret_type;
 }
 
+Node *find_method(Node *def, char *name) {
+   for (int i = 0; i < def->children_count; i++) {
+      Node *child = def->children[i];
+      if (child->token->type != FDEC) continue;
+      if (strcmp(child->token->name, name) == 0) return child;
+   }
+   return NULL;
+}
+
+void analyze_method_call(Node *node) {
+   analyze(node->left);
+   for (int i = 0; i < node->children_count; i++)
+      analyze(node->children[i]);
+}
+
 void analyze_fcall(Node *node) {
    Token *token = node->token;
+   if (token->is_method_call) { 
+      analyze_method_call(node); 
+      return; 
+   }
    Token *var = find_variable(token->name, NULL);
    if (var && var->ret_type == FN_TYPE) {
       token->Fcall.var = var;

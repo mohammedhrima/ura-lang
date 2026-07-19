@@ -53,7 +53,7 @@ char *type_name(Type type) {
 	case VOID:       return "void";
 	case ARRAY_TYPE: return "array";
 	case FN_TYPE:    return "fn";
-	default:         return to_string(type);
+	default:         return type ? to_string(type) : "unknown";
 	}
 }
 
