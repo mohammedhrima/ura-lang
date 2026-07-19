@@ -103,14 +103,14 @@ Value llvm_num_cast(Value value, Type src, Type dst) {
       return dst == F64 ? LLVMBuildFPExt(ura.builder, value, to, "cast")
                            : LLVMBuildFPTrunc(ura.builder, value, to, "cast");
    if (is_float(src))
-      return LLVMBuildFPToSI(ura.builder, value, to, "cast");
-   if (is_float(dst) && src == BOOL)
-      return LLVMBuildUIToFP(ura.builder, value, to, "cast");
+      return is_unsigned(dst)
+         ? LLVMBuildFPToUI(ura.builder, value, to, "cast")
+         : LLVMBuildFPToSI(ura.builder, value, to, "cast");
    if (is_float(dst))
-      return LLVMBuildSIToFP(ura.builder, value, to, "cast");
-   if (src == BOOL)
-      return LLVMBuildIntCast2(ura.builder, value, to, 0, "cast");
-   return llvm_int_cast(value, to);
+      return is_unsigned(src)
+         ? LLVMBuildUIToFP(ura.builder, value, to, "cast")
+         : LLVMBuildSIToFP(ura.builder, value, to, "cast");
+   return LLVMBuildIntCast2(ura.builder, value, to, !is_unsigned(src), "cast");
 }
 
 Value llvm_global(Token *token) {
@@ -265,10 +265,11 @@ Value promote(Type type, Value v) {
    switch (type) {
       case F32:
          return LLVMBuildFPExt(ura.builder, v, ura.f64, "f2d");
-      case CHAR:
-      case I16: return LLVMBuildSExt(ura.builder, v, ura.i32, "i2i");
-      case BOOL:  return LLVMBuildZExt(ura.builder, v, ura.i32, "b2i");
-      default:    return v;
+      case I8: case I16: case CHAR:
+         return LLVMBuildSExt(ura.builder, v, ura.i32, "i2i");
+      case BOOL: case U8: case U16:
+         return LLVMBuildZExt(ura.builder, v, ura.i32, "u2i");
+      default: return v;
    }
 }
 
@@ -1000,27 +1001,29 @@ void code_gen_binop(Node *node) {
    Value left  = node->left->token->llvm.elem;
    Value right = node->right->token->llvm.elem;
    Value res   = NULL;
-   bool  fp    = is_float(node->left->token->ret_type);
+   Type  lt    = node->left->token->ret_type;
+   bool  fp    = is_float(lt);
+   bool  un    = is_unsigned(lt);
    if (includes(token->type, DIV, MOD, 0)) guard_nonzero(token, right);
-#define ARITH(fop, iop, fname, iname) res = fp \
+#define ARITH(fop, sop, uop, fname, iname) res = fp \
    ? llvm_binop(fop, left, right, fname) \
-   : llvm_binop(iop, left, right, iname)
-#define CMP(fpred, ipred, fname, iname) res = fp \
+   : llvm_binop(un ? uop : sop, left, right, iname)
+#define CMP(fpred, spred, upred, fname, iname) res = fp \
    ? llvm_fcmp(fpred, left, right, fname) \
-   : llvm_icmp(ipred, left, right, iname)
+   : llvm_icmp(un ? upred : spred, left, right, iname)
    switch (token->type) {
-      case ADD: ARITH(LLVMFAdd, LLVMAdd,  "fadd", "add"); break;
-      case SUB: ARITH(LLVMFSub, LLVMSub,  "fsub", "sub"); break;
-      case MUL: ARITH(LLVMFMul, LLVMMul,  "fmul", "mul"); break;
-      case DIV: ARITH(LLVMFDiv, LLVMSDiv, "fdiv", "div"); break;
-      case MOD: ARITH(LLVMFRem, LLVMSRem, "frem", "mod"); break;
+      case ADD: ARITH(LLVMFAdd, LLVMAdd,  LLVMAdd,  "fadd", "add"); break;
+      case SUB: ARITH(LLVMFSub, LLVMSub,  LLVMSub,  "fsub", "sub"); break;
+      case MUL: ARITH(LLVMFMul, LLVMMul,  LLVMMul,  "fmul", "mul"); break;
+      case DIV: ARITH(LLVMFDiv, LLVMSDiv, LLVMUDiv, "fdiv", "div"); break;
+      case MOD: ARITH(LLVMFRem, LLVMSRem, LLVMURem, "frem", "mod"); break;
 
-      case EQUAL:       CMP(LLVMRealOEQ, LLVMIntEQ,  "feq", "eq"); break;
-      case NOT_EQUAL:   CMP(LLVMRealUNE, LLVMIntNE,  "fne", "ne"); break;
-      case LESS:        CMP(LLVMRealOLT, LLVMIntSLT, "flt", "lt"); break;
-      case GREAT:       CMP(LLVMRealOGT, LLVMIntSGT, "fgt", "gt"); break;
-      case LESS_EQUAL:  CMP(LLVMRealOLE, LLVMIntSLE, "fle", "le"); break;
-      case GREAT_EQUAL: CMP(LLVMRealOGE, LLVMIntSGE, "fge", "ge"); break;
+      case EQUAL:       CMP(LLVMRealOEQ, LLVMIntEQ,  LLVMIntEQ,  "feq", "eq"); break;
+      case NOT_EQUAL:   CMP(LLVMRealUNE, LLVMIntNE,  LLVMIntNE,  "fne", "ne"); break;
+      case LESS:        CMP(LLVMRealOLT, LLVMIntSLT, LLVMIntULT, "flt", "lt"); break;
+      case GREAT:       CMP(LLVMRealOGT, LLVMIntSGT, LLVMIntUGT, "fgt", "gt"); break;
+      case LESS_EQUAL:  CMP(LLVMRealOLE, LLVMIntSLE, LLVMIntULE, "fle", "le"); break;
+      case GREAT_EQUAL: CMP(LLVMRealOGE, LLVMIntSGE, LLVMIntUGE, "fge", "ge"); break;
 
       case AND:    res = llvm_binop(LLVMAnd,  left, right, "and");  break;
       case OR:     res = llvm_binop(LLVMOr,   left, right, "or");   break;
@@ -1028,7 +1031,8 @@ void code_gen_binop(Node *node) {
       case BOR:    res = llvm_binop(LLVMOr,   left, right, "bor");  break;
       case BXOR:   res = llvm_binop(LLVMXor,  left, right, "bxor"); break;
       case LSHIFT: res = llvm_binop(LLVMShl,  left, right, "shl");  break;
-      case RSHIFT: res = llvm_binop(LLVMAShr, left, right, "shr");  break;
+      case RSHIFT: res = llvm_binop(un ? LLVMLShr : LLVMAShr,
+                                    left, right, "shr");           break;
       default: break;
    }
 #undef ARITH
@@ -1082,11 +1086,16 @@ Value emit_printf(char *fmt, Value *args, int n) {
 Value print_adapt(Type type, Value v, char **spec) {
    switch (type) {
       case I32:   *spec = "%d";   return v;
-      case I64:  *spec = "%lld"; return v;
+      case I64:   *spec = "%lld"; return v;
+      case U32:   *spec = "%u";   return v;
+      case U64:   *spec = "%llu"; return v;
       case CHARS: *spec = "%s";   return v;
-      case I16:
+      case I8: case I16:
          *spec = "%d";
          return LLVMBuildSExt(ura.builder, v, ura.i32, "s2i");
+      case U8: case U16:
+         *spec = "%u";
+         return LLVMBuildZExt(ura.builder, v, ura.i32, "u2i");
       case CHAR:
          *spec = "%c";
          return LLVMBuildSExt(ura.builder, v, ura.i32, "c2i");

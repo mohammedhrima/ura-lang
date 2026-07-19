@@ -32,6 +32,10 @@ bool is_float(Type type) {
 	return includes(type, FLOAT_TYPES, 0);
 }
 
+bool is_unsigned(Type type) {
+	return includes(type, UNSIGNED_TYPES, BOOL, 0);
+}
+
 bool is_castable(Type type) {
 	return is_float(type) || includes(type, NUMERIC_TYPES, 0);
 }
@@ -42,15 +46,16 @@ bool is_data_type(Token *token) {
 
 TypeRef to_llvm_type(Type type) {
    switch (type) {
-   case I32:   return ura.i32;
-   case I64:  return ura.i64;
-   case I16: return ura.i16;
-   case CHAR:  return ura.i8;
-   case BOOL:  return ura.i1;
-   case CHARS: return LLVMPointerType(ura.i8, 0);
-   case F32: return ura.f32;
-   case F64: return ura.f64;
-   case VOID:  return ura.vd;
+   case I8:  case U8:  return ura.i8;
+   case I16: case U16: return ura.i16;
+   case I32: case U32: return ura.i32;
+   case I64: case U64: return ura.i64;
+   case CHAR:          return ura.i8;
+   case F32:           return ura.f32;
+   case F64:           return ura.f64;
+   case BOOL:          return ura.i1;
+   case VOID:          return ura.vd;
+   case CHARS:         return LLVMPointerType(ura.i8, 0);
    default: TODO(1, "to_llvm_type: unhandled type %t", type); return NULL;
    }
 }
@@ -185,7 +190,7 @@ void type_check_fcall(Node *node) {
    }
    for (int i = 0; i < wanted; i++) {
       Token *param    = fn->Fn.params[i + self];
-      adopt_float(node->children[i], param->ret_type);
+      adopt_literal(node->children[i], param->ret_type);
       Type arg_type   = node->children[i]->token->ret_type;
       Type param_type = param->ret_type;
       if (arg_type && arg_type != param_type) {
@@ -210,7 +215,7 @@ void type_check_return(Node *node) {
    type_check(node->left);
    if (!ura.fn_ret || !node->left) return;
    Type wanted = ura.fn_ret->ret_type;
-   adopt_float(node->left, wanted);
+   adopt_literal(node->left, wanted);
    Type got = node->left->token->ret_type;
    if (got && got != wanted)
       parse_error(node->token, ERR_RETURN_TYPE_MISMATCH, ura.fn_ret->name, type_name(wanted), type_name(got));
@@ -324,27 +329,32 @@ bool find_operator(Node *node) {
    return true;
 }
 
-bool is_float_literal(Node *node) {
-   if (!node) return false;
-   if (node->token->type == F32) return true;
-   if (!includes(node->token->type, MATH_TYPE, 0)) return false;
-   if (!is_float(node->token->ret_type)) return false;
-   return is_float_literal(node->left) && is_float_literal(node->right);
+bool same_family(Type a, Type b) {
+   if (is_float(a)) return is_float(b);
+   return includes(a, NUMERIC_TYPES, 0) && includes(b, NUMERIC_TYPES, 0);
 }
 
-void adopt_float(Node *node, Type target) {
-   if (!is_float(target) || !is_float_literal(node)) return;
+bool is_untyped_literal(Node *node) {
+   if (!node) return false;
+   if (includes(node->token->type, I32, F32, 0)) return true;
+   if (!includes(node->token->type, MATH_TYPE, 0)) return false;
+   return is_untyped_literal(node->left) && is_untyped_literal(node->right);
+}
+
+void adopt_literal(Node *node, Type target) {
+   if (!is_untyped_literal(node)) return;
+   if (!same_family(node->token->ret_type, target)) return;
    node->token->ret_type = target;
-   adopt_float(node->left, target);
-   adopt_float(node->right, target);
+   adopt_literal(node->left, target);
+   adopt_literal(node->right, target);
 }
 
 void type_check_binop(Node *node) {
    Token *token = node->token;
    type_check(node->left);
    type_check(node->right);
-   adopt_float(node->left, node->right->token->ret_type);
-   adopt_float(node->right, node->left->token->ret_type);
+   adopt_literal(node->left, node->right->token->ret_type);
+   adopt_literal(node->right, node->left->token->ret_type);
    Type lt = node->left->token->ret_type;
    Type rt = node->right->token->ret_type;
    if (node->left->token->is_dec && node->left->token->is_ref) {
