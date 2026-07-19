@@ -77,21 +77,19 @@ proto fn umask(cmask int) int
 
 // ── File type constants (st_mode & S_IFMT) ─────────────────────────────────
 // Values are identical between Linux and macOS for these.
-// BLOCKED (M4 globals): top-level variables are not implemented yet - a top-level declaration reaches code_gen_id with no insertion point.
-// S_IFMT   int = 61440   // 0o170000  — type mask
-// S_IFSOCK int = 49152   // 0o140000  — socket
-// S_IFLNK  int = 40960   // 0o120000  — symlink
-// S_IFREG  int = 32768   // 0o100000  — regular file
-// S_IFBLK  int = 24576   // 0o060000  — block device
-// S_IFDIR  int = 16384   // 0o040000  — directory
-// S_IFCHR  int = 8192    // 0o020000  — character device
-// S_IFIFO  int = 4096    // 0o010000  — FIFO / pipe
+S_IFMT   int = 61440   // 0o170000  — type mask
+S_IFSOCK int = 49152   // 0o140000  — socket
+S_IFLNK  int = 40960   // 0o120000  — symlink
+S_IFREG  int = 32768   // 0o100000  — regular file
+S_IFBLK  int = 24576   // 0o060000  — block device
+S_IFDIR  int = 16384   // 0o040000  — directory
+S_IFCHR  int = 8192    // 0o020000  — character device
+S_IFIFO  int = 4096    // 0o010000  — FIFO / pipe
 
 // ── Permission bits (POSIX, identical on both) ─────────────────────────────
-// BLOCKED (M4 globals): top-level variables are not implemented yet - a top-level declaration reaches code_gen_id with no insertion point.
-// S_ISUID  int = 2048    // 0o4000   — set-user-ID
-// S_ISGID  int = 1024    // 0o2000   — set-group-ID
-// S_ISVTX  int = 512     // 0o1000   — sticky bit
+S_ISUID  int = 2048    // 0o4000   — set-user-ID
+S_ISGID  int = 1024    // 0o2000   — set-group-ID
+S_ISVTX  int = 512     // 0o1000   — sticky bit
 
 // S_IRWXU  int = 448     // 0o700
 // S_IRUSR  int = 256     // 0o400

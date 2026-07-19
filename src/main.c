@@ -135,6 +135,12 @@ void generate_ir() {
    for (int i = 0; i < ura.head->children_count; i++)
       if (ura.head->children[i]->token->type == FDEC)
          declare_function(ura.head->children[i]);
+   for (int i = 0; i < ura.head->children_count; i++) {
+      Token *global = global_decl(ura.head->children[i]);
+      if (!global) continue;
+      global->is_global = true;
+      declare_variable(global);
+   }
    for (int i = 0; i < ura.head->children_count; i++)
       analyze(ura.head->children[i]);
    for (int i = 0; i < ura.head->children_count; i++)
@@ -147,8 +153,13 @@ void generate_asm() {
    if (ura.error_count || !ura.head) return;
    setup_paths(ura.sources[0]->filename);
    init_module(ura.output);
+   for (int i = 0; i < ura.head->children_count; i++) {
+      Token *global = global_decl(ura.head->children[i]);
+      if (global) llvm_global(global);
+   }
    for (int i = 0; i < ura.head->children_count; i++)
-      code_gen(ura.head->children[i]);
+      if (!global_decl(ura.head->children[i]))
+         code_gen(ura.head->children[i]);
    finalize_module(ura.ll_path);
 }
 

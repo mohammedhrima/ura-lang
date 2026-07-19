@@ -142,6 +142,10 @@
 
 #define ERR_ARRAY_SIZE_NOT_INT "Array size must be an integer"
 
+#define ERR_ARRAY_SIZE_IN_TYPE \
+	"An array type carries no size;" \
+	" ex. 'arr int[] = int[3]' to make one"
+
 #define ERR_UNKNOWN_MEMBER "Unknown member '.%s'"
 
 #define ERR_UNKNOWN_FIELD \

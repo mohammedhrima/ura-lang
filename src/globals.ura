@@ -1,0 +1,59 @@
+// globals.ura - top-level variables.
+//
+//   ura src/globals.ura -exec
+
+struct Counter:
+    hits int
+
+    pub fn create(n int) Counter:
+        c Counter
+        c.hits = n
+        return c
+
+    operator =(other Counter) void:
+        self.hits = other.hits
+
+    fn bump() void:
+        self.hits += 1
+
+    operator drop:
+        output("  DROP counter at ", self.hits, "\n")
+
+name  chars   = "ura"
+ratio float   = 1.5
+flag  bool    = True
+tally Counter = Counter::create(10)
+xs    int[]   = int[3]
+heap  int[]   = new int[2]
+
+fn touch() void:
+    total += 1
+    tally.bump()
+
+main():
+    output("1. scalars of every type\n")
+    output("  ", name, " ", ratio, " ", flag, "\n")
+
+    output("2. forward reference - total is declared below main\n")
+    output("  total starts ", total, "\n")
+
+    output("3. a function mutates a global scalar and a global struct\n")
+    touch()
+    touch()
+    output("  total ", total, "  tally ", tally.hits, "\n")
+
+    output("4. global arrays\n")
+    xs[0] = 7
+    heap[1] = 9
+    output("  xs ", xs[0], " len ", xs.len)
+    output("   heap ", heap[1], " len ", heap.len, "\n")
+    clean heap
+
+    output("5. a local shadows a global\n")
+    total int = 99
+    output("  local total ", total, "\n")
+
+    output("6. the global drops after main's last line\n")
+
+// declared after every use above
+total int = 7

@@ -185,29 +185,25 @@ proto fn ioctl(fd int, request int, arg pointer) int
 //     SO_SNDBUF     int = 4097
 
 // ── IP protocol numbers (assigned by IANA; same on both) ──────────────────
-// BLOCKED (M4 globals): top-level variables are not implemented yet - a top-level declaration reaches code_gen_id with no insertion point.
-// IPPROTO_IP   int = 0
-// IPPROTO_TCP  int = 6
-// IPPROTO_UDP  int = 17
-// IPPROTO_IPV6 int = 41
+IPPROTO_IP   int = 0
+IPPROTO_TCP  int = 6
+IPPROTO_UDP  int = 17
+IPPROTO_IPV6 int = 41
 
 // ── shutdown() how ────────────────────────────────────────────────────────
-// BLOCKED (M4 globals): top-level variables are not implemented yet - a top-level declaration reaches code_gen_id with no insertion point.
-// SHUT_RD   int = 0
-// SHUT_WR   int = 1
-// SHUT_RDWR int = 2
+SHUT_RD   int = 0
+SHUT_WR   int = 1
+SHUT_RDWR int = 2
 
 // ── poll() events ─────────────────────────────────────────────────────────
-// BLOCKED (M4 globals): top-level variables are not implemented yet - a top-level declaration reaches code_gen_id with no insertion point.
-// POLLIN    int = 1
-// POLLPRI   int = 2
-// POLLOUT   int = 4
-// POLLERR   int = 8
-// POLLHUP   int = 16
-// POLLNVAL  int = 32
+POLLIN    int = 1
+POLLPRI   int = 2
+POLLOUT   int = 4
+POLLERR   int = 8
+POLLHUP   int = 16
+POLLNVAL  int = 32
 
 // ── INADDR_ANY / loopback ─────────────────────────────────────────────────
-// BLOCKED (M4 globals): top-level variables are not implemented yet - a top-level declaration reaches code_gen_id with no insertion point.
-// INADDR_ANY       int = 0
-// INADDR_LOOPBACK  int = 2130706433  // 0x7f000001 — 127.0.0.1 (host byte order)
-// INADDR_BROADCAST int = -1          // 0xffffffff
+INADDR_ANY       int = 0
+INADDR_LOOPBACK  int = 2130706433  // 0x7f000001 — 127.0.0.1 (host byte order)
+INADDR_BROADCAST int = -1          // 0xffffffff

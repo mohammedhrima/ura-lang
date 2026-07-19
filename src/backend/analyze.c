@@ -252,10 +252,18 @@ bool rewrite_struct_ctor(Node *node) {
    return true;
 }
 
+Token *global_decl(Node *child) {
+   Token *token = child->token;
+   if (token->type == ID && token->is_dec) return token;
+   if (token->type == ASSIGN && child->left->token->is_dec)
+      return child->left->token;
+   return NULL;
+}
+
 void analyze_id(Node *node) {
    Token *token = node->token;
    if (token->is_dec) {
-      declare_variable(token);
+      if (!token->is_global) declare_variable(token);
       resolve_struct_type(token);
       return;
    }
@@ -266,6 +274,7 @@ void analyze_id(Node *node) {
          parse_error(token, ERR_CAPTURE_NOT_ALLOWED, token->name);
          return;
       }
+      token->Decl.ptr = decl;
       token->ret_type = decl->ret_type;
       if (decl->ret_type == FN_TYPE) token->Fn = decl->Fn;
       if (decl->ret_type == ARRAY_TYPE) token->Array = decl->Array;
