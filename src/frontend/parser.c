@@ -342,12 +342,8 @@ Node *fdec_node(Node *node) {
 	if(strcmp(node->token->name, "main") == 0) {
 		node->token->ret_type = I32;
 	}
-	else if(is_data_type(peek(0))) {
-		node->token->ret_type = next()->type;
-	}
-	else if(peek(0)->type == ID) {
-		node->token->ret_type    = STRUCT_CALL;
-		node->token->Struct.name = next()->name;
+	else if(is_data_type(peek(0)) || peek(0)->type == ID) {
+		parse_type(node->token);
 	}
 	else
 		parse_error(node->token, ERR_FN_EXPECTED_RET_TYPE, node->token->name);

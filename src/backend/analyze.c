@@ -98,12 +98,27 @@ Token *find_variable(char *name, bool *captured) {
 	return NULL;
 }
 
+char *signature_diff(Token *old, Token *new) {
+	if (old->Fn.params_count != new->Fn.params_count)
+		return format("expected %d parameter(s), found %d",
+		              old->Fn.params_count, new->Fn.params_count);
+	for (int i = 0; i < old->Fn.params_count; i++) {
+		Type a = old->Fn.params[i]->ret_type;
+		Type b = new->Fn.params[i]->ret_type;
+		if (!same_or_pointer(a, b))
+			return format("parameter %d is %s, expected %s", i + 1, type_name(b), type_name(a));
+	}
+	if (!same_or_pointer(old->ret_type, new->ret_type))
+		return format("returns %s, expected %s", type_name(new->ret_type), type_name(old->ret_type));
+	return format("one is variadic, the other is not");
+}
+
 bool same_signature(Token *a, Token *b) {
-	if (a->ret_type != b->ret_type) return false;
+	if (!same_or_pointer(a->ret_type, b->ret_type)) return false;
 	if (a->is_variadic != b->is_variadic) return false;
 	if (a->Fn.params_count != b->Fn.params_count) return false;
 	for (int i = 0; i < a->Fn.params_count; i++)
-		if (a->Fn.params[i]->ret_type != b->Fn.params[i]->ret_type)
+		if (!same_or_pointer(a->Fn.params[i]->ret_type,  b->Fn.params[i]->ret_type))
 			return false;
 	return true;
 }
@@ -113,9 +128,18 @@ void declare_function(Node *fn) {
 	for (int i = 0; i < ura.scope->functions_count; i++) {
 		Token *old = ura.scope->functions[i]->token;
 		if (strcmp(old->name, new->name) != 0) continue;
-		if (old->is_proto && new->is_proto && same_signature(old, new))
+		if (!old->is_proto && !new->is_proto) {
+			parse_error(new, ERR_REDECL_FUNCTION, new->name);
+			parse_note(old, NOTE_PREV_DECL, new->name);
 			return;
-		parse_error(new, ERR_REDECL_FUNCTION, new->name);
+		}
+		if (!same_signature(old, new)) {
+			parse_error(new, ERR_SIG_CONFLICT, new->name, signature_diff(old, new));
+			parse_note(old, NOTE_PREV_DECL, new->name);
+			return;
+		}
+		if (old->is_proto && !new->is_proto)
+			ura.scope->functions[i] = fn;
 		return;
 	}
 	resize_array(ura.scope->functions, Node *);

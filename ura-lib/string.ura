@@ -1,39 +1,39 @@
 // String length
-proto fn strlen(s chars) i32
-proto fn strnlen(s chars, maxlen i32) i32
+proto fn strlen(s pointer) i32
+proto fn strnlen(s pointer, maxlen i32) i32
 
 // String comparison
-proto fn strcmp(a chars, b chars) i32
-proto fn strncmp(a chars, b chars, n i32) i32
-proto fn strcasecmp(a chars, b chars) i32
-proto fn strncasecmp(a chars, b chars, n i32) i32
-proto fn strcoll(a chars, b chars) i32
-proto fn strxfrm(dest chars, src chars, n i32) i32
+proto fn strcmp(a pointer, b pointer) i32
+proto fn strncmp(a pointer, b pointer, n i32) i32
+proto fn strcasecmp(a pointer, b pointer) i32
+proto fn strncasecmp(a pointer, b pointer, n i32) i32
+proto fn strcoll(a pointer, b pointer) i32
+proto fn strxfrm(dest pointer, src pointer, n i32) i32
 
 // String copying
-proto fn strcpy(dest chars, src chars) chars
-proto fn strncpy(dest chars, src chars, n i32) chars
-proto fn strdup(s chars) chars
-proto fn strndup(s chars, n i32) chars
+proto fn strcpy(dest pointer, src pointer) pointer
+proto fn strncpy(dest pointer, src pointer, n i32) pointer
+proto fn strdup(s pointer) pointer
+proto fn strndup(s pointer, n i32) pointer
 
 // String concatenation
-proto fn strcat(dest chars, src chars) chars
-proto fn strncat(dest chars, src chars, n i32) chars
+proto fn strcat(dest pointer, src pointer) pointer
+proto fn strncat(dest pointer, src pointer, n i32) pointer
 
 // String searching
-proto fn strchr(s chars, c i32) chars
-proto fn strrchr(s chars, c i32) chars
-proto fn strstr(haystack chars, needle chars) chars
-proto fn strcasestr(haystack chars, needle chars) chars
-proto fn strspn(s chars, accept chars) i32
-proto fn strcspn(s chars, reject chars) i32
-proto fn strpbrk(s chars, accept chars) chars
-proto fn strtok(s chars, delim chars) chars
-proto fn strtok_r(s chars, delim chars, saveptr pointer) chars
+proto fn strchr(s pointer, c i32) pointer
+proto fn strrchr(s pointer, c i32) pointer
+proto fn strstr(haystack pointer, needle pointer) pointer
+proto fn strcasestr(haystack pointer, needle pointer) pointer
+proto fn strspn(s pointer, accept pointer) i32
+proto fn strcspn(s pointer, reject pointer) i32
+proto fn strpbrk(s pointer, accept pointer) pointer
+proto fn strtok(s pointer, delim pointer) pointer
+proto fn strtok_r(s pointer, delim pointer, saveptr pointer) pointer
 
 // String error messages
-proto fn strerror(errnum i32) chars
-proto fn strerror_r(errnum i32, buf chars, buflen i32) i32
+proto fn strerror(errnum i32) pointer
+proto fn strerror_r(errnum i32, buf pointer, buflen i32) i32
 
 // Memory functions
 proto fn memchr(ptr pointer, c i32, n i32) pointer
@@ -43,14 +43,14 @@ proto fn memcpy(dest pointer, src pointer, n i32) pointer
 proto fn memmove(dest pointer, src pointer, n i32) pointer
 proto fn memset(ptr pointer, value i32, n i32) pointer
 proto fn memccpy(dest pointer, src pointer, c i32, n i32) pointer
-proto fn bzero(s chars, size i64) void
+proto fn bzero(s pointer, size i64) void
 
 // BSD string functions (safer alternatives)
-proto fn strlcpy(dest chars, src chars, size i32) i32
-proto fn strlcat(dest chars, src chars, size i32) i32
+proto fn strlcpy(dest pointer, src pointer, size i32) i32
+proto fn strlcat(dest pointer, src pointer, size i32) i32
 
 // Signal-safe string length
-proto fn strsignal(sig i32) chars
+proto fn strsignal(sig i32) pointer
 
 // Explicit zeroing (C11)
 proto fn memset_s(ptr pointer, size i32, value i32, n i32) pointer

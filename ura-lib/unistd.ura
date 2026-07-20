@@ -12,25 +12,25 @@ proto fn setgid(gid i32) i32
 
 // Process control
 proto fn fork() i32
-proto fn execv(path chars, argv pointer) i32
-proto fn execve(path chars, argv pointer, envp pointer) i32
-proto fn execvp(file chars, argv pointer) i32
+proto fn execv(path pointer, argv pointer) i32
+proto fn execve(path pointer, argv pointer, envp pointer) i32
+proto fn execvp(file pointer, argv pointer) i32
 proto fn _exit(code i32) void
 
 // Working directory
-proto fn getcwd(buf chars, size i64) chars
-proto fn chdir(path chars) i32
+proto fn getcwd(buf pointer, size i64) pointer
+proto fn chdir(path pointer) i32
 proto fn fchdir(fd i32) i32
 
 // File system: paths
-proto fn access(path chars, mode i32) i32
-proto fn unlink(path chars) i32
-proto fn rmdir(path chars) i32
-proto fn link(oldpath chars, newpath chars) i32
-proto fn symlink(target chars, linkpath chars) i32
-proto fn readlink(path chars, buf chars, bufsize i64) i64
-proto fn rename(oldpath chars, newpath chars) i32
-proto fn truncate(path chars, length i64) i32
+proto fn access(path pointer, mode i32) i32
+proto fn unlink(path pointer) i32
+proto fn rmdir(path pointer) i32
+proto fn link(oldpath pointer, newpath pointer) i32
+proto fn symlink(target pointer, linkpath pointer) i32
+proto fn readlink(path pointer, buf pointer, bufsize i64) i64
+proto fn rename(oldpath pointer, newpath pointer) i32
+proto fn truncate(path pointer, length i64) i32
 proto fn ftruncate(fd i32, length i64) i32
 
 // File descriptors
@@ -40,15 +40,15 @@ proto fn dup2(oldfd i32, newfd i32) i32
 proto fn pipe(pipefd pointer) i32
 proto fn lseek(fd i32, offset i64, whence i32) i64
 proto fn isatty(fd i32) i32
-proto fn ttyname(fd i32) chars
+proto fn ttyname(fd i32) pointer
 
 // Sleep
 proto fn sleep(seconds i32) i32
 proto fn usleep(microseconds i32) i32
 
 // Host info
-proto fn gethostname(name chars, len i64) i32
-proto fn sethostname(name chars, len i64) i32
+proto fn gethostname(name pointer, len i64) i32
+proto fn sethostname(name pointer, len i64) i32
 
 // Misc
 proto fn alarm(seconds i32) i32

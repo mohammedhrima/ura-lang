@@ -65,13 +65,13 @@
 // stat / fstat / lstat — these have wrapper symbols on glibc (__xstat / __fxstat
 // on older glibc; just stat/fstat/lstat on newer glibc and on Darwin). Buffer
 // is typed `pointer` so callers can pass `ref my_stat` or a raw byte buffer.
-proto fn stat(path chars, buf pointer) i32
+proto fn stat(path pointer, buf pointer) i32
 proto fn fstat(fd i32, buf pointer) i32
-proto fn lstat(path chars, buf pointer) i32
+proto fn lstat(path pointer, buf pointer) i32
 
 // Directory and mode operations
-proto fn mkdir(path chars, mode i32) i32
-proto fn chmod(path chars, mode i32) i32
+proto fn mkdir(path pointer, mode i32) i32
+proto fn chmod(path pointer, mode i32) i32
 proto fn fchmod(fd i32, mode i32) i32
 proto fn umask(cmask i32) i32
 

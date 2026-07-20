@@ -367,8 +367,8 @@ Token *parse_token(int line, int s, int e, Type type, int indent) {
 		}
 
 		static const Keyword keywords[] = {
-			{"bool", BOOL, 1, 1},     {"chars", CHARS, 1, 1},     {"char", CHAR, 1, 1},
-			{"void", VOID, 1, 1},     {"pointer", CHARS, 1, 1},
+			{"bool", BOOL, 1, 1},     {"char", CHAR, 1, 1},
+			{"void", VOID, 1, 1},     {"pointer", PTR, 1, 1},
 			{"i8", I8, 1, 1},         {"i16", I16, 1, 1},         {"i32", I32, 1, 1},
 			{"i64", I64, 1, 1},       {"u8", U8, 1, 1},           {"u16", U16, 1, 1},
 			{"u32", U32, 1, 1},       {"u64", U64, 1, 1},         {"f32", F32, 1, 1},

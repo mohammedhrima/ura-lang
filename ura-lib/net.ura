@@ -109,18 +109,18 @@ proto fn htons(hostshort i32) i32
 proto fn htonl(hostlong i32) i32
 proto fn ntohs(netshort i32) i32
 proto fn ntohl(netlong i32) i32
-proto fn inet_addr(cp chars) i32            // returns in_addr_t (uint32_t)
-proto fn inet_ntoa(addr In_addr) chars
-proto fn inet_pton(af i32, src chars, dst pointer) i32
-proto fn inet_ntop(af i32, src pointer, dst chars, size i32) chars
+proto fn inet_addr(cp pointer) i32            // returns in_addr_t (uint32_t)
+proto fn inet_ntoa(addr In_addr) pointer
+proto fn inet_pton(af i32, src pointer, dst pointer) i32
+proto fn inet_ntop(af i32, src pointer, dst pointer, size i32) pointer
 
 // Name resolution
-proto fn gethostbyname(name chars) pointer
+proto fn gethostbyname(name pointer) pointer
 proto fn gethostbyaddr(addr pointer, len i32, type i32) pointer
-proto fn getaddrinfo(node chars, service chars, hints pointer, res pointer) i32
+proto fn getaddrinfo(node pointer, service pointer, hints pointer, res pointer) i32
 proto fn freeaddrinfo(res pointer) void
-proto fn gai_strerror(errcode i32) chars
-proto fn getnameinfo(addr pointer, addrlen i32, host chars, hostlen i32, serv chars, servlen i32, flags i32) i32
+proto fn gai_strerror(errcode i32) pointer
+proto fn getnameinfo(addr pointer, addrlen i32, host pointer, hostlen i32, serv pointer, servlen i32, flags i32) i32
 
 // I/O multiplexing
 proto fn select(nfds i32, readfds pointer, writefds pointer, exceptfds pointer, timeout pointer) i32

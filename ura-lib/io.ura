@@ -1,6 +1,6 @@
 // File operations
-proto fn fopen(path chars, mode chars) pointer
-proto fn freopen(path chars, mode chars, file pointer) pointer
+proto fn fopen(path pointer, mode pointer) pointer
+proto fn freopen(path pointer, mode pointer, file pointer) pointer
 proto fn fclose(file pointer) i32
 proto fn fflush(file pointer) i32
 
@@ -14,10 +14,10 @@ proto fn putchar(c char) i32
 proto fn ungetc(c i32, file pointer) i32
 
 // String I/O
-proto fn fgets(buffer chars, size i32, file pointer) chars
-proto fn fputs(str chars, file pointer) i32
-proto fn puts(str chars) i32
-proto fn gets(buffer chars) chars
+proto fn fgets(buffer pointer, size i32, file pointer) pointer
+proto fn fputs(str pointer, file pointer) i32
+proto fn puts(str pointer) i32
+proto fn gets(buffer pointer) pointer
 
 // Block I/O
 proto fn fread(ptr pointer, size i32, nmemb i32, file pointer) i32
@@ -39,44 +39,44 @@ proto fn fsetpos(file pointer, pos pointer) i32
 proto fn feof(file pointer) i32
 proto fn ferror(file pointer) i32
 proto fn clearerr(file pointer) void
-proto fn perror(str chars) void
+proto fn perror(str pointer) void
 
 // Buffering
-proto fn setvbuf(file pointer, buffer chars, mode i32, size i32) i32
-proto fn setbuf(file pointer, buffer chars) void
+proto fn setvbuf(file pointer, buffer pointer, mode i32, size i32) i32
+proto fn setbuf(file pointer, buffer pointer) void
 
 // File system operations
-proto fn remove(path chars) i32
-proto fn rename(oldpath chars, newpath chars) i32
+proto fn remove(path pointer) i32
+proto fn rename(oldpath pointer, newpath pointer) i32
 
 // Temporary files
 proto fn tmpfile() pointer
-proto fn tmpnam(str chars) chars
+proto fn tmpnam(str pointer) pointer
 
 // File descriptor operations (POSIX)
 proto fn fileno(file pointer) i32
-proto fn fdopen(fd i32, mode chars) pointer
+proto fn fdopen(fd i32, mode pointer) pointer
 
 // Formatted output
-proto fn printf(format chars, ...) i32
-proto fn fprintf(file pointer, format chars, ...) i32
-proto fn sprintf(buffer chars, format chars, ...) i32
-proto fn snprintf(buffer chars, size i32, format chars, ...) i32
-proto fn dprintf(fd i32, format chars, ...) i32
+proto fn printf(format pointer, ...) i32
+proto fn fprintf(file pointer, format pointer, ...) i32
+proto fn sprintf(buffer pointer, format pointer, ...) i32
+proto fn snprintf(buffer pointer, size i32, format pointer, ...) i32
+proto fn dprintf(fd i32, format pointer, ...) i32
 
 // Variadic formatted output
-proto fn vprintf(format chars, args pointer) i32
-proto fn vfprintf(file pointer, format chars, args pointer) i32
-proto fn vsprintf(buffer chars, format chars, args pointer) i32
-proto fn vsnprintf(buffer chars, size i32, format chars, args pointer) i32
-proto fn vdprintf(fd i32, format chars, args pointer) i32
+proto fn vprintf(format pointer, args pointer) i32
+proto fn vfprintf(file pointer, format pointer, args pointer) i32
+proto fn vsprintf(buffer pointer, format pointer, args pointer) i32
+proto fn vsnprintf(buffer pointer, size i32, format pointer, args pointer) i32
+proto fn vdprintf(fd i32, format pointer, args pointer) i32
 
 // Formatted input
-proto fn scanf(format chars, ...) i32
-proto fn fscanf(file pointer, format chars, ...) i32
-proto fn sscanf(buffer chars, format chars, ...) i32
+proto fn scanf(format pointer, ...) i32
+proto fn fscanf(file pointer, format pointer, ...) i32
+proto fn sscanf(buffer pointer, format pointer, ...) i32
 
 // Variadic formatted input
-proto fn vscanf(format chars, args pointer) i32
-proto fn vfscanf(file pointer, format chars, args pointer) i32
-proto fn vsscanf(buffer chars, format chars, args pointer) i32
+proto fn vscanf(format pointer, args pointer) i32
+proto fn vfscanf(file pointer, format pointer, args pointer) i32
+proto fn vsscanf(buffer pointer, format pointer, args pointer) i32

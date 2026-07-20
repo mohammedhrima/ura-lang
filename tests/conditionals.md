@@ -18,13 +18,13 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : i32
+proto fn printf(format : pointer, ...) : i32
 
-proto fn calloc(len : i64, size : i64) : chars
+proto fn calloc(len : i64, size : i64) : pointer
 
-proto fn free(ptr : chars) : void
+proto fn free(ptr : pointer) : void
 
-proto fn write(fd : i32, ptr : chars, len : i64) : i64
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
@@ -37,7 +37,7 @@ fn main() : i32
    │  ├─ floor : i32
    │  └─ int 1
    └─ output : void
-      └─ chars "Fresh start\n"
+      └─ char[] "Fresh start\n"
 ```
 
 ```out
@@ -50,7 +50,7 @@ Fresh start
 ```ll
 
 @str = private unnamed_addr constant [13 x i8] c"Fresh start\0A\00", align 1
-@fmt = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
 
 define i32 @main() {
 entry:
@@ -64,7 +64,7 @@ endif:                                            ; preds = %then, %entry
   ret i32 0
 
 then:                                             ; preds = %entry
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str, i32 0, i32 0))
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt, i32 0, i32 0), i32 12, i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str, i32 0, i32 0))
   br label %endif
 }
 
@@ -85,13 +85,13 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : i32
+proto fn printf(format : pointer, ...) : i32
 
-proto fn calloc(len : i64, size : i64) : chars
+proto fn calloc(len : i64, size : i64) : pointer
 
-proto fn free(ptr : chars) : void
+proto fn free(ptr : pointer) : void
 
-proto fn write(fd : i32, ptr : chars, len : i64) : i64
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
@@ -104,10 +104,10 @@ fn main() : i32
    │  ├─ hp : i32
    │  └─ int 0
    ├─ output : void
-   │  └─ chars "Hero is alive\n"
+   │  └─ char[] "Hero is alive\n"
    └─ else
       └─ output : void
-         └─ chars "Hero has fallen\n"
+         └─ char[] "Hero has fallen\n"
 ```
 
 ```out
@@ -120,9 +120,9 @@ Hero has fallen
 ```ll
 
 @str = private unnamed_addr constant [15 x i8] c"Hero is alive\0A\00", align 1
-@fmt = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
 @str.1 = private unnamed_addr constant [17 x i8] c"Hero has fallen\0A\00", align 1
-@fmt.2 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt.2 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
 
 define i32 @main() {
 entry:
@@ -136,11 +136,11 @@ endif:                                            ; preds = %next, %then
   ret i32 0
 
 then:                                             ; preds = %entry
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @str, i32 0, i32 0))
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt, i32 0, i32 0), i32 14, i8* getelementptr inbounds ([15 x i8], [15 x i8]* @str, i32 0, i32 0))
   br label %endif
 
 next:                                             ; preds = %entry
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.2, i32 0, i32 0), i8* getelementptr inbounds ([17 x i8], [17 x i8]* @str.1, i32 0, i32 0))
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.2, i32 0, i32 0), i32 16, i8* getelementptr inbounds ([17 x i8], [17 x i8]* @str.1, i32 0, i32 0))
   br label %endif
 }
 
@@ -163,13 +163,13 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : i32
+proto fn printf(format : pointer, ...) : i32
 
-proto fn calloc(len : i64, size : i64) : chars
+proto fn calloc(len : i64, size : i64) : pointer
 
-proto fn free(ptr : chars) : void
+proto fn free(ptr : pointer) : void
 
-proto fn write(fd : i32, ptr : chars, len : i64) : i64
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
@@ -182,16 +182,16 @@ fn main() : i32
    │  ├─ floor : i32
    │  └─ int 3
    ├─ output : void
-   │  └─ chars "Easy\n"
+   │  └─ char[] "Easy\n"
    └─ elif
       ├─ condition < : bool
       │  ├─ floor : i32
       │  └─ int 7
       ├─ output : void
-      │  └─ chars "Normal\n"
+      │  └─ char[] "Normal\n"
       └─ else
          └─ output : void
-            └─ chars "Hard\n"
+            └─ char[] "Hard\n"
 ```
 
 ```out
@@ -204,11 +204,11 @@ Normal
 ```ll
 
 @str = private unnamed_addr constant [6 x i8] c"Easy\0A\00", align 1
-@fmt = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
 @str.1 = private unnamed_addr constant [8 x i8] c"Normal\0A\00", align 1
-@fmt.2 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt.2 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
 @str.3 = private unnamed_addr constant [6 x i8] c"Hard\0A\00", align 1
-@fmt.4 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt.4 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
 
 define i32 @main() {
 entry:
@@ -222,7 +222,7 @@ endif:                                            ; preds = %next3, %then2, %the
   ret i32 0
 
 then:                                             ; preds = %entry
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str, i32 0, i32 0))
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt, i32 0, i32 0), i32 5, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str, i32 0, i32 0))
   br label %endif
 
 next:                                             ; preds = %entry
@@ -231,11 +231,11 @@ next:                                             ; preds = %entry
   br i1 %lt5, label %then2, label %next3
 
 then2:                                            ; preds = %next
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.2, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.1, i32 0, i32 0))
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.2, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.1, i32 0, i32 0))
   br label %endif
 
 next3:                                            ; preds = %next
-  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.4, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.3, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.4, i32 0, i32 0), i32 5, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.3, i32 0, i32 0))
   br label %endif
 }
 

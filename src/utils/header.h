@@ -32,5 +32,6 @@ char *exe_dir();
 char *find_ura_lib();
 void ura_lib_missing(int line, int s, int e);
 void parse_error(Token *token, const char *fmt, ...);
+void parse_note(Token *token, const char *fmt, ...);
 void parse_warn(Token *token, const char *fmt, ...);
 void tokenize_error(int line, int s, int e, const char *fmt, ...);

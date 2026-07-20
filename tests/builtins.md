@@ -10,13 +10,14 @@
 - 006 — typeof without parentheses
 - 007 — default argument promotion in a user variadic call
 - 008 — typeof and sizeof on chars, bool, and a literal
+- 009 — custom putchar via write: print dungeon tiles
 
 ## 001 — puts: simple messages, char comparison on hero grade
 
 ```ura
 // builtins/001.ura - puts: simple messages, char comparison on hero grade
 
-proto fn puts(str chars) i32
+proto fn puts(str pointer) i32
 
 fn is_s_rank(grade char) bool:
     return grade == 'S'
@@ -30,17 +31,17 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : i32
+proto fn printf(format : pointer, ...) : i32
 
-proto fn calloc(len : i64, size : i64) : chars
+proto fn calloc(len : i64, size : i64) : pointer
 
-proto fn free(ptr : chars) : void
+proto fn free(ptr : pointer) : void
 
-proto fn write(fd : i32, ptr : chars, len : i64) : i64
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
-proto fn puts(str : chars) : i32
+proto fn puts(str : pointer) : i32
 
 fn is_s_rank(grade : char) : bool
 └─ return
@@ -56,10 +57,10 @@ fn main() : i32
    ├─ condition call is_s_rank : bool
    │  └─ grade : char
    ├─ call puts : i32
-   │  └─ chars "S-rank hero — unstoppable"
+   │  └─ char[] "S-rank hero — unstoppable"
    └─ else
       └─ call puts : i32
-         └─ chars "keep training"
+         └─ char[] "keep training"
 ```
 
 ```out
@@ -111,34 +112,34 @@ declare i32 @puts(i8*)
 ```ura
 // builtins/002.ura - proto printf: hello world with a format string
 
-proto fn printf(fmt chars, ...) i32
+proto fn printf(fmt pointer, ...) i32
 
 main():
-    s chars = "ura"
+    s char[] = "ura"
     printf("hello %s %d\n", s, 42)
     return 0
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : i32
+proto fn printf(format : pointer, ...) : i32
 
-proto fn calloc(len : i64, size : i64) : chars
+proto fn calloc(len : i64, size : i64) : pointer
 
-proto fn free(ptr : chars) : void
+proto fn free(ptr : pointer) : void
 
-proto fn write(fd : i32, ptr : chars, len : i64) : i64
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
-proto fn printf(fmt : chars, ...) : i32
+proto fn printf(fmt : pointer, ...) : i32
 
 fn main() : i32
-├─ = : chars
-│  ├─ s : chars
-│  └─ chars "ura"
+├─ = : array
+│  ├─ s : char[]
+│  └─ char[] "ura"
 ├─ call printf : i32
-│  ├─ chars "hello %s %d\n"
-│  ├─ s : chars
+│  ├─ char[] "hello %s %d\n"
+│  ├─ s : char[]
 │  └─ int 42
 └─ return
    └─ int 0
@@ -158,10 +159,11 @@ hello ura 42
 
 define i32 @main() {
 entry:
-  %s = alloca i8*, align 8
-  store i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i8** %s, align 8
-  %s1 = load i8*, i8** %s, align 8
-  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str.1, i32 0, i32 0), i8* %s1, i32 42)
+  %s = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } { i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i64 3 }, { i8*, i64 }* %s, align 8
+  %s1 = load { i8*, i64 }, { i8*, i64 }* %s, align 8
+  %arr.data = extractvalue { i8*, i64 } %s1, 0
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str.1, i32 0, i32 0), i8* %arr.data, i32 42)
   ret i32 0
 }
 
@@ -182,13 +184,13 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : i32
+proto fn printf(format : pointer, ...) : i32
 
-proto fn calloc(len : i64, size : i64) : chars
+proto fn calloc(len : i64, size : i64) : pointer
 
-proto fn free(ptr : chars) : void
+proto fn free(ptr : pointer) : void
 
-proto fn write(fd : i32, ptr : chars, len : i64) : i64
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
@@ -200,27 +202,27 @@ fn main() : i32
 │  ├─ f : f32
 │  └─ float 1.5
 ├─ output : void
-│  ├─ chars "typeof x = "
-│  ├─ typeof : chars
+│  ├─ char[] "typeof x = "
+│  ├─ typeof : char[]
 │  │  └─ x : i32
-│  ├─ chars ", sizeof x = "
+│  ├─ char[] ", sizeof x = "
 │  ├─ sizeof : u64
 │  │  └─ x : i32
-│  └─ chars "\n"
+│  └─ char[] "\n"
 ├─ output : void
-│  ├─ chars "typeof f = "
-│  ├─ typeof : chars
+│  ├─ char[] "typeof f = "
+│  ├─ typeof : char[]
 │  │  └─ f : f32
-│  ├─ chars ", sizeof f = "
+│  ├─ char[] ", sizeof f = "
 │  ├─ sizeof : u64
 │  │  └─ f : f32
-│  └─ chars "\n"
+│  └─ char[] "\n"
 └─ output : void
-   ├─ chars "sizeof i64 = "
+   ├─ char[] "sizeof i64 = "
    ├─ sizeof : u64
    │  └─ cast : i64
    │     └─ int 1
-   └─ chars "\n"
+   └─ char[] "\n"
 ```
 
 ```out
@@ -235,18 +237,18 @@ sizeof i64 = 8
 ```ll
 
 @str = private unnamed_addr constant [12 x i8] c"typeof x = \00", align 1
-@typeof = private unnamed_addr constant [4 x i8] c"i32\00", align 1
-@str.1 = private unnamed_addr constant [14 x i8] c", sizeof x = \00", align 1
-@str.2 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt = private unnamed_addr constant [13 x i8] c"%s%s%s%llu%s\00", align 1
-@str.3 = private unnamed_addr constant [12 x i8] c"typeof f = \00", align 1
-@typeof.4 = private unnamed_addr constant [4 x i8] c"f32\00", align 1
-@str.5 = private unnamed_addr constant [14 x i8] c", sizeof f = \00", align 1
-@str.6 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.7 = private unnamed_addr constant [13 x i8] c"%s%s%s%llu%s\00", align 1
-@str.8 = private unnamed_addr constant [14 x i8] c"sizeof i64 = \00", align 1
-@str.9 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.10 = private unnamed_addr constant [9 x i8] c"%s%llu%s\00", align 1
+@str.1 = private unnamed_addr constant [4 x i8] c"i32\00", align 1
+@str.2 = private unnamed_addr constant [14 x i8] c", sizeof x = \00", align 1
+@str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [21 x i8] c"%.*s%.*s%.*s%llu%.*s\00", align 1
+@str.4 = private unnamed_addr constant [12 x i8] c"typeof f = \00", align 1
+@str.5 = private unnamed_addr constant [4 x i8] c"f32\00", align 1
+@str.6 = private unnamed_addr constant [14 x i8] c", sizeof f = \00", align 1
+@str.7 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.8 = private unnamed_addr constant [21 x i8] c"%.*s%.*s%.*s%llu%.*s\00", align 1
+@str.9 = private unnamed_addr constant [14 x i8] c"sizeof i64 = \00", align 1
+@str.10 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.11 = private unnamed_addr constant [13 x i8] c"%.*s%llu%.*s\00", align 1
 
 define i32 @main() {
 entry:
@@ -254,9 +256,9 @@ entry:
   store i32 5, i32* %x, align 4
   %f = alloca float, align 4
   store float 1.500000e+00, float* %f, align 4
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str, i32 0, i32 0), i8* getelementptr inbounds ([4 x i8], [4 x i8]* @typeof, i32 0, i32 0), i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.1, i32 0, i32 0), i64 4, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0))
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt.7, i32 0, i32 0), i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.3, i32 0, i32 0), i8* getelementptr inbounds ([4 x i8], [4 x i8]* @typeof.4, i32 0, i32 0), i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.5, i32 0, i32 0), i64 4, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.6, i32 0, i32 0))
-  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @fmt.10, i32 0, i32 0), i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.8, i32 0, i32 0), i64 8, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.9, i32 0, i32 0))
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @fmt, i32 0, i32 0), i32 11, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str, i32 0, i32 0), i32 3, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.1, i32 0, i32 0), i32 13, i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.2, i32 0, i32 0), i64 4, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @fmt.8, i32 0, i32 0), i32 11, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.4, i32 0, i32 0), i32 3, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.5, i32 0, i32 0), i32 13, i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.6, i32 0, i32 0), i64 4, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.7, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt.11, i32 0, i32 0), i32 13, i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.9, i32 0, i32 0), i64 8, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.10, i32 0, i32 0))
   ret i32 0
 }
 
@@ -274,13 +276,13 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : i32
+proto fn printf(format : pointer, ...) : i32
 
-proto fn calloc(len : i64, size : i64) : chars
+proto fn calloc(len : i64, size : i64) : pointer
 
-proto fn free(ptr : chars) : void
+proto fn free(ptr : pointer) : void
 
-proto fn write(fd : i32, ptr : chars, len : i64) : i64
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
@@ -292,13 +294,13 @@ fn main() : i32
 │     ├─ int 2
 │     └─ int 3
 └─ output : void
-   ├─ chars "typeof a = "
-   ├─ typeof : chars
+   ├─ char[] "typeof a = "
+   ├─ typeof : char[]
    │  └─ a : i32[]
-   ├─ chars ", sizeof a = "
+   ├─ char[] ", sizeof a = "
    ├─ sizeof : u64
    │  └─ a : i32[]
-   └─ chars "\n"
+   └─ char[] "\n"
 ```
 
 ```out
@@ -311,10 +313,10 @@ typeof a = array, sizeof a = 16
 ```ll
 
 @str = private unnamed_addr constant [12 x i8] c"typeof a = \00", align 1
-@typeof = private unnamed_addr constant [6 x i8] c"array\00", align 1
-@str.1 = private unnamed_addr constant [14 x i8] c", sizeof a = \00", align 1
-@str.2 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt = private unnamed_addr constant [13 x i8] c"%s%s%s%llu%s\00", align 1
+@str.1 = private unnamed_addr constant [6 x i8] c"array\00", align 1
+@str.2 = private unnamed_addr constant [14 x i8] c", sizeof a = \00", align 1
+@str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [21 x i8] c"%.*s%.*s%.*s%llu%.*s\00", align 1
 
 define i32 @main() {
 entry:
@@ -329,7 +331,7 @@ entry:
   %arr.ptr = insertvalue { i32*, i64 } undef, i32* %arr, 0
   %arr.len = insertvalue { i32*, i64 } %arr.ptr, i64 3, 1
   store { i32*, i64 } %arr.len, { i32*, i64 }* %a, align 8
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @typeof, i32 0, i32 0), i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.1, i32 0, i32 0), i64 16, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0))
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @fmt, i32 0, i32 0), i32 11, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str, i32 0, i32 0), i32 5, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.1, i32 0, i32 0), i32 13, i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.2, i32 0, i32 0), i64 16, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
   ret i32 0
 }
 
@@ -401,7 +403,7 @@ error: Expected ')' after output arguments
 ```ura
 // builtins/007.ura - default argument promotion in a variadic call
 
-proto fn printf(format chars, ...) i32
+proto fn printf(format pointer, ...) i32
 
 main():
     f f32 = 3.5
@@ -420,17 +422,17 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : i32
+proto fn printf(format : pointer, ...) : i32
 
-proto fn calloc(len : i64, size : i64) : chars
+proto fn calloc(len : i64, size : i64) : pointer
 
-proto fn free(ptr : chars) : void
+proto fn free(ptr : pointer) : void
 
-proto fn write(fd : i32, ptr : chars, len : i64) : i64
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
-proto fn printf(format : chars, ...) : i32
+proto fn printf(format : pointer, ...) : i32
 
 fn main() : i32
 ├─ = : f32
@@ -454,22 +456,22 @@ fn main() : i32
 │  ├─ i : i32
 │  └─ int 42
 ├─ call printf : i32
-│  ├─ chars "%.2f %c %d %d %d\n"
+│  ├─ char[] "%.2f %c %d %d %d\n"
 │  ├─ f : f32
 │  ├─ c : char
 │  ├─ s : i16
 │  ├─ b : bool
 │  └─ i : i32
 ├─ call printf : i32
-│  ├─ chars "%ld\n"
+│  ├─ char[] "%ld\n"
 │  └─ l : i64
 ├─ call printf : i32
-│  ├─ chars "%.2f %c %d\n"
+│  ├─ char[] "%.2f %c %d\n"
 │  ├─ float 2.5
 │  ├─ char 'Z'
 │  └─ int 9
 ├─ call printf : i32
-│  ├─ chars "%.2f %d\n"
+│  ├─ char[] "%.2f %d\n"
 │  ├─ + : f32
 │  │  ├─ f : f32
 │  │  └─ f : f32
@@ -477,7 +479,7 @@ fn main() : i32
 │     ├─ i : i32
 │     └─ int 1
 ├─ call printf : i32
-│  ├─ chars "%d %d\n"
+│  ├─ char[] "%d %d\n"
 │  ├─ < : bool
 │  │  ├─ int 1
 │  │  └─ int 2
@@ -485,7 +487,7 @@ fn main() : i32
 │     ├─ int 3
 │     └─ int 4
 └─ call printf : i32
-   └─ chars "none\n"
+   └─ char[] "none\n"
 ```
 
 ```out
@@ -557,52 +559,52 @@ declare i32 @printf(i8*, ...)
 // builtins/008.ura - typeof/sizeof beyond the numeric types
 
 main():
-    s chars = "hello"
+    s char[] = "hello"
     b bool  = True
     output(typeof(s), " ", typeof(b), "\n")
     output(sizeof("hello"), " ", sizeof(s), " ", sizeof(b), "\n")
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : i32
+proto fn printf(format : pointer, ...) : i32
 
-proto fn calloc(len : i64, size : i64) : chars
+proto fn calloc(len : i64, size : i64) : pointer
 
-proto fn free(ptr : chars) : void
+proto fn free(ptr : pointer) : void
 
-proto fn write(fd : i32, ptr : chars, len : i64) : i64
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
 fn main() : i32
-├─ = : chars
-│  ├─ s : chars
-│  └─ chars "hello"
+├─ = : array
+│  ├─ s : char[]
+│  └─ char[] "hello"
 ├─ = : bool
 │  ├─ b : bool
 │  └─ bool True
 ├─ output : void
-│  ├─ typeof : chars
-│  │  └─ s : chars
-│  ├─ chars " "
-│  ├─ typeof : chars
+│  ├─ typeof : char[]
+│  │  └─ s : char[]
+│  ├─ char[] " "
+│  ├─ typeof : char[]
 │  │  └─ b : bool
-│  └─ chars "\n"
+│  └─ char[] "\n"
 └─ output : void
    ├─ sizeof : u64
-   │  └─ chars "hello"
-   ├─ chars " "
+   │  └─ char[] "hello"
+   ├─ char[] " "
    ├─ sizeof : u64
-   │  └─ s : chars
-   ├─ chars " "
+   │  └─ s : char[]
+   ├─ char[] " "
    ├─ sizeof : u64
    │  └─ b : bool
-   └─ chars "\n"
+   └─ char[] "\n"
 ```
 
 ```out
-chars bool
-8 8 1
+array bool
+16 16 1
 ```
 
 ```err
@@ -611,26 +613,138 @@ chars bool
 ```ll
 
 @str = private unnamed_addr constant [6 x i8] c"hello\00", align 1
-@typeof = private unnamed_addr constant [6 x i8] c"chars\00", align 1
-@str.1 = private unnamed_addr constant [2 x i8] c" \00", align 1
-@typeof.2 = private unnamed_addr constant [5 x i8] c"bool\00", align 1
-@str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt = private unnamed_addr constant [9 x i8] c"%s%s%s%s\00", align 1
-@str.4 = private unnamed_addr constant [2 x i8] c" \00", align 1
+@str.1 = private unnamed_addr constant [6 x i8] c"array\00", align 1
+@str.2 = private unnamed_addr constant [2 x i8] c" \00", align 1
+@str.3 = private unnamed_addr constant [5 x i8] c"bool\00", align 1
+@str.4 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [17 x i8] c"%.*s%.*s%.*s%.*s\00", align 1
 @str.5 = private unnamed_addr constant [2 x i8] c" \00", align 1
-@str.6 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.7 = private unnamed_addr constant [19 x i8] c"%llu%s%llu%s%llu%s\00", align 1
+@str.6 = private unnamed_addr constant [2 x i8] c" \00", align 1
+@str.7 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.8 = private unnamed_addr constant [25 x i8] c"%llu%.*s%llu%.*s%llu%.*s\00", align 1
 
 define i32 @main() {
 entry:
-  %s = alloca i8*, align 8
-  store i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str, i32 0, i32 0), i8** %s, align 8
+  %s = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } { i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str, i32 0, i32 0), i64 5 }, { i8*, i64 }* %s, align 8
   %b = alloca i1, align 1
   store i1 true, i1* %b, align 1
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @typeof, i32 0, i32 0), i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @typeof.2, i32 0, i32 0), i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @fmt.7, i32 0, i32 0), i64 8, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.4, i32 0, i32 0), i64 8, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i32 0, i32 0), i64 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.6, i32 0, i32 0))
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @fmt, i32 0, i32 0), i32 5, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.1, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0), i32 4, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.3, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.4, i32 0, i32 0))
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([25 x i8], [25 x i8]* @fmt.8, i32 0, i32 0), i64 16, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i32 0, i32 0), i64 16, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.6, i32 0, i32 0), i64 1, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.7, i32 0, i32 0))
   ret i32 0
 }
 
 declare i32 @printf(i8*, ...)
+```
+
+## 009 — custom putchar via write: print dungeon tiles
+
+```ura
+// builtins/009.ura - custom putchar via write: print dungeon tiles
+
+fn putchar(c char) i32:
+    buf char[] = [c, '\0']
+    write(1, buf, 1)
+    return 0
+
+main():
+    putchar('D')
+    putchar('U')
+    putchar('N')
+    putchar('G')
+    putchar('E')
+    putchar('O')
+    putchar('N')
+    putchar('\n')
+    return 0
+```
+
+```tree
+proto fn printf(format : pointer, ...) : i32
+
+proto fn calloc(len : i64, size : i64) : pointer
+
+proto fn free(ptr : pointer) : void
+
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
+
+proto fn exit(code : i32) : void
+
+fn putchar(c : char) : i32
+├─ = : array
+│  ├─ buf : char[]
+│  └─ array : char[]
+│     ├─ c : char
+│     └─ char ' '
+├─ call write : i64
+│  ├─ int 1
+│  ├─ buf : char[]
+│  └─ int 1
+└─ return
+   └─ int 0
+
+fn main() : i32
+├─ call putchar : i32
+│  └─ char 'D'
+├─ call putchar : i32
+│  └─ char 'U'
+├─ call putchar : i32
+│  └─ char 'N'
+├─ call putchar : i32
+│  └─ char 'G'
+├─ call putchar : i32
+│  └─ char 'E'
+├─ call putchar : i32
+│  └─ char 'O'
+├─ call putchar : i32
+│  └─ char 'N'
+├─ call putchar : i32
+│  └─ char '\n'
+└─ return
+   └─ int 0
+```
+
+```out
+DUNGEON
+```
+
+```err
+```
+
+```ll
+
+define i32 @putchar(i8 %0) {
+entry:
+  %c = alloca i8, align 1
+  store i8 %0, i8* %c, align 1
+  %buf = alloca { i8*, i64 }, align 8
+  %arr = alloca i8, i64 2, align 1
+  %c1 = load i8, i8* %c, align 1
+  %arr.init = getelementptr i8, i8* %arr, i64 0
+  store i8 %c1, i8* %arr.init, align 1
+  %arr.init2 = getelementptr i8, i8* %arr, i64 1
+  store i8 0, i8* %arr.init2, align 1
+  %arr.ptr = insertvalue { i8*, i64 } undef, i8* %arr, 0
+  %arr.len = insertvalue { i8*, i64 } %arr.ptr, i64 2, 1
+  store { i8*, i64 } %arr.len, { i8*, i64 }* %buf, align 8
+  %buf3 = load { i8*, i64 }, { i8*, i64 }* %buf, align 8
+  %arr.data = extractvalue { i8*, i64 } %buf3, 0
+  %call = call i64 @write(i32 1, i8* %arr.data, i64 1)
+  ret i32 0
+}
+
+declare i64 @write(i32, i8*, i64)
+
+define i32 @main() {
+entry:
+  %call = call i32 @putchar(i8 68)
+  %call1 = call i32 @putchar(i8 85)
+  %call2 = call i32 @putchar(i8 78)
+  %call3 = call i32 @putchar(i8 71)
+  %call4 = call i32 @putchar(i8 69)
+  %call5 = call i32 @putchar(i8 79)
+  %call6 = call i32 @putchar(i8 78)
+  %call7 = call i32 @putchar(i8 10)
+  ret i32 0
+}
 ```

@@ -4,7 +4,7 @@ proto fn kill(pid i32, sig i32) i32
 proto fn sigaction(sig i32, act pointer, oldact pointer) i32
 proto fn sigprocmask(how i32, set pointer, oldset pointer) i32
 proto fn sigsuspend(mask pointer) i32
-proto fn strsignal(sig i32) chars
+proto fn strsignal(sig i32) pointer
 
 // ── Signal numbers ────────────────────────────────────────────────────────
 // SIGHUP..SIGTERM are identical on Linux and macOS; SIGUSR/SIGCHLD/SIGBUS
