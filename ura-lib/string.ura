@@ -1,59 +1,59 @@
 // String length
-proto fn strlen(s chars) int
-proto fn strnlen(s chars, maxlen int) int
+proto fn strlen(s chars) i32
+proto fn strnlen(s chars, maxlen i32) i32
 
 // String comparison
-proto fn strcmp(a chars, b chars) int
-proto fn strncmp(a chars, b chars, n int) int
-proto fn strcasecmp(a chars, b chars) int
-proto fn strncasecmp(a chars, b chars, n int) int
-proto fn strcoll(a chars, b chars) int
-proto fn strxfrm(dest chars, src chars, n int) int
+proto fn strcmp(a chars, b chars) i32
+proto fn strncmp(a chars, b chars, n i32) i32
+proto fn strcasecmp(a chars, b chars) i32
+proto fn strncasecmp(a chars, b chars, n i32) i32
+proto fn strcoll(a chars, b chars) i32
+proto fn strxfrm(dest chars, src chars, n i32) i32
 
 // String copying
 proto fn strcpy(dest chars, src chars) chars
-proto fn strncpy(dest chars, src chars, n int) chars
+proto fn strncpy(dest chars, src chars, n i32) chars
 proto fn strdup(s chars) chars
-proto fn strndup(s chars, n int) chars
+proto fn strndup(s chars, n i32) chars
 
 // String concatenation
 proto fn strcat(dest chars, src chars) chars
-proto fn strncat(dest chars, src chars, n int) chars
+proto fn strncat(dest chars, src chars, n i32) chars
 
 // String searching
-proto fn strchr(s chars, c int) chars
-proto fn strrchr(s chars, c int) chars
+proto fn strchr(s chars, c i32) chars
+proto fn strrchr(s chars, c i32) chars
 proto fn strstr(haystack chars, needle chars) chars
 proto fn strcasestr(haystack chars, needle chars) chars
-proto fn strspn(s chars, accept chars) int
-proto fn strcspn(s chars, reject chars) int
+proto fn strspn(s chars, accept chars) i32
+proto fn strcspn(s chars, reject chars) i32
 proto fn strpbrk(s chars, accept chars) chars
 proto fn strtok(s chars, delim chars) chars
 proto fn strtok_r(s chars, delim chars, saveptr pointer) chars
 
 // String error messages
-proto fn strerror(errnum int) chars
-proto fn strerror_r(errnum int, buf chars, buflen int) int
+proto fn strerror(errnum i32) chars
+proto fn strerror_r(errnum i32, buf chars, buflen i32) i32
 
 // Memory functions
-proto fn memchr(ptr pointer, c int, n int) pointer
-proto fn memrchr(ptr pointer, c int, n int) pointer
-proto fn memcmp(a pointer, b pointer, n int) int
-proto fn memcpy(dest pointer, src pointer, n int) pointer
-proto fn memmove(dest pointer, src pointer, n int) pointer
-proto fn memset(ptr pointer, value int, n int) pointer
-proto fn memccpy(dest pointer, src pointer, c int, n int) pointer
-proto fn bzero(s chars, size long) void
+proto fn memchr(ptr pointer, c i32, n i32) pointer
+proto fn memrchr(ptr pointer, c i32, n i32) pointer
+proto fn memcmp(a pointer, b pointer, n i32) i32
+proto fn memcpy(dest pointer, src pointer, n i32) pointer
+proto fn memmove(dest pointer, src pointer, n i32) pointer
+proto fn memset(ptr pointer, value i32, n i32) pointer
+proto fn memccpy(dest pointer, src pointer, c i32, n i32) pointer
+proto fn bzero(s chars, size i64) void
 
 // BSD string functions (safer alternatives)
-proto fn strlcpy(dest chars, src chars, size int) int
-proto fn strlcat(dest chars, src chars, size int) int
+proto fn strlcpy(dest chars, src chars, size i32) i32
+proto fn strlcat(dest chars, src chars, size i32) i32
 
 // Signal-safe string length
-proto fn strsignal(sig int) chars
+proto fn strsignal(sig i32) chars
 
 // Explicit zeroing (C11)
-proto fn memset_s(ptr pointer, size int, value int, n int) pointer
+proto fn memset_s(ptr pointer, size i32, value i32, n i32) pointer
 
 // BLOCKED: everything below needs features that are not implemented yet.
 //   - indexing a `chars` (str[i]) - chars is i8*, not an array type, so
@@ -62,16 +62,16 @@ proto fn memset_s(ptr pointer, size int, value int, n int) pointer
 //     PUB / OPERATOR / DOUBLE_DOTS all lex but have no parser handling
 // The 37 `proto` declarations above are usable today.
 // fn strjoin(left chars, right chars) chars:
-//     len1 int = 0
-//     len2 int = 0
+//     len1 i32 = 0
+//     len2 i32 = 0
 //     if left != null:  len1 = strlen(left)
 //     if right != null: len2 = strlen(right)
-//     str chars = calloc((len1 + len2 + 1) as long, 1)
-//     i int = 0
+//     str chars = calloc((len1 + len2 + 1) as i64, 1)
+//     i i32 = 0
 //     while i < len1:
 //         str[i] = left[i]
 //         i += 1
-//     j int = 0
+//     j i32 = 0
 //     while j < len2:
 //         str[i + j] = right[j]
 //         j += 1
@@ -79,8 +79,8 @@ proto fn memset_s(ptr pointer, size int, value int, n int) pointer
 
 // struct String:
 //     value chars
-//     count int
-//     size  int
+//     count i32
+//     size  i32
 
 //     // ── Destructor ──
 
@@ -91,7 +91,7 @@ proto fn memset_s(ptr pointer, size int, value int, n int) pointer
 
 //     fn assign(str chars) void:
 //         if str == null: str = ""
-//         len int = strlen(str)
+//         len i32 = strlen(str)
 //         if self.value == null or self.size <= len:
 //             if self.size == 0:
 //                 self.size = 10
@@ -99,7 +99,7 @@ proto fn memset_s(ptr pointer, size int, value int, n int) pointer
 //                 self.size *= 2
 //             self.value = realloc(self.value, self.size)
 //         strcpy(self.value, str)
-//         bzero(self.value + len, (self.size - len) as long)
+//         bzero(self.value + len, (self.size - len) as i64)
 //         self.count = len
 
 //     fn join(str chars) void:
@@ -109,7 +109,7 @@ proto fn memset_s(ptr pointer, size int, value int, n int) pointer
 //         free(res)
 
 //     fn clear() void:
-//         bzero(self.value, self.size as long)
+//         bzero(self.value, self.size as i64)
 //         self.count = 0
 
 //     fn push(c char) void:
@@ -136,7 +136,7 @@ proto fn memset_s(ptr pointer, size int, value int, n int) pointer
 //     pub fn new() String:
 //         s String
 //         s.size  = 10
-//         s.value = calloc(10 as long, 1 as long)
+//         s.value = calloc(10 as i64, 1 as i64)
 //         return s
 
 //     pub fn from(str chars) String:
@@ -144,25 +144,25 @@ proto fn memset_s(ptr pointer, size int, value int, n int) pointer
 //         s.assign(str)
 //         return s
 
-//     pub fn from_int(n int) String:
+//     pub fn from_int(n i32) String:
 //         s String = String::new()
 //         if n == 0:
 //             s.push('0')
 //             return s
 //         neg bool = False
-//         num int = n
+//         num i32 = n
 //         if num < 0:
 //             neg = True
 //             num = 0 - num
 //         buf array[char] = stack[char](20)
-//         i int = 0
+//         i i32 = 0
 //         while num > 0:
 //             buf[i] = (num % 10 + 48) as char
 //             num = num / 10
 //             i += 1
 //         if neg:
 //             s.push('-')
-//         j int = i - 1
+//         j i32 = i - 1
 //         while j >= 0:
 //             s.push(buf[j])
 //             j -= 1
@@ -170,7 +170,7 @@ proto fn memset_s(ptr pointer, size int, value int, n int) pointer
 
 //     // ── Accessors ──
 
-//     fn len() int:
+//     fn len() i32:
 //         return self.count
 
 //     fn empty() bool:
@@ -179,17 +179,17 @@ proto fn memset_s(ptr pointer, size int, value int, n int) pointer
 //     fn c_str() chars:
 //         return self.value
 
-//     fn at(i int) char:
+//     fn at(i i32) char:
 //         if i < 0 or i >= self.count:
 //             return 0 as char
 //         return self.value[i]
 
 //     // ── Search ──
 
-//     fn find(needle chars) int:
+//     fn find(needle chars) i32:
 //         if needle == null: return -1
-//         i int = 0
-//         nlen int = strlen(needle)
+//         i i32 = 0
+//         nlen i32 = strlen(needle)
 //         if nlen == 0: return 0
 //         while i <= self.count - nlen:
 //             if strncmp(self.value + i, needle, nlen) == 0:
@@ -202,27 +202,27 @@ proto fn memset_s(ptr pointer, size int, value int, n int) pointer
 
 //     fn starts_with(prefix chars) bool:
 //         if prefix == null: return True
-//         plen int = strlen(prefix)
+//         plen i32 = strlen(prefix)
 //         if plen > self.count: return False
 //         return strncmp(self.value, prefix, plen) == 0
 
 //     fn ends_with(suffix chars) bool:
 //         if suffix == null: return True
-//         slen int = strlen(suffix)
+//         slen i32 = strlen(suffix)
 //         if slen > self.count: return False
-//         offset int = self.count - slen
+//         offset i32 = self.count - slen
 //         return strncmp(self.value + offset, suffix, slen) == 0
 
 //     // ── Transformations (return new String) ──
 
-//     fn substr(start int, length int) String:
+//     fn substr(start i32, length i32) String:
 //         res String = String::new()
 //         if start < 0 or start >= self.count:
 //             return res
-//         end int = start + length
+//         end i32 = start + length
 //         if end > self.count:
 //             end = self.count
-//         i int = start
+//         i i32 = start
 //         while i < end:
 //             res.push(self.value[i])
 //             i += 1
@@ -230,11 +230,11 @@ proto fn memset_s(ptr pointer, size int, value int, n int) pointer
 
 //     fn upper() String:
 //         res String = String::new()
-//         i int = 0
+//         i i32 = 0
 //         while i < self.count:
 //             c char = self.value[i]
 //             if c >= 'a' and c <= 'z':
-//                 v int = c as int - 32
+//                 v i32 = c as i32 - 32
 //                 res.push(v as char)
 //             else:
 //                 res.push(c)
@@ -243,11 +243,11 @@ proto fn memset_s(ptr pointer, size int, value int, n int) pointer
 
 //     fn lower() String:
 //         res String = String::new()
-//         i int = 0
+//         i i32 = 0
 //         while i < self.count:
 //             c char = self.value[i]
 //             if c >= 'A' and c <= 'Z':
-//                 v int = c as int + 32
+//                 v i32 = c as i32 + 32
 //                 res.push(v as char)
 //             else:
 //                 res.push(c)
@@ -255,14 +255,14 @@ proto fn memset_s(ptr pointer, size int, value int, n int) pointer
 //         return res
 
 //     fn trim() String:
-//         start int = 0
+//         start i32 = 0
 //         while start < self.count:
 //             c char = self.value[start]
 //             if c == ' ' or c == '\t' or c == '\n' or c == '\r':
 //                 start += 1
 //             else:
 //                 break
-//         end int = self.count
+//         end i32 = self.count
 //         while end > start:
 //             c char = self.value[end - 1]
 //             if c == ' ' or c == '\t' or c == '\n' or c == '\r':
@@ -273,11 +273,11 @@ proto fn memset_s(ptr pointer, size int, value int, n int) pointer
 
 //     fn replace(old chars, replacement chars) String:
 //         res String = String::new()
-//         olen int = strlen(old)
+//         olen i32 = strlen(old)
 //         if olen == 0:
 //             res.assign(self.value)
 //             return res
-//         i int = 0
+//         i i32 = 0
 //         while i < self.count:
 //             if i <= self.count - olen and strncmp(self.value + i, old, olen) == 0:
 //                 res.join(replacement)
@@ -287,9 +287,9 @@ proto fn memset_s(ptr pointer, size int, value int, n int) pointer
 //                 i += 1
 //         return res
 
-//     fn repeat(n int) String:
+//     fn repeat(n i32) String:
 //         res String = String::new()
-//         i int = 0
+//         i i32 = 0
 //         while i < n:
 //             res.join(self.value)
 //             i += 1
@@ -297,7 +297,7 @@ proto fn memset_s(ptr pointer, size int, value int, n int) pointer
 
 //     fn reverse() String:
 //         res String = String::new()
-//         i int = self.count - 1
+//         i i32 = self.count - 1
 //         while i >= 0:
 //             res.push(self.value[i])
 //             i -= 1
@@ -305,12 +305,12 @@ proto fn memset_s(ptr pointer, size int, value int, n int) pointer
 
 //     // ── Comparison ──
 
-//     fn compare(ref other String) int:
+//     fn compare(ref other String) i32:
 //         return strcmp(self.value, other.value)
 
 //     // ── Conversion ──
 
-//     fn to_int() int:
+//     fn to_int() i32:
 //         return atoi(self.value)
 
 //     // ── Assignment operators ──

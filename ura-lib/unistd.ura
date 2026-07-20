@@ -1,74 +1,74 @@
 // unistd.h — POSIX OS calls. Linux + macOS both POSIX-compatible here.
 
 // Process IDs
-proto fn getpid() int
-proto fn getppid() int
-proto fn getuid() int
-proto fn geteuid() int
-proto fn getgid() int
-proto fn getegid() int
-proto fn setuid(uid int) int
-proto fn setgid(gid int) int
+proto fn getpid() i32
+proto fn getppid() i32
+proto fn getuid() i32
+proto fn geteuid() i32
+proto fn getgid() i32
+proto fn getegid() i32
+proto fn setuid(uid i32) i32
+proto fn setgid(gid i32) i32
 
 // Process control
-proto fn fork() int
-proto fn execv(path chars, argv pointer) int
-proto fn execve(path chars, argv pointer, envp pointer) int
-proto fn execvp(file chars, argv pointer) int
-proto fn _exit(code int) void
+proto fn fork() i32
+proto fn execv(path chars, argv pointer) i32
+proto fn execve(path chars, argv pointer, envp pointer) i32
+proto fn execvp(file chars, argv pointer) i32
+proto fn _exit(code i32) void
 
 // Working directory
-proto fn getcwd(buf chars, size long) chars
-proto fn chdir(path chars) int
-proto fn fchdir(fd int) int
+proto fn getcwd(buf chars, size i64) chars
+proto fn chdir(path chars) i32
+proto fn fchdir(fd i32) i32
 
 // File system: paths
-proto fn access(path chars, mode int) int
-proto fn unlink(path chars) int
-proto fn rmdir(path chars) int
-proto fn link(oldpath chars, newpath chars) int
-proto fn symlink(target chars, linkpath chars) int
-proto fn readlink(path chars, buf chars, bufsize long) long
-proto fn rename(oldpath chars, newpath chars) int
-proto fn truncate(path chars, length long) int
-proto fn ftruncate(fd int, length long) int
+proto fn access(path chars, mode i32) i32
+proto fn unlink(path chars) i32
+proto fn rmdir(path chars) i32
+proto fn link(oldpath chars, newpath chars) i32
+proto fn symlink(target chars, linkpath chars) i32
+proto fn readlink(path chars, buf chars, bufsize i64) i64
+proto fn rename(oldpath chars, newpath chars) i32
+proto fn truncate(path chars, length i64) i32
+proto fn ftruncate(fd i32, length i64) i32
 
 // File descriptors
-proto fn close(fd int) int
-proto fn dup(fd int) int
-proto fn dup2(oldfd int, newfd int) int
-proto fn pipe(pipefd pointer) int
-proto fn lseek(fd int, offset long, whence int) long
-proto fn isatty(fd int) int
-proto fn ttyname(fd int) chars
+proto fn close(fd i32) i32
+proto fn dup(fd i32) i32
+proto fn dup2(oldfd i32, newfd i32) i32
+proto fn pipe(pipefd pointer) i32
+proto fn lseek(fd i32, offset i64, whence i32) i64
+proto fn isatty(fd i32) i32
+proto fn ttyname(fd i32) chars
 
 // Sleep
-proto fn sleep(seconds int) int
-proto fn usleep(microseconds int) int
+proto fn sleep(seconds i32) i32
+proto fn usleep(microseconds i32) i32
 
 // Host info
-proto fn gethostname(name chars, len long) int
-proto fn sethostname(name chars, len long) int
+proto fn gethostname(name chars, len i64) i32
+proto fn sethostname(name chars, len i64) i32
 
 // Misc
-proto fn alarm(seconds int) int
-proto fn pause() int
+proto fn alarm(seconds i32) i32
+proto fn pause() i32
 proto fn sync() void
-proto fn fsync(fd int) int
-proto fn fdatasync(fd int) int
+proto fn fsync(fd i32) i32
+proto fn fdatasync(fd i32) i32
 
 // ── access() mode constants (POSIX, identical on Linux and macOS) ──────────
-F_OK int = 0
-X_OK int = 1
-W_OK int = 2
-R_OK int = 4
+F_OK i32 = 0
+X_OK i32 = 1
+W_OK i32 = 2
+R_OK i32 = 4
 
 // ── lseek() whence constants ───────────────────────────────────────────────
-SEEK_SET int = 0
-SEEK_CUR int = 1
-SEEK_END int = 2
+SEEK_SET i32 = 0
+SEEK_CUR i32 = 1
+SEEK_END i32 = 2
 
 // ── stdin/stdout/stderr file descriptors ───────────────────────────────────
-STDIN_FILENO  int = 0
-STDOUT_FILENO int = 1
-STDERR_FILENO int = 2
+STDIN_FILENO  i32 = 0
+STDOUT_FILENO i32 = 1
+STDERR_FILENO i32 = 2

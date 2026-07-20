@@ -1,8 +1,0 @@
-// errors/refs/007 — a nested fn cannot use an enclosing ref local (pass it as a ref param)
-
-main():
-    x int = 5
-    ref r int = ref x
-    fn inner() int:
-        return r
-    return inner()

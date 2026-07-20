@@ -1,8 +1,0 @@
-// errors/functions/011 — redeclaration of a function
-
-fn dup() int:
-    return 1
-fn dup() int:
-    return 2
-main():
-    return dup()

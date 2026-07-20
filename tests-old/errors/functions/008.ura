@@ -1,8 +1,0 @@
-// errors/functions/008 — `ref` parameter requires a named variable
-use "@/header"
-
-fn bump(ref n int) void:
-    n += 1
-
-main():
-    bump(5)

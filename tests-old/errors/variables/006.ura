@@ -1,4 +1,0 @@
-// errors/variables/006 — undeclared variable
-
-main():
-    return foo

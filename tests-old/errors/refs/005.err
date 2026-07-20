@@ -1,5 +1,0 @@
-[1m[0;31merror: [0mArgument 1 to 'twice' does not take a reference
-  [2mtests/errors/refs/005.ura:8:18[0m
-  [1m[34m|[0m
-[1m[34m8 |[0m     return twice(ref x)
-  [1m[34m|[0m                  [1;31m^^^[0m

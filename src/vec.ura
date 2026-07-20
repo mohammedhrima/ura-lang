@@ -1,10 +1,10 @@
 // vec.ura - a 2D integer vector, the operator-overloading showcase
 
 struct Vec2:
-    x int
-    y int
+    x i32
+    y i32
 
-    pub fn create(a int, b int) Vec2:
+    pub fn create(a i32, b i32) Vec2:
         v Vec2
         v.x = a
         v.y = b
@@ -16,19 +16,19 @@ struct Vec2:
     operator +(other Vec2) Vec2:
         return Vec2::create(self.x + other.x, self.y + other.y)
 
-    operator +(n int) Vec2:
+    operator +(n i32) Vec2:
         return Vec2::create(self.x + n, self.y + n)
 
     operator -(other Vec2) Vec2:
         return Vec2::create(self.x - other.x, self.y - other.y)
 
-    operator *(n int) Vec2:
+    operator *(n i32) Vec2:
         return Vec2::create(self.x * n, self.y * n)
 
-    operator /(n int) Vec2:
+    operator /(n i32) Vec2:
         return Vec2::create(self.x / n, self.y / n)
 
-    operator %(n int) Vec2:
+    operator %(n i32) Vec2:
         return Vec2::create(self.x % n, self.y % n)
 
     operator ==(other Vec2) bool:
@@ -61,23 +61,23 @@ struct Vec2:
         self.x = self.x - other.x
         self.y = self.y - other.y
 
-    operator *=(n int) void:
+    operator *=(n i32) void:
         self.x = self.x * n
         self.y = self.y * n
 
-    operator /=(n int) void:
+    operator /=(n i32) void:
         self.x = self.x / n
         self.y = self.y / n
 
-    operator %=(n int) void:
+    operator %=(n i32) void:
         self.x = self.x % n
         self.y = self.y % n
 
     // a method the operators above call - sibling dispatch
-    fn taxicab() int:
+    fn taxicab() i32:
         return self.abs(self.x) + self.abs(self.y)
 
-    fn abs(n int) int:
+    fn abs(n i32) i32:
         if n < 0:
             return 0 - n
         return n

@@ -298,7 +298,9 @@ bool lex_symbol(char *src, int *i, int line, int *indent)
 		{"::", DOUBLE_DOTS, 0, 0}, {":", DOTS, 0, 0},         {"+=", ADD_ASSIGN, 0, 0},
 		{"-=", SUB_ASSIGN, 0, 0},  {"*=", MUL_ASSIGN, 0, 0},  {"/=", DIV_ASSIGN, 0, 0},
 		{"%=", MOD_ASSIGN, 0, 0},  {"!=", NOT_EQUAL, 0, 0},   {"!", NOT, 0, 0},
-		{"==", EQUAL, 0, 0},       {"<<", LSHIFT, 0, 0},      {">>", RSHIFT, 0, 0},
+		{"==", EQUAL, 0, 0},		 	{"<<=", LSHIFT_ASSIGN, 0, 0}, {">>=", RSHIFT_ASSIGN, 0, 0},
+		{"&=", BAND_ASSIGN, 0, 0}, {"|=", BOR_ASSIGN, 0, 0},  {"^=", BXOR_ASSIGN, 0, 0},
+		{"<<", LSHIFT, 0, 0},      {">>", RSHIFT, 0, 0},
 		{"<=", LESS_EQUAL, 0, 0},  {">=", GREAT_EQUAL, 0, 0}, {"<", LESS, 0, 0},
 		{">", GREAT, 0, 0},        {"=", ASSIGN, 0, 0},       {"+", ADD, 0, 0},
 		{"-", SUB, 0, 0},          {"*", MUL, 0, 0},          {"/", DIV, 0, 0},
@@ -365,10 +367,8 @@ Token *parse_token(int line, int s, int e, Type type, int indent) {
 		}
 
 		static const Keyword keywords[] = {
-			{"int", I32, 1, 1},       {"bool", BOOL, 1, 1},       {"chars", CHARS, 1, 1},
-			{"char", CHAR, 1, 1},     {"void", VOID, 1, 1},       {"float", F32, 1, 1},
-			{"double", F64, 1, 1},    {"long", I64, 1, 1},        {"short", I16, 1, 1},
-			{"pointer", CHARS, 1, 1},
+			{"bool", BOOL, 1, 1},     {"chars", CHARS, 1, 1},     {"char", CHAR, 1, 1},
+			{"void", VOID, 1, 1},     {"pointer", CHARS, 1, 1},
 			{"i8", I8, 1, 1},         {"i16", I16, 1, 1},         {"i32", I32, 1, 1},
 			{"i64", I64, 1, 1},       {"u8", U8, 1, 1},           {"u16", U16, 1, 1},
 			{"u32", U32, 1, 1},       {"u64", U64, 1, 1},         {"f32", F32, 1, 1},

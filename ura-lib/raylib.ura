@@ -6,7 +6,7 @@ struct Color:
     b char
     a char
 
-fn setColor(r int, g int, b int, a int) Color:
+fn setColor(r i32, g i32, b i32, a i32) Color:
     c Color
     c.r = r as char
     c.g = g as char
@@ -14,29 +14,29 @@ fn setColor(r int, g int, b int, a int) Color:
     c.a = a as char
     return c
 
-proto fn InitWindow(width int, height int, title chars) void
+proto fn InitWindow(width i32, height i32, title chars) void
 proto fn CloseWindow() void
 proto fn WindowShouldClose() bool
-proto fn SetTargetFPS(fps int) void
-proto fn GetFrameTime() float
+proto fn SetTargetFPS(fps i32) void
+proto fn GetFrameTime() f32
 proto fn BeginDrawing() void
 proto fn EndDrawing() void
 proto fn ClearBackground(color Color) void
-proto fn DrawRectangle(x int, y int, w int, h int, color Color) void
-proto fn DrawRectangleLines(x int, y int, w int, h int, color Color) void
-proto fn DrawLine(x1 int, y1 int, x2 int, y2 int, color Color) void
-proto fn DrawText(text chars, x int, y int, size int, color Color) void
-proto fn MeasureText(text chars, size int) int
-proto fn IsKeyPressed(key int) bool
-proto fn ColorBrightness(color Color, factor float) Color
+proto fn DrawRectangle(x i32, y i32, w i32, h i32, color Color) void
+proto fn DrawRectangleLines(x i32, y i32, w i32, h i32, color Color) void
+proto fn DrawLine(x1 i32, y1 i32, x2 i32, y2 i32, color Color) void
+proto fn DrawText(text chars, x i32, y i32, size i32, color Color) void
+proto fn MeasureText(text chars, size i32) i32
+proto fn IsKeyPressed(key i32) bool
+proto fn ColorBrightness(color Color, factor f32) Color
 proto fn TextFormat(fmt chars, ...) chars
-proto fn SetRandomSeed(seed int) void
-proto fn GetRandomValue(min int, max int) int
+proto fn SetRandomSeed(seed i32) void
+proto fn GetRandomValue(min i32, max i32) i32
 
-KEY_LEFT  int = 263
-KEY_RIGHT int = 262
-KEY_UP    int = 265
-KEY_DOWN  int = 264
-KEY_SPACE int = 32
-KEY_P     int = 80
-KEY_R     int = 82
+KEY_LEFT  i32 = 263
+KEY_RIGHT i32 = 262
+KEY_UP    i32 = 265
+KEY_DOWN  i32 = 264
+KEY_SPACE i32 = 32
+KEY_P     i32 = 80
+KEY_R     i32 = 82

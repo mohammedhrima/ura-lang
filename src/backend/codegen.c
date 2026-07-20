@@ -441,8 +441,7 @@ void code_gen_dot(Node *node) {
       return;
    }
    code_gen(node->left);
-   Value len = llvm_extract(node->left->token->llvm.elem, 1, "len");
-   token->llvm.elem = LLVMBuildIntCast2(ura.builder, len, ura.i32, 1, "len");
+   token->llvm.elem = llvm_extract(node->left->token->llvm.elem, 1, "len");
 }
 
 void code_gen_access(Node *node) {
@@ -571,7 +570,7 @@ void code_gen_typeof(Node *node) {
 void code_gen_sizeof(Node *node) {
    TypeRef t = llvm_type_of(node->left->token);
    unsigned long long sz = LLVMABISizeOfType(LLVMGetModuleDataLayout(ura.module), t);
-   node->token->llvm.elem = const_i32(sz);
+   node->token->llvm.elem = const_i64(sz);
 }
 
 void code_gen_clean(Node *node) {
@@ -1031,8 +1030,7 @@ void code_gen_binop(Node *node) {
       case BOR:    res = llvm_binop(LLVMOr,   left, right, "bor");  break;
       case BXOR:   res = llvm_binop(LLVMXor,  left, right, "bxor"); break;
       case LSHIFT: res = llvm_binop(LLVMShl,  left, right, "shl");  break;
-      case RSHIFT: res = llvm_binop(un ? LLVMLShr : LLVMAShr,
-                                    left, right, "shr");           break;
+      case RSHIFT: res = llvm_binop(un ? LLVMLShr : LLVMAShr, left, right, "shr"); break;
       default: break;
    }
 #undef ARITH
@@ -1052,18 +1050,26 @@ void code_gen_compound(Node *node) {
    TypeRef type    = to_llvm_type(node->left->token->ret_type);
    Value   current = llvm_load(type, dest, "cur");
    Value   res     = right;
-   bool    fp      = is_float(node->left->token->ret_type);
+   Type    lt      = node->left->token->ret_type;
+   bool    fp      = is_float(lt);
+   bool    un      = is_unsigned(lt);
    bool    divides = includes(op, DIV_ASSIGN, MOD_ASSIGN, 0);
    if (divides) guard_nonzero(node->token, right);
-#define ARITH(fop, iop, fname, iname) res = fp \
+#define ARITH(fop, sop, uop, fname, iname) res = fp \
    ? llvm_binop(fop, current, right, fname) \
-   : llvm_binop(iop, current, right, iname)
+   : llvm_binop(un ? uop : sop, current, right, iname)
    switch (op) {
-      case ADD_ASSIGN: ARITH(LLVMFAdd, LLVMAdd,  "fadd", "add"); break;
-      case SUB_ASSIGN: ARITH(LLVMFSub, LLVMSub,  "fsub", "sub"); break;
-      case MUL_ASSIGN: ARITH(LLVMFMul, LLVMMul,  "fmul", "mul"); break;
-      case DIV_ASSIGN: ARITH(LLVMFDiv, LLVMSDiv, "fdiv", "div"); break;
-      case MOD_ASSIGN: ARITH(LLVMFRem, LLVMSRem, "frem", "mod"); break;
+      case ADD_ASSIGN: ARITH(LLVMFAdd, LLVMAdd,  LLVMAdd,  "fadd", "add"); break;
+      case SUB_ASSIGN: ARITH(LLVMFSub, LLVMSub,  LLVMSub,  "fsub", "sub"); break;
+      case MUL_ASSIGN: ARITH(LLVMFMul, LLVMMul,  LLVMMul,  "fmul", "mul"); break;
+      case DIV_ASSIGN: ARITH(LLVMFDiv, LLVMSDiv, LLVMUDiv, "fdiv", "div"); break;
+      case MOD_ASSIGN: ARITH(LLVMFRem, LLVMSRem, LLVMURem, "frem", "mod"); break;
+
+      case BAND_ASSIGN:   res = llvm_binop(LLVMAnd, current, right, "band"); break;
+      case BOR_ASSIGN:    res = llvm_binop(LLVMOr,  current, right, "bor");  break;
+      case BXOR_ASSIGN:   res = llvm_binop(LLVMXor, current, right, "bxor"); break;
+      case LSHIFT_ASSIGN: res = llvm_binop(LLVMShl, current, right, "shl");  break;
+      case RSHIFT_ASSIGN: res = llvm_binop(un ? LLVMLShr : LLVMAShr, current, right, "shr"); break;
       default: break;
    }
 #undef ARITH
@@ -1385,6 +1391,12 @@ void code_gen(Node *node) {
          break;
       }
       case RETURN: {
+         if (!node->left) {
+            drop_temps();
+            emit_unwind(NULL, NULL);
+            token->llvm.elem = LLVMBuildRetVoid(ura.builder);
+            break;
+         }
          code_gen(node->left);
          Token *out  = node->left->token;
          Token *keep = out->type == ID ? find_variable(out->name, NULL) : NULL;
@@ -1406,7 +1418,9 @@ void code_gen(Node *node) {
          break;
       }
       case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN:
-      case DIV_ASSIGN: case MOD_ASSIGN: {
+      case DIV_ASSIGN: case MOD_ASSIGN: case BAND_ASSIGN:
+      case BOR_ASSIGN: case BXOR_ASSIGN: case LSHIFT_ASSIGN:
+      case RSHIFT_ASSIGN: {
          code_gen_compound(node);
          break;
       }

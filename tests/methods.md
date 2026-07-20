@@ -25,7 +25,7 @@
 
 struct Room:
     name  chars
-    floor int
+    floor i32
 
     fn describe() void:
         output("room ", self.name, " on floor ", self.floor, "\n")
@@ -127,9 +127,9 @@ entry:
 // methods/002.ura - a method mutates through self
 
 struct Room:
-    floor int
+    floor i32
 
-    fn climb(n int) void:
+    fn climb(n i32) void:
         self.floor = self.floor + n
 
 main():
@@ -231,9 +231,9 @@ declare i32 @printf(i8*, ...)
 // methods/003.ura - a method with a return value
 
 struct Room:
-    floor int
+    floor i32
 
-    fn depth() int:
+    fn depth() i32:
         return self.floor * 10
 
 main():
@@ -321,12 +321,12 @@ declare i32 @printf(i8*, ...)
 // methods/004.ura - a method calling a sibling declared below it
 
 struct Room:
-    floor int
+    floor i32
 
     fn show() void:
         output("floor ", self.twice(), "\n")
 
-    fn twice() int:
+    fn twice() i32:
         return self.floor * 2
 
 main():
@@ -426,13 +426,13 @@ entry:
 // methods/005.ura - two structs may declare the same method name
 
 struct Room:
-    floor int
+    floor i32
 
     fn describe() void:
         output("room on floor ", self.floor, "\n")
 
 struct Tower:
-    height int
+    height i32
 
     fn describe() void:
         output("tower of height ", self.height, "\n")
@@ -558,7 +558,7 @@ entry:
 // methods/006.ura - a method on an array element
 
 struct Room:
-    floor int
+    floor i32
 
     fn bump() void:
         self.floor = self.floor + 1
@@ -704,9 +704,9 @@ attributes #0 = { argmemonly nofree nounwind willreturn writeonly }
 // methods/007.ura - a method on a nested struct field
 
 struct Room:
-    floor int
+    floor i32
 
-    fn depth() int:
+    fn depth() i32:
         return self.floor
 
 struct Dungeon:
@@ -802,7 +802,7 @@ declare i32 @printf(i8*, ...)
 // methods/008.ura - calling a method the struct does not have
 
 struct Room:
-    floor int
+    floor i32
 
 main():
     r Room
@@ -832,7 +832,7 @@ error: Struct Room has no method 'nope'; check the spelling or declare it in the
 // methods/009.ura - calling a method on a non-struct
 
 main():
-    x int = 3
+    x i32 = 3
     x.nope()
 ```
 
@@ -859,9 +859,9 @@ error: Cannot call '.nope()' on i32; only a struct has methods
 // methods/010.ura - wrong argument count to a method
 
 struct Room:
-    floor int
+    floor i32
 
-    fn climb(n int) void:
+    fn climb(n i32) void:
         self.floor = self.floor + n
 
 main():
@@ -892,9 +892,9 @@ error: Wrong number of arguments to 'climb'
 // methods/011.ura - a pub fn is static, called with ::
 
 struct Room:
-    floor int
+    floor i32
 
-    pub fn make(f int) Room:
+    pub fn make(f i32) Room:
         r Room
         r.floor = f
         return r
@@ -986,9 +986,9 @@ declare i32 @printf(i8*, ...)
 // methods/012.ura - calling a non-pub method with ::
 
 struct Room:
-    floor int
+    floor i32
 
-    fn depth() int:
+    fn depth() i32:
         return self.floor
 
 main():
@@ -1044,14 +1044,14 @@ error: Unknown type 'Nope'
 // methods/014.ura - chaining a field access onto a call
 
 struct Room:
-    floor int
+    floor i32
 
-    pub fn create(f int) Room:
+    pub fn create(f i32) Room:
         r Room
         r.floor = f
         return r
 
-fn make(f int) Room:
+fn make(f i32) Room:
     r Room
     r.floor = f
     return r
@@ -1178,9 +1178,9 @@ declare i32 @printf(i8*, ...)
 // methods/015.ura - two structs with the same pub fn name
 
 struct Room:
-    floor int
+    floor i32
 
-    pub fn create(f int) Room:
+    pub fn create(f i32) Room:
         r Room
         r.floor = f
         return r
@@ -1188,16 +1188,16 @@ struct Room:
     pub fn zero() Room:
         return Room::create(0)
 
-    pub fn level(f int) int:
+    pub fn level(f i32) i32:
         return f * 10
 
-    fn depth() int:
+    fn depth() i32:
         return self.floor
 
 struct Tower:
-    height int
+    height i32
 
-    pub fn create(h int) Tower:
+    pub fn create(h i32) Tower:
         t Tower
         t.height = h
         return t
@@ -1209,7 +1209,7 @@ main():
     output("zero ", Room::zero().floor, "\n")
     output("level ", Room::level(4), "\n")
     output("method ", Room::create(5).depth(), "\n")
-    n int = Room::create(2).depth() + Tower::create(1).height
+    n i32 = Room::create(2).depth() + Tower::create(1).height
     output("mixed ", n, "\n")
 ```
 

@@ -24,13 +24,21 @@
 - 020 — ref-to-value: ref passing a where value is expected
 - 021 — ref parameter mutates the caller (counter)
 - 022 — a void function with a ref parameter
+- 023 — redeclaring a function
+- 024 — calling a function that does not exist
+- 025 — too many arguments
+- 026 — an argument of the wrong type
+- 027 — two parameters with the same name
+- 028 — a function-typed parameter given a value
+- 029 — a variadic call missing its required arguments
+- 023 — a bare `return` in a void function
 
 ## 001 — void fn: announce dungeon floor
 
 ```ura
 // functions/001.ura - void fn: announce dungeon floor
 
-fn announce_floor(floor int) void:
+fn announce_floor(floor i32) void:
     output("=== Entering floor ", floor, " ===\n")
 
 fn announce_boss(name chars) void:
@@ -127,14 +135,14 @@ entry:
 ```ura
 // functions/002.ura - fn with return value + single-line fns
 
-fn victory_bonus(floor int) int:
+fn victory_bonus(floor i32) i32:
     return floor * 50
 
-fn is_alive(hp int) bool: return hp > 0
-fn is_boss_floor(floor int) bool: return floor == 10
+fn is_alive(hp i32) bool: return hp > 0
+fn is_boss_floor(floor i32) bool: return floor == 10
 
 main():
-    bonus int = victory_bonus(3)
+    bonus i32 = victory_bonus(3)
     output("Floor 3 bonus: ", bonus, "\n")
     output("Hero alive:    ", is_alive(80), "\n")
     output("Boss floor:    ", is_boss_floor(10), "\n")
@@ -266,21 +274,21 @@ declare i32 @printf(i8*, ...)
 ```ura
 // functions/003.ura - multi-fn: clamp, damage, is_dead
 
-fn clamp(val int, lo int, hi int) int:
+fn clamp(val i32, lo i32, hi i32) i32:
     if val < lo:
         return lo
     if val > hi:
         return hi
     return val
 
-fn damage(atk int, def int) int:
+fn damage(atk i32, def i32) i32:
     return clamp(atk - def, 0, 999)
 
-fn is_dead(hp int) bool:
+fn is_dead(hp i32) bool:
     return hp <= 0
 
 main():
-    d int = damage(25, 8)
+    d i32 = damage(25, 8)
     output("Orc takes ", d, " damage\n")
     output("Orc dead: ", is_dead(d - 60), "\n")
 ```
@@ -442,14 +450,14 @@ declare i32 @printf(i8*, ...)
 ```ura
 // functions/004.ura - fn-typed value: assign top-level fn to a local, call indirectly
 
-fn add(a int, b int) int:
+fn add(a i32, b i32) i32:
     return a + b
 
-fn sub(a int, b int) int:
+fn sub(a i32, b i32) i32:
     return a - b
 
 main():
-    op fn(int, int) int = add
+    op fn(i32, i32) i32 = add
     output(op(2, 3), "\n")
 
     op = sub
@@ -583,13 +591,13 @@ declare i32 @printf(i8*, ...)
 ```ura
 // functions/005.ura - fn-typed parameter: callback passed to higher-order fn
 
-fn double_it(n int) int:
+fn double_it(n i32) i32:
     return n * 2
 
-fn triple_it(n int) int:
+fn triple_it(n i32) i32:
     return n * 3
 
-fn apply(cb fn(int) int, x int) int:
+fn apply(cb fn(i32) i32, x i32) i32:
     return cb(x)
 
 main():
@@ -755,7 +763,7 @@ entry:
 // functions/007.ura - declare a variable and return it
 
 main():
-    a int = 7
+    a i32 = 7
     return a
 ```
 
@@ -801,7 +809,7 @@ entry:
 ```ura
 // functions/008.ura - function parameters and a direct call
 
-fn add(a int, b int) int:
+fn add(a i32, b i32) i32:
     return a + b
 main():
     return add(40, 2)
@@ -866,7 +874,7 @@ entry:
 
 main():
     return dbl(21)
-fn dbl(n int) int:
+fn dbl(n i32) i32:
     return n + n
 ```
 
@@ -924,10 +932,10 @@ entry:
 ```ura
 // functions/010.ura - store a function in a fn-typed variable, then call it
 
-fn twice(n int) int:
+fn twice(n i32) i32:
     return n + n
 main():
-    f fn(int) int = twice
+    f fn(i32) i32 = twice
     return f(21)
 ```
 
@@ -1006,9 +1014,9 @@ declare void @exit(i32)
 ```ura
 // functions/011.ura - pass a function as an argument (higher-order)
 
-fn twice(n int) int:
+fn twice(n i32) i32:
     return n + n
-fn apply(f fn(int) int, x int) int:
+fn apply(f fn(i32) i32, x i32) i32:
     return f(x)
 main():
     return apply(twice, 21)
@@ -1102,7 +1110,7 @@ entry:
 // functions/012.ura - nested non-capturing helper function
 
 main():
-    fn dbl(k int) int:
+    fn dbl(k i32) i32:
         return k + k
     return dbl(21)
 ```
@@ -1160,9 +1168,9 @@ entry:
 ```ura
 // functions/013.ura - a call used as an argument to another call
 
-fn square(n int) int:
+fn square(n i32) i32:
     return n * n
-fn add(a int, b int) int:
+fn add(a i32, b i32) i32:
     return a + b
 main():
     return add(square(5), 3)
@@ -1243,11 +1251,11 @@ entry:
 ```ura
 // functions/014.ura - value parameters: take_damage
 
-fn take_damage(hp int, atk int) int:
+fn take_damage(hp i32, atk i32) i32:
     return hp - atk
 
 main():
-    result int = take_damage(100, 18)
+    result i32 = take_damage(100, 18)
     output("<", result, ">\n")
 ```
 
@@ -1323,11 +1331,11 @@ declare i32 @printf(i8*, ...)
 ```ura
 // functions/015.ura - a by-value parameter does not change the caller
 
-fn inc(n int) int:
+fn inc(n i32) i32:
     n = n + 1
     return n
 main():
-    n int = 5
+    n i32 = 5
     inc(n)
     return n
 ```
@@ -1398,11 +1406,11 @@ entry:
 ```ura
 // functions/016.ura - single ref param: buff hero hp
 
-fn buff(ref hp int) void:
+fn buff(ref hp i32) void:
     hp = hp + 20
 
 main():
-    hero_hp int = 80
+    hero_hp i32 = 80
     buff(ref hero_hp)
     output("<", hero_hp, ">\n")
 ```
@@ -1481,14 +1489,14 @@ declare i32 @printf(i8*, ...)
 ```ura
 // functions/017.ura - swap two weapon damage values via refs
 
-fn swap_weapons(ref a int, ref b int) void:
-    temp int = a
+fn swap_weapons(ref a i32, ref b i32) void:
+    temp i32 = a
     a = b
     b = temp
 
 main():
-    sword  int = 30
-    dagger int = 15
+    sword  i32 = 30
+    dagger i32 = 15
     swap_weapons(ref sword, ref dagger)
     output("<", sword, " ", dagger, ">\n")
 ```
@@ -1590,14 +1598,14 @@ declare i32 @printf(i8*, ...)
 ```ura
 // functions/018.ura - refs used in expression, return result
 
-fn add_xp(ref a int, ref b int) int:
-    result int = a + b
+fn add_xp(ref a i32, ref b i32) i32:
+    result i32 = a + b
     return result
 
 main():
-    kill_xp  int = 30
-    bonus_xp int = 20
-    z        int
+    kill_xp  i32 = 30
+    bonus_xp i32 = 20
+    z        i32
     z = add_xp(ref kill_xp, ref bonus_xp)
     output("<", z, ">\n")
 ```
@@ -1696,12 +1704,12 @@ declare i32 @printf(i8*, ...)
 ```ura
 // functions/019.ura - compound ref assign through in a loop
 
-fn tick(ref kills int) void:
+fn tick(ref kills i32) void:
     kills += 1
 
 main():
-    kills int = 0
-    i     int = 0
+    kills i32 = 0
+    i     i32 = 0
     while i < 5:
         tick(ref kills)
         i = i + 1
@@ -1807,12 +1815,12 @@ declare i32 @printf(i8*, ...)
 ```ura
 // functions/020.ura - ref-to-value: ref passing a where value is expected
 
-fn show_hp(hp int) void:
+fn show_hp(hp i32) void:
     output("HP: ", hp, "\n")
 
 main():
-    hero_hp int = 75
-    ref r int = ref hero_hp
+    hero_hp i32 = 75
+    ref r i32 = ref hero_hp
     show_hp(r)
 ```
 
@@ -1887,11 +1895,11 @@ entry:
 ```ura
 // functions/021.ura - ref parameter mutates the caller (counter)
 
-fn tick(ref n int) int:
+fn tick(ref n i32) i32:
     n = n + 1
     return n
 main():
-    n int = 0
+    n i32 = 0
     tick(ref n)
     tick(ref n)
     return n
@@ -1970,10 +1978,10 @@ entry:
 ```ura
 // functions/022.ura - a void function with a ref parameter
 
-fn bump(ref n int) void:
+fn bump(ref n i32) void:
     n = n + 1
 main():
-    n int = 5
+    n i32 = 5
     bump(ref n)
     return n
 ```
@@ -2035,5 +2043,320 @@ entry:
   call void @bump(i32* %n)
   %n1 = load i32, i32* %n, align 4
   ret i32 %n1
+}
+```
+
+## 023 — redeclaring a function
+
+```ura
+// functions/023.ura - two functions with the same name
+
+fn dup() i32:
+    return 1
+
+fn dup() i32:
+    return 2
+
+main():
+    return dup()
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Redeclaration of function 'dup'
+  023.ura:6:1
+  |
+6 | fn dup() i32:
+  | ^^
+```
+
+```ll
+```
+
+## 024 — calling a function that does not exist
+
+```ura
+// functions/024.ura - undeclared function
+
+main():
+    return bar(3)
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Undeclared function 'bar'
+  024.ura:4:12
+  |
+4 |     return bar(3)
+  |            ^^^
+```
+
+```ll
+```
+
+## 025 — too many arguments
+
+```ura
+// functions/025.ura - wrong argument count
+
+fn add(a i32, b i32) i32:
+    return a + b
+
+main():
+    x i32 = add(1, 2, 3)
+    output(x, "\n")
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Wrong number of arguments to 'add'
+  025.ura:7:13
+  |
+7 |     x i32 = add(1, 2, 3)
+  |             ^^^
+```
+
+```ll
+```
+
+## 026 — an argument of the wrong type
+
+```ura
+// functions/026.ura - argument type mismatch
+
+fn show(s chars) void:
+    output(s, "\n")
+
+main():
+    show(42)
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Argument 1 type mismatch in call to 'show'
+  026.ura:7:10
+  |
+7 |     show(42)
+  |          ^^
+```
+
+```ll
+```
+
+## 027 — two parameters with the same name
+
+```ura
+// functions/027.ura - duplicate parameter
+
+fn add(a i32, a i32) i32:
+    return a
+
+main():
+    output(add(1, 2), "\n")
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Redeclaration of variable 'a'
+  027.ura:3:15
+  |
+3 | fn add(a i32, a i32) i32:
+  |               ^
+```
+
+```ll
+```
+
+## 028 — a function-typed parameter given a value
+
+```ura
+// functions/028.ura - fn-typed parameter mismatch
+
+fn twice(n i32) i32:
+    return n + n
+
+fn apply(f fn(i32) i32, x i32) i32:
+    return f(x)
+
+main():
+    return apply(5, 21)
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Argument 1 type mismatch in call to 'apply'
+   028.ura:10:18
+   |
+10 |     return apply(5, 21)
+   |                  ^
+```
+
+```ll
+```
+
+## 029 — a variadic call missing its required arguments
+
+```ura
+// functions/029.ura - variadic still needs its named parameters
+
+proto fn printf(fmt chars, ...) i32
+
+main():
+    printf()
+    return 0
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Wrong number of arguments to 'printf'
+  029.ura:6:5
+  |
+6 |     printf()
+  |     ^^^^^^
+```
+
+```ll
+```
+
+## 023 — a bare `return` in a void function
+
+```ura
+// functions/023.ura - return with no value must not consume the next statement
+
+fn announce() void:
+    output("floor cleared\n")
+    return
+
+fn guard(hp i32) void:
+    if hp <= 0:
+        output("down\n")
+        return
+    output("still up\n")
+
+main():
+    announce()
+    guard(0)
+    guard(5)
+```
+
+```tree
+proto fn printf(format : chars, ...) : i32
+
+proto fn calloc(len : i64, size : i64) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
+
+proto fn exit(code : i32) : void
+
+fn announce() : void
+├─ output : void
+│  └─ chars "floor cleared\n"
+└─ return
+
+fn guard(hp : i32) : void
+├─ if
+│  ├─ condition <= : bool
+│  │  ├─ hp : i32
+│  │  └─ int 0
+│  ├─ output : void
+│  │  └─ chars "down\n"
+│  └─ return
+└─ output : void
+   └─ chars "still up\n"
+
+fn main() : i32
+├─ call announce : void
+├─ call guard : void
+│  └─ int 0
+└─ call guard : void
+   └─ int 5
+```
+
+```out
+floor cleared
+down
+still up
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [15 x i8] c"floor cleared\0A\00", align 1
+@fmt = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@str.1 = private unnamed_addr constant [6 x i8] c"down\0A\00", align 1
+@fmt.2 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@str.3 = private unnamed_addr constant [10 x i8] c"still up\0A\00", align 1
+@fmt.4 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+
+define void @announce() {
+entry:
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @str, i32 0, i32 0))
+  ret void
+}
+
+declare i32 @printf(i8*, ...)
+
+define void @guard(i32 %0) {
+entry:
+  %hp = alloca i32, align 4
+  store i32 %0, i32* %hp, align 4
+  %hp1 = load i32, i32* %hp, align 4
+  %le = icmp sle i32 %hp1, 0
+  br i1 %le, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.4, i32 0, i32 0), i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.3, i32 0, i32 0))
+  ret void
+
+then:                                             ; preds = %entry
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.2, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.1, i32 0, i32 0))
+  ret void
+}
+
+define i32 @main() {
+entry:
+  call void @announce()
+  call void @guard(i32 0)
+  call void @guard(i32 5)
+  ret i32 0
 }
 ```

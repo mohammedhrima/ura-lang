@@ -3,9 +3,9 @@
 //   ura src/globals.ura -exec
 
 struct Counter:
-    hits int
+    hits i32
 
-    pub fn create(n int) Counter:
+    pub fn create(n i32) Counter:
         c Counter
         c.hits = n
         return c
@@ -20,11 +20,11 @@ struct Counter:
         output("  DROP counter at ", self.hits, "\n")
 
 name  chars   = "ura"
-ratio float   = 1.5
+ratio f32   = 1.5
 flag  bool    = True
 tally Counter = Counter::create(10)
-xs    int[]   = int[3]
-heap  int[]   = new int[2]
+xs    i32[]   = i32[3]
+heap  i32[]   = new i32[2]
 
 fn touch() void:
     total += 1
@@ -50,10 +50,10 @@ main():
     clean heap
 
     output("5. a local shadows a global\n")
-    total int = 99
+    total i32 = 99
     output("  local total ", total, "\n")
 
     output("6. the global drops after main's last line\n")
 
 // declared after every use above
-total int = 7
+total i32 = 7

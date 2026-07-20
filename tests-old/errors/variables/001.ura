@@ -1,7 +1,0 @@
-// errors/variables/001 — variable redefinition in same scope
-use "@/header"
-
-main():
-    x int = 5
-    x int = 10
-    output(x, "\n")

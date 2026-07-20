@@ -1,6 +1,6 @@
 // Memory allocation
-proto fn malloc(size int) pointer
-proto fn calloc(len long, size long) pointer
-proto fn realloc(ptr pointer, newSize int) pointer
+proto fn malloc(size i32) pointer
+proto fn calloc(len i64, size i64) pointer
+proto fn realloc(ptr pointer, newSize i32) pointer
 proto fn free(ptr pointer) void
-proto fn aligned_alloc(alignment int, size int) pointer
+proto fn aligned_alloc(alignment i32, size i32) pointer

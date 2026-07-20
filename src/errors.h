@@ -176,7 +176,8 @@
 
 #define ERR_OPERATOR_EXPECTED \
 	"Expected an operator after 'operator'" \
-	" (one of + - * / %% == != < > <= >= = += -= *= /= %%= drop)"
+	" (one of + - * / %% & | ^ << >> == != < > <= >= =" \
+	" += -= *= /= %%= &= |= ^= <<= >>= drop)"
 
 #define ERR_METHOD_NEEDS_RECEIVER \
 	"'%s::%s' needs a receiver;" \

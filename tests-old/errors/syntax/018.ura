@@ -1,9 +1,0 @@
-// errors/syntax/018 — `struct` missing identifier
-use "@/header"
-
-struct:
-    x int
-    y int
-
-main():
-    output("hi\n")

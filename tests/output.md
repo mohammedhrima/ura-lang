@@ -201,10 +201,10 @@ declare void @exit(i32)
 
 main():
     name  chars = "Aldric"
-    hp    int   = 100
+    hp    i32   = 100
     grade char  = 'S'
     alive bool  = True
-    speed float = 1.75
+    speed f32 = 1.75
 
     output("Name:  ", name,  "\n")
     output("HP:    ", hp,    "\n")
@@ -332,7 +332,7 @@ declare i32 @printf(i8*, ...)
 
 main():
     name chars = "ura"
-    n int = 42
+    n i32 = 42
     ok bool = True
     output("hello ", name, " ", n, " ", ok, "\n")
     return 0

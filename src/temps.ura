@@ -8,9 +8,9 @@
 //   ura src/temps.ura -exec
 
 struct R:
-    id int
+    id i32
 
-    pub fn create(n int) R:
+    pub fn create(n i32) R:
         r R
         r.id = n
         return r
@@ -27,7 +27,7 @@ struct R:
     operator drop:
         output("  DROP ", self.id, "\n")
 
-fn via_return(a R, b R) int:
+fn via_return(a R, b R) i32:
     return (a + b).id
 
 main():
@@ -47,7 +47,7 @@ main():
     output("   (statement over)\n")
 
     output("4. once per iteration, not once per loop\n")
-    i int = 0
+    i i32 = 0
     while i < 2:
         (a + b).show()
         i += 1
@@ -60,7 +60,7 @@ main():
     output("   (statement over)\n")
 
     output("7. break and continue drain before they branch\n")
-    j int = 0
+    j i32 = 0
     loop:
         if j >= 3:
             break
@@ -76,10 +76,10 @@ main():
     output("end of main - a and b go last, in reverse\n")
 
 struct Vec2:
-    x int
-    y int
+    x i32
+    y i32
 
-    pub fn create(a int, b int) Vec2:
+    pub fn create(a i32, b i32) Vec2:
         v Vec2
         v.x = a
         v.y = b

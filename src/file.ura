@@ -16,7 +16,7 @@ use "util"
 fn rule(title chars) void:
     output("\n== ", title, " ==\n")
 
-fn verdict(hp int) chars:
+fn verdict(hp i32) chars:
     grade chars = "?"
     match hp:
         case 0:
@@ -57,7 +57,7 @@ main():
     goblin.describe()
     output("preview power ", preview(goblin))
     output(" - caller hp untouched: ", goblin.hp, "\n")
-    turn int = 1
+    turn i32 = 1
     while goblin.is_dead() == False:
         strike(ref goblin, 11)
         output("  turn ", turn, " goblin hp ", goblin.hp, "\n")
@@ -101,10 +101,10 @@ main():
     rule("free functions: higher order, recursion, casts")
     output("seed(9) ", seed(9), "  fib(10) ", fib(10), "\n")
     output("outer(5) ", outer(5), "\n")
-    doubler fn(int) int = twice
+    doubler fn(i32) i32 = twice
     output("via fn value     ", doubler(21), "\n")
     output("via higher order ", apply(thrice, 14), "\n")
-    xs int[] = [1, 2, 3, 4]
+    xs i32[] = [1, 2, 3, 4]
     output("apply_all twice  ") apply_all(twice, xs)
     output("apply_all thrice ") apply_all(thrice, xs)
     casts()
@@ -112,9 +112,9 @@ main():
     unary()
 
     rule("C interop: a variadic proto with promotion")
-    f  float = 3.5
+    f  f32 = 3.5
     ch char  = 'A'
-    sh short = 7 as short
+    sh i16 = 7 as i16
     printf("printf %.2f %c %d %d\n", f, ch, sh, 42)
     puts("puts goes straight to libc")
 

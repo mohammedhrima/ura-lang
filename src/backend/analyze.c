@@ -430,7 +430,9 @@ void analyze(Node *node) {
       }
       case CLEAN: analyze(node->left); break;
       case ASSIGN: case ADD: case SUB: case MUL: case DIV: case MOD:
-      case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN: case MOD_ASSIGN:
+      case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN:
+      case MOD_ASSIGN: case BAND_ASSIGN: case BOR_ASSIGN: case BXOR_ASSIGN:
+      case LSHIFT_ASSIGN: case RSHIFT_ASSIGN:
       case EQUAL: case NOT_EQUAL: case LESS: case GREAT: case LESS_EQUAL: case GREAT_EQUAL:
       case AND: case OR:
       case BAND: case BOR: case BXOR: case LSHIFT: case RSHIFT:

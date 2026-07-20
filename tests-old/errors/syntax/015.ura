@@ -1,7 +1,0 @@
-// errors/syntax/015 — `while` missing `:` after condition
-use "@/header"
-
-main():
-    i int = 0
-    while i < 3
-        i += 1

@@ -15,8 +15,8 @@
 // Re-declaring any of these via use "@/io" / "@/memory" / "@/stdlib" is fine —
 // identical protos collapse to one declaration.
 
-proto fn printf(format chars, ...) int
-proto fn calloc(len long, size long) pointer
+proto fn printf(format chars, ...) i32
+proto fn calloc(len i64, size i64) pointer
 proto fn free(ptr pointer) void
-proto fn write(fd int, ptr pointer, len long) long
-proto fn exit(code int) void
+proto fn write(fd i32, ptr pointer, len i64) i64
+proto fn exit(code i32) void

@@ -1,5 +1,0 @@
-[1m[0;31merror: [0mRedeclaration of variable 'a'
-  [2mtests/errors/variables/007.ura:5:5[0m
-  [1m[34m|[0m
-[1m[34m5 |[0m     a int = 2
-  [1m[34m|[0m     [1;31m^[0m

@@ -1,6 +1,0 @@
-// parse_errors/011 — index expression missing closing `]`
-use "@/header"
-
-main():
-    arr array[int] = stack[int](3)
-    x int = arr[0

@@ -3,21 +3,21 @@
 
 struct Player:
     name  chars
-    hp    int
-    mp    int
-    xp    long
+    hp    i32
+    mp    i32
+    xp    i64
     grade char
-    speed float
+    speed f32
     alive bool
     pos   Vec2
     pack  Bag
 
-    pub fn create(n chars, hp int) Player:
+    pub fn create(n chars, hp i32) Player:
         p Player
         p.name  = n
         p.hp    = hp
         p.mp    = 20
-        p.xp    = 0 as long
+        p.xp    = 0 as i64
         p.grade = 'C'
         p.speed = 1.5
         p.alive = True
@@ -28,31 +28,31 @@ struct Player:
     fn walk(delta Vec2) void:
         self.pos += delta
 
-    fn hurt(amount int) void:
+    fn hurt(amount i32) void:
         self.hp = self.hp - amount
         if self.hp <= 0:
             self.hp    = 0
             self.alive = False
 
-    fn heal(amount int) void:
+    fn heal(amount i32) void:
         self.hp = self.clamp(self.hp + amount, 0, 100)
 
-    fn clamp(v int, lo int, hi int) int:
+    fn clamp(v i32, lo i32, hi i32) i32:
         if v < lo:
             return lo
         if v > hi:
             return hi
         return v
 
-    fn reward(gold int) void:
+    fn reward(gold i32) void:
         self.pack += gold
-        self.xp = self.xp + (gold as long)
+        self.xp = self.xp + (gold as i64)
         self.promote()
 
     fn promote() void:
-        if self.xp >= 60 as long:
+        if self.xp >= 60 as i64:
             self.grade = 'A'
-        elif self.xp >= 30 as long:
+        elif self.xp >= 30 as i64:
             self.grade = 'B'
 
     fn describe() void:
@@ -64,11 +64,11 @@ struct Player:
 
 struct Monster:
     kind  chars
-    hp    int
-    power int
+    hp    i32
+    power i32
     pos   Vec2
 
-    pub fn create(k chars, hp int, power int, at Vec2) Monster:
+    pub fn create(k chars, hp i32, power i32, at Vec2) Monster:
         m Monster
         m.kind  = k
         m.hp    = hp
@@ -85,16 +85,16 @@ struct Monster:
         return self.hp <= 0
 
 // a by-value struct parameter: the caller's copy is untouched
-fn preview(m Monster) int:
+fn preview(m Monster) i32:
     m.hp = 0
     return m.power
 
 // a ref struct parameter: the caller's struct IS mutated
-fn strike(ref m Monster, force int) void:
+fn strike(ref m Monster, force i32) void:
     m.hp = m.hp - force
 
 // refs to scalars, and a swap
-fn swap(ref a int, ref b int) void:
-    t int = a
+fn swap(ref a i32, ref b i32) void:
+    t i32 = a
     a = b
     b = t

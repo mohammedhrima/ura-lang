@@ -1,6 +1,0 @@
-// errors/variables/002 — using an undefined variable
-use "@/header"
-
-main():
-    x int = 5
-    output(y, "\n")

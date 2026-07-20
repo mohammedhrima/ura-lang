@@ -1,4 +1,0 @@
-// errors/functions/010 — undeclared function
-
-main():
-    return bar(3)

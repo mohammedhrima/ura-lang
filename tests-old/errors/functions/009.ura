@@ -1,7 +1,0 @@
-// errors/functions/009 — a nested fn may not use an enclosing function's local
-
-main():
-    x int = 10
-    fn bad() int:
-        return x
-    return bad()
