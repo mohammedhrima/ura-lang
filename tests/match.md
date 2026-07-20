@@ -28,13 +28,13 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : i32
+proto fn printf(format : pointer, ...) : i32
 
-proto fn calloc(len : i64, size : i64) : chars
+proto fn calloc(len : i64, size : i64) : pointer
 
-proto fn free(ptr : chars) : void
+proto fn free(ptr : pointer) : void
 
-proto fn write(fd : i32, ptr : chars, len : i64) : i64
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
@@ -47,10 +47,10 @@ fn main() : i32
    ├─ case
    │  ├─ value int 1
    │  └─ output : void
-   │     └─ chars "one\n"
+   │     └─ char[] "one\n"
    └─ default
       └─ output : void
-         └─ chars "other\n"
+         └─ char[] "other\n"
 ```
 
 ```out
@@ -63,9 +63,9 @@ one
 ```ll
 
 @str = private unnamed_addr constant [5 x i8] c"one\0A\00", align 1
-@fmt = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
 @str.1 = private unnamed_addr constant [7 x i8] c"other\0A\00", align 1
-@fmt.2 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt.2 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
 
 define i32 @main() {
 entry:
@@ -79,11 +79,11 @@ match.end:                                        ; preds = %case.next, %case.bo
   ret i32 0
 
 case.body:                                        ; preds = %entry
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str, i32 0, i32 0))
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt, i32 0, i32 0), i32 4, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str, i32 0, i32 0))
   br label %match.end
 
 case.next:                                        ; preds = %entry
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.2, i32 0, i32 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.1, i32 0, i32 0))
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.2, i32 0, i32 0), i32 6, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.1, i32 0, i32 0))
   br label %match.end
 }
 
@@ -104,13 +104,13 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : i32
+proto fn printf(format : pointer, ...) : i32
 
-proto fn calloc(len : i64, size : i64) : chars
+proto fn calloc(len : i64, size : i64) : pointer
 
-proto fn free(ptr : chars) : void
+proto fn free(ptr : pointer) : void
 
-proto fn write(fd : i32, ptr : chars, len : i64) : i64
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
@@ -125,10 +125,10 @@ fn main() : i32
    │  ├─ value int 2
    │  ├─ value int 3
    │  └─ output : void
-   │     └─ chars "small\n"
+   │     └─ char[] "small\n"
    └─ default
       └─ output : void
-         └─ chars "big\n"
+         └─ char[] "big\n"
 ```
 
 ```out
@@ -141,9 +141,9 @@ small
 ```ll
 
 @str = private unnamed_addr constant [7 x i8] c"small\0A\00", align 1
-@fmt = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
 @str.1 = private unnamed_addr constant [5 x i8] c"big\0A\00", align 1
-@fmt.2 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt.2 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
 
 define i32 @main() {
 entry:
@@ -161,11 +161,11 @@ match.end:                                        ; preds = %case.next, %case.bo
   ret i32 0
 
 case.body:                                        ; preds = %entry
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0))
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt, i32 0, i32 0), i32 6, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0))
   br label %match.end
 
 case.next:                                        ; preds = %entry
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.2, i32 0, i32 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.1, i32 0, i32 0))
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.2, i32 0, i32 0), i32 4, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.1, i32 0, i32 0))
   br label %match.end
 }
 
@@ -186,13 +186,13 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : i32
+proto fn printf(format : pointer, ...) : i32
 
-proto fn calloc(len : i64, size : i64) : chars
+proto fn calloc(len : i64, size : i64) : pointer
 
-proto fn free(ptr : chars) : void
+proto fn free(ptr : pointer) : void
 
-proto fn write(fd : i32, ptr : chars, len : i64) : i64
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
@@ -205,10 +205,10 @@ fn main() : i32
    ├─ case
    │  ├─ value int 1
    │  └─ output : void
-   │     └─ chars "one\n"
+   │     └─ char[] "one\n"
    └─ default
       └─ output : void
-         └─ chars "fallback\n"
+         └─ char[] "fallback\n"
 ```
 
 ```out
@@ -221,9 +221,9 @@ fallback
 ```ll
 
 @str = private unnamed_addr constant [5 x i8] c"one\0A\00", align 1
-@fmt = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
 @str.1 = private unnamed_addr constant [10 x i8] c"fallback\0A\00", align 1
-@fmt.2 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt.2 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
 
 define i32 @main() {
 entry:
@@ -237,11 +237,11 @@ match.end:                                        ; preds = %case.next, %case.bo
   ret i32 0
 
 case.body:                                        ; preds = %entry
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str, i32 0, i32 0))
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt, i32 0, i32 0), i32 4, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str, i32 0, i32 0))
   br label %match.end
 
 case.next:                                        ; preds = %entry
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.2, i32 0, i32 0), i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.1, i32 0, i32 0))
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.2, i32 0, i32 0), i32 9, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.1, i32 0, i32 0))
   br label %match.end
 }
 
@@ -262,13 +262,13 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : i32
+proto fn printf(format : pointer, ...) : i32
 
-proto fn calloc(len : i64, size : i64) : chars
+proto fn calloc(len : i64, size : i64) : pointer
 
-proto fn free(ptr : chars) : void
+proto fn free(ptr : pointer) : void
 
-proto fn write(fd : i32, ptr : chars, len : i64) : i64
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
@@ -281,10 +281,10 @@ fn main() : i32
    └─ case
       ├─ value int 1
       ├─ output : void
-      │  └─ chars "before\n"
+      │  └─ char[] "before\n"
       ├─ break
       └─ output : void
-         └─ chars "after\n"
+         └─ char[] "after\n"
 ```
 
 ```out
@@ -297,7 +297,7 @@ before
 ```ll
 
 @str = private unnamed_addr constant [8 x i8] c"before\0A\00", align 1
-@fmt = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
 
 define i32 @main() {
 entry:
@@ -311,7 +311,7 @@ match.end:                                        ; preds = %case.body, %entry
   ret i32 0
 
 case.body:                                        ; preds = %entry
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str, i32 0, i32 0))
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str, i32 0, i32 0))
   br label %match.end
 }
 
@@ -333,13 +333,13 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : i32
+proto fn printf(format : pointer, ...) : i32
 
-proto fn calloc(len : i64, size : i64) : chars
+proto fn calloc(len : i64, size : i64) : pointer
 
-proto fn free(ptr : chars) : void
+proto fn free(ptr : pointer) : void
 
-proto fn write(fd : i32, ptr : chars, len : i64) : i64
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
@@ -363,7 +363,7 @@ fn main() : i32
    │     └─ break
    └─ output : void
       ├─ i : i32
-      └─ chars "\n"
+      └─ char[] "\n"
 ```
 
 ```out
@@ -378,7 +378,7 @@ fn main() : i32
 ```ll
 
 @str = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt = private unnamed_addr constant [5 x i8] c"%d%s\00", align 1
+@fmt = private unnamed_addr constant [7 x i8] c"%d%.*s\00", align 1
 
 define i32 @main() {
 entry:
@@ -404,7 +404,7 @@ while.end:                                        ; preds = %while.cond
 
 match.end:                                        ; preds = %case.body, %while.body
   %i4 = load i32, i32* %i, align 4
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt, i32 0, i32 0), i32 %i4, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0))
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i32 %i4, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0))
   br label %while.cond
 
 case.body:                                        ; preds = %while.body
@@ -429,13 +429,13 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : i32
+proto fn printf(format : pointer, ...) : i32
 
-proto fn calloc(len : i64, size : i64) : chars
+proto fn calloc(len : i64, size : i64) : pointer
 
-proto fn free(ptr : chars) : void
+proto fn free(ptr : pointer) : void
 
-proto fn write(fd : i32, ptr : chars, len : i64) : i64
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
@@ -459,7 +459,7 @@ fn main() : i32
    │     └─ continue
    └─ output : void
       ├─ i : i32
-      └─ chars "\n"
+      └─ char[] "\n"
 ```
 
 ```out
@@ -473,7 +473,7 @@ fn main() : i32
 ```ll
 
 @str = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt = private unnamed_addr constant [5 x i8] c"%d%s\00", align 1
+@fmt = private unnamed_addr constant [7 x i8] c"%d%.*s\00", align 1
 
 define i32 @main() {
 entry:
@@ -499,7 +499,7 @@ while.end:                                        ; preds = %while.cond
 
 match.end:                                        ; preds = %while.body
   %i4 = load i32, i32* %i, align 4
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt, i32 0, i32 0), i32 %i4, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0))
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i32 %i4, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0))
   br label %while.cond
 
 case.body:                                        ; preds = %while.body
@@ -555,7 +555,7 @@ main():
 ```
 
 ```err
-error: This case value is chars but the subject is i32; they must be the same type
+error: This case value is array but the subject is i32; they must be the same type
   008.ura:5:15
   |
 5 |         case "x":

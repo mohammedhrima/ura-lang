@@ -3,6 +3,7 @@
 char *to_string(Type type) {
 	char *res[END + 1] = {
 	    [ID] = "ID",              [CHAR] = "CHAR",             [CHARS] = "CHARS",
+	    [PTR] = "PTR",
 	    [I8] = "I8",              [I16] = "I16",               [I32] = "I32",
 	    [I64] = "I64",            [U8] = "U8",                 [U16] = "U16",
 	    [U32] = "U32",            [U64] = "U64",               [F32] = "F32",
@@ -57,7 +58,7 @@ char *type_name(Type type) {
 	case U32:        return "u32";
 	case U64:        return "u64";
 	case CHAR:       return "char";
-	case CHARS:      return "chars";
+	case PTR:        return "pointer";
 	case BOOL:       return "bool";
 	case F32:        return "f32";
 	case F64:        return "f64";
@@ -254,7 +255,7 @@ static char *spelling[END + 1] = {
 		[I64] = "i64",       [U8] = "u8",           [U16] = "u16",
 		[U32] = "u32",       [U64] = "u64",         [F32] = "f32",
 		[F64] = "f64",       [BOOL] = "bool",       [CHAR] = "char",
-		[CHARS] = "chars",   [VOID] = "void",       [ADD] = "+",
+		[PTR] = "pointer",   [VOID] = "void",       [ADD] = "+",
 		[SUB] = "-",         [MUL] = "*",           [DIV] = "/",
 		[MOD] = "%",         [EQUAL] = "==",        [NOT_EQUAL] = "!=",
 		[LESS] = "<",        [GREAT] = ">",         [LESS_EQUAL] = "<=",
@@ -295,7 +296,7 @@ void print_node_label(Node *node) {
 		return;
 	}
 	case CHARS: {
-		printf("chars \"");
+		printf("char[] \"");
 		char *value = token->Chars.value;
 		for (int i = 0; value[i]; i++)
 			print_escaped(value[i]);
@@ -523,7 +524,10 @@ void render_caret(File out, Token *token, const char *color) {
 	for (int i = line_no; i >= 10; i /= 10)
 		gutter++;
 
-	fprintf(out, "%*s \033[2m%s:%d:%d\033[0m\n", gutter, "", token->source->filename, line_no, col);
+	char *name = token->source->filename;
+	char *lib  = strstr(name, "/ura-lib/");
+	if (lib) name = lib + 1;
+	fprintf(out, "%*s \033[2m%s:%d:%d\033[0m\n", gutter, "", name, line_no, col);
 	fprintf(out, "%*s " BLUE("|") "\n", gutter, "");
 	fprintf(out, BLUE("%*d |") " %.*s\n", gutter, line_no, line_end - line_start, content + line_start);
 	fprintf(out, "%*s " BLUE("|") " ", gutter, "");
@@ -565,6 +569,24 @@ void parse_warn(Token *token, const char *fmt, ...) {
 	size_t len = 0;
 	File   ms  = open_memstream(&buf, &len);
 	fprintf(ms, YELLOW("warning: "));
+	va_list ap;
+	va_start(ap, fmt);
+	vfprintf(ms, fmt, ap);
+	va_end(ap);
+	fputc('\n', ms);
+	render_caret(ms, token, CARET_WARN);
+	fclose(ms);
+
+	if (ura.no_color) decolor(buf);
+	fputs(buf, stderr);
+	free(buf);
+}
+
+void parse_note(Token *token, const char *fmt, ...) {
+	char  *buf = NULL;
+	size_t len = 0;
+	File   ms  = open_memstream(&buf, &len);
+	fprintf(ms, BLUE("note: "));
 	va_list ap;
 	va_start(ap, fmt);
 	vfprintf(ms, fmt, ap);

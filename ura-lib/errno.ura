@@ -17,9 +17,9 @@
 //     proto fn __error() pointer
 
 // strerror family — same on both
-proto fn strerror(errnum i32) chars
-proto fn strerror_r(errnum i32, buf chars, buflen i64) i32
-proto fn perror(s chars) void
+proto fn strerror(errnum i32) pointer
+proto fn strerror_r(errnum i32, buf pointer, buflen i64) i32
+proto fn perror(s pointer) void
 
 // ── Common errno values ───────────────────────────────────────────────────
 // 1..34 match between Linux and macOS (POSIX defines this baseline).

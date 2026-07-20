@@ -367,9 +367,13 @@ void emit_signature(Node *fn) {
          params[i] = token->Fn.params[i]->is_ref ? pointer_to(pt) : pt;
       }
    }
-   TypeRef ret = token->ret_type == STRUCT_CALL
-                 ? struct_type_of(token->Struct.ptr)
-                 : to_llvm_type(token->ret_type);
+   TypeRef ret;
+   if (token->ret_type == STRUCT_CALL)
+      ret = struct_type_of(token->Struct.ptr);
+   else if (token->ret_type == ARRAY_TYPE)
+      ret = array_type(token, token->Array.depth);
+   else
+      ret = to_llvm_type(token->ret_type);
    token->llvm.func_type = LLVMFunctionType(ret, params, n, token->is_variadic);
    token->llvm.elem      = LLVMAddFunction(ura.module, token->name, token->llvm.func_type);
    free(params);
@@ -471,6 +475,12 @@ void code_gen_array_lit(Node *node) {
    token->llvm.elem = agg;
 }
 
+Value string_slice(Token *token, char *text) {
+   Value str = llvm_string(text, "str");
+   Value len = LLVMConstInt(ura.i64, strlen(text), 0);
+   return make_slice(token, 1, str, len);
+}
+
 Value make_slice(Token *arr, int depth, Value data, Value len) {
    Value agg = LLVMGetUndef(array_type(arr, depth));
    agg = llvm_insert(agg, data, 0, "arr.ptr");
@@ -564,7 +574,7 @@ void free_array(Token *arr, Value slice, int depth) {
 
 void code_gen_typeof(Node *node) {
    char *name = type_name(node->left->token->ret_type);
-   node->token->llvm.elem = llvm_string(name, "typeof");
+   node->token->llvm.elem = string_slice(node->token, name);
 }
 
 void code_gen_sizeof(Node *node) {
@@ -587,7 +597,9 @@ void code_gen_literal(Node *node) {
    switch (token->type) {
       case I32:   token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Int.value, 0); break;
       case BOOL:  token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Bool.value, 0); break;
-      case CHARS: token->llvm.elem = llvm_string(token->Chars.value, "str"); break;
+      case CHARS:
+         token->llvm.elem = string_slice(token, token->Chars.value);
+         break;
       case CHAR:  token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Char.value, 0); break;
       case F32: token->llvm.elem = LLVMConstReal(to_llvm_type(token->ret_type), token->Float.value); break;
    }
@@ -720,6 +732,12 @@ void code_gen_id(Node *node) {
    token->llvm.elem = llvm_load(t, ptr, token->name);
 }
 
+Value decay_ptr(Type from, Type to, Value v) {
+   if (from != ARRAY_TYPE || to == ARRAY_TYPE || !is_pointer(to))
+      return v;
+   return llvm_extract(v, 0, "arr.data");
+}
+
 void code_gen_fcall(Node *node) {
    Token *token    = node->token;
    bool   indirect = token->Fcall.var != NULL;
@@ -735,7 +753,10 @@ void code_gen_fcall(Node *node) {
          Token *arg = node->children[i]->token;
          code_gen(node->children[i]);
          args[i + self] = arg->llvm.elem;
-         if (fn->is_variadic && i + self >= fn->Fn.params_count)
+         bool extra = fn->is_variadic && i + self >= fn->Fn.params_count;
+         Type want  = extra ? PTR : fn->Fn.params[i + self]->ret_type;
+         args[i + self] = decay_ptr(arg->ret_type, want, args[i + self]);
+         if (extra && arg->ret_type != ARRAY_TYPE)
             args[i + self] = promote(arg->ret_type, args[i + self]);
       }
    }
@@ -1095,7 +1116,7 @@ Value print_adapt(Type type, Value v, char **spec) {
       case I64:   *spec = "%lld"; return v;
       case U32:   *spec = "%u";   return v;
       case U64:   *spec = "%llu"; return v;
-      case CHARS: *spec = "%s";   return v;
+      case PTR:   *spec = "%s";   return v;
       case I8: case I16:
          *spec = "%d";
          return LLVMBuildSExt(ura.builder, v, ura.i32, "s2i");
@@ -1146,6 +1167,11 @@ void emit_out_array(Token *field, Value slot, Value frame, int depth) {
    Value   slice = llvm_load(array_type(field, depth), slot, "arr");
    Value   data  = llvm_extract(slice, 0, "arr.data");
    Value   len   = llvm_extract(slice, 1, "arr.len");
+   if (depth == 1 && field->Array.sub_type == CHAR) {
+      Value n = LLVMBuildTrunc(ura.builder, len, ura.i32, "len32");
+      emit_printf("%.*s", (Value[]){ n, data }, 2);
+      return;
+   }
    TypeRef ety   = elem_type(field, depth);
    Value   fn    = here_func();
    Value   slot_i = llvm_alloca(ura.i64, "oi");
@@ -1311,7 +1337,7 @@ Value struct_arg_ptr(Node *arg) {
 void code_gen_output(Node *node) {
    char  *fmt   = allocate(node->children_count * 8 + 16, 1);
    int    fc    = 0;
-   Value *args  = allocate(node->children_count + 1, sizeof(Value));
+   Value *args  = allocate(node->children_count * 2 + 1, sizeof(Value));
    int    nargs = 0;
    Value  last  = NULL;
 
@@ -1327,6 +1353,24 @@ void code_gen_output(Node *node) {
          continue;
       }
       code_gen(arg);
+      if (is_string(token)) {
+         Value len = llvm_extract(token->llvm.elem, 1, "str.len");
+         args[nargs++] = LLVMBuildTrunc(ura.builder, len, ura.i32, "len32");
+         args[nargs++] = llvm_extract(token->llvm.elem, 0, "str.data");
+         for (char *s = "%.*s"; *s; s++) fmt[fc++] = *s;
+         continue;
+      }
+      if (token->ret_type == ARRAY_TYPE) {
+         if (fc) { fmt[fc] = 0; last = emit_printf(fmt, args, nargs); }
+         fc    = 0;
+         nargs = 0;
+         int     depth = token->Array.depth;
+         TypeRef at    = array_type(token, depth);
+         Value   slot  = LLVMBuildAlloca(ura.builder, at, "arr.tmp");
+         llvm_store(token->llvm.elem, slot);
+         emit_out_array(token, slot, LLVMConstNull(pointer_to(out_frame_type())), depth);
+         continue;
+      }
       char *spec = NULL;
       Value v    = print_adapt(token->ret_type, token->llvm.elem, &spec);
       if (!v) { fmt[fc++] = '?'; continue; }

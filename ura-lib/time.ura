@@ -26,7 +26,7 @@ struct Tm:
     tm_yday   i32
     tm_isdst  i32
     tm_gmtoff i64          // i64
-    tm_zone   chars         // const char *
+    tm_zone   pointer       // const char *
 
 // Time manipulation
 proto fn time(timer pointer) i64
@@ -43,11 +43,11 @@ proto fn gmtime_r(ref timer i64, result pointer) pointer
 proto fn localtime_r(ref timer i64, result pointer) pointer
 
 // Formatting
-proto fn strftime(s chars, maxsize i64, format chars, timeptr pointer) i64
-proto fn asctime(timeptr pointer) chars
-proto fn ctime(timer pointer) chars
-proto fn asctime_r(timeptr pointer, buf chars) chars
-proto fn ctime_r(timer pointer, buf chars) chars
+proto fn strftime(s pointer, maxsize i64, format pointer, timeptr pointer) i64
+proto fn asctime(timeptr pointer) pointer
+proto fn ctime(timer pointer) pointer
+proto fn asctime_r(timeptr pointer, buf pointer) pointer
+proto fn ctime_r(timer pointer, buf pointer) pointer
 
 // High-resolution time (CLOCK_REALTIME = 0 on both Linux and macOS).
 // Timespec/Timeval args are typed `pointer` so callers can pass `ref ts` or

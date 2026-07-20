@@ -25,7 +25,7 @@
 //         d_name0    char           // start of inline name buffer (1024 chars on Darwin)
 
 // DIR* is opaque on both — use `pointer`.
-proto fn opendir(path chars) pointer
+proto fn opendir(path pointer) pointer
 proto fn fdopendir(fd i32) pointer
 proto fn closedir(dirp pointer) i32
 proto fn readdir(dirp pointer) pointer   // returns struct dirent*

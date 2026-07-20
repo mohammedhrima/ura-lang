@@ -24,7 +24,7 @@
 // variables/001.ura - hero stats: declare all common types
 
 main():
-    name  chars = "Aldric"
+    name  char[] = "Aldric"
     hp    i32   = 100
     mp    i32   = 50
     alive bool  = True
@@ -35,20 +35,20 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : i32
+proto fn printf(format : pointer, ...) : i32
 
-proto fn calloc(len : i64, size : i64) : chars
+proto fn calloc(len : i64, size : i64) : pointer
 
-proto fn free(ptr : chars) : void
+proto fn free(ptr : pointer) : void
 
-proto fn write(fd : i32, ptr : chars, len : i64) : i64
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
 fn main() : i32
-├─ = : chars
-│  ├─ name : chars
-│  └─ chars "Aldric"
+├─ = : array
+│  ├─ name : char[]
+│  └─ char[] "Aldric"
 ├─ = : i32
 │  ├─ hp : i32
 │  └─ int 100
@@ -62,21 +62,21 @@ fn main() : i32
 │  ├─ speed : f32
 │  └─ float 1.5
 ├─ output : void
-│  ├─ chars "=== "
-│  ├─ name : chars
-│  └─ chars " enters the dungeon ===\n"
+│  ├─ char[] "=== "
+│  ├─ name : char[]
+│  └─ char[] " enters the dungeon ===\n"
 ├─ output : void
-│  ├─ chars "HP: "
+│  ├─ char[] "HP: "
 │  ├─ hp : i32
-│  ├─ chars " | MP: "
+│  ├─ char[] " | MP: "
 │  ├─ mp : i32
-│  ├─ chars " | Speed: "
+│  ├─ char[] " | Speed: "
 │  ├─ speed : f32
-│  └─ chars "\n"
+│  └─ char[] "\n"
 └─ output : void
-   ├─ chars "Alive: "
+   ├─ char[] "Alive: "
    ├─ alive : bool
-   └─ chars "\n"
+   └─ char[] "\n"
 ```
 
 ```out
@@ -93,22 +93,22 @@ Alive: True
 @str = private unnamed_addr constant [7 x i8] c"Aldric\00", align 1
 @str.1 = private unnamed_addr constant [5 x i8] c"=== \00", align 1
 @str.2 = private unnamed_addr constant [25 x i8] c" enters the dungeon ===\0A\00", align 1
-@fmt = private unnamed_addr constant [7 x i8] c"%s%s%s\00", align 1
+@fmt = private unnamed_addr constant [13 x i8] c"%.*s%.*s%.*s\00", align 1
 @str.3 = private unnamed_addr constant [5 x i8] c"HP: \00", align 1
 @str.4 = private unnamed_addr constant [8 x i8] c" | MP: \00", align 1
 @str.5 = private unnamed_addr constant [11 x i8] c" | Speed: \00", align 1
 @str.6 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.7 = private unnamed_addr constant [15 x i8] c"%s%d%s%d%s%f%s\00", align 1
+@fmt.7 = private unnamed_addr constant [23 x i8] c"%.*s%d%.*s%d%.*s%f%.*s\00", align 1
 @str.8 = private unnamed_addr constant [8 x i8] c"Alive: \00", align 1
 @true_str = private unnamed_addr constant [5 x i8] c"True\00", align 1
 @false_str = private unnamed_addr constant [6 x i8] c"False\00", align 1
 @str.9 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.10 = private unnamed_addr constant [7 x i8] c"%s%s%s\00", align 1
+@fmt.10 = private unnamed_addr constant [11 x i8] c"%.*s%s%.*s\00", align 1
 
 define i32 @main() {
 entry:
-  %name = alloca i8*, align 8
-  store i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i8** %name, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } { i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i64 6 }, { i8*, i64 }* %name, align 8
   %hp = alloca i32, align 4
   store i32 100, i32* %hp, align 4
   %mp = alloca i32, align 4
@@ -117,16 +117,19 @@ entry:
   store i1 true, i1* %alive, align 1
   %speed = alloca float, align 4
   store float 1.500000e+00, float* %speed, align 4
-  %name1 = load i8*, i8** %name, align 8
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.1, i32 0, i32 0), i8* %name1, i8* getelementptr inbounds ([25 x i8], [25 x i8]* @str.2, i32 0, i32 0))
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %str.len = extractvalue { i8*, i64 } %name1, 1
+  %len32 = trunc i64 %str.len to i32
+  %str.data = extractvalue { i8*, i64 } %name1, 0
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt, i32 0, i32 0), i32 4, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.1, i32 0, i32 0), i32 %len32, i8* %str.data, i32 24, i8* getelementptr inbounds ([25 x i8], [25 x i8]* @str.2, i32 0, i32 0))
   %hp2 = load i32, i32* %hp, align 4
   %mp3 = load i32, i32* %mp, align 4
   %speed4 = load float, float* %speed, align 4
   %f2d = fpext float %speed4 to double
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @fmt.7, i32 0, i32 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.3, i32 0, i32 0), i32 %hp2, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.4, i32 0, i32 0), i32 %mp3, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.5, i32 0, i32 0), double %f2d, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.6, i32 0, i32 0))
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([23 x i8], [23 x i8]* @fmt.7, i32 0, i32 0), i32 4, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.3, i32 0, i32 0), i32 %hp2, i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.4, i32 0, i32 0), i32 %mp3, i32 10, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.5, i32 0, i32 0), double %f2d, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.6, i32 0, i32 0))
   %alive5 = load i1, i1* %alive, align 1
   %bool_str = select i1 %alive5, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str, i32 0, i32 0)
-  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.10, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.8, i32 0, i32 0), i8* %bool_str, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.9, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.10, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.8, i32 0, i32 0), i8* %bool_str, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.9, i32 0, i32 0))
   ret i32 0
 }
 
@@ -154,13 +157,13 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : i32
+proto fn printf(format : pointer, ...) : i32
 
-proto fn calloc(len : i64, size : i64) : chars
+proto fn calloc(len : i64, size : i64) : pointer
 
-proto fn free(ptr : chars) : void
+proto fn free(ptr : pointer) : void
 
-proto fn write(fd : i32, ptr : chars, len : i64) : i64
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
@@ -186,19 +189,19 @@ fn main() : i32
 │  ├─ xp : i32
 │  └─ int 50
 ├─ output : void
-│  └─ chars "After combat:\n"
+│  └─ char[] "After combat:\n"
 ├─ output : void
-│  ├─ chars "HP: "
+│  ├─ char[] "HP: "
 │  ├─ hp : i32
-│  └─ chars "\n"
+│  └─ char[] "\n"
 ├─ output : void
-│  ├─ chars "MP: "
+│  ├─ char[] "MP: "
 │  ├─ mp : i32
-│  └─ chars "\n"
+│  └─ char[] "\n"
 └─ output : void
-   ├─ chars "XP: "
+   ├─ char[] "XP: "
    ├─ xp : i32
-   └─ chars "\n"
+   └─ char[] "\n"
 ```
 
 ```out
@@ -214,16 +217,16 @@ XP: 50
 ```ll
 
 @str = private unnamed_addr constant [15 x i8] c"After combat:\0A\00", align 1
-@fmt = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
 @str.1 = private unnamed_addr constant [5 x i8] c"HP: \00", align 1
 @str.2 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.3 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@fmt.3 = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
 @str.4 = private unnamed_addr constant [5 x i8] c"MP: \00", align 1
 @str.5 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.6 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@fmt.6 = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
 @str.7 = private unnamed_addr constant [5 x i8] c"XP: \00", align 1
 @str.8 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.9 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@fmt.9 = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
 
 define i32 @main() {
 entry:
@@ -242,13 +245,13 @@ entry:
   %cur3 = load i32, i32* %xp, align 4
   %add = add i32 %cur3, 50
   store i32 %add, i32* %xp, align 4
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @str, i32 0, i32 0))
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt, i32 0, i32 0), i32 14, i8* getelementptr inbounds ([15 x i8], [15 x i8]* @str, i32 0, i32 0))
   %hp4 = load i32, i32* %hp, align 4
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.3, i32 0, i32 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.1, i32 0, i32 0), i32 %hp4, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0))
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.3, i32 0, i32 0), i32 4, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.1, i32 0, i32 0), i32 %hp4, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0))
   %mp5 = load i32, i32* %mp, align 4
-  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.6, i32 0, i32 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.4, i32 0, i32 0), i32 %mp5, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.6, i32 0, i32 0), i32 4, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.4, i32 0, i32 0), i32 %mp5, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i32 0, i32 0))
   %xp6 = load i32, i32* %xp, align 4
-  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.9, i32 0, i32 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.7, i32 0, i32 0), i32 %xp6, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.8, i32 0, i32 0))
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.9, i32 0, i32 0), i32 4, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.7, i32 0, i32 0), i32 %xp6, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.8, i32 0, i32 0))
   ret i32 0
 }
 
@@ -261,7 +264,7 @@ declare i32 @printf(i8*, ...)
 // variables/003.ura - all primitive types in one place
 
 main():
-    name   chars = "Aldric"
+    name   char[] = "Aldric"
     hp     i32   = 100
     xp     i64  = 999999 as i64
     level  i16 = 12 as i16
@@ -279,20 +282,20 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : i32
+proto fn printf(format : pointer, ...) : i32
 
-proto fn calloc(len : i64, size : i64) : chars
+proto fn calloc(len : i64, size : i64) : pointer
 
-proto fn free(ptr : chars) : void
+proto fn free(ptr : pointer) : void
 
-proto fn write(fd : i32, ptr : chars, len : i64) : i64
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
 fn main() : i32
-├─ = : chars
-│  ├─ name : chars
-│  └─ chars "Aldric"
+├─ = : array
+│  ├─ name : char[]
+│  └─ char[] "Aldric"
 ├─ = : i32
 │  ├─ hp : i32
 │  └─ int 100
@@ -314,33 +317,33 @@ fn main() : i32
 │  ├─ ratio : f32
 │  └─ float 0.85
 ├─ output : void
-│  ├─ chars "name:  "
-│  ├─ name : chars
-│  └─ chars "\n"
+│  ├─ char[] "name:  "
+│  ├─ name : char[]
+│  └─ char[] "\n"
 ├─ output : void
-│  ├─ chars "hp:    "
+│  ├─ char[] "hp:    "
 │  ├─ hp : i32
-│  └─ chars "\n"
+│  └─ char[] "\n"
 ├─ output : void
-│  ├─ chars "xp:    "
+│  ├─ char[] "xp:    "
 │  ├─ xp : i64
-│  └─ chars "\n"
+│  └─ char[] "\n"
 ├─ output : void
-│  ├─ chars "level: "
+│  ├─ char[] "level: "
 │  ├─ level : i16
-│  └─ chars "\n"
+│  └─ char[] "\n"
 ├─ output : void
-│  ├─ chars "grade: "
+│  ├─ char[] "grade: "
 │  ├─ grade : char
-│  └─ chars "\n"
+│  └─ char[] "\n"
 ├─ output : void
-│  ├─ chars "alive: "
+│  ├─ char[] "alive: "
 │  ├─ alive : bool
-│  └─ chars "\n"
+│  └─ char[] "\n"
 └─ output : void
-   ├─ chars "ratio: "
+   ├─ char[] "ratio: "
    ├─ ratio : f32
-   └─ chars "\n"
+   └─ char[] "\n"
 ```
 
 ```out
@@ -361,32 +364,32 @@ ratio: 0.850000
 @str = private unnamed_addr constant [7 x i8] c"Aldric\00", align 1
 @str.1 = private unnamed_addr constant [8 x i8] c"name:  \00", align 1
 @str.2 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt = private unnamed_addr constant [7 x i8] c"%s%s%s\00", align 1
+@fmt = private unnamed_addr constant [13 x i8] c"%.*s%.*s%.*s\00", align 1
 @str.3 = private unnamed_addr constant [8 x i8] c"hp:    \00", align 1
 @str.4 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.5 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@fmt.5 = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
 @str.6 = private unnamed_addr constant [8 x i8] c"xp:    \00", align 1
 @str.7 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.8 = private unnamed_addr constant [9 x i8] c"%s%lld%s\00", align 1
+@fmt.8 = private unnamed_addr constant [13 x i8] c"%.*s%lld%.*s\00", align 1
 @str.9 = private unnamed_addr constant [8 x i8] c"level: \00", align 1
 @str.10 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.11 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@fmt.11 = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
 @str.12 = private unnamed_addr constant [8 x i8] c"grade: \00", align 1
 @str.13 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.14 = private unnamed_addr constant [7 x i8] c"%s%c%s\00", align 1
+@fmt.14 = private unnamed_addr constant [11 x i8] c"%.*s%c%.*s\00", align 1
 @str.15 = private unnamed_addr constant [8 x i8] c"alive: \00", align 1
 @true_str = private unnamed_addr constant [5 x i8] c"True\00", align 1
 @false_str = private unnamed_addr constant [6 x i8] c"False\00", align 1
 @str.16 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.17 = private unnamed_addr constant [7 x i8] c"%s%s%s\00", align 1
+@fmt.17 = private unnamed_addr constant [11 x i8] c"%.*s%s%.*s\00", align 1
 @str.18 = private unnamed_addr constant [8 x i8] c"ratio: \00", align 1
 @str.19 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.20 = private unnamed_addr constant [7 x i8] c"%s%f%s\00", align 1
+@fmt.20 = private unnamed_addr constant [11 x i8] c"%.*s%f%.*s\00", align 1
 
 define i32 @main() {
 entry:
-  %name = alloca i8*, align 8
-  store i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i8** %name, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } { i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i64 6 }, { i8*, i64 }* %name, align 8
   %hp = alloca i32, align 4
   store i32 100, i32* %hp, align 4
   %xp = alloca i64, align 8
@@ -399,24 +402,27 @@ entry:
   store i1 true, i1* %alive, align 1
   %ratio = alloca float, align 4
   store float 0x3FEB333340000000, float* %ratio, align 4
-  %name1 = load i8*, i8** %name, align 8
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.1, i32 0, i32 0), i8* %name1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0))
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %str.len = extractvalue { i8*, i64 } %name1, 1
+  %len32 = trunc i64 %str.len to i32
+  %str.data = extractvalue { i8*, i64 } %name1, 0
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.1, i32 0, i32 0), i32 %len32, i8* %str.data, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0))
   %hp2 = load i32, i32* %hp, align 4
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.5, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.3, i32 0, i32 0), i32 %hp2, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.4, i32 0, i32 0))
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.5, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.3, i32 0, i32 0), i32 %hp2, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.4, i32 0, i32 0))
   %xp3 = load i64, i64* %xp, align 4
-  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @fmt.8, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.6, i32 0, i32 0), i64 %xp3, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.7, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt.8, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.6, i32 0, i32 0), i64 %xp3, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.7, i32 0, i32 0))
   %level4 = load i16, i16* %level, align 2
   %s2i = sext i16 %level4 to i32
-  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.11, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.9, i32 0, i32 0), i32 %s2i, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.10, i32 0, i32 0))
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.11, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.9, i32 0, i32 0), i32 %s2i, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.10, i32 0, i32 0))
   %grade5 = load i8, i8* %grade, align 1
   %c2i = sext i8 %grade5 to i32
-  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.14, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.12, i32 0, i32 0), i32 %c2i, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.13, i32 0, i32 0))
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.14, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.12, i32 0, i32 0), i32 %c2i, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.13, i32 0, i32 0))
   %alive6 = load i1, i1* %alive, align 1
   %bool_str = select i1 %alive6, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str, i32 0, i32 0)
-  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.17, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.15, i32 0, i32 0), i8* %bool_str, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.16, i32 0, i32 0))
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.17, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.15, i32 0, i32 0), i8* %bool_str, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.16, i32 0, i32 0))
   %ratio7 = load float, float* %ratio, align 4
   %f2d = fpext float %ratio7 to double
-  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.20, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.18, i32 0, i32 0), double %f2d, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.19, i32 0, i32 0))
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.20, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.18, i32 0, i32 0), double %f2d, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.19, i32 0, i32 0))
   ret i32 0
 }
 
@@ -449,13 +455,13 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : i32
+proto fn printf(format : pointer, ...) : i32
 
-proto fn calloc(len : i64, size : i64) : chars
+proto fn calloc(len : i64, size : i64) : pointer
 
-proto fn free(ptr : chars) : void
+proto fn free(ptr : pointer) : void
 
-proto fn write(fd : i32, ptr : chars, len : i64) : i64
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
@@ -474,20 +480,20 @@ fn main() : i32
 │  │  ├─ int 1
 │  │  └─ int 2
 │  ├─ output : void
-│  │  ├─ chars "outer "
+│  │  ├─ char[] "outer "
 │  │  ├─ x : i32
-│  │  └─ chars "\n"
+│  │  └─ char[] "\n"
 │  ├─ = : i32
 │  │  ├─ x : i32
 │  │  └─ int 2
 │  └─ output : void
-│     ├─ chars "inner "
+│     ├─ char[] "inner "
 │     ├─ x : i32
-│     └─ chars "\n"
+│     └─ char[] "\n"
 ├─ output : void
-│  ├─ chars "after "
+│  ├─ char[] "after "
 │  ├─ x : i32
-│  └─ chars "\n"
+│  └─ char[] "\n"
 ├─ = : i32
 │  ├─ y : i32
 │  └─ call pick : i32
@@ -497,16 +503,16 @@ fn main() : i32
    │  ├─ y : i32
    │  └─ int 0
    ├─ output : void
-   │  ├─ chars "loop y "
+   │  ├─ char[] "loop y "
    │  ├─ y : i32
-   │  └─ chars "\n"
+   │  └─ char[] "\n"
    ├─ = : i32
    │  ├─ y : i32
    │  └─ int 0
    ├─ output : void
-   │  ├─ chars "shadow y "
+   │  ├─ char[] "shadow y "
    │  ├─ y : i32
-   │  └─ chars "\n"
+   │  └─ char[] "\n"
    └─ break
 ```
 
@@ -525,19 +531,19 @@ shadow y 0
 
 @str = private unnamed_addr constant [7 x i8] c"outer \00", align 1
 @str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@fmt = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
 @str.2 = private unnamed_addr constant [7 x i8] c"inner \00", align 1
 @str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.4 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@fmt.4 = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
 @str.5 = private unnamed_addr constant [7 x i8] c"after \00", align 1
 @str.6 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.7 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@fmt.7 = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
 @str.8 = private unnamed_addr constant [8 x i8] c"loop y \00", align 1
 @str.9 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.10 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@fmt.10 = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
 @str.11 = private unnamed_addr constant [10 x i8] c"shadow y \00", align 1
 @str.12 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.13 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@fmt.13 = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
 
 define i32 @pick(i32 %0) {
 entry:
@@ -556,7 +562,7 @@ entry:
 
 endif:                                            ; preds = %then, %entry
   %x4 = load i32, i32* %x, align 4
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.7, i32 0, i32 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.5, i32 0, i32 0), i32 %x4, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.6, i32 0, i32 0))
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.7, i32 0, i32 0), i32 6, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.5, i32 0, i32 0), i32 %x4, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.6, i32 0, i32 0))
   %y = alloca i32, align 4
   %call = call i32 @pick(i32 3)
   store i32 %call, i32* %y, align 4
@@ -564,11 +570,11 @@ endif:                                            ; preds = %then, %entry
 
 then:                                             ; preds = %entry
   %x1 = load i32, i32* %x, align 4
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i32 %x1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i32 6, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i32 %x1, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
   %x2 = alloca i32, align 4
   store i32 2, i32* %x2, align 4
   %x3 = load i32, i32* %x2, align 4
-  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.4, i32 0, i32 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.2, i32 0, i32 0), i32 %x3, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.4, i32 0, i32 0), i32 6, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.2, i32 0, i32 0), i32 %x3, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
   br label %endif
 
 while.cond:                                       ; preds = %endif
@@ -578,11 +584,11 @@ while.cond:                                       ; preds = %endif
 
 while.body:                                       ; preds = %while.cond
   %y6 = load i32, i32* %y, align 4
-  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.10, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.8, i32 0, i32 0), i32 %y6, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.9, i32 0, i32 0))
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.10, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.8, i32 0, i32 0), i32 %y6, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.9, i32 0, i32 0))
   %y7 = alloca i32, align 4
   store i32 0, i32* %y7, align 4
   %y8 = load i32, i32* %y7, align 4
-  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.13, i32 0, i32 0), i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.11, i32 0, i32 0), i32 %y8, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.12, i32 0, i32 0))
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.13, i32 0, i32 0), i32 9, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.11, i32 0, i32 0), i32 %y8, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.12, i32 0, i32 0))
   br label %while.end
 
 while.end:                                        ; preds = %while.body, %while.cond
@@ -597,7 +603,7 @@ declare i32 @printf(i8*, ...)
 ```ura
 // variables/005.ura - top-level variables
 
-name  chars = "ura"
+name  char[] = "ura"
 ratio f32 = 1.5
 flag  bool  = True
 xs    i32[] = i32[3]
@@ -628,19 +634,19 @@ total i32 = 7
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : i32
+proto fn printf(format : pointer, ...) : i32
 
-proto fn calloc(len : i64, size : i64) : chars
+proto fn calloc(len : i64, size : i64) : pointer
 
-proto fn free(ptr : chars) : void
+proto fn free(ptr : pointer) : void
 
-proto fn write(fd : i32, ptr : chars, len : i64) : i64
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
-= : chars
-├─ name : chars
-└─ chars "ura"
+= : array
+├─ name : char[]
+└─ char[] "ura"
 
 = : f32
 ├─ ratio : f32
@@ -667,22 +673,22 @@ fn touch() : void
 
 fn main() : i32
 ├─ output : void
-│  ├─ name : chars
-│  ├─ chars " "
+│  ├─ name : char[]
+│  ├─ char[] " "
 │  ├─ ratio : f32
-│  ├─ chars " "
+│  ├─ char[] " "
 │  ├─ flag : bool
-│  └─ chars "\n"
+│  └─ char[] "\n"
 ├─ output : void
-│  ├─ chars "total starts "
+│  ├─ char[] "total starts "
 │  ├─ total : i32
-│  └─ chars "\n"
+│  └─ char[] "\n"
 ├─ call touch : void
 ├─ call touch : void
 ├─ output : void
-│  ├─ chars "total now "
+│  ├─ char[] "total now "
 │  ├─ total : i32
-│  └─ chars "\n"
+│  └─ char[] "\n"
 ├─ = : i32
 │  ├─ index : i32
 │  │  ├─ xs : i32[]
@@ -694,31 +700,31 @@ fn main() : i32
 │  │  └─ int 1
 │  └─ int 9
 ├─ output : void
-│  ├─ chars "xs "
+│  ├─ char[] "xs "
 │  ├─ index : i32
 │  │  ├─ xs : i32[]
 │  │  └─ int 0
-│  ├─ chars " len "
+│  ├─ char[] " len "
 │  └─ .len : u64
 │     └─ xs : i32[]
 ├─ output : void
-│  ├─ chars "  heap "
+│  ├─ char[] "  heap "
 │  ├─ index : i32
 │  │  ├─ heap : i32[]
 │  │  └─ int 1
-│  ├─ chars " len "
+│  ├─ char[] " len "
 │  ├─ .len : u64
 │  │  └─ heap : i32[]
-│  └─ chars "\n"
+│  └─ char[] "\n"
 ├─ clean : void
 │  └─ heap : i32[]
 ├─ = : i32
 │  ├─ total : i32
 │  └─ int 99
 └─ output : void
-   ├─ chars "local total "
+   ├─ char[] "local total "
    ├─ total : i32
-   └─ chars "\n"
+   └─ char[] "\n"
 
 = : i32
 ├─ total : i32
@@ -738,7 +744,7 @@ local total 99
 
 ```ll
 
-@name = internal global i8* null
+@name = internal global { i8*, i64 } zeroinitializer
 @ratio = internal global float 0.000000e+00
 @flag = internal global i1 false
 @xs = internal global { i32*, i64 } zeroinitializer
@@ -750,23 +756,23 @@ local total 99
 @true_str = private unnamed_addr constant [5 x i8] c"True\00", align 1
 @false_str = private unnamed_addr constant [6 x i8] c"False\00", align 1
 @str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt = private unnamed_addr constant [13 x i8] c"%s%s%f%s%s%s\00", align 1
+@fmt = private unnamed_addr constant [21 x i8] c"%.*s%.*s%f%.*s%s%.*s\00", align 1
 @str.4 = private unnamed_addr constant [14 x i8] c"total starts \00", align 1
 @str.5 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.6 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@fmt.6 = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
 @str.7 = private unnamed_addr constant [11 x i8] c"total now \00", align 1
 @str.8 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.9 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@fmt.9 = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
 @str.10 = private unnamed_addr constant [4 x i8] c"xs \00", align 1
 @str.11 = private unnamed_addr constant [6 x i8] c" len \00", align 1
-@fmt.12 = private unnamed_addr constant [11 x i8] c"%s%d%s%llu\00", align 1
+@fmt.12 = private unnamed_addr constant [15 x i8] c"%.*s%d%.*s%llu\00", align 1
 @str.13 = private unnamed_addr constant [8 x i8] c"  heap \00", align 1
 @str.14 = private unnamed_addr constant [6 x i8] c" len \00", align 1
 @str.15 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.16 = private unnamed_addr constant [13 x i8] c"%s%d%s%llu%s\00", align 1
+@fmt.16 = private unnamed_addr constant [19 x i8] c"%.*s%d%.*s%llu%.*s\00", align 1
 @str.17 = private unnamed_addr constant [13 x i8] c"local total \00", align 1
 @str.18 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.19 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@fmt.19 = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
 
 define void @touch() {
 entry:
@@ -778,7 +784,7 @@ entry:
 
 define i32 @main() {
 entry:
-  store i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i8** @name, align 8
+  store { i8*, i64 } { i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i64 3 }, { i8*, i64 }* @name, align 8
   store float 1.500000e+00, float* @ratio, align 4
   store i1 true, i1* @flag, align 1
   %arr = alloca i32, i64 3, align 4
@@ -793,18 +799,21 @@ entry:
   %arr.len3 = insertvalue { i32*, i64 } %arr.ptr2, i64 2, 1
   store { i32*, i64 } %arr.len3, { i32*, i64 }* @heap, align 8
   store i32 7, i32* @total, align 4
-  %name = load i8*, i8** @name, align 8
+  %name = load { i8*, i64 }, { i8*, i64 }* @name, align 8
+  %str.len = extractvalue { i8*, i64 } %name, 1
+  %len32 = trunc i64 %str.len to i32
+  %str.data = extractvalue { i8*, i64 } %name, 0
   %ratio = load float, float* @ratio, align 4
   %f2d = fpext float %ratio to double
   %flag = load i1, i1* @flag, align 1
   %bool_str = select i1 %flag, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str, i32 0, i32 0)
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt, i32 0, i32 0), i8* %name, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0), double %f2d, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0), i8* %bool_str, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @fmt, i32 0, i32 0), i32 %len32, i8* %str.data, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0), double %f2d, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0), i8* %bool_str, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
   %total = load i32, i32* @total, align 4
-  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.6, i32 0, i32 0), i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.4, i32 0, i32 0), i32 %total, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.6, i32 0, i32 0), i32 13, i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.4, i32 0, i32 0), i32 %total, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i32 0, i32 0))
   call void @touch()
   call void @touch()
   %total4 = load i32, i32* @total, align 4
-  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.9, i32 0, i32 0), i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.7, i32 0, i32 0), i32 %total4, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.8, i32 0, i32 0))
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.9, i32 0, i32 0), i32 10, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.7, i32 0, i32 0), i32 %total4, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.8, i32 0, i32 0))
   %xs = load { i32*, i64 }, { i32*, i64 }* @xs, align 8
   %arr.data = extractvalue { i32*, i64 } %xs, 0
   %arr.at = getelementptr i32, i32* %arr.data, i32 0
@@ -819,14 +828,14 @@ entry:
   %idx = load i32, i32* %arr.at10, align 4
   %xs11 = load { i32*, i64 }, { i32*, i64 }* @xs, align 8
   %len = extractvalue { i32*, i64 } %xs11, 1
-  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.12, i32 0, i32 0), i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.10, i32 0, i32 0), i32 %idx, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.11, i32 0, i32 0), i64 %len)
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @fmt.12, i32 0, i32 0), i32 3, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.10, i32 0, i32 0), i32 %idx, i32 5, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.11, i32 0, i32 0), i64 %len)
   %heap12 = load { i32*, i64 }, { i32*, i64 }* @heap, align 8
   %arr.data13 = extractvalue { i32*, i64 } %heap12, 0
   %arr.at14 = getelementptr i32, i32* %arr.data13, i32 1
   %idx15 = load i32, i32* %arr.at14, align 4
   %heap16 = load { i32*, i64 }, { i32*, i64 }* @heap, align 8
   %len17 = extractvalue { i32*, i64 } %heap16, 1
-  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt.16, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.13, i32 0, i32 0), i32 %idx15, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.14, i32 0, i32 0), i64 %len17, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.15, i32 0, i32 0))
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @fmt.16, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.13, i32 0, i32 0), i32 %idx15, i32 5, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.14, i32 0, i32 0), i64 %len17, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.15, i32 0, i32 0))
   %arr18 = load { i32*, i64 }, { i32*, i64 }* @heap, align 8
   %arr.data19 = extractvalue { i32*, i64 } %arr18, 0
   %free.ptr = bitcast i32* %arr.data19 to i8*
@@ -835,7 +844,7 @@ entry:
   %total20 = alloca i32, align 4
   store i32 99, i32* %total20, align 4
   %total21 = load i32, i32* %total20, align 4
-  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.19, i32 0, i32 0), i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str.17, i32 0, i32 0), i32 %total21, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.18, i32 0, i32 0))
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.19, i32 0, i32 0), i32 12, i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str.17, i32 0, i32 0), i32 %total21, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.18, i32 0, i32 0))
   ret i32 0
 }
 
@@ -886,13 +895,13 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : i32
+proto fn printf(format : pointer, ...) : i32
 
-proto fn calloc(len : i64, size : i64) : chars
+proto fn calloc(len : i64, size : i64) : pointer
 
-proto fn free(ptr : chars) : void
+proto fn free(ptr : pointer) : void
 
-proto fn write(fd : i32, ptr : chars, len : i64) : i64
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
@@ -919,10 +928,10 @@ struct Counter
 │     └─ int 1
 └─ fn Counter.drop(self : STRUCT_CALL) : void
    └─ output : void
-      ├─ chars "DROP at "
+      ├─ char[] "DROP at "
       ├─ .hits : i32
       │  └─ self : STRUCT_CALL
-      └─ chars "\n"
+      └─ char[] "\n"
 
 = : STRUCT_CALL
 ├─ tally : STRUCT_CALL
@@ -935,17 +944,17 @@ fn touch() : void
 
 fn main() : i32
 ├─ output : void
-│  ├─ chars "start "
+│  ├─ char[] "start "
 │  ├─ .hits : i32
 │  │  └─ tally : STRUCT_CALL
-│  └─ chars "\n"
+│  └─ char[] "\n"
 ├─ call touch : void
 ├─ call touch : void
 └─ output : void
-   ├─ chars "after "
+   ├─ char[] "after "
    ├─ .hits : i32
    │  └─ tally : STRUCT_CALL
-   └─ chars "\n"
+   └─ char[] "\n"
 ```
 
 ```out
@@ -964,13 +973,13 @@ DROP at 12
 @tally = internal global %Counter zeroinitializer
 @str = private unnamed_addr constant [9 x i8] c"DROP at \00", align 1
 @str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@fmt = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
 @str.2 = private unnamed_addr constant [7 x i8] c"start \00", align 1
 @str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.4 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@fmt.4 = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
 @str.5 = private unnamed_addr constant [7 x i8] c"after \00", align 1
 @str.6 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.7 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@fmt.7 = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
 
 define %Counter @Counter.create(i32 %0) {
 entry:
@@ -1018,7 +1027,7 @@ entry:
   %ref = load %Counter*, %Counter** %self, align 8
   %hits = getelementptr %Counter, %Counter* %ref, i32 0, i32 0
   %hits1 = load i32, i32* %hits, align 4
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str, i32 0, i32 0), i32 %hits1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i32 8, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str, i32 0, i32 0), i32 %hits1, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
   ret void
 }
 
@@ -1035,11 +1044,11 @@ entry:
   %call = call %Counter @Counter.create(i32 10)
   store %Counter %call, %Counter* @tally, align 4
   %hits = load i32, i32* getelementptr inbounds (%Counter, %Counter* @tally, i32 0, i32 0), align 4
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.4, i32 0, i32 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.2, i32 0, i32 0), i32 %hits, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.4, i32 0, i32 0), i32 6, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.2, i32 0, i32 0), i32 %hits, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
   call void @touch()
   call void @touch()
   %hits1 = load i32, i32* getelementptr inbounds (%Counter, %Counter* @tally, i32 0, i32 0), align 4
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.7, i32 0, i32 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.5, i32 0, i32 0), i32 %hits1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.6, i32 0, i32 0))
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.7, i32 0, i32 0), i32 6, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.5, i32 0, i32 0), i32 %hits1, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.6, i32 0, i32 0))
   call void @Counter.drop(%Counter* @tally)
   ret i32 0
 }
@@ -1076,13 +1085,13 @@ main():
 ```
 
 ```tree
-proto fn printf(format : chars, ...) : i32
+proto fn printf(format : pointer, ...) : i32
 
-proto fn calloc(len : i64, size : i64) : chars
+proto fn calloc(len : i64, size : i64) : pointer
 
-proto fn free(ptr : chars) : void
+proto fn free(ptr : pointer) : void
 
-proto fn write(fd : i32, ptr : chars, len : i64) : i64
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
@@ -1104,10 +1113,10 @@ struct Res
 │        └─ other : STRUCT_CALL
 └─ fn Res.drop(self : STRUCT_CALL) : void
    └─ output : void
-      ├─ chars "DROP "
+      ├─ char[] "DROP "
       ├─ .id : i32
       │  └─ self : STRUCT_CALL
-      └─ chars "\n"
+      └─ char[] "\n"
 
 = : STRUCT_CALL
 ├─ a : STRUCT_CALL
@@ -1121,17 +1130,17 @@ struct Res
 
 fn main() : i32
 ├─ output : void
-│  └─ chars "body\n"
+│  └─ char[] "body\n"
 ├─ if
 │  ├─ condition < : bool
 │  │  ├─ int 1
 │  │  └─ int 2
 │  ├─ output : void
-│  │  └─ chars "early\n"
+│  │  └─ char[] "early\n"
 │  └─ return
 │     └─ int 0
 └─ output : void
-   └─ chars "unreachable\n"
+   └─ char[] "unreachable\n"
 ```
 
 ```out
@@ -1152,13 +1161,13 @@ DROP 1
 @b = internal global %Res zeroinitializer
 @str = private unnamed_addr constant [6 x i8] c"DROP \00", align 1
 @str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@fmt = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
 @str.2 = private unnamed_addr constant [6 x i8] c"body\0A\00", align 1
-@fmt.3 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt.3 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
 @str.4 = private unnamed_addr constant [7 x i8] c"early\0A\00", align 1
-@fmt.5 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt.5 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
 @str.6 = private unnamed_addr constant [13 x i8] c"unreachable\0A\00", align 1
-@fmt.7 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@fmt.7 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
 
 define %Res @Res.create(i32 %0) {
 entry:
@@ -1194,7 +1203,7 @@ entry:
   %ref = load %Res*, %Res** %self, align 8
   %id = getelementptr %Res, %Res* %ref, i32 0, i32 0
   %id1 = load i32, i32* %id, align 4
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str, i32 0, i32 0), i32 %id1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i32 5, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str, i32 0, i32 0), i32 %id1, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
   ret void
 }
 
@@ -1206,17 +1215,17 @@ entry:
   store %Res %call, %Res* @a, align 4
   %call1 = call %Res @Res.create(i32 2)
   store %Res %call1, %Res* @b, align 4
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.3, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.2, i32 0, i32 0))
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.3, i32 0, i32 0), i32 5, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.2, i32 0, i32 0))
   br i1 true, label %then, label %endif
 
 endif:                                            ; preds = %entry
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.7, i32 0, i32 0), i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str.6, i32 0, i32 0))
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.7, i32 0, i32 0), i32 12, i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str.6, i32 0, i32 0))
   call void @Res.drop(%Res* @b)
   call void @Res.drop(%Res* @a)
   ret i32 0
 
 then:                                             ; preds = %entry
-  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.5, i32 0, i32 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.4, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.5, i32 0, i32 0), i32 6, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.4, i32 0, i32 0))
   call void @Res.drop(%Res* @b)
   call void @Res.drop(%Res* @a)
   ret i32 0
@@ -1444,7 +1453,7 @@ main():
 ```
 
 ```err
-error: Cannot assign chars to i32
+error: Cannot assign array to i32
   015.ura:7:11
   |
 7 |     a i32 = "hello"

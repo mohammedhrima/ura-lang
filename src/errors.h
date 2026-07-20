@@ -129,6 +129,11 @@
 
 #define ERR_REDECL_FUNCTION "Redeclaration of function '%s'"
 
+#define ERR_SIG_CONFLICT \
+	"Conflicting declaration of '%s': %s"
+
+#define NOTE_PREV_DECL "Previous declaration of '%s' is here"
+
 #define ERR_UNDECLARED_VARIABLE "Undeclared variable '%s'"
 
 #define ERR_REF_TO_NON_VARIABLE \

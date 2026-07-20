@@ -5,6 +5,8 @@ from pathlib import Path
 from config.goldens import _actual, parse_md, _fence, _desc, _decolor
 from config.ui import ok, err, _group_header, _row, _summary
 
+FENCES = ("tree", "out", "err", "ll")
+
 def migrate(dirpath):
     """ADD newly-implemented cases from <dir> into tests/<group>.md, PRESERVING already-migrated
     ones (success = compiles+runs; error = its recorded .err still reproduces). Run `prune` after."""
@@ -30,7 +32,8 @@ def migrate(dirpath):
     index, sections = [], []
     for c in (cases[k] for k in sorted(cases)):
         index.append(f"- {c['name']}")
-        blocks = [_fence("ura", c['ura'])] + [_fence(t, c.get(t, "")) for t in ("out", "err", "ll")]
+        blocks = [_fence("ura", c['ura'])]
+        blocks += [_fence(t, c.get(t, "")) for t in FENCES]
         sections.append(f"## {c['name']}\n\n" + "\n\n".join(blocks))
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(f"# {str(rel).replace('/', ' / ')}\n\n## index\n\n" + "\n".join(index)

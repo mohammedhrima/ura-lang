@@ -36,6 +36,25 @@ bool is_unsigned(Type type) {
 	return includes(type, UNSIGNED_TYPES, BOOL, 0);
 }
 
+bool is_pointer(Type type) {
+	return includes(type, POINTER_TYPES, 0);
+}
+
+bool same_or_pointer(Type a, Type b) {
+	return a == b || (is_pointer(a) && is_pointer(b));
+}
+
+void set_string_type(Token *token) {
+	token->ret_type       = ARRAY_TYPE;
+	token->Array.sub_type = CHAR;
+	token->Array.depth    = 1;
+}
+
+bool is_string(Token *token) {
+	return token->ret_type == ARRAY_TYPE && token->Array.depth == 1
+	       && token->Array.sub_type == CHAR;
+}
+
 bool is_castable(Type type) {
 	return is_float(type) || includes(type, NUMERIC_TYPES, 0);
 }
@@ -55,7 +74,7 @@ TypeRef to_llvm_type(Type type) {
    case F64:           return ura.f64;
    case BOOL:          return ura.i1;
    case VOID:          return ura.vd;
-   case CHARS:         return LLVMPointerType(ura.i8, 0);
+   case PTR:           return LLVMPointerType(ura.i8, 0);
    default: TODO(1, "to_llvm_type: unhandled type %t", type); return NULL;
    }
 }
@@ -193,7 +212,7 @@ void type_check_fcall(Node *node) {
       adopt_literal(node->children[i], param->ret_type);
       Type arg_type   = node->children[i]->token->ret_type;
       Type param_type = param->ret_type;
-      if (arg_type && arg_type != param_type) {
+      if (arg_type && !same_or_pointer(arg_type, param_type)) {
          parse_error(node->children[i]->token, ERR_ARG_TYPE_MISMATCH, i + 1, token->name);
          return;
       }
@@ -208,7 +227,9 @@ void type_check_fcall(Node *node) {
          return;
       }
    }
-   token->ret_type = indirect ? fn->Fn.ret->ret_type : fn->ret_type;
+   Token *ret      = indirect ? fn->Fn.ret : fn;
+   token->ret_type = ret->ret_type;
+   if (ret->ret_type == ARRAY_TYPE) token->Array = ret->Array;
 }
 
 void type_check_return(Node *node) {
@@ -493,7 +514,7 @@ void type_check(Node *node) {
       case STRUCT_DEF: type_check_struct(node); break;
       case I32:     token->ret_type = I32; break;
       case BOOL:    token->ret_type = BOOL; break;
-      case CHARS:   token->ret_type = CHARS; break;
+      case CHARS:   set_string_type(token); break;
       case CHAR:    token->ret_type = CHAR; break;
       case F32:   token->ret_type = F32; break;
       case ID:      break;
@@ -552,7 +573,8 @@ void type_check(Node *node) {
       case ARRAY:     type_check_array_ctor(node); break;
       case TYPEOF: case SIZEOF:
          type_check(node->left);
-         node->token->ret_type = token->type == TYPEOF ? CHARS : U64;
+         if (token->type == TYPEOF) set_string_type(node->token);
+         else node->token->ret_type = U64;
          break;
       case CLEAN: {
          type_check(node->left);

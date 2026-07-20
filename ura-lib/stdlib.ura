@@ -7,11 +7,11 @@ proto fn _Exit(code i32) void
 // protoFunc i32 at_quick_exit(pointer func)
 
 // Environment
-proto fn getenv(name chars) chars
-proto fn setenv(name chars, value chars, overwrite i32) i32
-proto fn unsetenv(name chars) i32
-proto fn putenv(string chars) i32
-proto fn system(command chars) i32
+proto fn getenv(name pointer) pointer
+proto fn setenv(name pointer, value pointer, overwrite i32) i32
+proto fn unsetenv(name pointer) i32
+proto fn putenv(string pointer) i32
+proto fn system(command pointer) i32
 
 // Random numbers
 proto fn rand() i32
@@ -30,19 +30,19 @@ proto fn div(numer i32, denom i32) pointer
 proto fn ldiv(numer i64, denom i64) pointer
 
 // String to number conversion
-proto fn atoi(str chars) i32
-proto fn atol(str chars) i64
-proto fn atof(str chars) f64
-proto fn strtol(str chars, endptr pointer, base i32) i64
-proto fn strtoul(str chars, endptr pointer, base i32) i64
-proto fn strtof(str chars, endptr pointer) f32
-proto fn strtod(str chars, endptr pointer) f64
-proto fn strtoll(str chars, endptr pointer, base i32) i64
-proto fn strtoull(str chars, endptr pointer, base i32) i64
+proto fn atoi(str pointer) i32
+proto fn atol(str pointer) i64
+proto fn atof(str pointer) f64
+proto fn strtol(str pointer, endptr pointer, base i32) i64
+proto fn strtoul(str pointer, endptr pointer, base i32) i64
+proto fn strtof(str pointer, endptr pointer) f32
+proto fn strtod(str pointer, endptr pointer) f64
+proto fn strtoll(str pointer, endptr pointer, base i32) i64
+proto fn strtoull(str pointer, endptr pointer, base i32) i64
 
 // Multibyte/wide character conversion
-proto fn mblen(s chars, n i32) i32
-proto fn mbtowc(pwc pointer, s chars, n i32) i32
-proto fn wctomb(s chars, wchar i32) i32
-proto fn mbstowcs(dest pointer, src chars, n i32) i32
-proto fn wcstombs(dest chars, src pointer, n i32) i32
+proto fn mblen(s pointer, n i32) i32
+proto fn mbtowc(pwc pointer, s pointer, n i32) i32
+proto fn wctomb(s pointer, wchar i32) i32
+proto fn mbstowcs(dest pointer, src pointer, n i32) i32
+proto fn wcstombs(dest pointer, src pointer, n i32) i32
