@@ -7432,6 +7432,44 @@ struct String
 │        │  └─ ref : STRUCT_CALL
 │        │     └─ v : STRUCT_CALL
 │        └─ int 0
+├─ fn String.==.array(self : STRUCT_CALL, str : array) : bool
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ str : char[]
+│  │  │  └─ NULL_LIT : char[]
+│  │  └─ return
+│  │     └─ == : bool
+│  │        ├─ .count : i32
+│  │        │  └─ self : STRUCT_CALL
+│  │        └─ int 0
+│  └─ return
+│     └─ == : bool
+│        ├─ call strcmp : i32
+│        │  ├─ FALLBACK : char[]
+│        │  │  ├─ .value : char[]
+│        │  │  │  └─ self : STRUCT_CALL
+│        │  │  └─ char[] ""
+│        │  └─ str : char[]
+│        └─ int 0
+├─ fn String.!=.array(self : STRUCT_CALL, str : array) : bool
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ str : char[]
+│  │  │  └─ NULL_LIT : char[]
+│  │  └─ return
+│  │     └─ != : bool
+│  │        ├─ .count : i32
+│  │        │  └─ self : STRUCT_CALL
+│  │        └─ int 0
+│  └─ return
+│     └─ != : bool
+│        ├─ call strcmp : i32
+│        │  ├─ FALLBACK : char[]
+│        │  │  ├─ .value : char[]
+│        │  │  │  └─ self : STRUCT_CALL
+│        │  │  └─ char[] ""
+│        │  └─ str : char[]
+│        └─ int 0
 ├─ fn String.<.ref.String(self : STRUCT_CALL, v : STRUCT_CALL) : bool
 │  └─ return
 │     └─ < : bool
@@ -7447,6 +7485,30 @@ struct String
 │        │  ├─ self : STRUCT_CALL
 │        │  └─ ref : STRUCT_CALL
 │        │     └─ v : STRUCT_CALL
+│        └─ int 0
+├─ fn String.<.array(self : STRUCT_CALL, str : array) : bool
+│  └─ return
+│     └─ < : bool
+│        ├─ call strcmp : i32
+│        │  ├─ FALLBACK : char[]
+│        │  │  ├─ .value : char[]
+│        │  │  │  └─ self : STRUCT_CALL
+│        │  │  └─ char[] ""
+│        │  └─ FALLBACK : char[]
+│        │     ├─ str : char[]
+│        │     └─ char[] ""
+│        └─ int 0
+├─ fn String.>.array(self : STRUCT_CALL, str : array) : bool
+│  └─ return
+│     └─ > : bool
+│        ├─ call strcmp : i32
+│        │  ├─ FALLBACK : char[]
+│        │  │  ├─ .value : char[]
+│        │  │  │  └─ self : STRUCT_CALL
+│        │  │  └─ char[] ""
+│        │  └─ FALLBACK : char[]
+│        │     ├─ str : char[]
+│        │     └─ char[] ""
 │        └─ int 0
 └─ fn String.output(self : STRUCT_CALL) : char[]
    └─ return
@@ -7536,14 +7598,20 @@ b2: world
 @str.6 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
 @str.7 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
 @str.8 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
-@str.9 = private unnamed_addr constant [6 x i8] c"hello\00", align 1
-@str.10 = private unnamed_addr constant [6 x i8] c"world\00", align 1
-@str.11 = private unnamed_addr constant [5 x i8] c"b1: \00", align 1
-@str.12 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@str.9 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.10 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.11 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.12 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.13 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.14 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.15 = private unnamed_addr constant [6 x i8] c"hello\00", align 1
+@str.16 = private unnamed_addr constant [6 x i8] c"world\00", align 1
+@str.17 = private unnamed_addr constant [5 x i8] c"b1: \00", align 1
+@str.18 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt = private unnamed_addr constant [13 x i8] c"%.*s%.*s%.*s\00", align 1
-@str.13 = private unnamed_addr constant [5 x i8] c"b2: \00", align 1
-@str.14 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.15 = private unnamed_addr constant [13 x i8] c"%.*s%.*s%.*s\00", align 1
+@str.19 = private unnamed_addr constant [5 x i8] c"b2: \00", align 1
+@str.20 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.21 = private unnamed_addr constant [13 x i8] c"%.*s%.*s%.*s\00", align 1
 
 define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
 entry:
@@ -9021,6 +9089,72 @@ entry:
   ret i1 %ne
 }
 
+define i1 @"String.==.array"(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %str1 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %str1, 0
+  %nullcmp = icmp eq i8* %opt.ptr, null
+  br i1 %nullcmp, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %ref3 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref3, i32 0, i32 0
+  %value4 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr5 = extractvalue { i8*, i64 } %value4, 0
+  %isnull = icmp eq i8* %opt.ptr5, null
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.8, i32 0, i32 0), i64 0 }, { i8*, i64 } %value4
+  %arr.data = extractvalue { i8*, i64 } %fallback, 0
+  %str6 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %arr.data7 = extractvalue { i8*, i64 } %str6, 0
+  %call = call i32 @strcmp(i8* %arr.data, i8* %arr.data7)
+  %eq8 = icmp eq i32 %call, 0
+  ret i1 %eq8
+
+then:                                             ; preds = %entry
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count2 = load i32, i32* %count, align 4
+  %eq = icmp eq i32 %count2, 0
+  ret i1 %eq
+}
+
+define i1 @"String.!=.array"(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %str1 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %str1, 0
+  %nullcmp = icmp eq i8* %opt.ptr, null
+  br i1 %nullcmp, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %ref3 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref3, i32 0, i32 0
+  %value4 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr5 = extractvalue { i8*, i64 } %value4, 0
+  %isnull = icmp eq i8* %opt.ptr5, null
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.9, i32 0, i32 0), i64 0 }, { i8*, i64 } %value4
+  %arr.data = extractvalue { i8*, i64 } %fallback, 0
+  %str6 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %arr.data7 = extractvalue { i8*, i64 } %str6, 0
+  %call = call i32 @strcmp(i8* %arr.data, i8* %arr.data7)
+  %ne8 = icmp ne i32 %call, 0
+  ret i1 %ne8
+
+then:                                             ; preds = %entry
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count2 = load i32, i32* %count, align 4
+  %ne = icmp ne i32 %count2, 0
+  ret i1 %ne
+}
+
 define i1 @"String.<.ref.String"(%String* %0, %String* %1) {
 entry:
   %self = alloca %String*, align 8
@@ -9047,6 +9181,52 @@ entry:
   ret i1 %gt
 }
 
+define i1 @"String.<.array"(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %value1, 0
+  %isnull = icmp eq i8* %opt.ptr, null
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.10, i32 0, i32 0), i64 0 }, { i8*, i64 } %value1
+  %arr.data = extractvalue { i8*, i64 } %fallback, 0
+  %str2 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %opt.ptr3 = extractvalue { i8*, i64 } %str2, 0
+  %isnull4 = icmp eq i8* %opt.ptr3, null
+  %fallback5 = select i1 %isnull4, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.11, i32 0, i32 0), i64 0 }, { i8*, i64 } %str2
+  %arr.data6 = extractvalue { i8*, i64 } %fallback5, 0
+  %call = call i32 @strcmp(i8* %arr.data, i8* %arr.data6)
+  %lt = icmp slt i32 %call, 0
+  ret i1 %lt
+}
+
+define i1 @"String.>.array"(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %value1, 0
+  %isnull = icmp eq i8* %opt.ptr, null
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.12, i32 0, i32 0), i64 0 }, { i8*, i64 } %value1
+  %arr.data = extractvalue { i8*, i64 } %fallback, 0
+  %str2 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %opt.ptr3 = extractvalue { i8*, i64 } %str2, 0
+  %isnull4 = icmp eq i8* %opt.ptr3, null
+  %fallback5 = select i1 %isnull4, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.13, i32 0, i32 0), i64 0 }, { i8*, i64 } %str2
+  %arr.data6 = extractvalue { i8*, i64 } %fallback5, 0
+  %call = call i32 @strcmp(i8* %arr.data, i8* %arr.data6)
+  %gt = icmp sgt i32 %call, 0
+  ret i1 %gt
+}
+
 define { i8*, i64 } @String.output(%String* %0) {
 entry:
   %self = alloca %String*, align 8
@@ -9056,7 +9236,7 @@ entry:
   %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
   %opt.ptr = extractvalue { i8*, i64 } %value1, 0
   %isnull = icmp eq i8* %opt.ptr, null
-  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.8, i32 0, i32 0), i64 0 }, { i8*, i64 } %value1
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.14, i32 0, i32 0), i64 0 }, { i8*, i64 } %value1
   ret { i8*, i64 } %fallback
 }
 
@@ -9127,7 +9307,7 @@ entry:
   %b1 = alloca %Buffer, align 8
   %call = call %Buffer @Buffer.create()
   store %Buffer %call, %Buffer* %b1, align 8
-  call void @"Buffer.=.array"(%Buffer* %b1, { i8*, i64 } { i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.9, i32 0, i32 0), i64 5 })
+  call void @"Buffer.=.array"(%Buffer* %b1, { i8*, i64 } { i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.15, i32 0, i32 0), i64 5 })
   %b2 = alloca %Buffer, align 8
   %call1 = call %Buffer @Buffer.create()
   store %Buffer %call1, %Buffer* %b2, align 8
@@ -9135,19 +9315,19 @@ entry:
   %value = getelementptr %Buffer, %Buffer* %b2, i32 0, i32 0
   %value2 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
   %arr.data = extractvalue { i8*, i64 } %value2, 0
-  %call3 = call i8* @strcpy(i8* %arr.data, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.10, i32 0, i32 0))
+  %call3 = call i8* @strcpy(i8* %arr.data, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.16, i32 0, i32 0))
   %value4 = getelementptr %Buffer, %Buffer* %b1, i32 0, i32 0
   %value5 = load { i8*, i64 }, { i8*, i64 }* %value4, align 8
   %str.len = extractvalue { i8*, i64 } %value5, 1
   %len32 = trunc i64 %str.len to i32
   %str.data = extractvalue { i8*, i64 } %value5, 0
-  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt, i32 0, i32 0), i32 4, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.11, i32 0, i32 0), i32 %len32, i8* %str.data, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.12, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt, i32 0, i32 0), i32 4, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.17, i32 0, i32 0), i32 %len32, i8* %str.data, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.18, i32 0, i32 0))
   %value6 = getelementptr %Buffer, %Buffer* %b2, i32 0, i32 0
   %value7 = load { i8*, i64 }, { i8*, i64 }* %value6, align 8
   %str.len8 = extractvalue { i8*, i64 } %value7, 1
   %len329 = trunc i64 %str.len8 to i32
   %str.data10 = extractvalue { i8*, i64 } %value7, 0
-  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt.15, i32 0, i32 0), i32 4, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.13, i32 0, i32 0), i32 %len329, i8* %str.data10, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.14, i32 0, i32 0))
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt.21, i32 0, i32 0), i32 4, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.19, i32 0, i32 0), i32 %len329, i8* %str.data10, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.20, i32 0, i32 0))
   call void @Buffer.drop(%Buffer* %b2)
   call void @Buffer.drop(%Buffer* %b1)
   ret i32 0
@@ -10947,6 +11127,44 @@ struct String
 │        │  └─ ref : STRUCT_CALL
 │        │     └─ v : STRUCT_CALL
 │        └─ int 0
+├─ fn String.==.array(self : STRUCT_CALL, str : array) : bool
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ str : char[]
+│  │  │  └─ NULL_LIT : char[]
+│  │  └─ return
+│  │     └─ == : bool
+│  │        ├─ .count : i32
+│  │        │  └─ self : STRUCT_CALL
+│  │        └─ int 0
+│  └─ return
+│     └─ == : bool
+│        ├─ call strcmp : i32
+│        │  ├─ FALLBACK : char[]
+│        │  │  ├─ .value : char[]
+│        │  │  │  └─ self : STRUCT_CALL
+│        │  │  └─ char[] ""
+│        │  └─ str : char[]
+│        └─ int 0
+├─ fn String.!=.array(self : STRUCT_CALL, str : array) : bool
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ str : char[]
+│  │  │  └─ NULL_LIT : char[]
+│  │  └─ return
+│  │     └─ != : bool
+│  │        ├─ .count : i32
+│  │        │  └─ self : STRUCT_CALL
+│  │        └─ int 0
+│  └─ return
+│     └─ != : bool
+│        ├─ call strcmp : i32
+│        │  ├─ FALLBACK : char[]
+│        │  │  ├─ .value : char[]
+│        │  │  │  └─ self : STRUCT_CALL
+│        │  │  └─ char[] ""
+│        │  └─ str : char[]
+│        └─ int 0
 ├─ fn String.<.ref.String(self : STRUCT_CALL, v : STRUCT_CALL) : bool
 │  └─ return
 │     └─ < : bool
@@ -10962,6 +11180,30 @@ struct String
 │        │  ├─ self : STRUCT_CALL
 │        │  └─ ref : STRUCT_CALL
 │        │     └─ v : STRUCT_CALL
+│        └─ int 0
+├─ fn String.<.array(self : STRUCT_CALL, str : array) : bool
+│  └─ return
+│     └─ < : bool
+│        ├─ call strcmp : i32
+│        │  ├─ FALLBACK : char[]
+│        │  │  ├─ .value : char[]
+│        │  │  │  └─ self : STRUCT_CALL
+│        │  │  └─ char[] ""
+│        │  └─ FALLBACK : char[]
+│        │     ├─ str : char[]
+│        │     └─ char[] ""
+│        └─ int 0
+├─ fn String.>.array(self : STRUCT_CALL, str : array) : bool
+│  └─ return
+│     └─ > : bool
+│        ├─ call strcmp : i32
+│        │  ├─ FALLBACK : char[]
+│        │  │  ├─ .value : char[]
+│        │  │  │  └─ self : STRUCT_CALL
+│        │  │  └─ char[] ""
+│        │  └─ FALLBACK : char[]
+│        │     ├─ str : char[]
+│        │     └─ char[] ""
 │        └─ int 0
 └─ fn String.output(self : STRUCT_CALL) : char[]
    └─ return
@@ -11446,20 +11688,26 @@ s0+s1: 1x23456x789 (11)
 @str.7 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
 @str.8 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
 @str.9 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
-@str.10 = private unnamed_addr constant [7 x i8] c"1x2345\00", align 1
-@str.11 = private unnamed_addr constant [6 x i8] c"6x789\00", align 1
-@str.12 = private unnamed_addr constant [8 x i8] c"s0:    \00", align 1
-@str.13 = private unnamed_addr constant [3 x i8] c" (\00", align 1
-@str.14 = private unnamed_addr constant [3 x i8] c")\0A\00", align 1
+@str.10 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.11 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.12 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.13 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.14 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.15 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.16 = private unnamed_addr constant [7 x i8] c"1x2345\00", align 1
+@str.17 = private unnamed_addr constant [6 x i8] c"6x789\00", align 1
+@str.18 = private unnamed_addr constant [8 x i8] c"s0:    \00", align 1
+@str.19 = private unnamed_addr constant [3 x i8] c" (\00", align 1
+@str.20 = private unnamed_addr constant [3 x i8] c")\0A\00", align 1
 @fmt = private unnamed_addr constant [19 x i8] c"%.*s%.*s%.*s%d%.*s\00", align 1
-@str.15 = private unnamed_addr constant [8 x i8] c"s1:    \00", align 1
-@str.16 = private unnamed_addr constant [3 x i8] c" (\00", align 1
-@str.17 = private unnamed_addr constant [3 x i8] c")\0A\00", align 1
-@fmt.18 = private unnamed_addr constant [19 x i8] c"%.*s%.*s%.*s%d%.*s\00", align 1
-@str.19 = private unnamed_addr constant [8 x i8] c"s0+s1: \00", align 1
-@str.20 = private unnamed_addr constant [3 x i8] c" (\00", align 1
-@str.21 = private unnamed_addr constant [3 x i8] c")\0A\00", align 1
-@fmt.22 = private unnamed_addr constant [19 x i8] c"%.*s%.*s%.*s%d%.*s\00", align 1
+@str.21 = private unnamed_addr constant [8 x i8] c"s1:    \00", align 1
+@str.22 = private unnamed_addr constant [3 x i8] c" (\00", align 1
+@str.23 = private unnamed_addr constant [3 x i8] c")\0A\00", align 1
+@fmt.24 = private unnamed_addr constant [19 x i8] c"%.*s%.*s%.*s%d%.*s\00", align 1
+@str.25 = private unnamed_addr constant [8 x i8] c"s0+s1: \00", align 1
+@str.26 = private unnamed_addr constant [3 x i8] c" (\00", align 1
+@str.27 = private unnamed_addr constant [3 x i8] c")\0A\00", align 1
+@fmt.28 = private unnamed_addr constant [19 x i8] c"%.*s%.*s%.*s%d%.*s\00", align 1
 
 define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
 entry:
@@ -12937,6 +13185,72 @@ entry:
   ret i1 %ne
 }
 
+define i1 @"String.==.array"(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %str1 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %str1, 0
+  %nullcmp = icmp eq i8* %opt.ptr, null
+  br i1 %nullcmp, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %ref3 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref3, i32 0, i32 0
+  %value4 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr5 = extractvalue { i8*, i64 } %value4, 0
+  %isnull = icmp eq i8* %opt.ptr5, null
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.8, i32 0, i32 0), i64 0 }, { i8*, i64 } %value4
+  %arr.data = extractvalue { i8*, i64 } %fallback, 0
+  %str6 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %arr.data7 = extractvalue { i8*, i64 } %str6, 0
+  %call = call i32 @strcmp(i8* %arr.data, i8* %arr.data7)
+  %eq8 = icmp eq i32 %call, 0
+  ret i1 %eq8
+
+then:                                             ; preds = %entry
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count2 = load i32, i32* %count, align 4
+  %eq = icmp eq i32 %count2, 0
+  ret i1 %eq
+}
+
+define i1 @"String.!=.array"(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %str1 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %str1, 0
+  %nullcmp = icmp eq i8* %opt.ptr, null
+  br i1 %nullcmp, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %ref3 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref3, i32 0, i32 0
+  %value4 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr5 = extractvalue { i8*, i64 } %value4, 0
+  %isnull = icmp eq i8* %opt.ptr5, null
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.9, i32 0, i32 0), i64 0 }, { i8*, i64 } %value4
+  %arr.data = extractvalue { i8*, i64 } %fallback, 0
+  %str6 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %arr.data7 = extractvalue { i8*, i64 } %str6, 0
+  %call = call i32 @strcmp(i8* %arr.data, i8* %arr.data7)
+  %ne8 = icmp ne i32 %call, 0
+  ret i1 %ne8
+
+then:                                             ; preds = %entry
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count2 = load i32, i32* %count, align 4
+  %ne = icmp ne i32 %count2, 0
+  ret i1 %ne
+}
+
 define i1 @"String.<.ref.String"(%String* %0, %String* %1) {
 entry:
   %self = alloca %String*, align 8
@@ -12963,6 +13277,52 @@ entry:
   ret i1 %gt
 }
 
+define i1 @"String.<.array"(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %value1, 0
+  %isnull = icmp eq i8* %opt.ptr, null
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.10, i32 0, i32 0), i64 0 }, { i8*, i64 } %value1
+  %arr.data = extractvalue { i8*, i64 } %fallback, 0
+  %str2 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %opt.ptr3 = extractvalue { i8*, i64 } %str2, 0
+  %isnull4 = icmp eq i8* %opt.ptr3, null
+  %fallback5 = select i1 %isnull4, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.11, i32 0, i32 0), i64 0 }, { i8*, i64 } %str2
+  %arr.data6 = extractvalue { i8*, i64 } %fallback5, 0
+  %call = call i32 @strcmp(i8* %arr.data, i8* %arr.data6)
+  %lt = icmp slt i32 %call, 0
+  ret i1 %lt
+}
+
+define i1 @"String.>.array"(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %value1, 0
+  %isnull = icmp eq i8* %opt.ptr, null
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.12, i32 0, i32 0), i64 0 }, { i8*, i64 } %value1
+  %arr.data = extractvalue { i8*, i64 } %fallback, 0
+  %str2 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %opt.ptr3 = extractvalue { i8*, i64 } %str2, 0
+  %isnull4 = icmp eq i8* %opt.ptr3, null
+  %fallback5 = select i1 %isnull4, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.13, i32 0, i32 0), i64 0 }, { i8*, i64 } %str2
+  %arr.data6 = extractvalue { i8*, i64 } %fallback5, 0
+  %call = call i32 @strcmp(i8* %arr.data, i8* %arr.data6)
+  %gt = icmp sgt i32 %call, 0
+  ret i1 %gt
+}
+
 define { i8*, i64 } @String.output(%String* %0) {
 entry:
   %self = alloca %String*, align 8
@@ -12972,7 +13332,7 @@ entry:
   %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
   %opt.ptr = extractvalue { i8*, i64 } %value1, 0
   %isnull = icmp eq i8* %opt.ptr, null
-  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.8, i32 0, i32 0), i64 0 }, { i8*, i64 } %value1
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.14, i32 0, i32 0), i64 0 }, { i8*, i64 } %value1
   ret { i8*, i64 } %fallback
 }
 
@@ -13117,7 +13477,7 @@ endif:                                            ; preds = %entry
 
 then:                                             ; preds = %entry
   %ref = load %String2*, %String2** %self, align 8
-  call void @String2.assign(%String2* %ref, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.9, i32 0, i32 0), i64 0 })
+  call void @String2.assign(%String2* %ref, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.15, i32 0, i32 0), i64 0 })
   ret void
 }
 
@@ -13305,11 +13665,11 @@ entry:
   %s0 = alloca %String2, align 8
   %call = call %String2 @String2.create()
   store %String2 %call, %String2* %s0, align 8
-  call void @"String2.=.array"(%String2* %s0, { i8*, i64 } { i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.10, i32 0, i32 0), i64 6 })
+  call void @"String2.=.array"(%String2* %s0, { i8*, i64 } { i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.16, i32 0, i32 0), i64 6 })
   %s1 = alloca %String2, align 8
   %call1 = call %String2 @String2.create()
   store %String2 %call1, %String2* %s1, align 8
-  call void @"String2.=.array"(%String2* %s1, { i8*, i64 } { i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.11, i32 0, i32 0), i64 5 })
+  call void @"String2.=.array"(%String2* %s1, { i8*, i64 } { i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.17, i32 0, i32 0), i64 5 })
   %s2 = alloca %String2, align 8
   %call2 = call %String2 @String2.create()
   store %String2 %call2, %String2* %s2, align 8
@@ -13324,7 +13684,7 @@ entry:
   %str.data = extractvalue { i8*, i64 } %value4, 0
   %count = getelementptr %String2, %String2* %s0, i32 0, i32 1
   %count5 = load i32, i32* %count, align 4
-  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @fmt, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.12, i32 0, i32 0), i32 %len32, i8* %str.data, i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.13, i32 0, i32 0), i32 %count5, i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.14, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @fmt, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.18, i32 0, i32 0), i32 %len32, i8* %str.data, i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.19, i32 0, i32 0), i32 %count5, i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.20, i32 0, i32 0))
   %value6 = getelementptr %String2, %String2* %s1, i32 0, i32 0
   %value7 = load { i8*, i64 }, { i8*, i64 }* %value6, align 8
   %str.len8 = extractvalue { i8*, i64 } %value7, 1
@@ -13332,7 +13692,7 @@ entry:
   %str.data10 = extractvalue { i8*, i64 } %value7, 0
   %count11 = getelementptr %String2, %String2* %s1, i32 0, i32 1
   %count12 = load i32, i32* %count11, align 4
-  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @fmt.18, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.15, i32 0, i32 0), i32 %len329, i8* %str.data10, i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.16, i32 0, i32 0), i32 %count12, i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.17, i32 0, i32 0))
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @fmt.24, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.21, i32 0, i32 0), i32 %len329, i8* %str.data10, i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.22, i32 0, i32 0), i32 %count12, i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.23, i32 0, i32 0))
   %value13 = getelementptr %String2, %String2* %s2, i32 0, i32 0
   %value14 = load { i8*, i64 }, { i8*, i64 }* %value13, align 8
   %str.len15 = extractvalue { i8*, i64 } %value14, 1
@@ -13340,7 +13700,7 @@ entry:
   %str.data17 = extractvalue { i8*, i64 } %value14, 0
   %count18 = getelementptr %String2, %String2* %s2, i32 0, i32 1
   %count19 = load i32, i32* %count18, align 4
-  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @fmt.22, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.19, i32 0, i32 0), i32 %len3216, i8* %str.data17, i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.20, i32 0, i32 0), i32 %count19, i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.21, i32 0, i32 0))
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @fmt.28, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.25, i32 0, i32 0), i32 %len3216, i8* %str.data17, i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.26, i32 0, i32 0), i32 %count19, i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.27, i32 0, i32 0))
   call void @String2.drop(%String2* %s2)
   call void @String2.drop(%String2* %s1)
   call void @String2.drop(%String2* %s0)
@@ -15451,6 +15811,44 @@ struct String
 │        │  └─ ref : STRUCT_CALL
 │        │     └─ v : STRUCT_CALL
 │        └─ int 0
+├─ fn String.==.array(self : STRUCT_CALL, str : array) : bool
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ str : char[]
+│  │  │  └─ NULL_LIT : char[]
+│  │  └─ return
+│  │     └─ == : bool
+│  │        ├─ .count : i32
+│  │        │  └─ self : STRUCT_CALL
+│  │        └─ int 0
+│  └─ return
+│     └─ == : bool
+│        ├─ call strcmp : i32
+│        │  ├─ FALLBACK : char[]
+│        │  │  ├─ .value : char[]
+│        │  │  │  └─ self : STRUCT_CALL
+│        │  │  └─ char[] ""
+│        │  └─ str : char[]
+│        └─ int 0
+├─ fn String.!=.array(self : STRUCT_CALL, str : array) : bool
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ str : char[]
+│  │  │  └─ NULL_LIT : char[]
+│  │  └─ return
+│  │     └─ != : bool
+│  │        ├─ .count : i32
+│  │        │  └─ self : STRUCT_CALL
+│  │        └─ int 0
+│  └─ return
+│     └─ != : bool
+│        ├─ call strcmp : i32
+│        │  ├─ FALLBACK : char[]
+│        │  │  ├─ .value : char[]
+│        │  │  │  └─ self : STRUCT_CALL
+│        │  │  └─ char[] ""
+│        │  └─ str : char[]
+│        └─ int 0
 ├─ fn String.<.ref.String(self : STRUCT_CALL, v : STRUCT_CALL) : bool
 │  └─ return
 │     └─ < : bool
@@ -15466,6 +15864,30 @@ struct String
 │        │  ├─ self : STRUCT_CALL
 │        │  └─ ref : STRUCT_CALL
 │        │     └─ v : STRUCT_CALL
+│        └─ int 0
+├─ fn String.<.array(self : STRUCT_CALL, str : array) : bool
+│  └─ return
+│     └─ < : bool
+│        ├─ call strcmp : i32
+│        │  ├─ FALLBACK : char[]
+│        │  │  ├─ .value : char[]
+│        │  │  │  └─ self : STRUCT_CALL
+│        │  │  └─ char[] ""
+│        │  └─ FALLBACK : char[]
+│        │     ├─ str : char[]
+│        │     └─ char[] ""
+│        └─ int 0
+├─ fn String.>.array(self : STRUCT_CALL, str : array) : bool
+│  └─ return
+│     └─ > : bool
+│        ├─ call strcmp : i32
+│        │  ├─ FALLBACK : char[]
+│        │  │  ├─ .value : char[]
+│        │  │  │  └─ self : STRUCT_CALL
+│        │  │  └─ char[] ""
+│        │  └─ FALLBACK : char[]
+│        │     ├─ str : char[]
+│        │     └─ char[] ""
 │        └─ int 0
 └─ fn String.output(self : STRUCT_CALL) : char[]
    └─ return
@@ -15865,15 +16287,21 @@ The Quick Cass enters!
 @str.6 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
 @str.7 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
 @str.8 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
-@str.9 = private unnamed_addr constant [2 x i8] c" \00", align 1
-@str.10 = private unnamed_addr constant [10 x i8] c" enters!\0A\00", align 1
+@str.9 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.10 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.11 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.12 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.13 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.14 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.15 = private unnamed_addr constant [2 x i8] c" \00", align 1
+@str.16 = private unnamed_addr constant [10 x i8] c" enters!\0A\00", align 1
 @fmt = private unnamed_addr constant [17 x i8] c"%.*s%.*s%.*s%.*s\00", align 1
-@str.11 = private unnamed_addr constant [7 x i8] c"Aldric\00", align 1
-@str.12 = private unnamed_addr constant [9 x i8] c"The Bold\00", align 1
-@str.13 = private unnamed_addr constant [6 x i8] c"Borin\00", align 1
-@str.14 = private unnamed_addr constant [9 x i8] c"The Grim\00", align 1
-@str.15 = private unnamed_addr constant [5 x i8] c"Cass\00", align 1
-@str.16 = private unnamed_addr constant [10 x i8] c"The Quick\00", align 1
+@str.17 = private unnamed_addr constant [7 x i8] c"Aldric\00", align 1
+@str.18 = private unnamed_addr constant [9 x i8] c"The Bold\00", align 1
+@str.19 = private unnamed_addr constant [6 x i8] c"Borin\00", align 1
+@str.20 = private unnamed_addr constant [9 x i8] c"The Grim\00", align 1
+@str.21 = private unnamed_addr constant [5 x i8] c"Cass\00", align 1
+@str.22 = private unnamed_addr constant [10 x i8] c"The Quick\00", align 1
 
 define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
 entry:
@@ -17351,6 +17779,72 @@ entry:
   ret i1 %ne
 }
 
+define i1 @"String.==.array"(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %str1 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %str1, 0
+  %nullcmp = icmp eq i8* %opt.ptr, null
+  br i1 %nullcmp, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %ref3 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref3, i32 0, i32 0
+  %value4 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr5 = extractvalue { i8*, i64 } %value4, 0
+  %isnull = icmp eq i8* %opt.ptr5, null
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.8, i32 0, i32 0), i64 0 }, { i8*, i64 } %value4
+  %arr.data = extractvalue { i8*, i64 } %fallback, 0
+  %str6 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %arr.data7 = extractvalue { i8*, i64 } %str6, 0
+  %call = call i32 @strcmp(i8* %arr.data, i8* %arr.data7)
+  %eq8 = icmp eq i32 %call, 0
+  ret i1 %eq8
+
+then:                                             ; preds = %entry
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count2 = load i32, i32* %count, align 4
+  %eq = icmp eq i32 %count2, 0
+  ret i1 %eq
+}
+
+define i1 @"String.!=.array"(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %str1 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %str1, 0
+  %nullcmp = icmp eq i8* %opt.ptr, null
+  br i1 %nullcmp, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %ref3 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref3, i32 0, i32 0
+  %value4 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr5 = extractvalue { i8*, i64 } %value4, 0
+  %isnull = icmp eq i8* %opt.ptr5, null
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.9, i32 0, i32 0), i64 0 }, { i8*, i64 } %value4
+  %arr.data = extractvalue { i8*, i64 } %fallback, 0
+  %str6 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %arr.data7 = extractvalue { i8*, i64 } %str6, 0
+  %call = call i32 @strcmp(i8* %arr.data, i8* %arr.data7)
+  %ne8 = icmp ne i32 %call, 0
+  ret i1 %ne8
+
+then:                                             ; preds = %entry
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count2 = load i32, i32* %count, align 4
+  %ne = icmp ne i32 %count2, 0
+  ret i1 %ne
+}
+
 define i1 @"String.<.ref.String"(%String* %0, %String* %1) {
 entry:
   %self = alloca %String*, align 8
@@ -17377,6 +17871,52 @@ entry:
   ret i1 %gt
 }
 
+define i1 @"String.<.array"(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %value1, 0
+  %isnull = icmp eq i8* %opt.ptr, null
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.10, i32 0, i32 0), i64 0 }, { i8*, i64 } %value1
+  %arr.data = extractvalue { i8*, i64 } %fallback, 0
+  %str2 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %opt.ptr3 = extractvalue { i8*, i64 } %str2, 0
+  %isnull4 = icmp eq i8* %opt.ptr3, null
+  %fallback5 = select i1 %isnull4, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.11, i32 0, i32 0), i64 0 }, { i8*, i64 } %str2
+  %arr.data6 = extractvalue { i8*, i64 } %fallback5, 0
+  %call = call i32 @strcmp(i8* %arr.data, i8* %arr.data6)
+  %lt = icmp slt i32 %call, 0
+  ret i1 %lt
+}
+
+define i1 @"String.>.array"(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %value1, 0
+  %isnull = icmp eq i8* %opt.ptr, null
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.12, i32 0, i32 0), i64 0 }, { i8*, i64 } %value1
+  %arr.data = extractvalue { i8*, i64 } %fallback, 0
+  %str2 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %opt.ptr3 = extractvalue { i8*, i64 } %str2, 0
+  %isnull4 = icmp eq i8* %opt.ptr3, null
+  %fallback5 = select i1 %isnull4, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.13, i32 0, i32 0), i64 0 }, { i8*, i64 } %str2
+  %arr.data6 = extractvalue { i8*, i64 } %fallback5, 0
+  %call = call i32 @strcmp(i8* %arr.data, i8* %arr.data6)
+  %gt = icmp sgt i32 %call, 0
+  ret i1 %gt
+}
+
 define { i8*, i64 } @String.output(%String* %0) {
 entry:
   %self = alloca %String*, align 8
@@ -17386,7 +17926,7 @@ entry:
   %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
   %opt.ptr = extractvalue { i8*, i64 } %value1, 0
   %isnull = icmp eq i8* %opt.ptr, null
-  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.8, i32 0, i32 0), i64 0 }, { i8*, i64 } %value1
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.14, i32 0, i32 0), i64 0 }, { i8*, i64 } %value1
   ret { i8*, i64 } %fallback
 }
 
@@ -17451,7 +17991,7 @@ entry:
   %str.len4 = extractvalue { i8*, i64 } %name3, 1
   %len325 = trunc i64 %str.len4 to i32
   %str.data6 = extractvalue { i8*, i64 } %name3, 0
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @fmt, i32 0, i32 0), i32 %len32, i8* %str.data, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.9, i32 0, i32 0), i32 %len325, i8* %str.data6, i32 9, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.10, i32 0, i32 0))
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @fmt, i32 0, i32 0), i32 %len32, i8* %str.data, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.15, i32 0, i32 0), i32 %len325, i8* %str.data6, i32 9, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.16, i32 0, i32 0))
   ret void
 }
 
@@ -17617,15 +18157,15 @@ entry:
   %hero = alloca %Hero, align 8
   %call = call %Hero @Hero.create()
   store %Hero %call, %Hero* %hero, align 8
-  call void @Hero.setup(%Hero* %hero, { i8*, i64 } { i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.11, i32 0, i32 0), i64 6 }, { i8*, i64 } { i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.12, i32 0, i32 0), i64 8 })
+  call void @Hero.setup(%Hero* %hero, { i8*, i64 } { i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.17, i32 0, i32 0), i64 6 }, { i8*, i64 } { i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.18, i32 0, i32 0), i64 8 })
   call void @Hero.announce(%Hero* %hero)
   %other = alloca %Hero, align 8
   %call1 = call %Hero @Hero.create()
   store %Hero %call1, %Hero* %other, align 8
-  call void @Hero.setup(%Hero* %other, { i8*, i64 } { i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.13, i32 0, i32 0), i64 5 }, { i8*, i64 } { i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.14, i32 0, i32 0), i64 8 })
+  call void @Hero.setup(%Hero* %other, { i8*, i64 } { i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.19, i32 0, i32 0), i64 5 }, { i8*, i64 } { i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.20, i32 0, i32 0), i64 8 })
   call void @"Hero.=.ref.Hero"(%Hero* %hero, %Hero* %other)
   call void @Hero.announce(%Hero* %hero)
-  call void @Hero.setup(%Hero* %other, { i8*, i64 } { i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.15, i32 0, i32 0), i64 4 }, { i8*, i64 } { i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.16, i32 0, i32 0), i64 9 })
+  call void @Hero.setup(%Hero* %other, { i8*, i64 } { i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.21, i32 0, i32 0), i64 4 }, { i8*, i64 } { i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.22, i32 0, i32 0), i64 9 })
   call void @Hero.announce(%Hero* %hero)
   call void @Hero.announce(%Hero* %other)
   call void @Hero.drop(%Hero* %other)

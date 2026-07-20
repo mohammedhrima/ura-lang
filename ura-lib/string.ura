@@ -339,11 +339,25 @@ struct String:
     operator != (ref v String) bool:
         return self.compare(ref v) != 0
 
+    operator == (str char[]?) bool:
+        if str == null: return self.count == 0
+        return strcmp(self.value ?? "", str) == 0
+
+    operator != (str char[]?) bool:
+        if str == null: return self.count != 0
+        return strcmp(self.value ?? "", str) != 0
+
     operator < (ref v String) bool:
         return self.compare(ref v) < 0
 
     operator > (ref v String) bool:
         return self.compare(ref v) > 0
+
+    operator < (str char[]?) bool:
+        return strcmp(self.value ?? "", str ?? "") < 0
+
+    operator > (str char[]?) bool:
+        return strcmp(self.value ?? "", str ?? "") > 0
 
     operator output() char[]:
         return self.value ?? ""
