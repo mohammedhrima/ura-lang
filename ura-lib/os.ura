@@ -1,6 +1,0 @@
-struct Os:
-    argc i32
-    argv char[][]
-
-// BLOCKED (M4 globals): top-level variables are not implemented yet - a top-level declaration reaches code_gen_id with no insertion point.
-// os Os

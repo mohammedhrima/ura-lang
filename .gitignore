@@ -1,6 +1,10 @@
-# Compiler build output
-build/*
-!build/ura
+# Every build/ directory is compiler output, at any depth...
+build/
+# ...except the root one, which holds the ura binary itself.
+# The directory must be un-ignored before a file inside it can be kept.
+!/build/
+/build/*
+!/build/ura
 
 # Generated files
 **/*.s
@@ -10,18 +14,6 @@ build/*
 # macOS
 .DS_Store
 **/.DS_Store
-
-# Test generated IR (keep expected .ll, ignore build/ subdirs)
-tests/**/build/
-
-# LLVM sandbox build
-llvm/build/
-
-# Src build
-src/build/
-
-# anvil build outputs (per-OS)
-config/anvil/build/
 
 # Python task tooling bytecode (config/)
 __pycache__/

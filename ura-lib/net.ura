@@ -110,7 +110,7 @@ proto fn htonl(hostlong i32) i32
 proto fn ntohs(netshort i32) i32
 proto fn ntohl(netlong i32) i32
 proto fn inet_addr(cp pointer) i32            // returns in_addr_t (uint32_t)
-proto fn inet_ntoa(addr In_addr) pointer
+proto fn inet_ntoa(addr u32) pointer
 proto fn inet_pton(af i32, src pointer, dst pointer) i32
 proto fn inet_ntop(af i32, src pointer, dst pointer, size i32) pointer
 

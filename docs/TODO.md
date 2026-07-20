@@ -84,3 +84,4 @@ struct User:
 
 
 + .ura -> tokens -> AST -> IR -> LOWER IR -> codegen
++ single instruction multiple data (simd)

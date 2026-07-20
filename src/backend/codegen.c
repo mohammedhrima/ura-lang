@@ -1066,9 +1066,24 @@ void code_gen_operator(Node *node) {
    Token *token = node->token;
    Node  *fn    = token->Fcall.ptr;
    emit_signature(fn);
-   Value self = struct_arg_ptr(node->left);
-   code_gen(node->right);
-   Value args[2] = { self, node->right->token->llvm.elem };
+   Value  self   = struct_arg_ptr(node->left);
+   Token *param  = fn->token->Fn.params_count > 1 ? fn->token->Fn.params[1] : NULL;
+   bool   by_ref = param && param->is_ref;
+   Type   kind  = node->right->token->type;
+   bool   has_addr = includes(kind, ID, DOT, ACCESS, 0);
+   Value  arg;
+   if (by_ref && has_addr)
+      arg = address_of(node->right);
+   else {
+      code_gen(node->right);
+      arg = node->right->token->llvm.elem;
+      if (by_ref) {
+         Value slot = llvm_alloca(LLVMTypeOf(arg), "op.tmp");
+         llvm_store(arg, slot);
+         arg = slot;
+      }
+   }
+   Value args[2] = { self, arg };
    char *name = fn->token->ret_type == VOID ? "" : "op";
    token->llvm.elem = llvm_call(fn->token->llvm.func_type, fn->token->llvm.elem, args, 2, name);
 }
@@ -1227,16 +1242,28 @@ Value print_adapt(Type type, Value v, char **spec) {
    }
 }
 
+int type_id(Node *def) {
+   static int next = 1;
+   Token *token = def->token;
+   if (!token->Struct.index) token->Struct.index = next++;
+   return token->Struct.index;
+}
+
 TypeRef out_frame_type() {
    TypeRef t = LLVMGetTypeByName(ura.module, "__out_frame");
    if (t) return t;
    t = LLVMStructCreateNamed(ura.context, "__out_frame");
-   TypeRef body[2] = { pointer_to(ura.i8), pointer_to(t) };
-   LLVMStructSetBody(t, body, 2, 0);
+   TypeRef body[3] = { pointer_to(ura.i8), ura.i32, pointer_to(t) };
+   LLVMStructSetBody(t, body, 3, 0);
    return t;
 }
 
 void emit_out_call(Node *def, Value ptr, Value frame) {
+   Node *printer = find_printer(def);
+   if (printer) {
+      emit_printer_call(printer, ptr);
+      return;
+   }
    Value   fn  = struct_printer(def);
    TypeRef fty = def->token->llvm.func_type;
    llvm_call(fty, fn, (Value[]){ ptr, frame }, 2, "");
@@ -1364,12 +1391,18 @@ Value struct_printer(Node *def) {
    llvm_cond_br(done, fresh, sb);
    llvm_at(sb);
    Value pidx[2] = { const_i32(0), const_i32(0) };
-   Value nidx[2] = { const_i32(0), const_i32(1) };
+   Value tidx[2] = { const_i32(0), const_i32(1) };
+   Value nidx[2] = { const_i32(0), const_i32(2) };
+   Value myid = const_i32(type_id(def));
    Value held = llvm_load(pointer_to(ura.i8),
                    llvm_gep(frt, node, pidx, 2, "q.ptr"), "held");
-   Value same = llvm_icmp(LLVMIntEQ,
+   Value hid  = llvm_load(ura.i32,
+                   llvm_gep(frt, node, tidx, 2, "q.ty"), "heldty");
+   Value hit_ptr = llvm_icmp(LLVMIntEQ,
                    LLVMBuildPtrToInt(ura.builder, held, ura.i64, "h2i"),
-                   LLVMBuildPtrToInt(ura.builder, me, ura.i64, "m2i"), "same");
+                   LLVMBuildPtrToInt(ura.builder, me, ura.i64, "m2i"), "sameptr");
+   Value hit_ty  = llvm_icmp(LLVMIntEQ, hid, myid, "samety");
+   Value same    = llvm_binop(LLVMAnd, hit_ptr, hit_ty, "same");
    llvm_cond_br(same, hit, miss);
    llvm_at(hit);
    emit_printf("[Circular]", NULL, 0);
@@ -1382,6 +1415,7 @@ Value struct_printer(Node *def) {
    llvm_at(fresh);
    Value frame = llvm_alloca(frt, "frame");
    llvm_store(me,     llvm_gep(frt, frame, pidx, 2, "f.ptr"));
+   llvm_store(myid,   llvm_gep(frt, frame, tidx, 2, "f.ty"));
    llvm_store(parent, llvm_gep(frt, frame, nidx, 2, "f.prev"));
 
    char *open = format("%s{", token->name);
@@ -1419,6 +1453,16 @@ Value struct_arg_ptr(Node *arg) {
    llvm_store(token->llvm.elem, tmp);
    push_temp(tmp, token);
    return tmp;
+}
+
+void emit_printer_call(Node *printer, Value self) {
+   Token *fn = printer->token;
+   emit_signature(printer);
+   Value slice = llvm_call(fn->llvm.func_type, fn->llvm.elem, &self, 1, "out");
+   Value len   = llvm_extract(slice, 1, "out.len");
+   Value data  = llvm_extract(slice, 0, "out.data");
+   Value n     = LLVMBuildTrunc(ura.builder, len, ura.i32, "len32");
+   emit_printf("%.*s", (Value[]){ n, data }, 2);
 }
 
 void code_gen_output(Node *node) {
