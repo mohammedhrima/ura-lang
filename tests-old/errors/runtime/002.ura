@@ -1,5 +1,0 @@
-// errors/runtime/002 — calling a null (zero-init) function value traps with file:line
-
-main():
-    f fn(int) int
-    return f(21)

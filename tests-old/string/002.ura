@@ -24,7 +24,7 @@ main():
     s2.pop()
     s2.pop()
     c2 char = s2.pop()
-    output(c2 as int, " ", s2.len(), "\n")
+    output(c2 as i32, " ", s2.len(), "\n")
 
     s3 String = String::from("hello")
     s3.join(" world")

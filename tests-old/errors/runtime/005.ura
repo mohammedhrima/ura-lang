@@ -1,5 +1,0 @@
-// errors/runtime/005 — a guarded use (m?) of an unbound ref? traps; raw m would segfault
-
-main():
-    ref? m int
-    output(m?, "\n")

@@ -2,15 +2,15 @@
 use "@/header"
 
 struct Stats:
-    hp  int
-    atk int
+    hp  i32
+    atk i32
 
 struct Hero:
-    name  chars
+    name  char[]
     stats Stats
-    level int
+    level i32
 
-    pub fn new(name chars) Hero:
+    pub fn new(name char[]) Hero:
         h Hero
         h.name      = name
         h.stats.hp  = 100
@@ -29,8 +29,8 @@ struct Hero:
         return s
 
 struct Loot:
-    name  chars
-    value int
+    name  char[]
+    value i32
 
 main():
     hero Hero = Hero::new("Aldric")

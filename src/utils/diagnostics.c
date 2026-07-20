@@ -30,7 +30,7 @@ char *to_string(Type type) {
 	    [OR] = "OR",              [DOTS] = "DOTS",             [PROTO] = "PROT",
 	    [VARIADIC] = "VAR",       [TYPEOF] = "TYPEOF",         [SIZEOF] = "SIZEOF",
 	    [ARGS] = "ARGS",          [OUTPUT] = "OUTPUT",         [CHILDREN] = "CHILDREN",
-	    [AS] = "AS",              [NULLABLE] = "NULLABLE",     [ARRAY_LIT] = "ARRAY_LIT",
+	    [AS] = "AS",              [NULL_LIT] = "NULL_LIT",    [FALLBACK] = "FALLBACK",     [ARRAY_LIT] = "ARRAY_LIT",
 	    [ARRAY_TYPE] = "ARRAY_TYPE",
 	    [OPTIONAL] = "OPTIONAL",  [STRUCT_DEF] = "STRUCT_DEF", [STRUCT_CALL] = "STRUCT_CALL",
 	    [TUPLE] = "TUPLE",        [ENUM_DEF] = "ENUM_DEF",     [ENUM_CALL] = "ENUM_CALL",

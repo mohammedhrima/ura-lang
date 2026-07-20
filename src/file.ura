@@ -1,11 +1,58 @@
+
 use "@/header"
 
+struct Flags:
+    bits i32
+
+    operator = (n i32) void:
+        self.bits = n
+
+    operator = (ref f Flags) void:
+        self.bits = f.bits
+
+    operator & (ref f Flags) Flags:
+        res Flags
+        res.bits = self.bits & f.bits
+        return res
+
+    operator | (ref f Flags) Flags:
+        res Flags
+        res.bits = self.bits | f.bits
+        return res
+
+    operator ^ (ref f Flags) Flags:
+        res Flags
+        res.bits = self.bits ^ f.bits
+        return res
+
+    operator << (n i32) Flags:
+        res Flags
+        res.bits = self.bits << n
+        return res
+
+    operator >> (n i32) Flags:
+        res Flags
+        res.bits = self.bits >> n
+        return res
+
 main():
-    map char[] = char[50]
-    i   i32   = 0
-    while i < 49:
-        map[i] = '.'
-        i = i + 1
-    map[24] = '@'
-    map[49] = 0 as char
-    output("Map: ", map, "\n")
+    a Flags
+    a = 12
+
+    b Flags
+    b = 10
+
+    band Flags = a & b
+    output("a & b:  ", band.bits, "\n")
+
+    bor Flags = a | b
+    output("a | b:  ", bor.bits, "\n")
+
+    bxor Flags = a ^ b
+    output("a ^ b:  ", bxor.bits, "\n")
+
+    lsh Flags = a << 2
+    output("a << 2: ", lsh.bits, "\n")
+
+    rsh Flags = a >> 1
+    output("a >> 1: ", rsh.bits, "\n")

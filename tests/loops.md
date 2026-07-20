@@ -42,6 +42,20 @@ proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
+
 fn main() : i32
 ├─ = : i32
 │  ├─ kills : i32
@@ -70,11 +84,28 @@ fn main() : i32
 
 ```ll
 
+%Os = type { i32, { { i8*, i64 }*, i64 } }
+
+@os = internal global %Os zeroinitializer
 @str = private unnamed_addr constant [2 x i8] c"<\00", align 1
 @str.1 = private unnamed_addr constant [3 x i8] c">\0A\00", align 1
 @fmt = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
 
-define i32 @main() {
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
+
+define i32 @main(i32 %0, i8** %1) {
 entry:
   %kills = alloca i32, align 4
   store i32 0, i32* %kills, align 4
@@ -93,7 +124,7 @@ while.body:                                       ; preds = %while.cond
 
 while.end:                                        ; preds = %while.cond
   %kills3 = load i32, i32* %kills, align 4
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0), i32 %kills3, i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.1, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0), i32 %kills3, i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.1, i32 0, i32 0))
   ret i32 0
 }
 
@@ -127,6 +158,20 @@ proto fn free(ptr : pointer) : void
 proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
+
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
 
 fn main() : i32
 ├─ = : i32
@@ -164,12 +209,29 @@ fn main() : i32
 
 ```ll
 
+%Os = type { i32, { { i8*, i64 }*, i64 } }
+
+@os = internal global %Os zeroinitializer
 @str = private unnamed_addr constant [2 x i8] c" \00", align 1
 @fmt = private unnamed_addr constant [7 x i8] c"%d%.*s\00", align 1
 @str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt.2 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
 
-define i32 @main() {
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
+
+define i32 @main(i32 %0, i8** %1) {
 entry:
   %i = alloca i32, align 4
   store i32 0, i32* %i, align 4
@@ -184,7 +246,7 @@ loop.body:                                        ; preds = %endif3, %then, %ent
   br i1 %eq, label %then, label %endif
 
 loop.end:                                         ; preds = %then4
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.2, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.2, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
   ret i32 0
 
 endif:                                            ; preds = %loop.body
@@ -197,7 +259,7 @@ then:                                             ; preds = %loop.body
 
 endif3:                                           ; preds = %endif
   %i7 = load i32, i32* %i, align 4
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i32 %i7, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0))
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i32 %i7, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0))
   br label %loop.body
 
 then4:                                            ; preds = %endif
@@ -232,6 +294,20 @@ proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
+
 fn main() : i32
 ├─ for
 │  ├─ i : i32
@@ -264,6 +340,9 @@ fn main() : i32
 
 ```ll
 
+%Os = type { i32, { { i8*, i64 }*, i64 } }
+
+@os = internal global %Os zeroinitializer
 @str = private unnamed_addr constant [2 x i8] c" \00", align 1
 @fmt = private unnamed_addr constant [7 x i8] c"%d%.*s\00", align 1
 @str.1 = private unnamed_addr constant [3 x i8] c"| \00", align 1
@@ -273,7 +352,21 @@ fn main() : i32
 @str.5 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt.6 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
 
-define i32 @main() {
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
+
+define i32 @main(i32 %0, i8** %1) {
 entry:
   %i = alloca i32, align 4
   store i32 0, i32* %i, align 4
@@ -288,7 +381,7 @@ for.cond:                                         ; preds = %for.inc, %entry
 
 for.body:                                         ; preds = %for.cond
   %i2 = load i32, i32* %i, align 4
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i32 %i2, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i32 %i2, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0))
   br label %for.inc
 
 for.inc:                                          ; preds = %for.body
@@ -298,7 +391,7 @@ for.inc:                                          ; preds = %for.body
   br label %for.cond
 
 for.end:                                          ; preds = %for.cond
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.2, i32 0, i32 0), i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.1, i32 0, i32 0))
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.2, i32 0, i32 0), i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.1, i32 0, i32 0))
   %i4 = alloca i32, align 4
   store i32 5, i32* %i4, align 4
   br label %for.cond5
@@ -312,7 +405,7 @@ for.cond5:                                        ; preds = %for.inc7, %for.end
 
 for.body6:                                        ; preds = %for.cond5
   %i13 = load i32, i32* %i4, align 4
-  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.4, i32 0, i32 0), i32 %i13, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.4, i32 0, i32 0), i32 %i13, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
   br label %for.inc7
 
 for.inc7:                                         ; preds = %for.body6
@@ -322,7 +415,7 @@ for.inc7:                                         ; preds = %for.body6
   br label %for.cond5
 
 for.end8:                                         ; preds = %for.cond5
-  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.6, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i32 0, i32 0))
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.6, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i32 0, i32 0))
   ret i32 0
 }
 
@@ -352,6 +445,20 @@ proto fn free(ptr : pointer) : void
 proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
+
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
 
 fn main() : i32
 ├─ = : array
@@ -386,11 +493,28 @@ sum = 60
 
 ```ll
 
+%Os = type { i32, { { i8*, i64 }*, i64 } }
+
+@os = internal global %Os zeroinitializer
 @str = private unnamed_addr constant [7 x i8] c"sum = \00", align 1
 @str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
 
-define i32 @main() {
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
+
+define i32 @main(i32 %0, i8** %1) {
 entry:
   %nums = alloca { i32*, i64 }, align 8
   %arr = alloca i32, i64 3, align 4
@@ -436,7 +560,7 @@ for.inc:                                          ; preds = %for.body
 
 for.end:                                          ; preds = %for.cond
   %total9 = load i32, i32* %total, align 4
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i32 6, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i32 %total9, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i32 6, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i32 %total9, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
   ret i32 0
 }
 
@@ -467,6 +591,20 @@ proto fn free(ptr : pointer) : void
 proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
+
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
 
 fn main() : i32
 ├─ = : array
@@ -503,12 +641,29 @@ fn main() : i32
 
 ```ll
 
+%Os = type { i32, { { i8*, i64 }*, i64 } }
+
+@os = internal global %Os zeroinitializer
 @str = private unnamed_addr constant [2 x i8] c" \00", align 1
 @fmt = private unnamed_addr constant [7 x i8] c"%d%.*s\00", align 1
 @str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt.2 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
 
-define i32 @main() {
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
+
+define i32 @main(i32 %0, i8** %1) {
 entry:
   %nums = alloca { i32*, i64 }, align 8
   %arr = alloca i32, i64 4, align 4
@@ -567,7 +722,7 @@ for.body13:                                       ; preds = %for.cond12
   %x19 = load i32, i32* %elem18, align 4
   store i32 %x19, i32* %x11, align 4
   %x20 = load i32, i32* %x11, align 4
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i32 %x20, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i32 %x20, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0))
   br label %for.inc14
 
 for.inc14:                                        ; preds = %for.body13
@@ -577,7 +732,7 @@ for.inc14:                                        ; preds = %for.body13
   br label %for.cond12
 
 for.end15:                                        ; preds = %for.cond12
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.2, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.2, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
   ret i32 0
 }
 
@@ -745,6 +900,20 @@ proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
+
 struct Room
 └─ floor : i32
 
@@ -865,9 +1034,11 @@ fn main() : i32
 
 ```ll
 
+%Os = type { i32, { { i8*, i64 }*, i64 } }
 %World = type { { { i32*, i64 }*, i64 }, { %Room*, i64 } }
 %Room = type { i32 }
 
+@os = internal global %Os zeroinitializer
 @str = private unnamed_addr constant [2 x i8] c" \00", align 1
 @fmt = private unnamed_addr constant [7 x i8] c"%d%.*s\00", align 1
 @str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
@@ -880,6 +1051,20 @@ fn main() : i32
 @fmt.8 = private unnamed_addr constant [7 x i8] c"%d%.*s\00", align 1
 @str.9 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt.10 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
+
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
 
 define %World @World.create() {
 entry:
@@ -1124,7 +1309,7 @@ for.end32:                                        ; preds = %for.cond29
   ret void
 }
 
-define i32 @main() {
+define i32 @main(i32 %0, i8** %1) {
 entry:
   %w = alloca %World, align 8
   %call = call %World @World.create()
@@ -1231,6 +1416,20 @@ proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
+
 struct Room
 └─ floor : i32
 
@@ -1351,9 +1550,11 @@ fn main() : i32
 
 ```ll
 
+%Os = type { i32, { { i8*, i64 }*, i64 } }
 %World = type { { { i32*, i64 }*, i64 }, { %Room*, i64 } }
 %Room = type { i32 }
 
+@os = internal global %Os zeroinitializer
 @str = private unnamed_addr constant [2 x i8] c" \00", align 1
 @fmt = private unnamed_addr constant [7 x i8] c"%d%.*s\00", align 1
 @str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
@@ -1366,6 +1567,20 @@ fn main() : i32
 @fmt.8 = private unnamed_addr constant [7 x i8] c"%d%.*s\00", align 1
 @str.9 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt.10 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
+
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
 
 define %World @World.create() {
 entry:
@@ -1610,7 +1825,7 @@ for.end32:                                        ; preds = %for.cond29
   ret void
 }
 
-define i32 @main() {
+define i32 @main(i32 %0, i8** %1) {
 entry:
   %w = alloca %World, align 8
   %call = call %World @World.create()
@@ -1690,6 +1905,20 @@ proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
+
 fn main() : i32
 ├─ for
 │  ├─ i : i32
@@ -1752,6 +1981,9 @@ fn main() : i32
 
 ```ll
 
+%Os = type { i32, { { i8*, i64 }*, i64 } }
+
+@os = internal global %Os zeroinitializer
 @str = private unnamed_addr constant [2 x i8] c" \00", align 1
 @fmt = private unnamed_addr constant [7 x i8] c"%d%.*s\00", align 1
 @str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
@@ -1769,7 +2001,21 @@ fn main() : i32
 @str.13 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt.14 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
 
-define i32 @main() {
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
+
+define i32 @main(i32 %0, i8** %1) {
 entry:
   %i = alloca i32, align 4
   store i32 0, i32* %i, align 4
@@ -1784,7 +2030,7 @@ for.cond:                                         ; preds = %for.inc, %entry
 
 for.body:                                         ; preds = %for.cond
   %i2 = load i32, i32* %i, align 4
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i32 %i2, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i32 %i2, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0))
   br label %for.inc
 
 for.inc:                                          ; preds = %for.body
@@ -1794,7 +2040,7 @@ for.inc:                                          ; preds = %for.body
   br label %for.cond
 
 for.end:                                          ; preds = %for.cond
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.2, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.2, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
   %i4 = alloca i32, align 4
   store i32 10, i32* %i4, align 4
   br label %for.cond5
@@ -1808,7 +2054,7 @@ for.cond5:                                        ; preds = %for.inc7, %for.end
 
 for.body6:                                        ; preds = %for.cond5
   %i13 = load i32, i32* %i4, align 4
-  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.4, i32 0, i32 0), i32 %i13, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.4, i32 0, i32 0), i32 %i13, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
   br label %for.inc7
 
 for.inc7:                                         ; preds = %for.body6
@@ -1818,7 +2064,7 @@ for.inc7:                                         ; preds = %for.body6
   br label %for.cond5
 
 for.end8:                                         ; preds = %for.cond5
-  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.6, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i32 0, i32 0))
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.6, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i32 0, i32 0))
   %n = alloca i32, align 4
   store i32 4, i32* %n, align 4
   %n16 = load i32, i32* %n, align 4
@@ -1837,7 +2083,7 @@ for.cond18:                                       ; preds = %for.inc20, %for.end
 
 for.body19:                                       ; preds = %for.cond18
   %i26 = load i32, i32* %i17, align 4
-  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.8, i32 0, i32 0), i32 %i26, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.7, i32 0, i32 0))
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.8, i32 0, i32 0), i32 %i26, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.7, i32 0, i32 0))
   br label %for.inc20
 
 for.inc20:                                        ; preds = %for.body19
@@ -1847,7 +2093,7 @@ for.inc20:                                        ; preds = %for.body19
   br label %for.cond18
 
 for.end21:                                        ; preds = %for.cond18
-  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.10, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.9, i32 0, i32 0))
+  %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.10, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.9, i32 0, i32 0))
   %i29 = alloca i32, align 4
   store i32 0, i32* %i29, align 4
   br label %for.cond30
@@ -1861,7 +2107,7 @@ for.cond30:                                       ; preds = %for.inc32, %for.end
 
 for.body31:                                       ; preds = %for.cond30
   %i38 = load i32, i32* %i29, align 4
-  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.12, i32 0, i32 0), i32 %i38, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.11, i32 0, i32 0))
+  %8 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.12, i32 0, i32 0), i32 %i38, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.11, i32 0, i32 0))
   br label %for.inc32
 
 for.inc32:                                        ; preds = %for.body31
@@ -1871,7 +2117,7 @@ for.inc32:                                        ; preds = %for.body31
   br label %for.cond30
 
 for.end33:                                        ; preds = %for.cond30
-  %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.14, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.13, i32 0, i32 0))
+  %9 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.14, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.13, i32 0, i32 0))
   ret i32 0
 }
 
@@ -1972,6 +2218,20 @@ proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
+
 fn main() : i32
 ├─ output : void
 │  └─ char[] "break:    "
@@ -2041,6 +2301,9 @@ nested:   00 01 10 11 20 21
 
 ```ll
 
+%Os = type { i32, { { i8*, i64 }*, i64 } }
+
+@os = internal global %Os zeroinitializer
 @str = private unnamed_addr constant [11 x i8] c"break:    \00", align 1
 @fmt = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
 @str.1 = private unnamed_addr constant [2 x i8] c" \00", align 1
@@ -2057,9 +2320,23 @@ nested:   00 01 10 11 20 21
 @str.11 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt.12 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
 
-define i32 @main() {
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
 entry:
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt, i32 0, i32 0), i32 10, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str, i32 0, i32 0))
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
+
+define i32 @main(i32 %0, i8** %1) {
+entry:
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt, i32 0, i32 0), i32 10, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str, i32 0, i32 0))
   %i = alloca i32, align 4
   store i32 0, i32* %i, align 4
   br label %for.cond
@@ -2083,14 +2360,14 @@ for.inc:                                          ; preds = %endif
   br label %for.cond
 
 for.end:                                          ; preds = %then, %for.cond
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.4, i32 0, i32 0), i32 11, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.3, i32 0, i32 0))
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.4, i32 0, i32 0), i32 11, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.3, i32 0, i32 0))
   %i5 = alloca i32, align 4
   store i32 0, i32* %i5, align 4
   br label %for.cond6
 
 endif:                                            ; preds = %for.body
   %i3 = load i32, i32* %i, align 4
-  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.2, i32 0, i32 0), i32 %i3, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.2, i32 0, i32 0), i32 %i3, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
   br label %for.inc
 
 then:                                             ; preds = %for.body
@@ -2114,21 +2391,21 @@ for.inc8:                                         ; preds = %endif14, %then15
   br label %for.cond6
 
 for.end9:                                         ; preds = %for.cond6
-  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.8, i32 0, i32 0), i32 11, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.7, i32 0, i32 0))
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.8, i32 0, i32 0), i32 11, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.7, i32 0, i32 0))
   %i21 = alloca i32, align 4
   store i32 0, i32* %i21, align 4
   br label %for.cond22
 
 endif14:                                          ; preds = %cont
   %i18 = load i32, i32* %i5, align 4
-  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.6, i32 0, i32 0), i32 %i18, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i32 0, i32 0))
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.6, i32 0, i32 0), i32 %i18, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i32 0, i32 0))
   br label %for.inc8
 
 then15:                                           ; preds = %cont
   br label %for.inc8
 
 trap:                                             ; preds = %for.body7
-  %5 = call i64 @write(i32 2, i8* getelementptr inbounds ([162 x i8], [162 x i8]* @trap_msg, i32 0, i32 0), i64 161)
+  %7 = call i64 @write(i32 2, i8* getelementptr inbounds ([162 x i8], [162 x i8]* @trap_msg, i32 0, i32 0), i64 161)
   call void @exit(i32 1)
   unreachable
 
@@ -2156,7 +2433,7 @@ for.inc24:                                        ; preds = %for.end33
   br label %for.cond22
 
 for.end25:                                        ; preds = %for.cond22
-  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.12, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.11, i32 0, i32 0))
+  %8 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.12, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.11, i32 0, i32 0))
   ret i32 0
 
 for.cond30:                                       ; preds = %for.inc32, %for.body23
@@ -2183,7 +2460,7 @@ for.end33:                                        ; preds = %then39, %for.cond30
 endif38:                                          ; preds = %for.body31
   %i42 = load i32, i32* %i21, align 4
   %j43 = load i32, i32* %j, align 4
-  %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @fmt.10, i32 0, i32 0), i32 %i42, i32 %j43, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.9, i32 0, i32 0))
+  %9 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @fmt.10, i32 0, i32 0), i32 %i42, i32 %j43, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.9, i32 0, i32 0))
   br label %for.inc32
 
 then39:                                           ; preds = %for.body31
@@ -2226,6 +2503,20 @@ proto fn free(ptr : pointer) : void
 proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
+
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
 
 fn main() : i32
 ├─ = : array
@@ -2289,11 +2580,28 @@ Open tiles: 6
 
 ```ll
 
+%Os = type { i32, { { i8*, i64 }*, i64 } }
+
+@os = internal global %Os zeroinitializer
 @str = private unnamed_addr constant [13 x i8] c"Open tiles: \00", align 1
 @str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
 
-define i32 @main() {
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
+
+define i32 @main(i32 %0, i8** %1) {
 entry:
   %tiles = alloca { i8*, i64 }, align 8
   %arr = alloca i8, i64 10, align 1
@@ -2344,7 +2652,7 @@ while.body:                                       ; preds = %while.cond
 
 while.end:                                        ; preds = %while.cond
   %open19 = load i32, i32* %open, align 4
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i32 12, i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str, i32 0, i32 0), i32 %open19, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i32 12, i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str, i32 0, i32 0), i32 %open19, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
   ret i32 0
 
 endif:                                            ; preds = %while.body

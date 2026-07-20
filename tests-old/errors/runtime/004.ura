@@ -1,6 +1,0 @@
-// errors/runtime/004 — float division by zero traps (not inf)
-
-main():
-    b float = 0.0
-    a float = 10.0
-    c float = a / b

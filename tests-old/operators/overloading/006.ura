@@ -3,7 +3,7 @@
 use "@/header"
 
 struct Buffer:
-    value chars
+    value char[]
 
     pub fn new() Buffer:
         b Buffer
@@ -13,7 +13,7 @@ struct Buffer:
     operator delete() void:
         free(self.value)
 
-    operator = (s chars) void:
+    operator = (s char[]) void:
         strcpy(self.value, s)
 
     operator = (ref b Buffer) void:

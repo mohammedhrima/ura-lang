@@ -1,5 +1,0 @@
-[1m[0;31merror: [0mBitwise and shift operators require integer operands
-  [2mtests/errors/operators/006.ura:4:19[0m
-  [1m[34m|[0m
-[1m[34m4 |[0m     x float = 1.5 & 2.0
-  [1m[34m|[0m                   [1;31m^[0m

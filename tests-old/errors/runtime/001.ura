@@ -1,6 +1,0 @@
-// errors/runtime/001 — divide by zero prints file:line and exits 1
-
-main():
-    b int = 0
-    a int = 10
-    c int = a / b

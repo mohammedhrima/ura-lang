@@ -15,10 +15,10 @@ fn banner() void:
     log("\033[0;90m─────────────────────────────────\033[0m\n\n")
 
 struct Server:
-    fd int
-    client_fd int
-    buf chars
-    rbuf chars
+    fd i32
+    client_fd i32
+    buf char[]
+    rbuf char[]
 
     fn init() void:
         self.fd = socket(2, 1, 0)
@@ -31,22 +31,22 @@ struct Server:
         self.rbuf = heap[char](1024)
 
     fn set_reuse() void:
-        opt chars = stack[char](4)
+        opt char[] = stack[char](4)
         opt[0] = 1 as char
         setsockopt(self.fd, 65535, 4, opt, 4)
         setsockopt(self.fd, 65535, 512, opt, 4)
 
     fn handle_client() void:
-        r int = 0
-        pid2 int = fork()
+        r i32 = 0
+        pid2 i32 = fork()
 
         if pid2 == 0:
-            welcome chars = "\033[0;35mWelcome to URA Secure Server\nType /help\n\033[0m"
+            welcome char[] = "\033[0;35mWelcome to URA Secure Server\nType /help\n\033[0m"
             write(self.client_fd, welcome, strlen(welcome))
 
             while True:
                 r = read(self.client_fd, self.buf, 1023)
-                msg chars
+                msg char[]
                 if r <= 0:
                     log_ts("\033[0;31m", "[server]", "client disconnected")
                     break
@@ -58,7 +58,7 @@ struct Server:
                     write(self.client_fd, msg, strlen(msg))
 
                 elif strcmp(self.buf, "/time") == 0:
-                    buff chars = heap[char](100)
+                    buff char[] = heap[char](100)
                     strcpy(buff, get_time())
                     write(self.client_fd, buff, strlen(buff))
                     free(buff)
@@ -68,7 +68,7 @@ struct Server:
                     write(self.client_fd, msg, strlen(msg))
 
                 elif strcmp(self.buf, "/exit") == 0:
-                    bye chars = "Session closed.\n"
+                    bye char[] = "Session closed.\n"
                     write(self.client_fd, bye, strlen(bye))
                     break
 
@@ -99,7 +99,7 @@ main():
     banner()
 
     addr SockAddr
-    port int = 17000
+    port i32 = 17000
     addr.set_port(port)
     addr.set_ip(0, 0, 0, 0)
 
@@ -121,7 +121,7 @@ main():
 
         log_ts("\033[0;32m", "[server]", "client connected")
 
-        pid int = fork()
+        pid i32 = fork()
         if pid == 0:
             close(srv.fd)
             srv.handle_client()

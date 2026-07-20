@@ -2,17 +2,17 @@
 use "@/header"
 
 fn run() void:
-    fd int = socket(2, 1, 0)
+    fd i32 = socket(2, 1, 0)
     if fd < 0:
         output("socket failed\n")
         return
 
-    port int  = 8080
-    addr chars = heap[char](16)
+    port i32  = 8080
+    addr char[] = heap[char](16)
     addr[0] = 16 as char
     addr[1] = 2  as char
-    hi int = port >> 8
-    lo int = port & 255
+    hi i32 = port >> 8
+    lo i32 = port & 255
     addr[2] = hi as char
     addr[3] = lo as char
 
@@ -20,10 +20,10 @@ fn run() void:
     listen(fd, 5)
     output("listening on :8080\n")
 
-    buf    chars = heap[char](1024)
-    client int   = accept(fd, null, null)
+    buf    char[] = heap[char](1024)
+    client i32   = accept(fd, null, null)
     if client >= 0:
-        n int = read(client, buf, 1023)
+        n i32 = read(client, buf, 1023)
         if n > 0:
             output("got: ", buf, "\n")
             write(client, "pong\n", 5)

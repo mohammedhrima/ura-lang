@@ -1,7 +1,0 @@
-// errors/runtime/003 — infinite recursion overflows the stack
-
-fn recurse(n int) int:
-    return recurse(n)
-
-main():
-    return recurse(1)

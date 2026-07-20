@@ -1,6 +1,0 @@
-[1m[0;31mruntime error: [0mDivision by zero
-  [2mtests/errors/runtime/004.ura:6:17[0m
-  [1m[34m|[0m
-[1m[34m6 |[0m     c float = a / b
-  [1m[34m|[0m                 [1;31m^[0m
-exit: 1

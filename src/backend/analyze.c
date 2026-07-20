@@ -298,8 +298,10 @@ void analyze_id(Node *node) {
          parse_error(token, ERR_CAPTURE_NOT_ALLOWED, token->name);
          return;
       }
-      token->Decl.ptr = decl;
-      token->ret_type = decl->ret_type;
+      decl->used++;
+      token->Decl.ptr    = decl;
+      token->ret_type    = decl->ret_type;
+      token->is_optional = decl->is_optional;
       if (decl->ret_type == FN_TYPE) token->Fn = decl->Fn;
       if (decl->ret_type == ARRAY_TYPE) token->Array = decl->Array;
       if (decl->ret_type == STRUCT_CALL) token->Struct = decl->Struct;
@@ -397,6 +399,8 @@ void analyze(Node *node) {
       case STRUCT_DEF: analyze_struct(node); break;
       case ID:     analyze_id(node); break;
       case I32: case BOOL: case CHARS: case CHAR: case F32: break;
+      case NULL_LIT: break;
+      case FALLBACK: analyze_binop(node); break;
       case RETURN: analyze(node->left); break;
       case FCALL:  analyze_fcall(node); break;
       case NOT: case BNOT: analyze(node->left); break;

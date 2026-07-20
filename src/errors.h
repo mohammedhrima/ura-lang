@@ -127,6 +127,31 @@
 #define ERR_NEW_EXPECTED_ARRAY_TYPE \
 	"Expected an array type after 'new' (e.g. new int[n])"
 
+#define ERR_DROP_NO_PARAMS \
+	"Destructor 'drop' takes no parameters; write 'operator drop:'"
+
+#define ERR_DROP_NO_RET \
+	"Destructor 'drop' returns void; drop the return type"
+
+#define ERR_ASSIGN_OPTIONAL \
+	"'%s' may be null; unwrap it with '?? <default>'" \
+	" or declare '%s' as optional"
+
+#define ERR_FALLBACK_RHS \
+	"The right side of '?\?' may itself be null; it must not be"
+
+#define ERR_FALLBACK_LHS \
+	"The left side of '?\?' is never null, so '?\?' does nothing"
+
+#define ERR_NULL_NO_TARGET \
+	"'%s' can never be null; declare it optional to assign null to it"
+
+#define ERR_COMPARE_NON_NULL \
+	"'%s' is never null, so this comparison is always the same"
+
+#define ERR_NULL_ON_VALUE \
+	"Only arrays and pointers can be null, not %s"
+
 #define ERR_REDECL_FUNCTION "Redeclaration of function '%s'"
 
 #define ERR_SIG_CONFLICT \
@@ -187,6 +212,10 @@
 #define ERR_METHOD_NEEDS_RECEIVER \
 	"'%s::%s' needs a receiver;" \
 	" call it on a value, or declare it 'pub fn' to make it static"
+
+#define ERR_PUB_IS_STATIC \
+	"'%s.%s' is a 'pub fn', so it is static and takes no receiver;" \
+	" call it as '%s::%s()'"
 
 #define ERR_METHOD_ON_NON_STRUCT \
 	"Cannot call '.%s()' on %s; only a struct has methods"

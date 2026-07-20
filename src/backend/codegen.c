@@ -374,7 +374,12 @@ void emit_signature(Node *fn) {
       ret = array_type(token, token->Array.depth);
    else
       ret = to_llvm_type(token->ret_type);
-   token->llvm.func_type = LLVMFunctionType(ret, params, n, token->is_variadic);
+   if (is_main(token)) {
+      TypeRef argv = pointer_to(pointer_to(ura.i8));
+      TypeRef mp[2] = { ura.i32, argv };
+      token->llvm.func_type = LLVMFunctionType(ret, mp, 2, 0);
+   } else
+      token->llvm.func_type = LLVMFunctionType(ret, params, n, token->is_variadic);
    token->llvm.elem      = LLVMAddFunction(ura.module, token->name, token->llvm.func_type);
    free(params);
 }
@@ -600,6 +605,9 @@ void code_gen_literal(Node *node) {
       case CHARS:
          token->llvm.elem = string_slice(token, token->Chars.value);
          break;
+      case NULL_LIT:
+         token->llvm.elem = LLVMConstNull(llvm_type_of(token));
+         break;
       case CHAR:  token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Char.value, 0); break;
       case F32: token->llvm.elem = LLVMConstReal(to_llvm_type(token->ret_type), token->Float.value); break;
    }
@@ -673,6 +681,58 @@ bool is_main(Token *token) {
    return token->type == FDEC && strcmp(token->name, "main") == 0;
 }
 
+void fill_os(Token *os, Value argc, Value argv) {
+   TypeRef sty  = struct_type_of(os->Struct.ptr);
+   Value   base = os->llvm.elem;
+   llvm_store(argc, LLVMBuildStructGEP2(ura.builder, sty, base, 0, "os.argc"));
+
+   TypeRef outer = LLVMStructGetTypeAtIndex(sty, 1);
+   TypeRef strt  = LLVMGetElementType(LLVMStructGetTypeAtIndex(outer, 0));
+   Value   n64   = LLVMBuildSExt(ura.builder, argc, ura.i64, "argc64");
+   TypeRef cty   = NULL;
+   Value   cfn   = lib_fn("calloc", &cty);
+   Value   raw   = llvm_call(cty, cfn, (Value[]){ n64, const_i64(16) }, 2, "argvbuf");
+   Value   buf   = LLVMBuildBitCast(ura.builder, raw, pointer_to(strt), "argv.buf");
+
+   TypeRef lty   = NULL;
+   Value   lfn   = lib_fn("strlen", &lty);
+   Value   fn    = here_func();
+   Block   cond  = llvm_block(fn, "os.cond");
+   Block   body  = llvm_block(fn, "os.body");
+   Block   end   = llvm_block(fn, "os.end");
+   Value   slot  = llvm_alloca(ura.i64, "oi");
+   llvm_store(const_i64(0), slot);
+   llvm_br(cond);
+   llvm_at(cond);
+   Value i = llvm_load(ura.i64, slot, "i");
+   llvm_cond_br(llvm_icmp(LLVMIntSLT, i, n64, "more"), body, end);
+   llvm_at(body);
+   TypeRef i8p = pointer_to(ura.i8);
+   Value   src = llvm_load(i8p, LLVMBuildGEP2(ura.builder, i8p, argv, &i, 1, "ap"), "arg");
+   Value   len = llvm_call(lty, lfn, (Value[]){ src }, 1, "alen");
+   Value   sl  = llvm_insert(LLVMGetUndef(strt), src, 0, "a.ptr");
+   sl          = llvm_insert(sl, len, 1, "a.len");
+   llvm_store(sl, LLVMBuildGEP2(ura.builder, strt, buf, &i, 1, "slot"));
+   llvm_store(llvm_binop(LLVMAdd, i, const_i64(1), "inc"), slot);
+   llvm_br(cond);
+   llvm_at(end);
+   Value agg = llvm_insert(LLVMGetUndef(outer), buf, 0, "argv.ptr");
+   agg       = llvm_insert(agg, n64, 1, "argv.len");
+   llvm_store(agg, LLVMBuildStructGEP2(ura.builder, sty, base, 1, "os.argv"));
+}
+
+void init_os() {
+   for (int i = 0; i < ura.head->children_count; i++) {
+      Token *os = global_decl(ura.head->children[i]);
+      if (!os || !os->name || strcmp(os->name, "os") != 0) continue;
+      if (os->ret_type != STRUCT_CALL || !os->Struct.ptr) return;
+      if (!os->used) return;
+      Value fn = here_func();
+      fill_os(os, LLVMGetParam(fn, 0), LLVMGetParam(fn, 1));
+      return;
+   }
+}
+
 void init_globals() {
    for (int i = 0; i < ura.head->children_count; i++) {
       Node *child = ura.head->children[i];
@@ -695,7 +755,10 @@ void code_gen_fdec(Node *node) {
       param->llvm.elem = llvm_alloca(pt, param->name);
       llvm_store(LLVMGetParam(token->llvm.elem, i), param->llvm.elem);
    }
-   if (is_main(token)) init_globals();
+   if (is_main(token)) { 
+      init_os(); 
+      init_globals(); 
+   }
    for (int i = 0; i < node->children_count; i++) {
       set_debug_location(node->children[i]->token);
       code_gen(node->children[i]);
@@ -1010,17 +1073,41 @@ void code_gen_operator(Node *node) {
    token->llvm.elem = llvm_call(fn->token->llvm.func_type, fn->token->llvm.elem, args, 2, name);
 }
 
+Value opt_ptr(Token *token, Value v) {
+   return token->ret_type == ARRAY_TYPE ? llvm_extract(v, 0, "opt.ptr") : v;
+}
+
+void code_gen_fallback(Node *node) {
+   code_gen(node->left);
+   code_gen(node->right);
+   Value left   = node->left->token->llvm.elem;
+   Value right  = node->right->token->llvm.elem;
+   Value ptr    = opt_ptr(node->left->token, left);
+   Value null   = LLVMConstNull(LLVMTypeOf(ptr));
+   Value isnull = llvm_icmp(LLVMIntEQ, ptr, null, "isnull");
+   node->token->llvm.elem = LLVMBuildSelect(ura.builder, isnull, right, left, "fallback");
+}
+
 void code_gen_binop(Node *node) {
    Token *token = node->token;
-   if (token->Fcall.ptr) { 
-      code_gen_operator(node); 
-      return; 
+   if (token->Fcall.ptr) {
+      code_gen_operator(node);
+      return;
    }
    code_gen(node->left);
    code_gen(node->right);
    Value left  = node->left->token->llvm.elem;
    Value right = node->right->token->llvm.elem;
    Value res   = NULL;
+   bool  is_eq    = includes(token->type, EQUAL, NOT_EQUAL, 0);
+   bool  is_slice = node->left->token->ret_type == ARRAY_TYPE;
+   if (is_eq && is_slice) {
+      Value l = opt_ptr(node->left->token, left);
+      Value r = opt_ptr(node->right->token, right);
+      int   p = token->type == EQUAL ? LLVMIntEQ : LLVMIntNE;
+      token->llvm.elem = llvm_icmp(p, l, r, "nullcmp");
+      return;
+   }
    Type  lt    = node->left->token->ret_type;
    bool  fp    = is_float(lt);
    bool  un    = is_unsigned(lt);
@@ -1425,7 +1512,7 @@ void code_gen(Node *node) {
          break;
       }
       case I32: case BOOL: case CHARS:
-      case CHAR: case F32: {
+      case CHAR: case F32: case NULL_LIT: {
          code_gen_literal(node);
          break;
       }
@@ -1466,6 +1553,10 @@ void code_gen(Node *node) {
       case BOR_ASSIGN: case BXOR_ASSIGN: case LSHIFT_ASSIGN:
       case RSHIFT_ASSIGN: {
          code_gen_compound(node);
+         break;
+      }
+      case FALLBACK: {
+         code_gen_fallback(node);
          break;
       }
       case ADD: case SUB: case MUL: case DIV: case MOD:

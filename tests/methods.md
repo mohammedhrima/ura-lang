@@ -48,6 +48,20 @@ proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
+
 struct Room
 ├─ name : char[]
 ├─ floor : i32
@@ -84,13 +98,29 @@ room hall on floor 2
 
 ```ll
 
+%Os = type { i32, { { i8*, i64 }*, i64 } }
 %Room = type { { i8*, i64 }, i32 }
 
+@os = internal global %Os zeroinitializer
 @str = private unnamed_addr constant [6 x i8] c"room \00", align 1
 @str.1 = private unnamed_addr constant [11 x i8] c" on floor \00", align 1
 @str.2 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt = private unnamed_addr constant [19 x i8] c"%.*s%.*s%.*s%d%.*s\00", align 1
 @str.3 = private unnamed_addr constant [5 x i8] c"hall\00", align 1
+
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
 
 define void @Room.describe(%Room* %0) {
 entry:
@@ -111,7 +141,7 @@ entry:
 
 declare i32 @printf(i8*, ...)
 
-define i32 @main() {
+define i32 @main(i32 %0, i8** %1) {
 entry:
   %r = alloca %Room, align 8
   store %Room zeroinitializer, %Room* %r, align 8
@@ -153,6 +183,20 @@ proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
+
 struct Room
 ├─ floor : i32
 └─ fn Room.climb(self : STRUCT_CALL, n : i32) : void
@@ -189,11 +233,27 @@ floor = 5
 
 ```ll
 
+%Os = type { i32, { { i8*, i64 }*, i64 } }
 %Room = type { i32 }
 
+@os = internal global %Os zeroinitializer
 @str = private unnamed_addr constant [9 x i8] c"floor = \00", align 1
 @str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
+
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
 
 define void @Room.climb(%Room* %0, i32 %1) {
 entry:
@@ -212,7 +272,7 @@ entry:
   ret void
 }
 
-define i32 @main() {
+define i32 @main(i32 %0, i8** %1) {
 entry:
   %r = alloca %Room, align 8
   store %Room zeroinitializer, %Room* %r, align 4
@@ -221,7 +281,7 @@ entry:
   call void @Room.climb(%Room* %r, i32 3)
   %floor1 = getelementptr %Room, %Room* %r, i32 0, i32 0
   %floor2 = load i32, i32* %floor1, align 4
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i32 8, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str, i32 0, i32 0), i32 %floor2, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i32 8, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str, i32 0, i32 0), i32 %floor2, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
   ret i32 0
 }
 
@@ -256,6 +316,20 @@ proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
+
 struct Room
 ├─ floor : i32
 └─ fn Room.depth(self : STRUCT_CALL) : i32
@@ -287,11 +361,27 @@ depth = 40
 
 ```ll
 
+%Os = type { i32, { { i8*, i64 }*, i64 } }
 %Room = type { i32 }
 
+@os = internal global %Os zeroinitializer
 @str = private unnamed_addr constant [9 x i8] c"depth = \00", align 1
 @str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
+
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
 
 define i32 @Room.depth(%Room* %0) {
 entry:
@@ -304,14 +394,14 @@ entry:
   ret i32 %mul
 }
 
-define i32 @main() {
+define i32 @main(i32 %0, i8** %1) {
 entry:
   %r = alloca %Room, align 8
   store %Room zeroinitializer, %Room* %r, align 4
   %floor = getelementptr %Room, %Room* %r, i32 0, i32 0
   store i32 4, i32* %floor, align 4
   %call = call i32 @Room.depth(%Room* %r)
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i32 8, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str, i32 0, i32 0), i32 %call, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i32 8, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str, i32 0, i32 0), i32 %call, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
   ret i32 0
 }
 
@@ -349,6 +439,20 @@ proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
+
 struct Room
 ├─ floor : i32
 ├─ fn Room.show(self : STRUCT_CALL) : void
@@ -383,11 +487,27 @@ floor 10
 
 ```ll
 
+%Os = type { i32, { { i8*, i64 }*, i64 } }
 %Room = type { i32 }
 
+@os = internal global %Os zeroinitializer
 @str = private unnamed_addr constant [7 x i8] c"floor \00", align 1
 @str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
+
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
 
 define void @Room.show(%Room* %0) {
 entry:
@@ -412,7 +532,7 @@ entry:
 
 declare i32 @printf(i8*, ...)
 
-define i32 @main() {
+define i32 @main(i32 %0, i8** %1) {
 entry:
   %r = alloca %Room, align 8
   store %Room zeroinitializer, %Room* %r, align 4
@@ -460,6 +580,20 @@ proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
+
 struct Room
 ├─ floor : i32
 └─ fn Room.describe(self : STRUCT_CALL) : void
@@ -505,15 +639,31 @@ tower of height 9
 
 ```ll
 
+%Os = type { i32, { { i8*, i64 }*, i64 } }
 %Room = type { i32 }
 %Tower = type { i32 }
 
+@os = internal global %Os zeroinitializer
 @str = private unnamed_addr constant [15 x i8] c"room on floor \00", align 1
 @str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
 @str.2 = private unnamed_addr constant [17 x i8] c"tower of height \00", align 1
 @str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt.4 = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
+
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
 
 define void @Room.describe(%Room* %0) {
 entry:
@@ -539,7 +689,7 @@ entry:
   ret void
 }
 
-define i32 @main() {
+define i32 @main(i32 %0, i8** %1) {
 entry:
   %r = alloca %Room, align 8
   store %Room zeroinitializer, %Room* %r, align 4
@@ -584,6 +734,20 @@ proto fn free(ptr : pointer) : void
 proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
+
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
 
 struct Room
 ├─ floor : i32
@@ -637,11 +801,27 @@ fn main() : i32
 
 ```ll
 
+%Os = type { i32, { { i8*, i64 }*, i64 } }
 %Room = type { i32 }
 
+@os = internal global %Os zeroinitializer
 @str = private unnamed_addr constant [2 x i8] c" \00", align 1
 @str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt = private unnamed_addr constant [13 x i8] c"%d%.*s%d%.*s\00", align 1
+
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
 
 define void @Room.bump(%Room* %0) {
 entry:
@@ -657,12 +837,12 @@ entry:
   ret void
 }
 
-define i32 @main() {
+define i32 @main(i32 %0, i8** %1) {
 entry:
   %rooms = alloca { %Room*, i64 }, align 8
   %arr = alloca %Room, i64 2, align 8
-  %0 = bitcast %Room* %arr to i8*
-  call void @llvm.memset.p0i8.i64(i8* %0, i8 0, i64 8, i1 false)
+  %2 = bitcast %Room* %arr to i8*
+  call void @llvm.memset.p0i8.i64(i8* %2, i8 0, i64 8, i1 false)
   %arr.ptr = insertvalue { %Room*, i64 } undef, %Room* %arr, 0
   %arr.len = insertvalue { %Room*, i64 } %arr.ptr, i64 2, 1
   store { %Room*, i64 } %arr.len, { %Room*, i64 }* %rooms, align 8
@@ -689,7 +869,7 @@ entry:
   %arr.at15 = getelementptr %Room, %Room* %arr.data14, i32 1
   %floor16 = getelementptr %Room, %Room* %arr.at15, i32 0, i32 0
   %floor17 = load i32, i32* %floor16, align 4
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt, i32 0, i32 0), i32 %floor12, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0), i32 %floor17, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt, i32 0, i32 0), i32 %floor12, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0), i32 %floor17, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
   ret i32 0
 }
 
@@ -732,6 +912,20 @@ proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
+
 struct Room
 ├─ floor : i32
 └─ fn Room.depth(self : STRUCT_CALL) : i32
@@ -766,12 +960,28 @@ entry depth 3
 
 ```ll
 
+%Os = type { i32, { { i8*, i64 }*, i64 } }
 %Room = type { i32 }
 %Dungeon = type { %Room }
 
+@os = internal global %Os zeroinitializer
 @str = private unnamed_addr constant [13 x i8] c"entry depth \00", align 1
 @str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
+
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
 
 define i32 @Room.depth(%Room* %0) {
 entry:
@@ -783,7 +993,7 @@ entry:
   ret i32 %floor1
 }
 
-define i32 @main() {
+define i32 @main(i32 %0, i8** %1) {
 entry:
   %d = alloca %Dungeon, align 8
   store %Dungeon zeroinitializer, %Dungeon* %d, align 4
@@ -792,7 +1002,7 @@ entry:
   store i32 3, i32* %floor, align 4
   %entry2 = getelementptr %Dungeon, %Dungeon* %d, i32 0, i32 0
   %call = call i32 @Room.depth(%Room* %entry2)
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i32 12, i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str, i32 0, i32 0), i32 %call, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i32 12, i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str, i32 0, i32 0), i32 %call, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
   ret i32 0
 }
 
@@ -918,6 +1128,20 @@ proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
+
 struct Room
 ├─ floor : i32
 └─ fn Room.make(f : i32) : STRUCT_CALL
@@ -950,11 +1174,27 @@ floor = 7
 
 ```ll
 
+%Os = type { i32, { { i8*, i64 }*, i64 } }
 %Room = type { i32 }
 
+@os = internal global %Os zeroinitializer
 @str = private unnamed_addr constant [9 x i8] c"floor = \00", align 1
 @str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
+
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
 
 define %Room @Room.make(i32 %0) {
 entry:
@@ -969,14 +1209,14 @@ entry:
   ret %Room %r2
 }
 
-define i32 @main() {
+define i32 @main(i32 %0, i8** %1) {
 entry:
   %r = alloca %Room, align 8
   %call = call %Room @Room.make(i32 7)
   store %Room %call, %Room* %r, align 4
   %floor = getelementptr %Room, %Room* %r, i32 0, i32 0
   %floor1 = load i32, i32* %floor, align 4
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i32 8, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str, i32 0, i32 0), i32 %floor1, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i32 8, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str, i32 0, i32 0), i32 %floor1, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
   ret i32 0
 }
 
@@ -1075,6 +1315,20 @@ proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
 
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
+
 struct Room
 ├─ floor : i32
 └─ fn Room.create(f : i32) : STRUCT_CALL
@@ -1120,14 +1374,30 @@ plain  3
 
 ```ll
 
+%Os = type { i32, { { i8*, i64 }*, i64 } }
 %Room = type { i32 }
 
+@os = internal global %Os zeroinitializer
 @str = private unnamed_addr constant [8 x i8] c"static \00", align 1
 @str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
 @str.2 = private unnamed_addr constant [8 x i8] c"plain  \00", align 1
 @str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt.4 = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
+
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
 
 define %Room @Room.create(i32 %0) {
 entry:
@@ -1155,20 +1425,20 @@ entry:
   ret %Room %r2
 }
 
-define i32 @main() {
+define i32 @main(i32 %0, i8** %1) {
 entry:
   %call = call %Room @Room.create(i32 7)
   %out.tmp = alloca %Room, align 8
   store %Room %call, %Room* %out.tmp, align 4
   %floor = getelementptr %Room, %Room* %out.tmp, i32 0, i32 0
   %floor1 = load i32, i32* %floor, align 4
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str, i32 0, i32 0), i32 %floor1, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str, i32 0, i32 0), i32 %floor1, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
   %call2 = call %Room @make(i32 3)
   %out.tmp3 = alloca %Room, align 8
   store %Room %call2, %Room* %out.tmp3, align 4
   %floor4 = getelementptr %Room, %Room* %out.tmp3, i32 0, i32 0
   %floor5 = load i32, i32* %floor4, align 4
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.4, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.2, i32 0, i32 0), i32 %floor5, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.4, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.2, i32 0, i32 0), i32 %floor5, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
   ret i32 0
 }
 
@@ -1226,6 +1496,20 @@ proto fn free(ptr : pointer) : void
 proto fn write(fd : i32, ptr : pointer, len : i64) : i64
 
 proto fn exit(code : i32) : void
+
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
 
 struct Room
 ├─ floor : i32
@@ -1323,9 +1607,11 @@ mixed 3
 
 ```ll
 
+%Os = type { i32, { { i8*, i64 }*, i64 } }
 %Room = type { i32 }
 %Tower = type { i32 }
 
+@os = internal global %Os zeroinitializer
 @str = private unnamed_addr constant [6 x i8] c"room \00", align 1
 @str.1 = private unnamed_addr constant [8 x i8] c" tower \00", align 1
 @str.2 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
@@ -1342,6 +1628,20 @@ mixed 3
 @str.12 = private unnamed_addr constant [7 x i8] c"mixed \00", align 1
 @str.13 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt.14 = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
+
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
 
 define %Room @Room.create(i32 %0) {
 entry:
@@ -1394,7 +1694,7 @@ entry:
   ret %Tower %t2
 }
 
-define i32 @main() {
+define i32 @main(i32 %0, i8** %1) {
 entry:
   %a = alloca %Room, align 8
   %call = call %Room @Room.create(i32 3)
@@ -1406,20 +1706,20 @@ entry:
   %floor2 = load i32, i32* %floor, align 4
   %height = getelementptr %Tower, %Tower* %b, i32 0, i32 0
   %height3 = load i32, i32* %height, align 4
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @fmt, i32 0, i32 0), i32 5, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str, i32 0, i32 0), i32 %floor2, i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.1, i32 0, i32 0), i32 %height3, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @fmt, i32 0, i32 0), i32 5, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str, i32 0, i32 0), i32 %floor2, i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.1, i32 0, i32 0), i32 %height3, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0))
   %call4 = call %Room @Room.zero()
   %out.tmp = alloca %Room, align 8
   store %Room %call4, %Room* %out.tmp, align 4
   %floor5 = getelementptr %Room, %Room* %out.tmp, i32 0, i32 0
   %floor6 = load i32, i32* %floor5, align 4
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.5, i32 0, i32 0), i32 5, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.3, i32 0, i32 0), i32 %floor6, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.4, i32 0, i32 0))
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.5, i32 0, i32 0), i32 5, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.3, i32 0, i32 0), i32 %floor6, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.4, i32 0, i32 0))
   %call7 = call i32 @Room.level(i32 4)
-  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.8, i32 0, i32 0), i32 6, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.6, i32 0, i32 0), i32 %call7, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.7, i32 0, i32 0))
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.8, i32 0, i32 0), i32 6, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.6, i32 0, i32 0), i32 %call7, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.7, i32 0, i32 0))
   %call8 = call %Room @Room.create(i32 5)
   %out.tmp9 = alloca %Room, align 8
   store %Room %call8, %Room* %out.tmp9, align 4
   %call10 = call i32 @Room.depth(%Room* %out.tmp9)
-  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.11, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.9, i32 0, i32 0), i32 %call10, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.10, i32 0, i32 0))
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.11, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.9, i32 0, i32 0), i32 %call10, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.10, i32 0, i32 0))
   %n = alloca i32, align 4
   %call11 = call %Room @Room.create(i32 2)
   %out.tmp12 = alloca %Room, align 8
@@ -1433,7 +1733,7 @@ entry:
   %add = add i32 %call13, %height17
   store i32 %add, i32* %n, align 4
   %n18 = load i32, i32* %n, align 4
-  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.14, i32 0, i32 0), i32 6, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.12, i32 0, i32 0), i32 %n18, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.13, i32 0, i32 0))
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.14, i32 0, i32 0), i32 6, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.12, i32 0, i32 0), i32 %n18, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.13, i32 0, i32 0))
   ret i32 0
 }
 

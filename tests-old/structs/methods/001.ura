@@ -3,8 +3,8 @@
 use "@/header"
 
 struct Hero:
-    name  chars
-    title chars
+    name  char[]
+    title char[]
 
     pub fn new() Hero:
         h Hero
@@ -12,7 +12,7 @@ struct Hero:
         h.title = heap[char](32)
         return h
 
-    fn setup(name chars, title chars) void:
+    fn setup(name char[], title char[]) void:
         strcpy(self.name,  name)
         strcpy(self.title, title)
 

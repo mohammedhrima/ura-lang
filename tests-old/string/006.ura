@@ -23,7 +23,7 @@ main():
     output(r2.value, "\n")
 
     big String = String::from("aaaa")
-    i int = 0
+    i i32 = 0
     while i < 5:
         big.join("bbbb")
         i += 1

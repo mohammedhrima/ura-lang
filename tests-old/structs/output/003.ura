@@ -2,10 +2,10 @@
 use "@/header"
 
 struct Score:
-    points int
-    combo  int
+    points i32
+    combo  i32
 
-    pub fn new(p int, c int) Score:
+    pub fn new(p i32, c i32) Score:
         s Score
         s.points = p
         s.combo  = c
