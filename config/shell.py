@@ -1,15 +1,17 @@
 import os, sys, subprocess, shutil
 from pathlib import Path
 
-from config.ui import console, RICH, Panel, ANSI, _c, emit, err
+from config.ui import console, RICH, Panel, ANSI, _c, pr, emit, styled, err
 from config.env import (ROOT, SCRIPT, check, build, install,
                         abbrev, git_branch, ura_fresh, llvm_version)
-from config.commands import tests, update, show, index, migrate, rebuild, prune
+from config.commands import (tests, update, show, index, migrate,
+                             rebuild, prune, doctor)
 
 TASKS = {
     "check": check, "build": build, "install": install, "tests": tests,
     "update": update, "show": show, "index": index,
     "migrate": migrate, "rebuild": rebuild, "prune": prune,
+    "doctor": doctor,
 }
 DESC = {
     "check":   "verify clang + llvm-config-14 are installed",
@@ -22,6 +24,7 @@ DESC = {
     "migrate": "add newly-passing tests-old cases into tests/",
     "rebuild": "migrate every tests-old group at once",
     "prune":   "drop already-migrated cases from tests-old",
+    "doctor":  "report duplicate case ids across tests/",
 }
 BUILTINS = {
     "cd": "change directory", "pwd": "print working directory", "help": "list commands",
@@ -47,16 +50,11 @@ def dispatch(name, *args):
 
 def show_help():
     shell = " · ".join(BUILTINS) + " · (else → your shell)"
-    if RICH:
-        console.print("[env]commands[/]")
-        for name in TASKS:
-            console.print(f"  [ok]{name:9}[/] [dim]{DESC.get(name, '')}[/]")
-        console.print(f"[env]shell[/]\n  [dim]{shell}[/]")
-    else:
-        print(_c("env", "commands"))
-        for name in TASKS:
-            print(f"  {_c('ok', f'{name:9}')} {_c('dim', DESC.get(name, ''))}")
-        print(_c("env", "shell") + "\n  " + _c("dim", shell))
+    emit("env", "commands")
+    for name in TASKS:
+        pr(f"  {styled('ok', f'{name:9}')} {styled('dim', DESC.get(name, ''))}")
+    emit("env", "shell")
+    pr("  " + styled("dim", shell))
 
 def run_line(line):
     parts = line.split()

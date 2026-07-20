@@ -1,58 +1,68 @@
-
 use "@/header"
 
-struct Flags:
-    bits i32
+struct String2:
+    value char[]?
+    count i32
+    size  i32
 
-    operator = (n i32) void:
-        self.bits = n
+    pub fn create() String2:
+        s String2
+        s.size  = 10
+        s.value = new char[10]
+        return s
 
-    operator = (ref f Flags) void:
-        self.bits = f.bits
+    operator drop:
+        clean self.value
 
-    operator & (ref f Flags) Flags:
-        res Flags
-        res.bits = self.bits & f.bits
-        return res
+    fn grow(want i32) void:
+        if self.size >= want: return
+        while self.size < want:
+            self.size *= 2
+        bigger char[] = new char[self.size]
+        strcpy(bigger, self.value)
+        clean self.value
+        self.value = bigger
 
-    operator | (ref f Flags) Flags:
-        res Flags
-        res.bits = self.bits | f.bits
-        return res
+    fn assign(str char[]?) void:
+        if str == null:
+            self.assign("")
+            return
+        len i32 = strlen(str) as i32
+        self.grow(len + 1)
+        bzero(self.value, self.size as i64)
+        strcpy(self.value, str)
+        self.count = len
 
-    operator ^ (ref f Flags) Flags:
-        res Flags
-        res.bits = self.bits ^ f.bits
-        return res
+    fn join(str char[]?) void:
+        if str == null: return
+        len i32 = strlen(str) as i32
+        self.grow(self.count + len + 1)
+        strcat(self.value, str)
+        self.count += len
 
-    operator << (n i32) Flags:
-        res Flags
-        res.bits = self.bits << n
-        return res
+    operator = (str char[]?) void:
+        self.assign(str)
 
-    operator >> (n i32) Flags:
-        res Flags
-        res.bits = self.bits >> n
-        return res
+    operator = (ref v String2) void:
+        self.assign(v.value)
+
+fn add(ref v String2, ref w String2) String2:
+    res String2 = String2::create()
+    res = v
+    res.join(w.value)
+    return res
 
 main():
-    a Flags
-    a = 12
+    s0 String2 = String2::create()
+    s0 = "1x2345"
 
-    b Flags
-    b = 10
+    s1 String2 = String2::create()
+    s1 = "6x789"
 
-    band Flags = a & b
-    output("a & b:  ", band.bits, "\n")
 
-    bor Flags = a | b
-    output("a | b:  ", bor.bits, "\n")
+    s2 String2 = String2::create()
+    s2 = add(ref s0, ref s1)
 
-    bxor Flags = a ^ b
-    output("a ^ b:  ", bxor.bits, "\n")
-
-    lsh Flags = a << 2
-    output("a << 2: ", lsh.bits, "\n")
-
-    rsh Flags = a >> 1
-    output("a >> 1: ", rsh.bits, "\n")
+    output("s0:    ", s0.value, " (", s0.count, ")\n")
+    output("s1:    ", s1.value, " (", s1.count, ")\n")
+    output("s0+s1: ", s2.value, " (", s2.count, ")\n")

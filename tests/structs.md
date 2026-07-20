@@ -51,6 +51,7 @@
 - 047 — destructor must take no parameters
 - 048 — destructor must return void
 - 049 — `pub fn` called via `.` instead of `::`
+- 050 — a struct whose first field is a struct is not circular
 
 ## 001 — declare a struct and a local: named type, alloca, zero-init
 
@@ -3500,7 +3501,7 @@ two: Room{name: hall, floor: 2} and Room{name: gate, floor: 1} done
 
 %Os = type { i32, { { i8*, i64 }*, i64 } }
 %Room = type { { i8*, i64 }, i32 }
-%__out_frame = type { i8*, %__out_frame* }
+%__out_frame = type { i8*, i32, %__out_frame* }
 %Dungeon = type { { i8*, i64 }, %Room }
 
 @os = internal global %Os zeroinitializer
@@ -3600,9 +3601,13 @@ seen.cond:                                        ; preds = %seen.next, %entry
 seen.body:                                        ; preds = %seen.cond
   %q.ptr = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 0
   %held = load i8*, i8** %q.ptr, align 8
+  %q.ty = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %heldty = load i32, i32* %q.ty, align 4
   %h2i = ptrtoint i8* %held to i64
   %m2i = ptrtoint i8* %me to i64
-  %same = icmp eq i64 %h2i, %m2i
+  %sameptr = icmp eq i64 %h2i, %m2i
+  %samety = icmp eq i32 %heldty, 1
+  %same = and i1 %sameptr, %samety
   br i1 %same, label %seen.hit, label %seen.next
 
 seen.hit:                                         ; preds = %seen.body
@@ -3610,7 +3615,7 @@ seen.hit:                                         ; preds = %seen.body
   ret void
 
 seen.next:                                        ; preds = %seen.body
-  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 2
   %up = load %__out_frame*, %__out_frame** %q.prev, align 8
   store %__out_frame* %up, %__out_frame** %walk, align 8
   br label %seen.cond
@@ -3619,7 +3624,9 @@ seen.fresh:                                       ; preds = %seen.cond
   %frame = alloca %__out_frame, align 8
   %f.ptr = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 0
   store i8* %me, i8** %f.ptr, align 8
-  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  %f.ty = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  store i32 1, i32* %f.ty, align 4
+  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 2
   store %__out_frame* %1, %__out_frame** %f.prev, align 8
   %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @fmt.3, i32 0, i32 0))
   %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.4, i32 0, i32 0))
@@ -3653,9 +3660,13 @@ seen.cond:                                        ; preds = %seen.next, %entry
 seen.body:                                        ; preds = %seen.cond
   %q.ptr = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 0
   %held = load i8*, i8** %q.ptr, align 8
+  %q.ty = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %heldty = load i32, i32* %q.ty, align 4
   %h2i = ptrtoint i8* %held to i64
   %m2i = ptrtoint i8* %me to i64
-  %same = icmp eq i64 %h2i, %m2i
+  %sameptr = icmp eq i64 %h2i, %m2i
+  %samety = icmp eq i32 %heldty, 2
+  %same = and i1 %sameptr, %samety
   br i1 %same, label %seen.hit, label %seen.next
 
 seen.hit:                                         ; preds = %seen.body
@@ -3663,7 +3674,7 @@ seen.hit:                                         ; preds = %seen.body
   ret void
 
 seen.next:                                        ; preds = %seen.body
-  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 2
   %up = load %__out_frame*, %__out_frame** %q.prev, align 8
   store %__out_frame* %up, %__out_frame** %walk, align 8
   br label %seen.cond
@@ -3672,7 +3683,9 @@ seen.fresh:                                       ; preds = %seen.cond
   %frame = alloca %__out_frame, align 8
   %f.ptr = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 0
   store i8* %me, i8** %f.ptr, align 8
-  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  %f.ty = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  store i32 2, i32* %f.ty, align 4
+  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 2
   store %__out_frame* %1, %__out_frame** %f.prev, align 8
   %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @fmt.16, i32 0, i32 0))
   %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.17, i32 0, i32 0))
@@ -3777,7 +3790,7 @@ bound   Node{value: 1, next: ref Node{value: 2, next: null}}
 
 %Os = type { i32, { { i8*, i64 }*, i64 } }
 %Node = type { i32, %Node* }
-%__out_frame = type { i8*, %__out_frame* }
+%__out_frame = type { i8*, i32, %__out_frame* }
 
 @os = internal global %Os zeroinitializer
 @str = private unnamed_addr constant [9 x i8] c"unbound \00", align 1
@@ -3850,9 +3863,13 @@ seen.cond:                                        ; preds = %seen.next, %entry
 seen.body:                                        ; preds = %seen.cond
   %q.ptr = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 0
   %held = load i8*, i8** %q.ptr, align 8
+  %q.ty = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %heldty = load i32, i32* %q.ty, align 4
   %h2i = ptrtoint i8* %held to i64
   %m2i = ptrtoint i8* %me to i64
-  %same = icmp eq i64 %h2i, %m2i
+  %sameptr = icmp eq i64 %h2i, %m2i
+  %samety = icmp eq i32 %heldty, 1
+  %same = and i1 %sameptr, %samety
   br i1 %same, label %seen.hit, label %seen.next
 
 seen.hit:                                         ; preds = %seen.body
@@ -3860,7 +3877,7 @@ seen.hit:                                         ; preds = %seen.body
   ret void
 
 seen.next:                                        ; preds = %seen.body
-  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 2
   %up = load %__out_frame*, %__out_frame** %q.prev, align 8
   store %__out_frame* %up, %__out_frame** %walk, align 8
   br label %seen.cond
@@ -3869,7 +3886,9 @@ seen.fresh:                                       ; preds = %seen.cond
   %frame = alloca %__out_frame, align 8
   %f.ptr = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 0
   store i8* %me, i8** %f.ptr, align 8
-  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  %f.ty = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  store i32 1, i32* %f.ty, align 4
+  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 2
   store %__out_frame* %1, %__out_frame** %f.prev, align 8
   %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @fmt.2, i32 0, i32 0))
   %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @fmt.3, i32 0, i32 0))
@@ -3990,7 +4009,7 @@ self  Node{value: 2, next: ref Node{value: 1, next: ref [Circular]}}
 
 %Os = type { i32, { { i8*, i64 }*, i64 } }
 %Node = type { i32, %Node* }
-%__out_frame = type { i8*, %__out_frame* }
+%__out_frame = type { i8*, i32, %__out_frame* }
 
 @os = internal global %Os zeroinitializer
 @str = private unnamed_addr constant [7 x i8] c"cycle \00", align 1
@@ -4065,9 +4084,13 @@ seen.cond:                                        ; preds = %seen.next, %entry
 seen.body:                                        ; preds = %seen.cond
   %q.ptr = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 0
   %held = load i8*, i8** %q.ptr, align 8
+  %q.ty = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %heldty = load i32, i32* %q.ty, align 4
   %h2i = ptrtoint i8* %held to i64
   %m2i = ptrtoint i8* %me to i64
-  %same = icmp eq i64 %h2i, %m2i
+  %sameptr = icmp eq i64 %h2i, %m2i
+  %samety = icmp eq i32 %heldty, 1
+  %same = and i1 %sameptr, %samety
   br i1 %same, label %seen.hit, label %seen.next
 
 seen.hit:                                         ; preds = %seen.body
@@ -4075,7 +4098,7 @@ seen.hit:                                         ; preds = %seen.body
   ret void
 
 seen.next:                                        ; preds = %seen.body
-  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 2
   %up = load %__out_frame*, %__out_frame** %q.prev, align 8
   store %__out_frame* %up, %__out_frame** %walk, align 8
   br label %seen.cond
@@ -4084,7 +4107,9 @@ seen.fresh:                                       ; preds = %seen.cond
   %frame = alloca %__out_frame, align 8
   %f.ptr = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 0
   store i8* %me, i8** %f.ptr, align 8
-  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  %f.ty = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  store i32 1, i32* %f.ty, align 4
+  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 2
   store %__out_frame* %1, %__out_frame** %f.prev, align 8
   %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @fmt.2, i32 0, i32 0))
   %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @fmt.3, i32 0, i32 0))
@@ -4276,7 +4301,7 @@ Grid{tag: grid, rooms: [[Room{floor: 1}, Room{floor: 2}], [Room{floor: 3}, Room{
 %Os = type { i32, { { i8*, i64 }*, i64 } }
 %Flat = type { { i8*, i64 }, { %Room*, i64 } }
 %Room = type { i32 }
-%__out_frame = type { i8*, %__out_frame* }
+%__out_frame = type { i8*, i32, %__out_frame* }
 %Grid = type { { i8*, i64 }, { { %Room*, i64 }*, i64 } }
 
 @os = internal global %Os zeroinitializer
@@ -4446,9 +4471,13 @@ seen.cond:                                        ; preds = %seen.next, %entry
 seen.body:                                        ; preds = %seen.cond
   %q.ptr = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 0
   %held = load i8*, i8** %q.ptr, align 8
+  %q.ty = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %heldty = load i32, i32* %q.ty, align 4
   %h2i = ptrtoint i8* %held to i64
   %m2i = ptrtoint i8* %me to i64
-  %same = icmp eq i64 %h2i, %m2i
+  %sameptr = icmp eq i64 %h2i, %m2i
+  %samety = icmp eq i32 %heldty, 1
+  %same = and i1 %sameptr, %samety
   br i1 %same, label %seen.hit, label %seen.next
 
 seen.hit:                                         ; preds = %seen.body
@@ -4456,7 +4485,7 @@ seen.hit:                                         ; preds = %seen.body
   ret void
 
 seen.next:                                        ; preds = %seen.body
-  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 2
   %up = load %__out_frame*, %__out_frame** %q.prev, align 8
   store %__out_frame* %up, %__out_frame** %walk, align 8
   br label %seen.cond
@@ -4465,7 +4494,9 @@ seen.fresh:                                       ; preds = %seen.cond
   %frame = alloca %__out_frame, align 8
   %f.ptr = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 0
   store i8* %me, i8** %f.ptr, align 8
-  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  %f.ty = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  store i32 1, i32* %f.ty, align 4
+  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 2
   store %__out_frame* %1, %__out_frame** %f.prev, align 8
   %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @fmt.1, i32 0, i32 0))
   %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @fmt.2, i32 0, i32 0))
@@ -4529,9 +4560,13 @@ seen.cond:                                        ; preds = %seen.next, %entry
 seen.body:                                        ; preds = %seen.cond
   %q.ptr = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 0
   %held = load i8*, i8** %q.ptr, align 8
+  %q.ty = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %heldty = load i32, i32* %q.ty, align 4
   %h2i = ptrtoint i8* %held to i64
   %m2i = ptrtoint i8* %me to i64
-  %same = icmp eq i64 %h2i, %m2i
+  %sameptr = icmp eq i64 %h2i, %m2i
+  %samety = icmp eq i32 %heldty, 2
+  %same = and i1 %sameptr, %samety
   br i1 %same, label %seen.hit, label %seen.next
 
 seen.hit:                                         ; preds = %seen.body
@@ -4539,7 +4574,7 @@ seen.hit:                                         ; preds = %seen.body
   ret void
 
 seen.next:                                        ; preds = %seen.body
-  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 2
   %up = load %__out_frame*, %__out_frame** %q.prev, align 8
   store %__out_frame* %up, %__out_frame** %walk, align 8
   br label %seen.cond
@@ -4548,7 +4583,9 @@ seen.fresh:                                       ; preds = %seen.cond
   %frame = alloca %__out_frame, align 8
   %f.ptr = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 0
   store i8* %me, i8** %f.ptr, align 8
-  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  %f.ty = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  store i32 2, i32* %f.ty, align 4
+  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 2
   store %__out_frame* %1, %__out_frame** %f.prev, align 8
   %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @fmt.8, i32 0, i32 0))
   %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @fmt.9, i32 0, i32 0))
@@ -4575,9 +4612,13 @@ seen.cond:                                        ; preds = %seen.next, %entry
 seen.body:                                        ; preds = %seen.cond
   %q.ptr = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 0
   %held = load i8*, i8** %q.ptr, align 8
+  %q.ty = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %heldty = load i32, i32* %q.ty, align 4
   %h2i = ptrtoint i8* %held to i64
   %m2i = ptrtoint i8* %me to i64
-  %same = icmp eq i64 %h2i, %m2i
+  %sameptr = icmp eq i64 %h2i, %m2i
+  %samety = icmp eq i32 %heldty, 3
+  %same = and i1 %sameptr, %samety
   br i1 %same, label %seen.hit, label %seen.next
 
 seen.hit:                                         ; preds = %seen.body
@@ -4585,7 +4626,7 @@ seen.hit:                                         ; preds = %seen.body
   ret void
 
 seen.next:                                        ; preds = %seen.body
-  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 2
   %up = load %__out_frame*, %__out_frame** %q.prev, align 8
   store %__out_frame* %up, %__out_frame** %walk, align 8
   br label %seen.cond
@@ -4594,7 +4635,9 @@ seen.fresh:                                       ; preds = %seen.cond
   %frame = alloca %__out_frame, align 8
   %f.ptr = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 0
   store i8* %me, i8** %f.ptr, align 8
-  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  %f.ty = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  store i32 3, i32* %f.ty, align 4
+  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 2
   store %__out_frame* %1, %__out_frame** %f.prev, align 8
   %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @fmt.18, i32 0, i32 0))
   %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @fmt.19, i32 0, i32 0))
@@ -5509,4 +5552,351 @@ error: 'm.make' is a 'pub fn', so it is static and takes no receiver; call it as
 ```
 
 ```ll
+```
+
+## 050 — a struct whose first field is a struct is not circular
+
+```ura
+// structs/050.ura - a struct whose first field is a struct is not circular
+
+struct Inner:
+    name char[]
+
+struct First:
+    tag Inner
+    n   i32
+
+struct Last:
+    n   i32
+    tag Inner
+
+main():
+    a First
+    a.tag.name = "one"
+    a.n = 1
+    output("first: ", a, "\n")
+
+    b Last
+    b.n = 2
+    b.tag.name = "two"
+    output("last:  ", b, "\n")
+```
+
+```tree
+proto fn printf(format : pointer, ...) : i32
+
+proto fn calloc(len : i64, size : i64) : pointer
+
+proto fn free(ptr : pointer) : void
+
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
+
+proto fn exit(code : i32) : void
+
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
+
+struct Inner
+└─ name : char[]
+
+struct First
+├─ tag : STRUCT_CALL
+└─ n : i32
+
+struct Last
+├─ n : i32
+└─ tag : STRUCT_CALL
+
+fn main() : i32
+├─ a : STRUCT_CALL
+├─ = : array
+│  ├─ .name : char[]
+│  │  └─ .tag : STRUCT_CALL
+│  │     └─ a : STRUCT_CALL
+│  └─ char[] "one"
+├─ = : i32
+│  ├─ .n : i32
+│  │  └─ a : STRUCT_CALL
+│  └─ int 1
+├─ output : void
+│  ├─ char[] "first: "
+│  ├─ a : STRUCT_CALL
+│  └─ char[] "\n"
+├─ b : STRUCT_CALL
+├─ = : i32
+│  ├─ .n : i32
+│  │  └─ b : STRUCT_CALL
+│  └─ int 2
+├─ = : array
+│  ├─ .name : char[]
+│  │  └─ .tag : STRUCT_CALL
+│  │     └─ b : STRUCT_CALL
+│  └─ char[] "two"
+└─ output : void
+   ├─ char[] "last:  "
+   ├─ b : STRUCT_CALL
+   └─ char[] "\n"
+```
+
+```out
+first: First{tag: Inner{name: one}, n: 1}
+last:  Last{n: 2, tag: Inner{name: two}}
+```
+
+```err
+```
+
+```ll
+
+%Os = type { i32, { { i8*, i64 }*, i64 } }
+%First = type { %Inner, i32 }
+%Inner = type { { i8*, i64 } }
+%__out_frame = type { i8*, i32, %__out_frame* }
+%Last = type { i32, %Inner }
+
+@os = internal global %Os zeroinitializer
+@str = private unnamed_addr constant [4 x i8] c"one\00", align 1
+@str.1 = private unnamed_addr constant [8 x i8] c"first: \00", align 1
+@fmt = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
+@fmt.2 = private unnamed_addr constant [11 x i8] c"[Circular]\00", align 1
+@fmt.3 = private unnamed_addr constant [7 x i8] c"First{\00", align 1
+@fmt.4 = private unnamed_addr constant [6 x i8] c"tag: \00", align 1
+@fmt.5 = private unnamed_addr constant [11 x i8] c"[Circular]\00", align 1
+@fmt.6 = private unnamed_addr constant [7 x i8] c"Inner{\00", align 1
+@fmt.7 = private unnamed_addr constant [7 x i8] c"name: \00", align 1
+@fmt.8 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
+@fmt.9 = private unnamed_addr constant [2 x i8] c"}\00", align 1
+@fmt.10 = private unnamed_addr constant [6 x i8] c", n: \00", align 1
+@fmt.11 = private unnamed_addr constant [3 x i8] c"%d\00", align 1
+@fmt.12 = private unnamed_addr constant [2 x i8] c"}\00", align 1
+@str.13 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.14 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
+@str.15 = private unnamed_addr constant [4 x i8] c"two\00", align 1
+@str.16 = private unnamed_addr constant [8 x i8] c"last:  \00", align 1
+@fmt.17 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
+@fmt.18 = private unnamed_addr constant [11 x i8] c"[Circular]\00", align 1
+@fmt.19 = private unnamed_addr constant [6 x i8] c"Last{\00", align 1
+@fmt.20 = private unnamed_addr constant [4 x i8] c"n: \00", align 1
+@fmt.21 = private unnamed_addr constant [3 x i8] c"%d\00", align 1
+@fmt.22 = private unnamed_addr constant [8 x i8] c", tag: \00", align 1
+@fmt.23 = private unnamed_addr constant [2 x i8] c"}\00", align 1
+@str.24 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.25 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
+
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
+
+define i32 @main(i32 %0, i8** %1) {
+entry:
+  %a = alloca %First, align 8
+  store %First zeroinitializer, %First* %a, align 8
+  %tag = getelementptr %First, %First* %a, i32 0, i32 0
+  %name = getelementptr %Inner, %Inner* %tag, i32 0, i32 0
+  store { i8*, i64 } { i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i64 3 }, { i8*, i64 }* %name, align 8
+  %n = getelementptr %First, %First* %a, i32 0, i32 1
+  store i32 1, i32* %n, align 4
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.1, i32 0, i32 0))
+  call void @__out_First(%First* %a, %__out_frame* null)
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.14, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.13, i32 0, i32 0))
+  %b = alloca %Last, align 8
+  store %Last zeroinitializer, %Last* %b, align 8
+  %n1 = getelementptr %Last, %Last* %b, i32 0, i32 0
+  store i32 2, i32* %n1, align 4
+  %tag2 = getelementptr %Last, %Last* %b, i32 0, i32 1
+  %name3 = getelementptr %Inner, %Inner* %tag2, i32 0, i32 0
+  store { i8*, i64 } { i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.15, i32 0, i32 0), i64 3 }, { i8*, i64 }* %name3, align 8
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.17, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.16, i32 0, i32 0))
+  call void @__out_Last(%Last* %b, %__out_frame* null)
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.25, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.24, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+
+define void @__out_First(%First* %0, %__out_frame* %1) {
+entry:
+  %me = bitcast %First* %0 to i8*
+  %walk = alloca %__out_frame*, align 8
+  store %__out_frame* %1, %__out_frame** %walk, align 8
+  br label %seen.cond
+
+seen.cond:                                        ; preds = %seen.next, %entry
+  %q = load %__out_frame*, %__out_frame** %walk, align 8
+  %q2i = ptrtoint %__out_frame* %q to i64
+  %atroot = icmp eq i64 %q2i, 0
+  br i1 %atroot, label %seen.fresh, label %seen.body
+
+seen.body:                                        ; preds = %seen.cond
+  %q.ptr = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 0
+  %held = load i8*, i8** %q.ptr, align 8
+  %q.ty = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %heldty = load i32, i32* %q.ty, align 4
+  %h2i = ptrtoint i8* %held to i64
+  %m2i = ptrtoint i8* %me to i64
+  %sameptr = icmp eq i64 %h2i, %m2i
+  %samety = icmp eq i32 %heldty, 1
+  %same = and i1 %sameptr, %samety
+  br i1 %same, label %seen.hit, label %seen.next
+
+seen.hit:                                         ; preds = %seen.body
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.2, i32 0, i32 0))
+  ret void
+
+seen.next:                                        ; preds = %seen.body
+  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 2
+  %up = load %__out_frame*, %__out_frame** %q.prev, align 8
+  store %__out_frame* %up, %__out_frame** %walk, align 8
+  br label %seen.cond
+
+seen.fresh:                                       ; preds = %seen.cond
+  %frame = alloca %__out_frame, align 8
+  %f.ptr = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 0
+  store i8* %me, i8** %f.ptr, align 8
+  %f.ty = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  store i32 1, i32* %f.ty, align 4
+  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 2
+  store %__out_frame* %1, %__out_frame** %f.prev, align 8
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.3, i32 0, i32 0))
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @fmt.4, i32 0, i32 0))
+  %tag = getelementptr %First, %First* %0, i32 0, i32 0
+  call void @__out_Inner(%Inner* %tag, %__out_frame* %frame)
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @fmt.10, i32 0, i32 0))
+  %n = getelementptr %First, %First* %0, i32 0, i32 1
+  %f = load i32, i32* %n, align 4
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.11, i32 0, i32 0), i32 %f)
+  %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @fmt.12, i32 0, i32 0))
+  ret void
+}
+
+define void @__out_Inner(%Inner* %0, %__out_frame* %1) {
+entry:
+  %me = bitcast %Inner* %0 to i8*
+  %walk = alloca %__out_frame*, align 8
+  store %__out_frame* %1, %__out_frame** %walk, align 8
+  br label %seen.cond
+
+seen.cond:                                        ; preds = %seen.next, %entry
+  %q = load %__out_frame*, %__out_frame** %walk, align 8
+  %q2i = ptrtoint %__out_frame* %q to i64
+  %atroot = icmp eq i64 %q2i, 0
+  br i1 %atroot, label %seen.fresh, label %seen.body
+
+seen.body:                                        ; preds = %seen.cond
+  %q.ptr = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 0
+  %held = load i8*, i8** %q.ptr, align 8
+  %q.ty = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %heldty = load i32, i32* %q.ty, align 4
+  %h2i = ptrtoint i8* %held to i64
+  %m2i = ptrtoint i8* %me to i64
+  %sameptr = icmp eq i64 %h2i, %m2i
+  %samety = icmp eq i32 %heldty, 2
+  %same = and i1 %sameptr, %samety
+  br i1 %same, label %seen.hit, label %seen.next
+
+seen.hit:                                         ; preds = %seen.body
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.5, i32 0, i32 0))
+  ret void
+
+seen.next:                                        ; preds = %seen.body
+  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 2
+  %up = load %__out_frame*, %__out_frame** %q.prev, align 8
+  store %__out_frame* %up, %__out_frame** %walk, align 8
+  br label %seen.cond
+
+seen.fresh:                                       ; preds = %seen.cond
+  %frame = alloca %__out_frame, align 8
+  %f.ptr = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 0
+  store i8* %me, i8** %f.ptr, align 8
+  %f.ty = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  store i32 2, i32* %f.ty, align 4
+  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 2
+  store %__out_frame* %1, %__out_frame** %f.prev, align 8
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.6, i32 0, i32 0))
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.7, i32 0, i32 0))
+  %name = getelementptr %Inner, %Inner* %0, i32 0, i32 0
+  %arr = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %arr, 0
+  %arr.len = extractvalue { i8*, i64 } %arr, 1
+  %len32 = trunc i64 %arr.len to i32
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.8, i32 0, i32 0), i32 %len32, i8* %arr.data)
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @fmt.9, i32 0, i32 0))
+  ret void
+}
+
+define void @__out_Last(%Last* %0, %__out_frame* %1) {
+entry:
+  %me = bitcast %Last* %0 to i8*
+  %walk = alloca %__out_frame*, align 8
+  store %__out_frame* %1, %__out_frame** %walk, align 8
+  br label %seen.cond
+
+seen.cond:                                        ; preds = %seen.next, %entry
+  %q = load %__out_frame*, %__out_frame** %walk, align 8
+  %q2i = ptrtoint %__out_frame* %q to i64
+  %atroot = icmp eq i64 %q2i, 0
+  br i1 %atroot, label %seen.fresh, label %seen.body
+
+seen.body:                                        ; preds = %seen.cond
+  %q.ptr = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 0
+  %held = load i8*, i8** %q.ptr, align 8
+  %q.ty = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %heldty = load i32, i32* %q.ty, align 4
+  %h2i = ptrtoint i8* %held to i64
+  %m2i = ptrtoint i8* %me to i64
+  %sameptr = icmp eq i64 %h2i, %m2i
+  %samety = icmp eq i32 %heldty, 3
+  %same = and i1 %sameptr, %samety
+  br i1 %same, label %seen.hit, label %seen.next
+
+seen.hit:                                         ; preds = %seen.body
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.18, i32 0, i32 0))
+  ret void
+
+seen.next:                                        ; preds = %seen.body
+  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 2
+  %up = load %__out_frame*, %__out_frame** %q.prev, align 8
+  store %__out_frame* %up, %__out_frame** %walk, align 8
+  br label %seen.cond
+
+seen.fresh:                                       ; preds = %seen.cond
+  %frame = alloca %__out_frame, align 8
+  %f.ptr = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 0
+  store i8* %me, i8** %f.ptr, align 8
+  %f.ty = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  store i32 3, i32* %f.ty, align 4
+  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 2
+  store %__out_frame* %1, %__out_frame** %f.prev, align 8
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @fmt.19, i32 0, i32 0))
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @fmt.20, i32 0, i32 0))
+  %n = getelementptr %Last, %Last* %0, i32 0, i32 0
+  %f = load i32, i32* %n, align 4
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.21, i32 0, i32 0), i32 %f)
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @fmt.22, i32 0, i32 0))
+  %tag = getelementptr %Last, %Last* %0, i32 0, i32 1
+  call void @__out_Inner(%Inner* %tag, %__out_frame* %frame)
+  %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @fmt.23, i32 0, i32 0))
+  ret void
+}
 ```

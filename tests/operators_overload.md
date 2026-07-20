@@ -27,6 +27,10 @@
 - 023 — every overloadable operator on one struct
 - 024 — bitwise operator overloads, and one returning a scalar
 - 025 — compound bitwise assignment overloads
+- 026 — bitwise and shift overloads taking a ref parameter
+- 027 — a heap-owning struct: create, deep-copy operator = and drop
+- 028 — a growable string struct: nullable buffer, grow, join and drop
+- 029 — operator output replaces the default struct dump, nested too
 
 ## 001 — operator + on two structs
 
@@ -5938,4 +5942,7742 @@ entry:
 }
 
 declare i32 @printf(i8*, ...)
+```
+
+## 026 — bitwise and shift overloads taking a ref parameter
+
+```ura
+// operators_overload/026.ura - bitwise and shift overloads taking a ref parameter
+
+struct Flags:
+    bits i32
+
+    operator = (n i32) void:
+        self.bits = n
+
+    operator = (ref f Flags) void:
+        self.bits = f.bits
+
+    operator & (ref f Flags) Flags:
+        res Flags
+        res.bits = self.bits & f.bits
+        return res
+
+    operator | (ref f Flags) Flags:
+        res Flags
+        res.bits = self.bits | f.bits
+        return res
+
+    operator ^ (ref f Flags) Flags:
+        res Flags
+        res.bits = self.bits ^ f.bits
+        return res
+
+    operator << (n i32) Flags:
+        res Flags
+        res.bits = self.bits << n
+        return res
+
+    operator >> (n i32) Flags:
+        res Flags
+        res.bits = self.bits >> n
+        return res
+
+main():
+    a Flags
+    a = 12
+
+    b Flags
+    b = 10
+
+    band Flags = a & b
+    output("a & b:  ", band.bits, "\n")
+
+    bor Flags = a | b
+    output("a | b:  ", bor.bits, "\n")
+
+    bxor Flags = a ^ b
+    output("a ^ b:  ", bxor.bits, "\n")
+
+    lsh Flags = a << 2
+    output("a << 2: ", lsh.bits, "\n")
+
+    rsh Flags = a >> 1
+    output("a >> 1: ", rsh.bits, "\n")
+```
+
+```tree
+proto fn printf(format : pointer, ...) : i32
+
+proto fn calloc(len : i64, size : i64) : pointer
+
+proto fn free(ptr : pointer) : void
+
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
+
+proto fn exit(code : i32) : void
+
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
+
+struct Flags
+├─ bits : i32
+├─ fn Flags.=.i32(self : STRUCT_CALL, n : i32) : void
+│  └─ = : i32
+│     ├─ .bits : i32
+│     │  └─ self : STRUCT_CALL
+│     └─ n : i32
+├─ fn Flags.=.Flags(self : STRUCT_CALL, f : STRUCT_CALL) : void
+│  └─ = : i32
+│     ├─ .bits : i32
+│     │  └─ self : STRUCT_CALL
+│     └─ .bits : i32
+│        └─ f : STRUCT_CALL
+├─ fn Flags.&.Flags(self : STRUCT_CALL, f : STRUCT_CALL) : STRUCT_CALL
+│  ├─ res : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ .bits : i32
+│  │  │  └─ res : STRUCT_CALL
+│  │  └─ & : i32
+│  │     ├─ .bits : i32
+│  │     │  └─ self : STRUCT_CALL
+│  │     └─ .bits : i32
+│  │        └─ f : STRUCT_CALL
+│  └─ return
+│     └─ res : STRUCT_CALL
+├─ fn Flags.|.Flags(self : STRUCT_CALL, f : STRUCT_CALL) : STRUCT_CALL
+│  ├─ res : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ .bits : i32
+│  │  │  └─ res : STRUCT_CALL
+│  │  └─ | : i32
+│  │     ├─ .bits : i32
+│  │     │  └─ self : STRUCT_CALL
+│  │     └─ .bits : i32
+│  │        └─ f : STRUCT_CALL
+│  └─ return
+│     └─ res : STRUCT_CALL
+├─ fn Flags.^.Flags(self : STRUCT_CALL, f : STRUCT_CALL) : STRUCT_CALL
+│  ├─ res : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ .bits : i32
+│  │  │  └─ res : STRUCT_CALL
+│  │  └─ ^ : i32
+│  │     ├─ .bits : i32
+│  │     │  └─ self : STRUCT_CALL
+│  │     └─ .bits : i32
+│  │        └─ f : STRUCT_CALL
+│  └─ return
+│     └─ res : STRUCT_CALL
+├─ fn Flags.<<.i32(self : STRUCT_CALL, n : i32) : STRUCT_CALL
+│  ├─ res : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ .bits : i32
+│  │  │  └─ res : STRUCT_CALL
+│  │  └─ << : i32
+│  │     ├─ .bits : i32
+│  │     │  └─ self : STRUCT_CALL
+│  │     └─ n : i32
+│  └─ return
+│     └─ res : STRUCT_CALL
+└─ fn Flags.>>.i32(self : STRUCT_CALL, n : i32) : STRUCT_CALL
+   ├─ res : STRUCT_CALL
+   ├─ = : i32
+   │  ├─ .bits : i32
+   │  │  └─ res : STRUCT_CALL
+   │  └─ >> : i32
+   │     ├─ .bits : i32
+   │     │  └─ self : STRUCT_CALL
+   │     └─ n : i32
+   └─ return
+      └─ res : STRUCT_CALL
+
+fn main() : i32
+├─ a : STRUCT_CALL
+├─ = : void
+│  ├─ a : STRUCT_CALL
+│  └─ int 12
+├─ b : STRUCT_CALL
+├─ = : void
+│  ├─ b : STRUCT_CALL
+│  └─ int 10
+├─ = : STRUCT_CALL
+│  ├─ band : STRUCT_CALL
+│  └─ & : STRUCT_CALL
+│     ├─ a : STRUCT_CALL
+│     └─ b : STRUCT_CALL
+├─ output : void
+│  ├─ char[] "a & b:  "
+│  ├─ .bits : i32
+│  │  └─ band : STRUCT_CALL
+│  └─ char[] "\n"
+├─ = : STRUCT_CALL
+│  ├─ bor : STRUCT_CALL
+│  └─ | : STRUCT_CALL
+│     ├─ a : STRUCT_CALL
+│     └─ b : STRUCT_CALL
+├─ output : void
+│  ├─ char[] "a | b:  "
+│  ├─ .bits : i32
+│  │  └─ bor : STRUCT_CALL
+│  └─ char[] "\n"
+├─ = : STRUCT_CALL
+│  ├─ bxor : STRUCT_CALL
+│  └─ ^ : STRUCT_CALL
+│     ├─ a : STRUCT_CALL
+│     └─ b : STRUCT_CALL
+├─ output : void
+│  ├─ char[] "a ^ b:  "
+│  ├─ .bits : i32
+│  │  └─ bxor : STRUCT_CALL
+│  └─ char[] "\n"
+├─ = : STRUCT_CALL
+│  ├─ lsh : STRUCT_CALL
+│  └─ << : STRUCT_CALL
+│     ├─ a : STRUCT_CALL
+│     └─ int 2
+├─ output : void
+│  ├─ char[] "a << 2: "
+│  ├─ .bits : i32
+│  │  └─ lsh : STRUCT_CALL
+│  └─ char[] "\n"
+├─ = : STRUCT_CALL
+│  ├─ rsh : STRUCT_CALL
+│  └─ >> : STRUCT_CALL
+│     ├─ a : STRUCT_CALL
+│     └─ int 1
+└─ output : void
+   ├─ char[] "a >> 1: "
+   ├─ .bits : i32
+   │  └─ rsh : STRUCT_CALL
+   └─ char[] "\n"
+```
+
+```out
+a & b:  8
+a | b:  14
+a ^ b:  6
+a << 2: 48
+a >> 1: 6
+```
+
+```err
+```
+
+```ll
+
+%Os = type { i32, { { i8*, i64 }*, i64 } }
+%Flags = type { i32 }
+
+@os = internal global %Os zeroinitializer
+@str = private unnamed_addr constant [9 x i8] c"a & b:  \00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
+@str.2 = private unnamed_addr constant [9 x i8] c"a | b:  \00", align 1
+@str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.4 = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
+@str.5 = private unnamed_addr constant [9 x i8] c"a ^ b:  \00", align 1
+@str.6 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.7 = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
+@str.8 = private unnamed_addr constant [9 x i8] c"a << 2: \00", align 1
+@str.9 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.10 = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
+@str.11 = private unnamed_addr constant [9 x i8] c"a >> 1: \00", align 1
+@str.12 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.13 = private unnamed_addr constant [11 x i8] c"%.*s%d%.*s\00", align 1
+
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
+
+define void @"Flags.=.i32"(%Flags* %0, i32 %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  %n = alloca i32, align 4
+  store i32 %1, i32* %n, align 4
+  %ref = load %Flags*, %Flags** %self, align 8
+  %bits = getelementptr %Flags, %Flags* %ref, i32 0, i32 0
+  %n1 = load i32, i32* %n, align 4
+  store i32 %n1, i32* %bits, align 4
+  ret void
+}
+
+define void @"Flags.=.Flags"(%Flags* %0, %Flags* %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  %f = alloca %Flags*, align 8
+  store %Flags* %1, %Flags** %f, align 8
+  %ref = load %Flags*, %Flags** %self, align 8
+  %bits = getelementptr %Flags, %Flags* %ref, i32 0, i32 0
+  %ref1 = load %Flags*, %Flags** %f, align 8
+  %bits2 = getelementptr %Flags, %Flags* %ref1, i32 0, i32 0
+  %bits3 = load i32, i32* %bits2, align 4
+  store i32 %bits3, i32* %bits, align 4
+  ret void
+}
+
+define %Flags @"Flags.&.Flags"(%Flags* %0, %Flags* %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  %f = alloca %Flags*, align 8
+  store %Flags* %1, %Flags** %f, align 8
+  %res = alloca %Flags, align 8
+  store %Flags zeroinitializer, %Flags* %res, align 4
+  %bits = getelementptr %Flags, %Flags* %res, i32 0, i32 0
+  %ref = load %Flags*, %Flags** %self, align 8
+  %bits1 = getelementptr %Flags, %Flags* %ref, i32 0, i32 0
+  %bits2 = load i32, i32* %bits1, align 4
+  %ref3 = load %Flags*, %Flags** %f, align 8
+  %bits4 = getelementptr %Flags, %Flags* %ref3, i32 0, i32 0
+  %bits5 = load i32, i32* %bits4, align 4
+  %band = and i32 %bits2, %bits5
+  store i32 %band, i32* %bits, align 4
+  %res6 = load %Flags, %Flags* %res, align 4
+  ret %Flags %res6
+}
+
+define %Flags @"Flags.|.Flags"(%Flags* %0, %Flags* %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  %f = alloca %Flags*, align 8
+  store %Flags* %1, %Flags** %f, align 8
+  %res = alloca %Flags, align 8
+  store %Flags zeroinitializer, %Flags* %res, align 4
+  %bits = getelementptr %Flags, %Flags* %res, i32 0, i32 0
+  %ref = load %Flags*, %Flags** %self, align 8
+  %bits1 = getelementptr %Flags, %Flags* %ref, i32 0, i32 0
+  %bits2 = load i32, i32* %bits1, align 4
+  %ref3 = load %Flags*, %Flags** %f, align 8
+  %bits4 = getelementptr %Flags, %Flags* %ref3, i32 0, i32 0
+  %bits5 = load i32, i32* %bits4, align 4
+  %bor = or i32 %bits2, %bits5
+  store i32 %bor, i32* %bits, align 4
+  %res6 = load %Flags, %Flags* %res, align 4
+  ret %Flags %res6
+}
+
+define %Flags @"Flags.^.Flags"(%Flags* %0, %Flags* %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  %f = alloca %Flags*, align 8
+  store %Flags* %1, %Flags** %f, align 8
+  %res = alloca %Flags, align 8
+  store %Flags zeroinitializer, %Flags* %res, align 4
+  %bits = getelementptr %Flags, %Flags* %res, i32 0, i32 0
+  %ref = load %Flags*, %Flags** %self, align 8
+  %bits1 = getelementptr %Flags, %Flags* %ref, i32 0, i32 0
+  %bits2 = load i32, i32* %bits1, align 4
+  %ref3 = load %Flags*, %Flags** %f, align 8
+  %bits4 = getelementptr %Flags, %Flags* %ref3, i32 0, i32 0
+  %bits5 = load i32, i32* %bits4, align 4
+  %bxor = xor i32 %bits2, %bits5
+  store i32 %bxor, i32* %bits, align 4
+  %res6 = load %Flags, %Flags* %res, align 4
+  ret %Flags %res6
+}
+
+define %Flags @"Flags.<<.i32"(%Flags* %0, i32 %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  %n = alloca i32, align 4
+  store i32 %1, i32* %n, align 4
+  %res = alloca %Flags, align 8
+  store %Flags zeroinitializer, %Flags* %res, align 4
+  %bits = getelementptr %Flags, %Flags* %res, i32 0, i32 0
+  %ref = load %Flags*, %Flags** %self, align 8
+  %bits1 = getelementptr %Flags, %Flags* %ref, i32 0, i32 0
+  %bits2 = load i32, i32* %bits1, align 4
+  %n3 = load i32, i32* %n, align 4
+  %shl = shl i32 %bits2, %n3
+  store i32 %shl, i32* %bits, align 4
+  %res4 = load %Flags, %Flags* %res, align 4
+  ret %Flags %res4
+}
+
+define %Flags @"Flags.>>.i32"(%Flags* %0, i32 %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  %n = alloca i32, align 4
+  store i32 %1, i32* %n, align 4
+  %res = alloca %Flags, align 8
+  store %Flags zeroinitializer, %Flags* %res, align 4
+  %bits = getelementptr %Flags, %Flags* %res, i32 0, i32 0
+  %ref = load %Flags*, %Flags** %self, align 8
+  %bits1 = getelementptr %Flags, %Flags* %ref, i32 0, i32 0
+  %bits2 = load i32, i32* %bits1, align 4
+  %n3 = load i32, i32* %n, align 4
+  %shr = ashr i32 %bits2, %n3
+  store i32 %shr, i32* %bits, align 4
+  %res4 = load %Flags, %Flags* %res, align 4
+  ret %Flags %res4
+}
+
+define i32 @main(i32 %0, i8** %1) {
+entry:
+  %a = alloca %Flags, align 8
+  store %Flags zeroinitializer, %Flags* %a, align 4
+  call void @"Flags.=.i32"(%Flags* %a, i32 12)
+  %b = alloca %Flags, align 8
+  store %Flags zeroinitializer, %Flags* %b, align 4
+  call void @"Flags.=.i32"(%Flags* %b, i32 10)
+  %band = alloca %Flags, align 8
+  %op = call %Flags @"Flags.&.Flags"(%Flags* %a, %Flags* %b)
+  store %Flags %op, %Flags* %band, align 4
+  %bits = getelementptr %Flags, %Flags* %band, i32 0, i32 0
+  %bits1 = load i32, i32* %bits, align 4
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i32 8, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str, i32 0, i32 0), i32 %bits1, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  %bor = alloca %Flags, align 8
+  %op2 = call %Flags @"Flags.|.Flags"(%Flags* %a, %Flags* %b)
+  store %Flags %op2, %Flags* %bor, align 4
+  %bits3 = getelementptr %Flags, %Flags* %bor, i32 0, i32 0
+  %bits4 = load i32, i32* %bits3, align 4
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.4, i32 0, i32 0), i32 8, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.2, i32 0, i32 0), i32 %bits4, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
+  %bxor = alloca %Flags, align 8
+  %op5 = call %Flags @"Flags.^.Flags"(%Flags* %a, %Flags* %b)
+  store %Flags %op5, %Flags* %bxor, align 4
+  %bits6 = getelementptr %Flags, %Flags* %bxor, i32 0, i32 0
+  %bits7 = load i32, i32* %bits6, align 4
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.7, i32 0, i32 0), i32 8, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.5, i32 0, i32 0), i32 %bits7, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.6, i32 0, i32 0))
+  %lsh = alloca %Flags, align 8
+  %op8 = call %Flags @"Flags.<<.i32"(%Flags* %a, i32 2)
+  store %Flags %op8, %Flags* %lsh, align 4
+  %bits9 = getelementptr %Flags, %Flags* %lsh, i32 0, i32 0
+  %bits10 = load i32, i32* %bits9, align 4
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.10, i32 0, i32 0), i32 8, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.8, i32 0, i32 0), i32 %bits10, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.9, i32 0, i32 0))
+  %rsh = alloca %Flags, align 8
+  %op11 = call %Flags @"Flags.>>.i32"(%Flags* %a, i32 1)
+  store %Flags %op11, %Flags* %rsh, align 4
+  %bits12 = getelementptr %Flags, %Flags* %rsh, i32 0, i32 0
+  %bits13 = load i32, i32* %bits12, align 4
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.13, i32 0, i32 0), i32 8, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.11, i32 0, i32 0), i32 %bits13, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.12, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 027 — a heap-owning struct: create, deep-copy operator = and drop
+
+```ura
+// operators_overload/027.ura - a heap-owning struct: create, deep-copy operator = and drop
+
+use "@/string"
+
+struct Buffer:
+    value char[]
+
+    pub fn create() Buffer:
+        b Buffer
+        b.value = new char[64]
+        return b
+
+    operator drop:
+        clean self.value
+
+    operator = (s char[]) void:
+        strcpy(self.value, s)
+
+    operator = (ref b Buffer) void:
+        strcpy(self.value, b.value)
+
+main():
+    b1 Buffer = Buffer::create()
+    b1 = "hello"
+
+    b2 Buffer = Buffer::create()
+    b2 = b1
+
+    strcpy(b2.value, "world")
+
+    output("b1: ", b1.value, "\n")
+    output("b2: ", b2.value, "\n")
+```
+
+```tree
+proto fn printf(format : pointer, ...) : i32
+
+proto fn calloc(len : i64, size : i64) : pointer
+
+proto fn free(ptr : pointer) : void
+
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
+
+proto fn exit(code : i32) : void
+
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
+
+proto fn strlen(s : pointer) : i64
+
+proto fn strnlen(s : pointer, maxlen : i32) : i32
+
+proto fn strcmp(a : pointer, b : pointer) : i32
+
+proto fn strncmp(a : pointer, b : pointer, n : i32) : i32
+
+proto fn strcasecmp(a : pointer, b : pointer) : i32
+
+proto fn strncasecmp(a : pointer, b : pointer, n : i32) : i32
+
+proto fn strcoll(a : pointer, b : pointer) : i32
+
+proto fn strxfrm(dest : pointer, src : pointer, n : i32) : i32
+
+proto fn strcpy(dest : pointer, src : pointer) : pointer
+
+proto fn strncpy(dest : pointer, src : pointer, n : i32) : pointer
+
+proto fn strdup(s : pointer) : pointer
+
+proto fn strndup(s : pointer, n : i32) : pointer
+
+proto fn strcat(dest : pointer, src : pointer) : pointer
+
+proto fn strncat(dest : pointer, src : pointer, n : i32) : pointer
+
+proto fn strchr(s : pointer, c : i32) : pointer
+
+proto fn strrchr(s : pointer, c : i32) : pointer
+
+proto fn strstr(haystack : pointer, needle : pointer) : pointer
+
+proto fn strcasestr(haystack : pointer, needle : pointer) : pointer
+
+proto fn strspn(s : pointer, accept : pointer) : i32
+
+proto fn strcspn(s : pointer, reject : pointer) : i32
+
+proto fn strpbrk(s : pointer, accept : pointer) : pointer
+
+proto fn strtok(s : pointer, delim : pointer) : pointer
+
+proto fn strtok_r(s : pointer, delim : pointer, saveptr : pointer) : pointer
+
+proto fn strerror(errnum : i32) : pointer
+
+proto fn strerror_r(errnum : i32, buf : pointer, buflen : i64) : i32
+
+proto fn memchr(ptr : pointer, c : i32, n : i32) : pointer
+
+proto fn memrchr(ptr : pointer, c : i32, n : i32) : pointer
+
+proto fn memcmp(a : pointer, b : pointer, n : i32) : i32
+
+proto fn memcpy(dest : pointer, src : pointer, n : i32) : pointer
+
+proto fn memmove(dest : pointer, src : pointer, n : i32) : pointer
+
+proto fn memset(ptr : pointer, value : i32, n : i32) : pointer
+
+proto fn memccpy(dest : pointer, src : pointer, c : i32, n : i32) : pointer
+
+proto fn bzero(s : pointer, size : i64) : void
+
+proto fn strlcpy(dest : pointer, src : pointer, size : i32) : i32
+
+proto fn strlcat(dest : pointer, src : pointer, size : i32) : i32
+
+proto fn strsignal(sig : i32) : pointer
+
+proto fn memset_s(ptr : pointer, size : i32, value : i32, n : i32) : pointer
+
+proto fn atoi(s : pointer) : i32
+
+struct String
+├─ value : char[]
+├─ count : i32
+├─ fn String.create() : STRUCT_CALL
+│  ├─ s : STRUCT_CALL
+│  ├─ = : array
+│  │  ├─ .value : char[]
+│  │  │  └─ s : STRUCT_CALL
+│  │  └─ array : char[]
+│  │     └─ int 16
+│  ├─ = : i32
+│  │  ├─ .count : i32
+│  │  │  └─ s : STRUCT_CALL
+│  │  └─ int 0
+│  └─ return
+│     └─ s : STRUCT_CALL
+├─ fn String.from(str : array) : STRUCT_CALL
+│  ├─ = : STRUCT_CALL
+│  │  ├─ s : STRUCT_CALL
+│  │  └─ call create : STRUCT_CALL
+│  ├─ call assign : void
+│  │  ├─ s : STRUCT_CALL
+│  │  └─ str : char[]
+│  └─ return
+│     └─ s : STRUCT_CALL
+├─ fn String.from_int(n : i32) : STRUCT_CALL
+│  ├─ = : STRUCT_CALL
+│  │  ├─ s : STRUCT_CALL
+│  │  └─ call create : STRUCT_CALL
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ n : i32
+│  │  │  └─ int 0
+│  │  ├─ call push : void
+│  │  │  ├─ s : STRUCT_CALL
+│  │  │  └─ char '0'
+│  │  └─ return
+│  │     └─ s : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ num : i32
+│  │  └─ n : i32
+│  ├─ if
+│  │  ├─ condition < : bool
+│  │  │  ├─ num : i32
+│  │  │  └─ int 0
+│  │  ├─ call push : void
+│  │  │  ├─ s : STRUCT_CALL
+│  │  │  └─ char '-'
+│  │  └─ = : i32
+│  │     ├─ num : i32
+│  │     └─ - : i32
+│  │        ├─ int 0
+│  │        └─ num : i32
+│  ├─ = : array
+│  │  ├─ digits : char[]
+│  │  └─ array : char[]
+│  │     └─ int 12
+│  ├─ = : i32
+│  │  ├─ i : i32
+│  │  └─ int 0
+│  ├─ while
+│  │  ├─ condition > : bool
+│  │  │  ├─ num : i32
+│  │  │  └─ int 0
+│  │  ├─ = : char
+│  │  │  ├─ index : char
+│  │  │  │  ├─ digits : char[]
+│  │  │  │  └─ i : i32
+│  │  │  └─ cast : char
+│  │  │     └─ + : i32
+│  │  │        ├─ % : i32
+│  │  │        │  ├─ num : i32
+│  │  │        │  └─ int 10
+│  │  │        └─ int 48
+│  │  ├─ = : i32
+│  │  │  ├─ num : i32
+│  │  │  └─ / : i32
+│  │  │     ├─ num : i32
+│  │  │     └─ int 10
+│  │  └─ += : i32
+│  │     ├─ i : i32
+│  │     └─ int 1
+│  ├─ while
+│  │  ├─ condition > : bool
+│  │  │  ├─ i : i32
+│  │  │  └─ int 0
+│  │  ├─ -= : i32
+│  │  │  ├─ i : i32
+│  │  │  └─ int 1
+│  │  └─ call push : void
+│  │     ├─ s : STRUCT_CALL
+│  │     └─ index : char
+│  │        ├─ digits : char[]
+│  │        └─ i : i32
+│  ├─ clean : void
+│  │  └─ digits : char[]
+│  └─ return
+│     └─ s : STRUCT_CALL
+├─ fn String.drop(self : STRUCT_CALL) : void
+│  └─ clean : void
+│     └─ .value : char[]
+│        └─ self : STRUCT_CALL
+├─ fn String.cap(self : STRUCT_CALL) : i32
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ .value : char[]
+│  │  │  │  └─ self : STRUCT_CALL
+│  │  │  └─ NULL_LIT : char[]
+│  │  └─ return
+│  │     └─ int 0
+│  └─ return
+│     └─ cast : i32
+│        └─ .len : u64
+│           └─ .value : char[]
+│              └─ self : STRUCT_CALL
+├─ fn String.grow(self : STRUCT_CALL, want : i32) : void
+│  ├─ = : i32
+│  │  ├─ room : i32
+│  │  └─ call cap : i32
+│  │     └─ self : STRUCT_CALL
+│  ├─ if
+│  │  ├─ condition >= : bool
+│  │  │  ├─ room : i32
+│  │  │  └─ want : i32
+│  │  └─ return
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ room : i32
+│  │  │  └─ int 0
+│  │  └─ = : i32
+│  │     ├─ room : i32
+│  │     └─ int 16
+│  ├─ while
+│  │  ├─ condition < : bool
+│  │  │  ├─ room : i32
+│  │  │  └─ want : i32
+│  │  └─ *= : i32
+│  │     ├─ room : i32
+│  │     └─ int 2
+│  ├─ = : array
+│  │  ├─ bigger : char[]
+│  │  └─ array : char[]
+│  │     └─ room : i32
+│  ├─ if
+│  │  ├─ condition > : bool
+│  │  │  ├─ .count : i32
+│  │  │  │  └─ self : STRUCT_CALL
+│  │  │  └─ int 0
+│  │  └─ call memcpy : pointer
+│  │     ├─ bigger : char[]
+│  │     ├─ FALLBACK : char[]
+│  │     │  ├─ .value : char[]
+│  │     │  │  └─ self : STRUCT_CALL
+│  │     │  └─ char[] ""
+│  │     └─ .count : i32
+│  │        └─ self : STRUCT_CALL
+│  ├─ = : char
+│  │  ├─ index : char
+│  │  │  ├─ bigger : char[]
+│  │  │  └─ .count : i32
+│  │  │     └─ self : STRUCT_CALL
+│  │  └─ cast : char
+│  │     └─ int 0
+│  ├─ clean : void
+│  │  └─ .value : char[]
+│  │     └─ self : STRUCT_CALL
+│  └─ = : array
+│     ├─ .value : char[]
+│     │  └─ self : STRUCT_CALL
+│     └─ bigger : char[]
+├─ fn String.assign(self : STRUCT_CALL, str : array) : void
+│  ├─ = : i32
+│  │  ├─ n : i32
+│  │  └─ int 0
+│  ├─ if
+│  │  ├─ condition != : bool
+│  │  │  ├─ str : char[]
+│  │  │  └─ NULL_LIT : char[]
+│  │  └─ = : i32
+│  │     ├─ n : i32
+│  │     └─ cast : i32
+│  │        └─ call strlen : i64
+│  │           └─ str : char[]
+│  ├─ call grow : void
+│  │  ├─ self : STRUCT_CALL
+│  │  └─ + : i32
+│  │     ├─ n : i32
+│  │     └─ int 1
+│  ├─ if
+│  │  ├─ condition > : bool
+│  │  │  ├─ n : i32
+│  │  │  └─ int 0
+│  │  └─ call memcpy : pointer
+│  │     ├─ FALLBACK : char[]
+│  │     │  ├─ .value : char[]
+│  │     │  │  └─ self : STRUCT_CALL
+│  │     │  └─ char[] ""
+│  │     ├─ FALLBACK : char[]
+│  │     │  ├─ str : char[]
+│  │     │  └─ char[] ""
+│  │     └─ n : i32
+│  ├─ = : char
+│  │  ├─ index : char
+│  │  │  ├─ .value : char[]
+│  │  │  │  └─ self : STRUCT_CALL
+│  │  │  └─ n : i32
+│  │  └─ cast : char
+│  │     └─ int 0
+│  └─ = : i32
+│     ├─ .count : i32
+│     │  └─ self : STRUCT_CALL
+│     └─ n : i32
+├─ fn String.join(self : STRUCT_CALL, str : array) : void
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ str : char[]
+│  │  │  └─ NULL_LIT : char[]
+│  │  └─ return
+│  ├─ = : i32
+│  │  ├─ n : i32
+│  │  └─ cast : i32
+│  │     └─ call strlen : i64
+│  │        └─ str : char[]
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ n : i32
+│  │  │  └─ int 0
+│  │  └─ return
+│  ├─ call grow : void
+│  │  ├─ self : STRUCT_CALL
+│  │  └─ + : i32
+│  │     ├─ + : i32
+│  │     │  ├─ .count : i32
+│  │     │  │  └─ self : STRUCT_CALL
+│  │     │  └─ n : i32
+│  │     └─ int 1
+│  ├─ call memcpy : pointer
+│  │  ├─ index : char[]
+│  │  │  ├─ .value : char[]
+│  │  │  │  └─ self : STRUCT_CALL
+│  │  │  └─ range : i32
+│  │  │     ├─ .count : i32
+│  │  │     │  └─ self : STRUCT_CALL
+│  │  │     └─ + : i32
+│  │  │        ├─ .count : i32
+│  │  │        │  └─ self : STRUCT_CALL
+│  │  │        └─ n : i32
+│  │  ├─ str : char[]
+│  │  └─ n : i32
+│  ├─ += : i32
+│  │  ├─ .count : i32
+│  │  │  └─ self : STRUCT_CALL
+│  │  └─ n : i32
+│  └─ = : char
+│     ├─ index : char
+│     │  ├─ .value : char[]
+│     │  │  └─ self : STRUCT_CALL
+│     │  └─ .count : i32
+│     │     └─ self : STRUCT_CALL
+│     └─ cast : char
+│        └─ int 0
+├─ fn String.push(self : STRUCT_CALL, c : char) : void
+│  ├─ call grow : void
+│  │  ├─ self : STRUCT_CALL
+│  │  └─ + : i32
+│  │     ├─ .count : i32
+│  │     │  └─ self : STRUCT_CALL
+│  │     └─ int 2
+│  ├─ = : char
+│  │  ├─ index : char
+│  │  │  ├─ .value : char[]
+│  │  │  │  └─ self : STRUCT_CALL
+│  │  │  └─ .count : i32
+│  │  │     └─ self : STRUCT_CALL
+│  │  └─ c : char
+│  ├─ += : i32
+│  │  ├─ .count : i32
+│  │  │  └─ self : STRUCT_CALL
+│  │  └─ int 1
+│  └─ = : char
+│     ├─ index : char
+│     │  ├─ .value : char[]
+│     │  │  └─ self : STRUCT_CALL
+│     │  └─ .count : i32
+│     │     └─ self : STRUCT_CALL
+│     └─ cast : char
+│        └─ int 0
+├─ fn String.pop(self : STRUCT_CALL) : char
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ .count : i32
+│  │  │  │  └─ self : STRUCT_CALL
+│  │  │  └─ int 0
+│  │  └─ return
+│  │     └─ cast : char
+│  │        └─ int 0
+│  ├─ -= : i32
+│  │  ├─ .count : i32
+│  │  │  └─ self : STRUCT_CALL
+│  │  └─ int 1
+│  ├─ = : char
+│  │  ├─ c : char
+│  │  └─ index : char
+│  │     ├─ .value : char[]
+│  │     │  └─ self : STRUCT_CALL
+│  │     └─ .count : i32
+│  │        └─ self : STRUCT_CALL
+│  ├─ = : char
+│  │  ├─ index : char
+│  │  │  ├─ .value : char[]
+│  │  │  │  └─ self : STRUCT_CALL
+│  │  │  └─ .count : i32
+│  │  │     └─ self : STRUCT_CALL
+│  │  └─ cast : char
+│  │     └─ int 0
+│  └─ return
+│     └─ c : char
+├─ fn String.clear(self : STRUCT_CALL) : void
+│  ├─ = : i32
+│  │  ├─ .count : i32
+│  │  │  └─ self : STRUCT_CALL
+│  │  └─ int 0
+│  └─ if
+│     ├─ condition != : bool
+│     │  ├─ .value : char[]
+│     │  │  └─ self : STRUCT_CALL
+│     │  └─ NULL_LIT : char[]
+│     └─ = : char
+│        ├─ index : char
+│        │  ├─ .value : char[]
+│        │  │  └─ self : STRUCT_CALL
+│        │  └─ int 0
+│        └─ cast : char
+│           └─ int 0
+├─ fn String.len(self : STRUCT_CALL) : i32
+│  └─ return
+│     └─ .count : i32
+│        └─ self : STRUCT_CALL
+├─ fn String.empty(self : STRUCT_CALL) : bool
+│  └─ return
+│     └─ == : bool
+│        ├─ .count : i32
+│        │  └─ self : STRUCT_CALL
+│        └─ int 0
+├─ fn String.c_str(self : STRUCT_CALL) : char[]
+│  └─ return
+│     └─ FALLBACK : char[]
+│        ├─ .value : char[]
+│        │  └─ self : STRUCT_CALL
+│        └─ char[] ""
+├─ fn String.at(self : STRUCT_CALL, i : i32) : char
+│  ├─ if
+│  │  ├─ condition or : bool
+│  │  │  ├─ < : bool
+│  │  │  │  ├─ i : i32
+│  │  │  │  └─ int 0
+│  │  │  └─ >= : bool
+│  │  │     ├─ i : i32
+│  │  │     └─ .count : i32
+│  │  │        └─ self : STRUCT_CALL
+│  │  └─ return
+│  │     └─ cast : char
+│  │        └─ int 0
+│  └─ return
+│     └─ index : char
+│        ├─ .value : char[]
+│        │  └─ self : STRUCT_CALL
+│        └─ i : i32
+├─ fn String.find(self : STRUCT_CALL, needle : array) : i32
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ needle : char[]
+│  │  │  └─ NULL_LIT : char[]
+│  │  └─ return
+│  │     └─ - : i32
+│  │        ├─ int 0
+│  │        └─ int 1
+│  ├─ = : i32
+│  │  ├─ n : i32
+│  │  └─ cast : i32
+│  │     └─ call strlen : i64
+│  │        └─ needle : char[]
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ n : i32
+│  │  │  └─ int 0
+│  │  └─ return
+│  │     └─ int 0
+│  ├─ = : i32
+│  │  ├─ i : i32
+│  │  └─ int 0
+│  ├─ while
+│  │  ├─ condition <= : bool
+│  │  │  ├─ + : i32
+│  │  │  │  ├─ i : i32
+│  │  │  │  └─ n : i32
+│  │  │  └─ .count : i32
+│  │  │     └─ self : STRUCT_CALL
+│  │  ├─ if
+│  │  │  ├─ condition == : bool
+│  │  │  │  ├─ call strncmp : i32
+│  │  │  │  │  ├─ index : char[]
+│  │  │  │  │  │  ├─ .value : char[]
+│  │  │  │  │  │  │  └─ self : STRUCT_CALL
+│  │  │  │  │  │  └─ range : i32
+│  │  │  │  │  │     ├─ i : i32
+│  │  │  │  │  │     └─ + : i32
+│  │  │  │  │  │        ├─ i : i32
+│  │  │  │  │  │        └─ n : i32
+│  │  │  │  │  ├─ needle : char[]
+│  │  │  │  │  └─ n : i32
+│  │  │  │  └─ int 0
+│  │  │  └─ return
+│  │  │     └─ i : i32
+│  │  └─ += : i32
+│  │     ├─ i : i32
+│  │     └─ int 1
+│  └─ return
+│     └─ - : i32
+│        ├─ int 0
+│        └─ int 1
+├─ fn String.contains(self : STRUCT_CALL, needle : array) : bool
+│  └─ return
+│     └─ != : bool
+│        ├─ call find : i32
+│        │  ├─ self : STRUCT_CALL
+│        │  └─ needle : char[]
+│        └─ - : i32
+│           ├─ int 0
+│           └─ int 1
+├─ fn String.starts_with(self : STRUCT_CALL, prefix : array) : bool
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ prefix : char[]
+│  │  │  └─ NULL_LIT : char[]
+│  │  └─ return
+│  │     └─ bool True
+│  ├─ = : i32
+│  │  ├─ n : i32
+│  │  └─ cast : i32
+│  │     └─ call strlen : i64
+│  │        └─ prefix : char[]
+│  ├─ if
+│  │  ├─ condition > : bool
+│  │  │  ├─ n : i32
+│  │  │  └─ .count : i32
+│  │  │     └─ self : STRUCT_CALL
+│  │  └─ return
+│  │     └─ bool False
+│  └─ return
+│     └─ == : bool
+│        ├─ call strncmp : i32
+│        │  ├─ index : char[]
+│        │  │  ├─ .value : char[]
+│        │  │  │  └─ self : STRUCT_CALL
+│        │  │  └─ range : i32
+│        │  │     ├─ int 0
+│        │  │     └─ n : i32
+│        │  ├─ prefix : char[]
+│        │  └─ n : i32
+│        └─ int 0
+├─ fn String.ends_with(self : STRUCT_CALL, suffix : array) : bool
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ suffix : char[]
+│  │  │  └─ NULL_LIT : char[]
+│  │  └─ return
+│  │     └─ bool True
+│  ├─ = : i32
+│  │  ├─ n : i32
+│  │  └─ cast : i32
+│  │     └─ call strlen : i64
+│  │        └─ suffix : char[]
+│  ├─ if
+│  │  ├─ condition > : bool
+│  │  │  ├─ n : i32
+│  │  │  └─ .count : i32
+│  │  │     └─ self : STRUCT_CALL
+│  │  └─ return
+│  │     └─ bool False
+│  └─ return
+│     └─ == : bool
+│        ├─ call strncmp : i32
+│        │  ├─ index : char[]
+│        │  │  ├─ .value : char[]
+│        │  │  │  └─ self : STRUCT_CALL
+│        │  │  └─ range : i32
+│        │  │     ├─ - : i32
+│        │  │     │  ├─ .count : i32
+│        │  │     │  │  └─ self : STRUCT_CALL
+│        │  │     │  └─ n : i32
+│        │  │     └─ .count : i32
+│        │  │        └─ self : STRUCT_CALL
+│        │  ├─ suffix : char[]
+│        │  └─ n : i32
+│        └─ int 0
+├─ fn String.substr(self : STRUCT_CALL, start : i32, length : i32) : STRUCT_CALL
+│  ├─ = : STRUCT_CALL
+│  │  ├─ res : STRUCT_CALL
+│  │  └─ call create : STRUCT_CALL
+│  ├─ if
+│  │  ├─ condition or : bool
+│  │  │  ├─ < : bool
+│  │  │  │  ├─ start : i32
+│  │  │  │  └─ int 0
+│  │  │  └─ >= : bool
+│  │  │     ├─ start : i32
+│  │  │     └─ .count : i32
+│  │  │        └─ self : STRUCT_CALL
+│  │  └─ return
+│  │     └─ res : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ stop : i32
+│  │  └─ + : i32
+│  │     ├─ start : i32
+│  │     └─ length : i32
+│  ├─ if
+│  │  ├─ condition > : bool
+│  │  │  ├─ stop : i32
+│  │  │  └─ .count : i32
+│  │  │     └─ self : STRUCT_CALL
+│  │  └─ = : i32
+│  │     ├─ stop : i32
+│  │     └─ .count : i32
+│  │        └─ self : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ i : i32
+│  │  └─ start : i32
+│  ├─ while
+│  │  ├─ condition < : bool
+│  │  │  ├─ i : i32
+│  │  │  └─ stop : i32
+│  │  ├─ call push : void
+│  │  │  ├─ res : STRUCT_CALL
+│  │  │  └─ index : char
+│  │  │     ├─ .value : char[]
+│  │  │     │  └─ self : STRUCT_CALL
+│  │  │     └─ i : i32
+│  │  └─ += : i32
+│  │     ├─ i : i32
+│  │     └─ int 1
+│  └─ return
+│     └─ res : STRUCT_CALL
+├─ fn String.upper(self : STRUCT_CALL) : STRUCT_CALL
+│  ├─ = : STRUCT_CALL
+│  │  ├─ res : STRUCT_CALL
+│  │  └─ call create : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ i : i32
+│  │  └─ int 0
+│  ├─ while
+│  │  ├─ condition < : bool
+│  │  │  ├─ i : i32
+│  │  │  └─ .count : i32
+│  │  │     └─ self : STRUCT_CALL
+│  │  ├─ = : char
+│  │  │  ├─ c : char
+│  │  │  └─ index : char
+│  │  │     ├─ .value : char[]
+│  │  │     │  └─ self : STRUCT_CALL
+│  │  │     └─ i : i32
+│  │  ├─ if
+│  │  │  ├─ condition and : bool
+│  │  │  │  ├─ >= : bool
+│  │  │  │  │  ├─ c : char
+│  │  │  │  │  └─ char 'a'
+│  │  │  │  └─ <= : bool
+│  │  │  │     ├─ c : char
+│  │  │  │     └─ char 'z'
+│  │  │  ├─ call push : void
+│  │  │  │  ├─ res : STRUCT_CALL
+│  │  │  │  └─ cast : char
+│  │  │  │     └─ - : i32
+│  │  │  │        ├─ cast : i32
+│  │  │  │        │  └─ c : char
+│  │  │  │        └─ int 32
+│  │  │  └─ else
+│  │  │     └─ call push : void
+│  │  │        ├─ res : STRUCT_CALL
+│  │  │        └─ c : char
+│  │  └─ += : i32
+│  │     ├─ i : i32
+│  │     └─ int 1
+│  └─ return
+│     └─ res : STRUCT_CALL
+├─ fn String.lower(self : STRUCT_CALL) : STRUCT_CALL
+│  ├─ = : STRUCT_CALL
+│  │  ├─ res : STRUCT_CALL
+│  │  └─ call create : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ i : i32
+│  │  └─ int 0
+│  ├─ while
+│  │  ├─ condition < : bool
+│  │  │  ├─ i : i32
+│  │  │  └─ .count : i32
+│  │  │     └─ self : STRUCT_CALL
+│  │  ├─ = : char
+│  │  │  ├─ c : char
+│  │  │  └─ index : char
+│  │  │     ├─ .value : char[]
+│  │  │     │  └─ self : STRUCT_CALL
+│  │  │     └─ i : i32
+│  │  ├─ if
+│  │  │  ├─ condition and : bool
+│  │  │  │  ├─ >= : bool
+│  │  │  │  │  ├─ c : char
+│  │  │  │  │  └─ char 'A'
+│  │  │  │  └─ <= : bool
+│  │  │  │     ├─ c : char
+│  │  │  │     └─ char 'Z'
+│  │  │  ├─ call push : void
+│  │  │  │  ├─ res : STRUCT_CALL
+│  │  │  │  └─ cast : char
+│  │  │  │     └─ + : i32
+│  │  │  │        ├─ cast : i32
+│  │  │  │        │  └─ c : char
+│  │  │  │        └─ int 32
+│  │  │  └─ else
+│  │  │     └─ call push : void
+│  │  │        ├─ res : STRUCT_CALL
+│  │  │        └─ c : char
+│  │  └─ += : i32
+│  │     ├─ i : i32
+│  │     └─ int 1
+│  └─ return
+│     └─ res : STRUCT_CALL
+├─ fn String.trim(self : STRUCT_CALL) : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ start : i32
+│  │  └─ int 0
+│  ├─ while
+│  │  ├─ condition < : bool
+│  │  │  ├─ start : i32
+│  │  │  └─ .count : i32
+│  │  │     └─ self : STRUCT_CALL
+│  │  ├─ = : char
+│  │  │  ├─ c : char
+│  │  │  └─ index : char
+│  │  │     ├─ .value : char[]
+│  │  │     │  └─ self : STRUCT_CALL
+│  │  │     └─ start : i32
+│  │  └─ if
+│  │     ├─ condition or : bool
+│  │     │  ├─ or : bool
+│  │     │  │  ├─ or : bool
+│  │     │  │  │  ├─ == : bool
+│  │     │  │  │  │  ├─ c : char
+│  │     │  │  │  │  └─ char ' '
+│  │     │  │  │  └─ == : bool
+│  │     │  │  │     ├─ c : char
+│  │     │  │  │     └─ char '\t'
+│  │     │  │  └─ == : bool
+│  │     │  │     ├─ c : char
+│  │     │  │     └─ char '\n'
+│  │     │  └─ == : bool
+│  │     │     ├─ c : char
+│  │     │     └─ char '\r'
+│  │     ├─ += : i32
+│  │     │  ├─ start : i32
+│  │     │  └─ int 1
+│  │     └─ else
+│  │        └─ break
+│  ├─ = : i32
+│  │  ├─ stop : i32
+│  │  └─ .count : i32
+│  │     └─ self : STRUCT_CALL
+│  ├─ while
+│  │  ├─ condition > : bool
+│  │  │  ├─ stop : i32
+│  │  │  └─ start : i32
+│  │  ├─ = : char
+│  │  │  ├─ c : char
+│  │  │  └─ index : char
+│  │  │     ├─ .value : char[]
+│  │  │     │  └─ self : STRUCT_CALL
+│  │  │     └─ - : i32
+│  │  │        ├─ stop : i32
+│  │  │        └─ int 1
+│  │  └─ if
+│  │     ├─ condition or : bool
+│  │     │  ├─ or : bool
+│  │     │  │  ├─ or : bool
+│  │     │  │  │  ├─ == : bool
+│  │     │  │  │  │  ├─ c : char
+│  │     │  │  │  │  └─ char ' '
+│  │     │  │  │  └─ == : bool
+│  │     │  │  │     ├─ c : char
+│  │     │  │  │     └─ char '\t'
+│  │     │  │  └─ == : bool
+│  │     │  │     ├─ c : char
+│  │     │  │     └─ char '\n'
+│  │     │  └─ == : bool
+│  │     │     ├─ c : char
+│  │     │     └─ char '\r'
+│  │     ├─ -= : i32
+│  │     │  ├─ stop : i32
+│  │     │  └─ int 1
+│  │     └─ else
+│  │        └─ break
+│  └─ return
+│     └─ call substr : STRUCT_CALL
+│        ├─ self : STRUCT_CALL
+│        ├─ start : i32
+│        └─ - : i32
+│           ├─ stop : i32
+│           └─ start : i32
+├─ fn String.replace(self : STRUCT_CALL, old : array, fresh : array) : STRUCT_CALL
+│  ├─ = : STRUCT_CALL
+│  │  ├─ res : STRUCT_CALL
+│  │  └─ call create : STRUCT_CALL
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ old : char[]
+│  │  │  └─ NULL_LIT : char[]
+│  │  ├─ call assign : void
+│  │  │  ├─ res : STRUCT_CALL
+│  │  │  └─ .value : char[]
+│  │  │     └─ self : STRUCT_CALL
+│  │  └─ return
+│  │     └─ res : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ n : i32
+│  │  └─ cast : i32
+│  │     └─ call strlen : i64
+│  │        └─ old : char[]
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ n : i32
+│  │  │  └─ int 0
+│  │  ├─ call assign : void
+│  │  │  ├─ res : STRUCT_CALL
+│  │  │  └─ .value : char[]
+│  │  │     └─ self : STRUCT_CALL
+│  │  └─ return
+│  │     └─ res : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ i : i32
+│  │  └─ int 0
+│  ├─ while
+│  │  ├─ condition < : bool
+│  │  │  ├─ i : i32
+│  │  │  └─ .count : i32
+│  │  │     └─ self : STRUCT_CALL
+│  │  ├─ = : bool
+│  │  │  ├─ hit : bool
+│  │  │  └─ bool False
+│  │  ├─ if
+│  │  │  ├─ condition <= : bool
+│  │  │  │  ├─ + : i32
+│  │  │  │  │  ├─ i : i32
+│  │  │  │  │  └─ n : i32
+│  │  │  │  └─ .count : i32
+│  │  │  │     └─ self : STRUCT_CALL
+│  │  │  └─ = : bool
+│  │  │     ├─ hit : bool
+│  │  │     └─ == : bool
+│  │  │        ├─ call strncmp : i32
+│  │  │        │  ├─ index : char[]
+│  │  │        │  │  ├─ .value : char[]
+│  │  │        │  │  │  └─ self : STRUCT_CALL
+│  │  │        │  │  └─ range : i32
+│  │  │        │  │     ├─ i : i32
+│  │  │        │  │     └─ + : i32
+│  │  │        │  │        ├─ i : i32
+│  │  │        │  │        └─ n : i32
+│  │  │        │  ├─ old : char[]
+│  │  │        │  └─ n : i32
+│  │  │        └─ int 0
+│  │  └─ if
+│  │     ├─ condition hit : bool
+│  │     ├─ call join : void
+│  │     │  ├─ res : STRUCT_CALL
+│  │     │  └─ fresh : char[]
+│  │     ├─ += : i32
+│  │     │  ├─ i : i32
+│  │     │  └─ n : i32
+│  │     └─ else
+│  │        ├─ call push : void
+│  │        │  ├─ res : STRUCT_CALL
+│  │        │  └─ index : char
+│  │        │     ├─ .value : char[]
+│  │        │     │  └─ self : STRUCT_CALL
+│  │        │     └─ i : i32
+│  │        └─ += : i32
+│  │           ├─ i : i32
+│  │           └─ int 1
+│  └─ return
+│     └─ res : STRUCT_CALL
+├─ fn String.repeat(self : STRUCT_CALL, n : i32) : STRUCT_CALL
+│  ├─ = : STRUCT_CALL
+│  │  ├─ res : STRUCT_CALL
+│  │  └─ call create : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ i : i32
+│  │  └─ int 0
+│  ├─ while
+│  │  ├─ condition < : bool
+│  │  │  ├─ i : i32
+│  │  │  └─ n : i32
+│  │  ├─ call join : void
+│  │  │  ├─ res : STRUCT_CALL
+│  │  │  └─ .value : char[]
+│  │  │     └─ self : STRUCT_CALL
+│  │  └─ += : i32
+│  │     ├─ i : i32
+│  │     └─ int 1
+│  └─ return
+│     └─ res : STRUCT_CALL
+├─ fn String.reverse(self : STRUCT_CALL) : STRUCT_CALL
+│  ├─ = : STRUCT_CALL
+│  │  ├─ res : STRUCT_CALL
+│  │  └─ call create : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ i : i32
+│  │  └─ - : i32
+│  │     ├─ .count : i32
+│  │     │  └─ self : STRUCT_CALL
+│  │     └─ int 1
+│  ├─ while
+│  │  ├─ condition >= : bool
+│  │  │  ├─ i : i32
+│  │  │  └─ int 0
+│  │  ├─ call push : void
+│  │  │  ├─ res : STRUCT_CALL
+│  │  │  └─ index : char
+│  │  │     ├─ .value : char[]
+│  │  │     │  └─ self : STRUCT_CALL
+│  │  │     └─ i : i32
+│  │  └─ -= : i32
+│  │     ├─ i : i32
+│  │     └─ int 1
+│  └─ return
+│     └─ res : STRUCT_CALL
+├─ fn String.compare(self : STRUCT_CALL, other : STRUCT_CALL) : i32
+│  └─ return
+│     └─ call strcmp : i32
+│        ├─ FALLBACK : char[]
+│        │  ├─ .value : char[]
+│        │  │  └─ self : STRUCT_CALL
+│        │  └─ char[] ""
+│        └─ FALLBACK : char[]
+│           ├─ .value : char[]
+│           │  └─ other : STRUCT_CALL
+│           └─ char[] ""
+├─ fn String.to_int(self : STRUCT_CALL) : i32
+│  └─ return
+│     └─ call atoi : i32
+│        └─ FALLBACK : char[]
+│           ├─ .value : char[]
+│           │  └─ self : STRUCT_CALL
+│           └─ char[] ""
+├─ fn String.=.array(self : STRUCT_CALL, str : array) : void
+│  └─ call assign : void
+│     ├─ self : STRUCT_CALL
+│     └─ str : char[]
+├─ fn String.=.String(self : STRUCT_CALL, v : STRUCT_CALL) : void
+│  └─ call assign : void
+│     ├─ self : STRUCT_CALL
+│     └─ .value : char[]
+│        └─ v : STRUCT_CALL
+├─ fn String.+.String(self : STRUCT_CALL, v : STRUCT_CALL) : STRUCT_CALL
+│  ├─ = : STRUCT_CALL
+│  │  ├─ res : STRUCT_CALL
+│  │  └─ call from : STRUCT_CALL
+│  │     └─ .value : char[]
+│  │        └─ self : STRUCT_CALL
+│  ├─ call join : void
+│  │  ├─ res : STRUCT_CALL
+│  │  └─ .value : char[]
+│  │     └─ v : STRUCT_CALL
+│  └─ return
+│     └─ res : STRUCT_CALL
+├─ fn String.+.array(self : STRUCT_CALL, str : array) : STRUCT_CALL
+│  ├─ = : STRUCT_CALL
+│  │  ├─ res : STRUCT_CALL
+│  │  └─ call from : STRUCT_CALL
+│  │     └─ .value : char[]
+│  │        └─ self : STRUCT_CALL
+│  ├─ call join : void
+│  │  ├─ res : STRUCT_CALL
+│  │  └─ str : char[]
+│  └─ return
+│     └─ res : STRUCT_CALL
+├─ fn String.+=.String(self : STRUCT_CALL, v : STRUCT_CALL) : void
+│  └─ call join : void
+│     ├─ self : STRUCT_CALL
+│     └─ .value : char[]
+│        └─ v : STRUCT_CALL
+├─ fn String.+=.array(self : STRUCT_CALL, str : array) : void
+│  └─ call join : void
+│     ├─ self : STRUCT_CALL
+│     └─ str : char[]
+├─ fn String.==.String(self : STRUCT_CALL, v : STRUCT_CALL) : bool
+│  └─ return
+│     └─ == : bool
+│        ├─ call compare : i32
+│        │  ├─ self : STRUCT_CALL
+│        │  └─ ref : STRUCT_CALL
+│        │     └─ v : STRUCT_CALL
+│        └─ int 0
+├─ fn String.!=.String(self : STRUCT_CALL, v : STRUCT_CALL) : bool
+│  └─ return
+│     └─ != : bool
+│        ├─ call compare : i32
+│        │  ├─ self : STRUCT_CALL
+│        │  └─ ref : STRUCT_CALL
+│        │     └─ v : STRUCT_CALL
+│        └─ int 0
+├─ fn String.<.String(self : STRUCT_CALL, v : STRUCT_CALL) : bool
+│  └─ return
+│     └─ < : bool
+│        ├─ call compare : i32
+│        │  ├─ self : STRUCT_CALL
+│        │  └─ ref : STRUCT_CALL
+│        │     └─ v : STRUCT_CALL
+│        └─ int 0
+├─ fn String.>.String(self : STRUCT_CALL, v : STRUCT_CALL) : bool
+│  └─ return
+│     └─ > : bool
+│        ├─ call compare : i32
+│        │  ├─ self : STRUCT_CALL
+│        │  └─ ref : STRUCT_CALL
+│        │     └─ v : STRUCT_CALL
+│        └─ int 0
+└─ fn String.output(self : STRUCT_CALL) : char[]
+   └─ return
+      └─ FALLBACK : char[]
+         ├─ .value : char[]
+         │  └─ self : STRUCT_CALL
+         └─ char[] ""
+
+struct Buffer
+├─ value : char[]
+├─ fn Buffer.create() : STRUCT_CALL
+│  ├─ b : STRUCT_CALL
+│  ├─ = : array
+│  │  ├─ .value : char[]
+│  │  │  └─ b : STRUCT_CALL
+│  │  └─ array : char[]
+│  │     └─ int 64
+│  └─ return
+│     └─ b : STRUCT_CALL
+├─ fn Buffer.drop(self : STRUCT_CALL) : void
+│  └─ clean : void
+│     └─ .value : char[]
+│        └─ self : STRUCT_CALL
+├─ fn Buffer.=.array(self : STRUCT_CALL, s : array) : void
+│  └─ call strcpy : pointer
+│     ├─ .value : char[]
+│     │  └─ self : STRUCT_CALL
+│     └─ s : char[]
+└─ fn Buffer.=.Buffer(self : STRUCT_CALL, b : STRUCT_CALL) : void
+   └─ call strcpy : pointer
+      ├─ .value : char[]
+      │  └─ self : STRUCT_CALL
+      └─ .value : char[]
+         └─ b : STRUCT_CALL
+
+fn main() : i32
+├─ = : STRUCT_CALL
+│  ├─ b1 : STRUCT_CALL
+│  └─ call create : STRUCT_CALL
+├─ = : void
+│  ├─ b1 : STRUCT_CALL
+│  └─ char[] "hello"
+├─ = : STRUCT_CALL
+│  ├─ b2 : STRUCT_CALL
+│  └─ call create : STRUCT_CALL
+├─ = : void
+│  ├─ b2 : STRUCT_CALL
+│  └─ b1 : STRUCT_CALL
+├─ call strcpy : pointer
+│  ├─ .value : char[]
+│  │  └─ b2 : STRUCT_CALL
+│  └─ char[] "world"
+├─ output : void
+│  ├─ char[] "b1: "
+│  ├─ .value : char[]
+│  │  └─ b1 : STRUCT_CALL
+│  └─ char[] "\n"
+└─ output : void
+   ├─ char[] "b2: "
+   ├─ .value : char[]
+   │  └─ b2 : STRUCT_CALL
+   └─ char[] "\n"
+```
+
+```out
+b1: hello
+b2: world
+```
+
+```err
+```
+
+```ll
+
+%Os = type { i32, { { i8*, i64 }*, i64 } }
+%String = type { { i8*, i64 }, i32 }
+%Buffer = type { { i8*, i64 } }
+
+@os = internal global %Os zeroinitializer
+@trap_msg = private unnamed_addr constant [153 x i8] c"runtime error: Modulo by zero\0A   ura-lib/string.ura:97:30\0A   |\0A97 |             digits[i] = (num % 10 + 48) as char\0A   |                              ^\0A\00", align 1
+@trap_msg.1 = private unnamed_addr constant [127 x i8] c"runtime error: Division by zero\0A   ura-lib/string.ura:98:23\0A   |\0A98 |             num = num / 10\0A   |                       ^\0A\00", align 1
+@str = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.2 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.3 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.4 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.5 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.6 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.7 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.8 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.9 = private unnamed_addr constant [6 x i8] c"hello\00", align 1
+@str.10 = private unnamed_addr constant [6 x i8] c"world\00", align 1
+@str.11 = private unnamed_addr constant [5 x i8] c"b1: \00", align 1
+@str.12 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [13 x i8] c"%.*s%.*s%.*s\00", align 1
+@str.13 = private unnamed_addr constant [5 x i8] c"b2: \00", align 1
+@str.14 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.15 = private unnamed_addr constant [13 x i8] c"%.*s%.*s%.*s\00", align 1
+
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
+
+define %String @String.create() {
+entry:
+  %s = alloca %String, align 8
+  store %String zeroinitializer, %String* %s, align 8
+  %value = getelementptr %String, %String* %s, i32 0, i32 0
+  %heap = call i8* @calloc(i64 16, i64 1)
+  %arr.ptr = insertvalue { i8*, i64 } undef, i8* %heap, 0
+  %arr.len = insertvalue { i8*, i64 } %arr.ptr, i64 16, 1
+  store { i8*, i64 } %arr.len, { i8*, i64 }* %value, align 8
+  %count = getelementptr %String, %String* %s, i32 0, i32 1
+  store i32 0, i32* %count, align 4
+  %s1 = load %String, %String* %s, align 8
+  ret %String %s1
+}
+
+declare i8* @calloc(i64, i64)
+
+define %String @String.from({ i8*, i64 } %0) {
+entry:
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %0, { i8*, i64 }* %str, align 8
+  %s = alloca %String, align 8
+  %call = call %String @String.create()
+  store %String %call, %String* %s, align 8
+  %str1 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  call void @String.assign(%String* %s, { i8*, i64 } %str1)
+  %s2 = load %String, %String* %s, align 8
+  ret %String %s2
+}
+
+define void @String.assign(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %n = alloca i32, align 4
+  store i32 0, i32* %n, align 4
+  %str1 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %str1, 0
+  %nullcmp = icmp ne i8* %opt.ptr, null
+  br i1 %nullcmp, label %then, label %endif
+
+endif:                                            ; preds = %then, %entry
+  %ref = load %String*, %String** %self, align 8
+  %n3 = load i32, i32* %n, align 4
+  %add = add i32 %n3, 1
+  call void @String.grow(%String* %ref, i32 %add)
+  %n6 = load i32, i32* %n, align 4
+  %gt = icmp sgt i32 %n6, 0
+  br i1 %gt, label %then5, label %endif4
+
+then:                                             ; preds = %entry
+  %str2 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %arr.data = extractvalue { i8*, i64 } %str2, 0
+  %call = call i64 @strlen(i8* %arr.data)
+  %cast = trunc i64 %call to i32
+  store i32 %cast, i32* %n, align 4
+  br label %endif
+
+endif4:                                           ; preds = %then5, %endif
+  %ref18 = load %String*, %String** %self, align 8
+  %value19 = getelementptr %String, %String* %ref18, i32 0, i32 0
+  %value20 = load { i8*, i64 }, { i8*, i64 }* %value19, align 8
+  %arr.data21 = extractvalue { i8*, i64 } %value20, 0
+  %n22 = load i32, i32* %n, align 4
+  %arr.at = getelementptr i8, i8* %arr.data21, i32 %n22
+  store i8 0, i8* %arr.at, align 1
+  %ref23 = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref23, i32 0, i32 1
+  %n24 = load i32, i32* %n, align 4
+  store i32 %n24, i32* %count, align 4
+  ret void
+
+then5:                                            ; preds = %endif
+  %ref7 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref7, i32 0, i32 0
+  %value8 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr9 = extractvalue { i8*, i64 } %value8, 0
+  %isnull = icmp eq i8* %opt.ptr9, null
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.2, i32 0, i32 0), i64 0 }, { i8*, i64 } %value8
+  %arr.data10 = extractvalue { i8*, i64 } %fallback, 0
+  %str11 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %opt.ptr12 = extractvalue { i8*, i64 } %str11, 0
+  %isnull13 = icmp eq i8* %opt.ptr12, null
+  %fallback14 = select i1 %isnull13, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.3, i32 0, i32 0), i64 0 }, { i8*, i64 } %str11
+  %arr.data15 = extractvalue { i8*, i64 } %fallback14, 0
+  %n16 = load i32, i32* %n, align 4
+  %call17 = call i8* @memcpy(i8* %arr.data10, i8* %arr.data15, i32 %n16)
+  br label %endif4
+}
+
+define %String @String.from_int(i32 %0) {
+entry:
+  %n = alloca i32, align 4
+  store i32 %0, i32* %n, align 4
+  %s = alloca %String, align 8
+  %call = call %String @String.create()
+  store %String %call, %String* %s, align 8
+  %n1 = load i32, i32* %n, align 4
+  %eq = icmp eq i32 %n1, 0
+  br i1 %eq, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %num = alloca i32, align 4
+  %n3 = load i32, i32* %n, align 4
+  store i32 %n3, i32* %num, align 4
+  %num6 = load i32, i32* %num, align 4
+  %lt = icmp slt i32 %num6, 0
+  br i1 %lt, label %then5, label %endif4
+
+then:                                             ; preds = %entry
+  call void @String.push(%String* %s, i8 48)
+  %s2 = load %String, %String* %s, align 8
+  ret %String %s2
+
+endif4:                                           ; preds = %then5, %endif
+  %digits = alloca { i8*, i64 }, align 8
+  %heap = call i8* @calloc(i64 12, i64 1)
+  %arr.ptr = insertvalue { i8*, i64 } undef, i8* %heap, 0
+  %arr.len = insertvalue { i8*, i64 } %arr.ptr, i64 12, 1
+  store { i8*, i64 } %arr.len, { i8*, i64 }* %digits, align 8
+  %i = alloca i32, align 4
+  store i32 0, i32* %i, align 4
+  br label %while.cond
+
+then5:                                            ; preds = %endif
+  call void @String.push(%String* %s, i8 45)
+  %num7 = load i32, i32* %num, align 4
+  %sub = sub i32 0, %num7
+  store i32 %sub, i32* %num, align 4
+  br label %endif4
+
+while.cond:                                       ; preds = %cont14, %endif4
+  %num8 = load i32, i32* %num, align 4
+  %gt = icmp sgt i32 %num8, 0
+  br i1 %gt, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %digits9 = load { i8*, i64 }, { i8*, i64 }* %digits, align 8
+  %arr.data = extractvalue { i8*, i64 } %digits9, 0
+  %i10 = load i32, i32* %i, align 4
+  %arr.at = getelementptr i8, i8* %arr.data, i32 %i10
+  %num11 = load i32, i32* %num, align 4
+  br i1 false, label %trap, label %cont
+
+while.end:                                        ; preds = %while.cond
+  br label %while.cond16
+
+trap:                                             ; preds = %while.body
+  %1 = call i64 @write(i32 2, i8* getelementptr inbounds ([153 x i8], [153 x i8]* @trap_msg, i32 0, i32 0), i64 152)
+  call void @exit(i32 1)
+  unreachable
+
+cont:                                             ; preds = %while.body
+  %mod = srem i32 %num11, 10
+  %add = add i32 %mod, 48
+  %cast = trunc i32 %add to i8
+  store i8 %cast, i8* %arr.at, align 1
+  %num12 = load i32, i32* %num, align 4
+  br i1 false, label %trap13, label %cont14
+
+trap13:                                           ; preds = %cont
+  %2 = call i64 @write(i32 2, i8* getelementptr inbounds ([127 x i8], [127 x i8]* @trap_msg.1, i32 0, i32 0), i64 126)
+  call void @exit(i32 1)
+  unreachable
+
+cont14:                                           ; preds = %cont
+  %div = sdiv i32 %num12, 10
+  store i32 %div, i32* %num, align 4
+  %cur = load i32, i32* %i, align 4
+  %add15 = add i32 %cur, 1
+  store i32 %add15, i32* %i, align 4
+  br label %while.cond
+
+while.cond16:                                     ; preds = %while.body17, %while.end
+  %i19 = load i32, i32* %i, align 4
+  %gt20 = icmp sgt i32 %i19, 0
+  br i1 %gt20, label %while.body17, label %while.end18
+
+while.body17:                                     ; preds = %while.cond16
+  %cur21 = load i32, i32* %i, align 4
+  %sub22 = sub i32 %cur21, 1
+  store i32 %sub22, i32* %i, align 4
+  %digits23 = load { i8*, i64 }, { i8*, i64 }* %digits, align 8
+  %arr.data24 = extractvalue { i8*, i64 } %digits23, 0
+  %i25 = load i32, i32* %i, align 4
+  %arr.at26 = getelementptr i8, i8* %arr.data24, i32 %i25
+  %idx = load i8, i8* %arr.at26, align 1
+  call void @String.push(%String* %s, i8 %idx)
+  br label %while.cond16
+
+while.end18:                                      ; preds = %while.cond16
+  %arr = load { i8*, i64 }, { i8*, i64 }* %digits, align 8
+  %arr.data27 = extractvalue { i8*, i64 } %arr, 0
+  call void @free(i8* %arr.data27)
+  store { i8*, i64 } zeroinitializer, { i8*, i64 }* %digits, align 8
+  %s28 = load %String, %String* %s, align 8
+  ret %String %s28
+}
+
+define void @String.push(%String* %0, i8 %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %c = alloca i8, align 1
+  store i8 %1, i8* %c, align 1
+  %ref = load %String*, %String** %self, align 8
+  %ref1 = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref1, i32 0, i32 1
+  %count2 = load i32, i32* %count, align 4
+  %add = add i32 %count2, 2
+  call void @String.grow(%String* %ref, i32 %add)
+  %ref3 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref3, i32 0, i32 0
+  %value4 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data = extractvalue { i8*, i64 } %value4, 0
+  %ref5 = load %String*, %String** %self, align 8
+  %count6 = getelementptr %String, %String* %ref5, i32 0, i32 1
+  %count7 = load i32, i32* %count6, align 4
+  %arr.at = getelementptr i8, i8* %arr.data, i32 %count7
+  %c8 = load i8, i8* %c, align 1
+  store i8 %c8, i8* %arr.at, align 1
+  %ref9 = load %String*, %String** %self, align 8
+  %count10 = getelementptr %String, %String* %ref9, i32 0, i32 1
+  %cur = load i32, i32* %count10, align 4
+  %add11 = add i32 %cur, 1
+  store i32 %add11, i32* %count10, align 4
+  %ref12 = load %String*, %String** %self, align 8
+  %value13 = getelementptr %String, %String* %ref12, i32 0, i32 0
+  %value14 = load { i8*, i64 }, { i8*, i64 }* %value13, align 8
+  %arr.data15 = extractvalue { i8*, i64 } %value14, 0
+  %ref16 = load %String*, %String** %self, align 8
+  %count17 = getelementptr %String, %String* %ref16, i32 0, i32 1
+  %count18 = load i32, i32* %count17, align 4
+  %arr.at19 = getelementptr i8, i8* %arr.data15, i32 %count18
+  store i8 0, i8* %arr.at19, align 1
+  ret void
+}
+
+declare i64 @write(i32, i8*, i64)
+
+declare void @exit(i32)
+
+declare void @free(i8*)
+
+define void @String.drop(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %arr = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data = extractvalue { i8*, i64 } %arr, 0
+  call void @free(i8* %arr.data)
+  store { i8*, i64 } zeroinitializer, { i8*, i64 }* %value, align 8
+  ret void
+}
+
+define i32 @String.cap(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %value1, 0
+  %nullcmp = icmp eq i8* %opt.ptr, null
+  br i1 %nullcmp, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %ref2 = load %String*, %String** %self, align 8
+  %value3 = getelementptr %String, %String* %ref2, i32 0, i32 0
+  %value4 = load { i8*, i64 }, { i8*, i64 }* %value3, align 8
+  %len = extractvalue { i8*, i64 } %value4, 1
+  %cast = trunc i64 %len to i32
+  ret i32 %cast
+
+then:                                             ; preds = %entry
+  ret i32 0
+}
+
+define void @String.grow(%String* %0, i32 %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %want = alloca i32, align 4
+  store i32 %1, i32* %want, align 4
+  %room = alloca i32, align 4
+  %ref = load %String*, %String** %self, align 8
+  %call = call i32 @String.cap(%String* %ref)
+  store i32 %call, i32* %room, align 4
+  %room1 = load i32, i32* %room, align 4
+  %want2 = load i32, i32* %want, align 4
+  %ge = icmp sge i32 %room1, %want2
+  br i1 %ge, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %room5 = load i32, i32* %room, align 4
+  %eq = icmp eq i32 %room5, 0
+  br i1 %eq, label %then4, label %endif3
+
+then:                                             ; preds = %entry
+  ret void
+
+endif3:                                           ; preds = %then4, %endif
+  br label %while.cond
+
+then4:                                            ; preds = %endif
+  store i32 16, i32* %room, align 4
+  br label %endif3
+
+while.cond:                                       ; preds = %while.body, %endif3
+  %room6 = load i32, i32* %room, align 4
+  %want7 = load i32, i32* %want, align 4
+  %lt = icmp slt i32 %room6, %want7
+  br i1 %lt, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %cur = load i32, i32* %room, align 4
+  %mul = mul i32 %cur, 2
+  store i32 %mul, i32* %room, align 4
+  br label %while.cond
+
+while.end:                                        ; preds = %while.cond
+  %bigger = alloca { i8*, i64 }, align 8
+  %room8 = load i32, i32* %room, align 4
+  %n = sext i32 %room8 to i64
+  %heap = call i8* @calloc(i64 %n, i64 1)
+  %arr.ptr = insertvalue { i8*, i64 } undef, i8* %heap, 0
+  %arr.len = insertvalue { i8*, i64 } %arr.ptr, i64 %n, 1
+  store { i8*, i64 } %arr.len, { i8*, i64 }* %bigger, align 8
+  %ref11 = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref11, i32 0, i32 1
+  %count12 = load i32, i32* %count, align 4
+  %gt = icmp sgt i32 %count12, 0
+  br i1 %gt, label %then10, label %endif9
+
+endif9:                                           ; preds = %then10, %while.end
+  %bigger21 = load { i8*, i64 }, { i8*, i64 }* %bigger, align 8
+  %arr.data22 = extractvalue { i8*, i64 } %bigger21, 0
+  %ref23 = load %String*, %String** %self, align 8
+  %count24 = getelementptr %String, %String* %ref23, i32 0, i32 1
+  %count25 = load i32, i32* %count24, align 4
+  %arr.at = getelementptr i8, i8* %arr.data22, i32 %count25
+  store i8 0, i8* %arr.at, align 1
+  %ref26 = load %String*, %String** %self, align 8
+  %value27 = getelementptr %String, %String* %ref26, i32 0, i32 0
+  %arr = load { i8*, i64 }, { i8*, i64 }* %value27, align 8
+  %arr.data28 = extractvalue { i8*, i64 } %arr, 0
+  call void @free(i8* %arr.data28)
+  store { i8*, i64 } zeroinitializer, { i8*, i64 }* %value27, align 8
+  %ref29 = load %String*, %String** %self, align 8
+  %value30 = getelementptr %String, %String* %ref29, i32 0, i32 0
+  %bigger31 = load { i8*, i64 }, { i8*, i64 }* %bigger, align 8
+  store { i8*, i64 } %bigger31, { i8*, i64 }* %value30, align 8
+  ret void
+
+then10:                                           ; preds = %while.end
+  %bigger13 = load { i8*, i64 }, { i8*, i64 }* %bigger, align 8
+  %arr.data = extractvalue { i8*, i64 } %bigger13, 0
+  %ref14 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref14, i32 0, i32 0
+  %value15 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %value15, 0
+  %isnull = icmp eq i8* %opt.ptr, null
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str, i32 0, i32 0), i64 0 }, { i8*, i64 } %value15
+  %arr.data16 = extractvalue { i8*, i64 } %fallback, 0
+  %ref17 = load %String*, %String** %self, align 8
+  %count18 = getelementptr %String, %String* %ref17, i32 0, i32 1
+  %count19 = load i32, i32* %count18, align 4
+  %call20 = call i8* @memcpy(i8* %arr.data, i8* %arr.data16, i32 %count19)
+  br label %endif9
+}
+
+declare i8* @memcpy(i8*, i8*, i32)
+
+declare i64 @strlen(i8*)
+
+define void @String.join(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %str1 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %str1, 0
+  %nullcmp = icmp eq i8* %opt.ptr, null
+  br i1 %nullcmp, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %n = alloca i32, align 4
+  %str2 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %arr.data = extractvalue { i8*, i64 } %str2, 0
+  %call = call i64 @strlen(i8* %arr.data)
+  %cast = trunc i64 %call to i32
+  store i32 %cast, i32* %n, align 4
+  %n5 = load i32, i32* %n, align 4
+  %eq = icmp eq i32 %n5, 0
+  br i1 %eq, label %then4, label %endif3
+
+then:                                             ; preds = %entry
+  ret void
+
+endif3:                                           ; preds = %endif
+  %ref = load %String*, %String** %self, align 8
+  %ref6 = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref6, i32 0, i32 1
+  %count7 = load i32, i32* %count, align 4
+  %n8 = load i32, i32* %n, align 4
+  %add = add i32 %count7, %n8
+  %add9 = add i32 %add, 1
+  call void @String.grow(%String* %ref, i32 %add9)
+  %ref10 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref10, i32 0, i32 0
+  %value11 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data12 = extractvalue { i8*, i64 } %value11, 0
+  %ref13 = load %String*, %String** %self, align 8
+  %count14 = getelementptr %String, %String* %ref13, i32 0, i32 1
+  %count15 = load i32, i32* %count14, align 4
+  %ref16 = load %String*, %String** %self, align 8
+  %count17 = getelementptr %String, %String* %ref16, i32 0, i32 1
+  %count18 = load i32, i32* %count17, align 4
+  %n19 = load i32, i32* %n, align 4
+  %add20 = add i32 %count18, %n19
+  %start = sext i32 %count15 to i64
+  %end = sext i32 %add20 to i64
+  %slice.data = getelementptr i8, i8* %arr.data12, i64 %start
+  %slice.len = sub i64 %end, %start
+  %arr.ptr = insertvalue { i8*, i64 } undef, i8* %slice.data, 0
+  %arr.len = insertvalue { i8*, i64 } %arr.ptr, i64 %slice.len, 1
+  %arr.data21 = extractvalue { i8*, i64 } %arr.len, 0
+  %str22 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %arr.data23 = extractvalue { i8*, i64 } %str22, 0
+  %n24 = load i32, i32* %n, align 4
+  %call25 = call i8* @memcpy(i8* %arr.data21, i8* %arr.data23, i32 %n24)
+  %ref26 = load %String*, %String** %self, align 8
+  %count27 = getelementptr %String, %String* %ref26, i32 0, i32 1
+  %n28 = load i32, i32* %n, align 4
+  %cur = load i32, i32* %count27, align 4
+  %add29 = add i32 %cur, %n28
+  store i32 %add29, i32* %count27, align 4
+  %ref30 = load %String*, %String** %self, align 8
+  %value31 = getelementptr %String, %String* %ref30, i32 0, i32 0
+  %value32 = load { i8*, i64 }, { i8*, i64 }* %value31, align 8
+  %arr.data33 = extractvalue { i8*, i64 } %value32, 0
+  %ref34 = load %String*, %String** %self, align 8
+  %count35 = getelementptr %String, %String* %ref34, i32 0, i32 1
+  %count36 = load i32, i32* %count35, align 4
+  %arr.at = getelementptr i8, i8* %arr.data33, i32 %count36
+  store i8 0, i8* %arr.at, align 1
+  ret void
+
+then4:                                            ; preds = %endif
+  ret void
+}
+
+define i8 @String.pop(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count1 = load i32, i32* %count, align 4
+  %eq = icmp eq i32 %count1, 0
+  br i1 %eq, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %ref2 = load %String*, %String** %self, align 8
+  %count3 = getelementptr %String, %String* %ref2, i32 0, i32 1
+  %cur = load i32, i32* %count3, align 4
+  %sub = sub i32 %cur, 1
+  store i32 %sub, i32* %count3, align 4
+  %c = alloca i8, align 1
+  %ref4 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref4, i32 0, i32 0
+  %value5 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data = extractvalue { i8*, i64 } %value5, 0
+  %ref6 = load %String*, %String** %self, align 8
+  %count7 = getelementptr %String, %String* %ref6, i32 0, i32 1
+  %count8 = load i32, i32* %count7, align 4
+  %arr.at = getelementptr i8, i8* %arr.data, i32 %count8
+  %idx = load i8, i8* %arr.at, align 1
+  store i8 %idx, i8* %c, align 1
+  %ref9 = load %String*, %String** %self, align 8
+  %value10 = getelementptr %String, %String* %ref9, i32 0, i32 0
+  %value11 = load { i8*, i64 }, { i8*, i64 }* %value10, align 8
+  %arr.data12 = extractvalue { i8*, i64 } %value11, 0
+  %ref13 = load %String*, %String** %self, align 8
+  %count14 = getelementptr %String, %String* %ref13, i32 0, i32 1
+  %count15 = load i32, i32* %count14, align 4
+  %arr.at16 = getelementptr i8, i8* %arr.data12, i32 %count15
+  store i8 0, i8* %arr.at16, align 1
+  %c17 = load i8, i8* %c, align 1
+  ret i8 %c17
+
+then:                                             ; preds = %entry
+  ret i8 0
+}
+
+define void @String.clear(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  store i32 0, i32* %count, align 4
+  %ref1 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref1, i32 0, i32 0
+  %value2 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %value2, 0
+  %nullcmp = icmp ne i8* %opt.ptr, null
+  br i1 %nullcmp, label %then, label %endif
+
+endif:                                            ; preds = %then, %entry
+  ret void
+
+then:                                             ; preds = %entry
+  %ref3 = load %String*, %String** %self, align 8
+  %value4 = getelementptr %String, %String* %ref3, i32 0, i32 0
+  %value5 = load { i8*, i64 }, { i8*, i64 }* %value4, align 8
+  %arr.data = extractvalue { i8*, i64 } %value5, 0
+  %arr.at = getelementptr i8, i8* %arr.data, i32 0
+  store i8 0, i8* %arr.at, align 1
+  br label %endif
+}
+
+define i32 @String.len(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count1 = load i32, i32* %count, align 4
+  ret i32 %count1
+}
+
+define i1 @String.empty(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count1 = load i32, i32* %count, align 4
+  %eq = icmp eq i32 %count1, 0
+  ret i1 %eq
+}
+
+define { i8*, i64 } @String.c_str(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %value1, 0
+  %isnull = icmp eq i8* %opt.ptr, null
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.4, i32 0, i32 0), i64 0 }, { i8*, i64 } %value1
+  ret { i8*, i64 } %fallback
+}
+
+define i8 @String.at(%String* %0, i32 %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %i = alloca i32, align 4
+  store i32 %1, i32* %i, align 4
+  %i1 = load i32, i32* %i, align 4
+  %lt = icmp slt i32 %i1, 0
+  %i2 = load i32, i32* %i, align 4
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count3 = load i32, i32* %count, align 4
+  %ge = icmp sge i32 %i2, %count3
+  %or = or i1 %lt, %ge
+  br i1 %or, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %ref4 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref4, i32 0, i32 0
+  %value5 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data = extractvalue { i8*, i64 } %value5, 0
+  %i6 = load i32, i32* %i, align 4
+  %arr.at = getelementptr i8, i8* %arr.data, i32 %i6
+  %idx = load i8, i8* %arr.at, align 1
+  ret i8 %idx
+
+then:                                             ; preds = %entry
+  ret i8 0
+}
+
+define i32 @String.find(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %needle = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %needle, align 8
+  %needle1 = load { i8*, i64 }, { i8*, i64 }* %needle, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %needle1, 0
+  %nullcmp = icmp eq i8* %opt.ptr, null
+  br i1 %nullcmp, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %n = alloca i32, align 4
+  %needle2 = load { i8*, i64 }, { i8*, i64 }* %needle, align 8
+  %arr.data = extractvalue { i8*, i64 } %needle2, 0
+  %call = call i64 @strlen(i8* %arr.data)
+  %cast = trunc i64 %call to i32
+  store i32 %cast, i32* %n, align 4
+  %n5 = load i32, i32* %n, align 4
+  %eq = icmp eq i32 %n5, 0
+  br i1 %eq, label %then4, label %endif3
+
+then:                                             ; preds = %entry
+  ret i32 -1
+
+endif3:                                           ; preds = %endif
+  %i = alloca i32, align 4
+  store i32 0, i32* %i, align 4
+  br label %while.cond
+
+then4:                                            ; preds = %endif
+  ret i32 0
+
+while.cond:                                       ; preds = %endif9, %endif3
+  %i6 = load i32, i32* %i, align 4
+  %n7 = load i32, i32* %n, align 4
+  %add = add i32 %i6, %n7
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count8 = load i32, i32* %count, align 4
+  %le = icmp sle i32 %add, %count8
+  br i1 %le, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %ref11 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref11, i32 0, i32 0
+  %value12 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data13 = extractvalue { i8*, i64 } %value12, 0
+  %i14 = load i32, i32* %i, align 4
+  %i15 = load i32, i32* %i, align 4
+  %n16 = load i32, i32* %n, align 4
+  %add17 = add i32 %i15, %n16
+  %start = sext i32 %i14 to i64
+  %end = sext i32 %add17 to i64
+  %slice.data = getelementptr i8, i8* %arr.data13, i64 %start
+  %slice.len = sub i64 %end, %start
+  %arr.ptr = insertvalue { i8*, i64 } undef, i8* %slice.data, 0
+  %arr.len = insertvalue { i8*, i64 } %arr.ptr, i64 %slice.len, 1
+  %arr.data18 = extractvalue { i8*, i64 } %arr.len, 0
+  %needle19 = load { i8*, i64 }, { i8*, i64 }* %needle, align 8
+  %arr.data20 = extractvalue { i8*, i64 } %needle19, 0
+  %n21 = load i32, i32* %n, align 4
+  %call22 = call i32 @strncmp(i8* %arr.data18, i8* %arr.data20, i32 %n21)
+  %eq23 = icmp eq i32 %call22, 0
+  br i1 %eq23, label %then10, label %endif9
+
+while.end:                                        ; preds = %while.cond
+  ret i32 -1
+
+endif9:                                           ; preds = %while.body
+  %cur = load i32, i32* %i, align 4
+  %add25 = add i32 %cur, 1
+  store i32 %add25, i32* %i, align 4
+  br label %while.cond
+
+then10:                                           ; preds = %while.body
+  %i24 = load i32, i32* %i, align 4
+  ret i32 %i24
+}
+
+declare i32 @strncmp(i8*, i8*, i32)
+
+define i1 @String.contains(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %needle = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %needle, align 8
+  %ref = load %String*, %String** %self, align 8
+  %needle1 = load { i8*, i64 }, { i8*, i64 }* %needle, align 8
+  %call = call i32 @String.find(%String* %ref, { i8*, i64 } %needle1)
+  %ne = icmp ne i32 %call, -1
+  ret i1 %ne
+}
+
+define i1 @String.starts_with(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %prefix = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %prefix, align 8
+  %prefix1 = load { i8*, i64 }, { i8*, i64 }* %prefix, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %prefix1, 0
+  %nullcmp = icmp eq i8* %opt.ptr, null
+  br i1 %nullcmp, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %n = alloca i32, align 4
+  %prefix2 = load { i8*, i64 }, { i8*, i64 }* %prefix, align 8
+  %arr.data = extractvalue { i8*, i64 } %prefix2, 0
+  %call = call i64 @strlen(i8* %arr.data)
+  %cast = trunc i64 %call to i32
+  store i32 %cast, i32* %n, align 4
+  %n5 = load i32, i32* %n, align 4
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count6 = load i32, i32* %count, align 4
+  %gt = icmp sgt i32 %n5, %count6
+  br i1 %gt, label %then4, label %endif3
+
+then:                                             ; preds = %entry
+  ret i1 true
+
+endif3:                                           ; preds = %endif
+  %ref7 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref7, i32 0, i32 0
+  %value8 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data9 = extractvalue { i8*, i64 } %value8, 0
+  %n10 = load i32, i32* %n, align 4
+  %end = sext i32 %n10 to i64
+  %slice.data = getelementptr i8, i8* %arr.data9, i64 0
+  %slice.len = sub i64 %end, 0
+  %arr.ptr = insertvalue { i8*, i64 } undef, i8* %slice.data, 0
+  %arr.len = insertvalue { i8*, i64 } %arr.ptr, i64 %slice.len, 1
+  %arr.data11 = extractvalue { i8*, i64 } %arr.len, 0
+  %prefix12 = load { i8*, i64 }, { i8*, i64 }* %prefix, align 8
+  %arr.data13 = extractvalue { i8*, i64 } %prefix12, 0
+  %n14 = load i32, i32* %n, align 4
+  %call15 = call i32 @strncmp(i8* %arr.data11, i8* %arr.data13, i32 %n14)
+  %eq = icmp eq i32 %call15, 0
+  ret i1 %eq
+
+then4:                                            ; preds = %endif
+  ret i1 false
+}
+
+define i1 @String.ends_with(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %suffix = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %suffix, align 8
+  %suffix1 = load { i8*, i64 }, { i8*, i64 }* %suffix, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %suffix1, 0
+  %nullcmp = icmp eq i8* %opt.ptr, null
+  br i1 %nullcmp, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %n = alloca i32, align 4
+  %suffix2 = load { i8*, i64 }, { i8*, i64 }* %suffix, align 8
+  %arr.data = extractvalue { i8*, i64 } %suffix2, 0
+  %call = call i64 @strlen(i8* %arr.data)
+  %cast = trunc i64 %call to i32
+  store i32 %cast, i32* %n, align 4
+  %n5 = load i32, i32* %n, align 4
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count6 = load i32, i32* %count, align 4
+  %gt = icmp sgt i32 %n5, %count6
+  br i1 %gt, label %then4, label %endif3
+
+then:                                             ; preds = %entry
+  ret i1 true
+
+endif3:                                           ; preds = %endif
+  %ref7 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref7, i32 0, i32 0
+  %value8 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data9 = extractvalue { i8*, i64 } %value8, 0
+  %ref10 = load %String*, %String** %self, align 8
+  %count11 = getelementptr %String, %String* %ref10, i32 0, i32 1
+  %count12 = load i32, i32* %count11, align 4
+  %n13 = load i32, i32* %n, align 4
+  %sub = sub i32 %count12, %n13
+  %ref14 = load %String*, %String** %self, align 8
+  %count15 = getelementptr %String, %String* %ref14, i32 0, i32 1
+  %count16 = load i32, i32* %count15, align 4
+  %start = sext i32 %sub to i64
+  %end = sext i32 %count16 to i64
+  %slice.data = getelementptr i8, i8* %arr.data9, i64 %start
+  %slice.len = sub i64 %end, %start
+  %arr.ptr = insertvalue { i8*, i64 } undef, i8* %slice.data, 0
+  %arr.len = insertvalue { i8*, i64 } %arr.ptr, i64 %slice.len, 1
+  %arr.data17 = extractvalue { i8*, i64 } %arr.len, 0
+  %suffix18 = load { i8*, i64 }, { i8*, i64 }* %suffix, align 8
+  %arr.data19 = extractvalue { i8*, i64 } %suffix18, 0
+  %n20 = load i32, i32* %n, align 4
+  %call21 = call i32 @strncmp(i8* %arr.data17, i8* %arr.data19, i32 %n20)
+  %eq = icmp eq i32 %call21, 0
+  ret i1 %eq
+
+then4:                                            ; preds = %endif
+  ret i1 false
+}
+
+define %String @String.substr(%String* %0, i32 %1, i32 %2) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %start = alloca i32, align 4
+  store i32 %1, i32* %start, align 4
+  %length = alloca i32, align 4
+  store i32 %2, i32* %length, align 4
+  %res = alloca %String, align 8
+  %call = call %String @String.create()
+  store %String %call, %String* %res, align 8
+  %start1 = load i32, i32* %start, align 4
+  %lt = icmp slt i32 %start1, 0
+  %start2 = load i32, i32* %start, align 4
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count3 = load i32, i32* %count, align 4
+  %ge = icmp sge i32 %start2, %count3
+  %or = or i1 %lt, %ge
+  br i1 %or, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %stop = alloca i32, align 4
+  %start5 = load i32, i32* %start, align 4
+  %length6 = load i32, i32* %length, align 4
+  %add = add i32 %start5, %length6
+  store i32 %add, i32* %stop, align 4
+  %stop9 = load i32, i32* %stop, align 4
+  %ref10 = load %String*, %String** %self, align 8
+  %count11 = getelementptr %String, %String* %ref10, i32 0, i32 1
+  %count12 = load i32, i32* %count11, align 4
+  %gt = icmp sgt i32 %stop9, %count12
+  br i1 %gt, label %then8, label %endif7
+
+then:                                             ; preds = %entry
+  %res4 = load %String, %String* %res, align 8
+  ret %String %res4
+
+endif7:                                           ; preds = %then8, %endif
+  %i = alloca i32, align 4
+  %start16 = load i32, i32* %start, align 4
+  store i32 %start16, i32* %i, align 4
+  br label %while.cond
+
+then8:                                            ; preds = %endif
+  %ref13 = load %String*, %String** %self, align 8
+  %count14 = getelementptr %String, %String* %ref13, i32 0, i32 1
+  %count15 = load i32, i32* %count14, align 4
+  store i32 %count15, i32* %stop, align 4
+  br label %endif7
+
+while.cond:                                       ; preds = %while.body, %endif7
+  %i17 = load i32, i32* %i, align 4
+  %stop18 = load i32, i32* %stop, align 4
+  %lt19 = icmp slt i32 %i17, %stop18
+  br i1 %lt19, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %ref20 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref20, i32 0, i32 0
+  %value21 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data = extractvalue { i8*, i64 } %value21, 0
+  %i22 = load i32, i32* %i, align 4
+  %arr.at = getelementptr i8, i8* %arr.data, i32 %i22
+  %idx = load i8, i8* %arr.at, align 1
+  call void @String.push(%String* %res, i8 %idx)
+  %cur = load i32, i32* %i, align 4
+  %add23 = add i32 %cur, 1
+  store i32 %add23, i32* %i, align 4
+  br label %while.cond
+
+while.end:                                        ; preds = %while.cond
+  %res24 = load %String, %String* %res, align 8
+  ret %String %res24
+}
+
+define %String @String.upper(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %res = alloca %String, align 8
+  %call = call %String @String.create()
+  store %String %call, %String* %res, align 8
+  %i = alloca i32, align 4
+  store i32 0, i32* %i, align 4
+  br label %while.cond
+
+while.cond:                                       ; preds = %endif, %entry
+  %i1 = load i32, i32* %i, align 4
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count2 = load i32, i32* %count, align 4
+  %lt = icmp slt i32 %i1, %count2
+  br i1 %lt, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %c = alloca i8, align 1
+  %ref3 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref3, i32 0, i32 0
+  %value4 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data = extractvalue { i8*, i64 } %value4, 0
+  %i5 = load i32, i32* %i, align 4
+  %arr.at = getelementptr i8, i8* %arr.data, i32 %i5
+  %idx = load i8, i8* %arr.at, align 1
+  store i8 %idx, i8* %c, align 1
+  %c6 = load i8, i8* %c, align 1
+  %ge = icmp sge i8 %c6, 97
+  %c7 = load i8, i8* %c, align 1
+  %le = icmp sle i8 %c7, 122
+  %and = and i1 %ge, %le
+  br i1 %and, label %then, label %next
+
+while.end:                                        ; preds = %while.cond
+  %res11 = load %String, %String* %res, align 8
+  ret %String %res11
+
+endif:                                            ; preds = %next, %then
+  %cur = load i32, i32* %i, align 4
+  %add = add i32 %cur, 1
+  store i32 %add, i32* %i, align 4
+  br label %while.cond
+
+then:                                             ; preds = %while.body
+  %c8 = load i8, i8* %c, align 1
+  %cast = sext i8 %c8 to i32
+  %sub = sub i32 %cast, 32
+  %cast9 = trunc i32 %sub to i8
+  call void @String.push(%String* %res, i8 %cast9)
+  br label %endif
+
+next:                                             ; preds = %while.body
+  %c10 = load i8, i8* %c, align 1
+  call void @String.push(%String* %res, i8 %c10)
+  br label %endif
+}
+
+define %String @String.lower(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %res = alloca %String, align 8
+  %call = call %String @String.create()
+  store %String %call, %String* %res, align 8
+  %i = alloca i32, align 4
+  store i32 0, i32* %i, align 4
+  br label %while.cond
+
+while.cond:                                       ; preds = %endif, %entry
+  %i1 = load i32, i32* %i, align 4
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count2 = load i32, i32* %count, align 4
+  %lt = icmp slt i32 %i1, %count2
+  br i1 %lt, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %c = alloca i8, align 1
+  %ref3 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref3, i32 0, i32 0
+  %value4 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data = extractvalue { i8*, i64 } %value4, 0
+  %i5 = load i32, i32* %i, align 4
+  %arr.at = getelementptr i8, i8* %arr.data, i32 %i5
+  %idx = load i8, i8* %arr.at, align 1
+  store i8 %idx, i8* %c, align 1
+  %c6 = load i8, i8* %c, align 1
+  %ge = icmp sge i8 %c6, 65
+  %c7 = load i8, i8* %c, align 1
+  %le = icmp sle i8 %c7, 90
+  %and = and i1 %ge, %le
+  br i1 %and, label %then, label %next
+
+while.end:                                        ; preds = %while.cond
+  %res12 = load %String, %String* %res, align 8
+  ret %String %res12
+
+endif:                                            ; preds = %next, %then
+  %cur = load i32, i32* %i, align 4
+  %add11 = add i32 %cur, 1
+  store i32 %add11, i32* %i, align 4
+  br label %while.cond
+
+then:                                             ; preds = %while.body
+  %c8 = load i8, i8* %c, align 1
+  %cast = sext i8 %c8 to i32
+  %add = add i32 %cast, 32
+  %cast9 = trunc i32 %add to i8
+  call void @String.push(%String* %res, i8 %cast9)
+  br label %endif
+
+next:                                             ; preds = %while.body
+  %c10 = load i8, i8* %c, align 1
+  call void @String.push(%String* %res, i8 %c10)
+  br label %endif
+}
+
+define %String @String.trim(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %start = alloca i32, align 4
+  store i32 0, i32* %start, align 4
+  br label %while.cond
+
+while.cond:                                       ; preds = %endif, %entry
+  %start1 = load i32, i32* %start, align 4
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count2 = load i32, i32* %count, align 4
+  %lt = icmp slt i32 %start1, %count2
+  br i1 %lt, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %c = alloca i8, align 1
+  %ref3 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref3, i32 0, i32 0
+  %value4 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data = extractvalue { i8*, i64 } %value4, 0
+  %start5 = load i32, i32* %start, align 4
+  %arr.at = getelementptr i8, i8* %arr.data, i32 %start5
+  %idx = load i8, i8* %arr.at, align 1
+  store i8 %idx, i8* %c, align 1
+  %c6 = load i8, i8* %c, align 1
+  %eq = icmp eq i8 %c6, 32
+  %c7 = load i8, i8* %c, align 1
+  %eq8 = icmp eq i8 %c7, 9
+  %or = or i1 %eq, %eq8
+  %c9 = load i8, i8* %c, align 1
+  %eq10 = icmp eq i8 %c9, 10
+  %or11 = or i1 %or, %eq10
+  %c12 = load i8, i8* %c, align 1
+  %eq13 = icmp eq i8 %c12, 13
+  %or14 = or i1 %or11, %eq13
+  br i1 %or14, label %then, label %next
+
+while.end:                                        ; preds = %next, %while.cond
+  %stop = alloca i32, align 4
+  %ref15 = load %String*, %String** %self, align 8
+  %count16 = getelementptr %String, %String* %ref15, i32 0, i32 1
+  %count17 = load i32, i32* %count16, align 4
+  store i32 %count17, i32* %stop, align 4
+  br label %while.cond18
+
+endif:                                            ; preds = %then
+  br label %while.cond
+
+then:                                             ; preds = %while.body
+  %cur = load i32, i32* %start, align 4
+  %add = add i32 %cur, 1
+  store i32 %add, i32* %start, align 4
+  br label %endif
+
+next:                                             ; preds = %while.body
+  br label %while.end
+
+while.cond18:                                     ; preds = %endif31, %while.end
+  %stop21 = load i32, i32* %stop, align 4
+  %start22 = load i32, i32* %start, align 4
+  %gt = icmp sgt i32 %stop21, %start22
+  br i1 %gt, label %while.body19, label %while.end20
+
+while.body19:                                     ; preds = %while.cond18
+  %c23 = alloca i8, align 1
+  %ref24 = load %String*, %String** %self, align 8
+  %value25 = getelementptr %String, %String* %ref24, i32 0, i32 0
+  %value26 = load { i8*, i64 }, { i8*, i64 }* %value25, align 8
+  %arr.data27 = extractvalue { i8*, i64 } %value26, 0
+  %stop28 = load i32, i32* %stop, align 4
+  %sub = sub i32 %stop28, 1
+  %arr.at29 = getelementptr i8, i8* %arr.data27, i32 %sub
+  %idx30 = load i8, i8* %arr.at29, align 1
+  store i8 %idx30, i8* %c23, align 1
+  %c34 = load i8, i8* %c23, align 1
+  %eq35 = icmp eq i8 %c34, 32
+  %c36 = load i8, i8* %c23, align 1
+  %eq37 = icmp eq i8 %c36, 9
+  %or38 = or i1 %eq35, %eq37
+  %c39 = load i8, i8* %c23, align 1
+  %eq40 = icmp eq i8 %c39, 10
+  %or41 = or i1 %or38, %eq40
+  %c42 = load i8, i8* %c23, align 1
+  %eq43 = icmp eq i8 %c42, 13
+  %or44 = or i1 %or41, %eq43
+  br i1 %or44, label %then32, label %next33
+
+while.end20:                                      ; preds = %next33, %while.cond18
+  %ref47 = load %String*, %String** %self, align 8
+  %start48 = load i32, i32* %start, align 4
+  %stop49 = load i32, i32* %stop, align 4
+  %start50 = load i32, i32* %start, align 4
+  %sub51 = sub i32 %stop49, %start50
+  %call = call %String @String.substr(%String* %ref47, i32 %start48, i32 %sub51)
+  ret %String %call
+
+endif31:                                          ; preds = %then32
+  br label %while.cond18
+
+then32:                                           ; preds = %while.body19
+  %cur45 = load i32, i32* %stop, align 4
+  %sub46 = sub i32 %cur45, 1
+  store i32 %sub46, i32* %stop, align 4
+  br label %endif31
+
+next33:                                           ; preds = %while.body19
+  br label %while.end20
+}
+
+define %String @String.replace(%String* %0, { i8*, i64 } %1, { i8*, i64 } %2) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %old = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %old, align 8
+  %fresh = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %2, { i8*, i64 }* %fresh, align 8
+  %res = alloca %String, align 8
+  %call = call %String @String.create()
+  store %String %call, %String* %res, align 8
+  %old1 = load { i8*, i64 }, { i8*, i64 }* %old, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %old1, 0
+  %nullcmp = icmp eq i8* %opt.ptr, null
+  br i1 %nullcmp, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %n = alloca i32, align 4
+  %old4 = load { i8*, i64 }, { i8*, i64 }* %old, align 8
+  %arr.data = extractvalue { i8*, i64 } %old4, 0
+  %call5 = call i64 @strlen(i8* %arr.data)
+  %cast = trunc i64 %call5 to i32
+  store i32 %cast, i32* %n, align 4
+  %n8 = load i32, i32* %n, align 4
+  %eq = icmp eq i32 %n8, 0
+  br i1 %eq, label %then7, label %endif6
+
+then:                                             ; preds = %entry
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %value2 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  call void @String.assign(%String* %res, { i8*, i64 } %value2)
+  %res3 = load %String, %String* %res, align 8
+  ret %String %res3
+
+endif6:                                           ; preds = %endif
+  %i = alloca i32, align 4
+  store i32 0, i32* %i, align 4
+  br label %while.cond
+
+then7:                                            ; preds = %endif
+  %ref9 = load %String*, %String** %self, align 8
+  %value10 = getelementptr %String, %String* %ref9, i32 0, i32 0
+  %value11 = load { i8*, i64 }, { i8*, i64 }* %value10, align 8
+  call void @String.assign(%String* %res, { i8*, i64 } %value11)
+  %res12 = load %String, %String* %res, align 8
+  ret %String %res12
+
+while.cond:                                       ; preds = %endif37, %endif6
+  %i13 = load i32, i32* %i, align 4
+  %ref14 = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref14, i32 0, i32 1
+  %count15 = load i32, i32* %count, align 4
+  %lt = icmp slt i32 %i13, %count15
+  br i1 %lt, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %hit = alloca i1, align 1
+  store i1 false, i1* %hit, align 1
+  %i18 = load i32, i32* %i, align 4
+  %n19 = load i32, i32* %n, align 4
+  %add = add i32 %i18, %n19
+  %ref20 = load %String*, %String** %self, align 8
+  %count21 = getelementptr %String, %String* %ref20, i32 0, i32 1
+  %count22 = load i32, i32* %count21, align 4
+  %le = icmp sle i32 %add, %count22
+  br i1 %le, label %then17, label %endif16
+
+while.end:                                        ; preds = %while.cond
+  %res50 = load %String, %String* %res, align 8
+  ret %String %res50
+
+endif16:                                          ; preds = %then17, %while.body
+  %hit39 = load i1, i1* %hit, align 1
+  br i1 %hit39, label %then38, label %next
+
+then17:                                           ; preds = %while.body
+  %ref23 = load %String*, %String** %self, align 8
+  %value24 = getelementptr %String, %String* %ref23, i32 0, i32 0
+  %value25 = load { i8*, i64 }, { i8*, i64 }* %value24, align 8
+  %arr.data26 = extractvalue { i8*, i64 } %value25, 0
+  %i27 = load i32, i32* %i, align 4
+  %i28 = load i32, i32* %i, align 4
+  %n29 = load i32, i32* %n, align 4
+  %add30 = add i32 %i28, %n29
+  %start = sext i32 %i27 to i64
+  %end = sext i32 %add30 to i64
+  %slice.data = getelementptr i8, i8* %arr.data26, i64 %start
+  %slice.len = sub i64 %end, %start
+  %arr.ptr = insertvalue { i8*, i64 } undef, i8* %slice.data, 0
+  %arr.len = insertvalue { i8*, i64 } %arr.ptr, i64 %slice.len, 1
+  %arr.data31 = extractvalue { i8*, i64 } %arr.len, 0
+  %old32 = load { i8*, i64 }, { i8*, i64 }* %old, align 8
+  %arr.data33 = extractvalue { i8*, i64 } %old32, 0
+  %n34 = load i32, i32* %n, align 4
+  %call35 = call i32 @strncmp(i8* %arr.data31, i8* %arr.data33, i32 %n34)
+  %eq36 = icmp eq i32 %call35, 0
+  store i1 %eq36, i1* %hit, align 1
+  br label %endif16
+
+endif37:                                          ; preds = %next, %then38
+  br label %while.cond
+
+then38:                                           ; preds = %endif16
+  %fresh40 = load { i8*, i64 }, { i8*, i64 }* %fresh, align 8
+  call void @String.join(%String* %res, { i8*, i64 } %fresh40)
+  %n41 = load i32, i32* %n, align 4
+  %cur = load i32, i32* %i, align 4
+  %add42 = add i32 %cur, %n41
+  store i32 %add42, i32* %i, align 4
+  br label %endif37
+
+next:                                             ; preds = %endif16
+  %ref43 = load %String*, %String** %self, align 8
+  %value44 = getelementptr %String, %String* %ref43, i32 0, i32 0
+  %value45 = load { i8*, i64 }, { i8*, i64 }* %value44, align 8
+  %arr.data46 = extractvalue { i8*, i64 } %value45, 0
+  %i47 = load i32, i32* %i, align 4
+  %arr.at = getelementptr i8, i8* %arr.data46, i32 %i47
+  %idx = load i8, i8* %arr.at, align 1
+  call void @String.push(%String* %res, i8 %idx)
+  %cur48 = load i32, i32* %i, align 4
+  %add49 = add i32 %cur48, 1
+  store i32 %add49, i32* %i, align 4
+  br label %endif37
+}
+
+define %String @String.repeat(%String* %0, i32 %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %n = alloca i32, align 4
+  store i32 %1, i32* %n, align 4
+  %res = alloca %String, align 8
+  %call = call %String @String.create()
+  store %String %call, %String* %res, align 8
+  %i = alloca i32, align 4
+  store i32 0, i32* %i, align 4
+  br label %while.cond
+
+while.cond:                                       ; preds = %while.body, %entry
+  %i1 = load i32, i32* %i, align 4
+  %n2 = load i32, i32* %n, align 4
+  %lt = icmp slt i32 %i1, %n2
+  br i1 %lt, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %value3 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  call void @String.join(%String* %res, { i8*, i64 } %value3)
+  %cur = load i32, i32* %i, align 4
+  %add = add i32 %cur, 1
+  store i32 %add, i32* %i, align 4
+  br label %while.cond
+
+while.end:                                        ; preds = %while.cond
+  %res4 = load %String, %String* %res, align 8
+  ret %String %res4
+}
+
+define %String @String.reverse(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %res = alloca %String, align 8
+  %call = call %String @String.create()
+  store %String %call, %String* %res, align 8
+  %i = alloca i32, align 4
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count1 = load i32, i32* %count, align 4
+  %sub = sub i32 %count1, 1
+  store i32 %sub, i32* %i, align 4
+  br label %while.cond
+
+while.cond:                                       ; preds = %while.body, %entry
+  %i2 = load i32, i32* %i, align 4
+  %ge = icmp sge i32 %i2, 0
+  br i1 %ge, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %ref3 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref3, i32 0, i32 0
+  %value4 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data = extractvalue { i8*, i64 } %value4, 0
+  %i5 = load i32, i32* %i, align 4
+  %arr.at = getelementptr i8, i8* %arr.data, i32 %i5
+  %idx = load i8, i8* %arr.at, align 1
+  call void @String.push(%String* %res, i8 %idx)
+  %cur = load i32, i32* %i, align 4
+  %sub6 = sub i32 %cur, 1
+  store i32 %sub6, i32* %i, align 4
+  br label %while.cond
+
+while.end:                                        ; preds = %while.cond
+  %res7 = load %String, %String* %res, align 8
+  ret %String %res7
+}
+
+define i32 @String.compare(%String* %0, %String* %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %other = alloca %String*, align 8
+  store %String* %1, %String** %other, align 8
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %value1, 0
+  %isnull = icmp eq i8* %opt.ptr, null
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.5, i32 0, i32 0), i64 0 }, { i8*, i64 } %value1
+  %arr.data = extractvalue { i8*, i64 } %fallback, 0
+  %ref2 = load %String*, %String** %other, align 8
+  %value3 = getelementptr %String, %String* %ref2, i32 0, i32 0
+  %value4 = load { i8*, i64 }, { i8*, i64 }* %value3, align 8
+  %opt.ptr5 = extractvalue { i8*, i64 } %value4, 0
+  %isnull6 = icmp eq i8* %opt.ptr5, null
+  %fallback7 = select i1 %isnull6, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.6, i32 0, i32 0), i64 0 }, { i8*, i64 } %value4
+  %arr.data8 = extractvalue { i8*, i64 } %fallback7, 0
+  %call = call i32 @strcmp(i8* %arr.data, i8* %arr.data8)
+  ret i32 %call
+}
+
+declare i32 @strcmp(i8*, i8*)
+
+define i32 @String.to_int(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %value1, 0
+  %isnull = icmp eq i8* %opt.ptr, null
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.7, i32 0, i32 0), i64 0 }, { i8*, i64 } %value1
+  %arr.data = extractvalue { i8*, i64 } %fallback, 0
+  %call = call i32 @atoi(i8* %arr.data)
+  ret i32 %call
+}
+
+declare i32 @atoi(i8*)
+
+define void @"String.=.array"(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %ref = load %String*, %String** %self, align 8
+  %str1 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  call void @String.assign(%String* %ref, { i8*, i64 } %str1)
+  ret void
+}
+
+define void @"String.=.String"(%String* %0, %String* %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %v = alloca %String*, align 8
+  store %String* %1, %String** %v, align 8
+  %ref = load %String*, %String** %self, align 8
+  %ref1 = load %String*, %String** %v, align 8
+  %value = getelementptr %String, %String* %ref1, i32 0, i32 0
+  %value2 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  call void @String.assign(%String* %ref, { i8*, i64 } %value2)
+  ret void
+}
+
+define %String @"String.+.String"(%String* %0, %String* %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %v = alloca %String*, align 8
+  store %String* %1, %String** %v, align 8
+  %res = alloca %String, align 8
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %call = call %String @String.from({ i8*, i64 } %value1)
+  store %String %call, %String* %res, align 8
+  %ref2 = load %String*, %String** %v, align 8
+  %value3 = getelementptr %String, %String* %ref2, i32 0, i32 0
+  %value4 = load { i8*, i64 }, { i8*, i64 }* %value3, align 8
+  call void @String.join(%String* %res, { i8*, i64 } %value4)
+  %res5 = load %String, %String* %res, align 8
+  ret %String %res5
+}
+
+define %String @"String.+.array"(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %res = alloca %String, align 8
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %call = call %String @String.from({ i8*, i64 } %value1)
+  store %String %call, %String* %res, align 8
+  %str2 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  call void @String.join(%String* %res, { i8*, i64 } %str2)
+  %res3 = load %String, %String* %res, align 8
+  ret %String %res3
+}
+
+define void @"String.+=.String"(%String* %0, %String* %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %v = alloca %String*, align 8
+  store %String* %1, %String** %v, align 8
+  %ref = load %String*, %String** %self, align 8
+  %ref1 = load %String*, %String** %v, align 8
+  %value = getelementptr %String, %String* %ref1, i32 0, i32 0
+  %value2 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  call void @String.join(%String* %ref, { i8*, i64 } %value2)
+  ret void
+}
+
+define void @"String.+=.array"(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %ref = load %String*, %String** %self, align 8
+  %str1 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  call void @String.join(%String* %ref, { i8*, i64 } %str1)
+  ret void
+}
+
+define i1 @"String.==.String"(%String* %0, %String* %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %v = alloca %String*, align 8
+  store %String* %1, %String** %v, align 8
+  %ref = load %String*, %String** %self, align 8
+  %ref1 = load %String*, %String** %v, align 8
+  %call = call i32 @String.compare(%String* %ref, %String* %ref1)
+  %eq = icmp eq i32 %call, 0
+  ret i1 %eq
+}
+
+define i1 @"String.!=.String"(%String* %0, %String* %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %v = alloca %String*, align 8
+  store %String* %1, %String** %v, align 8
+  %ref = load %String*, %String** %self, align 8
+  %ref1 = load %String*, %String** %v, align 8
+  %call = call i32 @String.compare(%String* %ref, %String* %ref1)
+  %ne = icmp ne i32 %call, 0
+  ret i1 %ne
+}
+
+define i1 @"String.<.String"(%String* %0, %String* %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %v = alloca %String*, align 8
+  store %String* %1, %String** %v, align 8
+  %ref = load %String*, %String** %self, align 8
+  %ref1 = load %String*, %String** %v, align 8
+  %call = call i32 @String.compare(%String* %ref, %String* %ref1)
+  %lt = icmp slt i32 %call, 0
+  ret i1 %lt
+}
+
+define i1 @"String.>.String"(%String* %0, %String* %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %v = alloca %String*, align 8
+  store %String* %1, %String** %v, align 8
+  %ref = load %String*, %String** %self, align 8
+  %ref1 = load %String*, %String** %v, align 8
+  %call = call i32 @String.compare(%String* %ref, %String* %ref1)
+  %gt = icmp sgt i32 %call, 0
+  ret i1 %gt
+}
+
+define { i8*, i64 } @String.output(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %value1, 0
+  %isnull = icmp eq i8* %opt.ptr, null
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.8, i32 0, i32 0), i64 0 }, { i8*, i64 } %value1
+  ret { i8*, i64 } %fallback
+}
+
+define %Buffer @Buffer.create() {
+entry:
+  %b = alloca %Buffer, align 8
+  store %Buffer zeroinitializer, %Buffer* %b, align 8
+  %value = getelementptr %Buffer, %Buffer* %b, i32 0, i32 0
+  %heap = call i8* @calloc(i64 64, i64 1)
+  %arr.ptr = insertvalue { i8*, i64 } undef, i8* %heap, 0
+  %arr.len = insertvalue { i8*, i64 } %arr.ptr, i64 64, 1
+  store { i8*, i64 } %arr.len, { i8*, i64 }* %value, align 8
+  %b1 = load %Buffer, %Buffer* %b, align 8
+  ret %Buffer %b1
+}
+
+define void @Buffer.drop(%Buffer* %0) {
+entry:
+  %self = alloca %Buffer*, align 8
+  store %Buffer* %0, %Buffer** %self, align 8
+  %ref = load %Buffer*, %Buffer** %self, align 8
+  %value = getelementptr %Buffer, %Buffer* %ref, i32 0, i32 0
+  %arr = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data = extractvalue { i8*, i64 } %arr, 0
+  call void @free(i8* %arr.data)
+  store { i8*, i64 } zeroinitializer, { i8*, i64 }* %value, align 8
+  ret void
+}
+
+define void @"Buffer.=.array"(%Buffer* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Buffer*, align 8
+  store %Buffer* %0, %Buffer** %self, align 8
+  %s = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %s, align 8
+  %ref = load %Buffer*, %Buffer** %self, align 8
+  %value = getelementptr %Buffer, %Buffer* %ref, i32 0, i32 0
+  %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data = extractvalue { i8*, i64 } %value1, 0
+  %s2 = load { i8*, i64 }, { i8*, i64 }* %s, align 8
+  %arr.data3 = extractvalue { i8*, i64 } %s2, 0
+  %call = call i8* @strcpy(i8* %arr.data, i8* %arr.data3)
+  ret void
+}
+
+declare i8* @strcpy(i8*, i8*)
+
+define void @"Buffer.=.Buffer"(%Buffer* %0, %Buffer* %1) {
+entry:
+  %self = alloca %Buffer*, align 8
+  store %Buffer* %0, %Buffer** %self, align 8
+  %b = alloca %Buffer*, align 8
+  store %Buffer* %1, %Buffer** %b, align 8
+  %ref = load %Buffer*, %Buffer** %self, align 8
+  %value = getelementptr %Buffer, %Buffer* %ref, i32 0, i32 0
+  %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data = extractvalue { i8*, i64 } %value1, 0
+  %ref2 = load %Buffer*, %Buffer** %b, align 8
+  %value3 = getelementptr %Buffer, %Buffer* %ref2, i32 0, i32 0
+  %value4 = load { i8*, i64 }, { i8*, i64 }* %value3, align 8
+  %arr.data5 = extractvalue { i8*, i64 } %value4, 0
+  %call = call i8* @strcpy(i8* %arr.data, i8* %arr.data5)
+  ret void
+}
+
+define i32 @main(i32 %0, i8** %1) {
+entry:
+  %b1 = alloca %Buffer, align 8
+  %call = call %Buffer @Buffer.create()
+  store %Buffer %call, %Buffer* %b1, align 8
+  call void @"Buffer.=.array"(%Buffer* %b1, { i8*, i64 } { i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.9, i32 0, i32 0), i64 5 })
+  %b2 = alloca %Buffer, align 8
+  %call1 = call %Buffer @Buffer.create()
+  store %Buffer %call1, %Buffer* %b2, align 8
+  call void @"Buffer.=.Buffer"(%Buffer* %b2, %Buffer* %b1)
+  %value = getelementptr %Buffer, %Buffer* %b2, i32 0, i32 0
+  %value2 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data = extractvalue { i8*, i64 } %value2, 0
+  %call3 = call i8* @strcpy(i8* %arr.data, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.10, i32 0, i32 0))
+  %value4 = getelementptr %Buffer, %Buffer* %b1, i32 0, i32 0
+  %value5 = load { i8*, i64 }, { i8*, i64 }* %value4, align 8
+  %str.len = extractvalue { i8*, i64 } %value5, 1
+  %len32 = trunc i64 %str.len to i32
+  %str.data = extractvalue { i8*, i64 } %value5, 0
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt, i32 0, i32 0), i32 4, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.11, i32 0, i32 0), i32 %len32, i8* %str.data, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.12, i32 0, i32 0))
+  %value6 = getelementptr %Buffer, %Buffer* %b2, i32 0, i32 0
+  %value7 = load { i8*, i64 }, { i8*, i64 }* %value6, align 8
+  %str.len8 = extractvalue { i8*, i64 } %value7, 1
+  %len329 = trunc i64 %str.len8 to i32
+  %str.data10 = extractvalue { i8*, i64 } %value7, 0
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt.15, i32 0, i32 0), i32 4, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.13, i32 0, i32 0), i32 %len329, i8* %str.data10, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.14, i32 0, i32 0))
+  call void @Buffer.drop(%Buffer* %b2)
+  call void @Buffer.drop(%Buffer* %b1)
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 028 — a growable string struct: nullable buffer, grow, join and drop
+
+```ura
+// operators_overload/028.ura - a growable string struct: nullable buffer, grow, join and drop
+
+use "@/header"
+
+struct String2:
+    value char[]?
+    count i32
+    size  i32
+
+    pub fn create() String2:
+        s String2
+        s.size  = 10
+        s.value = new char[10]
+        return s
+
+    operator drop:
+        clean self.value
+
+    fn grow(want i32) void:
+        if self.size >= want: return
+        while self.size < want:
+            self.size *= 2
+        bigger char[] = new char[self.size]
+        strcpy(bigger, self.value)
+        clean self.value
+        self.value = bigger
+
+    fn assign(str char[]?) void:
+        if str == null:
+            self.assign("")
+            return
+        len i32 = strlen(str) as i32
+        self.grow(len + 1)
+        bzero(self.value, self.size as i64)
+        strcpy(self.value, str)
+        self.count = len
+
+    fn join(str char[]?) void:
+        if str == null: return
+        len i32 = strlen(str) as i32
+        self.grow(self.count + len + 1)
+        strcat(self.value, str)
+        self.count += len
+
+    operator = (str char[]?) void:
+        self.assign(str)
+
+    operator = (ref v String2) void:
+        self.assign(v.value)
+
+fn add(ref v String2, ref w String2) String2:
+    res String2 = String2::create()
+    res = v
+    res.join(w.value)
+    return res
+
+main():
+    s0 String2 = String2::create()
+    s0 = "1x2345"
+
+    s1 String2 = String2::create()
+    s1 = "6x789"
+
+    s2 String2 = String2::create()
+    s2 = add(ref s0, ref s1)
+
+    output("s0:    ", s0.value, " (", s0.count, ")\n")
+    output("s1:    ", s1.value, " (", s1.count, ")\n")
+    output("s0+s1: ", s2.value, " (", s2.count, ")\n")
+```
+
+```tree
+proto fn printf(format : pointer, ...) : i32
+
+proto fn calloc(len : i64, size : i64) : pointer
+
+proto fn free(ptr : pointer) : void
+
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
+
+proto fn exit(code : i32) : void
+
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
+
+proto fn isalnum(c : i32) : i32
+
+proto fn isalpha(c : i32) : i32
+
+proto fn isascii(c : i32) : i32
+
+proto fn isblank(c : i32) : i32
+
+proto fn iscntrl(c : i32) : i32
+
+proto fn isdigit(c : i32) : i32
+
+proto fn isgraph(c : i32) : i32
+
+proto fn islower(c : i32) : i32
+
+proto fn isprint(c : i32) : i32
+
+proto fn ispunct(c : i32) : i32
+
+proto fn isspace(c : i32) : i32
+
+proto fn isupper(c : i32) : i32
+
+proto fn isxdigit(c : i32) : i32
+
+proto fn tolower(c : i32) : i32
+
+proto fn toupper(c : i32) : i32
+
+proto fn strerror(errnum : i32) : pointer
+
+proto fn strerror_r(errnum : i32, buf : pointer, buflen : i64) : i32
+
+proto fn perror(s : pointer) : void
+
+= : i32
+├─ EPERM : i32
+└─ int 1
+
+= : i32
+├─ ENOENT : i32
+└─ int 2
+
+= : i32
+├─ ESRCH : i32
+└─ int 3
+
+= : i32
+├─ EINTR : i32
+└─ int 4
+
+= : i32
+├─ EIO : i32
+└─ int 5
+
+= : i32
+├─ ENXIO : i32
+└─ int 6
+
+= : i32
+├─ E2BIG : i32
+└─ int 7
+
+= : i32
+├─ ENOEXEC : i32
+└─ int 8
+
+= : i32
+├─ EBADF : i32
+└─ int 9
+
+= : i32
+├─ ECHILD : i32
+└─ int 10
+
+= : i32
+├─ EACCES : i32
+└─ int 13
+
+= : i32
+├─ EFAULT : i32
+└─ int 14
+
+= : i32
+├─ ENOTBLK : i32
+└─ int 15
+
+= : i32
+├─ EBUSY : i32
+└─ int 16
+
+= : i32
+├─ EEXIST : i32
+└─ int 17
+
+= : i32
+├─ EXDEV : i32
+└─ int 18
+
+= : i32
+├─ ENODEV : i32
+└─ int 19
+
+= : i32
+├─ ENOTDIR : i32
+└─ int 20
+
+= : i32
+├─ EISDIR : i32
+└─ int 21
+
+= : i32
+├─ EINVAL : i32
+└─ int 22
+
+= : i32
+├─ ENFILE : i32
+└─ int 23
+
+= : i32
+├─ EMFILE : i32
+└─ int 24
+
+= : i32
+├─ ENOTTY : i32
+└─ int 25
+
+= : i32
+├─ ETXTBSY : i32
+└─ int 26
+
+= : i32
+├─ EFBIG : i32
+└─ int 27
+
+= : i32
+├─ ENOSPC : i32
+└─ int 28
+
+= : i32
+├─ ESPIPE : i32
+└─ int 29
+
+= : i32
+├─ EROFS : i32
+└─ int 30
+
+= : i32
+├─ EMLINK : i32
+└─ int 31
+
+= : i32
+├─ EPIPE : i32
+└─ int 32
+
+= : i32
+├─ EDOM : i32
+└─ int 33
+
+= : i32
+├─ ERANGE : i32
+└─ int 34
+
+proto fn open(path : pointer, flags : i32, mode : i32) : i32
+
+proto fn openat(dirfd : i32, path : pointer, flags : i32, mode : i32) : i32
+
+proto fn creat(path : pointer, mode : i32) : i32
+
+proto fn fcntl(fd : i32, cmd : i32, arg : i32) : i32
+
+= : i32
+├─ O_RDONLY : i32
+└─ int 0
+
+= : i32
+├─ O_WRONLY : i32
+└─ int 1
+
+= : i32
+├─ O_RDWR : i32
+└─ int 2
+
+= : i32
+├─ FD_CLOEXEC : i32
+└─ int 1
+
+proto fn fopen(path : pointer, mode : pointer) : pointer
+
+proto fn freopen(path : pointer, mode : pointer, file : pointer) : pointer
+
+proto fn fclose(file : pointer) : i32
+
+proto fn fflush(file : pointer) : i32
+
+proto fn fgetc(file : pointer) : i32
+
+proto fn fputc(c : i32, file : pointer) : i32
+
+proto fn getc(file : pointer) : i32
+
+proto fn putc(c : i32, file : pointer) : i32
+
+proto fn getchar() : i32
+
+proto fn putchar(c : char) : i32
+
+proto fn ungetc(c : i32, file : pointer) : i32
+
+proto fn fgets(buffer : pointer, size : i32, file : pointer) : pointer
+
+proto fn fputs(str : pointer, file : pointer) : i32
+
+proto fn puts(str : pointer) : i32
+
+proto fn gets(buffer : pointer) : pointer
+
+proto fn fread(ptr : pointer, size : i32, nmemb : i32, file : pointer) : i32
+
+proto fn fwrite(ptr : pointer, size : i32, nmemb : i32, file : pointer) : i32
+
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
+
+proto fn read(fd : i32, ptr : pointer, len : i64) : i64
+
+proto fn fseek(file : pointer, offset : i64, whence : i32) : i32
+
+proto fn ftell(file : pointer) : i64
+
+proto fn rewind(file : pointer) : void
+
+proto fn fgetpos(file : pointer, pos : pointer) : i32
+
+proto fn fsetpos(file : pointer, pos : pointer) : i32
+
+proto fn feof(file : pointer) : i32
+
+proto fn ferror(file : pointer) : i32
+
+proto fn clearerr(file : pointer) : void
+
+proto fn perror(str : pointer) : void
+
+proto fn setvbuf(file : pointer, buffer : pointer, mode : i32, size : i32) : i32
+
+proto fn setbuf(file : pointer, buffer : pointer) : void
+
+proto fn remove(path : pointer) : i32
+
+proto fn rename(oldpath : pointer, newpath : pointer) : i32
+
+proto fn tmpfile() : pointer
+
+proto fn tmpnam(str : pointer) : pointer
+
+proto fn fileno(file : pointer) : i32
+
+proto fn fdopen(fd : i32, mode : pointer) : pointer
+
+proto fn printf(format : pointer, ...) : i32
+
+proto fn fprintf(file : pointer, format : pointer, ...) : i32
+
+proto fn sprintf(buffer : pointer, format : pointer, ...) : i32
+
+proto fn snprintf(buffer : pointer, size : i32, format : pointer, ...) : i32
+
+proto fn dprintf(fd : i32, format : pointer, ...) : i32
+
+proto fn vprintf(format : pointer, args : pointer) : i32
+
+proto fn vfprintf(file : pointer, format : pointer, args : pointer) : i32
+
+proto fn vsprintf(buffer : pointer, format : pointer, args : pointer) : i32
+
+proto fn vsnprintf(buffer : pointer, size : i32, format : pointer, args : pointer) : i32
+
+proto fn vdprintf(fd : i32, format : pointer, args : pointer) : i32
+
+proto fn scanf(format : pointer, ...) : i32
+
+proto fn fscanf(file : pointer, format : pointer, ...) : i32
+
+proto fn sscanf(buffer : pointer, format : pointer, ...) : i32
+
+proto fn vscanf(format : pointer, args : pointer) : i32
+
+proto fn vfscanf(file : pointer, format : pointer, args : pointer) : i32
+
+proto fn vsscanf(buffer : pointer, format : pointer, args : pointer) : i32
+
+proto fn sin(x : f64) : f64
+
+proto fn cos(x : f64) : f64
+
+proto fn tan(x : f64) : f64
+
+proto fn asin(x : f64) : f64
+
+proto fn acos(x : f64) : f64
+
+proto fn atan(x : f64) : f64
+
+proto fn atan2(y : f64, x : f64) : f64
+
+proto fn sinh(x : f64) : f64
+
+proto fn cosh(x : f64) : f64
+
+proto fn tanh(x : f64) : f64
+
+proto fn asinh(x : f64) : f64
+
+proto fn acosh(x : f64) : f64
+
+proto fn atanh(x : f64) : f64
+
+proto fn exp(x : f64) : f64
+
+proto fn exp2(x : f64) : f64
+
+proto fn expm1(x : f64) : f64
+
+proto fn log(x : f64) : f64
+
+proto fn log2(x : f64) : f64
+
+proto fn log10(x : f64) : f64
+
+proto fn log1p(x : f64) : f64
+
+proto fn pow(x : f64, y : f64) : f64
+
+proto fn sqrt(x : f64) : f64
+
+proto fn cbrt(x : f64) : f64
+
+proto fn hypot(x : f64, y : f64) : f64
+
+proto fn ceil(x : f64) : f64
+
+proto fn floor(x : f64) : f64
+
+proto fn trunc(x : f64) : f64
+
+proto fn round(x : f64) : f64
+
+proto fn fmod(x : f64, y : f64) : f64
+
+proto fn remainder(x : f64, y : f64) : f64
+
+proto fn fabs(x : f64) : f64
+
+proto fn copysign(x : f64, y : f64) : f64
+
+proto fn fmax(x : f64, y : f64) : f64
+
+proto fn fmin(x : f64, y : f64) : f64
+
+proto fn fdim(x : f64, y : f64) : f64
+
+proto fn isnan(x : f64) : i32
+
+proto fn isinf(x : f64) : i32
+
+proto fn isfinite(x : f64) : i32
+
+proto fn signbit(x : f64) : i32
+
+proto fn tgamma(x : f64) : f64
+
+proto fn lgamma(x : f64) : f64
+
+proto fn erf(x : f64) : f64
+
+proto fn erfc(x : f64) : f64
+
+proto fn malloc(size : i32) : pointer
+
+proto fn calloc(len : i64, size : i64) : pointer
+
+proto fn realloc(ptr : pointer, newSize : i32) : pointer
+
+proto fn free(ptr : pointer) : void
+
+proto fn aligned_alloc(alignment : i32, size : i32) : pointer
+
+struct Pollfd
+├─ fd : i32
+├─ events : i16
+└─ revents : i16
+
+proto fn socket(domain : i32, type : i32, protocol : i32) : i32
+
+proto fn bind(fd : i32, addr : pointer, addrlen : i32) : i32
+
+proto fn listen(fd : i32, backlog : i32) : i32
+
+proto fn accept(fd : i32, addr : pointer, addrlen : pointer) : i32
+
+proto fn connect(fd : i32, addr : pointer, addrlen : i32) : i32
+
+proto fn shutdown(fd : i32, how : i32) : i32
+
+proto fn send(fd : i32, buf : pointer, len : i64, flags : i32) : i64
+
+proto fn recv(fd : i32, buf : pointer, len : i64, flags : i32) : i64
+
+proto fn sendto(fd : i32, buf : pointer, len : i64, flags : i32, addr : pointer, addrlen : i32) : i64
+
+proto fn recvfrom(fd : i32, buf : pointer, len : i64, flags : i32, addr : pointer, addrlen : pointer) : i64
+
+proto fn sendmsg(fd : i32, msg : pointer, flags : i32) : i64
+
+proto fn recvmsg(fd : i32, msg : pointer, flags : i32) : i64
+
+proto fn setsockopt(fd : i32, level : i32, optname : i32, optval : pointer, optlen : i32) : i32
+
+proto fn getsockopt(fd : i32, level : i32, optname : i32, optval : pointer, optlen : pointer) : i32
+
+proto fn getsockname(fd : i32, addr : pointer, addrlen : pointer) : i32
+
+proto fn getpeername(fd : i32, addr : pointer, addrlen : pointer) : i32
+
+proto fn htons(hostshort : i32) : i32
+
+proto fn htonl(hostlong : i32) : i32
+
+proto fn ntohs(netshort : i32) : i32
+
+proto fn ntohl(netlong : i32) : i32
+
+proto fn inet_addr(cp : pointer) : i32
+
+proto fn inet_ntoa(addr : u32) : pointer
+
+proto fn inet_pton(af : i32, src : pointer, dst : pointer) : i32
+
+proto fn inet_ntop(af : i32, src : pointer, dst : pointer, size : i32) : pointer
+
+proto fn gethostbyname(name : pointer) : pointer
+
+proto fn gethostbyaddr(addr : pointer, len : i32, type : i32) : pointer
+
+proto fn getaddrinfo(node : pointer, service : pointer, hints : pointer, res : pointer) : i32
+
+proto fn freeaddrinfo(res : pointer) : void
+
+proto fn gai_strerror(errcode : i32) : pointer
+
+proto fn getnameinfo(addr : pointer, addrlen : i32, host : pointer, hostlen : i32, serv : pointer, servlen : i32, flags : i32) : i32
+
+proto fn select(nfds : i32, readfds : pointer, writefds : pointer, exceptfds : pointer, timeout : pointer) : i32
+
+proto fn poll(fds : pointer, nfds : i32, timeout : i32) : i32
+
+proto fn ioctl(fd : i32, request : i32, arg : pointer) : i32
+
+= : i32
+├─ IPPROTO_IP : i32
+└─ int 0
+
+= : i32
+├─ IPPROTO_TCP : i32
+└─ int 6
+
+= : i32
+├─ IPPROTO_UDP : i32
+└─ int 17
+
+= : i32
+├─ IPPROTO_IPV6 : i32
+└─ int 41
+
+= : i32
+├─ SHUT_RD : i32
+└─ int 0
+
+= : i32
+├─ SHUT_WR : i32
+└─ int 1
+
+= : i32
+├─ SHUT_RDWR : i32
+└─ int 2
+
+= : i32
+├─ POLLIN : i32
+└─ int 1
+
+= : i32
+├─ POLLPRI : i32
+└─ int 2
+
+= : i32
+├─ POLLOUT : i32
+└─ int 4
+
+= : i32
+├─ POLLERR : i32
+└─ int 8
+
+= : i32
+├─ POLLHUP : i32
+└─ int 16
+
+= : i32
+├─ POLLNVAL : i32
+└─ int 32
+
+= : i32
+├─ INADDR_ANY : i32
+└─ int 0
+
+= : i32
+├─ INADDR_LOOPBACK : i32
+└─ int 2130706433
+
+= : i32
+├─ INADDR_BROADCAST : i32
+└─ - : i32
+   ├─ int 0
+   └─ int 1
+
+proto fn signal(sig : i32, handler : pointer) : pointer
+
+proto fn raise(sig : i32) : i32
+
+proto fn kill(pid : i32, sig : i32) : i32
+
+proto fn sigaction(sig : i32, act : pointer, oldact : pointer) : i32
+
+proto fn sigprocmask(how : i32, set : pointer, oldset : pointer) : i32
+
+proto fn sigsuspend(mask : pointer) : i32
+
+proto fn strsignal(sig : i32) : pointer
+
+= : i32
+├─ SIGHUP : i32
+└─ int 1
+
+= : i32
+├─ SIGINT : i32
+└─ int 2
+
+= : i32
+├─ SIGQUIT : i32
+└─ int 3
+
+= : i32
+├─ SIGILL : i32
+└─ int 4
+
+= : i32
+├─ SIGTRAP : i32
+└─ int 5
+
+= : i32
+├─ SIGABRT : i32
+└─ int 6
+
+= : i32
+├─ SIGFPE : i32
+└─ int 8
+
+= : i32
+├─ SIGKILL : i32
+└─ int 9
+
+= : i32
+├─ SIGSEGV : i32
+└─ int 11
+
+= : i32
+├─ SIGPIPE : i32
+└─ int 13
+
+= : i32
+├─ SIGALRM : i32
+└─ int 14
+
+= : i32
+├─ SIGTERM : i32
+└─ int 15
+
+proto fn stat(path : pointer, buf : pointer) : i32
+
+proto fn fstat(fd : i32, buf : pointer) : i32
+
+proto fn lstat(path : pointer, buf : pointer) : i32
+
+proto fn mkdir(path : pointer, mode : i32) : i32
+
+proto fn chmod(path : pointer, mode : i32) : i32
+
+proto fn fchmod(fd : i32, mode : i32) : i32
+
+proto fn umask(cmask : i32) : i32
+
+= : i32
+├─ S_IFMT : i32
+└─ int 61440
+
+= : i32
+├─ S_IFSOCK : i32
+└─ int 49152
+
+= : i32
+├─ S_IFLNK : i32
+└─ int 40960
+
+= : i32
+├─ S_IFREG : i32
+└─ int 32768
+
+= : i32
+├─ S_IFBLK : i32
+└─ int 24576
+
+= : i32
+├─ S_IFDIR : i32
+└─ int 16384
+
+= : i32
+├─ S_IFCHR : i32
+└─ int 8192
+
+= : i32
+├─ S_IFIFO : i32
+└─ int 4096
+
+= : i32
+├─ S_ISUID : i32
+└─ int 2048
+
+= : i32
+├─ S_ISGID : i32
+└─ int 1024
+
+= : i32
+├─ S_ISVTX : i32
+└─ int 512
+
+proto fn abort() : void
+
+proto fn exit(code : i32) : void
+
+proto fn quick_exit(code : i32) : void
+
+proto fn _Exit(code : i32) : void
+
+proto fn getenv(name : pointer) : pointer
+
+proto fn setenv(name : pointer, value : pointer, overwrite : i32) : i32
+
+proto fn unsetenv(name : pointer) : i32
+
+proto fn putenv(string : pointer) : i32
+
+proto fn system(command : pointer) : i32
+
+proto fn rand() : i32
+
+proto fn srand(seed : i32) : void
+
+proto fn bsearch(key : pointer, base : pointer, nmemb : i32, size : i32, compar : pointer) : pointer
+
+proto fn qsort(base : pointer, nmemb : i32, size : i32, compar : pointer) : void
+
+proto fn abs(n : i32) : i32
+
+proto fn labs(n : i64) : i64
+
+proto fn div(numer : i32, denom : i32) : pointer
+
+proto fn ldiv(numer : i64, denom : i64) : pointer
+
+proto fn atoi(str : pointer) : i32
+
+proto fn atol(str : pointer) : i64
+
+proto fn atof(str : pointer) : f64
+
+proto fn strtol(str : pointer, endptr : pointer, base : i32) : i64
+
+proto fn strtoul(str : pointer, endptr : pointer, base : i32) : i64
+
+proto fn strtof(str : pointer, endptr : pointer) : f32
+
+proto fn strtod(str : pointer, endptr : pointer) : f64
+
+proto fn strtoll(str : pointer, endptr : pointer, base : i32) : i64
+
+proto fn strtoull(str : pointer, endptr : pointer, base : i32) : i64
+
+proto fn mblen(s : pointer, n : i32) : i32
+
+proto fn mbtowc(pwc : pointer, s : pointer, n : i32) : i32
+
+proto fn wctomb(s : pointer, wchar : i32) : i32
+
+proto fn mbstowcs(dest : pointer, src : pointer, n : i32) : i32
+
+proto fn wcstombs(dest : pointer, src : pointer, n : i32) : i32
+
+proto fn strlen(s : pointer) : i64
+
+proto fn strnlen(s : pointer, maxlen : i32) : i32
+
+proto fn strcmp(a : pointer, b : pointer) : i32
+
+proto fn strncmp(a : pointer, b : pointer, n : i32) : i32
+
+proto fn strcasecmp(a : pointer, b : pointer) : i32
+
+proto fn strncasecmp(a : pointer, b : pointer, n : i32) : i32
+
+proto fn strcoll(a : pointer, b : pointer) : i32
+
+proto fn strxfrm(dest : pointer, src : pointer, n : i32) : i32
+
+proto fn strcpy(dest : pointer, src : pointer) : pointer
+
+proto fn strncpy(dest : pointer, src : pointer, n : i32) : pointer
+
+proto fn strdup(s : pointer) : pointer
+
+proto fn strndup(s : pointer, n : i32) : pointer
+
+proto fn strcat(dest : pointer, src : pointer) : pointer
+
+proto fn strncat(dest : pointer, src : pointer, n : i32) : pointer
+
+proto fn strchr(s : pointer, c : i32) : pointer
+
+proto fn strrchr(s : pointer, c : i32) : pointer
+
+proto fn strstr(haystack : pointer, needle : pointer) : pointer
+
+proto fn strcasestr(haystack : pointer, needle : pointer) : pointer
+
+proto fn strspn(s : pointer, accept : pointer) : i32
+
+proto fn strcspn(s : pointer, reject : pointer) : i32
+
+proto fn strpbrk(s : pointer, accept : pointer) : pointer
+
+proto fn strtok(s : pointer, delim : pointer) : pointer
+
+proto fn strtok_r(s : pointer, delim : pointer, saveptr : pointer) : pointer
+
+proto fn strerror(errnum : i32) : pointer
+
+proto fn strerror_r(errnum : i32, buf : pointer, buflen : i64) : i32
+
+proto fn memchr(ptr : pointer, c : i32, n : i32) : pointer
+
+proto fn memrchr(ptr : pointer, c : i32, n : i32) : pointer
+
+proto fn memcmp(a : pointer, b : pointer, n : i32) : i32
+
+proto fn memcpy(dest : pointer, src : pointer, n : i32) : pointer
+
+proto fn memmove(dest : pointer, src : pointer, n : i32) : pointer
+
+proto fn memset(ptr : pointer, value : i32, n : i32) : pointer
+
+proto fn memccpy(dest : pointer, src : pointer, c : i32, n : i32) : pointer
+
+proto fn bzero(s : pointer, size : i64) : void
+
+proto fn strlcpy(dest : pointer, src : pointer, size : i32) : i32
+
+proto fn strlcat(dest : pointer, src : pointer, size : i32) : i32
+
+proto fn strsignal(sig : i32) : pointer
+
+proto fn memset_s(ptr : pointer, size : i32, value : i32, n : i32) : pointer
+
+proto fn atoi(s : pointer) : i32
+
+struct String
+├─ value : char[]
+├─ count : i32
+├─ fn String.create() : STRUCT_CALL
+│  ├─ s : STRUCT_CALL
+│  ├─ = : array
+│  │  ├─ .value : char[]
+│  │  │  └─ s : STRUCT_CALL
+│  │  └─ array : char[]
+│  │     └─ int 16
+│  ├─ = : i32
+│  │  ├─ .count : i32
+│  │  │  └─ s : STRUCT_CALL
+│  │  └─ int 0
+│  └─ return
+│     └─ s : STRUCT_CALL
+├─ fn String.from(str : array) : STRUCT_CALL
+│  ├─ = : STRUCT_CALL
+│  │  ├─ s : STRUCT_CALL
+│  │  └─ call create : STRUCT_CALL
+│  ├─ call assign : void
+│  │  ├─ s : STRUCT_CALL
+│  │  └─ str : char[]
+│  └─ return
+│     └─ s : STRUCT_CALL
+├─ fn String.from_int(n : i32) : STRUCT_CALL
+│  ├─ = : STRUCT_CALL
+│  │  ├─ s : STRUCT_CALL
+│  │  └─ call create : STRUCT_CALL
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ n : i32
+│  │  │  └─ int 0
+│  │  ├─ call push : void
+│  │  │  ├─ s : STRUCT_CALL
+│  │  │  └─ char '0'
+│  │  └─ return
+│  │     └─ s : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ num : i32
+│  │  └─ n : i32
+│  ├─ if
+│  │  ├─ condition < : bool
+│  │  │  ├─ num : i32
+│  │  │  └─ int 0
+│  │  ├─ call push : void
+│  │  │  ├─ s : STRUCT_CALL
+│  │  │  └─ char '-'
+│  │  └─ = : i32
+│  │     ├─ num : i32
+│  │     └─ - : i32
+│  │        ├─ int 0
+│  │        └─ num : i32
+│  ├─ = : array
+│  │  ├─ digits : char[]
+│  │  └─ array : char[]
+│  │     └─ int 12
+│  ├─ = : i32
+│  │  ├─ i : i32
+│  │  └─ int 0
+│  ├─ while
+│  │  ├─ condition > : bool
+│  │  │  ├─ num : i32
+│  │  │  └─ int 0
+│  │  ├─ = : char
+│  │  │  ├─ index : char
+│  │  │  │  ├─ digits : char[]
+│  │  │  │  └─ i : i32
+│  │  │  └─ cast : char
+│  │  │     └─ + : i32
+│  │  │        ├─ % : i32
+│  │  │        │  ├─ num : i32
+│  │  │        │  └─ int 10
+│  │  │        └─ int 48
+│  │  ├─ = : i32
+│  │  │  ├─ num : i32
+│  │  │  └─ / : i32
+│  │  │     ├─ num : i32
+│  │  │     └─ int 10
+│  │  └─ += : i32
+│  │     ├─ i : i32
+│  │     └─ int 1
+│  ├─ while
+│  │  ├─ condition > : bool
+│  │  │  ├─ i : i32
+│  │  │  └─ int 0
+│  │  ├─ -= : i32
+│  │  │  ├─ i : i32
+│  │  │  └─ int 1
+│  │  └─ call push : void
+│  │     ├─ s : STRUCT_CALL
+│  │     └─ index : char
+│  │        ├─ digits : char[]
+│  │        └─ i : i32
+│  ├─ clean : void
+│  │  └─ digits : char[]
+│  └─ return
+│     └─ s : STRUCT_CALL
+├─ fn String.drop(self : STRUCT_CALL) : void
+│  └─ clean : void
+│     └─ .value : char[]
+│        └─ self : STRUCT_CALL
+├─ fn String.cap(self : STRUCT_CALL) : i32
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ .value : char[]
+│  │  │  │  └─ self : STRUCT_CALL
+│  │  │  └─ NULL_LIT : char[]
+│  │  └─ return
+│  │     └─ int 0
+│  └─ return
+│     └─ cast : i32
+│        └─ .len : u64
+│           └─ .value : char[]
+│              └─ self : STRUCT_CALL
+├─ fn String.grow(self : STRUCT_CALL, want : i32) : void
+│  ├─ = : i32
+│  │  ├─ room : i32
+│  │  └─ call cap : i32
+│  │     └─ self : STRUCT_CALL
+│  ├─ if
+│  │  ├─ condition >= : bool
+│  │  │  ├─ room : i32
+│  │  │  └─ want : i32
+│  │  └─ return
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ room : i32
+│  │  │  └─ int 0
+│  │  └─ = : i32
+│  │     ├─ room : i32
+│  │     └─ int 16
+│  ├─ while
+│  │  ├─ condition < : bool
+│  │  │  ├─ room : i32
+│  │  │  └─ want : i32
+│  │  └─ *= : i32
+│  │     ├─ room : i32
+│  │     └─ int 2
+│  ├─ = : array
+│  │  ├─ bigger : char[]
+│  │  └─ array : char[]
+│  │     └─ room : i32
+│  ├─ if
+│  │  ├─ condition > : bool
+│  │  │  ├─ .count : i32
+│  │  │  │  └─ self : STRUCT_CALL
+│  │  │  └─ int 0
+│  │  └─ call memcpy : pointer
+│  │     ├─ bigger : char[]
+│  │     ├─ FALLBACK : char[]
+│  │     │  ├─ .value : char[]
+│  │     │  │  └─ self : STRUCT_CALL
+│  │     │  └─ char[] ""
+│  │     └─ .count : i32
+│  │        └─ self : STRUCT_CALL
+│  ├─ = : char
+│  │  ├─ index : char
+│  │  │  ├─ bigger : char[]
+│  │  │  └─ .count : i32
+│  │  │     └─ self : STRUCT_CALL
+│  │  └─ cast : char
+│  │     └─ int 0
+│  ├─ clean : void
+│  │  └─ .value : char[]
+│  │     └─ self : STRUCT_CALL
+│  └─ = : array
+│     ├─ .value : char[]
+│     │  └─ self : STRUCT_CALL
+│     └─ bigger : char[]
+├─ fn String.assign(self : STRUCT_CALL, str : array) : void
+│  ├─ = : i32
+│  │  ├─ n : i32
+│  │  └─ int 0
+│  ├─ if
+│  │  ├─ condition != : bool
+│  │  │  ├─ str : char[]
+│  │  │  └─ NULL_LIT : char[]
+│  │  └─ = : i32
+│  │     ├─ n : i32
+│  │     └─ cast : i32
+│  │        └─ call strlen : i64
+│  │           └─ str : char[]
+│  ├─ call grow : void
+│  │  ├─ self : STRUCT_CALL
+│  │  └─ + : i32
+│  │     ├─ n : i32
+│  │     └─ int 1
+│  ├─ if
+│  │  ├─ condition > : bool
+│  │  │  ├─ n : i32
+│  │  │  └─ int 0
+│  │  └─ call memcpy : pointer
+│  │     ├─ FALLBACK : char[]
+│  │     │  ├─ .value : char[]
+│  │     │  │  └─ self : STRUCT_CALL
+│  │     │  └─ char[] ""
+│  │     ├─ FALLBACK : char[]
+│  │     │  ├─ str : char[]
+│  │     │  └─ char[] ""
+│  │     └─ n : i32
+│  ├─ = : char
+│  │  ├─ index : char
+│  │  │  ├─ .value : char[]
+│  │  │  │  └─ self : STRUCT_CALL
+│  │  │  └─ n : i32
+│  │  └─ cast : char
+│  │     └─ int 0
+│  └─ = : i32
+│     ├─ .count : i32
+│     │  └─ self : STRUCT_CALL
+│     └─ n : i32
+├─ fn String.join(self : STRUCT_CALL, str : array) : void
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ str : char[]
+│  │  │  └─ NULL_LIT : char[]
+│  │  └─ return
+│  ├─ = : i32
+│  │  ├─ n : i32
+│  │  └─ cast : i32
+│  │     └─ call strlen : i64
+│  │        └─ str : char[]
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ n : i32
+│  │  │  └─ int 0
+│  │  └─ return
+│  ├─ call grow : void
+│  │  ├─ self : STRUCT_CALL
+│  │  └─ + : i32
+│  │     ├─ + : i32
+│  │     │  ├─ .count : i32
+│  │     │  │  └─ self : STRUCT_CALL
+│  │     │  └─ n : i32
+│  │     └─ int 1
+│  ├─ call memcpy : pointer
+│  │  ├─ index : char[]
+│  │  │  ├─ .value : char[]
+│  │  │  │  └─ self : STRUCT_CALL
+│  │  │  └─ range : i32
+│  │  │     ├─ .count : i32
+│  │  │     │  └─ self : STRUCT_CALL
+│  │  │     └─ + : i32
+│  │  │        ├─ .count : i32
+│  │  │        │  └─ self : STRUCT_CALL
+│  │  │        └─ n : i32
+│  │  ├─ str : char[]
+│  │  └─ n : i32
+│  ├─ += : i32
+│  │  ├─ .count : i32
+│  │  │  └─ self : STRUCT_CALL
+│  │  └─ n : i32
+│  └─ = : char
+│     ├─ index : char
+│     │  ├─ .value : char[]
+│     │  │  └─ self : STRUCT_CALL
+│     │  └─ .count : i32
+│     │     └─ self : STRUCT_CALL
+│     └─ cast : char
+│        └─ int 0
+├─ fn String.push(self : STRUCT_CALL, c : char) : void
+│  ├─ call grow : void
+│  │  ├─ self : STRUCT_CALL
+│  │  └─ + : i32
+│  │     ├─ .count : i32
+│  │     │  └─ self : STRUCT_CALL
+│  │     └─ int 2
+│  ├─ = : char
+│  │  ├─ index : char
+│  │  │  ├─ .value : char[]
+│  │  │  │  └─ self : STRUCT_CALL
+│  │  │  └─ .count : i32
+│  │  │     └─ self : STRUCT_CALL
+│  │  └─ c : char
+│  ├─ += : i32
+│  │  ├─ .count : i32
+│  │  │  └─ self : STRUCT_CALL
+│  │  └─ int 1
+│  └─ = : char
+│     ├─ index : char
+│     │  ├─ .value : char[]
+│     │  │  └─ self : STRUCT_CALL
+│     │  └─ .count : i32
+│     │     └─ self : STRUCT_CALL
+│     └─ cast : char
+│        └─ int 0
+├─ fn String.pop(self : STRUCT_CALL) : char
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ .count : i32
+│  │  │  │  └─ self : STRUCT_CALL
+│  │  │  └─ int 0
+│  │  └─ return
+│  │     └─ cast : char
+│  │        └─ int 0
+│  ├─ -= : i32
+│  │  ├─ .count : i32
+│  │  │  └─ self : STRUCT_CALL
+│  │  └─ int 1
+│  ├─ = : char
+│  │  ├─ c : char
+│  │  └─ index : char
+│  │     ├─ .value : char[]
+│  │     │  └─ self : STRUCT_CALL
+│  │     └─ .count : i32
+│  │        └─ self : STRUCT_CALL
+│  ├─ = : char
+│  │  ├─ index : char
+│  │  │  ├─ .value : char[]
+│  │  │  │  └─ self : STRUCT_CALL
+│  │  │  └─ .count : i32
+│  │  │     └─ self : STRUCT_CALL
+│  │  └─ cast : char
+│  │     └─ int 0
+│  └─ return
+│     └─ c : char
+├─ fn String.clear(self : STRUCT_CALL) : void
+│  ├─ = : i32
+│  │  ├─ .count : i32
+│  │  │  └─ self : STRUCT_CALL
+│  │  └─ int 0
+│  └─ if
+│     ├─ condition != : bool
+│     │  ├─ .value : char[]
+│     │  │  └─ self : STRUCT_CALL
+│     │  └─ NULL_LIT : char[]
+│     └─ = : char
+│        ├─ index : char
+│        │  ├─ .value : char[]
+│        │  │  └─ self : STRUCT_CALL
+│        │  └─ int 0
+│        └─ cast : char
+│           └─ int 0
+├─ fn String.len(self : STRUCT_CALL) : i32
+│  └─ return
+│     └─ .count : i32
+│        └─ self : STRUCT_CALL
+├─ fn String.empty(self : STRUCT_CALL) : bool
+│  └─ return
+│     └─ == : bool
+│        ├─ .count : i32
+│        │  └─ self : STRUCT_CALL
+│        └─ int 0
+├─ fn String.c_str(self : STRUCT_CALL) : char[]
+│  └─ return
+│     └─ FALLBACK : char[]
+│        ├─ .value : char[]
+│        │  └─ self : STRUCT_CALL
+│        └─ char[] ""
+├─ fn String.at(self : STRUCT_CALL, i : i32) : char
+│  ├─ if
+│  │  ├─ condition or : bool
+│  │  │  ├─ < : bool
+│  │  │  │  ├─ i : i32
+│  │  │  │  └─ int 0
+│  │  │  └─ >= : bool
+│  │  │     ├─ i : i32
+│  │  │     └─ .count : i32
+│  │  │        └─ self : STRUCT_CALL
+│  │  └─ return
+│  │     └─ cast : char
+│  │        └─ int 0
+│  └─ return
+│     └─ index : char
+│        ├─ .value : char[]
+│        │  └─ self : STRUCT_CALL
+│        └─ i : i32
+├─ fn String.find(self : STRUCT_CALL, needle : array) : i32
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ needle : char[]
+│  │  │  └─ NULL_LIT : char[]
+│  │  └─ return
+│  │     └─ - : i32
+│  │        ├─ int 0
+│  │        └─ int 1
+│  ├─ = : i32
+│  │  ├─ n : i32
+│  │  └─ cast : i32
+│  │     └─ call strlen : i64
+│  │        └─ needle : char[]
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ n : i32
+│  │  │  └─ int 0
+│  │  └─ return
+│  │     └─ int 0
+│  ├─ = : i32
+│  │  ├─ i : i32
+│  │  └─ int 0
+│  ├─ while
+│  │  ├─ condition <= : bool
+│  │  │  ├─ + : i32
+│  │  │  │  ├─ i : i32
+│  │  │  │  └─ n : i32
+│  │  │  └─ .count : i32
+│  │  │     └─ self : STRUCT_CALL
+│  │  ├─ if
+│  │  │  ├─ condition == : bool
+│  │  │  │  ├─ call strncmp : i32
+│  │  │  │  │  ├─ index : char[]
+│  │  │  │  │  │  ├─ .value : char[]
+│  │  │  │  │  │  │  └─ self : STRUCT_CALL
+│  │  │  │  │  │  └─ range : i32
+│  │  │  │  │  │     ├─ i : i32
+│  │  │  │  │  │     └─ + : i32
+│  │  │  │  │  │        ├─ i : i32
+│  │  │  │  │  │        └─ n : i32
+│  │  │  │  │  ├─ needle : char[]
+│  │  │  │  │  └─ n : i32
+│  │  │  │  └─ int 0
+│  │  │  └─ return
+│  │  │     └─ i : i32
+│  │  └─ += : i32
+│  │     ├─ i : i32
+│  │     └─ int 1
+│  └─ return
+│     └─ - : i32
+│        ├─ int 0
+│        └─ int 1
+├─ fn String.contains(self : STRUCT_CALL, needle : array) : bool
+│  └─ return
+│     └─ != : bool
+│        ├─ call find : i32
+│        │  ├─ self : STRUCT_CALL
+│        │  └─ needle : char[]
+│        └─ - : i32
+│           ├─ int 0
+│           └─ int 1
+├─ fn String.starts_with(self : STRUCT_CALL, prefix : array) : bool
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ prefix : char[]
+│  │  │  └─ NULL_LIT : char[]
+│  │  └─ return
+│  │     └─ bool True
+│  ├─ = : i32
+│  │  ├─ n : i32
+│  │  └─ cast : i32
+│  │     └─ call strlen : i64
+│  │        └─ prefix : char[]
+│  ├─ if
+│  │  ├─ condition > : bool
+│  │  │  ├─ n : i32
+│  │  │  └─ .count : i32
+│  │  │     └─ self : STRUCT_CALL
+│  │  └─ return
+│  │     └─ bool False
+│  └─ return
+│     └─ == : bool
+│        ├─ call strncmp : i32
+│        │  ├─ index : char[]
+│        │  │  ├─ .value : char[]
+│        │  │  │  └─ self : STRUCT_CALL
+│        │  │  └─ range : i32
+│        │  │     ├─ int 0
+│        │  │     └─ n : i32
+│        │  ├─ prefix : char[]
+│        │  └─ n : i32
+│        └─ int 0
+├─ fn String.ends_with(self : STRUCT_CALL, suffix : array) : bool
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ suffix : char[]
+│  │  │  └─ NULL_LIT : char[]
+│  │  └─ return
+│  │     └─ bool True
+│  ├─ = : i32
+│  │  ├─ n : i32
+│  │  └─ cast : i32
+│  │     └─ call strlen : i64
+│  │        └─ suffix : char[]
+│  ├─ if
+│  │  ├─ condition > : bool
+│  │  │  ├─ n : i32
+│  │  │  └─ .count : i32
+│  │  │     └─ self : STRUCT_CALL
+│  │  └─ return
+│  │     └─ bool False
+│  └─ return
+│     └─ == : bool
+│        ├─ call strncmp : i32
+│        │  ├─ index : char[]
+│        │  │  ├─ .value : char[]
+│        │  │  │  └─ self : STRUCT_CALL
+│        │  │  └─ range : i32
+│        │  │     ├─ - : i32
+│        │  │     │  ├─ .count : i32
+│        │  │     │  │  └─ self : STRUCT_CALL
+│        │  │     │  └─ n : i32
+│        │  │     └─ .count : i32
+│        │  │        └─ self : STRUCT_CALL
+│        │  ├─ suffix : char[]
+│        │  └─ n : i32
+│        └─ int 0
+├─ fn String.substr(self : STRUCT_CALL, start : i32, length : i32) : STRUCT_CALL
+│  ├─ = : STRUCT_CALL
+│  │  ├─ res : STRUCT_CALL
+│  │  └─ call create : STRUCT_CALL
+│  ├─ if
+│  │  ├─ condition or : bool
+│  │  │  ├─ < : bool
+│  │  │  │  ├─ start : i32
+│  │  │  │  └─ int 0
+│  │  │  └─ >= : bool
+│  │  │     ├─ start : i32
+│  │  │     └─ .count : i32
+│  │  │        └─ self : STRUCT_CALL
+│  │  └─ return
+│  │     └─ res : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ stop : i32
+│  │  └─ + : i32
+│  │     ├─ start : i32
+│  │     └─ length : i32
+│  ├─ if
+│  │  ├─ condition > : bool
+│  │  │  ├─ stop : i32
+│  │  │  └─ .count : i32
+│  │  │     └─ self : STRUCT_CALL
+│  │  └─ = : i32
+│  │     ├─ stop : i32
+│  │     └─ .count : i32
+│  │        └─ self : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ i : i32
+│  │  └─ start : i32
+│  ├─ while
+│  │  ├─ condition < : bool
+│  │  │  ├─ i : i32
+│  │  │  └─ stop : i32
+│  │  ├─ call push : void
+│  │  │  ├─ res : STRUCT_CALL
+│  │  │  └─ index : char
+│  │  │     ├─ .value : char[]
+│  │  │     │  └─ self : STRUCT_CALL
+│  │  │     └─ i : i32
+│  │  └─ += : i32
+│  │     ├─ i : i32
+│  │     └─ int 1
+│  └─ return
+│     └─ res : STRUCT_CALL
+├─ fn String.upper(self : STRUCT_CALL) : STRUCT_CALL
+│  ├─ = : STRUCT_CALL
+│  │  ├─ res : STRUCT_CALL
+│  │  └─ call create : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ i : i32
+│  │  └─ int 0
+│  ├─ while
+│  │  ├─ condition < : bool
+│  │  │  ├─ i : i32
+│  │  │  └─ .count : i32
+│  │  │     └─ self : STRUCT_CALL
+│  │  ├─ = : char
+│  │  │  ├─ c : char
+│  │  │  └─ index : char
+│  │  │     ├─ .value : char[]
+│  │  │     │  └─ self : STRUCT_CALL
+│  │  │     └─ i : i32
+│  │  ├─ if
+│  │  │  ├─ condition and : bool
+│  │  │  │  ├─ >= : bool
+│  │  │  │  │  ├─ c : char
+│  │  │  │  │  └─ char 'a'
+│  │  │  │  └─ <= : bool
+│  │  │  │     ├─ c : char
+│  │  │  │     └─ char 'z'
+│  │  │  ├─ call push : void
+│  │  │  │  ├─ res : STRUCT_CALL
+│  │  │  │  └─ cast : char
+│  │  │  │     └─ - : i32
+│  │  │  │        ├─ cast : i32
+│  │  │  │        │  └─ c : char
+│  │  │  │        └─ int 32
+│  │  │  └─ else
+│  │  │     └─ call push : void
+│  │  │        ├─ res : STRUCT_CALL
+│  │  │        └─ c : char
+│  │  └─ += : i32
+│  │     ├─ i : i32
+│  │     └─ int 1
+│  └─ return
+│     └─ res : STRUCT_CALL
+├─ fn String.lower(self : STRUCT_CALL) : STRUCT_CALL
+│  ├─ = : STRUCT_CALL
+│  │  ├─ res : STRUCT_CALL
+│  │  └─ call create : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ i : i32
+│  │  └─ int 0
+│  ├─ while
+│  │  ├─ condition < : bool
+│  │  │  ├─ i : i32
+│  │  │  └─ .count : i32
+│  │  │     └─ self : STRUCT_CALL
+│  │  ├─ = : char
+│  │  │  ├─ c : char
+│  │  │  └─ index : char
+│  │  │     ├─ .value : char[]
+│  │  │     │  └─ self : STRUCT_CALL
+│  │  │     └─ i : i32
+│  │  ├─ if
+│  │  │  ├─ condition and : bool
+│  │  │  │  ├─ >= : bool
+│  │  │  │  │  ├─ c : char
+│  │  │  │  │  └─ char 'A'
+│  │  │  │  └─ <= : bool
+│  │  │  │     ├─ c : char
+│  │  │  │     └─ char 'Z'
+│  │  │  ├─ call push : void
+│  │  │  │  ├─ res : STRUCT_CALL
+│  │  │  │  └─ cast : char
+│  │  │  │     └─ + : i32
+│  │  │  │        ├─ cast : i32
+│  │  │  │        │  └─ c : char
+│  │  │  │        └─ int 32
+│  │  │  └─ else
+│  │  │     └─ call push : void
+│  │  │        ├─ res : STRUCT_CALL
+│  │  │        └─ c : char
+│  │  └─ += : i32
+│  │     ├─ i : i32
+│  │     └─ int 1
+│  └─ return
+│     └─ res : STRUCT_CALL
+├─ fn String.trim(self : STRUCT_CALL) : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ start : i32
+│  │  └─ int 0
+│  ├─ while
+│  │  ├─ condition < : bool
+│  │  │  ├─ start : i32
+│  │  │  └─ .count : i32
+│  │  │     └─ self : STRUCT_CALL
+│  │  ├─ = : char
+│  │  │  ├─ c : char
+│  │  │  └─ index : char
+│  │  │     ├─ .value : char[]
+│  │  │     │  └─ self : STRUCT_CALL
+│  │  │     └─ start : i32
+│  │  └─ if
+│  │     ├─ condition or : bool
+│  │     │  ├─ or : bool
+│  │     │  │  ├─ or : bool
+│  │     │  │  │  ├─ == : bool
+│  │     │  │  │  │  ├─ c : char
+│  │     │  │  │  │  └─ char ' '
+│  │     │  │  │  └─ == : bool
+│  │     │  │  │     ├─ c : char
+│  │     │  │  │     └─ char '\t'
+│  │     │  │  └─ == : bool
+│  │     │  │     ├─ c : char
+│  │     │  │     └─ char '\n'
+│  │     │  └─ == : bool
+│  │     │     ├─ c : char
+│  │     │     └─ char '\r'
+│  │     ├─ += : i32
+│  │     │  ├─ start : i32
+│  │     │  └─ int 1
+│  │     └─ else
+│  │        └─ break
+│  ├─ = : i32
+│  │  ├─ stop : i32
+│  │  └─ .count : i32
+│  │     └─ self : STRUCT_CALL
+│  ├─ while
+│  │  ├─ condition > : bool
+│  │  │  ├─ stop : i32
+│  │  │  └─ start : i32
+│  │  ├─ = : char
+│  │  │  ├─ c : char
+│  │  │  └─ index : char
+│  │  │     ├─ .value : char[]
+│  │  │     │  └─ self : STRUCT_CALL
+│  │  │     └─ - : i32
+│  │  │        ├─ stop : i32
+│  │  │        └─ int 1
+│  │  └─ if
+│  │     ├─ condition or : bool
+│  │     │  ├─ or : bool
+│  │     │  │  ├─ or : bool
+│  │     │  │  │  ├─ == : bool
+│  │     │  │  │  │  ├─ c : char
+│  │     │  │  │  │  └─ char ' '
+│  │     │  │  │  └─ == : bool
+│  │     │  │  │     ├─ c : char
+│  │     │  │  │     └─ char '\t'
+│  │     │  │  └─ == : bool
+│  │     │  │     ├─ c : char
+│  │     │  │     └─ char '\n'
+│  │     │  └─ == : bool
+│  │     │     ├─ c : char
+│  │     │     └─ char '\r'
+│  │     ├─ -= : i32
+│  │     │  ├─ stop : i32
+│  │     │  └─ int 1
+│  │     └─ else
+│  │        └─ break
+│  └─ return
+│     └─ call substr : STRUCT_CALL
+│        ├─ self : STRUCT_CALL
+│        ├─ start : i32
+│        └─ - : i32
+│           ├─ stop : i32
+│           └─ start : i32
+├─ fn String.replace(self : STRUCT_CALL, old : array, fresh : array) : STRUCT_CALL
+│  ├─ = : STRUCT_CALL
+│  │  ├─ res : STRUCT_CALL
+│  │  └─ call create : STRUCT_CALL
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ old : char[]
+│  │  │  └─ NULL_LIT : char[]
+│  │  ├─ call assign : void
+│  │  │  ├─ res : STRUCT_CALL
+│  │  │  └─ .value : char[]
+│  │  │     └─ self : STRUCT_CALL
+│  │  └─ return
+│  │     └─ res : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ n : i32
+│  │  └─ cast : i32
+│  │     └─ call strlen : i64
+│  │        └─ old : char[]
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ n : i32
+│  │  │  └─ int 0
+│  │  ├─ call assign : void
+│  │  │  ├─ res : STRUCT_CALL
+│  │  │  └─ .value : char[]
+│  │  │     └─ self : STRUCT_CALL
+│  │  └─ return
+│  │     └─ res : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ i : i32
+│  │  └─ int 0
+│  ├─ while
+│  │  ├─ condition < : bool
+│  │  │  ├─ i : i32
+│  │  │  └─ .count : i32
+│  │  │     └─ self : STRUCT_CALL
+│  │  ├─ = : bool
+│  │  │  ├─ hit : bool
+│  │  │  └─ bool False
+│  │  ├─ if
+│  │  │  ├─ condition <= : bool
+│  │  │  │  ├─ + : i32
+│  │  │  │  │  ├─ i : i32
+│  │  │  │  │  └─ n : i32
+│  │  │  │  └─ .count : i32
+│  │  │  │     └─ self : STRUCT_CALL
+│  │  │  └─ = : bool
+│  │  │     ├─ hit : bool
+│  │  │     └─ == : bool
+│  │  │        ├─ call strncmp : i32
+│  │  │        │  ├─ index : char[]
+│  │  │        │  │  ├─ .value : char[]
+│  │  │        │  │  │  └─ self : STRUCT_CALL
+│  │  │        │  │  └─ range : i32
+│  │  │        │  │     ├─ i : i32
+│  │  │        │  │     └─ + : i32
+│  │  │        │  │        ├─ i : i32
+│  │  │        │  │        └─ n : i32
+│  │  │        │  ├─ old : char[]
+│  │  │        │  └─ n : i32
+│  │  │        └─ int 0
+│  │  └─ if
+│  │     ├─ condition hit : bool
+│  │     ├─ call join : void
+│  │     │  ├─ res : STRUCT_CALL
+│  │     │  └─ fresh : char[]
+│  │     ├─ += : i32
+│  │     │  ├─ i : i32
+│  │     │  └─ n : i32
+│  │     └─ else
+│  │        ├─ call push : void
+│  │        │  ├─ res : STRUCT_CALL
+│  │        │  └─ index : char
+│  │        │     ├─ .value : char[]
+│  │        │     │  └─ self : STRUCT_CALL
+│  │        │     └─ i : i32
+│  │        └─ += : i32
+│  │           ├─ i : i32
+│  │           └─ int 1
+│  └─ return
+│     └─ res : STRUCT_CALL
+├─ fn String.repeat(self : STRUCT_CALL, n : i32) : STRUCT_CALL
+│  ├─ = : STRUCT_CALL
+│  │  ├─ res : STRUCT_CALL
+│  │  └─ call create : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ i : i32
+│  │  └─ int 0
+│  ├─ while
+│  │  ├─ condition < : bool
+│  │  │  ├─ i : i32
+│  │  │  └─ n : i32
+│  │  ├─ call join : void
+│  │  │  ├─ res : STRUCT_CALL
+│  │  │  └─ .value : char[]
+│  │  │     └─ self : STRUCT_CALL
+│  │  └─ += : i32
+│  │     ├─ i : i32
+│  │     └─ int 1
+│  └─ return
+│     └─ res : STRUCT_CALL
+├─ fn String.reverse(self : STRUCT_CALL) : STRUCT_CALL
+│  ├─ = : STRUCT_CALL
+│  │  ├─ res : STRUCT_CALL
+│  │  └─ call create : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ i : i32
+│  │  └─ - : i32
+│  │     ├─ .count : i32
+│  │     │  └─ self : STRUCT_CALL
+│  │     └─ int 1
+│  ├─ while
+│  │  ├─ condition >= : bool
+│  │  │  ├─ i : i32
+│  │  │  └─ int 0
+│  │  ├─ call push : void
+│  │  │  ├─ res : STRUCT_CALL
+│  │  │  └─ index : char
+│  │  │     ├─ .value : char[]
+│  │  │     │  └─ self : STRUCT_CALL
+│  │  │     └─ i : i32
+│  │  └─ -= : i32
+│  │     ├─ i : i32
+│  │     └─ int 1
+│  └─ return
+│     └─ res : STRUCT_CALL
+├─ fn String.compare(self : STRUCT_CALL, other : STRUCT_CALL) : i32
+│  └─ return
+│     └─ call strcmp : i32
+│        ├─ FALLBACK : char[]
+│        │  ├─ .value : char[]
+│        │  │  └─ self : STRUCT_CALL
+│        │  └─ char[] ""
+│        └─ FALLBACK : char[]
+│           ├─ .value : char[]
+│           │  └─ other : STRUCT_CALL
+│           └─ char[] ""
+├─ fn String.to_int(self : STRUCT_CALL) : i32
+│  └─ return
+│     └─ call atoi : i32
+│        └─ FALLBACK : char[]
+│           ├─ .value : char[]
+│           │  └─ self : STRUCT_CALL
+│           └─ char[] ""
+├─ fn String.=.array(self : STRUCT_CALL, str : array) : void
+│  └─ call assign : void
+│     ├─ self : STRUCT_CALL
+│     └─ str : char[]
+├─ fn String.=.String(self : STRUCT_CALL, v : STRUCT_CALL) : void
+│  └─ call assign : void
+│     ├─ self : STRUCT_CALL
+│     └─ .value : char[]
+│        └─ v : STRUCT_CALL
+├─ fn String.+.String(self : STRUCT_CALL, v : STRUCT_CALL) : STRUCT_CALL
+│  ├─ = : STRUCT_CALL
+│  │  ├─ res : STRUCT_CALL
+│  │  └─ call from : STRUCT_CALL
+│  │     └─ .value : char[]
+│  │        └─ self : STRUCT_CALL
+│  ├─ call join : void
+│  │  ├─ res : STRUCT_CALL
+│  │  └─ .value : char[]
+│  │     └─ v : STRUCT_CALL
+│  └─ return
+│     └─ res : STRUCT_CALL
+├─ fn String.+.array(self : STRUCT_CALL, str : array) : STRUCT_CALL
+│  ├─ = : STRUCT_CALL
+│  │  ├─ res : STRUCT_CALL
+│  │  └─ call from : STRUCT_CALL
+│  │     └─ .value : char[]
+│  │        └─ self : STRUCT_CALL
+│  ├─ call join : void
+│  │  ├─ res : STRUCT_CALL
+│  │  └─ str : char[]
+│  └─ return
+│     └─ res : STRUCT_CALL
+├─ fn String.+=.String(self : STRUCT_CALL, v : STRUCT_CALL) : void
+│  └─ call join : void
+│     ├─ self : STRUCT_CALL
+│     └─ .value : char[]
+│        └─ v : STRUCT_CALL
+├─ fn String.+=.array(self : STRUCT_CALL, str : array) : void
+│  └─ call join : void
+│     ├─ self : STRUCT_CALL
+│     └─ str : char[]
+├─ fn String.==.String(self : STRUCT_CALL, v : STRUCT_CALL) : bool
+│  └─ return
+│     └─ == : bool
+│        ├─ call compare : i32
+│        │  ├─ self : STRUCT_CALL
+│        │  └─ ref : STRUCT_CALL
+│        │     └─ v : STRUCT_CALL
+│        └─ int 0
+├─ fn String.!=.String(self : STRUCT_CALL, v : STRUCT_CALL) : bool
+│  └─ return
+│     └─ != : bool
+│        ├─ call compare : i32
+│        │  ├─ self : STRUCT_CALL
+│        │  └─ ref : STRUCT_CALL
+│        │     └─ v : STRUCT_CALL
+│        └─ int 0
+├─ fn String.<.String(self : STRUCT_CALL, v : STRUCT_CALL) : bool
+│  └─ return
+│     └─ < : bool
+│        ├─ call compare : i32
+│        │  ├─ self : STRUCT_CALL
+│        │  └─ ref : STRUCT_CALL
+│        │     └─ v : STRUCT_CALL
+│        └─ int 0
+├─ fn String.>.String(self : STRUCT_CALL, v : STRUCT_CALL) : bool
+│  └─ return
+│     └─ > : bool
+│        ├─ call compare : i32
+│        │  ├─ self : STRUCT_CALL
+│        │  └─ ref : STRUCT_CALL
+│        │     └─ v : STRUCT_CALL
+│        └─ int 0
+└─ fn String.output(self : STRUCT_CALL) : char[]
+   └─ return
+      └─ FALLBACK : char[]
+         ├─ .value : char[]
+         │  └─ self : STRUCT_CALL
+         └─ char[] ""
+
+struct Timespec
+├─ tv_sec : i64
+└─ tv_nsec : i64
+
+struct Timeval
+├─ tv_sec : i64
+├─ tv_usec : i32
+└─ __pad : i32
+
+struct Tm
+├─ tm_sec : i32
+├─ tm_min : i32
+├─ tm_hour : i32
+├─ tm_mday : i32
+├─ tm_mon : i32
+├─ tm_year : i32
+├─ tm_wday : i32
+├─ tm_yday : i32
+├─ tm_isdst : i32
+├─ tm_gmtoff : i64
+└─ tm_zone : pointer
+
+proto fn time(timer : pointer) : i64
+
+proto fn difftime(time1 : i64, time0 : i64) : f64
+
+proto fn clock() : i64
+
+proto fn gmtime(timer : i64) : pointer
+
+proto fn localtime(timer : i64) : pointer
+
+proto fn mktime(timeptr : pointer) : i64
+
+proto fn gmtime_r(timer : i64, result : pointer) : pointer
+
+proto fn localtime_r(timer : i64, result : pointer) : pointer
+
+proto fn strftime(s : pointer, maxsize : i64, format : pointer, timeptr : pointer) : i64
+
+proto fn asctime(timeptr : pointer) : pointer
+
+proto fn ctime(timer : pointer) : pointer
+
+proto fn asctime_r(timeptr : pointer, buf : pointer) : pointer
+
+proto fn ctime_r(timer : pointer, buf : pointer) : pointer
+
+proto fn clock_gettime(clk_id : i32, tp : pointer) : i32
+
+proto fn clock_settime(clk_id : i32, tp : pointer) : i32
+
+proto fn nanosleep(req : pointer, rem : pointer) : i32
+
+proto fn gettimeofday(tv : pointer, tz : pointer) : i32
+
+proto fn getpid() : i32
+
+proto fn getppid() : i32
+
+proto fn getuid() : i32
+
+proto fn geteuid() : i32
+
+proto fn getgid() : i32
+
+proto fn getegid() : i32
+
+proto fn setuid(uid : i32) : i32
+
+proto fn setgid(gid : i32) : i32
+
+proto fn fork() : i32
+
+proto fn execv(path : pointer, argv : pointer) : i32
+
+proto fn execve(path : pointer, argv : pointer, envp : pointer) : i32
+
+proto fn execvp(file : pointer, argv : pointer) : i32
+
+proto fn _exit(code : i32) : void
+
+proto fn getcwd(buf : pointer, size : i64) : pointer
+
+proto fn chdir(path : pointer) : i32
+
+proto fn fchdir(fd : i32) : i32
+
+proto fn access(path : pointer, mode : i32) : i32
+
+proto fn unlink(path : pointer) : i32
+
+proto fn rmdir(path : pointer) : i32
+
+proto fn link(oldpath : pointer, newpath : pointer) : i32
+
+proto fn symlink(target : pointer, linkpath : pointer) : i32
+
+proto fn readlink(path : pointer, buf : pointer, bufsize : i64) : i64
+
+proto fn rename(oldpath : pointer, newpath : pointer) : i32
+
+proto fn truncate(path : pointer, length : i64) : i32
+
+proto fn ftruncate(fd : i32, length : i64) : i32
+
+proto fn close(fd : i32) : i32
+
+proto fn dup(fd : i32) : i32
+
+proto fn dup2(oldfd : i32, newfd : i32) : i32
+
+proto fn pipe(pipefd : pointer) : i32
+
+proto fn lseek(fd : i32, offset : i64, whence : i32) : i64
+
+proto fn isatty(fd : i32) : i32
+
+proto fn ttyname(fd : i32) : pointer
+
+proto fn sleep(seconds : i32) : i32
+
+proto fn usleep(microseconds : i32) : i32
+
+proto fn gethostname(name : pointer, len : i64) : i32
+
+proto fn sethostname(name : pointer, len : i64) : i32
+
+proto fn alarm(seconds : i32) : i32
+
+proto fn pause() : i32
+
+proto fn sync() : void
+
+proto fn fsync(fd : i32) : i32
+
+proto fn fdatasync(fd : i32) : i32
+
+= : i32
+├─ F_OK : i32
+└─ int 0
+
+= : i32
+├─ X_OK : i32
+└─ int 1
+
+= : i32
+├─ W_OK : i32
+└─ int 2
+
+= : i32
+├─ R_OK : i32
+└─ int 4
+
+= : i32
+├─ SEEK_SET : i32
+└─ int 0
+
+= : i32
+├─ SEEK_CUR : i32
+└─ int 1
+
+= : i32
+├─ SEEK_END : i32
+└─ int 2
+
+= : i32
+├─ STDIN_FILENO : i32
+└─ int 0
+
+= : i32
+├─ STDOUT_FILENO : i32
+└─ int 1
+
+= : i32
+├─ STDERR_FILENO : i32
+└─ int 2
+
+struct String2
+├─ value : char[]
+├─ count : i32
+├─ size : i32
+├─ fn String2.create() : STRUCT_CALL
+│  ├─ s : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ .size : i32
+│  │  │  └─ s : STRUCT_CALL
+│  │  └─ int 10
+│  ├─ = : array
+│  │  ├─ .value : char[]
+│  │  │  └─ s : STRUCT_CALL
+│  │  └─ array : char[]
+│  │     └─ int 10
+│  └─ return
+│     └─ s : STRUCT_CALL
+├─ fn String2.drop(self : STRUCT_CALL) : void
+│  └─ clean : void
+│     └─ .value : char[]
+│        └─ self : STRUCT_CALL
+├─ fn String2.grow(self : STRUCT_CALL, want : i32) : void
+│  ├─ if
+│  │  ├─ condition >= : bool
+│  │  │  ├─ .size : i32
+│  │  │  │  └─ self : STRUCT_CALL
+│  │  │  └─ want : i32
+│  │  └─ return
+│  ├─ while
+│  │  ├─ condition < : bool
+│  │  │  ├─ .size : i32
+│  │  │  │  └─ self : STRUCT_CALL
+│  │  │  └─ want : i32
+│  │  └─ *= : i32
+│  │     ├─ .size : i32
+│  │     │  └─ self : STRUCT_CALL
+│  │     └─ int 2
+│  ├─ = : array
+│  │  ├─ bigger : char[]
+│  │  └─ array : char[]
+│  │     └─ .size : i32
+│  │        └─ self : STRUCT_CALL
+│  ├─ call strcpy : pointer
+│  │  ├─ bigger : char[]
+│  │  └─ .value : char[]
+│  │     └─ self : STRUCT_CALL
+│  ├─ clean : void
+│  │  └─ .value : char[]
+│  │     └─ self : STRUCT_CALL
+│  └─ = : array
+│     ├─ .value : char[]
+│     │  └─ self : STRUCT_CALL
+│     └─ bigger : char[]
+├─ fn String2.assign(self : STRUCT_CALL, str : array) : void
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ str : char[]
+│  │  │  └─ NULL_LIT : char[]
+│  │  ├─ call assign : void
+│  │  │  ├─ self : STRUCT_CALL
+│  │  │  └─ char[] ""
+│  │  └─ return
+│  ├─ = : i32
+│  │  ├─ len : i32
+│  │  └─ cast : i32
+│  │     └─ call strlen : i64
+│  │        └─ str : char[]
+│  ├─ call grow : void
+│  │  ├─ self : STRUCT_CALL
+│  │  └─ + : i32
+│  │     ├─ len : i32
+│  │     └─ int 1
+│  ├─ call bzero : void
+│  │  ├─ .value : char[]
+│  │  │  └─ self : STRUCT_CALL
+│  │  └─ cast : i64
+│  │     └─ .size : i32
+│  │        └─ self : STRUCT_CALL
+│  ├─ call strcpy : pointer
+│  │  ├─ .value : char[]
+│  │  │  └─ self : STRUCT_CALL
+│  │  └─ str : char[]
+│  └─ = : i32
+│     ├─ .count : i32
+│     │  └─ self : STRUCT_CALL
+│     └─ len : i32
+├─ fn String2.join(self : STRUCT_CALL, str : array) : void
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ str : char[]
+│  │  │  └─ NULL_LIT : char[]
+│  │  └─ return
+│  ├─ = : i32
+│  │  ├─ len : i32
+│  │  └─ cast : i32
+│  │     └─ call strlen : i64
+│  │        └─ str : char[]
+│  ├─ call grow : void
+│  │  ├─ self : STRUCT_CALL
+│  │  └─ + : i32
+│  │     ├─ + : i32
+│  │     │  ├─ .count : i32
+│  │     │  │  └─ self : STRUCT_CALL
+│  │     │  └─ len : i32
+│  │     └─ int 1
+│  ├─ call strcat : pointer
+│  │  ├─ .value : char[]
+│  │  │  └─ self : STRUCT_CALL
+│  │  └─ str : char[]
+│  └─ += : i32
+│     ├─ .count : i32
+│     │  └─ self : STRUCT_CALL
+│     └─ len : i32
+├─ fn String2.=.array(self : STRUCT_CALL, str : array) : void
+│  └─ call assign : void
+│     ├─ self : STRUCT_CALL
+│     └─ str : char[]
+└─ fn String2.=.String2(self : STRUCT_CALL, v : STRUCT_CALL) : void
+   └─ call assign : void
+      ├─ self : STRUCT_CALL
+      └─ .value : char[]
+         └─ v : STRUCT_CALL
+
+fn add(v : STRUCT_CALL, w : STRUCT_CALL) : STRUCT_CALL
+├─ = : STRUCT_CALL
+│  ├─ res : STRUCT_CALL
+│  └─ call create : STRUCT_CALL
+├─ = : void
+│  ├─ res : STRUCT_CALL
+│  └─ v : STRUCT_CALL
+├─ call join : void
+│  ├─ res : STRUCT_CALL
+│  └─ .value : char[]
+│     └─ w : STRUCT_CALL
+└─ return
+   └─ res : STRUCT_CALL
+
+fn main() : i32
+├─ = : STRUCT_CALL
+│  ├─ s0 : STRUCT_CALL
+│  └─ call create : STRUCT_CALL
+├─ = : void
+│  ├─ s0 : STRUCT_CALL
+│  └─ char[] "1x2345"
+├─ = : STRUCT_CALL
+│  ├─ s1 : STRUCT_CALL
+│  └─ call create : STRUCT_CALL
+├─ = : void
+│  ├─ s1 : STRUCT_CALL
+│  └─ char[] "6x789"
+├─ = : STRUCT_CALL
+│  ├─ s2 : STRUCT_CALL
+│  └─ call create : STRUCT_CALL
+├─ = : void
+│  ├─ s2 : STRUCT_CALL
+│  └─ call add : STRUCT_CALL
+│     ├─ ref : STRUCT_CALL
+│     │  └─ s0 : STRUCT_CALL
+│     └─ ref : STRUCT_CALL
+│        └─ s1 : STRUCT_CALL
+├─ output : void
+│  ├─ char[] "s0:    "
+│  ├─ .value : char[]
+│  │  └─ s0 : STRUCT_CALL
+│  ├─ char[] " ("
+│  ├─ .count : i32
+│  │  └─ s0 : STRUCT_CALL
+│  └─ char[] ")\n"
+├─ output : void
+│  ├─ char[] "s1:    "
+│  ├─ .value : char[]
+│  │  └─ s1 : STRUCT_CALL
+│  ├─ char[] " ("
+│  ├─ .count : i32
+│  │  └─ s1 : STRUCT_CALL
+│  └─ char[] ")\n"
+└─ output : void
+   ├─ char[] "s0+s1: "
+   ├─ .value : char[]
+   │  └─ s2 : STRUCT_CALL
+   ├─ char[] " ("
+   ├─ .count : i32
+   │  └─ s2 : STRUCT_CALL
+   └─ char[] ")\n"
+```
+
+```out
+s0:    1x2345 (6)
+s1:    6x789 (5)
+s0+s1: 1x23456x789 (11)
+```
+
+```err
+```
+
+```ll
+
+%Os = type { i32, { { i8*, i64 }*, i64 } }
+%String = type { { i8*, i64 }, i32 }
+%String2 = type { { i8*, i64 }, i32, i32 }
+
+@os = internal global %Os zeroinitializer
+@EPERM = internal global i32 0
+@ENOENT = internal global i32 0
+@ESRCH = internal global i32 0
+@EINTR = internal global i32 0
+@EIO = internal global i32 0
+@ENXIO = internal global i32 0
+@E2BIG = internal global i32 0
+@ENOEXEC = internal global i32 0
+@EBADF = internal global i32 0
+@ECHILD = internal global i32 0
+@EACCES = internal global i32 0
+@EFAULT = internal global i32 0
+@ENOTBLK = internal global i32 0
+@EBUSY = internal global i32 0
+@EEXIST = internal global i32 0
+@EXDEV = internal global i32 0
+@ENODEV = internal global i32 0
+@ENOTDIR = internal global i32 0
+@EISDIR = internal global i32 0
+@EINVAL = internal global i32 0
+@ENFILE = internal global i32 0
+@EMFILE = internal global i32 0
+@ENOTTY = internal global i32 0
+@ETXTBSY = internal global i32 0
+@EFBIG = internal global i32 0
+@ENOSPC = internal global i32 0
+@ESPIPE = internal global i32 0
+@EROFS = internal global i32 0
+@EMLINK = internal global i32 0
+@EPIPE = internal global i32 0
+@EDOM = internal global i32 0
+@ERANGE = internal global i32 0
+@O_RDONLY = internal global i32 0
+@O_WRONLY = internal global i32 0
+@O_RDWR = internal global i32 0
+@FD_CLOEXEC = internal global i32 0
+@IPPROTO_IP = internal global i32 0
+@IPPROTO_TCP = internal global i32 0
+@IPPROTO_UDP = internal global i32 0
+@IPPROTO_IPV6 = internal global i32 0
+@SHUT_RD = internal global i32 0
+@SHUT_WR = internal global i32 0
+@SHUT_RDWR = internal global i32 0
+@POLLIN = internal global i32 0
+@POLLPRI = internal global i32 0
+@POLLOUT = internal global i32 0
+@POLLERR = internal global i32 0
+@POLLHUP = internal global i32 0
+@POLLNVAL = internal global i32 0
+@INADDR_ANY = internal global i32 0
+@INADDR_LOOPBACK = internal global i32 0
+@INADDR_BROADCAST = internal global i32 0
+@SIGHUP = internal global i32 0
+@SIGINT = internal global i32 0
+@SIGQUIT = internal global i32 0
+@SIGILL = internal global i32 0
+@SIGTRAP = internal global i32 0
+@SIGABRT = internal global i32 0
+@SIGFPE = internal global i32 0
+@SIGKILL = internal global i32 0
+@SIGSEGV = internal global i32 0
+@SIGPIPE = internal global i32 0
+@SIGALRM = internal global i32 0
+@SIGTERM = internal global i32 0
+@S_IFMT = internal global i32 0
+@S_IFSOCK = internal global i32 0
+@S_IFLNK = internal global i32 0
+@S_IFREG = internal global i32 0
+@S_IFBLK = internal global i32 0
+@S_IFDIR = internal global i32 0
+@S_IFCHR = internal global i32 0
+@S_IFIFO = internal global i32 0
+@S_ISUID = internal global i32 0
+@S_ISGID = internal global i32 0
+@S_ISVTX = internal global i32 0
+@F_OK = internal global i32 0
+@X_OK = internal global i32 0
+@W_OK = internal global i32 0
+@R_OK = internal global i32 0
+@SEEK_SET = internal global i32 0
+@SEEK_CUR = internal global i32 0
+@SEEK_END = internal global i32 0
+@STDIN_FILENO = internal global i32 0
+@STDOUT_FILENO = internal global i32 0
+@STDERR_FILENO = internal global i32 0
+@trap_msg = private unnamed_addr constant [153 x i8] c"runtime error: Modulo by zero\0A   ura-lib/string.ura:97:30\0A   |\0A97 |             digits[i] = (num % 10 + 48) as char\0A   |                              ^\0A\00", align 1
+@trap_msg.1 = private unnamed_addr constant [127 x i8] c"runtime error: Division by zero\0A   ura-lib/string.ura:98:23\0A   |\0A98 |             num = num / 10\0A   |                       ^\0A\00", align 1
+@str = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.2 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.3 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.4 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.5 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.6 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.7 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.8 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.9 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+@str.10 = private unnamed_addr constant [7 x i8] c"1x2345\00", align 1
+@str.11 = private unnamed_addr constant [6 x i8] c"6x789\00", align 1
+@str.12 = private unnamed_addr constant [8 x i8] c"s0:    \00", align 1
+@str.13 = private unnamed_addr constant [3 x i8] c" (\00", align 1
+@str.14 = private unnamed_addr constant [3 x i8] c")\0A\00", align 1
+@fmt = private unnamed_addr constant [19 x i8] c"%.*s%.*s%.*s%d%.*s\00", align 1
+@str.15 = private unnamed_addr constant [8 x i8] c"s1:    \00", align 1
+@str.16 = private unnamed_addr constant [3 x i8] c" (\00", align 1
+@str.17 = private unnamed_addr constant [3 x i8] c")\0A\00", align 1
+@fmt.18 = private unnamed_addr constant [19 x i8] c"%.*s%.*s%.*s%d%.*s\00", align 1
+@str.19 = private unnamed_addr constant [8 x i8] c"s0+s1: \00", align 1
+@str.20 = private unnamed_addr constant [3 x i8] c" (\00", align 1
+@str.21 = private unnamed_addr constant [3 x i8] c")\0A\00", align 1
+@fmt.22 = private unnamed_addr constant [19 x i8] c"%.*s%.*s%.*s%d%.*s\00", align 1
+
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
+
+define %String @String.create() {
+entry:
+  %s = alloca %String, align 8
+  store %String zeroinitializer, %String* %s, align 8
+  %value = getelementptr %String, %String* %s, i32 0, i32 0
+  %heap = call i8* @calloc(i64 16, i64 1)
+  %arr.ptr = insertvalue { i8*, i64 } undef, i8* %heap, 0
+  %arr.len = insertvalue { i8*, i64 } %arr.ptr, i64 16, 1
+  store { i8*, i64 } %arr.len, { i8*, i64 }* %value, align 8
+  %count = getelementptr %String, %String* %s, i32 0, i32 1
+  store i32 0, i32* %count, align 4
+  %s1 = load %String, %String* %s, align 8
+  ret %String %s1
+}
+
+declare i8* @calloc(i64, i64)
+
+define %String @String.from({ i8*, i64 } %0) {
+entry:
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %0, { i8*, i64 }* %str, align 8
+  %s = alloca %String, align 8
+  %call = call %String @String.create()
+  store %String %call, %String* %s, align 8
+  %str1 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  call void @String.assign(%String* %s, { i8*, i64 } %str1)
+  %s2 = load %String, %String* %s, align 8
+  ret %String %s2
+}
+
+define void @String.assign(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %n = alloca i32, align 4
+  store i32 0, i32* %n, align 4
+  %str1 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %str1, 0
+  %nullcmp = icmp ne i8* %opt.ptr, null
+  br i1 %nullcmp, label %then, label %endif
+
+endif:                                            ; preds = %then, %entry
+  %ref = load %String*, %String** %self, align 8
+  %n3 = load i32, i32* %n, align 4
+  %add = add i32 %n3, 1
+  call void @String.grow(%String* %ref, i32 %add)
+  %n6 = load i32, i32* %n, align 4
+  %gt = icmp sgt i32 %n6, 0
+  br i1 %gt, label %then5, label %endif4
+
+then:                                             ; preds = %entry
+  %str2 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %arr.data = extractvalue { i8*, i64 } %str2, 0
+  %call = call i64 @strlen(i8* %arr.data)
+  %cast = trunc i64 %call to i32
+  store i32 %cast, i32* %n, align 4
+  br label %endif
+
+endif4:                                           ; preds = %then5, %endif
+  %ref18 = load %String*, %String** %self, align 8
+  %value19 = getelementptr %String, %String* %ref18, i32 0, i32 0
+  %value20 = load { i8*, i64 }, { i8*, i64 }* %value19, align 8
+  %arr.data21 = extractvalue { i8*, i64 } %value20, 0
+  %n22 = load i32, i32* %n, align 4
+  %arr.at = getelementptr i8, i8* %arr.data21, i32 %n22
+  store i8 0, i8* %arr.at, align 1
+  %ref23 = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref23, i32 0, i32 1
+  %n24 = load i32, i32* %n, align 4
+  store i32 %n24, i32* %count, align 4
+  ret void
+
+then5:                                            ; preds = %endif
+  %ref7 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref7, i32 0, i32 0
+  %value8 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr9 = extractvalue { i8*, i64 } %value8, 0
+  %isnull = icmp eq i8* %opt.ptr9, null
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.2, i32 0, i32 0), i64 0 }, { i8*, i64 } %value8
+  %arr.data10 = extractvalue { i8*, i64 } %fallback, 0
+  %str11 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %opt.ptr12 = extractvalue { i8*, i64 } %str11, 0
+  %isnull13 = icmp eq i8* %opt.ptr12, null
+  %fallback14 = select i1 %isnull13, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.3, i32 0, i32 0), i64 0 }, { i8*, i64 } %str11
+  %arr.data15 = extractvalue { i8*, i64 } %fallback14, 0
+  %n16 = load i32, i32* %n, align 4
+  %call17 = call i8* @memcpy(i8* %arr.data10, i8* %arr.data15, i32 %n16)
+  br label %endif4
+}
+
+define %String @String.from_int(i32 %0) {
+entry:
+  %n = alloca i32, align 4
+  store i32 %0, i32* %n, align 4
+  %s = alloca %String, align 8
+  %call = call %String @String.create()
+  store %String %call, %String* %s, align 8
+  %n1 = load i32, i32* %n, align 4
+  %eq = icmp eq i32 %n1, 0
+  br i1 %eq, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %num = alloca i32, align 4
+  %n3 = load i32, i32* %n, align 4
+  store i32 %n3, i32* %num, align 4
+  %num6 = load i32, i32* %num, align 4
+  %lt = icmp slt i32 %num6, 0
+  br i1 %lt, label %then5, label %endif4
+
+then:                                             ; preds = %entry
+  call void @String.push(%String* %s, i8 48)
+  %s2 = load %String, %String* %s, align 8
+  ret %String %s2
+
+endif4:                                           ; preds = %then5, %endif
+  %digits = alloca { i8*, i64 }, align 8
+  %heap = call i8* @calloc(i64 12, i64 1)
+  %arr.ptr = insertvalue { i8*, i64 } undef, i8* %heap, 0
+  %arr.len = insertvalue { i8*, i64 } %arr.ptr, i64 12, 1
+  store { i8*, i64 } %arr.len, { i8*, i64 }* %digits, align 8
+  %i = alloca i32, align 4
+  store i32 0, i32* %i, align 4
+  br label %while.cond
+
+then5:                                            ; preds = %endif
+  call void @String.push(%String* %s, i8 45)
+  %num7 = load i32, i32* %num, align 4
+  %sub = sub i32 0, %num7
+  store i32 %sub, i32* %num, align 4
+  br label %endif4
+
+while.cond:                                       ; preds = %cont14, %endif4
+  %num8 = load i32, i32* %num, align 4
+  %gt = icmp sgt i32 %num8, 0
+  br i1 %gt, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %digits9 = load { i8*, i64 }, { i8*, i64 }* %digits, align 8
+  %arr.data = extractvalue { i8*, i64 } %digits9, 0
+  %i10 = load i32, i32* %i, align 4
+  %arr.at = getelementptr i8, i8* %arr.data, i32 %i10
+  %num11 = load i32, i32* %num, align 4
+  br i1 false, label %trap, label %cont
+
+while.end:                                        ; preds = %while.cond
+  br label %while.cond16
+
+trap:                                             ; preds = %while.body
+  %1 = call i64 @write(i32 2, i8* getelementptr inbounds ([153 x i8], [153 x i8]* @trap_msg, i32 0, i32 0), i64 152)
+  call void @exit(i32 1)
+  unreachable
+
+cont:                                             ; preds = %while.body
+  %mod = srem i32 %num11, 10
+  %add = add i32 %mod, 48
+  %cast = trunc i32 %add to i8
+  store i8 %cast, i8* %arr.at, align 1
+  %num12 = load i32, i32* %num, align 4
+  br i1 false, label %trap13, label %cont14
+
+trap13:                                           ; preds = %cont
+  %2 = call i64 @write(i32 2, i8* getelementptr inbounds ([127 x i8], [127 x i8]* @trap_msg.1, i32 0, i32 0), i64 126)
+  call void @exit(i32 1)
+  unreachable
+
+cont14:                                           ; preds = %cont
+  %div = sdiv i32 %num12, 10
+  store i32 %div, i32* %num, align 4
+  %cur = load i32, i32* %i, align 4
+  %add15 = add i32 %cur, 1
+  store i32 %add15, i32* %i, align 4
+  br label %while.cond
+
+while.cond16:                                     ; preds = %while.body17, %while.end
+  %i19 = load i32, i32* %i, align 4
+  %gt20 = icmp sgt i32 %i19, 0
+  br i1 %gt20, label %while.body17, label %while.end18
+
+while.body17:                                     ; preds = %while.cond16
+  %cur21 = load i32, i32* %i, align 4
+  %sub22 = sub i32 %cur21, 1
+  store i32 %sub22, i32* %i, align 4
+  %digits23 = load { i8*, i64 }, { i8*, i64 }* %digits, align 8
+  %arr.data24 = extractvalue { i8*, i64 } %digits23, 0
+  %i25 = load i32, i32* %i, align 4
+  %arr.at26 = getelementptr i8, i8* %arr.data24, i32 %i25
+  %idx = load i8, i8* %arr.at26, align 1
+  call void @String.push(%String* %s, i8 %idx)
+  br label %while.cond16
+
+while.end18:                                      ; preds = %while.cond16
+  %arr = load { i8*, i64 }, { i8*, i64 }* %digits, align 8
+  %arr.data27 = extractvalue { i8*, i64 } %arr, 0
+  call void @free(i8* %arr.data27)
+  store { i8*, i64 } zeroinitializer, { i8*, i64 }* %digits, align 8
+  %s28 = load %String, %String* %s, align 8
+  ret %String %s28
+}
+
+define void @String.push(%String* %0, i8 %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %c = alloca i8, align 1
+  store i8 %1, i8* %c, align 1
+  %ref = load %String*, %String** %self, align 8
+  %ref1 = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref1, i32 0, i32 1
+  %count2 = load i32, i32* %count, align 4
+  %add = add i32 %count2, 2
+  call void @String.grow(%String* %ref, i32 %add)
+  %ref3 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref3, i32 0, i32 0
+  %value4 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data = extractvalue { i8*, i64 } %value4, 0
+  %ref5 = load %String*, %String** %self, align 8
+  %count6 = getelementptr %String, %String* %ref5, i32 0, i32 1
+  %count7 = load i32, i32* %count6, align 4
+  %arr.at = getelementptr i8, i8* %arr.data, i32 %count7
+  %c8 = load i8, i8* %c, align 1
+  store i8 %c8, i8* %arr.at, align 1
+  %ref9 = load %String*, %String** %self, align 8
+  %count10 = getelementptr %String, %String* %ref9, i32 0, i32 1
+  %cur = load i32, i32* %count10, align 4
+  %add11 = add i32 %cur, 1
+  store i32 %add11, i32* %count10, align 4
+  %ref12 = load %String*, %String** %self, align 8
+  %value13 = getelementptr %String, %String* %ref12, i32 0, i32 0
+  %value14 = load { i8*, i64 }, { i8*, i64 }* %value13, align 8
+  %arr.data15 = extractvalue { i8*, i64 } %value14, 0
+  %ref16 = load %String*, %String** %self, align 8
+  %count17 = getelementptr %String, %String* %ref16, i32 0, i32 1
+  %count18 = load i32, i32* %count17, align 4
+  %arr.at19 = getelementptr i8, i8* %arr.data15, i32 %count18
+  store i8 0, i8* %arr.at19, align 1
+  ret void
+}
+
+declare i64 @write(i32, i8*, i64)
+
+declare void @exit(i32)
+
+declare void @free(i8*)
+
+define void @String.drop(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %arr = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data = extractvalue { i8*, i64 } %arr, 0
+  call void @free(i8* %arr.data)
+  store { i8*, i64 } zeroinitializer, { i8*, i64 }* %value, align 8
+  ret void
+}
+
+define i32 @String.cap(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %value1, 0
+  %nullcmp = icmp eq i8* %opt.ptr, null
+  br i1 %nullcmp, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %ref2 = load %String*, %String** %self, align 8
+  %value3 = getelementptr %String, %String* %ref2, i32 0, i32 0
+  %value4 = load { i8*, i64 }, { i8*, i64 }* %value3, align 8
+  %len = extractvalue { i8*, i64 } %value4, 1
+  %cast = trunc i64 %len to i32
+  ret i32 %cast
+
+then:                                             ; preds = %entry
+  ret i32 0
+}
+
+define void @String.grow(%String* %0, i32 %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %want = alloca i32, align 4
+  store i32 %1, i32* %want, align 4
+  %room = alloca i32, align 4
+  %ref = load %String*, %String** %self, align 8
+  %call = call i32 @String.cap(%String* %ref)
+  store i32 %call, i32* %room, align 4
+  %room1 = load i32, i32* %room, align 4
+  %want2 = load i32, i32* %want, align 4
+  %ge = icmp sge i32 %room1, %want2
+  br i1 %ge, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %room5 = load i32, i32* %room, align 4
+  %eq = icmp eq i32 %room5, 0
+  br i1 %eq, label %then4, label %endif3
+
+then:                                             ; preds = %entry
+  ret void
+
+endif3:                                           ; preds = %then4, %endif
+  br label %while.cond
+
+then4:                                            ; preds = %endif
+  store i32 16, i32* %room, align 4
+  br label %endif3
+
+while.cond:                                       ; preds = %while.body, %endif3
+  %room6 = load i32, i32* %room, align 4
+  %want7 = load i32, i32* %want, align 4
+  %lt = icmp slt i32 %room6, %want7
+  br i1 %lt, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %cur = load i32, i32* %room, align 4
+  %mul = mul i32 %cur, 2
+  store i32 %mul, i32* %room, align 4
+  br label %while.cond
+
+while.end:                                        ; preds = %while.cond
+  %bigger = alloca { i8*, i64 }, align 8
+  %room8 = load i32, i32* %room, align 4
+  %n = sext i32 %room8 to i64
+  %heap = call i8* @calloc(i64 %n, i64 1)
+  %arr.ptr = insertvalue { i8*, i64 } undef, i8* %heap, 0
+  %arr.len = insertvalue { i8*, i64 } %arr.ptr, i64 %n, 1
+  store { i8*, i64 } %arr.len, { i8*, i64 }* %bigger, align 8
+  %ref11 = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref11, i32 0, i32 1
+  %count12 = load i32, i32* %count, align 4
+  %gt = icmp sgt i32 %count12, 0
+  br i1 %gt, label %then10, label %endif9
+
+endif9:                                           ; preds = %then10, %while.end
+  %bigger21 = load { i8*, i64 }, { i8*, i64 }* %bigger, align 8
+  %arr.data22 = extractvalue { i8*, i64 } %bigger21, 0
+  %ref23 = load %String*, %String** %self, align 8
+  %count24 = getelementptr %String, %String* %ref23, i32 0, i32 1
+  %count25 = load i32, i32* %count24, align 4
+  %arr.at = getelementptr i8, i8* %arr.data22, i32 %count25
+  store i8 0, i8* %arr.at, align 1
+  %ref26 = load %String*, %String** %self, align 8
+  %value27 = getelementptr %String, %String* %ref26, i32 0, i32 0
+  %arr = load { i8*, i64 }, { i8*, i64 }* %value27, align 8
+  %arr.data28 = extractvalue { i8*, i64 } %arr, 0
+  call void @free(i8* %arr.data28)
+  store { i8*, i64 } zeroinitializer, { i8*, i64 }* %value27, align 8
+  %ref29 = load %String*, %String** %self, align 8
+  %value30 = getelementptr %String, %String* %ref29, i32 0, i32 0
+  %bigger31 = load { i8*, i64 }, { i8*, i64 }* %bigger, align 8
+  store { i8*, i64 } %bigger31, { i8*, i64 }* %value30, align 8
+  ret void
+
+then10:                                           ; preds = %while.end
+  %bigger13 = load { i8*, i64 }, { i8*, i64 }* %bigger, align 8
+  %arr.data = extractvalue { i8*, i64 } %bigger13, 0
+  %ref14 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref14, i32 0, i32 0
+  %value15 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %value15, 0
+  %isnull = icmp eq i8* %opt.ptr, null
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str, i32 0, i32 0), i64 0 }, { i8*, i64 } %value15
+  %arr.data16 = extractvalue { i8*, i64 } %fallback, 0
+  %ref17 = load %String*, %String** %self, align 8
+  %count18 = getelementptr %String, %String* %ref17, i32 0, i32 1
+  %count19 = load i32, i32* %count18, align 4
+  %call20 = call i8* @memcpy(i8* %arr.data, i8* %arr.data16, i32 %count19)
+  br label %endif9
+}
+
+declare i8* @memcpy(i8*, i8*, i32)
+
+declare i64 @strlen(i8*)
+
+define void @String.join(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %str1 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %str1, 0
+  %nullcmp = icmp eq i8* %opt.ptr, null
+  br i1 %nullcmp, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %n = alloca i32, align 4
+  %str2 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %arr.data = extractvalue { i8*, i64 } %str2, 0
+  %call = call i64 @strlen(i8* %arr.data)
+  %cast = trunc i64 %call to i32
+  store i32 %cast, i32* %n, align 4
+  %n5 = load i32, i32* %n, align 4
+  %eq = icmp eq i32 %n5, 0
+  br i1 %eq, label %then4, label %endif3
+
+then:                                             ; preds = %entry
+  ret void
+
+endif3:                                           ; preds = %endif
+  %ref = load %String*, %String** %self, align 8
+  %ref6 = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref6, i32 0, i32 1
+  %count7 = load i32, i32* %count, align 4
+  %n8 = load i32, i32* %n, align 4
+  %add = add i32 %count7, %n8
+  %add9 = add i32 %add, 1
+  call void @String.grow(%String* %ref, i32 %add9)
+  %ref10 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref10, i32 0, i32 0
+  %value11 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data12 = extractvalue { i8*, i64 } %value11, 0
+  %ref13 = load %String*, %String** %self, align 8
+  %count14 = getelementptr %String, %String* %ref13, i32 0, i32 1
+  %count15 = load i32, i32* %count14, align 4
+  %ref16 = load %String*, %String** %self, align 8
+  %count17 = getelementptr %String, %String* %ref16, i32 0, i32 1
+  %count18 = load i32, i32* %count17, align 4
+  %n19 = load i32, i32* %n, align 4
+  %add20 = add i32 %count18, %n19
+  %start = sext i32 %count15 to i64
+  %end = sext i32 %add20 to i64
+  %slice.data = getelementptr i8, i8* %arr.data12, i64 %start
+  %slice.len = sub i64 %end, %start
+  %arr.ptr = insertvalue { i8*, i64 } undef, i8* %slice.data, 0
+  %arr.len = insertvalue { i8*, i64 } %arr.ptr, i64 %slice.len, 1
+  %arr.data21 = extractvalue { i8*, i64 } %arr.len, 0
+  %str22 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %arr.data23 = extractvalue { i8*, i64 } %str22, 0
+  %n24 = load i32, i32* %n, align 4
+  %call25 = call i8* @memcpy(i8* %arr.data21, i8* %arr.data23, i32 %n24)
+  %ref26 = load %String*, %String** %self, align 8
+  %count27 = getelementptr %String, %String* %ref26, i32 0, i32 1
+  %n28 = load i32, i32* %n, align 4
+  %cur = load i32, i32* %count27, align 4
+  %add29 = add i32 %cur, %n28
+  store i32 %add29, i32* %count27, align 4
+  %ref30 = load %String*, %String** %self, align 8
+  %value31 = getelementptr %String, %String* %ref30, i32 0, i32 0
+  %value32 = load { i8*, i64 }, { i8*, i64 }* %value31, align 8
+  %arr.data33 = extractvalue { i8*, i64 } %value32, 0
+  %ref34 = load %String*, %String** %self, align 8
+  %count35 = getelementptr %String, %String* %ref34, i32 0, i32 1
+  %count36 = load i32, i32* %count35, align 4
+  %arr.at = getelementptr i8, i8* %arr.data33, i32 %count36
+  store i8 0, i8* %arr.at, align 1
+  ret void
+
+then4:                                            ; preds = %endif
+  ret void
+}
+
+define i8 @String.pop(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count1 = load i32, i32* %count, align 4
+  %eq = icmp eq i32 %count1, 0
+  br i1 %eq, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %ref2 = load %String*, %String** %self, align 8
+  %count3 = getelementptr %String, %String* %ref2, i32 0, i32 1
+  %cur = load i32, i32* %count3, align 4
+  %sub = sub i32 %cur, 1
+  store i32 %sub, i32* %count3, align 4
+  %c = alloca i8, align 1
+  %ref4 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref4, i32 0, i32 0
+  %value5 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data = extractvalue { i8*, i64 } %value5, 0
+  %ref6 = load %String*, %String** %self, align 8
+  %count7 = getelementptr %String, %String* %ref6, i32 0, i32 1
+  %count8 = load i32, i32* %count7, align 4
+  %arr.at = getelementptr i8, i8* %arr.data, i32 %count8
+  %idx = load i8, i8* %arr.at, align 1
+  store i8 %idx, i8* %c, align 1
+  %ref9 = load %String*, %String** %self, align 8
+  %value10 = getelementptr %String, %String* %ref9, i32 0, i32 0
+  %value11 = load { i8*, i64 }, { i8*, i64 }* %value10, align 8
+  %arr.data12 = extractvalue { i8*, i64 } %value11, 0
+  %ref13 = load %String*, %String** %self, align 8
+  %count14 = getelementptr %String, %String* %ref13, i32 0, i32 1
+  %count15 = load i32, i32* %count14, align 4
+  %arr.at16 = getelementptr i8, i8* %arr.data12, i32 %count15
+  store i8 0, i8* %arr.at16, align 1
+  %c17 = load i8, i8* %c, align 1
+  ret i8 %c17
+
+then:                                             ; preds = %entry
+  ret i8 0
+}
+
+define void @String.clear(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  store i32 0, i32* %count, align 4
+  %ref1 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref1, i32 0, i32 0
+  %value2 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %value2, 0
+  %nullcmp = icmp ne i8* %opt.ptr, null
+  br i1 %nullcmp, label %then, label %endif
+
+endif:                                            ; preds = %then, %entry
+  ret void
+
+then:                                             ; preds = %entry
+  %ref3 = load %String*, %String** %self, align 8
+  %value4 = getelementptr %String, %String* %ref3, i32 0, i32 0
+  %value5 = load { i8*, i64 }, { i8*, i64 }* %value4, align 8
+  %arr.data = extractvalue { i8*, i64 } %value5, 0
+  %arr.at = getelementptr i8, i8* %arr.data, i32 0
+  store i8 0, i8* %arr.at, align 1
+  br label %endif
+}
+
+define i32 @String.len(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count1 = load i32, i32* %count, align 4
+  ret i32 %count1
+}
+
+define i1 @String.empty(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count1 = load i32, i32* %count, align 4
+  %eq = icmp eq i32 %count1, 0
+  ret i1 %eq
+}
+
+define { i8*, i64 } @String.c_str(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %value1, 0
+  %isnull = icmp eq i8* %opt.ptr, null
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.4, i32 0, i32 0), i64 0 }, { i8*, i64 } %value1
+  ret { i8*, i64 } %fallback
+}
+
+define i8 @String.at(%String* %0, i32 %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %i = alloca i32, align 4
+  store i32 %1, i32* %i, align 4
+  %i1 = load i32, i32* %i, align 4
+  %lt = icmp slt i32 %i1, 0
+  %i2 = load i32, i32* %i, align 4
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count3 = load i32, i32* %count, align 4
+  %ge = icmp sge i32 %i2, %count3
+  %or = or i1 %lt, %ge
+  br i1 %or, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %ref4 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref4, i32 0, i32 0
+  %value5 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data = extractvalue { i8*, i64 } %value5, 0
+  %i6 = load i32, i32* %i, align 4
+  %arr.at = getelementptr i8, i8* %arr.data, i32 %i6
+  %idx = load i8, i8* %arr.at, align 1
+  ret i8 %idx
+
+then:                                             ; preds = %entry
+  ret i8 0
+}
+
+define i32 @String.find(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %needle = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %needle, align 8
+  %needle1 = load { i8*, i64 }, { i8*, i64 }* %needle, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %needle1, 0
+  %nullcmp = icmp eq i8* %opt.ptr, null
+  br i1 %nullcmp, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %n = alloca i32, align 4
+  %needle2 = load { i8*, i64 }, { i8*, i64 }* %needle, align 8
+  %arr.data = extractvalue { i8*, i64 } %needle2, 0
+  %call = call i64 @strlen(i8* %arr.data)
+  %cast = trunc i64 %call to i32
+  store i32 %cast, i32* %n, align 4
+  %n5 = load i32, i32* %n, align 4
+  %eq = icmp eq i32 %n5, 0
+  br i1 %eq, label %then4, label %endif3
+
+then:                                             ; preds = %entry
+  ret i32 -1
+
+endif3:                                           ; preds = %endif
+  %i = alloca i32, align 4
+  store i32 0, i32* %i, align 4
+  br label %while.cond
+
+then4:                                            ; preds = %endif
+  ret i32 0
+
+while.cond:                                       ; preds = %endif9, %endif3
+  %i6 = load i32, i32* %i, align 4
+  %n7 = load i32, i32* %n, align 4
+  %add = add i32 %i6, %n7
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count8 = load i32, i32* %count, align 4
+  %le = icmp sle i32 %add, %count8
+  br i1 %le, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %ref11 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref11, i32 0, i32 0
+  %value12 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data13 = extractvalue { i8*, i64 } %value12, 0
+  %i14 = load i32, i32* %i, align 4
+  %i15 = load i32, i32* %i, align 4
+  %n16 = load i32, i32* %n, align 4
+  %add17 = add i32 %i15, %n16
+  %start = sext i32 %i14 to i64
+  %end = sext i32 %add17 to i64
+  %slice.data = getelementptr i8, i8* %arr.data13, i64 %start
+  %slice.len = sub i64 %end, %start
+  %arr.ptr = insertvalue { i8*, i64 } undef, i8* %slice.data, 0
+  %arr.len = insertvalue { i8*, i64 } %arr.ptr, i64 %slice.len, 1
+  %arr.data18 = extractvalue { i8*, i64 } %arr.len, 0
+  %needle19 = load { i8*, i64 }, { i8*, i64 }* %needle, align 8
+  %arr.data20 = extractvalue { i8*, i64 } %needle19, 0
+  %n21 = load i32, i32* %n, align 4
+  %call22 = call i32 @strncmp(i8* %arr.data18, i8* %arr.data20, i32 %n21)
+  %eq23 = icmp eq i32 %call22, 0
+  br i1 %eq23, label %then10, label %endif9
+
+while.end:                                        ; preds = %while.cond
+  ret i32 -1
+
+endif9:                                           ; preds = %while.body
+  %cur = load i32, i32* %i, align 4
+  %add25 = add i32 %cur, 1
+  store i32 %add25, i32* %i, align 4
+  br label %while.cond
+
+then10:                                           ; preds = %while.body
+  %i24 = load i32, i32* %i, align 4
+  ret i32 %i24
+}
+
+declare i32 @strncmp(i8*, i8*, i32)
+
+define i1 @String.contains(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %needle = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %needle, align 8
+  %ref = load %String*, %String** %self, align 8
+  %needle1 = load { i8*, i64 }, { i8*, i64 }* %needle, align 8
+  %call = call i32 @String.find(%String* %ref, { i8*, i64 } %needle1)
+  %ne = icmp ne i32 %call, -1
+  ret i1 %ne
+}
+
+define i1 @String.starts_with(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %prefix = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %prefix, align 8
+  %prefix1 = load { i8*, i64 }, { i8*, i64 }* %prefix, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %prefix1, 0
+  %nullcmp = icmp eq i8* %opt.ptr, null
+  br i1 %nullcmp, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %n = alloca i32, align 4
+  %prefix2 = load { i8*, i64 }, { i8*, i64 }* %prefix, align 8
+  %arr.data = extractvalue { i8*, i64 } %prefix2, 0
+  %call = call i64 @strlen(i8* %arr.data)
+  %cast = trunc i64 %call to i32
+  store i32 %cast, i32* %n, align 4
+  %n5 = load i32, i32* %n, align 4
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count6 = load i32, i32* %count, align 4
+  %gt = icmp sgt i32 %n5, %count6
+  br i1 %gt, label %then4, label %endif3
+
+then:                                             ; preds = %entry
+  ret i1 true
+
+endif3:                                           ; preds = %endif
+  %ref7 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref7, i32 0, i32 0
+  %value8 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data9 = extractvalue { i8*, i64 } %value8, 0
+  %n10 = load i32, i32* %n, align 4
+  %end = sext i32 %n10 to i64
+  %slice.data = getelementptr i8, i8* %arr.data9, i64 0
+  %slice.len = sub i64 %end, 0
+  %arr.ptr = insertvalue { i8*, i64 } undef, i8* %slice.data, 0
+  %arr.len = insertvalue { i8*, i64 } %arr.ptr, i64 %slice.len, 1
+  %arr.data11 = extractvalue { i8*, i64 } %arr.len, 0
+  %prefix12 = load { i8*, i64 }, { i8*, i64 }* %prefix, align 8
+  %arr.data13 = extractvalue { i8*, i64 } %prefix12, 0
+  %n14 = load i32, i32* %n, align 4
+  %call15 = call i32 @strncmp(i8* %arr.data11, i8* %arr.data13, i32 %n14)
+  %eq = icmp eq i32 %call15, 0
+  ret i1 %eq
+
+then4:                                            ; preds = %endif
+  ret i1 false
+}
+
+define i1 @String.ends_with(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %suffix = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %suffix, align 8
+  %suffix1 = load { i8*, i64 }, { i8*, i64 }* %suffix, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %suffix1, 0
+  %nullcmp = icmp eq i8* %opt.ptr, null
+  br i1 %nullcmp, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %n = alloca i32, align 4
+  %suffix2 = load { i8*, i64 }, { i8*, i64 }* %suffix, align 8
+  %arr.data = extractvalue { i8*, i64 } %suffix2, 0
+  %call = call i64 @strlen(i8* %arr.data)
+  %cast = trunc i64 %call to i32
+  store i32 %cast, i32* %n, align 4
+  %n5 = load i32, i32* %n, align 4
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count6 = load i32, i32* %count, align 4
+  %gt = icmp sgt i32 %n5, %count6
+  br i1 %gt, label %then4, label %endif3
+
+then:                                             ; preds = %entry
+  ret i1 true
+
+endif3:                                           ; preds = %endif
+  %ref7 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref7, i32 0, i32 0
+  %value8 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data9 = extractvalue { i8*, i64 } %value8, 0
+  %ref10 = load %String*, %String** %self, align 8
+  %count11 = getelementptr %String, %String* %ref10, i32 0, i32 1
+  %count12 = load i32, i32* %count11, align 4
+  %n13 = load i32, i32* %n, align 4
+  %sub = sub i32 %count12, %n13
+  %ref14 = load %String*, %String** %self, align 8
+  %count15 = getelementptr %String, %String* %ref14, i32 0, i32 1
+  %count16 = load i32, i32* %count15, align 4
+  %start = sext i32 %sub to i64
+  %end = sext i32 %count16 to i64
+  %slice.data = getelementptr i8, i8* %arr.data9, i64 %start
+  %slice.len = sub i64 %end, %start
+  %arr.ptr = insertvalue { i8*, i64 } undef, i8* %slice.data, 0
+  %arr.len = insertvalue { i8*, i64 } %arr.ptr, i64 %slice.len, 1
+  %arr.data17 = extractvalue { i8*, i64 } %arr.len, 0
+  %suffix18 = load { i8*, i64 }, { i8*, i64 }* %suffix, align 8
+  %arr.data19 = extractvalue { i8*, i64 } %suffix18, 0
+  %n20 = load i32, i32* %n, align 4
+  %call21 = call i32 @strncmp(i8* %arr.data17, i8* %arr.data19, i32 %n20)
+  %eq = icmp eq i32 %call21, 0
+  ret i1 %eq
+
+then4:                                            ; preds = %endif
+  ret i1 false
+}
+
+define %String @String.substr(%String* %0, i32 %1, i32 %2) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %start = alloca i32, align 4
+  store i32 %1, i32* %start, align 4
+  %length = alloca i32, align 4
+  store i32 %2, i32* %length, align 4
+  %res = alloca %String, align 8
+  %call = call %String @String.create()
+  store %String %call, %String* %res, align 8
+  %start1 = load i32, i32* %start, align 4
+  %lt = icmp slt i32 %start1, 0
+  %start2 = load i32, i32* %start, align 4
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count3 = load i32, i32* %count, align 4
+  %ge = icmp sge i32 %start2, %count3
+  %or = or i1 %lt, %ge
+  br i1 %or, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %stop = alloca i32, align 4
+  %start5 = load i32, i32* %start, align 4
+  %length6 = load i32, i32* %length, align 4
+  %add = add i32 %start5, %length6
+  store i32 %add, i32* %stop, align 4
+  %stop9 = load i32, i32* %stop, align 4
+  %ref10 = load %String*, %String** %self, align 8
+  %count11 = getelementptr %String, %String* %ref10, i32 0, i32 1
+  %count12 = load i32, i32* %count11, align 4
+  %gt = icmp sgt i32 %stop9, %count12
+  br i1 %gt, label %then8, label %endif7
+
+then:                                             ; preds = %entry
+  %res4 = load %String, %String* %res, align 8
+  ret %String %res4
+
+endif7:                                           ; preds = %then8, %endif
+  %i = alloca i32, align 4
+  %start16 = load i32, i32* %start, align 4
+  store i32 %start16, i32* %i, align 4
+  br label %while.cond
+
+then8:                                            ; preds = %endif
+  %ref13 = load %String*, %String** %self, align 8
+  %count14 = getelementptr %String, %String* %ref13, i32 0, i32 1
+  %count15 = load i32, i32* %count14, align 4
+  store i32 %count15, i32* %stop, align 4
+  br label %endif7
+
+while.cond:                                       ; preds = %while.body, %endif7
+  %i17 = load i32, i32* %i, align 4
+  %stop18 = load i32, i32* %stop, align 4
+  %lt19 = icmp slt i32 %i17, %stop18
+  br i1 %lt19, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %ref20 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref20, i32 0, i32 0
+  %value21 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data = extractvalue { i8*, i64 } %value21, 0
+  %i22 = load i32, i32* %i, align 4
+  %arr.at = getelementptr i8, i8* %arr.data, i32 %i22
+  %idx = load i8, i8* %arr.at, align 1
+  call void @String.push(%String* %res, i8 %idx)
+  %cur = load i32, i32* %i, align 4
+  %add23 = add i32 %cur, 1
+  store i32 %add23, i32* %i, align 4
+  br label %while.cond
+
+while.end:                                        ; preds = %while.cond
+  %res24 = load %String, %String* %res, align 8
+  ret %String %res24
+}
+
+define %String @String.upper(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %res = alloca %String, align 8
+  %call = call %String @String.create()
+  store %String %call, %String* %res, align 8
+  %i = alloca i32, align 4
+  store i32 0, i32* %i, align 4
+  br label %while.cond
+
+while.cond:                                       ; preds = %endif, %entry
+  %i1 = load i32, i32* %i, align 4
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count2 = load i32, i32* %count, align 4
+  %lt = icmp slt i32 %i1, %count2
+  br i1 %lt, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %c = alloca i8, align 1
+  %ref3 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref3, i32 0, i32 0
+  %value4 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data = extractvalue { i8*, i64 } %value4, 0
+  %i5 = load i32, i32* %i, align 4
+  %arr.at = getelementptr i8, i8* %arr.data, i32 %i5
+  %idx = load i8, i8* %arr.at, align 1
+  store i8 %idx, i8* %c, align 1
+  %c6 = load i8, i8* %c, align 1
+  %ge = icmp sge i8 %c6, 97
+  %c7 = load i8, i8* %c, align 1
+  %le = icmp sle i8 %c7, 122
+  %and = and i1 %ge, %le
+  br i1 %and, label %then, label %next
+
+while.end:                                        ; preds = %while.cond
+  %res11 = load %String, %String* %res, align 8
+  ret %String %res11
+
+endif:                                            ; preds = %next, %then
+  %cur = load i32, i32* %i, align 4
+  %add = add i32 %cur, 1
+  store i32 %add, i32* %i, align 4
+  br label %while.cond
+
+then:                                             ; preds = %while.body
+  %c8 = load i8, i8* %c, align 1
+  %cast = sext i8 %c8 to i32
+  %sub = sub i32 %cast, 32
+  %cast9 = trunc i32 %sub to i8
+  call void @String.push(%String* %res, i8 %cast9)
+  br label %endif
+
+next:                                             ; preds = %while.body
+  %c10 = load i8, i8* %c, align 1
+  call void @String.push(%String* %res, i8 %c10)
+  br label %endif
+}
+
+define %String @String.lower(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %res = alloca %String, align 8
+  %call = call %String @String.create()
+  store %String %call, %String* %res, align 8
+  %i = alloca i32, align 4
+  store i32 0, i32* %i, align 4
+  br label %while.cond
+
+while.cond:                                       ; preds = %endif, %entry
+  %i1 = load i32, i32* %i, align 4
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count2 = load i32, i32* %count, align 4
+  %lt = icmp slt i32 %i1, %count2
+  br i1 %lt, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %c = alloca i8, align 1
+  %ref3 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref3, i32 0, i32 0
+  %value4 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data = extractvalue { i8*, i64 } %value4, 0
+  %i5 = load i32, i32* %i, align 4
+  %arr.at = getelementptr i8, i8* %arr.data, i32 %i5
+  %idx = load i8, i8* %arr.at, align 1
+  store i8 %idx, i8* %c, align 1
+  %c6 = load i8, i8* %c, align 1
+  %ge = icmp sge i8 %c6, 65
+  %c7 = load i8, i8* %c, align 1
+  %le = icmp sle i8 %c7, 90
+  %and = and i1 %ge, %le
+  br i1 %and, label %then, label %next
+
+while.end:                                        ; preds = %while.cond
+  %res12 = load %String, %String* %res, align 8
+  ret %String %res12
+
+endif:                                            ; preds = %next, %then
+  %cur = load i32, i32* %i, align 4
+  %add11 = add i32 %cur, 1
+  store i32 %add11, i32* %i, align 4
+  br label %while.cond
+
+then:                                             ; preds = %while.body
+  %c8 = load i8, i8* %c, align 1
+  %cast = sext i8 %c8 to i32
+  %add = add i32 %cast, 32
+  %cast9 = trunc i32 %add to i8
+  call void @String.push(%String* %res, i8 %cast9)
+  br label %endif
+
+next:                                             ; preds = %while.body
+  %c10 = load i8, i8* %c, align 1
+  call void @String.push(%String* %res, i8 %c10)
+  br label %endif
+}
+
+define %String @String.trim(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %start = alloca i32, align 4
+  store i32 0, i32* %start, align 4
+  br label %while.cond
+
+while.cond:                                       ; preds = %endif, %entry
+  %start1 = load i32, i32* %start, align 4
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count2 = load i32, i32* %count, align 4
+  %lt = icmp slt i32 %start1, %count2
+  br i1 %lt, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %c = alloca i8, align 1
+  %ref3 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref3, i32 0, i32 0
+  %value4 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data = extractvalue { i8*, i64 } %value4, 0
+  %start5 = load i32, i32* %start, align 4
+  %arr.at = getelementptr i8, i8* %arr.data, i32 %start5
+  %idx = load i8, i8* %arr.at, align 1
+  store i8 %idx, i8* %c, align 1
+  %c6 = load i8, i8* %c, align 1
+  %eq = icmp eq i8 %c6, 32
+  %c7 = load i8, i8* %c, align 1
+  %eq8 = icmp eq i8 %c7, 9
+  %or = or i1 %eq, %eq8
+  %c9 = load i8, i8* %c, align 1
+  %eq10 = icmp eq i8 %c9, 10
+  %or11 = or i1 %or, %eq10
+  %c12 = load i8, i8* %c, align 1
+  %eq13 = icmp eq i8 %c12, 13
+  %or14 = or i1 %or11, %eq13
+  br i1 %or14, label %then, label %next
+
+while.end:                                        ; preds = %next, %while.cond
+  %stop = alloca i32, align 4
+  %ref15 = load %String*, %String** %self, align 8
+  %count16 = getelementptr %String, %String* %ref15, i32 0, i32 1
+  %count17 = load i32, i32* %count16, align 4
+  store i32 %count17, i32* %stop, align 4
+  br label %while.cond18
+
+endif:                                            ; preds = %then
+  br label %while.cond
+
+then:                                             ; preds = %while.body
+  %cur = load i32, i32* %start, align 4
+  %add = add i32 %cur, 1
+  store i32 %add, i32* %start, align 4
+  br label %endif
+
+next:                                             ; preds = %while.body
+  br label %while.end
+
+while.cond18:                                     ; preds = %endif31, %while.end
+  %stop21 = load i32, i32* %stop, align 4
+  %start22 = load i32, i32* %start, align 4
+  %gt = icmp sgt i32 %stop21, %start22
+  br i1 %gt, label %while.body19, label %while.end20
+
+while.body19:                                     ; preds = %while.cond18
+  %c23 = alloca i8, align 1
+  %ref24 = load %String*, %String** %self, align 8
+  %value25 = getelementptr %String, %String* %ref24, i32 0, i32 0
+  %value26 = load { i8*, i64 }, { i8*, i64 }* %value25, align 8
+  %arr.data27 = extractvalue { i8*, i64 } %value26, 0
+  %stop28 = load i32, i32* %stop, align 4
+  %sub = sub i32 %stop28, 1
+  %arr.at29 = getelementptr i8, i8* %arr.data27, i32 %sub
+  %idx30 = load i8, i8* %arr.at29, align 1
+  store i8 %idx30, i8* %c23, align 1
+  %c34 = load i8, i8* %c23, align 1
+  %eq35 = icmp eq i8 %c34, 32
+  %c36 = load i8, i8* %c23, align 1
+  %eq37 = icmp eq i8 %c36, 9
+  %or38 = or i1 %eq35, %eq37
+  %c39 = load i8, i8* %c23, align 1
+  %eq40 = icmp eq i8 %c39, 10
+  %or41 = or i1 %or38, %eq40
+  %c42 = load i8, i8* %c23, align 1
+  %eq43 = icmp eq i8 %c42, 13
+  %or44 = or i1 %or41, %eq43
+  br i1 %or44, label %then32, label %next33
+
+while.end20:                                      ; preds = %next33, %while.cond18
+  %ref47 = load %String*, %String** %self, align 8
+  %start48 = load i32, i32* %start, align 4
+  %stop49 = load i32, i32* %stop, align 4
+  %start50 = load i32, i32* %start, align 4
+  %sub51 = sub i32 %stop49, %start50
+  %call = call %String @String.substr(%String* %ref47, i32 %start48, i32 %sub51)
+  ret %String %call
+
+endif31:                                          ; preds = %then32
+  br label %while.cond18
+
+then32:                                           ; preds = %while.body19
+  %cur45 = load i32, i32* %stop, align 4
+  %sub46 = sub i32 %cur45, 1
+  store i32 %sub46, i32* %stop, align 4
+  br label %endif31
+
+next33:                                           ; preds = %while.body19
+  br label %while.end20
+}
+
+define %String @String.replace(%String* %0, { i8*, i64 } %1, { i8*, i64 } %2) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %old = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %old, align 8
+  %fresh = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %2, { i8*, i64 }* %fresh, align 8
+  %res = alloca %String, align 8
+  %call = call %String @String.create()
+  store %String %call, %String* %res, align 8
+  %old1 = load { i8*, i64 }, { i8*, i64 }* %old, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %old1, 0
+  %nullcmp = icmp eq i8* %opt.ptr, null
+  br i1 %nullcmp, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %n = alloca i32, align 4
+  %old4 = load { i8*, i64 }, { i8*, i64 }* %old, align 8
+  %arr.data = extractvalue { i8*, i64 } %old4, 0
+  %call5 = call i64 @strlen(i8* %arr.data)
+  %cast = trunc i64 %call5 to i32
+  store i32 %cast, i32* %n, align 4
+  %n8 = load i32, i32* %n, align 4
+  %eq = icmp eq i32 %n8, 0
+  br i1 %eq, label %then7, label %endif6
+
+then:                                             ; preds = %entry
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %value2 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  call void @String.assign(%String* %res, { i8*, i64 } %value2)
+  %res3 = load %String, %String* %res, align 8
+  ret %String %res3
+
+endif6:                                           ; preds = %endif
+  %i = alloca i32, align 4
+  store i32 0, i32* %i, align 4
+  br label %while.cond
+
+then7:                                            ; preds = %endif
+  %ref9 = load %String*, %String** %self, align 8
+  %value10 = getelementptr %String, %String* %ref9, i32 0, i32 0
+  %value11 = load { i8*, i64 }, { i8*, i64 }* %value10, align 8
+  call void @String.assign(%String* %res, { i8*, i64 } %value11)
+  %res12 = load %String, %String* %res, align 8
+  ret %String %res12
+
+while.cond:                                       ; preds = %endif37, %endif6
+  %i13 = load i32, i32* %i, align 4
+  %ref14 = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref14, i32 0, i32 1
+  %count15 = load i32, i32* %count, align 4
+  %lt = icmp slt i32 %i13, %count15
+  br i1 %lt, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %hit = alloca i1, align 1
+  store i1 false, i1* %hit, align 1
+  %i18 = load i32, i32* %i, align 4
+  %n19 = load i32, i32* %n, align 4
+  %add = add i32 %i18, %n19
+  %ref20 = load %String*, %String** %self, align 8
+  %count21 = getelementptr %String, %String* %ref20, i32 0, i32 1
+  %count22 = load i32, i32* %count21, align 4
+  %le = icmp sle i32 %add, %count22
+  br i1 %le, label %then17, label %endif16
+
+while.end:                                        ; preds = %while.cond
+  %res50 = load %String, %String* %res, align 8
+  ret %String %res50
+
+endif16:                                          ; preds = %then17, %while.body
+  %hit39 = load i1, i1* %hit, align 1
+  br i1 %hit39, label %then38, label %next
+
+then17:                                           ; preds = %while.body
+  %ref23 = load %String*, %String** %self, align 8
+  %value24 = getelementptr %String, %String* %ref23, i32 0, i32 0
+  %value25 = load { i8*, i64 }, { i8*, i64 }* %value24, align 8
+  %arr.data26 = extractvalue { i8*, i64 } %value25, 0
+  %i27 = load i32, i32* %i, align 4
+  %i28 = load i32, i32* %i, align 4
+  %n29 = load i32, i32* %n, align 4
+  %add30 = add i32 %i28, %n29
+  %start = sext i32 %i27 to i64
+  %end = sext i32 %add30 to i64
+  %slice.data = getelementptr i8, i8* %arr.data26, i64 %start
+  %slice.len = sub i64 %end, %start
+  %arr.ptr = insertvalue { i8*, i64 } undef, i8* %slice.data, 0
+  %arr.len = insertvalue { i8*, i64 } %arr.ptr, i64 %slice.len, 1
+  %arr.data31 = extractvalue { i8*, i64 } %arr.len, 0
+  %old32 = load { i8*, i64 }, { i8*, i64 }* %old, align 8
+  %arr.data33 = extractvalue { i8*, i64 } %old32, 0
+  %n34 = load i32, i32* %n, align 4
+  %call35 = call i32 @strncmp(i8* %arr.data31, i8* %arr.data33, i32 %n34)
+  %eq36 = icmp eq i32 %call35, 0
+  store i1 %eq36, i1* %hit, align 1
+  br label %endif16
+
+endif37:                                          ; preds = %next, %then38
+  br label %while.cond
+
+then38:                                           ; preds = %endif16
+  %fresh40 = load { i8*, i64 }, { i8*, i64 }* %fresh, align 8
+  call void @String.join(%String* %res, { i8*, i64 } %fresh40)
+  %n41 = load i32, i32* %n, align 4
+  %cur = load i32, i32* %i, align 4
+  %add42 = add i32 %cur, %n41
+  store i32 %add42, i32* %i, align 4
+  br label %endif37
+
+next:                                             ; preds = %endif16
+  %ref43 = load %String*, %String** %self, align 8
+  %value44 = getelementptr %String, %String* %ref43, i32 0, i32 0
+  %value45 = load { i8*, i64 }, { i8*, i64 }* %value44, align 8
+  %arr.data46 = extractvalue { i8*, i64 } %value45, 0
+  %i47 = load i32, i32* %i, align 4
+  %arr.at = getelementptr i8, i8* %arr.data46, i32 %i47
+  %idx = load i8, i8* %arr.at, align 1
+  call void @String.push(%String* %res, i8 %idx)
+  %cur48 = load i32, i32* %i, align 4
+  %add49 = add i32 %cur48, 1
+  store i32 %add49, i32* %i, align 4
+  br label %endif37
+}
+
+define %String @String.repeat(%String* %0, i32 %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %n = alloca i32, align 4
+  store i32 %1, i32* %n, align 4
+  %res = alloca %String, align 8
+  %call = call %String @String.create()
+  store %String %call, %String* %res, align 8
+  %i = alloca i32, align 4
+  store i32 0, i32* %i, align 4
+  br label %while.cond
+
+while.cond:                                       ; preds = %while.body, %entry
+  %i1 = load i32, i32* %i, align 4
+  %n2 = load i32, i32* %n, align 4
+  %lt = icmp slt i32 %i1, %n2
+  br i1 %lt, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %value3 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  call void @String.join(%String* %res, { i8*, i64 } %value3)
+  %cur = load i32, i32* %i, align 4
+  %add = add i32 %cur, 1
+  store i32 %add, i32* %i, align 4
+  br label %while.cond
+
+while.end:                                        ; preds = %while.cond
+  %res4 = load %String, %String* %res, align 8
+  ret %String %res4
+}
+
+define %String @String.reverse(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %res = alloca %String, align 8
+  %call = call %String @String.create()
+  store %String %call, %String* %res, align 8
+  %i = alloca i32, align 4
+  %ref = load %String*, %String** %self, align 8
+  %count = getelementptr %String, %String* %ref, i32 0, i32 1
+  %count1 = load i32, i32* %count, align 4
+  %sub = sub i32 %count1, 1
+  store i32 %sub, i32* %i, align 4
+  br label %while.cond
+
+while.cond:                                       ; preds = %while.body, %entry
+  %i2 = load i32, i32* %i, align 4
+  %ge = icmp sge i32 %i2, 0
+  br i1 %ge, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %ref3 = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref3, i32 0, i32 0
+  %value4 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data = extractvalue { i8*, i64 } %value4, 0
+  %i5 = load i32, i32* %i, align 4
+  %arr.at = getelementptr i8, i8* %arr.data, i32 %i5
+  %idx = load i8, i8* %arr.at, align 1
+  call void @String.push(%String* %res, i8 %idx)
+  %cur = load i32, i32* %i, align 4
+  %sub6 = sub i32 %cur, 1
+  store i32 %sub6, i32* %i, align 4
+  br label %while.cond
+
+while.end:                                        ; preds = %while.cond
+  %res7 = load %String, %String* %res, align 8
+  ret %String %res7
+}
+
+define i32 @String.compare(%String* %0, %String* %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %other = alloca %String*, align 8
+  store %String* %1, %String** %other, align 8
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %value1, 0
+  %isnull = icmp eq i8* %opt.ptr, null
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.5, i32 0, i32 0), i64 0 }, { i8*, i64 } %value1
+  %arr.data = extractvalue { i8*, i64 } %fallback, 0
+  %ref2 = load %String*, %String** %other, align 8
+  %value3 = getelementptr %String, %String* %ref2, i32 0, i32 0
+  %value4 = load { i8*, i64 }, { i8*, i64 }* %value3, align 8
+  %opt.ptr5 = extractvalue { i8*, i64 } %value4, 0
+  %isnull6 = icmp eq i8* %opt.ptr5, null
+  %fallback7 = select i1 %isnull6, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.6, i32 0, i32 0), i64 0 }, { i8*, i64 } %value4
+  %arr.data8 = extractvalue { i8*, i64 } %fallback7, 0
+  %call = call i32 @strcmp(i8* %arr.data, i8* %arr.data8)
+  ret i32 %call
+}
+
+declare i32 @strcmp(i8*, i8*)
+
+define i32 @String.to_int(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %value1, 0
+  %isnull = icmp eq i8* %opt.ptr, null
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.7, i32 0, i32 0), i64 0 }, { i8*, i64 } %value1
+  %arr.data = extractvalue { i8*, i64 } %fallback, 0
+  %call = call i32 @atoi(i8* %arr.data)
+  ret i32 %call
+}
+
+declare i32 @atoi(i8*)
+
+define void @"String.=.array"(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %ref = load %String*, %String** %self, align 8
+  %str1 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  call void @String.assign(%String* %ref, { i8*, i64 } %str1)
+  ret void
+}
+
+define void @"String.=.String"(%String* %0, %String* %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %v = alloca %String*, align 8
+  store %String* %1, %String** %v, align 8
+  %ref = load %String*, %String** %self, align 8
+  %ref1 = load %String*, %String** %v, align 8
+  %value = getelementptr %String, %String* %ref1, i32 0, i32 0
+  %value2 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  call void @String.assign(%String* %ref, { i8*, i64 } %value2)
+  ret void
+}
+
+define %String @"String.+.String"(%String* %0, %String* %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %v = alloca %String*, align 8
+  store %String* %1, %String** %v, align 8
+  %res = alloca %String, align 8
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %call = call %String @String.from({ i8*, i64 } %value1)
+  store %String %call, %String* %res, align 8
+  %ref2 = load %String*, %String** %v, align 8
+  %value3 = getelementptr %String, %String* %ref2, i32 0, i32 0
+  %value4 = load { i8*, i64 }, { i8*, i64 }* %value3, align 8
+  call void @String.join(%String* %res, { i8*, i64 } %value4)
+  %res5 = load %String, %String* %res, align 8
+  ret %String %res5
+}
+
+define %String @"String.+.array"(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %res = alloca %String, align 8
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %call = call %String @String.from({ i8*, i64 } %value1)
+  store %String %call, %String* %res, align 8
+  %str2 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  call void @String.join(%String* %res, { i8*, i64 } %str2)
+  %res3 = load %String, %String* %res, align 8
+  ret %String %res3
+}
+
+define void @"String.+=.String"(%String* %0, %String* %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %v = alloca %String*, align 8
+  store %String* %1, %String** %v, align 8
+  %ref = load %String*, %String** %self, align 8
+  %ref1 = load %String*, %String** %v, align 8
+  %value = getelementptr %String, %String* %ref1, i32 0, i32 0
+  %value2 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  call void @String.join(%String* %ref, { i8*, i64 } %value2)
+  ret void
+}
+
+define void @"String.+=.array"(%String* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %ref = load %String*, %String** %self, align 8
+  %str1 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  call void @String.join(%String* %ref, { i8*, i64 } %str1)
+  ret void
+}
+
+define i1 @"String.==.String"(%String* %0, %String* %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %v = alloca %String*, align 8
+  store %String* %1, %String** %v, align 8
+  %ref = load %String*, %String** %self, align 8
+  %ref1 = load %String*, %String** %v, align 8
+  %call = call i32 @String.compare(%String* %ref, %String* %ref1)
+  %eq = icmp eq i32 %call, 0
+  ret i1 %eq
+}
+
+define i1 @"String.!=.String"(%String* %0, %String* %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %v = alloca %String*, align 8
+  store %String* %1, %String** %v, align 8
+  %ref = load %String*, %String** %self, align 8
+  %ref1 = load %String*, %String** %v, align 8
+  %call = call i32 @String.compare(%String* %ref, %String* %ref1)
+  %ne = icmp ne i32 %call, 0
+  ret i1 %ne
+}
+
+define i1 @"String.<.String"(%String* %0, %String* %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %v = alloca %String*, align 8
+  store %String* %1, %String** %v, align 8
+  %ref = load %String*, %String** %self, align 8
+  %ref1 = load %String*, %String** %v, align 8
+  %call = call i32 @String.compare(%String* %ref, %String* %ref1)
+  %lt = icmp slt i32 %call, 0
+  ret i1 %lt
+}
+
+define i1 @"String.>.String"(%String* %0, %String* %1) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %v = alloca %String*, align 8
+  store %String* %1, %String** %v, align 8
+  %ref = load %String*, %String** %self, align 8
+  %ref1 = load %String*, %String** %v, align 8
+  %call = call i32 @String.compare(%String* %ref, %String* %ref1)
+  %gt = icmp sgt i32 %call, 0
+  ret i1 %gt
+}
+
+define { i8*, i64 } @String.output(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %ref = load %String*, %String** %self, align 8
+  %value = getelementptr %String, %String* %ref, i32 0, i32 0
+  %value1 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %value1, 0
+  %isnull = icmp eq i8* %opt.ptr, null
+  %fallback = select i1 %isnull, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.8, i32 0, i32 0), i64 0 }, { i8*, i64 } %value1
+  ret { i8*, i64 } %fallback
+}
+
+define %String2 @String2.create() {
+entry:
+  %s = alloca %String2, align 8
+  store %String2 zeroinitializer, %String2* %s, align 8
+  %size = getelementptr %String2, %String2* %s, i32 0, i32 2
+  store i32 10, i32* %size, align 4
+  %value = getelementptr %String2, %String2* %s, i32 0, i32 0
+  %heap = call i8* @calloc(i64 10, i64 1)
+  %arr.ptr = insertvalue { i8*, i64 } undef, i8* %heap, 0
+  %arr.len = insertvalue { i8*, i64 } %arr.ptr, i64 10, 1
+  store { i8*, i64 } %arr.len, { i8*, i64 }* %value, align 8
+  %s1 = load %String2, %String2* %s, align 8
+  ret %String2 %s1
+}
+
+define void @String2.drop(%String2* %0) {
+entry:
+  %self = alloca %String2*, align 8
+  store %String2* %0, %String2** %self, align 8
+  %ref = load %String2*, %String2** %self, align 8
+  %value = getelementptr %String2, %String2* %ref, i32 0, i32 0
+  %arr = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data = extractvalue { i8*, i64 } %arr, 0
+  call void @free(i8* %arr.data)
+  store { i8*, i64 } zeroinitializer, { i8*, i64 }* %value, align 8
+  ret void
+}
+
+define void @String2.grow(%String2* %0, i32 %1) {
+entry:
+  %self = alloca %String2*, align 8
+  store %String2* %0, %String2** %self, align 8
+  %want = alloca i32, align 4
+  store i32 %1, i32* %want, align 4
+  %ref = load %String2*, %String2** %self, align 8
+  %size = getelementptr %String2, %String2* %ref, i32 0, i32 2
+  %size1 = load i32, i32* %size, align 4
+  %want2 = load i32, i32* %want, align 4
+  %ge = icmp sge i32 %size1, %want2
+  br i1 %ge, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  br label %while.cond
+
+then:                                             ; preds = %entry
+  ret void
+
+while.cond:                                       ; preds = %while.body, %endif
+  %ref3 = load %String2*, %String2** %self, align 8
+  %size4 = getelementptr %String2, %String2* %ref3, i32 0, i32 2
+  %size5 = load i32, i32* %size4, align 4
+  %want6 = load i32, i32* %want, align 4
+  %lt = icmp slt i32 %size5, %want6
+  br i1 %lt, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %ref7 = load %String2*, %String2** %self, align 8
+  %size8 = getelementptr %String2, %String2* %ref7, i32 0, i32 2
+  %cur = load i32, i32* %size8, align 4
+  %mul = mul i32 %cur, 2
+  store i32 %mul, i32* %size8, align 4
+  br label %while.cond
+
+while.end:                                        ; preds = %while.cond
+  %bigger = alloca { i8*, i64 }, align 8
+  %ref9 = load %String2*, %String2** %self, align 8
+  %size10 = getelementptr %String2, %String2* %ref9, i32 0, i32 2
+  %size11 = load i32, i32* %size10, align 4
+  %n = sext i32 %size11 to i64
+  %heap = call i8* @calloc(i64 %n, i64 1)
+  %arr.ptr = insertvalue { i8*, i64 } undef, i8* %heap, 0
+  %arr.len = insertvalue { i8*, i64 } %arr.ptr, i64 %n, 1
+  store { i8*, i64 } %arr.len, { i8*, i64 }* %bigger, align 8
+  %bigger12 = load { i8*, i64 }, { i8*, i64 }* %bigger, align 8
+  %arr.data = extractvalue { i8*, i64 } %bigger12, 0
+  %ref13 = load %String2*, %String2** %self, align 8
+  %value = getelementptr %String2, %String2* %ref13, i32 0, i32 0
+  %value14 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data15 = extractvalue { i8*, i64 } %value14, 0
+  %call = call i8* @strcpy(i8* %arr.data, i8* %arr.data15)
+  %ref16 = load %String2*, %String2** %self, align 8
+  %value17 = getelementptr %String2, %String2* %ref16, i32 0, i32 0
+  %arr = load { i8*, i64 }, { i8*, i64 }* %value17, align 8
+  %arr.data18 = extractvalue { i8*, i64 } %arr, 0
+  call void @free(i8* %arr.data18)
+  store { i8*, i64 } zeroinitializer, { i8*, i64 }* %value17, align 8
+  %ref19 = load %String2*, %String2** %self, align 8
+  %value20 = getelementptr %String2, %String2* %ref19, i32 0, i32 0
+  %bigger21 = load { i8*, i64 }, { i8*, i64 }* %bigger, align 8
+  store { i8*, i64 } %bigger21, { i8*, i64 }* %value20, align 8
+  ret void
+}
+
+declare i8* @strcpy(i8*, i8*)
+
+define void @String2.assign(%String2* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String2*, align 8
+  store %String2* %0, %String2** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %str1 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %str1, 0
+  %nullcmp = icmp eq i8* %opt.ptr, null
+  br i1 %nullcmp, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %len = alloca i32, align 4
+  %str2 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %arr.data = extractvalue { i8*, i64 } %str2, 0
+  %call = call i64 @strlen(i8* %arr.data)
+  %cast = trunc i64 %call to i32
+  store i32 %cast, i32* %len, align 4
+  %ref3 = load %String2*, %String2** %self, align 8
+  %len4 = load i32, i32* %len, align 4
+  %add = add i32 %len4, 1
+  call void @String2.grow(%String2* %ref3, i32 %add)
+  %ref5 = load %String2*, %String2** %self, align 8
+  %value = getelementptr %String2, %String2* %ref5, i32 0, i32 0
+  %value6 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data7 = extractvalue { i8*, i64 } %value6, 0
+  %ref8 = load %String2*, %String2** %self, align 8
+  %size = getelementptr %String2, %String2* %ref8, i32 0, i32 2
+  %size9 = load i32, i32* %size, align 4
+  %cast10 = sext i32 %size9 to i64
+  call void @bzero(i8* %arr.data7, i64 %cast10)
+  %ref11 = load %String2*, %String2** %self, align 8
+  %value12 = getelementptr %String2, %String2* %ref11, i32 0, i32 0
+  %value13 = load { i8*, i64 }, { i8*, i64 }* %value12, align 8
+  %arr.data14 = extractvalue { i8*, i64 } %value13, 0
+  %str15 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %arr.data16 = extractvalue { i8*, i64 } %str15, 0
+  %call17 = call i8* @strcpy(i8* %arr.data14, i8* %arr.data16)
+  %ref18 = load %String2*, %String2** %self, align 8
+  %count = getelementptr %String2, %String2* %ref18, i32 0, i32 1
+  %len19 = load i32, i32* %len, align 4
+  store i32 %len19, i32* %count, align 4
+  ret void
+
+then:                                             ; preds = %entry
+  %ref = load %String2*, %String2** %self, align 8
+  call void @String2.assign(%String2* %ref, { i8*, i64 } { i8* getelementptr inbounds ([1 x i8], [1 x i8]* @str.9, i32 0, i32 0), i64 0 })
+  ret void
+}
+
+declare void @bzero(i8*, i64)
+
+define void @String2.join(%String2* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String2*, align 8
+  store %String2* %0, %String2** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %str1 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %opt.ptr = extractvalue { i8*, i64 } %str1, 0
+  %nullcmp = icmp eq i8* %opt.ptr, null
+  br i1 %nullcmp, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %len = alloca i32, align 4
+  %str2 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %arr.data = extractvalue { i8*, i64 } %str2, 0
+  %call = call i64 @strlen(i8* %arr.data)
+  %cast = trunc i64 %call to i32
+  store i32 %cast, i32* %len, align 4
+  %ref = load %String2*, %String2** %self, align 8
+  %ref3 = load %String2*, %String2** %self, align 8
+  %count = getelementptr %String2, %String2* %ref3, i32 0, i32 1
+  %count4 = load i32, i32* %count, align 4
+  %len5 = load i32, i32* %len, align 4
+  %add = add i32 %count4, %len5
+  %add6 = add i32 %add, 1
+  call void @String2.grow(%String2* %ref, i32 %add6)
+  %ref7 = load %String2*, %String2** %self, align 8
+  %value = getelementptr %String2, %String2* %ref7, i32 0, i32 0
+  %value8 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %arr.data9 = extractvalue { i8*, i64 } %value8, 0
+  %str10 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  %arr.data11 = extractvalue { i8*, i64 } %str10, 0
+  %call12 = call i8* @strcat(i8* %arr.data9, i8* %arr.data11)
+  %ref13 = load %String2*, %String2** %self, align 8
+  %count14 = getelementptr %String2, %String2* %ref13, i32 0, i32 1
+  %len15 = load i32, i32* %len, align 4
+  %cur = load i32, i32* %count14, align 4
+  %add16 = add i32 %cur, %len15
+  store i32 %add16, i32* %count14, align 4
+  ret void
+
+then:                                             ; preds = %entry
+  ret void
+}
+
+declare i8* @strcat(i8*, i8*)
+
+define void @"String2.=.array"(%String2* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %String2*, align 8
+  store %String2* %0, %String2** %self, align 8
+  %str = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %str, align 8
+  %ref = load %String2*, %String2** %self, align 8
+  %str1 = load { i8*, i64 }, { i8*, i64 }* %str, align 8
+  call void @String2.assign(%String2* %ref, { i8*, i64 } %str1)
+  ret void
+}
+
+define void @"String2.=.String2"(%String2* %0, %String2* %1) {
+entry:
+  %self = alloca %String2*, align 8
+  store %String2* %0, %String2** %self, align 8
+  %v = alloca %String2*, align 8
+  store %String2* %1, %String2** %v, align 8
+  %ref = load %String2*, %String2** %self, align 8
+  %ref1 = load %String2*, %String2** %v, align 8
+  %value = getelementptr %String2, %String2* %ref1, i32 0, i32 0
+  %value2 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  call void @String2.assign(%String2* %ref, { i8*, i64 } %value2)
+  ret void
+}
+
+define %String2 @add(%String2* %0, %String2* %1) {
+entry:
+  %v = alloca %String2*, align 8
+  store %String2* %0, %String2** %v, align 8
+  %w = alloca %String2*, align 8
+  store %String2* %1, %String2** %w, align 8
+  %res = alloca %String2, align 8
+  %call = call %String2 @String2.create()
+  store %String2 %call, %String2* %res, align 8
+  %ref = load %String2*, %String2** %v, align 8
+  call void @"String2.=.String2"(%String2* %res, %String2* %ref)
+  %ref1 = load %String2*, %String2** %w, align 8
+  %value = getelementptr %String2, %String2* %ref1, i32 0, i32 0
+  %value2 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  call void @String2.join(%String2* %res, { i8*, i64 } %value2)
+  %res3 = load %String2, %String2* %res, align 8
+  ret %String2 %res3
+}
+
+define i32 @main(i32 %0, i8** %1) {
+entry:
+  store i32 1, i32* @EPERM, align 4
+  store i32 2, i32* @ENOENT, align 4
+  store i32 3, i32* @ESRCH, align 4
+  store i32 4, i32* @EINTR, align 4
+  store i32 5, i32* @EIO, align 4
+  store i32 6, i32* @ENXIO, align 4
+  store i32 7, i32* @E2BIG, align 4
+  store i32 8, i32* @ENOEXEC, align 4
+  store i32 9, i32* @EBADF, align 4
+  store i32 10, i32* @ECHILD, align 4
+  store i32 13, i32* @EACCES, align 4
+  store i32 14, i32* @EFAULT, align 4
+  store i32 15, i32* @ENOTBLK, align 4
+  store i32 16, i32* @EBUSY, align 4
+  store i32 17, i32* @EEXIST, align 4
+  store i32 18, i32* @EXDEV, align 4
+  store i32 19, i32* @ENODEV, align 4
+  store i32 20, i32* @ENOTDIR, align 4
+  store i32 21, i32* @EISDIR, align 4
+  store i32 22, i32* @EINVAL, align 4
+  store i32 23, i32* @ENFILE, align 4
+  store i32 24, i32* @EMFILE, align 4
+  store i32 25, i32* @ENOTTY, align 4
+  store i32 26, i32* @ETXTBSY, align 4
+  store i32 27, i32* @EFBIG, align 4
+  store i32 28, i32* @ENOSPC, align 4
+  store i32 29, i32* @ESPIPE, align 4
+  store i32 30, i32* @EROFS, align 4
+  store i32 31, i32* @EMLINK, align 4
+  store i32 32, i32* @EPIPE, align 4
+  store i32 33, i32* @EDOM, align 4
+  store i32 34, i32* @ERANGE, align 4
+  store i32 0, i32* @O_RDONLY, align 4
+  store i32 1, i32* @O_WRONLY, align 4
+  store i32 2, i32* @O_RDWR, align 4
+  store i32 1, i32* @FD_CLOEXEC, align 4
+  store i32 0, i32* @IPPROTO_IP, align 4
+  store i32 6, i32* @IPPROTO_TCP, align 4
+  store i32 17, i32* @IPPROTO_UDP, align 4
+  store i32 41, i32* @IPPROTO_IPV6, align 4
+  store i32 0, i32* @SHUT_RD, align 4
+  store i32 1, i32* @SHUT_WR, align 4
+  store i32 2, i32* @SHUT_RDWR, align 4
+  store i32 1, i32* @POLLIN, align 4
+  store i32 2, i32* @POLLPRI, align 4
+  store i32 4, i32* @POLLOUT, align 4
+  store i32 8, i32* @POLLERR, align 4
+  store i32 16, i32* @POLLHUP, align 4
+  store i32 32, i32* @POLLNVAL, align 4
+  store i32 0, i32* @INADDR_ANY, align 4
+  store i32 2130706433, i32* @INADDR_LOOPBACK, align 4
+  store i32 -1, i32* @INADDR_BROADCAST, align 4
+  store i32 1, i32* @SIGHUP, align 4
+  store i32 2, i32* @SIGINT, align 4
+  store i32 3, i32* @SIGQUIT, align 4
+  store i32 4, i32* @SIGILL, align 4
+  store i32 5, i32* @SIGTRAP, align 4
+  store i32 6, i32* @SIGABRT, align 4
+  store i32 8, i32* @SIGFPE, align 4
+  store i32 9, i32* @SIGKILL, align 4
+  store i32 11, i32* @SIGSEGV, align 4
+  store i32 13, i32* @SIGPIPE, align 4
+  store i32 14, i32* @SIGALRM, align 4
+  store i32 15, i32* @SIGTERM, align 4
+  store i32 61440, i32* @S_IFMT, align 4
+  store i32 49152, i32* @S_IFSOCK, align 4
+  store i32 40960, i32* @S_IFLNK, align 4
+  store i32 32768, i32* @S_IFREG, align 4
+  store i32 24576, i32* @S_IFBLK, align 4
+  store i32 16384, i32* @S_IFDIR, align 4
+  store i32 8192, i32* @S_IFCHR, align 4
+  store i32 4096, i32* @S_IFIFO, align 4
+  store i32 2048, i32* @S_ISUID, align 4
+  store i32 1024, i32* @S_ISGID, align 4
+  store i32 512, i32* @S_ISVTX, align 4
+  store i32 0, i32* @F_OK, align 4
+  store i32 1, i32* @X_OK, align 4
+  store i32 2, i32* @W_OK, align 4
+  store i32 4, i32* @R_OK, align 4
+  store i32 0, i32* @SEEK_SET, align 4
+  store i32 1, i32* @SEEK_CUR, align 4
+  store i32 2, i32* @SEEK_END, align 4
+  store i32 0, i32* @STDIN_FILENO, align 4
+  store i32 1, i32* @STDOUT_FILENO, align 4
+  store i32 2, i32* @STDERR_FILENO, align 4
+  %s0 = alloca %String2, align 8
+  %call = call %String2 @String2.create()
+  store %String2 %call, %String2* %s0, align 8
+  call void @"String2.=.array"(%String2* %s0, { i8*, i64 } { i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.10, i32 0, i32 0), i64 6 })
+  %s1 = alloca %String2, align 8
+  %call1 = call %String2 @String2.create()
+  store %String2 %call1, %String2* %s1, align 8
+  call void @"String2.=.array"(%String2* %s1, { i8*, i64 } { i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.11, i32 0, i32 0), i64 5 })
+  %s2 = alloca %String2, align 8
+  %call2 = call %String2 @String2.create()
+  store %String2 %call2, %String2* %s2, align 8
+  %call3 = call %String2 @add(%String2* %s0, %String2* %s1)
+  %op.tmp = alloca %String2, align 8
+  store %String2 %call3, %String2* %op.tmp, align 8
+  call void @"String2.=.String2"(%String2* %s2, %String2* %op.tmp)
+  %value = getelementptr %String2, %String2* %s0, i32 0, i32 0
+  %value4 = load { i8*, i64 }, { i8*, i64 }* %value, align 8
+  %str.len = extractvalue { i8*, i64 } %value4, 1
+  %len32 = trunc i64 %str.len to i32
+  %str.data = extractvalue { i8*, i64 } %value4, 0
+  %count = getelementptr %String2, %String2* %s0, i32 0, i32 1
+  %count5 = load i32, i32* %count, align 4
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @fmt, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.12, i32 0, i32 0), i32 %len32, i8* %str.data, i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.13, i32 0, i32 0), i32 %count5, i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.14, i32 0, i32 0))
+  %value6 = getelementptr %String2, %String2* %s1, i32 0, i32 0
+  %value7 = load { i8*, i64 }, { i8*, i64 }* %value6, align 8
+  %str.len8 = extractvalue { i8*, i64 } %value7, 1
+  %len329 = trunc i64 %str.len8 to i32
+  %str.data10 = extractvalue { i8*, i64 } %value7, 0
+  %count11 = getelementptr %String2, %String2* %s1, i32 0, i32 1
+  %count12 = load i32, i32* %count11, align 4
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @fmt.18, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.15, i32 0, i32 0), i32 %len329, i8* %str.data10, i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.16, i32 0, i32 0), i32 %count12, i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.17, i32 0, i32 0))
+  %value13 = getelementptr %String2, %String2* %s2, i32 0, i32 0
+  %value14 = load { i8*, i64 }, { i8*, i64 }* %value13, align 8
+  %str.len15 = extractvalue { i8*, i64 } %value14, 1
+  %len3216 = trunc i64 %str.len15 to i32
+  %str.data17 = extractvalue { i8*, i64 } %value14, 0
+  %count18 = getelementptr %String2, %String2* %s2, i32 0, i32 1
+  %count19 = load i32, i32* %count18, align 4
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @fmt.22, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.19, i32 0, i32 0), i32 %len3216, i8* %str.data17, i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.20, i32 0, i32 0), i32 %count19, i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.21, i32 0, i32 0))
+  call void @String2.drop(%String2* %s2)
+  call void @String2.drop(%String2* %s1)
+  call void @String2.drop(%String2* %s0)
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 029 — operator output replaces the default struct dump, nested too
+
+```ura
+// operators_overload/029.ura - operator output replaces the default struct dump, nested too
+
+struct Tag:
+    name char[]
+    n    i32
+
+    operator output() char[]:
+        return self.name
+
+struct Plain:
+    a i32
+
+struct Holder:
+    tag Tag
+    p   Plain
+
+main():
+    t Tag
+    t.name = "custom"
+    t.n    = 7
+    output("direct: ", t, "\n")
+
+    p Plain
+    p.a = 1
+    output("plain:  ", p, "\n")
+
+    h Holder
+    h.tag.name = "inner"
+    h.p.a      = 2
+    output("nested: ", h, "\n")
+```
+
+```tree
+proto fn printf(format : pointer, ...) : i32
+
+proto fn calloc(len : i64, size : i64) : pointer
+
+proto fn free(ptr : pointer) : void
+
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
+
+proto fn exit(code : i32) : void
+
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
+
+struct Tag
+├─ name : char[]
+├─ n : i32
+└─ fn Tag.output(self : STRUCT_CALL) : char[]
+   └─ return
+      └─ .name : char[]
+         └─ self : STRUCT_CALL
+
+struct Plain
+└─ a : i32
+
+struct Holder
+├─ tag : STRUCT_CALL
+└─ p : STRUCT_CALL
+
+fn main() : i32
+├─ t : STRUCT_CALL
+├─ = : array
+│  ├─ .name : char[]
+│  │  └─ t : STRUCT_CALL
+│  └─ char[] "custom"
+├─ = : i32
+│  ├─ .n : i32
+│  │  └─ t : STRUCT_CALL
+│  └─ int 7
+├─ output : void
+│  ├─ char[] "direct: "
+│  ├─ t : STRUCT_CALL
+│  └─ char[] "\n"
+├─ p : STRUCT_CALL
+├─ = : i32
+│  ├─ .a : i32
+│  │  └─ p : STRUCT_CALL
+│  └─ int 1
+├─ output : void
+│  ├─ char[] "plain:  "
+│  ├─ p : STRUCT_CALL
+│  └─ char[] "\n"
+├─ h : STRUCT_CALL
+├─ = : array
+│  ├─ .name : char[]
+│  │  └─ .tag : STRUCT_CALL
+│  │     └─ h : STRUCT_CALL
+│  └─ char[] "inner"
+├─ = : i32
+│  ├─ .a : i32
+│  │  └─ .p : STRUCT_CALL
+│  │     └─ h : STRUCT_CALL
+│  └─ int 2
+└─ output : void
+   ├─ char[] "nested: "
+   ├─ h : STRUCT_CALL
+   └─ char[] "\n"
+```
+
+```out
+direct: custom
+plain:  Plain{a: 1}
+nested: Holder{tag: inner, p: Plain{a: 2}}
+```
+
+```err
+```
+
+```ll
+
+%Os = type { i32, { { i8*, i64 }*, i64 } }
+%Tag = type { { i8*, i64 }, i32 }
+%Plain = type { i32 }
+%__out_frame = type { i8*, i32, %__out_frame* }
+%Holder = type { %Tag, %Plain }
+
+@os = internal global %Os zeroinitializer
+@str = private unnamed_addr constant [7 x i8] c"custom\00", align 1
+@str.1 = private unnamed_addr constant [9 x i8] c"direct: \00", align 1
+@fmt = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
+@fmt.2 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
+@str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.4 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
+@str.5 = private unnamed_addr constant [9 x i8] c"plain:  \00", align 1
+@fmt.6 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
+@fmt.7 = private unnamed_addr constant [11 x i8] c"[Circular]\00", align 1
+@fmt.8 = private unnamed_addr constant [7 x i8] c"Plain{\00", align 1
+@fmt.9 = private unnamed_addr constant [4 x i8] c"a: \00", align 1
+@fmt.10 = private unnamed_addr constant [3 x i8] c"%d\00", align 1
+@fmt.11 = private unnamed_addr constant [2 x i8] c"}\00", align 1
+@str.12 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.13 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
+@str.14 = private unnamed_addr constant [6 x i8] c"inner\00", align 1
+@str.15 = private unnamed_addr constant [9 x i8] c"nested: \00", align 1
+@fmt.16 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
+@fmt.17 = private unnamed_addr constant [11 x i8] c"[Circular]\00", align 1
+@fmt.18 = private unnamed_addr constant [8 x i8] c"Holder{\00", align 1
+@fmt.19 = private unnamed_addr constant [6 x i8] c"tag: \00", align 1
+@fmt.20 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
+@fmt.21 = private unnamed_addr constant [6 x i8] c", p: \00", align 1
+@fmt.22 = private unnamed_addr constant [2 x i8] c"}\00", align 1
+@str.23 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.24 = private unnamed_addr constant [5 x i8] c"%.*s\00", align 1
+
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
+
+define { i8*, i64 } @Tag.output(%Tag* %0) {
+entry:
+  %self = alloca %Tag*, align 8
+  store %Tag* %0, %Tag** %self, align 8
+  %ref = load %Tag*, %Tag** %self, align 8
+  %name = getelementptr %Tag, %Tag* %ref, i32 0, i32 0
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  ret { i8*, i64 } %name1
+}
+
+define i32 @main(i32 %0, i8** %1) {
+entry:
+  %t = alloca %Tag, align 8
+  store %Tag zeroinitializer, %Tag* %t, align 8
+  %name = getelementptr %Tag, %Tag* %t, i32 0, i32 0
+  store { i8*, i64 } { i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i64 6 }, { i8*, i64 }* %name, align 8
+  %n = getelementptr %Tag, %Tag* %t, i32 0, i32 1
+  store i32 7, i32* %n, align 4
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt, i32 0, i32 0), i32 8, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.1, i32 0, i32 0))
+  %out = call { i8*, i64 } @Tag.output(%Tag* %t)
+  %out.len = extractvalue { i8*, i64 } %out, 1
+  %out.data = extractvalue { i8*, i64 } %out, 0
+  %len32 = trunc i64 %out.len to i32
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.2, i32 0, i32 0), i32 %len32, i8* %out.data)
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.4, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
+  %p = alloca %Plain, align 8
+  store %Plain zeroinitializer, %Plain* %p, align 4
+  %a = getelementptr %Plain, %Plain* %p, i32 0, i32 0
+  store i32 1, i32* %a, align 4
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.6, i32 0, i32 0), i32 8, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.5, i32 0, i32 0))
+  call void @__out_Plain(%Plain* %p, %__out_frame* null)
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.13, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.12, i32 0, i32 0))
+  %h = alloca %Holder, align 8
+  store %Holder zeroinitializer, %Holder* %h, align 8
+  %tag = getelementptr %Holder, %Holder* %h, i32 0, i32 0
+  %name1 = getelementptr %Tag, %Tag* %tag, i32 0, i32 0
+  store { i8*, i64 } { i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.14, i32 0, i32 0), i64 5 }, { i8*, i64 }* %name1, align 8
+  %p2 = getelementptr %Holder, %Holder* %h, i32 0, i32 1
+  %a3 = getelementptr %Plain, %Plain* %p2, i32 0, i32 0
+  store i32 2, i32* %a3, align 4
+  %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.16, i32 0, i32 0), i32 8, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.15, i32 0, i32 0))
+  call void @__out_Holder(%Holder* %h, %__out_frame* null)
+  %8 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.24, i32 0, i32 0), i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.23, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+
+define void @__out_Plain(%Plain* %0, %__out_frame* %1) {
+entry:
+  %me = bitcast %Plain* %0 to i8*
+  %walk = alloca %__out_frame*, align 8
+  store %__out_frame* %1, %__out_frame** %walk, align 8
+  br label %seen.cond
+
+seen.cond:                                        ; preds = %seen.next, %entry
+  %q = load %__out_frame*, %__out_frame** %walk, align 8
+  %q2i = ptrtoint %__out_frame* %q to i64
+  %atroot = icmp eq i64 %q2i, 0
+  br i1 %atroot, label %seen.fresh, label %seen.body
+
+seen.body:                                        ; preds = %seen.cond
+  %q.ptr = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 0
+  %held = load i8*, i8** %q.ptr, align 8
+  %q.ty = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %heldty = load i32, i32* %q.ty, align 4
+  %h2i = ptrtoint i8* %held to i64
+  %m2i = ptrtoint i8* %me to i64
+  %sameptr = icmp eq i64 %h2i, %m2i
+  %samety = icmp eq i32 %heldty, 1
+  %same = and i1 %sameptr, %samety
+  br i1 %same, label %seen.hit, label %seen.next
+
+seen.hit:                                         ; preds = %seen.body
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.7, i32 0, i32 0))
+  ret void
+
+seen.next:                                        ; preds = %seen.body
+  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 2
+  %up = load %__out_frame*, %__out_frame** %q.prev, align 8
+  store %__out_frame* %up, %__out_frame** %walk, align 8
+  br label %seen.cond
+
+seen.fresh:                                       ; preds = %seen.cond
+  %frame = alloca %__out_frame, align 8
+  %f.ptr = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 0
+  store i8* %me, i8** %f.ptr, align 8
+  %f.ty = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  store i32 1, i32* %f.ty, align 4
+  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 2
+  store %__out_frame* %1, %__out_frame** %f.prev, align 8
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.8, i32 0, i32 0))
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @fmt.9, i32 0, i32 0))
+  %a = getelementptr %Plain, %Plain* %0, i32 0, i32 0
+  %f = load i32, i32* %a, align 4
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.10, i32 0, i32 0), i32 %f)
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @fmt.11, i32 0, i32 0))
+  ret void
+}
+
+define void @__out_Holder(%Holder* %0, %__out_frame* %1) {
+entry:
+  %me = bitcast %Holder* %0 to i8*
+  %walk = alloca %__out_frame*, align 8
+  store %__out_frame* %1, %__out_frame** %walk, align 8
+  br label %seen.cond
+
+seen.cond:                                        ; preds = %seen.next, %entry
+  %q = load %__out_frame*, %__out_frame** %walk, align 8
+  %q2i = ptrtoint %__out_frame* %q to i64
+  %atroot = icmp eq i64 %q2i, 0
+  br i1 %atroot, label %seen.fresh, label %seen.body
+
+seen.body:                                        ; preds = %seen.cond
+  %q.ptr = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 0
+  %held = load i8*, i8** %q.ptr, align 8
+  %q.ty = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 1
+  %heldty = load i32, i32* %q.ty, align 4
+  %h2i = ptrtoint i8* %held to i64
+  %m2i = ptrtoint i8* %me to i64
+  %sameptr = icmp eq i64 %h2i, %m2i
+  %samety = icmp eq i32 %heldty, 2
+  %same = and i1 %sameptr, %samety
+  br i1 %same, label %seen.hit, label %seen.next
+
+seen.hit:                                         ; preds = %seen.body
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.17, i32 0, i32 0))
+  ret void
+
+seen.next:                                        ; preds = %seen.body
+  %q.prev = getelementptr %__out_frame, %__out_frame* %q, i32 0, i32 2
+  %up = load %__out_frame*, %__out_frame** %q.prev, align 8
+  store %__out_frame* %up, %__out_frame** %walk, align 8
+  br label %seen.cond
+
+seen.fresh:                                       ; preds = %seen.cond
+  %frame = alloca %__out_frame, align 8
+  %f.ptr = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 0
+  store i8* %me, i8** %f.ptr, align 8
+  %f.ty = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 1
+  store i32 2, i32* %f.ty, align 4
+  %f.prev = getelementptr %__out_frame, %__out_frame* %frame, i32 0, i32 2
+  store %__out_frame* %1, %__out_frame** %f.prev, align 8
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @fmt.18, i32 0, i32 0))
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @fmt.19, i32 0, i32 0))
+  %tag = getelementptr %Holder, %Holder* %0, i32 0, i32 0
+  %out = call { i8*, i64 } @Tag.output(%Tag* %tag)
+  %out.len = extractvalue { i8*, i64 } %out, 1
+  %out.data = extractvalue { i8*, i64 } %out, 0
+  %len32 = trunc i64 %out.len to i32
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.20, i32 0, i32 0), i32 %len32, i8* %out.data)
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @fmt.21, i32 0, i32 0))
+  %p = getelementptr %Holder, %Holder* %0, i32 0, i32 1
+  call void @__out_Plain(%Plain* %p, %__out_frame* %frame)
+  %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @fmt.22, i32 0, i32 0))
+  ret void
+}
 ```

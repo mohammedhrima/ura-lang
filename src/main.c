@@ -163,16 +163,41 @@ void generate_asm() {
    finalize_module(ura.ll_path);
 }
 
+void run_linker(char **argv) {
+   pid_t pid = fork();
+   if (pid < 0) return;
+   if (pid == 0) {
+      int devnull = open("/dev/null", O_WRONLY);
+      if (devnull >= 0) {
+         dup2(devnull, STDERR_FILENO);
+         close(devnull);
+      }
+      execvp(argv[0], argv);
+      _exit(127);
+   }
+   int status = 0;
+   waitpid(pid, &status, 0);
+}
+
 void compile_executable() {
    if (ura.error_count || !ura.head) return;
 
    fprintf(stderr, CYAN("%-9s") " " BLUE("%s (%s)") "\n", 
          "Compiling", ura.base, ura.sources[0]->filename);
-   char *cc  = ura.enable_san ? "/usr/bin/clang" : "clang";
-   char *san = ura.enable_san ? " -fsanitize=address,undefined -fno-omit-frame-pointer -g" : "";
-   char *cmd = format("%s%s %s -o %s 2>/dev/null", cc, san, ura.ll_path, ura.output);
-   system(cmd);
-   free(cmd);
+   char *cc = ura.enable_san ? "/usr/bin/clang" : "clang";
+   char *argv[12];
+   int   n = 0;
+   argv[n++] = cc;
+   if (ura.enable_san) {
+      argv[n++] = "-fsanitize=address,undefined";
+      argv[n++] = "-fno-omit-frame-pointer";
+      argv[n++] = "-g";
+   }
+   argv[n++] = ura.ll_path;
+   argv[n++] = "-o";
+   argv[n++] = ura.output;
+   argv[n]   = NULL;
+   run_linker(argv);
    if (!ura.enable_exec) return;
    char *opt = ura.flags ? "optimized" : "unoptimized";
    char *tag = ura.enable_san ? " + sanitized" : "";

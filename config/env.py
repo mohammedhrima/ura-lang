@@ -18,8 +18,20 @@ IGNORE = ("target triple", "source_filename", "ModuleID", "DIFile", "DICompileUn
 # (it hangs before main, even with no arguments). undefined alone is fine and fast.
 SAN = ["-fsanitize=undefined", "-fno-omit-frame-pointer", "-g", "-O0"]
 
-def run(*args):
-    return subprocess.run([str(a) for a in args], capture_output=True, text=True)
+class Timeout:
+    """Stands in for a CompletedProcess that never finished."""
+    def __init__(self, secs):
+        self.returncode = 124                       # what `timeout(1)` reports
+        self.stdout     = ""
+        self.stderr     = f"timed out after {secs}s\n"
+
+def run(*args, timeout=None):
+    argv = [str(a) for a in args]
+    try:
+        return subprocess.run(argv, capture_output=True, text=True,
+                              timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return Timeout(timeout)
 
 def exit_code(proc):
     # subprocess returns -signal when killed by a signal; show it as 128+signal

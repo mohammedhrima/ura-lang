@@ -342,10 +342,11 @@ void type_check_dot(Node *node) {
       parse_error(token, ERR_UNKNOWN_FIELD, def->token->name, token->name);
       return;
    }
-   token->ret_type = field->ret_type;
-   token->is_ref   = field->is_ref;
-   token->Struct   = field->Struct;
-   token->Array    = field->Array;
+   token->ret_type    = field->ret_type;
+   token->is_ref      = field->is_ref;
+   token->is_optional = field->is_optional;
+   token->Struct      = field->Struct;
+   token->Array       = field->Array;
 }
 
 char *struct_name_of(Token *token) {
@@ -356,6 +357,14 @@ char *struct_name_of(Token *token) {
 
 Node *find_destructor(Node *def) {
    char *qualified = format("%s.drop", def->token->name);
+   Node *fn        = find_method(def, qualified);
+   free(qualified);
+   return fn;
+}
+
+Node *find_printer(Node *def) {
+   if (!def) return NULL;
+   char *qualified = format("%s.output", def->token->name);
    Node *fn        = find_method(def, qualified);
    free(qualified);
    return fn;

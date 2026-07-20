@@ -513,6 +513,13 @@ Node *prime_node() {
          next();
          return drop_node(new_node(token), owner);
       }
+      if (peek(0)->type == ID && strcmp(peek(0)->name, "output") == 0) {
+         next();
+         Node *node = new_node(token);
+         set_name(node->token, "output");
+         fdec_node(node);
+         return node;
+      }
       Token *op = find(ASSIGN, ADD, SUB, MUL, DIV, MOD, EQUAL, NOT_EQUAL,
                        LESS, GREAT, LESS_EQUAL, GREAT_EQUAL, ADD_ASSIGN,
                        SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,

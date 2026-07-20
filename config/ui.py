@@ -23,9 +23,14 @@ _STYLE = {"ok": ("ok", "ok"), "err": ("fail", "fail"), "warn": ("warn", "branch"
 def pr(s):
     (console.print if RICH else print)(s)
 
-def emit(style, text):
+def styled(style, text):
+    """One styled fragment, in whichever dialect is active. Compose these
+    when a line mixes styles; use emit() when the whole line is one style."""
     tag, key = _STYLE[style]
-    pr(f"[{tag}]{text}[/]" if RICH else _c(key, text))
+    return f"[{tag}]{text}[/]" if RICH else _c(key, text)
+
+def emit(style, text):
+    pr(styled(style, text))
 
 def ok(m):   emit("ok", m)
 def err(m):  emit("err", m)
@@ -36,16 +41,14 @@ def _group_header(md):
     emit("env", str(rel))
 
 def _row(status, label):
-    tag = ("[ok]PASS[/]" if status == "pass" else "[fail]FAIL[/]") if RICH else \
-          (_c("ok", "PASS") if status == "pass" else _c("fail", "FAIL"))
+    good = status == "pass"
+    tag  = styled("ok", "PASS") if good else styled("err", "FAIL")
     pr(f"  {tag}  {label}")
 
 def _summary(p, f, sk):
-    passed = f"[ok]{p} passed[/]" if RICH else _c("ok", f"{p} passed")
-    failed = (f"[fail]{f} failed[/]" if f else "[dim]0 failed[/]") if RICH else \
-             (_c("fail", f"{f} failed") if f else _c("dim", "0 failed"))
-    head = "[env]tests[/]" if RICH else _c("env", "tests")
-    ln = f"{head}  {passed} · {failed}"
+    passed = styled("ok", f"{p} passed")
+    failed = styled("err", f"{f} failed") if f else styled("dim", "0 failed")
+    ln     = f"{styled('env', 'tests')}  {passed} · {failed}"
     if sk:
-        ln += f" · [dim]{sk} skipped[/]" if RICH else " · " + _c("dim", f"{sk} skipped")
+        ln += " · " + styled("dim", f"{sk} skipped")
     pr(ln)
