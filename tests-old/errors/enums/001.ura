@@ -1,9 +1,0 @@
-// errors/enums/001 — enum field redefined as something else later
-use "@/header"
-
-enum Color:
-    RED, GREEN, BLUE
-
-main():
-    RED int = 99
-    output(RED, "\n")

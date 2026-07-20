@@ -32,6 +32,8 @@ int get_operation_precedence(Type type)
    static const int res[END + 1] = {
       [ASSIGN] = 1,     [ADD_ASSIGN] = 1, [SUB_ASSIGN] = 1,
       [MUL_ASSIGN] = 1, [DIV_ASSIGN] = 1, [MOD_ASSIGN] = 1,
+      [BAND_ASSIGN] = 1, [BOR_ASSIGN] = 1, [BXOR_ASSIGN] = 1,
+      [LSHIFT_ASSIGN] = 1, [RSHIFT_ASSIGN] = 1,
       [OR] = 2,         [AND] = 3,        [RANGE] = 2,
       [BOR] = 4,        [BXOR] = 5,       [BAND] = 6,
       [LESS] = 8,       [EQUAL] = 7,      [NOT_EQUAL] = 7,
@@ -511,7 +513,10 @@ Node *prime_node() {
       }
       Token *op = find(ASSIGN, ADD, SUB, MUL, DIV, MOD, EQUAL, NOT_EQUAL,
                        LESS, GREAT, LESS_EQUAL, GREAT_EQUAL, ADD_ASSIGN,
-                       SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN, 0);
+                       SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,
+                       BAND, BOR, BXOR, LSHIFT, RSHIFT, BAND_ASSIGN,
+                       BOR_ASSIGN, BXOR_ASSIGN, LSHIFT_ASSIGN,
+                       RSHIFT_ASSIGN, 0);
       if (!op) {
          parse_error(token, ERR_OPERATOR_EXPECTED);
          return syntax_error();
@@ -587,7 +592,8 @@ Node *prime_node() {
    }
    case RETURN: {
       Node *node = new_node(token);
-      node->left = expr_node(0);
+      if (peek(0)->line == token->line)
+         node->left = expr_node(0);
       return node;
    }
    case NOT: case BNOT: {           

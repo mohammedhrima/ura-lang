@@ -4,11 +4,11 @@
 
 - 001 — bool literals: declare, zero-init, bool function, reassign
 - 002 — char literals: declare, print, escapes, in a function
-- 003 — float literals: declare, print, zero-init, in a function
-- 004 — float arithmetic + comparison, compound assignment
-- 005 — `double` declaration, arithmetic and compound assignment
-- 006 — a float literal takes the type of its target
-- 007 — casts between double, float and the integer types
+- 003 — f32 literals: declare, print, zero-init, in a function
+- 004 — f32 arithmetic + comparison, compound assignment
+- 005 — `f64` declaration, arithmetic and compound assignment
+- 006 — a f32 literal takes the type of its target
+- 007 — casts between f64, f32 and the integer types
 - 008 — a return that does not match the function's type
 
 ## 001 — bool literals: declare, zero-init, bool function, reassign
@@ -178,20 +178,20 @@ entry:
 declare i32 @printf(i8*, ...)
 ```
 
-## 003 — float literals: declare, print, zero-init, in a function
+## 003 — f32 literals: declare, print, zero-init, in a function
 
 ```ura
-// literals/003.ura - float literals: declare, print, zero-init, in a function
+// literals/003.ura - f32 literals: declare, print, zero-init, in a function
 
-fn half() float:
+fn half() f32:
     return 0.5
 
 main():
-    x float = 3.14
+    x f32 = 3.14
     output(x, "\n")
     output(2.71, "\n")
     output(half(), "\n")
-    y float
+    y f32
     output(y, "\n")
     return 0
 ```
@@ -280,14 +280,14 @@ entry:
 declare i32 @printf(i8*, ...)
 ```
 
-## 004 — float arithmetic + comparison, compound assignment
+## 004 — f32 arithmetic + comparison, compound assignment
 
 ```ura
-// literals/004.ura - float arithmetic + comparison, compound assignment
+// literals/004.ura - f32 arithmetic + comparison, compound assignment
 
 main():
-    a float = 3.0
-    b float = 2.0
+    a f32 = 3.0
+    b f32 = 2.0
     output(a + b, "\n")
     output(a - b, "\n")
     output(a * b, "\n")
@@ -470,19 +470,19 @@ declare i64 @write(i32, i8*, i64)
 declare void @exit(i32)
 ```
 
-## 005 — `double` declaration, arithmetic and compound assignment
+## 005 — `f64` declaration, arithmetic and compound assignment
 
 ```ura
-// literals/005.ura - the double type
+// literals/005.ura - the f64 type
 
 main():
-    d double = 3.141592653589793
-    e double = 2.0
+    d f64 = 3.141592653589793
+    e f64 = 2.0
     output(d, " ", e, "\n")
     output(d + e, " ", d - e, " ", d * e, " ", d / e, "\n")
     output(d > e, " ", d == d, " ", d != e, "\n")
 
-    c double = 10.0
+    c f64 = 10.0
     c += 2.5
     c -= 0.5
     c *= 2.0
@@ -490,7 +490,7 @@ main():
     output(c, "\n")
 
     // zero-init
-    z double
+    z f64
     output(z, "\n")
 ```
 
@@ -691,26 +691,26 @@ declare i64 @write(i32, i8*, i64)
 declare void @exit(i32)
 ```
 
-## 006 — a float literal takes the type of its target
+## 006 — a f32 literal takes the type of its target
 
 ```ura
-// literals/006.ura - float literal inference
+// literals/006.ura - f32 literal inference
 
-fn half() double:
+fn half() f64:
     return 0.5
 
-fn scale(x double) double:
+fn scale(x f64) f64:
     return x * 2.0
 
 main():
     // same digits, two different types
-    d double = 3.141592653589793
-    f float  = 3.141592653589793
+    d f64 = 3.141592653589793
+    f f32  = 3.141592653589793
     // the f32 rounding is lossy, so widening it back does NOT equal d
-    output((f as double) == d, "\n")
+    output((f as f64) == d, "\n")
 
     // an expression built only from literals adopts too, and unary minus
-    // desugars to 0 - x, so its synthesised zero must be a float
+    // desugars to 0 - x, so its synthesised zero must be a f32
     output(scale(-2.5), " ", scale(1.0 + 0.5), "\n")
 
     // inference at a return
@@ -825,19 +825,19 @@ entry:
 declare i32 @printf(i8*, ...)
 ```
 
-## 007 — casts between double, float and the integer types
+## 007 — casts between f64, f32 and the integer types
 
 ```ura
-// literals/007.ura - double casts
+// literals/007.ura - f64 casts
 
 main():
-    d double = 3.75
-    f float  = 1.5
-    output("d->float ", d as float, "  f->double ", f as double, "\n")
-    output("d->int ", d as int, "  d->long ", d as long, "\n")
-    output("d->short ", d as short, "  d->char ", d as char, "\n")
-    output("int->d ", 7 as double, "  bool->d ", True as double, "\n")
-    output("round trip ", d as int as double, "\n")
+    d f64 = 3.75
+    f f32  = 1.5
+    output("d->f32 ", d as f32, "  f->f64 ", f as f64, "\n")
+    output("d->i32 ", d as i32, "  d->i64 ", d as i64, "\n")
+    output("d->i16 ", d as i16, "  d->char ", d as char, "\n")
+    output("i32->d ", 7 as f64, "  bool->d ", True as f64, "\n")
+    output("round trip ", d as i32 as f64, "\n")
 ```
 
 ```tree
@@ -859,23 +859,23 @@ fn main() : i32
 │  ├─ f : f32
 │  └─ float 1.5
 ├─ output : void
-│  ├─ chars "d->float "
+│  ├─ chars "d->f32 "
 │  ├─ cast : f32
 │  │  └─ d : f64
-│  ├─ chars "  f->double "
+│  ├─ chars "  f->f64 "
 │  ├─ cast : f64
 │  │  └─ f : f32
 │  └─ chars "\n"
 ├─ output : void
-│  ├─ chars "d->int "
+│  ├─ chars "d->i32 "
 │  ├─ cast : i32
 │  │  └─ d : f64
-│  ├─ chars "  d->long "
+│  ├─ chars "  d->i64 "
 │  ├─ cast : i64
 │  │  └─ d : f64
 │  └─ chars "\n"
 ├─ output : void
-│  ├─ chars "d->short "
+│  ├─ chars "d->i16 "
 │  ├─ cast : i16
 │  │  └─ d : f64
 │  ├─ chars "  d->char "
@@ -883,7 +883,7 @@ fn main() : i32
 │  │  └─ d : f64
 │  └─ chars "\n"
 ├─ output : void
-│  ├─ chars "int->d "
+│  ├─ chars "i32->d "
 │  ├─ cast : f64
 │  │  └─ int 7
 │  ├─ chars "  bool->d "
@@ -899,10 +899,10 @@ fn main() : i32
 ```
 
 ```out
-d->float 3.750000  f->double 1.500000
-d->int 3  d->long 3
-d->short 3  d->char 
-int->d 7.000000  bool->d 1.000000
+d->f32 3.750000  f->f64 1.500000
+d->i32 3  d->i64 3
+d->i16 3  d->char 
+i32->d 7.000000  bool->d 1.000000
 round trip 3.000000
 ```
 
@@ -911,19 +911,19 @@ round trip 3.000000
 
 ```ll
 
-@str = private unnamed_addr constant [10 x i8] c"d->float \00", align 1
-@str.1 = private unnamed_addr constant [13 x i8] c"  f->double \00", align 1
+@str = private unnamed_addr constant [8 x i8] c"d->f32 \00", align 1
+@str.1 = private unnamed_addr constant [10 x i8] c"  f->f64 \00", align 1
 @str.2 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt = private unnamed_addr constant [11 x i8] c"%s%f%s%f%s\00", align 1
-@str.3 = private unnamed_addr constant [8 x i8] c"d->int \00", align 1
-@str.4 = private unnamed_addr constant [11 x i8] c"  d->long \00", align 1
+@str.3 = private unnamed_addr constant [8 x i8] c"d->i32 \00", align 1
+@str.4 = private unnamed_addr constant [10 x i8] c"  d->i64 \00", align 1
 @str.5 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt.6 = private unnamed_addr constant [13 x i8] c"%s%d%s%lld%s\00", align 1
-@str.7 = private unnamed_addr constant [10 x i8] c"d->short \00", align 1
+@str.7 = private unnamed_addr constant [8 x i8] c"d->i16 \00", align 1
 @str.8 = private unnamed_addr constant [11 x i8] c"  d->char \00", align 1
 @str.9 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt.10 = private unnamed_addr constant [11 x i8] c"%s%d%s%c%s\00", align 1
-@str.11 = private unnamed_addr constant [8 x i8] c"int->d \00", align 1
+@str.11 = private unnamed_addr constant [8 x i8] c"i32->d \00", align 1
 @str.12 = private unnamed_addr constant [11 x i8] c"  bool->d \00", align 1
 @str.13 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt.14 = private unnamed_addr constant [11 x i8] c"%s%f%s%f%s\00", align 1
@@ -942,19 +942,19 @@ entry:
   %f2d = fpext float %cast to double
   %f2 = load float, float* %f, align 4
   %cast3 = fpext float %f2 to double
-  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str, i32 0, i32 0), double %f2d, i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str.1, i32 0, i32 0), double %cast3, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0))
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str, i32 0, i32 0), double %f2d, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.1, i32 0, i32 0), double %cast3, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0))
   %d4 = load double, double* %d, align 8
   %cast5 = fptosi double %d4 to i32
   %d6 = load double, double* %d, align 8
   %cast7 = fptosi double %d6 to i64
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt.6, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.3, i32 0, i32 0), i32 %cast5, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.4, i32 0, i32 0), i64 %cast7, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i32 0, i32 0))
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt.6, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.3, i32 0, i32 0), i32 %cast5, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.4, i32 0, i32 0), i64 %cast7, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i32 0, i32 0))
   %d8 = load double, double* %d, align 8
   %cast9 = fptosi double %d8 to i16
   %s2i = sext i16 %cast9 to i32
   %d10 = load double, double* %d, align 8
   %cast11 = fptosi double %d10 to i8
   %c2i = sext i8 %cast11 to i32
-  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.10, i32 0, i32 0), i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.7, i32 0, i32 0), i32 %s2i, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.8, i32 0, i32 0), i32 %c2i, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.9, i32 0, i32 0))
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.10, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.7, i32 0, i32 0), i32 %s2i, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.8, i32 0, i32 0), i32 %c2i, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.9, i32 0, i32 0))
   %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.14, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.11, i32 0, i32 0), double 7.000000e+00, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.12, i32 0, i32 0), double 1.000000e+00, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.13, i32 0, i32 0))
   %d12 = load double, double* %d, align 8
   %cast13 = fptosi double %d12 to i32
@@ -971,7 +971,7 @@ declare i32 @printf(i8*, ...)
 ```ura
 // literals/008.ura - return type mismatch
 
-fn f() int:
+fn f() i32:
     return 1.5
 
 main():

@@ -278,7 +278,7 @@ void type_check_dot(Node *node) {
       if (strcmp(token->name, "len") != 0)
          parse_error(token, ERR_UNKNOWN_MEMBER, token->name);
       else
-         token->ret_type = I32;
+         token->ret_type = U64;
       return;
    }
    if (left->ret_type != STRUCT_CALL) {
@@ -330,6 +330,7 @@ bool find_operator(Node *node) {
 }
 
 bool same_family(Type a, Type b) {
+   if (b == BOOL) return false;
    if (is_float(a)) return is_float(b);
    return includes(a, NUMERIC_TYPES, 0) && includes(b, NUMERIC_TYPES, 0);
 }
@@ -518,7 +519,9 @@ void type_check(Node *node) {
          bool bad_src = src && !is_castable(src);
          bool bad_dst = !is_castable(dst);
          if (bad_src || bad_dst)
-            parse_error(token, ERR_CANNOT_CAST, type_name(src), type_name(dst));
+            parse_error(token, ERR_CANNOT_CAST,
+                        struct_name_of(node->left->token),
+                        struct_name_of(node->right->token));
          token->ret_type = dst;
          break;
       }
@@ -549,7 +552,7 @@ void type_check(Node *node) {
       case ARRAY:     type_check_array_ctor(node); break;
       case TYPEOF: case SIZEOF:
          type_check(node->left);
-         node->token->ret_type = token->type == TYPEOF ? CHARS : I32;
+         node->token->ret_type = token->type == TYPEOF ? CHARS : U64;
          break;
       case CLEAN: {
          type_check(node->left);
@@ -565,7 +568,9 @@ void type_check(Node *node) {
       }
       case BREAK: case CONTINUE: break;
       case ASSIGN: case ADD: case SUB: case MUL: case DIV: case MOD:
-      case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN: case MOD_ASSIGN:
+      case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN:
+      case MOD_ASSIGN: case BAND_ASSIGN: case BOR_ASSIGN: case BXOR_ASSIGN:
+      case LSHIFT_ASSIGN: case RSHIFT_ASSIGN:
       case EQUAL: case NOT_EQUAL: case LESS: case GREAT: case LESS_EQUAL: case GREAT_EQUAL:
       case AND: case OR:
       case BAND: case BOR: case BXOR: case LSHIFT: case RSHIFT:

@@ -1,59 +1,59 @@
 // util.ura - free functions: higher order, recursion, bitwise, casts.
 
 // forward reference: this calls a function declared further down
-fn seed(n int) int:
+fn seed(n i32) i32:
     return mix(n, 3)
 
-fn mix(a int, b int) int:
+fn mix(a i32, b i32) i32:
     return (a << b) ^ (a & 15 | b) >> 1
 
 // recursion
-fn fib(n int) int:
+fn fib(n i32) i32:
     if n < 2:
         return n
     return fib(n - 1) + fib(n - 2)
 
 // single-line function
-fn twice(n int) int: return n * 2
+fn twice(n i32) i32: return n * 2
 
-fn thrice(n int) int: return n * 3
+fn thrice(n i32) i32: return n * 3
 
 // higher order: takes a function as a parameter
-fn apply(f fn(int) int, v int) int:
+fn apply(f fn(i32) i32, v i32) i32:
     return f(v)
 
-fn apply_all(f fn(int) int, xs int[]) void:
+fn apply_all(f fn(i32) i32, xs i32[]) void:
     for x in xs:
         output(f(x), " ")
     output("\n")
 
 // a nested, non-capturing helper
-fn outer(n int) int:
-    fn inner(v int) int:
+fn outer(n i32) i32:
+    fn inner(v i32) i32:
         return v + 100
     return inner(n)
 
 // every cast the language has
 fn casts() void:
-    i int   = 300
-    l long  = i as long
-    s short = i as short
+    i i32   = 300
+    l i64  = i as i64
+    s i16 = i as i16
     c char  = 65 as char
-    f float = i as float
+    f f32 = i as f32
     b bool  = True
 
-    output("int ", i, " long ", l, " short ", s)
-    output(" char ", c, " float ", f, " bool ", b, "\n")
-    output("float->int ", 2.9 as int, " char->int ", 'Z' as int, "\n")
+    output("i32 ", i, " i64 ", l, " i16 ", s)
+    output(" char ", c, " f32 ", f, " bool ", b, "\n")
+    output("f32->i32 ", 2.9 as i32, " char->i32 ", 'Z' as i32, "\n")
 
 fn reflect() void:
-    n int      = 7
-    arr int[]  = [1, 2, 3]
+    n i32      = 7
+    arr i32[]  = [1, 2, 3]
     output("typeof n ", typeof(n), " sizeof n ", sizeof(n), "\n")
     output("typeof arr ", typeof(arr), " sizeof arr ", sizeof(arr), "\n")
 
 // unary operators
 fn unary() void:
-    n int  = 5
+    n i32  = 5
     b bool = False
     output("-n ", 0 - n, " ~n ", ~n, " !b ", !b, " not b ", not b, "\n")

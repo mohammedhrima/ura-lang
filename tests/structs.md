@@ -42,6 +42,7 @@
 - 038 — a struct declared in a block is not visible outside it
 - 039 — a struct declared twice in the same scope
 - 040 — a method and a field chain called on a `ref?` field
+- 041 — an unknown type as a parameter, a return type, or an array element
 
 ## 001 — declare a struct and a local: named type, alloca, zero-init
 
@@ -50,8 +51,8 @@
 
 struct Player:
     name chars
-    hp   int
-    mp   int
+    hp   i32
+    mp   i32
 
 main():
     p Player
@@ -112,7 +113,7 @@ declare i32 @printf(i8*, ...)
 
 struct Room:
     name  chars
-    floor int
+    floor i32
 
 struct Dungeon:
     name  chars
@@ -185,7 +186,7 @@ struct Dungeon:
 
 struct Room:
     name  chars
-    floor int
+    floor i32
 
 main():
     d Dungeon
@@ -250,8 +251,8 @@ declare i32 @printf(i8*, ...)
 
 main():
     struct Local:
-        x int
-        y int
+        x i32
+        y i32
 
     l Local
     output("ok\n")
@@ -308,10 +309,10 @@ declare i32 @printf(i8*, ...)
 // structs/005.ura - a struct declared inside an if block
 
 main():
-    n int = 1
+    n i32 = 1
     if n == 1:
         struct Inner:
-            x int
+            x i32
 
         i Inner
         output("ok\n")
@@ -386,7 +387,7 @@ declare i32 @printf(i8*, ...)
 main():
     for i in 0..2:
         struct Tick:
-            n int
+            n i32
 
         t Tick
     output("ok\n")
@@ -468,7 +469,7 @@ declare i32 @printf(i8*, ...)
 // structs/007.ura - an array-of-struct field is a fat pointer to the named type
 
 struct Room:
-    floor int
+    floor i32
 
 struct Tree:
     label chars
@@ -539,7 +540,7 @@ struct Outer:
     struct Config:
         debug bool
 
-    hp int
+    hp i32
 
 main():
     o Outer
@@ -660,8 +661,8 @@ declare i32 @printf(i8*, ...)
 // structs/010.ura - an unused struct emits no type
 
 struct Unused:
-    x int
-    y int
+    x i32
+    y i32
 
 main():
     output("ok\n")
@@ -721,10 +722,10 @@ main():
     l0 Local
 
     struct Local:
-        x int
-        y int
+        x i32
+        y i32
 
-    n int = 1
+    n i32 = 1
     if n == 1:
         struct Local:
             z chars
@@ -817,7 +818,7 @@ declare i32 @printf(i8*, ...)
 
 struct Room:
     name  chars
-    floor int
+    floor i32
 
 main():
     p Room
@@ -928,7 +929,7 @@ declare i32 @printf(i8*, ...)
 
 struct Room:
     name  chars
-    floor int
+    floor i32
 
 struct Dungeon:
     name  chars
@@ -1044,7 +1045,7 @@ declare i32 @printf(i8*, ...)
 
 struct Room:
     name  chars
-    floor int
+    floor i32
 
 main():
     s Room[] = Room[2]
@@ -1197,7 +1198,7 @@ attributes #0 = { argmemonly nofree nounwind willreturn writeonly }
 
 struct Room:
     name  chars
-    floor int
+    floor i32
 
 main():
     h Room[] = new Room[2]
@@ -1344,7 +1345,7 @@ declare void @free(i8*)
 
 struct Room:
     name  chars
-    floor int
+    floor i32
 
 main():
     g Room[][] = Room[2][1]
@@ -1570,7 +1571,7 @@ attributes #0 = { argmemonly nofree nounwind willreturn writeonly }
 // structs/017.ura - a 2D heap array of structs frees every inner slice
 
 struct Room:
-    floor int
+    floor i32
 
 main():
     g Room[][] = new Room[2][2]
@@ -1756,7 +1757,7 @@ declare void @free(i8*)
 // structs/018.ura - '.len' on arrays of structs, including 2D
 
 struct Room:
-    floor int
+    floor i32
 
 main():
     s Room[]   = Room[2]
@@ -1789,10 +1790,10 @@ fn main() : i32
 │     ├─ int 4
 │     └─ int 1
 └─ output : void
-   ├─ .len : i32
+   ├─ .len : u64
    │  └─ s : STRUCT_CALL[]
    ├─ chars " "
-   ├─ .len : i32
+   ├─ .len : u64
    │  └─ g : STRUCT_CALL[][]
    └─ chars "\n"
 ```
@@ -1810,7 +1811,7 @@ fn main() : i32
 
 @str = private unnamed_addr constant [2 x i8] c" \00", align 1
 @str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt = private unnamed_addr constant [9 x i8] c"%d%s%d%s\00", align 1
+@fmt = private unnamed_addr constant [13 x i8] c"%llu%s%llu%s\00", align 1
 
 define i32 @main() {
 entry:
@@ -1851,11 +1852,9 @@ arr.end:                                          ; preds = %arr.cond
   store { { %Room*, i64 }*, i64 } %arr.len8, { { %Room*, i64 }*, i64 }* %g, align 8
   %s9 = load { %Room*, i64 }, { %Room*, i64 }* %s, align 8
   %len = extractvalue { %Room*, i64 } %s9, 1
-  %len10 = trunc i64 %len to i32
-  %g11 = load { { %Room*, i64 }*, i64 }, { { %Room*, i64 }*, i64 }* %g, align 8
-  %len12 = extractvalue { { %Room*, i64 }*, i64 } %g11, 1
-  %len13 = trunc i64 %len12 to i32
-  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @fmt, i32 0, i32 0), i32 %len10, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0), i32 %len13, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  %g10 = load { { %Room*, i64 }*, i64 }, { { %Room*, i64 }*, i64 }* %g, align 8
+  %len11 = extractvalue { { %Room*, i64 }*, i64 } %g10, 1
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt, i32 0, i32 0), i64 %len, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0), i64 %len11, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
   ret i32 0
 }
 
@@ -1873,8 +1872,8 @@ attributes #0 = { argmemonly nofree nounwind willreturn writeonly }
 // structs/019.ura - 'stack' and 'heap' are ordinary identifiers
 
 main():
-    stack int = 5
-    heap  int = 7
+    stack i32 = 5
+    heap  i32 = 7
     output(stack, " ", heap, "\n")
 ```
 
@@ -1937,7 +1936,7 @@ declare i32 @printf(i8*, ...)
 // structs/020.ura - a 'ref?' field may refer to its own struct
 
 struct Node:
-    value int
+    value i32
     ref? next Node
 
 main():
@@ -2008,7 +2007,7 @@ declare i32 @printf(i8*, ...)
 // structs/021.ura - bind, read and write through a 'ref?' field
 
 struct Node:
-    value int
+    value i32
     ref? next Node
 
 main():
@@ -2149,7 +2148,7 @@ declare i32 @printf(i8*, ...)
 
 struct Room:
     name  chars
-    floor int
+    floor i32
 
 main():
     a Room
@@ -2263,7 +2262,7 @@ declare i32 @printf(i8*, ...)
 
 struct Room:
     name  chars
-    floor int
+    floor i32
 
 fn show(r Room) void:
     output("room ", r.name, "@", r.floor, "\n")
@@ -2366,7 +2365,7 @@ entry:
 
 struct Room:
     name  chars
-    floor int
+    floor i32
 
 fn bump(ref r Room) void:
     r.floor = r.floor + 1
@@ -2470,9 +2469,9 @@ declare i32 @printf(i8*, ...)
 
 struct Room:
     name  chars
-    floor int
+    floor i32
 
-fn create(f int) Room:
+fn create(f i32) Room:
     r Room
     r.name  = "made"
     r.floor = f
@@ -2596,7 +2595,7 @@ declare i32 @printf(i8*, ...)
 
 struct Room:
     name  chars
-    floor int
+    floor i32
 
 struct Dungeon:
     name  chars
@@ -2865,7 +2864,7 @@ seen.fresh:                                       ; preds = %seen.cond
 // structs/027.ura - output() follows a bound 'ref?' and prints null when unbound
 
 struct Node:
-    value int
+    value i32
     ref? next Node
 
 main():
@@ -3043,7 +3042,7 @@ out.refend:                                       ; preds = %out.ref, %out.null
 // structs/028.ura - output() prints [Circular] instead of looping forever
 
 struct Node:
-    value int
+    value i32
     ref? next Node
 
 main():
@@ -3228,7 +3227,7 @@ out.refend:                                       ; preds = %out.ref, %out.null
 // structs/029.ura - output() expands array fields, including 2D
 
 struct Room:
-    floor int
+    floor i32
 
 struct Flat:
     tag   chars
@@ -3752,8 +3751,8 @@ attributes #0 = { argmemonly nofree nounwind willreturn writeonly }
 
 struct Player:
     name chars
-    hp   int
-    hp   int
+    hp   i32
+    hp   i32
 
 main():
     p Player
@@ -3769,7 +3768,7 @@ main():
 error: Field 'hp' is already declared in this struct; rename it or remove the duplicate
   030.ura:6:5
   |
-6 |     hp   int
+6 |     hp   i32
   |     ^^
 ```
 
@@ -3811,7 +3810,7 @@ error: Unknown type 'Room'
 // structs/032.ura - a struct that contains itself by value
 
 struct Node:
-    value int
+    value i32
     next  Node
 
 main():
@@ -3905,7 +3904,7 @@ error: Unknown type 'Player'
 
 struct Player:
     name chars
-    hp   int
+    hp   i32
 
 main():
     p Player
@@ -3935,7 +3934,7 @@ error: Struct Player has no field 'nope'; check the spelling or declare it in th
 // structs/036.ura - reading a field from a scalar
 
 main():
-    x int = 3
+    x i32 = 3
     output(x.foo)
 ```
 
@@ -3962,7 +3961,7 @@ error: Cannot read '.foo' from i32; only a struct has fields
 // structs/037.ura - '.len' on a scalar
 
 main():
-    x int = 3
+    x i32 = 3
     output(x.len)
 ```
 
@@ -3989,10 +3988,10 @@ error: '.len' is only valid on an array, not i32
 // structs/038.ura - a struct declared in a block is not visible outside it
 
 main():
-    n int = 1
+    n i32 = 1
     if n == 1:
         struct Inner:
-            x int
+            x i32
 
     i Inner
 ```
@@ -4020,10 +4019,10 @@ error: Unknown type 'Inner'
 // structs/039.ura - a struct declared twice in the same scope
 
 struct Player:
-    hp int
+    hp i32
 
 struct Player:
-    mp int
+    mp i32
 
 main():
     p Player
@@ -4052,10 +4051,10 @@ error: Redeclaration of struct 'Player'
 // structs/040.ura - a method called through a 'ref?' field
 
 struct Item:
-    worth int
+    worth i32
     ref? next Item
 
-    pub fn create(w int) Item:
+    pub fn create(w i32) Item:
         it Item
         it.worth = w
         return it
@@ -4225,4 +4224,58 @@ entry:
   %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.4, i32 0, i32 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @str.2, i32 0, i32 0), i32 %worth13, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
   ret i32 0
 }
+```
+
+## 041 — an unknown type as a parameter, a return type, or an array element
+
+```ura
+// structs/041.ura - Unknown type in every declaration position
+
+fn process(p Widget) void:
+    return
+
+fn make() Widget:
+    w Widget
+    return w
+
+main():
+    arr Widget[] = new Widget[3]
+    output("hi\n")
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Unknown type 'Widget'
+  041.ura:3:12
+  |
+3 | fn process(p Widget) void:
+  |            ^
+error: Unknown type 'Widget'
+  041.ura:6:1
+  |
+6 | fn make() Widget:
+  | ^^
+error: Unknown type 'Widget'
+  041.ura:7:5
+  |
+7 |     w Widget
+  |     ^
+error: Unknown type 'Widget'
+   041.ura:11:5
+   |
+11 |     arr Widget[] = new Widget[3]
+   |     ^^^
+error: Unknown type 'Widget'
+   041.ura:11:24
+   |
+11 |     arr Widget[] = new Widget[3]
+   |                        ^^^^^^
+```
+
+```ll
 ```

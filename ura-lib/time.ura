@@ -5,45 +5,45 @@
 // same layout on both platforms in 64-bit mode.
 
 struct Timespec:
-    tv_sec   long      // time_t
-    tv_nsec  long      // long
+    tv_sec   i64      // time_t
+    tv_nsec  i64      // i64
 
 struct Timeval:
-    tv_sec   long      // time_t
-    tv_usec  int       // suseconds_t (i32)
-    __pad    int       // explicit pad so total is 16 bytes / 8-byte aligned
+    tv_sec   i64      // time_t
+    tv_usec  i32       // suseconds_t (i32)
+    __pad    i32       // explicit pad so total is 16 bytes / 8-byte aligned
 
 // `struct tm` — broken-down calendar time. Same field set on Linux glibc and
 // macOS (both expose POSIX + BSD extensions: tm_gmtoff and tm_zone).
 struct Tm:
-    tm_sec    int
-    tm_min    int
-    tm_hour   int
-    tm_mday   int
-    tm_mon    int
-    tm_year   int
-    tm_wday   int
-    tm_yday   int
-    tm_isdst  int
-    tm_gmtoff long          // long
+    tm_sec    i32
+    tm_min    i32
+    tm_hour   i32
+    tm_mday   i32
+    tm_mon    i32
+    tm_year   i32
+    tm_wday   i32
+    tm_yday   i32
+    tm_isdst  i32
+    tm_gmtoff i64          // i64
     tm_zone   chars         // const char *
 
 // Time manipulation
-proto fn time(timer pointer) long
-proto fn difftime(time1 long, time0 long) double
-proto fn clock() long
+proto fn time(timer pointer) i64
+proto fn difftime(time1 i64, time0 i64) f64
+proto fn clock() i64
 
 // Conversion (returned struct tm* points to thread-local static storage).
-// `timer` is a pointer to a time_t (so we type it as `ref ... long` — the
-// most ergonomic form for `t long = time(0); localtime(t)` callers).
-proto fn gmtime(ref timer long) pointer
-proto fn localtime(ref timer long) pointer
-proto fn mktime(timeptr pointer) long
-proto fn gmtime_r(ref timer long, result pointer) pointer
-proto fn localtime_r(ref timer long, result pointer) pointer
+// `timer` is a pointer to a time_t (so we type it as `ref ... i64` — the
+// most ergonomic form for `t i64 = time(0); localtime(t)` callers).
+proto fn gmtime(ref timer i64) pointer
+proto fn localtime(ref timer i64) pointer
+proto fn mktime(timeptr pointer) i64
+proto fn gmtime_r(ref timer i64, result pointer) pointer
+proto fn localtime_r(ref timer i64, result pointer) pointer
 
 // Formatting
-proto fn strftime(s chars, maxsize long, format chars, timeptr pointer) long
+proto fn strftime(s chars, maxsize i64, format chars, timeptr pointer) i64
 proto fn asctime(timeptr pointer) chars
 proto fn ctime(timer pointer) chars
 proto fn asctime_r(timeptr pointer, buf chars) chars
@@ -52,9 +52,9 @@ proto fn ctime_r(timer pointer, buf chars) chars
 // High-resolution time (CLOCK_REALTIME = 0 on both Linux and macOS).
 // Timespec/Timeval args are typed `pointer` so callers can pass `ref ts` or
 // a raw buffer.
-proto fn clock_gettime(clk_id int, tp pointer) int
-proto fn clock_settime(clk_id int, tp pointer) int
-proto fn nanosleep(req pointer, rem pointer) int
+proto fn clock_gettime(clk_id i32, tp pointer) i32
+proto fn clock_settime(clk_id i32, tp pointer) i32
+proto fn nanosleep(req pointer, rem pointer) i32
 
 // Wall-clock / time-of-day (POSIX, on both)
-proto fn gettimeofday(tv pointer, tz pointer) int
+proto fn gettimeofday(tv pointer, tz pointer) i32

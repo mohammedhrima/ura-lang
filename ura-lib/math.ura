@@ -1,63 +1,63 @@
 // math.h — floating-point math. Identical signatures on Linux and macOS.
-// Every function here takes and returns C `double`, so this file needs ura's
-// `double` type; with `float` (f32) the linker would bind these to libm's
-// double entry points and silently produce wrong results.
+// Every function here takes and returns a C double, so they must be declared
+// f64. Declared f32, the linker would still bind them to libm's double entry
+// points and silently produce wrong results.
 
 // Trigonometric (radians)
-proto fn sin(x double) double
-proto fn cos(x double) double
-proto fn tan(x double) double
-proto fn asin(x double) double
-proto fn acos(x double) double
-proto fn atan(x double) double
-proto fn atan2(y double, x double) double
+proto fn sin(x f64) f64
+proto fn cos(x f64) f64
+proto fn tan(x f64) f64
+proto fn asin(x f64) f64
+proto fn acos(x f64) f64
+proto fn atan(x f64) f64
+proto fn atan2(y f64, x f64) f64
 
 // Hyperbolic
-proto fn sinh(x double) double
-proto fn cosh(x double) double
-proto fn tanh(x double) double
-proto fn asinh(x double) double
-proto fn acosh(x double) double
-proto fn atanh(x double) double
+proto fn sinh(x f64) f64
+proto fn cosh(x f64) f64
+proto fn tanh(x f64) f64
+proto fn asinh(x f64) f64
+proto fn acosh(x f64) f64
+proto fn atanh(x f64) f64
 
 // Exponential and logarithmic
-proto fn exp(x double) double
-proto fn exp2(x double) double
-proto fn expm1(x double) double
-proto fn log(x double) double
-proto fn log2(x double) double
-proto fn log10(x double) double
-proto fn log1p(x double) double
+proto fn exp(x f64) f64
+proto fn exp2(x f64) f64
+proto fn expm1(x f64) f64
+proto fn log(x f64) f64
+proto fn log2(x f64) f64
+proto fn log10(x f64) f64
+proto fn log1p(x f64) f64
 
 // Power / roots
-proto fn pow(x double, y double) double
-proto fn sqrt(x double) double
-proto fn cbrt(x double) double
-proto fn hypot(x double, y double) double
+proto fn pow(x f64, y f64) f64
+proto fn sqrt(x f64) f64
+proto fn cbrt(x f64) f64
+proto fn hypot(x f64, y f64) f64
 
 // Rounding and remainder
-proto fn ceil(x double) double
-proto fn floor(x double) double
-proto fn trunc(x double) double
-proto fn round(x double) double
-proto fn fmod(x double, y double) double
-proto fn remainder(x double, y double) double
+proto fn ceil(x f64) f64
+proto fn floor(x f64) f64
+proto fn trunc(x f64) f64
+proto fn round(x f64) f64
+proto fn fmod(x f64, y f64) f64
+proto fn remainder(x f64, y f64) f64
 
 // Absolute, sign, min/max
-proto fn fabs(x double) double
-proto fn copysign(x double, y double) double
-proto fn fmax(x double, y double) double
-proto fn fmin(x double, y double) double
-proto fn fdim(x double, y double) double
+proto fn fabs(x f64) f64
+proto fn copysign(x f64, y f64) f64
+proto fn fmax(x f64, y f64) f64
+proto fn fmin(x f64, y f64) f64
+proto fn fdim(x f64, y f64) f64
 
-// Classification (returns int)
-proto fn isnan(x double) int
-proto fn isinf(x double) int
-proto fn isfinite(x double) int
-proto fn signbit(x double) int
+// Classification (returns i32)
+proto fn isnan(x f64) i32
+proto fn isinf(x f64) i32
+proto fn isfinite(x f64) i32
+proto fn signbit(x f64) i32
 
 // Gamma and error functions
-proto fn tgamma(x double) double
-proto fn lgamma(x double) double
-proto fn erf(x double) double
-proto fn erfc(x double) double
+proto fn tgamma(x f64) f64
+proto fn lgamma(x f64) f64
+proto fn erf(x f64) f64
+proto fn erfc(x f64) f64

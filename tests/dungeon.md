@@ -10,22 +10,22 @@
 
 ```ura
 // dungeon/floor04.ura
-fn clamp(val int, lo int, hi int) int:
+fn clamp(val i32, lo i32, hi i32) i32:
     if val < lo: return lo
     if val > hi: return hi
     return val
 
-fn damage(atk int, def int) int:
+fn damage(atk i32, def i32) i32:
     return clamp(atk - def, 0, 999)
 
-fn is_dead(hp int) bool:
+fn is_dead(hp i32) bool:
     return hp <= 0
 
-fn square(n int) int:      return n * n
+fn square(n i32) i32:      return n * n
 fn is_digit(c char) bool:  return c >= '0' and c <= '9'
 
 main():
-    d int = damage(25, 8)
+    d i32 = damage(25, 8)
     output("Orc takes ", d, " damage — dead: ", is_dead(d - 60), "\n")
     output("4 squared: ", square(4), "\n")
 ```
@@ -230,8 +230,8 @@ declare i32 @printf(i8*, ...)
 ```ura
 // dungeon/floor09b.ura
 main():
-    hp  int     = 80
-    ref r int = ref hp
+    hp  i32     = 80
+    ref r i32 = ref hp
     r   = 100
     output(hp, "\n")
 ```
@@ -295,12 +295,12 @@ declare i32 @printf(i8*, ...)
 
 ```ura
 // dungeon/floor14a.ura
-proto fn strlen(s chars) int
-proto fn write(fd int, ptr chars, len int) int
-proto fn printf(fmt chars, ...) int
+proto fn strlen(s chars) i32
+proto fn write(fd i32, ptr chars, len i32) i32
+proto fn printf(fmt chars, ...) i32
 
 main():
-    n int = strlen("dungeon")
+    n i32 = strlen("dungeon")
     write(1, "hi\n", 3)
     printf("length: %d\n", n)
 ```
@@ -315,7 +315,7 @@ main():
 error: Redeclaration of function 'write'
   floor14a.ura:3:7
   |
-3 | proto fn write(fd int, ptr chars, len int) int
+3 | proto fn write(fd i32, ptr chars, len i32) i32
   |       ^^
 ```
 

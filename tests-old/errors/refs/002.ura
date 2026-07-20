@@ -1,6 +1,0 @@
-// errors/refs/002 — a reference's type must match its target
-
-main():
-    x int = 5
-    ref y chars = ref x
-    return 0

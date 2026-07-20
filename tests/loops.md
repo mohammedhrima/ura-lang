@@ -16,6 +16,7 @@
 - 011 — `by` sets the step of a range
 - 012 — a `by` step must be a positive integer on a range
 - 013 — `by` needs a range on its left
+- 014 — `break` and `continue` inside a `for`
 
 ## 001 — basic while: count enemy kills
 
@@ -23,7 +24,7 @@
 // loops/001.ura - basic while: count enemy kills
 
 main():
-    kills int = 0
+    kills i32 = 0
     while kills < 5:
         kills = kills + 1
     output("<", kills, ">\n")
@@ -104,7 +105,7 @@ declare i32 @printf(i8*, ...)
 // loops/002.ura - loop (infinite) with break + continue
 
 main():
-    i int = 0
+    i i32 = 0
     loop:
         i = i + 1
         if i == 3:
@@ -333,8 +334,8 @@ declare i32 @printf(i8*, ...)
 // loops/004.ura - for x in arr iterates elements
 
 main():
-    nums int[] = [10, 20, 30]
-    total int = 0
+    nums i32[] = [10, 20, 30]
+    total i32 = 0
     for x in nums:
         total = total + x
     output("sum = ", total, "\n")
@@ -447,7 +448,7 @@ declare i32 @printf(i8*, ...)
 // loops/005.ura - for ref x in arr aliases each element (writes go through)
 
 main():
-    nums int[] = [1, 2, 3, 4]
+    nums i32[] = [1, 2, 3, 4]
     for ref x in nums:
         x = x * 2
     for x in nums:
@@ -611,7 +612,7 @@ error: Expected a loop variable after 'for'
 
 ```ura
 main():
-    x int = 5
+    x i32 = 5
     for i in x:
         output(i)
 ```
@@ -689,24 +690,24 @@ error: 'for ref' needs an array; a range yields values, not storage
 // loops/010.ura - for over a struct field, by ref and nested
 
 struct Room:
-    floor int
+    floor i32
 
 struct World:
-    grid  int[][]
+    grid  i32[][]
     rooms Room[]
 
     pub fn create() World:
         w World
-        w.grid  = new int[2][3]
+        w.grid  = new i32[2][3]
         w.rooms = new Room[3]
-        i int = 0
+        i i32 = 0
         while i < 3:
             w.rooms[i].floor = i
             i += 1
         w.grid[1][2] = 9
         return w
 
-    // nested for over a 2D field: 'row' must be typed int[]
+    // nested for over a 2D field: 'row' must be typed i32[]
     fn show_grid() void:
         for row in self.grid:
             for v in row:
@@ -1175,24 +1176,24 @@ declare void @free(i8*)
 // loops/010.ura - for over a struct field, by ref and nested
 
 struct Room:
-    floor int
+    floor i32
 
 struct World:
-    grid  int[][]
+    grid  i32[][]
     rooms Room[]
 
     pub fn create() World:
         w World
-        w.grid  = new int[2][3]
+        w.grid  = new i32[2][3]
         w.rooms = new Room[3]
-        i int = 0
+        i i32 = 0
         while i < 3:
             w.rooms[i].floor = i
             i += 1
         w.grid[1][2] = 9
         return w
 
-    // nested for over a 2D field: 'row' must be typed int[]
+    // nested for over a 2D field: 'row' must be typed i32[]
     fn show_grid() void:
         for row in self.grid:
             for v in row:
@@ -1667,7 +1668,7 @@ main():
     for i in 10..0 by 3:
         output(i, " ")
     output("\n")
-    n int = 4
+    n i32 = 4
     for i in 0..20 by n:
         output(i, " ")
     output("\n")
@@ -1909,7 +1910,7 @@ error: The 'by' step must be positive; a range counts down when its start is gre
 // loops/013.ura - by needs a range, not an array
 
 main():
-    xs int[] = [1, 2, 3]
+    xs i32[] = [1, 2, 3]
     for x in xs by 2:
         output(x)
 ```
@@ -1929,4 +1930,268 @@ error: 'by' sets the step of a range (a..b), so it needs one on its left
 ```
 
 ```ll
+```
+
+## 014 — `break` and `continue` inside a `for`
+
+```ura
+// loops/014.ura - break and continue in a range-for
+
+main():
+    output("break:    ")
+    for i in 0..10:
+        if i == 4:
+            break
+        output(i, " ")
+
+    output("\ncontinue: ")
+    for i in 0..8:
+        if i % 2 == 0:
+            continue
+        output(i, " ")
+
+    // break leaves only the inner for
+    output("\nnested:   ")
+    for i in 0..3:
+        for j in 0..3:
+            if j == 2:
+                break
+            output(i, j, " ")
+    output("\n")
+```
+
+```tree
+proto fn printf(format : chars, ...) : i32
+
+proto fn calloc(len : i64, size : i64) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
+
+proto fn exit(code : i32) : void
+
+fn main() : i32
+├─ output : void
+│  └─ chars "break:    "
+├─ for
+│  ├─ i : i32
+│  ├─ range : i32
+│  │  ├─ int 0
+│  │  └─ int 10
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ i : i32
+│  │  │  └─ int 4
+│  │  └─ break
+│  └─ output : void
+│     ├─ i : i32
+│     └─ chars " "
+├─ output : void
+│  └─ chars "\ncontinue: "
+├─ for
+│  ├─ i : i32
+│  ├─ range : i32
+│  │  ├─ int 0
+│  │  └─ int 8
+│  ├─ if
+│  │  ├─ condition == : bool
+│  │  │  ├─ % : i32
+│  │  │  │  ├─ i : i32
+│  │  │  │  └─ int 2
+│  │  │  └─ int 0
+│  │  └─ continue
+│  └─ output : void
+│     ├─ i : i32
+│     └─ chars " "
+├─ output : void
+│  └─ chars "\nnested:   "
+├─ for
+│  ├─ i : i32
+│  ├─ range : i32
+│  │  ├─ int 0
+│  │  └─ int 3
+│  └─ for
+│     ├─ j : i32
+│     ├─ range : i32
+│     │  ├─ int 0
+│     │  └─ int 3
+│     ├─ if
+│     │  ├─ condition == : bool
+│     │  │  ├─ j : i32
+│     │  │  └─ int 2
+│     │  └─ break
+│     └─ output : void
+│        ├─ i : i32
+│        ├─ j : i32
+│        └─ chars " "
+└─ output : void
+   └─ chars "\n"
+```
+
+```out
+break:    0 1 2 3 
+continue: 1 3 5 7 
+nested:   00 01 10 11 20 21 
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [11 x i8] c"break:    \00", align 1
+@fmt = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c" \00", align 1
+@fmt.2 = private unnamed_addr constant [5 x i8] c"%d%s\00", align 1
+@str.3 = private unnamed_addr constant [12 x i8] c"\0Acontinue: \00", align 1
+@fmt.4 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@trap_msg = private unnamed_addr constant [162 x i8] c"runtime error: Modulo by zero\0A   014.ura:12:14\0A   |\0A12 |         if i % 2 == 0:\0A   |              ^\0A\00", align 1
+@str.5 = private unnamed_addr constant [2 x i8] c" \00", align 1
+@fmt.6 = private unnamed_addr constant [5 x i8] c"%d%s\00", align 1
+@str.7 = private unnamed_addr constant [12 x i8] c"\0Anested:   \00", align 1
+@fmt.8 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@str.9 = private unnamed_addr constant [2 x i8] c" \00", align 1
+@fmt.10 = private unnamed_addr constant [7 x i8] c"%d%d%s\00", align 1
+@str.11 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.12 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+
+define i32 @main() {
+entry:
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str, i32 0, i32 0))
+  %i = alloca i32, align 4
+  store i32 0, i32* %i, align 4
+  br label %for.cond
+
+for.cond:                                         ; preds = %for.inc, %entry
+  %i1 = load i32, i32* %i, align 4
+  %lt = icmp slt i32 %i1, 10
+  %gt = icmp sgt i32 %i1, 10
+  %more = select i1 true, i1 %lt, i1 %gt
+  br i1 %more, label %for.body, label %for.end
+
+for.body:                                         ; preds = %for.cond
+  %i2 = load i32, i32* %i, align 4
+  %eq = icmp eq i32 %i2, 4
+  br i1 %eq, label %then, label %endif
+
+for.inc:                                          ; preds = %endif
+  %i4 = load i32, i32* %i, align 4
+  %next = add i32 %i4, 1
+  store i32 %next, i32* %i, align 4
+  br label %for.cond
+
+for.end:                                          ; preds = %then, %for.cond
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.4, i32 0, i32 0), i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.3, i32 0, i32 0))
+  %i5 = alloca i32, align 4
+  store i32 0, i32* %i5, align 4
+  br label %for.cond6
+
+endif:                                            ; preds = %for.body
+  %i3 = load i32, i32* %i, align 4
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.2, i32 0, i32 0), i32 %i3, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  br label %for.inc
+
+then:                                             ; preds = %for.body
+  br label %for.end
+
+for.cond6:                                        ; preds = %for.inc8, %for.end
+  %i10 = load i32, i32* %i5, align 4
+  %lt11 = icmp slt i32 %i10, 8
+  %gt12 = icmp sgt i32 %i10, 8
+  %more13 = select i1 true, i1 %lt11, i1 %gt12
+  br i1 %more13, label %for.body7, label %for.end9
+
+for.body7:                                        ; preds = %for.cond6
+  %i16 = load i32, i32* %i5, align 4
+  br i1 false, label %trap, label %cont
+
+for.inc8:                                         ; preds = %endif14, %then15
+  %i19 = load i32, i32* %i5, align 4
+  %next20 = add i32 %i19, 1
+  store i32 %next20, i32* %i5, align 4
+  br label %for.cond6
+
+for.end9:                                         ; preds = %for.cond6
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.8, i32 0, i32 0), i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.7, i32 0, i32 0))
+  %i21 = alloca i32, align 4
+  store i32 0, i32* %i21, align 4
+  br label %for.cond22
+
+endif14:                                          ; preds = %cont
+  %i18 = load i32, i32* %i5, align 4
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.6, i32 0, i32 0), i32 %i18, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i32 0, i32 0))
+  br label %for.inc8
+
+then15:                                           ; preds = %cont
+  br label %for.inc8
+
+trap:                                             ; preds = %for.body7
+  %5 = call i64 @write(i32 2, i8* getelementptr inbounds ([162 x i8], [162 x i8]* @trap_msg, i32 0, i32 0), i64 161)
+  call void @exit(i32 1)
+  unreachable
+
+cont:                                             ; preds = %for.body7
+  %mod = srem i32 %i16, 2
+  %eq17 = icmp eq i32 %mod, 0
+  br i1 %eq17, label %then15, label %endif14
+
+for.cond22:                                       ; preds = %for.inc24, %for.end9
+  %i26 = load i32, i32* %i21, align 4
+  %lt27 = icmp slt i32 %i26, 3
+  %gt28 = icmp sgt i32 %i26, 3
+  %more29 = select i1 true, i1 %lt27, i1 %gt28
+  br i1 %more29, label %for.body23, label %for.end25
+
+for.body23:                                       ; preds = %for.cond22
+  %j = alloca i32, align 4
+  store i32 0, i32* %j, align 4
+  br label %for.cond30
+
+for.inc24:                                        ; preds = %for.end33
+  %i46 = load i32, i32* %i21, align 4
+  %next47 = add i32 %i46, 1
+  store i32 %next47, i32* %i21, align 4
+  br label %for.cond22
+
+for.end25:                                        ; preds = %for.cond22
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.12, i32 0, i32 0), i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.11, i32 0, i32 0))
+  ret i32 0
+
+for.cond30:                                       ; preds = %for.inc32, %for.body23
+  %j34 = load i32, i32* %j, align 4
+  %lt35 = icmp slt i32 %j34, 3
+  %gt36 = icmp sgt i32 %j34, 3
+  %more37 = select i1 true, i1 %lt35, i1 %gt36
+  br i1 %more37, label %for.body31, label %for.end33
+
+for.body31:                                       ; preds = %for.cond30
+  %j40 = load i32, i32* %j, align 4
+  %eq41 = icmp eq i32 %j40, 2
+  br i1 %eq41, label %then39, label %endif38
+
+for.inc32:                                        ; preds = %endif38
+  %j44 = load i32, i32* %j, align 4
+  %next45 = add i32 %j44, 1
+  store i32 %next45, i32* %j, align 4
+  br label %for.cond30
+
+for.end33:                                        ; preds = %then39, %for.cond30
+  br label %for.inc24
+
+endif38:                                          ; preds = %for.body31
+  %i42 = load i32, i32* %i21, align 4
+  %j43 = load i32, i32* %j, align 4
+  %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.10, i32 0, i32 0), i32 %i42, i32 %j43, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.9, i32 0, i32 0))
+  br label %for.inc32
+
+then39:                                           ; preds = %for.body31
+  br label %for.end33
+}
+
+declare i32 @printf(i8*, ...)
+
+declare i64 @write(i32, i8*, i64)
+
+declare void @exit(i32)
 ```

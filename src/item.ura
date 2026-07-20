@@ -2,10 +2,10 @@
 
 struct Item:
     name  chars
-    worth int
+    worth i32
     ref? next Item
 
-    pub fn create(n chars, w int) Item:
+    pub fn create(n chars, w i32) Item:
         it Item
         it.name  = n
         it.worth = w
@@ -15,40 +15,40 @@ struct Item:
         output("  ", self.name, " worth ", self.worth, "\n")
 
 struct Bag:
-    slots int[]
-    count int
+    slots i32[]
+    count u64
     label chars
 
-    pub fn create(cap int, name chars) Bag:
+    pub fn create(cap i32, name chars) Bag:
         b Bag
-        b.slots = new int[cap]
+        b.slots = new i32[cap]
         b.count = 0
         b.label = name
         return b
 
-    fn push(v int) void:
+    fn push(v i32) void:
         if self.count < self.slots.len:
             self.slots[self.count] = v
             self.count = self.count + 1
 
-    fn total() int:
-        sum int = 0
-        i   int = 0
+    fn total() i32:
+        sum i32 = 0
+        i   u64 = 0
         while i < self.count:
             sum += self.slots[i]
             i   += 1
         return sum
 
     // guarded read: traps instead of reading past the end
-    fn at(i int) int:
+    fn at(i i32) i32:
         return self.slots[i]?
 
-    fn capacity() int:
+    fn capacity() u64:
         return self.slots.len
 
     fn show() void:
         output(self.label, " [")
-        i int = 0
+        i u64 = 0
         while i < self.count:
             if i > 0:
                 output(" ")
@@ -58,15 +58,15 @@ struct Bag:
 
     operator =(other Bag) void:
         clean self.slots
-        self.slots = new int[other.slots.len]
+        self.slots = new i32[other.slots.len]
         self.count = other.count
         self.label = other.label
-        i int = 0
+        i u64 = 0
         while i < other.count:
             self.slots[i] = other.slots[i]
             i += 1
 
-    operator +=(v int) void:
+    operator +=(v i32) void:
         self.push(v)
 
     operator ==(other Bag) bool:

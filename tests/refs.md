@@ -6,13 +6,20 @@
 - 002 — aliasing: two refs to same hp, both see mutations
 - 003 — compound ref assignment through in a loop
 - 004 — separate refs to different vars: hp ref ref and mp
-- 005 — multiply and subtract through refs: double shield, pay mana
+- 005 — multiply and subtract through refs: f64 shield, pay mana
 - 006 — chain of compound mutations ref through a
 - 007 — reference in conditional
 - 008 — a ref reads correctly through every operator + as a by-value arg
 - 009 — ref? nullable: bound at declaration, guarded reads pass, write-through works
 - 010 — nested fn shares an enclosing var through a ref parameter (the sanctioned path)
 - 011 — a ref reads correctly through the remaining math / comparison / bitwise / cast / logical ops
+- 012 — a reference must be bound when declared
+- 013 — binding a reference to the wrong type
+- 014 — a ref parameter given a value
+- 015 — taking a reference to a literal
+- 016 — a by-value parameter given a reference
+- 017 — a reference to a name that does not exist
+- 018 — a nested function may not capture an enclosing local
 
 ## 001 — basic ref: bind to hp, ref write through
 
@@ -20,8 +27,8 @@
 // refs/001.ura - basic ref: bind to hp, ref write through
 
 main():
-    hp int = 100
-    ref r int = ref hp
+    hp i32 = 100
+    ref r i32 = ref hp
     r = 0
     output("<", hp, ">\n")
 ```
@@ -89,9 +96,9 @@ declare i32 @printf(i8*, ...)
 // refs/002.ura - aliasing: two refs to same hp, both see mutations
 
 main():
-    hp int = 100
-    ref a int = ref hp
-    ref b int = ref hp
+    hp i32 = 100
+    ref a i32 = ref hp
+    ref b i32 = ref hp
     a = 80
     b = b - 10
     output("<", hp, ">\n")
@@ -176,10 +183,10 @@ declare i32 @printf(i8*, ...)
 // refs/003.ura - compound ref assignment through in a loop
 
 main():
-    xp      int = 0
-    xp_gain int = 50
-    ref r int = ref xp
-    i       int = 0
+    xp      i32 = 0
+    xp_gain i32 = 50
+    ref r i32 = ref xp
+    i       i32 = 0
     while i < 4:
         r += xp_gain
         i = i + 1
@@ -285,14 +292,14 @@ declare i32 @printf(i8*, ...)
 // refs/004.ura - separate refs to different vars: hp ref ref and mp
 
 main():
-    hp int = 100
-    mp int = 50
+    hp i32 = 100
+    mp i32 = 50
 
-    ref shield int = ref hp
+    ref shield i32 = ref hp
     shield = shield - 30
     output("HP after hit:   ", hp, "\n")
 
-    ref mana int = ref mp
+    ref mana i32 = ref mp
     mana = mana - 20
     output("MP after spell: ", mp, "\n")
 ```
@@ -390,17 +397,17 @@ entry:
 declare i32 @printf(i8*, ...)
 ```
 
-## 005 — multiply and subtract through refs: double shield, pay mana
+## 005 — multiply and subtract through refs: f64 shield, pay mana
 
 ```ura
-// refs/005.ura - multiply and subtract through refs: double shield, pay mana
+// refs/005.ura - multiply and subtract through refs: f64 shield, pay mana
 
 main():
-    shield int = 10
-    mp     int = 80
+    shield i32 = 10
+    mp     i32 = 80
 
-    ref s int = ref shield
-    ref m int = ref mp
+    ref s i32 = ref shield
+    ref m i32 = ref mp
     s *= 2
     m -= 25
 
@@ -494,8 +501,8 @@ declare i32 @printf(i8*, ...)
 // refs/006.ura - chain of compound mutations ref through a
 
 main():
-    score int = 0
-    ref r int = ref score
+    score i32 = 0
+    ref r i32 = ref score
     r += 100
     r += 50
     r *= 2
@@ -589,8 +596,8 @@ declare i32 @printf(i8*, ...)
 // refs/007 — reference in conditional
 
 main():
-    hp int = 75
-    ref r int = ref hp
+    hp i32 = 75
+    ref r i32 = ref hp
     if r > 50:
         output("healthy\n")
     else:
@@ -672,12 +679,12 @@ declare i32 @printf(i8*, ...)
 ```ura
 // refs/008 — a ref reads correctly through every operator + as a by-value arg
 
-fn twice(n int) int:
+fn twice(n i32) i32:
     return n * 2
 
 main():
-    x int = 12
-    ref r int = ref x
+    x i32 = 12
+    ref r i32 = ref x
     output(r + 3, "\n")
     output(r - 5, "\n")
     output(r * 2, "\n")
@@ -880,8 +887,8 @@ declare i32 @printf(i8*, ...)
 // refs/009 — ref? nullable: bound at declaration, guarded reads pass, write-through works
 
 main():
-    x int = 42
-    ref? m int = ref x
+    x i32 = 42
+    ref? m i32 = ref x
     output(m, "\n")
     m = 7
     output(x, "\n")
@@ -960,8 +967,8 @@ declare i32 @printf(i8*, ...)
 // refs/010 — nested fn shares an enclosing var through a ref parameter (the sanctioned path)
 
 main():
-    x int = 5
-    fn bump(ref n int) void:
+    x i32 = 5
+    fn bump(ref n i32) void:
         n = n + 1
     bump(ref x)
     output(x, "\n")
@@ -1042,8 +1049,8 @@ declare i32 @printf(i8*, ...)
 // refs/011 — a ref reads correctly through the remaining math / comparison / bitwise / cast / logical ops
 
 main():
-    a int = 20
-    ref r int = ref a
+    a i32 = 20
+    ref r i32 = ref a
     output(r / 6, "\n")
     output(r % 6, "\n")
     output(r != 20, "\n")
@@ -1053,7 +1060,7 @@ main():
     output(r | 3, "\n")
     output(r ^ 4, "\n")
     output(r >> 2, "\n")
-    output(r as long, "\n")
+    output(r as i64, "\n")
     flag bool = True
     ref b bool = ref flag
     output(b and False, "\n")
@@ -1312,4 +1319,203 @@ declare i64 @write(i32, i8*, i64)
 declare void @exit(i32)
 
 declare i32 @printf(i8*, ...)
+```
+
+## 012 — a reference must be bound when declared
+
+```ura
+// refs/012.ura - unbound ref
+
+main():
+    ref r i32
+    return 0
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: A reference must be bound when declared (use 'ref?' for an optional reference)
+  012.ura:4:9
+  |
+4 |     ref r i32
+  |         ^
+```
+
+```ll
+```
+
+## 013 — binding a reference to the wrong type
+
+```ura
+// refs/013.ura - ref type mismatch
+
+main():
+    x i32 = 5
+    ref y chars = ref x
+    return 0
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Reference type mismatch: expected chars, got i32
+  013.ura:5:17
+  |
+5 |     ref y chars = ref x
+  |                 ^
+```
+
+```ll
+```
+
+## 014 — a ref parameter given a value
+
+```ura
+// refs/014.ura - argument must be passed by reference
+
+fn tick(ref n i32) i32:
+    n = n + 1
+    return n
+
+main():
+    return tick(5)
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Argument 1 to 'tick' must be passed by reference (ref x)
+  014.ura:8:17
+  |
+8 |     return tick(5)
+  |                 ^
+```
+
+```ll
+```
+
+## 015 — taking a reference to a literal
+
+```ura
+// refs/015.ura - ref needs a variable
+
+main():
+    ref r i32 = ref 5
+    return 0
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Expected a variable after 'ref'
+  015.ura:4:17
+  |
+4 |     ref r i32 = ref 5
+  |                 ^^^
+```
+
+```ll
+```
+
+## 016 — a by-value parameter given a reference
+
+```ura
+// refs/016.ura - argument does not take a reference
+
+fn twice(n i32) i32:
+    return n * 2
+
+main():
+    x i32 = 5
+    return twice(ref x)
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Argument 1 to 'twice' does not take a reference
+  016.ura:8:18
+  |
+8 |     return twice(ref x)
+  |                  ^^^
+```
+
+```ll
+```
+
+## 017 — a reference to a name that does not exist
+
+```ura
+// refs/017.ura - ref to an undeclared variable
+
+main():
+    ref r i32 = ref ghost
+    return 0
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Undeclared variable 'ghost'
+  017.ura:4:21
+  |
+4 |     ref r i32 = ref ghost
+  |                     ^^^^^
+```
+
+```ll
+```
+
+## 018 — a nested function may not capture an enclosing local
+
+```ura
+// refs/018.ura - capture is not allowed
+
+main():
+    x i32 = 5
+    ref r i32 = ref x
+    fn inner() i32:
+        return r
+    return inner()
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Cannot use 'r' from an enclosing function - pass it as a parameter
+  018.ura:7:16
+  |
+7 |         return r
+  |                ^
+```
+
+```ll
 ```

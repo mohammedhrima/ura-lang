@@ -20,10 +20,13 @@
 - 016 — `operator drop` beside `operator =` does not warn
 - 017 — `return` unwinds every scope, and keeps the returned local
 - 018 — a destructor fires on `break` and on `continue`
-- 019 — every operator on one struct, and `=` from an int overload
+- 019 — every operator on one struct, and `=` from an i32 overload
 - 020 — drop on fall-through: an if block, each iteration, reverse order
 - 021 — a struct drops the structs it owns, at any depth, but not what it borrows
 - 022 — a temporary is destroyed at the end of its statement
+- 023 — every overloadable operator on one struct
+- 024 — bitwise operator overloads, and one returning a scalar
+- 025 — compound bitwise assignment overloads
 
 ## 001 — operator + on two structs
 
@@ -31,10 +34,10 @@
 // operators_overload/001.ura - operator + on two structs
 
 struct Vec:
-    x int
-    y int
+    x i32
+    y i32
 
-    pub fn create(a int, b int) Vec:
+    pub fn create(a i32, b i32) Vec:
         v Vec
         v.x = a
         v.y = b
@@ -199,9 +202,9 @@ declare i32 @printf(i8*, ...)
 // operators_overload/002.ura - two overloads of + with different RHS types
 
 struct Vec:
-    x int
+    x i32
 
-    pub fn create(a int) Vec:
+    pub fn create(a i32) Vec:
         v Vec
         v.x = a
         return v
@@ -209,7 +212,7 @@ struct Vec:
     operator +(other Vec) Vec:
         return Vec::create(self.x + other.x)
 
-    operator +(n int) Vec:
+    operator +(n i32) Vec:
         return Vec::create(self.x + n)
 
 main():
@@ -368,9 +371,9 @@ declare i32 @printf(i8*, ...)
 // operators_overload/003.ura - operator == returning bool
 
 struct Vec:
-    x int
+    x i32
 
-    pub fn create(a int) Vec:
+    pub fn create(a i32) Vec:
         v Vec
         v.x = a
         return v
@@ -515,7 +518,7 @@ declare i32 @printf(i8*, ...)
 // operators_overload/004.ura - no overload for that operator
 
 struct Vec:
-    x int
+    x i32
 
 main():
     a Vec
@@ -546,10 +549,10 @@ error: Struct Vec has no 'operator -' taking Vec; declare one inside the struct
 // operators_overload/005.ura - assigning a different struct
 
 struct Vec:
-    x int
+    x i32
 
 struct Point:
-    x int
+    x i32
 
 main():
     v Vec
@@ -644,10 +647,10 @@ declare i32 @printf(i8*, ...)
 // operators_overload/007.ura - operators and a method on the same struct
 
 struct Vec:
-    x int
-    y int
+    x i32
+    y i32
 
-    pub fn create(a int, b int) Vec:
+    pub fn create(a i32, b i32) Vec:
         v Vec
         v.x = a
         v.y = b
@@ -918,7 +921,7 @@ entry:
 // operators_overload/008.ura - assigning a void result
 
 struct Vec:
-    x int
+    x i32
 
     fn show() void:
         output(self.x, "\n")
@@ -951,7 +954,7 @@ error: Cannot assign void to Vec
 // operators_overload/009.ura - a binary operator with mismatched scalar types
 
 main():
-    n int = 1
+    n i32 = 1
     s chars = "hi"
     output(n + s, "\n")
 ```
@@ -979,8 +982,8 @@ error: Cannot use '+' with i32 and chars
 // operators_overload/010.ura - operator = on reassignment, not declaration
 
 struct Vec:
-    x int
-    tag int
+    x i32
+    tag i32
 
     operator =(other Vec) void:
         self.x   = other.x
@@ -1129,12 +1132,12 @@ declare i32 @printf(i8*, ...)
 // operators_overload/011.ura - compound assignment operators
 
 struct Vec:
-    x int
+    x i32
 
     operator +=(other Vec) void:
         self.x = self.x + other.x
 
-    operator -=(n int) void:
+    operator -=(n i32) void:
         self.x = self.x - n
 
 main():
@@ -1295,7 +1298,7 @@ declare i32 @printf(i8*, ...)
 // operators_overload/012.ura - a compound operator with no overload
 
 struct Vec:
-    x int
+    x i32
 
 main():
     a Vec
@@ -1326,7 +1329,7 @@ error: Struct Vec has no 'operator *=' taking Vec; declare one inside the struct
 // operators_overload/013.ura - operator drop declares Vec.drop
 
 struct Vec:
-    x int
+    x i32
 
     operator drop:
         output("dropping ", self.x, "\n")
@@ -1421,7 +1424,7 @@ entry:
 // operators_overload/014.ura - clean does not destroy a struct
 
 struct Vec:
-    x int
+    x i32
 
     operator drop:
         output("dropping\n")
@@ -1459,7 +1462,7 @@ error: 'clean' frees a heap array, not the struct Vec; a struct is destroyed at 
 // operators_overload/015.ura - calling .drop() yourself is rejected
 
 struct Vec:
-    x int
+    x i32
 
     operator drop:
         output("dropping\n")
@@ -1497,7 +1500,7 @@ error: Cannot call 'Vec.drop()' yourself; the compiler runs 'operator drop' when
 // operators_overload/016.ura - drop beside operator = does not warn
 
 struct Vec:
-    x int
+    x i32
 
     operator =(other Vec) void:
         self.x = other.x
@@ -1610,9 +1613,9 @@ entry:
 // operators_overload/017.ura - return unwinds scopes, keeps the returned local
 
 struct Tag:
-    id int
+    id i32
 
-    pub fn create(n int) Tag:
+    pub fn create(n i32) Tag:
         t Tag
         t.id = n
         return t
@@ -1623,7 +1626,7 @@ struct Tag:
     operator drop:
         output("drop ", self.id, "\n")
 
-fn early() int:
+fn early() i32:
     a Tag = Tag::create(1)
     if 1 < 2:
         b Tag = Tag::create(10)
@@ -1635,7 +1638,7 @@ fn giveback() Tag:
     return t
 
 main():
-    r int = early()
+    r i32 = early()
     output("early ", r, "\n")
     g Tag = giveback()
     output("g.id ", g.id, "\n")
@@ -1837,9 +1840,9 @@ entry:
 // operators_overload/018.ura - destructor fires on break and continue
 
 struct Tag:
-    id int
+    id i32
 
-    pub fn create(n int) Tag:
+    pub fn create(n i32) Tag:
         t Tag
         t.id = n
         return t
@@ -1851,7 +1854,7 @@ struct Tag:
         output("drop ", self.id, "\n")
 
 main():
-    i int = 0
+    i i32 = 0
     while i < 3:
         b Tag = Tag::create(100 + i)
         if i == 1:
@@ -1859,7 +1862,7 @@ main():
         i = i + 1
     output("after break\n")
 
-    k int = 0
+    k i32 = 0
     while k < 2:
         c Tag = Tag::create(200 + k)
         k = k + 1
@@ -2075,17 +2078,17 @@ while.end8:                                       ; preds = %while.cond6
 }
 ```
 
-## 019 — every operator on one struct, and `=` from an int overload
+## 019 — every operator on one struct, and `=` from an i32 overload
 
 ```ura
 // operators_overload/019.ura - every operator on one struct
 
 struct Vec:
-    x int
-    y int
-    tag int
+    x i32
+    y i32
+    tag i32
 
-    pub fn create(a int, b int) Vec:
+    pub fn create(a i32, b i32) Vec:
         v Vec
         v.x = a
         v.y = b
@@ -2094,7 +2097,7 @@ struct Vec:
     operator +(other Vec) Vec:
         return Vec::create(self.x + other.x, self.y + other.y)
 
-    operator +(n int) Vec:
+    operator +(n i32) Vec:
         return Vec::create(self.x + n, self.y + n)
 
     operator ==(other Vec) bool:
@@ -2109,7 +2112,7 @@ struct Vec:
         self.x = self.x + other.x
         self.y = self.y + other.y
 
-    operator -=(n int) void:
+    operator -=(n i32) void:
         self.x = self.x - n
         self.y = self.y - n
 
@@ -2123,7 +2126,7 @@ main():
     c Vec = a + b
     c.show()
 
-    // the int overload's result as a declaration initialiser
+    // the i32 overload's result as a declaration initialiser
     d Vec = a + 5
     d.show()
 
@@ -2608,9 +2611,9 @@ entry:
 // operators_overload/020.ura - fall-through drops, no return or break
 
 struct Tag:
-    id int
+    id i32
 
-    pub fn create(n int) Tag:
+    pub fn create(n i32) Tag:
         t Tag
         t.id = n
         return t
@@ -2627,7 +2630,7 @@ main():
         output("inside\n")
     output("after if\n")
 
-    i int = 0
+    i i32 = 0
     while i < 3:
         y Tag = Tag::create(10 + i)
         i += 1
@@ -2843,9 +2846,9 @@ while.end:                                        ; preds = %while.cond
 // operators_overload/021.ura - owned struct fields drop recursively
 
 struct Res:
-    id int
+    id i32
 
-    pub fn create(n int) Res:
+    pub fn create(n i32) Res:
         r Res
         r.id = n
         return r
@@ -3065,17 +3068,17 @@ entry:
 // operators_overload/022.ura - temporaries die at end of statement
 
 struct Plain:
-    x int
+    x i32
 
-    pub fn create(n int) Plain:
+    pub fn create(n i32) Plain:
         p Plain
         p.x = n
         return p
 
 struct R:
-    id int
+    id i32
 
-    pub fn create(n int) R:
+    pub fn create(n i32) R:
         r R
         r.id = n
         return r
@@ -3092,7 +3095,7 @@ struct R:
     operator drop:
         output("DROP ", self.id, "\n")
 
-fn via_return(a R, b R) int:
+fn via_return(a R, b R) i32:
     return (a + b).id
 
 main():
@@ -3105,7 +3108,7 @@ main():
     // a chain makes two temporaries; both die, in reverse
     (a + b + a).show()
     output("--\n")
-    i int = 0
+    i i32 = 0
     while i < 2:
         (a + b).show()
         i += 1
@@ -3500,4 +3503,1895 @@ while.end:                                        ; preds = %while.cond
   call void @R.drop(%R* %a)
   ret i32 0
 }
+```
+
+## 023 — every overloadable operator on one struct
+
+```ura
+// operators_overload/023.ura - the full overload surface
+
+struct Vec2:
+    x i32
+    y i32
+
+    pub fn create(a i32, b i32) Vec2:
+        v Vec2
+        v.x = a
+        v.y = b
+        return v
+
+    operator +(other Vec2) Vec2:
+        return Vec2::create(self.x + other.x, self.y + other.y)
+
+    operator -(other Vec2) Vec2:
+        return Vec2::create(self.x - other.x, self.y - other.y)
+
+    operator *(n i32) Vec2:
+        return Vec2::create(self.x * n, self.y * n)
+
+    operator /(n i32) Vec2:
+        return Vec2::create(self.x / n, self.y / n)
+
+    operator %(n i32) Vec2:
+        return Vec2::create(self.x % n, self.y % n)
+
+    operator ==(other Vec2) bool:
+        return self.x == other.x and self.y == other.y
+
+    operator !=(other Vec2) bool:
+        return self.x != other.x or self.y != other.y
+
+    operator <(other Vec2) bool:
+        return self.taxicab() < other.taxicab()
+
+    operator >(other Vec2) bool:
+        return self.taxicab() > other.taxicab()
+
+    operator <=(other Vec2) bool:
+        return self.taxicab() <= other.taxicab()
+
+    operator >=(other Vec2) bool:
+        return self.taxicab() >= other.taxicab()
+
+    operator =(other Vec2) void:
+        self.x = other.x
+        self.y = other.y
+
+    operator +=(other Vec2) void:
+        self.x = self.x + other.x
+        self.y = self.y + other.y
+
+    operator -=(other Vec2) void:
+        self.x = self.x - other.x
+        self.y = self.y - other.y
+
+    operator *=(n i32) void:
+        self.x = self.x * n
+        self.y = self.y * n
+
+    operator /=(n i32) void:
+        self.x = self.x / n
+        self.y = self.y / n
+
+    operator %=(n i32) void:
+        self.x = self.x % n
+        self.y = self.y % n
+
+    fn taxicab() i32:
+        return self.abs(self.x) + self.abs(self.y)
+
+    fn abs(n i32) i32:
+        if n < 0:
+            return 0 - n
+        return n
+
+    fn show(label chars) void:
+        output(label, "(", self.x, ", ", self.y, ")\n")
+
+main():
+    a Vec2 = Vec2::create(9, 12)
+    b Vec2 = Vec2::create(2, 3)
+
+    (a + b).show("a + b   ")
+    (a - b).show("a - b   ")
+    (a * 3).show("a * 3   ")
+    (a / 2).show("a / 2   ")
+    (a % 4).show("a mod 4 ")
+
+    output("== ", a == b, "  != ", a != b, "\n")
+    output("<  ", a < b,  "  >  ", a > b, "\n")
+    output("<= ", a <= b, "  >= ", a >= b, "\n")
+
+    c Vec2 = Vec2::create(0, 0)
+    c = a
+    c.show("c = a    ")
+    c += b
+    c.show("c += b   ")
+    c -= b
+    c.show("c -= b   ")
+    c *= 2
+    c.show("c *= 2   ")
+    c /= 3
+    c.show("c /= 3   ")
+    c %= 5
+    c.show("c %= 5   ")
+
+    // an overloaded comparison driving a branch and a loop
+    if a > b:
+        output("a is longer\n")
+    n i32 = 0
+    d Vec2 = Vec2::create(1, 1)
+    while d < a:
+        d += b
+        n += 1
+    output("steps to pass a: ", n, "\n")
+```
+
+```tree
+proto fn printf(format : chars, ...) : i32
+
+proto fn calloc(len : i64, size : i64) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
+
+proto fn exit(code : i32) : void
+
+struct Vec2
+├─ x : i32
+├─ y : i32
+├─ fn Vec2.create(a : i32, b : i32) : STRUCT_CALL
+│  ├─ v : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ .x : i32
+│  │  │  └─ v : STRUCT_CALL
+│  │  └─ a : i32
+│  ├─ = : i32
+│  │  ├─ .y : i32
+│  │  │  └─ v : STRUCT_CALL
+│  │  └─ b : i32
+│  └─ return
+│     └─ v : STRUCT_CALL
+├─ fn Vec2.+.Vec2(self : STRUCT_CALL, other : STRUCT_CALL) : STRUCT_CALL
+│  └─ return
+│     └─ call create : STRUCT_CALL
+│        ├─ + : i32
+│        │  ├─ .x : i32
+│        │  │  └─ self : STRUCT_CALL
+│        │  └─ .x : i32
+│        │     └─ other : STRUCT_CALL
+│        └─ + : i32
+│           ├─ .y : i32
+│           │  └─ self : STRUCT_CALL
+│           └─ .y : i32
+│              └─ other : STRUCT_CALL
+├─ fn Vec2.-.Vec2(self : STRUCT_CALL, other : STRUCT_CALL) : STRUCT_CALL
+│  └─ return
+│     └─ call create : STRUCT_CALL
+│        ├─ - : i32
+│        │  ├─ .x : i32
+│        │  │  └─ self : STRUCT_CALL
+│        │  └─ .x : i32
+│        │     └─ other : STRUCT_CALL
+│        └─ - : i32
+│           ├─ .y : i32
+│           │  └─ self : STRUCT_CALL
+│           └─ .y : i32
+│              └─ other : STRUCT_CALL
+├─ fn Vec2.*.i32(self : STRUCT_CALL, n : i32) : STRUCT_CALL
+│  └─ return
+│     └─ call create : STRUCT_CALL
+│        ├─ * : i32
+│        │  ├─ .x : i32
+│        │  │  └─ self : STRUCT_CALL
+│        │  └─ n : i32
+│        └─ * : i32
+│           ├─ .y : i32
+│           │  └─ self : STRUCT_CALL
+│           └─ n : i32
+├─ fn Vec2./.i32(self : STRUCT_CALL, n : i32) : STRUCT_CALL
+│  └─ return
+│     └─ call create : STRUCT_CALL
+│        ├─ / : i32
+│        │  ├─ .x : i32
+│        │  │  └─ self : STRUCT_CALL
+│        │  └─ n : i32
+│        └─ / : i32
+│           ├─ .y : i32
+│           │  └─ self : STRUCT_CALL
+│           └─ n : i32
+├─ fn Vec2.%.i32(self : STRUCT_CALL, n : i32) : STRUCT_CALL
+│  └─ return
+│     └─ call create : STRUCT_CALL
+│        ├─ % : i32
+│        │  ├─ .x : i32
+│        │  │  └─ self : STRUCT_CALL
+│        │  └─ n : i32
+│        └─ % : i32
+│           ├─ .y : i32
+│           │  └─ self : STRUCT_CALL
+│           └─ n : i32
+├─ fn Vec2.==.Vec2(self : STRUCT_CALL, other : STRUCT_CALL) : bool
+│  └─ return
+│     └─ and : bool
+│        ├─ == : bool
+│        │  ├─ .x : i32
+│        │  │  └─ self : STRUCT_CALL
+│        │  └─ .x : i32
+│        │     └─ other : STRUCT_CALL
+│        └─ == : bool
+│           ├─ .y : i32
+│           │  └─ self : STRUCT_CALL
+│           └─ .y : i32
+│              └─ other : STRUCT_CALL
+├─ fn Vec2.!=.Vec2(self : STRUCT_CALL, other : STRUCT_CALL) : bool
+│  └─ return
+│     └─ or : bool
+│        ├─ != : bool
+│        │  ├─ .x : i32
+│        │  │  └─ self : STRUCT_CALL
+│        │  └─ .x : i32
+│        │     └─ other : STRUCT_CALL
+│        └─ != : bool
+│           ├─ .y : i32
+│           │  └─ self : STRUCT_CALL
+│           └─ .y : i32
+│              └─ other : STRUCT_CALL
+├─ fn Vec2.<.Vec2(self : STRUCT_CALL, other : STRUCT_CALL) : bool
+│  └─ return
+│     └─ < : bool
+│        ├─ call taxicab : i32
+│        │  └─ self : STRUCT_CALL
+│        └─ call taxicab : i32
+│           └─ other : STRUCT_CALL
+├─ fn Vec2.>.Vec2(self : STRUCT_CALL, other : STRUCT_CALL) : bool
+│  └─ return
+│     └─ > : bool
+│        ├─ call taxicab : i32
+│        │  └─ self : STRUCT_CALL
+│        └─ call taxicab : i32
+│           └─ other : STRUCT_CALL
+├─ fn Vec2.<=.Vec2(self : STRUCT_CALL, other : STRUCT_CALL) : bool
+│  └─ return
+│     └─ <= : bool
+│        ├─ call taxicab : i32
+│        │  └─ self : STRUCT_CALL
+│        └─ call taxicab : i32
+│           └─ other : STRUCT_CALL
+├─ fn Vec2.>=.Vec2(self : STRUCT_CALL, other : STRUCT_CALL) : bool
+│  └─ return
+│     └─ >= : bool
+│        ├─ call taxicab : i32
+│        │  └─ self : STRUCT_CALL
+│        └─ call taxicab : i32
+│           └─ other : STRUCT_CALL
+├─ fn Vec2.=.Vec2(self : STRUCT_CALL, other : STRUCT_CALL) : void
+│  ├─ = : i32
+│  │  ├─ .x : i32
+│  │  │  └─ self : STRUCT_CALL
+│  │  └─ .x : i32
+│  │     └─ other : STRUCT_CALL
+│  └─ = : i32
+│     ├─ .y : i32
+│     │  └─ self : STRUCT_CALL
+│     └─ .y : i32
+│        └─ other : STRUCT_CALL
+├─ fn Vec2.+=.Vec2(self : STRUCT_CALL, other : STRUCT_CALL) : void
+│  ├─ = : i32
+│  │  ├─ .x : i32
+│  │  │  └─ self : STRUCT_CALL
+│  │  └─ + : i32
+│  │     ├─ .x : i32
+│  │     │  └─ self : STRUCT_CALL
+│  │     └─ .x : i32
+│  │        └─ other : STRUCT_CALL
+│  └─ = : i32
+│     ├─ .y : i32
+│     │  └─ self : STRUCT_CALL
+│     └─ + : i32
+│        ├─ .y : i32
+│        │  └─ self : STRUCT_CALL
+│        └─ .y : i32
+│           └─ other : STRUCT_CALL
+├─ fn Vec2.-=.Vec2(self : STRUCT_CALL, other : STRUCT_CALL) : void
+│  ├─ = : i32
+│  │  ├─ .x : i32
+│  │  │  └─ self : STRUCT_CALL
+│  │  └─ - : i32
+│  │     ├─ .x : i32
+│  │     │  └─ self : STRUCT_CALL
+│  │     └─ .x : i32
+│  │        └─ other : STRUCT_CALL
+│  └─ = : i32
+│     ├─ .y : i32
+│     │  └─ self : STRUCT_CALL
+│     └─ - : i32
+│        ├─ .y : i32
+│        │  └─ self : STRUCT_CALL
+│        └─ .y : i32
+│           └─ other : STRUCT_CALL
+├─ fn Vec2.*=.i32(self : STRUCT_CALL, n : i32) : void
+│  ├─ = : i32
+│  │  ├─ .x : i32
+│  │  │  └─ self : STRUCT_CALL
+│  │  └─ * : i32
+│  │     ├─ .x : i32
+│  │     │  └─ self : STRUCT_CALL
+│  │     └─ n : i32
+│  └─ = : i32
+│     ├─ .y : i32
+│     │  └─ self : STRUCT_CALL
+│     └─ * : i32
+│        ├─ .y : i32
+│        │  └─ self : STRUCT_CALL
+│        └─ n : i32
+├─ fn Vec2./=.i32(self : STRUCT_CALL, n : i32) : void
+│  ├─ = : i32
+│  │  ├─ .x : i32
+│  │  │  └─ self : STRUCT_CALL
+│  │  └─ / : i32
+│  │     ├─ .x : i32
+│  │     │  └─ self : STRUCT_CALL
+│  │     └─ n : i32
+│  └─ = : i32
+│     ├─ .y : i32
+│     │  └─ self : STRUCT_CALL
+│     └─ / : i32
+│        ├─ .y : i32
+│        │  └─ self : STRUCT_CALL
+│        └─ n : i32
+├─ fn Vec2.%=.i32(self : STRUCT_CALL, n : i32) : void
+│  ├─ = : i32
+│  │  ├─ .x : i32
+│  │  │  └─ self : STRUCT_CALL
+│  │  └─ % : i32
+│  │     ├─ .x : i32
+│  │     │  └─ self : STRUCT_CALL
+│  │     └─ n : i32
+│  └─ = : i32
+│     ├─ .y : i32
+│     │  └─ self : STRUCT_CALL
+│     └─ % : i32
+│        ├─ .y : i32
+│        │  └─ self : STRUCT_CALL
+│        └─ n : i32
+├─ fn Vec2.taxicab(self : STRUCT_CALL) : i32
+│  └─ return
+│     └─ + : i32
+│        ├─ call abs : i32
+│        │  ├─ self : STRUCT_CALL
+│        │  └─ .x : i32
+│        │     └─ self : STRUCT_CALL
+│        └─ call abs : i32
+│           ├─ self : STRUCT_CALL
+│           └─ .y : i32
+│              └─ self : STRUCT_CALL
+├─ fn Vec2.abs(self : STRUCT_CALL, n : i32) : i32
+│  ├─ if
+│  │  ├─ condition < : bool
+│  │  │  ├─ n : i32
+│  │  │  └─ int 0
+│  │  └─ return
+│  │     └─ - : i32
+│  │        ├─ int 0
+│  │        └─ n : i32
+│  └─ return
+│     └─ n : i32
+└─ fn Vec2.show(self : STRUCT_CALL, label : chars) : void
+   └─ output : void
+      ├─ label : chars
+      ├─ chars "("
+      ├─ .x : i32
+      │  └─ self : STRUCT_CALL
+      ├─ chars ", "
+      ├─ .y : i32
+      │  └─ self : STRUCT_CALL
+      └─ chars ")\n"
+
+fn main() : i32
+├─ = : STRUCT_CALL
+│  ├─ a : STRUCT_CALL
+│  └─ call create : STRUCT_CALL
+│     ├─ int 9
+│     └─ int 12
+├─ = : STRUCT_CALL
+│  ├─ b : STRUCT_CALL
+│  └─ call create : STRUCT_CALL
+│     ├─ int 2
+│     └─ int 3
+├─ call show : void
+│  ├─ + : STRUCT_CALL
+│  │  ├─ a : STRUCT_CALL
+│  │  └─ b : STRUCT_CALL
+│  └─ chars "a + b   "
+├─ call show : void
+│  ├─ - : STRUCT_CALL
+│  │  ├─ a : STRUCT_CALL
+│  │  └─ b : STRUCT_CALL
+│  └─ chars "a - b   "
+├─ call show : void
+│  ├─ * : STRUCT_CALL
+│  │  ├─ a : STRUCT_CALL
+│  │  └─ int 3
+│  └─ chars "a * 3   "
+├─ call show : void
+│  ├─ / : STRUCT_CALL
+│  │  ├─ a : STRUCT_CALL
+│  │  └─ int 2
+│  └─ chars "a / 2   "
+├─ call show : void
+│  ├─ % : STRUCT_CALL
+│  │  ├─ a : STRUCT_CALL
+│  │  └─ int 4
+│  └─ chars "a mod 4 "
+├─ output : void
+│  ├─ chars "== "
+│  ├─ == : bool
+│  │  ├─ a : STRUCT_CALL
+│  │  └─ b : STRUCT_CALL
+│  ├─ chars "  != "
+│  ├─ != : bool
+│  │  ├─ a : STRUCT_CALL
+│  │  └─ b : STRUCT_CALL
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "<  "
+│  ├─ < : bool
+│  │  ├─ a : STRUCT_CALL
+│  │  └─ b : STRUCT_CALL
+│  ├─ chars "  >  "
+│  ├─ > : bool
+│  │  ├─ a : STRUCT_CALL
+│  │  └─ b : STRUCT_CALL
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "<= "
+│  ├─ <= : bool
+│  │  ├─ a : STRUCT_CALL
+│  │  └─ b : STRUCT_CALL
+│  ├─ chars "  >= "
+│  ├─ >= : bool
+│  │  ├─ a : STRUCT_CALL
+│  │  └─ b : STRUCT_CALL
+│  └─ chars "\n"
+├─ = : STRUCT_CALL
+│  ├─ c : STRUCT_CALL
+│  └─ call create : STRUCT_CALL
+│     ├─ int 0
+│     └─ int 0
+├─ = : void
+│  ├─ c : STRUCT_CALL
+│  └─ a : STRUCT_CALL
+├─ call show : void
+│  ├─ c : STRUCT_CALL
+│  └─ chars "c = a    "
+├─ += : void
+│  ├─ c : STRUCT_CALL
+│  └─ b : STRUCT_CALL
+├─ call show : void
+│  ├─ c : STRUCT_CALL
+│  └─ chars "c += b   "
+├─ -= : void
+│  ├─ c : STRUCT_CALL
+│  └─ b : STRUCT_CALL
+├─ call show : void
+│  ├─ c : STRUCT_CALL
+│  └─ chars "c -= b   "
+├─ *= : void
+│  ├─ c : STRUCT_CALL
+│  └─ int 2
+├─ call show : void
+│  ├─ c : STRUCT_CALL
+│  └─ chars "c *= 2   "
+├─ /= : void
+│  ├─ c : STRUCT_CALL
+│  └─ int 3
+├─ call show : void
+│  ├─ c : STRUCT_CALL
+│  └─ chars "c /= 3   "
+├─ %= : void
+│  ├─ c : STRUCT_CALL
+│  └─ int 5
+├─ call show : void
+│  ├─ c : STRUCT_CALL
+│  └─ chars "c %= 5   "
+├─ if
+│  ├─ condition > : bool
+│  │  ├─ a : STRUCT_CALL
+│  │  └─ b : STRUCT_CALL
+│  └─ output : void
+│     └─ chars "a is longer\n"
+├─ = : i32
+│  ├─ n : i32
+│  └─ int 0
+├─ = : STRUCT_CALL
+│  ├─ d : STRUCT_CALL
+│  └─ call create : STRUCT_CALL
+│     ├─ int 1
+│     └─ int 1
+├─ while
+│  ├─ condition < : bool
+│  │  ├─ d : STRUCT_CALL
+│  │  └─ a : STRUCT_CALL
+│  ├─ += : void
+│  │  ├─ d : STRUCT_CALL
+│  │  └─ b : STRUCT_CALL
+│  └─ += : i32
+│     ├─ n : i32
+│     └─ int 1
+└─ output : void
+   ├─ chars "steps to pass a: "
+   ├─ n : i32
+   └─ chars "\n"
+```
+
+```out
+a + b   (11, 15)
+a - b   (7, 9)
+a * 3   (27, 36)
+a / 2   (4, 6)
+a mod 4 (1, 0)
+== False  != True
+<  False  >  True
+<= False  >= True
+c = a    (9, 12)
+c += b   (11, 15)
+c -= b   (9, 12)
+c *= 2   (18, 24)
+c /= 3   (6, 8)
+c %= 5   (1, 3)
+a is longer
+steps to pass a: 4
+```
+
+```err
+```
+
+```ll
+
+%Vec2 = type { i32, i32 }
+
+@trap_msg = private unnamed_addr constant [215 x i8] c"runtime error: Division by zero\0A   023.ura:23:36\0A   |\0A23 |         return Vec2::create(self.x / n, self.y / n)\0A   |                                    ^\0A\00", align 1
+@trap_msg.1 = private unnamed_addr constant [227 x i8] c"runtime error: Division by zero\0A   023.ura:23:48\0A   |\0A23 |         return Vec2::create(self.x / n, self.y / n)\0A   |                                                ^\0A\00", align 1
+@trap_msg.2 = private unnamed_addr constant [213 x i8] c"runtime error: Modulo by zero\0A   023.ura:26:36\0A   |\0A26 |         return Vec2::create(self.x % n, self.y % n)\0A   |                                    ^\0A\00", align 1
+@trap_msg.3 = private unnamed_addr constant [225 x i8] c"runtime error: Modulo by zero\0A   023.ura:26:48\0A   |\0A26 |         return Vec2::create(self.x % n, self.y % n)\0A   |                                                ^\0A\00", align 1
+@trap_msg.4 = private unnamed_addr constant [180 x i8] c"runtime error: Division by zero\0A   023.ura:63:25\0A   |\0A63 |         self.x = self.x / n\0A   |                         ^\0A\00", align 1
+@trap_msg.5 = private unnamed_addr constant [180 x i8] c"runtime error: Division by zero\0A   023.ura:64:25\0A   |\0A64 |         self.y = self.y / n\0A   |                         ^\0A\00", align 1
+@trap_msg.6 = private unnamed_addr constant [178 x i8] c"runtime error: Modulo by zero\0A   023.ura:67:25\0A   |\0A67 |         self.x = self.x % n\0A   |                         ^\0A\00", align 1
+@trap_msg.7 = private unnamed_addr constant [178 x i8] c"runtime error: Modulo by zero\0A   023.ura:68:25\0A   |\0A68 |         self.y = self.y % n\0A   |                         ^\0A\00", align 1
+@str = private unnamed_addr constant [2 x i8] c"(\00", align 1
+@str.8 = private unnamed_addr constant [3 x i8] c", \00", align 1
+@str.9 = private unnamed_addr constant [3 x i8] c")\0A\00", align 1
+@fmt = private unnamed_addr constant [13 x i8] c"%s%s%d%s%d%s\00", align 1
+@str.10 = private unnamed_addr constant [9 x i8] c"a + b   \00", align 1
+@str.11 = private unnamed_addr constant [9 x i8] c"a - b   \00", align 1
+@str.12 = private unnamed_addr constant [9 x i8] c"a * 3   \00", align 1
+@str.13 = private unnamed_addr constant [9 x i8] c"a / 2   \00", align 1
+@str.14 = private unnamed_addr constant [9 x i8] c"a mod 4 \00", align 1
+@str.15 = private unnamed_addr constant [4 x i8] c"== \00", align 1
+@true_str = private unnamed_addr constant [5 x i8] c"True\00", align 1
+@false_str = private unnamed_addr constant [6 x i8] c"False\00", align 1
+@str.16 = private unnamed_addr constant [6 x i8] c"  != \00", align 1
+@true_str.17 = private unnamed_addr constant [5 x i8] c"True\00", align 1
+@false_str.18 = private unnamed_addr constant [6 x i8] c"False\00", align 1
+@str.19 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.20 = private unnamed_addr constant [11 x i8] c"%s%s%s%s%s\00", align 1
+@str.21 = private unnamed_addr constant [4 x i8] c"<  \00", align 1
+@true_str.22 = private unnamed_addr constant [5 x i8] c"True\00", align 1
+@false_str.23 = private unnamed_addr constant [6 x i8] c"False\00", align 1
+@str.24 = private unnamed_addr constant [6 x i8] c"  >  \00", align 1
+@true_str.25 = private unnamed_addr constant [5 x i8] c"True\00", align 1
+@false_str.26 = private unnamed_addr constant [6 x i8] c"False\00", align 1
+@str.27 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.28 = private unnamed_addr constant [11 x i8] c"%s%s%s%s%s\00", align 1
+@str.29 = private unnamed_addr constant [4 x i8] c"<= \00", align 1
+@true_str.30 = private unnamed_addr constant [5 x i8] c"True\00", align 1
+@false_str.31 = private unnamed_addr constant [6 x i8] c"False\00", align 1
+@str.32 = private unnamed_addr constant [6 x i8] c"  >= \00", align 1
+@true_str.33 = private unnamed_addr constant [5 x i8] c"True\00", align 1
+@false_str.34 = private unnamed_addr constant [6 x i8] c"False\00", align 1
+@str.35 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.36 = private unnamed_addr constant [11 x i8] c"%s%s%s%s%s\00", align 1
+@str.37 = private unnamed_addr constant [10 x i8] c"c = a    \00", align 1
+@str.38 = private unnamed_addr constant [10 x i8] c"c += b   \00", align 1
+@str.39 = private unnamed_addr constant [10 x i8] c"c -= b   \00", align 1
+@str.40 = private unnamed_addr constant [10 x i8] c"c *= 2   \00", align 1
+@str.41 = private unnamed_addr constant [10 x i8] c"c /= 3   \00", align 1
+@str.42 = private unnamed_addr constant [10 x i8] c"c %= 5   \00", align 1
+@str.43 = private unnamed_addr constant [13 x i8] c"a is longer\0A\00", align 1
+@fmt.44 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+@str.45 = private unnamed_addr constant [18 x i8] c"steps to pass a: \00", align 1
+@str.46 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.47 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+
+define %Vec2 @Vec2.create(i32 %0, i32 %1) {
+entry:
+  %a = alloca i32, align 4
+  store i32 %0, i32* %a, align 4
+  %b = alloca i32, align 4
+  store i32 %1, i32* %b, align 4
+  %v = alloca %Vec2, align 8
+  store %Vec2 zeroinitializer, %Vec2* %v, align 4
+  %x = getelementptr %Vec2, %Vec2* %v, i32 0, i32 0
+  %a1 = load i32, i32* %a, align 4
+  store i32 %a1, i32* %x, align 4
+  %y = getelementptr %Vec2, %Vec2* %v, i32 0, i32 1
+  %b2 = load i32, i32* %b, align 4
+  store i32 %b2, i32* %y, align 4
+  %v3 = load %Vec2, %Vec2* %v, align 4
+  ret %Vec2 %v3
+}
+
+define %Vec2 @"Vec2.+.Vec2"(%Vec2* %0, %Vec2 %1) {
+entry:
+  %self = alloca %Vec2*, align 8
+  store %Vec2* %0, %Vec2** %self, align 8
+  %other = alloca %Vec2, align 8
+  store %Vec2 %1, %Vec2* %other, align 4
+  %ref = load %Vec2*, %Vec2** %self, align 8
+  %x = getelementptr %Vec2, %Vec2* %ref, i32 0, i32 0
+  %x1 = load i32, i32* %x, align 4
+  %x2 = getelementptr %Vec2, %Vec2* %other, i32 0, i32 0
+  %x3 = load i32, i32* %x2, align 4
+  %add = add i32 %x1, %x3
+  %ref4 = load %Vec2*, %Vec2** %self, align 8
+  %y = getelementptr %Vec2, %Vec2* %ref4, i32 0, i32 1
+  %y5 = load i32, i32* %y, align 4
+  %y6 = getelementptr %Vec2, %Vec2* %other, i32 0, i32 1
+  %y7 = load i32, i32* %y6, align 4
+  %add8 = add i32 %y5, %y7
+  %call = call %Vec2 @Vec2.create(i32 %add, i32 %add8)
+  ret %Vec2 %call
+}
+
+define %Vec2 @Vec2.-.Vec2(%Vec2* %0, %Vec2 %1) {
+entry:
+  %self = alloca %Vec2*, align 8
+  store %Vec2* %0, %Vec2** %self, align 8
+  %other = alloca %Vec2, align 8
+  store %Vec2 %1, %Vec2* %other, align 4
+  %ref = load %Vec2*, %Vec2** %self, align 8
+  %x = getelementptr %Vec2, %Vec2* %ref, i32 0, i32 0
+  %x1 = load i32, i32* %x, align 4
+  %x2 = getelementptr %Vec2, %Vec2* %other, i32 0, i32 0
+  %x3 = load i32, i32* %x2, align 4
+  %sub = sub i32 %x1, %x3
+  %ref4 = load %Vec2*, %Vec2** %self, align 8
+  %y = getelementptr %Vec2, %Vec2* %ref4, i32 0, i32 1
+  %y5 = load i32, i32* %y, align 4
+  %y6 = getelementptr %Vec2, %Vec2* %other, i32 0, i32 1
+  %y7 = load i32, i32* %y6, align 4
+  %sub8 = sub i32 %y5, %y7
+  %call = call %Vec2 @Vec2.create(i32 %sub, i32 %sub8)
+  ret %Vec2 %call
+}
+
+define %Vec2 @"Vec2.*.i32"(%Vec2* %0, i32 %1) {
+entry:
+  %self = alloca %Vec2*, align 8
+  store %Vec2* %0, %Vec2** %self, align 8
+  %n = alloca i32, align 4
+  store i32 %1, i32* %n, align 4
+  %ref = load %Vec2*, %Vec2** %self, align 8
+  %x = getelementptr %Vec2, %Vec2* %ref, i32 0, i32 0
+  %x1 = load i32, i32* %x, align 4
+  %n2 = load i32, i32* %n, align 4
+  %mul = mul i32 %x1, %n2
+  %ref3 = load %Vec2*, %Vec2** %self, align 8
+  %y = getelementptr %Vec2, %Vec2* %ref3, i32 0, i32 1
+  %y4 = load i32, i32* %y, align 4
+  %n5 = load i32, i32* %n, align 4
+  %mul6 = mul i32 %y4, %n5
+  %call = call %Vec2 @Vec2.create(i32 %mul, i32 %mul6)
+  ret %Vec2 %call
+}
+
+define %Vec2 @"Vec2./.i32"(%Vec2* %0, i32 %1) {
+entry:
+  %self = alloca %Vec2*, align 8
+  store %Vec2* %0, %Vec2** %self, align 8
+  %n = alloca i32, align 4
+  store i32 %1, i32* %n, align 4
+  %ref = load %Vec2*, %Vec2** %self, align 8
+  %x = getelementptr %Vec2, %Vec2* %ref, i32 0, i32 0
+  %x1 = load i32, i32* %x, align 4
+  %n2 = load i32, i32* %n, align 4
+  %iszero = icmp eq i32 %n2, 0
+  br i1 %iszero, label %trap, label %cont
+
+trap:                                             ; preds = %entry
+  %2 = call i64 @write(i32 2, i8* getelementptr inbounds ([215 x i8], [215 x i8]* @trap_msg, i32 0, i32 0), i64 214)
+  call void @exit(i32 1)
+  unreachable
+
+cont:                                             ; preds = %entry
+  %div = sdiv i32 %x1, %n2
+  %ref3 = load %Vec2*, %Vec2** %self, align 8
+  %y = getelementptr %Vec2, %Vec2* %ref3, i32 0, i32 1
+  %y4 = load i32, i32* %y, align 4
+  %n5 = load i32, i32* %n, align 4
+  %iszero6 = icmp eq i32 %n5, 0
+  br i1 %iszero6, label %trap7, label %cont8
+
+trap7:                                            ; preds = %cont
+  %3 = call i64 @write(i32 2, i8* getelementptr inbounds ([227 x i8], [227 x i8]* @trap_msg.1, i32 0, i32 0), i64 226)
+  call void @exit(i32 1)
+  unreachable
+
+cont8:                                            ; preds = %cont
+  %div9 = sdiv i32 %y4, %n5
+  %call = call %Vec2 @Vec2.create(i32 %div, i32 %div9)
+  ret %Vec2 %call
+}
+
+declare i64 @write(i32, i8*, i64)
+
+declare void @exit(i32)
+
+define %Vec2 @"Vec2.%.i32"(%Vec2* %0, i32 %1) {
+entry:
+  %self = alloca %Vec2*, align 8
+  store %Vec2* %0, %Vec2** %self, align 8
+  %n = alloca i32, align 4
+  store i32 %1, i32* %n, align 4
+  %ref = load %Vec2*, %Vec2** %self, align 8
+  %x = getelementptr %Vec2, %Vec2* %ref, i32 0, i32 0
+  %x1 = load i32, i32* %x, align 4
+  %n2 = load i32, i32* %n, align 4
+  %iszero = icmp eq i32 %n2, 0
+  br i1 %iszero, label %trap, label %cont
+
+trap:                                             ; preds = %entry
+  %2 = call i64 @write(i32 2, i8* getelementptr inbounds ([213 x i8], [213 x i8]* @trap_msg.2, i32 0, i32 0), i64 212)
+  call void @exit(i32 1)
+  unreachable
+
+cont:                                             ; preds = %entry
+  %mod = srem i32 %x1, %n2
+  %ref3 = load %Vec2*, %Vec2** %self, align 8
+  %y = getelementptr %Vec2, %Vec2* %ref3, i32 0, i32 1
+  %y4 = load i32, i32* %y, align 4
+  %n5 = load i32, i32* %n, align 4
+  %iszero6 = icmp eq i32 %n5, 0
+  br i1 %iszero6, label %trap7, label %cont8
+
+trap7:                                            ; preds = %cont
+  %3 = call i64 @write(i32 2, i8* getelementptr inbounds ([225 x i8], [225 x i8]* @trap_msg.3, i32 0, i32 0), i64 224)
+  call void @exit(i32 1)
+  unreachable
+
+cont8:                                            ; preds = %cont
+  %mod9 = srem i32 %y4, %n5
+  %call = call %Vec2 @Vec2.create(i32 %mod, i32 %mod9)
+  ret %Vec2 %call
+}
+
+define i1 @"Vec2.==.Vec2"(%Vec2* %0, %Vec2 %1) {
+entry:
+  %self = alloca %Vec2*, align 8
+  store %Vec2* %0, %Vec2** %self, align 8
+  %other = alloca %Vec2, align 8
+  store %Vec2 %1, %Vec2* %other, align 4
+  %ref = load %Vec2*, %Vec2** %self, align 8
+  %x = getelementptr %Vec2, %Vec2* %ref, i32 0, i32 0
+  %x1 = load i32, i32* %x, align 4
+  %x2 = getelementptr %Vec2, %Vec2* %other, i32 0, i32 0
+  %x3 = load i32, i32* %x2, align 4
+  %eq = icmp eq i32 %x1, %x3
+  %ref4 = load %Vec2*, %Vec2** %self, align 8
+  %y = getelementptr %Vec2, %Vec2* %ref4, i32 0, i32 1
+  %y5 = load i32, i32* %y, align 4
+  %y6 = getelementptr %Vec2, %Vec2* %other, i32 0, i32 1
+  %y7 = load i32, i32* %y6, align 4
+  %eq8 = icmp eq i32 %y5, %y7
+  %and = and i1 %eq, %eq8
+  ret i1 %and
+}
+
+define i1 @"Vec2.!=.Vec2"(%Vec2* %0, %Vec2 %1) {
+entry:
+  %self = alloca %Vec2*, align 8
+  store %Vec2* %0, %Vec2** %self, align 8
+  %other = alloca %Vec2, align 8
+  store %Vec2 %1, %Vec2* %other, align 4
+  %ref = load %Vec2*, %Vec2** %self, align 8
+  %x = getelementptr %Vec2, %Vec2* %ref, i32 0, i32 0
+  %x1 = load i32, i32* %x, align 4
+  %x2 = getelementptr %Vec2, %Vec2* %other, i32 0, i32 0
+  %x3 = load i32, i32* %x2, align 4
+  %ne = icmp ne i32 %x1, %x3
+  %ref4 = load %Vec2*, %Vec2** %self, align 8
+  %y = getelementptr %Vec2, %Vec2* %ref4, i32 0, i32 1
+  %y5 = load i32, i32* %y, align 4
+  %y6 = getelementptr %Vec2, %Vec2* %other, i32 0, i32 1
+  %y7 = load i32, i32* %y6, align 4
+  %ne8 = icmp ne i32 %y5, %y7
+  %or = or i1 %ne, %ne8
+  ret i1 %or
+}
+
+define i1 @"Vec2.<.Vec2"(%Vec2* %0, %Vec2 %1) {
+entry:
+  %self = alloca %Vec2*, align 8
+  store %Vec2* %0, %Vec2** %self, align 8
+  %other = alloca %Vec2, align 8
+  store %Vec2 %1, %Vec2* %other, align 4
+  %ref = load %Vec2*, %Vec2** %self, align 8
+  %call = call i32 @Vec2.taxicab(%Vec2* %ref)
+  %call1 = call i32 @Vec2.taxicab(%Vec2* %other)
+  %lt = icmp slt i32 %call, %call1
+  ret i1 %lt
+}
+
+define i32 @Vec2.taxicab(%Vec2* %0) {
+entry:
+  %self = alloca %Vec2*, align 8
+  store %Vec2* %0, %Vec2** %self, align 8
+  %ref = load %Vec2*, %Vec2** %self, align 8
+  %ref1 = load %Vec2*, %Vec2** %self, align 8
+  %x = getelementptr %Vec2, %Vec2* %ref1, i32 0, i32 0
+  %x2 = load i32, i32* %x, align 4
+  %call = call i32 @Vec2.abs(%Vec2* %ref, i32 %x2)
+  %ref3 = load %Vec2*, %Vec2** %self, align 8
+  %ref4 = load %Vec2*, %Vec2** %self, align 8
+  %y = getelementptr %Vec2, %Vec2* %ref4, i32 0, i32 1
+  %y5 = load i32, i32* %y, align 4
+  %call6 = call i32 @Vec2.abs(%Vec2* %ref3, i32 %y5)
+  %add = add i32 %call, %call6
+  ret i32 %add
+}
+
+define i1 @"Vec2.>.Vec2"(%Vec2* %0, %Vec2 %1) {
+entry:
+  %self = alloca %Vec2*, align 8
+  store %Vec2* %0, %Vec2** %self, align 8
+  %other = alloca %Vec2, align 8
+  store %Vec2 %1, %Vec2* %other, align 4
+  %ref = load %Vec2*, %Vec2** %self, align 8
+  %call = call i32 @Vec2.taxicab(%Vec2* %ref)
+  %call1 = call i32 @Vec2.taxicab(%Vec2* %other)
+  %gt = icmp sgt i32 %call, %call1
+  ret i1 %gt
+}
+
+define i1 @"Vec2.<=.Vec2"(%Vec2* %0, %Vec2 %1) {
+entry:
+  %self = alloca %Vec2*, align 8
+  store %Vec2* %0, %Vec2** %self, align 8
+  %other = alloca %Vec2, align 8
+  store %Vec2 %1, %Vec2* %other, align 4
+  %ref = load %Vec2*, %Vec2** %self, align 8
+  %call = call i32 @Vec2.taxicab(%Vec2* %ref)
+  %call1 = call i32 @Vec2.taxicab(%Vec2* %other)
+  %le = icmp sle i32 %call, %call1
+  ret i1 %le
+}
+
+define i1 @"Vec2.>=.Vec2"(%Vec2* %0, %Vec2 %1) {
+entry:
+  %self = alloca %Vec2*, align 8
+  store %Vec2* %0, %Vec2** %self, align 8
+  %other = alloca %Vec2, align 8
+  store %Vec2 %1, %Vec2* %other, align 4
+  %ref = load %Vec2*, %Vec2** %self, align 8
+  %call = call i32 @Vec2.taxicab(%Vec2* %ref)
+  %call1 = call i32 @Vec2.taxicab(%Vec2* %other)
+  %ge = icmp sge i32 %call, %call1
+  ret i1 %ge
+}
+
+define void @"Vec2.=.Vec2"(%Vec2* %0, %Vec2 %1) {
+entry:
+  %self = alloca %Vec2*, align 8
+  store %Vec2* %0, %Vec2** %self, align 8
+  %other = alloca %Vec2, align 8
+  store %Vec2 %1, %Vec2* %other, align 4
+  %ref = load %Vec2*, %Vec2** %self, align 8
+  %x = getelementptr %Vec2, %Vec2* %ref, i32 0, i32 0
+  %x1 = getelementptr %Vec2, %Vec2* %other, i32 0, i32 0
+  %x2 = load i32, i32* %x1, align 4
+  store i32 %x2, i32* %x, align 4
+  %ref3 = load %Vec2*, %Vec2** %self, align 8
+  %y = getelementptr %Vec2, %Vec2* %ref3, i32 0, i32 1
+  %y4 = getelementptr %Vec2, %Vec2* %other, i32 0, i32 1
+  %y5 = load i32, i32* %y4, align 4
+  store i32 %y5, i32* %y, align 4
+  ret void
+}
+
+define void @"Vec2.+=.Vec2"(%Vec2* %0, %Vec2 %1) {
+entry:
+  %self = alloca %Vec2*, align 8
+  store %Vec2* %0, %Vec2** %self, align 8
+  %other = alloca %Vec2, align 8
+  store %Vec2 %1, %Vec2* %other, align 4
+  %ref = load %Vec2*, %Vec2** %self, align 8
+  %x = getelementptr %Vec2, %Vec2* %ref, i32 0, i32 0
+  %ref1 = load %Vec2*, %Vec2** %self, align 8
+  %x2 = getelementptr %Vec2, %Vec2* %ref1, i32 0, i32 0
+  %x3 = load i32, i32* %x2, align 4
+  %x4 = getelementptr %Vec2, %Vec2* %other, i32 0, i32 0
+  %x5 = load i32, i32* %x4, align 4
+  %add = add i32 %x3, %x5
+  store i32 %add, i32* %x, align 4
+  %ref6 = load %Vec2*, %Vec2** %self, align 8
+  %y = getelementptr %Vec2, %Vec2* %ref6, i32 0, i32 1
+  %ref7 = load %Vec2*, %Vec2** %self, align 8
+  %y8 = getelementptr %Vec2, %Vec2* %ref7, i32 0, i32 1
+  %y9 = load i32, i32* %y8, align 4
+  %y10 = getelementptr %Vec2, %Vec2* %other, i32 0, i32 1
+  %y11 = load i32, i32* %y10, align 4
+  %add12 = add i32 %y9, %y11
+  store i32 %add12, i32* %y, align 4
+  ret void
+}
+
+define void @"Vec2.-=.Vec2"(%Vec2* %0, %Vec2 %1) {
+entry:
+  %self = alloca %Vec2*, align 8
+  store %Vec2* %0, %Vec2** %self, align 8
+  %other = alloca %Vec2, align 8
+  store %Vec2 %1, %Vec2* %other, align 4
+  %ref = load %Vec2*, %Vec2** %self, align 8
+  %x = getelementptr %Vec2, %Vec2* %ref, i32 0, i32 0
+  %ref1 = load %Vec2*, %Vec2** %self, align 8
+  %x2 = getelementptr %Vec2, %Vec2* %ref1, i32 0, i32 0
+  %x3 = load i32, i32* %x2, align 4
+  %x4 = getelementptr %Vec2, %Vec2* %other, i32 0, i32 0
+  %x5 = load i32, i32* %x4, align 4
+  %sub = sub i32 %x3, %x5
+  store i32 %sub, i32* %x, align 4
+  %ref6 = load %Vec2*, %Vec2** %self, align 8
+  %y = getelementptr %Vec2, %Vec2* %ref6, i32 0, i32 1
+  %ref7 = load %Vec2*, %Vec2** %self, align 8
+  %y8 = getelementptr %Vec2, %Vec2* %ref7, i32 0, i32 1
+  %y9 = load i32, i32* %y8, align 4
+  %y10 = getelementptr %Vec2, %Vec2* %other, i32 0, i32 1
+  %y11 = load i32, i32* %y10, align 4
+  %sub12 = sub i32 %y9, %y11
+  store i32 %sub12, i32* %y, align 4
+  ret void
+}
+
+define void @"Vec2.*=.i32"(%Vec2* %0, i32 %1) {
+entry:
+  %self = alloca %Vec2*, align 8
+  store %Vec2* %0, %Vec2** %self, align 8
+  %n = alloca i32, align 4
+  store i32 %1, i32* %n, align 4
+  %ref = load %Vec2*, %Vec2** %self, align 8
+  %x = getelementptr %Vec2, %Vec2* %ref, i32 0, i32 0
+  %ref1 = load %Vec2*, %Vec2** %self, align 8
+  %x2 = getelementptr %Vec2, %Vec2* %ref1, i32 0, i32 0
+  %x3 = load i32, i32* %x2, align 4
+  %n4 = load i32, i32* %n, align 4
+  %mul = mul i32 %x3, %n4
+  store i32 %mul, i32* %x, align 4
+  %ref5 = load %Vec2*, %Vec2** %self, align 8
+  %y = getelementptr %Vec2, %Vec2* %ref5, i32 0, i32 1
+  %ref6 = load %Vec2*, %Vec2** %self, align 8
+  %y7 = getelementptr %Vec2, %Vec2* %ref6, i32 0, i32 1
+  %y8 = load i32, i32* %y7, align 4
+  %n9 = load i32, i32* %n, align 4
+  %mul10 = mul i32 %y8, %n9
+  store i32 %mul10, i32* %y, align 4
+  ret void
+}
+
+define void @"Vec2./=.i32"(%Vec2* %0, i32 %1) {
+entry:
+  %self = alloca %Vec2*, align 8
+  store %Vec2* %0, %Vec2** %self, align 8
+  %n = alloca i32, align 4
+  store i32 %1, i32* %n, align 4
+  %ref = load %Vec2*, %Vec2** %self, align 8
+  %x = getelementptr %Vec2, %Vec2* %ref, i32 0, i32 0
+  %ref1 = load %Vec2*, %Vec2** %self, align 8
+  %x2 = getelementptr %Vec2, %Vec2* %ref1, i32 0, i32 0
+  %x3 = load i32, i32* %x2, align 4
+  %n4 = load i32, i32* %n, align 4
+  %iszero = icmp eq i32 %n4, 0
+  br i1 %iszero, label %trap, label %cont
+
+trap:                                             ; preds = %entry
+  %2 = call i64 @write(i32 2, i8* getelementptr inbounds ([180 x i8], [180 x i8]* @trap_msg.4, i32 0, i32 0), i64 179)
+  call void @exit(i32 1)
+  unreachable
+
+cont:                                             ; preds = %entry
+  %div = sdiv i32 %x3, %n4
+  store i32 %div, i32* %x, align 4
+  %ref5 = load %Vec2*, %Vec2** %self, align 8
+  %y = getelementptr %Vec2, %Vec2* %ref5, i32 0, i32 1
+  %ref6 = load %Vec2*, %Vec2** %self, align 8
+  %y7 = getelementptr %Vec2, %Vec2* %ref6, i32 0, i32 1
+  %y8 = load i32, i32* %y7, align 4
+  %n9 = load i32, i32* %n, align 4
+  %iszero10 = icmp eq i32 %n9, 0
+  br i1 %iszero10, label %trap11, label %cont12
+
+trap11:                                           ; preds = %cont
+  %3 = call i64 @write(i32 2, i8* getelementptr inbounds ([180 x i8], [180 x i8]* @trap_msg.5, i32 0, i32 0), i64 179)
+  call void @exit(i32 1)
+  unreachable
+
+cont12:                                           ; preds = %cont
+  %div13 = sdiv i32 %y8, %n9
+  store i32 %div13, i32* %y, align 4
+  ret void
+}
+
+define void @"Vec2.%=.i32"(%Vec2* %0, i32 %1) {
+entry:
+  %self = alloca %Vec2*, align 8
+  store %Vec2* %0, %Vec2** %self, align 8
+  %n = alloca i32, align 4
+  store i32 %1, i32* %n, align 4
+  %ref = load %Vec2*, %Vec2** %self, align 8
+  %x = getelementptr %Vec2, %Vec2* %ref, i32 0, i32 0
+  %ref1 = load %Vec2*, %Vec2** %self, align 8
+  %x2 = getelementptr %Vec2, %Vec2* %ref1, i32 0, i32 0
+  %x3 = load i32, i32* %x2, align 4
+  %n4 = load i32, i32* %n, align 4
+  %iszero = icmp eq i32 %n4, 0
+  br i1 %iszero, label %trap, label %cont
+
+trap:                                             ; preds = %entry
+  %2 = call i64 @write(i32 2, i8* getelementptr inbounds ([178 x i8], [178 x i8]* @trap_msg.6, i32 0, i32 0), i64 177)
+  call void @exit(i32 1)
+  unreachable
+
+cont:                                             ; preds = %entry
+  %mod = srem i32 %x3, %n4
+  store i32 %mod, i32* %x, align 4
+  %ref5 = load %Vec2*, %Vec2** %self, align 8
+  %y = getelementptr %Vec2, %Vec2* %ref5, i32 0, i32 1
+  %ref6 = load %Vec2*, %Vec2** %self, align 8
+  %y7 = getelementptr %Vec2, %Vec2* %ref6, i32 0, i32 1
+  %y8 = load i32, i32* %y7, align 4
+  %n9 = load i32, i32* %n, align 4
+  %iszero10 = icmp eq i32 %n9, 0
+  br i1 %iszero10, label %trap11, label %cont12
+
+trap11:                                           ; preds = %cont
+  %3 = call i64 @write(i32 2, i8* getelementptr inbounds ([178 x i8], [178 x i8]* @trap_msg.7, i32 0, i32 0), i64 177)
+  call void @exit(i32 1)
+  unreachable
+
+cont12:                                           ; preds = %cont
+  %mod13 = srem i32 %y8, %n9
+  store i32 %mod13, i32* %y, align 4
+  ret void
+}
+
+define i32 @Vec2.abs(%Vec2* %0, i32 %1) {
+entry:
+  %self = alloca %Vec2*, align 8
+  store %Vec2* %0, %Vec2** %self, align 8
+  %n = alloca i32, align 4
+  store i32 %1, i32* %n, align 4
+  %n1 = load i32, i32* %n, align 4
+  %lt = icmp slt i32 %n1, 0
+  br i1 %lt, label %then, label %endif
+
+endif:                                            ; preds = %entry
+  %n3 = load i32, i32* %n, align 4
+  ret i32 %n3
+
+then:                                             ; preds = %entry
+  %n2 = load i32, i32* %n, align 4
+  %sub = sub i32 0, %n2
+  ret i32 %sub
+}
+
+define void @Vec2.show(%Vec2* %0, i8* %1) {
+entry:
+  %self = alloca %Vec2*, align 8
+  store %Vec2* %0, %Vec2** %self, align 8
+  %label = alloca i8*, align 8
+  store i8* %1, i8** %label, align 8
+  %label1 = load i8*, i8** %label, align 8
+  %ref = load %Vec2*, %Vec2** %self, align 8
+  %x = getelementptr %Vec2, %Vec2* %ref, i32 0, i32 0
+  %x2 = load i32, i32* %x, align 4
+  %ref3 = load %Vec2*, %Vec2** %self, align 8
+  %y = getelementptr %Vec2, %Vec2* %ref3, i32 0, i32 1
+  %y4 = load i32, i32* %y, align 4
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt, i32 0, i32 0), i8* %label1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0), i32 %x2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.8, i32 0, i32 0), i32 %y4, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.9, i32 0, i32 0))
+  ret void
+}
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  %a = alloca %Vec2, align 8
+  %call = call %Vec2 @Vec2.create(i32 9, i32 12)
+  store %Vec2 %call, %Vec2* %a, align 4
+  %b = alloca %Vec2, align 8
+  %call1 = call %Vec2 @Vec2.create(i32 2, i32 3)
+  store %Vec2 %call1, %Vec2* %b, align 4
+  %b2 = load %Vec2, %Vec2* %b, align 4
+  %op = call %Vec2 @"Vec2.+.Vec2"(%Vec2* %a, %Vec2 %b2)
+  %out.tmp = alloca %Vec2, align 8
+  store %Vec2 %op, %Vec2* %out.tmp, align 4
+  call void @Vec2.show(%Vec2* %out.tmp, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.10, i32 0, i32 0))
+  %b3 = load %Vec2, %Vec2* %b, align 4
+  %op4 = call %Vec2 @Vec2.-.Vec2(%Vec2* %a, %Vec2 %b3)
+  %out.tmp5 = alloca %Vec2, align 8
+  store %Vec2 %op4, %Vec2* %out.tmp5, align 4
+  call void @Vec2.show(%Vec2* %out.tmp5, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.11, i32 0, i32 0))
+  %op6 = call %Vec2 @"Vec2.*.i32"(%Vec2* %a, i32 3)
+  %out.tmp7 = alloca %Vec2, align 8
+  store %Vec2 %op6, %Vec2* %out.tmp7, align 4
+  call void @Vec2.show(%Vec2* %out.tmp7, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.12, i32 0, i32 0))
+  %op8 = call %Vec2 @"Vec2./.i32"(%Vec2* %a, i32 2)
+  %out.tmp9 = alloca %Vec2, align 8
+  store %Vec2 %op8, %Vec2* %out.tmp9, align 4
+  call void @Vec2.show(%Vec2* %out.tmp9, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.13, i32 0, i32 0))
+  %op10 = call %Vec2 @"Vec2.%.i32"(%Vec2* %a, i32 4)
+  %out.tmp11 = alloca %Vec2, align 8
+  store %Vec2 %op10, %Vec2* %out.tmp11, align 4
+  call void @Vec2.show(%Vec2* %out.tmp11, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.14, i32 0, i32 0))
+  %b12 = load %Vec2, %Vec2* %b, align 4
+  %op13 = call i1 @"Vec2.==.Vec2"(%Vec2* %a, %Vec2 %b12)
+  %bool_str = select i1 %op13, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str, i32 0, i32 0)
+  %b14 = load %Vec2, %Vec2* %b, align 4
+  %op15 = call i1 @"Vec2.!=.Vec2"(%Vec2* %a, %Vec2 %b14)
+  %bool_str16 = select i1 %op15, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str.17, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str.18, i32 0, i32 0)
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.20, i32 0, i32 0), i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.15, i32 0, i32 0), i8* %bool_str, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.16, i32 0, i32 0), i8* %bool_str16, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.19, i32 0, i32 0))
+  %b17 = load %Vec2, %Vec2* %b, align 4
+  %op18 = call i1 @"Vec2.<.Vec2"(%Vec2* %a, %Vec2 %b17)
+  %bool_str19 = select i1 %op18, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str.22, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str.23, i32 0, i32 0)
+  %b20 = load %Vec2, %Vec2* %b, align 4
+  %op21 = call i1 @"Vec2.>.Vec2"(%Vec2* %a, %Vec2 %b20)
+  %bool_str22 = select i1 %op21, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str.25, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str.26, i32 0, i32 0)
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.28, i32 0, i32 0), i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.21, i32 0, i32 0), i8* %bool_str19, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.24, i32 0, i32 0), i8* %bool_str22, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.27, i32 0, i32 0))
+  %b23 = load %Vec2, %Vec2* %b, align 4
+  %op24 = call i1 @"Vec2.<=.Vec2"(%Vec2* %a, %Vec2 %b23)
+  %bool_str25 = select i1 %op24, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str.30, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str.31, i32 0, i32 0)
+  %b26 = load %Vec2, %Vec2* %b, align 4
+  %op27 = call i1 @"Vec2.>=.Vec2"(%Vec2* %a, %Vec2 %b26)
+  %bool_str28 = select i1 %op27, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @true_str.33, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @false_str.34, i32 0, i32 0)
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.36, i32 0, i32 0), i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.29, i32 0, i32 0), i8* %bool_str25, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.32, i32 0, i32 0), i8* %bool_str28, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.35, i32 0, i32 0))
+  %c = alloca %Vec2, align 8
+  %call29 = call %Vec2 @Vec2.create(i32 0, i32 0)
+  store %Vec2 %call29, %Vec2* %c, align 4
+  %a30 = load %Vec2, %Vec2* %a, align 4
+  call void @"Vec2.=.Vec2"(%Vec2* %c, %Vec2 %a30)
+  call void @Vec2.show(%Vec2* %c, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.37, i32 0, i32 0))
+  %b31 = load %Vec2, %Vec2* %b, align 4
+  call void @"Vec2.+=.Vec2"(%Vec2* %c, %Vec2 %b31)
+  call void @Vec2.show(%Vec2* %c, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.38, i32 0, i32 0))
+  %b32 = load %Vec2, %Vec2* %b, align 4
+  call void @"Vec2.-=.Vec2"(%Vec2* %c, %Vec2 %b32)
+  call void @Vec2.show(%Vec2* %c, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.39, i32 0, i32 0))
+  call void @"Vec2.*=.i32"(%Vec2* %c, i32 2)
+  call void @Vec2.show(%Vec2* %c, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.40, i32 0, i32 0))
+  call void @"Vec2./=.i32"(%Vec2* %c, i32 3)
+  call void @Vec2.show(%Vec2* %c, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.41, i32 0, i32 0))
+  call void @"Vec2.%=.i32"(%Vec2* %c, i32 5)
+  call void @Vec2.show(%Vec2* %c, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.42, i32 0, i32 0))
+  %b33 = load %Vec2, %Vec2* %b, align 4
+  %op34 = call i1 @"Vec2.>.Vec2"(%Vec2* %a, %Vec2 %b33)
+  br i1 %op34, label %then, label %endif
+
+endif:                                            ; preds = %then, %entry
+  %n = alloca i32, align 4
+  store i32 0, i32* %n, align 4
+  %d = alloca %Vec2, align 8
+  %call35 = call %Vec2 @Vec2.create(i32 1, i32 1)
+  store %Vec2 %call35, %Vec2* %d, align 4
+  br label %while.cond
+
+then:                                             ; preds = %entry
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @fmt.44, i32 0, i32 0), i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str.43, i32 0, i32 0))
+  br label %endif
+
+while.cond:                                       ; preds = %while.body, %endif
+  %a36 = load %Vec2, %Vec2* %a, align 4
+  %op37 = call i1 @"Vec2.<.Vec2"(%Vec2* %d, %Vec2 %a36)
+  br i1 %op37, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %b38 = load %Vec2, %Vec2* %b, align 4
+  call void @"Vec2.+=.Vec2"(%Vec2* %d, %Vec2 %b38)
+  %cur = load i32, i32* %n, align 4
+  %add = add i32 %cur, 1
+  store i32 %add, i32* %n, align 4
+  br label %while.cond
+
+while.end:                                        ; preds = %while.cond
+  %n39 = load i32, i32* %n, align 4
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.47, i32 0, i32 0), i8* getelementptr inbounds ([18 x i8], [18 x i8]* @str.45, i32 0, i32 0), i32 %n39, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.46, i32 0, i32 0))
+  ret i32 0
+}
+```
+
+## 024 — bitwise operator overloads, and one returning a scalar
+
+```ura
+// operators_overload/024.ura - bitwise overloads + a scalar return
+
+struct Flags:
+    bits i32
+
+    pub fn create(n i32) Flags:
+        f Flags
+        f.bits = n
+        return f
+
+    operator &(other Flags) Flags:
+        return Flags::create(self.bits & other.bits)
+
+    operator |(other Flags) Flags:
+        return Flags::create(self.bits | other.bits)
+
+    operator ^(other Flags) Flags:
+        return Flags::create(self.bits ^ other.bits)
+
+    operator <<(n i32) Flags:
+        return Flags::create(self.bits << n)
+
+    operator >>(n i32) Flags:
+        return Flags::create(self.bits >> n)
+
+struct Vec2:
+    x i32
+    y i32
+
+    pub fn create(a i32, b i32) Vec2:
+        v Vec2
+        v.x = a
+        v.y = b
+        return v
+
+    // an overload may return something other than the struct
+    operator *(other Vec2) i32:
+        return self.x * other.x + self.y * other.y
+
+main():
+    a Flags = Flags::create(12)
+    b Flags = Flags::create(10)
+    output("and ", (a & b).bits, "  or ", (a | b).bits)
+    output("  xor ", (a ^ b).bits, "\n")
+    output("shl ", (a << 2).bits, "  shr ", (a >> 2).bits, "\n")
+
+    p Vec2 = Vec2::create(2, 3)
+    q Vec2 = Vec2::create(4, 5)
+    output("dot ", p * q, "\n")
+```
+
+```tree
+proto fn printf(format : chars, ...) : i32
+
+proto fn calloc(len : i64, size : i64) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
+
+proto fn exit(code : i32) : void
+
+struct Flags
+├─ bits : i32
+├─ fn Flags.create(n : i32) : STRUCT_CALL
+│  ├─ f : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ .bits : i32
+│  │  │  └─ f : STRUCT_CALL
+│  │  └─ n : i32
+│  └─ return
+│     └─ f : STRUCT_CALL
+├─ fn Flags.&.Flags(self : STRUCT_CALL, other : STRUCT_CALL) : STRUCT_CALL
+│  └─ return
+│     └─ call create : STRUCT_CALL
+│        └─ & : i32
+│           ├─ .bits : i32
+│           │  └─ self : STRUCT_CALL
+│           └─ .bits : i32
+│              └─ other : STRUCT_CALL
+├─ fn Flags.|.Flags(self : STRUCT_CALL, other : STRUCT_CALL) : STRUCT_CALL
+│  └─ return
+│     └─ call create : STRUCT_CALL
+│        └─ | : i32
+│           ├─ .bits : i32
+│           │  └─ self : STRUCT_CALL
+│           └─ .bits : i32
+│              └─ other : STRUCT_CALL
+├─ fn Flags.^.Flags(self : STRUCT_CALL, other : STRUCT_CALL) : STRUCT_CALL
+│  └─ return
+│     └─ call create : STRUCT_CALL
+│        └─ ^ : i32
+│           ├─ .bits : i32
+│           │  └─ self : STRUCT_CALL
+│           └─ .bits : i32
+│              └─ other : STRUCT_CALL
+├─ fn Flags.<<.i32(self : STRUCT_CALL, n : i32) : STRUCT_CALL
+│  └─ return
+│     └─ call create : STRUCT_CALL
+│        └─ << : i32
+│           ├─ .bits : i32
+│           │  └─ self : STRUCT_CALL
+│           └─ n : i32
+└─ fn Flags.>>.i32(self : STRUCT_CALL, n : i32) : STRUCT_CALL
+   └─ return
+      └─ call create : STRUCT_CALL
+         └─ >> : i32
+            ├─ .bits : i32
+            │  └─ self : STRUCT_CALL
+            └─ n : i32
+
+struct Vec2
+├─ x : i32
+├─ y : i32
+├─ fn Vec2.create(a : i32, b : i32) : STRUCT_CALL
+│  ├─ v : STRUCT_CALL
+│  ├─ = : i32
+│  │  ├─ .x : i32
+│  │  │  └─ v : STRUCT_CALL
+│  │  └─ a : i32
+│  ├─ = : i32
+│  │  ├─ .y : i32
+│  │  │  └─ v : STRUCT_CALL
+│  │  └─ b : i32
+│  └─ return
+│     └─ v : STRUCT_CALL
+└─ fn Vec2.*.Vec2(self : STRUCT_CALL, other : STRUCT_CALL) : i32
+   └─ return
+      └─ + : i32
+         ├─ * : i32
+         │  ├─ .x : i32
+         │  │  └─ self : STRUCT_CALL
+         │  └─ .x : i32
+         │     └─ other : STRUCT_CALL
+         └─ * : i32
+            ├─ .y : i32
+            │  └─ self : STRUCT_CALL
+            └─ .y : i32
+               └─ other : STRUCT_CALL
+
+fn main() : i32
+├─ = : STRUCT_CALL
+│  ├─ a : STRUCT_CALL
+│  └─ call create : STRUCT_CALL
+│     └─ int 12
+├─ = : STRUCT_CALL
+│  ├─ b : STRUCT_CALL
+│  └─ call create : STRUCT_CALL
+│     └─ int 10
+├─ output : void
+│  ├─ chars "and "
+│  ├─ .bits : i32
+│  │  └─ & : STRUCT_CALL
+│  │     ├─ a : STRUCT_CALL
+│  │     └─ b : STRUCT_CALL
+│  ├─ chars "  or "
+│  └─ .bits : i32
+│     └─ | : STRUCT_CALL
+│        ├─ a : STRUCT_CALL
+│        └─ b : STRUCT_CALL
+├─ output : void
+│  ├─ chars "  xor "
+│  ├─ .bits : i32
+│  │  └─ ^ : STRUCT_CALL
+│  │     ├─ a : STRUCT_CALL
+│  │     └─ b : STRUCT_CALL
+│  └─ chars "\n"
+├─ output : void
+│  ├─ chars "shl "
+│  ├─ .bits : i32
+│  │  └─ << : STRUCT_CALL
+│  │     ├─ a : STRUCT_CALL
+│  │     └─ int 2
+│  ├─ chars "  shr "
+│  ├─ .bits : i32
+│  │  └─ >> : STRUCT_CALL
+│  │     ├─ a : STRUCT_CALL
+│  │     └─ int 2
+│  └─ chars "\n"
+├─ = : STRUCT_CALL
+│  ├─ p : STRUCT_CALL
+│  └─ call create : STRUCT_CALL
+│     ├─ int 2
+│     └─ int 3
+├─ = : STRUCT_CALL
+│  ├─ q : STRUCT_CALL
+│  └─ call create : STRUCT_CALL
+│     ├─ int 4
+│     └─ int 5
+└─ output : void
+   ├─ chars "dot "
+   ├─ * : i32
+   │  ├─ p : STRUCT_CALL
+   │  └─ q : STRUCT_CALL
+   └─ chars "\n"
+```
+
+```out
+and 8  or 14  xor 6
+shl 48  shr 3
+dot 23
+```
+
+```err
+```
+
+```ll
+
+%Flags = type { i32 }
+%Vec2 = type { i32, i32 }
+
+@str = private unnamed_addr constant [5 x i8] c"and \00", align 1
+@str.1 = private unnamed_addr constant [6 x i8] c"  or \00", align 1
+@fmt = private unnamed_addr constant [9 x i8] c"%s%d%s%d\00", align 1
+@str.2 = private unnamed_addr constant [7 x i8] c"  xor \00", align 1
+@str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.4 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@str.5 = private unnamed_addr constant [5 x i8] c"shl \00", align 1
+@str.6 = private unnamed_addr constant [7 x i8] c"  shr \00", align 1
+@str.7 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.8 = private unnamed_addr constant [11 x i8] c"%s%d%s%d%s\00", align 1
+@str.9 = private unnamed_addr constant [5 x i8] c"dot \00", align 1
+@str.10 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.11 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+
+define %Flags @Flags.create(i32 %0) {
+entry:
+  %n = alloca i32, align 4
+  store i32 %0, i32* %n, align 4
+  %f = alloca %Flags, align 8
+  store %Flags zeroinitializer, %Flags* %f, align 4
+  %bits = getelementptr %Flags, %Flags* %f, i32 0, i32 0
+  %n1 = load i32, i32* %n, align 4
+  store i32 %n1, i32* %bits, align 4
+  %f2 = load %Flags, %Flags* %f, align 4
+  ret %Flags %f2
+}
+
+define %Flags @"Flags.&.Flags"(%Flags* %0, %Flags %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  %other = alloca %Flags, align 8
+  store %Flags %1, %Flags* %other, align 4
+  %ref = load %Flags*, %Flags** %self, align 8
+  %bits = getelementptr %Flags, %Flags* %ref, i32 0, i32 0
+  %bits1 = load i32, i32* %bits, align 4
+  %bits2 = getelementptr %Flags, %Flags* %other, i32 0, i32 0
+  %bits3 = load i32, i32* %bits2, align 4
+  %band = and i32 %bits1, %bits3
+  %call = call %Flags @Flags.create(i32 %band)
+  ret %Flags %call
+}
+
+define %Flags @"Flags.|.Flags"(%Flags* %0, %Flags %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  %other = alloca %Flags, align 8
+  store %Flags %1, %Flags* %other, align 4
+  %ref = load %Flags*, %Flags** %self, align 8
+  %bits = getelementptr %Flags, %Flags* %ref, i32 0, i32 0
+  %bits1 = load i32, i32* %bits, align 4
+  %bits2 = getelementptr %Flags, %Flags* %other, i32 0, i32 0
+  %bits3 = load i32, i32* %bits2, align 4
+  %bor = or i32 %bits1, %bits3
+  %call = call %Flags @Flags.create(i32 %bor)
+  ret %Flags %call
+}
+
+define %Flags @"Flags.^.Flags"(%Flags* %0, %Flags %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  %other = alloca %Flags, align 8
+  store %Flags %1, %Flags* %other, align 4
+  %ref = load %Flags*, %Flags** %self, align 8
+  %bits = getelementptr %Flags, %Flags* %ref, i32 0, i32 0
+  %bits1 = load i32, i32* %bits, align 4
+  %bits2 = getelementptr %Flags, %Flags* %other, i32 0, i32 0
+  %bits3 = load i32, i32* %bits2, align 4
+  %bxor = xor i32 %bits1, %bits3
+  %call = call %Flags @Flags.create(i32 %bxor)
+  ret %Flags %call
+}
+
+define %Flags @"Flags.<<.i32"(%Flags* %0, i32 %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  %n = alloca i32, align 4
+  store i32 %1, i32* %n, align 4
+  %ref = load %Flags*, %Flags** %self, align 8
+  %bits = getelementptr %Flags, %Flags* %ref, i32 0, i32 0
+  %bits1 = load i32, i32* %bits, align 4
+  %n2 = load i32, i32* %n, align 4
+  %shl = shl i32 %bits1, %n2
+  %call = call %Flags @Flags.create(i32 %shl)
+  ret %Flags %call
+}
+
+define %Flags @"Flags.>>.i32"(%Flags* %0, i32 %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  %n = alloca i32, align 4
+  store i32 %1, i32* %n, align 4
+  %ref = load %Flags*, %Flags** %self, align 8
+  %bits = getelementptr %Flags, %Flags* %ref, i32 0, i32 0
+  %bits1 = load i32, i32* %bits, align 4
+  %n2 = load i32, i32* %n, align 4
+  %shr = ashr i32 %bits1, %n2
+  %call = call %Flags @Flags.create(i32 %shr)
+  ret %Flags %call
+}
+
+define %Vec2 @Vec2.create(i32 %0, i32 %1) {
+entry:
+  %a = alloca i32, align 4
+  store i32 %0, i32* %a, align 4
+  %b = alloca i32, align 4
+  store i32 %1, i32* %b, align 4
+  %v = alloca %Vec2, align 8
+  store %Vec2 zeroinitializer, %Vec2* %v, align 4
+  %x = getelementptr %Vec2, %Vec2* %v, i32 0, i32 0
+  %a1 = load i32, i32* %a, align 4
+  store i32 %a1, i32* %x, align 4
+  %y = getelementptr %Vec2, %Vec2* %v, i32 0, i32 1
+  %b2 = load i32, i32* %b, align 4
+  store i32 %b2, i32* %y, align 4
+  %v3 = load %Vec2, %Vec2* %v, align 4
+  ret %Vec2 %v3
+}
+
+define i32 @"Vec2.*.Vec2"(%Vec2* %0, %Vec2 %1) {
+entry:
+  %self = alloca %Vec2*, align 8
+  store %Vec2* %0, %Vec2** %self, align 8
+  %other = alloca %Vec2, align 8
+  store %Vec2 %1, %Vec2* %other, align 4
+  %ref = load %Vec2*, %Vec2** %self, align 8
+  %x = getelementptr %Vec2, %Vec2* %ref, i32 0, i32 0
+  %x1 = load i32, i32* %x, align 4
+  %x2 = getelementptr %Vec2, %Vec2* %other, i32 0, i32 0
+  %x3 = load i32, i32* %x2, align 4
+  %mul = mul i32 %x1, %x3
+  %ref4 = load %Vec2*, %Vec2** %self, align 8
+  %y = getelementptr %Vec2, %Vec2* %ref4, i32 0, i32 1
+  %y5 = load i32, i32* %y, align 4
+  %y6 = getelementptr %Vec2, %Vec2* %other, i32 0, i32 1
+  %y7 = load i32, i32* %y6, align 4
+  %mul8 = mul i32 %y5, %y7
+  %add = add i32 %mul, %mul8
+  ret i32 %add
+}
+
+define i32 @main() {
+entry:
+  %a = alloca %Flags, align 8
+  %call = call %Flags @Flags.create(i32 12)
+  store %Flags %call, %Flags* %a, align 4
+  %b = alloca %Flags, align 8
+  %call1 = call %Flags @Flags.create(i32 10)
+  store %Flags %call1, %Flags* %b, align 4
+  %b2 = load %Flags, %Flags* %b, align 4
+  %op = call %Flags @"Flags.&.Flags"(%Flags* %a, %Flags %b2)
+  %out.tmp = alloca %Flags, align 8
+  store %Flags %op, %Flags* %out.tmp, align 4
+  %bits = getelementptr %Flags, %Flags* %out.tmp, i32 0, i32 0
+  %bits3 = load i32, i32* %bits, align 4
+  %b4 = load %Flags, %Flags* %b, align 4
+  %op5 = call %Flags @"Flags.|.Flags"(%Flags* %a, %Flags %b4)
+  %out.tmp6 = alloca %Flags, align 8
+  store %Flags %op5, %Flags* %out.tmp6, align 4
+  %bits7 = getelementptr %Flags, %Flags* %out.tmp6, i32 0, i32 0
+  %bits8 = load i32, i32* %bits7, align 4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str, i32 0, i32 0), i32 %bits3, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.1, i32 0, i32 0), i32 %bits8)
+  %b9 = load %Flags, %Flags* %b, align 4
+  %op10 = call %Flags @"Flags.^.Flags"(%Flags* %a, %Flags %b9)
+  %out.tmp11 = alloca %Flags, align 8
+  store %Flags %op10, %Flags* %out.tmp11, align 4
+  %bits12 = getelementptr %Flags, %Flags* %out.tmp11, i32 0, i32 0
+  %bits13 = load i32, i32* %bits12, align 4
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.4, i32 0, i32 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.2, i32 0, i32 0), i32 %bits13, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
+  %op14 = call %Flags @"Flags.<<.i32"(%Flags* %a, i32 2)
+  %out.tmp15 = alloca %Flags, align 8
+  store %Flags %op14, %Flags* %out.tmp15, align 4
+  %bits16 = getelementptr %Flags, %Flags* %out.tmp15, i32 0, i32 0
+  %bits17 = load i32, i32* %bits16, align 4
+  %op18 = call %Flags @"Flags.>>.i32"(%Flags* %a, i32 2)
+  %out.tmp19 = alloca %Flags, align 8
+  store %Flags %op18, %Flags* %out.tmp19, align 4
+  %bits20 = getelementptr %Flags, %Flags* %out.tmp19, i32 0, i32 0
+  %bits21 = load i32, i32* %bits20, align 4
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.8, i32 0, i32 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.5, i32 0, i32 0), i32 %bits17, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.6, i32 0, i32 0), i32 %bits21, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.7, i32 0, i32 0))
+  %p = alloca %Vec2, align 8
+  %call22 = call %Vec2 @Vec2.create(i32 2, i32 3)
+  store %Vec2 %call22, %Vec2* %p, align 4
+  %q = alloca %Vec2, align 8
+  %call23 = call %Vec2 @Vec2.create(i32 4, i32 5)
+  store %Vec2 %call23, %Vec2* %q, align 4
+  %q24 = load %Vec2, %Vec2* %q, align 4
+  %op25 = call i32 @"Vec2.*.Vec2"(%Vec2* %p, %Vec2 %q24)
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.11, i32 0, i32 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.9, i32 0, i32 0), i32 %op25, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.10, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 025 — compound bitwise assignment overloads
+
+```ura
+// operators_overload/025.ura - &= |= ^= <<= >>= as overloads
+
+struct Flags:
+    bits i32
+
+    operator &=(n i32) void:
+        self.bits = self.bits & n
+
+    operator |=(n i32) void:
+        self.bits = self.bits | n
+
+    operator ^=(n i32) void:
+        self.bits = self.bits ^ n
+
+    operator <<=(n i32) void:
+        self.bits = self.bits << n
+
+    operator >>=(n i32) void:
+        self.bits = self.bits >> n
+
+main():
+    f Flags
+    f.bits = 12
+    f &= 10
+    output(f.bits, " ")
+    f |= 3
+    output(f.bits, " ")
+    f ^= 5
+    output(f.bits, " ")
+    f <<= 2
+    output(f.bits, " ")
+    f >>= 1
+    output(f.bits, "\n")
+```
+
+```tree
+proto fn printf(format : chars, ...) : i32
+
+proto fn calloc(len : i64, size : i64) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
+
+proto fn exit(code : i32) : void
+
+struct Flags
+├─ bits : i32
+├─ fn Flags.&=.i32(self : STRUCT_CALL, n : i32) : void
+│  └─ = : i32
+│     ├─ .bits : i32
+│     │  └─ self : STRUCT_CALL
+│     └─ & : i32
+│        ├─ .bits : i32
+│        │  └─ self : STRUCT_CALL
+│        └─ n : i32
+├─ fn Flags.|=.i32(self : STRUCT_CALL, n : i32) : void
+│  └─ = : i32
+│     ├─ .bits : i32
+│     │  └─ self : STRUCT_CALL
+│     └─ | : i32
+│        ├─ .bits : i32
+│        │  └─ self : STRUCT_CALL
+│        └─ n : i32
+├─ fn Flags.^=.i32(self : STRUCT_CALL, n : i32) : void
+│  └─ = : i32
+│     ├─ .bits : i32
+│     │  └─ self : STRUCT_CALL
+│     └─ ^ : i32
+│        ├─ .bits : i32
+│        │  └─ self : STRUCT_CALL
+│        └─ n : i32
+├─ fn Flags.<<=.i32(self : STRUCT_CALL, n : i32) : void
+│  └─ = : i32
+│     ├─ .bits : i32
+│     │  └─ self : STRUCT_CALL
+│     └─ << : i32
+│        ├─ .bits : i32
+│        │  └─ self : STRUCT_CALL
+│        └─ n : i32
+└─ fn Flags.>>=.i32(self : STRUCT_CALL, n : i32) : void
+   └─ = : i32
+      ├─ .bits : i32
+      │  └─ self : STRUCT_CALL
+      └─ >> : i32
+         ├─ .bits : i32
+         │  └─ self : STRUCT_CALL
+         └─ n : i32
+
+fn main() : i32
+├─ f : STRUCT_CALL
+├─ = : i32
+│  ├─ .bits : i32
+│  │  └─ f : STRUCT_CALL
+│  └─ int 12
+├─ &= : void
+│  ├─ f : STRUCT_CALL
+│  └─ int 10
+├─ output : void
+│  ├─ .bits : i32
+│  │  └─ f : STRUCT_CALL
+│  └─ chars " "
+├─ |= : void
+│  ├─ f : STRUCT_CALL
+│  └─ int 3
+├─ output : void
+│  ├─ .bits : i32
+│  │  └─ f : STRUCT_CALL
+│  └─ chars " "
+├─ ^= : void
+│  ├─ f : STRUCT_CALL
+│  └─ int 5
+├─ output : void
+│  ├─ .bits : i32
+│  │  └─ f : STRUCT_CALL
+│  └─ chars " "
+├─ <<= : void
+│  ├─ f : STRUCT_CALL
+│  └─ int 2
+├─ output : void
+│  ├─ .bits : i32
+│  │  └─ f : STRUCT_CALL
+│  └─ chars " "
+├─ >>= : void
+│  ├─ f : STRUCT_CALL
+│  └─ int 1
+└─ output : void
+   ├─ .bits : i32
+   │  └─ f : STRUCT_CALL
+   └─ chars "\n"
+```
+
+```out
+8 11 14 56 28
+```
+
+```err
+```
+
+```ll
+
+%Flags = type { i32 }
+
+@str = private unnamed_addr constant [2 x i8] c" \00", align 1
+@fmt = private unnamed_addr constant [5 x i8] c"%d%s\00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c" \00", align 1
+@fmt.2 = private unnamed_addr constant [5 x i8] c"%d%s\00", align 1
+@str.3 = private unnamed_addr constant [2 x i8] c" \00", align 1
+@fmt.4 = private unnamed_addr constant [5 x i8] c"%d%s\00", align 1
+@str.5 = private unnamed_addr constant [2 x i8] c" \00", align 1
+@fmt.6 = private unnamed_addr constant [5 x i8] c"%d%s\00", align 1
+@str.7 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.8 = private unnamed_addr constant [5 x i8] c"%d%s\00", align 1
+
+define void @"Flags.&=.i32"(%Flags* %0, i32 %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  %n = alloca i32, align 4
+  store i32 %1, i32* %n, align 4
+  %ref = load %Flags*, %Flags** %self, align 8
+  %bits = getelementptr %Flags, %Flags* %ref, i32 0, i32 0
+  %ref1 = load %Flags*, %Flags** %self, align 8
+  %bits2 = getelementptr %Flags, %Flags* %ref1, i32 0, i32 0
+  %bits3 = load i32, i32* %bits2, align 4
+  %n4 = load i32, i32* %n, align 4
+  %band = and i32 %bits3, %n4
+  store i32 %band, i32* %bits, align 4
+  ret void
+}
+
+define void @"Flags.|=.i32"(%Flags* %0, i32 %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  %n = alloca i32, align 4
+  store i32 %1, i32* %n, align 4
+  %ref = load %Flags*, %Flags** %self, align 8
+  %bits = getelementptr %Flags, %Flags* %ref, i32 0, i32 0
+  %ref1 = load %Flags*, %Flags** %self, align 8
+  %bits2 = getelementptr %Flags, %Flags* %ref1, i32 0, i32 0
+  %bits3 = load i32, i32* %bits2, align 4
+  %n4 = load i32, i32* %n, align 4
+  %bor = or i32 %bits3, %n4
+  store i32 %bor, i32* %bits, align 4
+  ret void
+}
+
+define void @"Flags.^=.i32"(%Flags* %0, i32 %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  %n = alloca i32, align 4
+  store i32 %1, i32* %n, align 4
+  %ref = load %Flags*, %Flags** %self, align 8
+  %bits = getelementptr %Flags, %Flags* %ref, i32 0, i32 0
+  %ref1 = load %Flags*, %Flags** %self, align 8
+  %bits2 = getelementptr %Flags, %Flags* %ref1, i32 0, i32 0
+  %bits3 = load i32, i32* %bits2, align 4
+  %n4 = load i32, i32* %n, align 4
+  %bxor = xor i32 %bits3, %n4
+  store i32 %bxor, i32* %bits, align 4
+  ret void
+}
+
+define void @"Flags.<<=.i32"(%Flags* %0, i32 %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  %n = alloca i32, align 4
+  store i32 %1, i32* %n, align 4
+  %ref = load %Flags*, %Flags** %self, align 8
+  %bits = getelementptr %Flags, %Flags* %ref, i32 0, i32 0
+  %ref1 = load %Flags*, %Flags** %self, align 8
+  %bits2 = getelementptr %Flags, %Flags* %ref1, i32 0, i32 0
+  %bits3 = load i32, i32* %bits2, align 4
+  %n4 = load i32, i32* %n, align 4
+  %shl = shl i32 %bits3, %n4
+  store i32 %shl, i32* %bits, align 4
+  ret void
+}
+
+define void @"Flags.>>=.i32"(%Flags* %0, i32 %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  %n = alloca i32, align 4
+  store i32 %1, i32* %n, align 4
+  %ref = load %Flags*, %Flags** %self, align 8
+  %bits = getelementptr %Flags, %Flags* %ref, i32 0, i32 0
+  %ref1 = load %Flags*, %Flags** %self, align 8
+  %bits2 = getelementptr %Flags, %Flags* %ref1, i32 0, i32 0
+  %bits3 = load i32, i32* %bits2, align 4
+  %n4 = load i32, i32* %n, align 4
+  %shr = ashr i32 %bits3, %n4
+  store i32 %shr, i32* %bits, align 4
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %f = alloca %Flags, align 8
+  store %Flags zeroinitializer, %Flags* %f, align 4
+  %bits = getelementptr %Flags, %Flags* %f, i32 0, i32 0
+  store i32 12, i32* %bits, align 4
+  call void @"Flags.&=.i32"(%Flags* %f, i32 10)
+  %bits1 = getelementptr %Flags, %Flags* %f, i32 0, i32 0
+  %bits2 = load i32, i32* %bits1, align 4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt, i32 0, i32 0), i32 %bits2, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0))
+  call void @"Flags.|=.i32"(%Flags* %f, i32 3)
+  %bits3 = getelementptr %Flags, %Flags* %f, i32 0, i32 0
+  %bits4 = load i32, i32* %bits3, align 4
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.2, i32 0, i32 0), i32 %bits4, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  call void @"Flags.^=.i32"(%Flags* %f, i32 5)
+  %bits5 = getelementptr %Flags, %Flags* %f, i32 0, i32 0
+  %bits6 = load i32, i32* %bits5, align 4
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.4, i32 0, i32 0), i32 %bits6, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
+  call void @"Flags.<<=.i32"(%Flags* %f, i32 2)
+  %bits7 = getelementptr %Flags, %Flags* %f, i32 0, i32 0
+  %bits8 = load i32, i32* %bits7, align 4
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.6, i32 0, i32 0), i32 %bits8, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i32 0, i32 0))
+  call void @"Flags.>>=.i32"(%Flags* %f, i32 1)
+  %bits9 = getelementptr %Flags, %Flags* %f, i32 0, i32 0
+  %bits10 = load i32, i32* %bits9, align 4
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.8, i32 0, i32 0), i32 %bits10, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.7, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
 ```

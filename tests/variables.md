@@ -10,6 +10,13 @@
 - 006 — a global struct is initialised and dropped like a local
 - 007 — a global is dropped on an early return too
 - 008 — an array type carries no size
+- 009 — redeclaring a variable in the same scope
+- 010 — using a name that was never declared
+- 011 — assigning to a name that was never declared
+- 012 — a variable does not outlive the block that declared it
+- 013 — redeclaring a global
+- 014 — a bool takes only True or False
+- 015 — assigning a string or a struct to an integer
 
 ## 001 — hero stats: declare all common types
 
@@ -18,10 +25,10 @@
 
 main():
     name  chars = "Aldric"
-    hp    int   = 100
-    mp    int   = 50
+    hp    i32   = 100
+    mp    i32   = 50
     alive bool  = True
-    speed float = 1.5
+    speed f32 = 1.5
     output("=== ", name, " enters the dungeon ===\n")
     output("HP: ", hp, " | MP: ", mp, " | Speed: ", speed, "\n")
     output("Alive: ", alive, "\n")
@@ -132,9 +139,9 @@ declare i32 @printf(i8*, ...)
 // variables/002.ura - reassignment: hp loss, xp gain, mp drain
 
 main():
-    hp int = 100
-    mp int = 50
-    xp int = 0
+    hp i32 = 100
+    mp i32 = 50
+    xp i32 = 0
 
     hp = hp - 12
     mp -= 10
@@ -255,12 +262,12 @@ declare i32 @printf(i8*, ...)
 
 main():
     name   chars = "Aldric"
-    hp     int   = 100
-    xp     long  = 999999 as long
-    level  short = 12 as short
+    hp     i32   = 100
+    xp     i64  = 999999 as i64
+    level  i16 = 12 as i16
     grade  char  = 'S'
     alive  bool  = True
-    ratio  float = 0.85
+    ratio  f32 = 0.85
 
     output("name:  ", name,  "\n")
     output("hp:    ", hp,    "\n")
@@ -421,22 +428,22 @@ declare i32 @printf(i8*, ...)
 ```ura
 // variables/004.ura - use before a shadowing declaration
 
-fn pick(n int) int:
+fn pick(n i32) i32:
     return n * 2
 
 main():
-    x int = 1
+    x i32 = 1
     if 1 < 2:
         // resolves to the OUTER x, even though an inner x follows
         output("outer ", x, "\n")
-        x int = 2
+        x i32 = 2
         output("inner ", x, "\n")
     output("after ", x, "\n")
 
-    y int = pick(3)
+    y i32 = pick(3)
     while y > 0:
         output("loop y ", y, "\n")
-        y int = 0
+        y i32 = 0
         output("shadow y ", y, "\n")
         break
 ```
@@ -591,10 +598,10 @@ declare i32 @printf(i8*, ...)
 // variables/005.ura - top-level variables
 
 name  chars = "ura"
-ratio float = 1.5
+ratio f32 = 1.5
 flag  bool  = True
-xs    int[] = int[3]
-heap  int[] = new int[2]
+xs    i32[] = i32[3]
+heap  i32[] = new i32[2]
 
 fn touch() void:
     total += 1
@@ -614,10 +621,10 @@ main():
     clean heap
 
     // a local shadows the global for the rest of this scope
-    total int = 99
+    total i32 = 99
     output("local total ", total, "\n")
 
-total int = 7
+total i32 = 7
 ```
 
 ```tree
@@ -692,7 +699,7 @@ fn main() : i32
 │  │  ├─ xs : i32[]
 │  │  └─ int 0
 │  ├─ chars " len "
-│  └─ .len : i32
+│  └─ .len : u64
 │     └─ xs : i32[]
 ├─ output : void
 │  ├─ chars "  heap "
@@ -700,7 +707,7 @@ fn main() : i32
 │  │  ├─ heap : i32[]
 │  │  └─ int 1
 │  ├─ chars " len "
-│  ├─ .len : i32
+│  ├─ .len : u64
 │  │  └─ heap : i32[]
 │  └─ chars "\n"
 ├─ clean : void
@@ -752,11 +759,11 @@ local total 99
 @fmt.9 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
 @str.10 = private unnamed_addr constant [4 x i8] c"xs \00", align 1
 @str.11 = private unnamed_addr constant [6 x i8] c" len \00", align 1
-@fmt.12 = private unnamed_addr constant [9 x i8] c"%s%d%s%d\00", align 1
+@fmt.12 = private unnamed_addr constant [11 x i8] c"%s%d%s%llu\00", align 1
 @str.13 = private unnamed_addr constant [8 x i8] c"  heap \00", align 1
 @str.14 = private unnamed_addr constant [6 x i8] c" len \00", align 1
 @str.15 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
-@fmt.16 = private unnamed_addr constant [11 x i8] c"%s%d%s%d%s\00", align 1
+@fmt.16 = private unnamed_addr constant [13 x i8] c"%s%d%s%llu%s\00", align 1
 @str.17 = private unnamed_addr constant [13 x i8] c"local total \00", align 1
 @str.18 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @fmt.19 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
@@ -812,25 +819,23 @@ entry:
   %idx = load i32, i32* %arr.at10, align 4
   %xs11 = load { i32*, i64 }, { i32*, i64 }* @xs, align 8
   %len = extractvalue { i32*, i64 } %xs11, 1
-  %len12 = trunc i64 %len to i32
-  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @fmt.12, i32 0, i32 0), i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.10, i32 0, i32 0), i32 %idx, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.11, i32 0, i32 0), i32 %len12)
-  %heap13 = load { i32*, i64 }, { i32*, i64 }* @heap, align 8
-  %arr.data14 = extractvalue { i32*, i64 } %heap13, 0
-  %arr.at15 = getelementptr i32, i32* %arr.data14, i32 1
-  %idx16 = load i32, i32* %arr.at15, align 4
-  %heap17 = load { i32*, i64 }, { i32*, i64 }* @heap, align 8
-  %len18 = extractvalue { i32*, i64 } %heap17, 1
-  %len19 = trunc i64 %len18 to i32
-  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.16, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.13, i32 0, i32 0), i32 %idx16, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.14, i32 0, i32 0), i32 %len19, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.15, i32 0, i32 0))
-  %arr20 = load { i32*, i64 }, { i32*, i64 }* @heap, align 8
-  %arr.data21 = extractvalue { i32*, i64 } %arr20, 0
-  %free.ptr = bitcast i32* %arr.data21 to i8*
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.12, i32 0, i32 0), i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.10, i32 0, i32 0), i32 %idx, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.11, i32 0, i32 0), i64 %len)
+  %heap12 = load { i32*, i64 }, { i32*, i64 }* @heap, align 8
+  %arr.data13 = extractvalue { i32*, i64 } %heap12, 0
+  %arr.at14 = getelementptr i32, i32* %arr.data13, i32 1
+  %idx15 = load i32, i32* %arr.at14, align 4
+  %heap16 = load { i32*, i64 }, { i32*, i64 }* @heap, align 8
+  %len17 = extractvalue { i32*, i64 } %heap16, 1
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt.16, i32 0, i32 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.13, i32 0, i32 0), i32 %idx15, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.14, i32 0, i32 0), i64 %len17, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.15, i32 0, i32 0))
+  %arr18 = load { i32*, i64 }, { i32*, i64 }* @heap, align 8
+  %arr.data19 = extractvalue { i32*, i64 } %arr18, 0
+  %free.ptr = bitcast i32* %arr.data19 to i8*
   call void @free(i8* %free.ptr)
   store { i32*, i64 } zeroinitializer, { i32*, i64 }* @heap, align 8
-  %total22 = alloca i32, align 4
-  store i32 99, i32* %total22, align 4
-  %total23 = load i32, i32* %total22, align 4
-  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.19, i32 0, i32 0), i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str.17, i32 0, i32 0), i32 %total23, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.18, i32 0, i32 0))
+  %total20 = alloca i32, align 4
+  store i32 99, i32* %total20, align 4
+  %total21 = load i32, i32* %total20, align 4
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.19, i32 0, i32 0), i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str.17, i32 0, i32 0), i32 %total21, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.18, i32 0, i32 0))
   ret i32 0
 }
 
@@ -852,9 +857,9 @@ attributes #0 = { argmemonly nofree nounwind willreturn writeonly }
 // variables/006.ura - a global struct, built and destroyed
 
 struct Counter:
-    hits int
+    hits i32
 
-    pub fn create(n int) Counter:
+    pub fn create(n i32) Counter:
         c Counter
         c.hits = n
         return c
@@ -1046,9 +1051,9 @@ entry:
 // variables/007.ura - global drop on the early-return path
 
 struct Res:
-    id int
+    id i32
 
-    pub fn create(n int) Res:
+    pub fn create(n i32) Res:
         r Res
         r.id = n
         return r
@@ -1224,7 +1229,7 @@ then:                                             ; preds = %entry
 // variables/008.ura - a sized array type is rejected
 
 main():
-    xs int[3]
+    xs i32[3]
     xs[0] = 7
 ```
 
@@ -1238,7 +1243,216 @@ main():
 error: An array type carries no size; ex. 'arr int[] = int[3]' to make one
   008.ura:4:11
   |
-4 |     xs int[3]
+4 |     xs i32[3]
+  |           ^
+```
+
+```ll
+```
+
+## 009 — redeclaring a variable in the same scope
+
+```ura
+// variables/009.ura - redeclaration
+
+main():
+    a i32 = 1
+    a i32 = 2
+    return a
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Redeclaration of variable 'a'
+  009.ura:5:5
+  |
+5 |     a i32 = 2
+  |     ^
+```
+
+```ll
+```
+
+## 010 — using a name that was never declared
+
+```ura
+// variables/010.ura - undeclared variable
+
+main():
+    x i32 = 5
+    output(y, "\n")
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Undeclared variable 'y'
+  010.ura:5:12
+  |
+5 |     output(y, "\n")
+  |            ^
+```
+
+```ll
+```
+
+## 011 — assigning to a name that was never declared
+
+```ura
+// variables/011.ura - assignment without a declaration
+
+main():
+    score = 100
+    output(score, "\n")
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Undeclared variable 'score'
+  011.ura:4:5
+  |
+4 |     score = 100
+  |     ^^^^^
+error: Undeclared variable 'score'
+  011.ura:5:12
+  |
+5 |     output(score, "\n")
+  |            ^^^^^
+```
+
+```ll
+```
+
+## 012 — a variable does not outlive the block that declared it
+
+```ura
+// variables/012.ura - out of scope after the block ends
+
+main():
+    x i32 = 1
+    if x > 0:
+        y i32 = 5
+    output(y, "\n")
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Undeclared variable 'y'
+  012.ura:7:12
+  |
+7 |     output(y, "\n")
+  |            ^
+```
+
+```ll
+```
+
+## 013 — redeclaring a global
+
+```ura
+// variables/013.ura - global redeclaration
+
+score i32 = 0
+score i32 = 10
+
+main():
+    output(score, "\n")
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Redeclaration of variable 'score'
+  013.ura:4:1
+  |
+4 | score i32 = 10
+  | ^^^^^
+```
+
+```ll
+```
+
+## 014 — a bool takes only True or False
+
+```ura
+// variables/014.ura - no numeric literal into a bool
+
+main():
+    b bool = 5
+    return 0
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Cannot assign i32 to bool
+  014.ura:4:12
+  |
+4 |     b bool = 5
+  |            ^
+```
+
+```ll
+```
+
+## 015 — assigning a string or a struct to an integer
+
+```ura
+// variables/015.ura - assignment type mismatches
+
+struct Point:
+    x i32
+
+main():
+    a i32 = "hello"
+    p Point
+    b i32 = p
+    output(a, b, "\n")
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Cannot assign chars to i32
+  015.ura:7:11
+  |
+7 |     a i32 = "hello"
+  |           ^
+error: Cannot assign Point to i32
+  015.ura:9:11
+  |
+9 |     b i32 = p
   |           ^
 ```
 

@@ -1,48 +1,48 @@
 // Program termination
 proto fn abort() void
-proto fn exit(code int) void
-proto fn quick_exit(code int) void
-proto fn _Exit(code int) void
-// protoFunc int atexit(pointer func)
-// protoFunc int at_quick_exit(pointer func)
+proto fn exit(code i32) void
+proto fn quick_exit(code i32) void
+proto fn _Exit(code i32) void
+// protoFunc i32 atexit(pointer func)
+// protoFunc i32 at_quick_exit(pointer func)
 
 // Environment
 proto fn getenv(name chars) chars
-proto fn setenv(name chars, value chars, overwrite int) int
-proto fn unsetenv(name chars) int
-proto fn putenv(string chars) int
-proto fn system(command chars) int
+proto fn setenv(name chars, value chars, overwrite i32) i32
+proto fn unsetenv(name chars) i32
+proto fn putenv(string chars) i32
+proto fn system(command chars) i32
 
 // Random numbers
-proto fn rand() int
-proto fn srand(seed int) void
+proto fn rand() i32
+proto fn srand(seed i32) void
 
 // Searching and sorting
-proto fn bsearch(key pointer, base pointer, nmemb int, size int, compar pointer) pointer
-proto fn qsort(base pointer, nmemb int, size int, compar pointer) void
+proto fn bsearch(key pointer, base pointer, nmemb i32, size i32, compar pointer) pointer
+proto fn qsort(base pointer, nmemb i32, size i32, compar pointer) void
 
 // Integer arithmetic
-proto fn abs(n int) int
-proto fn labs(n long) long
+proto fn abs(n i32) i32
+proto fn labs(n i64) i64
 
 // Division with quotient and remainder
-proto fn div(numer int, denom int) pointer
-proto fn ldiv(numer long, denom long) pointer
+proto fn div(numer i32, denom i32) pointer
+proto fn ldiv(numer i64, denom i64) pointer
 
 // String to number conversion
-proto fn atoi(str chars) int
-proto fn atol(str chars) long
-proto fn atof(str chars) double
-proto fn strtol(str chars, endptr pointer, base int) long
-proto fn strtoul(str chars, endptr pointer, base int) long
-proto fn strtof(str chars, endptr pointer) float
-proto fn strtod(str chars, endptr pointer) double
-proto fn strtoll(str chars, endptr pointer, base int) long
-proto fn strtoull(str chars, endptr pointer, base int) long
+proto fn atoi(str chars) i32
+proto fn atol(str chars) i64
+proto fn atof(str chars) f64
+proto fn strtol(str chars, endptr pointer, base i32) i64
+proto fn strtoul(str chars, endptr pointer, base i32) i64
+proto fn strtof(str chars, endptr pointer) f32
+proto fn strtod(str chars, endptr pointer) f64
+proto fn strtoll(str chars, endptr pointer, base i32) i64
+proto fn strtoull(str chars, endptr pointer, base i32) i64
 
 // Multibyte/wide character conversion
-proto fn mblen(s chars, n int) int
-proto fn mbtowc(pwc pointer, s chars, n int) int
-proto fn wctomb(s chars, wchar int) int
-proto fn mbstowcs(dest pointer, src chars, n int) int
-proto fn wcstombs(dest chars, src pointer, n int) int
+proto fn mblen(s chars, n i32) i32
+proto fn mbtowc(pwc pointer, s chars, n i32) i32
+proto fn wctomb(s chars, wchar i32) i32
+proto fn mbstowcs(dest pointer, src chars, n i32) i32
+proto fn wcstombs(dest chars, src pointer, n i32) i32

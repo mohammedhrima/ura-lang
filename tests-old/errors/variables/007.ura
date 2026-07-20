@@ -1,6 +1,0 @@
-// errors/variables/007 — redeclaration of a variable in the same scope
-
-main():
-    a int = 1
-    a int = 2
-    return a

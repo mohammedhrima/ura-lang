@@ -1,5 +1,0 @@
-// errors/refs/001 — a plain reference must be bound at its declaration
-
-main():
-    ref r int
-    return 0

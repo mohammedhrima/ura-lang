@@ -1,5 +1,0 @@
-// errors/syntax/020 — unexpected token where an expression is expected
-
-main():
-    x int = *
-    return 0

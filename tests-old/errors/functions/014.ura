@@ -1,7 +1,0 @@
-// errors/functions/014 — too few arguments to a variadic proto
-
-proto fn printf(fmt chars, ...) int
-
-main():
-    printf()
-    return 0

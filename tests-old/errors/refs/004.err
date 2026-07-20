@@ -1,5 +1,0 @@
-[1m[0;31merror: [0mExpected a variable after 'ref'
-  [2mtests/errors/refs/004.ura:4:17[0m
-  [1m[34m|[0m
-[1m[34m4 |[0m     ref r int = ref 5
-  [1m[34m|[0m                 [1;31m^^^[0m

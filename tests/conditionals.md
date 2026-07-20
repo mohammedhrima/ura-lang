@@ -12,7 +12,7 @@
 // conditionals/001.ura - basic if: first floor greeting
 
 main():
-    floor int = 1
+    floor i32 = 1
     if floor == 1:
         output("Fresh start\n")
 ```
@@ -77,7 +77,7 @@ declare i32 @printf(i8*, ...)
 // conditionals/002.ura - if-else: alive or dead check
 
 main():
-    hp int = 0
+    hp i32 = 0
     if hp > 0:
         output("Hero is alive\n")
     else:
@@ -153,7 +153,7 @@ declare i32 @printf(i8*, ...)
 // conditionals/003.ura - if-elif-else: floor difficulty rating
 
 main():
-    floor int = 6
+    floor i32 = 6
     if floor < 3:
         output("Easy\n")
     elif floor < 7:

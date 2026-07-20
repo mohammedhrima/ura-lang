@@ -13,7 +13,7 @@
 
 ```ura
 // ---- helper.ura
-fn help() int:
+fn help() i32:
     return 7
 
 // ---- 001.ura - a relative `use` pulls in a sibling file
@@ -77,18 +77,18 @@ declare i32 @printf(i8*, ...)
 
 ```ura
 // ---- sub/deep.ura
-fn deep() int:
+fn deep() i32:
     return 3
 
 // ---- side.ura
-fn side() int:
+fn side() i32:
     return 4
 
 // ---- mid.ura
 use "sub/deep"
 use "side"
 
-fn total() int:
+fn total() i32:
     return deep() + side()
 
 // ---- 002.ura - `use` resolves against the importing file
@@ -175,19 +175,19 @@ declare i32 @printf(i8*, ...)
 
 ```ura
 // ---- dbase.ura
-fn base() int:
+fn base() i32:
     return 5
 
 // ---- d1.ura
 use "dbase"
 
-fn one() int:
+fn one() i32:
     return base() + 1
 
 // ---- d2.ura
 use "dbase"
 
-fn two() int:
+fn two() i32:
     return base() + 2
 
 // ---- 003.ura - a diamond loads the shared file once
@@ -282,13 +282,13 @@ declare i32 @printf(i8*, ...)
 // ---- c1.ura
 use "c2"
 
-fn ping() int:
+fn ping() i32:
     return 1
 
 // ---- c2.ura
 use "c1"
 
-fn pong() int:
+fn pong() i32:
     return 2
 
 // ---- 004.ura - an import cycle warns and still compiles
@@ -394,8 +394,8 @@ use "@/ctype"
 use "@/io"
 
 main():
-    output("isdigit ", isdigit('7' as int), "\n")
-    output("isalpha ", isalpha('7' as int), "\n")
+    output("isdigit ", isdigit('7' as i32), "\n")
+    output("isalpha ", isalpha('7' as i32), "\n")
     output("stdlib parsed\n")
 ```
 

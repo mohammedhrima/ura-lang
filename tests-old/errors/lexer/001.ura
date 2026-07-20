@@ -1,5 +1,0 @@
-// parse_errors/001 — unterminated string literal
-use "@/header"
-
-main():
-    output("hello)

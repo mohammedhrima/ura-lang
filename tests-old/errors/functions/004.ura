@@ -1,8 +1,0 @@
-// errors/functions/004 — argument type mismatch
-use "@/header"
-
-fn show(s chars) void:
-    output(s, "\n")
-
-main():
-    show(42)

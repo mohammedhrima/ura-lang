@@ -1,5 +1,0 @@
-// errors/casting/003 — a long literal target still needs the cast
-
-main():
-    x long = 5
-    return 0

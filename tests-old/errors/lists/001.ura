@@ -1,6 +1,0 @@
-// errors/lists/001 — list of unknown element type
-use "@/header"
-
-main():
-    items list[Widget]
-    output("hi\n")

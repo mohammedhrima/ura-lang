@@ -1,8 +1,0 @@
-// errors/functions/013 — argument type mismatch
-
-fn twice(n int) int:
-    return n + n
-fn apply(f fn(int) int, x int) int:
-    return f(x)
-main():
-    return apply(5, 21)

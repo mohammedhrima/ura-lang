@@ -13,27 +13,28 @@
 - 009 — logical ops: &&, ||, !, and, or, not
 - 010 — and / or with comparisons and precedence
 - 011 — unary not / minus / bitwise-not
+- 012 — compound bitwise assignment
 
 ## 001 — all arithmetic ops in dungeon combat context
 
 ```ura
 // operators/001.ura - all arithmetic ops in dungeon combat context
 
-fn base_atk() int:
+fn base_atk() i32:
     return 10
 
-fn clamp(t float) float:
+fn clamp(t f32) f32:
     if t < 0.05:
         return 0.05
     return t
 
 main():
-    atk     int = 25
-    def     int = 8
-    kills   int = 3
-    total   int = 100
-    count   int = 4
-    xp_cap  int = 70
+    atk     i32 = 25
+    def     i32 = 8
+    kills   i32 = 3
+    total   i32 = 100
+    count   i32 = 4
+    xp_cap  i32 = 70
 
     // var + var
     output("atk + def:       ", atk + def,       "\n")
@@ -53,8 +54,8 @@ main():
     output("2 + 3 * 4:       ", 2 + 3 * 4,       "\n")
     output("(2 + 3) * 4:     ", (2 + 3) * 4,     "\n")
 
-    a float = 1.5
-    b float = 0.3
+    a f32 = 1.5
+    b f32 = 0.3
 
     output("add:  ", a + b, "\n")  // 1.8
     output("sub:  ", a - b, "\n")  // 1.2
@@ -66,7 +67,7 @@ main():
     output("lte:  ", a <= b, "\n")  // 0
     output("gte:  ", a >= b, "\n")  // 1
 
-    t float = 0.8 - 0.28
+    t f32 = 0.8 - 0.28
     output("clamp(0.52): ", clamp(t), "\n")  // 0.52
     output("clamp(0.01): ", clamp(0.01), "\n")  // 0.05
 ```
@@ -559,7 +560,7 @@ declare void @exit(i32)
 // operators/003.ura - reassign an existing variable (2*10 + 3)
 
 main():
-    a int = 2
+    a i32 = 2
     a = a * 10 + 3
     return a
 ```
@@ -674,8 +675,8 @@ declare void @exit(i32)
 // operators/005.ura - bitwise & | ^ << >>
 
 main():
-    a int = 12
-    b int = 10
+    a i32 = 12
+    b i32 = 10
     output(a & b, "\n")
     output(a | b, "\n")
     output(a ^ b, "\n")
@@ -790,13 +791,13 @@ declare i32 @printf(i8*, ...)
 ```ura
 // operators/006.ura - all comparison ops on hero/enemy stats
 
-fn enemy_atk() int:
+fn enemy_atk() i32:
     return 18
 
 main():
-    hero_hp  int = 100
-    orc_hp   int = 60
-    min_hp   int = 100
+    hero_hp  i32 = 100
+    orc_hp   i32 = 60
+    min_hp   i32 = 100
 
     output("hero_hp == min_hp: ", hero_hp == min_hp, "\n")   // True
     output("hero_hp != orc_hp: ", hero_hp != orc_hp, "\n")   // True
@@ -1030,8 +1031,8 @@ declare i32 @printf(i8*, ...)
 // operators/007.ura - comparisons produce bools (with precedence)
 
 main():
-    a int = 5
-    b int = 9
+    a i32 = 5
+    b i32 = 9
     t bool = a < b
     u bool = a == 5
     v bool = b != a
@@ -1172,7 +1173,7 @@ entry:
 // operators/008.ura - compound assignment += -= *= /= %=
 
 main():
-    x int = 10
+    x i32 = 10
     x += 5
     output(x, "\n")
     x -= 3
@@ -1321,15 +1322,15 @@ declare void @exit(i32)
 ```ura
 // operators/009.ura - logical ops: &&, ||, !, and, or, not
 
-fn is_alive(hp int) bool:
+fn is_alive(hp i32) bool:
     return hp > 0
 
-fn has_key(keys int) bool:
+fn has_key(keys i32) bool:
     return keys > 0
 
 main():
-    hp       int  = 60
-    keys     int  = 1
+    hp       i32  = 60
+    keys     i32  = 1
     exhausted bool = False
 
     // &&
@@ -1353,7 +1354,7 @@ main():
     else:
         output("hero advances\n")
 
-    // double negation
+    // f64 negation
     alive bool = is_alive(hp)
     output("!!alive: ", !(!alive), "\n")   // True
 ```
@@ -1605,8 +1606,8 @@ declare i32 @printf(i8*, ...)
 // operators/010.ura - and / or with comparisons and precedence
 
 main():
-    a int = 5
-    b int = 9
+    a i32 = 5
+    b i32 = 9
     output(a < b and b == 9, "\n")
     output(a > b or b == 9, "\n")
     output(a < b and a > b, "\n")
@@ -1753,7 +1754,7 @@ declare i32 @printf(i8*, ...)
 // operators/011.ura - unary not / minus / bitwise-not
 
 main():
-    a int = 5
+    a i32 = 5
     t bool = True
     output(-a, "\n")
     output(not t, "\n")
@@ -1864,6 +1865,200 @@ entry:
   %sub9 = sub i32 0, %a8
   %add = add i32 %sub9, 10
   %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fmt.10, i32 0, i32 0), i32 %add, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.9, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 012 — compound bitwise assignment
+
+```ura
+// operators/012.ura - &= |= ^= <<= >>=
+
+main():
+    a i32 = 12
+    a &= 10
+    b i32 = 12
+    b |= 3
+    c i32 = 12
+    c ^= 10
+    output("and ", a, "  or ", b, "  xor ", c, "\n")
+
+    d i32 = 3
+    d <<= 4
+    e i32 = 48
+    e >>= 2
+    output("shl ", d, "  shr ", e, "\n")
+
+    // an unsigned right shift is logical, not arithmetic
+    u u32 = 4000000000 as u32
+    u >>= 1
+    output("unsigned shr ", u, "\n")
+
+    // a signed one keeps the sign
+    s i32 = 0 - 16
+    s >>= 2
+    output("signed shr ", s, "\n")
+```
+
+```tree
+proto fn printf(format : chars, ...) : i32
+
+proto fn calloc(len : i64, size : i64) : chars
+
+proto fn free(ptr : chars) : void
+
+proto fn write(fd : i32, ptr : chars, len : i64) : i64
+
+proto fn exit(code : i32) : void
+
+fn main() : i32
+├─ = : i32
+│  ├─ a : i32
+│  └─ int 12
+├─ &= : i32
+│  ├─ a : i32
+│  └─ int 10
+├─ = : i32
+│  ├─ b : i32
+│  └─ int 12
+├─ |= : i32
+│  ├─ b : i32
+│  └─ int 3
+├─ = : i32
+│  ├─ c : i32
+│  └─ int 12
+├─ ^= : i32
+│  ├─ c : i32
+│  └─ int 10
+├─ output : void
+│  ├─ chars "and "
+│  ├─ a : i32
+│  ├─ chars "  or "
+│  ├─ b : i32
+│  ├─ chars "  xor "
+│  ├─ c : i32
+│  └─ chars "\n"
+├─ = : i32
+│  ├─ d : i32
+│  └─ int 3
+├─ <<= : i32
+│  ├─ d : i32
+│  └─ int 4
+├─ = : i32
+│  ├─ e : i32
+│  └─ int 48
+├─ >>= : i32
+│  ├─ e : i32
+│  └─ int 2
+├─ output : void
+│  ├─ chars "shl "
+│  ├─ d : i32
+│  ├─ chars "  shr "
+│  ├─ e : i32
+│  └─ chars "\n"
+├─ = : u32
+│  ├─ u : u32
+│  └─ cast : u32
+│     └─ int 4000000000
+├─ >>= : u32
+│  ├─ u : u32
+│  └─ int 1
+├─ output : void
+│  ├─ chars "unsigned shr "
+│  ├─ u : u32
+│  └─ chars "\n"
+├─ = : i32
+│  ├─ s : i32
+│  └─ - : i32
+│     ├─ int 0
+│     └─ int 16
+├─ >>= : i32
+│  ├─ s : i32
+│  └─ int 2
+└─ output : void
+   ├─ chars "signed shr "
+   ├─ s : i32
+   └─ chars "\n"
+```
+
+```out
+and 8  or 15  xor 6
+shl 48  shr 12
+unsigned shr 2000000000
+signed shr -4
+```
+
+```err
+```
+
+```ll
+
+@str = private unnamed_addr constant [5 x i8] c"and \00", align 1
+@str.1 = private unnamed_addr constant [6 x i8] c"  or \00", align 1
+@str.2 = private unnamed_addr constant [7 x i8] c"  xor \00", align 1
+@str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [15 x i8] c"%s%d%s%d%s%d%s\00", align 1
+@str.4 = private unnamed_addr constant [5 x i8] c"shl \00", align 1
+@str.5 = private unnamed_addr constant [7 x i8] c"  shr \00", align 1
+@str.6 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.7 = private unnamed_addr constant [11 x i8] c"%s%d%s%d%s\00", align 1
+@str.8 = private unnamed_addr constant [14 x i8] c"unsigned shr \00", align 1
+@str.9 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.10 = private unnamed_addr constant [7 x i8] c"%s%u%s\00", align 1
+@str.11 = private unnamed_addr constant [12 x i8] c"signed shr \00", align 1
+@str.12 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.13 = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+
+define i32 @main() {
+entry:
+  %a = alloca i32, align 4
+  store i32 12, i32* %a, align 4
+  %cur = load i32, i32* %a, align 4
+  %band = and i32 %cur, 10
+  store i32 %band, i32* %a, align 4
+  %b = alloca i32, align 4
+  store i32 12, i32* %b, align 4
+  %cur1 = load i32, i32* %b, align 4
+  %bor = or i32 %cur1, 3
+  store i32 %bor, i32* %b, align 4
+  %c = alloca i32, align 4
+  store i32 12, i32* %c, align 4
+  %cur2 = load i32, i32* %c, align 4
+  %bxor = xor i32 %cur2, 10
+  store i32 %bxor, i32* %c, align 4
+  %a3 = load i32, i32* %a, align 4
+  %b4 = load i32, i32* %b, align 4
+  %c5 = load i32, i32* %c, align 4
+  %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @fmt, i32 0, i32 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str, i32 0, i32 0), i32 %a3, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.1, i32 0, i32 0), i32 %b4, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.2, i32 0, i32 0), i32 %c5, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
+  %d = alloca i32, align 4
+  store i32 3, i32* %d, align 4
+  %cur6 = load i32, i32* %d, align 4
+  %shl = shl i32 %cur6, 4
+  store i32 %shl, i32* %d, align 4
+  %e = alloca i32, align 4
+  store i32 48, i32* %e, align 4
+  %cur7 = load i32, i32* %e, align 4
+  %shr = ashr i32 %cur7, 2
+  store i32 %shr, i32* %e, align 4
+  %d8 = load i32, i32* %d, align 4
+  %e9 = load i32, i32* %e, align 4
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.7, i32 0, i32 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.4, i32 0, i32 0), i32 %d8, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.5, i32 0, i32 0), i32 %e9, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.6, i32 0, i32 0))
+  %u = alloca i32, align 4
+  store i32 -294967296, i32* %u, align 4
+  %cur10 = load i32, i32* %u, align 4
+  %shr11 = lshr i32 %cur10, 1
+  store i32 %shr11, i32* %u, align 4
+  %u12 = load i32, i32* %u, align 4
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.10, i32 0, i32 0), i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.8, i32 0, i32 0), i32 %u12, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.9, i32 0, i32 0))
+  %s = alloca i32, align 4
+  store i32 -16, i32* %s, align 4
+  %cur13 = load i32, i32* %s, align 4
+  %shr14 = ashr i32 %cur13, 2
+  store i32 %shr14, i32* %s, align 4
+  %s15 = load i32, i32* %s, align 4
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt.13, i32 0, i32 0), i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.11, i32 0, i32 0), i32 %s15, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.12, i32 0, i32 0))
   ret i32 0
 }
 

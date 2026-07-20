@@ -19,7 +19,7 @@
 ```ura
 // match/001 — a single-value case matches
 main():
-    a int = 1
+    a i32 = 1
     match a:
         case 1:
             output("one\n")
@@ -95,7 +95,7 @@ declare i32 @printf(i8*, ...)
 ```ura
 // match/002 — a case with several values
 main():
-    a int = 3
+    a i32 = 3
     match a:
         case 1, 2, 3:
             output("small\n")
@@ -177,7 +177,7 @@ declare i32 @printf(i8*, ...)
 ```ura
 // match/003 — default runs when nothing matches
 main():
-    a int = 99
+    a i32 = 99
     match a:
         case 1:
             output("one\n")
@@ -253,7 +253,7 @@ declare i32 @printf(i8*, ...)
 ```ura
 // match/004 — break leaves the match early
 main():
-    a int = 1
+    a i32 = 1
     match a:
         case 1:
             output("before\n")
@@ -323,7 +323,7 @@ declare i32 @printf(i8*, ...)
 ```ura
 // match/005 — break exits the match, not the enclosing loop
 main():
-    i int = 0
+    i i32 = 0
     while i < 3:
         i = i + 1
         match i:
@@ -419,7 +419,7 @@ declare i32 @printf(i8*, ...)
 ```ura
 // match/006 — continue applies to the loop, skipping the rest of the iteration
 main():
-    i int = 0
+    i i32 = 0
     while i < 3:
         i = i + 1
         match i:
@@ -514,7 +514,7 @@ declare i32 @printf(i8*, ...)
 ```ura
 // errors/match/001 — a case needs at least one value
 main():
-    a int = 1
+    a i32 = 1
     match a:
         case:
             output("x\n")
@@ -542,7 +542,7 @@ error: Expected an expression after 'case'
 ```ura
 // errors/match/002 — case value type must match the subject
 main():
-    a int = 1
+    a i32 = 1
     match a:
         case "x":
             output("x\n")
