@@ -1069,12 +1069,17 @@ void code_gen_operator(Node *node) {
    Value  self   = struct_arg_ptr(node->left);
    Token *param  = fn->token->Fn.params_count > 1 ? fn->token->Fn.params[1] : NULL;
    bool   by_ref = param && param->is_ref;
-   Type   kind  = node->right->token->type;
+   Type   kind     = node->right->token->type;
+   bool   spelled  = kind == REF;                 
    bool   has_addr = includes(kind, ID, DOT, ACCESS, 0);
    Value  arg;
-   if (by_ref && has_addr)
+   if (spelled) {
+      code_gen(node->right);
+      Value addr = node->right->token->llvm.elem;
+      arg = by_ref ? addr : llvm_load(llvm_type_of(param), addr, "deref");
+   } else if (by_ref && has_addr) {
       arg = address_of(node->right);
-   else {
+   } else {
       code_gen(node->right);
       arg = node->right->token->llvm.elem;
       if (by_ref) {
