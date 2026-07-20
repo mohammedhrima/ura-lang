@@ -34,6 +34,8 @@ bool is_pointer(Type type);
 bool same_or_pointer(Type a, Type b);
 void set_string_type(Token *token);
 bool is_string(Token *token);
+bool is_null(Token *token);
+bool assignable(Token *lhs, Token *rhs);
 bool is_castable(Type type);
 bool is_data_type(Token *token);
 TypeRef to_llvm_type(Type type);

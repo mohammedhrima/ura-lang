@@ -20,3 +20,14 @@ proto fn calloc(len i64, size i64) pointer
 proto fn free(ptr pointer) void
 proto fn write(fd i32, ptr pointer, len i64) i64
 proto fn exit(code i32) void
+proto fn strlen(s pointer) i64
+proto fn getenv(name pointer) pointer
+
+struct Os:
+    argc i32
+    argv char[][]
+
+    fn get(name char[]) pointer:
+        return getenv(name)
+
+os Os

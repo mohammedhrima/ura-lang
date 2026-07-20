@@ -1,7 +1,7 @@
 // projects/ura-tcp-server/basic/client.ura
 use "./utils"
 
-fn banner(host chars, port int) void:
+fn banner(host char[], port i32) void:
     log("\033[0;36m")
     log("  ██████╗██╗     ██╗███████╗███╗   ██╗████████╗\n")
     log(" ██╔════╝██║     ██║██╔════╝████╗  ██║╚══██╔══╝\n")
@@ -15,9 +15,9 @@ fn banner(host chars, port int) void:
     log("\033[0;90m─────────────────────────────────────────────\033[0m\n\n")
 
 struct Client:
-    fd int
-    buf chars
-    rbuf chars
+    fd i32
+    buf char[]
+    rbuf char[]
 
     fn init() void:
         self.fd   = socket(2, 1, 0)
@@ -26,12 +26,12 @@ struct Client:
             exit(1)
         self.buf  = heap[char](1024)
         self.rbuf = heap[char](1024)
-        bzero(self.buf, 1024 as long)
-        bzero(self.rbuf, 1024 as long)
+        bzero(self.buf, 1024 as i64)
+        bzero(self.rbuf, 1024 as i64)
 
 main():
-    host chars = "127.0.0.1"
-    port int = 17000
+    host char[] = "127.0.0.1"
+    port i32 = 17000
     banner(host, port)
 
     addr SockAddr
@@ -43,15 +43,15 @@ main():
         log_ts("\033[0;31m", "[client]", "socket failed")
         return 1
 
-    result int = connect(cli.fd, addr.data, 16)
+    result i32 = connect(cli.fd, addr.data, 16)
     if result < 0:
         log_ts("\033[0;31m", "[client]", "connect failed")
         return 1
 
     log_ts("\033[0;36m", "[client]", "connected to server")
 
-    r int = 0
-    pid int = fork()
+    r i32 = 0
+    pid i32 = fork()
     if pid == 0:
         while True:
             r = read(cli.fd, cli.rbuf, 1023)

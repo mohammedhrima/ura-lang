@@ -3,8 +3,8 @@
 use "@/header"
 
 struct Inventory:
-    last  chars
-    count int
+    last  char[]
+    count i32
 
     pub fn new() Inventory:
         inv Inventory
@@ -12,7 +12,7 @@ struct Inventory:
         inv.count = 0
         return inv
 
-    fn add(item chars) void:
+    fn add(item char[]) void:
         strcpy(self.last, item)
         self.count = self.count + 1
 

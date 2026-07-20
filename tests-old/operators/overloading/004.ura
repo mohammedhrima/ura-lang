@@ -1,9 +1,9 @@
 // operators/overloading/004.ura
 
 struct Flags:
-    bits int
+    bits i32
 
-    operator = (n int) void:
+    operator = (n i32) void:
         self.bits = n
 
     operator = (ref f Flags) void:
@@ -24,12 +24,12 @@ struct Flags:
         res.bits = self.bits ^ f.bits
         return res
 
-    operator << (n int) Flags:
+    operator << (n i32) Flags:
         res Flags
         res.bits = self.bits << n
         return res
 
-    operator >> (n int) Flags:
+    operator >> (n i32) Flags:
         res Flags
         res.bits = self.bits >> n
         return res

@@ -308,7 +308,7 @@ bool lex_symbol(char *src, int *i, int line, int *indent)
 		{"[", LBRA, 0, 0},         {"]", RBRA, 0, 0},         {",", COMA, 0, 0},
 		{"&&", AND, 0, 0},         {"||", OR, 0, 0},          {"&", BAND, 0, 0},
 		{"|", BOR, 0, 0},          {"^", BXOR, 0, 0},         {"~", BNOT, 0, 0},
-		{"?", OPTIONAL, 0, 0},
+		{"??", FALLBACK, 0, 0},    {"?", OPTIONAL, 0, 0},
 	};
 	for (size_t j = 0; j < sizeof(specials) / sizeof(*specials); j++) {
 		size_t len = strlen(specials[j].name);
@@ -384,7 +384,7 @@ Token *parse_token(int line, int s, int e, Type type, int indent) {
 			{"new", NEW, 0, 0},       {"and", AND, 0, 1},         {"clean", CLEAN, 0, 0},
 			{"or", OR, 0, 1},         {"not", NOT, 0, 1},         {"is", EQUAL, 0, 1},
 			{"typeof", TYPEOF, 0, 1}, {"sizeof", SIZEOF, 0, 1},   {"List", LIST_TYPE, 0, 1},
-			{"array", ARRAY_TYPE, 0, 1}, {"null", NULLABLE, 0, 1},
+			{"array", ARRAY_TYPE, 0, 1}, {"null", NULL_LIT, 0, 1},
 		};
 
 		for (size_t i = 0; i < sizeof(keywords) / sizeof(*keywords); i++) {

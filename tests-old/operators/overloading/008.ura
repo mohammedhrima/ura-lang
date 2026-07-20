@@ -1,14 +1,14 @@
 // operators/overloading/008.ura
 
 struct Vec2:
-    x int
-    y int
+    x i32
+    y i32
 
     operator = (ref v Vec2) void:
         self.x = v.x
         self.y = v.y
 
-    operator * (ref v Vec2) int:
+    operator * (ref v Vec2) i32:
         return self.x * v.x + self.y * v.y
 
 main():
@@ -20,7 +20,7 @@ main():
     b.x = 2
     b.y = 5
 
-    dot int = a * b
+    dot i32 = a * b
     output("dot product: ", dot, "\n")
 
     c Vec2
@@ -31,5 +31,5 @@ main():
     d.x = 0
     d.y = 1
 
-    perp int = c * d
+    perp i32 = c * d
     output("perpendicular: ", perp, "\n")

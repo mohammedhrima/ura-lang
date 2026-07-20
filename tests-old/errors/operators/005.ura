@@ -1,6 +1,0 @@
-// errors/operators/005 — a comparison result is a bool, not an int
-
-main():
-    a int = 5
-    n int = a < 9
-    return 0

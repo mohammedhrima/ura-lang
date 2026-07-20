@@ -2,9 +2,9 @@
 use "@/header"
 
 struct Hero:
-    name  chars
-    title chars
-    hp    int
+    name  char[]
+    title char[]
+    hp    i32
 
     pub fn new() Hero:
         h Hero
@@ -13,14 +13,14 @@ struct Hero:
         h.hp    = 100
         return h
 
-    fn setup(name chars, title chars) void:
+    fn setup(name char[], title char[]) void:
         strcpy(self.name,  name)
         strcpy(self.title, title)
 
     fn announce() void:
         output(self.title, " ", self.name, " — HP: ", self.hp, "\n")
 
-    fn heal(amount int) void:
+    fn heal(amount i32) void:
         self.hp = self.hp + amount
 
     operator delete() void:

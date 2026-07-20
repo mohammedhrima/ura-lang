@@ -1,16 +1,16 @@
 // libft/putnbr.ura
-proto fn calloc(len int, size int) chars
-proto fn write(fd int, ptr chars, len int) int
-proto fn free(ptr chars) int
+proto fn calloc(len i32, size i32) pointer
+proto fn write(fd i32, ptr pointer, len i32) i32
+proto fn free(ptr pointer) i32
 
-fn putchar(c char) int:
-    str chars = calloc(2, 1)
+fn putchar(c char) i32:
+    str char[] = calloc(2, 1)
     str[0] = c
     write(1, str, 1)
     free(str)
     return 0
 
-fn putnbr(n int) void:
+fn putnbr(n i32) void:
     if n < 0:
         putchar('-')
         n = -n
@@ -19,22 +19,22 @@ fn putnbr(n int) void:
         putchar('0')
         return
     
-    digits chars = "0123456789"
+    digits char[] = "0123456789"
     
     // Count digits
-    temp int = n
-    digit_count int = 0
+    temp i32 = n
+    digit_count i32 = 0
     while temp > 0:
         digit_count += 1
         temp = temp / 10
     
     // Allocate buffer for digits
-    buffer chars = calloc(digit_count + 1, 1)
+    buffer char[] = calloc(digit_count + 1, 1)
     
     // Build number string from right to left in buffer
-    i int = digit_count - 1
+    i i32 = digit_count - 1
     while i >= 0:
-        digit int = n % 10
+        digit i32 = n % 10
         buffer[i] = digits[digit]
         n = n / 10
         i -= 1

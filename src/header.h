@@ -155,7 +155,7 @@ enum Type
 	FDEC, FCALL, PROTO, ARGS, CHILDREN, // Functions
 	TYPEOF, SIZEOF, OUTPUT, SYNTAX_ERROR, // Built-ins
 	BAND, BOR, BXOR, BNOT, LSHIFT, RSHIFT, // Bitwise
-	NULLABLE, OPTIONAL, // Literals 
+	NULL_LIT, OPTIONAL, FALLBACK, // Literals
 	MODULE, // Modules
 	OPERATOR, // Operator overloading keyword
 	PUB, DOUBLE_DOTS, CLEAN, NEW, // Static dispatch / pub
@@ -215,6 +215,7 @@ struct Token {
 
 	bool    is_ref;
 	bool    is_nullable;
+	bool    is_optional;
 	bool    is_dec;
 	bool    is_global;
 	bool    is_param;

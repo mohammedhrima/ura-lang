@@ -22,6 +22,8 @@
 - 018 — `proto` not followed by `fn`
 - 019 — a struct declaration missing its name
 - 020 — an unexpected token in an expression
+- 021 — member access with no member name after `.`
+- 022 — `::` must be followed by a function call
 
 ## 001 — `use` missing opening quote
 
@@ -609,6 +611,65 @@ error: Unexpected token
   |
 4 |     x i32 = *
   |             ^
+```
+
+```ll
+```
+
+## 021 — member access with no member name after `.`
+
+```ura
+// lexer/021.ura - member access with no member name after `.`
+use "@/header"
+
+struct Point:
+    x i32
+    y i32
+
+main():
+    p Point
+    p.
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Expected a member name after '.'
+   021.ura:10:6
+   |
+10 |     p.
+   |      ^
+```
+
+```ll
+```
+
+## 022 — `::` must be followed by a function call
+
+```ura
+// lexer/022.ura - `::` must be followed by a function call
+use "@/header"
+
+main():
+    s String = String::new
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: Expected a method name after '::'
+  022.ura:5:22
+  |
+5 |     s String = String::new
+  |                      ^^
 ```
 
 ```ll

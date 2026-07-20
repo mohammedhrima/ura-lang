@@ -50,6 +50,14 @@ void set_string_type(Token *token) {
 	token->Array.depth    = 1;
 }
 
+bool is_null(Token *token) {
+	return token->type == NULL_LIT;
+}
+
+bool assignable(Token *lhs, Token *rhs) {
+	return lhs->is_optional || !rhs->is_optional;
+}
+
 bool is_string(Token *token) {
 	return token->ret_type == ARRAY_TYPE && token->Array.depth == 1
 	       && token->Array.sub_type == CHAR;
@@ -156,6 +164,11 @@ void type_check_method_call(Node *node) {
       parse_error(token, ERR_CANNOT_CALL_DROP, def->token->name);
       return;
    }
+   if (fn->token->is_pub) {
+      char *self = recv->name ? recv->name : def->token->name;
+      parse_error(token, ERR_PUB_IS_STATIC, self, token->name, def->token->name, token->name);
+      return;
+   }
    token->Fcall.ptr = fn;
    type_check_fcall(node);
    if (token->ret_type == STRUCT_CALL) token->Struct = fn->token->Struct;
@@ -227,16 +240,28 @@ void type_check_fcall(Node *node) {
          return;
       }
    }
-   Token *ret      = indirect ? fn->Fn.ret : fn;
-   token->ret_type = ret->ret_type;
+   Token *ret         = indirect ? fn->Fn.ret : fn;
+   token->ret_type    = ret->ret_type;
+   token->is_optional = ret->is_optional;
    if (ret->ret_type == ARRAY_TYPE) token->Array = ret->Array;
 }
 
 void type_check_return(Node *node) {
    type_check(node->left);
    if (!ura.fn_ret || !node->left) return;
-   Type wanted = ura.fn_ret->ret_type;
+   Type   wanted = ura.fn_ret->ret_type;
+   Token *value  = node->left->token;
    adopt_literal(node->left, wanted);
+   if (is_null(value)) {
+      value->ret_type    = wanted;
+      value->Array       = ura.fn_ret->Array;
+      value->is_optional = true;
+   }
+   if (!assignable(ura.fn_ret, value)) {
+      parse_error(node->token, ERR_ASSIGN_OPTIONAL,
+                  value->name ? value->name : "the value", ura.fn_ret->name);
+      return;
+   }
    Type got = node->left->token->ret_type;
    if (got && got != wanted)
       parse_error(node->token, ERR_RETURN_TYPE_MISMATCH, ura.fn_ret->name, type_name(wanted), type_name(got));
@@ -377,8 +402,50 @@ void type_check_binop(Node *node) {
    type_check(node->right);
    adopt_literal(node->left, node->right->token->ret_type);
    adopt_literal(node->right, node->left->token->ret_type);
-   Type lt = node->left->token->ret_type;
-   Type rt = node->right->token->ret_type;
+   Type   lt  = node->left->token->ret_type;
+   Type   rt  = node->right->token->ret_type;
+   Token *lhs = node->left->token;
+   Token *rhs = node->right->token;
+   if (token->type == FALLBACK) {
+      if (!lhs->is_optional) {
+         parse_error(token, ERR_FALLBACK_LHS);
+         return;
+      }
+      if (rhs->is_optional) {
+         parse_error(token, ERR_FALLBACK_RHS);
+         return;
+      }
+      token->ret_type    = rt;
+      token->Array       = rhs->Array;
+      token->is_optional = false;
+      return;
+   }
+   if (is_null(lhs) || is_null(rhs)) {
+      Token *nul   = is_null(lhs) ? lhs : rhs;
+      Token *other = is_null(lhs) ? rhs : lhs;
+      if (!is_pointer(other->ret_type)) {
+         parse_error(nul, ERR_NULL_ON_VALUE, type_name(other->ret_type));
+         return;
+      }
+      nul->ret_type    = other->ret_type;
+      nul->Array       = other->Array;
+      nul->is_optional = true;
+      lt = lhs->ret_type;
+      rt = rhs->ret_type;
+      if (includes(token->type, EQUAL, NOT_EQUAL, 0)) {
+         if (!other->is_optional) {
+            parse_error(token, ERR_COMPARE_NON_NULL, other->name);
+            return;
+         }
+         token->ret_type = BOOL;
+         return;
+      }
+   }
+   if (token->type == ASSIGN && !assignable(lhs, rhs)) {
+      if (is_null(rhs)) parse_error(token, ERR_NULL_NO_TARGET, lhs->name);
+      else parse_error(token, ERR_ASSIGN_OPTIONAL, rhs->name, lhs->name);
+      return;
+   }
    if (node->left->token->is_dec && node->left->token->is_ref) {
       if (node->right->token->type != REF)
          parse_error(token, ERR_REF_NEEDS_VARIABLE);
@@ -588,7 +655,8 @@ void type_check(Node *node) {
             parse_error(node->token, ERR_CLEAN_NEEDS_ARRAY, name);
          break;
       }
-      case BREAK: case CONTINUE: break;
+      case BREAK: case CONTINUE: case NULL_LIT: break;
+      case FALLBACK:
       case ASSIGN: case ADD: case SUB: case MUL: case DIV: case MOD:
       case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN:
       case MOD_ASSIGN: case BAND_ASSIGN: case BOR_ASSIGN: case BXOR_ASSIGN:

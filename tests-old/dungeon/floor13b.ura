@@ -2,8 +2,8 @@
 use "@/header"
 
 struct Label:
-    value chars
-    len   int
+    value char[]
+    len   i32
 
     pub fn new() Label:
         l Label
@@ -14,11 +14,11 @@ struct Label:
     operator delete() void:
         free(self.value)
 
-    fn set(s chars) void:
+    fn set(s char[]) void:
         strcpy(self.value, s)
-        self.len = strlen(s) as int
+        self.len = strlen(s) as i32
 
-    operator = (s chars) void:
+    operator = (s char[]) void:
         self.set(s)
 
     operator = (ref v Label) void:
@@ -32,7 +32,7 @@ struct Label:
         return res
 
     fn print() void:
-        output(self.value, " (", self.len, " chars)\n")
+        output(self.value, " (", self.len, " char[])\n")
 
 main():
     title Label = Label::new()

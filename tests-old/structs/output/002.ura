@@ -1,11 +1,11 @@
-// structs/output/002 — operator output returning chars
+// structs/output/002 — operator output returning char[]
 use "@/header"
 
 struct Name:
-    first chars
-    last  chars
+    first char[]
+    last  char[]
 
-    operator output() chars:
+    operator output() char[]:
         return self.first
 
 main():

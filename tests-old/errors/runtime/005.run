@@ -1,6 +1,0 @@
-[1m[0;31mruntime error: [0mreference 'm' used before it was bound - assign 'm = ref <target>' first
-  [2mtests/errors/runtime/005.ura:5:12[0m
-  [1m[34m|[0m
-[1m[34m5 |[0m     output(m?, "\n")
-  [1m[34m|[0m            [1;31m^[0m
-exit: 1

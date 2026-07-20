@@ -15,9 +15,9 @@ fn banner() void:
     log("\033[0;90m─────────────────────────────────────────────\033[0m\n\n")
 
 struct Client:
-    fd int
-    buf chars
-    rbuf chars
+    fd i32
+    buf char[]
+    rbuf char[]
 
     fn init() void:
         self.fd = socket(2, 1, 0)
@@ -47,8 +47,8 @@ main():
 
     log_ts("\033[0;36m", "[client]", "connected to server")
 
-    r int = 0
-    pid int = fork()
+    r i32 = 0
+    pid i32 = fork()
 
     if pid == 0:
         while True:

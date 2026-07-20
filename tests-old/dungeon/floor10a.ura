@@ -2,8 +2,8 @@
 use "@/header"
 
 main():
-    map chars = heap[char](51)
-    i   int   = 0
+    map char[] = heap[char](51)
+    i   i32   = 0
     while i < 50:
         map[i] = '.'
         i = i + 1
@@ -12,7 +12,7 @@ main():
     output(map, "\n")
     free(map)
 
-    buf chars = stack[char](16)
+    buf char[] = stack[char](16)
     buf[0] = 'H'
     buf[1] = 'P'
     buf[2] = 0 as char

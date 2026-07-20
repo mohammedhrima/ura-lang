@@ -34,7 +34,8 @@ int get_operation_precedence(Type type)
       [MUL_ASSIGN] = 1, [DIV_ASSIGN] = 1, [MOD_ASSIGN] = 1,
       [BAND_ASSIGN] = 1, [BOR_ASSIGN] = 1, [BXOR_ASSIGN] = 1,
       [LSHIFT_ASSIGN] = 1, [RSHIFT_ASSIGN] = 1,
-      [OR] = 2,         [AND] = 3,        [RANGE] = 2,
+      [FALLBACK] = 2,   [OR] = 2,         [AND] = 3,
+      [RANGE] = 2,
       [BOR] = 4,        [BXOR] = 5,       [BAND] = 6,
       [LESS] = 8,       [EQUAL] = 7,      [NOT_EQUAL] = 7,
       [GREAT] = 8,      [LESS_EQUAL] = 8, [GREAT_EQUAL] = 8,
@@ -111,6 +112,8 @@ void parse_type(Token *target) {
 			target->Array.depth    = depth;
 			target->ret_type       = ARRAY_TYPE;
 		}
+		if (find(OPTIONAL, 0)) target->is_optional = true;
+		if (target->ret_type == PTR) target->is_optional = true;
 	} else {
 		parse_error(peek(0), "Expected a type");
 	}
@@ -301,8 +304,10 @@ Node *drop_node(Node *node, Node *owner) {
 	set_name(node->token, "drop");
 	enter_scope(node);
 	inject_self(node, owner);
-	if (!find(DOTS, 0))
-		parse_error(node->token, ERR_FN_EXPECTED_COLON, node->token->name);
+	if (peek(0)->type == LPAR)
+		parse_error(peek(0), ERR_DROP_NO_PARAMS);
+	else if (!find(DOTS, 0) && peek(0)->type != DOTS)
+		parse_error(peek(0), ERR_DROP_NO_RET);
 	parse_block(node, node->token->indent);
 	exit_scope();
 	owner->token->has_drop = true;
@@ -482,6 +487,7 @@ Node *prime_node() {
       if (token->is_dec && peek(0)->type == LBRA)
          return array_ctor_node(new_node(token));
       return new_node(token);
+   case NULL_LIT: return new_node(token);
    case LBRA: return postfix(array_lit_node(new_node(token)));
    case LPAR: {
       Node *node = expr_node(0);
@@ -640,12 +646,14 @@ Node *expr_node(int min_op) {
       if(op <= min_op) break;
       Node *node = new_node(next());
       node->left = left;
-      if (node->token->type == AS) {
+      bool is_cast  = node->token->type == AS;
+      bool is_chain = node->token->type == FALLBACK;
+      if (is_cast) {
          Token *type_tok = new_token(ID, 0);
          parse_type(type_tok);
          node->right = new_node(type_tok);
       } else
-         node->right = expr_node(op);
+         node->right = expr_node(is_chain ? op - 1 : op);
       left = node;
    }
    return left;

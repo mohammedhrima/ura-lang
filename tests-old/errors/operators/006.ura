@@ -1,5 +1,0 @@
-// errors/operators/006 — bitwise operator on float operands is rejected
-
-main():
-    x float = 1.5 & 2.0
-    return 0
