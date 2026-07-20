@@ -370,13 +370,30 @@ Node *find_printer(Node *def) {
    return fn;
 }
 
+Token *operand_of(Node *rhs) {
+   bool is_ref = rhs->token->type == REF;
+   return is_ref && rhs->left ? rhs->left->token : rhs->token;
+}
+
+Node *operator_named(Node *node, bool as_ref) {
+   Node *def = node->left->token->Struct.ptr;
+   if (!def) return NULL;
+   char *q  = format("%s.%s.%s%s", def->token->name, spell(node->token->type),
+                     as_ref ? "ref." : "",
+                     struct_name_of(operand_of(node->right)));
+   Node *fn = find_method(def, q);
+   free(q);
+   return fn;
+}
+
 bool find_operator(Node *node) {
    Token *token = node->token;
    Node  *def   = node->left->token->Struct.ptr;
    if (!def) return false;
-   char *qualified = format("%s.%s.%s", def->token->name, spell(token->type), struct_name_of(node->right->token));
-   Node *fn = find_method(def, qualified);
-   free(qualified);
+
+   bool  spelled = node->right->token->type == REF;
+   Node *fn      = operator_named(node, spelled);
+   if (!fn) fn   = operator_named(node, !spelled);
    if (!fn) return false;
    token->Fcall.ptr = fn;
    token->ret_type  = fn->token->ret_type;
@@ -465,10 +482,14 @@ void type_check_binop(Node *node) {
    }
    if (lt == STRUCT_CALL) {
       bool assign = token->type == ASSIGN;
-      if (!(assign && node->left->token->is_dec) && find_operator(node)) return;
+      bool is_init = assign && node->left->token->is_dec;
+      bool binding = assign && node->left->token->is_ref
+                            && node->right->token->type == REF;
+      if (!is_init && !binding && find_operator(node)) return;
+
       if (!assign) {
          parse_error(token, ERR_NO_OPERATOR, struct_name_of(node->left->token),
-                     spell(token->type), struct_name_of(node->right->token));
+                     spell(token->type), struct_name_of(operand_of(node->right)));
          return;
       }
       Node *lhs_def = node->left->token->Struct.ptr;

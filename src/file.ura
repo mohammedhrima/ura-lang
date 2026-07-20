@@ -1,68 +1,60 @@
+// string/004 — transforms: upper, lower, substr, trim, replace, repeat, reverse
 use "@/header"
 
-struct String2:
-    value char[]?
-    count i32
-    size  i32
-
-    pub fn create() String2:
-        s String2
-        s.size  = 10
-        s.value = new char[10]
-        return s
-
-    operator drop:
-        clean self.value
-
-    fn grow(want i32) void:
-        if self.size >= want: return
-        while self.size < want:
-            self.size *= 2
-        bigger char[] = new char[self.size]
-        strcpy(bigger, self.value)
-        clean self.value
-        self.value = bigger
-
-    fn assign(str char[]?) void:
-        if str == null:
-            self.assign("")
-            return
-        len i32 = strlen(str) as i32
-        self.grow(len + 1)
-        bzero(self.value, self.size as i64)
-        strcpy(self.value, str)
-        self.count = len
-
-    fn join(str char[]?) void:
-        if str == null: return
-        len i32 = strlen(str) as i32
-        self.grow(self.count + len + 1)
-        strcat(self.value, str)
-        self.count += len
-
-    operator = (str char[]?) void:
-        self.assign(str)
-
-    operator = (ref v String2) void:
-        self.assign(v.value)
-
-fn add(ref v String2, ref w String2) String2:
-    res String2 = String2::create()
-    res = v
-    res.join(w.value)
-    return res
-
 main():
-    s0 String2 = String2::create()
-    s0 = "1x2345"
+    s String = String::from("Hello World")
 
-    s1 String2 = String2::create()
-    s1 = "6x789"
+    u String = s.upper()
+    output(u.value, "\n")
 
+    l String = s.lower()
+    output(l.value, "\n")
 
-    s2 String2 = String2::create()
-    s2 = add(ref s0, ref s1)
+    sub String = s.substr(6, 5)
+    output(sub.value, "\n")
 
-    output("s0:    ", s0.value, " (", s0.count, ")\n")
-    output("s1:    ", s1.value, " (", s1.count, ")\n")
-    output("s0+s1: ", s2.value, " (", s2.count, ")\n")
+    sub2 String = s.substr(0, 5)
+    output(sub2.value, "\n")
+
+    sub3 String = s.substr(0, 100)
+    output(sub3.value, "\n")
+
+    sub4 String = s.substr(-1, 5)
+    output(sub4.len(), "\n")
+
+    t1 String = String::from("   hello   ")
+    t2 String = t1.trim()
+    output(t2.value, "\n")
+
+    t3 String = String::from("hello")
+    t4 String = t3.trim()
+    output(t4.value, "\n")
+
+    t5 String = String::from("   ")
+    t6 String = t5.trim()
+    output(t6.len(), "\n")
+
+    r1 String = String::from("foo bar foo baz")
+    r2 String = r1.replace("foo", "qux")
+    output(r2.value, "\n")
+
+    r3 String = r1.replace("xyz", "qux")
+    output(r3.value, "\n")
+
+    r4 String = r1.replace("", "qux")
+    output(r4.value, "\n")
+
+    rep String = String::from("ab")
+    rep2 String = rep.repeat(3)
+    output(rep2.value, "\n")
+
+    rep3 String = rep.repeat(0)
+    output(rep3.len(), "\n")
+
+    rev String = String::from("abcde")
+    rev2 String = rev.reverse()
+    output(rev2.value, "\n")
+
+    rev3 String = String::from("a")
+    rev4 String = rev3.reverse()
+    output(rev4.value, "\n")

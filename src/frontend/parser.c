@@ -538,7 +538,9 @@ Node *prime_node() {
          Token *rhs  = fn->Fn.params[1];
          char  *sub  = rhs->ret_type == STRUCT_CALL ? rhs->Struct.name
                                                     : type_name(rhs->ret_type);
-         char  *full = format("%s.%s", fn->name, sub);
+ 
+         char  *pre  = rhs->is_ref ? "ref." : "";
+         char  *full = format("%s.%s%s", fn->name, pre, sub);
          set_name(fn, full);
          free(full);
       }
