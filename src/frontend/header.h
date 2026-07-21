@@ -13,6 +13,8 @@ bool lex_number(char *src, int *i, int line, int indent);
 bool lex_use(char *src, int *i, int s, int line);
 bool lex_link(char *src, int *i, int s, int line);
 bool lex_identifier(char *src, int *i, int line, int indent, int base);
+bool platform_has(char *name);
+void preprocess();
 bool lex_symbol(char *src, int *i, int line, int *indent);
 Token *new_token(Type type, int indent);
 Token *parse_token(int line, int s, int e, Type type, int indent);

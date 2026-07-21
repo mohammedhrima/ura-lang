@@ -200,6 +200,34 @@ bool lex_number(char *src, int *i, int line, int indent)
 	return true;
 }
 
+bool platform_has(char *name) {
+	for (int i = 0; ura.platform && ura.platform[i]; i++)
+		if (strcmp(ura.platform[i], name) == 0) return true;
+	return false;
+}
+
+void preprocess() {
+	int  gate   = -1;
+	bool active = false;
+	bool taken  = false;
+	int  write  = 0;
+	for (int i = 0; i < ura.tokens_count; i++) {
+		Token *token = ura.tokens[i];
+		Type   type  = token->type;
+		if (type == AT_IF || type == AT_ELIF || type == AT_ELSE) {
+			char *name = type == AT_ELSE ? NULL : ura.tokens[++i]->name;
+			i++;
+			if (type == AT_IF) { gate = token->indent; taken = false; }
+			active = name ? (!taken && platform_has(name)) : !taken;
+			taken  = taken || active;
+			continue;
+		}
+		if (gate >= 0 && token->indent <= gate) gate = -1;
+		if (gate < 0 || active) ura.tokens[write++] = token;
+	}
+	ura.tokens_count = write;
+}
+
 bool lex_use(char *src, int *i, int s, int line)
 {
 	bool is_len   = (*i) - s == 3;
@@ -374,6 +402,7 @@ Token *parse_token(int line, int s, int e, Type type, int indent) {
 			{"u32", U32, 1, 1},       {"u64", U64, 1, 1},         {"f32", F32, 1, 1},
 			{"f64", F64, 1, 1},
 			{"if", IF, 0, 0},         {"elif", ELIF, 0, 0},       {"else", ELSE, 0, 0},
+			{"@if", AT_IF, 0, 0},     {"@elif", AT_ELIF, 0, 0},   {"@else", AT_ELSE, 0, 0},
 			{"for", FOR, 0, 0},       {"loop", LOOP, 0, 0},       {"while", WHILE, 0, 0},
 			{"by", BY, 0, 0},         {"in", IN, 0, 0},
 			{"fn", FDEC, 0, 0},       {"break", BREAK, 0, 0},     {"return", RETURN, 0, 0},

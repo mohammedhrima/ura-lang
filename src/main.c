@@ -230,13 +230,32 @@ void run_executable() {
               "\nExited", WEXITSTATUS(status), exec);
 }
 
+void detect_platform() {
+   static char *macos_aliases[]   = { "macos", "darwin", "unix", 0 };
+   static char *linux_aliases[]   = { "linux", "unix", 0 };
+   static char *windows_aliases[] = { "windows", 0 };
+   static char *no_platform[]     = { 0 };
+   char *triple = LLVMGetDefaultTargetTriple();
+   if (strstr(triple, "darwin") || strstr(triple, "apple"))
+      ura.platform = macos_aliases;
+   else if (strstr(triple, "linux"))
+      ura.platform = linux_aliases;
+   else if (strstr(triple, "windows") || strstr(triple, "win32"))
+      ura.platform = windows_aliases;
+   else
+      ura.platform = no_platform;
+   LLVMDisposeMessage(triple);
+}
+
 int main(int argc, char**argv) {
    ura.time_start = clock_now();
    ura.max_errors = 20;
    ura.enable_debug = false;
    parse_arguments(argc, argv);
+   detect_platform();
 #if TOKENIZE
    tokenize(0);
+   preprocess();
 #endif
 #if AST
    generate_ast();
