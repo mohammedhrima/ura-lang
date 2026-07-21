@@ -35,6 +35,7 @@ Node *ref_node(Node *node);
 Node *id_node(Node *node);
 Node *fdec_node(Node *node);
 Node *struct_node(Node *node);
+Node *enum_node(Node *node);
 Node *fcall_node(Node *node);
 Node *output_node(Node *node);
 Node *access_node(Node *node);

@@ -14,6 +14,7 @@ bool same_signature(Token *a, Token *b);
 void declare_function(Node *fn);
 void declare_struct(Node *node);
 void declare_structs(Node *node);
+void declare_enum(Node *node);
 Node *find_function(char *name);
 void analyze_binop(Node *node);
 void analyze_fdec(Node *node);

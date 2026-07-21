@@ -648,6 +648,7 @@ void type_check(Node *node) {
    switch (token->type) {
       case FDEC:   type_check_fdec(node); break;
       case STRUCT_DEF: type_check_struct(node); break;
+      case ENUM_DEF: break;
       case I32:     token->ret_type = I32; break;
       case BOOL:    token->ret_type = BOOL; break;
       case CHARS:   set_string_type(token); break;

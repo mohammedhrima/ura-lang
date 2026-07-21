@@ -1599,6 +1599,7 @@ void code_gen(Node *node) {
             if (node->children[i]->token->type == FDEC)
                code_gen(node->children[i]);
          break;
+      case ENUM_DEF: break;
 
       case REF:      token->llvm.elem = emit_ref(node->left);   break;
       case BREAK: {
