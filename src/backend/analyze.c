@@ -302,6 +302,7 @@ void analyze_id(Node *node) {
       token->Decl.ptr    = decl;
       token->ret_type    = decl->ret_type;
       token->is_optional = decl->is_optional;
+      token->is_ref      = decl->is_ref;
       if (decl->ret_type == FN_TYPE) token->Fn = decl->Fn;
       if (decl->ret_type == ARRAY_TYPE) token->Array = decl->Array;
       if (decl->ret_type == STRUCT_CALL) token->Struct = decl->Struct;
@@ -407,8 +408,9 @@ void analyze(Node *node) {
       case AS: analyze(node->left); break;
       case REF: {
          analyze(node->left);
-         if (node->left->token->type != ID)
-         parse_error(node->token, ERR_REF_TO_NON_VARIABLE);
+         Type k = node->left->token->type;
+         if (!includes(k, ID, ACCESS, DOT, 0))
+            parse_error(node->token, ERR_REF_TO_NON_VARIABLE);
          break;
       }
       case IF: case ELIF: case ELSE: case WHILE: case LOOP:

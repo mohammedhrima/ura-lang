@@ -52,6 +52,7 @@
 - 048 — destructor must return void
 - 049 — `pub fn` called via `.` instead of `::`
 - 050 — a struct whose first field is a struct is not circular
+- 051 — `pub` may only be used inside a struct
 
 ## 001 — declare a struct and a local: named type, alloca, zero-init
 
@@ -5899,4 +5900,25 @@ seen.fresh:                                       ; preds = %seen.cond
   %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @fmt.23, i32 0, i32 0))
   ret void
 }
+```
+
+## 051 — `pub` may only be used inside a struct
+
+```ura
+// structs/051.ura - `pub` may only be used inside a struct
+use "@/header"
+
+pub fn helper() void:
+    return
+
+main():
+    helper()
+```
+
+```err
+error: 'pub' marks a static method; it may only be used inside a struct
+  051.ura:4:1
+  |
+4 | pub fn helper() void:
+  | ^^^
 ```

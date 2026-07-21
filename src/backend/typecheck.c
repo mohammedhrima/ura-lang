@@ -54,8 +54,12 @@ bool is_null(Token *token) {
 	return token->type == NULL_LIT;
 }
 
-bool assignable(Token *lhs, Token *rhs) {
-	return lhs->is_optional || !rhs->is_optional;
+bool is_nullable(Token *t) {
+	return t->is_optional || t->is_ref;
+}
+
+bool is_assignable(Token *lhs, Token *rhs) {
+	return is_nullable(lhs) || !rhs->is_optional;
 }
 
 bool is_string(Token *token) {
@@ -230,7 +234,7 @@ void type_check_fcall(Node *node) {
          return;
       }
       bool want_ref = param->is_ref;
-      bool got_ref  = node->children[i]->token->type == REF;
+      bool got_ref  = category(node->children[i]) == CAT_REF;
       if (want_ref && !got_ref) {
          parse_error(node->children[i]->token, ERR_ARG_NEEDS_REF, i + 1, token->name);
          return;
@@ -243,6 +247,7 @@ void type_check_fcall(Node *node) {
    Token *ret         = indirect ? fn->Fn.ret : fn;
    token->ret_type    = ret->ret_type;
    token->is_optional = ret->is_optional;
+   token->is_ref      = ret->is_ref;
    if (ret->ret_type == ARRAY_TYPE) token->Array = ret->Array;
 }
 
@@ -255,9 +260,19 @@ void type_check_return(Node *node) {
    if (is_null(value)) {
       value->ret_type    = wanted;
       value->Array       = ura.fn_ret->Array;
+      value->Struct      = ura.fn_ret->Struct;
       value->is_optional = true;
    }
-   if (!assignable(ura.fn_ret, value)) {
+   bool want_ref = ura.fn_ret->is_ref;
+   if (want_ref && category(node->left) != CAT_REF) {
+      parse_error(node->token, ERR_RETURN_NEEDS_REF, ura.fn_ret->name);
+      return;
+   }
+   if (!want_ref && value->type == REF) {
+      parse_error(node->token, ERR_RETURN_NO_REF, ura.fn_ret->name);
+      return;
+   }
+   if (!is_assignable(ura.fn_ret, value)) {
       parse_error(node->token, ERR_ASSIGN_OPTIONAL,
                   value->name ? value->name : "the value", ura.fn_ret->name);
       return;
@@ -432,6 +447,23 @@ void type_check_binop(Node *node) {
    Type   rt  = node->right->token->ret_type;
    Token *lhs = node->left->token;
    Token *rhs = node->right->token;
+   if (includes(token->type, EQUAL, NOT_EQUAL, 0)) {
+      bool l_cref = category(node->left) == CAT_REF;
+      bool r_cref = category(node->right) == CAT_REF;
+      bool l_ok   = l_cref || lhs->is_ref;
+      bool r_ok   = r_cref || rhs->is_ref;
+      bool slice  = lt == ARRAY_TYPE || rt == ARRAY_TYPE;
+      if ((l_cref || r_cref) && l_ok && r_ok) token->kind = CMP_REF;
+      else if (slice)                         token->kind = CMP_SLICE;
+      else                                    token->kind = CMP_VALUE;
+   }
+   if (token->type == ASSIGN) {
+      bool lhs_ref = lhs->is_ref && !lhs->is_dec;
+      bool rebind  = lhs_ref && category(node->right) == CAT_REF;
+      if (rebind)       token->kind = REF_REBIND;
+      else if (lhs_ref) token->kind = REF_WRITE;
+      else              token->kind = VAL_STORE;
+   }
    if (token->type == FALLBACK) {
       if (!lhs->is_optional) {
          parse_error(token, ERR_FALLBACK_LHS);
@@ -449,17 +481,20 @@ void type_check_binop(Node *node) {
    if (is_null(lhs) || is_null(rhs)) {
       Token *nul   = is_null(lhs) ? lhs : rhs;
       Token *other = is_null(lhs) ? rhs : lhs;
-      if (!is_pointer(other->ret_type)) {
+      bool   ptr_like = is_pointer(other->ret_type) || other->is_ref;
+      if (!ptr_like) {
          parse_error(nul, ERR_NULL_ON_VALUE, type_name(other->ret_type));
          return;
       }
       nul->ret_type    = other->ret_type;
       nul->Array       = other->Array;
+      nul->Struct      = other->Struct;
+      nul->is_ref      = other->is_ref;
       nul->is_optional = true;
       lt = lhs->ret_type;
       rt = rhs->ret_type;
       if (includes(token->type, EQUAL, NOT_EQUAL, 0)) {
-         if (!other->is_optional) {
+         if (!is_nullable(other)) {
             parse_error(token, ERR_COMPARE_NON_NULL, other->name);
             return;
          }
@@ -467,17 +502,21 @@ void type_check_binop(Node *node) {
          return;
       }
    }
-   if (token->type == ASSIGN && !assignable(lhs, rhs)) {
+   if (token->type == ASSIGN && !is_assignable(lhs, rhs)) {
       if (is_null(rhs)) parse_error(token, ERR_NULL_NO_TARGET, lhs->name);
       else parse_error(token, ERR_ASSIGN_OPTIONAL, rhs->name, lhs->name);
       return;
    }
    if (node->left->token->is_dec && node->left->token->is_ref) {
-      if (node->right->token->type != REF)
+      if (category(node->right) != CAT_REF)
          parse_error(token, ERR_REF_NEEDS_VARIABLE);
       else if (lt && rt && lt != rt)
          parse_error(token, ERR_REF_TYPE_MISMATCH, type_name(lt), type_name(rt));
       token->ret_type = lt;
+      return;
+   }
+   if (token->kind == CMP_REF) {
+      token->ret_type = BOOL;
       return;
    }
    if (lt == STRUCT_CALL) {

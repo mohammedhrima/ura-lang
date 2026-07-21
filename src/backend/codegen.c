@@ -374,6 +374,7 @@ void emit_signature(Node *fn) {
       ret = array_type(token, token->Array.depth);
    else
       ret = to_llvm_type(token->ret_type);
+   if (token->is_ref) ret = pointer_to(ret);
    if (is_main(token)) {
       TypeRef argv = pointer_to(pointer_to(ura.i8));
       TypeRef mp[2] = { ura.i32, argv };
@@ -391,25 +392,6 @@ Value field_ptr(Node *node) {
    TypeRef sty    = struct_type_of(left->Struct.ptr);
    Value   idx[2] = { const_i32(0), const_i32(token->Struct.index) };
    return llvm_gep(sty, base, idx, 2, token->name);
-}
-
-Value address_of(Node *node) {
-   Token *token = node->token;
-   if (token->type == ACCESS) return access_ptr(node);
-   if (token->type == DOT)    return field_ptr(node);
-   if (token->is_dec) {
-      if (token->is_global) return token->llvm.elem;
-      TypeRef t = llvm_type_of(token);
-      if (token->is_ref) t = pointer_to(t);
-      return token->llvm.elem = llvm_alloca(t, token->name);
-   }
-   Token *decl = token->Decl.ptr;
-   if (decl->is_ref) {
-      Value ptr = llvm_load(pointer_to(llvm_type_of(decl)), decl->llvm.elem, "ref");
-      if (token->is_nullable) guard_bound(token, ptr);
-      return ptr;
-   }
-   return decl->llvm.elem;
 }
 
 Value access_ptr(Node *node) {
@@ -590,7 +572,7 @@ void code_gen_sizeof(Node *node) {
 
 void code_gen_clean(Node *node) {
    Token  *arr   = node->left->token;
-   Value   slot  = address_of(node->left);
+   Value   slot  = emit_place(node->left);
    TypeRef sty   = array_type(arr, arr->Array.depth);
    Value   slice = llvm_load(sty, slot, "arr");
    free_array(arr, slice, arr->Array.depth);
@@ -745,6 +727,8 @@ void init_globals() {
 void code_gen_fdec(Node *node) {
    Token *token = node->token;
    if (token->is_proto) return;
+   Token *prev_ret = ura.fn_ret;
+   ura.fn_ret = token;
    emit_signature(node);
    debug_enter_function(token);
    enter_scope(node);
@@ -771,6 +755,7 @@ void code_gen_fdec(Node *node) {
       else LLVMBuildRet(ura.builder, default_value(token));
    }
    debug_exit_function(token);
+   ura.fn_ret = prev_ret;
 }
 
 void code_gen_id(Node *node) {
@@ -1050,16 +1035,80 @@ void code_gen_if(Node *node) {
    llvm_at(end);
 }
 
+Type category(Node *n) {
+   Token *t = n->token;
+   if (t->ret_type == ARRAY_TYPE)             return CAT_SLICE;
+   if (t->type == REF || t->type == NULL_LIT) return CAT_REF;
+   if (t->type == FCALL && t->is_ref)         return CAT_REF;
+   return CAT_VALUE;
+}
+
+Value emit_value(Node *n) {
+   code_gen(n);
+   return n->token->llvm.elem;
+}
+
+Value emit_place(Node *n) {
+   Token *t = n->token;
+   if (t->type == ACCESS) return access_ptr(n);
+   if (t->type == DOT)    return field_ptr(n);
+   if (t->is_dec) {
+      if (t->is_global) return t->llvm.elem;
+      TypeRef ty = llvm_type_of(t);
+      if (t->is_ref) ty = pointer_to(ty);
+      return t->llvm.elem = llvm_alloca(ty, t->name);
+   }
+   Token *decl = t->Decl.ptr;
+   if (decl->is_ref) {
+      TypeRef pty = pointer_to(llvm_type_of(decl));
+      Value   ptr = llvm_load(pty, decl->llvm.elem, "ref");
+      if (t->is_nullable) guard_bound(t, ptr);
+      return ptr;
+   }
+   return decl->llvm.elem;
+}
+
+Value emit_ref(Node *n) {
+   Token *t = n->token;
+   if (t->type == REF)      return emit_ref(n->left);
+   if (t->type == NULL_LIT) return LLVMConstNull(pointer_to(llvm_type_of(t)));
+   if (t->type == FCALL)  { code_gen(n); return t->llvm.elem; }
+   if (t->type == DOT && t->is_ref) {
+      TypeRef pty = pointer_to(llvm_type_of(t));
+      return llvm_load(pty, field_ptr(n), "ref");
+   }
+   bool ref_var = t->type == ID && t->Decl.ptr && t->Decl.ptr->is_ref;
+   if (ref_var) {
+      TypeRef pty = pointer_to(llvm_type_of(t->Decl.ptr));
+      return llvm_load(pty, t->Decl.ptr->llvm.elem, "ref");
+   }
+   return emit_place(n);
+}
+
+Value emit_slot(Node *n) {
+   Token *t = n->token;
+   if (t->type == DOT) return field_ptr(n);
+   Token *decl = t->is_dec ? t : t->Decl.ptr;
+   return decl->llvm.elem;
+}
+
 void code_gen_assign(Node *node) {
    Token *token = node->token;
-   if (token->Fcall.ptr) { 
-      code_gen_operator(node); 
-      return; 
+   if (token->Fcall.ptr) {
+      code_gen_operator(node);
+      return;
    }
-   Value dest = address_of(node->left);
-   code_gen(node->right);
-   llvm_store(node->right->token->llvm.elem, dest);
-   token->llvm.elem = node->right->token->llvm.elem;
+   if (token->kind == REF_REBIND) {
+      Value ptr = emit_ref(node->right);
+      llvm_store(ptr, emit_slot(node->left));
+      token->llvm.elem = ptr;
+      return;
+   }
+   Value dest   = emit_place(node->left);
+   Node *rhs    = node->right;
+   bool  as_ref = node->left->token->is_ref && category(rhs) == CAT_REF;
+   token->llvm.elem = as_ref ? emit_ref(rhs) : emit_value(rhs);
+   llvm_store(token->llvm.elem, dest);
 }
 
 void code_gen_operator(Node *node) {
@@ -1078,7 +1127,7 @@ void code_gen_operator(Node *node) {
       Value addr = node->right->token->llvm.elem;
       arg = by_ref ? addr : llvm_load(llvm_type_of(param), addr, "deref");
    } else if (by_ref && has_addr) {
-      arg = address_of(node->right);
+      arg = emit_place(node->right);
    } else {
       code_gen(node->right);
       arg = node->right->token->llvm.elem;
@@ -1114,17 +1163,21 @@ void code_gen_binop(Node *node) {
       code_gen_operator(node);
       return;
    }
+   int p = token->type == EQUAL ? LLVMIntEQ : LLVMIntNE;
+   if (token->kind == CMP_REF) {
+      Value l = emit_ref(node->left);
+      Value r = emit_ref(node->right);
+      token->llvm.elem = llvm_icmp(p, l, r, "refcmp");
+      return;
+   }
    code_gen(node->left);
    code_gen(node->right);
    Value left  = node->left->token->llvm.elem;
    Value right = node->right->token->llvm.elem;
    Value res   = NULL;
-   bool  is_eq    = includes(token->type, EQUAL, NOT_EQUAL, 0);
-   bool  is_slice = node->left->token->ret_type == ARRAY_TYPE;
-   if (is_eq && is_slice) {
+   if (token->kind == CMP_SLICE) {
       Value l = opt_ptr(node->left->token, left);
       Value r = opt_ptr(node->right->token, right);
-      int   p = token->type == EQUAL ? LLVMIntEQ : LLVMIntNE;
       token->llvm.elem = llvm_icmp(p, l, r, "nullcmp");
       return;
    }
@@ -1171,7 +1224,7 @@ void code_gen_compound(Node *node) {
       code_gen_operator(node); 
       return; 
    }
-   Value   dest = address_of(node->left);
+   Value   dest = emit_place(node->left);
    code_gen(node->right);
    Type    op      = node->token->type;
    Value   right   = node->right->token->llvm.elem;
@@ -1446,7 +1499,7 @@ Value struct_printer(Node *def) {
 Value struct_arg_ptr(Node *arg) {
    Token *token = arg->token;
    if (includes(token->type, ID, ACCESS, DOT, 0) && !token->is_dec) {
-      Value slot = address_of(arg);
+      Value slot = emit_place(arg);
       if (token->type != DOT || !token->is_ref) return slot;
       TypeRef sty = pointer_to(struct_type_of(token->Struct.ptr));
       Value   ptr = llvm_load(sty, slot, "ref");
@@ -1547,7 +1600,7 @@ void code_gen(Node *node) {
                code_gen(node->children[i]);
          break;
 
-      case REF:      token->llvm.elem = address_of(node->left);   break;
+      case REF:      token->llvm.elem = emit_ref(node->left);   break;
       case BREAK: {
          drop_temps();
          emit_unwind(node->left, NULL);
@@ -1577,12 +1630,13 @@ void code_gen(Node *node) {
             token->llvm.elem = LLVMBuildRetVoid(ura.builder);
             break;
          }
-         code_gen(node->left);
          Token *out  = node->left->token;
+         bool   ref  = ura.fn_ret && ura.fn_ret->is_ref;
+         Value  val  = ref ? emit_ref(node->left) : emit_value(node->left);
          Token *keep = out->type == ID ? find_variable(out->name, NULL) : NULL;
          drop_temps();
          emit_unwind(NULL, keep);
-         token->llvm.elem = llvm_ret(out->llvm.elem);
+         token->llvm.elem = llvm_ret(val);
          break;
       }
       case NOT: case BNOT: {

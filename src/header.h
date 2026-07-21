@@ -159,6 +159,10 @@ enum Type
 	MODULE, // Modules
 	OPERATOR, // Operator overloading keyword
 	PUB, DOUBLE_DOTS, CLEAN, NEW, // Static dispatch / pub
+	CAT_VALUE, CAT_SLICE, CAT_REF,
+	VAL_STORE, REF_WRITE, REF_REBIND,
+	CMP_VALUE, CMP_SLICE, CMP_REF,
+	RET_VALUE, RET_REF,
 	END, // end
 };
 
@@ -204,6 +208,7 @@ struct LLVM {
 struct Token {
 	Type    type;
 	Type    ret_type;
+	Type    kind;    
 	Source *source;
 
 	char   *name;
