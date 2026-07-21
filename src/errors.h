@@ -50,6 +50,12 @@
 #define ERR_RETURN_TYPE_MISMATCH \
 	"'%s' returns %s, but this returns %s"
 
+#define ERR_RETURN_NEEDS_REF \
+	"'%s' returns a reference; return `ref x` (or null), not a value"
+
+#define ERR_RETURN_NO_REF \
+	"'%s' returns a value, not a reference; drop the `ref`"
+
 #define ERR_CANNOT_CAST "Cannot cast %s to %s"
 
 #define ERR_LEN_NOT_ARRAY \
@@ -203,6 +209,9 @@
 
 #define ERR_OPERATOR_OUTSIDE_STRUCT \
 	"'operator' may only be declared inside a struct"
+
+#define ERR_PUB_OUTSIDE_STRUCT \
+	"'pub' marks a static method; it may only be used inside a struct"
 
 #define ERR_OPERATOR_EXPECTED \
 	"Expected an operator after 'operator'" \

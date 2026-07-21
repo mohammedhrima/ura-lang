@@ -347,18 +347,21 @@ Node *fdec_node(Node *node) {
 	if(strcmp(node->token->name, "main") == 0) {
 		node->token->ret_type = I32;
 	}
-	else if(is_data_type(peek(0)) || peek(0)->type == ID) {
-		parse_type(node->token);
+	else {
+		if (find(REF, 0)) {
+			node->token->is_ref = true;
+			if (find(OPTIONAL, 0)) node->token->is_nullable = true;
+		}
+		if (is_data_type(peek(0)) || peek(0)->type == ID)
+			parse_type(node->token);
+		else
+			parse_error(node->token, ERR_FN_EXPECTED_RET_TYPE, node->token->name);
 	}
-	else
-		parse_error(node->token, ERR_FN_EXPECTED_RET_TYPE, node->token->name);
 	if (!node->token->is_proto) {
 		if (!find(DOTS, 0))
 			parse_error(node->token, ERR_FN_EXPECTED_COLON, node->token->name);
-
 		parse_block(node, node->token->indent);
 	}
-
 	exit_scope();
 	return node;
 }
@@ -547,6 +550,11 @@ Node *prime_node() {
       return node;
    }
    case PUB: {
+      Node *owner = ura.scope;
+      if (!owner || owner->token->type != STRUCT_DEF) {
+         parse_error(token, ERR_PUB_OUTSIDE_STRUCT);
+         return syntax_error();
+      }
 		if (peek(0)->type != FDEC) {
 			parse_error(token, "Expected 'fn' after 'pub'");
          return syntax_error();
