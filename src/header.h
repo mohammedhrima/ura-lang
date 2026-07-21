@@ -152,6 +152,7 @@ enum Type
 	LPAR, RPAR, LBRA, RBRA, COMA, DOT, DOTS, RANGE, ACCESS, AS, // Punctuation and Syntax
 	RETURN, IF, ELIF, ELSE, WHILE, CONTINUE, BREAK, MATCH, CASE, DEFAULT, // Control Flow
 	FOR, BY, IN, LOOP,
+	AT_IF, AT_ELIF, AT_ELSE,
 	FDEC, FCALL, PROTO, ARGS, CHILDREN, // Functions
 	TYPEOF, SIZEOF, OUTPUT, SYNTAX_ERROR, // Built-ins
 	BAND, BOR, BXOR, BNOT, LSHIFT, RSHIFT, // Bitwise
@@ -297,6 +298,7 @@ struct UraGlobal {
 	EXPAND(Token **, tokens);
 	EXPAND(Token **, temps);
 	EXPAND(Source **, sources);
+	char           **platform;
 	Token           *fn_ret;
 	Source          *current;
 	int              calling_use;
