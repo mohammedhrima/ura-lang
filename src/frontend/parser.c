@@ -385,6 +385,41 @@ Node *struct_node(Node *node) {
 	return node;
 }
 
+Node *enum_node(Node *node) {
+	node->token->type = ENUM_DEF;
+	if (!find(DOTS, 0))
+		parse_error(node->token, ERR_ENUM_EXPECTED_COLON, node->token->name);
+	int  line   = node->token->line;
+	int  indent = node->token->indent;
+	long value  = 0;
+	while (!ura.found_error) {
+		Token *peeked = peek(0);
+		bool   inside = peeked->line == line || peeked->indent > indent;
+		if (peeked->type != ID || !inside) break;
+		Token *var     = find(ID, 0);
+		var->is_dec    = true;
+		var->is_global = true;
+		var->type      = ENUM_CALL;
+		if (find(ASSIGN, 0)) {
+			bool   neg = find(SUB, 0) != NULL;
+			Token *lit = find(I32, 0);
+			if (!lit) {
+				parse_error(var, ERR_ENUM_VALUE_INT, var->name);
+				break;
+			}
+			value = neg ? -lit->Int.value : lit->Int.value;
+		}
+		var->Int.value = value;
+		value++;
+		resize_array(node->children, Node *);
+		node->children[node->children_count++] = new_node(var);
+		if (!find(COMA, 0)) break;
+	}
+	if (!node->children_count)
+		parse_error(node->token, ERR_ENUM_EMPTY, node->token->name);
+	return node;
+}
+
 Node *fcall_node(Node *node) {
 	node->token->type = FCALL;
 	if (!find(LPAR, 0))
@@ -581,6 +616,16 @@ Node *prime_node() {
       }
       set_name(node->token, sname->name);
       return struct_node(node);
+   }
+   case ENUM_DEF: {
+      Node *node = new_node(token);
+      Token *ename = find(ID, 0);
+      if (!ename) {
+         parse_error(token, "Expected an enum name after 'enum'");
+         return syntax_error();
+      }
+      set_name(node->token, ename->name);
+      return enum_node(node);
    }
    case ID: return id_node(new_node(token));
    case NEW: {

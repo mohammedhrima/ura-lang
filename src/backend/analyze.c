@@ -157,6 +157,19 @@ void declare_struct(Node *node) {
 	ura.scope->structs[ura.scope->structs_count++] = node;
 }
 
+void declare_enum(Node *node) {
+	Token *token = node->token;
+	for (int i = 0; i < ura.scope->structs_count; i++)
+		if (strcmp(ura.scope->structs[i]->token->name, token->name) == 0) {
+			parse_error(token, "Redeclaration of type '%s'", token->name);
+			return;
+		}
+	resize_array(ura.scope->structs, Node *);
+	ura.scope->structs[ura.scope->structs_count++] = node;
+	for (int i = 0; i < node->children_count; i++)
+		declare_variable(node->children[i]->token);
+}
+
 Node *find_struct(char *name) {
 	for (int i = ura.scopes_count; i >= 0; i--) {
 		Node *scope = ura.scopes[i];
@@ -212,6 +225,11 @@ void resolve_struct_type(Token *token) {
    Node *def = find_struct(token->Struct.name);
    if (!def) {
       parse_error(token, ERR_UNKNOWN_TYPE, token->Struct.name);
+      return;
+   }
+   if (def->token->type == ENUM_DEF) {
+      if (array) token->Array.sub_type = I32;
+      else       token->ret_type       = I32;
       return;
    }
    if (array) token->Array.struct_ptr = def;
@@ -293,6 +311,13 @@ void analyze_id(Node *node) {
    }
    bool   captured = false;
    Token *decl     = find_variable(token->name, &captured);
+   if (decl && decl->type == ENUM_CALL) {
+      token->type      = I32;
+      token->ret_type  = I32;
+      token->Int.value = decl->Int.value;
+      decl->used++;
+      return;
+   }
    if (decl) {
       if (captured) {
          parse_error(token, ERR_CAPTURE_NOT_ALLOWED, token->name);
@@ -398,6 +423,7 @@ void analyze(Node *node) {
    switch (token->type) {
       case FDEC:   analyze_fdec(node); break;
       case STRUCT_DEF: analyze_struct(node); break;
+      case ENUM_DEF: break;
       case ID:     analyze_id(node); break;
       case I32: case BOOL: case CHARS: case CHAR: case F32: break;
       case NULL_LIT: break;

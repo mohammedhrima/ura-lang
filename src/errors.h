@@ -124,6 +124,14 @@
 	"Field '%s' is already declared in this struct;" \
 	" rename it or remove the duplicate"
 
+#define ERR_ENUM_EXPECTED_COLON "Expected ':' after enum %s"
+
+#define ERR_ENUM_EMPTY \
+	"Enum %s must declare at least one variant"
+
+#define ERR_ENUM_VALUE_INT \
+	"Enum variant '%s' needs an integer value after '='"
+
 #define ERR_REDECL_VARIABLE "Redeclaration of variable '%s'"
 
 #define ERR_REF_MUST_BE_BOUND \

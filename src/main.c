@@ -133,6 +133,9 @@ void generate_ir() {
       if (ura.head->children[i]->token->type == STRUCT_DEF)
          declare_struct(ura.head->children[i]);
    for (int i = 0; i < ura.head->children_count; i++)
+      if (ura.head->children[i]->token->type == ENUM_DEF)
+         declare_enum(ura.head->children[i]);
+   for (int i = 0; i < ura.head->children_count; i++)
       if (ura.head->children[i]->token->type == FDEC)
          declare_function(ura.head->children[i]);
    for (int i = 0; i < ura.head->children_count; i++) {

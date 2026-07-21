@@ -135,3 +135,4 @@ Rewrite ura-lang feature by feature, full pipeline each. Nothing gets skipped, n
   `get_or_declare` is deleted
 - handle globals — still open, and now the single biggest blocker in ura-lib
   (105 constants + `os`/`raylib` need it)
+- implement input
