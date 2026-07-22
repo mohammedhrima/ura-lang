@@ -11,7 +11,7 @@ SCRIPT = str(ROOT / "config" / "tasks.py")
 BUILD  = ROOT / "build"
 URA    = BUILD / "ura"
 # substrings of .ll lines that vary per run / machine — ignored when diffing goldens
-IGNORE = ("target triple", "source_filename", "ModuleID", "DIFile", "DICompileUnit")
+IGNORE = ("target triple", "target datalayout", "source_filename", "ModuleID", "DIFile", "DICompileUnit")
 # dev builds of the compiler itself are sanitized, so a NULL deref reports a file
 # and line instead of dying as a silent SIGSEGV. `build release` opts out.
 # NOT address: -fsanitize=address deadlocks this binary at startup on macOS/arm64

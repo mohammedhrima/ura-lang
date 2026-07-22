@@ -94,11 +94,11 @@ entry:
   %argvbuf = call i8* @calloc(i64 %argc64, i64 16)
   %argv.buf = bitcast i8* %argvbuf to { i8*, i64 }*
   %oi = alloca i64, align 8
-  store i64 0, i64* %oi, align 4
+  store i64 0, i64* %oi, align 8
   br label %os.cond
 
 os.cond:                                          ; preds = %os.body, %entry
-  %i = load i64, i64* %oi, align 4
+  %i = load i64, i64* %oi, align 8
   %more = icmp slt i64 %i, %argc64
   br i1 %more, label %os.body, label %os.end
 
@@ -111,7 +111,7 @@ os.body:                                          ; preds = %os.cond
   %slot = getelementptr { i8*, i64 }, { i8*, i64 }* %argv.buf, i64 %i
   store { i8*, i64 } %a.len, { i8*, i64 }* %slot, align 8
   %inc = add i64 %i, 1
-  store i64 %inc, i64* %oi, align 4
+  store i64 %inc, i64* %oi, align 8
   br label %os.cond
 
 os.end:                                           ; preds = %os.cond

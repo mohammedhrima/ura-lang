@@ -128,16 +128,16 @@ entry:
   %big = alloca i64, align 8
   %a1 = load i32, i32* %a, align 4
   %cast = sext i32 %a1 to i64
-  store i64 %cast, i64* %big, align 4
+  store i64 %cast, i64* %big, align 8
   %small = alloca i16, align 2
   %a2 = load i32, i32* %a, align 4
   %cast3 = trunc i32 %a2 to i16
   store i16 %cast3, i16* %small, align 2
   %c = alloca i32, align 4
-  %big4 = load i64, i64* %big, align 4
+  %big4 = load i64, i64* %big, align 8
   %cast5 = trunc i64 %big4 to i32
   store i32 %cast5, i32* %c, align 4
-  %big6 = load i64, i64* %big, align 4
+  %big6 = load i64, i64* %big, align 8
   %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @fmt, i32 0, i32 0), i64 %big6, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0))
   %small7 = load i16, i16* %small, align 2
   %s2i = sext i16 %small7 to i32
@@ -347,8 +347,8 @@ entry:
   %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt, i32 0, i32 0), i32 9, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str, i32 0, i32 0), double %f2d, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
   %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @fmt.5, i32 0, i32 0), i32 9, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.2, i32 0, i32 0), i32 2, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0), i32 -2, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.4, i32 0, i32 0))
   %l = alloca i64, align 8
-  store i64 7, i64* %l, align 4
-  %l3 = load i64, i64* %l, align 4
+  store i64 7, i64* %l, align 8
+  %l3 = load i64, i64* %l, align 8
   %cast4 = sitofp i64 %l3 to float
   %f2d5 = fpext float %cast4 to double
   %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.8, i32 0, i32 0), i32 9, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.6, i32 0, i32 0), double %f2d5, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.7, i32 0, i32 0))

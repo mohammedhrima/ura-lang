@@ -709,7 +709,7 @@ void type_check(Node *node) {
       }
       case ARRAY:     type_check_array_ctor(node); break;
       case TYPEOF: case SIZEOF:
-         type_check(node->left);
+         if (!is_data_type(node->left->token)) type_check(node->left);
          if (token->type == TYPEOF) set_string_type(node->token);
          else node->token->ret_type = U64;
          break;

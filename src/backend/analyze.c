@@ -477,7 +477,9 @@ void analyze(Node *node) {
       }
       case RANGE:  analyze_binop(node); break;
       case DOT:    analyze(node->left); break;
-      case TYPEOF: case SIZEOF: analyze(node->left); break;
+      case TYPEOF: case SIZEOF:
+         if (!is_data_type(node->left->token)) analyze(node->left);
+         break;
       case ARRAY: {
          resolve_struct_type(token);
          for (int i = 0; i < node->children_count; i++)

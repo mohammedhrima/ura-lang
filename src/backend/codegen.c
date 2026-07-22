@@ -187,13 +187,19 @@ void init_module(char *name) {
    LLVMInitializeNativeAsmParser();
    char *triple = LLVMGetDefaultTargetTriple();
    LLVMSetTarget(ura.module, triple);
+   Target target;
+   if (!LLVMGetTargetFromTriple(triple, &target, NULL)) {
+      TargetMachine machine = LLVMCreateTargetMachine(target, triple, "", "", LLVMCodeGenLevelDefault, LLVMRelocDefault, LLVMCodeModelDefault);
+      TargetData layout = LLVMCreateTargetDataLayout(machine);
+      LLVMSetModuleDataLayout(ura.module, layout);
+      LLVMDisposeTargetData(layout);
+      LLVMDisposeTargetMachine(machine);
+   }
    LLVMDisposeMessage(triple);
 
    if (!ura.enable_san) return;
-   LLVMAddModuleFlag(ura.module, LLVMModuleFlagBehaviorWarning, "Debug Info Version", 18,
-                     LLVMValueAsMetadata(const_i32(3)));
-   LLVMAddModuleFlag(ura.module, LLVMModuleFlagBehaviorWarning, "Dwarf Version", 13,
-                     LLVMValueAsMetadata(const_i32(4)));
+   LLVMAddModuleFlag(ura.module, LLVMModuleFlagBehaviorWarning, "Debug Info Version", 18, LLVMValueAsMetadata(const_i32(3)));
+   LLVMAddModuleFlag(ura.module, LLVMModuleFlagBehaviorWarning, "Dwarf Version", 13, LLVMValueAsMetadata(const_i32(4)));
    ura.debug_builder = LLVMCreateDIBuilder(ura.module);
    char *src   = ura.sources[0]->filename;
    char *slash = strrchr(src, '/');
@@ -560,7 +566,9 @@ void free_array(Token *arr, Value slice, int depth) {
 }
 
 void code_gen_typeof(Node *node) {
-   char *name = type_name(node->left->token->ret_type);
+   Token *arg  = node->left->token;
+   char  *name = arg->ret_type == STRUCT_CALL ? struct_name_of(arg)
+               : type_name(arg->ret_type);
    node->token->llvm.elem = string_slice(node->token, name);
 }
 

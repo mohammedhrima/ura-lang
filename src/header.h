@@ -120,6 +120,8 @@ typedef LLVMBuilderRef    Builder;
 typedef LLVMBasicBlockRef Block;
 typedef LLVMValueRef      Value;
 typedef LLVMTargetDataRef TargetData;
+typedef LLVMTargetRef     Target;
+typedef LLVMTargetMachineRef TargetMachine;
 typedef LLVMTypeKind      TypeKind;
 typedef LLVMAttributeRef  AttributeRef;
 typedef LLVMMetadataRef   MetadataRef;

@@ -649,7 +649,12 @@ Node *prime_node() {
       Node *node = new_node(token);
       if (!find(LPAR, 0))
          parse_error(token, "Expected '(' after '%s'", kw);
-      node->left = expr_node(0);
+      if (is_data_type(peek(0))) {
+         Token *arg    = next();
+         arg->ret_type = arg->type;
+         node->left    = new_node(arg);
+      } else
+         node->left = expr_node(0);
       if (!find(RPAR, 0))
          parse_error(token, "Expected ')' to close '%s'", kw);
       return node;
