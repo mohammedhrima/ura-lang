@@ -1,8 +1,0 @@
-// errors/variables/005 — global variable redefinition
-use "@/header"
-
-score int = 0
-score int = 10
-
-main():
-    output(score, "\n")

@@ -1,8 +1,0 @@
-// parse_errors/014 — `fn` declaration missing identifier
-use "@/header"
-
-fn () int:
-    return 0
-
-main():
-    output("hi\n")

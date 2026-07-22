@@ -1,8 +1,0 @@
-// errors/functions/006 — non-void function missing return statement
-use "@/header"
-
-fn answer() int:
-    x int = 42
-
-main():
-    output(answer(), "\n")

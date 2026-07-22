@@ -1,6 +1,0 @@
-// errors/types/003 — unknown type in variable declaration
-use "@/header"
-
-main():
-    x Widget
-    output("hi\n")

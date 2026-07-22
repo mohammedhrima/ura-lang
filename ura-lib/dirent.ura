@@ -1,0 +1,34 @@
+// dirent.h — directory iteration.
+// `struct dirent` differs between Linux glibc and macOS.
+
+// BLOCKED: `@if` conditional compilation is not implemented (TODO.md M9).
+// `@` lexes as an ordinary identifier character, so `@if linux:` parses as a
+// bare identifier and then fails. Uncomment once @if lands.
+//
+// @if linux:
+//     struct Dirent:
+//         d_ino      i64           // ino_t
+//         d_off      i64           // off_t
+//         d_reclen   i16          // unsigned i16
+//         d_type     char           // unsigned char (file-type hint)
+//         d_name0    char           // start of inline name buffer (NAME_MAX+1 = 256 chars)
+//         // The rest of d_name follows in memory; access via pointer arithmetic
+//         // or through readdir's returned pointer.
+//
+// @elif macos:
+//     struct Dirent:
+//         d_ino      i64           // __darwin_ino64_t
+//         d_seekoff  i64           // __darwin_off_t
+//         d_reclen   i16          // __uint16_t
+//         d_namlen   i16          // __uint16_t (length of d_name)
+//         d_type     char           // __uint8_t
+//         d_name0    char           // start of inline name buffer (1024 chars on Darwin)
+
+// DIR* is opaque on both — use `pointer`.
+proto fn opendir(path pointer) pointer
+proto fn fdopendir(fd i32) pointer
+proto fn closedir(dirp pointer) i32
+proto fn readdir(dirp pointer) pointer   // returns struct dirent*
+proto fn rewinddir(dirp pointer) void
+proto fn telldir(dirp pointer) i64
+proto fn seekdir(dirp pointer, loc i64) void

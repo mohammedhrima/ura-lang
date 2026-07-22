@@ -1,0 +1,15 @@
+// Every module at once.
+
+use "@/ctype"
+use "@/errno"
+use "@/fcntl"
+use "@/io"
+use "@/math"
+use "@/memory"
+use "@/net"
+use "@/signals"
+use "@/stat"
+use "@/stdlib"
+use "@/string"
+use "@/time"
+use "@/unistd"

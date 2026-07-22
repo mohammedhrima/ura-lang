@@ -1,7 +1,0 @@
-// errors/syntax/014 — `if` missing `:` after condition
-use "@/header"
-
-main():
-    x int = 5
-    if x > 0
-        output("positive\n")

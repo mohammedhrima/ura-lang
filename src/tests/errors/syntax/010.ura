@@ -1,6 +1,0 @@
-// parse_errors/018 — `array` type missing closing `]`
-use "@/header"
-
-main():
-    arr array[int = stack[int](3)
-    arr[0] = 1

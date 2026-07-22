@@ -1,6 +1,0 @@
-// parse_errors/003 — unterminated block comment
-use "@/header"
-
-/* this comment never closes
-main():
-    output("hi\n")

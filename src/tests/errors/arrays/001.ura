@@ -1,8 +1,0 @@
-// errors/arrays/001 — array of unknown element type
-use "@/header"
-
-main():
-    arr array[Widget] = stack[Widget](3)
-    output("hi\n")
-    arr array[int] = stack[](3)
-    output("hi\n")

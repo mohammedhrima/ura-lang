@@ -1,0 +1,65 @@
+// fcntl.h — file control.
+//
+// Function signatures are identical on Linux + macOS. Flag constants differ.
+
+proto fn open(path pointer, flags i32, mode i32) i32
+proto fn openat(dirfd i32, path pointer, flags i32, mode i32) i32
+proto fn creat(path pointer, mode i32) i32
+proto fn fcntl(fd i32, cmd i32, arg i32) i32
+
+// ── open() access modes (same on both) ─────────────────────────────────────
+O_RDONLY i32 = 0
+O_WRONLY i32 = 1
+O_RDWR   i32 = 2
+
+// ── open() creation / status flags (values DIFFER between Linux and macOS) ─
+// BLOCKED: `@if` conditional compilation is not implemented (TODO.md M9).
+// `@` lexes as an ordinary identifier character, so `@if linux:` parses as
+// a bare identifier and then fails. Uncomment once @if lands.
+// @if linux:
+//     O_CREAT     i32 = 64       // 0o100
+//     O_EXCL      i32 = 128      // 0o200
+//     O_NOCTTY    i32 = 256      // 0o400
+//     O_TRUNC     i32 = 512      // 0o1000
+//     O_APPEND    i32 = 1024     // 0o2000
+//     O_NONBLOCK  i32 = 2048     // 0o4000
+//     O_DSYNC     i32 = 4096
+//     O_DIRECTORY i32 = 65536    // 0o200000
+//     O_NOFOLLOW  i32 = 131072   // 0o400000
+//     O_CLOEXEC   i32 = 524288   // 0o2000000
+
+// @elif macos:
+//     O_CREAT     i32 = 512      // 0x0200
+//     O_EXCL      i32 = 2048     // 0x0800
+//     O_NOCTTY    i32 = 131072   // 0x20000
+//     O_TRUNC     i32 = 1024     // 0x0400
+//     O_APPEND    i32 = 8        // 0x0008
+//     O_NONBLOCK  i32 = 4        // 0x0004
+//     O_DSYNC     i32 = 4194304  // 0x400000
+//     O_DIRECTORY i32 = 1048576  // 0x100000
+//     O_NOFOLLOW  i32 = 256      // 0x0100
+//     O_CLOEXEC   i32 = 16777216 // 0x1000000
+
+// ── fcntl() commands ───────────────────────────────────────────────────────
+// @if linux:
+//     F_DUPFD  i32 = 0
+//     F_GETFD  i32 = 1
+//     F_SETFD  i32 = 2
+//     F_GETFL  i32 = 3
+//     F_SETFL  i32 = 4
+// @elif macos:
+//     F_DUPFD  i32 = 0
+//     F_GETFD  i32 = 1
+//     F_SETFD  i32 = 2
+//     F_GETFL  i32 = 3
+//     F_SETFL  i32 = 4
+//     // (Darwin happens to match Linux for these basic commands.)
+
+// FD_CLOEXEC = 1 on both
+FD_CLOEXEC i32 = 1
+
+// ── AT_FDCWD for *at functions ─────────────────────────────────────────────
+// @if linux:
+//     AT_FDCWD i32 = -100
+// @elif macos:
+//     AT_FDCWD i32 = -2

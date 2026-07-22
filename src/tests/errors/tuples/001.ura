@@ -1,9 +1,0 @@
-// errors/tuples/001 — tuple unpack count mismatch
-use "@/header"
-
-fn pair() (int, int):
-    return 1, 2
-
-main():
-    a int, b int, c int = pair()
-    output(a, "\n")

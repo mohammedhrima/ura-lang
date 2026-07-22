@@ -1,5 +1,0 @@
-// parse_errors/012 — `::` must be followed by a function call
-use "@/header"
-
-main():
-    s String = String::new

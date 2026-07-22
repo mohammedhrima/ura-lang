@@ -1,0 +1,60 @@
+// time.h — time and date.
+//
+// On both Linux glibc (64-bit) and macOS arm64 the POSIX time types are 8 bytes
+// (time_t, suseconds_t is 4). `struct timespec` and `struct timeval` have the
+// same layout on both platforms in 64-bit mode.
+
+struct Timespec:
+    tv_sec   i64      // time_t
+    tv_nsec  i64      // i64
+
+struct Timeval:
+    tv_sec   i64      // time_t
+    tv_usec  i32       // suseconds_t (i32)
+    __pad    i32       // explicit pad so total is 16 bytes / 8-byte aligned
+
+// `struct tm` — broken-down calendar time. Same field set on Linux glibc and
+// macOS (both expose POSIX + BSD extensions: tm_gmtoff and tm_zone).
+struct Tm:
+    tm_sec    i32
+    tm_min    i32
+    tm_hour   i32
+    tm_mday   i32
+    tm_mon    i32
+    tm_year   i32
+    tm_wday   i32
+    tm_yday   i32
+    tm_isdst  i32
+    tm_gmtoff i64          // i64
+    tm_zone   pointer       // const char *
+
+// Time manipulation
+proto fn time(timer pointer) i64
+proto fn difftime(time1 i64, time0 i64) f64
+proto fn clock() i64
+
+// Conversion (returned struct tm* points to thread-local static storage).
+// `timer` is a pointer to a time_t (so we type it as `ref ... i64` — the
+// most ergonomic form for `t i64 = time(0); localtime(t)` callers).
+proto fn gmtime(ref timer i64) pointer
+proto fn localtime(ref timer i64) pointer
+proto fn mktime(timeptr pointer) i64
+proto fn gmtime_r(ref timer i64, result pointer) pointer
+proto fn localtime_r(ref timer i64, result pointer) pointer
+
+// Formatting
+proto fn strftime(s pointer, maxsize i64, format pointer, timeptr pointer) i64
+proto fn asctime(timeptr pointer) pointer
+proto fn ctime(timer pointer) pointer
+proto fn asctime_r(timeptr pointer, buf pointer) pointer
+proto fn ctime_r(timer pointer, buf pointer) pointer
+
+// High-resolution time (CLOCK_REALTIME = 0 on both Linux and macOS).
+// Timespec/Timeval args are typed `pointer` so callers can pass `ref ts` or
+// a raw buffer.
+proto fn clock_gettime(clk_id i32, tp pointer) i32
+proto fn clock_settime(clk_id i32, tp pointer) i32
+proto fn nanosleep(req pointer, rem pointer) i32
+
+// Wall-clock / time-of-day (POSIX, on both)
+proto fn gettimeofday(tv pointer, tz pointer) i32
