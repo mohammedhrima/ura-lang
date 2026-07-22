@@ -1,0 +1,19 @@
+use "@/error"
+
+fn deep() void:
+    throw Error::make("from deep")
+    output("hello from deep")
+
+fn middle() void:
+    try:
+        deep()
+    catch e:
+        output("caught: ", e.message, "\n")
+         throw Error::make("from middle")
+
+main():
+    try:
+        middle()
+    catch e:
+        output("caught: ", e.message, "\n")
+    output("after\n")

@@ -1,58 +1,40 @@
-# ura-lang rewrite — master roadmap
+# ura-lang roadmap
 
-Rewrite ura-lang feature by feature, full pipeline each. Nothing gets skipped, nothing gets forgotten.
+```
+lexer → parser → analyze → type_check → code_gen (switch case + stage helper) → tests
+```
+1 feature = full pipeline + goldens (`.ll` `.err` `.run`, suite green) · check `old.c` first · 1 feature / commit · 1pt ≈ 4h
 
-**Rules**
-- Every feature = full pipeline: lexer → parser → `analyze` → `type_check` → `code_gen` (dispatcher case + helper in its stage file, like `lex_*` in `frontend/lexer.c`) → tests.
-- Tests per feature: golden `.ll` (success), `.err` (compile error), `.run` (runtime) — `uv run config/tasks.py tests` must stay green.
-- Check `old.c` first for every old feature — port the intent, not the bugs.
-- One feature per commit. Update README/ROADMAP when a feature lands.
-- Points: 1 pt ≈ 4h.
+## ✅ done
+`types` bit-width+f64+unsigned · arrays · structs · enums · fn-values · nullable · operators + overloading + `operator drop` · methods/`self` · `pub`/`::` · proto/variadics · `ref`/`ref?` · `@if` · `use` · DWARF · `-san` · `-O0..Oz` · typeof/sizeof · if/while/break/continue/return · `is` · rust diagnostics
+**rewrite-only (old.c never had):** match/case · guards `a[i]?` `m?` `÷0` · for-in / for-ref · `as` casting · big ura-lib
 
-## M2 — control flow
-- [ ] block scoping + shadowing golden (1) — scoping works; struct shadowing is covered (structs 011), variable shadowing golden still missing
+## ❌ backlog
+| feature | example | old.c | pts | M |
+|---|---|---|---|---|
+| globals (top-level vars) | `x i32 = 5` outside fn | — | 3 | M4 |
+| tuples + multi-return | `a i32, b = f()` | ✓ | 4 | M5 |
+| `List[T]` | `List<int>` push/pop/len | ✓ synth | 5 | M6 |
+| `Map[K,V]` | `Map<str,int>` | — | 6 | M6 |
+| `mod` + `::` | `mod m:` → `m::f()` | ✓ | 4 | M7 |
+| wire `link` | `link "raylib"` | no-op | 3 | M7 |
+| multi-file CLI | `ura a.ura b.ura` (only last runs) | — | 1 | M7 |
+| `input` | `name = input()` | — | 2 | M8 |
+| Result / Option | `Result<T>` on enums | — | 6 | M8 |
+| try / catch — decide | `try: … catch e: …` | dead scaffold | 0 | M8 |
+| type inference | `x := 5` | — | 4 | M9 |
+| type aliases | `type Id = i32` | — | 2 | M9 |
+| fn overload · default · named ret | `f(a, b=2)` | — | 7 | M9 |
+| generics (LAST, monomorphize) | `Vec<T>` | — | 12 | M9 |
+| std string | `s.upper()` | ✓ | 5 | M10 |
+| std modules | math/time/os/net | — | 8 | M10 |
+| regression tests (old bugs) | — | — | 2 | M10 |
+| docs + vscode sync | — | — | 5 | M10 |
+| `\u`/`\U` escapes | `"café"` | stub | 1 | — |
+| post-1.0 | formatter · LSP · pkg-mgr | — | 34 | — |
 
-## M4 — globals, memory, type utilities
-- [ ] global variables (lift top-level fn-only restriction; LLVM globals) (3)
-- [ ] design: explicit `stack` keyword — keep or drop (1)
-
-## M5 — aggregates
-- [ ] tuples + destructuring (4)
-
-## M6 — collections & String
-- [ ] List[T] (5)
-- [ ] Map[K, V] (6)
-- [ ] NEW string interpolation (3)
-
-## M7 — modules & linking
-- [ ] mod namespaces (4) — `mod` is a reserved word with no parser; `::` lexes but is unused. `.` is taken by field access and `a.b(...)` does not parse at all yet
-- [ ] wire lex_link; URA_LINK external linking (3) — `link "..."` parses and discards the path, so raylib cannot be linked
-- [ ] multi-file CLI: `ura a.ura b.ura` silently compiles only the last file (1)
-
-## M8 — error handling & safety
-- [ ] assert / panic keywords on the existing trap machinery (guard_nonzero generalizes) (2)
-- [ ] Result / Option — enums now exist, build on them (6)
-- [ ] design decision: try/catch — tokens commented out; Result direction suggests DROP (0)
-
-## M9 — language polish
-- [ ] const / immutability (3)
-- [ ] type inference `:=` (4)
-- [ ] type aliases (2)
-- [ ] fn overloading (3) · default param values (2) · named returns (2)
-- [ ] struct embedding (4)
-- [ ] generics — LAST, everything monomorphizes (12)
-
-## M10 — stdlib & tooling (continuous)
-- [ ] std core: string (5) — commented down to its 37 protos; its blockers (`char[]` indexing, `pub`, `operator`, `::`) now exist
-- [ ] std extended modules (math/time/os/net/…) (8) — `@if` and `f64` now exist, so modules gated on them load: `@/header` pulls ctype/errno/fcntl/io/math/memory/net/signals/stat/stdlib/string/time/unistd and compiles+runs (verified via the socket + getpid demos). Still blocked on globals: os, raylib + 105 constants
-- [ ] regression tests for old bug list (2)
-- [ ] docs refresh per milestone (3) · vscode-extension sync (2) — README fully rewritten (every code block compile-checked) + extension `@if` grammar synced, 2026-07-22; recurring — keep in step each milestone
-- [ ] post-1.0: formatter (9) · LSP (13) · package manager on tasks.py/uv (12)
-
-## Design decisions ledger (open)
-- explicit stack/heap keywords vs implicit — decide at M4
-- try/catch vs Result/Option — decide at M8
-- the guard should throw an error
-- check if all features are implemented
-- handle globals — still open, and now the single biggest blocker in ura-lib (105 constants + `os`/`raylib` need it)
-- implement input
+## ⚖️ open decisions
+- try/catch vs Result/Option → M8
+- **globals** = biggest ura-lib blocker (105 consts + `os` + `raylib` need it)
+- std modules load via `@/header` (ctype/errno/io/math/net/…) but `os`/`raylib` blocked on globals
+- guard should throw an error · audit: are all features actually implemented?

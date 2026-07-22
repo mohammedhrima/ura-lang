@@ -156,6 +156,11 @@ void generate_asm() {
    if (ura.error_count || !ura.head) return;
    setup_paths(ura.sources[0]->filename);
    init_module(ura.output);
+   for (int i = 0; i < ura.head->children_count; i++)
+      if (program_throws(ura.head->children[i])) {
+         ura.uses_exceptions = true;
+         break;
+      }
    for (int i = 0; i < ura.head->children_count; i++) {
       Token *global = global_decl(ura.head->children[i]);
       if (global) llvm_global(global);
