@@ -29,3 +29,6 @@ examples.ura
 .vscode-extension
 TMP.md
 .claude
+
+# Retired monolith — kept locally as a port reference, not shipped
+src/old.c
