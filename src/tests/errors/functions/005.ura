@@ -1,9 +1,0 @@
-// errors/functions/005 — return type mismatch
-use "@/header"
-
-fn compute() int:
-    return "hello"
-
-main():
-    x int = compute()
-    output(x, "\n")

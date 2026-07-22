@@ -1,0 +1,64 @@
+proto fn signal(sig i32, handler pointer) pointer
+proto fn raise(sig i32) i32
+proto fn kill(pid i32, sig i32) i32
+proto fn sigaction(sig i32, act pointer, oldact pointer) i32
+proto fn sigprocmask(how i32, set pointer, oldset pointer) i32
+proto fn sigsuspend(mask pointer) i32
+proto fn strsignal(sig i32) pointer
+
+// ── Signal numbers ────────────────────────────────────────────────────────
+// SIGHUP..SIGTERM are identical on Linux and macOS; SIGUSR/SIGCHLD/SIGBUS
+// and a few others diverge.
+SIGHUP    i32 = 1
+SIGINT    i32 = 2
+SIGQUIT   i32 = 3
+SIGILL    i32 = 4
+SIGTRAP   i32 = 5
+SIGABRT   i32 = 6
+SIGFPE    i32 = 8
+SIGKILL   i32 = 9
+SIGSEGV   i32 = 11
+SIGPIPE   i32 = 13
+SIGALRM   i32 = 14
+SIGTERM   i32 = 15
+
+// BLOCKED: `@if` conditional compilation is not implemented (TODO.md M9).
+// `@` lexes as an ordinary identifier character, so `@if linux:` parses as
+// a bare identifier and then fails. Uncomment once @if lands.
+// @if linux:
+//     SIGUSR1   i32 = 10
+//     SIGUSR2   i32 = 12
+//     SIGCHLD   i32 = 17
+//     SIGCONT   i32 = 18
+//     SIGSTOP   i32 = 19
+//     SIGTSTP   i32 = 20
+//     SIGBUS    i32 = 7
+//     SIGSYS    i32 = 31
+//     SIGURG    i32 = 23
+//     SIGWINCH  i32 = 28
+//     SIGIO     i32 = 29
+// @elif macos:
+//     SIGUSR1   i32 = 30
+//     SIGUSR2   i32 = 31
+//     SIGCHLD   i32 = 20
+//     SIGCONT   i32 = 19
+//     SIGSTOP   i32 = 17
+//     SIGTSTP   i32 = 18
+//     SIGBUS    i32 = 10
+//     SIGSYS    i32 = 12
+//     SIGURG    i32 = 16
+//     SIGWINCH  i32 = 28
+//     SIGIO     i32 = 23
+
+// ── sigprocmask() how ─────────────────────────────────────────────────────
+// @if linux:
+//     SIG_BLOCK   i32 = 0
+//     SIG_UNBLOCK i32 = 1
+//     SIG_SETMASK i32 = 2
+// @elif macos:
+//     SIG_BLOCK   i32 = 1
+//     SIG_UNBLOCK i32 = 2
+//     SIG_SETMASK i32 = 3
+
+// ── Special handler values (cast to pointer at use site) ──────────────────
+// SIG_DFL = 0, SIG_IGN = 1 on both platforms.

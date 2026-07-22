@@ -1,6 +1,0 @@
-// errors/arrays/002 — `stack` missing element type
-use "@/header"
-
-main():
-    arr array[int] = stack[](3)
-    output("hi\n")

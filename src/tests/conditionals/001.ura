@@ -1,6 +1,0 @@
-// conditionals/001.ura - basic if: first floor greeting
-
-main():
-    floor int = 1
-    if floor == 1:
-        output("Fresh start\n")

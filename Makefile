@@ -1,45 +1,18 @@
-IMAGE     := ura-dev
-CONTAINER := ura-lang
-MOUNT     := /ura-lang
-PLATFORM  := linux/amd64
-ANVIL_BIN := config/anvil/build/linux/anvil
+LLVM      ?= llvm-config-14
+CC        ?= clang
+LLVMFLAGS := $(shell $(LLVM) --cflags --ldflags --libs core)
+SRC       := src/main.c
+OUT       := build/ura
 
-.PHONY: image re shell stop clean anvil
+.PHONY: build release dev
 
-image:
-	@docker image inspect $(IMAGE) >/dev/null 2>&1 || \
-	    docker build --platform $(PLATFORM) -t $(IMAGE) .
+build:
+	@mkdir -p build
+	$(CC) $(SRC) $(LLVMFLAGS) -o $(OUT)
 
-re:
-	-docker rm -f $(CONTAINER)
-	docker build --platform $(PLATFORM) -t $(IMAGE) .
+release:
+	@mkdir -p build
+	$(CC) -O2 $(SRC) $(LLVMFLAGS) -o $(OUT)
 
-$(ANVIL_BIN): | image
-	docker run --rm --platform $(PLATFORM) \
-	    -v "$(CURDIR):$(MOUNT)" \
-	    -w $(MOUNT)/config/anvil \
-	    $(IMAGE) make
-
-anvil: image
-	docker run --rm --platform $(PLATFORM) \
-	    -v "$(CURDIR):$(MOUNT)" \
-	    -w $(MOUNT)/config/anvil \
-	    $(IMAGE) make re
-
-shell: image $(ANVIL_BIN)
-	@if docker container inspect $(CONTAINER) >/dev/null 2>&1; then \
-	    docker start -ai $(CONTAINER); \
-	else \
-	    docker run --platform $(PLATFORM) -it \
-	        --name $(CONTAINER) \
-	        -v "$(CURDIR):$(MOUNT)" \
-	        -w $(MOUNT) \
-	        $(IMAGE); \
-	fi
-
-stop:
-	-docker stop $(CONTAINER)
-
-clean:
-	-docker rm -f $(CONTAINER)
-	-docker rmi $(IMAGE)
+dev:
+	uv run config/tasks.py

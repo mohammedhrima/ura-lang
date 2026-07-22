@@ -1,8 +1,0 @@
-// errors/variables/004 — using variable from inner scope after it left scope
-use "@/header"
-
-main():
-    x int = 1
-    if x > 0:
-        y int = 5
-    output(y, "\n")

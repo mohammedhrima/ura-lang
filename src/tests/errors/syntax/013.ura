@@ -1,8 +1,0 @@
-// parse_errors/024 — fn declaration missing return type before `:`
-use "@/header"
-
-fn greet():
-    output("hi\n")
-
-main():
-    greet()

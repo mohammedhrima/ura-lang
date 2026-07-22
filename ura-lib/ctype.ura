@@ -1,0 +1,20 @@
+// ctype.h — character classification + conversion. POSIX, identical signatures.
+// Takes i32 (the char promoted) and returns i32 (0 / non-zero).
+
+proto fn isalnum(c i32) i32
+proto fn isalpha(c i32) i32
+proto fn isascii(c i32) i32
+proto fn isblank(c i32) i32
+proto fn iscntrl(c i32) i32
+proto fn isdigit(c i32) i32
+proto fn isgraph(c i32) i32
+proto fn islower(c i32) i32
+proto fn isprint(c i32) i32
+proto fn ispunct(c i32) i32
+proto fn isspace(c i32) i32
+proto fn isupper(c i32) i32
+proto fn isxdigit(c i32) i32
+
+// Case conversion
+proto fn tolower(c i32) i32
+proto fn toupper(c i32) i32

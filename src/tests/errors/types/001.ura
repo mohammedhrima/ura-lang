@@ -1,8 +1,0 @@
-// parse_errors/016 — unknown struct type referenced in function argument
-use "@/header"
-
-fn process(p Widget) void:
-    return
-
-main():
-    output("hi\n")

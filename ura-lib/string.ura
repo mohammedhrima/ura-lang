@@ -1,0 +1,363 @@
+// String length
+proto fn strlen(s pointer) i64
+proto fn strnlen(s pointer, maxlen i32) i32
+
+// String comparison
+proto fn strcmp(a pointer, b pointer) i32
+proto fn strncmp(a pointer, b pointer, n i32) i32
+proto fn strcasecmp(a pointer, b pointer) i32
+proto fn strncasecmp(a pointer, b pointer, n i32) i32
+proto fn strcoll(a pointer, b pointer) i32
+proto fn strxfrm(dest pointer, src pointer, n i32) i32
+
+// String copying
+proto fn strcpy(dest pointer, src pointer) pointer
+proto fn strncpy(dest pointer, src pointer, n i32) pointer
+proto fn strdup(s pointer) pointer
+proto fn strndup(s pointer, n i32) pointer
+
+// String concatenation
+proto fn strcat(dest pointer, src pointer) pointer
+proto fn strncat(dest pointer, src pointer, n i32) pointer
+
+// String searching
+proto fn strchr(s pointer, c i32) pointer
+proto fn strrchr(s pointer, c i32) pointer
+proto fn strstr(haystack pointer, needle pointer) pointer
+proto fn strcasestr(haystack pointer, needle pointer) pointer
+proto fn strspn(s pointer, accept pointer) i32
+proto fn strcspn(s pointer, reject pointer) i32
+proto fn strpbrk(s pointer, accept pointer) pointer
+proto fn strtok(s pointer, delim pointer) pointer
+proto fn strtok_r(s pointer, delim pointer, saveptr pointer) pointer
+
+// String error messages
+proto fn strerror(errnum i32) pointer
+proto fn strerror_r(errnum i32, buf pointer, buflen i64) i32
+
+// Memory functions
+proto fn memchr(ptr pointer, c i32, n i32) pointer
+proto fn memrchr(ptr pointer, c i32, n i32) pointer
+proto fn memcmp(a pointer, b pointer, n i32) i32
+proto fn memcpy(dest pointer, src pointer, n i32) pointer
+proto fn memmove(dest pointer, src pointer, n i32) pointer
+proto fn memset(ptr pointer, value i32, n i32) pointer
+proto fn memccpy(dest pointer, src pointer, c i32, n i32) pointer
+proto fn bzero(s pointer, size i64) void
+
+// BSD string functions (safer alternatives)
+proto fn strlcpy(dest pointer, src pointer, size i32) i32
+proto fn strlcat(dest pointer, src pointer, size i32) i32
+
+// Signal-safe string length
+proto fn strsignal(sig i32) pointer
+
+// Explicit zeroing (C11)
+proto fn memset_s(ptr pointer, size i32, value i32, n i32) pointer
+
+proto fn atoi(s pointer) i32
+
+// A growable, owning, NUL-terminated string.
+//
+//   value  the heap buffer. Capacity is value.len; the last byte is always
+//          the terminator, so a C function can take it directly.
+//   count  bytes in use, NOT counting the terminator.
+//
+// Every method that hands text to C passes `self.value ?? ""`, so an
+// unallocated String behaves like an empty one instead of trapping.
+struct String:
+    value char[]?
+    count i32
+
+    // ── lifetime ──
+
+    pub fn create() String:
+        s String
+        s.value = new char[16]
+        s.count = 0
+        return s
+
+    pub fn from(str char[]?) String:
+        s String = String::create()
+        s.assign(str)
+        return s
+
+    pub fn from_int(n i32) String:
+        s String = String::create()
+        if n == 0:
+            s.push('0')
+            return s
+        num i32 = n
+        if num < 0:
+            s.push('-')
+            num = 0 - num
+        digits char[] = new char[12]
+        i i32 = 0
+        while num > 0:
+            digits[i] = (num % 10 + 48) as char
+            num = num / 10
+            i += 1
+        while i > 0:
+            i -= 1
+            s.push(digits[i])
+        clean digits
+        return s
+
+    operator drop:
+        clean self.value
+
+    // ── capacity ──
+
+    fn cap() i32:
+        if self.value == null: return 0
+        return self.value.len as i32
+
+    // Grow to hold `want` bytes, terminator included. Doubling keeps append
+    // amortised O(1). There is no realloc for slices, so: allocate, copy, free.
+    fn grow(want i32) void:
+        room i32 = self.cap()
+        if room >= want: return
+        if room == 0: room = 16
+        while room < want:
+            room *= 2
+        bigger char[] = new char[room]
+        if self.count > 0:
+            memcpy(bigger, self.value ?? "", self.count)
+        bigger[self.count] = 0 as char
+        clean self.value
+        self.value = bigger
+
+    // ── mutators ──
+
+    fn assign(str char[]?) void:
+        n i32 = 0
+        if str != null:
+            n = strlen(str) as i32
+        self.grow(n + 1)
+        if n > 0:
+            memcpy(self.value ?? "", str ?? "", n)
+        self.value[n] = 0 as char
+        self.count = n
+
+    fn join(str char[]?) void:
+        if str == null: return
+        n i32 = strlen(str) as i32
+        if n == 0: return
+        self.grow(self.count + n + 1)
+        memcpy(self.value[self.count..self.count + n], str, n)
+        self.count += n
+        self.value[self.count] = 0 as char
+
+    fn push(c char) void:
+        self.grow(self.count + 2)
+        self.value[self.count] = c
+        self.count += 1
+        self.value[self.count] = 0 as char
+
+    fn pop() char:
+        if self.count == 0: return 0 as char
+        self.count -= 1
+        c char = self.value[self.count]
+        self.value[self.count] = 0 as char
+        return c
+
+    fn clear() void:
+        self.count = 0
+        if self.value != null:
+            self.value[0] = 0 as char
+
+    // ── accessors ──
+
+    fn len() i32:
+        return self.count
+
+    fn empty() bool:
+        return self.count == 0
+
+    fn c_str() char[]:
+        return self.value ?? ""
+
+    fn at(i i32) char:
+        if i < 0 or i >= self.count: return 0 as char
+        return self.value[i]
+
+    // ── search ──
+
+    fn find(needle char[]?) i32:
+        if needle == null: return -1
+        n i32 = strlen(needle) as i32
+        if n == 0: return 0
+        i i32 = 0
+        while i + n <= self.count:
+            if strncmp(self.value[i..i + n], needle, n) == 0:
+                return i
+            i += 1
+        return -1
+
+    fn contains(needle char[]?) bool:
+        return self.find(needle) != -1
+
+    fn starts_with(prefix char[]?) bool:
+        if prefix == null: return True
+        n i32 = strlen(prefix) as i32
+        if n > self.count: return False
+        return strncmp(self.value[0..n], prefix, n) == 0
+
+    fn ends_with(suffix char[]?) bool:
+        if suffix == null: return True
+        n i32 = strlen(suffix) as i32
+        if n > self.count: return False
+        return strncmp(self.value[self.count - n..self.count], suffix, n) == 0
+
+    // ── transformations, each returns a new String ──
+
+    fn substr(start i32, length i32) String:
+        res String = String::create()
+        if start < 0 or start >= self.count: return res
+        stop i32 = start + length
+        if stop > self.count: stop = self.count
+        i i32 = start
+        while i < stop:
+            res.push(self.value[i])
+            i += 1
+        return res
+
+    fn upper() String:
+        res String = String::create()
+        i i32 = 0
+        while i < self.count:
+            c char = self.value[i]
+            if c >= 'a' and c <= 'z':
+                res.push((c as i32 - 32) as char)
+            else:
+                res.push(c)
+            i += 1
+        return res
+
+    fn lower() String:
+        res String = String::create()
+        i i32 = 0
+        while i < self.count:
+            c char = self.value[i]
+            if c >= 'A' and c <= 'Z':
+                res.push((c as i32 + 32) as char)
+            else:
+                res.push(c)
+            i += 1
+        return res
+
+    fn trim() String:
+        start i32 = 0
+        while start < self.count:
+            c char = self.value[start]
+            if c == ' ' or c == '\t' or c == '\n' or c == '\r':
+                start += 1
+            else:
+                break
+        stop i32 = self.count
+        while stop > start:
+            c char = self.value[stop - 1]
+            if c == ' ' or c == '\t' or c == '\n' or c == '\r':
+                stop -= 1
+            else:
+                break
+        return self.substr(start, stop - start)
+
+    fn replace(old char[]?, fresh char[]?) String:
+        res String = String::create()
+        if old == null:
+            res.assign(self.value)
+            return res
+        n i32 = strlen(old) as i32
+        if n == 0:
+            res.assign(self.value)
+            return res
+        i i32 = 0
+        while i < self.count:
+            hit bool = False
+            if i + n <= self.count:
+                hit = strncmp(self.value[i..i + n], old, n) == 0
+            if hit:
+                res.join(fresh)
+                i += n
+            else:
+                res.push(self.value[i])
+                i += 1
+        return res
+
+    fn repeat(n i32) String:
+        res String = String::create()
+        i i32 = 0
+        while i < n:
+            res.join(self.value)
+            i += 1
+        return res
+
+    fn reverse() String:
+        res String = String::create()
+        i i32 = self.count - 1
+        while i >= 0:
+            res.push(self.value[i])
+            i -= 1
+        return res
+
+    // ── conversion ──
+
+    fn compare(ref other String) i32:
+        return strcmp(self.value ?? "", other.value ?? "")
+
+    fn to_int() i32:
+        return atoi(self.value ?? "")
+
+    // ── operators ──
+
+    operator = (str char[]?) void:
+        self.assign(str)
+
+    operator = (ref v String) void:
+        self.assign(v.value)
+
+    operator + (ref v String) String:
+        res String = String::from(self.value)
+        res.join(v.value)
+        return res
+
+    operator + (str char[]?) String:
+        res String = String::from(self.value)
+        res.join(str)
+        return res
+
+    operator += (ref v String) void:
+        self.join(v.value)
+
+    operator += (str char[]?) void:
+        self.join(str)
+
+    operator == (ref v String) bool:
+        return self.compare(ref v) == 0
+
+    operator != (ref v String) bool:
+        return self.compare(ref v) != 0
+
+    operator == (str char[]?) bool:
+        if str == null: return self.count == 0
+        return strcmp(self.value ?? "", str) == 0
+
+    operator != (str char[]?) bool:
+        if str == null: return self.count != 0
+        return strcmp(self.value ?? "", str) != 0
+
+    operator < (ref v String) bool:
+        return self.compare(ref v) < 0
+
+    operator > (ref v String) bool:
+        return self.compare(ref v) > 0
+
+    operator < (str char[]?) bool:
+        return strcmp(self.value ?? "", str ?? "") < 0
+
+    operator > (str char[]?) bool:
+        return strcmp(self.value ?? "", str ?? "") > 0
+
+    operator output() char[]:
+        return self.value ?? ""

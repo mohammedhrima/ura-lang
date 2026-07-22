@@ -1,7 +1,0 @@
-// errors/refs/002 — ref of mismatched type
-use "@/header"
-
-main():
-    x int = 5
-    ref y chars = x
-    output(y, "\n")

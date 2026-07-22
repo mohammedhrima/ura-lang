@@ -1,0 +1,74 @@
+// unistd.h — POSIX OS calls. Linux + macOS both POSIX-compatible here.
+
+// Process IDs
+proto fn getpid() i32
+proto fn getppid() i32
+proto fn getuid() i32
+proto fn geteuid() i32
+proto fn getgid() i32
+proto fn getegid() i32
+proto fn setuid(uid i32) i32
+proto fn setgid(gid i32) i32
+
+// Process control
+proto fn fork() i32
+proto fn execv(path pointer, argv pointer) i32
+proto fn execve(path pointer, argv pointer, envp pointer) i32
+proto fn execvp(file pointer, argv pointer) i32
+proto fn _exit(code i32) void
+
+// Working directory
+proto fn getcwd(buf pointer, size i64) pointer
+proto fn chdir(path pointer) i32
+proto fn fchdir(fd i32) i32
+
+// File system: paths
+proto fn access(path pointer, mode i32) i32
+proto fn unlink(path pointer) i32
+proto fn rmdir(path pointer) i32
+proto fn link(oldpath pointer, newpath pointer) i32
+proto fn symlink(target pointer, linkpath pointer) i32
+proto fn readlink(path pointer, buf pointer, bufsize i64) i64
+proto fn rename(oldpath pointer, newpath pointer) i32
+proto fn truncate(path pointer, length i64) i32
+proto fn ftruncate(fd i32, length i64) i32
+
+// File descriptors
+proto fn close(fd i32) i32
+proto fn dup(fd i32) i32
+proto fn dup2(oldfd i32, newfd i32) i32
+proto fn pipe(pipefd pointer) i32
+proto fn lseek(fd i32, offset i64, whence i32) i64
+proto fn isatty(fd i32) i32
+proto fn ttyname(fd i32) pointer
+
+// Sleep
+proto fn sleep(seconds i32) i32
+proto fn usleep(microseconds i32) i32
+
+// Host info
+proto fn gethostname(name pointer, len i64) i32
+proto fn sethostname(name pointer, len i64) i32
+
+// Misc
+proto fn alarm(seconds i32) i32
+proto fn pause() i32
+proto fn sync() void
+proto fn fsync(fd i32) i32
+proto fn fdatasync(fd i32) i32
+
+// ── access() mode constants (POSIX, identical on Linux and macOS) ──────────
+F_OK i32 = 0
+X_OK i32 = 1
+W_OK i32 = 2
+R_OK i32 = 4
+
+// ── lseek() whence constants ───────────────────────────────────────────────
+SEEK_SET i32 = 0
+SEEK_CUR i32 = 1
+SEEK_END i32 = 2
+
+// ── stdin/stdout/stderr file descriptors ───────────────────────────────────
+STDIN_FILENO  i32 = 0
+STDOUT_FILENO i32 = 1
+STDERR_FILENO i32 = 2

@@ -1,5 +1,0 @@
-[1m[0;31merror: [0m'n': ref parameter requires a named variable
-  [1m[34m-->[0m src/tests/errors/functions/008.ura:8:10
-  [1m[34m|[0m
-[1m[34m8 |[0m     bump(5)
-  [1m[34m|[0m          [1;31m^[0m

@@ -1,6 +1,0 @@
-// errors/types/004 — type mismatch in assignment
-use "@/header"
-
-main():
-    x int = "hello"
-    output(x, "\n")

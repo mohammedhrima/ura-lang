@@ -1,0 +1,132 @@
+// net_client.ura — a TCP chat client (macOS), single-process event loop.
+//
+// No fork: one `poll()` loop watches both stdin and the socket, and handles
+// whichever becomes ready. Structs used:
+//   - SockAddr : the C sockaddr, passed to connect() by `ref`
+//   - PollFd   : one entry of the poll set; poll() gets `ref fds[0]`
+//   - Socket   : the connection, with `operator drop` (safe: one socket)
+//
+// write / strlen come from the auto-loaded common.ura; the socket calls are
+// declared here so their address arguments can take a struct by `ref`.
+
+AF_INET     i32 = 2
+SOCK_STREAM i32 = 1
+PORT        i32 = 8080
+POLLIN      i16 = 1
+
+// macOS sockaddr_in, 16 bytes: len(1) family(1) port(2,BE) ip(4) zero(8)
+struct SockAddr:
+    len    char
+    family char
+    port   i16
+    ip     i32
+    zero   i64
+
+    pub fn create(port i32, ip i32) SockAddr:
+        a SockAddr
+        a.len    = 16 as char
+        a.family = AF_INET as char
+        a.port   = (((port & 255) << 8) | (port >> 8)) as i16
+        a.ip     = ip
+        a.zero   = 0
+        return a
+
+// C: struct pollfd { int fd; short events; short revents; }  (8 bytes)
+struct PollFd:
+    fd      i32
+    events  i16
+    revents i16
+
+    fn watch(fd i32) void:
+        self.fd      = fd
+        self.events  = POLLIN
+        self.revents = 0
+
+    fn has_input() bool:
+        return (self.revents & POLLIN) != 0
+
+proto fn socket(domain i32, type i32, protocol i32) i32
+proto fn connect(fd i32, ref addr SockAddr, len i32) i32
+proto fn close(fd i32) i32
+proto fn read(fd i32, buf pointer, n i64) i64
+proto fn poll(ref fds PollFd, nfds i32, timeout i32) i32
+
+// 127.0.0.1 -> the four octets in network order, packed into one i32.
+fn ipv4(a i32, b i32, c i32, d i32) i32:
+    return a | (b << 8) | (c << 16) | (d << 24)
+
+// Unbuffered terminal write, so prompts appear before we block on poll.
+fn log(msg char[]) void:
+    write(1, msg, strlen(msg))
+
+struct Socket:
+    fd i32
+
+    fn valid() bool:
+        return self.fd >= 0
+
+    fn send_text(msg char[]) void:
+        write(self.fd, msg, strlen(msg))
+
+    fn recv_into(buf char[], cap i32) i32:
+        return read(self.fd, buf, cap as i64) as i32
+
+    operator drop:
+        if self.fd >= 0:
+            close(self.fd)
+
+main():
+    sock Socket
+    sock.fd = socket(AF_INET, SOCK_STREAM, 0)
+    if not sock.valid():
+        log("\033[0;31m[client] socket failed\033[0m\n")
+        return 1
+
+    addr SockAddr = SockAddr::create(PORT, ipv4(127, 0, 0, 1))
+    if connect(sock.fd, ref addr, 16) < 0:
+        log("\033[0;31m[client] connect failed\033[0m\n")
+        return 1
+
+    log("\033[0;36m[client]\033[0m connected to server on port 8080\n")
+
+    // poll set: [0] = stdin, [1] = the socket
+    fds PollFd[] = new PollFd[2]
+    fds[0].watch(0)
+    fds[1].watch(sock.fd)
+
+    buf  char[] = new char[1024]
+    rbuf char[] = new char[1024]
+    r i32 = 0
+
+    log("\033[0;36m[client]\033[0m > ")
+    loop:
+        poll(ref fds[0], 2, -1)
+
+        // a line typed at the terminal -> send it (drop the newline)
+        if fds[0].has_input():
+            r = read(0, buf, 1023) as i32
+            if r <= 0:
+                break
+            buf[r - 1] = 0 as char
+            sock.send_text(buf)
+            log("\033[0;36m[client]\033[0m > ")
+        elif fds[0].revents != 0:
+            // stdin redirected / closed: skip it (negative fd) and keep
+            // receiving from the server instead of spinning on POLLNVAL.
+            fds[0].fd = -1
+
+        // bytes from the server -> print them, then reprint the prompt
+        if fds[1].has_input():
+            r = sock.recv_into(rbuf, 1023)
+            if r <= 0:
+                log("\r\033[2K\033[0;31m[client]\033[0m server disconnected\n")
+                break
+            rbuf[r] = 0 as char
+            log("\r\033[2K\033[0;33m[server]\033[0m ")
+            log(rbuf)
+            log("\n\033[0;36m[client]\033[0m > ")
+
+    clean fds
+    clean buf
+    clean rbuf
+    return 0

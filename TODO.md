@@ -1,88 +1,60 @@
+# ura-lang rewrite — master roadmap
 
-+ add extension code in ura-lang code
-+ instead of using struct ptr let's use in Token and index
+Rewrite ura-lang feature by feature, full pipeline each. Nothing gets skipped, nothing gets forgotten.
 
-+ use dynamic/statis (for standart libraries)
+**Rules**
+- Every feature = full pipeline: lexer → parser → `analyze` → `type_check` → `code_gen` (dispatcher case + helper in its stage file, like `lex_*` in `frontend/lexer.c`) → tests.
+- Tests per feature: golden `.ll` (success), `.err` (compile error), `.run` (runtime) — `uv run config/tasks.py tests` must stay green.
+- Check `old.c` first for every old feature — port the intent, not the bugs.
+- One feature per commit. Update README/ROADMAP when a feature lands.
+- Points: 1 pt ≈ 4h.
 
-+ for templates implmetation, consider making the function takes data_type of the thing it's trying to create function for, example: template fn foo(v: T):  -> foo<int>(2), check how zig implement templates
+## M2 — control flow
+- [ ] block scoping + shadowing golden (1) — scoping works; struct shadowing is covered (structs 011), variable shadowing golden still missing
 
-+ implment this feature, even though function is declared at the bottom, we can acces it from the top, figure it out
+## M4 — globals, memory, type utilities
+- [ ] global variables (lift top-level fn-only restriction; LLVM globals) (3)
+- [ ] design: explicit `stack` keyword — keep or drop (1)
 
-+ clone (to deep copy), assing to shallow copy
+## M5 — aggregates
+- [ ] tuples + destructuring (4)
 
-+ check wtock trading in c++
-+ youtube channels:
-    + the cherno
-    + cppcon
-    + Jason turner
+## M6 — collections & String
+- [ ] List[T] (5)
+- [ ] Map[K, V] (6)
+- [ ] NEW string interpolation (3)
 
-+ zakaria feedbacks:
-    + output should no longer hardcode declar printf
-    + ref attribute in struct must not require assignementI
-    + array must have attribute len
-    + auto free heap
-    + importi only functions instead use
-    + import loop when some of the files is importing main file
-    + reference just no be assigned to null
+## M7 — modules & linking
+- [ ] mod namespaces (4) — `mod` is a reserved word with no parser; `::` lexes but is unused. `.` is taken by field access and `a.b(...)` does not parse at all yet
+- [ ] wire lex_link; URA_LINK external linking (3) — `link "..."` parses and discards the path, so raylib cannot be linked
+- [ ] multi-file CLI: `ura a.ura b.ura` silently compiles only the last file (1)
 
-+ use printf("%*s", string_len, string): * to set how many charters to print (usefull fpr string struct)
-+ find a way to handle diferent versions of libraries (check github package release)
+## M8 — error handling & safety
+- [ ] assert / panic keywords on the existing trap machinery (guard_nonzero generalizes) (2)
+- [ ] Result / Option — enums now exist, build on them (6)
+- [ ] design decision: try/catch — tokens commented out; Result direction suggests DROP (0)
 
-+ in README link keyword is explained wrong
-+ test output struct type
-+ use dlopen: https://www.youtube.com/watch?v=0o8Ex8mXigU
-+ check this protfolio https://wmbolles.com/
+## M9 — language polish
+- [ ] const / immutability (3)
+- [ ] type inference `:=` (4)
+- [ ] type aliases (2)
+- [ ] fn overloading (3) · default param values (2) · named returns (2)
+- [ ] struct embedding (4)
+- [ ] @if conditional compilation (3)
+- [ ] generics — LAST, everything monomorphizes (12)
 
-+ I had enough of bash and python, build my own scripting engine to handle stuff
+## M10 — stdlib & tooling (continuous)
+- [ ] std core: string (5) — commented down to its 37 protos; its blockers (`char[]` indexing, `pub`, `operator`, `::`) now exist
+- [ ] std extended modules (math/time/os/net/…) (8) — blocked, each commented with its reason:
+      `@if` (dirent, errno, fcntl, net, signals, stat, unistd) · globals (os, raylib, + 105 constants) · f64 (math, atof/strtod) · time
+- [ ] regression tests for old bug list (2)
+- [ ] docs refresh per milestone (3) · vscode-extension sync (2)
+- [ ] post-1.0: formatter (9) · LSP (13) · package manager on tasks.py/uv (12)
 
-+ remove all .init in code base
-
-+ foreach item in items:
-    // do something
-+ use match instead of switch, (no need for break keyword)
-+ clean the header file when you finish
-
-+ you can do clang file.ll -o exe.out
-+ use "atexit" function
-+ check the closing for (), [], {} in tokenize
-
-+ check those functions:
-    + strncasecmp, isxdigit, strtoul, open_memstream
-    + use stuff like "char *loc;" to see thelocaton of failed + token in case of wanting to print something
-    + __attribute__((format(printf, 1, 2)))
-
-+ run_compiler
-+ run_parser
-+ run_linker 
-+ etc ...
-
-
-
-+ base de donner (psql):
-    + jointure
-    + procedure
-    + fonctions
-    + index
-
-+ C#:
-    + 
-
-+ ne pas balancer on arabe
-+ xslt (maybe it's xsql)
-+ portfolio
-+ SOLID principals
-+ type of tests (one to one ...)
-
-
-+ check 'smoke tests', all type of tests
-
-
-struct User:
-    bug_attribute User
-
-+ i want to be able to access funcitons even though they are declared in later
-+ throw error if struct has no attirbute or find a way to use a struct even though it has no attirbute
-+ use $ to .ll to name funcitons inside struct or module
-
-
-+ .ura -> tokens -> AST -> IR -> LOWER IR -> codegen
+## Design decisions ledger (open)
+- explicit stack/heap keywords vs implicit — decide at M4
+- try/catch vs Result/Option — decide at M8
+- the guard should throw an error
+- check if all features are implemented
+- handle globals — still open, and now the single biggest blocker in ura-lib (105 constants + `os`/`raylib` need it)
+- implement input

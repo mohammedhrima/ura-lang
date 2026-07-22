@@ -1,0 +1,100 @@
+// errno.h — thread-local errno access.
+//
+// In modern C, `errno` is a macro that expands to *__errno_location() on Linux
+// glibc and *__error() on macOS. We expose them as functions; user code calls
+// the accessor and dereferences.
+//
+//   err i32 = __get_errno()
+//
+// (`*errno` itself is not a function; the symbol is per-thread.)
+
+// BLOCKED: `@if` conditional compilation is not implemented (TODO.md M9).
+// `@` lexes as an ordinary identifier character, so `@if linux:` parses as
+// a bare identifier and then fails. Uncomment once @if lands.
+// @if linux:
+//     proto fn __errno_location() pointer
+// @elif macos:
+//     proto fn __error() pointer
+
+// strerror family — same on both
+proto fn strerror(errnum i32) pointer
+proto fn strerror_r(errnum i32, buf pointer, buflen i64) i32
+proto fn perror(s pointer) void
+
+// ── Common errno values ───────────────────────────────────────────────────
+// 1..34 match between Linux and macOS (POSIX defines this baseline).
+// EAGAIN/EWOULDBLOCK/EDEADLK/EOPNOTSUPP and the larger numbers diverge.
+EPERM        i32 = 1
+ENOENT       i32 = 2
+ESRCH        i32 = 3
+EINTR        i32 = 4
+EIO          i32 = 5
+ENXIO        i32 = 6
+E2BIG        i32 = 7
+ENOEXEC      i32 = 8
+EBADF        i32 = 9
+ECHILD       i32 = 10
+EACCES       i32 = 13
+EFAULT       i32 = 14
+ENOTBLK      i32 = 15
+EBUSY        i32 = 16
+EEXIST       i32 = 17
+EXDEV        i32 = 18
+ENODEV       i32 = 19
+ENOTDIR      i32 = 20
+EISDIR       i32 = 21
+EINVAL       i32 = 22
+ENFILE       i32 = 23
+EMFILE       i32 = 24
+ENOTTY       i32 = 25
+ETXTBSY      i32 = 26
+EFBIG        i32 = 27
+ENOSPC       i32 = 28
+ESPIPE       i32 = 29
+EROFS        i32 = 30
+EMLINK       i32 = 31
+EPIPE        i32 = 32
+EDOM         i32 = 33
+ERANGE       i32 = 34
+
+// @if linux:
+//     EAGAIN        i32 = 11       // also EWOULDBLOCK on Linux
+//     EWOULDBLOCK   i32 = 11
+//     ENOMEM        i32 = 12
+//     EDEADLK       i32 = 35
+//     ENAMETOOLONG  i32 = 36
+//     ENOLCK        i32 = 37
+//     ENOSYS        i32 = 38
+//     ENOTEMPTY     i32 = 39
+//     ELOOP         i32 = 40
+//     ENOMSG        i32 = 42
+//     EIDRM         i32 = 43
+//     EOVERFLOW     i32 = 75
+//     ECONNREFUSED  i32 = 111
+//     EHOSTUNREACH  i32 = 113
+//     EADDRINUSE    i32 = 98
+//     EADDRNOTAVAIL i32 = 99
+//     ENETUNREACH   i32 = 101
+//     ECONNRESET    i32 = 104
+//     ETIMEDOUT     i32 = 110
+
+// @elif macos:
+//     EAGAIN        i32 = 35
+//     EWOULDBLOCK   i32 = 35       // same as EAGAIN on Darwin
+//     ENOMEM        i32 = 12
+//     EDEADLK       i32 = 11
+//     ENAMETOOLONG  i32 = 63
+//     ENOLCK        i32 = 77
+//     ENOSYS        i32 = 78
+//     ENOTEMPTY     i32 = 66
+//     ELOOP         i32 = 62
+//     ENOMSG        i32 = 91
+//     EIDRM         i32 = 90
+//     EOVERFLOW     i32 = 84
+//     ECONNREFUSED  i32 = 61
+//     EHOSTUNREACH  i32 = 65
+//     EADDRINUSE    i32 = 48
+//     EADDRNOTAVAIL i32 = 49
+//     ENETUNREACH   i32 = 51
+//     ECONNRESET    i32 = 54
+//     ETIMEDOUT     i32 = 60
