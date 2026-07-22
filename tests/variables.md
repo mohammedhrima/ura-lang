@@ -486,7 +486,7 @@ entry:
   %hp = alloca i32, align 4
   store i32 100, i32* %hp, align 4
   %xp = alloca i64, align 8
-  store i64 999999, i64* %xp, align 4
+  store i64 999999, i64* %xp, align 8
   %level = alloca i16, align 2
   store i16 12, i16* %level, align 2
   %grade = alloca i8, align 1
@@ -502,7 +502,7 @@ entry:
   %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.1, i32 0, i32 0), i32 %len32, i8* %str.data, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0))
   %hp2 = load i32, i32* %hp, align 4
   %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @fmt.5, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.3, i32 0, i32 0), i32 %hp2, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.4, i32 0, i32 0))
-  %xp3 = load i64, i64* %xp, align 4
+  %xp3 = load i64, i64* %xp, align 8
   %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt.8, i32 0, i32 0), i32 7, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.6, i32 0, i32 0), i64 %xp3, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.7, i32 0, i32 0))
   %level4 = load i16, i16* %level, align 2
   %s2i = sext i16 %level4 to i32

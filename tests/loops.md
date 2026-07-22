@@ -532,12 +532,12 @@ entry:
   %arr.data = extractvalue { i32*, i64 } %nums3, 0
   %arr.len4 = extractvalue { i32*, i64 } %nums3, 1
   %idx = alloca i64, align 8
-  store i64 0, i64* %idx, align 4
+  store i64 0, i64* %idx, align 8
   %x = alloca i32, align 4
   br label %for.cond
 
 for.cond:                                         ; preds = %for.inc, %entry
-  %i = load i64, i64* %idx, align 4
+  %i = load i64, i64* %idx, align 8
   %more = icmp slt i64 %i, %arr.len4
   br i1 %more, label %for.body, label %for.end
 
@@ -552,9 +552,9 @@ for.body:                                         ; preds = %for.cond
   br label %for.inc
 
 for.inc:                                          ; preds = %for.body
-  %i8 = load i64, i64* %idx, align 4
+  %i8 = load i64, i64* %idx, align 8
   %next = add i64 %i8, 1
-  store i64 %next, i64* %idx, align 4
+  store i64 %next, i64* %idx, align 8
   br label %for.cond
 
 for.end:                                          ; preds = %for.cond
@@ -681,11 +681,11 @@ entry:
   %arr.data = extractvalue { i32*, i64 } %nums4, 0
   %arr.len5 = extractvalue { i32*, i64 } %nums4, 1
   %idx = alloca i64, align 8
-  store i64 0, i64* %idx, align 4
+  store i64 0, i64* %idx, align 8
   br label %for.cond
 
 for.cond:                                         ; preds = %for.inc, %entry
-  %i = load i64, i64* %idx, align 4
+  %i = load i64, i64* %idx, align 8
   %more = icmp slt i64 %i, %arr.len5
   br i1 %more, label %for.body, label %for.end
 
@@ -697,9 +697,9 @@ for.body:                                         ; preds = %for.cond
   br label %for.inc
 
 for.inc:                                          ; preds = %for.body
-  %i6 = load i64, i64* %idx, align 4
+  %i6 = load i64, i64* %idx, align 8
   %next = add i64 %i6, 1
-  store i64 %next, i64* %idx, align 4
+  store i64 %next, i64* %idx, align 8
   br label %for.cond
 
 for.end:                                          ; preds = %for.cond
@@ -707,12 +707,12 @@ for.end:                                          ; preds = %for.cond
   %arr.data8 = extractvalue { i32*, i64 } %nums7, 0
   %arr.len9 = extractvalue { i32*, i64 } %nums7, 1
   %idx10 = alloca i64, align 8
-  store i64 0, i64* %idx10, align 4
+  store i64 0, i64* %idx10, align 8
   %x11 = alloca i32, align 4
   br label %for.cond12
 
 for.cond12:                                       ; preds = %for.inc14, %for.end
-  %i16 = load i64, i64* %idx10, align 4
+  %i16 = load i64, i64* %idx10, align 8
   %more17 = icmp slt i64 %i16, %arr.len9
   br i1 %more17, label %for.body13, label %for.end15
 
@@ -725,9 +725,9 @@ for.body13:                                       ; preds = %for.cond12
   br label %for.inc14
 
 for.inc14:                                        ; preds = %for.body13
-  %i21 = load i64, i64* %idx10, align 4
+  %i21 = load i64, i64* %idx10, align 8
   %next22 = add i64 %i21, 1
-  store i64 %next22, i64* %idx10, align 4
+  store i64 %next22, i64* %idx10, align 8
   br label %for.cond12
 
 for.end15:                                        ; preds = %for.cond12
@@ -1073,11 +1073,11 @@ entry:
   %heap = call i8* @calloc(i64 2, i64 16)
   %arr = bitcast i8* %heap to { i32*, i64 }*
   %i = alloca i64, align 8
-  store i64 0, i64* %i, align 4
+  store i64 0, i64* %i, align 8
   br label %arr.cond
 
 arr.cond:                                         ; preds = %arr.body, %entry
-  %i1 = load i64, i64* %i, align 4
+  %i1 = load i64, i64* %i, align 8
   %more = icmp slt i64 %i1, 2
   br i1 %more, label %arr.body, label %arr.end
 
@@ -1086,11 +1086,11 @@ arr.body:                                         ; preds = %arr.cond
   %arr3 = bitcast i8* %heap2 to i32*
   %arr.ptr = insertvalue { i32*, i64 } undef, i32* %arr3, 0
   %arr.len = insertvalue { i32*, i64 } %arr.ptr, i64 3, 1
-  %i4 = load i64, i64* %i, align 4
+  %i4 = load i64, i64* %i, align 8
   %arr.slot = getelementptr { i32*, i64 }, { i32*, i64 }* %arr, i64 %i4
   store { i32*, i64 } %arr.len, { i32*, i64 }* %arr.slot, align 8
   %next = add i64 %i4, 1
-  store i64 %next, i64* %i, align 4
+  store i64 %next, i64* %i, align 8
   br label %arr.cond
 
 arr.end:                                          ; preds = %arr.cond
@@ -1151,12 +1151,12 @@ entry:
   %arr.data = extractvalue { { i32*, i64 }*, i64 } %grid1, 0
   %arr.len = extractvalue { { i32*, i64 }*, i64 } %grid1, 1
   %idx = alloca i64, align 8
-  store i64 0, i64* %idx, align 4
+  store i64 0, i64* %idx, align 8
   %row = alloca { i32*, i64 }, align 8
   br label %for.cond
 
 for.cond:                                         ; preds = %for.inc, %entry
-  %i = load i64, i64* %idx, align 4
+  %i = load i64, i64* %idx, align 8
   %more = icmp slt i64 %i, %arr.len
   br i1 %more, label %for.body, label %for.end
 
@@ -1168,21 +1168,21 @@ for.body:                                         ; preds = %for.cond
   %arr.data3 = extractvalue { i32*, i64 } %row2, 0
   %arr.len4 = extractvalue { i32*, i64 } %row2, 1
   %idx5 = alloca i64, align 8
-  store i64 0, i64* %idx5, align 4
+  store i64 0, i64* %idx5, align 8
   %v = alloca i32, align 4
   br label %for.cond6
 
 for.inc:                                          ; preds = %for.end9
-  %i16 = load i64, i64* %idx, align 4
+  %i16 = load i64, i64* %idx, align 8
   %next17 = add i64 %i16, 1
-  store i64 %next17, i64* %idx, align 4
+  store i64 %next17, i64* %idx, align 8
   br label %for.cond
 
 for.end:                                          ; preds = %for.cond
   ret void
 
 for.cond6:                                        ; preds = %for.inc8, %for.body
-  %i10 = load i64, i64* %idx5, align 4
+  %i10 = load i64, i64* %idx5, align 8
   %more11 = icmp slt i64 %i10, %arr.len4
   br i1 %more11, label %for.body7, label %for.end9
 
@@ -1195,9 +1195,9 @@ for.body7:                                        ; preds = %for.cond6
   br label %for.inc8
 
 for.inc8:                                         ; preds = %for.body7
-  %i15 = load i64, i64* %idx5, align 4
+  %i15 = load i64, i64* %idx5, align 8
   %next = add i64 %i15, 1
-  store i64 %next, i64* %idx5, align 4
+  store i64 %next, i64* %idx5, align 8
   br label %for.cond6
 
 for.end9:                                         ; preds = %for.cond6
@@ -1217,12 +1217,12 @@ entry:
   %arr.data = extractvalue { %Room*, i64 } %rooms1, 0
   %arr.len = extractvalue { %Room*, i64 } %rooms1, 1
   %idx = alloca i64, align 8
-  store i64 0, i64* %idx, align 4
+  store i64 0, i64* %idx, align 8
   %r = alloca %Room, align 8
   br label %for.cond
 
 for.cond:                                         ; preds = %for.inc, %entry
-  %i = load i64, i64* %idx, align 4
+  %i = load i64, i64* %idx, align 8
   %more = icmp slt i64 %i, %arr.len
   br i1 %more, label %for.body, label %for.end
 
@@ -1236,9 +1236,9 @@ for.body:                                         ; preds = %for.cond
   br label %for.inc
 
 for.inc:                                          ; preds = %for.body
-  %i3 = load i64, i64* %idx, align 4
+  %i3 = load i64, i64* %idx, align 8
   %next = add i64 %i3, 1
-  store i64 %next, i64* %idx, align 4
+  store i64 %next, i64* %idx, align 8
   br label %for.cond
 
 for.end:                                          ; preds = %for.cond
@@ -1249,11 +1249,11 @@ for.end:                                          ; preds = %for.cond
   %arr.data7 = extractvalue { %Room*, i64 } %rooms6, 0
   %arr.len8 = extractvalue { %Room*, i64 } %rooms6, 1
   %idx9 = alloca i64, align 8
-  store i64 0, i64* %idx9, align 4
+  store i64 0, i64* %idx9, align 8
   br label %for.cond10
 
 for.cond10:                                       ; preds = %for.inc12, %for.end
-  %i14 = load i64, i64* %idx9, align 4
+  %i14 = load i64, i64* %idx9, align 8
   %more15 = icmp slt i64 %i14, %arr.len8
   br i1 %more15, label %for.body11, label %for.end13
 
@@ -1267,9 +1267,9 @@ for.body11:                                       ; preds = %for.cond10
   br label %for.inc12
 
 for.inc12:                                        ; preds = %for.body11
-  %i20 = load i64, i64* %idx9, align 4
+  %i20 = load i64, i64* %idx9, align 8
   %next21 = add i64 %i20, 1
-  store i64 %next21, i64* %idx9, align 4
+  store i64 %next21, i64* %idx9, align 8
   br label %for.cond10
 
 for.end13:                                        ; preds = %for.cond10
@@ -1279,12 +1279,12 @@ for.end13:                                        ; preds = %for.cond10
   %arr.data25 = extractvalue { %Room*, i64 } %rooms24, 0
   %arr.len26 = extractvalue { %Room*, i64 } %rooms24, 1
   %idx27 = alloca i64, align 8
-  store i64 0, i64* %idx27, align 4
+  store i64 0, i64* %idx27, align 8
   %r28 = alloca %Room, align 8
   br label %for.cond29
 
 for.cond29:                                       ; preds = %for.inc31, %for.end13
-  %i33 = load i64, i64* %idx27, align 4
+  %i33 = load i64, i64* %idx27, align 8
   %more34 = icmp slt i64 %i33, %arr.len26
   br i1 %more34, label %for.body30, label %for.end32
 
@@ -1298,9 +1298,9 @@ for.body30:                                       ; preds = %for.cond29
   br label %for.inc31
 
 for.inc31:                                        ; preds = %for.body30
-  %i39 = load i64, i64* %idx27, align 4
+  %i39 = load i64, i64* %idx27, align 8
   %next40 = add i64 %i39, 1
-  store i64 %next40, i64* %idx27, align 4
+  store i64 %next40, i64* %idx27, align 8
   br label %for.cond29
 
 for.end32:                                        ; preds = %for.cond29
@@ -1320,11 +1320,11 @@ entry:
   %arr.data = extractvalue { { i32*, i64 }*, i64 } %arr, 0
   %arr.len = extractvalue { { i32*, i64 }*, i64 } %arr, 1
   %i = alloca i64, align 8
-  store i64 0, i64* %i, align 4
+  store i64 0, i64* %i, align 8
   br label %free.cond
 
 free.cond:                                        ; preds = %free.body, %entry
-  %i1 = load i64, i64* %i, align 4
+  %i1 = load i64, i64* %i, align 8
   %more = icmp slt i64 %i1, %arr.len
   br i1 %more, label %free.body, label %free.end
 
@@ -1334,9 +1334,9 @@ free.body:                                        ; preds = %free.cond
   %arr.data2 = extractvalue { i32*, i64 } %inner, 0
   %free.ptr = bitcast i32* %arr.data2 to i8*
   call void @free(i8* %free.ptr)
-  %i3 = load i64, i64* %i, align 4
+  %i3 = load i64, i64* %i, align 8
   %next = add i64 %i3, 1
-  store i64 %next, i64* %i, align 4
+  store i64 %next, i64* %i, align 8
   br label %free.cond
 
 free.end:                                         ; preds = %free.cond
@@ -2114,11 +2114,11 @@ entry:
   %open = alloca i32, align 4
   store i32 0, i32* %open, align 4
   %i = alloca i64, align 8
-  store i64 0, i64* %i, align 4
+  store i64 0, i64* %i, align 8
   br label %while.cond
 
 while.cond:                                       ; preds = %endif, %then, %entry
-  %i10 = load i64, i64* %i, align 4
+  %i10 = load i64, i64* %i, align 8
   %tiles11 = load { i8*, i64 }, { i8*, i64 }* %tiles, align 8
   %len = extractvalue { i8*, i64 } %tiles11, 1
   %lt = icmp ult i64 %i10, %len
@@ -2127,7 +2127,7 @@ while.cond:                                       ; preds = %endif, %then, %entr
 while.body:                                       ; preds = %while.cond
   %tiles12 = load { i8*, i64 }, { i8*, i64 }* %tiles, align 8
   %arr.data = extractvalue { i8*, i64 } %tiles12, 0
-  %i13 = load i64, i64* %i, align 4
+  %i13 = load i64, i64* %i, align 8
   %arr.at = getelementptr i8, i8* %arr.data, i64 %i13
   %idx = load i8, i8* %arr.at, align 1
   %eq = icmp eq i8 %idx, 35
@@ -2142,15 +2142,15 @@ endif:                                            ; preds = %while.body
   %open15 = load i32, i32* %open, align 4
   %add16 = add i32 %open15, 1
   store i32 %add16, i32* %open, align 4
-  %i17 = load i64, i64* %i, align 4
+  %i17 = load i64, i64* %i, align 8
   %add18 = add i64 %i17, 1
-  store i64 %add18, i64* %i, align 4
+  store i64 %add18, i64* %i, align 8
   br label %while.cond
 
 then:                                             ; preds = %while.body
-  %i14 = load i64, i64* %i, align 4
+  %i14 = load i64, i64* %i, align 8
   %add = add i64 %i14, 1
-  store i64 %add, i64* %i, align 4
+  store i64 %add, i64* %i, align 8
   br label %while.cond
 }
 

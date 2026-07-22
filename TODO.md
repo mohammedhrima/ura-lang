@@ -15,7 +15,6 @@ Rewrite ura-lang feature by feature, full pipeline each. Nothing gets skipped, n
 ## M4 — globals, memory, type utilities
 - [ ] global variables (lift top-level fn-only restriction; LLVM globals) (3)
 - [ ] design: explicit `stack` keyword — keep or drop (1)
-- [ ] typeof / sizeof (2) — helpers exist (`code_gen_typeof`/`code_gen_sizeof`) but no golden tests yet
 
 ## M5 — aggregates
 - [ ] tuples + destructuring (4)

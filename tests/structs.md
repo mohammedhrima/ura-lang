@@ -1973,11 +1973,11 @@ entry:
   %g = alloca { { %Room*, i64 }*, i64 }, align 8
   %arr = alloca { %Room*, i64 }, i64 2, align 8
   %i = alloca i64, align 8
-  store i64 0, i64* %i, align 4
+  store i64 0, i64* %i, align 8
   br label %arr.cond
 
 arr.cond:                                         ; preds = %arr.body, %entry
-  %i1 = load i64, i64* %i, align 4
+  %i1 = load i64, i64* %i, align 8
   %more = icmp slt i64 %i1, 2
   br i1 %more, label %arr.body, label %arr.end
 
@@ -1987,11 +1987,11 @@ arr.body:                                         ; preds = %arr.cond
   call void @llvm.memset.p0i8.i64(i8* %2, i8 0, i64 24, i1 false)
   %arr.ptr = insertvalue { %Room*, i64 } undef, %Room* %arr2, 0
   %arr.len = insertvalue { %Room*, i64 } %arr.ptr, i64 1, 1
-  %i3 = load i64, i64* %i, align 4
+  %i3 = load i64, i64* %i, align 8
   %arr.slot = getelementptr { %Room*, i64 }, { %Room*, i64 }* %arr, i64 %i3
   store { %Room*, i64 } %arr.len, { %Room*, i64 }* %arr.slot, align 8
   %next = add i64 %i3, 1
-  store i64 %next, i64* %i, align 4
+  store i64 %next, i64* %i, align 8
   br label %arr.cond
 
 arr.end:                                          ; preds = %arr.cond
@@ -2202,11 +2202,11 @@ entry:
   %heap = call i8* @calloc(i64 2, i64 16)
   %arr = bitcast i8* %heap to { %Room*, i64 }*
   %i = alloca i64, align 8
-  store i64 0, i64* %i, align 4
+  store i64 0, i64* %i, align 8
   br label %arr.cond
 
 arr.cond:                                         ; preds = %arr.body, %entry
-  %i1 = load i64, i64* %i, align 4
+  %i1 = load i64, i64* %i, align 8
   %more = icmp slt i64 %i1, 2
   br i1 %more, label %arr.body, label %arr.end
 
@@ -2215,11 +2215,11 @@ arr.body:                                         ; preds = %arr.cond
   %arr3 = bitcast i8* %heap2 to %Room*
   %arr.ptr = insertvalue { %Room*, i64 } undef, %Room* %arr3, 0
   %arr.len = insertvalue { %Room*, i64 } %arr.ptr, i64 2, 1
-  %i4 = load i64, i64* %i, align 4
+  %i4 = load i64, i64* %i, align 8
   %arr.slot = getelementptr { %Room*, i64 }, { %Room*, i64 }* %arr, i64 %i4
   store { %Room*, i64 } %arr.len, { %Room*, i64 }* %arr.slot, align 8
   %next = add i64 %i4, 1
-  store i64 %next, i64* %i, align 4
+  store i64 %next, i64* %i, align 8
   br label %arr.cond
 
 arr.end:                                          ; preds = %arr.cond
@@ -2263,11 +2263,11 @@ arr.end:                                          ; preds = %arr.cond
   %arr.data34 = extractvalue { { %Room*, i64 }*, i64 } %arr33, 0
   %arr.len35 = extractvalue { { %Room*, i64 }*, i64 } %arr33, 1
   %i36 = alloca i64, align 8
-  store i64 0, i64* %i36, align 4
+  store i64 0, i64* %i36, align 8
   br label %free.cond
 
 free.cond:                                        ; preds = %free.body, %arr.end
-  %i37 = load i64, i64* %i36, align 4
+  %i37 = load i64, i64* %i36, align 8
   %more38 = icmp slt i64 %i37, %arr.len35
   br i1 %more38, label %free.body, label %free.end
 
@@ -2277,9 +2277,9 @@ free.body:                                        ; preds = %free.cond
   %arr.data39 = extractvalue { %Room*, i64 } %inner, 0
   %free.ptr = bitcast %Room* %arr.data39 to i8*
   call void @free(i8* %free.ptr)
-  %i40 = load i64, i64* %i36, align 4
+  %i40 = load i64, i64* %i36, align 8
   %next41 = add i64 %i40, 1
-  store i64 %next41, i64* %i36, align 4
+  store i64 %next41, i64* %i36, align 8
   br label %free.cond
 
 free.end:                                         ; preds = %free.cond
@@ -2400,11 +2400,11 @@ entry:
   %g = alloca { { %Room*, i64 }*, i64 }, align 8
   %arr1 = alloca { %Room*, i64 }, i64 4, align 8
   %i = alloca i64, align 8
-  store i64 0, i64* %i, align 4
+  store i64 0, i64* %i, align 8
   br label %arr.cond
 
 arr.cond:                                         ; preds = %arr.body, %entry
-  %i2 = load i64, i64* %i, align 4
+  %i2 = load i64, i64* %i, align 8
   %more = icmp slt i64 %i2, 4
   br i1 %more, label %arr.body, label %arr.end
 
@@ -2414,11 +2414,11 @@ arr.body:                                         ; preds = %arr.cond
   call void @llvm.memset.p0i8.i64(i8* %3, i8 0, i64 4, i1 false)
   %arr.ptr4 = insertvalue { %Room*, i64 } undef, %Room* %arr3, 0
   %arr.len5 = insertvalue { %Room*, i64 } %arr.ptr4, i64 1, 1
-  %i6 = load i64, i64* %i, align 4
+  %i6 = load i64, i64* %i, align 8
   %arr.slot = getelementptr { %Room*, i64 }, { %Room*, i64 }* %arr1, i64 %i6
   store { %Room*, i64 } %arr.len5, { %Room*, i64 }* %arr.slot, align 8
   %next = add i64 %i6, 1
-  store i64 %next, i64* %i, align 4
+  store i64 %next, i64* %i, align 8
   br label %arr.cond
 
 arr.end:                                          ; preds = %arr.cond
@@ -4387,11 +4387,11 @@ entry:
   %rooms9 = getelementptr %Grid, %Grid* %g, i32 0, i32 1
   %arr10 = alloca { %Room*, i64 }, i64 2, align 8
   %i = alloca i64, align 8
-  store i64 0, i64* %i, align 4
+  store i64 0, i64* %i, align 8
   br label %arr.cond
 
 arr.cond:                                         ; preds = %arr.body, %entry
-  %i11 = load i64, i64* %i, align 4
+  %i11 = load i64, i64* %i, align 8
   %more = icmp slt i64 %i11, 2
   br i1 %more, label %arr.body, label %arr.end
 
@@ -4401,11 +4401,11 @@ arr.body:                                         ; preds = %arr.cond
   call void @llvm.memset.p0i8.i64(i8* %4, i8 0, i64 8, i1 false)
   %arr.ptr13 = insertvalue { %Room*, i64 } undef, %Room* %arr12, 0
   %arr.len14 = insertvalue { %Room*, i64 } %arr.ptr13, i64 2, 1
-  %i15 = load i64, i64* %i, align 4
+  %i15 = load i64, i64* %i, align 8
   %arr.slot = getelementptr { %Room*, i64 }, { %Room*, i64 }* %arr10, i64 %i15
   store { %Room*, i64 } %arr.len14, { %Room*, i64 }* %arr.slot, align 8
   %next = add i64 %i15, 1
-  store i64 %next, i64* %i, align 4
+  store i64 %next, i64* %i, align 8
   br label %arr.cond
 
 arr.end:                                          ; preds = %arr.cond
@@ -4513,12 +4513,12 @@ seen.fresh:                                       ; preds = %seen.cond
   %arr.data2 = extractvalue { %Room*, i64 } %arr1, 0
   %arr.len3 = extractvalue { %Room*, i64 } %arr1, 1
   %oi = alloca i64, align 8
-  store i64 0, i64* %oi, align 4
+  store i64 0, i64* %oi, align 8
   %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @fmt.5, i32 0, i32 0))
   br label %out.arr.cond
 
 out.arr.cond:                                     ; preds = %out.arr.item, %seen.fresh
-  %i = load i64, i64* %oi, align 4
+  %i = load i64, i64* %oi, align 8
   %more = icmp slt i64 %i, %arr.len3
   br i1 %more, label %out.arr.body, label %out.arr.end
 
@@ -4534,7 +4534,7 @@ out.arr.item:                                     ; preds = %out.arr.sep, %out.a
   %at = getelementptr %Room, %Room* %arr.data2, i64 %i
   call void @__out_Room(%Room* %at, %__out_frame* %frame)
   %n = add i64 %i, 1
-  store i64 %n, i64* %oi, align 4
+  store i64 %n, i64* %oi, align 8
   br label %out.arr.cond
 
 out.arr.end:                                      ; preds = %out.arr.cond
@@ -4654,12 +4654,12 @@ seen.fresh:                                       ; preds = %seen.cond
   %arr.data2 = extractvalue { { %Room*, i64 }*, i64 } %arr1, 0
   %arr.len3 = extractvalue { { %Room*, i64 }*, i64 } %arr1, 1
   %oi = alloca i64, align 8
-  store i64 0, i64* %oi, align 4
+  store i64 0, i64* %oi, align 8
   %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @fmt.22, i32 0, i32 0))
   br label %out.arr.cond
 
 out.arr.cond:                                     ; preds = %out.arr.end12, %seen.fresh
-  %i = load i64, i64* %oi, align 4
+  %i = load i64, i64* %oi, align 8
   %more = icmp slt i64 %i, %arr.len3
   br i1 %more, label %out.arr.body, label %out.arr.end
 
@@ -4677,7 +4677,7 @@ out.arr.item:                                     ; preds = %out.arr.sep, %out.a
   %arr.data5 = extractvalue { %Room*, i64 } %arr4, 0
   %arr.len6 = extractvalue { %Room*, i64 } %arr4, 1
   %oi7 = alloca i64, align 8
-  store i64 0, i64* %oi7, align 4
+  store i64 0, i64* %oi7, align 8
   %9 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @fmt.24, i32 0, i32 0))
   br label %out.arr.cond8
 
@@ -4687,7 +4687,7 @@ out.arr.end:                                      ; preds = %out.arr.cond
   ret void
 
 out.arr.cond8:                                    ; preds = %out.arr.item11, %out.arr.item
-  %i13 = load i64, i64* %oi7, align 4
+  %i13 = load i64, i64* %oi7, align 8
   %more14 = icmp slt i64 %i13, %arr.len6
   br i1 %more14, label %out.arr.body9, label %out.arr.end12
 
@@ -4703,13 +4703,13 @@ out.arr.item11:                                   ; preds = %out.arr.sep10, %out
   %at16 = getelementptr %Room, %Room* %arr.data5, i64 %i13
   call void @__out_Room(%Room* %at16, %__out_frame* %frame)
   %n = add i64 %i13, 1
-  store i64 %n, i64* %oi7, align 4
+  store i64 %n, i64* %oi7, align 8
   br label %out.arr.cond8
 
 out.arr.end12:                                    ; preds = %out.arr.cond8
   %13 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @fmt.26, i32 0, i32 0))
   %n17 = add i64 %i, 1
-  store i64 %n17, i64* %oi, align 4
+  store i64 %n17, i64* %oi, align 8
   br label %out.arr.cond
 }
 
@@ -5915,10 +5915,19 @@ main():
     helper()
 ```
 
+```tree
+```
+
+```out
+```
+
 ```err
 error: 'pub' marks a static method; it may only be used inside a struct
   051.ura:4:1
   |
 4 | pub fn helper() void:
   | ^^^
+```
+
+```ll
 ```
