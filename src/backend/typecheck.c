@@ -450,6 +450,24 @@ void type_check(Node *node) {
          }
          break;
       }
+      case TRY: {
+         for (int i = 0; i < node->children_count; i++)
+            type_check(node->children[i]);
+         Node *cnode = node->right;
+         for (int i = 0; i < cnode->children_count; i++)
+            type_check(cnode->children[i]);
+         break;
+      }
+      case THROW: {
+         type_check(node->left);
+         Token *v      = node->left->token;
+         bool   is_err = v->ret_type == STRUCT_CALL && v->Struct.ptr
+                         && strcmp(v->Struct.ptr->token->name, "Error") == 0;
+         if (!is_err)
+            parse_error(node->token, ERR_THROW_NEEDS_ERROR,
+                        type_name(v->ret_type));
+         break;
+      }
       case ARRAY_LIT: {
          if (node->children_count == 0) {
             parse_error(node->token, "Empty array literal has no element type");

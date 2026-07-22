@@ -264,7 +264,8 @@ static char *spelling[END + 1] = {
 		[LOOP] = "loop",     [RANGE] = "range",     [ACCESS] = "index",
 		[ARRAY] = "array",   [ARRAY_LIT] = "array", [ARRAY_TYPE] = "array",
 		[NEW] = "new",       [TYPEOF] = "typeof",   [SIZEOF] = "sizeof",
-		[CLEAN] = "clean",
+		[CLEAN] = "clean",     [TRY] = "try",         [CATCH] = "catch",
+		[THROW] = "throw",
 };
 
 char *spell(Type type) {
@@ -368,6 +369,28 @@ void print_children(Node *node, char *prefix) {
 		for (int i = 0; node->left && i < node->left->children_count; i++) {
 			edge_role[count] = "value";
 			edge_node[count++] = node->left->children[i];
+		}
+		for (int i = 0; i < node->children_count; i++) {
+			edge_role[count] = NULL;
+			edge_node[count++] = node->children[i];
+		}
+		break;
+	}
+	case TRY: {
+		for (int i = 0; i < node->children_count; i++) {
+			edge_role[count] = NULL;
+			edge_node[count++] = node->children[i];
+		}
+		if (node->right) {
+			edge_role[count] = NULL;
+			edge_node[count++] = node->right;
+		}
+		break;
+	}
+	case CATCH: {
+		if (node->left) {
+			edge_role[count] = "binds";
+			edge_node[count++] = node->left;
 		}
 		for (int i = 0; i < node->children_count; i++) {
 			edge_role[count] = NULL;

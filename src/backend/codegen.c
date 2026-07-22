@@ -810,6 +810,77 @@ Value struct_arg_ptr(Node *arg) {
    return tmp;
 }
 
+bool program_throws(Node *n) {
+   if (!n) return false;
+   if (includes(n->token->type, THROW, TRY, 0)) return true;
+   // break/continue->left is a back-edge to the loop; recursing loops forever
+   if (includes(n->token->type, BREAK, CONTINUE, 0)) return false;
+   if (program_throws(n->left) || program_throws(n->right)) return true;
+   for (int i = 0; i < n->children_count; i++)
+      if (program_throws(n->children[i])) return true;
+   return false;
+}
+
+void ensure_err_globals() {
+   if (ura.err_flag) return;
+   ura.error_def = find_struct("Error");
+   ura.err_flag  = LLVMAddGlobal(ura.module, ura.i1, "ura.err_flag");
+   LLVMSetInitializer(ura.err_flag, LLVMConstInt(ura.i1, 0, 0));
+   LLVMSetLinkage(ura.err_flag, LLVMInternalLinkage);
+   TypeRef et    = struct_type_of(ura.error_def);
+   ura.err_value = LLVMAddGlobal(ura.module, et, "ura.err_value");
+   LLVMSetInitializer(ura.err_value, LLVMConstNull(et));
+   LLVMSetLinkage(ura.err_value, LLVMInternalLinkage);
+}
+
+void emit_uncaught() {
+   TypeRef et     = struct_type_of(ura.error_def);
+   TypeRef mt     = LLVMStructGetTypeAtIndex(et, 0);
+   Value   idx[2] = { const_i32(0), const_i32(0) };
+   Value   msgp   = llvm_gep(et, ura.err_value, idx, 2, "err.msg");
+   Value   msg    = llvm_load(mt, msgp, "msg");
+   Value   data   = llvm_extract(msg, 0, "msg.data");
+   Value   len    = llvm_extract(msg, 1, "msg.len");
+   TypeRef wty    = NULL;
+   Value   wfn    = lib_fn("write", &wty);
+   if (wfn) llvm_call(wty, wfn, (Value[]){ const_i32(2), data, len }, 3, "");
+   TypeRef xty    = NULL;
+   Value   xfn    = lib_fn("exit", &xty);
+   if (xfn) llvm_call(xty, xfn, (Value[]){ const_i32(1) }, 1, "");
+   LLVMBuildUnreachable(ura.builder);
+}
+
+Node *current_fdec() {
+   for (int i = ura.scopes_count; i >= 1; i--)
+      if (ura.scopes[i] && ura.scopes[i]->token->type == FDEC)
+         return ura.scopes[i];
+   return NULL;
+}
+
+void emit_throw_branch() {
+   // 1. enclosing try in THIS fn -> drop its scope, jump to the catch
+   if (ura.try_nodes_count > 0) {
+      Node *tn = ura.try_nodes[ura.try_nodes_count - 1];
+      emit_unwind(tn, NULL);
+      llvm_br(tn->token->llvm._catch);
+      return;
+   }
+   // 2. no try + we are main -> nothing above catches it: print + exit
+   Node *fdec = current_fdec();
+   if (!fdec || is_main(fdec->token)) {
+      emit_uncaught();
+      return;
+   }
+   // 3. no try in a callee -> ret (err_flag stays set; the caller's
+   //    post-call check picks it up and keeps unwinding)  deep()->middle()->main
+   emit_unwind(NULL, NULL);
+   TypeRef rt = LLVMGetReturnType(fdec->token->llvm.func_type);
+   if (LLVMGetTypeKind(rt) == LLVMVoidTypeKind)
+      LLVMBuildRetVoid(ura.builder);
+   else
+      LLVMBuildRet(ura.builder, LLVMConstNull(rt));
+}
+
 void code_gen(Node *node) {
    if (!node || ura.error_count) return;
    Token *token = node->token;
@@ -913,6 +984,9 @@ void code_gen(Node *node) {
                llvm_set_location(llvm_di_location(st->line, ura.debug_scope));
             code_gen(node->children[i]);
             drop_temps();
+            // throw/return closes the block; stop or the next stmt is dead code
+            //   throw Error::make(..)  \n  output(..)  <- unreachable
+            if (LLVMGetBasicBlockTerminator(here_block())) break;
          }
          scope_out();
          if (is_main(token)) emit_drops(ura.head, NULL);
@@ -998,6 +1072,19 @@ void code_gen(Node *node) {
             token->llvm.elem = llvm_call(fn->llvm.func_type, fn->llvm.elem, args, n, name);
          }
          free(args);
+         // after any call, a callee may have thrown; check + unwind. gated so
+         // non-throwing programs pay nothing:  f()  ->  if err_flag: unwind
+         if (ura.uses_exceptions) {
+            ensure_err_globals();
+            Value fnv    = here_func();
+            Block unwind = llvm_block(fnv, "throw.unwind");
+            Block cont   = llvm_block(fnv, "throw.cont");
+            Value flag   = llvm_load(ura.i1, ura.err_flag, "eflag");
+            llvm_cond_br(flag, unwind, cont);
+            llvm_at(unwind);
+            emit_throw_branch();
+            llvm_at(cont);
+         }
          break;
       }
       case OUTPUT: {
@@ -1370,6 +1457,46 @@ void code_gen(Node *node) {
       case ENUM_DEF: break;
 
       case REF:      token->llvm.elem = emit_ref(node->left);   break;
+      case THROW: {
+         ensure_err_globals();
+         code_gen(node->left);
+         llvm_store(node->left->token->llvm.elem, ura.err_value);
+         llvm_store(LLVMConstInt(ura.i1, 1, 0), ura.err_flag);
+         drop_temps();
+         emit_throw_branch();
+         break;
+      }
+      case TRY: {
+         ensure_err_globals();
+         Value fn   = here_func();
+         Block cblk = llvm_block(fn, "catch");
+         Block end  = llvm_block(fn, "try.end");
+         node->token->llvm._catch = cblk;
+         // push while emitting the body so a throw inside it targets THIS catch
+         resize_array(ura.try_nodes, Node *);
+         ura.try_nodes[ura.try_nodes_count++] = node;
+         enter_scope(node);
+         code_gen_body(node);
+         scope_out();
+         ura.try_nodes_count--;
+         // no br if the body already threw/returned (would double-terminate)
+         if (!LLVMGetBasicBlockTerminator(here_block()))
+            llvm_br(end);
+         llvm_at(cblk);
+         Node   *cnode = node->right;
+         enter_scope(cnode);
+         Value   slot  = emit_place(cnode->left);
+         TypeRef et    = struct_type_of(ura.error_def);
+         llvm_store(llvm_load(et, ura.err_value, "ev"), slot);
+         llvm_store(LLVMConstInt(ura.i1, 0, 0), ura.err_flag);
+         code_gen_body(cnode);
+         scope_out();
+         // catch may itself rethrow/return; only br when it fell through
+         if (!LLVMGetBasicBlockTerminator(here_block()))
+            llvm_br(end);
+         llvm_at(end);
+         break;
+      }
       case BREAK: {
          drop_temps();
          emit_unwind(node->left, NULL);

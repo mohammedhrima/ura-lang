@@ -425,6 +425,26 @@ void analyze(Node *node) {
          exit_scope();
          break;
       }
+      case TRY: {
+         enter_scope(node);
+         declare_structs(node);
+         for (int i = 0; i < node->children_count; i++)
+            analyze(node->children[i]);
+         exit_scope();
+         Node  *cnode = node->right;
+         Token *bind  = cnode->left->token;
+         bind->ret_type    = STRUCT_CALL;
+         bind->Struct.name = "Error";
+         resolve_struct_type(bind);
+         enter_scope(cnode);
+         declare_variable(bind);
+         declare_structs(cnode);
+         for (int i = 0; i < cnode->children_count; i++)
+            analyze(cnode->children[i]);
+         exit_scope();
+         break;
+      }
+      case THROW: analyze(node->left); break;
       case BREAK: {
          node->left = NULL;
          for (int i = ura.scopes_count; i >= 1; i--) {

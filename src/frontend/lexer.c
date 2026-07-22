@@ -407,6 +407,7 @@ Token *parse_token(int line, int s, int e, Type type, int indent) {
 			{"by", BY, 0, 0},         {"in", IN, 0, 0},
 			{"fn", FDEC, 0, 0},       {"break", BREAK, 0, 0},     {"return", RETURN, 0, 0},
 			{"case", CASE, 0, 0},     {"match", MATCH, 0, 0},     {"continue", CONTINUE, 0, 0},
+			{"try", TRY, 0, 0},       {"catch", CATCH, 0, 0},     {"throw", THROW, 0, 0},
 			{"ref", REF, 0, 0},       {"default", DEFAULT, 0, 0}, {"struct", STRUCT_DEF, 0, 0},
 			{"mod", MODULE, 0, 0},    {"proto", PROTO, 0, 0},     {"enum", ENUM_DEF, 0, 0},
 			{"as", AS, 0, 0},         {"pub", PUB, 0, 0},         {"operator", OPERATOR, 0, 0},

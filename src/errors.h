@@ -193,6 +193,8 @@
 #define ERR_REF_FIELD_WRITE \
 	"'%s' is a reference field; bind it with '= ref', not a value"
 
+#define ERR_THROW_NEEDS_ERROR "'throw' expects an Error, got %s"
+
 #define ERR_ARRAY_SIZE_NOT_INT "Array size must be an integer"
 
 #define ERR_ARRAY_SIZE_IN_TYPE \

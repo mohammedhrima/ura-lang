@@ -430,52 +430,52 @@ Node *prime_node() {
       return node;
    }
    case ID: {
-	Node *node = new_node(token);
-	Token *token = node->token;
-	if (peek(0)->type == LPAR) {
-		if (strcmp(token->name, "main") == 0)
-			return fdec_node(node);
-		if (strcmp(token->name, "output") == 0) {
-			node->token->type     = OUTPUT;
-			node->token->ret_type = VOID;
-			if (!find(LPAR, 0))
-				parse_error(node->token, "Expected '(' after output");
-			while (!ura.found_error && peek(0)->type != RPAR) {
-				resize_array(node->children, Node *);
-				node->children[node->children_count++] = expr_node(0);
-				while (find(COMA, 0));
+		Node *node = new_node(token);
+		Token *token = node->token;
+		if (peek(0)->type == LPAR) {
+			if (strcmp(token->name, "main") == 0)
+				return fdec_node(node);
+			if (strcmp(token->name, "output") == 0) {
+				node->token->type     = OUTPUT;
+				node->token->ret_type = VOID;
+				if (!find(LPAR, 0))
+					parse_error(node->token, "Expected '(' after output");
+				while (!ura.found_error && peek(0)->type != RPAR) {
+					resize_array(node->children, Node *);
+					node->children[node->children_count++] = expr_node(0);
+					while (find(COMA, 0));
+				}
+				if (!find(RPAR, 0))
+					parse_error(node->token, "Expected ')' after output arguments");
+				return node;
 			}
-			if (!find(RPAR, 0))
-				parse_error(node->token, "Expected ')' after output arguments");
-			return node;
+			return postfix(fcall_node(node));
 		}
-		return postfix(fcall_node(node));
-	}
-	if (peek(0)->type == DOUBLE_DOTS) {
-		Token *sep    = next();
-		Token *member = find(ID, 0);
-		if (!member) {
-			parse_error(sep, "Expected a method name after '::'");
-			return syntax_error();
+		if (peek(0)->type == DOUBLE_DOTS) {
+			Token *sep    = next();
+			Token *member = find(ID, 0);
+			if (!member) {
+				parse_error(sep, "Expected a method name after '::'");
+				return syntax_error();
+			}
+			token->Struct.name    = strdup(token->name);
+			token->is_static_call = true;
+			set_name(token, member->name);
+			return postfix(fcall_node(node));
 		}
-		token->Struct.name    = strdup(token->name);
-		token->is_static_call = true;
-		set_name(token, member->name);
-		return postfix(fcall_node(node));
-	}
-	if (peek(0)->type == LBRA || peek(0)->type == DOT)
-		return access_node(node);
-	bool named   = peek(0)->type == ID && peek(0)->line == token->line;
-	bool fn_type = peek(0)->type == FDEC && peek(1)->type == LPAR;
-	if (is_data_type(peek(0)) || named || fn_type) {
-		token->is_dec = true;
-		parse_type(token);
-	}
-	if (!token->is_dec && peek(0)->type == OPTIONAL) {
-		find(OPTIONAL, 0);
-		token->is_nullable = true;
-	}
-	return node;
+		if (peek(0)->type == LBRA || peek(0)->type == DOT)
+			return access_node(node);
+		bool named   = peek(0)->type == ID && peek(0)->line == token->line;
+		bool fn_type = peek(0)->type == FDEC && peek(1)->type == LPAR;
+		if (is_data_type(peek(0)) || named || fn_type) {
+			token->is_dec = true;
+			parse_type(token);
+		}
+		if (!token->is_dec && peek(0)->type == OPTIONAL) {
+			find(OPTIONAL, 0);
+			token->is_nullable = true;
+		}
+		return node;
    }
    case NEW: {
       Token *type = next();
@@ -527,98 +527,98 @@ Node *prime_node() {
       return node;
    }
    case REF: {
-	Node *node = new_node(token);
-	Token *token = node->token;
-	bool nullable = peek(0)->type == OPTIONAL;
-	if (nullable) find(OPTIONAL, 0);
-	Token *name = peek(0);
-	if (!name || name->type != ID) {
-		parse_error(token, "Expected a variable after 'ref'");
-		return syntax_error();
-	}
-	bool fn_type = peek(1)->type == FDEC && peek(2)->type == LPAR;
-	bool named   = peek(1)->type == ID && peek(1)->line == name->line;
-	if (is_data_type(peek(1)) || named || fn_type) {
-		find(ID, 0);
-		name->is_dec      = true;
-		name->is_ref      = true;
-		name->is_nullable = nullable;
-		parse_type(name);
-		if (!nullable && peek(0)->type != ASSIGN) {
-			parse_error(name, ERR_REF_MUST_BE_BOUND);
+		Node *node = new_node(token);
+		Token *token = node->token;
+		bool nullable = peek(0)->type == OPTIONAL;
+		if (nullable) find(OPTIONAL, 0);
+		Token *name = peek(0);
+		if (!name || name->type != ID) {
+			parse_error(token, "Expected a variable after 'ref'");
 			return syntax_error();
 		}
-		node->token = name;
+		bool fn_type = peek(1)->type == FDEC && peek(2)->type == LPAR;
+		bool named   = peek(1)->type == ID && peek(1)->line == name->line;
+		if (is_data_type(peek(1)) || named || fn_type) {
+			find(ID, 0);
+			name->is_dec      = true;
+			name->is_ref      = true;
+			name->is_nullable = nullable;
+			parse_type(name);
+			if (!nullable && peek(0)->type != ASSIGN) {
+				parse_error(name, ERR_REF_MUST_BE_BOUND);
+				return syntax_error();
+			}
+			node->token = name;
+			return node;
+		}
+		node->left = prime_node();
 		return node;
-	}
-	node->left = prime_node();
-	return node;
    }
    case IF: {
-	Node *node = new_node(token);
-	Token *token = node->token;
-	node->left = expr_node(0);
-	if (!find(DOTS, 0))
-		parse_error(token, "Expected ':' to open the 'if' body");
-	parse_block(node, token->indent);
-	Node *tail = node;
-	while (includes(peek(0)->type, ELIF, ELSE, 0) && peek(0)->indent == token->indent) {
-		Token *keyword = next();
-		Node  *branch  = new_node(keyword);
-		if (keyword->type == ELIF)
-			branch->left = expr_node(0);
+		Node *node = new_node(token);
+		Token *token = node->token;
+		node->left = expr_node(0);
 		if (!find(DOTS, 0))
-			parse_error(keyword, ERR_EXPECTED_BODY_COLON, keyword->name);
-		parse_block(branch, keyword->indent);
-		tail->right = branch;
-		tail        = branch;
-		if (keyword->type == ELSE) break;
-	}
-	return node;
+			parse_error(token, "Expected ':' to open the 'if' body");
+		parse_block(node, token->indent);
+		Node *tail = node;
+		while (includes(peek(0)->type, ELIF, ELSE, 0) && peek(0)->indent == token->indent) {
+			Token *keyword = next();
+			Node  *branch  = new_node(keyword);
+			if (keyword->type == ELIF)
+				branch->left = expr_node(0);
+			if (!find(DOTS, 0))
+				parse_error(keyword, ERR_EXPECTED_BODY_COLON, keyword->name);
+			parse_block(branch, keyword->indent);
+			tail->right = branch;
+			tail        = branch;
+			if (keyword->type == ELSE) break;
+		}
+		return node;
    }
    case ELIF: case ELSE:
       parse_error(token, "'%s' without a matching 'if'", token->name);
       return syntax_error();
    case MATCH: {
-	Node *node = new_node(token);
-	Token *token = node->token;
-	node->left = expr_node(0);
-	if (!find(DOTS, 0))
-		parse_error(token, "Expected ':' to open the 'match' body");
-	while (within(token->indent) && includes(peek(0)->type, CASE, DEFAULT, 0)) {
-		Token *keyword = next();
-		Node  *branch  = new_node(keyword);
-		if (keyword->type == CASE) {
-			Node *values = new_node(keyword);
-			while (!ura.found_error && peek(0)->type != DOTS) {
-				resize_array(values->children, Node *);
-				values->children[values->children_count++] = expr_node(0);
-				if (!find(COMA, 0)) break;
-			}
-			if (values->children_count == 0)
-				parse_error(keyword, "Expected an expression after 'case'");
-			branch->left = values;
-		}
+		Node *node = new_node(token);
+		Token *token = node->token;
+		node->left = expr_node(0);
 		if (!find(DOTS, 0))
-			parse_error(keyword, ERR_EXPECTED_BODY_COLON, keyword->name);
-		parse_block(branch, keyword->indent);
-		resize_array(node->children, Node *);
-		node->children[node->children_count++] = branch;
-		if (keyword->type == DEFAULT) break;
-	}
-	return node;
+			parse_error(token, "Expected ':' to open the 'match' body");
+		while (within(token->indent) && includes(peek(0)->type, CASE, DEFAULT, 0)) {
+			Token *keyword = next();
+			Node  *branch  = new_node(keyword);
+			if (keyword->type == CASE) {
+				Node *values = new_node(keyword);
+				while (!ura.found_error && peek(0)->type != DOTS) {
+					resize_array(values->children, Node *);
+					values->children[values->children_count++] = expr_node(0);
+					if (!find(COMA, 0)) break;
+				}
+				if (values->children_count == 0)
+					parse_error(keyword, "Expected an expression after 'case'");
+				branch->left = values;
+			}
+			if (!find(DOTS, 0))
+				parse_error(keyword, ERR_EXPECTED_BODY_COLON, keyword->name);
+			parse_block(branch, keyword->indent);
+			resize_array(node->children, Node *);
+			node->children[node->children_count++] = branch;
+			if (keyword->type == DEFAULT) break;
+		}
+		return node;
    }
    case CASE: case DEFAULT:
       parse_error(token, "'%s' without a matching 'match'", token->name);
       return syntax_error();
    case WHILE: {
-	Node *node = new_node(token);
-	Token *token = node->token;
-	node->left = expr_node(0);
-	if (!find(DOTS, 0))
-		parse_error(token, "Expected ':' to open the 'while' body");
-	parse_block(node, token->indent);
-	return node;
+		Node *node = new_node(token);
+		Token *token = node->token;
+		node->left = expr_node(0);
+		if (!find(DOTS, 0))
+			parse_error(token, "Expected ':' to open the 'while' body");
+		parse_block(node, token->indent);
+		return node;
    }
    case LOOP: {
       Node *node = new_node(token);
@@ -628,33 +628,66 @@ Node *prime_node() {
       return node;
    }
    case FOR: {
-	Node *node = new_node(token);
-	Token *token = node->token;
-	bool   ref   = find(REF, 0) != NULL;
-	Token *iter  = find(ID, 0);
-	if (!iter) {
-		parse_error(token, "Expected a loop variable after 'for'");
-		return syntax_error();
-	}
-	iter->is_dec  = true;
-	token->is_ref = ref;
-	node->left    = new_node(iter);
-	if (!find(IN, 0))
-		parse_error(token, "Expected 'in' after 'for %s'", iter->name);
-	node->right = expr_node(0);
-	if (find(BY, 0)) {
-		Node *by = expr_node(0);
-		if (node->right->token->type != RANGE)
-			parse_error(token, ERR_BY_NEEDS_RANGE);
-		else {
-			resize_array(node->right->children, Node *);
-			node->right->children[node->right->children_count++] = by;
+		Node *node = new_node(token);
+		Token *token = node->token;
+		bool   ref   = find(REF, 0) != NULL;
+		Token *iter  = find(ID, 0);
+		if (!iter) {
+			parse_error(token, "Expected a loop variable after 'for'");
+			return syntax_error();
 		}
-	}
-	if (!find(DOTS, 0))
-		parse_error(token, "Expected ':' to open the 'for' body");
-	parse_block(node, token->indent);
-	return node;
+		iter->is_dec  = true;
+		token->is_ref = ref;
+		node->left    = new_node(iter);
+		if (!find(IN, 0))
+			parse_error(token, "Expected 'in' after 'for %s'", iter->name);
+		node->right = expr_node(0);
+		if (find(BY, 0)) {
+			Node *by = expr_node(0);
+			if (node->right->token->type != RANGE)
+				parse_error(token, ERR_BY_NEEDS_RANGE);
+			else {
+				resize_array(node->right->children, Node *);
+				node->right->children[node->right->children_count++] = by;
+			}
+		}
+		if (!find(DOTS, 0))
+			parse_error(token, "Expected ':' to open the 'for' body");
+		parse_block(node, token->indent);
+		return node;
+   }
+   case TRY: {
+		Node *node = new_node(token);
+		Token *token = node->token;
+		if (!find(DOTS, 0))
+			parse_error(token, "Expected ':' to open the 'try' body");
+		parse_block(node, token->indent);
+		if (peek(0)->type != CATCH || peek(0)->indent != token->indent) {
+			parse_error(token, "Expected 'catch' after 'try'");
+			return node;
+		}
+		Token *ckw   = next();
+		Node  *cnode = new_node(ckw);
+		Token *bind  = find(ID, 0);
+		if (!bind) {
+			parse_error(ckw, "Expected a variable after 'catch'");
+			return node;
+		}
+		bind->is_dec = true;
+		cnode->left  = new_node(bind);
+		if (!find(DOTS, 0))
+			parse_error(ckw, "Expected ':' to open the 'catch' body");
+		parse_block(cnode, ckw->indent);
+		node->right = cnode;
+		return node;
+   }
+   case CATCH:
+      parse_error(token, "'catch' without a matching 'try'");
+      return syntax_error();
+   case THROW: {
+		Node *node = new_node(token);
+		node->left = expr_node(0);
+		return node;
    }
    case BREAK: case CONTINUE:
       return new_node(token);
