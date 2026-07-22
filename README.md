@@ -11,20 +11,20 @@ No braces. No semicolons. Indentation-based like Python, fast like C. Each floor
 ```bash
 git clone https://github.com/mohammedhrima/ura-lang && cd ura-lang
 
-# anvil — the dev tool — is a small scripting interpreter in its own repo.
-# Clone and build it once (puts `anvil` on your PATH via ~/.local/bin):
-git clone https://github.com/mohammedhrima/anvil && make -C anvil
-
-anvil anvil.an                 # open the anvil prompt for this project, then:
-#   install    install LLVM/clang deps (once per machine)
-#   build      compile the ura compiler
-#   tests      run the whole suite   (or:  test <folder>)
+make build          # compile the ura compiler → build/ura
+make dev            # open the task shell (needs uv)
 ```
 
-Dev workflow is driven by **[anvil](https://github.com/mohammedhrima/anvil)** —
-a small scripting interpreter. This project's commands live in
-[anvil.an](anvil.an); run `anvil anvil.an` and type a command at the prompt
-(`check`, `install`, `build`, `test <folder>`, `tests`, `copy <file>`).
+`make dev` drops you into the task shell (`uv run config/tasks.py`), where you
+type a verb:
+
+| Command | Does |
+|---------|------|
+| `install` | install LLVM/clang deps (once per machine) |
+| `build` | compile the ura compiler → `build/ura` |
+| `tests` | run the whole suite (or `tests <group>.md` for one group) |
+| `update <group>.md` | regenerate a group's golden output |
+| `check` | verify clang + `llvm-config-14` are present |
 
 ```ura
 main():
@@ -39,23 +39,24 @@ main():
 - [Floor 2 — Tracking Progress](#floor-2--tracking-progress)
 - [Floor 3 — Name Your Enemies](#floor-3--name-your-enemies)
 - [Floor 4 — Combat Math](#floor-4--combat-math)
-- [Floor 5 — Loot Drops](#floor-5--loot-drops)
-- [Floor 6 — The Battle Loop](#floor-6--the-battle-loop)
-- [Floor 7 — The Hero](#floor-7--the-hero)
-- [Floor 8 — Hero Abilities](#floor-8--hero-abilities)
-- [Floor 9 — Level Up!](#floor-9--level-up)
-- [Floor 10 — The Dungeon Map](#floor-10--the-dungeon-map)
-- [Floor 11 — Status Effects](#floor-11--status-effects)
-- [Floor 12 — Gear Score](#floor-12--gear-score)
-- [Floor 13 — Power Moves](#floor-13--power-moves)
-- [Floor 14 — C Interop](#floor-14--c-interop)
-- [Floor 15 — Command Line](#floor-15--command-line)
-- [Floor 16 — Graphics](#floor-16--graphics)
-- [Floor 17 — Network](#floor-17--network)
-- [Floor 18 — The Scroll of Words](#floor-18--the-scroll-of-words)
-- [Floor 19 — Loot Tables](#floor-19--loot-tables)
-- [Floor 20 — The Hero's Identity](#floor-20--the-heros-identity)
-- [Floor 21 — The Armory](#floor-21--the-armory)
+- [Floor 5 — The Battle Loop](#floor-5--the-battle-loop)
+- [Floor 6 — Patrol Routes](#floor-6--patrol-routes)
+- [Floor 7 — Reading the Runes](#floor-7--reading-the-runes)
+- [Floor 8 — The Hero](#floor-8--the-hero)
+- [Floor 9 — Hero Abilities](#floor-9--hero-abilities)
+- [Floor 10 — Level Up!](#floor-10--level-up)
+- [Floor 11 — Empty Chests](#floor-11--empty-chests)
+- [Floor 12 — The Dungeon Map](#floor-12--the-dungeon-map)
+- [Floor 13 — Status Effects](#floor-13--status-effects)
+- [Floor 14 — Gear Score](#floor-14--gear-score)
+- [Floor 15 — Power Moves](#floor-15--power-moves)
+- [Floor 16 — The Scroll of Words](#floor-16--the-scroll-of-words)
+- [Floor 17 — Loot Tables](#floor-17--loot-tables)
+- [Floor 18 — The Hero's Identity](#floor-18--the-heros-identity)
+- [Floor 19 — Cross-Platform Keep](#floor-19--cross-platform-keep)
+- [Floor 20 — C Interop](#floor-20--c-interop)
+- [Floor 21 — Command Line](#floor-21--command-line)
+- [Floor 22 — Network](#floor-22--network)
 - [Boss Room — The Full Game](#boss-room--the-full-game)
 - [How It Works](#how-it-works)
 - [Compiler Reference](#compiler-reference)
@@ -67,28 +68,28 @@ main():
 
 ## Floor 1 — Hello, Dungeon
 
-Variables are declared `name type = value`. Types: `int` `long` `short` `float` `char` `chars` `bool`. `output` is a built-in — no imports, no format strings, any number of values:
+Variables are declared `name type = value`. Integers are sized: `i8` `i16` `i32` `i64` and unsigned `u8` `u16` `u32` `u64`. Floats are `f32` `f64`. A single character is `char`; a string is `char[]` (an array of characters). `output` is a built-in — no imports, no format strings, any number of values:
 
 ```ura
 main():
-    hero  chars = "Aldric"
-    hp    int   = 100
-    mp    int   = 50
-    alive bool  = True
-    speed float = 1.5
+    hero  char[] = "Aldric"
+    hp    i32    = 100
+    mp    i32    = 50
+    alive bool   = True
+    speed f32    = 1.5
 
     output("=== ", hero, " enters the dungeon ===\n")
     output("HP: ", hp, "  MP: ", mp, "  Speed: ", speed, "\n")
-    output("typeof hp: ", typeof(hp), "  sizeof chars ptr: ", sizeof(hero), "\n")
+    output("typeof hp: ", typeof(hp), "  sizeof: ", sizeof(hp), "\n")
 ```
 
 ```
 === Aldric enters the dungeon ===
-HP: 100  MP: 50  Speed: 1.5
-typeof hp: INT  sizeof chars ptr: 8
+HP: 100  MP: 50  Speed: 1.500000
+typeof hp: i32  sizeof: 4
 ```
 
-`output` handles `int`, `long`, `short`, `float`, `char`, `chars`, `bool`. `typeof` returns the type name as a string. `sizeof` returns the byte size. For formatted output (`%d`, padding, etc.) use `printf` from `@/io` — covered in Floor 14.
+`typeof` returns the type name as a string; `sizeof` returns the byte size. For formatted output (`%d`, padding, etc.) use `printf` from C — see Floor 20.
 
 ---
 
@@ -97,11 +98,11 @@ typeof hp: INT  sizeof chars ptr: 8
 Global variables live above all functions. Every function in the file can read and write them:
 
 ```ura
-score int = 0
-floor int = 1
-lives int = 3
+score i32 = 0
+floor i32 = 1
+lives i32 = 3
 
-fn earn(pts int) void:
+fn earn(pts i32) void:
     score = score + pts
 
 main():
@@ -120,39 +121,37 @@ After two kills — Score: 150
 
 ## Floor 3 — Name Your Enemies
 
-Enums turn raw integers into readable names. Variants start at `0` and count up:
+Enums turn raw integers into readable names. Variants count up from `0`, or you can pin a value and let the rest continue from there:
 
 ```ura
 enum EnemyType:
-    ORC, SPIDER, DRAGON, GOLEM
+    ORC,
+    SPIDER,
+    DRAGON,
 
-enum DamageType:
-    PHYSICAL, FIRE, ICE, POISON
+enum Dir: NORTH = 1, EAST, SOUTH, WEST
 
-fn announce(enemy int, dtype int) void:
-    if enemy == DRAGON:      output("Dragon")
-    elif enemy == ORC:       output("Orc")
-    elif enemy == SPIDER:    output("Spider")
-    else:                    output("Golem")
-    output(" — ")
-    if dtype == FIRE:        output("fire\n")
-    elif dtype == ICE:       output("ice\n")
-    elif dtype == POISON:    output("poison\n")
-    else:                    output("physical\n")
+fn threat(e EnemyType) i32:
+    match e:
+        case DRAGON: return 100
+        case ORC:    return 30
+        default:     return 10
+    return 0
 
 main():
-    announce(DRAGON, FIRE)
-    announce(ORC,    PHYSICAL)
-    announce(SPIDER, POISON)
+    output("ORC=", ORC, " SPIDER=", SPIDER, " DRAGON=", DRAGON, "\n")
+    output("EAST=", EAST, " WEST=", WEST, "\n")
+    e EnemyType = DRAGON
+    output("threat(DRAGON)=", threat(e), "\n")
 ```
 
 ```
-Dragon — fire
-Orc — physical
-Spider — poison
+ORC=0 SPIDER=1 DRAGON=2
+EAST=2 WEST=4
+threat(DRAGON)=100
 ```
 
-Enum variants are global `int` constants. Use them anywhere an `int` is expected.
+Variants are named `i32` constants — usable anywhere an integer is, including array indices. An enum name is also a real type (`e EnemyType`), and `match` reads best over its variants (Floor 7).
 
 ---
 
@@ -161,67 +160,42 @@ Enum variants are global `int` constants. Use them anywhere an `int` is expected
 Functions are `fn name(params) returnType:`. Call them like any language:
 
 ```ura
-fn clamp(val int, lo int, hi int) int:
+fn clamp(val i32, lo i32, hi i32) i32:
     if val < lo: return lo
     if val > hi: return hi
     return val
 
-fn damage(atk int, def int) int:
+fn damage(atk i32, def i32) i32:
     return clamp(atk - def, 0, 999)
 
-fn is_dead(hp int) bool:
+fn is_dead(hp i32) bool:
     return hp <= 0
 
-// single-line functions
-fn square(n int) int:      return n * n
+fn square(n i32) i32:      return n * n
 fn is_digit(c char) bool:  return c >= '0' and c <= '9'
 
 main():
-    d int = damage(25, 8)
+    d i32 = damage(25, 8)
     output("Orc takes ", d, " damage — dead: ", is_dead(d - 60), "\n")
     output("4 squared: ", square(4), "\n")
 ```
 
 ```
-Orc takes 17 damage — dead: False
+Orc takes 17 damage — dead: True
 4 squared: 16
 ```
 
----
-
-## Floor 5 — Loot Drops
-
-Return multiple values by listing types in parentheses. Unpack at the call site:
-
-```ura
-fn roll_loot(f int) (chars, int):
-    item  chars = "Iron Sword"
-    value int   = f * 15
-    return item, value
-
-main():
-    item chars, gold int = roll_loot(3)
-    output("Floor 3 loot: ", item, " worth ", gold, " gold\n")
-
-    // ignore one value with _
-    _, bonus int = roll_loot(5)
-    output("Bonus gold: ", bonus, "\n")
-```
-
-```
-Floor 3 loot: Iron Sword worth 45 gold
-Bonus gold: 75
-```
+Single-line functions put the body after the colon. Functions and struct methods can be called before they are declared — no forward declarations needed.
 
 ---
 
-## Floor 6 — The Battle Loop
+## Floor 5 — The Battle Loop
 
 `while` loops, `if`/`elif`/`else` branching, `break`, and `continue` — all in one fight:
 
 ```ura
-fn simulate(hero_hp int, orc_hp int) void:
-    round int = 0
+fn simulate(hero_hp i32, orc_hp i32) void:
+    round i32 = 0
     while hero_hp > 0:
         round = round + 1
         if orc_hp <= 0:
@@ -237,8 +211,8 @@ fn simulate(hero_hp int, orc_hp int) void:
         output("Hero fell in round ", round, "\n")
 
 main():
-    simulate(100, 60)   // hero wins
-    simulate(30,  90)   // hero dies
+    simulate(100, 60)
+    simulate(30,  90)
 ```
 
 ```
@@ -249,26 +223,97 @@ Hero fell in round 3
 | Keyword | Purpose |
 |---------|---------|
 | `while cond:` | loop while condition holds |
+| `loop:` | loop forever (exit with `break`) |
 | `break` | exit the loop immediately |
 | `continue` | skip to the next iteration |
 | `if` / `elif` / `else` | branching |
 
 ---
 
-## Floor 7 — The Hero
+## Floor 6 — Patrol Routes
+
+`for` walks a range or an array. A range `a..b` is exclusive of `b` and counts down when `a > b`; `by` sets the step. `for ref x in arr` aliases each element, so writes go through:
+
+```ura
+main():
+    for i in 0..5:
+        output(i, " ")
+    output("| ")
+
+    nums i32[] = [10, 20, 30]
+    total i32 = 0
+    for x in nums:
+        total = total + x
+    output("sum=", total, " | ")
+
+    for ref x in nums:
+        x = x * 2
+    for x in nums:
+        output(x, " ")
+    output("| ")
+
+    for i in 0..10 by 3:
+        output(i, " ")
+    output("\n")
+```
+
+```
+0 1 2 3 4 | sum=60 | 20 40 60 | 0 3 6 9 
+```
+
+---
+
+## Floor 7 — Reading the Runes
+
+`match` dispatches on a value — cleaner than an `if`/`elif` ladder. `case` labels can be enum variants or integers; `default` catches the rest:
+
+```ura
+enum Tile: FLOOR, WALL, TRAP, EXIT
+
+fn walk(t Tile) i32:
+    match t:
+        case WALL:
+            output("blocked  ")
+            return 0
+        case TRAP:
+            output("ouch     ")
+            return -10
+        case EXIT:
+            output("escape!  ")
+            return 100
+        default:
+            output("step     ")
+            return 1
+    return 0
+
+main():
+    output("gain ", walk(FLOOR), "\n")
+    output("gain ", walk(TRAP), "\n")
+    output("gain ", walk(EXIT), "\n")
+```
+
+```
+step     gain 1
+ouch     gain -10
+escape!  gain 100
+```
+
+---
+
+## Floor 8 — The Hero
 
 Structs group related data. Fields are declared inside the struct body, one per line. Structs are **zero-initialized** by default:
 
 ```ura
 struct Player:
-    name  chars
-    hp    int
-    mp    int
+    name char[]
+    hp   i32
+    mp   i32
 
 struct Enemy:
-    name  chars
-    hp    int
-    atk   int
+    name char[]
+    hp   i32
+    atk  i32
 
 fn fight(p Player, e Enemy) void:
     output(p.name, " (", p.hp, " HP) faces ", e.name, " (", e.hp, " HP)\n")
@@ -296,232 +341,231 @@ Aldric (100 HP) faces Orc Grunt (60 HP)
 Aldric wins!
 ```
 
-**Nested structs** work at any depth:
-
-```ura
-struct Room:
-    name  chars
-    floor int
-
-struct Dungeon:
-    name  chars
-    entry Room
-
-main():
-    d Dungeon
-    d.name        = "The Abyss"
-    d.entry.name  = "Gate Hall"
-    d.entry.floor = 1
-    output("Welcome to ", d.name, " — enter via ", d.entry.name, "\n")
-```
-
-```
-Welcome to The Abyss — enter via Gate Hall
-```
+Structs nest to any depth — `hero.stats.hp` reaches straight into a `Stats` field of a `Hero`.
 
 ---
 
-## Floor 8 — Hero Abilities
+## Floor 9 — Hero Abilities
 
-`pub fn` declares a **static method** — no `self`, called with `Type::method()`. Use it as an explicit constructor. `operator delete()` is the destructor — auto-called when the variable goes out of scope. `self` refers to the current instance in regular methods:
+`pub fn` declares a **static method** — no `self`, called with `Type::method()`. Use it as an explicit constructor. A regular method takes an implicit `self`. `operator drop` is the destructor — auto-called when the value goes out of scope:
 
 ```ura
-use "@/header"
-
 struct Hero:
-    name  chars
-    title chars
-    hp    int
+    name char[]
+    hp   i32
 
-    pub fn new() Hero:
+    pub fn create(name char[], hp i32) Hero:
         h Hero
-        h.name  = heap[char](32)
-        h.title = heap[char](32)
-        h.hp    = 100
+        h.name = name
+        h.hp   = hp
         return h
 
-    fn setup(name chars, title chars) void:
-        strcpy(self.name,  name)
-        strcpy(self.title, title)
-
-    fn announce() void:
-        output(self.title, " ", self.name, " — HP: ", self.hp, "\n")
-
-    fn heal(amount int) void:
+    fn heal(amount i32) void:
         self.hp = self.hp + amount
 
-    operator delete() void:
-        free(self.name)
-        free(self.title)
+    fn announce() void:
+        output(self.name, " — HP: ", self.hp, "\n")
+
+    operator drop:
+        output("(", self.name, " leaves the dungeon)\n")
 
 main():
-    hero Hero = Hero::new()              // pub fn — static call
-    hero.setup("Aldric", "The Bold")
+    hero Hero = Hero::create("Aldric", 100)
     hero.announce()
     hero.heal(20)
     hero.announce()
-                                         // operator delete() called here automatically
 ```
 
 ```
-The Bold Aldric — HP: 100
-The Bold Aldric — HP: 120
+Aldric — HP: 100
+Aldric — HP: 120
+(Aldric leaves the dungeon)
 ```
 
 | Concept | Syntax | Notes |
 |---------|--------|-------|
-| Static method | `pub fn new() Hero:` | No `self`, called as `Hero::new()` |
-| Instance method | `fn heal(amount int) void:` | Has implicit `self` ref |
-| Destructor | `operator delete() void:` | Auto-called at scope exit |
-| Static dispatch | `Hero::new()` | `::` calls a `pub fn` |
-| Forward references | methods can call each other in any order | No declaration-before-use restriction within a struct |
+| Static method | `pub fn create(...) Hero:` | No `self`, called as `Hero::create(...)` |
+| Instance method | `fn heal(amount i32) void:` | Has implicit `self` |
+| Destructor | `operator drop:` | Auto-called at scope exit |
+| Static dispatch | `Hero::create(...)` | `::` calls a `pub fn` |
+
+`clean` (Floor 12) frees a heap buffer but does **not** call `operator drop`; the destructor fires from scope exit, `return`, `break`, and `continue`.
 
 ---
 
-## Floor 9 — Level Up!
+## Floor 10 — Level Up!
 
-References let a function modify the caller's variables directly. Mark a parameter `ref` after the type — the caller passes the variable as-is, no `&` needed:
+A reference is a second name for an existing variable. Mark a parameter `ref` (before the name) and the callee writes straight through to the caller's variable — pass it with `ref` at the call site, no `&`:
 
 ```ura
-fn level_up(level int ref, hp int ref, mp int ref) void:
+fn level_up(ref level i32, ref hp i32) void:
     level = level + 1
     hp    = hp + 20
-    mp    = mp + 10
-    output("★ Level ", level, "! HP+20 MP+10\n")
-
-fn swap(a int ref, b int ref) void:
-    tmp int = a
-    a   = b
-    b   = tmp
 
 main():
-    lv int = 1
-    hp int = 100
-    mp int = 50
-    level_up(lv, hp, mp)
-    output("Stats: HP=", hp, " MP=", mp, "\n")
-
-    x int = 3
-    y int = 7
-    swap(x, y)
-    output("x=", x, " y=", y, "\n")
+    lv i32 = 1
+    hp i32 = 100
+    level_up(ref lv, ref hp)
+    output("lv=", lv, " hp=", hp, "\n")
 ```
 
 ```
-★ Level 2! HP+20 MP+10
-Stats: HP=120 MP=60
-x=7 y=3
+lv=2 hp=120
 ```
 
-Local references bind at declaration and must not outlive the target:
+A local reference is `ref name type = ref target`. Then `=` **writes through** to the target, and `= ref other` **rebinds** the reference to a new target:
 
 ```ura
 main():
-    hp  int     = 80
-    ref int ref = hp   // binds to hp — must bind at declaration
-    ref = 100          // writes through to hp
-    output(hp, "\n")   // 100
+    x i32 = 10
+    y i32 = 20
+    ref cur i32 = ref x
+    cur = 99
+    output(x, " ")
+    cur = ref y
+    cur = 88
+    output(x, " ", y, "\n")
 ```
+
+```
+99 99 88
+```
+
+A function can **return a reference** (`fn f() ref T`) so the caller mutates in place. `ref? T` is a nullable reference — it may hold `null`, needed for linked structures:
+
+```ura
+struct Node:
+    v i32
+    ref? next Node
+
+fn make(v i32, h Node[]) ref Node:
+    h[0].v = v
+    return ref h[0]
+
+main():
+    h Node[] = new Node[1]
+    ref? n Node = make(9, h)
+    output("n.v = ", n.v, "\n")
+```
+
+```
+n.v = 9
+```
+
+`ref a == ref b` compares identity (same variable?), and `cur = ref cur.next` walks a linked list.
 
 ---
 
-## Floor 10 — The Dungeon Map
+## Floor 11 — Empty Chests
 
-Ura gives you explicit control over memory. Choose stack (auto-freed) or heap (manual `free`):
+A `T?` type is nullable — it holds a `T` or `null`. Return `null` for "nothing found". Narrow with `!= null`, read through a guard `value?`, or supply a fallback with `??`:
 
 ```ura
-use "@/header"
+fn find_weapon(chest i32) char[]?:
+    if chest == 1: return "Iron Sword"
+    if chest == 2: return "Magic Staff"
+    return null
 
 main():
-    // heap: size decided at runtime, you manage lifetime
-    map chars = heap[char](51)
-    i   int   = 0
+    loot char[]? = find_weapon(1)
+    if loot != null:
+        output("Found: ", loot?, "\n")
+    else:
+        output("Chest is empty\n")
+
+    loot = find_weapon(99)
+    if loot != null:
+        output("Found: ", loot?, "\n")
+    else:
+        output("Chest is empty\n")
+
+    output("default: ", loot ?? "nothing", "\n")
+```
+
+```
+Found: Iron Sword
+Chest is empty
+default: nothing
+```
+
+`a ?? b ?? c` chains left to right until a non-null value. A value that can never be null (a plain `char[]`) is rejected from `??` and `== null` — the compiler knows the check is pointless.
+
+---
+
+## Floor 12 — The Dungeon Map
+
+`new T[n]` allocates a heap array sized at runtime; `clean` frees it and nulls the pointer:
+
+```ura
+main():
+    map char[] = new char[51]
+    i i32 = 0
     while i < 50:
         map[i] = '.'
         i = i + 1
-    map[25] = '@'           // hero at centre
-    map[50] = 0 as char     // null-terminate
+    map[25] = '@'
+    map[50] = 0 as char
     output(map, "\n")
-    free(map)
-
-    // stack: auto-freed at end of scope, fixed size
-    buf chars = stack[char](16)
-    buf[0] = 'H'
-    buf[1] = 'P'
-    buf[2] = 0 as char
-    output(buf, "\n")
+    clean map
 ```
 
 ```
 .........................@........................
-HP
 ```
 
-| | `stack[type](n)` | `heap[type](n)` |
-|---|---|---|
-| Freed | automatically at scope exit | manually with `free()` |
-| Size | compile-time fixed | runtime variable |
-| Speed | faster | slightly slower |
-
-**Multi-dimensional arrays** — the dungeon board is a 2D flat array with chained `[row][col]` indexing:
+**Multi-dimensional arrays** — `new i32[rows][cols]` builds a grid, indexed `[r][c]`. `for row in board` yields each row (an `i32[]`):
 
 ```ura
 main():
-    // 4 rows × 3 cols  (stack[[int]] = 2D int array)
-    board array[[int]] = stack[[int]](4, 3)
-
-    r int = 0
+    board i32[][] = new i32[4][3]
+    r i32 = 0
     while r < 4:
-        c int = 0
+        c i32 = 0
         while c < 3:
             board[r][c] = r * 3 + c
             c = c + 1
         r = r + 1
-
-    r = 0
-    while r < 4:
-        c int = 0
-        while c < 3:
-            output(board[r][c], " ")
-            c = c + 1
+    for row in board:
+        for v in row:
+            output(v, " ")
         output("\n")
-        r = r + 1
+    clean board
 ```
 
 ```
-0 1 2
-3 4 5
-6 7 8
-9 10 11
+0 1 2 
+3 4 5 
+6 7 8 
+9 10 11 
 ```
 
-`array[[int]]` = 2D, `array[[[int]]]` = 3D, and so on. Use `heap[[int]](rows, cols)` for runtime-sized grids.
+`clean` nulls the pointer, so a later guarded index `board[r]?` traps instead of reading freed memory.
 
 ---
 
-## Floor 11 — Status Effects
+## Floor 13 — Status Effects
 
-Bitwise operators pack multiple flags into one `int`. Standard arithmetic, comparison, logical, and assignment operators all work as expected:
+Bitwise operators pack multiple flags into one integer. Arithmetic, comparison, logical, and assignment operators all work as expected:
 
 ```ura
-POISONED int = 1   // 0001
-FROZEN   int = 2   // 0010
-BURNING  int = 4   // 0100
-SHIELDED int = 8   // 1000
+POISONED i32 = 1
+FROZEN   i32 = 2
+BURNING  i32 = 4
+SHIELDED i32 = 8
 
-fn has(status int, flag int) bool:  return (status & flag) != 0
-fn add(status int, flag int) int:   return status | flag
-fn rem(status int, flag int) int:   return status & ~flag
+fn has(status i32, flag i32) bool:  return (status & flag) != 0
+fn add(status i32, flag i32) i32:   return status | flag
+fn rem(status i32, flag i32) i32:   return status & ~flag
 
 main():
-    s int = 0
+    s i32 = 0
     s = add(s, POISONED)
     s = add(s, BURNING)
-    output("Poisoned: ", has(s, POISONED), "\n")   // True
-    output("Frozen:   ", has(s, FROZEN),   "\n")   // False
-    output("Burning:  ", has(s, BURNING),  "\n")   // True
+    output("Poisoned: ", has(s, POISONED), "\n")
+    output("Frozen:   ", has(s, FROZEN),   "\n")
+    output("Burning:  ", has(s, BURNING),  "\n")
     s = rem(s, POISONED)
-    output("Cured:    ", has(s, POISONED), "\n")   // False
+    output("Cured:    ", has(s, POISONED), "\n")
 ```
 
 ```
@@ -541,215 +585,266 @@ Cured:    False
 
 ---
 
-## Floor 12 — Gear Score
+## Floor 14 — Gear Score
 
-`as` casts between any numeric, pointer, and float↔int type pair. The ASCII table is just an `int → char` cast away:
+`as` casts between numeric, pointer, and float↔int type pairs. The ASCII table is just an `i32 → char` cast away:
 
 ```ura
 main():
-    // score percentage
-    score     int   = 847
-    max_score int   = 1000
-    pct       float = score as float / max_score as float * 100.0
-    output("Score: ", score, "/", max_score, "  Rating: ", pct, "%\n")
+    score     i32 = 847
+    max_score i32 = 1000
+    pct f64 = score as f64 / max_score as f64 * 100.0
+    output("Score: ", score, "/", max_score, "  Rating: ", pct, "\n")
 
-    // char ↔ int (ASCII)
     grade char = 'A'
-    code  int  = grade as int          // 65
-    back  char = (code + 1) as char    // 'B'
+    code  i32  = grade as i32
+    back  char = (code + 1) as char
     output("Grade: ", grade, " → ", code, " → ", back, "\n")
 
-    // char difference
-    diff int = 'd' as int - 'a' as int
-    output("'d' - 'a' = ", diff, "\n")   // 3
+    diff i32 = 'd' as i32 - 'a' as i32
+    output("'d' - 'a' = ", diff, "\n")
 ```
 
 ```
-Score: 847/1000  Rating: 84.7%
+Score: 847/1000  Rating: 84.700000
 Grade: A → 65 → B
 'd' - 'a' = 3
 ```
 
 ---
 
-## Floor 13 — Power Moves
+## Floor 15 — Power Moves
 
-Structs can define their own behaviour for any operator. Use `operator OP (param type) returnType:` inside the struct body. The first parameter's type is part of the overload name, so you can have multiple overloads of the same operator:
+Structs can define their own behaviour for any operator: `operator OP(param type) returnType:` inside the struct body. The parameter's type is part of the overload name, so one operator can have several overloads:
 
 ```ura
 struct Vec2:
-    x int
-    y int
+    x i32
+    y i32
 
-    operator = (v Vec2 ref) void:
-        self.x = v.x
-        self.y = v.y
+    pub fn create(a i32, b i32) Vec2:
+        v Vec2
+        v.x = a
+        v.y = b
+        return v
 
-    operator + (v Vec2 ref) Vec2:
-        res Vec2
-        res.x = self.x + v.x
-        res.y = self.y + v.y
-        return res
+    operator +(other Vec2) Vec2:
+        return Vec2::create(self.x + other.x, self.y + other.y)
 
-    operator == (v Vec2 ref) bool:
-        return self.x == v.x and self.y == v.y
+    operator ==(other Vec2) bool:
+        return self.x == other.x and self.y == other.y
 
-    fn print() void:
+    fn show() void:
         output("(", self.x, ", ", self.y, ")\n")
 
-fn walk(steps int, dir Vec2) Vec2:
-    pos Vec2
-    i   int = 0
-    while i < steps:
-        pos = pos + dir
-        i   = i + 1
-    return pos
-
 main():
-    north Vec2
-    north.x = 0
-    north.y = 1
-
-    east Vec2
-    east.x = 1
-    east.y = 0
-
-    pos Vec2 = walk(3, north)
-    pos = pos + east
-    pos.print()
-
-    origin Vec2
-    output("at origin: ", pos == origin, "\n")
+    a Vec2 = Vec2::create(1, 2)
+    b Vec2 = Vec2::create(10, 20)
+    c Vec2 = a + b
+    c.show()
+    output("a == a  ", a == a, "\n")
+    output("a == b  ", a == b, "\n")
 ```
 
 ```
-(1, 3)
-at origin: False
+(11, 22)
+a == a  True
+a == b  False
 ```
 
-**Multiple overloads per operator** — distinguish by parameter type:
-
-```ura
-use "@/header"
-
-struct Label:
-    value chars
-    len   int
-
-    pub fn new() Label:
-        l Label
-        l.value = heap[char](64)
-        l.len   = 0
-        return l
-
-    operator delete() void:
-        free(self.value)
-
-    fn set(s chars) void:
-        strcpy(self.value, s)
-        self.len = strlen(s) as int
-
-    operator = (s chars) void:
-        self.set(s)
-
-    operator = (v Label ref) void:
-        self.set(v.value)
-
-    operator + (v Label ref) Label:
-        res Label = Label::new()
-        strcpy(res.value, self.value)
-        strcat(res.value, v.value)
-        res.len = self.len + v.len
-        return res
-
-    fn print() void:
-        output(self.value, " (", self.len, " chars)\n")
-
-main():
-    title Label = Label::new()
-    title = "Shadow"
-
-    name Label = Label::new()
-    name = "Aldric"
-
-    full Label = title + name
-    full.print()
-```
-
-```
-ShadowAldric (11 chars)
-```
-
-**Copy-constructor semantics** — if you pass a struct by value to a function and `operator = (v StructType ref)` is defined, the compiler deep-copies automatically. The original is never touched:
-
-```ura
-use "@/header"
-
-fn rename(hero Label, suffix chars) void:
-    strcat(hero.value, suffix)
-    output("inside: ", hero.value, "\n")
-
-main():
-    hero Label = Label::new()
-    hero = "Aldric"
-    rename(hero, " the Brave")   // hero is deep-copied for the call
-    output("after:  ", hero.value, "\n")
-```
-
-```
-inside: Aldric the Brave
-after:  Aldric
-```
-
-**Operator name mangling:**
-
-| Declaration | Internal name |
-|---|---|
-| `operator = (s chars)` | `Hero.operator.ASSIGN.CHARS` |
-| `operator = (v Hero ref)` | `Hero.operator.ASSIGN.Hero` |
-| `operator + (v Hero ref)` | `Hero.operator.ADD.Hero` |
-| `operator == (v Hero ref)` | `Hero.operator.EQUAL.Hero` |
-| `operator < (v Hero ref)` | `Hero.operator.LESS.Hero` |
-| `operator delete()` | `Hero.delete` |
+The full overload set: `=` `+` `-` `*` `/` `%` `==` `!=` `<` `>` `<=` `>=` `+=` `-=` `*=` `/=` `%=` `&` `|` `^` `<<` `>>`. Declare `operator =(ref other T)` to define copy assignment (deep-copy an owned buffer), and `operator drop` to release it — see the heap-owning `String` in the standard library.
 
 ---
 
-## Floor 14 — C Interop
+## Floor 16 — The Scroll of Words
 
-`use "@/module"` imports from the standard library. `@` resolves to `$URA_LIB`. `use "@/header"` pulls in everything at once:
+The standard library ships a heap-backed `String`. `use "@/header"` (or `use "@/string"`) imports it. Construct with `String::create()`, `String::from()`, or `String::from_int()`; it frees itself at scope exit:
+
+```ura
+use "@/header"
+
+main():
+    greeting String = String::from("Hello, Dungeon!")
+    output(greeting.value, " (len ", greeting.len(), ")\n")
+    output("find 'Dungeon': ", greeting.find("Dungeon"), "\n")
+
+    shout String = greeting.upper()
+    output(shout.value, "\n")
+
+    word String = greeting.substr(7, 7)
+    output("substr: ", word.value, "\n")
+
+    msg String = String::create()
+    msg.push('H')
+    msg.push('P')
+    output("pushed: ", msg.value, "\n")
+
+    first String = String::from("Shadow")
+    last  String = String::from(" Blade")
+    name  String = first + last
+    output("name: ", name.value, "\n")
+
+    a String = String::from("abc")
+    b String = String::from("abc")
+    output("equal: ", a == b, "\n")
+
+    n String = String::from_int(100)
+    output("from_int: ", n.value, "\n")
+```
+
+```
+Hello, Dungeon! (len 15)
+find 'Dungeon': 7
+HELLO, DUNGEON!
+substr: Dungeon
+pushed: HP
+name: Shadow Blade
+equal: True
+from_int: 100
+```
+
+**String API:**
+
+| Category | Methods |
+|----------|---------|
+| Constructors | `String::create()` `String::from(str)` `String::from_int(n)` |
+| Accessors | `.len()` `.empty()` `.at(i)` `.c_str()` |
+| Mutators | `.assign(str)` `.join(str)` `.push(c)` `.pop()` `.clear()` |
+| Search | `.find(str)` `.contains(str)` `.starts_with(str)` `.ends_with(str)` |
+| Transform | `.substr(i, n)` `.upper()` `.lower()` `.trim()` `.replace(old, new)` `.repeat(n)` `.reverse()` |
+| Convert | `.to_int()` `.compare(ref other)` |
+| Operators | `=` `+` `+=` `==` `!=` `<` `>` (against `String` and `char[]`) |
+
+---
+
+## Floor 17 — Loot Tables
+
+Array literals initialize an array inline with `[value, value, ...]`. A string is a `char[]`, so an array of strings is `char[][]`:
+
+```ura
+main():
+    enemies char[][] = ["Orc", "Spider", "Dragon"]
+    loot    i32[]    = [15, 30, 100]
+    output("Enemies: ", enemies[0], ", ", enemies[1], ", ", enemies[2], "\n")
+    output("Loot:    ", loot[0], ", ", loot[1], ", ", loot[2], " gold\n")
+    roll i32 = 4
+    output("Roll ", roll, ": ", enemies[roll % 3], "\n")
+```
+
+```
+Enemies: Orc, Spider, Dragon
+Loot:    15, 30, 100 gold
+Roll 4: Spider
+```
+
+Elements can be any expression — variables, arithmetic, or function calls.
+
+---
+
+## Floor 18 — The Hero's Identity
+
+A struct prints as `Name{ field: value, ... }` by default. Define `operator output()` to control how it appears inside `output()`. It may return `char[]` (used directly) or a `String` (the compiler chains to the `String`'s own `operator output()`):
+
+```ura
+struct Tag:
+    name char[]
+    n    i32
+
+    operator output() char[]:
+        return self.name
+
+struct Plain:
+    a i32
+
+main():
+    t Tag
+    t.name = "custom"
+    t.n    = 7
+    output("direct: ", t, "\n")
+
+    p Plain
+    p.a = 1
+    output("plain:  ", p, "\n")
+```
+
+```
+direct: custom
+plain:  Plain{a: 1}
+```
+
+| Return type | Behavior |
+|-------------|----------|
+| `char[]` | used directly |
+| `String` (or any struct) | compiler chains to that struct's `operator output()` |
+| *(not defined)* | default `Name{ field: value, ... }` printing |
+
+---
+
+## Floor 19 — Cross-Platform Keep
+
+`@if` / `@elif` / `@else` gate code by **target platform** at compile time — the branch that does not match the build target is removed before parsing. Tags: `unix`, `macos`, `linux`, `windows`. Use it to pick the right `proto` per OS:
+
+```ura
+@if unix:
+    proto fn getpid() i32
+
+main():
+    @if macos:
+        output("building for macOS\n")
+    @elif linux:
+        output("building for Linux\n")
+    @else:
+        output("building for another platform\n")
+
+    @if unix:
+        output("pid > 0: ", getpid() > 0, "\n")
+```
+
+```
+building for macOS
+pid > 0: True
+```
+
+*(Output is from a macOS build; a Linux build prints the `@elif linux` branch.)* The platform is detected from the LLVM target triple, so no `-D` flags are needed.
+
+---
+
+## Floor 20 — C Interop
+
+`use "@/module"` imports from the standard library; `@` resolves to `$URA_LIB`, and `use "@/header"` pulls everything at once:
 
 ```ura
 use "@/io"       // printf, puts, fopen, fclose, write, read, ...
 use "@/memory"   // malloc, free, realloc, ...
-use "@/string"   // strlen, strcmp, strcpy, strcat, strdup, String struct, ...
-use "@/stdlib"   // atoi, rand, exit, ...
-use "@/time"     // time, clock, difftime, ...
-use "@/signals"  // signal, raise, ...
+use "@/string"   // strlen, strcmp, strcpy, strcat, String struct, ...
+use "@/stdlib"   // atoi, rand, srand, exit, ...
+use "@/math"     // sin, cos, sqrt, pow, ...
 use "@/net"      // socket, bind, listen, connect, send, recv, ...
-use "@/os"       // os.argc, os.argv
-use "@/header"   // all of the above at once
+use "@/header"   // every module at once (also wires up os.argc / os.argv)
 ```
 
 For full control, declare any C function with `proto`. Variadic functions take `...`:
 
 ```ura
-proto fn strlen(s chars) int
-proto fn write(fd int, ptr chars, len int) int
-proto fn printf(fmt chars, ...) int
+proto fn strlen(s pointer) i64
+proto fn printf(fmt pointer, ...) i32
 
 main():
-    n int = strlen("dungeon")
-    write(1, "hi\n", 3)
+    n i32 = strlen("dungeon") as i32
     printf("length: %d\n", n)
 ```
 
-Pull in the entire C stdlib in one line for random encounters:
+```
+length: 7
+```
+
+Pull in the whole C stdlib for a random encounter:
 
 ```ura
 use "@/header"
 
-fn random_encounter() chars:
-    r int = rand() % 4
+fn random_encounter() char[]:
+    r i32 = rand() % 4
     if r == 0: return "Giant Spider"
     if r == 1: return "Orc Shaman"
     if r == 2: return "Stone Golem"
@@ -763,26 +858,26 @@ main():
 ```
 
 ```
-Encounter 1: Orc Shaman
+Encounter 1: Stone Golem
 Encounter 2: Shadow Wraith
-Encounter 3: Giant Spider
+Encounter 3: Orc Shaman
 ```
 
-**Linking external libraries** — set an environment variable, then `use` the module:
+**Linking external libraries** — set an environment variable, then `use` the module. The compiler reads `URA_LINK_<name>` and passes it to the linker:
 
 ```bash
-export URA_LINK_mylib="/path/to/libmylib.a"
+export URA_LINK_raylib="/opt/homebrew/lib/libraylib.a"
 ```
 
 ```ura
-use "@/mylib"   // compiler reads URA_LINK_mylib and passes it to the linker
+use "@/raylib"
 ```
 
 ---
 
-## Floor 15 — Command Line
+## Floor 21 — Command Line
 
-`os.argc` and `os.argv` are populated automatically before `main()` runs when you `use "@/header"`:
+`os.argc` and `os.argv` are populated before `main()` when you `use "@/header"`:
 
 ```ura
 use "@/header"
@@ -790,10 +885,10 @@ use "@/header"
 main():
     if os.argc < 2:
         output("Usage: dungeon <hero_name>\n")
-        return
-    name chars = os.argv[1]
-    output("=== Welcome, ", name, "! ===\n")
-    output("Your quest begins on floor 1.\n")
+    else:
+        name char[] = os.argv[1]
+        output("=== Welcome, ", name, "! ===\n")
+        output("Your quest begins on floor 1.\n")
 ```
 
 ```bash
@@ -807,520 +902,166 @@ ura dungeon.ura Aldric
 
 ---
 
-## Floor 16 — Graphics
+## Floor 22 — Network
 
-Link against raylib and get a real dungeon window. Export the path once, then `use "@/raylib"`:
-
-```bash
-export URA_LINK_raylib="/opt/homebrew/lib/libraylib.a"   # macOS
-export URA_LINK_raylib="/usr/local/lib/libraylib.a"      # Linux
-```
-
-```ura
-use "@/raylib"
-
-main():
-    InitWindow(800, 600, "Dungeon — Floor 1")
-    SetTargetFPS(60)
-    hero_x int = 100
-    speed  int = 3
-    while WindowShouldClose() == False:
-        hero_x = hero_x + speed
-        if hero_x > 800: hero_x = 0
-        BeginDrawing()
-        ClearBackground(setColor(20, 20, 40, 255))
-        DrawRectangle(hero_x, 300, 40, 60, setColor(180, 100, 255, 255))
-        DrawText("Dungeon Hero", 10, 10, 24, setColor(255, 220, 0, 255))
-        EndDrawing()
-    CloseWindow()
-```
-
-```bash
-ura dungeon.ura && ./dungeon
-```
-
----
-
-## Floor 17 — Network
-
-POSIX sockets through `@/net`. Full server + client examples live in `tests/projects/ura-tcp-server/` ([github.com/mohammedhrima/ura-tcp-server](https://github.com/mohammedhrima/ura-tcp-server)):
+POSIX sockets through `@/net` (bundled in `@/header`). A minimal listener — bind, listen, accept:
 
 ```ura
 use "@/header"
 
 main():
-    fd int = socket(2, 1, 0)   // AF_INET, SOCK_STREAM
+    fd i32 = socket(2, 1, 0)   // AF_INET, SOCK_STREAM
     if fd < 0:
         output("socket failed\n")
-        return
-
-    port int  = 8080
-    addr chars = heap[char](16)
-    addr[0] = 16 as char
-    addr[1] = 2  as char
-    addr[2] = (port >> 8)   as char
-    addr[3] = (port & 255)  as char
-
-    bind(fd, addr, 16)
-    listen(fd, 5)
-    output("listening on :8080\n")
-
-    buf      chars = heap[char](1024)
-    client   int   = accept(fd, null, null)
-    if client >= 0:
-        r int = read(client, buf, 1023)
-        if r > 0:
-            output("got: ", buf, "\n")
-            write(client, "pong\n", 5)
-        close(client)
-    free(buf)
-    free(addr)
+    else:
+        addr char[] = new char[16]
+        addr[0] = 16 as char
+        addr[1] = 2  as char
+        addr[2] = (8080 >> 8)  as char
+        addr[3] = (8080 & 255) as char
+        bind(fd, addr, 16)
+        listen(fd, 5)
+        output("listening on :8080\n")
+        clean addr
 ```
 
-```bash
-# Terminal 1
-ura tests/projects/ura-tcp-server/basic/server.ura
-
-# Terminal 2
-ura tests/projects/ura-tcp-server/basic/client.ura
-```
-
----
-
-## Floor 18 — The Scroll of Words
-
-The standard library includes a full-featured `String` struct. `use "@/header"` (or `use "@/string"`) imports it. Construct with `String::new()`, `String::from()`, or `String::from_int()`. Destruction is automatic:
-
-```ura
-use "@/header"
-
-main():
-    // construct
-    greeting String = String::from("Hello, Dungeon!")
-    output(greeting.value, " (len: ", greeting.len(), ")\n")
-
-    // search
-    output("found 'Dungeon' at: ", greeting.find("Dungeon"), "\n")
-    output("starts with Hello: ", greeting.starts_with("Hello"), "\n")
-
-    // transform
-    shout String = greeting.upper()
-    output(shout.value, "\n")
-
-    whisper String = greeting.lower()
-    output(whisper.value, "\n")
-
-    word String = greeting.substr(7, 7)
-    output("substr: ", word.value, "\n")
-
-    // mutate
-    msg String = String::new()
-    msg.push('H')
-    msg.push('P')
-    output("pushed: ", msg.value, "\n")
-
-    // operators
-    first String = String::from("Shadow")
-    last  String = String::from(" Blade")
-    name  String = first + last
-    output("name: ", name.value, "\n")
-
-    first += last
-    output("+=:   ", first.value, "\n")
-
-    a String = String::from("abc")
-    b String = String::from("abc")
-    output("equal: ", a == b, "\n")
-
-    // convert
-    hp_str String = String::from_int(100)
-    output("HP: ", hp_str.value, "\n")
-
-    num String = String::from("42")
-    output("parsed: ", num.to_int(), "\n")
-
-    // more transforms
-    padded  String = String::from("  trimmed  ")
-    trimmed String = padded.trim()
-    output("trim: '", trimmed.value, "'\n")
-
-    orig    String = String::from("orc orc orc")
-    swapped String = orig.replace("orc", "elf")
-    output("replace: ", swapped.value, "\n")
-
-    ha  String = String::from("ha")
-    ha3 String = ha.repeat(3)
-    output("repeat: ", ha3.value, "\n")
-
-    rev String = String::from("dragon")
-    output("reverse: ", rev.reverse().value, "\n")
-```
-
-```
-Hello, Dungeon! (len: 15)
-found 'Dungeon' at: 7
-starts with Hello: True
-HELLO, DUNGEON!
-hello, dungeon!
-substr: Dungeon
-pushed: HP
-name: Shadow Blade
-+=:   Shadow Blade
-equal: True
-HP: 100
-parsed: 42
-trim: 'trimmed'
-replace: elf elf elf
-repeat: hahaha
-reverse: nogard
-```
-
-**String API:**
-
-| Category | Methods |
-|----------|---------|
-| Constructors | `String::new()` `String::from(str)` `String::from_int(n)` |
-| Accessors | `.len()` `.empty()` `.at(i)` `.c_str()` |
-| Mutators | `.assign(str)` `.join(str)` `.push(c)` `.pop()` `.clear()` |
-| Search | `.find(str)` `.contains(str)` `.starts_with(str)` `.ends_with(str)` |
-| Transform | `.substr(i, n)` `.upper()` `.lower()` `.trim()` `.replace(old, new)` `.repeat(n)` `.reverse()` |
-| Convert | `.to_int()` `.compare(other)` |
-| Operators | `=` `+` `+=` `==` `!=` `<` `>` (both `String` and `chars` overloads) |
-
----
-
-## Floor 19 — Loot Tables
-
-Array literals let you initialize arrays inline with `[value, value, ...]`:
-
-```ura
-use "@/header"
-
-main():
-    enemies array[chars] = ["Orc", "Spider", "Dragon"]
-    loot    array[int]   = [15, 30, 100]
-
-    output("Enemies: ", enemies[0], ", ", enemies[1], ", ", enemies[2], "\n")
-    output("Loot:    ", loot[0], ", ", loot[1], ", ", loot[2], " gold\n")
-
-    roll int = 4
-    output("Roll ", roll, ": ", enemies[roll % 3], "\n")
-
-    hits array[int] = [12, 8, 15, 20]
-    total int = 0
-    i int = 0
-    while i < 4:
-        total += hits[i]
-        i += 1
-    output("Total damage: ", total, "\n")
-```
-
-```
-Enemies: Orc, Spider, Dragon
-Loot:    15, 30, 100 gold
-Roll 4: Spider
-Total damage: 55
-```
-
-Elements can be any expression — variables, arithmetic, function calls:
-
-```ura
-fn double(n int) int:
-    return n * 2
-
-main():
-    x int = 5
-    v array[int] = [x, x + 1, x * 2, double(x)]
-    output(v[0], " ", v[1], " ", v[2], " ", v[3], "\n")   // 5 6 10 10
-```
-
----
-
-## Floor 20 — The Hero's Identity
-
-Structs print as `{ field: value, ... }` by default. Define `operator output()` to customize how a struct appears in `output()`:
-
-```ura
-use "@/header"
-
-struct Hero:
-    name  chars
-    level int
-    hp    int
-
-    pub fn new(name chars) Hero:
-        h Hero
-        h.name  = name
-        h.level = 1
-        h.hp    = 100
-        return h
-
-    operator output() String:
-        s String = String::from(self.name)
-        s.join(" lv")
-        n String = String::from_int(self.level)
-        s.join(n.value)
-        s.join(" HP:")
-        hp String = String::from_int(self.hp)
-        s.join(hp.value)
-        return s
-
-struct Loot:
-    name  chars
-    value int
-
-main():
-    hero Hero = Hero::new("Aldric")
-    output("Hero: ", hero, "\n")
-
-    loot Loot
-    loot.name  = "Iron Sword"
-    loot.value = 50
-    output("Loot: ", loot, "\n")
-
-    s String = String::from("Fireball")
-    output("Spell: ", s, "\n")
-```
-
-```
-Hero: Aldric lv1 HP:100
-Loot: { name: Iron Sword, value: 50 }
-Spell: Fireball
-```
-
-- **Hero** has `operator output()` → returns a formatted `String` → the compiler chains to `String`'s `operator output()` which returns `self.value` (chars)
-- **Loot** has no `operator output()` → uses default `{ field: value }` printing
-- **String** has `operator output() chars:` → returns `self.value` directly
-
-The returned `String` from `operator output()` is a temporary — the compiler auto-frees it after `output()` finishes. No memory leak.
-
-| Return type | Behavior |
-|-------------|----------|
-| `chars` | Used directly as `%s` in printf |
-| `String` (or any struct) | Compiler chains — calls that struct's `operator output()` recursively |
-| *(not defined)* | Default `{ field: value, ... }` printing |
-
----
-
-## Floor 21 — The Armory
-
-`List[T]` is a built-in dynamic array — push, pop, grow automatically. Works for any type. Requires `use "@/memory"`:
-
-```ura
-use "@/memory"
-
-main():
-    loot List[int]
-    loot.push(15)
-    loot.push(30)
-    loot.push(100)
-
-    output("Items: ", loot.len(), "\n")
-    output("Loot: ", loot[0], ", ", loot[1], ", ", loot[2], "\n")
-
-    total int = 0
-    i int = 0
-    while i < loot.len():
-        total += loot[i]
-        i += 1
-    output("Total gold: ", total, "\n")
-
-    dropped int = loot.pop()
-    output("Dropped ", dropped, " gold. Remaining: ", loot.len(), "\n")
-```
-
-```
-Items: 3
-Loot: 15, 30, 100
-Total gold: 145
-Dropped 100 gold. Remaining: 2
-```
-
-| Method | Description |
-|--------|-------------|
-| `v.push(e)` | Append element (auto-grows) |
-| `v.pop()` | Remove and return last element |
-| `v.len()` | Current element count |
-| `v.cap()` | Allocated capacity |
-| `v[i]` | Access element at index |
-| `v.data` | Raw `array[T]` pointer (for C interop) |
-
-Pass `v.data` to functions expecting `array[T]`:
-
-```ura
-fn sum(arr array[int], n int) int:
-    s int = 0
-    i int = 0
-    while i < n:
-        s += arr[i]
-        i += 1
-    return s
-
-main():
-    v List[int]
-    v.push(10)
-    v.push(20)
-    output("sum=", sum(v.data, v.len()), "\n")   // sum=30
-```
-
-`List[T]` is implemented via template monomorphization — the compiler generates a struct `__list_int` (or `__list_char`, etc.) with push/pop/len/cap methods. No generics syntax in the language; the compiler handles it internally. Use `-prep` to see the expanded code.
+Full server + client examples live in [github.com/mohammedhrima/ura-tcp-server](https://github.com/mohammedhrima/ura-tcp-server).
 
 ---
 
 ## Boss Room — The Full Game
 
-All the skills. One program. The dungeon is alive:
+All the skills. One program. The complete listing lives in [src/dungeon.ura](src/dungeon.ura) and is verified by the test suite ([tests/dungeon.md](tests/dungeon.md)):
 
 ```ura
-score int = 0
-floor int = 1
-
-enum EnemyType:
-    ORC, SPIDER, DRAGON
+enum EnemyType: GOBLIN, ORC, DRAGON
 
 struct Stats:
-    hp  int
-    atk int
-    def int
+    hp  i32
+    atk i32
 
 struct Hero:
-    name  chars
+    name  char[]
     stats Stats
-    level int
 
-    pub fn new() Hero:
+    pub fn create(name char[], hp i32, atk i32) Hero:
         h Hero
-        h.name       = "Aldric"
-        h.stats.hp   = 100
-        h.stats.atk  = 20
-        h.stats.def  = 5
-        h.level      = 1
+        h.name       = name
+        h.stats.hp   = hp
+        h.stats.atk  = atk
         return h
 
-    fn is_alive() bool:
+    fn alive() bool:
         return self.stats.hp > 0
 
-    fn take_hit(dmg int) void:
-        actual int = dmg - self.stats.def
-        if actual < 1: actual = 1
-        self.stats.hp = self.stats.hp - actual
+    operator output() char[]:
+        return self.name
 
-    fn level_up() void:
-        self.level      = self.level + 1
-        self.stats.atk  = self.stats.atk + 5
-        self.stats.def  = self.stats.def + 2
-        self.stats.hp   = self.stats.hp + 20
+fn enemy_hp(kind EnemyType) i32:
+    match kind:
+        case GOBLIN: return 20
+        case ORC:    return 45
+        case DRAGON: return 120
+    return 0
 
-    fn status() void:
-        output("  ", self.name, " lv", self.level,
-               "  HP:", self.stats.hp,
-               "  ATK:", self.stats.atk, "\n")
+fn loot_for(kind EnemyType) char[]?:
+    match kind:
+        case DRAGON: return "Dragonfang"
+        default:     return null
+    return null
 
-fn enemy_hp(t int) int:
-    if t == DRAGON: return 120
-    if t == SPIDER: return 40
-    return 60
-
-fn enemy_atk(t int) int:
-    if t == DRAGON: return 22
-    if t == SPIDER: return 8
-    return 12
-
-fn enemy_name(t int) chars:
-    if t == DRAGON: return "Dragon"
-    if t == SPIDER: return "Spider"
-    return "Orc"
-
-fn fight(hero Hero ref, enemy int) bool:
-    ehp  int = enemy_hp(enemy)
-    eatk int = enemy_atk(enemy)
-    output("  [", enemy_name(enemy), " — HP:", ehp, " ATK:", eatk, "]\n")
-    round int = 0
-    while hero.is_alive() and ehp > 0:
-        round  = round + 1
-        ehp    = ehp - hero.stats.atk
-        if ehp > 0:
-            hero.take_hit(eatk)
-    if hero.is_alive():
-        score = score + 50 * floor
-        return True
-    return False
+fn strongest(party Hero[], n i32) ref Hero:
+    best i32 = 0
+    for i in 1..n:
+        if party[i].stats.atk > party[best].stats.atk:
+            best = i
+    return ref party[best]
 
 main():
-    hero Hero = Hero::new()
-    output("=== ", hero.name, " enters the dungeon ===\n")
-    hero.status()
+    @if macos:
+        output("== Dungeon (macOS build) ==\n")
+    @elif linux:
+        output("== Dungeon (Linux build) ==\n")
+    @else:
+        output("== Dungeon ==\n")
 
-    encounters int = 3
-    i          int = 0
-    while i < encounters and hero.is_alive():
-        enemy int = i % 3   // ORC, SPIDER, DRAGON
-        output("Floor ", floor, " encounter ", i + 1, ":\n")
-        won bool = fight(hero, enemy)
-        if won:
-            output("  Victory!\n")
-            if i == encounters - 1:
-                hero.level_up()
-                floor = floor + 1
-        else:
-            output("  Hero fell.\n")
-        hero.status()
-        i = i + 1
+    party Hero[] = new Hero[3]
+    party[0] = Hero::create("Aldric", 100, 18)
+    party[1] = Hero::create("Borin",  90, 25)
+    party[2] = Hero::create("Cass",   80, 22)
 
-    output("=== Run complete | Score: ", score, " | Floor: ", floor, " ===\n")
+    output("Party:\n")
+    for h in party:
+        output("  ", h, " atk=", h.stats.atk, "\n")
+
+    ref champ Hero = strongest(party, 3)
+    output("Champion: ", champ, " (alive=", champ.alive(), ")\n")
+
+    foes EnemyType[] = [GOBLIN, ORC, DRAGON]
+    for kind in foes:
+        loot char[]? = loot_for(kind)
+        output("Foe hp=", enemy_hp(kind), " loot=",
+               loot ?? "none", "\n")
+
+    for ref h in party:
+        h.stats.hp = h.stats.hp - 10
+    output("Trap! ", party[0], " hp=", party[0].stats.hp, "\n")
+
+    output("sizeof=", sizeof(party[0]), " typeof=",
+           typeof(champ), "\n")
+
+    clean party
 ```
 
 ```
-=== Aldric enters the dungeon ===
-  Aldric lv1  HP:100  ATK:20
-Floor 1 encounter 1:
-  [Orc — HP:60 ATK:12]
-  Victory!
-  Aldric lv1  HP:93  ATK:20
-Floor 1 encounter 2:
-  [Spider — HP:40 ATK:8]
-  Victory!
-  Aldric lv1  HP:88  ATK:20
-Floor 1 encounter 3:
-  [Dragon — HP:120 ATK:22]
-  Victory!
-  Aldric lv2  HP:108  ATK:25
-=== Run complete | Score: 150 | Floor: 2 ===
+== Dungeon (macOS build) ==
+Party:
+  Aldric atk=18
+  Borin atk=25
+  Cass atk=22
+Champion: Borin (alive=True)
+Foe hp=20 loot=none
+Foe hp=45 loot=none
+Foe hp=120 loot=Dragonfang
+Trap! Aldric hp=90
+sizeof=24 typeof=Hero
 ```
 
 ---
 
 ## How It Works
 
-The compiler is written entirely in C. LLVM handles only the final step — converting architecture-independent IR to native code. Ura targets any platform LLVM supports with zero extra work.
+The compiler is written entirely in C. LLVM handles only the final step — turning architecture-independent IR into native code — so ura targets any platform LLVM supports with zero extra work.
 
 ### Compilation Pipeline
 
 ```
 source.ura
     │
-    ▼  tokenize()                flat list of tokens
+    ▼  lexer        source text → flat list of tokens
     │
-    ▼  synth_list_structs()     monomorphize List[T] → __list_T structs
+    ▼  @if pass     remove code for non-target platforms
     │
-    ▼  AST                      recursive descent parser → syntax tree
+    ▼  parser       recursive descent → typed AST
     │
-    ▼  ir_gen()                  name resolution, type checking,
-    │                            operator overload dispatch
-    ▼  asm_gen()                 LLVM IR emission via LLVM C API → build/file.ll
+    ▼  analyze      name resolution, scopes, enum/struct declaration
     │
-    ▼  llc                      .ll → .s  (native assembly)
+    ▼  typecheck    type checking, operator-overload dispatch
     │
-    ▼  clang                    .s → executable
+    ▼  codegen      LLVM IR emission via the LLVM C API → build/file.ll
+    │
+    ▼  clang        .ll → native executable
 ```
 
 ### Source Files
 
-- **`src/main.c`** (~130 lines) — `compile()` pipeline orchestration and `int main()` argument parsing.
-- **`src/parse.c`** (~1200 lines) — tokenizer (`parse_token`, `tokenize`), recursive descent parser, `synth_list_structs` (monomorphizes `List[T]` → `__list_T` struct sources), `generate_list_source` template emitter. Operator precedence is encoded in the call chain: `expr → assign → logic_or → … → as → unary → access → prime`.
-- **`src/gen.c`** (~830 lines) — `ir_gen()` (semantic pass: name resolution, type checking, operator overload dispatch) and `asm_gen()` (LLVM IR emission). One thin per-case helper (`ir_<case>` / `asm_<case>`) per AST node kind.
-- **`src/utils.c`** (~2470 lines) — LLVM type helpers, scope management, IR/ASM support helpers, debug printing (`pnode`, `_vprint`), `copy_token` (deep-copies LLVM metadata), and the `-prep` serializer (`emit_prep_file` and friends).
-- **`src/header.h`** (~530 lines) — `Token`, `Node`, `Type` enum, all global declarations and prototypes.
+- **`src/main.c`** — the `compile()` pipeline, tokenizer driver, platform detection, and CLI argument parsing.
+- **`src/frontend/lexer.c`** — `lex_*` helpers; turns source text into tokens, plus the `@if` preprocessing pass.
+- **`src/frontend/parser.c`** — recursive descent parser (`*_node` helpers) building the typed AST.
+- **`src/backend/analyze.c`** — the resolution pass: scopes, name binding, enum/struct declaration.
+- **`src/backend/typecheck.c`** — type checking and operator-overload dispatch.
+- **`src/backend/codegen.c`** — LLVM IR emission (`code_gen_*` per node kind).
+- **`src/frontend/header.h`, `src/backend/header.h`** — `Token`, `Type` enum, `UraGlobal`, and shared prototypes.
 
 ---
 
@@ -1330,50 +1071,36 @@ source.ura
 
 ```bash
 ura <file.ura> [options]
-ura src/game.ura -O2 -o dungeon
+ura src/dungeon.ura -O2 -o dungeon
 ```
 
 ### Options
 
 | Flag | Description |
 |------|-------------|
-| `-O0` | No optimization (debug) |
-| `-O1` | Basic optimization |
-| `-O2` | Standard optimization |
-| `-O3` | Aggressive optimization |
-| `-Os` | Optimize for size |
-| `-Oz` | Minimize binary size |
-| `-san` | AddressSanitizer + debug info |
-| `-no-exec` | Compile only — generate .ll and .s but don't link/run |
-| `-no-debug` | Suppress debug output |
-| `-prep` | Generate preprocessed `.prep.ura` — expanded generics, resolved operators, inlined imports |
 | `-o <name>` | Output name (default: source basename) |
+| `-O0` … `-O3`, `-Os`, `-Oz` | LLVM optimization level |
+| `-san` | UndefinedBehavior/Address sanitizer + debug info |
+| `-tree` | Print the typed AST and stop |
+| `-debug` | Verbose compiler diagnostics |
 
-### anvil
-
-Dev tool for the compiler — a small scripting interpreter in its own repo:
-[github.com/mohammedhrima/anvil](https://github.com/mohammedhrima/anvil). Clone
-and build it once, then run this project's [anvil.an](anvil.an):
+### Building & the task shell
 
 ```bash
-git clone https://github.com/mohammedhrima/anvil && make -C anvil   # one-time
-anvil anvil.an                 # open the prompt, then type a command:
-#   check       verify clang + llvm-config-14
-#   install     install LLVM/clang deps
-#   build       compile the ura compiler -> build/ura
-#   test <dir>  run tests under a folder     tests   run them all
-#   copy <f>    file a .ura + its .ll as a new test
-#   reload      re-read anvil.an after edits
+make build      # compile the compiler → build/ura
+make release    # -O2 build
+make dev        # open the task shell: uv run config/tasks.py
 ```
 
-Each command is defined in [anvil.an](anvil.an) at the repo root — edit that file
-to change what a command does or add new ones.
+Inside `make dev` the verbs are `check`, `install`, `build`, `tests`
+(`tests <group>.md` runs one group), `update <group>.md`, `show`, `index`,
+`migrate`, `doctor`. The task shell needs [uv](https://github.com/astral-sh/uv).
 
 ---
 
 ## VS Code Extension
 
-Syntax highlighting for `.ura` files — keywords, types, operators, strings, comments, `pub fn`, `operator delete`, `Type::method()` static dispatch.
+Syntax highlighting for `.ura` files — keywords, types, operators, strings, comments, `pub fn`, `operator`, `@if` directives, and `Type::method()` static dispatch.
 
 ```bash
 git clone https://github.com/mohammedhrima/ura-vscode-extension
@@ -1386,46 +1113,39 @@ code --install-extension ura-lang-*.vsix
 ## Status
 
 **Working today:**
-- All primitive types: `int` `long` `short` `char` `chars` `bool` `float` `void`
-- `null` literal, enums, global variables
-- Functions, variadic functions, single-line functions
-- Forward references — functions and struct methods can be called before declaration
-- Tuples — multi-value returns with destructuring
-- `while` loops, `if`/`elif`/`else`, `break`, `continue`
+- Sized integers `i8` `i16` `i32` `i64`, unsigned `u8` `u16` `u32` `u64`, floats `f32` `f64`, plus `char`, `char[]`, `bool`, `void`, `pointer`
+- `null`, nullable types `T?`, `??` default, guarded deref `value?`
+- Enums — named `i32` constants, explicit values, enum-typed variables
+- Global variables
+- Functions, variadic functions, single-line functions, call-before-declare
+- `while` / `loop`, `if` / `elif` / `else`, `break`, `continue`
+- `for` loops — `for i in a..b`, `by` step, `for x in arr`, `for ref x in arr`
+- `match` / `case` / `default` (enum or integer cases)
 - Structs, nested structs, methods with `self`
-- `pub fn` — static methods, called via `Type::method()` (explicit constructors)
-- `operator delete()` — destructor, auto-called at scope exit
-- **Operator overloading** — `=` `+` `-` `*` `/` `%` `==` `!=` `<` `>` `<=` `>=` `+=` `-=` `*=` `/=` `%=` `&` `|` `^` `<<` `>>`
-- **Copy-constructor semantics** — struct by-value args auto-deep-copy via `operator =`
-- **`operator output()`** — custom struct printing, returns `chars` or `String` (chains recursively)
-- **Auto-free temp structs** — struct values returned from functions and not assigned are auto-freed at scope exit
-- **Built-in String type** — constructors, search, transforms, operators, `operator output()`
-- **Array literals** — `[1, 2, 3]` inline array initialization
-- References and reference parameters
-- Stack/heap allocation: `stack[type](n)`, `heap[type](n)`
-- **Multi-dimensional arrays** — `stack[[int]](rows, cols)`, chained `[r][c]` indexing
-- All operators: arithmetic, bitwise, logical, comparison, assignment
-- Pointer arithmetic — `chars + int` emits GEP
-- Type casting with `as` — numeric, pointer, float↔int, char↔int
+- `pub fn` static methods via `Type::method()`
+- References — `ref` params, local refs (`= ref` rebind, `=` write-through), **reference returns** `fn f() ref T`, nullable refs `ref? T`, identity `ref a == ref b`
+- Operator overloading — `=` `+` `-` `*` `/` `%` `==` `!=` `<` `>` `<=` `>=` `+=` `-=` `*=` `/=` `%=` `&` `|` `^` `<<` `>>`
+- `operator =` copy assignment and `operator drop` destructor (fires on scope exit, `return`, `break`, `continue`)
+- `operator output()` — custom struct printing (returns `char[]` or `String`, chains recursively)
+- Built-in `String` — constructors, search, transforms, operators
+- Array literals `[1, 2, 3]`, multi-dimensional `new T[r][c]`
+- `new` / `clean` heap allocation
+- Type casting `as` — numeric, pointer, float↔int, char↔int
 - `typeof`, `sizeof`
+- `@if` / `@elif` / `@else` platform conditional compilation (`unix`/`macos`/`linux`/`windows`)
 - `output` builtin — no format string, no imports
 - `use` module system (`@` for stdlib, relative for local files)
-- `proto` for C interop, variadic supported
-- OS module — `os.argc`, `os.argv`
-- Multi-file imports via `use` (single `.ura` entry point on the CLI)
-- Networking via POSIX socket APIs
-- LLVM optimization passes (-O0 → -O3, -Os, -Oz)
-- AddressSanitizer support (`-san`)
-- **`List[T]`** — generic dynamic array (push, pop, len, cap, `v[i]`, auto-free)
-- **`-prep` flag** — preprocessed source output (expanded generics, resolved operators)
+- `proto` C interop, variadic supported, `URA_LINK_<name>` external linking
+- `os.argc` / `os.argv`
+- LLVM optimization passes (`-O0` → `-O3`, `-Os`, `-Oz`), sanitizers (`-san`)
 
 **Coming next:**
-- For loops (`for i in 0..10`)
-- Switch / case
-- More container types (Map, Set)
-- Type inference
-- Type aliases
-- Default parameter values
+- Tuples — multi-value returns with destructuring (`a i32, b i32 = f()`)
+- `List[T]`, `Map[K, V]`, `Set[T]` container types
+- String interpolation
+- `const` / immutability, type inference (`:=`), type aliases
+- Function overloading, default parameter values, named returns
+- Generics
 
 ---
 
@@ -1437,7 +1157,7 @@ code --install-extension ura-lang-*.vsix
 | Linux | `clang-14` + `llvm-14` + `llvm-14-tools` |
 | Windows | MSYS2 MinGW64 + `mingw-w64-x86_64-llvm` + clang |
 
-Run `anvil install` to install everything automatically.
+Run `install` from the task shell (`make dev`) to install everything automatically.
 
 > **Why LLVM 14?** It uses explicit pointer types (`i32*`) in IR instead of the opaque `ptr` from LLVM 15+, making the generated `.ll` files much easier to read and debug.
 
