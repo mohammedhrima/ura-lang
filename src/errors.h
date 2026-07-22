@@ -175,6 +175,9 @@
 
 #define ERR_UNDECLARED_VARIABLE "Undeclared variable '%s'"
 
+#define ERR_BARE_FIELD \
+	"Field '%s' must be accessed through self; write 'self.%s'"
+
 #define ERR_REF_TO_NON_VARIABLE \
 	"Cannot take a reference to a non-variable"
 
@@ -186,6 +189,9 @@
 
 #define ERR_REF_NEEDS_VARIABLE \
 	"A reference must be bound to a variable (ref x)"
+
+#define ERR_REF_FIELD_WRITE \
+	"'%s' is a reference field; bind it with '= ref', not a value"
 
 #define ERR_ARRAY_SIZE_NOT_INT "Array size must be an integer"
 

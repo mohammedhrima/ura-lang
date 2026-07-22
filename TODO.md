@@ -40,15 +40,13 @@ Rewrite ura-lang feature by feature, full pipeline each. Nothing gets skipped, n
 - [ ] type aliases (2)
 - [ ] fn overloading (3) · default param values (2) · named returns (2)
 - [ ] struct embedding (4)
-- [ ] @if conditional compilation (3)
 - [ ] generics — LAST, everything monomorphizes (12)
 
 ## M10 — stdlib & tooling (continuous)
 - [ ] std core: string (5) — commented down to its 37 protos; its blockers (`char[]` indexing, `pub`, `operator`, `::`) now exist
-- [ ] std extended modules (math/time/os/net/…) (8) — blocked, each commented with its reason:
-      `@if` (dirent, errno, fcntl, net, signals, stat, unistd) · globals (os, raylib, + 105 constants) · f64 (math, atof/strtod) · time
+- [ ] std extended modules (math/time/os/net/…) (8) — `@if` and `f64` now exist, so modules gated on them load: `@/header` pulls ctype/errno/fcntl/io/math/memory/net/signals/stat/stdlib/string/time/unistd and compiles+runs (verified via the socket + getpid demos). Still blocked on globals: os, raylib + 105 constants
 - [ ] regression tests for old bug list (2)
-- [ ] docs refresh per milestone (3) · vscode-extension sync (2)
+- [ ] docs refresh per milestone (3) · vscode-extension sync (2) — README fully rewritten (every code block compile-checked) + extension `@if` grammar synced, 2026-07-22; recurring — keep in step each milestone
 - [ ] post-1.0: formatter (9) · LSP (13) · package manager on tasks.py/uv (12)
 
 ## Design decisions ledger (open)

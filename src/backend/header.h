@@ -9,7 +9,7 @@ Node *enclosing_break();
 void analyze_block(Node *node);
 void analyze_match(Node *node);
 void declare_variable(Token *token);
-Token *find_variable(char *name, bool *captured);
+Token *find_variable(char *name, bool *captured, bool *from_field);
 bool same_signature(Token *a, Token *b);
 void declare_function(Node *fn);
 void declare_struct(Node *node);

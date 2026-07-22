@@ -27,26 +27,6 @@ Token *find(Type type, ...) {
 	return NULL;
 }
 
-int get_operation_precedence(Type type)
-{
-   static const int res[END + 1] = {
-      [ASSIGN] = 1,     [ADD_ASSIGN] = 1, [SUB_ASSIGN] = 1,
-      [MUL_ASSIGN] = 1, [DIV_ASSIGN] = 1, [MOD_ASSIGN] = 1,
-      [BAND_ASSIGN] = 1, [BOR_ASSIGN] = 1, [BXOR_ASSIGN] = 1,
-      [LSHIFT_ASSIGN] = 1, [RSHIFT_ASSIGN] = 1,
-      [FALLBACK] = 2,   [OR] = 2,         [AND] = 3,
-      [RANGE] = 2,
-      [BOR] = 4,        [BXOR] = 5,       [BAND] = 6,
-      [LESS] = 8,       [EQUAL] = 7,      [NOT_EQUAL] = 7,
-      [GREAT] = 8,      [LESS_EQUAL] = 8, [GREAT_EQUAL] = 8,
-      [ADD] = 10,       [LSHIFT] = 9,     [RSHIFT] = 9,
-      [SUB] = 10,       [MUL] = 11,       [DIV] = 11,
-      [AS] = 12,        [MOD] = 11,
-   };
-
-   return res[type];
-}
-
 bool within(int indent) {
 	Token *curr = ura.tokens[ura.exe_pos];
 	return !ura.found_error && curr->indent > indent && curr->type != END;
@@ -126,162 +106,9 @@ void parse_block(Node *node, int indent) {
 	}
 }
 
-Node *match_node(Node *node) {
-	Token *token = node->token;
-	node->left = expr_node(0);
-	if (!find(DOTS, 0))
-		parse_error(token, "Expected ':' to open the 'match' body");
-	while (within(token->indent) && includes(peek(0)->type, CASE, DEFAULT, 0)) {
-		Token *keyword = next();
-		Node  *branch  = new_node(keyword);
-		if (keyword->type == CASE) {
-			Node *values = new_node(keyword);
-			while (!ura.found_error && peek(0)->type != DOTS) {
-				resize_array(values->children, Node *);
-				values->children[values->children_count++] = expr_node(0);
-				if (!find(COMA, 0)) break;
-			}
-			if (values->children_count == 0)
-				parse_error(keyword, "Expected an expression after 'case'");
-			branch->left = values;
-		}
-		if (!find(DOTS, 0))
-			parse_error(keyword, ERR_EXPECTED_BODY_COLON, keyword->name);
-		parse_block(branch, keyword->indent);
-		resize_array(node->children, Node *);
-		node->children[node->children_count++] = branch;
-		if (keyword->type == DEFAULT) break;
-	}
-	return node;
-}
-
-Node *if_node(Node *node) {
-	Token *token = node->token;
-	node->left = expr_node(0);
-	if (!find(DOTS, 0))
-		parse_error(token, "Expected ':' to open the 'if' body");
-	parse_block(node, token->indent);
-	Node *tail = node;
-	while (includes(peek(0)->type, ELIF, ELSE, 0) && peek(0)->indent == token->indent) {
-		Token *keyword = next();
-		Node  *branch  = new_node(keyword);
-		if (keyword->type == ELIF)
-			branch->left = expr_node(0);
-		if (!find(DOTS, 0))
-			parse_error(keyword, ERR_EXPECTED_BODY_COLON, keyword->name);
-		parse_block(branch, keyword->indent);
-		tail->right = branch;
-		tail        = branch;
-		if (keyword->type == ELSE) break;
-	}
-	return node;
-}
-
-Node *while_node(Node *node) {
-	Token *token = node->token;
-	node->left = expr_node(0);
-	if (!find(DOTS, 0))
-		parse_error(token, "Expected ':' to open the 'while' body");
-	parse_block(node, token->indent);
-	return node;
-}
-
-Node *for_node(Node *node) {
-	Token *token = node->token;
-	bool   ref   = find(REF, 0) != NULL;
-	Token *iter  = find(ID, 0);
-	if (!iter) {
-		parse_error(token, "Expected a loop variable after 'for'");
-		return syntax_error();
-	}
-	iter->is_dec  = true;
-	token->is_ref = ref;
-	node->left    = new_node(iter);
-	if (!find(IN, 0))
-		parse_error(token, "Expected 'in' after 'for %s'", iter->name);
-	node->right = expr_node(0);
-	if (find(BY, 0)) {
-		Node *by = expr_node(0);
-		if (node->right->token->type != RANGE)
-			parse_error(token, ERR_BY_NEEDS_RANGE);
-		else {
-			resize_array(node->right->children, Node *);
-			node->right->children[node->right->children_count++] = by;
-		}
-	}
-	if (!find(DOTS, 0))
-		parse_error(token, "Expected ':' to open the 'for' body");
-	parse_block(node, token->indent);
-	return node;
-}
-
-Node *ref_node(Node *node) {
-	Token *token = node->token;
-	bool nullable = peek(0)->type == OPTIONAL;
-	if (nullable) find(OPTIONAL, 0);
-	Token *name = peek(0);
-	if (!name || name->type != ID) {
-		parse_error(token, "Expected a variable after 'ref'");
-		return syntax_error();
-	}
-	bool fn_type = peek(1)->type == FDEC && peek(2)->type == LPAR;
-	bool named   = peek(1)->type == ID && peek(1)->line == name->line;
-	if (is_data_type(peek(1)) || named || fn_type) {
-		find(ID, 0);
-		name->is_dec      = true;
-		name->is_ref      = true;
-		name->is_nullable = nullable;
-		parse_type(name);
-		if (!nullable && peek(0)->type != ASSIGN) {
-			parse_error(name, ERR_REF_MUST_BE_BOUND);
-			return syntax_error();
-		}
-		node->token = name;
-		return node;
-	}
-	node->left = prime_node();
-	return node;
-}
-
 Node *postfix(Node *node) {
 	if (peek(0)->type == LBRA || peek(0)->type == DOT)
 		return access_node(node);
-	return node;
-}
-
-Node *id_node(Node *node) {
-	Token *token = node->token;
-	if (peek(0)->type == LPAR) {
-		if (strcmp(token->name, "main") == 0)
-			return fdec_node(node);
-		if (strcmp(token->name, "output") == 0)
-			return output_node(node);
-		return postfix(fcall_node(node));
-	}
-	if (peek(0)->type == DOUBLE_DOTS) {
-		Token *sep    = next();
-		Token *member = find(ID, 0);
-		if (!member) {
-			parse_error(sep, "Expected a method name after '::'");
-			return syntax_error();
-		}
-		token->Struct.name    = strdup(token->name);
-		token->is_static_call = true;
-		set_name(token, member->name);
-		return postfix(fcall_node(node));
-	}
-	if (peek(0)->type == LBRA || peek(0)->type == DOT)
-		return access_node(node);
-	bool named   = peek(0)->type == ID && peek(0)->line == token->line;
-	bool fn_type = peek(0)->type == FDEC && peek(1)->type == LPAR;
-	if (is_data_type(peek(0)) || named || fn_type) {
-		token->is_dec = true;
-		parse_type(token);
-	}
-	if (!token->is_dec && peek(0)->type == OPTIONAL) {
-		find(OPTIONAL, 0);
-		token->is_nullable = true;
-	}
 	return node;
 }
 
@@ -296,22 +123,6 @@ void inject_self(Node *fn, Node *owner) {
 	self->is_param    = true;
 	resize_array(fn->token->Fn.params, Token *);
 	fn->token->Fn.params[fn->token->Fn.params_count++] = self;
-}
-
-Node *drop_node(Node *node, Node *owner) {
-	node->token->type     = FDEC;
-	node->token->ret_type = VOID;
-	set_name(node->token, "drop");
-	enter_scope(node);
-	inject_self(node, owner);
-	if (peek(0)->type == LPAR)
-		parse_error(peek(0), ERR_DROP_NO_PARAMS);
-	else if (!find(DOTS, 0) && peek(0)->type != DOTS)
-		parse_error(peek(0), ERR_DROP_NO_RET);
-	parse_block(node, node->token->indent);
-	exit_scope();
-	owner->token->has_drop = true;
-	return node;
 }
 
 Node *fdec_node(Node *node) {
@@ -366,60 +177,6 @@ Node *fdec_node(Node *node) {
 	return node;
 }
 
-Node *struct_node(Node *node) {
-	node->token->type = STRUCT_DEF;
-	enter_scope(node);
-	if (!find(DOTS, 0))
-		parse_error(node->token, ERR_STRUCT_EXPECTED_COLON, node->token->name);
-	parse_block(node, node->token->indent);
-	if (!node->children_count)
-		parse_error(node->token, ERR_STRUCT_EMPTY, node->token->name);
-	for (int i = 0; i < node->children_count; i++) {
-		Token *child = node->children[i]->token;
-		if (child->type != FDEC) continue;
-		char *qualified = format("%s.%s", node->token->name, child->name);
-		set_name(child, qualified);
-		free(qualified);
-	}
-	exit_scope();
-	return node;
-}
-
-Node *enum_node(Node *node) {
-	node->token->type = ENUM_DEF;
-	if (!find(DOTS, 0))
-		parse_error(node->token, ERR_ENUM_EXPECTED_COLON, node->token->name);
-	int  line   = node->token->line;
-	int  indent = node->token->indent;
-	long value  = 0;
-	while (!ura.found_error) {
-		Token *peeked = peek(0);
-		bool   inside = peeked->line == line || peeked->indent > indent;
-		if (peeked->type != ID || !inside) break;
-		Token *var     = find(ID, 0);
-		var->is_dec    = true;
-		var->is_global = true;
-		var->type      = ENUM_CALL;
-		if (find(ASSIGN, 0)) {
-			bool   neg = find(SUB, 0) != NULL;
-			Token *lit = find(I32, 0);
-			if (!lit) {
-				parse_error(var, ERR_ENUM_VALUE_INT, var->name);
-				break;
-			}
-			value = neg ? -lit->Int.value : lit->Int.value;
-		}
-		var->Int.value = value;
-		value++;
-		resize_array(node->children, Node *);
-		node->children[node->children_count++] = new_node(var);
-		if (!find(COMA, 0)) break;
-	}
-	if (!node->children_count)
-		parse_error(node->token, ERR_ENUM_EMPTY, node->token->name);
-	return node;
-}
-
 Node *fcall_node(Node *node) {
 	node->token->type = FCALL;
 	if (!find(LPAR, 0))
@@ -431,21 +188,6 @@ Node *fcall_node(Node *node) {
 	}
 	if (!find(RPAR, 0))
 		parse_error(node->token, ERR_CALL_EXPECTED_RPAREN, node->token->name);
-	return node;
-}
-
-Node *output_node(Node *node) {
-	node->token->type     = OUTPUT;
-	node->token->ret_type = VOID;
-	if (!find(LPAR, 0))
-		parse_error(node->token, "Expected '(' after output");
-	while (!ura.found_error && peek(0)->type != RPAR) {
-		resize_array(node->children, Node *);
-		node->children[node->children_count++] = expr_node(0);
-		while (find(COMA, 0));
-	}
-	if (!find(RPAR, 0))
-		parse_error(node->token, "Expected ')' after output arguments");
 	return node;
 }
 
@@ -465,6 +207,8 @@ Node *access_node(Node *node) {
 				dnode = fcall_node(dnode);
 				dnode->token->is_method_call = true;
 			}
+			if (find(OPTIONAL, 0))
+				dnode->token->is_nullable = true;
 			node = dnode;
 			continue;
 		}
@@ -479,18 +223,6 @@ Node *access_node(Node *node) {
 			bracket->is_nullable = true;
 		node = access;
 	}
-	return node;
-}
-
-Node *array_lit_node(Node *node) {
-	node->token->type = ARRAY_LIT;
-	while (!ura.found_error && peek(0)->type != RBRA) {
-		resize_array(node->children, Node *);
-		node->children[node->children_count++] = expr_node(0);
-		while (find(COMA, 0));
-	}
-	if (!find(RBRA, 0))
-		parse_error(node->token, "Expected ']' to close array literal");
 	return node;
 }
 
@@ -526,7 +258,18 @@ Node *prime_node() {
          return array_ctor_node(new_node(token));
       return new_node(token);
    case NULL_LIT: return new_node(token);
-   case LBRA: return postfix(array_lit_node(new_node(token)));
+   case LBRA: {
+      Node *node = new_node(token);
+      node->token->type = ARRAY_LIT;
+      while (!ura.found_error && peek(0)->type != RBRA) {
+         resize_array(node->children, Node *);
+         node->children[node->children_count++] = expr_node(0);
+         while (find(COMA, 0));
+      }
+      if (!find(RBRA, 0))
+         parse_error(node->token, "Expected ']' to close array literal");
+      return postfix(node);
+   }
    case LPAR: {
       Node *node = expr_node(0);
       if (!find(RPAR, 0))
@@ -549,7 +292,20 @@ Node *prime_node() {
       }
       if (peek(0)->type == ID && strcmp(peek(0)->name, "drop") == 0) {
          next();
-         return drop_node(new_node(token), owner);
+         Node *node = new_node(token);
+         node->token->type     = FDEC;
+         node->token->ret_type = VOID;
+         set_name(node->token, "drop");
+         enter_scope(node);
+         inject_self(node, owner);
+         if (peek(0)->type == LPAR)
+            parse_error(peek(0), ERR_DROP_NO_PARAMS);
+         else if (!find(DOTS, 0) && peek(0)->type != DOTS)
+            parse_error(peek(0), ERR_DROP_NO_RET);
+         parse_block(node, node->token->indent);
+         exit_scope();
+         owner->token->has_drop = true;
+         return node;
       }
       if (peek(0)->type == ID && strcmp(peek(0)->name, "output") == 0) {
          next();
@@ -615,7 +371,22 @@ Node *prime_node() {
          return syntax_error();
       }
       set_name(node->token, sname->name);
-      return struct_node(node);
+      node->token->type = STRUCT_DEF;
+      enter_scope(node);
+      if (!find(DOTS, 0))
+         parse_error(node->token, ERR_STRUCT_EXPECTED_COLON, node->token->name);
+      parse_block(node, node->token->indent);
+      if (!node->children_count)
+         parse_error(node->token, ERR_STRUCT_EMPTY, node->token->name);
+      for (int i = 0; i < node->children_count; i++) {
+         Token *child = node->children[i]->token;
+         if (child->type != FDEC) continue;
+         char *qualified = format("%s.%s", node->token->name, child->name);
+         set_name(child, qualified);
+         free(qualified);
+      }
+      exit_scope();
+      return node;
    }
    case ENUM_DEF: {
       Node *node = new_node(token);
@@ -625,9 +396,87 @@ Node *prime_node() {
          return syntax_error();
       }
       set_name(node->token, ename->name);
-      return enum_node(node);
+      node->token->type = ENUM_DEF;
+      if (!find(DOTS, 0))
+         parse_error(node->token, ERR_ENUM_EXPECTED_COLON, node->token->name);
+      int  line   = node->token->line;
+      int  indent = node->token->indent;
+      long value  = 0;
+      while (!ura.found_error) {
+         Token *peeked = peek(0);
+         bool   inside = peeked->line == line || peeked->indent > indent;
+         if (peeked->type != ID || !inside) break;
+         Token *var     = find(ID, 0);
+         var->is_dec    = true;
+         var->is_global = true;
+         var->type      = ENUM_CALL;
+         if (find(ASSIGN, 0)) {
+            bool   neg = find(SUB, 0) != NULL;
+            Token *lit = find(I32, 0);
+            if (!lit) {
+               parse_error(var, ERR_ENUM_VALUE_INT, var->name);
+               break;
+            }
+            value = neg ? -lit->Int.value : lit->Int.value;
+         }
+         var->Int.value = value;
+         value++;
+         resize_array(node->children, Node *);
+         node->children[node->children_count++] = new_node(var);
+         if (!find(COMA, 0)) break;
+      }
+      if (!node->children_count)
+         parse_error(node->token, ERR_ENUM_EMPTY, node->token->name);
+      return node;
    }
-   case ID: return id_node(new_node(token));
+   case ID: {
+	Node *node = new_node(token);
+	Token *token = node->token;
+	if (peek(0)->type == LPAR) {
+		if (strcmp(token->name, "main") == 0)
+			return fdec_node(node);
+		if (strcmp(token->name, "output") == 0) {
+			node->token->type     = OUTPUT;
+			node->token->ret_type = VOID;
+			if (!find(LPAR, 0))
+				parse_error(node->token, "Expected '(' after output");
+			while (!ura.found_error && peek(0)->type != RPAR) {
+				resize_array(node->children, Node *);
+				node->children[node->children_count++] = expr_node(0);
+				while (find(COMA, 0));
+			}
+			if (!find(RPAR, 0))
+				parse_error(node->token, "Expected ')' after output arguments");
+			return node;
+		}
+		return postfix(fcall_node(node));
+	}
+	if (peek(0)->type == DOUBLE_DOTS) {
+		Token *sep    = next();
+		Token *member = find(ID, 0);
+		if (!member) {
+			parse_error(sep, "Expected a method name after '::'");
+			return syntax_error();
+		}
+		token->Struct.name    = strdup(token->name);
+		token->is_static_call = true;
+		set_name(token, member->name);
+		return postfix(fcall_node(node));
+	}
+	if (peek(0)->type == LBRA || peek(0)->type == DOT)
+		return access_node(node);
+	bool named   = peek(0)->type == ID && peek(0)->line == token->line;
+	bool fn_type = peek(0)->type == FDEC && peek(1)->type == LPAR;
+	if (is_data_type(peek(0)) || named || fn_type) {
+		token->is_dec = true;
+		parse_type(token);
+	}
+	if (!token->is_dec && peek(0)->type == OPTIONAL) {
+		find(OPTIONAL, 0);
+		token->is_nullable = true;
+	}
+	return node;
+   }
    case NEW: {
       Token *type = next();
       bool   ok   = is_data_type(type) || type->type == ID;
@@ -677,16 +526,100 @@ Node *prime_node() {
       node->left   = new_node(new_token(kind, token->indent));
       return node;
    }
-   case REF: return ref_node(new_node(token));
-   case IF: return if_node(new_node(token));
+   case REF: {
+	Node *node = new_node(token);
+	Token *token = node->token;
+	bool nullable = peek(0)->type == OPTIONAL;
+	if (nullable) find(OPTIONAL, 0);
+	Token *name = peek(0);
+	if (!name || name->type != ID) {
+		parse_error(token, "Expected a variable after 'ref'");
+		return syntax_error();
+	}
+	bool fn_type = peek(1)->type == FDEC && peek(2)->type == LPAR;
+	bool named   = peek(1)->type == ID && peek(1)->line == name->line;
+	if (is_data_type(peek(1)) || named || fn_type) {
+		find(ID, 0);
+		name->is_dec      = true;
+		name->is_ref      = true;
+		name->is_nullable = nullable;
+		parse_type(name);
+		if (!nullable && peek(0)->type != ASSIGN) {
+			parse_error(name, ERR_REF_MUST_BE_BOUND);
+			return syntax_error();
+		}
+		node->token = name;
+		return node;
+	}
+	node->left = prime_node();
+	return node;
+   }
+   case IF: {
+	Node *node = new_node(token);
+	Token *token = node->token;
+	node->left = expr_node(0);
+	if (!find(DOTS, 0))
+		parse_error(token, "Expected ':' to open the 'if' body");
+	parse_block(node, token->indent);
+	Node *tail = node;
+	while (includes(peek(0)->type, ELIF, ELSE, 0) && peek(0)->indent == token->indent) {
+		Token *keyword = next();
+		Node  *branch  = new_node(keyword);
+		if (keyword->type == ELIF)
+			branch->left = expr_node(0);
+		if (!find(DOTS, 0))
+			parse_error(keyword, ERR_EXPECTED_BODY_COLON, keyword->name);
+		parse_block(branch, keyword->indent);
+		tail->right = branch;
+		tail        = branch;
+		if (keyword->type == ELSE) break;
+	}
+	return node;
+   }
    case ELIF: case ELSE:
       parse_error(token, "'%s' without a matching 'if'", token->name);
       return syntax_error();
-   case MATCH: return match_node(new_node(token));
+   case MATCH: {
+	Node *node = new_node(token);
+	Token *token = node->token;
+	node->left = expr_node(0);
+	if (!find(DOTS, 0))
+		parse_error(token, "Expected ':' to open the 'match' body");
+	while (within(token->indent) && includes(peek(0)->type, CASE, DEFAULT, 0)) {
+		Token *keyword = next();
+		Node  *branch  = new_node(keyword);
+		if (keyword->type == CASE) {
+			Node *values = new_node(keyword);
+			while (!ura.found_error && peek(0)->type != DOTS) {
+				resize_array(values->children, Node *);
+				values->children[values->children_count++] = expr_node(0);
+				if (!find(COMA, 0)) break;
+			}
+			if (values->children_count == 0)
+				parse_error(keyword, "Expected an expression after 'case'");
+			branch->left = values;
+		}
+		if (!find(DOTS, 0))
+			parse_error(keyword, ERR_EXPECTED_BODY_COLON, keyword->name);
+		parse_block(branch, keyword->indent);
+		resize_array(node->children, Node *);
+		node->children[node->children_count++] = branch;
+		if (keyword->type == DEFAULT) break;
+	}
+	return node;
+   }
    case CASE: case DEFAULT:
       parse_error(token, "'%s' without a matching 'match'", token->name);
       return syntax_error();
-   case WHILE: return while_node(new_node(token));
+   case WHILE: {
+	Node *node = new_node(token);
+	Token *token = node->token;
+	node->left = expr_node(0);
+	if (!find(DOTS, 0))
+		parse_error(token, "Expected ':' to open the 'while' body");
+	parse_block(node, token->indent);
+	return node;
+   }
    case LOOP: {
       Node *node = new_node(token);
       if (!find(DOTS, 0))
@@ -694,7 +627,35 @@ Node *prime_node() {
       parse_block(node, token->indent);
       return node;
    }
-   case FOR: return for_node(new_node(token));
+   case FOR: {
+	Node *node = new_node(token);
+	Token *token = node->token;
+	bool   ref   = find(REF, 0) != NULL;
+	Token *iter  = find(ID, 0);
+	if (!iter) {
+		parse_error(token, "Expected a loop variable after 'for'");
+		return syntax_error();
+	}
+	iter->is_dec  = true;
+	token->is_ref = ref;
+	node->left    = new_node(iter);
+	if (!find(IN, 0))
+		parse_error(token, "Expected 'in' after 'for %s'", iter->name);
+	node->right = expr_node(0);
+	if (find(BY, 0)) {
+		Node *by = expr_node(0);
+		if (node->right->token->type != RANGE)
+			parse_error(token, ERR_BY_NEEDS_RANGE);
+		else {
+			resize_array(node->right->children, Node *);
+			node->right->children[node->right->children_count++] = by;
+		}
+	}
+	if (!find(DOTS, 0))
+		parse_error(token, "Expected ':' to open the 'for' body");
+	parse_block(node, token->indent);
+	return node;
+   }
    case BREAK: case CONTINUE:
       return new_node(token);
    default:
@@ -709,7 +670,21 @@ Node *expr_node(int min_op) {
 
    while (true)
    {
-      int op = get_operation_precedence(ura.tokens[ura.exe_pos]->type);
+      static const int res[END + 1] = {
+         [ASSIGN] = 1,     [ADD_ASSIGN] = 1, [SUB_ASSIGN] = 1,
+         [MUL_ASSIGN] = 1, [DIV_ASSIGN] = 1, [MOD_ASSIGN] = 1,
+         [BAND_ASSIGN] = 1, [BOR_ASSIGN] = 1, [BXOR_ASSIGN] = 1,
+         [LSHIFT_ASSIGN] = 1, [RSHIFT_ASSIGN] = 1,
+         [FALLBACK] = 2,   [OR] = 2,         [AND] = 3,
+         [RANGE] = 2,
+         [BOR] = 4,        [BXOR] = 5,       [BAND] = 6,
+         [LESS] = 8,       [EQUAL] = 7,      [NOT_EQUAL] = 7,
+         [GREAT] = 8,      [LESS_EQUAL] = 8, [GREAT_EQUAL] = 8,
+         [ADD] = 10,       [LSHIFT] = 9,     [RSHIFT] = 9,
+         [SUB] = 10,       [MUL] = 11,       [DIV] = 11,
+         [AS] = 12,        [MOD] = 11,
+      };
+      int op = res[ura.tokens[ura.exe_pos]->type];
       if(op <= min_op) break;
       Node *node = new_node(next());
       node->left = left;

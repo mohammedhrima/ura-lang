@@ -240,16 +240,6 @@ void print_escaped(char c) {
 	fprint_escaped(stdout, c);
 }
 
-char *array_type_label(Token *token) {
-	char *s = strdup(type_name(token->Array.sub_type));
-	for (int i = 0; i < token->Array.depth; i++) {
-		char *n = format("%s[]", s);
-		free(s);
-		s = n;
-	}
-	return s;
-}
-
 static char *spelling[END + 1] = {
 		[I8] = "i8",         [I16] = "i16",         [I32] = "i32",
 		[I64] = "i64",       [U8] = "u8",           [U16] = "u16",
@@ -323,21 +313,16 @@ void print_node_label(Node *node) {
 	default:    printf("%s", spell(token->type));
 	}
 	if (token->ret_type == ARRAY_TYPE && token->Array.sub_type) {
-		char *t = array_type_label(token);
+		char *t = strdup(type_name(token->Array.sub_type));
+		for (int i = 0; i < token->Array.depth; i++) {
+			char *n = format("%s[]", t);
+			free(t);
+			t = n;
+		}
 		printf(" : %s", t);
 		free(t);
 	} else if (token->ret_type)
 		printf(" : %s", spell(token->ret_type));
-}
-
-void print_subtree(Node *node, char *prefix, bool is_last, char *role) {
-	printf("%s%s", prefix, is_last ? "└─ " : "├─ ");
-	if (role) printf("%s ", role);
-	print_node_label(node);
-	putchar('\n');
-	char *child_prefix = format("%s%s", prefix, is_last ? "   " : "│  ");
-	print_children(node, child_prefix);
-	free(child_prefix);
 }
 
 void print_children(Node *node, char *prefix) {
@@ -413,8 +398,18 @@ void print_children(Node *node, char *prefix) {
 		}
 	}
 	}
-	for (int i = 0; i < count; i++)
-		print_subtree(edge_node[i], prefix, i == count - 1, edge_role[i]);
+	for (int i = 0; i < count; i++) {
+		Node *node = edge_node[i];
+		bool is_last = i == count - 1;
+		char *role = edge_role[i];
+		printf("%s%s", prefix, is_last ? "└─ " : "├─ ");
+		if (role) printf("%s ", role);
+		print_node_label(node);
+		putchar('\n');
+		char *child_prefix = format("%s%s", prefix, is_last ? "   " : "│  ");
+		print_children(node, child_prefix);
+		free(child_prefix);
+	}
 }
 
 void print_ast(Node *head) {
