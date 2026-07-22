@@ -135,14 +135,6 @@ bool includes(Type to_find, ...) {
 	return false;
 }
 
-void free_token(Token *token) {
-   if (!token) return;
-   free(token->name);
-   free(token->Chars.value);
-   free(token->llvm.dims);
-   free(token);
-}
-
 void free_node(Node *node) {
    if (!node) return;
    if (!includes(node->token->type, BREAK, CONTINUE, 0))
@@ -160,8 +152,15 @@ void free_node(Node *node) {
 
 void free_memory() {
    free_node(ura.head);
-   for (int i = 0; i < ura.tokens_count; i++)
-      free_token(ura.tokens[i]);
+   for (int i = 0; i < ura.tokens_count; i++) {
+      Token *token = ura.tokens[i];
+      if (token) {
+         free(token->name);
+         free(token->Chars.value);
+         free(token->llvm.dims);
+         free(token);
+      }
+   }
    free(ura.tokens);
    for (int i = 0; i < ura.sources_count; i++) {
       free(ura.sources[i]->content);

@@ -16,55 +16,10 @@ void exit_scope() {
 	ura.scope = ura.scopes[ura.scopes_count];
 }
 
-Node *enclosing_continue() {
-	for (int i = ura.scopes_count; i >= 1; i--) {
-		if (!ura.scopes[i]) continue;
-		if (includes(ura.scopes[i]->token->type, WHILE, LOOP, FOR, 0)) return ura.scopes[i];
-		if (ura.scopes[i]->token->type == FDEC)  return NULL;
-	}
-	return NULL;
-}
-
-Node *enclosing_break() {
-	for (int i = ura.scopes_count; i >= 1; i--) {
-		if (!ura.scopes[i]) continue;
-		if (includes(ura.scopes[i]->token->type, WHILE, LOOP, FOR, MATCH, 0)) return ura.scopes[i];
-		if (ura.scopes[i]->token->type == FDEC) return NULL;
-	}
-	return NULL;
-}
-
 void declare_structs(Node *node) {
 	for (int i = 0; i < node->children_count; i++)
 		if (node->children[i]->token->type == STRUCT_DEF)
 			declare_struct(node->children[i]);
-}
-
-void analyze_block(Node *node) {
-	analyze(node->left);
-	enter_scope(node);
-	declare_structs(node);
-	for (int i = 0; i < node->children_count; i++)
-		analyze(node->children[i]);
-	exit_scope();
-	analyze(node->right);
-}
-
-void analyze_match(Node *node) {
-	analyze(node->left);
-	enter_scope(node);
-	for (int i = 0; i < node->children_count; i++) {
-		Node *branch = node->children[i];
-		if (branch->left)
-			for (int j = 0; j < branch->left->children_count; j++)
-				analyze(branch->left->children[j]);
-		enter_scope(branch);
-		declare_structs(branch);
-		for (int j = 0; j < branch->children_count; j++)
-			analyze(branch->children[j]);
-		exit_scope();
-	}
-	exit_scope();
 }
 
 void declare_variable(Token *token) {
@@ -80,7 +35,7 @@ void declare_variable(Token *token) {
 	scope->variables[scope->variables_count++] = token;
 }
 
-Token *find_variable(char *name, bool *captured) {
+Token *find_variable(char *name, bool *captured, bool *from_field) {
 	bool passed_function = false;
 	for (int i = ura.scopes_count; i >= 0; i--) {
 		Node *scope = ura.scopes[i];
@@ -89,12 +44,14 @@ Token *find_variable(char *name, bool *captured) {
 			char *current = scope->variables[j]->name;
 			if (!current || strcmp(current, name) != 0) continue;
 			bool from_outer_fn = passed_function && scope->token->type == FDEC;
-			if (captured) *captured = from_outer_fn;
+			if (captured)   *captured   = from_outer_fn;
+			if (from_field) *from_field = scope->token->type == STRUCT_DEF;
 			return scope->variables[j];
 		}
 		if (scope->token->type == FDEC) passed_function = true;
 	}
-	if (captured) *captured = false;
+	if (captured)   *captured   = false;
+	if (from_field) *from_field = false;
 	return NULL;
 }
 
@@ -201,23 +158,6 @@ void analyze_binop(Node *node) {
    analyze(node->right);
 }
 
-void analyze_fdec(Node *node) {
-   Token *token = node->token;
-   resolve_struct_type(token);
-   enter_scope(node);
-   for (int i = 0; i < token->Fn.params_count; i++) {
-      declare_variable(token->Fn.params[i]);
-      resolve_struct_type(token->Fn.params[i]);
-   }
-   for (int i = 0; i < node->children_count; i++)
-      if (node->children[i]->token->type == FDEC)
-         declare_function(node->children[i]);
-   declare_structs(node);
-   for (int i = 0; i < node->children_count; i++)
-      analyze(node->children[i]);
-   exit_scope();
-}
-
 void resolve_struct_type(Token *token) {
    bool array = token->ret_type == ARRAY_TYPE;
    Type type  = array ? token->Array.sub_type : token->ret_type;
@@ -236,41 +176,13 @@ void resolve_struct_type(Token *token) {
    else       token->Struct.ptr       = def;
 }
 
-bool has_assign(Node *def) {
-   char *prefix = format("%s.=", def->token->name);
-   size_t n     = strlen(prefix);
-   bool  found  = false;
-   for (int i = 0; i < def->children_count && !found; i++) {
-      Token *child = def->children[i]->token;
-      if (child->type != FDEC || !child->name) continue;
-      found = strncmp(child->name, prefix, n) == 0;
-   }
-   free(prefix);
-   return found;
-}
-
-void analyze_struct(Node *node) {
-   if (node->token->has_drop && !has_assign(node))
-      parse_warn(node->token, WARN_DROP_NEEDS_ASSIGN, node->token->name);
-   enter_scope(node);
-   for (int i = 0; i < node->children_count; i++)
-      if (node->children[i]->token->type == FDEC)
-         declare_function(node->children[i]);
-   for (int i = 0; i < node->children_count; i++) {
-      Node *field = node->children[i];
-      if (field->token->type == STRUCT_DEF) declare_struct(field);
-      analyze(field);
-   }
-   exit_scope();
-}
-
 bool rewrite_struct_ctor(Node *node) {
    Node *base  = node;
    int   depth = 0;
    while (base->token->type == ACCESS) { base = base->left; depth++; }
    Token *name = base->token;
    if (name->type != ID || name->is_dec) return false;
-   if (find_variable(name->name, NULL)) return false;
+   if (find_variable(name->name, NULL, NULL)) return false;
    Node *def = find_struct(name->name);
    if (!def) return false;
    Node **dims = allocate(depth, sizeof(Node *));
@@ -302,51 +214,6 @@ Token *global_decl(Node *child) {
    return NULL;
 }
 
-void analyze_id(Node *node) {
-   Token *token = node->token;
-   if (token->is_dec) {
-      if (!token->is_global) declare_variable(token);
-      resolve_struct_type(token);
-      return;
-   }
-   bool   captured = false;
-   Token *decl     = find_variable(token->name, &captured);
-   if (decl && decl->type == ENUM_CALL) {
-      token->type      = I32;
-      token->ret_type  = I32;
-      token->Int.value = decl->Int.value;
-      decl->used++;
-      return;
-   }
-   if (decl) {
-      if (captured) {
-         parse_error(token, ERR_CAPTURE_NOT_ALLOWED, token->name);
-         return;
-      }
-      decl->used++;
-      token->Decl.ptr    = decl;
-      token->ret_type    = decl->ret_type;
-      token->is_optional = decl->is_optional;
-      token->is_ref      = decl->is_ref;
-      if (decl->ret_type == FN_TYPE) token->Fn = decl->Fn;
-      if (decl->ret_type == ARRAY_TYPE) token->Array = decl->Array;
-      if (decl->ret_type == STRUCT_CALL) token->Struct = decl->Struct;
-      return;
-   }
-   Node *fn = find_function(token->name);
-   if (!fn) { 
-      parse_error(token, ERR_UNDECLARED_VARIABLE, token->name); 
-      return; 
-   }
-   token->type             = FN_TYPE;
-   token->ret_type         = FN_TYPE;
-   token->Fcall.ptr        = fn;
-   token->Fn.params        = fn->token->Fn.params;
-   token->Fn.params_count  = fn->token->Fn.params_count;
-   token->Fn.ret           = new_token(ID, 0);
-   token->Fn.ret->ret_type = fn->token->ret_type;
-}
-
 Node *find_method(Node *def, char *name) {
    for (int i = 0; i < def->children_count; i++) {
       Node *child = def->children[i];
@@ -356,80 +223,147 @@ Node *find_method(Node *def, char *name) {
    return NULL;
 }
 
-void analyze_method_call(Node *node) {
-   analyze(node->left);
-   for (int i = 0; i < node->children_count; i++)
-      analyze(node->children[i]);
-}
-
-void analyze_fcall(Node *node) {
-   Token *token = node->token;
-   if (token->is_method_call) {
-      analyze_method_call(node);
-      return;
-   }
-   if (token->is_static_call) {
-      for (int i = 0; i < node->children_count; i++)
-         analyze(node->children[i]);
-      return;
-   }
-   Token *var = find_variable(token->name, NULL);
-   if (var && var->ret_type == FN_TYPE) {
-      token->Fcall.var = var;
-      for (int i = 0; i < node->children_count; i++)
-         analyze(node->children[i]);
-      token->ret_type = var->Fn.ret->ret_type;
-      return;
-   }
-   Node *fn = find_function(token->name);
-   if (!fn) { 
-      parse_error(token, "Undeclared function '%s'", token->name); 
-      return; 
-   }
-   token->Fcall.ptr = fn;
-   for (int i = 0; i < node->children_count; i++)
-      analyze(node->children[i]);
-   token->ret_type = fn->token->ret_type;
-   if (token->ret_type == STRUCT_CALL) token->Struct = fn->token->Struct;
-}
-
-void analyze_for(Node *node) {
-   enter_scope(node);
-   analyze(node->right);
-   Token *var = node->left->token;
-   Token *it  = node->right->token;
-   if (it->type != RANGE && !it->ret_type) type_check(node->right);
-   for (int i = 0; i < node->right->children_count; i++)
-      analyze(node->right->children[i]);
-   if (it->type == RANGE)
-      var->ret_type = I32;
-   else if (it->ret_type == ARRAY_TYPE) {
-      var->Array       = it->Array;
-      var->Array.depth = it->Array.depth - 1;
-      var->ret_type    = it->Array.depth > 1 ? ARRAY_TYPE : it->Array.sub_type;
-      if (var->ret_type == STRUCT_CALL)
-         var->Struct.ptr = it->Array.struct_ptr;
-   }
-   declare_variable(var);
-   declare_structs(node);
-   for (int i = 0; i < node->children_count; i++)
-      analyze(node->children[i]);
-   exit_scope();
-}
-
 void analyze(Node *node) {
    if (!node) return;
    Token *token = node->token;
    switch (token->type) {
-      case FDEC:   analyze_fdec(node); break;
-      case STRUCT_DEF: analyze_struct(node); break;
+      case FDEC: {
+         Token *token = node->token;
+         resolve_struct_type(token);
+         enter_scope(node);
+         for (int i = 0; i < token->Fn.params_count; i++) {
+            declare_variable(token->Fn.params[i]);
+            resolve_struct_type(token->Fn.params[i]);
+         }
+         for (int i = 0; i < node->children_count; i++)
+            if (node->children[i]->token->type == FDEC)
+               declare_function(node->children[i]);
+         declare_structs(node);
+         for (int i = 0; i < node->children_count; i++)
+            analyze(node->children[i]);
+         exit_scope();
+         break;
+      }
+      case STRUCT_DEF: {
+         if (token->has_drop) {
+            char *prefix = format("%s.=", token->name);
+            size_t n     = strlen(prefix);
+            bool  found  = false;
+            for (int i = 0; i < node->children_count && !found; i++) {
+               Token *child = node->children[i]->token;
+               if (child->type != FDEC || !child->name) continue;
+               found = strncmp(child->name, prefix, n) == 0;
+            }
+            free(prefix);
+            if (!found)
+               parse_warn(token, WARN_DROP_NEEDS_ASSIGN, token->name);
+         }
+         enter_scope(node);
+         for (int i = 0; i < node->children_count; i++)
+            if (node->children[i]->token->type == FDEC)
+               declare_function(node->children[i]);
+         for (int i = 0; i < node->children_count; i++) {
+            Node *field = node->children[i];
+            if (field->token->type == STRUCT_DEF) declare_struct(field);
+            analyze(field);
+         }
+         exit_scope();
+         break;
+      }
       case ENUM_DEF: break;
-      case ID:     analyze_id(node); break;
+      case ID: {
+         Token *token = node->token;
+         if (token->is_dec) {
+            if (!token->is_global) declare_variable(token);
+            resolve_struct_type(token);
+            return;
+         }
+         bool   captured = false;
+         bool   member   = false;
+         Token *decl     = find_variable(token->name, &captured, &member);
+         if (decl && decl->type == ENUM_CALL) {
+            token->type      = I32;
+            token->ret_type  = I32;
+            token->Int.value = decl->Int.value;
+            decl->used++;
+            return;
+         }
+         if (decl && member) {
+            char *nm = token->name;
+            if (find_variable("self", NULL, NULL))
+               parse_error(token, ERR_BARE_FIELD, nm, nm);
+            else
+               parse_error(token, ERR_UNDECLARED_VARIABLE, nm);
+            return;
+         }
+         if (decl) {
+            if (captured) {
+               parse_error(token, ERR_CAPTURE_NOT_ALLOWED, token->name);
+               return;
+            }
+            decl->used++;
+            token->Decl.ptr    = decl;
+            token->ret_type    = decl->ret_type;
+            token->is_optional = decl->is_optional;
+            token->is_ref      = decl->is_ref;
+            if (decl->ret_type == FN_TYPE) token->Fn = decl->Fn;
+            if (decl->ret_type == ARRAY_TYPE) token->Array = decl->Array;
+            if (decl->ret_type == STRUCT_CALL)
+               token->Struct = decl->Struct;
+            return;
+         }
+         Node *fn = find_function(token->name);
+         if (!fn) {
+            parse_error(token, ERR_UNDECLARED_VARIABLE, token->name);
+            return;
+         }
+         token->type             = FN_TYPE;
+         token->ret_type         = FN_TYPE;
+         token->Fcall.ptr        = fn;
+         token->Fn.params        = fn->token->Fn.params;
+         token->Fn.params_count  = fn->token->Fn.params_count;
+         token->Fn.ret           = new_token(ID, 0);
+         token->Fn.ret->ret_type = fn->token->ret_type;
+         break;
+      }
       case I32: case BOOL: case CHARS: case CHAR: case F32: break;
       case NULL_LIT: break;
       case FALLBACK: analyze_binop(node); break;
       case RETURN: analyze(node->left); break;
-      case FCALL:  analyze_fcall(node); break;
+      case FCALL: {
+         Token *token = node->token;
+         if (token->is_method_call) {
+            analyze(node->left);
+            for (int i = 0; i < node->children_count; i++)
+               analyze(node->children[i]);
+            return;
+         }
+         if (token->is_static_call) {
+            for (int i = 0; i < node->children_count; i++)
+               analyze(node->children[i]);
+            return;
+         }
+         Token *var = find_variable(token->name, NULL, NULL);
+         if (var && var->ret_type == FN_TYPE) {
+            token->Fcall.var = var;
+            for (int i = 0; i < node->children_count; i++)
+               analyze(node->children[i]);
+            token->ret_type = var->Fn.ret->ret_type;
+            return;
+         }
+         Node *fn = find_function(token->name);
+         if (!fn) {
+            parse_error(token, "Undeclared function '%s'", token->name);
+            return;
+         }
+         token->Fcall.ptr = fn;
+         for (int i = 0; i < node->children_count; i++)
+            analyze(node->children[i]);
+         token->ret_type = fn->token->ret_type;
+         if (token->ret_type == STRUCT_CALL)
+            token->Struct = fn->token->Struct;
+         break;
+      }
       case NOT: case BNOT: analyze(node->left); break;
       case AS: analyze(node->left); break;
       case REF: {
@@ -439,19 +373,84 @@ void analyze(Node *node) {
             parse_error(node->token, ERR_REF_TO_NON_VARIABLE);
          break;
       }
-      case IF: case ELIF: case ELSE: case WHILE: case LOOP:
-         analyze_block(node);
+      case IF: case ELIF: case ELSE: case WHILE: case LOOP: {
+         analyze(node->left);
+         enter_scope(node);
+         declare_structs(node);
+         for (int i = 0; i < node->children_count; i++)
+            analyze(node->children[i]);
+         exit_scope();
+         analyze(node->right);
          break;
-      case FOR: analyze_for(node); break;
-      case MATCH: analyze_match(node); break;
+      }
+      case FOR: {
+         enter_scope(node);
+         analyze(node->right);
+         Token *var = node->left->token;
+         Token *it  = node->right->token;
+         if (it->type != RANGE && !it->ret_type) type_check(node->right);
+         for (int i = 0; i < node->right->children_count; i++)
+            analyze(node->right->children[i]);
+         if (it->type == RANGE)
+            var->ret_type = I32;
+         else if (it->ret_type == ARRAY_TYPE) {
+            var->Array       = it->Array;
+            var->Array.depth = it->Array.depth - 1;
+            if (it->Array.depth > 1) var->ret_type = ARRAY_TYPE;
+            else var->ret_type = it->Array.sub_type;
+            if (var->ret_type == STRUCT_CALL)
+               var->Struct.ptr = it->Array.struct_ptr;
+         }
+         declare_variable(var);
+         declare_structs(node);
+         for (int i = 0; i < node->children_count; i++)
+            analyze(node->children[i]);
+         exit_scope();
+         break;
+      }
+      case MATCH: {
+         analyze(node->left);
+         enter_scope(node);
+         for (int i = 0; i < node->children_count; i++) {
+            Node *branch = node->children[i];
+            if (branch->left)
+               for (int j = 0; j < branch->left->children_count; j++)
+                  analyze(branch->left->children[j]);
+            enter_scope(branch);
+            declare_structs(branch);
+            for (int j = 0; j < branch->children_count; j++)
+               analyze(branch->children[j]);
+            exit_scope();
+         }
+         exit_scope();
+         break;
+      }
       case BREAK: {
-         node->left = enclosing_break();
+         node->left = NULL;
+         for (int i = ura.scopes_count; i >= 1; i--) {
+            Node *loop = ura.scopes[i];
+            if (!loop) continue;
+            if (includes(loop->token->type, WHILE, LOOP, FOR, MATCH, 0)) {
+               node->left = loop;
+               break;
+            }
+            if (loop->token->type == FDEC) break;
+         }
          if (!node->left)
          parse_error(node->token, "'break' outside a loop or match");
          break;
       }
       case CONTINUE: {
-         node->left = enclosing_continue();
+         node->left = NULL;
+         for (int i = ura.scopes_count; i >= 1; i--) {
+            Node *loop = ura.scopes[i];
+            if (!loop) continue;
+            if (includes(loop->token->type, WHILE, LOOP, FOR, 0)) {
+               node->left = loop;
+               break;
+            }
+            if (loop->token->type == FDEC) break;
+         }
          if (!node->left)
          parse_error(node->token, "'continue' outside a loop");
          break;

@@ -35,6 +35,7 @@
 - 031 — a reference function must return a reference, not a bare value
 - 032 — a ref declaration cannot be bound to a plain value
 - 033 — a non-nullable value cannot be compared to null
+- 034 — a field read chained directly on a ref-returning call
 
 ## 001 — basic ref: bind to hp, ref write through
 
@@ -3669,4 +3670,144 @@ error: Only arrays and pointers can be null, not i32
 ```
 
 ```ll
+```
+
+## 034 — a field read chained directly on a ref-returning call
+
+```ura
+struct Node:
+    value i32
+    ref? next Node
+
+fn make(v i32, heap Node[]) ref Node:
+    heap[0].value = v
+    return ref heap[0]
+
+main():
+    h Node[] = new Node[1]
+    output(make(42, h).value, "\n")
+```
+
+```tree
+proto fn printf(format : pointer, ...) : i32
+
+proto fn calloc(len : i64, size : i64) : pointer
+
+proto fn free(ptr : pointer) : void
+
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
+
+proto fn exit(code : i32) : void
+
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
+
+struct Node
+├─ value : i32
+└─ next : STRUCT_CALL
+
+fn make(v : i32, heap : array) : STRUCT_CALL
+├─ = : i32
+│  ├─ .value : i32
+│  │  └─ index : STRUCT_CALL
+│  │     ├─ heap : STRUCT_CALL[]
+│  │     └─ int 0
+│  └─ v : i32
+└─ return
+   └─ ref : STRUCT_CALL
+      └─ index : STRUCT_CALL
+         ├─ heap : STRUCT_CALL[]
+         └─ int 0
+
+fn main() : i32
+├─ = : array
+│  ├─ h : STRUCT_CALL[]
+│  └─ array : STRUCT_CALL[]
+│     └─ int 1
+└─ output : void
+   ├─ .value : i32
+   │  └─ call make : STRUCT_CALL
+   │     ├─ int 42
+   │     └─ h : STRUCT_CALL[]
+   └─ char[] "\n"
+```
+
+```out
+42
+```
+
+```err
+```
+
+```ll
+
+%Os = type { i32, { { i8*, i64 }*, i64 } }
+%Node = type { i32, %Node* }
+
+@os = internal global %Os zeroinitializer
+@str = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [7 x i8] c"%d%.*s\00", align 1
+
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
+
+define %Node* @make(i32 %0, { %Node*, i64 } %1) {
+entry:
+  %v = alloca i32, align 4
+  store i32 %0, i32* %v, align 4
+  %heap = alloca { %Node*, i64 }, align 8
+  store { %Node*, i64 } %1, { %Node*, i64 }* %heap, align 8
+  %heap1 = load { %Node*, i64 }, { %Node*, i64 }* %heap, align 8
+  %arr.data = extractvalue { %Node*, i64 } %heap1, 0
+  %arr.at = getelementptr %Node, %Node* %arr.data, i32 0
+  %value = getelementptr %Node, %Node* %arr.at, i32 0, i32 0
+  %v2 = load i32, i32* %v, align 4
+  store i32 %v2, i32* %value, align 4
+  %heap3 = load { %Node*, i64 }, { %Node*, i64 }* %heap, align 8
+  %arr.data4 = extractvalue { %Node*, i64 } %heap3, 0
+  %arr.at5 = getelementptr %Node, %Node* %arr.data4, i32 0
+  ret %Node* %arr.at5
+}
+
+define i32 @main(i32 %0, i8** %1) {
+entry:
+  %h = alloca { %Node*, i64 }, align 8
+  %heap = call i8* @calloc(i64 1, i64 16)
+  %arr = bitcast i8* %heap to %Node*
+  %arr.ptr = insertvalue { %Node*, i64 } undef, %Node* %arr, 0
+  %arr.len = insertvalue { %Node*, i64 } %arr.ptr, i64 1, 1
+  store { %Node*, i64 } %arr.len, { %Node*, i64 }* %h, align 8
+  %h1 = load { %Node*, i64 }, { %Node*, i64 }* %h, align 8
+  %call = call %Node* @make(i32 42, { %Node*, i64 } %h1)
+  %value = getelementptr %Node, %Node* %call, i32 0, i32 0
+  %value2 = load i32, i32* %value, align 4
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @fmt, i32 0, i32 0), i32 %value2, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i8* @calloc(i64, i64)
+
+declare i32 @printf(i8*, ...)
 ```
