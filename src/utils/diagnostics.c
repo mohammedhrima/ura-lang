@@ -265,7 +265,7 @@ static char *spelling[END + 1] = {
 		[ARRAY] = "array",   [ARRAY_LIT] = "array", [ARRAY_TYPE] = "array",
 		[NEW] = "new",       [TYPEOF] = "typeof",   [SIZEOF] = "sizeof",
 		[CLEAN] = "clean",     [TRY] = "try",         [CATCH] = "catch",
-		[THROW] = "throw",
+		[THROW] = "throw",     [MODULE] = "mod",
 };
 
 char *spell(Type type) {
@@ -310,6 +310,7 @@ void print_node_label(Node *node) {
 		break;
 	}
 	case STRUCT_DEF: printf("struct %s", token->name); return;
+	case MODULE:     printf("mod %s", token->name); return;
 	case DOT:   printf(".%s", token->name); break;
 	default:    printf("%s", spell(token->type));
 	}

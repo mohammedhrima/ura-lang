@@ -195,6 +195,22 @@
 
 #define ERR_THROW_NEEDS_ERROR "'throw' expects an Error, got %s"
 
+#define ERR_MOD_EXPECTED_COLON \
+	"Expected ':' to open the body of module '%s'"
+
+#define ERR_MOD_EMPTY \
+	"Module '%s' is empty; add a declaration or remove it"
+
+#define ERR_MOD_BODY \
+	"Only 'fn', 'struct', 'enum' and 'mod' can be declared in a module"
+
+#define ERR_UNKNOWN_MODULE "Unknown module '%s'"
+
+#define ERR_MOD_NO_MEMBER "Module '%s' has no member '%s'"
+
+#define ERR_MOD_DOT_CALL \
+	"'%s' is a module; reach its members with '::' instead of '.'"
+
 #define ERR_ARRAY_SIZE_NOT_INT "Array size must be an integer"
 
 #define ERR_ARRAY_SIZE_IN_TYPE \

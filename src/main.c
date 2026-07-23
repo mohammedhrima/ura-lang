@@ -127,6 +127,21 @@ void generate_ast() {
 		pnode(head->children[i], "");
 }
 
+void declare_module_members(Node *m) {
+   for (int i = 0; i < m->children_count; i++)
+      if (m->children[i]->token->type == STRUCT_DEF)
+         declare_struct(m->children[i]);
+   for (int i = 0; i < m->children_count; i++)
+      if (m->children[i]->token->type == ENUM_DEF)
+         declare_enum(m->children[i]);
+   for (int i = 0; i < m->children_count; i++)
+      if (m->children[i]->token->type == FDEC)
+         declare_function(m->children[i]);
+   for (int i = 0; i < m->children_count; i++)
+      if (m->children[i]->token->type == MODULE)
+         declare_module_members(m->children[i]);
+}
+
 void generate_ir() {
    if(ura.error_count || !ura.head) return;
    for (int i = 0; i < ura.head->children_count; i++)
@@ -144,6 +159,9 @@ void generate_ir() {
       global->is_global = true;
       declare_variable(global);
    }
+   for (int i = 0; i < ura.head->children_count; i++)
+      if (ura.head->children[i]->token->type == MODULE)
+         declare_module_members(ura.head->children[i]);
    for (int i = 0; i < ura.head->children_count; i++)
       analyze(ura.head->children[i]);
    for (int i = 0; i < ura.head->children_count; i++)

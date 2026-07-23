@@ -1,0 +1,26 @@
+mod math:
+    fn square(n i32) i32:
+        return n * n
+    fn cube(n i32) i32:
+        return square(n) * n
+
+mod shapes:
+    struct Point:
+        x i32
+        y i32
+        pub fn make(x i32, y i32) Point:
+            p Point
+            p.x = x
+            p.y = y
+            return p
+
+    mod color:
+        enum Color:
+            RED, GREEN, BLUE
+
+main():
+    output("square(5)  = ", math::square(5), "\n")
+    output("cube(3)    = ", math::cube(3), "\n")
+    p shapes::Point = shapes::Point::make(2, 7)
+    output("point      = ", p.x, ",", p.y, "\n")
+    output("BLUE        = ", shapes::color::BLUE, "\n")

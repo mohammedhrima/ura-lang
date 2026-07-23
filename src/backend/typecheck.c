@@ -154,9 +154,22 @@ void type_check_fcall(Node *node) {
    }
    if (token->is_static_call && !token->Fcall.ptr) {
       Token *token = node->token;
+      char *mq = format("%s.%s", token->Struct.name, token->name);
+      Node *mf = find_function(mq);
+      free(mq);
+      if (mf) {
+         token->Fcall.ptr = mf;
+         type_check_fcall(node);
+         if (token->ret_type == STRUCT_CALL) token->Struct = mf->token->Struct;
+         return;
+      }
       Node  *def   = find_struct(token->Struct.name);
       if (!def) {
-         parse_error(token, ERR_UNKNOWN_TYPE, token->Struct.name);
+         if (find_module(token->Struct.name))
+            parse_error(token, ERR_MOD_NO_MEMBER, token->Struct.name,
+                        token->name);
+         else
+            parse_error(token, ERR_UNKNOWN_TYPE, token->Struct.name);
          return;
       }
       char *qualified = format("%s.%s", def->token->name, token->name);
@@ -448,6 +461,14 @@ void type_check(Node *node) {
             for (int j = 0; j < branch->children_count; j++)
                type_check(branch->children[j]);
          }
+         break;
+      }
+      case MODULE: {
+         char *prev = ura.current_module;
+         ura.current_module = node->token->name;
+         for (int i = 0; i < node->children_count; i++)
+            type_check(node->children[i]);
+         ura.current_module = prev;
          break;
       }
       case TRY: {
