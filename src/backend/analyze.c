@@ -127,7 +127,7 @@ void declare_enum(Node *node) {
 		declare_variable(node->children[i]->token);
 }
 
-Node *find_struct(char *name) {
+Node *lookup_struct(char *name) {
 	for (int i = ura.scopes_count; i >= 0; i--) {
 		Node *scope = ura.scopes[i];
 		if (!scope) continue;
@@ -140,7 +140,7 @@ Node *find_struct(char *name) {
 	return NULL;
 }
 
-Node *find_function(char *name) {
+Node *lookup_function(char *name) {
 	for (int i = ura.scopes_count; i >= 0; i--) {
 		Node *scope = ura.scopes[i];
 		if (!scope) continue;
@@ -151,6 +151,55 @@ Node *find_function(char *name) {
 		}
 	}
 	return NULL;
+}
+
+Node *find_struct(char *name) {
+	if (ura.current_module) {
+		char *pre = strdup(ura.current_module);
+		while (1) {
+			char *q   = format("%s.%s", pre, name);
+			Node *hit = lookup_struct(q);
+			free(q);
+			if (hit) { free(pre); return hit; }
+			char *dot = strrchr(pre, '.');
+			if (!dot) break;
+			*dot = '\0';
+		}
+		free(pre);
+	}
+	return lookup_struct(name);
+}
+
+Node *find_function(char *name) {
+	if (ura.current_module) {
+		char *pre = strdup(ura.current_module);
+		while (1) {
+			char *q   = format("%s.%s", pre, name);
+			Node *hit = lookup_function(q);
+			free(q);
+			if (hit) { free(pre); return hit; }
+			char *dot = strrchr(pre, '.');
+			if (!dot) break;
+			*dot = '\0';
+		}
+		free(pre);
+	}
+	return lookup_function(name);
+}
+
+Node *find_module_in(Node *parent, char *name) {
+	for (int i = 0; i < parent->children_count; i++) {
+		Node *c = parent->children[i];
+		if (c->token->type != MODULE) continue;
+		if (strcmp(c->token->name, name) == 0) return c;
+		Node *hit = find_module_in(c, name);
+		if (hit) return hit;
+	}
+	return NULL;
+}
+
+Node *find_module(char *name) {
+	return ura.head ? find_module_in(ura.head, name) : NULL;
 }
 
 void analyze_binop(Node *node) {
@@ -314,7 +363,10 @@ void analyze(Node *node) {
          }
          Node *fn = find_function(token->name);
          if (!fn) {
-            parse_error(token, ERR_UNDECLARED_VARIABLE, token->name);
+            if (find_module(token->name))
+               parse_error(token, ERR_MOD_DOT_CALL, token->name);
+            else
+               parse_error(token, ERR_UNDECLARED_VARIABLE, token->name);
             return;
          }
          token->type             = FN_TYPE;
@@ -423,6 +475,14 @@ void analyze(Node *node) {
             exit_scope();
          }
          exit_scope();
+         break;
+      }
+      case MODULE: {
+         char *prev = ura.current_module;
+         ura.current_module = node->token->name;
+         for (int i = 0; i < node->children_count; i++)
+            analyze(node->children[i]);
+         ura.current_module = prev;
          break;
       }
       case TRY: {

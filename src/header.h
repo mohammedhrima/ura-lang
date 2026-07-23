@@ -308,6 +308,7 @@ struct UraGlobal {
 	Node            *error_def;
 	char           **platform;
 	Token           *fn_ret;
+	char            *current_module;
 	Source          *current;
 	int              calling_use;
 	Node            *scope;

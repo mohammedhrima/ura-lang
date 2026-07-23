@@ -75,8 +75,19 @@ void parse_type(Token *target) {
 	} else if (is_data_type(peek(0)) || peek(0)->type == ID) {
 		Token *base = next();
 		if (base->type == ID) {
-			target->ret_type    = STRUCT_CALL;
-			target->Struct.name = base->name;
+			target->ret_type = STRUCT_CALL;
+			char *tname = strdup(base->name);
+			while (find(DOUBLE_DOTS, 0)) {
+				Token *seg = find(ID, 0);
+				if (!seg) {
+					parse_error(base, "Expected a type name after '::'");
+					break;
+				}
+				char *j = format("%s.%s", tname, seg->name);
+				free(tname);
+				tname = j;
+			}
+			target->Struct.name = tname;
 		} else
 			target->ret_type = base->type;
 		int depth = 0;
@@ -246,6 +257,19 @@ Node *array_ctor_node(Node *node) {
 	}
 	node->token->Array.depth = depth;
 	return node;
+}
+
+void qualify_decl(Node *n, char *prefix) {
+   Token *t = n->token;
+   char  *q = format("%s.%s", prefix, t->name);
+   set_name(t, q);
+   free(q);
+   if (!includes(t->type, STRUCT_DEF, ENUM_DEF, MODULE, 0)) return;
+   for (int i = 0; i < n->children_count; i++) {
+      if (t->type == STRUCT_DEF && n->children[i]->token->type != FDEC)
+         continue;
+      qualify_decl(n->children[i], prefix);
+   }
 }
 
 Node *prime_node() {
@@ -429,6 +453,32 @@ Node *prime_node() {
          parse_error(node->token, ERR_ENUM_EMPTY, node->token->name);
       return node;
    }
+   case MODULE: {
+      Node  *node  = new_node(token);
+      Token *mname = find(ID, 0);
+      if (!mname) {
+         parse_error(token, "Expected a module name after 'mod'");
+         return syntax_error();
+      }
+      set_name(node->token, mname->name);
+      node->token->type = MODULE;
+      enter_scope(node);
+      if (!find(DOTS, 0))
+         parse_error(node->token, ERR_MOD_EXPECTED_COLON, node->token->name);
+      parse_block(node, node->token->indent);
+      exit_scope();
+      if (!node->children_count)
+         parse_error(node->token, ERR_MOD_EMPTY, node->token->name);
+      for (int i = 0; i < node->children_count; i++) {
+         Token *ct = node->children[i]->token;
+         if (!includes(ct->type, FDEC, STRUCT_DEF, ENUM_DEF, MODULE, 0)) {
+            parse_error(ct, ERR_MOD_BODY);
+            continue;
+         }
+         qualify_decl(node->children[i], node->token->name);
+      }
+      return node;
+   }
    case ID: {
 		Node *node = new_node(token);
 		Token *token = node->token;
@@ -452,15 +502,30 @@ Node *prime_node() {
 			return postfix(fcall_node(node));
 		}
 		if (peek(0)->type == DOUBLE_DOTS) {
-			Token *sep    = next();
-			Token *member = find(ID, 0);
-			if (!member) {
-				parse_error(sep, "Expected a method name after '::'");
-				return syntax_error();
+			char  *path = strdup(token->name);
+			Token *sep  = NULL;
+			while ((sep = find(DOUBLE_DOTS, 0))) {
+				Token *member = find(ID, 0);
+				if (!member) {
+					parse_error(sep, "Expected a name after '::'");
+					free(path);
+					return syntax_error();
+				}
+				char *joined = format("%s.%s", path, member->name);
+				free(path);
+				path = joined;
 			}
-			token->Struct.name    = strdup(token->name);
+			if (peek(0)->type != LPAR) {
+				set_name(token, path);
+				free(path);
+				return postfix(node);
+			}
+			char *dot = strrchr(path, '.');
+			*dot = '\0';
+			token->Struct.name    = strdup(path);
 			token->is_static_call = true;
-			set_name(token, member->name);
+			set_name(token, dot + 1);
+			free(path);
 			return postfix(fcall_node(node));
 		}
 		if (peek(0)->type == LBRA || peek(0)->type == DOT)

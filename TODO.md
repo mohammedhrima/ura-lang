@@ -6,8 +6,8 @@ lexer → parser → analyze → type_check → code_gen (switch case + stage he
 1 feature = full pipeline + goldens (`.ll` `.err` `.run`, suite green) · check `old.c` first · 1 feature / commit · 1pt ≈ 4h
 
 ## ✅ done
-`types` bit-width+f64+unsigned · arrays · structs · enums · fn-values · nullable · operators + overloading + `operator drop` · methods/`self` · `pub`/`::` · proto/variadics · `ref`/`ref?` · `@if` · `use` · DWARF · `-san` · `-O0..Oz` · typeof/sizeof · if/while/break/continue/return · `is` · rust diagnostics
-**rewrite-only (old.c never had):** match/case · guards `a[i]?` `m?` `÷0` · for-in / for-ref · `as` casting · big ura-lib
+`types` bit-width+f64+unsigned · arrays · structs · enums · fn-values · nullable · operators + overloading + `operator drop` · methods/`self` · `pub`/`::` · `mod`/namespaces · proto/variadics · `ref`/`ref?` · `@if` · `use` · DWARF · `-san` · `-O0..Oz` · typeof/sizeof · if/while/break/continue/return · `is` · rust diagnostics
+**rewrite-only (old.c never had):** match/case · `try`/`catch`/`throw`+Error · guards `a[i]?` `m?` `÷0` · for-in / for-ref · `as` casting · big ura-lib
 
 ## ❌ backlog
 | feature | example | old.c | pts | M |
@@ -16,7 +16,6 @@ lexer → parser → analyze → type_check → code_gen (switch case + stage he
 | tuples + multi-return | `a i32, b = f()` | ✓ | 4 | M5 |
 | `List[T]` | `List<int>` push/pop/len | ✓ synth | 5 | M6 |
 | `Map[K,V]` | `Map<str,int>` | — | 6 | M6 |
-| `mod` + `::` | `mod m:` → `m::f()` | ✓ | 4 | M7 |
 | wire `link` | `link "raylib"` | no-op | 3 | M7 |
 | multi-file CLI | `ura a.ura b.ura` (only last runs) | — | 1 | M7 |
 | `input` | `name = input()` | — | 2 | M8 |

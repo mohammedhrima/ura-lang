@@ -23,7 +23,7 @@
 - 019 — a struct declaration missing its name
 - 020 — an unexpected token in an expression
 - 021 — member access with no member name after `.`
-- 022 — `::` must be followed by a function call
+- 022 — `::` must be followed by a name
 
 ## 001 — `use` missing opening quote
 
@@ -648,10 +648,10 @@ error: Expected a member name after '.'
 ```ll
 ```
 
-## 022 — `::` must be followed by a function call
+## 022 — `::` must be followed by a name
 
 ```ura
-// lexer/022.ura - `::` must be followed by a function call
+// lexer/022.ura - `::` must be followed by a name
 use "@/header"
 
 main():
@@ -665,7 +665,7 @@ main():
 ```
 
 ```err
-error: Expected a method name after '::'
+error: Expected a name after '::'
   022.ura:5:22
   |
 5 |     s String = String::new
