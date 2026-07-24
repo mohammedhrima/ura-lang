@@ -385,6 +385,7 @@ void type_check(Node *node) {
          break;
       }
       case FCALL:   type_check_fcall(node); break;
+      case ERRPUT:
       case OUTPUT: {
          for (int i = 0; i < node->children_count; i++)
          type_check(node->children[i]);
@@ -606,6 +607,7 @@ void type_check(Node *node) {
          Token *target = node->left->token;
          node->token->ret_type = VOID;
          if (target->ret_type == ARRAY_TYPE) break;
+         if (target->ret_type == STRUCT_CALL && target->is_ref) break;
          char *name = struct_name_of(target);
          if (target->ret_type == STRUCT_CALL)
             parse_error(node->token, ERR_CLEAN_ON_STRUCT, name);
@@ -613,6 +615,7 @@ void type_check(Node *node) {
             parse_error(node->token, ERR_CLEAN_NEEDS_ARRAY, name);
          break;
       }
+      case NEW: break;
       case BREAK: case CONTINUE: case NULL_LIT: break;
       case FALLBACK:
       case ASSIGN: case ADD: case SUB: case MUL: case DIV: case MOD:

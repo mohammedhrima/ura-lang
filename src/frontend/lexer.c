@@ -210,10 +210,15 @@ void preprocess() {
 	int  gate   = -1;
 	bool active = false;
 	bool taken  = false;
+	bool mute   = false;
 	int  write  = 0;
 	for (int i = 0; i < ura.tokens_count; i++) {
 		Token *token = ura.tokens[i];
 		Type   type  = token->type;
+		if (type == AT_NO_WARN) { 
+			mute = true;
+			continue;
+		}
 		if (type == AT_IF || type == AT_ELIF || type == AT_ELSE) {
 			char *name = type == AT_ELSE ? NULL : ura.tokens[++i]->name;
 			i++;
@@ -223,7 +228,10 @@ void preprocess() {
 			continue;
 		}
 		if (gate >= 0 && token->indent <= gate) gate = -1;
-		if (gate < 0 || active) ura.tokens[write++] = token;
+		if (gate < 0 || active) {
+			if (mute) { token->no_warn = true; mute = false; }
+			ura.tokens[write++] = token;
+		}
 	}
 	ura.tokens_count = write;
 }
@@ -304,7 +312,8 @@ bool lex_identifier(char *src, int *i, int line, int indent, int base)
 	int s = *i;
 	if (!(isalpha(src[*i]) || strchr("@$_", src[*i])))
 		return false;
-	while (src[*i] && (isalnum(src[*i]) || strchr("@$_", src[*i])))
+	bool at_dir = src[s] == '@';
+	while (src[*i] && (isalnum(src[*i]) || strchr("@$_", src[*i]) || (at_dir && src[*i] == '-')))
 		(*i)++;
 	int loaded = ura.sources_count;
 	if (lex_use(src, i, s, line)) {
@@ -403,11 +412,13 @@ Token *parse_token(int line, int s, int e, Type type, int indent) {
 			{"f64", F64, 1, 1},
 			{"if", IF, 0, 0},         {"elif", ELIF, 0, 0},       {"else", ELSE, 0, 0},
 			{"@if", AT_IF, 0, 0},     {"@elif", AT_ELIF, 0, 0},   {"@else", AT_ELSE, 0, 0},
+			{"@no-warn", AT_NO_WARN, 0, 0},
 			{"for", FOR, 0, 0},       {"loop", LOOP, 0, 0},       {"while", WHILE, 0, 0},
 			{"by", BY, 0, 0},         {"in", IN, 0, 0},
 			{"fn", FDEC, 0, 0},       {"break", BREAK, 0, 0},     {"return", RETURN, 0, 0},
 			{"case", CASE, 0, 0},     {"match", MATCH, 0, 0},     {"continue", CONTINUE, 0, 0},
 			{"try", TRY, 0, 0},       {"catch", CATCH, 0, 0},     {"throw", THROW, 0, 0},
+			{"ret", RETURN, 0, 0},
 			{"ref", REF, 0, 0},       {"default", DEFAULT, 0, 0}, {"struct", STRUCT_DEF, 0, 0},
 			{"mod", MODULE, 0, 0},    {"proto", PROTO, 0, 0},     {"enum", ENUM_DEF, 0, 0},
 			{"as", AS, 0, 0},         {"pub", PUB, 0, 0},         {"operator", OPERATOR, 0, 0},

@@ -29,6 +29,8 @@ main():
 ```tree
 proto fn printf(format : pointer, ...) : i32
 
+proto fn dprintf(fd : i32, format : pointer, ...) : i32
+
 proto fn calloc(len : i64, size : i64) : pointer
 
 proto fn free(ptr : pointer) : void
@@ -186,6 +188,8 @@ main():
 
 ```tree
 proto fn printf(format : pointer, ...) : i32
+
+proto fn dprintf(fd : i32, format : pointer, ...) : i32
 
 proto fn calloc(len : i64, size : i64) : pointer
 
@@ -382,6 +386,8 @@ main():
 
 ```tree
 proto fn printf(format : pointer, ...) : i32
+
+proto fn dprintf(fd : i32, format : pointer, ...) : i32
 
 proto fn calloc(len : i64, size : i64) : pointer
 
@@ -595,6 +601,8 @@ main():
 ```tree
 proto fn printf(format : pointer, ...) : i32
 
+proto fn dprintf(fd : i32, format : pointer, ...) : i32
+
 proto fn calloc(len : i64, size : i64) : pointer
 
 proto fn free(ptr : pointer) : void
@@ -776,6 +784,8 @@ main():
 ```tree
 proto fn printf(format : pointer, ...) : i32
 
+proto fn dprintf(fd : i32, format : pointer, ...) : i32
+
 proto fn calloc(len : i64, size : i64) : pointer
 
 proto fn free(ptr : pointer) : void
@@ -938,6 +948,8 @@ main():
 
 ```tree
 proto fn printf(format : pointer, ...) : i32
+
+proto fn dprintf(fd : i32, format : pointer, ...) : i32
 
 proto fn calloc(len : i64, size : i64) : pointer
 
@@ -1118,6 +1130,8 @@ main():
 
 ```tree
 proto fn printf(format : pointer, ...) : i32
+
+proto fn dprintf(fd : i32, format : pointer, ...) : i32
 
 proto fn calloc(len : i64, size : i64) : pointer
 
@@ -1314,6 +1328,8 @@ main():
 
 ```tree
 proto fn printf(format : pointer, ...) : i32
+
+proto fn dprintf(fd : i32, format : pointer, ...) : i32
 
 proto fn calloc(len : i64, size : i64) : pointer
 

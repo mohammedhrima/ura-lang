@@ -149,16 +149,18 @@ Node *fdec_node(Node *node) {
 			node->token->is_variadic = true;
 			break;
 		}
-		bool   is_ref = find(REF, 0) != NULL;
-		Token *param  = find(ID, 0);
+		bool   is_ref  = find(REF, 0) != NULL;
+		bool   is_null = is_ref && find(OPTIONAL, 0) != NULL;
+		Token *param   = find(ID, 0);
 		if (!param) {
 			parse_error(node->token, ERR_FN_EXPECTED_PARAM_NAME, node->token->name);
 			break;
 		}
 		parse_type(param);
-		param->is_param = true;
-		param->is_dec   = true;
-		param->is_ref   = is_ref;
+		param->is_param    = true;
+		param->is_dec      = true;
+		param->is_ref      = is_ref;
+		param->is_nullable = is_null;
 		resize_array(node->token->Fn.params, Token *);
 		node->token->Fn.params[node->token->Fn.params_count++] = param;
 		while (find(COMA, 0));
@@ -485,18 +487,20 @@ Node *prime_node() {
 		if (peek(0)->type == LPAR) {
 			if (strcmp(token->name, "main") == 0)
 				return fdec_node(node);
-			if (strcmp(token->name, "output") == 0) {
-				node->token->type     = OUTPUT;
+			bool is_err = strcmp(token->name, "errput") == 0;
+			if (is_err || strcmp(token->name, "output") == 0) {
+				char *who = token->name;
+				node->token->type     = is_err ? ERRPUT : OUTPUT;
 				node->token->ret_type = VOID;
 				if (!find(LPAR, 0))
-					parse_error(node->token, "Expected '(' after output");
+					parse_error(node->token, "Expected '(' after %s", who);
 				while (!ura.found_error && peek(0)->type != RPAR) {
 					resize_array(node->children, Node *);
 					node->children[node->children_count++] = expr_node(0);
 					while (find(COMA, 0));
 				}
 				if (!find(RPAR, 0))
-					parse_error(node->token, "Expected ')' after output arguments");
+					parse_error(node->token, "Expected ')' after %s arguments", who);
 				return node;
 			}
 			return postfix(fcall_node(node));
@@ -539,15 +543,28 @@ Node *prime_node() {
 		if (!token->is_dec && peek(0)->type == OPTIONAL) {
 			find(OPTIONAL, 0);
 			token->is_nullable = true;
+			return postfix(node);
 		}
 		return node;
    }
    case NEW: {
       Token *type = next();
       bool   ok   = is_data_type(type) || type->type == ID;
-      if (!ok || peek(0)->type != LBRA) {
+      if (!ok) {
          parse_error(token, ERR_NEW_EXPECTED_ARRAY_TYPE);
          return syntax_error();
+      }
+      if (peek(0)->type != LBRA) {
+         if (type->type != ID) {
+            parse_error(token, ERR_NEW_EXPECTED_ARRAY_TYPE);
+            return syntax_error();
+         }
+         type->type        = NEW;
+         type->ret_type    = STRUCT_CALL;
+         type->Struct.name = type->name;
+         type->is_dec      = false;
+         type->is_heap     = true;
+         return postfix(new_node(type));
       }
       Node *arr = array_ctor_node(new_node(type));
       arr->token->is_heap = true;
