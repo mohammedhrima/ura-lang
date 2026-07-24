@@ -29,7 +29,8 @@ char *to_string(Type type) {
 	    [NOT] = "NOT",            [AND] = "AND",               [GREAT_EQUAL] = "GE",
 	    [OR] = "OR",              [DOTS] = "DOTS",             [PROTO] = "PROT",
 	    [VARIADIC] = "VAR",       [TYPEOF] = "TYPEOF",         [SIZEOF] = "SIZEOF",
-	    [ARGS] = "ARGS",          [OUTPUT] = "OUTPUT",         [CHILDREN] = "CHILDREN",
+	    [ARGS] = "ARGS",          [OUTPUT] = "OUTPUT",         [ERRPUT] = "ERRPUT",
+	    [CHILDREN] = "CHILDREN",
 	    [AS] = "AS",              [NULL_LIT] = "NULL_LIT",    [FALLBACK] = "FALLBACK",     [ARRAY_LIT] = "ARRAY_LIT",
 	    [ARRAY_TYPE] = "ARRAY_TYPE",
 	    [OPTIONAL] = "OPTIONAL",  [STRUCT_DEF] = "STRUCT_DEF", [STRUCT_CALL] = "STRUCT_CALL",
@@ -240,16 +241,6 @@ void print_escaped(char c) {
 	fprint_escaped(stdout, c);
 }
 
-char *array_type_label(Token *token) {
-	char *s = strdup(type_name(token->Array.sub_type));
-	for (int i = 0; i < token->Array.depth; i++) {
-		char *n = format("%s[]", s);
-		free(s);
-		s = n;
-	}
-	return s;
-}
-
 static char *spelling[END + 1] = {
 		[I8] = "i8",         [I16] = "i16",         [I32] = "i32",
 		[I64] = "i64",       [U8] = "u8",           [U16] = "u16",
@@ -269,12 +260,14 @@ static char *spelling[END + 1] = {
 		[IF] = "if",         [ELIF] = "elif",
 		[ELSE] = "else",     [WHILE] = "while",     [MATCH] = "match",
 		[CASE] = "case",     [BREAK] = "break",     [DEFAULT] = "default",
-		[RETURN] = "return", [OUTPUT] = "output",   [CONTINUE] = "continue",
+		[RETURN] = "return", [OUTPUT] = "output",   [ERRPUT] = "errput",
+		[CONTINUE] = "continue",
 		[REF] = "ref",       [AS] = "cast",         [FOR] = "for",
 		[LOOP] = "loop",     [RANGE] = "range",     [ACCESS] = "index",
 		[ARRAY] = "array",   [ARRAY_LIT] = "array", [ARRAY_TYPE] = "array",
 		[NEW] = "new",       [TYPEOF] = "typeof",   [SIZEOF] = "sizeof",
-		[CLEAN] = "clean",
+		[CLEAN] = "clean",     [TRY] = "try",         [CATCH] = "catch",
+		[THROW] = "throw",     [MODULE] = "mod",
 };
 
 char *spell(Type type) {
@@ -319,25 +312,22 @@ void print_node_label(Node *node) {
 		break;
 	}
 	case STRUCT_DEF: printf("struct %s", token->name); return;
+	case MODULE:     printf("mod %s", token->name); return;
+	case NEW:        printf("new %s", token->Struct.name); return;
 	case DOT:   printf(".%s", token->name); break;
 	default:    printf("%s", spell(token->type));
 	}
 	if (token->ret_type == ARRAY_TYPE && token->Array.sub_type) {
-		char *t = array_type_label(token);
+		char *t = strdup(type_name(token->Array.sub_type));
+		for (int i = 0; i < token->Array.depth; i++) {
+			char *n = format("%s[]", t);
+			free(t);
+			t = n;
+		}
 		printf(" : %s", t);
 		free(t);
 	} else if (token->ret_type)
 		printf(" : %s", spell(token->ret_type));
-}
-
-void print_subtree(Node *node, char *prefix, bool is_last, char *role) {
-	printf("%s%s", prefix, is_last ? "└─ " : "├─ ");
-	if (role) printf("%s ", role);
-	print_node_label(node);
-	putchar('\n');
-	char *child_prefix = format("%s%s", prefix, is_last ? "   " : "│  ");
-	print_children(node, child_prefix);
-	free(child_prefix);
 }
 
 void print_children(Node *node, char *prefix) {
@@ -390,6 +380,28 @@ void print_children(Node *node, char *prefix) {
 		}
 		break;
 	}
+	case TRY: {
+		for (int i = 0; i < node->children_count; i++) {
+			edge_role[count] = NULL;
+			edge_node[count++] = node->children[i];
+		}
+		if (node->right) {
+			edge_role[count] = NULL;
+			edge_node[count++] = node->right;
+		}
+		break;
+	}
+	case CATCH: {
+		if (node->left) {
+			edge_role[count] = "binds";
+			edge_node[count++] = node->left;
+		}
+		for (int i = 0; i < node->children_count; i++) {
+			edge_role[count] = NULL;
+			edge_node[count++] = node->children[i];
+		}
+		break;
+	}
 	case BREAK:
 	case CONTINUE:
 		break;
@@ -413,8 +425,18 @@ void print_children(Node *node, char *prefix) {
 		}
 	}
 	}
-	for (int i = 0; i < count; i++)
-		print_subtree(edge_node[i], prefix, i == count - 1, edge_role[i]);
+	for (int i = 0; i < count; i++) {
+		Node *node = edge_node[i];
+		bool is_last = i == count - 1;
+		char *role = edge_role[i];
+		printf("%s%s", prefix, is_last ? "└─ " : "├─ ");
+		if (role) printf("%s ", role);
+		print_node_label(node);
+		putchar('\n');
+		char *child_prefix = format("%s%s", prefix, is_last ? "   " : "│  ");
+		print_children(node, child_prefix);
+		free(child_prefix);
+	}
 }
 
 void print_ast(Node *head) {
@@ -565,6 +587,7 @@ void parse_error(Token *token, const char *fmt, ...) {
 }
 
 void parse_warn(Token *token, const char *fmt, ...) {
+	if (token && token->no_warn) return;
 	char  *buf = NULL;
 	size_t len = 0;
 	File   ms  = open_memstream(&buf, &len);

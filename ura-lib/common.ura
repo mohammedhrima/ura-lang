@@ -4,6 +4,7 @@
 // always be in scope:
 //
 //   printf  output(...)
+//   dprintf errput(...)
 //   calloc  new T[n]
 //   free    clean x
 //   write   runtime traps (divide by zero, bounds, unbound ref)
@@ -16,6 +17,7 @@
 // identical protos collapse to one declaration.
 
 proto fn printf(format pointer, ...) i32
+proto fn dprintf(fd i32, format pointer, ...) i32
 proto fn calloc(len i64, size i64) pointer
 proto fn free(ptr pointer) void
 proto fn write(fd i32, ptr pointer, len i64) i64
