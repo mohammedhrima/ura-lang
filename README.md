@@ -6,6 +6,218 @@ No braces. No semicolons. Indentation-based like Python, fast like C. Each floor
 
 ---
 
+## See it in action
+
+A recursive-descent calculator: a lexer in its own module, a heap-allocated AST
+freed by one `clean`, and a division-by-zero that travels up four call frames
+into a `catch`. This is the whole program, nothing elided —
+[`tests/projects/calculator.md`](tests/projects/calculator.md), where it also
+runs as a test.
+
+```ura
+use "@/header"
+use "@/error"
+
+enum Type: NONE, NUMBER, ADD, SUB, MUL, DIV, LPAREN, RPAREN
+
+struct Token:
+    value i32
+    type Type
+
+    pub fn number(v i32) ref? Token:
+        ref? t Token = new Token
+        t.type = NUMBER
+        t.value = v
+        ret ref t
+
+    pub fn op(k Type) ref? Token:
+        ref? t Token = new Token
+        t.type = k
+        ret ref t
+
+struct Node:
+    ref? token Token
+    ref? left Node
+    ref? right Node
+
+    pub fn create(ref? token Token) ref? Node:
+        ref? n Node = new Node
+        n.token = ref token
+        ret ref n
+
+    @no-warn
+    operator drop:
+        clean self.token
+        clean self.left
+        clean self.right
+
+mod Lexer:
+    fn run(ref src String, toks Token[]) i32:
+        fn is_digit(c char) bool: ret c >= '0' and c <= '9'
+        n i32 = 0
+        i i32 = 0
+        while i < src.len():
+            c char = src.at(i)
+            if c == ' ':
+                i = i + 1
+                continue
+            elif is_digit(c):
+                v i32 = 0
+                while i < src.len() and is_digit(src.at(i)):
+                    v = v * 10 + ((src.at(i) as i32) - 48)
+                    i = i + 1
+                toks[n].type = NUMBER
+                toks[n].value = v
+                n = n + 1
+                continue
+            else:
+                k Type = NUMBER
+                match c:
+                    case '+': k = ADD
+                    case '-': k = SUB
+                    case '*': k = MUL
+                    case '/': k = DIV
+                    case '(': k = LPAREN
+                    case ')': k = RPAREN
+                toks[n].type = k
+                toks[n].value = 0
+                n = n + 1
+                i = i + 1
+        ret n
+
+mod Parser:
+    fn factor(toks Token[], ref p i32, n i32) ref? Node:
+        if p < n and toks[p].type == LPAREN:
+            p = p + 1
+            ref? inner Node = expr(toks, ref p, n)
+            if p < n and toks[p].type == RPAREN:
+                p = p + 1
+            ret ref inner
+        ref? lf Node = Node::create(Token::number(toks[p].value))
+        p = p + 1
+        ret ref lf
+
+    fn term(toks Token[], ref p i32, n i32) ref? Node:
+        ref? l Node = factor(toks, ref p, n)
+        while p < n and (toks[p].type == MUL or toks[p].type == DIV):
+            k Type = toks[p].type
+            p = p + 1
+            ref? r Node = factor(toks, ref p, n)
+            ref? parent Node = Node::create(Token::op(k))
+            parent.left = ref l
+            parent.right = ref r
+            l = ref parent
+        ret ref l
+
+    fn expr(toks Token[], ref p i32, n i32) ref? Node:
+        ref? l Node = term(toks, ref p, n)
+        while p < n and (toks[p].type == ADD or toks[p].type == SUB):
+            k Type = toks[p].type
+            p = p + 1
+            ref? r Node = term(toks, ref p, n)
+            ref? parent Node = Node::create(Token::op(k))
+            parent.left = ref l
+            parent.right = ref r
+            l = ref parent
+        ret ref l
+
+fn sign(k Type) char[]:
+    match k:
+        case ADD: ret "+"
+        case SUB: ret "-"
+        case MUL: ret "*"
+        case DIV: ret "/"
+        default: ret "?"
+
+fn label(ref? n Node) void:
+    if n.token.type == NUMBER: output(n.token.value, "\n")
+    else:                      output(sign(n.token.type), "\n")
+
+fn show(ref? n Node, pre char[], last bool) void:
+    output(pre)
+    if last: output("└─ ")
+    else:    output("├─ ")
+    label(ref n)
+    kid String = String::from(pre)
+    if last: kid.join("   ")
+    else:    kid.join("│  ")
+    if n.left != null:  show(ref n.left, kid.c_str(), n.right == null)
+    if n.right != null: show(ref n.right, kid.c_str(), True)
+
+fn tree(ref? n Node) void:
+    label(ref n)
+    if n.left != null:  show(ref n.left, "", n.right == null)
+    if n.right != null: show(ref n.right, "", True)
+
+fn eval(ref? n Node) i32:
+    match n?.token?.type:
+        case NUMBER: ret n.token.value
+        case ADD:    ret eval(ref n.left) + eval(ref n.right)
+        case SUB:    ret eval(ref n.left) - eval(ref n.right)
+        case MUL:    ret eval(ref n.left) * eval(ref n.right)
+        case DIV:
+            d i32 = eval(ref n.right)
+            if d == 0: throw Error::make("division by zero")
+            ret eval(ref n.left) / d
+        default:    ret 0
+
+
+fn calc(text char[]) void:
+    output("========================================\n")
+    output("calculate expr:  ", text, "\nast:\n")
+    src String = String::from(text)
+    toks Token[] = new Token[64]
+    n i32 = Lexer::run(ref src, toks)
+    p i32 = 0
+    ref? root Node = Parser::expr(toks, ref p, n)
+    tree(ref root)
+    try:
+        output("result: ", eval(ref root), "\n")
+    catch e:
+        errput("\nError: ", e.message, "\n")
+    clean root
+    clean toks
+
+
+main():
+    calc("2 * (3 + 4) - 10 / 5")
+    calc("8 / (3 - 3)")
+    output("========================================\n")
+```
+
+```
+calculate expr:  2 * (3 + 4) - 10 / 5
+ast:
+-
+├─ *
+│  ├─ 2
+│  └─ +
+│     ├─ 3
+│     └─ 4
+└─ /
+   ├─ 10
+   └─ 5
+result: 12
+========================================
+calculate expr:  8 / (3 - 3)
+ast:
+/
+├─ 8
+└─ -
+   ├─ 3
+   └─ 3
+
+Error: division by zero
+```
+
+What that one file uses: `enum` · `struct` · `pub fn` statics called with
+`::` · in-file modules (`mod Lexer:`) · `new` / `clean` · `operator drop`
+cascading through a tree · `ref?` nullable references · `match` · `try` /
+`catch` / `throw` · `ret` · `errput`. No garbage collector, no leaks —
+verified with `leaks --atExit`.
+
+---
+
 ## Quick Start
 
 ```bash
@@ -57,6 +269,8 @@ main():
 - [Floor 20 — C Interop](#floor-20--c-interop)
 - [Floor 21 — Command Line](#floor-21--command-line)
 - [Floor 22 — Network](#floor-22--network)
+- [Floor 23 — Rooms Within Rooms](#floor-23--rooms-within-rooms)
+- [Floor 24 — When the Dungeon Fights Back](#floor-24--when-the-dungeon-fights-back)
 - [Boss Room — The Full Game](#boss-room--the-full-game)
 - [How It Works](#how-it-works)
 - [Compiler Reference](#compiler-reference)
@@ -90,6 +304,19 @@ typeof hp: i32  sizeof: 4
 ```
 
 `typeof` returns the type name as a string; `sizeof` returns the byte size. For formatted output (`%d`, padding, etc.) use `printf` from C — see Floor 20.
+
+`errput` is `output`'s twin for diagnostics: same arguments, same auto-formatting, but it writes to **stderr** in red. Redirecting stdout leaves it visible.
+
+```ura
+main():
+    output("normal progress\n")
+    errput("something went wrong\n")
+```
+
+| | Stream | Colour |
+|---|---|---|
+| `output(...)` | stdout | plain |
+| `errput(...)` | stderr | red |
 
 ---
 
@@ -186,6 +413,15 @@ Orc takes 17 damage — dead: True
 ```
 
 Single-line functions put the body after the colon. Functions and struct methods can be called before they are declared — no forward declarations needed.
+
+`ret` is a shorter spelling of `return`. The two are the same keyword and mix freely in one file; the rest of this tutorial uses `return`, most of the compiler's own `.ura` sources use `ret`.
+
+```ura
+fn clamp(val i32, lo i32, hi i32) i32:
+    if val < lo: ret lo
+    if val > hi: ret hi
+    ret val
+```
 
 ---
 
@@ -298,6 +534,38 @@ ouch     gain -10
 escape!  gain 100
 ```
 
+**One branch, several labels** — list them after `case`, separated by commas:
+
+```ura
+fn describe(roll i32) void:
+    match roll:
+        case 1, 2, 3:
+            output("weak    ")
+        case 4, 5:
+            output("solid   ")
+        case 20:
+            output("crit!   ")
+            break
+        default:
+            output("ordinary")
+    output(" (", roll, ")\n")
+
+main():
+    describe(2)
+    describe(5)
+    describe(20)
+    describe(11)
+```
+
+```
+weak     (2)
+solid    (5)
+crit!    (20)
+ordinary (11)
+```
+
+Cases never fall through — no `break` is needed to end one. `break` inside a `match` leaves the `match` early; `continue` belongs to the enclosing loop, not the `match`. Every label must have the subject's type, so an enum subject cannot take an integer case.
+
 ---
 
 ## Floor 8 — The Hero
@@ -389,7 +657,7 @@ Aldric — HP: 120
 | Destructor | `operator drop:` | Auto-called at scope exit |
 | Static dispatch | `Hero::create(...)` | `::` calls a `pub fn` |
 
-`clean` (Floor 12) frees a heap buffer but does **not** call `operator drop`; the destructor fires from scope exit, `return`, `break`, and `continue`.
+The destructor fires from scope exit, `return`, `break` and `continue`. It also fires from `clean` on a heap object (Floor 12) — `clean root` runs `Node.drop`, which is what lets one call free a whole tree. `clean` on an array frees the buffer only.
 
 ---
 
@@ -488,7 +756,32 @@ Chest is empty
 default: nothing
 ```
 
-`a ?? b ?? c` chains left to right until a non-null value. A value that can never be null (a plain `char[]`) is rejected from `??` and `== null` — the compiler knows the check is pointless.
+`a ?? b ?? c` chains left to right until a non-null value.
+
+**Nullable and non-nullable are different types.** A `T` widens into a `T?` for free. Coming back the other way, `?` and `??` are not interchangeable — `?` guards a *use*, `??` is what produces a real `T`:
+
+```ura
+main():
+    sure  char[]  = "Iron Sword"
+    maybe char[]? = sure          // widening — always fine
+
+    output(maybe?, "\n")          // ok: guarded read, traps if null
+    named char[] = maybe          // error: 'maybe' may be null
+    named char[] = maybe?         // error: same — ? does not narrow the type
+    named char[] = maybe ?? ""    // ok: ?? is the only way to land in a char[]
+```
+
+Checks that could never fire are errors rather than dead code:
+
+| You write | On a `T?` | On a plain `T` |
+|---|---|---|
+| `x == null` / `x != null` | narrows | **error** — never null |
+| `x ?? d` | uses `d` when null | **error** — `d` unreachable |
+| `a ?? b ?? c` | chains | the last one must be non-null |
+| `x = null` | ok | **error** — needs an optional target |
+| `x?` | traps if null | accepted, does nothing |
+
+The same split applies to references: `ref x T` must be bound at its declaration and can never be null, while `ref? x T` may be unbound or `null`, and `x?` traps rather than reading a dangling pointer. That is why a linked-list `next` field is `ref? Node` and a walking cursor is `ref? cur Node` — see Floor 15.
 
 ---
 
@@ -541,6 +834,48 @@ main():
 
 `clean` nulls the pointer, so a later guarded index `board[r]?` traps instead of reading freed memory.
 
+**One object, not an array.** Drop the `[n]` and `new T` allocates a single zeroed struct on the heap and hands back its address. It binds to a nullable reference (`ref? T`), which is what lets a function build a node and return it:
+
+```ura
+struct Node:
+    value i32
+    ref? left  Node
+    ref? right Node
+
+    pub fn create(v i32) ref? Node:
+        ref? n Node = new Node
+        n.value = v
+        ret ref n
+
+    @no-warn
+    operator drop:
+        clean self.left        // null-safe, so leaves are fine
+        clean self.right
+
+main():
+    ref? root Node = Node::create(1)
+    ref? l Node = Node::create(2)
+    ref? r Node = Node::create(3)
+    root.left  = ref l
+    root.right = ref r
+    clean root                 // frees all three
+    output(root == null, "\n")
+```
+
+```
+True
+```
+
+`clean x` on a heap object does three things in order: run `operator drop`, `free` the memory, then set `x` to `null`. That ordering is what makes the tree above collapse from one call — each `drop` cleans its children first. It is also idempotent: `clean` on an unbound or already-cleaned reference is a no-op, and a guarded read `x?` afterwards traps instead of touching freed memory.
+
+| | `new T[n]` | `new T` |
+|---|---|---|
+| Result | array (fat pointer + length) | one zeroed object |
+| Binds to | `T[]` | `ref? T` |
+| `clean` | frees the buffer | `operator drop` → `free` → null |
+
+`ref` binds to a variable, not to an expression — `root.left = ref make()` is rejected, so store the call in a local first. `@no-warn` above `operator drop` is Floor 19.
+
 ---
 
 ## Floor 13 — Status Effects
@@ -579,9 +914,9 @@ Cured:    False
 |------------|-----------|
 | Arithmetic | `+`  `-`  `*`  `/`  `%` |
 | Bitwise    | `&`  `\|`  `^`  `~`  `<<`  `>>` |
-| Comparison | `==` `!=` `<` `>` `<=` `>=` |
-| Logical    | `and` `or` `not` |
-| Assignment | `=` `+=` `-=` `*=` `/=` `%=` |
+| Comparison | `==` `!=` `<` `>` `<=` `>=` — `is` is a synonym for `==` |
+| Logical    | `and` `or` `not`, or the symbols `&&` `\|\|` `!` |
+| Assignment | `=` `+=` `-=` `*=` `/=` `%=` `&=` `\|=` `^=` `<<=` `>>=` |
 
 ---
 
@@ -743,7 +1078,7 @@ Elements can be any expression — variables, arithmetic, or function calls.
 
 ## Floor 18 — The Hero's Identity
 
-A struct prints as `Name{ field: value, ... }` by default. Define `operator output()` to control how it appears inside `output()`. It may return `char[]` (used directly) or a `String` (the compiler chains to the `String`'s own `operator output()`):
+A struct prints as `Name{ field: value, ... }` by default. Define `operator output()` to control how it appears inside `output()`. Return `char[]`, or a `String` when you want to build the text with `+`:
 
 ```ura
 struct Tag:
@@ -775,8 +1110,11 @@ plain:  Plain{a: 1}
 | Return type | Behavior |
 |-------------|----------|
 | `char[]` | used directly |
-| `String` (or any struct) | compiler chains to that struct's `operator output()` |
+| `String` | its text is used |
 | *(not defined)* | default `Name{ field: value, ... }` printing |
+
+Any other struct return type is not supported today — the printer reads the
+returned value as a `char[]`, so an unrelated struct crashes at runtime.
 
 ---
 
@@ -807,6 +1145,19 @@ pid > 0: True
 
 *(Output is from a macOS build; a Linux build prints the `@elif linux` branch.)* The platform is detected from the LLVM target triple, so no `-D` flags are needed.
 
+**`@no-warn`** silences the warning attached to the declaration directly below it — and only that one. The usual case is a struct that owns heap memory through a `ref?` field, where `operator drop` is deliberate and `operator =` is not wanted:
+
+```ura
+struct Node:
+    ref? next Node
+
+    @no-warn
+    operator drop:
+        clean self.next
+```
+
+Without it the compiler warns *"Struct Node has 'operator drop' but no 'operator ='; copying it makes two owners of the same memory, and both will be destroyed."* Errors are never silenced — only warnings, and only for the next declaration.
+
 ---
 
 ## Floor 20 — C Interop
@@ -820,6 +1171,7 @@ use "@/string"   // strlen, strcmp, strcpy, strcat, String struct, ...
 use "@/stdlib"   // atoi, rand, srand, exit, ...
 use "@/math"     // sin, cos, sqrt, pow, ...
 use "@/net"      // socket, bind, listen, connect, send, recv, ...
+use "@/error"    // the throwable Error struct — see Floor 24
 use "@/header"   // every module at once (also wires up os.argc / os.argv)
 ```
 
@@ -929,9 +1281,101 @@ Full server + client examples live in [github.com/mohammedhrima/ura-tcp-server](
 
 ---
 
+## Floor 23 — Rooms Within Rooms
+
+`use` brings in another *file*. `mod` carves a namespace inside the file you are already writing. Members are reached with `::`, the same operator that calls a `pub fn`:
+
+```ura
+mod Lexer:
+    fn run(text char[]) i32:
+        return text.len as i32
+
+mod Shapes:
+    enum Kind: CIRCLE, SQUARE
+
+    struct Point:
+        x i32
+        y i32
+
+        pub fn make(v i32) Point:
+            p Point
+            p.x = v
+            return p
+
+main():
+    output(Lexer::run("2 * (3 + 4)"), "\n")
+    p Shapes::Point = Shapes::Point::make(3)
+    k Shapes::Kind  = Shapes::CIRCLE
+    output(p.x, " ", k == Shapes::CIRCLE, "\n")
+```
+
+```
+11
+3 True
+```
+
+Modules nest (`a::b::f()`), may be used before they are declared, and hold `fn`, `struct`, `enum` and further `mod` declarations — but nothing else; a bare statement in a module body is an error. Inside a module, siblings are called unqualified: `Parser::term` can just say `factor(...)`. And `::` is not `.` — reaching a module member with a dot is rejected.
+
+| | Reaches |
+|---|---|
+| `use "path"` | another file |
+| `mod name:` + `name::x` | a namespace in this file |
+| `Type::method()` | a `pub fn` static |
+| `value.method()` | an instance method |
+
+---
+
+## Floor 24 — When the Dungeon Fights Back
+
+A `throw` unwinds to the nearest enclosing `catch`, across as many call frames as it takes. The only throwable type is `Error`, from `@/error`:
+
+```ura
+use "@/error"
+
+fn divide(a i32, b i32) i32:
+    if b == 0: throw Error::make("division by zero")
+    return a / b
+
+fn compute(a i32, b i32) i32:
+    return divide(a, b) * 2      // no try here — it just propagates
+
+main():
+    try:
+        output("ok: ", compute(10, 5), "\n")
+        output("bad: ", compute(8, 0), "\n")
+        output("never reached\n")
+    catch e:
+        errput("caught: ", e.message, "\n")
+```
+
+```
+ok: 4
+```
+```
+caught: division by zero
+```
+
+*(the second block is stderr, in red)*
+
+`Error` is an ordinary struct — `message char[]` plus a `pub fn make` — so `e.message` is just a field read. Code after a `throw` in the same block is unreachable and dropped. `try` blocks nest, and the innermost `catch` wins. `return` inside a `try` returns from the function; `break` exits the enclosing loop. A throw that reaches `main` uncaught prints its message and exits non-zero.
+
+**Runtime traps are not exceptions.** These abort with a `file:line` message and are not catchable:
+
+| Trap | Cause |
+|---|---|
+| index out of bounds | `a[9]?` past the end |
+| slice out of bounds | `a[lo..hi]?` past the end |
+| use after `clean` | reading a freed array or object |
+| unbound `ref?` | `x?` on a reference that was never bound |
+| divide by zero | integer **and** float |
+| null function value | calling a zero-init `fn` variable |
+| stack overflow | runaway recursion |
+
+---
+
 ## Boss Room — The Full Game
 
-All the skills. One program. The complete listing lives in [src/dungeon.ura](src/dungeon.ura) and is verified by the test suite ([tests/dungeon.md](tests/dungeon.md)):
+All the skills. One program. The complete listing lives in [tests/dungeon.md](tests/dungeon.md), where the test suite verifies it:
 
 ```ura
 enum EnemyType: GOBLIN, ORC, DRAGON
@@ -1071,7 +1515,7 @@ source.ura
 
 ```bash
 ura <file.ura> [options]
-ura src/dungeon.ura -O2 -o dungeon
+ura dungeon.ura -O2 -o dungeon
 ```
 
 ### Options
@@ -1120,20 +1564,22 @@ code --install-extension ura-lang-*.vsix
 - Functions, variadic functions, single-line functions, call-before-declare
 - `while` / `loop`, `if` / `elif` / `else`, `break`, `continue`
 - `for` loops — `for i in a..b`, `by` step, `for x in arr`, `for ref x in arr`
-- `match` / `case` / `default` (enum or integer cases)
+- `match` / `case` / `default` (enum or integer cases, `case 1, 2, 3` multi-labels, no fall-through)
 - Structs, nested structs, methods with `self`
 - `pub fn` static methods via `Type::method()`
 - References — `ref` params, local refs (`= ref` rebind, `=` write-through), **reference returns** `fn f() ref T`, nullable refs `ref? T`, identity `ref a == ref b`
 - Operator overloading — `=` `+` `-` `*` `/` `%` `==` `!=` `<` `>` `<=` `>=` `+=` `-=` `*=` `/=` `%=` `&` `|` `^` `<<` `>>`
 - `operator =` copy assignment and `operator drop` destructor (fires on scope exit, `return`, `break`, `continue`)
-- `operator output()` — custom struct printing (returns `char[]` or `String`, chains recursively)
+- `operator output()` — custom struct printing (returns `char[]` or `String`)
 - Built-in `String` — constructors, search, transforms, operators
 - Array literals `[1, 2, 3]`, multi-dimensional `new T[r][c]`
 - `new` / `clean` heap allocation
 - Type casting `as` — numeric, pointer, float↔int, char↔int
 - `typeof`, `sizeof`
-- `@if` / `@elif` / `@else` platform conditional compilation (`unix`/`macos`/`linux`/`windows`)
-- `output` builtin — no format string, no imports
+- `@if` / `@elif` / `@else` platform conditional compilation (`unix`/`macos`/`linux`/`windows`), `@no-warn`
+- `output` / `errput` builtins — no format string, no imports
+- `try` / `catch` / `throw` with the throwable `Error` struct (`@/error`)
+- `mod name:` in-file modules, nested, called with `::`
 - `use` module system (`@` for stdlib, relative for local files)
 - `proto` C interop, variadic supported, `URA_LINK_<name>` external linking
 - `os.argc` / `os.argv`

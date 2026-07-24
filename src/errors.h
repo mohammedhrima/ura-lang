@@ -175,6 +175,9 @@
 
 #define ERR_UNDECLARED_VARIABLE "Undeclared variable '%s'"
 
+#define ERR_BARE_FIELD \
+	"Field '%s' must be accessed through self; write 'self.%s'"
+
 #define ERR_REF_TO_NON_VARIABLE \
 	"Cannot take a reference to a non-variable"
 
@@ -186,6 +189,27 @@
 
 #define ERR_REF_NEEDS_VARIABLE \
 	"A reference must be bound to a variable (ref x)"
+
+#define ERR_REF_FIELD_WRITE \
+	"'%s' is a reference field; bind it with '= ref', not a value"
+
+#define ERR_THROW_NEEDS_ERROR "'throw' expects an Error, got %s"
+
+#define ERR_MOD_EXPECTED_COLON \
+	"Expected ':' to open the body of module '%s'"
+
+#define ERR_MOD_EMPTY \
+	"Module '%s' is empty; add a declaration or remove it"
+
+#define ERR_MOD_BODY \
+	"Only 'fn', 'struct', 'enum' and 'mod' can be declared in a module"
+
+#define ERR_UNKNOWN_MODULE "Unknown module '%s'"
+
+#define ERR_MOD_NO_MEMBER "Module '%s' has no member '%s'"
+
+#define ERR_MOD_DOT_CALL \
+	"'%s' is a module; reach its members with '::' instead of '.'"
 
 #define ERR_ARRAY_SIZE_NOT_INT "Array size must be an integer"
 

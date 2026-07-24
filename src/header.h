@@ -154,9 +154,10 @@ enum Type
 	LPAR, RPAR, LBRA, RBRA, COMA, DOT, DOTS, RANGE, ACCESS, AS, // Punctuation and Syntax
 	RETURN, IF, ELIF, ELSE, WHILE, CONTINUE, BREAK, MATCH, CASE, DEFAULT, // Control Flow
 	FOR, BY, IN, LOOP,
-	AT_IF, AT_ELIF, AT_ELSE,
+	TRY, CATCH, THROW,
+	AT_IF, AT_ELIF, AT_ELSE, AT_NO_WARN,
 	FDEC, FCALL, PROTO, ARGS, CHILDREN, // Functions
-	TYPEOF, SIZEOF, OUTPUT, SYNTAX_ERROR, // Built-ins
+	TYPEOF, SIZEOF, OUTPUT, ERRPUT, SYNTAX_ERROR, // Built-ins
 	BAND, BOR, BXOR, BNOT, LSHIFT, RSHIFT, // Bitwise
 	NULL_LIT, OPTIONAL, FALLBACK, // Literals
 	MODULE, // Modules
@@ -189,6 +190,7 @@ struct LLVM {
 	bool    is_loaded;
 	Value   array_size;
 	Value   elem;
+	Value   err_out;
 	Value  *dims;
 	int     dims_count;
 	int     dims_size;
@@ -230,6 +232,7 @@ struct Token {
 	bool    is_variadic;
 	bool    is_proto;
 	bool    has_drop;
+	bool    no_warn;   
 	bool    is_method_call;
 	bool    is_pub;
 	bool    is_static_call;
@@ -271,6 +274,7 @@ struct Node {
 
 struct UraGlobal {
 	bool             found_error;
+	bool             uses_exceptions;
 	char            *output;
 	int              error_count;
 	int              max_errors;
@@ -297,11 +301,16 @@ struct UraGlobal {
 	MetadataRef      debug_file;
 	MetadataRef      debug_scope;
 	EXPAND(Node **, scopes);
+	EXPAND(Node **, try_nodes);
 	EXPAND(Token **, tokens);
 	EXPAND(Token **, temps);
 	EXPAND(Source **, sources);
+	Value            err_flag;
+	Value            err_value;
+	Node            *error_def;
 	char           **platform;
 	Token           *fn_ret;
+	char            *current_module;
 	Source          *current;
 	int              calling_use;
 	Node            *scope;

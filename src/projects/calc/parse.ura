@@ -1,0 +1,63 @@
+mod Parser:
+    fn factor(toks Token[], ref p i32, n i32) ref? Node:
+        if p < n and toks[p].type == LPAREN:
+            p = p + 1
+            ref? inner Node = expr(toks, ref p, n)
+            if p < n and toks[p].type == RPAREN:
+                p = p + 1
+            ret ref inner
+        ref? lf Node = Node::create(Token::number(toks[p].value))
+        p = p + 1
+        ret ref lf
+
+    fn term(toks Token[], ref p i32, n i32) ref? Node:
+        ref? l Node = factor(toks, ref p, n)
+        while p < n and (toks[p].type == MUL or toks[p].type == DIV):
+            k Type = toks[p].type
+            p = p + 1
+            ref? r Node = factor(toks, ref p, n)
+            ref? parent Node = Node::create(Token::op(k))
+            parent.left = ref l
+            parent.right = ref r
+            l = ref parent
+        ret ref l
+
+    fn expr(toks Token[], ref p i32, n i32) ref? Node:
+        ref? l Node = term(toks, ref p, n)
+        while p < n and (toks[p].type == ADD or toks[p].type == SUB):
+            k Type = toks[p].type
+            p = p + 1
+            ref? r Node = term(toks, ref p, n)
+            ref? parent Node = Node::create(Token::op(k))
+            parent.left = ref l
+            parent.right = ref r
+            l = ref parent
+        ret ref l
+
+fn sign(k Type) char[]:
+    match k:
+        case ADD: ret "+"
+        case SUB: ret "-"
+        case MUL: ret "*"
+        case DIV: ret "/"
+        default: ret "?"
+
+fn label(ref? n Node) void:
+    if n.token.type == NUMBER: output(n.token.value, "\n")
+    else:                      output(sign(n.token.type), "\n")
+
+fn show(ref? n Node, pre char[], last bool) void:
+    output(pre)
+    if last: output("└─ ")
+    else:    output("├─ ")
+    label(ref n)
+    kid String = String::from(pre)
+    if last: kid.join("   ")
+    else:    kid.join("│  ")
+    if n.left != null:  show(ref n.left, kid.c_str(), n.right == null)
+    if n.right != null: show(ref n.right, kid.c_str(), True)
+
+fn tree(ref? n Node) void:
+    label(ref n)
+    if n.left != null:  show(ref n.left, "", n.right == null)
+    if n.right != null: show(ref n.right, "", True)
