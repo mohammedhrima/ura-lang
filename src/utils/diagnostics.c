@@ -29,7 +29,8 @@ char *to_string(Type type) {
 	    [NOT] = "NOT",            [AND] = "AND",               [GREAT_EQUAL] = "GE",
 	    [OR] = "OR",              [DOTS] = "DOTS",             [PROTO] = "PROT",
 	    [VARIADIC] = "VAR",       [TYPEOF] = "TYPEOF",         [SIZEOF] = "SIZEOF",
-	    [ARGS] = "ARGS",          [OUTPUT] = "OUTPUT",         [CHILDREN] = "CHILDREN",
+	    [ARGS] = "ARGS",          [OUTPUT] = "OUTPUT",         [ERRPUT] = "ERRPUT",
+	    [CHILDREN] = "CHILDREN",
 	    [AS] = "AS",              [NULL_LIT] = "NULL_LIT",    [FALLBACK] = "FALLBACK",     [ARRAY_LIT] = "ARRAY_LIT",
 	    [ARRAY_TYPE] = "ARRAY_TYPE",
 	    [OPTIONAL] = "OPTIONAL",  [STRUCT_DEF] = "STRUCT_DEF", [STRUCT_CALL] = "STRUCT_CALL",
@@ -259,7 +260,8 @@ static char *spelling[END + 1] = {
 		[IF] = "if",         [ELIF] = "elif",
 		[ELSE] = "else",     [WHILE] = "while",     [MATCH] = "match",
 		[CASE] = "case",     [BREAK] = "break",     [DEFAULT] = "default",
-		[RETURN] = "return", [OUTPUT] = "output",   [CONTINUE] = "continue",
+		[RETURN] = "return", [OUTPUT] = "output",   [ERRPUT] = "errput",
+		[CONTINUE] = "continue",
 		[REF] = "ref",       [AS] = "cast",         [FOR] = "for",
 		[LOOP] = "loop",     [RANGE] = "range",     [ACCESS] = "index",
 		[ARRAY] = "array",   [ARRAY_LIT] = "array", [ARRAY_TYPE] = "array",
@@ -311,6 +313,7 @@ void print_node_label(Node *node) {
 	}
 	case STRUCT_DEF: printf("struct %s", token->name); return;
 	case MODULE:     printf("mod %s", token->name); return;
+	case NEW:        printf("new %s", token->Struct.name); return;
 	case DOT:   printf(".%s", token->name); break;
 	default:    printf("%s", spell(token->type));
 	}
@@ -584,6 +587,7 @@ void parse_error(Token *token, const char *fmt, ...) {
 }
 
 void parse_warn(Token *token, const char *fmt, ...) {
+	if (token && token->no_warn) return;
 	char  *buf = NULL;
 	size_t len = 0;
 	File   ms  = open_memstream(&buf, &len);

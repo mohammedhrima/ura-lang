@@ -304,7 +304,15 @@ void analyze(Node *node) {
                found = strncmp(child->name, prefix, n) == 0;
             }
             free(prefix);
-            if (!found)
+            char *dname = format("%s.drop", token->name);
+            bool  muted = false;
+            for (int i = 0; i < node->children_count && !muted; i++) {
+               Token *child = node->children[i]->token;
+               if (child->type != FDEC || !child->name) continue;
+               if (strcmp(child->name, dname) == 0) muted = child->no_warn;
+            }
+            free(dname);
+            if (!found && !muted)
                parse_warn(token, WARN_DROP_NEEDS_ASSIGN, token->name);
          }
          enter_scope(node);
@@ -535,6 +543,7 @@ void analyze(Node *node) {
          parse_error(node->token, "'continue' outside a loop");
          break;
       }
+      case ERRPUT:
       case OUTPUT: {
          for (int i = 0; i < node->children_count; i++)
          analyze(node->children[i]);
@@ -566,6 +575,7 @@ void analyze(Node *node) {
          break;
       }
       case CLEAN: analyze(node->left); break;
+      case NEW: resolve_struct_type(token); break;
       case ASSIGN: case ADD: case SUB: case MUL: case DIV: case MOD:
       case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: case DIV_ASSIGN:
       case MOD_ASSIGN: case BAND_ASSIGN: case BOR_ASSIGN: case BXOR_ASSIGN:
