@@ -1,0 +1,37 @@
+use "@/header"
+use "@/error"
+use "lex"
+use "parse"
+
+fn eval(ref? n Node) i32:
+    match n?.token?.type:
+        case NUMBER: ret n.token.value
+        case ADD:    ret eval(ref n.left) + eval(ref n.right)
+        case SUB:    ret eval(ref n.left) - eval(ref n.right)
+        case MUL:    ret eval(ref n.left) * eval(ref n.right)
+        case DIV:
+            d i32 = eval(ref n.right)
+            if d == 0: throw Error::make("division by zero")
+            ret eval(ref n.left) / d
+        default:    ret 0
+
+fn calc(text char[]) void:
+    output("========================================\n")
+    output("calculate expr:  ", text, "\nast:\n")
+    src String = String::from(text)
+    toks Token[] = new Token[64]
+    n i32 = Lexer::run(ref src, toks)
+    p i32 = 0
+    ref? root Node = Parser::expr(toks, ref p, n)
+    tree(ref root)
+    try:
+        output("result: ", eval(ref root), "\n")
+    catch e:
+        errput("\nError: ", e.message, "\n")
+    clean root
+    clean toks
+
+main():
+    calc("2 * (3 + 4) - 10 / 5")
+    calc("8 / (3 - 3)")
+    output("========================================\n")

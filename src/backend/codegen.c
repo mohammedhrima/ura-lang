@@ -84,33 +84,8 @@ Value llvm_binop(LLVMOpcode op, Value l, Value r, char *name) {
    return LLVMBuildBinOp(ura.builder, op, l, r, name);
 }
 
-Value llvm_ret(Value value) {
-   return LLVMBuildRet(ura.builder, value);
-}
-
-Value llvm_not(Value value) {
-   return LLVMBuildNot(ura.builder, value, "not");
-}
-
 Value llvm_int_cast(Value value, TypeRef type) {
    return LLVMBuildIntCast2(ura.builder, value, type, 1, "cast");
-}
-
-Value llvm_num_cast(Value value, Type src, Type dst) {
-   if (src == dst) return value;
-   TypeRef to = to_llvm_type(dst);
-   if (is_float(src) && is_float(dst))
-      return dst == F64 ? LLVMBuildFPExt(ura.builder, value, to, "cast")
-                           : LLVMBuildFPTrunc(ura.builder, value, to, "cast");
-   if (is_float(src))
-      return is_unsigned(dst)
-         ? LLVMBuildFPToUI(ura.builder, value, to, "cast")
-         : LLVMBuildFPToSI(ura.builder, value, to, "cast");
-   if (is_float(dst))
-      return is_unsigned(src)
-         ? LLVMBuildUIToFP(ura.builder, value, to, "cast")
-         : LLVMBuildSIToFP(ura.builder, value, to, "cast");
-   return LLVMBuildIntCast2(ura.builder, value, to, !is_unsigned(src), "cast");
 }
 
 Value llvm_global(Token *token) {
@@ -121,32 +96,8 @@ Value llvm_global(Token *token) {
    return token->llvm.elem = glob;
 }
 
-void llvm_sanitize(Value fn) {
-   unsigned     kind = LLVMGetEnumAttributeKindForName("sanitize_address", 16);
-   AttributeRef attr = LLVMCreateEnumAttribute(ura.context, kind, 0);
-   LLVMAddAttributeAtIndex(fn, LLVMAttributeFunctionIndex, attr);
-}
-
-MetadataRef llvm_di_subroutine() {
-   return LLVMDIBuilderCreateSubroutineType(ura.debug_builder,
-                                            ura.debug_file, NULL, 0,
-                                            LLVMDIFlagZero);
-}
-
-MetadataRef llvm_di_function(char *name, int line, MetadataRef type) {
-   size_t len = strlen(name);
-   return LLVMDIBuilderCreateFunction(ura.debug_builder,
-                                      ura.debug_compile_unit, name, len,
-                                      name, len, ura.debug_file, line,
-                                      type, 0, 1, line, LLVMDIFlagZero, 0);
-}
-
 MetadataRef llvm_di_location(int line, MetadataRef scope) {
    return LLVMDIBuilderCreateDebugLocation(ura.context, line, 0, scope, NULL);
-}
-
-MetadataRef llvm_get_location() {
-   return LLVMGetCurrentDebugLocation2(ura.builder);
 }
 
 void llvm_set_location(MetadataRef loc) {
@@ -240,45 +191,6 @@ void finalize_module(char *ll_path) {
    }
 }
 
-void debug_enter_function(Token *token) {
-   token->llvm.prev_block = here_block();
-   token->llvm.prev_scope = ura.debug_scope;
-   token->llvm.prev_loc   = ura.debug_builder ? llvm_get_location() : NULL;
-   llvm_at(llvm_block(token->llvm.elem, "entry"));
-   if (ura.enable_san) llvm_sanitize(token->llvm.elem);
-   if (!ura.debug_builder) return;
-
-   MetadataRef di_type = llvm_di_subroutine();
-   MetadataRef di_func = llvm_di_function(token->name, token->line, di_type);
-   LLVMSetSubprogram(token->llvm.elem, di_func);
-   ura.debug_scope = di_func;
-   llvm_set_location(llvm_di_location(token->line, di_func));
-}
-
-void debug_exit_function(Token *token) {
-   if (token->llvm.prev_block) llvm_at(token->llvm.prev_block);
-   if (!ura.debug_builder) return;
-   ura.debug_scope = token->llvm.prev_scope;
-   llvm_set_location(token->llvm.prev_loc);
-}
-
-void set_debug_location(Token *token) {
-   if (!ura.debug_builder || !ura.debug_scope) return;
-   llvm_set_location(llvm_di_location(token->line, ura.debug_scope));
-}
-
-Value promote(Type type, Value v) {
-   switch (type) {
-      case F32:
-         return LLVMBuildFPExt(ura.builder, v, ura.f64, "f2d");
-      case I8: case I16: case CHAR:
-         return LLVMBuildSExt(ura.builder, v, ura.i32, "i2i");
-      case BOOL: case U8: case U16:
-         return LLVMBuildZExt(ura.builder, v, ura.i32, "u2i");
-      default: return v;
-   }
-}
-
 Value lib_fn(char *name, TypeRef *type) {
    Node *fn = find_function(name);
    if (!fn) {
@@ -331,34 +243,12 @@ void guard_nonzero(Token *op, Value divisor) {
    guard(op, iszero, includes(op->type, MOD, MOD_ASSIGN, 0) ? "Modulo by zero" : "Division by zero");
 }
 
-void guard_nonnull(Token *op, Value ptr) {
-   Value null   = LLVMConstNull(LLVMTypeOf(ptr));
-   Value isnull = llvm_icmp(LLVMIntEQ, ptr, null, "isnull");
-   guard(op, isnull, "Call to a null function value");
-}
-
 void guard_bound(Token *op, Value ptr) {
    Value null   = LLVMConstNull(LLVMTypeOf(ptr));
    Value isnull = llvm_icmp(LLVMIntEQ, ptr, null, "unbound");
    char *msg    = format("reference '%s' used before it was bound - assign '%s = ref <target>' first", op->name, op->name);
    guard(op, isnull, msg);
    free(msg);
-}
-
-void guard_index(Token *op, Value idx, Value slice) {
-   Value len   = llvm_extract(slice, 1, "arr.len");
-   Value idx64 = LLVMBuildIntCast2(ura.builder, idx, ura.i64, 1, "idx");
-   Value low   = llvm_icmp(LLVMIntSLT, idx64, const_i64(0), "oob.low");
-   Value high  = llvm_icmp(LLVMIntSGE, idx64, len, "oob.high");
-   guard(op, LLVMBuildOr(ura.builder, low, high, "oob"), "array index out of bounds");
-}
-
-void guard_slice(Token *op, Value start, Value end, Value len) {
-   Value lo  = llvm_icmp(LLVMIntSLT, start, const_i64(0), "s.lo");
-   Value hi  = llvm_icmp(LLVMIntSGT, end, len, "e.hi");
-   Value ord = llvm_icmp(LLVMIntSGT, start, end, "s.gt");
-   Value bad = LLVMBuildOr(ura.builder, LLVMBuildOr(ura.builder, lo, hi, "b"), ord, "bad");
-   guard(op, bad, "slice range out of bounds");
 }
 
 void emit_signature(Node *fn) {
@@ -406,66 +296,17 @@ Value access_ptr(Node *node) {
    Value   data  = llvm_extract(slice, 0, "arr.data");
    code_gen(node->right);
    Value   idx   = node->right->token->llvm.elem;
-   if (node->token->is_nullable) guard_index(node->token, idx, slice);
+   if (node->token->is_nullable) {
+      Value len   = llvm_extract(slice, 1, "arr.len");
+      Value idx64 = LLVMBuildIntCast2(ura.builder, idx, ura.i64, 1, "idx");
+      Value low   = llvm_icmp(LLVMIntSLT, idx64, const_i64(0), "oob.low");
+      Value high  = llvm_icmp(LLVMIntSGE, idx64, len, "oob.high");
+      guard(node->token, LLVMBuildOr(ura.builder, low, high, "oob"),
+            "array index out of bounds");
+   }
    Token  *arr   = node->left->token;
    TypeRef elem  = elem_type(arr, arr->Array.depth);
    return llvm_gep(elem, data, &idx, 1, "arr.at");
-}
-
-void code_gen_slice(Node *node) {
-   Token *arr   = node->left->token;
-   Node  *range = node->right;
-   code_gen(node->left);
-   Value   slice = node->left->token->llvm.elem;
-   Value   data  = llvm_extract(slice, 0, "arr.data");
-   code_gen(range->left);
-   code_gen(range->right);
-   Value   start = LLVMBuildIntCast2(ura.builder, range->left->token->llvm.elem, ura.i64, 1, "start");
-   Value   end   = LLVMBuildIntCast2(ura.builder, range->right->token->llvm.elem, ura.i64, 1, "end");
-   if (node->token->is_nullable)
-      guard_slice(node->token, start, end, llvm_extract(slice, 1, "arr.len"));
-   TypeRef elem  = elem_type(arr, arr->Array.depth);
-   Value   ptr   = llvm_gep(elem, data, &start, 1, "slice.data");
-   Value   len   = LLVMBuildSub(ura.builder, end, start, "slice.len");
-   node->token->llvm.elem = make_slice(arr, arr->Array.depth, ptr, len);
-}
-
-void code_gen_dot(Node *node) {
-   Token *token = node->token;
-   if (node->left->token->ret_type == STRUCT_CALL) {
-      Value ptr = field_ptr(node);
-      token->llvm.elem = llvm_load(llvm_type_of(token), ptr, token->name);
-      return;
-   }
-   code_gen(node->left);
-   token->llvm.elem = llvm_extract(node->left->token->llvm.elem, 1, "len");
-}
-
-void code_gen_access(Node *node) {
-   if (node->right->token->type == RANGE) { code_gen_slice(node); return; }
-   Value   ptr  = access_ptr(node);
-   TypeRef elem = llvm_type_of(node->token);
-   node->token->llvm.elem = llvm_load(elem, ptr, "idx");
-}
-
-void code_gen_array_lit(Node *node) {
-   Token  *token = node->token;
-   int     n     = node->children_count;
-   int     depth = token->Array.depth;
-   TypeRef elem  = elem_type(token, depth);
-   Value   len   = const_i64(n);
-   Value   data  = LLVMBuildArrayAlloca(ura.builder, elem, len, "arr");
-   for (int i = 0; i < n; i++) {
-      code_gen(node->children[i]);
-      Value idx = const_i64(i);
-      Value gep = llvm_gep(elem, data, &idx, 1, "arr.init");
-      llvm_store(node->children[i]->token->llvm.elem, gep);
-   }
-   TypeRef slice = array_type(token, depth);
-   Value   agg   = LLVMGetUndef(slice);
-   agg = llvm_insert(agg, data, 0, "arr.ptr");
-   agg = llvm_insert(agg, len,  1, "arr.len");
-   token->llvm.elem = agg;
 }
 
 Value string_slice(Token *token, char *text) {
@@ -524,18 +365,6 @@ Value build_array(Token *arr, Value *dims, int depth, bool heap) {
    return make_slice(arr, depth, data, n);
 }
 
-void code_gen_array_ctor(Node *node) {
-   Token *token = node->token;
-   int    depth = token->Array.depth;
-   Value *dims  = allocate(depth, sizeof(Value));
-   for (int i = 0; i < depth; i++) {
-      code_gen(node->children[i]);
-      dims[i] = LLVMBuildIntCast2(ura.builder, node->children[i]->token->llvm.elem, ura.i64, 1, "n");
-   }
-   token->llvm.elem = build_array(token, dims, depth, token->is_heap);
-   free(dims);
-}
-
 void free_array(Token *arr, Value slice, int depth) {
    Value data = llvm_extract(slice, 0, "arr.data");
    if (depth > 1) {
@@ -565,44 +394,6 @@ void free_array(Token *arr, Value slice, int depth) {
    if (ffn) llvm_call(fty, ffn, (Value[]){ ptr }, 1, "");
 }
 
-void code_gen_typeof(Node *node) {
-   Token *arg  = node->left->token;
-   char  *name = arg->ret_type == STRUCT_CALL ? struct_name_of(arg)
-               : type_name(arg->ret_type);
-   node->token->llvm.elem = string_slice(node->token, name);
-}
-
-void code_gen_sizeof(Node *node) {
-   TypeRef t = llvm_type_of(node->left->token);
-   unsigned long long sz = LLVMABISizeOfType(LLVMGetModuleDataLayout(ura.module), t);
-   node->token->llvm.elem = const_i64(sz);
-}
-
-void code_gen_clean(Node *node) {
-   Token  *arr   = node->left->token;
-   Value   slot  = emit_place(node->left);
-   TypeRef sty   = array_type(arr, arr->Array.depth);
-   Value   slice = llvm_load(sty, slot, "arr");
-   free_array(arr, slice, arr->Array.depth);
-   llvm_store(LLVMConstNull(sty), slot);
-}
-
-void code_gen_literal(Node *node) {
-   Token *token = node->token;
-   switch (token->type) {
-      case I32:   token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Int.value, 0); break;
-      case BOOL:  token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Bool.value, 0); break;
-      case CHARS:
-         token->llvm.elem = string_slice(token, token->Chars.value);
-         break;
-      case NULL_LIT:
-         token->llvm.elem = LLVMConstNull(llvm_type_of(token));
-         break;
-      case CHAR:  token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Char.value, 0); break;
-      case F32: token->llvm.elem = LLVMConstReal(to_llvm_type(token->ret_type), token->Float.value); break;
-   }
-}
-
 bool needs_drop(Node *def) {
    if (!def) return false;
    if (def->token->has_drop) return true;
@@ -613,13 +404,6 @@ bool needs_drop(Node *def) {
       if (needs_drop(field->Struct.ptr)) return true;
    }
    return false;
-}
-
-Node *drop_target(Token *var) {
-   if (var->is_ref || var->is_param || !var->llvm.elem) return NULL;
-   if (var->ret_type != STRUCT_CALL) return NULL;
-   Node *def = var->Struct.ptr;
-   return needs_drop(def) ? def : NULL;
 }
 
 void emit_drop_value(Value ptr, Node *def) {
@@ -647,7 +431,10 @@ void emit_drops(Node *scope, Token *keep) {
    if (!scope || LLVMGetBasicBlockTerminator(here_block())) return;
    for (int i = scope->variables_count - 1; i >= 0; i--) {
       Token *var = scope->variables[i];
-      Node  *def = var == keep ? NULL : drop_target(var);
+      bool  skip = var == keep || var->is_ref || var->is_param
+                   || !var->llvm.elem || var->ret_type != STRUCT_CALL;
+      Node  *def = NULL;
+      if (!skip && needs_drop(var->Struct.ptr)) def = var->Struct.ptr;
       if (def) emit_drop_value(var->llvm.elem, def);
    }
 }
@@ -671,174 +458,6 @@ bool is_main(Token *token) {
    return token->type == FDEC && strcmp(token->name, "main") == 0;
 }
 
-void fill_os(Token *os, Value argc, Value argv) {
-   TypeRef sty  = struct_type_of(os->Struct.ptr);
-   Value   base = os->llvm.elem;
-   llvm_store(argc, LLVMBuildStructGEP2(ura.builder, sty, base, 0, "os.argc"));
-
-   TypeRef outer = LLVMStructGetTypeAtIndex(sty, 1);
-   TypeRef strt  = LLVMGetElementType(LLVMStructGetTypeAtIndex(outer, 0));
-   Value   n64   = LLVMBuildSExt(ura.builder, argc, ura.i64, "argc64");
-   TypeRef cty   = NULL;
-   Value   cfn   = lib_fn("calloc", &cty);
-   Value   raw   = llvm_call(cty, cfn, (Value[]){ n64, const_i64(16) }, 2, "argvbuf");
-   Value   buf   = LLVMBuildBitCast(ura.builder, raw, pointer_to(strt), "argv.buf");
-
-   TypeRef lty   = NULL;
-   Value   lfn   = lib_fn("strlen", &lty);
-   Value   fn    = here_func();
-   Block   cond  = llvm_block(fn, "os.cond");
-   Block   body  = llvm_block(fn, "os.body");
-   Block   end   = llvm_block(fn, "os.end");
-   Value   slot  = llvm_alloca(ura.i64, "oi");
-   llvm_store(const_i64(0), slot);
-   llvm_br(cond);
-   llvm_at(cond);
-   Value i = llvm_load(ura.i64, slot, "i");
-   llvm_cond_br(llvm_icmp(LLVMIntSLT, i, n64, "more"), body, end);
-   llvm_at(body);
-   TypeRef i8p = pointer_to(ura.i8);
-   Value   src = llvm_load(i8p, LLVMBuildGEP2(ura.builder, i8p, argv, &i, 1, "ap"), "arg");
-   Value   len = llvm_call(lty, lfn, (Value[]){ src }, 1, "alen");
-   Value   sl  = llvm_insert(LLVMGetUndef(strt), src, 0, "a.ptr");
-   sl          = llvm_insert(sl, len, 1, "a.len");
-   llvm_store(sl, LLVMBuildGEP2(ura.builder, strt, buf, &i, 1, "slot"));
-   llvm_store(llvm_binop(LLVMAdd, i, const_i64(1), "inc"), slot);
-   llvm_br(cond);
-   llvm_at(end);
-   Value agg = llvm_insert(LLVMGetUndef(outer), buf, 0, "argv.ptr");
-   agg       = llvm_insert(agg, n64, 1, "argv.len");
-   llvm_store(agg, LLVMBuildStructGEP2(ura.builder, sty, base, 1, "os.argv"));
-}
-
-void init_os() {
-   for (int i = 0; i < ura.head->children_count; i++) {
-      Token *os = global_decl(ura.head->children[i]);
-      if (!os || !os->name || strcmp(os->name, "os") != 0) continue;
-      if (os->ret_type != STRUCT_CALL || !os->Struct.ptr) return;
-      if (!os->used) return;
-      Value fn = here_func();
-      fill_os(os, LLVMGetParam(fn, 0), LLVMGetParam(fn, 1));
-      return;
-   }
-}
-
-void init_globals() {
-   for (int i = 0; i < ura.head->children_count; i++) {
-      Node *child = ura.head->children[i];
-      if (child->token->type != ASSIGN || !global_decl(child)) continue;
-      code_gen(child);
-      drop_temps();
-   }
-}
-
-void code_gen_fdec(Node *node) {
-   Token *token = node->token;
-   if (token->is_proto) return;
-   Token *prev_ret = ura.fn_ret;
-   ura.fn_ret = token;
-   emit_signature(node);
-   debug_enter_function(token);
-   enter_scope(node);
-   for (int i = 0; i < token->Fn.params_count; i++) {
-      Token  *param = token->Fn.params[i];
-      TypeRef pt    = llvm_type_of(param);
-      if (param->is_ref) pt = pointer_to(pt);
-      param->llvm.elem = llvm_alloca(pt, param->name);
-      llvm_store(LLVMGetParam(token->llvm.elem, i), param->llvm.elem);
-   }
-   if (is_main(token)) { 
-      init_os(); 
-      init_globals(); 
-   }
-   for (int i = 0; i < node->children_count; i++) {
-      set_debug_location(node->children[i]->token);
-      code_gen(node->children[i]);
-      drop_temps();
-   }
-   scope_out();
-   if (is_main(token)) emit_drops(ura.head, NULL);
-   if (!LLVMGetBasicBlockTerminator(here_block())) {
-      if (token->ret_type == VOID) LLVMBuildRetVoid(ura.builder);
-      else LLVMBuildRet(ura.builder, default_value(token));
-   }
-   debug_exit_function(token);
-   ura.fn_ret = prev_ret;
-}
-
-void code_gen_id(Node *node) {
-   Token *token = node->token;
-   if (token->is_dec) {
-      if (token->is_global) return;
-      TypeRef t = llvm_type_of(token);
-      if (token->is_ref) t = pointer_to(t);
-      token->llvm.elem = llvm_alloca(t, token->name);
-      Value init = token->is_ref ? LLVMConstNull(t) : default_value(token);
-      llvm_store(init, token->llvm.elem);
-      return;
-   }
-   Token  *decl = token->Decl.ptr;
-   TypeRef t    = llvm_type_of(decl);
-   if (!decl->is_ref) {
-      token->llvm.elem = llvm_load(t, decl->llvm.elem, token->name);
-      return;
-   }
-   Value ptr = llvm_load(pointer_to(t), decl->llvm.elem, "ref");
-   if (token->is_nullable) guard_bound(token, ptr);
-   token->llvm.elem = llvm_load(t, ptr, token->name);
-}
-
-Value decay_ptr(Type from, Type to, Value v) {
-   if (from != ARRAY_TYPE || to == ARRAY_TYPE || !is_pointer(to))
-      return v;
-   return llvm_extract(v, 0, "arr.data");
-}
-
-void code_gen_fcall(Node *node) {
-   Token *token    = node->token;
-   bool   indirect = token->Fcall.var != NULL;
-   Token *fn       = indirect ? token->Fcall.var : token->Fcall.ptr->token;
-   if (!indirect) emit_signature(token->Fcall.ptr);
-   int    self = token->is_method_call ? 1 : 0;
-   int    n    = node->children_count + self;
-   Value *args = NULL;
-   if (n > 0) {
-      args = allocate(n, sizeof(Value));
-      if (self) args[0] = struct_arg_ptr(node->left);
-      for (int i = 0; i < node->children_count; i++) {
-         Token *arg = node->children[i]->token;
-         code_gen(node->children[i]);
-         args[i + self] = arg->llvm.elem;
-         bool extra = fn->is_variadic && i + self >= fn->Fn.params_count;
-         Type want  = extra ? PTR : fn->Fn.params[i + self]->ret_type;
-         args[i + self] = decay_ptr(arg->ret_type, want, args[i + self]);
-         if (extra && arg->ret_type != ARRAY_TYPE)
-            args[i + self] = promote(arg->ret_type, args[i + self]);
-      }
-   }
-   if (indirect) {
-      TypeRef ptr_type = llvm_type_of(fn);
-      Value   fn_ptr   = llvm_load(ptr_type, fn->llvm.elem, "fn");
-      guard_nonnull(token, fn_ptr);
-      char   *name     = fn->Fn.ret->ret_type == VOID ? "" : "call";
-      token->llvm.elem = llvm_call(LLVMGetElementType(ptr_type), fn_ptr, args, n, name);
-   } else {
-      char *name       = fn->ret_type == VOID ? "" : "call";
-      token->llvm.elem = llvm_call(fn->llvm.func_type, fn->llvm.elem, args, n, name);
-   }
-   free(args);
-}
-
-void push_temp(Value ptr, Token *of) {
-   if (!needs_drop(of->Struct.ptr)) return;
-   Token *temp     = new_token(ID, of->indent);
-   temp->ret_type  = STRUCT_CALL;
-   temp->Struct    = of->Struct;
-   temp->llvm.elem = ptr;
-   resize_array(ura.temps, Token *);
-   ura.temps[ura.temps_count++] = temp;
-}
-
 void drop_temps() {
    if (!LLVMGetBasicBlockTerminator(here_block()))
       for (int i = ura.temps_count - 1; i >= 0; i--)
@@ -854,199 +473,11 @@ void code_gen_body(Node *node) {
    }
 }
 
-void code_gen_loop(Node *node) {
-   Value fn   = here_func();
-   Block body = llvm_block(fn, "loop.body");
-   Block end  = llvm_block(fn, "loop.end");
-   node->token->llvm.start = body;
-   node->token->llvm.end   = end;
-   llvm_br(body);
-   llvm_at(body);
-   enter_scope(node);
-   code_gen_body(node);
-   scope_out();
-   if (!LLVMGetBasicBlockTerminator(here_block()))
-      llvm_br(body);
-   llvm_at(end);
-}
-
-void code_gen_for_array(Node *node) {
-   Token  *var  = node->left->token;
-   bool    ref  = node->token->is_ref;
-   Token  *arr  = node->right->token;
-   code_gen(node->right);
-   Value   slice = arr->llvm.elem;
-   Value   data  = llvm_extract(slice, 0, "arr.data");
-   Value   len   = llvm_extract(slice, 1, "arr.len");
-   TypeRef elem  = elem_type(arr, arr->Array.depth);
-   Value   fn    = here_func();
-   Value   idx   = llvm_alloca(ura.i64, "idx");
-   llvm_store(const_i64(0), idx);
-   Value   xslot = ref ? NULL : llvm_alloca(elem, var->name);
-   if (!ref) var->llvm.elem = xslot;
-   Block   cond  = llvm_block(fn, "for.cond");
-   Block   body  = llvm_block(fn, "for.body");
-   Block   inc   = llvm_block(fn, "for.inc");
-   Block   end   = llvm_block(fn, "for.end");
-   node->token->llvm.start = inc;
-   node->token->llvm.end   = end;
-   llvm_br(cond);
-   llvm_at(cond);
-   Value   i = llvm_load(ura.i64, idx, "i");
-   llvm_cond_br(llvm_icmp(LLVMIntSLT, i, len, "more"), body, end);
-   llvm_at(body);
-   Value   gep = llvm_gep(elem, data, &i, 1, "elem");
-   if (ref) var->llvm.elem = gep;
-   else     llvm_store(llvm_load(elem, gep, "x"), xslot);
-   enter_scope(node);
-   code_gen_body(node);
-   scope_out();
-   if (!LLVMGetBasicBlockTerminator(here_block()))
-      llvm_br(inc);
-   llvm_at(inc);
-   Value   iv = llvm_load(ura.i64, idx, "i");
-   llvm_store(LLVMBuildAdd(ura.builder, iv, const_i64(1), "next"), idx);
-   llvm_br(cond);
-   llvm_at(end);
-}
-
-void code_gen_for(Node *node) {
-   if (node->right->token->type != RANGE) { code_gen_for_array(node); return; }
-   Token *var   = node->left->token;
-   Node  *range = node->right;
-   code_gen(range->left);
-   code_gen(range->right);
-   Value a    = LLVMBuildIntCast2(ura.builder, range->left->token->llvm.elem, ura.i32, 1, "a");
-   Value b    = LLVMBuildIntCast2(ura.builder, range->right->token->llvm.elem, ura.i32, 1, "b");
-   Value asc  = llvm_icmp(LLVMIntSLT, a, b, "asc");
-   Value mag  = const_i32(1);
-   if (range->children_count) {
-      code_gen(range->children[0]);
-      Value raw = range->children[0]->token->llvm.elem;
-      mag = LLVMBuildIntCast2(ura.builder, raw, ura.i32, 1, "by");
-   }
-   Value down = LLVMBuildNeg(ura.builder, mag, "by.neg");
-   Value step = LLVMBuildSelect(ura.builder, asc, mag, down, "step");
-   Value fn   = here_func();
-   Value slot = llvm_alloca(ura.i32, var->name);
-   llvm_store(a, slot);
-   var->llvm.elem = slot;
-   Block cond = llvm_block(fn, "for.cond");
-   Block body = llvm_block(fn, "for.body");
-   Block inc  = llvm_block(fn, "for.inc");
-   Block end  = llvm_block(fn, "for.end");
-   node->token->llvm.start = inc;
-   node->token->llvm.end   = end;
-   llvm_br(cond);
-   llvm_at(cond);
-   Value i = llvm_load(ura.i32, slot, var->name);
-   // '!=' would overshoot and never terminate once the step exceeds 1
-   Value more = LLVMBuildSelect(ura.builder, asc,
-                                llvm_icmp(LLVMIntSLT, i, b, "lt"),
-                                llvm_icmp(LLVMIntSGT, i, b, "gt"), "more");
-   llvm_cond_br(more, body, end);
-   llvm_at(body);
-   enter_scope(node);
-   code_gen_body(node);
-   scope_out();
-   if (!LLVMGetBasicBlockTerminator(here_block()))
-      llvm_br(inc);
-   llvm_at(inc);
-   Value iv = llvm_load(ura.i32, slot, var->name);
-   llvm_store(LLVMBuildAdd(ura.builder, iv, step, "next"), slot);
-   llvm_br(cond);
-   llvm_at(end);
-}
-
-void code_gen_while(Node *node) {
-   Value fn   = here_func();
-   Block cond = llvm_block(fn, "while.cond");
-   Block body = llvm_block(fn, "while.body");
-   Block end  = llvm_block(fn, "while.end");
-   node->token->llvm.start = cond;   
-   node->token->llvm.end   = end;    
-   llvm_br(cond);
-   llvm_at(cond);
-   code_gen(node->left);
-   llvm_cond_br(node->left->token->llvm.elem, body, end);
-   llvm_at(body);
-   enter_scope(node);
-   code_gen_body(node);
-   scope_out();
-   if (!LLVMGetBasicBlockTerminator(here_block()))
-      llvm_br(cond);
-   llvm_at(end);
-}
-
-void code_gen_match(Node *node) {
-   Value fn   = here_func();
-   Block end  = llvm_block(fn, "match.end");
-   node->token->llvm.end = end;                       // break target
-   code_gen(node->left);                              
-   Value subject = node->left->token->llvm.elem;
-   bool  fp      = is_float(node->left->token->ret_type);
-   enter_scope(node);
-   for (int i = 0; i < node->children_count; i++) {
-      Node *branch = node->children[i];
-      if (branch->token->type == DEFAULT) {
-         enter_scope(branch); code_gen_body(branch); scope_out();
-         if (!LLVMGetBasicBlockTerminator(here_block()))
-            llvm_br(end);
-         break;
-      }
-      Block body = llvm_block(fn, "case.body");
-      Block next = i + 1 < node->children_count ? llvm_block(fn, "case.next") : end;
-      Value cond = NULL;
-      for (int j = 0; j < branch->left->children_count; j++) {
-         code_gen(branch->left->children[j]);
-         Value val = branch->left->children[j]->token->llvm.elem;
-         Value eq  = fp ? llvm_fcmp(LLVMRealOEQ, subject, val, "feq")
-                        : llvm_icmp(LLVMIntEQ, subject, val, "eq");
-         cond = cond ? LLVMBuildOr(ura.builder, cond, eq, "case.or") : eq;
-      }
-      llvm_cond_br(cond, body, next);
-      llvm_at(body);
-      enter_scope(branch); code_gen_body(branch); scope_out();
-      if (!LLVMGetBasicBlockTerminator(here_block()))
-         llvm_br(end);
-      llvm_at(next);
-   }
-   scope_out();
-   llvm_at(end);
-}
-
-void code_gen_if(Node *node) {
-   Value fn  = here_func();
-   Block end = llvm_block(fn, "endif");
-   for (Node *cur = node; cur; cur = cur->right) {
-      if (cur->token->type == ELSE) {
-         enter_scope(cur);
-         code_gen_body(cur);
-         scope_out();
-         if (!LLVMGetBasicBlockTerminator(here_block()))
-            llvm_br(end);
-         break;
-      }
-		// elif
-      Block body = llvm_block(fn, "then");
-      Block next = cur->right ? llvm_block(fn, "next") : end;
-      code_gen(cur->left);
-      llvm_cond_br(cur->left->token->llvm.elem, body, next);
-      llvm_at(body);
-      enter_scope(cur);
-      code_gen_body(cur);
-      scope_out();
-      if (!LLVMGetBasicBlockTerminator(here_block()))
-         llvm_br(end);
-      llvm_at(next);
-   }
-   llvm_at(end);
-}
-
 Type category(Node *n) {
    Token *t = n->token;
    if (t->ret_type == ARRAY_TYPE)             return CAT_SLICE;
    if (t->type == REF || t->type == NULL_LIT) return CAT_REF;
+   if (t->type == NEW)                        return CAT_REF;
    if (t->type == FCALL && t->is_ref)         return CAT_REF;
    return CAT_VALUE;
 }
@@ -1081,6 +512,7 @@ Value emit_ref(Node *n) {
    if (t->type == REF)      return emit_ref(n->left);
    if (t->type == NULL_LIT) return LLVMConstNull(pointer_to(llvm_type_of(t)));
    if (t->type == FCALL)  { code_gen(n); return t->llvm.elem; }
+   if (t->type == NEW)    { code_gen(n); return t->llvm.elem; }
    if (t->type == DOT && t->is_ref) {
       TypeRef pty = pointer_to(llvm_type_of(t));
       return llvm_load(pty, field_ptr(n), "ref");
@@ -1091,32 +523,6 @@ Value emit_ref(Node *n) {
       return llvm_load(pty, t->Decl.ptr->llvm.elem, "ref");
    }
    return emit_place(n);
-}
-
-Value emit_slot(Node *n) {
-   Token *t = n->token;
-   if (t->type == DOT) return field_ptr(n);
-   Token *decl = t->is_dec ? t : t->Decl.ptr;
-   return decl->llvm.elem;
-}
-
-void code_gen_assign(Node *node) {
-   Token *token = node->token;
-   if (token->Fcall.ptr) {
-      code_gen_operator(node);
-      return;
-   }
-   if (token->kind == REF_REBIND) {
-      Value ptr = emit_ref(node->right);
-      llvm_store(ptr, emit_slot(node->left));
-      token->llvm.elem = ptr;
-      return;
-   }
-   Value dest   = emit_place(node->left);
-   Node *rhs    = node->right;
-   bool  as_ref = node->left->token->is_ref && category(rhs) == CAT_REF;
-   token->llvm.elem = as_ref ? emit_ref(rhs) : emit_value(rhs);
-   llvm_store(token->llvm.elem, dest);
 }
 
 void code_gen_operator(Node *node) {
@@ -1154,128 +560,23 @@ Value opt_ptr(Token *token, Value v) {
    return token->ret_type == ARRAY_TYPE ? llvm_extract(v, 0, "opt.ptr") : v;
 }
 
-void code_gen_fallback(Node *node) {
-   code_gen(node->left);
-   code_gen(node->right);
-   Value left   = node->left->token->llvm.elem;
-   Value right  = node->right->token->llvm.elem;
-   Value ptr    = opt_ptr(node->left->token, left);
-   Value null   = LLVMConstNull(LLVMTypeOf(ptr));
-   Value isnull = llvm_icmp(LLVMIntEQ, ptr, null, "isnull");
-   node->token->llvm.elem = LLVMBuildSelect(ura.builder, isnull, right, left, "fallback");
-}
-
-void code_gen_binop(Node *node) {
-   Token *token = node->token;
-   if (token->Fcall.ptr) {
-      code_gen_operator(node);
-      return;
-   }
-   int p = token->type == EQUAL ? LLVMIntEQ : LLVMIntNE;
-   if (token->kind == CMP_REF) {
-      Value l = emit_ref(node->left);
-      Value r = emit_ref(node->right);
-      token->llvm.elem = llvm_icmp(p, l, r, "refcmp");
-      return;
-   }
-   code_gen(node->left);
-   code_gen(node->right);
-   Value left  = node->left->token->llvm.elem;
-   Value right = node->right->token->llvm.elem;
-   Value res   = NULL;
-   if (token->kind == CMP_SLICE) {
-      Value l = opt_ptr(node->left->token, left);
-      Value r = opt_ptr(node->right->token, right);
-      token->llvm.elem = llvm_icmp(p, l, r, "nullcmp");
-      return;
-   }
-   Type  lt    = node->left->token->ret_type;
-   bool  fp    = is_float(lt);
-   bool  un    = is_unsigned(lt);
-   if (includes(token->type, DIV, MOD, 0)) guard_nonzero(token, right);
-#define ARITH(fop, sop, uop, fname, iname) res = fp \
-   ? llvm_binop(fop, left, right, fname) \
-   : llvm_binop(un ? uop : sop, left, right, iname)
-#define CMP(fpred, spred, upred, fname, iname) res = fp \
-   ? llvm_fcmp(fpred, left, right, fname) \
-   : llvm_icmp(un ? upred : spred, left, right, iname)
-   switch (token->type) {
-      case ADD: ARITH(LLVMFAdd, LLVMAdd,  LLVMAdd,  "fadd", "add"); break;
-      case SUB: ARITH(LLVMFSub, LLVMSub,  LLVMSub,  "fsub", "sub"); break;
-      case MUL: ARITH(LLVMFMul, LLVMMul,  LLVMMul,  "fmul", "mul"); break;
-      case DIV: ARITH(LLVMFDiv, LLVMSDiv, LLVMUDiv, "fdiv", "div"); break;
-      case MOD: ARITH(LLVMFRem, LLVMSRem, LLVMURem, "frem", "mod"); break;
-
-      case EQUAL:       CMP(LLVMRealOEQ, LLVMIntEQ,  LLVMIntEQ,  "feq", "eq"); break;
-      case NOT_EQUAL:   CMP(LLVMRealUNE, LLVMIntNE,  LLVMIntNE,  "fne", "ne"); break;
-      case LESS:        CMP(LLVMRealOLT, LLVMIntSLT, LLVMIntULT, "flt", "lt"); break;
-      case GREAT:       CMP(LLVMRealOGT, LLVMIntSGT, LLVMIntUGT, "fgt", "gt"); break;
-      case LESS_EQUAL:  CMP(LLVMRealOLE, LLVMIntSLE, LLVMIntULE, "fle", "le"); break;
-      case GREAT_EQUAL: CMP(LLVMRealOGE, LLVMIntSGE, LLVMIntUGE, "fge", "ge"); break;
-
-      case AND:    res = llvm_binop(LLVMAnd,  left, right, "and");  break;
-      case OR:     res = llvm_binop(LLVMOr,   left, right, "or");   break;
-      case BAND:   res = llvm_binop(LLVMAnd,  left, right, "band"); break;
-      case BOR:    res = llvm_binop(LLVMOr,   left, right, "bor");  break;
-      case BXOR:   res = llvm_binop(LLVMXor,  left, right, "bxor"); break;
-      case LSHIFT: res = llvm_binop(LLVMShl,  left, right, "shl");  break;
-      case RSHIFT: res = llvm_binop(un ? LLVMLShr : LLVMAShr, left, right, "shr"); break;
-      default: break;
-   }
-#undef ARITH
-#undef CMP
-   token->llvm.elem = res;
-}
-
-void code_gen_compound(Node *node) {
-   if (node->token->Fcall.ptr) { 
-      code_gen_operator(node); 
-      return; 
-   }
-   Value   dest = emit_place(node->left);
-   code_gen(node->right);
-   Type    op      = node->token->type;
-   Value   right   = node->right->token->llvm.elem;
-   TypeRef type    = to_llvm_type(node->left->token->ret_type);
-   Value   current = llvm_load(type, dest, "cur");
-   Value   res     = right;
-   Type    lt      = node->left->token->ret_type;
-   bool    fp      = is_float(lt);
-   bool    un      = is_unsigned(lt);
-   bool    divides = includes(op, DIV_ASSIGN, MOD_ASSIGN, 0);
-   if (divides) guard_nonzero(node->token, right);
-#define ARITH(fop, sop, uop, fname, iname) res = fp \
-   ? llvm_binop(fop, current, right, fname) \
-   : llvm_binop(un ? uop : sop, current, right, iname)
-   switch (op) {
-      case ADD_ASSIGN: ARITH(LLVMFAdd, LLVMAdd,  LLVMAdd,  "fadd", "add"); break;
-      case SUB_ASSIGN: ARITH(LLVMFSub, LLVMSub,  LLVMSub,  "fsub", "sub"); break;
-      case MUL_ASSIGN: ARITH(LLVMFMul, LLVMMul,  LLVMMul,  "fmul", "mul"); break;
-      case DIV_ASSIGN: ARITH(LLVMFDiv, LLVMSDiv, LLVMUDiv, "fdiv", "div"); break;
-      case MOD_ASSIGN: ARITH(LLVMFRem, LLVMSRem, LLVMURem, "frem", "mod"); break;
-
-      case BAND_ASSIGN:   res = llvm_binop(LLVMAnd, current, right, "band"); break;
-      case BOR_ASSIGN:    res = llvm_binop(LLVMOr,  current, right, "bor");  break;
-      case BXOR_ASSIGN:   res = llvm_binop(LLVMXor, current, right, "bxor"); break;
-      case LSHIFT_ASSIGN: res = llvm_binop(LLVMShl, current, right, "shl");  break;
-      case RSHIFT_ASSIGN: res = llvm_binop(un ? LLVMLShr : LLVMAShr, current, right, "shr"); break;
-      default: break;
-   }
-#undef ARITH
-   llvm_store(res, dest);
-   node->token->llvm.elem = res;
+Value emit_printf_fd(int fd, char *fmt, Value *args, int n) {
+   bool    err   = fd != 1;
+   int     lead  = err ? 2 : 1;
+   TypeRef ty    = NULL;
+   Value   fn    = lib_fn(err ? "dprintf" : "printf", &ty);
+   if (!fn) return NULL;
+   Value  *call  = allocate(n + lead, sizeof(Value));
+   if (err) call[0] = const_i32(fd);
+   call[lead - 1] = llvm_string(fmt, "fmt");
+   if (n) memcpy(call + lead, args, n * sizeof(Value));
+   Value res = llvm_call(ty, fn, call, n + lead, "");
+   free(call);
+   return res;
 }
 
 Value emit_printf(char *fmt, Value *args, int n) {
-   TypeRef printf_ty = NULL;
-   Value   printf_fn = lib_fn("printf", &printf_ty);
-   if (!printf_fn) return NULL;
-   Value  *call      = allocate(n + 1, sizeof(Value));
-   call[0]           = llvm_string(fmt, "fmt");
-   if (n) memcpy(call + 1, args, n * sizeof(Value));
-   Value res = llvm_call(printf_ty, printf_fn, call, n + 1, "");
-   free(call);
-   return res;
+   return emit_printf_fd(1, fmt, args, n);
 }
 
 Value print_adapt(Type type, Value v, char **spec) {
@@ -1308,13 +609,6 @@ Value print_adapt(Type type, Value v, char **spec) {
    }
 }
 
-int type_id(Node *def) {
-   static int next = 1;
-   Token *token = def->token;
-   if (!token->Struct.index) token->Struct.index = next++;
-   return token->Struct.index;
-}
-
 TypeRef out_frame_type() {
    TypeRef t = LLVMGetTypeByName(ura.module, "__out_frame");
    if (t) return t;
@@ -1324,39 +618,152 @@ TypeRef out_frame_type() {
    return t;
 }
 
-void emit_out_call(Node *def, Value ptr, Value frame) {
+void emit_out_call(Node *def, Value ptr, Value frame, int fd) {
    Node *printer = find_printer(def);
    if (printer) {
-      emit_printer_call(printer, ptr);
+      Token *fn = printer->token;
+      emit_signature(printer);
+      Value self  = ptr;
+      Value slice = llvm_call(fn->llvm.func_type, fn->llvm.elem, &self, 1, "out");
+      Value len   = llvm_extract(slice, 1, "out.len");
+      Value data  = llvm_extract(slice, 0, "out.data");
+      Value n     = LLVMBuildTrunc(ura.builder, len, ura.i32, "len32");
+      emit_printf_fd(fd, "%.*s", (Value[]){ n, data }, 2);
       return;
    }
-   Value   fn  = struct_printer(def);
+   // The generated printer has its stream baked into its body, so stdout and
+   // stderr need two distinct functions -- reusing __out_T for errput would
+   // silently write struct dumps to fd 1.
+   Token *token = def->token;
+   Value *memo  = fd == 1 ? &token->llvm.elem : &token->llvm.err_out;
+   if (!*memo) {
+      TypeRef sty  = struct_type_of(def);
+      TypeRef frt  = out_frame_type();
+      TypeRef fty  = LLVMFunctionType(ura.vd,
+                        (TypeRef[]){ pointer_to(sty), pointer_to(frt) }, 2, 0);
+      char   *name = format(fd == 1 ? "__out_%s" : "__err_%s", token->name);
+      Value   fn   = LLVMAddFunction(ura.module, name, fty);
+      *memo                 = fn;
+      token->llvm.func_type = fty;
+      free(name);
+
+      Block prev   = LLVMGetInsertBlock(ura.builder);
+      Block entry  = llvm_block(fn, "entry");
+      llvm_at(entry);
+      Value self   = LLVMGetParam(fn, 0);
+      Value parent = LLVMGetParam(fn, 1);
+      Value me     = LLVMBuildBitCast(ura.builder, self, pointer_to(ura.i8), "me");
+
+      Value walk  = llvm_alloca(pointer_to(frt), "walk");
+      llvm_store(parent, walk);
+      Block sc    = llvm_block(fn, "seen.cond");
+      Block sb    = llvm_block(fn, "seen.body");
+      Block hit   = llvm_block(fn, "seen.hit");
+      Block miss  = llvm_block(fn, "seen.next");
+      Block fresh = llvm_block(fn, "seen.fresh");
+      llvm_br(sc);
+      llvm_at(sc);
+      Value node = llvm_load(pointer_to(frt), walk, "q");
+      Value done = llvm_icmp(LLVMIntEQ,
+                      LLVMBuildPtrToInt(ura.builder, node, ura.i64, "q2i"),
+                      const_i64(0), "atroot");
+      llvm_cond_br(done, fresh, sb);
+      llvm_at(sb);
+      Value pidx[2] = { const_i32(0), const_i32(0) };
+      Value tidx[2] = { const_i32(0), const_i32(1) };
+      Value nidx[2] = { const_i32(0), const_i32(2) };
+      static int next = 1;
+      if (!token->Struct.index) token->Struct.index = next++;
+      Value myid = const_i32(token->Struct.index);
+      Value held = llvm_load(pointer_to(ura.i8),
+                      llvm_gep(frt, node, pidx, 2, "q.ptr"), "held");
+      Value hid  = llvm_load(ura.i32,
+                      llvm_gep(frt, node, tidx, 2, "q.ty"), "heldty");
+      Value hit_ptr = llvm_icmp(LLVMIntEQ,
+                      LLVMBuildPtrToInt(ura.builder, held, ura.i64, "h2i"),
+                      LLVMBuildPtrToInt(ura.builder, me, ura.i64, "m2i"), "sameptr");
+      Value hit_ty  = llvm_icmp(LLVMIntEQ, hid, myid, "samety");
+      Value same    = llvm_binop(LLVMAnd, hit_ptr, hit_ty, "same");
+      llvm_cond_br(same, hit, miss);
+      llvm_at(hit);
+      emit_printf_fd(fd, "[Circular]", NULL, 0);
+      LLVMBuildRetVoid(ura.builder);
+      llvm_at(miss);
+      llvm_store(llvm_load(pointer_to(frt),
+                    llvm_gep(frt, node, nidx, 2, "q.prev"), "up"), walk);
+      llvm_br(sc);
+
+      llvm_at(fresh);
+      Value frame = llvm_alloca(frt, "frame");
+      llvm_store(me,     llvm_gep(frt, frame, pidx, 2, "f.ptr"));
+      llvm_store(myid,   llvm_gep(frt, frame, tidx, 2, "f.ty"));
+      llvm_store(parent, llvm_gep(frt, frame, nidx, 2, "f.prev"));
+
+      char *open = format("%s{", token->name);
+      emit_printf_fd(fd, open, NULL, 0);
+      free(open);
+      int shown = 0;
+      for (int i = 0; i < def->children_count; i++) {
+         Token *field = def->children[i]->token;
+         if (!is_field(field)) continue;
+         char *label = format(shown ? ", %s: " : "%s: ", field->name);
+         emit_printf_fd(fd, label, NULL, 0);
+         free(label);
+         shown++;
+         Value idx[2] = { const_i32(0), const_i32(field->Struct.index) };
+         Value slot = llvm_gep(sty, self, idx, 2, field->name);
+         if (field->is_ref) {
+            TypeRef tty = struct_type_of(field->Struct.ptr);
+            Value   ptr = llvm_load(pointer_to(tty), slot, "ref");
+            Value   fn  = here_func();
+            Block   nb  = llvm_block(fn, "out.null");
+            Block   vb  = llvm_block(fn, "out.ref");
+            Block   cb  = llvm_block(fn, "out.refend");
+            Value   iv  = LLVMBuildPtrToInt(ura.builder, ptr, ura.i64, "p2i");
+            llvm_cond_br(llvm_icmp(LLVMIntEQ, iv, const_i64(0), "isnull"), nb, vb);
+            llvm_at(nb);
+            emit_printf_fd(fd, "null", NULL, 0);
+            llvm_br(cb);
+            llvm_at(vb);
+            emit_printf_fd(fd, "ref ", NULL, 0);
+            emit_out_call(field->Struct.ptr, ptr, frame, fd);
+            llvm_br(cb);
+            llvm_at(cb);
+         } else if (field->ret_type == STRUCT_CALL) {
+            emit_out_call(field->Struct.ptr, slot, frame, fd);
+         } else if (field->ret_type == ARRAY_TYPE) {
+            emit_out_array(field, slot, frame, field->Array.depth, fd);
+         } else {
+            char *spec = NULL;
+            Value v    = llvm_load(llvm_type_of(field), slot, "f");
+            v          = print_adapt(field->ret_type, v, &spec);
+            if (!v) emit_printf_fd(fd, "?", NULL, 0);
+            else    emit_printf_fd(fd, spec, (Value[]){ v }, 1);
+         }
+      }
+      emit_printf_fd(fd, "}", NULL, 0);
+      LLVMBuildRetVoid(ura.builder);
+      if (prev) llvm_at(prev);
+   }
    TypeRef fty = def->token->llvm.func_type;
-   llvm_call(fty, fn, (Value[]){ ptr, frame }, 2, "");
+   llvm_call(fty, *memo, (Value[]){ ptr, frame }, 2, "");
 }
 
-void emit_out_scalar(Token *info, Value slot) {
-   char *spec = NULL;
-   Value v    = llvm_load(llvm_type_of(info), slot, "f");
-   v          = print_adapt(info->ret_type, v, &spec);
-   if (!v) { emit_printf("?", NULL, 0); return; }
-   emit_printf(spec, (Value[]){ v }, 1);
-}
-
-void emit_out_array(Token *field, Value slot, Value frame, int depth) {
+void emit_out_array(Token *field, Value slot, Value frame, int depth,
+                    int fd) {
    Value   slice = llvm_load(array_type(field, depth), slot, "arr");
    Value   data  = llvm_extract(slice, 0, "arr.data");
    Value   len   = llvm_extract(slice, 1, "arr.len");
    if (depth == 1 && field->Array.sub_type == CHAR) {
       Value n = LLVMBuildTrunc(ura.builder, len, ura.i32, "len32");
-      emit_printf("%.*s", (Value[]){ n, data }, 2);
+      emit_printf_fd(fd, "%.*s", (Value[]){ n, data }, 2);
       return;
    }
    TypeRef ety   = elem_type(field, depth);
    Value   fn    = here_func();
    Value   slot_i = llvm_alloca(ura.i64, "oi");
    llvm_store(const_i64(0), slot_i);
-   emit_printf("[", NULL, 0);
+   emit_printf_fd(fd, "[", NULL, 0);
    Block cond = llvm_block(fn, "out.arr.cond");
    Block body = llvm_block(fn, "out.arr.body");
    Block sep  = llvm_block(fn, "out.arr.sep");
@@ -1369,139 +776,25 @@ void emit_out_array(Token *field, Value slot, Value frame, int depth) {
    llvm_at(body);
    llvm_cond_br(llvm_icmp(LLVMIntSGT, i, const_i64(0), "notfirst"), sep, item);
    llvm_at(sep);
-   emit_printf(", ", NULL, 0);
+   emit_printf_fd(fd, ", ", NULL, 0);
    llvm_br(item);
    llvm_at(item);
    Value at = llvm_gep(ety, data, &i, 1, "at");
    if (depth > 1)
-      emit_out_array(field, at, frame, depth - 1);
+      emit_out_array(field, at, frame, depth - 1, fd);
    else if (field->Array.sub_type == STRUCT_CALL)
-      emit_out_call(field->Array.struct_ptr, at, frame);
+      emit_out_call(field->Array.struct_ptr, at, frame, fd);
    else {
       char *spec = NULL;
       Value v    = print_adapt(field->Array.sub_type,
                                llvm_load(ety, at, "e"), &spec);
-      if (v) emit_printf(spec, (Value[]){ v }, 1);
-      else   emit_printf("?", NULL, 0);
+      if (v) emit_printf_fd(fd, spec, (Value[]){ v }, 1);
+      else   emit_printf_fd(fd, "?", NULL, 0);
    }
    llvm_store(LLVMBuildAdd(ura.builder, i, const_i64(1), "n"), slot_i);
    llvm_br(cond);
    llvm_at(end);
-   emit_printf("]", NULL, 0);
-}
-
-void emit_out_field(Token *field, Value slot, Value frame) {
-   if (field->is_ref) {
-      TypeRef tty = struct_type_of(field->Struct.ptr);
-      Value   ptr = llvm_load(pointer_to(tty), slot, "ref");
-      Value   fn  = here_func();
-      Block   nb  = llvm_block(fn, "out.null");
-      Block   vb  = llvm_block(fn, "out.ref");
-      Block   cb  = llvm_block(fn, "out.refend");
-      Value   iv  = LLVMBuildPtrToInt(ura.builder, ptr, ura.i64, "p2i");
-      llvm_cond_br(llvm_icmp(LLVMIntEQ, iv, const_i64(0), "isnull"), nb, vb);
-      llvm_at(nb);
-      emit_printf("null", NULL, 0);
-      llvm_br(cb);
-      llvm_at(vb);
-      emit_printf("ref ", NULL, 0);
-      emit_out_call(field->Struct.ptr, ptr, frame);
-      llvm_br(cb);
-      llvm_at(cb);
-      return;
-   }
-   if (field->ret_type == STRUCT_CALL) {
-      emit_out_call(field->Struct.ptr, slot, frame);
-      return;
-   }
-   if (field->ret_type == ARRAY_TYPE) {
-      emit_out_array(field, slot, frame, field->Array.depth);
-      return;
-   }
-   emit_out_scalar(field, slot);
-}
-
-Value struct_printer(Node *def) {
-   Token *token = def->token;
-   if (token->llvm.elem) return token->llvm.elem;
-   TypeRef sty  = struct_type_of(def);
-   TypeRef frt  = out_frame_type();
-   TypeRef fty  = LLVMFunctionType(ura.vd,
-                     (TypeRef[]){ pointer_to(sty), pointer_to(frt) }, 2, 0);
-   char   *name = format("__out_%s", token->name);
-   Value   fn   = LLVMAddFunction(ura.module, name, fty);
-   token->llvm.elem      = fn;
-   token->llvm.func_type = fty;
-   free(name);
-
-   Block prev   = LLVMGetInsertBlock(ura.builder);
-   Block entry  = llvm_block(fn, "entry");
-   llvm_at(entry);
-   Value self   = LLVMGetParam(fn, 0);
-   Value parent = LLVMGetParam(fn, 1);
-   Value me     = LLVMBuildBitCast(ura.builder, self, pointer_to(ura.i8), "me");
-
-   Value walk  = llvm_alloca(pointer_to(frt), "walk");
-   llvm_store(parent, walk);
-   Block sc    = llvm_block(fn, "seen.cond");
-   Block sb    = llvm_block(fn, "seen.body");
-   Block hit   = llvm_block(fn, "seen.hit");
-   Block miss  = llvm_block(fn, "seen.next");
-   Block fresh = llvm_block(fn, "seen.fresh");
-   llvm_br(sc);
-   llvm_at(sc);
-   Value node = llvm_load(pointer_to(frt), walk, "q");
-   Value done = llvm_icmp(LLVMIntEQ,
-                   LLVMBuildPtrToInt(ura.builder, node, ura.i64, "q2i"),
-                   const_i64(0), "atroot");
-   llvm_cond_br(done, fresh, sb);
-   llvm_at(sb);
-   Value pidx[2] = { const_i32(0), const_i32(0) };
-   Value tidx[2] = { const_i32(0), const_i32(1) };
-   Value nidx[2] = { const_i32(0), const_i32(2) };
-   Value myid = const_i32(type_id(def));
-   Value held = llvm_load(pointer_to(ura.i8),
-                   llvm_gep(frt, node, pidx, 2, "q.ptr"), "held");
-   Value hid  = llvm_load(ura.i32,
-                   llvm_gep(frt, node, tidx, 2, "q.ty"), "heldty");
-   Value hit_ptr = llvm_icmp(LLVMIntEQ,
-                   LLVMBuildPtrToInt(ura.builder, held, ura.i64, "h2i"),
-                   LLVMBuildPtrToInt(ura.builder, me, ura.i64, "m2i"), "sameptr");
-   Value hit_ty  = llvm_icmp(LLVMIntEQ, hid, myid, "samety");
-   Value same    = llvm_binop(LLVMAnd, hit_ptr, hit_ty, "same");
-   llvm_cond_br(same, hit, miss);
-   llvm_at(hit);
-   emit_printf("[Circular]", NULL, 0);
-   LLVMBuildRetVoid(ura.builder);
-   llvm_at(miss);
-   llvm_store(llvm_load(pointer_to(frt),
-                 llvm_gep(frt, node, nidx, 2, "q.prev"), "up"), walk);
-   llvm_br(sc);
-
-   llvm_at(fresh);
-   Value frame = llvm_alloca(frt, "frame");
-   llvm_store(me,     llvm_gep(frt, frame, pidx, 2, "f.ptr"));
-   llvm_store(myid,   llvm_gep(frt, frame, tidx, 2, "f.ty"));
-   llvm_store(parent, llvm_gep(frt, frame, nidx, 2, "f.prev"));
-
-   char *open = format("%s{", token->name);
-   emit_printf(open, NULL, 0);
-   free(open);
-   int shown = 0;
-   for (int i = 0; i < def->children_count; i++) {
-      Token *field = def->children[i]->token;
-      if (!is_field(field)) continue;
-      char *label = format(shown ? ", %s: " : "%s: ", field->name);
-      emit_printf(label, NULL, 0);
-      free(label);
-      shown++;
-      Value idx[2] = { const_i32(0), const_i32(field->Struct.index) };
-      emit_out_field(field, llvm_gep(sty, self, idx, 2, field->name), frame);
-   }
-   emit_printf("}", NULL, 0);
-   LLVMBuildRetVoid(ura.builder);
-   if (prev) llvm_at(prev);
-   return fn;
+   emit_printf_fd(fd, "]", NULL, 0);
 }
 
 Value struct_arg_ptr(Node *arg) {
@@ -1515,101 +808,749 @@ Value struct_arg_ptr(Node *arg) {
       return ptr;
    }
    code_gen(arg);
+   if (category(arg) == CAT_REF)
+      return token->llvm.elem;
    Value tmp = llvm_alloca(struct_type_of(token->Struct.ptr), "out.tmp");
    llvm_store(token->llvm.elem, tmp);
-   push_temp(tmp, token);
+   if (needs_drop(token->Struct.ptr)) {
+      Token *temp     = new_token(ID, token->indent);
+      temp->ret_type  = STRUCT_CALL;
+      temp->Struct    = token->Struct;
+      temp->llvm.elem = tmp;
+      resize_array(ura.temps, Token *);
+      ura.temps[ura.temps_count++] = temp;
+   }
    return tmp;
 }
 
-void emit_printer_call(Node *printer, Value self) {
-   Token *fn = printer->token;
-   emit_signature(printer);
-   Value slice = llvm_call(fn->llvm.func_type, fn->llvm.elem, &self, 1, "out");
-   Value len   = llvm_extract(slice, 1, "out.len");
-   Value data  = llvm_extract(slice, 0, "out.data");
-   Value n     = LLVMBuildTrunc(ura.builder, len, ura.i32, "len32");
-   emit_printf("%.*s", (Value[]){ n, data }, 2);
+bool program_throws(Node *n) {
+   if (!n) return false;
+   if (includes(n->token->type, THROW, TRY, 0)) return true;
+   // break/continue->left is a back-edge to the loop; recursing loops forever
+   if (includes(n->token->type, BREAK, CONTINUE, 0)) return false;
+   if (program_throws(n->left) || program_throws(n->right)) return true;
+   for (int i = 0; i < n->children_count; i++)
+      if (program_throws(n->children[i])) return true;
+   return false;
 }
 
-void code_gen_output(Node *node) {
-   char  *fmt   = allocate(node->children_count * 8 + 16, 1);
-   int    fc    = 0;
-   Value *args  = allocate(node->children_count * 2 + 1, sizeof(Value));
-   int    nargs = 0;
-   Value  last  = NULL;
+void ensure_err_globals() {
+   if (ura.err_flag) return;
+   ura.error_def = find_struct("Error");
+   ura.err_flag  = LLVMAddGlobal(ura.module, ura.i1, "ura.err_flag");
+   LLVMSetInitializer(ura.err_flag, LLVMConstInt(ura.i1, 0, 0));
+   LLVMSetLinkage(ura.err_flag, LLVMInternalLinkage);
+   TypeRef et    = struct_type_of(ura.error_def);
+   ura.err_value = LLVMAddGlobal(ura.module, et, "ura.err_value");
+   LLVMSetInitializer(ura.err_value, LLVMConstNull(et));
+   LLVMSetLinkage(ura.err_value, LLVMInternalLinkage);
+}
 
-   for (int i = 0; i < node->children_count; i++) {
-      Node  *arg   = node->children[i];
-      Token *token = arg->token;
-      if (token->ret_type == STRUCT_CALL) {
-         if (fc) { fmt[fc] = 0; last = emit_printf(fmt, args, nargs); }
-         fc    = 0;
-         nargs = 0;
-         emit_out_call(token->Struct.ptr, struct_arg_ptr(arg),
-                       LLVMConstNull(pointer_to(out_frame_type())));
-         continue;
-      }
-      code_gen(arg);
-      if (is_string(token)) {
-         Value len = llvm_extract(token->llvm.elem, 1, "str.len");
-         args[nargs++] = LLVMBuildTrunc(ura.builder, len, ura.i32, "len32");
-         args[nargs++] = llvm_extract(token->llvm.elem, 0, "str.data");
-         for (char *s = "%.*s"; *s; s++) fmt[fc++] = *s;
-         continue;
-      }
-      if (token->ret_type == ARRAY_TYPE) {
-         if (fc) { fmt[fc] = 0; last = emit_printf(fmt, args, nargs); }
-         fc    = 0;
-         nargs = 0;
-         int     depth = token->Array.depth;
-         TypeRef at    = array_type(token, depth);
-         Value   slot  = LLVMBuildAlloca(ura.builder, at, "arr.tmp");
-         llvm_store(token->llvm.elem, slot);
-         emit_out_array(token, slot, LLVMConstNull(pointer_to(out_frame_type())), depth);
-         continue;
-      }
-      char *spec = NULL;
-      Value v    = print_adapt(token->ret_type, token->llvm.elem, &spec);
-      if (!v) { fmt[fc++] = '?'; continue; }
-      for (char *s = spec; *s; s++) fmt[fc++] = *s;
-      args[nargs++] = v;
+void emit_uncaught() {
+   TypeRef et     = struct_type_of(ura.error_def);
+   TypeRef mt     = LLVMStructGetTypeAtIndex(et, 0);
+   Value   idx[2] = { const_i32(0), const_i32(0) };
+   Value   msgp   = llvm_gep(et, ura.err_value, idx, 2, "err.msg");
+   Value   msg    = llvm_load(mt, msgp, "msg");
+   Value   data   = llvm_extract(msg, 0, "msg.data");
+   Value   len    = llvm_extract(msg, 1, "msg.len");
+   TypeRef wty    = NULL;
+   Value   wfn    = lib_fn("write", &wty);
+   if (wfn) llvm_call(wty, wfn, (Value[]){ const_i32(2), data, len }, 3, "");
+   TypeRef xty    = NULL;
+   Value   xfn    = lib_fn("exit", &xty);
+   if (xfn) llvm_call(xty, xfn, (Value[]){ const_i32(1) }, 1, "");
+   LLVMBuildUnreachable(ura.builder);
+}
+
+Node *current_fdec() {
+   for (int i = ura.scopes_count; i >= 1; i--)
+      if (ura.scopes[i] && ura.scopes[i]->token->type == FDEC)
+         return ura.scopes[i];
+   return NULL;
+}
+
+void emit_throw_branch() {
+   // 1. enclosing try in THIS fn -> drop its scope, jump to the catch
+   if (ura.try_nodes_count > 0) {
+      Node *tn = ura.try_nodes[ura.try_nodes_count - 1];
+      emit_unwind(tn, NULL);
+      llvm_br(tn->token->llvm._catch);
+      return;
    }
-   if (fc) { fmt[fc] = 0; last = emit_printf(fmt, args, nargs); }
-   node->token->llvm.elem = last;
-   free(fmt);
-   free(args);
+   // 2. no try + we are main -> nothing above catches it: print + exit
+   Node *fdec = current_fdec();
+   if (!fdec || is_main(fdec->token)) {
+      emit_uncaught();
+      return;
+   }
+   // 3. no try in a callee -> ret (err_flag stays set; the caller's
+   //    post-call check picks it up and keeps unwinding)  deep()->middle()->main
+   emit_unwind(NULL, NULL);
+   TypeRef rt = LLVMGetReturnType(fdec->token->llvm.func_type);
+   if (LLVMGetTypeKind(rt) == LLVMVoidTypeKind)
+      LLVMBuildRetVoid(ura.builder);
+   else
+      LLVMBuildRet(ura.builder, LLVMConstNull(rt));
 }
 
 void code_gen(Node *node) {
    if (!node || ura.error_count) return;
    Token *token = node->token;
    switch (token->type) {
-      case FDEC:       code_gen_fdec(node);       break;
-      case ID:         code_gen_id(node);         break;
-      case FCALL:      code_gen_fcall(node);      break;
-      case OUTPUT:     code_gen_output(node);     break;
-      case ARRAY_LIT:  code_gen_array_lit(node);  break;
-      case ARRAY:      code_gen_array_ctor(node); break;
-      case ACCESS:     code_gen_access(node);     break;
-      case DOT:        code_gen_dot(node);        break;
-      case TYPEOF:     code_gen_typeof(node);     break;
-      case SIZEOF:     code_gen_sizeof(node);     break;
-      case CLEAN:      code_gen_clean(node);      break;
-      case IF:         code_gen_if(node);         break;
-      case WHILE:      code_gen_while(node);      break;
-      case LOOP:       code_gen_loop(node);       break;
-      case FOR:        code_gen_for(node);        break;
-      case MATCH:      code_gen_match(node);      break;
-      case ASSIGN:     code_gen_assign(node);     break;
+      case FDEC: {
+         Token *token = node->token;
+         if (token->is_proto) return;
+         Token *prev_ret = ura.fn_ret;
+         ura.fn_ret = token;
+         emit_signature(node);
+         token->llvm.prev_block = here_block();
+         token->llvm.prev_scope = ura.debug_scope;
+         token->llvm.prev_loc   = NULL;
+         if (ura.debug_builder)
+            token->llvm.prev_loc = LLVMGetCurrentDebugLocation2(ura.builder);
+         llvm_at(llvm_block(token->llvm.elem, "entry"));
+         if (ura.enable_san) {
+            unsigned     kind = LLVMGetEnumAttributeKindForName("sanitize_address", 16);
+            AttributeRef attr = LLVMCreateEnumAttribute(ura.context, kind, 0);
+            LLVMAddAttributeAtIndex(token->llvm.elem, LLVMAttributeFunctionIndex, attr);
+         }
+         if (ura.debug_builder) {
+            MetadataRef di_type = LLVMDIBuilderCreateSubroutineType(
+               ura.debug_builder, ura.debug_file, NULL, 0, LLVMDIFlagZero);
+            size_t len = strlen(token->name);
+            MetadataRef di_func = LLVMDIBuilderCreateFunction(ura.debug_builder,
+               ura.debug_compile_unit, token->name, len, token->name, len,
+               ura.debug_file, token->line, di_type, 0, 1, token->line,
+               LLVMDIFlagZero, 0);
+            LLVMSetSubprogram(token->llvm.elem, di_func);
+            ura.debug_scope = di_func;
+            llvm_set_location(llvm_di_location(token->line, di_func));
+         }
+         enter_scope(node);
+         for (int i = 0; i < token->Fn.params_count; i++) {
+            Token  *param = token->Fn.params[i];
+            TypeRef pt    = llvm_type_of(param);
+            if (param->is_ref) pt = pointer_to(pt);
+            param->llvm.elem = llvm_alloca(pt, param->name);
+            llvm_store(LLVMGetParam(token->llvm.elem, i), param->llvm.elem);
+         }
+         if (is_main(token)) {
+            for (int i = 0; i < ura.head->children_count; i++) {
+               Token *os = global_decl(ura.head->children[i]);
+               if (!os || !os->name || strcmp(os->name, "os") != 0) continue;
+               if (os->ret_type != STRUCT_CALL || !os->Struct.ptr) break;
+               if (!os->used) break;
+               Value fn = here_func();
+               {
+                  Value   argc  = LLVMGetParam(fn, 0);
+                  Value   argv  = LLVMGetParam(fn, 1);
+                  TypeRef sty   = struct_type_of(os->Struct.ptr);
+                  Value   base  = os->llvm.elem;
+                  llvm_store(argc, LLVMBuildStructGEP2(ura.builder, sty, base, 0, "os.argc"));
+
+                  TypeRef outer = LLVMStructGetTypeAtIndex(sty, 1);
+                  TypeRef strt  = LLVMGetElementType(LLVMStructGetTypeAtIndex(outer, 0));
+                  Value   n64   = LLVMBuildSExt(ura.builder, argc, ura.i64, "argc64");
+                  TypeRef cty   = NULL;
+                  Value   cfn   = lib_fn("calloc", &cty);
+                  Value   raw   = llvm_call(cty, cfn, (Value[]){ n64, const_i64(16) }, 2, "argvbuf");
+                  Value   buf   = LLVMBuildBitCast(ura.builder, raw, pointer_to(strt), "argv.buf");
+
+                  TypeRef lty   = NULL;
+                  Value   lfn   = lib_fn("strlen", &lty);
+                  Block   cond  = llvm_block(fn, "os.cond");
+                  Block   body  = llvm_block(fn, "os.body");
+                  Block   end   = llvm_block(fn, "os.end");
+                  Value   slot  = llvm_alloca(ura.i64, "oi");
+                  llvm_store(const_i64(0), slot);
+                  llvm_br(cond);
+                  llvm_at(cond);
+                  Value i = llvm_load(ura.i64, slot, "i");
+                  llvm_cond_br(llvm_icmp(LLVMIntSLT, i, n64, "more"), body, end);
+                  llvm_at(body);
+                  TypeRef i8p = pointer_to(ura.i8);
+                  Value   src = llvm_load(i8p, LLVMBuildGEP2(ura.builder, i8p, argv, &i, 1, "ap"), "arg");
+                  Value   len = llvm_call(lty, lfn, (Value[]){ src }, 1, "alen");
+                  Value   sl  = llvm_insert(LLVMGetUndef(strt), src, 0, "a.ptr");
+                  sl          = llvm_insert(sl, len, 1, "a.len");
+                  llvm_store(sl, LLVMBuildGEP2(ura.builder, strt, buf, &i, 1, "slot"));
+                  llvm_store(llvm_binop(LLVMAdd, i, const_i64(1), "inc"), slot);
+                  llvm_br(cond);
+                  llvm_at(end);
+                  Value agg = llvm_insert(LLVMGetUndef(outer), buf, 0, "argv.ptr");
+                  agg       = llvm_insert(agg, n64, 1, "argv.len");
+                  llvm_store(agg, LLVMBuildStructGEP2(ura.builder, sty, base, 1, "os.argv"));
+               }
+               break;
+            }
+            for (int i = 0; i < ura.head->children_count; i++) {
+               Node *child = ura.head->children[i];
+               if (child->token->type != ASSIGN || !global_decl(child)) continue;
+               code_gen(child);
+               drop_temps();
+            }
+         }
+         for (int i = 0; i < node->children_count; i++) {
+            Token *st = node->children[i]->token;
+            if (ura.debug_builder && ura.debug_scope)
+               llvm_set_location(llvm_di_location(st->line, ura.debug_scope));
+            code_gen(node->children[i]);
+            drop_temps();
+            // throw/return closes the block; stop or the next stmt is dead code
+            //   throw Error::make(..)  \n  output(..)  <- unreachable
+            if (LLVMGetBasicBlockTerminator(here_block())) break;
+         }
+         scope_out();
+         if (is_main(token)) emit_drops(ura.head, NULL);
+         if (!LLVMGetBasicBlockTerminator(here_block())) {
+            if (token->ret_type == VOID) LLVMBuildRetVoid(ura.builder);
+            else LLVMBuildRet(ura.builder, default_value(token));
+         }
+         if (token->llvm.prev_block) llvm_at(token->llvm.prev_block);
+         if (ura.debug_builder) {
+            ura.debug_scope = token->llvm.prev_scope;
+            llvm_set_location(token->llvm.prev_loc);
+         }
+         ura.fn_ret = prev_ret;
+         break;
+      }
+      case ID: {
+         Token *token = node->token;
+         if (token->is_dec) {
+            if (token->is_global) return;
+            TypeRef t = llvm_type_of(token);
+            if (token->is_ref) t = pointer_to(t);
+            token->llvm.elem = llvm_alloca(t, token->name);
+            Value init = token->is_ref ? LLVMConstNull(t) : default_value(token);
+            llvm_store(init, token->llvm.elem);
+            return;
+         }
+         Token  *decl = token->Decl.ptr;
+         TypeRef t    = llvm_type_of(decl);
+         if (!decl->is_ref) {
+            token->llvm.elem = llvm_load(t, decl->llvm.elem, token->name);
+            return;
+         }
+         Value ptr = llvm_load(pointer_to(t), decl->llvm.elem, "ref");
+         if (token->is_nullable) guard_bound(token, ptr);
+         token->llvm.elem = llvm_load(t, ptr, token->name);
+         break;
+      }
+      case FCALL: {
+         Token *token    = node->token;
+         bool   indirect = token->Fcall.var != NULL;
+         Token *fn       = indirect ? token->Fcall.var : token->Fcall.ptr->token;
+         if (!indirect) emit_signature(token->Fcall.ptr);
+         int    self = token->is_method_call ? 1 : 0;
+         int    n    = node->children_count + self;
+         Value *args = NULL;
+         if (n > 0) {
+            args = allocate(n, sizeof(Value));
+            if (self) args[0] = struct_arg_ptr(node->left);
+            for (int i = 0; i < node->children_count; i++) {
+               Token *arg = node->children[i]->token;
+               code_gen(node->children[i]);
+               args[i + self] = arg->llvm.elem;
+               bool extra = fn->is_variadic && i + self >= fn->Fn.params_count;
+               Type want  = extra ? PTR : fn->Fn.params[i + self]->ret_type;
+               Value dv   = args[i + self];
+               bool  keep = arg->ret_type != ARRAY_TYPE || want == ARRAY_TYPE
+                            || !is_pointer(want);
+               args[i + self] = keep ? dv : llvm_extract(dv, 0, "arr.data");
+               if (extra && arg->ret_type != ARRAY_TYPE) {
+                  Value pv = args[i + self];
+                  Value pr = pv;
+                  Type  pt = arg->ret_type;
+                  if (pt == F32)
+                     pr = LLVMBuildFPExt(ura.builder, pv, ura.f64, "f2d");
+                  else if (pt == I8 || pt == I16 || pt == CHAR)
+                     pr = LLVMBuildSExt(ura.builder, pv, ura.i32, "i2i");
+                  else if (pt == BOOL || pt == U8 || pt == U16)
+                     pr = LLVMBuildZExt(ura.builder, pv, ura.i32, "u2i");
+                  args[i + self] = pr;
+               }
+            }
+         }
+         if (indirect) {
+            TypeRef ptr_type = llvm_type_of(fn);
+            Value   fn_ptr   = llvm_load(ptr_type, fn->llvm.elem, "fn");
+            Value   null     = LLVMConstNull(LLVMTypeOf(fn_ptr));
+            Value   isnull   = llvm_icmp(LLVMIntEQ, fn_ptr, null, "isnull");
+            guard(token, isnull, "Call to a null function value");
+            char   *name     = fn->Fn.ret->ret_type == VOID ? "" : "call";
+            token->llvm.elem = llvm_call(LLVMGetElementType(ptr_type), fn_ptr, args, n, name);
+         } else {
+            char *name       = fn->ret_type == VOID ? "" : "call";
+            token->llvm.elem = llvm_call(fn->llvm.func_type, fn->llvm.elem, args, n, name);
+         }
+         free(args);
+         // after any call, a callee may have thrown; check + unwind. gated so
+         // non-throwing programs pay nothing:  f()  ->  if err_flag: unwind
+         if (ura.uses_exceptions) {
+            ensure_err_globals();
+            Value fnv    = here_func();
+            Block unwind = llvm_block(fnv, "throw.unwind");
+            Block cont   = llvm_block(fnv, "throw.cont");
+            Value flag   = llvm_load(ura.i1, ura.err_flag, "eflag");
+            llvm_cond_br(flag, unwind, cont);
+            llvm_at(unwind);
+            emit_throw_branch();
+            llvm_at(cont);
+         }
+         break;
+      }
+      case ERRPUT:
+      case OUTPUT: {
+         int    fd    = node->token->type == ERRPUT ? 2 : 1;
+         char  *fmt   = allocate(node->children_count * 8 + 16, 1);
+         int    fc    = 0;
+         Value *args  = allocate(node->children_count * 2 + 1, sizeof(Value));
+         int    nargs = 0;
+         Value  last  = NULL;
+
+         if (fd == 2) emit_printf_fd(fd, "\033[0;31m", NULL, 0);
+         for (int i = 0; i < node->children_count; i++) {
+            Node  *arg   = node->children[i];
+            Token *token = arg->token;
+            if (token->ret_type == STRUCT_CALL) {
+               if (fc) { fmt[fc] = 0; last = emit_printf_fd(fd, fmt, args, nargs); }
+               fc    = 0;
+               nargs = 0;
+               emit_out_call(token->Struct.ptr, struct_arg_ptr(arg),
+                             LLVMConstNull(pointer_to(out_frame_type())), fd);
+               continue;
+            }
+            code_gen(arg);
+            if (is_string(token)) {
+               Value len = llvm_extract(token->llvm.elem, 1, "str.len");
+               args[nargs++] = LLVMBuildTrunc(ura.builder, len, ura.i32, "len32");
+               args[nargs++] = llvm_extract(token->llvm.elem, 0, "str.data");
+               for (char *s = "%.*s"; *s; s++) fmt[fc++] = *s;
+               continue;
+            }
+            if (token->ret_type == ARRAY_TYPE) {
+               if (fc) { fmt[fc] = 0; last = emit_printf_fd(fd, fmt, args, nargs); }
+               fc    = 0;
+               nargs = 0;
+               int     depth = token->Array.depth;
+               TypeRef at    = array_type(token, depth);
+               Value   slot  = LLVMBuildAlloca(ura.builder, at, "arr.tmp");
+               llvm_store(token->llvm.elem, slot);
+               emit_out_array(token, slot,
+                              LLVMConstNull(pointer_to(out_frame_type())), depth, fd);
+               continue;
+            }
+            char *spec = NULL;
+            Value v    = print_adapt(token->ret_type, token->llvm.elem, &spec);
+            if (!v) { fmt[fc++] = '?'; continue; }
+            for (char *s = spec; *s; s++) fmt[fc++] = *s;
+            args[nargs++] = v;
+         }
+         if (fc) { fmt[fc] = 0; last = emit_printf_fd(fd, fmt, args, nargs); }
+         if (fd == 2) last = emit_printf_fd(fd, "\033[0m", NULL, 0);
+         node->token->llvm.elem = last;
+         free(fmt);
+         free(args);
+         break;
+      }
+      case ARRAY_LIT: {
+         Token  *token = node->token;
+         int     n     = node->children_count;
+         int     depth = token->Array.depth;
+         TypeRef elem  = elem_type(token, depth);
+         Value   len   = const_i64(n);
+         Value   data  = LLVMBuildArrayAlloca(ura.builder, elem, len, "arr");
+         for (int i = 0; i < n; i++) {
+            code_gen(node->children[i]);
+            Value idx = const_i64(i);
+            Value gep = llvm_gep(elem, data, &idx, 1, "arr.init");
+            llvm_store(node->children[i]->token->llvm.elem, gep);
+         }
+         TypeRef slice = array_type(token, depth);
+         Value   agg   = LLVMGetUndef(slice);
+         agg = llvm_insert(agg, data, 0, "arr.ptr");
+         agg = llvm_insert(agg, len,  1, "arr.len");
+         token->llvm.elem = agg;
+         break;
+      }
+      case ARRAY: {
+         Token *token = node->token;
+         int    depth = token->Array.depth;
+         Value *dims  = allocate(depth, sizeof(Value));
+         for (int i = 0; i < depth; i++) {
+            code_gen(node->children[i]);
+            dims[i] = LLVMBuildIntCast2(ura.builder, node->children[i]->token->llvm.elem, ura.i64, 1, "n");
+         }
+         token->llvm.elem = build_array(token, dims, depth, token->is_heap);
+         free(dims);
+         break;
+      }
+      case NEW: {
+         TypeRef sty = struct_type_of(token->Struct.ptr);
+         Value   esz = LLVMConstInt(ura.i64,
+            LLVMABISizeOfType(LLVMGetModuleDataLayout(ura.module), sty), 0);
+         token->llvm.elem = array_calloc(sty, const_i64(1), esz);
+         break;
+      }
+      case ACCESS: {
+         if (node->right->token->type == RANGE) {
+            Token *arr   = node->left->token;
+            Node  *range = node->right;
+            code_gen(node->left);
+            Value   slice = node->left->token->llvm.elem;
+            Value   data  = llvm_extract(slice, 0, "arr.data");
+            code_gen(range->left);
+            code_gen(range->right);
+            Value   start = LLVMBuildIntCast2(ura.builder, range->left->token->llvm.elem, ura.i64, 1, "start");
+            Value   end   = LLVMBuildIntCast2(ura.builder, range->right->token->llvm.elem, ura.i64, 1, "end");
+            if (node->token->is_nullable) {
+               Value len = llvm_extract(slice, 1, "arr.len");
+               Value lo  = llvm_icmp(LLVMIntSLT, start, const_i64(0), "s.lo");
+               Value hi  = llvm_icmp(LLVMIntSGT, end, len, "e.hi");
+               Value ord = llvm_icmp(LLVMIntSGT, start, end, "s.gt");
+               Value bad = LLVMBuildOr(ura.builder, LLVMBuildOr(ura.builder, lo, hi, "b"), ord, "bad");
+               guard(node->token, bad, "slice range out of bounds");
+            }
+            TypeRef elem  = elem_type(arr, arr->Array.depth);
+            Value   ptr   = llvm_gep(elem, data, &start, 1, "slice.data");
+            Value   len   = LLVMBuildSub(ura.builder, end, start, "slice.len");
+            node->token->llvm.elem = make_slice(arr, arr->Array.depth, ptr, len);
+            return;
+         }
+         Value   ptr  = access_ptr(node);
+         TypeRef elem = llvm_type_of(node->token);
+         node->token->llvm.elem = llvm_load(elem, ptr, "idx");
+         break;
+      }
+      case DOT: {
+         Token *token = node->token;
+         if (node->left->token->ret_type == STRUCT_CALL) {
+            Value ptr = field_ptr(node);
+            token->llvm.elem = llvm_load(llvm_type_of(token), ptr, token->name);
+            return;
+         }
+         code_gen(node->left);
+         token->llvm.elem = llvm_extract(node->left->token->llvm.elem, 1, "len");
+         break;
+      }
+      case TYPEOF: {
+         Token *arg  = node->left->token;
+         char  *name = arg->ret_type == STRUCT_CALL ? struct_name_of(arg)
+                     : type_name(arg->ret_type);
+         node->token->llvm.elem = string_slice(node->token, name);
+         break;
+      }
+      case SIZEOF: {
+         TypeRef t = llvm_type_of(node->left->token);
+         unsigned long long sz = LLVMABISizeOfType(LLVMGetModuleDataLayout(ura.module), t);
+         node->token->llvm.elem = const_i64(sz);
+         break;
+      }
+      case CLEAN: {
+         Token *tgt = node->left->token;
+         if (tgt->ret_type == STRUCT_CALL && tgt->is_ref) {
+            Value   ptr  = emit_ref(node->left);
+            Value   slot;
+            if (tgt->type == DOT) slot = field_ptr(node->left);
+            else {
+               Token *decl = tgt->is_dec ? tgt : tgt->Decl.ptr;
+               slot = decl->llvm.elem;
+            }
+            TypeRef pty  = LLVMTypeOf(ptr);
+            Value   fnv  = here_func();
+            Block   live = llvm_block(fnv, "clean.live");
+            Block   done = llvm_block(fnv, "clean.done");
+            Value   nil  = llvm_icmp(LLVMIntEQ, ptr, LLVMConstNull(pty), "isnull");
+            llvm_cond_br(nil, done, live);
+            llvm_at(live);
+            emit_drop_value(ptr, tgt->Struct.ptr);
+            TypeRef fty = NULL;
+            Value   ffn = lib_fn("free", &fty);
+            Value   raw = LLVMBuildBitCast(ura.builder, ptr, pointer_to(ura.i8), "free.ptr");
+            if (ffn) llvm_call(fty, ffn, (Value[]){ raw }, 1, "");
+            llvm_br(done);
+            llvm_at(done);
+            llvm_store(LLVMConstNull(pty), slot);
+            break;
+         }
+         Value   slot  = emit_place(node->left);
+         TypeRef sty   = array_type(tgt, tgt->Array.depth);
+         Value   slice = llvm_load(sty, slot, "arr");
+         free_array(tgt, slice, tgt->Array.depth);
+         llvm_store(LLVMConstNull(sty), slot);
+         break;
+      }
+      case IF: {
+         Value fn  = here_func();
+         Block end = llvm_block(fn, "endif");
+         for (Node *cur = node; cur; cur = cur->right) {
+            if (cur->token->type == ELSE) {
+               enter_scope(cur);
+               code_gen_body(cur);
+               scope_out();
+               if (!LLVMGetBasicBlockTerminator(here_block()))
+                  llvm_br(end);
+               break;
+            }
+            Block body = llvm_block(fn, "then");
+            Block next = cur->right ? llvm_block(fn, "next") : end;
+            code_gen(cur->left);
+            llvm_cond_br(cur->left->token->llvm.elem, body, next);
+            llvm_at(body);
+            enter_scope(cur);
+            code_gen_body(cur);
+            scope_out();
+            if (!LLVMGetBasicBlockTerminator(here_block()))
+               llvm_br(end);
+            llvm_at(next);
+         }
+         llvm_at(end);
+         break;
+      }
+      case WHILE: {
+         Value fn   = here_func();
+         Block cond = llvm_block(fn, "while.cond");
+         Block body = llvm_block(fn, "while.body");
+         Block end  = llvm_block(fn, "while.end");
+         node->token->llvm.start = cond;
+         node->token->llvm.end   = end;
+         llvm_br(cond);
+         llvm_at(cond);
+         code_gen(node->left);
+         llvm_cond_br(node->left->token->llvm.elem, body, end);
+         llvm_at(body);
+         enter_scope(node);
+         code_gen_body(node);
+         scope_out();
+         if (!LLVMGetBasicBlockTerminator(here_block()))
+            llvm_br(cond);
+         llvm_at(end);
+         break;
+      }
+      case LOOP: {
+         Value fn   = here_func();
+         Block body = llvm_block(fn, "loop.body");
+         Block end  = llvm_block(fn, "loop.end");
+         node->token->llvm.start = body;
+         node->token->llvm.end   = end;
+         llvm_br(body);
+         llvm_at(body);
+         enter_scope(node);
+         code_gen_body(node);
+         scope_out();
+         if (!LLVMGetBasicBlockTerminator(here_block()))
+            llvm_br(body);
+         llvm_at(end);
+         break;
+      }
+      case FOR: {
+         if (node->right->token->type != RANGE) {
+            Token  *var  = node->left->token;
+            bool    ref  = node->token->is_ref;
+            Token  *arr  = node->right->token;
+            code_gen(node->right);
+            Value   slice = arr->llvm.elem;
+            Value   data  = llvm_extract(slice, 0, "arr.data");
+            Value   len   = llvm_extract(slice, 1, "arr.len");
+            TypeRef elem  = elem_type(arr, arr->Array.depth);
+            Value   fn    = here_func();
+            Value   idx   = llvm_alloca(ura.i64, "idx");
+            llvm_store(const_i64(0), idx);
+            Value   xslot = ref ? NULL : llvm_alloca(elem, var->name);
+            if (!ref) var->llvm.elem = xslot;
+            Block   cond  = llvm_block(fn, "for.cond");
+            Block   body  = llvm_block(fn, "for.body");
+            Block   inc   = llvm_block(fn, "for.inc");
+            Block   end   = llvm_block(fn, "for.end");
+            node->token->llvm.start = inc;
+            node->token->llvm.end   = end;
+            llvm_br(cond);
+            llvm_at(cond);
+            Value   i = llvm_load(ura.i64, idx, "i");
+            llvm_cond_br(llvm_icmp(LLVMIntSLT, i, len, "more"), body, end);
+            llvm_at(body);
+            Value   gep = llvm_gep(elem, data, &i, 1, "elem");
+            if (ref) var->llvm.elem = gep;
+            else     llvm_store(llvm_load(elem, gep, "x"), xslot);
+            enter_scope(node);
+            code_gen_body(node);
+            scope_out();
+            if (!LLVMGetBasicBlockTerminator(here_block()))
+               llvm_br(inc);
+            llvm_at(inc);
+            Value   iv = llvm_load(ura.i64, idx, "i");
+            llvm_store(LLVMBuildAdd(ura.builder, iv, const_i64(1), "next"), idx);
+            llvm_br(cond);
+            llvm_at(end);
+            return;
+         }
+         Token *var   = node->left->token;
+         Node  *range = node->right;
+         code_gen(range->left);
+         code_gen(range->right);
+         Value a    = LLVMBuildIntCast2(ura.builder, range->left->token->llvm.elem, ura.i32, 1, "a");
+         Value b    = LLVMBuildIntCast2(ura.builder, range->right->token->llvm.elem, ura.i32, 1, "b");
+         Value asc  = llvm_icmp(LLVMIntSLT, a, b, "asc");
+         Value mag  = const_i32(1);
+         if (range->children_count) {
+            code_gen(range->children[0]);
+            Value raw = range->children[0]->token->llvm.elem;
+            mag = LLVMBuildIntCast2(ura.builder, raw, ura.i32, 1, "by");
+         }
+         Value down = LLVMBuildNeg(ura.builder, mag, "by.neg");
+         Value step = LLVMBuildSelect(ura.builder, asc, mag, down, "step");
+         Value fn   = here_func();
+         Value slot = llvm_alloca(ura.i32, var->name);
+         llvm_store(a, slot);
+         var->llvm.elem = slot;
+         Block cond = llvm_block(fn, "for.cond");
+         Block body = llvm_block(fn, "for.body");
+         Block inc  = llvm_block(fn, "for.inc");
+         Block end  = llvm_block(fn, "for.end");
+         node->token->llvm.start = inc;
+         node->token->llvm.end   = end;
+         llvm_br(cond);
+         llvm_at(cond);
+         Value i = llvm_load(ura.i32, slot, var->name);
+         Value more = LLVMBuildSelect(ura.builder, asc,
+                                      llvm_icmp(LLVMIntSLT, i, b, "lt"),
+                                      llvm_icmp(LLVMIntSGT, i, b, "gt"), "more");
+         llvm_cond_br(more, body, end);
+         llvm_at(body);
+         enter_scope(node);
+         code_gen_body(node);
+         scope_out();
+         if (!LLVMGetBasicBlockTerminator(here_block()))
+            llvm_br(inc);
+         llvm_at(inc);
+         Value iv = llvm_load(ura.i32, slot, var->name);
+         llvm_store(LLVMBuildAdd(ura.builder, iv, step, "next"), slot);
+         llvm_br(cond);
+         llvm_at(end);
+         break;
+      }
+      case MATCH: {
+         Value fn   = here_func();
+         Block end  = llvm_block(fn, "match.end");
+         node->token->llvm.end = end;
+         code_gen(node->left);
+         Value subject = node->left->token->llvm.elem;
+         bool  fp      = is_float(node->left->token->ret_type);
+         enter_scope(node);
+         for (int i = 0; i < node->children_count; i++) {
+            Node *branch = node->children[i];
+            if (branch->token->type == DEFAULT) {
+               enter_scope(branch); code_gen_body(branch); scope_out();
+               if (!LLVMGetBasicBlockTerminator(here_block()))
+                  llvm_br(end);
+               break;
+            }
+            Block body = llvm_block(fn, "case.body");
+            Block next = i + 1 < node->children_count ? llvm_block(fn, "case.next") : end;
+            Value cond = NULL;
+            for (int j = 0; j < branch->left->children_count; j++) {
+               code_gen(branch->left->children[j]);
+               Value val = branch->left->children[j]->token->llvm.elem;
+               Value eq  = fp ? llvm_fcmp(LLVMRealOEQ, subject, val, "feq")
+                              : llvm_icmp(LLVMIntEQ, subject, val, "eq");
+               cond = cond ? LLVMBuildOr(ura.builder, cond, eq, "case.or") : eq;
+            }
+            llvm_cond_br(cond, body, next);
+            llvm_at(body);
+            enter_scope(branch); code_gen_body(branch); scope_out();
+            if (!LLVMGetBasicBlockTerminator(here_block()))
+               llvm_br(end);
+            llvm_at(next);
+         }
+         scope_out();
+         llvm_at(end);
+         break;
+      }
+      case ASSIGN: {
+         Token *token = node->token;
+         if (token->Fcall.ptr) {
+            code_gen_operator(node);
+            return;
+         }
+         if (token->kind == REF_REBIND) {
+            Node *left = node->left;
+            if (left->token->is_dec) {
+               Value dest = emit_place(left);
+               token->llvm.elem = emit_ref(node->right);
+               llvm_store(token->llvm.elem, dest);
+               return;
+            }
+            Value ptr = emit_ref(node->right);
+            Token *lt = left->token;
+            Value slot;
+            if (lt->type == DOT) slot = field_ptr(left);
+            else {
+               Token *decl = lt->is_dec ? lt : lt->Decl.ptr;
+               slot = decl->llvm.elem;
+            }
+            llvm_store(ptr, slot);
+            token->llvm.elem = ptr;
+            return;
+         }
+         Value dest = emit_place(node->left);
+         token->llvm.elem = emit_value(node->right);
+         llvm_store(token->llvm.elem, dest);
+         break;
+      }
       case STRUCT_DEF:
          struct_type_of(node);
          for (int i = 0; i < node->children_count; i++)
             if (node->children[i]->token->type == FDEC)
                code_gen(node->children[i]);
          break;
+      case MODULE:
+         for (int i = 0; i < node->children_count; i++)
+            code_gen(node->children[i]);
+         break;
       case ENUM_DEF: break;
 
       case REF:      token->llvm.elem = emit_ref(node->left);   break;
+      case THROW: {
+         ensure_err_globals();
+         code_gen(node->left);
+         llvm_store(node->left->token->llvm.elem, ura.err_value);
+         llvm_store(LLVMConstInt(ura.i1, 1, 0), ura.err_flag);
+         drop_temps();
+         emit_throw_branch();
+         break;
+      }
+      case TRY: {
+         ensure_err_globals();
+         Value fn   = here_func();
+         Block cblk = llvm_block(fn, "catch");
+         Block end  = llvm_block(fn, "try.end");
+         node->token->llvm._catch = cblk;
+         // push while emitting the body so a throw inside it targets THIS catch
+         resize_array(ura.try_nodes, Node *);
+         ura.try_nodes[ura.try_nodes_count++] = node;
+         enter_scope(node);
+         code_gen_body(node);
+         scope_out();
+         ura.try_nodes_count--;
+         // no br if the body already threw/returned (would double-terminate)
+         if (!LLVMGetBasicBlockTerminator(here_block()))
+            llvm_br(end);
+         llvm_at(cblk);
+         Node   *cnode = node->right;
+         enter_scope(cnode);
+         Value   slot  = emit_place(cnode->left);
+         TypeRef et    = struct_type_of(ura.error_def);
+         llvm_store(llvm_load(et, ura.err_value, "ev"), slot);
+         llvm_store(LLVMConstInt(ura.i1, 0, 0), ura.err_flag);
+         code_gen_body(cnode);
+         scope_out();
+         // catch may itself rethrow/return; only br when it fell through
+         if (!LLVMGetBasicBlockTerminator(here_block()))
+            llvm_br(end);
+         llvm_at(end);
+         break;
+      }
       case BREAK: {
          drop_temps();
          emit_unwind(node->left, NULL);
@@ -1624,7 +1565,19 @@ void code_gen(Node *node) {
       }
       case I32: case BOOL: case CHARS:
       case CHAR: case F32: case NULL_LIT: {
-         code_gen_literal(node);
+         Token *token = node->token;
+         switch (token->type) {
+            case I32:   token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Int.value, 0); break;
+            case BOOL:  token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Bool.value, 0); break;
+            case CHARS:
+               token->llvm.elem = string_slice(token, token->Chars.value);
+               break;
+            case NULL_LIT:
+               token->llvm.elem = LLVMConstNull(llvm_type_of(token));
+               break;
+            case CHAR:  token->llvm.elem = LLVMConstInt(to_llvm_type(token->ret_type), token->Char.value, 0); break;
+            case F32: token->llvm.elem = LLVMConstReal(to_llvm_type(token->ret_type), token->Float.value); break;
+         }
          break;
       }
       case FN_TYPE: {
@@ -1640,35 +1593,95 @@ void code_gen(Node *node) {
             break;
          }
          Token *out  = node->left->token;
-         bool   ref  = ura.fn_ret && ura.fn_ret->is_ref;
+         bool   ref  = token->kind == RET_REF;
          Value  val  = ref ? emit_ref(node->left) : emit_value(node->left);
-         Token *keep = out->type == ID ? find_variable(out->name, NULL) : NULL;
+         Token *keep = out->type == ID ? find_variable(out->name, NULL, NULL) : NULL;
          drop_temps();
          emit_unwind(NULL, keep);
-         token->llvm.elem = llvm_ret(val);
+         token->llvm.elem = LLVMBuildRet(ura.builder, val);
          break;
       }
       case NOT: case BNOT: {
          code_gen(node->left);
-         token->llvm.elem = llvm_not(node->left->token->llvm.elem);
+         Value nv = node->left->token->llvm.elem;
+         token->llvm.elem = LLVMBuildNot(ura.builder, nv, "not");
          break;
       }
       case AS: {
          code_gen(node->left);
-         token->llvm.elem = llvm_num_cast(node->left->token->llvm.elem,
-                                          node->left->token->ret_type,
-                                          token->ret_type);
+         Value value = node->left->token->llvm.elem;
+         Type  src   = node->left->token->ret_type;
+         Type  dst   = token->ret_type;
+         if (src == dst) { token->llvm.elem = value; break; }
+         TypeRef to = to_llvm_type(dst);
+         if (is_float(src) && is_float(dst))
+            token->llvm.elem = dst == F64
+               ? LLVMBuildFPExt(ura.builder, value, to, "cast")
+               : LLVMBuildFPTrunc(ura.builder, value, to, "cast");
+         else if (is_float(src))
+            token->llvm.elem = is_unsigned(dst)
+               ? LLVMBuildFPToUI(ura.builder, value, to, "cast")
+               : LLVMBuildFPToSI(ura.builder, value, to, "cast");
+         else if (is_float(dst))
+            token->llvm.elem = is_unsigned(src)
+               ? LLVMBuildUIToFP(ura.builder, value, to, "cast")
+               : LLVMBuildSIToFP(ura.builder, value, to, "cast");
+         else
+            token->llvm.elem = LLVMBuildIntCast2(ura.builder, value, to,
+               !is_unsigned(src), "cast");
          break;
       }
       case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN:
       case DIV_ASSIGN: case MOD_ASSIGN: case BAND_ASSIGN:
       case BOR_ASSIGN: case BXOR_ASSIGN: case LSHIFT_ASSIGN:
       case RSHIFT_ASSIGN: {
-         code_gen_compound(node);
+         if (node->token->Fcall.ptr) {
+            code_gen_operator(node);
+            return;
+         }
+         Value   dest = emit_place(node->left);
+         code_gen(node->right);
+         Type    op      = node->token->type;
+         Value   right   = node->right->token->llvm.elem;
+         TypeRef type    = to_llvm_type(node->left->token->ret_type);
+         Value   current = llvm_load(type, dest, "cur");
+         Value   res     = right;
+         Type    lt      = node->left->token->ret_type;
+         bool    fp      = is_float(lt);
+         bool    un      = is_unsigned(lt);
+         bool    divides = includes(op, DIV_ASSIGN, MOD_ASSIGN, 0);
+         if (divides) guard_nonzero(node->token, right);
+#define ARITH(fop, sop, uop, fname, iname) res = fp \
+   ? llvm_binop(fop, current, right, fname) \
+   : llvm_binop(un ? uop : sop, current, right, iname)
+         switch (op) {
+            case ADD_ASSIGN: ARITH(LLVMFAdd, LLVMAdd,  LLVMAdd,  "fadd", "add"); break;
+            case SUB_ASSIGN: ARITH(LLVMFSub, LLVMSub,  LLVMSub,  "fsub", "sub"); break;
+            case MUL_ASSIGN: ARITH(LLVMFMul, LLVMMul,  LLVMMul,  "fmul", "mul"); break;
+            case DIV_ASSIGN: ARITH(LLVMFDiv, LLVMSDiv, LLVMUDiv, "fdiv", "div"); break;
+            case MOD_ASSIGN: ARITH(LLVMFRem, LLVMSRem, LLVMURem, "frem", "mod"); break;
+
+            case BAND_ASSIGN:   res = llvm_binop(LLVMAnd, current, right, "band"); break;
+            case BOR_ASSIGN:    res = llvm_binop(LLVMOr,  current, right, "bor");  break;
+            case BXOR_ASSIGN:   res = llvm_binop(LLVMXor, current, right, "bxor"); break;
+            case LSHIFT_ASSIGN: res = llvm_binop(LLVMShl, current, right, "shl");  break;
+            case RSHIFT_ASSIGN: res = llvm_binop(un ? LLVMLShr : LLVMAShr, current, right, "shr"); break;
+            default: break;
+         }
+#undef ARITH
+         llvm_store(res, dest);
+         node->token->llvm.elem = res;
          break;
       }
       case FALLBACK: {
-         code_gen_fallback(node);
+         code_gen(node->left);
+         code_gen(node->right);
+         Value left   = node->left->token->llvm.elem;
+         Value right  = node->right->token->llvm.elem;
+         Value ptr    = opt_ptr(node->left->token, left);
+         Value null   = LLVMConstNull(LLVMTypeOf(ptr));
+         Value isnull = llvm_icmp(LLVMIntEQ, ptr, null, "isnull");
+         node->token->llvm.elem = LLVMBuildSelect(ura.builder, isnull, right, left, "fallback");
          break;
       }
       case ADD: case SUB: case MUL: case DIV: case MOD:
@@ -1676,7 +1689,65 @@ void code_gen(Node *node) {
       case LESS_EQUAL: case GREAT_EQUAL:
       case AND: case OR:
       case BAND: case BOR: case BXOR: case LSHIFT: case RSHIFT: {
-         code_gen_binop(node);
+         Token *token = node->token;
+         if (token->Fcall.ptr) {
+            code_gen_operator(node);
+            return;
+         }
+         int p = token->type == EQUAL ? LLVMIntEQ : LLVMIntNE;
+         if (token->kind == CMP_REF) {
+            Value l = emit_ref(node->left);
+            Value r = emit_ref(node->right);
+            token->llvm.elem = llvm_icmp(p, l, r, "refcmp");
+            return;
+         }
+         code_gen(node->left);
+         code_gen(node->right);
+         Value left  = node->left->token->llvm.elem;
+         Value right = node->right->token->llvm.elem;
+         Value res   = NULL;
+         if (token->kind == CMP_SLICE) {
+            Value l = opt_ptr(node->left->token, left);
+            Value r = opt_ptr(node->right->token, right);
+            token->llvm.elem = llvm_icmp(p, l, r, "nullcmp");
+            return;
+         }
+         Type  lt    = node->left->token->ret_type;
+         bool  fp    = is_float(lt);
+         bool  un    = is_unsigned(lt);
+         if (includes(token->type, DIV, MOD, 0)) guard_nonzero(token, right);
+#define ARITH(fop, sop, uop, fname, iname) res = fp \
+   ? llvm_binop(fop, left, right, fname) \
+   : llvm_binop(un ? uop : sop, left, right, iname)
+#define CMP(fpred, spred, upred, fname, iname) res = fp \
+   ? llvm_fcmp(fpred, left, right, fname) \
+   : llvm_icmp(un ? upred : spred, left, right, iname)
+         switch (token->type) {
+            case ADD: ARITH(LLVMFAdd, LLVMAdd,  LLVMAdd,  "fadd", "add"); break;
+            case SUB: ARITH(LLVMFSub, LLVMSub,  LLVMSub,  "fsub", "sub"); break;
+            case MUL: ARITH(LLVMFMul, LLVMMul,  LLVMMul,  "fmul", "mul"); break;
+            case DIV: ARITH(LLVMFDiv, LLVMSDiv, LLVMUDiv, "fdiv", "div"); break;
+            case MOD: ARITH(LLVMFRem, LLVMSRem, LLVMURem, "frem", "mod"); break;
+
+            case EQUAL:       CMP(LLVMRealOEQ, LLVMIntEQ,  LLVMIntEQ,  "feq", "eq"); break;
+            case NOT_EQUAL:   CMP(LLVMRealUNE, LLVMIntNE,  LLVMIntNE,  "fne", "ne"); break;
+            case LESS:        CMP(LLVMRealOLT, LLVMIntSLT, LLVMIntULT, "flt", "lt"); break;
+            case GREAT:       CMP(LLVMRealOGT, LLVMIntSGT, LLVMIntUGT, "fgt", "gt"); break;
+            case LESS_EQUAL:  CMP(LLVMRealOLE, LLVMIntSLE, LLVMIntULE, "fle", "le"); break;
+            case GREAT_EQUAL: CMP(LLVMRealOGE, LLVMIntSGE, LLVMIntUGE, "fge", "ge"); break;
+
+            case AND:    res = llvm_binop(LLVMAnd,  left, right, "and");  break;
+            case OR:     res = llvm_binop(LLVMOr,   left, right, "or");   break;
+            case BAND:   res = llvm_binop(LLVMAnd,  left, right, "band"); break;
+            case BOR:    res = llvm_binop(LLVMOr,   left, right, "bor");  break;
+            case BXOR:   res = llvm_binop(LLVMXor,  left, right, "bxor"); break;
+            case LSHIFT: res = llvm_binop(LLVMShl,  left, right, "shl");  break;
+            case RSHIFT: res = llvm_binop(un ? LLVMLShr : LLVMAShr, left, right, "shr"); break;
+            default: break;
+         }
+#undef ARITH
+#undef CMP
+         token->llvm.elem = res;
          break;
       }
       default:

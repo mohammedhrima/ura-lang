@@ -9,7 +9,7 @@ Node *enclosing_break();
 void analyze_block(Node *node);
 void analyze_match(Node *node);
 void declare_variable(Token *token);
-Token *find_variable(char *name, bool *captured);
+Token *find_variable(char *name, bool *captured, bool *from_field);
 bool same_signature(Token *a, Token *b);
 void declare_function(Node *fn);
 void declare_struct(Node *node);
@@ -115,14 +115,16 @@ void llvm_set_location(MetadataRef loc);
 
 void emit_signature(Node *fn);
 Value lib_fn(char *name, TypeRef *type);
+Value emit_printf_fd(int fd, char *fmt, Value *args, int n);
 Value emit_printf(char *fmt, Value *args, int n);
 Value print_adapt(Type type, Value v, char **spec);
 TypeRef out_frame_type();
-void emit_out_call(Node *def, Value ptr, Value frame);
+void emit_out_call(Node *def, Value ptr, Value frame, int fd);
 void emit_printer_call(Node *printer, Value self);
 int  type_id(Node *def);
 void emit_out_scalar(Token *info, Value slot);
-void emit_out_array(Token *field, Value slot, Value frame, int depth);
+void emit_out_array(Token *field, Value slot, Value frame, int depth,
+                    int fd);
 void emit_out_field(Token *field, Value slot, Value frame);
 Value struct_printer(Node *def);
 Value struct_arg_ptr(Node *arg);

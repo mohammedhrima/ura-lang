@@ -34,6 +34,8 @@ main():
 ```tree
 proto fn printf(format : pointer, ...) : i32
 
+proto fn dprintf(fd : i32, format : pointer, ...) : i32
+
 proto fn calloc(len : i64, size : i64) : pointer
 
 proto fn free(ptr : pointer) : void
@@ -271,6 +273,8 @@ main():
 ```tree
 proto fn printf(format : pointer, ...) : i32
 
+proto fn dprintf(fd : i32, format : pointer, ...) : i32
+
 proto fn calloc(len : i64, size : i64) : pointer
 
 proto fn free(ptr : pointer) : void
@@ -381,9 +385,9 @@ error: Conflicting declaration of 'write': parameter 3 is i32, expected i64
 3 | proto fn write(fd i32, ptr pointer, len i32) i32
   |       ^^
 note: Previous declaration of 'write' is here
-   ura-lib/common.ura:21:7
+   ura-lib/common.ura:23:7
    |
-21 | proto fn write(fd i32, ptr pointer, len i64) i64
+23 | proto fn write(fd i32, ptr pointer, len i64) i64
    |       ^^
 error: Cannot assign i64 to i32
   floor14a.ura:7:11
@@ -479,6 +483,8 @@ main():
 
 ```tree
 proto fn printf(format : pointer, ...) : i32
+
+proto fn dprintf(fd : i32, format : pointer, ...) : i32
 
 proto fn calloc(len : i64, size : i64) : pointer
 
