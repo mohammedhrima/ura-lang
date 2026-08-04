@@ -10,6 +10,10 @@
 - 006 — a f32 literal takes the type of its target
 - 007 — casts between f64, f32 and the integer types
 - 008 — a return that does not match the function's type
+- 009 — integer literals at the edge of each type's range
+- 010 — an integer literal too wide for i32 keeps its width
+- 011 — a literal that does not fit its target type
+- 012 — a negative literal at the low edge still fits
 
 ## 001 — bool literals: declare, zero-init, bool function, reassign
 
@@ -1225,4 +1229,451 @@ error: 'f' returns i32, but this returns f32
 ```
 
 ```ll
+```
+
+## 009 — integer literals at the edge of each type's range
+
+```ura
+// literals/009.ura - integer literals at the edge of each type's range
+
+main():
+    i64_max i64 = 9223372036854775807
+    i64_min i64 = -9223372036854775807
+    i32_max i32 = 2147483647
+    i32_min i32 = -2147483647
+    exact   i64 = 9007199254740993
+
+    output(i64_max, " ", i64_min, "\n")
+    output(i32_max, " ", i32_min, "\n")
+    output(exact, "\n")
+```
+
+```tree
+proto fn printf(format : pointer, ...) : i32
+
+proto fn dprintf(fd : i32, format : pointer, ...) : i32
+
+proto fn calloc(len : i64, size : i64) : pointer
+
+proto fn free(ptr : pointer) : void
+
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
+
+proto fn exit(code : i32) : void
+
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
+
+fn main() : i32
+├─ = : i64
+│  ├─ i64_max : i64
+│  └─ int 9223372036854775807
+├─ = : i64
+│  ├─ i64_min : i64
+│  └─ - : i64
+│     ├─ int 0
+│     └─ int 9223372036854775807
+├─ = : i32
+│  ├─ i32_max : i32
+│  └─ int 2147483647
+├─ = : i32
+│  ├─ i32_min : i32
+│  └─ - : i32
+│     ├─ int 0
+│     └─ int 2147483647
+├─ = : i64
+│  ├─ exact : i64
+│  └─ int 9007199254740993
+├─ output : void
+│  ├─ i64_max : i64
+│  ├─ char[] " "
+│  ├─ i64_min : i64
+│  └─ char[] "\n"
+├─ output : void
+│  ├─ i32_max : i32
+│  ├─ char[] " "
+│  ├─ i32_min : i32
+│  └─ char[] "\n"
+└─ output : void
+   ├─ exact : i64
+   └─ char[] "\n"
+```
+
+```out
+9223372036854775807 -9223372036854775807
+2147483647 -2147483647
+9007199254740993
+```
+
+```err
+```
+
+```ll
+
+%Os = type { i32, { { i8*, i64 }*, i64 } }
+
+@os = internal global %Os zeroinitializer
+@str = private unnamed_addr constant [2 x i8] c" \00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [17 x i8] c"%lld%.*s%lld%.*s\00", align 1
+@str.2 = private unnamed_addr constant [2 x i8] c" \00", align 1
+@str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.4 = private unnamed_addr constant [13 x i8] c"%d%.*s%d%.*s\00", align 1
+@str.5 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.6 = private unnamed_addr constant [9 x i8] c"%lld%.*s\00", align 1
+
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
+
+define i32 @main(i32 %0, i8** %1) {
+entry:
+  %i64_max = alloca i64, align 8
+  store i64 9223372036854775807, i64* %i64_max, align 8
+  %i64_min = alloca i64, align 8
+  store i64 -9223372036854775807, i64* %i64_min, align 8
+  %i32_max = alloca i32, align 4
+  store i32 2147483647, i32* %i32_max, align 4
+  %i32_min = alloca i32, align 4
+  store i32 -2147483647, i32* %i32_min, align 4
+  %exact = alloca i64, align 8
+  store i64 9007199254740993, i64* %exact, align 8
+  %i64_max1 = load i64, i64* %i64_max, align 8
+  %i64_min2 = load i64, i64* %i64_min, align 8
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @fmt, i32 0, i32 0), i64 %i64_max1, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0), i64 %i64_min2, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  %i32_max3 = load i32, i32* %i32_max, align 4
+  %i32_min4 = load i32, i32* %i32_min, align 4
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt.4, i32 0, i32 0), i32 %i32_max3, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0), i32 %i32_min4, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
+  %exact5 = load i64, i64* %exact, align 8
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @fmt.6, i32 0, i32 0), i64 %exact5, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 010 — an integer literal too wide for i32 keeps its width
+
+```ura
+// literals/010.ura - an integer literal too wide for i32 keeps its width
+
+fn twice(n i64) i64:
+    ret n * 2
+
+main():
+    with_target i64 = 9000000000
+    output(with_target, "\n")
+    output(9000000000, "\n")
+    output(9000000000 + 1, "\n")
+    output(1 + 9000000000, "\n")
+    output(twice(9000000000), "\n")
+    output(42, " ", 2147483647, "\n")
+```
+
+```tree
+proto fn printf(format : pointer, ...) : i32
+
+proto fn dprintf(fd : i32, format : pointer, ...) : i32
+
+proto fn calloc(len : i64, size : i64) : pointer
+
+proto fn free(ptr : pointer) : void
+
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
+
+proto fn exit(code : i32) : void
+
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
+
+fn twice(n : i64) : i64
+└─ return
+   └─ * : i64
+      ├─ n : i64
+      └─ int 2
+
+fn main() : i32
+├─ = : i64
+│  ├─ with_target : i64
+│  └─ int 9000000000
+├─ output : void
+│  ├─ with_target : i64
+│  └─ char[] "\n"
+├─ output : void
+│  ├─ int 9000000000
+│  └─ char[] "\n"
+├─ output : void
+│  ├─ + : i64
+│  │  ├─ int 9000000000
+│  │  └─ int 1
+│  └─ char[] "\n"
+├─ output : void
+│  ├─ + : i64
+│  │  ├─ int 1
+│  │  └─ int 9000000000
+│  └─ char[] "\n"
+├─ output : void
+│  ├─ call twice : i64
+│  │  └─ int 9000000000
+│  └─ char[] "\n"
+└─ output : void
+   ├─ int 42
+   ├─ char[] " "
+   ├─ int 2147483647
+   └─ char[] "\n"
+```
+
+```out
+9000000000
+9000000000
+9000000001
+9000000001
+18000000000
+42 2147483647
+```
+
+```err
+```
+
+```ll
+
+%Os = type { i32, { { i8*, i64 }*, i64 } }
+
+@os = internal global %Os zeroinitializer
+@str = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [9 x i8] c"%lld%.*s\00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.2 = private unnamed_addr constant [9 x i8] c"%lld%.*s\00", align 1
+@str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.4 = private unnamed_addr constant [9 x i8] c"%lld%.*s\00", align 1
+@str.5 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.6 = private unnamed_addr constant [9 x i8] c"%lld%.*s\00", align 1
+@str.7 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.8 = private unnamed_addr constant [9 x i8] c"%lld%.*s\00", align 1
+@str.9 = private unnamed_addr constant [2 x i8] c" \00", align 1
+@str.10 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt.11 = private unnamed_addr constant [13 x i8] c"%d%.*s%d%.*s\00", align 1
+
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
+
+define i64 @twice(i64 %0) {
+entry:
+  %n = alloca i64, align 8
+  store i64 %0, i64* %n, align 8
+  %n1 = load i64, i64* %n, align 8
+  %mul = mul i64 %n1, 2
+  ret i64 %mul
+}
+
+define i32 @main(i32 %0, i8** %1) {
+entry:
+  %with_target = alloca i64, align 8
+  store i64 9000000000, i64* %with_target, align 8
+  %with_target1 = load i64, i64* %with_target, align 8
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @fmt, i32 0, i32 0), i64 %with_target1, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0))
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @fmt.2, i32 0, i32 0), i64 9000000000, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @fmt.4, i32 0, i32 0), i64 9000000001, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @fmt.6, i32 0, i32 0), i64 9000000001, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i32 0, i32 0))
+  %call = call i64 @twice(i64 9000000000)
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @fmt.8, i32 0, i32 0), i64 %call, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.7, i32 0, i32 0))
+  %7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @fmt.11, i32 0, i32 0), i32 42, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.9, i32 0, i32 0), i32 2147483647, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.10, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
+```
+
+## 011 — a literal that does not fit its target type
+
+```ura
+// literals/011.ura - a literal that does not fit its target type
+
+main():
+    small i8 = 300
+```
+
+```tree
+```
+
+```out
+```
+
+```err
+error: 300 does not fit in 'i8' (range -128 to 127); widen the type, or convert explicitly with 'as'
+  011.ura:4:16
+  |
+4 |     small i8 = 300
+  |                ^^^
+```
+
+```ll
+```
+
+## 012 — a negative literal at the low edge still fits
+
+```ura
+// literals/012.ura - a negative literal at the low edge still fits
+
+main():
+    a i8  = -128
+    b i16 = -32768
+    c u8  = 255
+    d u16 = 65535
+    output(a, " ", b, " ", c, " ", d, "\n")
+```
+
+```tree
+proto fn printf(format : pointer, ...) : i32
+
+proto fn dprintf(fd : i32, format : pointer, ...) : i32
+
+proto fn calloc(len : i64, size : i64) : pointer
+
+proto fn free(ptr : pointer) : void
+
+proto fn write(fd : i32, ptr : pointer, len : i64) : i64
+
+proto fn exit(code : i32) : void
+
+proto fn strlen(s : pointer) : i64
+
+proto fn getenv(name : pointer) : pointer
+
+struct Os
+├─ argc : i32
+├─ argv : char[][]
+└─ fn Os.get(self : STRUCT_CALL, name : array) : pointer
+   └─ return
+      └─ call getenv : pointer
+         └─ name : char[]
+
+os : STRUCT_CALL
+
+fn main() : i32
+├─ = : i8
+│  ├─ a : i8
+│  └─ - : i8
+│     ├─ int 0
+│     └─ int 128
+├─ = : i16
+│  ├─ b : i16
+│  └─ - : i16
+│     ├─ int 0
+│     └─ int 32768
+├─ = : u8
+│  ├─ c : u8
+│  └─ int 255
+├─ = : u16
+│  ├─ d : u16
+│  └─ int 65535
+└─ output : void
+   ├─ a : i8
+   ├─ char[] " "
+   ├─ b : i16
+   ├─ char[] " "
+   ├─ c : u8
+   ├─ char[] " "
+   ├─ d : u16
+   └─ char[] "\n"
+```
+
+```out
+-128 -32768 255 65535
+```
+
+```err
+```
+
+```ll
+
+%Os = type { i32, { { i8*, i64 }*, i64 } }
+
+@os = internal global %Os zeroinitializer
+@str = private unnamed_addr constant [2 x i8] c" \00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c" \00", align 1
+@str.2 = private unnamed_addr constant [2 x i8] c" \00", align 1
+@str.3 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@fmt = private unnamed_addr constant [25 x i8] c"%d%.*s%d%.*s%u%.*s%u%.*s\00", align 1
+
+define i8* @Os.get(%Os* %0, { i8*, i64 } %1) {
+entry:
+  %self = alloca %Os*, align 8
+  store %Os* %0, %Os** %self, align 8
+  %name = alloca { i8*, i64 }, align 8
+  store { i8*, i64 } %1, { i8*, i64 }* %name, align 8
+  %name1 = load { i8*, i64 }, { i8*, i64 }* %name, align 8
+  %arr.data = extractvalue { i8*, i64 } %name1, 0
+  %call = call i8* @getenv(i8* %arr.data)
+  ret i8* %call
+}
+
+declare i8* @getenv(i8*)
+
+define i32 @main(i32 %0, i8** %1) {
+entry:
+  %a = alloca i8, align 1
+  store i8 -128, i8* %a, align 1
+  %b = alloca i16, align 2
+  store i16 -32768, i16* %b, align 2
+  %c = alloca i8, align 1
+  store i8 -1, i8* %c, align 1
+  %d = alloca i16, align 2
+  store i16 -1, i16* %d, align 2
+  %a1 = load i8, i8* %a, align 1
+  %s2i = sext i8 %a1 to i32
+  %b2 = load i16, i16* %b, align 2
+  %s2i3 = sext i16 %b2 to i32
+  %c4 = load i8, i8* %c, align 1
+  %u2i = zext i8 %c4 to i32
+  %d5 = load i16, i16* %d, align 2
+  %u2i6 = zext i16 %d5 to i32
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([25 x i8], [25 x i8]* @fmt, i32 0, i32 0), i32 %s2i, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0), i32 %s2i3, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0), i32 %u2i, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0), i32 %u2i6, i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @printf(i8*, ...)
 ```
