@@ -41,6 +41,10 @@
 	"The 'by' step must be positive;" \
 	" a range counts down when its start is greater than its end"
 
+#define ERR_LITERAL_OUT_OF_RANGE \
+	"%lld does not fit in '%s' (range %lld to %lld);" \
+	" widen the type, or convert explicitly with 'as'"
+
 #define ERR_FOR_NOT_ITERABLE \
 	"'for %s in ...' expects a range (a..b) or an array"
 

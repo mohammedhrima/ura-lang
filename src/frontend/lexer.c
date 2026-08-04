@@ -379,7 +379,8 @@ Token *parse_token(int line, int s, int e, Type type, int indent) {
 
 	switch (type) {
 	case I32: {
-		while (s < e) new->Int.value = new->Int.value * 10 + input[s++] - '0';
+		while (s < e) new->Int.value = new->Int.value * 10 + (input[s++] - '0');
+		new->ret_type = new->Int.value > INT32_MAX ? I64 : I32;
 		break;
 	}
 	case F32: {

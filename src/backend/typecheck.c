@@ -305,6 +305,52 @@ bool is_untyped_literal(Node *node) {
    return is_untyped_literal(node->left) && is_untyped_literal(node->right);
 }
 
+bool int_range(Type type, long *lo, long *hi) {
+   switch (type) {
+      case I8:   *lo = INT8_MIN;  *hi = INT8_MAX;  return true;
+      case I16:  *lo = INT16_MIN; *hi = INT16_MAX; return true;
+      case I32:  *lo = INT32_MIN; *hi = INT32_MAX; return true;
+      case I64:  *lo = INT64_MIN; *hi = INT64_MAX; return true;
+      case U8:   *lo = 0; *hi = UINT8_MAX;  return true;
+      case U16:  *lo = 0; *hi = UINT16_MAX; return true;
+      case U32:  *lo = 0; *hi = UINT32_MAX; return true;
+      case U64:  *lo = 0; *hi = INT64_MAX;  return true;
+      default:   return false;
+   }
+}
+
+bool literal_value(Node *node, long *out) {
+   if (!node || !node->token) return false;
+   if (node->token->type == I32) {
+      *out = node->token->Int.value;
+      return true;
+   }
+   long rhs;
+   if (node->token->type == SUB && node->left && node->right
+       && node->left->token->type == I32 && node->left->token->Int.value == 0
+       && literal_value(node->right, &rhs)) {
+      *out = -rhs;
+      return true;
+   }
+   return false;
+}
+
+void check_int_range(Node *node, Type target) {
+   long value, lo, hi;
+   if (!literal_value(node, &value)) return;
+   if (!int_range(target, &lo, &hi)) return;
+   if (value >= lo && value <= hi) return;
+   parse_error(node->token, ERR_LITERAL_OUT_OF_RANGE, (long long)value,
+               type_name(target), (long long)lo, (long long)hi);
+}
+
+void retype_literal(Node *node, Type target) {
+   if (!is_untyped_literal(node)) return;
+   node->token->ret_type = target;
+   retype_literal(node->left, target);
+   retype_literal(node->right, target);
+}
+
 void adopt_literal(Node *node, Type target) {
    if (!is_untyped_literal(node)) return;
    Type a = node->token->ret_type;
@@ -314,9 +360,23 @@ void adopt_literal(Node *node, Type target) {
    else if (is_float(a)) fam = is_float(b);
    else fam = includes(a, NUMERIC_TYPES, 0) && includes(b, NUMERIC_TYPES, 0);
    if (!fam) return;
-   node->token->ret_type = target;
-   adopt_literal(node->left, target);
-   adopt_literal(node->right, target);
+   if (!is_float(a)) check_int_range(node, target);
+   retype_literal(node, target);
+}
+
+void unify_literals(Node *left, Node *right) {
+   Type lt = left->token->ret_type;
+   Type rt = right->token->ret_type;
+   long llo, lhi, rlo, rhi;
+   if (is_untyped_literal(left) && is_untyped_literal(right)
+       && int_range(lt, &llo, &lhi) && int_range(rt, &rlo, &rhi)) {
+      Type wide = lhi >= rhi ? lt : rt;
+      adopt_literal(left, wide);
+      adopt_literal(right, wide);
+      return;
+   }
+   adopt_literal(left, rt);
+   adopt_literal(right, lt);
 }
 
 void type_check(Node *node) {
@@ -345,7 +405,7 @@ void type_check(Node *node) {
          break;
       }
       case ENUM_DEF: break;
-      case I32:     token->ret_type = I32; break;
+      case I32:     if (!token->ret_type) token->ret_type = I32; break;
       case BOOL:    token->ret_type = BOOL; break;
       case CHARS:   set_string_type(token); break;
       case CHAR:    token->ret_type = CHAR; break;
@@ -628,8 +688,7 @@ void type_check(Node *node) {
          Token *token = node->token;
          type_check(node->left);
          type_check(node->right);
-         adopt_literal(node->left, node->right->token->ret_type);
-         adopt_literal(node->right, node->left->token->ret_type);
+         unify_literals(node->left, node->right);
          Type   lt  = node->left->token->ret_type;
          Type   rt  = node->right->token->ret_type;
          Token *lhs = node->left->token;
