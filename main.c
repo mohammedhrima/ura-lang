@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdbool.h>
 
+// MACROS
 #define EXPAND(type, name) type* name; size_t name##_size; size_t name##_pos;
 #define TAB 4
 
@@ -34,11 +35,12 @@ typedef struct _IO_FILE *_File;
       elem = tmp;                                           \
    }                                                        \
 
+#define POS __FILE__, __func__, __LINE__
+
+// STRUCTS / ENUMS
 typedef enum Type Type;
 typedef struct Token Token;
 typedef struct Node Node;
-
-void free_node(Node *node);
 
 enum Type 
 {
@@ -63,8 +65,9 @@ struct Token
 {
    Type type;
    Type ret_type;
-   bool is_dec;
-   bool init;
+   bool is_dec; // i32, i64 ... (data type)
+   bool init; // initialize variable
+
    char *name;
    int indent;
 
@@ -74,6 +77,7 @@ struct Token
 struct 
 {
    bool found_error;
+   int  error_count;
    char *filename; // TODO: to be removed
    char *content;
    EXPAND(Token*, tokens);
@@ -82,45 +86,91 @@ struct
    EXPAND(Node*, nodes);
 } ura;
 
+// FUNCTIONS PROTOTYPES
+void free_node(Node *node);
+Node *expr_node(int min_op);
+
+// PRINTING
 char *to_string(Type type)
 {
    char*types[END + 1] = {
       [ID] = "ID", [I32] = "I32",
+      [LPAR] = "LPAR", [RPAR] = "RPAR", [DOTS] ="DOTS",
+
       [ADD] = "ADD", [SUB] = "SUB", [MUL] = "MUL", [DIV] = "DIV",
       [ASSIGN] = "ASSIGN",
       [FDEC] = "FDEC", 
       [END] = "END",
    };
-   
+   char *res = types[type];
+   if (res) return res;
    return "(NOT FOUND)";
 }
 
-void ptoken(Token *token)
-{
-   printf("token %s", to_string(token->type));
-   if(token->is_dec) printf(" is dec");
-   else
-      switch(token->type)
-      {
-         case ID: printf(" : name %s", token->name); break;
-         case I32:
-         {
-            if(token->name) printf(" : name %s", token->name);
-            else printf(" : value %d", token->i32.value); 
-            if(token->init) printf(" initialize");
-            break;
+int print(_File f, const char *conv, ...) {
+	int res = 0;
+   va_list args;
+   va_start(args, conv);
+
+   if(f == stderr) fprintf(f, "\033[1m""\033[0;31m""Error: ""\033[0m");
+	for (int i = 0; conv[i]; i++) {
+		if (conv[i] != '%') {
+			res += fprintf(f, "%c", conv[i]);
+			continue;
+		}
+      i++;
+      switch (conv[i]) {
+			case 'c': res += fprintf(f, "%c", va_arg(args, int)); break;
+			case 's': {
+				char *str = va_arg(args, char *);
+				if (!str) str = "(null)";
+            res += fprintf(f, "%s", str);
+				break;
+			}
+			case 'd': {
+				int value = va_arg(args, int);
+				res += fprintf(f, "%d", value);
+				break;
+			}
+			case 'f': {
+				double value = va_arg(args, double);
+				res += fprintf(f, "%f", value);
+				break;
+			}
+			case 'k': {
+				Token *token = va_arg(args, Token *);
+				if (!token) {
+					res += fprintf(f, "(null)");
+					break;
+				}
+				res += fprintf(f, "[%s] ", to_string(token->type));
+            if (token->is_dec) res += fprintf(f, "is dec ");
+            else {
+               if (token->name) res += fprintf(f, ": name %s ", token->name);
+               switch (token->type) {
+                  case I32: {
+                     if(!token->name) res += fprintf(f, ": value (%d) ", token->i32.value); 
+                     break;
+                  }
+                  default: break;
+               }
+               
+               if (token->init) res += fprintf(f, "initialize ");
+               if (token->ret_type) res += fprintf(f, "ret [%s] ", to_string(token->ret_type));
+               res += fprintf(f, "indent: %d ", token->indent);
+            }
+				break;
+			}
+			default: {
+            res += print(stderr, "invalid format specifier [%c]\n", conv[i]);
+            exit(1);
          }
-         case FDEC:
-         {
-            printf(" : name %s", token->name);
-            if(token->ret_type) printf(" ret %s", to_string(token->ret_type));
-            break;
-         }
-         default: break;
-      }
-   printf(" indent: %d\n", token->indent);
+			}
+	}
+	return res;
 }
 
+// TOKENIZE
 Token* new_token(Type type, size_t s, size_t e, int indent)
 {
    Token *new = calloc(1, sizeof(Token));
@@ -161,8 +211,7 @@ Token* new_token(Type type, size_t s, size_t e, int indent)
          default: break;
       }
    }
-   printf("new ");
-   ptoken(new);
+   print(stdout, "new %k\n", new);
    RESIZE(Token*, ura.tokens);
    ura.tokens[ura.tokens_pos++] = new;
    return new;
@@ -188,7 +237,6 @@ void ura_clean()
 void tokenize()
 {
    if(ura.found_error) return;
-   printf("tokenize: %s\n", ura.content);
    char *content = ura.content;
    int indent = 0;
    for(size_t s = 0; content[s];)
@@ -206,8 +254,8 @@ void tokenize()
          }
          s = e;
          while(content[e] == ' ') e++;
-         if(new_line && e - s > 1)
-            indent = (e - s) / TAB + ((e - s) % TAB ? 1 : 0);
+         if (new_line && e - s > 0)
+            indent = (((e - s) / TAB ) + ((e - s) % TAB ? 1 : 0)) * TAB;
          s = e;
          continue;
       }
@@ -296,7 +344,6 @@ bool within(int indent)
    return peek(0)->type != END && peek(0)->indent >= indent;
 }
 
-Node *expr_node(int min_op);
 Node *prime_node()
 {
    Node *node = NULL;
@@ -364,26 +411,10 @@ Node *prime_node()
          break;
       }
       default:
-         printf("Error %s:%d\n", __FILE__, __LINE__); // add proper error message
+         print(stderr, "%s:%d: unexpected token %k\n", __FILE__, __LINE__, token);
          break;
    }
    return node;
-}
-
-void pnode(Node *node, int indent)
-{
-   if(!node || ura.found_error) return;
-   for(int i = 0; i < indent; i++) printf(" ");
-   printf("node "); ptoken(node->token);
-   pnode(node->left, indent + TAB);
-   pnode(node->right, indent + TAB);
-   if(node->children)
-   {
-      for(int i = 0; i < indent; i++) printf(" ");
-      printf("children:\n");
-      for(size_t i = 0; i < node->children_pos; i++)
-         pnode(node->children[i], indent + TAB);
-   }
 }
 
 Node *expr_node(int min_op)
@@ -402,7 +433,7 @@ Node *expr_node(int min_op)
       if(curr->type == END) break;
       int op = ops[curr->type];
       if(op < min_op || !op) break;
-      printf("op %s: %d min %d\n", to_string(curr->type), op, min_op);
+  
       Node *node = new_node(next());
       node->left = left;
       node->right = expr_node(op);
@@ -411,6 +442,21 @@ Node *expr_node(int min_op)
    return left;
 }
 
+void pnode(Node *node, int indent)
+{
+   if(!node || ura.found_error) return;
+   for(int i = 0; i < indent; i++) printf(" ");
+   print(stdout, "node %k\n", node->token);
+   pnode(node->left, indent + TAB);
+   pnode(node->right, indent + TAB);
+   if(node->children)
+   {
+      for(int i = 0; i < indent; i++) printf(" ");
+      printf("children:\n");
+      for(size_t i = 0; i < node->children_pos; i++)
+         pnode(node->children[i], indent + TAB);
+   }
+}
 
 void free_node(Node *node)
 {
@@ -427,12 +473,14 @@ char *format(const char *fmt, ...) {
 	char  *buf  = NULL;
 	size_t size = 0;
 	_File   out  = open_memstream(&buf, &size);
-	if (CHECK(!out, "format: open_memstream failed")) 
+	if (!out) {
+      print(stderr, "format: open_memstream failed");
       return NULL;
+   }
 
 	va_list ap;
 	va_start(ap, fmt);
-	_vprint(out, fmt, ap);
+	print(out, fmt, ap);
 	va_end(ap);
 	fclose(out);
 	return buf;
@@ -440,18 +488,11 @@ char *format(const char *fmt, ...) {
 
 void *allocate(int len, int size) {
 	void *res = calloc(len, size);
-	TODO(!res, "allocate did failed");
+   if(!res) {
+      print(stderr, POS, "allocate did failed");
+      exit(1);
+   }
 	return res;
-}
-
-void ura_error()
-{
-
-}
-
-void dev_error(char *fmt)
-{
-
 }
 
 char *open_file(char *filename)
@@ -478,7 +519,10 @@ char *open_file(char *filename)
       fseek(file, 0, SEEK_SET);
       content = calloc(size + 1, sizeof(char));
       fread(content, sizeof(char), size, file);
-      printf("content: [%s]\n\n", content);
+      printf("===============================\n"
+             "%s\n"
+             "===============================\n"
+             ,content);
    }
    fclose(file);
    return content;

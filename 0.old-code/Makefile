@@ -1,4 +1,4 @@
-LLVM      ?= llvm-config-14
+LLVM      ?= llvm-config-12
 CC        ?= clang
 LLVMFLAGS := $(shell $(LLVM) --cflags --ldflags --libs core)
 SRC       := src/main.c
