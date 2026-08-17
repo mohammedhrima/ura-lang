@@ -236,7 +236,7 @@ type a verb:
 | `build` | compile the ura compiler → `build/ura` |
 | `tests` | run the whole suite (or `tests <group>.md` for one group) |
 | `update <group>.md` | regenerate a group's golden output |
-| `check` | verify clang + `llvm-config-14` are present |
+| `check` | verify clang + `llvm-config-12` are present |
 
 ```ura
 main():

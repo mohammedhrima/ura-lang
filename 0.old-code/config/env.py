@@ -39,7 +39,7 @@ def exit_code(proc):
 
 @lru_cache
 def llvm_version():
-    r = run("llvm-config-14", "--version")
+    r = run("llvm-config-12", "--version")
     return r.stdout.strip() if r.returncode == 0 else "?"
 
 def git_branch():
@@ -57,12 +57,12 @@ def abbrev(path):
     return "~" + path[len(home):] if path == home or path.startswith(home + os.sep) else path
 
 def check():
-    have = shutil.which("clang") and shutil.which("llvm-config-14")
-    (ok if have else err)("clang + llvm-config-14 present" if have else "missing clang or llvm-config-14")
+    have = shutil.which("clang") and shutil.which("llvm-config-12")
+    (ok if have else err)("clang + llvm-config-12 present" if have else "missing clang or llvm-config-12")
 
 def build(mode="dev"):
     BUILD.mkdir(exist_ok=True)
-    flags = run("llvm-config-14", "--cflags", "--ldflags", "--libs", "core").stdout.split()
+    flags = run("llvm-config-12", "--cflags", "--ldflags", "--libs", "core").stdout.split()
     san = [] if mode == "release" else SAN
     r = run("clang", "src/main.c", *flags, *san, "-o", URA)
     if r.returncode == 0:

@@ -14,7 +14,7 @@ TASKS = {
     "doctor": doctor,
 }
 DESC = {
-    "check":   "verify clang + llvm-config-14 are installed",
+    "check":   "verify clang + llvm-config-12 are installed",
     "build":   "compile the ura compiler: build/ura",
     "install": "install clang + llvm@14 via brew/apt",
     "tests":   "run .md tests — no arg = all · a dir or .md file = subset",
