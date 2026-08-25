@@ -1,0 +1,175 @@
+// net_server.ura — a TCP chat server (macOS), single-process event loop.
+//
+// No fork, no threads: one `poll()` loop owns every fd — stdin, the listener,
+// and all connected clients — and handles whichever is ready. A line typed at
+// the server is broadcast to every client; a line from a client is printed.
+//
+// The poll set is a `PollFd[]`: slot 0 is stdin, slot 1 is the listener, and
+// slots 2.. are clients. Because the loop owns the client fds and closes them
+// deliberately on disconnect, they are tracked as raw fds here (a Socket with
+// `operator drop` would close a fd when a copy of it went out of scope).
+
+AF_INET      i32 = 2
+SOCK_STREAM  i32 = 1
+SOL_SOCKET   i32 = 65535
+SO_REUSEADDR i32 = 4
+SO_REUSEPORT i32 = 512
+PORT         i32 = 8080
+POLLIN       i16 = 1
+MAX          i32 = 64
+
+// macOS sockaddr_in, 16 bytes: len(1) family(1) port(2,BE) ip(4) zero(8)
+struct SockAddr:
+    len    char
+    family char
+    port   i16
+    ip     i32
+    zero   i64
+
+    pub fn create(port i32, ip i32) SockAddr:
+        a SockAddr
+        a.len    = 16 as char
+        a.family = AF_INET as char
+        a.port   = (((port & 255) << 8) | (port >> 8)) as i16
+        a.ip     = ip
+        a.zero   = 0
+        return a
+
+// C: struct pollfd { int fd; short events; short revents; }  (8 bytes)
+struct PollFd:
+    fd      i32
+    events  i16
+    revents i16
+
+    fn watch(fd i32) void:
+        self.fd      = fd
+        self.events  = POLLIN
+        self.revents = 0
+
+    fn has_input() bool:
+        return (self.revents & POLLIN) != 0
+
+proto fn socket(domain i32, type i32, protocol i32) i32
+proto fn bind(fd i32, ref addr SockAddr, len i32) i32
+proto fn listen(fd i32, backlog i32) i32
+proto fn accept(fd i32, addr pointer, len pointer) i32
+proto fn setsockopt(fd i32, level i32, opt i32, val pointer, len i32) i32
+proto fn close(fd i32) i32
+proto fn read(fd i32, buf pointer, n i64) i64
+proto fn poll(ref fds PollFd, nfds i32, timeout i32) i32
+
+// Unbuffered terminal write, so prompts appear before we block on poll.
+fn log(msg char[]) void:
+    write(1, msg, strlen(msg))
+
+struct Server:
+    fd i32
+
+    pub fn create() Server:
+        s Server
+        s.fd = socket(AF_INET, SOCK_STREAM, 0)
+        return s
+
+    fn valid() bool:
+        return self.fd >= 0
+
+    fn reuse() void:
+        opt char[] = new char[4]
+        opt[0] = 1 as char
+        setsockopt(self.fd, SOL_SOCKET, SO_REUSEADDR, opt, 4)
+        setsockopt(self.fd, SOL_SOCKET, SO_REUSEPORT, opt, 4)
+        clean opt
+
+    fn bind_listen(port i32) bool:
+        addr SockAddr = SockAddr::create(port, 0)
+        if bind(self.fd, ref addr, 16) < 0:
+            return False
+        listen(self.fd, 5)
+        return True
+
+    // raw fd, not a Socket: the poll loop owns and closes it explicitly
+    fn accept_raw() i32:
+        none pointer = null
+        return accept(self.fd, none, none)
+
+    operator drop:
+        if self.fd >= 0:
+            close(self.fd)
+
+main():
+    server Server = Server::create()
+    if not server.valid():
+        log("\033[0;31m[server] socket failed\033[0m\n")
+        return 1
+
+    server.reuse()
+    if not server.bind_listen(PORT):
+        log("\033[0;31m[server] bind failed\033[0m\n")
+        return 1
+
+    log("\033[0;32m[server]\033[0m listening on port 8080...\n")
+
+    // poll set: [0] = stdin, [1] = listener, [2..nfds) = clients
+    fds PollFd[] = new PollFd[MAX]
+    fds[0].watch(0)
+    fds[1].watch(server.fd)
+    nfds i32 = 2
+
+    buf char[] = new char[1024]
+    r i32 = 0
+
+    log("\033[0;32m[server]\033[0m > ")
+    loop:
+        poll(ref fds[0], nfds, -1)
+
+        // a line typed here -> broadcast to every client
+        if fds[0].has_input():
+            r = read(0, buf, 1023) as i32
+            if r <= 0:
+                break
+            buf[r - 1] = 0 as char
+            i i32 = 2
+            while i < nfds:
+                write(fds[i].fd, buf, strlen(buf))
+                i += 1
+            log("\033[0;32m[server]\033[0m > ")
+        elif fds[0].revents != 0:
+            // stdin is not a live terminal (redirected / closed): a negative
+            // fd tells poll to skip it, so we keep serving clients instead of
+            // spinning on POLLNVAL.
+            fds[0].fd = -1
+
+        // a new connection -> add it to the poll set
+        if fds[1].has_input():
+            cfd i32 = server.accept_raw()
+            if cfd >= 0 and nfds < MAX:
+                fds[nfds].watch(cfd)
+                nfds += 1
+                log("\r\033[2K\033[0;32m[server]\033[0m client connected\n")
+                log("\033[0;32m[server]\033[0m > ")
+
+        // client traffic -> print it; compact the set on disconnect
+        j i32 = 2
+        while j < nfds:
+            if not fds[j].has_input():
+                j += 1
+                continue
+            r = read(fds[j].fd, buf, 1023) as i32
+            if r <= 0:
+                close(fds[j].fd)
+                nfds -= 1
+                fds[j].fd      = fds[nfds].fd
+                fds[j].events  = fds[nfds].events
+                fds[j].revents = fds[nfds].revents
+                log("\r\033[2K\033[0;31m[server]\033[0m client disconnected\n")
+                log("\033[0;32m[server]\033[0m > ")
+                continue
+            buf[r] = 0 as char
+            log("\r\033[2K\033[0;36m[client]\033[0m ")
+            log(buf)
+            log("\n\033[0;32m[server]\033[0m > ")
+            j += 1
+
+    clean fds
+    clean buf
+    return 0

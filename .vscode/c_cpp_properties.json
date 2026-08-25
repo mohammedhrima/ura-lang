@@ -3,9 +3,11 @@
         {
             "name": "Linux",
             "includePath": [
-                "${default}"
+                "${default}",
+                "${env:HOME}/llvm-16/include"
             ],
-            "defines": []
+            "defines": [],
+            "compilerPath": "${env:HOME}/llvm-16/bin/clang"
         }
     ],
     "version": 4

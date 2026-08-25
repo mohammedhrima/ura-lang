@@ -1,0 +1,372 @@
+fn ft_isalpha(c char) bool:
+    return (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z')
+
+fn ft_isdigit(c char) bool:
+    return c >= '0' and c <= '9'
+
+fn ft_isalnum(c char) bool:
+    return ft_isalpha(c) or ft_isdigit(c)
+
+fn ft_isascii(c char) bool:
+    return c >= 0 as char and c <= 127 as char
+
+fn ft_isprint(c char) bool:
+    return c >= 32 as char and c <= 126 as char
+
+fn ft_toupper(c char) char:
+    if c >= 'a' and c <= 'z':
+        return (c as i32 - 32) as char
+    return c
+
+fn ft_tolower(c char) char:
+    if c >= 'A' and c <= 'Z':
+        return (c as i32 + 32) as char
+    return c
+
+fn ft_strlen(s char[]) i32:
+    return s.len as i32
+
+fn ft_strncmp(a char[], b char[], n i32) i32:
+    i i32 = 0
+    while i < n:
+        ca i32 = 0
+        cb i32 = 0
+        if i < a.len as i32:
+            ca = a[i] as i32
+        if i < b.len as i32:
+            cb = b[i] as i32
+        if ca != cb:
+            return ca - cb
+        if ca == 0:
+            return 0
+        i += 1
+    return 0
+
+fn ft_memcmp(a char[], b char[], n i32) i32:
+    i i32 = 0
+    while i < n:
+        if a[i] != b[i]:
+            return a[i] as i32 - b[i] as i32
+        i += 1
+    return 0
+
+fn ft_strchr(s char[], c char) i32:
+    i i32 = 0
+    while i < s.len as i32:
+        if s[i] == c:
+            return i
+        i += 1
+    if c == 0 as char:
+        return s.len as i32
+    return -1
+
+fn ft_strrchr(s char[], c char) i32:
+    i i32 = s.len as i32 - 1
+    while i >= 0:
+        if s[i] == c:
+            return i
+        i -= 1
+    return -1
+
+fn ft_memchr(s char[], c char, n i32) i32:
+    i i32 = 0
+    while i < n:
+        if s[i] == c:
+            return i
+        i += 1
+    return -1
+
+fn ft_strnstr(hay char[], needle char[], n i32) i32:
+    m i32 = needle.len as i32
+    if m == 0:
+        return 0
+    i i32 = 0
+    while i + m <= n and i + m <= hay.len as i32:
+        if ft_strncmp(hay[i..i + m], needle, m) == 0:
+            return i
+        i += 1
+    return -1
+
+fn ft_atoi(s char[]) i32:
+    i i32 = 0
+    while i < s.len as i32 and (s[i] == ' ' or s[i] == '\t' or s[i] == '\n'):
+        i += 1
+    sign i32 = 1
+    if i < s.len as i32 and (s[i] == '-' or s[i] == '+'):
+        if s[i] == '-':
+            sign = -1
+        i += 1
+    n i32 = 0
+    while i < s.len as i32 and ft_isdigit(s[i]):
+        n = n * 10 + (s[i] as i32 - 48)
+        i += 1
+    return n * sign
+
+fn ft_memset(b char[], c char, n i32) void:
+    i i32 = 0
+    while i < n:
+        b[i] = c
+        i += 1
+
+fn ft_bzero(b char[], n i32) void:
+    ft_memset(b, 0 as char, n)
+
+fn ft_memcpy(dst char[], src char[], n i32) void:
+    i i32 = 0
+    while i < n:
+        dst[i] = src[i]
+        i += 1
+
+fn ft_memmove(dst char[], src char[], n i32) void:
+    tmp char[] = new char[n]
+    ft_memcpy(tmp, src, n)
+    ft_memcpy(dst, tmp, n)
+    clean tmp
+
+fn ft_strlcpy(dst char[], src char[], size i32) i32:
+    slen i32 = src.len as i32
+    i i32 = 0
+    while i + 1 < size and i < slen:
+        dst[i] = src[i]
+        i += 1
+    if size > 0:
+        dst[i] = 0 as char
+    return slen
+
+fn ft_strlcat(dst char[], src char[], size i32) i32:
+    dlen i32 = 0
+    while dlen < size and dlen < dst.len as i32 and dst[dlen] != 0 as char:
+        dlen += 1
+    slen i32 = src.len as i32
+    if dlen == size:
+        return size + slen
+    i i32 = 0
+    while dlen + i + 1 < size and i < slen:
+        dst[dlen + i] = src[i]
+        i += 1
+    dst[dlen + i] = 0 as char
+    return dlen + slen
+
+fn ft_strdup(s char[]) char[]:
+    n i32 = s.len as i32
+    out char[] = new char[n]
+    ft_memcpy(out, s, n)
+    return out
+
+fn ft_calloc(count i32, size i32) char[]:
+    return new char[count * size]
+
+fn ft_substr(s char[], start i32, len i32) char[]:
+    slen i32 = s.len as i32
+    if start >= slen:
+        return new char[0]
+    stop i32 = start + len
+    if stop > slen:
+        stop = slen
+    n i32 = stop - start
+    out char[] = new char[n]
+    i i32 = 0
+    while i < n:
+        out[i] = s[start + i]
+        i += 1
+    return out
+
+fn ft_strjoin(a char[], b char[]) char[]:
+    la i32 = a.len as i32
+    lb i32 = b.len as i32
+    out char[] = new char[la + lb]
+    ft_memcpy(out, a, la)
+    i i32 = 0
+    while i < lb:
+        out[la + i] = b[i]
+        i += 1
+    return out
+
+fn ft_in_set(c char, set char[]) bool:
+    i i32 = 0
+    while i < set.len as i32:
+        if set[i] == c:
+            return True
+        i += 1
+    return False
+
+fn ft_strtrim(s char[], set char[]) char[]:
+    slen i32 = s.len as i32
+    start i32 = 0
+    while start < slen and ft_in_set(s[start], set):
+        start += 1
+    stop i32 = slen
+    while stop > start and ft_in_set(s[stop - 1], set):
+        stop -= 1
+    return ft_substr(s, start, stop - start)
+
+fn ft_count_words(s char[], c char) i32:
+    slen i32 = s.len as i32
+    wc i32 = 0
+    i i32 = 0
+    while i < slen:
+        if s[i] != c:
+            wc += 1
+            while i < slen and s[i] != c:
+                i += 1
+        else:
+            i += 1
+    return wc
+
+fn ft_split(s char[], c char) char[][]:
+    slen i32 = s.len as i32
+    wc i32 = ft_count_words(s, c)
+    if wc == 0:
+        return new char[0][1]
+    out char[][] = new char[wc][1]
+    w i32 = 0
+    i i32 = 0
+    while i < slen:
+        if s[i] != c:
+            start i32 = i
+            while i < slen and s[i] != c:
+                i += 1
+            out[w] = ft_substr(s, start, i - start)
+            w += 1
+        else:
+            i += 1
+    return out
+
+fn ft_num_digits(n i32) i32:
+    d i32 = 0
+    tmp i32 = n
+    while tmp != 0:
+        tmp = tmp / 10
+        d += 1
+    return d
+
+fn ft_itoa(n i32) char[]:
+    if n == 0:
+        z char[] = new char[1]
+        z[0] = '0'
+        return z
+    neg bool = n < 0
+    digits i32 = ft_num_digits(n)
+    total i32 = digits
+    if neg:
+        total += 1
+    out char[] = new char[total]
+    num i32 = n
+    idx i32 = total - 1
+    i i32 = 0
+    while i < digits:
+        d i32 = num % 10
+        if d < 0:
+            d = -d
+        out[idx] = (d + 48) as char
+        num = num / 10
+        idx -= 1
+        i += 1
+    if neg:
+        out[0] = '-'
+    return out
+
+fn ft_strmapi(s char[], f fn(u32, char) char) char[]:
+    n i32 = s.len as i32
+    out char[] = new char[n]
+    i i32 = 0
+    while i < n:
+        out[i] = f(i as u32, s[i])
+        i += 1
+    return out
+
+fn ft_striteri(s char[], f fn(u32, char) char) void:
+    i i32 = 0
+    while i < s.len as i32:
+        s[i] = f(i as u32, s[i])
+        i += 1
+
+fn ft_putchar_fd(c char, fd i32) void:
+    b char[] = new char[1]
+    b[0] = c
+    write(fd, b, 1)
+    clean b
+
+fn ft_putstr_fd(s char[], fd i32) void:
+    write(fd, s, s.len as i64)
+
+fn ft_putendl_fd(s char[], fd i32) void:
+    ft_putstr_fd(s, fd)
+    ft_putchar_fd('\n', fd)
+
+fn ft_putnbr_fd(n i32, fd i32) void:
+    s char[] = ft_itoa(n)
+    ft_putstr_fd(s, fd)
+    clean s
+
+struct Node:
+    content char[]
+    ref? next Node
+
+struct Lst:
+    ref? head Node
+
+fn ft_lstnew(content char[]) ref Node:
+    n Node[] = new Node[1]
+    n[0].content = content
+    return ref n[0]
+
+fn ft_lstadd_front(ref lst Lst, ref node Node) void:
+    node.next = ref lst.head
+    lst.head  = ref node
+
+fn ft_lstadd_back(ref lst Lst, ref node Node) void:
+    if lst.head == null:
+        lst.head = ref node
+        return
+    ref? cur Node = ref lst.head
+    while cur.next != null:
+        cur = ref cur.next
+    cur.next = ref node
+
+fn ft_lstsize(ref lst Lst) i32:
+    ref? cur Node = ref lst.head
+    count i32 = 0
+    while cur != null:
+        count += 1
+        cur = ref cur.next
+    return count
+
+fn ft_lstlast(ref lst Lst) ref? Node:
+    ref? cur Node = ref lst.head
+    if cur == null:
+        return null
+    while cur.next != null:
+        cur = ref cur.next
+    return ref cur
+
+fn ft_lstiter(ref lst Lst, f fn(char[]) char[]) void:
+    ref? cur Node = ref lst.head
+    while cur != null:
+        cur.content = f(cur.content)
+        cur = ref cur.next
+
+fn ft_lstmap(ref lst Lst, f fn(char[]) char[]) Lst:
+    out Lst
+    ref? cur Node = ref lst.head
+    while cur != null:
+        ft_lstadd_back(ref out, ft_lstnew(f(cur.content)))
+        cur = ref cur.next
+    return out
+
+fn ft_lstdelone(ref lst Lst, idx i32) void:
+    if lst.head == null:
+        return
+    if idx <= 0:
+        lst.head = ref lst.head.next
+        return
+    ref? prev Node = ref lst.head
+    i i32 = 1
+    while i < idx and prev.next != null:
+        prev = ref prev.next
+        i += 1
+    if prev.next != null:
+        prev.next = ref prev.next.next
+
+fn ft_lstclear(ref lst Lst) void:
+    lst.head = null
