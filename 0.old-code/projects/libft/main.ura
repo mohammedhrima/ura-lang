@@ -1,0 +1,133 @@
+use "libft"
+
+fn upcase_i(i u32, c char) char:
+    if c >= 'a' and c <= 'z':
+        return (c as i32 - 32) as char
+    return c
+
+fn upcase(s char[]) char[]:
+    n i32 = s.len as i32
+    out char[] = new char[n]
+    i i32 = 0
+    while i < n:
+        c char = s[i]
+        if c >= 'a' and c <= 'z':
+            out[i] = (c as i32 - 32) as char
+        else:
+            out[i] = c
+        i += 1
+    return out
+
+fn lower(s char[]) char[]:
+    n i32 = s.len as i32
+    out char[] = new char[n]
+    i i32 = 0
+    while i < n:
+        c char = s[i]
+        if c >= 'A' and c <= 'Z':
+            out[i] = (c as i32 + 32) as char
+        else:
+            out[i] = c
+        i += 1
+    return out
+
+fn dump(ref lst Lst) void:
+    ref? cur Node = ref lst.head
+    while cur != null:
+        output(cur.content, " ")
+        cur = ref cur.next
+    output("\n")
+
+main():
+    output("ft_isalpha('a')=", ft_isalpha('a'), " ('1')=", ft_isalpha('1'), "\n")
+    output("ft_isdigit('7')=", ft_isdigit('7'), " ('x')=", ft_isdigit('x'), "\n")
+    output("ft_isalnum('Z')=", ft_isalnum('Z'), " (' ')=", ft_isalnum(' '), "\n")
+    output("ft_toupper('a')=", ft_toupper('a'), " ft_tolower('A')=", ft_tolower('A'), "\n")
+    output("ft_strlen(\"hello\")=", ft_strlen("hello"), "\n")
+    output("ft_strncmp(abc,abd,3)=", ft_strncmp("abc", "abd", 3), "\n")
+    output("ft_strchr(hello,l)=", ft_strchr("hello", 'l'), "\n")
+    output("ft_strrchr(hello,l)=", ft_strrchr("hello", 'l'), "\n")
+    output("ft_strnstr(hello world,wor,11)=", ft_strnstr("hello world", "wor", 11), "\n")
+    output("ft_atoi(\"  -42abc\")=", ft_atoi("  -42abc"), "\n")
+
+    buf char[] = new char[8]
+    ft_memset(buf, 'x', 4)
+    buf[4] = 0 as char
+    output("ft_memset -> ", buf, "\n")
+    n i32 = ft_strlcpy(buf, "hi", 8)
+    output("ft_strlcpy -> ", buf, " (ret ", n, ")\n")
+    clean buf
+
+    output("--- part 2 ---\n")
+    a char[] = ft_substr("hello world", 6, 5)
+    output("ft_substr -> ", a, "\n")
+    clean a
+
+    j char[] = ft_strjoin("foo", "bar")
+    output("ft_strjoin -> ", j, "\n")
+    clean j
+
+    t char[] = ft_strtrim("xxhelloxx", "x")
+    output("ft_strtrim -> ", t, "\n")
+    clean t
+
+    parts char[][] = ft_split("a,bb,ccc", ',')
+    output("ft_split -> ", parts.len as i32, " words: ")
+    i i32 = 0
+    while i < parts.len as i32:
+        output(parts[i], " ")
+        i += 1
+    output("\n")
+
+    p char[] = ft_itoa(-2147483648)
+    output("ft_itoa(INT_MIN) -> ", p, "\n")
+    clean p
+    q char[] = ft_itoa(0)
+    output("ft_itoa(0) -> ", q, "\n")
+    clean q
+
+    m char[] = ft_strmapi("hello", upcase_i)
+    output("ft_strmapi -> ", m, "\n")
+    clean m
+
+    it char[] = ft_strdup("world")
+    ft_striteri(it, upcase_i)
+    output("ft_striteri -> ", it, "\n")
+    clean it
+
+    output("ft_putnbr_fd -> ")
+    ft_putnbr_fd(-42, 1)
+    output("\n")
+    ft_putendl_fd("ft_putendl_fd works", 1)
+
+    output("--- bonus: linked list ---\n")
+    lst Lst
+    ft_lstadd_back(ref lst, ft_lstnew("a"))
+    ft_lstadd_back(ref lst, ft_lstnew("b"))
+    ft_lstadd_back(ref lst, ft_lstnew("c"))
+    ft_lstadd_front(ref lst, ft_lstnew("z"))
+    output("list:   ")
+    dump(ref lst)
+    output("size:   ", ft_lstsize(ref lst), "\n")
+
+    ref? L Node = ft_lstlast(ref lst)
+    output("last:   ", L.content, "\n")
+
+    ft_lstiter(ref lst, upcase)
+    output("iter:   ")
+    dump(ref lst)
+
+    mapped Lst = ft_lstmap(ref lst, lower)
+    output("map:    ")
+    dump(ref mapped)
+
+    ft_lstdelone(ref lst, 1)
+    output("del 1:  ")
+    dump(ref lst)
+
+    ft_lstdelone(ref lst, 0)
+    output("del 0:  ")
+    dump(ref lst)
+
+    ft_lstclear(ref lst)
+    output("clear:  size ", ft_lstsize(ref lst), "\n")
