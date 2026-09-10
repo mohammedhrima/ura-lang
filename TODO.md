@@ -1,2 +1,0 @@
-+ replace all log functions:
-    + 
