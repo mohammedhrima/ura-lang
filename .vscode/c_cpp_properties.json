@@ -4,10 +4,10 @@
             "name": "Linux",
             "includePath": [
                 "${default}",
-                "${env:HOME}/llvm-16/include"
+                "/usr/include/clang/include/12.0.1/include"
             ],
             "defines": [],
-            "compilerPath": "${env:HOME}/llvm-16/bin/clang"
+            "compilerPath": "/usr/bin/clang"
         }
     ],
     "version": 4
