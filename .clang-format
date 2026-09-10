@@ -1,0 +1,56 @@
+---
+Language: Cpp
+BasedOnStyle: LLVM
+
+# --- indentation ---
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ContinuationIndentWidth: 4
+IndentCaseLabels: false
+IndentPPDirectives: AfterHash
+AccessModifierOffset: -4
+
+# --- braces: K&R, attached everywhere (incl. functions) ---
+BreakBeforeBraces: Attach
+
+# --- keep control flow / functions expanded ---
+AllowShortBlocksOnASingleLine: Never
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortEnumsOnASingleLine: false
+InsertBraces: false
+
+# --- pointers & references ---
+PointerAlignment: Right
+ReferenceAlignment: Right
+DerivePointerAlignment: false
+
+# --- alignment ---
+AlignConsecutiveMacros: AcrossEmptyLinesAndComments
+AlignEscapedNewlines: Left
+AlignTrailingComments: true
+AlignAfterOpenBracket: Align
+AlignOperands: Align
+
+# --- spacing ---
+SpaceBeforeParens: ControlStatements
+SpaceAfterCStyleCast: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+SpaceBeforeAssignmentOperators: true
+Cpp11BracedListStyle: false
+
+# --- line breaking ---
+ColumnLimit: 100
+BreakBeforeBinaryOperators: None
+BreakBeforeTernaryOperators: true
+BinPackArguments: true
+BinPackParameters: true
+
+# --- misc ---
+SortIncludes: false
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 2

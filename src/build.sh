@@ -1,7 +1,7 @@
-CXX=/usr/lib/llvm-21/bin/clang++
+CXX=clang
 
-FLAGS="-fsanitize=address -g3 -std=c++2b -lstdc++exp "
+FLAGS="-fsanitize=address -fsanitize=null -g3 "
 
-$CXX $FLAGS main.cpp -o ura && \
+$CXX $FLAGS main.c -o ura && \
 setarch "$(uname -m)" -R ./ura file.ura && \
 rm -rf ura
