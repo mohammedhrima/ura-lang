@@ -866,11 +866,10 @@ void generate_asm(void) {
 
 /*
 TODO:
-    + generate ir for simple function
-    + handle returns
-    + generate asm for it
-    + function takes parameter
     + start creating an abstraction on top of llvm
+    + implement math operation on variables
+    + function returns variable
+    + function takes parameters
 */
 
 void print_nodes(char *text) {
