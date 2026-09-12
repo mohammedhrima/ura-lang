@@ -10,17 +10,17 @@
 #include <llvm-c/TargetMachine.h>
 #include <llvm/Config/llvm-config.h>
 #if LLVM_VERSION_MAJOR >= 13
-#if LLVM_VERSION_MAJOR == 13
+#    if LLVM_VERSION_MAJOR == 13
 // LLVM 13's PassBuilder.h declares LLVMCreatePassBuilderOptions() without
 // (void), tripping the strict-prototypes error its own headers switch on
-#undef LLVM_C_STRICT_PROTOTYPES_BEGIN
-#undef LLVM_C_STRICT_PROTOTYPES_END
-#define LLVM_C_STRICT_PROTOTYPES_BEGIN
-#define LLVM_C_STRICT_PROTOTYPES_END
-#endif
-#include <llvm-c/Transforms/PassBuilder.h>
+#        undef LLVM_C_STRICT_PROTOTYPES_BEGIN
+#        undef LLVM_C_STRICT_PROTOTYPES_END
+#        define LLVM_C_STRICT_PROTOTYPES_BEGIN
+#        define LLVM_C_STRICT_PROTOTYPES_END
+#    endif
+#    include <llvm-c/Transforms/PassBuilder.h>
 #else
-#include <llvm-c/Transforms/PassManagerBuilder.h>
+#    include <llvm-c/Transforms/PassManagerBuilder.h>
 #endif
 #include <signal.h>
 #include <stdarg.h>
@@ -83,7 +83,7 @@ typedef LLVMTypeRef TypeRef;
 typedef LLVMContextRef Context;
 typedef LLVMModuleRef Module;
 typedef LLVMBuilderRef Builder;
-typedef LLVMBasicBlockRef Block;
+typedef LLVMBasicBlockRef Bloc;
 typedef LLVMValueRef Value;
 typedef LLVMTargetDataRef TargetData;
 typedef LLVMTargetRef Target;
@@ -91,8 +91,10 @@ typedef LLVMTargetMachineRef TargetMachine;
 typedef LLVMTypeKind TypeKind;
 typedef LLVMAttributeRef AttributeRef;
 typedef LLVMMetadataRef MetadataRef;
+#if LLVM_VERSION_MAJOR >= 13
 typedef LLVMErrorRef Error;
 typedef LLVMPassBuilderOptionsRef PassBuilderOptions;
+#endif
 
 #define PointerType  LLVMPointerTypeKind
 #define IntegerType  LLVMIntegerTypeKind
@@ -140,6 +142,16 @@ struct Token {
 
     bool is_dec;
     size_t space;
+
+    // TODO: move this in asm.c
+    struct {
+        bool is_set;
+        bool is_loaded;
+
+        Value elem;
+        Bloc bloc;
+        TypeRef func_type;
+    } llvm;
 
     struct {
         char *name;
@@ -247,6 +259,12 @@ int _print(File fp, const char *fmt, va_list args) {
 
         if (strncmp(fmt + i, "%%", 2) == 0) {
             r += fprintf(fp, "%%");
+            i += 2;
+            continue;
+        }
+        if (strncmp(fmt + i, "%t", 2) == 0) {
+            Type type = va_arg(args, Type);
+            r += fprintf(fp, "%s", to_string(type));
             i += 2;
             continue;
         }
@@ -387,6 +405,7 @@ void new_file(char *filename) {
 void close_file(uraFile *file) {
     free(file->filename);
     free(file->content);
+    free(file);
 }
 
 void free_token(Token *token) {
@@ -410,7 +429,8 @@ void ura_clean(void) {
     free_node(ura.ast);
     for (size_t i = 0; i < ura.tokens_count; i++)
         free_token(ura.tokens[i]);
-    ura.tokens_count = 0;
+    for (size_t i = 0; i < ura.files_count; i++)
+        close_file(ura.files[i]);
 }
 // TOKENIZE
 Token *new_token(Type type, size_t space) {
@@ -724,15 +744,57 @@ void generate_ir(void) {
 }
 
 // ASSEMBLY
+#include "asm.c"
+
 void code_gen(Node *node) {
+    if (ura.errors_count)
+        return;
     switch (node->token->type) {
     case I32: {
+        Value elem;
+        if (node->token->name)
+            elem = create_variable(node->token);
+        else
+            elem = create_value(node->token);
+        node->token->llvm.elem = elem;
+        break;
+    }
+    case ADD: {
+        code_gen(node->left);
+        code_gen(node->right);
+        // TODO: check compatibility
+        node->token->llvm.elem = create_math_op(node->left->token, node->token, node->right->token);
+        break;
+    }
+    case ASSIGN : {
+        code_gen(node->left);
+        code_gen(node->right);
+        // TODO: check compatibility
+
+        node->token->llvm.elem = create_assign(node->left->token, node->right->token);
         break;
     }
     case FDEC: {
+        enter_scope(node);
+
+        Token *token = node->token;
+        if (token->llvm.func_type)
+            return;
+        create_function(node->token);
+        create_entry(token);
+
+        // extract parameters as variables
+
+        // code gen children
+        for (size_t i = 0; i < node->children_count; i++)
+            code_gen(node->children[i]);
+
+        exit_scope();
         break;
     }
     case RETURN: {
+        code_gen(node->left);
+        node->token->llvm.elem = create_return(node->left->token);
         break;
     }
     default:
@@ -740,11 +802,15 @@ void code_gen(Node *node) {
     }
 }
 
-void generate_asm(void) {
-    enter_scope(ura.ast);
+void init_module(char *name) {
+    ura.context = LLVMContextCreate();
+    ura.module = LLVMModuleCreateWithNameInContext(name, ura.context);
+    ura.builder = LLVMCreateBuilderInContext(ura.context);
+
     LLVMInitializeNativeTarget();
     LLVMInitializeNativeAsmPrinter();
-    LLVMInitializeNativeAsmParser(); // TODO: to be checked
+    // LLVMInitializeNativeAsmParser(); // TODO: to be checked
+
     char *triple = LLVMGetDefaultTargetTriple();
     LLVMSetTarget(ura.module, triple);
     Target target;
@@ -759,6 +825,17 @@ void generate_asm(void) {
     }
     LLVMDisposeMessage(triple);
 
+    // TODO: add asan stuff here
+    // TODO: add flags stuff (Passes)
+}
+
+void finalize_module(char *ll_path) {
+}
+
+void generate_asm(void) {
+    enter_scope(ura.ast);
+    init_module("ura-module");
+
     for (size_t i = 0; i < ura.ast->children_count; i++) {
         Node *node = ura.ast->children[i];
         code_gen(node);
@@ -766,25 +843,25 @@ void generate_asm(void) {
     exit_scope();
 
     char *error = NULL;
-    PassBuilderOptions opts = LLVMCreatePassBuilderOptions();
-    if (ura.flags) {
-        Error err = LLVMRunPasses(ura.module, ura.flags, NULL, opts);
-        if (err) {
-            char *msg = LLVMGetErrorMessage(err);
-            CHECK(1, "optimizer error: %s", msg);
-            LLVMDisposeErrorMessage(msg);
-        }
-    }
-    if (ura.debug_builder) {
-        LLVMDIBuilderFinalize(ura.debug_builder);
-        LLVMDisposeDIBuilder(ura.debug_builder);
-        ura.debug_builder = NULL;
-    }
+    // PassBuilderOptions opts = LLVMCreatePassBuilderOptions();
+    // if (ura.flags) {
+    //     Error err = LLVMRunPasses(ura.module, ura.flags, NULL, opts);
+    //     if (err) {
+    //         char *msg = LLVMGetErrorMessage(err);
+    //         CHECK(1, "optimizer error: %s", msg);
+    //         LLVMDisposeErrorMessage(msg);
+    //     }
+    // }
+    // if (ura.debug_builder) {
+    //     LLVMDIBuilderFinalize(ura.debug_builder);
+    //     LLVMDisposeDIBuilder(ura.debug_builder);
+    //     ura.debug_builder = NULL;
+    // }
     if (LLVMVerifyModule(ura.module, LLVMReturnStatusAction, &error))
-        CHECK(1, "module verification failed:\n%s", error);
+        eprint("module verification failed:\n%s", error);
     LLVMDisposeMessage(error);
-    LLVMDisposePassBuilderOptions(opts);
-    LLVMPrintModuleToFile(ura.module, "out.ll", NULL);
+    // LLVMDisposePassBuilderOptions(opts);
+    LLVMPrintModuleToFile(ura.module, "build/out.ll", NULL);
 }
 
 /*
@@ -793,10 +870,11 @@ TODO:
     + handle returns
     + generate asm for it
     + function takes parameter
+    + start creating an abstraction on top of llvm
 */
 
-void print_nodes(void) {
-    print(GREEN("=========PRINT AST==============\n"));
+void print_nodes(char *text) {
+    print(text);
     for (size_t i = 0; i < ura.ast->children_count; i++)
         print_node(ura.ast->children[i]);
 }
@@ -807,16 +885,14 @@ int main() {
         uraFile *file = ura.files[i];
         print(GREEN("============TOKENIZE============\n"));
         tokenize(file->content);
-        print(GREEN("============AST=================\n"));
         generate_ast();
-        print_nodes();
+        print_nodes(GREEN("============AST=================\n"));
         generate_ir();
-        print_nodes();
-        print(GREEN("==============ASM==============\n"));
+        print_nodes(GREEN("============IR==================\n"));
         generate_asm();
+        print_nodes(GREEN("============ASM==================\n"));
         print(GREEN("============CLEANING============\n"));
         ura_clean();
-        close_file(file);
     }
     free(ura.tokens);
     free(ura.files);
