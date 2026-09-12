@@ -1,5 +1,3 @@
-#include "header.h"
-
 TypeRef get_llvm_type(Type type) {
     // ura.vd = LLVMVoidTypeInContext(ura.context);
     // ura.i1 = LLVMInt1TypeInContext(ura.context);
