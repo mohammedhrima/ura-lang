@@ -37,3 +37,6 @@ lexer → parser → analyze → type_check → code_gen (switch case + stage he
 - **globals** = biggest ura-lib blocker (105 consts + `os` + `raylib` need it)
 - std modules load via `@/header` (ctype/errno/io/math/net/…) but `os`/`raylib` blocked on globals
 - guard should throw an error · audit: are all features actually implemented?
+
+
+
