@@ -1,6 +1,7 @@
 
+fn foo(a i32) i32:
+    return a + 1
+
 fn main() i32:
-    b i32 = 1
-    a i32 = 2
-    c i32 = a + 1
-    return a
+    b i32 = foo(1)
+    return b

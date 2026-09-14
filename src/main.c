@@ -130,8 +130,9 @@ enum Type {
     ASSIGN,
     ADD, SUB, MUL, DIV, MOD,
 
-    FDEC,
+    FDEC, ARGS, COMA,
     RETURN,
+    FCALL,
 
 
     DEC_VAR,
@@ -218,9 +219,10 @@ const char *to_string(Type type) {
         [ADD] = "ADD", [SUB] = "SUB", [MUL] = "MUL", 
         [DIV] = "DIV", [MOD] = "MOD",
 
-        [FDEC] = "FDEC",
-        [RETURN] = "RETURN",
-        
+        [FDEC] = "FDEC", [ARGS] = "ARGS", [COMA] = "COMA",
+        [RETURN] = "RETURN", 
+        [FCALL] = "FCALL",
+
         [DEC_VAR] = "DEC_VAR", [LOAD_VAR] = "LOAD_VAR",
         [END] = "END",
     };
@@ -425,7 +427,8 @@ void free_node(Node *node) {
     for (size_t i = 0; i < node->children_count; i++)
         free_node(node->children[i]);
     free_node(node->left);
-    free_node(node->right);
+    if (node->token->type != FCALL)
+        free_node(node->right);
     free(node->children);
     free(node->functions);
     free(node->variables);
@@ -605,6 +608,28 @@ Node *prime_node(void) {
             node->left = new_node(token);
             return node;
         }
+        if (peek(0)->type == LPARENT) // FCALL
+        {
+            next();
+            token->type = FCALL;
+            node = new_node(token);
+            node->left = new_node(new_token(ARGS, node->token->space));
+            while (!includes(peek(0)->type, RPARENT, 0)) {
+                Node *arg = prime_node();
+                push_back(node->left->children, arg);
+                if (!includes(peek(0)->type, RPARENT, COMA, 0)) {
+                    eprint("expect ',' between arguments");
+                    break;
+                } else if (peek(0)->type == COMA)
+                    next();
+            }
+            if (!includes(peek(0)->type, RPARENT, 0)) {
+                eprint("expect ')' between arguments");
+                return node;
+            }
+            next();
+            return node;
+        }
         return new_node(token);
     }
     case FDEC: {
@@ -619,8 +644,23 @@ Node *prime_node(void) {
 
         if (next()->type != LPARENT)
             eprint("Expected ( after function declaration\n");
+        node->left = new_node(new_token(ARGS, node->token->space));
+        while (!includes(peek(0)->type, RPARENT, 0)) {
+            Node *arg = prime_node();
+            if (arg->token->type != DEC_VAR) {
+                eprint("expected valid arguments\n");
+                exit(1);
+            }
+            push_back(node->left->children, arg);
+
+            if (!includes(peek(0)->type, RPARENT, COMA, 0)) {
+                eprint("expect ',' between arguments");
+                break;
+            } else if (peek(0)->type == COMA)
+                next();
+        }
         if (next()->type != RPARENT)
-            eprint("Expected ) after function declaration\n");
+            eprint("Expected ) after function declaration: %t\n", peek(0)->type);
 
         Token *ret_token = peek(0)->is_type && includes(peek(0)->type, I32, 0) ? peek(0) : NULL;
         if (ret_token) {
@@ -733,6 +773,20 @@ void declare_function(Node *fn) {
     push_back(ura.scope->functions, fn);
 }
 
+Node *find_function(char *name) {
+    for (size_t i = ura.scopes_count - 1; i >= 0; i--) {
+        Node *scope = ura.scopes[i];
+        for (size_t i = 0; i < scope->functions_count; i++) {
+            Node *curr = scope->functions[i];
+            if (strcmp(curr->token->name, name) == 0)
+                return scope->functions[i];
+        }
+    }
+    eprint("function '%s' not found", name);
+    exit(1);
+    return NULL;
+}
+
 void declare_variable(Node *node) {
     push_back(ura.scope->variables, node);
 }
@@ -743,7 +797,7 @@ Token *find_variable(char *name) {
         if (strcmp(curr->token->name, name) == 0)
             return ura.scope->variables[i]->token;
     }
-    eprint("variables '%s' not found", name);
+    eprint("variable '%s' not found", name);
     exit(1);
     return NULL;
 }
@@ -754,7 +808,7 @@ bool match(Node *op, Node *left, Node *right) {
 
 void analyze(Node *node) {
     if (ura.errors_count)
-        return ;
+        return;
     switch (node->token->type) {
     case IDENTIFIER: {
         node->left = new_node(find_variable(node->token->name));
@@ -787,8 +841,17 @@ void analyze(Node *node) {
         // TODO: check compatibility
         break;
     }
+    case FCALL: {
+        node->right = find_function(node->token->name);
+        for (size_t i = 0; i < node->left->children_count; i++)
+            analyze(node->left->children[i]);
+        break;
+    }
     case FDEC: {
         enter_scope(node);
+        for (size_t i = 0; i < node->left->children_count; i++)
+            analyze(node->left->children[i]);
+        // code bloc
         for (size_t i = 0; i < node->children_count; i++)
             analyze(node->children[i]);
         exit_scope();
@@ -812,6 +875,9 @@ void type_check(Node *node) {
 void generate_ir(void) {
     enter_scope(ura.ast);
     // skip last one because it's ura scope
+    // TODO: to be cheked later because
+    // we might need t odeclare function
+    // inside function
     for (size_t i = 0; i < ura.ast->children_count; i++)
         if (ura.ast->children[i]->token->type == FDEC)
             declare_function(ura.ast->children[i]);
@@ -868,16 +934,27 @@ void code_gen(Node *node) {
         Token *token = node->token;
         if (token->llvm.func_type)
             return;
-        create_function(node->token);
+        create_function(node);
         create_entry(token);
 
         // extract parameters as variables
-
+        for (size_t i = 0; i < node->left->children_count; i++) {
+            code_gen(node->left->children[i]);
+            create_param(node->token, node->left->children[i]->token, i);
+        }
         // code gen children
         for (size_t i = 0; i < node->children_count; i++)
             code_gen(node->children[i]);
 
         exit_scope();
+        break;
+    }
+    case FCALL: {
+        for (size_t i = 0; i < node->left->children_count; i++) {
+            assert(node->left->children[i] != NULL);
+            code_gen(node->left->children[i]);
+        }
+        node->token->llvm.elem = create_function_call(node);
         break;
     }
     case RETURN: {
@@ -958,6 +1035,14 @@ void generate_asm(void) {
 TODO:
     + start creating an abstraction on top of llvm
     + function takes parameters
+    + function calls
+    + logic operators
+    + if/elif/else
+    + while
+    + break/continue
+    + ref arguments
+    + struct
+    + function inside function
 */
 
 void print_nodes(char *text) {

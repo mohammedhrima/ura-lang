@@ -17,15 +17,25 @@ TypeRef get_llvm_type(Type type) {
     return NULL;
 };
 
-void create_function(Token *token) {
+void create_function(Node *node) {
+    Token *token = node->token;
     // set return type
     TypeRef ret = get_llvm_type(token->ret_type);
     // set params signature
     // TODO: add them
-    TypeRef *params = NULL;
-    // TODO: set params count, set if function is variadic or not
-    token->llvm.func_type = LLVMFunctionType(ret, params, 0, false);
+    TypeRef *args = NULL;
+    size_t args_count = node->left->children_count;
+    if (args_count) {
+        args = ura_alloc(node->left->children_count, sizeof(TypeRef));
+        for (size_t i = 0; i < args_count; i++) {
+            Token *child = node->left->children[i]->left->token;
+            args[i] = get_llvm_type(child->type);
+        }
+    }
+    // TODO: set args count, set if function is variadic or not
+    token->llvm.func_type = LLVMFunctionType(ret, args, args_count, false);
     token->llvm.elem = LLVMAddFunction(ura.module, token->name, token->llvm.func_type);
+    free(args);
 }
 
 void create_entry(Token *token) {
@@ -35,6 +45,22 @@ void create_entry(Token *token) {
 
 Value create_return(Token *token) {
     return LLVMBuildRet(ura.builder, token->llvm.elem);
+}
+
+Value create_function_call(Node *node) {
+    Token *fdec = node->right->token;
+    Value *args = NULL;
+    size_t args_count = node->left->children_count;
+    if (args_count) {
+        args = ura_alloc(args_count, sizeof(Value));
+        for (size_t i = 0; i < args_count; i++) {
+            args[i] = node->left->children[i]->token->llvm.elem;
+        }
+    }
+    Value res = LLVMBuildCall2(ura.builder, fdec->llvm.func_type, fdec->llvm.elem, args, args_count,
+                               node->token->name);
+    free(args);
+    return res;
 }
 
 Value create_value(Token *token) {
@@ -67,6 +93,9 @@ Value create_assign(Token *left, Token *right) {
     return LLVMBuildStore(ura.builder, right->llvm.elem, left->llvm.elem);
 }
 
+Value create_param(Token *fn, Token *param, size_t pos) {
+    return LLVMBuildStore(ura.builder, LLVMGetParam(fn->llvm.elem, pos), param->llvm.elem);
+}
 
 Value create_math_op(Token *left, Token *op_token, Token *right) {
     LLVMOpcode ops[] = {
