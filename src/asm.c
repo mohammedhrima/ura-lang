@@ -1,5 +1,3 @@
-#include "header.h"
-
 TypeRef get_llvm_type(Type type) {
     // ura.vd = LLVMVoidTypeInContext(ura.context);
     // ura.i1 = LLVMInt1TypeInContext(ura.context);
@@ -13,7 +11,7 @@ TypeRef get_llvm_type(Type type) {
     case I32:
         return LLVMInt32TypeInContext(ura.context);
     default:
-        eprint("%s:%d handle this case %t\n", FILE, LINE, type);
+        eprint("handle this case %t\n", type);
         break;
     }
     return NULL;
@@ -44,21 +42,25 @@ Value create_value(Token *token) {
     case I32:
         return LLVMConstInt(get_llvm_type(token->type), token->i32.value, 0);
     default:
-        eprint("%s:%d handle this case %t", FILE, LINE, token->type);
+        eprint("handle this case %t\n", token->type);
         break;
     }
     return NULL;
 }
 
-Value create_variable(Token *token) {
-    switch (token->type) {
+Value create_variable(Node *node) {
+    switch (node->token->type) {
     case I32:
-        return LLVMBuildAlloca(ura.builder, get_llvm_type(token->type), token->name);
+        return LLVMBuildAlloca(ura.builder, get_llvm_type(node->token->type), node->token->name);
     default:
-        eprint("%s:%d handle this case %t", FILE, LINE, token->type);
+        eprint("handle this case %t\n", node->token->type);
         break;
     }
     return NULL;
+}
+
+Value create_load(Token *token) {
+    return LLVMBuildLoad2(ura.builder, get_llvm_type(token->type), token->llvm.elem, token->name);
 }
 
 Value create_assign(Token *left, Token *right) {
@@ -67,13 +69,31 @@ Value create_assign(Token *left, Token *right) {
 
 
 Value create_math_op(Token *left, Token *op_token, Token *right) {
-    LLVMOpcode op = NULL;
+    LLVMOpcode ops[] = {
+        [ADD] = LLVMAdd,
+        [SUB] = LLVMSub,
+        [MUL] = LLVMMul,
+        [DIV] = LLVMSDiv,
+        // [DIV] = LLVMUDiv, unsigned div
+        [MOD] = LLVMSRem,
+        // [MOD] = LLVMSRem, unsigned Mod
+        [END] = 0,
+    };
+
+    LLVMOpcode op = ops[op_token->type];
+    if (op == 0) {
+        eprint("unknown operation\n");
+        exit(1);
+    }
 
     switch (left->type) {
     case I32:
-        return LLVMBuildBinOp(ura.builder, LLVMAdd, left->llvm.elem, right->llvm.elem, "add");
+        return LLVMBuildBinOp(ura.builder, op, left->llvm.elem, right->llvm.elem,
+                              to_string(op_token->type));
     default:
-        eprint("%s:%d handle this case %t", FILE, LINE, left->type);
+        eprint("handle this case %t", left->type);
+        exit(1);
         break;
     }
+    return NULL;
 }
