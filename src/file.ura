@@ -1,7 +1,8 @@
 
-fn foo(a i32) i32:
-    return a + 1
+
 
 fn main() i32:
-    b i32 = foo(1)
-    return b
+    a i32 = 10
+    b i32 = 11
+    c b1 = a != b
+    return c
