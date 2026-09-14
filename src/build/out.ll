@@ -5,7 +5,14 @@ target triple = "x86_64-pc-linux-gnu"
 
 define i32 @main() {
 entry:
+  %b = alloca i32, align 4
+  store i32 1, i32* %b, align 4
   %a = alloca i32, align 4
-  store i32 3, i32* %a, align 4
-  ret i32 0
+  store i32 2, i32* %a, align 4
+  %c = alloca i32, align 4
+  %a1 = load i32, i32* %a, align 4
+  %ADD = add i32 %a1, 1
+  store i32 %ADD, i32* %c, align 4
+  %a2 = load i32, i32* %a, align 4
+  ret i32 %a2
 }
