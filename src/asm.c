@@ -10,6 +10,8 @@ TypeRef get_llvm_type(Type type) {
     switch (type) {
     case I32:
         return LLVMInt32TypeInContext(ura.context);
+    case BOOL:
+        return LLVMInt1TypeInContext(ura.context);
     default:
         eprint("handle this case %t\n", type);
         break;
@@ -67,6 +69,8 @@ Value create_value(Token *token) {
     switch (token->type) {
     case I32:
         return LLVMConstInt(get_llvm_type(token->type), token->i32.value, 0);
+    case BOOL:
+        return LLVMConstInt(get_llvm_type(token->type), token->b1.value, 0);
     default:
         eprint("handle this case %t\n", token->type);
         break;
@@ -76,7 +80,9 @@ Value create_value(Token *token) {
 
 Value create_variable(Node *node) {
     switch (node->token->type) {
-    case I32:
+        // clang-format off
+    case I32: case BOOL:
+        // clang-format on
         return LLVMBuildAlloca(ura.builder, get_llvm_type(node->token->type), node->token->name);
     default:
         eprint("handle this case %t\n", node->token->type);
@@ -97,12 +103,36 @@ Value create_param(Token *fn, Token *param, size_t pos) {
     return LLVMBuildStore(ura.builder, LLVMGetParam(fn->llvm.elem, pos), param->llvm.elem);
 }
 
+Value create_comparision_op(Token *left, Token *op_token, Token *right) {
+    // TODO: handle unsigned types
+    LLVMIntPredicate ops[] = {
+        [GT] = LLVMIntSGT, [LT] = LLVMIntSLT, [GE] = LLVMIntSGE, [LE] = LLVMIntSLE,
+        [EQ] = LLVMIntEQ,  [NQ] = LLVMIntNE,  [END] = 0,
+    };
+
+    LLVMIntPredicate op = ops[op_token->type];
+    if (op == 0) {
+        eprint("unknown operation\n");
+        exit(1);
+    }
+
+    switch (left->type) {
+    case I32:
+        return LLVMBuildICmp(ura.builder, op, left->llvm.elem, right->llvm.elem,
+                             to_string(op_token->type));
+    default:
+        eprint("handle this case %t", left->type);
+        exit(1);
+        break;
+    }
+    return NULL;
+}
+
 Value create_math_op(Token *left, Token *op_token, Token *right) {
+    // TODO: handle unsigned types
     LLVMOpcode ops[] = {
-        [ADD] = LLVMAdd,
-        [SUB] = LLVMSub,
-        [MUL] = LLVMMul,
-        [DIV] = LLVMSDiv,
+        [ADD] = LLVMAdd, [SUB] = LLVMSub,
+        [MUL] = LLVMMul, [DIV] = LLVMSDiv,
         // [DIV] = LLVMUDiv, unsigned div
         [MOD] = LLVMSRem,
         // [MOD] = LLVMSRem, unsigned Mod

@@ -123,12 +123,14 @@ enum Type {
     NONE,
     IDENTIFIER,
 
-    VOID, I32,
+    VOID, I32, BOOL,
 
     LPARENT, RPARENT, DOTS,
 
     ASSIGN,
     ADD, SUB, MUL, DIV, MOD,
+
+    GT, LT, GE, LE, EQ, NQ,
 
     FDEC, ARGS, COMA,
     RETURN,
@@ -150,8 +152,8 @@ struct Token {
 
     // TODO: move this in asm.c
     struct {
-        bool is_set;
-        bool is_loaded;
+        // bool is_set;
+        // bool is_loaded;
 
         Value elem;
         Bloc bloc;
@@ -164,6 +166,9 @@ struct Token {
         struct {
             long value;
         } i32;
+        struct {
+            int value;
+        } b1;
     };
 };
 
@@ -209,7 +214,7 @@ void *ura_alloc(size_t count, size_t size) {
 const char *to_string(Type type) {
     char *types[END + 1] = {
         [IDENTIFIER] = "IDENTIFER",
-        [VOID] = "VOID", [I32] = "I32",
+        [VOID] = "VOID", [I32] = "I32", [BOOL] = "BOOL",
 
         [LPARENT] = "LPARENT", [RPARENT] = "LPARENT",
         [DOTS] = "DOTS",
@@ -218,6 +223,9 @@ const char *to_string(Type type) {
 
         [ADD] = "ADD", [SUB] = "SUB", [MUL] = "MUL", 
         [DIV] = "DIV", [MOD] = "MOD",
+
+        [GT] = "GT", [LT] = "LT", [GE] = "GE", 
+        [LE] = "LE", [EQ] = "EQ", [NQ] = "NQ",
 
         [FDEC] = "FDEC", [ARGS] = "ARGS", [COMA] = "COMA",
         [RETURN] = "RETURN", 
@@ -289,6 +297,12 @@ int _print(File fp, const char *fmt, va_list args) {
                 if (token->name || token->is_type)
                     break;
                 r += fprintf(fp, " value (%ld)", token->i32.value);
+                break;
+            }
+            case BOOL: {
+                if (token->name || token->is_type)
+                    break;
+                r += fprintf(fp, " value (%s)", token->b1.value ? "True" : "False");
                 break;
             }
             default:
@@ -457,17 +471,33 @@ Token *parse_token(Type type, size_t s, size_t e, size_t space) {
     switch (type) {
     case IDENTIFIER: {
         // if(e - s == 0) break;
-        if (strncmp(ura.curr_content + s, "i32", e - s) == 0) {
-            new->type = I32;
-            new->is_type = true;
-        } else if (strncmp(ura.curr_content + s, "fn", e - s) == 0) {
-            new->type = FDEC;
-        } else if (strncmp(ura.curr_content + s, "return", e - s) == 0) {
-            new->type = RETURN;
-        } else {
-            new->name = ura_alloc(e - s + 1, sizeof(char));
-            strncpy(new->name, ura.curr_content + s, e - s);
+        struct {
+            char *value;
+            Token token;
+        } keywords[] = {
+            { "i32", { .type = I32, .is_type = true } },
+            { "b1", { .type = BOOL, .is_type = true } },
+            { "True", { .type = BOOL, .b1 = { .value = true } } },
+            { "False", { .type = BOOL, .b1 = { .value = false } } },
+            { "fn", { .type = FDEC } },
+            { "return", { .type = RETURN } },
+            { NULL },
+        };
+        size_t i = 0;
+        for (; keywords[i].value; i++) {
+            char *value = keywords[i].value;
+            size_t len = strlen(value);
+            if (e - s == len && strncmp(ura.curr_content + s, value, e - s) == 0) {
+                *new = keywords[i].token;
+                new->space = space;
+                break;
+            }
         }
+        if (keywords[i].value)
+            break;
+
+        new->name = ura_alloc(e - s + 1, sizeof(char));
+        strncpy(new->name, ura.curr_content + s, e - s);
         break;
     }
     case I32: {
@@ -531,6 +561,8 @@ void tokenize(char *content) {
         } specials[] = {
             {"(", LPARENT}, {")", RPARENT}, {":", DOTS}, 
             {"+", ADD}, {"-", SUB}, {"*", MUL}, {"/", DIV}, {"%", MOD},
+            {">=", GE}, {"<=", LE}, {">", GT}, {"<", LT},
+            {"==", EQ}, {"!=", NQ},
             {"=", ASSIGN},
             {NULL, NONE}
         };
@@ -596,11 +628,13 @@ Node *prime_node(void) {
     Token *token = next();
     Node *node = NULL;
     switch (token->type) {
-    case I32: {
+    case I32:
+    case BOOL: {
         return new_node(token);
     }
     case IDENTIFIER: {
-        Token *next_token = peek(0)->is_type && includes(peek(0)->type, I32, 0) ? peek(0) : NULL;
+        Token *next_token =
+            peek(0)->is_type && includes(peek(0)->type, I32, BOOL, 0) ? peek(0) : NULL;
         if (next_token) {
             next();
             token->type = next_token->type;
@@ -662,7 +696,8 @@ Node *prime_node(void) {
         if (next()->type != RPARENT)
             eprint("Expected ) after function declaration: %t\n", peek(0)->type);
 
-        Token *ret_token = peek(0)->is_type && includes(peek(0)->type, I32, 0) ? peek(0) : NULL;
+        Token *ret_token =
+            peek(0)->is_type && includes(peek(0)->type, I32, BOOL, 0) ? peek(0) : NULL;
         if (ret_token) {
             next();
             node->token->ret_type = ret_token->type;
@@ -672,8 +707,16 @@ Node *prime_node(void) {
         if (next()->type != DOTS)
             eprint("Expected : after function declaration\n");
 
+        Node *last = NULL;
         while (inside(node->token->space)) {
-            push_back(node->children, expr_node(0));
+            last = expr_node(0);
+            push_back(node->children, last);
+        }
+
+        if (last == NULL || last->token->type != RETURN) {
+            Node *ret = new_node(new_token(RETURN, node->token->space));
+            ret->left = new_node(new_token(ret_token->type, node->token->space));
+            push_back(node->children, ret);
         }
         exit_scope();
         return node;
@@ -704,6 +747,11 @@ Node *expr_node(int min_op) {
         // clang-format off
         int prec[END + 1] = {
             [ASSIGN] = 1,
+
+            [GT] = 8, [LT] = 8,
+            [GE] = 8, [LE] = 8,
+            [EQ] = 7, [NQ] = 7,
+
             [ADD] = 10, [SUB] = 10, 
             [MUL] = 11, [DIV] = 11, [MOD] = 11,
         };
@@ -788,6 +836,7 @@ Node *find_function(char *name) {
 }
 
 void declare_variable(Node *node) {
+    // print(CYAN("declare %s\n"), node->token->name);
     push_back(ura.scope->variables, node);
 }
 
@@ -821,19 +870,21 @@ void analyze(Node *node) {
         declare_variable(node->left);
         break;
     }
-    case I32: {
-        // if (node->token->name) {
-        //     declare_variable(node);
-        // }
+        // clang-format off
+    case I32: case BOOL: {
+        // clang-format on
         break;
     }
     case ASSIGN: {
-        // don't resolve left and right
-        analyze(node->left);
+        if (node->left->token->type == DEC_VAR)
+            analyze(node->left);
+        else
+            node->left->token = find_variable(node->left->token->name);
         analyze(node->right);
         break;
     }
         // clang-format off
+    case GT: case LT: case GE: case LE: case EQ: case NQ:
     case SUB: case ADD: case MUL: case DIV: case MOD: {
         // clang-format on
         analyze(node->left);
@@ -843,6 +894,7 @@ void analyze(Node *node) {
     }
     case FCALL: {
         node->right = find_function(node->token->name);
+        // TODO: check compatibility
         for (size_t i = 0; i < node->left->children_count; i++)
             analyze(node->left->children[i]);
         break;
@@ -858,6 +910,7 @@ void analyze(Node *node) {
         break;
     }
     case RETURN: {
+        // TODOL check compatibility
         analyze(node->left);
         break;
     }
@@ -900,7 +953,9 @@ void code_gen(Node *node) {
         node->token = node->left->token;
         break;
     }
-    case I32: {
+        // clang-format off
+    case I32: case BOOL :{
+        // clang-format on
         node->token->llvm.elem = create_value(node->token);
         break;
     }
@@ -908,6 +963,16 @@ void code_gen(Node *node) {
         Token *var = node->left->token;
         node->token->llvm.elem = create_load(var);
         node->token->type = var->type;
+        break;
+    }
+        // clang-format off
+    case GT: case LT: case GE: case LE: case EQ: case NQ: {
+        // clang-format on
+        code_gen(node->left);
+        code_gen(node->right);
+        // TODO: check compatibility
+        node->token->llvm.elem =
+            create_comparision_op(node->left->token, node->token, node->right->token);
         break;
     }
         // clang-format off
@@ -920,7 +985,8 @@ void code_gen(Node *node) {
         break;
     }
     case ASSIGN: {
-        code_gen(node->left);
+        if (node->left->token->type == DEC_VAR)
+            code_gen(node->left);
         code_gen(node->right);
         if (ura.errors_count)
             break;
@@ -1034,8 +1100,6 @@ void generate_asm(void) {
 /*
 TODO:
     + start creating an abstraction on top of llvm
-    + function takes parameters
-    + function calls
     + logic operators
     + if/elif/else
     + while
