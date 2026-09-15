@@ -98,12 +98,12 @@ Value create_param(Token *fn, Token *param, size_t pos);
 Value create_function_call(Node *node);
 Value create_return(Token *token);
 Value get_parent_bloc();
-Bloc create_bloc(char *name);
-void create_condition_branch(Value cond, Bloc then, Bloc next);
+Bloc create_label(char *name);
+void create_jmp_condition(Value cond, Bloc then, Bloc next);
 bool is_bloc_terminated();
-void create_branch(Bloc bloc);
-void position_at(Bloc bloc);
-void position_last(Bloc bloc);
+void create_jmp(Bloc bloc);
+void create_at(Bloc bloc);
+void create_last_label(Bloc bloc);
 
 // end LLVM code
 
@@ -173,6 +173,7 @@ enum Type {
     FCALL,
 
     IF, ELIF, ELSE,
+    WHILE,
 
     DEC_VAR,
     LOAD_VAR,

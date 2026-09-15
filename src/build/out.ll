@@ -6,25 +6,20 @@ target triple = "x86_64-pc-linux-gnu"
 define i32 @main() {
 entry:
   %a = alloca i32, align 4
-  store i32 10, i32* %a, align 4
+  store i32 0, i32* %a, align 4
+  br label %cond
+
+cond:                                             ; preds = %then, %entry
   %a1 = load i32, i32* %a, align 4
-  %EQ = icmp eq i32 %a1, 1
-  br i1 %EQ, label %then, label %elif
+  %LT = icmp slt i32 %a1, 10
+  br i1 %LT, label %then, label %endwhile
 
-then:                                             ; preds = %entry
-  ret i32 1
+then:                                             ; preds = %cond
+  br label %cond
 
-elif:                                             ; preds = %entry
-  %a3 = load i32, i32* %a, align 4
-  %EQ4 = icmp eq i32 %a3, 2
-  br i1 %EQ4, label %then2, label %else
-
-then2:                                            ; preds = %elif
-  ret i32 2
-
-else:                                             ; preds = %elif
-  ret i32 3
-
-endif:                                            ; No predecessors!
+endwhile:                                         ; preds = %cond
+  %a2 = load i32, i32* %a, align 4
+  %ADD = add i32 %a2, 1
+  store i32 %ADD, i32* %a, align 4
   ret i32 0
 }

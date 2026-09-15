@@ -2,13 +2,8 @@
 
 
 fn main() i32:
-    a i32 = 10
-    if a == 1:
-        return 1
-        if a == 2:
-            return 4
-    elif a == 2:
-        return 2
-    else:
-        return 3
+    a i32 = 0
+    while a < 10:
+        a = a + 1
+    
     

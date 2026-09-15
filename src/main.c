@@ -33,6 +33,7 @@ const char *to_string(Type type) {
         [FCALL] = "FCALL",
 
         [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
+        [WHILE] = "WHILE",
 
         [DEC_VAR] = "DEC_VAR", [LOAD_VAR] = "LOAD_VAR",
         [END] = "END",
@@ -287,6 +288,7 @@ Token *parse_token(Type type, size_t s, size_t e, size_t space) {
             { "if", { .type = IF } },
             { "elif", { .type = ELIF } },
             { "else", { .type = ELSE } },
+            { "while", { .type = WHILE } },
             { NULL },
         };
         size_t i = 0;
@@ -576,7 +578,18 @@ Node *prime_node(void) {
                     push_back(curr->children, expr_node(0));
             }
         }
-
+        return node;
+    }
+    case WHILE: {
+        node = new_node(token);
+        node->left = expr_node(0); // condition
+        if (peek(0)->type != DOTS) {
+            eprint("expected ':' after while loop\n");
+            exit(1);
+        }
+        next();
+        while (inside(node->token->space))
+            push_back(node->children, expr_node(0));
         return node;
     }
     default: { // TODO: replace this with unexpected token
@@ -760,12 +773,10 @@ void analyze(Node *node) {
         // TODOL check compatibility
         analyze(node->left);
         break;
-    } // clang-format off
+    }
     case IF: {
-        // clang-format on
         enter_scope(node);
-        // TODO: check condition type is boolean
-        analyze(node->left);
+        analyze(node->left); // TODO: check condition type is boolean
         for (size_t i = 0; i < node->children_count; i++)
             analyze(node->children[i]);
         Node *curr = node->right;
@@ -778,6 +789,14 @@ void analyze(Node *node) {
             curr = curr->right;
             exit_scope();
         }
+        exit_scope();
+        break;
+    }
+    case WHILE: {
+        enter_scope(node);
+        analyze(node->left); // TODO: check condition type is boolean
+        for (size_t i = 0; i < node->children_count; i++)
+            analyze(node->children[i]);
         exit_scope();
         break;
     }
@@ -897,31 +916,48 @@ void code_gen(Node *node) {
         break;
     }
     case IF: {
-        Bloc end = create_bloc("endif");
+        Bloc end = create_label("endif");
         for (Node *curr = node; curr; curr = curr->right) {
             enter_scope(curr);
             if (curr->token->type == ELSE) {
                 gen_body(curr);
-                create_branch(end);
+                create_jmp(end);
                 exit_scope();
                 break;
             }
-            Bloc then = create_bloc("then");
+            Bloc then = create_label("then");
             Bloc next;
             if (curr->right)
-                next = create_bloc(curr->right->token->type == ELSE ? "else" : "elif");
+                next = create_label(curr->right->token->type == ELSE ? "else" : "elif");
             else
                 next = end;
 
-
             code_gen(curr->left);
-            create_condition_branch(curr->left->token->llvm.elem, then, next);
+            create_jmp_condition(curr->left->token->llvm.elem, then, next);
             gen_body(curr);
-            create_branch(end);
+            create_jmp(end);
             exit_scope();
-            position_at(next);
-            position_last(end);
+            create_at(next);
+            create_last_label(end);
         }
+        break;
+    }
+    case WHILE: {
+        Bloc cond = create_label("cond");
+        Bloc then = create_label("then");
+        Bloc end = create_label("endwhile");
+
+        enter_scope(node);
+        create_jmp(cond);
+        code_gen(node->left);
+        create_jmp_condition(node->left->token->llvm.elem, then, end);
+
+        gen_body(node);
+        create_jmp(cond);
+        exit_scope();
+
+        create_at(end);
+        // create_last_label(end);
         break;
     }
     default:
@@ -945,8 +981,6 @@ void generate_asm(void) {
 /*
 TODO:
     + start creating an abstraction on top of llvm
-    + if/elif/else
-    + while
     + break/continue
     + ref arguments
     + struct
