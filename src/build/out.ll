@@ -7,13 +7,24 @@ define i32 @main() {
 entry:
   %a = alloca i32, align 4
   store i32 10, i32* %a, align 4
-  %b = alloca i32, align 4
-  store i32 11, i32* %b, align 4
-  %c = alloca i1, align 1
   %a1 = load i32, i32* %a, align 4
-  %b2 = load i32, i32* %b, align 4
-  %NQ = icmp ne i32 %a1, %b2
-  store i1 %NQ, i1* %c, align 1
-  %c3 = load i1, i1* %c, align 1
-  ret i1 %c3
+  %EQ = icmp eq i32 %a1, 1
+  br i1 %EQ, label %then, label %elif
+
+then:                                             ; preds = %entry
+  ret i32 1
+
+elif:                                             ; preds = %entry
+  %a3 = load i32, i32* %a, align 4
+  %EQ4 = icmp eq i32 %a3, 2
+  br i1 %EQ4, label %then2, label %else
+
+then2:                                            ; preds = %elif
+  ret i32 2
+
+else:                                             ; preds = %elif
+  ret i32 3
+
+endif:                                            ; No predecessors!
+  ret i32 0
 }

@@ -3,6 +3,12 @@
 
 fn main() i32:
     a i32 = 10
-    b i32 = 11
-    c b1 = a != b
-    return c
+    if a == 1:
+        return 1
+        if a == 2:
+            return 4
+    elif a == 2:
+        return 2
+    else:
+        return 3
+    
