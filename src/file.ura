@@ -1,11 +1,10 @@
 
 
+// pointer syntax
+// p ref(i32) = own(a)
 
 fn main() i32:
     a i32 = 0
     while a < 10:
-        if a == 3:
-            a = a + 2
-            continue
         a = a + 1
-    return a
+

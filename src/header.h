@@ -91,9 +91,9 @@ struct ASM {
 void asm_init(char *name);
 void asm_finalize(char *ll_path);
 TypeRef get_llvm_type(Type type);
-Value create_variable(Node *node);
+Value create_variable(Token *var, Token *data_type);
 Value create_value(Token *token);
-Value create_load(Token *token);
+Value create_load(Token *var, Token *data_type);
 Value create_math_op(Token *left, Token *op_token, Token *right);
 Value create_comparision_op(Token *left, Token *op_token, Token *right);
 Value create_assign(Token *left, Token *right);
@@ -102,6 +102,7 @@ void create_entry(Token *token);
 Value create_param(Token *fn, Token *param, size_t pos);
 Value create_function_call(Node *node);
 Value create_return(Token *token);
+void create_default_return(Node *node);
 Value get_parent_bloc();
 Bloc create_label(char *name);
 void create_jmp_condition(Value cond, Bloc then, Bloc next);
@@ -156,11 +157,11 @@ typedef struct _IO_FILE *File;
 #define eprint(...) _eprint(FILE, LINE, __VA_ARGS__)
 
 struct uraFile {
-    char *name;      
-    char *dir;      
-    char *base;      
-    char *build_dir; 
-    char *ll_path;  
+    char *name;
+    char *dir;
+    char *base;
+    char *build_dir;
+    char *ll_path;
     size_t len;
     char *content;
 };
@@ -171,6 +172,7 @@ enum Type {
     IDENTIFIER,
 
     VOID, I32, BOOL,
+    REF, OWN,
 
     LPARENT, RPARENT, DOTS,
 
@@ -185,8 +187,8 @@ enum Type {
     IF, ELIF, ELSE,
     WHILE, BRK, CNT,
 
-    DEC_VAR,
-    LOAD_VAR,
+    DEC_VAR, VAR, LOAD_VAR,
+
     END,
 };
 // clang-format on
@@ -238,6 +240,7 @@ struct Ura {
     int errors_count;
     expand(uraFile *, files);
     expand(Token *, tokens);
+    expand(Node *, nodes);
     expand(Node *, scopes);
     Node *scope;
 
