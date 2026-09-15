@@ -1,207 +1,8 @@
-#include <ctype.h>
-#include <fcntl.h>
-#include <libgen.h>
-#include <limits.h>
-#include <llvm-c/Analysis.h>
-#include <llvm-c/BitWriter.h>
-#include <llvm-c/Core.h>
-#include <llvm-c/DebugInfo.h>
-#include <llvm-c/Target.h>
-#include <llvm-c/TargetMachine.h>
-#include <llvm/Config/llvm-config.h>
-#if LLVM_VERSION_MAJOR >= 13
-#    if LLVM_VERSION_MAJOR == 13
-// LLVM 13's PassBuilder.h declares LLVMCreatePassBuilderOptions() without
-// (void), tripping the strict-prototypes error its own headers switch on
-#        undef LLVM_C_STRICT_PROTOTYPES_BEGIN
-#        undef LLVM_C_STRICT_PROTOTYPES_END
-#        define LLVM_C_STRICT_PROTOTYPES_BEGIN
-#        define LLVM_C_STRICT_PROTOTYPES_END
-#    endif
-#    include <llvm-c/Transforms/PassBuilder.h>
-#else
-#    include <llvm-c/Transforms/PassManagerBuilder.h>
-#endif
-#include <signal.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <time.h>
-#include <unistd.h>
-#include <assert.h>
+#include "header.h"
 
-#ifndef bool
-#    define bool  int
-#    define true  1
-#    define false 0
-#endif
-
-#if defined(__APPLE__)
-#    include <mach-o/dyld.h>
-typedef struct __sFILE *File;
-#elif defined(__linux__)
-typedef struct _IO_FILE *File;
-#endif
-
-#define FILE       __FILE__
-#define LINE       __LINE__
-#define FUNC       __func__
-#define TAB        4 /*TODO: to be checked if can be got from some c function*/
-
-#define RESET      "\033[0m"
-#define BOLD       "\033[1m"
-#define GREEN(fmt) BOLD "\033[0;32m" fmt RESET
-#define RED(fmt)   BOLD "\033[0;31m" fmt RESET
-#define CYAN(fmt)  BOLD "\033[0;36m" fmt RESET
-// #define BLUE(fmt)  BOLD "\033[34m" fmt RESET
-// #define YELLOW(fmt) BOLD "\033[0;33m" fmt RESET
-
-#define expand(type, variable) \
-    type *variable;            \
-    size_t variable##_count;   \
-    size_t variable##_size;
-
-#define push_back(parent, child)                                              \
-    {                                                                         \
-        if (parent##_size == 0) /* empty */                                   \
-            parent = ura_alloc((parent##_size = 10), sizeof(*parent));        \
-        else if (parent##_count + 1 == parent##_size)                         \
-            parent = realloc(parent, (parent##_size *= 2) * sizeof(*parent)); \
-        parent[parent##_count++] = child;                                     \
-    }
-
-typedef struct uraFile uraFile;
-typedef enum Type Type;
-typedef struct Token Token;
-typedef struct Node Node;
-typedef LLVMTypeRef TypeRef;
-typedef LLVMContextRef Context;
-typedef LLVMModuleRef Module;
-typedef LLVMBuilderRef Builder;
-typedef LLVMBasicBlockRef Bloc;
-typedef LLVMValueRef Value;
-typedef LLVMTargetDataRef TargetData;
-typedef LLVMTargetRef Target;
-typedef LLVMTargetMachineRef TargetMachine;
-typedef LLVMTypeKind TypeKind;
-typedef LLVMAttributeRef AttributeRef;
-typedef LLVMMetadataRef MetadataRef;
-#if LLVM_VERSION_MAJOR >= 13
-typedef LLVMErrorRef Error;
-typedef LLVMPassBuilderOptionsRef PassBuilderOptions;
-#endif
-
-#define PointerType  LLVMPointerTypeKind
-#define IntegerType  LLVMIntegerTypeKind
-#define FloatType    LLVMFloatTypeKind
-#define DoubleType   LLVMDoubleTypeKind
-#define VoidType     LLVMVoidTypeKind
-#define FunctionType LLVMFunctionTypeKind
-#define StructType   LLVMStructTypeKind
-
-int _print(File fp, const char *fmt, va_list args);
-int _eprint(char *file, int line, char *fmt, ...);
-#define eprint(...) _eprint(FILE, LINE, __VA_ARGS__)
-Node *expr_node(int min_op);
-void enter_scope(Node *node);
-void exit_scope(void);
-
-struct uraFile {
-    char *filename;
-    size_t len;
-    char *content;
-};
-
-// clang-format off
-enum Type {
-    NONE,
-    IDENTIFIER,
-
-    VOID, I32, BOOL,
-
-    LPARENT, RPARENT, DOTS,
-
-    ASSIGN,
-    ADD, SUB, MUL, DIV, MOD,
-
-    GT, LT, GE, LE, EQ, NQ,
-
-    FDEC, ARGS, COMA,
-    RETURN,
-    FCALL,
-
-
-    DEC_VAR,
-    LOAD_VAR,
-    END,
-};
-// clang-format on
-
-struct Token {
-    Type type;
-    Type ret_type;
-
-    bool is_type;
-    size_t space;
-
-    // TODO: move this in asm.c
-    struct {
-        // bool is_set;
-        // bool is_loaded;
-
-        Value elem;
-        Bloc bloc;
-        TypeRef func_type;
-    } llvm;
-
-    struct {
-        char *name;
-        // struct {} Fn;
-        struct {
-            long value;
-        } i32;
-        struct {
-            int value;
-        } b1;
-    };
-};
-
-struct Node {
-    Token *token;
-
-    Node *left;
-    Node *right;
-
-    expand(Node *, children);
-    expand(Node *, functions);
-    expand(Node *, variables);
-};
-
-struct {
-    int errors_count;
-    expand(uraFile *, files);
-    expand(Token *, tokens);
-    expand(Node *, scopes);
-    Node *scope;
-
-    char *curr_content;
-    size_t exe_pos;
-
-    Node *ast;
-
-    Context context;
-    Module module;
-    Builder builder;
-} ura;
+Ura ura;
 
 // MEMORY/ERROR/LOGGING HANDLING
-
 void *ura_alloc(size_t count, size_t size) {
     void *res = calloc(count, size);
     if (!res) {
@@ -230,6 +31,8 @@ const char *to_string(Type type) {
         [FDEC] = "FDEC", [ARGS] = "ARGS", [COMA] = "COMA",
         [RETURN] = "RETURN", 
         [FCALL] = "FCALL",
+
+        [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
 
         [DEC_VAR] = "DEC_VAR", [LOAD_VAR] = "LOAD_VAR",
         [END] = "END",
@@ -481,6 +284,9 @@ Token *parse_token(Type type, size_t s, size_t e, size_t space) {
             { "False", { .type = BOOL, .b1 = { .value = false } } },
             { "fn", { .type = FDEC } },
             { "return", { .type = RETURN } },
+            { "if", { .type = IF } },
+            { "elif", { .type = ELIF } },
+            { "else", { .type = ELSE } },
             { NULL },
         };
         size_t i = 0;
@@ -649,7 +455,7 @@ Node *prime_node(void) {
             node = new_node(token);
             node->left = new_node(new_token(ARGS, node->token->space));
             while (!includes(peek(0)->type, RPARENT, 0)) {
-                Node *arg = prime_node();
+                Node *arg = expr_node(0);
                 push_back(node->left->children, arg);
                 if (!includes(peek(0)->type, RPARENT, COMA, 0)) {
                     eprint("expect ',' between arguments");
@@ -731,6 +537,46 @@ Node *prime_node(void) {
     case RETURN: {
         node = new_node(token);
         node->left = expr_node(0);
+        return node;
+    }
+    case IF: {
+        node = new_node(token);
+        node->left = expr_node(0); // condition
+        if (peek(0)->type != DOTS) {
+            eprint("expected ':' after if statement\n");
+            exit(1);
+        }
+        next();
+        while (inside(node->token->space))
+            push_back(node->children, expr_node(0));
+
+        Node *curr = node;
+        while (inside(node->token->space - TAB)) { // TODO: this might overflow
+            Token *next_token = peek(0);
+            if (!includes(next_token->type, ELIF, ELSE, 0))
+                break;
+
+            curr->right = new_node(next());
+            curr = curr->right;
+
+            if (next_token->type == ELIF) {
+                curr->left = expr_node(0); // condition
+                if (next()->type != DOTS) {
+                    eprint("expected dots after elif\n");
+                    exit(0);
+                }
+                while (inside(curr->token->space))
+                    push_back(curr->children, expr_node(0));
+            } else if (next_token->type == ELSE) {
+                if (next()->type != DOTS) {
+                    eprint("expected dots after elif\n");
+                    exit(0);
+                }
+                while (inside(curr->token->space))
+                    push_back(curr->children, expr_node(0));
+            }
+        }
+
         return node;
     }
     default: { // TODO: replace this with unexpected token
@@ -841,10 +687,13 @@ void declare_variable(Node *node) {
 }
 
 Token *find_variable(char *name) {
-    for (size_t i = 0; i < ura.scope->variables_count; i++) {
-        Node *curr = ura.scope->variables[i];
-        if (strcmp(curr->token->name, name) == 0)
-            return ura.scope->variables[i]->token;
+    for (size_t i = ura.scopes_count - 1; i >= 0; i--) {
+        Node *scope = ura.scopes[i];
+        for (size_t i = 0; i < scope->variables_count; i++) {
+            Node *curr = scope->variables[i];
+            if (strcmp(curr->token->name, name) == 0)
+                return scope->variables[i]->token;
+        }
     }
     eprint("variable '%s' not found", name);
     exit(1);
@@ -869,8 +718,7 @@ void analyze(Node *node) {
         // TODO: later on try declaring structs/enum at the bottom
         declare_variable(node->left);
         break;
-    }
-        // clang-format off
+    } // clang-format off
     case I32: case BOOL: {
         // clang-format on
         break;
@@ -882,8 +730,7 @@ void analyze(Node *node) {
             node->left->token = find_variable(node->left->token->name);
         analyze(node->right);
         break;
-    }
-        // clang-format off
+    } // clang-format off
     case GT: case LT: case GE: case LE: case EQ: case NQ:
     case SUB: case ADD: case MUL: case DIV: case MOD: {
         // clang-format on
@@ -913,6 +760,26 @@ void analyze(Node *node) {
         // TODOL check compatibility
         analyze(node->left);
         break;
+    } // clang-format off
+    case IF: {
+        // clang-format on
+        enter_scope(node);
+        // TODO: check condition type is boolean
+        analyze(node->left);
+        for (size_t i = 0; i < node->children_count; i++)
+            analyze(node->children[i]);
+        Node *curr = node->right;
+        while (curr) {
+            enter_scope(curr);
+            if (curr->left) // elif
+                analyze(curr->left);
+            for (size_t i = 0; i < curr->children_count; i++)
+                analyze(curr->children[i]);
+            curr = curr->right;
+            exit_scope();
+        }
+        exit_scope();
+        break;
     }
     default:
         eprint("handle this case %t\n", node->token->type);
@@ -926,6 +793,8 @@ void type_check(Node *node) {
 }
 
 void generate_ir(void) {
+    if (ura.errors_count)
+        return;
     enter_scope(ura.ast);
     // skip last one because it's ura scope
     // TODO: to be cheked later because
@@ -942,8 +811,13 @@ void generate_ir(void) {
 }
 
 // ASSEMBLY
-#include "asm.c"
-
+void gen_body(Node *node) {
+    for (size_t i = 0; i < node->children_count; i++) {
+        code_gen(node->children[i]);
+        if (is_bloc_terminated())
+            break;
+    }
+}
 void code_gen(Node *node) {
     if (ura.errors_count)
         return;
@@ -952,8 +826,7 @@ void code_gen(Node *node) {
         node->left->token->llvm.elem = create_variable(node->left);
         node->token = node->left->token;
         break;
-    }
-        // clang-format off
+    } // clang-format off
     case I32: case BOOL :{
         // clang-format on
         node->token->llvm.elem = create_value(node->token);
@@ -964,8 +837,15 @@ void code_gen(Node *node) {
         node->token->llvm.elem = create_load(var);
         node->token->type = var->type;
         break;
-    }
-        // clang-format off
+    } // clang-format off
+    case SUB: case ADD: case MUL: case DIV: case MOD: {
+        // clang-format on
+        code_gen(node->left);
+        code_gen(node->right);
+        // TODO: check compatibility
+        node->token->llvm.elem = create_math_op(node->left->token, node->token, node->right->token);
+        break;
+    } // clang-format off
     case GT: case LT: case GE: case LE: case EQ: case NQ: {
         // clang-format on
         code_gen(node->left);
@@ -973,15 +853,6 @@ void code_gen(Node *node) {
         // TODO: check compatibility
         node->token->llvm.elem =
             create_comparision_op(node->left->token, node->token, node->right->token);
-        break;
-    }
-        // clang-format off
-    case SUB: case ADD: case MUL: case DIV: case MOD: {
-        // clang-format on
-        code_gen(node->left);
-        code_gen(node->right);
-        // TODO: check compatibility
-        node->token->llvm.elem = create_math_op(node->left->token, node->token, node->right->token);
         break;
     }
     case ASSIGN: {
@@ -1009,15 +880,12 @@ void code_gen(Node *node) {
             create_param(node->token, node->left->children[i]->token, i);
         }
         // code gen children
-        for (size_t i = 0; i < node->children_count; i++)
-            code_gen(node->children[i]);
-
+        gen_body(node);
         exit_scope();
         break;
     }
     case FCALL: {
         for (size_t i = 0; i < node->left->children_count; i++) {
-            assert(node->left->children[i] != NULL);
             code_gen(node->left->children[i]);
         }
         node->token->llvm.elem = create_function_call(node);
@@ -1028,6 +896,34 @@ void code_gen(Node *node) {
         node->token->llvm.elem = create_return(node->left->token);
         break;
     }
+    case IF: {
+        Bloc end = create_bloc("endif");
+        for (Node *curr = node; curr; curr = curr->right) {
+            enter_scope(curr);
+            if (curr->token->type == ELSE) {
+                gen_body(curr);
+                create_branch(end);
+                exit_scope();
+                break;
+            }
+            Bloc then = create_bloc("then");
+            Bloc next;
+            if (curr->right)
+                next = create_bloc(curr->right->token->type == ELSE ? "else" : "elif");
+            else
+                next = end;
+
+
+            code_gen(curr->left);
+            create_condition_branch(curr->left->token->llvm.elem, then, next);
+            gen_body(curr);
+            create_branch(end);
+            exit_scope();
+            position_at(next);
+            position_last(end);
+        }
+        break;
+    }
     default:
         eprint("handle this case %t\n", node->token->type);
         exit(1);
@@ -1035,72 +931,20 @@ void code_gen(Node *node) {
     }
 }
 
-void init_module(char *name) {
-    ura.context = LLVMContextCreate();
-    ura.module = LLVMModuleCreateWithNameInContext(name, ura.context);
-    ura.builder = LLVMCreateBuilderInContext(ura.context);
-
-    LLVMInitializeNativeTarget();
-    LLVMInitializeNativeAsmPrinter();
-    // LLVMInitializeNativeAsmParser(); // TODO: to be checked
-
-    char *triple = LLVMGetDefaultTargetTriple();
-    LLVMSetTarget(ura.module, triple);
-    Target target;
-    if (!LLVMGetTargetFromTriple(triple, &target, NULL)) {
-        TargetMachine machine =
-            LLVMCreateTargetMachine(target, triple, "", "", LLVMCodeGenLevelDefault,
-                                    LLVMRelocDefault, LLVMCodeModelDefault);
-        TargetData layout = LLVMCreateTargetDataLayout(machine);
-        LLVMSetModuleDataLayout(ura.module, layout);
-        LLVMDisposeTargetData(layout);
-        LLVMDisposeTargetMachine(machine);
-    }
-    LLVMDisposeMessage(triple);
-
-    // TODO: add asan stuff here
-    // TODO: add flags stuff (Passes)
-}
-
-void finalize_module(char *ll_path) {
-}
-
 void generate_asm(void) {
+    if (ura.errors_count)
+        return;
     enter_scope(ura.ast);
-    init_module("ura-module");
-
-    for (size_t i = 0; i < ura.ast->children_count; i++) {
-        Node *node = ura.ast->children[i];
-        code_gen(node);
-    }
+    asm_init("ura-module");
+    for (size_t i = 0; i < ura.ast->children_count; i++)
+        code_gen(ura.ast->children[i]);
     exit_scope();
-
-    char *error = NULL;
-    // PassBuilderOptions opts = LLVMCreatePassBuilderOptions();
-    // if (ura.flags) {
-    //     Error err = LLVMRunPasses(ura.module, ura.flags, NULL, opts);
-    //     if (err) {
-    //         char *msg = LLVMGetErrorMessage(err);
-    //         CHECK(1, "optimizer error: %s", msg);
-    //         LLVMDisposeErrorMessage(msg);
-    //     }
-    // }
-    // if (ura.debug_builder) {
-    //     LLVMDIBuilderFinalize(ura.debug_builder);
-    //     LLVMDisposeDIBuilder(ura.debug_builder);
-    //     ura.debug_builder = NULL;
-    // }
-    if (LLVMVerifyModule(ura.module, LLVMReturnStatusAction, &error))
-        eprint("module verification failed:\n%s\n", error);
-    LLVMDisposeMessage(error);
-    // LLVMDisposePassBuilderOptions(opts);
-    LLVMPrintModuleToFile(ura.module, "build/out.ll", NULL);
+    asm_finalize("build/out.ll");
 }
 
 /*
 TODO:
     + start creating an abstraction on top of llvm
-    + logic operators
     + if/elif/else
     + while
     + break/continue
@@ -1110,6 +954,8 @@ TODO:
 */
 
 void print_nodes(char *text) {
+    if (ura.errors_count)
+        return;
     print(text);
     for (size_t i = 0; i < ura.ast->children_count; i++)
         print_node(ura.ast->children[i]);

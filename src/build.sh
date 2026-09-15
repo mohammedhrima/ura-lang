@@ -68,7 +68,7 @@ for lib in $("$LLVM_CONFIG" --system-libs); do
 done
 
 mkdir -p build
-$CC $FLAGS $("$LLVM_CONFIG" --cflags) main.c $LIBS -o build/ura || {
+$CC $FLAGS $("$LLVM_CONFIG" --cflags) main.c asm.c $LIBS -o build/ura || {
    echo "build.sh: build failed against LLVM $VERSION; to try another one:" >&2
    echo "    LLVM_CONFIG=/path/to/llvm-config ./build.sh" >&2
    exit 1
