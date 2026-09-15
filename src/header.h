@@ -150,7 +150,11 @@ typedef struct _IO_FILE *File;
 #define eprint(...) _eprint(FILE, LINE, __VA_ARGS__)
 
 struct uraFile {
-    char *filename;
+    char *name;      
+    char *dir;      
+    char *base;      
+    char *build_dir; 
+    char *ll_path;  
     size_t len;
     char *content;
 };
@@ -238,6 +242,7 @@ struct Ura {
     Context context;
     Module module;
     Builder builder;
+    char *exec;
 };
 
 extern Ura ura;
