@@ -230,6 +230,10 @@ bool is_bloc_terminated() {
     return LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ura.builder)) != NULL;
 }
 
+void create_jmp_out(Bloc bloc) {
+    LLVMBuildBr(ura.builder, bloc);
+}
+
 void create_jmp(Bloc bloc) {
     if (!is_bloc_terminated())
         LLVMBuildBr(ura.builder, bloc);

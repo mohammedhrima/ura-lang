@@ -81,6 +81,11 @@ struct ASM {
     Value elem;
     Bloc bloc;
     TypeRef func_type;
+
+    // while loop stuff
+    Bloc cond;
+    Bloc then;
+    Bloc end;
 };
 
 void asm_init(char *name);
@@ -101,6 +106,7 @@ Value get_parent_bloc();
 Bloc create_label(char *name);
 void create_jmp_condition(Value cond, Bloc then, Bloc next);
 bool is_bloc_terminated();
+void create_jmp_out(Bloc bloc);
 void create_jmp(Bloc bloc);
 void create_at(Bloc bloc);
 void create_last_label(Bloc bloc);
@@ -177,7 +183,7 @@ enum Type {
     FCALL,
 
     IF, ELIF, ELSE,
-    WHILE,
+    WHILE, BRK, CNT,
 
     DEC_VAR,
     LOAD_VAR,
@@ -226,6 +232,7 @@ void exit_scope(void);
 void *ura_alloc(size_t count, size_t size);
 const char *to_string(Type type);
 void code_gen(Node *node);
+bool includes(Type to_find, ...);
 
 struct Ura {
     int errors_count;

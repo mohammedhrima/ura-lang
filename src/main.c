@@ -33,7 +33,7 @@ const char *to_string(Type type) {
         [FCALL] = "FCALL",
 
         [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
-        [WHILE] = "WHILE",
+        [WHILE] = "WHILE", [BRK] = "BRK", [CNT] = "CNT",
 
         [DEC_VAR] = "DEC_VAR", [LOAD_VAR] = "LOAD_VAR",
         [END] = "END",
@@ -174,7 +174,8 @@ void print_helper(NodePrint *elems, Node *node, int depth) {
     push_back(elems->nodes, node);
     push_back(elems->depths, depth);
 
-    print_helper(elems, node->left, depth + 2);
+    if (!includes(node->token->type, BRK, CNT, 0))
+        print_helper(elems, node->left, depth + 2);
     print_helper(elems, node->right, depth + 2);
     for (size_t i = 0; i < node->children_count; i++)
         print_helper(elems, node->children[i], depth + 2);
@@ -266,7 +267,8 @@ void free_node(Node *node) {
         return;
     for (size_t i = 0; i < node->children_count; i++)
         free_node(node->children[i]);
-    free_node(node->left);
+    if (!includes(node->token->type, BRK, CNT, 0))
+        free_node(node->left);
     if (node->token->type != FCALL)
         free_node(node->right);
     free(node->children);
@@ -302,17 +304,18 @@ Token *parse_token(Type type, size_t s, size_t e, size_t space) {
             char *value;
             Token token;
         } keywords[] = {
+            // clang-format off
             { "i32", { .type = I32, .is_type = true } },
             { "b1", { .type = BOOL, .is_type = true } },
             { "True", { .type = BOOL, .b1 = { .value = true } } },
             { "False", { .type = BOOL, .b1 = { .value = false } } },
-            { "fn", { .type = FDEC } },
-            { "return", { .type = RETURN } },
-            { "if", { .type = IF } },
-            { "elif", { .type = ELIF } },
+            { "fn", { .type = FDEC } }, { "return", { .type = RETURN } },
+            { "if", { .type = IF } }, { "elif", { .type = ELIF } },
             { "else", { .type = ELSE } },
-            { "while", { .type = WHILE } },
+            { "while", { .type = WHILE } }, { "break", { .type = BRK } },
+            { "continue", { .type = CNT } },
             { NULL },
+            // clang-format on
         };
         size_t i = 0;
         for (; keywords[i].value; i++) {
@@ -577,7 +580,7 @@ Node *prime_node(void) {
             push_back(node->children, expr_node(0));
 
         Node *curr = node;
-        while (inside(node->token->space - 1)) { 
+        while (inside(node->token->space - 1)) {
             // TODO: space - 1 this might overflow
             // space is size_t
             Token *next_token = peek(0);
@@ -618,6 +621,9 @@ Node *prime_node(void) {
             push_back(node->children, expr_node(0));
         return node;
     }
+    case BRK:
+    case CNT:
+        return new_node(token);
     default: { // TODO: replace this with unexpected token
         eprint("handle this case %t\n", token->type);
         break;
@@ -826,6 +832,19 @@ void analyze(Node *node) {
         exit_scope();
         break;
     }
+        // clang-format off
+    case CNT: case BRK: {
+        // clang-format on
+        for (size_t i = ura.scopes_count - 1; i >= 0; i--) {
+            Node *scope = ura.scopes[i];
+            if (includes(scope->token->type, WHILE, 0)) {
+                node->left = scope;
+                break;
+            }
+        }
+        // TODO: handle if not inside 'while' loop or 'case'
+        break;
+    }
     default:
         eprint("handle this case %t\n", node->token->type);
         exit(1);
@@ -972,6 +991,9 @@ void code_gen(Node *node) {
         Bloc cond = create_label("cond");
         Bloc then = create_label("then");
         Bloc end = create_label("endwhile");
+        node->token->llvm.cond = cond;
+        node->token->llvm.then = then;
+        node->token->llvm.end = end;
 
         enter_scope(node);
         create_jmp(cond);
@@ -986,6 +1008,16 @@ void code_gen(Node *node) {
         // create_last_label(end);
         break;
     }
+        // clang-format off
+    case CNT: {
+        create_jmp_out(node->left->token->llvm.cond);
+        break;
+    }
+    case BRK: {
+        create_jmp_out(node->left->token->llvm.end);
+        break;
+    }
+    // clang-format on
     default:
         eprint("handle this case %t\n", node->token->type);
         exit(1);
@@ -1026,14 +1058,6 @@ void compile_executable(uraFile *file) {
         eprint("clang failed to compile %s\n", file->ll_path);
 }
 
-/*
-TODO:
-    + start creating an abstraction on top of llvm
-    + break/continue
-    + ref arguments
-    + struct
-    + function inside function
-*/
 
 void print_nodes(char *text) {
     if (ura.errors_count)
@@ -1068,6 +1092,15 @@ void parse_arguments(int ac, char **av) {
         }
     }
 }
+
+/*
+TODO:
+    + start creating an abstraction on top of llvm
+    + break/continue
+    + ref arguments
+    + struct
+    + function inside function
+*/
 
 int main(int ac, char **av) {
     parse_arguments(ac, av);
