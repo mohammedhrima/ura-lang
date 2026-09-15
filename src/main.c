@@ -206,16 +206,33 @@ void print_node(Node *node) {
 }
 
 // FILE HANDLING
-void new_file(char *filename) {
+void new_file(char *name) {
     uraFile *file = ura_alloc(1, sizeof(uraFile));
     if (file == NULL) {
         eprint("calloc failed\n");
         return;
     }
-    file->filename = filename;
+    // TODO: check this one when implementing arena allocator
+    file->name = strdup(name);
     push_back(ura.files, file);
 
-    File fp = fopen(filename, "r");
+    char *slash = strrchr(name, '/');
+    if (slash) {
+        file->dir = strdup(name);
+        file->dir[slash - name] = '\0';
+        file->base = strdup(slash + 1);
+    } else {
+        file->dir = strdup(".");
+        file->base = strdup(name);
+    }
+    char *dot = strrchr(file->base, '.');
+    if (dot)
+        *dot = '\0';
+    file->build_dir = format("%s/build", file->dir);
+    mkdir(file->build_dir, 0755);
+    file->ll_path = format("%s/%s.ll", file->build_dir, file->base);
+
+    File fp = fopen(name, "r");
     if (fp == NULL) {
         eprint("fopen failed\n");
         return;
@@ -226,10 +243,15 @@ void new_file(char *filename) {
     rewind(fp);
     file->content = ura_alloc(file->len + 1, sizeof(char));
     fread(file->content, file->len, sizeof(char), fp);
+    fclose(fp);
 }
 
 void close_file(uraFile *file) {
-    free(file->filename);
+    free(file->name);
+    free(file->dir);
+    free(file->base);
+    free(file->build_dir);
+    free(file->ll_path);
     free(file->content);
     free(file);
 }
@@ -272,6 +294,7 @@ Token *new_token(Type type, size_t space) {
 Token *parse_token(Type type, size_t s, size_t e, size_t space) {
     Token *new = new_token(type, (space / TAB + (space % TAB != 0 ? 1 : 0)));
     new->type = type;
+    space = new->space;
     switch (type) {
     case IDENTIFIER: {
         // if(e - s == 0) break;
@@ -320,8 +343,9 @@ Token *parse_token(Type type, size_t s, size_t e, size_t space) {
     return new;
 }
 
-void tokenize(char *content) {
-    ura.curr_content = content;
+void tokenize(uraFile *file) {
+    ura.curr_content = file->content;
+    char *content = file->content;
     size_t s = 0;
     size_t e = 0;
     size_t space = 0;
@@ -553,7 +577,9 @@ Node *prime_node(void) {
             push_back(node->children, expr_node(0));
 
         Node *curr = node;
-        while (inside(node->token->space - TAB)) { // TODO: this might overflow
+        while (inside(node->token->space - 1)) { 
+            // TODO: space - 1 this might overflow
+            // space is size_t
             Token *next_token = peek(0);
             if (!includes(next_token->type, ELIF, ELSE, 0))
                 break;
@@ -561,7 +587,7 @@ Node *prime_node(void) {
             curr->right = new_node(next());
             curr = curr->right;
 
-            if (next_token->type == ELIF) {
+            if (curr->token->type == ELIF) {
                 curr->left = expr_node(0); // condition
                 if (next()->type != DOTS) {
                     eprint("expected dots after elif\n");
@@ -569,7 +595,7 @@ Node *prime_node(void) {
                 }
                 while (inside(curr->token->space))
                     push_back(curr->children, expr_node(0));
-            } else if (next_token->type == ELSE) {
+            } else if (curr->token->type == ELSE) {
                 if (next()->type != DOTS) {
                     eprint("expected dots after elif\n");
                     exit(0);
@@ -967,7 +993,7 @@ void code_gen(Node *node) {
     }
 }
 
-void generate_asm(void) {
+void generate_asm(uraFile *file) {
     if (ura.errors_count)
         return;
     enter_scope(ura.ast);
@@ -975,7 +1001,29 @@ void generate_asm(void) {
     for (size_t i = 0; i < ura.ast->children_count; i++)
         code_gen(ura.ast->children[i]);
     exit_scope();
-    asm_finalize("build/out.ll");
+    asm_finalize(file->ll_path);
+}
+
+void compile_executable(uraFile *file) {
+    if (ura.errors_count)
+        return;
+
+    char *argv[] = { "clang", file->ll_path, "-o", ura.exec, NULL };
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        eprint("fork failed\n");
+        return;
+    }
+    if (pid == 0) {
+        execvp(argv[0], argv);
+        _exit(127);
+    }
+
+    int status = 0;
+    waitpid(pid, &status, 0);
+    if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+        eprint("clang failed to compile %s\n", file->ll_path);
 }
 
 /*
@@ -995,23 +1043,51 @@ void print_nodes(char *text) {
         print_node(ura.ast->children[i]);
 }
 
-int main() {
-    new_file(strdup("./file.ura"));
+void parse_arguments(int ac, char **av) {
+    if (ac < 2) {
+        eprint("expected argument: ura <file_name>.ura\n");
+        return;
+    }
+    ura.exec = "exe.out";
+    for (int i = 1; i < ac && !ura.errors_count; i++) {
+        char *arg = av[i];
+        if (strcmp(arg, "-o") == 0) {
+            if (i + 1 >= ac) {
+                eprint("expected argument: ura <file_name>.ura\n");
+                return;
+            }
+            ura.exec = av[++i]; // output file
+        } else {
+            size_t n = strlen(arg);
+            bool is_ura = n > 4 && strcmp(arg + n - 4, ".ura") == 0;
+            if (!is_ura) {
+                eprint("Invalid file '%s'\n", arg);
+                return;
+            }
+            new_file(arg);
+        }
+    }
+}
+
+int main(int ac, char **av) {
+    parse_arguments(ac, av);
     for (size_t i = 0; i < ura.files_count; i++) {
         uraFile *file = ura.files[i];
         print(GREEN("============TOKENIZE============\n"));
-        tokenize(file->content);
+        tokenize(file);
         generate_ast();
         print_nodes(GREEN("============AST=================\n"));
         generate_ir();
         print_nodes(GREEN("============IR==================\n"));
 #if 1
-        generate_asm();
+        generate_asm(file);
         print_nodes(GREEN("============ASM==================\n"));
+        compile_executable(file);
 #endif
         print(GREEN("============CLEANING============\n"));
         ura_clean();
     }
     free(ura.tokens);
     free(ura.files);
+    return ura.errors_count != 0;
 }

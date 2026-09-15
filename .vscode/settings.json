@@ -10,5 +10,42 @@
     "[cpp]": {
         "editor.defaultFormatter": "ms-vscode.cpptools",
         "editor.formatOnSave": true
-    }
+    },
+    "hidefiles.configurationType": "local",
+    "hidefiles.globalConfig": {
+        "profiles": [
+            {
+                "name": "Default",
+                "detail": "",
+                "description": "Test",
+                "hidden": [
+                    ".vscode/",
+                    "README.md",
+                    "LICENSE",
+                    ".gitignore",
+                    ".clang-format"
+                ]
+            },
+            {
+                "name": "Strict",
+                "detail": "Hide everything not immediately required",
+                "hidden": [
+                    "$Default"
+                ]
+            }
+        ]
+    },
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        ".vscode/": true,
+        "README.md": true,
+        "LICENSE": true,
+        ".gitignore": true,
+        ".clang-format": true
+    },
+    "hidefiles.selectedProfile": "Default"
 }
