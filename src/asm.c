@@ -216,12 +216,12 @@ Value get_parent_bloc() {
     return LLVMGetBasicBlockParent(LLVMGetInsertBlock(ura.builder));
 }
 
-Bloc create_bloc(char *name) {
+Bloc create_label(char *name) {
     Value parent = get_parent_bloc();
     return LLVMAppendBasicBlockInContext(ura.context, parent, name);
 }
 
-void create_condition_branch(Value cond, Bloc then, Bloc next) {
+void create_jmp_condition(Value cond, Bloc then, Bloc next) {
     LLVMBuildCondBr(ura.builder, cond, then, next);
     LLVMPositionBuilderAtEnd(ura.builder, then);
 }
@@ -230,16 +230,16 @@ bool is_bloc_terminated() {
     return LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ura.builder)) != NULL;
 }
 
-void create_branch(Bloc bloc) {
+void create_jmp(Bloc bloc) {
     if (!is_bloc_terminated())
         LLVMBuildBr(ura.builder, bloc);
     LLVMPositionBuilderAtEnd(ura.builder, bloc);
 }
 
-void position_at(Bloc bloc) {
+void create_at(Bloc bloc) {
     LLVMPositionBuilderAtEnd(ura.builder, bloc);
 }
 
-void position_last(Bloc bloc) {
+void create_last_label(Bloc bloc) {
     LLVMMoveBasicBlockAfter(bloc, LLVMGetLastBasicBlock(get_parent_bloc()));
 }
