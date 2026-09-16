@@ -178,7 +178,8 @@ void print_helper(NodePrint *elems, Node *node, int depth) {
 
     if (!includes(node->token->type, BRK, CNT, 0))
         print_helper(elems, node->left, depth + 2);
-    print_helper(elems, node->right, depth + 2);
+    if (!includes(node->token->type, FCALL, 0))
+        print_helper(elems, node->right, depth + 2);
     for (size_t i = 0; i < node->children_count; i++)
         print_helper(elems, node->children[i], depth + 2);
 }
@@ -403,6 +404,8 @@ void tokenize(uraFile *file) {
             size_t len = strlen(specials[i].value);
             if (strncmp(specials[i].value, content + e, len) == 0) {
                 parse_token(specials[i].type, 0, 0, space);
+                if (specials[i].type == DOTS)
+                    space += TAB;
                 e += len;
             }
         }
@@ -1019,9 +1022,8 @@ void code_gen(Node *node) {
         enter_scope(node);
 
         Token *token = node->token;
-        if (token->llvm.func_type)
-            return;
-        create_function(node);
+        // if (!token->llvm.func_type)
+        //     create_function(node);
         create_entry(token);
 
         // extract parameters as variables
@@ -1116,8 +1118,14 @@ void generate_asm(uraFile *file) {
         return;
     enter_scope(ura.ast);
     asm_init("ura-module");
-    for (size_t i = 0; i < ura.ast->children_count; i++)
+    for (size_t i = 0; i < ura.ast->children_count; i++) {
+        if (ura.ast->children[i]->token->type == FDEC) {
+            create_function(ura.ast->children[i]);
+        }
+    }
+    for (size_t i = 0; i < ura.ast->children_count; i++) {
         code_gen(ura.ast->children[i]);
+    }
     exit_scope();
     asm_finalize(file->ll_path);
 }
