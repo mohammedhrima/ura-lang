@@ -1,12 +1,10 @@
-
-
-fn foo(a ref(i32)):
-    dref(a) = 2
-
 fn main() i32:
-    a i32 = 10
-    
-    foo(own(a))
-
-    return a
-
+    i i32 = 0
+    c i32 = 0
+    while i < 3:
+        j i32 = 0
+        while j < 4:
+            c = c + 1
+            j = j + 1
+        i = i + 1
+    return c
