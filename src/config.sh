@@ -13,6 +13,9 @@
 #            rebuild first (stop if that fails), then run all tests, one
 #            file's tests, or a single test; compares the generated LLVM IR
 #            against what was recorded
+#   extension
+#            package the VS Code extension (../ura-vscode-extension) and
+#            install it into VS Code
 #   update   re-source this file after editing it
 #
 # Works when sourced from either bash or zsh. Everything else here is an
@@ -569,10 +572,22 @@ tests() {
 }
 
 # ============================================================================
+# extension - package the VS Code extension and install it into VS Code
+# ============================================================================
+extension() {
+    if make -C "$URA_ROOT/../ura-vscode-extension" install; then
+        _ura_green "extension: installed, reload VS Code to use it"
+    else
+        _ura_red "extension: failed"
+        return 1
+    fi
+}
+
+# ============================================================================
 # update - re-source this file, picking up edits made to it
 # ============================================================================
 update() {
     source "$URA_ROOT/config.sh"
 }
 
-printf '\033[0;32m(ura-lang)\033[0m ready — commands: build, copy, replace, tests, update\n'
+printf '\033[0;32m(ura-lang)\033[0m ready — commands: build, copy, replace, tests, extension, update\n'

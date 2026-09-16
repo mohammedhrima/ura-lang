@@ -1,0 +1,9 @@
+node_modules/**
+src/**
+out/**/*.map
+out/test/**
+.gitignore
+tsconfig.json
+Makefile
+*.vsix
+icons/ura.jpeg
