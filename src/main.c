@@ -557,6 +557,14 @@ Node *prime_node(void) {
         node->left = prime_node(); // TODO: expect identifier
         return node;
     }
+    case SUB: case ADD: {
+        node = new_node(token);
+        node->right = prime_node();
+        node->left = new_node(new_token(I32, node->token->space));
+        node->left->token->i32.value = token->type == SUB ? -1 : 1;
+        node->token->type = MUL;
+        return node;
+    }
     case LPARENT: {
         node = expr_node(0);
         if (peek(0)->type != RPARENT) {
@@ -596,16 +604,8 @@ Node *prime_node(void) {
         if (next()->type != RPARENT)
             eprint("Expected ) after function declaration: %t\n", peek(0)->type);
 
-        // Token *ret_token =
-        //     peek(0)->is_type && includes(peek(0)->type, I32, BOOL, 0) ? peek(0) : NULL;
+
         node->right = data_type_node();
-        // if (ret_token) {
-        //     next();
-        //     node->token->ret_type = ret_token->type;
-        // } else
-        //     node->token->ret_type = VOID;
-        // if(node->right == NULL)
-        //     node->right = new_node
 
         if (peek(0)->type != DOTS) {
             eprint("Expected : after function declaration\n");
@@ -614,11 +614,6 @@ Node *prime_node(void) {
         next();
         parse_bloc(node);
 
-        // if (last == NULL || last->token->type != RETURN) {
-        //     Node *ret = new_node(new_token(RETURN, node->token->space));
-        //     ret->left = new_node(new_token(ret_token->type, node->token->space));
-        //     push_back(node->children, ret);
-        // }
         exit_scope();
         return node;
     }
@@ -1189,13 +1184,16 @@ void parse_arguments(int ac, char **av) {
 
 /*
 TODO:
-    + start creating an abstraction on top of llvm
+    + unary operators: -x, not x
+    + logical and / or (short-circuit)
+    + compound assignment: += -= *= /= %=
+    + string literals and output()
+    + for loops over a range: for i in 0..10
+    + more integer types (i8, i64, unsigned) and casting with as
+    + arrays: declaration and indexing
     + struct
     + function inside function
 */
-
-// pointer syntax
-// p ref(i32) = own(a)
 
 int main(int ac, char **av) {
     parse_arguments(ac, av);
