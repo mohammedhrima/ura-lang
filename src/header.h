@@ -91,11 +91,14 @@ struct ASM {
 void asm_init(char *name);
 void asm_finalize(char *ll_path);
 TypeRef get_llvm_type(Type type);
-Value create_variable(Token *var, Token *data_type);
+TypeRef get_data_type(Node *type);
+Value create_variable(Token *var, Node *type);
 Value create_value(Token *token);
-Value create_load(Token *var, Token *data_type);
+Value create_load(Token *var, Node *type);
+Value create_dref(Value ptr, Node *type);
 Value create_math_op(Token *left, Token *op_token, Token *right);
 Value create_comparision_op(Token *left, Token *op_token, Token *right);
+Value address_of(Node *node);
 Value create_assign(Node *left, Node *right);
 void create_function(Node *node);
 void create_entry(Token *token);
@@ -111,7 +114,6 @@ void create_jmp_out(Bloc bloc);
 void create_jmp(Bloc bloc);
 void create_at(Bloc bloc);
 void create_last_label(Bloc bloc);
-
 // end LLVM code
 
 #ifndef bool
@@ -172,7 +174,7 @@ enum Type {
     IDENTIFIER,
 
     VOID, I32, BOOL,
-    REF, OWN,
+    REF, OWN, DREF,
 
     LPARENT, RPARENT, DOTS,
 
@@ -198,7 +200,6 @@ struct Token {
     Type ret_type;
 
     bool is_type;
-    bool is_ref;
     size_t space;
 
     ASM llvm;
@@ -226,16 +227,16 @@ struct Node {
     expand(Node *, variables);
 };
 
+void *ura_alloc(size_t count, size_t size);
+const char *to_string(Type type);
 int _print(File fp, const char *fmt, va_list args);
 int _eprint(char *file, const char *func, int line, char *fmt, ...);
+bool includes(Type to_find, ...);
+Node *prime_node(void);
 Node *expr_node(int min_op);
 void enter_scope(Node *node);
 void exit_scope(void);
-void *ura_alloc(size_t count, size_t size);
-const char *to_string(Type type);
 void code_gen(Node *node);
-bool includes(Type to_find, ...);
-Node *prime_node(void);
 
 struct Ura {
     int errors_count;
