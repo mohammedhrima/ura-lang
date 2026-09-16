@@ -23,7 +23,9 @@
                     "README.md",
                     "LICENSE",
                     ".gitignore",
-                    ".clang-format"
+                    ".clang-format",
+                    "0.old-code/.gitignore",
+                    "0.old-code/.gitattributes"
                 ]
             },
             {
@@ -45,7 +47,9 @@
         "README.md": true,
         "LICENSE": true,
         ".gitignore": true,
-        ".clang-format": true
+        ".clang-format": true,
+        "0.old-code/.gitignore": true,
+        "0.old-code/.gitattributes": true
     },
     "hidefiles.selectedProfile": "Default"
 }

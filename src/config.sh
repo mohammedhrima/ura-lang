@@ -10,8 +10,9 @@
 #   replace <ura_file> <number> <md_prefix>
 #            re-record test <number>, keeping its description
 #   tests [md_prefix] [number]
-#            run all tests, one file's tests, or a single test; compares
-#            the generated LLVM IR against what was recorded
+#            rebuild first (stop if that fails), then run all tests, one
+#            file's tests, or a single test; compares the generated LLVM IR
+#            against what was recorded
 #   update   re-source this file after editing it
 #
 # Works when sourced from either bash or zsh. Everything else here is an
@@ -144,8 +145,9 @@ build() {
 # ============================================================================
 # _ura_compile_case <ura_file> <out_name>
 #
-# Compiles <ura_file> (executable goes to build/<out_name>, never run) and
-# stores the generated LLVM IR in the global URA_CASE_IR.
+# Compiles <ura_file> and stores the generated LLVM IR in the global
+# URA_CASE_IR. The executable is only a by-product: it's never run, and it
+# is deleted as soon as the compile finishes.
 #
 # Returns 1 if the compiler itself failed.
 # ============================================================================
@@ -161,11 +163,13 @@ _ura_compile_case() {
     fi
 
     if ! "$URA_BIN" "$ura_file" -o "$exe" >/dev/null; then
+        rm -f "$exe"
         _ura_red "compile: failed for $ura_file"
         return 1
     fi
 
     URA_CASE_IR=$(cat "$ll" 2>/dev/null)
+    rm -f "$exe"
 }
 
 # ============================================================================
@@ -531,11 +535,17 @@ _ura_test_file() {
 #   tests            every test in tests/*.md
 #   tests while      every test in tests/while.md
 #   tests while 1    only test 001 in tests/while.md
+#
+# Runs build first and stops there if the build fails.
 # ============================================================================
 tests() {
     local md_prefix="$1" number="$2" md_file
     _ura_passed=0
     _ura_failed=0
+
+    # always test the current sources, never a stale build/ura
+    build || return 1
+    echo
 
     if [ -n "$md_prefix" ]; then
         md_file="$URA_TESTS_DIR/$md_prefix.md"
