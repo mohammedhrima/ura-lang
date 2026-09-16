@@ -64,54 +64,62 @@ TypeRef get_llvm_type(Type type) {
         return LLVMInt32TypeInContext(ura.context);
     case BOOL:
         return LLVMInt1TypeInContext(ura.context);
+    case VOID:
+        return LLVMVoidTypeInContext(ura.context);
     default:
         eprint("handle this case %t\n", type);
+        exit(1);
         break;
     }
     return NULL;
 };
 
-Value create_variable(Node *node) {
-    switch (node->token->type) {
+Value create_variable(Token *var, Token *type) {
+    TypeRef llvm_type = get_llvm_type(type->type);
+    if (type->is_ref)
+        llvm_type = LLVMPointerType(llvm_type, 0);
+    switch (type->type) {
         // clang-format off
     case I32: case BOOL:
         // clang-format on
-        return LLVMBuildAlloca(ura.builder, get_llvm_type(node->token->type), node->token->name);
+        return LLVMBuildAlloca(ura.builder, llvm_type, var->name);
     default:
-        eprint("handle this case %t\n", node->token->type);
+        eprint("handle this case %t\n", type->type);
+        exit(1);
         break;
     }
     return NULL;
 }
 
 Value create_value(Token *token) {
+    TypeRef llvm_type = get_llvm_type(token->type);
+    // if (token->is_ref)
+    //     llvm_type = LLVMPointerType(llvm_type, 0);
     switch (token->type) {
     case I32:
-        return LLVMConstInt(get_llvm_type(token->type), token->i32.value, 0);
+        return LLVMConstInt(llvm_type, token->i32.value, 0);
     case BOOL:
-        return LLVMConstInt(get_llvm_type(token->type), token->b1.value, 0);
+        return LLVMConstInt(llvm_type, token->b1.value, 0);
     default:
         eprint("handle this case %t\n", token->type);
+        exit(1);
         break;
     }
     return NULL;
 }
 
-Value create_load(Token *token) {
-    return LLVMBuildLoad2(ura.builder, get_llvm_type(token->type), token->llvm.elem, token->name);
+Value create_load(Token *var, Token *data_type) {
+    TypeRef type = get_llvm_type(data_type->type);
+    return LLVMBuildLoad2(ura.builder, type, var->llvm.elem, var->name);
 }
-
+// TODO: add a flag to define if it's float or unsigned or something
 Value create_math_op(Token *left, Token *op_token, Token *right) {
     // TODO: handle unsigned types
     LLVMOpcode ops[] = {
-        [ADD] = LLVMAdd,
-        [SUB] = LLVMSub,
-        [MUL] = LLVMMul,
-        [DIV] = LLVMSDiv,
+        [ADD] = LLVMAdd,  [SUB] = LLVMSub,  [MUL] = LLVMMul,
+        [DIV] = LLVMSDiv, [MOD] = LLVMSRem, [END] = 0,
         // [DIV] = LLVMUDiv, unsigned div
-        [MOD] = LLVMSRem,
         // [MOD] = LLVMSRem, unsigned Mod
-        [END] = 0,
     };
 
     LLVMOpcode op = ops[op_token->type];
@@ -120,15 +128,15 @@ Value create_math_op(Token *left, Token *op_token, Token *right) {
         exit(1);
     }
 
-    switch (left->type) {
-    case I32:
-        return LLVMBuildBinOp(ura.builder, op, left->llvm.elem, right->llvm.elem,
-                              to_string(op_token->type));
-    default:
-        eprint("handle this case %t", left->type);
-        exit(1);
-        break;
-    }
+    return LLVMBuildBinOp(ura.builder, op, left->llvm.elem, right->llvm.elem,
+                          to_string(op_token->type));
+    // switch (left->type) {
+    // case I32:
+    // default:
+    //     eprint("handle this case %t", left->type);
+    //     exit(1);
+    //     break;
+    // }
     return NULL;
 }
 
@@ -145,26 +153,43 @@ Value create_comparision_op(Token *left, Token *op_token, Token *right) {
         exit(1);
     }
 
-    switch (left->type) {
-    case I32:
-        return LLVMBuildICmp(ura.builder, op, left->llvm.elem, right->llvm.elem,
-                             to_string(op_token->type));
-    default:
-        eprint("handle this case %t", left->type);
+    return LLVMBuildICmp(ura.builder, op, left->llvm.elem, right->llvm.elem,
+                         to_string(op_token->type));
+    // switch (left->type) {
+    // case I32:
+    // default:
+    //     eprint("handle this case %t", left->type);
+    //     exit(1);
+    //     break;
+    // }
+    return NULL;
+}
+
+Value address_of(Node *node) {
+    switch (node->token->type) {
+    case VAR:
+        return node->token->llvm.elem;
+    case LOAD_VAR:
+        return node->left->token->llvm.elem;
+    default: {
+        eprint("can't assign to %t\n", node->token->type);
         exit(1);
         break;
+    }
     }
     return NULL;
 }
 
-Value create_assign(Token *left, Token *right) {
-    return LLVMBuildStore(ura.builder, right->llvm.elem, left->llvm.elem);
+Value create_assign(Node *left, Node *right) {
+    Value left_elem = address_of(left);
+    Value right_elem = right->token->llvm.elem;
+    return LLVMBuildStore(ura.builder, right_elem, left_elem);
 }
 
 void create_function(Node *node) {
     Token *token = node->token;
     // set return type
-    TypeRef ret = get_llvm_type(token->ret_type);
+    TypeRef ret = get_llvm_type(node->right ? node->right->token->type : VOID);
     // set params signature
     // TODO: add them
     TypeRef *args = NULL;
@@ -211,6 +236,15 @@ Value create_return(Token *token) {
     return LLVMBuildRet(ura.builder, token->llvm.elem);
 }
 
+void create_default_return(Node *node) {
+    if (is_bloc_terminated())
+        return;
+    if (!node->right) {
+        LLVMBuildRetVoid(ura.builder);
+        return;
+    }
+    LLVMBuildRet(ura.builder, create_value(node->right->token));
+}
 
 Value get_parent_bloc() {
     return LLVMGetBasicBlockParent(LLVMGetInsertBlock(ura.builder));

@@ -1,11 +1,7 @@
 
 
-
 fn main() i32:
-    a i32 = 0
-    while a < 10:
-        if a == 3:
-            a = a + 2
-            continue
-        a = a + 1
-    return a
+    a i32 = 10
+    a = 20
+    return 0
+
