@@ -16,7 +16,7 @@ const char *to_string(Type type) {
         // clang-format off
         [IDENTIFIER] = "IDENTIFER",
         [VOID] = "VOID", [I32] = "I32", [BOOL] = "BOOL",
-        [REF] = "REF", [OWN] = "OWN",
+        [REF] = "REF", [OWN] = "OWN", [DREF] = "DREF",
 
         [LPARENT] = "LPARENT", [RPARENT] = "RPARENT",
         [DOTS] = "DOTS",
@@ -117,8 +117,6 @@ int _print(File fp, const char *fmt, va_list args) {
             r += fprintf(fp, " space (%ld)", token->space);
             if (token->ret_type)
                 r += fprintf(fp, " ret (%s)", to_string(token->ret_type));
-            if (token->is_ref)
-                r += fprintf(fp, " is_ref");
             i += 2;
             continue;
         }
@@ -312,6 +310,7 @@ Token *parse_token(Type type, size_t s, size_t e, size_t space) {
             { "while", { .type = WHILE } }, { "break", { .type = BRK } },
             { "continue", { .type = CNT } },
             { "own", { .type = OWN } }, { "ref", { .type = REF } },
+            { "dref", {.type = DREF } },
             { NULL },
             // clang-format on
         };
@@ -474,11 +473,10 @@ void parse_bloc(Node *parent) {
 Node *data_type_node(void) {
     Node *node = NULL;
     if (peek(0)->type == REF) {
+        Node *node = new_node(peek(0));
         int p = 1;
-        while (peek(p)->type == LPARENT) {
-            // print("%d: skip -> %k\n", LINE, peek(p));
+        while (peek(p)->type == LPARENT)
             p++;
-        }
         if (peek(p)->type == REF) {
             eprint("a ref can't point to a ref: ref(ref(...)) is not allowed\n");
             exit(1);
@@ -490,8 +488,7 @@ Node *data_type_node(void) {
             exit(1);
         }
 
-        node = new_node(peek(p));
-        // print("%d: create instance -> %k\n", LINE, peek(p));
+        node->left = new_node(peek(p));
         p++; // skip the data type
         while (p2 > 1) {
             // print("%d: skip -> %k\n", LINE, peek(p));
@@ -502,11 +499,7 @@ Node *data_type_node(void) {
             p++;
             p2--;
         }
-        // print("%d: now -> %k\n", LINE, peek(p));
-        node->token->is_ref = true;
         ura.exe_pos += p;
-        // print("%d: success %k\n", LINE, ura.tokens[ura.exe_pos]);
-        // exit(1);
         return node;
     }
     if (peek(0)->is_type && includes(peek(0)->type, I32, BOOL, 0))
@@ -518,15 +511,6 @@ Node *prime_node(void) {
     Token *token = next();
     Node *node = NULL;
     switch (token->type) {
-    case OWN: {
-        node = new_node(token);
-        node->left = prime_node(); // TODO: expect data type
-        break;
-    } // clang-format off
-    case I32: case BOOL: {
-        // clang-format on
-        return new_node(token);
-    }
     case IDENTIFIER: {
         Node *next_elem = data_type_node();
         if (next_elem) {
@@ -559,6 +543,25 @@ Node *prime_node(void) {
             return node;
         }
         return new_node(token);
+    } // clang-format off
+    case I32: case BOOL: {
+        // clang-format on
+        return new_node(token);
+    } // clang-format off
+    case OWN: case DREF: {
+        // clang-format on
+        node = new_node(token);
+        node->left = prime_node(); // TODO: expect identifier
+        return node;
+    }
+    case LPARENT: {
+        node = expr_node(0);
+        if (peek(0)->type != RPARENT) {
+            eprint("Expected )\n");
+            exit(1);
+        }
+        next();
+        return node;
     }
     case FDEC: {
         node = new_node(token);
@@ -616,15 +619,6 @@ Node *prime_node(void) {
         exit_scope();
         return node;
     }
-    case LPARENT: {
-        node = expr_node(0);
-        if (peek(0)->type != RPARENT) {
-            eprint("Expected )\n");
-            exit(1);
-        }
-        next();
-        return node;
-    }
     case RETURN: {
         node = new_node(token);
         node->left = expr_node(0);
@@ -678,9 +672,9 @@ Node *prime_node(void) {
         next();
         parse_bloc(node);
         return node;
-    }
-    case BRK:
-    case CNT:
+    } // clang-format off
+    case BRK: case CNT:
+        // clang-format on
         return new_node(token);
     default: { // TODO: replace this with unexpected token
         eprint("handle this case %t\n", token->type);
@@ -808,6 +802,22 @@ bool match(Node *op, Node *left, Node *right) {
     return false;
 }
 
+Node *pointer_type(Node *node) {
+    Node *left = node->left;
+    switch (node->token->type) {
+    case LOAD_VAR: {
+        Node *type = left->left;
+        return type->token->type == REF ? type->left : NULL;
+    }
+    case OWN: {
+        return left->token->type == LOAD_VAR ? left->left->left : NULL;
+    }
+    default:
+        break;
+    }
+    return NULL;
+}
+
 void analyze(Node *node) {
     if (ura.errors_count)
         return;
@@ -818,16 +828,20 @@ void analyze(Node *node) {
         node->token->type = LOAD_VAR;
         break;
     }
-    case VAR: {
-        break;
-    }
     case DEC_VAR: {
         // TODO: later on try declaring structs/enum at the bottom
         declare_variable(node->left);
         break;
     } // clang-format off
-    case I32: case BOOL: {
-        // clang-format on
+    case VAR: case I32: case BOOL: break; 
+    case OWN: analyze(node->left); break; // clang-format on
+    case DREF: {
+        analyze(node->left);
+        // LOAD_VAR -> VAR -> type: the variable must be declared as a ref
+        if (pointer_type(node->left) == NULL) {
+            eprint("dref() expects a ref variable\n");
+            exit(1);
+        }
         break;
     }
     case ASSIGN: {
@@ -835,19 +849,11 @@ void analyze(Node *node) {
         analyze(node->left);
         break;
     } // clang-format off
-    case GT: case LT: case GE: case LE: case EQ: case NQ:
-    case SUB: case ADD: case MUL: case DIV: case MOD: {
-        // clang-format on
+    case ADD: case SUB: case MUL: case DIV: case MOD:
+    case GT: case LT: case GE: case LE: case EQ: case NQ: { // clang-format on
         analyze(node->left);
         analyze(node->right);
         // TODO: check compatibility
-        break;
-    }
-    case FCALL: {
-        node->right = find_function(node->token->name);
-        // TODO: check compatibility
-        for (size_t i = 0; i < node->left->children_count; i++)
-            analyze(node->left->children[i]);
         break;
     }
     case FDEC: {
@@ -858,6 +864,13 @@ void analyze(Node *node) {
         for (size_t i = 0; i < node->children_count; i++)
             analyze(node->children[i]);
         exit_scope();
+        break;
+    }
+    case FCALL: {
+        node->right = find_function(node->token->name);
+        // TODO: check compatibility
+        for (size_t i = 0; i < node->left->children_count; i++)
+            analyze(node->left->children[i]);
         break;
     }
     case RETURN: {
@@ -891,7 +904,7 @@ void analyze(Node *node) {
         exit_scope();
         break;
     } // clang-format off
-    case CNT: case BRK: {
+    case BRK: case CNT: {
         // clang-format on
         for (size_t i = ura.scopes_count - 1; i >= 0; i--) {
             Node *scope = ura.scopes[i];
@@ -944,49 +957,35 @@ void code_gen(Node *node) {
     if (ura.errors_count)
         return;
     switch (node->token->type) {
-    case VAR: {
-        break;
-    }
     case DEC_VAR: {
         Node *var = node->left;
         Node *type = var->left;
-        node->left->token->llvm.elem = create_variable(var->token, type->token);
+        node->left->token->llvm.elem = create_variable(var->token, type);
+        break;
+    }
+    case VAR: {
+        break;
+    }
+    case LOAD_VAR: {
+        Node *var = node->left;
+        Node *type = var->left;
+        node->token->llvm.elem = create_load(var->token, type);
         break;
     } // clang-format off
-    case I32: case BOOL :{
+    case I32: case BOOL: {
         // clang-format on
         node->token->llvm.elem = create_value(node->token);
         break;
     }
-    case LOAD_VAR: {
-        // TODO: check if  we can the same as DEC_VAR
-        // were we set node->token = node->left->token;
-        Node *var = node->left;
-        Node *type = var->left;
-
-        node->token->llvm.elem = create_load(var->token, type->token);
-        // node->token->type = node->left->token->type;
-        // be carefull this might break something
-        break;
-    } // clang-format off
-    case SUB: case ADD: case MUL: case DIV: case MOD: {
-        // clang-format on
+    case DREF: {
         code_gen(node->left);
-        code_gen(node->right);
-        // TODO: check compatibility
         Node *left = node->left;
-        Node *right = node->right;
-        node->token->llvm.elem = create_math_op(left->token, node->token, right->token);
+        Node *ref = pointer_type(left);
+        node->token->llvm.elem = create_dref(left->token->llvm.elem, ref);
         break;
-    } // clang-format off
-    case GT: case LT: case GE: case LE: case EQ: case NQ: {
-        // clang-format on
-        code_gen(node->left);
-        code_gen(node->right);
-        // TODO: check compatibility
-        Node *left = node->left;
-        Node *right = node->right;
-        node->token->llvm.elem = create_comparision_op(left->token, node->token, right->token);
+    }
+    case OWN: {
+        node->token->llvm.elem = address_of(node->left);
         break;
     }
     case ASSIGN: {
@@ -996,6 +995,24 @@ void code_gen(Node *node) {
             break;
         // TODO: check compatibility
         node->token->llvm.elem = create_assign(node->left, node->right);
+        break;
+    } // clang-format off
+    case ADD: case SUB: case MUL: case DIV: case MOD: { // clang-format on
+        code_gen(node->left);
+        code_gen(node->right);
+        // TODO: check compatibility
+        Node *left = node->left;
+        Node *right = node->right;
+        node->token->llvm.elem = create_math_op(left->token, node->token, right->token);
+        break;
+    } // clang-format off
+    case GT: case LT: case GE: case LE: case EQ: case NQ: { // clang-format on
+        code_gen(node->left);
+        code_gen(node->right);
+        // TODO: check compatibility
+        Node *left = node->left;
+        Node *right = node->right;
+        node->token->llvm.elem = create_comparision_op(left->token, node->token, right->token);
         break;
     }
     case FDEC: {
@@ -1009,8 +1026,9 @@ void code_gen(Node *node) {
 
         // extract parameters as variables
         for (size_t i = 0; i < node->left->children_count; i++) {
-            code_gen(node->left->children[i]);
-            create_param(node->token, node->left->children[i]->token, i);
+            Node *dec = node->left->children[i];
+            code_gen(dec);
+            create_param(node->token, dec->left->token, i);
         }
         // code gen children
         gen_body(node);
@@ -1078,12 +1096,12 @@ void code_gen(Node *node) {
         // create_last_label(end);
         break;
     }
-    case CNT: {
-        create_jmp_out(node->left->token->llvm.cond);
-        break;
-    }
     case BRK: {
         create_jmp_out(node->left->token->llvm.end);
+        break;
+    }
+    case CNT: {
+        create_jmp_out(node->left->token->llvm.cond);
         break;
     }
     default:
@@ -1164,7 +1182,6 @@ void parse_arguments(int ac, char **av) {
 /*
 TODO:
     + start creating an abstraction on top of llvm
-    + ref arguments
     + struct
     + function inside function
 */

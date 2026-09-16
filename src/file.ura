@@ -1,7 +1,12 @@
 
 
+fn foo(a ref(i32)):
+    dref(a) = 2
+
 fn main() i32:
     a i32 = 10
-    a = 20
-    return 0
+    
+    foo(own(a))
+
+    return a
 

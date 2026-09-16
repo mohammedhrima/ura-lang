@@ -60,12 +60,12 @@ TypeRef get_llvm_type(Type type) {
     // ura.f32 = LLVMFloatTypeInContext(ura.context);
     // ura.f64 = LLVMDoubleTypeInContext(ura.context);
     switch (type) {
+    case VOID:
+        return LLVMVoidTypeInContext(ura.context);
     case I32:
         return LLVMInt32TypeInContext(ura.context);
     case BOOL:
         return LLVMInt1TypeInContext(ura.context);
-    case VOID:
-        return LLVMVoidTypeInContext(ura.context);
     default:
         eprint("handle this case %t\n", type);
         exit(1);
@@ -74,21 +74,14 @@ TypeRef get_llvm_type(Type type) {
     return NULL;
 };
 
-Value create_variable(Token *var, Token *type) {
-    TypeRef llvm_type = get_llvm_type(type->type);
-    if (type->is_ref)
-        llvm_type = LLVMPointerType(llvm_type, 0);
-    switch (type->type) {
-        // clang-format off
-    case I32: case BOOL:
-        // clang-format on
-        return LLVMBuildAlloca(ura.builder, llvm_type, var->name);
-    default:
-        eprint("handle this case %t\n", type->type);
-        exit(1);
-        break;
-    }
-    return NULL;
+TypeRef get_data_type(Node *type) {
+    if (type->token->type == REF)
+        return LLVMPointerType(get_data_type(type->left), 0);
+    return get_llvm_type(type->token->type);
+}
+
+Value create_variable(Token *var, Node *type) {
+    return LLVMBuildAlloca(ura.builder, get_data_type(type), var->name);
 }
 
 Value create_value(Token *token) {
@@ -108,10 +101,14 @@ Value create_value(Token *token) {
     return NULL;
 }
 
-Value create_load(Token *var, Token *data_type) {
-    TypeRef type = get_llvm_type(data_type->type);
-    return LLVMBuildLoad2(ura.builder, type, var->llvm.elem, var->name);
+Value create_load(Token *var, Node *type) {
+    return LLVMBuildLoad2(ura.builder, get_data_type(type), var->llvm.elem, var->name);
 }
+
+Value create_dref(Value ptr, Node *type) {
+    return LLVMBuildLoad2(ura.builder, get_data_type(type), ptr, "dref");
+}
+
 // TODO: add a flag to define if it's float or unsigned or something
 Value create_math_op(Token *left, Token *op_token, Token *right) {
     // TODO: handle unsigned types
@@ -171,6 +168,9 @@ Value address_of(Node *node) {
         return node->token->llvm.elem;
     case LOAD_VAR:
         return node->left->token->llvm.elem;
+    case DREF:
+        code_gen(node->left); // TODO: to be checked, I don't like it here
+        return node->left->token->llvm.elem;
     default: {
         eprint("can't assign to %t\n", node->token->type);
         exit(1);
@@ -189,7 +189,7 @@ Value create_assign(Node *left, Node *right) {
 void create_function(Node *node) {
     Token *token = node->token;
     // set return type
-    TypeRef ret = get_llvm_type(node->right ? node->right->token->type : VOID);
+    TypeRef ret = node->right ? get_data_type(node->right) : get_llvm_type(VOID);
     // set params signature
     // TODO: add them
     TypeRef *args = NULL;
@@ -197,8 +197,8 @@ void create_function(Node *node) {
     if (args_count) {
         args = ura_alloc(node->left->children_count, sizeof(TypeRef));
         for (size_t i = 0; i < args_count; i++) {
-            Token *child = node->left->children[i]->left->token;
-            args[i] = get_llvm_type(child->type);
+            Node *type = node->left->children[i]->left->left;
+            args[i] = get_data_type(type);
         }
     }
     // TODO: set args count, set if function is variadic or not
@@ -227,7 +227,7 @@ Value create_function_call(Node *node) {
         }
     }
     Value res = LLVMBuildCall2(ura.builder, fdec->llvm.func_type, fdec->llvm.elem, args, args_count,
-                               node->token->name);
+                               node->right->right ? node->token->name : "");
     free(args);
     return res;
 }
