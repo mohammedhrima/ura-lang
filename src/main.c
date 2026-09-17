@@ -21,7 +21,10 @@ const char *to_string(Type type) {
         [LPARENT] = "LPARENT", [RPARENT] = "RPARENT",
         [DOTS] = "DOTS",
 
-        [ASSIGN] = "ASSIGN",
+        [ASSIGN] = "ASSIGN", 
+        [ADD_ASSIGN] = "ADD_ASSIGN", [SUB_ASSIGN] = "SUB_ASSIGN",
+        [MUL_ASSIGN] = "MUL_ASSIGN", [DIV_ASSIGN] = "DIV_ASSIGN",
+        [MOD_ASSIGN] = "MOD_ASSIGN",
 
         [ADD] = "ADD", [SUB] = "SUB", [MUL] = "MUL", 
         [DIV] = "DIV", [MOD] = "MOD",
@@ -314,7 +317,7 @@ Token *parse_token(Type type, size_t s, size_t e, size_t space) {
             { "continue", { .type = CNT } },
             { "own", { .type = OWN } }, { "ref", { .type = REF } },
             { "dref", { .type = DREF } },
-            {"and", { .type = AND } }, {"or", { .type = OR } },
+            { "and", { .type = AND } }, { "or", { .type = OR } },
             { NULL },
             // clang-format on
         };
@@ -396,6 +399,8 @@ void tokenize(uraFile *file) {
         } specials[] = {
             // clang-format off
             {"(", LPARENT}, {")", RPARENT}, {":", DOTS}, 
+            {"+=", ADD_ASSIGN}, {"-=", SUB_ASSIGN}, {"*=", MUL_ASSIGN},
+            {"/=", DIV_ASSIGN}, {"%=", MOD_ASSIGN},
             {"+", ADD}, {"-", SUB}, {"*", MUL}, {"/", DIV}, {"%", MOD},
             {">=", GE}, {"<=", LE}, {">", GT}, {"<", LT},
             {"==", EQ}, {"!=", NQ},
@@ -693,8 +698,11 @@ Node *expr_node(int min_op) {
     while (true) {
         int prec[END + 1] = {
             // clang-format off
-            [ASSIGN] = 1,
-
+            [ASSIGN] = 1, 
+            [ADD_ASSIGN] = 1, [SUB_ASSIGN] = 1,
+            [MUL_ASSIGN] = 1, [DIV_ASSIGN] = 1,
+            [MOD_ASSIGN] = 1,
+            
             [OR] = 2, [AND] = 3,
 
             [GT] = 8, [LT] = 8,
@@ -848,12 +856,35 @@ void analyze(Node *node) {
             exit(1);
         }
         break;
-    }
-    case ASSIGN: {
-        analyze(node->right);
-        analyze(node->left);
-        break;
     } // clang-format off
+    case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: 
+    case DIV_ASSIGN: case MOD_ASSIGN: {
+        analyze(node->left);
+        analyze(node->right);
+        
+        node->left = node->left;
+        Node *right = node->right;
+        Type type = 0;
+        switch(node->token->type) {
+            case ADD_ASSIGN: type = ADD; break;
+            case SUB_ASSIGN: type = SUB; break;
+            case MUL_ASSIGN: type = MUL; break;
+            case DIV_ASSIGN: type = DIV; break;
+            case MOD_ASSIGN: type = MOD; break;
+            default: {
+                eprint("handle this case %t\n", node->token->type);
+                exit(1);
+                break;
+            }
+        }
+        node->token->type = ASSIGN;
+        // set the compatible math op
+        node->right = new_node(new_token(type, node->token->space));
+        node->right->left = node->left;
+        node->right->right = right;
+        break;
+    }
+    case ASSIGN:
     case AND: case OR:
     case ADD: case SUB: case MUL: case DIV: case MOD:
     case GT: case LT: case GE: case LE: case EQ: case NQ: { // clang-format on
@@ -959,6 +990,7 @@ void gen_body(Node *node) {
             break;
     }
 }
+
 void code_gen(Node *node) {
     if (ura.errors_count)
         return;
@@ -1201,8 +1233,6 @@ void parse_arguments(int ac, char **av) {
 
 /*
 TODO:
-    + logical and / or (short-circuit)
-    + compound assignment: += -= *= /= %=
     + string literals and output()
     + for loops over a range: for i in 0..10
     + more integer types (i8, i64, unsigned) and casting with as
