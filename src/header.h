@@ -97,6 +97,7 @@ Value create_value(Token *token);
 Value create_load(Token *var, Node *type);
 Value create_dref(Value ptr, Node *type);
 Value create_math_op(Token *left, Token *op_token, Token *right);
+Value create_logic_op(Token *left, Token *op_token, Token *right);
 Value create_comparision_op(Token *left, Token *op_token, Token *right);
 Value address_of(Node *node);
 Value create_assign(Node *left, Node *right);
@@ -183,6 +184,8 @@ enum Type {
 
     GT, LT, GE, LE, EQ, NQ,
 
+    AND, OR,
+    
     FDEC, ARGS, COMA, RETURN,
     FCALL,
 

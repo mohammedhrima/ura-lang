@@ -125,16 +125,21 @@ Value create_math_op(Token *left, Token *op_token, Token *right) {
         exit(1);
     }
 
-    return LLVMBuildBinOp(ura.builder, op, left->llvm.elem, right->llvm.elem,
-                          to_string(op_token->type));
-    // switch (left->type) {
-    // case I32:
-    // default:
-    //     eprint("handle this case %t", left->type);
-    //     exit(1);
-    //     break;
-    // }
-    return NULL;
+    const char *name = to_string(op_token->type);
+    return LLVMBuildBinOp(ura.builder, op, left->llvm.elem, right->llvm.elem, name);
+}
+
+Value create_logic_op(Token *left, Token *op_token, Token *right) {
+    LLVMOpcode ops[] = { [AND] = LLVMAnd,  [OR] = LLVMOr };
+
+    LLVMOpcode op = ops[op_token->type];
+    if (op == 0) {
+        eprint("unknown operation\n");
+        exit(1);
+    }
+
+    const char *name = to_string(op_token->type);
+    return LLVMBuildBinOp(ura.builder, op, left->llvm.elem, right->llvm.elem, name);
 }
 
 Value create_comparision_op(Token *left, Token *op_token, Token *right) {
@@ -150,16 +155,8 @@ Value create_comparision_op(Token *left, Token *op_token, Token *right) {
         exit(1);
     }
 
-    return LLVMBuildICmp(ura.builder, op, left->llvm.elem, right->llvm.elem,
-                         to_string(op_token->type));
-    // switch (left->type) {
-    // case I32:
-    // default:
-    //     eprint("handle this case %t", left->type);
-    //     exit(1);
-    //     break;
-    // }
-    return NULL;
+    const char *name = to_string(op_token->type);
+    return LLVMBuildICmp(ura.builder, op, left->llvm.elem, right->llvm.elem, name);
 }
 
 Value address_of(Node *node) {
