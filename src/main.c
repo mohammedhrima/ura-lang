@@ -29,6 +29,8 @@ const char *to_string(Type type) {
         [GT] = "GT", [LT] = "LT", [GE] = "GE", 
         [LE] = "LE", [EQ] = "EQ", [NQ] = "NQ",
 
+        [AND] = "AND", [OR] = "OR",
+
         [FDEC] = "FDEC", [ARGS] = "ARGS", [COMA] = "COMA",
         [RETURN] = "RETURN", 
         [FCALL] = "FCALL",
@@ -311,7 +313,8 @@ Token *parse_token(Type type, size_t s, size_t e, size_t space) {
             { "while", { .type = WHILE } }, { "break", { .type = BRK } },
             { "continue", { .type = CNT } },
             { "own", { .type = OWN } }, { "ref", { .type = REF } },
-            { "dref", {.type = DREF } },
+            { "dref", { .type = DREF } },
+            {"and", { .type = AND } }, {"or", { .type = OR } },
             { NULL },
             // clang-format on
         };
@@ -397,6 +400,7 @@ void tokenize(uraFile *file) {
             {">=", GE}, {"<=", LE}, {">", GT}, {"<", LT},
             {"==", EQ}, {"!=", NQ},
             {"=", ASSIGN}, {",", COMA},
+            {"&&", AND}, {"||", OR},
             {NULL, NONE}
             // clang-format on
         };
@@ -557,7 +561,8 @@ Node *prime_node(void) {
         node->left = prime_node(); // TODO: expect identifier
         return node;
     }
-    case SUB: case ADD: {
+    case SUB:
+    case ADD: {
         node = new_node(token);
         node->right = prime_node();
         node->left = new_node(new_token(I32, node->token->space));
@@ -689,6 +694,8 @@ Node *expr_node(int min_op) {
         int prec[END + 1] = {
             // clang-format off
             [ASSIGN] = 1,
+
+            [OR] = 2, [AND] = 3,
 
             [GT] = 8, [LT] = 8,
             [GE] = 8, [LE] = 8,
@@ -847,6 +854,7 @@ void analyze(Node *node) {
         analyze(node->left);
         break;
     } // clang-format off
+    case AND: case OR:
     case ADD: case SUB: case MUL: case DIV: case MOD:
     case GT: case LT: case GE: case LE: case EQ: case NQ: { // clang-format on
         analyze(node->left);
@@ -1004,6 +1012,15 @@ void code_gen(Node *node) {
         node->token->llvm.elem = create_math_op(left->token, node->token, right->token);
         break;
     } // clang-format off
+    case AND: case OR: {
+        code_gen(node->left);
+        code_gen(node->right);
+        // TODO: check compatibility
+        Node *left = node->left;
+        Node *right = node->right;
+        node->token->llvm.elem = create_logic_op(left->token, node->token, right->token);
+        break;
+    }
     case GT: case LT: case GE: case LE: case EQ: case NQ: { // clang-format on
         code_gen(node->left);
         code_gen(node->right);
@@ -1184,7 +1201,6 @@ void parse_arguments(int ac, char **av) {
 
 /*
 TODO:
-    + unary operators: -x, not x
     + logical and / or (short-circuit)
     + compound assignment: += -= *= /= %=
     + string literals and output()
