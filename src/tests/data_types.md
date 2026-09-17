@@ -3,6 +3,7 @@
 ## index
 
 - 001 — declare variable
+- 002 — compound assignment/unary operator
 
 ---
 
@@ -42,5 +43,50 @@ entry:
 
 ```
 
+```
+
+---
+
+## 002 — compound assignment/unary operator
+
+```ura
+fn main() i32:
+    a i32 = -10
+    a += +2
+    a *= 4
+    a /= 2
+    a -= 2
+    a %= 3
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+define i32 @main() {
+entry:
+  %a = alloca i32, align 4
+  store i32 -10, i32* %a, align 4
+  %a1 = load i32, i32* %a, align 4
+  %ADD = add i32 %a1, 2
+  store i32 %ADD, i32* %a, align 4
+  %a2 = load i32, i32* %a, align 4
+  %MUL = mul i32 %a2, 4
+  store i32 %MUL, i32* %a, align 4
+  %a3 = load i32, i32* %a, align 4
+  %DIV = sdiv i32 %a3, 2
+  store i32 %DIV, i32* %a, align 4
+  %a4 = load i32, i32* %a, align 4
+  %SUB = sub i32 %a4, 2
+  store i32 %SUB, i32* %a, align 4
+  %a5 = load i32, i32* %a, align 4
+  %MOD = srem i32 %a5, 3
+  store i32 %MOD, i32* %a, align 4
+  ret i32 0
+}
 ```
 

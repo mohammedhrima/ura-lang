@@ -2,10 +2,9 @@
 
 
 fn main() i32:
-    a i32 = 10
-    b i32 = 11
-
-    if a > 1 and b > 1:
-        return 10
-    else:
-        return 2
+    a i32 = -10
+    a += +2
+    a *= 4
+    a /= 2
+    a -= 2
+    a %= 3
