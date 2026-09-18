@@ -19,6 +19,7 @@ export interface Param {
 
 export interface FunctionInfo {
     name: string;
+    keyword: string; // "fn", or "proto" for a function declared elsewhere
     params: Param[];
     returnType: string; // "void" when the header has none
     line: number;
@@ -50,18 +51,31 @@ export interface CallContext {
 }
 
 const IDENT = /[A-Za-z_]\w*/;
-const FN_HEADER = /^(\s*)fn\s+([A-Za-z_]\w*)\s*\(/;
+const FN_HEADER = /^(\s*)(fn|proto)\s+([A-Za-z_]\w*)\s*\(/;
 // `name type` or `name type = value`, where type is i32, b1 or a ref form
 const DECLARATION = /^(\s*)([A-Za-z_]\w*)(\s+)(i32|b1|ref\b[^=]*?)\s*(=.*)?$/;
 
-// The language has no strings yet, so everything after `//` is a comment.
+// Where the comment starts on this line, or -1. A `//` inside a string
+// literal doesn't start one, just like in the tokenizer.
+function commentStart(line: string): number {
+    let inString = false;
+    for (let i = 0; i < line.length; i++) {
+        if (line[i] === '"' || line[i] === '\'' ) {
+            inString = !inString;
+        } else if (!inString && line[i] === "/" && line[i + 1] === "/") {
+            return i;
+        }
+    }
+    return -1;
+}
+
 export function stripComment(line: string): string {
-    const at = line.indexOf("//");
+    const at = commentStart(line);
     return at < 0 ? line : line.slice(0, at);
 }
 
 export function isInComment(line: string, character: number): boolean {
-    const at = line.indexOf("//");
+    const at = commentStart(line);
     return at >= 0 && character > at;
 }
 
@@ -124,8 +138,9 @@ function parseFunction(lines: string[], line: number): FunctionInfo | undefined 
         return undefined;
     }
     const indent = header[1].length;
-    const name = header[2];
-    const character = text.indexOf(name, indent + 2);
+    const keyword = header[2];
+    const name = header[3];
+    const character = text.indexOf(name, indent + keyword.length);
 
     // find the ')' that closes the parameter list
     const open = header[0].length - 1;
@@ -162,7 +177,7 @@ function parseFunction(lines: string[], line: number): FunctionInfo | undefined 
         bodyEnd = i;
     }
 
-    return { name, params, returnType, line, character, indent, bodyStart: line + 1, bodyEnd };
+    return { name, keyword, params, returnType, line, character, indent, bodyStart: line + 1, bodyEnd };
 }
 
 function enclosingFunction(functions: FunctionInfo[], line: number): FunctionInfo | undefined {
@@ -333,5 +348,5 @@ export function callContext(line: string, character: number): CallContext | unde
 export function functionSignature(fn: FunctionInfo): string {
     const params = fn.params.map((p) => `${p.name} ${p.type}`.trim()).join(", ");
     const ret = fn.returnType === "void" ? "" : ` ${fn.returnType}`;
-    return `fn ${fn.name}(${params})${ret}`;
+    return `${fn.keyword} ${fn.name}(${params})${ret}`;
 }

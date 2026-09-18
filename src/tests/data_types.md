@@ -4,6 +4,7 @@
 
 - 001 — declare variable
 - 002 — compound assignment/unary operator
+- 003 — declaring char/i8 variable
 
 ---
 
@@ -86,6 +87,38 @@ entry:
   %a5 = load i32, i32* %a, align 4
   %MOD = srem i32 %a5, 3
   store i32 %MOD, i32* %a, align 4
+  ret i32 0
+}
+```
+
+---
+
+## 003 — declaring char/i8 variable
+
+```ura
+proto exit(code i32)
+
+fn main() i32:
+   c1 char = 'a'
+   c2 i8 = 'b'
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+declare void @exit(i32)
+
+define i32 @main() {
+entry:
+  %c1 = alloca i8, align 1
+  store i8 97, i8* %c1, align 1
+  %c2 = alloca i8, align 1
+  store i8 98, i8* %c2, align 1
   ret i32 0
 }
 ```

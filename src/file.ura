@@ -1,10 +1,6 @@
 
-
+proto printf(a chars, b chars) i32
 
 fn main() i32:
-    a i32 = -10
-    a += +2
-    a *= 4
-    a /= 2
-    a -= 2
-    a %= 3
+   str chars = "abcdef"
+   printf("%s\n", str)
