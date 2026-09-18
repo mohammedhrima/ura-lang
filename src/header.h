@@ -174,7 +174,8 @@ enum Type {
     NONE,
     IDENTIFIER,
 
-    VOID, I32, BOOL,
+    VOID, I32, I8, BOOL,
+    CHARS,
     REF, OWN, DREF,
 
     LPARENT, RPARENT, DOTS,
@@ -187,6 +188,7 @@ enum Type {
 
     AND, OR,
     
+    PROTO,
     FDEC, ARGS, COMA, RETURN,
     FCALL,
 
@@ -210,13 +212,18 @@ struct Token {
 
     struct {
         char *name;
-        // struct {} Fn;
         struct {
             long value;
         } i32;
         struct {
+            int value; // TODO: to be used to unicode stuff
+        } i8;
+        struct {
             int value;
         } b1;
+        struct {
+            char *value;
+        } chars;
     };
 };
 

@@ -14,6 +14,7 @@ import {
     functionSignature,
     isInComment,
     resolve,
+    stripComment,
     visibleVariables,
 } from "../analysis/parser";
 
@@ -171,6 +172,19 @@ describe("functions", () => {
         }
     });
 
+    test("proto declares a function with no body", () => {
+        const source = 'proto exit(code i32)\n\nfn main() i32:\n    exit(1)\n    return 0\n';
+        const analysis = analyze(source);
+        const exit = findFunction(analysis, "exit");
+        assert.ok(exit);
+        assert.equal(exit.keyword, "proto");
+        assert.equal(functionSignature(exit), "proto exit(code i32)");
+        assert.ok(exit.bodyEnd < exit.bodyStart, "a proto has no body");
+        assert.equal(findFunction(analysis, "main")?.keyword, "fn");
+        // and it can still be jumped to from a call
+        assert.equal(resolve(analysis, positionOf(source, "exit(1)"))?.kind, "function");
+    });
+
     test("body range follows indentation", () => {
         const source = "fn a() i32:\n    x i32 = 1\n\n    return x\n\nfn b():\n    y i32 = 2\n";
         const [a, b] = analyze(source).functions;
@@ -268,6 +282,33 @@ describe("call context", () => {
         assert.equal(callContext("    x = f(1)", 12), undefined);
         assert.equal(callContext("    // f(", 9), undefined);
         assert.equal(isInComment("    a = 1 // note", 16), true);
+    });
+});
+
+describe("recent language additions", () => {
+    test("and / or / proto are keywords, not names", () => {
+        const source =
+            "proto exit(code i32)\n\nfn main() i32:\n    a i32 = 1\n    if a > 0 and a < 3 or a == 9:\n        return 1\n    return 0\n";
+        const analysis = analyze(source);
+        for (const keyword of ["and ", "or ", "proto "]) {
+            assert.equal(resolve(analysis, positionOf(source, keyword)), undefined, keyword.trim());
+        }
+        // the variable next to them still resolves
+        assert.equal(resolve(analysis, positionOf(source, "a > 0"))?.kind, "variable");
+        assert.equal(analysis.variables.map((v) => v.name).includes("and"), false);
+    });
+
+    test("compound assignment is not a declaration", () => {
+        const source = "fn main() i32:\n    a i32 = 1\n    a += 2\n    a *= 3\n    return a\n";
+        const names = analyze(source).variables.map((v) => `${v.name} ${v.type}`);
+        assert.deepEqual(names, ["a i32"]);
+    });
+
+    test("// inside a string is not a comment", () => {
+        const line = 'proto puts(s i8)   // note';
+        assert.equal(isInComment(line, 20), true);
+        assert.equal(isInComment('    x = "a // b"', 12), false);
+        assert.equal(stripComment('    x = "a // b" // real'), '    x = "a // b" ');
     });
 });
 

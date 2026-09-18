@@ -1,5 +1,14 @@
 import * as vscode from "vscode";
-import { BOOLEANS, BUILTINS, builtinSignature, CONTROL, DECLARATION, REF, TYPES } from "../analysis/keywords";
+import {
+    BOOLEANS,
+    BUILTINS,
+    builtinSignature,
+    CONTROL,
+    DECLARATION,
+    LOGICAL,
+    REF,
+    TYPES,
+} from "../analysis/keywords";
 import { analyze, functionSignature, isInComment, visibleVariables } from "../analysis/parser";
 
 function keyword(label: string, kind: vscode.CompletionItemKind): vscode.CompletionItem {
@@ -17,7 +26,7 @@ export class CompletionProvider implements vscode.CompletionItemProvider {
         }
 
         const items: vscode.CompletionItem[] = [];
-        for (const word of [...CONTROL, ...DECLARATION]) {
+        for (const word of [...CONTROL, ...LOGICAL, ...DECLARATION]) {
             items.push(keyword(word, vscode.CompletionItemKind.Keyword));
         }
         for (const type of TYPES) {

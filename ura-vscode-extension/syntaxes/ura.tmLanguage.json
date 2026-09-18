@@ -4,6 +4,8 @@
   "scopeName": "source.ura",
   "comment": "Keep these word lists in sync with the tokenizer in src/main.c (keywords and specials tables).",
   "patterns": [
+    { "include": "#strings" },
+    { "include": "#characters" },
     { "include": "#comments" },
     { "include": "#function-definition" },
     { "include": "#control" },
@@ -17,6 +19,29 @@
     { "include": "#variables" }
   ],
   "repository": {
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.ura",
+          "match": "\"[^\"]*\""
+        }
+      ]
+    },
+    "characters": {
+      "patterns": [
+        {
+          "name": "string.quoted.single.ura",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.ura",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
     "comments": {
       "patterns": [
         {
@@ -28,7 +53,7 @@
     "function-definition": {
       "patterns": [
         {
-          "match": "\\b(fn)\\s+([A-Za-z_]\\w*)",
+          "match": "\\b(fn|proto)\\s+([A-Za-z_]\\w*)",
           "captures": {
             "1": { "name": "keyword.declaration.function.ura" },
             "2": { "name": "entity.name.function.ura" }
@@ -48,7 +73,7 @@
       "patterns": [
         {
           "name": "storage.type.ura",
-          "match": "\\b(i32|b1)\\b"
+          "match": "\\b(b1|char|i8|i32|chars)\\b"
         },
         {
           "name": "storage.type.ref.ura",
@@ -93,8 +118,16 @@
     "operators": {
       "patterns": [
         {
+          "name": "keyword.operator.assignment.ura",
+          "match": "\\+=|-=|\\*=|/=|%="
+        },
+        {
           "name": "keyword.operator.comparison.ura",
           "match": "==|!=|<=|>=|<|>"
+        },
+        {
+          "name": "keyword.operator.logical.ura",
+          "match": "&&|\\|\\|"
         },
         {
           "name": "keyword.operator.arithmetic.ura",

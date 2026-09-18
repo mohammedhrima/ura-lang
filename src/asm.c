@@ -59,22 +59,24 @@ TypeRef get_llvm_type(Type type) {
     // ura.i64 = LLVMInt64TypeInContext(ura.context);
     // ura.f32 = LLVMFloatTypeInContext(ura.context);
     // ura.f64 = LLVMDoubleTypeInContext(ura.context);
+    // clang-format off
     switch (type) {
-    case VOID:
-        return LLVMVoidTypeInContext(ura.context);
-    case I32:
-        return LLVMInt32TypeInContext(ura.context);
-    case BOOL:
-        return LLVMInt1TypeInContext(ura.context);
+    case VOID:  return LLVMVoidTypeInContext(ura.context);
+    case BOOL:  return LLVMInt1TypeInContext(ura.context);
+    case I8:    return LLVMInt8TypeInContext(ura.context);
+    case I32:   return LLVMInt32TypeInContext(ura.context);
     default:
         eprint("handle this case %t\n", type);
         exit(1);
         break;
     }
+    // clang-format on
     return NULL;
 };
 
 TypeRef get_data_type(Node *type) {
+    if (type->token->type == CHARS)
+        return LLVMPointerType(get_llvm_type(I8), 0);
     if (type->token->type == REF)
         return LLVMPointerType(get_data_type(type->left), 0);
     return get_llvm_type(type->token->type);
@@ -85,19 +87,22 @@ Value create_variable(Token *var, Node *type) {
 }
 
 Value create_value(Token *token) {
+    if (token->type == CHARS)
+        return LLVMBuildGlobalStringPtr(ura.builder, token->chars.value, "str");
     TypeRef llvm_type = get_llvm_type(token->type);
     // if (token->is_ref)
     //     llvm_type = LLVMPointerType(llvm_type, 0);
-    switch (token->type) {
-    case I32:
-        return LLVMConstInt(llvm_type, token->i32.value, 0);
-    case BOOL:
-        return LLVMConstInt(llvm_type, token->b1.value, 0);
+    // clang-format off
+    switch (token->type) { 
+    case BOOL:  return LLVMConstInt(llvm_type, token->b1.value, 0);
+    case I8:    return LLVMConstInt(llvm_type, token->i8.value, 0);
+    case I32:   return LLVMConstInt(llvm_type, token->i32.value, 0);
     default:
         eprint("handle this case %t\n", token->type);
         exit(1);
         break;
     }
+    // clang-format on
     return NULL;
 }
 
@@ -130,7 +135,7 @@ Value create_math_op(Token *left, Token *op_token, Token *right) {
 }
 
 Value create_logic_op(Token *left, Token *op_token, Token *right) {
-    LLVMOpcode ops[] = { [AND] = LLVMAnd,  [OR] = LLVMOr };
+    LLVMOpcode ops[] = { [AND] = LLVMAnd, [OR] = LLVMOr };
 
     LLVMOpcode op = ops[op_token->type];
     if (op == 0) {

@@ -15,7 +15,8 @@ const char *to_string(Type type) {
     char *types[END + 1] = {
         // clang-format off
         [IDENTIFIER] = "IDENTIFER",
-        [VOID] = "VOID", [I32] = "I32", [BOOL] = "BOOL",
+        [CHARS] = "CHARS",
+        [VOID] = "VOID", [BOOL] = "BOOL", [I8] = "I8", [I32] = "I32",
         [REF] = "REF", [OWN] = "OWN", [DREF] = "DREF",
 
         [LPARENT] = "LPARENT", [RPARENT] = "RPARENT",
@@ -33,6 +34,8 @@ const char *to_string(Type type) {
         [LE] = "LE", [EQ] = "EQ", [NQ] = "NQ",
 
         [AND] = "AND", [OR] = "OR",
+
+        [PROTO] = "PROTO",
 
         [FDEC] = "FDEC", [ARGS] = "ARGS", [COMA] = "COMA",
         [RETURN] = "RETURN", 
@@ -81,6 +84,7 @@ int _print(File fp, const char *fmt, va_list args) {
 
         macro("%s", char *);
         macro("%d", int);
+        macro("%c", int);
         macro("%f", double); // TODO: to be checked
 #undef macro
 
@@ -108,6 +112,18 @@ int _print(File fp, const char *fmt, va_list args) {
                 if (token->name || token->is_type)
                     break;
                 r += fprintf(fp, " value (%ld)", token->i32.value);
+                break;
+            }
+            case I8: {
+                if (token->name || token->is_type)
+                    break;
+                r += fprintf(fp, " value (%c)", token->i8.value);
+                break;
+            }
+            case CHARS: {
+                if (token->name || token->is_type)
+                    break;
+                r += fprintf(fp, " value (%s)", token->chars.value);
                 break;
             }
             case BOOL: {
@@ -267,6 +283,7 @@ void close_file(uraFile *file) {
 
 void free_token(Token *token) {
     free(token->name);
+    free(token->chars.value);
     free(token);
 }
 
@@ -306,8 +323,12 @@ Token *parse_token(Type type, size_t s, size_t e, size_t space) {
             Token token;
         } keywords[] = {
             // clang-format off
-            { "i32", { .type = I32, .is_type = true } },
             { "b1", { .type = BOOL, .is_type = true } },
+            { "char", { .type = I8, .is_type = true } },
+            { "i8", { .type = I8, .is_type = true } },
+            { "i32", { .type = I32, .is_type = true } },
+            { "chars", {.type = CHARS, .is_type = true } },
+
             { "True", { .type = BOOL, .b1 = { .value = true } } },
             { "False", { .type = BOOL, .b1 = { .value = false } } },
             { "fn", { .type = FDEC } }, { "return", { .type = RETURN } },
@@ -318,6 +339,7 @@ Token *parse_token(Type type, size_t s, size_t e, size_t space) {
             { "own", { .type = OWN } }, { "ref", { .type = REF } },
             { "dref", { .type = DREF } },
             { "and", { .type = AND } }, { "or", { .type = OR } },
+            { "proto", {.type = PROTO } },
             { NULL },
             // clang-format on
         };
@@ -336,6 +358,16 @@ Token *parse_token(Type type, size_t s, size_t e, size_t space) {
 
         new->name = ura_alloc(e - s + 1, sizeof(char));
         strncpy(new->name, ura.curr_content + s, e - s);
+        break;
+    }
+    case CHARS: {
+        new->chars.value = ura_alloc(e - s + 1, sizeof(char));
+        strncpy(new->chars.value, ura.curr_content + s + 1, e - s - 2);
+        break;
+    }
+    case I8: {
+        // TODO: handle special characters later on
+        new->i8.value = ura.curr_content[s + 1];
         break;
     }
     case I32: {
@@ -383,6 +415,25 @@ void tokenize(uraFile *file) {
         if (e != s) // found identifier
         {
             parse_token(IDENTIFIER, s, e, space);
+            continue;
+        }
+
+        while (content[s] == '\"' && content[e] && (e == s || content[e] != '\"'))
+            e++;
+        if (e != s) // found CHARS
+        {
+            e++;
+            parse_token(CHARS, s, e, space);
+            continue;
+        }
+
+        // TODO: to be fixed later
+        while (content[s] == '\'' && content[e] && (e == s || content[e] != '\''))
+            e++;
+        if (e != s) // found CHARS
+        {
+            e++;
+            parse_token(I8, s, e, space);
             continue;
         }
 
@@ -495,7 +546,7 @@ Node *data_type_node(void) {
         }
 
         int p2 = p;
-        if (!peek(p)->is_type || !includes(peek(p)->type, I32, BOOL, 0)) {
+        if (!peek(p)->is_type || !includes(peek(p)->type, BOOL, I8, I32, CHARS, 0)) {
             eprint("expected a data type after ref, got %k\n", peek(p));
             exit(1);
         }
@@ -514,7 +565,7 @@ Node *data_type_node(void) {
         ura.exe_pos += p;
         return node;
     }
-    if (peek(0)->is_type && includes(peek(0)->type, I32, BOOL, 0))
+    if (peek(0)->is_type && includes(peek(0)->type, BOOL, I8, I32, CHARS, 0))
         return new_node(next());
     return NULL;
 }
@@ -556,18 +607,16 @@ Node *prime_node(void) {
         }
         return new_node(token);
     } // clang-format off
-    case I32: case BOOL: {
+    case BOOL: case I8: case I32: case CHARS: {
         // clang-format on
         return new_node(token);
     } // clang-format off
-    case OWN: case DREF: {
-        // clang-format on
+    case OWN: case DREF: { // clang-format on
         node = new_node(token);
         node->left = prime_node(); // TODO: expect identifier
         return node;
-    }
-    case SUB:
-    case ADD: {
+    } // clang-format off
+    case SUB: case ADD: { // clang-format on
         node = new_node(token);
         node->right = prime_node();
         node->left = new_node(new_token(I32, node->token->space));
@@ -583,8 +632,8 @@ Node *prime_node(void) {
         }
         next();
         return node;
-    }
-    case FDEC: {
+    } // clang-format off
+    case PROTO: case FDEC: { // clang-format on
         node = new_node(token);
         if (peek(0)->type != IDENTIFIER) {
             eprint("Expected identifer after fn\n");
@@ -617,12 +666,14 @@ Node *prime_node(void) {
 
         node->right = data_type_node();
 
-        if (peek(0)->type != DOTS) {
-            eprint("Expected : after function declaration\n");
-            exit(1);
+        if (node->token->type == FDEC) { // : and bloc only for fn
+            if (peek(0)->type != DOTS) {
+                eprint("Expected : after function declaration\n");
+                exit(1);
+            }
+            next();
+            parse_bloc(node);
         }
-        next();
-        parse_bloc(node);
 
         exit_scope();
         return node;
@@ -846,7 +897,9 @@ void analyze(Node *node) {
         declare_variable(node->left);
         break;
     } // clang-format off
-    case VAR: case I32: case BOOL: break; 
+    case VAR:
+    case BOOL: case I8: case I32: case CHARS: break; 
+    
     case OWN: analyze(node->left); break; // clang-format on
     case DREF: {
         analyze(node->left);
@@ -892,8 +945,8 @@ void analyze(Node *node) {
         analyze(node->right);
         // TODO: check compatibility
         break;
-    }
-    case FDEC: {
+    } // clang-format off
+    case PROTO: case FDEC: { // clang-format on
         enter_scope(node);
         for (size_t i = 0; i < node->left->children_count; i++)
             analyze(node->left->children[i]);
@@ -973,7 +1026,7 @@ void generate_ir(void) {
     // we might need t odeclare function
     // inside function
     for (size_t i = 0; i < ura.ast->children_count; i++)
-        if (ura.ast->children[i]->token->type == FDEC)
+        if (includes(ura.ast->children[i]->token->type, FDEC, PROTO, 0))
             declare_function(ura.ast->children[i]);
     for (size_t i = 0; i < ura.ast->children_count; i++)
         analyze(ura.ast->children[i]);
@@ -1010,7 +1063,7 @@ void code_gen(Node *node) {
         node->token->llvm.elem = create_load(var->token, type);
         break;
     } // clang-format off
-    case I32: case BOOL: {
+    case BOOL: case I8: case I32: case CHARS: {
         // clang-format on
         node->token->llvm.elem = create_value(node->token);
         break;
@@ -1062,6 +1115,8 @@ void code_gen(Node *node) {
         node->token->llvm.elem = create_comparision_op(left->token, node->token, right->token);
         break;
     }
+    case PROTO:
+        break;
     case FDEC: {
         enter_scope(node);
 
@@ -1157,13 +1212,17 @@ void code_gen(Node *node) {
     }
 }
 
+void init_printf() {
+}
+
 void generate_asm(uraFile *file) {
     if (ura.errors_count)
         return;
     enter_scope(ura.ast);
     asm_init("ura-module");
+    init_printf();
     for (size_t i = 0; i < ura.ast->children_count; i++) {
-        if (ura.ast->children[i]->token->type == FDEC) {
+        if (includes(ura.ast->children[i]->token->type, FDEC, PROTO, 0)) {
             create_function(ura.ast->children[i]);
         }
     }
@@ -1233,12 +1292,24 @@ void parse_arguments(int ac, char **av) {
 
 /*
 TODO:
-    + string literals and output()
-    + for loops over a range: for i in 0..10
-    + more integer types (i8, i64, unsigned) and casting with as
-    + arrays: declaration and indexing
-    + struct
-    + function inside function
+    [*] proto function
+    [*] char data type
+    [*] char literal
+
+    [*] chars literal
+    [*] chars data type (pointer to char)
+
+    [*] assign chars lit with variable
+    [ ] variadic proto function
+
+    [ ] string literals and output()
+
+    [ ] for loops over a range: for i in 0..10
+    [ ] more integer types (i8, i64, unsigned) and casting with as
+    [ ] arrays: declaration and indexing
+    [ ] struct
+    [ ] function inside function
+    [ ] arena allocator (all stdup ... should use it)
 */
 
 int main(int ac, char **av) {

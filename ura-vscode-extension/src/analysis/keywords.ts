@@ -3,8 +3,9 @@
 // syntaxes/ura.tmLanguage.json.
 
 export const CONTROL = ["if", "elif", "else", "while", "break", "continue", "return"];
-export const DECLARATION = ["fn"];
-export const TYPES = ["i32", "b1"];
+export const LOGICAL = ["and", "or"];
+export const DECLARATION = ["fn", "proto"];
+export const TYPES = ["i8", "char", "i32", "b1"];
 export const REF = "ref";
 export const BOOLEANS = ["True", "False"];
 
@@ -34,6 +35,7 @@ export const BUILTINS: Builtin[] = [
 // Words that can never be a variable or function name.
 export const RESERVED = new Set<string>([
     ...CONTROL,
+    ...LOGICAL,
     ...DECLARATION,
     ...TYPES,
     REF,
