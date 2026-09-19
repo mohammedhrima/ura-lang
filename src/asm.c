@@ -79,6 +79,8 @@ TypeRef get_data_type(Node *type) {
         return LLVMPointerType(get_llvm_type(I8), 0);
     if (type->token->type == REF)
         return LLVMPointerType(get_data_type(type->left), 0);
+    if (type->token->type == STRUCT_DEC)
+        return type->token->llvm.type;
     return get_llvm_type(type->token->type);
 }
 
@@ -168,7 +170,7 @@ Value address_of(Node *node) {
     switch (node->token->type) {
     case VAR:
         return node->token->llvm.elem;
-    case LOAD_VAR:
+    case VAR_LOAD:
         return node->left->token->llvm.elem;
     case DREF:
         code_gen(node->left); // TODO: to be checked, I don't like it here
@@ -204,8 +206,8 @@ void create_function(Node *node) {
         }
     }
     // TODO: set args count, set if function is variadic or not
-    token->llvm.func_type = LLVMFunctionType(ret, args, args_count, token->is_variadic);
-    token->llvm.elem = LLVMAddFunction(ura.module, token->name, token->llvm.func_type);
+    token->llvm.type = LLVMFunctionType(ret, args, args_count, token->is_variadic);
+    token->llvm.elem = LLVMAddFunction(ura.module, token->name, token->llvm.type);
     free(args);
 }
 
@@ -228,7 +230,7 @@ Value create_function_call(Node *node) {
             args[i] = node->left->children[i]->token->llvm.elem;
         }
     }
-    Value res = LLVMBuildCall2(ura.builder, fdec->llvm.func_type, fdec->llvm.elem, args, args_count,
+    Value res = LLVMBuildCall2(ura.builder, fdec->llvm.type, fdec->llvm.elem, args, args_count,
                                node->right->right ? node->token->name : "");
     free(args);
     return res;
@@ -246,6 +248,18 @@ void create_default_return(Node *node) {
         return;
     }
     LLVMBuildRet(ura.builder, create_value(node->right->token));
+}
+
+void create_struct(Node *node) {
+    Token *token = node->token;
+    token->llvm.type = LLVMStructCreateNamed(ura.context, token->name);
+
+    // TODO: protect when struct has no attributes
+    TypeRef *attrs = ura_alloc(node->children_count, sizeof(TypeRef));
+    for (size_t i = 0; i < node->children_count; i++)
+        attrs[i] = get_data_type(node->children[i]->left->left);
+    LLVMStructSetBody(token->llvm.type, attrs, node->children_count, 0);
+    free(attrs);
 }
 
 Value get_parent_bloc() {

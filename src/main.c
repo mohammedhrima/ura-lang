@@ -15,8 +15,9 @@ const char *to_string(Type type) {
     char *types[END + 1] = {
         // clang-format off
         [IDENTIFIER] = "IDENTIFER",
-        [CHARS] = "CHARS",
+        [STRUCT_DEC] = "STRUCT_DEC", // [STRUCT_CALL] = "STRUCT_CALL",
         [VOID] = "VOID", [BOOL] = "BOOL", [I8] = "I8", [I32] = "I32",
+        [CHARS] = "CHARS",
         [REF] = "REF", [OWN] = "OWN", [DREF] = "DREF",
 
         [LPARENT] = "LPARENT", [RPARENT] = "RPARENT",
@@ -37,14 +38,14 @@ const char *to_string(Type type) {
 
         [PROTO] = "PROTO",
 
-        [FDEC] = "FDEC", [ARGS] = "ARGS", [COMA] = "COMA",
+        [FN_DEC] = "FN_DEC", [ARGS] = "ARGS", [COMA] = "COMA",
         [RETURN] = "RETURN", 
-        [FCALL] = "FCALL",
+        [FN_CALL] = "FN_CALL",
 
         [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
         [WHILE] = "WHILE", [BRK] = "BRK", [CNT] = "CNT",
 
-        [DEC_VAR] = "DEC_VAR", [VAR] = "VAR",  [LOAD_VAR] = "LOAD_VAR",
+        [VAR_DEC] = "VAR_DEC", [VAR] = "VAR",  [VAR_LOAD] = "VAR_LOAD",
 
         [END] = "END",
         // clang-format on
@@ -199,7 +200,7 @@ void print_helper(NodePrint *elems, Node *node, int depth) {
 
     if (!includes(node->token->type, BRK, CNT, 0))
         print_helper(elems, node->left, depth + 2);
-    if (!includes(node->token->type, FCALL, 0))
+    if (!includes(node->token->type, FN_CALL, 0))
         print_helper(elems, node->right, depth + 2);
     for (size_t i = 0; i < node->children_count; i++)
         print_helper(elems, node->children[i], depth + 2);
@@ -291,6 +292,7 @@ void free_node(Node *node) {
     free(node->children);
     free(node->functions);
     free(node->variables);
+    free(node->structs);
     free(node);
 }
 
@@ -316,7 +318,7 @@ Token *new_token(Type type, size_t space) {
 char *parse_escaped(char *input, size_t s, size_t e) {
     char *res = ura_alloc(e - s + 1, sizeof(char));
     size_t r = 0;
-    while(s < e) {
+    while (s < e) {
         char c = 0;
         // clang-format off
         if(s < e && input[s] == '\\')
@@ -363,10 +365,10 @@ Token *parse_token(Type type, size_t s, size_t e, size_t space) {
             { "i8", { .type = I8, .is_type = true } },
             { "i32", { .type = I32, .is_type = true } },
             { "chars", {.type = CHARS, .is_type = true } },
-
+            { "struct", {.type = STRUCT_DEC } },
             { "True", { .type = BOOL, .b1 = { .value = true } } },
             { "False", { .type = BOOL, .b1 = { .value = false } } },
-            { "fn", { .type = FDEC } }, { "return", { .type = RETURN } },
+            { "fn", { .type = FN_DEC } }, { "return", { .type = RETURN } },
             { "if", { .type = IF } }, { "elif", { .type = ELIF } },
             { "else", { .type = ELSE } },
             { "while", { .type = WHILE } }, { "break", { .type = BRK } },
@@ -558,7 +560,7 @@ Node *new_node(Token *token) {
 void parse_bloc(Node *parent) {
     while (inside(parent->token->space)) {
         Node *child = expr_node(0);
-        if (child->token->type == ASSIGN && child->left->token->type == DEC_VAR) {
+        if (child->token->type == ASSIGN && child->left->token->type == VAR_DEC) {
             Node *dec = child->left;
             push_back(parent->children, dec);
             child->left = dec->left;
@@ -567,7 +569,40 @@ void parse_bloc(Node *parent) {
     }
 }
 
-// TODO: use it in return in FDEC parsing
+void declare_struct(Node *node) {
+    assert(node != NULL);
+    assert(node->token != NULL);
+    assert(node->token->name != NULL);
+
+    print("%s struct %s in scope %s\n", CYAN("declare"), node->token->name, ura.scope->token->name);
+    assert(ura.scope != NULL);
+    push_back(ura.scope->structs, node);
+}
+
+Node *find_struct(char *name) {
+    for (size_t i = ura.scopes_count - 1; i >= 0; i--) {
+        Node *scope = ura.scopes[i];
+        print("%s in scope %s\n", RED("searching... "), scope->token->name);
+        for (size_t i = 0; i < scope->structs_count; i++) {
+            Node *curr = scope->structs[i];
+            assert(curr != NULL);
+            if (strcmp(curr->token->name, name) == 0)
+                return scope->structs[i];
+        }
+    }
+    // eprint("struct '%s' not found", name);
+    // exit(1);
+    return NULL;
+}
+
+Node *is_data_type(Token *token) {
+    if (token->is_type && includes(token->type, BOOL, I8, I32, CHARS, 0))
+        return new_node(token);
+    if (token->type == IDENTIFIER)
+        return find_struct(token->name);
+    return NULL;
+}
+
 Node *data_type_node(void) {
     Node *node = NULL;
     if (peek(0)->type == REF) {
@@ -581,12 +616,13 @@ Node *data_type_node(void) {
         }
 
         int p2 = p;
-        if (!peek(p)->is_type || !includes(peek(p)->type, BOOL, I8, I32, CHARS, 0)) {
+        Node *type = is_data_type(peek(p));
+        if (type == NULL) {
             eprint("expected a data type after ref, got %k\n", peek(p));
             exit(1);
         }
 
-        node->left = new_node(peek(p));
+        node->left = type;
         p++; // skip the data type
         while (p2 > 1) {
             // print("%d: skip -> %k\n", LINE, peek(p));
@@ -600,9 +636,10 @@ Node *data_type_node(void) {
         ura.exe_pos += p;
         return node;
     }
-    if (peek(0)->is_type && includes(peek(0)->type, BOOL, I8, I32, CHARS, 0))
-        return new_node(next());
-    return NULL;
+    Node *type = is_data_type(peek(0));
+    if (type != NULL)
+        next();
+    return type;
 }
 
 Node *prime_node(void) {
@@ -612,16 +649,16 @@ Node *prime_node(void) {
     case IDENTIFIER: {
         Node *next_elem = data_type_node();
         if (next_elem) {
-            node = new_node(new_token(DEC_VAR, token->space));
+            node = new_node(new_token(VAR_DEC, token->space));
             token->type = VAR;
             node->left = new_node(token);
             node->left->left = next_elem;
             return node;
         }
-        if (peek(0)->type == LPARENT) // FCALL
+        if (peek(0)->type == LPARENT) // FN_CALL
         {
             next();
-            token->type = FCALL;
+            token->type = FN_CALL;
             node = new_node(token);
             node->left = new_node(new_token(ARGS, node->token->space));
             while (!includes(peek(0)->type, RPARENT, 0)) {
@@ -642,9 +679,36 @@ Node *prime_node(void) {
         }
         return new_node(token);
     } // clang-format off
-    case BOOL: case I8: case I32: case CHARS: case VARIADIC: {
-        // clang-format on
+    // values
+    case BOOL: case I8: case I32: case CHARS: case VARIADIC: { // clang-format on
         return new_node(token);
+    }
+    case STRUCT_DEC: {
+        node = new_node(token);
+
+        node->token->is_type = true;
+        if (peek(0)->type != IDENTIFIER) {
+            eprint("Expected identifier after struct declaration\n");
+            exit(1);
+        }
+        node->token->name = strdup(next()->name); // get struct name
+        if (peek(0)->type != DOTS) {
+            eprint("Expected )\n");
+            exit(1);
+        }
+        declare_struct(node);
+        enter_scope(node);
+        next(); // skip ':'
+        while (inside(node->token->space)) {
+            Node *attr = expr_node(0);
+            if (attr->token->type != VAR_DEC) {
+                eprint("invalid attribute\n");
+                exit(1);
+            }
+            push_back(node->children, attr);
+        }
+        exit_scope();
+        return node;
     } // clang-format off
     case OWN: case DREF: { // clang-format on
         node = new_node(token);
@@ -668,7 +732,7 @@ Node *prime_node(void) {
         next();
         return node;
     } // clang-format off
-    case PROTO: case FDEC: { // clang-format on
+    case PROTO: case FN_DEC: { // clang-format on
         node = new_node(token);
         if (peek(0)->type != IDENTIFIER) {
             eprint("Expected identifer after fn\n");
@@ -683,13 +747,12 @@ Node *prime_node(void) {
         node->left = new_node(new_token(ARGS, node->token->space));
         while (!includes(peek(0)->type, RPARENT, 0)) {
             Node *arg = prime_node();
-            if(arg->token->type == VARIADIC)
-            {
+            if (arg->token->type == VARIADIC) {
                 // push_back(node->left->children, arg);
                 node->token->is_variadic = true;
                 break;
             }
-            if (arg->token->type != DEC_VAR) {
+            if (arg->token->type != VAR_DEC) {
                 eprint("expected valid arguments\n");
                 exit(1);
             }
@@ -707,7 +770,7 @@ Node *prime_node(void) {
 
         node->right = data_type_node();
 
-        if (node->token->type == FDEC) { // : and bloc only for fn
+        if (node->token->type == FN_DEC) { // : and bloc only for fn
             if (peek(0)->type != DOTS) {
                 eprint("Expected : after function declaration\n");
                 exit(1);
@@ -821,22 +884,27 @@ Node *expr_node(int min_op) {
 void generate_ast(void) {
     if (ura.errors_count)
         return;
-    ura.ast = new_node(new_token(0, 0));
+    ura.ast = new_node(new_token(IDENTIFIER, 0));
+    ura.ast->token->name = strdup("ura-scope");
+    enter_scope(ura.ast);
     while (!includes(peek(0)->type, END, 0) && !ura.errors_count) {
         Node *child = expr_node(0);
         push_back(ura.ast->children, child);
     }
+    exit_scope();
 }
 
 // INTERMEDIATE REPRESENTATION
 void enter_scope(Node *node) {
-    print("%s: %s\n", CYAN("enter scope"), node->token->name);
+    Token *token = node->token;
+    print("%s: %t %s\n", CYAN("enter scope"), token->type, token->name);
     ura.scope = node;
     push_back(ura.scopes, node);
 }
 
 void exit_scope() {
-    print("%s: %s\n", CYAN("exit scope"), ura.scope->token->name);
+    Token *token = ura.scope->token;
+    print("%s: %t %s\n", CYAN("exit scope"), token->type, token->name);
     ura.scopes_count--;
     ura.scopes[ura.scopes_count] = NULL;
     if (ura.scopes_count == 0)
@@ -910,12 +978,12 @@ bool match(Node *op, Node *left, Node *right) {
 Node *pointer_type(Node *node) {
     Node *left = node->left;
     switch (node->token->type) {
-    case LOAD_VAR: {
+    case VAR_LOAD: {
         Node *type = left->left;
         return type->token->type == REF ? type->left : NULL;
     }
     case OWN: {
-        return left->token->type == LOAD_VAR ? left->left->left : NULL;
+        return left->token->type == VAR_LOAD ? left->left->left : NULL;
     }
     default:
         break;
@@ -930,10 +998,13 @@ void analyze(Node *node) {
     case IDENTIFIER: {
         node->left = find_variable(node->token->name);
         // TODO: handle not found
-        node->token->type = LOAD_VAR;
+        node->token->type = VAR_LOAD;
         break;
     }
-    case DEC_VAR: {
+    case STRUCT_DEC: {
+        break;
+    }
+    case VAR_DEC: {
         // TODO: later on try declaring structs/enum at the bottom
         declare_variable(node->left);
         break;
@@ -987,7 +1058,7 @@ void analyze(Node *node) {
         // TODO: check compatibility
         break;
     } // clang-format off
-    case PROTO: case FDEC: { // clang-format on
+    case PROTO: case FN_DEC: { // clang-format on
         enter_scope(node);
         for (size_t i = 0; i < node->left->children_count; i++)
             analyze(node->left->children[i]);
@@ -997,7 +1068,7 @@ void analyze(Node *node) {
         exit_scope();
         break;
     }
-    case FCALL: {
+    case FN_CALL: {
         node->right = find_function(node->token->name);
         // TODO: check compatibility
         for (size_t i = 0; i < node->left->children_count; i++)
@@ -1067,7 +1138,7 @@ void generate_ir(void) {
     // we might need t odeclare function
     // inside function
     for (size_t i = 0; i < ura.ast->children_count; i++)
-        if (includes(ura.ast->children[i]->token->type, FDEC, PROTO, 0))
+        if (includes(ura.ast->children[i]->token->type, FN_DEC, PROTO, 0))
             declare_function(ura.ast->children[i]);
     for (size_t i = 0; i < ura.ast->children_count; i++)
         analyze(ura.ast->children[i]);
@@ -1089,7 +1160,7 @@ void code_gen(Node *node) {
     if (ura.errors_count)
         return;
     switch (node->token->type) {
-    case DEC_VAR: {
+    case VAR_DEC: {
         Node *var = node->left;
         Node *type = var->left;
         node->left->token->llvm.elem = create_variable(var->token, type);
@@ -1098,7 +1169,7 @@ void code_gen(Node *node) {
     case VAR: {
         break;
     }
-    case LOAD_VAR: {
+    case VAR_LOAD: {
         Node *var = node->left;
         Node *type = var->left;
         node->token->llvm.elem = create_load(var->token, type);
@@ -1155,10 +1226,14 @@ void code_gen(Node *node) {
         Node *right = node->right;
         node->token->llvm.elem = create_comparision_op(left->token, node->token, right->token);
         break;
-    }
+    } // clang-fromat off
     case PROTO:
+        break; // clang-fromat on
+    case STRUCT_DEC: {
+        create_struct(node);
         break;
-    case FDEC: {
+    }
+    case FN_DEC: {
         enter_scope(node);
 
         Token *token = node->token;
@@ -1178,7 +1253,7 @@ void code_gen(Node *node) {
         exit_scope();
         break;
     }
-    case FCALL: {
+    case FN_CALL: {
         for (size_t i = 0; i < node->left->children_count; i++) {
             code_gen(node->left->children[i]);
         }
@@ -1253,17 +1328,13 @@ void code_gen(Node *node) {
     }
 }
 
-void init_printf() {
-}
-
 void generate_asm(uraFile *file) {
     if (ura.errors_count)
         return;
     enter_scope(ura.ast);
     asm_init("ura-module");
-    init_printf();
     for (size_t i = 0; i < ura.ast->children_count; i++) {
-        if (includes(ura.ast->children[i]->token->type, FDEC, PROTO, 0)) {
+        if (includes(ura.ast->children[i]->token->type, FN_DEC, PROTO, 0)) {
             create_function(ura.ast->children[i]);
         }
     }
@@ -1333,7 +1404,6 @@ void parse_arguments(int ac, char **av) {
 
 /*
 TODO:
-    [ ] struct
     [ ] access via '.' in struct
     [ ] struct method
     [ ] drop method

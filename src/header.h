@@ -80,7 +80,8 @@ struct ASM {
 
     Value elem;
     Bloc bloc;
-    TypeRef func_type;
+    // TypeRef func_type;
+    TypeRef type;
 
     // while loop stuff
     Bloc cond;
@@ -107,6 +108,7 @@ Value create_param(Token *fn, Token *param, size_t pos);
 Value create_function_call(Node *node);
 Value create_return(Token *token);
 void create_default_return(Node *node);
+void create_struct(Node *node);
 Value get_parent_bloc();
 Bloc create_label(char *name);
 void create_jmp_condition(Value cond, Bloc then, Bloc next);
@@ -174,6 +176,7 @@ enum Type {
     NONE,
     IDENTIFIER,
 
+    STRUCT_DEC, //STRUCT_CALL, 
     VOID, I32, I8, BOOL,
     CHARS,
     VARIADIC,
@@ -190,13 +193,13 @@ enum Type {
     AND, OR,
     
     PROTO,
-    FDEC, ARGS, COMA, RETURN,
-    FCALL,
+    FN_DEC, ARGS, COMA, RETURN,
+    FN_CALL,
 
     IF, ELIF, ELSE,
     WHILE, BRK, CNT,
 
-    DEC_VAR, VAR, LOAD_VAR,
+    VAR_DEC, VAR, VAR_LOAD,
 
     END,
 };
@@ -238,12 +241,14 @@ struct Node {
     expand(Node *, children);
     expand(Node *, functions);
     expand(Node *, variables);
+    expand(Node *, structs);
 };
 
 void *ura_alloc(size_t count, size_t size);
 const char *to_string(Type type);
 int _print(File fp, const char *fmt, va_list args);
 int _eprint(char *file, const char *func, int line, char *fmt, ...);
+int print(char *fmt, ...);
 bool includes(Type to_find, ...);
 Node *prime_node(void);
 Node *expr_node(int min_op);

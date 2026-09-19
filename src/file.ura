@@ -1,6 +1,9 @@
 
-proto printf(fmt chars, ...) i32
+struct User:
+   a i32
+   b i32
 
 fn main() i32:
-   str chars = "abcdef\n"
-   printf("<%s>", str)
+   c i32
+   u User
+   
