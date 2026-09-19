@@ -204,7 +204,7 @@ void create_function(Node *node) {
         }
     }
     // TODO: set args count, set if function is variadic or not
-    token->llvm.func_type = LLVMFunctionType(ret, args, args_count, false);
+    token->llvm.func_type = LLVMFunctionType(ret, args, args_count, token->is_variadic);
     token->llvm.elem = LLVMAddFunction(ura.module, token->name, token->llvm.func_type);
     free(args);
 }

@@ -1,6 +1,6 @@
 
-proto printf(a chars, b chars) i32
+proto printf(fmt chars, ...) i32
 
 fn main() i32:
    str chars = "abcdef"
-   printf("%s\n", str)
+   printf("<%s>", str)
