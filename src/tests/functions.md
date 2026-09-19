@@ -8,6 +8,8 @@
 - 004 — factorial
 - 005 — fn returns ref
 - 006 — swap
+- 007 — proto function
+- 008 — proto variadic function
 
 ---
 
@@ -267,6 +269,69 @@ entry:
   %b2 = load i32, i32* %b, align 4
   %ADD = add i32 %MUL, %b2
   ret i32 %ADD
+}
+```
+
+---
+
+## 007 — proto function
+
+```ura
+proto exit(code i32)
+
+fn main() i32:
+   exit(10)
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+declare void @exit(i32)
+
+define i32 @main() {
+entry:
+  call void @exit(i32 10)
+  ret i32 0
+}
+```
+
+---
+
+## 008 — proto variadic function
+
+```ura
+proto printf(fmt chars, ...) i32
+
+fn main() i32:
+   str chars = "abcdef"
+   printf("<%s>", str)
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+@str = private unnamed_addr constant [7 x i8] c"abcdef\00", align 1
+@str.1 = private unnamed_addr constant [5 x i8] c"<%s>\00", align 1
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  %str = alloca i8*, align 8
+  store i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i8** %str, align 8
+  %str1 = load i8*, i8** %str, align 8
+  %printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.1, i32 0, i32 0), i8* %str1)
+  ret i32 0
 }
 ```
 

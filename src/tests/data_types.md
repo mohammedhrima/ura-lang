@@ -5,6 +5,7 @@
 - 001 — declare variable
 - 002 — compound assignment/unary operator
 - 003 — declaring char/i8 variable
+- 004 — chars type
 
 ---
 
@@ -119,6 +120,33 @@ entry:
   store i8 97, i8* %c1, align 1
   %c2 = alloca i8, align 1
   store i8 98, i8* %c2, align 1
+  ret i32 0
+}
+```
+
+---
+
+## 004 — chars type
+
+```ura
+fn main() i32:
+   str chars = "abcdef"
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+@str = private unnamed_addr constant [7 x i8] c"abcdef\00", align 1
+
+define i32 @main() {
+entry:
+  %str = alloca i8*, align 8
+  store i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i8** %str, align 8
   ret i32 0
 }
 ```

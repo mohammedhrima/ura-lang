@@ -452,6 +452,7 @@ void tokenize(uraFile *file) {
             {"(", LPARENT}, {")", RPARENT}, {":", DOTS}, 
             {"+=", ADD_ASSIGN}, {"-=", SUB_ASSIGN}, {"*=", MUL_ASSIGN},
             {"/=", DIV_ASSIGN}, {"%=", MOD_ASSIGN},
+            {"...", VARIADIC},
             {"+", ADD}, {"-", SUB}, {"*", MUL}, {"/", DIV}, {"%", MOD},
             {">=", GE}, {"<=", LE}, {">", GT}, {"<", LT},
             {"==", EQ}, {"!=", NQ},
@@ -607,7 +608,7 @@ Node *prime_node(void) {
         }
         return new_node(token);
     } // clang-format off
-    case BOOL: case I8: case I32: case CHARS: {
+    case BOOL: case I8: case I32: case CHARS: case VARIADIC: {
         // clang-format on
         return new_node(token);
     } // clang-format off
@@ -648,6 +649,12 @@ Node *prime_node(void) {
         node->left = new_node(new_token(ARGS, node->token->space));
         while (!includes(peek(0)->type, RPARENT, 0)) {
             Node *arg = prime_node();
+            if(arg->token->type == VARIADIC)
+            {
+                // push_back(node->left->children, arg);
+                node->token->is_variadic = true;
+                break;
+            }
             if (arg->token->type != DEC_VAR) {
                 eprint("expected valid arguments\n");
                 exit(1);
@@ -1292,16 +1299,6 @@ void parse_arguments(int ac, char **av) {
 
 /*
 TODO:
-    [*] proto function
-    [*] char data type
-    [*] char literal
-
-    [*] chars literal
-    [*] chars data type (pointer to char)
-
-    [*] assign chars lit with variable
-    [ ] variadic proto function
-
     [ ] string literals and output()
 
     [ ] for loops over a range: for i in 0..10
@@ -1310,6 +1307,7 @@ TODO:
     [ ] struct
     [ ] function inside function
     [ ] arena allocator (all stdup ... should use it)
+    [ ] parse special characters \n \r \t ....
 */
 
 int main(int ac, char **av) {

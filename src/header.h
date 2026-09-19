@@ -176,6 +176,7 @@ enum Type {
 
     VOID, I32, I8, BOOL,
     CHARS,
+    VARIADIC,
     REF, OWN, DREF,
 
     LPARENT, RPARENT, DOTS,
@@ -206,6 +207,7 @@ struct Token {
     Type ret_type;
 
     bool is_type;
+    bool is_variadic;
     size_t space;
 
     ASM llvm;
