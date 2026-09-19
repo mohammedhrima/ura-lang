@@ -174,6 +174,7 @@ enum Type {
     NONE,
     IDENTIFIER,
 
+    STRUCT_DEC, STRUCT_CALL, 
     VOID, I32, I8, BOOL,
     CHARS,
     VARIADIC,
@@ -238,6 +239,7 @@ struct Node {
     expand(Node *, children);
     expand(Node *, functions);
     expand(Node *, variables);
+    expand(Node *, structs);
 };
 
 void *ura_alloc(size_t count, size_t size);

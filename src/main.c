@@ -15,8 +15,9 @@ const char *to_string(Type type) {
     char *types[END + 1] = {
         // clang-format off
         [IDENTIFIER] = "IDENTIFER",
-        [CHARS] = "CHARS",
+        [STRUCT_DEC] = "STRUCT_DEC", [STRUCT_CALL] = "STRUCT_CALL",
         [VOID] = "VOID", [BOOL] = "BOOL", [I8] = "I8", [I32] = "I32",
+        [CHARS] = "CHARS",
         [REF] = "REF", [OWN] = "OWN", [DREF] = "DREF",
 
         [LPARENT] = "LPARENT", [RPARENT] = "RPARENT",
@@ -291,6 +292,7 @@ void free_node(Node *node) {
     free(node->children);
     free(node->functions);
     free(node->variables);
+    free(node->structs);
     free(node);
 }
 
@@ -316,7 +318,7 @@ Token *new_token(Type type, size_t space) {
 char *parse_escaped(char *input, size_t s, size_t e) {
     char *res = ura_alloc(e - s + 1, sizeof(char));
     size_t r = 0;
-    while(s < e) {
+    while (s < e) {
         char c = 0;
         // clang-format off
         if(s < e && input[s] == '\\')
@@ -363,7 +365,7 @@ Token *parse_token(Type type, size_t s, size_t e, size_t space) {
             { "i8", { .type = I8, .is_type = true } },
             { "i32", { .type = I32, .is_type = true } },
             { "chars", {.type = CHARS, .is_type = true } },
-
+            { "struct", {.type = STRUCT_DEC } },
             { "True", { .type = BOOL, .b1 = { .value = true } } },
             { "False", { .type = BOOL, .b1 = { .value = false } } },
             { "fn", { .type = FDEC } }, { "return", { .type = RETURN } },
@@ -642,9 +644,30 @@ Node *prime_node(void) {
         }
         return new_node(token);
     } // clang-format off
-    case BOOL: case I8: case I32: case CHARS: case VARIADIC: {
-        // clang-format on
+    case BOOL: case I8: case I32: case CHARS: case VARIADIC: { // clang-format on
         return new_node(token);
+    }
+    case STRUCT_DEC: {
+        node = new_node(token);
+        if (peek(0)->type != IDENTIFIER) {
+            eprint("Expected identifier after struct declaration\n");
+            exit(1);
+        }
+        node->token->name = strdup(next()->name); // get struct name
+        if (peek(0)->type != DOTS) {
+            eprint("Expected )\n");
+            exit(1);
+        }
+        next(); // skip ':'
+        while (inside(node->token->space)) {
+            Node *attr = expr_node(0);
+            if (attr->token->type != DEC_VAR) {
+                eprint("invalid attribute\n");
+                exit(1);
+            }
+            push_back(node->children, attr);
+        }
+        return node;
     } // clang-format off
     case OWN: case DREF: { // clang-format on
         node = new_node(token);
@@ -683,8 +706,7 @@ Node *prime_node(void) {
         node->left = new_node(new_token(ARGS, node->token->space));
         while (!includes(peek(0)->type, RPARENT, 0)) {
             Node *arg = prime_node();
-            if(arg->token->type == VARIADIC)
-            {
+            if (arg->token->type == VARIADIC) {
                 // push_back(node->left->children, arg);
                 node->token->is_variadic = true;
                 break;
@@ -903,6 +925,25 @@ Node *find_variable(char *name) {
     return NULL;
 }
 
+void declare_struct(Node *node) {
+    // print(CYAN("declare %s\n"), node->token->name);
+    push_back(ura.scope->structs, node);
+}
+
+Node *find_struct(char *name) {
+    for (size_t i = ura.scopes_count - 1; i >= 0; i--) {
+        Node *scope = ura.scopes[i];
+        for (size_t i = 0; i < scope->structs_count; i++) {
+            Node *curr = scope->structs[i];
+            if (strcmp(curr->token->name, name) == 0)
+                return scope->structs[i];
+        }
+    }
+    eprint("struct '%s' not found", name);
+    exit(1);
+    return NULL;
+}
+
 bool match(Node *op, Node *left, Node *right) {
     return false;
 }
@@ -931,6 +972,10 @@ void analyze(Node *node) {
         node->left = find_variable(node->token->name);
         // TODO: handle not found
         node->token->type = LOAD_VAR;
+        break;
+    }
+    case STRUCT_DEC: {
+        declare_struct(node);
         break;
     }
     case DEC_VAR: {
@@ -1333,7 +1378,8 @@ void parse_arguments(int ac, char **av) {
 
 /*
 TODO:
-    [ ] struct
+    [*] struct
+    [ ] delare a struct variable
     [ ] access via '.' in struct
     [ ] struct method
     [ ] drop method
@@ -1362,7 +1408,7 @@ int main(int ac, char **av) {
 #if 1
         generate_ir();
         print_nodes(GREEN("============IR==================\n"));
-#    if 1
+#    if 0
         generate_asm(file);
         print_nodes(GREEN("============ASM==================\n"));
         compile_executable(file);
