@@ -2,5 +2,5 @@
 proto printf(fmt chars, ...) i32
 
 fn main() i32:
-   str chars = "abcdef"
+   str chars = "abcdef\n"
    printf("<%s>", str)

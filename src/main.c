@@ -311,6 +311,41 @@ Token *new_token(Type type, size_t space) {
     return new;
 }
 
+
+// TODO: parse for char type also
+char *parse_escaped(char *input, size_t s, size_t e) {
+    char *res = ura_alloc(e - s + 1, sizeof(char));
+    size_t r = 0;
+    while(s < e) {
+        char c = 0;
+        // clang-format off
+        if(s < e && input[s] == '\\')
+        {
+            switch(input[s + 1]) { 
+                case 'n':  c = '\n'; break;
+                case 't':  c = '\t'; break;
+                case 'r':  c = '\r'; break;
+                case 'b':  c = '\b'; break;
+                case 'f':  c = '\f'; break;
+                case 'v':  c = '\v'; break;
+                case 'a':  c = '\a'; break;
+                case '\\': c = '\\'; break;
+                case '"':  c = '\"'; break;
+                case '\'': c = '\''; break;
+                case '?':  c = '\?'; break;
+                // TODO: add octal stuff etc...
+                default: break;
+            }
+            if(c) s += 2;
+            else c = input[s++];
+        } 
+        else c = input[s++];
+        // clang-format on
+        res[r++] = c;
+    }
+    return res;
+}
+
 Token *parse_token(Type type, size_t s, size_t e, size_t space) {
     Token *new = new_token(type, (space / TAB + (space % TAB != 0 ? 1 : 0)));
     new->type = type;
@@ -361,8 +396,7 @@ Token *parse_token(Type type, size_t s, size_t e, size_t space) {
         break;
     }
     case CHARS: {
-        new->chars.value = ura_alloc(e - s + 1, sizeof(char));
-        strncpy(new->chars.value, ura.curr_content + s + 1, e - s - 2);
+        new->chars.value = parse_escaped(ura.curr_content, s + 1, e - 1);
         break;
     }
     case I8: {
@@ -1299,15 +1333,22 @@ void parse_arguments(int ac, char **av) {
 
 /*
 TODO:
-    [ ] string literals and output()
+    [ ] struct
+    [ ] access via '.' in struct
+    [ ] struct method
+    [ ] drop method
+    [ ] String struct
+    [ ] to_string method
+    [ ] output (should handl also struct.to_string)
+
+    [ ] access via '[]' in chars
+    [ ] operators overload
 
     [ ] for loops over a range: for i in 0..10
     [ ] more integer types (i8, i64, unsigned) and casting with as
     [ ] arrays: declaration and indexing
-    [ ] struct
     [ ] function inside function
     [ ] arena allocator (all stdup ... should use it)
-    [ ] parse special characters \n \r \t ....
 */
 
 int main(int ac, char **av) {
