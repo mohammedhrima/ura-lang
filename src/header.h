@@ -176,7 +176,7 @@ enum Type {
     NONE,
     IDENTIFIER,
 
-    STRUCT_DEC, //STRUCT_CALL, 
+    STRUCT_DEC, DOT, ACCESS, ATTR,
     VOID, I32, I8, BOOL,
     CHARS,
     VARIADIC,

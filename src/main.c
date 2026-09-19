@@ -15,7 +15,7 @@ const char *to_string(Type type) {
     char *types[END + 1] = {
         // clang-format off
         [IDENTIFIER] = "IDENTIFER",
-        [STRUCT_DEC] = "STRUCT_DEC", // [STRUCT_CALL] = "STRUCT_CALL",
+        [STRUCT_DEC] = "STRUCT_DEC", [DOT] = "DOT", [ATTR] = "ATTR",
         [VOID] = "VOID", [BOOL] = "BOOL", [I8] = "I8", [I32] = "I32",
         [CHARS] = "CHARS",
         [REF] = "REF", [OWN] = "OWN", [DREF] = "DREF",
@@ -488,7 +488,7 @@ void tokenize(uraFile *file) {
             {"(", LPARENT}, {")", RPARENT}, {":", DOTS}, 
             {"+=", ADD_ASSIGN}, {"-=", SUB_ASSIGN}, {"*=", MUL_ASSIGN},
             {"/=", DIV_ASSIGN}, {"%=", MOD_ASSIGN},
-            {"...", VARIADIC},
+            {"...", VARIADIC}, {".", DOT},
             {"+", ADD}, {"-", SUB}, {"*", MUL}, {"/", DIV}, {"%", MOD},
             {">=", GE}, {"<=", LE}, {">", GT}, {"<", LT},
             {"==", EQ}, {"!=", NQ},
@@ -858,14 +858,16 @@ Node *expr_node(int min_op) {
             [MUL_ASSIGN] = 1, [DIV_ASSIGN] = 1,
             [MOD_ASSIGN] = 1,
             
-            [OR] = 2, [AND] = 3,
+            [OR] = 11, [AND] = 12,
 
-            [GT] = 8, [LT] = 8,
-            [GE] = 8, [LE] = 8,
-            [EQ] = 7, [NQ] = 7,
+            [EQ] = 21, [NQ] = 21,
+            [GT] = 22, [LT] = 22,
+            [GE] = 22, [LE] = 22,
 
-            [ADD] = 10, [SUB] = 10, 
-            [MUL] = 11, [DIV] = 11, [MOD] = 11,
+            [ADD] = 30, [SUB] = 30,
+            [MUL] = 31, [DIV] = 31, [MOD] = 31,
+
+            [DOT] = 41,
             // clang-format on
         };
         int op = prec[peek(0)->type];
@@ -879,7 +881,6 @@ Node *expr_node(int min_op) {
     }
     return left;
 }
-
 
 void generate_ast(void) {
     if (ura.errors_count)
@@ -1002,6 +1003,27 @@ void analyze(Node *node) {
         break;
     }
     case STRUCT_DEC: {
+        break;
+    }
+    case DOT: {
+        analyze(node->left);
+        // TODO: to be protected etc...
+        // we can only have identifer or a fdec
+        if (node->right->token->type != IDENTIFIER)
+            analyze(node->right);
+        Node *struct_dec = node->left->left->left;
+        Node *attr = node->right;
+        for(size_t i = 0; i < struct_dec->children_count; i++)
+        {
+            Node *child = struct_dec->children[i]->left; // VAR
+            if(strcmp(child->token->name, attr->token->name) == 0)
+            {
+                node->right->left = new_node(new_token(I32, node->token->space));
+                node->right->left->token->i32.value = i;
+                break;
+            }
+        }
+        // Not found
         break;
     }
     case VAR_DEC: {
@@ -1432,7 +1454,7 @@ int main(int ac, char **av) {
 #if 1
         generate_ir();
         print_nodes(GREEN("============IR==================\n"));
-#    if 1
+#    if 0
         generate_asm(file);
         print_nodes(GREEN("============ASM==================\n"));
         compile_executable(file);
