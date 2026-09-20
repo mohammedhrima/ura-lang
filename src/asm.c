@@ -167,21 +167,40 @@ Value create_comparision_op(Token *left, Token *op_token, Token *right) {
 }
 
 Value address_of(Node *node) {
-    switch (node->token->type) {
-    case VAR:
-        return node->token->llvm.elem;
-    case VAR_LOAD:
-        return node->left->token->llvm.elem;
-    case DREF:
+    switch (node->token->type) { // clang-format off
+    case VAR:      return node->token->llvm.elem;
+    case VAR_LOAD: return node->left->token->llvm.elem;
+    case DREF: {
         code_gen(node->left); // TODO: to be checked, I don't like it here
         return node->left->token->llvm.elem;
+    }
+    case DOT: {
+        Value ptr = address_of(node->left); // address of struct, not its value
+        return LLVMBuildStructGEP2(ura.builder, 
+                                   // type pointer to struct
+                                   LLVMGetElementType(LLVMTypeOf(ptr)), 
+                                   ptr,
+                                   // attribute index
+                                   node->right->token->i32.value, 
+                                   node->right->token->name);
+    }
     default: {
         eprint("can't assign to %t\n", node->token->type);
         exit(1);
         break;
     }
-    }
+    } // clang-format on
     return NULL;
+}
+
+
+Value create_attr(Node *node) {
+    Value ptr = address_of(node);
+    return LLVMBuildLoad2(ura.builder, 
+                          // type pointer to struct
+                          LLVMGetElementType(LLVMTypeOf(ptr)), 
+                          ptr,
+                          node->right->token->name);
 }
 
 Value create_assign(Node *left, Node *right) {

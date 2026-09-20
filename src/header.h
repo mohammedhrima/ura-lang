@@ -101,6 +101,7 @@ Value create_math_op(Token *left, Token *op_token, Token *right);
 Value create_logic_op(Token *left, Token *op_token, Token *right);
 Value create_comparision_op(Token *left, Token *op_token, Token *right);
 Value address_of(Node *node);
+Value create_attr(Node *node);
 Value create_assign(Node *left, Node *right);
 void create_function(Node *node);
 void create_entry(Token *token);
@@ -117,6 +118,7 @@ void create_jmp_out(Bloc bloc);
 void create_jmp(Bloc bloc);
 void create_at(Bloc bloc);
 void create_last_label(Bloc bloc);
+Value create_attr(Node *node);
 // end LLVM code
 
 #ifndef bool

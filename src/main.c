@@ -1013,17 +1013,15 @@ void analyze(Node *node) {
             analyze(node->right);
         Node *struct_dec = node->left->left->left;
         Node *attr = node->right;
-        for(size_t i = 0; i < struct_dec->children_count; i++)
-        {
+        for (size_t i = 0; i < struct_dec->children_count; i++) {
             Node *child = struct_dec->children[i]->left; // VAR
-            if(strcmp(child->token->name, attr->token->name) == 0)
-            {
-                node->right->left = new_node(new_token(I32, node->token->space));
-                node->right->left->token->i32.value = i;
+            if (strcmp(child->token->name, attr->token->name) == 0) {
+                attr->token->i32.value = i;
+                attr->token->type = ATTR;
                 break;
             }
         }
-        // Not found
+        // TODO: Not found
         break;
     }
     case VAR_DEC: {
@@ -1189,6 +1187,10 @@ void code_gen(Node *node) {
         break;
     }
     case VAR: {
+        break;
+    }
+    case DOT: {
+        node->token->llvm.elem = create_attr(node);
         break;
     }
     case VAR_LOAD: {
@@ -1426,7 +1428,8 @@ void parse_arguments(int ac, char **av) {
 
 /*
 TODO:
-    [ ] access via '.' in struct
+    [*] access via '.' in struct
+    [ ] handle method in preprocessing
     [ ] struct method
     [ ] drop method
     [ ] String struct
@@ -1454,7 +1457,7 @@ int main(int ac, char **av) {
 #if 1
         generate_ir();
         print_nodes(GREEN("============IR==================\n"));
-#    if 0
+#    if 1
         generate_asm(file);
         print_nodes(GREEN("============ASM==================\n"));
         compile_executable(file);
