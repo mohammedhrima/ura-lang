@@ -15,37 +15,39 @@ const char *to_string(Type type) {
     char *types[END + 1] = {
         // clang-format off
         [IDENTIFIER] = "IDENTIFER",
-        [STRUCT_DEC] = "STRUCT_DEC", [DOT] = "DOT", [ATTR] = "ATTR",
+
+        [VAR_DEC] = "VAR_DEC", [VAR] = "VAR", [VAR_LOAD] = "VAR_LOAD",
+
         [VOID] = "VOID", [BOOL] = "BOOL", [I8] = "I8", [I32] = "I32",
         [CHARS] = "CHARS",
-        [REF] = "REF", [OWN] = "OWN", [DREF] = "DREF",
+        [REF] = "REF",
+
+        [STRUCT_DEC] = "STRUCT_DEC", [DOT] = "DOT", [ATTR] = "ATTR",
+
+        [OWN] = "OWN", [DREF] = "DREF",
 
         [LPARENT] = "LPARENT", [RPARENT] = "RPARENT",
-        [DOTS] = "DOTS",
+        [DOTS] = "DOTS", [COMA] = "COMA",
 
-        [ASSIGN] = "ASSIGN", 
+        [ASSIGN] = "ASSIGN",
         [ADD_ASSIGN] = "ADD_ASSIGN", [SUB_ASSIGN] = "SUB_ASSIGN",
         [MUL_ASSIGN] = "MUL_ASSIGN", [DIV_ASSIGN] = "DIV_ASSIGN",
         [MOD_ASSIGN] = "MOD_ASSIGN",
 
-        [ADD] = "ADD", [SUB] = "SUB", [MUL] = "MUL", 
+        [ADD] = "ADD", [SUB] = "SUB", [MUL] = "MUL",
         [DIV] = "DIV", [MOD] = "MOD",
 
-        [GT] = "GT", [LT] = "LT", [GE] = "GE", 
+        [GT] = "GT", [LT] = "LT", [GE] = "GE",
         [LE] = "LE", [EQ] = "EQ", [NQ] = "NQ",
 
         [AND] = "AND", [OR] = "OR",
 
         [PROTO] = "PROTO",
-
-        [FN_DEC] = "FN_DEC", [ARGS] = "ARGS", [COMA] = "COMA",
-        [RETURN] = "RETURN", 
-        [FN_CALL] = "FN_CALL",
+        [FN_DEC] = "FN_DEC", [ARGS] = "ARGS", [VARIADIC] = "VARIADIC",
+        [FN_CALL] = "FN_CALL", [RETURN] = "RETURN",
 
         [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
         [WHILE] = "WHILE", [BRK] = "BRK", [CNT] = "CNT",
-
-        [VAR_DEC] = "VAR_DEC", [VAR] = "VAR",  [VAR_LOAD] = "VAR_LOAD",
 
         [END] = "END",
         // clang-format on
@@ -364,19 +366,22 @@ Token *parse_token(Type type, size_t s, size_t e, size_t space) {
             { "char", { .type = I8, .is_type = true } },
             { "i8", { .type = I8, .is_type = true } },
             { "i32", { .type = I32, .is_type = true } },
-            { "chars", {.type = CHARS, .is_type = true } },
-            { "struct", {.type = STRUCT_DEC } },
+            { "chars", { .type = CHARS, .is_type = true } },
+            { "ref", { .type = REF } },
+
             { "True", { .type = BOOL, .b1 = { .value = true } } },
             { "False", { .type = BOOL, .b1 = { .value = false } } },
-            { "fn", { .type = FN_DEC } }, { "return", { .type = RETURN } },
+
+            { "struct", { .type = STRUCT_DEC } },
+            { "own", { .type = OWN } }, { "dref", { .type = DREF } },
+            { "and", { .type = AND } }, { "or", { .type = OR } },
+            { "proto", { .type = PROTO } }, { "fn", { .type = FN_DEC } },
+            { "return", { .type = RETURN } },
             { "if", { .type = IF } }, { "elif", { .type = ELIF } },
             { "else", { .type = ELSE } },
             { "while", { .type = WHILE } }, { "break", { .type = BRK } },
             { "continue", { .type = CNT } },
-            { "own", { .type = OWN } }, { "ref", { .type = REF } },
-            { "dref", { .type = DREF } },
-            { "and", { .type = AND } }, { "or", { .type = OR } },
-            { "proto", {.type = PROTO } },
+
             { NULL },
             // clang-format on
         };
@@ -714,14 +719,6 @@ Node *prime_node(void) {
         node = new_node(token);
         node->left = prime_node(); // TODO: expect identifier
         return node;
-    } // clang-format off
-    case SUB: case ADD: { // clang-format on
-        node = new_node(token);
-        node->right = prime_node();
-        node->left = new_node(new_token(I32, node->token->space));
-        node->left->token->i32.value = token->type == SUB ? -1 : 1;
-        node->token->type = MUL;
-        return node;
     }
     case LPARENT: {
         node = expr_node(0);
@@ -730,6 +727,14 @@ Node *prime_node(void) {
             exit(1);
         }
         next();
+        return node;
+    } // clang-format off
+    case SUB: case ADD: { // clang-format on
+        node = new_node(token);
+        node->right = prime_node();
+        node->left = new_node(new_token(I32, node->token->space));
+        node->left->token->i32.value = token->type == SUB ? -1 : 1;
+        node->token->type = MUL;
         return node;
     } // clang-format off
     case PROTO: case FN_DEC: { // clang-format on
@@ -1002,6 +1007,14 @@ void analyze(Node *node) {
         node->token->type = VAR_LOAD;
         break;
     }
+    case VAR_DEC: {
+        // TODO: later on try declaring structs/enum at the bottom
+        declare_variable(node->left);
+        break;
+    } // clang-format off
+    case VAR:
+    case BOOL: case I8: case I32: case CHARS: break; // clang-format on
+
     case STRUCT_DEC: {
         break;
     }
@@ -1024,15 +1037,10 @@ void analyze(Node *node) {
         // TODO: Not found
         break;
     }
-    case VAR_DEC: {
-        // TODO: later on try declaring structs/enum at the bottom
-        declare_variable(node->left);
+    case OWN: {
+        analyze(node->left);
         break;
-    } // clang-format off
-    case VAR:
-    case BOOL: case I8: case I32: case CHARS: break; 
-    
-    case OWN: analyze(node->left); break; // clang-format on
+    }
     case DREF: {
         analyze(node->left);
         // LOAD_VAR -> VAR -> type: the variable must be declared as a ref
@@ -1070,9 +1078,9 @@ void analyze(Node *node) {
         break;
     }
     case ASSIGN:
-    case AND: case OR:
     case ADD: case SUB: case MUL: case DIV: case MOD:
-    case GT: case LT: case GE: case LE: case EQ: case NQ: { // clang-format on
+    case GT: case LT: case GE: case LE: case EQ: case NQ:
+    case AND: case OR: { // clang-format on
         analyze(node->left);
         analyze(node->right);
         // TODO: check compatibility
@@ -1181,38 +1189,36 @@ void code_gen(Node *node) {
         return;
     switch (node->token->type) {
     case VAR_DEC: {
-        Node *var = node->left;
-        Node *type = var->left;
-        node->left->token->llvm.elem = create_variable(var->token, type);
+        node->left->token->llvm.elem = create_variable(node);
         break;
     }
     case VAR: {
+        break;
+    }
+    case VAR_LOAD: {
+        node->token->llvm.elem = create_load(node);
+        break;
+    } // clang-format off
+    case BOOL: case I8: case I32: case CHARS: {
+        // clang-format on
+        node->token->llvm.elem = create_value(node);
+        break;
+    }
+    case STRUCT_DEC: {
+        create_struct(node);
         break;
     }
     case DOT: {
         node->token->llvm.elem = create_attr(node);
         break;
     }
-    case VAR_LOAD: {
-        Node *var = node->left;
-        Node *type = var->left;
-        node->token->llvm.elem = create_load(var->token, type);
-        break;
-    } // clang-format off
-    case BOOL: case I8: case I32: case CHARS: {
-        // clang-format on
-        node->token->llvm.elem = create_value(node->token);
+    case OWN: {
+        node->token->llvm.elem = address_of(node->left);
         break;
     }
     case DREF: {
         code_gen(node->left);
-        Node *left = node->left;
-        Node *ref = pointer_type(left);
-        node->token->llvm.elem = create_dref(left->token->llvm.elem, ref);
-        break;
-    }
-    case OWN: {
-        node->token->llvm.elem = address_of(node->left);
+        node->token->llvm.elem = create_dref(node->left);
         break;
     }
     case ASSIGN: {
@@ -1230,46 +1236,45 @@ void code_gen(Node *node) {
         // TODO: check compatibility
         Node *left = node->left;
         Node *right = node->right;
-        node->token->llvm.elem = create_math_op(left->token, node->token, right->token);
+        node->token->llvm.elem = create_math_op(node);
+        break;
+    } // clang-format off
+    case GT: case LT: case GE: case LE: case EQ: case NQ: {
+        // clang-format on
+        code_gen(node->left);
+        code_gen(node->right);
+        // TODO: check compatibility
+        Node *left = node->left;
+        Node *right = node->right;
+        node->token->llvm.elem = create_comparision_op(node);
         break;
     } // clang-format off
     case AND: case OR: {
+        // clang-format on
         code_gen(node->left);
         code_gen(node->right);
         // TODO: check compatibility
         Node *left = node->left;
         Node *right = node->right;
-        node->token->llvm.elem = create_logic_op(left->token, node->token, right->token);
+        node->token->llvm.elem = create_logic_op(node);
         break;
     }
-    case GT: case LT: case GE: case LE: case EQ: case NQ: { // clang-format on
-        code_gen(node->left);
-        code_gen(node->right);
-        // TODO: check compatibility
-        Node *left = node->left;
-        Node *right = node->right;
-        node->token->llvm.elem = create_comparision_op(left->token, node->token, right->token);
-        break;
-    } // clang-fromat off
-    case PROTO:
-        break; // clang-fromat on
-    case STRUCT_DEC: {
-        create_struct(node);
+    case PROTO: {
         break;
     }
     case FN_DEC: {
         enter_scope(node);
 
-        Token *token = node->token;
+        // Token *token = node->token;
         // if (!token->llvm.func_type)
         //     create_function(node);
-        create_entry(token);
+        create_entry(node);
 
         // extract parameters as variables
         for (size_t i = 0; i < node->left->children_count; i++) {
             Node *dec = node->left->children[i];
             code_gen(dec);
-            create_param(node->token, dec->left->token, i);
+            create_param(node, dec, i);
         }
         // code gen children
         gen_body(node);
@@ -1286,7 +1291,7 @@ void code_gen(Node *node) {
     }
     case RETURN: {
         code_gen(node->left);
-        node->token->llvm.elem = create_return(node->left->token);
+        node->token->llvm.elem = create_return(node->left);
         break;
     }
     case IF: {
@@ -1429,6 +1434,7 @@ void parse_arguments(int ac, char **av) {
 /*
 TODO:
     [*] access via '.' in struct
+    [ ] pass method by refrence to function
     [ ] handle method in preprocessing
     [ ] struct method
     [ ] drop method

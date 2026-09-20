@@ -93,23 +93,23 @@ void asm_init(char *name);
 void asm_finalize(char *ll_path);
 TypeRef get_llvm_type(Type type);
 TypeRef get_data_type(Node *type);
-Value create_variable(Token *var, Node *type);
-Value create_value(Token *token);
-Value create_load(Token *var, Node *type);
-Value create_dref(Value ptr, Node *type);
-Value create_math_op(Token *left, Token *op_token, Token *right);
-Value create_logic_op(Token *left, Token *op_token, Token *right);
-Value create_comparision_op(Token *left, Token *op_token, Token *right);
+Value create_variable(Node *node);
+Value create_value(Node *node);
+Value create_load(Node *node);
+void create_struct(Node *node);
+Value create_dref(Node *node);
+Value create_math_op(Node *node);
+Value create_comparision_op(Node *node);
+Value create_logic_op(Node *node);
 Value address_of(Node *node);
 Value create_attr(Node *node);
 Value create_assign(Node *left, Node *right);
 void create_function(Node *node);
-void create_entry(Token *token);
-Value create_param(Token *fn, Token *param, size_t pos);
+void create_entry(Node *node);
+Value create_param(Node *fn, Node *param, size_t pos);
 Value create_function_call(Node *node);
-Value create_return(Token *token);
+Value create_return(Node *node);
 void create_default_return(Node *node);
-void create_struct(Node *node);
 Value get_parent_bloc();
 Bloc create_label(char *name);
 void create_jmp_condition(Value cond, Bloc then, Bloc next);
@@ -178,30 +178,30 @@ enum Type {
     NONE,
     IDENTIFIER,
 
-    STRUCT_DEC, DOT, ACCESS, ATTR,
-    VOID, I32, I8, BOOL,
-    CHARS,
-    VARIADIC,
-    REF, OWN, DREF,
+    VAR_DEC, VAR, VAR_LOAD,
 
-    LPARENT, RPARENT, DOTS,
+    VOID, BOOL, I8, I32, CHARS,
+    REF,
 
-    ASSIGN, 
+    STRUCT_DEC, DOT, ATTR,
+
+    OWN, DREF,
+
+    LPARENT, RPARENT, DOTS, COMA,
+
+    ASSIGN,
     ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,
     ADD, SUB, MUL, DIV, MOD,
 
     GT, LT, GE, LE, EQ, NQ,
 
     AND, OR,
-    
+
     PROTO,
-    FN_DEC, ARGS, COMA, RETURN,
-    FN_CALL,
+    FN_DEC, ARGS, VARIADIC, FN_CALL, RETURN,
 
     IF, ELIF, ELSE,
     WHILE, BRK, CNT,
-
-    VAR_DEC, VAR, VAR_LOAD,
 
     END,
 };
