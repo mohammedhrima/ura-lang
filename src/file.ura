@@ -1,8 +1,6 @@
 
-fn same(p ref(i32)) ref(i32):
-   return p
+
+proto exit(code i32)
 
 fn main() i32:
-   a i32 = 6
-   q ref(i32) = same(own(a))
-   return dref(q)
+   exit(10)

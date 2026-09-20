@@ -97,6 +97,7 @@ Value create_variable(Node *node);
 Value create_value(Node *node);
 Value create_load(Node *node);
 void create_struct(Node *node);
+void create_struct_body(Node *node);
 Value create_dref(Node *node);
 Value create_math_op(Node *node);
 Value create_comparision_op(Node *node);
@@ -241,9 +242,6 @@ struct Node {
     Node *right;
 
     expand(Node *, children);
-    expand(Node *, functions);
-    expand(Node *, variables);
-    expand(Node *, structs);
 };
 
 void *ura_alloc(size_t count, size_t size);

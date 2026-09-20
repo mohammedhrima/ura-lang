@@ -124,7 +124,7 @@ Value create_load(Node *node) {
 void create_struct(Node *node) {
     Token *token = node->token;
     token->llvm.type = LLVMStructCreateNamed(ura.context, token->name);
-
+    assert(token->llvm.type != NULL);
     // TODO: protect when struct has no attributes
     TypeRef *attrs = ura_alloc(node->children_count, sizeof(TypeRef));
     for (size_t i = 0; i < node->children_count; i++)
@@ -132,6 +132,9 @@ void create_struct(Node *node) {
     LLVMStructSetBody(token->llvm.type, attrs, node->children_count, 0);
     free(attrs);
 }
+
+// void create_struct_body(Node *node) {
+// }
 
 // node is DREF: its left already hold the address to read through
 Value create_dref(Node *node) {
@@ -238,6 +241,7 @@ Value create_assign(Node *left, Node *right) {
     return LLVMBuildStore(ura.builder, right_elem, left_elem);
 }
 
+Node *find_struct(char *name);
 void create_function(Node *node) {
     Token *token = node->token;
     // set return type
@@ -250,7 +254,10 @@ void create_function(Node *node) {
         args = ura_alloc(node->left->children_count, sizeof(TypeRef));
         for (size_t i = 0; i < args_count; i++) {
             Node *type = node->left->children[i]->left->left;
-            args[i] = get_data_type(type);
+            if (type->token->type == STRUCT_DEC)
+                args[i] = type->token->llvm.type;
+            else
+                args[i] = get_data_type(type);
         }
     }
     // TODO: set args count, set if function is variadic or not
@@ -265,10 +272,14 @@ void create_entry(Node *node) {
 }
 
 // fn is FN_DEC, param is VAR_DEC: store the incoming argument into its slot
-Value create_param(Node *fn, Node *param, size_t pos) {
-    return LLVMBuildStore(ura.builder, // clang-format off
-                          LLVMGetParam(fn->token->llvm.elem, pos),
-                          param->left->token->llvm.elem); // clang-format on
+Value create_param(Node *fn, Node *param_node, size_t pos) {
+    assert(fn->token->llvm.elem);
+    assert(param_node->left->token->llvm.elem);
+
+    Value param = LLVMGetParam(fn->token->llvm.elem, pos);
+    Value value = param_node->left->token->llvm.elem;
+
+    return LLVMBuildStore(ura.builder, param, value);
 }
 
 Value create_function_call(Node *node) {
@@ -286,7 +297,7 @@ Value create_function_call(Node *node) {
                                fdec->llvm.elem, 
                                args, args_count,
                                node->right->right ? node->token->name : "");
-                               // clang-format on
+                                            // clang-format on
     free(args);
     return res;
 }
