@@ -75,6 +75,8 @@ TypeRef get_llvm_type(Type type) {
 };
 
 TypeRef get_data_type(Node *type) {
+    // assert(type);
+    // assert(type->token);
     if (type->token->type == CHARS)
         return LLVMPointerType(get_llvm_type(I8), 0);
     if (type->token->type == REF)
@@ -127,9 +129,14 @@ void create_struct(Node *node) {
     assert(token->llvm.type != NULL);
     // TODO: protect when struct has no attributes
     TypeRef *attrs = ura_alloc(node->children_count, sizeof(TypeRef));
-    for (size_t i = 0; i < node->children_count; i++)
-        attrs[i] = get_data_type(node->children[i]->left->left);
-    LLVMStructSetBody(token->llvm.type, attrs, node->children_count, 0);
+    size_t j = 0;
+    for (size_t i = 0; i < node->children_count; i++) {
+        Node *child = node->children[i];
+        if (!includes(child->token->type, VAR_DEC))
+            continue;
+        attrs[j++] = get_data_type(child->left->left);
+    }
+    LLVMStructSetBody(token->llvm.type, attrs, j, 0);
     free(attrs);
 }
 
@@ -241,7 +248,6 @@ Value create_assign(Node *left, Node *right) {
     return LLVMBuildStore(ura.builder, right_elem, left_elem);
 }
 
-Node *find_struct(char *name);
 void create_function(Node *node) {
     Token *token = node->token;
     // set return type
@@ -262,7 +268,8 @@ void create_function(Node *node) {
     }
     // TODO: set args count, set if function is variadic or not
     token->llvm.type = LLVMFunctionType(ret, args, args_count, token->is_variadic);
-    token->llvm.elem = LLVMAddFunction(ura.module, token->name, token->llvm.type);
+    char *name = token->asm_name ? token->asm_name : token->name;
+    token->llvm.elem = LLVMAddFunction(ura.module, name, token->llvm.type);
     free(args);
 }
 

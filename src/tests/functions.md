@@ -175,13 +175,13 @@ entry:
 ## 005 — fn returns ref
 
 ```ura
-fn same(p ref(i32)) ref(i32):
-    return p
+fn same(p &i32) &i32:
+    return &p
 
 fn main() i32:
     a i32 = 6
-    q ref(i32) = same(own(a))
-    return dref(q)
+    q &i32 = same(&a)
+    return q
 ```
 
 ### llvm ir
@@ -218,15 +218,15 @@ entry:
 ## 006 — swap
 
 ```ura
-fn swap(x ref(i32), y ref(i32)):
-    t i32 = dref(x)
-    dref(x) = dref(y)
-    dref(y) = t
+fn swap(x &i32, y &i32):
+    t i32 = x
+    x = y
+    y = t
 
 fn main() i32:
     a i32 = 1
     b i32 = 2
-    swap(own(a), own(b))
+    swap(&a, &b)
     return a * 10 + b
 ```
 

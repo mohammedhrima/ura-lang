@@ -5,7 +5,7 @@
 - 001 — basic if
 - 002 — basic if/elif/else chain
 - 003 — ifs with comparision operators
-- 004 — if with ref/dref
+- 004 — if with a ref
 - 005 — nested ifs
 - 006 — logic operators and/or
 
@@ -273,13 +273,13 @@ endif58:                                          ; preds = %then59, %endif53
 
 ---
 
-## 004 — if with ref/dref
+## 004 — if with a ref
 
 ```ura
 fn main() i32:
     b b1 = False
-    p ref(b1) = own(b)
-    dref(p) = True
+    p &b1 = &b
+    p = True
     if b:
         return 1
     return 0

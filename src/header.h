@@ -222,6 +222,7 @@ struct Token {
 
     struct {
         char *name;
+        char *asm_name;
         struct {
             long value;
         } i32;
