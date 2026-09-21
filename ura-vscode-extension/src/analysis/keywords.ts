@@ -6,10 +6,10 @@ export const CONTROL = ["if", "elif", "else", "while", "break", "continue", "ret
 export const LOGICAL = ["and", "or"];
 export const DECLARATION = ["fn", "proto"];
 export const TYPES = ["i8", "char", "i32", "b1"];
-export const REF = "ref";
 export const BOOLEANS = ["True", "False"];
 
-// Language built-ins that are written like calls.
+// Language built-ins that are written like calls. None today: references are
+// written with `&`, which is an operator, not a built-in.
 export interface Builtin {
     name: string;
     params: string[];
@@ -17,20 +17,7 @@ export interface Builtin {
     doc: string;
 }
 
-export const BUILTINS: Builtin[] = [
-    {
-        name: "own",
-        params: ["variable"],
-        returns: "ref(type of variable)",
-        doc: "The address of a variable, to store in a `ref`.",
-    },
-    {
-        name: "dref",
-        params: ["ref"],
-        returns: "the value the ref points to",
-        doc: "Reads through a ref. `dref(p) = value` writes through it.",
-    },
-];
+export const BUILTINS: Builtin[] = [];
 
 // Words that can never be a variable or function name.
 export const RESERVED = new Set<string>([
@@ -38,7 +25,6 @@ export const RESERVED = new Set<string>([
     ...LOGICAL,
     ...DECLARATION,
     ...TYPES,
-    REF,
     ...BOOLEANS,
     ...BUILTINS.map((b) => b.name),
 ]);

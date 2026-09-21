@@ -6,7 +6,6 @@ import {
     CONTROL,
     DECLARATION,
     LOGICAL,
-    REF,
     TYPES,
 } from "../analysis/keywords";
 import { analyze, functionSignature, isInComment, visibleVariables } from "../analysis/parser";
@@ -35,11 +34,6 @@ export class CompletionProvider implements vscode.CompletionItemProvider {
         for (const value of BOOLEANS) {
             items.push(keyword(value, vscode.CompletionItemKind.Constant));
         }
-
-        const ref = keyword(REF, vscode.CompletionItemKind.TypeParameter);
-        ref.insertText = new vscode.SnippetString(`${REF}(\${1:i32})`);
-        ref.detail = "ref(type)";
-        items.push(ref);
 
         for (const builtin of BUILTINS) {
             const item = keyword(builtin.name, vscode.CompletionItemKind.Function);

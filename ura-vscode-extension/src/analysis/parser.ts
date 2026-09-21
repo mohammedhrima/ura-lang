@@ -52,8 +52,8 @@ export interface CallContext {
 
 const IDENT = /[A-Za-z_]\w*/;
 const FN_HEADER = /^(\s*)(fn|proto)\s+([A-Za-z_]\w*)\s*\(/;
-// `name type` or `name type = value`, where type is i32, b1 or a ref form
-const DECLARATION = /^(\s*)([A-Za-z_]\w*)(\s+)(i32|b1|ref\b[^=]*?)\s*(=.*)?$/;
+// `name type` or `name type = value`, where type is i32, b1 or a ref `&type`
+const DECLARATION = /^(\s*)([A-Za-z_]\w*)(\s+)(i32|b1|&\w+)\s*(=.*)?$/;
 
 // Where the comment starts on this line, or -1. A `//` inside a string
 // literal doesn't start one, just like in the tokenizer.
@@ -336,8 +336,8 @@ export function callContext(line: string, character: number): CallContext | unde
             if (name && (!RESERVED.has(name) || findBuiltin(name))) {
                 return { name, argument };
             }
-            // a grouping parenthesis (or `if (`, `ref(`...): keep looking for
-            // the call around it
+            // a grouping parenthesis (or `if (`...): keep looking for the
+            // call around it
         } else if (c === "," && depth === 0) {
             argument++;
         }

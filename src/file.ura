@@ -1,13 +1,10 @@
 
-proto printf(str chars, ...)
-proto foo(code i32)
-
-fn foo(code i32):
-   printf("hello")
-
-fn foo(code char):
-   printf("hello")
+fn foo(ptr &i32):
+   ptr = 2
 
 fn main() i32:
-   foo(10)
-   foo('a')
+   a i32 = 10
+   foo(1)
+   return a
+
+
