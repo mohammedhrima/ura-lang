@@ -141,7 +141,7 @@ build() {
         CFLAGS_LLVM=($("$LLVM_CONFIG" --cflags))
 
         mkdir -p build
-        "$CC" "${FLAGS[@]}" "${CFLAGS_LLVM[@]}" main.c asm.c "${LIBS[@]}" -o build/ura
+        "$CC" "${FLAGS[@]}" "${CFLAGS_LLVM[@]}" main.c asm.c errors.c "${LIBS[@]}" -o build/ura
     ) && _ura_green "build: build/ura ready" || { _ura_red "build: failed"; return 1; }
 }
 

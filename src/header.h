@@ -57,6 +57,9 @@ typedef LLVMValueRef Value;
 typedef LLVMTargetDataRef TargetData;
 typedef LLVMTargetRef Target;
 typedef LLVMTargetMachineRef TargetMachine;
+typedef LLVMCodeGenOptLevel CodeGenOptLevel;
+typedef LLVMRelocMode RelocMode;
+typedef LLVMCodeModel CodeModel;
 typedef LLVMTypeKind TypeKind;
 typedef LLVMAttributeRef AttributeRef;
 typedef LLVMMetadataRef MetadataRef;
@@ -65,13 +68,17 @@ typedef LLVMErrorRef Error;
 typedef LLVMPassBuilderOptionsRef PassBuilderOptions;
 #endif
 
-#define PointerType  LLVMPointerTypeKind
-#define IntegerType  LLVMIntegerTypeKind
-#define FloatType    LLVMFloatTypeKind
-#define DoubleType   LLVMDoubleTypeKind
-#define VoidType     LLVMVoidTypeKind
-#define FunctionType LLVMFunctionTypeKind
-#define StructType   LLVMStructTypeKind
+#define PointerType         LLVMPointerTypeKind
+#define IntegerType         LLVMIntegerTypeKind
+#define FloatType           LLVMFloatTypeKind
+#define DoubleType          LLVMDoubleTypeKind
+#define VoidType            LLVMVoidTypeKind
+#define FunctionType        LLVMFunctionTypeKind
+#define StructType          LLVMStructTypeKind
+
+#define CodeGenLevelDefault LLVMCodeGenLevelDefault
+#define RelocDefault        LLVMRelocDefault
+#define CodeModelDefault    LLVMCodeModelDefault
 
 typedef struct ASM ASM;
 struct ASM {
@@ -145,6 +152,7 @@ typedef struct _IO_FILE *File;
 #define GREEN(fmt) BOLD "\033[0;32m" fmt RESET
 #define RED(fmt)   BOLD "\033[0;31m" fmt RESET
 #define CYAN(fmt)  BOLD "\033[0;36m" fmt RESET
+#define DIM(fmt)   "\033[2m" fmt RESET
 // #define BLUE(fmt)  BOLD "\033[34m" fmt RESET
 // #define YELLOW(fmt) BOLD "\033[0;33m" fmt RESET
 
@@ -162,7 +170,8 @@ typedef struct _IO_FILE *File;
         parent[parent##_count++] = child;                                     \
     }
 
-#define eprint(...) _eprint(FILE, FUNC, LINE, __VA_ARGS__)
+#define eprint(...)          _eprint(FILE, FUNC, LINE, __VA_ARGS__)
+#define error_at(token, ...) _error_at(FILE, FUNC, LINE, token, __VA_ARGS__)
 
 struct uraFile {
     char *name;
@@ -177,6 +186,7 @@ struct uraFile {
 // clang-format off
 enum Type {
     NONE,
+    ERR,
     IDENTIFIER,
 
     VAR_DEC, VAR, VAR_LOAD,
@@ -215,6 +225,8 @@ struct Token {
     bool is_type;
     bool is_variadic;
     size_t space;
+    size_t line;
+    size_t s, e;
 
     ASM llvm;
 
@@ -251,6 +263,12 @@ void *ura_alloc(size_t count, size_t size);
 const char *to_string(Type type);
 int _print(File fp, const char *fmt, va_list args);
 int _eprint(char *file, const char *func, int line, char *fmt, ...);
+void _error_at(char *file, const char *func, int line, Token *token, char *fmt, ...);
+void help(char *fmt, ...);
+void diag_flush(void);
+void report_bad_call(Node *call);
+Node *type_of(Node *node);
+bool same_type(Node *left, Node *right);
 int print(char *fmt, ...);
 bool includes(Type to_find, ...);
 Node *prime_node(void);
@@ -258,10 +276,13 @@ Node *expr_node(int min_op);
 void enter_scope(Node *node);
 void exit_scope(void);
 void code_gen(Node *node);
-void print_nodes(char *text) ;
+void print_nodes(char *text);
 
 struct Ura {
     int errors_count;
+    char *error_file;
+    const char *error_func;
+    int error_line;
     expand(uraFile *, files);
     expand(Token *, tokens);
     expand(Node *, nodes);
@@ -269,6 +290,8 @@ struct Ura {
     Node *scope;
 
     char *curr_content;
+    uraFile *curr_file;
+    size_t curr_line;
     size_t exe_pos;
 
     Node *ast;

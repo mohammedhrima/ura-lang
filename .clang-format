@@ -44,7 +44,7 @@ SpaceBeforeAssignmentOperators: true
 Cpp11BracedListStyle: false
 
 # --- line breaking ---
-ColumnLimit: 100
+ColumnLimit: 87
 BreakBeforeBinaryOperators: None
 BreakBeforeTernaryOperators: true
 BinPackArguments: true

@@ -11,6 +11,7 @@
 - 007 — proto function
 - 008 — proto variadic function
 - 009 — overloaded function
+- 010 — bare return in a void function
 
 ---
 
@@ -392,6 +393,53 @@ entry:
   call void @show(i32 42)
   call void @show.1(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.3, i32 0, i32 0))
   ret i32 0
+}
+```
+
+---
+
+## 010 — bare return in a void function
+
+```ura
+fn foo(a i32):
+   return
+
+fn foo(a b1):
+   return
+
+fn main() i32:
+   foo(1)
+   foo(True)
+   return 7
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+define void @foo(i32 %0) {
+entry:
+  %a = alloca i32, align 4
+  store i32 %0, i32* %a, align 4
+  ret void
+}
+
+define void @foo.1(i1 %0) {
+entry:
+  %a = alloca i1, align 1
+  store i1 %0, i1* %a, align 1
+  ret void
+}
+
+define i32 @main() {
+entry:
+  call void @foo(i32 1)
+  call void @foo.1(i1 true)
+  ret i32 7
 }
 ```
 

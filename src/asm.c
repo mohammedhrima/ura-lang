@@ -13,9 +13,11 @@ void asm_init(char *name) {
     LLVMSetTarget(ura.module, triple);
     Target target;
     if (!LLVMGetTargetFromTriple(triple, &target, NULL)) {
-        TargetMachine machine =
-            LLVMCreateTargetMachine(target, triple, "", "", LLVMCodeGenLevelDefault,
-                                    LLVMRelocDefault, LLVMCodeModelDefault);
+        CodeGenOptLevel level = CodeGenLevelDefault;
+        RelocMode reloc = RelocDefault;
+        CodeModel model = CodeModelDefault;
+        TargetMachine machine;
+        machine = LLVMCreateTargetMachine(target, triple, "", "", level, reloc, model);
         TargetData layout = LLVMCreateTargetDataLayout(machine);
         LLVMSetModuleDataLayout(ura.module, layout);
         LLVMDisposeTargetData(layout);
@@ -101,7 +103,7 @@ Value create_value(Node *node) {
     // if (token->is_ref)
     //     llvm_type = LLVMPointerType(llvm_type, 0);
     // clang-format off
-    switch (token->type) { 
+    switch (token->type) {
     case BOOL:  return LLVMConstInt(llvm_type, token->b1.value, 0);
     case I8:    return LLVMConstInt(llvm_type, token->i8.value, 0);
     case I32:   return LLVMConstInt(llvm_type, token->i32.value, 0);
@@ -117,10 +119,8 @@ Value create_value(Node *node) {
 // node is VAR_LOAD: its left is the VAR that own the storage
 Value create_load(Node *node) {
     Token *var = node->left->token;
-    return LLVMBuildLoad2(ura.builder, // clang-format off
-                          LLVMGetElementType(LLVMTypeOf(var->llvm.elem)),
-                          var->llvm.elem,
-                          var->name); // clang-format on
+    TypeRef type = LLVMGetElementType(LLVMTypeOf(var->llvm.elem));
+    return LLVMBuildLoad2(ura.builder, type, var->llvm.elem, var->name);
 }
 
 void create_struct(Node *node) {
@@ -132,7 +132,7 @@ void create_struct(Node *node) {
     size_t j = 0;
     for (size_t i = 0; i < node->children_count; i++) {
         Node *child = node->children[i];
-        if (!includes(child->token->type, VAR_DEC))
+        if (!includes(child->token->type, VAR_DEC, 0))
             continue;
         attrs[j++] = get_data_type(child->left->left);
     }
@@ -140,16 +140,10 @@ void create_struct(Node *node) {
     free(attrs);
 }
 
-// void create_struct_body(Node *node) {
-// }
-
-// node is DREF: its left already hold the address to read through
 Value create_dref(Node *node) {
     Value ptr = node->token->llvm.elem;
-    return LLVMBuildLoad2(ura.builder, // clang-format off
-                          LLVMGetElementType(LLVMTypeOf(ptr)),
-                          ptr,
-                          "dref"); // clang-format on
+    TypeRef type = LLVMGetElementType(LLVMTypeOf(ptr));
+    return LLVMBuildLoad2(ura.builder, type, ptr, "dref");
 }
 
 // TODO: add a flag to define if it's float or unsigned or something
@@ -169,8 +163,9 @@ Value create_math_op(Node *node) {
     }
 
     const char *name = to_string(node->token->type);
-    return LLVMBuildBinOp(ura.builder, op, node->left->token->llvm.elem,
-                          node->right->token->llvm.elem, name);
+    Value left = node->left->token->llvm.elem;
+    Value right = node->right->token->llvm.elem;
+    return LLVMBuildBinOp(ura.builder, op, left, right, name);
 }
 
 Value create_comparision_op(Node *node) {
@@ -187,8 +182,9 @@ Value create_comparision_op(Node *node) {
     }
 
     const char *name = to_string(node->token->type);
-    return LLVMBuildICmp(ura.builder, op, node->left->token->llvm.elem,
-                         node->right->token->llvm.elem, name);
+    Value left = node->left->token->llvm.elem;
+    Value right = node->right->token->llvm.elem;
+    return LLVMBuildICmp(ura.builder, op, left, right, name);
 }
 
 Value create_logic_op(Node *node) {
@@ -201,8 +197,9 @@ Value create_logic_op(Node *node) {
     }
 
     const char *name = to_string(node->token->type);
-    return LLVMBuildBinOp(ura.builder, op, node->left->token->llvm.elem,
-                          node->right->token->llvm.elem, name);
+    Value left = node->left->token->llvm.elem;
+    Value right = node->right->token->llvm.elem;
+    return LLVMBuildBinOp(ura.builder, op, left, right, name);
 }
 
 Value address_of(Node *node) {
@@ -211,13 +208,10 @@ Value address_of(Node *node) {
     case VAR_LOAD: return node->left->token->llvm.elem;
     case DOT: {
         Value ptr = address_of(node->left); // address of struct, not its value
-        return LLVMBuildStructGEP2(ura.builder,
-                                   // type pointer to struct
-                                   LLVMGetElementType(LLVMTypeOf(ptr)),
-                                   ptr,
-                                   // attribute index
-                                   node->right->token->i32.value,
-                                   node->right->token->name);
+        TypeRef type = LLVMGetElementType(LLVMTypeOf(ptr));
+        Token *attr = node->right->token;
+        unsigned index = attr->i32.value;
+        return LLVMBuildStructGEP2(ura.builder, type, ptr, index, attr->name);
     }
     case DREF: {
         code_gen(node->left); // TODO: to be checked, I don't like it here
@@ -235,11 +229,8 @@ Value address_of(Node *node) {
 
 Value create_attr(Node *node) {
     Value ptr = address_of(node);
-    return LLVMBuildLoad2(ura.builder, // clang-format off
-                          // type pointer to struct
-                          LLVMGetElementType(LLVMTypeOf(ptr)),
-                          ptr, 
-                          node->right->token->name); // clang-format on
+    TypeRef type = LLVMGetElementType(LLVMTypeOf(ptr));
+    return LLVMBuildLoad2(ura.builder, type, ptr, node->right->token->name);
 }
 
 Value create_assign(Node *left, Node *right) {
@@ -274,7 +265,8 @@ void create_function(Node *node) {
 }
 
 void create_entry(Node *node) {
-    Bloc bloc = LLVMAppendBasicBlockInContext(ura.context, node->token->llvm.elem, "entry");
+    Value fn = node->token->llvm.elem;
+    Bloc bloc = LLVMAppendBasicBlockInContext(ura.context, fn, "entry");
     LLVMPositionBuilderAtEnd(ura.builder, bloc);
 }
 
@@ -299,17 +291,17 @@ Value create_function_call(Node *node) {
             args[i] = node->left->children[i]->token->llvm.elem;
         }
     }
-    Value res = LLVMBuildCall2(ura.builder, // clang-format off
-                               fdec->llvm.type, 
-                               fdec->llvm.elem, 
-                               args, args_count,
-                               node->right->right ? node->token->name : "");
-                                            // clang-format on
+    TypeRef type = fdec->llvm.type;
+    Value fn = fdec->llvm.elem;
+    char *name = node->right->right ? node->token->name : "";
+    Value res = LLVMBuildCall2(ura.builder, type, fn, args, args_count, name);
     free(args);
     return res;
 }
 
 Value create_return(Node *node) {
+    if (!node)
+        return LLVMBuildRetVoid(ura.builder);
     return LLVMBuildRet(ura.builder, node->token->llvm.elem);
 }
 
