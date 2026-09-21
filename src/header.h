@@ -23,7 +23,8 @@ typedef enum Type Type;
 typedef struct Token Token;
 typedef struct Node Node;
 typedef struct Ura Ura;
-
+typedef struct Arena Arena;
+typedef struct NodePrint NodePrint;
 
 // begin LLVM code
 #include <llvm-c/Analysis.h>
@@ -104,7 +105,6 @@ Value create_variable(Node *node);
 Value create_value(Node *node);
 Value create_load(Node *node);
 void create_struct(Node *node);
-void create_struct_body(Node *node);
 Value create_dref(Node *node);
 Value create_math_op(Node *node);
 Value create_comparision_op(Node *node);
@@ -161,13 +161,16 @@ typedef struct _IO_FILE *File;
     size_t variable##_count;   \
     size_t variable##_size;
 
-#define push_back(parent, child)                                              \
-    {                                                                         \
-        if (parent##_size == 0) /* empty */                                   \
-            parent = ura_alloc((parent##_size = 10), sizeof(*parent));        \
-        else if (parent##_count + 1 == parent##_size)                         \
-            parent = realloc(parent, (parent##_size *= 2) * sizeof(*parent)); \
-        parent[parent##_count++] = child;                                     \
+#define push_back(parent, child)                                          \
+    {                                                                     \
+        if (parent##_size == 0) /* empty */                               \
+            parent = ura_alloc((parent##_size = 10), sizeof(*parent));    \
+        else if (parent##_count + 1 == parent##_size) {                   \
+            void *tmp = ura_alloc((parent##_size *= 2), sizeof(*parent)); \
+            memcpy(tmp, parent, (parent##_count * sizeof(*parent)));      \
+            parent = tmp;                                                 \
+        }                                                                 \
+        parent[parent##_count++] = child;                                 \
     }
 
 #define eprint(...)          _eprint(FILE, FUNC, LINE, __VA_ARGS__)
@@ -259,6 +262,18 @@ struct Node {
     expand(Node *, children);
 };
 
+struct Arena {
+    unsigned char *buf;
+    size_t size;
+    size_t used;
+    Arena *next;
+};
+
+struct NodePrint {
+    expand(Node *, nodes);
+    expand(int, depths);
+};
+
 void *ura_alloc(size_t count, size_t size);
 const char *to_string(Type type);
 int _print(File fp, const char *fmt, va_list args);
@@ -300,6 +315,12 @@ struct Ura {
     Module module;
     Builder builder;
     char *exec;
+
+    Arena *arena_head;
+    Arena *arena_curr;
+    size_t arena_index;
+
+    size_t heap_size;
 };
 
 extern Ura ura;

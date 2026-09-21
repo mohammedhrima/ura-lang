@@ -12,6 +12,7 @@
 - 008 — proto variadic function
 - 009 — overloaded function
 - 010 — bare return in a void function
+- 011 — multi line string
 
 ---
 
@@ -441,5 +442,53 @@ entry:
   call void @foo.1(i1 true)
   ret i32 7
 }
+```
+
+---
+
+## 011 — multi line string
+
+```ura
+fn foo(ptr i32):
+
+fn main() i32:
+   a i32 = 10
+   foo(a)
+   output(
+        "hello "
+        "world",
+        12, "\n")
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+@str = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
+@str.1 = private unnamed_addr constant [12 x i8] c"hello world\00", align 1
+@str.2 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+
+define void @foo(i32 %0) {
+entry:
+  %ptr = alloca i32, align 4
+  store i32 %0, i32* %ptr, align 4
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %a = alloca i32, align 4
+  store i32 10, i32* %a, align 4
+  %a1 = load i32, i32* %a, align 4
+  call void @foo(i32 %a1)
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.1, i32 0, i32 0), i32 12, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0))
+  ret i32 0
+}
+
+declare void @printf(i8*, ...)
 ```
 

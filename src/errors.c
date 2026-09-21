@@ -24,7 +24,6 @@ void _error_at(char *file, const char *func, int line, Token *token, char *fmt, 
     size_t e = token->s;
     while (content[e] && content[e] != '\n')
         e++;
-    int width = snprintf(NULL, 0, "%zu", token->line);
     size_t column = token->s - s + 1;
     char *name = ura.curr_file->name;
 
@@ -35,6 +34,7 @@ void _error_at(char *file, const char *func, int line, Token *token, char *fmt, 
     va_end(args);
     fprintf(stderr, "\n");
 
+    int width = token->space;
     fprintf(stderr, "%*s |\n", width, "");
     fprintf(stderr, "%zu | %.*s\n", token->line, (int)(e - s), content + s);
     fprintf(stderr, "%*s | %*s", width, "", (int)(token->s - s), "");

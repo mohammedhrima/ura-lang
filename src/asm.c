@@ -137,7 +137,6 @@ void create_struct(Node *node) {
         attrs[j++] = get_data_type(child->left->left);
     }
     LLVMStructSetBody(token->llvm.type, attrs, j, 0);
-    free(attrs);
 }
 
 Value create_dref(Node *node) {
@@ -261,7 +260,6 @@ void create_function(Node *node) {
     token->llvm.type = LLVMFunctionType(ret, args, args_count, token->is_variadic);
     char *name = token->asm_name ? token->asm_name : token->name;
     token->llvm.elem = LLVMAddFunction(ura.module, name, token->llvm.type);
-    free(args);
 }
 
 void create_entry(Node *node) {
@@ -295,7 +293,6 @@ Value create_function_call(Node *node) {
     Value fn = fdec->llvm.elem;
     char *name = node->right->right ? node->token->name : "";
     Value res = LLVMBuildCall2(ura.builder, type, fn, args, args_count, name);
-    free(args);
     return res;
 }
 

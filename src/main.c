@@ -3,12 +3,75 @@
 Ura ura;
 
 // MEMORY/ERROR/LOGGING HANDLING
-void *ura_alloc(size_t count, size_t size) {
-    void *res = calloc(count, size);
-    if (!res) {
-        eprint("ura_alloc failed\n");
+Arena *new_arena(size_t arena_size) {
+    Arena *new = calloc(1, sizeof(Arena));
+    if (new == NULL) {
+        eprint("failed\n");
+        exit(1);
     }
+    new->buf = calloc(arena_size, sizeof(char));
+    if (new->buf == NULL) {
+        eprint("failed\n");
+        exit(1);
+    }
+    new->size = arena_size;
+    // printf("arena %zu allocated %zu\n", ura.arena_index, arena_size);
+    ura.arena_index++;
+    ura.heap_size += (arena_size + sizeof(Arena));
+    return new;
+}
+
+void arena_reserve(size_t bytes) {
+    Arena *curr = ura.arena_curr;
+    if (curr && curr->size - curr->used >= bytes)
+        return;
+    Arena *new = new_arena(bytes);
+    if (curr)
+        curr->next = new;
+    else
+        ura.arena_head = new;
+    ura.arena_curr = new;
+}
+
+void *ura_alloc(size_t count, size_t size) {
+    size_t heap_size = count * size;
+    heap_size = (heap_size + 16 - 1) / 16 * 16;
+
+    if (ura.arena_curr == NULL ||
+        ura.arena_curr->used + heap_size > ura.arena_curr->size) {
+        size_t arena_size = 1 << 8;
+        if (ura.arena_curr != NULL)
+            arena_size = ura.arena_curr->size * 2;
+        while (arena_size < heap_size)
+            arena_size <<= 1;
+
+        Arena *new = new_arena(arena_size);
+        if (ura.arena_curr == NULL)
+            ura.arena_head = new;
+        else
+            ura.arena_curr->next = new;
+        ura.arena_curr = new;
+    }
+
+    void *ptr = ura.arena_curr->buf + ura.arena_curr->used;
+    ura.arena_curr->used += heap_size;
+    return ptr;
+}
+
+char *ura_strdup(char *str) {
+    char *res = ura_alloc(strlen(str) + 1, sizeof(char));
+    strcpy(res, str);
     return res;
+}
+
+void free_arena() {
+    Arena *arena = ura.arena_head;
+    while (arena) {
+        Arena *next = arena->next;
+        free(arena->buf);
+        free(arena);
+        arena = next;
+    }
 }
 
 const char *to_string(Type type) {
@@ -218,15 +281,10 @@ char *format(char *fmt, ...) {
     _print(out, fmt, ap);
     va_end(ap);
     fclose(out);
-    return buf;
+    char *res = ura_strdup(buf);
+    free(buf);
+    return res;
 }
-
-// TODO: this code needs to be reviewed
-typedef struct NodePrint NodePrint;
-struct NodePrint {
-    expand(Node *, nodes);
-    expand(int, depths);
-};
 
 void print_helper(NodePrint *elems, Node *node, int depth) {
     if (!node)
@@ -273,30 +331,23 @@ void print_node(Node *node) {
             print("%s", still_open(&elems, i, depth) ? "├─" : "└─");
         print("%k\n", elems.nodes[i]->token);
     }
-
-    free(elems.nodes);
-    free(elems.depths);
 }
 
 // FILE HANDLING
 void new_file(char *name) {
     uraFile *file = ura_alloc(1, sizeof(uraFile));
-    if (file == NULL) {
-        eprint("calloc failed\n");
-        return;
-    }
     // TODO: check this one when implementing arena allocator
-    file->name = strdup(name);
+    file->name = ura_strdup(name);
     push_back(ura.files, file);
 
     char *slash = strrchr(name, '/');
     if (slash) {
-        file->dir = strdup(name);
+        file->dir = ura_strdup(name);
         file->dir[slash - name] = '\0';
-        file->base = strdup(slash + 1);
+        file->base = ura_strdup(slash + 1);
     } else {
-        file->dir = strdup(".");
-        file->base = strdup(name);
+        file->dir = ura_strdup(".");
+        file->base = ura_strdup(name);
     }
     char *dot = strrchr(file->base, '.');
     if (dot)
@@ -319,41 +370,10 @@ void new_file(char *name) {
     fclose(fp);
 }
 
-void close_file(uraFile *file) {
-    free(file->name);
-    free(file->dir);
-    free(file->base);
-    free(file->build_dir);
-    free(file->ll_path);
-    free(file->content);
-    free(file);
-}
-
-void free_token(Token *token) {
-    free(token->name);
-    free(token->asm_name);
-    free(token->chars.value);
-    free(token);
-}
-
-void free_node(Node *node) {
-    free(node->children);
-    free(node);
-}
-
 void ura_clean(void) {
-    for (size_t i = 0; i < ura.tokens_count; i++)
-        free_token(ura.tokens[i]);
-    for (size_t i = 0; i < ura.files_count; i++)
-        close_file(ura.files[i]);
-    for (size_t i = 0; i < ura.nodes_count; i++)
-        free_node(ura.nodes[i]);
-    free(ura.tokens);
-    free(ura.files);
-    free(ura.nodes);
+    free_arena();
 }
 
-// gen_tokens
 Token *new_token(Type type, Token *from) {
     Token *new = ura_alloc(1, sizeof(Token));
     new->type = type;
@@ -366,7 +386,6 @@ Token *new_token(Type type, Token *from) {
     push_back(ura.tokens, new);
     return new;
 }
-
 
 // TODO: parse for char type also
 char *parse_escaped(char *input, size_t s, size_t e) {
@@ -481,6 +500,8 @@ void gen_tokens(uraFile *file) {
     ura.curr_file = file;
     ura.curr_line = 1;
     char *content = file->content;
+    arena_reserve(strlen(content) * 192);
+
     size_t s = 0;
     size_t e = 0;
     size_t space = 0;
@@ -753,7 +774,17 @@ Node *prime_node(void) {
         return new_node(token);
     } // clang-format off
     // values
-    case BOOL: case I8: case I32: case CHARS: case VARIADIC: { // clang-format on
+    case CHARS: {
+        Token *next_token = peek(0);
+        while(next_token->type == CHARS && !next_token->is_type) {
+            char *value = strjoin(token->chars.value, next_token->chars.value, "");
+            token->chars.value = value;
+            next();
+            next_token = peek(0);
+        }
+        return new_node(token);
+    }
+    case BOOL: case I8: case I32: case VARIADIC: { // clang-format on
         return new_node(token);
     }
     case STRUCT_DEC: {
@@ -764,7 +795,7 @@ Node *prime_node(void) {
             eprint("Expected identifier after struct declaration\n");
             exit(1);
         }
-        node->token->name = strdup(next()->name); // get struct name
+        node->token->name = ura_strdup(next()->name); // get struct name
         if (peek(0)->type != DOTS) {
             eprint("Expected )\n");
             exit(1);
@@ -812,10 +843,9 @@ Node *prime_node(void) {
         node = new_node(token);
         if (peek(0)->type != IDENTIFIER) {
             eprint("Expected identifer after fn\n");
-            free_node(node);
             return NULL;
         }
-        node->token->name = strdup(next()->name);
+        node->token->name = ura_strdup(next()->name);
         enter_scope(node);
 
         if (next()->type != LPARENT)
@@ -824,7 +854,7 @@ Node *prime_node(void) {
         if (struct_dec) {
             Node *self = new_node(new_token(VAR_DEC, node->token));
             self->left = new_node(new_token(VAR, node->token));
-            self->left->token->name = strdup("self");
+            self->left->token->name = ura_strdup("self");
             self->left->left = new_node(new_token(REF, node->token));
             self->left->left->left = struct_dec;
             push_back(node->left->children, self);
@@ -973,7 +1003,7 @@ void gen_ast(void) {
     if (ura.errors_count)
         return;
     ura.ast = new_node(new_token(IDENTIFIER, NULL));
-    ura.ast->token->name = strdup("ura-scope");
+    ura.ast->token->name = ura_strdup("ura-scope");
     enter_scope(ura.ast);
     while (!includes(peek(0)->type, END, 0) && !ura.errors_count) {
         Node *child = expr_node(0);
@@ -1100,9 +1130,74 @@ bool args_fit(Node *fdec, Node *call) {
     return true;
 }
 
+// TODO: later on gave her fd as parmeter to be used in errput
+Node *output_function(Node *call) {
+    static Node *node;
+    if(node == NULL)
+    {
+        node = new_node(new_token(PROTO, 0));
+        node->left = new_node(new_token(ARGS, 0));
+        node->token->name = ura_strdup("output");
+        node->token->asm_name = ura_strdup("printf");
+    
+        Node *fmt = new_node(new_token(VAR, 0));
+        fmt->token->name = ura_strdup("fmt");
+        fmt->left = new_node(new_token(CHARS, 0));
+        fmt->left->token->is_type = true;
+    
+        Node *var_dec = new_node(new_token(VAR_DEC, 0));
+        var_dec->left = fmt;
+        push_back(node->left->children, var_dec);
+    
+        node->token->is_variadic = true;
+    
+    }
+
+    // TODO: handle struct type
+    expand(Node*, args)
+    args_size = 0;
+    args_count = 0;
+    args = NULL;
+
+    Node *fmt_arg = new_node(new_token(CHARS, 0));
+    fmt_arg->token->chars.value = ura_strdup("");
+    push_back(args, fmt_arg);
+
+
+    for(size_t i = 0; i < call->left->children_count; i++) {
+        // TODO: hanlde struct
+        // hanlde also '&' (to print th address)
+        Node *child = call->left->children[i];
+        char *value = fmt_arg->token->chars.value;
+        char *new_value = value;
+        switch(child->token->type) { // clang-format off
+            case CHARS: new_value = strjoin(value, "%s", ""); break;
+            case I32:   new_value = strjoin(value, "%d", ""); break;
+            default: {
+                eprint("handle this case %k\n", child->token);
+                exit(1);
+                break;
+            }
+        } // clang-format on
+        fmt_arg->token->chars.value = new_value;
+        push_back(args, child);
+    }
+    call->left->children = args;
+    call->left->children_count = args_count;
+    call->left->children_size = args_size;
+
+    push_back(ura.ast->children, node);
+
+    print_node(node);
+    return node;
+}
+
 // pick the overload in this scope whose parameters match the call
 Node *find_function(Node *scope, Node *call) {
     char *name = call->token->name;
+    if (strcmp(name, "output") == 0) {
+        return output_function(call);
+    }
     Node *found = NULL;
     for (size_t i = 0; i < scope->children_count; i++) {
         Node *curr = scope->children[i];
@@ -1765,7 +1860,7 @@ TODO:
 
 int main(int ac, char **av) {
     atexit(diag_flush);
-    atexit(ura_clean);
+    atexit(free_arena);
     parse_arguments(ac, av);
     for (size_t i = 0; i < ura.files_count; i++) {
         uraFile *file = ura.files[i];
@@ -1791,5 +1886,6 @@ int main(int ac, char **av) {
         char *plural = count == 1 ? "" : "s";
         fprintf(stderr, RED("error:") " aborting due to %d error%s\n", count, plural);
     }
+    print("heap used (%zu) in (%zu) arenas \n", ura.heap_size, ura.arena_index);
     return ura.errors_count != 0;
 }
