@@ -218,6 +218,8 @@ struct Token {
 
     ASM llvm;
 
+    int used;
+
     struct {
         char *name;
         struct {
@@ -255,6 +257,7 @@ Node *expr_node(int min_op);
 void enter_scope(Node *node);
 void exit_scope(void);
 void code_gen(Node *node);
+void print_nodes(char *text) ;
 
 struct Ura {
     int errors_count;

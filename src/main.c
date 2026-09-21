@@ -102,6 +102,12 @@ int _print(File fp, const char *fmt, va_list args) {
             i += 2;
             continue;
         }
+        if (strncmp(fmt + i, "%zu", 3) == 0) {
+            size_t value = va_arg(args, size_t);
+            r += fprintf(fp, "%zu", value);
+            i += 3;
+            continue;
+        }
         if (strncmp(fmt + i, "%k", 2) == 0) {
             Token *token = va_arg(args, Token *);
             r += fprintf(fp, "%s", token ? to_string(token->type) : "(null token)");
@@ -606,7 +612,7 @@ Node *find_by_type(Type type, char *name) {
         if (found)
             return found;
     }
-    eprint("%s %t not found\n", name, type);
+    eprint("'%s' %t not found\n", name, type);
     exit(1);
     return NULL;
 }
@@ -712,7 +718,6 @@ Node *prime_node(void) {
             eprint("Expected )\n");
             exit(1);
         }
-        // declare(node);
         enter_scope(node);
         next(); // skip ':'
         while (inside(node->token->space)) {
@@ -932,9 +937,6 @@ void exit_scope() {
         ura.scope = ura.scopes[ura.scopes_count - 1];
 }
 
-bool match(Node *op, Node *left, Node *right) {
-    return false;
-}
 
 Node *pointer_type(Node *node) {
     Node *left = node->left;
@@ -952,6 +954,153 @@ Node *pointer_type(Node *node) {
     return NULL;
 }
 
+Node *type_of(Node *node) {
+    switch (node->token->type) {
+    case VAR: return node->left;
+    case VAR_LOAD: return node->left->left;
+    case DOT: {
+        Node *struct_dec = node->left->left->left;
+        size_t index = node->right->token->i32.value;
+        return struct_dec->children[index]->left->left;
+    }
+    case FN_CALL: return node->right->right;
+    case DREF:
+        return pointer_type(node->left);
+    case OWN: {
+        if (node->right == NULL) {
+            node->right = new_node(new_token(REF, node->token->space));
+            node->right->left = type_of(node->left);
+        }
+        return node->right;
+    } // clang-format off
+    case BOOL: case I8: case I32: case CHARS: { // clang-format on
+        return node; 
+    } // clang-format off
+    case ADD: case SUB: case MUL: case DIV: case MOD: {
+        return type_of(node->left); // TODO: to be checked later
+    }
+    default:
+        // TODO: comparisons and and/or need a BOOL type node
+        return NULL;
+    }
+}
+
+// NULL means void, so two NULLs are the same type
+bool same_type(Node *left, Node *right) {
+    if (left == NULL || right == NULL)
+        return left == right;
+    if (left->token->type != right->token->type)
+        return false;
+    if (left->token->type == STRUCT_DEC)
+        return strcmp(left->token->name, right->token->name) == 0;
+    if (left->token->type == REF)
+        return same_type(left->left, right->left);
+    return true;
+}
+
+bool same_params(Node *left, Node *right) {
+    if (left->token->is_variadic != right->token->is_variadic)
+        return false;
+    if (left->left->children_count != right->left->children_count)
+        return false;
+    for (size_t i = 0; i < left->left->children_count; i++) {
+        // ARGS -> VAR_DEC -> VAR -> type
+        Node *lchild = left->left->children[i]->left->left;
+        Node *rchild = right->left->children[i]->left->left;
+        if (!same_type(lchild, rchild))
+            return false;
+    }
+    return true;
+}
+
+bool same_signature(Node *left, Node *right) {
+    return same_params(left, right) && same_type(left->right, right->right);
+}
+
+bool args_fit(Node *fdec, Node *call) {
+    size_t want = fdec->left->children_count;
+    size_t got = call->left->children_count;
+    if (fdec->token->is_variadic ? got < want : got != want)
+        return false;
+    for (size_t i = 0; i < want; i++) {
+        Node *param = fdec->left->children[i]->left->left;
+        if (!same_type(param, type_of(call->left->children[i])))
+            return false;
+    }
+    return true;
+}
+
+// pick the overload whose parameters match the call, innermost scope first
+Node *find_function(Node *call) {
+    char *name = call->token->name;
+    for (size_t i = ura.scopes_count; i > 0; i--) {
+        Node *scope = ura.scopes[i - 1];
+        Node *found = NULL;
+        for (size_t j = 0; j < scope->children_count; j++) {
+            Node *curr = scope->children[j];
+            if (!includes(curr->token->type, FN_DEC, PROTO, 0))
+                continue;
+            if (strcmp(curr->token->name, name) != 0)
+                continue;
+            if (!args_fit(curr, call))
+                continue;
+          
+            // proto printf(str chars, ...)
+            // fn printf(str chars):
+            // printf("hello")
+            if (found) {
+                eprint("ambiguous call to '%s'\n", name);
+                exit(1);
+            }
+            found = curr;
+        }
+        if (found)
+            return found;
+    }
+    eprint("no overload of '%s' takes these arguments\n", name);
+    exit(1);
+    return NULL;
+}
+
+// TODO: do the llvm renaming here
+Node *check_ast(Node *parent, size_t i) {
+    Node *node = parent->children[i];
+    size_t count = node->children_count;
+
+    if (ura.errors_count)
+        return NULL;
+    switch (node->token->type) {
+    case FN_DEC: {
+        break;
+    }
+    case PROTO: {
+        for (size_t j = 0; j < parent->children_count; j++) {
+            Node *other = parent->children[j];
+            if (other == node) // never match yourself
+                continue;
+            if (other->token->type != FN_DEC)
+                continue;
+            if (!node->token->name || !other->token->name)
+                continue;
+            if (strcmp(node->token->name, other->token->name) != 0)
+                continue;
+
+            if (!same_params(node, other))
+                continue;
+            if (!same_type(node->right, other->right)) {
+                eprint("'%s' can't be overloaded on its return type alone\n", node->token->name);
+                return NULL;
+            }
+            return NULL; // keep fn, drop proto
+        }
+        break;
+    }
+    default:
+        break;
+    }
+    return node;
+}
+
 void analyze_ast(Node *node) {
     if (ura.errors_count)
         return;
@@ -964,7 +1113,6 @@ void analyze_ast(Node *node) {
     }
     case VAR_DEC: {
         // TODO: later on try declaring structs/enum at the bottom
-        // declare(node->left);
         break;
     } // clang-format off
     case VAR:
@@ -1056,10 +1204,9 @@ void analyze_ast(Node *node) {
         break;
     }
     case FN_CALL: {
-        node->right = find_by_type(FN_CALL, node->token->name);
-        // TODO: check compatibility
         for (size_t i = 0; i < node->left->children_count; i++)
             analyze_ast(node->left->children[i]);
+        node->right = find_function(node);
         break;
     }
     case RETURN: {
@@ -1113,9 +1260,6 @@ void analyze_ast(Node *node) {
     // return node;
 }
 
-void gen_types_check(Node *node) {
-}
-
 void gen_ir(void) {
     if (ura.errors_count)
         return;
@@ -1124,16 +1268,21 @@ void gen_ir(void) {
     // TODO: to be cheked later because
     // we might need t odeclare function
     // inside function
-    // for (size_t i = 0; i < ura.ast->children_count; i++) {
-    //     Node *child = ura.ast->children[i];
-    //     Type type = child->token->type;
-    //     if (includes(type, FN_DEC, PROTO, 0))
-    //         declare(child);
-    // }
-    for (size_t i = 0; i < ura.ast->children_count; i++)
+    size_t j = 0;
+    for (size_t i = 0; i < ura.ast->children_count; i++) {
+        Node *child = check_ast(ura.ast, i);
+        if (ura.errors_count)
+            break;
+        if (child)
+            ura.ast->children[j++] = child;
+    }
+    ura.ast->children_count = j;
+    print_nodes(GREEN("==========CHECK================\n"));
+    for (size_t i = 0; i < ura.ast->children_count; i++) {
         analyze_ast(ura.ast->children[i]);
-    for (size_t i = 0; i < ura.ast->children_count; i++)
-        gen_types_check(ura.ast->children[i]);
+        if (ura.errors_count)
+            break;
+    }
     exit_scope();
 }
 
@@ -1375,7 +1524,6 @@ void gen_bin(uraFile *file) {
         eprint("clang failed to compile %s\n", file->ll_path);
 }
 
-
 void print_nodes(char *text) {
     if (ura.errors_count)
         return;
@@ -1412,8 +1560,10 @@ void parse_arguments(int ac, char **av) {
 
 /*
 TODO:
+    [*] FN_DEC overwrite proto
     [*] access via '.' in struct
     [*] pass struct by reference to function
+    [ ] polymorphism
     [ ] handle method in preprocessing
     [ ] struct method
     [ ] drop method

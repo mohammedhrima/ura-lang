@@ -6,6 +6,8 @@
 - 002 — compound assignment/unary operator
 - 003 — declaring char/i8 variable
 - 004 — chars type
+- 005 — boolean type
+- 006 — escaped characters
 
 ---
 
@@ -147,6 +149,72 @@ define i32 @main() {
 entry:
   %str = alloca i8*, align 8
   store i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i8** %str, align 8
+  ret i32 0
+}
+```
+
+---
+
+## 005 — boolean type
+
+```ura
+fn main() i32:
+   flag b1 = True
+   if flag:
+      return 1
+   return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+define i32 @main() {
+entry:
+  %flag = alloca i1, align 1
+  store i1 true, i1* %flag, align 1
+  %flag1 = load i1, i1* %flag, align 1
+  br i1 %flag1, label %then, label %endif
+
+then:                                             ; preds = %entry
+  ret i32 1
+
+endif:                                            ; preds = %entry
+  ret i32 0
+}
+```
+
+---
+
+## 006 — escaped characters
+
+```ura
+proto printf(s chars, ...)
+
+fn main() i32:
+   printf("tab\there\n")
+   return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+@str = private unnamed_addr constant [10 x i8] c"tab\09here\0A\00", align 1
+
+declare void @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str, i32 0, i32 0))
   ret i32 0
 }
 ```

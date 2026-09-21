@@ -7,6 +7,7 @@
 - 003 — ifs with comparision operators
 - 004 — if with ref/dref
 - 005 — nested ifs
+- 006 — logic operators and/or
 
 ---
 
@@ -356,6 +357,45 @@ endif2:                                           ; preds = %then
 
 endif:                                            ; preds = %entry
   ret i32 3
+}
+```
+
+---
+
+## 006 — logic operators and/or
+
+```ura
+fn main() i32:
+   a i32 = 5
+   if a > 1 and a < 10:
+      return 1
+   return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+define i32 @main() {
+entry:
+  %a = alloca i32, align 4
+  store i32 5, i32* %a, align 4
+  %a1 = load i32, i32* %a, align 4
+  %GT = icmp sgt i32 %a1, 1
+  %a2 = load i32, i32* %a, align 4
+  %LT = icmp slt i32 %a2, 10
+  %AND = and i1 %GT, %LT
+  br i1 %AND, label %then, label %endif
+
+then:                                             ; preds = %entry
+  ret i32 1
+
+endif:                                            ; preds = %entry
+  ret i32 0
 }
 ```
 

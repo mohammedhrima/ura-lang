@@ -10,6 +10,7 @@
 - 006 — swap
 - 007 — proto function
 - 008 — proto variadic function
+- 009 — overloaded function
 
 ---
 
@@ -331,6 +332,65 @@ entry:
   store i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i8** %str, align 8
   %str1 = load i8*, i8** %str, align 8
   %printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.1, i32 0, i32 0), i8* %str1)
+  ret i32 0
+}
+```
+
+---
+
+## 009 — overloaded function
+
+```ura
+proto printf(s chars, ...)
+
+fn show(n i32):
+   printf("int %d\n", n)
+
+fn show(s chars):
+   printf("str %s\n", s)
+
+fn main() i32:
+   show(42)
+   show("hi")
+   return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+@str = private unnamed_addr constant [8 x i8] c"int %d\0A\00", align 1
+@str.2 = private unnamed_addr constant [8 x i8] c"str %s\0A\00", align 1
+@str.3 = private unnamed_addr constant [3 x i8] c"hi\00", align 1
+
+declare void @printf(i8*, ...)
+
+define void @show(i32 %0) {
+entry:
+  %n = alloca i32, align 4
+  store i32 %0, i32* %n, align 4
+  %n1 = load i32, i32* %n, align 4
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str, i32 0, i32 0), i32 %n1)
+  ret void
+}
+
+define void @show.1(i8* %0) {
+entry:
+  %s = alloca i8*, align 8
+  store i8* %0, i8** %s, align 8
+  %s1 = load i8*, i8** %s, align 8
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.2, i32 0, i32 0), i8* %s1)
+  ret void
+}
+
+define i32 @main() {
+entry:
+  call void @show(i32 42)
+  call void @show.1(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.3, i32 0, i32 0))
   ret i32 0
 }
 ```
