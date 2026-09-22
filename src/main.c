@@ -135,7 +135,6 @@ int print_type(File fp, Node *type) {
     case BOOL:       return fprintf(fp, "b1");
     case I8:         return fprintf(fp, "i8");
     case I32:        return fprintf(fp, "i32");
-    case CHARS:      return fprintf(fp, "chars");
     case NULL_:      return fprintf(fp, "null");
     case ARRAY:      return print_type(fp, type->left) + fprintf(fp, "[]");
     default:         return fprintf(fp, "%s", to_string(type->token->type));
@@ -392,7 +391,6 @@ Token *parse_token(Type type, size_t s, size_t e, size_t space) {
             { "char", { .type = I8, .is_type = true } },
             { "i8", { .type = I8, .is_type = true } },
             { "i32", { .type = I32, .is_type = true } },
-            { "chars", { .type = CHARS, .is_type = true } },
 
             { "True", { .type = BOOL, .b1 = { .value = true } } },
             { "False", { .type = BOOL, .b1 = { .value = false } } },
@@ -645,7 +643,7 @@ Node *find_by_type(Type type, char *name) {
 }
 
 Node *is_data_type(Token *token) {
-    if (token->is_type && includes(token->type, BOOL, I8, I32, CHARS, 0))
+    if (token->is_type && includes(token->type, BOOL, I8, I32, 0))
         return new_node(token);
     if (token->type == ID)
         return find_by_type(STRUCT_DEC, token->name);
@@ -751,7 +749,7 @@ Node *prime_node(void) {
     // values
     case CHARS: {
         Token *next_token = peek(0);
-        while(next_token->type == CHARS && !next_token->is_type) {
+        while(next_token->type == CHARS) {
             char *value = strjoin(token->chars.value, next_token->chars.value, NULL);
             token->chars.value = value;
             next();
@@ -1041,8 +1039,18 @@ Node *type_of(Node *node) {
     } // clang-format off
     case NULL_: return node->left ? node->left : node;
     case REF: case ARRAY: case STRUCT_DEC: return node;
-    case BOOL: case I8: case I32: case CHARS: { 
+    case BOOL: case I8: case I32: {
         return node;
+    }
+    case CHARS: {
+        static Node *i8_array;
+        if (!i8_array) {
+            i8_array = new_node(new_token(ARRAY, NULL));
+            i8_array->token->is_type = true;
+            i8_array->left = new_node(new_token(I8, NULL));
+            i8_array->left->token->is_type = true;
+        }
+        return i8_array;
     }
     case ADD: case SUB: case MUL: case DIV: case MOD: {
         return type_of(node->left); // TODO: to be checked later
@@ -1113,8 +1121,7 @@ Node *output_function(Node *call) {
 
         Node *fmt = new_node(new_token(VAR, 0));
         fmt->token->name = ura_strdup("fmt");
-        fmt->left = new_node(new_token(CHARS, 0));
-        fmt->left->token->is_type = true;
+        fmt->left = type_of(new_node(new_token(CHARS, 0)));
 
         Node *var_dec = new_node(new_token(VAR_DEC, 0));
         var_dec->left = fmt;
@@ -1136,8 +1143,7 @@ Node *output_function(Node *call) {
 
     char *specs[END + 1] = {
         // clang-format off
-        [CHARS] = "%s", [I8] = "%c", [I32] = "%d", 
-        [BOOL] = "%d", [REF] = "%p",
+        [I8] = "%c", [I32] = "%d", [BOOL] = "%d", [REF] = "%p",
     }; // clang-format on
 
     for (size_t i = 0; i < call->left->children_count; i++) {
@@ -1145,7 +1151,9 @@ Node *output_function(Node *call) {
         // hanlde also '&' (to print th address)
         Node *child = call->left->children[i];
         Node *type = type_of(child);
-        char *spec = type ? specs[type->token->type] : NULL;
+        Node *elem = type && type->token->type == ARRAY ? type->left : NULL;
+        bool is_string = elem && elem->token->type == I8;
+        char *spec = is_string ? "%s" : type ? specs[type->token->type] : NULL;
         if (!assert_type_is_printable(child, spec))
             continue;
         char *fmt = fmt_arg->token->chars.value;

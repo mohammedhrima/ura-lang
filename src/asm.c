@@ -79,8 +79,6 @@ TypeRef get_llvm_type(Type type) {
 TypeRef get_data_type(Node *type) {
     // assert(type);
     // assert(type->token);
-    if (type->token->type == CHARS)
-        return LLVMPointerType(get_llvm_type(I8), 0);
     if (includes(type->token->type, REF, ARRAY, 0))
         return LLVMPointerType(get_data_type(type->left), 0);
     if (type->token->type == STRUCT_DEC)

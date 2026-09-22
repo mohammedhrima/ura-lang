@@ -138,17 +138,17 @@ error: aborting due to 1 error
 
 ```ura
 fn main() i32:
-    s chars = "abc
+    s i8[] = "abc
     return 0
 ```
 
 ### stderr
 
 ```
-error: test.ura:2:15 unterminated string
+error: test.ura:2:14 unterminated string
   |
-2 |     s chars = "abc
-  |               ^^^^
+2 |     s i8[] = "abc
+  |              ^^^^
 error: aborting due to 1 error
 ```
 
@@ -1649,7 +1649,7 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:3:13 expected 'i32', found 'chars'
+error: test.ura:3:13 expected 'i32', found 'i8[]'
   |
 3 |     if a == "x":
   |             ^^^
@@ -1674,7 +1674,7 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:14 can't apply '+' to 'i32' and 'chars'
+error: test.ura:2:14 can't apply '+' to 'i32' and 'i8[]'
   |
 2 |     return 1 + "a"
   |              ^
@@ -1781,7 +1781,7 @@ error: aborting due to 1 error
 
 ```ura
 fn main() i32:
-    s chars = "a"
+    s i8[] = "a"
     s += 1
     return 0
 ```
@@ -1789,7 +1789,7 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:3:7 can't apply '+=' to 'chars' and 'i32'
+error: test.ura:3:7 can't apply '+=' to 'i8[]' and 'i32'
   |
 3 |     s += 1
   |       ^^
@@ -1808,17 +1808,17 @@ error: aborting due to 1 error
 
 ```ura
 fn main() i32:
-    s chars = -"a"
+    s i8[] = -"a"
     return 0
 ```
 
 ### stderr
 
 ```
-error: test.ura:2:15 can't apply '-' to 'chars'
+error: test.ura:2:14 can't apply '-' to 'i8[]'
   |
-2 |     s chars = -"a"
-  |               ^
+2 |     s i8[] = -"a"
+  |              ^
 error: aborting due to 1 error
 ```
 
@@ -1901,7 +1901,7 @@ error: test.ura:5:12 no overload of 'f' takes these arguments
   |
 5 |     return f("a")
   |            ^
-help: '"a"' is 'chars', but 'a' wants 'i32'
+help: '"a"' is 'i8[]', but 'a' wants 'i32'
 error: aborting due to 1 error
 ```
 
@@ -2205,7 +2205,7 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:3:14 expected 'i32', found 'chars'
+error: test.ura:3:14 expected 'i32', found 'i8[]'
   |
 3 |     return x["a"]
   |              ^^^
@@ -2231,7 +2231,7 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:19 expected 'i32', found 'chars'
+error: test.ura:2:19 expected 'i32', found 'i8[]'
   |
 2 |     x i32[] = [1, "a"]
   |                   ^^^
@@ -2335,7 +2335,7 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:12 expected 'i8', found 'chars'
+error: test.ura:2:12 expected 'i8', found 'i8[]'
   |
 2 |     x i8 = "a"
   |            ^^^
@@ -2474,7 +2474,7 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:12 expected 'i32', found 'chars'
+error: test.ura:2:12 expected 'i32', found 'i8[]'
   |
 2 |     return "a"
   |            ^^^

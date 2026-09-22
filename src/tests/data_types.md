@@ -132,7 +132,7 @@ entry:
 
 ```ura
 fn main() i32:
-   str chars = "abcdef"
+   str i8[] = "abcdef"
 ```
 
 ### llvm ir
@@ -202,7 +202,7 @@ endif:                                            ; preds = %entry
 ## 006 — escaped characters
 
 ```ura
-proto printf(s chars, ...)
+proto printf(s i8[], ...)
 
 fn main() i32:
    printf("tab\there\n")

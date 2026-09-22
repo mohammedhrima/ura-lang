@@ -308,10 +308,10 @@ entry:
 ## 008 — proto variadic function
 
 ```ura
-proto printf(fmt chars, ...) i32
+proto printf(fmt i8[], ...) i32
 
 fn main() i32:
-   str chars = "abcdef"
+   str i8[] = "abcdef"
    printf("<%s>", str)
 ```
 
@@ -356,12 +356,12 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ## 009 — overloaded function
 
 ```ura
-proto printf(s chars, ...)
+proto printf(s i8[], ...)
 
 fn show(n i32):
    printf("int %d\n", n)
 
-fn show(s chars):
+fn show(s i8[]):
    printf("str %s\n", s)
 
 fn main() i32:
