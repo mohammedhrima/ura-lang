@@ -92,13 +92,12 @@ const char *to_string(Type type) {
         [OWN] = "OWN", [DREF] = "DREF",
 
         [LPARENT] = "LPARENT", [RPARENT] = "RPARENT",
-        [LBRACK] = "LBRACK", [RBRACK] = "RBRACK",
+        [LBRACK] = "LBRACK", [RBRACK] = "RBRACK", 
         [DOTS] = "DOTS", [COMA] = "COMA",
-
+        
         [ARRAY] = "ARRAY", [ARRAY_LIT] = "ARRAY_LIT",
         [ACCESS] = "ACCESS",
-
-
+        
         [ASSIGN] = "ASSIGN",
         [ADD_ASSIGN] = "ADD_ASSIGN", [SUB_ASSIGN] = "SUB_ASSIGN",
         [MUL_ASSIGN] = "MUL_ASSIGN", [DIV_ASSIGN] = "DIV_ASSIGN",
@@ -1088,7 +1087,6 @@ void exit_scope() {
         ura.scope = ura.scopes[ura.scopes_count - 1];
 }
 
-
 Node *type_of(Node *node) {
     switch (node->token->type) {
     case VAR:
@@ -1099,44 +1097,116 @@ Node *type_of(Node *node) {
         Node *struct_dec = type_of(node->left);
         size_t index = node->right->token->i32.value;
         return struct_dec->children[index]->left->left;
-    }
-    case FN_CALL:
-        return node->right->right;
-    case ACCESS:
-    case DREF: {
-        return type_of(node->left)->left;
-    }
-    case OWN: {
+    } // clang-format off
+    case FN_CALL: return node->right->right;
+    case OWN: { // clang-format on
         if (node->right == NULL) {
             node->right = new_node(new_token(REF, node->token));
             node->right->left = type_of(node->left);
         }
         return node->right;
+    }
+    case ACCESS:
+    case DREF: {
+        return type_of(node->left)->left;
     } // clang-format off
-    case NULL_: return node->left;
-    case BOOL: case I8: case I32: case CHARS: { // clang-format on
+    case NULL_: return node->left ? node->left : node;
+    case REF: case ARRAY: case STRUCT_DEC: return node;
+    case BOOL: case I8: case I32: case CHARS: { 
         return node;
-    } // clang-format off
+    }
     case ADD: case SUB: case MUL: case DIV: case MOD: {
         return type_of(node->left); // TODO: to be checked later
     }
-    default:
-        // TODO: comparisons and and/or need a BOOL type node
-        return NULL;
+    case GT: case LT: case GE: case LE: case EQ: case NQ: case AND: case OR: {
+        static Node *b1;
+        if (!b1) {
+            b1 = new_node(new_token(BOOL, NULL));
+            b1->token->is_type = true;
+        }
+        return b1;
+    } // clang-format on
+    case ARRAY_LIT: {
+        if (!node->left) {
+            node->left = new_node(new_token(ARRAY, node->token));
+            node->left->token->is_type = true;
+            if (node->children_count)
+                node->left->left = type_of(node->children[0]);
+        }
+        return node->left;
     }
+    default: {
+        eprint("handle this case %t", node->token->type);
+        exit(1);
+        break;
+    }
+    }
+    return NULL;
 }
 
-// NULL means void, so two NULLs are the same type
-bool same_type(Node *left, Node *right) {
-    if (left == NULL || right == NULL)
-        return left == right;
-    if (left->token->type != right->token->type)
-        return false;
-    if (left->token->type == STRUCT_DEC)
-        return strcmp(left->token->name, right->token->name) == 0;
-    if (left->token->type == REF)
-        return same_type(left->left, right->left);
-    return true;
+// TODO: to be reviewed
+bool check_type(Node *expected, Node *value, bool report) {
+    Token *token = value ? value->token : NULL;
+    Type kind = token ? token->type : VOID;
+    Type want = expected ? expected->token->type : VOID;
+    if (kind == ERR || want == ERR)
+        return true;
+
+    if (kind == NULL_ && want == REF) {
+        if (report)
+            value->left = expected;
+        return true;
+    }
+
+    if (kind == I32 && !token->is_type && want == I8) {
+        long number = token->i32.value;
+        bool fits = number >= -128 && number <= 127;
+        if (report && !fits)
+            error_at(token, "'%K' doesn't fit in 'i8'", token);
+        if (report && fits) {
+            token->type = I8;
+            token->i8.value = number;
+        }
+        return fits;
+    }
+
+    if (kind == ARRAY_LIT && want == ARRAY) {
+        bool fits = true;
+        for (size_t i = 0; i < value->children_count; i++)
+            fits = check_type(expected->left, value->children[i], report) && fits;
+        if (report && fits)
+            value->left = expected;
+        return fits;
+    }
+
+    Node *actual = value ? type_of(value) : NULL;
+    bool fits = expected == actual;
+    if (expected && actual && want == actual->token->type) {
+        if (want == STRUCT_DEC)
+            fits = strcmp(expected->token->name, actual->token->name) == 0;
+        else if (includes(want, REF, ARRAY, 0))
+            fits = check_type(expected->left, actual->left, false);
+        else
+            fits = true;
+    }
+    if (report && !fits)
+        error_at(token, "expected '%N', found '%N'", expected, actual);
+    return fits;
+}
+
+void check_condition(Node *cond) {
+    static Node *b1;
+    if (!b1) {
+        b1 = new_node(new_token(BOOL, NULL));
+        b1->token->is_type = true;
+    }
+    if (check_type(b1, cond, true))
+        return;
+    Node *type = type_of(cond);
+    bool number = type && includes(type->token->type, I8, I32, 0);
+    bool literal = includes(cond->token->type, I8, I32, 0);
+    if (number && !literal) // 'while a != 0' instead of 'while a'
+        help("write '%K != 0'", cond->token);
 }
 
 bool same_params(Node *left, Node *right) {
@@ -1148,14 +1218,10 @@ bool same_params(Node *left, Node *right) {
         // ARGS -> VAR_DEC -> VAR -> type
         Node *lchild = left->left->children[i]->left->left;
         Node *rchild = right->left->children[i]->left->left;
-        if (!same_type(lchild, rchild))
+        if (!check_type(lchild, rchild, false))
             return false;
     }
     return true;
-}
-
-bool same_signature(Node *left, Node *right) {
-    return same_params(left, right) && same_type(left->right, right->right);
 }
 
 bool args_fit(Node *fdec, Node *call) {
@@ -1166,9 +1232,7 @@ bool args_fit(Node *fdec, Node *call) {
     for (size_t i = 0; i < want; i++) {
         Node *param = fdec->left->children[i]->left->left;
         Node *arg = call->left->children[i];
-        if (arg->token->type == ERR)
-            continue;
-        if (!same_type(param, type_of(arg)))
+        if (!check_type(param, arg, false))
             return false;
     }
     return true;
@@ -1218,6 +1282,7 @@ Node *output_function(Node *call) {
         Node *child = call->left->children[i];
         Node *type = type_of(child);
         char *spec = type ? specs[type->token->type] : NULL;
+
         if (!spec) {
             error_at(child->token, "can't output '%N'", type);
             continue;
@@ -1257,6 +1322,12 @@ Node *find_function(Node *scope, Node *call) {
         }
         found = curr;
     }
+    if (!found)
+        return NULL;
+    for (size_t i = 0; i < found->left->children_count; i++) {
+        Node *param = found->left->children[i]->left->left;
+        check_type(param, call->left->children[i], true);
+    }
     return found;
 }
 
@@ -1283,7 +1354,7 @@ Node *check_ast(Node *parent, size_t i) {
 
             if (!same_params(node, other))
                 continue;
-            if (!same_type(node->right, other->right)) {
+            if (!check_type(node->right, other->right, false)) {
                 Token *fn = node->token;
                 error_at(fn, "'%s' can't be overloaded on its return type", fn->name);
                 return NULL;
@@ -1349,10 +1420,16 @@ void analyze_ast(Node *node) {
             Token *left = node->left->token;
             error_at(left, "'%K' is '%N', not an array", left, type);
             node->token->type = ERR;
+            break;
+        }
+        Node *index = type_of(node->right);
+        if (!index || !includes(index->token->type, I8, I32, 0)) {
+            Token *value = node->right->token;
+            error_at(value, "expected 'i32', found '%N'", index);
+            node->token->type = ERR;
         }
         break;
     }
-
     case STRUCT_DEC: {
         enter_scope(node);
         for (size_t i = 0; i < node->children_count; i++) {
@@ -1469,12 +1546,7 @@ void analyze_ast(Node *node) {
         break;
     } // clang-format off
     case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN:
-    case DIV_ASSIGN: case MOD_ASSIGN: {
-        analyze_ast(node->left);
-        analyze_ast(node->right);
-
-        node->left = node->left;
-        Node *right = node->right;
+    case DIV_ASSIGN: case MOD_ASSIGN: { // clang-format on
         Type ops[END + 1] = {
             [ADD_ASSIGN] = ADD, [SUB_ASSIGN] = SUB, [MUL_ASSIGN] = MUL,
             [DIV_ASSIGN] = DIV, [MOD_ASSIGN] = MOD,
@@ -1484,11 +1556,12 @@ void analyze_ast(Node *node) {
             eprint("handle this case %t", node->token->type);
             exit(1);
         }
-        node->token->type = ASSIGN;
-        // set the compatible math op
-        node->right = new_node(new_token(type, node->token));
-        node->right->left = node->left;
-        node->right->right = right;
+        Node *math = new_node(new_token(type, node->token));
+        math->left = node->left;
+        math->right = node->right;
+        analyze_ast(math);
+        node->token->type = math->token->type == ERR ? ERR : ASSIGN;
+        node->right = math;
         break;
     }
     case ASSIGN: { // clang-format on
@@ -1499,11 +1572,9 @@ void analyze_ast(Node *node) {
             break;
         if (rebind && node->left->token->type == DREF)
             node->left = node->left->left;
-        if (includes(node->right->token->type, NULL_, ARRAY_LIT, 0))
-            node->right->left = type_of(node->left);
         if (node->left->token->type == VAR && node->left->left->token->type == REF) {
             Node *type = type_of(node->right);
-            if (!type || type->token->type != REF) {
+            if (!type || !includes(type->token->type, REF, NULL_, 0)) {
                 Token *value = node->right->token;
                 Token *var = node->left->token;
                 Token *pointer = node->left->left->left->token;
@@ -1513,6 +1584,8 @@ void analyze_ast(Node *node) {
                 break;
             }
         }
+        if (!check_type(type_of(node->left), node->right, true))
+            node->token->type = ERR;
         break;
     } // clang-format off
     case ADD: case SUB: case MUL: case DIV: case MOD:
@@ -1537,7 +1610,39 @@ void analyze_ast(Node *node) {
             node->token->type = ERR;
             break;
         }
-        // TODO: check compatibility
+        // TODO: to be reviewed
+        Node *left = node->left;
+        Node *right = node->right;
+        Token *op = node->token;
+        if (includes(op->type, AND, OR, 0)) {
+            Node *b1 = type_of(node);
+            if (!check_type(b1, left, true) || !check_type(b1, right, true))
+                node->token->type = ERR;
+            break;
+        }
+        Node *ltype = type_of(left);
+        Node *rtype = type_of(right);
+        bool left_number = ltype && includes(ltype->token->type, I8, I32, 0);
+        bool right_number = rtype && includes(rtype->token->type, I8, I32, 0);
+        bool unary = left->token->s == op->s;
+        if (!includes(op->type, EQ, NQ, 0) && (!left_number || !right_number)) {
+            if (unary)
+                error_at(op, "can't apply '%K' to '%N'", op, rtype);
+            else
+                error_at(op, "can't apply '%K' to '%N' and '%N'", op, ltype, rtype);
+            node->token->type = ERR;
+            break;
+        }
+        if (ltype && ltype->token->type == STRUCT_DEC) {
+            error_at(op, "can't compare '%N' values", ltype);
+            node->token->type = ERR;
+            break;
+        }
+        bool literal = left->token->type == I32 && !left->token->is_type;
+        Node *expected = literal ? rtype : ltype;
+        Node *value = literal ? left : right;
+        if (!check_type(expected, value, true))
+            node->token->type = ERR;
         break;
     } // clang-format off
     case PROTO: case FN_DEC: { // clang-format on
@@ -1565,32 +1670,36 @@ void analyze_ast(Node *node) {
         break;
     }
     case RETURN: {
-        // TODOL check compatibility
-        if (node->left) {
-            analyze_ast(node->left);
-            break;
-        }
         Node *fn = NULL;
-        for (size_t i = ura.scopes_count; i > 0 && !fn; i--)
+        for (size_t i = ura.scopes_count; i > 0 && !fn; i--) {
             if (ura.scopes[i - 1]->token->type == FN_DEC)
                 fn = ura.scopes[i - 1];
-        if (fn && fn->right) {
-            char *name = fn->token->name;
-            Node *type = fn->right;
-            error_at(node->token, "'%s' must return a value of type '%N'", name, type);
         }
+        if (node->left)
+            analyze_ast(node->left);
+        if (!fn)
+            break;
+        Node *type = fn->right;
+        if (!node->left && type) {
+            char *name = fn->token->name;
+            error_at(node->token, "'%s' must return a value of type '%N'", name, type);
+        } else if (node->left && !check_type(type, node->left, true))
+            node->token->type = ERR;
         break;
     }
     case IF: {
         enter_scope(node);
-        analyze_ast(node->left); // TODO: check condition type is boolean
+        analyze_ast(node->left);
+        check_condition(node->left);
         for (size_t i = 0; i < node->children_count; i++)
             analyze_ast(node->children[i]);
         Node *curr = node->right;
         while (curr) {
             enter_scope(curr);
-            if (curr->left) // elif
+            if (curr->left) {
                 analyze_ast(curr->left);
+                check_condition(curr->left);
+            }
             for (size_t i = 0; i < curr->children_count; i++)
                 analyze_ast(curr->children[i]);
             curr = curr->right;
@@ -1601,7 +1710,8 @@ void analyze_ast(Node *node) {
     }
     case WHILE: {
         enter_scope(node);
-        analyze_ast(node->left); // TODO: check condition type is boolean
+        analyze_ast(node->left);
+        check_condition(node->left);
         for (size_t i = 0; i < node->children_count; i++)
             analyze_ast(node->children[i]);
         exit_scope();
@@ -1810,12 +1920,6 @@ void code_gen(Node *node) {
         exit(1);
         break;
     }
-
-    // for (size_t i = 0; i < node->children_count; i++) {
-    //     Node *child = node->children[i];
-    //     if (includes(child->token->type, FN_DEC, PROTO, STRUCT_DEC))
-    //         code_gen(child);
-    // }
 }
 
 void gen_funcs_and_structs_asm(Node *node) {
@@ -1928,7 +2032,7 @@ TODO:
     [ ] more integer types (i8, i64, unsigned) and casting with as
     [ ] arrays: declaration and indexing
     [ ] function inside function
-    [ ] arena allocator (all stdup ... should use it)
+    [*] arena allocator (all stdup ... should use it)
 */
 
 

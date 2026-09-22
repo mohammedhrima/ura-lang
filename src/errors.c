@@ -89,11 +89,11 @@ void report_bad_call(Node *call) {
         Node *arg = call->left->children[i];
         Node *expected = var->left;
         Node *actual = type_of(arg);
-        if (same_type(expected, actual))
+        if (check_type(expected, arg, false))
             continue;
         Token *given = arg->token;
         help("'%K' is '%N', but '%K' wants '%N'", given, actual, var->token, expected);
-        if (expected->token->type == REF && same_type(expected->left, actual))
+        if (expected->token->type == REF && check_type(expected->left, arg, false))
             help("pass its address: '&%K'", given);
         return;
     }
