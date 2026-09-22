@@ -1117,29 +1117,28 @@ bool args_fit(Node *fdec, Node *call) {
 // TODO: later on gave her fd as parmeter to be used in errput
 Node *output_function(Node *call) {
     static Node *node;
-    if(node == NULL)
-    {
+    if (node == NULL) {
         node = new_node(new_token(PROTO, 0));
         node->left = new_node(new_token(ARGS, 0));
         node->token->name = ura_strdup("output");
         node->token->asm_name = ura_strdup("printf");
-    
+
         Node *fmt = new_node(new_token(VAR, 0));
         fmt->token->name = ura_strdup("fmt");
         fmt->left = new_node(new_token(CHARS, 0));
         fmt->left->token->is_type = true;
-    
+
         Node *var_dec = new_node(new_token(VAR_DEC, 0));
         var_dec->left = fmt;
         push_back(node->left->children, var_dec);
-    
+
         node->token->is_variadic = true;
-    
+
+        push_back(ura.ast->children, node);
     }
 
     // TODO: handle struct type
-    expand(Node*, args)
-    args_size = 0;
+    expand(Node *, args) args_size = 0;
     args_count = 0;
     args = NULL;
 
@@ -1147,32 +1146,29 @@ Node *output_function(Node *call) {
     fmt_arg->token->chars.value = ura_strdup("");
     push_back(args, fmt_arg);
 
+    char *specs[END + 1] = {
+        // clang-format off
+        [CHARS] = "%s", [I8] = "%c", [I32] = "%d", 
+        [BOOL] = "%d", [REF] = "%p",
+    }; // clang-format on
 
-    for(size_t i = 0; i < call->left->children_count; i++) {
+    for (size_t i = 0; i < call->left->children_count; i++) {
         // TODO: hanlde struct
         // hanlde also '&' (to print th address)
         Node *child = call->left->children[i];
-        char *value = fmt_arg->token->chars.value;
-        char *new_value = value;
-        switch(child->token->type) { // clang-format off
-            case CHARS: new_value = strjoin(value, "%s", ""); break;
-            case I32:   new_value = strjoin(value, "%d", ""); break;
-            default: {
-                eprint("handle this case %k\n", child->token);
-                exit(1);
-                break;
-            }
-        } // clang-format on
-        fmt_arg->token->chars.value = new_value;
+        Node *type = type_of(child);
+        char *spec = type ? specs[type->token->type] : NULL;
+        if (!spec) {
+            error_at(child->token, "can't output '%N'", type);
+            continue;
+        }
+        char *fmt = fmt_arg->token->chars.value;
+        fmt_arg->token->chars.value = strjoin(fmt, spec, "");
         push_back(args, child);
     }
     call->left->children = args;
     call->left->children_count = args_count;
     call->left->children_size = args_size;
-
-    push_back(ura.ast->children, node);
-
-    print_node(node);
     return node;
 }
 
