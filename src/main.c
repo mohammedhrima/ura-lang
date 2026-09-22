@@ -1032,22 +1032,6 @@ void exit_scope() {
 }
 
 
-Node *pointer_type(Node *node) {
-    Node *left = node->left;
-    switch (node->token->type) {
-    case VAR_LOAD: {
-        Node *type = left->left;
-        return type->token->type == REF ? type->left : NULL;
-    }
-    case OWN: {
-        return left->token->type == VAR_LOAD ? left->left->left : NULL;
-    }
-    default:
-        break;
-    }
-    return NULL;
-}
-
 Node *type_of(Node *node) {
     switch (node->token->type) {
     case VAR:
@@ -1062,7 +1046,7 @@ Node *type_of(Node *node) {
     case FN_CALL:
         return node->right->right;
     case DREF:
-        return pointer_type(node->left);
+        return type_of(node->left)->left;
     case OWN: {
         if (node->right == NULL) {
             node->right = new_node(new_token(REF, node->token));
@@ -1272,7 +1256,9 @@ void analyze_ast(Node *node) {
         }
         node->token->type = VAR_LOAD;
         if (node->left->left->token->type == REF) {
+            node->token->asm_name = strjoin(node->token->name, ".", "dref");
             Node *load = new_node(new_token(VAR_LOAD, node->token));
+            load->token->name = node->token->name;
             load->left = node->left;
             node->token->type = DREF;
             node->left = load;
@@ -1368,6 +1354,10 @@ void analyze_ast(Node *node) {
             node->token->type = ERR;
             break;
         }
+        Token *left = node->left->token;
+        char *base = left->name ? left->name : left->asm_name;
+        char *name = attr->token->name;
+        node->token->asm_name = base ? strjoin(base, ".", name) : name;
         break;
     }
     case OWN: {
@@ -1401,18 +1391,14 @@ void analyze_ast(Node *node) {
 
         node->left = node->left;
         Node *right = node->right;
-        Type type = 0;
-        switch(node->token->type) {
-            case ADD_ASSIGN: type = ADD; break;
-            case SUB_ASSIGN: type = SUB; break;
-            case MUL_ASSIGN: type = MUL; break;
-            case DIV_ASSIGN: type = DIV; break;
-            case MOD_ASSIGN: type = MOD; break;
-            default: {
-                eprint("handle this case %t\n", node->token->type);
-                exit(1);
-                break;
-            }
+        Type ops[END + 1] = {
+            [ADD_ASSIGN] = ADD, [SUB_ASSIGN] = SUB, [MUL_ASSIGN] = MUL,
+            [DIV_ASSIGN] = DIV, [MOD_ASSIGN] = MOD,
+        };
+        Type type = ops[node->token->type];
+        if (!type) {
+            eprint("handle this case %t", node->token->type);
+            exit(1);
         }
         node->token->type = ASSIGN;
         // set the compatible math op
@@ -1575,7 +1561,9 @@ void code_gen(Node *node) {
     case VAR: {
         break;
     }
-    case VAR_LOAD: {
+    case VAR_LOAD:
+    case DOT:
+    case DREF: {
         node->token->llvm.elem = create_load(node);
         break;
     } // clang-format off
@@ -1591,17 +1579,8 @@ void code_gen(Node *node) {
         }
         break;
     }
-    case DOT: {
-        node->token->llvm.elem = create_attr(node);
-        break;
-    }
     case OWN: {
         node->token->llvm.elem = address_of(node->left);
-        break;
-    }
-    case DREF: {
-        code_gen(node->left);
-        node->token->llvm.elem = create_dref(node->left);
         break;
     }
     case ASSIGN: {
@@ -1613,33 +1592,15 @@ void code_gen(Node *node) {
         node->token->llvm.elem = create_assign(node->left, node->right);
         break;
     } // clang-format off
-    case ADD: case SUB: case MUL: case DIV: case MOD: { // clang-format on
+    case ADD: case SUB: case MUL: case DIV: case MOD: 
+    case GT: case LT: case GE: case LE: case EQ: case NQ: 
+    case AND: case OR: { // clang-format on
         code_gen(node->left);
         code_gen(node->right);
         // TODO: check compatibility
         Node *left = node->left;
         Node *right = node->right;
-        node->token->llvm.elem = create_math_op(node);
-        break;
-    } // clang-format off
-    case GT: case LT: case GE: case LE: case EQ: case NQ: {
-        // clang-format on
-        code_gen(node->left);
-        code_gen(node->right);
-        // TODO: check compatibility
-        Node *left = node->left;
-        Node *right = node->right;
-        node->token->llvm.elem = create_comparision_op(node);
-        break;
-    } // clang-format off
-    case AND: case OR: {
-        // clang-format on
-        code_gen(node->left);
-        code_gen(node->right);
-        // TODO: check compatibility
-        Node *left = node->left;
-        Node *right = node->right;
-        node->token->llvm.elem = create_logic_op(node);
+        node->token->llvm.elem = create_bin_op(node);
         break;
     }
     case PROTO: {

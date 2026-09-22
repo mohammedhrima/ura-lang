@@ -118,9 +118,11 @@ Value create_value(Node *node) {
 
 // node is VAR_LOAD: its left is the VAR that own the storage
 Value create_load(Node *node) {
-    Token *var = node->left->token;
-    TypeRef type = LLVMGetElementType(LLVMTypeOf(var->llvm.elem));
-    return LLVMBuildLoad2(ura.builder, type, var->llvm.elem, var->name);
+    Value ptr = address_of(node);
+    TypeRef type = LLVMGetElementType(LLVMTypeOf(ptr));
+    Token *token = node->token;
+    char *name = token->asm_name ? token->asm_name : token->name;
+    return LLVMBuildLoad2(ura.builder, type, ptr, name ? name : "");
 }
 
 void create_struct(Node *node) {
@@ -129,77 +131,43 @@ void create_struct(Node *node) {
     assert(token->llvm.type != NULL);
     // TODO: protect when struct has no attributes
     TypeRef *attrs = ura_alloc(node->children_count, sizeof(TypeRef));
-    size_t j = 0;
+    size_t count = 0;
     for (size_t i = 0; i < node->children_count; i++) {
         Node *child = node->children[i];
         if (!includes(child->token->type, VAR_DEC, 0))
             continue;
-        attrs[j++] = get_data_type(child->left->left);
+        attrs[count++] = get_data_type(child->left->left);
     }
-    LLVMStructSetBody(token->llvm.type, attrs, j, 0);
+    LLVMStructSetBody(token->llvm.type, attrs, count, 0);
 }
 
-Value create_dref(Node *node) {
-    Value ptr = node->token->llvm.elem;
-    TypeRef type = LLVMGetElementType(LLVMTypeOf(ptr));
-    return LLVMBuildLoad2(ura.builder, type, ptr, "dref");
-}
 
 // TODO: add a flag to define if it's float or unsigned or something
-Value create_math_op(Node *node) {
+Value create_bin_op(Node *node) {
     // TODO: handle unsigned types
-    LLVMOpcode ops[] = {
-        [ADD] = LLVMAdd,  [SUB] = LLVMSub,  [MUL] = LLVMMul,
-        [DIV] = LLVMSDiv, [MOD] = LLVMSRem, [END] = 0,
-        // [DIV] = LLVMUDiv, unsigned div
-        // [MOD] = LLVMSRem, unsigned Mod
+    // clang-format off
+    LLVMOpcode opcodes[END + 1] = {
+        [ADD] = LLVMAdd,  [SUB] = LLVMSub, [MUL] = LLVMMul, [DIV] = LLVMSDiv,
+        [MOD] = LLVMSRem, [AND] = LLVMAnd, [OR] = LLVMOr,
     };
-
-    LLVMOpcode op = ops[node->token->type];
-    if (op == 0) {
-        eprint("unknown operation\n");
-        exit(1);
-    }
-
-    const char *name = to_string(node->token->type);
-    Value left = node->left->token->llvm.elem;
-    Value right = node->right->token->llvm.elem;
-    return LLVMBuildBinOp(ura.builder, op, left, right, name);
-}
-
-Value create_comparision_op(Node *node) {
-    // TODO: handle unsigned types
-    LLVMIntPredicate ops[] = {
-        [GT] = LLVMIntSGT, [LT] = LLVMIntSLT, [GE] = LLVMIntSGE, [LE] = LLVMIntSLE,
-        [EQ] = LLVMIntEQ,  [NQ] = LLVMIntNE,  [END] = 0,
+    LLVMIntPredicate predicates[END + 1] = {
+        [GT] = LLVMIntSGT, [LT] = LLVMIntSLT, [GE] = LLVMIntSGE,
+        [LE] = LLVMIntSLE, [EQ] = LLVMIntEQ,  [NQ] = LLVMIntNE,
     };
+    // clang-format on
 
-    LLVMIntPredicate op = ops[node->token->type];
-    if (op == 0) {
-        eprint("unknown operation\n");
-        exit(1);
-    }
-
-    const char *name = to_string(node->token->type);
+    Type type = node->token->type;
+    const char *name = to_string(type);
     Value left = node->left->token->llvm.elem;
     Value right = node->right->token->llvm.elem;
-    return LLVMBuildICmp(ura.builder, op, left, right, name);
+    if (opcodes[type])
+        return LLVMBuildBinOp(ura.builder, opcodes[type], left, right, name);
+    if (predicates[type])
+        return LLVMBuildICmp(ura.builder, predicates[type], left, right, name);
+    eprint("unknown operation %t\n", type);
+    exit(1);
 }
 
-Value create_logic_op(Node *node) {
-    LLVMOpcode ops[] = { [AND] = LLVMAnd, [OR] = LLVMOr };
-
-    LLVMOpcode op = ops[node->token->type];
-    if (op == 0) {
-        eprint("unknown operation\n");
-        exit(1);
-    }
-
-    const char *name = to_string(node->token->type);
-    Value left = node->left->token->llvm.elem;
-    Value right = node->right->token->llvm.elem;
-    return LLVMBuildBinOp(ura.builder, op, left, right, name);
-}
 
 Value address_of(Node *node) {
     switch (node->token->type) { // clang-format off
@@ -210,7 +178,8 @@ Value address_of(Node *node) {
         TypeRef type = LLVMGetElementType(LLVMTypeOf(ptr));
         Token *attr = node->right->token;
         unsigned index = attr->i32.value;
-        return LLVMBuildStructGEP2(ura.builder, type, ptr, index, attr->name);
+        char *name = node->token->asm_name;
+        return LLVMBuildStructGEP2(ura.builder, type, ptr, index, name);
     }
     case DREF: {
         code_gen(node->left); // TODO: to be checked, I don't like it here
@@ -223,13 +192,6 @@ Value address_of(Node *node) {
     }
     } // clang-format on
     return NULL;
-}
-
-
-Value create_attr(Node *node) {
-    Value ptr = address_of(node);
-    TypeRef type = LLVMGetElementType(LLVMTypeOf(ptr));
-    return LLVMBuildLoad2(ura.builder, type, ptr, node->right->token->name);
 }
 
 Value create_assign(Node *left, Node *right) {
@@ -250,10 +212,8 @@ void create_function(Node *node) {
         args = ura_alloc(node->left->children_count, sizeof(TypeRef));
         for (size_t i = 0; i < args_count; i++) {
             Node *type = node->left->children[i]->left->left;
-            if (type->token->type == STRUCT_DEC)
-                args[i] = type->token->llvm.type;
-            else
-                args[i] = get_data_type(type);
+
+            args[i] = get_data_type(type);
         }
     }
     // TODO: set args count, set if function is variadic or not

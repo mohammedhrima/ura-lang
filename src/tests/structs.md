@@ -72,8 +72,8 @@ define i32 @main() {
 entry:
   %c = alloca i32, align 4
   %u = alloca %User, align 8
-  %b = getelementptr inbounds %User, %User* %u, i32 0, i32 1
-  store i32 10, i32* %b, align 4
+  %u.b = getelementptr inbounds %User, %User* %u, i32 0, i32 1
+  store i32 10, i32* %u.b, align 4
   ret i32 0
 }
 ```
@@ -106,11 +106,11 @@ target triple = "x86_64-pc-linux-gnu"
 define i32 @main() {
 entry:
   %u = alloca %User, align 8
-  %b = getelementptr inbounds %User, %User* %u, i32 0, i32 1
-  store i32 7, i32* %b, align 4
-  %b1 = getelementptr inbounds %User, %User* %u, i32 0, i32 1
-  %b2 = load i32, i32* %b1, align 4
-  ret i32 %b2
+  %u.b = getelementptr inbounds %User, %User* %u, i32 0, i32 1
+  store i32 7, i32* %u.b, align 4
+  %u.b1 = getelementptr inbounds %User, %User* %u, i32 0, i32 1
+  %u.b2 = load i32, i32* %u.b1, align 4
+  ret i32 %u.b2
 }
 ```
 
@@ -146,8 +146,8 @@ entry:
   %p = alloca %User*, align 8
   store %User* %0, %User** %p, align 8
   %p1 = load %User*, %User** %p, align 8
-  %a = getelementptr inbounds %User, %User* %p1, i32 0, i32 0
-  store i32 3, i32* %a, align 4
+  %p.a = getelementptr inbounds %User, %User* %p1, i32 0, i32 0
+  store i32 3, i32* %p.a, align 4
   ret void
 }
 
@@ -155,9 +155,9 @@ define i32 @main() {
 entry:
   %u = alloca %User, align 8
   call void @set(%User* %u)
-  %a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  %a1 = load i32, i32* %a, align 4
-  ret i32 %a1
+  %u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  %u.a1 = load i32, i32* %u.a, align 4
+  ret i32 %u.a1
 }
 ```
 
@@ -192,12 +192,12 @@ entry:
   %self = alloca %User*, align 8
   store %User* %0, %User** %self, align 8
   %self1 = load %User*, %User** %self, align 8
-  %a = getelementptr inbounds %User, %User* %self1, i32 0, i32 0
-  store i32 10, i32* %a, align 4
+  %self.a = getelementptr inbounds %User, %User* %self1, i32 0, i32 0
+  store i32 10, i32* %self.a, align 4
   %self2 = load %User*, %User** %self, align 8
-  %a3 = getelementptr inbounds %User, %User* %self2, i32 0, i32 0
-  %a4 = load i32, i32* %a3, align 4
-  ret i32 %a4
+  %self.a3 = getelementptr inbounds %User, %User* %self2, i32 0, i32 0
+  %self.a4 = load i32, i32* %self.a3, align 4
+  ret i32 %self.a4
 }
 
 define i32 @main() {
@@ -240,18 +240,18 @@ entry:
   %n = alloca i32, align 4
   store i32 %1, i32* %n, align 4
   %self1 = load %User*, %User** %self, align 8
-  %a = getelementptr inbounds %User, %User* %self1, i32 0, i32 0
-  %a2 = load i32, i32* %a, align 4
+  %self.a = getelementptr inbounds %User, %User* %self1, i32 0, i32 0
+  %self.a2 = load i32, i32* %self.a, align 4
   %n3 = load i32, i32* %n, align 4
-  %ADD = add i32 %a2, %n3
+  %ADD = add i32 %self.a2, %n3
   ret i32 %ADD
 }
 
 define i32 @main() {
 entry:
   %u = alloca %User, align 8
-  %a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  store i32 5, i32* %a, align 4
+  %u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  store i32 5, i32* %u.a, align 4
   %add = call i32 @User.add(%User* %u, i32 3)
   ret i32 %add
 }
@@ -292,9 +292,9 @@ entry:
   %self = alloca %User*, align 8
   store %User* %0, %User** %self, align 8
   %self1 = load %User*, %User** %self, align 8
-  %a = getelementptr inbounds %User, %User* %self1, i32 0, i32 0
-  %a2 = load i32, i32* %a, align 4
-  ret i32 %a2
+  %self.a = getelementptr inbounds %User, %User* %self1, i32 0, i32 0
+  %self.a2 = load i32, i32* %self.a, align 4
+  ret i32 %self.a2
 }
 
 define i32 @via(%User* %0) {
@@ -309,8 +309,8 @@ entry:
 define i32 @main() {
 entry:
   %u = alloca %User, align 8
-  %a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  store i32 4, i32* %a, align 4
+  %u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  store i32 4, i32* %u.a, align 4
   %via = call i32 @via(%User* %u)
   ret i32 %via
 }
@@ -354,8 +354,8 @@ entry:
   store i32 %1, i32* %n, align 4
   %n1 = load i32, i32* %n, align 4
   %self2 = load %User*, %User** %self, align 8
-  %a = getelementptr inbounds %User, %User* %self2, i32 0, i32 0
-  store i32 %n1, i32* %a, align 4
+  %self.a = getelementptr inbounds %User, %User* %self2, i32 0, i32 0
+  store i32 %n1, i32* %self.a, align 4
   ret void
 }
 
@@ -364,8 +364,8 @@ entry:
   %self = alloca %User*, align 8
   store %User* %0, %User** %self, align 8
   %self1 = load %User*, %User** %self, align 8
-  %a = getelementptr inbounds %User, %User* %self1, i32 0, i32 0
-  store i32 1, i32* %a, align 4
+  %self.a = getelementptr inbounds %User, %User* %self1, i32 0, i32 0
+  store i32 1, i32* %self.a, align 4
   ret void
 }
 
@@ -373,9 +373,9 @@ define i32 @main() {
 entry:
   %u = alloca %User, align 8
   call void @User.set.1(%User* %u)
-  %a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  %a1 = load i32, i32* %a, align 4
-  ret i32 %a1
+  %u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  %u.a1 = load i32, i32* %u.a, align 4
+  ret i32 %u.a1
 }
 ```
 

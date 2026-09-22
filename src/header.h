@@ -105,12 +105,8 @@ Value create_variable(Node *node);
 Value create_value(Node *node);
 Value create_load(Node *node);
 void create_struct(Node *node);
-Value create_dref(Node *node);
-Value create_math_op(Node *node);
-Value create_comparision_op(Node *node);
-Value create_logic_op(Node *node);
+Value create_bin_op(Node *node);
 Value address_of(Node *node);
-Value create_attr(Node *node);
 Value create_assign(Node *left, Node *right);
 void create_function(Node *node);
 void create_entry(Node *node);
@@ -126,7 +122,6 @@ void create_jmp_out(Bloc bloc);
 void create_jmp(Bloc bloc);
 void create_at(Bloc bloc);
 void create_last_label(Bloc bloc);
-Value create_attr(Node *node);
 // end LLVM code
 
 #ifndef bool

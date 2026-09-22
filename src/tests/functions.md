@@ -210,8 +210,8 @@ entry:
   %same = call i32* @same(i32* %a)
   store i32* %same, i32** %q, align 8
   %q1 = load i32*, i32** %q, align 8
-  %dref = load i32, i32* %q1, align 4
-  ret i32 %dref
+  %q.dref = load i32, i32* %q1, align 4
+  ret i32 %q.dref
 }
 ```
 
@@ -248,15 +248,15 @@ entry:
   store i32* %1, i32** %y, align 8
   %t = alloca i32, align 4
   %x1 = load i32*, i32** %x, align 8
-  %dref = load i32, i32* %x1, align 4
-  store i32 %dref, i32* %t, align 4
+  %x.dref = load i32, i32* %x1, align 4
+  store i32 %x.dref, i32* %t, align 4
   %y2 = load i32*, i32** %y, align 8
-  %dref3 = load i32, i32* %y2, align 4
-  %x4 = load i32*, i32** %x, align 8
-  store i32 %dref3, i32* %x4, align 4
-  %t5 = load i32, i32* %t, align 4
-  %y6 = load i32*, i32** %y, align 8
-  store i32 %t5, i32* %y6, align 4
+  %y.dref = load i32, i32* %y2, align 4
+  %x3 = load i32*, i32** %x, align 8
+  store i32 %y.dref, i32* %x3, align 4
+  %t4 = load i32, i32* %t, align 4
+  %y5 = load i32*, i32** %y, align 8
+  store i32 %t4, i32* %y5, align 4
   ret void
 }
 

@@ -141,8 +141,8 @@ entry:
   store i32* %a, i32** %p, align 8
   %b = alloca i32, align 4
   %p1 = load i32*, i32** %p, align 8
-  %dref = load i32, i32* %p1, align 4
-  store i32 %dref, i32* %b, align 4
+  %p.dref = load i32, i32* %p1, align 4
+  store i32 %p.dref, i32* %b, align 4
   %b2 = load i32, i32* %b, align 4
   ret i32 %b2
 }
@@ -175,8 +175,8 @@ entry:
   %p = alloca i32*, align 8
   store i32* %a, i32** %p, align 8
   %p1 = load i32*, i32** %p, align 8
-  %dref = load i32, i32* %p1, align 4
-  %ADD = add i32 %dref, 5
+  %p.dref = load i32, i32* %p1, align 4
+  %ADD = add i32 %p.dref, 5
   %p2 = load i32*, i32** %p, align 8
   store i32 %ADD, i32* %p2, align 4
   %a3 = load i32, i32* %a, align 4
@@ -217,9 +217,9 @@ entry:
   %p2 = alloca i32*, align 8
   store i32* %b, i32** %p2, align 8
   %p21 = load i32*, i32** %p2, align 8
-  %dref = load i32, i32* %p21, align 4
+  %p2.dref = load i32, i32* %p21, align 4
   %p12 = load i32*, i32** %p1, align 8
-  store i32 %dref, i32* %p12, align 4
+  store i32 %p2.dref, i32* %p12, align 4
   %a3 = load i32, i32* %a, align 4
   ret i32 %a3
 }
