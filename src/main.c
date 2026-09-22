@@ -690,7 +690,10 @@ Node *find_by_type(Type type, char *name) {
     for (size_t i = ura.scopes_count; i > 0; i--) {
         Node *scope = ura.scopes[i - 1];
         Node *found = NULL;
-        if (scope->token->type == STRUCT_DEC)
+        bool is_struct = scope->token->type == STRUCT_DEC;
+        if (is_struct && type == STRUCT_DEC && strcmp(scope->token->name, name) == 0)
+            return scope;
+        if (is_struct)
             continue;
         if (includes(scope->token->type, FN_DEC, PROTO, 0))
             found = find_in_children(scope->left, type, name);
@@ -732,6 +735,12 @@ Node *parse_type(void) {
     Node *type = is_data_type(peek(0));
     if (!type)
         return NULL;
+    if (type == ura.scope) {
+        Token *name = next();
+        error_at(name, "struct '%s' can't contain itself", name->name);
+        help("use a ref: '&%s'", name->name);
+        return new_node(new_token(ERR, name));
+    }
     next();
     while (peek(0)->type == LBRACK) {
         next();
@@ -1516,6 +1525,16 @@ void analyze_ast(Node *node) {
         char *base = left->name ? left->name : left->asm_name;
         char *name = attr->token->name;
         node->token->asm_name = base ? strjoin(base, ".", name) : name;
+        if (type_of(node)->token->type == REF) { // dref left
+            Node *dot = new_node(node->token);
+            dot->left = node->left;
+            dot->right = node->right;
+            node->token = new_token(DREF, dot->token);
+            node->token->name = dot->token->asm_name;
+            node->token->asm_name = strjoin(dot->token->asm_name, ".", "dref");
+            node->left = dot;
+            node->right = NULL;
+        }
         break;
     }
     case OWN: {
