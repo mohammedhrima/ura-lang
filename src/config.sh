@@ -77,7 +77,7 @@ build() {
 
         CC=clang
         # arrays, not strings: zsh does not word-split unquoted "$VAR"
-        FLAGS=(-fsanitize=address -g3)
+        FLAGS=(-fsanitize=address -g3 -Werror)
 
         # every llvm-config in sight: on PATH, plain or versioned (Ubuntu's
         # llvm-config-12), and in the usual install prefixes
@@ -148,31 +148,77 @@ build() {
 # ============================================================================
 # _ura_compile_case <ura_file> <out_name>
 #
-# Compiles <ura_file> and stores the generated LLVM IR in the global
-# URA_CASE_IR. The executable is only a by-product: it's never run, and it
-# is deleted as soon as the compile finishes.
+# Compiles <ura_file> and stores the results in three globals:
+#   URA_CASE_IR      the generated LLVM IR (empty when the compile failed)
+#   URA_CASE_STDERR  the compiler's stderr, cleaned by _ura_clean_stderr
+#   URA_CASE_STATUS  the compiler's exit status (124 when it timed out)
+# The executable is only a by-product: it's never run, and it is deleted as
+# soon as the compile finishes.
 #
-# Returns 1 if the compiler itself failed.
+# The compiler runs from the source's directory with a bare file name, so
+# messages say "test.ura:2:11" instead of a temporary path.
+#
+# Returns 0 when the compile succeeded, 1 when it failed, 2 when there is no
+# compiler to run.
 # ============================================================================
 _ura_compile_case() {
     local ura_file="$1" out_name="$2"
     local exe="$URA_BUILD_DIR/$out_name"
+    local dir base ll
+    local -a limit
+    dir=$(cd "$(dirname "$ura_file")" && pwd)
+    base=$(basename "$ura_file")
     # ura derives the IR path from the source, not from -o: <dir>/build/<base>.ll
-    local ll="$(dirname "$ura_file")/build/$(basename "$ura_file" .ura).ll"
+    ll="$dir/build/$(basename "$ura_file" .ura).ll"
 
     if [ ! -x "$URA_BIN" ]; then
         _ura_red "compile: build/ura not found - run 'build' first"
-        return 1
+        return 2
     fi
 
-    if ! "$URA_BIN" "$ura_file" -o "$exe" >/dev/null; then
-        rm -f "$exe"
-        _ura_red "compile: failed for $ura_file"
-        return 1
+    # a compiler that loops forever fails its test instead of the whole run;
+    # macOS has no timeout, so it runs unguarded there
+    if command -v timeout >/dev/null 2>&1; then
+        limit=(timeout 10)
     fi
 
+    # a stale .ll from an earlier run must not pass for this run's IR
+    rm -f "$ll"
+    URA_CASE_STDERR=$(cd "$dir" && "${limit[@]}" "$URA_BIN" "$base" -o "$exe" 2>&1 >/dev/null)
+    URA_CASE_STATUS=$?
+    URA_CASE_STDERR=$(printf '%s\n' "$URA_CASE_STDERR" | _ura_clean_stderr)
     URA_CASE_IR=$(cat "$ll" 2>/dev/null)
     rm -f "$exe"
+
+    [ "$URA_CASE_STATUS" -eq 0 ] || return 1
+}
+
+# ============================================================================
+# _ura_compile_as_test <ura_file>
+#
+# Compiles a copy of <ura_file> named test.ura, the name tests compile every
+# entry under, so recorded messages match what tests prints later. Leaves
+# the same globals and returns the same codes as _ura_compile_case.
+# ============================================================================
+_ura_compile_as_test() {
+    # not "status": zsh reserves that name
+    local ura_file="$1" tmp_dir code
+    tmp_dir=$(mktemp -d)
+    cp "$ura_file" "$tmp_dir/test.ura"
+    _ura_compile_case "$tmp_dir/test.ura" test
+    code=$?
+    rm -rf "$tmp_dir"
+    return $code
+}
+
+# ============================================================================
+# _ura_clean_stderr
+#
+# Reads compiler stderr on stdin and prints it without colors and without
+# the "raised at main.c:N" lines, whose line numbers move on every edit.
+# ============================================================================
+_ura_clean_stderr() {
+    sed -e $'s/\033\\[[0-9;]*m//g' | grep -v '^raised at '
 }
 
 # ============================================================================
@@ -346,8 +392,9 @@ _ura_trim_blank_lines() {
 # ============================================================================
 # _ura_write_entry <number> <description> <ura_file>
 #
-# Prints one complete test entry to stdout, using the URA_CASE_IR global the
-# last _ura_compile_case call left behind.
+# Prints one complete test entry to stdout, using the globals the last
+# _ura_compile_case call left behind: the LLVM IR when the compile
+# succeeded, else the compiler's stderr and exit status.
 # ============================================================================
 _ura_write_entry() {
     local number="$1" description="$2" ura_file="$3"
@@ -360,6 +407,21 @@ _ura_write_entry() {
     _ura_trim_blank_lines "$ura_file"
     echo '```'
     echo
+    if [ "$URA_CASE_STATUS" -ne 0 ]; then
+        echo "### stderr"
+        echo
+        echo '```'
+        printf '%s\n' "$URA_CASE_STDERR"
+        echo '```'
+        echo
+        echo "### status"
+        echo
+        echo '```'
+        printf '%s\n' "$URA_CASE_STATUS"
+        echo '```'
+        echo
+        return 0
+    fi
     echo "### llvm ir"
     echo
     echo '```llvm'
@@ -372,10 +434,12 @@ _ura_write_entry() {
 # copy <ura_file> <md_prefix> <description>
 #
 # Snapshots <ura_file> into tests/<md_prefix>.md, alongside its generated
-# LLVM IR. An entry with the same description is replaced in place, keeping
-# its number; otherwise a new one is appended.
+# LLVM IR, or its stderr and exit status when the compile fails. An entry
+# with the same description is replaced in place, keeping its number;
+# otherwise a new one is appended.
 #
 #   copy file.ura while "basic while"
+#   copy bad.ura errors "unknown variable"
 # ============================================================================
 copy() {
     local ura_file="$1" md_prefix="$2" description="$3"
@@ -397,7 +461,10 @@ copy() {
     # the header itself is written by _ura_rewrite_index
     touch "$md_file"
 
-    _ura_compile_case "$ura_file" "$(basename "$ura_file" .ura)" || return 1
+    # a failed compile is recorded too, as an error test; only a missing
+    # compiler stops here
+    _ura_compile_as_test "$ura_file"
+    [ $? -ne 2 ] || return 1
 
     local number
     number=$(_ura_entry_number "$md_file" "$description")
@@ -453,7 +520,10 @@ replace() {
         return 1
     fi
 
-    _ura_compile_case "$ura_file" "$(basename "$ura_file" .ura)" || return 1
+    # a failed compile is recorded too, as an error test; only a missing
+    # compiler stops here
+    _ura_compile_as_test "$ura_file"
+    [ $? -ne 2 ] || return 1
 
     _ura_replace_entry "$md_file" "$number" "$description" "$ura_file"
     _ura_rewrite_index "$md_file"
@@ -488,7 +558,7 @@ _ura_compare() {
 # ============================================================================
 _ura_test_file() {
     local md_file="$1" only="$2"
-    local label numbers number entry name tmp_dir tmp_ura
+    local label numbers number entry name tmp_dir tmp_ura compiled
 
     label=$(basename "$md_file" .md)
     numbers=$(grep -oE '^## [0-9]{3}' "$md_file" | grep -oE '[0-9]{3}')
@@ -515,13 +585,30 @@ _ura_test_file() {
         tmp_ura="$tmp_dir/test.ura"
         printf '%s\n' "$entry" | _ura_extract_fence > "$tmp_ura"
 
-        if ! _ura_compile_case "$tmp_ura" "test_$number"; then
-            _ura_red "  $number — $name: FAIL (compile error)"
-            _ura_failed=$((_ura_failed + 1))
-            rm -rf "$tmp_dir"
+        _ura_compile_case "$tmp_ura" "test_$number"
+        compiled=$?
+        rm -rf "$tmp_dir"
+        [ "$compiled" -ne 2 ] || return 1
+
+        # an entry that records a status expects the compile to fail, with
+        # exactly that stderr and status
+        if printf '%s\n' "$entry" | grep -qx '### status'; then
+            if _ura_compare "$entry" "stderr" "$URA_CASE_STDERR" "$number" "$name" &&
+                _ura_compare "$entry" "status" "$URA_CASE_STATUS" "$number" "$name"; then
+                _ura_green "  $number — $name: PASS"
+                _ura_passed=$((_ura_passed + 1))
+            else
+                _ura_failed=$((_ura_failed + 1))
+            fi
             continue
         fi
-        rm -rf "$tmp_dir"
+
+        if [ "$compiled" -ne 0 ]; then
+            _ura_red "  $number — $name: FAIL (compile error, status $URA_CASE_STATUS)"
+            printf '%s\n' "$URA_CASE_STDERR" | head -8 | sed 's/^/      /'
+            _ura_failed=$((_ura_failed + 1))
+            continue
+        fi
 
         if _ura_compare "$entry" "llvm ir" "$URA_CASE_IR" "$number" "$name"; then
             _ura_green "  $number — $name: PASS"
