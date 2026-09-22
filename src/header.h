@@ -170,7 +170,8 @@ typedef struct _IO_FILE *File;
     }
 
 #define eprint(...)          _eprint(FILE, FUNC, LINE, __VA_ARGS__)
-#define error_at(token, ...) _error_at(FILE, FUNC, LINE, token, __VA_ARGS__)
+#define error_at(token, ...) _error_at(FILE, FUNC, LINE, token, format(__VA_ARGS__))
+#define help(...)            _help(format(__VA_ARGS__))
 
 struct uraFile {
     char *name;
@@ -277,16 +278,59 @@ void *ura_alloc(size_t count, size_t size);
 const char *to_string(Type type);
 int _print(File fp, const char *fmt, va_list args);
 int _eprint(char *file, const char *func, int line, char *fmt, ...);
-void _error_at(char *file, const char *func, int line, Token *token, char *fmt, ...);
-void help(char *fmt, ...);
+void _error_at(char *file, const char *func, int line, Token *token, char *message);
+void _help(char *message);
+char *format(char *fmt, ...);
 void diag_flush(void);
-void report_bad_call(Node *call);
+bool assert_function_matches_call(Node *call);
 Node *find_by_type(Type type, char *name);
 Node *find_in_children(Node *parent, Type type, char *name);
 Node *type_of(Node *node);
-bool check_type(Node *expected, Node *value, bool report);
-void check_condition(Node *cond);
+bool assert_type_fits(Node *expected, Node *value, bool report);
+void assert_condition_is_bool(Node *cond);
+bool assert_operands_are_valid(Node *node);
+bool assert_name_is_declared(Node *node);
+bool assert_not_declared_twice(Node *node);
+bool assert_indexing_an_array(Node *node);
+bool assert_receiver_is_struct(Node *node);
+bool assert_attribute_exists(Node *node, Node *struct_dec);
+bool assert_address_of_variable(Node *node);
+bool assert_assignment_is_valid(Node *node, bool bare_name);
+bool assert_operator_fits_operands(Node *node);
+bool assert_return_matches_function(Node *node, Node *fn);
+bool assert_inside_loop(Node *node);
+bool assert_declaration_is_valid(Node *parent, size_t i);
+bool same_params(Node *left, Node *right);
+Token *new_token(Type type, Token *from);
+Node *new_node(Token *token);
 Node *recover(Token *start);
+Token *assert_next_is(Type type, char *message);
+bool assert_character_is_known(Token *token);
+bool assert_token_is_expected(Token *token);
+bool assert_ref_is_single(void);
+bool assert_type_follows(Node *type, Token *after);
+bool assert_type_is_known(Node *type);
+bool assert_struct_not_inside_itself(Node *type);
+bool assert_array_type_is_closed(Token *open, Node *type);
+bool assert_arguments_are_separated(Token *call);
+bool assert_access_is_closed(Node *access);
+bool assert_array_literal_valid(Node *literal);
+bool assert_is_struct_member(Node *attr);
+bool assert_address_is_single(Token *amp);
+bool assert_parenthesis_is_closed(Token *open);
+bool assert_variadic_is_last(Node *arg);
+bool assert_parameter_has_type(Node *arg);
+bool assert_parameters_are_separated(void);
+bool assert_condition_follows(Token *keyword);
+bool assert_else_has_no_condition(Token *keyword);
+bool assert_operand_follows(Token *op);
+bool assert_type_is_printable(Node *value, char *spec);
+bool assert_call_is_unambiguous(Node *call, Node *found);
+Node *is_data_type(Token *token);
+bool assert_literal_is_valid(Token *literal, bool closed);
+bool assert_number_fits(Token *number, Type type, bool report);
+Token *peek(size_t index);
+Token *next(void);
 int print(char *fmt, ...);
 bool includes(Type to_find, ...);
 Node *prime_node(void);

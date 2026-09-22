@@ -104,6 +104,7 @@
 - 101 — control flow: else with a condition
 - 102 — recovery: three analysis errors
 - 103 — recovery: two syntax errors in two functions
+- 104 — diagnostics: error past line 9
 
 ---
 
@@ -2946,3 +2947,37 @@ error: aborting due to 2 errors
 ```
 1
 ```
+---
+
+## 104 — diagnostics: error past line 9
+
+```ura
+fn main() i32:
+    a i32 = 1
+    b i32 = 2
+    c i32 = 3
+    d i32 = 4
+    e i32 = 5
+    f i32 = 6
+    g i32 = 7
+    h i32 = 8
+    i i32 = 9
+    return zz
+```
+
+### stderr
+
+```
+error: test.ura:11:12 'zz' not found
+   |
+11 |     return zz
+   |            ^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
