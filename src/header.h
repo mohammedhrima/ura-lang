@@ -190,7 +190,7 @@ struct uraFile {
 enum Type {
     NONE,
     ERR,
-    IDENTIFIER,
+    ID,
 
     VAR_DEC, VAR, VAR_LOAD,
 

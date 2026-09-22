@@ -78,7 +78,7 @@ const char *to_string(Type type) {
     char *types[END + 1] = {
         // clang-format off
         [ERR] = "ERR",
-        [IDENTIFIER] = "IDENTIFER",
+        [ID] = "IDENTIFER",
 
         [VAR_DEC] = "VAR_DEC", [VAR] = "VAR", [VAR_LOAD] = "VAR_LOAD",
 
@@ -182,12 +182,12 @@ int _print(File fp, const char *fmt, va_list args) {
             i += 2;
             continue;
         }
-        if (strncmp(fmt + i, "%T", 2) == 0) {
+        if (strncmp(fmt + i, "%N", 2) == 0) {
             r += print_type(fp, va_arg(args, Node *));
             i += 2;
             continue;
         }
-        if (strncmp(fmt + i, "%S", 2) == 0) {
+        if (strncmp(fmt + i, "%K", 2) == 0) {
             Token *token = va_arg(args, Token *);
             int len = (int)(token->e - token->s);
             r += fprintf(fp, "%.*s", len, ura.curr_content + token->s);
@@ -206,7 +206,7 @@ int _print(File fp, const char *fmt, va_list args) {
             if (token->name)
                 r += fprintf(fp, " name (%s)", token->name);
             switch (token->type) {
-            case IDENTIFIER: {
+            case ID: {
                 break;
             }
             case I32: {
@@ -426,7 +426,7 @@ Token *parse_token(Type type, size_t s, size_t e, size_t space) {
     new->space = space / TAB + (space % TAB != 0 ? 1 : 0);
     space = new->space;
     switch (type) {
-    case IDENTIFIER: {
+    case ID: {
         // if(e - s == 0) break;
         struct {
             char *value;
@@ -532,7 +532,7 @@ void gen_tokens(uraFile *file) {
             e++;
         if (e != s) // found identifier
         {
-            parse_token(IDENTIFIER, s, e, space);
+            parse_token(ID, s, e, space);
             continue;
         }
 
@@ -693,7 +693,7 @@ Node *find_by_type(Type type, char *name) {
 Node *is_data_type(Token *token) {
     if (token->is_type && includes(token->type, BOOL, I8, I32, CHARS, 0))
         return new_node(token);
-    if (token->type == IDENTIFIER)
+    if (token->type == ID)
         return find_by_type(STRUCT_DEC, token->name);
     return NULL;
 }
@@ -740,7 +740,7 @@ Node *prime_node(void) {
     Token *token = next();
     Node *node = NULL;
     switch (token->type) {
-    case IDENTIFIER: {
+    case ID: {
         Node *next_elem = parse_type();
         if (next_elem) {
             node = new_node(new_token(VAR_DEC, token));
@@ -791,7 +791,7 @@ Node *prime_node(void) {
         node = new_node(token);
 
         node->token->is_type = true;
-        if (peek(0)->type != IDENTIFIER) {
+        if (peek(0)->type != ID) {
             eprint("Expected identifier after struct declaration\n");
             exit(1);
         }
@@ -841,7 +841,7 @@ Node *prime_node(void) {
     case PROTO: case FN_DEC: { // clang-format on
         Node *struct_dec = ura.scope->token->type == STRUCT_DEC ? ura.scope : NULL;
         node = new_node(token);
-        if (peek(0)->type != IDENTIFIER) {
+        if (peek(0)->type != ID) {
             eprint("Expected identifer after fn\n");
             return NULL;
         }
@@ -1002,7 +1002,7 @@ Node *expr_node(int min_op) {
 void gen_ast(void) {
     if (ura.errors_count)
         return;
-    ura.ast = new_node(new_token(IDENTIFIER, NULL));
+    ura.ast = new_node(new_token(ID, NULL));
     ura.ast->token->name = ura_strdup("ura-scope");
     enter_scope(ura.ast);
     while (!includes(peek(0)->type, END, 0) && !ura.errors_count) {
@@ -1263,7 +1263,7 @@ void analyze_ast(Node *node) {
     case ERR: {
         break;
     }
-    case IDENTIFIER: {
+    case ID: {
         node->left = find_by_type(VAR, node->token->name);
         if (!node->left) {
             error_at(node->token, "'%s' not found", node->token->name);
@@ -1314,7 +1314,7 @@ void analyze_ast(Node *node) {
         Node *struct_dec = type_of(node->left);
         if (!struct_dec || struct_dec->token->type != STRUCT_DEC) {
             Token *left = node->left->token;
-            error_at(left, "`%S` is `%T`, not a struct", left, struct_dec);
+            error_at(left, "'%K' is '%N', not a struct", left, struct_dec);
             node->token->type = ERR;
             break;
         }
@@ -1336,8 +1336,8 @@ void analyze_ast(Node *node) {
             if (!call->right) {
                 char *type = struct_dec->token->name;
                 Token *method = call->token;
-                error_at(method, "no matching method '%S'", method);
-                help("struct '%s' has no '%S' taking these arguments", type, method);
+                error_at(method, "no matching method '%K'", method);
+                help("struct '%s' has no '%K' taking these arguments", type, method);
                 node->token->type = ERR;
                 break;
             }
@@ -1364,7 +1364,7 @@ void analyze_ast(Node *node) {
         if (!found) {
             Token *name = attr->token;
             char *type = struct_dec->token->name;
-            error_at(name, "struct '%s' has no attribute '%S'", type, name);
+            error_at(name, "struct '%s' has no attribute '%K'", type, name);
             node->token->type = ERR;
             break;
         }
@@ -1435,7 +1435,7 @@ void analyze_ast(Node *node) {
                 Token *pointer = node->left->left->left->token;
                 char *name = var->name;
                 error_at(value, "'%s' is a ref, initialize it with an address", name);
-                help("write `%S &%S = &%S`", var, pointer, value);
+                help("write '%K &%K = &%K'", var, pointer, value);
                 break;
             }
         }
@@ -1485,7 +1485,7 @@ void analyze_ast(Node *node) {
         if (fn && fn->right) {
             char *name = fn->token->name;
             Node *type = fn->right;
-            error_at(node->token, "'%s' must return a value of type `%T`", name, type);
+            error_at(node->token, "'%s' must return a value of type '%N'", name, type);
         }
         break;
     }
