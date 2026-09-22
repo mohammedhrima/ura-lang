@@ -32,8 +32,8 @@ target triple = "x86_64-pc-linux-gnu"
 define i32 @main() {
 entry:
   %a = alloca i32, align 4
-  store i32 10, i32* %a, align 4
   %p = alloca i32*, align 8
+  store i32 10, i32* %a, align 4
   store i32* %a, i32** %p, align 8
   ret i32 0
 }
@@ -62,8 +62,8 @@ target triple = "x86_64-pc-linux-gnu"
 define i32 @main() {
 entry:
   %a = alloca i32, align 4
-  store i32 10, i32* %a, align 4
   %p = alloca i32*, align 8
+  store i32 10, i32* %a, align 4
   store i32* %a, i32** %p, align 8
   %p1 = load i32*, i32** %p, align 8
   store i32 12, i32* %p1, align 4
@@ -136,10 +136,10 @@ target triple = "x86_64-pc-linux-gnu"
 define i32 @main() {
 entry:
   %a = alloca i32, align 4
-  store i32 10, i32* %a, align 4
   %p = alloca i32*, align 8
-  store i32* %a, i32** %p, align 8
   %b = alloca i32, align 4
+  store i32 10, i32* %a, align 4
+  store i32* %a, i32** %p, align 8
   %p1 = load i32*, i32** %p, align 8
   %p.dref = load i32, i32* %p1, align 4
   store i32 %p.dref, i32* %b, align 4
@@ -171,8 +171,8 @@ target triple = "x86_64-pc-linux-gnu"
 define i32 @main() {
 entry:
   %a = alloca i32, align 4
-  store i32 10, i32* %a, align 4
   %p = alloca i32*, align 8
+  store i32 10, i32* %a, align 4
   store i32* %a, i32** %p, align 8
   %p1 = load i32*, i32** %p, align 8
   %p.dref = load i32, i32* %p1, align 4
@@ -209,12 +209,12 @@ target triple = "x86_64-pc-linux-gnu"
 define i32 @main() {
 entry:
   %a = alloca i32, align 4
-  store i32 1, i32* %a, align 4
   %b = alloca i32, align 4
-  store i32 2, i32* %b, align 4
   %p1 = alloca i32*, align 8
-  store i32* %a, i32** %p1, align 8
   %p2 = alloca i32*, align 8
+  store i32 1, i32* %a, align 4
+  store i32 2, i32* %b, align 4
+  store i32* %a, i32** %p1, align 8
   store i32* %b, i32** %p2, align 8
   %p21 = load i32*, i32** %p2, align 8
   %p2.dref = load i32, i32* %p21, align 4
@@ -251,12 +251,12 @@ target triple = "x86_64-pc-linux-gnu"
 define i32 @main() {
 entry:
   %a = alloca i32, align 4
-  store i32 1, i32* %a, align 4
   %b = alloca i32, align 4
-  store i32 2, i32* %b, align 4
   %p1 = alloca i32*, align 8
-  store i32* %a, i32** %p1, align 8
   %p2 = alloca i32*, align 8
+  store i32 1, i32* %a, align 4
+  store i32 2, i32* %b, align 4
+  store i32* %a, i32** %p1, align 8
   store i32* %b, i32** %p2, align 8
   %p21 = load i32*, i32** %p2, align 8
   store i32* %p21, i32** %p1, align 8

@@ -236,8 +236,8 @@ target triple = "x86_64-pc-linux-gnu"
 define i32 @User.add(%User* %0, i32 %1) {
 entry:
   %self = alloca %User*, align 8
-  store %User* %0, %User** %self, align 8
   %n = alloca i32, align 4
+  store %User* %0, %User** %self, align 8
   store i32 %1, i32* %n, align 4
   %self1 = load %User*, %User** %self, align 8
   %self.a = getelementptr inbounds %User, %User* %self1, i32 0, i32 0
@@ -349,8 +349,8 @@ target triple = "x86_64-pc-linux-gnu"
 define void @User.set(%User* %0, i32 %1) {
 entry:
   %self = alloca %User*, align 8
-  store %User* %0, %User** %self, align 8
   %n = alloca i32, align 4
+  store %User* %0, %User** %self, align 8
   store i32 %1, i32* %n, align 4
   %n1 = load i32, i32* %n, align 4
   %self2 = load %User*, %User** %self, align 8

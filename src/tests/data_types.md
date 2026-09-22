@@ -119,8 +119,8 @@ declare void @exit(i32)
 define i32 @main() {
 entry:
   %c1 = alloca i8, align 1
-  store i8 97, i8* %c1, align 1
   %c2 = alloca i8, align 1
+  store i8 97, i8* %c1, align 1
   store i8 98, i8* %c2, align 1
   ret i32 0
 }

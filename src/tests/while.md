@@ -189,8 +189,8 @@ target triple = "x86_64-pc-linux-gnu"
 define i32 @main() {
 entry:
   %i = alloca i32, align 4
-  store i32 0, i32* %i, align 4
   %c = alloca i32, align 4
+  store i32 0, i32* %i, align 4
   store i32 0, i32* %c, align 4
   br label %cond
 
@@ -251,8 +251,9 @@ target triple = "x86_64-pc-linux-gnu"
 define i32 @main() {
 entry:
   %i = alloca i32, align 4
-  store i32 0, i32* %i, align 4
   %c = alloca i32, align 4
+  %j = alloca i32, align 4
+  store i32 0, i32* %i, align 4
   store i32 0, i32* %c, align 4
   br label %cond
 
@@ -262,7 +263,6 @@ cond:                                             ; preds = %endwhile4, %entry
   br i1 %LT, label %then, label %endwhile
 
 then:                                             ; preds = %cond
-  %j = alloca i32, align 4
   store i32 0, i32* %j, align 4
   br label %cond2
 

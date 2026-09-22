@@ -131,8 +131,8 @@ target triple = "x86_64-pc-linux-gnu"
 define i32 @main() {
 entry:
   %a = alloca i32, align 4
-  store i32 5, i32* %a, align 4
   %n = alloca i32, align 4
+  store i32 5, i32* %a, align 4
   store i32 0, i32* %n, align 4
   %a1 = load i32, i32* %a, align 4
   %GT = icmp sgt i32 %a1, 3
@@ -296,8 +296,8 @@ target triple = "x86_64-pc-linux-gnu"
 define i32 @main() {
 entry:
   %b = alloca i1, align 1
-  store i1 false, i1* %b, align 1
   %p = alloca i1*, align 8
+  store i1 false, i1* %b, align 1
   store i1* %b, i1** %p, align 8
   %p1 = load i1*, i1** %p, align 8
   store i1 true, i1* %p1, align 1
@@ -337,8 +337,8 @@ target triple = "x86_64-pc-linux-gnu"
 define i32 @main() {
 entry:
   %a = alloca i32, align 4
-  store i32 5, i32* %a, align 4
   %b = alloca i32, align 4
+  store i32 5, i32* %a, align 4
   store i32 7, i32* %b, align 4
   %a1 = load i32, i32* %a, align 4
   %EQ = icmp eq i32 %a1, 5

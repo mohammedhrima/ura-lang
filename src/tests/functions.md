@@ -205,8 +205,8 @@ entry:
 define i32 @main() {
 entry:
   %a = alloca i32, align 4
-  store i32 6, i32* %a, align 4
   %q = alloca i32*, align 8
+  store i32 6, i32* %a, align 4
   %same = call i32* @same(i32* %a)
   store i32* %same, i32** %q, align 8
   %q1 = load i32*, i32** %q, align 8
@@ -243,10 +243,10 @@ target triple = "x86_64-pc-linux-gnu"
 define void @swap(i32* %0, i32* %1) {
 entry:
   %x = alloca i32*, align 8
-  store i32* %0, i32** %x, align 8
   %y = alloca i32*, align 8
-  store i32* %1, i32** %y, align 8
   %t = alloca i32, align 4
+  store i32* %0, i32** %x, align 8
+  store i32* %1, i32** %y, align 8
   %x1 = load i32*, i32** %x, align 8
   %x.dref = load i32, i32* %x1, align 4
   store i32 %x.dref, i32* %t, align 4
@@ -263,8 +263,8 @@ entry:
 define i32 @main() {
 entry:
   %a = alloca i32, align 4
-  store i32 1, i32* %a, align 4
   %b = alloca i32, align 4
+  store i32 1, i32* %a, align 4
   store i32 2, i32* %b, align 4
   call void @swap(i32* %a, i32* %b)
   %a1 = load i32, i32* %a, align 4

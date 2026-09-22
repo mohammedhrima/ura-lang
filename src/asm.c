@@ -87,12 +87,27 @@ TypeRef get_data_type(Node *type) {
         return type->token->llvm.type;
     return get_llvm_type(type->token->type);
 }
+// TODO: to be cheked
+Value create_alloca(TypeRef type, char *name) {
+    Bloc current = LLVMGetInsertBlock(ura.builder);
+    Bloc entry = LLVMGetEntryBasicBlock(LLVMGetBasicBlockParent(current));
+    Value inst = LLVMGetFirstInstruction(entry);
+    while (inst && LLVMIsAAllocaInst(inst))
+        inst = LLVMGetNextInstruction(inst);
+    if (inst)
+        LLVMPositionBuilderBefore(ura.builder, inst);
+    else
+        LLVMPositionBuilderAtEnd(ura.builder, entry);
+    Value alloca = LLVMBuildAlloca(ura.builder, type, name);
+    LLVMPositionBuilderAtEnd(ura.builder, current);
+    return alloca;
+}
 
 // node is VAR_DEC: its left is the VAR, the VAR's left is the type
 Value create_variable(Node *node) {
     Token *var = node->left->token;
     Node *type = node->left->left;
-    return LLVMBuildAlloca(ura.builder, get_data_type(type), var->name);
+    return create_alloca(get_data_type(type), var->name);
 }
 
 Value create_value(Node *node) {
@@ -153,7 +168,7 @@ Value create_array(Node *node) {
 
     TypeRef type = LLVMArrayType(elem, count);
     TypeRef i32 = get_llvm_type(I32);
-    Value array = LLVMBuildAlloca(ura.builder, type, "array");
+    Value array = create_alloca(type, "array");
     Value zero[] = { LLVMConstInt(i32, 0, 0), LLVMConstInt(i32, 0, 0) };
     Value first = LLVMBuildInBoundsGEP2(ura.builder, type, array, zero, 2, "");
     for (size_t i = 0; i < count; i++) {
