@@ -399,7 +399,7 @@ char *parse_escaped(char *input, size_t s, size_t e) {
     char *res = ura_alloc(e - s + 1, sizeof(char));
     size_t r = 0;
     while (s < e) {
-        char c = 0;
+        int c = -1;
         // clang-format off
         if(s < e && input[s] == '\\')
         {
@@ -415,10 +415,11 @@ char *parse_escaped(char *input, size_t s, size_t e) {
                 case '"':  c = '\"'; break;
                 case '\'': c = '\''; break;
                 case '?':  c = '\?'; break;
+                case '0':  c = '\0'; break;
                 // TODO: add octal stuff etc...
                 default: break;
             }
-            if(c) s += 2;
+            if(c != -1) s += 2;
             else c = input[s++];
         }
         else c = input[s++];
@@ -432,6 +433,8 @@ Token *parse_token(Type type, size_t s, size_t e, size_t space) {
     Token *new = new_token(type, NULL);
     new->space = space / TAB + (space % TAB != 0 ? 1 : 0);
     space = new->space;
+
+
     switch (type) {
     case ID: {
         // if(e - s == 0) break;
@@ -484,13 +487,30 @@ Token *parse_token(Type type, size_t s, size_t e, size_t space) {
         break;
     }
     case I8: {
-        // TODO: handle special characters later on
-        new->i8.value = ura.curr_content[s + 1];
+        new->i8.value = parse_escaped(ura.curr_content, s + 1, e - 1)[0];
         break;
     }
     case I32: {
-        // TODO: check INT_MIN, INT_MAX boundries
-        new->i32.value = atoi(ura.curr_content + s);
+        long r = 0; // TODO: INT_MIN
+        bool is_error = false;
+        size_t i = s;
+        while (i < e) {
+            int n = ura.curr_content[i] - '0';
+            if (r > (INT_MAX - n) / 10) {
+                new->line = ura.curr_line;
+                new->s = s;
+                new->e = e;
+                char *num = ura_alloc(e - s + 1, sizeof(char));
+                strncpy(num, ura.curr_content + s, e - s);
+                error_at(new, "'%s' doesn't fit in 'i32'", num);
+                is_error = true;
+                break;
+            }
+            r = r * 10 + n;
+            i++;
+        }
+        if (!is_error)
+            new->i32.value = strtol(ura.curr_content + s, NULL, 10);
         break;
     }
     default:
@@ -544,22 +564,32 @@ void gen_tokens(uraFile *file) {
             continue;
         }
 
-        while (content[s] == '\"' && content[e] && (e == s || content[e] != '\"'))
+        if (content[s] == '"' || content[s] == '\'') {
+            char quote = content[s];
             e++;
-        if (e != s) // found CHARS
-        {
-            e++;
-            parse_token(CHARS, s, e, space);
-            continue;
-        }
-
-        // TODO: to be fixed later
-        while (content[s] == '\'' && content[e] && (e == s || content[e] != '\''))
-            e++;
-        if (e != s) // found CHARS
-        {
-            e++;
-            parse_token(I8, s, e, space);
+            while (content[e] && content[e] != quote && content[e] != '\n') {
+                if (content[e] == '\\' && content[e + 1] && content[e + 1] != '\n')
+                    e++;
+                e++;
+            }
+            bool closed = content[e] == quote;
+            if (closed)
+                e++;
+            Token *literal = parse_token(quote == '"' ? CHARS : I8, s, e, space);
+            size_t len = closed ? e - s - 2 : 0;
+            bool escaped = content[s + 1] == '\\';
+            if (!closed && quote == '"')
+                error_at(literal, "unterminated string");
+            else if (!closed)
+                error_at(literal, "unterminated character");
+            else if (quote == '\'' && len == 0)
+                error_at(literal, "empty character literal");
+            else if (quote == '\'' && len != (escaped ? 2 : 1)) {
+                char *text = ura_alloc(len + 1, sizeof(char));
+                strncpy(text, content + s + 1, len);
+                error_at(literal, "a character holds one letter");
+                help("for a string, write '\"%s\"'", text);
+            }
             continue;
         }
 
@@ -600,7 +630,8 @@ void gen_tokens(uraFile *file) {
         }
         if (e != s)
             continue;
-        eprint("handle this case: <%s>\n", content + e);
+        Token *unexpected = parse_token(I8, s, e, space);
+        error_at(unexpected, "unexpected character '%c'", content[s]);
         break;
     }
     parse_token(END, e, e, 0);
