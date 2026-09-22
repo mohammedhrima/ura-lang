@@ -1,5 +1,10 @@
-proto printf(s chars, ...)
+
+
+struct Array:
+   
 
 fn main() i32:
-   printf("tab\there\n")
-   return 0
+   // str char[] = "abcd"
+   // arr i32[] = [1, 2, 3]
+   output("f")
+   // return 0

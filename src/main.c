@@ -148,7 +148,7 @@ int print_token(File fp, Token *token) {
     int r = fprintf(fp, "%s", to_string(token->type));
     if (token->name)
         r += fprintf(fp, " name (%s)", token->name);
-    
+
     if (!token->name && !token->is_type) {
         // clang-format off
         switch (token->type) {
@@ -157,11 +157,11 @@ int print_token(File fp, Token *token) {
         case CHARS: r += fprintf(fp, " value (%s)", token->chars.value); break;
         case BOOL: { // clang-format on
             char *b1 = token->b1.value ? "True" : "False";
-            r += fprintf(fp, " value (%s)", b1); 
+            r += fprintf(fp, " value (%s)", b1);
             break;
-
-        }  
-        default: break;
+        }
+        default:
+            break;
         }
     }
     r += fprintf(fp, " space (%ld)", token->space);
@@ -1042,26 +1042,26 @@ Node *type_of(Node *node) {
     case BOOL: case I8: case I32: {
         return node;
     }
-    case CHARS: {
-        static Node *i8_array;
-        if (!i8_array) {
-            i8_array = new_node(new_token(ARRAY, NULL));
-            i8_array->token->is_type = true;
-            i8_array->left = new_node(new_token(I8, NULL));
-            i8_array->left->token->is_type = true;
+    case CHARS: { // TODO: refacor hit part later on
+        static Node *node;
+        if (node == NULL) {
+            node = new_node(new_token(ARRAY, NULL));
+            node->token->is_type = true;
+            node->left = new_node(new_token(I8, NULL));
+            node->left->token->is_type = true;
         }
-        return i8_array;
+        return node;
     }
     case ADD: case SUB: case MUL: case DIV: case MOD: {
         return type_of(node->left); // TODO: to be checked later
     }
     case GT: case LT: case GE: case LE: case EQ: case NQ: case AND: case OR: {
-        static Node *b1;
-        if (!b1) {
-            b1 = new_node(new_token(BOOL, NULL));
-            b1->token->is_type = true;
+        static Node *node;
+        if (node == NULL) {
+            node = new_node(new_token(BOOL, NULL));
+            node->token->is_type = true;
         }
-        return b1;
+        return node;
     } // clang-format on
     case ARRAY_LIT: {
         if (!node->left) {
@@ -1133,7 +1133,8 @@ Node *output_function(Node *call) {
     }
 
     // TODO: handle struct type
-    expand(Node *, args) args_size = 0;
+    expand(Node *, args);
+    args_size = 0;
     args_count = 0;
     args = NULL;
 
@@ -1407,8 +1408,10 @@ void analyze_ast(Node *node) {
             if (ura.scopes[i - 1]->token->type == FN_DEC)
                 fn = ura.scopes[i - 1];
         }
-        if (node->left) analyze_ast(node->left);
-        if (fn) assert_return_matches_function(node, fn);
+        if (node->left)
+            analyze_ast(node->left);
+        if (fn)
+            assert_return_matches_function(node, fn);
         break;
     }
     case IF: {
@@ -1733,27 +1736,17 @@ void parse_arguments(int ac, char **av) {
 
 /*
 TODO:
-    [ ] add complex tests
-    [*] improve error handling
-    [*] FN_DEC overwrite proto
-    [*] access via '.' in struct
-    [*] pass struct by reference to function
-    [*] polymorphism
-    [*] handle method in preprocessing
-    [*] struct method
     [ ] drop method
     [ ] String struct
     [ ] to_string method
     [ ] output (should handl also struct.to_string)
+    [ ] for template add a part in the code thaht JIT/interpreter
 
-    [ ] access via '[]' in chars
     [ ] operators overload
 
     [ ] for loops over a range: for i in 0..10
     [ ] more integer types (i8, i64, unsigned) and casting with as
-    [ ] arrays: declaration and indexing
     [ ] function inside function
-    [*] arena allocator (all stdup ... should use it)
 */
 
 

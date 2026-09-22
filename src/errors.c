@@ -25,7 +25,8 @@ void _error_at(char *file, const char *func, int line, Token *token, char *messa
     while (content[e] && content[e] != '\n')
         e++;
     size_t col = token->s - s + 1;
-    char *name = ura.curr_file->name;
+    // TODO: chekc this one
+    char *name = ura.curr_file->name; 
 
     size_t row = token->line;
     fprintf(stderr, RED("error:") " %s:%zu:%zu %s\n", name, row, col, message);
