@@ -85,6 +85,7 @@ const char *to_string(Type type) {
         [VOID] = "VOID", [BOOL] = "BOOL", [I8] = "I8", [I32] = "I32",
         [CHARS] = "CHARS",
         [REF] = "REF",
+        [NULL_] = "NULL",
 
         [STRUCT_DEC] = "STRUCT_DEC", [DOT] = "DOT", [ATTR] = "ATTR",
 
@@ -132,6 +133,7 @@ int print_type(File fp, Node *type) {
     case I8:         return fprintf(fp, "i8");
     case I32:        return fprintf(fp, "i32");
     case CHARS:      return fprintf(fp, "chars");
+    case NULL_:      return fprintf(fp, "null");
     default:         return fprintf(fp, "%s", to_string(type->token->type));
     }
     // clang-format on
@@ -450,6 +452,7 @@ Token *parse_token(Type type, size_t s, size_t e, size_t space) {
             { "else", { .type = ELSE } },
             { "while", { .type = WHILE } }, { "break", { .type = BRK } },
             { "continue", { .type = CNT } },
+            { "null", {.type = NULL_ } },
 
             { NULL },
             // clang-format on
@@ -787,7 +790,8 @@ Node *prime_node(void) {
         }
         return new_node(token);
     }
-    case BOOL: case I8: case I32: case VARIADIC: { // clang-format on
+    case NULL_: case BOOL: case I8:
+    case I32: case VARIADIC: { // clang-format on
         return new_node(token);
     }
     case STRUCT_DEC: {
@@ -1057,6 +1061,7 @@ Node *type_of(Node *node) {
         }
         return node->right;
     } // clang-format off
+    case NULL_: return node->left;
     case BOOL: case I8: case I32: case CHARS: { // clang-format on
         return node;
     } // clang-format off
@@ -1387,6 +1392,9 @@ void analyze_ast(Node *node) {
     case DREF: {
         analyze_ast(node->left);
         break;
+    }
+    case NULL_: {
+        break;
     } // clang-format off
     case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN:
     case DIV_ASSIGN: case MOD_ASSIGN: {
@@ -1412,11 +1420,15 @@ void analyze_ast(Node *node) {
         break;
     }
     case ASSIGN: { // clang-format on
-        bool rebind = node->right->token->type == OWN;
+        bool rebind = includes(node->right->token->type, OWN, NULL_, 0);
         analyze_ast(node->left);
         analyze_ast(node->right);
         if (node->left->token->type == ERR || node->right->token->type == ERR)
             break;
+        if (rebind && node->left->token->type == DREF)
+            node->left = node->left->left;
+        if (node->right->token->type == NULL_)
+            node->right->left = type_of(node->left);
         if (node->left->token->type == VAR && node->left->left->token->type == REF) {
             Node *type = type_of(node->right);
             if (!type || type->token->type != REF) {
@@ -1429,8 +1441,6 @@ void analyze_ast(Node *node) {
                 break;
             }
         }
-        if (rebind && node->left->token->type == DREF)
-            node->left = node->left->left;
         break;
     } // clang-format off
     case ADD: case SUB: case MUL: case DIV: case MOD:
@@ -1438,6 +1448,23 @@ void analyze_ast(Node *node) {
     case AND: case OR: { // clang-format on
         analyze_ast(node->left);
         analyze_ast(node->right);
+        if (node->left->token->type == ERR || node->right->token->type == ERR) {
+            node->token->type = ERR;
+            break;
+        }
+        if (node->right->token->type == NULL_)
+            node->right->left = type_of(node->left);
+        if (node->left->token->type == NULL_)
+            node->left->left = type_of(node->right);
+        Node *null = node->left->token->type == NULL_ ? node->left : node->right;
+        Node *other = null == node->left ? node->right : node->left;
+        Node *type = null->left;
+        bool is_ref = type && type->token->type == REF;
+        if (null->token->type == NULL_ && !is_ref && other->token->type != NULL_) {
+            error_at(null->token, "'null' needs a ref on the other side");
+            node->token->type = ERR;
+            break;
+        }
         // TODO: check compatibility
         break;
     } // clang-format off
@@ -1574,7 +1601,7 @@ void code_gen(Node *node) {
         node->token->llvm.elem = create_load(node);
         break;
     } // clang-format off
-    case BOOL: case I8: case I32: case CHARS: {
+    case NULL_: case BOOL: case I8: case I32: case CHARS: {
         // clang-format on
         node->token->llvm.elem = create_value(node);
         break;

@@ -191,6 +191,7 @@ enum Type {
 
     VOID, BOOL, I8, I32, CHARS,
     REF,
+    NULL_,
 
     STRUCT_DEC, DOT, ATTR,
 

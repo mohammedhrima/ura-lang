@@ -99,6 +99,11 @@ Value create_value(Node *node) {
     Token *token = node->token;
     if (token->type == CHARS)
         return LLVMBuildGlobalStringPtr(ura.builder, token->chars.value, "str");
+    if (token->type == NULL_) {
+        TypeRef i8_ptr = LLVMPointerType(get_llvm_type(I8), 0);
+        TypeRef type = node->left ? get_data_type(node->left) : i8_ptr;
+        return LLVMConstPointerNull(type);
+    }
     TypeRef llvm_type = get_llvm_type(token->type);
     // if (token->is_ref)
     //     llvm_type = LLVMPointerType(llvm_type, 0);
