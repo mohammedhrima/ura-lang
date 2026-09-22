@@ -286,6 +286,7 @@ Node *find_in_children(Node *parent, Type type, char *name);
 Node *type_of(Node *node);
 bool check_type(Node *expected, Node *value, bool report);
 void check_condition(Node *cond);
+Node *recover(Token *start);
 int print(char *fmt, ...);
 bool includes(Type to_find, ...);
 Node *prime_node(void);

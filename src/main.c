@@ -620,7 +620,7 @@ bool includes(Type to_find, ...) {
 }
 
 bool inside(size_t space) {
-    return ura.tokens[ura.exe_pos]->space > space && ura.errors_count == 0;
+    return ura.tokens[ura.exe_pos]->space > space;
 }
 
 Token *peek(size_t index) {
@@ -647,6 +647,16 @@ Node *new_node(Token *token) {
     print("new node %k\n", new->token);
     push_back(ura.nodes, new);
     return new;
+}
+
+Node *recover(Token *start) {
+    while (peek(0)->type != END) {
+        Token *token = peek(0);
+        if (token->line > start->line && token->space <= start->space)
+            break;
+        next();
+    }
+    return new_node(new_token(ERR, start));
 }
 
 void parse_bloc(Node *parent) {
@@ -715,19 +725,21 @@ Node *is_data_type(Token *token) {
 
 Node *parse_type(void) {
     if (peek(0)->type == AND && is_data_type(peek(1))) {
-        eprint("a ref can't point to a ref: &&%t is not allowed\n", peek(1)->type);
-        exit(1);
+        Token *amp = next();
+        error_at(amp, "a ref can't point to a ref");
+        next();
+        return new_node(new_token(ERR, amp));
     }
     if (peek(0)->type == REF) {
         Node *node = new_node(next());
         if (peek(0)->type == REF) {
-            eprint("a ref can't point to a ref: &&%t is not allowed\n", peek(1)->type);
-            exit(1);
+            error_at(peek(0), "a ref can't point to a ref");
+            return recover(node->token);
         }
         node->left = is_data_type(peek(0));
         if (node->left == NULL) {
-            eprint("expected a data type after &, got %k\n", peek(0));
-            exit(1);
+            error_at(node->token, "expected a type after '&'");
+            return new_node(new_token(ERR, node->token));
         }
         next();
         return node;
@@ -749,11 +761,16 @@ Node *parse_type(void) {
     }
     next();
     while (peek(0)->type == LBRACK) {
-        next();
-        if (next()->type != RBRACK) {
-            eprint("expected ]");
-            exit(1);
+        Token *open = next();
+        Token *close = peek(0);
+        if (close->type != RBRACK) {
+            Token *at = close->line == open->line ? close : open;
+            error_at(at, "expected ']' after '['");
+            if (close->type == I32)
+                help("arrays have no size in the type: '%N[]'", type);
+            return recover(open);
         }
+        next();
         Node *array = new_node(new_token(ARRAY, type->token));
         array->token->is_type = true;
         array->left = type;
@@ -794,18 +811,23 @@ Node *prime_node(void) {
             token->type = FN_CALL;
             node = new_node(token);
             node->left = new_node(new_token(ARGS, node->token));
-            while (!includes(peek(0)->type, RPARENT, 0)) {
+            while (peek(0)->type != RPARENT) {
                 Node *arg = expr_node(0);
                 push_back(node->left->children, arg);
-                if (!includes(peek(0)->type, RPARENT, COMA, 0)) {
-                    eprint("expect ',' between arguments");
-                    break;
-                } else if (peek(0)->type == COMA)
+                Token *after = peek(0);
+                if (after->type == COMA && peek(1)->type == RPARENT) {
+                    error_at(peek(1), "expected an argument after ','");
                     next();
-            }
-            if (!includes(peek(0)->type, RPARENT, 0)) {
-                eprint("expect ')' between arguments");
-                return node;
+                } else if (after->type == COMA)
+                    next();
+                else if (after->type != RPARENT && after->line == token->line) {
+                    error_at(after, "expected ',' between arguments");
+                    return recover(token);
+                } else if (after->type != RPARENT) {
+                    char *name = token->name;
+                    error_at(token, "expected ')' to close the call to '%s'", name);
+                    return recover(token);
+                }
             }
             next();
             return node;
@@ -818,10 +840,11 @@ Node *prime_node(void) {
                 access->token->type = ACCESS;
                 access->left = node;
                 access->right = expr_node(0);
-                if (next()->type != RBRACK) {
-                    eprint("expected ]");
-                    exit(1);
+                if (peek(0)->type != RBRACK) {
+                    error_at(access->token, "unclosed '['");
+                    return recover(token);
                 }
+                next();
                 node = access;
             }
             return node;
@@ -840,22 +863,29 @@ Node *prime_node(void) {
         }
         return new_node(token);
     }
-    case NULL_: case BOOL: case I8:
+    case NULL_: case BOOL: case I8: 
     case I32: case VARIADIC: { // clang-format on
         return new_node(token);
     }
     case LBRACK: {
         Node *node = new_node(token);
         node->token->type = ARRAY_LIT;
-        while (!includes(peek(0)->type, RBRACK, 0)) {
-            push_back(node->children, prime_node());
-            if (peek(0)->type == COMA)
+        while (peek(0)->type != RBRACK) {
+            Token *curr = peek(0);
+            bool ends = curr->line > token->line && curr->space <= token->space;
+            if (ends || curr->type == END) {
+                error_at(token, "unclosed '['");
+                return node;
+            }
+            if (node->children_count && curr->type != COMA) {
+                error_at(curr, "expected ',' between elements");
+                return recover(token);
+            }
+            if (curr->type == COMA)
                 next();
+            push_back(node->children, prime_node());
         }
-        if (next()->type != RBRACK) {
-            eprint("expected closing ']'");
-            exit(1);
-        }
+        next();
         return node;
     }
     case STRUCT_DEC: {
@@ -863,33 +893,43 @@ Node *prime_node(void) {
 
         node->token->is_type = true;
         if (peek(0)->type != ID) {
-            eprint("Expected identifier after struct declaration\n");
-            exit(1);
+            error_at(peek(0), "expected a struct name after 'struct'");
+            return recover(token);
         }
         Token *name = next();
         node->token->name = ura_strdup(name->name);
         node->token->s = name->s;
         node->token->e = name->e;
         if (peek(0)->type != DOTS) {
-            eprint("Expected )\n");
-            exit(1);
+            error_at(name, "expected ':' after 'struct %s'", name->name);
+            return recover(token);
         }
         enter_scope(node);
         next(); // skip ':'
         while (inside(node->token->space)) {
             Node *attr = expr_node(0);
-
-            if (includes(attr->token->type, VAR_DEC, FN_DEC, 0)) {
+            Token *at = attr->token;
+            if (includes(at->type, VAR_DEC, FN_DEC, 0)) {
                 push_back(node->children, attr);
-            } else {
-                eprint("invalid attribute\n");
-                exit(1);
-            }
+            } else if (at->type == ID)
+                error_at(at, "attribute '%s' needs a type", at->name);
+            else
+                error_at(at, "a struct holds only attributes and methods");
         }
         exit_scope();
         return node;
     } // clang-format off
+    case AND: {
+        error_at(token, "can't take the address of an address");
+        expr_node(40);
+        return new_node(new_token(ERR, token));
+    }
     case REF: {
+        if (peek(0)->type == REF) {
+            error_at(token, "can't take the address of an address");
+            expr_node(40);
+            return new_node(new_token(ERR, token));
+        }
         token->type = OWN;
         node = new_node(token);
         node->left = expr_node(40); // TODO: to be checked
@@ -898,8 +938,8 @@ Node *prime_node(void) {
     case LPARENT: {
         node = expr_node(0);
         if (peek(0)->type != RPARENT) {
-            eprint("Expected )\n");
-            exit(1);
+            error_at(token, "unclosed '('");
+            return node;
         }
         next();
         return node;
@@ -916,8 +956,8 @@ Node *prime_node(void) {
         Node *struct_dec = ura.scope->token->type == STRUCT_DEC ? ura.scope : NULL;
         node = new_node(token);
         if (peek(0)->type != ID) {
-            eprint("Expected identifer after fn\n");
-            return NULL;
+            error_at(peek(0), "expected a function name after 'fn'");
+            return recover(token);
         }
         Token *name = next();
         node->token->name = ura_strdup(name->name);
@@ -925,8 +965,12 @@ Node *prime_node(void) {
         node->token->e = name->e;
         enter_scope(node);
 
-        if (next()->type != LPARENT)
-            eprint("Expected ( after function declaration\n");
+        if (peek(0)->type != LPARENT) {
+            error_at(peek(0), "expected '(' after '%s'", name->name);
+            exit_scope();
+            return recover(token);
+        }
+        next();
         node->left = new_node(new_token(ARGS, node->token));
         if (struct_dec) {
             Node *self = new_node(new_token(VAR_DEC, node->token));
@@ -943,30 +987,43 @@ Node *prime_node(void) {
             if (arg->token->type == VARIADIC) {
                 // push_back(node->left->children, arg);
                 node->token->is_variadic = true;
+                if(peek(0)->type != RPARENT) {
+                    error_at(arg->token, "'...' must be the last parameter");
+                    exit_scope();
+                    return recover(token);
+                }
                 break;
             }
-            if (arg->token->type != VAR_DEC) {
-                eprint("expected valid arguments\n");
-                exit(1);
+            if (arg->token->type == ID) {
+                error_at(arg->token, "parameter '%s' needs a type", arg->token->name);
+                exit_scope();
+                return recover(token);
             }
             push_back(node->left->children, arg);
 
-            if (!includes(peek(0)->type, RPARENT, COMA, 0)) {
-                eprint("expect ',' between arguments");
-                break;
-            } else if (peek(0)->type == COMA)
+            Token *after = peek(0);
+            if (after->type == COMA)
                 next();
+            else if (after->type == ID) {
+                error_at(after, "expected ',' between parameters");
+                exit_scope();
+                return recover(token);
+            } else if (after->type != RPARENT) {
+                error_at(after, "expected ')' to close the parameters");
+                exit_scope();
+                return recover(token);
+            }
         }
-        if (next()->type != RPARENT)
-            eprint("Expected ) after function declaration: %t\n", peek(0)->type);
-
+        next();
 
         node->right = parse_type();
 
         if (node->token->type == FN_DEC) { // : and bloc only for fn
             if (peek(0)->type != DOTS) {
-                eprint("Expected : after function declaration\n");
-                exit(1);
+                Token *last = ura.tokens[ura.exe_pos - 1];
+                error_at(last, "expected ':' after the function signature");
+                exit_scope();
+                return recover(token);
             }
             next();
             parse_bloc(node);
@@ -983,10 +1040,15 @@ Node *prime_node(void) {
     }
     case IF: {
         node = new_node(token);
-        node->left = expr_node(0); // condition
+        if (peek(0)->type == DOTS) {
+            error_at(token, "expected a condition after 'if'");
+            node->left = new_node(new_token(ERR, token));
+        } else
+            node->left = expr_node(0);
         if (peek(0)->type != DOTS) {
-            eprint("expected ':' after if statement\n");
-            exit(1);
+            Token *last = ura.tokens[ura.exe_pos - 1];
+            error_at(last, "expected ':' after the 'if' condition");
+            return recover(token);
         }
         next();
         parse_bloc(node);
@@ -1003,28 +1065,32 @@ Node *prime_node(void) {
             curr = curr->right;
 
             if (curr->token->type == ELIF) {
-                curr->left = expr_node(0); // condition
-                if (next()->type != DOTS) {
-                    eprint("expected dots after elif\n");
-                    exit(0);
+                curr->left = expr_node(0);
+                if (peek(0)->type != DOTS) {
+                    Token *last = ura.tokens[ura.exe_pos - 1];
+                    error_at(last, "expected ':' after the 'elif' condition");
+                    return recover(curr->token);
                 }
-                parse_bloc(curr);
-            } else if (curr->token->type == ELSE) {
-                if (next()->type != DOTS) {
-                    eprint("expected dots after else\n");
-                    exit(0);
-                }
-                parse_bloc(curr);
+            } else if (peek(0)->type != DOTS && peek(0)->line == curr->token->line) {
+                error_at(peek(0), "'else' takes no condition");
+                help("use 'elif'");
+                return recover(curr->token);
+            } else if (peek(0)->type != DOTS) {
+                error_at(curr->token, "expected ':' after 'else'");
+                return recover(curr->token);
             }
+            next();
+            parse_bloc(curr);
         }
         return node;
     }
     case WHILE: {
         node = new_node(token);
-        node->left = expr_node(0); // condition
+        node->left = expr_node(0);
         if (peek(0)->type != DOTS) {
-            eprint("expected ':' after while loop\n");
-            exit(1);
+            Token *last = ura.tokens[ura.exe_pos - 1];
+            error_at(last, "expected ':' after the 'while' condition");
+            return recover(token);
         }
         next();
         parse_bloc(node);
@@ -1033,10 +1099,14 @@ Node *prime_node(void) {
     case BRK: case CNT:
         // clang-format on
         return new_node(token);
-    default: { // TODO: replace this with unexpected token
-        eprint("handle this case %t\n", token->type);
-        exit(1);
-        break;
+        // clang-format off
+    case ELIF: case ELSE: { // clang-format on
+        error_at(token, "'%K' without a matching 'if'", token);
+        return recover(token);
+    }
+    default: {
+        error_at(token, "unexpected '%K'", token);
+        return new_node(new_token(ERR, token));
     }
     }
     return NULL;
@@ -1069,6 +1139,11 @@ Node *expr_node(int min_op) {
             break;
         Node *node = new_node(next());
         node->left = left;
+        if (peek(0)->line != node->token->line || peek(0)->type == END) {
+            error_at(node->token, "expected an expression after '%K'", node->token);
+            node->token->type = ERR;
+            return node;
+        }
         node->right = expr_node(op);
 
         left = node;
@@ -1082,7 +1157,7 @@ void gen_ast(void) {
     ura.ast = new_node(new_token(ID, NULL));
     ura.ast->token->name = ura_strdup("ura-scope");
     enter_scope(ura.ast);
-    while (!includes(peek(0)->type, END, 0) && !ura.errors_count) {
+    while (!includes(peek(0)->type, END, 0)) {
         Node *child = expr_node(0);
         push_back(ura.ast->children, child);
     }
