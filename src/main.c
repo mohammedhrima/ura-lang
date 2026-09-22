@@ -296,7 +296,7 @@ void print_helper(NodePrint *elems, Node *node, int depth) {
     if (!includes(node->token->type, BRK, CNT, 0)) {
         Node *left = node->left;
         bool struct_type = left && left->token->type == STRUCT_DEC;
-        if (includes(node->token->type, VAR, REF, 0) && struct_type) {
+        if (includes(node->token->type, ID, VAR, REF, 0) && struct_type) {
             push_back(elems->nodes, left);
             push_back(elems->depths, depth + 3);
         } else {
@@ -660,6 +660,8 @@ Node *find_in_children(Node *parent, Type type, char *name) {
         if (type == VAR) {
             if (curr->token->type != VAR_DEC)
                 continue;
+            if (curr->left->token->type != VAR)
+                continue;
             if (strcmp(curr->left->token->name, name) == 0)
                 return curr->left;
         } else {
@@ -679,7 +681,8 @@ Node *find_by_type(Type type, char *name) {
     for (size_t i = ura.scopes_count; i > 0; i--) {
         Node *scope = ura.scopes[i - 1];
         Node *found = NULL;
-
+        if (scope->token->type == STRUCT_DEC)
+            continue;
         if (includes(scope->token->type, FN_DEC, PROTO, 0))
             found = find_in_children(scope->left, type, name);
         if (!found)
@@ -744,7 +747,7 @@ Node *prime_node(void) {
         Node *next_elem = parse_type();
         if (next_elem) {
             node = new_node(new_token(VAR_DEC, token));
-            token->type = VAR;
+            // token->type = VAR;
             node->left = new_node(token);
             node->left->left = next_elem;
             return node;
@@ -1244,9 +1247,13 @@ void analyze_ast(Node *node) {
         break;
     }
     case ID: {
-        node->left = find_by_type(VAR, node->token->name);
-        if (!node->left) {
-            error_at(node->token, "'%s' not found", node->token->name);
+        char *name = node->token->name;
+        node->left = find_by_type(VAR, name);
+        if (node->left == NULL) {
+            error_at(node->token, "'%s' not found", name);
+            Node *self = find_by_type(VAR, "self");
+            if (self && find_in_children(self->left->left, VAR, name))
+                help("did you mean 'self.%s'?", name);
             node->token->type = ERR;
             break;
         }
@@ -1263,6 +1270,7 @@ void analyze_ast(Node *node) {
     }
     case VAR_DEC: {
         // TODO: later on try declaring structs/enum at the bottom
+        node->left->token->type = VAR;
         break;
     } // clang-format off
     case VAR:
@@ -1446,8 +1454,11 @@ void analyze_ast(Node *node) {
     case FN_CALL: {
         for (size_t i = 0; i < node->left->children_count; i++)
             analyze_ast(node->left->children[i]);
-        for (size_t i = ura.scopes_count; i > 0 && !node->right; i--)
-            node->right = find_function(ura.scopes[i - 1], node);
+        for (size_t i = ura.scopes_count; i > 0 && !node->right; i--) {
+            Node *scope = ura.scopes[i - 1];
+            if (scope->token->type != STRUCT_DEC)
+                node->right = find_function(scope, node);
+        }
         if (!node->right) {
             report_bad_call(node);
             node->token->type = ERR;
