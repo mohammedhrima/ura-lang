@@ -33,8 +33,9 @@ void _error_at(char *file, const char *func, int line, Token *token, char *fmt, 
     _print(stderr, fmt, args);
     va_end(args);
     fprintf(stderr, "\n");
-
-    int width = token->space;
+    
+    // TODO: why it works ?
+    int width = snprintf(NULL, 0, "%zu", token->space);
     fprintf(stderr, "%*s |\n", width, "");
     fprintf(stderr, "%zu | %.*s\n", token->line, (int)(e - s), content + s);
     fprintf(stderr, "%*s | %*s", width, "", (int)(token->s - s), "");
@@ -54,10 +55,13 @@ void help(char *fmt, ...) {
 
 void report_bad_call(Node *call) {
     char *name = call->token->name;
+    Node *struct_dec = ura.scope->token->type == STRUCT_DEC ? ura.scope : NULL;
     Node *fn = NULL;
     size_t count = 0;
     for (size_t i = ura.scopes_count; i > 0; i--) {
         Node *scope = ura.scopes[i - 1];
+        if (scope->token->type == STRUCT_DEC && scope != struct_dec)
+            continue;
         for (size_t j = 0; j < scope->children_count; j++) {
             Node *curr = scope->children[j];
             if (!includes(curr->token->type, FN_DEC, PROTO, 0))
@@ -67,9 +71,23 @@ void report_bad_call(Node *call) {
             fn = curr;
             count++;
         }
+        if (struct_dec)
+            break;
+    }
+    if (count == 0 && struct_dec) {
+        char *type = struct_dec->token->name;
+        error_at(call->token, "struct '%s' has no method '%s'", type, name);
+        return;
+    }
+    if (count == 0 && find_by_type(VAR, name)) {
+        error_at(call->token, "'%s' is a variable, not a function", name);
+        return;
     }
     if (count == 0) {
         error_at(call->token, "function '%s' not found", name);
+        Node *self = find_by_type(VAR, "self");
+        if (self && find_in_children(self->left->left, FN_CALL, name))
+            help("did you mean 'self.%s()'?", name);
         return;
     }
     error_at(call->token, "no overload of '%s' takes these arguments", name);
@@ -78,13 +96,15 @@ void report_bad_call(Node *call) {
         return;
     }
 
-    size_t want = fn->left->children_count;
-    size_t got = call->left->children_count;
+    size_t skip = struct_dec ? 1 : 0;
+    size_t want = fn->left->children_count - skip;
+    size_t got = call->left->children_count - skip;
     if (fn->token->is_variadic ? got < want : got != want) {
-        help("'%s' takes %zu arguments, got %zu", name, want, got);
+        char *plural = want == 1 ? "" : "s";
+        help("'%s' takes %zu argument%s, got %zu", name, want, plural, got);
         return;
     }
-    for (size_t i = 0; i < want; i++) {
+    for (size_t i = skip; i < fn->left->children_count; i++) {
         Node *var = fn->left->children[i]->left;
         Node *arg = call->left->children[i];
         Node *expected = var->left;
@@ -92,7 +112,8 @@ void report_bad_call(Node *call) {
         if (check_type(expected, arg, false))
             continue;
         Token *given = arg->token;
-        help("'%K' is '%N', but '%K' wants '%N'", given, actual, var->token, expected);
+        char *param = var->token->name;
+        help("'%K' is '%N', but '%s' wants '%N'", given, actual, param, expected);
         if (expected->token->type == REF && check_type(expected->left, arg, false))
             help("pass its address: '&%K'", given);
         return;

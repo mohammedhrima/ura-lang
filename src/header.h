@@ -281,6 +281,8 @@ void _error_at(char *file, const char *func, int line, Token *token, char *fmt, 
 void help(char *fmt, ...);
 void diag_flush(void);
 void report_bad_call(Node *call);
+Node *find_by_type(Type type, char *name);
+Node *find_in_children(Node *parent, Type type, char *name);
 Node *type_of(Node *node);
 bool check_type(Node *expected, Node *value, bool report);
 void check_condition(Node *cond);

@@ -733,6 +733,12 @@ Node *parse_type(void) {
         return node;
     }
     Node *type = is_data_type(peek(0));
+    Token *prev = ura.tokens[ura.exe_pos - 1];
+    if (!type && peek(0)->type == ID && peek(0)->line == prev->line) {
+        Token *name = next();
+        error_at(name, "unknown type '%s'", name->name);
+        return new_node(new_token(ERR, name));
+    }
     if (!type)
         return NULL;
     if (type == ura.scope) {
@@ -1386,6 +1392,11 @@ void analyze_ast(Node *node) {
     case ID: {
         char *name = node->token->name;
         node->left = find_by_type(VAR, name);
+        if (node->left == NULL && find_by_type(STRUCT_DEC, name)) {
+            error_at(node->token, "'%s' is a type, not a value", name);
+            node->token->type = ERR;
+            break;
+        }
         if (node->left == NULL) {
             error_at(node->token, "'%s' not found", name);
             Node *self = find_by_type(VAR, "self");
@@ -1487,10 +1498,9 @@ void analyze_ast(Node *node) {
 
             call->right = find_function(struct_dec, call);
             if (!call->right) {
-                char *type = struct_dec->token->name;
-                Token *method = call->token;
-                error_at(method, "no matching method '%K'", method);
-                help("struct '%s' has no '%K' taking these arguments", type, method);
+                enter_scope(struct_dec);
+                report_bad_call(call);
+                exit_scope();
                 node->token->type = ERR;
                 break;
             }
@@ -1552,7 +1562,7 @@ void analyze_ast(Node *node) {
         }
         if (!includes(node->left->token->type, VAR_LOAD, DOT, 0)) {
             Token *operand = node->left->token;
-            error_at(operand, "& expects a variable or a struct attribute");
+            error_at(operand, "'&' expects a variable or a struct attribute");
             node->token->type = ERR;
         }
         break;
@@ -1585,10 +1595,22 @@ void analyze_ast(Node *node) {
     }
     case ASSIGN: { // clang-format on
         bool rebind = includes(node->right->token->type, OWN, NULL_, 0);
+        bool bare_name = node->left->token->type == ID;
         analyze_ast(node->left);
         analyze_ast(node->right);
+        if (bare_name && node->left->token->type == ERR) {
+            char *name = node->left->token->name;
+            Node *type = type_of(node->right);
+            Token *value = node->right->token;
+            help("declare it: '%s %N = %K'", name, type, value);
+        }
         if (node->left->token->type == ERR || node->right->token->type == ERR)
             break;
+        if (!includes(node->left->token->type, VAR, VAR_LOAD, DREF, DOT, ACCESS, 0)) {
+            error_at(node->left->token, "can't assign to a value");
+            node->token->type = ERR;
+            break;
+        }
         if (rebind && node->left->token->type == DREF)
             node->left = node->left->left;
         if (node->left->token->type == VAR && node->left->left->token->type == REF) {
