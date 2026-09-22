@@ -102,6 +102,7 @@ void asm_finalize(char *ll_path);
 TypeRef get_llvm_type(Type type);
 TypeRef get_data_type(Node *type);
 Value create_alloca(TypeRef type, char *name);
+Value copy_to_stack(Value constant);
 Value create_variable(Node *node);
 Value create_value(Node *node);
 Value create_load(Node *node);

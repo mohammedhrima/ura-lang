@@ -143,14 +143,23 @@ source_filename = "ura-module"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-linux-gnu"
 
-@str = private unnamed_addr constant [7 x i8] c"abcdef\00", align 1
+@const = private unnamed_addr constant [7 x i8] c"abcdef\00"
 
 define i32 @main() {
 entry:
   %str = alloca i8*, align 8
-  store i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i8** %str, align 8
+  %array = alloca [7 x i8], align 1
+  %0 = bitcast [7 x i8]* %array to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %0, i8* align 1 getelementptr inbounds ([7 x i8], [7 x i8]* @const, i32 0, i32 0), i64 7, i1 false)
+  %1 = getelementptr inbounds [7 x i8], [7 x i8]* %array, i32 0, i32 0
+  store i8* %1, i8** %str, align 8
   ret i32 0
 }
+
+; Function Attrs: argmemonly nofree nosync nounwind willreturn
+declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
+
+attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -208,14 +217,23 @@ source_filename = "ura-module"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-linux-gnu"
 
-@str = private unnamed_addr constant [10 x i8] c"tab\09here\0A\00", align 1
+@const = private unnamed_addr constant [10 x i8] c"tab\09here\0A\00"
 
 declare void @printf(i8*, ...)
 
 define i32 @main() {
 entry:
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str, i32 0, i32 0))
+  %array = alloca [10 x i8], align 1
+  %0 = bitcast [10 x i8]* %array to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %0, i8* align 1 getelementptr inbounds ([10 x i8], [10 x i8]* @const, i32 0, i32 0), i64 10, i1 false)
+  %1 = getelementptr inbounds [10 x i8], [10 x i8]* %array, i32 0, i32 0
+  call void (i8*, ...) @printf(i8* %1)
   ret i32 0
 }
+
+; Function Attrs: argmemonly nofree nosync nounwind willreturn
+declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
+
+attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 

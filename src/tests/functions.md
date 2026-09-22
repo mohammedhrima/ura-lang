@@ -323,19 +323,32 @@ source_filename = "ura-module"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-linux-gnu"
 
-@str = private unnamed_addr constant [7 x i8] c"abcdef\00", align 1
-@str.1 = private unnamed_addr constant [5 x i8] c"<%s>\00", align 1
+@const = private unnamed_addr constant [7 x i8] c"abcdef\00"
+@const.1 = private unnamed_addr constant [5 x i8] c"<%s>\00"
 
 declare i32 @printf(i8*, ...)
 
 define i32 @main() {
 entry:
   %str = alloca i8*, align 8
-  store i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i8** %str, align 8
-  %str1 = load i8*, i8** %str, align 8
-  %printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.1, i32 0, i32 0), i8* %str1)
+  %array = alloca [7 x i8], align 1
+  %array1 = alloca [5 x i8], align 1
+  %0 = bitcast [7 x i8]* %array to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %0, i8* align 1 getelementptr inbounds ([7 x i8], [7 x i8]* @const, i32 0, i32 0), i64 7, i1 false)
+  %1 = getelementptr inbounds [7 x i8], [7 x i8]* %array, i32 0, i32 0
+  store i8* %1, i8** %str, align 8
+  %2 = bitcast [5 x i8]* %array1 to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %2, i8* align 1 getelementptr inbounds ([5 x i8], [5 x i8]* @const.1, i32 0, i32 0), i64 5, i1 false)
+  %3 = getelementptr inbounds [5 x i8], [5 x i8]* %array1, i32 0, i32 0
+  %str2 = load i8*, i8** %str, align 8
+  %printf = call i32 (i8*, ...) @printf(i8* %3, i8* %str2)
   ret i32 0
 }
+
+; Function Attrs: argmemonly nofree nosync nounwind willreturn
+declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
+
+attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -365,36 +378,53 @@ source_filename = "ura-module"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-linux-gnu"
 
-@str = private unnamed_addr constant [8 x i8] c"int %d\0A\00", align 1
-@str.2 = private unnamed_addr constant [8 x i8] c"str %s\0A\00", align 1
-@str.3 = private unnamed_addr constant [3 x i8] c"hi\00", align 1
+@const = private unnamed_addr constant [8 x i8] c"int %d\0A\00"
+@const.2 = private unnamed_addr constant [8 x i8] c"str %s\0A\00"
+@const.3 = private unnamed_addr constant [3 x i8] c"hi\00"
 
 declare void @printf(i8*, ...)
 
 define void @show(i32 %0) {
 entry:
   %n = alloca i32, align 4
+  %array = alloca [8 x i8], align 1
   store i32 %0, i32* %n, align 4
+  %1 = bitcast [8 x i8]* %array to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %1, i8* align 1 getelementptr inbounds ([8 x i8], [8 x i8]* @const, i32 0, i32 0), i64 8, i1 false)
+  %2 = getelementptr inbounds [8 x i8], [8 x i8]* %array, i32 0, i32 0
   %n1 = load i32, i32* %n, align 4
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str, i32 0, i32 0), i32 %n1)
+  call void (i8*, ...) @printf(i8* %2, i32 %n1)
   ret void
 }
 
 define void @show.1(i8* %0) {
 entry:
   %s = alloca i8*, align 8
+  %array = alloca [8 x i8], align 1
   store i8* %0, i8** %s, align 8
+  %1 = bitcast [8 x i8]* %array to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %1, i8* align 1 getelementptr inbounds ([8 x i8], [8 x i8]* @const.2, i32 0, i32 0), i64 8, i1 false)
+  %2 = getelementptr inbounds [8 x i8], [8 x i8]* %array, i32 0, i32 0
   %s1 = load i8*, i8** %s, align 8
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.2, i32 0, i32 0), i8* %s1)
+  call void (i8*, ...) @printf(i8* %2, i8* %s1)
   ret void
 }
 
 define i32 @main() {
 entry:
+  %array = alloca [3 x i8], align 1
   call void @show(i32 42)
-  call void @show.1(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.3, i32 0, i32 0))
+  %0 = bitcast [3 x i8]* %array to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %0, i8* align 1 getelementptr inbounds ([3 x i8], [3 x i8]* @const.3, i32 0, i32 0), i64 3, i1 false)
+  %1 = getelementptr inbounds [3 x i8], [3 x i8]* %array, i32 0, i32 0
+  call void @show.1(i8* %1)
   ret i32 0
 }
+
+; Function Attrs: argmemonly nofree nosync nounwind willreturn
+declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
+
+attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -468,9 +498,9 @@ source_filename = "ura-module"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-linux-gnu"
 
-@str = private unnamed_addr constant [7 x i8] c"%s%d%s\00", align 1
-@str.1 = private unnamed_addr constant [12 x i8] c"hello world\00", align 1
-@str.2 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@const = private unnamed_addr constant [7 x i8] c"%s%d%s\00"
+@const.1 = private unnamed_addr constant [12 x i8] c"hello world\00"
+@const.2 = private unnamed_addr constant [2 x i8] c"\0A\00"
 
 define void @foo(i32 %0) {
 entry:
@@ -482,13 +512,30 @@ entry:
 define i32 @main() {
 entry:
   %a = alloca i32, align 4
+  %array = alloca [7 x i8], align 1
+  %array2 = alloca [12 x i8], align 1
+  %array3 = alloca [2 x i8], align 1
   store i32 10, i32* %a, align 4
   %a1 = load i32, i32* %a, align 4
   call void @foo(i32 %a1)
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.1, i32 0, i32 0), i32 12, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0))
+  %0 = bitcast [7 x i8]* %array to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %0, i8* align 1 getelementptr inbounds ([7 x i8], [7 x i8]* @const, i32 0, i32 0), i64 7, i1 false)
+  %1 = getelementptr inbounds [7 x i8], [7 x i8]* %array, i32 0, i32 0
+  %2 = bitcast [12 x i8]* %array2 to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %2, i8* align 1 getelementptr inbounds ([12 x i8], [12 x i8]* @const.1, i32 0, i32 0), i64 12, i1 false)
+  %3 = getelementptr inbounds [12 x i8], [12 x i8]* %array2, i32 0, i32 0
+  %4 = bitcast [2 x i8]* %array3 to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %4, i8* align 1 getelementptr inbounds ([2 x i8], [2 x i8]* @const.2, i32 0, i32 0), i64 2, i1 false)
+  %5 = getelementptr inbounds [2 x i8], [2 x i8]* %array3, i32 0, i32 0
+  call void (i8*, ...) @printf(i8* %1, i8* %3, i32 12, i8* %5)
   ret i32 0
 }
 
 declare void @printf(i8*, ...)
+
+; Function Attrs: argmemonly nofree nosync nounwind willreturn
+declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
+
+attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 

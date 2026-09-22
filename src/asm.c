@@ -103,6 +103,26 @@ Value create_alloca(TypeRef type, char *name) {
     return alloca;
 }
 
+// TODO: to be checked
+Value copy_to_stack(Value constant) {
+    TypeRef type = LLVMTypeOf(constant);
+    Value global = LLVMAddGlobal(ura.module, type, "const");
+    LLVMSetInitializer(global, constant);
+    LLVMSetGlobalConstant(global, 1);
+    LLVMSetLinkage(global, LLVMPrivateLinkage);
+    LLVMSetUnnamedAddress(global, LLVMGlobalUnnamedAddr);
+
+    Value local = create_alloca(type, "array");
+    TargetData data = LLVMGetModuleDataLayout(ura.module);
+    TypeRef i64 = LLVMInt64TypeInContext(ura.context);
+    Value size = LLVMConstInt(i64, LLVMABISizeOfType(data, type), 0);
+    LLVMBuildMemCpy(ura.builder, local, 1, global, 1, size);
+
+    TypeRef i32 = get_llvm_type(I32);
+    Value zero[] = { LLVMConstInt(i32, 0, 0), LLVMConstInt(i32, 0, 0) };
+    return LLVMBuildInBoundsGEP2(ura.builder, type, local, zero, 2, "");
+}
+
 // node is VAR_DEC: its left is the VAR, the VAR's left is the type
 Value create_variable(Node *node) {
     Token *var = node->left->token;
@@ -112,8 +132,11 @@ Value create_variable(Node *node) {
 
 Value create_value(Node *node) {
     Token *token = node->token;
-    if (token->type == CHARS)
-        return LLVMBuildGlobalStringPtr(ura.builder, token->chars.value, "str");
+    if (token->type == CHARS) {
+        char *text = token->chars.value;
+        size_t len = strlen(text);
+        return copy_to_stack(LLVMConstStringInContext(ura.context, text, len, 0));
+    }
     if (token->type == NULL_) {
         TypeRef i8_ptr = LLVMPointerType(get_llvm_type(I8), 0);
         TypeRef type = node->left ? get_data_type(node->left) : i8_ptr;
@@ -165,16 +188,20 @@ void create_struct(Node *node) {
 Value create_array(Node *node) {
     size_t count = node->children_count;
     TypeRef elem = get_data_type(node->left->left);
-
-    TypeRef type = LLVMArrayType(elem, count);
-    TypeRef i32 = get_llvm_type(I32);
-    Value array = create_alloca(type, "array");
-    Value zero[] = { LLVMConstInt(i32, 0, 0), LLVMConstInt(i32, 0, 0) };
-    Value first = LLVMBuildInBoundsGEP2(ura.builder, type, array, zero, 2, "");
+    Value *values = ura_alloc(count, sizeof(Value));
     for (size_t i = 0; i < count; i++) {
+        Value value = node->children[i]->token->llvm.elem;
+        values[i] = LLVMIsConstant(value) ? value : LLVMConstNull(elem);
+    }
+    Value first = copy_to_stack(LLVMConstArray(elem, values, count));
+
+    TypeRef i32 = get_llvm_type(I32);
+    for (size_t i = 0; i < count; i++) {
+        Value value = node->children[i]->token->llvm.elem;
+        if (LLVMIsConstant(value))
+            continue;
         Value index = LLVMConstInt(i32, i, 0);
         Value ptr = LLVMBuildInBoundsGEP2(ura.builder, elem, first, &index, 1, "");
-        Value value = node->children[i]->token->llvm.elem;
         LLVMBuildStore(ura.builder, value, ptr);
     }
     return first;
