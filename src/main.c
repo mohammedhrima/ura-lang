@@ -866,7 +866,10 @@ Node *prime_node(void) {
             eprint("Expected identifier after struct declaration\n");
             exit(1);
         }
-        node->token->name = ura_strdup(next()->name); // get struct name
+        Token *name = next();
+        node->token->name = ura_strdup(name->name);
+        node->token->s = name->s;
+        node->token->e = name->e;
         if (peek(0)->type != DOTS) {
             eprint("Expected )\n");
             exit(1);
@@ -916,7 +919,10 @@ Node *prime_node(void) {
             eprint("Expected identifer after fn\n");
             return NULL;
         }
-        node->token->name = ura_strdup(next()->name);
+        Token *name = next();
+        node->token->name = ura_strdup(name->name);
+        node->token->s = name->s;
+        node->token->e = name->e;
         enter_scope(node);
 
         if (next()->type != LPARENT)
@@ -1351,9 +1357,46 @@ Node *check_ast(Node *parent, size_t i) {
     Node *node = parent->children[i];
     size_t count = node->children_count;
 
-    switch (node->token->type) {
-    case FN_DEC: {
+    Token *token = node->token;
+    char *name = token->name;
+    switch (token->type) {
+    case STRUCT_DEC: {
+        for (size_t j = 0; j < i; j++) {
+            Node *other = parent->children[j];
+            if (other->token->type != STRUCT_DEC)
+                continue;
+            if (strcmp(name, other->token->name) != 0)
+                continue;
+            error_at(token, "struct '%s' is already defined", name);
+            return NULL;
+        }
+        bool has_attr = false;
+        for (size_t j = 0; j < count; j++)
+            has_attr = has_attr || node->children[j]->token->type == VAR_DEC;
+        if (!has_attr)
+            error_at(token, "struct '%s' has no attributes", name);
         break;
+    }
+    case FN_DEC: {
+        for (size_t j = 0; j < i; j++) {
+            Node *other = parent->children[j];
+            if (other->token->type != FN_DEC)
+                continue;
+            if (strcmp(name, other->token->name) != 0)
+                continue;
+            if (!same_params(node, other))
+                continue;
+            if (check_type(node->right, other->right, false))
+                error_at(token, "'%s' is already defined with these parameters", name);
+            else
+                error_at(token, "'%s' can't be overloaded on its return type", name);
+            return NULL;
+        }
+        break;
+    }
+    case RETURN: {
+        error_at(token, "'return' outside of a function");
+        return NULL;
     }
     case PROTO: {
         for (size_t j = 0; j < parent->children_count; j++) {
@@ -1411,14 +1454,20 @@ void analyze_ast(Node *node) {
             Node *load = new_node(new_token(VAR_LOAD, node->token));
             load->token->name = node->token->name;
             load->left = node->left;
+
             node->token->type = DREF;
             node->left = load;
         }
         break;
     }
     case VAR_DEC: {
-        // TODO: later on try declaring structs/enum at the bottom
-        node->left->token->type = VAR;
+        Token *var = node->left->token;
+        Node *twin = find_in_children(ura.scope, VAR, var->name);
+        if (!twin && includes(ura.scope->token->type, FN_DEC, PROTO, 0))
+            twin = find_in_children(ura.scope->left, VAR, var->name);
+        if (twin && twin != node->left)
+            error_at(var, "'%s' is already declared", var->name);
+        var->type = VAR;
         break;
     } // clang-format off
     case VAR:
@@ -1760,14 +1809,14 @@ void analyze_ast(Node *node) {
     } // clang-format off
     case BRK: case CNT: {
         // clang-format on
-        for (size_t i = ura.scopes_count - 1; i >= 0; i--) {
-            Node *scope = ura.scopes[i];
-            if (includes(scope->token->type, WHILE, 0)) {
-                node->left = scope;
-                break;
-            }
+        for (size_t i = ura.scopes_count; i > 0 && !node->left; i--) {
+            if (ura.scopes[i - 1]->token->type == WHILE)
+                node->left = ura.scopes[i - 1];
         }
-        // TODO: handle if not inside 'while' loop or 'case'
+        if (!node->left) {
+            error_at(node->token, "'%K' outside of a loop", node->token);
+            node->token->type = ERR;
+        }
         break;
     }
     default:
