@@ -122,6 +122,7 @@ void create_jmp_out(Bloc bloc);
 void create_jmp(Bloc bloc);
 void create_at(Bloc bloc);
 void create_last_label(Bloc bloc);
+Value create_array(Node *node);
 // end LLVM code
 
 #ifndef bool
@@ -198,6 +199,8 @@ enum Type {
     OWN, DREF,
 
     LPARENT, RPARENT, DOTS, COMA,
+    LBRACK, RBRACK,
+    ARRAY, ARRAY_LIT, ACCESS,
 
     ASSIGN,
     ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,

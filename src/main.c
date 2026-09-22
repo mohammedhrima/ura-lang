@@ -92,7 +92,12 @@ const char *to_string(Type type) {
         [OWN] = "OWN", [DREF] = "DREF",
 
         [LPARENT] = "LPARENT", [RPARENT] = "RPARENT",
+        [LBRACK] = "LBRACK", [RBRACK] = "RBRACK",
         [DOTS] = "DOTS", [COMA] = "COMA",
+
+        [ARRAY] = "ARRAY", [ARRAY_LIT] = "ARRAY_LIT",
+        [ACCESS] = "ACCESS",
+
 
         [ASSIGN] = "ASSIGN",
         [ADD_ASSIGN] = "ADD_ASSIGN", [SUB_ASSIGN] = "SUB_ASSIGN",
@@ -134,6 +139,7 @@ int print_type(File fp, Node *type) {
     case I32:        return fprintf(fp, "i32");
     case CHARS:      return fprintf(fp, "chars");
     case NULL_:      return fprintf(fp, "null");
+    case ARRAY:      return print_type(fp, type->left) + fprintf(fp, "[]");
     default:         return fprintf(fp, "%s", to_string(type->token->type));
     }
     // clang-format on
@@ -571,6 +577,7 @@ void gen_tokens(uraFile *file) {
         } specials[] = {
             // clang-format off
             {"(", LPARENT}, {")", RPARENT}, {":", DOTS},
+            {"[", LBRACK}, {"]", RBRACK},
             {"+=", ADD_ASSIGN}, {"-=", SUB_ASSIGN}, {"*=", MUL_ASSIGN},
             {"/=", DIV_ASSIGN}, {"%=", MOD_ASSIGN},
             {"...", VARIADIC}, {".", DOT},
@@ -724,8 +731,20 @@ Node *parse_type(void) {
         return node;
     }
     Node *type = is_data_type(peek(0));
-    if (type != NULL)
+    if (!type)
+        return NULL;
+    next();
+    while (peek(0)->type == LBRACK) {
         next();
+        if (next()->type != RBRACK) {
+            eprint("expected ]");
+            exit(1);
+        }
+        Node *array = new_node(new_token(ARRAY, type->token));
+        array->token->is_type = true;
+        array->left = type;
+        type = array;
+    }
     return type;
 }
 
@@ -777,6 +796,23 @@ Node *prime_node(void) {
             next();
             return node;
         }
+        if (peek(0)->type == LBRACK) // str[0]
+        {
+            Node *node = new_node(token);
+            while (peek(0)->type == LBRACK) {
+                Node *access = new_node(next()); // skip [
+                access->token->type = ACCESS;
+                access->left = node;
+                access->right = expr_node(0);
+                if (next()->type != RBRACK) {
+                    eprint("expected ]");
+                    exit(1);
+                }
+                node = access;
+            }
+            return node;
+        }
+
         return new_node(token);
     } // clang-format off
     // values
@@ -793,6 +829,20 @@ Node *prime_node(void) {
     case NULL_: case BOOL: case I8:
     case I32: case VARIADIC: { // clang-format on
         return new_node(token);
+    }
+    case LBRACK: {
+        Node *node = new_node(token);
+        node->token->type = ARRAY_LIT;
+        while (!includes(peek(0)->type, RBRACK, 0)) {
+            push_back(node->children, prime_node());
+            if (peek(0)->type == COMA)
+                next();
+        }
+        if (next()->type != RBRACK) {
+            eprint("expected closing ']'");
+            exit(1);
+        }
+        return node;
     }
     case STRUCT_DEC: {
         node = new_node(token);
@@ -1052,8 +1102,10 @@ Node *type_of(Node *node) {
     }
     case FN_CALL:
         return node->right->right;
-    case DREF:
+    case ACCESS:
+    case DREF: {
         return type_of(node->left)->left;
+    }
     case OWN: {
         if (node->right == NULL) {
             node->right = new_node(new_token(REF, node->token));
@@ -1280,6 +1332,26 @@ void analyze_ast(Node *node) {
     } // clang-format off
     case VAR:
     case BOOL: case I8: case I32: case CHARS: break; // clang-format on
+    case ARRAY_LIT: {
+        for (size_t i = 0; i < node->children_count; i++)
+            analyze_ast(node->children[i]);
+        break;
+    }
+    case ACCESS: {
+        analyze_ast(node->left);
+        analyze_ast(node->right);
+        if (node->left->token->type == ERR || node->right->token->type == ERR) {
+            node->token->type = ERR;
+            break;
+        }
+        Node *type = type_of(node->left);
+        if (!type || type->token->type != ARRAY) {
+            Token *left = node->left->token;
+            error_at(left, "'%K' is '%N', not an array", left, type);
+            node->token->type = ERR;
+        }
+        break;
+    }
 
     case STRUCT_DEC: {
         enter_scope(node);
@@ -1427,7 +1499,7 @@ void analyze_ast(Node *node) {
             break;
         if (rebind && node->left->token->type == DREF)
             node->left = node->left->left;
-        if (node->right->token->type == NULL_)
+        if (includes(node->right->token->type, NULL_, ARRAY_LIT, 0))
             node->right->left = type_of(node->left);
         if (node->left->token->type == VAR && node->left->left->token->type == REF) {
             Node *type = type_of(node->right);
@@ -1597,6 +1669,7 @@ void code_gen(Node *node) {
     }
     case VAR_LOAD:
     case DOT:
+    case ACCESS:
     case DREF: {
         node->token->llvm.elem = create_load(node);
         break;
@@ -1604,6 +1677,12 @@ void code_gen(Node *node) {
     case NULL_: case BOOL: case I8: case I32: case CHARS: {
         // clang-format on
         node->token->llvm.elem = create_value(node);
+        break;
+    }
+    case ARRAY_LIT: {
+        for (size_t i = 0; i < node->children_count; i++)
+            code_gen(node->children[i]);
+        node->token->llvm.elem = create_array(node);
         break;
     }
     case STRUCT_DEC: {

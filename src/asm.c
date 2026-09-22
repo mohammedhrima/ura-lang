@@ -81,7 +81,7 @@ TypeRef get_data_type(Node *type) {
     // assert(type->token);
     if (type->token->type == CHARS)
         return LLVMPointerType(get_llvm_type(I8), 0);
-    if (type->token->type == REF)
+    if (includes(type->token->type, REF, ARRAY, 0))
         return LLVMPointerType(get_data_type(type->left), 0);
     if (type->token->type == STRUCT_DEC)
         return type->token->llvm.type;
@@ -147,6 +147,24 @@ void create_struct(Node *node) {
 }
 
 
+Value create_array(Node *node) {
+    size_t count = node->children_count;
+    TypeRef elem = get_data_type(node->left->left);
+
+    TypeRef type = LLVMArrayType(elem, count);
+    TypeRef i32 = get_llvm_type(I32);
+    Value array = LLVMBuildAlloca(ura.builder, type, "array");
+    Value zero[] = { LLVMConstInt(i32, 0, 0), LLVMConstInt(i32, 0, 0) };
+    Value first = LLVMBuildInBoundsGEP2(ura.builder, type, array, zero, 2, "");
+    for (size_t i = 0; i < count; i++) {
+        Value index = LLVMConstInt(i32, i, 0);
+        Value ptr = LLVMBuildInBoundsGEP2(ura.builder, elem, first, &index, 1, "");
+        Value value = node->children[i]->token->llvm.elem;
+        LLVMBuildStore(ura.builder, value, ptr);
+    }
+    return first;
+}
+
 // TODO: add a flag to define if it's float or unsigned or something
 Value create_bin_op(Node *node) {
     // TODO: handle unsigned types
@@ -185,6 +203,14 @@ Value address_of(Node *node) {
         unsigned index = attr->i32.value;
         char *name = node->token->asm_name;
         return LLVMBuildStructGEP2(ura.builder, type, ptr, index, name);
+    }
+    case ACCESS: {
+        code_gen(node->left);
+        code_gen(node->right);
+        Value ptr = node->left->token->llvm.elem;
+        TypeRef type = LLVMGetElementType(LLVMTypeOf(ptr));
+        Value index = node->right->token->llvm.elem;
+        return LLVMBuildInBoundsGEP2(ura.builder, type, ptr, &index, 1, "");
     }
     case DREF: {
         code_gen(node->left); // TODO: to be checked, I don't like it here
