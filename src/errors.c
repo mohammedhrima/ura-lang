@@ -481,9 +481,9 @@ bool assert_operator_fits_operands(Node *node) {
     Node *left = node->left;
     Node *right = node->right;
     Token *op = node->token;
-    if (right->token->type == NULL_)
+    if (right->token->type == NULL_ && left->token->type != NULL_)
         right->left = type_of(left);
-    if (left->token->type == NULL_)
+    if (left->token->type == NULL_ && right->token->type != NULL_)
         left->left = type_of(right);
     Node *null = left->token->type == NULL_ ? left : right;
     Node *other = null == left ? right : left;

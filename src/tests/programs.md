@@ -3,6 +3,7 @@
 ## index
 
 - 001 — linked list walked through ref attributes
+- 002 — null compared to null
 
 ---
 
@@ -93,6 +94,35 @@ endwhile:                                         ; preds = %cond
   %MUL = mul i32 %a.next.next.value11, 10
   %ADD12 = add i32 %sum7, %MUL
   ret i32 %ADD12
+}
+```
+
+## 002 — null compared to null
+
+```ura
+fn main() i32:
+    if null == null:
+        return 7
+    return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+define i32 @main() {
+entry:
+  br i1 true, label %then, label %endif
+
+then:                                             ; preds = %entry
+  ret i32 7
+
+endif:                                            ; preds = %entry
+  ret i32 0
 }
 ```
 
