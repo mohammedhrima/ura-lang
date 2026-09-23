@@ -26,7 +26,7 @@ void _error_at(char *file, const char *func, int line, Token *token, char *messa
         e++;
     size_t col = token->s - s + 1;
     // TODO: chekc this one
-    char *name = ura.curr_file->name; 
+    char *name = ura.curr_file->name;
 
     size_t row = token->line;
     fprintf(stderr, RED("error:") " %s:%zu:%zu %s\n", name, row, col, message);
@@ -149,8 +149,9 @@ bool assert_token_is_expected(Token *token) {
 bool assert_ref_is_single(void) {
     Token *first = peek(0);
     Token *second = peek(1);
-    bool double_amp = first->type == AND && is_data_type(second);
-    bool two_refs = first->type == REF && second->type == REF;
+    bool double_amp =
+        first->type == AND && is_data_type(second); // && (followed refrences)
+    bool two_refs = first->type == REF && second->type == REF; // & &
     if (!double_amp && !two_refs)
         return true;
     error_at(double_amp ? first : second, "a ref can't point to a ref");
@@ -158,7 +159,8 @@ bool assert_ref_is_single(void) {
 }
 
 bool assert_type_follows(Node *type, Token *after) {
-    if (type) return true;
+    if (type)
+        return true;
     error_at(after, "expected a type after '%K'", after);
     return false;
 }
@@ -166,6 +168,8 @@ bool assert_type_follows(Node *type, Token *after) {
 bool assert_type_is_known(Node *type) {
     Token *name = peek(0);
     Token *prev = ura.tokens[ura.exe_pos - 1];
+    // print("type %s\n", type ? "exits": "not exists");
+    // print("%s\n", name->type == ID ? "is id" : "is not id");
     if (type || name->type != ID || name->line != prev->line)
         return true;
     error_at(name, "unknown type '%s'", name->name);
@@ -239,9 +243,9 @@ bool assert_is_struct_member(Node *attr) {
     Token *at = attr->token;
     if (includes(at->type, VAR_DEC, FN_DEC, 0))
         return true;
-    if (at->type == ID)
+    if (at->type == ID) {
         error_at(at, "attribute '%s' needs a type", at->name);
-    else
+    } else
         error_at(at, "a struct holds only attributes and methods");
     return false;
 }
@@ -629,7 +633,7 @@ bool assert_inside_loop(Node *node) {
     node->token->type = ERR;
     return false;
 }
-
+// TODO: to be cheked
 bool assert_declaration_is_valid(Node *parent, size_t i) {
     Node *node = parent->children[i];
     size_t count = node->children_count;

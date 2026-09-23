@@ -446,6 +446,7 @@ void parse_bloc(Node *parent) {
     }
 }
 
+// TODO: to be cheked
 Node *find_variable(char *name) {
     for (size_t i = ura.scopes_count; i > 0; i--) {
         Node *scope = ura.scopes[i - 1];
@@ -476,6 +477,8 @@ Node *find_variable(char *name) {
     return NULL;
 }
 
+// TODO: check the part were we manage
+// that struct should not have it's own as attribute
 Node *find_in_children(Node *parent, char *name) {
     for (size_t j = 0; j < parent->children_count; j++) {
         Node *curr = parent->children[j];

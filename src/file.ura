@@ -1,10 +1,16 @@
 
 
-struct Array:
-   
+
+template<T>:
+   proto malloc(size i32) T[]
+
+   struct Vec:
+      arr T[]
+      fn init():
+         self.arr = malloc(sizeof(T) * 10)
 
 fn main() i32:
-   // str char[] = "abcd"
-   // arr i32[] = [1, 2, 3]
-   output("f")
-   // return 0
+   x Vec<i32>
+   x.init()
+
+
