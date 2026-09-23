@@ -1767,10 +1767,10 @@ int main(int ac, char **av) {
         gen_tokens(file);
         gen_ast();
         print_nodes(GREEN("============AST=================\n"));
-#if 1
+#if GEN_IR
         gen_ir();
         print_nodes(GREEN("============IR==================\n"));
-#    if 1
+#    if GEN_ASM
         gen_asm(file);
         print_nodes(GREEN("============ASM==================\n"));
         gen_bin(file);

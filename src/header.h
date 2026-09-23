@@ -18,6 +18,13 @@
 #include <unistd.h>
 #include <assert.h>
 
+#ifndef GEN_IR
+#    define GEN_IR 1
+#endif
+#ifndef GEN_ASM
+#    define GEN_ASM 1
+#endif
+
 typedef struct uraFile uraFile;
 typedef enum Type Type;
 typedef struct Token Token;

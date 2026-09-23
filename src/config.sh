@@ -78,6 +78,9 @@ build() {
         CC=clang
         # arrays, not strings: zsh does not word-split unquoted "$VAR"
         FLAGS=(-fsanitize=address -g3 -Werror)
+        # tests sets these; on their own build and header.h's defaults decide
+        [ -n "$GEN_IR" ] && FLAGS+=(-DGEN_IR="$GEN_IR")
+        [ -n "$GEN_ASM" ] && FLAGS+=(-DGEN_ASM="$GEN_ASM")
 
         # every llvm-config in sight: on PATH, plain or versioned (Ubuntu's
         # llvm-config-12), and in the usual install prefixes
@@ -644,6 +647,8 @@ _ura_test_file() {
 # ============================================================================
 tests() {
     local md_prefix="$1" number="$2" md_file
+    # every entry records the IR, so the compiler under test must emit it
+    local GEN_IR=1 GEN_ASM=1
     _ura_passed=0
     _ura_failed=0
 
