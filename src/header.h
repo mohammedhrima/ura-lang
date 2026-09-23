@@ -284,6 +284,7 @@ struct NodePrint {
 };
 
 void *ura_alloc(size_t count, size_t size);
+char *ura_strdup(char *str);
 const char *to_string(Type type);
 int _print(File fp, const char *fmt, va_list args);
 int _eprint(char *file, const char *func, int line, char *fmt, ...);
@@ -347,6 +348,7 @@ Node *expr_node(int min_op);
 void enter_scope(Node *node);
 void exit_scope(void);
 void code_gen(Node *node);
+int print_node(File fp, Node *node);
 void print_nodes(char *text);
 
 struct Ura {
