@@ -110,6 +110,8 @@
 - 107 — templates: parameter is not a name
 - 108 — templates: body holds something else
 - 109 — templates: missing colon
+- 110 — builtins: typeof without an argument
+- 111 — builtins: sizeof with two arguments
 
 ---
 
@@ -3135,3 +3137,54 @@ error: aborting due to 1 error
 ```
 
 ---
+
+## 110 — builtins: typeof without an argument
+
+```ura
+fn main() i32:
+   x i32 = 1
+   return typeof()
+```
+
+### stderr
+
+```
+error: test.ura:3:11 'typeof' takes 1 argument, got 0
+  |
+3 |    return typeof()
+  |           ^^^^^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 111 — builtins: sizeof with two arguments
+
+```ura
+fn main() i32:
+   x i32 = 1
+   return sizeof(x, x)
+```
+
+### stderr
+
+```
+error: test.ura:3:11 'sizeof' takes 1 argument, got 2
+  |
+3 |    return sizeof(x, x)
+  |           ^^^^^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+

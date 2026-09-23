@@ -115,6 +115,7 @@ const char *to_string(Type type) {
         [PROTO] = "PROTO",
         [FN_DEC] = "FN_DEC", [ARGS] = "ARGS", [VARIADIC] = "VARIADIC",
         [FN_CALL] = "FN_CALL", [RETURN] = "RETURN",
+        [SIZEOF] = "SIZEOF",
 
         [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
         [WHILE] = "WHILE", [BRK] = "BRK", [CNT] = "CNT",
@@ -565,7 +566,7 @@ Node *clone_link(Node *node, Node *template, Node *args, char *suffix) {
 Node *clone_node(Node *node, Node *template, Node *args, char *suffix) {
     if (!node)
         return NULL;
-    if (node->token->type == TEMPLATE_TYPE) {
+    if (includes(node->token->type, TEMPLATE_TYPE, ID, 0)) {
         Node *params = template->left;
         for (size_t i = 0; i < params->children_count; i++) {
             if (i >= args->children_count)
@@ -1139,6 +1140,15 @@ Node *type_of(Node *node) {
     case ADD: case SUB: case MUL: case DIV: case MOD: {
         return type_of(node->left); // TODO: to be checked later
     }
+    // TODO: to be checked
+    case SIZEOF: {
+        static Node *i32;
+        if (i32 == NULL) {
+            i32 = new_node(new_token(I32, NULL));
+            i32->token->is_type = true;
+        }
+        return i32;
+    }
     case GT: case LT: case GE: case LE: case EQ: case NQ: case AND: case OR: {
         static Node *node;
         if (node == NULL) {
@@ -1249,6 +1259,37 @@ Node *output_function(Node *call) {
     call->left->children_count = args_count;
     call->left->children_size = args_size;
     return node;
+}
+
+char *type_text(Node *type) {
+    if (!type)
+        return ura_strdup("void");
+    switch (type->token->type) {
+    case STRUCT_DEC:
+        return format("struct.%s", type->token->name);
+    case REF:
+        return format("&%s", type_text(type->left));
+    case ARRAY:
+        return format("%s[]", type_text(type->left));
+    default:
+        return format("%N", type);
+    }
+}
+
+Node *typeof_function(Node *call) {
+    if (!assert_builtin_takes_one(call))
+        return NULL;
+    call->token->chars.value = type_text(type_of(call->left->children[0]));
+    call->token->type = CHARS;
+    return NULL;
+}
+
+Node *sizeof_function(Node *call) {
+    if (!assert_builtin_takes_one(call))
+        return NULL;
+    call->left = type_of(call->left->children[0]);
+    call->token->type = SIZEOF;
+    return NULL;
 }
 
 // pick the overload in this scope whose parameters match the call
@@ -1489,6 +1530,14 @@ void analyze_ast(Node *node) {
     case FN_CALL: {
         for (size_t i = 0; i < node->left->children_count; i++)
             analyze_ast(node->left->children[i]);
+        if (strcmp(node->token->name, "typeof") == 0) {
+            typeof_function(node); // becomes a string literal
+            break;
+        }
+        if (strcmp(node->token->name, "sizeof") == 0) {
+            sizeof_function(node); // becomes a constant
+            break;
+        }
         for (size_t i = ura.scopes_count; i > 0 && !node->right; i--) {
             Node *scope = ura.scopes[i - 1];
             if (scope->token->type != STRUCT_DEC)
@@ -1609,6 +1658,10 @@ void code_gen(Node *node) {
     case NULL_: case BOOL: case I8: case I32: case CHARS: {
         // clang-format on
         node->token->llvm.elem = create_value(node);
+        break;
+    }
+    case SIZEOF: {
+        node->token->llvm.elem = create_sizeof(node);
         break;
     }
     case ARRAY_LIT: {

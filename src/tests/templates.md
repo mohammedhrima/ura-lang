@@ -9,6 +9,7 @@
 - 005 — a template inside itself
 - 006 — proto inside a template keeps its symbol
 - 007 — function called with type arguments
+- 008 — sizeof of the type parameter
 
 ---
 
@@ -340,3 +341,61 @@ endif:                                            ; preds = %then, %entry
 ```
 
 ---
+
+## 008 — sizeof of the type parameter
+
+```ura
+template<T>:
+   proto malloc(size i32) T[]
+
+   struct Vec:
+      arr T[]
+      fn init():
+         self.arr = malloc(sizeof(T) * 10)
+
+fn main() i32:
+   x Vec<i32>
+   x.init()
+   x.arr[3] = 7
+   return x.arr[3]
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%"Vec<i32>" = type { i32* }
+
+declare i32* @malloc(i32)
+
+define void @Vec.init(%"Vec<i32>"* %0) {
+entry:
+  %self = alloca %"Vec<i32>"*, align 8
+  store %"Vec<i32>"* %0, %"Vec<i32>"** %self, align 8
+  %"malloc<i32>" = call i32* @malloc(i32 40)
+  %self1 = load %"Vec<i32>"*, %"Vec<i32>"** %self, align 8
+  %self.arr = getelementptr inbounds %"Vec<i32>", %"Vec<i32>"* %self1, i32 0, i32 0
+  store i32* %"malloc<i32>", i32** %self.arr, align 8
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %x = alloca %"Vec<i32>", align 8
+  call void @Vec.init(%"Vec<i32>"* %x)
+  %x.arr = getelementptr inbounds %"Vec<i32>", %"Vec<i32>"* %x, i32 0, i32 0
+  %x.arr1 = load i32*, i32** %x.arr, align 8
+  %0 = getelementptr inbounds i32, i32* %x.arr1, i32 3
+  store i32 7, i32* %0, align 4
+  %x.arr2 = getelementptr inbounds %"Vec<i32>", %"Vec<i32>"* %x, i32 0, i32 0
+  %x.arr3 = load i32*, i32** %x.arr2, align 8
+  %1 = getelementptr inbounds i32, i32* %x.arr3, i32 3
+  %2 = load i32, i32* %1, align 4
+  ret i32 %2
+}
+```
+

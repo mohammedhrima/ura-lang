@@ -703,6 +703,16 @@ bool assert_declaration_is_valid(Node *parent, size_t i) {
     }
     return true;
 }
+// TODO: to be cheked
+bool assert_builtin_takes_one(Node *call) {
+    size_t got = call->left->children_count;
+    if (got == 1)
+        return true;
+    char *name = call->token->name;
+    error_at(call->token, "'%s' takes 1 argument, got %zu", name, got);
+    call->token->type = ERR;
+    return false;
+}
 
 bool assert_function_matches_call(Node *call) {
     if (call->right)

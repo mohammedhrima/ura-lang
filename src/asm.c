@@ -205,6 +205,12 @@ Value create_array(Node *node) {
     return first;
 }
 
+Value create_sizeof(Node *node) {
+    TargetData data = LLVMGetModuleDataLayout(ura.module);
+    unsigned long long size = LLVMABISizeOfType(data, get_data_type(node->left));
+    return LLVMConstInt(get_llvm_type(I32), size, 0);
+}
+
 // TODO: add a flag to define if it's float or unsigned or something
 Value create_bin_op(Node *node) {
     // TODO: handle unsigned types

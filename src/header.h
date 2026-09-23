@@ -132,6 +132,7 @@ void create_jmp(Bloc bloc);
 void create_at(Bloc bloc);
 void create_last_label(Bloc bloc);
 Value create_array(Node *node);
+Value create_sizeof(Node *node);
 // end LLVM code
 
 #ifndef bool
@@ -223,6 +224,7 @@ enum Type {
 
     PROTO,
     FN_DEC, ARGS, VARIADIC, FN_CALL, RETURN,
+    SIZEOF,
 
     IF, ELIF, ELSE,
     WHILE, BRK, CNT,
@@ -297,6 +299,7 @@ void _help(char *message);
 char *format(char *fmt, ...);
 void diag_flush(void);
 bool assert_function_matches_call(Node *call);
+bool assert_builtin_takes_one(Node *call);
 Node *find_variable(char *name);
 Node *find_type_by_name(char *name);
 Node *type_of(Node *node);
