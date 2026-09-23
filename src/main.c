@@ -14,6 +14,18 @@ typedef struct Token Token;
 typedef struct Node Node;
 
 // MACROS
+#define FILE       __FILE__
+#define LINE       __LINE__
+#define FUNC       __func__
+#define TAB        4
+
+#define RESET      "\033[0m"
+#define BOLD       "\033[1m"
+#define GREEN(fmt) BOLD "\033[0;32m" fmt RESET
+#define RED(fmt)   BOLD "\033[0;31m" fmt RESET
+#define CYAN(fmt)  BOLD "\033[0;36m" fmt RESET
+#define DIM(fmt)   "\033[2m" fmt RESET
+
 #define expand(type, name) \
     type *name;            \
     size_t name##_count;   \
@@ -30,9 +42,8 @@ typedef struct Node Node;
         }                                                                 \
         parent[parent##_count++] = child;                                 \
     }
-#define eprint(...) printf(__VA_ARGS__)
+#define eprint(...) _eprint(FILE, FUNC, LINE, __VA_ARGS__)
 #define help(...)   printf(__VA_ARGS__)
-#define print(...)  printf(__VA_ARGS__)
 
 #ifndef bool
 #    define bool  int
@@ -47,17 +58,6 @@ typedef struct __sFILE *File;
 typedef struct _IO_FILE *File;
 #endif
 
-#define FILE       __FILE__
-#define LINE       __LINE__
-#define FUNC       __func__
-#define TAB        4
-
-#define RESET      "\033[0m"
-#define BOLD       "\033[1m"
-#define GREEN(fmt) BOLD "\033[0;32m" fmt RESET
-#define RED(fmt)   BOLD "\033[0;31m" fmt RESET
-#define CYAN(fmt)  BOLD "\033[0;36m" fmt RESET
-#define DIM(fmt)   "\033[2m" fmt RESET
 
 // PROTOTYPES
 void ura_free();
@@ -385,7 +385,7 @@ int _print(File fp, const char *fmt, va_list ap) {
                 // clang-format on
                 switch (node->token->type) {
                 case REF: {
-                    r += fprintf(fp, "&") + _print("%N", node->left);
+                    r += fprintf(fp, "&") + _print(fp, "%N", node->left);
                     break;
                 }
                 case STRUCT_DEC:
@@ -439,4 +439,22 @@ char *format(char *fmt, ...) {
     char *res = ura_strdup(buf);
     free(buf);
     return res;
+}
+
+int _eprint(char *file, const char *func, int line, char *fmt, ...) {
+    ura.errors_count++;
+    va_list args;
+    va_start(args, fmt);
+    int r = fprintf(stderr, RED("%s:%d %s") " ", file, line, func);
+    r += _print(stderr, fmt, args);
+    va_end(args);
+    return r;
+}
+
+int print(char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    int r = _print(stdout, fmt, args);
+    va_end(args);
+    return r;
 }
