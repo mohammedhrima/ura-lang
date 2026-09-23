@@ -222,6 +222,19 @@ _ura_clean_stderr() {
 }
 
 # ============================================================================
+# _ura_entry_link <md_file> <number>
+#
+# Prints "<path>:<line>" for entry <number>, the line its "## NNN" heading is
+# on. The path is relative to the current directory when it sits below it, so
+# that terminals which turn "file:line" into a link can open it.
+# ============================================================================
+_ura_entry_link() {
+    local md_file="$1" number="$2" line
+    line=$(awk -v want="## $number " 'index($0, want) == 1 { print NR; exit }' "$md_file")
+    printf '%s:%s' "${md_file#$PWD/}" "$line"
+}
+
+# ============================================================================
 # _ura_extract_entry <md_file> <number>
 #
 # Prints the lines of test entry <number> (e.g. "003"): from its
@@ -531,20 +544,20 @@ replace() {
 }
 
 # ============================================================================
-# _ura_compare <entry_text> <section_heading> <fresh_value> <number> <name>
+# _ura_compare <entry_text> <section_heading> <fresh_value> <number> <name> <link>
 #
 # Diffs <fresh_value> against the recorded <section_heading> block inside
 # <entry_text>. Prints a short failure line plus a few lines of diff on
 # mismatch. Returns 1 on mismatch, 0 on match.
 # ============================================================================
 _ura_compare() {
-    local entry="$1" heading="$2" fresh="$3" number="$4" name="$5"
+    local entry="$1" heading="$2" fresh="$3" number="$4" name="$5" link="$6"
     local recorded
     recorded=$(printf '%s\n' "$entry" | _ura_extract_fence "$heading")
 
     [ "$recorded" = "$fresh" ] && return 0
 
-    _ura_red "  $number — $name: FAIL ($heading)"
+    _ura_red "  $link  $number — $name: FAIL ($heading)"
     diff <(printf '%s\n' "$recorded") <(printf '%s\n' "$fresh") | head -6 | sed 's/^/      /'
     return 1
 }
@@ -558,7 +571,7 @@ _ura_compare() {
 # ============================================================================
 _ura_test_file() {
     local md_file="$1" only="$2"
-    local label numbers number entry name tmp_dir tmp_ura compiled
+    local label numbers number entry name link tmp_dir tmp_ura compiled
 
     label=$(basename "$md_file" .md)
     numbers=$(grep -oE '^## [0-9]{3}' "$md_file" | grep -oE '[0-9]{3}')
@@ -578,6 +591,7 @@ _ura_test_file() {
     for number in $(printf '%s\n' "$numbers"); do
         entry=$(_ura_extract_entry "$md_file" "$number")
         name=$(printf '%s\n' "$entry" | head -1 | sed -E 's/^## [0-9]{3} — //')
+        link=$(_ura_entry_link "$md_file" "$number")
 
         # a private directory, so the build/ that ura creates next to the
         # source is removed along with it
@@ -593,9 +607,9 @@ _ura_test_file() {
         # an entry that records a status expects the compile to fail, with
         # exactly that stderr and status
         if printf '%s\n' "$entry" | grep -qx '### status'; then
-            if _ura_compare "$entry" "stderr" "$URA_CASE_STDERR" "$number" "$name" &&
-                _ura_compare "$entry" "status" "$URA_CASE_STATUS" "$number" "$name"; then
-                _ura_green "  $number — $name: PASS"
+            if _ura_compare "$entry" "stderr" "$URA_CASE_STDERR" "$number" "$name" "$link" &&
+                _ura_compare "$entry" "status" "$URA_CASE_STATUS" "$number" "$name" "$link"; then
+                _ura_green "  $link  $number — $name: PASS"
                 _ura_passed=$((_ura_passed + 1))
             else
                 _ura_failed=$((_ura_failed + 1))
@@ -604,14 +618,14 @@ _ura_test_file() {
         fi
 
         if [ "$compiled" -ne 0 ]; then
-            _ura_red "  $number — $name: FAIL (compile error, status $URA_CASE_STATUS)"
+            _ura_red "  $link  $number — $name: FAIL (compile error, status $URA_CASE_STATUS)"
             printf '%s\n' "$URA_CASE_STDERR" | head -8 | sed 's/^/      /'
             _ura_failed=$((_ura_failed + 1))
             continue
         fi
 
-        if _ura_compare "$entry" "llvm ir" "$URA_CASE_IR" "$number" "$name"; then
-            _ura_green "  $number — $name: PASS"
+        if _ura_compare "$entry" "llvm ir" "$URA_CASE_IR" "$number" "$name" "$link"; then
+            _ura_green "  $link  $number — $name: PASS"
             _ura_passed=$((_ura_passed + 1))
         else
             _ura_failed=$((_ura_failed + 1))
