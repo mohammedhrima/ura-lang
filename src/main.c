@@ -832,6 +832,16 @@ Node *expr_node(int min_op) {
             return node;
         }
         node->right = expr_node(op);
+        // TODO: to be cheked
+        if (node->token->type == DOT && node->right->token->type == ACCESS) {
+            Node *outer = node->right; // v.arr[1] is (v.arr)[1], not v.(arr[1])
+            Node *inner = outer;
+            while (inner->left->token->type == ACCESS)
+                inner = inner->left;
+            node->right = inner->left;
+            inner->left = node;
+            node = outer;
+        }
 
         left = node;
     }
