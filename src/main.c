@@ -442,44 +442,56 @@ void parse_bloc(Node *parent) {
     }
 }
 
-Node *find_in_children(Node *parent, Type type, char *name) {
-    if (!parent)
-        return NULL;
-    for (size_t i = 0; i < parent->children_count; i++) {
-        Node *curr = parent->children[i];
-        if (type == VAR) {
-            if (curr->token->type != VAR_DEC)
+Node *find_variable(char *name) {
+    for (size_t i = ura.scopes_count; i > 0; i--) {
+        Node *scope = ura.scopes[i - 1];
+        if (scope->token->type == STRUCT_DEC) // attributes only through self
+            continue;
+        Node *args = NULL;
+        if (includes(scope->token->type, FN_DEC, PROTO, 0))
+            args = scope->left;
+        size_t params = 0;
+        if (args)
+            params = args->children_count;
+
+        for (size_t j = 0; j < params + scope->children_count; j++) {
+            Node *dec = NULL;
+            if (j < params)
+                dec = args->children[j];
+            else
+                dec = scope->children[j - params];
+            if (dec->token->type != VAR_DEC)
                 continue;
-            if (curr->left->token->type != VAR)
+            Node *var = dec->left;
+            if (var->token->type != VAR)
                 continue;
-            if (strcmp(curr->left->token->name, name) == 0)
-                return curr->left;
-        } else {
-            if (type == FN_CALL) {
-                if (!includes(curr->token->type, FN_DEC, PROTO, 0))
-                    continue;
-            } else if (curr->token->type != type)
-                continue;
-            if (strcmp(curr->token->name, name) == 0)
-                return curr;
+            if (strcmp(var->token->name, name) == 0)
+                return var;
         }
     }
     return NULL;
 }
 
-Node *find_by_type(Type type, char *name) {
+Node *find_in_children(Node *parent, char *name) {
+    for (size_t j = 0; j < parent->children_count; j++) {
+        Node *curr = parent->children[j];
+        if (curr->token->type != STRUCT_DEC)
+            continue;
+        if (strcmp(curr->token->name, name) == 0)
+            return curr;
+    }
+    return NULL;
+}
+
+Node *find_type_by_name(char *name) {
     for (size_t i = ura.scopes_count; i > 0; i--) {
         Node *scope = ura.scopes[i - 1];
-        Node *found = NULL;
-        bool is_struct = scope->token->type == STRUCT_DEC;
-        if (is_struct && type == STRUCT_DEC && strcmp(scope->token->name, name) == 0)
-            return scope;
-        if (is_struct)
+        if (scope->token->type == STRUCT_DEC) {
+            if (strcmp(scope->token->name, name) == 0)
+                return scope;
             continue;
-        if (includes(scope->token->type, FN_DEC, PROTO, 0))
-            found = find_in_children(scope->left, type, name);
-        if (!found)
-            found = find_in_children(scope, type, name);
+        }
+        Node *found = find_in_children(scope, name);
         if (found)
             return found;
     }
@@ -490,7 +502,7 @@ Node *is_data_type(Token *token) {
     if (token->is_type && includes(token->type, BOOL, I8, I32, 0))
         return new_node(token);
     if (token->type == ID)
-        return find_by_type(STRUCT_DEC, token->name);
+        return find_type_by_name(token->name);
     return NULL;
 }
 
@@ -1050,7 +1062,7 @@ void analyze_ast(Node *node) {
         break;
     }
     case ID: {
-        node->left = find_by_type(VAR, node->token->name);
+        node->left = find_variable(node->token->name);
         if (!assert_name_is_declared(node))
             break;
         node->token->type = VAR_LOAD;

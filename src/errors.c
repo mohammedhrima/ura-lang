@@ -367,29 +367,60 @@ bool assert_operands_are_valid(Node *node) {
     node->token->type = ERR;
     return false;
 }
-
+// TODO: to be cheked
 bool assert_not_declared_twice(Node *node) {
     Token *var = node->left->token;
-    Node *twin = find_in_children(ura.scope, VAR, var->name);
-    if (!twin && includes(ura.scope->token->type, FN_DEC, PROTO, 0))
-        twin = find_in_children(ura.scope->left, VAR, var->name);
+    Node *scope = ura.scope;
+    Node *args = NULL;
+    if (includes(scope->token->type, FN_DEC, PROTO, 0))
+        args = scope->left;
+    size_t body = scope->children_count;
+    size_t params = 0;
+    if (args)
+        params = args->children_count;
+
+    Node *twin = NULL;
+    for (size_t i = 0; i < body + params && !twin; i++) {
+        Node *dec = NULL;
+        if (i < body)
+            dec = scope->children[i];
+        else
+            dec = args->children[i - body];
+        if (dec->token->type != VAR_DEC)
+            continue;
+        if (strcmp(dec->left->token->name, var->name) == 0)
+            twin = dec->left;
+    }
     if (!twin || twin == node->left)
         return true;
     error_at(var, "'%s' is already declared", var->name);
     return false;
 }
-
+// TODO: to be cheked
 bool assert_name_is_declared(Node *node) {
     if (node->left)
         return true;
     char *name = node->token->name;
-    if (find_by_type(STRUCT_DEC, name))
+    if (find_type_by_name(name))
         error_at(node->token, "'%s' is a type, not a value", name);
     else {
         error_at(node->token, "'%s' not found", name);
-        Node *self = find_by_type(VAR, "self");
-        if (self && find_in_children(self->left->left, VAR, name))
-            help("did you mean 'self.%s'?", name);
+        Node *self = find_variable("self");
+        Node *struct_dec = NULL;
+        if (self)
+            struct_dec = self->left->left;
+        size_t count = 0;
+        if (struct_dec)
+            count = struct_dec->children_count;
+        for (size_t i = 0; i < count; i++) {
+            Node *attr = struct_dec->children[i];
+            if (attr->token->type != VAR_DEC)
+                continue;
+            if (strcmp(attr->left->token->name, name) == 0) {
+                help("did you mean 'self.%s'?", name);
+                break;
+            }
+        }
     }
     node->token->type = ERR;
     return false;
@@ -654,15 +685,28 @@ bool assert_function_matches_call(Node *call) {
         error_at(call->token, "struct '%s' has no method '%s'", type, name);
         return false;
     }
-    if (count == 0 && find_by_type(VAR, name)) {
+    if (count == 0 && find_variable(name)) {
         error_at(call->token, "'%s' is a variable, not a function", name);
         return false;
     }
     if (count == 0) {
         error_at(call->token, "function '%s' not found", name);
-        Node *self = find_by_type(VAR, "self");
-        if (self && find_in_children(self->left->left, FN_CALL, name))
-            help("did you mean 'self.%s()'?", name);
+        Node *self = find_variable("self");
+        Node *struct_dec = NULL;
+        if (self)
+            struct_dec = self->left->left;
+        size_t methods = 0;
+        if (struct_dec)
+            methods = struct_dec->children_count;
+        for (size_t i = 0; i < methods; i++) {
+            Node *method = struct_dec->children[i];
+            if (!includes(method->token->type, FN_DEC, PROTO, 0))
+                continue;
+            if (strcmp(method->token->name, name) == 0) {
+                help("did you mean 'self.%s()'?", name);
+                break;
+            }
+        }
         return false;
     }
     error_at(call->token, "no overload of '%s' takes these arguments", name);
