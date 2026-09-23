@@ -105,6 +105,11 @@
 - 102 — recovery: three analysis errors
 - 103 — recovery: two syntax errors in two functions
 - 104 — diagnostics: error past line 9
+- 105 — templates: too many type arguments
+- 106 — templates: used without type arguments
+- 107 — templates: parameter is not a name
+- 108 — templates: body holds something else
+- 109 — templates: missing colon
 
 ---
 
@@ -2981,3 +2986,152 @@ error: aborting due to 1 error
 1
 ```
 
+---
+
+## 105 — templates: too many type arguments
+
+```ura
+template<T>:
+   struct Box:
+      value T
+
+fn main() i32:
+   b Box<i32, i8>
+   return 0
+```
+
+### stderr
+
+```
+error: test.ura:6:6 'Box' takes 1 type argument, got 2
+  |
+6 |    b Box<i32, i8>
+  |      ^^^
+help: it is declared 'template<T>'
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 106 — templates: used without type arguments
+
+```ura
+template<T>:
+   struct Box:
+      value T
+
+fn main() i32:
+   b Box
+   return 0
+```
+
+### stderr
+
+```
+error: test.ura:6:6 expected '<' after 'Box'
+  |
+6 |    b Box
+  |      ^^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 107 — templates: parameter is not a name
+
+```ura
+template<3>:
+   struct Box:
+      value i32
+
+fn main() i32:
+   return 0
+```
+
+### stderr
+
+```
+error: test.ura:1:10 expected names after template
+  |
+1 | template<3>:
+  |          ^
+help: use template<T, V>
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 108 — templates: body holds something else
+
+```ura
+template<T>:
+   value T
+
+fn main() i32:
+   return 0
+```
+
+### stderr
+
+```
+error: test.ura:2:4 expected struct/fn after template
+  |
+2 |    value T
+  |    ^^^^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 109 — templates: missing colon
+
+```ura
+template<T>
+   struct Box:
+      value T
+
+fn main() i32:
+   return 0
+```
+
+### stderr
+
+```
+error: test.ura:1:11 expected ':' after 'template'
+  |
+1 | template<T>
+  |           ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---

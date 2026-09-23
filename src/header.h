@@ -200,6 +200,7 @@ enum Type {
 
     VAR_DEC, VAR, VAR_LOAD,
 
+    TEMPLATE_DEC, TEMPLATE_TYPE, TEMPLATE_INIT,
     VOID, BOOL, I8, I32, CHARS,
     REF,
     NULL_,
@@ -285,6 +286,9 @@ struct NodePrint {
 
 void *ura_alloc(size_t count, size_t size);
 char *ura_strdup(char *str);
+char *strjoin(char *first, ...);
+Node *parse_type(void);
+Node *clone_node(Node *node, Node *template, Node *args, char *suffix);
 const char *to_string(Type type);
 int _print(File fp, const char *fmt, va_list args);
 int _eprint(char *file, const char *func, int line, char *fmt, ...);
@@ -309,6 +313,9 @@ bool assert_assignment_is_valid(Node *node, bool bare_name);
 bool assert_operator_fits_operands(Node *node);
 bool assert_return_matches_function(Node *node, Node *fn);
 bool assert_inside_loop(Node *node);
+bool assert_is_struct_or_func(Token *token);
+bool assert_templates_param(Token *token);
+bool assert_template_args_match(Node *template, Token *name, Node *args);
 bool assert_declaration_is_valid(Node *parent, size_t i);
 bool same_params(Node *left, Node *right);
 Token *new_token(Type type, Token *from);
@@ -330,7 +337,8 @@ bool assert_address_is_single(Token *amp);
 bool assert_parenthesis_is_closed(Token *open);
 bool assert_variadic_is_last(Node *arg);
 bool assert_parameter_has_type(Node *arg);
-bool assert_parameters_are_separated(void);
+bool assert_function_parameters_are_separated(void);
+bool assert_template_parameters_are_separated(void);
 bool assert_condition_follows(Token *keyword);
 bool assert_else_has_no_condition(Token *keyword);
 bool assert_operand_follows(Token *op);

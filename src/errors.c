@@ -104,6 +104,40 @@ bool assert_character_is_known(Token *token) {
     return false;
 }
 
+bool assert_is_struct_or_func(Token *token) {
+    if (includes(token->type, FN_DEC, PROTO, STRUCT_DEC, 0))
+        return true;
+    error_at(token, "expected struct/fn after template");
+    return false;
+}
+
+bool assert_templates_param(Token *token) {
+    if (token->type == ID)
+        return true;
+    error_at(token, "expected names after template");
+    help("use template<T, V>");
+    return false;
+}
+
+bool assert_template_args_match(Node *template, Token *name, Node *args) {
+    size_t want = template->left->children_count;
+    size_t got = args->children_count;
+    if (want == got)
+        return true;
+    char *plural = want == 1 ? "" : "s";
+    char *type = name->name;
+    error_at(name, "'%s' takes %zu type argument%s, got %zu", type, want, plural, got);
+
+    char *params = ura_strdup("");
+    for (size_t i = 0; i < want; i++) {
+        if (i > 0)
+            params = strjoin(params, ", ", NULL);
+        params = strjoin(params, template->left->children[i]->token->name, NULL);
+    }
+    help("it is declared 'template<%s>'", params);
+    return false;
+}
+
 bool assert_token_is_expected(Token *token) {
     if (includes(token->type, ELIF, ELSE, 0))
         error_at(token, "'%K' without a matching 'if'", token);
@@ -242,7 +276,7 @@ bool assert_parameter_has_type(Node *arg) {
     return false;
 }
 
-bool assert_parameters_are_separated(void) {
+bool assert_function_parameters_are_separated(void) {
     Token *after = peek(0);
     if (after->type == COMA)
         next();
@@ -254,6 +288,20 @@ bool assert_parameters_are_separated(void) {
         error_at(after, "expected ')' to close the parameters");
     return false;
 }
+
+bool assert_template_parameters_are_separated(void) {
+    Token *after = peek(0);
+    if (after->type == COMA)
+        next();
+    if (includes(after->type, COMA, GT, 0))
+        return true;
+    if (after->type == ID)
+        error_at(after, "expected ',' between parameters");
+    else
+        error_at(after, "expected '>' to close the parameters");
+    return false;
+}
+
 
 bool assert_condition_follows(Token *keyword) {
     if (peek(0)->type != DOTS)
