@@ -479,6 +479,13 @@ void gen_tokens(uraFile *file) {
             e++;
         if (e != s)
             continue;
+        while (strncmp(content + s, "/*", 2) == 0 && content[e] &&
+               strncmp(content + e, "*/", 2) != 0)
+            e++;
+        if (e != s) {
+            e += 2;
+            continue;
+        }
 
         while (isalpha(content[s]) && (isalnum(content[e]) || content[e] == '_'))
             e++;
