@@ -9,9 +9,9 @@
 typedef struct Arena Arena;
 typedef struct Ura Ura;
 typedef struct uraFile uraFile;
-typedef enum Type Type;
 typedef struct Token Token;
 typedef struct Node Node;
+typedef enum Type Type;
 
 // MACROS
 #define FILE       __FILE__
@@ -64,6 +64,7 @@ void ura_free();
 uraFile *new_file(char *name);
 bool ura_strcmp(char *left, char *right);
 bool ura_strncmp(char *left, char *right, size_t limit);
+int _eprint(char *file, const char *func, int line, char *fmt, ...);
 
 // STRUCTS / ENUMS
 // clang-format off
@@ -358,6 +359,35 @@ uraFile *new_file(char *name) {
 }
 
 // FORMATING / PRINTING
+int _print_type(File fp, Node *node) {
+    // clang-format off
+    if (node == NULL) return fprintf(fp, "void");
+    switch(node->token->type) {
+    case REF:        return fprintf(fp, "&") + _print_type(fp, node->left);
+    case STRUCT_DEC: return fprintf(fp, "%s", node->token->name);
+    case BOOL:       return fprintf(fp, "b1");
+    case I8:         return fprintf(fp, "i8");
+    case I32:        return fprintf(fp, "i32");
+    case NULL_:      return fprintf(fp, "null");
+    case ARRAY:      return _print_type(fp, node->left) + fprintf(fp, "[]");
+    default:         return fprintf(fp, "%s", to_string(node->token->type));
+    }
+    // clang-format on
+};
+
+int _print_token(File fp, Token *token) {
+    if (token == NULL)
+        return fprintf(fp, "(null token)");
+    int r = fprintf(fp, "%s", to_string(token->type));
+    if (token->name != NULL)
+        
+    return 0;
+}
+
+int _print_node(File fp, Node *node) {
+    return 0;
+}
+
 int _print(File fp, const char *fmt, va_list ap) {
     int r = 0;
     for (int i = 0; fmt[i]; i++) {
@@ -368,7 +398,8 @@ int _print(File fp, const char *fmt, va_list ap) {
         if (fmt[++i] == '\0')
             break;
         Token *token = NULL;
-        switch (fmt[i]) { // clang-format off
+        // clang-format off
+        switch (fmt[i]) {
         case 's': r += fprintf(fp, "%s", va_arg(ap, char*)); break;
         case 'd': r += fprintf(fp, "%d", va_arg(ap, int)); break;
         case 'c': r += fprintf(fp, "%c", va_arg(ap, int)); break;
@@ -377,46 +408,12 @@ int _print(File fp, const char *fmt, va_list ap) {
         case 'i': r += fprintf(fp, "%*s", va_arg(ap, int), ""); break;
         case '%': r += fprintf(fp, "%%"); break;
         case 't': r += fprintf(fp, "%s", to_string(va_arg(ap, Type))); break;
-        case 'N': {
-            Node *node = va_arg(ap, Node*);
-            if(node == NULL) 
-                r += fprintf(fp, "void");
-            else {
-                // clang-format on
-                switch (node->token->type) {
-                case REF: {
-                    r += fprintf(fp, "&") + _print(fp, "%N", node->left);
-                    break;
-                }
-                case STRUCT_DEC:
-                    r += fprintf(fp, "%s", node->token->name);
-                    break;
-                case BOOL:
-                    r += fprintf(fp, "b1");
-                    break;
-                case I8:
-                    r += fprintf(fp, "i8");
-                    break;
-                case I32:
-                    r += fprintf(fp, "i32");
-                    break;
-                case NULL_:
-                    r += fprintf(fp, "null");
-                    break;
-                case ARRAY: {
-                    r += _print(fp, "%N", node->left) + fprintf(fp, "[]");
-                    break;
-                }
-                default:
-                    r += fprintf(fp, "%s", to_string(node->token->type));
-                    break;
-                }
-            }
-            break;
+        case 'k': r += _print_token(fp, va_arg(ap, Token*)); break;
+        case 'n': r += _print_node(fp, va_arg(ap, Node *)); break;
+        case 'N': r += _print_type(fp, va_arg(ap, Node*)); break;
+        default : break;
         }
-        default:
-            break;
-        }
+        // clang-format on
     }
     return r;
 }
