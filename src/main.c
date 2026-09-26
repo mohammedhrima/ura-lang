@@ -195,11 +195,22 @@ const char *to_string(Type type) {
 struct Token {
     Type type;
     char *name;
+    bool is_type;
+    int space;
 
     struct {
         struct {
             long value;
         } i32;
+        struct {
+            int value; // TODO: check unicode stuff
+        } i8;
+        struct {
+            int value;
+        } b1;
+        struct {
+            char *value;
+        } chars;
     };
 };
 
@@ -215,13 +226,6 @@ struct Node {
 
 Ura ura;
 
-/*
-TODO:
-    [ ] open file
-    [ ] tokenize it
-
-    [ ] support: macos, windows
-*/
 
 void parse_args(int ac, char **av) {
     if (ac < 2) {
@@ -251,6 +255,23 @@ void parse_args(int ac, char **av) {
         }
     }
 }
+
+/*
+TODO:
+    [ ] open file
+    [ ] tokenize it
+    [ ] support: macos, windows
+
+    [ ] drop method
+    [ ] String struct
+    [ ] to_string method
+    [ ] output (should handl also struct.to_string)
+    [ ] for template add a part in the code thaht JIT/interpreter
+    [ ] operators overload
+    [ ] for loops over a range: for i in 0..10
+    [ ] more integer types (i8, i64, unsigned) and casting with as
+    [ ] function inside function
+*/
 
 int main(int ac, char **av) {
     atexit(ura_free);
@@ -359,8 +380,8 @@ uraFile *new_file(char *name) {
 }
 
 // FORMATING / PRINTING
+// clang-format off
 int _print_type(File fp, Node *node) {
-    // clang-format off
     if (node == NULL) return fprintf(fp, "void");
     switch(node->token->type) {
     case REF:        return fprintf(fp, "&") + _print_type(fp, node->left);
@@ -372,19 +393,87 @@ int _print_type(File fp, Node *node) {
     case ARRAY:      return _print_type(fp, node->left) + fprintf(fp, "[]");
     default:         return fprintf(fp, "%s", to_string(node->token->type));
     }
-    // clang-format on
 };
 
 int _print_token(File fp, Token *token) {
-    if (token == NULL)
-        return fprintf(fp, "(null token)");
+    if (token == NULL) return fprintf(fp, "(null token)");
     int r = fprintf(fp, "%s", to_string(token->type));
-    if (token->name != NULL)
-        
+    if (token->name != NULL) r += fprintf(fp, " name (%s)", token->name);
+    if(token->name == NULL && !token->is_type) {
+        switch(token->type) {
+        case I8:    r += fprintf(fp, " value (%c)", token->i8.value); break;
+        case I32:   r += fprintf(fp, " value (%ld)", token->i32.value); break;
+        case CHARS: r += fprintf(fp, " value (%s)", token->chars.value); break;
+        case BOOL: {
+            char *b1 = token->b1.value ? "True" : "False";
+            r += fprintf(fp, " value (%s)", b1);
+            break;
+        }
+        default: break;
+        }
+    }
+    r += fprintf(fp, " space (%d)", token->space);
+    return 0;
+}
+
+typedef struct NodePrint NodePrint;
+struct NodePrint {
+    expand(int, depths);
+    expand(Node*, nodes);
+};
+
+bool includes(Type to_find, ...) {
+    va_list ap;
+    va_start(ap, to_find);
+    Type curr = va_arg(ap, Type);
+    while (curr) {
+        if (curr == to_find) return true;
+        curr = va_arg(ap, Type);
+    }
+    return false;
+}
+
+void _print_node_helper(NodePrint *elems, Node *node, int depth) {
+    if(node == NULL) return;
+
+    push_back(elems->nodes, node);
+    push_back(elems->depths, depth);
+
+    if (!includes(node->token->type, BRK, CNT, 0)) {
+        Node *left = node->left;
+        bool is_struct = left && left->token->type == STRUCT_DEC;
+        if (includes(node->token->type, ID, VAR, REF, 0) && is_struct) {
+            push_back(elems->nodes, left);
+            push_back(elems->depths, depth + 3);
+        } 
+        else _print_node_helper(elems, left, depth + 3);
+    }
+    if (!includes(node->token->type, FN_CALL, 0))
+        _print_node_helper(elems, node->right, depth + 3);
+    for (size_t i = 0; i < node->children_count; i++)
+        _print_node_helper(elems, node->children[i], depth + 3);
+}
+
+bool is_open(NodePrint *elems, size_t i, int level) {
+    for (size_t j = i + 1; j < elems->nodes_count; j++) {
+        if (elems->depths[j] <= level)
+            return elems->depths[j] == level;
+    }
     return 0;
 }
 
 int _print_node(File fp, Node *node) {
+    NodePrint elems = {};
+    int r = 0;
+    _print_node_helper(&elems, node, 0);
+
+    for (size_t i = 0; i < elems.nodes_count; i++) {
+        int depth = elems.depths[i];
+        for (int level = 1; level < depth; level++)
+            r += fprintf(fp, "%s", is_open(&elems, i, level) ? "│ " : " ");
+        if (depth) r += fprintf(fp, "%s", is_open(&elems, i, depth) ? "├─" : "└─");
+        r += _print_token(fp, elems.nodes[i]->token) + fprintf(fp, "\n");
+    }
     return 0;
 }
 
@@ -395,28 +484,26 @@ int _print(File fp, const char *fmt, va_list ap) {
             r += fprintf(fp, "%c", fmt[i]);
             continue;
         }
-        if (fmt[++i] == '\0')
-            break;
+        if (fmt[++i] == '\0') break;
         Token *token = NULL;
-        // clang-format off
         switch (fmt[i]) {
-        case 's': r += fprintf(fp, "%s", va_arg(ap, char*)); break;
-        case 'd': r += fprintf(fp, "%d", va_arg(ap, int)); break;
-        case 'c': r += fprintf(fp, "%c", va_arg(ap, int)); break;
-        case 'f': r += fprintf(fp, "%f", va_arg(ap, double)); break;
-        case 'z': r += fprintf(fp, "%zu", va_arg(ap, size_t)); i++; break;
-        case 'i': r += fprintf(fp, "%*s", va_arg(ap, int), ""); break;
-        case '%': r += fprintf(fp, "%%"); break;
-        case 't': r += fprintf(fp, "%s", to_string(va_arg(ap, Type))); break;
-        case 'k': r += _print_token(fp, va_arg(ap, Token*)); break;
-        case 'n': r += _print_node(fp, va_arg(ap, Node *)); break;
-        case 'N': r += _print_type(fp, va_arg(ap, Node*)); break;
-        default : break;
+            case 's': r += fprintf(fp, "%s", va_arg(ap, char*)); break;
+            case 'd': r += fprintf(fp, "%d", va_arg(ap, int)); break;
+            case 'c': r += fprintf(fp, "%c", va_arg(ap, int)); break;
+            case 'f': r += fprintf(fp, "%f", va_arg(ap, double)); break;
+            case 'z': r += fprintf(fp, "%zu", va_arg(ap, size_t)); i++; break;
+            case 'i': r += fprintf(fp, "%*s", va_arg(ap, int), ""); break;
+            case '%': r += fprintf(fp, "%%"); break;
+            case 't': r += fprintf(fp, "%s", to_string(va_arg(ap, Type))); break;
+            case 'k': r += _print_token(fp, va_arg(ap, Token*)); break;
+            case 'n': r += _print_node(fp, va_arg(ap, Node *)); break;
+            case 'N': r += _print_type(fp, va_arg(ap, Node*)); break;
+            default : break;
         }
-        // clang-format on
     }
     return r;
 }
+// clang-format on
 
 char *format(char *fmt, ...) {
     char *buf = NULL;
