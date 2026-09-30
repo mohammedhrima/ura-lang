@@ -42,6 +42,8 @@ typedef enum Type Type;
         }                                                                 \
         parent[parent##_count++] = child;                                 \
     }
+
+// TODO: fix those
 #define eprint(...) _eprint(FILE, FUNC, LINE, __VA_ARGS__)
 #define help(...)   printf(__VA_ARGS__)
 
@@ -61,10 +63,12 @@ typedef struct _IO_FILE *File;
 
 // PROTOTYPES
 void ura_free();
+void arena_reserve(size_t size);
 uraFile *new_file(char *name);
 bool ura_strcmp(char *left, char *right);
 bool ura_strncmp(char *left, char *right, size_t limit);
 int _eprint(char *file, const char *func, int line, char *fmt, ...);
+int print(char *fmt, ...);
 
 // STRUCTS / ENUMS
 // clang-format off
@@ -77,11 +81,15 @@ struct Arena {
 
 struct Ura {
     Arena *arena_head;
+    Arena *arena_curr;
     size_t arena_count;
     size_t heap_used;
 
     char *exec;
     int errors_count;
+
+    uraFile curr_file;
+    int curr_line;
 
     expand(uraFile*, files);
 };
@@ -135,6 +143,9 @@ enum Type {
 
     END,
 };
+
+// Global Ura
+Ura ura;
 
 const char *to_string(Type type) {
     char *types[END + 1] = {
@@ -190,7 +201,35 @@ const char *to_string(Type type) {
         return "UNKNOWN";
     return types[type];
 }
-// clang-format on
+
+void parse_args(int ac, char **av) {
+    if (ac < 2) {
+        eprint("expected an argument:\n");
+        help("%s <file>.ura\n", av[0]);
+        return;
+    }
+    ura.exec = "exe.out";
+    for (int i = 1; i < ac && ura.errors_count == 0; i++) {
+        char *arg = av[i];
+        if (ura_strcmp(arg, "-o")) {
+            if (i + 1 >= ac) {
+                eprint("expected argument:\n");
+                help("-o exe.out\n");
+                exit(1);
+            }
+            ura.exec = av[++i];
+        } else {
+            size_t n = strlen(arg);
+            bool is_ura = n > 4 && ura_strcmp(arg + n - 4, ".ura");
+            if (!is_ura) {
+                eprint("Invalid file '%s'\n", arg);
+                help("use %s.ura\n", arg);
+                exit(1);
+            }
+            new_file(arg);
+        }
+    }
+}
 
 struct Token {
     Type type;
@@ -214,6 +253,30 @@ struct Token {
     };
 };
 
+void gen_tokens(uraFile *file) {
+    ura.curr_file = file;
+    ura.curr_line = 1;
+    char *content = file->content;
+    arena_reserve(strlen(content) * 192);
+
+    size_t s = 0;
+    size_t e = 0;
+    int space = 0;
+    while(content[e]) {
+        s = e;
+        if(isspace(content[e])) {
+            while(content[e] == '\n') {
+                ura.curr_line++;
+                e++;
+            }
+            if(content[s] == '\n') {
+                space = 0;
+                s = e - 1;
+            }
+        }
+    }
+}
+
 struct Node {
     Token *token;
     Node *left;
@@ -222,39 +285,6 @@ struct Node {
     expand(Node *, children);
 };
 
-// clang-format on
-
-Ura ura;
-
-
-void parse_args(int ac, char **av) {
-    if (ac < 2) {
-        eprint("expected an argument:\n");
-        help("%s <file>.ura\n", av[0]);
-        return;
-    }
-    ura.exec = "exe.out";
-    for (int i = 0; i < ac && ura.errors_count; i++) {
-        char *arg = av[i];
-        if (ura_strcmp(arg, "-o")) {
-            if (i + 1 >= ac) {
-                eprint("expected argument:\n");
-                help("-o exe.out\n");
-                exit(1);
-            }
-            ura.exec = av[++i];
-        } else {
-            size_t n = strlen(arg);
-            bool is_ura = n > 4 && ura_strcmp(arg + n - 4, ".ura");
-            if (!is_ura) {
-                eprint("Invalid file '%s'\n", arg);
-                help("use %s.ura\n", arg);
-                exit(1);
-            }
-            new_file(arg);
-        }
-    }
-}
 
 /*
 TODO:
@@ -271,6 +301,7 @@ TODO:
     [ ] for loops over a range: for i in 0..10
     [ ] more integer types (i8, i64, unsigned) and casting with as
     [ ] function inside function
+    [ ] learn some design patterns
 */
 
 int main(int ac, char **av) {
@@ -278,6 +309,8 @@ int main(int ac, char **av) {
     parse_args(ac, av);
     for (size_t i = 0; i < ura.files_count; i++) {
         uraFile *file = ura.files[i];
+        print(GREEN("============TOKENIZE============\n"));
+        gen_tokens(file);
     }
 }
 
@@ -300,8 +333,17 @@ Arena *new_arena(size_t size) {
 }
 
 // clang-format off
+void arena_reserve(size_t size) {
+    Arena *curr = ura.arena_curr;
+    if (curr && curr->size - curr->used >= size) return;
+    Arena *new = new_arena((size + 16 - 1) / 16 * 16);
+    if (curr) curr->next = new;
+    else ura.arena_head = curr;
+    ura.arena_curr = new;
+}
+
 void *ura_alloc(size_t asked_count, size_t asked_size) {
-    static Arena *curr;
+    Arena *curr = ura.arena_curr;
 
     size_t asked = asked_count * asked_size;
     asked = (asked + 16 - 1)  / 16 * 16;
@@ -324,6 +366,7 @@ void *ura_alloc(size_t asked_count, size_t asked_size) {
     }
     void *res = curr->buf + curr->used;
     curr->used += asked;
+    ura.arena_curr = curr;
     return res;
 }
 // clang-format on
@@ -371,11 +414,7 @@ uraFile *new_file(char *name) {
     }
     new->path = ura_strdup(path);
     free(path);
-    new->dir = dirname(new->path);
-
-    printf("path: %s\n", new->path);
-    printf("dir: %s\n", new->dir);
-
+    new->dir = dirname(ura_strdup(new->path));
     return new;
 }
 

@@ -1,16 +1,5 @@
 
 
-
-template<T>:
-   proto malloc(size i32) T[]
-
-   struct Vec:
-      arr T[]
-      fn init():
-         self.arr = malloc(sizeof(T) * 10)
-
-fn main() i32:
-   x Vec<i32>
-   x.init()
-
+fn main():
+   
 
