@@ -4,6 +4,11 @@
 #include <string.h>
 #include <libgen.h> // dirname
 #include <stdbool.h>
+#include <ctype.h>
+#include <assert.h>
+#include <sys/stat.h>
+// #include <sys/types.h>
+#include <dirent.h>
 
 // TYPEDEFS
 typedef struct Arena Arena;
@@ -63,12 +68,17 @@ typedef struct _IO_FILE *File;
 
 // PROTOTYPES
 void ura_free();
+void *ura_alloc(size_t asked_count, size_t asked_size);
 void arena_reserve(size_t size);
 uraFile *new_file(char *name);
-bool ura_strcmp(char *left, char *right);
-bool ura_strncmp(char *left, char *right, size_t limit);
+char *ura_dup(char *str);
+char *ura_ndup(char *str, size_t n);
+bool ura_cmp(char *left, char *right);
+bool ura_ncmp(char *left, char *right, size_t n);
 int _eprint(char *file, const char *func, int line, char *fmt, ...);
 int print(char *fmt, ...);
+char *format(char *fmt, ...);
+void open_file(uraFile *file);
 
 // STRUCTS / ENUMS
 // clang-format off
@@ -77,6 +87,17 @@ struct Arena {
     size_t size;
     size_t used;
     Arena *next;
+};
+
+struct uraFile {
+    char *name;
+    char *path;
+    char *dir;
+    char *buff;
+    size_t len;
+
+    char *build_dir;
+    char *ll_path;
 };
 
 struct Ura {
@@ -88,22 +109,12 @@ struct Ura {
     char *exec;
     int errors_count;
 
-    uraFile curr_file;
+    uraFile *curr_file;
     int curr_line;
 
     expand(uraFile*, files);
 };
 
-struct uraFile {
-    char *name;
-    char *path;
-    char *dir;
-    char *content;
-    size_t len;
-
-    char *build;
-    char *ll_path;
-};
 
 // clang-format off
 enum Type {
@@ -211,7 +222,7 @@ void parse_args(int ac, char **av) {
     ura.exec = "exe.out";
     for (int i = 1; i < ac && ura.errors_count == 0; i++) {
         char *arg = av[i];
-        if (ura_strcmp(arg, "-o")) {
+        if (ura_cmp(arg, "-o")) {
             if (i + 1 >= ac) {
                 eprint("expected argument:\n");
                 help("-o exe.out\n");
@@ -220,7 +231,7 @@ void parse_args(int ac, char **av) {
             ura.exec = av[++i];
         } else {
             size_t n = strlen(arg);
-            bool is_ura = n > 4 && ura_strcmp(arg + n - 4, ".ura");
+            bool is_ura = n > 4 && ura_cmp(arg + n - 4, ".ura");
             if (!is_ura) {
                 eprint("Invalid file '%s'\n", arg);
                 help("use %s.ura\n", arg);
@@ -236,6 +247,10 @@ struct Token {
     char *name;
     bool is_type;
     int space;
+
+    int line;
+    int s;
+    int e;
 
     struct {
         struct {
@@ -253,27 +268,180 @@ struct Token {
     };
 };
 
+#include "./assert.c"
+
+Token *new_token(Type type, Token *from) {
+    Token *new = ura_alloc(1, sizeof(Token));
+    new->type = type;
+    if (from) {
+        new->space = from->space;
+        new->line = from->line;
+        new->s = from->s;
+        new->e = from->e;
+    }
+    return new;
+}
+
+Token *parse_token(Type type, int s, int e, int space) {
+    Token *new = new_token(type, NULL);
+    char *buff = ura.curr_file->buff;
+
+    switch (type) {
+    case ID: {
+        struct {
+            char *value;
+            Token token;
+        } keywords[] = {
+            // clang-format off
+            { "b1", { .type = BOOL, .is_type = true } },
+            { "char", { .type = I8, .is_type = true } },
+            { "i8", { .type = I8, .is_type = true } },
+            { "i32", { .type = I32, .is_type = true } },
+            { "template", { .type = TEMPLATE_DEC, .is_type = true }},
+
+            { "True", { .type = BOOL, .b1 = { .value = true } } },
+            { "False", { .type = BOOL, .b1 = { .value = false } } },
+
+            { "struct", { .type = STRUCT_DEC } },
+            { "and", { .type = AND } }, { "or", { .type = OR } },
+            { "proto", { .type = PROTO } }, { "fn", { .type = FN_DEC } },
+            { "return", { .type = RETURN } },
+            { "if", { .type = IF } }, { "elif", { .type = ELIF } },
+            { "else", { .type = ELSE } },
+            { "while", { .type = WHILE } }, { "break", { .type = BRK } },
+            { "continue", { .type = CNT } },
+            { "null", {.type = NULL_ } },
+
+            { NULL },
+            // clang-format on
+        };
+
+        size_t i = 0;
+        for (; keywords[i].value; i++) {
+            char *value = keywords[i].value;
+            size_t len = strlen(value);
+            if (e - s == len && ura_ncmp(buff + s, value, e - s)) {
+                *new = keywords[i].token;
+                break;
+            }
+        }
+        if (keywords[i].value)
+            break;
+        new->name = ura_ndup(buff + s, e - s);
+        break;
+    }
+    default: {
+        break;
+    }
+    }
+    new->line = ura.curr_line;
+    new->s = s;
+    new->e = e;
+    new->space = space / TAB + (space % TAB != 0);
+    print("new token %k\n", new);
+    return new;
+}
+
 void gen_tokens(uraFile *file) {
+    open_file(file);
     ura.curr_file = file;
     ura.curr_line = 1;
-    char *content = file->content;
-    arena_reserve(strlen(content) * 192);
+    char *buff = file->buff;
+    assert(buff != NULL);
+    arena_reserve(strlen(buff) * 192);
 
     size_t s = 0;
     size_t e = 0;
     int space = 0;
-    while(content[e]) {
+    while (buff[e]) {
         s = e;
-        if(isspace(content[e])) {
-            while(content[e] == '\n') {
+        if (isspace(buff[e])) {
+            while (buff[e] == '\n') {
                 ura.curr_line++;
                 e++;
             }
-            if(content[s] == '\n') {
+            if (buff[s] == '\n') {
                 space = 0;
                 s = e - 1;
             }
+            while (isspace(buff[e]) && buff[e] != '\n') {
+                if (buff[s] == '\n') // beginning of line
+                    space++;
+                e++;
+            }
+            continue;
         }
+
+        while (ura_ncmp(buff + s, "//", 2) && buff[e] && buff[e] != '\n')
+            e++;
+        if (e != s)
+            continue;
+        // TODO: check onclosing /* */
+        while (ura_ncmp(buff + s, "/*", 2) && buff[e] && !ura_ncmp(buff + e, "*/", 2))
+            e++;
+
+        if (e != s) {
+            e += 2;
+            continue;
+        }
+
+        if (buff[s] == '"' || buff[s] == '\'') {
+            char c = buff[s];
+            e++;
+            while (buff[e] && buff[e] != c && buff[e] != '\n') {
+                if (buff[e] == '\\' && buff[e + 1] && buff[e + 1] != '\n')
+                    e++;
+                e++;
+            }
+            bool closed = buff[e] == c;
+            if (closed)
+                e++;
+            Token *literal = parse_token(c == '"' ? CHARS : I8, s, e, space);
+            // assert_literal_is_valid(literal, closed);
+            continue;
+        }
+
+        while (isalpha(buff[s]) && (isalnum(buff[e]) || buff[e] == '_'))
+            e++;
+        if (e != s) { // found ID
+            parse_token(ID, s, e, space);
+            continue;
+        }
+
+        struct {
+            char *value;
+            Type type;
+        } specials[] = {
+            // clang-format off
+            {"(", LPARENT}, {")", RPARENT}, {":", DOTS},
+            {"[", LBRACK}, {"]", RBRACK},
+            {"+=", ADD_ASSIGN}, {"-=", SUB_ASSIGN}, {"*=", MUL_ASSIGN},
+            {"/=", DIV_ASSIGN}, {"%=", MOD_ASSIGN},
+            {"...", VARIADIC}, {".", DOT},
+            {"+", ADD}, {"-", SUB}, {"*", MUL}, {"/", DIV}, {"%", MOD},
+            {">=", GE}, {"<=", LE}, {">", GT}, {"<", LT},
+            {"==", EQ}, {"!=", NQ},
+            {"=", ASSIGN}, {",", COMA},
+            {"&&", AND}, {"||", OR},
+            {"&", REF},
+            {NULL, NONE}
+            // clang-format on
+        };
+
+        for (int i = 0; specials[i].value; i++) {
+            size_t len = strlen(specials[i].value);
+            if (ura_ncmp(specials[i].value, buff + e, len)) {
+                parse_token(specials[i].type, e, e + len, space);
+                if (specials[i].type == DOTS)
+                    space += TAB;
+                e += len;
+            }
+        }
+
+        if (e != s)
+            continue;
+        eprint("Error\n");
+        exit(1);
     }
 }
 
@@ -381,23 +549,29 @@ void ura_free() {
     }
 }
 
-char *ura_strdup(char *str) {
+char *ura_dup(char *str) {
     char *res = ura_alloc(strlen(str) + 1, sizeof(char));
     strcpy(res, str);
     return res;
 }
 
+char *ura_ndup(char *str, size_t n) {
+    char *res = ura_alloc(n + 1, sizeof(char));
+    strncpy(res, str, n);
+    return res;
+}
+
 // clang-format off
-bool ura_strcmp(char *left, char *right) {
+bool ura_cmp(char *left, char *right) {
     size_t i = 0;
     while (left[i] && left[i] == right[i]) i++;
     return left[i] == '\0' && right[i] == '\0';
 }
 
-bool ura_strncmp(char *left, char *right, size_t limit) {
+bool ura_ncmp(char *left, char *right, size_t n) {
     size_t i = 0;
-    while (i < limit && left[i] && left[i] == right[i]) i++;
-    return i == limit;
+    while (i < n && left[i] && left[i] == right[i]) i++;
+    return i == n;
 }
 // clang-format on
 
@@ -412,10 +586,36 @@ uraFile *new_file(char *name) {
         eprint("realpath failed\n");
         exit(1);
     }
-    new->path = ura_strdup(path);
+    new->path = ura_dup(path);
     free(path);
-    new->dir = dirname(ura_strdup(new->path));
+    new->dir = dirname(ura_dup(new->path));
     return new;
+}
+
+void open_file(uraFile *file) {
+    file->build_dir = format("%s/build", file->dir);
+    DIR *dir = opendir(file->build_dir);
+    if (dir) {
+        closedir(dir);
+    } else if (mkdir(file->build_dir, 0755) != 0) {
+        eprint("mkdir failed\n");
+        exit(1);
+    }
+
+    File fp = fopen(file->path, "r");
+    if (fp == NULL) {
+        eprint("fopen failed\n");
+        exit(1);
+    }
+    if (fseek(fp, sizeof(char), SEEK_END)) {
+        eprint("mkdir failed\n");
+        exit(1);
+    }
+    file->len = (size_t)ftell(fp);
+    rewind(fp);
+    file->buff = ura_alloc(file->len + 1, sizeof(char));
+    fread(file->buff, file->len, sizeof(char), fp);
+    fclose(fp);
 }
 
 // FORMATING / PRINTING
@@ -559,7 +759,7 @@ char *format(char *fmt, ...) {
     va_end(ap);
 
     fclose(out);
-    char *res = ura_strdup(buf);
+    char *res = ura_dup(buf);
     free(buf);
     return res;
 }

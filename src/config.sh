@@ -681,7 +681,7 @@ tests() {
 # extension - package the VS Code extension and install it into VS Code
 # ============================================================================
 extension() {
-    if make -C "$URA_ROOT/../ura-vscode-extension" install; then
+    if make -C "$URA_ROOT/../0.ura-vscode-extension" install; then
         _ura_green "extension: installed, reload VS Code to use it"
     else
         _ura_red "extension: failed"
