@@ -76,6 +76,7 @@ char *ura_dup(char *str);
 char *ura_ndup(char *str, size_t n);
 bool ura_cmp(char *left, char *right);
 bool ura_ncmp(char *left, char *right, size_t n);
+bool includes(Type to_find, ...);
 int _eprint(char *file, const char *func, int line, char *fmt, ...);
 int print(char *fmt, ...);
 char *format(char *fmt, ...);
@@ -115,6 +116,13 @@ struct Ura {
     int curr_line;
 
     expand(uraFile*, files);
+    expand(Token*, tokens);
+
+    expand(Node*, scopes);
+    Node *scope;
+
+    int exe_pos;
+    Node *ast;
 };
 
 
@@ -281,7 +289,42 @@ Token *new_token(Type type, Token *from) {
         new->s = from->s;
         new->e = from->e;
     }
+    push_back(ura.tokens, new);
     return new;
+}
+
+char *parse_escaped(char *input, size_t s, size_t e) {
+    char *res = ura_alloc(e - s + 1, sizeof(char));
+    size_t r = 0;
+    while (s < e) {
+        int c = -1;
+        // clang-format off
+        if(s < e && input[s] == '\\')
+        {
+            switch(input[s + 1]) {
+            case 'n':  c = '\n'; break;
+            case 't':  c = '\t'; break;
+            case 'r':  c = '\r'; break;
+            case 'b':  c = '\b'; break;
+            case 'f':  c = '\f'; break;
+            case 'v':  c = '\v'; break;
+            case 'a':  c = '\a'; break;
+            case '\\': c = '\\'; break;
+            case '"':  c = '\"'; break;
+            case '\'': c = '\''; break;
+            case '?':  c = '\?'; break;
+            case '0':  c = '\0'; break;
+            // TODO: add octal stuff etc...
+            default: break;
+            }
+            if(c != -1) s += 2;
+            else c = input[s++];
+        }
+        else c = input[s++];
+        // clang-format on
+        res[r++] = c;
+    }
+    return res;
 }
 
 Token *parse_token(Type type, int s, int e, int space) {
@@ -295,26 +338,26 @@ Token *parse_token(Type type, int s, int e, int space) {
             Token token;
         } keywords[] = {
             // clang-format off
-            { "b1", { .type = BOOL, .is_type = true } },
-            { "char", { .type = I8, .is_type = true } },
-            { "i8", { .type = I8, .is_type = true } },
-            { "i32", { .type = I32, .is_type = true } },
-            { "template", { .type = TEMPLATE_DEC, .is_type = true }},
+        { "b1", { .type = BOOL, .is_type = true } },
+        { "char", { .type = I8, .is_type = true } },
+        { "i8", { .type = I8, .is_type = true } },
+        { "i32", { .type = I32, .is_type = true } },
+        { "template", { .type = TEMPLATE_DEC, .is_type = true }},
 
-            { "True", { .type = BOOL, .b1 = { .value = true } } },
-            { "False", { .type = BOOL, .b1 = { .value = false } } },
+        { "True", { .type = BOOL, .b1 = { .value = true } } },
+        { "False", { .type = BOOL, .b1 = { .value = false } } },
 
-            { "struct", { .type = STRUCT_DEC } },
-            { "and", { .type = AND } }, { "or", { .type = OR } },
-            { "proto", { .type = PROTO } }, { "fn", { .type = FN_DEC } },
-            { "return", { .type = RETURN } },
-            { "if", { .type = IF } }, { "elif", { .type = ELIF } },
-            { "else", { .type = ELSE } },
-            { "while", { .type = WHILE } }, { "break", { .type = BRK } },
-            { "continue", { .type = CNT } },
-            { "null", {.type = NULL_ } },
+        { "struct", { .type = STRUCT_DEC } },
+        { "and", { .type = AND } }, { "or", { .type = OR } },
+        { "proto", { .type = PROTO } }, { "fn", { .type = FN_DEC } },
+        { "return", { .type = RETURN } },
+        { "if", { .type = IF } }, { "elif", { .type = ELIF } },
+        { "else", { .type = ELSE } },
+        { "while", { .type = WHILE } }, { "break", { .type = BRK } },
+        { "continue", { .type = CNT } },
+        { "null", {.type = NULL_ } },
 
-            { NULL },
+        { NULL },
             // clang-format on
         };
 
@@ -330,6 +373,21 @@ Token *parse_token(Type type, int s, int e, int space) {
         if (keywords[i].value)
             break;
         new->name = ura_ndup(buff + s, e - s);
+        break;
+    }
+    case CHARS: {
+        new->chars.value = parse_escaped(buff, s + 1, e - 1);
+        break;
+    }
+    case I8: {
+        char *str = parse_escaped(buff, s + 1, e - 1);
+        if (strlen(str) > 1)
+            check_char(ura.curr_file, s, e);
+        new->i8.value = str[0];
+        break;
+    }
+    case I32: {
+        new->i32.value = strtol(buff + s, NULL, 10);
         break;
     }
     default: {
@@ -378,34 +436,39 @@ void gen_tokens(uraFile *file) {
             e++;
         if (e != s)
             continue;
-        // TODO: check onclosing /* */
         if (ura_ncmp(buff + s, "/*", 2)) {
-            s += 2;
+            s += 2; // skip /*
             while (buff[e] && !ura_ncmp(buff + e, "*/", 2))
                 e++;
-            if (e != s) {
-                if (!ura_ncmp(buff + e, "*/", 2)) {
-                    error(file->name, ura.curr_line, s, s + 3, "inclosed comment");
-                    exit(1);
-                }
-                e += 2;
-                continue;
-            }
+
+            if (!check_multi_comment(file, s, e))
+                break;
+            e += 2;
+            continue;
         }
 
-        if (buff[s] == '"' || buff[s] == '\'') {
+        if (buff[s] && strchr("\"\'", buff[s])) {
             char c = buff[s];
             e++;
+
             while (buff[e] && buff[e] != c && buff[e] != '\n') {
                 if (buff[e] == '\\' && buff[e + 1] && buff[e + 1] != '\n')
                     e++;
                 e++;
             }
-            bool closed = buff[e] == c;
-            if (closed)
-                e++;
-            Token *literal = parse_token(c == '"' ? CHARS : I8, s, e, space);
-            // assert_literal_is_valid(literal, closed);
+            if (!check_quote(file, s, e))
+                break;
+            e++; // skip last "
+            parse_token(c == '"' ? CHARS : I8, s, e, space);
+            continue;
+        }
+
+        while (isdigit(buff[e]))
+            e++;
+        if (e != s) {
+            if (!check_number_fits(file, s, e))
+                break;
+            parse_token(I32, s, e, space);
             continue;
         }
 
@@ -445,14 +508,16 @@ void gen_tokens(uraFile *file) {
                 e += len;
             }
         }
-
         if (e != s)
             continue;
-        eprint("Error\n");
-        exit(1);
+
+        check_unkown_char(file, s, e);
+        break;
     }
+    new_token(END, NULL);
 }
 
+// NODE STUFF
 struct Node {
     Token *token;
     Node *left;
@@ -461,23 +526,121 @@ struct Node {
     expand(Node *, children);
 };
 
+Node *new_node(Token *token) {
+    Node *new = ura_alloc(1, sizeof(Node));
+    new->token = token;
+    print("new node %k\n", token);
+    return new;
+}
+
+void enter_scope(Node *node) {
+    Token *token = node->token;
+    print("%s: %t %s\n", CYAN("enter scope"), token->type, token->name);
+    ura.scope = node;
+    push_back(ura.scopes, node);
+}
+
+void exit_scope() {
+    Token *token = ura.scope->token;
+    print("%s: %t %s\n", CYAN("exit scope"), token->type, token->name);
+    ura.scopes_count--;
+    ura.scopes[ura.scopes_count] = NULL;
+    ura.scope = ura.scopes_count == 0 ? NULL : ura.scopes[ura.scopes_count - 1];
+}
+
+Token *peek(int pos) {
+    assert(ura.exe_pos + pos <= ura.tokens_count);
+    return ura.tokens[ura.exe_pos + pos];
+    return NULL;
+}
+
+Token *next(void) {
+    Token *token = peek(0);
+    ura.exe_pos++;
+    return token;
+}
+
+
+Node *prime_node(void) {
+    Token *token = next();
+    Node *node = NULL;
+    switch (token->type) { // clang-format off
+    case I32: return new_node(token);
+    case ID: {
+        return new_node(token);
+        break;
+    }
+    default:
+        eprint("handle this case %t\n", token->type);
+        exit(1);
+    } // clang-format on
+    return NULL;
+}
+
+Node *expr_node(int min_op) {
+    Node *left = prime_node();
+    while (true) {
+        int prec[END + 1] = {
+            // clang-format off
+            [ASSIGN] = 1,     [ADD_ASSIGN] = 1, [SUB_ASSIGN] = 1,
+            [MUL_ASSIGN] = 1, [DIV_ASSIGN] = 1, [MOD_ASSIGN] = 1,
+
+            [OR] = 11,        [AND] = 12,
+
+            [EQ] = 21,        [NQ] = 21,        [GT] = 22,
+            [LT] = 22,        [GE] = 22,        [LE] = 22,
+
+            [ADD] = 30,       [SUB] = 30,       [MUL] = 31,
+            [DIV] = 31,       [MOD] = 31,
+
+            [DOT] = 41,
+            // clang-format on
+        };
+
+        int op = prec[peek(0)->type];
+        // assert(op != 0);
+        if (op <= min_op)
+            break;
+        Node *node = new_node(next());
+        node->left = left;
+        node->right = expr_node(op);
+        left = node;
+    }
+    return left;
+}
+
+void gen_ast(void) {
+    ura.ast = new_node(new_token(ID, NULL));
+    ura.ast->token->name = ura_dup("ura-scope");
+    enter_scope(ura.ast);
+    while (!includes(peek(0)->type, END, 0)) {
+        Node *child = expr_node(0);
+        if (child)
+            push_back(ura.ast->children, child);
+    }
+    exit_scope();
+}
 
 /*
 TODO:
-    [ ] open file
-    [ ] tokenize it
-    [ ] support: macos, windows
+    [*] open file
+    [*] tokenize it
+    [ ] ast:
+      [ ] function main
+      [ ] return something
 
-    [ ] drop method
-    [ ] String struct
-    [ ] to_string method
-    [ ] output (should handl also struct.to_string)
-    [ ] for template add a part in the code thaht JIT/interpreter
-    [ ] operators overload
-    [ ] for loops over a range: for i in 0..10
-    [ ] more integer types (i8, i64, unsigned) and casting with as
-    [ ] function inside function
-    [ ] learn some design patterns
+    [ ] remaining:
+        [ ] drop method
+        [ ] String struct
+        [ ] to_string method
+        [ ] output (should handl also struct.to_string)
+        [ ] for template add a part in the code thaht JIT/interpreter
+        [ ] operators overload
+        [ ] for loops over a range: for i in 0..10
+        [ ] more integer types (i8, i64, unsigned) and casting with as
+        [ ] function inside function
+        [ ] learn some design patterns
+        [ ] support: macos, windows
 */
 
 int main(int ac, char **av) {
@@ -487,6 +650,8 @@ int main(int ac, char **av) {
         uraFile *file = ura.files[i];
         print(GREEN("============TOKENIZE============\n"));
         gen_tokens(file);
+        gen_ast();
+        print("%n", ura.ast);
     }
 }
 
@@ -626,6 +791,19 @@ void open_file(uraFile *file) {
     fclose(fp);
 }
 
+// UTILS
+bool includes(Type to_find, ...) {
+    va_list ap;
+    va_start(ap, to_find);
+    Type curr = va_arg(ap, Type);
+    while (curr) {
+        if (curr == to_find)
+            return true;
+        curr = va_arg(ap, Type);
+    }
+    return false;
+}
+
 // FORMATING / PRINTING
 // clang-format off
 int _print_type(File fp, Node *node) {
@@ -668,17 +846,6 @@ struct NodePrint {
     expand(int, depths);
     expand(Node*, nodes);
 };
-
-bool includes(Type to_find, ...) {
-    va_list ap;
-    va_start(ap, to_find);
-    Type curr = va_arg(ap, Type);
-    while (curr) {
-        if (curr == to_find) return true;
-        curr = va_arg(ap, Type);
-    }
-    return false;
-}
 
 void _print_node_helper(NodePrint *elems, Node *node, int depth) {
     if(node == NULL) return;
@@ -798,16 +965,17 @@ void error(char *file, int line, int s, int e, char *msg) {
         s0--;
     while (buff[e0] && buff[e0] != '\n')
         e0++;
+    print("%d -> %d\n", s0, e0);
 
     char *name = ura.curr_file->name;
     int col = s - s0 + 1;
     fprintf(stderr, RED("error:") " %s:%d:%d %s\n", name, line, col, msg);
 
     int width = snprintf(NULL, 0, "%d", line);
-    fprintf(stderr, "%*s |\n", width, "");                // 1st line
-    fprintf(stderr, "%d | %.*s", line, e - s, buff + s0); // error line
-    fprintf(stderr, "%*s | %*s", width, "", s - s0, "");  // ^ left space
-    for (int i = s; i < e; i++)
+    fprintf(stderr, "%*s |\n", width, "");                    // 1st line
+    fprintf(stderr, "%d | %.*s\n", line, e0 - s0, buff + s0); // error line
+    fprintf(stderr, "%*s | %*s", width, "", s - s0, "");      // ^ left space
+    for (int i = s; i < e || i == s; i++)
         fputc('^', stderr);
     fprintf(stderr, "\n");
 }
