@@ -50,6 +50,7 @@ typedef enum Type Type;
 
 // TODO: fix those
 #define eprint(...) _eprint(FILE, FUNC, LINE, __VA_ARGS__)
+// #define error(...) _error(FILE, FUNC, LINE, __VA_ARGS__)
 #define help(...)   printf(__VA_ARGS__)
 
 #ifndef bool
@@ -79,6 +80,7 @@ int _eprint(char *file, const char *func, int line, char *fmt, ...);
 int print(char *fmt, ...);
 char *format(char *fmt, ...);
 void open_file(uraFile *file);
+void error(char *file, int line, int s, int e, char *msg);
 
 // STRUCTS / ENUMS
 // clang-format off
@@ -377,12 +379,18 @@ void gen_tokens(uraFile *file) {
         if (e != s)
             continue;
         // TODO: check onclosing /* */
-        while (ura_ncmp(buff + s, "/*", 2) && buff[e] && !ura_ncmp(buff + e, "*/", 2))
-            e++;
-
-        if (e != s) {
-            e += 2;
-            continue;
+        if (ura_ncmp(buff + s, "/*", 2)) {
+            s += 2;
+            while (buff[e] && !ura_ncmp(buff + e, "*/", 2))
+                e++;
+            if (e != s) {
+                if (!ura_ncmp(buff + e, "*/", 2)) {
+                    error(file->name, ura.curr_line, s, s + 3, "inclosed comment");
+                    exit(1);
+                }
+                e += 2;
+                continue;
+            }
         }
 
         if (buff[s] == '"' || buff[s] == '\'') {
@@ -780,4 +788,26 @@ int print(char *fmt, ...) {
     int r = _print(stdout, fmt, args);
     va_end(args);
     return r;
+}
+
+void error(char *file, int line, int s, int e, char *msg) {
+    char *buff = ura.curr_file->buff;
+    int s0 = s;
+    int e0 = e;
+    while (s0 > 0 && buff[s0 - 1] != '\n')
+        s0--;
+    while (buff[e0] && buff[e0] != '\n')
+        e0++;
+
+    char *name = ura.curr_file->name;
+    int col = s - s0 + 1;
+    fprintf(stderr, RED("error:") " %s:%d:%d %s\n", name, line, col, msg);
+
+    int width = snprintf(NULL, 0, "%d", line);
+    fprintf(stderr, "%*s |\n", width, "");                // 1st line
+    fprintf(stderr, "%d | %.*s", line, e - s, buff + s0); // error line
+    fprintf(stderr, "%*s | %*s", width, "", s - s0, "");  // ^ left space
+    for (int i = s; i < e; i++)
+        fputc('^', stderr);
+    fprintf(stderr, "\n");
 }
