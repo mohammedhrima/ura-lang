@@ -41,3 +41,16 @@ bool check_unkown_char(int s, int e, int line) {
     error(s, e, line, "unkown char");
     return false;
 }
+
+bool check_next(Type type, char *msg) {
+    Token *token = peek(0);
+    if (token->type == type)
+        return true;
+    Token *prev = peek(-1);
+    Token *err_token = token->line == prev->line ? token : prev;
+    int s = err_token->s;
+    int e = err_token->e;
+    int line = err_token->line;
+    error(s, e, line, msg);
+    return false;
+}

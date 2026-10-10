@@ -1,5 +1,12 @@
 
-
 fn main() i32:
-    return 1
-
+    a i32 = 10
+    // b i32 = a * 2
+    // a = a + b
+    // a += 5
+    // a -= 3
+    // a *= 2
+    // a /= 4
+    // a %= 5
+    // return a + b
+    return 0
