@@ -1,0 +1,95 @@
+{
+  "name": "ura-lang",
+  "displayName": "Ura Language Support",
+  "description": "Syntax highlighting, indentation, completion and compiler diagnostics for the Ura programming language (.ura)",
+  "version": "0.0.1",
+  "publisher": "mohamedhrima",
+  "author": {
+    "name": "Hrima Mohammed"
+  },
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "main": "./out/extension.js",
+  "icon": "icons/icon.png",
+  "categories": [
+    "Programming Languages",
+    "Linters"
+  ],
+  "keywords": [
+    "ura",
+    "programming language",
+    "syntax highlighting",
+    "language support"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mohammedhrima/ura-lang",
+    "directory": "ura-vscode-extension"
+  },
+  "bugs": {
+    "url": "https://github.com/mohammedhrima/ura-lang/issues"
+  },
+  "scripts": {
+    "vscode:prepublish": "tsc -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "~1.95.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "@vscode/vsce": "^3.0.0"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "ura",
+        "aliases": [
+          "Ura",
+          "ura"
+        ],
+        "extensions": [
+          ".ura"
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/icon.png",
+          "dark": "./icons/icon.png"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ura",
+        "scopeName": "source.ura",
+        "path": "./syntaxes/ura.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "Ura",
+      "properties": {
+        "ura.compilerPath": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Path to the `ura` compiler used for diagnostics. When empty, `<workspace>/src/build/ura` is used if it exists, otherwise `ura` from `PATH`."
+        },
+        "ura.lint.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run the ura compiler on open and on save and show its errors as problems."
+        }
+      }
+    },
+    "configurationDefaults": {
+      "[ura]": {
+        "editor.autoIndent": "advanced",
+        "editor.insertSpaces": true,
+        "editor.tabSize": 4,
+        "editor.indentSize": 4,
+        "editor.detectIndentation": false,
+        "editor.trimAutoWhitespace": true,
+        "editor.useTabStops": true
+      }
+    }
+  }
+}

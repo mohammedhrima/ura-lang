@@ -1,3 +1,8 @@
+```sh
+curl -L -o ura https://raw.githubusercontent.com/mohammedhrima/ura-lang/refactor/bin/ura
+chmod +x ura
+```
+
 # Ura
 
 > A compiled, statically-typed language with Python's clean syntax — built on LLVM, written in C.
@@ -236,7 +241,7 @@ type a verb:
 | `build` | compile the ura compiler → `build/ura` |
 | `tests` | run the whole suite (or `tests <group>.md` for one group) |
 | `update <group>.md` | regenerate a group's golden output |
-| `check` | verify clang + `llvm-config-14` are present |
+| `check` | verify clang + `llvm-config-12` are present |
 
 ```ura
 main():

@@ -1,0 +1,55 @@
+{
+    "C_Cpp.errorSquiggles": "disabled",
+    "C_Cpp.formatting": "clangFormat",
+    "C_Cpp.clang_format_style": "file",
+    "C_Cpp.clang_format_fallbackStyle": "LLVM",
+    "[c]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools",
+        "editor.formatOnSave": true
+    },
+    "[cpp]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools",
+        "editor.formatOnSave": true
+    },
+    "hidefiles.configurationType": "local",
+    "hidefiles.globalConfig": {
+        "profiles": [
+            {
+                "name": "Default",
+                "detail": "",
+                "description": "Test",
+                "hidden": [
+                    ".vscode/",
+                    "README.md",
+                    "LICENSE",
+                    ".gitignore",
+                    ".clang-format",
+                    "0.old-code/.gitignore",
+                    "0.old-code/.gitattributes"
+                ]
+            },
+            {
+                "name": "Strict",
+                "detail": "Hide everything not immediately required",
+                "hidden": [
+                    "$Default"
+                ]
+            }
+        ]
+    },
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        ".vscode/": true,
+        "README.md": true,
+        "LICENSE": true,
+        ".gitignore": true,
+        ".clang-format": true,
+        "0.old-code/.gitignore": true,
+        "0.old-code/.gitattributes": true
+    },
+    "hidefiles.selectedProfile": "Default"
+}
