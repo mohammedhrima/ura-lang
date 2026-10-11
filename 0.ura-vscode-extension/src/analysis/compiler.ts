@@ -5,6 +5,7 @@ import { spawn } from "child_process";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
+import { readFromDisk, Reader, walkUses } from "./imports";
 
 export interface Problem {
     message: string;
@@ -13,13 +14,13 @@ export interface Problem {
     code?: string; // where in the compiler the error came from, e.g. "main.c:827 analyze"
 }
 
-// `setting` wins; otherwise the compiler built inside the workspace; otherwise PATH.
+// `setting` wins; otherwise the compiler built inside the workspace (bin/ura); otherwise PATH.
 export function resolveCompiler(setting: string, workspaceRoot: string | undefined): string {
     if (setting) {
         return setting;
     }
     if (workspaceRoot) {
-        const local = path.join(workspaceRoot, "src", "build", "ura");
+        const local = path.join(workspaceRoot, "bin", "ura");
         if (fs.existsSync(local)) {
             return local;
         }
@@ -70,12 +71,54 @@ export function parseStderr(stderr: string): Problem[] {
     return problems;
 }
 
+// The deepest directory that holds every one of `files`.
+function commonDir(files: string[]): string {
+    let dir = path.dirname(files[0]);
+    const inside = (file: string) => {
+        const relative = path.relative(dir, file);
+        return relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+    };
+    while (!files.every(inside)) {
+        const parent = path.dirname(dir);
+        if (parent === dir) {
+            break;
+        }
+        dir = parent;
+    }
+    return dir;
+}
+
+// Copies `file` (with its unsaved `source`) and every file it reaches through
+// `use` into `dir`, keeping their layout, so each `use` path resolves the same
+// way it does next to the real files. Returns where the copy of `file` is.
+export function stage(dir: string, file: string, source: string, read: Reader = readFromDisk): string {
+    const files = walkUses(file, source, read, () => true);
+    const root = commonDir(files.map((f) => f.file));
+    for (const f of files) {
+        const copy = path.join(dir, path.relative(root, f.file));
+        fs.mkdirSync(path.dirname(copy), { recursive: true });
+        fs.writeFileSync(copy, f.source);
+    }
+    return path.join(dir, path.relative(root, file));
+}
+
 // Compiles `source` in a temporary directory, so unsaved edits are checked and
-// no build/ folder appears next to the user's file.
-export function lint(compiler: string, source: string, timeoutMs = 10_000): Promise<Problem[]> {
+// no build/ folder appears next to the user's files. With `file` (where
+// `source` lives), the files it reaches through `use` are copied there too.
+export function lint(
+    compiler: string,
+    source: string,
+    file?: string,
+    read: Reader = readFromDisk,
+    timeoutMs = 10_000,
+): Promise<Problem[]> {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ura-lint-"));
-    const input = path.join(dir, "input.ura");
-    fs.writeFileSync(input, source);
+    let input = path.join(dir, "input.ura");
+    if (file) {
+        input = stage(dir, file, source, read);
+    } else {
+        fs.writeFileSync(input, source);
+    }
 
     return new Promise((resolve) => {
         let stderr = "";

@@ -3,6 +3,7 @@ import { CompletionProvider } from "./providers/completion";
 import { DefinitionProvider } from "./providers/definition";
 import { Diagnostics } from "./providers/diagnostics";
 import { HoverProvider } from "./providers/hover";
+import { LinkProvider } from "./providers/links";
 import { SignatureProvider } from "./providers/signature";
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -14,6 +15,7 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.languages.registerHoverProvider(ura, new HoverProvider()),
         vscode.languages.registerSignatureHelpProvider(ura, new SignatureProvider(), "(", ","),
         vscode.languages.registerDefinitionProvider(ura, new DefinitionProvider()),
+        vscode.languages.registerDocumentLinkProvider(ura, new LinkProvider()),
         diagnostics,
     );
     diagnostics.start();

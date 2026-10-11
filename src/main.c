@@ -7,6 +7,9 @@
 #include <ctype.h>
 #include <assert.h>
 #include <sys/stat.h>
+#include <errno.h>
+#include <unistd.h>
+#include <signal.h>
 // #include <sys/types.h>
 #include <dirent.h>
 #include <llvm-c/Analysis.h>
@@ -134,7 +137,7 @@ struct Arena {
 
 enum Type {
     // clang-format off
-    NONE, ERR, SCOPE, USE,
+    NONE, ERR, SCOPE, URA,
     
     // ID become VAR, after getting declared
     ID, VAR, 
@@ -211,6 +214,7 @@ struct Token {
 
             char *build_dir;
             char *ll_path;
+            bool opened;
         } file;
         struct {
             long value;
@@ -244,9 +248,7 @@ struct Ura {
     char *exec;
     int errors_count;
 
-    // uraFile *curr_file;
-    // int curr_line;
-
+    Node *tree;
     expand(Token *, tokens);
 
     expand(Node *, scopes);
@@ -269,7 +271,7 @@ const char *to_string(Type type) {
         // clang-format off
         [ERR] = "ERR",
         [ID] = "ID",
-        [SCOPE] = "SCOPE", [USE] = "USE",
+        [SCOPE] = "SCOPE", [URA] = "URA",
 
         [VAR] = "VAR", [DECLARE] = "DECLARE", [LOAD] = "LOAD",
         [ARG] = "ARG",
@@ -327,8 +329,9 @@ void parse_args(int ac, char **av) {
     if (ac < 2) {
         eprint("expected an argument:\n");
         help("%s <file>.ura\n", av[0]);
-        return;
+        exit(1);
     }
+    ura.tree = new_node(new_token(URA, NULL));
     ura.exec = "exe.out";
     for (int i = 1; i < ac && ura.errors_count == 0; i++) {
         char *arg = av[i];
@@ -347,16 +350,10 @@ void parse_args(int ac, char **av) {
                 help("use %s.ura\n", arg);
                 exit(1);
             }
-            new_file(arg, -TAB);
+            Node *file = new_file(arg);
+            push_back(ura.tree->children, file);
         }
     }
-}
-
-void parse_file(Node *file) {
-    enter_scope(file);
-    while (peek(0)->type != END)
-        push_back(file->children, parse_expr(0));
-    exit_scope();
 }
 
 #include "./assert.c"
@@ -483,9 +480,10 @@ Token *parse_token(Type type, int s, int e, int space) {
     return new;
 }
 
-void tokenize(Node *node) {
+void tokenize(Node *node, int def) { // TODO: make use of space
     enter_scope(node);
     Token *token = node->token;
+
     open_file(token);
     char *buff = token->file.buff;
     assert(buff != NULL);
@@ -493,7 +491,7 @@ void tokenize(Node *node) {
 
     size_t s = 0;
     size_t e = 0;
-    int space = 0;
+    int space = def;
     while (buff[e]) {
         s = e;
         int line = ura.scope->token->line;
@@ -503,7 +501,7 @@ void tokenize(Node *node) {
                 e++;
             }
             if (buff[s] == '\n') {
-                space = 0;
+                space = def;
                 s = e - 1;
             }
             while (isspace(buff[e]) && buff[e] != '\n') {
@@ -556,7 +554,34 @@ void tokenize(Node *node) {
 
         while (isalpha(buff[s]) && (isalnum(buff[e]) || buff[e] == '_'))
             e++;
-        if (e != s) { // found ID
+        if (e != s) {
+            if (e - s == 3 && ura_ncmp(buff + s, "use", 3)) {
+                s += 3; // skip 'use'
+                while (isspace(buff[s]))
+                    s++;
+                if (buff[s] != '"') {
+                    eprint("expected \"\n");
+                    exit(1);
+                }
+                s++; // skip "
+                e = s;
+                while (buff[e] && buff[e] != '\"')
+                    e++;
+                if (buff[e] != '"') {
+                    eprint("expected \"\n");
+                    exit(1);
+                }
+                e++;
+
+                char *dir = ura.scope->token->file.dir;
+                int len = (int)(e - s - 1);
+                char *name = format("%s/%.*s.ura", dir, len, buff + s);
+                Node *use = new_file(name);
+                tokenize(use, space);
+                s = e;
+
+                continue;
+            }
             parse_token(ID, s, e, space);
             continue;
         }
@@ -596,8 +621,8 @@ void tokenize(Node *node) {
         check_unkown_char(s, e, line);
         break;
     }
-    new_token(END, NULL); // TODO: check if it can be removed
     exit_scope();
+    close_file(token);
 }
 
 // NODE STUFF
@@ -688,12 +713,14 @@ Node *get_default_return(Node *node) {
     Node *left = node->left;
 
     Node *ret = new_node(new_token(RETURN, token));
-    ret->left = new_node(new_token(VAL_CREATE, token));
-    ret->left->left = new_node(new_token(left->token->type, token));
+    if (left->token->type != VOID) {
+        ret->left = new_node(new_token(VAL_CREATE, token));
+        ret->left->left = new_node(new_token(left->token->type, token));
+    }
     return ret;
 }
 
-Node *parse_prime(void) {
+Node *parse_prime() {
     Token *token = next();
     Node *node = NULL;
     switch (token->type) {
@@ -722,25 +749,6 @@ Node *parse_prime(void) {
                 exit(1);
             }
             next();
-            // if (ura_cmp(token->name, "main")) { // main
-            //     node = new_node(token);
-            //     enter_scope(node);
-            //     // assert RPAR
-            //     next();
-            //     // assert :
-            //     next();
-            //     token->type = FN_DEC;
-            //     while (inside(token->space)) {
-            //         Node *child = parse_prime();
-            //         // Node *child = parse_expr(0);
-            //         // push_back(node->children, parse_expr(0));
-            //         push_back(node->children, child);
-            //     }
-            //     exit_scope();
-            //     return node;
-            // }
-
-
             return node;
         }
         Node *type = parse_type();
@@ -802,9 +810,13 @@ Node *parse_prime(void) {
             return recover(token);
         next(); // skip )
 
-        if (!check_next(I32, "expected i32"))
-            return recover(token);
-        node->left = new_node(next());
+        Node *type = parse_type();
+        // if (!check_next(I32, "expected i32")) // TODO: expect data type
+        //     return recover(token);
+        if (type)
+            node->left = type;
+        else
+            node->left = new_node(new_token(VOID, token));
 
         if (!check_next(DOTS, "expected :"))
             return recover(token);
@@ -821,10 +833,51 @@ Node *parse_prime(void) {
     case RETURN: {
         node = new_node(token);
         // TODO: we need to make sure it's on same space
+        if (peek(0)->space == token->space)
+            node->left = parse_expr(0);
+        return node;
+    }
+    case IF: {
+        node = new_node(token);
+        enter_scope(node);
         node->left = parse_expr(0);
+        if (!check_next(DOTS, "expected :"))
+            return recover(token);
+        next();
+        // enter_scope();
+        parse_bloc(node);
+        exit_scope();
+
+        Node *curr = node;
+        while (inside(node->token->space - 1)) {
+            Token *next_token = peek(0);
+            if (!includes(next_token->type, ELIF, ELSE, 0))
+                break;
+
+            curr->right = new_node(next());
+            curr = curr->right;
+            enter_scope(curr);
+            if (curr->token->type == ELIF) {
+                curr->left = parse_expr(0);
+                // if (!assert_next_is(DOTS, "expected ':' after the 'elif'
+                // condition"))
+                //     return recover(curr->token);
+            }
+            // else if (!assert_else_has_no_condition(curr->token))
+            //     return recover(curr->token);
+            // else if (!assert_next_is(DOTS, "expected ':' after 'else'"))
+            //     return recover(curr->token);
+            if (!check_next(DOTS, "expected :"))
+                return recover(token);
+            next();
+            parse_bloc(curr);
+            exit_scope();
+        }
         return node;
     }
     case SCOPE: {
+        // if (parent != NULL) {
+        // }
         return new_node(token);
     }
     case LPARENT: {
@@ -933,9 +986,16 @@ void declare_variable(Node *node) {
 
 Node *find_function(char *name) {
     for (int i = ura.scopes_count; i > 0; i--) {
-        Node *scope = ura.scopes[i - 1];
-        // print(CYAN("in scope %s\n"), scope->token->name);
+        Node *children = NULL;
+        int children_count = 0;
 
+        Node *scope = ura.scopes[i - 1];
+        print("search in %s\n", scope->token->name);
+        // if (scope->token->type == SCOPE)
+        //     scope = scope->left;
+
+        assert(scope != NULL);
+        // print(CYAN("in scope %s\n"), scope->token->name);
         for (int j = 0; j < scope->children_count; j++) {
             Node *child = scope->children[j];
             if (child->token->type != FN_DEC)
@@ -970,6 +1030,7 @@ void analyze(Node *node) {
     switch (node->token->type) {
     case SCOPE: {
         enter_scope(node);
+
         for (int i = 0; i < node->children_count; i++) {
             Node *child = node->children[i];
             analyze(child);
@@ -988,11 +1049,11 @@ void analyze(Node *node) {
     case VAR: {
         break;
     }
-    case I32: {
+    case I32:
+    case VOID: {
         break;
-    }
-    case ARGS:
-    case ARG: {
+    } // clang-format off
+    case ARGS: case ARG: { // clang-format on
         break;
     }
     case ID: {
@@ -1027,8 +1088,29 @@ void analyze(Node *node) {
         exit_scope();
         break;
     }
-    case RETURN: {
+    case IF: {
+        enter_scope(node);
         analyze(node->left);
+        for (int i = 0; i < node->children_count; i++) {
+            Node *child = node->children[i];
+            analyze(child);
+        }
+        Node *curr = node->right;
+        while (curr) {
+            if (curr->left)
+                analyze(curr->left);
+            for (int i = 0; i < curr->children_count; i++) {
+                Node *child = curr->children[i];
+                analyze(child);
+            }
+            curr = curr->right;
+        }
+        exit_scope();
+        break;
+    }
+    case RETURN: {
+        if (node->left)
+            analyze(node->left);
         break;
     } // clang-format off
     case ASSIGN: {
@@ -1038,6 +1120,8 @@ void analyze(Node *node) {
             node->left = node->left->left;
         break;
     }
+    case AND: case OR: 
+    case GT: case LT: case GE: case LE: case EQ: case NQ: 
     case ADD: case SUB: case MUL: case DIV: case MOD: {
         analyze(node->left);
         analyze(node->right);
@@ -1071,9 +1155,8 @@ void analyze(Node *node) {
     }
 }
 
-void codegen_beg(Node *node) {
+void codegen_beg(char *name) {
     ura.context = LLVMContextCreate();
-    char *name = node->token->name;
     ura.module = LLVMModuleCreateWithNameInContext(name, ura.context);
     ura.builder = LLVMCreateBuilderInContext(ura.context);
 
@@ -1101,7 +1184,7 @@ void codegen_beg(Node *node) {
     // TODO: add flags stuff (Passes)
 }
 
-void codegen_end(Node *node) {
+void codegen_finish(char *path) {
     char *error = NULL;
     // PassBuilderOptions opts = LLVMCreatePassBuilderOptions();
     // if (ura.flags) {
@@ -1121,16 +1204,22 @@ void codegen_end(Node *node) {
         eprint("module verification failed:\n%s\n", error);
     LLVMDisposeMessage(error);
     // LLVMDisposePassBuilderOptions(opts);
-    char *path = ura_dup(node->token->file.path);
-    strncpy(path + strlen(path) - 3, "ll\0", 3);
+    // char *path = ura_dup(node->token->file.path);
+    // strncpy(path + strlen(path) - 3, "ll\0", 3);
     LLVMPrintModuleToFile(ura.module, path, NULL);
 }
 
 TypeRef get_type(Node *node) {
-    if (!node)
+    switch (node->token->type) {
+    case VOID:
         return LLVMVoidTypeInContext(ura.context);
-    // TODO: implement the rest
-    return LLVMInt32TypeInContext(ura.context);
+    case I32:
+        return LLVMInt32TypeInContext(ura.context);
+    default:
+        eprint("handle this case %k\n", node->token);
+        exit(1);
+    }
+    return NULL;
 }
 
 void codegen_declare_function(Node *node) {
@@ -1186,7 +1275,8 @@ void codegen_create_value(Node *node) {
     }
     default: {
         eprint("handle this case %k\n", node->token);
-        exit(1);
+        raise(SIGSEGV);
+        // exit(1);
         break;
     }
     }
@@ -1270,7 +1360,7 @@ void codegen_load(Node *node) {
     node->token->llvm.elem = LLVMBuildLoad2(ura.builder, type, ptr, name);
 }
 
-void codegen_bloc(Node *node) {
+void codegen_body(Node *node) {
     for (int i = 0; i < node->children_count; i++) {
         Node *child = node->children[i];
         codegen(child);
@@ -1299,6 +1389,34 @@ void codegen_call_function(Node *node) {
     node->token->llvm.elem = fn_elem;
 }
 
+Bloc codegen_label(char *name) {
+    Value parent = get_parent_bloc();
+    return LLVMAppendBasicBlockInContext(ura.context, parent, name);
+}
+
+void codegen_jmp_cond(Node *node, Bloc then, Bloc next) {
+    LLVMBuildCondBr(ura.builder, node->token->llvm.elem, then, next);
+    LLVMPositionBuilderAtEnd(ura.builder, then);
+}
+
+void codegen_jmp(Bloc bloc) {
+    if (!is_bloc_terminated())
+        LLVMBuildBr(ura.builder, bloc);
+    LLVMPositionBuilderAtEnd(ura.builder, bloc);
+}
+
+void codegen_at(Bloc bloc) {
+    LLVMPositionBuilderAtEnd(ura.builder, bloc);
+}
+
+Value get_parent_bloc() {
+    return LLVMGetBasicBlockParent(LLVMGetInsertBlock(ura.builder));
+}
+
+void codegen_end(Bloc bloc) {
+    LLVMMoveBasicBlockAfter(bloc, LLVMGetLastBasicBlock(get_parent_bloc()));
+}
+
 void codegen(Node *node) {
     switch (node->token->type) {
     case VAR:
@@ -1325,13 +1443,37 @@ void codegen(Node *node) {
     }
     case FN_DEC: {
         codegen_entry(node);
-        codegen_bloc(node);
+        codegen_body(node);
         break;
     }
     case RETURN: {
         if (node->left) // case return (void)
             codegen(node->left);
         codegen_return(node->left);
+        break;
+    }
+    case IF: {
+        Token *head = node->token;
+        head->llvm.end = codegen_label("endif");
+        for (Node *curr = node; curr; curr = curr->right) {
+            enter_scope(curr);
+            Token *token = curr->token;
+            if (curr->left) {
+                token->llvm.then = codegen_label("then");
+                if (curr->right)
+                    token->llvm.bloc = codegen_label("next");
+                else
+                    token->llvm.bloc = head->llvm.end;
+                codegen(curr->left);
+                codegen_jmp_cond(curr->left, token->llvm.then, token->llvm.bloc);
+            }
+            codegen_body(curr);
+            codegen_jmp(head->llvm.end);
+            exit_scope();
+            if (curr->left)
+                codegen_at(token->llvm.bloc);
+        }
+        codegen_end(head->llvm.end);
         break;
     }
     case SCOPE: {
@@ -1354,6 +1496,8 @@ void codegen(Node *node) {
         codegen_assign(node->left, node->right);
         break;
     }
+    case AND: case OR:
+    case GT: case LT: case GE: case LE: case EQ: case NQ: 
     case ADD: case SUB: case MUL: case DIV: case MOD: { // clang-format on
         codegen(node->left);
         codegen(node->right);
@@ -1396,31 +1540,54 @@ TODO:
 int main(int ac, char **av) {
     atexit(ura_free);
     parse_args(ac, av);
-    for (size_t i = 0; i < ura.files_count; i++) {
-        Node *file = ura.files[i];
-        ura.tokens_count = 0;
-        ura.exe_pos = 0;
-        print(GREEN("======================================\n"));
-        print(GREEN("[TOKENIZE]:\n"));
-        tokenize(file);
-        for (size_t i = 0; i < ura.tokens_count; i++)
-            print(CYAN("token ") "%k\n", ura.tokens[i]);
-        parse_file(file);
-        print("%n", file);
+    ura.tokens_count = 0;
+    ura.exe_pos = 0;
+    print(GREEN("======================================\n"));
+    print(GREEN("[TOKENIZE]:\n"));
+    for (size_t i = 0; i < ura.tree->children_count; i++) {
+        Node *file = ura.tree->children[i];
+        tokenize(file, 0);
     }
-    for (size_t i = 0; i < ura.files_count; i++) {
-        Node *file = ura.files[i];
-        print(GREEN("======================================\n"));
-        print(GREEN("[ANALYZE]:\n"));
+    new_token(END, NULL);
+
+    print(GREEN("======================================\n"));
+    for (size_t i = 0; i < ura.tokens_count; i++)
+        print(CYAN("token ") "%k\n", ura.tokens[i]);
+
+    print(GREEN("======================================\n"));
+    print(GREEN("[AST]:\n"));
+    for (size_t i = 0; i < ura.tree->children_count; i++) {
+        Node *file = ura.tree->children[i]; // File node / empty children
+        enter_scope(file);
+        while (peek(0)->type != END)
+            push_back(file->children, parse_expr(0));
+        exit_scope();
+    }
+    print(GREEN("======================================\n"));
+    for (size_t i = 0; i < ura.tree->children_count; i++) {
+        print("%n", ura.tree->children[i]);
+    }
+
+    print(GREEN("======================================\n"));
+    print(GREEN("[ANALYZE]:\n"));
+    for (size_t i = 0; i < ura.tree->children_count; i++) {
+        Node *file = ura.tree->children[i];
         analyze(file);
-        print("%n", file);
-        print(GREEN("======================================\n"));
-        print(GREEN("[CODE GEN]:\n"));
-        codegen_beg(file);
-        codegen(file);
-        codegen_end(file);
     }
-    print("%s: %zu\n", CYAN("allocated"), ura.heap_used);
+    print(GREEN("======================================\n"));
+    for (size_t i = 0; i < ura.tree->children_count; i++) {
+        print("%n", ura.tree->children[i]);
+    }
+
+    print(GREEN("======================================\n"));
+    print(GREEN("[CODE GEN]:\n"));
+    make_dir(format("%s/build", cwd_path())); // TODO: save cwd in ura
+    codegen_beg("ura");
+    for (size_t i = 0; i < ura.tree->children_count; i++) {
+        Node *file = ura.tree->children[i];
+        codegen(file);
+    }
+    codegen_finish(format("%s/build/out.ll", cwd_path()));
 }
 
 // MEMORY
@@ -1488,6 +1655,7 @@ void ura_free() {
         free(curr);
         curr = next;
     }
+    print("%s: %zu byte(s)\n", CYAN("allocated"), ura.heap_used);
 }
 
 char *ura_dup(char *str) {
@@ -1517,7 +1685,8 @@ bool ura_ncmp(char *left, char *right, size_t n) {
 // clang-format on
 
 // FILE MANAGEMENT
-Node *new_file(char *name, int space) {
+Node *new_file(char *name) {
+    // TODO: check if file lready opened reuse it
     char *path = realpath(name, NULL);
     if (path == NULL) {
         eprint("can not open file %s\n", name);
@@ -1533,7 +1702,6 @@ Node *new_file(char *name, int space) {
     }
     Token *new = ura_alloc(1, sizeof(Token));
     new->type = SCOPE;
-    new->space = space;
     new->name = ura_dup(name);
     new->file.path = ura_dup(path);
     free(path);
@@ -1543,16 +1711,25 @@ Node *new_file(char *name, int space) {
     return node;
 }
 
-void open_file(Token *token) {
-    token->file.build_dir = format("%s/build", token->file.dir);
-    DIR *dir = opendir(token->file.build_dir);
-    if (dir) {
-        closedir(dir);
-    } else if (mkdir(token->file.build_dir, 0755) != 0) {
-        eprint("mkdir failed\n");
+char *cwd_path(void) {
+    char *path = getcwd(NULL, 0);
+    if (path == NULL) {
+        eprint("getcwd failed\n");
         exit(1);
     }
+    char *res = ura_dup(path);
+    free(path);
+    return res;
+}
 
+void make_dir(char *path) {
+    if (mkdir(path, 0755) != 0 && errno != EEXIST) {
+        eprint("mkdir failed %s\n", path);
+        exit(1);
+    }
+}
+
+void open_file(Token *token) {
     File fp = fopen(token->file.path, "r");
     if (fp == NULL) {
         eprint("fopen failed\n");
@@ -1567,6 +1744,10 @@ void open_file(Token *token) {
     token->file.buff = ura_alloc(token->file.len + 1, sizeof(char));
     fread(token->file.buff, token->file.len, sizeof(char), fp);
     fclose(fp);
+}
+
+void close_file(Token *token) {
+    token->file.opened = false;
 }
 
 // UTILS
@@ -1630,7 +1811,7 @@ void _print_node_helper(NodePrint *elems, Node *node, int depth) {
     push_back(elems->nodes, node);
     push_back(elems->depths, depth);
 
-    if (!includes(node->token->type, BRK, CNT, 0)) {
+    if (!includes(node->token->type, BRK, CNT, FN_CALL, 0)) {
         Node *left = node->left;
         bool is_struct = left && left->token->type == STRUCT_DEC;
         if (includes(node->token->type, ID, VAR, REF, 0) && is_struct) {
@@ -1639,8 +1820,7 @@ void _print_node_helper(NodePrint *elems, Node *node, int depth) {
         } 
         else _print_node_helper(elems, left, depth + 3);
     }
-    if (!includes(node->token->type, FN_CALL, 0))
-        _print_node_helper(elems, node->right, depth + 3);
+    _print_node_helper(elems, node->right, depth + 3);
     for (size_t i = 0; i < node->children_count; i++)
         _print_node_helper(elems, node->children[i], depth + 3);
 }
@@ -1683,6 +1863,13 @@ int _print(File fp, const char *fmt, va_list ap) {
             case 'c': r += fprintf(fp, "%c", va_arg(ap, int)); break;
             case 'f': r += fprintf(fp, "%f", va_arg(ap, double)); break;
             case 'z': r += fprintf(fp, "%zu", va_arg(ap, size_t)); i++; break;
+            case '.': {
+                int n = va_arg(ap, int);
+                char *str = va_arg(ap, char*);
+                r += fprintf(fp, "%.*s", n, str);
+                i += 2; // skip *s
+                break;
+            }
             case 'i': r += fprintf(fp, "%*s", va_arg(ap, int), ""); break;
             case '%': r += fprintf(fp, "%%"); break;
             case 't': r += fprintf(fp, "%s", to_string(va_arg(ap, Type))); break;

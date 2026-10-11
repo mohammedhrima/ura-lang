@@ -6,7 +6,9 @@ import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { describe, test } from "node:test";
-import { lint, parseStderr } from "../analysis/compiler";
+import * as os from "node:os";
+import { lint, parseStderr, stage } from "../analysis/compiler";
+import { importedFunctions, Reader, resolveUse, walkUses } from "../analysis/imports";
 import {
     analyze,
     callContext,
@@ -20,7 +22,7 @@ import {
 
 const REPO = path.resolve(__dirname, "../../..");
 const RECORDED = path.join(REPO, "src", "tests");
-const COMPILER = path.join(REPO, "src", "build", "ura");
+const COMPILER = path.join(REPO, "bin", "ura");
 
 // every ```ura block of every src/tests/*.md, labelled "file.md #n"
 function recordedPrograms(): { label: string; source: string }[] {
@@ -286,11 +288,11 @@ describe("call context", () => {
 });
 
 describe("recent language additions", () => {
-    test("and / or / proto are keywords, not names", () => {
+    test("and / or / proto / use are keywords, not names", () => {
         const source =
-            "proto exit(code i32)\n\nfn main() i32:\n    a i32 = 1\n    if a > 0 and a < 3 or a == 9:\n        return 1\n    return 0\n";
+            "use \"helper\"\nproto exit(code i32)\n\nfn main() i32:\n    a i32 = 1\n    if a > 0 and a < 3 or a == 9:\n        return 1\n    return 0\n";
         const analysis = analyze(source);
-        for (const keyword of ["and ", "or ", "proto "]) {
+        for (const keyword of ["and ", "or ", "proto ", "use "]) {
             assert.equal(resolve(analysis, positionOf(source, keyword)), undefined, keyword.trim());
         }
         // the variable next to them still resolves
@@ -356,5 +358,72 @@ describe("compiler output", () => {
         const problems = await lint("/nonexistent/ura", "fn main() i32:\n    return 0\n");
         assert.equal(problems.length, 1);
         assert.match(problems[0].message, /cannot run the ura compiler/);
+    });
+});
+
+describe("use", () => {
+    // an in-memory project: absolute path -> source
+    function project(files: Record<string, string>): Reader {
+        return (file) => files[file];
+    }
+
+    test("use lines are found, with the range of their path", () => {
+        const source = 'use "helper"\n\nfn main() i32:\n    use "sub/deep" // block use\n    return 0\n';
+        const uses = analyze(source).uses;
+        assert.deepEqual(
+            uses.map((u) => [u.target, u.line, u.indent]),
+            [["helper", 0, 0], ["sub/deep", 3, 4]],
+        );
+        assert.equal(source.split("\n")[0].slice(uses[0].start, uses[0].end), "helper");
+        assert.equal(source.split("\n")[3].slice(uses[1].start, uses[1].end), "sub/deep");
+    });
+
+    test("a use path is relative to the file that writes it", () => {
+        assert.equal(resolveUse("/p/app/main.ura", "../lib/m"), "/p/lib/m.ura");
+        assert.equal(resolveUse("/p/app/main.ura", "sub/deep"), "/p/app/sub/deep.ura");
+    });
+
+    test("a diamond is read once and a cycle ends", () => {
+        const read = project({
+            "/p/d1.ura": 'use "base"\nuse "d2"\n',
+            "/p/d2.ura": 'use "base"\nuse "main"\n',
+            "/p/base.ura": "fn base() i32:\n    return 5\n",
+        });
+        const files = walkUses("/p/main.ura", 'use "d1"\n', read, () => true);
+        assert.deepEqual(files.map((f) => f.file), ["/p/main.ura", "/p/d1.ura", "/p/base.ura", "/p/d2.ura"]);
+    });
+
+    test("imported functions are transitive, but not through a use inside a function", () => {
+        const read = project({
+            "/p/mid.ura": 'use "deep"\n\nfn total() i32:\n    use "private"\n    return deep() + 1\n',
+            "/p/deep.ura": "fn deep() i32:\n    return 3\n",
+            "/p/private.ura": "fn hidden() i32:\n    return 0\n",
+        });
+        const main = 'use "mid"\n\nfn main() i32:\n    return total() + deep()\n';
+        const imported = importedFunctions("/p/main.ura", main, read);
+        assert.deepEqual(imported.map((i) => [i.fn.name, i.file]), [["total", "/p/mid.ura"], ["deep", "/p/deep.ura"]]);
+
+        const found = resolve(analyze(main), positionOf(main, "deep()"), imported);
+        assert.equal(found?.kind, "function");
+        assert.equal(found?.kind === "function" && found.file, "/p/deep.ura");
+        assert.equal(findFunction(analyze(main), "total", imported)?.line, 2);
+    });
+
+    test("a missing file is skipped: the compiler reports it", () => {
+        const files = walkUses("/p/main.ura", 'use "nope"\n', project({}), () => true);
+        assert.deepEqual(files.map((f) => f.file), ["/p/main.ura"]);
+    });
+
+    test("lint copies used files with their layout, even above the document", () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ura-stage-test-"));
+        try {
+            const read = project({ "/p/lib/m.ura": "fn m() i32:\n    return 1\n" });
+            const input = stage(dir, "/p/app/main.ura", 'use "../lib/m"\n', read);
+            assert.equal(input, path.join(dir, "app", "main.ura"));
+            assert.equal(fs.readFileSync(input, "utf8"), 'use "../lib/m"\n');
+            assert.equal(fs.readFileSync(path.join(dir, "lib", "m.ura"), "utf8"), "fn m() i32:\n    return 1\n");
+        } finally {
+            fs.rmSync(dir, { recursive: true, force: true });
+        }
     });
 });

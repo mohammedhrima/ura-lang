@@ -25,6 +25,10 @@ in `../src` accepts today.
 - **Hover**: signature of a function, type of a variable or parameter.
 - **Signature help** while typing a call.
 - **Go to definition** for functions and variables in the same file.
+- **`use "path"`**: ctrl+click the path to open the file. Functions from used
+  files (and from the files they `use` at top level) show up in completion,
+  hover, signature help and go to definition. Diagnostics compile a copy of
+  the used files too, so `use` paths resolve as they do on disk.
 - **Diagnostics from the real compiler**: on open and on save the file is
   compiled with `ura`, and its errors show up in the Problems panel. The
   compiler doesn't report source positions yet, so errors are shown on the
@@ -36,7 +40,7 @@ in `../src` accepts today.
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `ura.compilerPath` | `""` | Compiler used for diagnostics. Empty: `<workspace>/src/build/ura` if it exists, otherwise `ura` from `PATH`. |
+| `ura.compilerPath` | `""` | Compiler used for diagnostics. Empty: `<workspace>/bin/ura` if it exists, otherwise `ura` from `PATH`. |
 | `ura.lint.enable` | `true` | Turn compiler diagnostics on or off. |
 
 ## Build and install

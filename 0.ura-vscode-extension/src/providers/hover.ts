@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { builtinSignature, findBuiltin } from "../analysis/keywords";
 import { analyze, functionSignature, isInComment, resolve, wordAt } from "../analysis/parser";
+import { importsOf } from "./documents";
 
 function code(text: string): vscode.MarkdownString {
     return new vscode.MarkdownString().appendCodeblock(text, "ura");
@@ -25,7 +26,8 @@ export class HoverProvider implements vscode.HoverProvider {
         }
 
         const analysis = analyze(document.getText());
-        const found = resolve(analysis, { line: position.line, character: position.character });
+        const at = { line: position.line, character: position.character };
+        const found = resolve(analysis, at, importsOf(document));
         if (!found) {
             return undefined;
         }

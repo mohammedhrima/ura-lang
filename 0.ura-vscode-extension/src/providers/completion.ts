@@ -5,10 +5,12 @@ import {
     builtinSignature,
     CONTROL,
     DECLARATION,
+    IMPORT,
     LOGICAL,
     TYPES,
 } from "../analysis/keywords";
-import { analyze, functionSignature, isInComment, visibleVariables } from "../analysis/parser";
+import { analyze, FunctionInfo, functionSignature, isInComment, visibleVariables } from "../analysis/parser";
+import { importsOf } from "./documents";
 
 function keyword(label: string, kind: vscode.CompletionItemKind): vscode.CompletionItem {
     return new vscode.CompletionItem(label, kind);
@@ -25,7 +27,7 @@ export class CompletionProvider implements vscode.CompletionItemProvider {
         }
 
         const items: vscode.CompletionItem[] = [];
-        for (const word of [...CONTROL, ...LOGICAL, ...DECLARATION]) {
+        for (const word of [...CONTROL, ...LOGICAL, ...DECLARATION, ...IMPORT]) {
             items.push(keyword(word, vscode.CompletionItemKind.Keyword));
         }
         for (const type of TYPES) {
@@ -44,7 +46,8 @@ export class CompletionProvider implements vscode.CompletionItemProvider {
         }
 
         const analysis = analyze(document.getText());
-        for (const fn of analysis.functions) {
+        const functions: FunctionInfo[] = [...analysis.functions, ...importsOf(document).map((i) => i.fn)];
+        for (const fn of functions) {
             const item = new vscode.CompletionItem(fn.name, vscode.CompletionItemKind.Function);
             const args = fn.params.map((p, i) => `\${${i + 1}:${p.name}}`).join(", ");
             item.insertText = new vscode.SnippetString(`${fn.name}(${args})`);

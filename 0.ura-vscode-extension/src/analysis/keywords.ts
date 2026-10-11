@@ -5,6 +5,7 @@
 export const CONTROL = ["if", "elif", "else", "while", "break", "continue", "return"];
 export const LOGICAL = ["and", "or"];
 export const DECLARATION = ["fn", "proto"];
+export const IMPORT = ["use"];
 export const TYPES = ["i8", "char", "i32", "b1"];
 export const BOOLEANS = ["True", "False"];
 
@@ -24,6 +25,7 @@ export const RESERVED = new Set<string>([
     ...CONTROL,
     ...LOGICAL,
     ...DECLARATION,
+    ...IMPORT,
     ...TYPES,
     ...BOOLEANS,
     ...BUILTINS.map((b) => b.name),

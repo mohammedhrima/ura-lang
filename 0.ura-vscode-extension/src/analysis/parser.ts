@@ -39,10 +39,25 @@ export interface VariableInfo {
     isParam: boolean;
 }
 
+export interface UseInfo {
+    target: string; // the path as written, without ".ura"
+    line: number;
+    indent: number;
+    start: number; // where the path starts, after the opening quote
+    end: number; // the closing quote
+}
+
 export interface Analysis {
     lines: string[];
     functions: FunctionInfo[];
     variables: VariableInfo[];
+    uses: UseInfo[];
+}
+
+// A function declared in another file and brought in through `use`.
+export interface ImportedFunction {
+    file: string;
+    fn: FunctionInfo;
 }
 
 export interface CallContext {
@@ -54,6 +69,8 @@ const IDENT = /[A-Za-z_]\w*/;
 const FN_HEADER = /^(\s*)(fn|proto)\s+([A-Za-z_]\w*)\s*\(/;
 // `name type` or `name type = value`, where type is i32, b1 or a ref `&type`
 const DECLARATION = /^(\s*)([A-Za-z_]\w*)(\s+)(i32|b1|&\w+)\s*(=.*)?$/;
+// `use "path"`, at any indentation
+const USE = /^(\s*)use\s+"([^"]*)"/;
 
 // Where the comment starts on this line, or -1. A `//` inside a string
 // literal doesn't start one, just like in the tokenizer.
@@ -222,7 +239,18 @@ export function analyze(source: string): Analysis {
         });
     }
 
-    return { lines, functions, variables };
+    const uses: UseInfo[] = [];
+    for (let line = 0; line < lines.length; line++) {
+        const match = USE.exec(stripComment(lines[line]));
+        if (!match) {
+            continue;
+        }
+        const end = match[0].length - 1;
+        const start = end - match[2].length;
+        uses.push({ target: match[2], line, indent: match[1].length, start, end });
+    }
+
+    return { lines, functions, variables, uses };
 }
 
 // A declaration stays visible until a line indented less than it: blocks
@@ -281,15 +309,25 @@ export function wordAt(line: string, character: number): Word | undefined {
 }
 
 export type Resolved =
-    | { kind: "function"; function: FunctionInfo }
+    | { kind: "function"; function: FunctionInfo; file?: string } // file: set when declared in another file
     | { kind: "variable"; variable: VariableInfo };
 
-export function findFunction(analysis: Analysis, name: string): FunctionInfo | undefined {
-    return analysis.functions.find((fn) => fn.name === name);
+// This file's functions come first, then the ones brought in through `use`.
+export function findFunction(
+    analysis: Analysis,
+    name: string,
+    imported: ImportedFunction[] = [],
+): FunctionInfo | undefined {
+    return analysis.functions.find((fn) => fn.name === name) ?? imported.find((i) => i.fn.name === name)?.fn;
 }
 
-// What the identifier under the cursor refers to, if it's declared in this file.
-export function resolve(analysis: Analysis, at: Position): Resolved | undefined {
+// What the identifier under the cursor refers to, if it's declared in this
+// file or in one of the `imported` functions.
+export function resolve(
+    analysis: Analysis,
+    at: Position,
+    imported: ImportedFunction[] = [],
+): Resolved | undefined {
     const line = analysis.lines[at.line] ?? "";
     if (isInComment(line, at.character)) {
         return undefined;
@@ -312,7 +350,11 @@ export function resolve(analysis: Analysis, at: Position): Resolved | undefined 
         }
     }
     const fn = findFunction(analysis, word.text);
-    return fn ? { kind: "function", function: fn } : undefined;
+    if (fn) {
+        return { kind: "function", function: fn };
+    }
+    const other = imported.find((i) => i.fn.name === word.text);
+    return other ? { kind: "function", function: other.fn, file: other.file } : undefined;
 }
 
 // The innermost unclosed `name(` before the cursor, on the cursor's line.

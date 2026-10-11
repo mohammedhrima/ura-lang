@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { lint, Problem, resolveCompiler } from "../analysis/compiler";
+import { readSource } from "./documents";
 
 function isUra(document: vscode.TextDocument): boolean {
     return document.languageId === "ura" && document.uri.scheme === "file";
@@ -32,7 +33,8 @@ export class Diagnostics implements vscode.Disposable {
     start(): void {
         this.subscriptions.push(
             vscode.workspace.onDidOpenTextDocument((d) => this.lint(d)),
-            vscode.workspace.onDidSaveTextDocument((d) => this.lint(d)),
+            // any open file may `use` the saved one, so every open file is checked again
+            vscode.workspace.onDidSaveTextDocument(() => this.lintAll()),
             vscode.workspace.onDidCloseTextDocument((d) => this.collection.delete(d.uri)),
             vscode.workspace.onDidChangeConfiguration((e) => {
                 if (e.affectsConfiguration("ura")) {
@@ -63,7 +65,7 @@ export class Diagnostics implements vscode.Disposable {
         const compiler = resolveCompiler(config.get<string>("compilerPath", ""), folder?.uri.fsPath);
 
         const version = document.version;
-        const problems = await lint(compiler, document.getText());
+        const problems = await lint(compiler, document.getText(), document.uri.fsPath, readSource);
         if (document.isClosed || document.version !== version) {
             return; // the result is for text that no longer exists
         }

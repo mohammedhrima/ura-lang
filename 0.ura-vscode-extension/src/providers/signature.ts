@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { builtinSignature, findBuiltin } from "../analysis/keywords";
 import { analyze, callContext, findFunction, functionSignature } from "../analysis/parser";
+import { importsOf } from "./documents";
 
 export class SignatureProvider implements vscode.SignatureHelpProvider {
     provideSignatureHelp(
@@ -19,7 +20,7 @@ export class SignatureProvider implements vscode.SignatureHelpProvider {
             signature = new vscode.SignatureInformation(builtinSignature(builtin), builtin.doc);
             signature.parameters = builtin.params.map((p) => new vscode.ParameterInformation(p));
         } else {
-            const fn = findFunction(analyze(document.getText()), call.name);
+            const fn = findFunction(analyze(document.getText()), call.name, importsOf(document));
             if (!fn) {
                 return undefined;
             }

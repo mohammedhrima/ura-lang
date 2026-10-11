@@ -71,7 +71,7 @@
         "ura.compilerPath": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Path to the `ura` compiler used for diagnostics. When empty, `<workspace>/src/build/ura` is used if it exists, otherwise `ura` from `PATH`."
+          "markdownDescription": "Path to the `ura` compiler used for diagnostics. When empty, `<workspace>/bin/ura` is used if it exists, otherwise `ura` from `PATH`."
         },
         "ura.lint.enable": {
           "type": "boolean",

@@ -3,7 +3,8 @@
 #   source config.sh
 #
 # defines these shell commands:
-#   build    rebuild build/ura
+#   build    rebuild bin/ura (the compiler); build/ only holds what ura
+#            itself generates when it compiles a file
 #   copy <ura_file> <md_prefix> <description>
 #            snapshot <ura_file> into tests/<md_prefix>.md; an entry with the
 #            same description is replaced in place, otherwise one is appended
@@ -36,15 +37,16 @@ fi
 URA_ROOT="$(cd "$(dirname "$_ura_self")" && pwd)"
 unset _ura_self
 
-URA_BUILD_DIR="$URA_ROOT/build"
+URA_BIN_DIR="$(cd "$URA_ROOT/.." && pwd)/bin" # the ura compiler itself, in the repo root
+URA_BUILD_DIR="$URA_ROOT/build" # what ura generates when it compiles a file
 URA_TESTS_DIR="$URA_ROOT/tests"
-URA_BIN="$URA_BUILD_DIR/ura"
+URA_BIN="$URA_BIN_DIR/ura"
 
-# put build/ on PATH so `ura` is callable by name; the case guard keeps
+# put bin/ on PATH so `ura` is callable by name; the case guard keeps
 # re-sourcing from stacking duplicate entries
 case ":$PATH:" in
-    *":$URA_BUILD_DIR:"*) ;;
-    *) PATH="$URA_BUILD_DIR:$PATH" ;;
+    *":$URA_BIN_DIR:"*) ;;
+    *) PATH="$URA_BIN_DIR:$PATH" ;;
 esac
 export PATH
 
@@ -68,7 +70,7 @@ _ura_green() { printf '\033[0;32m%s\033[0m\n' "$1"; }
 _ura_red()   { printf '\033[0;31m%s\033[0m\n' "$1"; }
 
 # ============================================================================
-# build - compile the ura compiler itself into build/ura
+# build - compile the ura compiler itself into bin/ura
 # ============================================================================
 build() {
     (
@@ -110,7 +112,7 @@ build() {
         echo "using LLVM $("$LLVM_CONFIG" --version) ($LLVM_CONFIG)"
 
         # ipo holds the legacy pass manager main.c falls back to before LLVM 13;
-        # the rpath lets build/ura find a shared LLVM installed outside system paths
+        # the rpath lets bin/ura find a shared LLVM installed outside system paths
         LIBS=($("$LLVM_CONFIG" --ldflags) "-Wl,-rpath,$("$LLVM_CONFIG" --libdir)")
         LIBS+=($("$LLVM_CONFIG" --libs core native bitwriter passes ipo))
 
@@ -159,9 +161,9 @@ build() {
             echo "build: Universal Ctags not found, proto.h not regenerated" >&2
         fi
 
-        mkdir -p build
-        "$CC" "${FLAGS[@]}" "${CFLAGS_LLVM[@]}" main.c "${LIBS[@]}" -o build/ura
-    ) && _ura_green "build: build/ura ready" || { _ura_red "build: failed"; return 1; }
+        mkdir -p "$URA_BIN_DIR"
+        "$CC" "${FLAGS[@]}" "${CFLAGS_LLVM[@]}" main.c "${LIBS[@]}" -o "$URA_BIN"
+    ) && _ura_green "build: bin/ura ready" || { _ura_red "build: failed"; return 1; }
 }
 
 # ============================================================================
@@ -191,9 +193,10 @@ _ura_compile_case() {
     ll="$dir/build/$(basename "$ura_file" .ura).ll"
 
     if [ ! -x "$URA_BIN" ]; then
-        _ura_red "compile: build/ura not found - run 'build' first"
+        _ura_red "compile: bin/ura not found - run 'build' first"
         return 2
     fi
+    mkdir -p "$URA_BUILD_DIR"
 
     # a compiler that loops forever fails its test instead of the whole run;
     # macOS has no timeout, so it runs unguarded there
@@ -668,7 +671,7 @@ tests() {
     _ura_passed=0
     _ura_failed=0
 
-    # always test the current sources, never a stale build/ura
+    # always test the current sources, never a stale bin/ura
     build || return 1
     echo
 

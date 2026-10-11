@@ -8,6 +8,7 @@
     { "include": "#characters" },
     { "include": "#comments" },
     { "include": "#function-definition" },
+    { "include": "#import" },
     { "include": "#control" },
     { "include": "#types" },
     { "include": "#pointers" },
@@ -58,6 +59,14 @@
             "1": { "name": "keyword.declaration.function.ura" },
             "2": { "name": "entity.name.function.ura" }
           }
+        }
+      ]
+    },
+    "import": {
+      "patterns": [
+        {
+          "name": "keyword.control.import.ura",
+          "match": "\\buse\\b"
         }
       ]
     },
