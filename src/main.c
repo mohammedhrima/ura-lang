@@ -701,7 +701,7 @@ void push_child(Node *node, Node *child) {
     push_back(node->children, child);
 }
 
-void parse_bloc(Node *node) {
+void parse_body(Node *node) {
     while (inside(node->token->space)) {
         Node *child = parse_expr(0);
         push_child(node, child);
@@ -734,7 +734,6 @@ Node *parse_prime() {
     }
     case ID: {
         if (peek(0)->type == LPARENT) { // FN_CALL
-
             token->type = FN_CALL;
             node = new_node(token);
             next(); // skip (
@@ -756,10 +755,6 @@ Node *parse_prime() {
             node = new_node(new_token(DECLARE, token));
             node->left = new_node(token);
             node->right = type;
-            // Node *var = new_node(new_token(ID, token));
-            // var->left = new_node(token);
-            // var->right = type;
-            // node->left = var;
             return node;
         }
 
@@ -822,7 +817,7 @@ Node *parse_prime() {
             return recover(token);
         next();
 
-        parse_bloc(node);
+        parse_body(node);
 
 
         push_back(node->children, get_default_return(node));
@@ -845,7 +840,7 @@ Node *parse_prime() {
             return recover(token);
         next();
         // enter_scope();
-        parse_bloc(node);
+        parse_body(node);
         exit_scope();
 
         Node *curr = node;
@@ -870,9 +865,31 @@ Node *parse_prime() {
             if (!check_next(DOTS, "expected :"))
                 return recover(token);
             next();
-            parse_bloc(curr);
+            parse_body(curr);
             exit_scope();
         }
+        return node;
+    }
+    case WHILE: {
+        node = new_node(token);
+        enter_scope(node);
+        node->left = parse_expr(0);
+        if (!check_next(DOTS, "expected :"))
+            return recover(token);
+        next();
+        parse_body(node);
+        exit_scope();
+        return node;
+    } // clang-format off
+    case BRK: case CNT: { // clang-format on
+        // TODO: when declaring function inside function this might cause problem
+        node = new_node(token);
+        for (int i = ura.scopes_count - 1; i > 0 && !node->left; i--) {
+            if (ura.scopes[i]->token->type == WHILE)
+                node->left = ura.scopes[i];
+        }
+        assert(node->left != NULL);
+        // assert_inside_loop(node);
         return node;
     }
     case SCOPE: {
@@ -897,9 +914,10 @@ Node *parse_prime() {
         return node;
     }
     default:
-        eprint("handle this case %k\n", token);
-        exit(1);
+        break;
     }
+    eprint("handle this case %k\n", token);
+    exit(1);
     return NULL;
 }
 
@@ -1026,15 +1044,18 @@ void declare_function(Node *node) {
     }
 }
 
+void analyze_body(Node *node) {
+    for (int i = 0; i < node->children_count; i++) {
+        Node *child = node->children[i];
+        analyze(child);
+    }
+}
+
 void analyze(Node *node) {
     switch (node->token->type) {
     case SCOPE: {
         enter_scope(node);
-
-        for (int i = 0; i < node->children_count; i++) {
-            Node *child = node->children[i];
-            analyze(child);
-        }
+        analyze_body(node);
         exit_scope();
         break;
     }
@@ -1046,16 +1067,17 @@ void analyze(Node *node) {
         declare_variable(node->left);
         break;
     }
-    case VAR: {
+        // clang-format off
+    case VAR: { 
+        break; 
+    }
+    case I32: case VOID: {
+        break;
+    } 
+    case ARGS: case ARG: { 
         break;
     }
-    case I32:
-    case VOID: {
-        break;
-    } // clang-format off
-    case ARGS: case ARG: { // clang-format on
-        break;
-    }
+    // clang-format on
     case ID: {
         Node *var = find_variable(node->token->name);
         if (var == NULL) { // TODO: improve this
@@ -1081,33 +1103,32 @@ void analyze(Node *node) {
     case FN_DEC: {
         declare_function(node);
         enter_scope(node);
-        for (int i = 0; i < node->children_count; i++) {
-            Node *child = node->children[i];
-            analyze(child);
-        }
+        analyze_body(node);
         exit_scope();
         break;
     }
     case IF: {
         enter_scope(node);
         analyze(node->left);
-        for (int i = 0; i < node->children_count; i++) {
-            Node *child = node->children[i];
-            analyze(child);
-        }
+        analyze_body(node);
         Node *curr = node->right;
         while (curr) {
             if (curr->left)
                 analyze(curr->left);
-            for (int i = 0; i < curr->children_count; i++) {
-                Node *child = curr->children[i];
-                analyze(child);
-            }
+            analyze_body(curr);
             curr = curr->right;
         }
         exit_scope();
         break;
     }
+    case WHILE: {
+        enter_scope(node);
+        analyze(node->left);
+        analyze_body(node);
+        exit_scope();
+        break;
+    } // clang-format off
+    case BRK: case CNT: break; // clang-format on
     case RETURN: {
         if (node->left)
             analyze(node->left);
@@ -1417,6 +1438,10 @@ void codegen_end(Bloc bloc) {
     LLVMMoveBasicBlockAfter(bloc, LLVMGetLastBasicBlock(get_parent_bloc()));
 }
 
+void codegen_jmp_out(Bloc bloc) {
+    LLVMBuildBr(ura.builder, bloc);
+}
+
 void codegen(Node *node) {
     switch (node->token->type) {
     case VAR:
@@ -1474,6 +1499,30 @@ void codegen(Node *node) {
                 codegen_at(token->llvm.bloc);
         }
         codegen_end(head->llvm.end);
+        break;
+    }
+    case WHILE: {
+        Token *token = node->token;
+        token->llvm.cond = codegen_label("cond");
+        token->llvm.then = codegen_label("then");
+        token->llvm.end = codegen_label("endwhile");
+
+        enter_scope(node);
+        codegen_jmp(token->llvm.cond);
+        codegen(node->left);
+        codegen_jmp_cond(node->left, token->llvm.then, token->llvm.end);
+        codegen_body(node);
+        codegen_jmp(token->llvm.cond);
+        exit_scope();
+        codegen_at(token->llvm.end);
+        break;
+    }
+    case BRK: {
+        codegen_jmp_out(node->left->token->llvm.end);
+        break;
+    }
+    case CNT: {
+        codegen_jmp_out(node->left->token->llvm.cond);
         break;
     }
     case SCOPE: {

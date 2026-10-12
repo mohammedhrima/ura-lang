@@ -1,5 +1,4 @@
 fn main() i32:
-    a i32 = 1
-    if a == 1:
-        b i32 = 2
-    return b
+    if 1 < 2:
+        continue
+    return 0
