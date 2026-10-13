@@ -1,4 +1,8 @@
 fn main() i32:
-    if 1 < 2:
-        continue
-    return 0
+    a i32 = 1
+    b i32 = 2
+    p1 &i32 = &a
+    p2 &i32 = &b
+    p1 = &p2
+    p1 = 9
+    return b

@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <signal.h>
+#include <sys/wait.h>
 // #include <sys/types.h>
 #include <dirent.h>
 #include <llvm-c/Analysis.h>
@@ -245,7 +246,8 @@ struct Ura {
     size_t arena_count;
     size_t heap_used;
 
-    char *exec;
+    char *ll_path;
+    char *exec_path;
     int errors_count;
 
     Node *tree;
@@ -332,7 +334,8 @@ void parse_args(int ac, char **av) {
         exit(1);
     }
     ura.tree = new_node(new_token(URA, NULL));
-    ura.exec = "exe.out";
+    ura.ll_path = format("%s/build/out.ll", cwd_path());
+    ura.exec_path = format("%s/exe.out", cwd_path());
     for (int i = 1; i < ac && ura.errors_count == 0; i++) {
         char *arg = av[i];
         if (ura_cmp(arg, "-o")) {
@@ -341,7 +344,7 @@ void parse_args(int ac, char **av) {
                 help("-o exe.out\n");
                 exit(1);
             }
-            ura.exec = av[++i];
+            ura.exec_path = av[++i];
         } else {
             size_t n = strlen(arg);
             bool is_ura = n > 4 && ura_cmp(arg + n - 4, ".ura");
@@ -417,7 +420,7 @@ Token *parse_token(Type type, int s, int e, int space) {
             Token token;
         } keywords[] = {
             // clang-format off
-        { "b1", { .type = BOOL, .is_type = true } },
+        { "bool", { .type = BOOL, .is_type = true } },
         { "char", { .type = I8, .is_type = true } },
         { "i8", { .type = I8, .is_type = true } },
         { "i32", { .type = I32, .is_type = true } },
@@ -679,15 +682,29 @@ Node *recover(Token *start) {
 Node *is_type(Token *token) {
     if (token->is_type)
         return new_node(token);
-    // if(token)
+    // TODO: handle struct
     return NULL;
 }
 
 // TODO: add a proper check
 Node *parse_type(void) {
+    if (peek(0)->type == REF) {
+        Node *ref = new_node(next());
+        ref->left = parse_type();
+        assert(ref->left != NULL);
+        return ref;
+    }
+
     Node *type = is_type(peek(0));
     if (type) {
         next();
+        while (peek(0)->type == LBRACK && peek(1)->type == RBRACK) {
+            next();
+            next();
+            Node *array = new_node(new_token(ARRAY, type->token));
+            array->left = type;
+            type = array;
+        }
     }
     return type;
 }
@@ -723,8 +740,8 @@ Node *get_default_return(Node *node) {
 Node *parse_prime() {
     Token *token = next();
     Node *node = NULL;
-    switch (token->type) {
-    case I32: {
+    switch (token->type) { // clang-format off
+    case I32: case I8: case BOOL: case CHARS: { // clang-format on
         if (token->name == NULL) {
             node = new_node(new_token(VAL_CREATE, token));
             node->left = new_node(token);
@@ -760,11 +777,21 @@ Node *parse_prime() {
 
         return new_node(token);
     }
-    case FN_DEC: {
+    case REF: {
+        token->type = OWN;
+        node = new_node(token);
+        node->left = parse_prime();
+        assert(node->left);
+        assert(node->left->token->type == ID);
+        return node;
+    }
+    case FN_DEC:
+    case PROTO: {
         node = new_node(token);
         token = next(); // TODO: assert is ID
         node->token->name = token->name;
-        enter_scope(node);
+        if (node->token->type != PROTO)
+            enter_scope(node);
 
         if (!check_next(LPARENT, "expected ("))
             return recover(token);
@@ -773,6 +800,13 @@ Node *parse_prime() {
         node->right = new_node(new_token(ARGS, token));
 
         while (!includes(peek(0)->type, RPARENT, 0)) {
+            if (peek(0)->type == VARIADIC) {
+                next();
+                node->token->is_variadic = true;
+                if (!check_next(RPARENT, "... must be the last parameter"))
+                    return recover(token);
+                break;
+            }
             Token *id = next();
             if (id->type != ID) {
                 eprint("expected ID\n");
@@ -813,16 +847,16 @@ Node *parse_prime() {
         else
             node->left = new_node(new_token(VOID, token));
 
-        if (!check_next(DOTS, "expected :"))
-            return recover(token);
-        next();
+        if (node->token->type != PROTO) {
+            if (!check_next(DOTS, "expected :"))
+                return recover(token);
+            next();
 
-        parse_body(node);
+            parse_body(node);
+            push_back(node->children, get_default_return(node));
+            exit_scope();
+        }
 
-
-        push_back(node->children, get_default_return(node));
-
-        exit_scope();
         return node;
     }
     case RETURN: {
@@ -888,7 +922,10 @@ Node *parse_prime() {
             if (ura.scopes[i]->token->type == WHILE)
                 node->left = ura.scopes[i];
         }
-        assert(node->left != NULL);
+        if (node->left == NULL) {
+            eprint("break/continue should be inside a while loop\n");
+            exit(1);
+        }
         // assert_inside_loop(node);
         return node;
     }
@@ -1016,7 +1053,7 @@ Node *find_function(char *name) {
         // print(CYAN("in scope %s\n"), scope->token->name);
         for (int j = 0; j < scope->children_count; j++) {
             Node *child = scope->children[j];
-            if (child->token->type != FN_DEC)
+            if (!includes(child->token->type, FN_DEC, PROTO, 0))
                 continue;
 
             if (ura_cmp(child->token->name, name))
@@ -1031,7 +1068,7 @@ Node *find_function(char *name) {
 void declare_function(Node *node) {
     for (int i = 0; i < ura.scope->children_count; i++) {
         Node *dec = ura.scope->children[i];
-        if (dec->token->type != FN_DEC)
+        if (!includes(dec->token->type, FN_DEC, PROTO, 0))
             continue;
         if (dec == node)
             continue;
@@ -1051,6 +1088,10 @@ void analyze_body(Node *node) {
     }
 }
 
+bool is_ref(Node *node) {
+    return node->left && node->left->token->type == REF;
+}
+
 void analyze(Node *node) {
     switch (node->token->type) {
     case SCOPE: {
@@ -1065,16 +1106,20 @@ void analyze(Node *node) {
     }
     case DECLARE: {
         declare_variable(node->left);
+        node->left->left = node->right;
         break;
-    }
-        // clang-format off
+    } // clang-format off
     case VAR: { 
         break; 
     }
-    case I32: case VOID: {
+    case I32: case I8: case BOOL: case CHARS: case VOID: {
         break;
     } 
     case ARGS: case ARG: { 
+        break;
+    }
+    case OWN: {
+        analyze(node->left);
         break;
     }
     // clang-format on
@@ -1087,6 +1132,10 @@ void analyze(Node *node) {
         *node = *new_node(new_token(LOAD, node->token));
         node->token->name = format("load.%s", var->token->name);
         node->left = var;
+        if (is_ref(var)) {
+            node->left = new_node(new_token(DREF, var->token));
+            node->left->left = var;
+        }
         break;
     }
     case FN_CALL: {
@@ -1100,14 +1149,18 @@ void analyze(Node *node) {
         }
         break;
     }
-    case FN_DEC: {
+    case FN_DEC:
+    case PROTO: {
         declare_function(node);
-        enter_scope(node);
-        analyze_body(node);
-        exit_scope();
+        if (node->token->type != PROTO) {
+            enter_scope(node);
+            analyze_body(node);
+            exit_scope();
+        }
         break;
     }
     case IF: {
+        // TODO: conidtion must be a boolean
         enter_scope(node);
         analyze(node->left);
         analyze_body(node);
@@ -1133,14 +1186,17 @@ void analyze(Node *node) {
         if (node->left)
             analyze(node->left);
         break;
-    } // clang-format off
+    }
     case ASSIGN: {
+        // TODO: check compatibility
         analyze(node->left);
         analyze(node->right);
-        if(node->left->token->type == LOAD) // assign doesn't load left
+        if (node->left->token->type == LOAD) // assign doesn't load left
+            node->left = node->left->left;
+        if (node->left->token->type == DREF && node->right->token->type == OWN)
             node->left = node->left->left;
         break;
-    }
+    } // clang-format off
     case AND: case OR: 
     case GT: case LT: case GE: case LE: case EQ: case NQ: 
     case ADD: case SUB: case MUL: case DIV: case MOD: {
@@ -1205,7 +1261,7 @@ void codegen_beg(char *name) {
     // TODO: add flags stuff (Passes)
 }
 
-void codegen_finish(char *path) {
+void codegen_finish() {
     char *error = NULL;
     // PassBuilderOptions opts = LLVMCreatePassBuilderOptions();
     // if (ura.flags) {
@@ -1227,7 +1283,7 @@ void codegen_finish(char *path) {
     // LLVMDisposePassBuilderOptions(opts);
     // char *path = ura_dup(node->token->file.path);
     // strncpy(path + strlen(path) - 3, "ll\0", 3);
-    LLVMPrintModuleToFile(ura.module, path, NULL);
+    LLVMPrintModuleToFile(ura.module, ura.ll_path, NULL);
 }
 
 TypeRef get_type(Node *node) {
@@ -1236,6 +1292,13 @@ TypeRef get_type(Node *node) {
         return LLVMVoidTypeInContext(ura.context);
     case I32:
         return LLVMInt32TypeInContext(ura.context);
+    case I8:
+        return LLVMInt8TypeInContext(ura.context);
+    case BOOL:
+        return LLVMInt1TypeInContext(ura.context);
+    case ARRAY:
+    case REF:
+        return LLVMPointerType(get_type(node->left), 0);
     default:
         eprint("handle this case %k\n", node->token);
         exit(1);
@@ -1272,7 +1335,8 @@ void codegen_entry(Node *node) {
 }
 
 bool is_bloc_terminated() {
-    return LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ura.builder)) != NULL;
+    Bloc bloc = LLVMGetInsertBlock(ura.builder);
+    return bloc != NULL && LLVMGetBasicBlockTerminator(bloc) != NULL;
 }
 
 void codegen_return(Node *node) {
@@ -1294,9 +1358,26 @@ void codegen_create_value(Node *node) {
         node->token->llvm.elem = LLVMConstInt(type, value, 0);
         break;
     }
+    case CHARS: {
+        char *value = node->token->chars.value;
+        node->token->llvm.elem = LLVMBuildGlobalStringPtr(ura.builder, value, "str");
+        break;
+    }
+    case I8: {
+        TypeRef type = get_type(node);
+        int value = node->token->i8.value;
+        node->token->llvm.elem = LLVMConstInt(type, value, 0);
+        break;
+    }
+    case BOOL: {
+        TypeRef type = get_type(node);
+        int value = node->token->b1.value;
+        node->token->llvm.elem = LLVMConstInt(type, value, 0);
+        break;
+    }
     default: {
         eprint("handle this case %k\n", node->token);
-        raise(SIGSEGV);
+        // raise(SIGSEGV);
         // exit(1);
         break;
     }
@@ -1363,7 +1444,15 @@ void codegen_assign(Node *left, Node *right) {
 
 Value address_of(Node *node) {
     switch (node->token->type) { // clang-format off
-    case VAR: return node->token->llvm.elem;
+    case VAR: 
+        return node->token->llvm.elem;
+    case LOAD:
+        return address_of(node->left);
+    case DREF: {
+        Value ptr = address_of(node->left);
+        TypeRef type = LLVMGetElementType(LLVMTypeOf(ptr));
+        return LLVMBuildLoad2(ura.builder, type, ptr, "dref");
+    }
     default:
         eprint("handle this case %k\n", node->token);
         exit(1);
@@ -1403,7 +1492,7 @@ void codegen_call_function(Node *node) {
         }
     }
     Token *fn = fdec->token;
-    char *name = node->token->name;
+    char *name = fdec->left->token->type != VOID ? node->token->name : "";
     TypeRef type = fn->llvm.type;
     Value elem = fn->llvm.elem;
     Value fn_elem = LLVMBuildCall2(ura.builder, type, elem, values, count, name);
@@ -1443,9 +1532,12 @@ void codegen_jmp_out(Bloc bloc) {
 }
 
 void codegen(Node *node) {
-    switch (node->token->type) {
-    case VAR:
-    case ARG: {
+    switch (node->token->type) { // clang-format off
+    case DREF: case VAR: case ARG: { // clang-format on
+        break;
+    }
+    case OWN: {
+        node->token->llvm.elem = address_of(node->left);
         break;
     }
     case LOAD: {
@@ -1464,6 +1556,9 @@ void codegen(Node *node) {
     }
     case FN_CALL: {
         codegen_call_function(node);
+        break;
+    }
+    case PROTO: {
         break;
     }
     case FN_DEC: {
@@ -1529,13 +1624,10 @@ void codegen(Node *node) {
         enter_scope(node);
         for (int i = 0; i < node->children_count; i++) {
             Node *child = node->children[i];
-            if (child->token->type == FN_DEC)
+            if (includes(child->token->type, FN_DEC, PROTO, 0))
                 codegen_declare_function(child);
         }
-        for (int i = 0; i < node->children_count; i++) {
-            Node *child = node->children[i];
-            codegen(child);
-        }
+        codegen_body(node);
         exit_scope();
         break;
     } // clang-format off
@@ -1559,6 +1651,34 @@ void codegen(Node *node) {
         break;
     }
     }
+}
+
+int run(char **argv) {
+    id_t pid = fork();
+    if (pid < 0) {
+        eprint("fork failed\n");
+        return -1;
+    }
+    if (pid == 0) {
+        execvp(argv[0], argv);
+        _exit(127);
+    }
+    int status = 0;
+    waitpid(pid, &status, 0);
+    return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+}
+
+void gen_bin() {
+    if (ura.errors_count)
+        return;
+    char *argv[] = { "clang", ura.ll_path, "-o", ura.exec_path, NULL };
+    if (run(argv) != 0)
+        eprint("clang failed to compile %s\n", ura.ll_path);
+}
+
+int exec_bin() {
+    char *argv[] = { ura.exec_path, NULL };
+    return run(argv);
 }
 
 /*
@@ -1636,7 +1756,9 @@ int main(int ac, char **av) {
         Node *file = ura.tree->children[i];
         codegen(file);
     }
-    codegen_finish(format("%s/build/out.ll", cwd_path()));
+    codegen_finish();
+    gen_bin();
+    // return exec_bin();
 }
 
 // MEMORY
@@ -1819,7 +1941,7 @@ int _print_type(File fp, Node *node) {
     switch(node->token->type) {
     case REF:        return fprintf(fp, "&") + _print_type(fp, node->left);
     case STRUCT_DEC: return fprintf(fp, "%s", node->token->name);
-    case BOOL:       return fprintf(fp, "b1");
+    case BOOL:       return fprintf(fp, "bool");
     case I8:         return fprintf(fp, "i8");
     case I32:        return fprintf(fp, "i32");
     case NULL_:      return fprintf(fp, "null");

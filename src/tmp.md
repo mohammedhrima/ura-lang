@@ -6,211 +6,456 @@ prints against `stdout`.
 
 ---
 
-## 1 — while / break / continue
+## 1 — arrays, and declarations without a value
 
-needs: `while cond:` with a condition block, a body block and an end block;
-`break` jumps to the end of the innermost loop, `continue` to its condition.
+needs: `x i32` with no value is zero, `[a, b, c]` literals, `a[i]` read and
+write, `i8[]` from a string literal is a writable copy (the literal itself is
+read-only memory), arrays passed to functions.
+
+```ura
+// expect: 0
+fn main() i32:
+    x i32
+    return x
+```
 
 ```ura
 // expect: 10
 fn main() i32:
-    a i32 = 0
-    while a < 10:
-        a += 1
-    return a
+    a i32[] = [4, 5, 6]
+    return a[0] + a[2]
 ```
 
 ```ura
-// expect: 3
+// expect: 9
 fn main() i32:
-    a i32 = 0
-    while a < 10:
-        if a == 3:
-            break
-        a += 1
-    return a
+    a i32[] = [1, 2, 3]
+    a[1] = 9
+    return a[1]
 ```
 
 ```ura
-// expect: 25   (sum of the odd numbers below 10: 1 + 3 + 5 + 7 + 9)
+// expect: 9   (index from a variable)
 fn main() i32:
-    i i32 = 0
-    sum i32 = 0
-    while i < 10:
-        i += 1
-        if i % 2 == 0:
-            continue
-        sum += i
-    return sum
+    a i32[] = [7, 8, 9]
+    i i32 = 2
+    return a[i]
 ```
 
 ```ura
-// expect: 12   (3 x 4, j declared again on every outer iteration)
+// expect: 16   (10 + 2 + 4)
 fn main() i32:
-    i i32 = 0
-    c i32 = 0
-    while i < 3:
-        j i32 = 0
-        while j < 4:
-            c += 1
-            j += 1
-        i += 1
-    return c
+    x i32 = 10
+    y i32 = 4
+    a i32[] = [x, 2, y]
+    return a[0] + a[1] + a[2]
 ```
 
 ```ura
-// expect: 3   (break leaves only the inner loop)
+// expect: 1   (a string in an i8[] is writable)
 fn main() i32:
-    i i32 = 0
-    c i32 = 0
-    while i < 3:
-        while c < 100:
-            c += 1
-            break
-        i += 1
-    return c
-```
-
-```ura
-// expect: 7   (return from inside a loop)
-fn main() i32:
-    i i32 = 0
-    while i < 100:
-        if i == 7:
-            return i
-        i += 1
-    return 0
-```
-
-must fail:
-
-```ura
-// error: break outside a loop
-fn main() i32:
-    break
-    return 0
-```
-
-```ura
-// error: continue outside a loop
-fn main() i32:
-    if 1 < 2:
-        continue
-    return 0
-```
-
----
-
-## 2 — b1 type
-
-needs: `b1` variables, `True` / `False` literals, comparisons give a `b1`,
-`b1` parameters and return values, and a first type check on assignment.
-
-```ura
-// expect: 1
-fn main() i32:
-    flag b1 = True
-    if flag:
+    s i8[] = "abc"
+    s[0] = 'x'
+    c i8 = s[1]
+    if c == 'b' and s[0] == 'x':
         return 1
     return 0
 ```
 
 ```ura
-// expect: 2
-fn main() i32:
-    a i32 = 5
-    big b1 = a > 3
-    n i32 = 0
-    if big:
-        n += 1
-    big = a > 9
-    if big:
-        n += 10
-    big = False
-    if big:
-        n += 100
-    if big == False:
-        n += 1
-    return n
-```
-
-```ura
-// expect: 3
-fn is_even(n i32) b1:
-    return n % 2 == 0
-
-fn both(a b1, b b1) b1:
-    return a and b
+// expect: 6
+fn sum(a i32[]) i32:
+    total i32 = 0
+    i i32 = 0
+    while i < 3:
+        total += a[i]
+        i += 1
+    return total
 
 fn main() i32:
-    n i32 = 0
-    if is_even(4):
-        n += 1
-    if both(is_even(2), is_even(6)):
-        n += 2
-    if both(is_even(2), is_even(7)):
-        n += 10
-    return n
+    values i32[] = [1, 2, 3]
+    return sum(values)
 ```
 
 must fail:
 
 ```ura
-// error: flag is b1, 5 is i32
+// error: x is not an array
 fn main() i32:
-    flag b1 = 5
+    x i32 = 1
+    return x[0]
+```
+
+```ura
+// error: an index must be an integer
+fn main() i32:
+    a i32[] = [1, 2]
+    return a[True]
+```
+
+```ura
+// error: mixed element types in an array literal
+fn main() i32:
+    a i32[] = [1, True]
     return 0
 ```
 
 ---
+
+## 2 — structs
+
+needs: `struct Name:` with typed attributes, `u User` zero-initialised,
+`u.a` read and write, nested attributes (`r.b.x`), structs through refs.
+
+```ura
+// expect: 0   (zero-initialised)
+struct User:
+    a i32
+    b i32
+
+fn main() i32:
+    u User
+    return u.a + u.b
+```
+
+```ura
+// expect: 7
+struct User:
+    a i32
+    b i32
+
+fn main() i32:
+    u User
+    u.b = 7
+    return u.b
+```
+
+```ura
+// expect: 3   (write through a ref to a struct)
+struct User:
+    a i32
+
+fn set(p &User):
+    p.a = 3
+
+fn main() i32:
+    u User
+    set(&u)
+    return u.a
+```
+
+```ura
+// expect: 52   (r.a.x stays 0)
+struct Point:
+    x i32
+    y i32
+
+struct Rect:
+    a Point
+    b Point
+
+fn main() i32:
+    r Rect
+    r.b.x = 5
+    r.a.y = 2
+    return r.b.x * 10 + r.a.y + r.a.x
+```
+
+```ura
+// expect: 12   (9 + 3)
+struct Row:
+    cells i32[]
+
+fn main() i32:
+    r Row
+    r.cells = [1, 2, 3]
+    r.cells[0] = 9
+    return r.cells[0] + r.cells[2]
+```
+
+must fail:
+
+```ura
+// error: User has no attribute c
+struct User:
+    a i32
+
+fn main() i32:
+    u User
+    return u.c
+```
+
+```ura
+// error: x is not a struct
+fn main() i32:
+    x i32 = 1
+    return x.a
+```
+
+```ura
+// error: a struct cannot contain itself (use &Node)
+struct Node:
+    next Node
+
+fn main() i32:
+    return 0
+```
+
+---
+
+## 3 — methods
+
+needs: `fn` inside a struct, `self` is a ref to the receiver (changes stay
+visible to the caller), `u.m(...)` calls, a method may call a sibling declared
+below it, calls through a ref receiver.
+
+```ura
+// expect: 8
+struct User:
+    a i32
+
+    fn add(n i32) i32:
+        return self.a + n
+
+fn main() i32:
+    u User
+    u.a = 5
+    return u.add(3)
+```
+
+```ura
+// expect: 3   (self changes the caller's struct)
+struct Counter:
+    n i32
+
+    fn inc():
+        self.n += 1
+
+fn main() i32:
+    c Counter
+    c.inc()
+    c.inc()
+    c.inc()
+    return c.n
+```
+
+```ura
+// expect: 42   (twice calls get, declared below it)
+struct Box:
+    v i32
+
+    fn twice() i32:
+        return self.get() * 2
+
+    fn get() i32:
+        return self.v
+
+fn main() i32:
+    b Box
+    b.v = 21
+    return b.twice()
+```
+
+```ura
+// expect: 4   (method through a ref receiver)
+struct User:
+    a i32
+
+    fn get() i32:
+        return self.a
+
+fn via(p &User) i32:
+    return p.get()
+
+fn main() i32:
+    u User
+    u.a = 4
+    return via(&u)
+```
+
+must fail:
+
+```ura
+// error: User has no method nope
+struct User:
+    a i32
+
+fn main() i32:
+    u User
+    return u.nope()
+```
+
+```ura
+// error: self outside a method
+fn main() i32:
+    return self.a
+```
+
+```ura
+// error: a is an attribute: write self.a
+struct User:
+    a i32
+
+    fn set():
+        a = 1
+
+fn main() i32:
+    return 0
+```
+
+---
+
+## 4 — overloading
+
+needs: several functions (or methods) with one name, chosen by the number
+and types of the arguments; each gets its own LLVM name.
+
+```ura
+// stdout: int 42
+//         str hi
+proto printf(fmt i8[], ...) i32
+
+fn show(n i32):
+    printf("int %d\n", n)
+
+fn show(s i8[]):
+    printf("str %s\n", s)
+
+fn main() i32:
+    show(42)
+    show("hi")
+    return 0
+```
+
+```ura
+// expect: 36   (add(1, 2) * 10 + add(1, 2, 3) = 30 + 6)
+fn add(a i32, b i32) i32:
+    return a + b
+
+fn add(a i32, b i32, c i32) i32:
+    return a + b + c
+
+fn main() i32:
+    return add(1, 2) * 10 + add(1, 2, 3)
+```
+
+```ura
+// expect: 17   (set() gives 1, set(7) gives 7: 1 * 10 + 7)
+struct User:
+    a i32
+
+    fn set(n i32):
+        self.a = n
+
+    fn set():
+        self.a = 1
+
+fn main() i32:
+    u User
+    u.set()
+    x i32 = u.a
+    u.set(7)
+    return x * 10 + u.a
+```
+
+must fail:
+
+```ura
+// error: f differs only by return type
+fn f() i32:
+    return 1
+
+fn f() b1:
+    return True
+
+fn main() i32:
+    return 0
+```
+
+```ura
+// error: no add takes (b1)
+fn add(a i32, b i32) i32:
+    return a + b
+
+fn main() i32:
+    return add(True)
+```
+
+---
+
+## 5 — builtins: output, typeof, sizeof
+
+needs: `output(...)` prints each argument by its type (no format string),
+`typeof(x)` gives the type name as a string, `sizeof(x)` folds to a constant
+with ABI padding. `output` uses printf under the hood: it must not clash with
+a user's own `proto printf`.
+
+```ura
+// stdout: 42 z hi True
+fn main() i32:
+    n i32 = 42
+    c i8 = 'z'
+    s i8[] = "hi"
+    flag b1 = n > 1
+    output(n, " ", c, " ", s, " ", flag, "\n")
+    return 0
+```
+
+```ura
+// stdout: n=3	tab   (a real tab)
+//         no newline
+fn main() i32:
+    n i32 = 3
+    output("n=", n, "\ttab\n")
+    output("no newline")
+    output("\n")
+    return 0
+```
+
+```ura
+// stdout: i32 i8[] User
+struct User:
+    count i32
+
+fn main() i32:
+    x i32 = 1
+    s i8[] = "abc"
+    u User
+    output(typeof(x), " ", typeof(s), " ", typeof(u), "\n")
+    return 0
+```
+
+```ura
+// expect: 20   (i32 = 4, i8[] = 8 (a pointer), Pad = 8 (i8, 3 bytes padding, i32))
+struct Pad:
+    flag i8
+    count i32
+
+fn main() i32:
+    x i32
+    s i8[]
+    p Pad
+    return sizeof(x) + sizeof(s) + sizeof(p)
+```
+
+must fail:
+
+```ura
+// error: nope is not declared
+fn main() i32:
+    return sizeof(nope)
+```
+
+---
+
+# left from last round
 
 ## 3 — references (&i32)
 
 needs: `&type` as a type, `&a` takes the address of a variable, a ref reads
 and writes through to what it points to, `p1 = &p2` rebinds instead.
 
-```ura
-// expect: 12   (write through)
-fn main() i32:
-    a i32 = 10
-    p &i32 = &a
-    p = 12
-    return a
-```
 
-```ura
-// expect: 15   (read through, then write through)
-fn main() i32:
-    a i32 = 10
-    p &i32 = &a
-    p = p + 5
-    return a
-```
-
-```ura
-// expect: 21   (a = 2, b = 1)
-fn swap(x &i32, y &i32):
-    t i32 = x
-    x = y
-    y = t
-
-fn main() i32:
-    a i32 = 1
-    b i32 = 2
-    swap(&a, &b)
-    return a * 10 + b
-```
-
-```ura
-// expect: 2   (p1 = p2 copies the value: a becomes 2)
-fn main() i32:
-    a i32 = 1
-    b i32 = 2
-    p1 &i32 = &a
-    p2 &i32 = &b
-    p1 = p2
-    return a
-```
 
 ```ura
 // expect: 9   (p1 = &p2 rebinds p1 to b, then writes 9 into b)
