@@ -82,7 +82,7 @@
       "patterns": [
         {
           "name": "storage.type.ura",
-          "match": "\\b(b1|char|i8|i32|chars)\\b"
+          "match": "\\b(bool|char|i8|i32|chars)\\b"
         }
       ]
     },
