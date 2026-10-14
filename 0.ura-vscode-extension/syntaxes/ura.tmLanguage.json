@@ -4,20 +4,48 @@
   "scopeName": "source.ura",
   "comment": "Keep these word lists in sync with the tokenizer in src/main.c (keywords and specials tables).",
   "patterns": [
-    { "include": "#strings" },
-    { "include": "#characters" },
-    { "include": "#comments" },
-    { "include": "#function-definition" },
-    { "include": "#import" },
-    { "include": "#control" },
-    { "include": "#types" },
-    { "include": "#pointers" },
-    { "include": "#booleans" },
-    { "include": "#numbers" },
-    { "include": "#function-call" },
-    { "include": "#operators" },
-    { "include": "#punctuation" },
-    { "include": "#variables" }
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#characters"
+    },
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#function-definition"
+    },
+    {
+      "include": "#import"
+    },
+    {
+      "include": "#control"
+    },
+    {
+      "include": "#types"
+    },
+    {
+      "include": "#pointers"
+    },
+    {
+      "include": "#booleans"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#function-call"
+    },
+    {
+      "include": "#operators"
+    },
+    {
+      "include": "#punctuation"
+    },
+    {
+      "include": "#variables"
+    }
   ],
   "repository": {
     "strings": {
@@ -48,6 +76,11 @@
         {
           "name": "comment.line.double-slash.ura",
           "match": "//.*$"
+        },
+        {
+          "name": "comment.block.ura",
+          "begin": "/\\*",
+          "end": "\\*/"
         }
       ]
     },
@@ -56,8 +89,23 @@
         {
           "match": "\\b(fn|proto)\\s+([A-Za-z_]\\w*)",
           "captures": {
-            "1": { "name": "keyword.declaration.function.ura" },
-            "2": { "name": "entity.name.function.ura" }
+            "1": {
+              "name": "keyword.declaration.function.ura"
+            },
+            "2": {
+              "name": "entity.name.function.ura"
+            }
+          }
+        },
+        {
+          "match": "\\b(struct)\\s+([A-Za-z_]\\w*)",
+          "captures": {
+            "1": {
+              "name": "keyword.declaration.struct.ura"
+            },
+            "2": {
+              "name": "entity.name.type.struct.ura"
+            }
           }
         }
       ]
@@ -115,7 +163,9 @@
         {
           "match": "\\b([A-Za-z_]\\w*)\\s*(?=\\()",
           "captures": {
-            "1": { "name": "entity.name.function.call.ura" }
+            "1": {
+              "name": "entity.name.function.call.ura"
+            }
           }
         }
       ]

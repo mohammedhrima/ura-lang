@@ -11,88 +11,114 @@ in `../src` accepts today.
 
 ## Features
 
-- **Highlighting** for everything the language has today:
-  - functions: `fn name(a i32, p ref(i32)) i32:` and calls
-  - types `i32`, `b1`, `ref(type)`
-  - `own(x)` (address of) and `dref(p)` (dereference)
-  - `if` / `elif` / `else`, `while`, `break`, `continue`, `return`
-  - `True`, `False`, integers, `//` comments
-  - operators `+ - * / % == != < > <= >= =`
-- **Indentation**: a line ending in `:` indents the next one; `elif` / `else`
-  outdent; a new line after `return` / `break` / `continue` outdents.
-- **Completion**: keywords, types, `own` / `dref`, the functions of the file
-  (with parameter placeholders) and the variables visible at the cursor.
-- **Hover**: signature of a function, type of a variable or parameter.
-- **Signature help** while typing a call.
-- **Go to definition** for functions and variables in the same file.
-- **`use "path"`**: ctrl+click the path to open the file. Functions from used
-  files (and from the files they `use` at top level) show up in completion,
-  hover, signature help and go to definition. Diagnostics compile a copy of
-  the used files too, so `use` paths resolve as they do on disk.
-- **Diagnostics from the real compiler**: on open and on save the file is
-  compiled with `ura`, and its errors show up in the Problems panel. The
-  compiler doesn't report source positions yet, so errors are shown on the
-  first line of the file.
-- **File icon** for `.ura` files (shown by icon themes that have no icon of
-  their own for `.ura`, such as the default Seti theme).
+- **Highlighting**: keywords, types, functions, `struct` names (also where they
+  are used, through semantic tokens), strings, numbers, `//` and `/* */` comments.
+- **Formatter** (Format Document, Format Selection, and on save by default):
+  4-space indentation that keeps the compiler's levels, one space around
+  operators, after commas and in declarations, tight calls/indexes/`&`/`.`,
+  one blank line between top-level `fn` / `struct` / `proto` / `use` groups.
+  Strings and comments are never touched. It never changes what a program means
+  (tested: the compiler's IR is identical before and after formatting).
+- **Completion**: keywords, types, struct names, functions (with parameter
+  placeholders) of the file and of the files it `use`s, visible variables, and
+  after `x.` the attributes and methods of `x`'s struct.
+- **Hover**: signatures of functions and methods, structs with their attributes,
+  types of variables, parameters and attributes.
+- **Signature help** while typing a call, methods included (`self` is implicit).
+- **Go to definition**, **Find all references**, **highlights** and **rename**
+  for variables, parameters, functions, structs, attributes and methods, across
+  the files of the workspace. Rename refuses keywords, invalid names, `self` and
+  names already taken.
+- **Outline / breadcrumbs** and **Go to Symbol in Workspace** (Ctrl+T).
+- **`use "path"`**: ctrl+click opens the file; its functions and structs are
+  known everywhere (transitively, like the compiler's lookup).
+- **Diagnostics from the real compiler**, on open and on save; files reached
+  through `use` are compiled too. Errors show on the first line until the
+  compiler reports positions.
+- **Run / Build** (play button in the editor title, or `Ura: Run File`): compiles
+  to `build/<name>` next to the file and runs it in the "Ura" terminal.
+- **Snippets**: `fn`, `main`, `struct`, `method`, `if`, `ife`, `while`, `use`, `printf`.
+- **Editing**: auto-closing brackets and quotes, indentation on `:`,
+  indentation-based folding, file icon.
 
 ## Settings
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `ura.compilerPath` | `""` | Compiler used for diagnostics. Empty: `<workspace>/bin/ura` if it exists, otherwise `ura` from `PATH`. |
+| `ura.compilerPath` | `""` | Compiler used for diagnostics and Run/Build. Empty: `<workspace>/bin/ura` if it exists, otherwise `ura` from `PATH`. |
 | `ura.lint.enable` | `true` | Turn compiler diagnostics on or off. |
 
-## Build and install
+`.ura` files default to this extension as formatter, with format on save; change
+`editor.formatOnSave` under `[ura]` to turn that off.
 
-Requirements: Node.js, and the `code` command for installing.
+## Build, test, install
+
+Requirements: Node.js, and the `code` command for installing and E2E tests.
 
 ```bash
-make            # npm install + compile TypeScript
-make test       # run the analysis tests (also reads ../src/tests/*.md)
+make            # npm install + compile (tsc -b: server, client, tests)
+make lint       # ESLint, including the layer rules below
+make test       # unit tests: server core, no VS Code (also reads ../src/tests/*.md)
+make test-e2e   # end-to-end: a real VS Code (the one behind `code`) with the extension
 make package    # build ura-lang-<version>.vsix
 make install    # package and install into VS Code
 make uninstall  # remove it from VS Code
 make clean      # remove out/ and the .vsix
-make fclean     # also remove node_modules
+make fclean     # also remove node_modules and .vscode-test
 ```
 
 From the compiler side, `source src/config.sh` gives an `extension` command
-that does `make install` for you.
+that does `make install` for you. After installing, reload VS Code.
 
-After installing, reload VS Code (`Developer: Reload Window`).
+## Architecture
 
-## Layout
+The extension is a language client; the language itself lives in a language
+server (LSP) running in its own Node process.
 
 ```
-package.json                   extension manifest, settings
-language-configuration.json    comments, brackets, indentation rules
-syntaxes/ura.tmLanguage.json   highlighting
-icons/icon.png                 extension icon and .ura file icon
-icons/ura.jpeg                 source image of the icon (not packaged)
-src/extension.ts               registers everything
-src/analysis/                  language knowledge, no VS Code API
-    keywords.ts                the words the language has
-    parser.ts                  functions, variables, calls
-    compiler.ts                runs ura, reads its errors
-src/providers/                 the VS Code features
-src/test/                      tests for src/analysis
+client/src/                 runs in VS Code: starts the server, registers commands
+    extension.ts            wiring only
+    services/               logger (the "Ura" output), language client
+    commands/               Run / Build
+server/src/                 runs as its own process: speaks LSP
+    server.ts               builds the services, registers every feature
+    services/               documents/workspace, config, logger, compiler
+    features/               one LSP request per file (completion, hover, rename, ...)
+    core/                   the language: pure functions, no VS Code / LSP / file system
+        keywords.ts         the words the language has
+        parser.ts           functions, structs, methods, variables, calls, resolution
+        imports.ts          following `use`
+        symbols.ts          declarations, hovers, outline
+        references.ts       occurrences, rename checks
+        format.ts           the formatter
+        compiler.ts         reading the compiler's errors
+test/unit/                  node --test on server/src/core
+test/e2e/                   @vscode/test-electron + mocha, fixtures/*.ura
+syntaxes/  snippets/  language-configuration.json  icons/
 ```
 
-`src/analysis/` never imports `vscode`, so it can move into a language server
-later without being rewritten.
+Rules, enforced by TypeScript project references and ESLint:
+
+- `core` never imports `vscode`, LSP or `fs`: it takes text and callbacks.
+- A feature turns an LSP request into core calls and back, nothing else; features
+  never import each other. Adding one = a file in `features/` + a line in `server.ts`.
+- Services are built once and passed in; nothing reads settings or globals directly.
+- The client never imports server code.
+- A request handler never throws (it logs and returns an empty answer), except
+  for errors meant for the user, like a refused rename.
 
 ## Keeping up with the compiler
 
 When the compiler learns something new, update in this order:
 
-1. `src/analysis/keywords.ts` — mirror the `keywords[]` / `specials[]`
+1. `server/src/core/keywords.ts` — mirror the `keywords[]` / `specials[]`
    tables in `src/main.c`.
 2. `syntaxes/ura.tmLanguage.json` — the same words for highlighting.
-3. `src/analysis/parser.ts` — if the new feature declares something (a new
-   type, a struct...).
+3. `server/src/core/parser.ts` (and `format.ts` for new operators) — if the
+   feature declares or writes something new.
 4. Record a compiler test with `copy` (it lands in `../src/tests/`, which
-   `make test` also reads) and add an extension test in `src/test/`.
+   `make test` also reads: the formatter is checked against every program there)
+   and add tests in `test/unit/` (and `test/e2e/` for a new editor feature).
 
 ## License
 
