@@ -1226,23 +1226,32 @@ bool is_ref(Node *node) {
 
 Node *type_of(Node *node) {
     switch (node->token->type) { // clang-format off
-    case LOAD: return type_of(node->left);
-    case VAR:  return node->left;
-    case DOT:  return type_of(node->right);
-    case DREF: return type_of(node->left)->left;
-    case ARG:  return node->left;                  
-    case VAL_CREATE: return type_of(node->left);
-    case I32: case I8: case BOOL: return node;
-        case CHARS: {
+    case LOAD:
+        return type_of(node->left);
+    case VAR:
+        return node->left;
+    case DOT:
+        return type_of(node->right);
+    case DREF:
+        return type_of(node->left)->left;
+    case ARG:
+        return node->left;                  
+    case VAL_CREATE: 
+        return type_of(node->left);
+    case I32: case I8: case BOOL: 
+        return node;
+    case CHARS: {
         Node *array = new_node(new_token(ARRAY, node->token));
         array->left = new_node(new_token(I8, node->token));
         return array;
     }
-
-    case FN_CALL: return node->left->left;          
-    case ADD: case SUB: case MUL: case DIV: case MOD: return type_of(node->left);
+    case FN_CALL: 
+        return node->left->left;          
+    case ADD: case SUB: case MUL: case DIV: case MOD: 
+        return type_of(node->left);
     default: {
         eprint("handle this case %k\n", node->token);
+        raise(SIGSEGV);
         exit(1);
     }
     } // clang-format on
@@ -1397,17 +1406,17 @@ void analyze(Node *node) {
     }
     case FN_CALL: {
         // TODO: recursive function might cause stack over flow
-        node->left = find_function(node);
-        Node *args = node->right;
         // TODO: fcall_args_count != fdec_args_count
+        Node *args = node->right;
         for (int i = 0; i < args->children_count; i++) {
             Node *child = args->children[i];
             analyze(child);
         }
+        node->left = find_function(node);
+
         break;
-    }
-    case FN_DEC:
-    case PROTO: {
+    } // clang-format off
+    case FN_DEC: case PROTO: { // clang-format on
         declare_function(node);
         if (node->token->type != PROTO) {
             enter_scope(node);

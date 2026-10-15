@@ -1,13 +1,12 @@
-proto printf(fmt i8[], ...) i32
-
-fn show(n i32):
-    printf("int %d\n", n)
-
-fn show(s i8):
-    printf("str %c\n", s)
+fn sum(a i32) i32:
+    // total i32 = 0
+    // i i32 = 0
+    // while i < 3:
+    //     total += a[i]
+    //     i += 1
+    // return total
 
 fn main() i32:
-    show(42)
-    show('h')
-    
-    return 0
+    values i32[] = [1, 2, 3]
+    a i32 = values[0]
+    sum(a)
