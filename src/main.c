@@ -157,7 +157,8 @@ enum Type {
 
     STRUCT_DEC, DOT, ATTR,
 
-    OWN, DREF,
+    //OWN,
+    DREF,
 
     LPARENT, RPARENT, DOTS, COMA,
     LBRACK, RBRACK,
@@ -218,6 +219,9 @@ struct Token {
             char *ll_path;
             bool opened;
         } file;
+        struct {
+            int index;
+        } attr;
         struct {
             long value;
         } i32;
@@ -291,7 +295,8 @@ const char *to_string(Type type) {
 
         [STRUCT_DEC] = "STRUCT_DEC", [DOT] = "DOT", [ATTR] = "ATTR",
 
-        [OWN] = "OWN", [DREF] = "DREF",
+        // [OWN] = "OWN",
+        [DREF] = "DREF",
 
         [LPARENT] = "LPARENT", [RPARENT] = "RPARENT",
         [LBRACK] = "LBRACK", [RBRACK] = "RBRACK", 
@@ -769,12 +774,16 @@ Node *parse_access(Node *node) {
 }
 
 void add_param(Node *fn, Token *id, Node *type) {
+    // arg->left = type;
     Node *arg = new_node(new_token(ARG, id));
+    arg->token->name = format("arg.%s", id->name);
     arg->left = type;
     push_back(fn->right->children, arg);
 
     Node *dec = new_node(new_token(DECLARE, id));
     dec->left = new_node(id);
+    // dec->left->token->name = format("arg.%s", id->name);
+    // dec->left->left = type;
     dec->left->left = type;
 
     Node *assign = new_node(new_token(ASSIGN, id));
@@ -873,7 +882,7 @@ Node *parse_prime() {
         return new_node(token);
     }
     case REF: {
-        token->type = OWN;
+        // token->type = OWN;
         node = new_node(token);
         node->left = parse_prime();
         assert(node->left);
@@ -1060,8 +1069,7 @@ Node *parse_expr(int min_op) {
         while (inside(left->token->space)) {
             Node *child = parse_expr(0);
             assert(child != NULL);
-            if (child)
-                push_back(left->children, child);
+            push_back(left->children, child);
         }
         exit_scope();
         return left;
@@ -1096,20 +1104,23 @@ Node *parse_expr(int min_op) {
         Node *node = new_node(next());
         node->left = left;
 
-        if (node->token->type == DOT)
+        if (node->token->type == DOT) {
             node->right = parse_prime();
-        else
+            if (node->right->token->type != FN_CALL) {
+                char *lname = node->left->token->name;
+                char *rname = node->right->token->name;
+                char *name = format("%s.%s", lname, rname);
+                node->token->name = name;
+                Node *load = new_node(new_token(LOAD, node->token));
+                load->token->name = name;
+                load->left = node;
+                node = load;
+            } else {
+                // check later on
+            }
+        } else
             node->right = parse_expr(op);
-        if (node->token->type == DOT && node->right->token->type != FN_CALL) {
-            char *lname = node->left->token->name;
-            char *rname = node->right->token->name;
-            char *name = format("%s.%s", lname, rname);
-            node->token->name = name;
-            Node *load = new_node(new_token(LOAD, node->token));
-            load->token->name = name;
-            load->left = node;
-            node = load;
-        }
+
         left = node;
     }
     return left;
@@ -1128,6 +1139,9 @@ Node *find_variable(char *name) {
             Node *var = child->left;
             if (var->token->type != VAR)
                 continue;
+            assert(var);
+            assert(var->token);
+            // assert(name);
             if (ura_cmp(var->token->name, name))
                 return var;
         }
@@ -1144,12 +1158,75 @@ Node *find_function(Node *call) {
             Node *child = scope->children[j];
             if (!includes(child->token->type, FN_DEC, PROTO, 0))
                 continue;
+            print("====================\n");
+            print("%n", child);
             if (ura_cmp(child->token->name, name) && same_params(child, call))
                 return child;
         }
     }
+    print("%n", call);
     eprint("no function '%s' takes these arguments\n", name);
     exit(1);
+    return NULL;
+}
+
+Node *find_attribute(Node *node, Node *struct_node, Node *attr) {
+    char *str0 = node->left->token->name;
+    char *str1 = node->right->token->name;
+    int index = 0;
+    for (int i = 0; i < struct_node->children_count; i++) {
+        Node *child = struct_node->children[i];
+        if (child->token->type != DECLARE)
+            continue;
+        child = child->left; // VAR
+        if (ura_cmp(attr->token->name, child->token->name)) {
+            node->token->name = format("%s.%s", str0, str1);
+            node->token->attr.index = index;
+            return attr;
+        }
+        index++;
+    }
+    eprint("%s has no attribute %s\n", struct_node->token->name, str1);
+    return NULL;
+}
+
+Node *find_method(Node *caller, Node *struct_node, Node *method) {
+    print("========================\n");
+    print("%d %n", LINE, caller);
+    print("%d %n", LINE, struct_node);
+    print("%d %n", LINE, method);
+    print("========================\n");
+
+    Node **args0 = method->right->children;
+    int args_count0 = method->right->children_count;
+    Node **args1 = ura_alloc(args_count0 + 1, sizeof(Node *));
+    memcpy(args1 + sizeof(Node *), args0, args_count0 * sizeof(Node *));
+    args1[0] = caller;
+    method->right->children = args1;
+    method->right->children_count = args_count0 + 1;
+
+    for (int i = 0; i < struct_node->children_count; i++) {
+        Node *child = struct_node->children[i];
+        if (child->token->type != FN_DEC)
+            continue;
+        if (!ura_cmp(child->token->name, method->token->name))
+            continue;
+        print("check\n");
+        print("%n", child);
+        print("%n", method);
+        exit(1);
+        if (!same_params(child, method))
+            continue;
+
+        if (caller->token->type != REF) {
+            Node *ref = new_node(new_token(REF, caller->token));
+            ref->left = caller;
+            caller = ref;
+        }
+        print("%n", method);
+        return method;
+    }
+    eprint("%s has no method %s\n", struct_node->token->name, method->token->name);
     return NULL;
 }
 
@@ -1171,8 +1248,8 @@ bool same_params(Node *fdec, Node *other) {
     if (fdec->token->is_variadic ? got < want : got != want)
         return false;
     for (int i = 0; i < want; i++) {
-        Node *ptype = type_of(params->children[i]);
-        Node *otype = type_of(items->children[i]);
+        Node *ptype = analyze_type(params->children[i]);
+        Node *otype = analyze_type(items->children[i]);
         if (!same_type(ptype, otype))
             return false;
     }
@@ -1216,49 +1293,91 @@ void declare_struct(Node *node) {
 void analyze_body(Node *node) {
     for (int i = 0; i < node->children_count; i++) {
         Node *child = node->children[i];
-        analyze(child);
+        node->children[i] = analyze(child, 1);
     }
 }
 
-bool is_ref(Node *node) {
-    return node->left && node->left->token->type == REF;
-}
+// TODO: delete this one later on
+// Node *type_of(Node *node) {
+//     switch (node->token->type) { // clang-format off
+//     case LOAD:
+//         return type_of(node->left);
+//     case VAR:
+//         return node->left;
+//     case DOT:
+//         return type_of(node->right);
+//     case DREF:
+//         return type_of(node->left)->left;
+//     case ARG:
+//         return node->left;
+//     case VAL_CREATE:
+//         return type_of(node->left);
+//     case I32: case I8: case BOOL:
+//         return node;
+//     case CHARS: {
+//         Node *array = new_node(new_token(ARRAY, node->token));
+//         array->left = new_node(new_token(I8, node->token));
+//         return array;
+//     }
+//     // case OWN: {
+//     //     Node *ref = new_node(new_token(REF, node->token));
+//     //     ref->left = type_of(node->left);
+//     //     return ref;
+//     // }
+//     case FN_CALL:
+//         return node->left->left;
+//     case ADD: case SUB: case MUL: case DIV: case MOD:
+//         return type_of(node->left);
+//     default: {
+//         eprint("handle this case\n");
+//         print("%n\n", node);
+//         // raise(SIGSEGV);
+//         exit(1);
+//     }
+//     } // clang-format on
+//     return NULL;
+// }
 
-Node *type_of(Node *node) {
-    switch (node->token->type) { // clang-format off
-    case LOAD:
-        return type_of(node->left);
-    case VAR:
+Node *analyze_type(Node *node) {
+    switch (node->token->type) {
+    case LOAD: {
+        return analyze_type(node->left);
+    } // clang-format off
+    // left is the data type
+    case VAR: case ARG: { 
         return node->left;
-    case DOT:
-        return type_of(node->right);
-    case DREF:
-        return type_of(node->left)->left;
-    case ARG:
-        return node->left;                  
-    case VAL_CREATE: 
-        return type_of(node->left);
-    case I32: case I8: case BOOL: 
+    }
+    case I32: case I8: case BOOL: {
         return node;
+    } // clang-format on
+    case VAL_CREATE: {
+        return analyze_type(node->left);
+    }
+    case DREF: {
+        Node *var = node->left; // DREF -> VAR
+        Node *ref = var->left;  // VAR -> REF
+        Node *type = ref->left; // REF -> DATA_TYPE
+        return type;
+    }
+    case REF: {
+        Node *ref = new_node(new_token(REF, node->token));
+        ref->left = analyze_type(node->left);
+        return ref;
+    }
     case CHARS: {
         Node *array = new_node(new_token(ARRAY, node->token));
         array->left = new_node(new_token(I8, node->token));
         return array;
     }
-    case FN_CALL: 
-        return node->left->left;          
-    case ADD: case SUB: case MUL: case DIV: case MOD: 
-        return type_of(node->left);
     default: {
         eprint("handle this case %k\n", node->token);
-        raise(SIGSEGV);
         exit(1);
     }
-    } // clang-format on
+    }
     return NULL;
 }
 
-void analyze(Node *node) {
+Node *analyze(Node *node, bool load) {
     switch (node->token->type) {
     case SCOPE: {
         enter_scope(node);
@@ -1267,12 +1386,17 @@ void analyze(Node *node) {
         break;
     }
     case VAL_CREATE: {
-        analyze(node->left);
+        // print("%n", node);
+        node->left = analyze(node->left, 0);
+        assert(node->left);
         break;
     }
     case LOAD: {
-        analyze(node->left);
-        break;
+        node->left = analyze(node->left, 0);
+        // print("%n", node);
+        // exit(1);
+
+        return load ? node : node->left;
     }
     case DECLARE: {
         Node *var = node->left;
@@ -1287,7 +1411,7 @@ void analyze(Node *node) {
                 // TODO: improve errors
                 eprint("redeclared varible '%s'\n", var->token->name);
                 exit(1);
-                return;
+                return NULL;
             }
         }
         var->token->type = VAR;
@@ -1299,20 +1423,22 @@ void analyze(Node *node) {
         analyze_body(node);
         exit_scope();
         break;
-    }
-        // clang-format off
-    case VAR: { 
-        break; 
-    }
+    } // clang-format off
+    case VAR: case ARG: {
+        break;
+    } 
     case I32: case I8: case BOOL: case CHARS: case VOID: {
         break;
     } 
-    case ARGS: case ARG: { 
+    case ARGS: { 
+        break;
+    }
+    case DREF: {
         break;
     }
     // clang-format on
-    case OWN: {
-        analyze(node->left);
+    case REF: {
+        node->left = analyze(node->left, 0);
         break;
     }
     case ARRAY_LIT: {
@@ -1323,32 +1449,80 @@ void analyze(Node *node) {
         break;
     }
     case ID: {
-        Node *var = find_variable(node->token->name);
-        if (var == NULL) { // TODO: improve this
+        Node *to_find = find_variable(node->token->name);
+        if (to_find == NULL) { // TODO: improve this
             eprint("undeclared variable '%s'\n", node->token->name);
             exit(1);
         }
-        *node = *new_node(new_token(LOAD, node->token));
-        node->token->name = format("load.%s", var->token->name);
-        node->left = var;
-        if (is_ref(var)) {
-            node->left = new_node(new_token(DREF, var->token));
-            node->left->left = var;
-        }
-        break;
+
+        Node *id = NULL;
+        if (to_find->left && to_find->left->token->type == REF) {
+            id = new_node(new_token(DREF, to_find->token));
+            id->left = to_find;
+        } else
+            id = to_find;
+
+        if (load) {
+            node = new_node(new_token(LOAD, node->token));
+            node->token->name = format("load.%s", to_find->token->name);
+            node->left = id;
+        } else
+            node = id;
+        return node;
     }
     case ACCESS: {
-        analyze(node->left);
-        analyze(node->right);
+        node->left = analyze(node->left, 0);
+        assert(node->left != NULL);
+        node->right = analyze(node->right, 0);
+        assert(node->right != NULL);
         break;
     }
     case DOT: {
-        analyze(node->left);
-        Node *struct_node = type_of(node->left); // STRUCT_DEC
+        // print("%n\n", node->left);
+        node->left = analyze(node->left, 1); // it can be LOAD->VAR->STRUCT_DEC or DOT
+        assert(node->left != NULL);
+        // TODO: assert VAR->STRUCT_DEC
+        // Node *struct_node = type_of(node->left); // STRUCT_DEC
         char *src = node->left->token->name;
-        char *to_find = node->right->token->name;
 
-        Type rtype = node->right->token->type;
+        // char *to_find = node->right->token->name;
+        switch (node->right->token->type) {
+        case ID: { // attribute
+            // print("===================\n");
+            // print("%n", node);
+            // print("===================\n");
+            Node *struct_node = analyze_type(node->left);
+            Node *attr = node->right;
+            if (find_attribute(node, struct_node, attr) == NULL) {
+                exit(1);
+            }
+            return node;
+            break;
+        }
+        case FN_CALL: { // method
+            // TODO: replace OWN with REF
+            // print("===================\n");
+            // print("%n", node);
+            // print("===================\n");
+            Node *struct_node = analyze_type(node->left);
+            Node *method = node->right;
+            Node *args = method->right;
+
+            // print("%n", args);
+            // print("===========================\n");
+            Node *res = find_method(node->left, struct_node, method);
+            assert(res != NULL);
+            print(">>> %n", res);
+            exit(1);
+            break;
+        }
+        default: {
+            eprint("handle this case %k\n", node->right->token);
+            exit(1);
+        }
+        }
+        break;
+#if 0
         if (node->right->token->type == ID) { // attribute
             int index = 0;
             for (int i = 0; i < struct_node->children_count; i++) {
@@ -1369,7 +1543,8 @@ void analyze(Node *node) {
             exit(1);
             break;
         }
-        if (node->right->token->type == FN_CALL) { // method
+        if (node->right->token->type == FN_CALL) {
+            // method
             for (int i = 0; i < struct_node->children_count; i++) {
                 Node *child = struct_node->children[i];
                 if (child->token->type != FN_DEC)
@@ -1398,7 +1573,7 @@ void analyze(Node *node) {
             exit(1);
             break;
         }
-
+#endif
         eprint("handle this case\n");
         exit(1);
 
@@ -1410,7 +1585,7 @@ void analyze(Node *node) {
         Node *args = node->right;
         for (int i = 0; i < args->children_count; i++) {
             Node *child = args->children[i];
-            analyze(child);
+            args->children[i] = analyze(child, 1);
         }
         node->left = find_function(node);
 
@@ -1428,12 +1603,12 @@ void analyze(Node *node) {
     case IF: {
         // TODO: conidtion must be a boolean
         enter_scope(node);
-        analyze(node->left);
+        node->left = analyze(node->left, 1);
         analyze_body(node);
         Node *curr = node->right;
         while (curr) {
             if (curr->left)
-                analyze(curr->left);
+                curr->left = analyze(curr->left, 1);
             analyze_body(curr);
             curr = curr->right;
         }
@@ -1442,7 +1617,7 @@ void analyze(Node *node) {
     }
     case WHILE: {
         enter_scope(node);
-        analyze(node->left);
+        node->left = analyze(node->left, 1);
         analyze_body(node);
         exit_scope();
         break;
@@ -1450,27 +1625,29 @@ void analyze(Node *node) {
     case BRK: case CNT: break; // clang-format on
     case RETURN: {
         if (node->left)
-            analyze(node->left);
+            node->left = analyze(node->left, 1);
         break;
     }
     case ASSIGN: {
         // TODO: check compatibility
-        analyze(node->left);
-        analyze(node->right);
-        if (node->left->token->type == LOAD) // assign doesn't load left
-            node->left = node->left->left;
-        if (node->left->token->type == DREF && node->right->token->type == OWN)
-            node->left = node->left->left;
-        if (node->right->token->type == ARRAY_LIT && node->right->left &&
-            node->right->left->token->type == ANY)
-            node->right->left = node->left->left;
+        node->left = analyze(node->left, 0);
+        node->right = analyze(node->right, 1);
+        // if (node->left->token->type == LOAD) // assign doesn't load left
+        //     node->left = node->left->left;
+        // if (node->left->token->type == DREF && node->right->token->type == REF)
+        //     node->left = node->left->left;
+        // if (node->right->token->type == ARRAY_LIT && node->right->left &&
+        //     node->right->left->token->type == ANY)
+        //     node->right->left = node->left->left;
         break;
     } // clang-format off
     case AND: case OR: 
     case GT: case LT: case GE: case LE: case EQ: case NQ: 
     case ADD: case SUB: case MUL: case DIV: case MOD: {
-        analyze(node->left);
-        analyze(node->right);
+        node->left = analyze(node->left, 1);
+        assert(node->left);
+        node->right = analyze(node->right, 1);
+        assert(node->right);
         break;
     } 
     case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN:
@@ -1480,25 +1657,27 @@ void analyze(Node *node) {
             [DIV_ASSIGN] = DIV, [MOD_ASSIGN] = MOD,
         };
         Type type = ops[node->token->type];
-        Node *tmp = new_node(new_token(type, node->token));
-        tmp->left = node->left;
-        tmp->right = node->right;
-        analyze(tmp);
-        if (tmp->token->type == ERR)
-            node->token->type = ERR;
-        else
-            node->token->type = ASSIGN;
-        node->right = tmp;
-        if (node->left->token->type == LOAD) // assign doesn't load left
-            node->left = node->left->left;
+
+        Node *op = new_node(new_token(type, node->token));
+        op->left = analyze(node->left, 1);
+        op->right = analyze(node->right, 1);
+        analyze(op, 1);
+        // TODO: check this
+        // if (tmp->token->type == ERR)
+        //     node->token->type = ERR;
+        // else
+        node->token->type = ASSIGN;
+        node->left = analyze(node->left, 0);
+        node->right = op;
         break;
     }
     default: {
-        eprint("handle this case %k\n", node->token);
+        eprint("handle this case %n\n", node);
         exit(1);
         break;
     }
     }
+    return node;
 }
 
 void codegen_beg(char *name) {
@@ -1664,7 +1843,7 @@ void codegen_create_value(Node *node) {
     default: {
         eprint("handle this case %k\n", node->token);
         // raise(SIGSEGV);
-        // exit(1);
+        exit(1);
         break;
     }
     }
@@ -1831,6 +2010,20 @@ Node *place_of(Node *node) {
     return node->token->type == LOAD ? node->left : node;
 }
 
+void codegen_declare_functions_and_structs(Node *node) {
+    if (node == NULL)
+        return;
+    if (includes(node->token->type, FN_DEC, PROTO, 0))
+        codegen_declare_function(node);
+    else if (includes(node->token->type, STRUCT_DEC, 0)) {
+        codegen_declare_struct(node);
+    }
+    for (int j = 0; j < node->children_count; j++) {
+        Node *child = node->children[j];
+        codegen_declare_functions_and_structs(child);
+    }
+}
+
 void codegen(Node *node) {
     switch (node->token->type) { // clang-format off
     case VAR: case ARG: { // clang-format on
@@ -1839,12 +2032,12 @@ void codegen(Node *node) {
     case STRUCT_DEC: {
         for (int i = 0; i < node->children_count; i++) {
             Node *child = node->children[i];
-            if (child->token->type == FN_DEC)
-                codegen(child);
+            // if (child->token->type == FN_DEC)
+            //     codegen(child);
         }
         break;
     }
-    case DREF: {
+    case DREF: { // TODO: get rid of LLVMGetElemenType(LLVMTypeOf())
         codegen(node->left);
         Value ptr = node->left->token->llvm.elem;
         TypeRef type = LLVMGetElementType(LLVMTypeOf(ptr));
@@ -1852,23 +2045,22 @@ void codegen(Node *node) {
         node->token->llvm.elem = elem;
         break;
     }
-    case ACCESS: {
+    case ACCESS: { // clang-format off
         codegen(node->left);
         codegen(node->right);
         Value base = node->left->token->llvm.elem;
         Value index = node->right->token->llvm.elem;
         TypeRef type = LLVMGetElementType(LLVMTypeOf(base));
-        Value elem =
-            LLVMBuildInBoundsGEP2(ura.builder, type, base, &index, 1, "access");
+        Value elem = LLVMBuildInBoundsGEP2(ura.builder, type, base, &index, 1, "access");
         node->token->llvm.elem = elem;
         break;
-    }
+    } // clang-format on
     case DOT: {
         Node *base = place_of(node->left);
         codegen(base);
         Value ptr = base->token->llvm.elem;
         TypeRef type = LLVMGetElementType(LLVMTypeOf(ptr));
-        int index = node->token->i32.value;
+        int index = node->token->attr.index;
         char *name = node->token->name;
         Value elem = LLVMBuildStructGEP2(ura.builder, type, ptr, index, name);
         node->token->llvm.elem = elem;
@@ -1883,7 +2075,7 @@ void codegen(Node *node) {
         node->token->llvm.elem = elem;
         break;
     }
-    case OWN: {
+    case REF: {
         Node *place = place_of(node->left);
         codegen(place);
         node->token->llvm.elem = place->token->llvm.elem;
@@ -1912,8 +2104,11 @@ void codegen(Node *node) {
         break;
     }
     case FN_DEC: {
+        Bloc back = LLVMGetInsertBlock(ura.builder);
         codegen_entry(node);
         codegen_body(node);
+        if (back)
+            LLVMPositionBuilderAtEnd(ura.builder, back);
         break;
     }
     case RETURN: {
@@ -1972,19 +2167,7 @@ void codegen(Node *node) {
     }
     case SCOPE: {
         enter_scope(node);
-        for (int i = 0; i < node->children_count; i++) {
-            Node *child = node->children[i];
-            if (includes(child->token->type, FN_DEC, PROTO, 0))
-                codegen_declare_function(child);
-            else if (includes(child->token->type, STRUCT_DEC, 0)) {
-                codegen_declare_struct(child);
-                for (int j = 0; j < child->children_count; j++) {
-                    Node *child2 = child->children[j];
-                    if (child2->token->type == FN_DEC)
-                        codegen_declare_function(child2);
-                }
-            }
-        }
+        codegen_declare_functions_and_structs(node);
         for (int i = 0; i < node->children_count; i++)
             codegen(node->children[i]);
         exit_scope();
@@ -2102,7 +2285,7 @@ int main(int ac, char **av) {
     print(GREEN("[ANALYZE]:\n"));
     for (size_t i = 0; i < ura.tree->children_count; i++) {
         Node *file = ura.tree->children[i];
-        analyze(file);
+        analyze(file, 0);
     }
     print(GREEN("======================================\n"));
     for (size_t i = 0; i < ura.tree->children_count; i++) {
@@ -2311,15 +2494,40 @@ int _print_type(File fp, Node *node) {
     }
 };
 
+int _print_char(File fp, char c) {
+    switch(c) { // clang-format off
+    case '\n': return fprintf(fp, "\\n");
+    case '\t': return fprintf(fp, "\\t");
+    case '\r': return fprintf(fp, "\\r");
+    case '\0': return fprintf(fp, "\\0");
+    case '\\': return fprintf(fp, "\\\\");
+    case '"':  return fprintf(fp, "\\\"");
+    case '\'': return fprintf(fp, "\\\'");
+    default:   return fprintf(fp, "%c", c);
+    } // clang-format on
+}
+
+// clang-format off
 int _print_token(File fp, Token *token) {
     if (token == NULL) return fprintf(fp, "(null token)");
     int r = fprintf(fp, "%s", to_string(token->type));
     if (token->name != NULL) r += fprintf(fp, " name (%s)", token->name);
-    if(token->name == NULL && !token->is_type) {
+    if(token->name == NULL && !token->is_type) { 
         switch(token->type) {
         case I8:    r += fprintf(fp, " value (%c)", token->i8.value); break;
         case I32:   r += fprintf(fp, " value (%ld)", token->i32.value); break;
-        case CHARS: r += fprintf(fp, " value (%s)", token->chars.value); break;
+        case CHARS: {
+            #if 1
+            r += fprintf(fp, " value (");
+            char *value = token->chars.value;
+            for(int i = 0; value && value[i]; i++)
+                r += _print_char(fp, value[i]);
+            r += fprintf(fp, ")"); 
+            #else
+            r += fprintf(fp, " value (%s)", token->chars.value);
+            #endif
+            break;
+        }
         case BOOL: {
             char *b1 = token->b1.value ? "True" : "False";
             r += fprintf(fp, " value (%s)", b1);
@@ -2327,10 +2535,11 @@ int _print_token(File fp, Token *token) {
         }
         default: break;
         }
-    }
+    } 
     r += fprintf(fp, " space (%d)", token->space);
     return 0;
 }
+// clang-format on
 
 struct NodePrint {
     expand(int, depths);

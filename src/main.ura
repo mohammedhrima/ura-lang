@@ -1,12 +1,11 @@
-fn sum(a i32) i32:
-    // total i32 = 0
-    // i i32 = 0
-    // while i < 3:
-    //     total += a[i]
-    //     i += 1
-    // return total
+proto printf(fmt i8[], ...) i32
 
 fn main() i32:
-    values i32[] = [1, 2, 3]
-    a i32 = values[0]
-    sum(a)
+    a i32 = 1
+    b i32 = 2
+    p1 &i32 = &a
+    p2 &i32 = &b
+    p1 = &p2
+    // p1 = 9
+    // printf("a = %d, b = %d\n", a, b)
+    return b

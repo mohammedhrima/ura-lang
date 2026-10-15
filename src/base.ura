@@ -1,0 +1,2 @@
+fn help() i32:
+    return 7
