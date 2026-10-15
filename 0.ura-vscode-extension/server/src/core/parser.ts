@@ -117,14 +117,22 @@ const USE = /^(\s*)use\s+"([^"]*)"/;
 // `struct Name:`
 const STRUCT = /^(\s*struct\s+)([A-Za-z_]\w*)/;
 
-// Where the comment starts on this line, or -1. A `//` inside a string
-// literal doesn't start one, just like in the tokenizer.
+// Where the comment starts on this line, or -1. A `//` inside a string or
+// character literal doesn't start one, just like in the tokenizer; inside a
+// literal, `\"` and `\'` don't end it, and the other quote kind is plain text.
 function commentStart(line: string): number {
-    let inString = false;
+    let quote: string | undefined; // the quote of the literal we're in
     for (let i = 0; i < line.length; i++) {
-        if (line[i] === '"' || line[i] === '\'' ) {
-            inString = !inString;
-        } else if (!inString && line[i] === "/" && line[i + 1] === "/") {
+        const c = line[i];
+        if (quote !== undefined) {
+            if (c === "\\") {
+                i++; // skip the escaped character
+            } else if (c === quote) {
+                quote = undefined;
+            }
+        } else if (c === '"' || c === "'") {
+            quote = c;
+        } else if (c === "/" && line[i + 1] === "/") {
             return i;
         }
     }

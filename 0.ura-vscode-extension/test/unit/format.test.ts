@@ -12,7 +12,7 @@ import { formatDocument, formatLine, levelOf } from "../../server/src/core/forma
 // out/test/unit → the ura-lang repository
 const REPO = path.resolve(__dirname, "../../../..");
 const COMPILER = path.join(REPO, "bin", "ura");
-const RECORDED = [path.join(REPO, "src", "tests"), path.join(REPO, "1.old-code", "tests")];
+const RECORDED = ["src/tests", "src/tests-old", "1.old-code/tests"].map((dir) => path.join(REPO, dir));
 
 // every ```ura block of every recorded *.md, labelled "file.md #n"
 function recordedPrograms(): { label: string; source: string }[] {
