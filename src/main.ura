@@ -1,11 +1,5 @@
-proto printf(fmt i8[], ...) i32
-
 fn main() i32:
-    a i32 = 1
-    b i32 = 2
-    p1 &i32 = &a
-    p2 &i32 = &b
-    p1 = &p2
-    // p1 = 9
-    // printf("a = %d, b = %d\n", a, b)
-    return b
+    x i32 = 10
+    y i32 = 4
+    a i32[] = [x, 2, y]
+    return a[0] + a[1] + a[2]

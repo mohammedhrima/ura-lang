@@ -25,18 +25,19 @@ import { lint, stage } from "../../server/src/services/compiler";
 
 // out/test/unit → the ura-lang repository
 const REPO = path.resolve(__dirname, "../../../..");
-const RECORDED = path.join(REPO, "src", "tests");
+// the compiler's recorded programs (src/tests, or src/tests-old once renamed)
+const RECORDED = [path.join(REPO, "src", "tests"), path.join(REPO, "src", "tests-old")].filter((d) => fs.existsSync(d));
 const COMPILER = path.join(REPO, "bin", "ura");
 
 // every ```ura block of every src/tests/*.md, labelled "file.md #n"
 function recordedPrograms(): { label: string; source: string }[] {
     const programs: { label: string; source: string }[] = [];
-    for (const file of fs.readdirSync(RECORDED).filter((f) => f.endsWith(".md"))) {
-        const text = fs.readFileSync(path.join(RECORDED, file), "utf8");
+    for (const file of RECORDED.flatMap((dir) => fs.readdirSync(dir).filter((f) => f.endsWith(".md")).map((f) => path.join(dir, f)))) {
+        const text = fs.readFileSync(file, "utf8");
         const blocks = text.match(/^```ura\n[\s\S]*?^```$/gm) ?? [];
         blocks.forEach((block, i) => {
             programs.push({
-                label: `${file} #${i + 1}`,
+                label: `${path.relative(REPO, file)} #${i + 1}`,
                 source: block.replace(/^```ura\n/, "").replace(/```$/, ""),
             });
         });
@@ -148,7 +149,7 @@ function positionOf(source: string, needle: string, occurrence = 0): { line: num
 describe("functions", () => {
     test("every recorded test program parses and every fn / proto line is found", () => {
         const programs = recordedPrograms();
-        assert.ok(programs.length > 0, "no recorded programs found in src/tests");
+        assert.ok(programs.length > 0, "no recorded programs found in src/tests or src/tests-old");
         for (const { label, source } of programs) {
             const headers = source.split("\n").filter((l) => /^\s*(fn|proto)\s+[A-Za-z_]/.test(l)).length; // named headers
             assert.equal(analyze(source).functions.length, headers, label);
@@ -472,5 +473,14 @@ describe("structs", () => {
     test("struct names from used files count too", () => {
         const read: Reader = (file) => ({ "/p/types.ura": "struct User:\n    a i32\n" } as Record<string, string>)[file];
         assert.deepEqual(importedStructs("/p/main.ura", 'use "types"\n', read).map((i) => [i.file, i.struct.name]), [["/p/types.ura", "User"]]);
+    });
+});
+
+describe("comments and quotes", () => {
+    test("// inside a string is not a comment, escaped quotes included", () => {
+        assert.equal(stripComment('printf("\\" // not a comment") // comment'), 'printf("\\" // not a comment") ');
+        assert.equal(stripComment('printf("it\'s // text") // c'), 'printf("it\'s // text") ');
+        assert.equal(stripComment("c char = '\\'' // c"), "c char = '\\'' ");
+        assert.equal(stripComment('s i8[] = "a\\\\" // c'), 's i8[] = "a\\\\" ');
     });
 });

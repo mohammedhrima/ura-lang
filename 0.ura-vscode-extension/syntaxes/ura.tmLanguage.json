@@ -52,7 +52,18 @@
       "patterns": [
         {
           "name": "string.quoted.double.ura",
-          "match": "\"[^\"]*\""
+          "begin": "\"",
+          "end": "\"|$",
+          "patterns": [
+            {
+              "name": "constant.character.escape.ura",
+              "match": "\\\\[ntrbfva0?\\\\\"']"
+            },
+            {
+              "name": "invalid.illegal.unknown-escape.ura",
+              "match": "\\\\."
+            }
+          ]
         }
       ]
     },
@@ -61,10 +72,14 @@
         {
           "name": "string.quoted.single.ura",
           "begin": "'",
-          "end": "'",
+          "end": "'|$",
           "patterns": [
             {
               "name": "constant.character.escape.ura",
+              "match": "\\\\[ntrbfva0?\\\\\"']"
+            },
+            {
+              "name": "invalid.illegal.unknown-escape.ura",
               "match": "\\\\."
             }
           ]

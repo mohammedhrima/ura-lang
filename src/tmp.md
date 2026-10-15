@@ -1,153 +1,145 @@
-## references (&)
+## arrays
 
-# write through a ref
+# literal and indexing
 ```ura
-// stdout: a = 12
-// expect: 12
-proto printf(fmt i8[], ...) i32
-
+// expect: 10
 fn main() i32:
-    a i32 = 10
-    p &i32 = &a
-    p = 12
-    printf("a = %d\n", a)
-    return a
+    a i32[] = [4, 5, 6]
+    return a[0] + a[2]
 ```
 
-# read through a ref, then write
+# write through an index
 ```ura
-// stdout: p = 10, a = 15
-// expect: 15
-proto printf(fmt i8[], ...) i32
-
-fn main() i32:
-    a i32 = 10
-    p &i32 = &a
-    printf("p = %d, ", p)
-    p = p + 5
-    printf("a = %d\n", a)
-    return a
-```
-
-# compound assignment through a ref
-```ura
-// expect: 24
-fn main() i32:
-    a i32 = 10
-    p &i32 = &a
-    p += 2
-    p *= 2
-    return a
-```
-
-# swap with ref parameters
-```ura
-// stdout: a = 2, b = 1
-// expect: 21
-proto printf(fmt i8[], ...) i32
-
-fn swap(x &i32, y &i32):
-    t i32 = x
-    x = y
-    y = t
-
-fn main() i32:
-    a i32 = 1
-    b i32 = 2
-    swap(&a, &b)
-    printf("a = %d, b = %d\n", a, b)
-    return a * 10 + b
-```
-
-# a ref parameter changes the caller
-```ura
-// expect: 3
-fn inc(c &i32):
-    c += 1
-
-fn main() i32:
-    n i32 = 0
-    inc(&n)
-    inc(&n)
-    inc(&n)
-    return n
-```
-
-# p1 = p2 copies the value
-```ura
-// stdout: a = 2, b = 2
-// expect: 2
-proto printf(fmt i8[], ...) i32
-
-fn main() i32:
-    a i32 = 1
-    b i32 = 2
-    p1 &i32 = &a
-    p2 &i32 = &b
-    p1 = p2
-    printf("a = %d, b = %d\n", a, b)
-    return a
-```
-
-# p1 = &p2 rebinds
-```ura
-// stdout: a = 1, b = 9
 // expect: 9
+fn main() i32:
+    a i32[] = [1, 2, 3]
+    a[1] = 9
+    return a[1]
+```
+
+# index from a variable
+```ura
+// expect: 9
+fn main() i32:
+    a i32[] = [7, 8, 9]
+    i i32 = 2
+    return a[i]
+```
+
+# index from an expression
+```ura
+// expect: 8
+fn main() i32:
+    a i32[] = [7, 8, 9]
+    i i32 = 2
+    return a[i - 1]
+```
+
+# literal made of variables
+```ura
+// expect: 16
+fn main() i32:
+    x i32 = 10
+    y i32 = 4
+    a i32[] = [x, 2, y]
+    return a[0] + a[1] + a[2]
+```
+
+# compound assignment on an element
+```ura
+// expect: 18   (5 + 2 + 9 + 2)
+fn main() i32:
+    a i32[] = [1, 2, 3]
+    a[0] += 4
+    a[2] *= 3
+    return a[0] + a[1] + a[2] + 2
+```
+
+# loop over an array
+```ura
+// stdout: 3 1 4 1 5
+// expect: 14
 proto printf(fmt i8[], ...) i32
 
 fn main() i32:
-    a i32 = 1
-    b i32 = 2
-    p1 &i32 = &a
-    p2 &i32 = &b
-    p1 = &p2
-    p1 = 9
-    printf("a = %d, b = %d\n", a, b)
-    return b
+    a i32[] = [3, 1, 4, 1, 5]
+    sum i32 = 0
+    i i32 = 0
+    while i < 5:
+        printf("%d", a[i])
+        if i < 4:
+            printf(" ")
+        sum += a[i]
+        i += 1
+    printf("\n")
+    return sum
 ```
 
-# pass a ref parameter on to another function
+# an array passed to a function
 ```ura
-// expect: 2
-fn add_one(p &i32):
-    p += 1
-
-fn add_two(p &i32):
-    add_one(&p)
-    add_one(&p)
+// expect: 6
+fn sum(a i32[], n i32) i32:
+    total i32 = 0
+    i i32 = 0
+    while i < n:
+        total += a[i]
+        i += 1
+    return total
 
 fn main() i32:
-    a i32 = 0
-    add_two(&a)
-    return a
+    values i32[] = [1, 2, 3]
+    return sum(values, 3)
 ```
 
-# a ref to a bool
+# a function writes into the caller's array
 ```ura
+// expect: 7
+fn set_first(a i32[], v i32):
+    a[0] = v
+
+fn main() i32:
+    values i32[] = [1, 2, 3]
+    set_first(values, 7)
+    return values[0]
+```
+
+# a string is a writable i8[]
+```ura
+// stdout: xbc
 // expect: 1
+proto printf(fmt i8[], ...) i32
+
 fn main() i32:
-    b bool = False
-    p &bool = &b
-    p = True
-    if b:
+    s i8[] = "abc"
+    s[0] = 'x'
+    printf("%s\n", s)
+    if s[1] == 'b':
         return 1
     return 0
 ```
 
-# a ref in a loop
+# an array of bools
 ```ura
-// stdout: 1 2 3 4 5
-// expect: 15
-proto printf(fmt i8[], ...) i32
-
+// expect: 2
 fn main() i32:
-    total i32 = 0
-    p &i32 = &total
-    i i32 = 1
-    while i <= 5:
-        printf("%d ", i)
-        p += i
+    flags bool[] = [True, False, True]
+    n i32 = 0
+    i i32 = 0
+    while i < 3:
+        if flags[i]:
+            n += 1
         i += 1
-    printf("\n")
-    return total
+    return n
+```
+
+# declarations without a value start at zero
+```ura
+// expect: 0
+fn main() i32:
+    x i32
+    b bool
+    c char
+    if b or c != '\0':
+        return 1
+    return x
 ```

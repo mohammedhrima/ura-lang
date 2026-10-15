@@ -1369,6 +1369,7 @@ Node *analyze_type(Node *node) {
         array->left = new_node(new_token(I8, node->token));
         return array;
     }
+    case FN_CALL: return node->left->left;
     default: {
         eprint("handle this case %k\n", node->token);
         exit(1);
@@ -1471,9 +1472,9 @@ Node *analyze(Node *node, bool load) {
         return node;
     }
     case ACCESS: {
-        node->left = analyze(node->left, 0);
+        node->left = analyze(node->left, 1);
         assert(node->left != NULL);
-        node->right = analyze(node->right, 0);
+        node->right = analyze(node->right, 1);
         assert(node->right != NULL);
         break;
     }
@@ -1634,8 +1635,8 @@ Node *analyze(Node *node, bool load) {
         node->right = analyze(node->right, 1);
         // if (node->left->token->type == LOAD) // assign doesn't load left
         //     node->left = node->left->left;
-        // if (node->left->token->type == DREF && node->right->token->type == REF)
-        //     node->left = node->left->left;
+        if (node->left->token->type == DREF && node->right->token->type == REF)
+            node->left = node->left->left;
         // if (node->right->token->type == ARRAY_LIT && node->right->left &&
         //     node->right->left->token->type == ANY)
         //     node->right->left = node->left->left;
@@ -1813,9 +1814,8 @@ void codegen_create_value(Node *node) {
         Value first[] = { LLVMConstInt(i32, 0, 0), LLVMConstInt(i32, 0, 0) };
 
         Value str = LLVMAddGlobal(ura.module, type, "str");
-
-        LLVMSetInitializer(str,
-                           LLVMConstStringInContext(ura.context, value, len - 1, 0));
+        Value string = LLVMConstStringInContext(ura.context, value, len - 1, 0);
+        LLVMSetInitializer(str, string);
         LLVMSetGlobalConstant(str, 1);
         LLVMSetLinkage(str, LLVMPrivateLinkage);
 
@@ -1825,7 +1825,7 @@ void codegen_create_value(Node *node) {
         Value src = LLVMBuildInBoundsGEP2(ura.builder, type, str, first, 2, "src");
         Value dst = LLVMBuildInBoundsGEP2(ura.builder, type, stack, first, 2, "dst");
         LLVMBuildMemCpy(ura.builder, dst, 1, src, 1, LLVMConstInt(i64, len, 0));
-        node->token->llvm.elem = dst; // i8*, points to the stack copy
+        node->token->llvm.elem = dst;
         break;
     }
     case I8: {
@@ -2543,11 +2543,12 @@ int _print_token(File fp, Token *token) {
 
 struct NodePrint {
     expand(int, depths);
-    expand(Node*, nodes);
+    expand(Node *, nodes);
 };
 
 void _print_node_helper(NodePrint *elems, Node *node, int depth) {
-    if(node == NULL) return;
+    if (node == NULL)
+        return;
 
     push_back(elems->nodes, node);
     push_back(elems->depths, depth);
@@ -2558,8 +2559,8 @@ void _print_node_helper(NodePrint *elems, Node *node, int depth) {
         if (includes(node->token->type, ID, VAR, REF, 0) && is_struct) {
             push_back(elems->nodes, left);
             push_back(elems->depths, depth + 3);
-        } 
-        else _print_node_helper(elems, left, depth + 3);
+        } else
+            _print_node_helper(elems, left, depth + 3);
     }
     _print_node_helper(elems, node->right, depth + 3);
     for (size_t i = 0; i < node->children_count; i++)
@@ -2583,7 +2584,8 @@ int _print_node(File fp, Node *node) {
         int depth = elems.depths[i];
         for (int level = 1; level < depth; level++)
             r += fprintf(fp, "%s", is_open(&elems, i, level) ? "│ " : " ");
-        if (depth) r += fprintf(fp, "%s", is_open(&elems, i, depth) ? "├─" : "└─");
+        if (depth)
+            r += fprintf(fp, "%s", is_open(&elems, i, depth) ? "├─" : "└─");
         r += _print_token(fp, elems.nodes[i]->token) + fprintf(fp, "\n");
     }
     return 0;
@@ -2596,28 +2598,53 @@ int _print(File fp, const char *fmt, va_list ap) {
             r += fprintf(fp, "%c", fmt[i]);
             continue;
         }
-        if (fmt[++i] == '\0') break;
+        if (fmt[++i] == '\0')
+            break;
         Token *token = NULL;
         switch (fmt[i]) {
-            case 's': r += fprintf(fp, "%s", va_arg(ap, char*)); break;
-            case 'd': r += fprintf(fp, "%d", va_arg(ap, int)); break;
-            case 'c': r += fprintf(fp, "%c", va_arg(ap, int)); break;
-            case 'f': r += fprintf(fp, "%f", va_arg(ap, double)); break;
-            case 'z': r += fprintf(fp, "%zu", va_arg(ap, size_t)); i++; break;
-            case '.': {
-                int n = va_arg(ap, int);
-                char *str = va_arg(ap, char*);
-                r += fprintf(fp, "%.*s", n, str);
-                i += 2; // skip *s
-                break;
-            }
-            case 'i': r += fprintf(fp, "%*s", va_arg(ap, int), ""); break;
-            case '%': r += fprintf(fp, "%%"); break;
-            case 't': r += fprintf(fp, "%s", to_string(va_arg(ap, Type))); break;
-            case 'k': r += _print_token(fp, va_arg(ap, Token*)); break;
-            case 'n': r += _print_node(fp, va_arg(ap, Node *)); break;
-            case 'N': r += _print_type(fp, va_arg(ap, Node*)); break;
-            default : break;
+        case 's':
+            r += fprintf(fp, "%s", va_arg(ap, char *));
+            break;
+        case 'd':
+            r += fprintf(fp, "%d", va_arg(ap, int));
+            break;
+        case 'c':
+            r += fprintf(fp, "%c", va_arg(ap, int));
+            break;
+        case 'f':
+            r += fprintf(fp, "%f", va_arg(ap, double));
+            break;
+        case 'z':
+            r += fprintf(fp, "%zu", va_arg(ap, size_t));
+            i++;
+            break;
+        case '.': {
+            int n = va_arg(ap, int);
+            char *str = va_arg(ap, char *);
+            r += fprintf(fp, "%.*s", n, str);
+            i += 2; // skip *s
+            break;
+        }
+        case 'i':
+            r += fprintf(fp, "%*s", va_arg(ap, int), "");
+            break;
+        case '%':
+            r += fprintf(fp, "%%");
+            break;
+        case 't':
+            r += fprintf(fp, "%s", to_string(va_arg(ap, Type)));
+            break;
+        case 'k':
+            r += _print_token(fp, va_arg(ap, Token *));
+            break;
+        case 'n':
+            r += _print_node(fp, va_arg(ap, Node *));
+            break;
+        case 'N':
+            r += _print_type(fp, va_arg(ap, Node *));
+            break;
+        default:
+            break;
         }
     }
     return r;
