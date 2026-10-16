@@ -1369,7 +1369,8 @@ Node *analyze_type(Node *node) {
         array->left = new_node(new_token(I8, node->token));
         return array;
     }
-    case FN_CALL: return node->left->left;
+    case FN_CALL:
+        return node->left->left;
     default: {
         eprint("handle this case %k\n", node->token);
         exit(1);
@@ -1653,23 +1654,28 @@ Node *analyze(Node *node, bool load) {
     } 
     case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN:
     case DIV_ASSIGN: case MOD_ASSIGN: { // clang-format on
-        Type ops[END + 1] = {
-            [ADD_ASSIGN] = ADD, [SUB_ASSIGN] = SUB, [MUL_ASSIGN] = MUL,
-            [DIV_ASSIGN] = DIV, [MOD_ASSIGN] = MOD,
-        };
-        Type type = ops[node->token->type];
+        node->left = analyze(node->left, 0);
+        assert(node->left);
+        node->right = analyze(node->right, 1);
+        assert(node->right);
+        // Type ops[END + 1] = {
+        //     [ADD_ASSIGN] = ADD, [SUB_ASSIGN] = SUB, [MUL_ASSIGN] = MUL,
+        //     [DIV_ASSIGN] = DIV, [MOD_ASSIGN] = MOD,
+        // };
+        // Type type = ops[node->token->type];
 
-        Node *op = new_node(new_token(type, node->token));
-        op->left = analyze(node->left, 1);
-        op->right = analyze(node->right, 1);
-        analyze(op, 1);
+        // Node *op = new_node(new_token(type, node->token));
+        // op->left = analyze(node->left, 0);
+        // op->right = analyze(node->right, 1);
+        // analyze(op, 1);
         // TODO: check this
         // if (tmp->token->type == ERR)
         //     node->token->type = ERR;
         // else
-        node->token->type = ASSIGN;
-        node->left = analyze(node->left, 0);
-        node->right = op;
+        // node->token->type = ASSIGN;
+        // node->left = analyze(node->left, 0);
+        // node->right = op;
+        // analyze(node);
         break;
     }
     default: {
@@ -1849,11 +1855,12 @@ void codegen_create_value(Node *node) {
     }
 }
 
-void codegen_op(Node *node) {
+void codegen_op(Type type, Value left, Value right) {
     // clang-format off
     LLVMOpcode opcodes[END + 1] = {
-        [ADD] = LLVMAdd,  [SUB] = LLVMSub, [MUL] = LLVMMul, [DIV] = LLVMSDiv,
-        [MOD] = LLVMSRem, [AND] = LLVMAnd, [OR] = LLVMOr,
+        [ADD] = LLVMAdd,  [SUB] = LLVMSub, [MUL] = LLVMMul, 
+        [DIV] = LLVMSDiv, [MOD] = LLVMSRem, 
+        [AND] = LLVMAnd, [OR] = LLVMOr,
     };
     LLVMIntPredicate predicates[END + 1] = {
         [GT] = LLVMIntSGT, [LT] = LLVMIntSLT, [GE] = LLVMIntSGE,
@@ -2172,13 +2179,18 @@ void codegen(Node *node) {
             codegen(node->children[i]);
         exit_scope();
         break;
-    } // clang-format off
+    } 
     case ASSIGN: {
         codegen(node->left);
         codegen(node->right);
         Value lelem = node->left->token->llvm.elem;
         Value relem = node->right->token->llvm.elem;
         LLVMBuildStore(ura.builder, relem, lelem);
+        break;
+    } // clang-format off
+    case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN:
+    case DIV_ASSIGN: case MOD_ASSIGN: { // clang-format on
+
         break;
     }
     case AND: case OR:
@@ -2191,6 +2203,7 @@ void codegen(Node *node) {
     }
     default: {
         eprint("handle this case %k\n", node->token);
+        raise(SIGSEGV);
         exit(1);
         break;
     }

@@ -51,5 +51,6 @@
         "0.old-code/.gitignore": true,
         "0.old-code/.gitattributes": true
     },
-    "hidefiles.selectedProfile": "Default"
+    "hidefiles.selectedProfile": "Default",
+    "C_Cpp.loggingLevel": "Debug"
 }
