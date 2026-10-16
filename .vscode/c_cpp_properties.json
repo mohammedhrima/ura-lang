@@ -2,12 +2,20 @@
     "configurations": [
         {
             "name": "Linux",
+            "compileCommands": "${workspaceFolder}/src/compile_commands.json",
             "includePath": [
                 "${default}",
                 "/usr/lib/llvm-12/include"
             ],
-            "defines": [],
-            "compilerPath": "/usr/bin/clang"
+            "defines": [
+                "_GNU_SOURCE",
+                "__STDC_CONSTANT_MACROS",
+                "__STDC_FORMAT_MACROS",
+                "__STDC_LIMIT_MACROS"
+            ],
+            "compilerPath": "/usr/bin/clang",
+            "cStandard": "gnu17",
+            "intelliSenseMode": "linux-clang-x64"
         }
     ],
     "version": 4

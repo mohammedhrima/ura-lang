@@ -161,6 +161,14 @@ build() {
             echo "build: Universal Ctags not found, proto.h not regenerated" >&2
         fi
 
+        # compile_commands.json: the exact flags of the compile below, so the
+        # editor's C/C++ IntelliSense finds the LLVM headers and colors their names
+        {
+            printf '[{"directory": "%s", "file": "main.c", "arguments": [' "$URA_ROOT"
+            printf '"%s", ' "$CC" "${FLAGS[@]}" "${CFLAGS_LLVM[@]}"
+            printf '"-c", "main.c"]}]\n'
+        } > compile_commands.json
+
         mkdir -p "$URA_BIN_DIR"
         "$CC" "${FLAGS[@]}" "${CFLAGS_LLVM[@]}" main.c "${LIBS[@]}" -o "$URA_BIN"
     ) && _ura_green "build: bin/ura ready" || { _ura_red "build: failed"; return 1; }
