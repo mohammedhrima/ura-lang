@@ -3,28 +3,30 @@
 #   source config.sh
 #
 # defines these shell commands:
-#   build    rebuild bin/ura (the compiler); build/ only holds what ura
-#            itself generates when it compiles a file
-#   copy <ura_file> <md_prefix> <description>
-#            snapshot <ura_file> into tests/<md_prefix>.md; an entry with the
-#            same description is replaced in place, otherwise one is appended
-#   replace <ura_file> <number> <md_prefix>
-#            re-record test <number>, keeping its description
-#   tests [md_prefix] [number]
-#            rebuild first (stop if that fails), then run all tests, one
-#            file's tests, or a single test; compares the generated LLVM IR
-#            against what was recorded
+#   build    rebuild <repo>/bin/ura (the compiler), plus proto.h and
+#            compile_commands.json
+#   tests [target] [number]
+#            rebuild, then compile tests and compare the generated LLVM IR
+#            with the recorded one; one line per test, with a file:line link
+#            target: nothing (all), a folder (data_types), a file
+#            (data_types/bool, or just bool); number: one entry of a file
+#   record [target] [number]
+#            rebuild, then compile tests and (re)write their recorded IR;
+#            an entry that doesn't compile is left as it was and reported
+#   copy <ura_file> <file> <description>
+#            add <ura_file> to tests/<file>.md as a new entry (an entry with
+#            the same description is replaced in place)
 #   extension
-#            package the VS Code extension (../ura-vscode-extension) and
+#            package the VS Code extension (../0.ura-vscode-extension) and
 #            install it into VS Code
 #   update   re-source this file after editing it
 #
 # Works when sourced from either bash or zsh. Everything else here is an
 # internal helper, prefixed _ura_ so it doesn't collide with your shell.
 #
-# Depends on `ura <dir>/<name>.ura -o <path>` writing its LLVM IR to
-# <dir>/build/<name>.ll. If that contract changes, only _ura_compile_case()
-# below needs to change.
+# Depends on `ura <file>.ura -o <exe>` writing its LLVM IR to
+# <current directory>/build/out.ll. If that contract changes, only
+# _ura_compile_case() below needs to change.
 
 # ---------------------------------------------------------------------------
 # where this file lives: bash and zsh report it differently when sourced
@@ -80,9 +82,6 @@ build() {
         CC=clang
         # arrays, not strings: zsh does not word-split unquoted "$VAR"
         FLAGS=(-fsanitize=address -g3 -Werror)
-        # tests sets these; on their own build and header.h's defaults decide
-        [ -n "$GEN_IR" ] && FLAGS+=(-DGEN_IR="$GEN_IR")
-        [ -n "$GEN_ASM" ] && FLAGS+=(-DGEN_ASM="$GEN_ASM")
 
         # every llvm-config in sight: on PATH, plain or versioned (Ubuntu's
         # llvm-config-12), and in the usual install prefixes
@@ -185,7 +184,9 @@ build() {
 # soon as the compile finishes.
 #
 # The compiler runs from the source's directory with a bare file name, so
-# messages say "test.ura:2:11" instead of a temporary path.
+# messages say "test.ura:2:11" instead of a temporary path. It writes its IR
+# to build/out.ll under that directory, so each test (in its own temporary
+# directory) reads its own IR.
 #
 # Returns 0 when the compile succeeded, 1 when it failed, 2 when there is no
 # compiler to run.
@@ -197,8 +198,8 @@ _ura_compile_case() {
     local -a limit
     dir=$(cd "$(dirname "$ura_file")" && pwd)
     base=$(basename "$ura_file")
-    # ura derives the IR path from the source, not from -o: <dir>/build/<base>.ll
-    ll="$dir/build/$(basename "$ura_file" .ura).ll"
+    # ura writes its IR under the directory it runs in: <dir>/build/out.ll
+    ll="$dir/build/out.ll"
 
     if [ ! -x "$URA_BIN" ]; then
         _ura_red "compile: bin/ura not found - run 'build' first"
@@ -244,24 +245,103 @@ _ura_compile_as_test() {
 # ============================================================================
 # _ura_clean_stderr
 #
-# Reads compiler stderr on stdin and prints it without colors and without
-# the "raised at main.c:N" lines, whose line numbers move on every edit.
+# Reads compiler stderr on stdin and prints it without colors, and with
+# eprint's "main.c:1165 find_function message" written as
+# "find_function: message": the file and line number move on every edit of
+# main.c, the function name doesn't.
 # ============================================================================
 _ura_clean_stderr() {
-    sed -e $'s/\033\\[[0-9;]*m//g' | grep -v '^raised at '
+    sed -E \
+        -e $'s/\033\\[[0-9;]*m//g' \
+        -e 's/^[^ :]+\.[ch]:[0-9]+ ([A-Za-z_][A-Za-z0-9_]*) /\1: /'
+}
+
+# ============================================================================
+# _ura_print_failure <stderr>
+#
+# Prints a failed compile's stderr, indented, short enough to read in a test
+# run: for a sanitizer crash only the error line and the first two stack
+# frames (where it crashed), otherwise the first 8 lines.
+# ============================================================================
+_ura_print_failure() {
+    local stderr="$1"
+    if printf '%s\n' "$stderr" | grep -q 'AddressSanitizer'; then
+        printf '%s\n' "$stderr" | grep -E 'ERROR: AddressSanitizer|^ *#[01] ' | sed 's/^ */      /'
+    else
+        printf '%s\n' "$stderr" | head -8 | sed 's/^/      /'
+    fi
+}
+
+# ============================================================================
+# _ura_test_files [target]
+#
+# Prints the test files <target> names, one per line:
+#   (nothing)          every .md under tests/
+#   data_types         every .md in tests/data_types/
+#   data_types/bool    tests/data_types/bool.md
+#   bool               the file named bool.md, in whichever folder it is
+# Returns 1 when <target> names nothing.
+# ============================================================================
+_ura_test_files() {
+    local target="$1" found
+
+    if [ -z "$target" ]; then
+        found=$(find "$URA_TESTS_DIR" -name '*.md' 2>/dev/null | sort)
+    elif [ -f "$URA_TESTS_DIR/$target.md" ]; then
+        found="$URA_TESTS_DIR/$target.md"
+    elif [ -d "$URA_TESTS_DIR/$target" ]; then
+        found=$(find "$URA_TESTS_DIR/$target" -name '*.md' 2>/dev/null | sort)
+    else
+        found=$(find "$URA_TESTS_DIR" -name "$target.md" 2>/dev/null | sort)
+    fi
+
+    if [ -z "$found" ]; then
+        return 1
+    fi
+    printf '%s\n' "$found"
+}
+
+# ============================================================================
+# _ura_label <md_file>
+#
+# Prints the name a test file is shown under: its path below tests/, without
+# ".md" (tests/data_types/bool.md -> data_types/bool).
+# ============================================================================
+_ura_label() {
+    printf '%s\n' "$1" | sed -e "s|^$URA_TESTS_DIR/||" -e 's|\.md$||'
+}
+
+# ============================================================================
+# _ura_pick_number <md_files> <number>
+#
+# Checks that <number> can be used with <md_files> (it needs exactly one
+# file) and prints it padded to 3 digits. Prints nothing for no number.
+# ============================================================================
+_ura_pick_number() {
+    local md_files="$1" number="$2" count
+    if [ -z "$number" ]; then
+        return 0
+    fi
+    count=$(printf '%s\n' "$md_files" | wc -l)
+    if [ "$count" -ne 1 ]; then
+        _ura_red "a test number needs one file, like: data_types/bool $number" >&2
+        return 1
+    fi
+    printf '%03d\n' "$((10#$number))"
 }
 
 # ============================================================================
 # _ura_entry_link <md_file> <number>
 #
 # Prints "<path>:<line>" for entry <number>, the line its "## NNN" heading is
-# on. The path is relative to the current directory when it sits below it, so
-# that terminals which turn "file:line" into a link can open it.
+# on. The path is relative to tests/ (control_flow/if.md:21): every test is
+# there, so the prefix adds nothing. Terminals that turn "file:line" into a
+# link can still open it (VS Code finds it in the workspace).
 # ============================================================================
 _ura_entry_link() {
     local md_file="$1" number="$2" line
     line=$(awk -v want="## $number " 'index($0, want) == 1 { print NR; exit }' "$md_file")
-    printf '%s:%s' "${md_file#$PWD/}" "$line"
+    printf '%s:%s' "${md_file#$URA_TESTS_DIR/}" "$line"
 }
 
 # ============================================================================
@@ -444,7 +524,8 @@ _ura_write_entry() {
 
     echo "---"
     echo
-    echo "## $number — $description"
+    # printf, not echo: zsh's echo turns a "\0" in the description into a NUL
+    printf '## %s — %s\n' "$number" "$description"
     echo
     echo '```ura'
     _ura_trim_blank_lines "$ura_file"
@@ -474,33 +555,33 @@ _ura_write_entry() {
 }
 
 # ============================================================================
-# copy <ura_file> <md_prefix> <description>
+# copy <ura_file> <file> <description>
 #
-# Snapshots <ura_file> into tests/<md_prefix>.md, alongside its generated
-# LLVM IR, or its stderr and exit status when the compile fails. An entry
-# with the same description is replaced in place, keeping its number;
-# otherwise a new one is appended.
+# Snapshots <ura_file> into tests/<file>.md (folders are created), alongside
+# its generated LLVM IR, or its stderr and exit status when the compile
+# fails. An entry with the same description is replaced in place, keeping
+# its number; otherwise a new one is appended.
 #
-#   copy file.ura while "basic while"
-#   copy bad.ura errors "unknown variable"
+#   copy file.ura control_flow/while "basic while"
+#   copy bad.ura errors/variables "unknown variable"
 # ============================================================================
 copy() {
-    local ura_file="$1" md_prefix="$2" description="$3"
-    if [ -z "$ura_file" ] || [ -z "$md_prefix" ] || [ -z "$description" ]; then
-        _ura_red "usage: copy <ura_file> <md_prefix> <description>"
+    local ura_file="$1" level="$2" description="$3"
+    if [ -z "$ura_file" ] || [ -z "$level" ] || [ -z "$description" ]; then
+        _ura_red "usage: copy <ura_file> <file> <description>"
         return 1
     fi
     if [ ! -f "$ura_file" ]; then
         _ura_red "copy: no such file: $ura_file"
         return 1
     fi
-    # md_prefix becomes a file path, so keep it a plain name
-    case "$md_prefix" in
-        */*|.*) _ura_red "copy: md_prefix must not contain '/' or start with '.'"; return 1 ;;
+    # level becomes a path below tests/: folders are fine, leaving tests/ isn't
+    case "$level" in
+        /*|.*|*/.*) _ura_red "copy: give a path inside tests/, like data_types/bool"; return 1 ;;
     esac
 
-    mkdir -p "$URA_TESTS_DIR"
-    local md_file="$URA_TESTS_DIR/$md_prefix.md"
+    local md_file="$URA_TESTS_DIR/$level.md"
+    mkdir -p "$(dirname "$md_file")"
     # the header itself is written by _ura_rewrite_index
     touch "$md_file"
 
@@ -516,69 +597,115 @@ copy() {
         number=$(_ura_next_number "$md_file")
         _ura_write_entry "$number" "$description" "$ura_file" >> "$md_file"
         _ura_rewrite_index "$md_file"
-        _ura_green "copy: added $number — $description to tests/$md_prefix.md"
+        _ura_green "copy: added $number — $description to tests/$level.md"
         return 0
     fi
 
     _ura_replace_entry "$md_file" "$number" "$description" "$ura_file"
     _ura_rewrite_index "$md_file"
-    _ura_green "copy: replaced $number — $description in tests/$md_prefix.md"
+    _ura_green "copy: replaced $number — $description in tests/$level.md"
 }
 
 # ============================================================================
-# replace <ura_file> <number> <md_prefix>
+# _ura_record_file <md_file> [number]
 #
-# Recompiles <ura_file> and overwrites test <number> in tests/<md_prefix>.md,
-# keeping that entry's existing description. The number may be written
-# without padding.
-#
-#   replace file.ura 1 while
+# Compiles every entry of <md_file> (or only entry <number>) and rewrites its
+# "### llvm ir" block with the IR the compiler generates now. An entry that
+# doesn't compile is left as it was. Prints the file, then one line per
+# entry: green when recorded, red when it doesn't compile. Adds to the _ura_recorded / _ura_not_compiling counters that
+# record() resets.
 # ============================================================================
-replace() {
-    local ura_file="$1" number="$2" md_prefix="$3"
-    if [ -z "$ura_file" ] || [ -z "$number" ] || [ -z "$md_prefix" ]; then
-        _ura_red "usage: replace <ura_file> <number> <md_prefix>"
-        return 1
+_ura_record_file() {
+    local md_file="$1" only="$2"
+    local numbers number description link tmp_dir tmp_ura compiled
+
+    numbers=$(grep -oE '^## [0-9]{3}' "$md_file" | grep -oE '[0-9]{3}')
+
+    if [ -n "$only" ]; then
+        if ! printf '%s\n' "$numbers" | grep -qx "$only"; then
+            _ura_red "record: no test $only in $(_ura_label "$md_file")"
+            return 1
+        fi
+        numbers=$only
     fi
-    if [ ! -f "$ura_file" ]; then
-        _ura_red "replace: no such file: $ura_file"
-        return 1
-    fi
-    case "$md_prefix" in
-        */*|.*) _ura_red "replace: md_prefix must not contain '/' or start with '.'"; return 1 ;;
-    esac
+    [ -n "$numbers" ] || return 0
 
-    local md_file="$URA_TESTS_DIR/$md_prefix.md"
-    if [ ! -f "$md_file" ]; then
-        _ura_red "replace: no such test file: $md_file"
-        return 1
-    fi
+    _ura_label "$md_file"
 
-    number=$(printf '%03d' "$((10#$number))")
+    # command substitution, not a bare $numbers: zsh does not word-split variables
+    for number in $(printf '%s\n' "$numbers"); do
+        description=$(_ura_entry_description "$md_file" "$number")
+        link=$(_ura_entry_link "$md_file" "$number")
 
-    local description
-    description=$(_ura_entry_description "$md_file" "$number")
-    if [ -z "$description" ]; then
-        _ura_red "replace: no test $number in tests/$md_prefix.md"
-        return 1
-    fi
+        tmp_dir=$(mktemp -d)
+        tmp_ura="$tmp_dir/test.ura"
+        _ura_extract_entry "$md_file" "$number" | _ura_extract_fence > "$tmp_ura"
 
-    # a failed compile is recorded too, as an error test; only a missing
-    # compiler stops here
-    _ura_compile_as_test "$ura_file"
-    [ $? -ne 2 ] || return 1
+        _ura_compile_case "$tmp_ura" "test_$number"
+        compiled=$?
+        if [ "$compiled" -eq 2 ]; then
+            rm -rf "$tmp_dir"
+            return 1
+        fi
 
-    _ura_replace_entry "$md_file" "$number" "$description" "$ura_file"
+        if [ "$compiled" -eq 0 ]; then
+            # needs the source file, so before the temporary directory goes
+            _ura_replace_entry "$md_file" "$number" "$description" "$tmp_ura"
+            _ura_green "$link $description"
+            _ura_recorded=$((_ura_recorded + 1))
+        else
+            _ura_red "$link $description (doesn't compile, not recorded)"
+            _ura_print_failure "$URA_CASE_STDERR"
+            _ura_not_compiling=$((_ura_not_compiling + 1))
+        fi
+        rm -rf "$tmp_dir"
+    done
+
     _ura_rewrite_index "$md_file"
-    _ura_green "replace: replaced $number — $description in tests/$md_prefix.md"
+}
+
+# ============================================================================
+# record [target] [number]
+#
+#   record                     every test file
+#   record data_types          every file in tests/data_types/
+#   record data_types/bool     one file (or just: record bool)
+#   record bool 4              only entry 004 of it
+#
+# Rebuilds first, then (re)writes the recorded IR. Use it to fill new
+# entries, and after a change that alters the IR on purpose (naming,
+# codegen); review the result with `git diff`.
+# ============================================================================
+record() {
+    local target="$1" number="$2" md_files md_file
+    _ura_recorded=0
+    _ura_not_compiling=0
+
+    build || return 1
+    echo
+
+    if ! md_files=$(_ura_test_files "$target"); then
+        _ura_red "record: no tests named '$target' in tests/"
+        return 1
+    fi
+    number=$(_ura_pick_number "$md_files" "$number") || return 1
+
+    while IFS= read -r md_file; do
+        _ura_record_file "$md_file" "$number" || return 1
+    done <<EOF
+$md_files
+EOF
+
+    echo
+    echo "$_ura_recorded recorded, $_ura_not_compiling not compiling (left as they were)"
 }
 
 # ============================================================================
 # _ura_compare <entry_text> <section_heading> <fresh_value> <number> <name> <link>
 #
 # Diffs <fresh_value> against the recorded <section_heading> block inside
-# <entry_text>. Prints a short failure line plus a few lines of diff on
-# mismatch. Returns 1 on mismatch, 0 on match.
+# <entry_text>. Prints nothing on match; on mismatch, the entry's line in
+# red plus a few lines of diff. Returns 1 on mismatch, 0 on match.
 # ============================================================================
 _ura_compare() {
     local entry="$1" heading="$2" fresh="$3" number="$4" name="$5" link="$6"
@@ -587,7 +714,7 @@ _ura_compare() {
 
     [ "$recorded" = "$fresh" ] && return 0
 
-    _ura_red "  $link  $number — $name: FAIL ($heading)"
+    _ura_red "$link $name ($heading differs)"
     diff <(printf '%s\n' "$recorded") <(printf '%s\n' "$fresh") | head -6 | sed 's/^/      /'
     return 1
 }
@@ -595,27 +722,28 @@ _ura_compare() {
 # ============================================================================
 # _ura_test_file <md_file> [number]
 #
-# Runs every entry in <md_file>, or only entry <number> when given, under a
-# "<name>:" header. Adds to the _ura_passed / _ura_failed counters that
-# tests() resets.
+# Runs every entry in <md_file>, or only entry <number>. Prints the file,
+# then one line per entry, green when it passes, red when it fails: a
+# file:line link to the entry (ctrl+click opens it in VS Code) and its name.
+# A failure shows its details under its line. Adds to the _ura_passed /
+# _ura_failed counters that tests() resets.
 # ============================================================================
 _ura_test_file() {
     local md_file="$1" only="$2"
-    local label numbers number entry name link tmp_dir tmp_ura compiled
+    local numbers number entry name link tmp_dir tmp_ura compiled
 
-    label=$(basename "$md_file" .md)
     numbers=$(grep -oE '^## [0-9]{3}' "$md_file" | grep -oE '[0-9]{3}')
 
     if [ -n "$only" ]; then
         if ! printf '%s\n' "$numbers" | grep -qx "$only"; then
-            _ura_red "tests: no test $only in tests/$label.md"
+            _ura_red "tests: no test $only in $(_ura_label "$md_file")"
             return 1
         fi
         numbers=$only
     fi
     [ -n "$numbers" ] || return 0
 
-    echo "$label:"
+    _ura_label "$md_file"
 
     # command substitution, not a bare $numbers: zsh does not word-split variables
     for number in $(printf '%s\n' "$numbers"); do
@@ -623,8 +751,7 @@ _ura_test_file() {
         name=$(printf '%s\n' "$entry" | head -1 | sed -E 's/^## [0-9]{3} — //')
         link=$(_ura_entry_link "$md_file" "$number")
 
-        # a private directory, so the build/ that ura creates next to the
-        # source is removed along with it
+        # a private directory, so the build/ that ura creates is removed with it
         tmp_dir=$(mktemp -d)
         tmp_ura="$tmp_dir/test.ura"
         printf '%s\n' "$entry" | _ura_extract_fence > "$tmp_ura"
@@ -634,28 +761,22 @@ _ura_test_file() {
         rm -rf "$tmp_dir"
         [ "$compiled" -ne 2 ] || return 1
 
-        # an entry that records a status expects the compile to fail, with
-        # exactly that stderr and status
         if printf '%s\n' "$entry" | grep -qx '### status'; then
+            # an entry that records a status expects the compile to fail,
+            # with exactly that stderr and status
             if _ura_compare "$entry" "stderr" "$URA_CASE_STDERR" "$number" "$name" "$link" &&
                 _ura_compare "$entry" "status" "$URA_CASE_STATUS" "$number" "$name" "$link"; then
-                _ura_green "  $link  $number — $name: PASS"
+                _ura_green "$link $name"
                 _ura_passed=$((_ura_passed + 1))
             else
                 _ura_failed=$((_ura_failed + 1))
             fi
-            continue
-        fi
-
-        if [ "$compiled" -ne 0 ]; then
-            _ura_red "  $link  $number — $name: FAIL (compile error, status $URA_CASE_STATUS)"
-            printf '%s\n' "$URA_CASE_STDERR" | head -8 | sed 's/^/      /'
+        elif [ "$compiled" -ne 0 ]; then
+            _ura_red "$link $name (compile error, status $URA_CASE_STATUS)"
+            _ura_print_failure "$URA_CASE_STDERR"
             _ura_failed=$((_ura_failed + 1))
-            continue
-        fi
-
-        if _ura_compare "$entry" "llvm ir" "$URA_CASE_IR" "$number" "$name" "$link"; then
-            _ura_green "  $link  $number — $name: PASS"
+        elif _ura_compare "$entry" "llvm ir" "$URA_CASE_IR" "$number" "$name" "$link"; then
+            _ura_green "$link $name"
             _ura_passed=$((_ura_passed + 1))
         else
             _ura_failed=$((_ura_failed + 1))
@@ -664,18 +785,18 @@ _ura_test_file() {
 }
 
 # ============================================================================
-# tests [md_prefix] [number]
+# tests [target] [number]
 #
-#   tests            every test in tests/*.md
-#   tests while      every test in tests/while.md
-#   tests while 1    only test 001 in tests/while.md
+#   tests                      every test file
+#   tests data_types           every file in tests/data_types/
+#   tests data_types/bool      one file (or just: tests bool)
+#   tests bool 4               only entry 004 of it
 #
-# Runs build first and stops there if the build fails.
+# Runs build first and stops there if the build fails. Prints each file and
+# one line per test under it (see _ura_test_file), then the totals.
 # ============================================================================
 tests() {
-    local md_prefix="$1" number="$2" md_file
-    # every entry records the IR, so the compiler under test must emit it
-    local GEN_IR=1 GEN_ASM=1
+    local target="$1" number="$2" md_files md_file
     _ura_passed=0
     _ura_failed=0
 
@@ -683,22 +804,17 @@ tests() {
     build || return 1
     echo
 
-    if [ -n "$md_prefix" ]; then
-        md_file="$URA_TESTS_DIR/$md_prefix.md"
-        if [ ! -f "$md_file" ]; then
-            _ura_red "tests: no such test file: tests/$md_prefix.md"
-            return 1
-        fi
-        if [ -n "$number" ]; then
-            number=$(printf '%03d' "$((10#$number))")
-        fi
-        _ura_test_file "$md_file" "$number" || return 1
-    else
-        # find, not a glob: zsh errors out on a glob that matches nothing
-        while IFS= read -r md_file; do
-            _ura_test_file "$md_file"
-        done < <(find "$URA_TESTS_DIR" -maxdepth 1 -name '*.md' 2>/dev/null | sort)
+    if ! md_files=$(_ura_test_files "$target"); then
+        _ura_red "tests: no tests named '$target' in tests/"
+        return 1
     fi
+    number=$(_ura_pick_number "$md_files" "$number") || return 1
+
+    while IFS= read -r md_file; do
+        _ura_test_file "$md_file" "$number" || return 1
+    done <<EOF
+$md_files
+EOF
 
     echo
     echo "$_ura_passed passed, $_ura_failed failed"
@@ -723,4 +839,4 @@ update() {
     source "$URA_ROOT/config.sh"
 }
 
-printf '\033[0;32m(ura-lang)\033[0m ready — commands: build, copy, replace, tests, extension, update\n'
+printf '\033[0;32m(ura-lang)\033[0m ready — commands: build, tests, record, copy, extension, update\n'

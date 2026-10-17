@@ -137,7 +137,7 @@
       "patterns": [
         {
           "name": "keyword.control.ura",
-          "match": "\\b(if|elif|else|while|break|continue|return|and|or)\\b"
+          "match": "\\b(if|elif|else|while|break|continue|return|and|or|as)\\b"
         }
       ]
     },
