@@ -4,20 +4,44 @@ bool check_multi_comment(int s, int e, int line) {
     char *buff = ura.scope->token->file.buff;
     if (ura_ncmp(buff + e, "*/", 2))
         return true;
-    error(s - 2, s, line, "inclosed comment"); // TODO: fix this ugly shit
+    error((Error){
+        .s = s - 2,
+        .e = s,
+        .line = line,
+        .msg = "unclosed comment",
+        .help = "add */ to close it",
+    });
     return false;
 }
 
 bool check_quote(int s, int e, int line) {
     char *buff = ura.scope->token->file.buff;
-    if (buff[s] == buff[e])
+    char quote = buff[s];
+    if (buff[e] == quote)
         return true;
-    error(s, e, line, "inclosed string");
+
+    int s0 = s; // the line, without its indentation
+    while (s0 > 0 && buff[s0 - 1] != '\n')
+        s0--;
+    while (buff[s0] == ' ')
+        s0++;
+    error((Error){
+        .s = s,
+        .e = e,
+        .line = line,
+        .msg = format("unclosed %s", quote == '"' ? "string" : "character"),
+        .help = format("use %.*s%c", e - s0, buff + s0, quote), // the line, closed
+    });
     return false;
 }
 
 bool check_char(int s, int e, int line) {
-    error(s, e, line, "invalid character");
+    error((Error){
+        .s = s,
+        .e = e,
+        .line = line,
+        .msg = "invalid character",
+    });
     return false;
 }
 
@@ -37,8 +61,15 @@ bool check_number_fits(int s, int e, int line) {
     return true;
 }
 
-bool check_unkown_char(int s, int e, int line) {
-    error(s, e, line, "unkown char");
+bool check_unknown_char(int s, int e, int line) {
+    char *buff = ura.scope->token->file.buff;
+    error((Error){
+        .s = s,
+        .e = e,
+        .line = line,
+        .msg = format("unknown character '%c'", buff[s]),
+        .help = "remove it",
+    });
     return false;
 }
 
@@ -48,9 +79,9 @@ bool check_next(Type type, char *msg) {
         return true;
     Token *prev = peek(-1);
     Token *err_token = token->line == prev->line ? token : prev;
-    int s = err_token->s;
-    int e = err_token->e;
-    int line = err_token->line;
-    error(s, e, line, msg);
+    error((Error){
+        .token = err_token,
+        .msg = msg,
+    });
     return false;
 }

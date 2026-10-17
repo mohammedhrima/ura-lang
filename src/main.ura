@@ -1,20 +1,5 @@
-struct Node:
-    value i32
-    next &Node
-
+// error: unknown escape '\q'
+// help: the escapes are \n \t \r \0 \\ \" \'
 fn main() i32:
-    c Node
-    c.value = 3
-    c.next 
-    b Node
-    b.value = 2
-    b.next = &c
-    a Node
-    a.value = 1
-    a.next = &b
-    sum i32 = 0
-    p &Node = &a
-    while isNullable(p):
-        sum += p.value
-        p = &p.next
-    return sum + a.next.next.value * 10
+    s i8[] = "a\qb"
+    return 0

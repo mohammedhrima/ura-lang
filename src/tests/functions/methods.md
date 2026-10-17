@@ -383,8 +383,6 @@ target triple = "x86_64-pc-linux-gnu"
 
 @str = private constant [4 x i8] c"%d\0A\00"
 
-declare i32 @printf(i8*, ...)
-
 define void @Counter.tick(%Counter* %0) {
 entry:
   %self = alloca %Counter*, align 8
@@ -396,6 +394,8 @@ entry:
   store i32 %ADD_ASSIGN, i32* %load.dref.self.n, align 4
   ret void
 }
+
+declare i32 @printf(i8*, ...)
 
 define i32 @main() {
 entry:
