@@ -1,0 +1,34 @@
+# Every build/ directory is compiler output, at any depth...
+build/
+# ...except the root one, which holds the ura binary itself.
+# The directory must be un-ignored before a file inside it can be kept.
+!/build/
+/build/*
+!/build/ura
+
+# Generated files
+**/*.s
+**/*.out
+**/*.dSYM
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Python task tooling bytecode (config/)
+__pycache__/
+*.pyc
+
+# VSCode extension
+config/vscode-extension/node_modules/
+config/vscode-extension/*.vsix
+
+# Others
+examples.ura
+.vscode
+.vscode-extension
+TMP.md
+.claude
+
+# Retired monolith — kept locally as a port reference, not shipped
+src/old.c

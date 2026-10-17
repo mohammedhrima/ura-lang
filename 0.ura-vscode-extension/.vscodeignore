@@ -1,0 +1,14 @@
+.vscode-test/**
+client/**
+server/**
+test/**
+out/test/**
+out/**/*.map
+out/**/*.d.ts
+out/*.tsbuildinfo
+**/tsconfig*.json
+eslint.config.mjs
+Makefile
+.gitignore
+*.vsix
+icons/ura.jpeg

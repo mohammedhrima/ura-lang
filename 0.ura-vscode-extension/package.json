@@ -1,0 +1,158 @@
+{
+  "name": "ura-lang",
+  "displayName": "Ura Language Support",
+  "description": "Ura language support: highlighting, formatting, completion, navigation, rename, compiler diagnostics, run and build",
+  "version": "0.0.1",
+  "publisher": "mohamedhrima",
+  "author": {
+    "name": "Hrima Mohammed"
+  },
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "main": "./out/client/src/extension.js",
+  "icon": "icons/icon.png",
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Formatters"
+  ],
+  "keywords": [
+    "ura",
+    "programming language",
+    "syntax highlighting",
+    "language support"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mohammedhrima/ura-lang",
+    "directory": "ura-vscode-extension"
+  },
+  "bugs": {
+    "url": "https://github.com/mohammedhrima/ura-lang/issues"
+  },
+  "scripts": {
+    "vscode:prepublish": "tsc -b",
+    "build": "tsc -b",
+    "lint": "eslint .",
+    "test": "node --test \"out/test/unit/**/*.test.js\"",
+    "test:e2e": "node out/test/e2e/runTest.js"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20.0.0",
+    "@types/vscode": "~1.95.0",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.0.0",
+    "eslint": "^9.39.5",
+    "mocha": "^10.8.2",
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.71.2"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "ura",
+        "aliases": [
+          "Ura",
+          "ura"
+        ],
+        "extensions": [
+          ".ura"
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/icon.png",
+          "dark": "./icons/icon.png"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ura",
+        "scopeName": "source.ura",
+        "path": "./syntaxes/ura.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "Ura",
+      "properties": {
+        "ura.compilerPath": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Path to the `ura` compiler used for diagnostics. When empty, `<workspace>/bin/ura` is used if it exists, otherwise `ura` from `PATH`."
+        },
+        "ura.lint.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run the ura compiler on open and on save and show its errors as problems."
+        }
+      }
+    },
+    "configurationDefaults": {
+      "[ura]": {
+        "editor.semanticHighlighting.enabled": true,
+        "editor.autoIndent": "advanced",
+        "editor.insertSpaces": true,
+        "editor.tabSize": 4,
+        "editor.indentSize": 4,
+        "editor.detectIndentation": false,
+        "editor.trimAutoWhitespace": true,
+        "editor.useTabStops": true,
+        "editor.defaultFormatter": "mohamedhrima.ura-lang",
+        "editor.formatOnSave": true
+      }
+    },
+    "snippets": [
+      {
+        "language": "ura",
+        "path": "./snippets/ura.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "ura.run",
+        "title": "Run File",
+        "category": "Ura",
+        "icon": "$(play)"
+      },
+      {
+        "command": "ura.build",
+        "title": "Build File",
+        "category": "Ura",
+        "icon": "$(tools)"
+      }
+    ],
+    "menus": {
+      "editor/title/run": [
+        {
+          "command": "ura.run",
+          "when": "resourceLangId == ura",
+          "group": "navigation@0"
+        },
+        {
+          "command": "ura.build",
+          "when": "resourceLangId == ura",
+          "group": "navigation@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "ura.run",
+          "when": "editorLangId == ura"
+        },
+        {
+          "command": "ura.build",
+          "when": "editorLangId == ura"
+        }
+      ]
+    }
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.12"
+  }
+}
