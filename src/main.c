@@ -12,7 +12,6 @@
 #include <unistd.h>
 #include <signal.h>
 #include <sys/wait.h>
-// #include <sys/types.h>
 #include <dirent.h>
 #include <llvm-c/Analysis.h>
 #include <llvm-c/BitWriter.h>
@@ -152,13 +151,13 @@ enum Type {
 
     VAL_CREATE,
 
-    TEMPLATE_DEC, TEMPLATE_TYPE, TEMPLATE_INIT,
+    TEMPLATE, TEMPLATE_TYPE, TEMPLATE_INIT,
     ANY,
     VOID, BOOL, I8, I32, CHARS,
     REF,
     NULL_,
 
-    STRUCT_DEC, DOT, ATTR,
+    STRUCT, DOT, ATTR,
 
     //OWN,
     DREF,
@@ -304,7 +303,7 @@ const char *to_string(Type type) {
         [LOAD] = "LOAD", [ARG] = "ARG",
 
         [VAL_CREATE] = "VAL_CREATE",
-        [TEMPLATE_DEC] = "TEMPLATE_DEC", [TEMPLATE_TYPE] = "TEMPLATE_TYPE",
+        [TEMPLATE] = "TEMPLATE", [TEMPLATE_TYPE] = "TEMPLATE_TYPE",
         [TEMPLATE_INIT] = "TEMPLATE_INIT",
 
         [ANY] = "ANY",
@@ -313,7 +312,7 @@ const char *to_string(Type type) {
         [REF] = "REF",
         [NULL_] = "NULL",
 
-        [STRUCT_DEC] = "STRUCT_DEC", [DOT] = "DOT", [ATTR] = "ATTR",
+        [STRUCT] = "STRUCT", [DOT] = "DOT", [ATTR] = "ATTR",
 
         // [OWN] = "OWN",
         [DREF] = "DREF",
@@ -451,12 +450,12 @@ Token *parse_token(Type type, int s, int e, int space) {
         { "char", { .type = I8, .is_type = true } },
         { "i8", { .type = I8, .is_type = true } },
         { "i32", { .type = I32, .is_type = true } },
-        { "template", { .type = TEMPLATE_DEC, .is_type = true }},
+        { "template", { .type = TEMPLATE, .is_type = true }},
 
         { "True", { .type = BOOL, .b1 = { .value = true } } },
         { "False", { .type = BOOL, .b1 = { .value = false } } },
 
-        { "struct", { .type = STRUCT_DEC } },
+        { "struct", { .type = STRUCT } },
         { "and", { .type = AND } }, { "or", { .type = OR } },
         { "not", { .type = NOT } },
         { "proto", { .type = PROTO } }, { "fn", { .type = FN_DEC } },
@@ -721,12 +720,20 @@ Node *is_type(Token *token) {
         return NULL;
     for (int i = ura.scopes_count; i > 0; i--) {
         Node *scope = ura.scopes[i - 1];
-        bool is_struct = scope->token->type == STRUCT_DEC;
+        if (scope->token->type == TEMPLATE) {
+            Node *params = scope->right;
+            for (int j = 0; j < params->children_count; j++) {
+                Node *param = params->children[j];
+                if (ura_cmp(token->name, param->token->name))
+                    return param;
+            }
+        }
+        bool is_struct = scope->token->type == STRUCT;
         if (is_struct && ura_cmp(token->name, scope->token->name))
             return scope;
         for (int j = 0; j < scope->children_count; j++) {
             Node *child = scope->children[j];
-            if (child->token->type != STRUCT_DEC)
+            if (child->token->type != STRUCT)
                 continue;
             if (ura_cmp(token->name, child->token->name))
                 return child;
@@ -759,7 +766,7 @@ Node *parse_type(void) {
 }
 
 void push_child(Node *node, Node *child) {
-    if (child->token->type == STRUCT_DEC)
+    if (child->token->type == STRUCT)
         return;
     if (child->token->type == ASSIGN && child->left->token->type == DECLARE) {
         Node *dec = child->left; // declare node
@@ -854,7 +861,7 @@ void parse_structs(Node *node) {
     Token *token = peek(pos);
     int space = token->space;
     while (token->type != END && token->space >= space) {
-        if (token->type == STRUCT_DEC && token->space == space) {
+        if (token->type == STRUCT && token->space == space) {
             Token *id = peek(pos + 1);
             // TODO: handle this properly
             assert(id->type == ID);
@@ -884,7 +891,44 @@ Node *parse_prime() {
         }
         return new_node(token);
     }
-    case STRUCT_DEC: {
+    case TEMPLATE: {
+        node = new_node(token);
+        if (!check_next(LT, "expected '<' after template", "<"))
+            return recover(token);
+        next();
+        node->right = new_node(new_token(ARGS, token));
+        while (!includes(peek(0)->type, GT, END, 0)) {
+            // TODO: improve error messages
+            Token *id = peek(0);
+            if (id->type != ID) {
+                eprint("expect ID\n");
+                exit(1);
+            }
+            id->type = TEMPLATE_TYPE;
+            push_back(node->right->children, new_node(id));
+            next();
+        }
+        if (!check_next(GT, "expected '>' after template", ">"))
+            return recover(token);
+        next();
+        if (!check_next(DOTS, "expected ':' after template definition", ":"))
+            return recover(token);
+        next();
+
+        parse_structs(node);
+        enter_scope(node);
+        while (inside(token->space)) {
+            Node *child = parse_expr(0);
+            if (!includes(child->token->type, STRUCT, FN_DEC, 0)) {
+                eprint("only fn declaration and structs are allowed in templates");
+                exit(1);
+            }
+            push_back(node->children, child);
+        }
+        exit_scope();
+        return node;
+    }
+    case STRUCT: {
         for (int i = 0; i < ura.scope->children_count; i++) {
             Token *scope_token = ura.scope->children[i]->token;
             if (scope_token == token) {
@@ -951,7 +995,8 @@ Node *parse_prime() {
             return node;
         }
         Token *after = peek(0);
-        if (after->type == ID && after->line == token->line) { // p Point: no type named Point
+        if (after->type == ID &&
+            after->line == token->line) { // p Point: no type named Point
             next();
             error((Error){
                 .token = after,
@@ -1007,7 +1052,7 @@ Node *parse_prime() {
         node->token->s = token->s; // errors point at the name, not at 'fn'
         node->token->e = token->e;
         Node *struct_node = NULL;
-        if (node->token->type == FN_DEC && ura.scope->token->type == STRUCT_DEC) {
+        if (node->token->type == FN_DEC && ura.scope->token->type == STRUCT) {
             struct_node = ura.scope;
         }
 
@@ -1377,10 +1422,12 @@ Node *find_method(Node *caller, Node *struct_node, Node *method) {
         bool seen = false;
         for (size_t j = 0; j < i; j++) {
             Node *before = struct_node->children[j];
-            seen |= before->token->type == FN_DEC && ura_cmp(before->token->name, child->token->name);
+            seen |= before->token->type == FN_DEC &&
+                    ura_cmp(before->token->name, child->token->name);
         }
         if (!seen)
-            names = names ? format("%s, %s", names, child->token->name) : child->token->name;
+            names = names ? format("%s, %s", names, child->token->name)
+                          : child->token->name;
     }
     char *sname = struct_node->token->name;
     error((Error){
@@ -1394,7 +1441,7 @@ Node *find_method(Node *caller, Node *struct_node, Node *method) {
 bool same_type(Node *left, Node *right) {
     if (left->token->type != right->token->type)
         return false;
-    if (left->token->type == STRUCT_DEC)
+    if (left->token->type == STRUCT)
         return ura_cmp(left->token->name, right->token->name);
     if (includes(left->token->type, REF, ARRAY, 0))
         return same_type(left->left, right->left);
@@ -1429,14 +1476,14 @@ void analyze_function(Node *node) {
         if (ura_cmp(dec->token->name, node->token->name)) {
             error((Error){
                 .token = node->token,
-                .msg = format("function '%s' is already declared, on line %d", node->token->name,
-                              dec->token->line + 1),
+                .msg = format("function '%s' is already declared, on line %d",
+                              node->token->name, dec->token->line + 1),
             });
             exit(1);
         }
     }
     char *name = NULL;
-    if (ura.scope->token->type == STRUCT_DEC)
+    if (ura.scope->token->type == STRUCT)
         name = format("%s.%s", ura.scope->token->name, node->token->name);
     else
         name = node->token->name;
@@ -1446,15 +1493,15 @@ void analyze_function(Node *node) {
 void analyze_struct(Node *node) {
     for (int i = 0; i < ura.scope->children_count; i++) {
         Node *dec = ura.scope->children[i];
-        if (!includes(dec->token->type, STRUCT_DEC, 0))
+        if (!includes(dec->token->type, STRUCT, 0))
             continue;
         if (dec == node)
             break; // only the ones before it
         if (ura_cmp(dec->token->name, node->token->name)) {
             error((Error){
                 .token = node->token,
-                .msg = format("struct '%s' is already declared, on line %d", node->token->name,
-                              dec->token->line + 1),
+                .msg = format("struct '%s' is already declared, on line %d",
+                              node->token->name, dec->token->line + 1),
             });
             exit(1);
         }
@@ -1620,9 +1667,11 @@ Node *analyze(Node *node, bool load) {
                 bool assigns = type->line == var->token->line && buff[after] == '=';
                 error((Error){
                     .token = var->token,
-                    .msg = format("'%s' is already declared, on line %d", var->token->name,
-                                  dec->token->line + 1),
-                    .help = assigns ? fix_line(var->token->e, type->e - var->token->e, "") : NULL,
+                    .msg = format("'%s' is already declared, on line %d",
+                                  var->token->name, dec->token->line + 1),
+                    .help = assigns
+                                ? fix_line(var->token->e, type->e - var->token->e, "")
+                                : NULL,
                 });
                 exit(1);
             }
@@ -1631,7 +1680,7 @@ Node *analyze(Node *node, bool load) {
         var->token->llvm.name = var->token->name;
         break;
     }
-    case STRUCT_DEC: {
+    case STRUCT: {
         analyze_struct(node);
         enter_scope(node);
         analyze_body(node);
@@ -1642,6 +1691,9 @@ Node *analyze(Node *node, bool load) {
         node->token->llvm.name = node->token->name;
         break;
     } 
+    case TEMPLATE: {
+        break;
+    }
     case INIT_VAR: {
         break;
     }
@@ -1707,10 +1759,10 @@ Node *analyze(Node *node, bool load) {
     }
     case DOT: {
         // print("%n\n", node->left);
-        node->left = analyze(node->left, 1); // it can be LOAD->VAR->STRUCT_DEC or DOT
+        node->left = analyze(node->left, 1); // it can be LOAD->VAR->STRUCT or DOT
         assert(node->left != NULL);
-        // TODO: assert VAR->STRUCT_DEC
-        // Node *struct_node = type_of(node->left); // STRUCT_DEC
+        // TODO: assert VAR->STRUCT
+        // Node *struct_node = type_of(node->left); // STRUCT
         char *src = node->left->token->name;
         Node *struct_node = analyze_type(node->left);
         if (struct_node->token->type == REF)
@@ -1782,7 +1834,7 @@ Node *analyze(Node *node, bool load) {
             Node *arg = args->children[0];
             if (arg->token->type == LOAD && arg->left->token->type == DREF)
                 args->children[0] = arg->left;
-            else if (analyze_type(arg)->token->type == STRUCT_DEC) {
+            else if (analyze_type(arg)->token->type == STRUCT) {
                 eprint("isNullable can't take a struct\n");
                 exit(1);
             }
@@ -1937,7 +1989,7 @@ TypeRef get_type(Node *node) {
     case BOOL: return LLVMInt1TypeInContext(ura.context);
     case ARRAY:
     case REF: return LLVMPointerType(get_type(node->left), 0);
-    case STRUCT_DEC: {
+    case STRUCT: {
         if(node->token->llvm.type == NULL)
             node->token->llvm.type = LLVMStructCreateNamed(ura.context, node->token->name);
         return node->token->llvm.type;
@@ -2239,7 +2291,7 @@ void codegen_declare_functions_and_structs(Node *node) {
         return;
     if (includes(node->token->type, FN_DEC, PROTO, 0))
         codegen_declare_function(node);
-    else if (includes(node->token->type, STRUCT_DEC, 0)) {
+    else if (includes(node->token->type, STRUCT, 0)) {
         codegen_declare_struct(node);
     }
     for (int j = 0; j < node->children_count; j++) {
@@ -2257,7 +2309,7 @@ void codegen(Node *node) {
         node->token->llvm.elem = LLVMConstNull(get_type(node->left));
         break;
     }
-    case STRUCT_DEC: {
+    case STRUCT: {
         for (int i = 0; i < node->children_count; i++) {
             Node *child = node->children[i];
             if (child->token->type == FN_DEC)
@@ -2299,8 +2351,7 @@ void codegen(Node *node) {
         codegen(base);
         Value ptr = base->token->llvm.elem;
         // TODO: later on move this in analyze
-        if (base->token->type == FN_CALL &&
-            base->left->left->token->type == STRUCT_DEC) {
+        if (base->token->type == FN_CALL && base->left->left->token->type == STRUCT) {
             Value tmp = codegen_alloc(LLVMTypeOf(ptr), "tmp");
             LLVMBuildStore(ura.builder, ptr, tmp);
             ptr = tmp;
@@ -2555,7 +2606,7 @@ void handle_global_scope(Node *file) {
     for (int i = 0; i < count; i++) {
         Node *child = children[i];
         Type type = child->token->type;
-        if (includes(type, DECLARE, FN_DEC, PROTO, STRUCT_DEC, 0)) {
+        if (includes(type, DECLARE, FN_DEC, PROTO, STRUCT, 0)) {
             push_back(file->children, child);
         } else {
             push_back(entry->children, child);
@@ -2826,7 +2877,7 @@ int _print_type(File fp, Node *node) {
     if (node == NULL) return fprintf(fp, "void");
     switch(node->token->type) {
     case REF:        return fprintf(fp, "&") + _print_type(fp, node->left);
-    case STRUCT_DEC: return fprintf(fp, "%s", node->token->name);
+    case STRUCT: return fprintf(fp, "%s", node->token->name);
     case BOOL:       return fprintf(fp, "bool");
     case I8:         return fprintf(fp, "i8");
     case I32:        return fprintf(fp, "i32");
@@ -2897,7 +2948,7 @@ void _print_node_helper(NodePrint *elems, Node *node, int depth) {
 
     if (!includes(node->token->type, BRK, CNT, FN_CALL, 0)) {
         Node *left = node->left;
-        bool is_struct = left && left->token->type == STRUCT_DEC;
+        bool is_struct = left && left->token->type == STRUCT;
         if (is_struct) {
             push_back(elems->nodes, left);
             push_back(elems->depths, depth + 3);

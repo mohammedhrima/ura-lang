@@ -58,7 +58,7 @@ bool check_escape(int s, int line) {
 
 bool check_number_fits(int s, int e, int line) {
     char *buff = ura.scope->token->file.buff;
-    long value = strtol(buff + s, NULL, 10); // saturates at LONG_MAX: still too big
+    long value = strtol(buff + s, NULL, 10); 
     if (value <= INT_MAX)
         return true;
     error((Error){
@@ -71,10 +71,9 @@ bool check_number_fits(int s, int e, int line) {
     return false;
 }
 
-// a line starts with buff[s..e) spaces, space of them counted
 bool check_indent(int s, int e, int line, int space) {
     char *buff = ura.scope->token->file.buff;
-    if (space % TAB == 0 || ura_ncmp(buff + e, "//", 2)) // comments can go anywhere
+    if (space % TAB == 0 || ura_ncmp(buff + e, "//", 2)) 
         return true;
     error((Error){
         .s = s,
@@ -115,7 +114,7 @@ bool check_next(Type type, char *msg, char *insert) {
 // HELPERS
 char *fix_line(int at, int remove, char *put) {
     char *buff = curr_file()->token->file.buff;
-    int s = at; // the line, without its indentation
+    int s = at; 
     while (s > 0 && buff[s - 1] != '\n')
         s--;
     while (buff[s] == ' ')
@@ -127,13 +126,11 @@ char *fix_line(int at, int remove, char *put) {
     return format("use %.*s%s%.*s", at - s, buff + s, put, end - e, buff + e);
 }
 
-// the source text of a token, like "+" or "else"
 char *token_text(Token *token) {
     char *buff = curr_file()->token->file.buff;
     return format("%.*s", token->e - token->s, buff + token->s);
 }
 
-// the line of a token as written, without its indentation and its ending ':'
 char *line_of(Token *token) {
     char *buff = curr_file()->token->file.buff;
     int s = token->s;
@@ -149,7 +146,6 @@ char *line_of(Token *token) {
     return format("%.*s", e - s, buff + s);
 }
 
-// how many one-letter edits turn a into b (Levenshtein distance)
 int edit_distance(char *a, char *b) {
     int n = strlen(a);
     int m = strlen(b);
@@ -160,7 +156,7 @@ int edit_distance(char *a, char *b) {
     for (int i = 1; i <= n; i++) {
         curr[0] = i;
         for (int j = 1; j <= m; j++) {
-            int best = prev[j - 1] + (a[i - 1] != b[j - 1]); // replace (or keep)
+            int best = prev[j - 1] + (a[i - 1] != b[j - 1]);
             if (prev[j] + 1 < best)
                 best = prev[j] + 1; // remove
             if (curr[j - 1] + 1 < best)
@@ -206,18 +202,18 @@ void undeclared_variable(Token *token) {
         error((Error){ .token = token, .msg = "'self' only exists inside a method" });
         return;
     }
-    // declared, but further down: its DECLARE is not analyzed yet
     for (int i = ura.scopes_count; i > 0; i--) {
         Node *scope = ura.scopes[i - 1];
         for (size_t j = 0; j < scope->children_count; j++) {
             Node *child = scope->children[j];
-            if (child->token->type != DECLARE ||
-                !ura_cmp(child->left->token->name, name))
+            if (child->token->type != DECLARE)
                 continue;
+            if (!ura_cmp(child->left->token->name, name))
+                continue;
+            int line = child->left->token->line + 1;
             error((Error){
                 .token = token,
-                .msg = format("'%s' is used before its declaration, on line %d", name,
-                              child->left->token->line + 1),
+                .msg = format("'%s' is used before its declaration, on line %d", name, line),
                 .help = "move the declaration above this line",
             });
             return;
@@ -231,10 +227,9 @@ void undeclared_variable(Token *token) {
     });
 }
 
-// no function takes the arguments of call: say why, as precisely as possible
 void no_function(Node *call) {
     char *name = call->token->name;
-    Node *same = NULL; // a function with this name, but other parameters
+    Node *same = NULL; 
     for (int i = ura.scopes_count; i > 0 && same == NULL; i--) {
         Node *scope = ura.scopes[i - 1];
         for (size_t j = 0; j < scope->children_count; j++) {
@@ -252,13 +247,18 @@ void no_function(Node *call) {
             msg = format("'%s' takes %s%d argument%s, not %d", name,
                          same->token->is_variadic ? "at least " : "", want,
                          want == 1 ? "" : "s", got);
-        error(
-            (Error){ .token = call->token, .msg = msg, .help = line_of(same->token) });
+        error((Error){ 
+            .token = call->token, 
+            .msg = msg, 
+            .help = line_of(same->token),
+         });
         return;
     }
     if (find_variable(name)) {
-        error((Error){ .token = call->token,
-                       .msg = format("'%s' is a variable, not a function", name) });
+        error((Error){
+            .token = call->token,
+            .msg = format("'%s' is a variable, not a function", name),
+        });
         return;
     }
     error((Error){

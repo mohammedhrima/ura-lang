@@ -1,3 +1,8 @@
+template <T>:
+    struct Box:
+        value T
+
 fn main() i32:
-    x i32 = 1
-    return x()
+    // b Box < i32 >
+    // b.value = 7
+    // return b.value
