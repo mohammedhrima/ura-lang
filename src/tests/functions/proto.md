@@ -421,7 +421,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 proto exit(code i32)
 
 fn main() i32:
-   exit(10)
+    exit(10)
 ```
 
 ### llvm ir
@@ -449,8 +449,8 @@ entry:
 proto printf(fmt i8[], ...) i32
 
 fn main() i32:
-   str i8[] = "abcdef"
-   printf("<%s>", str)
+    str i8[] = "abcdef"
+    printf("<%s>", str)
 ```
 
 ### llvm ir
@@ -493,7 +493,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ```ura
 fn main() i32:
-   str i8[] = "abcdef"
+    str i8[] = "abcdef"
 ```
 
 ### llvm ir
@@ -530,8 +530,8 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 proto printf(s i8[], ...)
 
 fn main() i32:
-   printf("tab\there\n")
-   return 0
+    printf("tab\there\n")
+    return 0
 ```
 
 ### llvm ir

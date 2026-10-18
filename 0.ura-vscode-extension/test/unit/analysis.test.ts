@@ -350,6 +350,46 @@ describe("compiler output", () => {
         ]);
     });
 
+    test("an error with its snippet and help", () => {
+        const stderr = [
+            "\x1b[0;31merror:\x1b[0m /tmp/ura-lint-x/main.ura:1:11 expected ':' after the function header",
+            "  |",
+            "1 | fn main() i32",
+            "  |           ^^^",
+            "\x1b[0;36mhelp:\x1b[0m use fn main() i32:",
+            "",
+        ].join("\n");
+        assert.deepEqual(parseStderr(stderr), [
+            {
+                message: "expected ':' after the function header",
+                line: 0,
+                character: 10,
+                length: 3,
+                help: "use fn main() i32:",
+            },
+        ]);
+    });
+
+    test("every error of a file is a problem", () => {
+        const stderr = [
+            "error: main.ura:2:15 unknown character '$'",
+            "  |",
+            "2 |     x i32 = 5 $ 3",
+            "  |               ^",
+            "help: remove it",
+            "error: main.ura:3:15 unknown character '@'",
+            "  |",
+            "3 |     y i32 = 2 @ 1",
+            "  |               ^",
+            "help: remove it",
+            "",
+        ].join("\n");
+        assert.deepEqual(parseStderr(stderr).map((p) => [p.line, p.character, p.message]), [
+            [1, 14, "unknown character '$'"],
+            [2, 14, "unknown character '@'"],
+        ]);
+    });
+
     test("a sanitizer report is a crash", () => {
         const stderr = "==123==ERROR: AddressSanitizer: SEGV on unknown address 0x10\nstack...\n";
         assert.deepEqual(parseStderr(stderr), [

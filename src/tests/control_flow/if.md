@@ -860,10 +860,10 @@ endif:                                            ; preds = %entry
 
 ```ura
 fn main() i32:
-   a i32 = 5
-   if a > 1 and a < 10:
-      return 1
-   return 0
+    a i32 = 5
+    if a > 1 and a < 10:
+        return 1
+    return 0
 ```
 
 ### llvm ir
