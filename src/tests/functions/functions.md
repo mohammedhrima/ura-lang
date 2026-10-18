@@ -385,15 +385,15 @@ entry:
 
 ```ura
 fn foo(a i32):
-   return
+    return
 
 fn foo(a bool):
-   return
+    return
 
 fn main() i32:
-   foo(1)
-   foo(True)
-   return 7
+    foo(1)
+    foo(True)
+    return 7
 ```
 
 ### llvm ir

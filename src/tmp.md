@@ -1,91 +1,168 @@
-## errors 1: tokenizer
+## errors 3: names
 
-# unknown character
+# undeclared variable
 ```ura
-// error: unknown character '$'
-// help: remove it
+// error: undeclared variable 'y'
+// help: declare it first, like: y i32 = 0
 fn main() i32:
-    x i32 = 5 $ 3
+    x i32 = 1
+    return y
+```
+
+# a typo in a variable name
+```ura
+// error: undeclared variable 'cuont'
+// help: did you mean 'count'?
+fn main() i32:
+    count i32 = 3
+    return cuont
+```
+
+# a variable used before its declaration
+```ura
+// error: 'x' is used before its declaration, on line 5
+// help: move the declaration above this line
+fn main() i32:
+    y i32 = x + 1
+    x i32 = 1
+    return y
+```
+
+# a variable declared twice
+```ura
+// error: 'x' is already declared, on line 4
+// help: use x = 2
+fn main() i32:
+    x i32 = 1
+    x i32 = 2
     return x
 ```
 
-# unclosed string
+# unknown type
 ```ura
-// error: unclosed string
-// help: add " at the end
+// error: unknown type 'Point'
+// help: declare it: struct Point:
 fn main() i32:
-    s i8[] = "abc
+    p Point
     return 0
 ```
 
-# unclosed character
+# undeclared function
 ```ura
-// error: unclosed character
-// help: add ' after the character
+// error: no function named 'foo'
 fn main() i32:
-    c char = 'a
+    return foo()
+```
+
+# a typo in a function name
+```ura
+// error: no function named 'ad'
+// help: did you mean 'add'?
+fn add(a i32, b i32) i32:
+    return a + b
+
+fn main() i32:
+    return ad(1, 2)
+```
+
+# wrong number of arguments
+```ura
+// error: 'add' takes 2 arguments, not 1
+// help: fn add(a i32, b i32) i32
+fn add(a i32, b i32) i32:
+    return a + b
+
+fn main() i32:
+    return add(1)
+```
+
+# a function declared twice
+```ura
+// error: function 'f' is already declared, on line 2
+fn f() i32:
+    return 1
+
+fn f() i32:
+    return 2
+
+fn main() i32:
+    return f()
+```
+
+# a struct declared twice
+```ura
+// error: struct 'User' is already declared, on line 2
+struct User:
+    a i32
+
+struct User:
+    b i32
+
+fn main() i32:
     return 0
 ```
 
-# empty character
+# unknown attribute
 ```ura
-// error: empty character
-// help: put one character between the quotes, like 'a'
+// error: User has no attribute 'age'
+// help: User has: name, id
+struct User:
+    name i8[]
+    id i32
+
 fn main() i32:
-    c char = ''
+    u User
+    return u.age
+```
+
+# unknown method
+```ura
+// error: User has no method 'run'
+// help: User has: get
+struct User:
+    a i32
+
+    fn get() i32:
+        return self.a
+
+fn main() i32:
+    u User
+    return u.run()
+```
+
+# break outside a loop
+```ura
+// error: break outside a loop
+// help: break only works inside a while
+fn main() i32:
+    break
     return 0
 ```
 
-# character with two letters
+# continue outside a loop
 ```ura
-// error: a character holds one letter, not 2
-// help: use "ab" for a string
+// error: continue outside a loop
+// help: continue only works inside a while
 fn main() i32:
-    c char = 'ab'
+    if True:
+        continue
     return 0
 ```
 
-# unknown escape
+# self outside a method
 ```ura
-// error: unknown escape '\q'
-// help: the escapes are \n \t \r \0 \\ \" \'
+// error: 'self' only exists inside a method
+fn get() i32:
+    return self.a
+
 fn main() i32:
-    s i8[] = "a\qb"
     return 0
 ```
 
-# unclosed comment
+# calling a variable
 ```ura
-// error: unclosed comment
-// help: add */ to close it
+// error: 'x' is a variable, not a function
 fn main() i32:
-    /* this never ends
-    return 0
-```
-
-# number too big for i32
-```ura
-// error: 99999999999 doesn't fit in i32
-// help: i32 goes from -2147483648 to 2147483647
-fn main() i32:
-    x i32 = 99999999999
-    return 0
-```
-
-# indentation that is not a multiple of 4
-```ura
-// error: indentation of 3 spaces
-// help: indent with a multiple of 4 spaces
-fn main() i32:
-   return 0
-```
-
-# two errors in one file: both are shown
-```ura
-// error: unknown character '$'
-// error: unknown character '@'
-fn main() i32:
-    x i32 = 5 $ 3
-    y i32 = 2 @ 1
-    return 0
+    x i32 = 1
+    return x()
 ```

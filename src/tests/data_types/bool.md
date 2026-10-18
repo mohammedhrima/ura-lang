@@ -424,10 +424,10 @@ endif:                                            ; preds = %entry
 
 ```ura
 fn main() i32:
-   flag bool = True
-   if flag:
-      return 1
-   return 0
+    flag bool = True
+    if flag:
+        return 1
+    return 0
 ```
 
 ### llvm ir

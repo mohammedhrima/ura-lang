@@ -15,6 +15,11 @@ function rangeOf(document: TextDocument, problem: Problem): Range {
     }
     const text = lines[problem.line] ?? "";
     const start = Math.min(problem.character ?? 0, text.length);
+    if (problem.length !== undefined) {
+        // exactly what the compiler underlined
+        const end = Math.min(start + problem.length, text.length);
+        return { start: { line: problem.line, character: start }, end: { line: problem.line, character: end } };
+    }
     const word = wordAt(text, start);
     const [from, to] = word ? [word.start, word.end] : [start, text.length];
     return { start: { line: problem.line, character: from }, end: { line: problem.line, character: to } };
@@ -23,7 +28,7 @@ function rangeOf(document: TextDocument, problem: Problem): Range {
 function toDiagnostic(document: TextDocument, problem: Problem): Diagnostic {
     return {
         range: rangeOf(document, problem),
-        message: problem.message,
+        message: problem.help ? `${problem.message}\n\nhelp: ${problem.help}` : problem.message,
         severity: DiagnosticSeverity.Error,
         source: "ura",
         ...(problem.code ? { code: problem.code } : {}),

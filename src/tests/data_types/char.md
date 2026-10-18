@@ -531,8 +531,8 @@ endif:                                            ; preds = %entry
 proto exit(code i32)
 
 fn main() i32:
-   c1 char = 'a'
-   c2 i8 = 'b'
+    c1 char = 'a'
+    c2 i8 = 'b'
 ```
 
 ### llvm ir
