@@ -251,15 +251,6 @@ struct Node {
     Node *left;
     Node *right;
 
-    // structs, template types (T, U, V, ...)
-    expand(Node *, templates);
-    // structs
-    expand(Node *, structs);
-    // functions and methods
-    expand(Node *, functions);
-    // templates types (T, U, V)
-    expand(Node *, types);
-    // anything else
     expand(Node *, children);
 };
 
@@ -730,36 +721,36 @@ Node *recover(Token *start) {
     return new_node(new_token(ERR, start));
 }
 
-Node *clone_node(Node *node) {
-    if (!node)
-        return NULL;
-    Node *new = ura_alloc(1, sizeof(Node));
-    Token *token = node->token;
-    new->token = new_token(token->type, token);
-    // memcpy(new->token, token, sizeof(Token));
-    if (token->name) {
-        new->token->name = ura_dup(token->name);
-    }
+// Node *clone_node(Node *node) {
+//     if (!node)
+//         return NULL;
+//     Node *new = ura_alloc(1, sizeof(Node));
+//     Token *token = node->token;
+//     new->token = new_token(token->type, token);
+//     // memcpy(new->token, token, sizeof(Token));
+//     if (token->name) {
+//         new->token->name = ura_dup(token->name);
+//     }
 
-    new->left = clone_node(node->left);
-    new->right = clone_node(node->right);
-    for (int i = 0; i < node->children_count; i++)
-        push_back(new->children, clone_node(node->children[i]));
-    return new;
-}
+//     new->left = clone_node(node->left);
+//     new->right = clone_node(node->right);
+//     for (int i = 0; i < node->children_count; i++)
+//         push_back(new->children, clone_node(node->children[i]));
+//     return new;
+// }
 
 Node *find_struct_type() {
     return NULL;
 }
 
-Node *find_template_type(Node *template, Node **types, int types_count) {
-    // if (template->types_count != types_count)
-    //     return NULL;
-    // for (int j = 0; j < template->types_count; j++) {
-    // }
+// Node *find_template_type(Node *template, Node **types, int types_count) {
+//     // if (template->children_count != types_count)
+//     //     return NULL;
+//     // for (int j = 0; j < template->children_count; j++) {
+//     // }
 
-    return NULL;
-}
+//     return NULL;
+// }
 
 Node *is_type(int pos) {
     Token *token = peek(pos);
@@ -770,70 +761,41 @@ Node *is_type(int pos) {
     if (token->type != ID)
         return NULL;
 
-    if (peek(pos + 1)->type == LT) {
-        expand(Node *, types);
-        types = NULL;
-        types_count = 0;
-        types_size = 0;
-        pos += 2; // skip ID and <
-        while (!includes(peek(pos)->type, GT, END, 0)) {
-            // TODO: to be refactored alter on
-            // will casue problem for nested template type
-            Node *type = is_type(pos);
-            if (type == NULL) {
-                eprint("error\n");
-                exit(1);
-            }
-            push_back(types, type);
-            pos++;
-        }
-        print("hello\n");
-        for (int i = ura.scopes_count; i > 0; i--) {
-            Node *scope = ura.scopes[i - 1];
-            Node *find = find_template_type(scope, types, types_count);
-            if (find != NULL) {
-                print(">>>>>>>>>> found");
-                exit(0);
-            }
-        }
-        exit(0);
-    }
+    // for (int i = ura.scopes_count; i > 0; i--) {
+    //     Node *scope = ura.scopes[i - 1];
+    //     print(RED("searching for %k in %k scope\n"), token, scope->token);
+    //     for (int j = 0; j < scope->children_count; j++) {
+    //         Node *child = scope->children[j];
+    //         if (ura_cmp(child->token->name, token->name)) {
+    //             return child;
+    //         }
+    //         // continue;
+    //         // Node *found = find_struct_type(child, pos);
+    //         // if (found != NULL)
+    //         // return found;
+    //     }
+    //     // for(int j = 0; j < scope->children)
 
-    for (int i = ura.scopes_count; i > 0; i--) {
-        Node *scope = ura.scopes[i - 1];
-        print(RED("searching for %k in %k scope\n"), token, scope->token);
-        for (int j = 0; j < scope->structs_count; j++) {
-            Node *child = scope->structs[j];
-            if (ura_cmp(child->token->name, token->name)) {
-                return child;
-            }
-            // continue;
-            // Node *found = find_struct_type(child, pos);
-            // if (found != NULL)
-            // return found;
-        }
-        for(int j = 0; j < scope->types)
+    //     // I'm inside the struct
+    //     // if (scope->token->type == STRUCT && scope->left == NULL) {
+    //     //     // case 1: I might be instance of that struct
+    //     // }
+    //     // if (scope->token->type == STRUCT && scope->left != NULL) {
+    //     //     // case 2: I might be an instance of that template struct
 
-        // I'm inside the struct
-        // if (scope->token->type == STRUCT && scope->left == NULL) {
-        //     // case 1: I might be instance of that struct
-        // }
-        // if (scope->token->type == STRUCT && scope->left != NULL) {
-        //     // case 2: I might be an instance of that template struct
+    //     //     // case 3: I might be TEMPLATE_TYPE
+    //     //     Node **elems = scope->left->children;
+    //     //     int count = scope->left->children_count;
 
-        //     // case 3: I might be TEMPLATE_TYPE
-        //     Node **elems = scope->left->children;
-        //     int count = scope->left->children_count;
+    //     //     for (int j = 0; j < count; j++) {
+    //     //         Node *elem = elems[j];
+    //     //         if (ura_cmp(token->name, elem->token->name))
+    //     //             return elem;
+    //     //     }
+    //     // }
 
-        //     for (int j = 0; j < count; j++) {
-        //         Node *elem = elems[j];
-        //         if (ura_cmp(token->name, elem->token->name))
-        //             return elem;
-        //     }
-        // }
-
-        // Node *found = find_struct_type(scope, pos);
-    }
+    //     // Node *found = find_struct_type(scope, pos);
+    // }
     return NULL;
 }
 
@@ -842,7 +804,7 @@ Node *parse_type(void) {
     if (peek(0)->type == REF) {
         Node *ref = new_node(next());
         ref->left = parse_type();
-        // assert(ref->left != NULL);
+        assert(ref->left != NULL); // TODO: add proper error message
         return ref;
     }
 
@@ -870,7 +832,6 @@ void push_child(Node *node, Node *child) {
         Node *init = new_node(new_token(INIT_VAR, child->token));
         init->left = child->left;
         child = init;
-        push_back(node->children, child);
         break;
     }
     case ASSIGN: {
@@ -879,19 +840,12 @@ void push_child(Node *node, Node *child) {
             push_back(node->children, dec);
             child->left = dec->left;
         }
-        push_back(node->children, child);
-        break;
-    }
-    case TEMPLATE: {
-        push_back(node->templates, child);
-        // eprint("hello\n");
-        // exit(0);
         break;
     }
     default:
-        push_back(node->children, child);
         break;
     }
+    push_back(node->children, child);
 }
 
 void parse_body(Node *node) {
@@ -986,7 +940,7 @@ void parse_structs(Node *node) {
             Node *st = new_node(token);
             pos += 2; // skip STRUCT and ID
             st->token->is_type = true;
-            push_back(node->structs, st);
+            push_back(node->children, st);
         } else
             pos++;
         token = peek(pos);
@@ -1024,7 +978,7 @@ Node *parse_prime() {
             if (peek(0)->type == COMA)
                 next();
             type->token->type = TEMPLATE_TYPE;
-            push_back(node->types, type);
+            push_back(node->children, type);
         }
 
         if (!check_next(GT, "expected >", ">"))
@@ -1036,18 +990,9 @@ Node *parse_prime() {
         next(); // skip :
 
         enter_scope(node);
-        parse_structs(node);
         while (inside(token->space)) {
             Node *child = parse_prime();
-            Token *ctoken = child->token;
-            if (ctoken->type == FN_DEC) {
-                push_back(node->functions, child);
-            } else if (ctoken->type == STRUCT) {
-                // push_back(node->types, child);
-                continue;
-            } else {
-                push_back(node->children, child);
-            }
+            push_child(node, child);
         }
         exit_scope();
         // print("%n", node);
@@ -1055,10 +1000,10 @@ Node *parse_prime() {
         return node;
     }
     case STRUCT: {
-        for (int i = 0; i < ura.scope->structs_count; i++) {
-            Token *scope_token = ura.scope->structs[i]->token;
+        for (int i = 0; i < ura.scope->children_count; i++) {
+            Token *scope_token = ura.scope->children[i]->token;
             if (scope_token == token) {
-                node = ura.scope->structs[i];
+                node = ura.scope->children[i];
                 break;
             }
         }
@@ -1094,6 +1039,13 @@ Node *parse_prime() {
         return node;
     }
     case ID: {
+        Node *type = parse_type();
+        if (type) {
+            node = new_node(new_token(DECLARE, token));
+            node->left = new_node(token);
+            node->left->left = type;
+            return node;
+        }
         if (peek(0)->type == LPARENT) { // FN_CALL
             token->type = FN_CALL;
             node = new_node(token);
@@ -1109,13 +1061,6 @@ Node *parse_prime() {
             if (!check_next(RPARENT, msg, ")"))
                 return recover(token);
             next(); // skip )
-            return node;
-        }
-        Node *type = parse_type();
-        if (type) {
-            node = new_node(new_token(DECLARE, token));
-            node->left = new_node(token);
-            node->left->left = type;
             return node;
         }
         Token *after = peek(0);
@@ -1384,11 +1329,11 @@ Node *parse_expr(int min_op) {
             switch (type) {
             case TEMPLATE:
             case STRUCT: {
-                push_back(left->structs, child);
+                push_back(left->children, child);
                 break;
             }
             case FN_DEC: {
-                push_back(left->functions, child);
+                push_back(left->children, child);
                 break;
             }
             default: {
@@ -2472,28 +2417,13 @@ void codegen_declare_functions_and_structs(Node *node) {
         return;
 
     Token *token = node->token;
-    if (token->type == TEMPLATE) {
-        return;
-    }
     if (includes(token->type, FN_DEC, PROTO, 0))
         codegen_declare_function(node);
     else if (token->type == STRUCT) {
         codegen_declare_struct(node);
     }
-    for (int j = 0; j < node->structs_count; j++) {
-        Node *child = node->structs[j];
-        codegen_declare_functions_and_structs(child);
-    }
-    for (int j = 0; j < node->functions_count; j++) {
-        Node *child = node->functions[j];
-        codegen_declare_functions_and_structs(child);
-    }
-    for (int j = 0; j < node->templates_count; j++) {
-        Node *child = node->templates[j];
-        codegen_declare_functions_and_structs(child);
-    }
-    for (int j = 0; j < node->children_count; j++) {
-        Node *child = node->children[j];
+    for (int i = 0; i < node->children_count; i++) {
+        Node *child = node->children[i];
         codegen_declare_functions_and_structs(child);
     }
 }
@@ -3172,15 +3102,6 @@ void _print_node_helper(NodePrint *elems, Node *node, int depth) {
             _print_node_helper(elems, left, depth + 3);
     }
     _print_node_helper(elems, node->right, depth + 3);
-    for (size_t i = 0; i < node->templates_count; i++)
-        _print_node_helper(elems, node->templates[i], depth + 3);
-    
-    for (size_t i = 0; i < node->structs_count; i++)
-        _print_node_helper(elems, node->structs[i], depth + 3);
-
-    for (size_t i = 0; i < node->functions_count; i++)
-        _print_node_helper(elems, node->functions[i], depth + 3);
-
     for (size_t i = 0; i < node->children_count; i++)
         _print_node_helper(elems, node->children[i], depth + 3);
 }

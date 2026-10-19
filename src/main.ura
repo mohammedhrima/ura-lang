@@ -1,11 +1,7 @@
-template<T>:
-    struct Test:
-        a T
-    
-struct Box:
-    value i32
+struct User:
+    a i32
+    b i32
 
 fn main() i32:
-    b Box
-    // b.value = 7
-    // return b.value
+    u User
+    return u.a + u.b
