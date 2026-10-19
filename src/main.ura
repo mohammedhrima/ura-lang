@@ -1,8 +1,11 @@
-template <T>:
-    struct Box:
-        value T
+template<T>:
+    struct Test:
+        a T
+    
+struct Box:
+    value i32
 
 fn main() i32:
-    // b Box < i32 >
+    b Box
     // b.value = 7
     // return b.value
