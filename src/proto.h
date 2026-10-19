@@ -95,7 +95,7 @@ void codegen_jmp_out(Bloc bloc);
 void codegen_return(Node *node);
 void codegen_variable(Node *var);
 void enter_scope(Node *node);
-void error(Error err);
+void error(uraError err);
 void exit_scope();
 void gen_bin();
 void handle_global_scope(Node *file);

@@ -3688,15 +3688,3 @@ bool assert_function_matches_call(Node *call) {
     return false;
 }
 
-/*
-TODO:
-    [ ] drop method
-    [ ] String struct
-    [ ] to_string method
-    [ ] output (should handl also struct.to_string)
-    [ ] for template add a part in the code thaht JIT/interpreter
-    [ ] operators overload
-    [ ] for loops over a range: for i in 0..10
-    [ ] more integer types (i8, i64, unsigned) and casting with as
-    [ ] function inside function
-*/
