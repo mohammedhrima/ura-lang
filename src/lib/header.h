@@ -6,7 +6,7 @@
 /*   | |_| |  _ <  / ___ \     mohammedxhrima@gmail.com                       */
 /*    \___/|_| \_\/_/   \_\    created: 2023/03/11 03:08:09                   */
 /*                                                                            */
-/*   updated: 2026/10/20 15:12:53                                             */
+/*   updated: 2026/10/20 21:04:05                                             */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,15 +27,15 @@
 #endif
 
 #ifndef vfprint
-#	define vfprint vfprintf
+#    define vfprint vfprintf
 #endif
 
 #ifndef print
-#	define print(...) fprintf(stdout, __VA_ARGS__)
+#    define print(...) fprintf(stdout, __VA_ARGS__)
 #endif
 
 #ifndef eprint
-#	define eprint(...) fprintf(stderr, __VA_ARGS__)
+#    define eprint(...) fprintf(stderr, __VA_ARGS__)
 #endif
 
 #define RESET      "\033[0m"
@@ -241,35 +241,38 @@ struct File {
     // some attributes might need to be removed
     // char *dir;
     char *buff;
-    size_t len;
+    // size_t len;
     // bool opened;
 };
 
 File *new_file(char *path) {
     File *new = arena_alloc(1, sizeof(File));
-	new->path = path;
-	return new;
-	// new->name = 
+    new->path = path;
+    return new;
+    // new->name =
 }
 
 void open_file(File *file) {
-    char *path = realpath(file->path, NULL);
-    if (path == NULL) {
-        fprintf(stderr, "can't open file (%s)\n", file->path);
+	char *path = file->path;
+    if (realpath(path, NULL) == NULL) {
+        fprintf(stderr, "realpath failed (%s)\n", file->path);
         exit(1);
     }
-	ioFile fp = fopen(file->path, "r");
+	file->path = path;
+    ioFile fp = fopen(file->path, "r");
     if (fp == NULL) {
         fprintf(stderr, "fopen failed (%s)\n", file->path);
         exit(1);
     }
-	if (fseek(fp, sizeof(char), SEEK_END) != 0) {
+    if (fseek(fp, sizeof(char), SEEK_END) != 0) {
         fprintf(stderr, "fseek failed\n");
         exit(1);
     }
-	
-
-    // return node;
+    int len = ftell(fp);
+    rewind(fp);
+    file->buff = arena_alloc(len + 1, sizeof(char));
+    fread(file->buff, len, sizeof(char), fp);
+    fclose(fp);
 }
 
 void close_file() {

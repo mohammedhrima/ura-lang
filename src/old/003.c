@@ -1650,7 +1650,7 @@ Node *analyze_type(Node *node) {
 
 char *ura_text(Node *node) {
     // clang-format off
-    char *ops[END + 1] = {
+    char *binary_ops[END + 1] = {
         [ADD] = "+", [SUB] = "-", [MUL] = "*", 
         [DIV] = "/", [MOD] = "%",
         
@@ -1666,10 +1666,10 @@ char *ura_text(Node *node) {
     };
     // clang-format on
     Token *token = node->token;
-    if (ops[token->type]) {
+    if (binary_ops[token->type]) {
         char *ltext = ura_text(node->left);
         char *rtext = ura_text(node->right);
-        char *optext = ops[token->type];
+        char *optext = binary_ops[token->type];
         return format("%s %s %s", ltext, optext, rtext);
     }
     switch (token->type) { // clang-format off

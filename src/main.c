@@ -4,20 +4,27 @@
 // DEFINE MACROS
 
 
-typedef struct Ura Ura;
 typedef struct Token Token;
 typedef struct Node Node;
 typedef struct NodePrint NodePrint;
 typedef struct uraError uraError;
 
-#define print(...) _print(stdout, __VA_ARGS__)
-#define help(...) _print(stdout, __VA_ARGS__)
+#define print(...)  _print(stdout, __VA_ARGS__)
+#define help(...)   _print(stdout, __VA_ARGS__)
 #define eprint(...) _print(stderr, __VA_ARGS__)
-int _fprint(ioFile fp, const char*fmt, va_list ap);
-#define vfprint _fprint
+
+#ifndef TOKENIZE
+#    define TOKENIZE 1
+
+#endif
 
 
 #include "./ir.h"
+
+int _fprint(ioFile fp, const char *fmt, va_list ap);
+#undef vfprint
+#define vfprint _fprint
+
 struct Token {
     Type type;
     char *name;
@@ -68,7 +75,13 @@ struct uraError {
     char *help;
 };
 
-struct Ura {
+struct NodePrint {
+    expand(int, depths);
+    expand(Node *, nodes);
+};
+
+// Global Ura
+struct {
     Arena *arena_head;
     Arena *arena_curr;
     size_t arena_count;
@@ -97,17 +110,128 @@ struct Ura {
     Context context;
     Module module;
     Builder builder;
+} ura;
+
+struct {
+    char *value;
+    Token token;
+} keywords[] = {
+    // clang-format off
+	{ "bool", { .type = BOOL, .is_type = true } },
+	{ "char", { .type = I8, .is_type = true } },
+	{ "i8", { .type = I8, .is_type = true } },
+	{ "i32", { .type = I32, .is_type = true } },
+
+	{ "True", { .type = BOOL, .b1 = { .value = true } } },
+	{ "False", { .type = BOOL, .b1 = { .value = false } } },
+
+	{ "struct", { .type = STRUCT } },
+	{ "and", { .type = AND } }, { "or", { .type = OR } },
+	{ "not", { .type = NOT } },
+	{ "proto", { .type = PROTO } }, { "fn", { .type = FN_DEC } },
+	{ "return", { .type = RETURN } },
+	{ "if", { .type = IF } }, { "elif", { .type = ELIF } },
+	{ "else", { .type = ELSE } },
+	{ "while", { .type = WHILE } }, { "break", { .type = BRK } },
+	{ "continue", { .type = CNT } },
+	{ "template", { .type = TEMPLATE } },
+	// { "null", {.type = ZERO } },
+	{ "as", {.type = AS } },
+
+	{ NULL },
+    // clang-format on
 };
 
-struct NodePrint {
-    expand(int, depths);
-    expand(Node *, nodes);
+struct {
+    char *value;
+    Type type;
+} specials[] = {
+    // clang-format off
+	{ "(", LPARENT }, { ")", RPARENT }, { ":", DOTS },
+	{ "[", LBRACK }, { "]", RBRACK },
+
+	{ "+=", ADD_ASSIGN }, { "-=", SUB_ASSIGN }, { "*=", MUL_ASSIGN },
+	{ "/=", DIV_ASSIGN }, { "%=", MOD_ASSIGN },
+	
+	{ "...", VARIADIC }, { ".", DOT },
+	
+	{ "+", ADD }, { "-", SUB }, { "*", MUL }, { "/", DIV }, { "%", MOD },
+
+	{ ">=", GE }, { "<=", LE }, { ">", GT }, { "<", LT },
+	{ "==", EQ }, { "!=", NQ }, { "!", NOT },
+
+	{ "=", ASSIGN }, { ",", COMA },
+	{ "&&", AND }, { "||", OR },
+	{ "&", REF },
+	{NULL, NONE}
+    // clang-format on
 };
 
-// Global Ura
-Ura ura;
+char *binary_ops[END + 1] = {
+    // clang-format off
+	[ADD] = "+", [SUB] = "-", [MUL] = "*", 
+	[DIV] = "/", [MOD] = "%",
+	
+	[ADD_ASSIGN] = "+", [SUB_ASSIGN] = "-", 
+	[MUL_ASSIGN] = "*", [DIV_ASSIGN] = "/", 
+	[MOD_ASSIGN] = "%",
+	
+	[EQ] = "==", [NQ] = "!=", 
+	[LT] = "<", [GT] = ">", 
+	[LE] = "<=", [GE] = ">=",
+	
+	[AND] = "and", [OR] = "or",
+    // clang-format on
+};
+
+int precedence[END + 1] = {
+    // clang-format off
+    [ASSIGN] = 1,     [ADD_ASSIGN] = 1, [SUB_ASSIGN] = 1,
+    [MUL_ASSIGN] = 1, [DIV_ASSIGN] = 1, [MOD_ASSIGN] = 1,
+
+    [OR] = 11,        [AND] = 12,
+
+    [EQ] = 21,        [NQ] = 21,        [GT] = 22,
+    [LT] = 22,        [GE] = 22,        [LE] = 22,
+
+    [ADD] = 30,       [SUB] = 30,       
+    [MUL] = 31,       [DIV] = 31,       [MOD] = 31,
+
+    [AS] = 35,
+
+    [DOT] = 51,
+    // clang-format on
+};
+
+char *escaped[255] = {
+    ['n'] = "\n",   ['t'] = "\t",   ['r'] = "\r",   ['b'] = "\b",
+    ['f'] = "\f",   ['v'] = "\v",   ['a'] = "\a",   ['?'] = "\?",
+    ['0'] = "\0",   ['"'] = "\"",   ['\''] = "\'",  ['\\'] = "\\",
+
+    ['\n'] = "\\n", ['\t'] = "\\t", ['\r'] = "\\r", ['\0'] = "\\0",
+};
+
+// TOKENIZE
+Token *new_token(Type type, Token *from) {
+    Token *new = arena_alloc(1, sizeof(Token));
+    new->type = type;
+    if (from != NULL) {
+        new->space = from->space;
+        new->line = from->line;
+        new->s = from->s;
+        new->e = from->e;
+    }
+    append(ura.tokens, new);
+    return new;
+}
+
+void tokenize(File *file, int space) {
+}
+
+// AST
 
 
+// ANALYZE
 
 /*
 TODO:
@@ -123,12 +247,12 @@ int main(int ac, char **av) {
     parse_args(ac, av);
     ura.tokens_count = 0;
     ura.exe_pos = 0;
-    
+
 #if TOKENIZE
-	print(GREEN("======================================\n"));
+    print(GREEN("======================================\n"));
     print(GREEN("[TOKENIZE]:\n"));
-    for (size_t i = 0; i < ura.tree->children_count; i++) {
-        Node *file = ura.tree->children[i];
+    for (size_t i = 0; i < ura.files_count; i++) {
+        File *file = ura.files[i];
         tokenize(file, 0);
     }
     new_token(END, NULL);
@@ -191,8 +315,8 @@ int main(int ac, char **av) {
 }
 
 // UTILS / FORMATING / PRINTING
-// clang-format off
 int _print_type(ioFile fp, Node *node) {
+    // clang-format off
     if (node == NULL) return fprintf(fp, "void");
     switch(node->token->type) {
     case REF:		return fprintf(fp, "&") + _print_type(fp, node->left);
@@ -203,19 +327,12 @@ int _print_type(ioFile fp, Node *node) {
     case ARRAY:		return _print_type(fp, node->left) + fprintf(fp, "[]");
     default:		return fprintf(fp, "%s", to_string(node->token->type));
     }
+    // clang-format on
 };
 
 int _print_char(ioFile fp, char c) {
-    switch(c) { // clang-format off
-    case '\n': return fprintf(fp, "\\n");
-    case '\t': return fprintf(fp, "\\t");
-    case '\r': return fprintf(fp, "\\r");
-    case '\0': return fprintf(fp, "\\0");
-    case '\\': return fprintf(fp, "\\\\");
-    case '"':  return fprintf(fp, "\\\"");
-    case '\'': return fprintf(fp, "\\\'");
-    default:   return fprintf(fp, "%c", c);
-    } // clang-format on
+    char *str = escaped[c];
+    return str ? fprintf(fp, "%s", str) : fprintf(fp, "%c", c);
 }
 
 // clang-format off
@@ -347,6 +464,12 @@ int _fprint(ioFile fp, const char *fmt, va_list ap) {
         }
     }
     return r;
+}
+
+void check_errors(void) {
+    if (ura.errors_count == 0)
+        return;
+    exit(1);
 }
 
 bool includes(Type to_find, ...) {
