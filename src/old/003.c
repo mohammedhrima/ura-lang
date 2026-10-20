@@ -2940,22 +2940,6 @@ void make_dir(char *path) {
 }
 
 
-        return new_node(token);
-    }
-    case REF: {
-        // token->type = OWN;
-        node = new_node(token);
-        // fix for &p.next
-        // to capture &(p.next) instead of (&p).next
-        node->left = parse_expr(precedence[AS]);
-        assert(node->left);
-        // assert(node->left->token->type == ID);
-        return node;
-    } // clang-format off
-    case FN_DEC: case PROTO: { // clang-format on
-        node = new_node(token);
-        token = next();
-        if (
 void open_file(Token *token) {
     File fp = fopen(token->file.path, "r");
     if (fp == NULL) {
