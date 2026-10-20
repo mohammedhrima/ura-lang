@@ -1,9 +1,4 @@
-// INCLUDES
-#include <stdio.h>
-#include <stdarg.h>
-// DEFINE MACROS
-
-
+// TYPEDEFS
 typedef struct Token Token;
 typedef struct Node Node;
 typedef struct NodePrint NodePrint;
@@ -15,9 +10,7 @@ typedef struct uraError uraError;
 
 #ifndef TOKENIZE
 #    define TOKENIZE 1
-
 #endif
-
 
 #include "./ir.h"
 
@@ -82,19 +75,10 @@ struct NodePrint {
 
 // Global Ura
 struct {
-    Arena *arena_head;
-    Arena *arena_curr;
-    size_t arena_count;
-    size_t heap_used;
-
-    char *ll_path;
-    char *exec_path;
-
     // int errors_count;
     // File errors;
     // char *errors_buff;
     // int errors_len;
-
 
     Node *tree;
     expand(Token *, tokens);
@@ -103,89 +87,83 @@ struct {
     Node *scope;
 
     expand(File *, files);
+    File *file;
+    int line;
+
     expand(uraError, errors);
 
     int exe_pos;
-
-    Context context;
-    Module module;
-    Builder builder;
 } ura;
 
 struct {
     char *value;
     Token token;
 } keywords[] = {
-    // clang-format off
-	{ "bool", { .type = BOOL, .is_type = true } },
-	{ "char", { .type = I8, .is_type = true } },
-	{ "i8", { .type = I8, .is_type = true } },
-	{ "i32", { .type = I32, .is_type = true } },
+    { "bool", { .type = BOOL, .is_type = true } },
+    { "char", { .type = I8, .is_type = true } },
+    { "i8", { .type = I8, .is_type = true } },
+    { "i32", { .type = I32, .is_type = true } },
 
-	{ "True", { .type = BOOL, .b1 = { .value = true } } },
-	{ "False", { .type = BOOL, .b1 = { .value = false } } },
+    { "True", { .type = BOOL, .b1 = { .value = true } } },
+    { "False", { .type = BOOL, .b1 = { .value = false } } },
 
-	{ "struct", { .type = STRUCT } },
-	{ "and", { .type = AND } }, { "or", { .type = OR } },
-	{ "not", { .type = NOT } },
-	{ "proto", { .type = PROTO } }, { "fn", { .type = FN_DEC } },
-	{ "return", { .type = RETURN } },
-	{ "if", { .type = IF } }, { "elif", { .type = ELIF } },
-	{ "else", { .type = ELSE } },
-	{ "while", { .type = WHILE } }, { "break", { .type = BRK } },
-	{ "continue", { .type = CNT } },
-	{ "template", { .type = TEMPLATE } },
-	// { "null", {.type = ZERO } },
-	{ "as", {.type = AS } },
+    { "struct", { .type = STRUCT } },
+    { "and", { .type = AND } },
+    { "or", { .type = OR } },
+    { "not", { .type = NOT } },
+    { "proto", { .type = PROTO } },
+    { "fn", { .type = FN_DEC } },
+    { "return", { .type = RETURN } },
+    { "if", { .type = IF } },
+    { "elif", { .type = ELIF } },
+    { "else", { .type = ELSE } },
+    { "while", { .type = WHILE } },
+    { "break", { .type = BRK } },
+    { "continue", { .type = CNT } },
+    { "template", { .type = TEMPLATE } },
+    // { "null", {.type = ZERO } },
+    { "as", { .type = AS } },
 
-	{ NULL },
-    // clang-format on
+    { NULL },
 };
 
 struct {
     char *value;
     Type type;
 } specials[] = {
-    // clang-format off
-	{ "(", LPARENT }, { ")", RPARENT }, { ":", DOTS },
-	{ "[", LBRACK }, { "]", RBRACK },
+    { "(", LPARENT },     { ")", RPARENT },     { ":", DOTS },
+    { "[", LBRACK },      { "]", RBRACK },
 
-	{ "+=", ADD_ASSIGN }, { "-=", SUB_ASSIGN }, { "*=", MUL_ASSIGN },
-	{ "/=", DIV_ASSIGN }, { "%=", MOD_ASSIGN },
-	
-	{ "...", VARIADIC }, { ".", DOT },
-	
-	{ "+", ADD }, { "-", SUB }, { "*", MUL }, { "/", DIV }, { "%", MOD },
+    { "+=", ADD_ASSIGN }, { "-=", SUB_ASSIGN }, { "*=", MUL_ASSIGN },
+    { "/=", DIV_ASSIGN }, { "%=", MOD_ASSIGN },
 
-	{ ">=", GE }, { "<=", LE }, { ">", GT }, { "<", LT },
-	{ "==", EQ }, { "!=", NQ }, { "!", NOT },
+    { "...", VARIADIC },  { ".", DOT },
 
-	{ "=", ASSIGN }, { ",", COMA },
-	{ "&&", AND }, { "||", OR },
-	{ "&", REF },
-	{NULL, NONE}
-    // clang-format on
+    { "+", ADD },         { "-", SUB },         { "*", MUL },
+    { "/", DIV },         { "%", MOD },
+
+    { ">=", GE },         { "<=", LE },         { ">", GT },
+    { "<", LT },          { "==", EQ },         { "!=", NQ },
+    { "!", NOT },
+
+    { "=", ASSIGN },      { ",", COMA },        { "&&", AND },
+    { "||", OR },         { "&", REF },         { NULL, NONE },
 };
 
 char *binary_ops[END + 1] = {
-    // clang-format off
-	[ADD] = "+", [SUB] = "-", [MUL] = "*", 
-	[DIV] = "/", [MOD] = "%",
-	
-	[ADD_ASSIGN] = "+", [SUB_ASSIGN] = "-", 
-	[MUL_ASSIGN] = "*", [DIV_ASSIGN] = "/", 
-	[MOD_ASSIGN] = "%",
-	
-	[EQ] = "==", [NQ] = "!=", 
-	[LT] = "<", [GT] = ">", 
-	[LE] = "<=", [GE] = ">=",
-	
-	[AND] = "and", [OR] = "or",
-    // clang-format on
+    [ADD] = "+",        [SUB] = "-",        [MUL] = "*",
+    [DIV] = "/",        [MOD] = "%",
+
+    [ADD_ASSIGN] = "+", [SUB_ASSIGN] = "-", [MUL_ASSIGN] = "*",
+    [DIV_ASSIGN] = "/", [MOD_ASSIGN] = "%",
+
+    [EQ] = "==",        [NQ] = "!=",        [LT] = "<",
+    [GT] = ">",         [LE] = "<=",        [GE] = ">=",
+
+    [AND] = "and",      [OR] = "or",
 };
 
 int precedence[END + 1] = {
-    // clang-format off
     [ASSIGN] = 1,     [ADD_ASSIGN] = 1, [SUB_ASSIGN] = 1,
     [MUL_ASSIGN] = 1, [DIV_ASSIGN] = 1, [MOD_ASSIGN] = 1,
 
@@ -194,21 +172,27 @@ int precedence[END + 1] = {
     [EQ] = 21,        [NQ] = 21,        [GT] = 22,
     [LT] = 22,        [GE] = 22,        [LE] = 22,
 
-    [ADD] = 30,       [SUB] = 30,       
-    [MUL] = 31,       [DIV] = 31,       [MOD] = 31,
+    [ADD] = 30,       [SUB] = 30,       [MUL] = 31,
+    [DIV] = 31,       [MOD] = 31,
 
     [AS] = 35,
 
     [DOT] = 51,
-    // clang-format on
 };
 
-char *escaped[255] = {
+char *escaped[256] = {
     ['n'] = "\n",   ['t'] = "\t",   ['r'] = "\r",   ['b'] = "\b",
     ['f'] = "\f",   ['v'] = "\v",   ['a'] = "\a",   ['?'] = "\?",
     ['0'] = "\0",   ['"'] = "\"",   ['\''] = "\'",  ['\\'] = "\\",
 
     ['\n'] = "\\n", ['\t'] = "\\t", ['\r'] = "\\r", ['\0'] = "\\0",
+};
+
+char *type_names[END + 1] = {
+    [VOID] = "void",
+    [BOOL] = "bool",
+    [I8] = "i8",
+    [I32] = "i32",
 };
 
 // TOKENIZE
@@ -225,7 +209,98 @@ Token *new_token(Type type, Token *from) {
     return new;
 }
 
-void tokenize(File *file, int space) {
+Token *parse_token(Type type, int s, int e, int space) {
+    Token *new = arena_alloc(1, sizeof(Token));
+    char *buff = ura.file->buff;
+
+    switch (type) {
+    case ID: {
+        int i = 0;
+        for (; keywords[i].value; i++) {
+            char *value = keywords[i].value;
+            size_t len = strlen(value);
+            if (e - s == len && strncmp2(buff + s, value, e - s)) {
+                *new = keywords[i].token;
+                break;
+            }
+        }
+        if (keywords[i].value)
+            break;
+        new->name = strndup2(buff + s, e - s);
+        break;
+    }
+    case CHARS: {
+        new->chars.value = parse_escaped(buff, s + 1, e - 1);
+        break;
+    }
+    case I8: {
+        char *str = parse_escaped(buff, s + 1, e - 1);
+        // TODO: assert_char
+        new->i8.value = str[0];
+        break;
+    }
+    case I32: {
+        new->i32.value = strtol(buff + s, NULL, 10);
+        break;
+    }
+    default: {
+        break;
+    }
+    }
+    new->line = ura.line;
+    new->s = s;
+    new->e = e;
+    new->space = space / TAB + ((space % TAB) != 0);
+    return new;
+}
+
+void tokenize(File *file, int space2) {
+    open_file(file);
+    ura.file = file;
+    arena_reserve(file->len * 192);
+
+    int s = 0;
+    int e = 0;
+    int space = space2;
+    char *buff = file->buff;
+    while (buff[e] != '\0') {
+        s = e;
+        if (isspace(buff[e])) {
+            while (buff[e] == '\n') {
+                ura.line++;
+                e++;
+            }
+            if (buff[s] == '\n') {
+                space = space2;
+                s = e - 1;
+            }
+            while (buff[e] != '\n' && isspace(buff[e])) {
+                // calculated spaces after hitting \n in s position
+                if (buff[s] == '\n')
+                    space++;
+                e++;
+            }
+            //  if (buff[s] == '\n' && buff[e] && buff[e] != '\n') // a line with code
+            //     check_indent(s + 1, e, ura.scope->token->line, space);
+            continue;
+        }
+        while (strncmp2(buff + s, "//", 2) && !strchr("\n", buff[e]))
+            e++;
+        if (e != s)
+            continue;
+        if (strncmp2(buff + s, "/*", 2)) {
+            s += 2; // skip /*
+            while (buff[e] != '\0' && !strncmp2(buff + e, "*/", 2))
+                e++;
+            // TODO:
+            //  if (!check_multi_comment(s, e, line))
+            //     break;
+			e += 2;
+			continue;
+        }
+
+		if(buff[s] != '\0')
+    }
 }
 
 // AST
@@ -253,6 +328,8 @@ int main(int ac, char **av) {
     print(GREEN("[TOKENIZE]:\n"));
     for (size_t i = 0; i < ura.files_count; i++) {
         File *file = ura.files[i];
+        if (file->opened)
+            continue;
         tokenize(file, 0);
     }
     new_token(END, NULL);
@@ -321,18 +398,17 @@ int _print_type(ioFile fp, Node *node) {
     switch(node->token->type) {
     case REF:		return fprintf(fp, "&") + _print_type(fp, node->left);
     case STRUCT:	return fprintf(fp, "%s", node->token->name);
-    case BOOL:		return fprintf(fp, "bool");
-    case I8:		return fprintf(fp, "i8");
-    case I32:		return fprintf(fp, "i32");
     case ARRAY:		return _print_type(fp, node->left) + fprintf(fp, "[]");
-    default:		return fprintf(fp, "%s", to_string(node->token->type));
+    default:		return fprintf(fp, "%s", type_names[node->token->type]);
     }
     // clang-format on
 };
 
 int _print_char(ioFile fp, char c) {
-    char *str = escaped[c];
-    return str ? fprintf(fp, "%s", str) : fprintf(fp, "%c", c);
+    unsigned char u = (unsigned char)c;
+    if (iscntrl(u) && escaped[u])
+        return fprintf(fp, "%s", escaped[u]);
+    return fprintf(fp, "%c", c);
 }
 
 // clang-format off
@@ -340,7 +416,7 @@ int _print_token(ioFile fp, Token *token) {
     if (token == NULL) return fprintf(fp, "(null token)");
     int r = fprintf(fp, "%s", to_string(token->type));
     if (token->name != NULL) r += fprintf(fp, " name (%s)", token->name);
-    if(token->name == NULL && !token->is_type) { 
+    if (token->name == NULL && !token->is_type) { 
         switch(token->type) {
         case I8:    r += fprintf(fp, " value (%c)", token->i8.value); break;
         case I32:   r += fprintf(fp, " value (%ld)", token->i32.value); break;
@@ -511,4 +587,24 @@ void parse_args(int ac, char **av) {
             append(ura.files, file);
         }
     }
+}
+
+char *parse_escaped(char *input, int s, int e) {
+    char *res = arena_alloc(e - s + 1, sizeof(char));
+    int r = 0;
+    while (s < e) {
+        int c = -1;
+        if (s < e - 1 && input[s] == '\\') {
+            char *str = escaped[input[s + 1]];
+            if (str != NULL) {
+                c = str[0];
+                s += 2;
+            }
+        }
+        if (c == -1)
+            c = input[s++];
+        assert(c > 0);
+        res[r++] = c;
+    }
+    return res;
 }

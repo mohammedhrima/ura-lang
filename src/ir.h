@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <sys/types.h>
+#include <stdarg.h>
+#include <ctype.h>
 
 // STRUCTS
 #include <llvm-c/Analysis.h>

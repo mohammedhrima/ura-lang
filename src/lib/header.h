@@ -6,7 +6,7 @@
 /*   | |_| |  _ <  / ___ \     mohammedxhrima@gmail.com                       */
 /*    \___/|_| \_\/_/   \_\    created: 2023/03/11 03:08:09                   */
 /*                                                                            */
-/*   updated: 2026/10/20 21:04:05                                             */
+/*   updated: 2026/10/20 23:37:39                                             */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -241,8 +241,8 @@ struct File {
     // some attributes might need to be removed
     // char *dir;
     char *buff;
-    // size_t len;
-    // bool opened;
+    int len;
+    bool opened;
 };
 
 File *new_file(char *path) {
@@ -253,12 +253,12 @@ File *new_file(char *path) {
 }
 
 void open_file(File *file) {
-	char *path = file->path;
+    char *path = file->path;
     if (realpath(path, NULL) == NULL) {
         fprintf(stderr, "realpath failed (%s)\n", file->path);
         exit(1);
     }
-	file->path = path;
+    file->path = path;
     ioFile fp = fopen(file->path, "r");
     if (fp == NULL) {
         fprintf(stderr, "fopen failed (%s)\n", file->path);
@@ -268,12 +268,14 @@ void open_file(File *file) {
         fprintf(stderr, "fseek failed\n");
         exit(1);
     }
-    int len = ftell(fp);
+    file->len = ftell(fp);
     rewind(fp);
-    file->buff = arena_alloc(len + 1, sizeof(char));
-    fread(file->buff, len, sizeof(char), fp);
+    file->buff = arena_alloc(file->len + 1, sizeof(char));
+    fread(file->buff, file->len, sizeof(char), fp);
     fclose(fp);
+    file->opened = true;
 }
 
-void close_file() {
+void close_file(File *file) {
+    file->opened = false;
 }
