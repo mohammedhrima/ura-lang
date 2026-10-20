@@ -169,7 +169,7 @@ build() {
         } > compile_commands.json
 
         mkdir -p "$URA_BIN_DIR"
-        "$CC" "${FLAGS[@]}" "${CFLAGS_LLVM[@]}" main.c "${LIBS[@]}" -o "$URA_BIN"
+        "$CC" "${FLAGS[@]}" "${CFLAGS_LLVM[@]}" main.c ir.c "${LIBS[@]}" -o "$URA_BIN"
     ) && _ura_green "build: bin/ura ready" || { _ura_red "build: failed"; return 1; }
 }
 
