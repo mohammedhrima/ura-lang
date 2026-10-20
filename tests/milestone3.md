@@ -2,1543 +2,146 @@
 
 ## index
 
-- 001 — struct: declare: attributes start at zero
-- 002 — struct: write an attribute, read it back
-- 003 — struct: attributes don't overlap
-- 004 — struct: compound assignment on an attribute
-- 005 — struct: two variables of one struct are separate
-- 006 — struct: attributes of different types
-- 007 — struct: nested struct: r.b.x
-- 008 — struct: attributes in a loop
-- 009 — struct: array attribute
-- 010 — struct: print attributes
-- 011 — struct: a function returns a struct
-- 012 — struct: a ref variable to a struct
-- 013 — struct: write through a ref parameter
-- 014 — struct: read through a ref parameter
-- 015 — method: a method reads self
-- 016 — method: a method writes self
-- 017 — method: a method reads and writes self
-- 018 — method: a method with arguments
-- 019 — method: a method calls another method
-- 020 — method: a method returns a bool
-- 021 — method: a method in a loop
-- 022 — method: two structs, one method name
-- 023 — method: a method on a nested attribute
-- 024 — method: overloaded method
-- 025 — method: a method on a ref receiver
-- 026 — method: a method through a ref changes the caller
-- 027 — global scope: no main: the file is the program
-- 028 — name error: a struct declared twice
-- 029 — name error: unknown attribute
-- 030 — name error: unknown method
-- 031 — name error: self outside a method
-- 032 — program: a method called three times through a ref
-- 033 — program: methods of a nested struct, called through self
-- 034 — program: bubble sort: a struct with an array, methods calling methods
-- 035 — program: bank account: methods, a ref parameter, an array of bills
-- 036 — program: an array of structs is a copy
-- 037 — program: vectors: struct parameters, struct returns, chained calls
-- 038 — program: linked list: ref attributes, isNullable, rebinding a ref in a loop
-- 039 — program: a recursive method that counts its calls
-- 040 — program: a method takes a ref to its own struct type
-- 041 — program: stack: push squares, pop until empty
-- 042 — program: ring-buffer queue: full, wrap around, drain
-- 043 — program: binary tree: recursion through ref attributes
-- 044 — program: a linked list over array elements
-- 045 — program: search a linked list, -1 when missing
-- 046 — program: assigning a struct copies it
-- 047 — program: a struct parameter is a copy
-- 048 — program: compound assignment through a ref attribute
-- 049 — program: a method on an array element
-- 050 — program: builder: a method returns a ref to self, chained
-- 051 — program: a struct holding an array of structs
-- 052 — program: tree walk with a ref out-parameter
-- 053 — program: a function returns a ref into a struct, the caller binds it
-- 054 — program: fibonacci as a pair: recursion returning a struct, .a on a call
-- 055 — program: method calls nested as arguments
-- 056 — program: print a linked list backwards with recursion
-- 057 — program: sort structs in an array by an attribute
-- 058 — program: ping pong: two structs that name each other, before either is declared
-- 059 — program: while True with break and return inside a method
-- 060 — program: script: a global stack evaluates postfix 3 4 + 2 *
-- 061 — program: structs used before declared, a struct local to a function
-- 062 — program: a linked list built with chained methods that return refs
-- 063 — program: binary search tree: recursive methods through ref attributes
-- 064 — program: 2x2 matrix product with methods and ref parameters
+- 001 — global scope: no main: the file is the program
+- 002 — struct: declare: attributes start at zero
+- 003 — struct: write an attribute, read it back
+- 004 — struct: attributes don't overlap
+- 005 — struct: compound assignment on an attribute
+- 006 — struct: two variables of one struct are separate
+- 007 — struct: attributes of different types
+- 008 — struct: nested struct: r.b.x
+- 009 — struct: attributes in a loop
+- 010 — struct: array attribute
+- 011 — struct: print attributes
+- 012 — struct: a function returns a struct
+- 013 — struct: a ref variable to a struct
+- 014 — struct: write through a ref parameter
+- 015 — struct: read through a ref parameter
+- 016 — method: a method reads self
+- 017 — method: a method writes self
+- 018 — method: a method reads and writes self
+- 019 — method: a method with arguments
+- 020 — method: a method calls another method
+- 021 — method: a method returns a bool
+- 022 — method: a method in a loop
+- 023 — method: two structs, one method name
+- 024 — method: a method on a nested attribute
+- 025 — method: overloaded method
+- 026 — method: a method on a ref receiver
+- 027 — method: a method through a ref changes the caller
+- 028 — crazy: a method called three times through a ref
+- 029 — crazy: methods of a nested struct, called through self
+- 030 — crazy: bubble sort: a struct with an array, methods calling methods
+- 031 — crazy: bank account: methods, a ref parameter, an array of bills
+- 032 — crazy: an array of structs is a copy
+- 033 — crazy: vectors: struct parameters, struct returns, chained calls
+- 034 — crazy: linked list: ref attributes, isNullable, rebinding a ref in a loop
+- 035 — crazy: a recursive method that counts its calls
+- 036 — crazy: a method takes a ref to its own struct type
+- 037 — crazy: stack: push squares, pop until empty
+- 038 — crazy: ring-buffer queue: full, wrap around, drain
+- 039 — crazy: binary tree: recursion through ref attributes
+- 040 — crazy: a linked list over array elements
+- 041 — crazy: search a linked list, -1 when missing
+- 042 — crazy: assigning a struct copies it
+- 043 — crazy: a struct parameter is a copy
+- 044 — crazy: compound assignment through a ref attribute
+- 045 — crazy: a method on an array element
+- 046 — crazy: builder: a method returns a ref to self, chained
+- 047 — crazy: a struct holding an array of structs
+- 048 — crazy: tree walk with a ref out-parameter
+- 049 — crazy: a function returns a ref into a struct, the caller binds it
+- 050 — crazy: fibonacci as a pair: recursion returning a struct, .a on a call
+- 051 — crazy: method calls nested as arguments
+- 052 — crazy: print a linked list backwards with recursion
+- 053 — crazy: sort structs in an array by an attribute
+- 054 — crazy: ping pong: two structs that name each other, before either is declared
+- 055 — crazy: while True with break and return inside a method
+- 056 — crazy: script: a global stack evaluates postfix 3 4 + 2 *
+- 057 — crazy: structs used before declared, a struct local to a function
+- 058 — crazy: a linked list built with chained methods that return refs
+- 059 — crazy: binary search tree: recursive methods through ref attributes
+- 060 — crazy: 2x2 matrix product with methods and ref parameters
+- 061 — name error: a struct declared twice
+- 062 — name error: unknown attribute
+- 063 — name error: unknown method
+- 064 — name error: self outside a method
+- 065 — structs: missing name
+- 066 — structs: missing colon
+- 067 — structs: expression inside a struct
+- 068 — structs: attribute without a type
+- 069 — structs: attribute declared twice
+- 070 — structs: no attributes
+- 071 — structs: contains itself by value
+- 072 — structs: unknown attribute
+- 073 — structs: unknown method
+- 074 — structs: method with wrong arguments
+- 075 — structs: bare attribute inside a method
+- 076 — structs: bare method call inside a method
+- 077 — structs: method called on the type
+- 078 — structs: self outside a method
+- 079 — expressions: add a struct and a number
+- 080 — expressions: compare structs
+- 081 — types: struct into another struct
+- 082 — struct: init a struct
+- 083 — struct: modify struct attribute
+- 084 — struct: method reads and writes self
+- 085 — struct: overloaded method
+- 086 — struct: linked list
+- 087 — program: linked list walked through ref attributes
+- 088 — method: a method reads self
+- 089 — method: a method mutates through self, and the caller sees it
+- 090 — method: a method with a return value
+- 091 — method: a method calling a sibling method declared below it
+- 092 — method: two structs may declare the same method name
+- 093 — method: a method on an array element
+- 094 — method: a method on a nested struct field
+- 095 — method: calling a method the struct does not have
+- 096 — method: calling a method on a non-struct
+- 097 — method: wrong argument count to a method
+- 098 — method: chaining a field access onto a call
+- 099 — struct: declare a struct and a local: named type, alloca, zero-init
+- 100 — struct: a field whose type is another struct
+- 101 — struct: forward reference: a field type declared later in the file
+- 102 — struct: a struct declared inside a function body
+- 103 — struct: a struct declared inside an if block
+- 104 — struct: a struct declared inside a loop body
+- 105 — struct: an array-of-struct field is a fat pointer to the named type
+- 106 — struct: a struct nested inside another struct's body
+- 107 — struct: self reference through an array stays finite
+- 108 — struct: an unused struct emits no type: LLVM drops unreferenced named types
+- 109 — struct: the same struct name in three nested scopes: innermost wins
+- 110 — struct: read and write a field
+- 111 — struct: nested field access through a struct field
+- 112 — struct: a stack array of structs: Room[N]
+- 113 — struct: a 2D array of structs: Room[N][M]
+- 114 — struct: '.len' on arrays of structs, including 2D
+- 115 — struct: 'stack' and 'heap' are ordinary identifiers
+- 116 — struct: a 'ref?' field may refer to its own struct
+- 117 — struct: bind, read and write through a 'ref?' field
+- 118 — struct: struct assignment copies by value
+- 119 — struct: a struct as a by-value parameter
+- 120 — struct: a 'ref' struct parameter mutates the caller's struct
+- 121 — struct: returning a struct: the create() constructor convention
+- 122 — struct: a field declared twice
+- 123 — struct: a field whose type does not exist
+- 124 — struct: a struct that contains itself by value
+- 125 — struct: two structs that contain each other by value
+- 126 — struct: a variable of a type that was never declared
+- 127 — struct: reading a field the struct does not have
+- 128 — struct: reading a field from a scalar
+- 129 — struct: '.len' on a scalar
+- 130 — struct: a struct declared in a block is not visible outside it
+- 131 — struct: a struct declared twice in the same scope
+- 132 — struct: a method and a field chain called on a ref? field
+- 133 — struct: struct redefinition
+- 134 — struct: accessing an undefined field
+- 135 — struct: calling undefined method on struct
+- 136 — struct: a struct whose first field is a struct is not circular
 
 ---
 
-## 001 — struct: declare: attributes start at zero
-
-```ura
-// expect: 0
-struct User:
-    a i32
-    b i32
-
-fn main() i32:
-    u User
-    return u.a + u.b
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%User = type { i32, i32 }
-
-define i32 @main() {
-entry:
-  %u = alloca %User, align 8
-  store %User zeroinitializer, %User* %u, align 4
-  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  %load.load.u.a = load i32, i32* %load.u.a, align 4
-  %load.u.b = getelementptr inbounds %User, %User* %u, i32 0, i32 1
-  %load.load.u.b = load i32, i32* %load.u.b, align 4
-  %ADD = add i32 %load.load.u.a, %load.load.u.b
-  ret i32 %ADD
-}
-```
-
----
-
-## 002 — struct: write an attribute, read it back
-
-```ura
-// expect: 7
-struct User:
-    a i32
-    b i32
-
-fn main() i32:
-    u User
-    u.b = 7
-    return u.b
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%User = type { i32, i32 }
-
-define i32 @main() {
-entry:
-  %u = alloca %User, align 8
-  store %User zeroinitializer, %User* %u, align 4
-  %load.u.b = getelementptr inbounds %User, %User* %u, i32 0, i32 1
-  store i32 7, i32* %load.u.b, align 4
-  %load.u.b1 = getelementptr inbounds %User, %User* %u, i32 0, i32 1
-  %load.load.u.b = load i32, i32* %load.u.b1, align 4
-  ret i32 %load.load.u.b
-}
-```
-
----
-
-## 003 — struct: attributes don't overlap
-
-```ura
-// expect: 34
-struct User:
-    a i32
-    b i32
-
-fn main() i32:
-    u User
-    u.a = 3
-    u.b = 4
-    return u.a * 10 + u.b
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%User = type { i32, i32 }
-
-define i32 @main() {
-entry:
-  %u = alloca %User, align 8
-  store %User zeroinitializer, %User* %u, align 4
-  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  store i32 3, i32* %load.u.a, align 4
-  %load.u.b = getelementptr inbounds %User, %User* %u, i32 0, i32 1
-  store i32 4, i32* %load.u.b, align 4
-  %load.u.a1 = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  %load.load.u.a = load i32, i32* %load.u.a1, align 4
-  %MUL = mul i32 %load.load.u.a, 10
-  %load.u.b2 = getelementptr inbounds %User, %User* %u, i32 0, i32 1
-  %load.load.u.b = load i32, i32* %load.u.b2, align 4
-  %ADD = add i32 %MUL, %load.load.u.b
-  ret i32 %ADD
-}
-```
-
----
-
-## 004 — struct: compound assignment on an attribute
-
-```ura
-// expect: 21   ((5 + 2) * 3)
-struct User:
-    a i32
-
-fn main() i32:
-    u User
-    u.a = 5
-    u.a += 2
-    u.a *= 3
-    return u.a
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%User = type { i32 }
-
-define i32 @main() {
-entry:
-  %u = alloca %User, align 8
-  store %User zeroinitializer, %User* %u, align 4
-  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  store i32 5, i32* %load.u.a, align 4
-  %load.u.a1 = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  %old = load i32, i32* %load.u.a1, align 4
-  %ADD_ASSIGN = add i32 %old, 2
-  store i32 %ADD_ASSIGN, i32* %load.u.a1, align 4
-  %load.u.a2 = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  %old3 = load i32, i32* %load.u.a2, align 4
-  %MUL_ASSIGN = mul i32 %old3, 3
-  store i32 %MUL_ASSIGN, i32* %load.u.a2, align 4
-  %load.u.a4 = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  %load.load.u.a = load i32, i32* %load.u.a4, align 4
-  ret i32 %load.load.u.a
-}
-```
-
----
-
-## 005 — struct: two variables of one struct are separate
-
-```ura
-// expect: 12
-struct User:
-    a i32
-
-fn main() i32:
-    u User
-    v User
-    u.a = 1
-    v.a = 2
-    return u.a * 10 + v.a
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%User = type { i32 }
-
-define i32 @main() {
-entry:
-  %u = alloca %User, align 8
-  %v = alloca %User, align 8
-  store %User zeroinitializer, %User* %u, align 4
-  store %User zeroinitializer, %User* %v, align 4
-  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  store i32 1, i32* %load.u.a, align 4
-  %load.v.a = getelementptr inbounds %User, %User* %v, i32 0, i32 0
-  store i32 2, i32* %load.v.a, align 4
-  %load.u.a1 = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  %load.load.u.a = load i32, i32* %load.u.a1, align 4
-  %MUL = mul i32 %load.load.u.a, 10
-  %load.v.a2 = getelementptr inbounds %User, %User* %v, i32 0, i32 0
-  %load.load.v.a = load i32, i32* %load.v.a2, align 4
-  %ADD = add i32 %MUL, %load.load.v.a
-  ret i32 %ADD
-}
-```
-
----
-
-## 006 — struct: attributes of different types
-
-```ura
-// expect: 4
-struct Item:
-    id i32
-    used bool
-    tag char
-
-fn main() i32:
-    it Item
-    it.id = 4
-    it.used = True
-    it.tag = 'x'
-    if it.used and it.tag == 'x':
-        return it.id
-    return 0
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%Item = type { i32, i1, i8 }
-
-define i32 @main() {
-entry:
-  %it = alloca %Item, align 8
-  store %Item zeroinitializer, %Item* %it, align 4
-  %load.it.id = getelementptr inbounds %Item, %Item* %it, i32 0, i32 0
-  store i32 4, i32* %load.it.id, align 4
-  %load.it.used = getelementptr inbounds %Item, %Item* %it, i32 0, i32 1
-  store i1 true, i1* %load.it.used, align 1
-  %load.it.tag = getelementptr inbounds %Item, %Item* %it, i32 0, i32 2
-  store i8 120, i8* %load.it.tag, align 1
-  %load.it.used1 = getelementptr inbounds %Item, %Item* %it, i32 0, i32 1
-  %load.load.it.used = load i1, i1* %load.it.used1, align 1
-  %load.it.tag2 = getelementptr inbounds %Item, %Item* %it, i32 0, i32 2
-  %load.load.it.tag = load i8, i8* %load.it.tag2, align 1
-  %EQ = icmp eq i8 %load.load.it.tag, 120
-  %AND = and i1 %load.load.it.used, %EQ
-  br i1 %AND, label %then, label %endif
-
-then:                                             ; preds = %entry
-  %load.it.id3 = getelementptr inbounds %Item, %Item* %it, i32 0, i32 0
-  %load.load.it.id = load i32, i32* %load.it.id3, align 4
-  ret i32 %load.load.it.id
-
-endif:                                            ; preds = %entry
-  ret i32 0
-}
-```
-
----
-
-## 007 — struct: nested struct: r.b.x
-
-```ura
-// expect: 6   (5 - 1 + 2)
-struct Point:
-    x i32
-    y i32
-
-struct Rect:
-    a Point
-    b Point
-
-fn main() i32:
-    r Rect
-    r.a.x = 1
-    r.b.x = 5
-    r.b.y = 2
-    return r.b.x - r.a.x + r.b.y
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%Rect = type { %Point, %Point }
-%Point = type { i32, i32 }
-
-define i32 @main() {
-entry:
-  %r = alloca %Rect, align 8
-  store %Rect zeroinitializer, %Rect* %r, align 4
-  %load.r.a = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 0
-  %load.load.r.a.x = getelementptr inbounds %Point, %Point* %load.r.a, i32 0, i32 0
-  store i32 1, i32* %load.load.r.a.x, align 4
-  %load.r.b = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 1
-  %load.load.r.b.x = getelementptr inbounds %Point, %Point* %load.r.b, i32 0, i32 0
-  store i32 5, i32* %load.load.r.b.x, align 4
-  %load.r.b1 = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 1
-  %load.load.r.b.y = getelementptr inbounds %Point, %Point* %load.r.b1, i32 0, i32 1
-  store i32 2, i32* %load.load.r.b.y, align 4
-  %load.r.b2 = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 1
-  %load.load.r.b.x3 = getelementptr inbounds %Point, %Point* %load.r.b2, i32 0, i32 0
-  %load.load.load.r.b.x = load i32, i32* %load.load.r.b.x3, align 4
-  %load.r.a4 = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 0
-  %load.load.r.a.x5 = getelementptr inbounds %Point, %Point* %load.r.a4, i32 0, i32 0
-  %load.load.load.r.a.x = load i32, i32* %load.load.r.a.x5, align 4
-  %SUB = sub i32 %load.load.load.r.b.x, %load.load.load.r.a.x
-  %load.r.b6 = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 1
-  %load.load.r.b.y7 = getelementptr inbounds %Point, %Point* %load.r.b6, i32 0, i32 1
-  %load.load.load.r.b.y = load i32, i32* %load.load.r.b.y7, align 4
-  %ADD = add i32 %SUB, %load.load.load.r.b.y
-  ret i32 %ADD
-}
-```
-
----
-
-## 008 — struct: attributes in a loop
-
-```ura
-// expect: 10   (1 + 2 + 3 + 4)
-struct Counter:
-    n i32
-    total i32
-
-fn main() i32:
-    c Counter
-    while c.n < 4:
-        c.n += 1
-        c.total += c.n
-    return c.total
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%Counter = type { i32, i32 }
-
-define i32 @main() {
-entry:
-  %c = alloca %Counter, align 8
-  store %Counter zeroinitializer, %Counter* %c, align 4
-  br label %cond
-
-cond:                                             ; preds = %then, %entry
-  %load.c.n = getelementptr inbounds %Counter, %Counter* %c, i32 0, i32 0
-  %load.load.c.n = load i32, i32* %load.c.n, align 4
-  %LT = icmp slt i32 %load.load.c.n, 4
-  br i1 %LT, label %then, label %endwhile
-
-then:                                             ; preds = %cond
-  %load.c.n1 = getelementptr inbounds %Counter, %Counter* %c, i32 0, i32 0
-  %old = load i32, i32* %load.c.n1, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* %load.c.n1, align 4
-  %load.c.total = getelementptr inbounds %Counter, %Counter* %c, i32 0, i32 1
-  %load.c.n2 = getelementptr inbounds %Counter, %Counter* %c, i32 0, i32 0
-  %load.load.c.n3 = load i32, i32* %load.c.n2, align 4
-  %old4 = load i32, i32* %load.c.total, align 4
-  %ADD_ASSIGN5 = add i32 %old4, %load.load.c.n3
-  store i32 %ADD_ASSIGN5, i32* %load.c.total, align 4
-  br label %cond
-
-endwhile:                                         ; preds = %cond
-  %load.c.total6 = getelementptr inbounds %Counter, %Counter* %c, i32 0, i32 1
-  %load.load.c.total = load i32, i32* %load.c.total6, align 4
-  ret i32 %load.load.c.total
-}
-```
-
----
-
-## 009 — struct: array attribute
-
-```ura
-// expect: 12
-struct Row:
-    cells i32[]
-
-fn main() i32:
-    r Row
-    r.cells = [1, 2, 3]
-    r.cells[0] = 9
-    return r.cells[0] + r.cells[2]
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%Row = type { i32* }
-
-define i32 @main() {
-entry:
-  %r = alloca %Row, align 8
-  %array = alloca [3 x i32], align 4
-  store %Row zeroinitializer, %Row* %r, align 8
-  %load.r.cells = getelementptr inbounds %Row, %Row* %r, i32 0, i32 0
-  %e = getelementptr inbounds [3 x i32], [3 x i32]* %array, i32 0, i32 0
-  store i32 1, i32* %e, align 4
-  %e1 = getelementptr inbounds [3 x i32], [3 x i32]* %array, i32 0, i32 1
-  store i32 2, i32* %e1, align 4
-  %e2 = getelementptr inbounds [3 x i32], [3 x i32]* %array, i32 0, i32 2
-  store i32 3, i32* %e2, align 4
-  %array3 = getelementptr inbounds [3 x i32], [3 x i32]* %array, i32 0, i32 0
-  store i32* %array3, i32** %load.r.cells, align 8
-  %load.r.cells4 = getelementptr inbounds %Row, %Row* %r, i32 0, i32 0
-  %load.load.r.cells = load i32*, i32** %load.r.cells4, align 8
-  %"load.load.r.cells[0]" = getelementptr inbounds i32, i32* %load.load.r.cells, i32 0
-  store i32 9, i32* %"load.load.r.cells[0]", align 4
-  %load.r.cells5 = getelementptr inbounds %Row, %Row* %r, i32 0, i32 0
-  %load.load.r.cells6 = load i32*, i32** %load.r.cells5, align 8
-  %"load.load.r.cells[0]7" = getelementptr inbounds i32, i32* %load.load.r.cells6, i32 0
-  %"load.load.load.r.cells[0]" = load i32, i32* %"load.load.r.cells[0]7", align 4
-  %load.r.cells8 = getelementptr inbounds %Row, %Row* %r, i32 0, i32 0
-  %load.load.r.cells9 = load i32*, i32** %load.r.cells8, align 8
-  %"load.load.r.cells[2]" = getelementptr inbounds i32, i32* %load.load.r.cells9, i32 2
-  %"load.load.load.r.cells[2]" = load i32, i32* %"load.load.r.cells[2]", align 4
-  %ADD = add i32 %"load.load.load.r.cells[0]", %"load.load.load.r.cells[2]"
-  ret i32 %ADD
-}
-```
-
----
-
-## 010 — struct: print attributes
-
-```ura
-// stdout: ura 42
-// expect: 0
-proto printf(fmt i8[], ...) i32
-
-struct User:
-    id i32
-    name i8[]
-
-fn main() i32:
-    u User
-    u.id = 42
-    u.name = "ura"
-    printf("%s %d\n", u.name, u.id)
-    return 0
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%User = type { i32, i8* }
-
-@str = private constant [4 x i8] c"ura\00"
-@str.1 = private constant [7 x i8] c"%s %d\0A\00"
-
-declare i32 @printf(i8*, ...)
-
-define i32 @main() {
-entry:
-  %u = alloca %User, align 8
-  %s = alloca [4 x i8], align 1
-  %s1 = alloca [7 x i8], align 1
-  store %User zeroinitializer, %User* %u, align 8
-  %load.u.id = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  store i32 42, i32* %load.u.id, align 4
-  %load.u.name = getelementptr inbounds %User, %User* %u, i32 0, i32 1
-  %dst = getelementptr inbounds [4 x i8], [4 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i64 4, i1 false)
-  store i8* %dst, i8** %load.u.name, align 8
-  %dst2 = getelementptr inbounds [7 x i8], [7 x i8]* %s1, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst2, i8* align 1 getelementptr inbounds ([7 x i8], [7 x i8]* @str.1, i32 0, i32 0), i64 7, i1 false)
-  %load.u.name3 = getelementptr inbounds %User, %User* %u, i32 0, i32 1
-  %load.load.u.name = load i8*, i8** %load.u.name3, align 8
-  %load.u.id4 = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  %load.load.u.id = load i32, i32* %load.u.id4, align 4
-  %"printf(str,load.load.u.name,load.load.u.id)" = call i32 (i8*, ...) @printf(i8* %dst2, i8* %load.load.u.name, i32 %load.load.u.id)
-  ret i32 0
-}
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
-```
-
----
-
-## 011 — struct: a function returns a struct
-
-```ura
-// expect: 5
-struct User:
-    a i32
-
-fn make(a i32) User:
-    u User
-    u.a = a
-    return u
-
-fn main() i32:
-    u User = make(5)
-    return u.a
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%User = type { i32 }
-
-define %User @make(i32 %0) {
-entry:
-  %a = alloca i32, align 4
-  %u = alloca %User, align 8
-  store i32 %0, i32* %a, align 4
-  store %User zeroinitializer, %User* %u, align 4
-  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  %load.a = load i32, i32* %a, align 4
-  store i32 %load.a, i32* %load.u.a, align 4
-  %load.u = load %User, %User* %u, align 4
-  ret %User %load.u
-}
-
-define i32 @main() {
-entry:
-  %u = alloca %User, align 8
-  %"make(5)" = call %User @make(i32 5)
-  store %User %"make(5)", %User* %u, align 4
-  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  %load.load.u.a = load i32, i32* %load.u.a, align 4
-  ret i32 %load.load.u.a
-}
-```
-
----
-
-## 012 — struct: a ref variable to a struct
-
-```ura
-// expect: 8
-struct User:
-    a i32
-
-fn main() i32:
-    u User
-    p &User = &u
-    p.a = 8
-    return u.a
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%User = type { i32 }
-
-define i32 @main() {
-entry:
-  %u = alloca %User, align 8
-  %p = alloca %User*, align 8
-  store %User zeroinitializer, %User* %u, align 4
-  store %User* %u, %User** %p, align 8
-  %dref.p = load %User*, %User** %p, align 8
-  %load.dref.p.a = getelementptr inbounds %User, %User* %dref.p, i32 0, i32 0
-  store i32 8, i32* %load.dref.p.a, align 4
-  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  %load.load.u.a = load i32, i32* %load.u.a, align 4
-  ret i32 %load.load.u.a
-}
-```
-
----
-
-## 013 — struct: write through a ref parameter
-
-```ura
-// expect: 3
-struct User:
-    a i32
-
-fn set(p &User):
-    p.a = 3
-
-fn main() i32:
-    u User
-    set(&u)
-    return u.a
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%User = type { i32 }
-
-define void @set(%User* %0) {
-entry:
-  %p = alloca %User*, align 8
-  store %User* %0, %User** %p, align 8
-  %dref.p = load %User*, %User** %p, align 8
-  %load.dref.p.a = getelementptr inbounds %User, %User* %dref.p, i32 0, i32 0
-  store i32 3, i32* %load.dref.p.a, align 4
-  ret void
-}
-
-define i32 @main() {
-entry:
-  %u = alloca %User, align 8
-  store %User zeroinitializer, %User* %u, align 4
-  call void @set(%User* %u)
-  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  %load.load.u.a = load i32, i32* %load.u.a, align 4
-  ret i32 %load.load.u.a
-}
-```
-
----
-
-## 014 — struct: read through a ref parameter
-
-```ura
-// expect: 7
-struct User:
-    a i32
-    b i32
-
-fn total(p &User) i32:
-    return p.a + p.b
-
-fn main() i32:
-    u User
-    u.a = 2
-    u.b = 5
-    return total(&u)
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%User = type { i32, i32 }
-
-define i32 @total(%User* %0) {
-entry:
-  %p = alloca %User*, align 8
-  store %User* %0, %User** %p, align 8
-  %dref.p = load %User*, %User** %p, align 8
-  %load.dref.p.a = getelementptr inbounds %User, %User* %dref.p, i32 0, i32 0
-  %load.load.dref.p.a = load i32, i32* %load.dref.p.a, align 4
-  %dref.p1 = load %User*, %User** %p, align 8
-  %load.dref.p.b = getelementptr inbounds %User, %User* %dref.p1, i32 0, i32 1
-  %load.load.dref.p.b = load i32, i32* %load.dref.p.b, align 4
-  %ADD = add i32 %load.load.dref.p.a, %load.load.dref.p.b
-  ret i32 %ADD
-}
-
-define i32 @main() {
-entry:
-  %u = alloca %User, align 8
-  store %User zeroinitializer, %User* %u, align 4
-  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  store i32 2, i32* %load.u.a, align 4
-  %load.u.b = getelementptr inbounds %User, %User* %u, i32 0, i32 1
-  store i32 5, i32* %load.u.b, align 4
-  %"total(&u)" = call i32 @total(%User* %u)
-  ret i32 %"total(&u)"
-}
-```
-
----
-
-## 015 — method: a method reads self
-
-```ura
-// expect: 4
-struct User:
-    a i32
-
-    fn get() i32:
-        return self.a
-
-fn main() i32:
-    u User
-    u.a = 4
-    return u.get()
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%User = type { i32 }
-
-define i32 @User.get(%User* %0) {
-entry:
-  %self = alloca %User*, align 8
-  store %User* %0, %User** %self, align 8
-  %dref.self = load %User*, %User** %self, align 8
-  %load.dref.self.a = getelementptr inbounds %User, %User* %dref.self, i32 0, i32 0
-  %load.load.dref.self.a = load i32, i32* %load.dref.self.a, align 4
-  ret i32 %load.load.dref.self.a
-}
-
-define i32 @main() {
-entry:
-  %u = alloca %User, align 8
-  store %User zeroinitializer, %User* %u, align 4
-  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  store i32 4, i32* %load.u.a, align 4
-  %"get(&load.u)" = call i32 @User.get(%User* %u)
-  ret i32 %"get(&load.u)"
-}
-```
-
----
-
-## 016 — method: a method writes self
-
-```ura
-// expect: 9
-struct User:
-    a i32
-
-    fn set(n i32):
-        self.a = n
-
-fn main() i32:
-    u User
-    u.set(9)
-    return u.a
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%User = type { i32 }
-
-define void @User.set(%User* %0, i32 %1) {
-entry:
-  %self = alloca %User*, align 8
-  %n = alloca i32, align 4
-  store %User* %0, %User** %self, align 8
-  store i32 %1, i32* %n, align 4
-  %dref.self = load %User*, %User** %self, align 8
-  %load.dref.self.a = getelementptr inbounds %User, %User* %dref.self, i32 0, i32 0
-  %load.n = load i32, i32* %n, align 4
-  store i32 %load.n, i32* %load.dref.self.a, align 4
-  ret void
-}
-
-define i32 @main() {
-entry:
-  %u = alloca %User, align 8
-  store %User zeroinitializer, %User* %u, align 4
-  call void @User.set(%User* %u, i32 9)
-  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  %load.load.u.a = load i32, i32* %load.u.a, align 4
-  ret i32 %load.load.u.a
-}
-```
-
----
-
-## 017 — method: a method reads and writes self
-
-```ura
-// expect: 7
-struct User:
-    a i32
-
-    fn bump() i32:
-        self.a += 1
-        return self.a
-
-fn main() i32:
-    u User
-    u.a = 5
-    u.bump()
-    return u.bump()
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%User = type { i32 }
-
-define i32 @User.bump(%User* %0) {
-entry:
-  %self = alloca %User*, align 8
-  store %User* %0, %User** %self, align 8
-  %dref.self = load %User*, %User** %self, align 8
-  %load.dref.self.a = getelementptr inbounds %User, %User* %dref.self, i32 0, i32 0
-  %old = load i32, i32* %load.dref.self.a, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* %load.dref.self.a, align 4
-  %dref.self1 = load %User*, %User** %self, align 8
-  %load.dref.self.a2 = getelementptr inbounds %User, %User* %dref.self1, i32 0, i32 0
-  %load.load.dref.self.a = load i32, i32* %load.dref.self.a2, align 4
-  ret i32 %load.load.dref.self.a
-}
-
-define i32 @main() {
-entry:
-  %u = alloca %User, align 8
-  store %User zeroinitializer, %User* %u, align 4
-  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  store i32 5, i32* %load.u.a, align 4
-  %"bump(&load.u)" = call i32 @User.bump(%User* %u)
-  %"bump(&load.u)1" = call i32 @User.bump(%User* %u)
-  ret i32 %"bump(&load.u)1"
-}
-```
-
----
-
-## 018 — method: a method with arguments
-
-```ura
-// expect: 8
-struct User:
-    a i32
-
-    fn add(n i32) i32:
-        return self.a + n
-
-fn main() i32:
-    u User
-    u.a = 5
-    return u.add(3)
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%User = type { i32 }
-
-define i32 @User.add(%User* %0, i32 %1) {
-entry:
-  %self = alloca %User*, align 8
-  %n = alloca i32, align 4
-  store %User* %0, %User** %self, align 8
-  store i32 %1, i32* %n, align 4
-  %dref.self = load %User*, %User** %self, align 8
-  %load.dref.self.a = getelementptr inbounds %User, %User* %dref.self, i32 0, i32 0
-  %load.load.dref.self.a = load i32, i32* %load.dref.self.a, align 4
-  %load.n = load i32, i32* %n, align 4
-  %ADD = add i32 %load.load.dref.self.a, %load.n
-  ret i32 %ADD
-}
-
-define i32 @main() {
-entry:
-  %u = alloca %User, align 8
-  store %User zeroinitializer, %User* %u, align 4
-  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  store i32 5, i32* %load.u.a, align 4
-  %"add(&load.u,3)" = call i32 @User.add(%User* %u, i32 3)
-  ret i32 %"add(&load.u,3)"
-}
-```
-
----
-
-## 019 — method: a method calls another method
-
-```ura
-// expect: 12
-struct User:
-    a i32
-
-    fn get() i32:
-        return self.a
-
-    fn twice() i32:
-        return self.get() * 2
-
-fn main() i32:
-    u User
-    u.a = 6
-    return u.twice()
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%User = type { i32 }
-
-define i32 @User.get(%User* %0) {
-entry:
-  %self = alloca %User*, align 8
-  store %User* %0, %User** %self, align 8
-  %dref.self = load %User*, %User** %self, align 8
-  %load.dref.self.a = getelementptr inbounds %User, %User* %dref.self, i32 0, i32 0
-  %load.load.dref.self.a = load i32, i32* %load.dref.self.a, align 4
-  ret i32 %load.load.dref.self.a
-}
-
-define i32 @User.twice(%User* %0) {
-entry:
-  %self = alloca %User*, align 8
-  store %User* %0, %User** %self, align 8
-  %dref.self = load %User*, %User** %self, align 8
-  %"get(&load.dref.self)" = call i32 @User.get(%User* %dref.self)
-  %MUL = mul i32 %"get(&load.dref.self)", 2
-  ret i32 %MUL
-}
-
-define i32 @main() {
-entry:
-  %u = alloca %User, align 8
-  store %User zeroinitializer, %User* %u, align 4
-  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  store i32 6, i32* %load.u.a, align 4
-  %"twice(&load.u)" = call i32 @User.twice(%User* %u)
-  ret i32 %"twice(&load.u)"
-}
-```
-
----
-
-## 020 — method: a method returns a bool
-
-```ura
-// expect: 1
-struct User:
-    age i32
-
-    fn adult() bool:
-        return self.age >= 18
-
-fn main() i32:
-    u User
-    u.age = 20
-    if u.adult():
-        return 1
-    return 0
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%User = type { i32 }
-
-define i1 @User.adult(%User* %0) {
-entry:
-  %self = alloca %User*, align 8
-  store %User* %0, %User** %self, align 8
-  %dref.self = load %User*, %User** %self, align 8
-  %load.dref.self.age = getelementptr inbounds %User, %User* %dref.self, i32 0, i32 0
-  %load.load.dref.self.age = load i32, i32* %load.dref.self.age, align 4
-  %GE = icmp sge i32 %load.load.dref.self.age, 18
-  ret i1 %GE
-}
-
-define i32 @main() {
-entry:
-  %u = alloca %User, align 8
-  store %User zeroinitializer, %User* %u, align 4
-  %load.u.age = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  store i32 20, i32* %load.u.age, align 4
-  %"adult(&load.u)" = call i1 @User.adult(%User* %u)
-  br i1 %"adult(&load.u)", label %then, label %endif
-
-then:                                             ; preds = %entry
-  ret i32 1
-
-endif:                                            ; preds = %entry
-  ret i32 0
-}
-```
-
----
-
-## 021 — method: a method in a loop
-
-```ura
-// stdout: 3
-// expect: 3
-proto printf(fmt i8[], ...) i32
-
-struct Counter:
-    n i32
-
-    fn tick():
-        self.n += 1
-
-fn main() i32:
-    c Counter
-    i i32 = 0
-    while i < 3:
-        c.tick()
-        i += 1
-    printf("%d\n", c.n)
-    return c.n
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%Counter = type { i32 }
-
-@str = private constant [4 x i8] c"%d\0A\00"
-
-define void @Counter.tick(%Counter* %0) {
-entry:
-  %self = alloca %Counter*, align 8
-  store %Counter* %0, %Counter** %self, align 8
-  %dref.self = load %Counter*, %Counter** %self, align 8
-  %load.dref.self.n = getelementptr inbounds %Counter, %Counter* %dref.self, i32 0, i32 0
-  %old = load i32, i32* %load.dref.self.n, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* %load.dref.self.n, align 4
-  ret void
-}
-
-declare i32 @printf(i8*, ...)
-
-define i32 @main() {
-entry:
-  %c = alloca %Counter, align 8
-  %i = alloca i32, align 4
-  %s = alloca [4 x i8], align 1
-  store %Counter zeroinitializer, %Counter* %c, align 4
-  store i32 0, i32* %i, align 4
-  br label %cond
-
-cond:                                             ; preds = %then, %entry
-  %load.i = load i32, i32* %i, align 4
-  %LT = icmp slt i32 %load.i, 3
-  br i1 %LT, label %then, label %endwhile
-
-then:                                             ; preds = %cond
-  call void @Counter.tick(%Counter* %c)
-  %old = load i32, i32* %i, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* %i, align 4
-  br label %cond
-
-endwhile:                                         ; preds = %cond
-  %dst = getelementptr inbounds [4 x i8], [4 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i64 4, i1 false)
-  %load.c.n = getelementptr inbounds %Counter, %Counter* %c, i32 0, i32 0
-  %load.load.c.n = load i32, i32* %load.c.n, align 4
-  %"printf(str,load.load.c.n)" = call i32 (i8*, ...) @printf(i8* %dst, i32 %load.load.c.n)
-  %load.c.n1 = getelementptr inbounds %Counter, %Counter* %c, i32 0, i32 0
-  %load.load.c.n2 = load i32, i32* %load.c.n1, align 4
-  ret i32 %load.load.c.n2
-}
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
-```
-
----
-
-## 022 — method: two structs, one method name
-
-```ura
-// expect: 21   (1 + 2 * 10)
-struct A:
-    v i32
-
-    fn get() i32:
-        return self.v
-
-struct B:
-    v i32
-
-    fn get() i32:
-        return self.v * 10
-
-fn main() i32:
-    a A
-    b B
-    a.v = 1
-    b.v = 2
-    return a.get() + b.get()
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%A = type { i32 }
-%B = type { i32 }
-
-define i32 @A.get(%A* %0) {
-entry:
-  %self = alloca %A*, align 8
-  store %A* %0, %A** %self, align 8
-  %dref.self = load %A*, %A** %self, align 8
-  %load.dref.self.v = getelementptr inbounds %A, %A* %dref.self, i32 0, i32 0
-  %load.load.dref.self.v = load i32, i32* %load.dref.self.v, align 4
-  ret i32 %load.load.dref.self.v
-}
-
-define i32 @B.get(%B* %0) {
-entry:
-  %self = alloca %B*, align 8
-  store %B* %0, %B** %self, align 8
-  %dref.self = load %B*, %B** %self, align 8
-  %load.dref.self.v = getelementptr inbounds %B, %B* %dref.self, i32 0, i32 0
-  %load.load.dref.self.v = load i32, i32* %load.dref.self.v, align 4
-  %MUL = mul i32 %load.load.dref.self.v, 10
-  ret i32 %MUL
-}
-
-define i32 @main() {
-entry:
-  %a = alloca %A, align 8
-  %b = alloca %B, align 8
-  store %A zeroinitializer, %A* %a, align 4
-  store %B zeroinitializer, %B* %b, align 4
-  %load.a.v = getelementptr inbounds %A, %A* %a, i32 0, i32 0
-  store i32 1, i32* %load.a.v, align 4
-  %load.b.v = getelementptr inbounds %B, %B* %b, i32 0, i32 0
-  store i32 2, i32* %load.b.v, align 4
-  %"get(&load.a)" = call i32 @A.get(%A* %a)
-  %"get(&load.b)" = call i32 @B.get(%B* %b)
-  %ADD = add i32 %"get(&load.a)", %"get(&load.b)"
-  ret i32 %ADD
-}
-```
-
----
-
-## 023 — method: a method on a nested attribute
-
-```ura
-// expect: 7
-struct Point:
-    x i32
-
-    fn get() i32:
-        return self.x
-
-struct Rect:
-    a Point
-    b Point
-
-fn main() i32:
-    r Rect
-    r.b.x = 7
-    return r.b.get()
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%Point = type { i32 }
-%Rect = type { %Point, %Point }
-
-define i32 @Point.get(%Point* %0) {
-entry:
-  %self = alloca %Point*, align 8
-  store %Point* %0, %Point** %self, align 8
-  %dref.self = load %Point*, %Point** %self, align 8
-  %load.dref.self.x = getelementptr inbounds %Point, %Point* %dref.self, i32 0, i32 0
-  %load.load.dref.self.x = load i32, i32* %load.dref.self.x, align 4
-  ret i32 %load.load.dref.self.x
-}
-
-define i32 @main() {
-entry:
-  %r = alloca %Rect, align 8
-  store %Rect zeroinitializer, %Rect* %r, align 4
-  %load.r.b = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 1
-  %load.load.r.b.x = getelementptr inbounds %Point, %Point* %load.r.b, i32 0, i32 0
-  store i32 7, i32* %load.load.r.b.x, align 4
-  %load.r.b1 = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 1
-  %"get(&load.load.r.b)" = call i32 @Point.get(%Point* %load.r.b1)
-  ret i32 %"get(&load.load.r.b)"
-}
-```
-
----
-
-## 024 — method: overloaded method
-
-```ura
-// expect: 6   (1 + 5)
-struct User:
-    a i32
-
-    fn set(n i32):
-        self.a = n
-
-    fn set():
-        self.a = 1
-
-fn main() i32:
-    u User
-    u.set()
-    first i32 = u.a
-    u.set(5)
-    return first + u.a
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%User = type { i32 }
-
-define void @User.set(%User* %0, i32 %1) {
-entry:
-  %self = alloca %User*, align 8
-  %n = alloca i32, align 4
-  store %User* %0, %User** %self, align 8
-  store i32 %1, i32* %n, align 4
-  %dref.self = load %User*, %User** %self, align 8
-  %load.dref.self.a = getelementptr inbounds %User, %User* %dref.self, i32 0, i32 0
-  %load.n = load i32, i32* %n, align 4
-  store i32 %load.n, i32* %load.dref.self.a, align 4
-  ret void
-}
-
-define void @User.set.1(%User* %0) {
-entry:
-  %self = alloca %User*, align 8
-  store %User* %0, %User** %self, align 8
-  %dref.self = load %User*, %User** %self, align 8
-  %load.dref.self.a = getelementptr inbounds %User, %User* %dref.self, i32 0, i32 0
-  store i32 1, i32* %load.dref.self.a, align 4
-  ret void
-}
-
-define i32 @main() {
-entry:
-  %u = alloca %User, align 8
-  %first = alloca i32, align 4
-  store %User zeroinitializer, %User* %u, align 4
-  call void @User.set.1(%User* %u)
-  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  %load.load.u.a = load i32, i32* %load.u.a, align 4
-  store i32 %load.load.u.a, i32* %first, align 4
-  call void @User.set(%User* %u, i32 5)
-  %load.first = load i32, i32* %first, align 4
-  %load.u.a1 = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  %load.load.u.a2 = load i32, i32* %load.u.a1, align 4
-  %ADD = add i32 %load.first, %load.load.u.a2
-  ret i32 %ADD
-}
-```
-
----
-
-## 025 — method: a method on a ref receiver
-
-```ura
-// expect: 4
-struct User:
-    a i32
-
-    fn get() i32:
-        return self.a
-
-fn via(p &User) i32:
-    return p.get()
-
-fn main() i32:
-    u User
-    u.a = 4
-    return via(&u)
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%User = type { i32 }
-
-define i32 @User.get(%User* %0) {
-entry:
-  %self = alloca %User*, align 8
-  store %User* %0, %User** %self, align 8
-  %dref.self = load %User*, %User** %self, align 8
-  %load.dref.self.a = getelementptr inbounds %User, %User* %dref.self, i32 0, i32 0
-  %load.load.dref.self.a = load i32, i32* %load.dref.self.a, align 4
-  ret i32 %load.load.dref.self.a
-}
-
-define i32 @via(%User* %0) {
-entry:
-  %p = alloca %User*, align 8
-  store %User* %0, %User** %p, align 8
-  %dref.p = load %User*, %User** %p, align 8
-  %"get(&load.dref.p)" = call i32 @User.get(%User* %dref.p)
-  ret i32 %"get(&load.dref.p)"
-}
-
-define i32 @main() {
-entry:
-  %u = alloca %User, align 8
-  store %User zeroinitializer, %User* %u, align 4
-  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  store i32 4, i32* %load.u.a, align 4
-  %"via(&u)" = call i32 @via(%User* %u)
-  ret i32 %"via(&u)"
-}
-```
-
----
-
-## 026 — method: a method through a ref changes the caller
-
-```ura
-// expect: 11
-struct User:
-    a i32
-
-    fn set(n i32):
-        self.a = n
-
-fn reset(p &User):
-    p.set(11)
-
-fn main() i32:
-    u User
-    u.a = 3
-    reset(&u)
-    return u.a
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%User = type { i32 }
-
-define void @User.set(%User* %0, i32 %1) {
-entry:
-  %self = alloca %User*, align 8
-  %n = alloca i32, align 4
-  store %User* %0, %User** %self, align 8
-  store i32 %1, i32* %n, align 4
-  %dref.self = load %User*, %User** %self, align 8
-  %load.dref.self.a = getelementptr inbounds %User, %User* %dref.self, i32 0, i32 0
-  %load.n = load i32, i32* %n, align 4
-  store i32 %load.n, i32* %load.dref.self.a, align 4
-  ret void
-}
-
-define void @reset(%User* %0) {
-entry:
-  %p = alloca %User*, align 8
-  store %User* %0, %User** %p, align 8
-  %dref.p = load %User*, %User** %p, align 8
-  call void @User.set(%User* %dref.p, i32 11)
-  ret void
-}
-
-define i32 @main() {
-entry:
-  %u = alloca %User, align 8
-  store %User zeroinitializer, %User* %u, align 4
-  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  store i32 3, i32* %load.u.a, align 4
-  call void @reset(%User* %u)
-  %load.u.a1 = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  %load.load.u.a = load i32, i32* %load.u.a1, align 4
-  ret i32 %load.load.u.a
-}
-```
-
----
-
-## 027 — global scope: no main: the file is the program
+## 001 — global scope: no main: the file is the program
 
 ```ura
 // expect: 40   (23 at 4 * 10, 4 at 0, 99 missing: 0)
@@ -1654,74 +257,726 @@ entry:
 
 ---
 
-## 028 — name error: a struct declared twice
+## 002 — struct: declare: attributes start at zero
 
 ```ura
-// error: struct 'User' is already declared, on line 2
+// expect: 0
 struct User:
     a i32
-
-struct User:
     b i32
 
 fn main() i32:
-    return 0
+    u User
+    return u.a + u.b
 ```
 
-### stderr
+### llvm ir
 
-```
-error: test.ura:5:8 struct 'User' is already declared, on line 2
-  |
-5 | struct User:
-  |        ^^^^
-```
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
 
-### status
+%User = type { i32, i32 }
 
-```
-1
+define i32 @main() {
+entry:
+  %u = alloca %User, align 8
+  store %User zeroinitializer, %User* %u, align 4
+  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  %load.load.u.a = load i32, i32* %load.u.a, align 4
+  %load.u.b = getelementptr inbounds %User, %User* %u, i32 0, i32 1
+  %load.load.u.b = load i32, i32* %load.u.b, align 4
+  %ADD = add i32 %load.load.u.a, %load.load.u.b
+  ret i32 %ADD
+}
 ```
 
 ---
 
-## 029 — name error: unknown attribute
+## 003 — struct: write an attribute, read it back
 
 ```ura
-// error: User has no attribute 'age'
-// help: User has: name, id
+// expect: 7
 struct User:
-    name i8[]
-    id i32
+    a i32
+    b i32
 
 fn main() i32:
     u User
-    return u.age
+    u.b = 7
+    return u.b
 ```
 
-### stderr
+### llvm ir
 
-```
-error: test.ura:9:14 User has no attribute 'age'
-  |
-9 |     return u.age
-  |              ^^^
-help: User has: name, id
-```
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
 
-### status
+%User = type { i32, i32 }
 
-```
-1
+define i32 @main() {
+entry:
+  %u = alloca %User, align 8
+  store %User zeroinitializer, %User* %u, align 4
+  %load.u.b = getelementptr inbounds %User, %User* %u, i32 0, i32 1
+  store i32 7, i32* %load.u.b, align 4
+  %load.u.b1 = getelementptr inbounds %User, %User* %u, i32 0, i32 1
+  %load.load.u.b = load i32, i32* %load.u.b1, align 4
+  ret i32 %load.load.u.b
+}
 ```
 
 ---
 
-## 030 — name error: unknown method
+## 004 — struct: attributes don't overlap
 
 ```ura
-// error: User has no method 'run'
-// help: User has: get
+// expect: 34
+struct User:
+    a i32
+    b i32
+
+fn main() i32:
+    u User
+    u.a = 3
+    u.b = 4
+    return u.a * 10 + u.b
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%User = type { i32, i32 }
+
+define i32 @main() {
+entry:
+  %u = alloca %User, align 8
+  store %User zeroinitializer, %User* %u, align 4
+  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  store i32 3, i32* %load.u.a, align 4
+  %load.u.b = getelementptr inbounds %User, %User* %u, i32 0, i32 1
+  store i32 4, i32* %load.u.b, align 4
+  %load.u.a1 = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  %load.load.u.a = load i32, i32* %load.u.a1, align 4
+  %MUL = mul i32 %load.load.u.a, 10
+  %load.u.b2 = getelementptr inbounds %User, %User* %u, i32 0, i32 1
+  %load.load.u.b = load i32, i32* %load.u.b2, align 4
+  %ADD = add i32 %MUL, %load.load.u.b
+  ret i32 %ADD
+}
+```
+
+---
+
+## 005 — struct: compound assignment on an attribute
+
+```ura
+// expect: 21   ((5 + 2) * 3)
+struct User:
+    a i32
+
+fn main() i32:
+    u User
+    u.a = 5
+    u.a += 2
+    u.a *= 3
+    return u.a
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%User = type { i32 }
+
+define i32 @main() {
+entry:
+  %u = alloca %User, align 8
+  store %User zeroinitializer, %User* %u, align 4
+  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  store i32 5, i32* %load.u.a, align 4
+  %load.u.a1 = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  %old = load i32, i32* %load.u.a1, align 4
+  %ADD_ASSIGN = add i32 %old, 2
+  store i32 %ADD_ASSIGN, i32* %load.u.a1, align 4
+  %load.u.a2 = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  %old3 = load i32, i32* %load.u.a2, align 4
+  %MUL_ASSIGN = mul i32 %old3, 3
+  store i32 %MUL_ASSIGN, i32* %load.u.a2, align 4
+  %load.u.a4 = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  %load.load.u.a = load i32, i32* %load.u.a4, align 4
+  ret i32 %load.load.u.a
+}
+```
+
+---
+
+## 006 — struct: two variables of one struct are separate
+
+```ura
+// expect: 12
+struct User:
+    a i32
+
+fn main() i32:
+    u User
+    v User
+    u.a = 1
+    v.a = 2
+    return u.a * 10 + v.a
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%User = type { i32 }
+
+define i32 @main() {
+entry:
+  %u = alloca %User, align 8
+  %v = alloca %User, align 8
+  store %User zeroinitializer, %User* %u, align 4
+  store %User zeroinitializer, %User* %v, align 4
+  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  store i32 1, i32* %load.u.a, align 4
+  %load.v.a = getelementptr inbounds %User, %User* %v, i32 0, i32 0
+  store i32 2, i32* %load.v.a, align 4
+  %load.u.a1 = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  %load.load.u.a = load i32, i32* %load.u.a1, align 4
+  %MUL = mul i32 %load.load.u.a, 10
+  %load.v.a2 = getelementptr inbounds %User, %User* %v, i32 0, i32 0
+  %load.load.v.a = load i32, i32* %load.v.a2, align 4
+  %ADD = add i32 %MUL, %load.load.v.a
+  ret i32 %ADD
+}
+```
+
+---
+
+## 007 — struct: attributes of different types
+
+```ura
+// expect: 4
+struct Item:
+    id i32
+    used bool
+    tag char
+
+fn main() i32:
+    it Item
+    it.id = 4
+    it.used = True
+    it.tag = 'x'
+    if it.used and it.tag == 'x':
+        return it.id
+    return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%Item = type { i32, i1, i8 }
+
+define i32 @main() {
+entry:
+  %it = alloca %Item, align 8
+  store %Item zeroinitializer, %Item* %it, align 4
+  %load.it.id = getelementptr inbounds %Item, %Item* %it, i32 0, i32 0
+  store i32 4, i32* %load.it.id, align 4
+  %load.it.used = getelementptr inbounds %Item, %Item* %it, i32 0, i32 1
+  store i1 true, i1* %load.it.used, align 1
+  %load.it.tag = getelementptr inbounds %Item, %Item* %it, i32 0, i32 2
+  store i8 120, i8* %load.it.tag, align 1
+  %load.it.used1 = getelementptr inbounds %Item, %Item* %it, i32 0, i32 1
+  %load.load.it.used = load i1, i1* %load.it.used1, align 1
+  %load.it.tag2 = getelementptr inbounds %Item, %Item* %it, i32 0, i32 2
+  %load.load.it.tag = load i8, i8* %load.it.tag2, align 1
+  %EQ = icmp eq i8 %load.load.it.tag, 120
+  %AND = and i1 %load.load.it.used, %EQ
+  br i1 %AND, label %then, label %endif
+
+then:                                             ; preds = %entry
+  %load.it.id3 = getelementptr inbounds %Item, %Item* %it, i32 0, i32 0
+  %load.load.it.id = load i32, i32* %load.it.id3, align 4
+  ret i32 %load.load.it.id
+
+endif:                                            ; preds = %entry
+  ret i32 0
+}
+```
+
+---
+
+## 008 — struct: nested struct: r.b.x
+
+```ura
+// expect: 6   (5 - 1 + 2)
+struct Point:
+    x i32
+    y i32
+
+struct Rect:
+    a Point
+    b Point
+
+fn main() i32:
+    r Rect
+    r.a.x = 1
+    r.b.x = 5
+    r.b.y = 2
+    return r.b.x - r.a.x + r.b.y
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%Rect = type { %Point, %Point }
+%Point = type { i32, i32 }
+
+define i32 @main() {
+entry:
+  %r = alloca %Rect, align 8
+  store %Rect zeroinitializer, %Rect* %r, align 4
+  %load.r.a = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 0
+  %load.load.r.a.x = getelementptr inbounds %Point, %Point* %load.r.a, i32 0, i32 0
+  store i32 1, i32* %load.load.r.a.x, align 4
+  %load.r.b = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 1
+  %load.load.r.b.x = getelementptr inbounds %Point, %Point* %load.r.b, i32 0, i32 0
+  store i32 5, i32* %load.load.r.b.x, align 4
+  %load.r.b1 = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 1
+  %load.load.r.b.y = getelementptr inbounds %Point, %Point* %load.r.b1, i32 0, i32 1
+  store i32 2, i32* %load.load.r.b.y, align 4
+  %load.r.b2 = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 1
+  %load.load.r.b.x3 = getelementptr inbounds %Point, %Point* %load.r.b2, i32 0, i32 0
+  %load.load.load.r.b.x = load i32, i32* %load.load.r.b.x3, align 4
+  %load.r.a4 = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 0
+  %load.load.r.a.x5 = getelementptr inbounds %Point, %Point* %load.r.a4, i32 0, i32 0
+  %load.load.load.r.a.x = load i32, i32* %load.load.r.a.x5, align 4
+  %SUB = sub i32 %load.load.load.r.b.x, %load.load.load.r.a.x
+  %load.r.b6 = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 1
+  %load.load.r.b.y7 = getelementptr inbounds %Point, %Point* %load.r.b6, i32 0, i32 1
+  %load.load.load.r.b.y = load i32, i32* %load.load.r.b.y7, align 4
+  %ADD = add i32 %SUB, %load.load.load.r.b.y
+  ret i32 %ADD
+}
+```
+
+---
+
+## 009 — struct: attributes in a loop
+
+```ura
+// expect: 10   (1 + 2 + 3 + 4)
+struct Counter:
+    n i32
+    total i32
+
+fn main() i32:
+    c Counter
+    while c.n < 4:
+        c.n += 1
+        c.total += c.n
+    return c.total
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%Counter = type { i32, i32 }
+
+define i32 @main() {
+entry:
+  %c = alloca %Counter, align 8
+  store %Counter zeroinitializer, %Counter* %c, align 4
+  br label %cond
+
+cond:                                             ; preds = %then, %entry
+  %load.c.n = getelementptr inbounds %Counter, %Counter* %c, i32 0, i32 0
+  %load.load.c.n = load i32, i32* %load.c.n, align 4
+  %LT = icmp slt i32 %load.load.c.n, 4
+  br i1 %LT, label %then, label %endwhile
+
+then:                                             ; preds = %cond
+  %load.c.n1 = getelementptr inbounds %Counter, %Counter* %c, i32 0, i32 0
+  %old = load i32, i32* %load.c.n1, align 4
+  %ADD_ASSIGN = add i32 %old, 1
+  store i32 %ADD_ASSIGN, i32* %load.c.n1, align 4
+  %load.c.total = getelementptr inbounds %Counter, %Counter* %c, i32 0, i32 1
+  %load.c.n2 = getelementptr inbounds %Counter, %Counter* %c, i32 0, i32 0
+  %load.load.c.n3 = load i32, i32* %load.c.n2, align 4
+  %old4 = load i32, i32* %load.c.total, align 4
+  %ADD_ASSIGN5 = add i32 %old4, %load.load.c.n3
+  store i32 %ADD_ASSIGN5, i32* %load.c.total, align 4
+  br label %cond
+
+endwhile:                                         ; preds = %cond
+  %load.c.total6 = getelementptr inbounds %Counter, %Counter* %c, i32 0, i32 1
+  %load.load.c.total = load i32, i32* %load.c.total6, align 4
+  ret i32 %load.load.c.total
+}
+```
+
+---
+
+## 010 — struct: array attribute
+
+```ura
+// expect: 12
+struct Row:
+    cells i32[]
+
+fn main() i32:
+    r Row
+    r.cells = [1, 2, 3]
+    r.cells[0] = 9
+    return r.cells[0] + r.cells[2]
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%Row = type { i32* }
+
+define i32 @main() {
+entry:
+  %r = alloca %Row, align 8
+  %array = alloca [3 x i32], align 4
+  store %Row zeroinitializer, %Row* %r, align 8
+  %load.r.cells = getelementptr inbounds %Row, %Row* %r, i32 0, i32 0
+  %e = getelementptr inbounds [3 x i32], [3 x i32]* %array, i32 0, i32 0
+  store i32 1, i32* %e, align 4
+  %e1 = getelementptr inbounds [3 x i32], [3 x i32]* %array, i32 0, i32 1
+  store i32 2, i32* %e1, align 4
+  %e2 = getelementptr inbounds [3 x i32], [3 x i32]* %array, i32 0, i32 2
+  store i32 3, i32* %e2, align 4
+  %array3 = getelementptr inbounds [3 x i32], [3 x i32]* %array, i32 0, i32 0
+  store i32* %array3, i32** %load.r.cells, align 8
+  %load.r.cells4 = getelementptr inbounds %Row, %Row* %r, i32 0, i32 0
+  %load.load.r.cells = load i32*, i32** %load.r.cells4, align 8
+  %"load.load.r.cells[0]" = getelementptr inbounds i32, i32* %load.load.r.cells, i32 0
+  store i32 9, i32* %"load.load.r.cells[0]", align 4
+  %load.r.cells5 = getelementptr inbounds %Row, %Row* %r, i32 0, i32 0
+  %load.load.r.cells6 = load i32*, i32** %load.r.cells5, align 8
+  %"load.load.r.cells[0]7" = getelementptr inbounds i32, i32* %load.load.r.cells6, i32 0
+  %"load.load.load.r.cells[0]" = load i32, i32* %"load.load.r.cells[0]7", align 4
+  %load.r.cells8 = getelementptr inbounds %Row, %Row* %r, i32 0, i32 0
+  %load.load.r.cells9 = load i32*, i32** %load.r.cells8, align 8
+  %"load.load.r.cells[2]" = getelementptr inbounds i32, i32* %load.load.r.cells9, i32 2
+  %"load.load.load.r.cells[2]" = load i32, i32* %"load.load.r.cells[2]", align 4
+  %ADD = add i32 %"load.load.load.r.cells[0]", %"load.load.load.r.cells[2]"
+  ret i32 %ADD
+}
+```
+
+---
+
+## 011 — struct: print attributes
+
+```ura
+// stdout: ura 42
+// expect: 0
+proto printf(fmt i8[], ...) i32
+
+struct User:
+    id i32
+    name i8[]
+
+fn main() i32:
+    u User
+    u.id = 42
+    u.name = "ura"
+    printf("%s %d\n", u.name, u.id)
+    return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%User = type { i32, i8* }
+
+@str = private constant [4 x i8] c"ura\00"
+@str.1 = private constant [7 x i8] c"%s %d\0A\00"
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  %u = alloca %User, align 8
+  %s = alloca [4 x i8], align 1
+  %s1 = alloca [7 x i8], align 1
+  store %User zeroinitializer, %User* %u, align 8
+  %load.u.id = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  store i32 42, i32* %load.u.id, align 4
+  %load.u.name = getelementptr inbounds %User, %User* %u, i32 0, i32 1
+  %dst = getelementptr inbounds [4 x i8], [4 x i8]* %s, i32 0, i32 0
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i64 4, i1 false)
+  store i8* %dst, i8** %load.u.name, align 8
+  %dst2 = getelementptr inbounds [7 x i8], [7 x i8]* %s1, i32 0, i32 0
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst2, i8* align 1 getelementptr inbounds ([7 x i8], [7 x i8]* @str.1, i32 0, i32 0), i64 7, i1 false)
+  %load.u.name3 = getelementptr inbounds %User, %User* %u, i32 0, i32 1
+  %load.load.u.name = load i8*, i8** %load.u.name3, align 8
+  %load.u.id4 = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  %load.load.u.id = load i32, i32* %load.u.id4, align 4
+  %"printf(str,load.load.u.name,load.load.u.id)" = call i32 (i8*, ...) @printf(i8* %dst2, i8* %load.load.u.name, i32 %load.load.u.id)
+  ret i32 0
+}
+
+; Function Attrs: argmemonly nofree nosync nounwind willreturn
+declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
+
+attributes #0 = { argmemonly nofree nosync nounwind willreturn }
+```
+
+---
+
+## 012 — struct: a function returns a struct
+
+```ura
+// expect: 5
+struct User:
+    a i32
+
+fn make(a i32) User:
+    u User
+    u.a = a
+    return u
+
+fn main() i32:
+    u User = make(5)
+    return u.a
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%User = type { i32 }
+
+define %User @make(i32 %0) {
+entry:
+  %a = alloca i32, align 4
+  %u = alloca %User, align 8
+  store i32 %0, i32* %a, align 4
+  store %User zeroinitializer, %User* %u, align 4
+  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  %load.a = load i32, i32* %a, align 4
+  store i32 %load.a, i32* %load.u.a, align 4
+  %load.u = load %User, %User* %u, align 4
+  ret %User %load.u
+}
+
+define i32 @main() {
+entry:
+  %u = alloca %User, align 8
+  %"make(5)" = call %User @make(i32 5)
+  store %User %"make(5)", %User* %u, align 4
+  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  %load.load.u.a = load i32, i32* %load.u.a, align 4
+  ret i32 %load.load.u.a
+}
+```
+
+---
+
+## 013 — struct: a ref variable to a struct
+
+```ura
+// expect: 8
+struct User:
+    a i32
+
+fn main() i32:
+    u User
+    p &User = &u
+    p.a = 8
+    return u.a
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%User = type { i32 }
+
+define i32 @main() {
+entry:
+  %u = alloca %User, align 8
+  %p = alloca %User*, align 8
+  store %User zeroinitializer, %User* %u, align 4
+  store %User* %u, %User** %p, align 8
+  %dref.p = load %User*, %User** %p, align 8
+  %load.dref.p.a = getelementptr inbounds %User, %User* %dref.p, i32 0, i32 0
+  store i32 8, i32* %load.dref.p.a, align 4
+  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  %load.load.u.a = load i32, i32* %load.u.a, align 4
+  ret i32 %load.load.u.a
+}
+```
+
+---
+
+## 014 — struct: write through a ref parameter
+
+```ura
+// expect: 3
+struct User:
+    a i32
+
+fn set(p &User):
+    p.a = 3
+
+fn main() i32:
+    u User
+    set(&u)
+    return u.a
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%User = type { i32 }
+
+define void @set(%User* %0) {
+entry:
+  %p = alloca %User*, align 8
+  store %User* %0, %User** %p, align 8
+  %dref.p = load %User*, %User** %p, align 8
+  %load.dref.p.a = getelementptr inbounds %User, %User* %dref.p, i32 0, i32 0
+  store i32 3, i32* %load.dref.p.a, align 4
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %u = alloca %User, align 8
+  store %User zeroinitializer, %User* %u, align 4
+  call void @set(%User* %u)
+  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  %load.load.u.a = load i32, i32* %load.u.a, align 4
+  ret i32 %load.load.u.a
+}
+```
+
+---
+
+## 015 — struct: read through a ref parameter
+
+```ura
+// expect: 7
+struct User:
+    a i32
+    b i32
+
+fn total(p &User) i32:
+    return p.a + p.b
+
+fn main() i32:
+    u User
+    u.a = 2
+    u.b = 5
+    return total(&u)
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%User = type { i32, i32 }
+
+define i32 @total(%User* %0) {
+entry:
+  %p = alloca %User*, align 8
+  store %User* %0, %User** %p, align 8
+  %dref.p = load %User*, %User** %p, align 8
+  %load.dref.p.a = getelementptr inbounds %User, %User* %dref.p, i32 0, i32 0
+  %load.load.dref.p.a = load i32, i32* %load.dref.p.a, align 4
+  %dref.p1 = load %User*, %User** %p, align 8
+  %load.dref.p.b = getelementptr inbounds %User, %User* %dref.p1, i32 0, i32 1
+  %load.load.dref.p.b = load i32, i32* %load.dref.p.b, align 4
+  %ADD = add i32 %load.load.dref.p.a, %load.load.dref.p.b
+  ret i32 %ADD
+}
+
+define i32 @main() {
+entry:
+  %u = alloca %User, align 8
+  store %User zeroinitializer, %User* %u, align 4
+  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  store i32 2, i32* %load.u.a, align 4
+  %load.u.b = getelementptr inbounds %User, %User* %u, i32 0, i32 1
+  store i32 5, i32* %load.u.b, align 4
+  %"total(&u)" = call i32 @total(%User* %u)
+  ret i32 %"total(&u)"
+}
+```
+
+---
+
+## 016 — method: a method reads self
+
+```ura
+// expect: 4
 struct User:
     a i32
 
@@ -1730,56 +985,748 @@ struct User:
 
 fn main() i32:
     u User
-    return u.run()
+    u.a = 4
+    return u.get()
 ```
 
-### stderr
+### llvm ir
 
-```
-error: test.ura:11:14 User has no method 'run'
-   |
-11 |     return u.run()
-   |              ^^^
-help: User has: get
-```
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
 
-### status
+%User = type { i32 }
 
-```
-1
+define i32 @User.get(%User* %0) {
+entry:
+  %self = alloca %User*, align 8
+  store %User* %0, %User** %self, align 8
+  %dref.self = load %User*, %User** %self, align 8
+  %load.dref.self.a = getelementptr inbounds %User, %User* %dref.self, i32 0, i32 0
+  %load.load.dref.self.a = load i32, i32* %load.dref.self.a, align 4
+  ret i32 %load.load.dref.self.a
+}
+
+define i32 @main() {
+entry:
+  %u = alloca %User, align 8
+  store %User zeroinitializer, %User* %u, align 4
+  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  store i32 4, i32* %load.u.a, align 4
+  %"get(&load.u)" = call i32 @User.get(%User* %u)
+  ret i32 %"get(&load.u)"
+}
 ```
 
 ---
 
-## 031 — name error: self outside a method
+## 017 — method: a method writes self
 
 ```ura
-// error: 'self' only exists inside a method
-fn get() i32:
-    return self.a
+// expect: 9
+struct User:
+    a i32
+
+    fn set(n i32):
+        self.a = n
 
 fn main() i32:
+    u User
+    u.set(9)
+    return u.a
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%User = type { i32 }
+
+define void @User.set(%User* %0, i32 %1) {
+entry:
+  %self = alloca %User*, align 8
+  %n = alloca i32, align 4
+  store %User* %0, %User** %self, align 8
+  store i32 %1, i32* %n, align 4
+  %dref.self = load %User*, %User** %self, align 8
+  %load.dref.self.a = getelementptr inbounds %User, %User* %dref.self, i32 0, i32 0
+  %load.n = load i32, i32* %n, align 4
+  store i32 %load.n, i32* %load.dref.self.a, align 4
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %u = alloca %User, align 8
+  store %User zeroinitializer, %User* %u, align 4
+  call void @User.set(%User* %u, i32 9)
+  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  %load.load.u.a = load i32, i32* %load.u.a, align 4
+  ret i32 %load.load.u.a
+}
+```
+
+---
+
+## 018 — method: a method reads and writes self
+
+```ura
+// expect: 7
+struct User:
+    a i32
+
+    fn bump() i32:
+        self.a += 1
+        return self.a
+
+fn main() i32:
+    u User
+    u.a = 5
+    u.bump()
+    return u.bump()
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%User = type { i32 }
+
+define i32 @User.bump(%User* %0) {
+entry:
+  %self = alloca %User*, align 8
+  store %User* %0, %User** %self, align 8
+  %dref.self = load %User*, %User** %self, align 8
+  %load.dref.self.a = getelementptr inbounds %User, %User* %dref.self, i32 0, i32 0
+  %old = load i32, i32* %load.dref.self.a, align 4
+  %ADD_ASSIGN = add i32 %old, 1
+  store i32 %ADD_ASSIGN, i32* %load.dref.self.a, align 4
+  %dref.self1 = load %User*, %User** %self, align 8
+  %load.dref.self.a2 = getelementptr inbounds %User, %User* %dref.self1, i32 0, i32 0
+  %load.load.dref.self.a = load i32, i32* %load.dref.self.a2, align 4
+  ret i32 %load.load.dref.self.a
+}
+
+define i32 @main() {
+entry:
+  %u = alloca %User, align 8
+  store %User zeroinitializer, %User* %u, align 4
+  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  store i32 5, i32* %load.u.a, align 4
+  %"bump(&load.u)" = call i32 @User.bump(%User* %u)
+  %"bump(&load.u)1" = call i32 @User.bump(%User* %u)
+  ret i32 %"bump(&load.u)1"
+}
+```
+
+---
+
+## 019 — method: a method with arguments
+
+```ura
+// expect: 8
+struct User:
+    a i32
+
+    fn add(n i32) i32:
+        return self.a + n
+
+fn main() i32:
+    u User
+    u.a = 5
+    return u.add(3)
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%User = type { i32 }
+
+define i32 @User.add(%User* %0, i32 %1) {
+entry:
+  %self = alloca %User*, align 8
+  %n = alloca i32, align 4
+  store %User* %0, %User** %self, align 8
+  store i32 %1, i32* %n, align 4
+  %dref.self = load %User*, %User** %self, align 8
+  %load.dref.self.a = getelementptr inbounds %User, %User* %dref.self, i32 0, i32 0
+  %load.load.dref.self.a = load i32, i32* %load.dref.self.a, align 4
+  %load.n = load i32, i32* %n, align 4
+  %ADD = add i32 %load.load.dref.self.a, %load.n
+  ret i32 %ADD
+}
+
+define i32 @main() {
+entry:
+  %u = alloca %User, align 8
+  store %User zeroinitializer, %User* %u, align 4
+  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  store i32 5, i32* %load.u.a, align 4
+  %"add(&load.u,3)" = call i32 @User.add(%User* %u, i32 3)
+  ret i32 %"add(&load.u,3)"
+}
+```
+
+---
+
+## 020 — method: a method calls another method
+
+```ura
+// expect: 12
+struct User:
+    a i32
+
+    fn get() i32:
+        return self.a
+
+    fn twice() i32:
+        return self.get() * 2
+
+fn main() i32:
+    u User
+    u.a = 6
+    return u.twice()
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%User = type { i32 }
+
+define i32 @User.get(%User* %0) {
+entry:
+  %self = alloca %User*, align 8
+  store %User* %0, %User** %self, align 8
+  %dref.self = load %User*, %User** %self, align 8
+  %load.dref.self.a = getelementptr inbounds %User, %User* %dref.self, i32 0, i32 0
+  %load.load.dref.self.a = load i32, i32* %load.dref.self.a, align 4
+  ret i32 %load.load.dref.self.a
+}
+
+define i32 @User.twice(%User* %0) {
+entry:
+  %self = alloca %User*, align 8
+  store %User* %0, %User** %self, align 8
+  %dref.self = load %User*, %User** %self, align 8
+  %"get(&load.dref.self)" = call i32 @User.get(%User* %dref.self)
+  %MUL = mul i32 %"get(&load.dref.self)", 2
+  ret i32 %MUL
+}
+
+define i32 @main() {
+entry:
+  %u = alloca %User, align 8
+  store %User zeroinitializer, %User* %u, align 4
+  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  store i32 6, i32* %load.u.a, align 4
+  %"twice(&load.u)" = call i32 @User.twice(%User* %u)
+  ret i32 %"twice(&load.u)"
+}
+```
+
+---
+
+## 021 — method: a method returns a bool
+
+```ura
+// expect: 1
+struct User:
+    age i32
+
+    fn adult() bool:
+        return self.age >= 18
+
+fn main() i32:
+    u User
+    u.age = 20
+    if u.adult():
+        return 1
     return 0
 ```
 
-### stderr
+### llvm ir
 
-```
-error: test.ura:3:12 'self' only exists inside a method
-  |
-3 |     return self.a
-  |            ^^^^
-```
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
 
-### status
+%User = type { i32 }
 
-```
-1
+define i1 @User.adult(%User* %0) {
+entry:
+  %self = alloca %User*, align 8
+  store %User* %0, %User** %self, align 8
+  %dref.self = load %User*, %User** %self, align 8
+  %load.dref.self.age = getelementptr inbounds %User, %User* %dref.self, i32 0, i32 0
+  %load.load.dref.self.age = load i32, i32* %load.dref.self.age, align 4
+  %GE = icmp sge i32 %load.load.dref.self.age, 18
+  ret i1 %GE
+}
+
+define i32 @main() {
+entry:
+  %u = alloca %User, align 8
+  store %User zeroinitializer, %User* %u, align 4
+  %load.u.age = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  store i32 20, i32* %load.u.age, align 4
+  %"adult(&load.u)" = call i1 @User.adult(%User* %u)
+  br i1 %"adult(&load.u)", label %then, label %endif
+
+then:                                             ; preds = %entry
+  ret i32 1
+
+endif:                                            ; preds = %entry
+  ret i32 0
+}
 ```
 
 ---
 
-## 032 — program: a method called three times through a ref
+## 022 — method: a method in a loop
+
+```ura
+// stdout: 3
+// expect: 3
+proto printf(fmt i8[], ...) i32
+
+struct Counter:
+    n i32
+
+    fn tick():
+        self.n += 1
+
+fn main() i32:
+    c Counter
+    i i32 = 0
+    while i < 3:
+        c.tick()
+        i += 1
+    printf("%d\n", c.n)
+    return c.n
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%Counter = type { i32 }
+
+@str = private constant [4 x i8] c"%d\0A\00"
+
+define void @Counter.tick(%Counter* %0) {
+entry:
+  %self = alloca %Counter*, align 8
+  store %Counter* %0, %Counter** %self, align 8
+  %dref.self = load %Counter*, %Counter** %self, align 8
+  %load.dref.self.n = getelementptr inbounds %Counter, %Counter* %dref.self, i32 0, i32 0
+  %old = load i32, i32* %load.dref.self.n, align 4
+  %ADD_ASSIGN = add i32 %old, 1
+  store i32 %ADD_ASSIGN, i32* %load.dref.self.n, align 4
+  ret void
+}
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  %c = alloca %Counter, align 8
+  %i = alloca i32, align 4
+  %s = alloca [4 x i8], align 1
+  store %Counter zeroinitializer, %Counter* %c, align 4
+  store i32 0, i32* %i, align 4
+  br label %cond
+
+cond:                                             ; preds = %then, %entry
+  %load.i = load i32, i32* %i, align 4
+  %LT = icmp slt i32 %load.i, 3
+  br i1 %LT, label %then, label %endwhile
+
+then:                                             ; preds = %cond
+  call void @Counter.tick(%Counter* %c)
+  %old = load i32, i32* %i, align 4
+  %ADD_ASSIGN = add i32 %old, 1
+  store i32 %ADD_ASSIGN, i32* %i, align 4
+  br label %cond
+
+endwhile:                                         ; preds = %cond
+  %dst = getelementptr inbounds [4 x i8], [4 x i8]* %s, i32 0, i32 0
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i64 4, i1 false)
+  %load.c.n = getelementptr inbounds %Counter, %Counter* %c, i32 0, i32 0
+  %load.load.c.n = load i32, i32* %load.c.n, align 4
+  %"printf(str,load.load.c.n)" = call i32 (i8*, ...) @printf(i8* %dst, i32 %load.load.c.n)
+  %load.c.n1 = getelementptr inbounds %Counter, %Counter* %c, i32 0, i32 0
+  %load.load.c.n2 = load i32, i32* %load.c.n1, align 4
+  ret i32 %load.load.c.n2
+}
+
+; Function Attrs: argmemonly nofree nosync nounwind willreturn
+declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
+
+attributes #0 = { argmemonly nofree nosync nounwind willreturn }
+```
+
+---
+
+## 023 — method: two structs, one method name
+
+```ura
+// expect: 21   (1 + 2 * 10)
+struct A:
+    v i32
+
+    fn get() i32:
+        return self.v
+
+struct B:
+    v i32
+
+    fn get() i32:
+        return self.v * 10
+
+fn main() i32:
+    a A
+    b B
+    a.v = 1
+    b.v = 2
+    return a.get() + b.get()
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%A = type { i32 }
+%B = type { i32 }
+
+define i32 @A.get(%A* %0) {
+entry:
+  %self = alloca %A*, align 8
+  store %A* %0, %A** %self, align 8
+  %dref.self = load %A*, %A** %self, align 8
+  %load.dref.self.v = getelementptr inbounds %A, %A* %dref.self, i32 0, i32 0
+  %load.load.dref.self.v = load i32, i32* %load.dref.self.v, align 4
+  ret i32 %load.load.dref.self.v
+}
+
+define i32 @B.get(%B* %0) {
+entry:
+  %self = alloca %B*, align 8
+  store %B* %0, %B** %self, align 8
+  %dref.self = load %B*, %B** %self, align 8
+  %load.dref.self.v = getelementptr inbounds %B, %B* %dref.self, i32 0, i32 0
+  %load.load.dref.self.v = load i32, i32* %load.dref.self.v, align 4
+  %MUL = mul i32 %load.load.dref.self.v, 10
+  ret i32 %MUL
+}
+
+define i32 @main() {
+entry:
+  %a = alloca %A, align 8
+  %b = alloca %B, align 8
+  store %A zeroinitializer, %A* %a, align 4
+  store %B zeroinitializer, %B* %b, align 4
+  %load.a.v = getelementptr inbounds %A, %A* %a, i32 0, i32 0
+  store i32 1, i32* %load.a.v, align 4
+  %load.b.v = getelementptr inbounds %B, %B* %b, i32 0, i32 0
+  store i32 2, i32* %load.b.v, align 4
+  %"get(&load.a)" = call i32 @A.get(%A* %a)
+  %"get(&load.b)" = call i32 @B.get(%B* %b)
+  %ADD = add i32 %"get(&load.a)", %"get(&load.b)"
+  ret i32 %ADD
+}
+```
+
+---
+
+## 024 — method: a method on a nested attribute
+
+```ura
+// expect: 7
+struct Point:
+    x i32
+
+    fn get() i32:
+        return self.x
+
+struct Rect:
+    a Point
+    b Point
+
+fn main() i32:
+    r Rect
+    r.b.x = 7
+    return r.b.get()
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%Point = type { i32 }
+%Rect = type { %Point, %Point }
+
+define i32 @Point.get(%Point* %0) {
+entry:
+  %self = alloca %Point*, align 8
+  store %Point* %0, %Point** %self, align 8
+  %dref.self = load %Point*, %Point** %self, align 8
+  %load.dref.self.x = getelementptr inbounds %Point, %Point* %dref.self, i32 0, i32 0
+  %load.load.dref.self.x = load i32, i32* %load.dref.self.x, align 4
+  ret i32 %load.load.dref.self.x
+}
+
+define i32 @main() {
+entry:
+  %r = alloca %Rect, align 8
+  store %Rect zeroinitializer, %Rect* %r, align 4
+  %load.r.b = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 1
+  %load.load.r.b.x = getelementptr inbounds %Point, %Point* %load.r.b, i32 0, i32 0
+  store i32 7, i32* %load.load.r.b.x, align 4
+  %load.r.b1 = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 1
+  %"get(&load.load.r.b)" = call i32 @Point.get(%Point* %load.r.b1)
+  ret i32 %"get(&load.load.r.b)"
+}
+```
+
+---
+
+## 025 — method: overloaded method
+
+```ura
+// expect: 6   (1 + 5)
+struct User:
+    a i32
+
+    fn set(n i32):
+        self.a = n
+
+    fn set():
+        self.a = 1
+
+fn main() i32:
+    u User
+    u.set()
+    first i32 = u.a
+    u.set(5)
+    return first + u.a
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%User = type { i32 }
+
+define void @User.set(%User* %0, i32 %1) {
+entry:
+  %self = alloca %User*, align 8
+  %n = alloca i32, align 4
+  store %User* %0, %User** %self, align 8
+  store i32 %1, i32* %n, align 4
+  %dref.self = load %User*, %User** %self, align 8
+  %load.dref.self.a = getelementptr inbounds %User, %User* %dref.self, i32 0, i32 0
+  %load.n = load i32, i32* %n, align 4
+  store i32 %load.n, i32* %load.dref.self.a, align 4
+  ret void
+}
+
+define void @User.set.1(%User* %0) {
+entry:
+  %self = alloca %User*, align 8
+  store %User* %0, %User** %self, align 8
+  %dref.self = load %User*, %User** %self, align 8
+  %load.dref.self.a = getelementptr inbounds %User, %User* %dref.self, i32 0, i32 0
+  store i32 1, i32* %load.dref.self.a, align 4
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %u = alloca %User, align 8
+  %first = alloca i32, align 4
+  store %User zeroinitializer, %User* %u, align 4
+  call void @User.set.1(%User* %u)
+  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  %load.load.u.a = load i32, i32* %load.u.a, align 4
+  store i32 %load.load.u.a, i32* %first, align 4
+  call void @User.set(%User* %u, i32 5)
+  %load.first = load i32, i32* %first, align 4
+  %load.u.a1 = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  %load.load.u.a2 = load i32, i32* %load.u.a1, align 4
+  %ADD = add i32 %load.first, %load.load.u.a2
+  ret i32 %ADD
+}
+```
+
+---
+
+## 026 — method: a method on a ref receiver
+
+```ura
+// expect: 4
+struct User:
+    a i32
+
+    fn get() i32:
+        return self.a
+
+fn via(p &User) i32:
+    return p.get()
+
+fn main() i32:
+    u User
+    u.a = 4
+    return via(&u)
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%User = type { i32 }
+
+define i32 @User.get(%User* %0) {
+entry:
+  %self = alloca %User*, align 8
+  store %User* %0, %User** %self, align 8
+  %dref.self = load %User*, %User** %self, align 8
+  %load.dref.self.a = getelementptr inbounds %User, %User* %dref.self, i32 0, i32 0
+  %load.load.dref.self.a = load i32, i32* %load.dref.self.a, align 4
+  ret i32 %load.load.dref.self.a
+}
+
+define i32 @via(%User* %0) {
+entry:
+  %p = alloca %User*, align 8
+  store %User* %0, %User** %p, align 8
+  %dref.p = load %User*, %User** %p, align 8
+  %"get(&load.dref.p)" = call i32 @User.get(%User* %dref.p)
+  ret i32 %"get(&load.dref.p)"
+}
+
+define i32 @main() {
+entry:
+  %u = alloca %User, align 8
+  store %User zeroinitializer, %User* %u, align 4
+  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  store i32 4, i32* %load.u.a, align 4
+  %"via(&u)" = call i32 @via(%User* %u)
+  ret i32 %"via(&u)"
+}
+```
+
+---
+
+## 027 — method: a method through a ref changes the caller
+
+```ura
+// expect: 11
+struct User:
+    a i32
+
+    fn set(n i32):
+        self.a = n
+
+fn reset(p &User):
+    p.set(11)
+
+fn main() i32:
+    u User
+    u.a = 3
+    reset(&u)
+    return u.a
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%User = type { i32 }
+
+define void @User.set(%User* %0, i32 %1) {
+entry:
+  %self = alloca %User*, align 8
+  %n = alloca i32, align 4
+  store %User* %0, %User** %self, align 8
+  store i32 %1, i32* %n, align 4
+  %dref.self = load %User*, %User** %self, align 8
+  %load.dref.self.a = getelementptr inbounds %User, %User* %dref.self, i32 0, i32 0
+  %load.n = load i32, i32* %n, align 4
+  store i32 %load.n, i32* %load.dref.self.a, align 4
+  ret void
+}
+
+define void @reset(%User* %0) {
+entry:
+  %p = alloca %User*, align 8
+  store %User* %0, %User** %p, align 8
+  %dref.p = load %User*, %User** %p, align 8
+  call void @User.set(%User* %dref.p, i32 11)
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %u = alloca %User, align 8
+  store %User zeroinitializer, %User* %u, align 4
+  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  store i32 3, i32* %load.u.a, align 4
+  call void @reset(%User* %u)
+  %load.u.a1 = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  %load.load.u.a = load i32, i32* %load.u.a1, align 4
+  ret i32 %load.load.u.a
+}
+```
+
+---
+
+## 028 — crazy: a method called three times through a ref
 
 ```ura
 // expect: 21
@@ -1871,7 +1818,7 @@ entry:
 
 ---
 
-## 033 — program: methods of a nested struct, called through self
+## 029 — crazy: methods of a nested struct, called through self
 
 ```ura
 // expect: 30   (area 4 * 5, plus a.x 10)
@@ -1998,7 +1945,7 @@ entry:
 
 ---
 
-## 034 — program: bubble sort: a struct with an array, methods calling methods
+## 030 — crazy: bubble sort: a struct with an array, methods calling methods
 
 ```ura
 // stdout: 1 3 4 5 9
@@ -2263,7 +2210,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 035 — program: bank account: methods, a ref parameter, an array of bills
+## 031 — crazy: bank account: methods, a ref parameter, an array of bills
 
 ```ura
 // stdout: balance 10, ops 4, failed 1
@@ -2458,7 +2405,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 036 — program: an array of structs is a copy
+## 032 — crazy: an array of structs is a copy
 
 ```ura
 // expect: 10   (1 + 7 + 2: q itself stays 2)
@@ -2528,7 +2475,7 @@ entry:
 
 ---
 
-## 037 — program: vectors: struct parameters, struct returns, chained calls
+## 033 — crazy: vectors: struct parameters, struct returns, chained calls
 
 ```ura
 // expect: 27   (c = (7, 10), c . a = 7 + 20)
@@ -2660,7 +2607,7 @@ entry:
 
 ---
 
-## 038 — program: linked list: ref attributes, isNullable, rebinding a ref in a loop
+## 034 — crazy: linked list: ref attributes, isNullable, rebinding a ref in a loop
 
 ```ura
 // expect: 36   (1 + 2 + 3, plus 3 * 10)
@@ -2754,7 +2701,7 @@ endwhile:                                         ; preds = %cond
 
 ---
 
-## 039 — program: a recursive method that counts its calls
+## 035 — crazy: a recursive method that counts its calls
 
 ```ura
 // expect: 125   (5! = 120, plus 5 calls)
@@ -2827,7 +2774,7 @@ entry:
 
 ---
 
-## 040 — program: a method takes a ref to its own struct type
+## 036 — crazy: a method takes a ref to its own struct type
 
 ```ura
 // expect: 100   (a = 10, b = 0)
@@ -2902,7 +2849,7 @@ entry:
 
 ---
 
-## 041 — program: stack: push squares, pop until empty
+## 037 — crazy: stack: push squares, pop until empty
 
 ```ura
 // expect: 173   (pops 25 16 9 4 1, last digits folded: ((((5*2+6)*2+9)*2+4)*2+1)
@@ -3068,7 +3015,7 @@ endwhile13:                                       ; preds = %cond11
 
 ---
 
-## 042 — program: ring-buffer queue: full, wrap around, drain
+## 038 — crazy: ring-buffer queue: full, wrap around, drain
 
 ```ura
 // expect: 242   (first 1 * 100, sum 2 + 3 + 9 = 14 * 10, 2 dropped)
@@ -3281,7 +3228,7 @@ endwhile10:                                       ; preds = %cond8
 
 ---
 
-## 043 — program: binary tree: recursion through ref attributes
+## 039 — crazy: binary tree: recursion through ref attributes
 
 ```ura
 // expect: 103   (sum 10 * 10, depth 3)
@@ -3428,7 +3375,7 @@ entry:
 
 ---
 
-## 044 — program: a linked list over array elements
+## 040 — crazy: a linked list over array elements
 
 ```ura
 // expect: 33   (length 3, plus the third value 30)
@@ -3563,7 +3510,7 @@ endif:                                            ; preds = %then6, %then
 
 ---
 
-## 045 — program: search a linked list, -1 when missing
+## 041 — crazy: search a linked list, -1 when missing
 
 ```ura
 // expect: 121   (13 at 2 * 10, 8 at 1, 99 missing: 100)
@@ -3691,7 +3638,7 @@ endif:                                            ; preds = %then, %entry
 
 ---
 
-## 046 — program: assigning a struct copies it
+## 042 — crazy: assigning a struct copies it
 
 ```ura
 // expect: 63   (1 + 20 + 10 + 2 + 10 + 20)
@@ -3764,7 +3711,7 @@ entry:
 
 ---
 
-## 047 — program: a struct parameter is a copy
+## 043 — crazy: a struct parameter is a copy
 
 ```ura
 // expect: 61
@@ -3826,7 +3773,7 @@ entry:
 
 ---
 
-## 048 — program: compound assignment through a ref attribute
+## 044 — crazy: compound assignment through a ref attribute
 
 ```ura
 // expect: 14   ((0 + 5) * 3 - 1)
@@ -3886,7 +3833,7 @@ entry:
 
 ---
 
-## 049 — program: a method on an array element
+## 045 — crazy: a method on an array element
 
 ```ura
 // expect: 45   (4 * 10 + 5)
@@ -3991,7 +3938,7 @@ endwhile:                                         ; preds = %cond
 
 ---
 
-## 050 — program: builder: a method returns a ref to self, chained
+## 046 — crazy: builder: a method returns a ref to self, chained
 
 ```ura
 // expect: 6
@@ -4049,7 +3996,7 @@ entry:
 
 ---
 
-## 051 — program: a struct holding an array of structs
+## 047 — crazy: a struct holding an array of structs
 
 ```ura
 // expect: 12   (9 - (-3))
@@ -4205,7 +4152,7 @@ entry:
 
 ---
 
-## 052 — program: tree walk with a ref out-parameter
+## 048 — crazy: tree walk with a ref out-parameter
 
 ```ura
 // expect: 183   (sum 18 * 10, 3 nodes)
@@ -4312,7 +4259,7 @@ entry:
 
 ---
 
-## 053 — program: a function returns a ref into a struct, the caller binds it
+## 049 — crazy: a function returns a ref into a struct, the caller binds it
 
 ```ura
 // expect: 103   (r binds to x.b: 3 + 100)
@@ -4391,7 +4338,7 @@ entry:
 
 ---
 
-## 054 — program: fibonacci as a pair: recursion returning a struct, .a on a call
+## 050 — crazy: fibonacci as a pair: recursion returning a struct, .a on a call
 
 ```ura
 // expect: 55
@@ -4476,7 +4423,7 @@ entry:
 
 ---
 
-## 055 — program: method calls nested as arguments
+## 051 — crazy: method calls nested as arguments
 
 ```ura
 // expect: 160   (a 15 * 10, b 10)
@@ -4560,7 +4507,7 @@ entry:
 
 ---
 
-## 056 — program: print a linked list backwards with recursion
+## 052 — crazy: print a linked list backwards with recursion
 
 ```ura
 // stdout: 321
@@ -4673,7 +4620,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 057 — program: sort structs in an array by an attribute
+## 053 — crazy: sort structs in an array by an attribute
 
 ```ura
 // stdout: abc
@@ -4869,7 +4816,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 058 — program: ping pong: two structs that name each other, before either is declared
+## 054 — crazy: ping pong: two structs that name each other, before either is declared
 
 ```ura
 // expect: 33
@@ -4982,7 +4929,7 @@ entry:
 
 ---
 
-## 059 — program: while True with break and return inside a method
+## 055 — crazy: while True with break and return inside a method
 
 ```ura
 // expect: 40   (23 at 4 * 10, 4 at 0, 99 missing: 0)
@@ -5100,7 +5047,7 @@ entry:
 
 ---
 
-## 060 — program: script: a global stack evaluates postfix 3 4 + 2 *
+## 056 — crazy: script: a global stack evaluates postfix 3 4 + 2 *
 
 ```ura
 // expect: 14
@@ -5206,7 +5153,7 @@ entry:
 
 ---
 
-## 061 — program: structs used before declared, a struct local to a function
+## 057 — crazy: structs used before declared, a struct local to a function
 
 ```ura
 // expect: 203   (area 5 * 4 = 20 * 10, plus 3)
@@ -5309,7 +5256,7 @@ entry:
 
 ---
 
-## 062 — program: a linked list built with chained methods that return refs
+## 058 — crazy: a linked list built with chained methods that return refs
 
 ```ura
 // expect: 44   (length 4 * 10, last value 4)
@@ -5427,7 +5374,7 @@ entry:
 
 ---
 
-## 063 — program: binary search tree: recursive methods through ref attributes
+## 059 — crazy: binary search tree: recursive methods through ref attributes
 
 ```ura
 // expect: 213   (sum 210, depth 3)
@@ -5690,7 +5637,7 @@ entry:
 
 ---
 
-## 064 — program: 2x2 matrix product with methods and ref parameters
+## 060 — crazy: 2x2 matrix product with methods and ref parameters
 
 ```ura
 // expect: 134   (19 + 22 + 43 + 50)
@@ -5897,5 +5844,2015 @@ entry:
   %ADD21 = add i32 %ADD19, %"load.load.load.c.v[3]"
   ret i32 %ADD21
 }
+```
+
+---
+
+## 061 — name error: a struct declared twice
+
+```ura
+// error: struct 'User' is already declared, on line 2
+struct User:
+    a i32
+
+struct User:
+    b i32
+
+fn main() i32:
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:5:8 struct 'User' is already declared, on line 2
+  |
+5 | struct User:
+  |        ^^^^
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 062 — name error: unknown attribute
+
+```ura
+// error: User has no attribute 'age'
+// help: User has: name, id
+struct User:
+    name i8[]
+    id i32
+
+fn main() i32:
+    u User
+    return u.age
+```
+
+### stderr
+
+```
+error: test.ura:9:14 User has no attribute 'age'
+  |
+9 |     return u.age
+  |              ^^^
+help: User has: name, id
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 063 — name error: unknown method
+
+```ura
+// error: User has no method 'run'
+// help: User has: get
+struct User:
+    a i32
+
+    fn get() i32:
+        return self.a
+
+fn main() i32:
+    u User
+    return u.run()
+```
+
+### stderr
+
+```
+error: test.ura:11:14 User has no method 'run'
+   |
+11 |     return u.run()
+   |              ^^^
+help: User has: get
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 064 — name error: self outside a method
+
+```ura
+// error: 'self' only exists inside a method
+fn get() i32:
+    return self.a
+
+fn main() i32:
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:3:12 'self' only exists inside a method
+  |
+3 |     return self.a
+  |            ^^^^
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 065 — structs: missing name
+
+```ura
+struct :
+    a i32
+
+fn main() i32:
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:1:8 expected a struct name after 'struct'
+  |
+1 | struct :
+  |        ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 066 — structs: missing colon
+
+```ura
+struct User
+    a i32
+
+fn main() i32:
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:1:8 expected ':' after 'struct User'
+  |
+1 | struct User
+  |        ^^^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 067 — structs: expression inside a struct
+
+```ura
+struct User:
+    a i32
+    1 + 2
+
+fn main() i32:
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:3:7 a struct holds only attributes and methods
+  |
+3 |     1 + 2
+  |       ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 068 — structs: attribute without a type
+
+```ura
+struct User:
+    a
+
+fn main() i32:
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:2:5 attribute 'a' needs a type
+  |
+2 |     a
+  |     ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 069 — structs: attribute declared twice
+
+```ura
+struct User:
+    a i32
+    a i32
+
+fn main() i32:
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:3:5 'a' is already declared
+  |
+3 |     a i32
+  |     ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 070 — structs: no attributes
+
+```ura
+struct E:
+
+fn main() i32:
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:1:8 struct 'E' has no attributes
+  |
+1 | struct E:
+  |        ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 071 — structs: contains itself by value
+
+```ura
+struct N:
+    next N
+
+fn main() i32:
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:2:10 struct 'N' can't contain itself
+  |
+2 |     next N
+  |          ^
+help: use a ref: '&N'
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 072 — structs: unknown attribute
+
+```ura
+struct User:
+    a i32
+
+fn main() i32:
+    u User
+    return u.zz
+```
+
+### stderr
+
+```
+error: test.ura:6:14 struct 'User' has no attribute 'zz'
+  |
+6 |     return u.zz
+  |              ^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 073 — structs: unknown method
+
+```ura
+struct User:
+    a i32
+
+fn main() i32:
+    u User
+    return u.zz()
+```
+
+### stderr
+
+```
+error: test.ura:6:14 struct 'User' has no method 'zz'
+  |
+6 |     return u.zz()
+  |              ^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 074 — structs: method with wrong arguments
+
+```ura
+struct User:
+    a i32
+
+    fn add(n i32) i32:
+        return self.a + n
+
+fn main() i32:
+    u User
+    return u.add(1, 2)
+```
+
+### stderr
+
+```
+error: test.ura:9:14 no overload of 'add' takes these arguments
+  |
+9 |     return u.add(1, 2)
+  |              ^^^
+help: 'add' takes 1 argument, got 2
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 075 — structs: bare attribute inside a method
+
+```ura
+struct User:
+    value i32
+
+    fn get() i32:
+        return value
+
+fn main() i32:
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:5:16 'value' not found
+  |
+5 |         return value
+  |                ^^^^^
+help: did you mean 'self.value'?
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 076 — structs: bare method call inside a method
+
+```ura
+struct User:
+    value i32
+
+    fn get() i32:
+        return self.value
+
+    fn twice() i32:
+        return get() * 2
+
+fn main() i32:
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:8:16 function 'get' not found
+  |
+8 |         return get() * 2
+  |                ^^^
+help: did you mean 'self.get()'?
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 077 — structs: method called on the type
+
+```ura
+struct User:
+    a i32
+
+    fn get() i32:
+        return self.a
+
+fn main() i32:
+    return User.get()
+```
+
+### stderr
+
+```
+error: test.ura:8:12 'User' is a type, not a value
+  |
+8 |     return User.get()
+  |            ^^^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 078 — structs: self outside a method
+
+```ura
+fn main() i32:
+    return self.a
+```
+
+### stderr
+
+```
+error: test.ura:2:12 'self' not found
+  |
+2 |     return self.a
+  |            ^^^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 079 — expressions: add a struct and a number
+
+```ura
+struct User:
+    a i32
+
+fn main() i32:
+    u User
+    return u + 1
+```
+
+### stderr
+
+```
+error: test.ura:6:14 can't apply '+' to 'User' and 'i32'
+  |
+6 |     return u + 1
+  |              ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 080 — expressions: compare structs
+
+```ura
+struct User:
+    a i32
+
+fn main() i32:
+    u User
+    v User
+    if u == v:
+        return 1
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:7:10 can't compare 'User' values
+  |
+7 |     if u == v:
+  |          ^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 081 — types: struct into another struct
+
+```ura
+struct User:
+    a i32
+
+struct Addr:
+    b i32
+
+fn main() i32:
+    v Addr
+    u User = v
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:9:14 expected 'User', found 'Addr'
+  |
+9 |     u User = v
+  |              ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 082 — struct: init a struct
+
+```ura
+struct User:
+   a i32
+   b i32
+
+fn main() i32:
+   c i32
+   u User
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%User = type { i32, i32 }
+
+define i32 @main() {
+entry:
+  %c = alloca i32, align 4
+  %u = alloca %User, align 8
+  ret i32 0
+}
+```
+
+---
+
+## 083 — struct: modify struct attribute
+
+```ura
+struct User:
+   a i32
+   b i32
+
+fn main() i32:
+   c i32
+   u User
+   u.b = 10
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%User = type { i32, i32 }
+
+define i32 @main() {
+entry:
+  %c = alloca i32, align 4
+  %u = alloca %User, align 8
+  %u.b = getelementptr inbounds %User, %User* %u, i32 0, i32 1
+  store i32 10, i32* %u.b, align 4
+  ret i32 0
+}
+```
+
+---
+
+## 084 — struct: method reads and writes self
+
+```ura
+struct User:
+   a i32
+
+   fn method() i32:
+      self.a = 10
+      return self.a
+
+fn main() i32:
+   return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%User = type { i32 }
+
+define i32 @User.method(%User* %0) {
+entry:
+  %self = alloca %User*, align 8
+  store %User* %0, %User** %self, align 8
+  %self1 = load %User*, %User** %self, align 8
+  %self.a = getelementptr inbounds %User, %User* %self1, i32 0, i32 0
+  store i32 10, i32* %self.a, align 4
+  %self2 = load %User*, %User** %self, align 8
+  %self.a3 = getelementptr inbounds %User, %User* %self2, i32 0, i32 0
+  %self.a4 = load i32, i32* %self.a3, align 4
+  ret i32 %self.a4
+}
+
+define i32 @main() {
+entry:
+  ret i32 0
+}
+```
+
+---
+
+## 085 — struct: overloaded method
+
+```ura
+struct User:
+   a i32
+
+   fn set(n i32):
+      self.a = n
+
+   fn set():
+      self.a = 1
+
+fn main() i32:
+   u User
+   u.set()
+   return u.a
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%User = type { i32 }
+
+define void @User.set(%User* %0, i32 %1) {
+entry:
+  %self = alloca %User*, align 8
+  %n = alloca i32, align 4
+  store %User* %0, %User** %self, align 8
+  store i32 %1, i32* %n, align 4
+  %n1 = load i32, i32* %n, align 4
+  %self2 = load %User*, %User** %self, align 8
+  %self.a = getelementptr inbounds %User, %User* %self2, i32 0, i32 0
+  store i32 %n1, i32* %self.a, align 4
+  ret void
+}
+
+define void @User.set.1(%User* %0) {
+entry:
+  %self = alloca %User*, align 8
+  store %User* %0, %User** %self, align 8
+  %self1 = load %User*, %User** %self, align 8
+  %self.a = getelementptr inbounds %User, %User* %self1, i32 0, i32 0
+  store i32 1, i32* %self.a, align 4
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %u = alloca %User, align 8
+  call void @User.set.1(%User* %u)
+  %u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  %u.a1 = load i32, i32* %u.a, align 4
+  ret i32 %u.a1
+}
+```
+
+---
+
+## 086 — struct: linked list
+
+```ura
+struct Node:
+   value i32
+   next &Node
+
+fn create(value i32) Node:
+   res Node
+   res.value = value
+   res.next = null
+   return res
+
+fn main() i32:
+   a Node = create(1)
+   b Node = create(2)
+
+   a.next = &b
+
+   p &Node = &a
+   sum i32 = 0
+   while &p != null:
+      sum += p.value
+      p = &p.next
+
+   // output("sum: ", sum, "\n")
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%Node = type { i32, %Node* }
+
+define %Node @create(i32 %0) {
+entry:
+  %value = alloca i32, align 4
+  %res = alloca %Node, align 8
+  store i32 %0, i32* %value, align 4
+  %value1 = load i32, i32* %value, align 4
+  %res.value = getelementptr inbounds %Node, %Node* %res, i32 0, i32 0
+  store i32 %value1, i32* %res.value, align 4
+  %res.next = getelementptr inbounds %Node, %Node* %res, i32 0, i32 1
+  store %Node* null, %Node** %res.next, align 8
+  %res2 = load %Node, %Node* %res, align 8
+  ret %Node %res2
+}
+
+define i32 @main() {
+entry:
+  %a = alloca %Node, align 8
+  %b = alloca %Node, align 8
+  %p = alloca %Node*, align 8
+  %sum = alloca i32, align 4
+  %create = call %Node @create(i32 1)
+  store %Node %create, %Node* %a, align 8
+  %create1 = call %Node @create(i32 2)
+  store %Node %create1, %Node* %b, align 8
+  %a.next = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
+  store %Node* %b, %Node** %a.next, align 8
+  store %Node* %a, %Node** %p, align 8
+  store i32 0, i32* %sum, align 4
+  br label %cond
+
+cond:                                             ; preds = %then, %entry
+  %p2 = load %Node*, %Node** %p, align 8
+  %NQ = icmp ne %Node* %p2, null
+  br i1 %NQ, label %then, label %endwhile
+
+then:                                             ; preds = %cond
+  %sum3 = load i32, i32* %sum, align 4
+  %p4 = load %Node*, %Node** %p, align 8
+  %p.value = getelementptr inbounds %Node, %Node* %p4, i32 0, i32 0
+  %p.value5 = load i32, i32* %p.value, align 4
+  %ADD = add i32 %sum3, %p.value5
+  store i32 %ADD, i32* %sum, align 4
+  %p6 = load %Node*, %Node** %p, align 8
+  %p.next = getelementptr inbounds %Node, %Node* %p6, i32 0, i32 1
+  %p.next7 = load %Node*, %Node** %p.next, align 8
+  store %Node* %p.next7, %Node** %p, align 8
+  br label %cond
+
+endwhile:                                         ; preds = %cond
+  ret i32 0
+}
+```
+
+---
+
+## 087 — program: linked list walked through ref attributes
+
+```ura
+struct Node:
+    value i32
+    next &Node
+
+fn main() i32:
+    c Node
+    c.value = 3
+    c.next = null
+    b Node
+    b.value = 2
+    b.next = &c
+    a Node
+    a.value = 1
+    a.next = &b
+    sum i32 = 0
+    p &Node = &a
+    while &p != null:
+        sum += p.value
+        p = &p.next
+    return sum + a.next.next.value * 10
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%Node = type { i32, %Node* }
+
+define i32 @main() {
+entry:
+  %c = alloca %Node, align 8
+  %b = alloca %Node, align 8
+  %a = alloca %Node, align 8
+  %sum = alloca i32, align 4
+  %p = alloca %Node*, align 8
+  %c.value = getelementptr inbounds %Node, %Node* %c, i32 0, i32 0
+  store i32 3, i32* %c.value, align 4
+  %c.next = getelementptr inbounds %Node, %Node* %c, i32 0, i32 1
+  store %Node* null, %Node** %c.next, align 8
+  %b.value = getelementptr inbounds %Node, %Node* %b, i32 0, i32 0
+  store i32 2, i32* %b.value, align 4
+  %b.next = getelementptr inbounds %Node, %Node* %b, i32 0, i32 1
+  store %Node* %c, %Node** %b.next, align 8
+  %a.value = getelementptr inbounds %Node, %Node* %a, i32 0, i32 0
+  store i32 1, i32* %a.value, align 4
+  %a.next = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
+  store %Node* %b, %Node** %a.next, align 8
+  store i32 0, i32* %sum, align 4
+  store %Node* %a, %Node** %p, align 8
+  br label %cond
+
+cond:                                             ; preds = %then, %entry
+  %p1 = load %Node*, %Node** %p, align 8
+  %NQ = icmp ne %Node* %p1, null
+  br i1 %NQ, label %then, label %endwhile
+
+then:                                             ; preds = %cond
+  %sum2 = load i32, i32* %sum, align 4
+  %p3 = load %Node*, %Node** %p, align 8
+  %p.value = getelementptr inbounds %Node, %Node* %p3, i32 0, i32 0
+  %p.value4 = load i32, i32* %p.value, align 4
+  %ADD = add i32 %sum2, %p.value4
+  store i32 %ADD, i32* %sum, align 4
+  %p5 = load %Node*, %Node** %p, align 8
+  %p.next = getelementptr inbounds %Node, %Node* %p5, i32 0, i32 1
+  %p.next6 = load %Node*, %Node** %p.next, align 8
+  store %Node* %p.next6, %Node** %p, align 8
+  br label %cond
+
+endwhile:                                         ; preds = %cond
+  %sum7 = load i32, i32* %sum, align 4
+  %a.next8 = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
+  %a.next9 = load %Node*, %Node** %a.next8, align 8
+  %a.next.next = getelementptr inbounds %Node, %Node* %a.next9, i32 0, i32 1
+  %a.next.next10 = load %Node*, %Node** %a.next.next, align 8
+  %a.next.next.value = getelementptr inbounds %Node, %Node* %a.next.next10, i32 0, i32 0
+  %a.next.next.value11 = load i32, i32* %a.next.next.value, align 4
+  %MUL = mul i32 %a.next.next.value11, 10
+  %ADD12 = add i32 %sum7, %MUL
+  ret i32 %ADD12
+}
+```
+
+---
+
+## 088 — method: a method reads self
+
+```ura
+// stdout: room hall on floor 2
+// expect: 0
+
+struct Room:
+    name  char[]
+    floor i32
+
+    fn describe():
+        output("room ", self.name, " on floor ", self.floor, "\n")
+
+fn main() i32:
+    r Room
+    r.name  = "hall"
+    r.floor = 2
+    r.describe()
+    return 0
+```
+
+---
+
+## 089 — method: a method mutates through self, and the caller sees it
+
+```ura
+// stdout: floor = 5
+// expect: 0
+
+struct Room:
+    floor i32
+
+    fn climb(n i32):
+        self.floor = self.floor + n
+
+fn main() i32:
+    r Room
+    r.floor = 2
+    r.climb(3)
+    output("floor = ", r.floor, "\n")
+    return 0
+```
+
+---
+
+## 090 — method: a method with a return value
+
+```ura
+// stdout: depth = 40
+// expect: 0
+
+struct Room:
+    floor i32
+
+    fn depth() i32:
+        return self.floor * 10
+
+fn main() i32:
+    r Room
+    r.floor = 4
+    output("depth = ", r.depth(), "\n")
+    return 0
+```
+
+---
+
+## 091 — method: a method calling a sibling method declared below it
+
+```ura
+// stdout: floor 10
+// expect: 0
+
+struct Room:
+    floor i32
+
+    fn show():
+        output("floor ", self.twice(), "\n")
+
+    fn twice() i32:
+        return self.floor * 2
+
+fn main() i32:
+    r Room
+    r.floor = 5
+    r.show()
+    return 0
+```
+
+---
+
+## 092 — method: two structs may declare the same method name
+
+```ura
+// stdout: room on floor 1
+// stdout: tower of height 9
+// expect: 0
+
+struct Room:
+    floor i32
+
+    fn describe():
+        output("room on floor ", self.floor, "\n")
+
+struct Tower:
+    height i32
+
+    fn describe():
+        output("tower of height ", self.height, "\n")
+
+fn main() i32:
+    r Room
+    r.floor = 1
+    t Tower
+    t.height = 9
+    r.describe()
+    t.describe()
+    return 0
+```
+
+---
+
+## 093 — method: a method on an array element
+
+```ura
+// stdout: 8 1
+// expect: 0
+
+struct Room:
+    floor i32
+
+    fn bump():
+        self.floor = self.floor + 1
+
+fn main() i32:
+    rooms Room[] = Room[2]
+    rooms[0].floor = 7
+    rooms[0].bump()
+    rooms[1].bump()
+    output(rooms[0].floor, " ", rooms[1].floor, "\n")
+    return 0
+```
+
+---
+
+## 094 — method: a method on a nested struct field
+
+```ura
+// stdout: entry depth 3
+// expect: 0
+
+struct Room:
+    floor i32
+
+    fn depth() i32:
+        return self.floor
+
+struct Dungeon:
+    entry Room
+
+fn main() i32:
+    d Dungeon
+    d.entry.floor = 3
+    output("entry depth ", d.entry.depth(), "\n")
+    return 0
+```
+
+---
+
+## 095 — method: calling a method the struct does not have
+
+```ura
+// error: Struct Room has no method 'nope'; check the spelling or declare it in the struct
+
+struct Room:
+    floor i32
+
+fn main() i32:
+    r Room
+    r.nope()
+    return 0
+```
+
+---
+
+## 096 — method: calling a method on a non-struct
+
+```ura
+// error: Cannot call '.nope()' on i32; only a struct has methods
+
+fn main() i32:
+    x i32 = 3
+    x.nope()
+    return 0
+```
+
+---
+
+## 097 — method: wrong argument count to a method
+
+```ura
+// error: Wrong number of arguments to 'climb'
+
+struct Room:
+    floor i32
+
+    fn climb(n i32):
+        self.floor = self.floor + n
+
+fn main() i32:
+    r Room
+    r.climb()
+    return 0
+```
+
+---
+
+## 098 — method: chaining a field access onto a call
+
+```ura
+// stdout: static 7
+// stdout: plain  3
+// expect: 0
+
+struct Room:
+    floor i32
+
+    pub fn create(f i32) Room:
+        r Room
+        r.floor = f
+        return r
+
+fn make(f i32) Room:
+    r Room
+    r.floor = f
+    return r
+
+fn main() i32:
+    output("static ", Room::create(7).floor, "\n")
+    output("plain  ", make(3).floor, "\n")
+    return 0
+```
+
+---
+
+## 099 — struct: declare a struct and a local: named type, alloca, zero-init
+
+```ura
+// stdout: ok
+// expect: 0
+
+struct Player:
+    name char[]
+    hp   i32
+    mp   i32
+
+fn main() i32:
+    p Player
+    output("ok\n")
+    return 0
+```
+
+---
+
+## 100 — struct: a field whose type is another struct
+
+```ura
+// stdout: ok
+// expect: 0
+
+struct Room:
+    name  char[]
+    floor i32
+
+struct Dungeon:
+    name  char[]
+    entry Room
+
+fn main() i32:
+    d Dungeon
+    output("ok\n")
+    return 0
+```
+
+---
+
+## 101 — struct: forward reference: a field type declared later in the file
+
+```ura
+// stdout: ok
+// expect: 0
+
+struct Dungeon:
+    name  char[]
+    entry Room
+
+struct Room:
+    name  char[]
+    floor i32
+
+fn main() i32:
+    d Dungeon
+    output("ok\n")
+    return 0
+```
+
+---
+
+## 102 — struct: a struct declared inside a function body
+
+```ura
+// stdout: ok
+// expect: 0
+
+fn main() i32:
+    struct Local:
+        x i32
+        y i32
+
+    l Local
+    output("ok\n")
+    return 0
+```
+
+---
+
+## 103 — struct: a struct declared inside an if block
+
+```ura
+// stdout: ok
+// expect: 0
+
+fn main() i32:
+    n i32 = 1
+    if n == 1:
+        struct Inner:
+            x i32
+
+        i Inner
+        output("ok\n")
+    return 0
+```
+
+---
+
+## 104 — struct: a struct declared inside a loop body
+
+```ura
+// stdout: ok
+// expect: 0
+
+fn main() i32:
+    for i in 0..2:
+        struct Tick:
+            n i32
+
+        t Tick
+    output("ok\n")
+    return 0
+```
+
+---
+
+## 105 — struct: an array-of-struct field is a fat pointer to the named type
+
+```ura
+// stdout: ok
+// expect: 0
+
+struct Room:
+    floor i32
+
+struct Tree:
+    label char[]
+    kids  Room[]
+
+fn main() i32:
+    t Tree
+    output("ok\n")
+    return 0
+```
+
+---
+
+## 106 — struct: a struct nested inside another struct's body
+
+```ura
+// stdout: ok
+// expect: 0
+
+struct Outer:
+    name char[]
+    struct Config:
+        debug bool
+
+    hp i32
+
+fn main() i32:
+    o Outer
+    output("ok\n")
+    return 0
+```
+
+---
+
+## 107 — struct: self reference through an array stays finite
+
+```ura
+// stdout: ok
+// expect: 0
+
+struct Tree:
+    label char[]
+    kids  Tree[]
+
+fn main() i32:
+    t Tree
+    output("ok\n")
+    return 0
+```
+
+---
+
+## 108 — struct: an unused struct emits no type: LLVM drops unreferenced named types
+
+```ura
+// stdout: ok
+// expect: 0
+
+struct Unused:
+    x i32
+    y i32
+
+fn main() i32:
+    output("ok\n")
+    return 0
+```
+
+---
+
+## 109 — struct: the same struct name in three nested scopes: innermost wins
+
+```ura
+// stdout: ok
+// expect: 0
+
+struct Local:
+    a char
+    b char
+
+fn main() i32:
+    l0 Local
+
+    struct Local:
+        x i32
+        y i32
+
+    n i32 = 1
+    if n == 1:
+        struct Local:
+            z char[]
+
+        l3 Local
+
+    l Local
+    output("ok\n")
+    return 0
+```
+
+---
+
+## 110 — struct: read and write a field
+
+```ura
+// stdout: armory on floor 3
+// stdout: floor now 13
+// expect: 0
+
+struct Room:
+    name  char[]
+    floor i32
+
+fn main() i32:
+    p Room
+    p.name  = "armory"
+    p.floor = 3
+    output(p.name, " on floor ", p.floor, "\n")
+    p.floor = p.floor + 10
+    output("floor now ", p.floor, "\n")
+    return 0
+```
+
+---
+
+## 111 — struct: nested field access through a struct field
+
+```ura
+// stdout: keep entry gate floor 1
+// expect: 0
+
+struct Room:
+    name  char[]
+    floor i32
+
+struct Dungeon:
+    name  char[]
+    entry Room
+
+fn main() i32:
+    d Dungeon
+    d.name = "keep"
+    d.entry.name  = "gate"
+    d.entry.floor = 1
+    output(d.name, " entry ", d.entry.name, " floor ", d.entry.floor, "\n")
+    return 0
+```
+
+---
+
+## 112 — struct: a stack array of structs: Room[N]
+
+```ura
+// stdout: lobby@1 cellar@0
+// expect: 0
+
+struct Room:
+    name  char[]
+    floor i32
+
+fn main() i32:
+    s Room[] = Room[2]
+    s[0].name  = "lobby"
+    s[0].floor = 1
+    s[1].name  = "cellar"
+    output(s[0].name, "@", s[0].floor, " ", s[1].name, "@", s[1].floor, "\n")
+    return 0
+```
+
+---
+
+## 113 — struct: a 2D array of structs: Room[N][M]
+
+```ura
+// stdout: grid-a@3 grid-b@4
+// expect: 0
+
+struct Room:
+    name  char[]
+    floor i32
+
+fn main() i32:
+    g Room[][] = Room[2][1]
+    g[0][0].name  = "grid-a"
+    g[0][0].floor = 3
+    g[1][0].name  = "grid-b"
+    g[1][0].floor = 4
+    output(g[0][0].name, "@", g[0][0].floor, " ", g[1][0].name, "@", g[1][0].floor, "\n")
+    return 0
+```
+
+---
+
+## 114 — struct: '.len' on arrays of structs, including 2D
+
+```ura
+// stdout: 2 4
+// expect: 0
+
+struct Room:
+    floor i32
+
+fn main() i32:
+    s Room[]   = Room[2]
+    g Room[][] = Room[4][1]
+    output(s.len, " ", g.len, "\n")
+    return 0
+```
+
+---
+
+## 115 — struct: 'stack' and 'heap' are ordinary identifiers
+
+```ura
+// stdout: 5 7
+// expect: 0
+
+fn main() i32:
+    stack i32 = 5
+    heap  i32 = 7
+    output(stack, " ", heap, "\n")
+    return 0
+```
+
+---
+
+## 116 — struct: a 'ref?' field may refer to its own struct
+
+```ura
+// stdout: 1
+// expect: 0
+
+struct Node:
+    value i32
+    next &Node
+
+fn main() i32:
+    a Node
+    a.value = 1
+    output(a.value, "\n")
+    return 0
+```
+
+---
+
+## 117 — struct: bind, read and write through a 'ref?' field
+
+```ura
+// stdout: 20 3 20
+// expect: 0
+
+struct Node:
+    value i32
+    next &Node
+
+fn main() i32:
+    a Node
+    b Node
+    c Node
+    a.value = 1
+    b.value = 2
+    c.value = 3
+    a.next = &b
+    b.next = &c
+    a.next.value = 20
+    output(a.next.value, " ", a.next.next.value, " ", b.value, "\n")
+    return 0
+```
+
+---
+
+## 118 — struct: struct assignment copies by value
+
+```ura
+// stdout: hall 9 / hall 2
+// expect: 0
+
+struct Room:
+    name  char[]
+    floor i32
+
+fn main() i32:
+    a Room
+    a.name  = "hall"
+    a.floor = 2
+    b Room
+    b = a
+    b.floor = 9
+    output(b.name, " ", b.floor, " / ", a.name, " ", a.floor, "\n")
+    return 0
+```
+
+---
+
+## 119 — struct: a struct as a by-value parameter
+
+```ura
+// stdout: room hall@2
+// expect: 0
+
+struct Room:
+    name  char[]
+    floor i32
+
+fn show(r Room):
+    output("room ", r.name, "@", r.floor, "\n")
+
+fn main() i32:
+    a Room
+    a.name  = "hall"
+    a.floor = 2
+    show(a)
+    return 0
+```
+
+---
+
+## 120 — struct: a 'ref' struct parameter mutates the caller's struct
+
+```ura
+// stdout: after 3
+// expect: 0
+
+struct Room:
+    name  char[]
+    floor i32
+
+fn bump(r &Room):
+    r.floor = r.floor + 1
+
+fn main() i32:
+    a Room
+    a.floor = 2
+    bump(&a)
+    output("after ", a.floor, "\n")
+    return 0
+```
+
+---
+
+## 121 — struct: returning a struct: the create() constructor convention
+
+```ura
+// stdout: made 4
+// expect: 0
+
+struct Room:
+    name  char[]
+    floor i32
+
+fn create(f i32) Room:
+    r Room
+    r.name  = "made"
+    r.floor = f
+    return r
+
+fn describe(r Room) char[]:
+    return r.name
+
+fn main() i32:
+    a Room = create(4)
+    output(describe(a), " ", a.floor, "\n")
+    return 0
+```
+
+---
+
+## 122 — struct: a field declared twice
+
+```ura
+// error: Field 'hp' is already declared in this struct; rename it or remove the duplicate
+
+struct Player:
+    name char[]
+    hp   i32
+    hp   i32
+
+fn main() i32:
+    p Player
+    return 0
+```
+
+---
+
+## 123 — struct: a field whose type does not exist
+
+```ura
+// error: Unknown type 'Room'
+
+struct Dungeon:
+    entry Room
+
+fn main() i32:
+    d Dungeon
+    return 0
+```
+
+---
+
+## 124 — struct: a struct that contains itself by value
+
+```ura
+// error: Struct Node cannot contain itself by value; use an array or a 'ref?' so the size stays finite
+
+struct Node:
+    value i32
+    next  Node
+
+fn main() i32:
+    n Node
+    return 0
+```
+
+---
+
+## 125 — struct: two structs that contain each other by value
+
+```ura
+// error: Struct A cannot contain itself by value; use an array or a 'ref?' so the size stays finite
+
+struct A:
+    b B
+
+struct B:
+    a A
+
+fn main() i32:
+    x A
+    return 0
+```
+
+---
+
+## 126 — struct: a variable of a type that was never declared
+
+```ura
+// error: Unknown type 'Player'
+
+fn main() i32:
+    p Player
+    return 0
+```
+
+---
+
+## 127 — struct: reading a field the struct does not have
+
+```ura
+// error: Struct Player has no field 'nope'; check the spelling or declare it in the struct
+
+struct Player:
+    name char[]
+    hp   i32
+
+fn main() i32:
+    p Player
+    output(p.nope)
+    return 0
+```
+
+---
+
+## 128 — struct: reading a field from a scalar
+
+```ura
+// error: Cannot read '.foo' from i32; only a struct has fields
+
+fn main() i32:
+    x i32 = 3
+    output(x.foo)
+    return 0
+```
+
+---
+
+## 129 — struct: '.len' on a scalar
+
+```ura
+// error: '.len' is only valid on an array, not i32
+
+fn main() i32:
+    x i32 = 3
+    output(x.len)
+    return 0
+```
+
+---
+
+## 130 — struct: a struct declared in a block is not visible outside it
+
+```ura
+// error: Unknown type 'Inner'
+
+fn main() i32:
+    n i32 = 1
+    if n == 1:
+        struct Inner:
+            x i32
+
+    i Inner
+    return 0
+```
+
+---
+
+## 131 — struct: a struct declared twice in the same scope
+
+```ura
+// error: Redeclaration of struct 'Player'
+
+struct Player:
+    hp i32
+
+struct Player:
+    mp i32
+
+fn main() i32:
+    p Player
+    return 0
+```
+
+---
+
+## 132 — struct: a method and a field chain called on a ref? field
+
+```ura
+// stdout: worth 5
+// stdout: worth 7
+// stdout: worth 9
+// stdout: chained field 9
+// expect: 0
+
+struct Item:
+    worth i32
+    next &Item
+
+    pub fn create(w i32) Item:
+        it Item
+        it.worth = w
+        return it
+
+    fn show():
+        output("worth ", self.worth, "\n")
+
+fn main() i32:
+    head Item = Item::create(5)
+    mid  Item = Item::create(7)
+    tail Item = Item::create(9)
+    head.next = &mid
+    mid.next  = &tail
+    head.show()
+    head.next.show()
+    head.next.next.show()
+    output("chained field ", head.next.next.worth, "\n")
+    return 0
+```
+
+---
+
+## 133 — struct: struct redefinition
+
+```ura
+// error: Redeclaration of struct 'Point'
+use "@/header"
+
+struct Point:
+    x i32
+    y i32
+
+struct Point:
+    a i32
+    b i32
+
+fn main() i32:
+    output("hi\n")
+    return 0
+```
+
+---
+
+## 134 — struct: accessing an undefined field
+
+```ura
+// error: Struct Point has no field 'z'; check the spelling or declare it in the struct
+use "@/header"
+
+struct Point:
+    x i32
+    y i32
+
+fn main() i32:
+    p Point
+    p.x = 1
+    p.z = 5
+    return 0
+```
+
+---
+
+## 135 — struct: calling undefined method on struct
+
+```ura
+// error: Struct Point has no method 'normalize'; check the spelling or declare it in the struct
+use "@/header"
+
+struct Point:
+    x i32
+    y i32
+
+fn main() i32:
+    p Point
+    p.x = 1
+    p.normalize()
+    return 0
+```
+
+---
+
+## 136 — struct: a struct whose first field is a struct is not circular
+
+```ura
+// stdout: first: First{tag: Inner{name: one}, n: 1}
+// stdout: last:  Last{n: 2, tag: Inner{name: two}}
+// expect: 0
+
+struct Inner:
+    name char[]
+
+struct First:
+    tag Inner
+    n   i32
+
+struct Last:
+    n   i32
+    tag Inner
+
+fn main() i32:
+    a First
+    a.tag.name = "one"
+    a.n = 1
+    output("first: ", a, "\n")
+
+    b Last
+    b.n = 2
+    b.tag.name = "two"
+    output("last:  ", b, "\n")
+    return 0
 ```
 

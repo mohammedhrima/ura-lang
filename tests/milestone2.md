@@ -13,41 +13,122 @@
 - 009 — array: a function writes into the caller's array
 - 010 — array: a string is a writable i8[]
 - 011 — array: an array of bools
-- 012 — ref: write through a ref
-- 013 — ref: read through a ref, then write
-- 014 — ref: compound assignment through a ref
-- 015 — ref: swap with ref parameters
-- 016 — ref: a ref parameter changes the caller
-- 017 — ref: p1 = p2 copies the value
-- 018 — ref: p1 = &p2 rebinds
-- 019 — ref: pass a ref parameter on to another function
-- 020 — ref: a ref to a bool
-- 021 — ref: a ref in a loop
-- 022 — ref: take the address of a variable
-- 023 — char: escaped chars
-- 024 — proto: a string in a variable
-- 025 — proto: a string passed to a function
-- 026 — proto: proto variadic function
-- 027 — proto: chars type
-- 028 — parser error: unclosed [ in an array literal
-- 029 — program: fibonacci with a memo array
-- 030 — program: upper-case a string in place
-- 031 — program: not and ! on bools, in a loop
-- 032 — program: count trues with as, then a cast that wraps
-- 033 — program: caesar cipher: char arithmetic with as
-- 034 — program: print the alphabet with a char counter
-- 035 — program: isNullable on array elements and chars
-- 036 — program: transpose a 3x3 matrix stored flat
-- 037 — program: a ref to an array element
-- 038 — program: an array literal made of calls
-- 039 — program: elif chain on one line each, with not / and / or
-- 040 — program: reverse a string, palindromes, a while on one line
-- 041 — program: sieve of eratosthenes on a bool array
-- 042 — program: atoi: parse numbers from strings
-- 043 — program: itoa: write a number's digits into a buffer
-- 044 — program: print a number in hex with as
-- 045 — program: a string builder on a global buffer
-- 046 — program: filter with as bool, not and isNullable
+- 012 — proto: a string in a variable
+- 013 — proto: a string passed to a function
+- 014 — proto: proto variadic function
+- 015 — proto: chars type
+- 016 — ref: write through a ref
+- 017 — ref: read through a ref, then write
+- 018 — ref: compound assignment through a ref
+- 019 — ref: swap with ref parameters
+- 020 — ref: a ref parameter changes the caller
+- 021 — ref: p1 = p2 copies the value
+- 022 — ref: p1 = &p2 rebinds
+- 023 — ref: pass a ref parameter on to another function
+- 024 — ref: a ref to a bool
+- 025 — ref: a ref in a loop
+- 026 — ref: take the address of a variable
+- 027 — crazy: fibonacci with a memo array
+- 028 — crazy: upper-case a string in place
+- 029 — crazy: not and ! on bools, in a loop
+- 030 — crazy: count trues with as, then a cast that wraps
+- 031 — crazy: caesar cipher: char arithmetic with as
+- 032 — crazy: print the alphabet with a char counter
+- 033 — crazy: isNullable on array elements and chars
+- 034 — crazy: transpose a 3x3 matrix stored flat
+- 035 — crazy: a ref to an array element
+- 036 — crazy: an array literal made of calls
+- 037 — crazy: elif chain on one line each, with not / and / or
+- 038 — crazy: reverse a string, palindromes, a while on one line
+- 039 — crazy: sieve of eratosthenes on a bool array
+- 040 — crazy: atoi: parse numbers from strings
+- 041 — crazy: itoa: write a number's digits into a buffer
+- 042 — crazy: print a number in hex with as
+- 043 — crazy: a string builder on a global buffer
+- 044 — crazy: filter with as bool, not and isNullable
+- 045 — parser error: unclosed [ in an array literal
+- 046 — refs: ref to a ref
+- 047 — refs: missing type after &
+- 048 — refs: initialized with a value
+- 049 — refs: address of a literal
+- 050 — refs: address of an expression
+- 051 — refs: address of a call
+- 052 — refs: address of an address
+- 053 — refs: ref to a different type
+- 054 — null: assigned to a value
+- 055 — null: compared with a value
+- 056 — null: address of null
+- 057 — expressions: compound assign on chars
+- 058 — expressions: negate a string
+- 059 — calls: missing & on a ref argument
+- 060 — arrays: unclosed type
+- 061 — arrays: size in the type
+- 062 — arrays: index a non-array
+- 063 — arrays: index with a string
+- 064 — arrays: mixed element types
+- 065 — arrays: array into a scalar
+- 066 — arrays: unclosed literal
+- 067 — arrays: missing comma between elements
+- 068 — array: string as i8[] is writable
+- 069 — array: array passed to a function
+- 070 — ref: write through a ref
+- 071 — ref: ref as parameter
+- 072 — ref: read through a ref
+- 073 — ref: math through a ref
+- 074 — ref: copy the pointed value between refs
+- 075 — ref: rebind a ref
+- 076 — function: fn returns ref
+- 077 — function: swap
+- 078 — function: overloaded function
+- 079 — program: null compared to null
+- 080 — statement: if with a ref
+- 081 — array: 1D i32 array: literal, index read, indexed write
+- 082 — array: variable index and element arithmetic
+- 083 — array: arrays of bool, char, f32
+- 084 — array: sized constructor i32[N] with zero-init
+- 085 — array: VLA: runtime-sized stack array
+- 086 — array: indexing a non-array
+- 087 — array: non-integer index
+- 088 — array: array literal with mixed element types
+- 089 — array: array size is not an integer
+- 090 — array: missing closing bracket on index
+- 091 — array: empty array literal has no element type
+- 092 — array: unknown member
+- 093 — function: single ref param: buff hero hp
+- 094 — function: swap two weapon damage values via refs
+- 095 — function: refs used in expression, return result
+- 096 — function: compound ref assign through in a loop
+- 097 — function: ref-to-value: ref passing a where value is expected
+- 098 — function: ref parameter mutates the caller (counter)
+- 099 — function: a void function with a ref parameter
+- 100 — ref: basic ref: bind to hp, ref write through
+- 101 — ref: aliasing: two refs to same hp, both see mutations
+- 102 — ref: compound ref assignment through in a loop
+- 103 — ref: separate refs to different vars: hp ref ref and mp
+- 104 — ref: multiply and subtract through refs: f64 shield, pay mana
+- 105 — ref: chain of compound mutations ref through a
+- 106 — ref: reference in conditional
+- 107 — ref: a ref reads correctly through every operator + as a by-value arg
+- 108 — ref: ref? nullable: bound at declaration, guarded reads pass, write-through works
+- 109 — ref: nested fn shares an enclosing var through a ref parameter (the sanctioned path)
+- 110 — ref: a ref reads correctly through the remaining math / comparison / bitwise / cast / logical ops
+- 111 — ref: a reference must be bound when declared
+- 112 — ref: binding a reference to the wrong type
+- 113 — ref: a ref parameter given a value
+- 114 — ref: taking a reference to a literal
+- 115 — ref: a by-value parameter given a reference
+- 116 — ref: a reference to a name that does not exist
+- 117 — ref: a nested function may not capture an enclosing local
+- 118 — ref: linked list: build with ref, walk it with cur = ref cur.next
+- 119 — ref: a ref parameter rebinds a struct's ref field in place (add-front)
+- 120 — ref: ref? compared to null with == and !=, bound and unbound
+- 121 — ref: chained rebind removes the head: lst.head = ref lst.head.next
+- 122 — ref: = ref rebinds the pointer, = value writes through the referent
+- 123 — ref: ref a == ref a is identity true, ref a == ref b is false
+- 124 — ref: a value function cannot return a reference
+- 125 — ref: a ref declaration cannot be bound to a plain value
+- 126 — ref: a non-nullable value cannot be compared to null
+- 127 — variable: an array type carries no size
 
 ---
 
@@ -721,7 +802,194 @@ endif:                                            ; preds = %then4, %then
 
 ---
 
-## 012 — ref: write through a ref
+## 012 — proto: a string in a variable
+
+```ura
+// stdout: <abcdef>
+// expect: 0
+proto printf(fmt i8[], ...) i32
+
+fn main() i32:
+    str i8[] = "abcdef"
+    printf("<%s>\n", str)
+    return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+@str = private constant [7 x i8] c"abcdef\00"
+@str.1 = private constant [6 x i8] c"<%s>\0A\00"
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  %str = alloca i8*, align 8
+  %s = alloca [7 x i8], align 1
+  %s1 = alloca [6 x i8], align 1
+  %dst = getelementptr inbounds [7 x i8], [7 x i8]* %s, i32 0, i32 0
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i64 7, i1 false)
+  store i8* %dst, i8** %str, align 8
+  %dst2 = getelementptr inbounds [6 x i8], [6 x i8]* %s1, i32 0, i32 0
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst2, i8* align 1 getelementptr inbounds ([6 x i8], [6 x i8]* @str.1, i32 0, i32 0), i64 6, i1 false)
+  %load.str = load i8*, i8** %str, align 8
+  %"printf(str,load.str)" = call i32 (i8*, ...) @printf(i8* %dst2, i8* %load.str)
+  ret i32 0
+}
+
+; Function Attrs: argmemonly nofree nosync nounwind willreturn
+declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
+
+attributes #0 = { argmemonly nofree nosync nounwind willreturn }
+```
+
+---
+
+## 013 — proto: a string passed to a function
+
+```ura
+// stdout: hi ura
+// expect: 0
+proto printf(fmt i8[], ...) i32
+
+fn greet(name i8[]):
+    printf("hi %s\n", name)
+
+fn main() i32:
+    greet("ura")
+    return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+@str = private constant [7 x i8] c"hi %s\0A\00"
+@str.1 = private constant [4 x i8] c"ura\00"
+
+declare i32 @printf(i8*, ...)
+
+define void @greet(i8* %0) {
+entry:
+  %name = alloca i8*, align 8
+  %s = alloca [7 x i8], align 1
+  store i8* %0, i8** %name, align 8
+  %dst = getelementptr inbounds [7 x i8], [7 x i8]* %s, i32 0, i32 0
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i64 7, i1 false)
+  %load.name = load i8*, i8** %name, align 8
+  %"printf(str,load.name)" = call i32 (i8*, ...) @printf(i8* %dst, i8* %load.name)
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %s = alloca [4 x i8], align 1
+  %dst = getelementptr inbounds [4 x i8], [4 x i8]* %s, i32 0, i32 0
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([4 x i8], [4 x i8]* @str.1, i32 0, i32 0), i64 4, i1 false)
+  call void @greet(i8* %dst)
+  ret i32 0
+}
+
+; Function Attrs: argmemonly nofree nosync nounwind willreturn
+declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
+
+attributes #0 = { argmemonly nofree nosync nounwind willreturn }
+```
+
+---
+
+## 014 — proto: proto variadic function
+
+```ura
+proto printf(fmt i8[], ...) i32
+
+fn main() i32:
+    str i8[] = "abcdef"
+    printf("<%s>", str)
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+@str = private constant [7 x i8] c"abcdef\00"
+@str.1 = private constant [5 x i8] c"<%s>\00"
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  %str = alloca i8*, align 8
+  %s = alloca [7 x i8], align 1
+  %s1 = alloca [5 x i8], align 1
+  %dst = getelementptr inbounds [7 x i8], [7 x i8]* %s, i32 0, i32 0
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i64 7, i1 false)
+  store i8* %dst, i8** %str, align 8
+  %dst2 = getelementptr inbounds [5 x i8], [5 x i8]* %s1, i32 0, i32 0
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst2, i8* align 1 getelementptr inbounds ([5 x i8], [5 x i8]* @str.1, i32 0, i32 0), i64 5, i1 false)
+  %load.str = load i8*, i8** %str, align 8
+  %"printf(str,load.str)" = call i32 (i8*, ...) @printf(i8* %dst2, i8* %load.str)
+  ret i32 0
+}
+
+; Function Attrs: argmemonly nofree nosync nounwind willreturn
+declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
+
+attributes #0 = { argmemonly nofree nosync nounwind willreturn }
+```
+
+---
+
+## 015 — proto: chars type
+
+```ura
+fn main() i32:
+    str i8[] = "abcdef"
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+@str = private constant [7 x i8] c"abcdef\00"
+
+define i32 @main() {
+entry:
+  %str = alloca i8*, align 8
+  %s = alloca [7 x i8], align 1
+  %dst = getelementptr inbounds [7 x i8], [7 x i8]* %s, i32 0, i32 0
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i64 7, i1 false)
+  store i8* %dst, i8** %str, align 8
+  ret i32 0
+}
+
+; Function Attrs: argmemonly nofree nosync nounwind willreturn
+declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
+
+attributes #0 = { argmemonly nofree nosync nounwind willreturn }
+```
+
+---
+
+## 016 — ref: write through a ref
 
 ```ura
 // stdout: a = 12
@@ -773,7 +1041,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 013 — ref: read through a ref, then write
+## 017 — ref: read through a ref, then write
 
 ```ura
 // stdout: p = 10, a = 15
@@ -836,7 +1104,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 014 — ref: compound assignment through a ref
+## 018 — ref: compound assignment through a ref
 
 ```ura
 // expect: 24
@@ -877,7 +1145,7 @@ entry:
 
 ---
 
-## 015 — ref: swap with ref parameters
+## 019 — ref: swap with ref parameters
 
 ```ura
 // stdout: a = 2, b = 1
@@ -957,7 +1225,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 016 — ref: a ref parameter changes the caller
+## 020 — ref: a ref parameter changes the caller
 
 ```ura
 // expect: 3
@@ -1005,7 +1273,7 @@ entry:
 
 ---
 
-## 017 — ref: p1 = p2 copies the value
+## 021 — ref: p1 = p2 copies the value
 
 ```ura
 proto printf(fmt i8[], ...) i32
@@ -1064,7 +1332,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 018 — ref: p1 = &p2 rebinds
+## 022 — ref: p1 = &p2 rebinds
 
 ```ura
 // stdout: a = 1, b = 9
@@ -1126,7 +1394,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 019 — ref: pass a ref parameter on to another function
+## 023 — ref: pass a ref parameter on to another function
 
 ```ura
 // expect: 2
@@ -1185,7 +1453,7 @@ entry:
 
 ---
 
-## 020 — ref: a ref to a bool
+## 024 — ref: a ref to a bool
 
 ```ura
 // expect: 1
@@ -1227,7 +1495,7 @@ endif:                                            ; preds = %entry
 
 ---
 
-## 021 — ref: a ref in a loop
+## 025 — ref: a ref in a loop
 
 ```ura
 // stdout: 1 2 3 4 5
@@ -1307,7 +1575,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 022 — ref: take the address of a variable
+## 026 — ref: take the address of a variable
 
 ```ura
 fn main() i32:
@@ -1336,283 +1604,7 @@ entry:
 
 ---
 
-## 023 — char: escaped chars
-
-```ura
-// stdout: [newline] [tab] ['] [\]
-// expect: 0
-proto printf(fmt i8[], ...) i32
-
-fn main() i32:
-    nl char = '\n'
-    tab char = '\t'
-    printf("[%c]\n", nl)
-    printf("[%c]\n", tab)
-    printf("[%c] [%c]\n", '\'', '\\')
-    return 0
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-@str = private constant [6 x i8] c"[%c]\0A\00"
-@str.1 = private constant [6 x i8] c"[%c]\0A\00"
-@str.2 = private constant [11 x i8] c"[%c] [%c]\0A\00"
-
-declare i32 @printf(i8*, ...)
-
-define i32 @main() {
-entry:
-  %nl = alloca i8, align 1
-  %tab = alloca i8, align 1
-  %s = alloca [6 x i8], align 1
-  %s1 = alloca [6 x i8], align 1
-  %s3 = alloca [11 x i8], align 1
-  store i8 10, i8* %nl, align 1
-  store i8 9, i8* %tab, align 1
-  %dst = getelementptr inbounds [6 x i8], [6 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([6 x i8], [6 x i8]* @str, i32 0, i32 0), i64 6, i1 false)
-  %load.nl = load i8, i8* %nl, align 1
-  %"printf(str,load.nl)" = call i32 (i8*, ...) @printf(i8* %dst, i8 %load.nl)
-  %dst2 = getelementptr inbounds [6 x i8], [6 x i8]* %s1, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst2, i8* align 1 getelementptr inbounds ([6 x i8], [6 x i8]* @str.1, i32 0, i32 0), i64 6, i1 false)
-  %load.tab = load i8, i8* %tab, align 1
-  %"printf(str,load.tab)" = call i32 (i8*, ...) @printf(i8* %dst2, i8 %load.tab)
-  %dst4 = getelementptr inbounds [11 x i8], [11 x i8]* %s3, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst4, i8* align 1 getelementptr inbounds ([11 x i8], [11 x i8]* @str.2, i32 0, i32 0), i64 11, i1 false)
-  %"printf(str,''','\\')" = call i32 (i8*, ...) @printf(i8* %dst4, i8 39, i8 92)
-  ret i32 0
-}
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
-```
-
----
-
-## 024 — proto: a string in a variable
-
-```ura
-// stdout: <abcdef>
-// expect: 0
-proto printf(fmt i8[], ...) i32
-
-fn main() i32:
-    str i8[] = "abcdef"
-    printf("<%s>\n", str)
-    return 0
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-@str = private constant [7 x i8] c"abcdef\00"
-@str.1 = private constant [6 x i8] c"<%s>\0A\00"
-
-declare i32 @printf(i8*, ...)
-
-define i32 @main() {
-entry:
-  %str = alloca i8*, align 8
-  %s = alloca [7 x i8], align 1
-  %s1 = alloca [6 x i8], align 1
-  %dst = getelementptr inbounds [7 x i8], [7 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i64 7, i1 false)
-  store i8* %dst, i8** %str, align 8
-  %dst2 = getelementptr inbounds [6 x i8], [6 x i8]* %s1, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst2, i8* align 1 getelementptr inbounds ([6 x i8], [6 x i8]* @str.1, i32 0, i32 0), i64 6, i1 false)
-  %load.str = load i8*, i8** %str, align 8
-  %"printf(str,load.str)" = call i32 (i8*, ...) @printf(i8* %dst2, i8* %load.str)
-  ret i32 0
-}
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
-```
-
----
-
-## 025 — proto: a string passed to a function
-
-```ura
-// stdout: hi ura
-// expect: 0
-proto printf(fmt i8[], ...) i32
-
-fn greet(name i8[]):
-    printf("hi %s\n", name)
-
-fn main() i32:
-    greet("ura")
-    return 0
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-@str = private constant [7 x i8] c"hi %s\0A\00"
-@str.1 = private constant [4 x i8] c"ura\00"
-
-declare i32 @printf(i8*, ...)
-
-define void @greet(i8* %0) {
-entry:
-  %name = alloca i8*, align 8
-  %s = alloca [7 x i8], align 1
-  store i8* %0, i8** %name, align 8
-  %dst = getelementptr inbounds [7 x i8], [7 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i64 7, i1 false)
-  %load.name = load i8*, i8** %name, align 8
-  %"printf(str,load.name)" = call i32 (i8*, ...) @printf(i8* %dst, i8* %load.name)
-  ret void
-}
-
-define i32 @main() {
-entry:
-  %s = alloca [4 x i8], align 1
-  %dst = getelementptr inbounds [4 x i8], [4 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([4 x i8], [4 x i8]* @str.1, i32 0, i32 0), i64 4, i1 false)
-  call void @greet(i8* %dst)
-  ret i32 0
-}
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
-```
-
----
-
-## 026 — proto: proto variadic function
-
-```ura
-proto printf(fmt i8[], ...) i32
-
-fn main() i32:
-    str i8[] = "abcdef"
-    printf("<%s>", str)
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-@str = private constant [7 x i8] c"abcdef\00"
-@str.1 = private constant [5 x i8] c"<%s>\00"
-
-declare i32 @printf(i8*, ...)
-
-define i32 @main() {
-entry:
-  %str = alloca i8*, align 8
-  %s = alloca [7 x i8], align 1
-  %s1 = alloca [5 x i8], align 1
-  %dst = getelementptr inbounds [7 x i8], [7 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i64 7, i1 false)
-  store i8* %dst, i8** %str, align 8
-  %dst2 = getelementptr inbounds [5 x i8], [5 x i8]* %s1, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst2, i8* align 1 getelementptr inbounds ([5 x i8], [5 x i8]* @str.1, i32 0, i32 0), i64 5, i1 false)
-  %load.str = load i8*, i8** %str, align 8
-  %"printf(str,load.str)" = call i32 (i8*, ...) @printf(i8* %dst2, i8* %load.str)
-  ret i32 0
-}
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
-```
-
----
-
-## 027 — proto: chars type
-
-```ura
-fn main() i32:
-    str i8[] = "abcdef"
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-@str = private constant [7 x i8] c"abcdef\00"
-
-define i32 @main() {
-entry:
-  %str = alloca i8*, align 8
-  %s = alloca [7 x i8], align 1
-  %dst = getelementptr inbounds [7 x i8], [7 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i64 7, i1 false)
-  store i8* %dst, i8** %str, align 8
-  ret i32 0
-}
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
-```
-
----
-
-## 028 — parser error: unclosed [ in an array literal
-
-```ura
-// error: expected ']' to close this '['
-// help: use a i32[] = [1, 2]
-fn main() i32:
-    a i32[] = [1, 2
-    return a[0]
-```
-
-### stderr
-
-```
-error: test.ura:4:19 expected ']' to close this '['
-  |
-4 |     a i32[] = [1, 2
-  |                   ^
-help: use a i32[] = [1, 2]
-```
-
-### status
-
-```
-1
-```
-
----
-
-## 029 — program: fibonacci with a memo array
+## 027 — crazy: fibonacci with a memo array
 
 ```ura
 // expect: 109   (fib(20) = 6765, 6765 % 256)
@@ -1742,7 +1734,7 @@ entry:
 
 ---
 
-## 030 — program: upper-case a string in place
+## 028 — crazy: upper-case a string in place
 
 ```ura
 // stdout: HELLO, URA
@@ -1885,7 +1877,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 031 — program: not and ! on bools, in a loop
+## 029 — crazy: not and ! on bools, in a loop
 
 ```ura
 // expect: 12
@@ -1971,7 +1963,7 @@ endif7:                                           ; preds = %then8, %endwhile
 
 ---
 
-## 032 — program: count trues with as, then a cast that wraps
+## 030 — crazy: count trues with as, then a cast that wraps
 
 ```ura
 // expect: 6   (3 * 10, plus 1000 as i8 = -24)
@@ -2048,7 +2040,7 @@ endwhile:                                         ; preds = %cond
 
 ---
 
-## 033 — program: caesar cipher: char arithmetic with as
+## 031 — crazy: caesar cipher: char arithmetic with as
 
 ```ura
 // stdout: khoor, zruog | hello, world
@@ -2198,7 +2190,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 034 — program: print the alphabet with a char counter
+## 032 — crazy: print the alphabet with a char counter
 
 ```ura
 // stdout: abcde
@@ -2269,7 +2261,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 035 — program: isNullable on array elements and chars
+## 033 — crazy: isNullable on array elements and chars
 
 ```ura
 // expect: 33   (3 zeros * 10, plus 1, plus 2)
@@ -2408,7 +2400,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 036 — program: transpose a 3x3 matrix stored flat
+## 034 — crazy: transpose a 3x3 matrix stored flat
 
 ```ura
 // expect: 154   (trace 15 * 10, plus t[1] = 4)
@@ -2591,7 +2583,7 @@ endwhile33:                                       ; preds = %cond31
 
 ---
 
-## 037 — program: a ref to an array element
+## 035 — crazy: a ref to an array element
 
 ```ura
 // expect: 92   (10 + 22 + 60)
@@ -2669,7 +2661,7 @@ entry:
 
 ---
 
-## 038 — program: an array literal made of calls
+## 036 — crazy: an array literal made of calls
 
 ```ura
 // expect: 50   (1 + 4 + 9 + 20 + 16)
@@ -2754,7 +2746,7 @@ entry:
 
 ---
 
-## 039 — program: elif chain on one line each, with not / and / or
+## 037 — crazy: elif chain on one line each, with not / and / or
 
 ```ura
 // expect: 31
@@ -2889,7 +2881,7 @@ endif16:                                          ; preds = %then17, %endif11
 
 ---
 
-## 040 — program: reverse a string, palindromes, a while on one line
+## 038 — crazy: reverse a string, palindromes, a while on one line
 
 ```ura
 // stdout: gnal aru
@@ -3130,7 +3122,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 041 — program: sieve of eratosthenes on a bool array
+## 039 — crazy: sieve of eratosthenes on a bool array
 
 ```ura
 // expect: 77   (2 + 3 + 5 + 7 + 11 + 13 + 17 + 19)
@@ -3267,7 +3259,7 @@ endif:                                            ; preds = %endwhile28, %then
 
 ---
 
-## 042 — program: atoi: parse numbers from strings
+## 040 — crazy: atoi: parse numbers from strings
 
 ```ura
 // expect: 85   (123 - 45 + 7)
@@ -3395,7 +3387,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 043 — program: itoa: write a number's digits into a buffer
+## 041 — crazy: itoa: write a number's digits into a buffer
 
 ```ura
 // stdout: 9071
@@ -3556,7 +3548,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 044 — program: print a number in hex with as
+## 042 — crazy: print a number in hex with as
 
 ```ura
 // stdout: 0000beef
@@ -3683,7 +3675,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 045 — program: a string builder on a global buffer
+## 043 — crazy: a string builder on a global buffer
 
 ```ura
 // stdout: x=1234, y=7
@@ -3837,7 +3829,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 046 — program: filter with as bool, not and isNullable
+## 044 — crazy: filter with as bool, not and isNullable
 
 ```ura
 // expect: 42   (4 odd, 2 even, zeros skipped)
@@ -3951,5 +3943,2076 @@ entry:
   %ADD = add i32 %MUL, %"count_if(load.a,8,False)"
   ret i32 %ADD
 }
+```
+
+---
+
+## 045 — parser error: unclosed [ in an array literal
+
+```ura
+// error: expected ']' to close this '['
+// help: use a i32[] = [1, 2]
+fn main() i32:
+    a i32[] = [1, 2
+    return a[0]
+```
+
+### stderr
+
+```
+error: test.ura:4:19 expected ']' to close this '['
+  |
+4 |     a i32[] = [1, 2
+  |                   ^
+help: use a i32[] = [1, 2]
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 046 — refs: ref to a ref
+
+```ura
+fn main() i32:
+    a i32 = 1
+    p &&i32 = &a
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:3:7 a ref can't point to a ref
+  |
+3 |     p &&i32 = &a
+  |       ^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 047 — refs: missing type after &
+
+```ura
+fn main() i32:
+    a i32 = 1
+    p & = &a
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:3:7 expected a type after '&'
+  |
+3 |     p & = &a
+  |       ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 048 — refs: initialized with a value
+
+```ura
+fn main() i32:
+    a i32 = 1
+    p &i32 = a
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:3:14 'p' is a ref, initialize it with an address
+  |
+3 |     p &i32 = a
+  |              ^
+help: write 'p &i32 = &a'
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 049 — refs: address of a literal
+
+```ura
+fn main() i32:
+    p &i32 = &5
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:2:15 '&' expects a variable or a struct attribute
+  |
+2 |     p &i32 = &5
+  |               ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 050 — refs: address of an expression
+
+```ura
+fn main() i32:
+    a i32 = 1
+    p &i32 = &(a + 1)
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:3:18 '&' expects a variable or a struct attribute
+  |
+3 |     p &i32 = &(a + 1)
+  |                  ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 051 — refs: address of a call
+
+```ura
+fn f() i32:
+    return 1
+
+fn main() i32:
+    p &i32 = &f()
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:5:15 '&' expects a variable or a struct attribute
+  |
+5 |     p &i32 = &f()
+  |               ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 052 — refs: address of an address
+
+```ura
+fn main() i32:
+    a i32 = 1
+    p &i32 = &&a
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:3:14 can't take the address of an address
+  |
+3 |     p &i32 = &&a
+  |              ^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 053 — refs: ref to a different type
+
+```ura
+fn main() i32:
+    c i8 = 'a'
+    p &i32 = &c
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:3:14 expected '&i32', found '&i8'
+  |
+3 |     p &i32 = &c
+  |              ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 054 — null: assigned to a value
+
+```ura
+fn main() i32:
+    x i32 = null
+    return x
+```
+
+### stderr
+
+```
+error: test.ura:2:13 expected 'i32', found 'null'
+  |
+2 |     x i32 = null
+  |             ^^^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 055 — null: compared with a value
+
+```ura
+fn main() i32:
+    a i32 = 1
+    b b1 = a == null
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:3:17 'null' needs a ref on the other side
+  |
+3 |     b b1 = a == null
+  |                 ^^^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 056 — null: address of null
+
+```ura
+fn main() i32:
+    p &i32 = &null
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:2:15 '&' expects a variable or a struct attribute
+  |
+2 |     p &i32 = &null
+  |               ^^^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 057 — expressions: compound assign on chars
+
+```ura
+fn main() i32:
+    s i8[] = "a"
+    s += 1
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:3:7 can't apply '+=' to 'i8[]' and 'i32'
+  |
+3 |     s += 1
+  |       ^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 058 — expressions: negate a string
+
+```ura
+fn main() i32:
+    s i8[] = -"a"
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:2:14 can't apply '-' to 'i8[]'
+  |
+2 |     s i8[] = -"a"
+  |              ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 059 — calls: missing & on a ref argument
+
+```ura
+fn f(p &i32):
+    p = 1
+
+fn main() i32:
+    a i32 = 0
+    f(a)
+    return a
+```
+
+### stderr
+
+```
+error: test.ura:6:5 no overload of 'f' takes these arguments
+  |
+6 |     f(a)
+  |     ^
+help: 'a' is 'i32', but 'p' wants '&i32'
+help: pass its address: '&a'
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 060 — arrays: unclosed type
+
+```ura
+fn main() i32:
+    x i32[
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:2:10 expected ']' after '['
+  |
+2 |     x i32[
+  |          ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 061 — arrays: size in the type
+
+```ura
+fn main() i32:
+    x i32[3]
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:2:11 expected ']' after '['
+  |
+2 |     x i32[3]
+  |           ^
+help: arrays have no size in the type: 'i32[]'
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 062 — arrays: index a non-array
+
+```ura
+fn main() i32:
+    a i32 = 1
+    return a[0]
+```
+
+### stderr
+
+```
+error: test.ura:3:12 'a' is 'i32', not an array
+  |
+3 |     return a[0]
+  |            ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 063 — arrays: index with a string
+
+```ura
+fn main() i32:
+    x i32[] = [1, 2]
+    return x["a"]
+```
+
+### stderr
+
+```
+error: test.ura:3:14 expected 'i32', found 'i8[]'
+  |
+3 |     return x["a"]
+  |              ^^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 064 — arrays: mixed element types
+
+```ura
+fn main() i32:
+    x i32[] = [1, "a"]
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:2:19 expected 'i32', found 'i8[]'
+  |
+2 |     x i32[] = [1, "a"]
+  |                   ^^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 065 — arrays: array into a scalar
+
+```ura
+fn main() i32:
+    a i32 = [1, 2]
+    return a
+```
+
+### stderr
+
+```
+error: test.ura:2:13 expected 'i32', found 'i32[]'
+  |
+2 |     a i32 = [1, 2]
+  |             ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 066 — arrays: unclosed literal
+
+```ura
+fn main() i32:
+    x i32[] = [1, 2
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:2:15 unclosed '['
+  |
+2 |     x i32[] = [1, 2
+  |               ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 067 — arrays: missing comma between elements
+
+```ura
+fn main() i32:
+    x i32[] = [1 2]
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:2:18 expected ',' between elements
+  |
+2 |     x i32[] = [1 2]
+  |                  ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 068 — array: string as i8[] is writable
+
+```ura
+fn main() i32:
+   s i8[] = "abc"
+   s[0] = 'x'
+   c i8 = s[1]
+   if c == 'b':
+      return 1
+   return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+@const = private unnamed_addr constant [4 x i8] c"abc\00"
+
+define i32 @main() {
+entry:
+  %s = alloca i8*, align 8
+  %array = alloca [4 x i8], align 1
+  %c = alloca i8, align 1
+  %0 = bitcast [4 x i8]* %array to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %0, i8* align 1 getelementptr inbounds ([4 x i8], [4 x i8]* @const, i32 0, i32 0), i64 4, i1 false)
+  %1 = getelementptr inbounds [4 x i8], [4 x i8]* %array, i32 0, i32 0
+  store i8* %1, i8** %s, align 8
+  %s1 = load i8*, i8** %s, align 8
+  %2 = getelementptr inbounds i8, i8* %s1, i32 0
+  store i8 120, i8* %2, align 1
+  %s2 = load i8*, i8** %s, align 8
+  %3 = getelementptr inbounds i8, i8* %s2, i32 1
+  %4 = load i8, i8* %3, align 1
+  store i8 %4, i8* %c, align 1
+  %c3 = load i8, i8* %c, align 1
+  %EQ = icmp eq i8 %c3, 98
+  br i1 %EQ, label %then, label %endif
+
+then:                                             ; preds = %entry
+  ret i32 1
+
+endif:                                            ; preds = %entry
+  ret i32 0
+}
+
+; Function Attrs: argmemonly nofree nosync nounwind willreturn
+declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
+
+attributes #0 = { argmemonly nofree nosync nounwind willreturn }
+```
+
+---
+
+## 069 — array: array passed to a function
+
+```ura
+fn sum(a i32[]) i32:
+   total i32 = 0
+   i i32 = 0
+   while i < 3:
+      total += a[i]
+      i += 1
+   return total
+
+fn main() i32:
+   values i32[] = [1, 2, 3]
+   return sum(values)
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+@const = private unnamed_addr constant [3 x i32] [i32 1, i32 2, i32 3]
+
+define i32 @sum(i32* %0) {
+entry:
+  %a = alloca i32*, align 8
+  %total = alloca i32, align 4
+  %i = alloca i32, align 4
+  store i32* %0, i32** %a, align 8
+  store i32 0, i32* %total, align 4
+  store i32 0, i32* %i, align 4
+  br label %cond
+
+cond:                                             ; preds = %then, %entry
+  %i1 = load i32, i32* %i, align 4
+  %LT = icmp slt i32 %i1, 3
+  br i1 %LT, label %then, label %endwhile
+
+then:                                             ; preds = %cond
+  %total2 = load i32, i32* %total, align 4
+  %a3 = load i32*, i32** %a, align 8
+  %i4 = load i32, i32* %i, align 4
+  %1 = getelementptr inbounds i32, i32* %a3, i32 %i4
+  %2 = load i32, i32* %1, align 4
+  %ADD = add i32 %total2, %2
+  store i32 %ADD, i32* %total, align 4
+  %i5 = load i32, i32* %i, align 4
+  %ADD6 = add i32 %i5, 1
+  store i32 %ADD6, i32* %i, align 4
+  br label %cond
+
+endwhile:                                         ; preds = %cond
+  %total7 = load i32, i32* %total, align 4
+  ret i32 %total7
+}
+
+define i32 @main() {
+entry:
+  %values = alloca i32*, align 8
+  %array = alloca [3 x i32], align 4
+  %0 = bitcast [3 x i32]* %array to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %0, i8* align 1 bitcast ([3 x i32]* @const to i8*), i64 12, i1 false)
+  %1 = getelementptr inbounds [3 x i32], [3 x i32]* %array, i32 0, i32 0
+  store i32* %1, i32** %values, align 8
+  %values1 = load i32*, i32** %values, align 8
+  %sum = call i32 @sum(i32* %values1)
+  ret i32 %sum
+}
+
+; Function Attrs: argmemonly nofree nosync nounwind willreturn
+declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
+
+attributes #0 = { argmemonly nofree nosync nounwind willreturn }
+```
+
+---
+
+## 070 — ref: write through a ref
+
+```ura
+fn main() i32:
+    a i32 = 10
+    p &i32 = &a
+    p = 12
+    return a
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+define i32 @main() {
+entry:
+  %a = alloca i32, align 4
+  %p = alloca i32*, align 8
+  store i32 10, i32* %a, align 4
+  store i32* %a, i32** %p, align 8
+  %p1 = load i32*, i32** %p, align 8
+  store i32 12, i32* %p1, align 4
+  %a2 = load i32, i32* %a, align 4
+  ret i32 %a2
+}
+```
+
+---
+
+## 071 — ref: ref as parameter
+
+```ura
+fn foo(a &i32):
+    a = 2
+
+fn main() i32:
+    a i32 = 10
+    foo(&a)
+    return a
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+define void @foo(i32* %0) {
+entry:
+  %a = alloca i32*, align 8
+  store i32* %0, i32** %a, align 8
+  %a1 = load i32*, i32** %a, align 8
+  store i32 2, i32* %a1, align 4
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %a = alloca i32, align 4
+  store i32 10, i32* %a, align 4
+  call void @foo(i32* %a)
+  %a1 = load i32, i32* %a, align 4
+  ret i32 %a1
+}
+```
+
+---
+
+## 072 — ref: read through a ref
+
+```ura
+fn main() i32:
+    a i32 = 10
+    p &i32 = &a
+    b i32 = p
+    return b
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+define i32 @main() {
+entry:
+  %a = alloca i32, align 4
+  %p = alloca i32*, align 8
+  %b = alloca i32, align 4
+  store i32 10, i32* %a, align 4
+  store i32* %a, i32** %p, align 8
+  %p1 = load i32*, i32** %p, align 8
+  %p.dref = load i32, i32* %p1, align 4
+  store i32 %p.dref, i32* %b, align 4
+  %b2 = load i32, i32* %b, align 4
+  ret i32 %b2
+}
+```
+
+---
+
+## 073 — ref: math through a ref
+
+```ura
+fn main() i32:
+    a i32 = 10
+    p &i32 = &a
+    p = p + 5
+    return a
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+define i32 @main() {
+entry:
+  %a = alloca i32, align 4
+  %p = alloca i32*, align 8
+  store i32 10, i32* %a, align 4
+  store i32* %a, i32** %p, align 8
+  %p1 = load i32*, i32** %p, align 8
+  %p.dref = load i32, i32* %p1, align 4
+  %ADD = add i32 %p.dref, 5
+  %p2 = load i32*, i32** %p, align 8
+  store i32 %ADD, i32* %p2, align 4
+  %a3 = load i32, i32* %a, align 4
+  ret i32 %a3
+}
+```
+
+---
+
+## 074 — ref: copy the pointed value between refs
+
+```ura
+fn main() i32:
+    a i32 = 1
+    b i32 = 2
+    p1 &i32 = &a
+    p2 &i32 = &b
+    p1 = p2
+    return a
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+define i32 @main() {
+entry:
+  %a = alloca i32, align 4
+  %b = alloca i32, align 4
+  %p1 = alloca i32*, align 8
+  %p2 = alloca i32*, align 8
+  store i32 1, i32* %a, align 4
+  store i32 2, i32* %b, align 4
+  store i32* %a, i32** %p1, align 8
+  store i32* %b, i32** %p2, align 8
+  %p21 = load i32*, i32** %p2, align 8
+  %p2.dref = load i32, i32* %p21, align 4
+  %p12 = load i32*, i32** %p1, align 8
+  store i32 %p2.dref, i32* %p12, align 4
+  %a3 = load i32, i32* %a, align 4
+  ret i32 %a3
+}
+```
+
+---
+
+## 075 — ref: rebind a ref
+
+```ura
+fn main() i32:
+    a i32 = 1
+    b i32 = 2
+    p1 &i32 = &a
+    p2 &i32 = &b
+    p1 = &p2
+    p1 = 9
+    return b
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+define i32 @main() {
+entry:
+  %a = alloca i32, align 4
+  %b = alloca i32, align 4
+  %p1 = alloca i32*, align 8
+  %p2 = alloca i32*, align 8
+  store i32 1, i32* %a, align 4
+  store i32 2, i32* %b, align 4
+  store i32* %a, i32** %p1, align 8
+  store i32* %b, i32** %p2, align 8
+  %p21 = load i32*, i32** %p2, align 8
+  store i32* %p21, i32** %p1, align 8
+  %p12 = load i32*, i32** %p1, align 8
+  store i32 9, i32* %p12, align 4
+  %b3 = load i32, i32* %b, align 4
+  ret i32 %b3
+}
+```
+
+---
+
+## 076 — function: fn returns ref
+
+```ura
+fn same(p &i32) &i32:
+    return &p
+
+fn main() i32:
+    a i32 = 6
+    q &i32 = same(&a)
+    return q
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+define i32* @same(i32* %0) {
+entry:
+  %p = alloca i32*, align 8
+  store i32* %0, i32** %p, align 8
+  %p1 = load i32*, i32** %p, align 8
+  ret i32* %p1
+}
+
+define i32 @main() {
+entry:
+  %a = alloca i32, align 4
+  %q = alloca i32*, align 8
+  store i32 6, i32* %a, align 4
+  %same = call i32* @same(i32* %a)
+  store i32* %same, i32** %q, align 8
+  %q1 = load i32*, i32** %q, align 8
+  %q.dref = load i32, i32* %q1, align 4
+  ret i32 %q.dref
+}
+```
+
+---
+
+## 077 — function: swap
+
+```ura
+fn swap(x &i32, y &i32):
+    t i32 = x
+    x = y
+    y = t
+
+fn main() i32:
+    a i32 = 1
+    b i32 = 2
+    swap(&a, &b)
+    return a * 10 + b
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+define void @swap(i32* %0, i32* %1) {
+entry:
+  %x = alloca i32*, align 8
+  %y = alloca i32*, align 8
+  %t = alloca i32, align 4
+  store i32* %0, i32** %x, align 8
+  store i32* %1, i32** %y, align 8
+  %x1 = load i32*, i32** %x, align 8
+  %x.dref = load i32, i32* %x1, align 4
+  store i32 %x.dref, i32* %t, align 4
+  %y2 = load i32*, i32** %y, align 8
+  %y.dref = load i32, i32* %y2, align 4
+  %x3 = load i32*, i32** %x, align 8
+  store i32 %y.dref, i32* %x3, align 4
+  %t4 = load i32, i32* %t, align 4
+  %y5 = load i32*, i32** %y, align 8
+  store i32 %t4, i32* %y5, align 4
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %a = alloca i32, align 4
+  %b = alloca i32, align 4
+  store i32 1, i32* %a, align 4
+  store i32 2, i32* %b, align 4
+  call void @swap(i32* %a, i32* %b)
+  %a1 = load i32, i32* %a, align 4
+  %MUL = mul i32 %a1, 10
+  %b2 = load i32, i32* %b, align 4
+  %ADD = add i32 %MUL, %b2
+  ret i32 %ADD
+}
+```
+
+---
+
+## 078 — function: overloaded function
+
+```ura
+proto printf(s i8[], ...)
+
+fn show(n i32):
+   printf("int %d\n", n)
+
+fn show(s i8[]):
+   printf("str %s\n", s)
+
+fn main() i32:
+   show(42)
+   show("hi")
+   return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+@const = private unnamed_addr constant [8 x i8] c"int %d\0A\00"
+@const.2 = private unnamed_addr constant [8 x i8] c"str %s\0A\00"
+@const.3 = private unnamed_addr constant [3 x i8] c"hi\00"
+
+declare void @printf(i8*, ...)
+
+define void @show(i32 %0) {
+entry:
+  %n = alloca i32, align 4
+  %array = alloca [8 x i8], align 1
+  store i32 %0, i32* %n, align 4
+  %1 = bitcast [8 x i8]* %array to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %1, i8* align 1 getelementptr inbounds ([8 x i8], [8 x i8]* @const, i32 0, i32 0), i64 8, i1 false)
+  %2 = getelementptr inbounds [8 x i8], [8 x i8]* %array, i32 0, i32 0
+  %n1 = load i32, i32* %n, align 4
+  call void (i8*, ...) @printf(i8* %2, i32 %n1)
+  ret void
+}
+
+define void @show.1(i8* %0) {
+entry:
+  %s = alloca i8*, align 8
+  %array = alloca [8 x i8], align 1
+  store i8* %0, i8** %s, align 8
+  %1 = bitcast [8 x i8]* %array to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %1, i8* align 1 getelementptr inbounds ([8 x i8], [8 x i8]* @const.2, i32 0, i32 0), i64 8, i1 false)
+  %2 = getelementptr inbounds [8 x i8], [8 x i8]* %array, i32 0, i32 0
+  %s1 = load i8*, i8** %s, align 8
+  call void (i8*, ...) @printf(i8* %2, i8* %s1)
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %array = alloca [3 x i8], align 1
+  call void @show(i32 42)
+  %0 = bitcast [3 x i8]* %array to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %0, i8* align 1 getelementptr inbounds ([3 x i8], [3 x i8]* @const.3, i32 0, i32 0), i64 3, i1 false)
+  %1 = getelementptr inbounds [3 x i8], [3 x i8]* %array, i32 0, i32 0
+  call void @show.1(i8* %1)
+  ret i32 0
+}
+
+; Function Attrs: argmemonly nofree nosync nounwind willreturn
+declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
+
+attributes #0 = { argmemonly nofree nosync nounwind willreturn }
+```
+
+---
+
+## 079 — program: null compared to null
+
+```ura
+fn main() i32:
+    if null == null:
+        return 7
+    return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+define i32 @main() {
+entry:
+  br i1 true, label %then, label %endif
+
+then:                                             ; preds = %entry
+  ret i32 7
+
+endif:                                            ; preds = %entry
+  ret i32 0
+}
+```
+
+---
+
+## 080 — statement: if with a ref
+
+```ura
+fn main() i32:
+    b b1 = False
+    p &b1 = &b
+    p = True
+    if b:
+        return 1
+    return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura-module'
+source_filename = "ura-module"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+define i32 @main() {
+entry:
+  %b = alloca i1, align 1
+  %p = alloca i1*, align 8
+  store i1 false, i1* %b, align 1
+  store i1* %b, i1** %p, align 8
+  %p1 = load i1*, i1** %p, align 8
+  store i1 true, i1* %p1, align 1
+  %b2 = load i1, i1* %b, align 1
+  br i1 %b2, label %then, label %endif
+
+then:                                             ; preds = %entry
+  ret i32 1
+
+endif:                                            ; preds = %entry
+  ret i32 0
+}
+```
+
+---
+
+## 081 — array: 1D i32 array: literal, index read, indexed write
+
+```ura
+// stdout: a[0]=10 a[1]=20 a[2]=30
+// stdout: after a[1]=99: 99
+// expect: 0
+
+fn main() i32:
+    a i32[] = [10, 20, 30]
+    output("a[0]=", a[0], " a[1]=", a[1], " a[2]=", a[2], "\n")
+    a[1] = 99
+    output("after a[1]=99: ", a[1], "\n")
+    return 0
+```
+
+---
+
+## 082 — array: variable index and element arithmetic
+
+```ura
+// stdout: a[i]=20 a[i-1]=15
+// stdout: a[0]+a[3]=25
+// expect: 0
+
+fn main() i32:
+    a i32[] = [5, 10, 15, 20]
+    i i32 = 3
+    output("a[i]=", a[i], " a[i-1]=", a[i - 1], "\n")
+    output("a[0]+a[3]=", a[0] + a[3], "\n")
+    return 0
+```
+
+---
+
+## 083 — array: arrays of bool, char, f32
+
+```ura
+// stdout: b[0]=True c[1]=b f[2]=3.000000
+// expect: 0
+
+fn main() i32:
+    b bool[]  = [True, False, True]
+    c char[]  = ['a', 'b', 'c']
+    f f32[] = [1.5, 2.5, 3.0]
+    output("b[0]=", b[0], " c[1]=", c[1], " f[2]=", f[2], "\n")
+    return 0
+```
+
+---
+
+## 084 — array: sized constructor i32[N] with zero-init
+
+```ura
+// stdout: zero-init: 0 0
+// stdout: a[2]=42
+// expect: 0
+
+fn main() i32:
+    a i32[] = i32[5]
+    output("zero-init: ", a[0], " ", a[4], "\n")
+    a[2] = 42
+    output("a[2]=", a[2], "\n")
+    return 0
+```
+
+---
+
+## 085 — array: VLA: runtime-sized stack array
+
+```ura
+// stdout: a[0]=0 a[7]=100
+// expect: 0
+
+fn main() i32:
+    n i32 = 4
+    a i32[] = i32[n * 2]
+    a[7] = 100
+    output("a[0]=", a[0], " a[7]=", a[7], "\n")
+    return 0
+```
+
+---
+
+## 086 — array: indexing a non-array
+
+```ura
+// error: Cannot index 'i32', it is not an array
+fn main() i32:
+    a i32 = 5
+    output(a[0])
+    return 0
+```
+
+---
+
+## 087 — array: non-integer index
+
+```ura
+// error: Array index must be an integer, got f32
+fn main() i32:
+    a i32[] = [1, 2, 3]
+    output(a[1.5])
+    return 0
+```
+
+---
+
+## 088 — array: array literal with mixed element types
+
+```ura
+// error: Array elements must all be the same type
+fn main() i32:
+    a i32[] = [1, True, 3]
+    return 0
+```
+
+---
+
+## 089 — array: array size is not an integer
+
+```ura
+// error: Array size must be an integer
+fn main() i32:
+    a i32[] = i32[1.5]
+    return 0
+```
+
+---
+
+## 090 — array: missing closing bracket on index
+
+```ura
+// error: Expected ']' after array index
+fn main() i32:
+    a i32[] = [1, 2, 3]
+    output(a[0)
+    return 0
+```
+
+---
+
+## 091 — array: empty array literal has no element type
+
+```ura
+// error: Empty array literal has no element type
+fn main() i32:
+    a i32[] = []
+    return 0
+```
+
+---
+
+## 092 — array: unknown member
+
+```ura
+// error: Unknown member '.size'
+fn main() i32:
+    a i32[] = [1, 2, 3]
+    output(a.size)
+    return 0
+```
+
+---
+
+## 093 — function: single ref param: buff hero hp
+
+```ura
+// stdout: <100>
+// expect: 0
+
+fn buff(hp &i32):
+    hp = hp + 20
+
+fn main() i32:
+    hero_hp i32 = 80
+    buff(&hero_hp)
+    output("<", hero_hp, ">\n")
+    return 0
+```
+
+---
+
+## 094 — function: swap two weapon damage values via refs
+
+```ura
+// stdout: <15 30>
+// expect: 0
+
+fn swap_weapons(a &i32, b &i32):
+    temp i32 = a
+    a = b
+    b = temp
+
+fn main() i32:
+    sword  i32 = 30
+    dagger i32 = 15
+    swap_weapons(&sword, &dagger)
+    output("<", sword, " ", dagger, ">\n")
+    return 0
+```
+
+---
+
+## 095 — function: refs used in expression, return result
+
+```ura
+// stdout: <50>
+// expect: 0
+
+fn add_xp(a &i32, b &i32) i32:
+    result i32 = a + b
+    return result
+
+fn main() i32:
+    kill_xp  i32 = 30
+    bonus_xp i32 = 20
+    z        i32
+    z = add_xp(&kill_xp, &bonus_xp)
+    output("<", z, ">\n")
+    return 0
+```
+
+---
+
+## 096 — function: compound ref assign through in a loop
+
+```ura
+// stdout: <5>
+// expect: 0
+
+fn tick(kills &i32):
+    kills += 1
+
+fn main() i32:
+    kills i32 = 0
+    i     i32 = 0
+    while i < 5:
+        tick(&kills)
+        i = i + 1
+    output("<", kills, ">\n")
+    return 0
+```
+
+---
+
+## 097 — function: ref-to-value: ref passing a where value is expected
+
+```ura
+// stdout: HP: 75
+// expect: 0
+
+fn show_hp(hp i32):
+    output("HP: ", hp, "\n")
+
+fn main() i32:
+    hero_hp i32 = 75
+    r &i32 = &hero_hp
+    show_hp(r)
+    return 0
+```
+
+---
+
+## 098 — function: ref parameter mutates the caller (counter)
+
+```ura
+// stderr: exit: 2
+// expect: 1
+
+fn tick(n &i32) i32:
+    n = n + 1
+    return n
+fn main() i32:
+    n i32 = 0
+    tick(&n)
+    tick(&n)
+    return n
+```
+
+---
+
+## 099 — function: a void function with a ref parameter
+
+```ura
+// stderr: exit: 6
+// expect: 1
+
+fn bump(n &i32):
+    n = n + 1
+fn main() i32:
+    n i32 = 5
+    bump(&n)
+    return n
+```
+
+---
+
+## 100 — ref: basic ref: bind to hp, ref write through
+
+```ura
+// stdout: <0>
+// expect: 0
+
+fn main() i32:
+    hp i32 = 100
+    r &i32 = &hp
+    r = 0
+    output("<", hp, ">\n")
+    return 0
+```
+
+---
+
+## 101 — ref: aliasing: two refs to same hp, both see mutations
+
+```ura
+// stdout: <70>
+// expect: 0
+
+fn main() i32:
+    hp i32 = 100
+    a &i32 = &hp
+    b &i32 = &hp
+    a = 80
+    b = b - 10
+    output("<", hp, ">\n")
+    return 0
+```
+
+---
+
+## 102 — ref: compound ref assignment through in a loop
+
+```ura
+// stdout: <200>
+// expect: 0
+
+fn main() i32:
+    xp      i32 = 0
+    xp_gain i32 = 50
+    r &i32 = &xp
+    i       i32 = 0
+    while i < 4:
+        r += xp_gain
+        i = i + 1
+    output("<", xp, ">\n")
+    return 0
+```
+
+---
+
+## 103 — ref: separate refs to different vars: hp ref ref and mp
+
+```ura
+// stdout: HP after hit:   70
+// stdout: MP after spell: 30
+// expect: 0
+
+fn main() i32:
+    hp i32 = 100
+    mp i32 = 50
+
+    shield &i32 = &hp
+    shield = shield - 30
+    output("HP after hit:   ", hp, "\n")
+
+    mana &i32 = &mp
+    mana = mana - 20
+    output("MP after spell: ", mp, "\n")
+    return 0
+```
+
+---
+
+## 104 — ref: multiply and subtract through refs: f64 shield, pay mana
+
+```ura
+// stdout: <20 55>
+// expect: 0
+
+fn main() i32:
+    shield i32 = 10
+    mp     i32 = 80
+
+    s &i32 = &shield
+    m &i32 = &mp
+    s *= 2
+    m -= 25
+
+    output("<", shield, " ", mp, ">\n")
+    return 0
+```
+
+---
+
+## 105 — ref: chain of compound mutations ref through a
+
+```ura
+// stdout: <270>
+// expect: 0
+
+fn main() i32:
+    score i32 = 0
+    r &i32 = &score
+    r += 100
+    r += 50
+    r *= 2
+    r -= 30
+    output("<", score, ">\n")
+    return 0
+```
+
+---
+
+## 106 — ref: reference in conditional
+
+```ura
+// stdout: healthy
+// expect: 0
+
+fn main() i32:
+    hp i32 = 75
+    r &i32 = &hp
+    if r > 50:
+        output("healthy\n")
+    else:
+        output("critical\n")
+    return 0
+```
+
+---
+
+## 107 — ref: a ref reads correctly through every operator + as a by-value arg
+
+```ura
+// stdout: 15
+// stdout: 7
+// stdout: 24
+// stdout: True
+// stdout: True
+// stdout: 8
+// stdout: 24
+// stdout: -12
+// stdout: -13
+// stdout: 24
+// expect: 0
+
+fn twice(n i32) i32:
+    return n * 2
+
+fn main() i32:
+    x i32 = 12
+    r &i32 = &x
+    output(r + 3, "\n")
+    output(r - 5, "\n")
+    output(r * 2, "\n")
+    output(r > 10, "\n")
+    output(r == 12, "\n")
+    output(r & 10, "\n")
+    output(r << 1, "\n")
+    output(-r, "\n")
+    output(~r, "\n")
+    output(twice(r), "\n")
+    return 0
+```
+
+---
+
+## 108 — ref: ref? nullable: bound at declaration, guarded reads pass, write-through works
+
+```ura
+// stdout: 42
+// stdout: 7
+// expect: 0
+
+fn main() i32:
+    x i32 = 42
+    m &i32 = &x
+    output(m, "\n")
+    m = 7
+    output(x, "\n")
+    return 0
+```
+
+---
+
+## 109 — ref: nested fn shares an enclosing var through a ref parameter (the sanctioned path)
+
+```ura
+// stdout: 6
+// expect: 0
+
+fn main() i32:
+    x i32 = 5
+    fn bump(n &i32):
+        n = n + 1
+    bump(&x)
+    output(x, "\n")
+    return 0
+```
+
+---
+
+## 110 — ref: a ref reads correctly through the remaining math / comparison / bitwise / cast / logical ops
+
+```ura
+// stdout: 3
+// stdout: 2
+// stdout: False
+// stdout: True
+// stdout: True
+// stdout: False
+// stdout: 23
+// stdout: 16
+// stdout: 5
+// stdout: 20
+// stdout: False
+// stdout: True
+// stdout: False
+// expect: 0
+
+fn main() i32:
+    a i32 = 20
+    r &i32 = &a
+    output(r / 6, "\n")
+    output(r % 6, "\n")
+    output(r != 20, "\n")
+    output(r < 25, "\n")
+    output(r <= 20, "\n")
+    output(r >= 21, "\n")
+    output(r | 3, "\n")
+    output(r ^ 4, "\n")
+    output(r >> 2, "\n")
+    output(r as i64, "\n")
+    flag bool = True
+    b &bool = &flag
+    output(b and False, "\n")
+    output(b or False, "\n")
+    output(not b, "\n")
+    return 0
+```
+
+---
+
+## 111 — ref: a reference must be bound when declared
+
+```ura
+// error: A reference must be bound when declared (use 'ref?' for an optional reference)
+
+fn main() i32:
+    r &i32
+    return 0
+```
+
+---
+
+## 112 — ref: binding a reference to the wrong type
+
+```ura
+// error: Reference type mismatch: expected array, got i32
+
+fn main() i32:
+    x i32 = 5
+    y &char[] = &x
+    return 0
+```
+
+---
+
+## 113 — ref: a ref parameter given a value
+
+```ura
+// error: Argument 1 to 'tick' must be passed by reference (ref x)
+
+fn tick(n &i32) i32:
+    n = n + 1
+    return n
+
+fn main() i32:
+    return tick(5)
+```
+
+---
+
+## 114 — ref: taking a reference to a literal
+
+```ura
+// error: Expected a variable after 'ref'
+
+fn main() i32:
+    r &i32 = &5
+    return 0
+```
+
+---
+
+## 115 — ref: a by-value parameter given a reference
+
+```ura
+// error: Argument 1 to 'twice' does not take a reference
+
+fn twice(n i32) i32:
+    return n * 2
+
+fn main() i32:
+    x i32 = 5
+    return twice(&x)
+```
+
+---
+
+## 116 — ref: a reference to a name that does not exist
+
+```ura
+// error: Undeclared variable 'ghost'
+
+fn main() i32:
+    r &i32 = &ghost
+    return 0
+```
+
+---
+
+## 117 — ref: a nested function may not capture an enclosing local
+
+```ura
+// error: Cannot use 'r' from an enclosing function - pass it as a parameter
+
+fn main() i32:
+    x i32 = 5
+    r &i32 = &x
+    fn inner() i32:
+        return r
+    return inner()
+```
+
+---
+
+## 118 — ref: linked list: build with ref, walk it with cur = ref cur.next
+
+```ura
+// stdout: sum=60
+// expect: 0
+struct Node:
+    value i32
+    next &Node
+
+fn main() i32:
+    a Node
+    a.value = 10
+    b Node
+    b.value = 20
+    c Node
+    c.value = 30
+    a.next = &b
+    b.next = &c
+    cur &Node = &a
+    sum i32 = 0
+    while cur != null:
+        sum += cur.value
+        cur = &cur.next
+    output("sum=", sum, "\n")
+    return 0
+```
+
+---
+
+## 119 — ref: a ref parameter rebinds a struct's ref field in place (add-front)
+
+```ura
+// stdout: 2 1
+// expect: 0
+struct Node:
+    content i32
+    next &Node
+
+struct Lst:
+    head &Node
+
+fn push(lst &Lst, node &Node):
+    node.next = &lst.head
+    lst.head  = &node
+
+fn main() i32:
+    lst Lst
+    a Node
+    a.content = 1
+    b Node
+    b.content = 2
+    push(&lst, &a)
+    push(&lst, &b)
+    cur &Node = &lst.head
+    while cur != null:
+        output(cur.content, " ")
+        cur = &cur.next
+    output("\n")
+    return 0
+```
+
+---
+
+## 120 — ref: ref? compared to null with == and !=, bound and unbound
+
+```ura
+// stdout: False True True
+// expect: 0
+struct N:
+    v i32
+    nx &N
+
+fn main() i32:
+    a N
+    a.v = 1
+    p &N = &a
+    q &N = null
+    output(p == null, " ", p != null, " ", q == null, "\n")
+    return 0
+```
+
+---
+
+## 121 — ref: chained rebind removes the head: lst.head = ref lst.head.next
+
+```ura
+// stdout: 2
+// expect: 0
+struct Node:
+    v i32
+    next &Node
+
+struct Lst:
+    head &Node
+
+fn main() i32:
+    a Node
+    a.v = 1
+    b Node
+    b.v = 2
+    a.next = &b
+    lst Lst
+    lst.head = &a
+    lst.head = &lst.head.next
+    output(lst.head.v, "\n")
+    return 0
+```
+
+---
+
+## 122 — ref: = ref rebinds the pointer, = value writes through the referent
+
+```ura
+// stdout: 99 99 88
+// expect: 0
+fn main() i32:
+    x i32 = 10
+    y i32 = 20
+    cur &i32 = &x
+    cur = 99
+    output(x, " ")
+    cur = &y
+    cur = 88
+    output(x, " ", y, "\n")
+    return 0
+```
+
+---
+
+## 123 — ref: ref a == ref a is identity true, ref a == ref b is false
+
+```ura
+// stdout: True False
+// expect: 0
+struct N:
+    v i32
+
+fn main() i32:
+    a N
+    b N
+    output(&a == &a, " ", &a == &b, "\n")
+    return 0
+```
+
+---
+
+## 124 — ref: a value function cannot return a reference
+
+```ura
+// error: 'f' returns a value, not a reference; drop the `ref`
+fn f() i32:
+    x i32 = 5
+    return &x
+
+fn main() i32:
+    output(f(), "\n")
+    return 0
+```
+
+---
+
+## 125 — ref: a ref declaration cannot be bound to a plain value
+
+```ura
+// error: A reference must be bound to a variable (ref x)
+fn main() i32:
+    m &i32 = 5
+    output(m, "\n")
+    return 0
+```
+
+---
+
+## 126 — ref: a non-nullable value cannot be compared to null
+
+```ura
+// error: Only arrays and pointers can be null, not i32
+fn main() i32:
+    x i32 = 5
+    output(x == null, "\n")
+    return 0
+```
+
+---
+
+## 127 — variable: an array type carries no size
+
+```ura
+// error: An array type carries no size; ex. 'arr int[] = int[3]' to make one
+
+fn main() i32:
+    xs i32[3]
+    xs[0] = 7
+    return 0
 ```
 

@@ -2,110 +2,87 @@
 
 ## index
 
-- 001 — output: basic output: strings, ints, floats, bools
-- 002 — output: output with expressions: arithmetic inline
-- 003 — output: output all supported types in one block
-- 004 — output: output() auto-formats each argument by its type
+- 001 — calls: output a struct
+- 002 — function: multi line string
+- 003 — builtin: output picks the spec from each argument
+- 004 — builtin: output with literals and escapes
 - 005 — errput: errput writes to stderr, output writes to stdout
 - 006 — errput: errput auto-formats every scalar type, like output
 - 007 — errput: errput expands a struct with the default dump
 - 008 — errput: errput honours operator output()
 - 009 — errput: errput prints arrays and nested arrays
-- 010 — errput: errput follows a bound ref? and prints null when unbound
-- 011 — errput: errput() with no arguments still emits the colour pair
-- 012 — errput: errput and output keep separate struct printers
-- 013 — string: String constructors and accessors
-- 014 — string: assign, push, pop, join and clear
-- 015 — string: find, contains, starts_with and ends_with
-- 016 — string: transforms: upper, lower, substr, trim, replace, repeat, reverse
-- 017 — string: operators: + += == != < > against String and against a literal
-- 018 — string: to_int, compare and chained transformations
-- 019 — output: output() prints a struct and its nested struct
-- 020 — output: output() follows a bound 'ref?' and prints null when unbound
-- 021 — output: output() prints [Circular] instead of looping forever
-- 022 — output: output() expands array fields, including 2D
+- 010 — errput: errput() with no arguments still emits the colour pair
+- 011 — errput: errput and output keep separate struct printers
+- 012 — output: basic output: strings, ints, floats, bools
+- 013 — output: output with expressions: arithmetic inline
+- 014 — output: output all supported types in one block
+- 015 — output: output() auto-formats each argument by its type
+- 016 — string: String constructors and accessors
+- 017 — string: assign, push, pop, join and clear
+- 018 — string: find, contains, starts_with and ends_with
+- 019 — string: transforms: upper, lower, substr, trim, replace, repeat, reverse
+- 020 — string: operators: + += == != < > against String and against a literal
+- 021 — string: to_int, compare and chained transformations
+- 022 — struct: output() prints a struct and its nested struct
+- 023 — struct: output() follows a bound 'ref?' and prints null when unbound
+- 024 — struct: output() prints [Circular] instead of looping forever
+- 025 — struct: output() expands array fields, including 2D
 
 ---
 
-## 001 — output: basic output: strings, ints, floats, bools
+## 001 — calls: output a struct
 
 ```ura
-// stdout: === Aldric enters the dungeon ===
-// stdout: Floor: 1
-// stdout: Alive: True
-// stdout: Speed: 1.500000
-// stdout: Ready to fight!
-// expect: 0
+struct User:
+    a i32
 
 fn main() i32:
-    output("=== Aldric enters the dungeon ===\n")
-    output("Floor: ", 1, "\n")
-    output("Alive: ", True, "\n")
-    output("Speed: ", 1.5, "\n")
-    output("Ready to fight!\n")
+    u User
+    output(u)
     return 0
 ```
 
 ---
 
-## 002 — output: output with expressions: arithmetic inline
+## 002 — function: multi line string
 
 ```ura
-// stdout: Damage dealt: 17
-// stdout: XP gained:    150
-// stdout: Gold split:   30
-// stdout: Bonus:        37
-// expect: 0
+fn foo(ptr i32):
 
 fn main() i32:
-    output("Damage dealt: ", 25 - 8, "\n")
-    output("XP gained:    ", 3 * 50, "\n")
-    output("Gold split:   ", 120 / 4, "\n")
-    output("Bonus:        ", 7 + 3 * 10, "\n")
-    return 0
+   a i32 = 10
+   foo(a)
+   output(
+        "hello "
+        "world",
+        12, "\n")
 ```
 
 ---
 
-## 003 — output: output all supported types in one block
+## 003 — builtin: output picks the spec from each argument
 
 ```ura
-// stdout: Name:  Aldric
-// stdout: HP:    100
-// stdout: Grade: S
-// stdout: Alive: True
-// stdout: Speed: 1.750000
-// expect: 0
-
 fn main() i32:
-    name  char[] = "Aldric"
-    hp    i32   = 100
-    grade char  = 'S'
-    alive bool  = True
-    speed f32 = 1.75
-
-    output("Name:  ", name,  "\n")
-    output("HP:    ", hp,    "\n")
-    output("Grade: ", grade, "\n")
-    output("Alive: ", alive, "\n")
-    output("Speed: ", speed, "\n")
-    return 0
+   n i32 = 42
+   c i8 = 'z'
+   s i8[] = "hi"
+   flag b1 = n > 1
+   output(n, " ", c, " ", s, " ", flag, "\n")
+   return 0
 ```
 
 ---
 
-## 004 — output: output() auto-formats each argument by its type
+## 004 — builtin: output with literals and escapes
 
 ```ura
-// stdout: hello ura 42 True
-// expect: 0
-
 fn main() i32:
-    name char[] = "ura"
-    n i32 = 42
-    ok bool = True
-    output("hello ", name, " ", n, " ", ok, "\n")
-    return 0
+   n i32 = 3
+   output("n=", n, "\ttab\n")
+   output("no newline")
+   output("\n")
+   return 0
 ```
 
 ---
@@ -211,32 +188,7 @@ fn main() i32:
 
 ---
 
-## 010 — errput: errput follows a bound ref? and prints null when unbound
-
-```ura
-// stderr: [0;31munbound Node{value: 1, next: null}
-// expect: 1
-
-struct Node:
-    value i32
-    ref? next Node
-
-fn main() i32:
-    ref? head Node = new Node
-    head.value = 1
-    errput("unbound ", head, "\n")
-    ref? tail Node = new Node
-    tail.value = 2
-    head.next = &tail
-    errput("bound ", head, "\n")
-    clean tail
-    clean head
-    return 0
-```
-
----
-
-## 011 — errput: errput() with no arguments still emits the colour pair
+## 010 — errput: errput() with no arguments still emits the colour pair
 
 ```ura
 // stderr: [0;31m[0m[0;31mafter the empty call
@@ -250,7 +202,7 @@ fn main() i32:
 
 ---
 
-## 012 — errput: errput and output keep separate struct printers
+## 011 — errput: errput and output keep separate struct printers
 
 ```ura
 // stdout: out Point{x: 3, y: 4}
@@ -273,7 +225,90 @@ fn main() i32:
 
 ---
 
-## 013 — string: String constructors and accessors
+## 012 — output: basic output: strings, ints, floats, bools
+
+```ura
+// stdout: === Aldric enters the dungeon ===
+// stdout: Floor: 1
+// stdout: Alive: True
+// stdout: Speed: 1.500000
+// stdout: Ready to fight!
+// expect: 0
+
+fn main() i32:
+    output("=== Aldric enters the dungeon ===\n")
+    output("Floor: ", 1, "\n")
+    output("Alive: ", True, "\n")
+    output("Speed: ", 1.5, "\n")
+    output("Ready to fight!\n")
+    return 0
+```
+
+---
+
+## 013 — output: output with expressions: arithmetic inline
+
+```ura
+// stdout: Damage dealt: 17
+// stdout: XP gained:    150
+// stdout: Gold split:   30
+// stdout: Bonus:        37
+// expect: 0
+
+fn main() i32:
+    output("Damage dealt: ", 25 - 8, "\n")
+    output("XP gained:    ", 3 * 50, "\n")
+    output("Gold split:   ", 120 / 4, "\n")
+    output("Bonus:        ", 7 + 3 * 10, "\n")
+    return 0
+```
+
+---
+
+## 014 — output: output all supported types in one block
+
+```ura
+// stdout: Name:  Aldric
+// stdout: HP:    100
+// stdout: Grade: S
+// stdout: Alive: True
+// stdout: Speed: 1.750000
+// expect: 0
+
+fn main() i32:
+    name  char[] = "Aldric"
+    hp    i32   = 100
+    grade char  = 'S'
+    alive bool  = True
+    speed f32 = 1.75
+
+    output("Name:  ", name,  "\n")
+    output("HP:    ", hp,    "\n")
+    output("Grade: ", grade, "\n")
+    output("Alive: ", alive, "\n")
+    output("Speed: ", speed, "\n")
+    return 0
+```
+
+---
+
+## 015 — output: output() auto-formats each argument by its type
+
+```ura
+// stdout: hello ura 42 True
+// expect: 0
+
+fn main() i32:
+    name char[] = "ura"
+    n i32 = 42
+    ok bool = True
+    output("hello ", name, " ", n, " ", ok, "\n")
+    return 0
+```
+
+---
+
+## 016 — string: String constructors and accessors
 
 ```ura
 // stdout: 0 True
@@ -314,7 +349,7 @@ fn main() i32:
 
 ---
 
-## 014 — string: assign, push, pop, join and clear
+## 017 — string: assign, push, pop, join and clear
 
 ```ura
 // stdout: abc 3
@@ -364,7 +399,7 @@ fn main() i32:
 
 ---
 
-## 015 — string: find, contains, starts_with and ends_with
+## 018 — string: find, contains, starts_with and ends_with
 
 ```ura
 // stdout: 6
@@ -417,7 +452,7 @@ fn main() i32:
 
 ---
 
-## 016 — string: transforms: upper, lower, substr, trim, replace, repeat, reverse
+## 019 — string: transforms: upper, lower, substr, trim, replace, repeat, reverse
 
 ```ura
 // stdout: HELLO WORLD
@@ -501,7 +536,7 @@ fn main() i32:
 
 ---
 
-## 017 — string: operators: + += == != < > against String and against a literal
+## 020 — string: operators: + += == != < > against String and against a literal
 
 ```ura
 // stdout: hello world
@@ -567,7 +602,7 @@ fn main() i32:
 
 ---
 
-## 018 — string: to_int, compare and chained transformations
+## 021 — string: to_int, compare and chained transformations
 
 ```ura
 // stdout: 12345
@@ -621,7 +656,7 @@ fn main() i32:
 
 ---
 
-## 019 — output: output() prints a struct and its nested struct
+## 022 — struct: output() prints a struct and its nested struct
 
 ```ura
 // stdout: flat   Room{name: hall, floor: 2}
@@ -655,7 +690,7 @@ fn main() i32:
 
 ---
 
-## 020 — output: output() follows a bound 'ref?' and prints null when unbound
+## 023 — struct: output() follows a bound 'ref?' and prints null when unbound
 
 ```ura
 // stdout: unbound Node{value: 1, next: null}
@@ -664,7 +699,7 @@ fn main() i32:
 
 struct Node:
     value i32
-    ref? next Node
+    next &Node
 
 fn main() i32:
     a Node
@@ -680,7 +715,7 @@ fn main() i32:
 
 ---
 
-## 021 — output: output() prints [Circular] instead of looping forever
+## 024 — struct: output() prints [Circular] instead of looping forever
 
 ```ura
 // stdout: cycle Node{value: 1, next: ref Node{value: 2, next: ref [Circular]}}
@@ -689,7 +724,7 @@ fn main() i32:
 
 struct Node:
     value i32
-    ref? next Node
+    next &Node
 
 fn main() i32:
     a Node
@@ -705,7 +740,7 @@ fn main() i32:
 
 ---
 
-## 022 — output: output() expands array fields, including 2D
+## 025 — struct: output() expands array fields, including 2D
 
 ```ura
 // stdout: Flat{tag: flat, rooms: [Room{floor: 3}, Room{floor: 4}]}

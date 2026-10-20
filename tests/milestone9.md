@@ -2,41 +2,198 @@
 
 ## index
 
-- 001 — operator: operator + on two structs
-- 002 — operator: two overloads of + with different right-hand types
-- 003 — operator: operator == returning bool
-- 004 — operator: no overload for that operator
-- 005 — operator: assigning a different struct
-- 006 — operator: indexing an array literal directly
-- 007 — operator: operators and a method on the same struct
-- 008 — operator: assigning a void result
-- 009 — operator: a binary operator with mismatched scalar types
-- 010 — operator: operator = on reassignment, but not on declaration
-- 011 — operator: compound assignment operators
-- 012 — operator: a compound operator with no overload
-- 013 — operator: return unwinds every scope, and keeps the returned local
-- 014 — operator: every operator on one struct, and = from an i32 overload
-- 015 — operator: a temporary is destroyed at the end of its statement
-- 016 — operator: every overloadable operator on one struct
-- 017 — operator: bitwise operator overloads, and one returning a scalar
-- 018 — operator: compound bitwise assignment overloads
-- 019 — operator: bitwise and shift overloads taking a ref parameter
-- 020 — operator: operator output replaces the default struct dump, nested too
-- 021 — operator: operator outside a struct definition
-- 022 — operator: operator missing operator symbol
-- 023 — operator: adding two structs without an operator + overload
-- 024 — static method: a pub fn is static: no self, called with ::
-- 025 — static method: calling a non-pub method with ::
-- 026 — static method: :: on a type that does not exist
-- 027 — static method: two structs declare the same pub fn, and statics compose
-- 028 — static method: pub inside struct must be followed by fn
-- 029 — static method: instance method called via :: instead of .
-- 030 — static method: pub fn called via . instead of ::
-- 031 — static method: pub may only be used inside a struct
+- 001 — method: a pub fn is static: no self, called with ::
+- 002 — method: calling a non-pub method with ::
+- 003 — method: :: on a type that does not exist
+- 004 — method: two structs declare the same pub fn, and statics compose
+- 005 — operator: operator outside a struct definition
+- 006 — operator: operator missing operator symbol
+- 007 — operator: adding two structs without an operator + overload
+- 008 — operator: operator + on two structs
+- 009 — operator: two overloads of + with different right-hand types
+- 010 — operator: operator == returning bool
+- 011 — operator: no overload for that operator
+- 012 — operator: assigning a different struct
+- 013 — operator: indexing an array literal directly
+- 014 — operator: operators and a method on the same struct
+- 015 — operator: assigning a void result
+- 016 — operator: a binary operator with mismatched scalar types
+- 017 — operator: operator = on reassignment, but not on declaration
+- 018 — operator: compound assignment operators
+- 019 — operator: a compound operator with no overload
+- 020 — operator: return unwinds every scope, and keeps the returned local
+- 021 — operator: every operator on one struct, and = from an i32 overload
+- 022 — operator: a temporary is destroyed at the end of its statement
+- 023 — operator: every overloadable operator on one struct
+- 024 — operator: bitwise operator overloads, and one returning a scalar
+- 025 — operator: compound bitwise assignment overloads
+- 026 — operator: bitwise and shift overloads taking a ref parameter
+- 027 — operator: operator output replaces the default struct dump, nested too
+- 028 — struct: pub inside struct must be followed by fn
+- 029 — struct: instance method called via :: instead of .
+- 030 — struct: pub fn called via . instead of ::
+- 031 — struct: pub may only be used inside a struct
 
 ---
 
-## 001 — operator: operator + on two structs
+## 001 — method: a pub fn is static: no self, called with ::
+
+```ura
+// stdout: floor = 7
+// expect: 0
+
+struct Room:
+    floor i32
+
+    pub fn make(f i32) Room:
+        r Room
+        r.floor = f
+        return r
+
+fn main() i32:
+    r Room = Room::make(7)
+    output("floor = ", r.floor, "\n")
+    return 0
+```
+
+---
+
+## 002 — method: calling a non-pub method with ::
+
+```ura
+// error: 'Room::depth' needs a receiver; call it on a value, or declare it 'pub fn' to make it static
+
+struct Room:
+    floor i32
+
+    fn depth() i32:
+        return self.floor
+
+fn main() i32:
+    output(Room::depth(), "\n")
+    return 0
+```
+
+---
+
+## 003 — method: :: on a type that does not exist
+
+```ura
+// error: Unknown type 'Nope'
+
+fn main() i32:
+    output(Nope::make(), "\n")
+    return 0
+```
+
+---
+
+## 004 — method: two structs declare the same pub fn, and statics compose
+
+```ura
+// stdout: room 3 tower 9
+// stdout: zero 0
+// stdout: level 40
+// stdout: method 5
+// stdout: mixed 3
+// expect: 0
+
+struct Room:
+    floor i32
+
+    pub fn create(f i32) Room:
+        r Room
+        r.floor = f
+        return r
+
+    pub fn zero() Room:
+        return Room::create(0)
+
+    pub fn level(f i32) i32:
+        return f * 10
+
+    fn depth() i32:
+        return self.floor
+
+struct Tower:
+    height i32
+
+    pub fn create(h i32) Tower:
+        t Tower
+        t.height = h
+        return t
+
+fn main() i32:
+    a Room  = Room::create(3)
+    b Tower = Tower::create(9)
+    output("room ", a.floor, " tower ", b.height, "\n")
+    output("zero ", Room::zero().floor, "\n")
+    output("level ", Room::level(4), "\n")
+    output("method ", Room::create(5).depth(), "\n")
+    n i32 = Room::create(2).depth() + Tower::create(1).height
+    output("mixed ", n, "\n")
+    return 0
+```
+
+---
+
+## 005 — operator: operator outside a struct definition
+
+```ura
+// error: 'operator' may only be declared inside a struct
+use "@/header"
+
+operator + (a i32, b i32) i32:
+    return a + b
+
+fn main() i32:
+    output("hi\n")
+    return 0
+```
+
+---
+
+## 006 — operator: operator missing operator symbol
+
+```ura
+// error: Expected an operator after 'operator' (one of + - * / % & | ^ << >> == != < > <= >= = += -= *= /= %= &= |= ^= <<= >>= drop)
+use "@/header"
+
+struct Vec:
+    x i32
+
+    operator () Vec:
+        return self
+
+fn main() i32:
+    v Vec
+    v.x = 1
+    return 0
+```
+
+---
+
+## 007 — operator: adding two structs without an operator + overload
+
+```ura
+// error: Struct Vec has no 'operator +' taking Vec; declare one inside the struct
+use "@/header"
+
+struct Vec:
+    x i32
+    y i32
+
+fn main() i32:
+    a Vec
+    b Vec
+    c Vec = a + b
+    output(c.x, "\n")
+    return 0
+```
+
+---
+
+## 008 — operator: operator + on two structs
 
 ```ura
 // stdout: 11 22
@@ -65,7 +222,7 @@ fn main() i32:
 
 ---
 
-## 002 — operator: two overloads of + with different right-hand types
+## 009 — operator: two overloads of + with different right-hand types
 
 ```ura
 // stdout: 11 6
@@ -94,7 +251,7 @@ fn main() i32:
 
 ---
 
-## 003 — operator: operator == returning bool
+## 010 — operator: operator == returning bool
 
 ```ura
 // stdout: True False
@@ -121,7 +278,7 @@ fn main() i32:
 
 ---
 
-## 004 — operator: no overload for that operator
+## 011 — operator: no overload for that operator
 
 ```ura
 // error: Struct Vec has no 'operator -' taking Vec; declare one inside the struct
@@ -138,7 +295,7 @@ fn main() i32:
 
 ---
 
-## 005 — operator: assigning a different struct
+## 012 — operator: assigning a different struct
 
 ```ura
 // error: Cannot assign Point to Vec; they are different structs
@@ -158,7 +315,7 @@ fn main() i32:
 
 ---
 
-## 006 — operator: indexing an array literal directly
+## 013 — operator: indexing an array literal directly
 
 ```ura
 // stdout: 20
@@ -171,7 +328,7 @@ fn main() i32:
 
 ---
 
-## 007 — operator: operators and a method on the same struct
+## 014 — operator: operators and a method on the same struct
 
 ```ura
 // stdout: (11, 22)
@@ -217,7 +374,7 @@ fn main() i32:
 
 ---
 
-## 008 — operator: assigning a void result
+## 015 — operator: assigning a void result
 
 ```ura
 // error: Cannot assign void to Vec
@@ -236,7 +393,7 @@ fn main() i32:
 
 ---
 
-## 009 — operator: a binary operator with mismatched scalar types
+## 016 — operator: a binary operator with mismatched scalar types
 
 ```ura
 // error: Cannot use '+' with i32 and array
@@ -250,7 +407,7 @@ fn main() i32:
 
 ---
 
-## 010 — operator: operator = on reassignment, but not on declaration
+## 017 — operator: operator = on reassignment, but not on declaration
 
 ```ura
 // stdout: decl   5 0
@@ -282,7 +439,7 @@ fn main() i32:
 
 ---
 
-## 011 — operator: compound assignment operators
+## 018 — operator: compound assignment operators
 
 ```ura
 // stdout: after += 14
@@ -314,7 +471,7 @@ fn main() i32:
 
 ---
 
-## 012 — operator: a compound operator with no overload
+## 019 — operator: a compound operator with no overload
 
 ```ura
 // error: Struct Vec has no 'operator *=' taking Vec; declare one inside the struct
@@ -331,7 +488,7 @@ fn main() i32:
 
 ---
 
-## 013 — operator: return unwinds every scope, and keeps the returned local
+## 020 — operator: return unwinds every scope, and keeps the returned local
 
 ```ura
 // stdout: drop 10
@@ -376,7 +533,7 @@ fn main() i32:
 
 ---
 
-## 014 — operator: every operator on one struct, and = from an i32 overload
+## 021 — operator: every operator on one struct, and = from an i32 overload
 
 ```ura
 // stdout: (11, 22) tag 0
@@ -461,7 +618,7 @@ fn main() i32:
 
 ---
 
-## 015 — operator: a temporary is destroyed at the end of its statement
+## 022 — operator: a temporary is destroyed at the end of its statement
 
 ```ura
 // stdout: show 3
@@ -550,7 +707,7 @@ fn main() i32:
 
 ---
 
-## 016 — operator: every overloadable operator on one struct
+## 023 — operator: every overloadable operator on one struct
 
 ```ura
 // stdout: a + b   (11, 15)
@@ -691,7 +848,7 @@ fn main() i32:
 
 ---
 
-## 017 — operator: bitwise operator overloads, and one returning a scalar
+## 024 — operator: bitwise operator overloads, and one returning a scalar
 
 ```ura
 // stdout: and 8  or 14  xor 6
@@ -751,7 +908,7 @@ fn main() i32:
 
 ---
 
-## 018 — operator: compound bitwise assignment overloads
+## 025 — operator: compound bitwise assignment overloads
 
 ```ura
 // stdout: 8 11 14 56 28
@@ -793,7 +950,7 @@ fn main() i32:
 
 ---
 
-## 019 — operator: bitwise and shift overloads taking a ref parameter
+## 026 — operator: bitwise and shift overloads taking a ref parameter
 
 ```ura
 // stdout: a & b:  8
@@ -863,7 +1020,7 @@ fn main() i32:
 
 ---
 
-## 020 — operator: operator output replaces the default struct dump, nested too
+## 027 — operator: operator output replaces the default struct dump, nested too
 
 ```ura
 // stdout: direct: custom
@@ -904,164 +1061,7 @@ fn main() i32:
 
 ---
 
-## 021 — operator: operator outside a struct definition
-
-```ura
-// error: 'operator' may only be declared inside a struct
-use "@/header"
-
-operator + (a i32, b i32) i32:
-    return a + b
-
-fn main() i32:
-    output("hi\n")
-    return 0
-```
-
----
-
-## 022 — operator: operator missing operator symbol
-
-```ura
-// error: Expected an operator after 'operator' (one of + - * / % & | ^ << >> == != < > <= >= = += -= *= /= %= &= |= ^= <<= >>= drop)
-use "@/header"
-
-struct Vec:
-    x i32
-
-    operator () Vec:
-        return self
-
-fn main() i32:
-    v Vec
-    v.x = 1
-    return 0
-```
-
----
-
-## 023 — operator: adding two structs without an operator + overload
-
-```ura
-// error: Struct Vec has no 'operator +' taking Vec; declare one inside the struct
-use "@/header"
-
-struct Vec:
-    x i32
-    y i32
-
-fn main() i32:
-    a Vec
-    b Vec
-    c Vec = a + b
-    output(c.x, "\n")
-    return 0
-```
-
----
-
-## 024 — static method: a pub fn is static: no self, called with ::
-
-```ura
-// stdout: floor = 7
-// expect: 0
-
-struct Room:
-    floor i32
-
-    pub fn make(f i32) Room:
-        r Room
-        r.floor = f
-        return r
-
-fn main() i32:
-    r Room = Room::make(7)
-    output("floor = ", r.floor, "\n")
-    return 0
-```
-
----
-
-## 025 — static method: calling a non-pub method with ::
-
-```ura
-// error: 'Room::depth' needs a receiver; call it on a value, or declare it 'pub fn' to make it static
-
-struct Room:
-    floor i32
-
-    fn depth() i32:
-        return self.floor
-
-fn main() i32:
-    output(Room::depth(), "\n")
-    return 0
-```
-
----
-
-## 026 — static method: :: on a type that does not exist
-
-```ura
-// error: Unknown type 'Nope'
-
-fn main() i32:
-    output(Nope::make(), "\n")
-    return 0
-```
-
----
-
-## 027 — static method: two structs declare the same pub fn, and statics compose
-
-```ura
-// stdout: room 3 tower 9
-// stdout: zero 0
-// stdout: level 40
-// stdout: method 5
-// stdout: mixed 3
-// expect: 0
-
-struct Room:
-    floor i32
-
-    pub fn create(f i32) Room:
-        r Room
-        r.floor = f
-        return r
-
-    pub fn zero() Room:
-        return Room::create(0)
-
-    pub fn level(f i32) i32:
-        return f * 10
-
-    fn depth() i32:
-        return self.floor
-
-struct Tower:
-    height i32
-
-    pub fn create(h i32) Tower:
-        t Tower
-        t.height = h
-        return t
-
-fn main() i32:
-    a Room  = Room::create(3)
-    b Tower = Tower::create(9)
-    output("room ", a.floor, " tower ", b.height, "\n")
-    output("zero ", Room::zero().floor, "\n")
-    output("level ", Room::level(4), "\n")
-    output("method ", Room::create(5).depth(), "\n")
-    n i32 = Room::create(2).depth() + Tower::create(1).height
-    output("mixed ", n, "\n")
-    return 0
-```
-
----
-
-## 028 — static method: pub inside struct must be followed by fn
+## 028 — struct: pub inside struct must be followed by fn
 
 ```ura
 // error: Expected 'fn' after 'pub'
@@ -1079,7 +1079,7 @@ fn main() i32:
 
 ---
 
-## 029 — static method: instance method called via :: instead of .
+## 029 — struct: instance method called via :: instead of .
 
 ```ura
 // error: 'Counter::bump' needs a receiver; call it on a value, or declare it 'pub fn' to make it static
@@ -1100,7 +1100,7 @@ fn main() i32:
 
 ---
 
-## 030 — static method: pub fn called via . instead of ::
+## 030 — struct: pub fn called via . instead of ::
 
 ```ura
 // error: 'm.make' is a 'pub fn', so it is static and takes no receiver; call it as 'Maker::make()'
@@ -1123,13 +1123,13 @@ fn main() i32:
 
 ---
 
-## 031 — static method: pub may only be used inside a struct
+## 031 — struct: pub may only be used inside a struct
 
 ```ura
 // error: 'pub' marks a static method; it may only be used inside a struct
 use "@/header"
 
-pub fn helper() void:
+pub fn helper():
     return
 
 fn main() i32:

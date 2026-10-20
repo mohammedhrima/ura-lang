@@ -82,7 +82,7 @@ fn main() i32:
 
 fn main() i32:
     nums i32[] = [1, 2, 3, 4]
-    for x &in nums:
+    for ref x in nums:
         x = x * 2
     for x in nums:
         output(x, " ")
@@ -122,7 +122,7 @@ fn main() i32:
 ```ura
 // error: 'for ref' needs an array; a range yields values, not storage
 fn main() i32:
-    for i &in 0..5:
+    for ref i in 0..5:
         output(i)
     return 0
 ```
@@ -168,7 +168,7 @@ struct World:
         for r in self.rooms:
             output(r.floor, " ")
         output("\n")
-        for r &in self.rooms:
+        for ref r in self.rooms:
             r.floor = r.floor * 10
         for r in self.rooms:
             output(r.floor, " ")

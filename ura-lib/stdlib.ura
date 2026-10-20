@@ -1,0 +1,48 @@
+// Program termination
+proto fn abort() void
+proto fn exit(code i32) void
+proto fn quick_exit(code i32) void
+proto fn _Exit(code i32) void
+// protoFunc i32 atexit(pointer func)
+// protoFunc i32 at_quick_exit(pointer func)
+
+// Environment
+proto fn getenv(name pointer) pointer
+proto fn setenv(name pointer, value pointer, overwrite i32) i32
+proto fn unsetenv(name pointer) i32
+proto fn putenv(string pointer) i32
+proto fn system(command pointer) i32
+
+// Random numbers
+proto fn rand() i32
+proto fn srand(seed i32) void
+
+// Searching and sorting
+proto fn bsearch(key pointer, base pointer, nmemb i32, size i32, compar pointer) pointer
+proto fn qsort(base pointer, nmemb i32, size i32, compar pointer) void
+
+// Integer arithmetic
+proto fn abs(n i32) i32
+proto fn labs(n i64) i64
+
+// Division with quotient and remainder
+proto fn div(numer i32, denom i32) pointer
+proto fn ldiv(numer i64, denom i64) pointer
+
+// String to number conversion
+proto fn atoi(str pointer) i32
+proto fn atol(str pointer) i64
+proto fn atof(str pointer) f64
+proto fn strtol(str pointer, endptr pointer, base i32) i64
+proto fn strtoul(str pointer, endptr pointer, base i32) i64
+proto fn strtof(str pointer, endptr pointer) f32
+proto fn strtod(str pointer, endptr pointer) f64
+proto fn strtoll(str pointer, endptr pointer, base i32) i64
+proto fn strtoull(str pointer, endptr pointer, base i32) i64
+
+// Multibyte/wide character conversion
+proto fn mblen(s pointer, n i32) i32
+proto fn mbtowc(pwc pointer, s pointer, n i32) i32
+proto fn wctomb(s pointer, wchar i32) i32
+proto fn mbstowcs(dest pointer, src pointer, n i32) i32
+proto fn wcstombs(dest pointer, src pointer, n i32) i32

@@ -10,6 +10,11 @@
 - 006 — template: proto inside a template keeps its symbol
 - 007 — template: function called with type arguments
 - 008 — template: sizeof of the type parameter
+- 009 — templates: too many type arguments
+- 010 — templates: used without type arguments
+- 011 — templates: parameter is not a name
+- 012 — templates: body holds something else
+- 013 — templates: missing colon
 
 ---
 
@@ -397,5 +402,153 @@ entry:
   %2 = load i32, i32* %1, align 4
   ret i32 %2
 }
+```
+
+---
+
+## 009 — templates: too many type arguments
+
+```ura
+template<T>:
+   struct Box:
+      value T
+
+fn main() i32:
+   b Box<i32, i8>
+   return 0
+```
+
+### stderr
+
+```
+error: test.ura:6:6 'Box' takes 1 type argument, got 2
+  |
+6 |    b Box<i32, i8>
+  |      ^^^
+help: it is declared 'template<T>'
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 010 — templates: used without type arguments
+
+```ura
+template<T>:
+   struct Box:
+      value T
+
+fn main() i32:
+   b Box
+   return 0
+```
+
+### stderr
+
+```
+error: test.ura:6:6 expected '<' after 'Box'
+  |
+6 |    b Box
+  |      ^^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 011 — templates: parameter is not a name
+
+```ura
+template<3>:
+   struct Box:
+      value i32
+
+fn main() i32:
+   return 0
+```
+
+### stderr
+
+```
+error: test.ura:1:10 expected names after template
+  |
+1 | template<3>:
+  |          ^
+help: use template<T, V>
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 012 — templates: body holds something else
+
+```ura
+template<T>:
+   value T
+
+fn main() i32:
+   return 0
+```
+
+### stderr
+
+```
+error: test.ura:2:4 expected struct/fn after template
+  |
+2 |    value T
+  |    ^^^^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 013 — templates: missing colon
+
+```ura
+template<T>
+   struct Box:
+      value T
+
+fn main() i32:
+   return 0
+```
+
+### stderr
+
+```
+error: test.ura:1:11 expected ':' after 'template'
+  |
+1 | template<T>
+  |           ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 

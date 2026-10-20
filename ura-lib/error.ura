@@ -1,0 +1,7 @@
+struct Error:
+    message char[]
+
+    pub fn make(msg char[]) Error:
+        e Error
+        e.message = msg
+        return e

@@ -2,318 +2,235 @@
 
 ## index
 
-- 001 — literal: bool literals: declare, zero-init, bool function, reassign
-- 002 — literal: char literals: declare, print, escapes, in a function
-- 003 — literal: f32 literals: declare, print, zero-init, in a function
-- 004 — literal: f32 arithmetic + comparison, compound assignment
-- 005 — literal: f64 declaration, arithmetic and compound assignment
-- 006 — literal: a f32 literal takes the type of its target
-- 007 — literal: casts between f64, f32 and the integer types
-- 008 — literal: a return that does not match the function's type
-- 009 — literal: integer literals at the edge of each type's range
-- 010 — literal: an integer literal too wide for i32 keeps its width
-- 011 — literal: a literal that does not fit its target type
-- 012 — literal: a negative literal at the low edge still fits
-- 013 — cast: as casting + i64 / i16 via explicit cast
-- 014 — cast: as converts between f32 and the integer types
-- 015 — cast: char arithmetic and an expression cast back to char
-- 016 — cast: a struct cannot be cast to or from a scalar
-- 017 — cast: casting a scalar to a struct
-- 018 — operator: bitwise & | ^ << >>
-- 019 — operator: unary not / minus / bitwise-not
-- 020 — operator: compound bitwise assignment
-- 021 — operator: bitwise operator on f32 operands is rejected
-- 022 — operator: divide by zero prints file:line and exits 1
-- 023 — operator: f32 division by zero traps (not inf)
-- 024 — builtin: typeof / sizeof on scalars
-- 025 — builtin: typeof / sizeof on an array
-- 026 — builtin: sizeof without parentheses
-- 027 — builtin: typeof without parentheses
-- 028 — builtin: typeof and sizeof on chars, bool, and a literal
-- 029 — builtin: sizeof of every scalar type
-- 030 — builtin: sizeof of a struct honours ABI padding
-- 031 — builtin: typeof of a struct gives its name
+- 001 — builtins: typeof without an argument
+- 002 — builtins: sizeof with two arguments
+- 003 — builtin: typeof on a value, a string and a struct
+- 004 — builtin: typeof on a ref and on a type name
+- 005 — builtin: sizeof folds to a constant
+- 006 — builtin: typeof / sizeof on scalars
+- 007 — builtin: typeof / sizeof on an array
+- 008 — builtin: sizeof without parentheses
+- 009 — builtin: typeof without parentheses
+- 010 — builtin: typeof and sizeof on chars, bool, and a literal
+- 011 — builtin: sizeof of every scalar type
+- 012 — builtin: sizeof of a struct honours ABI padding
+- 013 — builtin: typeof of a struct gives its name
+- 014 — cast: as casting + i64 / i16 via explicit cast
+- 015 — cast: as converts between f32 and the integer types
+- 016 — cast: char arithmetic and an expression cast back to char
+- 017 — cast: a struct cannot be cast to or from a scalar
+- 018 — cast: casting a scalar to a struct
+- 019 — literal: f32 literals: declare, print, zero-init, in a function
+- 020 — literal: f32 arithmetic + comparison, compound assignment
+- 021 — literal: f64 declaration, arithmetic and compound assignment
+- 022 — literal: a f32 literal takes the type of its target
+- 023 — literal: casts between f64, f32 and the integer types
+- 024 — literal: a return that does not match the function's type
+- 025 — literal: integer literals at the edge of each type's range
+- 026 — literal: an integer literal too wide for i32 keeps its width
+- 027 — literal: a literal that does not fit its target type
+- 028 — literal: a negative literal at the low edge still fits
+- 029 — operator: bitwise & | ^ << >>
+- 030 — operator: unary not / minus / bitwise-not
+- 031 — operator: compound bitwise assignment
+- 032 — operator: bitwise operator on f32 operands is rejected
+- 033 — operator: divide by zero prints file:line and exits 1
+- 034 — operator: f32 division by zero traps (not inf)
 
 ---
 
-## 001 — literal: bool literals: declare, zero-init, bool function, reassign
+## 001 — builtins: typeof without an argument
 
 ```ura
-// stderr: exit: 9
-// expect: 1
-
-fn flag() bool:
-    return True
-
 fn main() i32:
-    b bool = flag()
-    c bool = False
-    d bool
-    c = True
-    return 9
+   x i32 = 1
+   return typeof()
 ```
 
 ---
 
-## 002 — literal: char literals: declare, print, escapes, in a function
+## 002 — builtins: sizeof with two arguments
 
 ```ura
-// stdout: z
-// stdout: !
-// stdout: A
-// expect: 0
-
-fn grade() char:
-    return 'A'
-
 fn main() i32:
-    c char = 'z'
-    output(c, "\n")
-    output('!', "\n")
-    output(grade(), "\n")
-    output('\n')
-    return 0
+   x i32 = 1
+   return sizeof(x, x)
 ```
 
 ---
 
-## 003 — literal: f32 literals: declare, print, zero-init, in a function
+## 003 — builtin: typeof on a value, a string and a struct
 
 ```ura
-// stdout: 3.140000
-// stdout: 2.710000
-// stdout: 0.500000
-// stdout: 0.000000
-// expect: 0
-
-fn half() f32:
-    return 0.5
+struct User:
+   count i32
 
 fn main() i32:
-    x f32 = 3.14
-    output(x, "\n")
-    output(2.71, "\n")
-    output(half(), "\n")
-    y f32
-    output(y, "\n")
-    return 0
+   x i32 = 1
+   s i8[] = "abc"
+   u User
+   output(typeof(x), " ", typeof(s), " ", typeof(u), "\n")
+   return 0
 ```
 
 ---
 
-## 004 — literal: f32 arithmetic + comparison, compound assignment
+## 004 — builtin: typeof on a ref and on a type name
 
 ```ura
-// stdout: 5.000000
-// stdout: 1.000000
-// stdout: 6.000000
-// stdout: 1.500000
-// stdout: True
-// stdout: False
-// stdout: 4.500000
-// stdout: 9.000000
-// expect: 0
+struct User:
+   count i32
 
 fn main() i32:
-    a f32 = 3.0
-    b f32 = 2.0
-    output(a + b, "\n")
-    output(a - b, "\n")
-    output(a * b, "\n")
-    output(a / b, "\n")
-    output(a > b, "\n")
-    output(a == b, "\n")
-    a += 1.5
-    output(a, "\n")
-    a *= 2.0
-    output(a, "\n")
-    return 0
+   u User
+   p &User = &u
+   output(typeof(&p), " ", typeof(i32), "\n")
+   return 0
 ```
 
 ---
 
-## 005 — literal: f64 declaration, arithmetic and compound assignment
+## 005 — builtin: sizeof folds to a constant
 
 ```ura
-// stdout: 3.141593 2.000000
-// stdout: 5.141593 1.141593 6.283185 1.570796
-// stdout: True True True
-// stdout: 6.000000
-// stdout: 0.000000
+struct Pad:
+   flag i8
+   count i32
+
+fn main() i32:
+   x i32
+   s i8[]
+   p Pad
+   return sizeof(x) + sizeof(s) + sizeof(p)
+```
+
+---
+
+## 006 — builtin: typeof / sizeof on scalars
+
+```ura
+// stdout: typeof x = i32, sizeof x = 4
+// stdout: typeof f = f32, sizeof f = 4
+// stdout: sizeof i64 = 8
 // expect: 0
 
 fn main() i32:
-    d f64 = 3.141592653589793
-    e f64 = 2.0
-    output(d, " ", e, "\n")
-    output(d + e, " ", d - e, " ", d * e, " ", d / e, "\n")
-    output(d > e, " ", d == d, " ", d != e, "\n")
-
-    c f64 = 10.0
-    c += 2.5
-    c -= 0.5
-    c *= 2.0
-    c /= 4.0
-    output(c, "\n")
-
-    // zero-init
-    z f64
-    output(z, "\n")
+    x i32   = 5
+    f f32 = 1.5
+    output("typeof x = ", typeof(x), ", sizeof x = ", sizeof(x), "\n")
+    output("typeof f = ", typeof(f), ", sizeof f = ", sizeof(f), "\n")
+    output("sizeof i64 = ", sizeof(1 as i64), "\n")
     return 0
 ```
 
 ---
 
-## 006 — literal: a f32 literal takes the type of its target
+## 007 — builtin: typeof / sizeof on an array
 
 ```ura
-// stdout: False
-// stdout: -5.000000 3.000000
-// stdout: 0.500000
-// expect: 0
-
-fn half() f64:
-    return 0.5
-
-fn scale(x f64) f64:
-    return x * 2.0
-
-fn main() i32:
-    // same digits, two different types
-    d f64 = 3.141592653589793
-    f f32  = 3.141592653589793
-    // the f32 rounding is lossy, so widening it back does NOT equal d
-    output((f as f64) == d, "\n")
-
-    // an expression built only from literals adopts too, and unary minus
-    // desugars to 0 - x, so its synthesised zero must be a f32
-    output(scale(-2.5), " ", scale(1.0 + 0.5), "\n")
-
-    // inference at a return
-    output(half(), "\n")
-    return 0
-```
-
----
-
-## 007 — literal: casts between f64, f32 and the integer types
-
-```ura
-// stdout: d->f32 3.750000  f->f64 1.500000
-// stdout: d->i32 3  d->i64 3
-// stdout: d->i16 3  d->char 
-// stdout: i32->d 7.000000  bool->d 1.000000
-// stdout: round trip 3.000000
+// stdout: typeof a = array, sizeof a = 16
 // expect: 0
 
 fn main() i32:
-    d f64 = 3.75
-    f f32  = 1.5
-    output("d->f32 ", d as f32, "  f->f64 ", f as f64, "\n")
-    output("d->i32 ", d as i32, "  d->i64 ", d as i64, "\n")
-    output("d->i16 ", d as i16, "  d->char ", d as char, "\n")
-    output("i32->d ", 7 as f64, "  bool->d ", True as f64, "\n")
-    output("round trip ", d as i32 as f64, "\n")
+    a i32[] = [1, 2, 3]
+    output("typeof a = ", typeof(a), ", sizeof a = ", sizeof(a), "\n")
     return 0
 ```
 
 ---
 
-## 008 — literal: a return that does not match the function's type
+## 008 — builtin: sizeof without parentheses
 
 ```ura
-// error: 'f' returns i32, but this returns f32
-
-fn f() i32:
-    return 1.5
-
+// error: Expected '(' after 'sizeof'
 fn main() i32:
-    output(f(), "\n")
+    x i32 = 5
+    output(sizeof x)
     return 0
 ```
 
 ---
 
-## 009 — literal: integer literals at the edge of each type's range
+## 009 — builtin: typeof without parentheses
 
 ```ura
-// stdout: 9223372036854775807 -9223372036854775807
-// stdout: 2147483647 -2147483647
-// stdout: 9007199254740993
+// error: Expected '(' after 'typeof'
+fn main() i32:
+    x i32 = 5
+    output(typeof x)
+    return 0
+```
+
+---
+
+## 010 — builtin: typeof and sizeof on chars, bool, and a literal
+
+```ura
+// stdout: array bool
+// stdout: 16 16 1
 // expect: 0
 
 fn main() i32:
-    i64_max i64 = 9223372036854775807
-    i64_min i64 = -9223372036854775807
-    i32_max i32 = 2147483647
-    i32_min i32 = -2147483647
-    exact   i64 = 9007199254740993
-
-    output(i64_max, " ", i64_min, "\n")
-    output(i32_max, " ", i32_min, "\n")
-    output(exact, "\n")
+    s char[] = "hello"
+    b bool  = True
+    output(typeof(s), " ", typeof(b), "\n")
+    output(sizeof("hello"), " ", sizeof(s), " ", sizeof(b), "\n")
     return 0
 ```
 
 ---
 
-## 010 — literal: an integer literal too wide for i32 keeps its width
+## 011 — builtin: sizeof of every scalar type
 
 ```ura
-// stdout: 9000000000
-// stdout: 9000000000
-// stdout: 9000000001
-// stdout: 9000000001
-// stdout: 18000000000
-// stdout: 42 2147483647
+// stdout: 1 2 4 8
+// stdout: 1 4 4 8
+// stdout: 1 1
 // expect: 0
-
-fn twice(n i64) i64:
-    ret n * 2
-
 fn main() i32:
-    with_target i64 = 9000000000
-    output(with_target, "\n")
-    output(9000000000, "\n")
-    output(9000000000 + 1, "\n")
-    output(1 + 9000000000, "\n")
-    output(twice(9000000000), "\n")
-    output(42, " ", 2147483647, "\n")
+    output(sizeof(i8), " ", sizeof(i16), " ", sizeof(i32), " ", sizeof(i64), "\n")
+    output(sizeof(u8), " ", sizeof(u32), " ", sizeof(f32), " ", sizeof(f64), "\n")
+    output(sizeof(bool), " ", sizeof(char), "\n")
     return 0
 ```
 
 ---
 
-## 011 — literal: a literal that does not fit its target type
+## 012 — builtin: sizeof of a struct honours ABI padding
 
 ```ura
-// error: 300 does not fit in 'i8' (range -128 to 127); widen the type, or convert explicitly with 'as'
-
-fn main() i32:
-    small i8 = 300
-    return 0
-```
-
----
-
-## 012 — literal: a negative literal at the low edge still fits
-
-```ura
-// stdout: -128 -32768 255 65535
+// stdout: 16
 // expect: 0
+struct Point:
+    x i32
+    y i64
 
 fn main() i32:
-    a i8  = -128
-    b i16 = -32768
-    c u8  = 255
-    d u16 = 65535
-    output(a, " ", b, " ", c, " ", d, "\n")
+    p Point
+    output(sizeof(p), "\n")
     return 0
 ```
 
 ---
 
-## 013 — cast: as casting + i64 / i16 via explicit cast
+## 013 — builtin: typeof of a struct gives its name
+
+```ura
+// stdout: Point
+// expect: 0
+struct Point:
+    x i32
+    y i64
+
+fn main() i32:
+    p Point
+    output(typeof(p), "\n")
+    return 0
+```
+
+---
+
+## 014 — cast: as casting + i64 / i16 via explicit cast
 
 ```ura
 // stdout: 300
@@ -336,7 +253,7 @@ fn main() i32:
 
 ---
 
-## 014 — cast: as converts between f32 and the integer types
+## 015 — cast: as converts between f32 and the integer types
 
 ```ura
 // stdout: i32->f32 300.000000
@@ -369,7 +286,7 @@ fn main() i32:
 
 ---
 
-## 015 — cast: char arithmetic and an expression cast back to char
+## 016 — cast: char arithmetic and an expression cast back to char
 
 ```ura
 // stdout: A 65 B
@@ -397,7 +314,7 @@ fn main() i32:
 
 ---
 
-## 016 — cast: a struct cannot be cast to or from a scalar
+## 017 — cast: a struct cannot be cast to or from a scalar
 
 ```ura
 // error: Cannot cast Point to i32
@@ -415,7 +332,7 @@ fn main() i32:
 
 ---
 
-## 017 — cast: casting a scalar to a struct
+## 018 — cast: casting a scalar to a struct
 
 ```ura
 // error: Cannot cast i32 to Point
@@ -432,7 +349,243 @@ fn main() i32:
 
 ---
 
-## 018 — operator: bitwise & | ^ << >>
+## 019 — literal: f32 literals: declare, print, zero-init, in a function
+
+```ura
+// stdout: 3.140000
+// stdout: 2.710000
+// stdout: 0.500000
+// stdout: 0.000000
+// expect: 0
+
+fn half() f32:
+    return 0.5
+
+fn main() i32:
+    x f32 = 3.14
+    output(x, "\n")
+    output(2.71, "\n")
+    output(half(), "\n")
+    y f32
+    output(y, "\n")
+    return 0
+```
+
+---
+
+## 020 — literal: f32 arithmetic + comparison, compound assignment
+
+```ura
+// stdout: 5.000000
+// stdout: 1.000000
+// stdout: 6.000000
+// stdout: 1.500000
+// stdout: True
+// stdout: False
+// stdout: 4.500000
+// stdout: 9.000000
+// expect: 0
+
+fn main() i32:
+    a f32 = 3.0
+    b f32 = 2.0
+    output(a + b, "\n")
+    output(a - b, "\n")
+    output(a * b, "\n")
+    output(a / b, "\n")
+    output(a > b, "\n")
+    output(a == b, "\n")
+    a += 1.5
+    output(a, "\n")
+    a *= 2.0
+    output(a, "\n")
+    return 0
+```
+
+---
+
+## 021 — literal: f64 declaration, arithmetic and compound assignment
+
+```ura
+// stdout: 3.141593 2.000000
+// stdout: 5.141593 1.141593 6.283185 1.570796
+// stdout: True True True
+// stdout: 6.000000
+// stdout: 0.000000
+// expect: 0
+
+fn main() i32:
+    d f64 = 3.141592653589793
+    e f64 = 2.0
+    output(d, " ", e, "\n")
+    output(d + e, " ", d - e, " ", d * e, " ", d / e, "\n")
+    output(d > e, " ", d == d, " ", d != e, "\n")
+
+    c f64 = 10.0
+    c += 2.5
+    c -= 0.5
+    c *= 2.0
+    c /= 4.0
+    output(c, "\n")
+
+    // zero-init
+    z f64
+    output(z, "\n")
+    return 0
+```
+
+---
+
+## 022 — literal: a f32 literal takes the type of its target
+
+```ura
+// stdout: False
+// stdout: -5.000000 3.000000
+// stdout: 0.500000
+// expect: 0
+
+fn half() f64:
+    return 0.5
+
+fn scale(x f64) f64:
+    return x * 2.0
+
+fn main() i32:
+    // same digits, two different types
+    d f64 = 3.141592653589793
+    f f32  = 3.141592653589793
+    // the f32 rounding is lossy, so widening it back does NOT equal d
+    output((f as f64) == d, "\n")
+
+    // an expression built only from literals adopts too, and unary minus
+    // desugars to 0 - x, so its synthesised zero must be a f32
+    output(scale(-2.5), " ", scale(1.0 + 0.5), "\n")
+
+    // inference at a return
+    output(half(), "\n")
+    return 0
+```
+
+---
+
+## 023 — literal: casts between f64, f32 and the integer types
+
+```ura
+// stdout: d->f32 3.750000  f->f64 1.500000
+// stdout: d->i32 3  d->i64 3
+// stdout: d->i16 3  d->char 
+// stdout: i32->d 7.000000  bool->d 1.000000
+// stdout: round trip 3.000000
+// expect: 0
+
+fn main() i32:
+    d f64 = 3.75
+    f f32  = 1.5
+    output("d->f32 ", d as f32, "  f->f64 ", f as f64, "\n")
+    output("d->i32 ", d as i32, "  d->i64 ", d as i64, "\n")
+    output("d->i16 ", d as i16, "  d->char ", d as char, "\n")
+    output("i32->d ", 7 as f64, "  bool->d ", True as f64, "\n")
+    output("round trip ", d as i32 as f64, "\n")
+    return 0
+```
+
+---
+
+## 024 — literal: a return that does not match the function's type
+
+```ura
+// error: 'f' returns i32, but this returns f32
+
+fn f() i32:
+    return 1.5
+
+fn main() i32:
+    output(f(), "\n")
+    return 0
+```
+
+---
+
+## 025 — literal: integer literals at the edge of each type's range
+
+```ura
+// stdout: 9223372036854775807 -9223372036854775807
+// stdout: 2147483647 -2147483647
+// stdout: 9007199254740993
+// expect: 0
+
+fn main() i32:
+    i64_max i64 = 9223372036854775807
+    i64_min i64 = -9223372036854775807
+    i32_max i32 = 2147483647
+    i32_min i32 = -2147483647
+    exact   i64 = 9007199254740993
+
+    output(i64_max, " ", i64_min, "\n")
+    output(i32_max, " ", i32_min, "\n")
+    output(exact, "\n")
+    return 0
+```
+
+---
+
+## 026 — literal: an integer literal too wide for i32 keeps its width
+
+```ura
+// stdout: 9000000000
+// stdout: 9000000000
+// stdout: 9000000001
+// stdout: 9000000001
+// stdout: 18000000000
+// stdout: 42 2147483647
+// expect: 0
+
+fn twice(n i64) i64:
+    ret n * 2
+
+fn main() i32:
+    with_target i64 = 9000000000
+    output(with_target, "\n")
+    output(9000000000, "\n")
+    output(9000000000 + 1, "\n")
+    output(1 + 9000000000, "\n")
+    output(twice(9000000000), "\n")
+    output(42, " ", 2147483647, "\n")
+    return 0
+```
+
+---
+
+## 027 — literal: a literal that does not fit its target type
+
+```ura
+// error: 300 does not fit in 'i8' (range -128 to 127); widen the type, or convert explicitly with 'as'
+
+fn main() i32:
+    small i8 = 300
+    return 0
+```
+
+---
+
+## 028 — literal: a negative literal at the low edge still fits
+
+```ura
+// stdout: -128 -32768 255 65535
+// expect: 0
+
+fn main() i32:
+    a i8  = -128
+    b i16 = -32768
+    c u8  = 255
+    d u16 = 65535
+    output(a, " ", b, " ", c, " ", d, "\n")
+    return 0
+```
+
+---
+
+## 029 — operator: bitwise & | ^ << >>
 
 ```ura
 // stdout: 8
@@ -455,7 +608,7 @@ fn main() i32:
 
 ---
 
-## 019 — operator: unary not / minus / bitwise-not
+## 030 — operator: unary not / minus / bitwise-not
 
 ```ura
 // stdout: -5
@@ -478,7 +631,7 @@ fn main() i32:
 
 ---
 
-## 020 — operator: compound bitwise assignment
+## 031 — operator: compound bitwise assignment
 
 ```ura
 // stdout: and 8  or 15  xor 6
@@ -516,7 +669,7 @@ fn main() i32:
 
 ---
 
-## 021 — operator: bitwise operator on f32 operands is rejected
+## 032 — operator: bitwise operator on f32 operands is rejected
 
 ```ura
 // error: Bitwise and shift operators require integer operands
@@ -528,7 +681,7 @@ fn main() i32:
 
 ---
 
-## 022 — operator: divide by zero prints file:line and exits 1
+## 033 — operator: divide by zero prints file:line and exits 1
 
 ```ura
 // stderr: runtime error: Division by zero
@@ -543,7 +696,7 @@ fn main() i32:
 
 ---
 
-## 023 — operator: f32 division by zero traps (not inf)
+## 034 — operator: f32 division by zero traps (not inf)
 
 ```ura
 // stderr: runtime error: Division by zero
@@ -553,130 +706,6 @@ fn main() i32:
     b f32 = 0.0
     a f32 = 10.0
     c f32 = a / b
-    return 0
-```
-
----
-
-## 024 — builtin: typeof / sizeof on scalars
-
-```ura
-// stdout: typeof x = i32, sizeof x = 4
-// stdout: typeof f = f32, sizeof f = 4
-// stdout: sizeof i64 = 8
-// expect: 0
-
-fn main() i32:
-    x i32   = 5
-    f f32 = 1.5
-    output("typeof x = ", typeof(x), ", sizeof x = ", sizeof(x), "\n")
-    output("typeof f = ", typeof(f), ", sizeof f = ", sizeof(f), "\n")
-    output("sizeof i64 = ", sizeof(1 as i64), "\n")
-    return 0
-```
-
----
-
-## 025 — builtin: typeof / sizeof on an array
-
-```ura
-// stdout: typeof a = array, sizeof a = 16
-// expect: 0
-
-fn main() i32:
-    a i32[] = [1, 2, 3]
-    output("typeof a = ", typeof(a), ", sizeof a = ", sizeof(a), "\n")
-    return 0
-```
-
----
-
-## 026 — builtin: sizeof without parentheses
-
-```ura
-// error: Expected '(' after 'sizeof'
-fn main() i32:
-    x i32 = 5
-    output(sizeof x)
-    return 0
-```
-
----
-
-## 027 — builtin: typeof without parentheses
-
-```ura
-// error: Expected '(' after 'typeof'
-fn main() i32:
-    x i32 = 5
-    output(typeof x)
-    return 0
-```
-
----
-
-## 028 — builtin: typeof and sizeof on chars, bool, and a literal
-
-```ura
-// stdout: array bool
-// stdout: 16 16 1
-// expect: 0
-
-fn main() i32:
-    s char[] = "hello"
-    b bool  = True
-    output(typeof(s), " ", typeof(b), "\n")
-    output(sizeof("hello"), " ", sizeof(s), " ", sizeof(b), "\n")
-    return 0
-```
-
----
-
-## 029 — builtin: sizeof of every scalar type
-
-```ura
-// stdout: 1 2 4 8
-// stdout: 1 4 4 8
-// stdout: 1 1
-// expect: 0
-fn main() i32:
-    output(sizeof(i8), " ", sizeof(i16), " ", sizeof(i32), " ", sizeof(i64), "\n")
-    output(sizeof(u8), " ", sizeof(u32), " ", sizeof(f32), " ", sizeof(f64), "\n")
-    output(sizeof(bool), " ", sizeof(char), "\n")
-    return 0
-```
-
----
-
-## 030 — builtin: sizeof of a struct honours ABI padding
-
-```ura
-// stdout: 16
-// expect: 0
-struct Point:
-    x i32
-    y i64
-
-fn main() i32:
-    p Point
-    output(sizeof(p), "\n")
-    return 0
-```
-
----
-
-## 031 — builtin: typeof of a struct gives its name
-
-```ura
-// stdout: Point
-// expect: 0
-struct Point:
-    x i32
-    y i64
-
-fn main() i32:
-    p Point
-    output(typeof(p), "\n")
     return 0
 ```
 

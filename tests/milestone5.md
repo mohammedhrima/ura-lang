@@ -8,22 +8,22 @@
 - 004 — use: an import cycle warns and still compiles
 - 005 — use: use of a file that does not exist
 - 006 — use: use "@/..." resolves against the standard library
-- 007 — mod: a module function is called with ::
-- 008 — mod: nested modules: a::b::f()
-- 009 — mod: an enum inside a module, member read with ::
-- 010 — mod: a module may be referenced before it is declared
-- 011 — mod: a module function calls a sibling unqualified
-- 012 — mod: a struct declared in a module, used as mod::Type
-- 013 — mod: a pub static method on a struct inside a module
-- 014 — mod: calling a module member with . is an error
-- 015 — mod: an unknown member of a known module is an error
-- 016 — mod: only declarations are allowed in a module body
-- 017 — mod: a module call is arity-checked
-- 018 — os: argc and argv from the global os
-- 019 — use: use missing opening quote
-- 020 — use: use with unclosed quote
-- 021 — use: link missing opening quote
-- 022 — use: link with unclosed quote
+- 007 — lexer: use missing opening quote
+- 008 — lexer: use with unclosed quote
+- 009 — lexer: link missing opening quote
+- 010 — lexer: link with unclosed quote
+- 011 — mod: a module function is called with ::
+- 012 — mod: nested modules: a::b::f()
+- 013 — mod: an enum inside a module, member read with ::
+- 014 — mod: a module may be referenced before it is declared
+- 015 — mod: a module function calls a sibling unqualified
+- 016 — mod: a struct declared in a module, used as mod::Type
+- 017 — mod: a pub static method on a struct inside a module
+- 018 — mod: calling a module member with . is an error
+- 019 — mod: an unknown member of a known module is an error
+- 020 — mod: only declarations are allowed in a module body
+- 021 — mod: a module call is arity-checked
+- 022 — os: argc and argv from the global os
 
 ---
 
@@ -172,7 +172,61 @@ fn main() i32:
 
 ---
 
-## 007 — mod: a module function is called with ::
+## 007 — lexer: use missing opening quote
+
+```ura
+// error: Expected '"' after 'use'
+use @/header
+
+fn main() i32:
+    output("hi\n")
+    return 0
+```
+
+---
+
+## 008 — lexer: use with unclosed quote
+
+```ura
+// error: Unterminated 'use' path, expected closing '"'
+use "@/header
+
+fn main() i32:
+    output("hi\n")
+    return 0
+```
+
+---
+
+## 009 — lexer: link missing opening quote
+
+```ura
+// error: Expected '"' after 'link'
+// errors/lexer/008 — `link` missing opening quote
+link header.h
+
+fn main() i32:
+    output("hi\n")
+    return 0
+```
+
+---
+
+## 010 — lexer: link with unclosed quote
+
+```ura
+// error: Unterminated 'link' path, expected closing '"'
+// errors/lexer/009 — `link` with unclosed quote
+link "header.h
+
+fn main() i32:
+    output("hi\n")
+    return 0
+```
+
+---
+
+## 011 — mod: a module function is called with ::
 
 ```ura
 // stdout: 1
@@ -188,7 +242,7 @@ fn main() i32:
 
 ---
 
-## 008 — mod: nested modules: a::b::f()
+## 012 — mod: nested modules: a::b::f()
 
 ```ura
 // stdout: 42
@@ -205,7 +259,7 @@ fn main() i32:
 
 ---
 
-## 009 — mod: an enum inside a module, member read with ::
+## 013 — mod: an enum inside a module, member read with ::
 
 ```ura
 // stdout: 0 2
@@ -221,7 +275,7 @@ fn main() i32:
 
 ---
 
-## 010 — mod: a module may be referenced before it is declared
+## 014 — mod: a module may be referenced before it is declared
 
 ```ura
 // stdout: 7
@@ -237,7 +291,7 @@ mod later:
 
 ---
 
-## 011 — mod: a module function calls a sibling unqualified
+## 015 — mod: a module function calls a sibling unqualified
 
 ```ura
 // stdout: 6
@@ -255,7 +309,7 @@ fn main() i32:
 
 ---
 
-## 012 — mod: a struct declared in a module, used as mod::Type
+## 016 — mod: a struct declared in a module, used as mod::Type
 
 ```ura
 // stdout: 9
@@ -273,7 +327,7 @@ fn main() i32:
 
 ---
 
-## 013 — mod: a pub static method on a struct inside a module
+## 017 — mod: a pub static method on a struct inside a module
 
 ```ura
 // stdout: 3
@@ -294,7 +348,7 @@ fn main() i32:
 
 ---
 
-## 014 — mod: calling a module member with . is an error
+## 018 — mod: calling a module member with . is an error
 
 ```ura
 // error: 'lib' is a module; reach its members with '::' instead of '.'
@@ -309,7 +363,7 @@ fn main() i32:
 
 ---
 
-## 015 — mod: an unknown member of a known module is an error
+## 019 — mod: an unknown member of a known module is an error
 
 ```ura
 // error: Module 'lib' has no member 'bar'
@@ -324,7 +378,7 @@ fn main() i32:
 
 ---
 
-## 016 — mod: only declarations are allowed in a module body
+## 020 — mod: only declarations are allowed in a module body
 
 ```ura
 // error: Only 'fn', 'struct', 'enum' and 'mod' can be declared in a module
@@ -338,7 +392,7 @@ fn main() i32:
 
 ---
 
-## 017 — mod: a module call is arity-checked
+## 021 — mod: a module call is arity-checked
 
 ```ura
 // error: Wrong number of arguments to 'foo'
@@ -353,7 +407,7 @@ fn main() i32:
 
 ---
 
-## 018 — os: argc and argv from the global os
+## 022 — os: argc and argv from the global os
 
 ```ura
 // stdout: argc: 1
@@ -363,60 +417,6 @@ fn main() i32:
 fn main() i32:
     output("argc: ", os.argc, "\n")
     output("argv: ", os.argv.len, "\n")
-    return 0
-```
-
----
-
-## 019 — use: use missing opening quote
-
-```ura
-// error: Expected '"' after 'use'
-use @/header
-
-fn main() i32:
-    output("hi\n")
-    return 0
-```
-
----
-
-## 020 — use: use with unclosed quote
-
-```ura
-// error: Unterminated 'use' path, expected closing '"'
-use "@/header
-
-fn main() i32:
-    output("hi\n")
-    return 0
-```
-
----
-
-## 021 — use: link missing opening quote
-
-```ura
-// error: Expected '"' after 'link'
-// errors/lexer/008 — `link` missing opening quote
-link header.h
-
-fn main() i32:
-    output("hi\n")
-    return 0
-```
-
----
-
-## 022 — use: link with unclosed quote
-
-```ura
-// error: Unterminated 'link' path, expected closing '"'
-// errors/lexer/009 — `link` with unclosed quote
-link "header.h
-
-fn main() i32:
-    output("hi\n")
     return 0
 ```
 

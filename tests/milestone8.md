@@ -2,225 +2,60 @@
 
 ## index
 
-- 001 — heap: new T allocates one zeroed struct and binds it to a ref
-- 002 — heap: clean frees a heap struct and nulls the reference
-- 003 — heap: clean on an unbound reference is a no-op
-- 004 — heap: cleaning twice is safe
-- 005 — heap: a guarded read after clean traps
-- 006 — heap: operator drop cascades, freeing a whole tree
-- 007 — heap: a function returns new T from a ref? return
-- 008 — heap: clean on a value struct is still an error
-- 009 — heap: new without an array type is still an error
-- 010 — array: 2D array literal and nested indexing
-- 011 — array: sized 2D matrix i32[N][M], zero-init and writes
-- 012 — array: 3D sized array with runtime size
-- 013 — array: ? bounds guard: in-bounds access is fine
-- 014 — array: ? bounds guard: out-of-bounds access traps at runtime
-- 015 — array: heap array: new i32[N], zero-init, write, clean
-- 016 — array: heap array with runtime size (new i32[n]) + clean
-- 017 — array: clean nulls the array; a[i]? then traps (no use-after-free)
-- 018 — array: multi-dim heap: new i32[N][M] + recursive clean
-- 019 — array: slice a[1..4] is a view (shared storage, exclusive end)
-- 020 — array: ? on a slice traps when the range is out of bounds
-- 021 — array: arr.len on stack, heap, slice, and multi-dim
-- 022 — array: clean on a non-array
-- 023 — array: new without an array type
-- 024 — array: range bounds must be integers
-- 025 — array: .len on a non-array
-- 026 — array: array literals: one element, expressions, and strings
-- 027 — array: fill a heap char buffer by index, print it, clean it
-- 028 — global: a global struct is initialised and dropped like a local
-- 029 — global: a global is dropped on an early return too
-- 030 — drop: operator drop declares a destructor named Vec.drop
-- 031 — drop: 'clean' does not destroy a struct, even one with operator drop
-- 032 — drop: calling .drop() yourself is rejected
-- 033 — drop: operator drop beside operator = does not warn
-- 034 — drop: a destructor fires on break and on continue
-- 035 — drop: drop on fall-through: an if block, each iteration, reverse order
-- 036 — drop: a struct drops the structs it owns, at any depth, but not what it borrows
-- 037 — drop: a heap-owning struct: create, deep-copy operator = and drop
-- 038 — drop: a growable string struct: nullable buffer, grow, join and drop
-- 039 — drop: a struct owning heap buffers: deep-copy operator = and drop
-- 040 — drop: destructor must take no parameters
-- 041 — drop: destructor must return void
+- 001 — array: 2D array literal and nested indexing
+- 002 — array: sized 2D matrix i32[N][M], zero-init and writes
+- 003 — array: 3D sized array with runtime size
+- 004 — array: heap array: new i32[N], zero-init, write, clean
+- 005 — array: heap array with runtime size (new i32[n]) + clean
+- 006 — array: multi-dim heap: new i32[N][M] + recursive clean
+- 007 — array: slice a[1..4] is a view (shared storage, exclusive end)
+- 008 — array: arr.len on stack, heap, slice, and multi-dim
+- 009 — array: clean on a non-array
+- 010 — array: new without an array type
+- 011 — array: range bounds must be integers
+- 012 — array: .len on a non-array
+- 013 — array: array literals: one element, expressions, and strings
+- 014 — array: fill a heap char buffer by index, print it, clean it
+- 015 — enum: a variant as an array index and in arithmetic
+- 016 — errput: errput follows a bound ref? and prints null when unbound
+- 017 — heap: new T allocates one zeroed struct and binds it to a ref
+- 018 — heap: clean frees a heap struct and nulls the reference
+- 019 — heap: clean on an unbound reference is a no-op
+- 020 — heap: cleaning twice is safe
+- 021 — heap: operator drop cascades, freeing a whole tree
+- 022 — heap: a function returns new T from a ref? return
+- 023 — heap: clean on a value struct is still an error
+- 024 — heap: new without an array type is still an error
+- 025 — lexer: an index with nothing in it
+- 026 — lexer: :: must be followed by a name
+- 027 — operator: operator drop declares a destructor named Vec.drop
+- 028 — operator: 'clean' does not destroy a struct, even one with operator drop
+- 029 — operator: calling .drop() yourself is rejected
+- 030 — operator: operator drop beside operator = does not warn
+- 031 — operator: a destructor fires on break and on continue
+- 032 — operator: drop on fall-through: an if block, each iteration, reverse order
+- 033 — operator: a struct drops the structs it owns, at any depth, but not what it borrows
+- 034 — operator: a heap-owning struct: create, deep-copy operator = and drop
+- 035 — operator: a growable string struct: nullable buffer, grow, join and drop
+- 036 — operator: a struct owning heap buffers: deep-copy operator = and drop
+- 037 — ref: ref return: create a node on the heap and return a reference to it
+- 038 — ref: ref? return: one branch returns a reference, the other returns null
+- 039 — ref: declare a ref and bind it to a ref-returning call
+- 040 — ref: a ref-returning call passed straight into a ref parameter
+- 041 — ref: a reference function must return a reference, not a bare value
+- 042 — ref: a field read chained directly on a ref-returning call
+- 043 — struct: a heap array of structs: new Room[N], then clean
+- 044 — struct: a 2D heap array of structs frees every inner slice
+- 045 — struct: an unknown type as a parameter, a return type, or an array element
+- 046 — struct: destructor must take no parameters
+- 047 — struct: destructor must return void
+- 048 — variable: global variables: scalars, arrays, forward reference, shadowing
+- 049 — variable: a global struct is initialised and dropped like a local
+- 050 — variable: a global is dropped on an early return too
 
 ---
 
-## 001 — heap: new T allocates one zeroed struct and binds it to a ref
-
-```ura
-// stdout: 0 0
-// stdout: 7
-// expect: 0
-struct P:
-    a i32
-    b i32
-
-fn main() i32:
-    ref? p P = new P
-    output(p.a, " ", p.b, "\n")
-    p.a = 7
-    output(p.a, "\n")
-    clean p
-    return 0
-```
-
----
-
-## 002 — heap: clean frees a heap struct and nulls the reference
-
-```ura
-// stdout: 3
-// stdout: True
-// expect: 0
-struct P:
-    a i32
-
-fn main() i32:
-    ref? p P = new P
-    p.a = 3
-    output(p.a, "\n")
-    clean p
-    output(p == null, "\n")
-    return 0
-```
-
----
-
-## 003 — heap: clean on an unbound reference is a no-op
-
-```ura
-// stdout: ok
-// expect: 0
-struct P:
-    a i32
-
-fn main() i32:
-    ref? p P
-    clean p
-    output("ok\n")
-    return 0
-```
-
----
-
-## 004 — heap: cleaning twice is safe
-
-```ura
-// stdout: ok
-// expect: 0
-struct P:
-    a i32
-
-fn main() i32:
-    ref? p P = new P
-    clean p
-    clean p
-    output("ok\n")
-    return 0
-```
-
----
-
-## 005 — heap: a guarded read after clean traps
-
-```ura
-// stderr: runtime error: reference 'p' used before it was bound - assign 'p = ref <target>' first
-// expect: 1
-struct P:
-    a i32
-
-fn main() i32:
-    ref? p P = new P
-    clean p
-    output(p?.a, "\n")
-    return 0
-```
-
----
-
-## 006 — heap: operator drop cascades, freeing a whole tree
-
-```ura
-// stdout: 1 2 3
-// stdout: freed
-// stderr: warning: Struct Node has 'operator drop' but no 'operator ='; copying it makes two owners of the same memory, and both will be destroyed
-// expect: 1
-struct Node:
-    value i32
-    ref? left Node
-    ref? right Node
-
-    operator drop:
-        clean self.left
-        clean self.right
-
-fn main() i32:
-    ref? root Node = new Node
-    root.value = 1
-    ref? l Node = new Node
-    l.value = 2
-    ref? r Node = new Node
-    r.value = 3
-    root.left = &l
-    root.right = &r
-    output(root.value, " ", root.left.value, " ", root.right.value, "\n")
-    clean root
-    output("freed\n")
-    return 0
-```
-
----
-
-## 007 — heap: a function returns new T from a ref? return
-
-```ura
-// stdout: 9
-// expect: 0
-struct P:
-    v i32
-
-fn make(x i32) ref? P:
-    ref? p P = new P
-    p.v = x
-    ret ref p
-
-fn main() i32:
-    ref? q P = make(9)
-    output(q.v, "\n")
-    clean q
-    return 0
-```
-
----
-
-## 008 — heap: clean on a value struct is still an error
-
-```ura
-// error: 'clean' frees a heap array, not the struct P; a struct is destroyed at end of scope by its 'operator drop'
-struct P:
-    v i32
-
-fn main() i32:
-    p P
-    clean p
-    return 0
-```
-
----
-
-## 009 — heap: new without an array type is still an error
-
-```ura
-// error: Expected an array type after 'new' (e.g. new int[n])
-fn main() i32:
-    a i32[] = new i32
-    return 0
-```
-
----
-
-## 010 — array: 2D array literal and nested indexing
+## 001 — array: 2D array literal and nested indexing
 
 ```ura
 // stdout: m[0][0]=1 m[1][1]=4
@@ -237,7 +72,7 @@ fn main() i32:
 
 ---
 
-## 011 — array: sized 2D matrix i32[N][M], zero-init and writes
+## 002 — array: sized 2D matrix i32[N][M], zero-init and writes
 
 ```ura
 // stdout: g[0][0]=1 g[2][3]=99 g[1][1]=0
@@ -253,7 +88,7 @@ fn main() i32:
 
 ---
 
-## 012 — array: 3D sized array with runtime size
+## 003 — array: 3D sized array with runtime size
 
 ```ura
 // stdout: v[1][1][1]=7 v[0][0][0]=0
@@ -269,36 +104,7 @@ fn main() i32:
 
 ---
 
-## 013 — array: ? bounds guard: in-bounds access is fine
-
-```ura
-// stdout: a[i]?=30
-// expect: 0
-
-fn main() i32:
-    a i32[] = [10, 20, 30]
-    i i32 = 2
-    output("a[i]?=", a[i]?, "\n")
-    return 0
-```
-
----
-
-## 014 — array: ? bounds guard: out-of-bounds access traps at runtime
-
-```ura
-// stderr: runtime error: array index out of bounds
-// expect: 1
-
-fn main() i32:
-    a i32[] = [10, 20, 30]
-    output(a[5]?)
-    return 0
-```
-
----
-
-## 015 — array: heap array: new i32[N], zero-init, write, clean
+## 004 — array: heap array: new i32[N], zero-init, write, clean
 
 ```ura
 // stdout: a[0]=0 a[2]=42
@@ -314,7 +120,7 @@ fn main() i32:
 
 ---
 
-## 016 — array: heap array with runtime size (new i32[n]) + clean
+## 005 — array: heap array with runtime size (new i32[n]) + clean
 
 ```ura
 // stdout: a[5]=7 a[0]=0
@@ -331,22 +137,7 @@ fn main() i32:
 
 ---
 
-## 017 — array: clean nulls the array; a[i]? then traps (no use-after-free)
-
-```ura
-// stderr: runtime error: array index out of bounds
-// expect: 1
-
-fn main() i32:
-    a i32[] = new i32[5]
-    clean a
-    output(a[0]?)
-    return 0
-```
-
----
-
-## 018 — array: multi-dim heap: new i32[N][M] + recursive clean
+## 006 — array: multi-dim heap: new i32[N][M] + recursive clean
 
 ```ura
 // stdout: m[0][0]=1 m[1][2]=9 m[0][1]=0
@@ -363,7 +154,7 @@ fn main() i32:
 
 ---
 
-## 019 — array: slice a[1..4] is a view (shared storage, exclusive end)
+## 007 — array: slice a[1..4] is a view (shared storage, exclusive end)
 
 ```ura
 // stdout: mid: 20 30 40
@@ -381,22 +172,7 @@ fn main() i32:
 
 ---
 
-## 020 — array: ? on a slice traps when the range is out of bounds
-
-```ura
-// stderr: runtime error: slice range out of bounds
-// expect: 1
-
-fn main() i32:
-    a i32[] = [10, 20, 30]
-    mid i32[] = a[1..9]?
-    output(mid[0])
-    return 0
-```
-
----
-
-## 021 — array: arr.len on stack, heap, slice, and multi-dim
+## 008 — array: arr.len on stack, heap, slice, and multi-dim
 
 ```ura
 // stdout: len = 4
@@ -416,7 +192,7 @@ fn main() i32:
 
 ---
 
-## 022 — array: clean on a non-array
+## 009 — array: clean on a non-array
 
 ```ura
 // error: 'clean' frees a heap array, not i32
@@ -428,7 +204,7 @@ fn main() i32:
 
 ---
 
-## 023 — array: new without an array type
+## 010 — array: new without an array type
 
 ```ura
 // error: Expected an array type after 'new' (e.g. new int[n])
@@ -439,7 +215,7 @@ fn main() i32:
 
 ---
 
-## 024 — array: range bounds must be integers
+## 011 — array: range bounds must be integers
 
 ```ura
 // error: Range bounds must be integers
@@ -451,7 +227,7 @@ fn main() i32:
 
 ---
 
-## 025 — array: .len on a non-array
+## 012 — array: .len on a non-array
 
 ```ura
 // error: '.len' is only valid on an array, not i32
@@ -463,7 +239,7 @@ fn main() i32:
 
 ---
 
-## 026 — array: array literals: one element, expressions, and strings
+## 013 — array: array literals: one element, expressions, and strings
 
 ```ura
 // stdout: 42 len 1
@@ -496,7 +272,7 @@ fn main() i32:
 
 ---
 
-## 027 — array: fill a heap char buffer by index, print it, clean it
+## 014 — array: fill a heap char buffer by index, print it, clean it
 
 ```ura
 // stdout: DUNGEON
@@ -519,84 +295,232 @@ fn main() i32:
 
 ---
 
-## 028 — global: a global struct is initialised and dropped like a local
+## 015 — enum: a variant as an array index and in arithmetic
 
 ```ura
-// stdout: start 10
-// stdout: after 12
-// stdout: DROP at 12
+// stdout: 14 2
 // expect: 0
-
-struct Counter:
-    hits i32
-
-    pub fn create(n i32) Counter:
-        c Counter
-        c.hits = n
-        return c
-
-    operator =(other Counter) void:
-        self.hits = other.hits
-
-    fn bump():
-        self.hits += 1
-
-    operator drop:
-        output("DROP at ", self.hits, "\n")
-
-tally Counter = Counter::create(10)
-
-fn touch():
-    tally.bump()
+enum Slot: HEAD, BODY, LEGS
 
 fn main() i32:
-    output("start ", tally.hits, "\n")
-    touch()
-    touch()
-    output("after ", tally.hits, "\n")
+    gear i32[] = new i32[3]
+    gear[HEAD] = 5
+    gear[LEGS] = 9
+    output(gear[HEAD] + gear[LEGS], " ", LEGS - HEAD, "\n")
     return 0
 ```
 
 ---
 
-## 029 — global: a global is dropped on an early return too
+## 016 — errput: errput follows a bound ref? and prints null when unbound
 
 ```ura
-// stdout: body
-// stdout: early
-// stdout: DROP 2
-// stdout: DROP 1
-// expect: 0
+// stderr: [0;31munbound Node{value: 1, next: null}
+// expect: 1
 
-struct Res:
-    id i32
-
-    pub fn create(n i32) Res:
-        r Res
-        r.id = n
-        return r
-
-    operator =(other Res) void:
-        self.id = other.id
-
-    operator drop:
-        output("DROP ", self.id, "\n")
-
-a Res = Res::create(1)
-b Res = Res::create(2)
+struct Node:
+    value i32
+    next &Node
 
 fn main() i32:
-    output("body\n")
-    if 1 < 2:
-        output("early\n")
-        return 0
-    output("unreachable\n")
+    head &Node = new Node
+    head.value = 1
+    errput("unbound ", head, "\n")
+    tail &Node = new Node
+    tail.value = 2
+    head.next = &tail
+    errput("bound ", head, "\n")
+    clean tail
+    clean head
     return 0
 ```
 
 ---
 
-## 030 — drop: operator drop declares a destructor named Vec.drop
+## 017 — heap: new T allocates one zeroed struct and binds it to a ref
+
+```ura
+// stdout: 0 0
+// stdout: 7
+// expect: 0
+struct P:
+    a i32
+    b i32
+
+fn main() i32:
+    p &P = new P
+    output(p.a, " ", p.b, "\n")
+    p.a = 7
+    output(p.a, "\n")
+    clean p
+    return 0
+```
+
+---
+
+## 018 — heap: clean frees a heap struct and nulls the reference
+
+```ura
+// stdout: 3
+// stdout: True
+// expect: 0
+struct P:
+    a i32
+
+fn main() i32:
+    p &P = new P
+    p.a = 3
+    output(p.a, "\n")
+    clean p
+    output(p == null, "\n")
+    return 0
+```
+
+---
+
+## 019 — heap: clean on an unbound reference is a no-op
+
+```ura
+// stdout: ok
+// expect: 0
+struct P:
+    a i32
+
+fn main() i32:
+    p &P
+    clean p
+    output("ok\n")
+    return 0
+```
+
+---
+
+## 020 — heap: cleaning twice is safe
+
+```ura
+// stdout: ok
+// expect: 0
+struct P:
+    a i32
+
+fn main() i32:
+    p &P = new P
+    clean p
+    clean p
+    output("ok\n")
+    return 0
+```
+
+---
+
+## 021 — heap: operator drop cascades, freeing a whole tree
+
+```ura
+// stdout: 1 2 3
+// stdout: freed
+// stderr: warning: Struct Node has 'operator drop' but no 'operator ='; copying it makes two owners of the same memory, and both will be destroyed
+// expect: 1
+struct Node:
+    value i32
+    left &Node
+    right &Node
+
+    operator drop:
+        clean self.left
+        clean self.right
+
+fn main() i32:
+    root &Node = new Node
+    root.value = 1
+    l &Node = new Node
+    l.value = 2
+    r &Node = new Node
+    r.value = 3
+    root.left = &l
+    root.right = &r
+    output(root.value, " ", root.left.value, " ", root.right.value, "\n")
+    clean root
+    output("freed\n")
+    return 0
+```
+
+---
+
+## 022 — heap: a function returns new T from a ref? return
+
+```ura
+// stdout: 9
+// expect: 0
+struct P:
+    v i32
+
+fn make(x i32) &P:
+    p &P = new P
+    p.v = x
+    ret &p
+
+fn main() i32:
+    q &P = make(9)
+    output(q.v, "\n")
+    clean q
+    return 0
+```
+
+---
+
+## 023 — heap: clean on a value struct is still an error
+
+```ura
+// error: 'clean' frees a heap array, not the struct P; a struct is destroyed at end of scope by its 'operator drop'
+struct P:
+    v i32
+
+fn main() i32:
+    p P
+    clean p
+    return 0
+```
+
+---
+
+## 024 — heap: new without an array type is still an error
+
+```ura
+// error: Expected an array type after 'new' (e.g. new int[n])
+fn main() i32:
+    a i32[] = new i32
+    return 0
+```
+
+---
+
+## 025 — lexer: an index with nothing in it
+
+```ura
+// error: Unexpected token
+
+fn main() i32:
+    arr i32[] = new i32[3]
+    x i32 = arr[]
+    return 0
+```
+
+---
+
+## 026 — lexer: :: must be followed by a name
+
+```ura
+// error: Expected a name after '::'
+use "@/header"
+
+fn main() i32:
+    s String = String::new
+    return 0
+```
+
+---
+
+## 027 — operator: operator drop declares a destructor named Vec.drop
 
 ```ura
 // stdout: done
@@ -619,7 +543,7 @@ fn main() i32:
 
 ---
 
-## 031 — drop: 'clean' does not destroy a struct, even one with operator drop
+## 028 — operator: 'clean' does not destroy a struct, even one with operator drop
 
 ```ura
 // stderr: warning: Struct Vec has 'operator drop' but no 'operator ='; copying it makes two owners of the same memory, and both will be destroyed
@@ -639,7 +563,7 @@ fn main() i32:
 
 ---
 
-## 032 — drop: calling .drop() yourself is rejected
+## 029 — operator: calling .drop() yourself is rejected
 
 ```ura
 // stderr: warning: Struct Vec has 'operator drop' but no 'operator ='; copying it makes two owners of the same memory, and both will be destroyed
@@ -659,7 +583,7 @@ fn main() i32:
 
 ---
 
-## 033 — drop: operator drop beside operator = does not warn
+## 030 — operator: operator drop beside operator = does not warn
 
 ```ura
 // stdout: done
@@ -684,7 +608,7 @@ fn main() i32:
 
 ---
 
-## 034 — drop: a destructor fires on break and on continue
+## 031 — operator: a destructor fires on break and on continue
 
 ```ura
 // stdout: drop 100
@@ -729,7 +653,7 @@ fn main() i32:
 
 ---
 
-## 035 — drop: drop on fall-through: an if block, each iteration, reverse order
+## 032 — operator: drop on fall-through: an if block, each iteration, reverse order
 
 ```ura
 // stdout: inside
@@ -778,7 +702,7 @@ fn main() i32:
 
 ---
 
-## 036 — drop: a struct drops the structs it owns, at any depth, but not what it borrows
+## 033 — operator: a struct drops the structs it owns, at any depth, but not what it borrows
 
 ```ura
 // stdout: built
@@ -810,7 +734,7 @@ struct L2:
 struct Owner:
     mid  L2
     also Res
-    ref? borrowed Res
+    borrowed &Res
 
     pub fn create() Owner:
         o Owner
@@ -828,7 +752,7 @@ fn main() i32:
 
 ---
 
-## 037 — drop: a heap-owning struct: create, deep-copy operator = and drop
+## 034 — operator: a heap-owning struct: create, deep-copy operator = and drop
 
 ```ura
 // stdout: b1: hello
@@ -870,7 +794,7 @@ fn main() i32:
 
 ---
 
-## 038 — drop: a growable string struct: nullable buffer, grow, join and drop
+## 035 — operator: a growable string struct: nullable buffer, grow, join and drop
 
 ```ura
 // stdout: s0:    1x2345 (6)
@@ -881,7 +805,7 @@ fn main() i32:
 use "@/header"
 
 struct String2:
-    value char[]?
+    value char[]
     count i32
     size  i32
 
@@ -903,7 +827,7 @@ struct String2:
         clean self.value
         self.value = bigger
 
-    fn assign(str char[]?):
+    fn assign(str char[]):
         if str == null:
             self.assign("")
             return
@@ -913,14 +837,14 @@ struct String2:
         strcpy(self.value, str)
         self.count = len
 
-    fn join(str char[]?):
+    fn join(str char[]):
         if str == null: return
         len i32 = strlen(str) as i32
         self.grow(self.count + len + 1)
         strcat(self.value, str)
         self.count += len
 
-    operator = (str char[]?) void:
+    operator = (str char[]) void:
         self.assign(str)
 
     operator = (v &String2) void:
@@ -950,7 +874,7 @@ fn main() i32:
 
 ---
 
-## 039 — drop: a struct owning heap buffers: deep-copy operator = and drop
+## 036 — operator: a struct owning heap buffers: deep-copy operator = and drop
 
 ```ura
 // stdout: The Bold Aldric enters!
@@ -961,8 +885,8 @@ fn main() i32:
 use "@/header"
 
 struct Hero:
-    name  char[]?
-    title char[]?
+    name  char[]
+    title char[]
 
     pub fn create() Hero:
         h Hero
@@ -1008,7 +932,206 @@ fn main() i32:
 
 ---
 
-## 040 — drop: destructor must take no parameters
+## 037 — ref: ref return: create a node on the heap and return a reference to it
+
+```ura
+// stdout: 42
+// expect: 0
+struct Node:
+    value i32
+    next &Node
+
+fn make(v i32, heap Node[]) &Node:
+    heap[0].value = v
+    return &heap[0]
+
+fn main() i32:
+    h Node[] = new Node[1]
+    a &Node = make(42, h)
+    output(a.value, "\n")
+    return 0
+```
+
+---
+
+## 038 — ref: ref? return: one branch returns a reference, the other returns null
+
+```ura
+// stdout: 7 True
+// expect: 0
+struct N:
+    v i32
+    nx &N
+
+fn pick(h N[], want bool) &N:
+    if want:
+        return &h[0]
+    return null
+
+fn main() i32:
+    h N[] = new N[1]
+    h[0].v = 7
+    r &N = pick(h, True)
+    e &N = pick(h, False)
+    output(r.v, " ", e == null, "\n")
+    return 0
+```
+
+---
+
+## 039 — ref: declare a ref and bind it to a ref-returning call
+
+```ura
+// stdout: 9
+// expect: 0
+struct Node:
+    v i32
+    next &Node
+
+fn make(v i32, h Node[]) &Node:
+    h[0].v = v
+    return &h[0]
+
+fn main() i32:
+    h Node[] = new Node[1]
+    n &Node = make(9, h)
+    output(n.v, "\n")
+    return 0
+```
+
+---
+
+## 040 — ref: a ref-returning call passed straight into a ref parameter
+
+```ura
+// stdout: 5
+// expect: 0
+struct Node:
+    v i32
+    next &Node
+
+struct Lst:
+    head &Node
+
+fn make(v i32, h Node[]) &Node:
+    h[0].v = v
+    return &h[0]
+
+fn sethead(lst &Lst, node &Node):
+    lst.head = &node
+
+fn main() i32:
+    h Node[] = new Node[1]
+    lst Lst
+    sethead(&lst, make(5, h))
+    output(lst.head.v, "\n")
+    return 0
+```
+
+---
+
+## 041 — ref: a reference function must return a reference, not a bare value
+
+```ura
+// error: 'g' returns a reference; return `ref x` (or null), not a value
+struct N:
+    v i32
+
+fn g(h N[]) &N:
+    return h[0]
+
+fn main() i32:
+    h N[] = new N[1]
+    output(g(h).v, "\n")
+    return 0
+```
+
+---
+
+## 042 — ref: a field read chained directly on a ref-returning call
+
+```ura
+// stdout: 42
+// expect: 0
+struct Node:
+    value i32
+    next &Node
+
+fn make(v i32, heap Node[]) &Node:
+    heap[0].value = v
+    return &heap[0]
+
+fn main() i32:
+    h Node[] = new Node[1]
+    output(make(42, h).value, "\n")
+    return 0
+```
+
+---
+
+## 043 — struct: a heap array of structs: new Room[N], then clean
+
+```ura
+// stdout: attic@9 2
+// expect: 0
+
+struct Room:
+    name  char[]
+    floor i32
+
+fn main() i32:
+    h Room[] = new Room[2]
+    h[0].name  = "attic"
+    h[0].floor = 9
+    h[1].floor = 2
+    output(h[0].name, "@", h[0].floor, " ", h[1].floor, "\n")
+    clean h
+    return 0
+```
+
+---
+
+## 044 — struct: a 2D heap array of structs frees every inner slice
+
+```ura
+// stdout: 1 4
+// expect: 0
+
+struct Room:
+    floor i32
+
+fn main() i32:
+    g Room[][] = new Room[2][2]
+    g[0][0].floor = 1
+    g[1][1].floor = 4
+    output(g[0][0].floor, " ", g[1][1].floor, "\n")
+    clean g
+    return 0
+```
+
+---
+
+## 045 — struct: an unknown type as a parameter, a return type, or an array element
+
+```ura
+// error: Unknown type 'Widget'
+
+fn process(p Widget):
+    return
+
+fn make() Widget:
+    w Widget
+    return w
+
+fn main() i32:
+    arr Widget[] = new Widget[3]
+    output("hi\n")
+    return 0
+```
+
+---
+
+## 046 — struct: destructor must take no parameters
 
 ```ura
 // error: Destructor 'drop' takes no parameters; write 'operator drop:'
@@ -1028,7 +1151,7 @@ fn main() i32:
 
 ---
 
-## 041 — drop: destructor must return void
+## 047 — struct: destructor must return void
 
 ```ura
 // error: Destructor 'drop' returns void; drop the return type
@@ -1043,6 +1166,126 @@ struct Box:
 fn main() i32:
     b Box
     b.value = 1
+    return 0
+```
+
+---
+
+## 048 — variable: global variables: scalars, arrays, forward reference, shadowing
+
+```ura
+// stdout: ura 1.500000 True
+// stdout: total starts 7
+// stdout: total now 9
+// stdout: xs 7 len 3  heap 9 len 2
+// stdout: local total 99
+// expect: 0
+
+name  char[] = "ura"
+ratio f32 = 1.5
+flag  bool  = True
+xs    i32[] = i32[3]
+heap  i32[] = new i32[2]
+
+fn touch():
+    total += 1
+
+fn main() i32:
+    output(name, " ", ratio, " ", flag, "\n")
+    // forward reference: total is declared below main
+    output("total starts ", total, "\n")
+    touch()
+    touch()
+    output("total now ", total, "\n")
+
+    xs[0] = 7
+    heap[1] = 9
+    output("xs ", xs[0], " len ", xs.len)
+    output("  heap ", heap[1], " len ", heap.len, "\n")
+    clean heap
+
+    // a local shadows the global for the rest of this scope
+    total i32 = 99
+    output("local total ", total, "\n")
+    return 0
+
+total i32 = 7
+```
+
+---
+
+## 049 — variable: a global struct is initialised and dropped like a local
+
+```ura
+// stdout: start 10
+// stdout: after 12
+// stdout: DROP at 12
+// expect: 0
+
+struct Counter:
+    hits i32
+
+    pub fn create(n i32) Counter:
+        c Counter
+        c.hits = n
+        return c
+
+    operator =(other Counter) void:
+        self.hits = other.hits
+
+    fn bump():
+        self.hits += 1
+
+    operator drop:
+        output("DROP at ", self.hits, "\n")
+
+tally Counter = Counter::create(10)
+
+fn touch():
+    tally.bump()
+
+fn main() i32:
+    output("start ", tally.hits, "\n")
+    touch()
+    touch()
+    output("after ", tally.hits, "\n")
+    return 0
+```
+
+---
+
+## 050 — variable: a global is dropped on an early return too
+
+```ura
+// stdout: body
+// stdout: early
+// stdout: DROP 2
+// stdout: DROP 1
+// expect: 0
+
+struct Res:
+    id i32
+
+    pub fn create(n i32) Res:
+        r Res
+        r.id = n
+        return r
+
+    operator =(other Res) void:
+        self.id = other.id
+
+    operator drop:
+        output("DROP ", self.id, "\n")
+
+a Res = Res::create(1)
+b Res = Res::create(2)
+
+fn main() i32:
+    output("body\n")
+    if 1 < 2:
+        output("early\n")
+        return 0
+    output("unreachable\n")
     return 0
 ```
 

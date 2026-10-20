@@ -8,22 +8,21 @@
 - 004 — enum: an enum-typed variable compared to a variant
 - 005 — enum: match over an enum inside a function
 - 006 — enum: an enum used as a struct field type
-- 007 — enum: a variant as an array index and in arithmetic
-- 008 — enum: a variant used before the enum is declared
-- 009 — enum: an enum must declare at least one variant
-- 010 — enum: a variant name cannot be declared twice
-- 011 — enum: an explicit variant value must be an integer
-- 012 — match: a single-value case matches
-- 013 — match: a case with several values
-- 014 — match: default runs when nothing matches
-- 015 — match: break leaves the match early
-- 016 — match: break exits the match, not the enclosing loop
-- 017 — match: continue applies to the loop, skipping the rest of the iteration
-- 018 — match: a case needs at least one value
-- 019 — match: case value type must match the subject
-- 020 — match: a case with no enclosing match
-- 021 — match: a default with no enclosing match
-- 022 — match: break needs a loop or match
+- 007 — enum: a variant used before the enum is declared
+- 008 — enum: an enum must declare at least one variant
+- 009 — enum: a variant name cannot be declared twice
+- 010 — enum: an explicit variant value must be an integer
+- 011 — match: a single-value case matches
+- 012 — match: a case with several values
+- 013 — match: default runs when nothing matches
+- 014 — match: break leaves the match early
+- 015 — match: break exits the match, not the enclosing loop
+- 016 — match: continue applies to the loop, skipping the rest of the iteration
+- 017 — match: a case needs at least one value
+- 018 — match: case value type must match the subject
+- 019 — match: a case with no enclosing match
+- 020 — match: a default with no enclosing match
+- 021 — match: break needs a loop or match
 
 ---
 
@@ -139,24 +138,7 @@ fn main() i32:
 
 ---
 
-## 007 — enum: a variant as an array index and in arithmetic
-
-```ura
-// stdout: 14 2
-// expect: 0
-enum Slot: HEAD, BODY, LEGS
-
-fn main() i32:
-    gear i32[] = new i32[3]
-    gear[HEAD] = 5
-    gear[LEGS] = 9
-    output(gear[HEAD] + gear[LEGS], " ", LEGS - HEAD, "\n")
-    return 0
-```
-
----
-
-## 008 — enum: a variant used before the enum is declared
+## 007 — enum: a variant used before the enum is declared
 
 ```ura
 // stdout: 0
@@ -173,7 +155,7 @@ fn main() i32:
 
 ---
 
-## 009 — enum: an enum must declare at least one variant
+## 008 — enum: an enum must declare at least one variant
 
 ```ura
 // error: Enum Nothing must declare at least one variant
@@ -186,7 +168,7 @@ fn main() i32:
 
 ---
 
-## 010 — enum: a variant name cannot be declared twice
+## 009 — enum: a variant name cannot be declared twice
 
 ```ura
 // error: Redeclaration of variable 'RED'
@@ -200,7 +182,7 @@ fn main() i32:
 
 ---
 
-## 011 — enum: an explicit variant value must be an integer
+## 010 — enum: an explicit variant value must be an integer
 
 ```ura
 // error: Enum variant 'A' needs an integer value after '='
@@ -214,7 +196,7 @@ fn main() i32:
 
 ---
 
-## 012 — match: a single-value case matches
+## 011 — match: a single-value case matches
 
 ```ura
 // stdout: one
@@ -231,7 +213,7 @@ fn main() i32:
 
 ---
 
-## 013 — match: a case with several values
+## 012 — match: a case with several values
 
 ```ura
 // stdout: small
@@ -248,7 +230,7 @@ fn main() i32:
 
 ---
 
-## 014 — match: default runs when nothing matches
+## 013 — match: default runs when nothing matches
 
 ```ura
 // stdout: fallback
@@ -265,7 +247,7 @@ fn main() i32:
 
 ---
 
-## 015 — match: break leaves the match early
+## 014 — match: break leaves the match early
 
 ```ura
 // stdout: before
@@ -282,7 +264,7 @@ fn main() i32:
 
 ---
 
-## 016 — match: break exits the match, not the enclosing loop
+## 015 — match: break exits the match, not the enclosing loop
 
 ```ura
 // stdout: 1
@@ -302,7 +284,7 @@ fn main() i32:
 
 ---
 
-## 017 — match: continue applies to the loop, skipping the rest of the iteration
+## 016 — match: continue applies to the loop, skipping the rest of the iteration
 
 ```ura
 // stdout: 1
@@ -321,7 +303,7 @@ fn main() i32:
 
 ---
 
-## 018 — match: a case needs at least one value
+## 017 — match: a case needs at least one value
 
 ```ura
 // error: Expected an expression after 'case'
@@ -336,7 +318,7 @@ fn main() i32:
 
 ---
 
-## 019 — match: case value type must match the subject
+## 018 — match: case value type must match the subject
 
 ```ura
 // error: This case value is array but the subject is i32; they must be the same type
@@ -351,7 +333,7 @@ fn main() i32:
 
 ---
 
-## 020 — match: a case with no enclosing match
+## 019 — match: a case with no enclosing match
 
 ```ura
 // error: 'case' without a matching 'match'
@@ -364,7 +346,7 @@ fn main() i32:
 
 ---
 
-## 021 — match: a default with no enclosing match
+## 020 — match: a default with no enclosing match
 
 ```ura
 // error: 'default' without a matching 'match'
@@ -377,7 +359,7 @@ fn main() i32:
 
 ---
 
-## 022 — match: break needs a loop or match
+## 021 — match: break needs a loop or match
 
 ```ura
 // error: 'break' outside a loop or match

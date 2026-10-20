@@ -64,7 +64,7 @@ These come from the recorded IR in milestones 1 to 4. The core passes them, but 
 + Milestone 0.1: Context, types, constants and globals.
 + Milestone 0.2: Functions, variables and expressions.
 + Milestone 0.3: Control flow (conditionals, loops, match, break, continue, return, try).
-+ Milestone 0.4: Memory, arrays, strings, references and nullable values.
++ Milestone 0.4: Memory, arrays, strings and references (a reference can be null).
 + Milestone 0.5: Structs, fields, methods, templates, enums and modules.
 + Milestone 0.6: Runtime support, builtins, C interop and debug info.
 + Milestone 0.7: Optimizer hooks and backend.
@@ -96,7 +96,7 @@ The context is one struct, created once per compilation (the core has a single g
     - debug: UraDebugInfo pointer. NULL unless debug info is on, see 0.6.
     - diag: UraDiagFn. Callback for internal errors and warnings.
     - diag_user: void pointer handed back to the callback.
-    - flags: UraIRFlags. Bits: verify_module (default on), keep_value_names (default on, needed to match the recorded IR), emit_debug_info, sanitize, bounds_checks (default off: the recorded IR of milestones 1 to 3 has none), check_div_zero (default off until language milestone 11, same reason), trap_on_null_deref (default off, the explicit guard x? always checks).
+    - flags: UraIRFlags. Bits: verify_module (default on), keep_value_names (default on, needed to match the recorded IR), emit_debug_info, sanitize, bounds_checks (default off: the recorded IR of milestones 1 to 3 has none), check_div_zero (default off until language milestone 11, same reason), trap_on_null_deref (default off: dereferencing a null reference is undefined, as in C; when on, every dereference of a reference that can be null is preceded by a check that calls the trap helper). The ? syntax (guard x?, the ?? operator, optional types T?) no longer exists in the language, so the wrapper has no function for it.
     - counters: unsigned counters for generated names (string literals, anonymous blocks, helper functions).
     - runtime: UraRuntimeDecls. Cached handles of the libc functions the wrapper itself calls: printf, dprintf, calloc, free, write, exit, strlen, memcpy, memset, getenv, abort.
     - error_slot: UraGlobal pointer for the try and catch machinery, see 0.3. NULL until used.
@@ -112,7 +112,7 @@ The context is one struct, created once per compilation (the core has a single g
 
 + UraIRContext *ura_ir_create(const char *module_name, const char *source_name, UraDiagFn diag, void *user): creates the LLVM context, module and builder, initialises the native target (LLVMInitializeNativeTarget, LLVMInitializeNativeAsmPrinter, LLVMInitializeNativeAsmParser), sets the triple and the data layout, creates the type cache and the empty tables.
 + void ura_ir_set_target(UraIRContext *ctx, const char *triple, const char *cpu, const char *features, UraRelocMode reloc, UraCodeModel model): creates the target machine, sets the module's triple and data layout from it. Default is the host triple, generic CPU, no features, default reloc and model.
-+ void ura_ir_set_flag(UraIRContext *ctx, UraIRFlag flag, bool value): sets one flag.
++ void ura_ir_set_flag(UraIRContext *ctx, UraIRFlag flag, bool value): sets one flag. enum UraIRFlag: URA_FLAG_VERIFY_MODULE, URA_FLAG_KEEP_NAMES, URA_FLAG_DEBUG_INFO, URA_FLAG_SANITIZE, URA_FLAG_BOUNDS_CHECKS, URA_FLAG_CHECK_DIV_ZERO, URA_FLAG_TRAP_NULL_DEREF.
 + void ura_ir_dispose(UraIRContext *ctx): disposes the builder, pass managers, target machine, target data, module and context, in that order.
 + void ura_ir_verify(UraIRContext *ctx): runs LLVMVerifyModule with the return status action and reports the message as a FATAL diagnostic. Called by ura_ir_emit_ll unless verify_module is off.
 + void ura_ir_reset(UraIRContext *ctx): empties the module so the same context can compile another file. Needed for the test runner if it ever runs in-process.
@@ -156,7 +156,6 @@ The cursor is the "where am I emitting" state. It lives inside the context. The 
     - URA_FUNC (function type, used for functions and for function values)
     - URA_TUPLE (an anonymous struct, for multiple return values)
     - URA_ENUM (an i32 with a name; kept as its own kind so printing can use the variant names)
-    - URA_OPTIONAL (a nullable value, see 0.4)
     - URA_OPAQUE (a named struct whose body is not set yet)
 
 ### Type layout: UraType
@@ -166,7 +165,7 @@ The cursor is the "where am I emitting" state. It lives inside the context. The 
     - name: char *. For structs, enums and opaque types. NULL otherwise.
     - bits: unsigned. For integers and floats, the width.
     - is_signed: bool. For integers.
-    - elem: UraType pointer. Pointee of a pointer or reference, element of an array, slice or optional.
+    - elem: UraType pointer. Pointee of a pointer or reference, element of an array or slice.
     - length: size_t. Element count of an array. Zero for a slice or an array of unknown size.
     - fields: array of UraField (see below), with count and size. For structs and tuples.
     - ret: UraType pointer. Function result.
@@ -193,13 +192,12 @@ Types are uniqued in the cache: asking twice for the pointer to i32 returns the 
 + UraType *ura_type_slice(UraIRContext *ctx, UraType *elem)
 + UraType *ura_type_func(UraIRContext *ctx, UraType *ret, UraType **params, size_t count, bool variadic)
 + UraType *ura_type_tuple(UraIRContext *ctx, UraType **elems, size_t count)
-+ UraType *ura_type_optional(UraIRContext *ctx, UraType *elem)
 + UraType *ura_type_enum(UraIRContext *ctx, const char *name)
 + UraType *ura_type_struct_declare(UraIRContext *ctx, const char *name): creates the named opaque struct and returns it. Calling it twice with the same name returns the same type. This is what lets a struct be used before its declaration, and lets a struct hold a reference to itself.
 + bool ura_type_struct_define(UraIRContext *ctx, UraType *type, UraType **field_types, const char **field_names, size_t count): sets the body. Returns false and reports a diagnostic when a field is the struct itself by value (infinite size) or is a type that is still opaque and not behind a pointer.
 + Queries, all pure: ura_type_kind, ura_type_is_integer, ura_type_is_signed, ura_type_is_float, ura_type_is_pointer, ura_type_is_aggregate (array, struct, tuple), ura_type_elem, ura_type_bits, ura_type_name, ura_type_field_count, ura_type_field(type, index), ura_type_param_count, ura_type_param(type, index), ura_type_ret, ura_type_is_complete.
 + bool ura_type_equal(UraType *a, UraType *b): same as ==, written out for clarity in the core.
-+ bool ura_type_can_convert(UraType *from, UraType *to, UraConvertKind *how): tells whether an implicit conversion exists (a literal fitting its target, a non-null value widening to an optional) and which cast it needs. Explicit casts (as) are always allowed between scalars.
++ bool ura_type_can_convert(UraType *from, UraType *to, UraConvertKind *how): tells whether an implicit conversion exists (a literal fitting its target) and which cast it needs. Explicit casts (as) are always allowed between scalars.
 + size_t ura_sizeof(UraIRContext *ctx, UraType *type): ABI size from the target data, with struct padding. Used by the sizeof builtin.
 + size_t ura_alignof(UraIRContext *ctx, UraType *type).
 + size_t ura_offsetof(UraIRContext *ctx, UraType *struct_type, unsigned field_index).
@@ -211,7 +209,6 @@ Types are uniqued in the cache: asking twice for the pointer to i32 returns the 
 + char is i8 and prints as a character. i8 as a number prints as a number: the distinction is kept by the core, the wrapper only has i8.
 + The untyped pointer of the language and string literals are i8*.
 + Arrays: the language type i32[] has no size in its type (an error to write one). In the recorded IR (milestone 2) an array variable is a slot holding a pointer to its first element (alloca i32*), the elements live in a separate backing array (alloca [3 x i32] named array), and a parameter is the bare element pointer (define i32 @count_zero(i32* %0, i32 %1), with the length passed by the caller as a separate argument). The wrapper follows that. The fat pointer (data pointer plus length, URA_SLICE) is the later form for slices, .len and bounds checks (language milestone 8).
-+ Optional values: a pointer-like type (reference, pointer, array, slice) is nullable by being null. A scalar optional would need a flag and is not part of this milestone; ura_type_optional on a scalar reports a diagnostic.
 + Enums are i32. Their variants are constants created by ura_const_enum.
 + Unsigned types share the LLVM integer type with the signed one. A function that emits an operation takes the UraType of its operand to know which instruction to choose.
 + Floats: f32 is float, f64 is double. Comparisons are ordered (fcmp oeq, olt, and so on); the exception is != which is unordered (une).
@@ -229,7 +226,7 @@ Types are uniqued in the cache: asking twice for the pointer to i32 returns the 
 + UraValue *ura_const_array(UraIRContext *ctx, UraType *elem, UraValue **values, size_t count): an array literal whose elements are all constants.
 + UraValue *ura_const_struct(UraIRContext *ctx, UraType *type, UraValue **values, size_t count).
 + bool ura_int_fits(UraType *type, long long value) and the unsigned form: tells whether a literal fits its target type, for the core's out-of-range errors.
-+ Queries: ura_value_type(UraValue *), ura_value_is_const, ura_value_is_null_const, ura_const_int_value (get the number back, for array sizes and case labels).
++ Queries: ura_value_type(UraValue *), ura_value_is_const, ura_value_is_null_const, long long ura_const_int_value(UraValue *value) (get the number back, for array sizes and case labels).
 
 ### Values: UraValue
 
@@ -256,7 +253,7 @@ Types are uniqued in the cache: asking twice for the pointer to i32 returns the 
 
 ### Module output
 
-+ char *ura_ir_to_string(UraIRContext *ctx): the textual IR, for the -tree and -ll flags. Freed with LLVMDisposeMessage inside the wrapper (ura_ir_free_string).
++ char *ura_ir_to_string(UraIRContext *ctx): the textual IR, for the -tree and -ll flags. Released with void ura_ir_free_string(char *text), which calls LLVMDisposeMessage inside the wrapper.
 + bool ura_ir_emit_ll(UraIRContext *ctx, const char *path): verifies, then writes the .ll file with LLVMPrintModuleToFile. The core passes build/out.ll.
 + bool ura_ir_emit_bitcode(UraIRContext *ctx, const char *path): LLVMWriteBitcodeToFile (the BitWriter header is already included in 003).
 + The build of an executable is in 0.7.
@@ -284,7 +281,7 @@ The core already resolves names in analyze. The wrapper keeps its own small tabl
 + UraFunc *ura_func_declare(UraIRContext *ctx, const char *symbol, UraType *type, UraLinkage linkage): creates the function in the module without a body. The core calls it for every function before emitting any body, so a call before the declaration works. A proto statement is exactly this with external linkage.
 + UraFunc *ura_func_lookup(UraIRContext *ctx, const char *symbol).
 + void ura_func_set_param_names(UraFunc *func, const char **names): names the LLVM parameters.
-+ UraFunc *ura_func_begin(UraIRContext *ctx, UraFunc *declared): starts the body: creates the entry block, positions the builder in it, opens a function scope, and for each parameter creates an alloca named after it and stores the incoming value (a by-value parameter is a copy, so changing it never changes the caller). A reference parameter is not copied: its pointer is used as the storage. Returns the function.
++ UraFunc *ura_func_begin(UraIRContext *ctx, UraFunc *declared): starts the body: creates the entry block, positions the builder in it, opens a function scope, and for each parameter creates an alloca named after it and stores the incoming value (a by-value parameter is a copy, so changing it never changes the caller). A reference parameter does not copy the pointee: the incoming pointer is stored in a slot (an alloca of the pointer type) named after the parameter, exactly like a reference variable, and reads and writes go through dref.NAME (see inc in milestone2.md, which has %c = alloca i32* and %dref.c = load i32*, i32** %c). Returns the function.
 + void ura_func_end(UraIRContext *ctx): closes the function. If the current block does not end, it adds the default return: ret void for a void function, and for others a return of the zero of the result type (the recorded IR has this default return). Pops the function scope, verifies the function (LLVMVerifyFunction), and restores the cursor.
 + UraValue *ura_func_param(UraFunc *func, unsigned index): the incoming value.
 + UraType *ura_func_ret_type(UraIRContext *ctx): the result type of the function being emitted (replaces the default-return lookup of 003).
@@ -376,7 +373,7 @@ All take the operand type from the values, and a name.
 + void ura_ret_void(UraIRContext *ctx).
 + void ura_unreachable(UraIRContext *ctx).
 + UraValue *ura_build_phi(UraIRContext *ctx, UraType *type, UraValue **values, UraBlock **blocks, size_t count, const char *name): a phi node with its incoming values. LLVMAddIncoming is called inside.
-+ UraValue *ura_build_select(UraIRContext *ctx, UraValue *condition, UraValue *if_true, UraValue *if_false, const char *name): a value choice without branching, used by the optional default operator when both sides are cheap.
++ UraValue *ura_build_select(UraIRContext *ctx, UraValue *condition, UraValue *if_true, UraValue *if_false, const char *name): a value choice without branching.
 
 ### Conditionals: ura_codegen_conditional
 
@@ -414,7 +411,7 @@ The core hands over a whole if, elif ... else chain at once. The conditions and 
 + Ura loops use these block names: cond for the test block, then for the body, endwhile for the exit. A for loop adds step and a loop uses body.
 + void ura_codegen_while(UraIRContext *ctx, UraEmitValueFn condition, void *condition_user, UraEmitBodyFn body, void *body_user): creates cond, then and endwhile; branches to cond; emits the condition there; conditional branch to then or endwhile; pushes a loop frame (continue goes to cond, break to endwhile); opens a scope; runs the body; pops the scope; branches back to cond if the block is not ended; pops the frame; positions in endwhile.
 + void ura_codegen_loop(UraIRContext *ctx, UraEmitBodyFn body, void *body_user): the infinite loop. A body block that branches back to itself, an exit block for break.
-+ struct UraForRange, members: var_name (const char *), var_type (UraType pointer, an integer type), start (UraValue pointer), end (UraValue pointer), step (UraValue pointer or NULL for 1), by_ref (reserved), direction (URA_RANGE_AUTO, URA_RANGE_UP, URA_RANGE_DOWN). With AUTO the wrapper compares start and end at run time and picks the direction (up when start is smaller, down when larger), the end is excluded.
++ struct UraForRange, members: var_name (const char *), var_type (UraType pointer, an integer type), start (UraValue pointer), end (UraValue pointer), step (UraValue pointer or NULL for 1), by_ref (reserved), direction (a UraRangeDirection: URA_RANGE_AUTO, URA_RANGE_UP, URA_RANGE_DOWN). With AUTO the wrapper compares start and end at run time and picks the direction (up when start is smaller, down when larger), the end is excluded.
 + void ura_codegen_for_range(UraIRContext *ctx, UraForRange *range, UraEmitBodyFn body, void *body_user): evaluates start, end and step once before the loop, creates the loop variable in a new scope (alloca in entry), emits the test, body, and the step block (continue goes to the step block, not to the test), and the exit.
 + struct UraForEach, members: var_name, array (UraValue pointer, an array address or a slice), elem_type, by_ref (bool, for ref x in arr: the variable is a reference to the element and writes change the array), index_name (const char * or NULL).
 + void ura_codegen_for_each(UraIRContext *ctx, UraForEach *each, UraEmitBodyFn body, void *body_user): a hidden index runs from 0 to the length (known for a fixed array, read from the slice otherwise), the element is loaded or bound by reference.
@@ -432,8 +429,8 @@ The core hands over a whole if, elif ... else chain at once. The conditions and 
 
 ### Match (switch)
 
-+ struct UraCase, members: values (array of UraValue pointers, all constant integers or enum constants; several values share a body), body (UraEmitBodyFn), body_user (void pointer).
-+ struct UraMatch, members: subject (UraValue pointer), cases (array of UraCase), has_default (bool), default_body (UraEmitBodyFn), default_user (void pointer).
++ struct UraCase, members: values (array of UraValue pointers, all constant integers or enum constants; several values share a body), value_count (size_t), body (UraEmitBodyFn), body_user (void pointer).
++ struct UraMatch, members: subject (UraValue pointer), cases (array of UraCase), case_count (size_t), has_default (bool), default_body (UraEmitBodyFn), default_user (void pointer).
 + void ura_codegen_match(UraIRContext *ctx, UraMatch *match): emits an LLVM switch instruction (LLVMBuildSwitch, LLVMAddCase), one block per case named case, a default block (or the end block when there is no default), and an end block named endmatch. There is no fall-through: each body branches to the end block. Pushes a match frame so that break leaves the match and continue is passed on to the enclosing loop.
 + Matching on non-integer subjects (strings) is not part of this milestone. If it is wanted, it is a chain of ura_codegen_conditional calls built by the core.
 
@@ -471,19 +468,17 @@ Two designs are possible. The first is the default here.
 ### References
 
 + A reference variable is stored as a pointer in an alloca. A read of the variable loads the pointer then the value; a write-through loads the pointer then stores into it; a rebind stores a new pointer. The functions are in 0.2 (ura_var_declare_ref, ura_ref_write, ura_ref_rebind).
-+ A reference parameter receives the caller's address and is used directly: no alloca, no copy. The caller passes ura_address_of(variable).
-+ A reference return (fn f() ref T) returns the pointer. The caller binds it to a reference or dereferences it.
-+ A nullable reference (ref?) can be null. Reading it through the guard (m?) checks for null first and traps if it is, see below. A raw read would segfault, which is the language's rule.
++ A reference parameter receives the caller's address, keeps it in a slot like a reference variable (as recorded), and does not copy the value. The caller passes ura_address_of(variable).
++ A reference return (fn f() &T) returns the pointer, or the zero pointer for null. The caller binds it to a reference or dereferences it.
++ Every reference can be null: next &Node is a reference attribute that starts as the zero of the pointer type. Reading through a null reference is undefined (a segmentation fault), unless the flag trap_on_null_deref is on, see 0.1. A reference is tested with ura_build_is_null (the isNullable builtin and comparisons with null).
 + Reference fields in structs are stored as pointers. They are bound, not assigned: ura_ref_rebind on the field address.
 + Taking a reference to a field or an element is the same as taking the address of the GEP.
 
-### Nullable values
+### Null
 
 + ura_build_is_null and ura_build_is_not_null (0.2) cover null checks and the isNullable builtin.
-+ UraValue *ura_build_guard(UraIRContext *ctx, UraValue *pointer, const char *what, const char *name): the ? operator. Emits the null check; the null branch calls the trap helper with a message that names the expression; the other branch continues. Returns the pointer, now known to be non-null.
-+ UraValue *ura_build_fallback(UraIRContext *ctx, UraValue *optional, UraEmitValueFn fallback, void *user, const char *name): the ?? operator. If the optional is not null, its value; otherwise the fallback is emitted in its own block, and a phi merges the two. A chain a ?? b ?? c is right-associative and is built by nesting the calls.
-+ A non-null value widens into an optional with no instruction (the same pointer).
 + null needs a target type: ura_const_null takes it.
++ There is no guard operator and no fallback operator in the language any more, so the wrapper has no builder for them. A dereference check, when wanted, is ura_codegen_trap_if on ura_build_is_null (0.6), switched on by trap_on_null_deref.
 
 ### Arrays and slices
 
@@ -491,7 +486,7 @@ Two designs are possible. The first is the default here.
 + UraValue *ura_array_alloca(UraIRContext *ctx, UraType *elem, size_t length, const char *name): the backing storage of a fixed array on the stack, in the entry block, named array. Returns the element pointer slot value: it also stores the address of element 0 into the variable's slot when a variable name is given (ura_array_bind_slot).
 + UraValue *ura_array_alloca_dynamic(UraIRContext *ctx, UraType *elem, UraValue *length, const char *name): a runtime-sized stack array (alloca with a count).
 + UraValue *ura_array_literal(UraIRContext *ctx, UraType *elem, UraValue **values, size_t count, const char *name): allocates the backing array, then stores each element through its own address (named e, e1, e2 ...), as recorded. A literal of constants as one memcpy from a private constant is an optimisation for later.
-+ UraValue *ura_array_element(UraIRContext *ctx, UraValue *array, UraValue *index, const char *name): the address of an element: a GEP on the loaded element pointer. The bounds check is added only when the flag bounds_checks is on (it is off in the recorded milestones 1 to 3). The guarded form a[i]? always checks, whatever the flag. Out of bounds calls the trap helper with the index and length in the message.
++ UraValue *ura_array_element(UraIRContext *ctx, UraValue *array, UraValue *index, const char *name): the address of an element: a GEP on the loaded element pointer. The bounds check is added only when the flag bounds_checks is on (it is off in the recorded milestones 1 to 3). Out of bounds calls the trap helper with the index and length in the message.
 + UraValue *ura_array_len(UraIRContext *ctx, UraValue *array, const char *name): the .len attribute, as an i64 or i32 as the core wants (ura_array_len_as with a type).
 + UraValue *ura_slice_make(UraIRContext *ctx, UraValue *data, UraValue *length, const char *name): builds a fat pointer.
 + UraValue *ura_slice_from_array(UraIRContext *ctx, UraValue *array_address, const char *name): decay of a fixed array to a slice.
@@ -514,7 +509,7 @@ Two designs are possible. The first is the default here.
 + UraValue *ura_heap_alloc(UraIRContext *ctx, UraType *type, UraValue *count, const char *name): calloc of count elements of the type (count NULL means one), cast to a pointer of the type. Zeroed, as the language says. Uses the runtime declaration of calloc. The new keyword.
 + UraValue *ura_heap_alloc_dynamic(UraIRContext *ctx, UraType *elem, UraValue *length, const char *name): new T[n], returns a slice.
 + void ura_heap_free(UraIRContext *ctx, UraValue *pointer): calls free, skipping null.
-+ void ura_heap_clean(UraIRContext *ctx, UraValue *slot, UraType *type): the clean keyword: frees the value the slot points to (for a multi-dimensional array, each row first, recursively, using a generated helper function) and stores null back into the slot so a later guarded read traps and a second clean does nothing.
++ void ura_heap_clean(UraIRContext *ctx, UraValue *slot, UraType *type): the clean keyword: frees the value the slot points to (for a multi-dimensional array, each row first, recursively, using a generated helper function) and stores null back into the slot, so a second clean does nothing (a read through the nulled slot is undefined unless trap_on_null_deref is on).
 + The default declarations come from the standard library file common.ura (language milestone 6), not from the compiler, but until that exists the wrapper declares calloc, free and malloc itself through ura_runtime_declare (0.6). The recorded IR of milestone 8 will show which.
 + Memory intrinsics: ura_memcpy(UraIRContext *ctx, UraValue *dest, UraValue *src, UraValue *size, unsigned align), ura_memmove, ura_memset(UraIRContext *ctx, UraValue *dest, UraValue *byte, UraValue *size, unsigned align). They declare the llvm.memcpy, llvm.memmove and llvm.memset intrinsics on demand.
 
@@ -548,7 +543,7 @@ Two designs are possible. The first is the default here.
 ### ura_codegen_struct
 
 + UraStruct *ura_struct_declare(UraIRContext *ctx, const char *name): the first step. Creates the named opaque LLVM struct type and registers the struct in the current scope. The core calls this for every struct of a scope before it emits any code that mentions one, which is how a struct is usable before its declaration. Declaring a name that already exists in the same scope is an internal error.
-+ bool ura_struct_define(UraIRContext *ctx, UraStruct *s, const UraFieldSpec *fields, size_t count): the second step. UraFieldSpec holds the name, the type, the is_ref flag and an optional default. Sets the LLVM body (LLVMStructSetBody) in field order with natural alignment (not packed), then reads back the offsets, the size and the alignment from the target data, and fills the field table. Returns false if a field makes the struct contain itself by value, directly or through other structs.
++ bool ura_struct_define(UraIRContext *ctx, UraStruct *s, const UraFieldSpec *fields, size_t count): the second step. UraFieldSpec has the members name (const char *), type (UraType pointer), is_ref (bool) and default_value (UraValue pointer, NULL for none). Sets the LLVM body (LLVMStructSetBody) in field order with natural alignment (not packed), then reads back the offsets, the size and the alignment from the target data, and fills the field table. Returns false if a field makes the struct contain itself by value, directly or through other structs.
 + UraStruct *ura_codegen_struct(UraIRContext *ctx, const char *name, const UraFieldSpec *fields, size_t count, const UraStructBindings *bindings): the one-call form for a struct whose field types are all known. It runs ura_struct_declare (or reuses the declared one), ura_struct_define, then binds the methods listed in bindings. UraStructBindings is a struct of: methods (array of UraMethodSpec), method_count, operators (array of UraMethodSpec), operator_count, destructor (UraMethodSpec pointer or NULL). Each UraMethodSpec carries the Ura name, the function type, the flags (static, operator kind), and a callback UraEmitBodyFn that emits the body. The wrapper declares all the methods first (so methods can call each other in any order), then emits the bodies one by one, with self as the first parameter.
 + The unused-struct rule: a struct no code refers to produces no type in the .ll, because LLVM only prints types that are used. The wrapper does nothing special for that.
 + Local structs: a struct declared inside a function or block gets a type name that is unique across the module; its methods are emitted as top-level functions with mangled names, using the cursor push and pop.
@@ -629,12 +624,12 @@ Two designs are possible. The first is the default here.
 + UraFunc *ura_trap_helper(UraIRContext *ctx, UraTrapKind kind): returns (creating once) a small noreturn function for each kind: URA_TRAP_BOUNDS (index out of range), URA_TRAP_NULL (null reference or pointer used), URA_TRAP_DIV_ZERO (division by zero), URA_TRAP_NULL_CALL (a null function value called), URA_TRAP_UNCAUGHT (a throw nobody caught), URA_TRAP_OOM (calloc returned null), URA_TRAP_CUSTOM (message passed as an argument). Each helper takes the line number and, for bounds, the index and the length.
 + void ura_codegen_trap_if(UraIRContext *ctx, UraValue *condition, UraTrapKind kind, const char *detail): emits a conditional branch to a cold block that calls the helper and ends with unreachable, and continues in the other block. The branch blocks are named trap and ok.
 + Stack overflow from infinite recursion is left to the operating system (a segmentation fault), the language only promises that it does not run forever. With the sanitizer on, the sanitizer reports it.
-+ Every trap kind can be switched off by a flag for release builds, except division by zero and explicit guards.
++ Every trap kind is controlled by a flag (bounds_checks, check_div_zero, trap_on_null_deref) and is off by default, because the recorded IR has none.
 
 ### Output builtins
 
 + output(a, b, c) prints each argument by its type with no format string. The core does the walk over the arguments; the wrapper offers the emitters.
-+ void ura_codegen_print(UraIRContext *ctx, UraValue *value, UraType *type, UraPrintTarget target): target is URA_STDOUT or URA_STDERR (errput). Emits the right printf or dprintf call: %d for i8-as-number, i16, i32, %ld for i64, %u and %lu for unsigned, %f for floats (f32 promoted to double), %s for strings, %c for chars, True and False for a bool (a select between two string constants), the pointer as %p, an enum as the variant name (a generated lookup switch or a table of private strings).
++ void ura_codegen_print(UraIRContext *ctx, UraValue *value, UraType *type, UraPrintTarget target): target is a UraPrintTarget, URA_STDOUT or URA_STDERR (errput). Emits the right printf or dprintf call: %d for i8-as-number, i16, i32, %ld for i64, %u and %lu for unsigned, %f for floats (f32 promoted to double), %s for strings, %c for chars, True and False for a bool (a select between two string constants), the pointer as %p, an enum as the variant name (a generated lookup switch or a table of private strings).
 + void ura_codegen_print_string(UraIRContext *ctx, const char *text, UraPrintTarget target): a literal piece (a separator, a newline).
 + UraFunc *ura_print_helper(UraIRContext *ctx, UraType *type, UraPrintTarget target): for aggregates, a generated function that prints the value: a struct as Name(field: value, ...) or the layout the old output used, an array as [a, b, c] (two dimensions nested), a reference field by following it and printing null if unbound, a cycle as [Circular] (the helper carries a visited marker). A struct with operator output uses it instead. Generated once per type and target.
 + The colour pair for errput and the exact formats are given by the language milestone 6 tests; the wrapper only provides the emitters.
@@ -710,7 +705,7 @@ Two designs are possible. The first is the default here.
 
 + bool ura_emit_object(UraIRContext *ctx, const char *path): uses the target machine to write an object file (LLVMTargetMachineEmitToFile with LLVMObjectFile). Needs ura_ir_set_target.
 + bool ura_emit_assembly(UraIRContext *ctx, const char *path): the same with LLVMAssemblyFile.
-+ bool ura_build_executable(UraIRContext *ctx, const char *exe_path, const UraLinkOptions *options): writes the .ll (or an object) and runs clang to produce the executable, as gen_bin did: clang file.ll -o exe. UraLinkOptions holds: libraries (array of const char *, -l), library_paths (-L), extra_flags (array), sanitize (adds -fsanitize=address,undefined), debug (adds -g and -fno-omit-frame-pointer), opt_level (passed to clang only when the optimizer did not already run), verbose.
++ bool ura_build_executable(UraIRContext *ctx, const char *exe_path, const UraLinkOptions *options): writes the .ll (or an object) and runs clang to produce the executable, as gen_bin did: clang file.ll -o exe. A NULL options pointer means the defaults (no libraries, no sanitizer, no debug flags). UraLinkOptions holds: libraries (array of const char *, -l), library_paths (-L), extra_flags (array), sanitize (adds -fsanitize=address,undefined), debug (adds -g and -fno-omit-frame-pointer), opt_level (passed to clang only when the optimizer did not already run), verbose.
 + int ura_run_executable(const char *exe_path, char **args): for the -exec flag. Forks, runs, waits, returns the exit status. Lives in ir.c because the build step lives there, but it uses no LLVM.
 + The paths follow the task shell contract: the IR goes to build/out.ll below the directory the compiler runs in, and the executable path comes from -o.
 + Cross compilation: ura_ir_set_target with another triple; the link step then needs a matching clang target. Not tested in this milestone.
@@ -718,7 +713,7 @@ Two designs are possible. The first is the default here.
 ## Appendix A: Which wrapper parts each language milestone uses
 
 + Language milestone 1 (programs that compute): 0.1 (contexts, i8, i32, bool, constants, globals, string literals, symbols, output), 0.2 (functions, protos, variables, arithmetic, comparisons, casts excluded, calls, variadic calls, script main), 0.3 (branches, ura_codegen_conditional, while, break, continue, return, dead blocks), the string literal part of 0.4.
-+ Language milestone 2 (memory and data): the rest of 0.4 (arrays, slices as parameters, references, null, nullable guard), casts of 0.2.
++ Language milestone 2 (memory and data): the rest of 0.4 (arrays, slices as parameters, references that can be null, null), casts of 0.2.
 + Language milestone 3 (structs): 0.5 without templates, enums and modules; the struct copy of 0.2.
 + Language milestone 4 (templates): ura_template_instance and ura_func_instance.
 + Language milestone 5 (modules and imports): ura_module_open, ura_qualify, ura_ir_add_link, runtime declarations of 0.6, the os global and program entry parameters.
@@ -728,7 +723,7 @@ Two designs are possible. The first is the default here.
 + Language milestone 9 (operator overloading, static methods): UraMethod operators and ura_call_operator, ura_call_static.
 + Language milestone 10 (loops): ura_codegen_loop, ura_codegen_for_range, ura_codegen_for_each.
 + Language milestone 11 (more types and operators): the unsigned and float paths of 0.2, the other integer widths in 0.1, shifts, float traps.
-+ Language milestone 12 (nullable and errors): ura_build_fallback, optional types, the try and throw machinery.
++ Language milestone 12 (null references and errors): reference attributes that start as null, ura_build_is_null, the try and throw machinery.
 + Language milestone 13 (function values and directives): ura_func_address, ura_call_indirect, null function trap. Directives are the core's.
 + 0.7 (optimizer, backend) is independent. The executable building part is needed from the first milestone, since the test runner builds programs.
 
@@ -755,7 +750,7 @@ This is the list of what the core did directly in 003. Each group is now inside 
 + Step 2: functions, entry block and the alloca rule, variables, load and store, arithmetic, comparisons. Checkpoint: the variables and operators entries of milestone1.md produce the same IR as recorded.
 + Step 3: branches, ura_codegen_conditional, ura_codegen_while, break, continue, return with the ended-block rule. Checkpoint: the if and while entries.
 + Step 4: calls, protos, variadic promotion, string literals, globals, script main. Checkpoint: all of milestone1.md passes with the wrapper under the new core.
-+ Step 5: arrays, slices, references, nullable guard, casts. Checkpoint: milestone2.md.
++ Step 5: arrays, slices, references that can be null, casts. Checkpoint: milestone2.md.
 + Step 6: structs, fields, methods, copy. Checkpoint: milestone3.md.
 + Step 7: templates. Checkpoint: milestone4.md.
 + Step 8: the rest, in the order of the language milestones 5 to 13, adding the parts of Appendix A as each one starts.
@@ -769,9 +764,8 @@ This is the list of what the core did directly in 003. Each group is now inside 
 + D3, array parameters: the recorded IR passes a bare element pointer and a separate length argument, so that is the form for language milestones 1 to 7. The fat pointer (0.4) arrives with slices and .len in milestone 8; decide then whether older tests are recorded again or whether bare pointers stay valid next to slices.
 + D4, structs by value across calls and returns: settled by the recorded IR of milestone 3, which uses true LLVM aggregate values for parameters and results. What stays open is the C ABI: a proto that takes or returns a struct by value will not match C on every platform, so the rule is to pass pointers to C.
 + D5, error handling: error slot (Design A) or LLVM exception handling (Design B), see 0.3. The proposal is A.
-+ D6, bounds checks and division checks: the recorded IR of milestones 1 to 3 has none, so they are off by default. They turn on with the first language milestone that records them (division by zero in milestone 11, the explicit guard x? and the slice checks in milestone 8). Decide whether they become the default after that, and whether release builds can switch them off.
++ D6, bounds checks and division checks: the recorded IR of milestones 1 to 3 has none, so they are off by default. They turn on with the first language milestone that records them (division by zero in milestone 11, the slice bounds checks in milestone 8). Decide whether they become the default after that, and whether release builds can switch them off.
 + D7, integer overflow: wrapping now, checked arithmetic later (a flag), see 0.2.
-+ D8, optional scalars (i32?): a pair of a flag and a value, or not supported. Proposed: not supported until a milestone needs them.
 + D9, a deferred IR: not now; the API allows it later (see the design decision).
 + D10, one context per compilation or per file: one per compilation, with ura_ir_reset available.
 + D11, multi-threaded compilation: not supported. The context is not thread safe.
