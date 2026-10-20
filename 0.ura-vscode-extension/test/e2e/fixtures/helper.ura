@@ -1,6 +1,0 @@
-struct Point:
-    x i32
-    y i32
-
-fn help(n i32) i32:
-    return n + 7
