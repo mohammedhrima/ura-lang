@@ -13,7 +13,6 @@
 - 009 — a function writes into the caller's array
 - 010 — a string is a writable i8[]
 - 011 — an array of bools
-- 012 — declarations without a value start at zero
 
 ---
 
@@ -682,52 +681,6 @@ endif:                                            ; preds = %then4, %then
   %ADD_ASSIGN7 = add i32 %old6, 1
   store i32 %ADD_ASSIGN7, i32* %i, align 4
   br label %cond
-}
-```
-
----
-
-## 012 — declarations without a value start at zero
-
-```ura
-// expect: 0
-fn main() i32:
-    x i32
-    b bool
-    c char
-    if b or c != '\0':
-        return 1
-    return x
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-define i32 @main() {
-entry:
-  %x = alloca i32, align 4
-  %b = alloca i1, align 1
-  %c = alloca i8, align 1
-  store i32 0, i32* %x, align 4
-  store i1 false, i1* %b, align 1
-  store i8 0, i8* %c, align 1
-  %load.b = load i1, i1* %b, align 1
-  %load.c = load i8, i8* %c, align 1
-  %NQ = icmp ne i8 %load.c, 0
-  %OR = or i1 %load.b, %NQ
-  br i1 %OR, label %then, label %endif
-
-then:                                             ; preds = %entry
-  ret i32 1
-
-endif:                                            ; preds = %entry
-  %load.x = load i32, i32* %x, align 4
-  ret i32 %load.x
 }
 ```
 

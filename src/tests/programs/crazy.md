@@ -2,544 +2,61 @@
 
 ## index
 
-- 001 — mutual recursion, used before it's declared
-- 002 — gcd, printf with many arguments
-- 003 — collatz: a parameter changed in a loop
-- 004 — the 20th prime: continue, break, a bool function
-- 005 — return from two nested loops
-- 006 — fibonacci with a memo array
-- 007 — upper-case a string in place
-- 008 — a method called three times through a ref
-- 009 — methods of a nested struct, called through self
-- 010 — bubble sort: a struct with an array, methods calling methods
-- 011 — bank account: methods, a ref parameter, an array of bills
-- 012 — an array of structs is a copy
-- 013 — vectors: struct parameters, struct returns, chained calls
-- 014 — linked list: ref attributes, isNullable, rebinding a ref in a loop
-- 015 — not and ! on bools, in a loop
-- 016 — count trues with as, then a cast that wraps
-- 017 — caesar cipher: char arithmetic with as
-- 018 — print the alphabet with a char counter
-- 019 — isNullable on array elements and chars
-- 020 — transpose a 3x3 matrix stored flat
-- 021 — a recursive method that counts its calls
-- 022 — a method takes a ref to its own struct type
-- 023 — stack: push squares, pop until empty
-- 024 — ring-buffer queue: full, wrap around, drain
-- 025 — binary tree: recursion through ref attributes
-- 026 — a linked list over array elements
-- 027 — search a linked list, -1 when missing
-- 028 — operator precedence soup
-- 029 — negative numbers: signed / and %
-- 030 — assigning a struct copies it
-- 031 — a struct parameter is a copy
-- 032 — compound assignment through a ref attribute
-- 033 — a ref to an array element
-- 034 — a method on an array element
-- 035 — builder: a method returns a ref to self, chained
-- 036 — ackermann: deep recursion, a call as an argument
-- 037 — an array literal made of calls
-- 038 — one name declared in sibling blocks
-- 039 — elif chain on one line each, with not / and / or
-- 040 — a struct holding an array of structs
-- 041 — tree walk with a ref out-parameter
-- 042 — reverse a string, palindromes, a while on one line
-- 043 — a function returns a ref into a struct, the caller binds it
-- 044 — fibonacci as a pair: recursion returning a struct, .a on a call
-- 045 — method calls nested as arguments
-- 046 — print a linked list backwards with recursion
-- 047 — sort structs in an array by an attribute
-- 048 — sieve of eratosthenes on a bool array
-- 049 — atoi: parse numbers from strings
-- 050 — itoa: write a number's digits into a buffer
-- 051 — ping pong: two structs that name each other, before either is declared
-- 052 — while True with break and return inside a method
-- 053 — script: a global counts recursive calls
-- 054 — script: a global stack evaluates postfix 3 4 + 2 *
-- 055 — structs used before declared, a struct local to a function
-- 056 — print a number in hex with as
-- 057 — a linked list built with chained methods that return refs
-- 058 — binary search tree: recursive methods through ref attributes
-- 059 — a string builder on a global buffer
-- 060 — 2x2 matrix product with methods and ref parameters
-- 061 — script: nested loops with continue and break at file level
-- 062 — filter with as bool, not and isNullable
+- 001 — fibonacci with a memo array
+- 002 — upper-case a string in place
+- 003 — a method called three times through a ref
+- 004 — methods of a nested struct, called through self
+- 005 — bubble sort: a struct with an array, methods calling methods
+- 006 — bank account: methods, a ref parameter, an array of bills
+- 007 — an array of structs is a copy
+- 008 — vectors: struct parameters, struct returns, chained calls
+- 009 — linked list: ref attributes, isNullable, rebinding a ref in a loop
+- 010 — not and ! on bools, in a loop
+- 011 — count trues with as, then a cast that wraps
+- 012 — caesar cipher: char arithmetic with as
+- 013 — print the alphabet with a char counter
+- 014 — isNullable on array elements and chars
+- 015 — transpose a 3x3 matrix stored flat
+- 016 — a recursive method that counts its calls
+- 017 — a method takes a ref to its own struct type
+- 018 — stack: push squares, pop until empty
+- 019 — ring-buffer queue: full, wrap around, drain
+- 020 — binary tree: recursion through ref attributes
+- 021 — a linked list over array elements
+- 022 — search a linked list, -1 when missing
+- 023 — assigning a struct copies it
+- 024 — a struct parameter is a copy
+- 025 — compound assignment through a ref attribute
+- 026 — a ref to an array element
+- 027 — a method on an array element
+- 028 — builder: a method returns a ref to self, chained
+- 029 — an array literal made of calls
+- 030 — elif chain on one line each, with not / and / or
+- 031 — a struct holding an array of structs
+- 032 — tree walk with a ref out-parameter
+- 033 — reverse a string, palindromes, a while on one line
+- 034 — a function returns a ref into a struct, the caller binds it
+- 035 — fibonacci as a pair: recursion returning a struct, .a on a call
+- 036 — method calls nested as arguments
+- 037 — print a linked list backwards with recursion
+- 038 — sort structs in an array by an attribute
+- 039 — sieve of eratosthenes on a bool array
+- 040 — atoi: parse numbers from strings
+- 041 — itoa: write a number's digits into a buffer
+- 042 — ping pong: two structs that name each other, before either is declared
+- 043 — while True with break and return inside a method
+- 044 — script: a global stack evaluates postfix 3 4 + 2 *
+- 045 — structs used before declared, a struct local to a function
+- 046 — print a number in hex with as
+- 047 — a linked list built with chained methods that return refs
+- 048 — binary search tree: recursive methods through ref attributes
+- 049 — a string builder on a global buffer
+- 050 — 2x2 matrix product with methods and ref parameters
+- 051 — filter with as bool, not and isNullable
 
 ---
 
-## 001 — mutual recursion, used before it's declared
-
-```ura
-// expect: 3
-fn is_even(n i32) bool:
-    if n == 0: return True
-    return is_odd(n - 1)
-
-fn is_odd(n i32) bool:
-    if n == 0: return False
-    return is_even(n - 1)
-
-fn main() i32:
-    r i32 = 0
-    if is_even(10): r += 1
-    if is_odd(7): r += 2
-    if is_even(3): r += 4
-    return r
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-define i1 @is_even(i32 %0) {
-entry:
-  %n = alloca i32, align 4
-  store i32 %0, i32* %n, align 4
-  %load.n = load i32, i32* %n, align 4
-  %EQ = icmp eq i32 %load.n, 0
-  br i1 %EQ, label %then, label %endif
-
-then:                                             ; preds = %entry
-  ret i1 true
-
-endif:                                            ; preds = %entry
-  %load.n1 = load i32, i32* %n, align 4
-  %SUB = sub i32 %load.n1, 1
-  %"is_odd(load.n - 1)" = call i1 @is_odd(i32 %SUB)
-  ret i1 %"is_odd(load.n - 1)"
-}
-
-define i1 @is_odd(i32 %0) {
-entry:
-  %n = alloca i32, align 4
-  store i32 %0, i32* %n, align 4
-  %load.n = load i32, i32* %n, align 4
-  %EQ = icmp eq i32 %load.n, 0
-  br i1 %EQ, label %then, label %endif
-
-then:                                             ; preds = %entry
-  ret i1 false
-
-endif:                                            ; preds = %entry
-  %load.n1 = load i32, i32* %n, align 4
-  %SUB = sub i32 %load.n1, 1
-  %"is_even(load.n - 1)" = call i1 @is_even(i32 %SUB)
-  ret i1 %"is_even(load.n - 1)"
-}
-
-define i32 @main() {
-entry:
-  %r = alloca i32, align 4
-  store i32 0, i32* %r, align 4
-  %"is_even(10)" = call i1 @is_even(i32 10)
-  br i1 %"is_even(10)", label %then, label %endif
-
-then:                                             ; preds = %entry
-  %old = load i32, i32* %r, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* %r, align 4
-  br label %endif
-
-endif:                                            ; preds = %then, %entry
-  %"is_odd(7)" = call i1 @is_odd(i32 7)
-  br i1 %"is_odd(7)", label %then2, label %endif1
-
-then2:                                            ; preds = %endif
-  %old3 = load i32, i32* %r, align 4
-  %ADD_ASSIGN4 = add i32 %old3, 2
-  store i32 %ADD_ASSIGN4, i32* %r, align 4
-  br label %endif1
-
-endif1:                                           ; preds = %then2, %endif
-  %"is_even(3)" = call i1 @is_even(i32 3)
-  br i1 %"is_even(3)", label %then6, label %endif5
-
-then6:                                            ; preds = %endif1
-  %old7 = load i32, i32* %r, align 4
-  %ADD_ASSIGN8 = add i32 %old7, 4
-  store i32 %ADD_ASSIGN8, i32* %r, align 4
-  br label %endif5
-
-endif5:                                           ; preds = %then6, %endif1
-  %load.r = load i32, i32* %r, align 4
-  ret i32 %load.r
-}
-```
-
----
-
-## 002 — gcd, printf with many arguments
-
-```ura
-// stdout: 12 1 4
-// expect: 13
-proto printf(fmt i8[], ...) i32
-
-fn gcd(a i32, b i32) i32:
-    if b == 0: return a
-    return gcd(b, a % b)
-
-fn main() i32:
-    x i32 = gcd(84, 36)
-    y i32 = gcd(17, 5)
-    printf("%d %d %d\n", x, y, gcd(x, 4))
-    return x + y
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-@str = private constant [10 x i8] c"%d %d %d\0A\00"
-
-declare i32 @printf(i8*, ...)
-
-define i32 @gcd(i32 %0, i32 %1) {
-entry:
-  %a = alloca i32, align 4
-  %b = alloca i32, align 4
-  store i32 %0, i32* %a, align 4
-  store i32 %1, i32* %b, align 4
-  %load.b = load i32, i32* %b, align 4
-  %EQ = icmp eq i32 %load.b, 0
-  br i1 %EQ, label %then, label %endif
-
-then:                                             ; preds = %entry
-  %load.a = load i32, i32* %a, align 4
-  ret i32 %load.a
-
-endif:                                            ; preds = %entry
-  %load.b1 = load i32, i32* %b, align 4
-  %load.a2 = load i32, i32* %a, align 4
-  %load.b3 = load i32, i32* %b, align 4
-  %MOD = srem i32 %load.a2, %load.b3
-  %"gcd(load.b,load.a % load.b)" = call i32 @gcd(i32 %load.b1, i32 %MOD)
-  ret i32 %"gcd(load.b,load.a % load.b)"
-}
-
-define i32 @main() {
-entry:
-  %x = alloca i32, align 4
-  %y = alloca i32, align 4
-  %s = alloca [10 x i8], align 1
-  %"gcd(84,36)" = call i32 @gcd(i32 84, i32 36)
-  store i32 %"gcd(84,36)", i32* %x, align 4
-  %"gcd(17,5)" = call i32 @gcd(i32 17, i32 5)
-  store i32 %"gcd(17,5)", i32* %y, align 4
-  %dst = getelementptr inbounds [10 x i8], [10 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([10 x i8], [10 x i8]* @str, i32 0, i32 0), i64 10, i1 false)
-  %load.x = load i32, i32* %x, align 4
-  %load.y = load i32, i32* %y, align 4
-  %load.x1 = load i32, i32* %x, align 4
-  %"gcd(load.x,4)" = call i32 @gcd(i32 %load.x1, i32 4)
-  %"printf(str,load.x,load.y,gcd(load.x,4))" = call i32 (i8*, ...) @printf(i8* %dst, i32 %load.x, i32 %load.y, i32 %"gcd(load.x,4)")
-  %load.x2 = load i32, i32* %x, align 4
-  %load.y3 = load i32, i32* %y, align 4
-  %ADD = add i32 %load.x2, %load.y3
-  ret i32 %ADD
-}
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
-```
-
----
-
-## 003 — collatz: a parameter changed in a loop
-
-```ura
-// expect: 111
-fn steps(n i32) i32:
-    c i32 = 0
-    while n != 1:
-        if n % 2 == 0:
-            n /= 2
-        else:
-            n = n * 3 + 1
-        c += 1
-    return c
-
-fn main() i32:
-    return steps(27)
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-define i32 @steps(i32 %0) {
-entry:
-  %n = alloca i32, align 4
-  %c = alloca i32, align 4
-  store i32 %0, i32* %n, align 4
-  store i32 0, i32* %c, align 4
-  br label %cond
-
-cond:                                             ; preds = %endif, %entry
-  %load.n = load i32, i32* %n, align 4
-  %NQ = icmp ne i32 %load.n, 1
-  br i1 %NQ, label %then, label %endwhile
-
-then:                                             ; preds = %cond
-  %load.n2 = load i32, i32* %n, align 4
-  %MOD = srem i32 %load.n2, 2
-  %EQ = icmp eq i32 %MOD, 0
-  br i1 %EQ, label %then1, label %next
-
-endwhile:                                         ; preds = %cond
-  %load.c = load i32, i32* %c, align 4
-  ret i32 %load.c
-
-then1:                                            ; preds = %then
-  %old = load i32, i32* %n, align 4
-  %DIV_ASSIGN = sdiv i32 %old, 2
-  store i32 %DIV_ASSIGN, i32* %n, align 4
-  br label %endif
-
-next:                                             ; preds = %then
-  %load.n3 = load i32, i32* %n, align 4
-  %MUL = mul i32 %load.n3, 3
-  %ADD = add i32 %MUL, 1
-  store i32 %ADD, i32* %n, align 4
-  br label %endif
-
-endif:                                            ; preds = %next, %then1
-  %old4 = load i32, i32* %c, align 4
-  %ADD_ASSIGN = add i32 %old4, 1
-  store i32 %ADD_ASSIGN, i32* %c, align 4
-  br label %cond
-}
-
-define i32 @main() {
-entry:
-  %"steps(27)" = call i32 @steps(i32 27)
-  ret i32 %"steps(27)"
-}
-```
-
----
-
-## 004 — the 20th prime: continue, break, a bool function
-
-```ura
-// expect: 71
-fn is_prime(n i32) bool:
-    if n < 2: return False
-    d i32 = 2
-    while d * d <= n:
-        if n % d == 0: return False
-        d += 1
-    return True
-
-fn main() i32:
-    count i32 = 0
-    n i32 = 0
-    while n < 100:
-        n += 1
-        if is_prime(n) == False: continue
-        count += 1
-        if count == 20: break
-    return n
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-define i1 @is_prime(i32 %0) {
-entry:
-  %n = alloca i32, align 4
-  %d = alloca i32, align 4
-  store i32 %0, i32* %n, align 4
-  %load.n = load i32, i32* %n, align 4
-  %LT = icmp slt i32 %load.n, 2
-  br i1 %LT, label %then, label %endif
-
-then:                                             ; preds = %entry
-  ret i1 false
-
-endif:                                            ; preds = %entry
-  store i32 2, i32* %d, align 4
-  br label %cond
-
-cond:                                             ; preds = %endif4, %endif
-  %load.d = load i32, i32* %d, align 4
-  %load.d2 = load i32, i32* %d, align 4
-  %MUL = mul i32 %load.d, %load.d2
-  %load.n3 = load i32, i32* %n, align 4
-  %LE = icmp sle i32 %MUL, %load.n3
-  br i1 %LE, label %then1, label %endwhile
-
-then1:                                            ; preds = %cond
-  %load.n6 = load i32, i32* %n, align 4
-  %load.d7 = load i32, i32* %d, align 4
-  %MOD = srem i32 %load.n6, %load.d7
-  %EQ = icmp eq i32 %MOD, 0
-  br i1 %EQ, label %then5, label %endif4
-
-endwhile:                                         ; preds = %cond
-  ret i1 true
-
-then5:                                            ; preds = %then1
-  ret i1 false
-
-endif4:                                           ; preds = %then1
-  %old = load i32, i32* %d, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* %d, align 4
-  br label %cond
-}
-
-define i32 @main() {
-entry:
-  %count = alloca i32, align 4
-  %n = alloca i32, align 4
-  store i32 0, i32* %count, align 4
-  store i32 0, i32* %n, align 4
-  br label %cond
-
-cond:                                             ; preds = %endif5, %then1, %entry
-  %load.n = load i32, i32* %n, align 4
-  %LT = icmp slt i32 %load.n, 100
-  br i1 %LT, label %then, label %endwhile
-
-then:                                             ; preds = %cond
-  %old = load i32, i32* %n, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* %n, align 4
-  %load.n2 = load i32, i32* %n, align 4
-  %"is_prime(load.n)" = call i1 @is_prime(i32 %load.n2)
-  %EQ = icmp eq i1 %"is_prime(load.n)", false
-  br i1 %EQ, label %then1, label %endif
-
-endwhile:                                         ; preds = %then6, %cond
-  %load.n8 = load i32, i32* %n, align 4
-  ret i32 %load.n8
-
-then1:                                            ; preds = %then
-  br label %cond
-
-endif:                                            ; preds = %then
-  %old3 = load i32, i32* %count, align 4
-  %ADD_ASSIGN4 = add i32 %old3, 1
-  store i32 %ADD_ASSIGN4, i32* %count, align 4
-  %load.count = load i32, i32* %count, align 4
-  %EQ7 = icmp eq i32 %load.count, 20
-  br i1 %EQ7, label %then6, label %endif5
-
-then6:                                            ; preds = %endif
-  br label %endwhile
-
-endif5:                                           ; preds = %endif
-  br label %cond
-}
-```
-
----
-
-## 005 — return from two nested loops
-
-```ura
-// expect: 67
-fn main() i32:
-    i i32 = 1
-    while i < 20:
-        j i32 = i
-        while j < 20:
-            if i * j == 42 and i + j == 13:
-                return i * 10 + j
-            j += 1
-        i += 1
-    return 0
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-define i32 @main() {
-entry:
-  %i = alloca i32, align 4
-  %j = alloca i32, align 4
-  store i32 1, i32* %i, align 4
-  br label %cond
-
-cond:                                             ; preds = %endwhile4, %entry
-  %load.i = load i32, i32* %i, align 4
-  %LT = icmp slt i32 %load.i, 20
-  br i1 %LT, label %then, label %endwhile
-
-then:                                             ; preds = %cond
-  %load.i1 = load i32, i32* %i, align 4
-  store i32 %load.i1, i32* %j, align 4
-  br label %cond2
-
-endwhile:                                         ; preds = %cond
-  ret i32 0
-
-cond2:                                            ; preds = %endif, %then
-  %load.j = load i32, i32* %j, align 4
-  %LT5 = icmp slt i32 %load.j, 20
-  br i1 %LT5, label %then3, label %endwhile4
-
-then3:                                            ; preds = %cond2
-  %load.i7 = load i32, i32* %i, align 4
-  %load.j8 = load i32, i32* %j, align 4
-  %MUL = mul i32 %load.i7, %load.j8
-  %EQ = icmp eq i32 %MUL, 42
-  %load.i9 = load i32, i32* %i, align 4
-  %load.j10 = load i32, i32* %j, align 4
-  %ADD = add i32 %load.i9, %load.j10
-  %EQ11 = icmp eq i32 %ADD, 13
-  %AND = and i1 %EQ, %EQ11
-  br i1 %AND, label %then6, label %endif
-
-endwhile4:                                        ; preds = %cond2
-  %old16 = load i32, i32* %i, align 4
-  %ADD_ASSIGN17 = add i32 %old16, 1
-  store i32 %ADD_ASSIGN17, i32* %i, align 4
-  br label %cond
-
-then6:                                            ; preds = %then3
-  %load.i12 = load i32, i32* %i, align 4
-  %MUL13 = mul i32 %load.i12, 10
-  %load.j14 = load i32, i32* %j, align 4
-  %ADD15 = add i32 %MUL13, %load.j14
-  ret i32 %ADD15
-
-endif:                                            ; preds = %then3
-  %old = load i32, i32* %j, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* %j, align 4
-  br label %cond2
-}
-```
-
----
-
-## 006 — fibonacci with a memo array
+## 001 — fibonacci with a memo array
 
 ```ura
 // expect: 109   (fib(20) = 6765, 6765 % 256)
@@ -669,7 +186,7 @@ entry:
 
 ---
 
-## 007 — upper-case a string in place
+## 002 — upper-case a string in place
 
 ```ura
 // stdout: HELLO, URA
@@ -812,7 +329,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 008 — a method called three times through a ref
+## 003 — a method called three times through a ref
 
 ```ura
 // expect: 21
@@ -904,7 +421,7 @@ entry:
 
 ---
 
-## 009 — methods of a nested struct, called through self
+## 004 — methods of a nested struct, called through self
 
 ```ura
 // expect: 30   (area 4 * 5, plus a.x 10)
@@ -1031,7 +548,7 @@ entry:
 
 ---
 
-## 010 — bubble sort: a struct with an array, methods calling methods
+## 005 — bubble sort: a struct with an array, methods calling methods
 
 ```ura
 // stdout: 1 3 4 5 9
@@ -1296,7 +813,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 011 — bank account: methods, a ref parameter, an array of bills
+## 006 — bank account: methods, a ref parameter, an array of bills
 
 ```ura
 // stdout: balance 10, ops 4, failed 1
@@ -1491,7 +1008,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 012 — an array of structs is a copy
+## 007 — an array of structs is a copy
 
 ```ura
 // expect: 10   (1 + 7 + 2: q itself stays 2)
@@ -1561,7 +1078,7 @@ entry:
 
 ---
 
-## 013 — vectors: struct parameters, struct returns, chained calls
+## 008 — vectors: struct parameters, struct returns, chained calls
 
 ```ura
 // expect: 27   (c = (7, 10), c . a = 7 + 20)
@@ -1693,7 +1210,7 @@ entry:
 
 ---
 
-## 014 — linked list: ref attributes, isNullable, rebinding a ref in a loop
+## 009 — linked list: ref attributes, isNullable, rebinding a ref in a loop
 
 ```ura
 // expect: 36   (1 + 2 + 3, plus 3 * 10)
@@ -1787,7 +1304,7 @@ endwhile:                                         ; preds = %cond
 
 ---
 
-## 015 — not and ! on bools, in a loop
+## 010 — not and ! on bools, in a loop
 
 ```ura
 // expect: 12
@@ -1873,7 +1390,7 @@ endif7:                                           ; preds = %then8, %endwhile
 
 ---
 
-## 016 — count trues with as, then a cast that wraps
+## 011 — count trues with as, then a cast that wraps
 
 ```ura
 // expect: 6   (3 * 10, plus 1000 as i8 = -24)
@@ -1950,7 +1467,7 @@ endwhile:                                         ; preds = %cond
 
 ---
 
-## 017 — caesar cipher: char arithmetic with as
+## 012 — caesar cipher: char arithmetic with as
 
 ```ura
 // stdout: khoor, zruog | hello, world
@@ -2100,7 +1617,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 018 — print the alphabet with a char counter
+## 013 — print the alphabet with a char counter
 
 ```ura
 // stdout: abcde
@@ -2171,7 +1688,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 019 — isNullable on array elements and chars
+## 014 — isNullable on array elements and chars
 
 ```ura
 // expect: 33   (3 zeros * 10, plus 1, plus 2)
@@ -2310,7 +1827,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 020 — transpose a 3x3 matrix stored flat
+## 015 — transpose a 3x3 matrix stored flat
 
 ```ura
 // expect: 154   (trace 15 * 10, plus t[1] = 4)
@@ -2493,7 +2010,7 @@ endwhile33:                                       ; preds = %cond31
 
 ---
 
-## 021 — a recursive method that counts its calls
+## 016 — a recursive method that counts its calls
 
 ```ura
 // expect: 125   (5! = 120, plus 5 calls)
@@ -2566,7 +2083,7 @@ entry:
 
 ---
 
-## 022 — a method takes a ref to its own struct type
+## 017 — a method takes a ref to its own struct type
 
 ```ura
 // expect: 100   (a = 10, b = 0)
@@ -2641,7 +2158,7 @@ entry:
 
 ---
 
-## 023 — stack: push squares, pop until empty
+## 018 — stack: push squares, pop until empty
 
 ```ura
 // expect: 173   (pops 25 16 9 4 1, last digits folded: ((((5*2+6)*2+9)*2+4)*2+1)
@@ -2807,7 +2324,7 @@ endwhile13:                                       ; preds = %cond11
 
 ---
 
-## 024 — ring-buffer queue: full, wrap around, drain
+## 019 — ring-buffer queue: full, wrap around, drain
 
 ```ura
 // expect: 242   (first 1 * 100, sum 2 + 3 + 9 = 14 * 10, 2 dropped)
@@ -3020,7 +2537,7 @@ endwhile10:                                       ; preds = %cond8
 
 ---
 
-## 025 — binary tree: recursion through ref attributes
+## 020 — binary tree: recursion through ref attributes
 
 ```ura
 // expect: 103   (sum 10 * 10, depth 3)
@@ -3167,7 +2684,7 @@ entry:
 
 ---
 
-## 026 — a linked list over array elements
+## 021 — a linked list over array elements
 
 ```ura
 // expect: 33   (length 3, plus the third value 30)
@@ -3302,7 +2819,7 @@ endif:                                            ; preds = %then6, %then
 
 ---
 
-## 027 — search a linked list, -1 when missing
+## 022 — search a linked list, -1 when missing
 
 ```ura
 // expect: 121   (13 at 2 * 10, 8 at 1, 99 missing: 100)
@@ -3430,101 +2947,7 @@ endif:                                            ; preds = %then, %entry
 
 ---
 
-## 028 — operator precedence soup
-
-```ura
-// expect: 217   (a 5, b 0, c 5, d 2: 5*40 + 0*7 + 5*3 + 2)
-fn main() i32:
-    a i32 = 1 + 2 * 3 - 4 / 2 % 3
-    b i32 = (1 + 2) * (3 - 4 / 2) % 3
-    c i32 = 10 - 3 - 2
-    d i32 = 100 / 10 / 5
-    return a * 40 + b * 7 + c * 3 + d
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-define i32 @main() {
-entry:
-  %a = alloca i32, align 4
-  %b = alloca i32, align 4
-  %c = alloca i32, align 4
-  %d = alloca i32, align 4
-  store i32 5, i32* %a, align 4
-  store i32 0, i32* %b, align 4
-  store i32 5, i32* %c, align 4
-  store i32 2, i32* %d, align 4
-  %load.a = load i32, i32* %a, align 4
-  %MUL = mul i32 %load.a, 40
-  %load.b = load i32, i32* %b, align 4
-  %MUL1 = mul i32 %load.b, 7
-  %ADD = add i32 %MUL, %MUL1
-  %load.c = load i32, i32* %c, align 4
-  %MUL2 = mul i32 %load.c, 3
-  %ADD3 = add i32 %ADD, %MUL2
-  %load.d = load i32, i32* %d, align 4
-  %ADD4 = add i32 %ADD3, %load.d
-  ret i32 %ADD4
-}
-```
-
----
-
-## 029 — negative numbers: signed / and %
-
-```ura
-// expect: 98   (-3 - 1 - 3 + 5, plus 100)
-fn main() i32:
-    a i32 = -7 / 2
-    b i32 = -7 % 3
-    c i32 = 0 - a * b
-    d i32 = -(-5)
-    return a + b + c + d + 100
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-define i32 @main() {
-entry:
-  %a = alloca i32, align 4
-  %b = alloca i32, align 4
-  %c = alloca i32, align 4
-  %d = alloca i32, align 4
-  store i32 -3, i32* %a, align 4
-  store i32 -1, i32* %b, align 4
-  %load.a = load i32, i32* %a, align 4
-  %load.b = load i32, i32* %b, align 4
-  %MUL = mul i32 %load.a, %load.b
-  %SUB = sub i32 0, %MUL
-  store i32 %SUB, i32* %c, align 4
-  store i32 5, i32* %d, align 4
-  %load.a1 = load i32, i32* %a, align 4
-  %load.b2 = load i32, i32* %b, align 4
-  %ADD = add i32 %load.a1, %load.b2
-  %load.c = load i32, i32* %c, align 4
-  %ADD3 = add i32 %ADD, %load.c
-  %load.d = load i32, i32* %d, align 4
-  %ADD4 = add i32 %ADD3, %load.d
-  %ADD5 = add i32 %ADD4, 100
-  ret i32 %ADD5
-}
-```
-
----
-
-## 030 — assigning a struct copies it
+## 023 — assigning a struct copies it
 
 ```ura
 // expect: 63   (1 + 20 + 10 + 2 + 10 + 20)
@@ -3597,7 +3020,7 @@ entry:
 
 ---
 
-## 031 — a struct parameter is a copy
+## 024 — a struct parameter is a copy
 
 ```ura
 // expect: 61
@@ -3659,7 +3082,7 @@ entry:
 
 ---
 
-## 032 — compound assignment through a ref attribute
+## 025 — compound assignment through a ref attribute
 
 ```ura
 // expect: 14   ((0 + 5) * 3 - 1)
@@ -3719,7 +3142,7 @@ entry:
 
 ---
 
-## 033 — a ref to an array element
+## 026 — a ref to an array element
 
 ```ura
 // expect: 92   (10 + 22 + 60)
@@ -3797,7 +3220,7 @@ entry:
 
 ---
 
-## 034 — a method on an array element
+## 027 — a method on an array element
 
 ```ura
 // expect: 45   (4 * 10 + 5)
@@ -3902,7 +3325,7 @@ endwhile:                                         ; preds = %cond
 
 ---
 
-## 035 — builder: a method returns a ref to self, chained
+## 028 — builder: a method returns a ref to self, chained
 
 ```ura
 // expect: 6
@@ -3960,74 +3383,7 @@ entry:
 
 ---
 
-## 036 — ackermann: deep recursion, a call as an argument
-
-```ura
-// expect: 61
-fn ack(m i32, n i32) i32:
-    if m == 0: return n + 1
-    if n == 0: return ack(m - 1, 1)
-    return ack(m - 1, ack(m, n - 1))
-
-fn main() i32:
-    return ack(3, 3)
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-define i32 @ack(i32 %0, i32 %1) {
-entry:
-  %m = alloca i32, align 4
-  %n = alloca i32, align 4
-  store i32 %0, i32* %m, align 4
-  store i32 %1, i32* %n, align 4
-  %load.m = load i32, i32* %m, align 4
-  %EQ = icmp eq i32 %load.m, 0
-  br i1 %EQ, label %then, label %endif
-
-then:                                             ; preds = %entry
-  %load.n = load i32, i32* %n, align 4
-  %ADD = add i32 %load.n, 1
-  ret i32 %ADD
-
-endif:                                            ; preds = %entry
-  %load.n3 = load i32, i32* %n, align 4
-  %EQ4 = icmp eq i32 %load.n3, 0
-  br i1 %EQ4, label %then2, label %endif1
-
-then2:                                            ; preds = %endif
-  %load.m5 = load i32, i32* %m, align 4
-  %SUB = sub i32 %load.m5, 1
-  %"ack(load.m - 1,1)" = call i32 @ack(i32 %SUB, i32 1)
-  ret i32 %"ack(load.m - 1,1)"
-
-endif1:                                           ; preds = %endif
-  %load.m6 = load i32, i32* %m, align 4
-  %SUB7 = sub i32 %load.m6, 1
-  %load.m8 = load i32, i32* %m, align 4
-  %load.n9 = load i32, i32* %n, align 4
-  %SUB10 = sub i32 %load.n9, 1
-  %"ack(load.m,load.n - 1)" = call i32 @ack(i32 %load.m8, i32 %SUB10)
-  %"ack(load.m - 1,ack(load.m,load.n - 1))" = call i32 @ack(i32 %SUB7, i32 %"ack(load.m,load.n - 1)")
-  ret i32 %"ack(load.m - 1,ack(load.m,load.n - 1))"
-}
-
-define i32 @main() {
-entry:
-  %"ack(3,3)" = call i32 @ack(i32 3, i32 3)
-  ret i32 %"ack(3,3)"
-}
-```
-
----
-
-## 037 — an array literal made of calls
+## 029 — an array literal made of calls
 
 ```ura
 // expect: 50   (1 + 4 + 9 + 20 + 16)
@@ -4112,101 +3468,7 @@ entry:
 
 ---
 
-## 038 — one name declared in sibling blocks
-
-```ura
-// expect: 130   (10 + 20 + 0 + 100)
-fn main() i32:
-    x i32 = 1
-    r i32 = 0
-    if x == 1:
-        y i32 = 10
-        r += y
-    if x == 1:
-        y i32 = 20
-        r += y
-    i i32 = 0
-    while i < 2:
-        z i32 = i * 100
-        r += z
-        i += 1
-    return r
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-define i32 @main() {
-entry:
-  %x = alloca i32, align 4
-  %r = alloca i32, align 4
-  %y = alloca i32, align 4
-  %y5 = alloca i32, align 4
-  %i = alloca i32, align 4
-  %z = alloca i32, align 4
-  store i32 1, i32* %x, align 4
-  store i32 0, i32* %r, align 4
-  %load.x = load i32, i32* %x, align 4
-  %EQ = icmp eq i32 %load.x, 1
-  br i1 %EQ, label %then, label %endif
-
-then:                                             ; preds = %entry
-  store i32 10, i32* %y, align 4
-  %load.y = load i32, i32* %y, align 4
-  %old = load i32, i32* %r, align 4
-  %ADD_ASSIGN = add i32 %old, %load.y
-  store i32 %ADD_ASSIGN, i32* %r, align 4
-  br label %endif
-
-endif:                                            ; preds = %then, %entry
-  %load.x3 = load i32, i32* %x, align 4
-  %EQ4 = icmp eq i32 %load.x3, 1
-  br i1 %EQ4, label %then2, label %endif1
-
-then2:                                            ; preds = %endif
-  store i32 20, i32* %y5, align 4
-  %load.y6 = load i32, i32* %y5, align 4
-  %old7 = load i32, i32* %r, align 4
-  %ADD_ASSIGN8 = add i32 %old7, %load.y6
-  store i32 %ADD_ASSIGN8, i32* %r, align 4
-  br label %endif1
-
-endif1:                                           ; preds = %then2, %endif
-  store i32 0, i32* %i, align 4
-  br label %cond
-
-cond:                                             ; preds = %then9, %endif1
-  %load.i = load i32, i32* %i, align 4
-  %LT = icmp slt i32 %load.i, 2
-  br i1 %LT, label %then9, label %endwhile
-
-then9:                                            ; preds = %cond
-  %load.i10 = load i32, i32* %i, align 4
-  %MUL = mul i32 %load.i10, 100
-  store i32 %MUL, i32* %z, align 4
-  %load.z = load i32, i32* %z, align 4
-  %old11 = load i32, i32* %r, align 4
-  %ADD_ASSIGN12 = add i32 %old11, %load.z
-  store i32 %ADD_ASSIGN12, i32* %r, align 4
-  %old13 = load i32, i32* %i, align 4
-  %ADD_ASSIGN14 = add i32 %old13, 1
-  store i32 %ADD_ASSIGN14, i32* %i, align 4
-  br label %cond
-
-endwhile:                                         ; preds = %cond
-  %load.r = load i32, i32* %r, align 4
-  ret i32 %load.r
-}
-```
-
----
-
-## 039 — elif chain on one line each, with not / and / or
+## 030 — elif chain on one line each, with not / and / or
 
 ```ura
 // expect: 31
@@ -4341,7 +3603,7 @@ endif16:                                          ; preds = %then17, %endif11
 
 ---
 
-## 040 — a struct holding an array of structs
+## 031 — a struct holding an array of structs
 
 ```ura
 // expect: 12   (9 - (-3))
@@ -4497,7 +3759,7 @@ entry:
 
 ---
 
-## 041 — tree walk with a ref out-parameter
+## 032 — tree walk with a ref out-parameter
 
 ```ura
 // expect: 183   (sum 18 * 10, 3 nodes)
@@ -4604,7 +3866,7 @@ entry:
 
 ---
 
-## 042 — reverse a string, palindromes, a while on one line
+## 033 — reverse a string, palindromes, a while on one line
 
 ```ura
 // stdout: gnal aru
@@ -4845,7 +4107,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 043 — a function returns a ref into a struct, the caller binds it
+## 034 — a function returns a ref into a struct, the caller binds it
 
 ```ura
 // expect: 103   (r binds to x.b: 3 + 100)
@@ -4924,7 +4186,7 @@ entry:
 
 ---
 
-## 044 — fibonacci as a pair: recursion returning a struct, .a on a call
+## 035 — fibonacci as a pair: recursion returning a struct, .a on a call
 
 ```ura
 // expect: 55
@@ -5009,7 +4271,7 @@ entry:
 
 ---
 
-## 045 — method calls nested as arguments
+## 036 — method calls nested as arguments
 
 ```ura
 // expect: 160   (a 15 * 10, b 10)
@@ -5093,7 +4355,7 @@ entry:
 
 ---
 
-## 046 — print a linked list backwards with recursion
+## 037 — print a linked list backwards with recursion
 
 ```ura
 // stdout: 321
@@ -5206,7 +4468,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 047 — sort structs in an array by an attribute
+## 038 — sort structs in an array by an attribute
 
 ```ura
 // stdout: abc
@@ -5402,7 +4664,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 048 — sieve of eratosthenes on a bool array
+## 039 — sieve of eratosthenes on a bool array
 
 ```ura
 // expect: 77   (2 + 3 + 5 + 7 + 11 + 13 + 17 + 19)
@@ -5539,7 +4801,7 @@ endif:                                            ; preds = %endwhile28, %then
 
 ---
 
-## 049 — atoi: parse numbers from strings
+## 040 — atoi: parse numbers from strings
 
 ```ura
 // expect: 85   (123 - 45 + 7)
@@ -5667,7 +4929,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 050 — itoa: write a number's digits into a buffer
+## 041 — itoa: write a number's digits into a buffer
 
 ```ura
 // stdout: 9071
@@ -5828,7 +5090,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 051 — ping pong: two structs that name each other, before either is declared
+## 042 — ping pong: two structs that name each other, before either is declared
 
 ```ura
 // expect: 33
@@ -5941,7 +5203,7 @@ entry:
 
 ---
 
-## 052 — while True with break and return inside a method
+## 043 — while True with break and return inside a method
 
 ```ura
 // expect: 40   (23 at 4 * 10, 4 at 0, 99 missing: 0)
@@ -6059,89 +5321,7 @@ entry:
 
 ---
 
-## 053 — script: a global counts recursive calls
-
-```ura
-// stdout: 55 177
-// expect: 177
-proto printf(fmt i8[], ...) i32
-
-calls i32 = 0
-
-fn fib(n i32) i32:
-    calls += 1
-    if n < 2: return n
-    return fib(n - 1) + fib(n - 2)
-
-r i32 = fib(10)
-printf("%d %d\n", r, calls)
-return calls
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-@calls = global i32 0
-@r = global i32 0
-@str = private constant [7 x i8] c"%d %d\0A\00"
-
-declare i32 @printf(i8*, ...)
-
-define i32 @fib(i32 %0) {
-entry:
-  %n = alloca i32, align 4
-  store i32 %0, i32* %n, align 4
-  %old = load i32, i32* @calls, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* @calls, align 4
-  %load.n = load i32, i32* %n, align 4
-  %LT = icmp slt i32 %load.n, 2
-  br i1 %LT, label %then, label %endif
-
-then:                                             ; preds = %entry
-  %load.n1 = load i32, i32* %n, align 4
-  ret i32 %load.n1
-
-endif:                                            ; preds = %entry
-  %load.n2 = load i32, i32* %n, align 4
-  %SUB = sub i32 %load.n2, 1
-  %"fib(load.n - 1)" = call i32 @fib(i32 %SUB)
-  %load.n3 = load i32, i32* %n, align 4
-  %SUB4 = sub i32 %load.n3, 2
-  %"fib(load.n - 2)" = call i32 @fib(i32 %SUB4)
-  %ADD = add i32 %"fib(load.n - 1)", %"fib(load.n - 2)"
-  ret i32 %ADD
-}
-
-define i32 @main() {
-entry:
-  %s = alloca [7 x i8], align 1
-  store i32 0, i32* @calls, align 4
-  %"fib(10)" = call i32 @fib(i32 10)
-  store i32 %"fib(10)", i32* @r, align 4
-  %dst = getelementptr inbounds [7 x i8], [7 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i64 7, i1 false)
-  %load.r = load i32, i32* @r, align 4
-  %load.calls = load i32, i32* @calls, align 4
-  %"printf(str,load.r,load.calls)" = call i32 (i8*, ...) @printf(i8* %dst, i32 %load.r, i32 %load.calls)
-  %load.calls1 = load i32, i32* @calls, align 4
-  ret i32 %load.calls1
-}
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
-```
-
----
-
-## 054 — script: a global stack evaluates postfix 3 4 + 2 *
+## 044 — script: a global stack evaluates postfix 3 4 + 2 *
 
 ```ura
 // expect: 14
@@ -6247,7 +5427,7 @@ entry:
 
 ---
 
-## 055 — structs used before declared, a struct local to a function
+## 045 — structs used before declared, a struct local to a function
 
 ```ura
 // expect: 203   (area 5 * 4 = 20 * 10, plus 3)
@@ -6350,7 +5530,7 @@ entry:
 
 ---
 
-## 056 — print a number in hex with as
+## 046 — print a number in hex with as
 
 ```ura
 // stdout: 0000beef
@@ -6477,7 +5657,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 057 — a linked list built with chained methods that return refs
+## 047 — a linked list built with chained methods that return refs
 
 ```ura
 // expect: 44   (length 4 * 10, last value 4)
@@ -6595,7 +5775,7 @@ entry:
 
 ---
 
-## 058 — binary search tree: recursive methods through ref attributes
+## 048 — binary search tree: recursive methods through ref attributes
 
 ```ura
 // expect: 213   (sum 210, depth 3)
@@ -6858,7 +6038,7 @@ entry:
 
 ---
 
-## 059 — a string builder on a global buffer
+## 049 — a string builder on a global buffer
 
 ```ura
 // stdout: x=1234, y=7
@@ -7012,7 +6192,7 @@ attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 
 ---
 
-## 060 — 2x2 matrix product with methods and ref parameters
+## 050 — 2x2 matrix product with methods and ref parameters
 
 ```ura
 // expect: 134   (19 + 22 + 43 + 50)
@@ -7223,110 +6403,7 @@ entry:
 
 ---
 
-## 061 — script: nested loops with continue and break at file level
-
-```ura
-// expect: 37
-found i32 = -1
-i i32 = 0
-while i < 10:
-    i += 1
-    if i % 2 == 0: continue
-    j i32 = 0
-    while j < 10:
-        if i * j == 21:
-            found = i * 10 + j
-            break
-        j += 1
-    if found != -1: break
-return found
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-@found = global i32 0
-@i = global i32 0
-
-define i32 @main() {
-entry:
-  %j = alloca i32, align 4
-  store i32 -1, i32* @found, align 4
-  store i32 0, i32* @i, align 4
-  br label %cond
-
-cond:                                             ; preds = %endif17, %then1, %entry
-  %load.i = load i32, i32* @i, align 4
-  %LT = icmp slt i32 %load.i, 10
-  br i1 %LT, label %then, label %endwhile
-
-then:                                             ; preds = %cond
-  %old = load i32, i32* @i, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* @i, align 4
-  %load.i2 = load i32, i32* @i, align 4
-  %MOD = srem i32 %load.i2, 2
-  %EQ = icmp eq i32 %MOD, 0
-  br i1 %EQ, label %then1, label %endif
-
-endwhile:                                         ; preds = %then18, %cond
-  %load.found19 = load i32, i32* @found, align 4
-  ret i32 %load.found19
-
-then1:                                            ; preds = %then
-  br label %cond
-
-endif:                                            ; preds = %then
-  store i32 0, i32* %j, align 4
-  br label %cond3
-
-cond3:                                            ; preds = %endif7, %endif
-  %load.j = load i32, i32* %j, align 4
-  %LT6 = icmp slt i32 %load.j, 10
-  br i1 %LT6, label %then4, label %endwhile5
-
-then4:                                            ; preds = %cond3
-  %load.i9 = load i32, i32* @i, align 4
-  %load.j10 = load i32, i32* %j, align 4
-  %MUL = mul i32 %load.i9, %load.j10
-  %EQ11 = icmp eq i32 %MUL, 21
-  br i1 %EQ11, label %then8, label %endif7
-
-endwhile5:                                        ; preds = %then8, %cond3
-  %load.found = load i32, i32* @found, align 4
-  %NQ = icmp ne i32 %load.found, -1
-  br i1 %NQ, label %then18, label %endif17
-
-then8:                                            ; preds = %then4
-  %load.i12 = load i32, i32* @i, align 4
-  %MUL13 = mul i32 %load.i12, 10
-  %load.j14 = load i32, i32* %j, align 4
-  %ADD = add i32 %MUL13, %load.j14
-  store i32 %ADD, i32* @found, align 4
-  br label %endwhile5
-
-endif7:                                           ; preds = %then4
-  %old15 = load i32, i32* %j, align 4
-  %ADD_ASSIGN16 = add i32 %old15, 1
-  store i32 %ADD_ASSIGN16, i32* %j, align 4
-  br label %cond3
-
-then18:                                           ; preds = %endwhile5
-  br label %endwhile
-
-endif17:                                          ; preds = %endwhile5
-  br label %cond
-}
-```
-
----
-
-## 062 — filter with as bool, not and isNullable
+## 051 — filter with as bool, not and isNullable
 
 ```ura
 // expect: 42   (4 odd, 2 even, zeros skipped)

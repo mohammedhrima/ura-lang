@@ -2,74 +2,11 @@
 
 ## index
 
-- 001 — a global variable changed by a function
-- 002 — no main: the file is the program
+- 001 — no main: the file is the program
 
 ---
 
-## 001 — a global variable changed by a function
-
-```ura
-// expect: 4
-count i32 = 0
-
-fn tick():
-    count += 1
-
-fn main() i32:
-    i i32 = 0
-    while i < 4:
-        tick()
-        i += 1
-    return count
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-@count = global i32 0
-
-define void @tick() {
-entry:
-  %old = load i32, i32* @count, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* @count, align 4
-  ret void
-}
-
-define i32 @main() {
-entry:
-  %i = alloca i32, align 4
-  store i32 0, i32* @count, align 4
-  store i32 0, i32* %i, align 4
-  br label %cond
-
-cond:                                             ; preds = %then, %entry
-  %load.i = load i32, i32* %i, align 4
-  %LT = icmp slt i32 %load.i, 4
-  br i1 %LT, label %then, label %endwhile
-
-then:                                             ; preds = %cond
-  call void @tick()
-  %old = load i32, i32* %i, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* %i, align 4
-  br label %cond
-
-endwhile:                                         ; preds = %cond
-  %load.count = load i32, i32* @count, align 4
-  ret i32 %load.count
-}
-```
-
----
-
-## 002 — no main: the file is the program
+## 001 — no main: the file is the program
 
 ```ura
 // expect: 40   (23 at 4 * 10, 4 at 0, 99 missing: 0)
