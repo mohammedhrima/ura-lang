@@ -8,8 +8,8 @@
 #   tests [target] [number]
 #            rebuild, then compile tests and compare the generated LLVM IR
 #            with the recorded one; one line per test, with a file:line link
-#            target: nothing (all), a folder (data_types), a file
-#            (data_types/bool, or just bool); number: one entry of a file
+#            target: nothing (all) or a file (milestone1);
+#            number: one entry of that file
 #   record [target] [number]
 #            rebuild, then compile tests and (re)write their recorded IR;
 #            an entry that doesn't compile is left as it was and reported
@@ -41,7 +41,7 @@ unset _ura_self
 
 URA_BIN_DIR="$(cd "$URA_ROOT/.." && pwd)/bin" # the ura compiler itself, in the repo root
 URA_BUILD_DIR="$URA_ROOT/build" # what ura generates when it compiles a file
-URA_TESTS_DIR="$URA_ROOT/tests"
+URA_TESTS_DIR="$(cd "$URA_ROOT/.." && pwd)/tests" # one file per milestone, in the repo root
 URA_BIN="$URA_BIN_DIR/ura"
 
 # put bin/ on PATH so `ura` is callable by name; the case guard keeps
@@ -277,9 +277,8 @@ _ura_print_failure() {
 #
 # Prints the test files <target> names, one per line:
 #   (nothing)          every .md under tests/
-#   data_types         every .md in tests/data_types/
-#   data_types/bool    tests/data_types/bool.md
-#   bool               the file named bool.md, in whichever folder it is
+#   milestone1         tests/milestone1.md
+#   a folder, or a bare name, also work if tests/ ever gets subfolders
 # Returns 1 when <target> names nothing.
 # ============================================================================
 _ura_test_files() {
@@ -305,7 +304,7 @@ _ura_test_files() {
 # _ura_label <md_file>
 #
 # Prints the name a test file is shown under: its path below tests/, without
-# ".md" (tests/data_types/bool.md -> data_types/bool).
+# ".md" (tests/milestone1.md -> milestone1).
 # ============================================================================
 _ura_label() {
     printf '%s\n' "$1" | sed -e "s|^$URA_TESTS_DIR/||" -e 's|\.md$||'
@@ -324,7 +323,7 @@ _ura_pick_number() {
     fi
     count=$(printf '%s\n' "$md_files" | wc -l)
     if [ "$count" -ne 1 ]; then
-        _ura_red "a test number needs one file, like: data_types/bool $number" >&2
+        _ura_red "a test number needs one file, like: milestone1 $number" >&2
         return 1
     fi
     printf '%03d\n' "$((10#$number))"
@@ -334,7 +333,7 @@ _ura_pick_number() {
 # _ura_entry_link <md_file> <number>
 #
 # Prints "<path>:<line>" for entry <number>, the line its "## NNN" heading is
-# on. The path is relative to tests/ (control_flow/if.md:21): every test is
+# on. The path is relative to tests/ (milestone1.md:21): every test is
 # there, so the prefix adds nothing. Terminals that turn "file:line" into a
 # link can still open it (VS Code finds it in the workspace).
 # ============================================================================
@@ -562,8 +561,8 @@ _ura_write_entry() {
 # fails. An entry with the same description is replaced in place, keeping
 # its number; otherwise a new one is appended.
 #
-#   copy file.ura control_flow/while "basic while"
-#   copy bad.ura errors/variables "unknown variable"
+#   copy file.ura milestone1 "basic while"
+#   copy bad.ura milestone1 "unknown variable"
 # ============================================================================
 copy() {
     local ura_file="$1" level="$2" description="$3"
@@ -577,7 +576,7 @@ copy() {
     fi
     # level becomes a path below tests/: folders are fine, leaving tests/ isn't
     case "$level" in
-        /*|.*|*/.*) _ura_red "copy: give a path inside tests/, like data_types/bool"; return 1 ;;
+        /*|.*|*/.*) _ura_red "copy: give a path inside tests/, like milestone1"; return 1 ;;
     esac
 
     local md_file="$URA_TESTS_DIR/$level.md"
@@ -668,9 +667,8 @@ _ura_record_file() {
 # record [target] [number]
 #
 #   record                     every test file
-#   record data_types          every file in tests/data_types/
-#   record data_types/bool     one file (or just: record bool)
-#   record bool 4              only entry 004 of it
+#   record milestone1          one file
+#   record milestone1 4        only entry 004 of it
 #
 # Rebuilds first, then (re)writes the recorded IR. Use it to fill new
 # entries, and after a change that alters the IR on purpose (naming,
@@ -788,9 +786,8 @@ _ura_test_file() {
 # tests [target] [number]
 #
 #   tests                      every test file
-#   tests data_types           every file in tests/data_types/
-#   tests data_types/bool      one file (or just: tests bool)
-#   tests bool 4               only entry 004 of it
+#   tests milestone1           one file
+#   tests milestone1 4         only entry 004 of it
 #
 # Runs build first and stops there if the build fails. Prints each file and
 # one line per test under it (see _ura_test_file), then the totals.

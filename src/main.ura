@@ -1,7 +1,0 @@
-struct User:
-    a i32
-    b i32
-
-fn main() i32:
-    u User
-    return u.a + u.b
