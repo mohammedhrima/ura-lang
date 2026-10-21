@@ -284,7 +284,7 @@ void tokenize(File *file, int space2) {
             //     check_indent(s + 1, e, ura.scope->token->line, space);
             continue;
         }
-        while (strncmp2(buff + s, "//", 2) && !strchr("\n", buff[e]))
+        while (strncmp2(buff + s, "//", 2) && !strchr2("\n", buff[e]))
             e++;
         if (e != s)
             continue;
@@ -295,11 +295,40 @@ void tokenize(File *file, int space2) {
             // TODO:
             //  if (!check_multi_comment(s, e, line))
             //     break;
-			e += 2;
-			continue;
+            e += 2;
+            continue;
         }
 
-		if(buff[s] != '\0')
+        if (buff[s] != '\0' && strchr2("\"\'", buff[s])) {
+            char c = buff[s];
+            e++;
+            char str[3] = { [0] = '\n', [1] = c };
+            while (!strchr2(str, buff[e])) {
+                if (buff[e] == '\\' && !strchr2("\n", buff[e + 1]))
+                    e++;
+                e++;
+            }
+            // TODO:
+            // if (!check_quote(s, e, line))
+            //     continue;
+            e++; // skip last ' or "
+            parse_token(c == '"' ? CHARS : I8, s, e, space);
+            continue;
+        }
+        while (isdigit(buff[e]))
+            e++;
+        if (e != s) {
+            // TODO:
+            // if (!check_number_fits(s, e, line))
+            //     continue;
+            parse_token(I32, s, e, space);
+            continue;
+        }
+        while (isalpha(buff[s]) && (isalnum(buff[e]) || buff[e] == '_'))
+            e++;
+		if(e != s) {
+			
+		}
     }
 }
 

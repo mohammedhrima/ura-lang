@@ -6,7 +6,7 @@
 /*   | |_| |  _ <  / ___ \     mohammedxhrima@gmail.com                       */
 /*    \___/|_| \_\/_/   \_\    created: 2023/03/11 03:08:09                   */
 /*                                                                            */
-/*   updated: 2026/10/20 23:37:39                                             */
+/*   updated: 2026/10/21 00:05:32                                             */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -178,17 +178,16 @@ char *strndup2(const char *str, size_t n) {
 }
 
 bool strcmp2(const char *left, const char *right) {
-    int i = 0;
-    while (left[i] && left[i] == right[i])
-        i++;
-    return left[i] == right[i];
+    return strcmp(left, right) == 0;
 }
 
 bool strncmp2(const char *left, const char *right, size_t n) {
-    int i = 0;
-    while (i < n && left[i] && left[i] == right[i])
-        i++;
-    return i == n;
+    return strncmp(left, right, n) == 0;
+}
+
+bool strchr2(char *str, int c) {
+    char *res = strchr(str, c);
+    return c != '\0' && res != NULL && res[0] != '\0';
 }
 
 char *getcwd2(void) {
