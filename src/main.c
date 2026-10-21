@@ -1,296 +1,639 @@
-#include "header.h"
+// TYPEDEFS
+typedef struct Token Token;
+typedef struct Node Node;
+typedef struct NodePrint NodePrint;
+typedef struct uraError uraError;
 
-#include "utils/memory.c"
-#include "utils/diagnostics.c"
-#include "frontend/lexer.c"
-#include "frontend/parser.c"
-#include "backend/analyze.c"
-#include "backend/typecheck.c"
-#include "backend/codegen.c"
+#define print(...)  _print(stdout, __VA_ARGS__)
+#define help(...)   _print(stdout, __VA_ARGS__)
+#define eprint(...) _print(stderr, __VA_ARGS__)
 
-UraGlobal ura;
+#ifndef TOKENIZE
+#    define TOKENIZE 1
+#endif
 
-void parse_arguments(int argc, char **argv)
-{
-   ura.lib = getenv("URA_LIB");
-   if (!is_dir(ura.lib)) ura.lib = find_ura_lib();
-   ura.output = "exe.out";
-   
-   for (int i = 1; i < argc && !ura.error_count; i++) {
-      char *arg = argv[i];
-#define MATCH(name, field, val) if (strcmp(arg, name) == 0) { field = val; continue; }
-      MATCH("-debug", ura.enable_debug, true);
-      MATCH("-exec",  ura.enable_exec,  true);
-      MATCH("-san",   ura.enable_san,   true);
-      MATCH("-testing", ura.no_color,   true);
-      MATCH("-tree",  ura.enable_tree,  true);
-      MATCH("-ll",    ura.enable_ll,    true);
-      MATCH("-O0", ura.flags, PASSES_O0);   
-      MATCH("-O1", ura.flags, PASSES_O1);
-      MATCH("-O2", ura.flags, PASSES_O2);   
-      MATCH("-O3", ura.flags, PASSES_O3);
-      MATCH("-Os", ura.flags, PASSES_Os);   
-      MATCH("-Oz", ura.flags, PASSES_Oz);
-#undef MATCH
-      if (strcmp(arg, "-o") == 0) {
-         if (i + 1 >= argc) {
-            parse_error(NULL, ERR_MISSING_O_ARG);
-            return;
-         }
-         ura.output = argv[++i];
-      } else if (arg[0] == '-') {
-         parse_error(NULL, "Unknown flag '%s'", arg);
-      } else {
-         size_t n = strlen(arg);
-         bool is_ura = n > 4 && strcmp(arg + n - 4, ".ura") == 0;
-         if (!is_ura) parse_error(NULL, "Invalid file '%s'", arg);
-         else new_source(arg);
-      }
-   }
-   if (ura.error_count) return;
-   if (!ura.sources) parse_error(NULL, ERR_NO_INPUT);
+#include "./ir.h"
+
+int _fprint(ioFile fp, const char *fmt, va_list ap);
+#undef vfprint
+#define vfprint _fprint
+
+struct Token {
+    Type type;
+    char *name;
+    int space;
+
+    int line;
+    int s;
+    int e;
+
+    bool is_type;
+    bool is_variadic;
+    uraIR ir;
+
+    union {
+        struct {
+            int index;
+        } attr;
+        struct {
+            long value;
+        } i32;
+        struct {
+            int value; // TODO: check unicode stuff
+        } i8;
+        struct {
+            int value;
+        } b1;
+        struct {
+            char *value;
+        } chars;
+    };
+};
+
+struct Node {
+    Token *token;
+    Node *left;
+    Node *right;
+
+    expand(Node *, children);
+};
+
+struct uraError {
+    Node *file;
+    Token *token;
+    int s;
+    int e;
+    int line;
+    char *msg;
+    char *help;
+};
+
+struct NodePrint {
+    expand(int, depths);
+    expand(Node *, nodes);
+};
+
+// Global Ura
+struct {
+    // int errors_count;
+    // File errors;
+    // char *errors_buff;
+    // int errors_len;
+
+    Node *tree;
+    expand(Token *, tokens);
+
+    expand(Node *, scopes);
+    Node *scope;
+
+    expand(File *, files);
+    File *file;
+    int line;
+
+    expand(uraError, errors);
+
+    int exe_pos;
+} ura;
+
+struct {
+    char *value;
+    Token token;
+} keywords[] = {
+    { "bool", { .type = BOOL, .is_type = true } },
+    { "char", { .type = I8, .is_type = true } },
+    { "i8", { .type = I8, .is_type = true } },
+    { "i32", { .type = I32, .is_type = true } },
+
+    { "True", { .type = BOOL, .b1 = { .value = true } } },
+    { "False", { .type = BOOL, .b1 = { .value = false } } },
+
+    { "struct", { .type = STRUCT } },
+    { "and", { .type = AND } },
+    { "or", { .type = OR } },
+    { "not", { .type = NOT } },
+    { "proto", { .type = PROTO } },
+    { "fn", { .type = FN_DEC } },
+    { "return", { .type = RETURN } },
+    { "if", { .type = IF } },
+    { "elif", { .type = ELIF } },
+    { "else", { .type = ELSE } },
+    { "while", { .type = WHILE } },
+    { "break", { .type = BRK } },
+    { "continue", { .type = CNT } },
+    { "template", { .type = TEMPLATE } },
+    // { "null", {.type = ZERO } },
+    { "as", { .type = AS } },
+
+    { NULL },
+};
+
+struct {
+    char *value;
+    Type type;
+} specials[] = {
+    { "(", LPARENT },     { ")", RPARENT },     { ":", DOTS },
+    { "[", LBRACK },      { "]", RBRACK },
+
+    { "+=", ADD_ASSIGN }, { "-=", SUB_ASSIGN }, { "*=", MUL_ASSIGN },
+    { "/=", DIV_ASSIGN }, { "%=", MOD_ASSIGN },
+
+    { "...", VARIADIC },  { ".", DOT },
+
+    { "+", ADD },         { "-", SUB },         { "*", MUL },
+    { "/", DIV },         { "%", MOD },
+
+    { ">=", GE },         { "<=", LE },         { ">", GT },
+    { "<", LT },          { "==", EQ },         { "!=", NQ },
+    { "!", NOT },
+
+    { "=", ASSIGN },      { ",", COMA },        { "&&", AND },
+    { "||", OR },         { "&", REF },         { NULL, NONE },
+};
+
+char *binary_ops[END + 1] = {
+    [ADD] = "+",        [SUB] = "-",        [MUL] = "*",
+    [DIV] = "/",        [MOD] = "%",
+
+    [ADD_ASSIGN] = "+", [SUB_ASSIGN] = "-", [MUL_ASSIGN] = "*",
+    [DIV_ASSIGN] = "/", [MOD_ASSIGN] = "%",
+
+    [EQ] = "==",        [NQ] = "!=",        [LT] = "<",
+    [GT] = ">",         [LE] = "<=",        [GE] = ">=",
+
+    [AND] = "and",      [OR] = "or",
+};
+
+int precedence[END + 1] = {
+    [ASSIGN] = 1,     [ADD_ASSIGN] = 1, [SUB_ASSIGN] = 1,
+    [MUL_ASSIGN] = 1, [DIV_ASSIGN] = 1, [MOD_ASSIGN] = 1,
+
+    [OR] = 11,        [AND] = 12,
+
+    [EQ] = 21,        [NQ] = 21,        [GT] = 22,
+    [LT] = 22,        [GE] = 22,        [LE] = 22,
+
+    [ADD] = 30,       [SUB] = 30,       [MUL] = 31,
+    [DIV] = 31,       [MOD] = 31,
+
+    [AS] = 35,
+
+    [DOT] = 51,
+};
+
+char *escaped[256] = {
+    ['n'] = "\n",   ['t'] = "\t",   ['r'] = "\r",   ['b'] = "\b",
+    ['f'] = "\f",   ['v'] = "\v",   ['a'] = "\a",   ['?'] = "\?",
+    ['0'] = "\0",   ['"'] = "\"",   ['\''] = "\'",  ['\\'] = "\\",
+
+    ['\n'] = "\\n", ['\t'] = "\\t", ['\r'] = "\\r", ['\0'] = "\\0",
+};
+
+char *type_names[END + 1] = {
+    [VOID] = "void",
+    [BOOL] = "bool",
+    [I8] = "i8",
+    [I32] = "i32",
+};
+
+// TOKENIZE
+Token *new_token(Type type, Token *from) {
+    Token *new = arena_alloc(1, sizeof(Token));
+    new->type = type;
+    if (from != NULL) {
+        new->space = from->space;
+        new->line = from->line;
+        new->s = from->s;
+        new->e = from->e;
+    }
+    append(ura.tokens, new);
+    return new;
 }
 
-void load_common() {
-   if (!ura.lib) {
-      parse_error(NULL, ERR_NO_STDLIB);
-      return;
-   }
-   char *path   = format("%s/common.ura", ura.lib);
-   int   before = ura.sources_count;
-   new_source(path);
-   free(path);
-   if (ura.error_count || ura.sources_count == before) return;
-   ura.calling_use++;
-   tokenize(0);
-   ura.calling_use--;
+Token *parse_token(Type type, int s, int e, int space) {
+    Token *new = arena_alloc(1, sizeof(Token));
+    char *buff = ura.file->buff;
+
+    switch (type) {
+    case ID: {
+        int i = 0;
+        for (; keywords[i].value; i++) {
+            char *value = keywords[i].value;
+            size_t len = strlen(value);
+            if (e - s == len && strncmp2(buff + s, value, e - s)) {
+                *new = keywords[i].token;
+                break;
+            }
+        }
+        if (keywords[i].value)
+            break;
+        new->name = strndup2(buff + s, e - s);
+        break;
+    }
+    case CHARS: {
+        new->chars.value = parse_escaped(buff, s + 1, e - 1);
+        break;
+    }
+    case I8: {
+        char *str = parse_escaped(buff, s + 1, e - 1);
+        // TODO: assert_char
+        new->i8.value = str[0];
+        break;
+    }
+    case I32: {
+        new->i32.value = strtol(buff + s, NULL, 10);
+        break;
+    }
+    default: {
+        break;
+    }
+    }
+    new->line = ura.line;
+    new->s = s;
+    new->e = e;
+    new->space = space / TAB + ((space % TAB) != 0);
+    return new;
 }
 
-void tokenize(int default_indent) {
-   if (ura.error_count || !ura.sources) return;
-   Source *prev = ura.current;
-   ura.current  = ura.sources[ura.sources_count - 1];
-   ura.current->loading = true;
-   if (!ura.calling_use) load_common();
-   char *content = ura.current->content;
-   int line = 1;
-   int indent = default_indent;
-   
-   int s = 0;
-   int i = 0;
-   while (content && content[i] && !ura.error_count) {
-      s = i;
-      char c = content[i];
-      if (lex_spaces(content, &i, &line, &indent, default_indent)) continue;
-      if (lex_multi_comment(content, &i, &line)) continue;
-      if (lex_comment(content, &i)) continue;
-      if (lex_chars(content, &i, line, indent)) continue;
-      if (lex_char(content, &i, line, indent)) continue;
-      if (lex_number(content, &i, line, indent)) continue;
-      if (lex_identifier(content, &i, line, indent, default_indent)) continue;
-      if (lex_symbol(content, &i, line, &indent)) continue;
-      tokenize_error(line, i, i + 1, "Unexpected character '%c'", c);
-   }
-   if (!ura.calling_use)
-   {
-      parse_token(line, s, i, END, -1);
-      for(int i = 0; i < ura.tokens_count && ura.enable_debug; i++)
-         debug("token %k\n", ura.tokens[i]);
-   }
-   ura.current->loading = false;
-   ura.current = prev;
+void tokenize(File *file, int space2) {
+    open_file(file);
+    ura.file = file;
+    arena_reserve(file->len * 192);
+
+    int s = 0;
+    int e = 0;
+    int space = space2;
+    char *buff = file->buff;
+    while (buff[e] != '\0') {
+        s = e;
+        if (isspace(buff[e])) {
+            while (buff[e] == '\n') {
+                ura.line++;
+                e++;
+            }
+            if (buff[s] == '\n') {
+                space = space2;
+                s = e - 1;
+            }
+            while (buff[e] != '\n' && isspace(buff[e])) {
+                // calculated spaces after hitting \n in s position
+                if (buff[s] == '\n')
+                    space++;
+                e++;
+            }
+            //  if (buff[s] == '\n' && buff[e] && buff[e] != '\n') // a line with code
+            //     check_indent(s + 1, e, ura.scope->token->line, space);
+            continue;
+        }
+        while (strncmp2(buff + s, "//", 2) && !strchr2("\n", buff[e]))
+            e++;
+        if (e != s)
+            continue;
+        if (strncmp2(buff + s, "/*", 2)) {
+            s += 2; // skip /*
+            while (buff[e] != '\0' && !strncmp2(buff + e, "*/", 2))
+                e++;
+            // TODO:
+            //  if (!check_multi_comment(s, e, line))
+            //     break;
+            e += 2;
+            continue;
+        }
+
+        if (buff[s] != '\0' && strchr2("\"\'", buff[s])) {
+            char c = buff[s];
+            e++;
+            char str[3] = { [0] = '\n', [1] = c };
+            while (!strchr2(str, buff[e])) {
+                if (buff[e] == '\\' && !strchr2("\n", buff[e + 1]))
+                    e++;
+                e++;
+            }
+            // TODO:
+            // if (!check_quote(s, e, line))
+            //     continue;
+            e++; // skip last ' or "
+            parse_token(c == '"' ? CHARS : I8, s, e, space);
+            continue;
+        }
+        while (isdigit(buff[e]))
+            e++;
+        if (e != s) {
+            // TODO:
+            // if (!check_number_fits(s, e, line))
+            //     continue;
+            parse_token(I32, s, e, space);
+            continue;
+        }
+        while (isalpha(buff[s]) && (isalnum(buff[e]) || buff[e] == '_'))
+            e++;
+		if(e != s) {
+			
+		}
+    }
 }
 
-void generate_ast() {
-   if(ura.error_count) return;
-   Node *head = new_node(new_token(ID, -TAB));
-   ura.head = head;
-   enter_scope(head);
-   while (!find(END, 0)) {
-      int before = ura.error_count;
-      Node *child = expr_node(0);
-      if (ura.error_count > before) {
-         parser_recover(0);
-         if (ura.error_count > ura.max_errors) break;
-         continue;
-      }
-      resize_array(head->children, Node *);
-      head->children[head->children_count++] = child;
-      // TODO: only function declarations and
-      // struct declaration are allowed here
-   }
-   if (ura.error_count > 0 || !ura.enable_debug) return;
-	debug(GREEN("===========================================\n"));
-	debug(GREEN("AFTER PARSING\n"));
-	debug(GREEN("===========================================\n"));
-	for (int i = 0; i < head->children_count; i++)
-		pnode(head->children[i], "");
-}
+// AST
 
-void declare_module_members(Node *m) {
-   for (int i = 0; i < m->children_count; i++)
-      if (m->children[i]->token->type == STRUCT_DEF)
-         declare_struct(m->children[i]);
-   for (int i = 0; i < m->children_count; i++)
-      if (m->children[i]->token->type == ENUM_DEF)
-         declare_enum(m->children[i]);
-   for (int i = 0; i < m->children_count; i++)
-      if (m->children[i]->token->type == FDEC)
-         declare_function(m->children[i]);
-   for (int i = 0; i < m->children_count; i++)
-      if (m->children[i]->token->type == MODULE)
-         declare_module_members(m->children[i]);
-}
 
-void generate_ir() {
-   if(ura.error_count || !ura.head) return;
-   for (int i = 0; i < ura.head->children_count; i++)
-      if (ura.head->children[i]->token->type == STRUCT_DEF)
-         declare_struct(ura.head->children[i]);
-   for (int i = 0; i < ura.head->children_count; i++)
-      if (ura.head->children[i]->token->type == ENUM_DEF)
-         declare_enum(ura.head->children[i]);
-   for (int i = 0; i < ura.head->children_count; i++)
-      if (ura.head->children[i]->token->type == FDEC)
-         declare_function(ura.head->children[i]);
-   for (int i = 0; i < ura.head->children_count; i++) {
-      Token *global = global_decl(ura.head->children[i]);
-      if (!global) continue;
-      global->is_global = true;
-      declare_variable(global);
-   }
-   for (int i = 0; i < ura.head->children_count; i++)
-      if (ura.head->children[i]->token->type == MODULE)
-         declare_module_members(ura.head->children[i]);
-   for (int i = 0; i < ura.head->children_count; i++)
-      analyze(ura.head->children[i]);
-   for (int i = 0; i < ura.head->children_count; i++)
-      type_check(ura.head->children[i]);
-   if (!ura.enable_tree) return;
-   print_ast(ura.head);
-}
+// ANALYZE
 
-void generate_asm() {
-   if (ura.error_count || !ura.head) return;
-   setup_paths(ura.sources[0]->filename);
-   init_module(ura.output);
-   for (int i = 0; i < ura.head->children_count; i++)
-      if (program_throws(ura.head->children[i])) {
-         ura.uses_exceptions = true;
-         break;
-      }
-   for (int i = 0; i < ura.head->children_count; i++) {
-      Token *global = global_decl(ura.head->children[i]);
-      if (global) llvm_global(global);
-   }
-   for (int i = 0; i < ura.head->children_count; i++)
-      if (!global_decl(ura.head->children[i]))
-         code_gen(ura.head->children[i]);
-   finalize_module(ura.ll_path);
-}
+/*
+TODO:
+    + replace all fprintf with builtins
+    + try buffring instead of calling fprintf everytime
+    + use (reopen already opened file)
+    + reuse (don't reopen opened files)
+*/
 
-void run_linker(char **argv) {
-   pid_t pid = fork();
-   if (pid < 0) return;
-   if (pid == 0) {
-      int devnull = open("/dev/null", O_WRONLY);
-      if (devnull >= 0) {
-         dup2(devnull, STDERR_FILENO);
-         close(devnull);
-      }
-      execvp(argv[0], argv);
-      _exit(127);
-   }
-   int status = 0;
-   waitpid(pid, &status, 0);
-}
+int main(int ac, char **av) {
+    atexit(arena_free);
+    arena_reserve(1000);
+    parse_args(ac, av);
+    ura.tokens_count = 0;
+    ura.exe_pos = 0;
 
-void compile_executable() {
-   if (ura.error_count || !ura.head) return;
-
-   fprintf(stderr, CYAN("%-9s") " " BLUE("%s (%s)") "\n", 
-         "Compiling", ura.base, ura.sources[0]->filename);
-   char *cc = ura.enable_san ? "/usr/bin/clang" : "clang";
-   char *argv[12];
-   int   n = 0;
-   argv[n++] = cc;
-   if (ura.enable_san) {
-      argv[n++] = "-fsanitize=address,undefined";
-      argv[n++] = "-fno-omit-frame-pointer";
-      argv[n++] = "-g";
-   }
-   argv[n++] = ura.ll_path;
-   argv[n++] = "-o";
-   argv[n++] = ura.output;
-   argv[n]   = NULL;
-   run_linker(argv);
-   if (!ura.enable_exec) return;
-   char *opt = ura.flags ? "optimized" : "unoptimized";
-   char *tag = ura.enable_san ? " + sanitized" : "";
-   fprintf(stderr, CYAN("%-9s") " \033[2m[%s%s]\033[0m in %.2fs\n",
-           "Finished", opt, tag, clock_now() - ura.time_start);
-}
-
-void run_executable() {
-   if (!ura.enable_exec || ura.error_count || !ura.head) return;
-   char  *run = strchr(ura.output, '/') ? ura.output : format("./%s", ura.output);
-   fprintf(stderr, CYAN("%-9s") " " BLUE("%s") "\n", "Running", run);
-   double start = clock_now();
-   pid_t  pid = fork();
-   if (pid == 0) {
-      execl(run, run, NULL);
-      _exit(127);
-   }
-   if (pid < 0) return;
-   int status = 0;
-   waitpid(pid, &status, 0);
-   double exec = clock_now() - start;
-   if (WIFSIGNALED(status))
-      fprintf(stderr, RED("%-9s") " %s (signal %d) in %.2fs\n",
-              "\nCrashed", signal_name(WTERMSIG(status)), WTERMSIG(status), exec);
-   else
-      fprintf(stderr, CYAN("%-9s") " with code %d in %.2fs\n",
-              "\nExited", WEXITSTATUS(status), exec);
-}
-
-void detect_platform() {
-   static char *macos_aliases[]   = { "macos", "darwin", "unix", 0 };
-   static char *linux_aliases[]   = { "linux", "unix", 0 };
-   static char *windows_aliases[] = { "windows", 0 };
-   static char *no_platform[]     = { 0 };
-   char *triple = LLVMGetDefaultTargetTriple();
-   if (strstr(triple, "darwin") || strstr(triple, "apple"))
-      ura.platform = macos_aliases;
-   else if (strstr(triple, "linux"))
-      ura.platform = linux_aliases;
-   else if (strstr(triple, "windows") || strstr(triple, "win32"))
-      ura.platform = windows_aliases;
-   else
-      ura.platform = no_platform;
-   LLVMDisposeMessage(triple);
-}
-
-int main(int argc, char**argv) {
-   ura.time_start = clock_now();
-   ura.max_errors = 20;
-   ura.enable_debug = false;
-   parse_arguments(argc, argv);
-   detect_platform();
 #if TOKENIZE
-   tokenize(0);
-   preprocess();
-#endif
-#if AST
-   generate_ast();
-#endif
-#if IR
-   generate_ir();
-#endif
-#if ASM
-   generate_asm();
-   compile_executable();
-   run_executable();
-#endif
-   free_memory();
-   return ura.error_count != 0;
+    print(GREEN("======================================\n"));
+    print(GREEN("[TOKENIZE]:\n"));
+    for (size_t i = 0; i < ura.files_count; i++) {
+        File *file = ura.files[i];
+        if (file->opened)
+            continue;
+        tokenize(file, 0);
+    }
+    new_token(END, NULL);
+
+    check_errors();
+
+    print(GREEN("======================================\n"));
+    for (size_t i = 0; i < ura.tokens_count; i++)
+        print(CYAN("token ") "%k\n", ura.tokens[i]);
+
+#    if AST
+    print(GREEN("======================================\n"));
+    print(GREEN("[AST]:\n"));
+    for (size_t i = 0; i < ura.tree->children_count; i++) {
+        Node *file = ura.tree->children[i]; // File node / empty children
+        enter_scope(file);
+        parse_structs(file);
+        while (peek(0)->type != END) {
+            push_child(file, parse_expr(0));
+        }
+        // handle_global_scope(file);
+        exit_scope();
+    }
+    check_errors(); // the tree is broken: don't analyze it
+    print(GREEN("======================================\n"));
+    for (size_t i = 0; i < ura.tree->children_count; i++) {
+        print("%n", ura.tree->children[i]);
+    }
+
+#        if ANALYZE
+    print(GREEN("======================================\n"));
+    print(GREEN("[ANALYZE]:\n"));
+    for (size_t i = 0; i < ura.tree->children_count; i++) {
+        Node *file = ura.tree->children[i];
+        analyze(file, 0);
+    }
+    check_errors(); // the tree is not valid code: don't generate it
+    print(GREEN("======================================\n"));
+    for (size_t i = 0; i < ura.tree->children_count; i++) {
+        print("%n", ura.tree->children[i]);
+    }
+
+#            if ASM
+    print(GREEN("======================================\n"));
+    print(GREEN("[CODE GEN]:\n"));
+    make_dir(format("%s/build", cwd_path())); // TODO: save cwd in ura
+    codegen_beg("ura");
+    for (size_t i = 0; i < ura.tree->children_count; i++) {
+        Node *file = ura.tree->children[i];
+        codegen(file);
+    }
+    codegen_finish();
+    gen_bin();
+    // return exec_bin();
+#            endif // ASM
+#        endif     // ANALYZE
+#    endif         // AST
+#endif             // TOKENIZE
+    printf("did allocate %zu\n", arena_size());
+}
+
+// UTILS / FORMATING / PRINTING
+int _print_type(ioFile fp, Node *node) {
+    // clang-format off
+    if (node == NULL) return fprintf(fp, "void");
+    switch(node->token->type) {
+    case REF:		return fprintf(fp, "&") + _print_type(fp, node->left);
+    case STRUCT:	return fprintf(fp, "%s", node->token->name);
+    case ARRAY:		return _print_type(fp, node->left) + fprintf(fp, "[]");
+    default:		return fprintf(fp, "%s", type_names[node->token->type]);
+    }
+    // clang-format on
+};
+
+int _print_char(ioFile fp, char c) {
+    unsigned char u = (unsigned char)c;
+    if (iscntrl(u) && escaped[u])
+        return fprintf(fp, "%s", escaped[u]);
+    return fprintf(fp, "%c", c);
+}
+
+// clang-format off
+int _print_token(ioFile fp, Token *token) {
+    if (token == NULL) return fprintf(fp, "(null token)");
+    int r = fprintf(fp, "%s", to_string(token->type));
+    if (token->name != NULL) r += fprintf(fp, " name (%s)", token->name);
+    if (token->name == NULL && !token->is_type) { 
+        switch(token->type) {
+        case I8:    r += fprintf(fp, " value (%c)", token->i8.value); break;
+        case I32:   r += fprintf(fp, " value (%ld)", token->i32.value); break;
+        case CHARS: {
+            #if 1
+            r += fprintf(fp, " value (");
+            char *value = token->chars.value;
+            for(int i = 0; value && value[i]; i++)
+                r += _print_char(fp, value[i]);
+            r += fprintf(fp, ")"); 
+            #else
+            r += fprintf(fp, " value (%s)", token->chars.value);
+            #endif
+            break;
+        }
+        case BOOL: {
+            char *b1 = token->b1.value ? "True" : "False";
+            r += fprintf(fp, " value (%s)", b1);
+            break;
+        }
+        default: break;
+        }
+    } 
+    r += fprintf(fp, " space (%d)", token->space);
+    return 0;
+}
+
+void _print_node_helper(NodePrint *elems, Node *node, int depth) {
+    if (node == NULL)
+        return;
+
+    append(elems->nodes, node);
+    append(elems->depths, depth);
+
+    if (!includes(node->token->type, BRK, CNT, FN_CALL, 0)) {
+        Node *left = node->left;
+        bool is_struct = left && left->token->type == STRUCT;
+        if (is_struct) {
+            append(elems->nodes, left);
+            append(elems->depths, depth + 3);
+            // print(">>>> %n\n", left);
+            // exit(1);
+            // if (left->left) {
+            //     append(elems->nodes, left->left);
+            //     append(elems->depths, depth + 3);
+            // }
+        } else
+            _print_node_helper(elems, left, depth + 3);
+    }
+    _print_node_helper(elems, node->right, depth + 3);
+    for (size_t i = 0; i < node->children_count; i++)
+        _print_node_helper(elems, node->children[i], depth + 3);
+}
+
+bool is_open(NodePrint *elems, size_t i, int level) {
+    for (size_t j = i + 1; j < elems->nodes_count; j++) {
+        if (elems->depths[j] <= level)
+            return elems->depths[j] == level;
+    }
+    return 0;
+}
+
+int _print_node(ioFile fp, Node *node) {
+    NodePrint elems = {};
+    int r = 0;
+    _print_node_helper(&elems, node, 0);
+
+    for (size_t i = 0; i < elems.nodes_count; i++) {
+        int depth = elems.depths[i];
+        for (int level = 1; level < depth; level++)
+            r += fprintf(fp, "%s", is_open(&elems, i, level) ? "│ " : " ");
+        if (depth)
+            r += fprintf(fp, "%s", is_open(&elems, i, depth) ? "├─" : "└─");
+        r += _print_token(fp, elems.nodes[i]->token) + fprintf(fp, "\n");
+    }
+    return 0;
+}
+
+int _print(ioFile fp, char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    int r = _fprint(fp, fmt, args);
+    va_end(args);
+    return r;
+}
+
+int _fprint(ioFile fp, const char *fmt, va_list ap) {
+    int r = 0;
+    for (int i = 0; fmt[i]; i++) {
+        if (fmt[i] != '%') {
+            r += fprintf(fp, "%c", fmt[i]);
+            continue;
+        }
+        if (fmt[++i] == '\0')
+            break;
+        Token *token = NULL;
+        switch (fmt[i]) { // clang-format off
+        case 's': r += fprintf(fp, "%s", va_arg(ap, char *)); break;
+        case 'd': r += fprintf(fp, "%d", va_arg(ap, int)); break;
+        case 'c': r += fprintf(fp, "%c", va_arg(ap, int)); break;
+        case 'f': r += fprintf(fp, "%f", va_arg(ap, double)); break;
+        case 'i': r += fprintf(fp, "%*s", va_arg(ap, int), ""); break;
+        case '%': r += fprintf(fp, "%%"); break;
+        case 't': r += fprintf(fp, "%s", to_string(va_arg(ap, Type))); break;
+        case 'k': r += _print_token(fp, va_arg(ap, Token *)); break;
+        case 'n': r += _print_node(fp, va_arg(ap, Node *)); break;
+        case 'N': r += _print_type(fp, va_arg(ap, Node *)); break;
+        case 'z': {
+            r += fprintf(fp, "%zu", va_arg(ap, size_t));
+            i++;
+            break;
+        }
+        case '.': {
+            int n = va_arg(ap, int);
+            char *str = va_arg(ap, char *);
+            r += fprintf(fp, "%.*s", n, str);
+            i += 2; // skip *s
+            break;
+        } 
+        default: break; // clang-format on
+        }
+    }
+    return r;
+}
+
+void check_errors(void) {
+    if (ura.errors_count == 0)
+        return;
+    exit(1);
+}
+
+bool includes(Type to_find, ...) {
+    va_list ap;
+    va_start(ap, to_find);
+    Type curr = va_arg(ap, Type);
+    while (curr) {
+        if (curr == to_find)
+            return true;
+        curr = va_arg(ap, Type);
+    }
+    return false;
+}
+
+void parse_args(int ac, char **av) {
+    if (ac < 2) {
+        eprint("expected an argument:\n");
+        help("%s <file>.ura\n", av[0]);
+        exit(1);
+    }
+    for (int i = 1; i < ac && ura.errors_count == 0; i++) {
+        char *arg = av[i];
+        if (strcmp2(arg, "-o")) {
+            if (i + 1 >= ac) {
+                eprint("expected argument:\n");
+                help("-o exe.out\n");
+                exit(1);
+            }
+            set_exec_path(av[++i]);
+        } else {
+            size_t n = strlen(arg);
+            bool is_ura = n > 4 && strcmp2(arg + n - 4, ".ura");
+            if (!is_ura) {
+                eprint("Invalid file '%s'\n", arg);
+                help("use %s.ura\n", arg);
+                exit(1);
+            }
+            File *file = new_file(arg);
+            append(ura.files, file);
+        }
+    }
+}
+
+char *parse_escaped(char *input, int s, int e) {
+    char *res = arena_alloc(e - s + 1, sizeof(char));
+    int r = 0;
+    while (s < e) {
+        int c = -1;
+        if (s < e - 1 && input[s] == '\\') {
+            char *str = escaped[input[s + 1]];
+            if (str != NULL) {
+                c = str[0];
+                s += 2;
+            }
+        }
+        if (c == -1)
+            c = input[s++];
+        assert(c > 0);
+        res[r++] = c;
+    }
+    return res;
 }
