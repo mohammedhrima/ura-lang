@@ -12,7 +12,7 @@ typedef struct uraError uraError;
 #    define TOKENIZE 1
 #endif
 
-#include "./ir.h"
+#include "./ir.c"
 
 int _fprint(ioFile fp, const char *fmt, va_list ap);
 #undef vfprint
