@@ -6,10 +6,15 @@ int main() {
     // printf("%d\n", 008);
     // printf("%d\n", 016);
     // printf("%d\n", 032);
-    int a = 1;
+    // int a = 1;
+    // while (a < 255) {
+    //     printf("%d\n", a);
+    //     a <<= 1;
+    // }
 
-    while (a < 255) {
-        printf("%d\n", a);
-        a <<= 1;
-    }
+	int a = 1;
+	int b = 2;
+
+	int *p = &a;
+	
 }
