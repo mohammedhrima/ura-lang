@@ -19,6 +19,9 @@
 #   extension
 #            package the VS Code extension (../0.ura-vscode-extension) and
 #            install it into VS Code
+#   set-llvm [version]
+#            list the LLVM versions on this machine, or pick the one build
+#            uses (15 or 15.0.6); the pick is kept in llvm-version.txt
 #   update   re-source this file after editing it
 #
 # Works when sourced from either bash or zsh. Everything else here is an
@@ -43,6 +46,7 @@ URA_BIN_DIR="$(cd "$URA_ROOT/.." && pwd)/bin" # the ura compiler itself, in the 
 URA_BUILD_DIR="$URA_ROOT/build" # what ura generates when it compiles a file
 URA_TESTS_DIR="$(cd "$URA_ROOT/.." && pwd)/tests" # one file per milestone, in the repo root
 URA_BIN="$URA_BIN_DIR/ura"
+URA_LLVM_FILE="$URA_ROOT/llvm-version.txt" # written by set-llvm, read by build
 
 # put bin/ on PATH so `ura` is callable by name; the case guard keeps
 # re-sourcing from stacking duplicate entries
@@ -72,6 +76,42 @@ _ura_green() { printf '\033[0;32m%s\033[0m\n' "$1"; }
 _ura_red()   { printf '\033[0;31m%s\033[0m\n' "$1"; }
 
 # ============================================================================
+# _ura_llvm_list
+#
+# Prints "<version> <llvm-config>" for every LLVM in sight, oldest first, one
+# line per version: llvm-config on PATH, plain or versioned (Ubuntu's
+# llvm-config-12), and in the usual install prefixes.
+# ============================================================================
+_ura_llvm_list() {
+    # zsh complains about a glob that matches nothing, and does it before the
+    # loop runs; null_glob drops it instead (bash keeps it, and -x fails it)
+    if [ -n "$ZSH_VERSION" ]; then setopt local_options null_glob; fi
+    local c
+    {
+        for c in llvm-config $(seq -f 'llvm-config-%g' 3 40); do
+            command -v "$c" || true
+        done
+        for c in /usr/lib/llvm-*/bin/llvm-config /usr/local/opt/llvm*/bin/llvm-config \
+                 /opt/homebrew/opt/llvm*/bin/llvm-config "$HOME"/.local/opt/llvm*/bin/llvm-config; do
+            [ -x "$c" ] && echo "$c"
+        done
+    } | while read -r c; do echo "$("$c" --version) $c"; done |
+        sort -t . -k1,1n -k2,2n -k3,3n | awk '!seen[$1]++'
+}
+
+# ============================================================================
+# _ura_llvm_find [version]
+#
+# Prints the llvm-config of the newest LLVM matching [version]: exact
+# (15.0.6) or a prefix ending at a dot (15, 15.0). No version: the newest.
+# Prints nothing when none matches.
+# ============================================================================
+_ura_llvm_find() {
+    _ura_llvm_list |
+        awk -v w="$1" 'w == "" || $1 == w || index($1, w ".") == 1 { p = $2 } END { print p }'
+}
+
+# ============================================================================
 # build - compile the ura compiler itself into bin/ura
 # ============================================================================
 build() {
@@ -83,26 +123,18 @@ build() {
         # arrays, not strings: zsh does not word-split unquoted "$VAR"
         FLAGS=(-fsanitize=address -g3 -Werror)
 
-        # every llvm-config in sight: on PATH, plain or versioned (Ubuntu's
-        # llvm-config-12), and in the usual install prefixes
-        _ura_candidates() {
-            # zsh complains about a glob that matches nothing, and does it
-            # before ls runs, so 2>/dev/null alone would not silence it
-            if [ -n "$ZSH_VERSION" ]; then setopt local_options null_glob; fi
-            for name in llvm-config $(seq -f 'llvm-config-%g' 3 40); do
-                command -v "$name" || true
-            done
-            ls /usr/lib/llvm-*/bin/llvm-config /usr/local/opt/llvm*/bin/llvm-config \
-                /opt/homebrew/opt/llvm*/bin/llvm-config "$HOME"/llvm*/bin/llvm-config 2>/dev/null || true
-        }
-
         _ura_links() {
             echo 'int main(void) { return 0; }' | $CC -x c - "$@" -o /dev/null 2>/dev/null
         }
 
+        # LLVM_CONFIG from the shell wins, then set-llvm's pick, then the newest
         if [ -z "$LLVM_CONFIG" ]; then
-            LLVM_CONFIG=$(for c in $(_ura_candidates); do echo "$("$c" --version) $c"; done |
-                          sort -t . -k1,1n -k2,2n -k3,3n | tail -n 1 | cut -d ' ' -f 2)
+            want=$(cat "$URA_LLVM_FILE" 2>/dev/null || true)
+            LLVM_CONFIG=$(_ura_llvm_find "$want")
+            if [ -n "$want" ] && [ -z "$LLVM_CONFIG" ]; then
+                echo "build: LLVM $want (from set-llvm) not found, run set-llvm to list them" >&2
+                exit 1
+            fi
         fi
         if ! command -v "$LLVM_CONFIG" >/dev/null 2>&1; then
             echo "build: no llvm-config found, run as: LLVM_CONFIG=/path/to/llvm-config" >&2
@@ -830,10 +862,35 @@ extension() {
 }
 
 # ============================================================================
+# set-llvm [version] - with no version, list the LLVM versions on this
+# machine (* marks the one build uses); with one, make build use it. The
+# pick is kept in llvm-version.txt
+# ============================================================================
+set-llvm() {
+    local want="$1" active config version mark
+    if [ -z "$want" ]; then
+        active=$(_ura_llvm_find "$(cat "$URA_LLVM_FILE" 2>/dev/null)")
+        _ura_llvm_list | while read -r version config; do
+            if [ "$config" = "$active" ]; then mark='*'; else mark=' '; fi
+            printf '%s %-8s %s\n' "$mark" "$version" "$config"
+        done
+        [ -f "$URA_LLVM_FILE" ] || echo "none set: build uses the newest"
+        return
+    fi
+    config=$(_ura_llvm_find "$want")
+    if [ -z "$config" ]; then
+        _ura_red "set-llvm: no LLVM $want, run set-llvm to list them"
+        return 1
+    fi
+    "$config" --version > "$URA_LLVM_FILE"
+    _ura_green "set-llvm: build uses LLVM $(cat "$URA_LLVM_FILE") ($config)"
+}
+
+# ============================================================================
 # update - re-source this file, picking up edits made to it
 # ============================================================================
 update() {
     source "$URA_ROOT/config.sh"
 }
 
-printf '\033[0;32m(ura-lang)\033[0m ready — commands: build, tests, record, copy, extension, update\n'
+printf '\033[0;32m(ura-lang)\033[0m ready — commands: build, tests, record, copy, extension, set-llvm, update\n'

@@ -350,6 +350,7 @@ TypeRef llvm_type(Ucg *ir) {
     switch (ir->type) { // clang-format off
     case INT:        return gb_ucg.types.num[1 << ir->shift];
     case VAL_CREATE: return llvm_type(ir->to_create);
+    case DECLARE:    return llvm_type(ir->data_type);
     default: { 
         eprint("%s: %s:%d handle this case %s\n", 
             RED("error"), FILE, LINE, to_string(ir->type)); 
@@ -397,7 +398,7 @@ void llvm_load(Ucg *ir) {
     Ucg *to_dref = ir->to_dref;
     // to_dref->rtype;
     Value elem = to_dref->elem;
-    TypeRef rtype = LLVMGetElementType(LLVMTypeOf(elem));
+    TypeRef rtype = llvm_type(to_dref);
     char *name = ir->name;
 
     assert(elem);
@@ -504,6 +505,18 @@ Ucg *ucg_int_type(int shift) {
     return new;
 }
 
+Ucg *ucg_bool_type() {
+    return ucg_int_type(1);
+}
+
+Ucg *ucg_i4_type() {
+    return ucg_int_type(4);
+}
+
+Ucg *ucg_i32_type() {
+    return ucg_int_type(32);
+}
+
 Ucg *ucg_int_value(int shift, long long value) {
     Ucg *new = ucg_new(VAL_CREATE);
 
@@ -515,6 +528,18 @@ Ucg *ucg_int_value(int shift, long long value) {
 
     append(gb_ucg.insts, new);
     return new;
+}
+
+Ucg *ucg_bool_value(long long value) {
+    return ucg_int_value(1, value);
+}
+
+Ucg *ucg_char_value(long long value) {
+    return ucg_int_value(4, value);
+}
+
+Ucg *ucg_i32_value(long long value) {
+    return ucg_int_value(32, value);
 }
 
 Ucg *ucg_dref(Ucg *var) {
@@ -734,49 +759,49 @@ void ucg_compile() {
     }
 }
 
-#define TESTS_SIZE 3
+#define TESTS_SIZE 4
 void run_test(int p) {
     ucg_clear();
     switch (p) {
     case 0: {
         Struct(Ucg *) params = {};
-        Ucg *fn = ucg_fn("main", params.arr, params.count, ucg_int_type(32));
+        Ucg *fn = ucg_fn("main", params.arr, params.count, ucg_i32_type());
 
         Ucg *entry = ucg_fn_entry(fn);
 
-        Ucg *a = ucg_var("a", ucg_int_type(32));
-        Ucg *b = ucg_var("b", ucg_int_type(32));
+        Ucg *a = ucg_var("a", ucg_i32_type());
+        Ucg *b = ucg_var("b", ucg_i32_type());
 
-        ucg_op(ASSIGN, a, ucg_int_value(32, 10));
+        ucg_op(ASSIGN, a, ucg_i32_value(10));
 
-        ucg_op(ASSIGN, b, ucg_op(MUL, ucg_dref(a), ucg_int_value(32, 2)));
+        ucg_op(ASSIGN, b, ucg_op(MUL, ucg_dref(a), ucg_i32_value(2)));
         ucg_op(ASSIGN, a, ucg_op(ADD, ucg_dref(a), ucg_dref(b)));
 
-        ucg_op(ADD_ASSIGN, a, ucg_int_value(32, 5));
-        ucg_op(SUB_ASSIGN, a, ucg_int_value(32, 3));
-        ucg_op(MUL_ASSIGN, a, ucg_int_value(32, 2));
-        ucg_op(DIV_ASSIGN, a, ucg_int_value(32, 4));
-        ucg_op(MOD_ASSIGN, a, ucg_int_value(32, 5));
+        ucg_op(ADD_ASSIGN, a, ucg_i32_value(5));
+        ucg_op(SUB_ASSIGN, a, ucg_i32_value(3));
+        ucg_op(MUL_ASSIGN, a, ucg_i32_value(2));
+        ucg_op(DIV_ASSIGN, a, ucg_i32_value(4));
+        ucg_op(MOD_ASSIGN, a, ucg_i32_value(5));
 
         ucg_ret(ucg_op(ADD, ucg_dref(a), ucg_dref(b)));
         break;
     };
     case 1: {
         Struct(Ucg *) params = {};
-        Ucg *fn = ucg_fn("main", params.arr, params.count, ucg_int_type(32));
+        Ucg *fn = ucg_fn("main", params.arr, params.count, ucg_i32_type());
         Ucg *entry = ucg_fn_entry(fn);
 
-        Ucg *x = ucg_var("a", ucg_int_type(32));
-        Ucg *b = ucg_var("b", ucg_int_type(1));
-        Ucg *c = ucg_var("c", ucg_int_type(4));
+        Ucg *x = ucg_var("a", ucg_i32_type());
+        Ucg *b = ucg_var("b", ucg_bool_type());
+        Ucg *c = ucg_var("c", ucg_i4_type());
 
         Ucg *if_stmt = ucg_if( // clang-format off
 			ucg_op(OR, 
-				ucg_op(EQ, ucg_dref(b), ucg_int_value(1, 1)),
+				ucg_op(EQ, ucg_dref(b), ucg_bool_value(1)),
 				ucg_op(NQ, ucg_dref(c), ucg_int_value(4, 0))
 			)
 		); // clang-format on
-        ucg_ret(ucg_int_value(32, 1));
+        ucg_ret(ucg_i32_value(1));
         ucg_endif(if_stmt);
 
         ucg_ret(ucg_dref(x));
@@ -784,58 +809,58 @@ void run_test(int p) {
     }
     case 2: {
         Struct(Ucg *) params = {};
-        Ucg *fn = ucg_fn("main", params.arr, params.count, ucg_int_type(32));
+        Ucg *fn = ucg_fn("main", params.arr, params.count, ucg_i32_type());
         Ucg *entry = ucg_fn_entry(fn);
 
-        Ucg *flag = ucg_var("flag", ucg_int_type(1));
+        Ucg *flag = ucg_var("flag", ucg_bool_type());
 
         Ucg *if_stmt = ucg_if( // clang-format off
 			ucg_op(EQ, 
 				ucg_dref(flag),
-				ucg_int_value(1, 1)
+				ucg_bool_value(1)
 			)
 		); // clang-format on
-        ucg_ret(ucg_int_value(32, 1));
+        ucg_ret(ucg_i32_value(1));
         ucg_endif(if_stmt);
 
-        ucg_ret(ucg_int_value(32, 0));
+        ucg_ret(ucg_i32_value(0));
 
         break;
     }
     case 3: {
         Struct(Ucg *) params = {};
-        Ucg *fn = ucg_fn("main", params.arr, params.count, ucg_int_type(32));
+        Ucg *fn = ucg_fn("main", params.arr, params.count, ucg_i32_type());
         Ucg *entry = ucg_fn_entry(fn);
 
-        Ucg *a = ucg_var("a", ucg_int_type(32));
-        Ucg *big = ucg_var("big", ucg_int_type(1));
+        Ucg *a = ucg_var("a", ucg_i32_type());
+        Ucg *big = ucg_var("big", ucg_bool_type());
 
         ucg_op(ASSIGN, // clang-format off
 			big, 
 			ucg_op(LT, 
 				ucg_dref(a), 
-				ucg_int_value(32, 3)
+				ucg_i32_value(3)
 			)
 		); // clang-format on
 
-		Ucg *n = ucg_var("n", ucg_int_type(32));
+        Ucg *n = ucg_var("n", ucg_i32_type());
 
-		ucg_op(ASSIGN, // clang-format off
+        ucg_op(ASSIGN, // clang-format off
 			n,
-			ucg_int_value(32, 0)
-		);  // clang-format on
+			ucg_i32_value(0)
+		); // clang-format on
 
-		Ucg *if_stmt = ucg_if( // clang-format off
+        Ucg *if_stmt = ucg_if( // clang-format off
 			ucg_op(EQ,
 				ucg_dref(big),
-				ucg_int_value(1, 1)
+				ucg_bool_value(1)
 			)
 		); // clang-format on
 
-		ucg_op(ADD_ASSIGN, // clang-format off
+        ucg_op(ADD_ASSIGN, // clang-format off
 			n,
-			ucg_int_value(32, 1)
-		); // clang-format on
+			ucg_i32_value(1)
+		); // clang-format on(ura-lang) src$ ura
 
 		ucg_endif(if_stmt);
 
@@ -843,27 +868,47 @@ void run_test(int p) {
 			big,
 			ucg_op(LT,
 				ucg_dref(a),
-				ucg_int_value(32, 9)
+				ucg_i32_value(9)
 			)
 		); // clang-format on
 
-		if_stmt = ucg_if( // clang-format off
+        if_stmt = ucg_if( // clang-format off
 			ucg_op(EQ,
 				ucg_dref(big),
-				ucg_int_value(1, 1)
+				ucg_bool_value(1)
 			)
 		); // clang-format on
+        ucg_op(ADD_ASSIGN, n, ucg_i32_value(10));
+        ucg_endif(if_stmt);
 
-		ucg_op(ADD_ASSIGN, 
-			n,
-			ucg_int_value(32, 10)
-		);
+        ucg_op(ASSIGN, big, ucg_bool_value(0));
+        
+        if_stmt = ucg_if( // clang-format off
+            ucg_op(EQ,
+                ucg_dref(big),
+                ucg_bool_value(1)
+            )
+        ); // clang-format on
+        ucg_op(ADD_ASSIGN, n, ucg_i32_value(100));
+        ucg_endif(if_stmt);
 
-		ucg_endif(if_stmt);
+        if_stmt = ucg_if( // clang-format off
+            ucg_op(EQ,
+                ucg_dref(big),
+                ucg_bool_value(0)
+            )
+        ); // clang-format on
+        ucg_op(ADD_ASSIGN, n, ucg_i32_value(1));
+        ucg_endif(if_stmt);
 
-		ucg_ret(ucg_int_value(32, 0));
+        ucg_ret(ucg_dref(n));
         break;
     }
+    case 4: {
+        
+        break;
+    }
+    case TESTS_SIZE + 1:
     default: {
         eprint("exceeded numbers of tests");
         exit(1);
@@ -875,6 +920,7 @@ void run_test(int p) {
 /*
 TODO:
     + add default return
+    + test it with all llvm versions
 */
 
 int main() {

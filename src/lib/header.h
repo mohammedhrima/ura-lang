@@ -19,6 +19,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <libgen.h>
+#include <stdarg.h>
 
 #ifndef bool
 #    define bool  int
