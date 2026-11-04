@@ -164,6 +164,7 @@ struct Ucg {
         Ucg *to_create;
         Ucg *to_dref;
         Ucg *to_end; // used in ENDIF
+        Ucg *to_call;
         Ucg *stmt;
         // Ucg
     };
@@ -335,6 +336,26 @@ void llvm_fn_dec(Ucg *ir) {
     }
 }
 
+void llvm_fn_call(Ucg *ir) {
+    Ucg *fn_dec = ir->to_call;
+    expand(Value, params);
+    zero_init(params);
+
+    for (int i = 0; i < ir->fn.params_count; i++) {
+        append(params, ir->fn.params[i]->elem);
+    }
+    TypeRef rtype = fn_dec->rtype;
+    Value fn_elem = fn_dec->elem;
+    char *name = ir->name;
+    Value elem = LLVMBuildCall2(gb_ucg.builder, // clang-format off
+                                rtype, 
+                                fn_elem, params, 
+                                params_count, 
+                                name 
+                            ); // clang-format on
+    ir->elem = elem;
+}
+
 bool is_bloc_terminated() {
     Bloc bloc = LLVMGetInsertBlock(gb_ucg.builder);
     return bloc != NULL && LLVMGetBasicBlockTerminator(bloc) != NULL;
@@ -350,6 +371,7 @@ void llvm_ret(Ucg *ir) {
     }
     LLVMBuildRet(gb_ucg.builder, ir->elem);
 }
+
 
 TypeRef llvm_type(Ucg *ir) {
     switch (ir->type) { // clang-format off
@@ -583,7 +605,7 @@ Ucg *ucg_dref(Ucg *var) {
     return new;
 }
 
-Ucg *ucg_fn_dec(char *name, Ucg *ret, va_list ap) {
+Ucg *ucg_fn_dec_(char *name, Ucg *ret, va_list ap) {
     Ucg *new = ucg_new(FN_DEC);
     new->name = name;
     new->fn.ret = ret;
@@ -598,11 +620,28 @@ Ucg *ucg_fn_dec(char *name, Ucg *ret, va_list ap) {
     return new;
 }
 
+Ucg *ucg_fn_call_(Ucg *fn_dec, va_list ap) {
+    Ucg *new = ucg_new(FN_CALL);
+    new->name = format("call.%s", fn_dec->name);
+    new->to_call = fn_dec;
+    // new->fn.ret = ret;
+
+
+    for (Ucg *param = va_arg(ap, Ucg *); param; param = va_arg(ap, Ucg *)) {
+        // if (param->type == VARIADIC)
+        //     new->fn.varg = true;
+        // else
+        append(new->fn.params, param);
+    }
+    // append(gb_ucg.insts, new);
+    return new;
+}
+
 // to force variadic arg to ends with NULL
 __attribute__((sentinel)) Ucg *ucg_proto(char *name, Ucg *ret, ...) {
     va_list ap;
     va_start(ap, ret);
-    Ucg *new = ucg_fn_dec(name, ret, ap);
+    Ucg *new = ucg_fn_dec_(name, ret, ap);
     va_end(ap);
     return new;
 }
@@ -610,12 +649,22 @@ __attribute__((sentinel)) Ucg *ucg_proto(char *name, Ucg *ret, ...) {
 __attribute__((sentinel)) Ucg *ucg_fn(char *name, Ucg *ret, ...) {
     va_list ap;
     va_start(ap, ret);
-    Ucg *new = ucg_fn_dec(name, ret, ap);
+    Ucg *new = ucg_fn_dec_(name, ret, ap);
     va_end(ap);
 
     Ucg *entry = ucg_new(FN_ENTRY);
     entry->to_enter = new;
     append(gb_ucg.insts, entry);
+    return new;
+}
+
+__attribute__((sentinel)) Ucg *ucg_fn_call(Ucg *fn_dec, ...) {
+    va_list ap;
+    va_start(ap, fn_dec);
+    Ucg *new = ucg_fn_call_(fn_dec, ap);
+    va_end(ap);
+
+    append(gb_ucg.insts, new);
     return new;
 }
 
@@ -638,7 +687,6 @@ Ucg *ucg_ret(Ucg *ret) {
     append(gb_ucg.insts, new);
     return new;
 }
-
 
 Ucg *ucg_return() {
     Ucg *new = ucg_new(RETURN);
@@ -825,12 +873,16 @@ void ucg_compile() {
 
             break;
         }
-        case VAL_CREATE: {
-            llvm_val_create(curr);
-            break;
-        }
         case RETURN: {
             llvm_ret(curr->to_ret);
+            break;
+        }
+        case FN_CALL: {
+            llvm_fn_call(curr);
+            break;
+        }
+        case VAL_CREATE: {
+            llvm_val_create(curr);
             break;
         }
         case DECLARE: {
@@ -842,15 +894,12 @@ void ucg_compile() {
             break;
         } // clang-format off
         case ASSIGN: 
-        // math ops
-		case ADD: case SUB: case MUL: case DIV: case MOD:
-		// composite math ops
-		case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN:
+		case ADD: case SUB: case MUL: case DIV: case MOD: // math
+		case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: // composite 
 		case DIV_ASSIGN: case MOD_ASSIGN: 
-		// comparision
-		case LT: case GT: case EQ: case LE: case GE: case NQ:
-		// logic 
-		case AND: case OR: { // clang-format on
+		case LT: case GT: case EQ: case LE: case GE: case NQ: // comparision
+		case AND: case OR: { // logic
+            // clang-format on
             llvm_op(curr);
             break;
         }
@@ -886,8 +935,7 @@ void ucg_compile() {
     }
 }
 
-#define TESTS_SIZE 5
-void run_test(int p) {
+bool run_test(int p) {
     ucg_clear();
     switch (p) {
     case 0: {
@@ -981,9 +1029,9 @@ void run_test(int p) {
 			ucg_i32_value(1)
 		); // clang-format on
 
-		ucg_endif(if_stmt);
+        ucg_endif(if_stmt);
 
-		ucg_op(ASSIGN, // clang-format off
+        ucg_op(ASSIGN, // clang-format off
 			big,
 			ucg_op(LT,
 				ucg_dref(a),
@@ -1066,13 +1114,91 @@ void run_test(int p) {
         ucg_ret(ucg_i32_value(0));
         break;
     }
-    case TESTS_SIZE + 1:
+    case 6: {
+        Ucg *is_even = ucg_fn("is_even", ucg_i1_type(), // clang-format off
+        		ucg_param("n1", ucg_i32_type()),
+        		NULL
+        	); // clang-format on
+
+        Ucg *n = ucg_get_param(is_even, 0);
+
+        ucg_ret(ucg_op(EQ, // clang-format off
+        			ucg_op(MOD,
+        				ucg_dref(n),
+        				ucg_i32_value(2)),
+        			ucg_i32_value(0)
+        		) // clang-format on
+        );
+
+        Ucg *both = ucg_fn("both", ucg_i1_type(), // clang-format off
+        					ucg_param("a", ucg_i1_type()),
+                        	ucg_param("b", ucg_i1_type()),
+        					NULL
+        				); // clang-format on
+
+        Ucg *a = ucg_get_param(both, 0);
+        Ucg *b = ucg_get_param(both, 1);
+
+        ucg_ret(ucg_op(AND, ucg_dref(a), ucg_dref(b)));
+
+
+        Ucg *main_fn = ucg_fn("main", ucg_i32_type(), NULL);
+        Ucg *n0 = ucg_var("n0", ucg_i32_type());
+
+        Ucg *if_stmt = ucg_if();
+        ucg_then(if_stmt, // clang-format off
+            ucg_op(EQ,
+                ucg_fn_call(is_even, ucg_i32_value(4), NULL),
+                ucg_i1_value(1)
+            )
+        ); // clang-format on
+        ucg_op(ADD_ASSIGN, n0, ucg_i32_value(1));
+
+        ucg_endif(if_stmt);
+
+        if_stmt = ucg_if();
+        ucg_then(if_stmt, // clang-format off
+            ucg_op(EQ,
+                ucg_fn_call(both, 
+                    ucg_fn_call(is_even, ucg_i32_value(2), NULL), 
+                    ucg_fn_call(is_even, ucg_i32_value(6), NULL), 
+                    NULL),
+                ucg_i1_value(1)
+            )
+        ); // clang-format on
+        ucg_op(ADD_ASSIGN, n0, ucg_i32_value(2));
+
+        ucg_endif(if_stmt);
+
+
+        if_stmt = ucg_if();
+        ucg_then(if_stmt, // clang-format off
+            ucg_op(EQ,
+                ucg_fn_call(both, 
+                    ucg_fn_call(is_even, ucg_i32_value(2), NULL), 
+                    ucg_fn_call(is_even, ucg_i32_value(7), NULL), 
+                    NULL),
+                ucg_i1_value(1)
+            )
+        ); // clang-format on
+        ucg_op(ADD_ASSIGN, n0, ucg_i32_value(10));
+
+        ucg_endif(if_stmt);
+
+        // Ucg *f = ucg_fn_call(foo, ucg_i32_value(3), NULL);
+        ucg_ret(ucg_dref(n0));
+        break;
+    }
+    case 7: {
+        
+        break;
+    }
     default: {
-        eprint("exceeded numbers of tests\n");
-        exit(1);
+        return false;
         break;
     }
     }
+    return true;
 }
 
 /*
@@ -1081,7 +1207,6 @@ TODO:
     + test it with all llvm versions
 */
 
-// one module per test, each test has its own main: build/test<p>.ll
 void compile_test(int p) {
     printf(CYAN("Test %d: ================================\n"), p);
     ucg_start(format("test%d", p));
@@ -1091,18 +1216,18 @@ void compile_test(int p) {
         print_ucg(curr, '\n');
     }
     ucg_compile();
-    gb_ucg.ll_path = format("build/test%d.ll", p);
+    gb_ucg.ll_path = format("build/out.ll");
     ucg_end();
 }
 
 int main() {
     mkdir2("build");
 
-#if 0
-    compile_test(5);
+#if 1
+    compile_test(7);
 #else
-    for (int i = 0; i <= TESTS_SIZE; i++)
-        compile_test(i);
+    for (int i = 0; compile_test(i); i++)
+        ;
 #endif
 }
 
