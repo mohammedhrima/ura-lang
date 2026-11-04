@@ -102,10 +102,10 @@ enum Type {
     SIZEOF, IS_NULLABLE,
     AS,
 	BLOC,
-    IF, ELIF, ELSE, THEN, ENDIF,
-    WHILE, BRK, CNT,
-
+    IF, ELIF, ELSE, THEN,
+    LOOP, BRK, CNT,
     END,
+    LAST,
     // clang-format on
 };
 
@@ -244,7 +244,7 @@ void ucg_start(char *name) {
     // TODO: add flags stuff (Passes)
 }
 
-void ucg_end() {
+void ucg_finish() {
     // PassBuilderOptions opts = LLVMCreatePassBuilderOptions();
     // if (gb_ucg.flags) {
     //     Error err = LLVMRunPasses(gb_ucg.module, gb_ucg.flags, NULL, opts);
@@ -475,12 +475,12 @@ void llvm_op(Ucg *ir) {
     //     [ADD_ASSIGN] = ADD, [SUB_ASSIGN] = SUB, [MUL_ASSIGN] = MUL,
     //     [DIV_ASSIGN] = DIV, [MOD_ASSIGN] = MOD,
     // };
-    LLVMOpcode opcodes[END + 1] = {
+    LLVMOpcode opcodes[LAST + 1] = {
         [ADD] = LLVMAdd,  [SUB] = LLVMSub,  [MUL] = LLVMMul,
         [DIV] = LLVMSDiv, [MOD] = LLVMSRem,
         [AND] = LLVMAnd,  [OR] = LLVMOr,
     };
-    LLVMIntPredicate predicates[END + 1] = {
+    LLVMIntPredicate predicates[LAST + 1] = {
         [GT] = LLVMIntSGT, [LT] = LLVMIntSLT, [GE] = LLVMIntSGE,
         [LE] = LLVMIntSLE, [EQ] = LLVMIntEQ,  [NQ] = LLVMIntNE,
     };
@@ -711,7 +711,7 @@ Ucg *ucg_param(char *name, Ucg *data_type) {
 }
 
 Ucg *ucg_op(Type type, Ucg *left, Ucg *right) {
-    Type ops[END + 1] = {
+    Type ops[LAST + 1] = {
         [ADD_ASSIGN] = ADD, [SUB_ASSIGN] = SUB, [MUL_ASSIGN] = MUL,
         [DIV_ASSIGN] = DIV, [MOD_ASSIGN] = MOD,
     };
@@ -750,6 +750,10 @@ Ucg *ucg_branch(Type type, Ucg *prev_stmt) {
     return new;
 }
 
+Ucg *ucg_loop() {
+    return ucg_branch(LOOP, NULL);
+}
+
 Ucg *ucg_if(void) {
     return ucg_branch(IF, NULL);
 }
@@ -771,12 +775,23 @@ Ucg *ucg_then(Ucg *stmt, Ucg *cond) {
 }
 
 Ucg *ucg_endif(Ucg *if_stmt) {
-    Ucg *new = ucg_new(ENDIF);
+    Ucg *new = ucg_new(END);
     new->to_end = if_stmt;
     while (if_stmt) {
         if_stmt->end = new;
         if_stmt = if_stmt->next;
     }
+    append(gb_ucg.insts, new);
+    return new;
+}
+
+Ucg *ucg_endloop(Ucg *loop) {
+    Ucg *new = ucg_new(END);
+    new->to_end = loop;
+    loop->end = new;
+    // while (if_stmt) {
+    //     if_stmt = if_stmt->next;
+    // }
     append(gb_ucg.insts, new);
     return new;
 }
@@ -824,6 +839,12 @@ void ucg_compile() {
             curr->bloc = llvm_bloc(fn, "entry");
             break;
         }
+        case LOOP: {
+            curr->bloc = llvm_bloc(fn, format("while%d", stmt_index));
+            curr->then = llvm_bloc(fn, format("while%d.then", stmt_index));
+            stmt_index++;
+            break;
+        }
         case IF: {
             curr->bloc = llvm_bloc(fn, format("if%d", stmt_index));
             curr->then = llvm_bloc(fn, format("if%d.then", stmt_index));
@@ -842,8 +863,10 @@ void ucg_compile() {
             stmt_index++;
             break;
         }
-        case ENDIF: {
-            curr->bloc = llvm_bloc(fn, "endif");
+        case END: {
+            Ucg *to_end = curr->to_end;
+            char *name = to_end->type == LOOP ? "endloop" : "endif";
+            curr->bloc = llvm_bloc(fn, name);
             // stmt_index++;
             break;
         }
@@ -915,13 +938,19 @@ void ucg_compile() {
             llvm_set_pos(curr->bloc);
             break;
         }
+        case LOOP: {
+            llvm_jmp(curr->bloc);
+            llvm_set_pos(curr->bloc);
+            break;
+        }
         case THEN: {
             llvm_cond(curr->stmt);
             break;
         }
-        case ENDIF: {
+        case END: {
             // position at
-            llvm_jmp(curr->bloc);
+            Ucg *stmt = curr->to_end;
+            llvm_jmp(stmt->type == LOOP ? stmt->bloc : curr->bloc);
             llvm_set_pos(curr->bloc);
             break;
         }
@@ -1190,7 +1219,50 @@ bool run_test(int p) {
         break;
     }
     case 7: {
-        
+        Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL);
+        Ucg *a = ucg_var("a", ucg_i1_type());
+        Ucg *b = ucg_var("b", ucg_i1_type());
+        Ucg *n = ucg_var("n", ucg_i32_type());
+
+        ucg_op(ASSIGN, a, ucg_i1_value(0));
+        ucg_op(ASSIGN, a, ucg_i1_value(1));
+        ucg_op(ASSIGN, n, ucg_i32_value(0));
+
+        Ucg *if_stmt = NULL;
+        if_stmt = ucg_if();
+        ucg_then(if_stmt, ucg_op(OR, ucg_dref(a), ucg_dref(b)));
+        ucg_op(ADD_ASSIGN, n, ucg_i32_value(5));
+        ucg_endif(if_stmt);
+
+
+        if_stmt = ucg_if();
+        ucg_then(if_stmt, ucg_op(AND, ucg_dref(a), ucg_dref(b)));
+        ucg_op(ADD_ASSIGN, n, ucg_i32_value(50));
+        ucg_endif(if_stmt);
+
+        ucg_ret(ucg_dref(n));
+
+        break;
+    }
+    case 8: {
+        Ucg *fn = ucg_fn("main", ucg_i32_type(), NULL);
+
+        Ucg *a = ucg_var("a", ucg_i32_type());
+        ucg_op(ASSIGN, a, ucg_i32_value(0));
+
+        Ucg *loop = ucg_loop();
+        ucg_then(loop, // clang-format off
+            ucg_op(LT, 
+                ucg_dref(a), 
+                ucg_i32_value(5)
+            )
+        ); // clang-format on
+
+        ucg_op(ADD_ASSIGN, a, ucg_i32_value(1));
+
+        ucg_endloop(loop);
+
+        ucg_ret(ucg_dref(a));
         break;
     }
     default: {
@@ -1217,14 +1289,14 @@ void compile_test(int p) {
     }
     ucg_compile();
     gb_ucg.ll_path = format("build/out.ll");
-    ucg_end();
+    ucg_finish();
 }
 
 int main() {
     mkdir2("build");
 
 #if 1
-    compile_test(7);
+    compile_test(8);
 #else
     for (int i = 0; compile_test(i); i++)
         ;
@@ -1233,7 +1305,7 @@ int main() {
 
 // UTILS
 const char *to_string(Type type) {
-    char *types[END + 1] = {
+    char *types[LAST + 1] = {
         // clang-format off
         [ERR] = "ERR",
         [ID] = "ID",
@@ -1284,11 +1356,11 @@ const char *to_string(Type type) {
         [SIZEOF] = "SIZE", [IS_NULLABLE] = "NULL",
 
         [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
-		[THEN] = "THEN", [ENDIF] = "ENDIF",
+		[THEN] = "THEN", [END] = "END",
 		[BLOC] = "BLOC",
-        [WHILE] = "WHILE", [BRK] = "BRK", [CNT] = "CNT",
+        [LOOP] = "LOOP", [BRK] = "BRK", [CNT] = "CNT",
         [AS] = "AS",
-        [END] = "END",
+        [LAST] = "LAST",
         // clang-format on
     };
 
