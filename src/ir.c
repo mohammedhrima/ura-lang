@@ -148,6 +148,11 @@ struct Ucg {
         long long value;
     } num;
 
+    struct {
+        Ucg *elem;
+        expand(Ucg *, items);
+    } arr;
+
     // struct {
     //     Bloc cond;
     //     Bloc then;
@@ -163,6 +168,7 @@ struct Ucg {
         Ucg *to_ret;
         Ucg *to_create;
         Ucg *to_dref;
+        Ucg *to_ref;
         Ucg *to_end; // used in ENDIF
         Ucg *to_call;
         Ucg *stmt;
@@ -379,6 +385,14 @@ TypeRef llvm_type(Ucg *ir) {
     case VAL_CREATE:	return llvm_type(ir->to_create);
     case DECLARE:		return llvm_type(ir->data_type);
     case PARAM:			return llvm_type(ir->data_type);
+	case ARRAY: {
+		Ucg* elem = ir->arr.elem;
+		int count = ir->arr.items_count;
+		return LLVMArrayType(llvm_type(elem), count);
+	}
+	case REF: {
+		return LLVMPointerType(llvm_type(ir->to_ref), 0);
+	}
     default: { 
         eprint("%s: %s:%d handle this case %s\n", 
             RED("error"), FILE, LINE, to_string(ir->type)); 
@@ -389,61 +403,81 @@ TypeRef llvm_type(Ucg *ir) {
     return NULL;
 }
 
-Ucg *llvm_val_create(Ucg *ir) {
+void llvm_val_create(Ucg *ir) {
     // assert(ir->rtype);
-    long value = ir->to_create->num.value;
+    Ucg *to_create = ir->to_create;
+    switch (to_create->type) {
+    case INT: {
+        long value = to_create->num.value;
+        ir->elem = LLVMConstInt(llvm_type(to_create), value, 0);
+        break;
+    }
+    case ARRAY: {
+        TypeRef rtype = llvm_type(to_create);
+        Value agg = LLVMGetUndef(rtype);
+        for (int i = 0; i < to_create->arr.items_count; i++) {
+            agg = LLVMBuildInsertValue( // clang-format off
+								gb_ucg.builder, agg, 
+								to_create->arr.items[i]->elem, 
+								i, ""); // clang-format on
+        }
 
-    ir->elem = LLVMConstInt(llvm_type(ir), value, 0);
-    // if (ir->rtype == gb_ucg.types.i32)
-    // else
-    //     fprintf(stderr, "handle this case\n");
-    return ir;
+        Value stack = llvm_alloc(rtype, "arr");
+        LLVMBuildStore(gb_ucg.builder, agg, stack);
+
+        TypeRef i32 = gb_ucg.types.num[32];
+        Value zero[] = {
+            LLVMConstInt(i32, 0, 0),
+            LLVMConstInt(i32, 0, 0),
+        };
+        ir->elem = LLVMBuildInBoundsGEP2( // clang-format off
+										gb_ucg.builder, 
+										rtype, stack, zero, 
+										2, ""); // clang-format on
+
+        break;
+    }
+    default: { // clang-format off
+        eprint("%s: %s:%d handle this case %s\n", 
+			RED("error"), FILE, LINE, to_string(to_create->type));
+        exit(1);
+    } // clang-format on
+    }
+}
+
+
+Value llvm_alloc(TypeRef rtype, char *name) {
+    Bloc bloc = LLVMGetInsertBlock(gb_ucg.builder);
+    Value basic = LLVMGetBasicBlockParent(bloc);
+    Bloc entry = LLVMGetEntryBasicBlock(basic);
+
+    Value inst = LLVMGetFirstInstruction(entry);
+    while (inst && LLVMIsAAllocaInst(inst))
+        inst = LLVMGetNextInstruction(inst);
+
+    if (inst)
+        LLVMPositionBuilderBefore(gb_ucg.builder, inst);
+    else
+        LLVMPositionBuilderAtEnd(gb_ucg.builder, entry);
+
+    Value elem = LLVMBuildAlloca(gb_ucg.builder, rtype, name);
+    LLVMPositionBuilderAtEnd(gb_ucg.builder, bloc);
+    return elem;
 }
 
 void llvm_declare_var(Ucg *ir) {
     ir->rtype = llvm_type(ir->data_type);
     // assert(ir->rtype);
     assert(ir->name);
-
-    Bloc bloc = LLVMGetInsertBlock(gb_ucg.builder);
-    assert(bloc);
-    Value basic = LLVMGetBasicBlockParent(bloc);
-    Bloc entry = LLVMGetEntryBasicBlock(basic);
-
-    Value inst = LLVMGetFirstInstruction(entry);
-    while (inst && LLVMIsAAllocaInst(inst))
-        inst = LLVMGetNextInstruction(inst);
-
-    if (inst)
-        LLVMPositionBuilderBefore(gb_ucg.builder, inst);
-    else
-        LLVMPositionBuilderAtEnd(gb_ucg.builder, entry);
-
-    ir->elem = LLVMBuildAlloca(gb_ucg.builder, ir->rtype, ir->name);
-    LLVMPositionBuilderAtEnd(gb_ucg.builder, bloc);
+    ir->elem = llvm_alloc(ir->rtype, ir->name);
 }
 
 void llvm_declare_param(Ucg *ir) {
     ir->rtype = llvm_type(ir->data_type);
-    Bloc bloc = LLVMGetInsertBlock(gb_ucg.builder);
-    assert(bloc);
-    Value basic = LLVMGetBasicBlockParent(bloc);
-    Bloc entry = LLVMGetEntryBasicBlock(basic);
-
-    Value inst = LLVMGetFirstInstruction(entry);
-    while (inst && LLVMIsAAllocaInst(inst))
-        inst = LLVMGetNextInstruction(inst);
-
-    if (inst)
-        LLVMPositionBuilderBefore(gb_ucg.builder, inst);
-    else
-        LLVMPositionBuilderAtEnd(gb_ucg.builder, entry);
-
-    Value elem = LLVMBuildAlloca(gb_ucg.builder, ir->rtype, ir->name);
+    Value elem = llvm_alloc(ir->rtype, ir->name);
 
     LLVMBuildStore(gb_ucg.builder, ir->elem, elem);
     ir->elem = elem;
-    LLVMPositionBuilderAtEnd(gb_ucg.builder, bloc);
 }
 
 void llvm_load(Ucg *ir) {
@@ -559,16 +593,33 @@ Ucg *ucg_int_type(int shift) {
     return new;
 }
 
-Ucg *ucg_i1_type() {
+Ucg *ucg_i1_type() { // boolean
     return ucg_int_type(1);
 }
 
-Ucg *ucg_i4_type() {
-    return ucg_int_type(4);
+Ucg *ucg_i8_type() {
+    return ucg_int_type(8);
+}
+
+Ucg *ucg_char_type() {
+    return ucg_i8_type();
 }
 
 Ucg *ucg_i32_type() {
     return ucg_int_type(32);
+}
+
+Ucg *ucg_ref_type(Ucg *to_ref) {
+    Ucg *new = ucg_new(REF);
+    new->to_ref = to_ref;
+    return new;
+}
+
+Ucg *ucg_array_type(Ucg *elem, int count) {
+    Ucg *new = ucg_new(ARRAY);
+    new->arr.elem = elem;
+    new->arr.items_count = count;
+    return new;
 }
 
 Ucg *ucg_int_value(int shift, long long value) {
@@ -589,11 +640,57 @@ Ucg *ucg_i1_value(long long value) {
 }
 
 Ucg *ucg_i8_value(long long value) {
-    return ucg_int_value(4, value);
+    return ucg_int_value(8, value);
+}
+
+Ucg *ucg_bool_value(long long value) {
+    return ucg_i1_value(value);
+}
+
+Ucg *ucg_char_value(long long value) {
+    return ucg_i8_value(value);
 }
 
 Ucg *ucg_i32_value(long long value) {
     return ucg_int_value(32, value);
+}
+
+Ucg *ucg_array_new(Ucg *elem) {
+    Ucg *new = ucg_new(VAL_CREATE);
+    new->to_create = ucg_new(ARRAY);
+    new->to_create->arr.elem = elem;
+    return new;
+}
+
+__attribute__((sentinel)) Ucg *ucg_array_value(Ucg *elem, ...) {
+    Ucg *new = ucg_array_new(elem);
+    Ucg *to_create = new->to_create;
+    va_list ap;
+    va_start(ap, elem);
+    for (Ucg *v = va_arg(ap, Ucg *); v; v = va_arg(ap, Ucg *))
+        append(to_create->arr.items, v);
+    va_end(ap);
+    append(gb_ucg.insts, new);
+    return new;
+}
+
+Ucg *ucg_string_value(char *str) {
+    Ucg *new = ucg_array_new(ucg_i8_type());
+    Ucg *to_create = new->to_create;
+    for (int i = 0; i <= strlen(str); i++)
+        append(to_create->arr.items, ucg_i8_value(str[i]));
+    append(gb_ucg.insts, new);
+    return new;
+}
+
+Ucg *ucg_ref(Ucg *to_ref) {
+    Ucg *new = ucg_new(REF);
+    new->to_ref = to_ref;
+    const char *name = to_ref->name ? to_ref->name : to_string(to_ref->type);
+    new->name = format("&%s", name);
+
+    append(gb_ucg.insts, new);
+    return new;
 }
 
 Ucg *ucg_dref(Ucg *var) {
@@ -631,7 +728,7 @@ Ucg *ucg_fn_call_(Ucg *fn_dec, va_list ap) {
         // if (param->type == VARIADIC)
         //     new->fn.varg = true;
         // else
-        append(new->fn.params, param);
+        append(new->fn.params, ucg_value(param));
     }
     // append(gb_ucg.insts, new);
     return new;
@@ -678,7 +775,7 @@ Ucg *ucg_get_param(Ucg *fn, int index) {
 
 Ucg *ucg_ret(Ucg *ret) {
     Ucg *new = ucg_new(RETURN);
-    new->to_ret = ret;
+    new->to_ret = ucg_value(ret);
     // new->right = ret;
     // new->name = name;
     // new->fn.ret = ret;
@@ -710,11 +807,24 @@ Ucg *ucg_param(char *name, Ucg *data_type) {
     return new;
 }
 
+bool is_locator(Ucg *ir) {
+    return ir->type == DECLARE || ir->type == PARAM;
+}
+
+Ucg *ucg_value(Ucg *ir) {
+    assert(ir);
+    return is_locator(ir) ? ucg_dref(ir) : ir;
+}
+
 Ucg *ucg_op(Type type, Ucg *left, Ucg *right) {
     Type ops[LAST + 1] = {
         [ADD_ASSIGN] = ADD, [SUB_ASSIGN] = SUB, [MUL_ASSIGN] = MUL,
         [DIV_ASSIGN] = DIV, [MOD_ASSIGN] = MOD,
     };
+
+    if (type != ASSIGN && !ops[type])
+        left = ucg_value(left);
+    right = ucg_value(right);
 
     if (ops[type]) {
         type = ops[type];
@@ -730,6 +840,10 @@ Ucg *ucg_op(Type type, Ucg *left, Ucg *right) {
     new->right = right;
     append(gb_ucg.insts, new);
     return new;
+}
+
+Ucg *ucg_assign(Ucg *left, Ucg *right) {
+    return ucg_op(ASSIGN, left, right);
 }
 
 Ucg *ucg_bloc(char *name) {
@@ -768,30 +882,19 @@ Ucg *ucg_else(Ucg *prev_stmt) {
 
 Ucg *ucg_then(Ucg *stmt, Ucg *cond) {
     Ucg *new = ucg_new(THEN);
-    stmt->cond = cond;
+    stmt->cond = cond ? ucg_value(cond) : NULL;
     new->stmt = stmt;
     append(gb_ucg.insts, new);
     return new;
 }
 
-Ucg *ucg_endif(Ucg *if_stmt) {
+Ucg *ucg_end(Ucg *stmt) {
     Ucg *new = ucg_new(END);
-    new->to_end = if_stmt;
-    while (if_stmt) {
-        if_stmt->end = new;
-        if_stmt = if_stmt->next;
+    new->to_end = stmt;
+    while (stmt) {
+        stmt->end = new;
+        stmt = stmt->next;
     }
-    append(gb_ucg.insts, new);
-    return new;
-}
-
-Ucg *ucg_endloop(Ucg *loop) {
-    Ucg *new = ucg_new(END);
-    new->to_end = loop;
-    loop->end = new;
-    // while (if_stmt) {
-    //     if_stmt = if_stmt->next;
-    // }
     append(gb_ucg.insts, new);
     return new;
 }
@@ -816,7 +919,7 @@ void print_ucg(Ucg *inst, char end) {
         }
     }
 
-    text = format("[%03d] <%-16s>", inst->inst_index, text);
+    text = format("[%03d] %-16s", inst->inst_index, text);
     if (inst->left)
         text = format("%s [%03d]", text, inst->left->inst_index);
     if (inst->right)
@@ -881,6 +984,10 @@ void ucg_compile() {
         switch (curr->type) {
         case INT:
             break;
+        // case ARRAY_LIT: {
+        // 	// llvm_array_value(curr);
+        // 	break;
+        // }
         case FN_DEC: {
             // llvm_fn_dec(curr);
             break;
@@ -977,8 +1084,8 @@ bool run_test(int p) {
 
         ucg_op(ASSIGN, a, ucg_i32_value(10));
 
-        ucg_op(ASSIGN, b, ucg_op(MUL, ucg_dref(a), ucg_i32_value(2)));
-        ucg_op(ASSIGN, a, ucg_op(ADD, ucg_dref(a), ucg_dref(b)));
+        ucg_op(ASSIGN, b, ucg_op(MUL, a, ucg_i32_value(2)));
+        ucg_op(ASSIGN, a, ucg_op(ADD, a, b));
 
         ucg_op(ADD_ASSIGN, a, ucg_i32_value(5));
         ucg_op(SUB_ASSIGN, a, ucg_i32_value(3));
@@ -986,7 +1093,7 @@ bool run_test(int p) {
         ucg_op(DIV_ASSIGN, a, ucg_i32_value(4));
         ucg_op(MOD_ASSIGN, a, ucg_i32_value(5));
 
-        ucg_ret(ucg_op(ADD, ucg_dref(a), ucg_dref(b)));
+        ucg_ret(ucg_op(ADD, a, b));
         break;
     };
     case 1: {
@@ -994,20 +1101,20 @@ bool run_test(int p) {
 
         Ucg *x = ucg_var("a", ucg_i32_type());
         Ucg *b = ucg_var("b", ucg_i1_type());
-        Ucg *c = ucg_var("c", ucg_i4_type());
+        Ucg *c = ucg_var("c", ucg_char_type());
 
         Ucg *if_stmt = ucg_if();
         ucg_then(if_stmt, // clang-format off
             ucg_op(OR, 
-                ucg_op(EQ, ucg_dref(b), ucg_i1_value(1)),
-                ucg_op(NQ, ucg_dref(c), ucg_int_value(4, 0))
+                ucg_op(EQ, b, ucg_i1_value(1)),
+                ucg_op(NQ, c, ucg_char_value(0))
             )
         ); // clang-format on
 
         ucg_ret(ucg_i32_value(1));
-        ucg_endif(if_stmt);
+        ucg_end(if_stmt);
 
-        ucg_ret(ucg_dref(x));
+        ucg_ret(x);
         break;
     }
     case 2: {
@@ -1018,7 +1125,7 @@ bool run_test(int p) {
         Ucg *if_stmt = ucg_if();
         ucg_then(if_stmt, // clang-format off
             ucg_op(EQ, 
-				ucg_dref(flag),
+				flag,
 				ucg_i1_value(1)
 			)
         ); // clang-format on
@@ -1029,7 +1136,7 @@ bool run_test(int p) {
         ucg_then(else_stmt, NULL);
         ucg_ret(ucg_i32_value(2));
 
-        ucg_endif(if_stmt);
+        ucg_end(if_stmt);
 
         ucg_ret(ucg_i32_value(0));
 
@@ -1041,7 +1148,7 @@ bool run_test(int p) {
         Ucg *a = ucg_var("a", ucg_i32_type());
         Ucg *big = ucg_var("big", ucg_i1_type());
 
-        ucg_op(ASSIGN, big, ucg_op(LT, ucg_dref(a), ucg_i32_value(3)));
+        ucg_op(ASSIGN, big, ucg_op(LT, a, ucg_i32_value(3)));
 
         Ucg *n = ucg_var("n", ucg_i32_type());
 
@@ -1051,41 +1158,41 @@ bool run_test(int p) {
 		); // clang-format on
 
         Ucg *if_stmt = ucg_if();
-        ucg_then(if_stmt, ucg_op(EQ, ucg_dref(big), ucg_i1_value(1)));
+        ucg_then(if_stmt, ucg_op(EQ, big, ucg_i1_value(1)));
 
         ucg_op(ADD_ASSIGN, // clang-format off
 			n,
 			ucg_i32_value(1)
 		); // clang-format on
 
-        ucg_endif(if_stmt);
+        ucg_end(if_stmt);
 
         ucg_op(ASSIGN, // clang-format off
 			big,
 			ucg_op(LT,
-				ucg_dref(a),
+				a,
 				ucg_i32_value(9)
 			)
 		); // clang-format on
 
         if_stmt = ucg_if();
-        ucg_then(if_stmt, ucg_op(EQ, ucg_dref(big), ucg_i1_value(1)));
+        ucg_then(if_stmt, ucg_op(EQ, big, ucg_i1_value(1)));
         ucg_op(ADD_ASSIGN, n, ucg_i32_value(10));
-        ucg_endif(if_stmt);
+        ucg_end(if_stmt);
 
         ucg_op(ASSIGN, big, ucg_i1_value(0));
 
         if_stmt = ucg_if();
-        ucg_then(if_stmt, ucg_op(EQ, ucg_dref(big), ucg_i1_value(1)));
+        ucg_then(if_stmt, ucg_op(EQ, big, ucg_i1_value(1)));
         ucg_op(ADD_ASSIGN, n, ucg_i32_value(100));
-        ucg_endif(if_stmt);
+        ucg_end(if_stmt);
 
         if_stmt = ucg_if();
-        ucg_then(if_stmt, ucg_op(EQ, ucg_dref(big), ucg_i1_value(0)));
+        ucg_then(if_stmt, ucg_op(EQ, big, ucg_i1_value(0)));
         ucg_op(ADD_ASSIGN, n, ucg_i32_value(1));
-        ucg_endif(if_stmt);
+        ucg_end(if_stmt);
 
-        ucg_ret(ucg_dref(n));
+        ucg_ret(n);
         break;
     }
     case 4: {
@@ -1098,7 +1205,7 @@ bool run_test(int p) {
 
         ucg_ret(ucg_op(EQ, // clang-format off
 					ucg_op(MOD, 
-						ucg_dref(n), 
+						n, 
 						ucg_i32_value(2)), 
 					ucg_i32_value(0)
 				) // clang-format on
@@ -1113,7 +1220,7 @@ bool run_test(int p) {
         Ucg *a = ucg_get_param(both, 0);
         Ucg *b = ucg_get_param(both, 1);
 
-        ucg_ret(ucg_op(AND, ucg_dref(a), ucg_dref(b)));
+        ucg_ret(ucg_op(AND, a, b));
 
 
         Ucg *main_fn = ucg_fn("main", ucg_i32_type(), NULL);
@@ -1127,18 +1234,18 @@ bool run_test(int p) {
         Ucg *flag = ucg_var("flag", ucg_i1_type());
 
         Ucg *if_stmt = ucg_if();
-        ucg_then(if_stmt, ucg_op(EQ, ucg_dref(flag), ucg_i1_value(1)));
+        ucg_then(if_stmt, ucg_op(EQ, flag, ucg_i1_value(1)));
         ucg_ret(ucg_i32_value(1));
 
         Ucg *elif_stmt = ucg_elif(if_stmt);
-        ucg_then(elif_stmt, ucg_op(EQ, ucg_dref(flag), ucg_i1_value(0)));
+        ucg_then(elif_stmt, ucg_op(EQ, flag, ucg_i1_value(0)));
         ucg_ret(ucg_i32_value(2));
 
         Ucg *else_stmt = ucg_else(if_stmt);
         ucg_then(else_stmt, NULL);
         ucg_ret(ucg_i32_value(3));
 
-        ucg_endif(if_stmt);
+        ucg_end(if_stmt);
 
         ucg_ret(ucg_i32_value(0));
         break;
@@ -1153,7 +1260,7 @@ bool run_test(int p) {
 
         ucg_ret(ucg_op(EQ, // clang-format off
         			ucg_op(MOD,
-        				ucg_dref(n),
+        				n,
         				ucg_i32_value(2)),
         			ucg_i32_value(0)
         		) // clang-format on
@@ -1168,7 +1275,7 @@ bool run_test(int p) {
         Ucg *a = ucg_get_param(both, 0);
         Ucg *b = ucg_get_param(both, 1);
 
-        ucg_ret(ucg_op(AND, ucg_dref(a), ucg_dref(b)));
+        ucg_ret(ucg_op(AND, a, b));
 
 
         Ucg *main_fn = ucg_fn("main", ucg_i32_type(), NULL);
@@ -1183,7 +1290,7 @@ bool run_test(int p) {
         ); // clang-format on
         ucg_op(ADD_ASSIGN, n0, ucg_i32_value(1));
 
-        ucg_endif(if_stmt);
+        ucg_end(if_stmt);
 
         if_stmt = ucg_if();
         ucg_then(if_stmt, // clang-format off
@@ -1197,8 +1304,7 @@ bool run_test(int p) {
         ); // clang-format on
         ucg_op(ADD_ASSIGN, n0, ucg_i32_value(2));
 
-        ucg_endif(if_stmt);
-
+        ucg_end(if_stmt);
 
         if_stmt = ucg_if();
         ucg_then(if_stmt, // clang-format off
@@ -1212,10 +1318,10 @@ bool run_test(int p) {
         ); // clang-format on
         ucg_op(ADD_ASSIGN, n0, ucg_i32_value(10));
 
-        ucg_endif(if_stmt);
+        ucg_end(if_stmt);
 
         // Ucg *f = ucg_fn_call(foo, ucg_i32_value(3), NULL);
-        ucg_ret(ucg_dref(n0));
+        ucg_ret(n0);
         break;
     }
     case 7: {
@@ -1230,17 +1336,17 @@ bool run_test(int p) {
 
         Ucg *if_stmt = NULL;
         if_stmt = ucg_if();
-        ucg_then(if_stmt, ucg_op(OR, ucg_dref(a), ucg_dref(b)));
+        ucg_then(if_stmt, ucg_op(OR, a, b));
         ucg_op(ADD_ASSIGN, n, ucg_i32_value(5));
-        ucg_endif(if_stmt);
+        ucg_end(if_stmt);
 
 
         if_stmt = ucg_if();
-        ucg_then(if_stmt, ucg_op(AND, ucg_dref(a), ucg_dref(b)));
+        ucg_then(if_stmt, ucg_op(AND, a, b));
         ucg_op(ADD_ASSIGN, n, ucg_i32_value(50));
-        ucg_endif(if_stmt);
+        ucg_end(if_stmt);
 
-        ucg_ret(ucg_dref(n));
+        ucg_ret(n);
 
         break;
     }
@@ -1253,16 +1359,185 @@ bool run_test(int p) {
         Ucg *loop = ucg_loop();
         ucg_then(loop, // clang-format off
             ucg_op(LT, 
-                ucg_dref(a), 
+                a, 
                 ucg_i32_value(5)
             )
         ); // clang-format on
 
         ucg_op(ADD_ASSIGN, a, ucg_i32_value(1));
 
-        ucg_endloop(loop);
+        ucg_end(loop);
 
-        ucg_ret(ucg_dref(a));
+        ucg_ret(a);
+        break;
+    }
+    case 9: {
+        Ucg *fn = ucg_fn("main", ucg_i32_type(), NULL);
+
+        Ucg *i = ucg_var("i", ucg_i32_type());
+        ucg_op(ASSIGN, i, ucg_i32_value(0));
+
+        Ucg *going = ucg_var("going", ucg_i1_type());
+        ucg_op(ASSIGN, going, ucg_i1_value(1));
+
+        Ucg *loop = ucg_loop();
+        ucg_then(loop, // clang-format off
+            ucg_op(EQ, 
+                going,
+                ucg_i1_value(1)
+            )
+        ); // clang-format on
+
+        ucg_op(ADD_ASSIGN, i, ucg_i32_value(1));
+        ucg_op(ASSIGN, going, // clang-format off
+			ucg_op(
+				LT,
+				i,
+				ucg_i32_value(4)
+			)
+		); // clang-format on
+
+        ucg_end(loop);
+
+        ucg_ret(i);
+        break;
+    }
+    case 10: {
+        Ucg *printf = ucg_proto("printf", // clang-format off
+						ucg_i32_type(), 
+						ucg_ref_type(ucg_i8_type()), 
+						ucg_varg(),
+						NULL
+					); // clang-format on
+
+        Ucg *fn = ucg_fn("main", ucg_i32_type(), NULL);
+        Ucg *a = ucg_var("a", ucg_char_type());
+        Ucg *b = ucg_var("b", ucg_char_type());
+
+        // Ucg *b = ucg_var('b', ucg_i8_type());
+
+        ucg_assign(a, ucg_char_value('a'));
+        ucg_assign(b, ucg_char_value('b'));
+
+        ucg_fn_call(printf, // clang-format off
+					ucg_string_value("<%c%c>\n"), 
+					a, b,
+                    NULL); // clang-format on
+
+        ucg_ret(ucg_i32_value(0));
+        break;
+    }
+    case 11: {
+        Ucg *fn = ucg_fn("main", ucg_i32_type(), NULL);
+
+        Ucg *c = ucg_var("c", ucg_char_type());
+        ucg_assign(c, ucg_char_value('x'));
+
+        Ucg *n = ucg_var("n", ucg_i32_type());
+        ucg_assign(n, ucg_i32_value(0));
+
+        Ucg *stmt = ucg_if();
+        ucg_then(stmt, ucg_op(EQ, c, ucg_char_value('x')));
+        ucg_op(ADD_ASSIGN, n, ucg_i32_value(1));
+        ucg_end(stmt);
+
+        stmt = ucg_if();
+        ucg_then(stmt, ucg_op(NQ, c, ucg_char_value('y')));
+        ucg_op(ADD_ASSIGN, n, ucg_i32_value(1));
+        ucg_end(stmt);
+
+
+        stmt = ucg_if();
+        ucg_then(stmt, ucg_op(EQ, c, ucg_char_value('z')));
+        ucg_op(ADD_ASSIGN, n, ucg_i32_value(10));
+        ucg_end(stmt);
+
+        ucg_ret(n);
+        break;
+    }
+    case 12: {
+        Ucg *fn = ucg_fn("main", ucg_i32_type(), NULL);
+
+        Ucg *c = ucg_var("c", ucg_char_type());
+        ucg_assign(c, ucg_char_value('m'));
+
+        Ucg *n = ucg_var("n", ucg_i32_type());
+        ucg_assign(n, ucg_i32_value(0));
+
+        Ucg *stmt = ucg_if();
+        ucg_then(stmt, ucg_op(GT, c, ucg_char_value('a')));
+        ucg_op(ADD_ASSIGN, n, ucg_i32_value(1));
+        ucg_end(stmt);
+
+        stmt = ucg_if();
+        ucg_then(stmt, ucg_op(LT, c, ucg_char_value('z')));
+        ucg_op(ADD_ASSIGN, n, ucg_i32_value(1));
+        ucg_end(stmt);
+
+        stmt = ucg_if();
+        ucg_then(stmt, // clang-format off
+			ucg_op(AND,
+				ucg_op(GE, c, ucg_char_value('m')),
+				ucg_op(LE, c, ucg_char_value('m'))
+			)); // clang-format on
+
+        ucg_op(ADD_ASSIGN, n, ucg_i32_value(1));
+        ucg_end(stmt);
+
+        ucg_ret(n);
+        break;
+    }
+    case 13: {
+		// clang-format off
+        Ucg *printf = ucg_proto("printf",
+							ucg_i32_type(), 
+							ucg_ref_type(ucg_char_type()),
+							ucg_varg(),
+							NULL); // clang-format on
+        Ucg *fn = ucg_fn("main", ucg_i32_type(), NULL);
+        Ucg *nl = ucg_var("nl", ucg_char_type());
+        ucg_assign(nl, ucg_char_value('\n'));
+
+        Ucg *tab = ucg_var("tab", ucg_char_type());
+        ucg_assign(tab, ucg_char_value('\t'));
+
+        ucg_fn_call(printf, ucg_string_value("[%c]\n"), nl, NULL);
+        ucg_fn_call(printf, ucg_string_value("[%c]\n"), tab, NULL);
+        ucg_fn_call(printf, // clang-format off
+			ucg_string_value("[%c] [%c]\n"), 
+			ucg_char_value('\''),
+			ucg_char_value('\\'),
+			NULL); // clang-format on
+
+
+        ucg_ret(ucg_i32_value(0));
+        break;
+    }
+    case 14: {
+		// clang-format off
+        Ucg *printf = ucg_proto("printf",
+							ucg_i32_type(), 
+							ucg_ref_type(ucg_char_type()),
+							ucg_varg(),
+							NULL); // clang-format on
+		
+		
+        Ucg *fn = ucg_fn("main", ucg_i32_type(), NULL);
+        Ucg *nl = ucg_var("nl", ucg_char_type());
+        ucg_assign(nl, ucg_char_value('\n'));
+
+        Ucg *tab = ucg_var("tab", ucg_char_type());
+        ucg_assign(tab, ucg_char_value('\t'));
+
+        ucg_fn_call(printf, ucg_string_value("[%c]\n"), nl, NULL);
+        ucg_fn_call(printf, ucg_string_value("[%c]\n"), tab, NULL);
+        ucg_fn_call(printf, // clang-format off
+			ucg_string_value("[%c] [%c]\n"), 
+			ucg_char_value('\''),
+			ucg_char_value('\\'),
+			NULL); // clang-format on
+
+        ucg_ret(ucg_i32_value(0));
         break;
     }
     default: {
@@ -1277,12 +1552,16 @@ bool run_test(int p) {
 TODO:
     + add default return
     + test it with all llvm versions
+    + asm gen:
+        get rid of .ll file generation when you finish
+        since llvm can automaticaly generate the assembly
+        that's compatible without saving it in external file
 */
 
-void compile_test(int p) {
+bool compile_test(int p) {
     printf(CYAN("Test %d: ================================\n"), p);
     ucg_start(format("test%d", p));
-    run_test(p);
+    bool r = run_test(p);
     for (size_t i = 0; i < gb_ucg.insts_count; i++) {
         Ucg *curr = gb_ucg.insts[i];
         print_ucg(curr, '\n');
@@ -1290,13 +1569,14 @@ void compile_test(int p) {
     ucg_compile();
     gb_ucg.ll_path = format("build/out.ll");
     ucg_finish();
+    return r;
 }
 
 int main() {
     mkdir2("build");
 
 #if 1
-    compile_test(8);
+    compile_test(14);
 #else
     for (int i = 0; compile_test(i); i++)
         ;
@@ -1307,60 +1587,59 @@ int main() {
 const char *to_string(Type type) {
     char *types[LAST + 1] = {
         // clang-format off
-        [ERR] = "ERR",
-        [ID] = "ID",
-        [SCOPE] = "SCOPE", [URA] = "URA",
+		[ERR] = "ERR",
+		[ID] = "ID", [SCOPE] = "SCOPE", [URA] = "URA",
 
-        [VAR] = "VAR", [DECLARE] = "DECL", [INIT_VAR] = "INIT",
-        [ARG] = "ARG", [PARAM] = "PARAM",
+		[VAR] = "VAR", [DECLARE] = "DECLARE", [INIT_VAR] = "INIT_VAR",
+		[ARG] = "ARG", [PARAM] = "PARAM",
 
-        [VAL_CREATE] = "VCREATE",
-        [TEMPLATE] = "TMPL",
-        [TEMPLATE_TYPE] = "TMPLT",
-        [TYPES] = "TYPES",
+		[VAL_CREATE] = "VAL_CREATE",
+		[TEMPLATE] = "TEMPLATE", [TEMPLATE_TYPE] = "TEMPLATE_TYPE",
+		[TYPES] = "TYPES",
 
-        [ANY] = "ANY",
-        [VOID] = "VOID",
-        [INT] = "INT",
-        [CHARS] = "STR",
-        [REF] = "REF",
-        [ZERO] = "ZERO",
+		[ANY] = "ANY",
+		[VOID] = "VOID",
+		[INT] = "INT",
+		[CHARS] = "CHARS",
+		[REF] = "REF",
+		[ZERO] = "ZERO",
 
-        [STRUCT] = "STRU", [DOT] = "DOT", [ATTR] = "ATTR",
+		[STRUCT] = "STRUCT", [DOT] = "DOT", [ATTR] = "ATTR",
 
-        [DREF] = "DREF",
+		[DREF] = "DREF",
 
-        [LPARENT] = "LPAR", [RPARENT] = "RPAR",
-        [LBRACK] = "LBRK", [RBRACK] = "RBRK",
-        [DOTS] = "DOTS", [COMA] = "COMA",
+		[LPARENT] = "LPARENT", [RPARENT] = "RPARENT",
+		[LBRACK] = "LBRACK", [RBRACK] = "RBRACK",
+		[DOTS] = "DOTS", [COMA] = "COMA",
 
-        [ARRAY] = "ARRAY", [ARRAY_LIT] = "ALIT",
-        [ACCESS] = "ACCESS",
+		[ARRAY] = "ARRAY", // [ARRAY_LIT] = "ARRAY_LIT",
+		[ACCESS] = "ACCESS",
 
-        [ASSIGN] = "ASSIGN",
-        [ADD_ASSIGN] = "ADDA", [SUB_ASSIGN] = "SUBA",
-        [MUL_ASSIGN] = "MULA", [DIV_ASSIGN] = "DIVA",
-        [MOD_ASSIGN] = "MODA",
+		[ASSIGN] = "ASSIGN",
+		[ADD_ASSIGN] = "ADD_ASSIGN", [SUB_ASSIGN] = "SUB_ASSIGN",
+		[MUL_ASSIGN] = "MUL_ASSIGN", [DIV_ASSIGN] = "DIV_ASSIGN",
+		[MOD_ASSIGN] = "MOD_ASSIGN",
 
-        [ADD] = "ADD", [SUB] = "SUB", [MUL] = "MUL",
-        [DIV] = "DIV", [MOD] = "MOD",
+		[ADD] = "ADD", [SUB] = "SUB", [MUL] = "MUL",
+		[DIV] = "DIV", [MOD] = "MOD",
 
-        [GT] = "GT", [LT] = "LT", [GE] = "GE",
-        [LE] = "LE", [EQ] = "EQ", [NQ] = "NQ",
+		[GT] = "GT", [LT] = "LT", [GE] = "GE",
+		[LE] = "LE", [EQ] = "EQ", [NQ] = "NQ",
 
-        [AND] = "AND", [OR] = "OR", [NOT] = "NOT",
+		[AND] = "AND", [OR] = "OR", [NOT] = "NOT",
 
-        [PROTO] = "PROTO", [FN_ENTRY] = "FENT",
-        [FN_DEC] = "FDEC", [ARGS] = "ARGS", [VARIADIC] = "VARA",
-        [FN_CALL] = "FCAL", [RETURN] = "RET",
-        [SIZEOF] = "SIZE", [IS_NULLABLE] = "NULL",
+		[PROTO] = "PROTO", [FN_ENTRY] = "FN_ENTRY",
+		[FN_DEC] = "FN_DEC", [ARGS] = "ARGS",
+		[VARIADIC] = "VARIADIC",
+		[FN_CALL] = "FN_CALL", [RETURN] = "RETURN",
+		[SIZEOF] = "SIZEOF", [IS_NULLABLE] = "IS_NULLABLE",
 
-        [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
+		[IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
 		[THEN] = "THEN", [END] = "END",
 		[BLOC] = "BLOC",
-        [LOOP] = "LOOP", [BRK] = "BRK", [CNT] = "CNT",
-        [AS] = "AS",
-        [LAST] = "LAST",
+		[LOOP] = "LOOP", [BRK] = "BRK", [CNT] = "CNT",
+		[AS] = "AS",
+		[LAST] = "LAST",
         // clang-format on
     };
 
