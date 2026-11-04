@@ -102,7 +102,7 @@ enum Type {
     SIZEOF, IS_NULLABLE,
     AS,
 	BLOC,
-    IF, ELIF, ELSE, ENDIF,
+    IF, ELIF, ELSE, THEN, ENDIF,
     WHILE, BRK, CNT,
 
     END,
@@ -164,6 +164,7 @@ struct Ucg {
         Ucg *to_create;
         Ucg *to_dref;
         Ucg *to_end; // used in ENDIF
+        Ucg *stmt;
         // Ucg
     };
     struct {
@@ -286,6 +287,10 @@ void ucg_end() {
         // clang-format on
     }
     // LLVMVerifyModule always allocate for char* error
+
+    LLVMDisposeBuilder(gb_ucg.builder);
+    LLVMDisposeModule(gb_ucg.module);
+    LLVMContextDispose(gb_ucg.context);
 }
 
 void ucg_exit() {
@@ -497,25 +502,15 @@ void llvm_jmp(Bloc bloc) {
 }
 
 void llvm_cond(Ucg *ir) {
-    Ucg *cond = ir->cond;
-    assert(cond);
-    assert(cond->elem);
     assert(ir->then);
 
-    if (ir->next) { // has ELSE/ELIF
-        Ucg *next = ir->next;
-        // Ucg *then = ir->then;
-        // assert(then);
-        // print_ucg(next, '\n');
-        assert(next);
-        assert(next->bloc);
-        LLVMBuildCondBr(gb_ucg.builder, cond->elem, ir->then, next->bloc);
-    } else {
-        Ucg *next = ir->end;
-        assert(next);
+    if (ir->cond) {
+        Ucg *cond = ir->cond;
+        assert(cond->elem);
+        Ucg *next = ir->next ? ir->next : ir->end;
+        assert(next && next->bloc);
         LLVMBuildCondBr(gb_ucg.builder, cond->elem, ir->then, next->bloc);
     }
-
     llvm_set_pos(ir->then);
 }
 
@@ -696,60 +691,44 @@ Ucg *ucg_bloc(char *name) {
     return new;
 }
 
-// Ucg *ucg_branch(Type type, Ucg *head) {
-// 	// assert(head && head->type == IF);
-// 	// assert(head->last->type != ENDIF);
-// 	// assert()
-// 	Ucg *new = ucg_new(type);
-// 	new->head = head;
-// 	// head->last-
-// 	return new;
-// }
-
-Ucg *ucg_if(Ucg *cond) {
-    Ucg *new = ucg_new(IF);
-    new->cond = cond;
-    // new->then = ucg_bloc("then");
+Ucg *ucg_branch(Type type, Ucg *prev_stmt) {
+    Ucg *new = ucg_new(type);
+    if (prev_stmt) {
+        while (prev_stmt->next)
+            prev_stmt = prev_stmt->next;
+        prev_stmt->next = new;
+    }
     append(gb_ucg.insts, new);
     return new;
 }
 
-Ucg *ucg_elif(Ucg *prev_stmt, Ucg *cond) {
-    Ucg *new = ucg_new(ELIF);
-    new->cond = cond;
+Ucg *ucg_if(void) {
+    return ucg_branch(IF, NULL);
+}
 
-	while (prev_stmt->next)
-        prev_stmt = prev_stmt->next;
-	
-	prev_stmt->next = new;
-	// assert(prev_stmt->end);
-	// new->end = prev_stmt->end;
-
-    append(gb_ucg.insts, new);
-    return new;
+Ucg *ucg_elif(Ucg *prev_stmt) {
+    return ucg_branch(ELIF, prev_stmt);
 }
 
 Ucg *ucg_else(Ucg *prev_stmt) {
-    Ucg *new = ucg_new(ELSE);
+    return ucg_branch(ELSE, prev_stmt);
+}
 
-    while (prev_stmt->next)
-        prev_stmt = prev_stmt->next;
-
-    prev_stmt->next = new;
-
-    // new->end = prev_stmt->end;
+Ucg *ucg_then(Ucg *stmt, Ucg *cond) {
+    Ucg *new = ucg_new(THEN);
+    stmt->cond = cond;
+    new->stmt = stmt;
     append(gb_ucg.insts, new);
-    // new->next = if_stmt;
     return new;
 }
 
 Ucg *ucg_endif(Ucg *if_stmt) {
     Ucg *new = ucg_new(ENDIF);
     new->to_end = if_stmt;
-	while(if_stmt) {
-		if_stmt->end = new;
-		if_stmt = if_stmt->next;
-	}
+    while (if_stmt) {
+        if_stmt->end = new;
+        if_stmt = if_stmt->next;
+    }
     append(gb_ucg.insts, new);
     return new;
 }
@@ -784,6 +763,7 @@ void print_ucg(Ucg *inst, char end) {
 
 void ucg_compile() {
     Value fn = NULL;
+    int stmt_index = 0;
     for (int i = 0; i < gb_ucg.insts_count; i++) {
         Ucg *curr = gb_ucg.insts[i];
         switch (curr->type) {
@@ -797,20 +777,26 @@ void ucg_compile() {
             break;
         }
         case IF: {
-            curr->then = llvm_bloc(fn, "then");
+            curr->bloc = llvm_bloc(fn, format("if%d", stmt_index));
+            curr->then = llvm_bloc(fn, format("if%d.then", stmt_index));
+            stmt_index++;
+            break;
+        }
+        case ELIF: {
+            curr->bloc = llvm_bloc(fn, format("elif%d", stmt_index));
+            curr->then = llvm_bloc(fn, format("elif%d.then", stmt_index));
+            stmt_index++;
             break;
         }
         case ELSE: {
-            curr->bloc = llvm_bloc(fn, "else");
-            break;
-        }
-		case ELIF: {
-			curr->then = llvm_bloc(fn, "then");
-            curr->bloc = llvm_bloc(fn, "elif");
+            curr->bloc = llvm_bloc(fn, format("else%d", stmt_index));
+            curr->then = curr->bloc;
+            stmt_index++;
             break;
         }
         case ENDIF: {
             curr->bloc = llvm_bloc(fn, "endif");
+            // stmt_index++;
             break;
         }
         default: {
@@ -872,25 +858,21 @@ void ucg_compile() {
         //     llvm_bloc(curr);
         //     break;
         // }
-        case ENDIF: {
-            // position at
-            llvm_jmp(curr->bloc);
+        // clang-format off
+        case IF: case ELIF: case ELSE: { // clang-format on
+            assert(curr->end);
+
+            llvm_jmp(curr->type == IF ? curr->bloc : curr->end->bloc);
             llvm_set_pos(curr->bloc);
             break;
         }
-        case IF: {
-            llvm_cond(curr);
+        case THEN: {
+            llvm_cond(curr->stmt);
             break;
         }
-		case ELIF: {
-			assert(curr->end);
-			llvm_jmp(curr->end->bloc);
-			llvm_set_pos(curr->bloc);
-			llvm_cond(curr);
-			break;
-		}
-        case ELSE: {
-			llvm_jmp(curr->end->bloc);
+        case ENDIF: {
+            // position at
+            llvm_jmp(curr->bloc);
             llvm_set_pos(curr->bloc);
             break;
         }
@@ -937,12 +919,14 @@ void run_test(int p) {
         Ucg *b = ucg_var("b", ucg_i1_type());
         Ucg *c = ucg_var("c", ucg_i4_type());
 
-        Ucg *if_stmt = ucg_if( // clang-format off
-			ucg_op(OR, 
-				ucg_op(EQ, ucg_dref(b), ucg_i1_value(1)),
-				ucg_op(NQ, ucg_dref(c), ucg_int_value(4, 0))
-			)
-		); // clang-format on
+        Ucg *if_stmt = ucg_if();
+        ucg_then(if_stmt, // clang-format off
+            ucg_op(OR, 
+                ucg_op(EQ, ucg_dref(b), ucg_i1_value(1)),
+                ucg_op(NQ, ucg_dref(c), ucg_int_value(4, 0))
+            )
+        ); // clang-format on
+
         ucg_ret(ucg_i32_value(1));
         ucg_endif(if_stmt);
 
@@ -954,15 +938,18 @@ void run_test(int p) {
 
         Ucg *flag = ucg_var("flag", ucg_i1_type());
 
-        Ucg *if_stmt = ucg_if( // clang-format off
-			ucg_op(EQ, 
+        Ucg *if_stmt = ucg_if();
+        ucg_then(if_stmt, // clang-format off
+            ucg_op(EQ, 
 				ucg_dref(flag),
 				ucg_i1_value(1)
 			)
-		); // clang-format on
+        ); // clang-format on
+
         ucg_ret(ucg_i32_value(1));
 
         Ucg *else_stmt = ucg_else(if_stmt);
+        ucg_then(else_stmt, NULL);
         ucg_ret(ucg_i32_value(2));
 
         ucg_endif(if_stmt);
@@ -977,13 +964,7 @@ void run_test(int p) {
         Ucg *a = ucg_var("a", ucg_i32_type());
         Ucg *big = ucg_var("big", ucg_i1_type());
 
-        ucg_op(ASSIGN, // clang-format off
-			big, 
-			ucg_op(LT, 
-				ucg_dref(a), 
-				ucg_i32_value(3)
-			)
-		); // clang-format on
+        ucg_op(ASSIGN, big, ucg_op(LT, ucg_dref(a), ucg_i32_value(3)));
 
         Ucg *n = ucg_var("n", ucg_i32_type());
 
@@ -992,17 +973,13 @@ void run_test(int p) {
 			ucg_i32_value(0)
 		); // clang-format on
 
-        Ucg *if_stmt = ucg_if( // clang-format off
-			ucg_op(EQ,
-				ucg_dref(big),
-				ucg_i1_value(1)
-			)
-		); // clang-format on
+        Ucg *if_stmt = ucg_if();
+        ucg_then(if_stmt, ucg_op(EQ, ucg_dref(big), ucg_i1_value(1)));
 
         ucg_op(ADD_ASSIGN, // clang-format off
 			n,
 			ucg_i32_value(1)
-		); // clang-format on(ura-lang) src$ ura
+		); // clang-format on
 
 		ucg_endif(if_stmt);
 
@@ -1014,32 +991,20 @@ void run_test(int p) {
 			)
 		); // clang-format on
 
-        if_stmt = ucg_if( // clang-format off
-			ucg_op(EQ,
-				ucg_dref(big),
-				ucg_i1_value(1)
-			)
-		); // clang-format on
+        if_stmt = ucg_if();
+        ucg_then(if_stmt, ucg_op(EQ, ucg_dref(big), ucg_i1_value(1)));
         ucg_op(ADD_ASSIGN, n, ucg_i32_value(10));
         ucg_endif(if_stmt);
 
         ucg_op(ASSIGN, big, ucg_i1_value(0));
 
-        if_stmt = ucg_if( // clang-format off
-            ucg_op(EQ,
-                ucg_dref(big),
-                ucg_i1_value(1)
-            )
-        ); // clang-format on
+        if_stmt = ucg_if();
+        ucg_then(if_stmt, ucg_op(EQ, ucg_dref(big), ucg_i1_value(1)));
         ucg_op(ADD_ASSIGN, n, ucg_i32_value(100));
         ucg_endif(if_stmt);
 
-        if_stmt = ucg_if( // clang-format off
-            ucg_op(EQ,
-                ucg_dref(big),
-                ucg_i1_value(0)
-            )
-        ); // clang-format on
+        if_stmt = ucg_if();
+        ucg_then(if_stmt, ucg_op(EQ, ucg_dref(big), ucg_i1_value(0)));
         ucg_op(ADD_ASSIGN, n, ucg_i32_value(1));
         ucg_endif(if_stmt);
 
@@ -1084,23 +1049,17 @@ void run_test(int p) {
 
         Ucg *flag = ucg_var("flag", ucg_i1_type());
 
-        Ucg *if_stmt = ucg_if( // clang-format off
-			ucg_op(EQ, 
-				ucg_dref(flag),
-				ucg_i1_value(1)
-			)
-		); // clang-format on
+        Ucg *if_stmt = ucg_if();
+        ucg_then(if_stmt, ucg_op(EQ, ucg_dref(flag), ucg_i1_value(1)));
         ucg_ret(ucg_i32_value(1));
 
-        Ucg *elif_stmt = ucg_elif(if_stmt, // clang-format off
-			ucg_op(EQ, 
-				ucg_dref(flag),
-				ucg_i1_value(2)
-			)
-		); // clang-format on
+        Ucg *elif_stmt = ucg_elif(if_stmt);
+        ucg_then(elif_stmt, ucg_op(EQ, ucg_dref(flag), ucg_i1_value(0)));
+        ucg_ret(ucg_i32_value(2));
 
         Ucg *else_stmt = ucg_else(if_stmt);
-        ucg_ret(ucg_i32_value(2));
+        ucg_then(else_stmt, NULL);
+        ucg_ret(ucg_i32_value(3));
 
         ucg_endif(if_stmt);
 
@@ -1122,29 +1081,29 @@ TODO:
     + test it with all llvm versions
 */
 
-int main() {
-    ucg_start("test");
-
-#if 1
-    run_test(5);
+// one module per test, each test has its own main: build/test<p>.ll
+void compile_test(int p) {
+    printf(CYAN("Test %d: ================================\n"), p);
+    ucg_start(format("test%d", p));
+    run_test(p);
     for (size_t i = 0; i < gb_ucg.insts_count; i++) {
         Ucg *curr = gb_ucg.insts[i];
         print_ucg(curr, '\n');
     }
-#else
-    for (int i = 0; i <= TESTS_SIZE; i++) {
-        printf(CYAN("Test %d: ================================\n"), i);
-        run_test(i);
-        for (size_t i = 0; i < gb_ucg.insts_count; i++) {
-            Ucg *curr = gb_ucg.insts[i];
-            print_ucg(curr, '\n');
-        }
-    }
-#endif
-
     ucg_compile();
-
+    gb_ucg.ll_path = format("build/test%d.ll", p);
     ucg_end();
+}
+
+int main() {
+    mkdir2("build");
+
+#if 0
+    compile_test(5);
+#else
+    for (int i = 0; i <= TESTS_SIZE; i++)
+        compile_test(i);
+#endif
 }
 
 // UTILS
@@ -1200,7 +1159,7 @@ const char *to_string(Type type) {
         [SIZEOF] = "SIZE", [IS_NULLABLE] = "NULL",
 
         [IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
-		[ENDIF] = "ENDIF",
+		[THEN] = "THEN", [ENDIF] = "ENDIF",
 		[BLOC] = "BLOC",
         [WHILE] = "WHILE", [BRK] = "BRK", [CNT] = "CNT",
         [AS] = "AS",
