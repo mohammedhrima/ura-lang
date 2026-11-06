@@ -72,7 +72,8 @@ enum Type {
     ANY,
     VOID, 
     
-    // BOOL, I8, I32, 
+    // BOOL, I8, I32,
+    // CHAR, BOOL,
     INT,
     
     CHARS,
@@ -352,7 +353,7 @@ void llvm_fn_call(Ucg *ir) {
     }
     TypeRef rtype = fn_dec->rtype;
     Value fn_elem = fn_dec->elem;
-    char *name = ir->name;
+    char *name = fn_dec->fn.ret->type != VOID ? ir->name : "";
     Value elem = LLVMBuildCall2(gb_ucg.builder, // clang-format off
                                 rtype, 
                                 fn_elem, params, 
@@ -371,7 +372,7 @@ void llvm_ret(Ucg *ir) {
     if (is_bloc_terminated())
         return;
 
-    if (ir->elem == NULL) {
+    if (ir == NULL) {
         LLVMBuildRetVoid(gb_ucg.builder);
         return;
     }
@@ -382,6 +383,7 @@ void llvm_ret(Ucg *ir) {
 TypeRef llvm_type(Ucg *ir) {
     switch (ir->type) { // clang-format off
     case INT:        	return gb_ucg.types.num[1 << ir->shift];
+	case VOID:			return gb_ucg.types.vd;
     case VAL_CREATE:	return llvm_type(ir->to_create);
     case DECLARE:		return llvm_type(ir->data_type);
     case PARAM:			return llvm_type(ir->data_type);
@@ -609,6 +611,14 @@ Ucg *ucg_i32_type() {
     return ucg_int_type(32);
 }
 
+Ucg *ucg_bool_type() {
+    return ucg_i1_type();
+}
+
+Ucg *ucg_void_type() {
+    return ucg_new(VOID);
+}
+
 Ucg *ucg_ref_type(Ucg *to_ref) {
     Ucg *new = ucg_new(REF);
     new->to_ref = to_ref;
@@ -681,6 +691,10 @@ Ucg *ucg_string_value(char *str) {
         append(to_create->arr.items, ucg_i8_value(str[i]));
     append(gb_ucg.insts, new);
     return new;
+}
+
+Ucg *ucg_string_type(void) {
+    return ucg_ref_type(ucg_char_type());
 }
 
 Ucg *ucg_ref(Ucg *to_ref) {
@@ -765,7 +779,7 @@ __attribute__((sentinel)) Ucg *ucg_fn_call(Ucg *fn_dec, ...) {
     return new;
 }
 
-Ucg *ucg_varg(void) {
+Ucg *ucg_varg_type(void) {
     return ucg_new(VARIADIC);
 }
 
@@ -968,6 +982,8 @@ void ucg_compile() {
         }
         case END: {
             Ucg *to_end = curr->to_end;
+            if (to_end->type == FN_DEC)
+                break;
             char *name = to_end->type == LOOP ? "endloop" : "endif";
             curr->bloc = llvm_bloc(fn, name);
             // stmt_index++;
@@ -1057,6 +1073,18 @@ void ucg_compile() {
         case END: {
             // position at
             Ucg *stmt = curr->to_end;
+            if (stmt->type == FN_DEC) {
+                if (is_bloc_terminated())
+                    break;
+                if (stmt->fn.ret->type == VOID)
+                    LLVMBuildRetVoid(gb_ucg.builder);
+                else {
+                    // TODO: struct type
+                    TypeRef rtype = llvm_type(stmt->fn.ret);
+                    LLVMBuildRet(gb_ucg.builder, LLVMConstNull(rtype));
+                }
+                break;
+            }
             llvm_jmp(stmt->type == LOOP ? stmt->bloc : curr->bloc);
             llvm_set_pos(curr->bloc);
             break;
@@ -1075,474 +1103,582 @@ bool run_test(int p) {
     ucg_clear();
     switch (p) {
     case 0: {
-        Ucg *fn = ucg_fn("main", ucg_i32_type(), NULL);
+        // clang-format off
+        Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL);
+        {
+            Ucg *a = ucg_var("a", ucg_i32_type());
+            Ucg *b = ucg_var("b", ucg_i32_type());
 
-        // Ucg *entry = ucg_fn_entry(fn);
+            ucg_assign(a, ucg_i32_value(10));
 
-        Ucg *a = ucg_var("a", ucg_i32_type());
-        Ucg *b = ucg_var("b", ucg_i32_type());
+            ucg_assign(b, ucg_op(MUL, a, ucg_i32_value(2)));
+            ucg_assign(a, ucg_op(ADD, a, b));
 
-        ucg_op(ASSIGN, a, ucg_i32_value(10));
+            ucg_op(ADD_ASSIGN, a, ucg_i32_value(5));
+            ucg_op(SUB_ASSIGN, a, ucg_i32_value(3));
+            ucg_op(MUL_ASSIGN, a, ucg_i32_value(2));
+            ucg_op(DIV_ASSIGN, a, ucg_i32_value(4));
+            ucg_op(MOD_ASSIGN, a, ucg_i32_value(5));
 
-        ucg_op(ASSIGN, b, ucg_op(MUL, a, ucg_i32_value(2)));
-        ucg_op(ASSIGN, a, ucg_op(ADD, a, b));
-
-        ucg_op(ADD_ASSIGN, a, ucg_i32_value(5));
-        ucg_op(SUB_ASSIGN, a, ucg_i32_value(3));
-        ucg_op(MUL_ASSIGN, a, ucg_i32_value(2));
-        ucg_op(DIV_ASSIGN, a, ucg_i32_value(4));
-        ucg_op(MOD_ASSIGN, a, ucg_i32_value(5));
-
-        ucg_ret(ucg_op(ADD, a, b));
+            ucg_ret(ucg_op(ADD, a, b));
+        }
+        ucg_end(fn_main);
+        // clang-format on
         break;
-    };
+    }
     case 1: {
-        Ucg *fn = ucg_fn("main", ucg_i32_type(), NULL);
+        // clang-format off
+        Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL);
+        {
+            Ucg *x = ucg_var("a", ucg_i32_type());
+            Ucg *b = ucg_var("b", ucg_bool_type());
+            Ucg *c = ucg_var("c", ucg_char_type());
 
-        Ucg *x = ucg_var("a", ucg_i32_type());
-        Ucg *b = ucg_var("b", ucg_i1_type());
-        Ucg *c = ucg_var("c", ucg_char_type());
-
-        Ucg *if_stmt = ucg_if();
-        ucg_then(if_stmt, // clang-format off
-            ucg_op(OR, 
-                ucg_op(EQ, b, ucg_i1_value(1)),
+            Ucg *if_stmt = ucg_if();
+            ucg_then(if_stmt, ucg_op(OR,
+                ucg_op(EQ, b, ucg_bool_value(1)),
                 ucg_op(NQ, c, ucg_char_value(0))
-            )
-        ); // clang-format on
+            ));
+            {
+                ucg_ret(ucg_i32_value(1));
+            }
+            ucg_end(if_stmt);
 
-        ucg_ret(ucg_i32_value(1));
-        ucg_end(if_stmt);
-
-        ucg_ret(x);
+            ucg_ret(x);
+        }
+        ucg_end(fn_main);
+        // clang-format on
         break;
     }
     case 2: {
-        Ucg *fn = ucg_fn("main", ucg_i32_type(), NULL);
+        // clang-format off
+        Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL);
+        {
+            Ucg *flag = ucg_var("flag", ucg_bool_type());
 
-        Ucg *flag = ucg_var("flag", ucg_i1_type());
+            Ucg *if_stmt = ucg_if();
+            ucg_then(if_stmt, ucg_op(EQ, flag, ucg_bool_value(1)));
+            {
+                ucg_ret(ucg_i32_value(1));
+            }
+            Ucg *else_stmt = ucg_else(if_stmt);
+            ucg_then(else_stmt, NULL);
+            {
+                ucg_ret(ucg_i32_value(2));
+            }
+            ucg_end(if_stmt);
 
-        Ucg *if_stmt = ucg_if();
-        ucg_then(if_stmt, // clang-format off
-            ucg_op(EQ, 
-				flag,
-				ucg_i1_value(1)
-			)
-        ); // clang-format on
-
-        ucg_ret(ucg_i32_value(1));
-
-        Ucg *else_stmt = ucg_else(if_stmt);
-        ucg_then(else_stmt, NULL);
-        ucg_ret(ucg_i32_value(2));
-
-        ucg_end(if_stmt);
-
-        ucg_ret(ucg_i32_value(0));
-
+            ucg_ret(ucg_i32_value(0));
+        }
+        ucg_end(fn_main);
+        // clang-format on
         break;
     }
     case 3: {
-        Ucg *fn = ucg_fn("main", ucg_i32_type(), NULL);
+        // clang-format off
+        Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL);
+        {
+            Ucg *a = ucg_var("a", ucg_i32_type());
+            Ucg *big = ucg_var("big", ucg_bool_type());
 
-        Ucg *a = ucg_var("a", ucg_i32_type());
-        Ucg *big = ucg_var("big", ucg_i1_type());
+            ucg_assign(big, ucg_op(LT, a, ucg_i32_value(3)));
 
-        ucg_op(ASSIGN, big, ucg_op(LT, a, ucg_i32_value(3)));
+            Ucg *n = ucg_var("n", ucg_i32_type());
+            ucg_assign(n, ucg_i32_value(0));
 
-        Ucg *n = ucg_var("n", ucg_i32_type());
+            Ucg *if_stmt = ucg_if();
+            ucg_then(if_stmt, ucg_op(EQ, big, ucg_bool_value(1)));
+            {
+                ucg_op(ADD_ASSIGN, n, ucg_i32_value(1));
+            }
+            ucg_end(if_stmt);
 
-        ucg_op(ASSIGN, // clang-format off
-			n,
-			ucg_i32_value(0)
-		); // clang-format on
+            ucg_assign(big, ucg_op(LT, a, ucg_i32_value(9)));
 
-        Ucg *if_stmt = ucg_if();
-        ucg_then(if_stmt, ucg_op(EQ, big, ucg_i1_value(1)));
+            if_stmt = ucg_if();
+            ucg_then(if_stmt, ucg_op(EQ, big, ucg_bool_value(1)));
+            {
+                ucg_op(ADD_ASSIGN, n, ucg_i32_value(10));
+            }
+            ucg_end(if_stmt);
 
-        ucg_op(ADD_ASSIGN, // clang-format off
-			n,
-			ucg_i32_value(1)
-		); // clang-format on
+            ucg_assign(big, ucg_bool_value(0));
 
-        ucg_end(if_stmt);
+            if_stmt = ucg_if();
+            ucg_then(if_stmt, ucg_op(EQ, big, ucg_bool_value(1)));
+            {
+                ucg_op(ADD_ASSIGN, n, ucg_i32_value(100));
+            }
+            ucg_end(if_stmt);
 
-        ucg_op(ASSIGN, // clang-format off
-			big,
-			ucg_op(LT,
-				a,
-				ucg_i32_value(9)
-			)
-		); // clang-format on
+            if_stmt = ucg_if();
+            ucg_then(if_stmt, ucg_op(EQ, big, ucg_bool_value(0)));
+            {
+                ucg_op(ADD_ASSIGN, n, ucg_i32_value(1));
+            }
+            ucg_end(if_stmt);
 
-        if_stmt = ucg_if();
-        ucg_then(if_stmt, ucg_op(EQ, big, ucg_i1_value(1)));
-        ucg_op(ADD_ASSIGN, n, ucg_i32_value(10));
-        ucg_end(if_stmt);
-
-        ucg_op(ASSIGN, big, ucg_i1_value(0));
-
-        if_stmt = ucg_if();
-        ucg_then(if_stmt, ucg_op(EQ, big, ucg_i1_value(1)));
-        ucg_op(ADD_ASSIGN, n, ucg_i32_value(100));
-        ucg_end(if_stmt);
-
-        if_stmt = ucg_if();
-        ucg_then(if_stmt, ucg_op(EQ, big, ucg_i1_value(0)));
-        ucg_op(ADD_ASSIGN, n, ucg_i32_value(1));
-        ucg_end(if_stmt);
-
-        ucg_ret(n);
+            ucg_ret(n);
+        }
+        ucg_end(fn_main);
+        // clang-format on
         break;
     }
     case 4: {
-        Ucg *is_even = ucg_fn("is_even", ucg_i1_type(), // clang-format off
-				ucg_param("n", ucg_i32_type()), 
-				NULL
-			); // clang-format on
+        // clang-format off
+        Ucg *is_even = ucg_fn("is_even", ucg_bool_type(),
+                              ucg_param("n", ucg_i32_type()),
+                              NULL);
+        {
+            Ucg *n = ucg_get_param(is_even, 0);
+            ucg_ret(ucg_op(EQ,
+                ucg_op(MOD, n, ucg_i32_value(2)),
+                ucg_i32_value(0)
+            ));
+        }
+        ucg_end(is_even);
 
-        Ucg *n = ucg_get_param(is_even, 0);
+        Ucg *both = ucg_fn("both", ucg_bool_type(),
+                           ucg_param("a", ucg_bool_type()),
+                           ucg_param("b", ucg_bool_type()),
+                           NULL);
+        {
+            Ucg *a = ucg_get_param(both, 0);
+            Ucg *b = ucg_get_param(both, 1);
+            ucg_ret(ucg_op(AND, a, b));
+        }
+        ucg_end(both);
 
-        ucg_ret(ucg_op(EQ, // clang-format off
-					ucg_op(MOD, 
-						n, 
-						ucg_i32_value(2)), 
-					ucg_i32_value(0)
-				) // clang-format on
-        );
-
-        Ucg *both = ucg_fn("both", ucg_i1_type(), // clang-format off
-							ucg_param("a", ucg_i1_type()),
-                        	ucg_param("b", ucg_i1_type()), 
-							NULL
-						); // clang-format on
-
-        Ucg *a = ucg_get_param(both, 0);
-        Ucg *b = ucg_get_param(both, 1);
-
-        ucg_ret(ucg_op(AND, a, b));
-
-
-        Ucg *main_fn = ucg_fn("main", ucg_i32_type(), NULL);
-        ucg_ret(ucg_i32_value(0));
-
+        Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL);
+        {
+            ucg_ret(ucg_i32_value(0));
+        }
+        ucg_end(fn_main);
+        // clang-format on
         break;
     }
     case 5: {
-        Ucg *fn = ucg_fn("main", ucg_i32_type(), NULL);
+        // clang-format off
+        Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL);
+        {
+            Ucg *flag = ucg_var("flag", ucg_bool_type());
 
-        Ucg *flag = ucg_var("flag", ucg_i1_type());
+            Ucg *if_stmt = ucg_if();
+            ucg_then(if_stmt, ucg_op(EQ, flag, ucg_bool_value(1)));
+            {
+                ucg_ret(ucg_i32_value(1));
+            }
+            Ucg *elif_stmt = ucg_elif(if_stmt);
+            ucg_then(elif_stmt, ucg_op(EQ, flag, ucg_bool_value(0)));
+            {
+                ucg_ret(ucg_i32_value(2));
+            }
+            Ucg *else_stmt = ucg_else(if_stmt);
+            ucg_then(else_stmt, NULL);
+            {
+                ucg_ret(ucg_i32_value(3));
+            }
+            ucg_end(if_stmt);
 
-        Ucg *if_stmt = ucg_if();
-        ucg_then(if_stmt, ucg_op(EQ, flag, ucg_i1_value(1)));
-        ucg_ret(ucg_i32_value(1));
-
-        Ucg *elif_stmt = ucg_elif(if_stmt);
-        ucg_then(elif_stmt, ucg_op(EQ, flag, ucg_i1_value(0)));
-        ucg_ret(ucg_i32_value(2));
-
-        Ucg *else_stmt = ucg_else(if_stmt);
-        ucg_then(else_stmt, NULL);
-        ucg_ret(ucg_i32_value(3));
-
-        ucg_end(if_stmt);
-
-        ucg_ret(ucg_i32_value(0));
+            ucg_ret(ucg_i32_value(0));
+        }
+        ucg_end(fn_main);
+        // clang-format on
         break;
     }
     case 6: {
-        Ucg *is_even = ucg_fn("is_even", ucg_i1_type(), // clang-format off
-        		ucg_param("n1", ucg_i32_type()),
-        		NULL
-        	); // clang-format on
+        // clang-format off
+        Ucg *is_even = ucg_fn("is_even", ucg_bool_type(),
+                              ucg_param("n1", ucg_i32_type()),
+                              NULL);
+        {
+            Ucg *n = ucg_get_param(is_even, 0);
+            ucg_ret(ucg_op(EQ,
+                ucg_op(MOD, n, ucg_i32_value(2)),
+                ucg_i32_value(0)
+            ));
+        }
+        ucg_end(is_even);
 
-        Ucg *n = ucg_get_param(is_even, 0);
+        Ucg *both = ucg_fn("both", ucg_bool_type(),
+                           ucg_param("a", ucg_bool_type()),
+                           ucg_param("b", ucg_bool_type()),
+                           NULL);
+        {
+            Ucg *a = ucg_get_param(both, 0);
+            Ucg *b = ucg_get_param(both, 1);
+            ucg_ret(ucg_op(AND, a, b));
+        }
+        ucg_end(both);
 
-        ucg_ret(ucg_op(EQ, // clang-format off
-        			ucg_op(MOD,
-        				n,
-        				ucg_i32_value(2)),
-        			ucg_i32_value(0)
-        		) // clang-format on
-        );
+        Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL);
+        {
+            Ucg *n0 = ucg_var("n0", ucg_i32_type());
 
-        Ucg *both = ucg_fn("both", ucg_i1_type(), // clang-format off
-        					ucg_param("a", ucg_i1_type()),
-                        	ucg_param("b", ucg_i1_type()),
-        					NULL
-        				); // clang-format on
-
-        Ucg *a = ucg_get_param(both, 0);
-        Ucg *b = ucg_get_param(both, 1);
-
-        ucg_ret(ucg_op(AND, a, b));
-
-
-        Ucg *main_fn = ucg_fn("main", ucg_i32_type(), NULL);
-        Ucg *n0 = ucg_var("n0", ucg_i32_type());
-
-        Ucg *if_stmt = ucg_if();
-        ucg_then(if_stmt, // clang-format off
-            ucg_op(EQ,
+            Ucg *if_stmt = ucg_if();
+            ucg_then(if_stmt, ucg_op(EQ,
                 ucg_fn_call(is_even, ucg_i32_value(4), NULL),
-                ucg_i1_value(1)
-            )
-        ); // clang-format on
-        ucg_op(ADD_ASSIGN, n0, ucg_i32_value(1));
+                ucg_bool_value(1)
+            ));
+            {
+                ucg_op(ADD_ASSIGN, n0, ucg_i32_value(1));
+            }
+            ucg_end(if_stmt);
 
-        ucg_end(if_stmt);
+            if_stmt = ucg_if();
+            ucg_then(if_stmt, ucg_op(EQ,
+                ucg_fn_call(both,
+                    ucg_fn_call(is_even, ucg_i32_value(2), NULL),
+                    ucg_fn_call(is_even, ucg_i32_value(6), NULL),
+                    NULL
+                ),
+                ucg_bool_value(1)
+            ));
+            {
+                ucg_op(ADD_ASSIGN, n0, ucg_i32_value(2));
+            }
+            ucg_end(if_stmt);
 
-        if_stmt = ucg_if();
-        ucg_then(if_stmt, // clang-format off
-            ucg_op(EQ,
-                ucg_fn_call(both, 
-                    ucg_fn_call(is_even, ucg_i32_value(2), NULL), 
-                    ucg_fn_call(is_even, ucg_i32_value(6), NULL), 
-                    NULL),
-                ucg_i1_value(1)
-            )
-        ); // clang-format on
-        ucg_op(ADD_ASSIGN, n0, ucg_i32_value(2));
+            if_stmt = ucg_if();
+            ucg_then(if_stmt, ucg_op(EQ,
+                ucg_fn_call(both,
+                    ucg_fn_call(is_even, ucg_i32_value(2), NULL),
+                    ucg_fn_call(is_even, ucg_i32_value(7), NULL),
+                    NULL
+                ),
+                ucg_bool_value(1)
+            ));
+            {
+                ucg_op(ADD_ASSIGN, n0, ucg_i32_value(10));
+            }
+            ucg_end(if_stmt);
 
-        ucg_end(if_stmt);
-
-        if_stmt = ucg_if();
-        ucg_then(if_stmt, // clang-format off
-            ucg_op(EQ,
-                ucg_fn_call(both, 
-                    ucg_fn_call(is_even, ucg_i32_value(2), NULL), 
-                    ucg_fn_call(is_even, ucg_i32_value(7), NULL), 
-                    NULL),
-                ucg_i1_value(1)
-            )
-        ); // clang-format on
-        ucg_op(ADD_ASSIGN, n0, ucg_i32_value(10));
-
-        ucg_end(if_stmt);
-
-        // Ucg *f = ucg_fn_call(foo, ucg_i32_value(3), NULL);
-        ucg_ret(n0);
+            ucg_ret(n0);
+        }
+        ucg_end(fn_main);
+        // clang-format on
         break;
     }
     case 7: {
+        // clang-format off
         Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL);
-        Ucg *a = ucg_var("a", ucg_i1_type());
-        Ucg *b = ucg_var("b", ucg_i1_type());
-        Ucg *n = ucg_var("n", ucg_i32_type());
+        {
+            Ucg *a = ucg_var("a", ucg_bool_type());
+            Ucg *b = ucg_var("b", ucg_bool_type());
+            Ucg *n = ucg_var("n", ucg_i32_type());
 
-        ucg_op(ASSIGN, a, ucg_i1_value(0));
-        ucg_op(ASSIGN, a, ucg_i1_value(1));
-        ucg_op(ASSIGN, n, ucg_i32_value(0));
+            ucg_assign(a, ucg_bool_value(0));
+            ucg_assign(a, ucg_bool_value(1));
+            ucg_assign(n, ucg_i32_value(0));
 
-        Ucg *if_stmt = NULL;
-        if_stmt = ucg_if();
-        ucg_then(if_stmt, ucg_op(OR, a, b));
-        ucg_op(ADD_ASSIGN, n, ucg_i32_value(5));
-        ucg_end(if_stmt);
+            Ucg *if_stmt = ucg_if();
+            ucg_then(if_stmt, ucg_op(OR, a, b));
+            {
+                ucg_op(ADD_ASSIGN, n, ucg_i32_value(5));
+            }
+            ucg_end(if_stmt);
 
+            if_stmt = ucg_if();
+            ucg_then(if_stmt, ucg_op(AND, a, b));
+            {
+                ucg_op(ADD_ASSIGN, n, ucg_i32_value(50));
+            }
+            ucg_end(if_stmt);
 
-        if_stmt = ucg_if();
-        ucg_then(if_stmt, ucg_op(AND, a, b));
-        ucg_op(ADD_ASSIGN, n, ucg_i32_value(50));
-        ucg_end(if_stmt);
-
-        ucg_ret(n);
-
+            ucg_ret(n);
+        }
+        ucg_end(fn_main);
+        // clang-format on
         break;
     }
     case 8: {
-        Ucg *fn = ucg_fn("main", ucg_i32_type(), NULL);
+        // clang-format off
+        Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL);
+        {
+            Ucg *a = ucg_var("a", ucg_i32_type());
+            ucg_assign(a, ucg_i32_value(0));
 
-        Ucg *a = ucg_var("a", ucg_i32_type());
-        ucg_op(ASSIGN, a, ucg_i32_value(0));
+            Ucg *loop = ucg_loop();
+            ucg_then(loop, ucg_op(LT, a, ucg_i32_value(5)));
+            {
+                ucg_op(ADD_ASSIGN, a, ucg_i32_value(1));
+            }
+            ucg_end(loop);
 
-        Ucg *loop = ucg_loop();
-        ucg_then(loop, // clang-format off
-            ucg_op(LT, 
-                a, 
-                ucg_i32_value(5)
-            )
-        ); // clang-format on
-
-        ucg_op(ADD_ASSIGN, a, ucg_i32_value(1));
-
-        ucg_end(loop);
-
-        ucg_ret(a);
+            ucg_ret(a);
+        }
+        ucg_end(fn_main);
+        // clang-format on
         break;
     }
     case 9: {
-        Ucg *fn = ucg_fn("main", ucg_i32_type(), NULL);
+        // clang-format off
+        Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL);
+        {
+            Ucg *i = ucg_var("i", ucg_i32_type());
+            ucg_assign(i, ucg_i32_value(0));
 
-        Ucg *i = ucg_var("i", ucg_i32_type());
-        ucg_op(ASSIGN, i, ucg_i32_value(0));
+            Ucg *going = ucg_var("going", ucg_bool_type());
+            ucg_assign(going, ucg_bool_value(1));
 
-        Ucg *going = ucg_var("going", ucg_i1_type());
-        ucg_op(ASSIGN, going, ucg_i1_value(1));
+            Ucg *loop = ucg_loop();
+            ucg_then(loop, ucg_op(EQ, going, ucg_bool_value(1)));
+            {
+                ucg_op(ADD_ASSIGN, i, ucg_i32_value(1));
+                ucg_assign(going, ucg_op(LT, i, ucg_i32_value(4)));
+            }
+            ucg_end(loop);
 
-        Ucg *loop = ucg_loop();
-        ucg_then(loop, // clang-format off
-            ucg_op(EQ, 
-                going,
-                ucg_i1_value(1)
-            )
-        ); // clang-format on
-
-        ucg_op(ADD_ASSIGN, i, ucg_i32_value(1));
-        ucg_op(ASSIGN, going, // clang-format off
-			ucg_op(
-				LT,
-				i,
-				ucg_i32_value(4)
-			)
-		); // clang-format on
-
-        ucg_end(loop);
-
-        ucg_ret(i);
+            ucg_ret(i);
+        }
+        ucg_end(fn_main);
+        // clang-format on
         break;
     }
     case 10: {
-        Ucg *printf = ucg_proto("printf", // clang-format off
-						ucg_i32_type(), 
-						ucg_ref_type(ucg_i8_type()), 
-						ucg_varg(),
-						NULL
-					); // clang-format on
+        // clang-format off
+        Ucg *printf = ucg_proto("printf", ucg_i32_type(),
+                                ucg_param("fmt", ucg_string_type()),
+                                ucg_varg_type(),
+                                NULL);
 
-        Ucg *fn = ucg_fn("main", ucg_i32_type(), NULL);
-        Ucg *a = ucg_var("a", ucg_char_type());
-        Ucg *b = ucg_var("b", ucg_char_type());
+        Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL);
+        {
+            Ucg *a = ucg_var("a", ucg_char_type());
+            Ucg *b = ucg_var("b", ucg_char_type());
 
-        // Ucg *b = ucg_var('b', ucg_i8_type());
+            ucg_assign(a, ucg_char_value('a'));
+            ucg_assign(b, ucg_char_value('b'));
 
-        ucg_assign(a, ucg_char_value('a'));
-        ucg_assign(b, ucg_char_value('b'));
+            ucg_fn_call(printf, ucg_string_value("<%c%c>\n"), a, b, NULL);
 
-        ucg_fn_call(printf, // clang-format off
-					ucg_string_value("<%c%c>\n"), 
-					a, b,
-                    NULL); // clang-format on
-
-        ucg_ret(ucg_i32_value(0));
+            ucg_ret(ucg_i32_value(0));
+        }
+        ucg_end(fn_main);
+        // clang-format on
         break;
     }
     case 11: {
-        Ucg *fn = ucg_fn("main", ucg_i32_type(), NULL);
+        // clang-format off
+        Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL);
+        {
+            Ucg *c = ucg_var("c", ucg_char_type());
+            ucg_assign(c, ucg_char_value('x'));
 
-        Ucg *c = ucg_var("c", ucg_char_type());
-        ucg_assign(c, ucg_char_value('x'));
+            Ucg *n = ucg_var("n", ucg_i32_type());
+            ucg_assign(n, ucg_i32_value(0));
 
-        Ucg *n = ucg_var("n", ucg_i32_type());
-        ucg_assign(n, ucg_i32_value(0));
+            Ucg *if_stmt = ucg_if();
+            ucg_then(if_stmt, ucg_op(EQ, c, ucg_char_value('x')));
+            {
+                ucg_op(ADD_ASSIGN, n, ucg_i32_value(1));
+            }
+            ucg_end(if_stmt);
 
-        Ucg *stmt = ucg_if();
-        ucg_then(stmt, ucg_op(EQ, c, ucg_char_value('x')));
-        ucg_op(ADD_ASSIGN, n, ucg_i32_value(1));
-        ucg_end(stmt);
+            if_stmt = ucg_if();
+            ucg_then(if_stmt, ucg_op(NQ, c, ucg_char_value('y')));
+            {
+                ucg_op(ADD_ASSIGN, n, ucg_i32_value(1));
+            }
+            ucg_end(if_stmt);
 
-        stmt = ucg_if();
-        ucg_then(stmt, ucg_op(NQ, c, ucg_char_value('y')));
-        ucg_op(ADD_ASSIGN, n, ucg_i32_value(1));
-        ucg_end(stmt);
+            if_stmt = ucg_if();
+            ucg_then(if_stmt, ucg_op(EQ, c, ucg_char_value('z')));
+            {
+                ucg_op(ADD_ASSIGN, n, ucg_i32_value(10));
+            }
+            ucg_end(if_stmt);
 
-
-        stmt = ucg_if();
-        ucg_then(stmt, ucg_op(EQ, c, ucg_char_value('z')));
-        ucg_op(ADD_ASSIGN, n, ucg_i32_value(10));
-        ucg_end(stmt);
-
-        ucg_ret(n);
+            ucg_ret(n);
+        }
+        ucg_end(fn_main);
+        // clang-format on
         break;
     }
     case 12: {
-        Ucg *fn = ucg_fn("main", ucg_i32_type(), NULL);
+        // clang-format off
+        Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL);
+        {
+            Ucg *c = ucg_var("c", ucg_char_type());
+            ucg_assign(c, ucg_char_value('m'));
 
-        Ucg *c = ucg_var("c", ucg_char_type());
-        ucg_assign(c, ucg_char_value('m'));
+            Ucg *n = ucg_var("n", ucg_i32_type());
+            ucg_assign(n, ucg_i32_value(0));
 
-        Ucg *n = ucg_var("n", ucg_i32_type());
-        ucg_assign(n, ucg_i32_value(0));
+            Ucg *if_stmt = ucg_if();
+            ucg_then(if_stmt, ucg_op(GT, c, ucg_char_value('a')));
+            {
+                ucg_op(ADD_ASSIGN, n, ucg_i32_value(1));
+            }
+            ucg_end(if_stmt);
 
-        Ucg *stmt = ucg_if();
-        ucg_then(stmt, ucg_op(GT, c, ucg_char_value('a')));
-        ucg_op(ADD_ASSIGN, n, ucg_i32_value(1));
-        ucg_end(stmt);
+            if_stmt = ucg_if();
+            ucg_then(if_stmt, ucg_op(LT, c, ucg_char_value('z')));
+            {
+                ucg_op(ADD_ASSIGN, n, ucg_i32_value(1));
+            }
+            ucg_end(if_stmt);
 
-        stmt = ucg_if();
-        ucg_then(stmt, ucg_op(LT, c, ucg_char_value('z')));
-        ucg_op(ADD_ASSIGN, n, ucg_i32_value(1));
-        ucg_end(stmt);
+            if_stmt = ucg_if();
+            ucg_then(if_stmt, ucg_op(AND,
+                ucg_op(GE, c, ucg_char_value('m')),
+                ucg_op(LE, c, ucg_char_value('m'))
+            ));
+            {
+                ucg_op(ADD_ASSIGN, n, ucg_i32_value(1));
+            }
+            ucg_end(if_stmt);
 
-        stmt = ucg_if();
-        ucg_then(stmt, // clang-format off
-			ucg_op(AND,
-				ucg_op(GE, c, ucg_char_value('m')),
-				ucg_op(LE, c, ucg_char_value('m'))
-			)); // clang-format on
-
-        ucg_op(ADD_ASSIGN, n, ucg_i32_value(1));
-        ucg_end(stmt);
-
-        ucg_ret(n);
+            ucg_ret(n);
+        }
+        ucg_end(fn_main);
+        // clang-format on
         break;
     }
     case 13: {
-		// clang-format off
-        Ucg *printf = ucg_proto("printf",
-							ucg_i32_type(), 
-							ucg_ref_type(ucg_char_type()),
-							ucg_varg(),
-							NULL); // clang-format on
-        Ucg *fn = ucg_fn("main", ucg_i32_type(), NULL);
-        Ucg *nl = ucg_var("nl", ucg_char_type());
-        ucg_assign(nl, ucg_char_value('\n'));
+        // clang-format off
+        Ucg *printf = ucg_proto("printf", ucg_i32_type(),
+                                ucg_param("fmt", ucg_string_type()),
+                                ucg_varg_type(),
+                                NULL);
 
-        Ucg *tab = ucg_var("tab", ucg_char_type());
-        ucg_assign(tab, ucg_char_value('\t'));
+        Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL);
+        {
+            Ucg *nl = ucg_var("nl", ucg_char_type());
+            ucg_assign(nl, ucg_char_value('\n'));
 
-        ucg_fn_call(printf, ucg_string_value("[%c]\n"), nl, NULL);
-        ucg_fn_call(printf, ucg_string_value("[%c]\n"), tab, NULL);
-        ucg_fn_call(printf, // clang-format off
-			ucg_string_value("[%c] [%c]\n"), 
-			ucg_char_value('\''),
-			ucg_char_value('\\'),
-			NULL); // clang-format on
+            Ucg *tab = ucg_var("tab", ucg_char_type());
+            ucg_assign(tab, ucg_char_value('\t'));
 
+            ucg_fn_call(printf, ucg_string_value("[%c]\n"), nl, NULL);
+            ucg_fn_call(printf, ucg_string_value("[%c]\n"), tab, NULL);
+            ucg_fn_call(printf,
+                ucg_string_value("[%c] [%c]\n"),
+                ucg_char_value('\''),
+                ucg_char_value('\\'),
+                NULL
+            );
 
-        ucg_ret(ucg_i32_value(0));
+            ucg_ret(ucg_i32_value(0));
+        }
+        ucg_end(fn_main);
+        // clang-format on
         break;
     }
     case 14: {
-		// clang-format off
-        Ucg *printf = ucg_proto("printf",
-							ucg_i32_type(), 
-							ucg_ref_type(ucg_char_type()),
-							ucg_varg(),
-							NULL); // clang-format on
-		
-		
-        Ucg *fn = ucg_fn("main", ucg_i32_type(), NULL);
-        Ucg *nl = ucg_var("nl", ucg_char_type());
-        ucg_assign(nl, ucg_char_value('\n'));
+        // clang-format off
+        Ucg *printf = ucg_proto("printf", ucg_i32_type(),
+                                ucg_param("fmt", ucg_string_type()),
+                                ucg_varg_type(),
+                                NULL);
 
-        Ucg *tab = ucg_var("tab", ucg_char_type());
-        ucg_assign(tab, ucg_char_value('\t'));
+        Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL);
+        {
+            Ucg *nl = ucg_var("nl", ucg_char_type());
+            ucg_assign(nl, ucg_char_value('\n'));
 
-        ucg_fn_call(printf, ucg_string_value("[%c]\n"), nl, NULL);
-        ucg_fn_call(printf, ucg_string_value("[%c]\n"), tab, NULL);
-        ucg_fn_call(printf, // clang-format off
-			ucg_string_value("[%c] [%c]\n"), 
-			ucg_char_value('\''),
-			ucg_char_value('\\'),
-			NULL); // clang-format on
+            Ucg *tab = ucg_var("tab", ucg_char_type());
+            ucg_assign(tab, ucg_char_value('\t'));
 
-        ucg_ret(ucg_i32_value(0));
+            ucg_fn_call(printf, ucg_string_value("[%c]\n"), nl, NULL);
+            ucg_fn_call(printf, ucg_string_value("[%c]\n"), tab, NULL);
+            ucg_fn_call(printf,
+                ucg_string_value("[%c] [%c]\n"),
+                ucg_char_value('\''),
+                ucg_char_value('\\'),
+                NULL
+            );
+
+            ucg_ret(ucg_i32_value(0));
+        }
+        ucg_end(fn_main);
+        // clang-format on
+        break;
+    }
+    case 15: {
+        // clang-format off
+        Ucg *printf = ucg_proto("printf", ucg_i32_type(),
+                                ucg_param("fmt", ucg_string_type()),
+                                ucg_varg_type(),
+                                NULL);
+
+        Ucg *answer = ucg_fn("answer", ucg_char_type(),
+                             ucg_param("yes", ucg_bool_type()),
+                             NULL);
+        {
+            Ucg *yes = ucg_get_param(answer, 0);
+            Ucg *if_stmt = ucg_if();
+            ucg_then(if_stmt, ucg_op(EQ, yes, ucg_bool_value(1)));
+            {
+                ucg_ret(ucg_char_value('Y'));
+            }
+            ucg_end(if_stmt);
+
+            ucg_ret(ucg_char_value('N'));
+        }
+        ucg_end(answer);
+
+        Ucg *show = ucg_fn("show", ucg_void_type(),
+                           ucg_param("c", ucg_char_type()),
+                           NULL);
+        {
+            ucg_fn_call(printf, 
+				ucg_string_value("%c\n"), 
+				ucg_get_param(show, 0), 
+				NULL);
+        }
+        ucg_end(show);
+
+        Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL);
+        {
+            ucg_fn_call(show, 
+				ucg_fn_call(answer, 
+					ucg_bool_value(1), 
+					NULL), 
+				NULL);
+            ucg_fn_call(printf, 
+				ucg_string_value("\n"), 
+				NULL);
+            ucg_fn_call(show, 
+				ucg_fn_call(answer, 
+					ucg_bool_value(0), 
+					NULL), 
+				NULL);
+            ucg_fn_call(printf, 
+				ucg_string_value("\n"), 
+				NULL);
+        }
+        ucg_end(fn_main);
+        // clang-format on
+        break;
+    }
+    case 16: {
+        Ucg *fact =
+            ucg_fn("fact", ucg_i32_type(), ucg_param("n", ucg_i32_type()), NULL);
+        {
+            Ucg *stmt = ucg_if();
+            {
+                ucg_then(stmt, ucg_op(LE, ucg_get_param(fact, 0), ucg_i32_value(1)));
+                ucg_ret(ucg_i32_value(1));
+            }
+            ucg_end(stmt);
+            ucg_ret(ucg_op(
+                MUL, ucg_get_param(fact, 0),
+                ucg_fn_call(fact,
+                            ucg_op(SUB, ucg_get_param(fact, 0), ucg_i32_value(1)),
+                            NULL)));
+        }
+        ucg_end(fact);
+
+        Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL);
+
+        Ucg *call = ucg_fn_call(fact, ucg_i32_value(5), NULL);
+        ucg_ret(call);
+        ucg_end(fn_main);
         break;
     }
     default: {
         return false;
-        break;
     }
     }
     return true;
@@ -1571,17 +1707,18 @@ bool compile_test(int p) {
     ucg_finish();
     return r;
 }
-
+#if 0
 int main() {
     mkdir2("build");
 
-#if 1
-    compile_test(14);
-#else
+#    if 1
+    compile_test(16);
+#    else
     for (int i = 0; compile_test(i); i++)
         ;
-#endif
+#    endif
 }
+#endif
 
 // UTILS
 const char *to_string(Type type) {

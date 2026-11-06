@@ -28,22 +28,17 @@ struct Token {
     int e;
 
     bool is_type;
-    bool is_variadic;
-    uraIR ir;
+    bool is_varg;
+    // uraIR ir;
 
     union {
         struct {
             int index;
         } attr;
         struct {
-            long value;
-        } i32;
-        struct {
-            int value; // TODO: check unicode stuff
-        } i8;
-        struct {
-            int value;
-        } b1;
+            int shift;
+            long long value;
+        } num;
         struct {
             char *value;
         } chars;
@@ -99,13 +94,13 @@ struct {
     char *value;
     Token token;
 } keywords[] = {
-    { "bool", { .type = BOOL, .is_type = true } },
-    { "char", { .type = I8, .is_type = true } },
-    { "i8", { .type = I8, .is_type = true } },
-    { "i32", { .type = I32, .is_type = true } },
+    { "bool", { .type = INT, .is_type = true } },
+    { "char", { .type = INT, .is_type = true } },
+    { "i8", { .type = INT, .is_type = true } },
+    { "num", { .type = INT, .is_type = true } },
 
-    { "True", { .type = BOOL, .b1 = { .value = true } } },
-    { "False", { .type = BOOL, .b1 = { .value = false } } },
+    { "True", { .type = INT, .num = { .value = true } } },
+    { "False", { .type = INT, .num = { .value = false } } },
 
     { "struct", { .type = STRUCT } },
     { "and", { .type = AND } },
@@ -117,7 +112,7 @@ struct {
     { "if", { .type = IF } },
     { "elif", { .type = ELIF } },
     { "else", { .type = ELSE } },
-    { "while", { .type = WHILE } },
+    { "while", { .type = LOOP } },
     { "break", { .type = BRK } },
     { "continue", { .type = CNT } },
     { "template", { .type = TEMPLATE } },
@@ -190,9 +185,9 @@ char *escaped[256] = {
 
 char *type_names[END + 1] = {
     [VOID] = "void",
-    [BOOL] = "bool",
-    [I8] = "i8",
-    [I32] = "i32",
+    // [BOOL] = "bool",
+    // [I8] = "i8",
+    // [I32] = "num",
 };
 
 // TOKENIZE
@@ -209,48 +204,72 @@ Token *new_token(Type type, Token *from) {
     return new;
 }
 
-Token *parse_token(Type type, int s, int e, int space) {
-    Token *new = arena_alloc(1, sizeof(Token));
+Token *parse_id(int s, int e, int space) {
+    Token *new = new_token(ID, NULL);
     char *buff = ura.file->buff;
 
-    switch (type) {
-    case ID: {
-        int i = 0;
-        for (; keywords[i].value; i++) {
-            char *value = keywords[i].value;
-            size_t len = strlen(value);
-            if (e - s == len && strncmp2(buff + s, value, e - s)) {
-                *new = keywords[i].token;
-                break;
-            }
-        }
-        if (keywords[i].value)
+    int i = 0;
+    for (; keywords[i].value; i++) {
+        char *value = keywords[i].value;
+        size_t len = strlen(value);
+        if (e - s == len && strncmp2(buff + s, value, e - s)) {
+            *new = keywords[i].token;
             break;
+        }
+    }
+    if (keywords[i].value == NULL)
         new->name = strndup2(buff + s, e - s);
-        break;
-    }
-    case CHARS: {
-        new->chars.value = parse_escaped(buff, s + 1, e - 1);
-        break;
-    }
-    case I8: {
-        char *str = parse_escaped(buff, s + 1, e - 1);
-        // TODO: assert_char
-        new->i8.value = str[0];
-        break;
-    }
-    case I32: {
-        new->i32.value = strtol(buff + s, NULL, 10);
-        break;
-    }
-    default: {
-        break;
-    }
-    }
+
     new->line = ura.line;
     new->s = s;
     new->e = e;
     new->space = space / TAB + ((space % TAB) != 0);
+    print("new token %t\n", new->type);
+    return new;
+}
+
+Token *parse_num(int s, int e, int space) {
+    Token *new = new_token(INT, NULL);
+    char *buff = ura.file->buff;
+
+    new->num.value = strtol(buff + s, NULL, 10);
+    new->line = ura.line;
+    new->s = s;
+    new->e = e;
+    new->space = space / TAB + ((space % TAB) != 0);
+    print("new token %t\n", new->type);
+    return new;
+}
+
+
+
+
+Token *parse_string(int s, int e, int space) {
+    Token *new = new_token(CHARS, NULL);
+    char *buff = ura.file->buff;
+
+    new->chars.value = parse_escaped(buff, s + 1, e - 1);
+    new->line = ura.line;
+    new->s = s;
+    new->e = e;
+    new->space = space / TAB + ((space % TAB) != 0);
+    print("new token %t\n", new->type);
+    return new;
+}
+
+Token *parse_char(int s, int e, int space) {
+    Token *new = new_token(INT, NULL);
+    char *buff = ura.file->buff;
+
+    char *str = parse_escaped(buff, s + 1, e - 1);
+    // TODO: assert_char
+    new->num.value = str[0];
+
+    new->line = ura.line;
+    new->s = s;
+    new->e = e;
+    new->space = space / TAB + ((space % TAB) != 0);
+    print("new token %t\n", new->type);
     return new;
 }
 
@@ -303,6 +322,7 @@ void tokenize(File *file, int space2) {
             char c = buff[s];
             e++;
             char str[3] = { [0] = '\n', [1] = c };
+            // print("2. hellooo\n");
             while (!strchr2(str, buff[e])) {
                 if (buff[e] == '\\' && !strchr2("\n", buff[e + 1]))
                     e++;
@@ -312,7 +332,7 @@ void tokenize(File *file, int space2) {
             // if (!check_quote(s, e, line))
             //     continue;
             e++; // skip last ' or "
-            parse_token(c == '"' ? CHARS : I8, s, e, space);
+            // parse_id(c == '"' ? CHARS : I8, s, e, space);
             continue;
         }
         while (isdigit(buff[e]))
@@ -321,19 +341,70 @@ void tokenize(File *file, int space2) {
             // TODO:
             // if (!check_number_fits(s, e, line))
             //     continue;
-            parse_token(I32, s, e, space);
+            parse_num(s, e, space);
             continue;
         }
         while (isalpha(buff[s]) && (isalnum(buff[e]) || buff[e] == '_'))
             e++;
-		if(e != s) {
-			
-		}
+        if (e != s) {
+            parse_id(s, e, space);
+            continue;
+        }
+        for (int i = 0; specials[i].value; i++) {
+            char *value = specials[i].value;
+            Type type = specials[i].type;
+            int len = (int)strlen(value);
+            if (strncmp2(value, buff + s, len)) {
+                new_token(type, NULL);
+                if (type == DOTS)
+                    space += TAB;
+                e += len;
+                break;
+            }
+        }
+        if (e != s) {
+            continue;
+        }
+        eprint("unknow charcter <%c>\n", buff[s]);
+        exit(1);
     }
+    new_token(LAST, NULL);
 }
 
 // AST
+Node *new_node(Token *token) {
+    Node *new = arena_alloc(1, sizeof(Node));
+    new->token = token;
+    return new;
+}
 
+Token *peek(int pos) {
+    assert(ura.exe_pos + pos <= ura.tokens_count);
+    return ura.tokens[ura.exe_pos + pos];
+    return NULL;
+}
+
+Token *next() {
+    Token *token = peek(0);
+    if (token->type != LAST)
+        ura.exe_pos++;
+    return token;
+}
+
+Node *pase_prime() {
+    Token *token = next();
+    Node *node = NULL;
+    switch(token->type) {
+        case FN_DEC: {
+            node = new_node(token);
+            token = next();
+            node->token->name = token->name;
+            
+            break;
+        }
+    }
+    return NULL;
+}
 
 // ANALYZE
 
@@ -447,8 +518,8 @@ int _print_token(ioFile fp, Token *token) {
     if (token->name != NULL) r += fprintf(fp, " name (%s)", token->name);
     if (token->name == NULL && !token->is_type) { 
         switch(token->type) {
-        case I8:    r += fprintf(fp, " value (%c)", token->i8.value); break;
-        case I32:   r += fprintf(fp, " value (%ld)", token->i32.value); break;
+        // case I8:    r += fprintf(fp, " value (%c)", token->i8.value); break;
+        // case I32:   r += fprintf(fp, " value (%ld)", token->num.value); break;
         case CHARS: {
             #if 1
             r += fprintf(fp, " value (");
@@ -461,11 +532,11 @@ int _print_token(ioFile fp, Token *token) {
             #endif
             break;
         }
-        case BOOL: {
-            char *b1 = token->b1.value ? "True" : "False";
-            r += fprintf(fp, " value (%s)", b1);
-            break;
-        }
+        // case BOOL: {
+        //     char *b1 = token->b1.value ? "True" : "False";
+        //     r += fprintf(fp, " value (%s)", b1);
+        //     break;
+        // }
         default: break;
         }
     } 
@@ -500,29 +571,29 @@ void _print_node_helper(NodePrint *elems, Node *node, int depth) {
         _print_node_helper(elems, node->children[i], depth + 3);
 }
 
-bool is_open(NodePrint *elems, size_t i, int level) {
-    for (size_t j = i + 1; j < elems->nodes_count; j++) {
-        if (elems->depths[j] <= level)
-            return elems->depths[j] == level;
-    }
-    return 0;
-}
+// bool is_open(NodePrint *elems, size_t i, int level) {
+//     for (size_t j = i + 1; j < elems->nodes_count; j++) {
+//         if (elems->depths[j] <= level)
+//             return elems->depths[j] == level;
+//     }
+//     return 0;
+// }
 
-int _print_node(ioFile fp, Node *node) {
-    NodePrint elems = {};
-    int r = 0;
-    _print_node_helper(&elems, node, 0);
+// int _print_node(ioFile fp, Node *node) {
+//     NodePrint elems = {};
+//     int r = 0;
+//     _print_node_helper(&elems, node, 0);
 
-    for (size_t i = 0; i < elems.nodes_count; i++) {
-        int depth = elems.depths[i];
-        for (int level = 1; level < depth; level++)
-            r += fprintf(fp, "%s", is_open(&elems, i, level) ? "│ " : " ");
-        if (depth)
-            r += fprintf(fp, "%s", is_open(&elems, i, depth) ? "├─" : "└─");
-        r += _print_token(fp, elems.nodes[i]->token) + fprintf(fp, "\n");
-    }
-    return 0;
-}
+//     for (size_t i = 0; i < elems.nodes_count; i++) {
+//         int depth = elems.depths[i];
+//         for (int level = 1; level < depth; level++)
+//             r += fprintf(fp, "%s", is_open(&elems, i, level) ? "│ " : " ");
+//         if (depth)
+//             r += fprintf(fp, "%s", is_open(&elems, i, depth) ? "├─" : "└─");
+//         r += _print_token(fp, elems.nodes[i]->token) + fprintf(fp, "\n");
+//     }
+//     return 0;
+// }
 
 int _print(ioFile fp, char *fmt, ...) {
     va_list args;
@@ -551,7 +622,7 @@ int _fprint(ioFile fp, const char *fmt, va_list ap) {
         case '%': r += fprintf(fp, "%%"); break;
         case 't': r += fprintf(fp, "%s", to_string(va_arg(ap, Type))); break;
         case 'k': r += _print_token(fp, va_arg(ap, Token *)); break;
-        case 'n': r += _print_node(fp, va_arg(ap, Node *)); break;
+        // case 'n': r += _print_node(fp, va_arg(ap, Node *)); break;
         case 'N': r += _print_type(fp, va_arg(ap, Node *)); break;
         case 'z': {
             r += fprintf(fp, "%zu", va_arg(ap, size_t));

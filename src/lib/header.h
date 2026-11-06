@@ -253,12 +253,13 @@ File *new_file(char *path) {
 }
 
 void open_file(File *file) {
-    char *path = file->path;
-    if (realpath(path, NULL) == NULL) {
+    char *path = realpath(file->path, NULL);
+    if (path == NULL) {
         fprintf(stderr, "realpath failed (%s)\n", file->path);
         exit(1);
     }
-    file->path = path;
+    file->path = strdup2(path);
+    free(path);
     ioFile fp = fopen(file->path, "r");
     if (fp == NULL) {
         fprintf(stderr, "fopen failed (%s)\n", file->path);
