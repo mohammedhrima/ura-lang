@@ -96,7 +96,7 @@ typedef struct uraError uraError;
     size_t name##_count;   \
     size_t name##_size;
 
-#define push_back(parent, child)                                          \
+#define append(parent, child)                                          \
     {                                                                     \
         if (parent##_size == 0)                                           \
             parent = ura_alloc((parent##_size = 10), sizeof(*parent));    \
@@ -388,7 +388,7 @@ void parse_args(int ac, char **av) {
                 exit(1);
             }
             Node *file = new_file(arg);
-            push_back(ura.tree->children, file);
+            append(ura.tree->children, file);
         }
     }
 }
@@ -402,7 +402,7 @@ Token *new_token(Type type, Token *from) {
         new->s = from->s;
         new->e = from->e;
     }
-    push_back(ura.tokens, new);
+    append(ura.tokens, new);
     // print("new token %k\n", new);
     return new;
 }
@@ -677,7 +677,7 @@ void enter_scope(Node *node) {
     char *name = token->name ? token->name : "";
     print("%s: %t %s\n", CYAN("enter scope"), token->type, name);
     ura.scope = node;
-    push_back(ura.scopes, node);
+    append(ura.scopes, node);
 }
 
 void exit_scope() {
@@ -734,7 +734,7 @@ Node *recover(Token *start) {
 //     new->left = clone_node(node->left);
 //     new->right = clone_node(node->right);
 //     for (int i = 0; i < node->children_count; i++)
-//         push_back(new->children, clone_node(node->children[i]));
+//         append(new->children, clone_node(node->children[i]));
 //     return new;
 // }
 
@@ -827,7 +827,7 @@ void push_child(Node *node, Node *child) {
         break;
     }
     case DECLARE: {
-        push_back(node->children, child);
+        append(node->children, child);
         Node *init = new_node(new_token(INIT_VAR, child->token));
         init->left = child->left;
         child = init;
@@ -836,7 +836,7 @@ void push_child(Node *node, Node *child) {
     case ASSIGN: {
         if (child->left->token->type == DECLARE) {
             Node *dec = child->left; // declare node
-            push_back(node->children, dec);
+            append(node->children, dec);
             child->left = dec->left;
         }
         break;
@@ -844,7 +844,7 @@ void push_child(Node *node, Node *child) {
     default:
         break;
     }
-    push_back(node->children, child);
+    append(node->children, child);
 }
 
 void parse_body(Node *node) {
@@ -889,7 +889,7 @@ void add_param(Node *fn, Token *id, Node *type) {
     Node *arg = new_node(new_token(ARG, id));
     arg->token->name = format("arg.%s", id->name);
     arg->left = type;
-    push_back(fn->right->children, arg);
+    append(fn->right->children, arg);
 
     Node *dec = new_node(new_token(DECLARE, id));
     dec->left = new_node(id);
@@ -939,7 +939,7 @@ void parse_structs(Node *node) {
             Node *st = new_node(token);
             pos += 2; // skip STRUCT and ID
             st->token->is_type = true;
-            push_back(node->children, st);
+            append(node->children, st);
         } else
             pos++;
         token = peek(pos);
@@ -977,7 +977,7 @@ Node *parse_prime() {
             if (peek(0)->type == COMA)
                 next();
             type->token->type = TEMPLATE_TYPE;
-            push_back(node->children, type);
+            append(node->children, type);
         }
 
         if (!check_next(GT, "expected >", ">"))
@@ -1018,7 +1018,7 @@ Node *parse_prime() {
             Node *attr = parse_prime();
             Type type = attr->token->type;
             // TODO: should be declaration, or FN_DEC
-            push_back(node->children, attr);
+            append(node->children, attr);
         }
         exit_scope();
         return node;
@@ -1027,7 +1027,7 @@ Node *parse_prime() {
         token->type = ARRAY_LIT;
         node = new_node(token);
         while (peek(0)->type != RBRACK) {
-            push_back(node->children, parse_expr(0));
+            append(node->children, parse_expr(0));
             if (peek(0)->type != COMA)
                 break;
             next();
@@ -1051,7 +1051,7 @@ Node *parse_prime() {
             next(); // skip (
             node->right = new_node(new_token(ARGS, token));
             while (peek(0)->type != RPARENT) {
-                push_back(node->right->children, parse_expr(0));
+                append(node->right->children, parse_expr(0));
                 if (peek(0)->type != COMA)
                     break;
                 next(); // skip ,
@@ -1164,7 +1164,7 @@ Node *parse_prime() {
             next();
             enter_scope(node);
             parse_body(node);
-            push_back(node->children, get_default_return(node));
+            append(node->children, get_default_return(node));
             exit_scope();
         }
 
@@ -1310,15 +1310,15 @@ Node *parse_expr(int min_op) {
             switch (type) {
             case TEMPLATE:
             case STRUCT: {
-                push_back(left->children, child);
+                append(left->children, child);
                 break;
             }
             case FN_DEC: {
-                push_back(left->children, child);
+                append(left->children, child);
                 break;
             }
             default: {
-                push_back(left->children, child);
+                append(left->children, child);
                 break;
             }
             }
@@ -2700,7 +2700,7 @@ void handle_global_scope(Node *file) {
         entry = new_node(token);
         entry->left = new_node(new_token(I32, token));
         entry->right = new_node(new_token(ARGS, token));
-        push_back(file->children, entry);
+        append(file->children, entry);
     }
 
     Node **children = file->children;
@@ -2719,15 +2719,15 @@ void handle_global_scope(Node *file) {
         Node *child = children[i];
         Type type = child->token->type;
         if (includes(type, DECLARE, FN_DEC, PROTO, STRUCT, 0)) {
-            push_back(file->children, child);
+            append(file->children, child);
         } else {
-            push_back(entry->children, child);
+            append(entry->children, child);
         }
     }
     for (int i = 0; i < body_count; i++) // push remaining in the main
-        push_back(entry->children, body[i]);
+        append(entry->children, body[i]);
     if (created)
-        push_back(entry->children, get_default_return(entry));
+        append(entry->children, get_default_return(entry));
 }
 
 int main(int ac, char **av) {
@@ -2917,7 +2917,7 @@ Node *new_file(char *name) {
     free(path);
     new->file.dir = dirname(ura_dup(new->file.path));
     Node *node = new_node(new);
-    push_back(ura.files, node);
+    append(ura.files, node);
     return node;
 }
 
@@ -3046,20 +3046,20 @@ void _print_node_helper(NodePrint *elems, Node *node, int depth) {
     if (node == NULL)
         return;
 
-    push_back(elems->nodes, node);
-    push_back(elems->depths, depth);
+    append(elems->nodes, node);
+    append(elems->depths, depth);
 
     if (!includes(node->token->type, BRK, CNT, FN_CALL, 0)) {
         Node *left = node->left;
         bool is_struct = left && left->token->type == STRUCT;
         if (is_struct) {
-            push_back(elems->nodes, left);
-            push_back(elems->depths, depth + 3);
+            append(elems->nodes, left);
+            append(elems->depths, depth + 3);
             // print(">>>> %n\n", left);
             // exit(1);
             // if (left->left) {
-            //     push_back(elems->nodes, left->left);
-            //     push_back(elems->depths, depth + 3);
+            //     append(elems->nodes, left->left);
+            //     append(elems->depths, depth + 3);
             // }
         } else
             _print_node_helper(elems, left, depth + 3);
@@ -3230,7 +3230,7 @@ void error(uraError err) {
         err.line = err.token->line;
     }
     err.file = curr_file();
-    push_back(ura.errors, err);
+    append(ura.errors, err);
 }
 
 

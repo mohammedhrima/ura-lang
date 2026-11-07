@@ -12,6 +12,10 @@ typedef struct uraError uraError;
 #    define TOKENIZE 1
 #endif
 
+#if TOKENIZE
+#define AST 1
+#endif
+
 #include "./ir.c"
 
 int _fprint(ioFile fp, const char *fmt, va_list ap);
@@ -241,9 +245,6 @@ Token *parse_num(int s, int e, int space) {
     return new;
 }
 
-
-
-
 Token *parse_string(int s, int e, int space) {
     Token *new = new_token(CHARS, NULL);
     char *buff = ura.file->buff;
@@ -368,13 +369,14 @@ void tokenize(File *file, int space2) {
         eprint("unknow charcter <%c>\n", buff[s]);
         exit(1);
     }
-    new_token(LAST, NULL);
+    new_token(LAST, NULL)->space = -TAB;
 }
 
 // AST
 Node *new_node(Token *token) {
     Node *new = arena_alloc(1, sizeof(Node));
     new->token = token;
+	print("new node %k\n", token);
     return new;
 }
 
@@ -391,19 +393,45 @@ Token *next() {
     return token;
 }
 
-Node *pase_prime() {
+bool inside(int space) {
+    return ura.tokens[ura.exe_pos]->space > space;
+}
+
+Node *parse_prime() {
     Token *token = next();
     Node *node = NULL;
-    switch(token->type) {
-        case FN_DEC: {
-            node = new_node(token);
-            token = next();
-            node->token->name = token->name;
-            
-            break;
+    switch (token->type) {
+    case FN_DEC: {
+        node = new_node(token);
+        token = next(); // TODO: expect ID
+        node->token->name = token->name;
+		next(); // SKIP (
+		next(); // SKIP )
+		next(); // SKIP :
+        while (inside(node->token->space)) {
+			append(node->children, parse_prime());
         }
+        break;
+    }
+	case RETURN: {
+		// return exr
+	}
+    default: {
+        eprint("handle this case %t\n", token->type);
+        exit(1);
+    }
     }
     return NULL;
+}
+
+Node *parse_expr(int min_op) {
+	Node *left = parse_prime();
+	while(true) {
+		int op = precedence[peek(0)->type];
+		if(op <= min_op)
+			break;
+	}
+	return left;
 }
 
 // ANALYZE
@@ -445,19 +473,19 @@ int main(int ac, char **av) {
     print(GREEN("[AST]:\n"));
     for (size_t i = 0; i < ura.tree->children_count; i++) {
         Node *file = ura.tree->children[i]; // File node / empty children
-        enter_scope(file);
-        parse_structs(file);
+        // enter_scope(file);
+        // parse_structs(file);
         while (peek(0)->type != END) {
             push_child(file, parse_expr(0));
         }
         // handle_global_scope(file);
-        exit_scope();
+        // exit_scope();
     }
-    check_errors(); // the tree is broken: don't analyze it
-    print(GREEN("======================================\n"));
-    for (size_t i = 0; i < ura.tree->children_count; i++) {
-        print("%n", ura.tree->children[i]);
-    }
+    // check_errors(); // the tree is broken: don't analyze it
+    // print(GREEN("======================================\n"));
+    // for (size_t i = 0; i < ura.tree->children_count; i++) {
+    //     print("%n", ura.tree->children[i]);
+    // }
 
 #        if ANALYZE
     print(GREEN("======================================\n"));
