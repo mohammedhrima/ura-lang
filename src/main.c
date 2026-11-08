@@ -13,7 +13,15 @@ typedef struct uraError uraError;
 #endif
 
 #if TOKENIZE
-#define AST 1
+#    define AST 1
+#endif
+
+#if AST
+#    define ANALYZE 1
+#endif
+
+#if ANALYZE
+#    define ASM 1
 #endif
 
 #include "./ir.c"
@@ -35,12 +43,13 @@ struct Token {
     bool is_varg;
     // uraIR ir;
 
+    Ucg *ucg;
+    int shift;
     union {
         struct {
             int index;
         } attr;
         struct {
-            int shift;
             long long value;
         } num;
         struct {
@@ -51,8 +60,15 @@ struct Token {
 
 struct Node {
     Token *token;
-    Node *left;
-    Node *right;
+    union {
+        Node *left;
+        Node *var;
+        Node *data_type;
+        Node *cond;
+    };
+    union {
+        Node *right;
+    };
 
     expand(Node *, children);
 };
@@ -78,16 +94,16 @@ struct {
     // File errors;
     // char *errors_buff;
     // int errors_len;
-
-    Node *tree;
-    expand(Token *, tokens);
-
-    expand(Node *, scopes);
-    Node *scope;
-
     expand(File *, files);
     File *file;
     int line;
+
+    expand(Token *, tokens);
+
+    Node *tree;
+
+    expand(Node *, scopes);
+    Node *scope;
 
     expand(uraError, errors);
 
@@ -98,9 +114,10 @@ struct {
     char *value;
     Token token;
 } keywords[] = {
-    { "bool", { .type = INT, .is_type = true } },
-    { "char", { .type = INT, .is_type = true } },
-    { "i8", { .type = INT, .is_type = true } },
+    { "bool", { .type = INT, .is_type = true, .shift = 8 } },
+    { "char", { .type = INT, .is_type = true, .shift = 8 } },
+    { "i8", { .type = INT, .is_type = true, .shift = 8 } },
+    { "i32", { .type = INT, .is_type = true, .shift = 32 } },
     { "num", { .type = INT, .is_type = true } },
 
     { "True", { .type = INT, .num = { .value = true } } },
@@ -260,6 +277,7 @@ Token *parse_string(int s, int e, int space) {
 
 Token *parse_char(int s, int e, int space) {
     Token *new = new_token(INT, NULL);
+	new->shift = 1;
     char *buff = ura.file->buff;
 
     char *str = parse_escaped(buff, s + 1, e - 1);
@@ -333,7 +351,10 @@ void tokenize(File *file, int space2) {
             // if (!check_quote(s, e, line))
             //     continue;
             e++; // skip last ' or "
-            // parse_id(c == '"' ? CHARS : I8, s, e, space);
+            if (c == '"')
+                parse_string(s, e, space);
+            else
+                parse_char(s, e, space);
             continue;
         }
         while (isdigit(buff[e]))
@@ -369,14 +390,13 @@ void tokenize(File *file, int space2) {
         eprint("unknow charcter <%c>\n", buff[s]);
         exit(1);
     }
-    new_token(LAST, NULL)->space = -TAB;
 }
 
 // AST
 Node *new_node(Token *token) {
     Node *new = arena_alloc(1, sizeof(Node));
     new->token = token;
-	print("new node %k\n", token);
+    print("new node %k\n", token);
     return new;
 }
 
@@ -397,27 +417,91 @@ bool inside(int space) {
     return ura.tokens[ura.exe_pos]->space > space;
 }
 
+void enter_scope(Node *node) {
+    print(CYAN("enter scope %s\n"), node->token->name);
+    append(ura.scopes, node);
+    ura.scope = node;
+}
+
+void exit_scope() {
+    print(CYAN("exit scope %s\n"), ura.scope->token->name);
+    ura.scopes[ura.scopes_count] = NULL;
+    ura.scopes_count--;
+    if (ura.scopes_count >= 0)
+        ura.scope = ura.scopes[ura.scopes_count];
+    else
+        ura.scope = NULL;
+}
+
+Node *is_type(int pos) {
+    Token *token = peek(pos);
+    if (token->is_type) {
+        next();
+        return new_node(token);
+    }
+    return NULL;
+}
+
 Node *parse_prime() {
     Token *token = next();
     Node *node = NULL;
     switch (token->type) {
+    case INT: {
+        return new_node(token);
+    }
+    case ID: {
+        // node = new_node(token);
+        Node *type = is_type(0);
+        if (type != NULL) {
+            node = new_node(new_token(DECLARE, token));
+            node->var = new_node(token);
+            node->var->token->type = VAR;
+            node->var->data_type = type;
+            append(ura.scope->children, node);
+            node = node->var;
+            // node->right = type;
+        } else
+            node = new_node(token);
+        return node;
+    }
     case FN_DEC: {
         node = new_node(token);
         token = next(); // TODO: expect ID
         node->token->name = token->name;
-		next(); // SKIP (
-		next(); // SKIP )
-		next(); // SKIP :
+        next(); // SKIP (
+        next(); // SKIP )
+        node->left = parse_prime();
+        assert(!node->left || node->left->token->is_type);
+        next(); // SKIP :
+        enter_scope(node);
         while (inside(node->token->space)) {
-			append(node->children, parse_prime());
+            append(node->children, parse_expr(0));
         }
-        break;
+        exit_scope();
+        return node;
     }
-	case RETURN: {
-		// return exr
-	}
+    case RETURN: {
+        node = new_node(token);
+        node->left = parse_expr(0);
+        return node;
+    }
+    case IF: {
+        node = new_node(token);
+        enter_scope(node);
+        node->left = parse_expr(0);
+        if (peek(0)->type != DOTS) {
+            eprint("expect ':'\n");
+            exit(1);
+        }
+        next(); // TODO: expect ':'
+        while (inside(node->token->space)) {
+            append(node->children, parse_expr(0));
+        }
+        exit_scope();
+        return node;
+    }
     default: {
-        eprint("handle this case %t\n", token->type);
+        eprint("%s:%d handle this case %t\n", FILE, LINE, token->type);
         exit(1);
     }
     }
@@ -425,16 +509,192 @@ Node *parse_prime() {
 }
 
 Node *parse_expr(int min_op) {
-	Node *left = parse_prime();
-	while(true) {
-		int op = precedence[peek(0)->type];
-		if(op <= min_op)
-			break;
-	}
-	return left;
+    Node *left = parse_prime();
+    while (true) {
+        int e = peek(0)->type;
+        if (e == LAST)
+            break;
+        assert(e >= 0 && e <= LAST);
+        // printf("accessing %d\n", e);
+        int op = precedence[e];
+        if (op <= min_op)
+            break;
+        Node *node = new_node(next());
+        node->left = left;
+        node->right = parse_expr(op);
+        left = node;
+    }
+    return left;
 }
 
 // ANALYZE
+Node *find_variable(char *name) {
+    for (int i = ura.scopes_count - 1; i >= 0; i--) {
+        Node *curr = ura.scopes[i];
+        print(GREEN("find variable %s in %k\n"), name, curr->token);
+        for (int j = 0; j < curr->children_count; j++) {
+            Node *child = curr->children[j];
+            if (child->token->type != DECLARE)
+                continue;
+            Node *id = child->left;
+            if (strcmp2(id->token->name, name))
+                return id;
+        }
+    }
+    eprint("'%s' not found\n", name);
+    return NULL;
+}
+
+void analyze(Node *node) {
+    switch (node->token->type) {
+    case INT:
+    case VAR: {
+        break;
+    }
+    case ID: {
+        Node *var = find_variable(node->token->name);
+        if (var) {
+            // node->token->type = VAR;
+            // node->token->ucg = var->token->ucg;
+            // node->left = var;
+            *node = *var;
+        }
+        break;
+    }
+    case DECLARE: { // right is the data type
+                    // TODO: protect from redeclaring
+        analyze(node->var->data_type);
+        break;
+    }
+    case FN_DEC: {
+        enter_scope(node);
+        if (node->left)
+            analyze(node->left);
+        for (int i = 0; i < node->children_count; i++)
+            analyze(node->children[i]);
+        exit_scope();
+        break;
+    }
+    case RETURN: {
+        if (node->left) {
+            analyze(node->left);
+            // assert(node->left-)
+        } else {
+            // TODO: return void
+        }
+        break;
+    }
+    case IF: {
+        analyze(node->cond); // TODO: make sure it's boolean
+        for (int i = 0; i < node->children_count; i++)
+            analyze(node->children[i]);
+        break;
+    }
+    case ASSIGN:  // clang-format off
+	case ADD: case SUB: case MUL: case DIV: case MOD: // math
+	case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: // composite 
+	case DIV_ASSIGN: case MOD_ASSIGN: 
+	case LT: case GT: case EQ: case LE: case GE: case NQ: // comparision
+	case AND: case OR: { // clang-format on
+        // TODO: check compatibility
+        analyze(node->left);
+        analyze(node->right);
+        break;
+    }
+    default: { // clang-format off
+		eprint("%s:%d handle this case %t\n", 
+			FILE, LINE, node->token->type);
+		exit(1);
+		break;
+	} // clang-format on
+    }
+}
+
+// CODE GEN
+void codegen(Node *node) {
+    Ucg *ucg = NULL;
+    switch (node->token->type) {
+    case VAR: {
+        // node->token->ucg = node->left->token->ucg;
+        break;
+    }
+    case INT: {
+        if (node->token->is_type) {
+            ucg = ucg_int_type(node->token->shift);
+        } else {
+            ucg = ucg_int_value(node->token->shift, node->token->num.value);
+        }
+        node->token->ucg = ucg;
+        break;
+    }
+    case DECLARE: {
+        codegen(node->var->data_type); // data type
+
+        char *name = node->var->token->name;
+        Ucg *type = node->var->data_type->token->ucg;
+        ucg = ucg_var(name, type);
+        node->var->token->ucg = ucg;
+        break;
+    }
+    case FN_DEC: {
+        Ucg *ret_type = NULL;
+        if (node->left) {
+            // TODO: add return type
+            codegen(node->left);
+            ret_type = node->left->token->ucg;
+        } else
+            ret_type = ucg_void_type();
+
+        ucg = ucg_fn(node->token->name, ret_type, NULL);
+        for (int i = 0; i < node->children_count; i++)
+            codegen(node->children[i]);
+
+        ucg_end(ucg);
+        node->token->ucg = ucg;
+        break;
+    }
+    case RETURN: {
+        // TODO: check if there is node left
+        codegen(node->left);
+        ucg_ret(node->left->token->ucg);
+        break;
+    }
+    case IF: {
+        codegen(node->cond);
+        node->token->ucg = ucg_if();
+        ucg_then(node->token->ucg, node->cond->token->ucg);
+        for (int i = 0; i < node->children_count; i++)
+            codegen(node->children[i]);
+        ucg_end(node->token->ucg);
+        break;
+    }
+    case ASSIGN:  // clang-format off
+	case ADD: case SUB: case MUL: case DIV: case MOD: // math
+	case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: // composite 
+	case DIV_ASSIGN: case MOD_ASSIGN: 
+	case LT: case GT: case EQ: case LE: case GE: case NQ: // comparision
+	case AND: case OR: { // clang-format on
+        print("=========================\n");
+        print("%n", node);
+        print("=========================\n");
+        codegen(node->left);
+        codegen(node->right);
+        // exit(1);
+        node->token->ucg = ucg_op(node->token->type, // clang-format off
+			node->left->token->ucg, 
+			node->right->token->ucg
+		); // clang-format on
+        break;
+    }
+    default: { // clang-format off
+		eprint("%s:%d handle this case %t\n", 
+			FILE, LINE, node->token->type
+		);
+		exit(1);
+		break;
+	} // clang-format on
+    }
+}
 
 /*
 TODO:
@@ -454,63 +714,75 @@ int main(int ac, char **av) {
 #if TOKENIZE
     print(GREEN("======================================\n"));
     print(GREEN("[TOKENIZE]:\n"));
-    for (size_t i = 0; i < ura.files_count; i++) {
+    for (int i = 0; i < ura.files_count; i++) {
         File *file = ura.files[i];
         if (file->opened)
             continue;
         tokenize(file, 0);
     }
-    new_token(END, NULL);
+    new_token(LAST, NULL)->space = -TAB;
 
     check_errors();
 
     print(GREEN("======================================\n"));
-    for (size_t i = 0; i < ura.tokens_count; i++)
+    for (int i = 0; i < ura.tokens_count; i++)
         print(CYAN("token ") "%k\n", ura.tokens[i]);
 
 #    if AST
     print(GREEN("======================================\n"));
     print(GREEN("[AST]:\n"));
-    for (size_t i = 0; i < ura.tree->children_count; i++) {
-        Node *file = ura.tree->children[i]; // File node / empty children
+    ura.tree = new_node(new_token(SCOPE, NULL));
+    ura.tree->token->name = "ura-scope";
+    enter_scope(ura.tree);
+    while (peek(0)->type != LAST) {
+        // Node *file = ura.tree->children[i]; // File node / empty children
         // enter_scope(file);
         // parse_structs(file);
-        while (peek(0)->type != END) {
-            push_child(file, parse_expr(0));
-        }
+        append(ura.tree->children, parse_expr(0));
         // handle_global_scope(file);
         // exit_scope();
     }
+    exit_scope();
     // check_errors(); // the tree is broken: don't analyze it
     // print(GREEN("======================================\n"));
-    // for (size_t i = 0; i < ura.tree->children_count; i++) {
-    //     print("%n", ura.tree->children[i]);
-    // }
+    for (int i = 0; i < ura.tree->children_count; i++) {
+        print("%n", ura.tree->children[i]);
+    }
 
 #        if ANALYZE
     print(GREEN("======================================\n"));
     print(GREEN("[ANALYZE]:\n"));
-    for (size_t i = 0; i < ura.tree->children_count; i++) {
-        Node *file = ura.tree->children[i];
-        analyze(file, 0);
+    enter_scope(ura.tree);
+    for (int i = 0; i < ura.tree->children_count; i++) {
+        analyze(ura.tree->children[i]);
     }
-    check_errors(); // the tree is not valid code: don't generate it
-    print(GREEN("======================================\n"));
-    for (size_t i = 0; i < ura.tree->children_count; i++) {
+    exit_scope();
+    // check_errors(); // the tree is not valid code: don't generate it
+    // print(GREEN("======================================\n"));
+    for (int i = 0; i < ura.tree->children_count; i++) {
         print("%n", ura.tree->children[i]);
     }
 
 #            if ASM
     print(GREEN("======================================\n"));
     print(GREEN("[CODE GEN]:\n"));
-    make_dir(format("%s/build", cwd_path())); // TODO: save cwd in ura
-    codegen_beg("ura");
-    for (size_t i = 0; i < ura.tree->children_count; i++) {
-        Node *file = ura.tree->children[i];
-        codegen(file);
+    ucg_start("ura");
+    // enter_scope(ura.tree);
+    for (int i = 0; i < ura.tree->children_count; i++) {
+        codegen(ura.tree->children[i]);
     }
-    codegen_finish();
-    gen_bin();
+    // exit_scope();
+    print(GREEN("======================================\n"));
+    print(GREEN("[URA IR]:\n"));
+    print_ucgs();
+    ucg_compile();
+    ucg_path("build/out.ll");
+    ucg_gen_ll();
+    ucg_gen_bin();
+    ucg_finish();
+
+
+    // gen_bin();
     // return exec_bin();
 #            endif // ASM
 #        endif     // ANALYZE
@@ -547,7 +819,7 @@ int _print_token(ioFile fp, Token *token) {
     if (token->name == NULL && !token->is_type) { 
         switch(token->type) {
         // case I8:    r += fprintf(fp, " value (%c)", token->i8.value); break;
-        // case I32:   r += fprintf(fp, " value (%ld)", token->num.value); break;
+        case INT:   r += fprintf(fp, " value (%lld)", token->num.value); break;
         case CHARS: {
             #if 1
             r += fprintf(fp, " value (");
@@ -599,34 +871,37 @@ void _print_node_helper(NodePrint *elems, Node *node, int depth) {
         _print_node_helper(elems, node->children[i], depth + 3);
 }
 
-// bool is_open(NodePrint *elems, size_t i, int level) {
-//     for (size_t j = i + 1; j < elems->nodes_count; j++) {
-//         if (elems->depths[j] <= level)
-//             return elems->depths[j] == level;
-//     }
-//     return 0;
-// }
+bool is_open(NodePrint *elems, size_t i, int level) {
+    for (size_t j = i + 1; j < elems->nodes_count; j++) {
+        if (elems->depths[j] <= level)
+            return elems->depths[j] == level;
+    }
+    return 0;
+}
 
-// int _print_node(ioFile fp, Node *node) {
-//     NodePrint elems = {};
-//     int r = 0;
-//     _print_node_helper(&elems, node, 0);
+int _print_node(ioFile fp, Node *node) {
+    NodePrint elems = {};
+    int r = 0;
+    _print_node_helper(&elems, node, 0);
 
-//     for (size_t i = 0; i < elems.nodes_count; i++) {
-//         int depth = elems.depths[i];
-//         for (int level = 1; level < depth; level++)
-//             r += fprintf(fp, "%s", is_open(&elems, i, level) ? "│ " : " ");
-//         if (depth)
-//             r += fprintf(fp, "%s", is_open(&elems, i, depth) ? "├─" : "└─");
-//         r += _print_token(fp, elems.nodes[i]->token) + fprintf(fp, "\n");
-//     }
-//     return 0;
-// }
+    for (size_t i = 0; i < elems.nodes_count; i++) {
+        int depth = elems.depths[i];
+        for (int level = 1; level < depth; level++)
+            r += fprintf(fp, "%s", is_open(&elems, i, level) ? "│ " : " ");
+        if (depth)
+            r += fprintf(fp, "%s", is_open(&elems, i, depth) ? "├─" : "└─");
+        r += _print_token(fp, elems.nodes[i]->token) + fprintf(fp, "\n");
+    }
+    return 0;
+}
 
 int _print(ioFile fp, char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
-    int r = _fprint(fp, fmt, args);
+    int r = 0;
+	if(fp == stderr)
+		r += fprintf(stderr, RED("error: "));
+	r += _fprint(fp, fmt, args);
     va_end(args);
     return r;
 }
@@ -650,7 +925,7 @@ int _fprint(ioFile fp, const char *fmt, va_list ap) {
         case '%': r += fprintf(fp, "%%"); break;
         case 't': r += fprintf(fp, "%s", to_string(va_arg(ap, Type))); break;
         case 'k': r += _print_token(fp, va_arg(ap, Token *)); break;
-        // case 'n': r += _print_node(fp, va_arg(ap, Node *)); break;
+        case 'n': r += _print_node(fp, va_arg(ap, Node *)); break;
         case 'N': r += _print_type(fp, va_arg(ap, Node *)); break;
         case 'z': {
             r += fprintf(fp, "%zu", va_arg(ap, size_t));
@@ -664,7 +939,10 @@ int _fprint(ioFile fp, const char *fmt, va_list ap) {
             i += 2; // skip *s
             break;
         } 
-        default: break; // clang-format on
+        default: {
+			eprint("%s:%d handle this case <%%%c>\n", FILE, LINE, fmt[i]);
+			break; // clang-format on
+        }
         }
     }
     return r;
@@ -702,7 +980,7 @@ void parse_args(int ac, char **av) {
                 help("-o exe.out\n");
                 exit(1);
             }
-            set_exec_path(av[++i]);
+            ucg_bin_path(av[++i]);
         } else {
             size_t n = strlen(arg);
             bool is_ura = n > 4 && strcmp2(arg + n - 4, ".ura");
@@ -731,7 +1009,7 @@ char *parse_escaped(char *input, int s, int e) {
         }
         if (c == -1)
             c = input[s++];
-        assert(c > 0);
+        assert(c >= 0);
         res[r++] = c;
     }
     return res;

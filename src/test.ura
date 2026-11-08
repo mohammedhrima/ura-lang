@@ -1,2 +1,8 @@
-fn main():
-    return 0
+// expect: 0
+fn main() i32:
+    x i32
+    b bool
+    c char
+    if c != '\0':
+    	return 1
+    return x

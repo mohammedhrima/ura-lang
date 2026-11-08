@@ -9,6 +9,8 @@
 #include <ctype.h>
 #include <math.h>
 #include <signal.h> // SIGSEGV
+#include <unistd.h>
+#include <sys/wait.h>
 
 // LLVM STUFF
 #include <llvm-c/Analysis.h>
@@ -202,6 +204,7 @@ struct {
     Context context;
     Module module;
     Builder builder;
+    TargetMachine machine;
 
     char *dir;
     char *ll_path;
@@ -211,11 +214,6 @@ struct {
 
     expand(Ucg *, insts);
 } gb_ucg;
-
-
-void set_exec_path(char *path) {
-    gb_ucg.dir = dirname2(path);
-}
 
 void ucg_start(char *name) {
     gb_ucg.context = LLVMContextCreate();
@@ -227,78 +225,133 @@ void ucg_start(char *name) {
     for (int i = 1; i < 255; i <<= 1)
         gb_ucg.types.num[i] = LLVMIntTypeInContext(gb_ucg.context, i);
 
-    LLVMInitializeNativeTarget();
-    LLVMInitializeNativeAsmPrinter();
-    // LLVMInitializeNativeAsmParser(); // TODO: to be checked
+    // Initialize native target.
+    if (LLVMInitializeNativeTarget()) {
+        eprint("%s:%d Failed to initialize native target\n", FILE, LINE);
+        exit(1);
+    }
+
+    if (LLVMInitializeNativeAsmPrinter()) {
+        eprint("%s:%d Failed to initialize native asm printer\n", FILE, LINE);
+        exit(1);
+    }
 
     char *triple = LLVMGetDefaultTargetTriple();
     LLVMSetTarget(gb_ucg.module, triple);
+
     Target target;
-    if (!LLVMGetTargetFromTriple(triple, &target, NULL)) {
-        CodeGenOptLevel level = LLVMCodeGenLevelDefault;
-        RelocMode reloc = LLVMRelocDefault;
-        CodeModel model = LLVMCodeModelDefault;
-        TargetMachine machine;
-        machine = LLVMCreateTargetMachine(target, triple, "", "", level, reloc, model);
-        TargetData layout = LLVMCreateTargetDataLayout(machine);
-        LLVMSetModuleDataLayout(gb_ucg.module, layout);
-        LLVMDisposeTargetData(layout);
-        LLVMDisposeTargetMachine(machine);
+    char *error = NULL;
+
+    if (LLVMGetTargetFromTriple(triple, &target, &error)) {
+        eprint("%s:%d GetTargetFromTriple error: %s\n", FILE, LINE, error);
+        LLVMDisposeMessage(error);
+        LLVMDisposeMessage(triple);
+        exit(1);
     }
+
+    gb_ucg.machine = LLVMCreateTargetMachine(target, triple,
+                                             "", // CPU
+                                             "", // Features
+                                             LLVMCodeGenLevelDefault, LLVMRelocDefault,
+                                             LLVMCodeModelDefault);
+
+    if (!gb_ucg.machine) {
+        eprint("%s:%d Failed to create target machine\n", FILE, LINE);
+        LLVMDisposeMessage(triple);
+        exit(1);
+    }
+
+    TargetData layout = LLVMCreateTargetDataLayout(gb_ucg.machine);
+    LLVMSetModuleDataLayout(gb_ucg.module, layout);
+
+    LLVMDisposeTargetData(layout);
     LLVMDisposeMessage(triple);
 
-    // TODO: add asan stuff here
+    // TODO: add ASAN stuff here
     // TODO: add flags stuff (Passes)
 }
 
-void ucg_finish() {
-    // PassBuilderOptions opts = LLVMCreatePassBuilderOptions();
-    // if (gb_ucg.flags) {
-    //     Error err = LLVMRunPasses(gb_ucg.module, gb_ucg.flags, NULL, opts);
-    //     if (err) {
-    //         char *msg = LLVMGetErrorMessage(err);
-    //         CHECK(1, "optimizer error: %s", msg);
-    //         LLVMDisposeErrorMessage(msg);
-    //     }
-    // }
-    // if (gb_ucg.debug_builder) {
-    //     LLVMDIBuilderFinalize(gb_ucg.debug_builder);
-    //     LLVMDisposeDIBuilder(gb_ucg.debug_builder);
-    //     gb_ucg.debug_builder = NULL;
-    // }
-    if (LLVMVerifyModule(gb_ucg.module, LLVMReturnStatusAction, &gb_ucg.error_msg)) {
-        // clang-format off
-        fprintf(stderr, "%s: %s\n", 
-			RED("VerifyModule error"), gb_ucg.error_msg);
-        // exit(1);
-        // clang-format on
-    }
-    // LLVMVerifyModule always allocate for char* error
-    LLVMDisposeMessage(gb_ucg.error_msg);
-
-
-    // LLVMDisposePassBuilderOptions(opts);
-    if (gb_ucg.dir == NULL)
-        gb_ucg.dir = getcwd2();
-    if (gb_ucg.ll_path == NULL) {
-        gb_ucg.ll_path = format("%s/build/out.ll", gb_ucg.dir);
-        mkdir2(dirname2(gb_ucg.ll_path));
-    }
-    if (gb_ucg.exe_path == NULL) {
-        gb_ucg.exe_path = format("%s/exe.out", gb_ucg.dir);
-    }
-    if (LLVMPrintModuleToFile(gb_ucg.module, gb_ucg.ll_path, &gb_ucg.error_msg)) {
-        // clang-format off
-        fprintf(stderr, "%s: %s (%s)\n", 
-			RED("PrintModuleToFile error"), gb_ucg.error_msg, gb_ucg.ll_path);
-        exit(1);
-        // clang-format on
-    }
-    // LLVMVerifyModule always allocate for char* error
-
+void ucg_finish(void) {
     LLVMDisposeBuilder(gb_ucg.builder);
     LLVMDisposeModule(gb_ucg.module);
+    LLVMDisposeTargetMachine(gb_ucg.machine);
     LLVMContextDispose(gb_ucg.context);
+}
+
+void ucg_gen_ll(void) {
+    if (gb_ucg.ll_path == NULL)
+        gb_ucg.ll_path = format("%s/build/out.ll", gb_ucg.dir);
+
+    mkdir2(dirname2(gb_ucg.ll_path));
+
+    char *error = NULL;
+
+    if (LLVMVerifyModule(gb_ucg.module, LLVMReturnStatusAction, &error)) {
+        eprint("%s:%d LLVM verification failed:\n%s\n", FILE, LINE, error);
+        LLVMDisposeMessage(error);
+        // exit(1);
+    }
+    if (LLVMPrintModuleToFile(gb_ucg.module, gb_ucg.ll_path, &gb_ucg.error_msg)) {
+		eprint("%s:%d LLVM IR error: %s\n", FILE, LINE, gb_ucg.error_msg);
+        LLVMDisposeMessage(gb_ucg.error_msg);
+        // exit(1);
+    }
+	LLVMDisposeMessage(error);
+}
+
+void ucg_gen_bin(void) {
+    if (gb_ucg.exe_path == NULL)
+        gb_ucg.exe_path = format("%s/exe.out", gb_ucg.dir);
+
+    char *obj_path = format("%s.o", gb_ucg.exe_path);
+
+    mkdir2(dirname2(gb_ucg.exe_path));
+
+    char *error = NULL;
+
+    // clang-format off
+	assert(gb_ucg.machine);
+	assert(gb_ucg.module);
+	assert(obj_path);
+	// assert(gb_ucg.machine);
+
+    if (LLVMTargetMachineEmitToFile(gb_ucg.machine,
+									gb_ucg.module, obj_path,
+                                    LLVMObjectFile, &error)) {
+        eprint("LLVM codegen error: %s\n", error);
+        LLVMDisposeMessage(error);
+        exit(1);
+    }
+    // clang-format on
+
+    pid_t pid = fork();
+    if (pid == 0) {
+        execlp("clang", "clang", obj_path, "-o", gb_ucg.exe_path, NULL);
+        _exit(127);
+    }
+    int status;
+    waitpid(pid, &status, 0);
+    if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+        eprint("Linking failed\n");
+        exit(1);
+    }
+}
+
+void ucg_run_bin(void) {
+    pid_t pid = fork();
+
+    if (pid == 0) {
+        execl(gb_ucg.exe_path, gb_ucg.exe_path, NULL);
+        _exit(127);
+    }
+
+    int status;
+    waitpid(pid, &status, 0);
+
+    if (WIFEXITED(status))
+        printf("Exit code: %d\n", WEXITSTATUS(status));
+    else if (WIFSIGNALED(status))
+        printf("Terminated by signal: %d\n", WTERMSIG(status));
 }
 
 void ucg_exit() {
@@ -1694,14 +1747,27 @@ TODO:
         that's compatible without saving it in external file
 */
 
-bool compile_test(int p) {
-    printf(CYAN("Test %d: ================================\n"), p);
-    ucg_start(format("test%d", p));
-    bool r = run_test(p);
+void print_ucgs(void) {
     for (size_t i = 0; i < gb_ucg.insts_count; i++) {
         Ucg *curr = gb_ucg.insts[i];
         print_ucg(curr, '\n');
     }
+}
+
+void ucg_path(char *path) {
+    gb_ucg.ll_path = path;
+    gb_ucg.dir = dirname2(path);
+}
+
+void ucg_bin_path(char *path) {
+    gb_ucg.exe_path = path;
+}
+
+bool compile_test(int p) {
+    printf(CYAN("Test %d: ================================\n"), p);
+    ucg_start(format("test%d", p));
+    bool r = run_test(p);
+    print_ucgs();
     ucg_compile();
     gb_ucg.ll_path = format("build/out.ll");
     ucg_finish();
