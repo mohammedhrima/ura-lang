@@ -64,10 +64,12 @@ struct Node {
         Node *left;
         Node *var;
         Node *data_type;
+        Node *ret_type;
         Node *cond;
     };
     union {
         Node *right;
+		Node *args;
     };
 
     expand(Node *, children);
@@ -114,7 +116,7 @@ struct {
     char *value;
     Token token;
 } keywords[] = {
-    { "bool", { .type = INT, .is_type = true, .shift = 8 } },
+    { "bool", { .type = INT, .is_type = true, .shift = 1 } },
     { "char", { .type = INT, .is_type = true, .shift = 8 } },
     { "i8", { .type = INT, .is_type = true, .shift = 8 } },
     { "i32", { .type = INT, .is_type = true, .shift = 32 } },
@@ -254,6 +256,7 @@ Token *parse_num(int s, int e, int space) {
     char *buff = ura.file->buff;
 
     new->num.value = strtol(buff + s, NULL, 10);
+    new->shift = 32;
     new->line = ura.line;
     new->s = s;
     new->e = e;
@@ -277,7 +280,7 @@ Token *parse_string(int s, int e, int space) {
 
 Token *parse_char(int s, int e, int space) {
     Token *new = new_token(INT, NULL);
-	new->shift = 1;
+    new->shift = 8;
     char *buff = ura.file->buff;
 
     char *str = parse_escaped(buff, s + 1, e - 1);
@@ -433,7 +436,7 @@ void exit_scope() {
         ura.scope = NULL;
 }
 
-Node *is_type(int pos) {
+Node *parse_type(int pos) {
     Token *token = peek(pos);
     if (token->is_type) {
         next();
@@ -451,7 +454,7 @@ Node *parse_prime() {
     }
     case ID: {
         // node = new_node(token);
-        Node *type = is_type(0);
+        Node *type = parse_type(0);
         if (type != NULL) {
             node = new_node(new_token(DECLARE, token));
             node->var = new_node(token);
@@ -469,9 +472,34 @@ Node *parse_prime() {
         token = next(); // TODO: expect ID
         node->token->name = token->name;
         next(); // SKIP (
-        next(); // SKIP )
-        node->left = parse_prime();
+        node->right = new_node(new_token(ARGS, token));
+        while (!includes(peek(0)->type, RPARENT, LAST)) {
+            Token *token = peek(0);
+            if (token->type == ID) {
+                token->type = PARAM;
+                Node *param = new_node(token);
+                next(); // skip ID
+                Node *type = parse_type(0);
+                param->left = type;
+                append(node->right->children, param);
+            } else if (token->type == VARIADIC) {
+                // node->token->is_varg = true;
+                Node *param = new_node(token);
+                append(node->right->children, param);
+                break;
+            } else {
+                eprint("%s:%d error %k\n", FILE, LINE, token);
+                exit(1);
+            }
+            if (peek(0)->type == COMA) // TODO: to be improved
+                next();
+        }
+        print(">>> %k\n", peek(0));
+        assert(peek(0)->type == RPARENT);
+        next();                     // SKIP )
+        node->ret_type = parse_prime(); // return type
         assert(!node->left || node->left->token->is_type);
+        assert(peek(0)->type == DOTS);
         next(); // SKIP :
         enter_scope(node);
         while (inside(node->token->space)) {
@@ -528,27 +556,37 @@ Node *parse_expr(int min_op) {
 }
 
 // ANALYZE
+Node *find_in_children(Node *parent, char *name) {
+    for (int j = 0; j < parent->children_count; j++) {
+        Node *child = parent->children[j];
+        if (!includes(child->token->type, DECLARE, PARAM, 0))
+            continue;
+        // print(">> %n\n", child);
+        Node *id = child->token->type == DECLARE ? child->var : child;
+        if (strcmp2(id->token->name, name))
+            return id;
+    }
+    return NULL;
+}
 Node *find_variable(char *name) {
     for (int i = ura.scopes_count - 1; i >= 0; i--) {
         Node *curr = ura.scopes[i];
         print(GREEN("find variable %s in %k\n"), name, curr->token);
-        for (int j = 0; j < curr->children_count; j++) {
-            Node *child = curr->children[j];
-            if (child->token->type != DECLARE)
-                continue;
-            Node *id = child->left;
-            if (strcmp2(id->token->name, name))
-                return id;
-        }
+        Node *to_find = NULL;
+        if (curr->token->type == FN_DEC)
+            to_find = find_in_children(curr->right, name);
+        if (to_find == NULL)
+            to_find = find_in_children(curr, name);
+        if (to_find)
+            return to_find;
     }
     eprint("'%s' not found\n", name);
     return NULL;
 }
 
 void analyze(Node *node) {
-    switch (node->token->type) {
-    case INT:
-    case VAR: {
+    switch (node->token->type) { // clang-format off
+    case INT: case VAR: case PARAM: { // clang-format on
         break;
     }
     case ID: {
@@ -563,13 +601,18 @@ void analyze(Node *node) {
     }
     case DECLARE: { // right is the data type
                     // TODO: protect from redeclaring
-        analyze(node->var->data_type);
+        analyze(node->var->ret_type);
         break;
     }
     case FN_DEC: {
         enter_scope(node);
-        if (node->left)
-            analyze(node->left);
+        if (node->ret_type)
+            analyze(node->ret_type);
+		for(int i = 0; i < node->args->children_count; i++) {
+			Node *arg = node->args->children[i];
+			analyze(arg);
+		}
+		
         for (int i = 0; i < node->children_count; i++)
             analyze(node->children[i]);
         exit_scope();
@@ -590,7 +633,7 @@ void analyze(Node *node) {
             analyze(node->children[i]);
         break;
     }
-    case ASSIGN:  // clang-format off
+    case ASSIGN: // clang-format off
 	case ADD: case SUB: case MUL: case DIV: case MOD: // math
 	case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: // composite 
 	case DIV_ASSIGN: case MOD_ASSIGN: 
@@ -618,6 +661,7 @@ void codegen(Node *node) {
         // node->token->ucg = node->left->token->ucg;
         break;
     }
+
     case INT: {
         if (node->token->is_type) {
             ucg = ucg_int_type(node->token->shift);
@@ -645,7 +689,16 @@ void codegen(Node *node) {
         } else
             ret_type = ucg_void_type();
 
-        ucg = ucg_fn(node->token->name, ret_type, NULL);
+		expand(Ucg*, params);
+		zero_init(params);
+
+		// Ucg *args = NULL;
+		if(node->args->children_count != 0) {
+			Ucg *arg = arena_alloc(node->args->children_count, sizeof(Ucg));
+			// for
+			// for(int i = 0; i < )
+		}
+        ucg = ucg_fn(node->token->name, ret_type, NULL, 0);
         for (int i = 0; i < node->children_count; i++)
             codegen(node->children[i]);
 
@@ -668,7 +721,7 @@ void codegen(Node *node) {
         ucg_end(node->token->ucg);
         break;
     }
-    case ASSIGN:  // clang-format off
+    case ASSIGN: // clang-format off
 	case ADD: case SUB: case MUL: case DIV: case MOD: // math
 	case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: // composite 
 	case DIV_ASSIGN: case MOD_ASSIGN: 
@@ -954,7 +1007,7 @@ void check_errors(void) {
     exit(1);
 }
 
-bool includes(Type to_find, ...) {
+__attribute__((sentinel)) bool includes(Type to_find, ...) {
     va_list ap;
     va_start(ap, to_find);
     Type curr = va_arg(ap, Type);
