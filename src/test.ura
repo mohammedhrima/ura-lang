@@ -1,6 +1,16 @@
+// expect: 3
+fn is_even(n i32) bool:
+    return n % 2 == 0
 
+fn both(a bool, b bool) bool:
+    return a and b
 
 fn main() i32:
     n i32 = 0
-
+    // if is_even(4):
+    //     n += 1
+    // if both(is_even(2), is_even(6)):
+    //     n += 2
+    // if both(is_even(2), is_even(7)):
+    //     n += 10
     return n

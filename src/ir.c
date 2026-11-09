@@ -216,7 +216,7 @@ struct {
 } gb_ucg;
 
 void ucg_start(char *name) {
-    atexit(ucg_finish);
+    // atexit(ucg_finish);
 
     gb_ucg.context = LLVMContextCreate();
     gb_ucg.module = LLVMModuleCreateWithNameInContext(name, gb_ucg.context);
@@ -274,6 +274,7 @@ void ucg_start(char *name) {
 void ucg_finish(void) {
     // TODO: make sure to use ucg.error_msg
     if (gb_ucg.error_msg != NULL) {
+        printf("there is an error %s\n", gb_ucg.error_msg);
         // LLVMDisposeMessage(gb_ucg.error_msg);
         eprint("%s: <%s>\n", RED("error"), gb_ucg.error_msg);
     }
@@ -281,7 +282,7 @@ void ucg_finish(void) {
     LLVMDisposeModule(gb_ucg.module);
     LLVMDisposeTargetMachine(gb_ucg.machine);
     LLVMContextDispose(gb_ucg.context);
-    arena_free();
+    // arena_free();
 }
 
 void ucg_gen_ll(void) {
@@ -294,16 +295,16 @@ void ucg_gen_ll(void) {
 
     if (LLVMVerifyModule(gb_ucg.module, LLVMReturnStatusAction, &error)) {
         eprint("%s:%d LLVM verification failed:\n%s\n", FILE, LINE, error);
-        // LLVMDisposeMessage(error);
+        LLVMDisposeMessage(error);
     }
     if (LLVMPrintModuleToFile(gb_ucg.module, gb_ucg.ll_path, &error)) {
-        eprint("%s:%d LLVM IR error: %s\n", FILE, LINE, error);
-        // LLVMDisposeMessage(error);
+        eprint("%s:%d LLVM IR error: \n%s\n", FILE, LINE, error);
+        LLVMDisposeMessage(error);
     }
-    gb_ucg.error_msg = error;
-    if (error)
-        exit(1);
-    // LLVMDisposeMessage(error);
+    // gb_ucg.error_msg = error;
+    // if (error)
+    //     exit(1);
+    LLVMDisposeMessage(error);
 }
 
 void ucg_gen_bin(void) {
@@ -503,7 +504,9 @@ void llvm_val_create(Ucg *ir) {
 
 Value llvm_alloc(TypeRef rtype, char *name) {
     Bloc bloc = LLVMGetInsertBlock(gb_ucg.builder);
+    assert(bloc);
     Value basic = LLVMGetBasicBlockParent(bloc);
+    assert(basic);
     Bloc entry = LLVMGetEntryBasicBlock(basic);
 
     Value inst = LLVMGetFirstInstruction(entry);
@@ -626,7 +629,7 @@ void llvm_cond(Ucg *ir) {
 }
 
 void ucg_clear(void) {
-    memset(gb_ucg.insts, 0, gb_ucg.insts_size * sizeof(Ucg *));
+    memset(gb_ucg.insts, 0, gb_ucg.insts_count * sizeof(Ucg *));
     gb_ucg.insts_count = 0;
 }
 
@@ -835,6 +838,9 @@ Ucg *ucg_fn(char *name, Ucg *ret, Ucg **params, int params_count) {
             append(new->fn.params, param);
     }
     append(gb_ucg.insts, new);
+    Ucg *entry = ucg_new(FN_ENTRY);
+    entry->to_enter = new;
+    append(gb_ucg.insts, entry);
     return new;
 }
 
@@ -905,6 +911,8 @@ Ucg *ucg_value(Ucg *ir) {
 }
 
 Ucg *ucg_op(Type type, Ucg *left, Ucg *right) {
+    assert(left);
+    assert(right);
     Type ops[LAST + 1] = {
         [ADD_ASSIGN] = ADD, [SUB_ASSIGN] = SUB, [MUL_ASSIGN] = MUL,
         [DIV_ASSIGN] = DIV, [MOD_ASSIGN] = MOD,
@@ -1797,7 +1805,7 @@ bool compile_test(int p) {
     ucg_finish();
     return r;
 }
-#if 1
+#if 0
 int main() {
     mkdir2("build");
 

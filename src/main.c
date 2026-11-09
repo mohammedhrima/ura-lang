@@ -69,7 +69,7 @@ struct Node {
     };
     union {
         Node *right;
-		Node *args;
+        Node *args;
     };
 
     expand(Node *, children);
@@ -496,7 +496,7 @@ Node *parse_prime() {
         }
         print(">>> %k\n", peek(0));
         assert(peek(0)->type == RPARENT);
-        next();                     // SKIP )
+        next();                         // SKIP )
         node->ret_type = parse_prime(); // return type
         assert(!node->left || node->left->token->is_type);
         assert(peek(0)->type == DOTS);
@@ -608,11 +608,11 @@ void analyze(Node *node) {
         enter_scope(node);
         if (node->ret_type)
             analyze(node->ret_type);
-		for(int i = 0; i < node->args->children_count; i++) {
-			Node *arg = node->args->children[i];
-			analyze(arg);
-		}
-		
+        for (int i = 0; i < node->args->children_count; i++) {
+            Node *arg = node->args->children[i];
+            analyze(arg);
+        }
+
         for (int i = 0; i < node->children_count; i++)
             analyze(node->children[i]);
         exit_scope();
@@ -661,6 +661,10 @@ void codegen(Node *node) {
         // node->token->ucg = node->left->token->ucg;
         break;
     }
+    case PARAM: {
+
+        break;
+    }
 
     case INT: {
         if (node->token->is_type) {
@@ -689,27 +693,46 @@ void codegen(Node *node) {
         } else
             ret_type = ucg_void_type();
 
-		expand(Ucg*, params);
-		zero_init(params);
+        expand(Ucg *, params);
+        zero_init(params);
 
-		// Ucg *args = NULL;
-		if(node->args->children_count != 0) {
-			Ucg *arg = arena_alloc(node->args->children_count, sizeof(Ucg));
-			// for
-			// for(int i = 0; i < )
-		}
-        ucg = ucg_fn(node->token->name, ret_type, NULL, 0);
+        // Ucg *args = NULL;
+        Node **children = node->args->children;
+        int count = node->args->children_count;
+        Ucg **args = NULL;
+        if (count != 0) {
+            args = arena_alloc(count, sizeof(Ucg*));
+            for (int i = 0; i < count; i++) {
+                Node *param = children[i];
+                Ucg *type = NULL;
+                switch (param->data_type->token->type) {
+                case INT: {
+                    type = ucg_int_type(param->data_type->token->shift);
+                    break;
+                }
+                default: {
+                    eprint("%s:%d handle this case %t\n" FILE, LINE,
+                           param->data_type->token->type);
+                    break;
+                }
+                }
+                args[i] = ucg_param(param->token->name, type);
+                param->token->ucg = args[i];
+            }
+        }
+        ucg = ucg_fn(node->token->name, ret_type, args, count);
         for (int i = 0; i < node->children_count; i++)
             codegen(node->children[i]);
 
-        ucg_end(ucg);
         node->token->ucg = ucg;
+        ucg_end(ucg);
         break;
     }
     case RETURN: {
         // TODO: check if there is node left
         codegen(node->left);
-        ucg_ret(node->left->token->ucg);
+        ucg = ucg_ret(node->left->token->ucg);
+        node->token->ucg = ucg;
         break;
     }
     case IF: {
@@ -733,10 +756,11 @@ void codegen(Node *node) {
         codegen(node->left);
         codegen(node->right);
         // exit(1);
-        node->token->ucg = ucg_op(node->token->type, // clang-format off
+        ucg = ucg_op(node->token->type, // clang-format off
 			node->left->token->ucg, 
 			node->right->token->ucg
 		); // clang-format on
+        node->token->ucg = ucg;
         break;
     }
     default: { // clang-format off
@@ -831,7 +855,7 @@ int main(int ac, char **av) {
     ucg_compile();
     ucg_path("build/out.ll");
     ucg_gen_ll();
-    ucg_gen_bin();
+    // ucg_gen_bin();
     ucg_finish();
 
 
