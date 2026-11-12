@@ -6,3 +6,5 @@
 		+ 1001:
 			+ means bytes 1, 4 are used 
 			+ means bytes 2, 3 are free
+
++ you might need using funciton callback
