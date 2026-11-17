@@ -727,9 +727,27 @@ Node *parse_prime() {
             expect(ID, "expected a struct name after 'struct'", " Name");
         expect(DOTS, "expected ':' after the struct name", ":");
         enter_scope(node);
-        while (inside(node->token->space))
-            parse_expr(0);
+        while (inside(node->token->space)) {
+            Node *child = parse_expr(0);
+            if (child->token->type == FN_DEC)
+                append(node->children, child);
+        }
         exit_scope();
+        for (int i = 0; i < node->children_count; i++) {
+            Node *method = node->children[i];
+            if (method->token->type != FN_DEC)
+                continue;
+            Node *type = new_type(ID, 0, NULL);
+            type->token->name = node->token->name;
+            Node *self = new_node(new_token(PARAM, method->token));
+            self->token->name = "self";
+            self->data_type = new_type(REF, 0, type);
+            Node *args = method->args;
+            append(args->children, self);
+            for (int j = args->children_count - 1; j > 0; j--)
+                args->children[j] = args->children[j - 1];
+            args->children[0] = self;
+        }
         return node;
     }
     case BRK: case CNT: {
@@ -854,6 +872,20 @@ Node *find_attr(Node *st, char *name, int *index) {
     return NULL;
 }
 
+Node *find_method(Node *st, char *name, int args_count) {
+    for (int i = 0; i < st->children_count; i++) {
+        Node *child = st->children[i];
+        if (child->token->type != FN_DEC)
+            continue;
+        if (!strcmp2(child->token->name, name))
+            continue;
+        if (child->args->children_count != args_count + 1)
+            continue;
+        return child;
+    }
+    return NULL;
+}
+
 Node *find_struct(char *name) {
     for (int i = ura.scopes_count - 1; i >= 0; i--) {
         Node *curr = ura.scopes[i];
@@ -923,7 +955,11 @@ Node *type_of(Node *node) {
     case INT: case FLOAT: return node;
     case AS:        return node->to_type;
     case LCBRACK:   return node->data_type;
-    case DOT:       return node->right->declared ? node->right->declared->data_type : NULL;
+    case DOT: {
+        if (node->right->token->type == FN_CALL)
+            return type_of(node->right);
+        return node->right->declared ? node->right->declared->data_type : NULL;
+    }
     case CHARS:     return new_type(ARRAY, 0, new_type(INT, 8, NULL));
     case VAR: case PARAM: return is_ref_variable(node) ? node->data_type->data_type : node->data_type;
     case REF: {
@@ -1126,6 +1162,17 @@ void analyze(Node *node) {
         if (type->declared == NULL)
             break;
         Node *st = type->declared;
+        if (node->right->token->type == FN_CALL) {
+            Node *call = node->right;
+            for (int i = 0; i < call->children_count; i++)
+                analyze(call->children[i]);
+            call->to_call = find_method(st, call->token->name, call->children_count);
+            if (call->to_call == NULL)
+                add_error(call->token->s, call->token->e,
+                          format("'%s' has no method '%s'", st->token->name, call->token->name),
+                          NULL);
+            break;
+        }
         Token *attr = node->right->token;
         node->right->declared = find_attr(st, attr->name, &attr->attr.index);
         if (node->right->declared == NULL)
@@ -1194,7 +1241,7 @@ void codegen_branch(Node *node, Ucg *stmt) {
     exit_scope();
 }
 
-void codegen_proto(Node *node) {
+void codegen_proto(Node *node, char *name) {
     Ucg *ret_type = NULL;
     if (node->left) {
         // TODO: add return type
@@ -1219,7 +1266,7 @@ void codegen_proto(Node *node) {
             param->token->ucg = args[i];
         }
     }
-    node->token->ucg = ucg_proto(node->token->name, ret_type, args, count);
+    node->token->ucg = ucg_proto(name, ret_type, args, count);
 }
 
 void codegen_structs(Node *node) {
@@ -1247,7 +1294,15 @@ void codegen_protos(Node *node) {
     for (int i = 0; i < node->children_count; i++) {
         Node *child = node->children[i];
         if (includes(child->token->type, FN_DEC, PROTO, 0))
-            codegen_proto(child);
+            codegen_proto(child, child->token->name);
+        if (child->token->type != STRUCT)
+            continue;
+        for (int j = 0; j < child->children_count; j++) {
+            Node *method = child->children[j];
+            if (method->token->type != FN_DEC)
+                continue;
+            codegen_proto(method, format("%s.%s", child->token->name, method->token->name));
+        }
     }
 }
 
@@ -1333,7 +1388,7 @@ void codegen(Node *node) {
         }
         for (int i = 0; i < node->children_count; i++) {
             Node *child = node->children[i];
-            if (child->token->type == FN_DEC)
+            if (includes(child->token->type, FN_DEC, STRUCT, 0))
                 codegen(child);
         }
         exit_scope();
@@ -1354,6 +1409,16 @@ void codegen(Node *node) {
             codegen(child);
         }
         ucg_end(node->token->ucg);
+        exit_scope();
+        break;
+    }
+    case STRUCT: {
+        enter_scope(node);
+        for (int i = 0; i < node->children_count; i++) {
+            Node *child = node->children[i];
+            if (child->token->type == FN_DEC)
+                codegen(child);
+        }
         exit_scope();
         break;
     }
@@ -1414,6 +1479,18 @@ void codegen(Node *node) {
     }
     case DOT: {
         codegen(node->left);
+        if (node->right->token->type == FN_CALL) {
+            Node *call = node->right;
+            Ucg **args = arena_alloc(call->children_count + 2, sizeof(Ucg *));
+            args[0] = ucg_ref(node->left->token->ucg);
+            for (int i = 0; i < call->children_count; i++) {
+                codegen(call->children[i]);
+                args[i + 1] = call->children[i]->token->ucg;
+            }
+            Ucg *method = call->to_call->token->ucg;
+            node->token->ucg = ucg_fn_call(method, args, call->children_count + 1);
+            break;
+        }
         int index = node->right->token->attr.index;
         node->token->ucg = ucg_get_attr(node->left->token->ucg, index);
         break;
@@ -1619,7 +1696,8 @@ void _print_node_helper(NodePrint *elems, Node *node, int depth) {
         } else
             _print_node_helper(elems, left, depth + 3);
     }
-    _print_node_helper(elems, node->right, depth + 3);
+    if (!includes(node->token->type, ID, VAR, PARAM, 0))
+        _print_node_helper(elems, node->right, depth + 3);
     for (size_t i = 0; i < node->children_count; i++)
         _print_node_helper(elems, node->children[i], depth + 3);
 }
