@@ -138,6 +138,13 @@
 - 134 — struct: accessing an undefined field
 - 135 — struct: calling undefined method on struct
 - 136 — struct: a struct whose first field is a struct is not circular
+- 137 — struct: a struct as a parameter and as a return value
+- 138 — struct: assigning a struct copies it
+- 139 — struct: a struct declared inside a function
+- 140 — struct: a nested struct as a parameter and a copy
+- 141 — struct: a struct value {x: 10, y: 11}: missing attributes are zero, nested, returned
+- 142 — struct: a struct value with an unknown attribute
+- 143 — struct: a struct value given to an i32
 
 ---
 
@@ -7838,5 +7845,432 @@ fn main() i32:
     b.tag.name = "two"
     output("last:  ", b, "\n")
     return 0
+```
+
+---
+
+## 137 — struct: a struct as a parameter and as a return value
+
+```ura
+// expect: 21   (3 + 4 + 14)
+struct Point:
+    x i32
+    y i32
+
+fn sum(p Point) i32:
+    return p.x + p.y
+
+fn scale(p Point, k i32) Point:
+    p.x *= k
+    p.y *= k
+    return p
+
+fn main() i32:
+    a Point
+    a.x = 3
+    a.y = 4
+    b Point = scale(a, 2)
+    return sum(a) + sum(b)
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Point = type { i32, i32 }
+
+define i32 @sum(%Point %0) {
+entry:
+  %p = alloca %Point, align 8
+  store %Point %0, %Point* %p, align 4
+  %p.x = getelementptr inbounds %Point, %Point* %p, i32 0, i32 0
+  %p.y = getelementptr inbounds %Point, %Point* %p, i32 0, i32 1
+  %"$p.x" = load i32, i32* %p.x, align 4
+  %"$p.y" = load i32, i32* %p.y, align 4
+  %ADD = add i32 %"$p.x", %"$p.y"
+  ret i32 %ADD
+}
+
+define %Point @scale(%Point %0, i32 %1) {
+entry:
+  %p = alloca %Point, align 8
+  %k = alloca i32, align 4
+  store %Point %0, %Point* %p, align 4
+  store i32 %1, i32* %k, align 4
+  %p.x = getelementptr inbounds %Point, %Point* %p, i32 0, i32 0
+  %"$k" = load i32, i32* %k, align 4
+  %"$p.x" = load i32, i32* %p.x, align 4
+  %MUL = mul i32 %"$p.x", %"$k"
+  store i32 %MUL, i32* %p.x, align 4
+  %p.y = getelementptr inbounds %Point, %Point* %p, i32 0, i32 1
+  %"$k1" = load i32, i32* %k, align 4
+  %"$p.y" = load i32, i32* %p.y, align 4
+  %MUL2 = mul i32 %"$p.y", %"$k1"
+  store i32 %MUL2, i32* %p.y, align 4
+  %"$p" = load %Point, %Point* %p, align 4
+  ret %Point %"$p"
+}
+
+define i32 @main() {
+entry:
+  %a = alloca %Point, align 8
+  %b = alloca %Point, align 8
+  store %Point zeroinitializer, %Point* %a, align 4
+  %a.x = getelementptr inbounds %Point, %Point* %a, i32 0, i32 0
+  store i32 3, i32* %a.x, align 4
+  %a.y = getelementptr inbounds %Point, %Point* %a, i32 0, i32 1
+  store i32 4, i32* %a.y, align 4
+  %"$a" = load %Point, %Point* %a, align 4
+  %call.scale = call %Point @scale(%Point %"$a", i32 2)
+  store %Point %call.scale, %Point* %b, align 4
+  %"$a1" = load %Point, %Point* %a, align 4
+  %call.sum = call i32 @sum(%Point %"$a1")
+  %"$b" = load %Point, %Point* %b, align 4
+  %call.sum2 = call i32 @sum(%Point %"$b")
+  %ADD = add i32 %call.sum, %call.sum2
+  ret i32 %ADD
+}
+```
+
+---
+
+## 138 — struct: assigning a struct copies it
+
+```ura
+// expect: 15   (a stays 1 + 2, b is 5 + 7)
+struct Point:
+    x i32
+    y i32
+
+fn main() i32:
+    a Point
+    a.x = 1
+    a.y = 2
+    b Point
+    b = a
+    b.x = 5
+    b.y += 5
+    return a.x + a.y + b.x + b.y
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Point = type { i32, i32 }
+
+define i32 @main() {
+entry:
+  %a = alloca %Point, align 8
+  %b = alloca %Point, align 8
+  store %Point zeroinitializer, %Point* %a, align 4
+  %a.x = getelementptr inbounds %Point, %Point* %a, i32 0, i32 0
+  store i32 1, i32* %a.x, align 4
+  %a.y = getelementptr inbounds %Point, %Point* %a, i32 0, i32 1
+  store i32 2, i32* %a.y, align 4
+  %"$a" = load %Point, %Point* %a, align 4
+  store %Point %"$a", %Point* %b, align 4
+  %b.x = getelementptr inbounds %Point, %Point* %b, i32 0, i32 0
+  store i32 5, i32* %b.x, align 4
+  %b.y = getelementptr inbounds %Point, %Point* %b, i32 0, i32 1
+  %"$b.y" = load i32, i32* %b.y, align 4
+  %ADD = add i32 %"$b.y", 5
+  store i32 %ADD, i32* %b.y, align 4
+  %a.x1 = getelementptr inbounds %Point, %Point* %a, i32 0, i32 0
+  %a.y2 = getelementptr inbounds %Point, %Point* %a, i32 0, i32 1
+  %"$a.x" = load i32, i32* %a.x1, align 4
+  %"$a.y" = load i32, i32* %a.y2, align 4
+  %ADD3 = add i32 %"$a.x", %"$a.y"
+  %b.x4 = getelementptr inbounds %Point, %Point* %b, i32 0, i32 0
+  %"$b.x" = load i32, i32* %b.x4, align 4
+  %ADD5 = add i32 %ADD3, %"$b.x"
+  %b.y6 = getelementptr inbounds %Point, %Point* %b, i32 0, i32 1
+  %"$b.y7" = load i32, i32* %b.y6, align 4
+  %ADD8 = add i32 %ADD5, %"$b.y7"
+  ret i32 %ADD8
+}
+```
+
+---
+
+## 139 — struct: a struct declared inside a function
+
+```ura
+// expect: 9
+fn main() i32:
+    struct Pair:
+        a i32
+        b i32
+    p Pair
+    p.a = 4
+    p.b = 5
+    return p.a + p.b
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Pair = type { i32, i32 }
+
+define i32 @main() {
+entry:
+  %p = alloca %Pair, align 8
+  store %Pair zeroinitializer, %Pair* %p, align 4
+  %p.a = getelementptr inbounds %Pair, %Pair* %p, i32 0, i32 0
+  store i32 4, i32* %p.a, align 4
+  %p.b = getelementptr inbounds %Pair, %Pair* %p, i32 0, i32 1
+  store i32 5, i32* %p.b, align 4
+  %p.a1 = getelementptr inbounds %Pair, %Pair* %p, i32 0, i32 0
+  %p.b2 = getelementptr inbounds %Pair, %Pair* %p, i32 0, i32 1
+  %"$p.a" = load i32, i32* %p.a1, align 4
+  %"$p.b" = load i32, i32* %p.b2, align 4
+  %ADD = add i32 %"$p.a", %"$p.b"
+  ret i32 %ADD
+}
+```
+
+---
+
+## 140 — struct: a nested struct as a parameter and a copy
+
+```ura
+// expect: 10   (width 4 + height 6)
+struct Point:
+    x i32
+    y i32
+
+struct Rect:
+    min Point
+    max Point
+
+fn size(r Rect) i32:
+    return (r.max.x - r.min.x) + (r.max.y - r.min.y)
+
+fn main() i32:
+    r Rect
+    r.min.x = 1
+    r.min.y = 2
+    r.max.x = 5
+    r.max.y = 8
+    c Rect = r
+    return size(c)
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Rect = type { %Point, %Point }
+%Point = type { i32, i32 }
+
+define i32 @size(%Rect %0) {
+entry:
+  %r = alloca %Rect, align 8
+  store %Rect %0, %Rect* %r, align 4
+  %r.max = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 1
+  %r.max.x = getelementptr inbounds %Point, %Point* %r.max, i32 0, i32 0
+  %r.min = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 0
+  %r.min.x = getelementptr inbounds %Point, %Point* %r.min, i32 0, i32 0
+  %"$r.max.x" = load i32, i32* %r.max.x, align 4
+  %"$r.min.x" = load i32, i32* %r.min.x, align 4
+  %SUB = sub i32 %"$r.max.x", %"$r.min.x"
+  %r.max1 = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 1
+  %r.max.y = getelementptr inbounds %Point, %Point* %r.max1, i32 0, i32 1
+  %r.min2 = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 0
+  %r.min.y = getelementptr inbounds %Point, %Point* %r.min2, i32 0, i32 1
+  %"$r.max.y" = load i32, i32* %r.max.y, align 4
+  %"$r.min.y" = load i32, i32* %r.min.y, align 4
+  %SUB3 = sub i32 %"$r.max.y", %"$r.min.y"
+  %ADD = add i32 %SUB, %SUB3
+  ret i32 %ADD
+}
+
+define i32 @main() {
+entry:
+  %r = alloca %Rect, align 8
+  %c = alloca %Rect, align 8
+  store %Rect zeroinitializer, %Rect* %r, align 4
+  %r.min = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 0
+  %r.min.x = getelementptr inbounds %Point, %Point* %r.min, i32 0, i32 0
+  store i32 1, i32* %r.min.x, align 4
+  %r.min1 = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 0
+  %r.min.y = getelementptr inbounds %Point, %Point* %r.min1, i32 0, i32 1
+  store i32 2, i32* %r.min.y, align 4
+  %r.max = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 1
+  %r.max.x = getelementptr inbounds %Point, %Point* %r.max, i32 0, i32 0
+  store i32 5, i32* %r.max.x, align 4
+  %r.max2 = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 1
+  %r.max.y = getelementptr inbounds %Point, %Point* %r.max2, i32 0, i32 1
+  store i32 8, i32* %r.max.y, align 4
+  %"$r" = load %Rect, %Rect* %r, align 4
+  store %Rect %"$r", %Rect* %c, align 4
+  %"$c" = load %Rect, %Rect* %c, align 4
+  %call.size = call i32 @size(%Rect %"$c")
+  ret i32 %call.size
+}
+```
+
+---
+
+## 141 — struct: a struct value {x: 10, y: 11}: missing attributes are zero, nested, returned
+
+```ura
+// expect: 39   (10 + 11 + 3 + 0 + 1 + 2 + 5 + 7)
+struct Point:
+    x i32
+    y i32
+
+struct Rect:
+    min Point
+    max Point
+
+fn origin() Point:
+    return {x: 0, y: 0}
+
+fn main() i32:
+    p Point = {x: 10, y: 11}
+    q Point = {x: 3}
+    r Rect = {
+        min: {x: 1, y: 2},
+        max: {x: 5, y: 7},
+    }
+    o Point = origin()
+    return p.x + p.y + q.x + q.y + r.min.x + r.min.y + r.max.x + r.max.y + o.x
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Point = type { i32, i32 }
+%Rect = type { %Point, %Point }
+
+define %Point @origin() {
+entry:
+  ret %Point zeroinitializer
+}
+
+define i32 @main() {
+entry:
+  %p = alloca %Point, align 8
+  %q = alloca %Point, align 8
+  %r = alloca %Rect, align 8
+  %o = alloca %Point, align 8
+  store %Point { i32 10, i32 11 }, %Point* %p, align 4
+  store %Point { i32 3, i32 0 }, %Point* %q, align 4
+  store %Rect { %Point { i32 1, i32 2 }, %Point { i32 5, i32 7 } }, %Rect* %r, align 4
+  %call.origin = call %Point @origin()
+  store %Point %call.origin, %Point* %o, align 4
+  %p.x = getelementptr inbounds %Point, %Point* %p, i32 0, i32 0
+  %p.y = getelementptr inbounds %Point, %Point* %p, i32 0, i32 1
+  %"$p.x" = load i32, i32* %p.x, align 4
+  %"$p.y" = load i32, i32* %p.y, align 4
+  %ADD = add i32 %"$p.x", %"$p.y"
+  %q.x = getelementptr inbounds %Point, %Point* %q, i32 0, i32 0
+  %"$q.x" = load i32, i32* %q.x, align 4
+  %ADD1 = add i32 %ADD, %"$q.x"
+  %q.y = getelementptr inbounds %Point, %Point* %q, i32 0, i32 1
+  %"$q.y" = load i32, i32* %q.y, align 4
+  %ADD2 = add i32 %ADD1, %"$q.y"
+  %r.min = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 0
+  %r.min.x = getelementptr inbounds %Point, %Point* %r.min, i32 0, i32 0
+  %"$r.min.x" = load i32, i32* %r.min.x, align 4
+  %ADD3 = add i32 %ADD2, %"$r.min.x"
+  %r.min4 = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 0
+  %r.min.y = getelementptr inbounds %Point, %Point* %r.min4, i32 0, i32 1
+  %"$r.min.y" = load i32, i32* %r.min.y, align 4
+  %ADD5 = add i32 %ADD3, %"$r.min.y"
+  %r.max = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 1
+  %r.max.x = getelementptr inbounds %Point, %Point* %r.max, i32 0, i32 0
+  %"$r.max.x" = load i32, i32* %r.max.x, align 4
+  %ADD6 = add i32 %ADD5, %"$r.max.x"
+  %r.max7 = getelementptr inbounds %Rect, %Rect* %r, i32 0, i32 1
+  %r.max.y = getelementptr inbounds %Point, %Point* %r.max7, i32 0, i32 1
+  %"$r.max.y" = load i32, i32* %r.max.y, align 4
+  %ADD8 = add i32 %ADD6, %"$r.max.y"
+  %o.x = getelementptr inbounds %Point, %Point* %o, i32 0, i32 0
+  %"$o.x" = load i32, i32* %o.x, align 4
+  %ADD9 = add i32 %ADD8, %"$o.x"
+  ret i32 %ADD9
+}
+```
+
+---
+
+## 142 — struct: a struct value with an unknown attribute
+
+```ura
+// error: 'Point' has no attribute 'z'
+struct Point:
+    x i32
+    y i32
+
+fn main() i32:
+    p Point = {x: 1, z: 2}
+    return p.x
+```
+
+### stderr
+
+```
+error: test.ura:7:22 'Point' has no attribute 'z'
+  |
+7 |     p Point = {x: 1, z: 2}
+  |                      ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 143 — struct: a struct value given to an i32
+
+```ura
+// error: expected 'i32', found a struct value
+fn main() i32:
+    n i32 = {x: 1}
+    return n
+```
+
+### stderr
+
+```
+error: test.ura:3:13 expected 'i32', found a struct value
+  |
+3 |     n i32 = {x: 1}
+  |             ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 

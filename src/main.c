@@ -161,6 +161,7 @@ struct {
 } specials[] = {
     { "(", LPARENT },     { ")", RPARENT },     { ":", DOTS },
     { "[", LBRACK },      { "]", RBRACK },
+    { "{", LCBRACK },     { "}", RCBRACK },
 
     { "+=", ADD_ASSIGN }, { "-=", SUB_ASSIGN }, { "*=", MUL_ASSIGN },
     { "/=", DIV_ASSIGN }, { "%=", MOD_ASSIGN },
@@ -691,6 +692,21 @@ Node *parse_prime() {
         add_error(token->s, token->e, format("%s without an if before it", name), help);
         return parse_block(token);
     }
+    case LCBRACK: {
+        node = new_node(token);
+        while (peek(0)->type == ID) {
+            Node *attr = new_node(next());
+            attr->token->type = ATTR;
+            expect(DOTS, "expected ':' after the attribute name", ":");
+            attr->left = parse_expr(0);
+            append(node->children, attr);
+            if (peek(0)->type != COMA)
+                break;
+            next(); // SKIP ,
+        }
+        expect(RCBRACK, "expected '}' to close the struct value", "}");
+        return node;
+    }
     case STRUCT: {
         node = new_node(token);
         if (peek(0)->type == ID)
@@ -813,6 +829,19 @@ Node *find_function(char *name) {
     return find_function_like(name, 0);
 }
 
+Node *find_attr(Node *st, char *name, int *index) {
+    *index = 0;
+    for (int i = 0; i < st->children_count; i++) {
+        Node *child = st->children[i];
+        if (child->token->type != DECLARE)
+            continue;
+        if (strcmp2(child->var->token->name, name))
+            return child->var;
+        (*index)++;
+    }
+    return NULL;
+}
+
 Node *find_struct(char *name) {
     for (int i = ura.scopes_count - 1; i >= 0; i--) {
         Node *curr = ura.scopes[i];
@@ -867,6 +896,7 @@ Node *type_of(Node *node) {
     switch (node->token->type) { // clang-format off
     case INT: case FLOAT: return node;
     case AS:        return node->to_type;
+    case LCBRACK:   return node->data_type;
     case DOT:       return node->right->declared ? node->right->declared->data_type : NULL;
     case CHARS:     return new_type(REF, 0, new_type(INT, 8, NULL));
     case VAR: case PARAM: return node->data_type;
@@ -893,7 +923,35 @@ bool is_number(Node *node) {
     return node->token->type == INT && node->token->shift != 1;
 }
 
+void check_struct_value(Node *value, Node *expected) {
+    Token *token = value->token;
+    if (expected->token->type != ID) {
+        add_error(token->s, token->e,
+                  format("expected '%s', found a struct value", type_name(expected)), NULL);
+        return;
+    }
+    if (expected->declared == NULL)
+        return;
+    value->data_type = expected;
+    Node *st = expected->declared;
+    for (int i = 0; i < value->children_count; i++) {
+        Node *attr = value->children[i];
+        Token *name = attr->token;
+        attr->declared = find_attr(st, name->name, &name->attr.index);
+        if (attr->declared == NULL) {
+            add_error(name->s, name->e,
+                      format("'%s' has no attribute '%s'", st->token->name, name->name), NULL);
+            continue;
+        }
+        check_type(attr->left, attr->declared->data_type, NULL);
+    }
+}
+
 void check_type(Node *value, Node *expected, char *help) {
+    if (expected && value->token->type == LCBRACK) {
+        check_struct_value(value, expected);
+        return;
+    }
     Node *found = type_of(value);
     bool unknown = expected && expected->token->type == ID && !expected->declared;
     if (found == NULL || expected == NULL || unknown)
@@ -1012,6 +1070,11 @@ void analyze(Node *node) {
         analyze(node->left);
         break;
     }
+    case LCBRACK: {
+        for (int i = 0; i < node->children_count; i++)
+            analyze(node->children[i]->left);
+        break;
+    }
     case DOT: {
         analyze(node->left);
         Node *type = type_of(node->left);
@@ -1027,18 +1090,7 @@ void analyze(Node *node) {
             break;
         Node *st = type->declared;
         Token *attr = node->right->token;
-        int index = 0;
-        for (int i = 0; i < st->children_count; i++) {
-            Node *child = st->children[i];
-            if (child->token->type != DECLARE)
-                continue;
-            if (strcmp2(child->var->token->name, attr->name)) {
-                node->right->declared = child->var;
-                attr->attr.index = index;
-                break;
-            }
-            index++;
-        }
+        node->right->declared = find_attr(st, attr->name, &attr->attr.index);
         if (node->right->declared == NULL)
             add_error(attr->s, attr->e,
                       format("'%s' has no attribute '%s'", 
@@ -1244,13 +1296,14 @@ void codegen(Node *node) {
     case FN_DEC: {
         Node *parent = ura.scope;
         enter_scope(node);
+        codegen_structs(node);
         codegen_protos(node);
         ucg_entry(node->token->ucg);
         if (parent->token->type == SCOPE && strcmp2(node->token->name, "main"))
             codegen_statements(parent);
         for (int i = 0; i < node->children_count; i++) {
             Node *child = node->children[i];
-            if (child->token->type == PROTO)
+            if (includes(child->token->type, PROTO, STRUCT, 0))
                 continue;
             codegen(child);
         }
@@ -1299,6 +1352,18 @@ void codegen(Node *node) {
     }
     case ID: {
         node->token->ucg = node->declared->token->ucg;
+        break;
+    }
+    case LCBRACK: {
+        codegen(node->data_type);
+        Node *st = node->data_type->declared;
+        Ucg **values = arena_alloc(st->children_count + 1, sizeof(Ucg *));
+        for (int i = 0; i < node->children_count; i++) {
+            Node *attr = node->children[i];
+            codegen(attr->left);
+            values[attr->token->attr.index] = attr->left->token->ucg;
+        }
+        node->token->ucg = ucg_struct_value(node->data_type->token->ucg, values);
         break;
     }
     case DOT: {

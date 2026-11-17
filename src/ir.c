@@ -89,6 +89,7 @@ enum Type {
 
     LPARENT, RPARENT, DOTS, COMA,
     LBRACK, RBRACK,
+    LCBRACK, RCBRACK,
     ARRAY, ARRAY_LIT, ACCESS,
 
     ASSIGN,
@@ -527,6 +528,16 @@ void llvm_val_create(Ucg *ir) {
     }
     case FLOAT: {
         ir->elem = LLVMConstReal(llvm_type(to_create), to_create->num.real);
+        break;
+    }
+    case STRUCT: {
+        Value agg = LLVMConstNull(llvm_type(to_create));
+        for (int i = 0; i < ir->arr.items_count; i++) {
+            Ucg *item = ir->arr.items[i];
+            if (item)
+                agg = LLVMBuildInsertValue(gb_ucg.builder, agg, item->elem, i, "");
+        }
+        ir->elem = agg;
         break;
     }
     case ARRAY: {
@@ -1127,6 +1138,15 @@ Ucg *ucg_struct_of(Ucg *base) {
     if (base->type == DOT)
         return base->attr->data_type;
     return base->data_type;
+}
+
+Ucg *ucg_struct_value(Ucg *st, Ucg **values) {
+    Ucg *new = ucg_new(VAL_CREATE);
+    new->to_create = st;
+    for (int i = 0; i < st->obj.attrs_count; i++)
+        append(new->arr.items, values[i] ? ucg_value(values[i]) : NULL);
+    append(gb_ucg.insts, new);
+    return new;
 }
 
 Ucg *ucg_get_attr(Ucg *base, int index) {
@@ -2248,6 +2268,19 @@ bool run_test(int p) {
         ucg_end(fn_main);
         break;
     }
+    case 25: {
+        Ucg *point = ucg_struct("Point");
+        ucg_add_attr(point, ucg_attr("x", ucg_i32_type()));
+        ucg_add_attr(point, ucg_attr("y", ucg_i32_type()));
+
+        Ucg *fn_main = ucg_fn2("main", ucg_i32_type(), NULL);
+        Ucg *p = ucg_var("p", point);
+        Ucg *values[] = {ucg_i32_value(10), NULL};
+        ucg_assign(p, ucg_struct_value(point, values));
+        ucg_ret(ucg_op(ADD, ucg_get_attr(p, 0), ucg_get_attr(p, 1)));
+        ucg_end(fn_main);
+        break;
+    }
     default: {
         return false;
     }
@@ -2334,6 +2367,7 @@ const char *to_string(Type type) {
 
 		[LPARENT] = "LPARENT", [RPARENT] = "RPARENT",
 		[LBRACK] = "LBRACK", [RBRACK] = "RBRACK",
+		[LCBRACK] = "LCBRACK", [RCBRACK] = "RCBRACK",
 		[DOTS] = "DOTS", [COMA] = "COMA",
 
 		[ARRAY] = "ARRAY", // [ARRAY_LIT] = "ARRAY_LIT",
