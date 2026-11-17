@@ -114,6 +114,7 @@ void _print_node_helper(NodePrint *elems, Node *node, int depth);
 void analyze(Node *node);
 void check_errors(void);
 void codegen(Node *node);
+void codegen_branch(Node *node, Ucg *stmt);
 void enter_scope(Node *node);
 void exit_scope();
 void parse_args(int ac, char **av);

@@ -72,6 +72,7 @@ struct Node {
     union {
         Node *right;
         Node *args;
+        Node *next;
     };
 
     expand(Node *, children);
@@ -543,10 +544,11 @@ Node *parse_prime() {
         node->left = parse_expr(0);
         return node;
     }
-    case IF: case LOOP: {
+    case IF: case ELIF: case ELSE: case LOOP: {
         node = new_node(token);
         enter_scope(node);
-        node->left = parse_expr(0);
+        if (token->type != ELSE)
+            node->cond = parse_expr(0);
         if (peek(0)->type != DOTS) {
             eprint("expect ':'\n");
             exit(1);
@@ -556,6 +558,13 @@ Node *parse_prime() {
             append(node->children, parse_expr(0));
         }
         exit_scope();
+        if (token->type != IF)
+            return node;
+        Node *branch = node;
+        while (includes(peek(0)->type, ELIF, ELSE, 0) && peek(0)->space == token->space) {
+            branch->next = parse_prime();
+            branch = branch->next;
+        }
         return node;
     }
     case BRK: case CNT: {
@@ -684,12 +693,15 @@ void analyze(Node *node) {
         }
         break;
     }
-    case IF: case LOOP: {
-        analyze(node->cond); // TODO: make sure it's boolean
+    case IF: case ELIF: case ELSE: case LOOP: {
+        if (node->cond)
+            analyze(node->cond); // TODO: make sure it's boolean
         enter_scope(node);
         for (int i = 0; i < node->children_count; i++)
             analyze(node->children[i]);
         exit_scope();
+        if (node->next)
+            analyze(node->next);
         break;
     }
     case BRK: case CNT: {
@@ -723,6 +735,20 @@ void analyze(Node *node) {
 }
 
 // CODE GEN
+void codegen_branch(Node *node, Ucg *stmt) {
+    node->token->ucg = stmt;
+    Ucg *cond = NULL;
+    if (node->cond) {
+        codegen(node->cond);
+        cond = node->cond->token->ucg;
+    }
+    ucg_then(stmt, cond);
+    enter_scope(node);
+    for (int i = 0; i < node->children_count; i++)
+        codegen(node->children[i]);
+    exit_scope();
+}
+
 void codegen(Node *node) {
     Ucg *ucg = NULL;
     switch (node->token->type) {
@@ -822,15 +848,20 @@ void codegen(Node *node) {
         node->token->ucg = ucg;
         break;
     }
-    case IF: case LOOP: {
-        node->token->ucg = node->token->type == IF ? ucg_if() : ucg_loop();
-        codegen(node->cond);
-        ucg_then(node->token->ucg, node->cond->token->ucg);
-        enter_scope(node);
-        for (int i = 0; i < node->children_count; i++)
-            codegen(node->children[i]);
-        exit_scope();
-        ucg_end(node->token->ucg);
+    case IF: {
+        Ucg *if_stmt = ucg_if();
+        codegen_branch(node, if_stmt);
+        for (Node *branch = node->next; branch; branch = branch->next) {
+            Ucg *stmt = branch->token->type == ELIF ? ucg_elif(if_stmt) : ucg_else(if_stmt);
+            codegen_branch(branch, stmt);
+        }
+        ucg_end(if_stmt);
+        break;
+    }
+    case LOOP: {
+        Ucg *loop = ucg_loop();
+        codegen_branch(node, loop);
+        ucg_end(loop);
         break;
     }
     case BRK: {
