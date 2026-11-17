@@ -5368,6 +5368,7 @@ error: test.ura:3:11 expected ':' after the function header
 3 | fn main() i32
   |           ^^^
 help: use fn main() i32:
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5395,6 +5396,7 @@ error: test.ura:3:9 expected '(' after the function name
 3 | fn main i32:
   |         ^^^
 help: use fn main() i32:
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5425,6 +5427,7 @@ error: test.ura:3:21 expected ')' after the parameters
 3 | fn add(a i32, b i32 i32:
   |                     ^^^
 help: use fn add(a i32, b i32) i32:
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5452,6 +5455,7 @@ error: test.ura:3:4 expected a name after 'fn'
 3 | fn () i32:
   |    ^
 help: use fn name() i32:
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5512,6 +5516,7 @@ error: test.ura:5:12 expected ':' after the if condition
 5 |     if x > 1
   |            ^
 help: use if x > 1:
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5542,6 +5547,7 @@ error: test.ura:5:15 expected ':' after the while condition
 5 |     while i < 3
   |               ^
 help: use while i < 3:
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5574,6 +5580,7 @@ error: test.ura:7:5 else has no condition
 7 |     else x > 1:
   |     ^^^^
 help: use elif x > 1:
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5604,6 +5611,7 @@ error: test.ura:5:5 elif without an if before it
 5 |     elif x == 1:
   |     ^^^^
 help: use if x == 1:
+error: aborting due to 1 error
 ```
 
 ### status
@@ -6003,6 +6011,7 @@ error: test.ura:4:5 break outside a loop
 4 |     break
   |     ^^^^^
 help: break only works inside a while
+error: aborting due to 1 error
 ```
 
 ### status
@@ -6032,6 +6041,7 @@ error: test.ura:5:9 continue outside a loop
 5 |         continue
   |         ^^^^^^^^
 help: continue only works inside a while
+error: aborting due to 1 error
 ```
 
 ### status
@@ -6230,10 +6240,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:1:4 expected a function name after 'fn'
+error: test.ura:1:4 expected a name after 'fn'
   |
 1 | fn () i32:
   |    ^
+help: use fn name() i32:
 error: aborting due to 1 error
 ```
 
@@ -6258,10 +6269,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:1:13 expected ')' to close the parameters
+error: test.ura:1:13 expected ')' after the parameters
   |
 1 | fn add(a i32:
   |             ^
+help: use fn add(a i32):
 error: aborting due to 1 error
 ```
 
@@ -7382,10 +7394,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:5 'continue' outside of a loop
+error: test.ura:2:5 continue outside a loop
   |
 2 |     continue
   |     ^^^^^^^^
+help: continue only works inside a while
 error: aborting due to 1 error
 ```
 
@@ -7409,10 +7422,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:5 'elif' without a matching 'if'
+error: test.ura:2:5 elif without an if before it
   |
 2 |     elif True:
   |     ^^^^
+help: use if True:
 error: aborting due to 1 error
 ```
 
@@ -7436,7 +7450,7 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:5 'else' without a matching 'if'
+error: test.ura:2:5 else without an if before it
   |
 2 |     else:
   |     ^^^^
@@ -7464,10 +7478,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:3:12 expected ':' after the 'if' condition
+error: test.ura:3:12 expected ':' after the if condition
   |
 3 |     if a > 1
   |            ^
+help: use if a > 1:
 error: aborting due to 1 error
 ```
 
@@ -7494,10 +7509,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:5:14 expected ':' after the 'elif' condition
+error: test.ura:5:14 expected ':' after the elif condition
   |
 5 |     elif a > 0
   |              ^
+help: use elif a > 0:
 error: aborting due to 1 error
 ```
 
@@ -7523,10 +7539,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:5:5 expected ':' after 'else'
+error: test.ura:5:5 expected ':' after else
   |
 5 |     else
   |     ^^^^
+help: use else:
 error: aborting due to 1 error
 ```
 
@@ -7551,10 +7568,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:3:15 expected ':' after the 'while' condition
+error: test.ura:3:15 expected ':' after the while condition
   |
 3 |     while a > 0
   |               ^
+help: use while a > 0:
 error: aborting due to 1 error
 ```
 
@@ -7608,11 +7626,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:5:10 'else' takes no condition
+error: test.ura:5:5 else has no condition
   |
 5 |     else a > 0:
-  |          ^
-help: use 'elif'
+  |     ^^^^
+help: use elif a > 0:
 error: aborting due to 1 error
 ```
 
@@ -8607,7 +8625,7 @@ fn main() i32:
 ## 207 — lexer: a function declaration missing its colon
 
 ```ura
-// error: Expected ':' after function answer
+// error: expected ':' after the function header
 
 fn answer() i32
     return 42
@@ -8617,12 +8635,29 @@ fn main() i32:
     return 0
 ```
 
+### stderr
+
+```
+error: test.ura:3:13 expected ':' after the function header
+  |
+3 | fn answer() i32
+  |             ^^^
+help: use fn answer() i32:
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
 ---
 
 ## 208 — lexer: a function declaration missing its name
 
 ```ura
-// error: Expected a function name after 'fn'
+// error: expected a name after 'fn'
 
 fn () i32:
     return 0
@@ -8630,6 +8665,23 @@ fn () i32:
 fn main() i32:
     output("hi\n")
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:3:4 expected a name after 'fn'
+  |
+3 | fn () i32:
+  |    ^
+help: use fn name() i32:
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---
@@ -8667,13 +8719,30 @@ fn main() i32:
 ## 211 — lexer: if and while missing their colon
 
 ```ura
-// error: Expected ':' to open the 'if' body
+// error: expected ':' after the if condition
 
 fn main() i32:
     x i32 = 5
     if x > 0
         output("positive\n")
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:5:12 expected ':' after the if condition
+  |
+5 |     if x > 0
+  |            ^
+help: use if x > 0:
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---

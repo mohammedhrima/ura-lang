@@ -369,13 +369,9 @@ void tokenize(File *file, int space2) {
                 e++;
             }
             if (buff[e] != c) {
-                int line_start = s;
-                while (line_start > 0 && buff[line_start - 1] != '\n')
-                    line_start--;
-                while (buff[line_start] == ' ')
-                    line_start++;
+                int start = line_start(s);
                 add_error(s, e, c == '"' ? "unclosed string" : "unclosed character",
-                          format("use %.*s%c", e - line_start, buff + line_start, c));
+                          format("use %.*s%c", e - start, buff + start, c));
                 continue;
             }
             e++; // skip last ' or "
@@ -410,7 +406,10 @@ void tokenize(File *file, int space2) {
             Type type = specials[i].type;
             int len = (int)strlen(value);
             if (strncmp2(value, buff + s, len)) {
-                new_token(type, NULL)->line = ura.line;
+                Token *token = new_token(type, NULL);
+                token->line = ura.line;
+                token->s = s;
+                token->e = s + len;
                 if (type == DOTS)
                     space += TAB;
                 e += len;
@@ -444,6 +443,36 @@ Token *next() {
     if (token->type != LAST)
         ura.exe_pos++;
     return token;
+}
+
+int line_start(int pos) {
+    char *buff = ura.file->buff;
+    while (pos > 0 && buff[pos - 1] != '\n')
+        pos--;
+    while (buff[pos] == ' ')
+        pos++;
+    return pos;
+}
+
+int line_end(int pos) {
+    char *buff = ura.file->buff;
+    while (buff[pos] && buff[pos] != '\n')
+        pos++;
+    return pos;
+}
+
+void expect(Type type, char *msg, char *fix) {
+    if (peek(0)->type == type) {
+        next();
+        return;
+    }
+    char *buff = ura.file->buff;
+    Token *prev = ura.tokens[ura.exe_pos - 1];
+    Token *at = peek(0)->line == prev->line ? peek(0) : prev;
+    int start = line_start(prev->s);
+    int end = line_end(prev->e);
+    add_error(at->s, at->e, msg,
+              format("use %.*s%s%.*s", prev->e - start, buff + start, fix, end - prev->e, buff + prev->e));
 }
 
 bool inside(int space) {
@@ -482,6 +511,29 @@ Node *parse_type(int pos) {
         return node;
     }
     return NULL;
+}
+
+Node *parse_block(Token *token) {
+    Node *node = new_node(token);
+    enter_scope(node);
+    if (token->type != ELSE)
+        node->cond = parse_expr(0);
+    else if (peek(0)->type != DOTS && peek(0)->line == token->line) {
+        char *buff = ura.file->buff;
+        add_error(token->s, token->e, "else has no condition",
+                  format("use elif%.*s", line_end(token->e) - token->e, buff + token->e));
+        node->cond = parse_expr(0);
+    }
+    char *after[LAST + 1] = {
+        [IF] = "the if condition", [ELIF] = "the elif condition",
+        [LOOP] = "the while condition", [ELSE] = "else",
+    };
+    expect(DOTS, format("expected ':' after %s", after[token->type]), ":");
+    while (inside(node->token->space)) {
+        append(node->children, parse_expr(0));
+    }
+    exit_scope();
+    return node;
 }
 
 Node *parse_prime() {
@@ -542,40 +594,48 @@ Node *parse_prime() {
     }
     case FN_DEC: case PROTO: {
         node = new_node(token);
-        token = next(); // TODO: expect ID
-        node->token->name = token->name;
-        next(); // SKIP (
-        node->right = new_node(new_token(ARGS, token));
-        while (!includes(peek(0)->type, RPARENT, LAST)) {
-            Token *token = peek(0);
-            if (token->type == ID) {
-                token->type = PARAM;
-                Node *param = new_node(token);
-                next(); // skip ID
-                Node *type = parse_type(0);
-                param->left = type;
-                append(node->right->children, param);
-            } else if (token->type == VARIADIC) {
-                // node->token->is_varg = true;
-                Node *param = new_node(token);
-                append(node->right->children, param);
-                next(); // skip ...
-                break;
-            } else {
-                eprint("%s:%d error %k\n", FILE, LINE, token);
-                exit(1);
-            }
-            if (peek(0)->type == COMA) // TODO: to be improved
-                next();
+        if (peek(0)->type != ID) {
+            char *buff = ura.file->buff;
+            Token *at = peek(0);
+            int start = line_start(at->s);
+            add_error(at->s, at->e, "expected a name after 'fn'",
+                      format("use %.*sname%.*s", at->s - start, buff + start,
+                             line_end(at->s) - at->s, buff + at->s));
+            node->token->name = "";
+        } else {
+            token = next();
+            node->token->name = token->name;
         }
-        print(">>> %k\n", peek(0));
-        assert(peek(0)->type == RPARENT);
-        next();                         // SKIP )
+        node->right = new_node(new_token(ARGS, token));
+        if (peek(0)->type == LPARENT) {
+            next(); // SKIP (
+            while (peek(0)->type != RPARENT) {
+                Token *token = peek(0);
+                if (token->type == ID) {
+                    token->type = PARAM;
+                    Node *param = new_node(token);
+                    next(); // skip ID
+                    Node *type = parse_type(0);
+                    param->left = type;
+                    append(node->right->children, param);
+                } else if (token->type == VARIADIC) {
+                    // node->token->is_varg = true;
+                    Node *param = new_node(token);
+                    append(node->right->children, param);
+                    next(); // skip ...
+                    break;
+                } else
+                    break;
+                if (peek(0)->type == COMA) // TODO: to be improved
+                    next();
+            }
+            expect(RPARENT, "expected ')' after the parameters", ")");
+        } else
+            expect(LPARENT, "expected '(' after the function name", "()");
         node->ret_type = parse_type(0);
         if (node->token->type == PROTO)
             return node;
-        assert(peek(0)->type == DOTS);
-        next(); // SKIP :
+        expect(DOTS, "expected ':' after the function header", ":");
         enter_scope(node);
         while (inside(node->token->space)) {
             append(node->children, parse_expr(0));
@@ -589,33 +649,34 @@ Node *parse_prime() {
             node->left = parse_expr(0);
         return node;
     }
-    case IF: case ELIF: case ELSE: case LOOP: {
-        node = new_node(token);
-        enter_scope(node);
-        if (token->type != ELSE)
-            node->cond = parse_expr(0);
-        if (peek(0)->type != DOTS) {
-            eprint("expect ':'\n");
-            exit(1);
-        }
-        next(); // TODO: expect ':'
-        while (inside(node->token->space)) {
-            append(node->children, parse_expr(0));
-        }
-        exit_scope();
+    case IF: case LOOP: {
+        node = parse_block(token);
         if (token->type != IF)
             return node;
         Node *branch = node;
         while (includes(peek(0)->type, ELIF, ELSE, 0) && peek(0)->space == token->space) {
-            branch->next = parse_prime();
+            branch->next = parse_block(next());
             branch = branch->next;
         }
         return node;
     }
+    case ELIF: case ELSE: {
+        char *buff = ura.file->buff;
+        char *name = token->type == ELIF ? "elif" : "else";
+        char *help = NULL;
+        if (token->type == ELIF)
+            help = format("use if%.*s", line_end(token->e) - token->e, buff + token->e);
+        add_error(token->s, token->e, format("%s without an if before it", name), help);
+        return parse_block(token);
+    }
     case BRK: case CNT: {
         node = new_node(token);
         node->loop = find_scope(LOOP);
-        assert(node->loop);
+        if (node->loop == NULL) {
+            char *name = token->type == BRK ? "break" : "continue";
+            add_error(token->s, token->e, format("%s outside a loop", name),
+                      format("%s only works inside a while", name));
+        }
         return node;
     }
     default: {
@@ -1163,7 +1224,7 @@ int main(int ac, char **av) {
     print(GREEN("======================================\n"));
     print(GREEN("[AST]:\n"));
     ura.tree = parse_expr(0);
-    // check_errors(); // the tree is broken: don't analyze it
+    check_errors();
     // print(GREEN("======================================\n"));
     for (int i = 0; i < ura.tree->children_count; i++) {
         print("%n", ura.tree->children[i]);
