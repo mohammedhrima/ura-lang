@@ -249,6 +249,7 @@
 - 245 — function: early bare return in a void function
 - 246 — bool: i1 and bool are the same type
 - 247 — tokenizer: a block comment over two lines, /*/ does not close it
+- 248 — calls: arguments over several lines
 
 ---
 
@@ -5640,6 +5641,7 @@ error: test.ura:4:18 expected ')' to close this '('
 4 |     x i32 = (1 + 2
   |                  ^
 help: use x i32 = (1 + 2)
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5666,6 +5668,7 @@ error: test.ura:3:11 expected a value after '='
   |
 3 |     x i32 =
   |           ^
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5692,6 +5695,7 @@ error: test.ura:3:15 expected a value after '+'
   |
 3 |     x i32 = 1 +
   |               ^
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5722,6 +5726,7 @@ error: test.ura:7:19 expected ')' to close the call to 'add'
 7 |     return add(1, 2
   |                   ^
 help: use return add(1, 2)
+error: aborting due to 1 error
 ```
 
 ### status
@@ -6712,7 +6717,7 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:15 expected an expression after '+'
+error: test.ura:2:15 expected a value after '+'
   |
 2 |     a i32 = 1 +
   |               ^
@@ -6738,10 +6743,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:13 unclosed '('
+error: test.ura:2:18 expected ')' to close this '('
   |
 2 |     a i32 = (1 + 2
-  |             ^
+  |                  ^
+help: use a i32 = (1 + 2)
 error: aborting due to 1 error
 ```
 
@@ -7040,10 +7046,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:5:13 expected ')' to close the call to 'f'
+error: test.ura:5:18 expected ')' to close the call to 'f'
   |
 5 |     x i32 = f(1, 2
-  |             ^
+  |                  ^
+help: use x i32 = f(1, 2)
 error: aborting due to 1 error
 ```
 
@@ -7693,14 +7700,16 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:1:8 expected ':' after the function signature
+error: test.ura:1:8 expected ':' after the function header
   |
 1 | fn f() i32
   |        ^^^
-error: test.ura:5:12 unclosed '('
+help: use fn f() i32:
+error: test.ura:5:13 expected ')' to close this '('
   |
 5 |     return (2
-  |            ^
+  |             ^
+help: use return (2)
 error: aborting due to 2 errors
 ```
 
@@ -8610,7 +8619,7 @@ fn main() i32:
 ## 206 — lexer: a call with no closing parenthesis
 
 ```ura
-// error: Unexpected token
+// error: expected ')' to close the call to 'add'
 
 fn add(a i32, b i32) i32:
     return a + b
@@ -8618,6 +8627,23 @@ fn add(a i32, b i32) i32:
 fn main() i32:
     x i32 = add(1, 2
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:7:20 expected ')' to close the call to 'add'
+  |
+7 |     x i32 = add(1, 2
+  |                    ^
+help: use x i32 = add(1, 2)
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---
@@ -8779,11 +8805,27 @@ fn main() i32:
 ## 214 — lexer: an unexpected token in an expression
 
 ```ura
-// error: Unexpected token
+// error: unexpected '*'
 
 fn main() i32:
     x i32 = *
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:4:13 unexpected '*'
+  |
+4 |     x i32 = *
+  |             ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---
@@ -9727,6 +9769,53 @@ target triple = "x86_64-unknown-linux-gnu"
 define i32 @main() {
 entry:
   ret i32 5
+}
+```
+
+---
+
+## 248 — calls: arguments over several lines
+
+```ura
+// expect: 6
+fn add(a i32, b i32, c i32) i32:
+    return a + b + c
+
+fn main() i32:
+    return add(
+        1,
+        2,
+    3)
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+define i32 @add(i32 %0, i32 %1, i32 %2) {
+entry:
+  %a = alloca i32, align 4
+  %b = alloca i32, align 4
+  %c = alloca i32, align 4
+  store i32 %0, i32* %a, align 4
+  store i32 %1, i32* %b, align 4
+  store i32 %2, i32* %c, align 4
+  %"$a" = load i32, i32* %a, align 4
+  %"$b" = load i32, i32* %b, align 4
+  %ADD = add i32 %"$a", %"$b"
+  %"$c" = load i32, i32* %c, align 4
+  %ADD1 = add i32 %ADD, %"$c"
+  ret i32 %ADD1
+}
+
+define i32 @main() {
+entry:
+  %call.add = call i32 @add(i32 1, i32 2, i32 3)
+  ret i32 %call.add
 }
 ```
 

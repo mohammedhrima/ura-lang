@@ -4,6 +4,7 @@ proto printf(fmt char[], ...) i32
 
 fn is_even(n i32) bool:
     return n % 2 == 0
+parser errors: fn header, missing ':', elif/else, break/continue outside a loop
 
 fn both(a bool, b bool) bool:
     return a and b

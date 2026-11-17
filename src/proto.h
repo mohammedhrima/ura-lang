@@ -119,6 +119,7 @@ bool is_number(Node *node);
 bool is_open(NodePrint *elems, size_t i, int level);
 bool same_type(Node *a, Node *b);
 char *parse_escaped(char *input, int s, int e);
+char *token_text(Token *token);
 char *type_name(Node *type);
 int _fprint(ioFile fp, const char *fmt, va_list ap);
 int _print(ioFile fp, char *fmt, ...);

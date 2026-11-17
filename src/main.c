@@ -454,6 +454,10 @@ int line_start(int pos) {
     return pos;
 }
 
+char *token_text(Token *token) {
+    return format("%.*s", token->e - token->s, ura.file->buff + token->s);
+}
+
 int line_end(int pos) {
     char *buff = ura.file->buff;
     while (buff[pos] && buff[pos] != '\n')
@@ -516,7 +520,9 @@ Node *parse_type(int pos) {
 Node *parse_block(Token *token) {
     Node *node = new_node(token);
     enter_scope(node);
-    if (token->type != ELSE)
+    if (token->type != ELSE && peek(0)->type == DOTS)
+        add_error(token->s, token->e, format("expected a condition after '%s'", token_text(token)), NULL);
+    else if (token->type != ELSE)
         node->cond = parse_expr(0);
     else if (peek(0)->type != DOTS && peek(0)->line == token->line) {
         char *buff = ura.file->buff;
@@ -568,19 +574,18 @@ Node *parse_prime() {
             next(); // SKIP (
             while (!includes(peek(0)->type, RPARENT, LAST)) {
                 append(node->children, parse_expr(0));
-                if (peek(0)->type == COMA)
-                    next();
+                if (peek(0)->type != COMA)
+                    break;
+                next(); // SKIP ,
             }
-            assert(peek(0)->type == RPARENT);
-            next(); // SKIP )
+            expect(RPARENT, format("expected ')' to close the call to '%s'", token->name), ")");
         } else
             node = new_node(token);
         return node;
     }
     case LPARENT: {
         node = parse_expr(0);
-        assert(peek(0)->type == RPARENT);
-        next(); // SKIP )
+        expect(RPARENT, "expected ')' to close this '('", ")");
         return node;
     }
     case SUB: {
@@ -680,8 +685,8 @@ Node *parse_prime() {
         return node;
     }
     default: {
-        eprint("%s:%d handle this case %t\n", FILE, LINE, token->type);
-        exit(1);
+        add_error(token->s, token->e, format("unexpected '%s'", token_text(token)), NULL);
+        return new_node(token);
     }
     }
     return NULL;
@@ -700,6 +705,11 @@ Node *parse_expr(int min_op) {
             break;
         Node *node = new_node(next());
         node->left = left;
+        Token *token = node->token;
+        if (peek(0)->type == LAST || peek(0)->line != token->line) {
+            add_error(token->s, token->e, format("expected a value after '%s'", token_text(token)), NULL);
+            return node;
+        }
         node->right = parse_expr(op);
         left = node;
     }
