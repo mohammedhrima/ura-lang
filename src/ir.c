@@ -61,7 +61,7 @@ enum Type {
     
     // ID become VAR, after getting declared
     ID, VAR, 
-	PARAM,
+	PARAM, GLOBAL,
     DECLARE,
     INIT_VAR,
     DREF,
@@ -441,6 +441,7 @@ TypeRef llvm_type(Ucg *ir) {
     case VAL_CREATE:	return llvm_type(ir->to_create);
     case DECLARE:		return llvm_type(ir->data_type);
     case PARAM:			return llvm_type(ir->data_type);
+    case GLOBAL:		return llvm_type(ir->data_type);
 	case ARRAY: {
 		Ucg* elem = ir->arr.elem;
 		int count = ir->arr.items_count;
@@ -528,6 +529,13 @@ void llvm_declare_var(Ucg *ir) {
     // assert(ir->rtype);
     assert(ir->name);
     ir->elem = llvm_alloc(ir->rtype, ir->name);
+}
+
+void llvm_declare_global(Ucg *ir) {
+    ir->rtype = llvm_type(ir->data_type);
+    assert(ir->name);
+    ir->elem = LLVMAddGlobal(gb_ucg.module, ir->rtype, ir->name);
+    LLVMSetInitializer(ir->elem, LLVMConstNull(ir->rtype));
 }
 
 void llvm_declare_param(Ucg *ir) {
@@ -893,6 +901,14 @@ Ucg *ucg_var(char *name, Ucg *data_type) {
     return new;
 }
 
+Ucg *ucg_global(char *name, Ucg *data_type) {
+    Ucg *new = ucg_new(GLOBAL);
+    new->name = name;
+    new->data_type = data_type;
+    append(gb_ucg.insts, new);
+    return new;
+}
+
 Ucg *ucg_param(char *name, Ucg *data_type) {
     Ucg *new = ucg_new(PARAM);
     new->name = name;
@@ -902,7 +918,7 @@ Ucg *ucg_param(char *name, Ucg *data_type) {
 }
 
 bool is_locator(Ucg *ir) {
-    return ir->type == DECLARE || ir->type == PARAM;
+    return ir->type == DECLARE || ir->type == PARAM || ir->type == GLOBAL;
 }
 
 Ucg *ucg_value(Ucg *ir) {
@@ -1048,6 +1064,10 @@ void ucg_compile() {
             llvm_fn_dec(curr);
             break;
         }
+        case GLOBAL: {
+            llvm_declare_global(curr);
+            break;
+        }
         case FN_ENTRY: {
             fn = curr->to_enter->elem;
             curr->bloc = llvm_bloc(fn, "entry");
@@ -1103,6 +1123,9 @@ void ucg_compile() {
         // }
         case FN_DEC: {
             // llvm_fn_dec(curr);
+            break;
+        }
+        case GLOBAL: {
             break;
         }
         case FN_ENTRY: {
@@ -1829,6 +1852,30 @@ bool run_test(int p) {
         ucg_end(fn_main);
         break;
     }
+    case 19: {
+        Ucg *count = ucg_global("count", ucg_i32_type());
+
+        Ucg *tick = ucg_fn2("tick", ucg_void_type(), NULL);
+        ucg_op(ADD_ASSIGN, count, ucg_i32_value(1));
+        ucg_end(tick);
+
+        Ucg *fn_main = ucg_fn2("main", ucg_i32_type(), NULL);
+        Ucg *i = ucg_var("i", ucg_i32_type());
+        ucg_assign(count, ucg_i32_value(0));
+        ucg_assign(i, ucg_i32_value(0));
+
+        Ucg *loop = ucg_loop();
+        {
+            ucg_then(loop, ucg_op(LT, i, ucg_i32_value(4)));
+            ucg_fn_call2(tick, NULL);
+            ucg_op(ADD_ASSIGN, i, ucg_i32_value(1));
+        }
+        ucg_end(loop);
+
+        ucg_ret(count);
+        ucg_end(fn_main);
+        break;
+    }
     default: {
         return false;
     }
@@ -1870,20 +1917,22 @@ bool compile_test(int p) {
     ucg_compile();
     ucg_path("build/out.ll");
     ucg_gen_ll();
-    // ucg_gen_bin();
+    if (r) {
+        ucg_gen_bin();
+        ucg_run_bin();
+    }
     ucg_finish();
     return r;
 }
-#if 0
-int main() {
+#if UCG
+int main(int ac, char **av) {
     mkdir2("build");
 
-#    if 0
-    compile_test(16);
-#    else
-    for (int i = 0; compile_test(i); i++)
-        ;
-#    endif
+    if (ac > 1)
+        compile_test(atoi(av[1]));
+    else
+        for (int i = 0; compile_test(i); i++)
+            ;
 }
 #endif
 
@@ -1895,7 +1944,7 @@ const char *to_string(Type type) {
 		[ID] = "ID", [SCOPE] = "SCOPE", [URA] = "URA",
 
 		[VAR] = "VAR", [DECLARE] = "DECLARE", [INIT_VAR] = "INIT_VAR",
-		[ARG] = "ARG", [PARAM] = "PARAM",
+		[ARG] = "ARG", [PARAM] = "PARAM", [GLOBAL] = "GLOBAL",
 
 		[VAL_CREATE] = "VAL_CREATE",
 		[TEMPLATE] = "TEMPLATE", [TEMPLATE_TYPE] = "TEMPLATE_TYPE",
