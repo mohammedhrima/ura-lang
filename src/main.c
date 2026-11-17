@@ -74,6 +74,7 @@ struct Node {
         Node *right;
         Node *args;
         Node *next;
+        Node *declared;
     };
 
     expand(Node *, children);
@@ -121,13 +122,14 @@ struct {
     Token token;
 } keywords[] = {
     { "bool", { .type = INT, .is_type = true, .shift = 1 } },
+    { "i1", { .type = INT, .is_type = true, .shift = 1 } },
     { "char", { .type = INT, .is_type = true, .shift = 8 } },
     { "i8", { .type = INT, .is_type = true, .shift = 8 } },
     { "i32", { .type = INT, .is_type = true, .shift = 32 } },
     { "num", { .type = INT, .is_type = true } },
 
-    { "True", { .type = INT, .num = { .value = true } } },
-    { "False", { .type = INT, .num = { .value = false } } },
+    { "True", { .type = INT, .shift = 1, .num = { .value = true } } },
+    { "False", { .type = INT, .shift = 1, .num = { .value = false } } },
 
     { "struct", { .type = STRUCT } },
     { "and", { .type = AND } },
@@ -334,12 +336,16 @@ void tokenize(File *file, int space2) {
         if (e != s)
             continue;
         if (strncmp2(buff + s, "/*", 2)) {
-            s += 2; // skip /*
-            while (buff[e] != '\0' && !strncmp2(buff + e, "*/", 2))
+            e = s + 2; // skip /*
+            while (buff[e] != '\0' && !strncmp2(buff + e, "*/", 2)) {
+                if (buff[e] == '\n')
+                    ura.line++;
                 e++;
-            // TODO:
-            //  if (!check_multi_comment(s, e, line))
-            //     break;
+            }
+            if (buff[e] == '\0') {
+                add_error(s, s + 2, "unclosed comment", "add */ to close it");
+                break;
+            }
             e += 2;
             continue;
         }
@@ -347,19 +353,39 @@ void tokenize(File *file, int space2) {
         if (buff[s] != '\0' && strchr2("\"\'", buff[s])) {
             char c = buff[s];
             e++;
-            char str[3] = { [0] = '\n', [1] = c };
-            // print("2. hellooo\n");
-            while (!strchr2(str, buff[e])) {
-                if (buff[e] == '\\' && !strchr2("\n", buff[e + 1]))
+            bool valid = true;
+            int letters = 0;
+            while (buff[e] != '\0' && buff[e] != '\n' && buff[e] != c) {
+                char next = buff[e + 1];
+                if (buff[e] == '\\' && next != '\0' && next != '\n') {
+                    if (!isprint(next) || !escaped[(unsigned char)next]) {
+                        add_error(e, e + 2, format("unknown escape '\\%c'", next),
+                                  "the escapes are \\n \\t \\r \\0 \\\\ \\\" \\'");
+                        valid = false;
+                    }
                     e++;
+                }
+                letters++;
                 e++;
             }
-            // TODO:
-            // if (!check_quote(s, e, line))
-            //     continue;
+            if (buff[e] != c) {
+                int line_start = s;
+                while (line_start > 0 && buff[line_start - 1] != '\n')
+                    line_start--;
+                while (buff[line_start] == ' ')
+                    line_start++;
+                add_error(s, e, c == '"' ? "unclosed string" : "unclosed character",
+                          format("use %.*s%c", e - line_start, buff + line_start, c));
+                continue;
+            }
             e++; // skip last ' or "
+            if (!valid)
+                continue;
             if (c == '"')
                 parse_string(s, e, space);
+            else if (letters > 1)
+                add_error(s, e, format("a character holds one letter, not %d", letters),
+                          format("use \"%.*s\" for a string", e - s - 2, buff + s + 1));
             else
                 parse_char(s, e, space);
             continue;
@@ -394,8 +420,8 @@ void tokenize(File *file, int space2) {
         if (e != s) {
             continue;
         }
-        eprint("unknow charcter <%c>\n", buff[s]);
-        exit(1);
+        add_error(s, s + 1, format("unknown character '%c'", buff[s]), "remove it");
+        e++;
     }
 }
 
@@ -588,12 +614,7 @@ Node *parse_prime() {
     }
     case BRK: case CNT: {
         node = new_node(token);
-        for (int i = ura.scopes_count - 1; i >= 0; i--) {
-            if (ura.scopes[i]->token->type == LOOP) {
-                node->loop = ura.scopes[i];
-                break;
-            }
-        }
+        node->loop = find_scope(LOOP);
         assert(node->loop);
         return node;
     }
@@ -649,24 +670,128 @@ Node *find_variable(char *name) {
         if (to_find)
             return to_find;
     }
-    eprint("'%s' not found\n", name);
     return NULL;
 }
 
-Node *find_function(char *name) {
+Node *find_scope(Type type) {
+    for (int i = ura.scopes_count - 1; i >= 0; i--)
+        if (ura.scopes[i]->token->type == type)
+            return ura.scopes[i];
+    return NULL;
+}
+
+int name_diff(char *a, char *b) {
+    int d = 0;
+    int i = 0;
+    int j = 0;
+    while (a[i] && b[j])
+        d += a[i++] != b[j++];
+    return d + strlen(a + i) + strlen(b + j);
+}
+
+Node *find_function_like(char *name, int max_diff) {
+    Node *found = NULL;
+    int found_diff = max_diff + 1;
     for (int i = ura.scopes_count - 1; i >= 0; i--) {
         Node *curr = ura.scopes[i];
         for (int j = 0; j < curr->children_count; j++) {
             Node *child = curr->children[j];
             if (!includes(child->token->type, FN_DEC, PROTO, 0))
                 continue;
-            if (!strcmp2(child->token->name, name))
+            int diff = name_diff(child->token->name, name);
+            if (diff >= found_diff)
                 continue;
-            return child;
+            found = child;
+            found_diff = diff;
         }
     }
-    eprint("'%s' not found\n", name);
-    return NULL;
+    return found;
+}
+
+Node *find_function(char *name) {
+    return find_function_like(name, 0);
+}
+
+Node *new_type(Type type, int shift, Node *data_type) {
+    Node *node = new_node(new_token(type, NULL));
+    node->token->is_type = true;
+    node->token->shift = shift;
+    node->data_type = data_type;
+    return node;
+}
+
+Node *bool_type(void) {
+    return new_type(INT, 1, NULL);
+}
+
+Node *ret_type_of(Node *fn) {
+    return fn->ret_type ? fn->ret_type : new_type(VOID, 0, NULL);
+}
+
+char *type_name(Node *type) {
+    switch (type->token->type) {
+    case INT: {
+        int shift = type->token->shift;
+        return shift == 1 ? "bool" : format("i%d", shift);
+    }
+    case REF:
+        return format("%s[]", type_name(type->data_type));
+    case VOID:
+        return "void";
+    default:
+        return (char *)to_string(type->token->type);
+    }
+}
+
+Node *type_of(Node *node) {
+    switch (node->token->type) { // clang-format off
+    case INT:       return node;
+    case CHARS:     return new_type(REF, 0, new_type(INT, 8, NULL));
+    case VAR: case PARAM: return node->data_type;
+    case FN_CALL:   return node->to_call ? ret_type_of(node->to_call) : NULL;
+    case NEG:       return type_of(node->operand);
+    case LT: case GT: case EQ: case LE: case GE: case NQ:
+    case AND: case OR: return bool_type();
+    case ID:        return NULL;
+    default:        return type_of(node->left); // clang-format on
+    }
+}
+
+bool same_type(Node *a, Node *b) {
+    if (a->token->type != b->token->type)
+        return false;
+    if (a->token->type == REF)
+        return same_type(a->data_type, b->data_type);
+    return a->token->shift == b->token->shift;
+}
+
+bool is_number(Node *node) {
+    return node->token->type == INT && node->token->shift != 1;
+}
+
+void check_type(Node *value, Node *expected, char *help) {
+    Node *found = type_of(value);
+    if (found == NULL || expected == NULL)
+        return;
+    Token *token = value->token;
+    if (is_number(value) && is_number(expected)) {
+        long long max = (1LL << (expected->token->shift - 1)) - 1;
+        long long number = token->num.value;
+        if (number < -max - 1 || number > max)
+            add_error(token->s, token->e, format("%lld doesn't fit in %s", number, type_name(expected)),
+                      format("%s goes from %lld to %lld", type_name(expected), -max - 1, max));
+        return;
+    }
+    if (!same_type(found, expected))
+        add_error(token->s, token->e,
+                  format("expected '%s', found '%s'", type_name(expected), type_name(found)), help);
+}
+
+void check_same_type(Node *left, Node *right) {
+    if (is_number(left))
+        check_type(left, type_of(right), NULL);
+    else
+        check_type(right, type_of(left), NULL);
 }
 
 void analyze(Node *node) {
@@ -677,10 +802,13 @@ void analyze(Node *node) {
     case ID: {
         Node *var = find_variable(node->token->name);
         if (var) {
-            // node->token->type = VAR;
-            // node->token->ucg = var->token->ucg;
-            // node->left = var;
-            *node = *var;
+            node->token->type = var->token->type;
+            node->data_type = var->data_type;
+            node->declared = var;
+        } else {
+            Token *token = node->token;
+            add_error(token->s, token->e, format("undeclared variable '%s'", token->name),
+                      format("declare it first, like: %s i32 = 0", token->name));
         }
         break;
     }
@@ -706,17 +834,24 @@ void analyze(Node *node) {
         break;
     }
     case RETURN: {
+        Node *fn = find_scope(FN_DEC);
         if (node->left) {
             analyze(node->left);
-            // assert(node->left-)
+            if (fn)
+                check_type(node->left, ret_type_of(fn), NULL);
         } else {
             // TODO: return void
         }
         break;
     }
     case IF: case ELIF: case ELSE: case LOOP: {
-        if (node->cond)
-            analyze(node->cond); // TODO: make sure it's boolean
+        if (node->cond) {
+            analyze(node->cond);
+            char *help = NULL;
+            if (includes(node->cond->token->type, VAR, PARAM, 0))
+                help = format("write '%s != 0'", node->cond->token->name);
+            check_type(node->cond, bool_type(), help);
+        }
         enter_scope(node);
         for (int i = 0; i < node->children_count; i++)
             analyze(node->children[i]);
@@ -733,8 +868,18 @@ void analyze(Node *node) {
         break;
     }
     case FN_CALL: {
-        node->to_call = find_function(node->token->name);
-        assert(node->to_call);
+        Token *token = node->token;
+        char *name = token->name;
+        node->to_call = find_function(name);
+        if (node->to_call == NULL) {
+            Node *like = find_function_like(name, 2);
+            if (find_variable(name))
+                add_error(token->s, token->e, format("'%s' is a variable, not a function", name), NULL);
+            else
+                add_error(token->s, token->e, format("no function named '%s'", name),
+                          like ? format("did you mean '%s'?", like->token->name) : NULL);
+            break;
+        }
         for (int i = 0; i < node->children_count; i++)
             analyze(node->children[i]);
         break;
@@ -745,9 +890,14 @@ void analyze(Node *node) {
 	case DIV_ASSIGN: case MOD_ASSIGN: 
 	case LT: case GT: case EQ: case LE: case GE: case NQ: // comparision
 	case AND: case OR: { // clang-format on
-        // TODO: check compatibility
         analyze(node->left);
         analyze(node->right);
+        if (!includes(node->token->type, AND, OR, 0))
+            check_same_type(node->left, node->right);
+        else if (!type_of(node->left) || same_type(type_of(node->left), bool_type()))
+            check_type(node->right, bool_type(), NULL);
+        else
+            check_type(node->left, bool_type(), NULL);
         break;
     }
     default: { // clang-format off
@@ -822,12 +972,9 @@ void codegen_statements(Node *node) {
 void codegen(Node *node) {
     Ucg *ucg = NULL;
     switch (node->token->type) {
-    case VAR: {
-        // node->token->ucg = node->left->token->ucg;
-        break;
-    }
-    case PARAM: {
-
+    case VAR: case PARAM: {
+        if (node->declared)
+            node->token->ucg = node->declared->token->ucg;
         break;
     }
 
@@ -1026,7 +1173,7 @@ int main(int ac, char **av) {
     print(GREEN("======================================\n"));
     print(GREEN("[ANALYZE]:\n"));
     analyze(ura.tree);
-    // check_errors(); // the tree is not valid code: don't generate it
+    check_errors();
     // print(GREEN("======================================\n"));
     for (int i = 0; i < ura.tree->children_count; i++) {
         print("%n", ura.tree->children[i]);
@@ -1212,9 +1359,48 @@ int _fprint(ioFile fp, const char *fmt, va_list ap) {
     return r;
 }
 
+void add_error(int s, int e, char *msg, char *help) {
+    uraError error = {.s = s, .e = e, .msg = msg, .help = help};
+    append(ura.errors, error);
+}
+
 void check_errors(void) {
     if (ura.errors_count == 0)
         return;
+    char *buff = ura.file->buff;
+    char *path = ura.file->path;
+    char *cwd = getcwd2();
+    size_t cwd_len = strlen(cwd);
+    if (strncmp2(path, cwd, cwd_len) && path[cwd_len] == '/')
+        path += cwd_len + 1;
+    for (int i = 0; i < ura.errors_count; i++) {
+        uraError *error = &ura.errors[i];
+        int line = 1;
+        int start = 0;
+        for (int j = 0; j < error->s; j++) {
+            if (buff[j] == '\n') {
+                line++;
+                start = j + 1;
+            }
+        }
+        int end = error->s;
+        while (buff[end] && buff[end] != '\n')
+            end++;
+        int col = error->s - start;
+        int width = snprintf(NULL, 0, "%d", line);
+
+        fprintf(stderr, "%s: %s:%d:%d %s\n", RED("error"), path, line, col + 1, error->msg);
+        fprintf(stderr, "%*s |\n", width, "");
+        fprintf(stderr, "%d | %.*s\n", line, end - start, buff + start);
+        fprintf(stderr, "%*s | %*s", width, "", col, "");
+        for (int j = error->s; j < error->e || j == error->s; j++)
+            fprintf(stderr, "^");
+        fprintf(stderr, "\n");
+        if (error->help)
+            fprintf(stderr, "help: %s\n", error->help);
+    }
+    fprintf(stderr, "%s: aborting due to %d error%s\n", RED("error"),
+            (int)ura.errors_count, ura.errors_count > 1 ? "s" : "");
     exit(1);
 }
 

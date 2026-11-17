@@ -4224,7 +4224,7 @@ error: aborting due to 1 error
 ```ura
 fn main() i32:
     a i32 = 1
-    b b1 = a == null
+    b bool = a == null
     return 0
 ```
 
@@ -4233,7 +4233,7 @@ fn main() i32:
 ```
 error: test.ura:3:17 'null' needs a ref on the other side
   |
-3 |     b b1 = a == null
+3 |     b bool = a == null
   |                 ^^^^
 error: aborting due to 1 error
 ```
@@ -5145,8 +5145,8 @@ endif:                                            ; preds = %entry
 
 ```ura
 fn main() i32:
-    b b1 = False
-    p &b1 = &b
+    b bool = False
+    p &bool = &b
     p = True
     if b:
         return 1

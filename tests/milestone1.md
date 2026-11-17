@@ -89,7 +89,7 @@
 - 085 — tokenizer error: unknown escape
 - 086 — tokenizer error: unclosed comment
 - 087 — tokenizer error: number too big for i32
-- 088 — tokenizer error: indentation that is not a multiple of 4
+- 088 — tokenizer: indentation that is not a multiple of 4 works
 - 089 — tokenizer error: two errors in one file: both are shown
 - 090 — parser error: missing : after a function header
 - 091 — parser error: missing ( after a function name
@@ -156,7 +156,7 @@
 - 152 — calls: use a void result
 - 153 — types: string into i8
 - 154 — types: bool into i32
-- 155 — types: number into b1
+- 155 — types: number into bool
 - 156 — types: number too big for i8
 - 157 — types: wrong return type
 - 158 — types: value returned from a void fn
@@ -247,6 +247,8 @@
 - 243 — variables: unary minus on a variable and a parameter
 - 244 — global scope: a top-level statement runs before main
 - 245 — function: early bare return in a void function
+- 246 — bool: i1 and bool are the same type
+- 247 — tokenizer: a block comment over two lines, /*/ does not close it
 
 ---
 
@@ -5088,6 +5090,7 @@ error: test.ura:4:15 unknown character '$'
 4 |     x i32 = 5 $ 3
   |               ^
 help: remove it
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5116,6 +5119,7 @@ error: test.ura:4:14 unclosed string
 4 |     s i8[] = "abc
   |              ^^^^
 help: use s i8[] = "abc"
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5144,6 +5148,7 @@ error: test.ura:4:14 unclosed character
 4 |     c char = 'a
   |              ^^
 help: use c char = 'a'
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5172,6 +5177,7 @@ error: test.ura:4:14 a character holds one letter, not 2
 4 |     c char = 'ab'
   |              ^^^^
 help: use "ab" for a string
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5200,6 +5206,7 @@ error: test.ura:4:16 unknown escape '\q'
 4 |     s i8[] = "a\qb"
   |                ^^
 help: the escapes are \n \t \r \0 \\ \" \'
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5228,6 +5235,7 @@ error: test.ura:4:5 unclosed comment
 4 |     /* this never ends
   |     ^^
 help: add */ to close it
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5256,6 +5264,7 @@ error: test.ura:4:13 99999999999 doesn't fit in i32
 4 |     x i32 = 99999999999
   |             ^^^^^^^^^^^
 help: i32 goes from -2147483648 to 2147483647
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5266,29 +5275,43 @@ help: i32 goes from -2147483648 to 2147483647
 
 ---
 
-## 088 — tokenizer error: indentation that is not a multiple of 4
+## 088 — tokenizer: indentation that is not a multiple of 4 works
 
 ```ura
-// error: indentation of 3 spaces
-// help: indent with a multiple of 4 spaces
+// expect: 7
 fn main() i32:
+   a i32 = 7
+   if a == 7:
+         return a
    return 0
 ```
 
-### stderr
+### llvm ir
 
-```
-error: test.ura:4:1 indentation of 3 spaces
-  |
-4 |    return 0
-  | ^^^
-help: indent with a multiple of 4 spaces
-```
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
 
-### status
+define i32 @main() {
+entry:
+  %a = alloca i32, align 4
+  store i32 7, i32* %a, align 4
+  br label %if0
 
-```
-1
+if0:                                              ; preds = %entry
+  %"$a" = load i32, i32* %a, align 4
+  %EQ = icmp eq i32 %"$a", 7
+  br i1 %EQ, label %if0.then, label %endif
+
+if0.then:                                         ; preds = %if0
+  %"$a1" = load i32, i32* %a, align 4
+  ret i32 %"$a1"
+
+endif:                                            ; preds = %if0
+  ret i32 0
+}
 ```
 
 ---
@@ -5317,6 +5340,7 @@ error: test.ura:5:15 unknown character '@'
 5 |     y i32 = 2 @ 1
   |               ^
 help: remove it
+error: aborting due to 2 errors
 ```
 
 ### status
@@ -5718,6 +5742,7 @@ error: test.ura:5:12 undeclared variable 'y'
 5 |     return y
   |            ^
 help: declare it first, like: y i32 = 0
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5857,6 +5882,7 @@ error: test.ura:3:12 no function named 'foo'
   |
 3 |     return foo()
   |            ^^^
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5887,6 +5913,7 @@ error: test.ura:7:12 no function named 'ad'
 7 |     return ad(1, 2)
   |            ^^
 help: did you mean 'add'?
+error: aborting due to 1 error
 ```
 
 ### status
@@ -6031,6 +6058,7 @@ error: test.ura:4:12 'x' is a variable, not a function
   |
 4 |     return x()
   |            ^
+error: aborting due to 1 error
 ```
 
 ### status
@@ -6052,10 +6080,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:15 unexpected character '$'
+error: test.ura:2:15 unknown character '$'
   |
 2 |     x i32 = 5 $
   |               ^
+help: remove it
 error: aborting due to 1 error
 ```
 
@@ -6078,10 +6107,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:12 unterminated character
+error: test.ura:2:12 unclosed character
   |
 2 |     c i8 = 'a
   |            ^^
+help: use c i8 = 'a'
 error: aborting due to 1 error
 ```
 
@@ -6096,25 +6126,39 @@ error: aborting due to 1 error
 ## 117 — tokenizer: empty character
 
 ```ura
+// expect: 0
 fn main() i32:
     c i8 = ''
-    return 0
+    if c == '\0':
+        return 0
+    return 1
 ```
 
-### stderr
+### llvm ir
 
-```
-error: test.ura:2:12 empty character literal
-  |
-2 |     c i8 = ''
-  |            ^^
-error: aborting due to 1 error
-```
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
 
-### status
+define i32 @main() {
+entry:
+  %c = alloca i8, align 1
+  store i8 0, i8* %c, align 1
+  br label %if0
 
-```
-1
+if0:                                              ; preds = %entry
+  %"$c" = load i8, i8* %c, align 1
+  %EQ = icmp eq i8 %"$c", 0
+  br i1 %EQ, label %if0.then, label %endif
+
+if0.then:                                         ; preds = %if0
+  ret i32 0
+
+endif:                                            ; preds = %if0
+  ret i32 1
+}
 ```
 
 ---
@@ -6130,11 +6174,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:12 a character holds one letter
+error: test.ura:2:12 a character holds one letter, not 2
   |
 2 |     c i8 = 'ab'
   |            ^^^^
-help: for a string, write '"ab"'
+help: use "ab" for a string
 error: aborting due to 1 error
 ```
 
@@ -6157,10 +6201,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:13 '99999999999' doesn't fit in 'i32'
+error: test.ura:2:13 99999999999 doesn't fit in i32
   |
 2 |     x i32 = 99999999999
   |             ^^^^^^^^^^^
+help: i32 goes from -2147483648 to 2147483647
 error: aborting due to 1 error
 ```
 
@@ -6843,7 +6888,7 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:8 expected 'b1', found 'i32'
+error: test.ura:2:8 expected 'bool', found 'i32'
   |
 2 |     if 1 and 2:
   |        ^
@@ -6868,7 +6913,7 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:12 function 'zz' not found
+error: test.ura:2:12 no function named 'zz'
   |
 2 |     return zz()
   |            ^^
@@ -7118,7 +7163,7 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:13 expected 'i32', found 'b1'
+error: test.ura:2:13 expected 'i32', found 'bool'
   |
 2 |     a i32 = True
   |             ^^^^
@@ -7133,21 +7178,21 @@ error: aborting due to 1 error
 
 ---
 
-## 155 — types: number into b1
+## 155 — types: number into bool
 
 ```ura
 fn main() i32:
-    b b1 = 1
+    b bool = 1
     return 0
 ```
 
 ### stderr
 
 ```
-error: test.ura:2:12 expected 'b1', found 'i32'
+error: test.ura:2:14 expected 'bool', found 'i32'
   |
-2 |     b b1 = 1
-  |            ^
+2 |     b bool = 1
+  |              ^
 error: aborting due to 1 error
 ```
 
@@ -7170,10 +7215,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:12 '300' doesn't fit in 'i8'
+error: test.ura:2:12 300 doesn't fit in i8
   |
 2 |     x i8 = 300
   |            ^^^
+help: i8 goes from -128 to 127
 error: aborting due to 1 error
 ```
 
@@ -7281,7 +7327,7 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:8 expected 'b1', found 'i32'
+error: test.ura:2:8 expected 'bool', found 'i32'
   |
 2 |     if 5:
   |        ^
@@ -7309,7 +7355,7 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:3:11 expected 'b1', found 'i32'
+error: test.ura:3:11 expected 'bool', found 'i32'
   |
 3 |     while a:
   |           ^
@@ -7688,7 +7734,7 @@ error: aborting due to 1 error
 fn foo(a i32):
    return
 
-fn foo(a b1):
+fn foo(a bool):
    return
 
 fn main() i32:
@@ -7778,7 +7824,7 @@ entry:
 
 ```ura
 fn main() i32:
-   flag b1 = True
+   flag bool = True
    if flag:
       return 1
    return 0
@@ -8273,10 +8319,26 @@ fn main() i32:
 ## 194 — function: calling a function that does not exist
 
 ```ura
-// error: Undeclared function 'bar'
+// error: no function named 'bar'
 
 fn main() i32:
     return bar(3)
+```
+
+### stderr
+
+```
+error: test.ura:4:12 no function named 'bar'
+  |
+4 |     return bar(3)
+  |            ^^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---
@@ -8371,11 +8433,28 @@ fn main() i32:
 ## 200 — lexer: unterminated string literal
 
 ```ura
-// error: Unterminated string literal, expected '"'
+// error: unclosed string
 
 fn main() i32:
     output("hello)
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:4:12 unclosed string
+  |
+4 |     output("hello)
+  |            ^^^^^^^
+help: use output("hello)"
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---
@@ -8383,11 +8462,28 @@ fn main() i32:
 ## 201 — lexer: unterminated character literal
 
 ```ura
-// error: Unterminated character literal, expected "'"
+// error: unclosed character
 
 fn main() i32:
     c char = 'a
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:4:14 unclosed character
+  |
+4 |     c char = 'a
+  |              ^^
+help: use c char = 'a'
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---
@@ -8395,7 +8491,7 @@ fn main() i32:
 ## 202 — lexer: unterminated block comment
 
 ```ura
-// error: Unterminated block comment, expected '*/'
+// error: unclosed comment
 
 /* this comment never closes
 fn main() i32:
@@ -8403,16 +8499,50 @@ fn main() i32:
     return 0
 ```
 
+### stderr
+
+```
+error: test.ura:3:1 unclosed comment
+  |
+3 | /* this comment never closes
+  | ^^
+help: add */ to close it
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
 ---
 
 ## 203 — lexer: an unexpected character
 
 ```ura
-// error: Unexpected character '#'
+// error: unknown character '#'
 
 fn main() i32:
     a i32 = 5 # 1
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:4:15 unknown character '#'
+  |
+4 |     a i32 = 5 # 1
+  |               ^
+help: remove it
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---
@@ -8420,12 +8550,29 @@ fn main() i32:
 ## 204 — lexer: an unknown escape sequence
 
 ```ura
-// error: Unknown escape character: \q
+// error: unknown escape '\q'
 
 fn main() i32:
     c char = '\q'
     output(c, "\n")
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:4:15 unknown escape '\q'
+  |
+4 |     c char = '\q'
+  |               ^^
+help: the escapes are \n \t \r \0 \\ \" \'
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---
@@ -9442,6 +9589,75 @@ entry:
   call void @add_small(i32 2)
   %"$total" = load i32, i32* @total, align 4
   ret i32 %"$total"
+}
+```
+
+---
+
+## 246 — bool: i1 and bool are the same type
+
+```ura
+// expect: 2
+fn main() i32:
+    a i1 = True
+    b bool = a
+    if b:
+        return 2
+    return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+define i32 @main() {
+entry:
+  %a = alloca i1, align 1
+  %b = alloca i1, align 1
+  store i1 true, i1* %a, align 1
+  %"$a" = load i1, i1* %a, align 1
+  store i1 %"$a", i1* %b, align 1
+  br label %if0
+
+if0:                                              ; preds = %entry
+  %"$b" = load i1, i1* %b, align 1
+  br i1 %"$b", label %if0.then, label %endif
+
+if0.then:                                         ; preds = %if0
+  ret i32 2
+
+endif:                                            ; preds = %if0
+  ret i32 0
+}
+```
+
+---
+
+## 247 — tokenizer: a block comment over two lines, /*/ does not close it
+
+```ura
+// expect: 5
+/*/ this comment opens with slash star slash
+   and goes on until here */
+fn main() i32:
+    return 5
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+define i32 @main() {
+entry:
+  ret i32 5
 }
 ```
 

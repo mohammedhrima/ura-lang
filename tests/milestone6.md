@@ -67,7 +67,7 @@ fn main() i32:
    n i32 = 42
    c i8 = 'z'
    s i8[] = "hi"
-   flag b1 = n > 1
+   flag bool = n > 1
    output(n, " ", c, " ", s, " ", flag, "\n")
    return 0
 ```

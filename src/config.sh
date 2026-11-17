@@ -680,7 +680,7 @@ copy() {
 # ============================================================================
 _ura_record_file() {
     local md_file="$1" only="$2"
-    local numbers number description link tmp_dir tmp_ura compiled
+    local numbers number description link tmp_dir tmp_ura compiled is_error
 
     numbers=$(grep -oE '^## [0-9]{3}' "$md_file" | grep -oE '[0-9]{3}')
 
@@ -711,11 +711,22 @@ _ura_record_file() {
             return 1
         fi
 
-        if [ "$compiled" -eq 0 ]; then
+        # an error test records its stderr when the compile fails, any other
+        # test records its IR when it compiles
+        is_error=false
+        if _ura_extract_entry "$md_file" "$number" | grep -qx '### status' ||
+           grep -q '^// error:' "$tmp_ura"; then
+            is_error=true
+        fi
+
+        if { [ "$compiled" -eq 0 ] && ! $is_error; } || { [ "$compiled" -ne 0 ] && $is_error; }; then
             # needs the source file, so before the temporary directory goes
             _ura_replace_entry "$md_file" "$number" "$description" "$tmp_ura"
             _ura_green "$link $description"
             _ura_recorded=$((_ura_recorded + 1))
+        elif $is_error; then
+            _ura_red "$link $description (compiles, expected an error: not recorded)"
+            _ura_not_compiling=$((_ura_not_compiling + 1))
         else
             _ura_red "$link $description (doesn't compile, not recorded)"
             _ura_print_failure "$URA_CASE_STDERR"
