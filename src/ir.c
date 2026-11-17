@@ -9,6 +9,7 @@
 #include <ctype.h>
 #include <math.h>
 #include <signal.h> // SIGSEGV
+#include <dirent.h>
 #include <unistd.h>
 #include <sys/wait.h>
 
@@ -102,6 +103,7 @@ enum Type {
 
     PROTO, 
     FN_DEC, ARGS, VARIADIC, FN_CALL, RETURN, PRINT,
+    LINK,
 	FN_ENTRY,
     SIZEOF, IS_NULLABLE,
     AS,
@@ -224,6 +226,7 @@ struct {
     char *asm_path;
     char *obj_path;
     char *exe_path;
+    expand(char *, libs);
 
     char *error_msg;
 
@@ -238,6 +241,7 @@ void ucg_start(char *name) {
     gb_ucg.context = LLVMContextCreate();
     gb_ucg.input_fn = NULL;
     gb_ucg.print_fn = NULL;
+    zero_init(gb_ucg.libs);
     gb_ucg.module = LLVMModuleCreateWithNameInContext(name, gb_ucg.context);
     gb_ucg.builder = LLVMCreateBuilderInContext(gb_ucg.context);
 
@@ -350,9 +354,18 @@ void ucg_gen_bin(void) {
         llvm_emit(obj_path, LLVMObjectFile);
     }
 
+    char **argv = arena_alloc(gb_ucg.libs_count + 5, sizeof(char *));
+    int argc = 0;
+    argv[argc++] = "clang";
+    argv[argc++] = obj_path;
+    argv[argc++] = "-o";
+    argv[argc++] = gb_ucg.exe_path;
+    for (int i = 0; i < gb_ucg.libs_count; i++)
+        argv[argc++] = gb_ucg.libs[i];
+
     pid_t pid = fork();
     if (pid == 0) {
-        execlp("clang", "clang", obj_path, "-o", gb_ucg.exe_path, NULL);
+        execvp("clang", argv);
         _exit(127);
     }
     int status;
@@ -2568,6 +2581,45 @@ void ucg_bin_path(char *path) {
     gb_ucg.exe_path = path;
 }
 
+char *ucg_find_lib_in(char *dir, char *name) {
+    DIR *d = dir ? opendir(dir) : NULL;
+    if (d == NULL)
+        return NULL;
+    char *prefix = format("lib%s", name);
+    size_t len = strlen(prefix);
+    char *found = NULL;
+    for (struct dirent *entry = readdir(d); entry && !found; entry = readdir(d)) {
+        char *file = entry->d_name;
+        if (!strncmp2(file, prefix, len))
+            continue;
+        if (file[len] != '.' && file[len] != '-')
+            continue;
+        if (!strstr(file, ".so") && !strstr(file, ".dylib"))
+            continue;
+        found = format("%s/%s", dir, file);
+    }
+    closedir(d);
+    return found;
+}
+
+char *ucg_find_lib(char *name) {
+    char *dirs[] = {
+        getenv("URA_LIB_PATH"),     "/usr/local/lib",           "/opt/homebrew/lib",
+        "/usr/lib/x86_64-linux-gnu", "/usr/lib/aarch64-linux-gnu", "/usr/lib64",
+        "/usr/lib",
+    };
+    for (size_t i = 0; i < sizeof(dirs) / sizeof(*dirs); i++) {
+        char *path = ucg_find_lib_in(dirs[i], name);
+        if (path)
+            return path;
+    }
+    return NULL;
+}
+
+void ucg_link(char *path) {
+    append(gb_ucg.libs, path);
+}
+
 bool compile_test(int p) {
     printf(CYAN("Test %d: ================================\n"), p);
     ucg_start(format("test%d", p));
@@ -2643,7 +2695,7 @@ const char *to_string(Type type) {
 		[PROTO] = "PROTO", [FN_ENTRY] = "FN_ENTRY",
 		[FN_DEC] = "FN_DEC", [ARGS] = "ARGS",
 		[VARIADIC] = "VARIADIC",
-		[FN_CALL] = "FN_CALL", [RETURN] = "RETURN", [PRINT] = "PRINT",
+		[FN_CALL] = "FN_CALL", [RETURN] = "RETURN", [PRINT] = "PRINT", [LINK] = "LINK",
 		[SIZEOF] = "SIZEOF", [IS_NULLABLE] = "IS_NULLABLE",
 
 		[IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",

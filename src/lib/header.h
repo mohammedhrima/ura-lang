@@ -62,6 +62,7 @@
 #ifndef append
 #define append(p, c)                                          \
 {                                                             \
+	__typeof__(*p) appended = (c);                            \
 	if (p##_size == 0)                                        \
 		p = arena_alloc((p##_size = 10), sizeof(*p));         \
 	else if (p##_count + 2 == p##_size) {                     \
@@ -69,7 +70,7 @@
 		memcpy(tmp, p, (p##_count * sizeof(*p)));             \
 		p = tmp;                                              \
 	}                                                         \
-	p[p##_count++] = c;                                       \
+	p[p##_count++] = appended;                                \
 }
 #endif
 // clang-format on

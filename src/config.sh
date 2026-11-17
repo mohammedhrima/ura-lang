@@ -25,6 +25,8 @@
 #   set-llvm [version]
 #            list the LLVM versions on this machine, or pick the one build
 #            uses (15 or 15.0.6); the pick is kept in llvm-version.txt
+#   run <target> <number>
+#            compile one entry and run its program in the terminal
 #   update   re-source this file after editing it
 #
 # Works when sourced from either bash or zsh. Everything else here is an
@@ -893,6 +895,46 @@ EOF
 }
 
 # ============================================================================
+# run <target> <number>
+#
+#   run milestone13 41
+#
+# Rebuilds, then compiles one entry and runs its program with the terminal
+# as stdin and stdout: an SDL window opens, input() reads what you type.
+# The entry links what its `link` lines name, like any ura program.
+# ============================================================================
+run() {
+    local target="$1" number="$2" md_files tmp_dir code
+    if [ -z "$target" ] || [ -z "$number" ]; then
+        _ura_red "run: give a file and a number, like: run milestone13 41"
+        return 1
+    fi
+    build || return 1
+    if ! md_files=$(_ura_test_files "$target"); then
+        _ura_red "run: no tests named '$target' in tests/"
+        return 1
+    fi
+    number=$(_ura_pick_number "$md_files" "$number") || return 1
+
+    tmp_dir=$(mktemp -d)
+    _ura_extract_entry "$md_files" "$number" | _ura_extract_fence > "$tmp_dir/test.ura"
+    if [ ! -s "$tmp_dir/test.ura" ]; then
+        _ura_red "run: no test $number in $(_ura_label "$md_files")"
+        rm -rf "$tmp_dir"
+        return 1
+    fi
+    if ! (cd "$tmp_dir" && "$URA_BIN" test.ura -o program >/dev/null); then
+        _ura_red "run: test $number doesn't compile"
+        rm -rf "$tmp_dir"
+        return 1
+    fi
+    (cd "$tmp_dir" && ./program)
+    code=$?
+    rm -rf "$tmp_dir"
+    echo "exit code: $code"
+}
+
+# ============================================================================
 # extension - package the VS Code extension and install it into VS Code
 # ============================================================================
 extension() {
@@ -936,4 +978,4 @@ update() {
     source "$URA_ROOT/config.sh"
 }
 
-printf '\033[0;32m(ura-lang)\033[0m ready — commands: build, ucg, tests, record, copy, extension, set-llvm, update\n'
+printf '\033[0;32m(ura-lang)\033[0m ready — commands: build, ucg, tests, record, copy, run, extension, set-llvm, update\n'

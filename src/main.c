@@ -140,6 +140,7 @@ struct {
     { "or", { .type = OR } },
     { "not", { .type = NOT } },
     { "proto", { .type = PROTO } },
+    { "link", { .type = LINK } },
     { "fn", { .type = FN_DEC } },
     { "return", { .type = RETURN } },
     { "if", { .type = IF } },
@@ -704,6 +705,14 @@ Node *parse_prime() {
         add_error(token->s, token->e, format("%s without an if before it", name), help);
         return parse_block(token);
     }
+    case LINK: {
+        node = new_node(token);
+        if (peek(0)->type == CHARS)
+            node->token->name = next()->chars.value;
+        else
+            expect(CHARS, "expected a library name after 'link'", " \"name\"");
+        return node;
+    }
     case LCBRACK: {
         node = new_node(token);
         while (peek(0)->type == ID) {
@@ -1134,6 +1143,16 @@ void analyze(Node *node) {
     case BRK: case CNT: {
         break;
     }
+    case LINK: {
+        Token *token = node->token;
+        if (token->name == NULL)
+            break;
+        token->chars.value = ucg_find_lib(token->name);
+        if (token->chars.value == NULL)
+            add_error(token->s, token->e, format("library '%s' not found", token->name),
+                      "install it, or set URA_LIB_PATH to the folder that holds it");
+        break;
+    }
     case NEG: {
         analyze(node->operand);
         break;
@@ -1323,7 +1342,7 @@ void codegen_protos(Node *node) {
 void codegen_statements(Node *node) {
     for (int i = 0; i < node->children_count; i++) {
         Node *child = node->children[i];
-        if (includes(child->token->type, FN_DEC, PROTO, DECLARE, STRUCT, 0))
+        if (includes(child->token->type, FN_DEC, PROTO, DECLARE, STRUCT, LINK, 0))
             continue;
         codegen(child);
     }
@@ -1392,6 +1411,8 @@ void codegen(Node *node) {
             Node *child = node->children[i];
             if (child->token->type == DECLARE)
                 codegen(child);
+            if (child->token->type == LINK)
+                ucg_link(child->token->chars.value);
             if (child->token->type == FN_DEC && strcmp2(child->token->name, "main"))
                 has_main = true;
         }

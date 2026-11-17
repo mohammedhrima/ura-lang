@@ -42,6 +42,8 @@
 - 038 — libft: lstlast — returns a reference to the last node
 - 039 — libft: lstiter — apply a function to each node's content in place
 - 040 — libft: lstdelone — unlink a node by index and clear the list
+- 041 — link: an SDL2 window drawn from ura
+- 042 — link: a library that is not installed
 
 ---
 
@@ -2186,5 +2188,282 @@ fn main() i32:
     ft_lstclear(&lst)
     output("size=", ft_lstsize(&lst), "\n")
     return 0
+```
+
+---
+
+## 041 — link: an SDL2 window drawn from ura
+
+```ura
+// stdout: window closed after 181 frames
+// expect: 0
+// opens a 400x300 SDL2 window with a color gradient for 3 seconds
+link "SDL2"
+proto SDL_Init(flags i32) i32
+proto SDL_CreateWindow(title i8[], x i32, y i32, w i32, h i32, flags i32) i8[]
+proto SDL_CreateRenderer(window i8[], index i32, flags i32) i8[]
+proto SDL_SetRenderDrawColor(renderer i8[], r i8, g i8, b i8, a i8) i32
+proto SDL_RenderDrawPoint(renderer i8[], x i32, y i32) i32
+proto SDL_RenderPresent(renderer i8[])
+proto SDL_PollEvent(event &Event) i32
+proto SDL_Delay(ms i32)
+proto SDL_Quit()
+
+struct Event:
+    type i32
+    a1 i32
+    a2 i32
+    a3 i32
+    a4 i32
+    a5 i32
+    a6 i32
+    a7 i32
+    a8 i32
+    a9 i32
+    a10 i32
+    a11 i32
+    a12 i32
+    a13 i32
+
+fn main() i32:
+    width i32 = 400
+    height i32 = 300
+    SDL_Init(32)
+    window i8[] = SDL_CreateWindow("ura + SDL2", 805240832, 805240832, width, height, 0)
+    renderer i8[] = SDL_CreateRenderer(window, -1, 0)
+
+    y i32 = 0
+    while y < height:
+        x i32 = 0
+        while x < width:
+            red i8 = (x * 255 / width) as i8
+            green i8 = (y * 255 / height) as i8
+            SDL_SetRenderDrawColor(renderer, red, green, 128 as i8, 255 as i8)
+            SDL_RenderDrawPoint(renderer, x, y)
+            x += 1
+        y += 1
+    SDL_RenderPresent(renderer)
+
+    event Event
+    running bool = True
+    frames i32 = 0
+    while running:
+        while SDL_PollEvent(&event) != 0:
+            if event.type == 256:
+                running = False
+        SDL_Delay(16)
+        frames += 1
+        if frames > 180:
+            running = False
+    SDL_Quit()
+    output("window closed after ", frames, " frames\n")
+    return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Event = type { i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32 }
+
+declare i32 @SDL_Init(i32)
+
+declare i8* @SDL_CreateWindow(i8*, i32, i32, i32, i32, i32)
+
+declare i8* @SDL_CreateRenderer(i8*, i32, i32)
+
+declare i32 @SDL_SetRenderDrawColor(i8*, i8, i8, i8, i8)
+
+declare i32 @SDL_RenderDrawPoint(i8*, i32, i32)
+
+declare void @SDL_RenderPresent(i8*)
+
+declare i32 @SDL_PollEvent(%Event*)
+
+declare void @SDL_Delay(i32)
+
+declare void @SDL_Quit()
+
+define i32 @main() {
+entry:
+  %width = alloca i32, align 4
+  %height = alloca i32, align 4
+  %window = alloca i8*, align 8
+  %arr = alloca [11 x i8], align 1
+  %renderer = alloca i8*, align 8
+  %y = alloca i32, align 4
+  %x = alloca i32, align 4
+  %red = alloca i8, align 1
+  %green = alloca i8, align 1
+  %event = alloca %Event, align 8
+  %running = alloca i1, align 1
+  %frames = alloca i32, align 4
+  %arr24 = alloca [21 x i8], align 1
+  %arr25 = alloca [9 x i8], align 1
+  %arr27 = alloca [31 x i8], align 1
+  store i32 400, i32* %width, align 4
+  store i32 300, i32* %height, align 4
+  %call.SDL_Init = call i32 @SDL_Init(i32 32)
+  store [11 x i8] c"ura + SDL2\00", [11 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [11 x i8], [11 x i8]* %arr, i32 0, i32 0
+  %"$width" = load i32, i32* %width, align 4
+  %"$height" = load i32, i32* %height, align 4
+  %call.SDL_CreateWindow = call i8* @SDL_CreateWindow(i8* %0, i32 805240832, i32 805240832, i32 %"$width", i32 %"$height", i32 0)
+  store i8* %call.SDL_CreateWindow, i8** %window, align 8
+  %"$window" = load i8*, i8** %window, align 8
+  %call.SDL_CreateRenderer = call i8* @SDL_CreateRenderer(i8* %"$window", i32 -1, i32 0)
+  store i8* %call.SDL_CreateRenderer, i8** %renderer, align 8
+  store i32 0, i32* %y, align 4
+  br label %while0
+
+while0:                                           ; preds = %endloop, %entry
+  %"$y" = load i32, i32* %y, align 4
+  %"$height5" = load i32, i32* %height, align 4
+  %LT = icmp slt i32 %"$y", %"$height5"
+  br i1 %LT, label %while0.then, label %endloop1
+
+while0.then:                                      ; preds = %while0
+  store i32 0, i32* %x, align 4
+  br label %while1
+
+while1:                                           ; preds = %while1.then, %while0.then
+  %"$x" = load i32, i32* %x, align 4
+  %"$width6" = load i32, i32* %width, align 4
+  %LT7 = icmp slt i32 %"$x", %"$width6"
+  br i1 %LT7, label %while1.then, label %endloop
+
+while1.then:                                      ; preds = %while1
+  %"$x8" = load i32, i32* %x, align 4
+  %MUL = mul i32 %"$x8", 255
+  %"$width9" = load i32, i32* %width, align 4
+  %DIV = sdiv i32 %MUL, %"$width9"
+  %AS = trunc i32 %DIV to i8
+  store i8 %AS, i8* %red, align 1
+  %"$y10" = load i32, i32* %y, align 4
+  %MUL11 = mul i32 %"$y10", 255
+  %"$height12" = load i32, i32* %height, align 4
+  %DIV13 = sdiv i32 %MUL11, %"$height12"
+  %AS14 = trunc i32 %DIV13 to i8
+  store i8 %AS14, i8* %green, align 1
+  %"$renderer" = load i8*, i8** %renderer, align 8
+  %"$red" = load i8, i8* %red, align 1
+  %"$green" = load i8, i8* %green, align 1
+  %call.SDL_SetRenderDrawColor = call i32 @SDL_SetRenderDrawColor(i8* %"$renderer", i8 %"$red", i8 %"$green", i8 -128, i8 -1)
+  %"$renderer15" = load i8*, i8** %renderer, align 8
+  %"$x16" = load i32, i32* %x, align 4
+  %"$y17" = load i32, i32* %y, align 4
+  %call.SDL_RenderDrawPoint = call i32 @SDL_RenderDrawPoint(i8* %"$renderer15", i32 %"$x16", i32 %"$y17")
+  %"$x18" = load i32, i32* %x, align 4
+  %ADD = add i32 %"$x18", 1
+  store i32 %ADD, i32* %x, align 4
+  br label %while1
+
+endloop:                                          ; preds = %while1
+  %"$y19" = load i32, i32* %y, align 4
+  %ADD20 = add i32 %"$y19", 1
+  store i32 %ADD20, i32* %y, align 4
+  br label %while0
+
+endloop1:                                         ; preds = %while0
+  %"$renderer21" = load i8*, i8** %renderer, align 8
+  call void @SDL_RenderPresent(i8* %"$renderer21")
+  store %Event zeroinitializer, %Event* %event, align 4
+  store i1 true, i1* %running, align 1
+  store i32 0, i32* %frames, align 4
+  br label %while2
+
+while2:                                           ; preds = %endif3, %endloop1
+  %"$running" = load i1, i1* %running, align 1
+  br i1 %"$running", label %while2.then, label %endloop4
+
+while2.then:                                      ; preds = %while2
+  br label %while3
+
+while3:                                           ; preds = %endif, %while2.then
+  %call.SDL_PollEvent = call i32 @SDL_PollEvent(%Event* %event)
+  %NQ = icmp ne i32 %call.SDL_PollEvent, 0
+  br i1 %NQ, label %while3.then, label %endloop2
+
+while3.then:                                      ; preds = %while3
+  br label %if4
+
+if4:                                              ; preds = %while3.then
+  %event.type = getelementptr inbounds %Event, %Event* %event, i32 0, i32 0
+  %"$event.type" = load i32, i32* %event.type, align 4
+  %EQ = icmp eq i32 %"$event.type", 256
+  br i1 %EQ, label %if4.then, label %endif
+
+if4.then:                                         ; preds = %if4
+  store i1 false, i1* %running, align 1
+  br label %endif
+
+endif:                                            ; preds = %if4.then, %if4
+  br label %while3
+
+endloop2:                                         ; preds = %while3
+  call void @SDL_Delay(i32 16)
+  %"$frames" = load i32, i32* %frames, align 4
+  %ADD22 = add i32 %"$frames", 1
+  store i32 %ADD22, i32* %frames, align 4
+  br label %if5
+
+if5:                                              ; preds = %endloop2
+  %"$frames23" = load i32, i32* %frames, align 4
+  %GT = icmp sgt i32 %"$frames23", 180
+  br i1 %GT, label %if5.then, label %endif3
+
+if5.then:                                         ; preds = %if5
+  store i1 false, i1* %running, align 1
+  br label %endif3
+
+endif3:                                           ; preds = %if5.then, %if5
+  br label %while2
+
+endloop4:                                         ; preds = %while2
+  call void @SDL_Quit()
+  store [21 x i8] c"window closed after \00", [21 x i8]* %arr24, align 1
+  %1 = getelementptr inbounds [21 x i8], [21 x i8]* %arr24, i32 0, i32 0
+  store [9 x i8] c" frames\0A\00", [9 x i8]* %arr25, align 1
+  %2 = getelementptr inbounds [9 x i8], [9 x i8]* %arr25, i32 0, i32 0
+  %"$frames26" = load i32, i32* %frames, align 4
+  store [31 x i8] c"window closed after %d frames\0A\00", [31 x i8]* %arr27, align 1
+  %3 = getelementptr inbounds [31 x i8], [31 x i8]* %arr27, i32 0, i32 0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %3, i32 %"$frames26")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
+---
+
+## 042 — link: a library that is not installed
+
+```ura
+// error: library 'NoSuchLib' not found
+link "NoSuchLib"
+fn main() i32:
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:2:1 library 'NoSuchLib' not found
+  |
+2 | link "NoSuchLib"
+  | ^^^^
+help: install it, or set URA_LIB_PATH to the folder that holds it
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
