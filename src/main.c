@@ -51,6 +51,7 @@ struct Token {
         } attr;
         struct {
             long long value;
+            double real;
         } num;
         struct {
             char *value;
@@ -75,6 +76,7 @@ struct Node {
         Node *args;
         Node *next;
         Node *declared;
+        Node *to_type;
     };
 
     expand(Node *, children);
@@ -123,6 +125,8 @@ struct {
 } keywords[] = {
     { "bool", { .type = INT, .is_type = true, .shift = 1 } },
     { "i1", { .type = INT, .is_type = true, .shift = 1 } },
+    { "f32", { .type = FLOAT, .is_type = true, .shift = 32 } },
+    { "f64", { .type = FLOAT, .is_type = true, .shift = 64 } },
     { "char", { .type = INT, .is_type = true, .shift = 8 } },
     { "i8", { .type = INT, .is_type = true, .shift = 8 } },
     { "i32", { .type = INT, .is_type = true, .shift = 32 } },
@@ -263,6 +267,11 @@ Token *parse_num(int s, int e, int space) {
 
     new->num.value = strtol(buff + s, NULL, 10);
     new->shift = 32;
+    if (memchr(buff + s, '.', e - s)) {
+        new->type = FLOAT;
+        new->num.real = strtod(buff + s, NULL);
+        new->shift = 64;
+    }
     new->line = ura.line;
     new->s = s;
     new->e = e;
@@ -388,6 +397,11 @@ void tokenize(File *file, int space2) {
         }
         while (isdigit(buff[e]))
             e++;
+        if (e != s && buff[e] == '.' && isdigit(buff[e + 1])) {
+            e++; // skip .
+            while (isdigit(buff[e]))
+                e++;
+        }
         if (e != s) {
             // TODO:
             // if (!check_number_fits(s, e, line))
@@ -546,7 +560,7 @@ Node *parse_prime() {
     Token *token = next();
     Node *node = NULL;
     switch (token->type) {
-    case INT: case CHARS: {
+    case INT: case FLOAT: case CHARS: {
         return new_node(token);
     }
     case SCOPE: {
@@ -572,7 +586,7 @@ Node *parse_prime() {
             token->type = FN_CALL;
             node = new_node(token);
             next(); // SKIP (
-            while (!includes(peek(0)->type, RPARENT, LAST)) {
+            while (!includes(peek(0)->type, RPARENT, LAST, 0)) {
                 append(node->children, parse_expr(0));
                 if (peek(0)->type != COMA)
                     break;
@@ -805,6 +819,8 @@ char *type_name(Node *type) {
         int shift = type->token->shift;
         return shift == 1 ? "bool" : format("i%d", shift);
     }
+    case FLOAT:
+        return format("f%d", type->token->shift);
     case REF:
         return format("%s[]", type_name(type->data_type));
     case VOID:
@@ -816,7 +832,8 @@ char *type_name(Node *type) {
 
 Node *type_of(Node *node) {
     switch (node->token->type) { // clang-format off
-    case INT:       return node;
+    case INT: case FLOAT: return node;
+    case AS:        return node->to_type;
     case CHARS:     return new_type(REF, 0, new_type(INT, 8, NULL));
     case VAR: case PARAM: return node->data_type;
     case FN_CALL:   return node->to_call ? ret_type_of(node->to_call) : NULL;
@@ -851,6 +868,12 @@ void check_type(Node *value, Node *expected, char *help) {
         if (number < -max - 1 || number > max)
             add_error(token->s, token->e, format("%lld doesn't fit in %s", number, type_name(expected)),
                       format("%s goes from %lld to %lld", type_name(expected), -max - 1, max));
+        token->shift = expected->token->shift;
+        return;
+    }
+    bool is_real = value->token->type == FLOAT && !value->token->is_type;
+    if (is_real && expected->token->type == FLOAT) {
+        token->shift = expected->token->shift;
         return;
     }
     if (!same_type(found, expected))
@@ -867,7 +890,7 @@ void check_same_type(Node *left, Node *right) {
 
 void analyze(Node *node) {
     switch (node->token->type) { // clang-format off
-    case INT: case VAR: case PARAM: case CHARS: case VARIADIC: case REF: { // clang-format on
+    case INT: case FLOAT: case VAR: case PARAM: case CHARS: case VARIADIC: case REF: { // clang-format on
         break;
     }
     case ID: {
@@ -936,6 +959,10 @@ void analyze(Node *node) {
     }
     case NEG: {
         analyze(node->operand);
+        break;
+    }
+    case AS: {
+        analyze(node->left);
         break;
     }
     case FN_CALL: {
@@ -1050,11 +1077,19 @@ void codegen(Node *node) {
     }
 
     case INT: {
-        if (node->token->is_type) {
+        if (node->token->is_type) 
             ucg = ucg_int_type(node->token->shift);
-        } else {
+        else 
             ucg = ucg_int_value(node->token->shift, node->token->num.value);
-        }
+        
+        node->token->ucg = ucg;
+        break;
+    }
+    case FLOAT: {
+        if (node->token->is_type)
+            ucg = ucg_float_type(node->token->shift);
+        else
+            ucg = ucg_float_value(node->token->shift, node->token->num.real);
         node->token->ucg = ucg;
         break;
     }
@@ -1157,6 +1192,12 @@ void codegen(Node *node) {
     }
     case BRK: {
         ucg_brk(node->loop->token->ucg);
+        break;
+    }
+    case AS: {
+        codegen(node->left);
+        codegen(node->to_type);
+        node->token->ucg = ucg_cast(node->left->token->ucg, node->to_type->token->ucg);
         break;
     }
     case NEG: {

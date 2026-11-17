@@ -250,6 +250,7 @@
 - 246 — bool: i1 and bool are the same type
 - 247 — tokenizer: a block comment over two lines, /*/ does not close it
 - 248 — calls: arguments over several lines
+- 249 — variables: a number literal takes the type of its i8 target
 
 ---
 
@@ -9816,6 +9817,46 @@ define i32 @main() {
 entry:
   %call.add = call i32 @add(i32 1, i32 2, i32 3)
   ret i32 %call.add
+}
+```
+
+---
+
+## 249 — variables: a number literal takes the type of its i8 target
+
+```ura
+// expect: 1
+fn main() i32:
+    c i8 = 5
+    if c == 5:
+        return 1
+    return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+define i32 @main() {
+entry:
+  %c = alloca i8, align 1
+  store i8 5, i8* %c, align 1
+  br label %if0
+
+if0:                                              ; preds = %entry
+  %"$c" = load i8, i8* %c, align 1
+  %EQ = icmp eq i8 %"$c", 5
+  br i1 %EQ, label %if0.then, label %endif
+
+if0.then:                                         ; preds = %if0
+  ret i32 1
+
+endif:                                            ; preds = %if0
+  ret i32 0
 }
 ```
 

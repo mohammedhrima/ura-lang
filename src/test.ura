@@ -1,21 +1,18 @@
-// expect: 3
+proto printf(fmt i8[], ...) i32
 
-proto printf(fmt char[], ...) i32
-
-fn is_even(n i32) bool:
-    return n % 2 == 0
-parser errors: fn header, missing ':', elif/else, break/continue outside a loop
-
-fn both(a bool, b bool) bool:
-    return a and b
+fn half() f32:
+    return 0.5
 
 fn main() i32:
-    n i32 = 0
-    if is_even(4):
-        n += 1
-    if both(is_even(2), is_even(6)):
-        n += 2
-    if both(is_even(2), is_even(7)):
-        n += 10
-    printf("hello %d %s\n", 12, "test")
-    return n
+    a f32 = 3.0
+    b f32 = 2.0
+    printf("%f %f %f %f\n", a + b, a - b, a * b, a / b)
+    a += 1.5
+    c f64 = 4.5
+    c *= 2.0
+    printf("%f %f %f\n", a, c, -c)
+    d f64 = 3.75
+    printf("%f %d %f %f\n", d, d as i32, 7 as f64, True as f64)
+    if a > b and half() == 0.5:
+        return 7
+    return 0

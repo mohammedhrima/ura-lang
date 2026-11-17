@@ -76,7 +76,7 @@ enum Type {
     
     // BOOL, I8, I32,
     // CHAR, BOOL,
-    INT,
+    INT, FLOAT,
     
     CHARS,
     
@@ -150,6 +150,7 @@ struct Ucg {
 
     struct {
         long long value;
+        double real;
     } num;
 
     struct {
@@ -188,6 +189,7 @@ struct Ucg {
     };
     union {
         Ucg *right;
+        Ucg *to_type;
     };
 };
 
@@ -421,7 +423,11 @@ void llvm_fn_call(Ucg *ir) {
     zero_init(params);
 
     for (int i = 0; i < ir->fn.params_count; i++) {
-        append(params, ir->fn.params[i]->elem);
+        Value value = ir->fn.params[i]->elem;
+        bool is_extra = i >= fn_dec->fn.params_count; // printf passed f32 as f64
+        if (is_extra && llvm_is_float(value) && llvm_bits(value) == 32)
+            value = LLVMBuildFPExt(gb_ucg.builder, value, llvm_float_type(64), "");
+        append(params, value);
     }
     TypeRef rtype = fn_dec->rtype;
     Value fn_elem = fn_dec->elem;
@@ -466,9 +472,16 @@ void llvm_ret(Ucg *ir) {
 }
 
 
+TypeRef llvm_float_type(int bits) {
+    if (bits == 32)
+        return LLVMFloatTypeInContext(gb_ucg.context);
+    return LLVMDoubleTypeInContext(gb_ucg.context);
+}
+
 TypeRef llvm_type(Ucg *ir) {
     switch (ir->type) { // clang-format off
     case INT:        	return gb_ucg.types.num[1 << ir->shift];
+    case FLOAT:			return llvm_float_type(1 << ir->shift);
 	case VOID:			return gb_ucg.types.vd;
     case VAL_CREATE:	return llvm_type(ir->to_create);
     case DECLARE:		return llvm_type(ir->data_type);
@@ -499,6 +512,10 @@ void llvm_val_create(Ucg *ir) {
     case INT: {
         long value = to_create->num.value;
         ir->elem = LLVMConstInt(llvm_type(to_create), value, 0);
+        break;
+    }
+    case FLOAT: {
+        ir->elem = LLVMConstReal(llvm_type(to_create), to_create->num.real);
         break;
     }
     case ARRAY: {
@@ -616,16 +633,29 @@ void llvm_op(Ucg *ir) {
         [GT] = LLVMIntSGT, [LT] = LLVMIntSLT, [GE] = LLVMIntSGE,
         [LE] = LLVMIntSLE, [EQ] = LLVMIntEQ,  [NQ] = LLVMIntNE,
     };
+    LLVMOpcode float_opcodes[LAST + 1] = {
+        [ADD] = LLVMFAdd, [SUB] = LLVMFSub, [MUL] = LLVMFMul,
+        [DIV] = LLVMFDiv, [MOD] = LLVMFRem,
+    };
+    LLVMRealPredicate float_predicates[LAST + 1] = {
+        [GT] = LLVMRealOGT, [LT] = LLVMRealOLT, [GE] = LLVMRealOGE,
+        [LE] = LLVMRealOLE, [EQ] = LLVMRealOEQ, [NQ] = LLVMRealUNE,
+    };
     // clang-format on
     Type type = ir->type;
     Value left = ir->left->elem;
     Value right = ir->right->elem;
+    bool is_float = llvm_is_float(right);
 
     const char *name = to_string(ir->type); // node->token->llvm.name;
     Value value = NULL;
-    if (opcodes[type])
+    if (is_float && float_opcodes[type])
+        value = LLVMBuildBinOp(gb_ucg.builder, float_opcodes[type], left, right, name);
+    else if (is_float && float_predicates[type])
+        value = LLVMBuildFCmp(gb_ucg.builder, float_predicates[type], left, right, name);
+    else if (!is_float && opcodes[type])
         value = LLVMBuildBinOp(gb_ucg.builder, opcodes[type], left, right, name);
-    else if (predicates[type])
+    else if (!is_float && predicates[type])
         value = LLVMBuildICmp(gb_ucg.builder, predicates[type], left, right, name);
     else if (ir->type == ASSIGN) {
         value = LLVMBuildStore(gb_ucg.builder, right, left);
@@ -636,8 +666,56 @@ void llvm_op(Ucg *ir) {
     ir->elem = value;
 }
 
+bool llvm_is_float(Value value) {
+    TypeKind kind = LLVMGetTypeKind(LLVMTypeOf(value));
+    return kind == LLVMFloatTypeKind || kind == LLVMDoubleTypeKind;
+}
+
+int llvm_bits(Value value) {
+    TypeRef type = LLVMTypeOf(value);
+    switch (LLVMGetTypeKind(type)) {
+    case LLVMFloatTypeKind:
+        return 32;
+    case LLVMDoubleTypeKind:
+        return 64;
+    default:
+        return LLVMGetIntTypeWidth(type);
+    }
+}
+
+// TODO: review this one
+void llvm_cast(Ucg *ir) {
+    Value value = ir->left->elem;
+    Ucg *to = ir->to_type;
+    bool from_float = llvm_is_float(value);
+    bool to_float = to->type == FLOAT;
+    int from_bits = llvm_bits(value);
+    int to_bits = 1 << to->shift;
+
+    if (from_float == to_float && from_bits == to_bits) {
+        ir->elem = value;
+        return;
+    }
+    LLVMOpcode op;
+    if (from_float && to_float)
+        op = to_bits > from_bits ? LLVMFPExt : LLVMFPTrunc;
+    else if (from_float)
+        op = LLVMFPToSI;
+    else if (to_float)
+        op = from_bits == 1 ? LLVMUIToFP : LLVMSIToFP;
+    else if (to_bits > from_bits)
+        op = from_bits == 1 ? LLVMZExt : LLVMSExt;
+    else
+        op = LLVMTrunc;
+    ir->elem = LLVMBuildCast(gb_ucg.builder, op, value, llvm_type(to), "AS");
+}
+
 void llvm_neg(Ucg *ir) {
-    ir->elem = LLVMBuildNeg(gb_ucg.builder, ir->right->elem, "NEG");
+    Value value = ir->right->elem;
+    if (llvm_is_float(value))
+        ir->elem = LLVMBuildFNeg(gb_ucg.builder, value, "NEG");
+    else
+        ir->elem = LLVMBuildNeg(gb_ucg.builder, value, "NEG");
 }
 
 Value llvm_parent_bloc() {
@@ -733,6 +811,25 @@ Ucg *ucg_array_type(Ucg *elem, int count) {
     Ucg *new = ucg_new(ARRAY);
     new->arr.elem = elem;
     new->arr.items_count = count;
+    return new;
+}
+
+Ucg *ucg_float_type(int shift) {
+    Ucg *new = ucg_new(FLOAT);
+    new->shift = log2(shift);
+    return new;
+}
+
+Ucg *ucg_float_value(int shift, double value) {
+    Ucg *new = ucg_new(VAL_CREATE);
+
+    new->to_create = ucg_float_type(shift);
+    new->to_create->num.real = value;
+
+    new->to_create->is_val = true;
+    append(gb_ucg.insts, new->to_create);
+
+    append(gb_ucg.insts, new);
     return new;
 }
 
@@ -1018,6 +1115,14 @@ Ucg *ucg_assign(Ucg *left, Ucg *right) {
     return ucg_op(ASSIGN, left, right);
 }
 
+Ucg *ucg_cast(Ucg *value, Ucg *type) {
+    Ucg *new = ucg_new(AS);
+    new->left = ucg_value(value);
+    new->to_type = type;
+    append(gb_ucg.insts, new);
+    return new;
+}
+
 Ucg *ucg_neg(Ucg *value) {
     Ucg *new = ucg_new(NEG);
     new->right = ucg_value(value);
@@ -1104,6 +1209,10 @@ void print_ucg(Ucg *inst, char end) {
             text = format("%s(%lld)", text, inst->num.value);
             break;
         }
+        case FLOAT: {
+            text = format("%s(%f)", text, inst->num.real);
+            break;
+        }
         default: { // clang-format off
             eprint("%s: %s:%d handle this case %s\n", RED("error"),
 			FILE, LINE,
@@ -1182,7 +1291,7 @@ void ucg_compile() {
         Ucg *curr = gb_ucg.insts[i];
         // print_ucg(curr, '\n');
         switch (curr->type) {
-        case INT:
+        case INT: case FLOAT:
             break;
         // case ARRAY_LIT: {
         // 	// llvm_array_value(curr);
@@ -1275,6 +1384,10 @@ void ucg_compile() {
         }
         case NEG: {
             llvm_neg(curr);
+            break;
+        }
+        case AS: {
+            llvm_cast(curr);
             break;
         }
         case CNT: {
@@ -1961,6 +2074,27 @@ bool run_test(int p) {
         ucg_end(fn_main);
         break;
     }
+    case 22: {
+        Ucg *printf = ucg_proto2("printf", ucg_i32_type(),
+                                 ucg_param("fmt", ucg_string_type()), ucg_varg_type(), NULL);
+        Ucg *fn_main = ucg_fn2("main", ucg_i32_type(), NULL);
+        Ucg *a = ucg_var("a", ucg_float_type(32));
+        Ucg *b = ucg_var("b", ucg_float_type(64));
+        ucg_assign(a, ucg_float_value(32, 1.5));
+        ucg_assign(b, ucg_float_value(64, 2.25));
+        ucg_assign(b, ucg_op(MUL, b, ucg_cast(a, ucg_float_type(64))));
+        ucg_fn_call2(printf, ucg_string_value("%f %f\n"), a, b, NULL);
+
+        Ucg *stmt = ucg_if();
+        {
+            ucg_then(stmt, ucg_op(GT, b, ucg_float_value(64, 3.0)));
+            ucg_ret(ucg_cast(ucg_neg(b), ucg_i32_type()));
+        }
+        ucg_end(stmt);
+        ucg_ret(ucg_i32_value(0));
+        ucg_end(fn_main);
+        break;
+    }
     default: {
         return false;
     }
@@ -2036,7 +2170,7 @@ const char *to_string(Type type) {
 
 		[ANY] = "ANY",
 		[VOID] = "VOID",
-		[INT] = "INT",
+		[INT] = "INT", [FLOAT] = "FLOAT",
 		[CHARS] = "CHARS",
 		[REF] = "REF",
 		[ZERO] = "ZERO",

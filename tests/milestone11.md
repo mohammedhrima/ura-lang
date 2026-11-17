@@ -36,6 +36,7 @@
 - 032 — operator: bitwise operator on f32 operands is rejected
 - 033 — operator: divide by zero prints file:line and exits 1
 - 034 — operator: f32 division by zero traps (not inf)
+- 035 — literal: f32 and f64 math, casts and printf
 
 ---
 
@@ -707,5 +708,120 @@ fn main() i32:
     a f32 = 10.0
     c f32 = a / b
     return 0
+```
+
+---
+
+## 035 — literal: f32 and f64 math, casts and printf
+
+```ura
+// stdout: 5.000000 1.000000 6.000000 1.500000
+// stdout: 4.500000 9.000000 -9.000000
+// stdout: 3.750000 3 7.000000 1.000000
+// expect: 7
+proto printf(fmt i8[], ...) i32
+
+fn half() f32:
+    return 0.5
+
+fn main() i32:
+    a f32 = 3.0
+    b f32 = 2.0
+    printf("%f %f %f %f\n", a + b, a - b, a * b, a / b)
+    a += 1.5
+    c f64 = 4.5
+    c *= 2.0
+    printf("%f %f %f\n", a, c, -c)
+    d f64 = 3.75
+    printf("%f %d %f %f\n", d, d as i32, 7 as f64, True as f64)
+    if a > b and half() == 0.5:
+        return 7
+    return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+declare i32 @printf(i8*, ...)
+
+define float @half() {
+entry:
+  ret float 5.000000e-01
+}
+
+define i32 @main() {
+entry:
+  %a = alloca float, align 4
+  %b = alloca float, align 4
+  %arr = alloca [13 x i8], align 1
+  %c = alloca double, align 8
+  %arr10 = alloca [10 x i8], align 1
+  %d = alloca double, align 8
+  %arr15 = alloca [13 x i8], align 1
+  store float 3.000000e+00, float* %a, align 4
+  store float 2.000000e+00, float* %b, align 4
+  store [13 x i8] c"%f %f %f %f\0A\00", [13 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [13 x i8], [13 x i8]* %arr, i32 0, i32 0
+  %"$a" = load float, float* %a, align 4
+  %"$b" = load float, float* %b, align 4
+  %ADD = fadd float %"$a", %"$b"
+  %"$a1" = load float, float* %a, align 4
+  %"$b2" = load float, float* %b, align 4
+  %SUB = fsub float %"$a1", %"$b2"
+  %"$a3" = load float, float* %a, align 4
+  %"$b4" = load float, float* %b, align 4
+  %MUL = fmul float %"$a3", %"$b4"
+  %"$a5" = load float, float* %a, align 4
+  %"$b6" = load float, float* %b, align 4
+  %DIV = fdiv float %"$a5", %"$b6"
+  %1 = fpext float %ADD to double
+  %2 = fpext float %SUB to double
+  %3 = fpext float %MUL to double
+  %4 = fpext float %DIV to double
+  %call.printf = call i32 (i8*, ...) @printf(i8* %0, double %1, double %2, double %3, double %4)
+  %"$a7" = load float, float* %a, align 4
+  %ADD8 = fadd float %"$a7", 1.500000e+00
+  store float %ADD8, float* %a, align 4
+  store double 4.500000e+00, double* %c, align 8
+  %"$c" = load double, double* %c, align 8
+  %MUL9 = fmul double %"$c", 2.000000e+00
+  store double %MUL9, double* %c, align 8
+  store [10 x i8] c"%f %f %f\0A\00", [10 x i8]* %arr10, align 1
+  %5 = getelementptr inbounds [10 x i8], [10 x i8]* %arr10, i32 0, i32 0
+  %"$c11" = load double, double* %c, align 8
+  %NEG = fneg double %"$c11"
+  %"$a12" = load float, float* %a, align 4
+  %"$c13" = load double, double* %c, align 8
+  %6 = fpext float %"$a12" to double
+  %call.printf14 = call i32 (i8*, ...) @printf(i8* %5, double %6, double %"$c13", double %NEG)
+  store double 3.750000e+00, double* %d, align 8
+  store [13 x i8] c"%f %d %f %f\0A\00", [13 x i8]* %arr15, align 1
+  %7 = getelementptr inbounds [13 x i8], [13 x i8]* %arr15, i32 0, i32 0
+  %"$d" = load double, double* %d, align 8
+  %AS = fptosi double %"$d" to i32
+  %"$d16" = load double, double* %d, align 8
+  %call.printf17 = call i32 (i8*, ...) @printf(i8* %7, double %"$d16", i32 %AS, double 7.000000e+00, double 1.000000e+00)
+  br label %if0
+
+if0:                                              ; preds = %entry
+  %"$a18" = load float, float* %a, align 4
+  %"$b19" = load float, float* %b, align 4
+  %GT = fcmp ogt float %"$a18", %"$b19"
+  %call.half = call float @half()
+  %EQ = fcmp oeq float %call.half, 5.000000e-01
+  %AND = and i1 %GT, %EQ
+  br i1 %AND, label %if0.then, label %endif
+
+if0.then:                                         ; preds = %if0
+  ret i32 7
+
+endif:                                            ; preds = %if0
+  ret i32 0
+}
 ```
 
