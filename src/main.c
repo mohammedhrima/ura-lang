@@ -1195,9 +1195,8 @@ void analyze(Node *node) {
         if (declared == NULL)
             declared = find_in_children(scope, token->name);
         if (declared != node->var)
-            add_error(token->s, token->e,
-                      format("'%s' is already declared in this scope", token->name),
-                      "use another name");
+            add_error(token->s, token->e, format("'%s' is already declared", token->name),
+                      NULL);
         analyze(node->var->ret_type);
         break;
     }
@@ -1767,6 +1766,7 @@ TODO:
 int main(int ac, char **av) {
     atexit(arena_free);
     arena_reserve(1000);
+    ucg_bin_path("build/exe.out");
     parse_args(ac, av);
     ura.tokens_count = 0;
     ura.exe_pos = 0;
@@ -1819,7 +1819,6 @@ int main(int ac, char **av) {
     print_ucgs();
     ucg_compile();
     ucg_path("build/out.ll");
-    ucg_bin_path("build/exe.out");
     ucg_gen();
     ucg_run_bin();
     ucg_finish();

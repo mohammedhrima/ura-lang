@@ -907,7 +907,8 @@ source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-unknown-linux-gnu"
 
-@stdin = external global i8*
+@ura.read_file = global i8* null
+@ura.read_fd = global i32 0
 
 define i32 @main() {
 entry:
@@ -929,8 +930,8 @@ entry:
   %1 = getelementptr inbounds [7 x i8], [7 x i8]* %arr1, i32 0, i32 0
   %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %1)
   store i8* null, i8** %name, align 8
-  %call.ura.input = call i8* @ura.input()
-  store i8* %call.ura.input, i8** %name, align 8
+  %call.ura.read = call i8* @ura.read(i32 0)
+  store i8* %call.ura.read, i8** %name, align 8
   store [7 x i8] c"hello \00", [7 x i8]* %arr2, align 1
   %2 = getelementptr inbounds [7 x i8], [7 x i8]* %arr2, i32 0, i32 0
   store [2 x i8] c"\0A\00", [2 x i8]* %arr3, align 1
@@ -944,8 +945,8 @@ entry:
   store [6 x i8] c"age? \00", [6 x i8]* %arr7, align 1
   %6 = getelementptr inbounds [6 x i8], [6 x i8]* %arr7, i32 0, i32 0
   %call.dprintf8 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %6)
-  %call.ura.input9 = call i8* @ura.input()
-  store i8* %call.ura.input9, i8** %age, align 8
+  %call.ura.read9 = call i8* @ura.read(i32 0)
+  store i8* %call.ura.read9, i8** %age, align 8
   store [10 x i8] c"you said \00", [10 x i8]* %arr10, align 1
   %7 = getelementptr inbounds [10 x i8], [10 x i8]* %arr10, i32 0, i32 0
   store [2 x i8] c"\0A\00", [2 x i8]* %arr11, align 1
@@ -965,50 +966,77 @@ declare i8* @strchr(i8*, i32)
 
 declare i8* @strdup(i8*)
 
-define i8* @ura.input() {
+declare i8* @fdopen(i32, i8*)
+
+define i8* @ura.read(i32 %0) {
 entry:
+  %fd = alloca i32, align 4
+  %arr = alloca [2 x i8], align 1
   %line = alloca i8*, align 8
   %cap = alloca i64, align 8
   %len = alloca i64, align 8
-  %arr = alloca [1 x i8], align 1
+  %arr6 = alloca [1 x i8], align 1
   %newline = alloca i8*, align 8
-  store i8* null, i8** %line, align 8
-  store i64 0, i64* %cap, align 8
-  %"$stdin" = load i8*, i8** @stdin, align 8
-  %call.getline = call i64 @getline(i8** %line, i64* %cap, i8* %"$stdin")
-  store i64 %call.getline, i64* %len, align 8
+  store i32 %0, i32* %fd, align 4
   br label %if0
 
 if0:                                              ; preds = %entry
-  %"$len" = load i64, i64* %len, align 8
-  %LT = icmp slt i64 %"$len", 1
-  br i1 %LT, label %if0.then, label %endif
+  %"$ura.read_file" = load i8*, i8** @ura.read_file, align 8
+  %EQ = icmp eq i8* %"$ura.read_file", null
+  %"$fd" = load i32, i32* %fd, align 4
+  %"$ura.read_fd" = load i32, i32* @ura.read_fd, align 4
+  %NQ = icmp ne i32 %"$fd", %"$ura.read_fd"
+  %OR = or i1 %EQ, %NQ
+  br i1 %OR, label %if0.then, label %endif
 
 if0.then:                                         ; preds = %if0
-  store [1 x i8] zeroinitializer, [1 x i8]* %arr, align 1
-  %0 = getelementptr inbounds [1 x i8], [1 x i8]* %arr, i32 0, i32 0
-  %call.strdup = call i8* @strdup(i8* %0)
-  ret i8* %call.strdup
+  store [2 x i8] c"r\00", [2 x i8]* %arr, align 1
+  %1 = getelementptr inbounds [2 x i8], [2 x i8]* %arr, i32 0, i32 0
+  %"$fd3" = load i32, i32* %fd, align 4
+  %call.fdopen = call i8* @fdopen(i32 %"$fd3", i8* %1)
+  store i8* %call.fdopen, i8** @ura.read_file, align 8
+  %"$fd4" = load i32, i32* %fd, align 4
+  store i32 %"$fd4", i32* @ura.read_fd, align 4
+  br label %endif
 
-endif:                                            ; preds = %if0
-  %"$line" = load i8*, i8** %line, align 8
-  %call.strchr = call i8* @strchr(i8* %"$line", i32 10)
-  store i8* %call.strchr, i8** %newline, align 8
+endif:                                            ; preds = %if0.then, %if0
+  store i8* null, i8** %line, align 8
+  store i64 0, i64* %cap, align 8
+  %"$ura.read_file5" = load i8*, i8** @ura.read_file, align 8
+  %call.getline = call i64 @getline(i8** %line, i64* %cap, i8* %"$ura.read_file5")
+  store i64 %call.getline, i64* %len, align 8
   br label %if1
 
 if1:                                              ; preds = %endif
-  %"$newline" = load i8*, i8** %newline, align 8
-  %NQ = icmp ne i8* %"$newline", null
-  br i1 %NQ, label %if1.then, label %endif1
+  %"$len" = load i64, i64* %len, align 8
+  %LT = icmp slt i64 %"$len", 1
+  br i1 %LT, label %if1.then, label %endif1
 
 if1.then:                                         ; preds = %if1
+  store [1 x i8] zeroinitializer, [1 x i8]* %arr6, align 1
+  %2 = getelementptr inbounds [1 x i8], [1 x i8]* %arr6, i32 0, i32 0
+  %call.strdup = call i8* @strdup(i8* %2)
+  ret i8* %call.strdup
+
+endif1:                                           ; preds = %if1
+  %"$line" = load i8*, i8** %line, align 8
+  %call.strchr = call i8* @strchr(i8* %"$line", i32 10)
+  store i8* %call.strchr, i8** %newline, align 8
+  br label %if2
+
+if2:                                              ; preds = %endif1
+  %"$newline" = load i8*, i8** %newline, align 8
+  %NQ7 = icmp ne i8* %"$newline", null
+  br i1 %NQ7, label %if2.then, label %endif2
+
+if2.then:                                         ; preds = %if2
   %"*newline" = load i8*, i8** %newline, align 8
   store i8 0, i8* %"*newline", align 1
-  br label %endif1
+  br label %endif2
 
-endif1:                                           ; preds = %if1.then, %if1
-  %"$line2" = load i8*, i8** %line, align 8
-  ret i8* %"$line2"
+endif2:                                           ; preds = %if2.then, %if2
+  %"$line8" = load i8*, i8** %line, align 8
+  ret i8* %"$line8"
 }
 ```
 

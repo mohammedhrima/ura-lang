@@ -923,7 +923,7 @@ run() {
         rm -rf "$tmp_dir"
         return 1
     fi
-    if ! (cd "$tmp_dir" && "$URA_BIN" test.ura -o program >/dev/null); then
+    if ! (cd "$tmp_dir" && "$URA_BIN" test.ura -o program >/dev/null </dev/null); then
         _ura_red "run: test $number doesn't compile"
         rm -rf "$tmp_dir"
         return 1

@@ -252,6 +252,7 @@
 - 248 — calls: arguments over several lines
 - 249 — variables: a number literal takes the type of its i8 target
 - 250 — variables: a variable first set inside an if still starts at zero
+- 251 — variables: a variable with the name of a parameter
 
 ---
 
@@ -11285,5 +11286,35 @@ endif1:                                           ; preds = %if1.then, %if1
   %ADD5 = add i32 %ADD, %"$c"
   ret i32 %ADD5
 }
+```
+
+
+---
+
+## 251 — variables: a variable with the name of a parameter
+
+```ura
+fn f(r i32) i32:
+    r i32 = 2
+    return r
+
+fn main() i32:
+    return f(1)
+```
+
+### stderr
+
+```
+error: test.ura:2:5 'r' is already declared
+  |
+2 |     r i32 = 2
+  |     ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
