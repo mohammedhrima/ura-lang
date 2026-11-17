@@ -440,6 +440,20 @@ bool is_bloc_terminated() {
     return bloc != NULL && LLVMGetBasicBlockTerminator(bloc) != NULL;
 }
 
+void llvm_end_fn(Ucg *fn) {
+    if (!is_bloc_terminated()) {
+        if (fn->fn.ret->type == VOID)
+            LLVMBuildRetVoid(gb_ucg.builder);
+        else {
+            // TODO: struct type
+            TypeRef rtype = llvm_type(fn->fn.ret);
+            LLVMBuildRet(gb_ucg.builder, LLVMConstNull(rtype));
+        }
+    }
+    if (fn->caller_bloc)
+        llvm_set_pos(fn->caller_bloc);
+}
+
 void llvm_ret(Ucg *ir) {
     if (is_bloc_terminated())
         return;
@@ -1248,17 +1262,7 @@ void ucg_compile() {
             // position at
             Ucg *stmt = curr->to_end;
             if (stmt->type == FN_DEC) {
-                if (!is_bloc_terminated()) {
-                    if (stmt->fn.ret->type == VOID)
-                        LLVMBuildRetVoid(gb_ucg.builder);
-                    else {
-                        // TODO: struct type
-                        TypeRef rtype = llvm_type(stmt->fn.ret);
-                        LLVMBuildRet(gb_ucg.builder, LLVMConstNull(rtype));
-                    }
-                }
-                if (stmt->caller_bloc)
-                    llvm_set_pos(stmt->caller_bloc);
+                llvm_end_fn(stmt);
                 break;
             }
             llvm_jmp(stmt->type == LOOP ? stmt->bloc : curr->bloc);
@@ -1933,6 +1937,27 @@ bool run_test(int p) {
         ucg_end(loop);
 
         ucg_ret(count);
+        ucg_end(fn_main);
+        break;
+    }
+    case 20: {
+        Ucg *fn_main = ucg_fn2("main", ucg_i32_type(), NULL);
+        Ucg *a = ucg_var("a", ucg_i32_type());
+        ucg_assign(a, ucg_i32_value(5));
+        ucg_ret(ucg_op(ADD, ucg_neg(a), ucg_i32_value(12)));
+        ucg_end(fn_main);
+        break;
+    }
+    case 21: {
+        Ucg *fn_main = ucg_fn2("main", ucg_i32_type(), NULL);
+        Ucg *a = ucg_var("a", ucg_i32_type());
+        ucg_assign(a, ucg_i32_value(3));
+
+        Ucg *help = ucg_fn2("help", ucg_i32_type(), NULL);
+        ucg_ret(ucg_i32_value(4));
+        ucg_end(help);
+
+        ucg_ret(ucg_op(ADD, a, ucg_fn_call(help, NULL, 0)));
         ucg_end(fn_main);
         break;
     }

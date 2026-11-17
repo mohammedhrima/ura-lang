@@ -243,6 +243,10 @@
 - 239 — variable: redeclaring a global
 - 240 — variable: a bool takes only True or False
 - 241 — variable: assigning a string or a struct to an integer
+- 242 — proto: a string passed to a fn with an i8[] param
+- 243 — variables: unary minus on a variable and a parameter
+- 244 — global scope: a top-level statement runs before main
+- 245 — function: early bare return in a void function
 
 ---
 
@@ -4068,15 +4072,15 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @count = global i32 0
 
 define void @tick() {
 entry:
-  %old = load i32, i32* @count, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* @count, align 4
+  %"$count" = load i32, i32* @count, align 4
+  %ADD = add i32 %"$count", 1
+  store i32 %ADD, i32* @count, align 4
   ret void
 }
 
@@ -4085,23 +4089,23 @@ entry:
   %i = alloca i32, align 4
   store i32 0, i32* @count, align 4
   store i32 0, i32* %i, align 4
-  br label %cond
+  br label %while0
 
-cond:                                             ; preds = %then, %entry
-  %load.i = load i32, i32* %i, align 4
-  %LT = icmp slt i32 %load.i, 4
-  br i1 %LT, label %then, label %endwhile
+while0:                                           ; preds = %while0.then, %entry
+  %"$i" = load i32, i32* %i, align 4
+  %LT = icmp slt i32 %"$i", 4
+  br i1 %LT, label %while0.then, label %endloop
 
-then:                                             ; preds = %cond
+while0.then:                                      ; preds = %while0
   call void @tick()
-  %old = load i32, i32* %i, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* %i, align 4
-  br label %cond
+  %"$i1" = load i32, i32* %i, align 4
+  %ADD = add i32 %"$i1", 1
+  store i32 %ADD, i32* %i, align 4
+  br label %while0
 
-endwhile:                                         ; preds = %cond
-  %load.count = load i32, i32* @count, align 4
-  ret i32 %load.count
+endloop:                                          ; preds = %while0
+  %"$count" = load i32, i32* @count, align 4
+  ret i32 %"$count"
 }
 ```
 
@@ -4900,7 +4904,7 @@ return calls
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @calls = global i32 0
 @r = global i32 0
@@ -4911,41 +4915,44 @@ define i32 @fib(i32 %0) {
 entry:
   %n = alloca i32, align 4
   store i32 %0, i32* %n, align 4
-  %old = load i32, i32* @calls, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* @calls, align 4
-  %load.n = load i32, i32* %n, align 4
-  %LT = icmp slt i32 %load.n, 2
-  br i1 %LT, label %then, label %endif
+  %"$calls" = load i32, i32* @calls, align 4
+  %ADD = add i32 %"$calls", 1
+  store i32 %ADD, i32* @calls, align 4
+  br label %if0
 
-then:                                             ; preds = %entry
-  %load.n1 = load i32, i32* %n, align 4
-  ret i32 %load.n1
+if0:                                              ; preds = %entry
+  %"$n" = load i32, i32* %n, align 4
+  %LT = icmp slt i32 %"$n", 2
+  br i1 %LT, label %if0.then, label %endif
 
-endif:                                            ; preds = %entry
-  %load.n2 = load i32, i32* %n, align 4
-  %SUB = sub i32 %load.n2, 1
-  %"fib(load.n - 1)" = call i32 @fib(i32 %SUB)
-  %load.n3 = load i32, i32* %n, align 4
-  %SUB4 = sub i32 %load.n3, 2
-  %"fib(load.n - 2)" = call i32 @fib(i32 %SUB4)
-  %ADD = add i32 %"fib(load.n - 1)", %"fib(load.n - 2)"
-  ret i32 %ADD
+if0.then:                                         ; preds = %if0
+  %"$n1" = load i32, i32* %n, align 4
+  ret i32 %"$n1"
+
+endif:                                            ; preds = %if0
+  %"$n2" = load i32, i32* %n, align 4
+  %SUB = sub i32 %"$n2", 1
+  %call.fib = call i32 @fib(i32 %SUB)
+  %"$n3" = load i32, i32* %n, align 4
+  %SUB4 = sub i32 %"$n3", 2
+  %call.fib5 = call i32 @fib(i32 %SUB4)
+  %ADD6 = add i32 %call.fib, %call.fib5
+  ret i32 %ADD6
 }
 
 define i32 @main() {
 entry:
-  %s = alloca [7 x i8], align 1
+  %arr = alloca [7 x i8], align 1
   store i32 0, i32* @calls, align 4
-  %"fib(10)" = call i32 @fib(i32 10)
-  store i32 %"fib(10)", i32* @r, align 4
-  store [7 x i8] c"%d %d\0A\00", [7 x i8]* %s, align 1
-  %dst = getelementptr inbounds [7 x i8], [7 x i8]* %s, i32 0, i32 0
-  %load.r = load i32, i32* @r, align 4
-  %load.calls = load i32, i32* @calls, align 4
-  %"printf(str,load.r,load.calls)" = call i32 (i8*, ...) @printf(i8* %dst, i32 %load.r, i32 %load.calls)
-  %load.calls1 = load i32, i32* @calls, align 4
-  ret i32 %load.calls1
+  %call.fib = call i32 @fib(i32 10)
+  store i32 %call.fib, i32* @r, align 4
+  store [7 x i8] c"%d %d\0A\00", [7 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [7 x i8], [7 x i8]* %arr, i32 0, i32 0
+  %"$r" = load i32, i32* @r, align 4
+  %"$calls" = load i32, i32* @calls, align 4
+  %call.printf = call i32 (i8*, ...) @printf(i8* %0, i32 %"$r", i32 %"$calls")
+  %"$calls1" = load i32, i32* @calls, align 4
+  ret i32 %"$calls1"
 }
 ```
 
@@ -4976,7 +4983,7 @@ return found
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @found = global i32 0
 @i = global i32 0
@@ -4986,69 +4993,78 @@ entry:
   %j = alloca i32, align 4
   store i32 -1, i32* @found, align 4
   store i32 0, i32* @i, align 4
-  br label %cond
+  br label %while0
 
-cond:                                             ; preds = %endif17, %then1, %entry
-  %load.i = load i32, i32* @i, align 4
-  %LT = icmp slt i32 %load.i, 10
-  br i1 %LT, label %then, label %endwhile
+while0:                                           ; preds = %endif2, %if1.then, %entry
+  %"$i" = load i32, i32* @i, align 4
+  %LT = icmp slt i32 %"$i", 10
+  br i1 %LT, label %while0.then, label %endloop3
 
-then:                                             ; preds = %cond
-  %old = load i32, i32* @i, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* @i, align 4
-  %load.i2 = load i32, i32* @i, align 4
-  %MOD = srem i32 %load.i2, 2
+while0.then:                                      ; preds = %while0
+  %"$i4" = load i32, i32* @i, align 4
+  %ADD = add i32 %"$i4", 1
+  store i32 %ADD, i32* @i, align 4
+  br label %if1
+
+if1:                                              ; preds = %while0.then
+  %"$i5" = load i32, i32* @i, align 4
+  %MOD = srem i32 %"$i5", 2
   %EQ = icmp eq i32 %MOD, 0
-  br i1 %EQ, label %then1, label %endif
+  br i1 %EQ, label %if1.then, label %endif
 
-endwhile:                                         ; preds = %then18, %cond
-  %load.found19 = load i32, i32* @found, align 4
-  ret i32 %load.found19
+if1.then:                                         ; preds = %if1
+  br label %while0
 
-then1:                                            ; preds = %then
-  br label %cond
-
-endif:                                            ; preds = %then
+endif:                                            ; preds = %if1
   store i32 0, i32* %j, align 4
-  br label %cond3
+  br label %while2
 
-cond3:                                            ; preds = %endif7, %endif
-  %load.j = load i32, i32* %j, align 4
-  %LT6 = icmp slt i32 %load.j, 10
-  br i1 %LT6, label %then4, label %endwhile5
+while2:                                           ; preds = %endif1, %endif
+  %"$j" = load i32, i32* %j, align 4
+  %LT6 = icmp slt i32 %"$j", 10
+  br i1 %LT6, label %while2.then, label %endloop
 
-then4:                                            ; preds = %cond3
-  %load.i9 = load i32, i32* @i, align 4
-  %load.j10 = load i32, i32* %j, align 4
-  %MUL = mul i32 %load.i9, %load.j10
-  %EQ11 = icmp eq i32 %MUL, 21
-  br i1 %EQ11, label %then8, label %endif7
+while2.then:                                      ; preds = %while2
+  br label %if3
 
-endwhile5:                                        ; preds = %then8, %cond3
-  %load.found = load i32, i32* @found, align 4
-  %NQ = icmp ne i32 %load.found, -1
-  br i1 %NQ, label %then18, label %endif17
+if3:                                              ; preds = %while2.then
+  %"$i7" = load i32, i32* @i, align 4
+  %"$j8" = load i32, i32* %j, align 4
+  %MUL = mul i32 %"$i7", %"$j8"
+  %EQ9 = icmp eq i32 %MUL, 21
+  br i1 %EQ9, label %if3.then, label %endif1
 
-then8:                                            ; preds = %then4
-  %load.i12 = load i32, i32* @i, align 4
-  %MUL13 = mul i32 %load.i12, 10
-  %load.j14 = load i32, i32* %j, align 4
-  %ADD = add i32 %MUL13, %load.j14
-  store i32 %ADD, i32* @found, align 4
-  br label %endwhile5
+if3.then:                                         ; preds = %if3
+  %"$i10" = load i32, i32* @i, align 4
+  %MUL11 = mul i32 %"$i10", 10
+  %"$j12" = load i32, i32* %j, align 4
+  %ADD13 = add i32 %MUL11, %"$j12"
+  store i32 %ADD13, i32* @found, align 4
+  br label %endloop
 
-endif7:                                           ; preds = %then4
-  %old15 = load i32, i32* %j, align 4
-  %ADD_ASSIGN16 = add i32 %old15, 1
-  store i32 %ADD_ASSIGN16, i32* %j, align 4
-  br label %cond3
+endif1:                                           ; preds = %if3
+  %"$j14" = load i32, i32* %j, align 4
+  %ADD15 = add i32 %"$j14", 1
+  store i32 %ADD15, i32* %j, align 4
+  br label %while2
 
-then18:                                           ; preds = %endwhile5
-  br label %endwhile
+endloop:                                          ; preds = %if3.then, %while2
+  br label %if4
 
-endif17:                                          ; preds = %endwhile5
-  br label %cond
+if4:                                              ; preds = %endloop
+  %"$found" = load i32, i32* @found, align 4
+  %NQ = icmp ne i32 %"$found", -1
+  br i1 %NQ, label %if4.then, label %endif2
+
+if4.then:                                         ; preds = %if4
+  br label %endloop3
+
+endif2:                                           ; preds = %if4
+  br label %while0
+
+endloop3:                                         ; preds = %if4.then, %while0
+  %"$found16" = load i32, i32* @found, align 4
+  ret i32 %"$found16"
 }
 ```
 
@@ -9234,5 +9250,198 @@ fn main() i32:
     b i32 = p
     output(a, b, "\n")
     return 0
+```
+
+---
+
+## 242 — proto: a string passed to a fn with an i8[] param
+
+```ura
+// stdout: hi ura
+// expect: 0
+proto printf(fmt i8[], ...) i32
+
+fn greet(name i8[]):
+    printf("hi %s\n", name)
+
+fn main() i32:
+    greet("ura")
+    return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+declare i32 @printf(i8*, ...)
+
+define void @greet(i8* %0) {
+entry:
+  %name = alloca i8*, align 8
+  %arr = alloca [7 x i8], align 1
+  store i8* %0, i8** %name, align 8
+  store [7 x i8] c"hi %s\0A\00", [7 x i8]* %arr, align 1
+  %1 = getelementptr inbounds [7 x i8], [7 x i8]* %arr, i32 0, i32 0
+  %"$name" = load i8*, i8** %name, align 8
+  %call.printf = call i32 (i8*, ...) @printf(i8* %1, i8* %"$name")
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %arr = alloca [4 x i8], align 1
+  store [4 x i8] c"ura\00", [4 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [4 x i8], [4 x i8]* %arr, i32 0, i32 0
+  call void @greet(i8* %0)
+  ret i32 0
+}
+```
+
+---
+
+## 243 — variables: unary minus on a variable and a parameter
+
+```ura
+// expect: 12   (neg(-5) + 7)
+fn neg(n i32) i32:
+    return -n
+
+fn main() i32:
+    a i32 = 5
+    b i32 = -a
+    return neg(b) + -(-7)
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+define i32 @neg(i32 %0) {
+entry:
+  %n = alloca i32, align 4
+  store i32 %0, i32* %n, align 4
+  %"$n" = load i32, i32* %n, align 4
+  %NEG = sub i32 0, %"$n"
+  ret i32 %NEG
+}
+
+define i32 @main() {
+entry:
+  %a = alloca i32, align 4
+  %b = alloca i32, align 4
+  store i32 5, i32* %a, align 4
+  %"$a" = load i32, i32* %a, align 4
+  %NEG = sub i32 0, %"$a"
+  store i32 %NEG, i32* %b, align 4
+  %"$b" = load i32, i32* %b, align 4
+  %call.neg = call i32 @neg(i32 %"$b")
+  %ADD = add i32 %call.neg, 7
+  ret i32 %ADD
+}
+```
+
+---
+
+## 244 — global scope: a top-level statement runs before main
+
+```ura
+// expect: 15
+count i32 = 10
+count += 5
+
+fn main() i32:
+    return count
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@count = global i32 0
+
+define i32 @main() {
+entry:
+  store i32 10, i32* @count, align 4
+  %"$count" = load i32, i32* @count, align 4
+  %ADD = add i32 %"$count", 5
+  store i32 %ADD, i32* @count, align 4
+  %"$count1" = load i32, i32* @count, align 4
+  ret i32 %"$count1"
+}
+```
+
+---
+
+## 245 — function: early bare return in a void function
+
+```ura
+// expect: 3
+total i32 = 0
+
+fn add_small(n i32):
+    if n > 2:
+        return
+    total += n
+
+fn main() i32:
+    add_small(1)
+    add_small(5)
+    add_small(2)
+    return total
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@total = global i32 0
+
+define void @add_small(i32 %0) {
+entry:
+  %n = alloca i32, align 4
+  store i32 %0, i32* %n, align 4
+  br label %if0
+
+if0:                                              ; preds = %entry
+  %"$n" = load i32, i32* %n, align 4
+  %GT = icmp sgt i32 %"$n", 2
+  br i1 %GT, label %if0.then, label %endif
+
+if0.then:                                         ; preds = %if0
+  ret void
+
+endif:                                            ; preds = %if0
+  %"$n1" = load i32, i32* %n, align 4
+  %"$total" = load i32, i32* @total, align 4
+  %ADD = add i32 %"$total", %"$n1"
+  store i32 %ADD, i32* @total, align 4
+  ret void
+}
+
+define i32 @main() {
+entry:
+  store i32 0, i32* @total, align 4
+  call void @add_small(i32 1)
+  call void @add_small(i32 5)
+  call void @add_small(i32 2)
+  %"$total" = load i32, i32* @total, align 4
+  ret i32 %"$total"
+}
 ```
 

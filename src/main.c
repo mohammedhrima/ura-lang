@@ -384,7 +384,7 @@ void tokenize(File *file, int space2) {
             Type type = specials[i].type;
             int len = (int)strlen(value);
             if (strncmp2(value, buff + s, len)) {
-                new_token(type, NULL);
+                new_token(type, NULL)->line = ura.line;
                 if (type == DOTS)
                     space += TAB;
                 e += len;
@@ -802,6 +802,23 @@ void codegen_proto(Node *node) {
     node->token->ucg = ucg_proto(node->token->name, ret_type, args, count);
 }
 
+void codegen_protos(Node *node) {
+    for (int i = 0; i < node->children_count; i++) {
+        Node *child = node->children[i];
+        if (includes(child->token->type, FN_DEC, PROTO, 0))
+            codegen_proto(child);
+    }
+}
+
+void codegen_statements(Node *node) {
+    for (int i = 0; i < node->children_count; i++) {
+        Node *child = node->children[i];
+        if (includes(child->token->type, FN_DEC, PROTO, DECLARE, 0))
+            continue;
+        codegen(child);
+    }
+}
+
 void codegen(Node *node) {
     Ucg *ucg = NULL;
     switch (node->token->type) {
@@ -837,27 +854,51 @@ void codegen(Node *node) {
 
         char *name = node->var->token->name;
         Ucg *type = node->var->data_type->token->ucg;
-        ucg = ucg_var(name, type);
+        if (ura.scope->token->type == SCOPE)
+            ucg = ucg_global(name, type);
+        else
+            ucg = ucg_var(name, type);
         node->var->token->ucg = ucg;
         break;
     }
-    case SCOPE: case FN_DEC: {
+    case SCOPE: {
         enter_scope(node);
+        codegen_protos(node);
+        bool has_main = false;
         for (int i = 0; i < node->children_count; i++) {
             Node *child = node->children[i];
-            if (includes(child->token->type, FN_DEC, PROTO, 0))
-                codegen_proto(child);
+            if (child->token->type == DECLARE)
+                codegen(child);
+            if (child->token->type == FN_DEC && strcmp2(child->token->name, "main"))
+                has_main = true;
         }
-        if (node->token->type == FN_DEC)
-            ucg_entry(node->token->ucg);
+        if (!has_main) {
+            Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL, 0);
+            codegen_statements(node);
+            ucg_end(fn_main);
+        }
+        for (int i = 0; i < node->children_count; i++) {
+            Node *child = node->children[i];
+            if (child->token->type == FN_DEC)
+                codegen(child);
+        }
+        exit_scope();
+        break;
+    }
+    case FN_DEC: {
+        Node *parent = ura.scope;
+        enter_scope(node);
+        codegen_protos(node);
+        ucg_entry(node->token->ucg);
+        if (parent->token->type == SCOPE && strcmp2(node->token->name, "main"))
+            codegen_statements(parent);
         for (int i = 0; i < node->children_count; i++) {
             Node *child = node->children[i];
             if (child->token->type == PROTO)
                 continue;
             codegen(child);
         }
-        if (node->token->type == FN_DEC)
-            ucg_end(node->token->ucg);
+        ucg_end(node->token->ucg);
         exit_scope();
         break;
     }
