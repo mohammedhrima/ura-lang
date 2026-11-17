@@ -3387,20 +3387,20 @@ fn later(n i32) i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
-  %"later(2)" = call i32 @later(i32 2)
-  ret i32 %"later(2)"
+  %call.later = call i32 @later(i32 2)
+  ret i32 %call.later
 }
 
 define i32 @later(i32 %0) {
 entry:
   %n = alloca i32, align 4
   store i32 %0, i32* %n, align 4
-  %load.n = load i32, i32* %n, align 4
-  %MUL = mul i32 %load.n, 9
+  %"$n" = load i32, i32* %n, align 4
+  %MUL = mul i32 %"$n", 9
   ret i32 %MUL
 }
 ```
@@ -3594,12 +3594,12 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
-  %"help()" = call i32 @help()
-  ret i32 %"help()"
+  %call.help = call i32 @help()
+  ret i32 %call.help
 }
 
 define i32 @help() {
@@ -3626,12 +3626,12 @@ fn later() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
-  %"later()" = call i32 @later()
-  ret i32 %"later()"
+  %call.later = call i32 @later()
+  ret i32 %call.later
 }
 
 define i32 @later() {
@@ -4133,80 +4133,95 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i1 @is_even(i32 %0) {
 entry:
   %n = alloca i32, align 4
   store i32 %0, i32* %n, align 4
-  %load.n = load i32, i32* %n, align 4
-  %EQ = icmp eq i32 %load.n, 0
-  br i1 %EQ, label %then, label %endif
+  br label %if0
 
-then:                                             ; preds = %entry
+if0:                                              ; preds = %entry
+  %"$n" = load i32, i32* %n, align 4
+  %EQ = icmp eq i32 %"$n", 0
+  br i1 %EQ, label %if0.then, label %endif
+
+if0.then:                                         ; preds = %if0
   ret i1 true
 
-endif:                                            ; preds = %entry
-  %load.n1 = load i32, i32* %n, align 4
-  %SUB = sub i32 %load.n1, 1
-  %"is_odd(load.n - 1)" = call i1 @is_odd(i32 %SUB)
-  ret i1 %"is_odd(load.n - 1)"
+endif:                                            ; preds = %if0
+  %"$n1" = load i32, i32* %n, align 4
+  %SUB = sub i32 %"$n1", 1
+  %call.is_odd = call i1 @is_odd(i32 %SUB)
+  ret i1 %call.is_odd
 }
 
 define i1 @is_odd(i32 %0) {
 entry:
   %n = alloca i32, align 4
   store i32 %0, i32* %n, align 4
-  %load.n = load i32, i32* %n, align 4
-  %EQ = icmp eq i32 %load.n, 0
-  br i1 %EQ, label %then, label %endif
+  br label %if1
 
-then:                                             ; preds = %entry
+if1:                                              ; preds = %entry
+  %"$n" = load i32, i32* %n, align 4
+  %EQ = icmp eq i32 %"$n", 0
+  br i1 %EQ, label %if1.then, label %endif
+
+if1.then:                                         ; preds = %if1
   ret i1 false
 
-endif:                                            ; preds = %entry
-  %load.n1 = load i32, i32* %n, align 4
-  %SUB = sub i32 %load.n1, 1
-  %"is_even(load.n - 1)" = call i1 @is_even(i32 %SUB)
-  ret i1 %"is_even(load.n - 1)"
+endif:                                            ; preds = %if1
+  %"$n1" = load i32, i32* %n, align 4
+  %SUB = sub i32 %"$n1", 1
+  %call.is_even = call i1 @is_even(i32 %SUB)
+  ret i1 %call.is_even
 }
 
 define i32 @main() {
 entry:
   %r = alloca i32, align 4
   store i32 0, i32* %r, align 4
-  %"is_even(10)" = call i1 @is_even(i32 10)
-  br i1 %"is_even(10)", label %then, label %endif
+  br label %if2
 
-then:                                             ; preds = %entry
-  %old = load i32, i32* %r, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* %r, align 4
+if2:                                              ; preds = %entry
+  %call.is_even = call i1 @is_even(i32 10)
+  br i1 %call.is_even, label %if2.then, label %endif
+
+if2.then:                                         ; preds = %if2
+  %"$r" = load i32, i32* %r, align 4
+  %ADD = add i32 %"$r", 1
+  store i32 %ADD, i32* %r, align 4
   br label %endif
 
-endif:                                            ; preds = %then, %entry
-  %"is_odd(7)" = call i1 @is_odd(i32 7)
-  br i1 %"is_odd(7)", label %then2, label %endif1
+endif:                                            ; preds = %if2.then, %if2
+  br label %if3
 
-then2:                                            ; preds = %endif
-  %old3 = load i32, i32* %r, align 4
-  %ADD_ASSIGN4 = add i32 %old3, 2
-  store i32 %ADD_ASSIGN4, i32* %r, align 4
+if3:                                              ; preds = %endif
+  %call.is_odd = call i1 @is_odd(i32 7)
+  br i1 %call.is_odd, label %if3.then, label %endif1
+
+if3.then:                                         ; preds = %if3
+  %"$r3" = load i32, i32* %r, align 4
+  %ADD4 = add i32 %"$r3", 2
+  store i32 %ADD4, i32* %r, align 4
   br label %endif1
 
-endif1:                                           ; preds = %then2, %endif
-  %"is_even(3)" = call i1 @is_even(i32 3)
-  br i1 %"is_even(3)", label %then6, label %endif5
+endif1:                                           ; preds = %if3.then, %if3
+  br label %if4
 
-then6:                                            ; preds = %endif1
-  %old7 = load i32, i32* %r, align 4
-  %ADD_ASSIGN8 = add i32 %old7, 4
-  store i32 %ADD_ASSIGN8, i32* %r, align 4
-  br label %endif5
+if4:                                              ; preds = %endif1
+  %call.is_even5 = call i1 @is_even(i32 3)
+  br i1 %call.is_even5, label %if4.then, label %endif2
 
-endif5:                                           ; preds = %then6, %endif1
-  %load.r = load i32, i32* %r, align 4
-  ret i32 %load.r
+if4.then:                                         ; preds = %if4
+  %"$r6" = load i32, i32* %r, align 4
+  %ADD7 = add i32 %"$r6", 4
+  store i32 %ADD7, i32* %r, align 4
+  br label %endif2
+
+endif2:                                           ; preds = %if4.then, %if4
+  %"$r8" = load i32, i32* %r, align 4
+  ret i32 %"$r8"
 }
 ```
 
@@ -8075,6 +8090,31 @@ fn main() i32:
     return dbl(21)
 fn dbl(n i32) i32:
     return n + n
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+define i32 @main() {
+entry:
+  %call.dbl = call i32 @dbl(i32 21)
+  ret i32 %call.dbl
+}
+
+define i32 @dbl(i32 %0) {
+entry:
+  %n = alloca i32, align 4
+  store i32 %0, i32* %n, align 4
+  %"$n" = load i32, i32* %n, align 4
+  %"$n1" = load i32, i32* %n, align 4
+  %ADD = add i32 %"$n", %"$n1"
+  ret i32 %ADD
+}
 ```
 
 ---

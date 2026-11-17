@@ -133,6 +133,7 @@ struct Ucg {
         Value elem;
         Bloc bloc;
         Bloc then;
+        Bloc caller_bloc; 
     };
 
     struct {
@@ -635,6 +636,10 @@ Bloc llvm_bloc(Value fn, char *name) {
     return LLVMAppendBasicBlockInContext(gb_ucg.context, fn, name);
 }
 
+Bloc llvm_get_pos(void) {
+    return LLVMGetInsertBlock(gb_ucg.builder);
+}
+
 void llvm_set_pos(Bloc bloc) {
     LLVMPositionBuilderAtEnd(gb_ucg.builder, bloc);
 }
@@ -870,11 +875,16 @@ Ucg *ucg_proto(char *name, Ucg *ret, Ucg **params, int params_count) {
     return new;
 }
 
+Ucg *ucg_entry(Ucg *fn) {
+    Ucg *new = ucg_new(FN_ENTRY);
+    new->to_enter = fn;
+    append(gb_ucg.insts, new);
+    return new;
+}
+
 Ucg *ucg_fn(char *name, Ucg *ret, Ucg **params, int params_count) {
     Ucg *new = ucg_proto(name, ret, params, params_count);
-    Ucg *entry = ucg_new(FN_ENTRY);
-    entry->to_enter = new;
-    append(gb_ucg.insts, entry);
+    ucg_entry(new);
     return new;
 }
 
@@ -1172,6 +1182,7 @@ void ucg_compile() {
             break;
         }
         case FN_ENTRY: {
+            curr->to_enter->caller_bloc = llvm_get_pos();
             llvm_set_pos(curr->bloc);
             Ucg *fn = curr->to_enter;
             // assert()
@@ -1237,15 +1248,17 @@ void ucg_compile() {
             // position at
             Ucg *stmt = curr->to_end;
             if (stmt->type == FN_DEC) {
-                if (is_bloc_terminated())
-                    break;
-                if (stmt->fn.ret->type == VOID)
-                    LLVMBuildRetVoid(gb_ucg.builder);
-                else {
-                    // TODO: struct type
-                    TypeRef rtype = llvm_type(stmt->fn.ret);
-                    LLVMBuildRet(gb_ucg.builder, LLVMConstNull(rtype));
+                if (!is_bloc_terminated()) {
+                    if (stmt->fn.ret->type == VOID)
+                        LLVMBuildRetVoid(gb_ucg.builder);
+                    else {
+                        // TODO: struct type
+                        TypeRef rtype = llvm_type(stmt->fn.ret);
+                        LLVMBuildRet(gb_ucg.builder, LLVMConstNull(rtype));
+                    }
                 }
+                if (stmt->caller_bloc)
+                    llvm_set_pos(stmt->caller_bloc);
                 break;
             }
             llvm_jmp(stmt->type == LOOP ? stmt->bloc : curr->bloc);

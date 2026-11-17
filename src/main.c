@@ -465,6 +465,14 @@ Node *parse_prime() {
     case INT: case CHARS: {
         return new_node(token);
     }
+    case SCOPE: {
+        node = new_node(token);
+        enter_scope(node);
+        while (peek(0)->type != LAST)
+            append(node->children, parse_expr(0));
+        exit_scope();
+        return node;
+    }
     case ID: {
         // node = new_node(token);
         Node *type = parse_type(0);
@@ -681,13 +689,15 @@ void analyze(Node *node) {
         analyze(node->var->ret_type);
         break;
     }
-    case FN_DEC: case PROTO: {
+    case SCOPE: case FN_DEC: case PROTO: {
         enter_scope(node);
         if (node->ret_type)
             analyze(node->ret_type);
-        for (int i = 0; i < node->args->children_count; i++) {
-            Node *arg = node->args->children[i];
-            analyze(arg);
+        if (node->args) {
+            for (int i = 0; i < node->args->children_count; i++) {
+                Node *arg = node->args->children[i];
+                analyze(arg);
+            }
         }
 
         for (int i = 0; i < node->children_count; i++)
@@ -764,6 +774,34 @@ void codegen_branch(Node *node, Ucg *stmt) {
     exit_scope();
 }
 
+void codegen_proto(Node *node) {
+    Ucg *ret_type = NULL;
+    if (node->left) {
+        // TODO: add return type
+        codegen(node->left);
+        ret_type = node->left->token->ucg;
+    } else
+        ret_type = ucg_void_type();
+
+    Node **children = node->args->children;
+    int count = node->args->children_count;
+    Ucg **args = NULL;
+    if (count != 0) {
+        args = arena_alloc(count, sizeof(Ucg*));
+        for (int i = 0; i < count; i++) {
+            Node *param = children[i];
+            if (param->token->type == VARIADIC) {
+                args[i] = ucg_varg_type();
+                continue;
+            }
+            codegen(param->data_type);
+            args[i] = ucg_param(param->token->name, param->data_type->token->ucg);
+            param->token->ucg = args[i];
+        }
+    }
+    node->token->ucg = ucg_proto(node->token->name, ret_type, args, count);
+}
+
 void codegen(Node *node) {
     Ucg *ucg = NULL;
     switch (node->token->type) {
@@ -803,47 +841,24 @@ void codegen(Node *node) {
         node->var->token->ucg = ucg;
         break;
     }
-    case FN_DEC: case PROTO: {
-        Ucg *ret_type = NULL;
-        if (node->left) {
-            // TODO: add return type
-            codegen(node->left);
-            ret_type = node->left->token->ucg;
-        } else
-            ret_type = ucg_void_type();
-
-        expand(Ucg *, params);
-        zero_init(params);
-
-        // Ucg *args = NULL;
-        Node **children = node->args->children;
-        int count = node->args->children_count;
-        Ucg **args = NULL;
-        if (count != 0) {
-            args = arena_alloc(count, sizeof(Ucg*));
-            for (int i = 0; i < count; i++) {
-                Node *param = children[i];
-                if (param->token->type == VARIADIC) {
-                    args[i] = ucg_varg_type();
-                    continue;
-                }
-                codegen(param->data_type);
-                args[i] = ucg_param(param->token->name, param->data_type->token->ucg);
-                param->token->ucg = args[i];
-            }
-        }
-        if (node->token->type == PROTO) {
-            node->token->ucg = ucg_proto(node->token->name, ret_type, args, count);
-            break;
-        }
-        ucg = ucg_fn(node->token->name, ret_type, args, count);
-        node->token->ucg = ucg;
+    case SCOPE: case FN_DEC: {
         enter_scope(node);
-        for (int i = 0; i < node->children_count; i++)
-            codegen(node->children[i]);
+        for (int i = 0; i < node->children_count; i++) {
+            Node *child = node->children[i];
+            if (includes(child->token->type, FN_DEC, PROTO, 0))
+                codegen_proto(child);
+        }
+        if (node->token->type == FN_DEC)
+            ucg_entry(node->token->ucg);
+        for (int i = 0; i < node->children_count; i++) {
+            Node *child = node->children[i];
+            if (child->token->type == PROTO)
+                continue;
+            codegen(child);
+        }
+        if (node->token->type == FN_DEC)
+            ucg_end(node->token->ucg);
         exit_scope();
-
-        ucg_end(ucg);
         break;
     }
     case FN_CALL: {
@@ -941,6 +956,7 @@ int main(int ac, char **av) {
 #if TOKENIZE
     print(GREEN("======================================\n"));
     print(GREEN("[TOKENIZE]:\n"));
+    new_token(SCOPE, NULL)->name = "ura-scope";
     for (int i = 0; i < ura.files_count; i++) {
         File *file = ura.files[i];
         if (file->opened)
@@ -958,18 +974,7 @@ int main(int ac, char **av) {
 #    if AST
     print(GREEN("======================================\n"));
     print(GREEN("[AST]:\n"));
-    ura.tree = new_node(new_token(SCOPE, NULL));
-    ura.tree->token->name = "ura-scope";
-    enter_scope(ura.tree);
-    while (peek(0)->type != LAST) {
-        // Node *file = ura.tree->children[i]; // File node / empty children
-        // enter_scope(file);
-        // parse_structs(file);
-        append(ura.tree->children, parse_expr(0));
-        // handle_global_scope(file);
-        // exit_scope();
-    }
-    exit_scope();
+    ura.tree = parse_expr(0);
     // check_errors(); // the tree is broken: don't analyze it
     // print(GREEN("======================================\n"));
     for (int i = 0; i < ura.tree->children_count; i++) {
@@ -979,11 +984,7 @@ int main(int ac, char **av) {
 #        if ANALYZE
     print(GREEN("======================================\n"));
     print(GREEN("[ANALYZE]:\n"));
-    enter_scope(ura.tree);
-    for (int i = 0; i < ura.tree->children_count; i++) {
-        analyze(ura.tree->children[i]);
-    }
-    exit_scope();
+    analyze(ura.tree);
     // check_errors(); // the tree is not valid code: don't generate it
     // print(GREEN("======================================\n"));
     for (int i = 0; i < ura.tree->children_count; i++) {
@@ -994,11 +995,7 @@ int main(int ac, char **av) {
     print(GREEN("======================================\n"));
     print(GREEN("[CODE GEN]:\n"));
     ucg_start("ura");
-    enter_scope(ura.tree);
-    for (int i = 0; i < ura.tree->children_count; i++) {
-        codegen(ura.tree->children[i]);
-    }
-    exit_scope();
+    codegen(ura.tree);
     print(GREEN("======================================\n"));
     print(GREEN("[URA IR]:\n"));
     print_ucgs();
