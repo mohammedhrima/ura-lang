@@ -862,6 +862,16 @@ Ucg *ucg_fn(char *name, Ucg *ret, Ucg **params, int params_count) {
     return new;
 }
 
+Ucg *ucg_fn_call(Ucg *fn_dec, Ucg **args, int args_count) {
+    Ucg *new = ucg_new(FN_CALL);
+    new->name = format("call.%s", fn_dec->name);
+    new->to_call = fn_dec;
+    for (int i = 0; i < args_count; i++)
+        append(new->fn.params, ucg_value(args[i]));
+    append(gb_ucg.insts, new);
+    return new;
+}
+
 __attribute__((sentinel)) Ucg *ucg_fn_call2(Ucg *fn_dec, ...) {
     va_list ap;
     va_start(ap, fn_dec);

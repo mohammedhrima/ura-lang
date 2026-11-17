@@ -66,6 +66,8 @@ struct Node {
         Node *data_type;
         Node *ret_type;
         Node *cond;
+        Node *to_call;
+        Node *loop;
     };
     union {
         Node *right;
@@ -428,10 +430,10 @@ void enter_scope(Node *node) {
 
 void exit_scope() {
     print(CYAN("exit scope %s\n"), ura.scope->token->name);
-    ura.scopes[ura.scopes_count] = NULL;
     ura.scopes_count--;
-    if (ura.scopes_count >= 0)
-        ura.scope = ura.scopes[ura.scopes_count];
+    ura.scopes[ura.scopes_count] = NULL;
+    if (ura.scopes_count > 0)
+        ura.scope = ura.scopes[ura.scopes_count - 1];
     else
         ura.scope = NULL;
 }
@@ -463,8 +465,25 @@ Node *parse_prime() {
             append(ura.scope->children, node);
             node = node->var;
             // node->right = type;
+        } else if (peek(0)->type == LPARENT) {
+            token->type = FN_CALL;
+            node = new_node(token);
+            next(); // SKIP (
+            while (!includes(peek(0)->type, RPARENT, LAST)) {
+                append(node->children, parse_expr(0));
+                if (peek(0)->type == COMA)
+                    next();
+            }
+            assert(peek(0)->type == RPARENT);
+            next(); // SKIP )
         } else
             node = new_node(token);
+        return node;
+    }
+    case LPARENT: {
+        node = parse_expr(0);
+        assert(peek(0)->type == RPARENT);
+        next(); // SKIP )
         return node;
     }
     case FN_DEC: {
@@ -513,7 +532,7 @@ Node *parse_prime() {
         node->left = parse_expr(0);
         return node;
     }
-    case IF: {
+    case IF: case LOOP: {
         node = new_node(token);
         enter_scope(node);
         node->left = parse_expr(0);
@@ -526,6 +545,17 @@ Node *parse_prime() {
             append(node->children, parse_expr(0));
         }
         exit_scope();
+        return node;
+    }
+    case BRK: case CNT: {
+        node = new_node(token);
+        for (int i = ura.scopes_count - 1; i >= 0; i--) {
+            if (ura.scopes[i]->token->type == LOOP) {
+                node->loop = ura.scopes[i];
+                break;
+            }
+        }
+        assert(node->loop);
         return node;
     }
     default: {
@@ -584,6 +614,19 @@ Node *find_variable(char *name) {
     return NULL;
 }
 
+Node *find_function(char *name) {
+    for (int i = ura.scopes_count - 1; i >= 0; i--) {
+        Node *curr = ura.scopes[i];
+        for (int j = 0; j < curr->children_count; j++) {
+            Node *child = curr->children[j];
+            if (child->token->type == FN_DEC && strcmp2(child->token->name, name))
+                return child;
+        }
+    }
+    eprint("'%s' not found\n", name);
+    return NULL;
+}
+
 void analyze(Node *node) {
     switch (node->token->type) { // clang-format off
     case INT: case VAR: case PARAM: { // clang-format on
@@ -627,8 +670,20 @@ void analyze(Node *node) {
         }
         break;
     }
-    case IF: {
+    case IF: case LOOP: {
         analyze(node->cond); // TODO: make sure it's boolean
+        enter_scope(node);
+        for (int i = 0; i < node->children_count; i++)
+            analyze(node->children[i]);
+        exit_scope();
+        break;
+    }
+    case BRK: case CNT: {
+        break;
+    }
+    case FN_CALL: {
+        node->to_call = find_function(node->token->name);
+        assert(node->to_call);
         for (int i = 0; i < node->children_count; i++)
             analyze(node->children[i]);
         break;
@@ -721,11 +776,23 @@ void codegen(Node *node) {
             }
         }
         ucg = ucg_fn(node->token->name, ret_type, args, count);
+        node->token->ucg = ucg;
+        enter_scope(node);
         for (int i = 0; i < node->children_count; i++)
             codegen(node->children[i]);
+        exit_scope();
 
-        node->token->ucg = ucg;
         ucg_end(ucg);
+        break;
+    }
+    case FN_CALL: {
+        Ucg **args = arena_alloc(node->children_count + 1, sizeof(Ucg *));
+        for (int i = 0; i < node->children_count; i++) {
+            codegen(node->children[i]);
+            args[i] = node->children[i]->token->ucg;
+        }
+        Ucg *fn = node->to_call->token->ucg;
+        node->token->ucg = ucg_fn_call(fn, args, node->children_count);
         break;
     }
     case RETURN: {
@@ -735,13 +802,23 @@ void codegen(Node *node) {
         node->token->ucg = ucg;
         break;
     }
-    case IF: {
+    case IF: case LOOP: {
+        node->token->ucg = node->token->type == IF ? ucg_if() : ucg_loop();
         codegen(node->cond);
-        node->token->ucg = ucg_if();
         ucg_then(node->token->ucg, node->cond->token->ucg);
+        enter_scope(node);
         for (int i = 0; i < node->children_count; i++)
             codegen(node->children[i]);
+        exit_scope();
         ucg_end(node->token->ucg);
+        break;
+    }
+    case BRK: {
+        ucg_brk(node->loop->token->ucg);
+        break;
+    }
+    case CNT: {
+        ucg_cnt(node->loop->token->ucg);
         break;
     }
     case ASSIGN: // clang-format off
@@ -844,11 +921,11 @@ int main(int ac, char **av) {
     print(GREEN("======================================\n"));
     print(GREEN("[CODE GEN]:\n"));
     ucg_start("ura");
-    // enter_scope(ura.tree);
+    enter_scope(ura.tree);
     for (int i = 0; i < ura.tree->children_count; i++) {
         codegen(ura.tree->children[i]);
     }
-    // exit_scope();
+    exit_scope();
     print(GREEN("======================================\n"));
     print(GREEN("[URA IR]:\n"));
     print_ucgs();

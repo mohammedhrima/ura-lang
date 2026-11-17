@@ -20,6 +20,7 @@ Ucg *ucg_else(Ucg *prev_stmt);
 Ucg *ucg_end(Ucg *stmt);
 Ucg *ucg_fn(char *name, Ucg *ret, Ucg **params, int params_count);
 Ucg *ucg_fn2(char *name, Ucg *ret, ...);
+Ucg *ucg_fn_call(Ucg *fn_dec, Ucg **args, int args_count);
 Ucg *ucg_fn_call2(Ucg *fn_dec, ...);
 Ucg *ucg_fn_call_2(Ucg *fn_dec, va_list ap);
 Ucg *ucg_fn_dec_2(char *name, Ucg *ret, va_list ap);
@@ -84,6 +85,7 @@ void ucg_path(char *path);
 void ucg_run_bin(void);
 void ucg_start(char *name);
 #if !UCG
+Node *find_function(char *name);
 Node *find_in_children(Node *parent, char *name);
 Node *find_variable(char *name);
 Node *new_node(Token *token);
