@@ -517,6 +517,13 @@ void exit_scope() {
 Node *parse_type(int pos) {
     Token *token = peek(pos);
     Token *prev = ura.tokens[ura.exe_pos - 1];
+    if (token->type == REF && token->line == prev->line) {
+        next(); // SKIP &
+        Node *ref = new_node(token);
+        ref->token->is_type = true;
+        ref->data_type = parse_type(0);
+        return ref;
+    }
     if (token->type == ID && token->line == prev->line)
         token->is_type = true;
     if (token->is_type) {
@@ -525,10 +532,10 @@ Node *parse_type(int pos) {
         if (peek(0)->type == LBRACK && peek(1)->type == RBRACK) {
             next(); // SKIP [
             next(); // SKIP ]
-            Node *ref = new_node(new_token(REF, token));
-            ref->token->is_type = true;
-            ref->data_type = node;
-            return ref;
+            Node *array = new_node(new_token(ARRAY, token));
+            array->token->is_type = true;
+            array->data_type = node;
+            return array;
         }
         return node;
     }
@@ -608,6 +615,11 @@ Node *parse_prime() {
     }
     case SUB: {
         token->type = NEG;
+        node = new_node(token);
+        node->operand = parse_prime();
+        return node;
+    }
+    case REF: {
         node = new_node(token);
         node->operand = parse_prime();
         return node;
@@ -873,6 +885,18 @@ Node *ret_type_of(Node *fn) {
     return fn->ret_type ? fn->ret_type : new_type(VOID, 0, NULL);
 }
 
+bool is_ref_variable(Node *node) {
+    if (!includes(node->token->type, VAR, PARAM, 0) || node->data_type == NULL)
+        return false;
+    return node->data_type->token->type == REF;
+}
+
+bool is_ref_binding(Node *node) {
+    if (node->token->type != ASSIGN || !is_ref_variable(node->left))
+        return false;
+    return node->right->token->type == REF && !node->right->token->is_type;
+}
+
 char *type_name(Node *type) {
     switch (type->token->type) {
     case INT: {
@@ -881,8 +905,10 @@ char *type_name(Node *type) {
     }
     case FLOAT:
         return format("f%d", type->token->shift);
-    case REF:
+    case ARRAY:
         return format("%s[]", type_name(type->data_type));
+    case REF:
+        return format("&%s", type_name(type->data_type));
     case VOID:
         return "void";
     case ID:
@@ -898,8 +924,12 @@ Node *type_of(Node *node) {
     case AS:        return node->to_type;
     case LCBRACK:   return node->data_type;
     case DOT:       return node->right->declared ? node->right->declared->data_type : NULL;
-    case CHARS:     return new_type(REF, 0, new_type(INT, 8, NULL));
-    case VAR: case PARAM: return node->data_type;
+    case CHARS:     return new_type(ARRAY, 0, new_type(INT, 8, NULL));
+    case VAR: case PARAM: return is_ref_variable(node) ? node->data_type->data_type : node->data_type;
+    case REF: {
+        Node *type = type_of(node->operand);
+        return type ? new_type(REF, 0, type) : NULL;
+    }
     case FN_CALL:   return node->to_call ? ret_type_of(node->to_call) : NULL;
     case NEG:       return type_of(node->operand);
     case LT: case GT: case EQ: case LE: case GE: case NQ:
@@ -912,7 +942,7 @@ Node *type_of(Node *node) {
 bool same_type(Node *a, Node *b) {
     if (a->token->type != b->token->type)
         return false;
-    if (a->token->type == REF)
+    if (includes(a->token->type, REF, ARRAY, 0))
         return same_type(a->data_type, b->data_type);
     if (a->token->type == ID)
         return strcmp2(a->token->name, b->token->name);
@@ -985,7 +1015,7 @@ void check_same_type(Node *left, Node *right) {
 
 void analyze(Node *node) {
     switch (node->token->type) { // clang-format off
-    case INT: case FLOAT: case VAR: case PARAM: case CHARS: case VARIADIC: case REF: { // clang-format on
+    case INT: case FLOAT: case VAR: case PARAM: case CHARS: case VARIADIC: { // clang-format on
         break;
     }
     case ID: {
@@ -1066,6 +1096,13 @@ void analyze(Node *node) {
         analyze(node->operand);
         break;
     }
+    case REF: case ARRAY: {
+        if (node->token->is_type)
+            analyze(node->data_type);
+        else
+            analyze(node->operand);
+        break;
+    }
     case AS: {
         analyze(node->left);
         break;
@@ -1123,7 +1160,9 @@ void analyze(Node *node) {
 	case AND: case OR: { // clang-format on
         analyze(node->left);
         analyze(node->right);
-        if (!includes(node->token->type, AND, OR, 0))
+        if (is_ref_binding(node))
+            check_type(node->right, node->left->data_type, NULL);
+        else if (!includes(node->token->type, AND, OR, 0))
             check_same_type(node->left, node->right);
         else if (!type_of(node->left) || same_type(type_of(node->left), bool_type()))
             check_type(node->right, bool_type(), NULL);
@@ -1227,6 +1266,8 @@ void codegen(Node *node) {
     case VAR: case PARAM: {
         if (node->declared)
             node->token->ucg = node->declared->token->ucg;
+        if (node->declared && is_ref_variable(node))
+            node->token->ucg = ucg_point_to(node->token->ucg);
         break;
     }
 
@@ -1247,9 +1288,14 @@ void codegen(Node *node) {
         node->token->ucg = ucg;
         break;
     }
-    case REF: {
-        codegen(node->data_type);
-        node->token->ucg = ucg_ref_type(node->data_type->token->ucg);
+    case REF: case ARRAY: {
+        if (node->token->is_type) {
+            codegen(node->data_type);
+            node->token->ucg = ucg_ref_type(node->data_type->token->ucg);
+        } else {
+            codegen(node->operand);
+            node->token->ucg = ucg_ref(node->operand->token->ucg);
+        }
         break;
     }
     case CHARS: {
@@ -1396,6 +1442,12 @@ void codegen(Node *node) {
         print("=========================\n");
         print("%n", node);
         print("=========================\n");
+        if (is_ref_binding(node)) {
+            Node *slot = node->left->declared ? node->left->declared : node->left;
+            codegen(node->right);
+            node->token->ucg = ucg_assign(slot->token->ucg, node->right->token->ucg);
+            break;
+        }
         codegen(node->left);
         codegen(node->right);
         // exit(1);

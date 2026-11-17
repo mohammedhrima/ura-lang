@@ -821,32 +821,24 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-@str = private constant [7 x i8] c"abcdef\00"
-@str.1 = private constant [6 x i8] c"<%s>\0A\00"
+target triple = "x86_64-unknown-linux-gnu"
 
 declare i32 @printf(i8*, ...)
 
 define i32 @main() {
 entry:
   %str = alloca i8*, align 8
-  %s = alloca [7 x i8], align 1
-  %s1 = alloca [6 x i8], align 1
-  %dst = getelementptr inbounds [7 x i8], [7 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i64 7, i1 false)
-  store i8* %dst, i8** %str, align 8
-  %dst2 = getelementptr inbounds [6 x i8], [6 x i8]* %s1, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst2, i8* align 1 getelementptr inbounds ([6 x i8], [6 x i8]* @str.1, i32 0, i32 0), i64 6, i1 false)
-  %load.str = load i8*, i8** %str, align 8
-  %"printf(str,load.str)" = call i32 (i8*, ...) @printf(i8* %dst2, i8* %load.str)
+  %arr = alloca [7 x i8], align 1
+  %arr1 = alloca [6 x i8], align 1
+  store [7 x i8] c"abcdef\00", [7 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [7 x i8], [7 x i8]* %arr, i32 0, i32 0
+  store i8* %0, i8** %str, align 8
+  store [6 x i8] c"<%s>\0A\00", [6 x i8]* %arr1, align 1
+  %1 = getelementptr inbounds [6 x i8], [6 x i8]* %arr1, i32 0, i32 0
+  %"$str" = load i8*, i8** %str, align 8
+  %call.printf = call i32 (i8*, ...) @printf(i8* %1, i8* %"$str")
   ret i32 0
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -872,38 +864,30 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-@str = private constant [7 x i8] c"hi %s\0A\00"
-@str.1 = private constant [4 x i8] c"ura\00"
+target triple = "x86_64-unknown-linux-gnu"
 
 declare i32 @printf(i8*, ...)
 
 define void @greet(i8* %0) {
 entry:
   %name = alloca i8*, align 8
-  %s = alloca [7 x i8], align 1
+  %arr = alloca [7 x i8], align 1
   store i8* %0, i8** %name, align 8
-  %dst = getelementptr inbounds [7 x i8], [7 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i64 7, i1 false)
-  %load.name = load i8*, i8** %name, align 8
-  %"printf(str,load.name)" = call i32 (i8*, ...) @printf(i8* %dst, i8* %load.name)
+  store [7 x i8] c"hi %s\0A\00", [7 x i8]* %arr, align 1
+  %1 = getelementptr inbounds [7 x i8], [7 x i8]* %arr, i32 0, i32 0
+  %"$name" = load i8*, i8** %name, align 8
+  %call.printf = call i32 (i8*, ...) @printf(i8* %1, i8* %"$name")
   ret void
 }
 
 define i32 @main() {
 entry:
-  %s = alloca [4 x i8], align 1
-  %dst = getelementptr inbounds [4 x i8], [4 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([4 x i8], [4 x i8]* @str.1, i32 0, i32 0), i64 4, i1 false)
-  call void @greet(i8* %dst)
+  %arr = alloca [4 x i8], align 1
+  store [4 x i8] c"ura\00", [4 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [4 x i8], [4 x i8]* %arr, i32 0, i32 0
+  call void @greet(i8* %0)
   ret i32 0
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -924,32 +908,24 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-@str = private constant [7 x i8] c"abcdef\00"
-@str.1 = private constant [5 x i8] c"<%s>\00"
+target triple = "x86_64-unknown-linux-gnu"
 
 declare i32 @printf(i8*, ...)
 
 define i32 @main() {
 entry:
   %str = alloca i8*, align 8
-  %s = alloca [7 x i8], align 1
-  %s1 = alloca [5 x i8], align 1
-  %dst = getelementptr inbounds [7 x i8], [7 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i64 7, i1 false)
-  store i8* %dst, i8** %str, align 8
-  %dst2 = getelementptr inbounds [5 x i8], [5 x i8]* %s1, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst2, i8* align 1 getelementptr inbounds ([5 x i8], [5 x i8]* @str.1, i32 0, i32 0), i64 5, i1 false)
-  %load.str = load i8*, i8** %str, align 8
-  %"printf(str,load.str)" = call i32 (i8*, ...) @printf(i8* %dst2, i8* %load.str)
+  %arr = alloca [7 x i8], align 1
+  %arr1 = alloca [5 x i8], align 1
+  store [7 x i8] c"abcdef\00", [7 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [7 x i8], [7 x i8]* %arr, i32 0, i32 0
+  store i8* %0, i8** %str, align 8
+  store [5 x i8] c"<%s>\00", [5 x i8]* %arr1, align 1
+  %1 = getelementptr inbounds [5 x i8], [5 x i8]* %arr1, i32 0, i32 0
+  %"$str" = load i8*, i8** %str, align 8
+  %call.printf = call i32 (i8*, ...) @printf(i8* %1, i8* %"$str")
   ret i32 0
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -967,24 +943,17 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-@str = private constant [7 x i8] c"abcdef\00"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
   %str = alloca i8*, align 8
-  %s = alloca [7 x i8], align 1
-  %dst = getelementptr inbounds [7 x i8], [7 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i64 7, i1 false)
-  store i8* %dst, i8** %str, align 8
+  %arr = alloca [7 x i8], align 1
+  store [7 x i8] c"abcdef\00", [7 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [7 x i8], [7 x i8]* %arr, i32 0, i32 0
+  store i8* %0, i8** %str, align 8
   ret i32 0
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -1010,9 +979,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-@str = private constant [8 x i8] c"a = %d\0A\00"
+target triple = "x86_64-unknown-linux-gnu"
 
 declare i32 @printf(i8*, ...)
 
@@ -1020,23 +987,18 @@ define i32 @main() {
 entry:
   %a = alloca i32, align 4
   %p = alloca i32*, align 8
-  %s = alloca [8 x i8], align 1
+  %arr = alloca [8 x i8], align 1
   store i32 10, i32* %a, align 4
   store i32* %a, i32** %p, align 8
-  %dref.p = load i32*, i32** %p, align 8
-  store i32 12, i32* %dref.p, align 4
-  %dst = getelementptr inbounds [8 x i8], [8 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([8 x i8], [8 x i8]* @str, i32 0, i32 0), i64 8, i1 false)
-  %load.a = load i32, i32* %a, align 4
-  %"printf(str,load.a)" = call i32 (i8*, ...) @printf(i8* %dst, i32 %load.a)
-  %load.a1 = load i32, i32* %a, align 4
-  ret i32 %load.a1
+  %"*p" = load i32*, i32** %p, align 8
+  store i32 12, i32* %"*p", align 4
+  store [8 x i8] c"a = %d\0A\00", [8 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [8 x i8], [8 x i8]* %arr, i32 0, i32 0
+  %"$a" = load i32, i32* %a, align 4
+  %call.printf = call i32 (i8*, ...) @printf(i8* %0, i32 %"$a")
+  %"$a1" = load i32, i32* %a, align 4
+  ret i32 %"$a1"
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -1063,10 +1025,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-@str = private constant [9 x i8] c"p = %d, \00"
-@str.1 = private constant [8 x i8] c"a = %d\0A\00"
+target triple = "x86_64-unknown-linux-gnu"
 
 declare i32 @printf(i8*, ...)
 
@@ -1074,32 +1033,27 @@ define i32 @main() {
 entry:
   %a = alloca i32, align 4
   %p = alloca i32*, align 8
-  %s = alloca [9 x i8], align 1
-  %s4 = alloca [8 x i8], align 1
+  %arr = alloca [9 x i8], align 1
+  %arr4 = alloca [8 x i8], align 1
   store i32 10, i32* %a, align 4
   store i32* %a, i32** %p, align 8
-  %dst = getelementptr inbounds [9 x i8], [9 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([9 x i8], [9 x i8]* @str, i32 0, i32 0), i64 9, i1 false)
-  %dref.p = load i32*, i32** %p, align 8
-  %load.dref.p = load i32, i32* %dref.p, align 4
-  %"printf(str,load.dref.p)" = call i32 (i8*, ...) @printf(i8* %dst, i32 %load.dref.p)
-  %dref.p1 = load i32*, i32** %p, align 8
-  %dref.p2 = load i32*, i32** %p, align 8
-  %load.dref.p3 = load i32, i32* %dref.p2, align 4
-  %ADD = add i32 %load.dref.p3, 5
-  store i32 %ADD, i32* %dref.p1, align 4
-  %dst5 = getelementptr inbounds [8 x i8], [8 x i8]* %s4, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst5, i8* align 1 getelementptr inbounds ([8 x i8], [8 x i8]* @str.1, i32 0, i32 0), i64 8, i1 false)
-  %load.a = load i32, i32* %a, align 4
-  %"printf(str,load.a)" = call i32 (i8*, ...) @printf(i8* %dst5, i32 %load.a)
-  %load.a6 = load i32, i32* %a, align 4
-  ret i32 %load.a6
+  store [9 x i8] c"p = %d, \00", [9 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [9 x i8], [9 x i8]* %arr, i32 0, i32 0
+  %"*p" = load i32*, i32** %p, align 8
+  %"$*p" = load i32, i32* %"*p", align 4
+  %call.printf = call i32 (i8*, ...) @printf(i8* %0, i32 %"$*p")
+  %"*p1" = load i32*, i32** %p, align 8
+  %"*p2" = load i32*, i32** %p, align 8
+  %"$*p3" = load i32, i32* %"*p2", align 4
+  %ADD = add i32 %"$*p3", 5
+  store i32 %ADD, i32* %"*p1", align 4
+  store [8 x i8] c"a = %d\0A\00", [8 x i8]* %arr4, align 1
+  %1 = getelementptr inbounds [8 x i8], [8 x i8]* %arr4, i32 0, i32 0
+  %"$a" = load i32, i32* %a, align 4
+  %call.printf5 = call i32 (i8*, ...) @printf(i8* %1, i32 %"$a")
+  %"$a6" = load i32, i32* %a, align 4
+  ret i32 %"$a6"
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -1122,7 +1076,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -1130,16 +1084,16 @@ entry:
   %p = alloca i32*, align 8
   store i32 10, i32* %a, align 4
   store i32* %a, i32** %p, align 8
-  %dref.p = load i32*, i32** %p, align 8
-  %old = load i32, i32* %dref.p, align 4
-  %ADD_ASSIGN = add i32 %old, 2
-  store i32 %ADD_ASSIGN, i32* %dref.p, align 4
-  %dref.p1 = load i32*, i32** %p, align 8
-  %old2 = load i32, i32* %dref.p1, align 4
-  %MUL_ASSIGN = mul i32 %old2, 2
-  store i32 %MUL_ASSIGN, i32* %dref.p1, align 4
-  %load.a = load i32, i32* %a, align 4
-  ret i32 %load.a
+  %"*p" = load i32*, i32** %p, align 8
+  %"$*p" = load i32, i32* %"*p", align 4
+  %ADD = add i32 %"$*p", 2
+  store i32 %ADD, i32* %"*p", align 4
+  %"*p1" = load i32*, i32** %p, align 8
+  %"$*p2" = load i32, i32* %"*p1", align 4
+  %MUL = mul i32 %"$*p2", 2
+  store i32 %MUL, i32* %"*p1", align 4
+  %"$a" = load i32, i32* %a, align 4
+  ret i32 %"$a"
 }
 ```
 
@@ -1171,9 +1125,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-@str = private constant [16 x i8] c"a = %d, b = %d\0A\00"
+target triple = "x86_64-unknown-linux-gnu"
 
 declare i32 @printf(i8*, ...)
 
@@ -1184,16 +1136,16 @@ entry:
   %t = alloca i32, align 4
   store i32* %0, i32** %x, align 8
   store i32* %1, i32** %y, align 8
-  %dref.x = load i32*, i32** %x, align 8
-  %load.dref.x = load i32, i32* %dref.x, align 4
-  store i32 %load.dref.x, i32* %t, align 4
-  %dref.x1 = load i32*, i32** %x, align 8
-  %dref.y = load i32*, i32** %y, align 8
-  %load.dref.y = load i32, i32* %dref.y, align 4
-  store i32 %load.dref.y, i32* %dref.x1, align 4
-  %dref.y2 = load i32*, i32** %y, align 8
-  %load.t = load i32, i32* %t, align 4
-  store i32 %load.t, i32* %dref.y2, align 4
+  %"*x" = load i32*, i32** %x, align 8
+  %"$*x" = load i32, i32* %"*x", align 4
+  store i32 %"$*x", i32* %t, align 4
+  %"*x1" = load i32*, i32** %x, align 8
+  %"*y" = load i32*, i32** %y, align 8
+  %"$*y" = load i32, i32* %"*y", align 4
+  store i32 %"$*y", i32* %"*x1", align 4
+  %"*y2" = load i32*, i32** %y, align 8
+  %"$t" = load i32, i32* %t, align 4
+  store i32 %"$t", i32* %"*y2", align 4
   ret void
 }
 
@@ -1201,26 +1153,21 @@ define i32 @main() {
 entry:
   %a = alloca i32, align 4
   %b = alloca i32, align 4
-  %s = alloca [16 x i8], align 1
+  %arr = alloca [16 x i8], align 1
   store i32 1, i32* %a, align 4
   store i32 2, i32* %b, align 4
   call void @swap(i32* %a, i32* %b)
-  %dst = getelementptr inbounds [16 x i8], [16 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([16 x i8], [16 x i8]* @str, i32 0, i32 0), i64 16, i1 false)
-  %load.a = load i32, i32* %a, align 4
-  %load.b = load i32, i32* %b, align 4
-  %"printf(str,load.a,load.b)" = call i32 (i8*, ...) @printf(i8* %dst, i32 %load.a, i32 %load.b)
-  %load.a1 = load i32, i32* %a, align 4
-  %MUL = mul i32 %load.a1, 10
-  %load.b2 = load i32, i32* %b, align 4
-  %ADD = add i32 %MUL, %load.b2
+  store [16 x i8] c"a = %d, b = %d\0A\00", [16 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [16 x i8], [16 x i8]* %arr, i32 0, i32 0
+  %"$a" = load i32, i32* %a, align 4
+  %"$b" = load i32, i32* %b, align 4
+  %call.printf = call i32 (i8*, ...) @printf(i8* %0, i32 %"$a", i32 %"$b")
+  %"$a1" = load i32, i32* %a, align 4
+  %MUL = mul i32 %"$a1", 10
+  %"$b2" = load i32, i32* %b, align 4
+  %ADD = add i32 %MUL, %"$b2"
   ret i32 %ADD
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -1246,16 +1193,16 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define void @inc(i32* %0) {
 entry:
   %c = alloca i32*, align 8
   store i32* %0, i32** %c, align 8
-  %dref.c = load i32*, i32** %c, align 8
-  %old = load i32, i32* %dref.c, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* %dref.c, align 4
+  %"*c" = load i32*, i32** %c, align 8
+  %"$*c" = load i32, i32* %"*c", align 4
+  %ADD = add i32 %"$*c", 1
+  store i32 %ADD, i32* %"*c", align 4
   ret void
 }
 
@@ -1266,8 +1213,8 @@ entry:
   call void @inc(i32* %n)
   call void @inc(i32* %n)
   call void @inc(i32* %n)
-  %load.n = load i32, i32* %n, align 4
-  ret i32 %load.n
+  %"$n" = load i32, i32* %n, align 4
+  ret i32 %"$n"
 }
 ```
 
@@ -1294,9 +1241,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-@str = private constant [16 x i8] c"a = %d, b = %d\0A\00"
+target triple = "x86_64-unknown-linux-gnu"
 
 declare i32 @printf(i8*, ...)
 
@@ -1306,28 +1251,23 @@ entry:
   %b = alloca i32, align 4
   %p1 = alloca i32*, align 8
   %p2 = alloca i32*, align 8
-  %s = alloca [16 x i8], align 1
+  %arr = alloca [16 x i8], align 1
   store i32 1, i32* %a, align 4
   store i32 2, i32* %b, align 4
   store i32* %a, i32** %p1, align 8
   store i32* %b, i32** %p2, align 8
-  %dref.p1 = load i32*, i32** %p1, align 8
-  %dref.p2 = load i32*, i32** %p2, align 8
-  %load.dref.p2 = load i32, i32* %dref.p2, align 4
-  store i32 %load.dref.p2, i32* %dref.p1, align 4
-  %dst = getelementptr inbounds [16 x i8], [16 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([16 x i8], [16 x i8]* @str, i32 0, i32 0), i64 16, i1 false)
-  %load.a = load i32, i32* %a, align 4
-  %load.b = load i32, i32* %b, align 4
-  %"printf(str,load.a,load.b)" = call i32 (i8*, ...) @printf(i8* %dst, i32 %load.a, i32 %load.b)
-  %load.a1 = load i32, i32* %a, align 4
-  ret i32 %load.a1
+  %"*p1" = load i32*, i32** %p1, align 8
+  %"*p2" = load i32*, i32** %p2, align 8
+  %"$*p2" = load i32, i32* %"*p2", align 4
+  store i32 %"$*p2", i32* %"*p1", align 4
+  store [16 x i8] c"a = %d, b = %d\0A\00", [16 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [16 x i8], [16 x i8]* %arr, i32 0, i32 0
+  %"$a" = load i32, i32* %a, align 4
+  %"$b" = load i32, i32* %b, align 4
+  %call.printf = call i32 (i8*, ...) @printf(i8* %0, i32 %"$a", i32 %"$b")
+  %"$a1" = load i32, i32* %a, align 4
+  ret i32 %"$a1"
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -1356,9 +1296,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-@str = private constant [16 x i8] c"a = %d, b = %d\0A\00"
+target triple = "x86_64-unknown-linux-gnu"
 
 declare i32 @printf(i8*, ...)
 
@@ -1368,28 +1306,23 @@ entry:
   %b = alloca i32, align 4
   %p1 = alloca i32*, align 8
   %p2 = alloca i32*, align 8
-  %s = alloca [16 x i8], align 1
+  %arr = alloca [16 x i8], align 1
   store i32 1, i32* %a, align 4
   store i32 2, i32* %b, align 4
   store i32* %a, i32** %p1, align 8
   store i32* %b, i32** %p2, align 8
-  %dref.p2 = load i32*, i32** %p2, align 8
-  store i32* %dref.p2, i32** %p1, align 8
-  %dref.p1 = load i32*, i32** %p1, align 8
-  store i32 9, i32* %dref.p1, align 4
-  %dst = getelementptr inbounds [16 x i8], [16 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([16 x i8], [16 x i8]* @str, i32 0, i32 0), i64 16, i1 false)
-  %load.a = load i32, i32* %a, align 4
-  %load.b = load i32, i32* %b, align 4
-  %"printf(str,load.a,load.b)" = call i32 (i8*, ...) @printf(i8* %dst, i32 %load.a, i32 %load.b)
-  %load.b1 = load i32, i32* %b, align 4
-  ret i32 %load.b1
+  %"*p2" = load i32*, i32** %p2, align 8
+  store i32* %"*p2", i32** %p1, align 8
+  %"*p1" = load i32*, i32** %p1, align 8
+  store i32 9, i32* %"*p1", align 4
+  store [16 x i8] c"a = %d, b = %d\0A\00", [16 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [16 x i8], [16 x i8]* %arr, i32 0, i32 0
+  %"$a" = load i32, i32* %a, align 4
+  %"$b" = load i32, i32* %b, align 4
+  %call.printf = call i32 (i8*, ...) @printf(i8* %0, i32 %"$a", i32 %"$b")
+  %"$b1" = load i32, i32* %b, align 4
+  ret i32 %"$b1"
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -1417,16 +1350,16 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define void @add_one(i32* %0) {
 entry:
   %p = alloca i32*, align 8
   store i32* %0, i32** %p, align 8
-  %dref.p = load i32*, i32** %p, align 8
-  %old = load i32, i32* %dref.p, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* %dref.p, align 4
+  %"*p" = load i32*, i32** %p, align 8
+  %"$*p" = load i32, i32* %"*p", align 4
+  %ADD = add i32 %"$*p", 1
+  store i32 %ADD, i32* %"*p", align 4
   ret void
 }
 
@@ -1434,10 +1367,10 @@ define void @add_two(i32* %0) {
 entry:
   %p = alloca i32*, align 8
   store i32* %0, i32** %p, align 8
-  %dref.p = load i32*, i32** %p, align 8
-  call void @add_one(i32* %dref.p)
-  %dref.p1 = load i32*, i32** %p, align 8
-  call void @add_one(i32* %dref.p1)
+  %"*p" = load i32*, i32** %p, align 8
+  call void @add_one(i32* %"*p")
+  %"*p1" = load i32*, i32** %p, align 8
+  call void @add_one(i32* %"*p1")
   ret void
 }
 
@@ -1446,8 +1379,8 @@ entry:
   %a = alloca i32, align 4
   store i32 0, i32* %a, align 4
   call void @add_two(i32* %a)
-  %load.a = load i32, i32* %a, align 4
-  ret i32 %load.a
+  %"$a" = load i32, i32* %a, align 4
+  ret i32 %"$a"
 }
 ```
 
@@ -1472,7 +1405,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -1480,15 +1413,18 @@ entry:
   %p = alloca i1*, align 8
   store i1 false, i1* %b, align 1
   store i1* %b, i1** %p, align 8
-  %dref.p = load i1*, i1** %p, align 8
-  store i1 true, i1* %dref.p, align 1
-  %load.b = load i1, i1* %b, align 1
-  br i1 %load.b, label %then, label %endif
+  %"*p" = load i1*, i1** %p, align 8
+  store i1 true, i1* %"*p", align 1
+  br label %if0
 
-then:                                             ; preds = %entry
+if0:                                              ; preds = %entry
+  %"$b" = load i1, i1* %b, align 1
+  br i1 %"$b", label %if0.then, label %endif
+
+if0.then:                                         ; preds = %if0
   ret i32 1
 
-endif:                                            ; preds = %entry
+endif:                                            ; preds = %if0
   ret i32 0
 }
 ```
@@ -1520,10 +1456,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-@str = private constant [4 x i8] c"%d \00"
-@str.1 = private constant [2 x i8] c"\0A\00"
+target triple = "x86_64-unknown-linux-gnu"
 
 declare i32 @printf(i8*, ...)
 
@@ -1532,45 +1465,40 @@ entry:
   %total = alloca i32, align 4
   %p = alloca i32*, align 8
   %i = alloca i32, align 4
-  %s = alloca [4 x i8], align 1
-  %s5 = alloca [2 x i8], align 1
+  %arr = alloca [4 x i8], align 1
+  %arr5 = alloca [2 x i8], align 1
   store i32 0, i32* %total, align 4
   store i32* %total, i32** %p, align 8
   store i32 1, i32* %i, align 4
-  br label %cond
+  br label %while0
 
-cond:                                             ; preds = %then, %entry
-  %load.i = load i32, i32* %i, align 4
-  %LE = icmp sle i32 %load.i, 5
-  br i1 %LE, label %then, label %endwhile
+while0:                                           ; preds = %while0.then, %entry
+  %"$i" = load i32, i32* %i, align 4
+  %LE = icmp sle i32 %"$i", 5
+  br i1 %LE, label %while0.then, label %endloop
 
-then:                                             ; preds = %cond
-  %dst = getelementptr inbounds [4 x i8], [4 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i64 4, i1 false)
-  %load.i1 = load i32, i32* %i, align 4
-  %"printf(str,load.i)" = call i32 (i8*, ...) @printf(i8* %dst, i32 %load.i1)
-  %dref.p = load i32*, i32** %p, align 8
-  %load.i2 = load i32, i32* %i, align 4
-  %old = load i32, i32* %dref.p, align 4
-  %ADD_ASSIGN = add i32 %old, %load.i2
-  store i32 %ADD_ASSIGN, i32* %dref.p, align 4
-  %old3 = load i32, i32* %i, align 4
-  %ADD_ASSIGN4 = add i32 %old3, 1
-  store i32 %ADD_ASSIGN4, i32* %i, align 4
-  br label %cond
+while0.then:                                      ; preds = %while0
+  store [4 x i8] c"%d \00", [4 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [4 x i8], [4 x i8]* %arr, i32 0, i32 0
+  %"$i1" = load i32, i32* %i, align 4
+  %call.printf = call i32 (i8*, ...) @printf(i8* %0, i32 %"$i1")
+  %"*p" = load i32*, i32** %p, align 8
+  %"$i2" = load i32, i32* %i, align 4
+  %"$*p" = load i32, i32* %"*p", align 4
+  %ADD = add i32 %"$*p", %"$i2"
+  store i32 %ADD, i32* %"*p", align 4
+  %"$i3" = load i32, i32* %i, align 4
+  %ADD4 = add i32 %"$i3", 1
+  store i32 %ADD4, i32* %i, align 4
+  br label %while0
 
-endwhile:                                         ; preds = %cond
-  %dst6 = getelementptr inbounds [2 x i8], [2 x i8]* %s5, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst6, i8* align 1 getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0), i64 2, i1 false)
-  %"printf(str)" = call i32 (i8*, ...) @printf(i8* %dst6)
-  %load.total = load i32, i32* %total, align 4
-  ret i32 %load.total
+endloop:                                          ; preds = %while0
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr5, align 1
+  %1 = getelementptr inbounds [2 x i8], [2 x i8]* %arr5, i32 0, i32 0
+  %call.printf6 = call i32 (i8*, ...) @printf(i8* %1)
+  %"$total" = load i32, i32* %total, align 4
+  ret i32 %"$total"
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -1590,7 +1518,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -2212,51 +2140,43 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-@str = private constant [3 x i8] c"%c\00"
-@str.1 = private constant [2 x i8] c"\0A\00"
+target triple = "x86_64-unknown-linux-gnu"
 
 declare i32 @printf(i8*, ...)
 
 define i32 @main() {
 entry:
   %c = alloca i8, align 1
-  %s = alloca [3 x i8], align 1
-  %s3 = alloca [2 x i8], align 1
+  %arr = alloca [3 x i8], align 1
+  %arr4 = alloca [2 x i8], align 1
   store i8 97, i8* %c, align 1
-  br label %cond
+  br label %while0
 
-cond:                                             ; preds = %then, %entry
-  %load.c = load i8, i8* %c, align 1
-  %LE = icmp sle i8 %load.c, 101
-  br i1 %LE, label %then, label %endwhile
+while0:                                           ; preds = %while0.then, %entry
+  %"$c" = load i8, i8* %c, align 1
+  %LE = icmp sle i8 %"$c", 101
+  br i1 %LE, label %while0.then, label %endloop
 
-then:                                             ; preds = %cond
-  %dst = getelementptr inbounds [3 x i8], [3 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i64 3, i1 false)
-  %load.c1 = load i8, i8* %c, align 1
-  %"printf(str,load.c)" = call i32 (i8*, ...) @printf(i8* %dst, i8 %load.c1)
-  %load.c2 = load i8, i8* %c, align 1
-  %"(i32)load.c" = sext i8 %load.c2 to i32
-  %ADD = add i32 %"(i32)load.c", 1
-  %"(i8)(i32)load.c + 1" = trunc i32 %ADD to i8
-  store i8 %"(i8)(i32)load.c + 1", i8* %c, align 1
-  br label %cond
+while0.then:                                      ; preds = %while0
+  store [3 x i8] c"%c\00", [3 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [3 x i8], [3 x i8]* %arr, i32 0, i32 0
+  %"$c1" = load i8, i8* %c, align 1
+  %call.printf = call i32 (i8*, ...) @printf(i8* %0, i8 %"$c1")
+  %"$c2" = load i8, i8* %c, align 1
+  %AS = sext i8 %"$c2" to i32
+  %ADD = add i32 %AS, 1
+  %AS3 = trunc i32 %ADD to i8
+  store i8 %AS3, i8* %c, align 1
+  br label %while0
 
-endwhile:                                         ; preds = %cond
-  %dst4 = getelementptr inbounds [2 x i8], [2 x i8]* %s3, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst4, i8* align 1 getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0), i64 2, i1 false)
-  %"printf(str)" = call i32 (i8*, ...) @printf(i8* %dst4)
-  %load.c5 = load i8, i8* %c, align 1
-  %"(i32)load.c6" = sext i8 %load.c5 to i32
-  ret i32 %"(i32)load.c6"
+endloop:                                          ; preds = %while0
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr4, align 1
+  %1 = getelementptr inbounds [2 x i8], [2 x i8]* %arr4, i32 0, i32 0
+  %call.printf5 = call i32 (i8*, ...) @printf(i8* %1)
+  %"$c6" = load i8, i8* %c, align 1
+  %AS7 = sext i8 %"$c6" to i32
+  ret i32 %AS7
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -4716,10 +4636,10 @@ fn main() i32:
 ### llvm ir
 
 ```llvm
-; ModuleID = 'ura-module'
-source_filename = "ura-module"
+; ModuleID = 'ura'
+source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -4727,10 +4647,10 @@ entry:
   %p = alloca i32*, align 8
   store i32 10, i32* %a, align 4
   store i32* %a, i32** %p, align 8
-  %p1 = load i32*, i32** %p, align 8
-  store i32 12, i32* %p1, align 4
-  %a2 = load i32, i32* %a, align 4
-  ret i32 %a2
+  %"*p" = load i32*, i32** %p, align 8
+  store i32 12, i32* %"*p", align 4
+  %"$a" = load i32, i32* %a, align 4
+  ret i32 %"$a"
 }
 ```
 
@@ -4751,17 +4671,17 @@ fn main() i32:
 ### llvm ir
 
 ```llvm
-; ModuleID = 'ura-module'
-source_filename = "ura-module"
+; ModuleID = 'ura'
+source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define void @foo(i32* %0) {
 entry:
   %a = alloca i32*, align 8
   store i32* %0, i32** %a, align 8
-  %a1 = load i32*, i32** %a, align 8
-  store i32 2, i32* %a1, align 4
+  %"*a" = load i32*, i32** %a, align 8
+  store i32 2, i32* %"*a", align 4
   ret void
 }
 
@@ -4770,8 +4690,8 @@ entry:
   %a = alloca i32, align 4
   store i32 10, i32* %a, align 4
   call void @foo(i32* %a)
-  %a1 = load i32, i32* %a, align 4
-  ret i32 %a1
+  %"$a" = load i32, i32* %a, align 4
+  ret i32 %"$a"
 }
 ```
 
@@ -4790,10 +4710,10 @@ fn main() i32:
 ### llvm ir
 
 ```llvm
-; ModuleID = 'ura-module'
-source_filename = "ura-module"
+; ModuleID = 'ura'
+source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -4802,11 +4722,11 @@ entry:
   %b = alloca i32, align 4
   store i32 10, i32* %a, align 4
   store i32* %a, i32** %p, align 8
-  %p1 = load i32*, i32** %p, align 8
-  %p.dref = load i32, i32* %p1, align 4
-  store i32 %p.dref, i32* %b, align 4
-  %b2 = load i32, i32* %b, align 4
-  ret i32 %b2
+  %"*p" = load i32*, i32** %p, align 8
+  %"$*p" = load i32, i32* %"*p", align 4
+  store i32 %"$*p", i32* %b, align 4
+  %"$b" = load i32, i32* %b, align 4
+  ret i32 %"$b"
 }
 ```
 
@@ -4825,10 +4745,10 @@ fn main() i32:
 ### llvm ir
 
 ```llvm
-; ModuleID = 'ura-module'
-source_filename = "ura-module"
+; ModuleID = 'ura'
+source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -4836,13 +4756,13 @@ entry:
   %p = alloca i32*, align 8
   store i32 10, i32* %a, align 4
   store i32* %a, i32** %p, align 8
-  %p1 = load i32*, i32** %p, align 8
-  %p.dref = load i32, i32* %p1, align 4
-  %ADD = add i32 %p.dref, 5
-  %p2 = load i32*, i32** %p, align 8
-  store i32 %ADD, i32* %p2, align 4
-  %a3 = load i32, i32* %a, align 4
-  ret i32 %a3
+  %"*p" = load i32*, i32** %p, align 8
+  %"*p1" = load i32*, i32** %p, align 8
+  %"$*p" = load i32, i32* %"*p1", align 4
+  %ADD = add i32 %"$*p", 5
+  store i32 %ADD, i32* %"*p", align 4
+  %"$a" = load i32, i32* %a, align 4
+  ret i32 %"$a"
 }
 ```
 
@@ -4863,10 +4783,10 @@ fn main() i32:
 ### llvm ir
 
 ```llvm
-; ModuleID = 'ura-module'
-source_filename = "ura-module"
+; ModuleID = 'ura'
+source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -4878,12 +4798,12 @@ entry:
   store i32 2, i32* %b, align 4
   store i32* %a, i32** %p1, align 8
   store i32* %b, i32** %p2, align 8
-  %p21 = load i32*, i32** %p2, align 8
-  %p2.dref = load i32, i32* %p21, align 4
-  %p12 = load i32*, i32** %p1, align 8
-  store i32 %p2.dref, i32* %p12, align 4
-  %a3 = load i32, i32* %a, align 4
-  ret i32 %a3
+  %"*p1" = load i32*, i32** %p1, align 8
+  %"*p2" = load i32*, i32** %p2, align 8
+  %"$*p2" = load i32, i32* %"*p2", align 4
+  store i32 %"$*p2", i32* %"*p1", align 4
+  %"$a" = load i32, i32* %a, align 4
+  ret i32 %"$a"
 }
 ```
 
@@ -4905,10 +4825,10 @@ fn main() i32:
 ### llvm ir
 
 ```llvm
-; ModuleID = 'ura-module'
-source_filename = "ura-module"
+; ModuleID = 'ura'
+source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -4920,12 +4840,12 @@ entry:
   store i32 2, i32* %b, align 4
   store i32* %a, i32** %p1, align 8
   store i32* %b, i32** %p2, align 8
-  %p21 = load i32*, i32** %p2, align 8
-  store i32* %p21, i32** %p1, align 8
-  %p12 = load i32*, i32** %p1, align 8
-  store i32 9, i32* %p12, align 4
-  %b3 = load i32, i32* %b, align 4
-  ret i32 %b3
+  %"*p2" = load i32*, i32** %p2, align 8
+  store i32* %"*p2", i32** %p1, align 8
+  %"*p1" = load i32*, i32** %p1, align 8
+  store i32 9, i32* %"*p1", align 4
+  %"$b" = load i32, i32* %b, align 4
+  ret i32 %"$b"
 }
 ```
 
@@ -4992,10 +4912,10 @@ fn main() i32:
 ### llvm ir
 
 ```llvm
-; ModuleID = 'ura-module'
-source_filename = "ura-module"
+; ModuleID = 'ura'
+source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define void @swap(i32* %0, i32* %1) {
 entry:
@@ -5004,16 +4924,16 @@ entry:
   %t = alloca i32, align 4
   store i32* %0, i32** %x, align 8
   store i32* %1, i32** %y, align 8
-  %x1 = load i32*, i32** %x, align 8
-  %x.dref = load i32, i32* %x1, align 4
-  store i32 %x.dref, i32* %t, align 4
-  %y2 = load i32*, i32** %y, align 8
-  %y.dref = load i32, i32* %y2, align 4
-  %x3 = load i32*, i32** %x, align 8
-  store i32 %y.dref, i32* %x3, align 4
-  %t4 = load i32, i32* %t, align 4
-  %y5 = load i32*, i32** %y, align 8
-  store i32 %t4, i32* %y5, align 4
+  %"*x" = load i32*, i32** %x, align 8
+  %"$*x" = load i32, i32* %"*x", align 4
+  store i32 %"$*x", i32* %t, align 4
+  %"*x1" = load i32*, i32** %x, align 8
+  %"*y" = load i32*, i32** %y, align 8
+  %"$*y" = load i32, i32* %"*y", align 4
+  store i32 %"$*y", i32* %"*x1", align 4
+  %"*y2" = load i32*, i32** %y, align 8
+  %"$t" = load i32, i32* %t, align 4
+  store i32 %"$t", i32* %"*y2", align 4
   ret void
 }
 
@@ -5024,10 +4944,10 @@ entry:
   store i32 1, i32* %a, align 4
   store i32 2, i32* %b, align 4
   call void @swap(i32* %a, i32* %b)
-  %a1 = load i32, i32* %a, align 4
-  %MUL = mul i32 %a1, 10
-  %b2 = load i32, i32* %b, align 4
-  %ADD = add i32 %MUL, %b2
+  %"$a" = load i32, i32* %a, align 4
+  %MUL = mul i32 %"$a", 10
+  %"$b" = load i32, i32* %b, align 4
+  %ADD = add i32 %MUL, %"$b"
   ret i32 %ADD
 }
 ```
@@ -5156,10 +5076,10 @@ fn main() i32:
 ### llvm ir
 
 ```llvm
-; ModuleID = 'ura-module'
-source_filename = "ura-module"
+; ModuleID = 'ura'
+source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -5167,15 +5087,18 @@ entry:
   %p = alloca i1*, align 8
   store i1 false, i1* %b, align 1
   store i1* %b, i1** %p, align 8
-  %p1 = load i1*, i1** %p, align 8
-  store i1 true, i1* %p1, align 1
-  %b2 = load i1, i1* %b, align 1
-  br i1 %b2, label %then, label %endif
+  %"*p" = load i1*, i1** %p, align 8
+  store i1 true, i1* %"*p", align 1
+  br label %if0
 
-then:                                             ; preds = %entry
+if0:                                              ; preds = %entry
+  %"$b" = load i1, i1* %b, align 1
+  br i1 %"$b", label %if0.then, label %endif
+
+if0.then:                                         ; preds = %if0
   ret i32 1
 
-endif:                                            ; preds = %entry
+endif:                                            ; preds = %if0
   ret i32 0
 }
 ```
@@ -5461,6 +5384,39 @@ fn main() i32:
     return n
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+define i32 @tick(i32* %0) {
+entry:
+  %n = alloca i32*, align 8
+  store i32* %0, i32** %n, align 8
+  %"*n" = load i32*, i32** %n, align 8
+  %"*n1" = load i32*, i32** %n, align 8
+  %"$*n" = load i32, i32* %"*n1", align 4
+  %ADD = add i32 %"$*n", 1
+  store i32 %ADD, i32* %"*n", align 4
+  %"*n2" = load i32*, i32** %n, align 8
+  %"$*n3" = load i32, i32* %"*n2", align 4
+  ret i32 %"$*n3"
+}
+
+define i32 @main() {
+entry:
+  %n = alloca i32, align 4
+  store i32 0, i32* %n, align 4
+  %call.tick = call i32 @tick(i32* %n)
+  %call.tick1 = call i32 @tick(i32* %n)
+  %"$n" = load i32, i32* %n, align 4
+  ret i32 %"$n"
+}
+```
+
 ---
 
 ## 099 — function: a void function with a ref parameter
@@ -5475,6 +5431,36 @@ fn main() i32:
     n i32 = 5
     bump(&n)
     return n
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+define void @bump(i32* %0) {
+entry:
+  %n = alloca i32*, align 8
+  store i32* %0, i32** %n, align 8
+  %"*n" = load i32*, i32** %n, align 8
+  %"*n1" = load i32*, i32** %n, align 8
+  %"$*n" = load i32, i32* %"*n1", align 4
+  %ADD = add i32 %"$*n", 1
+  store i32 %ADD, i32* %"*n", align 4
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %n = alloca i32, align 4
+  store i32 5, i32* %n, align 4
+  call void @bump(i32* %n)
+  %"$n" = load i32, i32* %n, align 4
+  ret i32 %"$n"
+}
 ```
 
 ---

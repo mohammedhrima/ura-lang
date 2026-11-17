@@ -848,7 +848,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %User = type { i32 }
 
@@ -858,12 +858,12 @@ entry:
   %p = alloca %User*, align 8
   store %User zeroinitializer, %User* %u, align 4
   store %User* %u, %User** %p, align 8
-  %dref.p = load %User*, %User** %p, align 8
-  %load.dref.p.a = getelementptr inbounds %User, %User* %dref.p, i32 0, i32 0
-  store i32 8, i32* %load.dref.p.a, align 4
-  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  %load.load.u.a = load i32, i32* %load.u.a, align 4
-  ret i32 %load.load.u.a
+  %"*p" = load %User*, %User** %p, align 8
+  %"*p.a" = getelementptr inbounds %User, %User* %"*p", i32 0, i32 0
+  store i32 8, i32* %"*p.a", align 4
+  %u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  %"$u.a" = load i32, i32* %u.a, align 4
+  ret i32 %"$u.a"
 }
 ```
 
@@ -891,7 +891,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %User = type { i32 }
 
@@ -899,9 +899,9 @@ define void @set(%User* %0) {
 entry:
   %p = alloca %User*, align 8
   store %User* %0, %User** %p, align 8
-  %dref.p = load %User*, %User** %p, align 8
-  %load.dref.p.a = getelementptr inbounds %User, %User* %dref.p, i32 0, i32 0
-  store i32 3, i32* %load.dref.p.a, align 4
+  %"*p" = load %User*, %User** %p, align 8
+  %"*p.a" = getelementptr inbounds %User, %User* %"*p", i32 0, i32 0
+  store i32 3, i32* %"*p.a", align 4
   ret void
 }
 
@@ -910,9 +910,9 @@ entry:
   %u = alloca %User, align 8
   store %User zeroinitializer, %User* %u, align 4
   call void @set(%User* %u)
-  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  %load.load.u.a = load i32, i32* %load.u.a, align 4
-  ret i32 %load.load.u.a
+  %u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  %"$u.a" = load i32, i32* %u.a, align 4
+  ret i32 %"$u.a"
 }
 ```
 
@@ -942,7 +942,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %User = type { i32, i32 }
 
@@ -950,13 +950,13 @@ define i32 @total(%User* %0) {
 entry:
   %p = alloca %User*, align 8
   store %User* %0, %User** %p, align 8
-  %dref.p = load %User*, %User** %p, align 8
-  %load.dref.p.a = getelementptr inbounds %User, %User* %dref.p, i32 0, i32 0
-  %load.load.dref.p.a = load i32, i32* %load.dref.p.a, align 4
-  %dref.p1 = load %User*, %User** %p, align 8
-  %load.dref.p.b = getelementptr inbounds %User, %User* %dref.p1, i32 0, i32 1
-  %load.load.dref.p.b = load i32, i32* %load.dref.p.b, align 4
-  %ADD = add i32 %load.load.dref.p.a, %load.load.dref.p.b
+  %"*p" = load %User*, %User** %p, align 8
+  %"*p.a" = getelementptr inbounds %User, %User* %"*p", i32 0, i32 0
+  %"*p1" = load %User*, %User** %p, align 8
+  %"*p.b" = getelementptr inbounds %User, %User* %"*p1", i32 0, i32 1
+  %"$*p.a" = load i32, i32* %"*p.a", align 4
+  %"$*p.b" = load i32, i32* %"*p.b", align 4
+  %ADD = add i32 %"$*p.a", %"$*p.b"
   ret i32 %ADD
 }
 
@@ -964,12 +964,12 @@ define i32 @main() {
 entry:
   %u = alloca %User, align 8
   store %User zeroinitializer, %User* %u, align 4
-  %load.u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  store i32 2, i32* %load.u.a, align 4
-  %load.u.b = getelementptr inbounds %User, %User* %u, i32 0, i32 1
-  store i32 5, i32* %load.u.b, align 4
-  %"total(&u)" = call i32 @total(%User* %u)
-  ret i32 %"total(&u)"
+  %u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  store i32 2, i32* %u.a, align 4
+  %u.b = getelementptr inbounds %User, %User* %u, i32 0, i32 1
+  store i32 5, i32* %u.b, align 4
+  %call.total = call i32 @total(%User* %u)
+  ret i32 %call.total
 }
 ```
 
