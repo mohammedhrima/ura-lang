@@ -843,7 +843,7 @@ __attribute__((sentinel)) Ucg *ucg_fn2(char *name, Ucg *ret, ...) {
     return new;
 }
 
-Ucg *ucg_fn(char *name, Ucg *ret, Ucg **params, int params_count) {
+Ucg *ucg_proto(char *name, Ucg *ret, Ucg **params, int params_count) {
     Ucg *new = ucg_new(FN_DEC);
     new->name = name;
     new->fn.ret = ret;
@@ -856,6 +856,11 @@ Ucg *ucg_fn(char *name, Ucg *ret, Ucg **params, int params_count) {
             append(new->fn.params, param);
     }
     append(gb_ucg.insts, new);
+    return new;
+}
+
+Ucg *ucg_fn(char *name, Ucg *ret, Ucg **params, int params_count) {
+    Ucg *new = ucg_proto(name, ret, params, params_count);
     Ucg *entry = ucg_new(FN_ENTRY);
     entry->to_enter = new;
     append(gb_ucg.insts, entry);

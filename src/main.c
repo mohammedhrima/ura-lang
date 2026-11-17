@@ -442,7 +442,16 @@ Node *parse_type(int pos) {
     Token *token = peek(pos);
     if (token->is_type) {
         next();
-        return new_node(token);
+        Node *node = new_node(token);
+        if (peek(0)->type == LBRACK && peek(1)->type == RBRACK) {
+            next(); // SKIP [
+            next(); // SKIP ]
+            Node *ref = new_node(new_token(REF, token));
+            ref->token->is_type = true;
+            ref->data_type = node;
+            return ref;
+        }
+        return node;
     }
     return NULL;
 }
@@ -451,7 +460,7 @@ Node *parse_prime() {
     Token *token = next();
     Node *node = NULL;
     switch (token->type) {
-    case INT: {
+    case INT: case CHARS: {
         return new_node(token);
     }
     case ID: {
@@ -486,7 +495,7 @@ Node *parse_prime() {
         next(); // SKIP )
         return node;
     }
-    case FN_DEC: {
+    case FN_DEC: case PROTO: {
         node = new_node(token);
         token = next(); // TODO: expect ID
         node->token->name = token->name;
@@ -505,6 +514,7 @@ Node *parse_prime() {
                 // node->token->is_varg = true;
                 Node *param = new_node(token);
                 append(node->right->children, param);
+                next(); // skip ...
                 break;
             } else {
                 eprint("%s:%d error %k\n", FILE, LINE, token);
@@ -516,8 +526,9 @@ Node *parse_prime() {
         print(">>> %k\n", peek(0));
         assert(peek(0)->type == RPARENT);
         next();                         // SKIP )
-        node->ret_type = parse_prime(); // return type
-        assert(!node->left || node->left->token->is_type);
+        node->ret_type = parse_type(0);
+        if (node->token->type == PROTO)
+            return node;
         assert(peek(0)->type == DOTS);
         next(); // SKIP :
         enter_scope(node);
@@ -619,8 +630,11 @@ Node *find_function(char *name) {
         Node *curr = ura.scopes[i];
         for (int j = 0; j < curr->children_count; j++) {
             Node *child = curr->children[j];
-            if (child->token->type == FN_DEC && strcmp2(child->token->name, name))
-                return child;
+            if (!includes(child->token->type, FN_DEC, PROTO, 0))
+                continue;
+            if (!strcmp2(child->token->name, name))
+                continue;
+            return child;
         }
     }
     eprint("'%s' not found\n", name);
@@ -629,7 +643,7 @@ Node *find_function(char *name) {
 
 void analyze(Node *node) {
     switch (node->token->type) { // clang-format off
-    case INT: case VAR: case PARAM: { // clang-format on
+    case INT: case VAR: case PARAM: case CHARS: case VARIADIC: case REF: { // clang-format on
         break;
     }
     case ID: {
@@ -647,7 +661,7 @@ void analyze(Node *node) {
         analyze(node->var->ret_type);
         break;
     }
-    case FN_DEC: {
+    case FN_DEC: case PROTO: {
         enter_scope(node);
         if (node->ret_type)
             analyze(node->ret_type);
@@ -730,6 +744,15 @@ void codegen(Node *node) {
         node->token->ucg = ucg;
         break;
     }
+    case REF: {
+        codegen(node->data_type);
+        node->token->ucg = ucg_ref_type(node->data_type->token->ucg);
+        break;
+    }
+    case CHARS: {
+        node->token->ucg = ucg_string_value(node->token->chars.value);
+        break;
+    }
     case DECLARE: {
         codegen(node->var->data_type); // data type
 
@@ -739,7 +762,7 @@ void codegen(Node *node) {
         node->var->token->ucg = ucg;
         break;
     }
-    case FN_DEC: {
+    case FN_DEC: case PROTO: {
         Ucg *ret_type = NULL;
         if (node->left) {
             // TODO: add return type
@@ -759,21 +782,18 @@ void codegen(Node *node) {
             args = arena_alloc(count, sizeof(Ucg*));
             for (int i = 0; i < count; i++) {
                 Node *param = children[i];
-                Ucg *type = NULL;
-                switch (param->data_type->token->type) {
-                case INT: {
-                    type = ucg_int_type(param->data_type->token->shift);
-                    break;
+                if (param->token->type == VARIADIC) {
+                    args[i] = ucg_varg_type();
+                    continue;
                 }
-                default: {
-                    eprint("%s:%d handle this case %t\n" FILE, LINE,
-                           param->data_type->token->type);
-                    break;
-                }
-                }
-                args[i] = ucg_param(param->token->name, type);
+                codegen(param->data_type);
+                args[i] = ucg_param(param->token->name, param->data_type->token->ucg);
                 param->token->ucg = args[i];
             }
+        }
+        if (node->token->type == PROTO) {
+            node->token->ucg = ucg_proto(node->token->name, ret_type, args, count);
+            break;
         }
         ucg = ucg_fn(node->token->name, ret_type, args, count);
         node->token->ucg = ucg;

@@ -39,6 +39,7 @@ Ucg *ucg_loop();
 Ucg *ucg_new(Type type);
 Ucg *ucg_op(Type type, Ucg *left, Ucg *right);
 Ucg *ucg_param(char *name, Ucg *data_type);
+Ucg *ucg_proto(char *name, Ucg *ret, Ucg **params, int params_count);
 Ucg *ucg_proto2(char *name, Ucg *ret, ...);
 Ucg *ucg_ref(Ucg *to_ref);
 Ucg *ucg_ref_type(Ucg *to_ref);
