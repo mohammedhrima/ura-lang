@@ -995,6 +995,20 @@ Ucg *ucg_end(Ucg *stmt) {
     return new;
 }
 
+Ucg *ucg_brk(Ucg *loop) {
+    Ucg *new = ucg_new(BRK);
+    new->stmt = loop;
+    append(gb_ucg.insts, new);
+    return new;
+}
+
+Ucg *ucg_cnt(Ucg *loop) {
+    Ucg *new = ucg_new(CNT);
+    new->stmt = loop;
+    append(gb_ucg.insts, new);
+    return new;
+}
+
 void print_ucg(Ucg *inst, char end) {
     char *text = "";
 
@@ -1170,6 +1184,14 @@ void ucg_compile() {
             }
             llvm_jmp(stmt->type == LOOP ? stmt->bloc : curr->bloc);
             llvm_set_pos(curr->bloc);
+            break;
+        }
+        case BRK: {
+            llvm_jmp(curr->stmt->end->bloc);
+            break;
+        }
+        case CNT: {
+            llvm_jmp(curr->stmt->bloc);
             break;
         }
         default: { // clang-format off
@@ -1757,6 +1779,53 @@ bool run_test(int p) {
 
         Ucg *call = ucg_fn_call2(fact, ucg_i32_value(5), NULL);
         ucg_ret(call);
+        ucg_end(fn_main);
+        break;
+    }
+    case 17: {
+        Ucg *fn_main = ucg_fn2("main", ucg_i32_type(), NULL);
+        Ucg *a = ucg_var("a", ucg_i32_type());
+        ucg_assign(a, ucg_i32_value(0));
+
+        Ucg *loop = ucg_loop();
+        {
+            ucg_then(loop, ucg_op(LT, a, ucg_i32_value(10)));
+            Ucg *stmt = ucg_if();
+            {
+                ucg_then(stmt, ucg_op(EQ, a, ucg_i32_value(3)));
+                ucg_brk(loop);
+            }
+            ucg_end(stmt);
+            ucg_op(ADD_ASSIGN, a, ucg_i32_value(1));
+        }
+        ucg_end(loop);
+
+        ucg_ret(a);
+        ucg_end(fn_main);
+        break;
+    }
+    case 18: {
+        Ucg *fn_main = ucg_fn2("main", ucg_i32_type(), NULL);
+        Ucg *i = ucg_var("i", ucg_i32_type());
+        Ucg *sum = ucg_var("sum", ucg_i32_type());
+        ucg_assign(i, ucg_i32_value(0));
+        ucg_assign(sum, ucg_i32_value(0));
+
+        Ucg *loop = ucg_loop();
+        {
+            ucg_then(loop, ucg_op(LT, i, ucg_i32_value(10)));
+            ucg_op(ADD_ASSIGN, i, ucg_i32_value(1));
+            Ucg *stmt = ucg_if();
+            {
+                ucg_then(stmt, ucg_op(EQ, ucg_op(MOD, i, ucg_i32_value(2)), ucg_i32_value(0)));
+                ucg_cnt(loop);
+            }
+            ucg_end(stmt);
+            ucg_op(ADD_ASSIGN, sum, i);
+        }
+        ucg_end(loop);
+
+        ucg_ret(sum);
         ucg_end(fn_main);
         break;
     }
