@@ -940,8 +940,6 @@ source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-linux-gnu"
 
-@str = private constant [7 x i8] c"%c %c\0A\00"
-
 declare i32 @printf(i8*, ...)
 
 define i32 @main() {
@@ -951,18 +949,13 @@ entry:
   %s = alloca [7 x i8], align 1
   store i8 97, i8* %c1, align 1
   store i8 98, i8* %c2, align 1
+  store [7 x i8] c"%c %c\0A\00", [7 x i8]* %s, align 1
   %dst = getelementptr inbounds [7 x i8], [7 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i64 7, i1 false)
   %load.c1 = load i8, i8* %c1, align 1
   %load.c2 = load i8, i8* %c2, align 1
   %"printf(str,load.c1,load.c2)" = call i32 (i8*, ...) @printf(i8* %dst, i8 %load.c1, i8 %load.c2)
   ret i32 0
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -1134,10 +1127,6 @@ source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-linux-gnu"
 
-@str = private constant [6 x i8] c"[%c]\0A\00"
-@str.1 = private constant [6 x i8] c"[%c]\0A\00"
-@str.2 = private constant [11 x i8] c"[%c] [%c]\0A\00"
-
 declare i32 @printf(i8*, ...)
 
 define i32 @main() {
@@ -1149,24 +1138,19 @@ entry:
   %s3 = alloca [11 x i8], align 1
   store i8 10, i8* %nl, align 1
   store i8 9, i8* %tab, align 1
+  store [6 x i8] c"[%c]\0A\00", [6 x i8]* %s, align 1
   %dst = getelementptr inbounds [6 x i8], [6 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([6 x i8], [6 x i8]* @str, i32 0, i32 0), i64 6, i1 false)
   %load.nl = load i8, i8* %nl, align 1
   %"printf(str,load.nl)" = call i32 (i8*, ...) @printf(i8* %dst, i8 %load.nl)
+  store [6 x i8] c"[%c]\0A\00", [6 x i8]* %s1, align 1
   %dst2 = getelementptr inbounds [6 x i8], [6 x i8]* %s1, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst2, i8* align 1 getelementptr inbounds ([6 x i8], [6 x i8]* @str.1, i32 0, i32 0), i64 6, i1 false)
   %load.tab = load i8, i8* %tab, align 1
   %"printf(str,load.tab)" = call i32 (i8*, ...) @printf(i8* %dst2, i8 %load.tab)
+  store [11 x i8] c"[%c] [%c]\0A\00", [11 x i8]* %s3, align 1
   %dst4 = getelementptr inbounds [11 x i8], [11 x i8]* %s3, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst4, i8* align 1 getelementptr inbounds ([11 x i8], [11 x i8]* @str.2, i32 0, i32 0), i64 11, i1 false)
   %"printf(str,''','\\')" = call i32 (i8*, ...) @printf(i8* %dst4, i8 39, i8 92)
   ret i32 0
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -1193,8 +1177,6 @@ source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-linux-gnu"
 
-@str = private constant [4 x i8] c"%c\0A\00"
-
 declare i32 @printf(i8*, ...)
 
 define i32 @main() {
@@ -1203,17 +1185,12 @@ entry:
   %s = alloca [4 x i8], align 1
   store i8 112, i8* %c, align 1
   store i8 113, i8* %c, align 1
+  store [4 x i8] c"%c\0A\00", [4 x i8]* %s, align 1
   %dst = getelementptr inbounds [4 x i8], [4 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i64 4, i1 false)
   %load.c = load i8, i8* %c, align 1
   %"printf(str,load.c)" = call i32 (i8*, ...) @printf(i8* %dst, i8 %load.c)
   ret i32 0
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -1249,10 +1226,6 @@ source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-linux-gnu"
 
-@str = private constant [3 x i8] c"%c\00"
-@str.1 = private constant [2 x i8] c" \00"
-@str.2 = private constant [2 x i8] c"\0A\00"
-
 declare i32 @printf(i8*, ...)
 
 define i8 @answer(i1 %0) {
@@ -1274,8 +1247,8 @@ entry:
   %c = alloca i8, align 1
   %s = alloca [3 x i8], align 1
   store i8 %0, i8* %c, align 1
+  store [3 x i8] c"%c\00", [3 x i8]* %s, align 1
   %dst = getelementptr inbounds [3 x i8], [3 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i64 3, i1 false)
   %load.c = load i8, i8* %c, align 1
   %"printf(str,load.c)" = call i32 (i8*, ...) @printf(i8* %dst, i8 %load.c)
   ret void
@@ -1287,21 +1260,16 @@ entry:
   %s1 = alloca [2 x i8], align 1
   %"answer(True)" = call i8 @answer(i1 true)
   call void @show(i8 %"answer(True)")
+  store [2 x i8] c" \00", [2 x i8]* %s, align 1
   %dst = getelementptr inbounds [2 x i8], [2 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0), i64 2, i1 false)
   %"printf(str)" = call i32 (i8*, ...) @printf(i8* %dst)
   %"answer(False)" = call i8 @answer(i1 false)
   call void @show(i8 %"answer(False)")
+  store [2 x i8] c"\0A\00", [2 x i8]* %s1, align 1
   %dst2 = getelementptr inbounds [2 x i8], [2 x i8]* %s1, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst2, i8* align 1 getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0), i64 2, i1 false)
   %"printf(str)3" = call i32 (i8*, ...) @printf(i8* %dst2)
   ret i32 0
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -3590,23 +3558,16 @@ source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-linux-gnu"
 
-@str = private constant [10 x i8] c"hello %d\0A\00"
-
 declare i32 @printf(i8*, ...)
 
 define i32 @main() {
 entry:
   %s = alloca [10 x i8], align 1
+  store [10 x i8] c"hello %d\0A\00", [10 x i8]* %s, align 1
   %dst = getelementptr inbounds [10 x i8], [10 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([10 x i8], [10 x i8]* @str, i32 0, i32 0), i64 10, i1 false)
   %"printf(str,42)" = call i32 (i8*, ...) @printf(i8* %dst, i32 42)
   ret i32 0
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -3633,8 +3594,6 @@ source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-linux-gnu"
 
-@str = private constant [14 x i8] c"%d + %d = %d\0A\00"
-
 declare i32 @printf(i8*, ...)
 
 define i32 @main() {
@@ -3644,8 +3603,8 @@ entry:
   %s = alloca [14 x i8], align 1
   store i32 1, i32* %a, align 4
   store i32 2, i32* %b, align 4
+  store [14 x i8] c"%d + %d = %d\0A\00", [14 x i8]* %s, align 1
   %dst = getelementptr inbounds [14 x i8], [14 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([14 x i8], [14 x i8]* @str, i32 0, i32 0), i64 14, i1 false)
   %load.a = load i32, i32* %a, align 4
   %load.b = load i32, i32* %b, align 4
   %load.a1 = load i32, i32* %a, align 4
@@ -3654,11 +3613,6 @@ entry:
   %"printf(str,load.a,load.b,load.a + load.b)" = call i32 (i8*, ...) @printf(i8* %dst, i32 %load.a, i32 %load.b, i32 %ADD)
   ret i32 0
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -3714,28 +3668,20 @@ source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-linux-gnu"
 
-@str = private constant [5 x i8] c"a\09b\0A\00"
-@str.1 = private constant [17 x i8] c"\22quoted\22 \\ done\0A\00"
-
 declare i32 @printf(i8*, ...)
 
 define i32 @main() {
 entry:
   %s = alloca [5 x i8], align 1
   %s1 = alloca [17 x i8], align 1
+  store [5 x i8] c"a\09b\0A\00", [5 x i8]* %s, align 1
   %dst = getelementptr inbounds [5 x i8], [5 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([5 x i8], [5 x i8]* @str, i32 0, i32 0), i64 5, i1 false)
   %"printf(str)" = call i32 (i8*, ...) @printf(i8* %dst)
+  store [17 x i8] c"\22quoted\22 \\ done\0A\00", [17 x i8]* %s1, align 1
   %dst2 = getelementptr inbounds [17 x i8], [17 x i8]* %s1, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst2, i8* align 1 getelementptr inbounds ([17 x i8], [17 x i8]* @str.1, i32 0, i32 0), i64 17, i1 false)
   %"printf(str)3" = call i32 (i8*, ...) @printf(i8* %dst2)
   ret i32 0
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -3759,23 +3705,16 @@ source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-linux-gnu"
 
-@str = private constant [4 x i8] c"abc\00"
-
 declare i32 @printf(i8*, ...)
 
 define i32 @main() {
 entry:
   %s = alloca [4 x i8], align 1
+  store [4 x i8] c"abc\00", [4 x i8]* %s, align 1
   %dst = getelementptr inbounds [4 x i8], [4 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i64 4, i1 false)
   %"printf(str)" = call i32 (i8*, ...) @printf(i8* %dst)
   ret i32 %"printf(str)"
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -3806,10 +3745,6 @@ source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-linux-gnu"
 
-@str = private constant [3 x i8] c"%d\00"
-@str.1 = private constant [2 x i8] c" \00"
-@str.2 = private constant [2 x i8] c"\0A\00"
-
 declare i32 @printf(i8*, ...)
 
 define i32 @main() {
@@ -3827,8 +3762,8 @@ cond:                                             ; preds = %endif, %entry
   br i1 %LT, label %then, label %endwhile
 
 then:                                             ; preds = %cond
+  store [3 x i8] c"%d\00", [3 x i8]* %s, align 1
   %dst = getelementptr inbounds [3 x i8], [3 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i64 3, i1 false)
   %load.i1 = load i32, i32* %i, align 4
   %"printf(str,load.i)" = call i32 (i8*, ...) @printf(i8* %dst, i32 %load.i1)
   %load.i3 = load i32, i32* %i, align 4
@@ -3836,14 +3771,14 @@ then:                                             ; preds = %cond
   br i1 %LT4, label %then2, label %endif
 
 endwhile:                                         ; preds = %cond
+  store [2 x i8] c"\0A\00", [2 x i8]* %s7, align 1
   %dst8 = getelementptr inbounds [2 x i8], [2 x i8]* %s7, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst8, i8* align 1 getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0), i64 2, i1 false)
   %"printf(str)9" = call i32 (i8*, ...) @printf(i8* %dst8)
   ret i32 0
 
 then2:                                            ; preds = %then
+  store [2 x i8] c" \00", [2 x i8]* %s5, align 1
   %dst6 = getelementptr inbounds [2 x i8], [2 x i8]* %s5, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst6, i8* align 1 getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0), i64 2, i1 false)
   %"printf(str)" = call i32 (i8*, ...) @printf(i8* %dst6)
   br label %endif
 
@@ -3853,11 +3788,6 @@ endif:                                            ; preds = %then2, %then
   store i32 %ADD_ASSIGN, i32* %i, align 4
   br label %cond
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -3908,23 +3838,16 @@ source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-linux-gnu"
 
-@str = private constant [10 x i8] c"tab\09here\0A\00"
-
 declare void @printf(i8*, ...)
 
 define i32 @main() {
 entry:
   %s = alloca [10 x i8], align 1
+  store [10 x i8] c"tab\09here\0A\00", [10 x i8]* %s, align 1
   %dst = getelementptr inbounds [10 x i8], [10 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([10 x i8], [10 x i8]* @str, i32 0, i32 0), i64 10, i1 false)
   call void (i8*, ...) @printf(i8* %dst)
   ret i32 0
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -4122,8 +4045,6 @@ source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-linux-gnu"
 
-@str = private constant [10 x i8] c"%d %d %d\0A\00"
-
 declare i32 @printf(i8*, ...)
 
 define i32 @gcd(i32 %0, i32 %1) {
@@ -4158,8 +4079,8 @@ entry:
   store i32 %"gcd(84,36)", i32* %x, align 4
   %"gcd(17,5)" = call i32 @gcd(i32 17, i32 5)
   store i32 %"gcd(17,5)", i32* %y, align 4
+  store [10 x i8] c"%d %d %d\0A\00", [10 x i8]* %s, align 1
   %dst = getelementptr inbounds [10 x i8], [10 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([10 x i8], [10 x i8]* @str, i32 0, i32 0), i64 10, i1 false)
   %load.x = load i32, i32* %x, align 4
   %load.y = load i32, i32* %y, align 4
   %load.x1 = load i32, i32* %x, align 4
@@ -4170,11 +4091,6 @@ entry:
   %ADD = add i32 %load.x2, %load.y3
   ret i32 %ADD
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -4747,7 +4663,6 @@ target triple = "x86_64-pc-linux-gnu"
 
 @calls = global i32 0
 @r = global i32 0
-@str = private constant [7 x i8] c"%d %d\0A\00"
 
 declare i32 @printf(i8*, ...)
 
@@ -4783,19 +4698,14 @@ entry:
   store i32 0, i32* @calls, align 4
   %"fib(10)" = call i32 @fib(i32 10)
   store i32 %"fib(10)", i32* @r, align 4
+  store [7 x i8] c"%d %d\0A\00", [7 x i8]* %s, align 1
   %dst = getelementptr inbounds [7 x i8], [7 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i64 7, i1 false)
   %load.r = load i32, i32* @r, align 4
   %load.calls = load i32, i32* @calls, align 4
   %"printf(str,load.r,load.calls)" = call i32 (i8*, ...) @printf(i8* %dst, i32 %load.r, i32 %load.calls)
   %load.calls1 = load i32, i32* @calls, align 4
   ret i32 %load.calls1
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---

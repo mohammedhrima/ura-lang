@@ -208,6 +208,8 @@ struct {
 
     char *dir;
     char *ll_path;
+    char *asm_path;
+    char *obj_path;
     char *exe_path;
 
     char *error_msg;
@@ -286,51 +288,41 @@ void ucg_finish(void) {
 }
 
 void ucg_gen_ll(void) {
-    if (gb_ucg.ll_path == NULL)
-        gb_ucg.ll_path = format("%s/build/out.ll", gb_ucg.dir);
-
     mkdir2(dirname2(gb_ucg.ll_path));
 
     char *error = NULL;
 
-    if (LLVMVerifyModule(gb_ucg.module, LLVMReturnStatusAction, &error)) {
-        eprint("%s:%d LLVM verification failed:\n%s\n", FILE, LINE, error);
-        LLVMDisposeMessage(error);
-    }
     if (LLVMPrintModuleToFile(gb_ucg.module, gb_ucg.ll_path, &error)) {
         eprint("%s:%d LLVM IR error: \n%s\n", FILE, LINE, error);
         LLVMDisposeMessage(error);
     }
-    // gb_ucg.error_msg = error;
-    // if (error)
-    //     exit(1);
-    LLVMDisposeMessage(error);
 }
 
-void ucg_gen_bin(void) {
-    if (gb_ucg.exe_path == NULL)
-        gb_ucg.exe_path = format("%s/exe.out", gb_ucg.dir);
-
-    char *obj_path = format("%s.o", gb_ucg.exe_path);
-
-    mkdir2(dirname2(gb_ucg.exe_path));
+void llvm_emit(char *path, LLVMCodeGenFileType type) {
+    mkdir2(dirname2(path));
 
     char *error = NULL;
 
     // clang-format off
 	assert(gb_ucg.machine);
 	assert(gb_ucg.module);
-	assert(obj_path);
-	// assert(gb_ucg.machine);
 
     if (LLVMTargetMachineEmitToFile(gb_ucg.machine,
-									gb_ucg.module, obj_path,
-                                    LLVMObjectFile, &error)) {
+									gb_ucg.module, path,
+                                    type, &error)) {
         eprint("LLVM codegen error: %s\n", error);
         LLVMDisposeMessage(error);
         exit(1);
     }
     // clang-format on
+}
+
+void ucg_gen_bin(void) {
+    char *obj_path = gb_ucg.obj_path;
+    if (obj_path == NULL) {
+        obj_path = format("%s.o", gb_ucg.exe_path);
+        llvm_emit(obj_path, LLVMObjectFile);
+    }
 
     pid_t pid = fork();
     if (pid == 0) {
@@ -343,6 +335,24 @@ void ucg_gen_bin(void) {
         eprint("Linking failed\n");
         exit(1);
     }
+    if (gb_ucg.obj_path == NULL)
+        remove(obj_path);
+}
+
+void ucg_gen(void) {
+    char *error = NULL;
+    if (LLVMVerifyModule(gb_ucg.module, LLVMReturnStatusAction, &error))
+        eprint("%s:%d LLVM verification failed:\n%s\n", FILE, LINE, error);
+    LLVMDisposeMessage(error);
+
+    if (gb_ucg.ll_path)
+        ucg_gen_ll();
+    if (gb_ucg.asm_path)
+        llvm_emit(gb_ucg.asm_path, LLVMAssemblyFile);
+    if (gb_ucg.obj_path)
+        llvm_emit(gb_ucg.obj_path, LLVMObjectFile);
+    if (gb_ucg.exe_path)
+        ucg_gen_bin();
 }
 
 void ucg_run_bin(void) {
@@ -1916,11 +1926,10 @@ bool compile_test(int p) {
     print_ucgs();
     ucg_compile();
     ucg_path("build/out.ll");
-    ucg_gen_ll();
-    if (r) {
-        ucg_gen_bin();
+    ucg_bin_path(r ? "build/exe.out" : NULL);
+    ucg_gen();
+    if (r)
         ucg_run_bin();
-    }
     ucg_finish();
     return r;
 }

@@ -854,8 +854,7 @@ int main(int ac, char **av) {
     print_ucgs();
     ucg_compile();
     ucg_path("build/out.ll");
-    ucg_gen_ll();
-    // ucg_gen_bin();
+    ucg_gen();
     ucg_finish();
 
 
