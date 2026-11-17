@@ -251,6 +251,7 @@
 - 247 — tokenizer: a block comment over two lines, /*/ does not close it
 - 248 — calls: arguments over several lines
 - 249 — variables: a number literal takes the type of its i8 target
+- 250 — variables: a variable first set inside an if still starts at zero
 
 ---
 
@@ -464,6 +465,9 @@ entry:
   %x = alloca i32, align 4
   %b = alloca i1, align 1
   %c = alloca i8, align 1
+  store i32 0, i32* %x, align 4
+  store i1 false, i1* %b, align 1
+  store i8 0, i8* %c, align 1
   br label %if0
 
 if0:                                              ; preds = %entry
@@ -910,6 +914,7 @@ target triple = "x86_64-unknown-linux-gnu"
 define i32 @main() {
 entry:
   %flag = alloca i1, align 1
+  store i1 false, i1* %flag, align 1
   br label %if0
 
 if0:                                              ; preds = %entry
@@ -1452,6 +1457,7 @@ target triple = "x86_64-unknown-linux-gnu"
 define i32 @main() {
 entry:
   %c = alloca i8, align 1
+  store i8 0, i8* %c, align 1
   br label %if0
 
 if0:                                              ; preds = %entry
@@ -5871,6 +5877,7 @@ error: test.ura:4:7 unknown type 'Point'
 4 |     p Point
   |       ^^^^^
 help: declare it: struct Point:
+error: aborting due to 1 error
 ```
 
 ### status
@@ -6391,6 +6398,7 @@ error: test.ura:1:8 unknown type 'Foo'
   |
 1 | fn f() Foo:
   |        ^^^
+help: declare it: struct Foo:
 error: aborting due to 1 error
 ```
 
@@ -6419,6 +6427,7 @@ error: test.ura:1:8 unknown type 'Foo'
   |
 1 | fn f(a Foo) i32:
   |        ^^^
+help: declare it: struct Foo:
 error: aborting due to 1 error
 ```
 
@@ -6588,6 +6597,7 @@ error: test.ura:2:7 unknown type 'Foo'
   |
 2 |     x Foo
   |       ^^^
+help: declare it: struct Foo:
 error: aborting due to 1 error
 ```
 
@@ -7861,22 +7871,25 @@ fn main() i32:
 ### llvm ir
 
 ```llvm
-; ModuleID = 'ura-module'
-source_filename = "ura-module"
+; ModuleID = 'ura'
+source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
   %flag = alloca i1, align 1
   store i1 true, i1* %flag, align 1
-  %flag1 = load i1, i1* %flag, align 1
-  br i1 %flag1, label %then, label %endif
+  br label %if0
 
-then:                                             ; preds = %entry
+if0:                                              ; preds = %entry
+  %"$flag" = load i1, i1* %flag, align 1
+  br i1 %"$flag", label %if0.then, label %endif
+
+if0.then:                                         ; preds = %if0
   ret i32 1
 
-endif:                                            ; preds = %entry
+endif:                                            ; preds = %if0
   ret i32 0
 }
 ```
@@ -8887,6 +8900,7 @@ entry:
   %call.flag = call i1 @flag()
   store i1 %call.flag, i1* %b, align 1
   store i1 false, i1* %c, align 1
+  store i1 false, i1* %d, align 1
   store i1 true, i1* %c, align 1
   ret i32 9
 }
@@ -9857,6 +9871,72 @@ if0.then:                                         ; preds = %if0
 
 endif:                                            ; preds = %if0
   ret i32 0
+}
+```
+
+---
+
+## 250 — variables: a variable first set inside an if still starts at zero
+
+```ura
+// expect: 13
+fn main() i32:
+    a i32 = 10
+    b i32
+    c i32
+    if a > 50:
+        c = 7
+    if a > 5:
+        b = 3
+    return a + b + c
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+define i32 @main() {
+entry:
+  %a = alloca i32, align 4
+  %b = alloca i32, align 4
+  %c = alloca i32, align 4
+  store i32 10, i32* %a, align 4
+  store i32 0, i32* %b, align 4
+  store i32 0, i32* %c, align 4
+  br label %if0
+
+if0:                                              ; preds = %entry
+  %"$a" = load i32, i32* %a, align 4
+  %GT = icmp sgt i32 %"$a", 50
+  br i1 %GT, label %if0.then, label %endif
+
+if0.then:                                         ; preds = %if0
+  store i32 7, i32* %c, align 4
+  br label %endif
+
+endif:                                            ; preds = %if0.then, %if0
+  br label %if1
+
+if1:                                              ; preds = %endif
+  %"$a2" = load i32, i32* %a, align 4
+  %GT3 = icmp sgt i32 %"$a2", 5
+  br i1 %GT3, label %if1.then, label %endif1
+
+if1.then:                                         ; preds = %if1
+  store i32 3, i32* %b, align 4
+  br label %endif1
+
+endif1:                                           ; preds = %if1.then, %if1
+  %"$a4" = load i32, i32* %a, align 4
+  %"$b" = load i32, i32* %b, align 4
+  %ADD = add i32 %"$a4", %"$b"
+  %"$c" = load i32, i32* %c, align 4
+  %ADD5 = add i32 %ADD, %"$c"
+  ret i32 %ADD5
 }
 ```
 

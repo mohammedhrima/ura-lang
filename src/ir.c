@@ -127,6 +127,7 @@ struct Ucg {
     Type type;
     int shift;
     bool is_val;
+    bool is_set;
 
     struct { // llvm stuff
         TypeRef rtype;
@@ -158,6 +159,11 @@ struct Ucg {
         expand(Ucg *, items);
     } arr;
 
+    struct {
+        expand(Ucg *, attrs);
+        int index;
+    } obj;
+
     // struct {
     //     Bloc cond;
     //     Bloc then;
@@ -177,6 +183,7 @@ struct Ucg {
         Ucg *to_end; // used in ENDIF
         Ucg *to_call;
         Ucg *stmt;
+        Ucg *base;
         // Ucg
     };
     struct {
@@ -190,6 +197,7 @@ struct Ucg {
     union {
         Ucg *right;
         Ucg *to_type;
+        Ucg *attr;
     };
 };
 
@@ -482,6 +490,9 @@ TypeRef llvm_type(Ucg *ir) {
     switch (ir->type) { // clang-format off
     case INT:        	return gb_ucg.types.num[1 << ir->shift];
     case FLOAT:			return llvm_float_type(1 << ir->shift);
+    case STRUCT:		return ir->rtype;
+    case ATTR:			return llvm_type(ir->data_type);
+    case DOT:			return llvm_type(ir->attr);
 	case VOID:			return gb_ucg.types.vd;
     case VAL_CREATE:	return llvm_type(ir->to_create);
     case DECLARE:		return llvm_type(ir->data_type);
@@ -578,6 +589,27 @@ void llvm_declare_var(Ucg *ir) {
     // assert(ir->rtype);
     assert(ir->name);
     ir->elem = llvm_alloc(ir->rtype, ir->name);
+    if (!ir->is_set)
+        llvm_zero_init(ir);
+}
+
+void llvm_struct_create(Ucg *ir) {
+    ir->rtype = LLVMStructCreateNamed(gb_ucg.context, ir->name);
+}
+
+void llvm_struct_body(Ucg *ir) {
+    int count = ir->obj.attrs_count;
+    TypeRef *types = arena_alloc(count + 1, sizeof(TypeRef));
+    for (int i = 0; i < count; i++)
+        types[i] = llvm_type(ir->obj.attrs[i]);
+    LLVMStructSetBody(ir->rtype, types, count, 0);
+}
+
+void llvm_get_attr(Ucg *ir) {
+    Ucg *base = ir->base;
+    TypeRef rtype = llvm_type(base);
+    int index = ir->attr->obj.index;
+    ir->elem = LLVMBuildStructGEP2(gb_ucg.builder, rtype, base->elem, index, ir->name);
 }
 
 void llvm_declare_global(Ucg *ir) {
@@ -1066,6 +1098,48 @@ Ucg *ucg_global(char *name, Ucg *data_type) {
     return new;
 }
 
+Ucg *ucg_struct(char *name) {
+    Ucg *new = ucg_new(STRUCT);
+    new->name = name;
+    append(gb_ucg.insts, new);
+    return new;
+}
+
+Ucg *ucg_attr(char *name, Ucg *data_type) {
+    Ucg *new = ucg_new(ATTR);
+    new->name = name;
+    new->data_type = data_type;
+    return new;
+}
+
+Ucg *ucg_add_attr(Ucg *st, Ucg *attr) {
+    attr->obj.index = st->obj.attrs_count;
+    append(st->obj.attrs, attr);
+    return attr;
+}
+
+void ucg_add_attrs(Ucg *st, Ucg **attrs, int attrs_count) {
+    for (int i = 0; i < attrs_count; i++)
+        ucg_add_attr(st, attrs[i]);
+}
+
+Ucg *ucg_struct_of(Ucg *base) {
+    if (base->type == DOT)
+        return base->attr->data_type;
+    return base->data_type;
+}
+
+Ucg *ucg_get_attr(Ucg *base, int index) {
+    Ucg *attr = ucg_struct_of(base)->obj.attrs[index];
+    Ucg *new = ucg_new(DOT);
+    new->base = base;
+    new->attr = attr;
+    const char *name = base->name ? base->name : to_string(base->type);
+    new->name = format("%s.%s", name, attr->name);
+    append(gb_ucg.insts, new);
+    return new;
+}
+
 Ucg *ucg_param(char *name, Ucg *data_type) {
     Ucg *new = ucg_new(PARAM);
     new->name = name;
@@ -1075,12 +1149,30 @@ Ucg *ucg_param(char *name, Ucg *data_type) {
 }
 
 bool is_locator(Ucg *ir) {
-    return ir->type == DECLARE || ir->type == PARAM || ir->type == GLOBAL;
+    return ir->type == DECLARE || ir->type == PARAM || ir->type == GLOBAL || ir->type == DOT;
 }
 
 Ucg *ucg_value(Ucg *ir) {
     assert(ir);
     return is_locator(ir) ? ucg_dref(ir) : ir;
+}
+
+bool is_first_write(Ucg *var) {
+    if (var->type != DECLARE)
+        return false;
+    for (int i = gb_ucg.insts_count - 1; i >= 0 && gb_ucg.insts[i] != var; i--) {
+        Ucg *curr = gb_ucg.insts[i];
+        switch (curr->type) { // clang-format off
+        case IF: case ELIF: case ELSE: case THEN: case LOOP: case END:
+        case BRK: case CNT: case RETURN: case FN_ENTRY:
+            return false;
+        case DREF: if (curr->to_dref == var) return false; break;
+        case DOT:  if (curr->base == var) return false; break;
+        case REF:  if (curr->to_ref == var) return false; break;
+        default:   break; // clang-format on
+        }
+    }
+    return true;
 }
 
 Ucg *ucg_op(Type type, Ucg *left, Ucg *right) {
@@ -1104,6 +1196,8 @@ Ucg *ucg_op(Type type, Ucg *left, Ucg *right) {
         append(gb_ucg.insts, binary_op);
         type = ASSIGN;
     }
+    if (type == ASSIGN && is_first_write(left))
+        left->is_set = true;
     Ucg *new = ucg_new(type);
     new->left = left;
     new->right = right;
@@ -1233,6 +1327,16 @@ void print_ucg(Ucg *inst, char end) {
 void ucg_compile() {
     Value fn = NULL;
     int stmt_index = 0;
+    for (int i = 0; i < gb_ucg.insts_count; i++) {
+        Ucg *curr = gb_ucg.insts[i];
+        if (curr->type == STRUCT)
+            llvm_struct_create(curr);
+    }
+    for (int i = 0; i < gb_ucg.insts_count; i++) {
+        Ucg *curr = gb_ucg.insts[i];
+        if (curr->type == STRUCT)
+            llvm_struct_body(curr);
+    }
     for (int i = 0; i < gb_ucg.insts_count; i++) {
         Ucg *curr = gb_ucg.insts[i];
         switch (curr->type) {
@@ -1388,6 +1492,13 @@ void ucg_compile() {
         }
         case AS: {
             llvm_cast(curr);
+            break;
+        }
+        case STRUCT: {
+            break;
+        }
+        case DOT: {
+            llvm_get_attr(curr);
             break;
         }
         case CNT: {
@@ -2092,6 +2203,48 @@ bool run_test(int p) {
         }
         ucg_end(stmt);
         ucg_ret(ucg_i32_value(0));
+        ucg_end(fn_main);
+        break;
+    }
+    case 23: {
+        Ucg *point = ucg_struct("Point");
+        Ucg *point_attrs[] = {
+            ucg_attr("x", ucg_i32_type()),
+            ucg_attr("y", ucg_i32_type()),
+        };
+        ucg_add_attrs(point, point_attrs, 2);
+
+        Ucg *rect = ucg_struct("Rect");
+        ucg_add_attr(rect, ucg_attr("a", point));
+        ucg_add_attr(rect, ucg_attr("b", point));
+
+        Ucg *make = ucg_fn2("make", point, ucg_param("n", ucg_i32_type()), NULL);
+        Ucg *p = ucg_var("p", point);
+        ucg_assign(ucg_get_attr(p, 0), ucg_get_param(make, 0));
+        ucg_ret(p);
+        ucg_end(make);
+
+        Ucg *fn_main = ucg_fn2("main", ucg_i32_type(), NULL);
+        Ucg *r = ucg_var("r", rect);
+        ucg_assign(ucg_get_attr(ucg_get_attr(r, 0), 0), ucg_i32_value(1));
+        ucg_assign(ucg_get_attr(r, 1), ucg_fn_call2(make, ucg_i32_value(5), NULL));
+        ucg_assign(ucg_get_attr(ucg_get_attr(r, 1), 1), ucg_i32_value(2));
+        Ucg *diff = ucg_op(SUB, ucg_get_attr(ucg_get_attr(r, 1), 0),
+                           ucg_get_attr(ucg_get_attr(r, 0), 0));
+        ucg_ret(ucg_op(ADD, diff, ucg_get_attr(ucg_get_attr(r, 1), 1)));
+        ucg_end(fn_main);
+        break;
+    }
+    case 24: {
+        Ucg *point = ucg_struct("Point");
+        ucg_add_attr(point, ucg_attr("x", ucg_i32_type()));
+        ucg_add_attr(point, ucg_attr("y", ucg_i32_type()));
+
+        Ucg *fn_main = ucg_fn2("main", ucg_i32_type(), NULL);
+        Ucg *p = ucg_var("p", point);
+        Ucg *n = ucg_var("n", ucg_i32_type());
+        Ucg *sum = ucg_op(ADD, ucg_get_attr(p, 0), ucg_get_attr(p, 1));
+        ucg_ret(ucg_op(ADD, sum, n));
         ucg_end(fn_main);
         break;
     }

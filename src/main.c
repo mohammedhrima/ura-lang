@@ -515,6 +515,9 @@ void exit_scope() {
 
 Node *parse_type(int pos) {
     Token *token = peek(pos);
+    Token *prev = ura.tokens[ura.exe_pos - 1];
+    if (token->type == ID && token->line == prev->line)
+        token->is_type = true;
     if (token->is_type) {
         next();
         Node *node = new_node(token);
@@ -688,6 +691,19 @@ Node *parse_prime() {
         add_error(token->s, token->e, format("%s without an if before it", name), help);
         return parse_block(token);
     }
+    case STRUCT: {
+        node = new_node(token);
+        if (peek(0)->type == ID)
+            node->token->name = next()->name;
+        else
+            expect(ID, "expected a struct name after 'struct'", " Name");
+        expect(DOTS, "expected ':' after the struct name", ":");
+        enter_scope(node);
+        while (inside(node->token->space))
+            parse_expr(0);
+        exit_scope();
+        return node;
+    }
     case BRK: case CNT: {
         node = new_node(token);
         node->loop = find_scope(LOOP);
@@ -797,6 +813,21 @@ Node *find_function(char *name) {
     return find_function_like(name, 0);
 }
 
+Node *find_struct(char *name) {
+    for (int i = ura.scopes_count - 1; i >= 0; i--) {
+        Node *curr = ura.scopes[i];
+        for (int j = 0; j < curr->children_count; j++) {
+            Node *child = curr->children[j];
+            if (child->token->type != STRUCT)
+                continue;
+            if (!strcmp2(child->token->name, name))
+                continue;
+            return child;
+        }
+    }
+    return NULL;
+}
+
 Node *new_type(Type type, int shift, Node *data_type) {
     Node *node = new_node(new_token(type, NULL));
     node->token->is_type = true;
@@ -825,6 +856,8 @@ char *type_name(Node *type) {
         return format("%s[]", type_name(type->data_type));
     case VOID:
         return "void";
+    case ID:
+        return type->token->name;
     default:
         return (char *)to_string(type->token->type);
     }
@@ -834,6 +867,7 @@ Node *type_of(Node *node) {
     switch (node->token->type) { // clang-format off
     case INT: case FLOAT: return node;
     case AS:        return node->to_type;
+    case DOT:       return node->right->declared ? node->right->declared->data_type : NULL;
     case CHARS:     return new_type(REF, 0, new_type(INT, 8, NULL));
     case VAR: case PARAM: return node->data_type;
     case FN_CALL:   return node->to_call ? ret_type_of(node->to_call) : NULL;
@@ -850,6 +884,8 @@ bool same_type(Node *a, Node *b) {
         return false;
     if (a->token->type == REF)
         return same_type(a->data_type, b->data_type);
+    if (a->token->type == ID)
+        return strcmp2(a->token->name, b->token->name);
     return a->token->shift == b->token->shift;
 }
 
@@ -859,7 +895,8 @@ bool is_number(Node *node) {
 
 void check_type(Node *value, Node *expected, char *help) {
     Node *found = type_of(value);
-    if (found == NULL || expected == NULL)
+    bool unknown = expected && expected->token->type == ID && !expected->declared;
+    if (found == NULL || expected == NULL || unknown)
         return;
     Token *token = value->token;
     if (is_number(value) && is_number(expected)) {
@@ -894,6 +931,14 @@ void analyze(Node *node) {
         break;
     }
     case ID: {
+        if (node->token->is_type) {
+            Token *token = node->token;
+            node->declared = find_struct(token->name);
+            if (node->declared == NULL)
+                add_error(token->s, token->e, format("unknown type '%s'", token->name),
+                          format("declare it: struct %s:", token->name));
+            break;
+        }
         Node *var = find_variable(node->token->name);
         if (var) {
             node->token->type = var->token->type;
@@ -911,7 +956,7 @@ void analyze(Node *node) {
         analyze(node->var->ret_type);
         break;
     }
-    case SCOPE: case FN_DEC: case PROTO: {
+    case SCOPE: case FN_DEC: case PROTO: case STRUCT: {
         enter_scope(node);
         if (node->ret_type)
             analyze(node->ret_type);
@@ -919,6 +964,8 @@ void analyze(Node *node) {
             for (int i = 0; i < node->args->children_count; i++) {
                 Node *arg = node->args->children[i];
                 analyze(arg);
+                if (arg->data_type)
+                    analyze(arg->data_type);
             }
         }
 
@@ -963,6 +1010,40 @@ void analyze(Node *node) {
     }
     case AS: {
         analyze(node->left);
+        break;
+    }
+    case DOT: {
+        analyze(node->left);
+        Node *type = type_of(node->left);
+        if (type == NULL)
+            break;
+        Token *base = node->left->token;
+        if (type->token->type != ID) {
+            add_error(base->s, base->e,
+                      format("'%s' is '%s', not a struct", token_text(base), type_name(type)), NULL);
+            break;
+        }
+        if (type->declared == NULL)
+            break;
+        Node *st = type->declared;
+        Token *attr = node->right->token;
+        int index = 0;
+        for (int i = 0; i < st->children_count; i++) {
+            Node *child = st->children[i];
+            if (child->token->type != DECLARE)
+                continue;
+            if (strcmp2(child->var->token->name, attr->name)) {
+                node->right->declared = child->var;
+                attr->attr.index = index;
+                break;
+            }
+            index++;
+        }
+        if (node->right->declared == NULL)
+            add_error(attr->s, attr->e,
+                      format("'%s' has no attribute '%s'", 
+                        st->token->name, attr->name), 
+                        NULL);
         break;
     }
     case FN_CALL: {
@@ -1050,6 +1131,27 @@ void codegen_proto(Node *node) {
     node->token->ucg = ucg_proto(node->token->name, ret_type, args, count);
 }
 
+void codegen_structs(Node *node) {
+    for (int i = 0; i < node->children_count; i++) {
+        Node *child = node->children[i];
+        if (child->token->type == STRUCT)
+            child->token->ucg = ucg_struct(child->token->name);
+    }
+    for (int i = 0; i < node->children_count; i++) {
+        Node *child = node->children[i];
+        if (child->token->type != STRUCT)
+            continue;
+        for (int j = 0; j < child->children_count; j++) {
+            Node *attr = child->children[j];
+            if (attr->token->type != DECLARE)
+                continue;
+            codegen(attr->var->data_type);
+            Ucg *type = attr->var->data_type->token->ucg;
+            ucg_add_attr(child->token->ucg, ucg_attr(attr->var->token->name, type));
+        }
+    }
+}
+
 void codegen_protos(Node *node) {
     for (int i = 0; i < node->children_count; i++) {
         Node *child = node->children[i];
@@ -1061,7 +1163,7 @@ void codegen_protos(Node *node) {
 void codegen_statements(Node *node) {
     for (int i = 0; i < node->children_count; i++) {
         Node *child = node->children[i];
-        if (includes(child->token->type, FN_DEC, PROTO, DECLARE, 0))
+        if (includes(child->token->type, FN_DEC, PROTO, DECLARE, STRUCT, 0))
             continue;
         codegen(child);
     }
@@ -1116,6 +1218,7 @@ void codegen(Node *node) {
     }
     case SCOPE: {
         enter_scope(node);
+        codegen_structs(node);
         codegen_protos(node);
         bool has_main = false;
         for (int i = 0; i < node->children_count; i++) {
@@ -1192,6 +1295,16 @@ void codegen(Node *node) {
     }
     case BRK: {
         ucg_brk(node->loop->token->ucg);
+        break;
+    }
+    case ID: {
+        node->token->ucg = node->declared->token->ucg;
+        break;
+    }
+    case DOT: {
+        codegen(node->left);
+        int index = node->right->token->attr.index;
+        node->token->ucg = ucg_get_attr(node->left->token->ucg, index);
         break;
     }
     case AS: {
