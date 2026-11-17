@@ -101,7 +101,7 @@ enum Type {
     AND, OR, NOT, NEG,
 
     PROTO, 
-    FN_DEC, ARGS, VARIADIC, FN_CALL, RETURN,
+    FN_DEC, ARGS, VARIADIC, FN_CALL, RETURN, PRINT,
 	FN_ENTRY,
     SIZEOF, IS_NULLABLE,
     AS,
@@ -228,12 +228,16 @@ struct {
     char *error_msg;
 
     expand(Ucg *, insts);
+    Ucg *input_fn;
+    Ucg *print_fn;
 } gb_ucg;
 
 void ucg_start(char *name) {
     // atexit(ucg_finish);
 
     gb_ucg.context = LLVMContextCreate();
+    gb_ucg.input_fn = NULL;
+    gb_ucg.print_fn = NULL;
     gb_ucg.module = LLVMModuleCreateWithNameInContext(name, gb_ucg.context);
     gb_ucg.builder = LLVMCreateBuilderInContext(gb_ucg.context);
 
@@ -267,7 +271,7 @@ void ucg_start(char *name) {
     gb_ucg.machine = LLVMCreateTargetMachine(target, triple,
                                              "", // CPU
                                              "", // Features
-                                             LLVMCodeGenLevelDefault, LLVMRelocDefault,
+                                             LLVMCodeGenLevelDefault, LLVMRelocPIC,
                                              LLVMCodeModelDefault);
 
     if (!gb_ucg.machine) {
@@ -418,7 +422,9 @@ void llvm_fn_dec(Ucg *ir) {
 							ir->fn.varg
 						); // clang-format on
 
-    ir->elem = LLVMAddFunction(gb_ucg.module, ir->name, ir->rtype);
+    ir->elem = LLVMGetNamedFunction(gb_ucg.module, ir->name);
+    if (ir->elem == NULL || LLVMGlobalGetValueType(ir->elem) != ir->rtype)
+        ir->elem = LLVMAddFunction(gb_ucg.module, ir->name, ir->rtype);
     // // printf("declare %s, has %zu params\n", ir->name, ir->fn.params_count);
     for (int i = 0; i < ir->fn.params_count; i++) {
         Ucg *param = ir->fn.params[i];
@@ -532,6 +538,10 @@ void llvm_val_create(Ucg *ir) {
         ir->elem = LLVMConstReal(llvm_type(to_create), to_create->num.real);
         break;
     }
+    case REF: {
+        ir->elem = LLVMConstNull(llvm_type(to_create));
+        break;
+    }
     case STRUCT: {
         Value agg = LLVMConstNull(llvm_type(to_create));
         for (int i = 0; i < ir->arr.items_count; i++) {
@@ -618,6 +628,23 @@ void llvm_struct_body(Ucg *ir) {
     LLVMStructSetBody(ir->rtype, types, count, 0);
 }
 
+char *ucg_string_text(Ucg *value) {
+    if (value->type != VAL_CREATE || value->to_create->type != ARRAY)
+        return NULL;
+    Ucg *arr = value->to_create;
+    char *text = arena_alloc(arr->arr.items_count * 2 + 1, sizeof(char));
+    int len = 0;
+    for (int i = 0; i < arr->arr.items_count; i++) {
+        char c = arr->arr.items[i]->to_create->num.value;
+        if (c == '\0')
+            break;
+        if (c == '%')
+            text[len++] = '%';
+        text[len++] = c;
+    }
+    return text;
+}
+
 void llvm_ref(Ucg *ir) {
     ir->elem = ir->to_ref->elem;
 }
@@ -638,7 +665,8 @@ void llvm_declare_global(Ucg *ir) {
     ir->rtype = llvm_type(ir->data_type);
     assert(ir->name);
     ir->elem = LLVMAddGlobal(gb_ucg.module, ir->rtype, ir->name);
-    LLVMSetInitializer(ir->elem, LLVMConstNull(ir->rtype));
+    if (!ir->is_set)
+        LLVMSetInitializer(ir->elem, LLVMConstNull(ir->rtype));
 }
 
 void llvm_declare_param(Ucg *ir) {
@@ -1129,6 +1157,19 @@ Ucg *ucg_global(char *name, Ucg *data_type) {
     return new;
 }
 
+Ucg *ucg_extern(char *name, Ucg *data_type) {
+    Ucg *new = ucg_global(name, data_type);
+    new->is_set = true;
+    return new;
+}
+
+Ucg *ucg_null(Ucg *ref_type) {
+    Ucg *new = ucg_new(VAL_CREATE);
+    new->to_create = ref_type;
+    append(gb_ucg.insts, new);
+    return new;
+}
+
 Ucg *ucg_struct(char *name) {
     Ucg *new = ucg_new(STRUCT);
     new->name = name;
@@ -1160,6 +1201,111 @@ Ucg *ucg_type_of(Ucg *place) {
     if (place->type == POINT_TO)
         return ucg_type_of(place->to_point)->to_ref;
     return place->data_type;
+}
+
+Ucg *ucg_value_type(Ucg *value) {
+    switch (value->type) { // clang-format off
+    case DREF:       return ucg_type_of(value->to_dref);
+    case VAL_CREATE: return value->to_create;
+    case FN_CALL:    return value->to_call->fn.ret;
+    case AS:         return value->to_type;
+    case NEG:        return ucg_value_type(value->right);
+    case LT: case GT: case EQ: case LE: case GE: case NQ:
+                     return ucg_i1_type();
+    default:         return ucg_value_type(value->left); // clang-format on
+    }
+}
+
+Ucg *ucg_print(Ucg *fd, Ucg **values, int values_count) {
+    if (gb_ucg.print_fn == NULL)
+        gb_ucg.print_fn = ucg_proto2("dprintf", ucg_i32_type(), ucg_param("fd", ucg_i32_type()),
+                                     ucg_param("format", ucg_string_type()), ucg_varg_type(), NULL);
+    Ucg **args = arena_alloc(values_count + 3, sizeof(Ucg *));
+    int args_count = 2;
+    char *layout = "";
+    for (int i = 0; i < values_count; i++) {
+        Ucg *value = ucg_value(values[i]);
+        char *text = ucg_string_text(value);
+        if (text) {
+            layout = format("%s%s", layout, text);
+            continue;
+        }
+        Ucg *type = ucg_value_type(value);
+        int bits = 1 << type->shift;
+        char *spec = "%s";
+        if (type->type == FLOAT) {
+            spec = "%f";
+            value = ucg_cast(value, ucg_float_type(64));
+        } else if (type->type == INT && bits == 1) {
+            Ucg *text_var = ucg_var("bool.text", ucg_string_type());
+            Ucg *stmt = ucg_if();
+            ucg_then(stmt, value);
+            ucg_assign(text_var, ucg_string_value("True"));
+            ucg_then(ucg_else(stmt), NULL);
+            ucg_assign(text_var, ucg_string_value("False"));
+            ucg_end(stmt);
+            value = text_var;
+        } else if (type->type == INT && bits == 8) {
+            spec = "%c";
+            value = ucg_cast(value, ucg_i32_type());
+        } else if (type->type == INT && bits == 64) {
+            spec = "%lld";
+        } else if (type->type == INT) {
+            spec = "%d";
+            value = ucg_cast(value, ucg_i32_type());
+        }
+        layout = format("%s%s", layout, spec);
+        args[args_count++] = value;
+    }
+    args[0] = fd;
+    args[1] = ucg_string_value(layout);
+    return ucg_fn_call(gb_ucg.print_fn, args, args_count);
+}
+
+Ucg *ucg_input(void) {
+    if (gb_ucg.input_fn == NULL) {
+#if defined(__APPLE__)
+        char *stdin_name = "__stdinp";
+#else
+        char *stdin_name = "stdin";
+#endif
+        Ucg *str = ucg_string_type();
+        Ucg *i64 = ucg_int_type(64);
+        Ucg *getline = ucg_proto2("getline", i64, // clang-format off
+                                  ucg_param("line", ucg_ref_type(str)),
+                                  ucg_param("cap", ucg_ref_type(i64)),
+                                  ucg_param("file", str), NULL); // clang-format on
+        Ucg *find = ucg_proto2("strchr", str, ucg_param("s", str),
+                               ucg_param("c", ucg_i32_type()), NULL);
+        Ucg *copy = ucg_proto2("strdup", str, ucg_param("s", str), NULL);
+        Ucg *file = ucg_extern(stdin_name, str);
+
+        Ucg *fn = ucg_fn2("ura.input", str, NULL);
+        Ucg *line = ucg_var("line", str);
+        Ucg *cap = ucg_var("cap", i64);
+        Ucg *len = ucg_var("len", i64);
+        ucg_assign(len, ucg_fn_call2(getline, ucg_ref(line), ucg_ref(cap), file, NULL));
+
+        Ucg *eof = ucg_if();
+        {
+            ucg_then(eof, ucg_op(LT, len, ucg_int_value(64, 1)));
+            ucg_ret(ucg_fn_call2(copy, ucg_string_value(""), NULL));
+        }
+        ucg_end(eof);
+
+        Ucg *newline = ucg_var("newline", str);
+        ucg_assign(newline, ucg_fn_call2(find, line, ucg_i32_value('\n'), NULL));
+        Ucg *found = ucg_if();
+        {
+            ucg_then(found, ucg_op(NQ, newline, ucg_null(str)));
+            ucg_assign(ucg_point_to(newline), ucg_char_value(0));
+        }
+        ucg_end(found);
+        ucg_ret(line);
+        ucg_end(fn);
+        gb_ucg.input_fn = fn;
+    }
+    return ucg_fn_call2(gb_ucg.input_fn, NULL);
 }
 
 Ucg *ucg_struct_value(Ucg *st, Ucg **values) {
@@ -2352,6 +2498,43 @@ bool run_test(int p) {
         ucg_end(fn_main);
         break;
     }
+    case 27: {
+        Ucg *fn_main = ucg_fn2("main", ucg_i32_type(), NULL);
+        Ucg *hp = ucg_var("hp", ucg_i32_type());
+        Ucg *speed = ucg_var("speed", ucg_float_type(32));
+        Ucg *alive = ucg_var("alive", ucg_i1_type());
+        Ucg *grade = ucg_var("grade", ucg_char_type());
+        ucg_assign(hp, ucg_i32_value(100));
+        ucg_assign(speed, ucg_float_value(32, 1.5));
+        ucg_assign(alive, ucg_i1_value(1));
+        ucg_assign(grade, ucg_char_value('S'));
+        Ucg *values[] = {
+            ucg_string_value("hp: "), hp,
+            ucg_string_value(" speed: "), speed,
+            ucg_string_value(" alive: "), alive,
+            ucg_string_value(" grade: "), grade,
+            ucg_string_value(" 100%\n"),
+        };
+        ucg_print(ucg_i32_value(1), values, 9);
+        ucg_ret(ucg_i32_value(0));
+        ucg_end(fn_main);
+        break;
+    }
+    case 28: {
+        Ucg *fn_main = ucg_fn2("main", ucg_i32_type(), NULL);
+        Ucg *first = ucg_var("first", ucg_string_type());
+        Ucg *second = ucg_var("second", ucg_string_type());
+        ucg_assign(first, ucg_input());
+        ucg_assign(second, ucg_input());
+        Ucg *values[] = {
+            ucg_string_value("["), first, ucg_string_value("] ["),
+            second, ucg_string_value("]\n"),
+        };
+        ucg_print(ucg_i32_value(1), values, 5);
+        ucg_ret(ucg_i32_value(0));
+        ucg_end(fn_main);
+        break;
+    }
     default: {
         return false;
     }
@@ -2460,7 +2643,7 @@ const char *to_string(Type type) {
 		[PROTO] = "PROTO", [FN_ENTRY] = "FN_ENTRY",
 		[FN_DEC] = "FN_DEC", [ARGS] = "ARGS",
 		[VARIADIC] = "VARIADIC",
-		[FN_CALL] = "FN_CALL", [RETURN] = "RETURN",
+		[FN_CALL] = "FN_CALL", [RETURN] = "RETURN", [PRINT] = "PRINT",
 		[SIZEOF] = "SIZEOF", [IS_NULLABLE] = "IS_NULLABLE",
 
 		[IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",

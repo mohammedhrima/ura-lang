@@ -1,20 +1,10 @@
-struct Point:
-    x i32
-    y i32
 
-struct Rect:
-    min Point
-    max Point
-
-fn origin() Point:
-    return {x: 0, y: 0}
 
 fn main() i32:
-    p Point = {x: 10, y: 11}
-    q Point = {x: 3}
-    r Rect = {
-        max: {x: 5, y: 10},
-        min: {x: 1, y: 2},
-    }
-    o Point = origin()
-    return p.x + p.y + q.x + q.y + r.min.x + r.min.y + r.max.x + r.max.y + o.x
+    hp i32 = 100
+    speed f32 = 1.5
+    alive bool = True
+    grade char = 'S'
+    output("hp: ", hp, " speed: ", speed, " alive: ", alive, " grade: ", grade, " 100%\n")
+    errput("bad value: ", 7, "\n")
+    return 0

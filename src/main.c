@@ -966,7 +966,13 @@ Node *type_of(Node *node) {
         Node *type = type_of(node->operand);
         return type ? new_type(REF, 0, type) : NULL;
     }
-    case FN_CALL:   return node->to_call ? ret_type_of(node->to_call) : NULL;
+    case FN_CALL: {
+        if (node->to_call)
+            return ret_type_of(node->to_call);
+        if (strcmp2(node->token->name, "input"))
+            return new_type(ARRAY, 0, new_type(INT, 8, NULL));
+        return NULL;
+    }
     case NEG:       return type_of(node->operand);
     case LT: case GT: case EQ: case LE: case GE: case NQ:
     case AND: case OR: return bool_type();
@@ -1186,6 +1192,14 @@ void analyze(Node *node) {
         Token *token = node->token;
         char *name = token->name;
         node->to_call = find_function(name);
+        if (node->to_call == NULL && (strcmp2(name, "output") || strcmp2(name, "errput"))) {
+            token->type = PRINT;
+            for (int i = 0; i < node->children_count; i++)
+                analyze(node->children[i]);
+            break;
+        }
+        if (node->to_call == NULL && strcmp2(name, "input") && node->children_count == 0)
+            break;
         if (node->to_call == NULL) {
             Node *like = find_function_like(name, 2);
             if (find_variable(name))
@@ -1422,7 +1436,21 @@ void codegen(Node *node) {
         exit_scope();
         break;
     }
+    case PRINT: {
+        Ucg **values = arena_alloc(node->children_count + 1, sizeof(Ucg *));
+        for (int i = 0; i < node->children_count; i++) {
+            codegen(node->children[i]);
+            values[i] = node->children[i]->token->ucg;
+        }
+        int fd = strcmp2(node->token->name, "errput") ? 2 : 1;
+        node->token->ucg = ucg_print(ucg_i32_value(fd), values, node->children_count);
+        break;
+    }
     case FN_CALL: {
+        if (node->to_call == NULL) {
+            node->token->ucg = ucg_input();
+            break;
+        }
         Ucg **args = arena_alloc(node->children_count + 1, sizeof(Ucg *));
         for (int i = 0; i < node->children_count; i++) {
             codegen(node->children[i]);
