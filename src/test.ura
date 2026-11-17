@@ -1,60 +1,22 @@
-link "SDL2"
-proto SDL_Init(flags i32) i32
-proto SDL_CreateWindow(title i8[], x i32, y i32, w i32, h i32, flags i32) i8[]
-proto SDL_CreateRenderer(window i8[], index i32, flags i32) i8[]
-proto SDL_SetRenderDrawColor(renderer i8[], r i8, g i8, b i8, a i8) i32
-proto SDL_RenderDrawPoint(renderer i8[], x i32, y i32) i32
-proto SDL_RenderPresent(renderer i8[])
-proto SDL_PollEvent(event &Event) i32
-proto SDL_Delay(ms i32)
-proto SDL_Quit()
+struct Vec:
+    x i32
+    y i32
 
-struct Event:
-    type i32
-    a1 i32
-    a2 i32
-    a3 i32
-    a4 i32
-    a5 i32
-    a6 i32
-    a7 i32
-    a8 i32
-    a9 i32
-    a10 i32
-    a11 i32
-    a12 i32
-    a13 i32
+    operator + (e Vec) Vec:
+        r Vec = {
+            x: self.x + e.x,
+            y: self.y + e.y,
+        }
+        return r
 
 fn main() i32:
-    width i32 = 400
-    height i32 = 300
-    SDL_Init(32)
-    window i8[] = SDL_CreateWindow("ura + SDL2", 805240832, 805240832, width, height, 0)
-    renderer i8[] = SDL_CreateRenderer(window, -1, 0)
-
-    y i32 = 0
-    while y < height:
-        x i32 = 0
-        while x < width:
-            red i8 = (x * 255 / width) as i8
-            green i8 = (y * 255 / height) as i8
-            SDL_SetRenderDrawColor(renderer, red, green, 128 as i8, 255 as i8)
-            SDL_RenderDrawPoint(renderer, x, y)
-            x += 1
-        y += 1
-    SDL_RenderPresent(renderer)
-
-    event Event
-    running bool = True
-    frames i32 = 0
-    while running:
-        while SDL_PollEvent(&event) != 0:
-            if event.type == 256:
-                running = False
-        SDL_Delay(16)
-        frames += 1
-        if frames > 180:
-            running = False
-    SDL_Quit()
-    output("window closed after ", frames, " frames\n")
-    return 0
+    a Vec = {
+        x: 1,
+        y: 1
+    }
+    b Vec = {
+        x: 2,
+        y: 2
+    }
+    c Vec = a + b
+    output(c.x, " ", c.y, "\n")

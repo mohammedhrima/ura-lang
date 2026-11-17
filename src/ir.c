@@ -88,7 +88,8 @@ enum Type {
 
     //OWN,
 
-    LPARENT, RPARENT, DOTS, COMA,
+    LPARENT, RPARENT, DOTS, DOUBLE_DOTS, COMA,
+    OPERATOR, PUB,
     LBRACK, RBRACK,
     LCBRACK, RCBRACK,
     ARRAY, ARRAY_LIT, ACCESS,
@@ -102,7 +103,7 @@ enum Type {
     AND, OR, NOT, NEG,
 
     PROTO, 
-    FN_DEC, ARGS, VARIADIC, FN_CALL, RETURN, PRINT,
+    FN_DEC, ARGS, VARIADIC, FN_CALL, RETURN, WRITE, READ,
     LINK,
 	FN_ENTRY,
     SIZEOF, IS_NULLABLE,
@@ -231,16 +232,16 @@ struct {
     char *error_msg;
 
     expand(Ucg *, insts);
-    Ucg *input_fn;
-    Ucg *print_fn;
+    Ucg *read_fn;
+    Ucg *write_fn;
 } gb_ucg;
 
 void ucg_start(char *name) {
     // atexit(ucg_finish);
 
     gb_ucg.context = LLVMContextCreate();
-    gb_ucg.input_fn = NULL;
-    gb_ucg.print_fn = NULL;
+    gb_ucg.read_fn = NULL;
+    gb_ucg.write_fn = NULL;
     zero_init(gb_ucg.libs);
     gb_ucg.module = LLVMModuleCreateWithNameInContext(name, gb_ucg.context);
     gb_ucg.builder = LLVMCreateBuilderInContext(gb_ucg.context);
@@ -678,8 +679,7 @@ void llvm_declare_global(Ucg *ir) {
     ir->rtype = llvm_type(ir->data_type);
     assert(ir->name);
     ir->elem = LLVMAddGlobal(gb_ucg.module, ir->rtype, ir->name);
-    if (!ir->is_set)
-        LLVMSetInitializer(ir->elem, LLVMConstNull(ir->rtype));
+    LLVMSetInitializer(ir->elem, LLVMConstNull(ir->rtype));
 }
 
 void llvm_declare_param(Ucg *ir) {
@@ -1170,12 +1170,6 @@ Ucg *ucg_global(char *name, Ucg *data_type) {
     return new;
 }
 
-Ucg *ucg_extern(char *name, Ucg *data_type) {
-    Ucg *new = ucg_global(name, data_type);
-    new->is_set = true;
-    return new;
-}
-
 Ucg *ucg_null(Ucg *ref_type) {
     Ucg *new = ucg_new(VAL_CREATE);
     new->to_create = ref_type;
@@ -1229,9 +1223,9 @@ Ucg *ucg_value_type(Ucg *value) {
     }
 }
 
-Ucg *ucg_print(Ucg *fd, Ucg **values, int values_count) {
-    if (gb_ucg.print_fn == NULL)
-        gb_ucg.print_fn = ucg_proto2("dprintf", ucg_i32_type(), ucg_param("fd", ucg_i32_type()),
+Ucg *ucg_write(Ucg *fd, Ucg **values, int values_count) {
+    if (gb_ucg.write_fn == NULL)
+        gb_ucg.write_fn = ucg_proto2("dprintf", ucg_i32_type(), ucg_param("fd", ucg_i32_type()),
                                      ucg_param("format", ucg_string_type()), ucg_varg_type(), NULL);
     Ucg **args = arena_alloc(values_count + 3, sizeof(Ucg *));
     int args_count = 2;
@@ -1272,28 +1266,35 @@ Ucg *ucg_print(Ucg *fd, Ucg **values, int values_count) {
     }
     args[0] = fd;
     args[1] = ucg_string_value(layout);
-    return ucg_fn_call(gb_ucg.print_fn, args, args_count);
+    return ucg_fn_call(gb_ucg.write_fn, args, args_count);
 }
 
-Ucg *ucg_input(void) {
-    if (gb_ucg.input_fn == NULL) {
-#if defined(__APPLE__)
-        char *stdin_name = "__stdinp";
-#else
-        char *stdin_name = "stdin";
-#endif
+Ucg *ucg_read(Ucg *fd) {
+    if (gb_ucg.read_fn == NULL) {
         Ucg *str = ucg_string_type();
+        Ucg *i32 = ucg_i32_type();
         Ucg *i64 = ucg_int_type(64);
         Ucg *getline = ucg_proto2("getline", i64, // clang-format off
                                   ucg_param("line", ucg_ref_type(str)),
                                   ucg_param("cap", ucg_ref_type(i64)),
                                   ucg_param("file", str), NULL); // clang-format on
-        Ucg *find = ucg_proto2("strchr", str, ucg_param("s", str),
-                               ucg_param("c", ucg_i32_type()), NULL);
+        Ucg *find = ucg_proto2("strchr", str, ucg_param("s", str), ucg_param("c", i32), NULL);
         Ucg *copy = ucg_proto2("strdup", str, ucg_param("s", str), NULL);
-        Ucg *file = ucg_extern(stdin_name, str);
+        Ucg *open = ucg_proto2("fdopen", str, ucg_param("fd", i32), ucg_param("mode", str), NULL);
+        Ucg *file = ucg_global("ura.read_file", str);
+        Ucg *file_fd = ucg_global("ura.read_fd", i32);
 
-        Ucg *fn = ucg_fn2("ura.input", str, NULL);
+        Ucg *fn = ucg_fn2("ura.read", str, ucg_param("fd", i32), NULL);
+        Ucg *fd_param = ucg_get_param(fn, 0);
+        Ucg *reopen = ucg_if();
+        {
+            ucg_then(reopen, ucg_op(OR, ucg_op(EQ, file, ucg_null(str)),
+                                    ucg_op(NQ, fd_param, file_fd)));
+            ucg_assign(file, ucg_fn_call2(open, fd_param, ucg_string_value("r"), NULL));
+            ucg_assign(file_fd, fd_param);
+        }
+        ucg_end(reopen);
+
         Ucg *line = ucg_var("line", str);
         Ucg *cap = ucg_var("cap", i64);
         Ucg *len = ucg_var("len", i64);
@@ -1316,9 +1317,9 @@ Ucg *ucg_input(void) {
         ucg_end(found);
         ucg_ret(line);
         ucg_end(fn);
-        gb_ucg.input_fn = fn;
+        gb_ucg.read_fn = fn;
     }
-    return ucg_fn_call2(gb_ucg.input_fn, NULL);
+    return ucg_fn_call2(gb_ucg.read_fn, fd, NULL);
 }
 
 Ucg *ucg_struct_value(Ucg *st, Ucg **values) {
@@ -2528,7 +2529,7 @@ bool run_test(int p) {
             ucg_string_value(" grade: "), grade,
             ucg_string_value(" 100%\n"),
         };
-        ucg_print(ucg_i32_value(1), values, 9);
+        ucg_write(ucg_i32_value(1), values, 9);
         ucg_ret(ucg_i32_value(0));
         ucg_end(fn_main);
         break;
@@ -2537,13 +2538,13 @@ bool run_test(int p) {
         Ucg *fn_main = ucg_fn2("main", ucg_i32_type(), NULL);
         Ucg *first = ucg_var("first", ucg_string_type());
         Ucg *second = ucg_var("second", ucg_string_type());
-        ucg_assign(first, ucg_input());
-        ucg_assign(second, ucg_input());
+        ucg_assign(first, ucg_read(ucg_i32_value(0)));
+        ucg_assign(second, ucg_read(ucg_i32_value(0)));
         Ucg *values[] = {
             ucg_string_value("["), first, ucg_string_value("] ["),
             second, ucg_string_value("]\n"),
         };
-        ucg_print(ucg_i32_value(1), values, 5);
+        ucg_write(ucg_i32_value(1), values, 5);
         ucg_ret(ucg_i32_value(0));
         ucg_end(fn_main);
         break;
@@ -2674,7 +2675,8 @@ const char *to_string(Type type) {
 		[LPARENT] = "LPARENT", [RPARENT] = "RPARENT",
 		[LBRACK] = "LBRACK", [RBRACK] = "RBRACK",
 		[LCBRACK] = "LCBRACK", [RCBRACK] = "RCBRACK",
-		[DOTS] = "DOTS", [COMA] = "COMA",
+		[DOTS] = "DOTS", [DOUBLE_DOTS] = "DOUBLE_DOTS", [COMA] = "COMA",
+		[OPERATOR] = "OPERATOR", [PUB] = "PUB",
 
 		[ARRAY] = "ARRAY", // [ARRAY_LIT] = "ARRAY_LIT",
 		[ACCESS] = "ACCESS",
@@ -2695,7 +2697,7 @@ const char *to_string(Type type) {
 		[PROTO] = "PROTO", [FN_ENTRY] = "FN_ENTRY",
 		[FN_DEC] = "FN_DEC", [ARGS] = "ARGS",
 		[VARIADIC] = "VARIADIC",
-		[FN_CALL] = "FN_CALL", [RETURN] = "RETURN", [PRINT] = "PRINT", [LINK] = "LINK",
+		[FN_CALL] = "FN_CALL", [RETURN] = "RETURN", [WRITE] = "WRITE", [READ] = "READ", [LINK] = "LINK",
 		[SIZEOF] = "SIZEOF", [IS_NULLABLE] = "IS_NULLABLE",
 
 		[IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
