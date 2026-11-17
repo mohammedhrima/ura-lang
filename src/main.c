@@ -68,6 +68,7 @@ struct Node {
         Node *cond;
         Node *to_call;
         Node *loop;
+        Node *operand;
     };
     union {
         Node *right;
@@ -496,6 +497,15 @@ Node *parse_prime() {
         next(); // SKIP )
         return node;
     }
+    case SUB: {
+        token->type = NEG;
+        node = new_node(token);
+        node->operand = parse_prime();
+        return node;
+    }
+    case ADD: {
+        return parse_prime();
+    }
     case FN_DEC: case PROTO: {
         node = new_node(token);
         token = next(); // TODO: expect ID
@@ -541,7 +551,8 @@ Node *parse_prime() {
     }
     case RETURN: {
         node = new_node(token);
-        node->left = parse_expr(0);
+        if (peek(0)->line == token->line)
+            node->left = parse_expr(0);
         return node;
     }
     case IF: case ELIF: case ELSE: case LOOP: {
@@ -707,6 +718,10 @@ void analyze(Node *node) {
     case BRK: case CNT: {
         break;
     }
+    case NEG: {
+        analyze(node->operand);
+        break;
+    }
     case FN_CALL: {
         node->to_call = find_function(node->token->name);
         assert(node->to_call);
@@ -842,9 +857,11 @@ void codegen(Node *node) {
         break;
     }
     case RETURN: {
-        // TODO: check if there is node left
-        codegen(node->left);
-        ucg = ucg_ret(node->left->token->ucg);
+        if (node->left) {
+            codegen(node->left);
+            ucg = ucg_ret(node->left->token->ucg);
+        } else
+            ucg = ucg_return();
         node->token->ucg = ucg;
         break;
     }
@@ -866,6 +883,11 @@ void codegen(Node *node) {
     }
     case BRK: {
         ucg_brk(node->loop->token->ucg);
+        break;
+    }
+    case NEG: {
+        codegen(node->operand);
+        node->token->ucg = ucg_neg(node->operand->token->ucg);
         break;
     }
     case CNT: {

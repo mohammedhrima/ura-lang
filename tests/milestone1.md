@@ -1359,7 +1359,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -1367,53 +1367,56 @@ entry:
   %n = alloca i32, align 4
   store i8 97, i8* %c, align 1
   store i32 0, i32* %n, align 4
-  br label %cond
+  br label %while0
 
-cond:                                             ; preds = %endif, %entry
-  %load.c = load i8, i8* %c, align 1
-  %NQ = icmp ne i8 %load.c, 101
-  br i1 %NQ, label %then, label %endwhile
+while0:                                           ; preds = %endif, %entry
+  %"$c" = load i8, i8* %c, align 1
+  %NQ = icmp ne i8 %"$c", 101
+  br i1 %NQ, label %while0.then, label %endloop
 
-then:                                             ; preds = %cond
-  %old = load i32, i32* %n, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* %n, align 4
-  %load.n = load i32, i32* %n, align 4
-  %EQ = icmp eq i32 %load.n, 1
-  br i1 %EQ, label %then1, label %next
+while0.then:                                      ; preds = %while0
+  %"$n" = load i32, i32* %n, align 4
+  %ADD = add i32 %"$n", 1
+  store i32 %ADD, i32* %n, align 4
+  br label %if1
 
-endwhile:                                         ; preds = %cond
-  %load.n10 = load i32, i32* %n, align 4
-  ret i32 %load.n10
+if1:                                              ; preds = %while0.then
+  %"$n1" = load i32, i32* %n, align 4
+  %EQ = icmp eq i32 %"$n1", 1
+  br i1 %EQ, label %if1.then, label %elif2
 
-then1:                                            ; preds = %then
+if1.then:                                         ; preds = %if1
   store i8 98, i8* %c, align 1
   br label %endif
 
-next:                                             ; preds = %then
-  %load.n4 = load i32, i32* %n, align 4
-  %EQ5 = icmp eq i32 %load.n4, 2
-  br i1 %EQ5, label %then2, label %next3
+elif2:                                            ; preds = %if1
+  %"$n2" = load i32, i32* %n, align 4
+  %EQ3 = icmp eq i32 %"$n2", 2
+  br i1 %EQ3, label %elif2.then, label %elif3
 
-then2:                                            ; preds = %next
+elif2.then:                                       ; preds = %elif2
   store i8 99, i8* %c, align 1
   br label %endif
 
-next3:                                            ; preds = %next
-  %load.n8 = load i32, i32* %n, align 4
-  %EQ9 = icmp eq i32 %load.n8, 3
-  br i1 %EQ9, label %then6, label %next7
+elif3:                                            ; preds = %elif2
+  %"$n4" = load i32, i32* %n, align 4
+  %EQ5 = icmp eq i32 %"$n4", 3
+  br i1 %EQ5, label %elif3.then, label %else4
 
-then6:                                            ; preds = %next3
+elif3.then:                                       ; preds = %elif3
   store i8 100, i8* %c, align 1
   br label %endif
 
-next7:                                            ; preds = %next3
+else4:                                            ; preds = %elif3
   store i8 101, i8* %c, align 1
   br label %endif
 
-endif:                                            ; preds = %next7, %then6, %then2, %then1
-  br label %cond
+endif:                                            ; preds = %else4, %elif3.then, %elif2.then, %if1.then
+  br label %while0
+
+endloop:                                          ; preds = %while0
+  %"$n6" = load i32, i32* %n, align 4
+  ret i32 %"$n6"
 }
 ```
 
@@ -1512,28 +1515,31 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @grade(i32 %0) {
 entry:
   %n = alloca i32, align 4
   store i32 %0, i32* %n, align 4
-  %load.n = load i32, i32* %n, align 4
-  %LT = icmp slt i32 %load.n, 10
-  br i1 %LT, label %then, label %next
+  br label %if0
 
-then:                                             ; preds = %entry
+if0:                                              ; preds = %entry
+  %"$n" = load i32, i32* %n, align 4
+  %LT = icmp slt i32 %"$n", 10
+  br i1 %LT, label %if0.then, label %elif1
+
+if0.then:                                         ; preds = %if0
   ret i32 1
 
-next:                                             ; preds = %entry
-  %load.n3 = load i32, i32* %n, align 4
-  %LT4 = icmp slt i32 %load.n3, 20
-  br i1 %LT4, label %then1, label %next2
+elif1:                                            ; preds = %if0
+  %"$n1" = load i32, i32* %n, align 4
+  %LT2 = icmp slt i32 %"$n1", 20
+  br i1 %LT2, label %elif1.then, label %else2
 
-then1:                                            ; preds = %next
+elif1.then:                                       ; preds = %elif1
   ret i32 2
 
-next2:                                            ; preds = %next
+else2:                                            ; preds = %elif1
   ret i32 3
 
 endif:                                            ; No predecessors!
@@ -1542,14 +1548,14 @@ endif:                                            ; No predecessors!
 
 define i32 @main() {
 entry:
-  %"grade(5)" = call i32 @grade(i32 5)
-  %MUL = mul i32 %"grade(5)", 100
-  %"grade(15)" = call i32 @grade(i32 15)
-  %MUL1 = mul i32 %"grade(15)", 10
-  %ADD = add i32 %MUL, %MUL1
-  %"grade(25)" = call i32 @grade(i32 25)
-  %ADD2 = add i32 %ADD, %"grade(25)"
-  ret i32 %ADD2
+  %call.grade = call i32 @grade(i32 5)
+  %MUL = mul i32 %call.grade, 100
+  %call.grade1 = call i32 @grade(i32 15)
+  %MUL2 = mul i32 %call.grade1, 10
+  %ADD = add i32 %MUL, %MUL2
+  %call.grade3 = call i32 @grade(i32 25)
+  %ADD4 = add i32 %ADD, %call.grade3
+  ret i32 %ADD4
 }
 ```
 
@@ -1937,32 +1943,35 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
   %a = alloca i32, align 4
   store i32 1, i32* %a, align 4
-  %load.a = load i32, i32* %a, align 4
-  %EQ = icmp eq i32 %load.a, 2
-  br i1 %EQ, label %then, label %next
+  br label %if0
 
-then:                                             ; preds = %entry
+if0:                                              ; preds = %entry
+  %"$a" = load i32, i32* %a, align 4
+  %EQ = icmp eq i32 %"$a", 2
+  br i1 %EQ, label %if0.then, label %elif1
+
+if0.then:                                         ; preds = %if0
   store i32 100, i32* %a, align 4
   br label %endif
 
-next:                                             ; preds = %entry
-  %load.a2 = load i32, i32* %a, align 4
-  %EQ3 = icmp eq i32 %load.a2, 3
-  br i1 %EQ3, label %then1, label %endif
+elif1:                                            ; preds = %if0
+  %"$a1" = load i32, i32* %a, align 4
+  %EQ2 = icmp eq i32 %"$a1", 3
+  br i1 %EQ2, label %elif1.then, label %endif
 
-then1:                                            ; preds = %next
+elif1.then:                                       ; preds = %elif1
   store i32 200, i32* %a, align 4
   br label %endif
 
-endif:                                            ; preds = %then1, %next, %then
-  %load.a4 = load i32, i32* %a, align 4
-  %ADD = add i32 %load.a4, 8
+endif:                                            ; preds = %elif1.then, %elif1, %if0.then
+  %"$a3" = load i32, i32* %a, align 4
+  %ADD = add i32 %"$a3", 8
   ret i32 %ADD
 }
 ```
@@ -2128,33 +2137,36 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
   %a = alloca i32, align 4
   store i32 0, i32* %a, align 4
-  %load.a = load i32, i32* %a, align 4
-  %LT = icmp slt i32 %load.a, 1
-  br i1 %LT, label %then, label %next
+  br label %if0
 
-then:                                             ; preds = %entry
+if0:                                              ; preds = %entry
+  %"$a" = load i32, i32* %a, align 4
+  %LT = icmp slt i32 %"$a", 1
+  br i1 %LT, label %if0.then, label %elif1
+
+if0.then:                                         ; preds = %if0
   ret i32 1
 
-next:                                             ; preds = %entry
-  %load.a3 = load i32, i32* %a, align 4
-  %LT4 = icmp slt i32 %load.a3, 2
-  br i1 %LT4, label %then1, label %next2
+elif1:                                            ; preds = %if0
+  %"$a1" = load i32, i32* %a, align 4
+  %LT2 = icmp slt i32 %"$a1", 2
+  br i1 %LT2, label %elif1.then, label %else2
 
-then1:                                            ; preds = %next
+elif1.then:                                       ; preds = %elif1
   ret i32 2
 
-next2:                                            ; preds = %next
+else2:                                            ; preds = %elif1
   ret i32 3
 
 endif:                                            ; No predecessors!
-  %load.a5 = load i32, i32* %a, align 4
-  ret i32 %load.a5
+  %"$a3" = load i32, i32* %a, align 4
+  ret i32 %"$a3"
 }
 ```
 
@@ -3550,7 +3562,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define void @nothing() {
 entry:
@@ -4303,7 +4315,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @steps(i32 %0) {
 entry:
@@ -4311,47 +4323,50 @@ entry:
   %c = alloca i32, align 4
   store i32 %0, i32* %n, align 4
   store i32 0, i32* %c, align 4
-  br label %cond
+  br label %while0
 
-cond:                                             ; preds = %endif, %entry
-  %load.n = load i32, i32* %n, align 4
-  %NQ = icmp ne i32 %load.n, 1
-  br i1 %NQ, label %then, label %endwhile
+while0:                                           ; preds = %endif, %entry
+  %"$n" = load i32, i32* %n, align 4
+  %NQ = icmp ne i32 %"$n", 1
+  br i1 %NQ, label %while0.then, label %endloop
 
-then:                                             ; preds = %cond
-  %load.n2 = load i32, i32* %n, align 4
-  %MOD = srem i32 %load.n2, 2
+while0.then:                                      ; preds = %while0
+  br label %if1
+
+if1:                                              ; preds = %while0.then
+  %"$n1" = load i32, i32* %n, align 4
+  %MOD = srem i32 %"$n1", 2
   %EQ = icmp eq i32 %MOD, 0
-  br i1 %EQ, label %then1, label %next
+  br i1 %EQ, label %if1.then, label %else2
 
-endwhile:                                         ; preds = %cond
-  %load.c = load i32, i32* %c, align 4
-  ret i32 %load.c
-
-then1:                                            ; preds = %then
-  %old = load i32, i32* %n, align 4
-  %DIV_ASSIGN = sdiv i32 %old, 2
-  store i32 %DIV_ASSIGN, i32* %n, align 4
+if1.then:                                         ; preds = %if1
+  %"$n2" = load i32, i32* %n, align 4
+  %DIV = sdiv i32 %"$n2", 2
+  store i32 %DIV, i32* %n, align 4
   br label %endif
 
-next:                                             ; preds = %then
-  %load.n3 = load i32, i32* %n, align 4
-  %MUL = mul i32 %load.n3, 3
+else2:                                            ; preds = %if1
+  %"$n3" = load i32, i32* %n, align 4
+  %MUL = mul i32 %"$n3", 3
   %ADD = add i32 %MUL, 1
   store i32 %ADD, i32* %n, align 4
   br label %endif
 
-endif:                                            ; preds = %next, %then1
-  %old4 = load i32, i32* %c, align 4
-  %ADD_ASSIGN = add i32 %old4, 1
-  store i32 %ADD_ASSIGN, i32* %c, align 4
-  br label %cond
+endif:                                            ; preds = %else2, %if1.then
+  %"$c" = load i32, i32* %c, align 4
+  %ADD4 = add i32 %"$c", 1
+  store i32 %ADD4, i32* %c, align 4
+  br label %while0
+
+endloop:                                          ; preds = %while0
+  %"$c5" = load i32, i32* %c, align 4
+  ret i32 %"$c5"
 }
 
 define i32 @main() {
 entry:
-  %"steps(27)" = call i32 @steps(i32 27)
-  ret i32 %"steps(27)"
+  %call.steps = call i32 @steps(i32 27)
+  ret i32 %call.steps
 }
 ```
 
@@ -4642,7 +4657,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -4652,19 +4667,19 @@ entry:
   %d = alloca i32, align 4
   store i32 -3, i32* %a, align 4
   store i32 -1, i32* %b, align 4
-  %load.a = load i32, i32* %a, align 4
-  %load.b = load i32, i32* %b, align 4
-  %MUL = mul i32 %load.a, %load.b
+  %"$a" = load i32, i32* %a, align 4
+  %"$b" = load i32, i32* %b, align 4
+  %MUL = mul i32 %"$a", %"$b"
   %SUB = sub i32 0, %MUL
   store i32 %SUB, i32* %c, align 4
   store i32 5, i32* %d, align 4
-  %load.a1 = load i32, i32* %a, align 4
-  %load.b2 = load i32, i32* %b, align 4
-  %ADD = add i32 %load.a1, %load.b2
-  %load.c = load i32, i32* %c, align 4
-  %ADD3 = add i32 %ADD, %load.c
-  %load.d = load i32, i32* %d, align 4
-  %ADD4 = add i32 %ADD3, %load.d
+  %"$a1" = load i32, i32* %a, align 4
+  %"$b2" = load i32, i32* %b, align 4
+  %ADD = add i32 %"$a1", %"$b2"
+  %"$c" = load i32, i32* %c, align 4
+  %ADD3 = add i32 %ADD, %"$c"
+  %"$d" = load i32, i32* %d, align 4
+  %ADD4 = add i32 %ADD3, %"$d"
   %ADD5 = add i32 %ADD4, 100
   ret i32 %ADD5
 }
@@ -7698,29 +7713,29 @@ fn main() i32:
 ### llvm ir
 
 ```llvm
-; ModuleID = 'ura-module'
-source_filename = "ura-module"
+; ModuleID = 'ura'
+source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
   %a = alloca i32, align 4
   store i32 -10, i32* %a, align 4
-  %a1 = load i32, i32* %a, align 4
-  %ADD = add i32 %a1, 2
+  %"$a" = load i32, i32* %a, align 4
+  %ADD = add i32 %"$a", 2
   store i32 %ADD, i32* %a, align 4
-  %a2 = load i32, i32* %a, align 4
-  %MUL = mul i32 %a2, 4
+  %"$a1" = load i32, i32* %a, align 4
+  %MUL = mul i32 %"$a1", 4
   store i32 %MUL, i32* %a, align 4
-  %a3 = load i32, i32* %a, align 4
-  %DIV = sdiv i32 %a3, 2
+  %"$a2" = load i32, i32* %a, align 4
+  %DIV = sdiv i32 %"$a2", 2
   store i32 %DIV, i32* %a, align 4
-  %a4 = load i32, i32* %a, align 4
-  %SUB = sub i32 %a4, 2
+  %"$a3" = load i32, i32* %a, align 4
+  %SUB = sub i32 %"$a3", 2
   store i32 %SUB, i32* %a, align 4
-  %a5 = load i32, i32* %a, align 4
-  %MOD = srem i32 %a5, 3
+  %"$a4" = load i32, i32* %a, align 4
+  %MOD = srem i32 %"$a4", 3
   store i32 %MOD, i32* %a, align 4
   ret i32 0
 }

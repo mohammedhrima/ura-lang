@@ -97,7 +97,7 @@ enum Type {
 
     GT, LT, GE, LE, EQ, NQ,
 
-    AND, OR, NOT,
+    AND, OR, NOT, NEG,
 
     PROTO, 
     FN_DEC, ARGS, VARIADIC, FN_CALL, RETURN,
@@ -298,6 +298,15 @@ void ucg_gen_ll(void) {
     }
 }
 
+bool llvm_verify(void) {
+    char *error = NULL;
+    bool failed = LLVMVerifyModule(gb_ucg.module, LLVMReturnStatusAction, &error);
+    if (failed)
+        eprint("%s:%d LLVM verification failed:\n%s\n", FILE, LINE, error);
+    LLVMDisposeMessage(error);
+    return !failed;
+}
+
 void llvm_emit(char *path, LLVMCodeGenFileType type) {
     mkdir2(dirname2(path));
 
@@ -340,13 +349,11 @@ void ucg_gen_bin(void) {
 }
 
 void ucg_gen(void) {
-    char *error = NULL;
-    if (LLVMVerifyModule(gb_ucg.module, LLVMReturnStatusAction, &error))
-        eprint("%s:%d LLVM verification failed:\n%s\n", FILE, LINE, error);
-    LLVMDisposeMessage(error);
-
+    bool valid = llvm_verify();
     if (gb_ucg.ll_path)
         ucg_gen_ll();
+    if (!valid)
+        exit(1);
     if (gb_ucg.asm_path)
         llvm_emit(gb_ucg.asm_path, LLVMAssemblyFile);
     if (gb_ucg.obj_path)
@@ -612,6 +619,10 @@ void llvm_op(Ucg *ir) {
         exit(1);
     }
     ir->elem = value;
+}
+
+void llvm_neg(Ucg *ir) {
+    ir->elem = LLVMBuildNeg(gb_ucg.builder, ir->right->elem, "NEG");
 }
 
 Value llvm_parent_bloc() {
@@ -983,6 +994,13 @@ Ucg *ucg_assign(Ucg *left, Ucg *right) {
     return ucg_op(ASSIGN, left, right);
 }
 
+Ucg *ucg_neg(Ucg *value) {
+    Ucg *new = ucg_new(NEG);
+    new->right = ucg_value(value);
+    append(gb_ucg.insts, new);
+    return new;
+}
+
 Ucg *ucg_bloc(char *name) {
     Ucg *new = ucg_new(BLOC);
     new->name = name;
@@ -1236,6 +1254,10 @@ void ucg_compile() {
         }
         case BRK: {
             llvm_jmp(curr->stmt->end->bloc);
+            break;
+        }
+        case NEG: {
+            llvm_neg(curr);
             break;
         }
         case CNT: {
@@ -2003,7 +2025,7 @@ const char *to_string(Type type) {
 		[GT] = "GT", [LT] = "LT", [GE] = "GE",
 		[LE] = "LE", [EQ] = "EQ", [NQ] = "NQ",
 
-		[AND] = "AND", [OR] = "OR", [NOT] = "NOT",
+		[AND] = "AND", [OR] = "OR", [NOT] = "NOT", [NEG] = "NEG",
 
 		[PROTO] = "PROTO", [FN_ENTRY] = "FN_ENTRY",
 		[FN_DEC] = "FN_DEC", [ARGS] = "ARGS",
