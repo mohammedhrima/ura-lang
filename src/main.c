@@ -43,7 +43,6 @@ struct Token {
     bool is_varg;
     bool is_pub;
     bool is_uint;
-    bool is_operator;
     // uraIR ir;
 
     Ucg *ucg;
@@ -80,6 +79,7 @@ struct Node {
         Node *loop;
         Node *operand;
         Node *scope;
+        Node *symbol;
     };
     union {
         Node *right;
@@ -1095,9 +1095,9 @@ Node *parse_prime() {
     } // clang-format off
     case FN_DEC: case PROTO: case OPERATOR: { // clang-format on
         node = new_node(token);
-        if (token->type == OPERATOR) {
+        bool is_operator = token->type == OPERATOR;
+        if (is_operator) {
             token->type = FN_DEC;
-            token->is_operator = true;
             token = next();
             node->token->name = token_text(token);
             if (token->type == LBRACK) {
@@ -1125,6 +1125,8 @@ Node *parse_prime() {
             node->token->name = token->name;
         }
         node->right = new_node(new_token(ARGS, token));
+        if (is_operator)
+            node->args->symbol = new_node(token);
         if (peek(0)->type == LPARENT) {
             next(); // SKIP (
             while (peek(0)->type != RPARENT) {
@@ -1363,7 +1365,8 @@ Node *parse_prime() {
             if (method->token->type != FN_DEC || method->token->is_pub)
                 continue;
             Token *name = method->token;
-            if (name->is_operator && method->args->children_count > 1)
+            Node *symbol = method->args->symbol;
+            if (symbol && method->args->children_count > 1)
                 add_error(
                     name->s,
                     name->e,
@@ -1374,7 +1377,7 @@ Node *parse_prime() {
                     ),
                     format("use operator %s(other %s)", name->name, node->token->name)
                 );
-            bool is_assign = name->is_operator && strcmp2(name->name, "=");
+            bool is_assign = symbol && symbol->token->type == ASSIGN;
             bool has_one_param = method->args->children_count == 1;
             Node *other = has_one_param ? method->args->children[0]->data_type : NULL;
             bool is_by_value = other && other->token->type == ID;
@@ -1512,7 +1515,8 @@ Node *find_function_like(char *name, int max_diff) {
             bool is_function = includes(child->token->type, 
                 FN_DEC, PROTO, WRITE, READ, SIZEOF, 
                 TYPEOF, DROP, 0);
-            if (!is_function || child->token->is_operator)
+            bool is_operator = child->args && child->args->symbol;
+            if (!is_function || is_operator)
                 continue;
             char *other = child->token->name;
             int diff = 0;
@@ -1552,7 +1556,7 @@ Node *find_drop(Node *type) {
     Node *st = type->declared;
     for (int i = 0; i < st->children_count; i++) {
         Node *child = st->children[i];
-        if (child->token->type != FN_DEC || !child->token->is_operator)
+        if (child->token->type != FN_DEC || child->args->symbol == NULL)
             continue;
         if (!strcmp2(child->token->name, "drop"))
             continue;
