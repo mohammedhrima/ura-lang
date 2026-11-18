@@ -235,6 +235,7 @@ void check_declare(Node *node);
 void check_enum(Node *node);
 void check_errors(void);
 void check_link(Node *node);
+void check_match(Node *node);
 void check_member(Node *node);
 void check_name(Node *node);
 void check_operation(Node *node);

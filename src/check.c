@@ -377,6 +377,24 @@ void check_name(Node *node) {
     node->declared = var;
 }
 
+void check_match(Node *node) {
+    Token *token = node->token;
+    Node *var = node->left->left;
+    Node *type = type_of(node->left->right);
+    if (type && type->token->type == REF)
+        type = type->data_type;
+    var->data_type = type ? type : new_type(INT, 32, NULL);
+    if (type)
+        check_operation(node->left);
+    if (node->children_count < 2 || node->children[1]->token->type == DEFAULT)
+        add_error(token->s, token->e, "a match needs a case before default", "like: case 1:");
+    for (int i = 1; i < node->children_count - 1; i++) {
+        Token *branch = node->children[i]->token;
+        if (branch->type == DEFAULT)
+            add_error(branch->s, branch->e, "default must be the last branch of a match", NULL);
+    }
+}
+
 void check_enum(Node *node) {
     Token *token = node->token;
     if (node->children_count == 0)
@@ -634,7 +652,8 @@ void check_operation(Node *node) {
         bool is_conversion = right_type && !same_type(right_type, left_type);
         bool has_assign = find_method(st, "=", &node->right, 1, false) != NULL;
         if (node->token->type != ASSIGN || (is_conversion && has_assign)) {
-            analyze_operator(node, st, token_text(node->token));
+            char *symbol = node->token->name ? node->token->name : token_text(node->token);
+            analyze_operator(node, st, symbol);
             return;
         }
         check_copy(&node->right, left_type);

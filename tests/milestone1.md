@@ -6013,8 +6013,8 @@ error: test.ura:5:4 function 'f' is already declared, on line 2
 ## 112 — name error: break outside a loop
 
 ```ura
-// error: break outside a loop
-// help: break only works inside a while
+// error: break outside a loop or match
+// help: break only works inside a while or a match
 fn main() i32:
     break
     return 0
@@ -6023,11 +6023,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:4:5 break outside a loop
+error: test.ura:4:5 break outside a loop or match
   |
 4 |     break
   |     ^^^^^
-help: break only works inside a while
+help: break only works inside a while or a match
 error: aborting due to 1 error
 ```
 

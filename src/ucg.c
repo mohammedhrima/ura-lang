@@ -113,7 +113,7 @@ enum Type {
     AS,
 	BLOC,
     IF, ELIF, ELSE, THEN,
-    LOOP, BRK, CNT,
+    LOOP, BRK, CNT, MATCH, CASE, DEFAULT,
     END,
     LAST,
     // clang-format on
@@ -2041,7 +2041,8 @@ bool run_test(int p) {
 
             if_stmt = ucg_if();
             ucg_then(if_stmt, ucg_op(EQ, big, ucg_bool_value(0)));
-            { ucg_op(ADD_ASSIGN, n, ucg_i32_value(1)); }
+            { 
+                ucg_op(ADD_ASSIGN, n, ucg_i32_value(1)); }
             ucg_end(if_stmt);
 
             ucg_ret(n);
@@ -2972,6 +2973,7 @@ const char *to_string(Type type) {
 		[THEN] = "THEN", [END] = "END",
 		[BLOC] = "BLOC",
 		[LOOP] = "LOOP", [BRK] = "BRK", [CNT] = "CNT",
+		[MATCH] = "MATCH", [CASE] = "CASE", [DEFAULT] = "DEFAULT",
 		[AS] = "AS",
 		[LAST] = "LAST",
         // clang-format on

@@ -177,6 +177,9 @@ struct {
     { "while", { .type = LOOP } },
     { "break", { .type = BRK } },
     { "continue", { .type = CNT } },
+    { "match", { .type = MATCH } },
+    { "case", { .type = CASE } },
+    { "default", { .type = DEFAULT } },
     { "template", { .type = TEMPLATE } },
     // { "null", {.type = ZERO } },
     { "as", { .type = AS } },
@@ -1083,6 +1086,68 @@ Node *parse_prime() {
         }
         return node;
     }
+    case MATCH: {
+        node = new_node(token);
+        enter_scope(node);
+        Node *declare = new_node(new_token(DECLARE, token));
+        declare->var = new_node(new_token(VAR, token));
+        declare->var->token->name = format("match@%d", token->s);
+        append(node->children, declare);
+        node->left = new_node(new_token(ASSIGN, token));
+        node->left->left = declare->var;
+        node->left->right = parse_expr(0);
+        expect(DOTS, "expected ':' after the match value", ":");
+        while (inside(token->space)) {
+            Token *head = next();
+            if (!includes(head->type, CASE, DEFAULT, 0)) {
+                add_error(
+                    head->s, head->e, "expected 'case' or 'default' inside a match", NULL
+                );
+                continue;
+            }
+            Node *branch = new_node(head);
+            while (head->type == CASE && !includes(peek(0)->type, DOTS, LAST, 0)) {
+                Node *value = new_node(new_token(ID, head));
+                value->token->name = declare->var->token->name;
+                Node *eq = new_node(new_token(EQ, head));
+                eq->token->name = "==";
+                eq->left = value;
+                eq->right = parse_expr(0);
+                Node *cond = eq;
+                if (branch->cond) {
+                    cond = new_node(new_token(OR, head));
+                    cond->left = branch->cond;
+                    cond->right = eq;
+                }
+                branch->cond = cond;
+                if (peek(0)->type != COMA)
+                    break;
+                next(); // SKIP ,
+            }
+            if (head->type == CASE && branch->cond == NULL)
+                add_error(head->s, head->e, "expected a value after 'case'", "like: case 1:");
+            expect(DOTS, format("expected ':' after %s", token_text(head)), ":");
+            enter_scope(branch);
+            while (inside(head->space))
+                append(branch->children, parse_expr(0));
+            exit_scope();
+            append(node->children, branch);
+        }
+        exit_scope();
+        return node;
+    }
+    case CASE:
+    case DEFAULT: {
+        add_error(
+            token->s,
+            token->e,
+            format("'%s' without a matching 'match'", token_text(token)),
+            NULL
+        );
+        while (peek(0)->line == token->line || inside(token->space))
+            next();
+        return new_node(token);
+    }
     case ELIF:
     case ELSE: {
         char *name = token->type == ELIF ? "elif" : "else";
@@ -1337,20 +1402,29 @@ Node *parse_prime() {
             args->children[0] = self;
         }
         return node;
-    }
-    case BRK:
-    case CNT: {
+    } // clang-format off
+    case BRK: case CNT: {  // clang-format on
         node = new_node(token);
-        node->loop = find_scope(LOOP);
-        if (node->loop == NULL) {
-            char *name = token->type == BRK ? "break" : "continue";
+        for (int i = ura.scopes_count - 1; i >= 0 && node->loop == NULL; i--) {
+            Type type = ura.scopes[i]->token->type;
+            bool is_target = type == LOOP || (type == MATCH && token->type == BRK);
+            if (is_target)
+                node->loop = ura.scopes[i];
+        }
+        if (node->loop == NULL && token->type == BRK)
             add_error(
                 token->s,
                 token->e,
-                format("%s outside a loop", name),
-                format("%s only works inside a while", name)
+                "break outside a loop or match",
+                "break only works inside a while or a match"
             );
-        }
+        else if (node->loop == NULL)
+            add_error(
+                token->s,
+                token->e,
+                "continue outside a loop",
+                "continue only works inside a while"
+            );
         return node;
     }
     default: {
@@ -1579,20 +1653,14 @@ char *type_name(Node *type) {
         if (shift == 1)
             return "bool";
         return format("%c%d", type->token->is_uint ? 'u' : 'i', shift);
-    }
-    case FLOAT:
-        return format("f%d", type->token->shift);
-    case ARRAY:
-        return format("%s[]", type_name(type->data_type));
-    case REF:
-        return format("&%s", type_name(type->data_type));
-    case VOID:
-        return "void";
-    case ID:
-        return type->token->name;
-    default:
-        return (char *)to_string(type->token->type);
-    }
+    } // clang-format off
+    case FLOAT: return format("f%d", type->token->shift);
+    case ARRAY: return format("%s[]", type_name(type->data_type));
+    case REF: return format("&%s", type_name(type->data_type));
+    case VOID: return "void";
+    case ID: return type->token->name;
+    default: return (char *)to_string(type->token->type);
+    } // clang-format on
 }
 
 Node *type_of(Node *node) {
@@ -1693,7 +1761,16 @@ void analyze(Node *node) {
         }
         break;
     } // clang-format off
-    case IF: case ELIF: case ELSE: case LOOP: { // clang-format on
+    case MATCH: {
+        enter_scope(node);
+        analyze(node->left->right);
+        check_match(node);
+        for (int i = 0; i < node->children_count; i++)
+            analyze(node->children[i]);
+        exit_scope();
+        break;
+    } // clang-format off
+    case IF: case ELIF: case ELSE: case LOOP: case CASE: case DEFAULT: { // clang-format on
         if (node->cond) {
             analyze(node->cond);
             check_cond(node->cond);
@@ -1785,10 +1862,10 @@ void analyze(Node *node) {
 
 // CODE GEN
 bool ends_with_jump(Node *block) {
-    if (block->children_count == 0)
-        return false;
-    Node *last = block->children[block->children_count - 1];
-    return includes(last->token->type, RETURN, BRK, CNT, 0);
+    for (int i = 0; i < block->children_count; i++)
+        if (includes(block->children[i]->token->type, RETURN, BRK, CNT, 0))
+            return true;
+    return false;
 }
 
 void codegen_drop(Ucg *place, Node *type) {
@@ -1814,7 +1891,8 @@ void codegen_drops(Node *last, Node *skip) {
         Node *scope = ura.scopes[i];
         for (int j = scope->children_count - 1; j >= 0; j--) {
             Node *child = scope->children[j];
-            if (child->token->type != DECLARE || child->var == skip)
+            bool is_declared = child->token->type == DECLARE && child->var->token->ucg;
+            if (!is_declared || child->var == skip)
                 continue;
             if (needs_drop(child->var->data_type))
                 codegen_drop(child->var->token->ucg, child->var->data_type);
@@ -1859,8 +1937,11 @@ void codegen_branch(Node *node, Ucg *stmt) {
     }
     ucg_then(stmt, cond);
     enter_scope(node);
-    for (int i = 0; i < node->children_count; i++)
+    for (int i = 0; i < node->children_count; i++) {
         codegen_statement(node->children[i]);
+        if (includes(node->children[i]->token->type, RETURN, BRK, CNT, 0))
+            break;
+    }
     if (!ends_with_jump(node))
         codegen_drops(node, NULL);
     exit_scope();
@@ -2091,6 +2172,8 @@ void codegen(Node *node) {
             if (includes(child->token->type, PROTO, STRUCT, 0))
                 continue;
             codegen_statement(child);
+            if (includes(child->token->type, RETURN, BRK, CNT, 0))
+                break;
         }
         if (!ends_with_jump(node))
             codegen_drops(node, NULL);
@@ -2171,8 +2254,30 @@ void codegen(Node *node) {
         ucg_end(loop);
         break;
     }
+    case MATCH: {
+        enter_scope(node);
+        codegen(node->children[0]);
+        codegen_statement(node->left);
+        Ucg *if_stmt = NULL;
+        for (int i = 1; i < node->children_count; i++) {
+            Node *branch = node->children[i];
+            Ucg *stmt = NULL;
+            if (if_stmt == NULL)
+                stmt = if_stmt = node->token->ucg = ucg_if();
+            else
+                stmt = branch->cond ? ucg_elif(if_stmt) : ucg_else(if_stmt);
+            codegen_branch(branch, stmt);
+        }
+        if (if_stmt)
+            ucg_end(if_stmt);
+        codegen_drops(node, NULL);
+        exit_scope();
+        break;
+    }
     case BRK: {
-        codegen_drops(node->loop, NULL);
+        bool is_match = node->loop->token->type == MATCH;
+        Node *subject = is_match ? node->loop->children[0]->var : NULL;
+        codegen_drops(node->loop, subject);
         ucg_brk(node->loop->token->ucg);
         break;
     } // clang-format off
