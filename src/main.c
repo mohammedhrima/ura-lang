@@ -24,7 +24,7 @@ typedef struct uraError uraError;
 #    define ASM 1
 #endif
 
-#include "./ir.c"
+#include "./ucg.c"
 
 #define URA_VERSION "0.1.0"
 

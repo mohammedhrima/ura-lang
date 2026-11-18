@@ -66,7 +66,7 @@ What Ura depends on, measured on the reference machine, plus what changes on eve
 + libLLVM: /usr/lib/x86_64-linux-gnu/libLLVM-12.so.1 (SONAME libLLVM-12.so.1). /usr/lib/llvm-12/lib links to it.
 + LLVM-C headers: Analysis, BitWriter, Core, DebugInfo, Target, TargetMachine.
     - Transforms has the legacy headers: AggressiveInstCombine, Coroutines, InstCombine, IPO, PassManagerBuilder, Scalar, Utils, Vectorize.
-    - There is no Transforms/PassBuilder.h. That is why ir.h uses the legacy pass manager below LLVM 13.
+    - There is no Transforms/PassBuilder.h. That is why ucg.c uses the legacy pass manager below LLVM 13.
 + Sanitizer runtimes (/usr/lib/llvm-12/lib/clang/12.0.1/lib/linux): asan (static and shared), lsan (static), ubsan_standalone (static and shared), all for x86_64.
 
 ### Tools
@@ -178,10 +178,10 @@ Only the changes that touch a compiler using the LLVM C API, like Ura, are liste
 + Always use the explicit-type builders: LLVMBuildLoad2, LLVMBuildGEP2, LLVMBuildInBoundsGEP2, LLVMBuildStructGEP2, LLVMBuildCall2. They exist in 12 and are the only ones left from 16.
 + Always use a context you created (LLVMContextCreate) and the InContext versions of every type, constant, block and builder function.
 + Never build constant expressions with LLVMConst operations (add, mul, casts, comparisons). Build the instruction: LLVM folds it into a constant when it can.
-+ Pass manager: the legacy one below 13, the new one from 13. From 17, only the new one exists. ir.h already switches on LLVM_VERSION_MAJOR.
++ Pass manager: the legacy one below 13, the new one from 13. From 17, only the new one exists. ucg.c already switches on LLVM_VERSION_MAJOR.
 + String constants: LLVMConstStringInContext below 19, LLVMConstStringInContext2 from 19.
 + Debug info, when Ura gets it: intrinsics below 19, debug records from 19.
-+ Put every version check in one file, src/ir.c, so the rest of the compiler never sees an LLVM version.
++ Put every version check in one file, src/ucg.c, so the rest of the compiler never sees an LLVM version.
 + Text IR is never comparable between versions (i32* or ptr, data layouts), so IR snapshot tests belong to one pinned version.
 
 ## 4. Where each platform gets LLVM
@@ -230,14 +230,14 @@ Only the changes that touch a compiler using the LLVM C API, like Ura, are liste
 + Calling conventions:
     - LLVM handles scalar arguments for every target;
     - passing or returning a struct by value to a C function needs ABI lowering in the compiler, per target. LLVM does not do it. Rust implements it for each target.
-+ Data layout: take it from the target machine, as ir.h already does. It differs per target and per LLVM version.
++ Data layout: take it from the target machine, as ucg.c already does. It differs per target and per LLVM version.
 + Linking:
     - today, clang is used as the linker driver, so clang must be installed wherever Ura runs;
     - Rust can ship its own linker (rust-lld) so that a system linker is not always needed.
 
 ## 6. The compiler itself on each OS
 
-+ POSIX calls the compiler uses (src/lib/header.h, src/ir.h, src/old/003.c):
++ POSIX calls the compiler uses (src/lib/header.h, src/ucg.c, src/old/003.c):
     - open_memstream, getcwd, mkdir, realpath, dirname;
     - fork, execvp and waitpid, to run clang;
     - unistd.h and libgen.h.
