@@ -91,6 +91,8 @@ struct Node {
     };
 
     expand(Node *, children);
+    expand(Ucg *, temporaries);
+    expand(Node *, temporary_drops);
 };
 
 struct uraError {
@@ -110,10 +112,6 @@ struct NodePrint {
 
 // Global Ura
 struct {
-    // int errors_count;
-    // File errors;
-    // char *errors_buff;
-    // int errors_len;
     expand(File *, files);
     File *file;
     int line;
@@ -125,8 +123,6 @@ struct {
     expand(Node *, scopes);
     Node *scope;
     Node *types;
-    expand(Ucg *, temporaries);
-    expand(Node *, temporary_drops);
 
     expand(uraError, errors);
 
@@ -2209,12 +2205,13 @@ void codegen_drops_until(Node *last, Node *skip) {
 }
 
 void codegen_drop_temporaries(void) {
-    for (int i = ura.temporaries_count - 1; i >= 0; i--) {
-        Ucg *self = ucg_ref(ura.temporaries[i]);
-        ucg_fn_call(ura.temporary_drops[i]->token->ucg, &self, 1);
+    Node *scope = ura.scope;
+    for (int i = scope->temporaries_count - 1; i >= 0; i--) {
+        Ucg *self = ucg_ref(scope->temporaries[i]);
+        ucg_fn_call(scope->temporary_drops[i]->token->ucg, &self, 1);
     }
-    ura.temporaries_count = 0;
-    ura.temporary_drops_count = 0;
+    scope->temporaries_count = 0;
+    scope->temporary_drops_count = 0;
 }
 
 void codegen_branch(Node *node, Ucg *stmt) {
@@ -2303,8 +2300,8 @@ Ucg *codegen_in_variable(Node *node) {
     ucg_assign(tmp, ucg);
     Node *drop = find_drop(type);
     if (drop) {
-        append(ura.temporaries, tmp);
-        append(ura.temporary_drops, drop);
+        append(ura.scope->temporaries, tmp);
+        append(ura.scope->temporary_drops, drop);
     }
     return tmp;
 }
