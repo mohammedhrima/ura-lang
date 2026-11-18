@@ -7047,10 +7047,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:5:7 'Array<i32>' has no method 'append'
+error: test.ura:5:7 'Array<i32>' has no method 'append' that takes (i8[])
   |
 5 |     a.append("text")
   |       ^^^^^^
+help: 'append' takes (i32)
 error: aborting due to 1 error
 ```
 
@@ -7059,7 +7060,6 @@ error: aborting due to 1 error
 ```
 1
 ```
-
 
 ---
 

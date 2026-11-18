@@ -536,12 +536,30 @@ void check_member(Node *node) {
             st, call->token->name, call->children, call->children_count, false
         );
         if (call->to_call == NULL) {
-            add_error(
-                call->token->s,
-                call->token->e,
-                format("'%s' has no method '%s'", st->token->name, call->token->name),
-                NULL
-            );
+            Node *named = NULL;
+            for (int i = 0; i < st->children_count && named == NULL; i++) {
+                Node *child = st->children[i];
+                bool is_method = child->token->type == FN_DEC && !child->token->is_pub;
+                if (is_method && strcmp2(child->token->name, call->token->name))
+                    named = child;
+            }
+            char *message = format("'%s' has no method '%s'", st->token->name, call->token->name);
+            char *help = NULL;
+            if (named) {
+                char *given = "";
+                for (int i = 0; i < call->children_count; i++) {
+                    Node *type = type_of(call->children[i]);
+                    given = format("%s%s%s", given, i ? ", " : "", type ? type_name(type) : "?");
+                }
+                char *takes = "";
+                for (int i = 1; i < named->args->children_count; i++) {
+                    Node *type = named->args->children[i]->data_type;
+                    takes = format("%s%s%s", takes, i > 1 ? ", " : "", type ? type_name(type) : "?");
+                }
+                message = format("%s that takes (%s)", message, given);
+                help = format("'%s' takes (%s)", call->token->name, takes);
+            }
+            add_error(call->token->s, call->token->e, message, help);
             return;
         }
         check_args(call->to_call, call->children, call->children_count, 1);
