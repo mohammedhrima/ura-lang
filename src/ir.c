@@ -96,7 +96,9 @@ enum Type {
 
     ASSIGN,
     ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,
+    BAND_ASSIGN, BOR_ASSIGN, BXOR_ASSIGN, LSHIFT_ASSIGN, RSHIFT_ASSIGN,
     ADD, SUB, MUL, DIV, MOD,
+    BAND, BOR, BXOR, LSHIFT, RSHIFT,
 
     GT, LT, GE, LE, EQ, NQ,
 
@@ -743,6 +745,8 @@ void llvm_op(Ucg *ir) {
         [ADD] = LLVMAdd,  [SUB] = LLVMSub,  [MUL] = LLVMMul,
         [DIV] = LLVMSDiv, [MOD] = LLVMSRem,
         [AND] = LLVMAnd,  [OR] = LLVMOr,
+        [BAND] = LLVMAnd, [BOR] = LLVMOr,   [BXOR] = LLVMXor,
+        [LSHIFT] = LLVMShl, [RSHIFT] = LLVMAShr,
     };
     LLVMIntPredicate predicates[LAST + 1] = {
         [GT] = LLVMIntSGT, [LT] = LLVMIntSLT, [GE] = LLVMIntSGE,
@@ -760,6 +764,7 @@ void llvm_op(Ucg *ir) {
     if (ir->is_uint) {
         opcodes[DIV] = LLVMUDiv;
         opcodes[MOD] = LLVMURem;
+        opcodes[RSHIFT] = LLVMLShr;
         predicates[GT] = LLVMIntUGT;
         predicates[LT] = LLVMIntULT;
         predicates[GE] = LLVMIntUGE;
@@ -1478,6 +1483,8 @@ Ucg *ucg_op(Type type, Ucg *left, Ucg *right) {
     Type ops[LAST + 1] = {
         [ADD_ASSIGN] = ADD, [SUB_ASSIGN] = SUB, [MUL_ASSIGN] = MUL,
         [DIV_ASSIGN] = DIV, [MOD_ASSIGN] = MOD,
+        [BAND_ASSIGN] = BAND, [BOR_ASSIGN] = BOR, [BXOR_ASSIGN] = BXOR,
+        [LSHIFT_ASSIGN] = LSHIFT, [RSHIFT_ASSIGN] = RSHIFT,
     };
 
     if (type != ASSIGN && !ops[type])
@@ -1829,8 +1836,11 @@ void ucg_compile() {
         } // clang-format off
         case ASSIGN: 
 		case ADD: case SUB: case MUL: case DIV: case MOD: // math
-		case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: // composite 
-		case DIV_ASSIGN: case MOD_ASSIGN: 
+		case BAND: case BOR: case BXOR: case LSHIFT: case RSHIFT: // bitwise
+		case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: // composite
+		case DIV_ASSIGN: case MOD_ASSIGN:
+		case BAND_ASSIGN: case BOR_ASSIGN: case BXOR_ASSIGN:
+		case LSHIFT_ASSIGN: case RSHIFT_ASSIGN:
 		case LT: case GT: case EQ: case LE: case GE: case NQ: // comparision
 		case AND: case OR: { // logic
             // clang-format on
@@ -2927,9 +2937,14 @@ const char *to_string(Type type) {
 		[ADD_ASSIGN] = "ADD_ASSIGN", [SUB_ASSIGN] = "SUB_ASSIGN",
 		[MUL_ASSIGN] = "MUL_ASSIGN", [DIV_ASSIGN] = "DIV_ASSIGN",
 		[MOD_ASSIGN] = "MOD_ASSIGN",
+		[BAND_ASSIGN] = "BAND_ASSIGN", [BOR_ASSIGN] = "BOR_ASSIGN",
+		[BXOR_ASSIGN] = "BXOR_ASSIGN", [LSHIFT_ASSIGN] = "LSHIFT_ASSIGN",
+		[RSHIFT_ASSIGN] = "RSHIFT_ASSIGN",
 
 		[ADD] = "ADD", [SUB] = "SUB", [MUL] = "MUL",
 		[DIV] = "DIV", [MOD] = "MOD",
+		[BAND] = "BAND", [BOR] = "BOR", [BXOR] = "BXOR",
+		[LSHIFT] = "LSHIFT", [RSHIFT] = "RSHIFT",
 
 		[GT] = "GT", [LT] = "LT", [GE] = "GE",
 		[LE] = "LE", [EQ] = "EQ", [NQ] = "NQ",

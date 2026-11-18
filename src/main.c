@@ -191,6 +191,9 @@ struct {
 
     { "+=", ADD_ASSIGN }, { "-=", SUB_ASSIGN }, { "*=", MUL_ASSIGN },
     { "/=", DIV_ASSIGN }, { "%=", MOD_ASSIGN },
+    { "<<=", LSHIFT_ASSIGN }, { ">>=", RSHIFT_ASSIGN }, { "&=", BAND_ASSIGN },
+    { "|=", BOR_ASSIGN }, { "^=", BXOR_ASSIGN },
+    { "<<", LSHIFT },     { ">>", RSHIFT },
 
     { "...", VARIADIC },  { ".", DOT },
 
@@ -202,7 +205,8 @@ struct {
     { "!", NOT },
 
     { "=", ASSIGN },      { ",", COMA },        { "&&", AND },
-    { "||", OR },         { "&", REF },         { NULL, NONE },
+    { "||", OR },         { "&", REF },         { "|", BOR },
+    { "^", BXOR },        { NULL, NONE },
 };
 
 char *binary_ops[END + 1] = {
@@ -211,6 +215,12 @@ char *binary_ops[END + 1] = {
 
     [ADD_ASSIGN] = "+", [SUB_ASSIGN] = "-", [MUL_ASSIGN] = "*",
     [DIV_ASSIGN] = "/", [MOD_ASSIGN] = "%",
+
+    [BAND] = "&",       [BOR] = "|",        [BXOR] = "^",
+    [LSHIFT] = "<<",    [RSHIFT] = ">>",
+
+    [BAND_ASSIGN] = "&", [BOR_ASSIGN] = "|", [BXOR_ASSIGN] = "^",
+    [LSHIFT_ASSIGN] = "<<", [RSHIFT_ASSIGN] = ">>",
 
     [EQ] = "==",        [NQ] = "!=",        [LT] = "<",
     [GT] = ">",         [LE] = "<=",        [GE] = ">=",
@@ -221,11 +231,16 @@ char *binary_ops[END + 1] = {
 int precedence[END + 1] = {
     [ASSIGN] = 1,     [ADD_ASSIGN] = 1,   [SUB_ASSIGN] = 1,
     [MUL_ASSIGN] = 1, [DIV_ASSIGN] = 1,   [MOD_ASSIGN] = 1,
+    [BAND_ASSIGN] = 1, [BOR_ASSIGN] = 1,  [BXOR_ASSIGN] = 1,
+    [LSHIFT_ASSIGN] = 1, [RSHIFT_ASSIGN] = 1,
 
     [OR] = 11,        [AND] = 12,
 
     [EQ] = 21,        [NQ] = 21,          [GT] = 22,
     [LT] = 22,        [GE] = 22,          [LE] = 22,
+
+    [BOR] = 23,       [BXOR] = 24,        [BAND] = 25,
+    [LSHIFT] = 28,    [RSHIFT] = 28,
 
     [ADD] = 30,       [SUB] = 30,         [MUL] = 31,
     [DIV] = 31,       [MOD] = 31,
@@ -742,6 +757,12 @@ Node *parse_types(Token *token) {
             break;
         next(); // SKIP ,
     }
+    Token *close = peek(0);
+    if (close->type == RSHIFT) {
+        close->type = GT;
+        close->s++;
+        return types;
+    }
     expect(GT, format("expected '>' after the types of '%s'", token->name), ">");
     return types;
 }
@@ -787,7 +808,12 @@ char *init_from_template(Node *template, Node *types) {
 Node *parse_type(void) {
     Token *token = peek(0);
     Token *prev = ura.tokens[ura.exe_pos - 1];
-    if (token->type == REF && token->line == prev->line) {
+    bool is_ref = token->type == REF && token->line == prev->line;
+    Token *after = is_ref ? peek(1) : token;
+    bool is_value_after = after->type == ID ?
+                          find_variable(after->name) != NULL :
+                          !after->is_type;
+    if (is_ref && !is_value_after) {
         next(); // SKIP &
         Node *ref = new_node(token);
         ref->token->is_type = true;
@@ -1310,6 +1336,10 @@ Node *parse_prime() {
 Node *parse_expr(int min_op) {
     Node *left = parse_prime();
     while (true) {
+        Token *prev = ura.tokens[ura.exe_pos - 1];
+        bool is_band = peek(0)->type == REF && peek(0)->line == prev->line;
+        if (is_band)
+            peek(0)->type = BAND;
         int e = peek(0)->type;
         if (e == LAST)
             break;
@@ -1687,8 +1717,11 @@ void analyze(Node *node) {
     }
     case ASSIGN: // clang-format off
 	case ADD: case SUB: case MUL: case DIV: case MOD: // math
-	case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: // composite 
-	case DIV_ASSIGN: case MOD_ASSIGN: 
+	case BAND: case BOR: case BXOR: case LSHIFT: case RSHIFT: // bitwise
+	case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: // composite
+	case DIV_ASSIGN: case MOD_ASSIGN:
+	case BAND_ASSIGN: case BOR_ASSIGN: case BXOR_ASSIGN:
+	case LSHIFT_ASSIGN: case RSHIFT_ASSIGN:
 	case LT: case GT: case EQ: case LE: case GE: case NQ: // comparision
 	case AND: case OR: { // clang-format on
         analyze(node->left);
@@ -2178,8 +2211,11 @@ void codegen(Node *node) {
     }
     case ASSIGN: // clang-format off
 	case ADD: case SUB: case MUL: case DIV: case MOD: // math
-	case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: // composite 
-	case DIV_ASSIGN: case MOD_ASSIGN: 
+	case BAND: case BOR: case BXOR: case LSHIFT: case RSHIFT: // bitwise
+	case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: // composite
+	case DIV_ASSIGN: case MOD_ASSIGN:
+	case BAND_ASSIGN: case BOR_ASSIGN: case BXOR_ASSIGN:
+	case LSHIFT_ASSIGN: case RSHIFT_ASSIGN:
 	case LT: case GT: case EQ: case LE: case GE: case NQ: // comparision
 	case AND: case OR: { // clang-format on
         if (is_ref_binding(node)) {

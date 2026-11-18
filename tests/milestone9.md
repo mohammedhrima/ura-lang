@@ -2921,6 +2921,241 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Flags = type { i32 }
+%Vec2 = type { i32, i32 }
+
+define %Flags @Flags.create(i32 %0) {
+entry:
+  %n = alloca i32, align 4
+  %f = alloca %Flags, align 8
+  store i32 %0, i32* %n, align 4
+  store %Flags zeroinitializer, %Flags* %f, align 4
+  %f.bits = getelementptr inbounds %Flags, %Flags* %f, i32 0, i32 0
+  %"$n" = load i32, i32* %n, align 4
+  store i32 %"$n", i32* %f.bits, align 4
+  %"$f" = load %Flags, %Flags* %f, align 4
+  ret %Flags %"$f"
+}
+
+define %Flags @"Flags.&"(%Flags* %0, %Flags %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  %other = alloca %Flags, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  store %Flags %1, %Flags* %other, align 4
+  %"*self" = load %Flags*, %Flags** %self, align 8
+  %"*self.bits" = getelementptr inbounds %Flags, %Flags* %"*self", i32 0, i32 0
+  %other.bits = getelementptr inbounds %Flags, %Flags* %other, i32 0, i32 0
+  %"$*self.bits" = load i32, i32* %"*self.bits", align 4
+  %"$other.bits" = load i32, i32* %other.bits, align 4
+  %BAND = and i32 %"$*self.bits", %"$other.bits"
+  %call.Flags.create = call %Flags @Flags.create(i32 %BAND)
+  ret %Flags %call.Flags.create
+}
+
+define %Flags @"Flags.|"(%Flags* %0, %Flags %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  %other = alloca %Flags, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  store %Flags %1, %Flags* %other, align 4
+  %"*self" = load %Flags*, %Flags** %self, align 8
+  %"*self.bits" = getelementptr inbounds %Flags, %Flags* %"*self", i32 0, i32 0
+  %other.bits = getelementptr inbounds %Flags, %Flags* %other, i32 0, i32 0
+  %"$*self.bits" = load i32, i32* %"*self.bits", align 4
+  %"$other.bits" = load i32, i32* %other.bits, align 4
+  %BOR = or i32 %"$*self.bits", %"$other.bits"
+  %call.Flags.create = call %Flags @Flags.create(i32 %BOR)
+  ret %Flags %call.Flags.create
+}
+
+define %Flags @"Flags.^"(%Flags* %0, %Flags %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  %other = alloca %Flags, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  store %Flags %1, %Flags* %other, align 4
+  %"*self" = load %Flags*, %Flags** %self, align 8
+  %"*self.bits" = getelementptr inbounds %Flags, %Flags* %"*self", i32 0, i32 0
+  %other.bits = getelementptr inbounds %Flags, %Flags* %other, i32 0, i32 0
+  %"$*self.bits" = load i32, i32* %"*self.bits", align 4
+  %"$other.bits" = load i32, i32* %other.bits, align 4
+  %BXOR = xor i32 %"$*self.bits", %"$other.bits"
+  %call.Flags.create = call %Flags @Flags.create(i32 %BXOR)
+  ret %Flags %call.Flags.create
+}
+
+define %Flags @"Flags.<<"(%Flags* %0, i32 %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  %n = alloca i32, align 4
+  store %Flags* %0, %Flags** %self, align 8
+  store i32 %1, i32* %n, align 4
+  %"*self" = load %Flags*, %Flags** %self, align 8
+  %"*self.bits" = getelementptr inbounds %Flags, %Flags* %"*self", i32 0, i32 0
+  %"$*self.bits" = load i32, i32* %"*self.bits", align 4
+  %"$n" = load i32, i32* %n, align 4
+  %LSHIFT = shl i32 %"$*self.bits", %"$n"
+  %call.Flags.create = call %Flags @Flags.create(i32 %LSHIFT)
+  ret %Flags %call.Flags.create
+}
+
+define %Flags @"Flags.>>"(%Flags* %0, i32 %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  %n = alloca i32, align 4
+  store %Flags* %0, %Flags** %self, align 8
+  store i32 %1, i32* %n, align 4
+  %"*self" = load %Flags*, %Flags** %self, align 8
+  %"*self.bits" = getelementptr inbounds %Flags, %Flags* %"*self", i32 0, i32 0
+  %"$*self.bits" = load i32, i32* %"*self.bits", align 4
+  %"$n" = load i32, i32* %n, align 4
+  %RSHIFT = ashr i32 %"$*self.bits", %"$n"
+  %call.Flags.create = call %Flags @Flags.create(i32 %RSHIFT)
+  ret %Flags %call.Flags.create
+}
+
+define %Vec2 @Vec2.create(i32 %0, i32 %1) {
+entry:
+  %a = alloca i32, align 4
+  %b = alloca i32, align 4
+  %v = alloca %Vec2, align 8
+  store i32 %0, i32* %a, align 4
+  store i32 %1, i32* %b, align 4
+  store %Vec2 zeroinitializer, %Vec2* %v, align 4
+  %v.x = getelementptr inbounds %Vec2, %Vec2* %v, i32 0, i32 0
+  %"$a" = load i32, i32* %a, align 4
+  store i32 %"$a", i32* %v.x, align 4
+  %v.y = getelementptr inbounds %Vec2, %Vec2* %v, i32 0, i32 1
+  %"$b" = load i32, i32* %b, align 4
+  store i32 %"$b", i32* %v.y, align 4
+  %"$v" = load %Vec2, %Vec2* %v, align 4
+  ret %Vec2 %"$v"
+}
+
+define i32 @"Vec2.*"(%Vec2* %0, %Vec2 %1) {
+entry:
+  %self = alloca %Vec2*, align 8
+  %other = alloca %Vec2, align 8
+  store %Vec2* %0, %Vec2** %self, align 8
+  store %Vec2 %1, %Vec2* %other, align 4
+  %"*self" = load %Vec2*, %Vec2** %self, align 8
+  %"*self.x" = getelementptr inbounds %Vec2, %Vec2* %"*self", i32 0, i32 0
+  %other.x = getelementptr inbounds %Vec2, %Vec2* %other, i32 0, i32 0
+  %"$*self.x" = load i32, i32* %"*self.x", align 4
+  %"$other.x" = load i32, i32* %other.x, align 4
+  %MUL = mul i32 %"$*self.x", %"$other.x"
+  %"*self1" = load %Vec2*, %Vec2** %self, align 8
+  %"*self.y" = getelementptr inbounds %Vec2, %Vec2* %"*self1", i32 0, i32 1
+  %other.y = getelementptr inbounds %Vec2, %Vec2* %other, i32 0, i32 1
+  %"$*self.y" = load i32, i32* %"*self.y", align 4
+  %"$other.y" = load i32, i32* %other.y, align 4
+  %MUL2 = mul i32 %"$*self.y", %"$other.y"
+  %ADD = add i32 %MUL, %MUL2
+  ret i32 %ADD
+}
+
+define i32 @main() {
+entry:
+  %a = alloca %Flags, align 8
+  %b = alloca %Flags, align 8
+  %arr = alloca [5 x i8], align 1
+  %tmp = alloca %Flags, align 8
+  %arr2 = alloca [6 x i8], align 1
+  %tmp4 = alloca %Flags, align 8
+  %arr7 = alloca [14 x i8], align 1
+  %arr8 = alloca [7 x i8], align 1
+  %tmp10 = alloca %Flags, align 8
+  %arr12 = alloca [2 x i8], align 1
+  %arr14 = alloca [10 x i8], align 1
+  %arr16 = alloca [5 x i8], align 1
+  %tmp17 = alloca %Flags, align 8
+  %arr19 = alloca [7 x i8], align 1
+  %tmp20 = alloca %Flags, align 8
+  %arr22 = alloca [2 x i8], align 1
+  %arr25 = alloca [16 x i8], align 1
+  %p = alloca %Vec2, align 8
+  %q = alloca %Vec2, align 8
+  %arr28 = alloca [5 x i8], align 1
+  %arr29 = alloca [2 x i8], align 1
+  %arr30 = alloca [8 x i8], align 1
+  %call.Flags.create = call %Flags @Flags.create(i32 12)
+  store %Flags %call.Flags.create, %Flags* %a, align 4
+  %call.Flags.create1 = call %Flags @Flags.create(i32 10)
+  store %Flags %call.Flags.create1, %Flags* %b, align 4
+  store [5 x i8] c"and \00", [5 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [5 x i8], [5 x i8]* %arr, i32 0, i32 0
+  %"$b" = load %Flags, %Flags* %b, align 4
+  %"call.Flags.&" = call %Flags @"Flags.&"(%Flags* %a, %Flags %"$b")
+  store %Flags %"call.Flags.&", %Flags* %tmp, align 4
+  %tmp.bits = getelementptr inbounds %Flags, %Flags* %tmp, i32 0, i32 0
+  store [6 x i8] c"  or \00", [6 x i8]* %arr2, align 1
+  %1 = getelementptr inbounds [6 x i8], [6 x i8]* %arr2, i32 0, i32 0
+  %"$b3" = load %Flags, %Flags* %b, align 4
+  %"call.Flags.|" = call %Flags @"Flags.|"(%Flags* %a, %Flags %"$b3")
+  store %Flags %"call.Flags.|", %Flags* %tmp4, align 4
+  %tmp.bits5 = getelementptr inbounds %Flags, %Flags* %tmp4, i32 0, i32 0
+  %"$tmp.bits" = load i32, i32* %tmp.bits, align 4
+  %"$tmp.bits6" = load i32, i32* %tmp.bits5, align 4
+  store [14 x i8] c"and %d  or %d\00", [14 x i8]* %arr7, align 1
+  %2 = getelementptr inbounds [14 x i8], [14 x i8]* %arr7, i32 0, i32 0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %2, i32 %"$tmp.bits", i32 %"$tmp.bits6")
+  store [7 x i8] c"  xor \00", [7 x i8]* %arr8, align 1
+  %3 = getelementptr inbounds [7 x i8], [7 x i8]* %arr8, i32 0, i32 0
+  %"$b9" = load %Flags, %Flags* %b, align 4
+  %"call.Flags.^" = call %Flags @"Flags.^"(%Flags* %a, %Flags %"$b9")
+  store %Flags %"call.Flags.^", %Flags* %tmp10, align 4
+  %tmp.bits11 = getelementptr inbounds %Flags, %Flags* %tmp10, i32 0, i32 0
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr12, align 1
+  %4 = getelementptr inbounds [2 x i8], [2 x i8]* %arr12, i32 0, i32 0
+  %"$tmp.bits13" = load i32, i32* %tmp.bits11, align 4
+  store [10 x i8] c"  xor %d\0A\00", [10 x i8]* %arr14, align 1
+  %5 = getelementptr inbounds [10 x i8], [10 x i8]* %arr14, i32 0, i32 0
+  %call.dprintf15 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %5, i32 %"$tmp.bits13")
+  store [5 x i8] c"shl \00", [5 x i8]* %arr16, align 1
+  %6 = getelementptr inbounds [5 x i8], [5 x i8]* %arr16, i32 0, i32 0
+  %"call.Flags.<<" = call %Flags @"Flags.<<"(%Flags* %a, i32 2)
+  store %Flags %"call.Flags.<<", %Flags* %tmp17, align 4
+  %tmp.bits18 = getelementptr inbounds %Flags, %Flags* %tmp17, i32 0, i32 0
+  store [7 x i8] c"  shr \00", [7 x i8]* %arr19, align 1
+  %7 = getelementptr inbounds [7 x i8], [7 x i8]* %arr19, i32 0, i32 0
+  %"call.Flags.>>" = call %Flags @"Flags.>>"(%Flags* %a, i32 2)
+  store %Flags %"call.Flags.>>", %Flags* %tmp20, align 4
+  %tmp.bits21 = getelementptr inbounds %Flags, %Flags* %tmp20, i32 0, i32 0
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr22, align 1
+  %8 = getelementptr inbounds [2 x i8], [2 x i8]* %arr22, i32 0, i32 0
+  %"$tmp.bits23" = load i32, i32* %tmp.bits18, align 4
+  %"$tmp.bits24" = load i32, i32* %tmp.bits21, align 4
+  store [16 x i8] c"shl %d  shr %d\0A\00", [16 x i8]* %arr25, align 1
+  %9 = getelementptr inbounds [16 x i8], [16 x i8]* %arr25, i32 0, i32 0
+  %call.dprintf26 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %9, i32 %"$tmp.bits23", i32 %"$tmp.bits24")
+  %call.Vec2.create = call %Vec2 @Vec2.create(i32 2, i32 3)
+  store %Vec2 %call.Vec2.create, %Vec2* %p, align 4
+  %call.Vec2.create27 = call %Vec2 @Vec2.create(i32 4, i32 5)
+  store %Vec2 %call.Vec2.create27, %Vec2* %q, align 4
+  store [5 x i8] c"dot \00", [5 x i8]* %arr28, align 1
+  %10 = getelementptr inbounds [5 x i8], [5 x i8]* %arr28, i32 0, i32 0
+  %"$q" = load %Vec2, %Vec2* %q, align 4
+  %"call.Vec2.*" = call i32 @"Vec2.*"(%Vec2* %p, %Vec2 %"$q")
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr29, align 1
+  %11 = getelementptr inbounds [2 x i8], [2 x i8]* %arr29, i32 0, i32 0
+  store [8 x i8] c"dot %d\0A\00", [8 x i8]* %arr30, align 1
+  %12 = getelementptr inbounds [8 x i8], [8 x i8]* %arr30, i32 0, i32 0
+  %call.dprintf31 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %12, i32 %"call.Vec2.*")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 025 — operator: compound bitwise assignment overloads
@@ -2961,6 +3196,163 @@ fn main() i32:
     f >>= 1
     output(f.bits, "\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Flags = type { i32 }
+
+define void @"Flags.&="(%Flags* %0, i32 %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  %n = alloca i32, align 4
+  store %Flags* %0, %Flags** %self, align 8
+  store i32 %1, i32* %n, align 4
+  %"*self" = load %Flags*, %Flags** %self, align 8
+  %"*self.bits" = getelementptr inbounds %Flags, %Flags* %"*self", i32 0, i32 0
+  %"*self1" = load %Flags*, %Flags** %self, align 8
+  %"*self.bits2" = getelementptr inbounds %Flags, %Flags* %"*self1", i32 0, i32 0
+  %"$*self.bits" = load i32, i32* %"*self.bits2", align 4
+  %"$n" = load i32, i32* %n, align 4
+  %BAND = and i32 %"$*self.bits", %"$n"
+  store i32 %BAND, i32* %"*self.bits", align 4
+  ret void
+}
+
+define void @"Flags.|="(%Flags* %0, i32 %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  %n = alloca i32, align 4
+  store %Flags* %0, %Flags** %self, align 8
+  store i32 %1, i32* %n, align 4
+  %"*self" = load %Flags*, %Flags** %self, align 8
+  %"*self.bits" = getelementptr inbounds %Flags, %Flags* %"*self", i32 0, i32 0
+  %"*self1" = load %Flags*, %Flags** %self, align 8
+  %"*self.bits2" = getelementptr inbounds %Flags, %Flags* %"*self1", i32 0, i32 0
+  %"$*self.bits" = load i32, i32* %"*self.bits2", align 4
+  %"$n" = load i32, i32* %n, align 4
+  %BOR = or i32 %"$*self.bits", %"$n"
+  store i32 %BOR, i32* %"*self.bits", align 4
+  ret void
+}
+
+define void @"Flags.^="(%Flags* %0, i32 %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  %n = alloca i32, align 4
+  store %Flags* %0, %Flags** %self, align 8
+  store i32 %1, i32* %n, align 4
+  %"*self" = load %Flags*, %Flags** %self, align 8
+  %"*self.bits" = getelementptr inbounds %Flags, %Flags* %"*self", i32 0, i32 0
+  %"*self1" = load %Flags*, %Flags** %self, align 8
+  %"*self.bits2" = getelementptr inbounds %Flags, %Flags* %"*self1", i32 0, i32 0
+  %"$*self.bits" = load i32, i32* %"*self.bits2", align 4
+  %"$n" = load i32, i32* %n, align 4
+  %BXOR = xor i32 %"$*self.bits", %"$n"
+  store i32 %BXOR, i32* %"*self.bits", align 4
+  ret void
+}
+
+define void @"Flags.<<="(%Flags* %0, i32 %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  %n = alloca i32, align 4
+  store %Flags* %0, %Flags** %self, align 8
+  store i32 %1, i32* %n, align 4
+  %"*self" = load %Flags*, %Flags** %self, align 8
+  %"*self.bits" = getelementptr inbounds %Flags, %Flags* %"*self", i32 0, i32 0
+  %"*self1" = load %Flags*, %Flags** %self, align 8
+  %"*self.bits2" = getelementptr inbounds %Flags, %Flags* %"*self1", i32 0, i32 0
+  %"$*self.bits" = load i32, i32* %"*self.bits2", align 4
+  %"$n" = load i32, i32* %n, align 4
+  %LSHIFT = shl i32 %"$*self.bits", %"$n"
+  store i32 %LSHIFT, i32* %"*self.bits", align 4
+  ret void
+}
+
+define void @"Flags.>>="(%Flags* %0, i32 %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  %n = alloca i32, align 4
+  store %Flags* %0, %Flags** %self, align 8
+  store i32 %1, i32* %n, align 4
+  %"*self" = load %Flags*, %Flags** %self, align 8
+  %"*self.bits" = getelementptr inbounds %Flags, %Flags* %"*self", i32 0, i32 0
+  %"*self1" = load %Flags*, %Flags** %self, align 8
+  %"*self.bits2" = getelementptr inbounds %Flags, %Flags* %"*self1", i32 0, i32 0
+  %"$*self.bits" = load i32, i32* %"*self.bits2", align 4
+  %"$n" = load i32, i32* %n, align 4
+  %RSHIFT = ashr i32 %"$*self.bits", %"$n"
+  store i32 %RSHIFT, i32* %"*self.bits", align 4
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %f = alloca %Flags, align 8
+  %arr = alloca [2 x i8], align 1
+  %arr2 = alloca [4 x i8], align 1
+  %arr4 = alloca [2 x i8], align 1
+  %arr6 = alloca [4 x i8], align 1
+  %arr9 = alloca [2 x i8], align 1
+  %arr11 = alloca [4 x i8], align 1
+  %arr14 = alloca [2 x i8], align 1
+  %arr16 = alloca [4 x i8], align 1
+  %arr19 = alloca [2 x i8], align 1
+  %arr21 = alloca [4 x i8], align 1
+  store %Flags zeroinitializer, %Flags* %f, align 4
+  %f.bits = getelementptr inbounds %Flags, %Flags* %f, i32 0, i32 0
+  store i32 12, i32* %f.bits, align 4
+  call void @"Flags.&="(%Flags* %f, i32 10)
+  %f.bits1 = getelementptr inbounds %Flags, %Flags* %f, i32 0, i32 0
+  store [2 x i8] c" \00", [2 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [2 x i8], [2 x i8]* %arr, i32 0, i32 0
+  %"$f.bits" = load i32, i32* %f.bits1, align 4
+  store [4 x i8] c"%d \00", [4 x i8]* %arr2, align 1
+  %1 = getelementptr inbounds [4 x i8], [4 x i8]* %arr2, i32 0, i32 0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %1, i32 %"$f.bits")
+  call void @"Flags.|="(%Flags* %f, i32 3)
+  %f.bits3 = getelementptr inbounds %Flags, %Flags* %f, i32 0, i32 0
+  store [2 x i8] c" \00", [2 x i8]* %arr4, align 1
+  %2 = getelementptr inbounds [2 x i8], [2 x i8]* %arr4, i32 0, i32 0
+  %"$f.bits5" = load i32, i32* %f.bits3, align 4
+  store [4 x i8] c"%d \00", [4 x i8]* %arr6, align 1
+  %3 = getelementptr inbounds [4 x i8], [4 x i8]* %arr6, i32 0, i32 0
+  %call.dprintf7 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %3, i32 %"$f.bits5")
+  call void @"Flags.^="(%Flags* %f, i32 5)
+  %f.bits8 = getelementptr inbounds %Flags, %Flags* %f, i32 0, i32 0
+  store [2 x i8] c" \00", [2 x i8]* %arr9, align 1
+  %4 = getelementptr inbounds [2 x i8], [2 x i8]* %arr9, i32 0, i32 0
+  %"$f.bits10" = load i32, i32* %f.bits8, align 4
+  store [4 x i8] c"%d \00", [4 x i8]* %arr11, align 1
+  %5 = getelementptr inbounds [4 x i8], [4 x i8]* %arr11, i32 0, i32 0
+  %call.dprintf12 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %5, i32 %"$f.bits10")
+  call void @"Flags.<<="(%Flags* %f, i32 2)
+  %f.bits13 = getelementptr inbounds %Flags, %Flags* %f, i32 0, i32 0
+  store [2 x i8] c" \00", [2 x i8]* %arr14, align 1
+  %6 = getelementptr inbounds [2 x i8], [2 x i8]* %arr14, i32 0, i32 0
+  %"$f.bits15" = load i32, i32* %f.bits13, align 4
+  store [4 x i8] c"%d \00", [4 x i8]* %arr16, align 1
+  %7 = getelementptr inbounds [4 x i8], [4 x i8]* %arr16, i32 0, i32 0
+  %call.dprintf17 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %7, i32 %"$f.bits15")
+  call void @"Flags.>>="(%Flags* %f, i32 1)
+  %f.bits18 = getelementptr inbounds %Flags, %Flags* %f, i32 0, i32 0
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr19, align 1
+  %8 = getelementptr inbounds [2 x i8], [2 x i8]* %arr19, i32 0, i32 0
+  %"$f.bits20" = load i32, i32* %f.bits18, align 4
+  store [4 x i8] c"%d\0A\00", [4 x i8]* %arr21, align 1
+  %9 = getelementptr inbounds [4 x i8], [4 x i8]* %arr21, i32 0, i32 0
+  %call.dprintf22 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %9, i32 %"$f.bits20")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -3031,6 +3423,219 @@ fn main() i32:
     rsh Flags = a >> 1
     output("a >> 1: ", rsh.bits, "\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Flags = type { i32 }
+
+define void @"Flags.="(%Flags* %0, i32 %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  %n = alloca i32, align 4
+  store %Flags* %0, %Flags** %self, align 8
+  store i32 %1, i32* %n, align 4
+  %"*self" = load %Flags*, %Flags** %self, align 8
+  %"*self.bits" = getelementptr inbounds %Flags, %Flags* %"*self", i32 0, i32 0
+  %"$n" = load i32, i32* %n, align 4
+  store i32 %"$n", i32* %"*self.bits", align 4
+  ret void
+}
+
+define %Flags @"Flags.&"(%Flags* %0, %Flags* %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  %f = alloca %Flags*, align 8
+  %res = alloca %Flags, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  store %Flags* %1, %Flags** %f, align 8
+  store %Flags zeroinitializer, %Flags* %res, align 4
+  %res.bits = getelementptr inbounds %Flags, %Flags* %res, i32 0, i32 0
+  %"*self" = load %Flags*, %Flags** %self, align 8
+  %"*self.bits" = getelementptr inbounds %Flags, %Flags* %"*self", i32 0, i32 0
+  %"*f" = load %Flags*, %Flags** %f, align 8
+  %"*f.bits" = getelementptr inbounds %Flags, %Flags* %"*f", i32 0, i32 0
+  %"$*self.bits" = load i32, i32* %"*self.bits", align 4
+  %"$*f.bits" = load i32, i32* %"*f.bits", align 4
+  %BAND = and i32 %"$*self.bits", %"$*f.bits"
+  store i32 %BAND, i32* %res.bits, align 4
+  %"$res" = load %Flags, %Flags* %res, align 4
+  ret %Flags %"$res"
+}
+
+define %Flags @"Flags.|"(%Flags* %0, %Flags* %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  %f = alloca %Flags*, align 8
+  %res = alloca %Flags, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  store %Flags* %1, %Flags** %f, align 8
+  store %Flags zeroinitializer, %Flags* %res, align 4
+  %res.bits = getelementptr inbounds %Flags, %Flags* %res, i32 0, i32 0
+  %"*self" = load %Flags*, %Flags** %self, align 8
+  %"*self.bits" = getelementptr inbounds %Flags, %Flags* %"*self", i32 0, i32 0
+  %"*f" = load %Flags*, %Flags** %f, align 8
+  %"*f.bits" = getelementptr inbounds %Flags, %Flags* %"*f", i32 0, i32 0
+  %"$*self.bits" = load i32, i32* %"*self.bits", align 4
+  %"$*f.bits" = load i32, i32* %"*f.bits", align 4
+  %BOR = or i32 %"$*self.bits", %"$*f.bits"
+  store i32 %BOR, i32* %res.bits, align 4
+  %"$res" = load %Flags, %Flags* %res, align 4
+  ret %Flags %"$res"
+}
+
+define %Flags @"Flags.^"(%Flags* %0, %Flags* %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  %f = alloca %Flags*, align 8
+  %res = alloca %Flags, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  store %Flags* %1, %Flags** %f, align 8
+  store %Flags zeroinitializer, %Flags* %res, align 4
+  %res.bits = getelementptr inbounds %Flags, %Flags* %res, i32 0, i32 0
+  %"*self" = load %Flags*, %Flags** %self, align 8
+  %"*self.bits" = getelementptr inbounds %Flags, %Flags* %"*self", i32 0, i32 0
+  %"*f" = load %Flags*, %Flags** %f, align 8
+  %"*f.bits" = getelementptr inbounds %Flags, %Flags* %"*f", i32 0, i32 0
+  %"$*self.bits" = load i32, i32* %"*self.bits", align 4
+  %"$*f.bits" = load i32, i32* %"*f.bits", align 4
+  %BXOR = xor i32 %"$*self.bits", %"$*f.bits"
+  store i32 %BXOR, i32* %res.bits, align 4
+  %"$res" = load %Flags, %Flags* %res, align 4
+  ret %Flags %"$res"
+}
+
+define %Flags @"Flags.<<"(%Flags* %0, i32 %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  %n = alloca i32, align 4
+  %res = alloca %Flags, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  store i32 %1, i32* %n, align 4
+  store %Flags zeroinitializer, %Flags* %res, align 4
+  %res.bits = getelementptr inbounds %Flags, %Flags* %res, i32 0, i32 0
+  %"*self" = load %Flags*, %Flags** %self, align 8
+  %"*self.bits" = getelementptr inbounds %Flags, %Flags* %"*self", i32 0, i32 0
+  %"$*self.bits" = load i32, i32* %"*self.bits", align 4
+  %"$n" = load i32, i32* %n, align 4
+  %LSHIFT = shl i32 %"$*self.bits", %"$n"
+  store i32 %LSHIFT, i32* %res.bits, align 4
+  %"$res" = load %Flags, %Flags* %res, align 4
+  ret %Flags %"$res"
+}
+
+define %Flags @"Flags.>>"(%Flags* %0, i32 %1) {
+entry:
+  %self = alloca %Flags*, align 8
+  %n = alloca i32, align 4
+  %res = alloca %Flags, align 8
+  store %Flags* %0, %Flags** %self, align 8
+  store i32 %1, i32* %n, align 4
+  store %Flags zeroinitializer, %Flags* %res, align 4
+  %res.bits = getelementptr inbounds %Flags, %Flags* %res, i32 0, i32 0
+  %"*self" = load %Flags*, %Flags** %self, align 8
+  %"*self.bits" = getelementptr inbounds %Flags, %Flags* %"*self", i32 0, i32 0
+  %"$*self.bits" = load i32, i32* %"*self.bits", align 4
+  %"$n" = load i32, i32* %n, align 4
+  %RSHIFT = ashr i32 %"$*self.bits", %"$n"
+  store i32 %RSHIFT, i32* %res.bits, align 4
+  %"$res" = load %Flags, %Flags* %res, align 4
+  ret %Flags %"$res"
+}
+
+define i32 @main() {
+entry:
+  %a = alloca %Flags, align 8
+  %b = alloca %Flags, align 8
+  %band = alloca %Flags, align 8
+  %arr = alloca [9 x i8], align 1
+  %arr1 = alloca [2 x i8], align 1
+  %arr2 = alloca [12 x i8], align 1
+  %bor = alloca %Flags, align 8
+  %arr3 = alloca [9 x i8], align 1
+  %arr4 = alloca [2 x i8], align 1
+  %arr5 = alloca [12 x i8], align 1
+  %bxor = alloca %Flags, align 8
+  %arr7 = alloca [9 x i8], align 1
+  %arr8 = alloca [2 x i8], align 1
+  %arr9 = alloca [12 x i8], align 1
+  %lsh = alloca %Flags, align 8
+  %arr11 = alloca [9 x i8], align 1
+  %arr12 = alloca [2 x i8], align 1
+  %arr13 = alloca [12 x i8], align 1
+  %rsh = alloca %Flags, align 8
+  %arr15 = alloca [9 x i8], align 1
+  %arr16 = alloca [2 x i8], align 1
+  %arr17 = alloca [12 x i8], align 1
+  store %Flags zeroinitializer, %Flags* %a, align 4
+  call void @"Flags.="(%Flags* %a, i32 12)
+  store %Flags zeroinitializer, %Flags* %b, align 4
+  call void @"Flags.="(%Flags* %b, i32 10)
+  %"call.Flags.&" = call %Flags @"Flags.&"(%Flags* %a, %Flags* %b)
+  store %Flags %"call.Flags.&", %Flags* %band, align 4
+  store [9 x i8] c"a & b:  \00", [9 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [9 x i8], [9 x i8]* %arr, i32 0, i32 0
+  %band.bits = getelementptr inbounds %Flags, %Flags* %band, i32 0, i32 0
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr1, align 1
+  %1 = getelementptr inbounds [2 x i8], [2 x i8]* %arr1, i32 0, i32 0
+  %"$band.bits" = load i32, i32* %band.bits, align 4
+  store [12 x i8] c"a & b:  %d\0A\00", [12 x i8]* %arr2, align 1
+  %2 = getelementptr inbounds [12 x i8], [12 x i8]* %arr2, i32 0, i32 0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %2, i32 %"$band.bits")
+  %"call.Flags.|" = call %Flags @"Flags.|"(%Flags* %a, %Flags* %b)
+  store %Flags %"call.Flags.|", %Flags* %bor, align 4
+  store [9 x i8] c"a | b:  \00", [9 x i8]* %arr3, align 1
+  %3 = getelementptr inbounds [9 x i8], [9 x i8]* %arr3, i32 0, i32 0
+  %bor.bits = getelementptr inbounds %Flags, %Flags* %bor, i32 0, i32 0
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr4, align 1
+  %4 = getelementptr inbounds [2 x i8], [2 x i8]* %arr4, i32 0, i32 0
+  %"$bor.bits" = load i32, i32* %bor.bits, align 4
+  store [12 x i8] c"a | b:  %d\0A\00", [12 x i8]* %arr5, align 1
+  %5 = getelementptr inbounds [12 x i8], [12 x i8]* %arr5, i32 0, i32 0
+  %call.dprintf6 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %5, i32 %"$bor.bits")
+  %"call.Flags.^" = call %Flags @"Flags.^"(%Flags* %a, %Flags* %b)
+  store %Flags %"call.Flags.^", %Flags* %bxor, align 4
+  store [9 x i8] c"a ^ b:  \00", [9 x i8]* %arr7, align 1
+  %6 = getelementptr inbounds [9 x i8], [9 x i8]* %arr7, i32 0, i32 0
+  %bxor.bits = getelementptr inbounds %Flags, %Flags* %bxor, i32 0, i32 0
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr8, align 1
+  %7 = getelementptr inbounds [2 x i8], [2 x i8]* %arr8, i32 0, i32 0
+  %"$bxor.bits" = load i32, i32* %bxor.bits, align 4
+  store [12 x i8] c"a ^ b:  %d\0A\00", [12 x i8]* %arr9, align 1
+  %8 = getelementptr inbounds [12 x i8], [12 x i8]* %arr9, i32 0, i32 0
+  %call.dprintf10 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %8, i32 %"$bxor.bits")
+  %"call.Flags.<<" = call %Flags @"Flags.<<"(%Flags* %a, i32 2)
+  store %Flags %"call.Flags.<<", %Flags* %lsh, align 4
+  store [9 x i8] c"a << 2: \00", [9 x i8]* %arr11, align 1
+  %9 = getelementptr inbounds [9 x i8], [9 x i8]* %arr11, i32 0, i32 0
+  %lsh.bits = getelementptr inbounds %Flags, %Flags* %lsh, i32 0, i32 0
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr12, align 1
+  %10 = getelementptr inbounds [2 x i8], [2 x i8]* %arr12, i32 0, i32 0
+  %"$lsh.bits" = load i32, i32* %lsh.bits, align 4
+  store [12 x i8] c"a << 2: %d\0A\00", [12 x i8]* %arr13, align 1
+  %11 = getelementptr inbounds [12 x i8], [12 x i8]* %arr13, i32 0, i32 0
+  %call.dprintf14 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %11, i32 %"$lsh.bits")
+  %"call.Flags.>>" = call %Flags @"Flags.>>"(%Flags* %a, i32 1)
+  store %Flags %"call.Flags.>>", %Flags* %rsh, align 4
+  store [9 x i8] c"a >> 1: \00", [9 x i8]* %arr15, align 1
+  %12 = getelementptr inbounds [9 x i8], [9 x i8]* %arr15, i32 0, i32 0
+  %rsh.bits = getelementptr inbounds %Flags, %Flags* %rsh, i32 0, i32 0
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr16, align 1
+  %13 = getelementptr inbounds [2 x i8], [2 x i8]* %arr16, i32 0, i32 0
+  %"$rsh.bits" = load i32, i32* %rsh.bits, align 4
+  store [12 x i8] c"a >> 1: %d\0A\00", [12 x i8]* %arr17, align 1
+  %14 = getelementptr inbounds [12 x i8], [12 x i8]* %arr17, i32 0, i32 0
+  %call.dprintf18 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %14, i32 %"$rsh.bits")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
