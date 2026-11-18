@@ -169,6 +169,7 @@ bool is_open(NodePrint *elems, size_t i, int level);
 bool is_ref_binding(Node *node);
 bool is_ref_variable(Node *node);
 bool same_type(Node *a, Node *b);
+char *find_module(char *name);
 char *instantiate(Node *template, Node *types);
 char *parse_escaped(char *input, int s, int e);
 char *token_text(Token *token);
@@ -200,5 +201,7 @@ void enter_scope(Node *node);
 void exit_scope();
 void expect(Type type, char *msg, char *fix);
 void parse_args(int ac, char **av);
-void tokenize(File *file, int space2);
+void parse_module(File *module);
+void parse_tokens(Node *scope, int start);
+void tokenize(int start, int space2);
 #endif

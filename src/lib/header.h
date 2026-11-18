@@ -243,6 +243,7 @@ struct File {
     // char *dir;
     char *buff;
     int len;
+    int start;
     bool opened;
 };
 

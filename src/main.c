@@ -157,6 +157,7 @@ struct {
     { "not", { .type = NOT } },
     { "proto", { .type = PROTO } },
     { "link", { .type = LINK } },
+    { "use", { .type = USE } },
     { "operator", { .type = OPERATOR } },
     { "pub", { .type = PUB } },
     { "fn", { .type = FN_DEC } },
@@ -330,15 +331,11 @@ Token *parse_char(int s, int e, int space) {
     return new;
 }
 
-void tokenize(File *file, int space2) {
-    open_file(file);
-    ura.file = file;
-    arena_reserve(file->len * 192);
-
-    int s = 0;
-    int e = 0;
+void tokenize(int start, int space2) {
+    int s = start;
+    int e = start;
     int space = space2;
-    char *buff = file->buff;
+    char *buff = ura.file->buff;
     while (buff[e] != '\0') {
         s = e;
         if (isspace(buff[e])) {
@@ -585,6 +582,67 @@ Node *find_template_type(char *name) {
     return NULL;
 }
 
+void parse_tokens(Node *scope, int start) {
+    int exe_pos = ura.exe_pos;
+    ura.exe_pos = start;
+    while (peek(0)->type != LAST)
+        append(scope->children, parse_expr(0));
+    ura.exe_pos = exe_pos;
+}
+
+char *find_module(char *name) {
+    if (!strncmp2(name, "@/", 2)) {
+        char *path = format("%s/%s.ura", dirname2(ura.files[0]->path), name);
+        return access(path, R_OK) == 0 ? path : NULL;
+    }
+    char *package = strdup2(name + 2);
+    char *version = strchr(package, '@');
+    if (version)
+        *version++ = '\0';
+    char *dirs[] = { getenv("URA_LIB"), format("%s/.ura/lib", getenv("HOME")) };
+    for (int i = 0; i < 2; i++) {
+        if (dirs[i] == NULL)
+            continue;
+        char *paths[] = {
+            format(
+                "%s/%s/%s/%s.ura", dirs[i], package, version ? version : "current", package
+            ),
+            version ? NULL : format("%s/%s.ura", dirs[i], package),
+        };
+        for (int j = 0; j < 2; j++) {
+            if (paths[j] == NULL || access(paths[j], R_OK) != 0)
+                continue;
+            return paths[j];
+        }
+    }
+    return NULL;
+}
+
+void parse_module(File *module) {
+    open_file(module);
+    for (int i = 0; i < ura.files_count; i++) {
+        if (strcmp2(ura.files[i]->path, module->path))
+            return;
+    }
+    File *file = ura.file;
+    module->start = file->len + 2;
+    char *buff = arena_alloc(module->start + module->len + 1, sizeof(char));
+    memcpy(buff, file->buff, file->len);
+    buff[file->len + 1] = '\n';
+    memcpy(buff + module->start, module->buff, module->len);
+    file->buff = buff;
+    file->len = module->start + module->len;
+    append(ura.files, module);
+
+    int line = ura.line;
+    int start = ura.tokens_count;
+    ura.line = 1;
+    tokenize(module->start, 0);
+    new_token(LAST, NULL);
+    ura.line = line;
+    parse_tokens(ura.scope, start);
+}
+
 Node *parse_types(Token *token) {
     Node *types = new_node(new_token(TYPES, token));
     types->token->name = token->name;
@@ -633,31 +691,19 @@ char *instantiate(Node *template, Node *types) {
     if (find_struct(name) || find_function(name))
         return name;
 
-    Token **tokens = ura.tokens;
-    size_t tokens_count = ura.tokens_count;
-    size_t tokens_size = ura.tokens_size;
-    int exe_pos = ura.exe_pos;
-    Node *outer = ura.types;
-
-    zero_init(ura.tokens);
+    int start = ura.tokens_count;
     Token *body = template->token;
     for (int i = body->body.start; i < body->body.end; i++) {
-        Token *copy = new_token(tokens[i]->type, NULL);
-        *copy = *tokens[i];
+        Token *copy = new_token(ura.tokens[i]->type, NULL);
+        *copy = *ura.tokens[i];
         if (copy->type == ID && strcmp2(copy->name, token->name))
             copy->name = name;
     }
     new_token(LAST, NULL);
+    Node *outer = ura.types;
     types->declared = template;
     ura.types = types;
-    ura.exe_pos = 0;
-    while (peek(0)->type != LAST)
-        append(template->scope->children, parse_expr(0));
-
-    ura.tokens = tokens;
-    ura.tokens_count = tokens_count;
-    ura.tokens_size = tokens_size;
-    ura.exe_pos = exe_pos;
+    parse_tokens(template->scope, start);
     ura.types = outer;
     return name;
 }
@@ -966,6 +1012,27 @@ Node *parse_prime() {
         expect(RCBRACK, "expected '}' to close the struct value", "}");
         return node;
     }
+    case USE: {
+        node = new_node(token);
+        if (peek(0)->type != CHARS) {
+            expect(CHARS, "expected a module name after 'use'", " \"@/name\"");
+            return node;
+        }
+        Token *name = next();
+        char *module = name->chars.value;
+        char *path = find_module(module);
+        if (path == NULL)
+            add_error(
+                name->s,
+                name->e,
+                format("module '%s' not found", module),
+                strncmp2(module, "@/", 2) ? format("run: ura --install %s", module + 2)
+                                          : NULL
+            );
+        else
+            parse_module(new_file(path));
+        return node;
+    }
     case TEMPLATE: {
         node = new_node(token);
         node->scope = ura.scope;
@@ -1098,6 +1165,10 @@ Node *parse_expr(int min_op) {
             token->type = ACCESS;
             node->index = parse_expr(0);
             expect(RBRACK, "expected ']' after the index", "]");
+        } else if (token->type == AS) {
+            node->to_type = parse_type();
+            if (node->to_type == NULL)
+                add_error(token->s, token->e, "expected a type after 'as'", NULL);
         } else
             node->right = parse_expr(op);
         left = node;
@@ -1441,8 +1512,10 @@ void analyze_operator(Node *node, Node *st, char *symbol) {
 
 void analyze(Node *node) {
     switch (node->token->type) { // clang-format off
-    case INT: case FLOAT: case VOID: case VAR: case PARAM: case CHARS: case VARIADIC:
-    case WRITE: case READ: case SIZEOF: case TYPEOF: case TEMPLATE: { // clang-format on
+    case INT: case FLOAT: case VOID: 
+    case VAR: case PARAM: case CHARS: case VARIADIC:
+    case WRITE: case READ: case SIZEOF: 
+    case TYPEOF: case TEMPLATE: case USE: { // clang-format on
         break;
     }
     case ID: {
@@ -2033,8 +2106,8 @@ void codegen(Node *node) {
     case BRK: {
         ucg_brk(node->loop->token->ucg);
         break;
-    }
-    case TEMPLATE: {
+    } // clang-format off
+    case TEMPLATE: case USE: { // clang-format on
         break;
     }
     case ID: {
@@ -2158,7 +2231,10 @@ int main(int ac, char **av) {
         File *file = ura.files[i];
         if (file->opened)
             continue;
-        tokenize(file, 0);
+        open_file(file);
+        ura.file = file;
+        arena_reserve(file->len * 192);
+        tokenize(0, 0);
     }
     new_token(LAST, NULL)->space = -TAB;
 
@@ -2379,16 +2455,22 @@ void check_errors(void) {
     if (ura.errors_count == 0)
         return;
     char *buff = ura.file->buff;
-    char *path = ura.file->path;
     char *cwd = getcwd2();
     size_t cwd_len = strlen(cwd);
-    if (strncmp2(path, cwd, cwd_len) && path[cwd_len] == '/')
-        path += cwd_len + 1;
     for (int i = 0; i < ura.errors_count; i++) {
         uraError *error = &ura.errors[i];
+        File *file = ura.files[0];
+        for (int j = 0; j < ura.files_count; j++) {
+            File *curr = ura.files[j];
+            if (curr->start <= error->s && curr->start > file->start)
+                file = curr;
+        }
+        char *path = file->path;
+        if (strncmp2(path, cwd, cwd_len) && path[cwd_len] == '/')
+            path += cwd_len + 1;
         int line = 1;
-        int start = 0;
-        for (int j = 0; j < error->s; j++) {
+        int start = file->start;
+        for (int j = file->start; j < error->s; j++) {
             if (buff[j] == '\n') {
                 line++;
                 start = j + 1;

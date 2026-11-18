@@ -104,7 +104,7 @@ enum Type {
 
     PROTO, 
     FN_DEC, ARGS, VARIADIC, FN_CALL, RETURN, WRITE, READ,
-    LINK,
+    LINK, USE,
 	FN_ENTRY,
     SIZEOF, TYPEOF, IS_NULLABLE,
     AS,
@@ -2858,7 +2858,7 @@ const char *to_string(Type type) {
 		[PROTO] = "PROTO", [FN_ENTRY] = "FN_ENTRY",
 		[FN_DEC] = "FN_DEC", [ARGS] = "ARGS",
 		[VARIADIC] = "VARIADIC",
-		[FN_CALL] = "FN_CALL", [RETURN] = "RETURN", [WRITE] = "WRITE", [READ] = "READ", [LINK] = "LINK",
+		[FN_CALL] = "FN_CALL", [RETURN] = "RETURN", [WRITE] = "WRITE", [READ] = "READ", [LINK] = "LINK", [USE] = "USE",
 		[SIZEOF] = "SIZEOF", [TYPEOF] = "TYPEOF", [IS_NULLABLE] = "IS_NULLABLE",
 
 		[IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",

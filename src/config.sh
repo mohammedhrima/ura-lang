@@ -52,6 +52,8 @@ URA_BUILD_DIR="$URA_ROOT/build" # what ura generates when it compiles a file
 URA_TESTS_DIR="$(cd "$URA_ROOT/.." && pwd)/tests" # one file per milestone, in the repo root
 URA_BIN="$URA_BIN_DIR/ura"
 URA_LLVM_FILE="$URA_ROOT/llvm-version.txt" # written by set-llvm, read by build
+URA_LIB="$(cd "$URA_ROOT/.." && pwd)/ura-lib" # use "@/name" reads the repo copy, not ~/.ura/lib
+export URA_LIB
 
 # put bin/ on PATH so `ura` is callable by name; the case guard keeps
 # re-sourcing from stacking duplicate entries
