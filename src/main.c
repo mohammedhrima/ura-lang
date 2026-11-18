@@ -57,6 +57,10 @@ struct Token {
         struct {
             char *value;
         } chars;
+        struct {
+            int start;
+            int end;
+        } body;
     };
 };
 
@@ -71,6 +75,7 @@ struct Node {
         Node *to_call;
         Node *loop;
         Node *operand;
+        Node *scope;
     };
     union {
         Node *right;
@@ -114,6 +119,7 @@ struct {
 
     expand(Node *, scopes);
     Node *scope;
+    Node *types;
 
     expand(uraError, errors);
 
@@ -542,6 +548,112 @@ void exit_scope() {
         ura.scope = NULL;
 }
 
+Node *find_template(char *name) {
+    for (int i = ura.scopes_count - 1; i >= 0; i--) {
+        Node *curr = ura.scopes[i];
+        for (int j = 0; j < curr->children_count; j++) {
+            Node *child = curr->children[j];
+            if (child->token->type != TEMPLATE)
+                continue;
+            for (int k = 0; k < child->children_count; k++) {
+                if (!strcmp2(child->children[k]->token->name, name))
+                    continue;
+                return child;
+            }
+        }
+    }
+    return NULL;
+}
+
+Node *find_template_type(char *name) {
+    if (ura.types == NULL)
+        return NULL;
+    Node *params = ura.types->declared->args;
+    for (int i = 0; i < ura.types->children_count; i++) {
+        if (!strcmp2(params->children[i]->token->name, name))
+            continue;
+        return ura.types->children[i];
+    }
+    return NULL;
+}
+
+Node *parse_types(Token *token) {
+    Node *types = new_node(new_token(TYPES, token));
+    types->token->name = token->name;
+    next(); // SKIP <
+    while (!includes(peek(0)->type, GT, LAST, 0)) {
+        Node *type = parse_type();
+        if (type == NULL)
+            break;
+        append(types->children, type);
+        if (peek(0)->type != COMA)
+            break;
+        next(); // SKIP ,
+    }
+    expect(GT, format("expected '>' after the types of '%s'", token->name), ">");
+    return types;
+}
+
+char *instantiate(Node *template, Node *types) {
+    Token *token = types->token;
+    char *name = format("%s<", token->name);
+    for (int i = 0; i < types->children_count; i++)
+        name = format("%s%s%s", name, i ? "," : "", type_name(types->children[i]));
+    name = format("%s>", name);
+
+    Node *params = template->args;
+    if (types->children_count != params->children_count) {
+        char *declared = "";
+        for (int i = 0; i < params->children_count; i++)
+            declared = format(
+                "%s%s%s", declared, i ? ", " : "", params->children[i]->token->name
+            );
+        add_error(
+            token->s,
+            token->e,
+            format(
+                "'%s' takes %d type argument%s, got %d",
+                token->name,
+                params->children_count,
+                params->children_count == 1 ? "" : "s",
+                types->children_count
+            ),
+            format("it is declared 'template<%s>'", declared)
+        );
+        return name;
+    }
+    if (find_struct(name) || find_function(name))
+        return name;
+
+    Token **tokens = ura.tokens;
+    size_t tokens_count = ura.tokens_count;
+    size_t tokens_size = ura.tokens_size;
+    int exe_pos = ura.exe_pos;
+    Node *outer = ura.types;
+
+    zero_init(ura.tokens);
+    Token *body = template->token;
+    for (int i = body->body.start; i < body->body.end; i++) {
+        Token *copy = new_token(tokens[i]->type, NULL);
+        *copy = *tokens[i];
+        if (copy->type == ID && strcmp2(copy->name, token->name))
+            copy->name = name;
+    }
+    new_token(LAST, NULL);
+    types->declared = template;
+    ura.types = types;
+    ura.exe_pos = 0;
+    while (peek(0)->type != LAST)
+        append(template->scope->children, parse_expr(0));
+
+    ura.tokens = tokens;
+    ura.tokens_count = tokens_count;
+    ura.tokens_size = tokens_size;
+    ura.exe_pos = exe_pos;
+    ura.types = outer;
+    return name;
+}
+
 Node *parse_type(void) {
     Token *token = peek(0);
     Token *prev = ura.tokens[ura.exe_pos - 1];
@@ -556,7 +668,28 @@ Node *parse_type(void) {
         token->is_type = true;
     if (token->is_type) {
         next();
-        Node *node = new_node(token);
+        Node *node = token->type == ID ? find_template_type(token->name) : NULL;
+        Node *template = token->type == ID ? find_template(token->name) : NULL;
+        if (node == NULL)
+            node = new_node(token);
+        if (template && peek(0)->type != LT)
+            add_error(
+                token->s,
+                token->e,
+                format("expected '<' after '%s'", token->name),
+                NULL
+            );
+        else if (template)
+            token->name = instantiate(template, parse_types(token));
+        else if (peek(0)->type == LT) {
+            add_error(
+                token->s,
+                token->e,
+                format("no template named '%s'", token->name),
+                format("declare it: template<T>: struct %s:", token->name)
+            );
+            parse_types(token);
+        }
         if (peek(0)->type == LBRACK && peek(1)->type == RBRACK) {
             next(); // SKIP [
             next(); // SKIP ]
@@ -638,6 +771,9 @@ Node *parse_prime() {
         return node;
     }
     case ID: {
+        Node *template = find_template(token->name);
+        if (template && peek(0)->type == LT)
+            token->name = instantiate(template, parse_types(token));
         Node *type = parse_type();
         if (type != NULL) {
             node = new_node(new_token(DECLARE, token));
@@ -810,6 +946,42 @@ Node *parse_prime() {
         expect(RCBRACK, "expected '}' to close the struct value", "}");
         return node;
     }
+    case TEMPLATE: {
+        node = new_node(token);
+        node->scope = ura.scope;
+        node->args = new_node(new_token(ARGS, token));
+        expect(LT, "expected '<' after 'template'", "<T>");
+        while (!includes(peek(0)->type, GT, LAST, 0)) {
+            Token *param = next();
+            if (param->type != ID)
+                add_error(
+                    param->s,
+                    param->e,
+                    "expected names after template",
+                    "use template<T, V>"
+                );
+            append(node->args->children, new_node(param));
+            if (peek(0)->type != COMA)
+                break;
+            next(); // SKIP ,
+        }
+        expect(GT, "expected '>' after the template names", ">");
+        expect(DOTS, "expected ':' after 'template'", ":");
+        int space = peek(0)->space;
+        token->body.start = ura.exe_pos;
+        while (inside(token->space)) {
+            Token *prev = ura.tokens[ura.exe_pos - 1];
+            Token *curr = next();
+            if (curr->space != space || curr->line == prev->line)
+                continue;
+            if (!includes(curr->type, STRUCT, FN_DEC, PROTO, PUB, 0))
+                add_error(curr->s, curr->e, "expected struct/fn after template", NULL);
+            else if (peek(0)->type == ID && curr->type != PROTO)
+                append(node->children, new_node(peek(0)));
+        }
+        token->body.end = ura.exe_pos;
+        return node;
+    }
     case STRUCT: {
         node = new_node(token);
         if (peek(0)->type == ID)
@@ -820,7 +992,7 @@ Node *parse_prime() {
         enter_scope(node);
         while (inside(node->token->space)) {
             Node *child = parse_expr(0);
-            if (child->token->type == FN_DEC)
+            if (includes(child->token->type, FN_DEC, TEMPLATE, 0))
                 append(node->children, child);
         }
         exit_scope();
@@ -1232,7 +1404,7 @@ void analyze_operator(Node *node, Node *st) {
 void analyze(Node *node) {
     switch (node->token->type) { // clang-format off
     case INT: case FLOAT: case VOID: case VAR: case PARAM: case CHARS: case VARIADIC:
-    case WRITE: case READ: { // clang-format on
+    case WRITE: case READ: case TEMPLATE: { // clang-format on
         break;
     }
     case ID: {
@@ -1454,8 +1626,15 @@ void analyze(Node *node) {
                 );
             break;
         }
-        for (int i = 0; i < node->children_count; i++)
+        Node *params = node->to_call->args;
+        for (int i = 0; i < node->children_count; i++) {
             analyze(node->children[i]);
+            if (params == NULL || i >= params->children_count)
+                continue;
+            Node *param = params->children[i];
+            if (param->token->type != VARIADIC)
+                check_type(node->children[i], param->data_type, NULL);
+        }
         break;
     }
     case ASSIGN: // clang-format off
@@ -1768,6 +1947,9 @@ void codegen(Node *node) {
         ucg_brk(node->loop->token->ucg);
         break;
     }
+    case TEMPLATE: {
+        break;
+    }
     case ID: {
         node->token->ucg = node->declared->token->ucg;
         break;
@@ -1993,7 +2175,7 @@ void _print_node_helper(NodePrint *elems, Node *node, int depth) {
     append(elems->nodes, node);
     append(elems->depths, depth);
 
-    if (!includes(node->token->type, BRK, CNT, FN_CALL, 0)) {
+    if (!includes(node->token->type, BRK, CNT, FN_CALL, TEMPLATE, 0)) {
         Node *left = node->left;
         bool is_struct = left && left->token->type == STRUCT;
         if (is_struct) {

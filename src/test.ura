@@ -1,22 +1,9 @@
-struct Vec:
-    x i32
-    y i32
-
-    operator + (e Vec) Vec:
-        r Vec = {
-            x: self.x + e.x,
-            y: self.y + e.y,
-        }
-        return r
+fn f() i32:
+    template<T>:
+        struct Box:
+            value T
+    return 0
 
 fn main() i32:
-    a Vec = {
-        x: 1,
-        y: 1
-    }
-    b Vec = {
-        x: 2,
-        y: 2
-    }
-    c Vec = a + b
-    output(c.x, " ", c.y, "\n")
+    b Box<i32>
+    return 0
