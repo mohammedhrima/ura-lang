@@ -292,7 +292,7 @@ _ura_compile_case() {
 
     # a stale .ll from an earlier run must not pass for this run's IR
     rm -f "$ll"
-    URA_CASE_STDERR=$(cd "$dir" && "${limit[@]}" "$URA_BIN" "$base" -o "$exe" 2>&1 >/dev/null)
+    URA_CASE_STDERR=$(cd "$dir" && "${limit[@]}" "$URA_BIN" "$base" -o "$exe" -ll 2>&1 >/dev/null)
     URA_CASE_STATUS=$?
     URA_CASE_STDERR=$(printf '%s\n' "$URA_CASE_STDERR" | _ura_clean_stderr)
     URA_CASE_IR=$(cat "$ll" 2>/dev/null)

@@ -14,6 +14,7 @@
 #include <sys/wait.h>
 
 // LLVM STUFF
+#include <llvm/Config/llvm-config.h>
 #include <llvm-c/Analysis.h>
 #include <llvm-c/BitWriter.h>
 #include <llvm-c/Core.h>
@@ -2828,6 +2829,14 @@ void ucg_path(char *path) {
 
 void ucg_bin_path(char *path) {
     gb_ucg.exe_path = path;
+}
+
+void ucg_asm_path(char *path) {
+    gb_ucg.asm_path = path;
+}
+
+void ucg_obj_path(char *path) {
+    gb_ucg.obj_path = path;
 }
 
 char *ucg_find_lib_in(char *dir, char *name) {

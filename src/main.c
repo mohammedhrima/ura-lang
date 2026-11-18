@@ -26,6 +26,8 @@ typedef struct uraError uraError;
 
 #include "./ir.c"
 
+#define URA_VERSION "0.1.0"
+
 int _fprint(ioFile fp, const char *fmt, va_list ap);
 #undef vfprint
 #define vfprint _fprint
@@ -2360,7 +2362,6 @@ int main(int ac, char **av) {
     print(GREEN("[URA IR]:\n"));
     print_ucgs();
     ucg_compile();
-    ucg_path("build/out.ll");
     ucg_gen();
     if (DEBUG || run)
         code = ucg_run_bin();
@@ -2587,11 +2588,46 @@ void build_project(void) {
     append(ura.files, new_file("src/main.ura"));
 }
 
+void print_help(char *ura) {
+    help("usage:\n");
+    help("  %s <file>.ura [flags]    compile files\n", ura);
+    help("  %s init <name>           create a project in a new folder\n", ura);
+    help("  %s build                 build the project in this folder\n", ura);
+    help("  %s run                   build the project and run it\n", ura);
+    help("  %s install <name>[@ver]  install a package from the registry\n", ura);
+    help("  %s remove <name>         remove an installed package\n", ura);
+    help("  %s -version              print the ura and LLVM versions\n", ura);
+    help("  %s -help                 show this help\n", ura);
+    help("flags:\n");
+    help("  -o <exe>                 link an executable\n");
+    help("  -ll [path]               write the LLVM IR (build/out.ll)\n");
+    help("  -S [path]                write the assembly (build/out.s)\n");
+    help("  -c [path]                write the object file (build/out.o)\n");
+}
+
+char *parse_flag_path(int ac, char **av, int *i, char *fallback) {
+    char *next = *i + 1 < ac ? av[*i + 1] : NULL;
+    size_t n = next ? strlen(next) : 0;
+    bool is_path = next && next[0] != '-' && !(n > 4 && strcmp2(next + n - 4, ".ura"));
+    if (!is_path)
+        return fallback;
+    (*i)++;
+    return next;
+}
+
 bool parse_args(int ac, char **av) {
     if (ac < 2) {
         eprint("expected an argument:\n");
-        help("%s <file>.ura\n", av[0]);
+        print_help(av[0]);
         exit(1);
+    }
+    if (strcmp2(av[1], "-help") || strcmp2(av[1], "-h")) {
+        print_help(av[0]);
+        exit(0);
+    }
+    if (strcmp2(av[1], "-version")) {
+        help("ura %s (LLVM %s)\n", URA_VERSION, LLVM_VERSION_STRING);
+        exit(0);
     }
     if (strcmp2(av[1], "init")) {
         if (ac < 3) {
@@ -2622,6 +2658,8 @@ bool parse_args(int ac, char **av) {
         build_project();
         return run;
     }
+    bool has_exe = false;
+    bool no_link = false;
     for (int i = 1; i < ac && ura.errors_count == 0; i++) {
         char *arg = av[i];
         if (strcmp2(arg, "-o")) {
@@ -2631,6 +2669,15 @@ bool parse_args(int ac, char **av) {
                 exit(1);
             }
             ucg_bin_path(av[++i]);
+            has_exe = true;
+        } else if (strcmp2(arg, "-ll")) {
+            ucg_path(parse_flag_path(ac, av, &i, "build/out.ll"));
+        } else if (strcmp2(arg, "-S")) {
+            ucg_asm_path(parse_flag_path(ac, av, &i, "build/out.s"));
+            no_link = true;
+        } else if (strcmp2(arg, "-c")) {
+            ucg_obj_path(parse_flag_path(ac, av, &i, "build/out.o"));
+            no_link = true;
         } else {
             size_t n = strlen(arg);
             bool is_ura = n > 4 && strcmp2(arg + n - 4, ".ura");
@@ -2643,6 +2690,8 @@ bool parse_args(int ac, char **av) {
             append(ura.files, file);
         }
     }
+    if (no_link && !has_exe)
+        ucg_bin_path(NULL);
     return false;
 }
 
