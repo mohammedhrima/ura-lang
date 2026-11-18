@@ -2125,7 +2125,10 @@ void analyze(Node *node) {
                 );
                 break;
             }
-            bool copy_by_operator = has_assign && (!is_declaration || (has_drop && is_copy));
+            Node *right_type = type_of(node->right);
+            bool is_conversion = right_type && !same_type(right_type, left_type);
+            bool copy_by_operator =
+                has_assign && (!is_declaration || is_conversion || (has_drop && is_copy));
             if (node->token->type != ASSIGN || copy_by_operator) {
                 analyze_operator(node, st, token_text(node->token));
                 break;

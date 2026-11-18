@@ -56,3 +56,196 @@ proto strsignal(sig i32) i8[]
 proto memset_s(ptr i8[], size i32, value i32, n i32) i8[]
 
 proto atoi(s i8[]) i32
+
+use "@/array"
+
+struct String from Array<char>:
+    pub fn from(text i8[]) String:
+        res String
+        res.join(text)
+        return res
+
+    fn join(text i8[]):
+        i i32 = 0
+        while text[i] != 0:
+            self.push_back(text[i])
+            i += 1
+
+    fn assign(text i8[]):
+        self.clear()
+        self.join(text)
+
+    fn c_str() i8[]:
+        self.reserve(self.count + 1)
+        self.data[self.count] = 0
+        return self.data
+
+    fn to_int() i32:
+        return atoi(self.c_str())
+
+    // ── search ──
+
+    fn matches_at(index i32, text i8[]) bool:
+        j i32 = 0
+        while text[j] != 0:
+            if index + j >= self.count:
+                return False
+            if self.data[index + j] != text[j]:
+                return False
+            j += 1
+        return True
+
+    fn find(text i8[]) i32:
+        i i32 = 0
+        while i < self.count:
+            if self.matches_at(i, text):
+                return i
+            i += 1
+        return -1
+
+    fn contains(text i8[]) bool:
+        return self.find(text) != -1
+
+    fn starts_with(text i8[]) bool:
+        return self.matches_at(0, text)
+
+    fn ends_with(text i8[]) bool:
+        n i32 = strlen(text) as i32
+        if n > self.count:
+            return False
+        return self.matches_at(self.count - n, text)
+
+    // ── new strings ──
+
+    fn substr(start i32, length i32) String:
+        res String
+        stop i32 = start + length
+        if stop > self.count:
+            stop = self.count
+        i i32 = start
+        while i < stop:
+            res.push_back(self.data[i])
+            i += 1
+        return res
+
+    fn upper() String:
+        res String
+        i i32 = 0
+        while i < self.count:
+            c char = self.data[i]
+            if c >= 'a' and c <= 'z':
+                c = (c as i32 - 32) as char
+            res.push_back(c)
+            i += 1
+        return res
+
+    fn lower() String:
+        res String
+        i i32 = 0
+        while i < self.count:
+            c char = self.data[i]
+            if c >= 'A' and c <= 'Z':
+                c = (c as i32 + 32) as char
+            res.push_back(c)
+            i += 1
+        return res
+
+    fn is_space(c char) bool:
+        return c == ' ' or c == '\t' or c == '\n' or c == '\r'
+
+    fn trim() String:
+        start i32 = 0
+        while start < self.count:
+            if self.is_space(self.data[start]) == False:
+                break
+            start += 1
+        stop i32 = self.count
+        while stop > start:
+            if self.is_space(self.data[stop - 1]) == False:
+                break
+            stop -= 1
+        return self.substr(start, stop - start)
+
+    fn replace(old i8[], fresh i8[]) String:
+        res String
+        n i32 = strlen(old) as i32
+        i i32 = 0
+        while i < self.count:
+            if n > 0 and self.matches_at(i, old):
+                res.join(fresh)
+                i += n
+            else:
+                res.push_back(self.data[i])
+                i += 1
+        return res
+
+    fn repeat(times i32) String:
+        res String
+        k i32 = 0
+        while k < times:
+            i i32 = 0
+            while i < self.count:
+                res.push_back(self.data[i])
+                i += 1
+            k += 1
+        return res
+
+    fn reverse() String:
+        res String
+        i i32 = self.count - 1
+        while i >= 0:
+            res.push_back(self.data[i])
+            i -= 1
+        return res
+
+    // ── compare ──
+
+    fn compare(other &String) i32:
+        i i32 = 0
+        while i < self.count and i < other.count:
+            if self.data[i] != other.data[i]:
+                return (self.data[i] as i32) - (other.data[i] as i32)
+            i += 1
+        return self.count - other.count
+
+    operator ==(other &String) bool:
+        return self.compare(other) == 0
+
+    operator !=(other &String) bool:
+        return self.compare(other) != 0
+
+    operator <(other &String) bool:
+        return self.compare(other) < 0
+
+    operator >(other &String) bool:
+        return self.compare(other) > 0
+
+    operator ==(text i8[]) bool:
+        return self.count == strlen(text) as i32 and self.matches_at(0, text)
+
+    operator !=(text i8[]) bool:
+        return self.count != strlen(text) as i32 or self.matches_at(0, text) == False
+
+    // ── build ──
+
+    operator =(text i8[]):
+        self.assign(text)
+
+    operator +=(text i8[]):
+        self.join(text)
+
+    operator +=(other &String):
+        i i32 = 0
+        while i < other.count:
+            self.push_back(other.data[i])
+            i += 1
+
+    operator +(text i8[]) String:
+        res String = self
+        res.join(text)
+        return res
+
+    operator +(other &String) String:
+        res String = self
+        res += other
+        return res
