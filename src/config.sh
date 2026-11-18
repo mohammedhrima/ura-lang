@@ -206,6 +206,7 @@ _ura_build() {
                 # main.c's types (Node, ...) don't exist when ucg builds ir.c alone
                 echo '#if !UCG'
                 _ura_protos main.c
+                _ura_protos check.c
                 echo '#endif'
             } > proto.h.tmp
             mv proto.h.tmp proto.h
