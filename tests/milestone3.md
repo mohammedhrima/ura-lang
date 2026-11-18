@@ -6579,21 +6579,6 @@ source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-unknown-linux-gnu"
 
-%User = type { i32 }
-
-define i32 @User.method(%User* %0) {
-entry:
-  %self = alloca %User*, align 8
-  store %User* %0, %User** %self, align 8
-  %"*self" = load %User*, %User** %self, align 8
-  %"*self.a" = getelementptr inbounds %User, %User* %"*self", i32 0, i32 0
-  store i32 10, i32* %"*self.a", align 4
-  %"*self1" = load %User*, %User** %self, align 8
-  %"*self.a2" = getelementptr inbounds %User, %User* %"*self1", i32 0, i32 0
-  %"$*self.a" = load i32, i32* %"*self.a2", align 4
-  ret i32 %"$*self.a"
-}
-
 define i32 @main() {
 entry:
   ret i32 0
@@ -6630,20 +6615,7 @@ target triple = "x86_64-unknown-linux-gnu"
 
 %User = type { i32 }
 
-define void @User.set(%User* %0, i32 %1) {
-entry:
-  %self = alloca %User*, align 8
-  %n = alloca i32, align 4
-  store %User* %0, %User** %self, align 8
-  store i32 %1, i32* %n, align 4
-  %"*self" = load %User*, %User** %self, align 8
-  %"*self.a" = getelementptr inbounds %User, %User* %"*self", i32 0, i32 0
-  %"$n" = load i32, i32* %n, align 4
-  store i32 %"$n", i32* %"*self.a", align 4
-  ret void
-}
-
-define void @User.set.1(%User* %0) {
+define void @User.set(%User* %0) {
 entry:
   %self = alloca %User*, align 8
   store %User* %0, %User** %self, align 8
@@ -6657,7 +6629,7 @@ define i32 @main() {
 entry:
   %u = alloca %User, align 8
   store %User zeroinitializer, %User* %u, align 4
-  call void @User.set.1(%User* %u)
+  call void @User.set(%User* %u)
   %u.a = getelementptr inbounds %User, %User* %u, i32 0, i32 0
   %"$u.a" = load i32, i32* %u.a, align 4
   ret i32 %"$u.a"

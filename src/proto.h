@@ -129,6 +129,7 @@ void ucg_gen(void);
 void ucg_gen_bin(void);
 void ucg_gen_ll(void);
 void ucg_link(char *path);
+void ucg_optimize(void);
 void ucg_path(char *path);
 void ucg_start(char *name);
 #if !UCG

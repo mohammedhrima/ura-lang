@@ -133,6 +133,7 @@ struct Ucg {
     bool is_val;
     bool is_set;
     bool is_uint;
+    int used;
 
     struct { // llvm stuff
         TypeRef rtype;
@@ -708,6 +709,7 @@ void llvm_declare_param(Ucg *ir) {
     ir->elem = elem;
 }
 
+
 void llvm_load(Ucg *ir) {
     Ucg *to_dref = ir->to_dref;
     // to_dref->rtype;
@@ -1082,6 +1084,7 @@ Ucg *ucg_fn_call_2(Ucg *fn_dec, va_list ap) {
     Ucg *new = ucg_new(FN_CALL);
     new->name = format("call.%s", fn_dec->name);
     new->to_call = fn_dec;
+    fn_dec->used++;
     // new->fn.ret = ret;
 
 
@@ -1149,6 +1152,7 @@ Ucg *ucg_fn_call(Ucg *fn_dec, Ucg **args, int args_count) {
     Ucg *new = ucg_new(FN_CALL);
     new->name = format("call.%s", fn_dec->name);
     new->to_call = fn_dec;
+    fn_dec->used++;
     for (int i = 0; i < args_count; i++)
         append(new->fn.params, ucg_value(args[i]));
     append(gb_ucg.insts, new);
@@ -1664,7 +1668,49 @@ void print_ucg(Ucg *inst, char end) {
     print("%s%c", text, end);
 }
 
+void ucg_optimize(void) {
+    bool removed = true;
+    while (removed) {
+        removed = false;
+        for (int i = 0; i < gb_ucg.insts_count; i++) {
+            Ucg *fn = gb_ucg.insts[i];
+            bool is_unused = fn->type == FN_DEC && fn->used == 0;
+            if (!is_unused || strcmp2(fn->name, "main"))
+                continue;
+            fn->used = -1;
+            removed = true;
+            bool is_inside = false;
+            for (int j = i + 1; j < gb_ucg.insts_count; j++) {
+                Ucg *inst = gb_ucg.insts[j];
+                if (inst->type == FN_ENTRY && inst->to_enter == fn)
+                    is_inside = true;
+                if (!is_inside)
+                    continue;
+                if (inst->type == END && inst->to_end == fn)
+                    break;
+                if (inst->type == FN_CALL)
+                    inst->to_call->used--;
+            }
+        }
+    }
+    int count = 0;
+    Ucg *removed_fn = NULL;
+    for (int i = 0; i < gb_ucg.insts_count; i++) {
+        Ucg *inst = gb_ucg.insts[i];
+        bool is_removed = inst->type == FN_DEC && inst->used < 0;
+        if (inst->type == FN_ENTRY && inst->to_enter->used < 0 && !removed_fn)
+            removed_fn = inst->to_enter;
+        bool is_body_end = removed_fn && inst->type == END && inst->to_end == removed_fn;
+        if (!removed_fn && !is_removed)
+            gb_ucg.insts[count++] = inst;
+        if (is_body_end)
+            removed_fn = NULL;
+    }
+    gb_ucg.insts_count = count;
+}
+
 void ucg_compile() {
+    ucg_optimize();
     Value fn = NULL;
     int stmt_index = 0;
     for (int i = 0; i < gb_ucg.insts_count; i++) {
