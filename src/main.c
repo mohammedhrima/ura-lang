@@ -2255,7 +2255,8 @@ int main(int ac, char **av) {
     atexit(arena_free);
     arena_reserve(1000);
     ucg_bin_path("build/exe.out");
-    parse_args(ac, av);
+    bool run = parse_args(ac, av);
+    int code = 0;
     ura.tokens_count = 0;
     ura.exe_pos = 0;
 
@@ -2311,14 +2312,15 @@ int main(int ac, char **av) {
     ucg_compile();
     ucg_path("build/out.ll");
     ucg_gen();
-    if (DEBUG)
-        ucg_run_bin();
+    if (DEBUG || run)
+        code = ucg_run_bin();
     ucg_finish();
 #            endif // ASM
 #        endif     // ANALYZE
 #    endif         // AST
 #endif             // TOKENIZE
     print("did allocate %zu\n", arena_size());
+    return code;
 }
 
 // UTILS / FORMATING / PUTING
@@ -2491,11 +2493,69 @@ __attribute__((sentinel)) bool includes(Type to_find, ...) {
     return false;
 }
 
-void parse_args(int ac, char **av) {
+void init_project(char *name) {
+    if (access(format("%s/ura.project", name), F_OK) == 0) {
+        eprint("'%s' already has a ura.project\n", name);
+        exit(1);
+    }
+    mkdir2(name);
+    mkdir2(format("%s/src", name));
+    char *files[][2] = {
+        { "ura.project", format("name \"%s\"\nversion \"0.1.0\"\n", name) },
+        { "src/main.ura", "fn main() i32:\n    output(\"hello\\n\")\n    return 0\n" },
+        { ".gitignore", "build/\n" },
+    };
+    for (size_t i = 0; i < sizeof(files) / sizeof(*files); i++) {
+        ioFile fp = fopen(format("%s/%s", name, files[i][0]), "w");
+        if (fp == NULL) {
+            eprint("can't write %s/%s\n", name, files[i][0]);
+            exit(1);
+        }
+        fputs(files[i][1], fp);
+        fclose(fp);
+    }
+    help("created %s/, run it with: cd %s && ura run\n", name, name);
+}
+
+void build_project(void) {
+    if (access("ura.project", R_OK) != 0) {
+        eprint("no ura.project in this folder\n");
+        help("create a project with: ura init <name>\n");
+        exit(1);
+    }
+    File *project = new_file("ura.project");
+    open_file(project);
+    char *name = strstr(project->buff, "name \"");
+    char *end = name ? strchr(name + 6, '"') : NULL;
+    if (end == NULL) {
+        eprint("ura.project has no name\n");
+        help("add a line: name \"<name>\"\n");
+        exit(1);
+    }
+    name += 6;
+    ucg_bin_path(format("build/%s", strndup2(name, end - name)));
+    append(ura.files, new_file("src/main.ura"));
+}
+
+bool parse_args(int ac, char **av) {
     if (ac < 2) {
         eprint("expected an argument:\n");
         help("%s <file>.ura\n", av[0]);
         exit(1);
+    }
+    if (strcmp2(av[1], "init")) {
+        if (ac < 3) {
+            eprint("expected a project name:\n");
+            help("%s init <name>\n", av[0]);
+            exit(1);
+        }
+        init_project(av[2]);
+        exit(0);
+    }
+    bool run = strcmp2(av[1], "run");
+    if (run || strcmp2(av[1], "build")) {
+        build_project();
+        return run;
     }
     for (int i = 1; i < ac && ura.errors_count == 0; i++) {
         char *arg = av[i];
@@ -2518,6 +2578,7 @@ void parse_args(int ac, char **av) {
             append(ura.files, file);
         }
     }
+    return false;
 }
 
 char *parse_escaped(char *input, int s, int e) {

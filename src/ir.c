@@ -398,7 +398,7 @@ void ucg_gen(void) {
         ucg_gen_bin();
 }
 
-void ucg_run_bin(void) {
+int ucg_run_bin(void) {
     pid_t pid = fork();
 
     if (pid == 0) {
@@ -409,10 +409,12 @@ void ucg_run_bin(void) {
     int status;
     waitpid(pid, &status, 0);
 
-    if (WIFEXITED(status))
+    if (WIFEXITED(status)) {
         print("Exit code: %d\n", WEXITSTATUS(status));
-    else if (WIFSIGNALED(status))
-        print("Terminated by signal: %d\n", WTERMSIG(status));
+        return WEXITSTATUS(status);
+    }
+    print("Terminated by signal: %d\n", WTERMSIG(status));
+    return 128 + WTERMSIG(status);
 }
 
 void llvm_fn_dec(Ucg *ir) {
