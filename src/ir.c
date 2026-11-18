@@ -305,7 +305,7 @@ void ucg_start(char *name) {
 void ucg_finish(void) {
     // TODO: make sure to use ucg.error_msg
     if (gb_ucg.error_msg != NULL) {
-        printf("there is an error %s\n", gb_ucg.error_msg);
+        print("there is an error %s\n", gb_ucg.error_msg);
         // LLVMDisposeMessage(gb_ucg.error_msg);
         eprint("%s: <%s>\n", RED("error"), gb_ucg.error_msg);
     }
@@ -410,9 +410,9 @@ void ucg_run_bin(void) {
     waitpid(pid, &status, 0);
 
     if (WIFEXITED(status))
-        printf("Exit code: %d\n", WEXITSTATUS(status));
+        print("Exit code: %d\n", WEXITSTATUS(status));
     else if (WIFSIGNALED(status))
-        printf("Terminated by signal: %d\n", WTERMSIG(status));
+        print("Terminated by signal: %d\n", WTERMSIG(status));
 }
 
 void llvm_fn_dec(Ucg *ir) {
@@ -1647,7 +1647,7 @@ void print_ucg(Ucg *inst, char end) {
         text = format("%s [%03d]", text, inst->left->inst_index);
     if (inst->right)
         text = format("%s [%03d]", text, inst->right->inst_index);
-    printf("%s%c", text, end);
+    print("%s%c", text, end);
 }
 
 void ucg_compile() {
@@ -2783,7 +2783,7 @@ void ucg_link(char *path) {
 }
 
 bool compile_test(int p) {
-    printf(CYAN("Test %d: ================================\n"), p);
+    print(CYAN("Test %d: ================================\n"), p);
     ucg_start(format("test%d", p));
     bool r = run_test(p);
     print_ucgs();

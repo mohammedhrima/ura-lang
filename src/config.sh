@@ -3,11 +3,13 @@
 #   source config.sh
 #
 # defines these shell commands:
-#   build    rebuild <repo>/bin/ura (the compiler), plus proto.h and
-#            compile_commands.json
-#   ucg [number]
+#   build [-D DEBUG=true]
+#            rebuild <repo>/bin/ura (the compiler), plus proto.h and
+#            compile_commands.json; ura prints nothing but errors unless
+#            built with -D DEBUG=true (tokens, AST, IR, then runs the program)
+#   ucg [-D DEBUG=true] [number]
 #            build ir.c alone into <repo>/bin/ucg and run its test <number>
-#            (every test when none)
+#            (every test when none); -D DEBUG=true prints the ucg nodes
 #   tests [target] [number]
 #            rebuild, then compile tests and compare the generated LLVM IR
 #            with the recorded one; one line per test, with a file:line link
@@ -228,7 +230,7 @@ _ura_build() {
 # build - compile the ura compiler itself into bin/ura
 # ============================================================================
 build() {
-    _ura_build main.c ura
+    _ura_build main.c ura "$@"
 }
 
 # ============================================================================
@@ -237,7 +239,12 @@ build() {
 # build/out.ll, then links and runs the program
 # ============================================================================
 ucg() {
-    _ura_build ir.c ucg -DUCG=1 || return 1
+    local flags=()
+    while [ "$1" = "-D" ]; do
+        flags+=(-D "$2")
+        shift 2
+    done
+    _ura_build ir.c ucg -DUCG=1 "${flags[@]}" || return 1
     (cd "$URA_ROOT" && "$URA_BIN_DIR/ucg" "$@")
 }
 

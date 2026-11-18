@@ -31,8 +31,12 @@
 #    define vfprint vfprintf
 #endif
 
+#ifndef DEBUG
+#    define DEBUG false
+#endif
+
 #ifndef print
-#    define print(...) fprintf(stdout, __VA_ARGS__)
+#    define print(...) (DEBUG ? fprintf(stdout, __VA_ARGS__) : 0)
 #endif
 
 #ifndef eprint

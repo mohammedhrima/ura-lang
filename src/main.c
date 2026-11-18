@@ -4,7 +4,7 @@ typedef struct Node Node;
 typedef struct NodePrint NodePrint;
 typedef struct uraError uraError;
 
-#define print(...)  _print(stdout, __VA_ARGS__)
+#define print(...)  (DEBUG ? _print(stdout, __VA_ARGS__) : 0)
 #define help(...)   _print(stdout, __VA_ARGS__)
 #define eprint(...) _print(stderr, __VA_ARGS__)
 
@@ -2659,13 +2659,14 @@ int main(int ac, char **av) {
     ucg_compile();
     ucg_path("build/out.ll");
     ucg_gen();
-    ucg_run_bin();
+    if (DEBUG)
+        ucg_run_bin();
     ucg_finish();
 #            endif // ASM
 #        endif     // ANALYZE
 #    endif         // AST
 #endif             // TOKENIZE
-    printf("did allocate %zu\n", arena_size());
+    print("did allocate %zu\n", arena_size());
 }
 
 // UTILS / FORMATING / PUTING
