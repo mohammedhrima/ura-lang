@@ -593,7 +593,7 @@ fn main() i32:
 struct Vec:
     x i32
 
-    operator =(other Vec) void:
+    operator =(other &Vec) void:
         self.x = other.x
 
     operator drop:
@@ -627,7 +627,7 @@ struct Tag:
         t.id = n
         return t
 
-    operator =(other Tag) void:
+    operator =(other &Tag) void:
         self.id = other.id
 
     operator drop:
@@ -676,7 +676,7 @@ struct Tag:
         t.id = n
         return t
 
-    operator =(other Tag) void:
+    operator =(other &Tag) void:
         self.id = other.id
 
     operator drop:
@@ -719,7 +719,7 @@ struct Res:
         r.id = n
         return r
 
-    operator =(other Res) void:
+    operator =(other &Res) void:
         self.id = other.id
 
     operator drop:
@@ -1230,7 +1230,7 @@ struct Counter:
         c.hits = n
         return c
 
-    operator =(other Counter) void:
+    operator =(other &Counter) void:
         self.hits = other.hits
 
     fn bump():
@@ -1271,7 +1271,7 @@ struct Res:
         r.id = n
         return r
 
-    operator =(other Res) void:
+    operator =(other &Res) void:
         self.id = other.id
 
     operator drop:

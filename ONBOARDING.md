@@ -335,6 +335,19 @@ These were decided with the user on the workstation, and 003.c implements most o
 + The escaped table in main.c (char *escaped[256]) maps both ways: the letter after a backslash to its character (n to a newline), and a control character to its escape text (a newline to backslash n).
 + So printing must use it only for control characters, with iscntrl and an unsigned char index. Otherwise the letter n prints as a newline. _print_char in main.c does this.
 
+### Ownership: values, copies and drop
+
+Decided with the user on 2026-11-18. Ura uses value semantics, like C++ or Swift structs. It does not track moves the way Rust does. Every ownership question must be answered by one of these six rules. Do not add a special case.
+
++ Zero is empty. Every type's all-zero value is a valid empty value: variables, attributes and new elements start there. An operator drop must be safe on an empty value; free(null) is.
++ One owner. Every variable, attribute and element owns its value. Ura drops it exactly once: when its block ends, or before a return, break or continue leaves the block. A struct is dropped by running its operator drop, if it has one, and then dropping its attributes. A reference (&T) owns nothing: it is never copied and never dropped.
++ A named value is copied. A value read from a name (a variable, a.x or p[i]) and put somewhere else is copied: b T = a, b = a, f(a) with a T parameter, p[i] = a, return a.x. The copy uses operator =(other &T). A type that needs no drop is copied as plain bytes. A type that needs a drop and has no operator = cannot be copied, and the copy is a compile error that says so.
++ A temporary is taken. A value with no name is taken, not copied: a call result, a struct literal {x: 1}, and return of a local variable (the local dies anyway). Reassigning b = f() drops b's old value first.
++ Leftovers die at the end of the statement. A temporary that is not stored, such as the String in s.upper().c_str(), is dropped when its statement ends.
++ drop(x) drops x now and resets it to empty. It works on any place, for example drop(p[i]). Containers use it to release elements.
+
+For a container such as Array: reserve fills new memory with zeros, so every slot always holds a live value, empty or not. p[i] = v is then an ordinary assignment, and pop_back copies the element out and then calls drop(p[i]).
+
 ### Arena and library rules
 
 + Everything is allocated from the arena. Nothing is freed one by one.

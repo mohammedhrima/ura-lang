@@ -1,4 +1,5 @@
-proto realloc(ptr i8[], size i32) i8[]
+proto calloc(len i64, size i64) i8[]
+proto memcpy(dest i8[], src i8[], n i32) i8[]
 proto free(ptr i8[])
 
 template<T>:
@@ -10,15 +11,17 @@ template<T>:
         fn reserve(cap i32):
             if cap <= self.cap:
                 return
+            bigger T[] = calloc(cap as i64, sizeof(T) as i64) as T[]
+            memcpy(bigger as i8[], self.data as i8[], self.count * sizeof(T))
+            free(self.data as i8[])
+            self.data = bigger
             self.cap = cap
-            self.data = realloc(self.data as i8[], cap * sizeof(T)) as T[]
 
         fn resize(size i32):
             self.reserve(size)
-            while self.count < size:
-                zero T
-                self.data[self.count] = zero
-                self.count += 1
+            while self.count > size:
+                self.count -= 1
+                drop(self.data[self.count])
             self.count = size
 
         fn push_back(value T):
@@ -31,12 +34,14 @@ template<T>:
             self.push_back(value)
 
         fn insert(index i32, value T):
-            self.push_back(value)
-            i i32 = self.count - 1
+            if self.count == self.cap:
+                self.reserve(self.cap * 2 + 4)
+            i i32 = self.count
             while i > index:
                 self.data[i] = self.data[i - 1]
                 i -= 1
             self.data[index] = value
+            self.count += 1
 
         fn push_front(value T):
             self.insert(0, value)
@@ -48,11 +53,14 @@ template<T>:
                 self.data[i] = self.data[i + 1]
                 i += 1
             self.count -= 1
+            drop(self.data[self.count])
             return value
 
         fn pop_back() T:
             self.count -= 1
-            return self.data[self.count]
+            value T = self.data[self.count]
+            drop(self.data[self.count])
+            return value
 
         fn pop() T:
             return self.pop_back()
@@ -76,7 +84,9 @@ template<T>:
             return self.count == 0
 
         fn clear():
-            self.count = 0
+            while self.count > 0:
+                self.count -= 1
+                drop(self.data[self.count])
 
         fn reverse():
             i i32 = 0
@@ -89,10 +99,9 @@ template<T>:
                 j -= 1
 
         fn release():
+            self.clear()
             free(self.data as i8[])
-            nothing T[]
-            self.data = nothing
-            self.count = 0
+            drop(self.data)
             self.cap = 0
 
         operator [](index i32) &T:
@@ -103,8 +112,10 @@ template<T>:
             self.reserve(other.count)
             i i32 = 0
             while i < other.count:
-                self.push_back(other.data[i])
+                self.data[i] = other.data[i]
                 i += 1
+            self.count = other.count
 
         operator drop():
+            self.clear()
             free(self.data as i8[])
