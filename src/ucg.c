@@ -113,7 +113,7 @@ enum Type {
     AS,
 	BLOC,
     IF, ELIF, ELSE, THEN,
-    LOOP, BRK, CNT, MATCH, CASE, DEFAULT,
+    LOOP, BRK, CNT, MATCH, CASE, DEFAULT, CLEAN,
     END,
     LAST,
     // clang-format on
@@ -211,6 +211,7 @@ struct Ucg {
         Ucg *attr;
         Ucg *index;
     };
+    expand(Ucg *, cleans);
 };
 
 struct {
@@ -241,6 +242,10 @@ struct {
     expand(Ucg *, insts);
     Ucg *read_fn;
     Ucg *write_fn;
+
+    expand(Ucg *, blocks);
+    int clean_start;
+    Ucg *clean_var;
 } gb_ucg;
 
 void ucg_start(char *name) {
@@ -1089,10 +1094,74 @@ Ucg *ucg_proto(char *name, Ucg *ret, Ucg **params, int params_count) {
     return new;
 }
 
+void ucg_clean(Ucg *var) {
+    gb_ucg.clean_start = gb_ucg.insts_count;
+    gb_ucg.clean_var = var;
+}
+
+void ucg_clean_end(void) {
+    Ucg *clean = ucg_new(CLEAN);
+    clean->left = gb_ucg.clean_var;
+    for (int i = gb_ucg.clean_start; i < gb_ucg.insts_count; i++) {
+        Ucg *inst = gb_ucg.insts[i];
+        if (inst->type == FN_CALL)
+            inst->to_call->used--;
+        append(clean->cleans, inst);
+    }
+    gb_ucg.insts_count = gb_ucg.clean_start;
+    Ucg *block = gb_ucg.blocks[gb_ucg.blocks_count - 1];
+    append(block->cleans, clean);
+}
+
+void ucg_run_cleans(Ucg *block, Ucg *moved) {
+    for (int i = block->cleans_count - 1; i >= 0; i--) {
+        Ucg *clean = block->cleans[i];
+        if (moved && clean->left == moved)
+            continue;
+        for (int j = 0; j < clean->cleans_count; j++) {
+            Ucg *inst = clean->cleans[j];
+            if (inst->type == FN_CALL)
+                inst->to_call->used++;
+            append(gb_ucg.insts, inst);
+        }
+    }
+}
+
+bool ucg_ends_with_jump(void) {
+    Ucg *last = gb_ucg.insts[gb_ucg.insts_count - 1];
+    return last->type == RETURN || last->type == BRK || last->type == CNT;
+}
+
+void ucg_close_block(void) {
+    Ucg *block = gb_ucg.blocks[gb_ucg.blocks_count - 1];
+    gb_ucg.blocks_count--;
+    if (!ucg_ends_with_jump())
+        ucg_run_cleans(block, NULL);
+}
+
+bool ucg_is_block_of(Ucg *block, Ucg *target) {
+    if (target == NULL)
+        return block->type == FN_DEC;
+    for (Ucg *stmt = target; stmt; stmt = stmt->next)
+        if (stmt == block)
+            return true;
+    return false;
+}
+
+void ucg_leave_blocks(Ucg *target, Ucg *moved) {
+    for (int i = gb_ucg.blocks_count - 1; i >= 0; i--) {
+        Ucg *block = gb_ucg.blocks[i];
+        ucg_run_cleans(block, moved);
+        if (ucg_is_block_of(block, target))
+            return;
+    }
+}
+
 Ucg *ucg_entry(Ucg *fn) {
     Ucg *new = ucg_new(FN_ENTRY);
     new->to_enter = fn;
     append(gb_ucg.insts, new);
+    append(gb_ucg.blocks, fn);
     return new;
 }
 
@@ -1134,12 +1203,14 @@ Ucg *ucg_ret(Ucg *ret) {
     // new->fn.ret = ret;
     // new->fn.params = params;
 
+    ucg_leave_blocks(NULL, ret);
     append(gb_ucg.insts, new);
     return new;
 }
 
 Ucg *ucg_return() {
     Ucg *new = ucg_new(RETURN);
+    ucg_leave_blocks(NULL, NULL);
     append(gb_ucg.insts, new);
     return new;
 }
@@ -1606,10 +1677,12 @@ Ucg *ucg_if(void) {
 }
 
 Ucg *ucg_elif(Ucg *prev_stmt) {
+    ucg_close_block();
     return ucg_branch(ELIF, prev_stmt);
 }
 
 Ucg *ucg_else(Ucg *prev_stmt) {
+    ucg_close_block();
     return ucg_branch(ELSE, prev_stmt);
 }
 
@@ -1618,10 +1691,12 @@ Ucg *ucg_then(Ucg *stmt, Ucg *cond) {
     stmt->cond = cond ? ucg_value(cond) : NULL;
     new->stmt = stmt;
     append(gb_ucg.insts, new);
+    append(gb_ucg.blocks, stmt);
     return new;
 }
 
 Ucg *ucg_end(Ucg *stmt) {
+    ucg_close_block();
     Ucg *new = ucg_new(END);
     new->to_end = stmt;
     while (stmt) {
@@ -1635,11 +1710,13 @@ Ucg *ucg_end(Ucg *stmt) {
 Ucg *ucg_brk(Ucg *loop) {
     Ucg *new = ucg_new(BRK);
     new->stmt = loop;
+    ucg_leave_blocks(loop, NULL);
     append(gb_ucg.insts, new);
     return new;
 }
 
 Ucg *ucg_cnt(Ucg *loop) {
+    ucg_leave_blocks(loop, NULL);
     Ucg *new = ucg_new(CNT);
     new->stmt = loop;
     append(gb_ucg.insts, new);
@@ -3083,6 +3160,52 @@ bool run_test(int p) {
         ucg_end(fn_main);
         break;
     }
+    case 32: {
+        Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL, 0);
+        Ucg *a = ucg_var("a", ucg_i32_type());
+        ucg_clean(a);
+        ucg_write(
+            ucg_i32_value(1),
+            (Ucg *[]){
+                ucg_string_value("clean a\n"),
+            },
+            1
+        );
+        ucg_clean_end();
+        Ucg *i = ucg_var("i", ucg_i32_type());
+        ucg_assign(i, ucg_i32_value(0));
+        Ucg *loop = ucg_loop();
+        ucg_then(loop, ucg_op(LT, i, ucg_i32_value(3)));
+        Ucg *b = ucg_var("b", ucg_i32_type());
+        ucg_assign(b, i);
+        ucg_clean(b);
+        ucg_write(
+            ucg_i32_value(1),
+            (Ucg *[]){
+                ucg_string_value("clean b "),
+                b,
+                ucg_string_value("\n"),
+            },
+            3
+        );
+        ucg_clean_end();
+        ucg_op(ADD_ASSIGN, i, ucg_i32_value(1));
+        Ucg *stop = ucg_if();
+        ucg_then(stop, ucg_op(EQ, i, ucg_i32_value(2)));
+        ucg_brk(loop);
+        ucg_end(stop);
+        ucg_write(
+            ucg_i32_value(1),
+            (Ucg *[]){
+                ucg_string_value("loop\n"),
+            },
+            1
+        );
+        ucg_end(loop);
+        ucg_ret(ucg_i32_value(0));
+        ucg_end(fn_main);
+        break;
+    }
     default: {
         return false;
     }
@@ -3256,7 +3379,7 @@ const char *to_string(Type type) {
 		[THEN] = "THEN", [END] = "END",
 		[BLOC] = "BLOC",
 		[LOOP] = "LOOP", [BRK] = "BRK", [CNT] = "CNT",
-		[MATCH] = "MATCH", [CASE] = "CASE", [DEFAULT] = "DEFAULT",
+		[MATCH] = "MATCH", [CASE] = "CASE", [DEFAULT] = "DEFAULT", [CLEAN] = "CLEAN",
 		[AS] = "AS",
 		[LAST] = "LAST",
         // clang-format on

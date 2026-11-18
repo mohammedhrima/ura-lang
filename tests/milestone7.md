@@ -1551,12 +1551,12 @@ if12.then:                                        ; preds = %if12
   br label %while11
 
 endif:                                            ; preds = %if12
-  call void @String.drop(%String* %"match@458")
   store [7 x i8] c"never\0A\00", [7 x i8]* %arr16, align 1
   %8 = getelementptr inbounds [7 x i8], [7 x i8]* %arr16, i32 0, i32 0
   store [7 x i8] c"never\0A\00", [7 x i8]* %arr17, align 1
   %9 = getelementptr inbounds [7 x i8], [7 x i8]* %arr17, i32 0, i32 0
   %call.dprintf18 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %9)
+  call void @String.drop(%String* %"match@458")
   br label %while11
 
 endloop:                                          ; preds = %while11
