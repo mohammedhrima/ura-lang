@@ -1984,14 +1984,17 @@ void codegen_structs(Node *node) {
         Node *child = node->children[i];
         if (child->token->type != STRUCT)
             continue;
+        Ucg **attrs = arena_alloc(child->children_count + 1, sizeof(Ucg *));
+        int attrs_count = 0;
         for (int j = 0; j < child->children_count; j++) {
             Node *attr = child->children[j];
             if (attr->token->type != DECLARE)
                 continue;
             codegen(attr->var->data_type);
             Ucg *type = attr->var->data_type->token->ucg;
-            ucg_add_attr(child->token->ucg, ucg_attr(attr->var->token->name, type));
+            attrs[attrs_count++] = ucg_attr(attr->var->token->name, type);
         }
+        ucg_attrs(child->token->ucg, attrs, attrs_count);
     }
 }
 

@@ -1181,15 +1181,11 @@ Ucg *ucg_attr(char *name, Ucg *data_type) {
     return new;
 }
 
-Ucg *ucg_add_attr(Ucg *st, Ucg *attr) {
-    attr->obj.index = st->obj.attrs_count;
-    append(st->obj.attrs, attr);
-    return attr;
-}
-
-void ucg_add_attrs(Ucg *st, Ucg **attrs, int attrs_count) {
-    for (int i = 0; i < attrs_count; i++)
-        ucg_add_attr(st, attrs[i]);
+void ucg_attrs(Ucg *st, Ucg **attrs, int attrs_count) {
+    for (int i = 0; i < attrs_count; i++) {
+        attrs[i]->obj.index = st->obj.attrs_count;
+        append(st->obj.attrs, attrs[i]);
+    }
 }
 
 Ucg *ucg_type_of(Ucg *place) {
@@ -2785,15 +2781,24 @@ bool run_test(int p) {
     }
     case 23: {
         Ucg *point = ucg_struct("Point");
-        Ucg *point_attrs[] = {
-            ucg_attr("x", ucg_i32_type()),
-            ucg_attr("y", ucg_i32_type()),
-        };
-        ucg_add_attrs(point, point_attrs, 2);
+        ucg_attrs(
+            point,
+            (Ucg *[]){
+                ucg_attr("x", ucg_i32_type()),
+                ucg_attr("y", ucg_i32_type()),
+            },
+            2
+        );
 
         Ucg *rect = ucg_struct("Rect");
-        ucg_add_attr(rect, ucg_attr("a", point));
-        ucg_add_attr(rect, ucg_attr("b", point));
+        ucg_attrs(
+            rect,
+            (Ucg *[]){
+                ucg_attr("a", point),
+                ucg_attr("b", point),
+            },
+            2
+        );
 
         Ucg *make = ucg_fn(
             "make",
@@ -2833,8 +2838,14 @@ bool run_test(int p) {
     }
     case 24: {
         Ucg *point = ucg_struct("Point");
-        ucg_add_attr(point, ucg_attr("x", ucg_i32_type()));
-        ucg_add_attr(point, ucg_attr("y", ucg_i32_type()));
+        ucg_attrs(
+            point,
+            (Ucg *[]){
+                ucg_attr("x", ucg_i32_type()),
+                ucg_attr("y", ucg_i32_type()),
+            },
+            2
+        );
 
         Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL, 0);
         Ucg *p = ucg_var("p", point);
@@ -2846,8 +2857,14 @@ bool run_test(int p) {
     }
     case 25: {
         Ucg *point = ucg_struct("Point");
-        ucg_add_attr(point, ucg_attr("x", ucg_i32_type()));
-        ucg_add_attr(point, ucg_attr("y", ucg_i32_type()));
+        ucg_attrs(
+            point,
+            (Ucg *[]){
+                ucg_attr("x", ucg_i32_type()),
+                ucg_attr("y", ucg_i32_type()),
+            },
+            2
+        );
 
         Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL, 0);
         Ucg *p = ucg_var("p", point);
@@ -2867,8 +2884,14 @@ bool run_test(int p) {
     }
     case 26: {
         Ucg *point = ucg_struct("Point");
-        ucg_add_attr(point, ucg_attr("x", ucg_i32_type()));
-        ucg_add_attr(point, ucg_attr("y", ucg_i32_type()));
+        ucg_attrs(
+            point,
+            (Ucg *[]){
+                ucg_attr("x", ucg_i32_type()),
+                ucg_attr("y", ucg_i32_type()),
+            },
+            2
+        );
 
         Ucg *swap = ucg_fn(
             "swap",
