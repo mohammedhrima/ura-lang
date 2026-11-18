@@ -42,6 +42,7 @@ struct Token {
     bool is_type;
     bool is_varg;
     bool is_pub;
+    bool is_uint;
     // uraIR ir;
 
     Ucg *ucg;
@@ -141,6 +142,10 @@ struct {
     { "i16", { .type = INT, .is_type = true, .shift = 16 } },
     { "i32", { .type = INT, .is_type = true, .shift = 32 } },
     { "i64", { .type = INT, .is_type = true, .shift = 64 } },
+    { "u8", { .type = INT, .is_type = true, .shift = 8, .is_uint = true } },
+    { "u16", { .type = INT, .is_type = true, .shift = 16, .is_uint = true } },
+    { "u32", { .type = INT, .is_type = true, .shift = 32, .is_uint = true } },
+    { "u64", { .type = INT, .is_type = true, .shift = 64, .is_uint = true } },
     { "num", { .type = INT, .is_type = true } },
 
     { "True", { .type = INT, .shift = 1, .num = { .value = true } } },
@@ -1259,7 +1264,9 @@ char *type_name(Node *type) {
     switch (type->token->type) {
     case INT: {
         int shift = type->token->shift;
-        return shift == 1 ? "bool" : format("i%d", shift);
+        if (shift == 1)
+            return "bool";
+        return format("%c%d", type->token->is_uint ? 'u' : 'i', shift);
     }
     case FLOAT:
         return format("f%d", type->token->shift);
@@ -1313,6 +1320,8 @@ bool same_type(Node *a, Node *b) {
         return same_type(a->data_type, b->data_type);
     if (a->token->type == ID)
         return strcmp2(a->token->name, b->token->name);
+    if (a->token->is_uint != b->token->is_uint)
+        return false;
     return a->token->shift == b->token->shift;
 }
 
@@ -1363,16 +1372,19 @@ void check_type(Node *value, Node *expected, char *help) {
         return;
     Token *token = value->token;
     if (is_number(value) && is_number(expected)) {
-        long long max = (1LL << (expected->token->shift - 1)) - 1;
+        int bits = expected->token->shift - !expected->token->is_uint;
+        long long max = bits == 64 ? ~0ULL >> 1 : (1ULL << bits) - 1;
+        long long min = expected->token->is_uint ? 0 : -max - 1;
         long long number = token->num.value;
-        if (number < -max - 1 || number > max)
+        if (number < min || number > max)
             add_error(
                 token->s,
                 token->e,
                 format("%lld doesn't fit in %s", number, type_name(expected)),
-                format("%s goes from %lld to %lld", type_name(expected), -max - 1, max)
+                format("%s goes from %lld to %lld", type_name(expected), min, max)
             );
         token->shift = expected->token->shift;
+        token->is_uint = expected->token->is_uint;
         return;
     }
     bool is_real = value->token->type == FLOAT && !value->token->is_type;
@@ -1847,7 +1859,9 @@ void codegen(Node *node) {
     }
 
     case INT: {
-        if (node->token->is_type)
+        if (node->token->is_type && node->token->is_uint)
+            ucg = ucg_uint_type(node->token->shift);
+        else if (node->token->is_type)
             ucg = ucg_int_type(node->token->shift);
         else
             ucg = ucg_int_value(node->token->shift, node->token->num.value);

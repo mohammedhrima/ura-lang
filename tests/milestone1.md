@@ -253,6 +253,8 @@
 - 249 — variables: a number literal takes the type of its i8 target
 - 250 — variables: a variable first set inside an if still starts at zero
 - 251 — variables: a variable with the name of a parameter
+- 252 — unsigned: u8 wraps, u32 divides and compares unsigned, u64, casts
+- 253 — unsigned: a number that doesn't fit in u8
 
 ---
 
@@ -11309,6 +11311,148 @@ error: test.ura:2:5 'r' is already declared
   |
 2 |     r i32 = 2
   |     ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+
+---
+
+## 252 — unsigned: u8 wraps, u32 divides and compares unsigned, u64, casts
+
+```ura
+fn main() i32:
+    small u8 = 250
+    small += 10
+    big u32 = 4000000000
+    half u32 = big / 2
+    wide u64 = 18000000000
+    output(typeof(small), " ", small, " ", big, " ", half, " ", big > 100, " ", wide, "\n")
+    output(sizeof(u16), " ", big as f64, " ", -1 as u8, "\n")
+    return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@TYPEOF = private unnamed_addr constant [3 x i8] c"u8\00", align 1
+
+define i32 @main() {
+entry:
+  %small = alloca i8, align 1
+  %big = alloca i32, align 4
+  %half = alloca i32, align 4
+  %wide = alloca i64, align 8
+  %arr = alloca [2 x i8], align 1
+  %arr1 = alloca [2 x i8], align 1
+  %arr2 = alloca [2 x i8], align 1
+  %arr3 = alloca [2 x i8], align 1
+  %arr5 = alloca [2 x i8], align 1
+  %arr6 = alloca [2 x i8], align 1
+  %bool.text = alloca i8*, align 8
+  %arr9 = alloca [5 x i8], align 1
+  %arr10 = alloca [6 x i8], align 1
+  %arr11 = alloca [21 x i8], align 1
+  %arr12 = alloca [2 x i8], align 1
+  %arr15 = alloca [2 x i8], align 1
+  %arr16 = alloca [2 x i8], align 1
+  %arr17 = alloca [10 x i8], align 1
+  store i8 -6, i8* %small, align 1
+  %"$small" = load i8, i8* %small, align 1
+  %ADD = add i8 %"$small", 10
+  store i8 %ADD, i8* %small, align 1
+  store i32 -294967296, i32* %big, align 4
+  %"$big" = load i32, i32* %big, align 4
+  %DIV = udiv i32 %"$big", 2
+  store i32 %DIV, i32* %half, align 4
+  store i64 18000000000, i64* %wide, align 8
+  store [2 x i8] c" \00", [2 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [2 x i8], [2 x i8]* %arr, i32 0, i32 0
+  store [2 x i8] c" \00", [2 x i8]* %arr1, align 1
+  %1 = getelementptr inbounds [2 x i8], [2 x i8]* %arr1, i32 0, i32 0
+  store [2 x i8] c" \00", [2 x i8]* %arr2, align 1
+  %2 = getelementptr inbounds [2 x i8], [2 x i8]* %arr2, i32 0, i32 0
+  store [2 x i8] c" \00", [2 x i8]* %arr3, align 1
+  %3 = getelementptr inbounds [2 x i8], [2 x i8]* %arr3, i32 0, i32 0
+  %"$big4" = load i32, i32* %big, align 4
+  %GT = icmp ugt i32 %"$big4", 100
+  store [2 x i8] c" \00", [2 x i8]* %arr5, align 1
+  %4 = getelementptr inbounds [2 x i8], [2 x i8]* %arr5, i32 0, i32 0
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr6, align 1
+  %5 = getelementptr inbounds [2 x i8], [2 x i8]* %arr6, i32 0, i32 0
+  %"$small7" = load i8, i8* %small, align 1
+  %AS = zext i8 %"$small7" to i32
+  %"$big8" = load i32, i32* %big, align 4
+  %"$half" = load i32, i32* %half, align 4
+  store i8* null, i8** %bool.text, align 8
+  br label %if0
+
+if0:                                              ; preds = %entry
+  br i1 %GT, label %if0.then, label %else1
+
+if0.then:                                         ; preds = %if0
+  store [5 x i8] c"True\00", [5 x i8]* %arr9, align 1
+  %6 = getelementptr inbounds [5 x i8], [5 x i8]* %arr9, i32 0, i32 0
+  store i8* %6, i8** %bool.text, align 8
+  br label %endif
+
+else1:                                            ; preds = %if0
+  store [6 x i8] c"False\00", [6 x i8]* %arr10, align 1
+  %7 = getelementptr inbounds [6 x i8], [6 x i8]* %arr10, i32 0, i32 0
+  store i8* %7, i8** %bool.text, align 8
+  br label %endif
+
+endif:                                            ; preds = %else1, %if0.then
+  %"$wide" = load i64, i64* %wide, align 8
+  store [21 x i8] c"%s %u %u %u %s %llu\0A\00", [21 x i8]* %arr11, align 1
+  %8 = getelementptr inbounds [21 x i8], [21 x i8]* %arr11, i32 0, i32 0
+  %"$bool.text" = load i8*, i8** %bool.text, align 8
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %8, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @TYPEOF, i32 0, i32 0), i32 %AS, i32 %"$big8", i32 %"$half", i8* %"$bool.text", i64 %"$wide")
+  store [2 x i8] c" \00", [2 x i8]* %arr12, align 1
+  %9 = getelementptr inbounds [2 x i8], [2 x i8]* %arr12, i32 0, i32 0
+  %"$big13" = load i32, i32* %big, align 4
+  %AS14 = uitofp i32 %"$big13" to double
+  store [2 x i8] c" \00", [2 x i8]* %arr15, align 1
+  %10 = getelementptr inbounds [2 x i8], [2 x i8]* %arr15, i32 0, i32 0
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr16, align 1
+  %11 = getelementptr inbounds [2 x i8], [2 x i8]* %arr16, i32 0, i32 0
+  store [10 x i8] c"%d %f %u\0A\00", [10 x i8]* %arr17, align 1
+  %12 = getelementptr inbounds [10 x i8], [10 x i8]* %arr17, i32 0, i32 0
+  %call.dprintf18 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %12, i32 ptrtoint (i16* getelementptr (i16, i16* null, i32 1) to i32), double %AS14, i32 255)
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
+---
+
+## 253 — unsigned: a number that doesn't fit in u8
+
+```ura
+fn main() i32:
+    x u8 = 256
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:2:12 256 doesn't fit in u8
+  |
+2 |     x u8 = 256
+  |            ^^^
+help: u8 goes from 0 to 255
 error: aborting due to 1 error
 ```
 

@@ -132,6 +132,7 @@ struct Ucg {
     int shift;
     bool is_val;
     bool is_set;
+    bool is_uint;
 
     struct { // llvm stuff
         TypeRef rtype;
@@ -752,6 +753,14 @@ void llvm_op(Ucg *ir) {
         [LE] = LLVMRealOLE, [EQ] = LLVMRealOEQ, [NQ] = LLVMRealUNE,
     };
     // clang-format on
+    if (ir->is_uint) {
+        opcodes[DIV] = LLVMUDiv;
+        opcodes[MOD] = LLVMURem;
+        predicates[GT] = LLVMIntUGT;
+        predicates[LT] = LLVMIntULT;
+        predicates[GE] = LLVMIntUGE;
+        predicates[LE] = LLVMIntULE;
+    }
     Type type = ir->type;
     Value left = ir->left->elem;
     Value right = ir->right->elem;
@@ -811,15 +820,16 @@ void llvm_cast(Ucg *ir) {
         ir->elem = value;
         return;
     }
+    bool from_uint = from_bits == 1 || ir->is_uint;
     LLVMOpcode op;
     if (from_float && to_float)
         op = to_bits > from_bits ? LLVMFPExt : LLVMFPTrunc;
     else if (from_float)
-        op = LLVMFPToSI;
+        op = to->is_uint ? LLVMFPToUI : LLVMFPToSI;
     else if (to_float)
-        op = from_bits == 1 ? LLVMUIToFP : LLVMSIToFP;
+        op = from_uint ? LLVMUIToFP : LLVMSIToFP;
     else if (to_bits > from_bits)
-        op = from_bits == 1 ? LLVMZExt : LLVMSExt;
+        op = from_uint ? LLVMZExt : LLVMSExt;
     else
         op = LLVMTrunc;
     ir->elem = LLVMBuildCast(gb_ucg.builder, op, value, llvm_type(to), "AS");
@@ -889,6 +899,12 @@ Ucg *ucg_int_type(int shift) {
     // printf(">>>> %d\n", shift);
     new->shift = log2(shift);
     // printf(">>>> %d\n", new->shift);
+    return new;
+}
+
+Ucg *ucg_uint_type(int shift) {
+    Ucg *new = ucg_int_type(shift);
+    new->is_uint = true;
     return new;
 }
 
@@ -1282,6 +1298,11 @@ Ucg *ucg_write(Ucg *fd, Ucg **values, int values_count) {
             ucg_assign(text_var, ucg_string_value("False"));
             ucg_end(stmt);
             value = text_var;
+        } else if (type->type == INT && type->is_uint && bits == 64) {
+            spec = "%llu";
+        } else if (type->type == INT && type->is_uint) {
+            spec = "%u";
+            value = ucg_cast(value, ucg_uint_type(32));
         } else if (type->type == INT && bits == 8) {
             spec = "%c";
             value = ucg_cast(value, ucg_i32_type());
@@ -1434,9 +1455,15 @@ bool is_first_write(Ucg *var) {
     return true;
 }
 
+bool ucg_is_uint(Ucg *value) {
+    Ucg *type = is_locator(value) ? ucg_type_of(value) : ucg_value_type(value);
+    return type->type == INT && type->is_uint;
+}
+
 Ucg *ucg_op(Type type, Ucg *left, Ucg *right) {
     assert(left);
     assert(right);
+    bool is_uint = type != ASSIGN && (ucg_is_uint(left) || ucg_is_uint(right));
     Type ops[LAST + 1] = {
         [ADD_ASSIGN] = ADD, [SUB_ASSIGN] = SUB, [MUL_ASSIGN] = MUL,
         [DIV_ASSIGN] = DIV, [MOD_ASSIGN] = MOD,
@@ -1451,6 +1478,7 @@ Ucg *ucg_op(Type type, Ucg *left, Ucg *right) {
         Ucg *binary_op = ucg_new(type);
         binary_op->left = ucg_dref(left);
         binary_op->right = right;
+        binary_op->is_uint = is_uint;
         right = binary_op;
         append(gb_ucg.insts, binary_op);
         type = ASSIGN;
@@ -1460,6 +1488,7 @@ Ucg *ucg_op(Type type, Ucg *left, Ucg *right) {
     Ucg *new = ucg_new(type);
     new->left = left;
     new->right = right;
+    new->is_uint = is_uint;
     append(gb_ucg.insts, new);
     return new;
 }
@@ -1472,6 +1501,7 @@ Ucg *ucg_cast(Ucg *value, Ucg *type) {
     Ucg *new = ucg_new(AS);
     new->left = ucg_value(value);
     new->to_type = type;
+    new->is_uint = ucg_is_uint(new->left);
     append(gb_ucg.insts, new);
     return new;
 }
@@ -1487,7 +1517,9 @@ char *ucg_type_name(Ucg *type) {
     switch (type->type) {
     case INT: {
         int bits = 1 << type->shift;
-        return bits == 1 ? "bool" : format("i%d", bits);
+        if (bits == 1)
+            return "bool";
+        return format("%c%d", type->is_uint ? 'u' : 'i', bits);
     }
     case FLOAT:
         return format("f%d", 1 << type->shift);
@@ -2641,6 +2673,36 @@ bool run_test(int p) {
         };
         ucg_write(ucg_i32_value(1), values, 6);
         ucg_ret(ucg_access(arr, ucg_i32_value(0)));
+        ucg_end(fn_main);
+        break;
+    }
+    case 30: {
+        Ucg *fn_main = ucg_fn2("main", ucg_i32_type(), NULL);
+        Ucg *small = ucg_var("small", ucg_uint_type(8));
+        ucg_assign(small, ucg_int_value(8, 250));
+        ucg_op(ADD_ASSIGN, small, ucg_int_value(8, 10));
+        Ucg *big = ucg_var("big", ucg_uint_type(32));
+        ucg_assign(big, ucg_int_value(32, 4000000000));
+        Ucg *half = ucg_var("half", ucg_uint_type(32));
+        ucg_assign(half, ucg_op(DIV, big, ucg_int_value(32, 2)));
+        Ucg *is_big = ucg_var("is_big", ucg_bool_type());
+        ucg_assign(is_big, ucg_op(GT, big, ucg_int_value(32, 100)));
+        Ucg *values[] = {
+            ucg_typeof(ucg_uint_type(8)),
+            ucg_string_value(" "),
+            small,
+            ucg_string_value(" "),
+            big,
+            ucg_string_value(" "),
+            half,
+            ucg_string_value(" "),
+            is_big,
+            ucg_string_value(" "),
+            ucg_cast(big, ucg_float_type(64)),
+            ucg_string_value("\n"),
+        };
+        ucg_write(ucg_i32_value(1), values, 12);
+        ucg_ret(ucg_i32_value(0));
         ucg_end(fn_main);
         break;
     }
