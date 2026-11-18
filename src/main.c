@@ -731,12 +731,18 @@ bool macro_cond(Node *cond) {
     return false;
 }
 
-void parse_tokens(Node *scope, int start) {
+void parse_tokens(Node *scope, int start, Node *types) {
     int exe_pos = ura.exe_pos;
+    Node *outer = ura.types;
     ura.exe_pos = start;
-    while (peek(0)->type != LAST)
-        append(scope->children, parse_expr(0));
+    ura.types = types;
+    while (peek(0)->type != LAST) {
+        Node *child = parse_expr(0);
+        if (child->token->type != VAR)
+            append(scope->children, child);
+    }
     ura.exe_pos = exe_pos;
+    ura.types = outer;
 }
 
 char *find_package(char *name) {
@@ -754,7 +760,11 @@ char *find_package(char *name) {
             continue;
         char *paths[] = {
             format(
-                "%s/%s/%s/%s.ura", dirs[i], package, version ? version : "current", package
+                "%s/%s/%s/%s.ura",
+                dirs[i],
+                package,
+                version ? version : "current",
+                package
             ),
             version ? NULL : format("%s/%s.ura", dirs[i], package),
         };
@@ -784,7 +794,7 @@ void parse_package(File *package) {
     new_token(LAST, NULL);
     ura.file = file;
     ura.line = line;
-    parse_tokens(ura.scope, start);
+    parse_tokens(ura.scope, start, ura.types);
 }
 
 int copy_tokens(int from_pos, int to_pos, char *from, char *to, int space) {
@@ -800,13 +810,6 @@ int copy_tokens(int from_pos, int to_pos, char *from, char *to, int space) {
     return start;
 }
 
-void parse_struct_body(Node *st) {
-    while (inside(st->token->space)) {
-        Node *child = parse_expr(0);
-        if (includes(child->token->type, FN_DEC, TEMPLATE, 0))
-            append(st->children, child);
-    }
-}
 
 void parse_parent(Node *st, Node *parent) {
     Token *body = parent->token;
@@ -817,13 +820,7 @@ void parse_parent(Node *st, Node *parent) {
     int start = copy_tokens(
         body->body.start, body->body.end, parent->token->name, st->token->name, space
     );
-    int exe_pos = ura.exe_pos;
-    Node *types = ura.types;
-    ura.exe_pos = start;
-    ura.types = body->body.types;
-    parse_struct_body(st);
-    ura.exe_pos = exe_pos;
-    ura.types = types;
+    parse_tokens(st, start, body->body.types);
 }
 
 void remove_overridden(Node *st) {
@@ -907,11 +904,8 @@ char *init_from_template(Node *template, Node *types) {
 
     Token *body = template->token;
     int start = copy_tokens(body->body.start, body->body.end, token->name, name, 0);
-    Node *outer = ura.types;
     types->declared = template;
-    ura.types = types;
-    parse_tokens(template->scope, start);
-    ura.types = outer;
+    parse_tokens(template->scope, start, types);
     return name;
 }
 
@@ -1033,7 +1027,9 @@ Node *parse_prime() {
         );
         append(
             node->children,
-            new_builtin(TYPEOF, "typeof", 0, new_type(ARRAY, 0, new_type(INT, 8, NULL)))
+            new_builtin(
+                TYPEOF, "typeof", 0, new_type(ARRAY, 0, new_type(INT, 8, NULL))
+            )
         );
         append(node->children, new_builtin(DROP, "drop", 0, NULL));
         return node;
@@ -1175,8 +1171,8 @@ Node *parse_prime() {
         if (token->type != IF)
             return node;
         Node *branch = node;
-        while (includes(peek(0)->type, ELIF, ELSE, 0) && peek(0)->space == token->space
-        ) {
+        while (includes(peek(0)->type, ELIF, ELSE, 0) &&
+               peek(0)->space == token->space) {
             branch->next = parse_block(next());
             branch = branch->next;
         }
@@ -1187,7 +1183,8 @@ Node *parse_prime() {
         char *name = token->type == ELIF ? "elif" : "else";
         char *help = NULL;
         if (token->type == ELIF)
-            help = format("use if%.*s", line_end(token->e) - token->e, text_at(token->e));
+            help =
+                format("use if%.*s", line_end(token->e) - token->e, text_at(token->e));
         add_error(
             token->s, token->e, format("%s without an if before it", name), help
         );
@@ -1275,8 +1272,9 @@ Node *parse_prime() {
                 name->s,
                 name->e,
                 format("package '%s' not found", package),
-                strncmp2(package, "@/", 2) ? format("run: ura --install %s", package + 2)
-                                          : NULL
+                strncmp2(package, "@/", 2)
+                    ? format("run: ura --install %s", package + 2)
+                    : NULL
             );
         else
             parse_package(new_file(path));
@@ -1357,7 +1355,11 @@ Node *parse_prime() {
         token->body.end = token->body.start + end - ura.exe_pos;
         token->body.types = ura.types;
         token->body.parents = parents;
-        parse_struct_body(node);
+        while (inside(node->token->space)) {
+            Node *child = parse_expr(0);
+            if (includes(child->token->type, FN_DEC, TEMPLATE, 0))
+                append(node->children, child);
+        }
         exit_scope();
         remove_overridden(node);
         for (int i = 0; i < node->children_count; i++) {
@@ -1381,12 +1383,14 @@ Node *parse_prime() {
             bool has_one_param = method->args->children_count == 1;
             Node *other = has_one_param ? method->args->children[0]->data_type : NULL;
             bool is_by_value = other && other->token->type == ID;
-            bool is_same_type = is_by_value && strcmp2(other->token->name, node->token->name);
+            bool is_same_type =
+                is_by_value && strcmp2(other->token->name, node->token->name);
             if (is_assign && is_same_type)
                 add_error(
                     name->s,
                     name->e,
-                    "operator = takes the other side by reference, a copy would need itself",
+                    "operator = takes the other side by reference, a copy would need "
+                    "itself",
                     format("use operator =(other &%s)", node->token->name)
                 );
             Node *type = new_type(ID, 0, NULL);
@@ -1512,9 +1516,9 @@ Node *find_function_like(char *name, int max_diff) {
         Node *curr = ura.scopes[i];
         for (int j = 0; j < curr->children_count; j++) {
             Node *child = curr->children[j];
-            bool is_function = includes(child->token->type, 
-                FN_DEC, PROTO, WRITE, READ, SIZEOF, 
-                TYPEOF, DROP, 0);
+            bool is_function = includes(
+                child->token->type, FN_DEC, PROTO, WRITE, READ, SIZEOF, TYPEOF, DROP, 0
+            );
             bool is_operator = child->args && child->args->symbol;
             if (!is_function || is_operator)
                 continue;
@@ -2147,7 +2151,8 @@ void analyze(Node *node) {
                 );
             break;
         }
-        bool takes_type = includes(node->to_call->token->type, SIZEOF, TYPEOF, DROP, 0);
+        bool takes_type =
+            includes(node->to_call->token->type, SIZEOF, TYPEOF, DROP, 0);
         if (takes_type && node->children_count != 1)
             add_error(
                 token->s,
@@ -2167,10 +2172,14 @@ void analyze(Node *node) {
             }
         }
         bool is_drop = node->to_call->token->type == DROP;
-        if (is_drop && node->children_count == 1 && !lives_in_variable(node->children[0])) {
+        if (is_drop && node->children_count == 1 &&
+            !lives_in_variable(node->children[0])) {
             Token *arg = node->children[0]->token;
             add_error(
-                arg->s, arg->e, "drop takes a variable, an attribute or an element", NULL
+                arg->s,
+                arg->e,
+                "drop takes a variable, an attribute or an element",
+                NULL
             );
         }
         break;
@@ -2710,7 +2719,8 @@ void codegen(Node *node) {
         codegen(node->left);
         codegen(node->right);
         Node *type = type_of(node->left);
-        bool is_declaration = node->left->token->type == VAR && node->left->declared == NULL;
+        bool is_declaration =
+            node->left->token->type == VAR && node->left->declared == NULL;
         if (node->token->type == ASSIGN && !is_declaration && needs_drop(type)) {
             Ucg *value = ucg_value(node->right->token->ucg);
             codegen_drop(node->left->token->ucg, type);

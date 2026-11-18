@@ -223,8 +223,7 @@ void expect(Type type, char *msg, char *fix);
 void parse_args(int ac, char **av);
 void parse_package(File *package);
 void parse_parent(Node *st, Node *parent);
-void parse_struct_body(Node *st);
-void parse_tokens(Node *scope, int start);
+void parse_tokens(Node *scope, int start, Node *types);
 void remove_overridden(Node *st);
 void tokenize(File *file);
 #endif
