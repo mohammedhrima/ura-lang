@@ -491,8 +491,8 @@ void tokenize(File *file) {
         }
         if (buff[s] == '@' && isalpha(buff[s + 1]))
             e++; // SKIP @
-        while ((isalpha(buff[s]) || buff[s] == '_' || buff[s] == '@') &&
-               (isalnum(buff[e]) || buff[e] == '_'))
+        bool starts_name = isalpha(buff[s]) || buff[s] == '_' || buff[s] == '@';
+        while (starts_name && (isalnum(buff[e]) || buff[e] == '_'))
             e++;
         if (e != s) {
             parse_id(s, e, space);
@@ -1077,8 +1077,9 @@ Node *parse_prime() {
         if (token->type != IF)
             return node;
         Node *branch = node;
-        while (includes(peek(0)->type, ELIF, ELSE, 0) &&
-               peek(0)->space == token->space) {
+        while (includes(peek(0)->type, ELIF, ELSE, 0)) {
+            if (peek(0)->space != token->space)
+                break;
             branch->next = parse_block(next());
             branch = branch->next;
         }
@@ -1145,9 +1146,9 @@ Node *parse_prime() {
                     next();
             }
             is_done = is_done || is_chosen;
-            bool has_next = includes(peek(0)->type, MACRO_ELIF, MACRO_ELSE, 0) &&
-                            peek(0)->space == token->space;
-            if (!has_next)
+            bool is_branch = includes(peek(0)->type, MACRO_ELIF, MACRO_ELSE, 0);
+            bool is_same_level = peek(0)->space == token->space;
+            if (!is_branch || !is_same_level)
                 break;
             branch = next();
         }
@@ -1791,8 +1792,8 @@ void codegen_drop_temporaries(void) {
 }
 
 void codegen_statement(Node *node) {
-    bool is_call = includes(node->token->type, FN_CALL, DOUBLE_DOTS, 0) ||
-                   (node->token->type == DOT && node->right->token->type == FN_CALL);
+    bool is_method = node->token->type == DOT && node->right->token->type == FN_CALL;
+    bool is_call = includes(node->token->type, FN_CALL, DOUBLE_DOTS, 0) || is_method;
     if (is_call && needs_drop(type_of(node)))
         codegen_in_variable(node);
     else

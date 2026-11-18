@@ -128,10 +128,10 @@ bool macro_cond(Node *cond) {
         break;
     }
     case FN_CALL: {
-        bool is_installed = strcmp2(token->name, "installed") &&
-                            cond->children_count == 1 &&
-                            cond->children[0]->token->type == CHARS;
-        if (is_installed)
+        bool is_installed = strcmp2(token->name, "installed");
+        bool has_one_arg = cond->children_count == 1;
+        bool has_name = has_one_arg && cond->children[0]->token->type == CHARS;
+        if (is_installed && has_name)
             return ucg_find_lib(cond->children[0]->token->chars.value) != NULL;
         break;
     }

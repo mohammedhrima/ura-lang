@@ -1431,8 +1431,9 @@ Ucg *ucg_param(char *name, Ucg *data_type) {
 }
 
 bool is_locator(Ucg *ir) {
-    return ir->type == DECLARE || ir->type == PARAM || ir->type == GLOBAL ||
-           ir->type == DOT || ir->type == POINT_TO || ir->type == ACCESS;
+    bool is_variable = ir->type == DECLARE || ir->type == PARAM || ir->type == GLOBAL;
+    bool is_part_of_variable = ir->type == DOT || ir->type == POINT_TO || ir->type == ACCESS;
+    return is_variable || is_part_of_variable;
 }
 
 Ucg *ucg_value(Ucg *ir) {
