@@ -131,6 +131,7 @@
 - 127 — variable: an array type carries no size
 - 128 — array: Array<T> from use "@/array": push, insert, pop, remove, front/back, resize, reverse
 - 129 — use: a module that doesn't exist
+- 130 — use: an error after a use points at the user's file and line
 
 ---
 
@@ -7347,6 +7348,36 @@ error: test.ura:1:5 module '@/nothing' not found
 1 | use "@/nothing"
   |     ^^^^^^^^^^^
 help: run: ura --install nothing
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+
+---
+
+## 130 — use: an error after a use points at the user's file and line
+
+```ura
+use "@/array"
+
+fn main() i32:
+    a Array<i32>
+    a.append("text")
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:5:7 'Array<i32>' has no method 'append'
+  |
+5 |     a.append("text")
+  |       ^^^^^^
 error: aborting due to 1 error
 ```
 

@@ -263,6 +263,46 @@ Token *new_token(Type type, Token *from) {
     return new;
 }
 
+File *file_at(int pos) {
+    File *found = ura.files[0];
+    for (int i = 0; i < ura.files_count; i++) {
+        File *file = ura.files[i];
+        if (!file->opened || file->start > pos || file->start < found->start)
+            continue;
+        found = file;
+    }
+    return found;
+}
+
+char *text_at(int pos) {
+    File *file = file_at(pos);
+    return file->buff + pos - file->start;
+}
+
+int end_of_sources(void) {
+    int end = 0;
+    for (int i = 0; i < ura.files_count; i++) {
+        File *file = ura.files[i];
+        if (file->opened && file->start + file->len + 1 > end)
+            end = file->start + file->len + 1;
+    }
+    return end;
+}
+
+int line_start_in(char *buff, int pos) {
+    while (pos > 0 && buff[pos - 1] != '\n')
+        pos--;
+    while (buff[pos] == ' ')
+        pos++;
+    return pos;
+}
+
+int line_end_in(char *buff, int pos) {
+    while (buff[pos] && buff[pos] != '\n')
+        pos++;
+    return pos;
+}
+
 Token *parse_id(int s, int e, int space) {
     Token *new = new_token(ID, NULL);
     char *buff = ura.file->buff;
@@ -336,11 +376,14 @@ Token *parse_char(int s, int e, int space) {
     return new;
 }
 
-void tokenize(int start, int space2) {
-    int s = start;
-    int e = start;
-    int space = space2;
-    char *buff = ura.file->buff;
+void tokenize(File *file) {
+    ura.file = file;
+    int first_token = ura.tokens_count;
+    int first_error = ura.errors_count;
+    int s = 0;
+    int e = 0;
+    int space = 0;
+    char *buff = file->buff;
     while (buff[e] != '\0') {
         s = e;
         if (isspace(buff[e])) {
@@ -349,7 +392,7 @@ void tokenize(int start, int space2) {
                 e++;
             }
             if (buff[s] == '\n') {
-                space = space2;
+                space = 0;
                 s = e - 1;
             }
             while (buff[e] != '\n' && isspace(buff[e])) {
@@ -404,7 +447,7 @@ void tokenize(int start, int space2) {
                 e++;
             }
             if (buff[e] != c) {
-                int start = line_start(s);
+                int start = line_start_in(buff, s);
                 add_error(
                     s,
                     e,
@@ -474,6 +517,14 @@ void tokenize(int start, int space2) {
         add_error(s, s + 1, format("unknown character '%c'", buff[s]), "remove it");
         e++;
     }
+    for (int i = first_token; i < ura.tokens_count; i++) {
+        ura.tokens[i]->s += file->start;
+        ura.tokens[i]->e += file->start;
+    }
+    for (int i = first_error; i < ura.errors_count; i++) {
+        ura.errors[i].s += file->start;
+        ura.errors[i].e += file->start;
+    }
 }
 
 // AST
@@ -497,23 +548,17 @@ Token *next() {
 }
 
 int line_start(int pos) {
-    char *buff = ura.file->buff;
-    while (pos > 0 && buff[pos - 1] != '\n')
-        pos--;
-    while (buff[pos] == ' ')
-        pos++;
-    return pos;
+    File *file = file_at(pos);
+    return file->start + line_start_in(file->buff, pos - file->start);
 }
 
 char *token_text(Token *token) {
-    return format("%.*s", token->e - token->s, ura.file->buff + token->s);
+    return format("%.*s", token->e - token->s, text_at(token->s));
 }
 
 int line_end(int pos) {
-    char *buff = ura.file->buff;
-    while (buff[pos] && buff[pos] != '\n')
-        pos++;
-    return pos;
+    File *file = file_at(pos);
+    return file->start + line_end_in(file->buff, pos - file->start);
 }
 
 void expect(Type type, char *msg, char *fix) {
@@ -521,7 +566,6 @@ void expect(Type type, char *msg, char *fix) {
         next();
         return;
     }
-    char *buff = ura.file->buff;
     Token *prev = ura.tokens[ura.exe_pos - 1];
     Token *at = peek(0)->line == prev->line ? peek(0) : prev;
     int start = line_start(prev->s);
@@ -533,10 +577,10 @@ void expect(Type type, char *msg, char *fix) {
         format(
             "use %.*s%s%.*s",
             prev->e - start,
-            buff + start,
+            text_at(start),
             fix,
             end - prev->e,
-            buff + prev->e
+            text_at(prev->e)
         )
     );
 }
@@ -615,7 +659,6 @@ bool fix_type_first(Token *token) {
         return false;
     int start = ura.exe_pos - 1;
     Token *last = ura.tokens[ura.exe_pos + end - 1];
-    char *buff = ura.file->buff;
     add_error(
         token->s,
         last->e,
@@ -624,9 +667,9 @@ bool fix_type_first(Token *token) {
             "use %s %.*s%.*s",
             name->name,
             last->e - token->s,
-            buff + token->s,
+            text_at(token->s),
             line_end(name->e) - name->e,
-            buff + name->e
+            text_at(name->e)
         )
     );
     for (int i = ura.exe_pos + end; i > start; i--)
@@ -745,21 +788,16 @@ void parse_module(File *module) {
         if (strcmp2(ura.files[i]->path, module->path))
             return;
     }
-    File *file = ura.file;
-    module->start = file->len + 2;
-    char *buff = arena_alloc(module->start + module->len + 1, sizeof(char));
-    memcpy(buff, file->buff, file->len);
-    buff[file->len + 1] = '\n';
-    memcpy(buff + module->start, module->buff, module->len);
-    file->buff = buff;
-    file->len = module->start + module->len;
+    module->start = end_of_sources();
     append(ura.files, module);
 
+    File *file = ura.file;
     int line = ura.line;
     int start = ura.tokens_count;
     ura.line = 1;
-    tokenize(module->start, 0);
+    tokenize(module);
     new_token(LAST, NULL);
+    ura.file = file;
     ura.line = line;
     parse_tokens(ura.scope, start);
 }
@@ -972,12 +1010,11 @@ Node *parse_block(Token *token) {
     else if (token->type != ELSE)
         node->cond = parse_expr(0);
     else if (peek(0)->type != DOTS && peek(0)->line == token->line) {
-        char *buff = ura.file->buff;
         add_error(
             token->s,
             token->e,
             "else has no condition",
-            format("use elif%.*s", line_end(token->e) - token->e, buff + token->e)
+            format("use elif%.*s", line_end(token->e) - token->e, text_at(token->e))
         );
         node->cond = parse_expr(0);
     }
@@ -1094,7 +1131,6 @@ Node *parse_prime() {
                 node->token->name = "[]";
             }
         } else if (peek(0)->type != ID) {
-            char *buff = ura.file->buff;
             Token *at = peek(0);
             int start = line_start(at->s);
             add_error(
@@ -1104,9 +1140,9 @@ Node *parse_prime() {
                 format(
                     "use %.*sname%.*s",
                     at->s - start,
-                    buff + start,
+                    text_at(start),
                     line_end(at->s) - at->s,
-                    buff + at->s
+                    text_at(at->s)
                 )
             );
             node->token->name = "";
@@ -1172,12 +1208,10 @@ Node *parse_prime() {
     }
     case ELIF:
     case ELSE: {
-        char *buff = ura.file->buff;
         char *name = token->type == ELIF ? "elif" : "else";
         char *help = NULL;
         if (token->type == ELIF)
-            help =
-                format("use if%.*s", line_end(token->e) - token->e, buff + token->e);
+            help = format("use if%.*s", line_end(token->e) - token->e, text_at(token->e));
         add_error(
             token->s, token->e, format("%s without an if before it", name), help
         );
@@ -2658,10 +2692,10 @@ int main(int ac, char **av) {
         File *file = ura.files[i];
         if (file->opened)
             continue;
+        file->start = end_of_sources();
         open_file(file);
-        ura.file = file;
         arena_reserve(file->len * 192);
-        tokenize(0, 0);
+        tokenize(file);
     }
     new_token(LAST, NULL)->space = -TAB;
 
@@ -2878,32 +2912,27 @@ void add_error(int s, int e, char *msg, char *help) {
 void check_errors(void) {
     if (ura.errors_count == 0)
         return;
-    char *buff = ura.file->buff;
     char *cwd = getcwd2();
     size_t cwd_len = strlen(cwd);
     for (int i = 0; i < ura.errors_count; i++) {
         uraError *error = &ura.errors[i];
-        File *file = ura.files[0];
-        for (int j = 0; j < ura.files_count; j++) {
-            File *curr = ura.files[j];
-            if (curr->start <= error->s && curr->start > file->start)
-                file = curr;
-        }
+        File *file = file_at(error->s);
+        char *buff = file->buff;
+        int s = error->s - file->start;
+        int e = error->e - file->start;
         char *path = file->path;
         if (strncmp2(path, cwd, cwd_len) && path[cwd_len] == '/')
             path += cwd_len + 1;
         int line = 1;
-        int start = file->start;
-        for (int j = file->start; j < error->s; j++) {
+        int start = 0;
+        for (int j = 0; j < s; j++) {
             if (buff[j] == '\n') {
                 line++;
                 start = j + 1;
             }
         }
-        int end = error->s;
-        while (buff[end] && buff[end] != '\n')
-            end++;
-        int col = error->s - start;
+        int end = line_end_in(buff, s);
+        int col = s - start;
         int width = snprintf(NULL, 0, "%d", line);
 
         fprintf(
@@ -2912,7 +2941,7 @@ void check_errors(void) {
         fprintf(stderr, "%*s |\n", width, "");
         fprintf(stderr, "%d | %.*s\n", line, end - start, buff + start);
         fprintf(stderr, "%*s | %*s", width, "", col, "");
-        for (int j = error->s; j < error->e || j == error->s; j++)
+        for (int j = s; j < e || j == s; j++)
             fprintf(stderr, "^");
         fprintf(stderr, "\n");
         if (error->help)
