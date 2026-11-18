@@ -7493,8 +7493,8 @@ if27:                                             ; preds = %while26.then
   %"*self.data[]" = getelementptr inbounds i8, i8* %"$*self.data", i32 %"$start5"
   %"$*self.data[]" = load i8, i8* %"*self.data[]", align 1
   %call.String.is_space = call i1 @String.is_space(%String* %"*self3", i8 %"$*self.data[]")
-  %EQ = icmp eq i1 %call.String.is_space, false
-  br i1 %EQ, label %if27.then, label %endif
+  %NOT = xor i1 %call.String.is_space, true
+  br i1 %NOT, label %if27.then, label %endif
 
 if27.then:                                        ; preds = %if27
   br label %endloop
@@ -7531,8 +7531,8 @@ if29:                                             ; preds = %while28.then
   %"*self.data[]16" = getelementptr inbounds i8, i8* %"$*self.data15", i32 %SUB
   %"$*self.data[]17" = load i8, i8* %"*self.data[]16", align 1
   %call.String.is_space18 = call i1 @String.is_space(%String* %"*self11", i8 %"$*self.data[]17")
-  %EQ19 = icmp eq i1 %call.String.is_space18, false
-  br i1 %EQ19, label %if29.then, label %endif1
+  %NOT19 = xor i1 %call.String.is_space18, true
+  br i1 %NOT19, label %if29.then, label %endif1
 
 if29.then:                                        ; preds = %if29
   br label %endloop2
@@ -7872,18 +7872,10 @@ entry:
   store %String* %0, %String** %self, align 8
   store i8* %1, i8** %text, align 8
   %"*self" = load %String*, %String** %self, align 8
-  %"*self.count" = getelementptr inbounds %String, %String* %"*self", i32 0, i32 1
   %"$text" = load i8*, i8** %text, align 8
-  %call.strlen = call i64 @strlen(i8* %"$text")
-  %AS = trunc i64 %call.strlen to i32
-  %"$*self.count" = load i32, i32* %"*self.count", align 4
-  %NQ = icmp ne i32 %"$*self.count", %AS
-  %"*self1" = load %String*, %String** %self, align 8
-  %"$text2" = load i8*, i8** %text, align 8
-  %call.String.matches_at = call i1 @String.matches_at(%String* %"*self1", i32 0, i8* %"$text2")
-  %EQ = icmp eq i1 %call.String.matches_at, false
-  %OR = or i1 %NQ, %EQ
-  ret i1 %OR
+  %"call.String.==" = call i1 @"String.==.1"(%String* %"*self", i8* %"$text")
+  %NOT = xor i1 %"call.String.==", true
+  ret i1 %NOT
 }
 
 define void @"String.=.3"(%String* %0, i8* %1) {
@@ -8325,7 +8317,6 @@ endif5:                                           ; preds = %else50, %if49.then
 
 declare i32 @dprintf(i32, i8*, ...)
 ```
-
 
 ---
 

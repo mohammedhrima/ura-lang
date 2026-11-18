@@ -843,6 +843,10 @@ void llvm_neg(Ucg *ir) {
         ir->elem = LLVMBuildNeg(gb_ucg.builder, value, "NEG");
 }
 
+void llvm_not(Ucg *ir) {
+    ir->elem = LLVMBuildNot(gb_ucg.builder, ir->right->elem, "NOT");
+}
+
 Value llvm_parent_bloc() {
     assert(gb_ucg.builder);
     assert(LLVMGetInsertBlock(gb_ucg.builder));
@@ -1257,7 +1261,7 @@ Ucg *ucg_value_type(Ucg *value) {
     case SIZEOF:     return ucg_i32_type();
     case TYPEOF:     return ucg_string_type();
     case NEG:        return ucg_value_type(value->right);
-    case LT: case GT: case EQ: case LE: case GE: case NQ:
+    case LT: case GT: case EQ: case LE: case GE: case NQ: case NOT:
                      return ucg_i1_type();
     default:         return ucg_value_type(value->left); // clang-format on
     }
@@ -1546,6 +1550,13 @@ Ucg *ucg_neg(Ucg *value) {
     return new;
 }
 
+Ucg *ucg_not(Ucg *value) {
+    Ucg *new = ucg_new(NOT);
+    new->right = ucg_value(value);
+    append(gb_ucg.insts, new);
+    return new;
+}
+
 Ucg *ucg_bloc(char *name) {
     Ucg *new = ucg_new(BLOC);
     new->name = name;
@@ -1815,6 +1826,10 @@ void ucg_compile() {
         }
         case NEG: {
             llvm_neg(curr);
+            break;
+        }
+        case NOT: {
+            llvm_not(curr);
             break;
         }
         case AS: {
@@ -2702,6 +2717,23 @@ bool run_test(int p) {
             ucg_string_value("\n"),
         };
         ucg_write(ucg_i32_value(1), values, 12);
+        ucg_ret(ucg_i32_value(0));
+        ucg_end(fn_main);
+        break;
+    }
+    case 31: {
+        Ucg *fn_main = ucg_fn2("main", ucg_i32_type(), NULL);
+        Ucg *x = ucg_var("x", ucg_i32_type());
+        ucg_assign(x, ucg_i32_value(5));
+        Ucg *small = ucg_var("small", ucg_bool_type());
+        ucg_assign(small, ucg_not(ucg_op(GT, x, ucg_i32_value(3))));
+        Ucg *values[] = {
+            small,
+            ucg_string_value(" "),
+            ucg_not(small),
+            ucg_string_value("\n"),
+        };
+        ucg_write(ucg_i32_value(1), values, 4);
         ucg_ret(ucg_i32_value(0));
         ucg_end(fn_main);
         break;

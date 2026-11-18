@@ -156,12 +156,12 @@ struct String from Array<char>:
     fn trim() String:
         start i32 = 0
         while start < self.count:
-            if self.is_space(self.data[start]) == False:
+            if not self.is_space(self.data[start]):
                 break
             start += 1
         stop i32 = self.count
         while stop > start:
-            if self.is_space(self.data[stop - 1]) == False:
+            if not self.is_space(self.data[stop - 1]):
                 break
             stop -= 1
         return self.substr(start, stop - start)
@@ -224,7 +224,7 @@ struct String from Array<char>:
         return self.count == strlen(text) as i32 and self.matches_at(0, text)
 
     operator !=(text i8[]) bool:
-        return self.count != strlen(text) as i32 or self.matches_at(0, text) == False
+        return not (self == text)
 
     // ── build ──
 

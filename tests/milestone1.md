@@ -256,6 +256,8 @@
 - 252 — unsigned: u8 wraps, u32 divides and compares unsigned, u64, casts
 - 253 — unsigned: a number that doesn't fit in u8
 - 254 — variables: the type written before the name
+- 255 — bool: not, with and / or and in if / elif
+- 256 — bool: not on an i32
 
 ---
 
@@ -11499,6 +11501,142 @@ error: test.ura:7:5 the type goes after the name
   |     ^^^^^
 help: use p Point
 error: aborting due to 3 errors
+```
+
+### status
+
+```
+1
+```
+
+
+---
+
+## 255 — bool: not, with and / or and in if / elif
+
+```ura
+fn main() i32:
+    x i32 = 5
+    big bool = not (x < 3)
+    if not big or x == 0:
+        output("no\n")
+    elif not (x > 10) and big:
+        output("yes ", not big, "\n")
+    return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+define i32 @main() {
+entry:
+  %x = alloca i32, align 4
+  %big = alloca i1, align 1
+  %arr = alloca [4 x i8], align 1
+  %arr4 = alloca [4 x i8], align 1
+  %arr8 = alloca [5 x i8], align 1
+  %arr11 = alloca [2 x i8], align 1
+  %bool.text = alloca i8*, align 8
+  %arr12 = alloca [5 x i8], align 1
+  %arr13 = alloca [6 x i8], align 1
+  %arr14 = alloca [8 x i8], align 1
+  store i32 5, i32* %x, align 4
+  %"$x" = load i32, i32* %x, align 4
+  %LT = icmp slt i32 %"$x", 3
+  %NOT = xor i1 %LT, true
+  store i1 %NOT, i1* %big, align 1
+  br label %if0
+
+if0:                                              ; preds = %entry
+  %"$big" = load i1, i1* %big, align 1
+  %NOT2 = xor i1 %"$big", true
+  %"$x3" = load i32, i32* %x, align 4
+  %EQ = icmp eq i32 %"$x3", 0
+  %OR = or i1 %NOT2, %EQ
+  br i1 %OR, label %if0.then, label %elif1
+
+if0.then:                                         ; preds = %if0
+  store [4 x i8] c"no\0A\00", [4 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [4 x i8], [4 x i8]* %arr, i32 0, i32 0
+  store [4 x i8] c"no\0A\00", [4 x i8]* %arr4, align 1
+  %1 = getelementptr inbounds [4 x i8], [4 x i8]* %arr4, i32 0, i32 0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %1)
+  br label %endif1
+
+elif1:                                            ; preds = %if0
+  %"$x5" = load i32, i32* %x, align 4
+  %GT = icmp sgt i32 %"$x5", 10
+  %NOT6 = xor i1 %GT, true
+  %"$big7" = load i1, i1* %big, align 1
+  %AND = and i1 %NOT6, %"$big7"
+  br i1 %AND, label %elif1.then, label %endif1
+
+elif1.then:                                       ; preds = %elif1
+  store [5 x i8] c"yes \00", [5 x i8]* %arr8, align 1
+  %2 = getelementptr inbounds [5 x i8], [5 x i8]* %arr8, i32 0, i32 0
+  %"$big9" = load i1, i1* %big, align 1
+  %NOT10 = xor i1 %"$big9", true
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr11, align 1
+  %3 = getelementptr inbounds [2 x i8], [2 x i8]* %arr11, i32 0, i32 0
+  store i8* null, i8** %bool.text, align 8
+  br label %if2
+
+if2:                                              ; preds = %elif1.then
+  br i1 %NOT10, label %if2.then, label %else3
+
+if2.then:                                         ; preds = %if2
+  store [5 x i8] c"True\00", [5 x i8]* %arr12, align 1
+  %4 = getelementptr inbounds [5 x i8], [5 x i8]* %arr12, i32 0, i32 0
+  store i8* %4, i8** %bool.text, align 8
+  br label %endif
+
+else3:                                            ; preds = %if2
+  store [6 x i8] c"False\00", [6 x i8]* %arr13, align 1
+  %5 = getelementptr inbounds [6 x i8], [6 x i8]* %arr13, i32 0, i32 0
+  store i8* %5, i8** %bool.text, align 8
+  br label %endif
+
+endif:                                            ; preds = %else3, %if2.then
+  store [8 x i8] c"yes %s\0A\00", [8 x i8]* %arr14, align 1
+  %6 = getelementptr inbounds [8 x i8], [8 x i8]* %arr14, i32 0, i32 0
+  %"$bool.text" = load i8*, i8** %bool.text, align 8
+  %call.dprintf15 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %6, i8* %"$bool.text")
+  br label %endif1
+
+endif1:                                           ; preds = %endif, %elif1, %if0.then
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
+---
+
+## 256 — bool: not on an i32
+
+```ura
+fn main() i32:
+    x i32 = 5
+    return not x
+```
+
+### stderr
+
+```
+error: test.ura:3:16 expected 'bool', found 'i32'
+  |
+3 |     return not x
+  |                ^
+error: test.ura:3:12 expected 'i32', found 'bool'
+  |
+3 |     return not x
+  |            ^^^
+error: aborting due to 2 errors
 ```
 
 ### status

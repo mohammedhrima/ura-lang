@@ -1703,7 +1703,7 @@ Node *type_of(Node *node) {
     }
     case NEG:       return type_of(node->operand);
     case LT: case GT: case EQ: case LE: case GE: case NQ:
-    case AND: case OR: return bool_type();
+    case AND: case OR: case NOT: return bool_type();
     case ID:        return NULL;
     default:        return type_of(node->left); // clang-format on
     }
@@ -1972,6 +1972,11 @@ void analyze(Node *node) {
     }
     case NEG: {
         analyze(node->operand);
+        break;
+    }
+    case NOT: {
+        analyze(node->operand);
+        check_type(node->operand, bool_type(), NULL);
         break;
     } // clang-format off
     case REF: case ARRAY: { // clang-format on
@@ -2593,6 +2598,11 @@ void codegen(Node *node) {
     case NEG: {
         codegen(node->operand);
         node->token->ucg = ucg_neg(node->operand->token->ucg);
+        break;
+    }
+    case NOT: {
+        codegen(node->operand);
+        node->token->ucg = ucg_not(node->operand->token->ucg);
         break;
     }
     case CNT: {
