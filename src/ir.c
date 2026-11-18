@@ -84,7 +84,7 @@ enum Type {
     REF, POINT_TO,
     ZERO,
 
-    STRUCT, DOT, ATTR,
+    STRUCT, DOT, ATTR, ENUM,
 
     //OWN,
 
@@ -2920,7 +2920,7 @@ const char *to_string(Type type) {
 		[REF] = "REF", [POINT_TO] = "POINT_TO",
 		[ZERO] = "ZERO",
 
-		[STRUCT] = "STRUCT", [DOT] = "DOT", [ATTR] = "ATTR",
+		[STRUCT] = "STRUCT", [DOT] = "DOT", [ATTR] = "ATTR", [ENUM] = "ENUM",
 
 		[DREF] = "DREF",
 

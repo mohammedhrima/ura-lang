@@ -346,6 +346,11 @@ void analyze_operator(Node *node, Node *st, char *symbol) {
 
 void check_name(Node *node) {
     Token *token = node->token;
+    if (token->is_type && find_enum(token->name)) {
+        token->type = INT;
+        token->shift = 32;
+        return;
+    }
     if (token->is_type) {
         node->declared = find_struct(token->name);
         if (node->declared == NULL)
@@ -372,6 +377,35 @@ void check_name(Node *node) {
     node->declared = var;
 }
 
+void check_enum(Node *node) {
+    Token *token = node->token;
+    if (node->children_count == 0)
+        add_error(
+            token->s,
+            token->e,
+            format("enum '%s' has no variants", token->name),
+            format("add some: enum %s: A, B", token->name)
+        );
+    for (int i = 0; i < node->children_count; i++) {
+        Node *variant = node->children[i];
+        Token *name = variant->token;
+        Node *value = variant->left;
+        bool is_integer = value == NULL || (value->token->type == INT && !value->token->is_type);
+        if (!is_integer)
+            add_error(
+                value->token->s,
+                value->token->e,
+                format("the value of '%s' must be an integer", name->name),
+                NULL
+            );
+        for (int j = 0; j < i; j++)
+            if (strcmp2(node->children[j]->token->name, name->name))
+                add_error(
+                    name->s, name->e, format("'%s' is already declared", name->name), NULL
+                );
+    }
+}
+
 void check_declare(Node *node) {
     Token *token = node->var->token;
     if (find_in_scope(ura.scope, token->name) != node->var)
@@ -396,8 +430,32 @@ void check_cond(Node *cond) {
     check_type(cond, bool_type(), help);
 }
 
+void check_variant(Node *node, Node *en) {
+    Token *name = node->right->token;
+    for (int i = 0; i < en->children_count; i++) {
+        Token *variant = en->children[i]->token;
+        if (!strcmp2(variant->name, name->name))
+            continue;
+        node->token->type = INT;
+        node->token->shift = 32;
+        node->token->num.value = variant->num.value;
+        return;
+    }
+    add_error(
+        name->s,
+        name->e,
+        format("enum '%s' has no variant '%s'", en->token->name, token_text(name)),
+        NULL
+    );
+}
+
 void check_static_call(Node *node) {
     Token *name = node->left->token;
+    Node *en = find_enum(name->name);
+    if (en) {
+        check_variant(node, en);
+        return;
+    }
     Node *st = find_struct(name->name);
     if (st == NULL) {
         add_error(name->s, name->e, format("unknown type '%s'", name->name), NULL);

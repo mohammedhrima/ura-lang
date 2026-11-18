@@ -37,8 +37,37 @@ enum Color:
     BLUE,
 
 fn main() i32:
-    output(RED, " ", GREEN, " ", BLUE, "\n")
+    output(Color::RED, " ", Color::GREEN, " ", Color::BLUE, "\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+define i32 @main() {
+entry:
+  %arr = alloca [2 x i8], align 1
+  %arr1 = alloca [2 x i8], align 1
+  %arr2 = alloca [2 x i8], align 1
+  %arr3 = alloca [10 x i8], align 1
+  store [2 x i8] c" \00", [2 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [2 x i8], [2 x i8]* %arr, i32 0, i32 0
+  store [2 x i8] c" \00", [2 x i8]* %arr1, align 1
+  %1 = getelementptr inbounds [2 x i8], [2 x i8]* %arr1, i32 0, i32 0
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr2, align 1
+  %2 = getelementptr inbounds [2 x i8], [2 x i8]* %arr2, i32 0, i32 0
+  store [10 x i8] c"%d %d %d\0A\00", [10 x i8]* %arr3, align 1
+  %3 = getelementptr inbounds [10 x i8], [10 x i8]* %arr3, i32 0, i32 0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %3, i32 0, i32 1, i32 2)
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -51,8 +80,31 @@ fn main() i32:
 enum Color: RED, GREEN, BLUE
 
 fn main() i32:
-    output(RED, GREEN, BLUE, "\n")
+    output(Color::RED, Color::GREEN, Color::BLUE, "\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+define i32 @main() {
+entry:
+  %arr = alloca [2 x i8], align 1
+  %arr1 = alloca [8 x i8], align 1
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [2 x i8], [2 x i8]* %arr, i32 0, i32 0
+  store [8 x i8] c"%d%d%d\0A\00", [8 x i8]* %arr1, align 1
+  %1 = getelementptr inbounds [8 x i8], [8 x i8]* %arr1, i32 0, i32 0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %1, i32 0, i32 1, i32 2)
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -69,8 +121,31 @@ enum Dir:
     WEST,
 
 fn main() i32:
-    output(NORTH, EAST, SOUTH, WEST, "\n")
+    output(Dir::NORTH, Dir::EAST, Dir::SOUTH, Dir::WEST, "\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+define i32 @main() {
+entry:
+  %arr = alloca [2 x i8], align 1
+  %arr1 = alloca [10 x i8], align 1
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [2 x i8], [2 x i8]* %arr, i32 0, i32 0
+  store [10 x i8] c"%d%d%d%d\0A\00", [10 x i8]* %arr1, align 1
+  %1 = getelementptr inbounds [10 x i8], [10 x i8]* %arr1, i32 0, i32 0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %1, i32 1, i32 2, i32 3, i32 4)
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -83,12 +158,58 @@ fn main() i32:
 enum Color: RED, GREEN, BLUE
 
 fn main() i32:
-    c Color = GREEN
-    if c == GREEN:
+    c Color = Color::GREEN
+    if c == Color::GREEN:
         output("green\n")
     else:
         output("other\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+define i32 @main() {
+entry:
+  %c = alloca i32, align 4
+  %arr = alloca [7 x i8], align 1
+  %arr1 = alloca [7 x i8], align 1
+  %arr2 = alloca [7 x i8], align 1
+  %arr3 = alloca [7 x i8], align 1
+  store i32 1, i32* %c, align 4
+  br label %if0
+
+if0:                                              ; preds = %entry
+  %"$c" = load i32, i32* %c, align 4
+  %EQ = icmp eq i32 %"$c", 1
+  br i1 %EQ, label %if0.then, label %else1
+
+if0.then:                                         ; preds = %if0
+  store [7 x i8] c"green\0A\00", [7 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [7 x i8], [7 x i8]* %arr, i32 0, i32 0
+  store [7 x i8] c"green\0A\00", [7 x i8]* %arr1, align 1
+  %1 = getelementptr inbounds [7 x i8], [7 x i8]* %arr1, i32 0, i32 0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %1)
+  br label %endif
+
+else1:                                            ; preds = %if0
+  store [7 x i8] c"other\0A\00", [7 x i8]* %arr2, align 1
+  %2 = getelementptr inbounds [7 x i8], [7 x i8]* %arr2, i32 0, i32 0
+  store [7 x i8] c"other\0A\00", [7 x i8]* %arr3, align 1
+  %3 = getelementptr inbounds [7 x i8], [7 x i8]* %arr3, i32 0, i32 0
+  %call.dprintf4 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %3)
+  br label %endif
+
+endif:                                            ; preds = %else1, %if0.then
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -102,16 +223,16 @@ enum Signal: LOW, HIGH, FLOAT
 
 fn describe(s Signal) i32:
     match s:
-        case LOW:
+        case Signal::LOW:
             return 0
-        case HIGH:
+        case Signal::HIGH:
             return 1
         default:
             return -1
     return -2
 
 fn main() i32:
-    output(describe(HIGH), " ", describe(FLOAT), "\n")
+    output(describe(Signal::HIGH), " ", describe(Signal::FLOAT), "\n")
     return 0
 ```
 
@@ -130,10 +251,48 @@ struct Hero:
 
 fn main() i32:
     h Hero
-    h.kind = MAGE
+    h.kind = Kind::MAGE
     h.hp = 30
     output(h.kind, " ", h.hp, "\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Hero = type { i32, i32 }
+
+define i32 @main() {
+entry:
+  %h = alloca %Hero, align 8
+  %arr = alloca [2 x i8], align 1
+  %arr3 = alloca [2 x i8], align 1
+  %arr4 = alloca [7 x i8], align 1
+  store %Hero zeroinitializer, %Hero* %h, align 4
+  %h.kind = getelementptr inbounds %Hero, %Hero* %h, i32 0, i32 0
+  store i32 1, i32* %h.kind, align 4
+  %h.hp = getelementptr inbounds %Hero, %Hero* %h, i32 0, i32 1
+  store i32 30, i32* %h.hp, align 4
+  %h.kind1 = getelementptr inbounds %Hero, %Hero* %h, i32 0, i32 0
+  store [2 x i8] c" \00", [2 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [2 x i8], [2 x i8]* %arr, i32 0, i32 0
+  %h.hp2 = getelementptr inbounds %Hero, %Hero* %h, i32 0, i32 1
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr3, align 1
+  %1 = getelementptr inbounds [2 x i8], [2 x i8]* %arr3, i32 0, i32 0
+  %"$h.kind" = load i32, i32* %h.kind1, align 4
+  %"$h.hp" = load i32, i32* %h.hp2, align 4
+  store [7 x i8] c"%d %d\0A\00", [7 x i8]* %arr4, align 1
+  %2 = getelementptr inbounds [7 x i8], [7 x i8]* %arr4, i32 0, i32 0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %2, i32 %"$h.kind", i32 %"$h.hp")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -144,7 +303,7 @@ fn main() i32:
 // stdout: 0
 // expect: 0
 fn first() Color:
-    return RED
+    return Color::RED
 
 enum Color: RED, GREEN, BLUE
 
@@ -153,12 +312,41 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+define i32 @first() {
+entry:
+  ret i32 0
+}
+
+define i32 @main() {
+entry:
+  %arr = alloca [2 x i8], align 1
+  %arr1 = alloca [4 x i8], align 1
+  %call.first = call i32 @first()
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [2 x i8], [2 x i8]* %arr, i32 0, i32 0
+  store [4 x i8] c"%d\0A\00", [4 x i8]* %arr1, align 1
+  %1 = getelementptr inbounds [4 x i8], [4 x i8]* %arr1, i32 0, i32 0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %1, i32 %call.first)
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 008 — enum: an enum must declare at least one variant
 
 ```ura
-// error: Enum Nothing must declare at least one variant
+// error: enum 'Nothing' has no variants
 enum Nothing:
 
 fn main() i32:
@@ -166,12 +354,29 @@ fn main() i32:
     return 0
 ```
 
+### stderr
+
+```
+error: test.ura:2:1 enum 'Nothing' has no variants
+  |
+2 | enum Nothing:
+  | ^^^^
+help: add some: enum Nothing: A, B
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
 ---
 
 ## 009 — enum: a variant name cannot be declared twice
 
 ```ura
-// error: Redeclaration of variable 'RED'
+// error: 'RED' is already declared
 enum C:
     RED, GREEN, RED
 
@@ -180,18 +385,50 @@ fn main() i32:
     return 0
 ```
 
+### stderr
+
+```
+error: test.ura:3:17 'RED' is already declared
+  |
+3 |     RED, GREEN, RED
+  |                 ^^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
 ---
 
 ## 010 — enum: an explicit variant value must be an integer
 
 ```ura
-// error: Enum variant 'A' needs an integer value after '='
+// error: the value of 'A' must be an integer
 enum C:
     A = hello
 
 fn main() i32:
     output(0, "\n")
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:3:9 the value of 'A' must be an integer
+  |
+3 |     A = hello
+  |         ^^^^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---

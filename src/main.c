@@ -154,6 +154,7 @@ struct {
     { "False", { .type = INT, .shift = 1, .num = { .value = false } } },
 
     { "struct", { .type = STRUCT } },
+    { "enum", { .type = ENUM } },
     { "and", { .type = AND } },
     { "or", { .type = OR } },
     { "not", { .type = NOT } },
@@ -1218,6 +1219,33 @@ Node *parse_prime() {
         token->body.end = ura.exe_pos;
         return node;
     }
+    case ENUM: {
+        node = new_node(token);
+        if (peek(0)->type == ID)
+            node->token->name = next()->name;
+        else
+            expect(ID, "expected an enum name after 'enum'", " Name");
+        expect(DOTS, "expected ':' after the enum name", ":");
+        long long value = 0;
+        while (true) {
+            Token *name = peek(0);
+            bool is_near = name->line == token->line || inside(token->space);
+            if (name->type != ID || !is_near)
+                break;
+            Node *variant = new_node(next());
+            if (peek(0)->type == ASSIGN) {
+                next(); // SKIP =
+                variant->left = parse_prime();
+                if (variant->left->token->type == INT)
+                    value = variant->left->token->num.value;
+            }
+            name->num.value = value++;
+            append(node->children, variant);
+            if (peek(0)->type == COMA)
+                next(); // SKIP ,
+        }
+        return node;
+    }
     case STRUCT: {
         node = new_node(token);
         if (peek(0)->type == ID)
@@ -1502,6 +1530,18 @@ Node *find_struct(char *name) {
     return NULL;
 }
 
+Node *find_enum(char *name) {
+    for (int i = ura.scopes_count - 1; i >= 0; i--) {
+        Node *curr = ura.scopes[i];
+        for (int j = 0; j < curr->children_count; j++) {
+            Node *child = curr->children[j];
+            if (child->token->type == ENUM && strcmp2(child->token->name, name))
+                return child;
+        }
+    }
+    return NULL;
+}
+
 Node *new_type(Type type, int shift, Node *data_type) {
     Node *node = new_node(new_token(type, NULL));
     node->token->is_type = true;
@@ -1669,6 +1709,10 @@ void analyze(Node *node) {
     }
     case DOUBLE_DOTS: {
         check_static_call(node);
+        break;
+    }
+    case ENUM: {
+        check_enum(node);
         break;
     }
     case LINK: {
@@ -2130,7 +2174,8 @@ void codegen(Node *node) {
         ucg_brk(node->loop->token->ucg);
         break;
     } // clang-format off
-    case TEMPLATE: case USE: case MACRO_IF: case MACRO_ERROR: { // clang-format on
+    case TEMPLATE: case USE: case MACRO_IF: 
+    case MACRO_ERROR: case ENUM: { // clang-format on
         break;
     }
     case ID: {
