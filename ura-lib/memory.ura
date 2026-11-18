@@ -1,6 +1,0 @@
-// Memory allocation
-proto malloc(size i32) i8[]
-proto calloc(len i64, size i64) i8[]
-proto realloc(ptr i8[], newSize i32) i8[]
-proto free(ptr i8[]) void
-proto aligned_alloc(alignment i32, size i32) i8[]
