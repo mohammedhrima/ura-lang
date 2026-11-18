@@ -40,6 +40,7 @@
 - 036 — struct: from takes attributes and methods of a template, a struct and a grandparent; overrides win
 - 037 — struct: from a struct that doesn't exist
 - 038 — struct: String from Array<char> in "@/string", temporaries are dropped
+- 039 — struct: a plain fn drop() is a normal method, only operator drop runs by itself
 
 ---
 
@@ -8319,6 +8320,102 @@ endif5:                                           ; preds = %else50, %if49.then
   call void @String.drop(%String* %r)
   call void @String.drop(%String* %t)
   call void @String.drop(%String* %s)
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
+
+---
+
+## 039 — struct: a plain fn drop() is a normal method, only operator drop runs by itself
+
+```ura
+struct Plain:
+    id i32
+
+    fn drop():
+        output("plain drop ", self.id, "\n")
+
+struct Owned:
+    id i32
+
+    operator drop():
+        output("owned drop ", self.id, "\n")
+
+fn main() i32:
+    p Plain
+    p.id = 1
+    o Owned
+    o.id = 2
+    p.drop()
+    return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Plain = type { i32 }
+%Owned = type { i32 }
+
+define void @Plain.drop(%Plain* %0) {
+entry:
+  %self = alloca %Plain*, align 8
+  %arr = alloca [12 x i8], align 1
+  %arr1 = alloca [2 x i8], align 1
+  %arr2 = alloca [15 x i8], align 1
+  store %Plain* %0, %Plain** %self, align 8
+  store [12 x i8] c"plain drop \00", [12 x i8]* %arr, align 1
+  %1 = getelementptr inbounds [12 x i8], [12 x i8]* %arr, i32 0, i32 0
+  %"*self" = load %Plain*, %Plain** %self, align 8
+  %"*self.id" = getelementptr inbounds %Plain, %Plain* %"*self", i32 0, i32 0
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr1, align 1
+  %2 = getelementptr inbounds [2 x i8], [2 x i8]* %arr1, i32 0, i32 0
+  %"$*self.id" = load i32, i32* %"*self.id", align 4
+  store [15 x i8] c"plain drop %d\0A\00", [15 x i8]* %arr2, align 1
+  %3 = getelementptr inbounds [15 x i8], [15 x i8]* %arr2, i32 0, i32 0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %3, i32 %"$*self.id")
+  ret void
+}
+
+define void @Owned.drop(%Owned* %0) {
+entry:
+  %self = alloca %Owned*, align 8
+  %arr = alloca [12 x i8], align 1
+  %arr1 = alloca [2 x i8], align 1
+  %arr2 = alloca [15 x i8], align 1
+  store %Owned* %0, %Owned** %self, align 8
+  store [12 x i8] c"owned drop \00", [12 x i8]* %arr, align 1
+  %1 = getelementptr inbounds [12 x i8], [12 x i8]* %arr, i32 0, i32 0
+  %"*self" = load %Owned*, %Owned** %self, align 8
+  %"*self.id" = getelementptr inbounds %Owned, %Owned* %"*self", i32 0, i32 0
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr1, align 1
+  %2 = getelementptr inbounds [2 x i8], [2 x i8]* %arr1, i32 0, i32 0
+  %"$*self.id" = load i32, i32* %"*self.id", align 4
+  store [15 x i8] c"owned drop %d\0A\00", [15 x i8]* %arr2, align 1
+  %3 = getelementptr inbounds [15 x i8], [15 x i8]* %arr2, i32 0, i32 0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %3, i32 %"$*self.id")
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %p = alloca %Plain, align 8
+  %o = alloca %Owned, align 8
+  store %Plain zeroinitializer, %Plain* %p, align 4
+  %p.id = getelementptr inbounds %Plain, %Plain* %p, i32 0, i32 0
+  store i32 1, i32* %p.id, align 4
+  store %Owned zeroinitializer, %Owned* %o, align 4
+  %o.id = getelementptr inbounds %Owned, %Owned* %o, i32 0, i32 0
+  store i32 2, i32* %o.id, align 4
+  call void @Plain.drop(%Plain* %p)
+  call void @Owned.drop(%Owned* %o)
   ret i32 0
 }
 

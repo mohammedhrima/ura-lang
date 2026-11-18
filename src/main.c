@@ -43,6 +43,7 @@ struct Token {
     bool is_varg;
     bool is_pub;
     bool is_uint;
+    bool is_operator;
     // uraIR ir;
 
     Ucg *ucg;
@@ -1089,6 +1090,7 @@ Node *parse_prime() {
         node = new_node(token);
         if (token->type == OPERATOR) {
             token->type = FN_DEC;
+            token->is_operator = true;
             token = next();
             node->token->name = token_text(token);
             if (token->type == LBRACK) {
@@ -1357,8 +1359,7 @@ Node *parse_prime() {
             if (method->token->type != FN_DEC || method->token->is_pub)
                 continue;
             Token *name = method->token;
-            bool is_operator = !isalpha(name->name[0]) && name->name[0] != '_';
-            if (is_operator && method->args->children_count > 1)
+            if (name->is_operator && method->args->children_count > 1)
                 add_error(
                     name->s,
                     name->e,
@@ -1544,7 +1545,16 @@ bool fits_type(Node *value, Node *type) {
 Node *find_drop(Node *type) {
     if (type == NULL || type->token->type != ID || type->declared == NULL)
         return NULL;
-    return find_method(type->declared, "drop", NULL, 0, false);
+    Node *st = type->declared;
+    for (int i = 0; i < st->children_count; i++) {
+        Node *child = st->children[i];
+        if (child->token->type != FN_DEC || !child->token->is_operator)
+            continue;
+        if (!strcmp2(child->token->name, "drop"))
+            continue;
+        return child;
+    }
+    return NULL;
 }
 
 bool lives_in_variable(Node *node) {
