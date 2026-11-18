@@ -207,6 +207,7 @@ _ura_build() {
                 echo '#if !UCG'
                 _ura_protos main.c
                 _ura_protos check.c
+                _ura_protos package.c
                 echo '#endif'
             } > proto.h.tmp
             mv proto.h.tmp proto.h

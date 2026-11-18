@@ -251,6 +251,7 @@ char *type_names[END + 1] = {
 };
 
 #include "./check.c"
+#include "./package.c"
 
 // TOKENIZE
 Token *new_token(Type type, Token *from) {
@@ -649,38 +650,6 @@ void parse_tokens(Node *scope, int start, Node *types) {
     }
     ura.exe_pos = exe_pos;
     ura.types = outer;
-}
-
-char *find_package(char *name) {
-    if (!strncmp2(name, "@/", 2)) {
-        char *path = format("%s/%s.ura", dirname2(ura.files[0]->path), name);
-        return access(path, R_OK) == 0 ? path : NULL;
-    }
-    char *package = strdup2(name + 2);
-    char *version = strchr(package, '@');
-    if (version)
-        *version++ = '\0';
-    char *dirs[] = { getenv("URA_LIB"), format("%s/.ura/lib", getenv("HOME")) };
-    for (int i = 0; i < 2; i++) {
-        if (dirs[i] == NULL)
-            continue;
-        char *paths[] = {
-            format(
-                "%s/%s/%s/%s.ura",
-                dirs[i],
-                package,
-                version ? version : "current",
-                package
-            ),
-            version ? NULL : format("%s/%s.ura", dirs[i], package),
-        };
-        for (int j = 0; j < 2; j++) {
-            if (paths[j] == NULL || access(paths[j], R_OK) != 0)
-                continue;
-            return paths[j];
-        }
-    }
-    return NULL;
 }
 
 void parse_package(File *package) {
@@ -2550,6 +2519,21 @@ bool parse_args(int ac, char **av) {
             exit(1);
         }
         init_project(av[2]);
+        exit(0);
+    }
+    bool install = strcmp2(av[1], "install");
+    if (install || strcmp2(av[1], "remove")) {
+        if (ac < 3) {
+            eprint("expected a package name:\n");
+            help("%s %s <name>\n", av[0], av[1]);
+            exit(1);
+        }
+        for (int i = 2; i < ac; i++) {
+            if (install)
+                install_package(av[i]);
+            else
+                remove_package(av[i]);
+        }
         exit(0);
     }
     bool run = strcmp2(av[1], "run");

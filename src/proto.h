@@ -173,7 +173,6 @@ bool is_ref_binding(Node *node);
 bool is_ref_variable(Node *node);
 bool parse_args(int ac, char **av);
 bool same_type(Node *a, Node *b);
-char *find_package(char *name);
 char *init_from_template(Node *template, Node *types);
 char *parse_escaped(char *input, int s, int e);
 char *text_at(int pos);
@@ -237,4 +236,9 @@ void check_static_call(Node *node);
 void check_struct_value(Node *value, Node *expected);
 void check_type(Node *value, Node *expected, char *help);
 void check_type_first(Token *token);
+bool is_package_name(char *name);
+char *find_package(char *name);
+int run_command(char **argv, char *out_path);
+void install_package(char *spec);
+void remove_package(char *name);
 #endif
