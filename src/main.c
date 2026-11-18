@@ -2253,29 +2253,24 @@ void codegen_drop(Ucg *place, Node *type) {
     }
 }
 
-void codegen_drops(Node *scope, Node *skip) {
-    for (int i = scope->children_count - 1; i >= 0; i--) {
-        Node *child = scope->children[i];
-        if (child->token->type != DECLARE || child->var == skip)
-            continue;
-        if (needs_drop(child->var->data_type))
-            codegen_drop(child->var->token->ucg, child->var->data_type);
-    }
-    if (scope->token->type != FN_DEC)
-        return;
-    for (int i = 0; i < scope->args->children_count; i++) {
-        Node *param = scope->args->children[i];
-        if (param == skip || param->token->type != PARAM)
-            continue;
-        if (needs_drop(param->data_type))
-            codegen_drop(param->token->ucg, param->data_type);
-    }
-}
-
-void codegen_drops_until(Node *last, Node *skip) {
+void codegen_drops(Node *last, Node *skip) {
     for (int i = ura.scopes_count - 1; i >= 0; i--) {
-        codegen_drops(ura.scopes[i], skip);
-        if (ura.scopes[i] == last)
+        Node *scope = ura.scopes[i];
+        for (int j = scope->children_count - 1; j >= 0; j--) {
+            Node *child = scope->children[j];
+            if (child->token->type != DECLARE || child->var == skip)
+                continue;
+            if (needs_drop(child->var->data_type))
+                codegen_drop(child->var->token->ucg, child->var->data_type);
+        }
+        for (int j = 0; scope->token->type == FN_DEC && j < scope->args->children_count; j++) {
+            Node *param = scope->args->children[j];
+            if (param == skip || param->token->type != PARAM)
+                continue;
+            if (needs_drop(param->data_type))
+                codegen_drop(param->token->ucg, param->data_type);
+        }
+        if (scope == last)
             return;
     }
 }
@@ -2594,10 +2589,10 @@ void codegen(Node *node) {
             Ucg *value = ucg_value(node->left->token->ucg);
             codegen_drop_temporaries();
             bool is_local = is_local_variable(node->left);
-            codegen_drops_until(fn, is_local ? node->left->declared : NULL);
+            codegen_drops(fn, is_local ? node->left->declared : NULL);
             ucg = ucg_ret(value);
         } else {
-            codegen_drops_until(fn, NULL);
+            codegen_drops(fn, NULL);
             ucg = ucg_return();
         }
         node->token->ucg = ucg;
@@ -2621,7 +2616,7 @@ void codegen(Node *node) {
         break;
     }
     case BRK: {
-        codegen_drops_until(node->loop, NULL);
+        codegen_drops(node->loop, NULL);
         ucg_brk(node->loop->token->ucg);
         break;
     } // clang-format off
@@ -2700,7 +2695,7 @@ void codegen(Node *node) {
         break;
     }
     case CNT: {
-        codegen_drops_until(node->loop, NULL);
+        codegen_drops(node->loop, NULL);
         ucg_cnt(node->loop->token->ucg);
         break;
     }
