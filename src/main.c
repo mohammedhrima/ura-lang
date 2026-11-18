@@ -374,8 +374,12 @@ void tokenize(File *file, int space2) {
                 char next = buff[e + 1];
                 if (buff[e] == '\\' && next != '\0' && next != '\n') {
                     if (!isprint(next) || !escaped[(unsigned char)next]) {
-                        add_error(e, e + 2, format("unknown escape '\\%c'", next),
-                                  "the escapes are \\n \\t \\r \\0 \\\\ \\\" \\'");
+                        add_error(
+                            e,
+                            e + 2,
+                            format("unknown escape '\\%c'", next),
+                            "the escapes are \\n \\t \\r \\0 \\\\ \\\" \\'"
+                        );
                         valid = false;
                     }
                     e++;
@@ -385,8 +389,12 @@ void tokenize(File *file, int space2) {
             }
             if (buff[e] != c) {
                 int start = line_start(s);
-                add_error(s, e, c == '"' ? "unclosed string" : "unclosed character",
-                          format("use %.*s%c", e - start, buff + start, c));
+                add_error(
+                    s,
+                    e,
+                    c == '"' ? "unclosed string" : "unclosed character",
+                    format("use %.*s%c", e - start, buff + start, c)
+                );
                 continue;
             }
             e++; // skip last ' or "
@@ -396,8 +404,11 @@ void tokenize(File *file, int space2) {
                 parse_string(s, e, space);
             else if (letters > 1)
                 add_error(
-                    s, e, format("a character holds one letter, not %d", letters),
-                    format("use \"%.*s\" for a string", e - s - 2, buff + s + 1));
+                    s,
+                    e,
+                    format("a character holds one letter, not %d", letters),
+                    format("use \"%.*s\" for a string", e - s - 2, buff + s + 1)
+                );
             else
                 parse_char(s, e, space);
             continue;
@@ -457,7 +468,6 @@ Node *new_node(Token *token) {
 Token *peek(int pos) {
     assert(ura.exe_pos + pos <= ura.tokens_count);
     return ura.tokens[ura.exe_pos + pos];
-    return NULL;
 }
 
 Token *next() {
@@ -497,9 +507,19 @@ void expect(Type type, char *msg, char *fix) {
     Token *at = peek(0)->line == prev->line ? peek(0) : prev;
     int start = line_start(prev->s);
     int end = line_end(prev->e);
-    add_error(at->s, at->e, msg,
-              format("use %.*s%s%.*s", prev->e - start, buff + start, fix,
-                     end - prev->e, buff + prev->e));
+    add_error(
+        at->s,
+        at->e,
+        msg,
+        format(
+            "use %.*s%s%.*s",
+            prev->e - start,
+            buff + start,
+            fix,
+            end - prev->e,
+            buff + prev->e
+        )
+    );
 }
 
 bool inside(int space) {
@@ -522,14 +542,14 @@ void exit_scope() {
         ura.scope = NULL;
 }
 
-Node *parse_type(int pos) {
-    Token *token = peek(pos);
+Node *parse_type(void) {
+    Token *token = peek(0);
     Token *prev = ura.tokens[ura.exe_pos - 1];
     if (token->type == REF && token->line == prev->line) {
         next(); // SKIP &
         Node *ref = new_node(token);
         ref->token->is_type = true;
-        ref->data_type = parse_type(0);
+        ref->data_type = parse_type();
         return ref;
     }
     if (token->type == ID && token->line == prev->line)
@@ -562,15 +582,22 @@ Node *parse_block(Token *token) {
     Node *node = new_node(token);
     enter_scope(node);
     if (token->type != ELSE && peek(0)->type == DOTS)
-        add_error(token->s, token->e,
-                  format("expected a condition after '%s'", token_text(token)), NULL);
+        add_error(
+            token->s,
+            token->e,
+            format("expected a condition after '%s'", token_text(token)),
+            NULL
+        );
     else if (token->type != ELSE)
         node->cond = parse_expr(0);
     else if (peek(0)->type != DOTS && peek(0)->line == token->line) {
         char *buff = ura.file->buff;
         add_error(
-            token->s, token->e, "else has no condition",
-            format("use elif%.*s", line_end(token->e) - token->e, buff + token->e));
+            token->s,
+            token->e,
+            "else has no condition",
+            format("use elif%.*s", line_end(token->e) - token->e, buff + token->e)
+        );
         node->cond = parse_expr(0);
     }
     char *after[LAST + 1] = {
@@ -606,12 +633,12 @@ Node *parse_prime() {
         append(node->children, new_builtin(WRITE, "errput", 2, NULL));
         append(
             node->children,
-            new_builtin(READ, "input", 0, new_type(ARRAY, 0, new_type(INT, 8, NULL))));
+            new_builtin(READ, "input", 0, new_type(ARRAY, 0, new_type(INT, 8, NULL)))
+        );
         return node;
     }
     case ID: {
-        // node = new_node(token);
-        Node *type = parse_type(0);
+        Node *type = parse_type();
         if (type != NULL) {
             node = new_node(new_token(DECLARE, token));
             node->var = new_node(token);
@@ -619,7 +646,6 @@ Node *parse_prime() {
             node->var->data_type = type;
             append(ura.scope->children, node);
             node = node->var;
-            // node->right = type;
         } else if (peek(0)->type == LPARENT) {
             token->type = FN_CALL;
             node = new_node(token);
@@ -630,8 +656,11 @@ Node *parse_prime() {
                     break;
                 next(); // SKIP ,
             }
-            expect(RPARENT,
-                   format("expected ')' to close the call to '%s'", token->name), ")");
+            expect(
+                RPARENT,
+                format("expected ')' to close the call to '%s'", token->name),
+                ")"
+            );
         } else
             node = new_node(token);
         return node;
@@ -667,9 +696,18 @@ Node *parse_prime() {
             char *buff = ura.file->buff;
             Token *at = peek(0);
             int start = line_start(at->s);
-            add_error(at->s, at->e, "expected a name after 'fn'",
-                      format("use %.*sname%.*s", at->s - start, buff + start,
-                             line_end(at->s) - at->s, buff + at->s));
+            add_error(
+                at->s,
+                at->e,
+                "expected a name after 'fn'",
+                format(
+                    "use %.*sname%.*s",
+                    at->s - start,
+                    buff + start,
+                    line_end(at->s) - at->s,
+                    buff + at->s
+                )
+            );
             node->token->name = "";
         } else {
             token = next();
@@ -684,8 +722,7 @@ Node *parse_prime() {
                     token->type = PARAM;
                     Node *param = new_node(token);
                     next(); // skip ID
-                    Node *type = parse_type(0);
-                    param->left = type;
+                    param->data_type = parse_type();
                     append(node->right->children, param);
                 } else if (token->type == VARIADIC) {
                     // node->token->is_varg = true;
@@ -695,13 +732,14 @@ Node *parse_prime() {
                     break;
                 } else
                     break;
-                if (peek(0)->type == COMA) // TODO: to be improved
-                    next();
+                if (peek(0)->type != COMA)
+                    break;
+                next(); // SKIP ,
             }
             expect(RPARENT, "expected ')' after the parameters", ")");
         } else
             expect(LPARENT, "expected '(' after the function name", "()");
-        node->ret_type = parse_type(0);
+        node->ret_type = parse_type();
         if (node->token->type == PROTO)
             return node;
         expect(DOTS, "expected ':' after the function header", ":");
@@ -724,8 +762,8 @@ Node *parse_prime() {
         if (token->type != IF)
             return node;
         Node *branch = node;
-        while (includes(peek(0)->type, ELIF, ELSE, 0) &&
-               peek(0)->space == token->space) {
+        while (includes(peek(0)->type, ELIF, ELSE, 0) && peek(0)->space == token->space
+        ) {
             branch->next = parse_block(next());
             branch = branch->next;
         }
@@ -739,8 +777,9 @@ Node *parse_prime() {
         if (token->type == ELIF)
             help =
                 format("use if%.*s", line_end(token->e) - token->e, buff + token->e);
-        add_error(token->s, token->e, format("%s without an if before it", name),
-                  help);
+        add_error(
+            token->s, token->e, format("%s without an if before it", name), help
+        );
         return parse_block(token);
     }
     case PUB: {
@@ -793,13 +832,15 @@ Node *parse_prime() {
             bool is_operator = !isalpha(name->name[0]) && name->name[0] != '_';
             if (is_operator && method->args->children_count > 1)
                 add_error(
-                    name->s, name->e,
+                    name->s,
+                    name->e,
                     format(
                         "operator '%s' takes one parameter, the right side; the left "
                         "side is self",
-                        name->name),
-                    format("use operator %s(other %s)", name->name,
-                           node->token->name));
+                        name->name
+                    ),
+                    format("use operator %s(other %s)", name->name, node->token->name)
+                );
             Node *type = new_type(ID, 0, NULL);
             type->token->name = node->token->name;
             Node *self = new_node(new_token(PARAM, method->token));
@@ -819,14 +860,19 @@ Node *parse_prime() {
         node->loop = find_scope(LOOP);
         if (node->loop == NULL) {
             char *name = token->type == BRK ? "break" : "continue";
-            add_error(token->s, token->e, format("%s outside a loop", name),
-                      format("%s only works inside a while", name));
+            add_error(
+                token->s,
+                token->e,
+                format("%s outside a loop", name),
+                format("%s only works inside a while", name)
+            );
         }
         return node;
     }
     default: {
-        add_error(token->s, token->e, format("unexpected '%s'", token_text(token)),
-                  NULL);
+        add_error(
+            token->s, token->e, format("unexpected '%s'", token_text(token)), NULL
+        );
         return new_node(token);
     }
     }
@@ -848,8 +894,12 @@ Node *parse_expr(int min_op) {
         node->left = left;
         Token *token = node->token;
         if (peek(0)->type == LAST || peek(0)->line != token->line) {
-            add_error(token->s, token->e,
-                      format("expected a value after '%s'", token_text(token)), NULL);
+            add_error(
+                token->s,
+                token->e,
+                format("expected a value after '%s'", token_text(token)),
+                NULL
+            );
             return node;
         }
         node->right = parse_expr(op);
@@ -864,24 +914,29 @@ Node *find_in_children(Node *parent, char *name) {
         Node *child = parent->children[j];
         if (!includes(child->token->type, DECLARE, PARAM, 0))
             continue;
-        // print(">> %n\n", child);
         Node *id = child->token->type == DECLARE ? child->var : child;
         if (strcmp2(id->token->name, name))
             return id;
     }
     return NULL;
 }
+
+Node *find_in_scope(Node *scope, char *name) {
+    Node *found = NULL;
+    if (scope->token->type == FN_DEC)
+        found = find_in_children(scope->args, name);
+    if (found == NULL)
+        found = find_in_children(scope, name);
+    return found;
+}
+
 Node *find_variable(char *name) {
     for (int i = ura.scopes_count - 1; i >= 0; i--) {
         Node *curr = ura.scopes[i];
         print(GREEN("find variable %s in %k\n"), name, curr->token);
-        Node *to_find = NULL;
-        if (curr->token->type == FN_DEC)
-            to_find = find_in_children(curr->right, name);
-        if (to_find == NULL)
-            to_find = find_in_children(curr, name);
-        if (to_find)
-            return to_find;
+        Node *found = find_in_scope(curr, name);
+        if (found)
+            return found;
     }
     return NULL;
 }
@@ -1074,9 +1129,12 @@ bool is_number(Node *node) {
 void check_struct_value(Node *value, Node *expected) {
     Token *token = value->token;
     if (expected->token->type != ID) {
-        add_error(token->s, token->e,
-                  format("expected '%s', found a struct value", type_name(expected)),
-                  NULL);
+        add_error(
+            token->s,
+            token->e,
+            format("expected '%s', found a struct value", type_name(expected)),
+            NULL
+        );
         return;
     }
     if (expected->declared == NULL)
@@ -1089,9 +1147,11 @@ void check_struct_value(Node *value, Node *expected) {
         attr->declared = find_attr(st, name->name, &name->attr.index);
         if (attr->declared == NULL) {
             add_error(
-                name->s, name->e,
+                name->s,
+                name->e,
                 format("'%s' has no attribute '%s'", st->token->name, name->name),
-                NULL);
+                NULL
+            );
             continue;
         }
         check_type(attr->left, attr->declared->data_type, NULL);
@@ -1112,10 +1172,12 @@ void check_type(Node *value, Node *expected, char *help) {
         long long max = (1LL << (expected->token->shift - 1)) - 1;
         long long number = token->num.value;
         if (number < -max - 1 || number > max)
-            add_error(token->s, token->e,
-                      format("%lld doesn't fit in %s", number, type_name(expected)),
-                      format("%s goes from %lld to %lld", type_name(expected),
-                             -max - 1, max));
+            add_error(
+                token->s,
+                token->e,
+                format("%lld doesn't fit in %s", number, type_name(expected)),
+                format("%s goes from %lld to %lld", type_name(expected), -max - 1, max)
+            );
         token->shift = expected->token->shift;
         return;
     }
@@ -1126,9 +1188,11 @@ void check_type(Node *value, Node *expected, char *help) {
     }
     if (!same_type(found, expected))
         add_error(
-            token->s, token->e,
+            token->s,
+            token->e,
             format("expected '%s', found '%s'", type_name(expected), type_name(found)),
-            help);
+            help
+        );
 }
 
 void check_same_type(Node *left, Node *right) {
@@ -1144,10 +1208,17 @@ void analyze_operator(Node *node, Node *st) {
     Node *method = find_method(st, symbol, &node->right, 1, false);
     if (method == NULL) {
         Node *right = type_of(node->right);
-        add_error(op->s, op->e,
-                  format("'%s' has no operator '%s' that takes '%s'", st->token->name,
-                         symbol, right ? type_name(right) : "?"),
-                  NULL);
+        add_error(
+            op->s,
+            op->e,
+            format(
+                "'%s' has no operator '%s' that takes '%s'",
+                st->token->name,
+                symbol,
+                right ? type_name(right) : "?"
+            ),
+            NULL
+        );
         return;
     }
     Node *call = new_node(new_token(FN_CALL, op));
@@ -1169,8 +1240,12 @@ void analyze(Node *node) {
             Token *token = node->token;
             node->declared = find_struct(token->name);
             if (node->declared == NULL)
-                add_error(token->s, token->e, format("unknown type '%s'", token->name),
-                          format("declare it: struct %s:", token->name));
+                add_error(
+                    token->s,
+                    token->e,
+                    format("unknown type '%s'", token->name),
+                    format("declare it: struct %s:", token->name)
+                );
             break;
         }
         Node *var = find_variable(node->token->name);
@@ -1180,24 +1255,25 @@ void analyze(Node *node) {
             node->declared = var;
         } else {
             Token *token = node->token;
-            add_error(token->s, token->e,
-                      format("undeclared variable '%s'", token->name),
-                      format("declare it first, like: %s i32 = 0", token->name));
+            add_error(
+                token->s,
+                token->e,
+                format("undeclared variable '%s'", token->name),
+                format("declare it first, like: %s i32 = 0", token->name)
+            );
         }
         break;
     }
-    case DECLARE: { // right is the data type
-        Node *scope = ura.scopes[ura.scopes_count - 1];
+    case DECLARE: {
         Token *token = node->var->token;
-        Node *declared = NULL;
-        if (scope->token->type == FN_DEC)
-            declared = find_in_children(scope->right, token->name);
-        if (declared == NULL)
-            declared = find_in_children(scope, token->name);
-        if (declared != node->var)
-            add_error(token->s, token->e, format("'%s' is already declared", token->name),
-                      NULL);
-        analyze(node->var->ret_type);
+        if (find_in_scope(ura.scope, token->name) != node->var)
+            add_error(
+                token->s,
+                token->e,
+                format("'%s' is already declared", token->name),
+                NULL
+            );
+        analyze(node->var->data_type);
         break;
     }
     case SCOPE:
@@ -1261,13 +1337,16 @@ void analyze(Node *node) {
         Node *call = node->right;
         for (int i = 0; i < call->children_count; i++)
             analyze(call->children[i]);
-        call->to_call = find_method(st, call->token->name, call->children,
-                                    call->children_count, true);
+        call->to_call = find_method(
+            st, call->token->name, call->children, call->children_count, true
+        );
         if (call->to_call == NULL)
             add_error(
-                call->token->s, call->token->e,
+                call->token->s,
+                call->token->e,
                 format("'%s' has no pub fn '%s'", st->token->name, call->token->name),
-                NULL);
+                NULL
+            );
         break;
     }
     case LINK: {
@@ -1276,9 +1355,12 @@ void analyze(Node *node) {
             break;
         token->chars.value = ucg_find_lib(token->name);
         if (token->chars.value == NULL)
-            add_error(token->s, token->e,
-                      format("library '%s' not found", token->name),
-                      "install it, or set URA_LIB_PATH to the folder that holds it");
+            add_error(
+                token->s,
+                token->e,
+                format("library '%s' not found", token->name),
+                "install it, or set URA_LIB_PATH to the folder that holds it"
+            );
         break;
     }
     case NEG: {
@@ -1308,10 +1390,14 @@ void analyze(Node *node) {
             break;
         Token *base = node->left->token;
         if (type->token->type != ID) {
-            add_error(base->s, base->e,
-                      format("'%s' is '%s', not a struct", token_text(base),
-                             type_name(type)),
-                      NULL);
+            add_error(
+                base->s,
+                base->e,
+                format(
+                    "'%s' is '%s', not a struct", token_text(base), type_name(type)
+                ),
+                NULL
+            );
             break;
         }
         if (type->declared == NULL)
@@ -1321,22 +1407,29 @@ void analyze(Node *node) {
             Node *call = node->right;
             for (int i = 0; i < call->children_count; i++)
                 analyze(call->children[i]);
-            call->to_call = find_method(st, call->token->name, call->children,
-                                        call->children_count, false);
+            call->to_call = find_method(
+                st, call->token->name, call->children, call->children_count, false
+            );
             if (call->to_call == NULL)
-                add_error(call->token->s, call->token->e,
-                          format("'%s' has no method '%s'", st->token->name,
-                                 call->token->name),
-                          NULL);
+                add_error(
+                    call->token->s,
+                    call->token->e,
+                    format(
+                        "'%s' has no method '%s'", st->token->name, call->token->name
+                    ),
+                    NULL
+                );
             break;
         }
         Token *attr = node->right->token;
         node->right->declared = find_attr(st, attr->name, &attr->attr.index);
         if (node->right->declared == NULL)
             add_error(
-                attr->s, attr->e,
+                attr->s,
+                attr->e,
                 format("'%s' has no attribute '%s'", st->token->name, attr->name),
-                NULL);
+                NULL
+            );
         break;
     }
     case FN_CALL: {
@@ -1346,12 +1439,19 @@ void analyze(Node *node) {
         if (node->to_call == NULL) {
             Node *like = find_function_like(name, 2);
             if (find_variable(name))
-                add_error(token->s, token->e,
-                          format("'%s' is a variable, not a function", name), NULL);
+                add_error(
+                    token->s,
+                    token->e,
+                    format("'%s' is a variable, not a function", name),
+                    NULL
+                );
             else
-                add_error(token->s, token->e, format("no function named '%s'", name),
-                          like ? format("did you mean '%s'?", like->token->name)
-                               : NULL);
+                add_error(
+                    token->s,
+                    token->e,
+                    format("no function named '%s'", name),
+                    like ? format("did you mean '%s'?", like->token->name) : NULL
+                );
             break;
         }
         for (int i = 0; i < node->children_count; i++)
@@ -1389,12 +1489,11 @@ void analyze(Node *node) {
             check_type(node->left, bool_type(), NULL);
         break;
     }
-    default: { // clang-format off
-		eprint("%s:%d handle this case %t\n", 
-			FILE, LINE, node->token->type);
-		exit(1);
-		break;
-	} // clang-format on
+    default: {
+        eprint("%s:%d handle this case %t\n", FILE, LINE, node->token->type);
+        exit(1);
+        break;
+    }
     }
 }
 
@@ -1415,10 +1514,9 @@ void codegen_branch(Node *node, Ucg *stmt) {
 
 void codegen_proto(Node *node, char *name) {
     Ucg *ret_type = NULL;
-    if (node->left) {
-        // TODO: add return type
-        codegen(node->left);
-        ret_type = node->left->token->ucg;
+    if (node->ret_type) {
+        codegen(node->ret_type);
+        ret_type = node->ret_type->token->ucg;
     } else
         ret_type = ucg_void_type();
 
@@ -1483,8 +1581,9 @@ void codegen_protos(Node *node) {
             Node *method = child->children[j];
             if (method->token->type != FN_DEC)
                 continue;
-            codegen_proto(method,
-                          format("%s.%s", child->token->name, method->token->name));
+            codegen_proto(
+                method, format("%s.%s", child->token->name, method->token->name)
+            );
         }
     }
 }
@@ -1492,8 +1591,17 @@ void codegen_protos(Node *node) {
 void codegen_statements(Node *node) {
     for (int i = 0; i < node->children_count; i++) {
         Node *child = node->children[i];
-        if (includes(child->token->type, FN_DEC, PROTO, DECLARE, STRUCT, LINK, WRITE,
-                     READ, 0))
+        if (includes(
+                child->token->type,
+                FN_DEC,
+                PROTO,
+                DECLARE,
+                STRUCT,
+                LINK,
+                WRITE,
+                READ,
+                0
+            ))
             continue;
         codegen(child);
     }
@@ -1726,9 +1834,6 @@ void codegen(Node *node) {
 	case DIV_ASSIGN: case MOD_ASSIGN: 
 	case LT: case GT: case EQ: case LE: case GE: case NQ: // comparision
 	case AND: case OR: { // clang-format on
-        print("=========================\n");
-        print("%n", node);
-        print("=========================\n");
         if (is_ref_binding(node)) {
             Node *slot = node->left->declared ? node->left->declared : node->left;
             codegen(node->right);
@@ -1737,21 +1842,16 @@ void codegen(Node *node) {
         }
         codegen(node->left);
         codegen(node->right);
-        // exit(1);
-        ucg = ucg_op(node->token->type, // clang-format off
-			node->left->token->ucg, 
-			node->right->token->ucg
-		); // clang-format on
+        ucg =
+            ucg_op(node->token->type, node->left->token->ucg, node->right->token->ucg);
         node->token->ucg = ucg;
         break;
     }
-    default: { // clang-format off
-		eprint("%s:%d handle this case %t\n", 
-			FILE, LINE, node->token->type
-		);
-		exit(1);
-		break;
-	} // clang-format on
+    default: {
+        eprint("%s:%d handle this case %t\n", FILE, LINE, node->token->type);
+        exit(1);
+        break;
+    }
     }
 }
 
@@ -2021,8 +2121,9 @@ void check_errors(void) {
         int col = error->s - start;
         int width = snprintf(NULL, 0, "%d", line);
 
-        fprintf(stderr, "%s: %s:%d:%d %s\n", RED("error"), path, line, col + 1,
-                error->msg);
+        fprintf(
+            stderr, "%s: %s:%d:%d %s\n", RED("error"), path, line, col + 1, error->msg
+        );
         fprintf(stderr, "%*s |\n", width, "");
         fprintf(stderr, "%d | %.*s\n", line, end - start, buff + start);
         fprintf(stderr, "%*s | %*s", width, "", col, "");
@@ -2032,8 +2133,13 @@ void check_errors(void) {
         if (error->help)
             fprintf(stderr, "help: %s\n", error->help);
     }
-    fprintf(stderr, "%s: aborting due to %d error%s\n", RED("error"),
-            (int)ura.errors_count, ura.errors_count > 1 ? "s" : "");
+    fprintf(
+        stderr,
+        "%s: aborting due to %d error%s\n",
+        RED("error"),
+        (int)ura.errors_count,
+        ura.errors_count > 1 ? "s" : ""
+    );
     exit(1);
 }
 

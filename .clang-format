@@ -32,7 +32,7 @@ DerivePointerAlignment: false
 AlignConsecutiveMacros: AcrossEmptyLinesAndComments
 AlignEscapedNewlines: Left
 AlignTrailingComments: true
-AlignAfterOpenBracket: Align
+AlignAfterOpenBracket: BlockIndent
 AlignOperands: Align
 
 # --- spacing ---
@@ -47,8 +47,8 @@ Cpp11BracedListStyle: false
 ColumnLimit: 87
 BreakBeforeBinaryOperators: None
 BreakBeforeTernaryOperators: true
-BinPackArguments: true
-BinPackParameters: true
+BinPackArguments: false
+BinPackParameters: false
 
 # --- misc ---
 SortIncludes: false
