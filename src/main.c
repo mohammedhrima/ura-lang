@@ -827,25 +827,27 @@ Node *parse_prime() {
     case SUB: {
         token->type = NEG;
         node = new_node(token);
-        node->operand = parse_prime();
+        node->operand = parse_expr(precedence[DOT] - 1);
         return node;
     }
     case REF: {
         node = new_node(token);
-        node->operand = parse_prime();
+        node->operand = parse_expr(precedence[DOT] - 1);
         return node;
     }
     case ADD: {
         return parse_prime();
-    }
-    case FN_DEC:
-    case PROTO:
-    case OPERATOR: {
+    } // clang-format off
+    case FN_DEC: case PROTO: case OPERATOR: { // clang-format on
         node = new_node(token);
         if (token->type == OPERATOR) {
             token->type = FN_DEC;
             token = next();
             node->token->name = token_text(token);
+            if (token->type == LBRACK) {
+                expect(RBRACK, "expected ']' after 'operator ['", "]");
+                node->token->name = "[]";
+            }
         } else if (peek(0)->type != ID) {
             char *buff = ura.file->buff;
             Token *at = peek(0);
@@ -1304,7 +1306,10 @@ Node *type_of(Node *node) {
         Node *type = type_of(node->operand);
         return type ? new_type(REF, 0, type) : NULL;
     }
-    case FN_CALL:   return node->to_call ? ret_type_of(node->to_call) : NULL;
+    case FN_CALL: {
+        Node *type = node->to_call ? ret_type_of(node->to_call) : NULL;
+        return type && type->token->type == REF ? type->data_type : type;
+    }
     case NEG:       return type_of(node->operand);
     case LT: case GT: case EQ: case LE: case GE: case NQ:
     case AND: case OR: return bool_type();
@@ -1408,9 +1413,8 @@ void check_same_type(Node *left, Node *right) {
         check_type(right, type_of(left), NULL);
 }
 
-void analyze_operator(Node *node, Node *st) {
+void analyze_operator(Node *node, Node *st, char *symbol) {
     Token *op = node->token;
-    char *symbol = token_text(op);
     Node *method = find_method(st, symbol, &node->right, 1, false);
     if (method == NULL) {
         Node *right = type_of(node->right);
@@ -1592,8 +1596,12 @@ void analyze(Node *node) {
     case ACCESS: {
         analyze(node->left);
         analyze(node->index);
-        check_type(node->index, new_type(INT, 32, NULL), NULL);
         Node *type = type_of(node->left);
+        if (type && type->token->type == ID && type->declared) {
+            analyze_operator(node, type->declared, "[]");
+            break;
+        }
+        check_type(node->index, new_type(INT, 32, NULL), NULL);
         if (type == NULL || type->token->type == ARRAY)
             break;
         Token *base = node->left->token;
@@ -1712,7 +1720,7 @@ void analyze(Node *node) {
                 node->left->token->type == VAR && node->left->declared == NULL;
             bool has_assign = find_method(st, "=", &node->right, 1, false) != NULL;
             if (node->token->type != ASSIGN || (!is_declaration && has_assign)) {
-                analyze_operator(node, st);
+                analyze_operator(node, st, token_text(node->token));
                 break;
             }
         }
@@ -1795,6 +1803,15 @@ void codegen_structs(Node *node) {
             ucg_add_attr(child->token->ucg, ucg_attr(attr->var->token->name, type));
         }
     }
+}
+
+Ucg *codegen_call_result(Node *fn, Ucg *call) {
+    Node *type = ret_type_of(fn);
+    if (type->token->type != REF)
+        return call;
+    Ucg *ref = ucg_var("ref", type->token->ucg);
+    ucg_assign(ref, call);
+    return ucg_point_to(ref);
 }
 
 Ucg *codegen_in_variable(Node *node) {
@@ -1982,7 +1999,9 @@ void codegen(Node *node) {
             Ucg *ucg = type->token->ucg;
             node->token->ucg = fn->type == SIZEOF ? ucg_sizeof(ucg) : ucg_typeof(ucg);
         } else
-            node->token->ucg = ucg_fn_call(fn->ucg, args, node->children_count);
+            node->token->ucg = codegen_call_result(
+                node->to_call, ucg_fn_call(fn->ucg, args, node->children_count)
+            );
         break;
     }
     case RETURN: {
@@ -2051,7 +2070,9 @@ void codegen(Node *node) {
                 args[i + 1] = call->children[i]->token->ucg;
             }
             Ucg *method = call->to_call->token->ucg;
-            node->token->ucg = ucg_fn_call(method, args, call->children_count + 1);
+            node->token->ucg = codegen_call_result(
+                call->to_call, ucg_fn_call(method, args, call->children_count + 1)
+            );
             break;
         }
         int index = node->right->token->attr.index;
@@ -2065,8 +2086,10 @@ void codegen(Node *node) {
             codegen(call->children[i]);
             args[i] = call->children[i]->token->ucg;
         }
-        node->token->ucg =
-            ucg_fn_call(call->to_call->token->ucg, args, call->children_count);
+        node->token->ucg = codegen_call_result(
+            call->to_call,
+            ucg_fn_call(call->to_call->token->ucg, args, call->children_count)
+        );
         break;
     }
     case AS: {

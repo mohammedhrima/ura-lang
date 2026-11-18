@@ -33,6 +33,7 @@
 - 029 — struct: instance method called via :: instead of .
 - 030 — struct: pub fn called via . instead of ::
 - 031 — struct: pub may only be used inside a struct
+- 032 — operator: [] returns &i32, so b[0] reads and writes through
 
 ---
 
@@ -3069,4 +3070,116 @@ fn main() i32:
     helper()
     return 0
 ```
+
+
+---
+
+## 032 — operator: [] returns &i32, so b[0] reads and writes through
+
+```ura
+proto malloc(size i32) i32[]
+
+struct Bag:
+    data i32[]
+
+    operator [](index i32) &i32:
+        return &self.data[index]
+
+fn main() i32:
+    b Bag
+    b.data = malloc(40)
+    b[0] = 5
+    b[1] = b[0] + 2
+    b[1] += 1
+    output(b[0], " ", b[1], "\n")
+    return b[1]
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Bag = type { i32* }
+
+declare i32* @malloc(i32)
+
+define i32* @"Bag.[]"(%Bag* %0, i32 %1) {
+entry:
+  %self = alloca %Bag*, align 8
+  %index = alloca i32, align 4
+  store %Bag* %0, %Bag** %self, align 8
+  store i32 %1, i32* %index, align 4
+  %"*self" = load %Bag*, %Bag** %self, align 8
+  %"*self.data" = getelementptr inbounds %Bag, %Bag* %"*self", i32 0, i32 0
+  %"$*self.data" = load i32*, i32** %"*self.data", align 8
+  %"$index" = load i32, i32* %index, align 4
+  %"*self.data[]" = getelementptr inbounds i32, i32* %"$*self.data", i32 %"$index"
+  ret i32* %"*self.data[]"
+}
+
+define i32 @main() {
+entry:
+  %b = alloca %Bag, align 8
+  %ref = alloca i32*, align 8
+  %ref2 = alloca i32*, align 8
+  %ref5 = alloca i32*, align 8
+  %ref8 = alloca i32*, align 8
+  %ref13 = alloca i32*, align 8
+  %arr = alloca [2 x i8], align 1
+  %ref16 = alloca i32*, align 8
+  %arr18 = alloca [2 x i8], align 1
+  %arr21 = alloca [7 x i8], align 1
+  %ref23 = alloca i32*, align 8
+  store %Bag zeroinitializer, %Bag* %b, align 8
+  %b.data = getelementptr inbounds %Bag, %Bag* %b, i32 0, i32 0
+  %call.malloc = call i32* @malloc(i32 40)
+  store i32* %call.malloc, i32** %b.data, align 8
+  %"call.Bag.[]" = call i32* @"Bag.[]"(%Bag* %b, i32 0)
+  store i32* %"call.Bag.[]", i32** %ref, align 8
+  %"*ref" = load i32*, i32** %ref, align 8
+  store i32 5, i32* %"*ref", align 4
+  %"call.Bag.[]1" = call i32* @"Bag.[]"(%Bag* %b, i32 1)
+  store i32* %"call.Bag.[]1", i32** %ref2, align 8
+  %"*ref3" = load i32*, i32** %ref2, align 8
+  %"call.Bag.[]4" = call i32* @"Bag.[]"(%Bag* %b, i32 0)
+  store i32* %"call.Bag.[]4", i32** %ref5, align 8
+  %"*ref6" = load i32*, i32** %ref5, align 8
+  %"$*ref" = load i32, i32* %"*ref6", align 4
+  %ADD = add i32 %"$*ref", 2
+  store i32 %ADD, i32* %"*ref3", align 4
+  %"call.Bag.[]7" = call i32* @"Bag.[]"(%Bag* %b, i32 1)
+  store i32* %"call.Bag.[]7", i32** %ref8, align 8
+  %"*ref9" = load i32*, i32** %ref8, align 8
+  %"$*ref10" = load i32, i32* %"*ref9", align 4
+  %ADD11 = add i32 %"$*ref10", 1
+  store i32 %ADD11, i32* %"*ref9", align 4
+  %"call.Bag.[]12" = call i32* @"Bag.[]"(%Bag* %b, i32 0)
+  store i32* %"call.Bag.[]12", i32** %ref13, align 8
+  %"*ref14" = load i32*, i32** %ref13, align 8
+  store [2 x i8] c" \00", [2 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [2 x i8], [2 x i8]* %arr, i32 0, i32 0
+  %"call.Bag.[]15" = call i32* @"Bag.[]"(%Bag* %b, i32 1)
+  store i32* %"call.Bag.[]15", i32** %ref16, align 8
+  %"*ref17" = load i32*, i32** %ref16, align 8
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr18, align 1
+  %1 = getelementptr inbounds [2 x i8], [2 x i8]* %arr18, i32 0, i32 0
+  %"$*ref19" = load i32, i32* %"*ref14", align 4
+  %"$*ref20" = load i32, i32* %"*ref17", align 4
+  store [7 x i8] c"%d %d\0A\00", [7 x i8]* %arr21, align 1
+  %2 = getelementptr inbounds [7 x i8], [7 x i8]* %arr21, i32 0, i32 0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %2, i32 %"$*ref19", i32 %"$*ref20")
+  %"call.Bag.[]22" = call i32* @"Bag.[]"(%Bag* %b, i32 1)
+  store i32* %"call.Bag.[]22", i32** %ref23, align 8
+  %"*ref24" = load i32*, i32** %ref23, align 8
+  %"$*ref25" = load i32, i32* %"*ref24", align 4
+  ret i32 %"$*ref25"
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 
