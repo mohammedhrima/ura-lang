@@ -635,7 +635,7 @@ Node *find_template_type(char *name) {
     return NULL;
 }
 
-bool fix_type_first(Token *token) {
+void check_type_first(Token *token) {
     int end = 0;
     int depth = 0;
     while (peek(end)->type == LT || depth > 0) {
@@ -651,8 +651,7 @@ bool fix_type_first(Token *token) {
         end += 2;
     Token *name = peek(end);
     if (name->type != ID || name->line != token->line)
-        return false;
-    int start = ura.exe_pos - 1;
+        return;
     Token *last = ura.tokens[ura.exe_pos + end - 1];
     add_error(
         token->s,
@@ -667,11 +666,7 @@ bool fix_type_first(Token *token) {
             text_at(name->e)
         )
     );
-    for (int i = ura.exe_pos + end; i > start; i--)
-        ura.tokens[i] = ura.tokens[i - 1];
-    ura.tokens[start] = name;
-    ura.exe_pos = start;
-    return true;
+    ura.exe_pos += end;
 }
 
 char *macro_to_text(Node *node) {
@@ -1017,8 +1012,8 @@ Node *parse_prime() {
     Node *node = NULL;
     switch (token->type) { // clang-format off
     case INT: case FLOAT: case CHARS: { // clang-format on
-        if (token->is_type && fix_type_first(token))
-            return parse_prime();
+        if (token->is_type)
+            check_type_first(token);
         return new_node(token);
     }
     case SCOPE: {
@@ -1044,14 +1039,12 @@ Node *parse_prime() {
         return node;
     }
     case ID: {
-        bool is_type_name = find_struct(token->name) || find_template(token->name) ||
-                            find_template_type(token->name);
-        if (is_type_name && fix_type_first(token))
-            return parse_prime();
         Node *template_type = find_template_type(token->name);
+        Node *template = find_template(token->name);
+        if (template_type || template || find_struct(token->name))
+            check_type_first(token);
         if (template_type)
             return template_type;
-        Node *template = find_template(token->name);
         if (template && peek(0)->type == LT)
             token->name = init_from_template(template, parse_types(token));
         Node *type = parse_type();
