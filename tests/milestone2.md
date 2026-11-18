@@ -130,7 +130,7 @@
 - 126 — ref: a non-nullable value cannot be compared to null
 - 127 — variable: an array type carries no size
 - 128 — array: Array<T> from use "@/array": push, insert, pop, remove, front/back, resize, reverse
-- 129 — use: a module that doesn't exist
+- 129 — use: a package that doesn't exist
 - 130 — use: an error after a use points at the user's file and line
 
 ---
@@ -7503,7 +7503,7 @@ declare i32 @dprintf(i32, i8*, ...)
 
 ---
 
-## 129 — use: a module that doesn't exist
+## 129 — use: a package that doesn't exist
 
 ```ura
 use "@/nothing"
@@ -7515,7 +7515,7 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:1:5 module '@/nothing' not found
+error: test.ura:1:5 package '@/nothing' not found
   |
 1 | use "@/nothing"
   |     ^^^^^^^^^^^
@@ -7528,7 +7528,6 @@ error: aborting due to 1 error
 ```
 1
 ```
-
 
 ---
 

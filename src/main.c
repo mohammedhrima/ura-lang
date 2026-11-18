@@ -697,15 +697,15 @@ char *macro_to_text(Node *node) {
     return NULL;
 }
 
-bool macro_is_true(Node *cond) {
+bool macro_cond(Node *cond) {
     Token *token = cond->token;
     switch (token->type) {
     case AND:
-        return macro_is_true(cond->left) && macro_is_true(cond->right);
+        return macro_cond(cond->left) && macro_cond(cond->right);
     case OR:
-        return macro_is_true(cond->left) || macro_is_true(cond->right);
+        return macro_cond(cond->left) || macro_cond(cond->right);
     case NOT:
-        return !macro_is_true(cond->operand);
+        return !macro_cond(cond->operand);
     case INT:
         return token->num.value != 0;
     case EQ:
@@ -744,7 +744,7 @@ void parse_tokens(Node *scope, int start) {
     ura.exe_pos = exe_pos;
 }
 
-char *find_module(char *name) {
+char *find_package(char *name) {
     if (!strncmp2(name, "@/", 2)) {
         char *path = format("%s/%s.ura", dirname2(ura.files[0]->path), name);
         return access(path, R_OK) == 0 ? path : NULL;
@@ -772,20 +772,20 @@ char *find_module(char *name) {
     return NULL;
 }
 
-void parse_module(File *module) {
-    open_file(module);
+void parse_package(File *package) {
+    open_file(package);
     for (int i = 0; i < ura.files_count; i++) {
-        if (strcmp2(ura.files[i]->path, module->path))
+        if (strcmp2(ura.files[i]->path, package->path))
             return;
     }
-    module->start = end_of_sources();
-    append(ura.files, module);
+    package->start = end_of_sources();
+    append(ura.files, package);
 
     File *file = ura.file;
     int line = ura.line;
     int start = ura.tokens_count;
     ura.line = 1;
-    tokenize(module);
+    tokenize(package);
     new_token(LAST, NULL);
     ura.file = file;
     ura.line = line;
@@ -879,7 +879,7 @@ Node *parse_types(Token *token) {
     return types;
 }
 
-char *instantiate(Node *template, Node *types) {
+char *init_from_template(Node *template, Node *types) {
     Token *token = types->token;
     char *name = format("%s<", token->name);
     for (int i = 0; i < types->children_count; i++)
@@ -946,7 +946,7 @@ Node *parse_type(void) {
                 NULL
             );
         else if (template)
-            token->name = instantiate(template, parse_types(token));
+            token->name = init_from_template(template, parse_types(token));
         else if (peek(0)->type == LT) {
             add_error(
                 token->s,
@@ -1053,7 +1053,7 @@ Node *parse_prime() {
             return template_type;
         Node *template = find_template(token->name);
         if (template && peek(0)->type == LT)
-            token->name = instantiate(template, parse_types(token));
+            token->name = init_from_template(template, parse_types(token));
         Node *type = parse_type();
         if (type != NULL) {
             node = new_node(new_token(DECLARE, token));
@@ -1238,7 +1238,7 @@ Node *parse_prime() {
         while (true) {
             bool is_chosen = !is_done;
             if (branch->type != MACRO_ELSE)
-                is_chosen = macro_is_true(parse_expr(0)) && !is_done;
+                is_chosen = macro_cond(parse_expr(0)) && !is_done;
             expect(DOTS, format("expected ':' after %s", token_text(branch)), ":");
             while (inside(branch->space)) {
                 if (is_chosen) {
@@ -1269,22 +1269,22 @@ Node *parse_prime() {
     case USE: {
         node = new_node(token);
         if (peek(0)->type != CHARS) {
-            expect(CHARS, "expected a module name after 'use'", " \"@/name\"");
+            expect(CHARS, "expected a package name after 'use'", " \"@/name\"");
             return node;
         }
         Token *name = next();
-        char *module = name->chars.value;
-        char *path = find_module(module);
+        char *package = name->chars.value;
+        char *path = find_package(package);
         if (path == NULL)
             add_error(
                 name->s,
                 name->e,
-                format("module '%s' not found", module),
-                strncmp2(module, "@/", 2) ? format("run: ura --install %s", module + 2)
+                format("package '%s' not found", package),
+                strncmp2(package, "@/", 2) ? format("run: ura --install %s", package + 2)
                                           : NULL
             );
         else
-            parse_module(new_file(path));
+            parse_package(new_file(path));
         return node;
     }
     case TEMPLATE: {
