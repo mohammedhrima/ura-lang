@@ -635,26 +635,20 @@ Node *find_template_type(char *name) {
     return NULL;
 }
 
-int type_end(int pos) {
-    if (peek(pos)->type == LT) {
-        int depth = 0;
-        do {
-            if (peek(pos)->type == LAST)
-                return pos;
-            if (peek(pos)->type == LT)
-                depth++;
-            if (peek(pos)->type == GT)
-                depth--;
-            pos++;
-        } while (depth > 0);
-    }
-    if (peek(pos)->type == LBRACK && peek(pos + 1)->type == RBRACK)
-        pos += 2;
-    return pos;
-}
-
 bool fix_type_first(Token *token) {
-    int end = type_end(0);
+    int end = 0;
+    int depth = 0;
+    while (peek(end)->type == LT || depth > 0) {
+        if (peek(end)->type == LAST)
+            break;
+        if (peek(end)->type == LT)
+            depth++;
+        if (peek(end)->type == GT)
+            depth--;
+        end++;
+    }
+    if (peek(end)->type == LBRACK && peek(end + 1)->type == RBRACK)
+        end += 2;
     Token *name = peek(end);
     if (name->type != ID || name->line != token->line)
         return false;
@@ -680,8 +674,11 @@ bool fix_type_first(Token *token) {
     return true;
 }
 
-char *macro_value(char *name) {
-    if (strcmp2(name, "os")) {
+char *macro_to_text(Node *node) {
+    Token *token = node->token;
+    if (token->type == CHARS)
+        return token->chars.value;
+    if (token->type == ID && strcmp2(token->name, "os")) {
 #if defined(_WIN32)
         return "windows";
 #elif defined(__APPLE__)
@@ -690,21 +687,13 @@ char *macro_value(char *name) {
         return "linux";
 #endif
     }
-    if (strcmp2(name, "arch")) {
+    if (token->type == ID && strcmp2(token->name, "arch")) {
 #if defined(__aarch64__) || defined(__arm64__)
         return "arm64";
 #else
         return "x86_64";
 #endif
     }
-    return NULL;
-}
-
-char *macro_text(Node *node) {
-    if (node->token->type == CHARS)
-        return node->token->chars.value;
-    if (node->token->type == ID)
-        return macro_value(node->token->name);
     return NULL;
 }
 
@@ -721,8 +710,8 @@ bool macro_is_true(Node *cond) {
         return token->num.value != 0;
     case EQ:
     case NQ: {
-        char *left = macro_text(cond->left);
-        char *right = macro_text(cond->right);
+        char *left = macro_to_text(cond->left);
+        char *right = macro_to_text(cond->right);
         if (left && right)
             return strcmp2(left, right) == (token->type == EQ);
         break;
@@ -842,23 +831,6 @@ void parse_parent(Node *st, Node *parent) {
     ura.types = types;
 }
 
-bool same_params(Node *a, Node *b) {
-    if (a->args->children_count != b->args->children_count)
-        return false;
-    for (int i = 0; i < a->args->children_count; i++) {
-        Node *left = a->args->children[i]->data_type;
-        Node *right = b->args->children[i]->data_type;
-        if (left == NULL || right == NULL) {
-            if (left != right)
-                return false;
-            continue;
-        }
-        if (!same_type(left, right))
-            return false;
-    }
-    return true;
-}
-
 void remove_overridden(Node *st) {
     for (int i = 0; i < st->children_count; i++) {
         Node *method = st->children[i];
@@ -872,7 +844,14 @@ void remove_overridden(Node *st) {
                 continue;
             if (other->token->is_pub != method->token->is_pub)
                 continue;
-            if (!same_params(method, other))
+            bool is_same = other->args->children_count == method->args->children_count;
+            for (int k = 0; is_same && k < method->args->children_count; k++) {
+                Node *left = method->args->children[k]->data_type;
+                Node *right = other->args->children[k]->data_type;
+                bool has_types = left && right;
+                is_same = has_types ? same_type(left, right) : left == right;
+            }
+            if (!is_same)
                 continue;
             for (int k = i; k < st->children_count - 1; k++)
                 st->children[k] = st->children[k + 1];
@@ -1530,15 +1509,6 @@ Node *find_scope(Type type) {
     return NULL;
 }
 
-int name_diff(char *a, char *b) {
-    int d = 0;
-    int i = 0;
-    int j = 0;
-    while (a[i] && b[j])
-        d += a[i++] != b[j++];
-    return d + strlen(a + i) + strlen(b + j);
-}
-
 Node *find_function_like(char *name, int max_diff) {
     Node *found = NULL;
     int found_diff = max_diff + 1;
@@ -1551,7 +1521,12 @@ Node *find_function_like(char *name, int max_diff) {
                 TYPEOF, DROP, 0);
             if (!is_function || child->token->is_operator)
                 continue;
-            int diff = name_diff(child->token->name, name);
+            char *other = child->token->name;
+            int diff = 0;
+            int k = 0;
+            for (; other[k] && name[k]; k++)
+                diff += other[k] != name[k];
+            diff += strlen(other + k) + strlen(name + k);
             if (diff >= found_diff)
                 continue;
             found = child;
@@ -1576,17 +1551,6 @@ Node *find_attr(Node *st, char *name, int *index) {
         (*index)++;
     }
     return NULL;
-}
-
-bool fits_type(Node *value, Node *type) {
-    Node *found = type_of(value);
-    if (found == NULL || type == NULL)
-        return true;
-    if (is_number(value) && is_number(type))
-        return true;
-    if (type->token->type == REF && found->token->type != REF)
-        return same_type(found, type->data_type);
-    return same_type(found, type);
 }
 
 Node *find_drop(Node *type) {
@@ -1643,19 +1607,13 @@ bool is_local_variable(Node *node) {
     return false;
 }
 
-Node *find_copy(Node *type, Node **value) {
-    Node *assign = find_method(type->declared, "=", value, 1, false);
-    if (assign == NULL || assign->args->children[1]->data_type->token->type != REF)
-        return NULL;
-    return assign;
-}
-
 void check_copy(Node **value, Node *type) {
     Node *found = type_of(*value);
     bool is_struct = type && type->token->type == ID && type->declared;
-    if (!lives_in_variable(*value) || !is_struct || !found || !same_type(found, type))
+    bool is_same = is_struct && found && same_type(found, type);
+    if (!lives_in_variable(*value) || !is_same)
         return;
-    Node *assign = find_copy(type, value);
+    Node *assign = find_method(type->declared, "=", value, 1, false);
     if (assign) {
         Node *copy = new_node(new_token(COPY, (*value)->token));
         copy->to_call = assign;
@@ -1701,8 +1659,15 @@ Node *find_method(Node *st, char *name, Node **args, int args_count, bool is_pub
         if (child->args->children_count != args_count + self)
             continue;
         bool fits = true;
-        for (int j = 0; j < args_count && fits; j++)
-            fits = fits_type(args[j], child->args->children[j + self]->data_type);
+        for (int j = 0; j < args_count && fits; j++) {
+            Node *type = child->args->children[j + self]->data_type;
+            Node *found = type_of(args[j]);
+            bool is_unknown = found == NULL || type == NULL;
+            if (is_unknown || (is_number(args[j]) && is_number(type)))
+                continue;
+            bool takes_ref = type->token->type == REF && found->token->type != REF;
+            fits = same_type(found, takes_ref ? type->data_type : type);
+        }
         if (!fits)
             continue;
         return child;
@@ -1897,13 +1862,6 @@ void check_type(Node *value, Node *expected, char *help) {
             format("expected '%s', found '%s'", type_name(expected), type_name(found)),
             help
         );
-}
-
-void check_same_type(Node *left, Node *right) {
-    if (is_number(left))
-        check_type(left, type_of(right), NULL);
-    else
-        check_type(right, type_of(left), NULL);
 }
 
 void analyze_operator(Node *node, Node *st, char *symbol) {
@@ -2242,10 +2200,13 @@ void analyze(Node *node) {
             }
             check_copy(&node->right, left_type);
         }
+        bool is_logic = includes(node->token->type, AND, OR, 0);
         if (is_ref_binding(node))
             check_type(node->right, node->left->data_type, NULL);
-        else if (!includes(node->token->type, AND, OR, 0))
-            check_same_type(node->left, node->right);
+        else if (!is_logic && is_number(node->left))
+            check_type(node->left, type_of(node->right), NULL);
+        else if (!is_logic)
+            check_type(node->right, type_of(node->left), NULL);
         else if (!type_of(node->left) || same_type(type_of(node->left), bool_type()))
             check_type(node->right, bool_type(), NULL);
         else
