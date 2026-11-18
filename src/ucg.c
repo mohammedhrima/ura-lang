@@ -114,6 +114,7 @@ enum Type {
 	BLOC,
     IF, ELIF, ELSE, THEN,
     LOOP, BRK, CNT, MATCH, CASE, DEFAULT, CLEAN,
+    TRY, CATCH, THROW, CHECK,
     END,
     LAST,
     // clang-format on
@@ -246,6 +247,15 @@ struct {
     expand(Ucg *, blocks);
     int clean_start;
     Ucg *clean_var;
+
+    bool is_cleaning;
+    bool throws;
+    expand(Ucg *, tries);
+    Ucg *thrown;
+    Ucg *error;
+    Ucg *error_type;
+    expand(Ucg *, error_types);
+    expand(Ucg *, error_ids);
 } gb_ucg;
 
 void ucg_start(char *name) {
@@ -322,6 +332,14 @@ void ucg_finish(void) {
     LLVMDisposeModule(gb_ucg.module);
     LLVMDisposeTargetMachine(gb_ucg.machine);
     LLVMContextDispose(gb_ucg.context);
+    gb_ucg.throws = false;
+    gb_ucg.thrown = NULL;
+    gb_ucg.error = NULL;
+    gb_ucg.error_type = NULL;
+    gb_ucg.error_types_count = 0;
+    gb_ucg.error_ids_count = 0;
+    gb_ucg.tries_count = 0;
+    gb_ucg.blocks_count = 0;
     // arena_free();
 }
 
@@ -1097,6 +1115,7 @@ Ucg *ucg_proto(char *name, Ucg *ret, Ucg **params, int params_count) {
 void ucg_clean(Ucg *var) {
     gb_ucg.clean_start = gb_ucg.insts_count;
     gb_ucg.clean_var = var;
+    gb_ucg.is_cleaning = true;
 }
 
 void ucg_clean_end(void) {
@@ -1109,6 +1128,7 @@ void ucg_clean_end(void) {
         append(clean->cleans, inst);
     }
     gb_ucg.insts_count = gb_ucg.clean_start;
+    gb_ucg.is_cleaning = false;
     Ucg *block = gb_ucg.blocks[gb_ucg.blocks_count - 1];
     append(block->cleans, clean);
 }
@@ -1179,6 +1199,8 @@ Ucg *ucg_fn_call(Ucg *fn_dec, Ucg **args, int args_count) {
     for (int i = 0; i < args_count; i++)
         append(new->fn.params, ucg_value(args[i]));
     append(gb_ucg.insts, new);
+    if (gb_ucg.throws && !gb_ucg.is_cleaning)
+        ucg_check(fn_dec);
     return new;
 }
 
@@ -1273,6 +1295,7 @@ Ucg *ucg_value_type(Ucg *value) {
     switch (value->type) { // clang-format off
     case DREF:       return ucg_type_of(value->to_dref);
     case VAL_CREATE: return value->to_create;
+    case REF:        return ucg_ref_type(ucg_type_of(value->to_ref));
     case FN_CALL:    return value->to_call->fn.ret;
     case AS:         return value->to_type;
     case SIZEOF:     return ucg_i32_type();
@@ -1723,6 +1746,122 @@ Ucg *ucg_cnt(Ucg *loop) {
     return new;
 }
 
+void ucg_throws(void) {
+    gb_ucg.throws = true;
+}
+
+bool ucg_has_throw(void) {
+    return gb_ucg.throws;
+}
+
+Ucg *ucg_thrown(void) {
+    if (gb_ucg.thrown == NULL)
+        gb_ucg.thrown = ucg_global("ucg.thrown", ucg_bool_type());
+    return gb_ucg.thrown;
+}
+
+Ucg *ucg_error_type(void) {
+    if (gb_ucg.error_type == NULL)
+        gb_ucg.error_type = ucg_global("ucg.error_type", ucg_i32_type());
+    return gb_ucg.error_type;
+}
+
+Ucg *ucg_type_id(Ucg *type) {
+    Ucg *id = ucg_i32_value(0);
+    append(gb_ucg.error_types, type);
+    append(gb_ucg.error_ids, id);
+    return id;
+}
+
+Ucg *ucg_error(Ucg *type) {
+    if (gb_ucg.error == NULL)
+        gb_ucg.error = ucg_global("ucg.error", ucg_int_type(64));
+    Ucg *at = ucg_var("error.at", ucg_ref_type(type));
+    ucg_assign(at, ucg_cast(ucg_ref(gb_ucg.error), ucg_ref_type(type)));
+    return ucg_point_to(at);
+}
+
+Ucg *ucg_find_try(void) {
+    for (int i = gb_ucg.blocks_count - 1; i >= 0; i--) {
+        Ucg *block = gb_ucg.blocks[i];
+        if (block->type == FN_DEC)
+            return NULL;
+        for (int j = 0; j < gb_ucg.tries_count; j++)
+            if (gb_ucg.tries[j] == block)
+                return block;
+    }
+    return NULL;
+}
+
+Ucg *ucg_unwind(void) {
+    Ucg *try_stmt = ucg_find_try();
+    if (try_stmt)
+        return ucg_brk(try_stmt);
+    Ucg *fn = NULL;
+    for (int i = gb_ucg.blocks_count - 1; i >= 0 && fn == NULL; i--)
+        if (gb_ucg.blocks[i]->type == FN_DEC)
+            fn = gb_ucg.blocks[i];
+    if (fn->fn.ret->type == VOID)
+        return ucg_return();
+    return ucg_ret(ucg_null(fn->fn.ret));
+}
+
+Ucg *ucg_throw(Ucg *value) {
+    value = ucg_value(value);
+    Ucg *type = ucg_value_type(value);
+    ucg_assign(ucg_error(type), value);
+    ucg_assign(ucg_error_type(), ucg_type_id(type));
+    ucg_assign(ucg_thrown(), ucg_bool_value(1));
+    return ucg_unwind();
+}
+
+void ucg_check(Ucg *fn) {
+    if (gb_ucg.blocks_count == 0)
+        return;
+    int start = gb_ucg.insts_count;
+    Ucg *stmt = ucg_if();
+    ucg_then(stmt, ucg_thrown());
+    ucg_unwind();
+    ucg_end(stmt);
+    Ucg *check = ucg_new(CHECK);
+    check->to_call = fn;
+    for (int i = start; i < gb_ucg.insts_count; i++)
+        append(check->cleans, gb_ucg.insts[i]);
+    gb_ucg.insts_count = start;
+    append(gb_ucg.insts, check);
+}
+
+Ucg *ucg_try(void) {
+    Ucg *stmt = ucg_if();
+    ucg_then(stmt, ucg_bool_value(1));
+    append(gb_ucg.tries, stmt);
+    return stmt;
+}
+
+Ucg *ucg_catch(Ucg *stmt, Ucg *type) {
+    bool is_first = gb_ucg.tries_count && gb_ucg.tries[gb_ucg.tries_count - 1] == stmt;
+    Ucg *catch_stmt = NULL;
+    if (is_first) {
+        gb_ucg.tries_count--;
+        ucg_end(stmt);
+        catch_stmt = ucg_if();
+    } else
+        catch_stmt = ucg_elif(stmt);
+    Ucg *is_type = ucg_op(EQ, ucg_error_type(), ucg_type_id(type));
+    ucg_then(catch_stmt, ucg_op(AND, ucg_thrown(), is_type));
+    ucg_assign(ucg_thrown(), ucg_bool_value(0));
+    return catch_stmt;
+}
+
+Ucg *ucg_end_catch(Ucg *catch_stmt) {
+    Ucg *end = ucg_end(catch_stmt);
+    Ucg *uncaught = ucg_if();
+    ucg_then(uncaught, ucg_thrown());
+    ucg_unwind();
+    ucg_end(uncaught);
+    return end;
+}
+
 void print_ucg(Ucg *inst, char end) {
     char *text = "";
 
@@ -1758,6 +1897,64 @@ void print_ucg(Ucg *inst, char end) {
     if (inst->right)
         text = format("%s [%03d]", text, inst->right->inst_index);
     print("%s%c", text, end);
+}
+
+bool ucg_has_body(Ucg *fn) {
+    for (int i = 0; i < gb_ucg.insts_count; i++) {
+        Ucg *inst = gb_ucg.insts[i];
+        if (inst->type == FN_ENTRY && inst->to_enter == fn)
+            return true;
+    }
+    return false;
+}
+
+void ucg_splice_checks(void) {
+    int total = gb_ucg.insts_count;
+    for (int i = 0; i < gb_ucg.insts_count; i++)
+        total += gb_ucg.insts[i]->cleans_count;
+    Ucg **insts = arena_alloc(total + 2, sizeof(Ucg *));
+    int count = 0;
+    for (int i = 0; i < gb_ucg.insts_count; i++) {
+        Ucg *inst = gb_ucg.insts[i];
+        if (inst->type != CHECK) {
+            insts[count++] = inst;
+            continue;
+        }
+        bool has_body = ucg_has_body(inst->to_call);
+        for (int j = 0; j < inst->cleans_count; j++) {
+            Ucg *part = inst->cleans[j];
+            if (has_body)
+                insts[count++] = part;
+            else if (part->type == FN_CALL)
+                part->to_call->used--;
+        }
+    }
+    gb_ucg.insts = insts;
+    gb_ucg.insts_count = count;
+    gb_ucg.insts_size = total + 2;
+}
+
+void ucg_number_errors(void) {
+    if (gb_ucg.error == NULL)
+        return;
+    TargetData layout = LLVMCreateTargetDataLayout(gb_ucg.machine);
+    TypeRef *seen = arena_alloc(gb_ucg.error_types_count + 1, sizeof(TypeRef));
+    int seen_count = 0;
+    unsigned long long size = 8;
+    for (int i = 0; i < gb_ucg.error_types_count; i++) {
+        TypeRef type = llvm_type(gb_ucg.error_types[i]);
+        int id = 0;
+        while (id < seen_count && seen[id] != type)
+            id++;
+        if (id == seen_count)
+            seen[seen_count++] = type;
+        gb_ucg.error_ids[i]->to_create->num.value = id + 1;
+        unsigned long long type_size = LLVMABISizeOfType(layout, type);
+        if (type_size > size)
+            size = type_size;
+    }
+    gb_ucg.error->data_type = ucg_array_type(ucg_int_type(64), (size + 7) / 8);
+    LLVMDisposeTargetData(layout);
 }
 
 void ucg_optimize(void) {
@@ -1803,6 +2000,7 @@ void ucg_optimize(void) {
 }
 
 void ucg_compile() {
+    ucg_splice_checks();
     ucg_optimize();
     Value fn = NULL;
     int stmt_index = 0;
@@ -1816,6 +2014,7 @@ void ucg_compile() {
         if (curr->type == STRUCT)
             llvm_struct_body(curr);
     }
+    ucg_number_errors();
     for (int i = 0; i < gb_ucg.insts_count; i++) {
         Ucg *curr = gb_ucg.insts[i];
         switch (curr->type) {
@@ -3206,6 +3405,70 @@ bool run_test(int p) {
         ucg_end(fn_main);
         break;
     }
+    case 33: {
+        ucg_throws();
+        Ucg *boom = ucg_fn(
+            "boom",
+            ucg_void_type(),
+            (Ucg *[]){
+                ucg_param("n", ucg_i32_type()),
+            },
+            1
+        );
+        Ucg *pick = ucg_if();
+        ucg_then(pick, ucg_op(EQ, ucg_get_param(boom, 0), ucg_i32_value(1)));
+        ucg_throw(ucg_i32_value(7));
+        ucg_then(ucg_else(pick), NULL);
+        ucg_throw(ucg_float_value(64, 2.5));
+        ucg_end(pick);
+        ucg_end(boom);
+
+        Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL, 0);
+        for (int n = 1; n <= 2; n++) {
+            Ucg *try_stmt = ucg_try();
+            Ucg *x = ucg_var("x", ucg_i32_type());
+            ucg_clean(x);
+            ucg_write(
+                ucg_i32_value(1),
+                (Ucg *[]){
+                    ucg_string_value("clean x\n"),
+                },
+                1
+            );
+            ucg_clean_end();
+            ucg_fn_call(
+                boom,
+                (Ucg *[]){
+                    ucg_i32_value(n),
+                },
+                1
+            );
+            Ucg *as_int = ucg_catch(try_stmt, ucg_i32_type());
+            ucg_write(
+                ucg_i32_value(1),
+                (Ucg *[]){
+                    ucg_string_value("caught i32 "),
+                    ucg_error(ucg_i32_type()),
+                    ucg_string_value("\n"),
+                },
+                3
+            );
+            ucg_catch(as_int, ucg_float_type(64));
+            ucg_write(
+                ucg_i32_value(1),
+                (Ucg *[]){
+                    ucg_string_value("caught f64 "),
+                    ucg_error(ucg_float_type(64)),
+                    ucg_string_value("\n"),
+                },
+                3
+            );
+            ucg_end_catch(as_int);
+        }
+        ucg_ret(ucg_i32_value(0));
+        ucg_end(fn_main);
+        break;
+    }
     default: {
         return false;
     }
@@ -3380,6 +3643,7 @@ const char *to_string(Type type) {
 		[BLOC] = "BLOC",
 		[LOOP] = "LOOP", [BRK] = "BRK", [CNT] = "CNT",
 		[MATCH] = "MATCH", [CASE] = "CASE", [DEFAULT] = "DEFAULT", [CLEAN] = "CLEAN",
+		[TRY] = "TRY", [CATCH] = "CATCH", [THROW] = "THROW", [CHECK] = "CHECK",
 		[AS] = "AS",
 		[LAST] = "LAST",
         // clang-format on
