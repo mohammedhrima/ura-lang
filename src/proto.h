@@ -205,6 +205,7 @@ void check_struct_value(Node *value, Node *expected);
 void check_type(Node *value, Node *expected, char *help);
 void codegen(Node *node);
 void codegen_branch(Node *node, Ucg *stmt);
+void codegen_drop_temporaries(void);
 void codegen_drops(Node *scope, Node *skip);
 void codegen_drops_until(Node *last, Node *skip);
 void codegen_proto(Node *node, char *name);

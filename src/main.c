@@ -124,6 +124,8 @@ struct {
     expand(Node *, scopes);
     Node *scope;
     Node *types;
+    expand(Ucg *, temporaries);
+    expand(Node *, temporary_drops);
 
     expand(uraError, errors);
 
@@ -2188,17 +2190,29 @@ void codegen_drops_until(Node *last, Node *skip) {
     }
 }
 
+void codegen_drop_temporaries(void) {
+    for (int i = ura.temporaries_count - 1; i >= 0; i--) {
+        Ucg *self = ucg_ref(ura.temporaries[i]);
+        ucg_fn_call(ura.temporary_drops[i]->token->ucg, &self, 1);
+    }
+    ura.temporaries_count = 0;
+    ura.temporary_drops_count = 0;
+}
+
 void codegen_branch(Node *node, Ucg *stmt) {
     node->token->ucg = stmt;
     Ucg *cond = NULL;
     if (node->cond) {
         codegen(node->cond);
         cond = node->cond->token->ucg;
+        codegen_drop_temporaries();
     }
     ucg_then(stmt, cond);
     enter_scope(node);
-    for (int i = 0; i < node->children_count; i++)
+    for (int i = 0; i < node->children_count; i++) {
         codegen(node->children[i]);
+        codegen_drop_temporaries();
+    }
     if (!ends_with_jump(node))
         codegen_drops(node, NULL);
     exit_scope();
@@ -2266,8 +2280,14 @@ Ucg *codegen_in_variable(Node *node) {
     Ucg *ucg = node->token->ucg;
     if (is_locator(ucg))
         return ucg;
-    Ucg *tmp = ucg_var("tmp", type_of(node)->declared->token->ucg);
+    Node *type = type_of(node);
+    Ucg *tmp = ucg_var("tmp", type->declared->token->ucg);
     ucg_assign(tmp, ucg);
+    Node *drop = find_drop(type);
+    if (drop) {
+        append(ura.temporaries, tmp);
+        append(ura.temporary_drops, drop);
+    }
     return tmp;
 }
 
@@ -2307,6 +2327,7 @@ void codegen_statements(Node *node) {
             ))
             continue;
         codegen(child);
+        codegen_drop_temporaries();
     }
 }
 
@@ -2412,6 +2433,7 @@ void codegen(Node *node) {
             if (includes(child->token->type, PROTO, STRUCT, 0))
                 continue;
             codegen(child);
+            codegen_drop_temporaries();
         }
         if (!ends_with_jump(node))
             codegen_drops(node, NULL);
@@ -2458,6 +2480,7 @@ void codegen(Node *node) {
         if (node->left) {
             codegen(node->left);
             Ucg *value = ucg_value(node->left->token->ucg);
+            codegen_drop_temporaries();
             bool is_variable = includes(node->left->token->type, VAR, PARAM, 0);
             codegen_drops_until(fn, is_variable ? node->left->declared : NULL);
             ucg = ucg_ret(value);
