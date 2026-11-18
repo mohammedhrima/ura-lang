@@ -1,4 +1,4 @@
-link "@/raylib"
+link "raylib"
 
 struct Color:
     r char
@@ -14,24 +14,24 @@ fn setColor(r i32, g i32, b i32, a i32) Color:
     c.a = a as char
     return c
 
-proto fn InitWindow(width i32, height i32, title pointer) void
-proto fn CloseWindow() void
-proto fn WindowShouldClose() bool
-proto fn SetTargetFPS(fps i32) void
-proto fn GetFrameTime() f32
-proto fn BeginDrawing() void
-proto fn EndDrawing() void
-proto fn ClearBackground(color Color) void
-proto fn DrawRectangle(x i32, y i32, w i32, h i32, color Color) void
-proto fn DrawRectangleLines(x i32, y i32, w i32, h i32, color Color) void
-proto fn DrawLine(x1 i32, y1 i32, x2 i32, y2 i32, color Color) void
-proto fn DrawText(text pointer, x i32, y i32, size i32, color Color) void
-proto fn MeasureText(text pointer, size i32) i32
-proto fn IsKeyPressed(key i32) bool
-proto fn ColorBrightness(color Color, factor f32) Color
-proto fn TextFormat(fmt pointer, ...) pointer
-proto fn SetRandomSeed(seed i32) void
-proto fn GetRandomValue(min i32, max i32) i32
+proto InitWindow(width i32, height i32, title i8[]) void
+proto CloseWindow() void
+proto WindowShouldClose() bool
+proto SetTargetFPS(fps i32) void
+proto GetFrameTime() f32
+proto BeginDrawing() void
+proto EndDrawing() void
+proto ClearBackground(color Color) void
+proto DrawRectangle(x i32, y i32, w i32, h i32, color Color) void
+proto DrawRectangleLines(x i32, y i32, w i32, h i32, color Color) void
+proto DrawLine(x1 i32, y1 i32, x2 i32, y2 i32, color Color) void
+proto DrawText(text i8[], x i32, y i32, size i32, color Color) void
+proto MeasureText(text i8[], size i32) i32
+proto IsKeyPressed(key i32) bool
+proto ColorBrightness(color Color, factor f32) Color
+proto TextFormat(fmt i8[], ...) i8[]
+proto SetRandomSeed(seed i32) void
+proto GetRandomValue(min i32, max i32) i32
 
 KEY_LEFT  i32 = 263
 KEY_RIGHT i32 = 262

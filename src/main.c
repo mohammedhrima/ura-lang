@@ -438,7 +438,7 @@ void tokenize(int start, int space2) {
             parse_num(s, e, space);
             continue;
         }
-        while (isalpha(buff[s]) && (isalnum(buff[e]) || buff[e] == '_'))
+        while ((isalpha(buff[s]) || buff[s] == '_') && (isalnum(buff[e]) || buff[e] == '_'))
             e++;
         if (e != s) {
             parse_id(s, e, space);
@@ -790,13 +790,13 @@ Node *parse_type(void) {
             );
             parse_types(token);
         }
-        if (peek(0)->type == LBRACK && peek(1)->type == RBRACK) {
+        while (peek(0)->type == LBRACK && peek(1)->type == RBRACK) {
             next(); // SKIP [
             next(); // SKIP ]
             Node *array = new_node(new_token(ARRAY, token));
             array->token->is_type = true;
             array->data_type = node;
-            return array;
+            node = array;
         }
         return node;
     }

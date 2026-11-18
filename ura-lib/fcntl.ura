@@ -2,10 +2,10 @@
 //
 // Function signatures are identical on Linux + macOS. Flag constants differ.
 
-proto fn open(path pointer, flags i32, mode i32) i32
-proto fn openat(dirfd i32, path pointer, flags i32, mode i32) i32
-proto fn creat(path pointer, mode i32) i32
-proto fn fcntl(fd i32, cmd i32, arg i32) i32
+proto open(path i8[], flags i32, mode i32) i32
+proto openat(dirfd i32, path i8[], flags i32, mode i32) i32
+proto creat(path i8[], mode i32) i32
+proto fcntl(fd i32, cmd i32, arg i32) i32
 
 // ── open() access modes (same on both) ─────────────────────────────────────
 O_RDONLY i32 = 0

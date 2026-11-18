@@ -80,55 +80,55 @@ struct Pollfd:
     revents  i16
 
 // ── Socket creation and connection ─────────────────────────────────────────
-// Sockaddr args are typed `pointer` so callers can pass `ref Sockaddr_in`,
-// `ref Sockaddr` or a raw chars buffer interchangeably. The struct defs above
+// Sockaddr args are typed `i8[]` so callers can pass `ref Sockaddr_in`,
+// `ref Sockaddr` or a raw i8[] buffer interchangeably. The struct defs above
 // are there for users who want to lay out the bytes by hand.
-proto fn socket(domain i32, type i32, protocol i32) i32
-proto fn bind(fd i32, addr pointer, addrlen i32) i32
-proto fn listen(fd i32, backlog i32) i32
-proto fn accept(fd i32, addr pointer, addrlen pointer) i32
-proto fn connect(fd i32, addr pointer, addrlen i32) i32
-proto fn shutdown(fd i32, how i32) i32
+proto socket(domain i32, type i32, protocol i32) i32
+proto bind(fd i32, addr i8[], addrlen i32) i32
+proto listen(fd i32, backlog i32) i32
+proto accept(fd i32, addr i8[], addrlen i8[]) i32
+proto connect(fd i32, addr i8[], addrlen i32) i32
+proto shutdown(fd i32, how i32) i32
 
 // Socket I/O
-proto fn send(fd i32, buf pointer, len i64, flags i32) i64
-proto fn recv(fd i32, buf pointer, len i64, flags i32) i64
-proto fn sendto(fd i32, buf pointer, len i64, flags i32, addr pointer, addrlen i32) i64
-proto fn recvfrom(fd i32, buf pointer, len i64, flags i32, addr pointer, addrlen pointer) i64
-proto fn sendmsg(fd i32, msg pointer, flags i32) i64
-proto fn recvmsg(fd i32, msg pointer, flags i32) i64
+proto send(fd i32, buf i8[], len i64, flags i32) i64
+proto recv(fd i32, buf i8[], len i64, flags i32) i64
+proto sendto(fd i32, buf i8[], len i64, flags i32, addr i8[], addrlen i32) i64
+proto recvfrom(fd i32, buf i8[], len i64, flags i32, addr i8[], addrlen i8[]) i64
+proto sendmsg(fd i32, msg i8[], flags i32) i64
+proto recvmsg(fd i32, msg i8[], flags i32) i64
 
 // Socket options
-proto fn setsockopt(fd i32, level i32, optname i32, optval pointer, optlen i32) i32
-proto fn getsockopt(fd i32, level i32, optname i32, optval pointer, optlen pointer) i32
-proto fn getsockname(fd i32, addr pointer, addrlen pointer) i32
-proto fn getpeername(fd i32, addr pointer, addrlen pointer) i32
+proto setsockopt(fd i32, level i32, optname i32, optval i8[], optlen i32) i32
+proto getsockopt(fd i32, level i32, optname i32, optval i8[], optlen i8[]) i32
+proto getsockname(fd i32, addr i8[], addrlen i8[]) i32
+proto getpeername(fd i32, addr i8[], addrlen i8[]) i32
 
 // Byte-order conversion (inet equivalents) — both platforms
-proto fn htons(hostshort i32) i32
-proto fn htonl(hostlong i32) i32
-proto fn ntohs(netshort i32) i32
-proto fn ntohl(netlong i32) i32
-proto fn inet_addr(cp pointer) i32            // returns in_addr_t (uint32_t)
-proto fn inet_ntoa(addr u32) pointer
-proto fn inet_pton(af i32, src pointer, dst pointer) i32
-proto fn inet_ntop(af i32, src pointer, dst pointer, size i32) pointer
+proto htons(hostshort i32) i32
+proto htonl(hostlong i32) i32
+proto ntohs(netshort i32) i32
+proto ntohl(netlong i32) i32
+proto inet_addr(cp i8[]) i32            // returns in_addr_t (uint32_t)
+proto inet_ntoa(addr u32) i8[]
+proto inet_pton(af i32, src i8[], dst i8[]) i32
+proto inet_ntop(af i32, src i8[], dst i8[], size i32) i8[]
 
 // Name resolution
-proto fn gethostbyname(name pointer) pointer
-proto fn gethostbyaddr(addr pointer, len i32, type i32) pointer
-proto fn getaddrinfo(node pointer, service pointer, hints pointer, res pointer) i32
-proto fn freeaddrinfo(res pointer) void
-proto fn gai_strerror(errcode i32) pointer
-proto fn getnameinfo(addr pointer, addrlen i32, host pointer, hostlen i32, serv pointer, servlen i32, flags i32) i32
+proto gethostbyname(name i8[]) i8[]
+proto gethostbyaddr(addr i8[], len i32, type i32) i8[]
+proto getaddrinfo(node i8[], service i8[], hints i8[], res i8[]) i32
+proto freeaddrinfo(res i8[]) void
+proto gai_strerror(errcode i32) i8[]
+proto getnameinfo(addr i8[], addrlen i32, host i8[], hostlen i32, serv i8[], servlen i32, flags i32) i32
 
 // I/O multiplexing
-proto fn select(nfds i32, readfds pointer, writefds pointer, exceptfds pointer, timeout pointer) i32
-proto fn poll(fds pointer, nfds i32, timeout i32) i32
+proto select(nfds i32, readfds i8[], writefds i8[], exceptfds i8[], timeout i8[]) i32
+proto poll(fds i8[], nfds i32, timeout i32) i32
 
 // File descriptor control (kept here for compatibility with old callers; see
 // fcntl.ura / unistd.ura for the canonical declarations).
-proto fn ioctl(fd i32, request i32, arg pointer) i32
+proto ioctl(fd i32, request i32, arg i8[]) i32
 
 // ── Address families ──────────────────────────────────────────────────────
 // @if linux:

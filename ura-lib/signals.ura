@@ -1,10 +1,10 @@
-proto fn signal(sig i32, handler pointer) pointer
-proto fn raise(sig i32) i32
-proto fn kill(pid i32, sig i32) i32
-proto fn sigaction(sig i32, act pointer, oldact pointer) i32
-proto fn sigprocmask(how i32, set pointer, oldset pointer) i32
-proto fn sigsuspend(mask pointer) i32
-proto fn strsignal(sig i32) pointer
+proto signal(sig i32, handler i8[]) i8[]
+proto raise(sig i32) i32
+proto kill(pid i32, sig i32) i32
+proto sigaction(sig i32, act i8[], oldact i8[]) i32
+proto sigprocmask(how i32, set i8[], oldset i8[]) i32
+proto sigsuspend(mask i8[]) i32
+proto strsignal(sig i32) i8[]
 
 // ── Signal numbers ────────────────────────────────────────────────────────
 // SIGHUP..SIGTERM are identical on Linux and macOS; SIGUSR/SIGCHLD/SIGBUS
@@ -60,5 +60,5 @@ SIGTERM   i32 = 15
 //     SIG_UNBLOCK i32 = 2
 //     SIG_SETMASK i32 = 3
 
-// ── Special handler values (cast to pointer at use site) ──────────────────
+// ── Special handler values (cast to i8[] at use site) ──────────────────
 // SIG_DFL = 0, SIG_IGN = 1 on both platforms.

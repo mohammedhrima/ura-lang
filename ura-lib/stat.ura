@@ -64,16 +64,16 @@
 
 // stat / fstat / lstat — these have wrapper symbols on glibc (__xstat / __fxstat
 // on older glibc; just stat/fstat/lstat on newer glibc and on Darwin). Buffer
-// is typed `pointer` so callers can pass `ref my_stat` or a raw byte buffer.
-proto fn stat(path pointer, buf pointer) i32
-proto fn fstat(fd i32, buf pointer) i32
-proto fn lstat(path pointer, buf pointer) i32
+// is typed `i8[]` so callers can pass `ref my_stat` or a raw byte buffer.
+proto stat(path i8[], buf i8[]) i32
+proto fstat(fd i32, buf i8[]) i32
+proto lstat(path i8[], buf i8[]) i32
 
 // Directory and mode operations
-proto fn mkdir(path pointer, mode i32) i32
-proto fn chmod(path pointer, mode i32) i32
-proto fn fchmod(fd i32, mode i32) i32
-proto fn umask(cmask i32) i32
+proto mkdir(path i8[], mode i32) i32
+proto chmod(path i8[], mode i32) i32
+proto fchmod(fd i32, mode i32) i32
+proto umask(cmask i32) i32
 
 // ── File type constants (st_mode & S_IFMT) ─────────────────────────────────
 // Values are identical between Linux and macOS for these.
