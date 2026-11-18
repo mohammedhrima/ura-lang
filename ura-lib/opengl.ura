@@ -1,6 +1,13 @@
 // OpenGL 1.x fixed pipeline plus textures: enough to draw shapes and blit
 // pixel buffers. Needs a context first, e.g. SDL_GL_CreateContext from "@/sdl2".
-link "GL"
+@if os == "windows":
+    link "opengl32"
+@elif os == "macos":
+    link "OpenGL"
+@elif installed("GL"):
+    link "GL"
+@else:
+    @error "OpenGL is not installed" "sudo apt install libgl-dev"
 
 // ── clearing and viewport ──
 GL_DEPTH_BUFFER_BIT u32 = 256

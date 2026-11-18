@@ -1,4 +1,11 @@
-link "raylib"
+@if installed("raylib"):
+    link "raylib"
+@elif os == "macos":
+    @error "raylib is not installed" "brew install raylib"
+@elif os == "windows":
+    @error "raylib is not installed" "download raylib from https://raylib.com"
+@else:
+    @error "raylib is not installed" "sudo apt install libraylib-dev"
 
 struct Color:
     r char

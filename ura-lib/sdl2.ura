@@ -1,6 +1,13 @@
 // SDL2: windows, 2D rendering, textures, events, keyboard, timers, GL contexts.
 // Pointers to SDL objects (SDL_Window *, SDL_Renderer *, SDL_Texture *) are i8[].
-link "SDL2"
+@if installed("SDL2"):
+    link "SDL2"
+@elif os == "macos":
+    @error "SDL2 is not installed" "brew install sdl2"
+@elif os == "windows":
+    @error "SDL2 is not installed" "download SDL2 from https://libsdl.org"
+@else:
+    @error "SDL2 is not installed" "sudo apt install libsdl2-dev"
 
 // ── init ──
 SDL_INIT_TIMER u32 = 1

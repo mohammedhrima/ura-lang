@@ -44,6 +44,9 @@
 - 040 — libft: lstdelone — unlink a node by index and clear the list
 - 041 — link: an SDL2 window drawn from ura
 - 042 — link: a library that is not installed
+- 043 — macros: @if / @elif / @else on os and installed()
+- 044 — macros: @error stops the build with a message and a help
+- 045 — macros: @if on something it can't check
 
 ---
 
@@ -2458,6 +2461,118 @@ error: test.ura:2:1 library 'NoSuchLib' not found
 2 | link "NoSuchLib"
   | ^^^^
 help: install it, or set URA_LIB_PATH to the folder that holds it
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+
+---
+
+## 043 — macros: @if / @elif / @else on os and installed()
+
+```ura
+@if os == "linux" or os == "macos":
+    name i8[] = "unix"
+@elif os == "windows":
+    name i8[] = "windows"
+@else:
+    @error "unsupported platform"
+
+fn main() i32:
+    @if installed("SDL2") and not installed("raylib"):
+        output(name, " ", "sdl only\n")
+    @else:
+        output("other\n")
+    return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@name = global i8* null
+
+define i32 @main() {
+entry:
+  %arr = alloca [5 x i8], align 1
+  %arr1 = alloca [2 x i8], align 1
+  %arr2 = alloca [10 x i8], align 1
+  %arr3 = alloca [13 x i8], align 1
+  store [5 x i8] c"unix\00", [5 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [5 x i8], [5 x i8]* %arr, i32 0, i32 0
+  store i8* %0, i8** @name, align 8
+  store [2 x i8] c" \00", [2 x i8]* %arr1, align 1
+  %1 = getelementptr inbounds [2 x i8], [2 x i8]* %arr1, i32 0, i32 0
+  store [10 x i8] c"sdl only\0A\00", [10 x i8]* %arr2, align 1
+  %2 = getelementptr inbounds [10 x i8], [10 x i8]* %arr2, i32 0, i32 0
+  %"$name" = load i8*, i8** @name, align 8
+  store [13 x i8] c"%s sdl only\0A\00", [13 x i8]* %arr3, align 1
+  %3 = getelementptr inbounds [13 x i8], [13 x i8]* %arr3, i32 0, i32 0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %3, i8* %"$name")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
+---
+
+## 044 — macros: @error stops the build with a message and a help
+
+```ura
+@if not installed("nothing_like_this"):
+    @error "nothing_like_this is not installed" "linux: sudo apt install libnothing-dev"
+
+fn main() i32:
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:2:5 nothing_like_this is not installed
+  |
+2 |     @error "nothing_like_this is not installed" "linux: sudo apt install libnothing-dev"
+  |     ^^^^^^
+help: linux: sudo apt install libnothing-dev
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+---
+
+## 045 — macros: @if on something it can't check
+
+```ura
+@if version == 2:
+    x i32 = 1
+
+fn main() i32:
+    return 0
+```
+
+### stderr
+
+```
+error: test.ura:1:13 @if checks os, arch and installed("lib")
+  |
+1 | @if version == 2:
+  |             ^^
+help: use @if os == "linux" and installed("SDL2"):
 error: aborting due to 1 error
 ```
 

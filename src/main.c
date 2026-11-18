@@ -158,6 +158,10 @@ struct {
     { "proto", { .type = PROTO } },
     { "link", { .type = LINK } },
     { "use", { .type = USE } },
+    { "@if", { .type = MACRO_IF } },
+    { "@elif", { .type = MACRO_ELIF } },
+    { "@else", { .type = MACRO_ELSE } },
+    { "@error", { .type = MACRO_ERROR } },
     { "operator", { .type = OPERATOR } },
     { "pub", { .type = PUB } },
     { "fn", { .type = FN_DEC } },
@@ -438,7 +442,10 @@ void tokenize(int start, int space2) {
             parse_num(s, e, space);
             continue;
         }
-        while ((isalpha(buff[s]) || buff[s] == '_') && (isalnum(buff[e]) || buff[e] == '_'))
+        if (buff[s] == '@' && isalpha(buff[s + 1]))
+            e++; // SKIP @
+        while ((isalpha(buff[s]) || buff[s] == '_' || buff[s] == '@') &&
+               (isalnum(buff[e]) || buff[e] == '_'))
             e++;
         if (e != s) {
             parse_id(s, e, space);
@@ -626,6 +633,73 @@ bool fix_type_first(Token *token) {
     ura.tokens[start] = name;
     ura.exe_pos = start;
     return true;
+}
+
+char *macro_value(char *name) {
+    if (strcmp2(name, "os")) {
+#if defined(_WIN32)
+        return "windows";
+#elif defined(__APPLE__)
+        return "macos";
+#else
+        return "linux";
+#endif
+    }
+    if (strcmp2(name, "arch")) {
+#if defined(__aarch64__) || defined(__arm64__)
+        return "arm64";
+#else
+        return "x86_64";
+#endif
+    }
+    return NULL;
+}
+
+char *macro_text(Node *node) {
+    if (node->token->type == CHARS)
+        return node->token->chars.value;
+    if (node->token->type == ID)
+        return macro_value(node->token->name);
+    return NULL;
+}
+
+bool macro_is_true(Node *cond) {
+    Token *token = cond->token;
+    switch (token->type) {
+    case AND:
+        return macro_is_true(cond->left) && macro_is_true(cond->right);
+    case OR:
+        return macro_is_true(cond->left) || macro_is_true(cond->right);
+    case NOT:
+        return !macro_is_true(cond->operand);
+    case INT:
+        return token->num.value != 0;
+    case EQ:
+    case NQ: {
+        char *left = macro_text(cond->left);
+        char *right = macro_text(cond->right);
+        if (left && right)
+            return strcmp2(left, right) == (token->type == EQ);
+        break;
+    }
+    case FN_CALL: {
+        bool is_installed = strcmp2(token->name, "installed") &&
+                            cond->children_count == 1 &&
+                            cond->children[0]->token->type == CHARS;
+        if (is_installed)
+            return ucg_find_lib(cond->children[0]->token->chars.value) != NULL;
+        break;
+    }
+    default:
+        break;
+    }
+    add_error(
+        token->s,
+        token->e,
+        "@if checks os, arch and installed(\"lib\")",
+        "use @if os == \"linux\" and installed(\"SDL2\"):"
+    );
+    return false;
 }
 
 void parse_tokens(Node *scope, int start) {
@@ -1060,6 +1134,46 @@ Node *parse_prime() {
             next(); // SKIP ,
         }
         expect(RCBRACK, "expected '}' to close the struct value", "}");
+        return node;
+    }
+    case NOT: {
+        node = new_node(token);
+        node->operand = parse_expr(precedence[AND]);
+        return node;
+    }
+    case MACRO_IF: {
+        node = new_node(token);
+        bool is_done = false;
+        Token *branch = token;
+        while (true) {
+            bool is_chosen = !is_done;
+            if (branch->type != MACRO_ELSE)
+                is_chosen = macro_is_true(parse_expr(0)) && !is_done;
+            expect(DOTS, format("expected ':' after %s", token_text(branch)), ":");
+            while (inside(branch->space)) {
+                if (is_chosen) {
+                    append(ura.scope->children, parse_expr(0));
+                } else
+                    next();
+            }
+            is_done = is_done || is_chosen;
+            bool has_next = includes(peek(0)->type, MACRO_ELIF, MACRO_ELSE, 0) &&
+                            peek(0)->space == token->space;
+            if (!has_next)
+                break;
+            branch = next();
+        }
+        return node;
+    }
+    case MACRO_ERROR: {
+        node = new_node(token);
+        char *message = "@error";
+        char *help = NULL;
+        if (peek(0)->type == CHARS && peek(0)->line == token->line)
+            message = next()->chars.value;
+        if (peek(0)->type == CHARS && peek(0)->line == token->line)
+            help = next()->chars.value;
+        add_error(token->s, token->e, message, help);
         return node;
     }
     case USE: {
@@ -1607,7 +1721,8 @@ void analyze(Node *node) {
     case INT: case FLOAT: case VOID: 
     case VAR: case PARAM: case CHARS: case VARIADIC:
     case WRITE: case READ: case SIZEOF: 
-    case TYPEOF: case TEMPLATE: case USE: { // clang-format on
+    case TYPEOF: case TEMPLATE: case USE:
+    case MACRO_IF: case MACRO_ERROR: { // clang-format on
         break;
     }
     case ID: {
@@ -2272,7 +2387,7 @@ void codegen(Node *node) {
         ucg_brk(node->loop->token->ucg);
         break;
     } // clang-format off
-    case TEMPLATE: case USE: { // clang-format on
+    case TEMPLATE: case USE: case MACRO_IF: case MACRO_ERROR: { // clang-format on
         break;
     }
     case ID: {
