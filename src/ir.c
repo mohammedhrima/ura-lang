@@ -106,7 +106,7 @@ enum Type {
     FN_DEC, ARGS, VARIADIC, FN_CALL, RETURN, WRITE, READ,
     LINK,
 	FN_ENTRY,
-    SIZEOF, IS_NULLABLE,
+    SIZEOF, TYPEOF, IS_NULLABLE,
     AS,
 	BLOC,
     IF, ELIF, ELSE, THEN,
@@ -189,6 +189,7 @@ struct Ucg {
         Ucg *stmt;
         Ucg *base;
         Ucg *to_point;
+        Ucg *to_size;
         // Ucg
     };
     struct {
@@ -203,6 +204,7 @@ struct Ucg {
         Ucg *right;
         Ucg *to_type;
         Ucg *attr;
+        Ucg *index;
     };
 };
 
@@ -510,6 +512,7 @@ TypeRef llvm_type(Ucg *ir) {
     case POINT_TO:		return llvm_type(ucg_type_of(ir));
     case ATTR:			return llvm_type(ir->data_type);
     case DOT:			return llvm_type(ir->attr);
+    case ACCESS:		return llvm_type(ucg_type_of(ir));
 	case VOID:			return gb_ucg.types.vd;
     case VAL_CREATE:	return llvm_type(ir->to_create);
     case DECLARE:		return llvm_type(ir->data_type);
@@ -670,6 +673,23 @@ void llvm_get_attr(Ucg *ir) {
     ir->elem = LLVMBuildStructGEP2(gb_ucg.builder, rtype, base->elem, index, ir->name);
 }
 
+void llvm_access(Ucg *ir) {
+    TypeRef rtype = llvm_type(ucg_type_of(ir));
+    Value index = ir->index->elem;
+    ir->elem = LLVMBuildInBoundsGEP2(
+        gb_ucg.builder, rtype, ir->base->elem, &index, 1, ir->name);
+}
+
+void llvm_sizeof(Ucg *ir) {
+    Value size = LLVMSizeOf(llvm_type(ir->to_size));
+    ir->elem = LLVMBuildIntCast2(gb_ucg.builder, size, gb_ucg.types.num[32], 0, "SIZEOF");
+}
+
+void llvm_typeof(Ucg *ir) {
+    char *name = ucg_type_name(ir->to_type);
+    ir->elem = LLVMBuildGlobalStringPtr(gb_ucg.builder, name, "TYPEOF");
+}
+
 void llvm_declare_global(Ucg *ir) {
     ir->rtype = llvm_type(ir->data_type);
     assert(ir->name);
@@ -778,6 +798,10 @@ int llvm_bits(Value value) {
 void llvm_cast(Ucg *ir) {
     Value value = ir->left->elem;
     Ucg *to = ir->to_type;
+    if (to->type == REF) {
+        ir->elem = LLVMBuildPointerCast(gb_ucg.builder, value, llvm_type(to), "AS");
+        return;
+    }
     bool from_float = llvm_is_float(value);
     bool to_float = to->type == FLOAT;
     int from_bits = llvm_bits(value);
@@ -1203,6 +1227,8 @@ Ucg *ucg_type_of(Ucg *place) {
         return place->attr->data_type;
     if (place->type == POINT_TO)
         return ucg_type_of(place->to_point)->to_ref;
+    if (place->type == ACCESS)
+        return ucg_value_type(place->base)->to_ref;
     return place->data_type;
 }
 
@@ -1212,6 +1238,8 @@ Ucg *ucg_value_type(Ucg *value) {
     case VAL_CREATE: return value->to_create;
     case FN_CALL:    return value->to_call->fn.ret;
     case AS:         return value->to_type;
+    case SIZEOF:     return ucg_i32_type();
+    case TYPEOF:     return ucg_string_type();
     case NEG:        return ucg_value_type(value->right);
     case LT: case GT: case EQ: case LE: case GE: case NQ:
                      return ucg_i1_type();
@@ -1359,6 +1387,16 @@ Ucg *ucg_get_attr(Ucg *base, int index) {
     return new;
 }
 
+Ucg *ucg_access(Ucg *base, Ucg *index) {
+    Ucg *new = ucg_new(ACCESS);
+    new->base = ucg_value(base);
+    new->index = ucg_value(index);
+    const char *name = base->name ? base->name : to_string(base->type);
+    new->name = format("%s[]", name);
+    append(gb_ucg.insts, new);
+    return new;
+}
+
 Ucg *ucg_param(char *name, Ucg *data_type) {
     Ucg *new = ucg_new(PARAM);
     new->name = name;
@@ -1369,7 +1407,7 @@ Ucg *ucg_param(char *name, Ucg *data_type) {
 
 bool is_locator(Ucg *ir) {
     return ir->type == DECLARE || ir->type == PARAM || ir->type == GLOBAL ||
-           ir->type == DOT || ir->type == POINT_TO;
+           ir->type == DOT || ir->type == POINT_TO || ir->type == ACCESS;
 }
 
 Ucg *ucg_value(Ucg *ir) {
@@ -1433,6 +1471,37 @@ Ucg *ucg_assign(Ucg *left, Ucg *right) {
 Ucg *ucg_cast(Ucg *value, Ucg *type) {
     Ucg *new = ucg_new(AS);
     new->left = ucg_value(value);
+    new->to_type = type;
+    append(gb_ucg.insts, new);
+    return new;
+}
+
+Ucg *ucg_sizeof(Ucg *type) {
+    Ucg *new = ucg_new(SIZEOF);
+    new->to_size = type;
+    append(gb_ucg.insts, new);
+    return new;
+}
+
+char *ucg_type_name(Ucg *type) {
+    switch (type->type) {
+    case INT: {
+        int bits = 1 << type->shift;
+        return bits == 1 ? "bool" : format("i%d", bits);
+    }
+    case FLOAT:
+        return format("f%d", 1 << type->shift);
+    case REF:
+        return format("%s[]", ucg_type_name(type->to_ref));
+    case VOID:
+        return "void";
+    default:
+        return type->name;
+    }
+}
+
+Ucg *ucg_typeof(Ucg *type) {
+    Ucg *new = ucg_new(TYPEOF);
     new->to_type = type;
     append(gb_ucg.insts, new);
     return new;
@@ -1725,6 +1794,18 @@ void ucg_compile() {
         }
         case DOT: {
             llvm_get_attr(curr);
+            break;
+        }
+        case ACCESS: {
+            llvm_access(curr);
+            break;
+        }
+        case SIZEOF: {
+            llvm_sizeof(curr);
+            break;
+        }
+        case TYPEOF: {
+            llvm_typeof(curr);
             break;
         }
         case REF: {
@@ -2537,6 +2618,32 @@ bool run_test(int p) {
         ucg_end(fn_main);
         break;
     }
+    case 29: {
+        Ucg *i32 = ucg_i32_type();
+        Ucg *malloc =
+            ucg_proto2("malloc", ucg_string_type(), ucg_param("size", i32), NULL);
+        Ucg *fn_main = ucg_fn2("main", i32, NULL);
+        Ucg *arr = ucg_var("arr", ucg_ref_type(i32));
+        Ucg *size = ucg_op(MUL, ucg_sizeof(i32), ucg_i32_value(4));
+        ucg_assign(arr, ucg_cast(ucg_fn_call2(malloc, size, NULL), ucg_ref_type(i32)));
+        ucg_assign(ucg_access(arr, ucg_i32_value(2)), ucg_i32_value(7));
+        ucg_assign(
+            ucg_access(arr, ucg_i32_value(0)),
+            ucg_op(ADD, ucg_access(arr, ucg_i32_value(2)), ucg_i32_value(1))
+        );
+        Ucg *values[] = {
+            ucg_typeof(ucg_ref_type(i32)),
+            ucg_string_value(" "),
+            ucg_access(arr, ucg_i32_value(0)),
+            ucg_string_value(" "),
+            ucg_sizeof(i32),
+            ucg_string_value("\n"),
+        };
+        ucg_write(ucg_i32_value(1), values, 6);
+        ucg_ret(ucg_access(arr, ucg_i32_value(0)));
+        ucg_end(fn_main);
+        break;
+    }
     default: {
         return false;
     }
@@ -2690,7 +2797,7 @@ const char *to_string(Type type) {
 		[FN_DEC] = "FN_DEC", [ARGS] = "ARGS",
 		[VARIADIC] = "VARIADIC",
 		[FN_CALL] = "FN_CALL", [RETURN] = "RETURN", [WRITE] = "WRITE", [READ] = "READ", [LINK] = "LINK",
-		[SIZEOF] = "SIZEOF", [IS_NULLABLE] = "IS_NULLABLE",
+		[SIZEOF] = "SIZEOF", [TYPEOF] = "TYPEOF", [IS_NULLABLE] = "IS_NULLABLE",
 
 		[IF] = "IF", [ELIF] = "ELIF", [ELSE] = "ELSE",
 		[THEN] = "THEN", [END] = "END",

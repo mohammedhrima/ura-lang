@@ -83,6 +83,7 @@ struct Node {
         Node *next;
         Node *declared;
         Node *to_type;
+        Node *index;
     };
 
     expand(Node *, children);
@@ -137,7 +138,9 @@ struct {
     { "f64", { .type = FLOAT, .is_type = true, .shift = 64 } },
     { "char", { .type = INT, .is_type = true, .shift = 8 } },
     { "i8", { .type = INT, .is_type = true, .shift = 8 } },
+    { "i16", { .type = INT, .is_type = true, .shift = 16 } },
     { "i32", { .type = INT, .is_type = true, .shift = 32 } },
+    { "i64", { .type = INT, .is_type = true, .shift = 64 } },
     { "num", { .type = INT, .is_type = true } },
 
     { "True", { .type = INT, .shift = 1, .num = { .value = true } } },
@@ -217,7 +220,7 @@ int precedence[END + 1] = {
 
     [AS] = 35,
 
-    [DOT] = 51,       [DOUBLE_DOTS] = 51,
+    [DOT] = 51,       [DOUBLE_DOTS] = 51, [LBRACK] = 51,
 };
 
 char *escaped[256] = {
@@ -768,9 +771,19 @@ Node *parse_prime() {
             node->children,
             new_builtin(READ, "input", 0, new_type(ARRAY, 0, new_type(INT, 8, NULL)))
         );
+        append(
+            node->children, new_builtin(SIZEOF, "sizeof", 0, new_type(INT, 32, NULL))
+        );
+        append(
+            node->children,
+            new_builtin(TYPEOF, "typeof", 0, new_type(ARRAY, 0, new_type(INT, 8, NULL)))
+        );
         return node;
     }
     case ID: {
+        Node *template_type = find_template_type(token->name);
+        if (template_type)
+            return template_type;
         Node *template = find_template(token->name);
         if (template && peek(0)->type == LT)
             token->name = instantiate(template, parse_types(token));
@@ -1074,7 +1087,12 @@ Node *parse_expr(int min_op) {
             );
             return node;
         }
-        node->right = parse_expr(op);
+        if (token->type == LBRACK) {
+            token->type = ACCESS;
+            node->index = parse_expr(0);
+            expect(RBRACK, "expected ']' after the index", "]");
+        } else
+            node->right = parse_expr(op);
         left = node;
     }
     return left;
@@ -1136,7 +1154,7 @@ Node *find_function_like(char *name, int max_diff) {
         Node *curr = ura.scopes[i];
         for (int j = 0; j < curr->children_count; j++) {
             Node *child = curr->children[j];
-            if (!includes(child->token->type, FN_DEC, PROTO, WRITE, READ, 0))
+            if (!includes(child->token->type, FN_DEC, PROTO, WRITE, READ, SIZEOF, TYPEOF, 0))
                 continue;
             int diff = name_diff(child->token->name, name);
             if (diff >= found_diff)
@@ -1268,6 +1286,10 @@ Node *type_of(Node *node) {
         if (node->right->token->type == FN_CALL)
             return type_of(node->right);
         return node->right->declared ? node->right->declared->data_type : NULL;
+    }
+    case ACCESS: {
+        Node *type = type_of(node->left);
+        return type && type->token->type == ARRAY ? type->data_type : NULL;
     }
     case CHARS:     return new_type(ARRAY, 0, new_type(INT, 8, NULL));
     case VAR: case PARAM: return is_ref_variable(node) ? node->data_type->data_type : node->data_type;
@@ -1404,7 +1426,7 @@ void analyze_operator(Node *node, Node *st) {
 void analyze(Node *node) {
     switch (node->token->type) { // clang-format off
     case INT: case FLOAT: case VOID: case VAR: case PARAM: case CHARS: case VARIADIC:
-    case WRITE: case READ: case TEMPLATE: { // clang-format on
+    case WRITE: case READ: case SIZEOF: case TYPEOF: case TEMPLATE: { // clang-format on
         break;
     }
     case ID: {
@@ -1555,6 +1577,22 @@ void analyze(Node *node) {
             analyze(node->children[i]->left);
         break;
     }
+    case ACCESS: {
+        analyze(node->left);
+        analyze(node->index);
+        check_type(node->index, new_type(INT, 32, NULL), NULL);
+        Node *type = type_of(node->left);
+        if (type == NULL || type->token->type == ARRAY)
+            break;
+        Token *base = node->left->token;
+        add_error(
+            base->s,
+            base->e,
+            format("'%s' is '%s', not an array", token_text(base), type_name(type)),
+            NULL
+        );
+        break;
+    }
     case DOT: {
         analyze(node->left);
         Node *type = type_of(node->left);
@@ -1626,6 +1664,14 @@ void analyze(Node *node) {
                 );
             break;
         }
+        bool takes_type = includes(node->to_call->token->type, SIZEOF, TYPEOF, 0);
+        if (takes_type && node->children_count != 1)
+            add_error(
+                token->s,
+                token->e,
+                format("'%s' takes one argument, got %d", name, node->children_count),
+                format("use %s(x)", name)
+            );
         Node *params = node->to_call->args;
         for (int i = 0; i < node->children_count; i++) {
             analyze(node->children[i]);
@@ -1779,6 +1825,8 @@ void codegen_statements(Node *node) {
                 LINK,
                 WRITE,
                 READ,
+                SIZEOF,
+                TYPEOF,
                 0
             ))
             continue;
@@ -1913,7 +1961,13 @@ void codegen(Node *node) {
                 ucg_write(ucg_i32_value(fn->num.value), args, node->children_count);
         else if (fn->type == READ)
             node->token->ucg = ucg_read(ucg_i32_value(fn->num.value));
-        else
+        else if (includes(fn->type, SIZEOF, TYPEOF, 0)) {
+            Node *arg = node->children[0];
+            Node *type = arg->token->is_type ? arg : type_of(arg);
+            codegen(type);
+            Ucg *ucg = type->token->ucg;
+            node->token->ucg = fn->type == SIZEOF ? ucg_sizeof(ucg) : ucg_typeof(ucg);
+        } else
             node->token->ucg = ucg_fn_call(fn->ucg, args, node->children_count);
         break;
     }
@@ -1964,6 +2018,12 @@ void codegen(Node *node) {
             values[attr->token->attr.index] = attr->left->token->ucg;
         }
         node->token->ucg = ucg_struct_value(node->data_type->token->ucg, values);
+        break;
+    }
+    case ACCESS: {
+        codegen(node->left);
+        codegen(node->index);
+        node->token->ucg = ucg_access(node->left->token->ucg, node->index->token->ucg);
         break;
     }
     case DOT: {

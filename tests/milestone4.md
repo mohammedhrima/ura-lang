@@ -380,39 +380,40 @@ fn main() i32:
 ### llvm ir
 
 ```llvm
-; ModuleID = 'ura-module'
-source_filename = "ura-module"
+; ModuleID = 'ura'
+source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %"Vec<i32>" = type { i32* }
 
 declare i32* @malloc(i32)
 
-define void @Vec.init(%"Vec<i32>"* %0) {
+define void @"Vec<i32>.init"(%"Vec<i32>"* %0) {
 entry:
   %self = alloca %"Vec<i32>"*, align 8
   store %"Vec<i32>"* %0, %"Vec<i32>"** %self, align 8
-  %"malloc<i32>" = call i32* @malloc(i32 40)
-  %self1 = load %"Vec<i32>"*, %"Vec<i32>"** %self, align 8
-  %self.arr = getelementptr inbounds %"Vec<i32>", %"Vec<i32>"* %self1, i32 0, i32 0
-  store i32* %"malloc<i32>", i32** %self.arr, align 8
+  %"*self" = load %"Vec<i32>"*, %"Vec<i32>"** %self, align 8
+  %"*self.arr" = getelementptr inbounds %"Vec<i32>", %"Vec<i32>"* %"*self", i32 0, i32 0
+  %call.malloc = call i32* @malloc(i32 mul (i32 ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i32), i32 10))
+  store i32* %call.malloc, i32** %"*self.arr", align 8
   ret void
 }
 
 define i32 @main() {
 entry:
   %x = alloca %"Vec<i32>", align 8
-  call void @Vec.init(%"Vec<i32>"* %x)
+  store %"Vec<i32>" zeroinitializer, %"Vec<i32>"* %x, align 8
+  call void @"Vec<i32>.init"(%"Vec<i32>"* %x)
   %x.arr = getelementptr inbounds %"Vec<i32>", %"Vec<i32>"* %x, i32 0, i32 0
-  %x.arr1 = load i32*, i32** %x.arr, align 8
-  %0 = getelementptr inbounds i32, i32* %x.arr1, i32 3
-  store i32 7, i32* %0, align 4
-  %x.arr2 = getelementptr inbounds %"Vec<i32>", %"Vec<i32>"* %x, i32 0, i32 0
-  %x.arr3 = load i32*, i32** %x.arr2, align 8
-  %1 = getelementptr inbounds i32, i32* %x.arr3, i32 3
-  %2 = load i32, i32* %1, align 4
-  ret i32 %2
+  %"$x.arr" = load i32*, i32** %x.arr, align 8
+  %"x.arr[]" = getelementptr inbounds i32, i32* %"$x.arr", i32 3
+  store i32 7, i32* %"x.arr[]", align 4
+  %x.arr1 = getelementptr inbounds %"Vec<i32>", %"Vec<i32>"* %x, i32 0, i32 0
+  %"$x.arr2" = load i32*, i32** %x.arr1, align 8
+  %"x.arr[]3" = getelementptr inbounds i32, i32* %"$x.arr2", i32 3
+  %"$x.arr[]" = load i32, i32* %"x.arr[]3", align 4
+  ret i32 %"$x.arr[]"
 }
 ```
 

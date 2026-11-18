@@ -74,6 +74,50 @@ fn main() i32:
    return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%User = type { i32 }
+
+@TYPEOF = private unnamed_addr constant [4 x i8] c"i32\00", align 1
+@TYPEOF.1 = private unnamed_addr constant [5 x i8] c"i8[]\00", align 1
+@TYPEOF.2 = private unnamed_addr constant [5 x i8] c"User\00", align 1
+
+define i32 @main() {
+entry:
+  %x = alloca i32, align 4
+  %s = alloca i8*, align 8
+  %arr = alloca [4 x i8], align 1
+  %u = alloca %User, align 8
+  %arr1 = alloca [2 x i8], align 1
+  %arr2 = alloca [2 x i8], align 1
+  %arr3 = alloca [2 x i8], align 1
+  %arr4 = alloca [10 x i8], align 1
+  store i32 1, i32* %x, align 4
+  store [4 x i8] c"abc\00", [4 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [4 x i8], [4 x i8]* %arr, i32 0, i32 0
+  store i8* %0, i8** %s, align 8
+  store %User zeroinitializer, %User* %u, align 4
+  store [2 x i8] c" \00", [2 x i8]* %arr1, align 1
+  %1 = getelementptr inbounds [2 x i8], [2 x i8]* %arr1, i32 0, i32 0
+  store [2 x i8] c" \00", [2 x i8]* %arr2, align 1
+  %2 = getelementptr inbounds [2 x i8], [2 x i8]* %arr2, i32 0, i32 0
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr3, align 1
+  %3 = getelementptr inbounds [2 x i8], [2 x i8]* %arr3, i32 0, i32 0
+  store [10 x i8] c"%s %s %s\0A\00", [10 x i8]* %arr4, align 1
+  %4 = getelementptr inbounds [10 x i8], [10 x i8]* %arr4, i32 0, i32 0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %4, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @TYPEOF, i32 0, i32 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @TYPEOF.1, i32 0, i32 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @TYPEOF.2, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 004 — builtin: typeof on a ref and on a type name
@@ -105,6 +149,28 @@ fn main() i32:
    return sizeof(x) + sizeof(s) + sizeof(p)
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Pad = type { i8, i32 }
+
+define i32 @main() {
+entry:
+  %x = alloca i32, align 4
+  %s = alloca i8*, align 8
+  %p = alloca %Pad, align 8
+  store i32 0, i32* %x, align 4
+  store i8* null, i8** %s, align 8
+  store %Pad zeroinitializer, %Pad* %p, align 4
+  ret i32 add (i32 add (i32 ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i32), i32 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i32)), i32 ptrtoint (%Pad* getelementptr (%Pad, %Pad* null, i32 1) to i32))
+}
+```
+
 ---
 
 ## 006 — builtin: typeof / sizeof on scalars
@@ -122,6 +188,65 @@ fn main() i32:
     output("typeof f = ", typeof(f), ", sizeof f = ", sizeof(f), "\n")
     output("sizeof i64 = ", sizeof(1 as i64), "\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@TYPEOF = private unnamed_addr constant [4 x i8] c"i32\00", align 1
+@TYPEOF.1 = private unnamed_addr constant [4 x i8] c"f32\00", align 1
+
+define i32 @main() {
+entry:
+  %x = alloca i32, align 4
+  %f = alloca float, align 4
+  %arr = alloca [12 x i8], align 1
+  %arr1 = alloca [14 x i8], align 1
+  %arr2 = alloca [2 x i8], align 1
+  %arr3 = alloca [30 x i8], align 1
+  %arr4 = alloca [12 x i8], align 1
+  %arr5 = alloca [14 x i8], align 1
+  %arr6 = alloca [2 x i8], align 1
+  %arr7 = alloca [30 x i8], align 1
+  %arr9 = alloca [14 x i8], align 1
+  %arr10 = alloca [2 x i8], align 1
+  %arr11 = alloca [17 x i8], align 1
+  store i32 5, i32* %x, align 4
+  store float 1.500000e+00, float* %f, align 4
+  store [12 x i8] c"typeof x = \00", [12 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [12 x i8], [12 x i8]* %arr, i32 0, i32 0
+  store [14 x i8] c", sizeof x = \00", [14 x i8]* %arr1, align 1
+  %1 = getelementptr inbounds [14 x i8], [14 x i8]* %arr1, i32 0, i32 0
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr2, align 1
+  %2 = getelementptr inbounds [2 x i8], [2 x i8]* %arr2, i32 0, i32 0
+  store [30 x i8] c"typeof x = %s, sizeof x = %d\0A\00", [30 x i8]* %arr3, align 1
+  %3 = getelementptr inbounds [30 x i8], [30 x i8]* %arr3, i32 0, i32 0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %3, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @TYPEOF, i32 0, i32 0), i32 ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i32))
+  store [12 x i8] c"typeof f = \00", [12 x i8]* %arr4, align 1
+  %4 = getelementptr inbounds [12 x i8], [12 x i8]* %arr4, i32 0, i32 0
+  store [14 x i8] c", sizeof f = \00", [14 x i8]* %arr5, align 1
+  %5 = getelementptr inbounds [14 x i8], [14 x i8]* %arr5, i32 0, i32 0
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr6, align 1
+  %6 = getelementptr inbounds [2 x i8], [2 x i8]* %arr6, i32 0, i32 0
+  store [30 x i8] c"typeof f = %s, sizeof f = %d\0A\00", [30 x i8]* %arr7, align 1
+  %7 = getelementptr inbounds [30 x i8], [30 x i8]* %arr7, i32 0, i32 0
+  %call.dprintf8 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %7, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @TYPEOF.1, i32 0, i32 0), i32 ptrtoint (float* getelementptr (float, float* null, i32 1) to i32))
+  store [14 x i8] c"sizeof i64 = \00", [14 x i8]* %arr9, align 1
+  %8 = getelementptr inbounds [14 x i8], [14 x i8]* %arr9, i32 0, i32 0
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr10, align 1
+  %9 = getelementptr inbounds [2 x i8], [2 x i8]* %arr10, i32 0, i32 0
+  store [17 x i8] c"sizeof i64 = %d\0A\00", [17 x i8]* %arr11, align 1
+  %10 = getelementptr inbounds [17 x i8], [17 x i8]* %arr11, i32 0, i32 0
+  %call.dprintf12 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %10, i32 ptrtoint (i64* getelementptr (i64, i64* null, i32 1) to i32))
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -179,6 +304,58 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@TYPEOF = private unnamed_addr constant [5 x i8] c"i8[]\00", align 1
+@TYPEOF.1 = private unnamed_addr constant [5 x i8] c"bool\00", align 1
+
+define i32 @main() {
+entry:
+  %s = alloca i8*, align 8
+  %arr = alloca [6 x i8], align 1
+  %b = alloca i1, align 1
+  %arr1 = alloca [2 x i8], align 1
+  %arr2 = alloca [2 x i8], align 1
+  %arr3 = alloca [7 x i8], align 1
+  %arr4 = alloca [6 x i8], align 1
+  %arr5 = alloca [2 x i8], align 1
+  %arr6 = alloca [2 x i8], align 1
+  %arr7 = alloca [2 x i8], align 1
+  %arr8 = alloca [10 x i8], align 1
+  store [6 x i8] c"hello\00", [6 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [6 x i8], [6 x i8]* %arr, i32 0, i32 0
+  store i8* %0, i8** %s, align 8
+  store i1 true, i1* %b, align 1
+  store [2 x i8] c" \00", [2 x i8]* %arr1, align 1
+  %1 = getelementptr inbounds [2 x i8], [2 x i8]* %arr1, i32 0, i32 0
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr2, align 1
+  %2 = getelementptr inbounds [2 x i8], [2 x i8]* %arr2, i32 0, i32 0
+  store [7 x i8] c"%s %s\0A\00", [7 x i8]* %arr3, align 1
+  %3 = getelementptr inbounds [7 x i8], [7 x i8]* %arr3, i32 0, i32 0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %3, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @TYPEOF, i32 0, i32 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @TYPEOF.1, i32 0, i32 0))
+  store [6 x i8] c"hello\00", [6 x i8]* %arr4, align 1
+  %4 = getelementptr inbounds [6 x i8], [6 x i8]* %arr4, i32 0, i32 0
+  store [2 x i8] c" \00", [2 x i8]* %arr5, align 1
+  %5 = getelementptr inbounds [2 x i8], [2 x i8]* %arr5, i32 0, i32 0
+  store [2 x i8] c" \00", [2 x i8]* %arr6, align 1
+  %6 = getelementptr inbounds [2 x i8], [2 x i8]* %arr6, i32 0, i32 0
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr7, align 1
+  %7 = getelementptr inbounds [2 x i8], [2 x i8]* %arr7, i32 0, i32 0
+  store [10 x i8] c"%d %d %d\0A\00", [10 x i8]* %arr8, align 1
+  %8 = getelementptr inbounds [10 x i8], [10 x i8]* %arr8, i32 0, i32 0
+  %call.dprintf9 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %8, i32 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i32), i32 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i32), i32 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i32))
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 011 — builtin: sizeof of every scalar type
@@ -212,6 +389,33 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Point = type { i32, i64 }
+
+define i32 @main() {
+entry:
+  %p = alloca %Point, align 8
+  %arr = alloca [2 x i8], align 1
+  %arr1 = alloca [4 x i8], align 1
+  store %Point zeroinitializer, %Point* %p, align 8
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [2 x i8], [2 x i8]* %arr, i32 0, i32 0
+  store [4 x i8] c"%d\0A\00", [4 x i8]* %arr1, align 1
+  %1 = getelementptr inbounds [4 x i8], [4 x i8]* %arr1, i32 0, i32 0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %1, i32 ptrtoint (%Point* getelementptr (%Point, %Point* null, i32 1) to i32))
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 013 — builtin: typeof of a struct gives its name
@@ -227,6 +431,35 @@ fn main() i32:
     p Point
     output(typeof(p), "\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Point = type { i32, i64 }
+
+@TYPEOF = private unnamed_addr constant [6 x i8] c"Point\00", align 1
+
+define i32 @main() {
+entry:
+  %p = alloca %Point, align 8
+  %arr = alloca [2 x i8], align 1
+  %arr1 = alloca [4 x i8], align 1
+  store %Point zeroinitializer, %Point* %p, align 8
+  store [2 x i8] c"\0A\00", [2 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [2 x i8], [2 x i8]* %arr, i32 0, i32 0
+  store [4 x i8] c"%s\0A\00", [4 x i8]* %arr1, align 1
+  %1 = getelementptr inbounds [4 x i8], [4 x i8]* %arr1, i32 0, i32 0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %1, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @TYPEOF, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
