@@ -1317,7 +1317,48 @@ bool fits_type(Node *value, Node *type) {
         return true;
     if (is_number(value) && is_number(type))
         return true;
+    if (type->token->type == REF && found->token->type != REF)
+        return same_type(found, type->data_type);
     return same_type(found, type);
+}
+
+Node *find_drop(Node *type) {
+    if (type == NULL || type->token->type != ID || type->declared == NULL)
+        return NULL;
+    return find_method(type->declared, "drop", NULL, 0, false);
+}
+
+bool lives_in_variable(Node *node) {
+    if (node->token->type == DOT)
+        return node->right->token->type != FN_CALL;
+    return includes(node->token->type, VAR, PARAM, ACCESS, 0);
+}
+
+void check_copy(Node *value, Node *type) {
+    if (!lives_in_variable(value) || find_drop(type) == NULL)
+        return;
+    Token *token = value->token;
+    add_error(
+        token->s,
+        token->e,
+        format("'%s' has operator drop, passing a copy would free it twice", type_name(type)),
+        format("take it as &%s", type_name(type))
+    );
+}
+
+void check_args(Node *fn, Node **args, int count, int self) {
+    for (int i = 0; i < count && i + self < fn->args->children_count; i++) {
+        Node *type = fn->args->children[i + self]->data_type;
+        if (type == NULL || args[i]->token->type == REF)
+            continue;
+        if (type->token->type != REF) {
+            check_copy(args[i], type);
+            continue;
+        }
+        Node *ref = new_node(new_token(REF, args[i]->token));
+        ref->operand = args[i];
+        args[i] = ref;
+    }
 }
 
 Node *find_method(Node *st, char *name, Node **args, int args_count, bool is_pub) {
@@ -1552,6 +1593,7 @@ void analyze_operator(Node *node, Node *st, char *symbol) {
         );
         return;
     }
+    check_args(method, &node->right, 1, 1);
     Node *call = new_node(new_token(FN_CALL, op));
     call->token->name = symbol;
     call->to_call = method;
@@ -1680,6 +1722,8 @@ void analyze(Node *node) {
                 format("'%s' has no pub fn '%s'", st->token->name, call->token->name),
                 NULL
             );
+        else
+            check_args(call->to_call, call->children, call->children_count, 0);
         break;
     }
     case LINK: {
@@ -1772,6 +1816,8 @@ void analyze(Node *node) {
                     ),
                     NULL
                 );
+            else
+                check_args(call->to_call, call->children, call->children_count, 1);
             break;
         }
         Token *attr = node->right->token;
@@ -1821,8 +1867,10 @@ void analyze(Node *node) {
             if (params == NULL || i >= params->children_count)
                 continue;
             Node *param = params->children[i];
-            if (param->token->type != VARIADIC)
+            if (param->token->type != VARIADIC) {
                 check_type(node->children[i], param->data_type, NULL);
+                check_copy(node->children[i], param->data_type);
+            }
         }
         break;
     }
@@ -1842,7 +1890,23 @@ void analyze(Node *node) {
             bool is_declaration =
                 node->left->token->type == VAR && node->left->declared == NULL;
             bool has_assign = find_method(st, "=", &node->right, 1, false) != NULL;
-            if (node->token->type != ASSIGN || (!is_declaration && has_assign)) {
+            bool is_copy = node->token->type == ASSIGN && lives_in_variable(node->right);
+            bool has_drop = find_drop(left_type) != NULL;
+            if (is_copy && has_drop && !has_assign) {
+                Token *token = node->token;
+                add_error(
+                    token->s,
+                    token->e,
+                    format(
+                        "'%s' has operator drop, a copy would free it twice",
+                        st->token->name
+                    ),
+                    format("define operator =(other &%s) to copy it", st->token->name)
+                );
+                break;
+            }
+            bool copy_by_operator = has_assign && (!is_declaration || (has_drop && is_copy));
+            if (node->token->type != ASSIGN || copy_by_operator) {
                 analyze_operator(node, st, token_text(node->token));
                 break;
             }
@@ -1866,6 +1930,46 @@ void analyze(Node *node) {
 }
 
 // CODE GEN
+bool ends_with_jump(Node *block) {
+    if (block->children_count == 0)
+        return false;
+    Node *last = block->children[block->children_count - 1];
+    return includes(last->token->type, RETURN, BRK, CNT, 0);
+}
+
+void codegen_drops(Node *scope, Node *skip) {
+    for (int i = scope->children_count - 1; i >= 0; i--) {
+        Node *child = scope->children[i];
+        if (child->token->type != DECLARE || child->var == skip)
+            continue;
+        Node *drop = find_drop(child->var->data_type);
+        if (drop == NULL)
+            continue;
+        Ucg *self = ucg_ref(child->var->token->ucg);
+        ucg_fn_call(drop->token->ucg, &self, 1);
+    }
+    if (scope->token->type != FN_DEC)
+        return;
+    for (int i = 0; i < scope->args->children_count; i++) {
+        Node *param = scope->args->children[i];
+        if (param == skip || param->token->type != PARAM)
+            continue;
+        Node *drop = find_drop(param->data_type);
+        if (drop == NULL)
+            continue;
+        Ucg *self = ucg_ref(param->token->ucg);
+        ucg_fn_call(drop->token->ucg, &self, 1);
+    }
+}
+
+void codegen_drops_until(Node *last, Node *skip) {
+    for (int i = ura.scopes_count - 1; i >= 0; i--) {
+        codegen_drops(ura.scopes[i], skip);
+        if (ura.scopes[i] == last)
+            return;
+    }
+}
+
 void codegen_branch(Node *node, Ucg *stmt) {
     node->token->ucg = stmt;
     Ucg *cond = NULL;
@@ -1877,6 +1981,8 @@ void codegen_branch(Node *node, Ucg *stmt) {
     enter_scope(node);
     for (int i = 0; i < node->children_count; i++)
         codegen(node->children[i]);
+    if (!ends_with_jump(node))
+        codegen_drops(node, NULL);
     exit_scope();
 }
 
@@ -2089,6 +2195,8 @@ void codegen(Node *node) {
                 continue;
             codegen(child);
         }
+        if (!ends_with_jump(node))
+            codegen_drops(node, NULL);
         ucg_end(node->token->ucg);
         exit_scope();
         break;
@@ -2128,11 +2236,17 @@ void codegen(Node *node) {
         break;
     }
     case RETURN: {
+        Node *fn = find_scope(FN_DEC);
         if (node->left) {
             codegen(node->left);
-            ucg = ucg_ret(node->left->token->ucg);
-        } else
+            Ucg *value = ucg_value(node->left->token->ucg);
+            bool is_variable = includes(node->left->token->type, VAR, PARAM, 0);
+            codegen_drops_until(fn, is_variable ? node->left->declared : NULL);
+            ucg = ucg_ret(value);
+        } else {
+            codegen_drops_until(fn, NULL);
             ucg = ucg_return();
+        }
         node->token->ucg = ucg;
         break;
     }
@@ -2154,6 +2268,7 @@ void codegen(Node *node) {
         break;
     }
     case BRK: {
+        codegen_drops_until(node->loop, NULL);
         ucg_brk(node->loop->token->ucg);
         break;
     } // clang-format off
@@ -2227,6 +2342,7 @@ void codegen(Node *node) {
         break;
     }
     case CNT: {
+        codegen_drops_until(node->loop, NULL);
         ucg_cnt(node->loop->token->ucg);
         break;
     }

@@ -98,3 +98,13 @@ template<T>:
         operator [](index i32) &T:
             return &self.data[index]
 
+        operator =(other &Array):
+            self.clear()
+            self.reserve(other.count)
+            i i32 = 0
+            while i < other.count:
+                self.push_back(other.data[i])
+                i += 1
+
+        operator drop():
+            free(self.data as i8[])
