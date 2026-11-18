@@ -582,6 +582,52 @@ Node *find_template_type(char *name) {
     return NULL;
 }
 
+int type_end(int pos) {
+    if (peek(pos)->type == LT) {
+        int depth = 0;
+        do {
+            if (peek(pos)->type == LAST)
+                return pos;
+            if (peek(pos)->type == LT)
+                depth++;
+            if (peek(pos)->type == GT)
+                depth--;
+            pos++;
+        } while (depth > 0);
+    }
+    if (peek(pos)->type == LBRACK && peek(pos + 1)->type == RBRACK)
+        pos += 2;
+    return pos;
+}
+
+bool fix_type_first(Token *token) {
+    int end = type_end(0);
+    Token *name = peek(end);
+    if (name->type != ID || name->line != token->line)
+        return false;
+    int start = ura.exe_pos - 1;
+    Token *last = ura.tokens[ura.exe_pos + end - 1];
+    char *buff = ura.file->buff;
+    add_error(
+        token->s,
+        last->e,
+        "the type goes after the name",
+        format(
+            "use %s %.*s%.*s",
+            name->name,
+            last->e - token->s,
+            buff + token->s,
+            line_end(name->e) - name->e,
+            buff + name->e
+        )
+    );
+    for (int i = ura.exe_pos + end; i > start; i--)
+        ura.tokens[i] = ura.tokens[i - 1];
+    ura.tokens[start] = name;
+    ura.exe_pos = start;
+    return true;
+}
+
 void parse_tokens(Node *scope, int start) {
     int exe_pos = ura.exe_pos;
     ura.exe_pos = start;
@@ -804,10 +850,10 @@ Node *parse_block(Token *token) {
 Node *parse_prime() {
     Token *token = next();
     Node *node = NULL;
-    switch (token->type) {
-    case INT:
-    case FLOAT:
-    case CHARS: {
+    switch (token->type) { // clang-format off
+    case INT: case FLOAT: case CHARS: { // clang-format on
+        if (token->is_type && fix_type_first(token))
+            return parse_prime();
         return new_node(token);
     }
     case SCOPE: {
@@ -832,6 +878,10 @@ Node *parse_prime() {
         return node;
     }
     case ID: {
+        bool is_type_name = find_struct(token->name) || find_template(token->name) ||
+                            find_template_type(token->name);
+        if (is_type_name && fix_type_first(token))
+            return parse_prime();
         Node *template_type = find_template_type(token->name);
         if (template_type)
             return template_type;

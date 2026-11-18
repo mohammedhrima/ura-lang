@@ -255,6 +255,7 @@
 - 251 — variables: a variable with the name of a parameter
 - 252 — unsigned: u8 wraps, u32 divides and compares unsigned, u64, casts
 - 253 — unsigned: a number that doesn't fit in u8
+- 254 — variables: the type written before the name
 
 ---
 
@@ -11454,6 +11455,50 @@ error: test.ura:2:12 256 doesn't fit in u8
   |            ^^^
 help: u8 goes from 0 to 255
 error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
+
+---
+
+## 254 — variables: the type written before the name
+
+```ura
+struct Point:
+    x i32
+
+fn main() i32:
+    i32 x = 1
+    i8[] s = "ab"
+    Point p
+    p.x = x
+    return p.x
+```
+
+### stderr
+
+```
+error: test.ura:5:5 the type goes after the name
+  |
+5 |     i32 x = 1
+  |     ^^^
+help: use x i32 = 1
+error: test.ura:6:5 the type goes after the name
+  |
+6 |     i8[] s = "ab"
+  |     ^^^^
+help: use s i8[] = "ab"
+error: test.ura:7:5 the type goes after the name
+  |
+7 |     Point p
+  |     ^^^^^
+help: use p Point
+error: aborting due to 3 errors
 ```
 
 ### status
