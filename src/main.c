@@ -811,11 +811,11 @@ int copy_tokens(int from_pos, int to_pos, char *from, char *to, int space) {
 }
 
 
-void parse_parent(Node *st, Node *parent) {
+void inherit_from_parent(Node *st, Node *parent) {
     Token *body = parent->token;
     Node *parents = body->body.parents;
     for (int i = 0; parents && i < parents->children_count; i++)
-        parse_parent(st, parents->children[i]);
+        inherit_from_parent(st, parents->children[i]);
     int space = st->token->space - parent->token->space;
     int start = copy_tokens(
         body->body.start, body->body.end, parent->token->name, st->token->name, space
@@ -1347,7 +1347,7 @@ Node *parse_prime() {
         expect(DOTS, "expected ':' after the struct name", ":");
         enter_scope(node);
         for (int i = 0; i < parents->children_count; i++)
-            parse_parent(node, parents->children[i]);
+            inherit_from_parent(node, parents->children[i]);
         int end = ura.exe_pos;
         while (ura.tokens[end]->type != LAST && ura.tokens[end]->space > token->space)
             end++;
