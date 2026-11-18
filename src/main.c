@@ -61,6 +61,8 @@ struct Token {
         struct {
             int start;
             int end;
+            Node *types;
+            Node *parents;
         } body;
     };
 };
@@ -763,6 +765,86 @@ void parse_module(File *module) {
     parse_tokens(ura.scope, start);
 }
 
+int copy_tokens(int from_pos, int to_pos, char *from, char *to, int space) {
+    int start = ura.tokens_count;
+    for (int i = from_pos; i < to_pos; i++) {
+        Token *copy = new_token(ura.tokens[i]->type, NULL);
+        *copy = *ura.tokens[i];
+        copy->space += space;
+        if (from && copy->type == ID && strcmp2(copy->name, from))
+            copy->name = to;
+    }
+    new_token(LAST, NULL);
+    return start;
+}
+
+void parse_struct_body(Node *st) {
+    while (inside(st->token->space)) {
+        Node *child = parse_expr(0);
+        if (includes(child->token->type, FN_DEC, TEMPLATE, 0))
+            append(st->children, child);
+    }
+}
+
+void parse_parent(Node *st, Node *parent) {
+    Token *body = parent->token;
+    Node *parents = body->body.parents;
+    for (int i = 0; parents && i < parents->children_count; i++)
+        parse_parent(st, parents->children[i]);
+    int space = st->token->space - parent->token->space;
+    int start = copy_tokens(
+        body->body.start, body->body.end, parent->token->name, st->token->name, space
+    );
+    int exe_pos = ura.exe_pos;
+    Node *types = ura.types;
+    ura.exe_pos = start;
+    ura.types = body->body.types;
+    parse_struct_body(st);
+    ura.exe_pos = exe_pos;
+    ura.types = types;
+}
+
+bool same_params(Node *a, Node *b) {
+    if (a->args->children_count != b->args->children_count)
+        return false;
+    for (int i = 0; i < a->args->children_count; i++) {
+        Node *left = a->args->children[i]->data_type;
+        Node *right = b->args->children[i]->data_type;
+        if (left == NULL || right == NULL) {
+            if (left != right)
+                return false;
+            continue;
+        }
+        if (!same_type(left, right))
+            return false;
+    }
+    return true;
+}
+
+void remove_overridden(Node *st) {
+    for (int i = 0; i < st->children_count; i++) {
+        Node *method = st->children[i];
+        if (method->token->type != FN_DEC)
+            continue;
+        for (int j = i + 1; j < st->children_count; j++) {
+            Node *other = st->children[j];
+            if (other->token->type != FN_DEC)
+                continue;
+            if (!strcmp2(other->token->name, method->token->name))
+                continue;
+            if (other->token->is_pub != method->token->is_pub)
+                continue;
+            if (!same_params(method, other))
+                continue;
+            for (int k = i; k < st->children_count - 1; k++)
+                st->children[k] = st->children[k + 1];
+            st->children_count--;
+            i--;
+            break;
+        }
+    }
+}
+
 Node *parse_types(Token *token) {
     Node *types = new_node(new_token(TYPES, token));
     types->token->name = token->name;
@@ -811,15 +893,8 @@ char *instantiate(Node *template, Node *types) {
     if (find_struct(name) || find_function(name))
         return name;
 
-    int start = ura.tokens_count;
     Token *body = template->token;
-    for (int i = body->body.start; i < body->body.end; i++) {
-        Token *copy = new_token(ura.tokens[i]->type, NULL);
-        *copy = *ura.tokens[i];
-        if (copy->type == ID && strcmp2(copy->name, token->name))
-            copy->name = name;
-    }
-    new_token(LAST, NULL);
+    int start = copy_tokens(body->body.start, body->body.end, token->name, name, 0);
     Node *outer = ura.types;
     types->declared = template;
     ura.types = types;
@@ -1239,14 +1314,42 @@ Node *parse_prime() {
             node->token->name = next()->name;
         else
             expect(ID, "expected a struct name after 'struct'", " Name");
+        Node *parents = new_node(new_token(TYPES, token));
+        bool has_parents = peek(0)->type == ID && strcmp2(peek(0)->name, "from");
+        if (has_parents) {
+            next(); // SKIP from
+            while (true) {
+                Token *name = peek(0);
+                Node *type = parse_type();
+                Node *parent = type ? find_struct(type->token->name) : NULL;
+                if (parent) {
+                    append(parents->children, parent);
+                } else
+                    add_error(
+                        name->s,
+                        name->e,
+                        format("no struct named '%s' to take from", token_text(name)),
+                        NULL
+                    );
+                if (peek(0)->type != AND)
+                    break;
+                next(); // SKIP and
+            }
+        }
         expect(DOTS, "expected ':' after the struct name", ":");
         enter_scope(node);
-        while (inside(node->token->space)) {
-            Node *child = parse_expr(0);
-            if (includes(child->token->type, FN_DEC, TEMPLATE, 0))
-                append(node->children, child);
-        }
+        for (int i = 0; i < parents->children_count; i++)
+            parse_parent(node, parents->children[i]);
+        int end = ura.exe_pos;
+        while (ura.tokens[end]->type != LAST && ura.tokens[end]->space > token->space)
+            end++;
+        token->body.start = copy_tokens(ura.exe_pos, end, NULL, NULL, 0);
+        token->body.end = token->body.start + end - ura.exe_pos;
+        token->body.types = ura.types;
+        token->body.parents = parents;
+        parse_struct_body(node);
         exit_scope();
+        remove_overridden(node);
         for (int i = 0; i < node->children_count; i++) {
             Node *method = node->children[i];
             if (method->token->type != FN_DEC || method->token->is_pub)
@@ -2558,10 +2661,6 @@ int main(int ac, char **av) {
     ucg_gen();
     ucg_run_bin();
     ucg_finish();
-
-
-    // gen_bin();
-    // return exec_bin();
 #            endif // ASM
 #        endif     // ANALYZE
 #    endif         // AST
