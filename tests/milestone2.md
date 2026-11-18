@@ -7020,7 +7020,7 @@ error: test.ura:1:5 package '@/nothing' not found
   |
 1 | use "@/nothing"
   |     ^^^^^^^^^^^
-help: run: ura --install nothing
+help: run: ura install nothing
 error: aborting due to 1 error
 ```
 

@@ -1149,7 +1149,7 @@ Node *parse_prime() {
                 name->e,
                 format("package '%s' not found", package),
                 strncmp2(package, "@/", 2)
-                    ? format("run: ura --install %s", package + 2)
+                    ? format("run: ura install %s", package + 2)
                     : NULL
             );
         else
