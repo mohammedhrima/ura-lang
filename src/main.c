@@ -2292,13 +2292,14 @@ void codegen(Node *node) {
     case LCBRACK: {
         codegen(node->data_type);
         Node *st = node->data_type->declared;
-        Ucg **values = arena_alloc(st->children_count + 1, sizeof(Ucg *));
+        int values_count = st->children_count + 1;
+        Ucg **values = arena_alloc(values_count, sizeof(Ucg *));
         for (int i = 0; i < node->children_count; i++) {
             Node *attr = node->children[i];
             codegen(attr->left);
             values[attr->token->attr.index] = attr->left->token->ucg;
         }
-        node->token->ucg = ucg_struct_value(node->data_type->token->ucg, values);
+        node->token->ucg = ucg_struct_value(node->data_type->token->ucg, values, values_count);
         break;
     }
     case ACCESS: {
