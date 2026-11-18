@@ -305,7 +305,9 @@ void check_args(Node *fn, Node **args, int count, int self) {
         Node *type = fn->args->children[i + self]->data_type;
         if (type == NULL || args[i]->token->type == REF)
             continue;
-        if (type->token->type != REF) {
+        bool takes_ref = type->token->type == REF;
+        check_type(args[i], takes_ref ? type->data_type : type, NULL);
+        if (!takes_ref) {
             check_copy(&args[i], type);
             continue;
         }
