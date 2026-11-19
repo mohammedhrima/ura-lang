@@ -330,11 +330,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:4:19 unknown type 'x'
+error: test.ura:4:19 expected '(' after 'sizeof'
   |
 4 |     output(sizeof x)
   |                   ^
-help: declare it: struct x:
+help: use output(sizeof(x) x)
 error: aborting due to 1 error
 ```
 
@@ -359,11 +359,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:4:19 unknown type 'x'
+error: test.ura:4:19 expected '(' after 'typeof'
   |
 4 |     output(typeof x)
   |                   ^
-help: declare it: struct x:
+help: use output(typeof(x) x)
 error: aborting due to 1 error
 ```
 

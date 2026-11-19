@@ -202,38 +202,41 @@ Keyword builtins[] = {
     { "memory_free",  { .type = FREE } },
     { "ura::argc",    { .type = ARGC } },
     { "ura::argv",    { .type = ARGV } },
+    { NULL },
+};
+
+Keyword specials[] = {
+    { "(",   { .type = LPARENT } },       { ")",   { .type = RPARENT } },
+    { "::",  { .type = DOUBLE_DOTS } },   { ":",   { .type = DOTS } },
+    { "[",   { .type = LBRACK } },        { "]",   { .type = RBRACK } },
+    { "{",   { .type = LCBRACK } },       { "}",   { .type = RCBRACK } },
+
+    { "+=",  { .type = ADD_ASSIGN } },    { "-=",  { .type = SUB_ASSIGN } },
+    { "*=",  { .type = MUL_ASSIGN } },    { "/=",  { .type = DIV_ASSIGN } },
+    { "%=",  { .type = MOD_ASSIGN } },
+    { "<<=", { .type = LSHIFT_ASSIGN } }, { ">>=", { .type = RSHIFT_ASSIGN } },
+    { "&=",  { .type = BAND_ASSIGN } },   { "|=",  { .type = BOR_ASSIGN } },
+    { "^=",  { .type = BXOR_ASSIGN } },
+    { "<<",  { .type = LSHIFT } },        { ">>",  { .type = RSHIFT } },
+
+    { "...", { .type = VARIADIC } },      { ".",   { .type = DOT } },
+
+    { "+",   { .type = ADD } },           { "-",   { .type = SUB } },
+    { "*",   { .type = MUL } },           { "/",   { .type = DIV } },
+    { "%",   { .type = MOD } },
+
+    { ">=",  { .type = GE } },            { "<=",  { .type = LE } },
+    { ">",   { .type = GT } },            { "<",   { .type = LT } },
+    { "==",  { .type = EQ } },            { "!=",  { .type = NQ } },
+    { "!",   { .type = NOT } },           { "~",   { .type = BNOT } },
+
+    { "=",   { .type = ASSIGN } },        { ",",   { .type = COMA } },
+
+    { "&&",  { .type = AND } },           { "||",  { .type = OR } },
+    { "&",   { .type = REF } },           { "|",   { .type = BOR } },
+    { "^",   { .type = BXOR } },
 
     { NULL },
-}; // clang-format on
-
-struct {
-    char *value;
-    Type type;
-} specials[] = {
-    // clang-format off
-    { "(", LPARENT },       { ")", RPARENT },       { "::", DOUBLE_DOTS }, { ":", DOTS },
-    { "[", LBRACK },        { "]", RBRACK },        { "{", LCBRACK },      { "}", RCBRACK },
-
-    { "+=", ADD_ASSIGN },   { "-=", SUB_ASSIGN },   { "*=", MUL_ASSIGN },  { "/=", DIV_ASSIGN },
-    { "%=", MOD_ASSIGN },
-    { "<<=", LSHIFT_ASSIGN }, { ">>=", RSHIFT_ASSIGN }, { "&=", BAND_ASSIGN }, { "|=", BOR_ASSIGN },
-    { "^=", BXOR_ASSIGN },  { "<<", LSHIFT },       { ">>", RSHIFT },
-
-    { "...", VARIADIC },    { ".", DOT },
-
-    { "+", ADD },           { "-", SUB },           { "*", MUL },          { "/", DIV },
-    { "%", MOD },
-
-    { ">=", GE },           { "<=", LE },           { ">", GT },           { "<", LT },
-    { "==", EQ },           { "!=", NQ },
-    { "!", NOT },           { "~", BNOT },
-
-    { "=", ASSIGN },        { ",", COMA },
-
-    { "&&", AND },          { "||", OR },           { "&", REF },          { "|", BOR },
-    { "^", BXOR },
-
-    { NULL, NONE },
 }; // clang-format on
 
 char *binary_ops[LAST + 1] = {
@@ -524,7 +527,7 @@ void tokenize(File *file) {
         }
         for (int i = 0; specials[i].value; i++) {
             char *value = specials[i].value;
-            Type type = specials[i].type;
+            Type type = specials[i].token.type;
             int len = (int)strlen(value);
             if (strncmp2(value, buff + s, len)) {
                 Token *token = new_token(type, NULL);
@@ -974,9 +977,15 @@ Node *parse_prime() {
             token->type = builtin->type;
             token->num = builtin->num;
         }
-        bool is_value = builtin && peek(0)->type != LPARENT;
+        bool is_value = builtin && includes(builtin->type, ARGC, ARGV, 0);
         if (is_value)
             return new_node(token);
+        if (builtin && peek(0)->type != LPARENT) {
+            expect(LPARENT, format("expected '(' after '%s'", token->name), "(x)");
+            node = new_node(token);
+            append(node->children, parse_prime());
+            return node;
+        }
         Node *template_type = find_template_type(token->name);
         Node *template = find_template(token->name);
         bool is_template_use = template && peek(0)->type == LT;
