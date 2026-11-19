@@ -5738,7 +5738,7 @@ error: test.ura:5:12 undeclared variable 'y'
   |
 5 |     return y
   |            ^
-help: declare it first, like: y i32 = 0
+help: did you mean 'x'?
 error: aborting due to 1 error
 ```
 
@@ -5973,10 +5973,10 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:5:1 'f' is already defined with these parameters
+error: test.ura:5:4 'f' is already defined with these parameters
   |
 5 | fn f() i32:
-  | ^^
+  |    ^
 error: aborting due to 1 error
 ```
 
@@ -6605,10 +6605,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:3:5 'a' is already declared
+error: test.ura:3:5 'a' is already declared, on line 2
   |
 3 |     a i32 = 2
   |     ^
+help: use a = 2
 error: aborting due to 1 error
 ```
 
@@ -6632,11 +6633,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:13 undeclared variable 'a'
+error: test.ura:2:13 'a' is used before its declaration, on line 3
   |
 2 |     b i32 = a
   |             ^
-help: declare it first, like: a i32 = 0
+help: move the declaration above this line
 error: aborting due to 1 error
 ```
 
@@ -7661,12 +7662,12 @@ error: test.ura:2:13 undeclared variable 'zz'
   |
 2 |     a i32 = zz
   |             ^^
-help: declare it first, like: zz i32 = 0
+help: did you mean 'a'?
 error: test.ura:3:13 undeclared variable 'u'
   |
 3 |     b i32 = u.x
   |             ^
-help: declare it first, like: u i32 = 0
+help: did you mean 'a'?
 error: test.ura:4:12 no function named 'yy'
   |
 4 |     return yy()
@@ -7742,7 +7743,7 @@ error: test.ura:11:12 undeclared variable 'zz'
    |
 11 |     return zz
    |            ^^
-help: declare it first, like: zz i32 = 0
+help: did you mean 'a'?
 error: aborting due to 1 error
 ```
 
@@ -8808,10 +8809,10 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:6:1 'dup' is already defined with these parameters
+error: test.ura:6:4 'dup' is already defined with these parameters
   |
 6 | fn dup() i32:
-  | ^^
+  |    ^^^
 error: aborting due to 1 error
 ```
 
@@ -11363,7 +11364,7 @@ error: test.ura:5:12 undeclared variable 'y'
   |
 5 |     output(y, "\n")
   |            ^
-help: declare it first, like: y i32 = 0
+help: did you mean 'x'?
 error: aborting due to 1 error
 ```
 
@@ -11430,7 +11431,7 @@ error: test.ura:7:12 undeclared variable 'y'
   |
 7 |     output(y, "\n")
   |            ^
-help: declare it first, like: y i32 = 0
+help: did you mean 'x'?
 error: aborting due to 1 error
 ```
 
@@ -11967,10 +11968,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:5 'r' is already declared
+error: test.ura:2:5 'r' is already declared, on line 1
   |
 2 |     r i32 = 2
   |     ^
+help: use r = 2
 error: aborting due to 1 error
 ```
 
@@ -11979,7 +11981,6 @@ error: aborting due to 1 error
 ```
 1
 ```
-
 
 ---
 

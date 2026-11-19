@@ -3,6 +3,235 @@ void add_error(int s, int e, char *msg, char *help) {
     append(ura.errors, error);
 }
 
+void expect(Type type, char *msg, char *fix) {
+    if (peek(0)->type == type) {
+        next();
+        return;
+    }
+    Token *prev = ura.tokens[ura.exe_pos - 1];
+    Token *at = peek(0)->line == prev->line ? peek(0) : prev;
+    int start = line_start(prev->s);
+    int end = line_end(prev->e);
+    add_error(
+        at->s,
+        at->e,
+        msg,
+        format(
+            "use %.*s%s%.*s",
+            prev->e - start,
+            text_at(start),
+            fix,
+            end - prev->e,
+            text_at(prev->e)
+        )
+    );
+}
+
+void check_lexeme(char *buff, int s, int e) {
+    char c = buff[s];
+    if (strncmp2(buff + s, "/*", 2)) {
+        if (buff[e] == '\0')
+            add_error(
+                s,
+                s + 2,
+                "unclosed comment",
+                "add */ to close it"
+            );
+        return;
+    }
+    if (c != '"' && c != '\'') {
+        add_error(
+            s,
+            s + 1,
+            format("unknown character '%c'", c),
+            "remove it"
+        );
+        return;
+    }
+    bool is_valid = true;
+    int letters = 0;
+    int i = s + 1;
+    while (buff[i] != '\0' && buff[i] != '\n' && buff[i] != c) {
+        char next = buff[i + 1];
+        bool is_escape = buff[i] == '\\' && next != '\0' && !strchr2("\n", next);
+        bool is_known = isprint(next) && escaped[(unsigned char)next];
+        if (is_escape && !is_known) {
+            add_error(
+                i,
+                i + 2,
+                format("unknown escape '\\%c'", next),
+                "the escapes are \\n \\t \\r \\0 \\\\ \\\" \\'"
+            );
+            is_valid = false;
+        }
+        i += is_escape ? 2 : 1;
+        letters++;
+    }
+    if (buff[i] != c) {
+        int start = line_start_in(buff, s);
+        add_error(
+            s,
+            i,
+            c == '"' ? "unclosed string" : "unclosed character",
+            format("use %.*s%c", i - start, buff + start, c)
+        );
+    } else if (is_valid && c == '\'' && letters > 1)
+        add_error(
+            s,
+            e,
+            format("a character holds one letter, not %d", letters),
+            format("use \"%.*s\" for a string", e - s - 2, buff + s + 1)
+        );
+}
+
+void check_unexpected(Token *token) {
+    Token *scope = ura.scope->token;
+    bool is_in_match = scope->type == MATCH && token->line != scope->line;
+    char *text = token_text(token);
+    int end = line_end(token->e);
+    char *msg = format("unexpected '%s'", text);
+    char *help = NULL;
+    if (is_in_match)
+        msg = "expected 'case' or 'default' inside a match";
+    else if (token->type == CATCH)
+        msg = "'catch' without a matching 'try'";
+    else if (includes(token->type, CASE, DEFAULT, 0))
+        msg = format("'%s' without a matching 'match'", text);
+    else if (includes(token->type, ELIF, ELSE, 0))
+        msg = format("%s without an if before it", text);
+    if (!is_in_match && token->type == ELIF)
+        help = format("use if%.*s", end - token->e, text_at(token->e));
+    add_error(
+        token->s,
+        token->e,
+        msg,
+        help
+    );
+}
+
+void check_template(Node *node) {
+    Token *token = node->token;
+    for (int i = 0; i < node->args->children_count; i++) {
+        Token *param = node->args->children[i]->token;
+        if (param->type != ID)
+            add_error(
+                param->s,
+                param->e,
+                "expected names after template",
+                "use template<T, V>"
+            );
+    }
+    int space = ura.tokens[token->body.start]->space;
+    for (int i = token->body.start; i < token->body.end; i++) {
+        Token *curr = ura.tokens[i];
+        Token *prev = ura.tokens[i - 1];
+        bool is_head = curr->space == space && curr->line != prev->line;
+        bool is_declaration = includes(curr->type, STRUCT, FN_DEC, PROTO, PUB, 0);
+        if (is_head && !is_declaration)
+            add_error(
+                curr->s,
+                curr->e,
+                "expected struct/fn after template",
+                NULL
+            );
+    }
+}
+
+bool check_template_use(Token *token, Node *template, Node *types) {
+    if (template == NULL && types == NULL)
+        return false;
+    if (template == NULL) {
+        add_error(
+            token->s,
+            token->e,
+            format("no template named '%s'", token->name),
+            format("declare it: template<T>: struct %s:", token->name)
+        );
+        return false;
+    }
+    if (types == NULL) {
+        add_error(
+            token->s,
+            token->e,
+            format("expected '<' after '%s'", token->name),
+            NULL
+        );
+        return false;
+    }
+    Node *params = template->args;
+    if (types->children_count == params->children_count)
+        return true;
+    char *declared = "";
+    for (int i = 0; i < params->children_count; i++)
+        declared =
+            format("%s%s%s", declared, i ? ", " : "", params->children[i]->token->name);
+    add_error(
+        token->s,
+        token->e,
+        format(
+            "'%s' takes %d type argument%s, got %d",
+            token->name,
+            params->children_count,
+            params->children_count == 1 ? "" : "s",
+            types->children_count
+        ),
+        format("it is declared 'template<%s>'", declared)
+    );
+    return false;
+}
+
+void check_macro(Node *node) {
+    Token *token = node->token;
+    add_error(
+        token->s,
+        token->e,
+        node->left ? node->left->token->chars.value : "@error",
+        node->right ? node->right->token->chars.value : NULL
+    );
+}
+
+bool check_package(Token *name, char *path) {
+    char *package = name->chars.value;
+    if (path)
+        return true;
+    add_error(
+        name->s,
+        name->e,
+        format("package '%s' not found", package),
+        strncmp2(package, "@/", 2) ? format("run: ura install %s", package + 2) : NULL
+    );
+    return false;
+}
+
+bool check_parent(Token *name, Node *parent) {
+    if (parent)
+        return true;
+    add_error(
+        name->s,
+        name->e,
+        format("no struct named '%s' to take from", token_text(name)),
+        NULL
+    );
+    return false;
+}
+
+void check_operand(Node *node) {
+    Token *token = node->token;
+    if (node->right)
+        return;
+    char *what = "a value";
+    if (token->type == AS)
+        what = "a type";
+    else if (token->type == DOT)
+        what = "an attribute or method name";
+    add_error(
+        token->s,
+        token->e,
+        format("expected %s after '%s'", what, token_text(token)),
+        NULL
+    );
+}
+
 void check_errors(void) {
     if (ura.errors_count == 0)
         return;
@@ -425,7 +654,12 @@ void check_throw(Node *node) {
     Node *type = type_of(node->left);
     bool is_void = type == NULL || type->token->type == VOID;
     if (is_void) {
-        add_error(token->s, token->e, "throw needs a value", "like: throw Error::make(\"...\")");
+        add_error(
+            token->s,
+            token->e,
+            "throw needs a value",
+            "like: throw Error::create(\"...\")"
+        );
         return;
     }
     check_copy(&node->left, type);
@@ -441,11 +675,21 @@ void check_match(Node *node) {
     if (type)
         check_operation(node->left);
     if (node->children_count < 2 || node->children[1]->token->type == DEFAULT)
-        add_error(token->s, token->e, "a match needs a case before default", "like: case 1:");
+        add_error(
+            token->s,
+            token->e,
+            "a match needs a case before default",
+            "like: case 1:"
+        );
     for (int i = 1; i < node->children_count - 1; i++) {
         Token *branch = node->children[i]->token;
         if (branch->type == DEFAULT)
-            add_error(branch->s, branch->e, "default must be the last branch of a match", NULL);
+            add_error(
+                branch->s,
+                branch->e,
+                "default must be the last branch of a match",
+                NULL
+            );
     }
 }
 
@@ -461,14 +705,60 @@ void check_param_type(Token *token, Node *param) {
     param->data_type = new_type(INT, 32, NULL);
 }
 
-void check_param_after(Token *param, Token *after) {
-    if (param->type == VARIADIC && after->type == COMA)
-        add_error(param->s, param->e, "'...' must be the last parameter", NULL);
-    else if (after->type == ID)
-        add_error(after->s, after->e, "expected ',' between parameters", NULL);
+bool check_comma(Token *item, Token *after) {
+    bool is_arg = item->type == FN_CALL;
+    bool is_param = includes(item->type, PARAM, VARIADIC, 0);
+    bool is_end = includes(after->type, COMA, RPARENT, LAST, 0);
+    bool is_arg_missing = is_arg && !is_end && after->line == item->line;
+    bool is_param_missing = is_param && after->type == ID;
+    if (item->type == VARIADIC && after->type == COMA)
+        add_error(
+            item->s,
+            item->e,
+            "'...' must be the last parameter",
+            NULL
+        );
+    else if (item->type == COMA && after->type == RPARENT)
+        add_error(
+            after->s,
+            after->e,
+            "expected an argument after ','",
+            NULL
+        );
+    else if (is_arg_missing || is_param_missing)
+        add_error(
+            after->s,
+            after->e,
+            format("expected ',' between %s", is_arg ? "arguments" : "parameters"),
+            NULL
+        );
+    return is_arg_missing || is_param_missing;
 }
 
 void check_function(Node *node, Node *scope) {
+    Token *token = node->token;
+    int name_s = token->e;
+    while (text_at(name_s)[0] == ' ')
+        name_s++;
+    int name_e = name_s + strlen(token->name);
+    if (token->name[0] == '\0') {
+        int start = line_start(name_s);
+        add_error(
+            name_s,
+            name_s + 1,
+            "expected a name after 'fn'",
+            format(
+                "use %.*sname%.*s",
+                name_s - start,
+                text_at(start),
+                line_end(name_s) - name_s,
+                text_at(name_s)
+            )
+        );
+        return;
+    }
+    if (token->type == PROTO)
+        return;
     Node **params = node->args->children;
     int count = node->args->children_count;
     for (int i = 0; i < count; i++)
@@ -480,10 +770,30 @@ void check_function(Node *node, Node *scope) {
                     format("'%s' is already declared", params[i]->token->name),
                     NULL
                 );
-    int name_s = node->token->e;
-    while (text_at(name_s)[0] == ' ')
-        name_s++;
-    int name_e = name_s + strlen(node->token->name);
+    char *owner = scope->token->name;
+    Node *symbol = node->args->symbol;
+    bool is_operator = symbol && !token->is_pub;
+    if (is_operator && count > 2)
+        add_error(
+            token->s,
+            token->e,
+            format(
+                "operator '%s' takes one parameter, the right side; the left "
+                "side is self",
+                token->name
+            ),
+            format("use operator %s(other %s)", token->name, owner)
+        );
+    Node *other = is_operator && count == 2 ? params[1]->data_type : NULL;
+    bool is_by_value = other && other->token->type == ID;
+    bool is_same_type = is_by_value && strcmp2(other->token->name, owner);
+    if (is_same_type && symbol->token->type == ASSIGN)
+        add_error(
+            token->s,
+            token->e,
+            "operator = takes the other side by reference, a copy would need itself",
+            format("use operator =(other &%s)", owner)
+        );
     for (int i = 0; i < scope->children_count; i++) {
         Node *other = scope->children[i];
         bool is_function = includes(other->token->type, FN_DEC, PROTO, 0) && other != node;
@@ -550,7 +860,10 @@ void check_enum(Node *node) {
         for (int j = 0; j < i; j++)
             if (strcmp2(node->children[j]->token->name, name->name))
                 add_error(
-                    name->s, name->e, format("'%s' is already declared", name->name), NULL
+                    name->s,
+                    name->e,
+                    format("'%s' is already declared", name->name),
+                    NULL
                 );
     }
 }
@@ -600,7 +913,83 @@ void check_return(Node *node) {
         check_copy(&node->left, ret_type_of(fn));
 }
 
-void check_cond(Node *cond) {
+void check_jump(Node *node) {
+    Token *token = node->token;
+    if (node->loop)
+        return;
+    if (token->type == BRK)
+        add_error(
+            token->s,
+            token->e,
+            "break outside a loop or match",
+            "break only works inside a while or a match"
+        );
+    else
+        add_error(
+            token->s,
+            token->e,
+            "continue outside a loop",
+            "continue only works inside a while"
+        );
+}
+
+void check_try(Node *node) {
+    Token *token = node->token;
+    char *help = "like: catch e Error:";
+    if (token->type == TRY && node->next == NULL)
+        add_error(
+            token->s,
+            token->e,
+            "expected 'catch' after the try block",
+            help
+        );
+    else if (token->type == CATCH && node->var == NULL)
+        add_error(
+            token->s,
+            token->e,
+            "expected a name after 'catch'",
+            help
+        );
+    else if (token->type == CATCH && node->var->data_type == NULL)
+        add_error(
+            node->var->token->s,
+            node->var->token->e,
+            "expected a type after the catch name",
+            help
+        );
+}
+
+void check_cond(Node *node) {
+    Token *token = node->token;
+    Node *cond = node->cond;
+    bool takes_cond = !includes(token->type, ELSE, DEFAULT, 0);
+    if (cond && !takes_cond) {
+        int end = line_end(token->e);
+        add_error(
+            token->s,
+            token->e,
+            "else has no condition",
+            format("use elif%.*s", end - token->e, text_at(token->e))
+        );
+        return;
+    }
+    if (cond == NULL && token->type == CASE)
+        add_error(
+            token->s,
+            token->e,
+            "expected a value after 'case'",
+            "like: case 1:"
+        );
+    else if (cond == NULL && takes_cond)
+        add_error(
+            token->s,
+            token->e,
+            format("expected a condition after '%s'", token_text(token)),
+            NULL
+        );
+    if (cond == NULL)
+        return;
+    analyze(cond);
     char *help = NULL;
     if (includes(cond->token->type, VAR, PARAM, 0))
         help = format("write '%s != 0'", cond->token->name);
@@ -635,7 +1024,12 @@ void check_static_call(Node *node) {
     }
     Node *st = find_struct(name->name);
     if (st == NULL) {
-        add_error(name->s, name->e, format("unknown type '%s'", name->name), NULL);
+        add_error(
+            name->s,
+            name->e,
+            format("unknown type '%s'", name->name),
+            NULL
+        );
         return;
     }
     Node *call = node->right;
@@ -736,7 +1130,12 @@ void check_member(Node *node) {
                 message = format("%s that takes (%s)", message, given);
                 help = format("'%s' takes (%s)", call->token->name, takes);
             }
-            add_error(call->token->s, call->token->e, message, help);
+            add_error(
+                call->token->s,
+                call->token->e,
+                message,
+                help
+            );
             return;
         }
         check_args(call->to_call, call->children, call->children_count, 1);
@@ -846,7 +1245,12 @@ void check_call(Node *node) {
     bool has_one_arg = node->children_count == 1;
     if (is_drop && has_one_arg && !lives_in_variable(node->children[0])) {
         Token *arg = node->children[0]->token;
-        add_error(arg->s, arg->e, "drop takes a variable, an attribute or an element", NULL);
+        add_error(
+            arg->s,
+            arg->e,
+            "drop takes a variable, an attribute or an element",
+            NULL
+        );
     }
 }
 
@@ -866,9 +1270,15 @@ void check_operation(Node *node) {
         RSHIFT_ASSIGN,
         0
     );
-    if (is_assign && !lives_in_variable(node->left)) {
+    bool is_undeclared = node->left->token->type == ID;
+    if (is_assign && !is_undeclared && !lives_in_variable(node->left)) {
         Token *left = node->left->token;
-        add_error(left->s, left->e, "can't assign to a value", NULL);
+        add_error(
+            left->s,
+            left->e,
+            "can't assign to a value",
+            NULL
+        );
         return;
     }
     Node *left_type = type_of(node->left);

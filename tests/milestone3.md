@@ -6103,7 +6103,7 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:3:5 'a' is already declared
+error: test.ura:3:5 'a' is already declared, on line 2
   |
 3 |     a i32
   |     ^

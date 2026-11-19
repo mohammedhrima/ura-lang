@@ -110,7 +110,7 @@ enum Type {
     LINK, USE, MACRO_IF, MACRO_ELIF, MACRO_ELSE, MACRO_ERROR,
 	FN_ENTRY,
     SIZEOF, TYPEOF, DROP, COPY, IS_NULLABLE, ALLOC, MEMCPY, FREE,
-    AS,
+    AS, FROM,
 	BLOC,
     IF, ELIF, ELSE, THEN,
     LOOP, BRK, CNT, MATCH, CASE, DEFAULT, CLEAN,
@@ -3774,7 +3774,7 @@ const char *to_string(Type type) {
 		[LOOP] = "LOOP", [BRK] = "BRK", [CNT] = "CNT",
 		[MATCH] = "MATCH", [CASE] = "CASE", [DEFAULT] = "DEFAULT", [CLEAN] = "CLEAN",
 		[TRY] = "TRY", [CATCH] = "CATCH", [THROW] = "THROW", [CHECK] = "CHECK",
-		[AS] = "AS",
+		[AS] = "AS", [FROM] = "FROM",
 		[LAST] = "LAST",
         // clang-format on
     };

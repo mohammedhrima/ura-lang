@@ -188,6 +188,7 @@ struct {
     { "template", { .type = TEMPLATE } },
     // { "null", {.type = ZERO } },
     { "as", { .type = AS } },
+    { "from", { .type = FROM } },
 
     { NULL },
 };
@@ -447,10 +448,9 @@ void tokenize(File *file) {
                     ura.line++;
                 e++;
             }
-            if (buff[e] == '\0') {
-                add_error(s, s + 2, "unclosed comment", "add */ to close it");
+            check_lexeme(buff, s, e);
+            if (buff[e] == '\0')
                 break;
-            }
             e += 2;
             continue;
         }
@@ -458,47 +458,19 @@ void tokenize(File *file) {
         if (buff[s] != '\0' && strchr2("\"\'", buff[s])) {
             char c = buff[s];
             e++;
-            bool valid = true;
-            int letters = 0;
             while (buff[e] != '\0' && buff[e] != '\n' && buff[e] != c) {
                 char next = buff[e + 1];
-                if (buff[e] == '\\' && next != '\0' && next != '\n') {
-                    if (!isprint(next) || !escaped[(unsigned char)next]) {
-                        add_error(
-                            e,
-                            e + 2,
-                            format("unknown escape '\\%c'", next),
-                            "the escapes are \\n \\t \\r \\0 \\\\ \\\" \\'"
-                        );
-                        valid = false;
-                    }
-                    e++;
-                }
-                letters++;
-                e++;
+                bool is_escape = buff[e] == '\\' && next != '\0' && !strchr2("\n", next);
+                e += is_escape ? 2 : 1;
             }
-            if (buff[e] != c) {
-                int start = line_start_in(buff, s);
-                add_error(
-                    s,
-                    e,
-                    c == '"' ? "unclosed string" : "unclosed character",
-                    format("use %.*s%c", e - start, buff + start, c)
-                );
-                continue;
-            }
-            e++; // skip last ' or "
-            if (!valid)
+            if (buff[e] == c)
+                e++; // skip last ' or "
+            int errors = ura.errors_count;
+            check_lexeme(buff, s, e);
+            if (ura.errors_count > errors)
                 continue;
             if (c == '"')
                 parse_string(s, e, space);
-            else if (letters > 1)
-                add_error(
-                    s,
-                    e,
-                    format("a character holds one letter, not %d", letters),
-                    format("use \"%.*s\" for a string", e - s - 2, buff + s + 1)
-                );
             else
                 parse_char(s, e, space);
             continue;
@@ -545,7 +517,7 @@ void tokenize(File *file) {
         if (e != s) {
             continue;
         }
-        add_error(s, s + 1, format("unknown character '%c'", buff[s]), "remove it");
+        check_lexeme(buff, s, s + 1);
         e++;
     }
     for (int i = first_token; i < ura.tokens_count; i++) {
@@ -598,30 +570,6 @@ char *token_text(Token *token) {
 int line_end(int pos) {
     File *file = file_at(pos);
     return file->start + line_end_in(file->buff, pos - file->start);
-}
-
-void expect(Type type, char *msg, char *fix) {
-    if (peek(0)->type == type) {
-        next();
-        return;
-    }
-    Token *prev = ura.tokens[ura.exe_pos - 1];
-    Token *at = peek(0)->line == prev->line ? peek(0) : prev;
-    int start = line_start(prev->s);
-    int end = line_end(prev->e);
-    add_error(
-        at->s,
-        at->e,
-        msg,
-        format(
-            "use %.*s%s%.*s",
-            prev->e - start,
-            text_at(start),
-            fix,
-            end - prev->e,
-            text_at(prev->e)
-        )
-    );
 }
 
 bool inside(int space) {
@@ -794,27 +742,6 @@ char *init_from_template(Node *template, Node *types) {
         name = format("%s%s%s", name, i ? "," : "", type_name(types->children[i]));
     name = format("%s>", name);
 
-    Node *params = template->args;
-    if (types->children_count != params->children_count) {
-        char *declared = "";
-        for (int i = 0; i < params->children_count; i++)
-            declared = format(
-                "%s%s%s", declared, i ? ", " : "", params->children[i]->token->name
-            );
-        add_error(
-            token->s,
-            token->e,
-            format(
-                "'%s' takes %d type argument%s, got %d",
-                token->name,
-                params->children_count,
-                params->children_count == 1 ? "" : "s",
-                types->children_count
-            ),
-            format("it is declared 'template<%s>'", declared)
-        );
-        return name;
-    }
     if (find_struct(name) || find_function(name))
         return name;
 
@@ -864,24 +791,9 @@ Node *parse_type(void) {
         Node *template = token->type == ID ? find_template(token->name) : NULL;
         if (node == NULL)
             node = new_node(token);
-        if (template && peek(0)->type != LT)
-            add_error(
-                token->s,
-                token->e,
-                format("expected '<' after '%s'", token->name),
-                NULL
-            );
-        else if (template)
-            token->name = init_from_template(template, parse_types(token));
-        else if (peek(0)->type == LT) {
-            add_error(
-                token->s,
-                token->e,
-                format("no template named '%s'", token->name),
-                format("declare it: template<T>: struct %s:", token->name)
-            );
-            parse_types(token);
-        }
+        Node *types = peek(0)->type == LT ? parse_types(token) : NULL;
+        if (check_template_use(token, template, types))
+            token->name = init_from_template(template, types);
         while (peek(0)->type == LBRACK && peek(1)->type == RBRACK) {
             next(); // SKIP [
             next(); // SKIP ]
@@ -914,24 +826,10 @@ void add_param(Node *fn, Node *type) {
 Node *parse_block(Token *token) {
     Node *node = new_node(token);
     enter_scope(node);
-    if (token->type != ELSE && peek(0)->type == DOTS)
-        add_error(
-            token->s,
-            token->e,
-            format("expected a condition after '%s'", token_text(token)),
-            NULL
-        );
-    else if (token->type != ELSE)
+    bool is_same_line = peek(0)->line == token->line;
+    bool has_cond = peek(0)->type != DOTS && (token->type != ELSE || is_same_line);
+    if (has_cond)
         node->cond = parse_expr(0);
-    else if (peek(0)->type != DOTS && peek(0)->line == token->line) {
-        add_error(
-            token->s,
-            token->e,
-            "else has no condition",
-            format("use elif%.*s", line_end(token->e) - token->e, text_at(token->e))
-        );
-        node->cond = parse_expr(0);
-    }
     char *after[LAST + 1] = {
         [IF] = "the if condition",
         [ELIF] = "the elif condition",
@@ -1004,8 +902,9 @@ Node *parse_prime() {
             check_type_first(token);
         if (template_type)
             return template_type;
-        if (is_template_use)
-            token->name = init_from_template(template, parse_types(token));
+        Node *types = is_template_use ? parse_types(token) : NULL;
+        if (types && check_template_use(token, template, types))
+            token->name = init_from_template(template, types);
         Node *type = parse_type();
         if (type != NULL) {
             node = new_node(new_token(DECLARE, token));
@@ -1020,18 +919,11 @@ Node *parse_prime() {
             next(); // SKIP (
             while (!includes(peek(0)->type, RPARENT, LAST, 0)) {
                 append(node->children, parse_expr(0));
-                Token *after = peek(0);
-                bool is_missing_comma = !includes(after->type, COMA, RPARENT, LAST, 0) &&
-                                        after->line == token->line;
-                if (is_missing_comma) {
-                    add_error(after->s, after->e, "expected ',' between arguments", NULL);
+                if (check_comma(token, peek(0)))
                     continue;
-                }
-                if (after->type != COMA)
+                if (peek(0)->type != COMA)
                     break;
-                next(); // SKIP ,
-                if (peek(0)->type == RPARENT)
-                    add_error(peek(0)->s, peek(0)->e, "expected an argument after ','", NULL);
+                check_comma(next(), peek(0));
             }
             expect(
                 RPARENT,
@@ -1072,23 +964,9 @@ Node *parse_prime() {
                 expect(RBRACK, "expected ']' after 'operator ['", "]");
                 node->token->name = "[]";
             }
-        } else if (peek(0)->type != ID) {
-            Token *at = peek(0);
-            int start = line_start(at->s);
-            add_error(
-                at->s,
-                at->e,
-                "expected a name after 'fn'",
-                format(
-                    "use %.*sname%.*s",
-                    at->s - start,
-                    text_at(start),
-                    line_end(at->s) - at->s,
-                    text_at(at->s)
-                )
-            );
+        } else if (peek(0)->type != ID)
             node->token->name = "";
-        } else {
+        else {
             token = next();
             node->token->name = token->name;
         }
@@ -1110,14 +988,13 @@ Node *parse_prime() {
                     Node *param = new_node(token);
                     append(node->right->children, param);
                     next(); // skip ...
-                    check_param_after(token, peek(0));
+                    check_comma(token, peek(0));
                     while (!includes(peek(0)->type, RPARENT, LAST, 0))
                         next(); // SKIP what follows ...
                     break;
                 } else
                     break;
-                check_param_after(token, peek(0));
-                if (peek(0)->type == ID)
+                if (check_comma(token, peek(0)))
                     continue;
                 if (peek(0)->type != COMA)
                     break;
@@ -1171,9 +1048,7 @@ Node *parse_prime() {
         while (inside(token->space)) {
             Token *head = next();
             if (!includes(head->type, CASE, DEFAULT, 0)) {
-                add_error(
-                    head->s, head->e, "expected 'case' or 'default' inside a match", NULL
-                );
+                check_unexpected(head);
                 continue;
             }
             Node *branch = new_node(head);
@@ -1194,8 +1069,6 @@ Node *parse_prime() {
                     break;
                 next(); // SKIP ,
             }
-            if (head->type == CASE && branch->cond == NULL)
-                add_error(head->s, head->e, "expected a value after 'case'", "like: case 1:");
             expect(DOTS, format("expected ':' after %s", token_text(head)), ":");
             enter_scope(branch);
             while (inside(head->space))
@@ -1226,58 +1099,31 @@ Node *parse_prime() {
                 declare->var = new_node(name);
                 declare->var->token->type = VAR;
                 declare->var->data_type = parse_type();
-                if (declare->var->data_type) {
+                branch->var = declare->var;
+                if (declare->var->data_type)
                     append(branch->children, declare);
-                    branch->var = declare->var;
-                } else
-                    add_error(
-                        name->s, name->e, "expected a type after the catch name", "like: catch e Error:"
-                    );
-            } else
-                add_error(head->s, head->e, "expected a name after 'catch'", "like: catch e Error:");
+            }
             expect(DOTS, "expected ':' after the catch type", ":");
             while (inside(head->space))
                 append(branch->children, parse_expr(0));
             exit_scope();
         }
-        if (node->next == NULL)
-            add_error(token->s, token->e, "expected 'catch' after the try block", "like: catch e Error:");
         return node;
-    }
-    case CATCH: {
-        add_error(token->s, token->e, "'catch' without a matching 'try'", NULL);
-        while (peek(0)->line == token->line || inside(token->space))
-            next();
-        return new_node(token);
     }
     case THROW: {
         ura.throws = true;
         node = new_node(token);
         node->left = parse_expr(0);
         return node;
-    }
-    case CASE:
-    case DEFAULT: {
-        add_error(
-            token->s,
-            token->e,
-            format("'%s' without a matching 'match'", token_text(token)),
-            NULL
-        );
+    } // clang-format off
+    case CATCH: case CASE: case DEFAULT: { // clang-format on
+        check_unexpected(token);
         while (peek(0)->line == token->line || inside(token->space))
             next();
         return new_node(token);
-    }
-    case ELIF:
-    case ELSE: {
-        char *name = token->type == ELIF ? "elif" : "else";
-        char *help = NULL;
-        if (token->type == ELIF)
-            help =
-                format("use if%.*s", line_end(token->e) - token->e, text_at(token->e));
-        add_error(
-            token->s, token->e, format("%s without an if before it", name), help
-        );
+    } // clang-format off
+    case ELIF: case ELSE: { // clang-format on
+        check_unexpected(token);
         return parse_block(token);
     }
     case PUB: {
@@ -1339,13 +1185,11 @@ Node *parse_prime() {
     }
     case MACRO_ERROR: {
         node = new_node(token);
-        char *message = "@error";
-        char *help = NULL;
         if (peek(0)->type == CHARS && peek(0)->line == token->line)
-            message = next()->chars.value;
+            node->left = new_node(next());
         if (peek(0)->type == CHARS && peek(0)->line == token->line)
-            help = next()->chars.value;
-        add_error(token->s, token->e, message, help);
+            node->right = new_node(next());
+        check_macro(node);
         return node;
     }
     case USE: {
@@ -1355,18 +1199,8 @@ Node *parse_prime() {
             return node;
         }
         Token *name = next();
-        char *package = name->chars.value;
-        char *path = find_package(package);
-        if (path == NULL)
-            add_error(
-                name->s,
-                name->e,
-                format("package '%s' not found", package),
-                strncmp2(package, "@/", 2)
-                    ? format("run: ura install %s", package + 2)
-                    : NULL
-            );
-        else
+        char *path = find_package(name->chars.value);
+        if (check_package(name, path))
             parse_package(new_file(path));
         return node;
     }
@@ -1376,15 +1210,7 @@ Node *parse_prime() {
         node->args = new_node(new_token(ARGS, token));
         expect(LT, "expected '<' after 'template'", "<T>");
         while (!includes(peek(0)->type, GT, LAST, 0)) {
-            Token *param = next();
-            if (param->type != ID)
-                add_error(
-                    param->s,
-                    param->e,
-                    "expected names after template",
-                    "use template<T, V>"
-                );
-            append(node->args->children, new_node(param));
+            append(node->args->children, new_node(next()));
             if (peek(0)->type != COMA)
                 break;
             next(); // SKIP ,
@@ -1396,11 +1222,9 @@ Node *parse_prime() {
         while (inside(token->space)) {
             Token *prev = ura.tokens[ura.exe_pos - 1];
             Token *curr = next();
-            if (curr->space != space || curr->line == prev->line)
-                continue;
-            if (!includes(curr->type, STRUCT, FN_DEC, PROTO, PUB, 0))
-                add_error(curr->s, curr->e, "expected struct/fn after template", NULL);
-            else if (peek(0)->type == ID && curr->type != PROTO)
+            bool is_head = curr->space == space && curr->line != prev->line;
+            bool is_named = includes(curr->type, STRUCT, FN_DEC, PUB, 0);
+            if (is_head && is_named && peek(0)->type == ID)
                 append(node->children, new_node(peek(0)));
         }
         token->body.end = ura.exe_pos;
@@ -1442,22 +1266,14 @@ Node *parse_prime() {
             node->token->name = "";
         }
         Node *parents = new_node(new_token(TYPES, token));
-        bool has_parents = peek(0)->type == ID && strcmp2(peek(0)->name, "from");
-        if (has_parents) {
+        if (peek(0)->type == FROM) {
             next(); // SKIP from
             while (true) {
                 Token *name = peek(0);
                 Node *type = parse_type();
                 Node *parent = type ? find_struct(type->token->name) : NULL;
-                if (parent) {
+                if (check_parent(name, parent))
                     append(parents->children, parent);
-                } else
-                    add_error(
-                        name->s,
-                        name->e,
-                        format("no struct named '%s' to take from", token_text(name)),
-                        NULL
-                    );
                 if (peek(0)->type != AND)
                     break;
                 next(); // SKIP and
@@ -1485,33 +1301,6 @@ Node *parse_prime() {
             Node *method = node->children[i];
             if (method->token->type != FN_DEC || method->token->is_pub)
                 continue;
-            Token *name = method->token;
-            Node *symbol = method->args->symbol;
-            if (symbol && method->args->children_count > 1)
-                add_error(
-                    name->s,
-                    name->e,
-                    format(
-                        "operator '%s' takes one parameter, the right side; the left "
-                        "side is self",
-                        name->name
-                    ),
-                    format("use operator %s(other %s)", name->name, node->token->name)
-                );
-            bool is_assign = symbol && symbol->token->type == ASSIGN;
-            bool has_one_param = method->args->children_count == 1;
-            Node *other = has_one_param ? method->args->children[0]->data_type : NULL;
-            bool is_by_value = other && other->token->type == ID;
-            bool is_same_type =
-                is_by_value && strcmp2(other->token->name, node->token->name);
-            if (is_assign && is_same_type)
-                add_error(
-                    name->s,
-                    name->e,
-                    "operator = takes the other side by reference, a copy would need "
-                    "itself",
-                    format("use operator =(other &%s)", node->token->name)
-                );
             Node *type = new_type(ID, 0, NULL);
             type->token->name = node->token->name;
             Node *self = new_node(new_token(PARAM, method->token));
@@ -1533,26 +1322,10 @@ Node *parse_prime() {
             if (is_target)
                 node->loop = ura.scopes[i];
         }
-        if (node->loop == NULL && token->type == BRK)
-            add_error(
-                token->s,
-                token->e,
-                "break outside a loop or match",
-                "break only works inside a while or a match"
-            );
-        else if (node->loop == NULL)
-            add_error(
-                token->s,
-                token->e,
-                "continue outside a loop",
-                "continue only works inside a while"
-            );
         return node;
     }
     default: {
-        add_error(
-            token->s, token->e, format("unexpected '%s'", token_text(token)), NULL
-        );
+        check_unexpected(token);
         return new_node(token);
     }
     }
@@ -1577,30 +1350,18 @@ Node *parse_expr(int min_op) {
         Node *node = new_node(next());
         node->left = left;
         Token *token = node->token;
-        if (peek(0)->type == LAST || peek(0)->line != token->line) {
-            char *what = "a value";
-            if (token->type == AS)
-                what = "a type";
-            else if (token->type == DOT)
-                what = "an attribute or method name";
-            add_error(
-                token->s,
-                token->e,
-                format("expected %s after '%s'", what, token_text(token)),
-                NULL
-            );
-            return node;
-        }
-        if (token->type == LBRACK) {
+        bool is_missing = peek(0)->type == LAST || peek(0)->line != token->line;
+        if (!is_missing && token->type == LBRACK) {
             token->type = ACCESS;
             node->index = parse_expr(0);
             expect(RBRACK, "expected ']' after the index", "]");
-        } else if (token->type == AS) {
+        } else if (!is_missing && token->type == AS)
             node->to_type = parse_type();
-            if (node->to_type == NULL)
-                add_error(token->s, token->e, "expected a type after 'as'", NULL);
-        } else
+        else if (!is_missing)
             node->right = parse_expr(op);
+        check_operand(node);
+        if (is_missing)
+            return node;
         left = node;
     }
     return left;
@@ -1928,7 +1689,7 @@ void analyze(Node *node) {
     case VAR: case PARAM: case CHARS: case VARIADIC:
     case WRITE: case READ: case SIZEOF: case DROP:
     case ALLOC: case MEMCPY: case FREE:
-    case TYPEOF: case TEMPLATE: case USE:
+    case TYPEOF: case USE:
     case MACRO_IF: case MACRO_ERROR: { // clang-format on
         break;
     }
@@ -1940,11 +1701,8 @@ void analyze(Node *node) {
         check_declare(node);
         analyze(node->var->data_type);
         break;
-    }
-    case SCOPE:
-    case FN_DEC:
-    case PROTO:
-    case STRUCT: {
+    } // clang-format off
+    case SCOPE: case FN_DEC: case PROTO: case STRUCT: { // clang-format on
         enter_scope(node);
         if (node->ret_type)
             analyze(node->ret_type);
@@ -1956,7 +1714,7 @@ void analyze(Node *node) {
                     analyze(arg->data_type);
             }
         }
-        if (node->token->type == FN_DEC)
+        if (includes(node->token->type, FN_DEC, PROTO, 0))
             check_function(node, ura.scopes[ura.scopes_count - 2]);
 
         for (int i = 0; i < node->children_count; i++)
@@ -1985,6 +1743,7 @@ void analyze(Node *node) {
         break;
     } // clang-format off
     case TRY: case CATCH: { // clang-format on
+        check_try(node);
         enter_scope(node);
         for (int i = 0; i < node->children_count; i++)
             analyze(node->children[i]);
@@ -1994,10 +1753,7 @@ void analyze(Node *node) {
         break;
     } // clang-format off
     case IF: case ELIF: case ELSE: case LOOP: case CASE: case DEFAULT: { // clang-format on
-        if (node->cond) {
-            analyze(node->cond);
-            check_cond(node->cond);
-        }
+        check_cond(node);
         enter_scope(node);
         for (int i = 0; i < node->children_count; i++)
             analyze(node->children[i]);
@@ -2007,6 +1763,7 @@ void analyze(Node *node) {
         break;
     } // clang-format off
     case BRK: case CNT: { // clang-format on
+        check_jump(node);
         break;
     }
     case DOUBLE_DOTS: {
@@ -2015,6 +1772,10 @@ void analyze(Node *node) {
     }
     case ENUM: {
         check_enum(node);
+        break;
+    }
+    case TEMPLATE: {
+        check_template(node);
         break;
     }
     case LINK: {
