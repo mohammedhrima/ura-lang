@@ -243,6 +243,9 @@ struct {
     expand(Ucg *, insts);
     Ucg *read_fn;
     Ucg *write_fn;
+    Ucg *alloc_fn;
+    Ucg *copy_fn;
+    Ucg *free_fn;
 
     expand(Ucg *, blocks);
     int clean_start;
@@ -264,6 +267,9 @@ void ucg_start(char *name) {
     gb_ucg.context = LLVMContextCreate();
     gb_ucg.read_fn = NULL;
     gb_ucg.write_fn = NULL;
+    gb_ucg.alloc_fn = NULL;
+    gb_ucg.copy_fn = NULL;
+    gb_ucg.free_fn = NULL;
     zero_init(gb_ucg.libs);
     gb_ucg.module = LLVMModuleCreateWithNameInContext(name, gb_ucg.context);
     gb_ucg.builder = LLVMCreateBuilderInContext(gb_ucg.context);
@@ -602,7 +608,8 @@ void llvm_val_create(Ucg *ir) {
         for (int i = 0; i < count; i++)
             text[i] = to_create->arr.items[i]->to_create->num.value;
         Value global = LLVMBuildGlobalString(gb_ucg.builder, text, "str");
-        ir->elem = LLVMBuildPointerCast(gb_ucg.builder, global, llvm_type(to_create), "");
+        ir->elem =
+            LLVMBuildPointerCast(gb_ucg.builder, global, llvm_type(to_create), "");
         break;
     }
     case ARRAY: {
@@ -1645,6 +1652,74 @@ Ucg *ucg_sizeof(Ucg *type) {
     new->to_size = type;
     append(gb_ucg.insts, new);
     return new;
+}
+
+Ucg *ucg_alloc(Ucg *type, Ucg *count) {
+    if (gb_ucg.alloc_fn == NULL)
+        gb_ucg.alloc_fn = ucg_proto(
+            "calloc",
+            ucg_string_type(),
+            (Ucg *[]){
+                ucg_param("count", ucg_int_type(64)),
+                ucg_param("size", ucg_int_type(64)),
+            },
+            2
+        );
+    Ucg *size = ucg_cast(ucg_sizeof(type), ucg_int_type(64));
+    Ucg *memory = ucg_fn_call(
+        gb_ucg.alloc_fn,
+        (Ucg *[]){
+            ucg_cast(count, ucg_int_type(64)),
+            size,
+        },
+        2
+    );
+    return ucg_cast(memory, ucg_ref_type(type));
+}
+
+Ucg *ucg_copy(Ucg *dst, Ucg *src, Ucg *count) {
+    if (gb_ucg.copy_fn == NULL)
+        gb_ucg.copy_fn = ucg_proto(
+            "memcpy",
+            ucg_string_type(),
+            (Ucg *[]){
+                ucg_param("dst", ucg_string_type()),
+                ucg_param("src", ucg_string_type()),
+                ucg_param("size", ucg_int_type(64)),
+            },
+            3
+        );
+    dst = ucg_value(dst);
+    Ucg *type = ucg_value_type(dst)->to_ref;
+    Ucg *size = ucg_cast(ucg_sizeof(type), ucg_int_type(64));
+    return ucg_fn_call(
+        gb_ucg.copy_fn,
+        (Ucg *[]){
+            ucg_cast(dst, ucg_string_type()),
+            ucg_cast(src, ucg_string_type()),
+            ucg_op(MUL, ucg_cast(count, ucg_int_type(64)), size),
+        },
+        3
+    );
+}
+
+Ucg *ucg_free(Ucg *memory) {
+    if (gb_ucg.free_fn == NULL)
+        gb_ucg.free_fn = ucg_proto(
+            "free",
+            ucg_void_type(),
+            (Ucg *[]){
+                ucg_param("memory", ucg_string_type()),
+            },
+            1
+        );
+    return ucg_fn_call(
+        gb_ucg.free_fn,
+        (Ucg *[]){
+            ucg_cast(memory, ucg_string_type()),
+        },
+        1
+    );
 }
 
 char *ucg_type_name(Ucg *type) {
@@ -3478,6 +3553,33 @@ bool run_test(int p) {
             );
             ucg_end_catch(as_int);
         }
+        ucg_ret(ucg_i32_value(0));
+        ucg_end(fn_main);
+        break;
+    }
+    case 34: {
+        Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL, 0);
+        Ucg *a = ucg_var("a", ucg_ref_type(ucg_i32_type()));
+        Ucg *b = ucg_var("b", ucg_ref_type(ucg_i32_type()));
+        ucg_assign(a, ucg_alloc(ucg_i32_type(), ucg_i32_value(3)));
+        ucg_assign(b, ucg_alloc(ucg_i32_type(), ucg_i32_value(3)));
+        for (int i = 0; i < 3; i++)
+            ucg_assign(ucg_access(a, ucg_i32_value(i)), ucg_i32_value(10 * (i + 1)));
+        ucg_copy(b, a, ucg_i32_value(3));
+        ucg_write(
+            ucg_i32_value(1),
+            (Ucg *[]){
+                ucg_access(b, ucg_i32_value(0)),
+                ucg_string_value(" "),
+                ucg_access(b, ucg_i32_value(1)),
+                ucg_string_value(" "),
+                ucg_access(b, ucg_i32_value(2)),
+                ucg_string_value("\n"),
+            },
+            6
+        );
+        ucg_free(a);
+        ucg_free(b);
         ucg_ret(ucg_i32_value(0));
         ucg_end(fn_main);
         break;
