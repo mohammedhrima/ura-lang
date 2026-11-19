@@ -793,11 +793,14 @@ EOF
 # Diffs <fresh_value> against the recorded <section_heading> block inside
 # <entry_text>. Prints nothing on match; on mismatch, the entry's line in
 # red plus a few lines of diff. Returns 1 on mismatch, 0 on match.
+# The "target triple" line is skipped on both sides: it names the machine
+# (x86_64-pc-linux-gnu, x86_64-unknown-linux-gnu, ...), not ura's output.
 # ============================================================================
 _ura_compare() {
     local entry="$1" heading="$2" fresh="$3" number="$4" name="$5" link="$6"
     local recorded
-    recorded=$(printf '%s\n' "$entry" | _ura_extract_fence "$heading")
+    recorded=$(printf '%s\n' "$entry" | _ura_extract_fence "$heading" | grep -v '^target triple = ')
+    fresh=$(printf '%s\n' "$fresh" | grep -v '^target triple = ')
 
     [ "$recorded" = "$fresh" ] && return 0
 
