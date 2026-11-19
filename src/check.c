@@ -17,14 +17,10 @@ void check_errors(void) {
         char *path = file->path;
         if (strncmp2(path, cwd, cwd_len) && path[cwd_len] == '/')
             path += cwd_len + 1;
-        int line = 1;
-        int start = 0;
-        for (int j = 0; j < s; j++) {
-            if (buff[j] == '\n') {
-                line++;
-                start = j + 1;
-            }
-        }
+        int line = line_at(error->s);
+        int start = s;
+        while (start > 0 && buff[start - 1] != '\n')
+            start--;
         int end = line_end_in(buff, s);
         int col = s - start;
         int width = snprintf(NULL, 0, "%d", line);
@@ -201,19 +197,25 @@ bool is_local_variable(Node *node) {
     return false;
 }
 
+bool is_math(Node *node) {
+    return includes(
+        node->token->type, ADD, SUB, MUL, DIV, MOD, BAND, BOR, BXOR, LSHIFT, RSHIFT, 0
+    );
+}
+
+bool is_numeric(Node *type) {
+    return type && includes(type->token->type, INT, FLOAT, 0) && type->token->shift != 1;
+}
+
 void check_type(Node *value, Node *expected, char *help) {
     if (expected && value->token->type == LCBRACK) {
         check_struct_value(value, expected);
         return;
     }
-    bool is_math = includes(
-        value->token->type, ADD, SUB, MUL, DIV, MOD, BAND, BOR, BXOR, LSHIFT, RSHIFT, 0
-    );
-    Node *math_type = is_math ? type_of(value) : NULL;
-    bool is_numeric = expected && math_type && expected->token->shift != 1 &&
-                      includes(expected->token->type, INT, FLOAT, 0) &&
-                      includes(math_type->token->type, INT, FLOAT, 0);
-    if (is_numeric) {
+    bool is_numeric_math = is_math(value) && is_numeric(expected) &&
+                           is_numeric(type_of(value->left)) &&
+                           is_numeric(type_of(value->right));
+    if (is_numeric_math) {
         check_type(value->left, expected, help);
         check_type(value->right, expected, help);
         return;
@@ -388,12 +390,28 @@ void check_name(Node *node) {
         );
         return;
     }
+    Node *later = var ? NULL : find_variable(token->name, __INT_MAX__);
+    if (later) {
+        add_error(
+            token->s,
+            token->e,
+            format(
+                "'%s' is used before its declaration, on line %d",
+                token->name,
+                line_at(later->token->s)
+            ),
+            "move the declaration above this line"
+        );
+        return;
+    }
     if (var == NULL) {
+        Node *like = find_variable_like(token->name, token->s, 2);
         add_error(
             token->s,
             token->e,
             format("undeclared variable '%s'", token->name),
-            format("declare it first, like: %s i32 = 0", token->name)
+            like ? format("did you mean '%s'?", like->token->name)
+                 : format("declare it first, like: %s i32 = 0", token->name)
         );
         return;
     }
@@ -431,6 +449,25 @@ void check_match(Node *node) {
     }
 }
 
+void check_param_type(Token *token, Node *param) {
+    if (param->data_type)
+        return;
+    add_error(
+        token->s,
+        token->e,
+        format("parameter '%s' has no type", token->name),
+        format("like: %s i32", token->name)
+    );
+    param->data_type = new_type(INT, 32, NULL);
+}
+
+void check_param_after(Token *param, Token *after) {
+    if (param->type == VARIADIC && after->type == COMA)
+        add_error(param->s, param->e, "'...' must be the last parameter", NULL);
+    else if (after->type == ID)
+        add_error(after->s, after->e, "expected ',' between parameters", NULL);
+}
+
 void check_function(Node *node, Node *scope) {
     Node **params = node->args->children;
     int count = node->args->children_count;
@@ -443,6 +480,10 @@ void check_function(Node *node, Node *scope) {
                     format("'%s' is already declared", params[i]->token->name),
                     NULL
                 );
+    int name_s = node->token->e;
+    while (text_at(name_s)[0] == ' ')
+        name_s++;
+    int name_e = name_s + strlen(node->token->name);
     for (int i = 0; i < scope->children_count; i++) {
         Node *other = scope->children[i];
         bool is_function = includes(other->token->type, FN_DEC, PROTO, 0) && other != node;
@@ -455,17 +496,25 @@ void check_function(Node *node, Node *scope) {
         bool is_earlier_fn = other->token->type == FN_DEC && other->token->s < node->token->s;
         bool is_proto = other->token->type == PROTO;
         Node *ret = ret_type_of(node);
-        if (is_same && is_earlier_fn)
+        bool is_same_ret = same_type(ret, ret_type_of(other));
+        if (is_same && is_earlier_fn && is_same_ret)
             add_error(
-                node->token->s,
-                node->token->e,
+                name_s,
+                name_e,
                 format("'%s' is already defined with these parameters", node->token->name),
                 NULL
             );
-        else if (is_same && is_proto && !same_type(ret, ret_type_of(other)))
+        else if (is_same && is_earlier_fn)
             add_error(
-                node->token->s,
-                node->token->e,
+                name_s,
+                name_e,
+                format("'%s' can't be overloaded on its return type", node->token->name),
+                NULL
+            );
+        else if (is_same && is_proto && !is_same_ret)
+            add_error(
+                name_s,
+                name_e,
                 format(
                     "'%s' returns '%s', but its proto returns '%s'",
                     node->token->name,
@@ -508,16 +557,44 @@ void check_enum(Node *node) {
 
 void check_declare(Node *node) {
     Token *token = node->var->token;
-    if (find_in_scope(ura.scope, token->name) != node->var)
-        add_error(
-            token->s, token->e, format("'%s' is already declared", token->name), NULL
-        );
+    Node *first = find_in_scope(ura.scope, token->name);
+    if (first == node->var)
+        return;
+    int type_end = node->var->data_type->token->e;
+    char *rest = format("%.*s", line_end(type_end) - type_end, text_at(type_end));
+    add_error(
+        token->s,
+        token->e,
+        format("'%s' is already declared, on line %d", token->name, line_at(first->token->s)),
+        strchr(rest, '=') ? format("use %s%s", token->name, rest) : NULL
+    );
 }
 
 void check_return(Node *node) {
+    Token *token = node->token;
     Node *fn = find_scope(FN_DEC);
+    if (fn == NULL && find_function("main")) {
+        add_error(
+            token->s,
+            token->e,
+            "'return' outside of a function",
+            "top-level code returns only in a file without main"
+        );
+        return;
+    }
     if (fn == NULL)
         return;
+    Node *ret = ret_type_of(fn);
+    if (node->left == NULL) {
+        if (ret->token->type != VOID)
+            add_error(
+                token->s,
+                token->e,
+                format("'%s' must return a value of type '%s'", fn->token->name, type_name(ret)),
+                NULL
+            );
+        return;
+    }
     check_type(node->left, ret_type_of(fn), NULL);
     if (!is_local_variable(node->left))
         check_copy(&node->left, ret_type_of(fn));
@@ -774,6 +851,26 @@ void check_call(Node *node) {
 }
 
 void check_operation(Node *node) {
+    bool is_assign = includes(
+        node->token->type,
+        ASSIGN,
+        ADD_ASSIGN,
+        SUB_ASSIGN,
+        MUL_ASSIGN,
+        DIV_ASSIGN,
+        MOD_ASSIGN,
+        BAND_ASSIGN,
+        BOR_ASSIGN,
+        BXOR_ASSIGN,
+        LSHIFT_ASSIGN,
+        RSHIFT_ASSIGN,
+        0
+    );
+    if (is_assign && !lives_in_variable(node->left)) {
+        Token *left = node->left->token;
+        add_error(left->s, left->e, "can't assign to a value", NULL);
+        return;
+    }
     Node *left_type = type_of(node->left);
     bool is_struct = left_type && left_type->token->type == ID && left_type->declared;
     if (is_struct) {
@@ -786,6 +883,24 @@ void check_operation(Node *node) {
             return;
         }
         check_copy(&node->right, left_type);
+    }
+    Node *right_type = type_of(node->right);
+    bool is_known = left_type && right_type;
+    bool is_mismatch = is_known && !same_type(left_type, right_type) &&
+                       !(is_numeric(left_type) && is_numeric(right_type));
+    if (is_math(node) && is_mismatch) {
+        add_error(
+            node->token->s,
+            node->token->e,
+            format(
+                "can't apply '%s' to '%s' and '%s'",
+                binary_ops[node->token->type],
+                type_name(left_type),
+                type_name(right_type)
+            ),
+            NULL
+        );
+        return;
     }
     bool is_logic = includes(node->token->type, AND, OR, 0);
     Node *left_bool = type_of(node->left);

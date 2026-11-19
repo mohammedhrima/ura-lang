@@ -583,6 +583,14 @@ int line_start(int pos) {
     return file->start + line_start_in(file->buff, pos - file->start);
 }
 
+int line_at(int pos) {
+    File *file = file_at(pos);
+    int line = 1;
+    for (int i = 0; i < pos - file->start; i++)
+        line += file->buff[i] == '\n';
+    return line;
+}
+
 char *token_text(Token *token) {
     return format("%.*s", token->e - token->s, text_at(token->s));
 }
@@ -1012,9 +1020,18 @@ Node *parse_prime() {
             next(); // SKIP (
             while (!includes(peek(0)->type, RPARENT, LAST, 0)) {
                 append(node->children, parse_expr(0));
-                if (peek(0)->type != COMA)
+                Token *after = peek(0);
+                bool is_missing_comma = !includes(after->type, COMA, RPARENT, LAST, 0) &&
+                                        after->line == token->line;
+                if (is_missing_comma) {
+                    add_error(after->s, after->e, "expected ',' between arguments", NULL);
+                    continue;
+                }
+                if (after->type != COMA)
                     break;
                 next(); // SKIP ,
+                if (peek(0)->type == RPARENT)
+                    add_error(peek(0)->s, peek(0)->e, "expected an argument after ','", NULL);
             }
             expect(
                 RPARENT,
@@ -1087,24 +1104,21 @@ Node *parse_prime() {
                     Node *param = new_node(token);
                     next(); // skip ID
                     param->data_type = parse_type();
-                    if (param->data_type == NULL) {
-                        add_error(
-                            token->s,
-                            token->e,
-                            format("parameter '%s' has no type", token->name),
-                            format("like: %s i32", token->name)
-                        );
-                        param->data_type = new_type(INT, 32, NULL);
-                    }
+                    check_param_type(token, param);
                     append(node->right->children, param);
                 } else if (token->type == VARIADIC) {
-                    // node->token->is_varg = true;
                     Node *param = new_node(token);
                     append(node->right->children, param);
                     next(); // skip ...
+                    check_param_after(token, peek(0));
+                    while (!includes(peek(0)->type, RPARENT, LAST, 0))
+                        next(); // SKIP what follows ...
                     break;
                 } else
                     break;
+                check_param_after(token, peek(0));
+                if (peek(0)->type == ID)
+                    continue;
                 if (peek(0)->type != COMA)
                     break;
                 next(); // SKIP ,
@@ -1639,6 +1653,34 @@ Node *find_scope(Type type) {
     return NULL;
 }
 
+int name_diff(char *a, char *b) {
+    int diff = 0;
+    int k = 0;
+    for (; a[k] && b[k]; k++)
+        diff += a[k] != b[k];
+    return diff + strlen(a + k) + strlen(b + k);
+}
+
+Node *find_variable_like(char *name, int pos, int max_diff) {
+    Node *found = NULL;
+    int found_diff = max_diff + 1;
+    for (int i = ura.scopes_count - 1; i >= 0; i--) {
+        Node *scope = ura.scopes[i];
+        for (int j = 0; j < scope->children_count; j++) {
+            Node *child = scope->children[j];
+            bool is_before = child->token->type == DECLARE && child->var->token->s <= pos;
+            if (!is_before)
+                continue;
+            int diff = name_diff(child->var->token->name, name);
+            if (diff < found_diff) {
+                found = child->var;
+                found_diff = diff;
+            }
+        }
+    }
+    return found;
+}
+
 Node *find_function_like(char *name, int max_diff) {
     Node *found = NULL;
     int found_diff = max_diff + 1;
@@ -1663,12 +1705,7 @@ Node *find_function_like(char *name, int max_diff) {
             bool is_operator = child->args && child->args->symbol;
             if (!is_function || is_operator)
                 continue;
-            char *other = child->token->name;
-            int diff = 0;
-            int k = 0;
-            for (; other[k] && name[k]; k++)
-                diff += other[k] != name[k];
-            diff += strlen(other + k) + strlen(name + k);
+            int diff = name_diff(child->token->name, name);
             if (diff >= found_diff)
                 continue;
             found = child;
@@ -1928,12 +1965,9 @@ void analyze(Node *node) {
         break;
     }
     case RETURN: {
-        if (node->left) {
+        if (node->left)
             analyze(node->left);
-            check_return(node);
-        } else {
-            // TODO: return void
-        }
+        check_return(node);
         break;
     } // clang-format off
     case MATCH: {

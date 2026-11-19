@@ -5469,7 +5469,8 @@ error: test.ura:3:10 parameter 'a' has no type
   |
 3 | fn twice(a) i32:
   |          ^
-help: use fn twice(a i32) i32:
+help: like: a i32
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5767,6 +5768,7 @@ error: test.ura:5:12 undeclared variable 'cuont'
 5 |     return cuont
   |            ^^^^^
 help: did you mean 'count'?
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5796,6 +5798,7 @@ error: test.ura:4:13 'x' is used before its declaration, on line 5
 4 |     y i32 = x + 1
   |             ^
 help: move the declaration above this line
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5825,6 +5828,7 @@ error: test.ura:5:5 'x' is already declared, on line 4
 5 |     x i32 = 2
   |     ^
 help: use x = 2
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5969,10 +5973,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:5:4 function 'f' is already declared, on line 2
+error: test.ura:5:1 'f' is already defined with these parameters
   |
 5 | fn f() i32:
-  |    ^
+  | ^^
+error: aborting due to 1 error
 ```
 
 ### status
@@ -6288,10 +6293,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:1:6 parameter 'a' needs a type
+error: test.ura:1:6 parameter 'a' has no type
   |
 1 | fn f(a) i32:
   |      ^
+help: like: a i32
 error: aborting due to 1 error
 ```
 
@@ -6522,6 +6528,7 @@ error: test.ura:1:1 'return' outside of a function
   |
 1 | return 1
   | ^^^^^^
+help: top-level code returns only in a file without main
 error: aborting due to 1 error
 ```
 
@@ -6625,10 +6632,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:13 'a' not found
+error: test.ura:2:13 undeclared variable 'a'
   |
 2 |     b i32 = a
   |             ^
+help: declare it first, like: a i32 = 0
 error: aborting due to 1 error
 ```
 
@@ -6652,10 +6660,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:4:12 'x' not found
+error: test.ura:4:12 undeclared variable 'x'
   |
 4 |     return x
   |            ^
+help: declare it first, like: x i32 = 0
 error: aborting due to 1 error
 ```
 
@@ -6678,11 +6687,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:5 'x' not found
+error: test.ura:2:5 undeclared variable 'x'
   |
 2 |     x = 5
   |     ^
-help: declare it: 'x i32 = 5'
+help: declare it first, like: x i32 = 0
 error: aborting due to 1 error
 ```
 
@@ -6867,7 +6876,7 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:14 can't apply '+' to 'i32' and 'i8[]'
+error: test.ura:2:14 can't apply '+' to 'i32' and 'String'
   |
 2 |     return 1 + "a"
   |              ^
@@ -6947,11 +6956,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:5:12 no overload of 'f' takes these arguments
+error: test.ura:5:12 'f' takes 1 argument, not 2
   |
 5 |     return f(1, 2)
   |            ^
-help: 'f' takes 1 argument, got 2
+help: fn f(a i32) i32
 error: aborting due to 1 error
 ```
 
@@ -6976,11 +6985,10 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:5:12 no overload of 'f' takes these arguments
+error: test.ura:5:14 expected 'i32', found 'String'
   |
 5 |     return f("a")
-  |            ^
-help: '"a"' is 'i8[]', but 'a' wants 'i32'
+  |              ^^^
 error: aborting due to 1 error
 ```
 
@@ -7649,15 +7657,17 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:13 'zz' not found
+error: test.ura:2:13 undeclared variable 'zz'
   |
 2 |     a i32 = zz
   |             ^^
-error: test.ura:3:13 'u' not found
+help: declare it first, like: zz i32 = 0
+error: test.ura:3:13 undeclared variable 'u'
   |
 3 |     b i32 = u.x
   |             ^
-error: test.ura:4:12 function 'yy' not found
+help: declare it first, like: u i32 = 0
+error: test.ura:4:12 no function named 'yy'
   |
 4 |     return yy()
   |            ^^
@@ -7728,10 +7738,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:11:12 'zz' not found
+error: test.ura:11:12 undeclared variable 'zz'
    |
 11 |     return zz
    |            ^^
+help: declare it first, like: zz i32 = 0
 error: aborting due to 1 error
 ```
 
@@ -11318,10 +11329,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:5:5 'a' is already declared
+error: test.ura:5:5 'a' is already declared, on line 4
   |
 5 |     a i32 = 2
   |     ^
+help: use a = 2
 error: aborting due to 1 error
 ```
 
@@ -11446,10 +11458,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:4:1 'score' is already declared
+error: test.ura:4:1 'score' is already declared, on line 3
   |
 4 | score i32 = 10
   | ^^^^^
+help: use score = 10
 error: aborting due to 1 error
 ```
 
