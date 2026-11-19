@@ -138,6 +138,7 @@ struct Ucg {
     bool is_val;
     bool is_set;
     bool is_uint;
+    bool is_throwing;
     int used;
 
     struct { // llvm stuff
@@ -250,14 +251,7 @@ struct {
     char *error_msg;
 
     expand(Ucg *, insts);
-    Ucg *read_fn;
-    Ucg *write_fn;
-    Ucg *alloc_fn;
-    Ucg *copy_fn;
-    Ucg *free_fn;
-    Ucg *argc;
-    Ucg *argv;
-    bool has_args;
+    expand(Ucg *, runtime);
 
     expand(Ucg *, blocks);
     int clean_start;
@@ -333,14 +327,7 @@ void ucg_start(char *name) {
     // atexit(ucg_finish);
 
     gb_ucg.context = LLVMContextCreate();
-    gb_ucg.read_fn = NULL;
-    gb_ucg.write_fn = NULL;
-    gb_ucg.alloc_fn = NULL;
-    gb_ucg.copy_fn = NULL;
-    gb_ucg.free_fn = NULL;
-    gb_ucg.argc = NULL;
-    gb_ucg.argv = NULL;
-    gb_ucg.has_args = false;
+    zero_init(gb_ucg.runtime);
     zero_init(gb_ucg.libs);
     gb_ucg.module = LLVMModuleCreateWithNameInContext(name, gb_ucg.context);
     gb_ucg.builder = LLVMCreateBuilderInContext(gb_ucg.context);
@@ -1370,56 +1357,91 @@ Ucg *ucg_global(char *name, Ucg *data_type) {
     return new;
 }
 
-void ucg_main_globals(void) {
-    if (gb_ucg.argc)
-        return;
-    gb_ucg.argc = ucg_new(GLOBAL);
-    gb_ucg.argc->name = "ucg.argc";
-    gb_ucg.argc->data_type = ucg_i32_type();
-    gb_ucg.argv = ucg_new(GLOBAL);
-    gb_ucg.argv->name = "ucg.argv";
-    gb_ucg.argv->data_type = ucg_ref_type(ucg_string_type());
+Ucg *ucg_runtime(char *name) {
+    for (int i = 0; i < gb_ucg.runtime_count; i++) {
+        if (strcmp2(gb_ucg.runtime[i]->name, name))
+            return gb_ucg.runtime[i];
+    }
+    return NULL;
+}
+
+Ucg *ucg_extern(char *name, Ucg *ret, int count, ...) {
+    Ucg *fn = ucg_runtime(name);
+    if (fn)
+        return fn;
+    Ucg **params = arena_alloc(count + 1, sizeof(Ucg *));
+    va_list ap;
+    va_start(ap, count);
+    for (int i = 0; i < count; i++) {
+        Ucg *type = va_arg(ap, Ucg *);
+        params[i] = type->type == VARIADIC ? type : ucg_param("arg", type);
+    }
+    va_end(ap);
+    fn = ucg_proto(name, ret, params, count);
+    append(gb_ucg.runtime, fn);
+    return fn;
+}
+
+Ucg *ucg_call(Ucg *fn, int count, ...) {
+    Ucg **args = arena_alloc(count + 1, sizeof(Ucg *));
+    va_list ap;
+    va_start(ap, count);
+    for (int i = 0; i < count; i++)
+        args[i] = va_arg(ap, Ucg *);
+    va_end(ap);
+    return ucg_fn_call(fn, args, count);
+}
+
+Ucg *ucg_main_arg(char *name, Ucg *type) {
+    Ucg *global = ucg_runtime(name);
+    if (global == NULL) {
+        global = ucg_new(GLOBAL);
+        global->name = name;
+        global->data_type = type;
+        append(gb_ucg.runtime, global);
+    }
+    return ucg_dref(global);
 }
 
 Ucg *ucg_argc(void) {
-    ucg_main_globals();
-    return ucg_dref(gb_ucg.argc);
+    return ucg_main_arg("ucg.argc", ucg_i32_type());
 }
 
 Ucg *ucg_argv(void) {
-    ucg_main_globals();
-    return ucg_dref(gb_ucg.argv);
+    return ucg_main_arg("ucg.argv", ucg_ref_type(ucg_string_type()));
 }
 
 void ucg_main_args(void) {
+    Ucg *argc = ucg_runtime("ucg.argc");
+    Ucg *argv = ucg_runtime("ucg.argv");
     Ucg *main = NULL;
+    bool is_used = false;
     for (int i = 0; i < gb_ucg.insts_count; i++) {
         Ucg *inst = gb_ucg.insts[i];
-        bool is_load = inst->type == DREF && gb_ucg.argc;
-        bool is_arg = inst->to_dref == gb_ucg.argc || inst->to_dref == gb_ucg.argv;
-        if (is_load && is_arg)
-            gb_ucg.has_args = true;
+        bool is_arg = inst->to_dref == argc || inst->to_dref == argv;
+        is_used = is_used || (inst->type == DREF && is_arg);
         if (inst->type == FN_DEC && strcmp2(inst->name, "main"))
             main = inst;
     }
-    if (!gb_ucg.has_args || main == NULL) {
-        gb_ucg.has_args = false;
+    if (!is_used || main == NULL)
         return;
-    }
-    append(gb_ucg.insts, gb_ucg.argc);
-    append(gb_ucg.insts, gb_ucg.argv);
+    if (argc)
+        append(gb_ucg.insts, argc);
+    if (argv)
+        append(gb_ucg.insts, argv);
     if (main->fn.params_count != 0)
         return;
-    append(main->fn.params, ucg_param("argc", gb_ucg.argc->data_type));
-    append(main->fn.params, ucg_param("argv", gb_ucg.argv->data_type));
+    append(main->fn.params, ucg_param("argc", ucg_i32_type()));
+    append(main->fn.params, ucg_param("argv", ucg_ref_type(ucg_string_type())));
 }
 
 void llvm_main_args(Ucg *fn) {
-    bool is_main = gb_ucg.has_args && strcmp2(fn->name, "main");
-    if (!is_main || fn->fn.params_count < 2)
-        return;
-    LLVMBuildStore(gb_ucg.builder, LLVMGetParam(fn->elem, 0), gb_ucg.argc->elem);
-    LLVMBuildStore(gb_ucg.builder, LLVMGetParam(fn->elem, 1), gb_ucg.argv->elem);
+    Ucg *args[] = { ucg_runtime("ucg.argc"), ucg_runtime("ucg.argv") };
+    bool is_main = strcmp2(fn->name, "main") && fn->fn.params_count >= 2;
+    for (int i = 0; is_main && i < 2; i++) {
+        if (args[i] && args[i]->elem)
+            LLVMBuildStore(gb_ucg.builder, LLVMGetParam(fn->elem, i), args[i]->elem);
+    }
 }
 
 Ucg *ucg_null(Ucg *ref_type) {
@@ -1480,17 +1502,8 @@ Ucg *ucg_value_type(Ucg *value) {
 }
 
 Ucg *ucg_write(Ucg *fd, Ucg **values, int values_count) {
-    if (gb_ucg.write_fn == NULL)
-        gb_ucg.write_fn = ucg_proto(
-            "dprintf",
-            ucg_i32_type(),
-            (Ucg *[]){
-                ucg_param("fd", ucg_i32_type()),
-                ucg_param("format", ucg_string_type()),
-                ucg_varg_type(),
-            },
-            3
-        );
+    Ucg *i32 = ucg_i32_type();
+    Ucg *dprintf = ucg_extern("dprintf", i32, 3, i32, ucg_string_type(), ucg_varg_type());
     Ucg **args = arena_alloc(values_count + 3, sizeof(Ucg *));
     int args_count = 2;
     char *layout = "";
@@ -1536,143 +1549,54 @@ Ucg *ucg_write(Ucg *fd, Ucg **values, int values_count) {
     }
     args[0] = fd;
     args[1] = ucg_string_value(layout);
-    return ucg_fn_call(gb_ucg.write_fn, args, args_count);
+    return ucg_fn_call(dprintf, args, args_count);
+}
+
+Ucg *ucg_read_fn(void) {
+    Ucg *str = ucg_string_type();
+    Ucg *i32 = ucg_i32_type();
+    Ucg *i64 = ucg_int_type(64);
+    Ucg *getline = ucg_extern("getline", i64, 3, ucg_ref_type(str), ucg_ref_type(i64), str);
+    Ucg *find = ucg_extern("strchr", str, 2, str, i32);
+    Ucg *copy = ucg_extern("strdup", str, 1, str);
+    Ucg *open = ucg_extern("fdopen", str, 2, i32, str);
+    Ucg *file = ucg_global("ura.read_file", str);
+    Ucg *file_fd = ucg_global("ura.read_fd", i32);
+    Ucg *fn = ucg_fn("ura.read", str, (Ucg *[]){ ucg_param("fd", i32) }, 1);
+    append(gb_ucg.runtime, fn);
+    Ucg *fd = ucg_get_param(fn, 0);
+
+    Ucg *reopen = ucg_if();
+    Ucg *is_closed = ucg_op(EQ, file, ucg_null(str));
+    ucg_then(reopen, ucg_op(OR, is_closed, ucg_op(NQ, fd, file_fd)));
+    ucg_assign(file, ucg_call(open, 2, fd, ucg_string_value("r")));
+    ucg_assign(file_fd, fd);
+    ucg_end(reopen);
+
+    Ucg *line = ucg_var("line", str);
+    Ucg *cap = ucg_var("cap", i64);
+    Ucg *len = ucg_var("len", i64);
+    ucg_assign(len, ucg_call(getline, 3, ucg_ref(line), ucg_ref(cap), file));
+
+    Ucg *eof = ucg_if();
+    ucg_then(eof, ucg_op(LT, len, ucg_int_value(64, 1)));
+    ucg_ret(ucg_call(copy, 1, ucg_string_value("")));
+    ucg_end(eof);
+
+    Ucg *newline = ucg_var("newline", str);
+    ucg_assign(newline, ucg_call(find, 2, line, ucg_i32_value('\n')));
+    Ucg *found = ucg_if();
+    ucg_then(found, ucg_op(NQ, newline, ucg_null(str)));
+    ucg_assign(ucg_point_to(newline), ucg_char_value(0));
+    ucg_end(found);
+    ucg_ret(line);
+    ucg_end(fn);
+    return fn;
 }
 
 Ucg *ucg_read(Ucg *fd) {
-    if (gb_ucg.read_fn == NULL) {
-        Ucg *str = ucg_string_type();
-        Ucg *i32 = ucg_i32_type();
-        Ucg *i64 = ucg_int_type(64);
-        Ucg *getline = ucg_proto(
-            "getline",
-            i64,
-            (Ucg *[]){
-                ucg_param("line", ucg_ref_type(str)),
-                ucg_param("cap", ucg_ref_type(i64)),
-                ucg_param("file", str),
-            },
-            3
-        );
-        Ucg *find = ucg_proto(
-            "strchr",
-            str,
-            (Ucg *[]){
-                ucg_param("s", str),
-                ucg_param("c", i32),
-            },
-            2
-        );
-        Ucg *copy = ucg_proto(
-            "strdup",
-            str,
-            (Ucg *[]){
-                ucg_param("s", str),
-            },
-            1
-        );
-        Ucg *open = ucg_proto(
-            "fdopen",
-            str,
-            (Ucg *[]){
-                ucg_param("fd", i32),
-                ucg_param("mode", str),
-            },
-            2
-        );
-        Ucg *file = ucg_global("ura.read_file", str);
-        Ucg *file_fd = ucg_global("ura.read_fd", i32);
-
-        Ucg *fn = ucg_fn(
-            "ura.read",
-            str,
-            (Ucg *[]){
-                ucg_param("fd", i32),
-            },
-            1
-        );
-        Ucg *fd_param = ucg_get_param(fn, 0);
-        Ucg *reopen = ucg_if();
-        {
-            ucg_then(
-                reopen,
-                ucg_op(
-                    OR, ucg_op(EQ, file, ucg_null(str)), ucg_op(NQ, fd_param, file_fd)
-                )
-            );
-            ucg_assign(
-                file,
-                ucg_fn_call(
-                    open,
-                    (Ucg *[]){
-                        fd_param,
-                        ucg_string_value("r"),
-                    },
-                    2
-                )
-            );
-            ucg_assign(file_fd, fd_param);
-        }
-        ucg_end(reopen);
-
-        Ucg *line = ucg_var("line", str);
-        Ucg *cap = ucg_var("cap", i64);
-        Ucg *len = ucg_var("len", i64);
-        ucg_assign(
-            len,
-            ucg_fn_call(
-                getline,
-                (Ucg *[]){
-                    ucg_ref(line),
-                    ucg_ref(cap),
-                    file,
-                },
-                3
-            )
-        );
-
-        Ucg *eof = ucg_if();
-        {
-            ucg_then(eof, ucg_op(LT, len, ucg_int_value(64, 1)));
-            ucg_ret(ucg_fn_call(
-                copy,
-                (Ucg *[]){
-                    ucg_string_value(""),
-                },
-                1
-            ));
-        }
-        ucg_end(eof);
-
-        Ucg *newline = ucg_var("newline", str);
-        ucg_assign(
-            newline,
-            ucg_fn_call(
-                find,
-                (Ucg *[]){
-                    line,
-                    ucg_i32_value('\n'),
-                },
-                2
-            )
-        );
-        Ucg *found = ucg_if();
-        {
-            ucg_then(found, ucg_op(NQ, newline, ucg_null(str)));
-            ucg_assign(ucg_point_to(newline), ucg_char_value(0));
-        }
-        ucg_end(found);
-        ucg_ret(line);
-        ucg_end(fn);
-        gb_ucg.read_fn = fn;
-    }
-    return ucg_fn_call(
-        gb_ucg.read_fn,
-        (Ucg *[]){
-            fd,
-        },
-        1
-    );
+    Ucg *fn = ucg_runtime("ura.read");
+    return ucg_call(fn ? fn : ucg_read_fn(), 1, fd);
 }
 
 Ucg *ucg_struct_value(Ucg *st, Ucg **values, int values_count) {
@@ -1807,71 +1731,29 @@ Ucg *ucg_sizeof(Ucg *type) {
 }
 
 Ucg *ucg_alloc(Ucg *type, Ucg *count) {
-    if (gb_ucg.alloc_fn == NULL)
-        gb_ucg.alloc_fn = ucg_proto(
-            "calloc",
-            ucg_string_type(),
-            (Ucg *[]){
-                ucg_param("count", ucg_int_type(64)),
-                ucg_param("size", ucg_int_type(64)),
-            },
-            2
-        );
-    Ucg *size = ucg_cast(ucg_sizeof(type), ucg_int_type(64));
-    Ucg *memory = ucg_fn_call(
-        gb_ucg.alloc_fn,
-        (Ucg *[]){
-            ucg_cast(count, ucg_int_type(64)),
-            size,
-        },
-        2
-    );
+    Ucg *bytes = ucg_string_type();
+    Ucg *i64 = ucg_int_type(64);
+    Ucg *calloc = ucg_extern("calloc", bytes, 2, i64, i64);
+    Ucg *size = ucg_cast(ucg_sizeof(type), i64);
+    Ucg *memory = ucg_call(calloc, 2, ucg_cast(count, i64), size);
     return ucg_cast(memory, ucg_ref_type(type));
 }
 
 Ucg *ucg_copy(Ucg *dst, Ucg *src, Ucg *count) {
-    if (gb_ucg.copy_fn == NULL)
-        gb_ucg.copy_fn = ucg_proto(
-            "memcpy",
-            ucg_string_type(),
-            (Ucg *[]){
-                ucg_param("dst", ucg_string_type()),
-                ucg_param("src", ucg_string_type()),
-                ucg_param("size", ucg_int_type(64)),
-            },
-            3
-        );
+    Ucg *bytes = ucg_string_type();
+    Ucg *i64 = ucg_int_type(64);
+    Ucg *memcpy = ucg_extern("memcpy", bytes, 3, bytes, bytes, i64);
     dst = ucg_value(dst);
-    Ucg *type = ucg_value_type(dst)->to_ref;
-    Ucg *size = ucg_cast(ucg_sizeof(type), ucg_int_type(64));
-    return ucg_fn_call(
-        gb_ucg.copy_fn,
-        (Ucg *[]){
-            ucg_cast(dst, ucg_string_type()),
-            ucg_cast(src, ucg_string_type()),
-            ucg_op(MUL, ucg_cast(count, ucg_int_type(64)), size),
-        },
-        3
-    );
+    Ucg *size = ucg_cast(ucg_sizeof(ucg_value_type(dst)->to_ref), i64);
+    Ucg *to = ucg_cast(dst, bytes);
+    Ucg *from = ucg_cast(src, bytes);
+    return ucg_call(memcpy, 3, to, from, ucg_op(MUL, ucg_cast(count, i64), size));
 }
 
 Ucg *ucg_free(Ucg *memory) {
-    if (gb_ucg.free_fn == NULL)
-        gb_ucg.free_fn = ucg_proto(
-            "free",
-            ucg_void_type(),
-            (Ucg *[]){
-                ucg_param("memory", ucg_string_type()),
-            },
-            1
-        );
-    return ucg_fn_call(
-        gb_ucg.free_fn,
-        (Ucg *[]){
-            ucg_cast(memory, ucg_string_type()),
-        },
-        1
-    );
+    Ucg *bytes = ucg_string_type();
+    Ucg *free = ucg_extern("free", ucg_void_type(), 1, bytes);
+    return ucg_call(free, 1, ucg_cast(memory, bytes));
 }
 
 char *ucg_type_name(Ucg *type) {
@@ -2147,13 +2029,37 @@ void print_ucg(Ucg *inst, char end) {
     print("%s%c", text, end);
 }
 
-bool ucg_has_body(Ucg *fn) {
+bool ucg_can_throw(Ucg *fn) {
+    bool is_inside = false;
     for (int i = 0; i < gb_ucg.insts_count; i++) {
         Ucg *inst = gb_ucg.insts[i];
         if (inst->type == FN_ENTRY && inst->to_enter == fn)
+            is_inside = true;
+        if (!is_inside)
+            continue;
+        if (inst->type == END && inst->to_end == fn)
+            return false;
+        bool is_error = gb_ucg.error_type && inst->left == gb_ucg.error_type;
+        bool is_throw = inst->type == ASSIGN && is_error;
+        bool is_call = inst->type == CHECK && inst->to_call->is_throwing;
+        if (is_throw || is_call)
             return true;
     }
     return false;
+}
+
+void ucg_find_throwing(void) {
+    bool changed = true;
+    while (changed) {
+        changed = false;
+        for (int i = 0; i < gb_ucg.insts_count; i++) {
+            Ucg *fn = gb_ucg.insts[i];
+            if (fn->type != FN_DEC || fn->is_throwing || !ucg_can_throw(fn))
+                continue;
+            fn->is_throwing = true;
+            changed = true;
+        }
+    }
 }
 
 void ucg_splice_checks(void) {
@@ -2162,16 +2068,17 @@ void ucg_splice_checks(void) {
         total += gb_ucg.insts[i]->cleans_count;
     Ucg **insts = arena_alloc(total + 2, sizeof(Ucg *));
     int count = 0;
+    ucg_find_throwing();
     for (int i = 0; i < gb_ucg.insts_count; i++) {
         Ucg *inst = gb_ucg.insts[i];
         if (inst->type != CHECK) {
             insts[count++] = inst;
             continue;
         }
-        bool has_body = ucg_has_body(inst->to_call);
+        bool is_throwing = inst->to_call->is_throwing;
         for (int j = 0; j < inst->cleans_count; j++) {
             Ucg *part = inst->cleans[j];
-            if (has_body)
+            if (is_throwing)
                 insts[count++] = part;
             else if (part->type == FN_CALL)
                 part->to_call->used--;
@@ -2254,6 +2161,8 @@ void ucg_compile() {
     ucg_optimize();
     ucg_main_args();
     Value fn = NULL;
+    expand(Value, outer_fns);
+    zero_init(outer_fns);
     int stmt_index = 0;
     for (int i = 0; i < gb_ucg.insts_count; i++) {
         Ucg *curr = gb_ucg.insts[i];
@@ -2278,6 +2187,7 @@ void ucg_compile() {
             break;
         }
         case FN_ENTRY: {
+            append(outer_fns, fn);
             fn = curr->to_enter->elem;
             curr->bloc = llvm_bloc(fn, "entry");
             break;
@@ -2310,8 +2220,10 @@ void ucg_compile() {
         }
         case END: {
             Ucg *to_end = curr->to_end;
-            if (to_end->type == FN_DEC)
+            if (to_end->type == FN_DEC) {
+                fn = outer_fns[--outer_fns_count];
                 break;
+            }
             char *name = to_end->type == LOOP ? "endloop" : "endif";
             if (to_end->name)
                 name = format("end%s", to_end->name);

@@ -2226,13 +2226,7 @@ void codegen_uncaught(Ucg *try_stmt) {
     Node *type = param && param->token->type == REF ? param->data_type : param;
     if (type) {
         Ucg *catch_stmt = ucg_catch(try_stmt, type->token->ucg);
-        Ucg *code = ucg_fn_call(
-            hook->token->ucg,
-            (Ucg *[]){
-                ucg_ref(ucg_error(type->token->ucg)),
-            },
-            1
-        );
+        Ucg *code = ucg_call(hook->token->ucg, 1, ucg_ref(ucg_error(type->token->ucg)));
         ucg_ret(code);
         ucg_end(catch_stmt);
     } else
@@ -2350,7 +2344,7 @@ void codegen_write(Node *node) {
         if (is_string) {
             Node *chars = find_method_named(type->declared, "chars");
             Ucg *self = ucg_ref(codegen_in_variable(child));
-            args[count++] = ucg_fn_call(chars->token->ucg, (Ucg *[]){ self }, 1);
+            args[count++] = ucg_call(chars->token->ucg, 1, self);
             continue;
         }
         if (!is_struct_value(type)) {
@@ -2766,7 +2760,7 @@ void codegen(Node *node) {
         Ucg *array = ucg_var("array", type->token->ucg);
         ucg_assign(array, ucg_struct_value(type->token->ucg, fields, 3));
         Node *own = find_method_named(type->declared, "own");
-        ucg_fn_call(own->token->ucg, (Ucg *[]){ ucg_ref(array) }, 1);
+        ucg_call(own->token->ucg, 1, ucg_ref(array));
         node->token->ucg = array;
         break;
     }
