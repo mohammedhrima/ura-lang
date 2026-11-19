@@ -8,7 +8,7 @@
 #            compile_commands.json; ura prints nothing but errors unless
 #            built with -D DEBUG=true (tokens, AST, IR, then runs the program)
 #   ucg [-D DEBUG=true] [number]
-#            build ucg.c alone into <repo>/bin/ucg and run its test <number>
+#            build ucg_test.c (ucg.c and its tests) into <repo>/bin/ucg and run its test <number>
 #            (every test when none); -D DEBUG=true prints the ucg nodes
 #   tests [target] [number]
 #            rebuild, then compile tests and compare the generated LLVM IR
@@ -237,7 +237,7 @@ build() {
 }
 
 # ============================================================================
-# ucg [number] - compile ucg.c alone, with its test main, into bin/ucg and run
+# ucg [number] - compile ucg_test.c (ucg.c plus its tests) into bin/ucg and run
 # test <number> (every test when none): prints its nodes, writes
 # build/out.ll, then links and runs the program
 # ============================================================================
@@ -247,7 +247,7 @@ ucg() {
         flags+=(-D "$2")
         shift 2
     done
-    _ura_build ucg.c ucg -DUCG=1 "${flags[@]}" || return 1
+    _ura_build ucg_test.c ucg -DUCG=1 "${flags[@]}" || return 1
     (cd "$URA_ROOT" && "$URA_BIN_DIR/ucg" "$@")
 }
 

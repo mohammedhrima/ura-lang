@@ -292,13 +292,6 @@ char *escaped[256] = { // clang-format off
     ['\n'] = "\\n", ['\t'] = "\\t", ['\r'] = "\\r", ['\0'] = "\\0",
 }; // clang-format on
 
-char *type_names[LAST + 1] = {
-    [VOID] = "void",
-    // [BOOL] = "bool",
-    // [I8] = "i8",
-    // [I32] = "num",
-};
-
 #include "./check.c"
 #include "./package.c"
 
@@ -2955,7 +2948,7 @@ int _print_type(ioFile fp, Node *node) {
     case REF:		return fprintf(fp, "&") + _print_type(fp, node->left);
     case STRUCT:	return fprintf(fp, "%s", node->token->name);
     case ARRAY:		return _print_type(fp, node->left) + fprintf(fp, "[]");
-    default:		return fprintf(fp, "%s", type_names[node->token->type]);
+    default:		return fprintf(fp, "%s", to_string(node->token->type));
     }
     // clang-format on
 };
