@@ -748,27 +748,24 @@ target triple = "x86_64-unknown-linux-gnu"
 
 %User = type { i32, i8* }
 
+@str = private unnamed_addr constant [4 x i8] c"ura\00", align 1
+@str.1 = private unnamed_addr constant [7 x i8] c"%s %d\0A\00", align 1
+
 declare i32 @printf(i8*, ...)
 
 define i32 @main() {
 entry:
   %u = alloca %User, align 8
-  %arr = alloca [4 x i8], align 1
-  %arr1 = alloca [7 x i8], align 1
   store %User zeroinitializer, %User* %u, align 8
   %u.id = getelementptr inbounds %User, %User* %u, i32 0, i32 0
   store i32 42, i32* %u.id, align 4
   %u.name = getelementptr inbounds %User, %User* %u, i32 0, i32 1
-  store [4 x i8] c"ura\00", [4 x i8]* %arr, align 1
-  %0 = getelementptr inbounds [4 x i8], [4 x i8]* %arr, i32 0, i32 0
-  store i8* %0, i8** %u.name, align 8
-  store [7 x i8] c"%s %d\0A\00", [7 x i8]* %arr1, align 1
-  %1 = getelementptr inbounds [7 x i8], [7 x i8]* %arr1, i32 0, i32 0
-  %u.name2 = getelementptr inbounds %User, %User* %u, i32 0, i32 1
-  %u.id3 = getelementptr inbounds %User, %User* %u, i32 0, i32 0
-  %"$u.name" = load i8*, i8** %u.name2, align 8
-  %"$u.id" = load i32, i32* %u.id3, align 4
-  %call.printf = call i32 (i8*, ...) @printf(i8* %1, i8* %"$u.name", i32 %"$u.id")
+  store i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i8** %u.name, align 8
+  %u.name1 = getelementptr inbounds %User, %User* %u, i32 0, i32 1
+  %u.id2 = getelementptr inbounds %User, %User* %u, i32 0, i32 0
+  %"$u.name" = load i8*, i8** %u.name1, align 8
+  %"$u.id" = load i32, i32* %u.id2, align 4
+  %call.printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.1, i32 0, i32 0), i8* %"$u.name", i32 %"$u.id")
   ret i32 0
 }
 ```
@@ -1342,6 +1339,8 @@ target triple = "x86_64-unknown-linux-gnu"
 
 %Counter = type { i32 }
 
+@str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+
 declare i32 @printf(i8*, ...)
 
 define void @Counter.tick(%Counter* %0) {
@@ -1360,7 +1359,6 @@ define i32 @main() {
 entry:
   %c = alloca %Counter, align 8
   %i = alloca i32, align 4
-  %arr = alloca [4 x i8], align 1
   store %Counter zeroinitializer, %Counter* %c, align 4
   store i32 0, i32* %i, align 4
   br label %while0
@@ -1378,11 +1376,9 @@ while0.then:                                      ; preds = %while0
   br label %while0
 
 endloop:                                          ; preds = %while0
-  store [4 x i8] c"%d\0A\00", [4 x i8]* %arr, align 1
-  %0 = getelementptr inbounds [4 x i8], [4 x i8]* %arr, i32 0, i32 0
   %c.n = getelementptr inbounds %Counter, %Counter* %c, i32 0, i32 0
   %"$c.n" = load i32, i32* %c.n, align 4
-  %call.printf = call i32 (i8*, ...) @printf(i8* %0, i32 %"$c.n")
+  %call.printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i32 %"$c.n")
   %c.n2 = getelementptr inbounds %Counter, %Counter* %c, i32 0, i32 0
   %"$c.n3" = load i32, i32* %c.n2, align 4
   ret i32 %"$c.n3"

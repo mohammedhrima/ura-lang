@@ -206,9 +206,19 @@ void check_type(Node *value, Node *expected, char *help) {
         check_struct_value(value, expected);
         return;
     }
-    Node *element = expected && expected->token->type == ARRAY ? expected->data_type : NULL;
-    bool wants_chars = element && element->token->type == INT && element->token->shift == 8;
-    if (value->token->type == CHARS && wants_chars) {
+    bool is_math = includes(
+        value->token->type, ADD, SUB, MUL, DIV, MOD, BAND, BOR, BXOR, LSHIFT, RSHIFT, 0
+    );
+    Node *math_type = is_math ? type_of(value) : NULL;
+    bool is_numeric = expected && math_type && expected->token->shift != 1 &&
+                      includes(expected->token->type, INT, FLOAT, 0) &&
+                      includes(math_type->token->type, INT, FLOAT, 0);
+    if (is_numeric) {
+        check_type(value->left, expected, help);
+        check_type(value->right, expected, help);
+        return;
+    }
+    if (value->token->type == CHARS && is_chars(expected)) {
         value->data_type = expected;
         return;
     }
@@ -368,7 +378,7 @@ void check_name(Node *node) {
             );
         return;
     }
-    Node *var = find_variable(token->name);
+    Node *var = find_variable(token->name, token->s);
     if (var == NULL) {
         add_error(
             token->s,
@@ -611,13 +621,46 @@ void check_member(Node *node) {
         );
 }
 
+void check_arg_count(Node *node) {
+    Node *fn = node->to_call;
+    Node *params = fn->args;
+    int count = params->children_count;
+    bool is_variadic = count && params->children[count - 1]->token->type == VARIADIC;
+    int needed = is_variadic ? count - 1 : count;
+    bool is_wrong = is_variadic ? node->children_count < needed : node->children_count != needed;
+    if (!is_wrong)
+        return;
+    char *signature = "";
+    for (int i = 0; i < count; i++) {
+        Node *param = params->children[i];
+        char *text = param->token->type == VARIADIC
+                         ? "..."
+                         : format("%s %s", param->token->name, type_name(param->data_type));
+        signature = format("%s%s%s", signature, i ? ", " : "", text);
+    }
+    char *ret = fn->ret_type ? format(" %s", type_name(fn->ret_type)) : "";
+    add_error(
+        node->token->s,
+        node->token->e,
+        format(
+            "'%s' takes %s%d argument%s, not %d",
+            fn->token->name,
+            is_variadic ? "at least " : "",
+            needed,
+            needed == 1 ? "" : "s",
+            node->children_count
+        ),
+        format("fn %s(%s)%s", fn->token->name, signature, ret)
+    );
+}
+
 void check_call(Node *node) {
     Token *token = node->token;
     char *name = token->name;
     node->to_call = find_function(name);
     if (node->to_call == NULL) {
         Node *like = find_function_like(name, 2);
-        if (find_variable(name))
+        if (find_variable(name, token->s))
             add_error(
                 token->s,
                 token->e,
@@ -641,12 +684,18 @@ void check_call(Node *node) {
             format("'%s' takes one argument, got %d", name, node->children_count),
             format("use %s(x)", name)
         );
+    for (int i = 0; i < node->children_count; i++)
+        analyze(node->children[i]);
+    Node *overload = find_overload(name, node->children, node->children_count);
+    if (overload)
+        node->to_call = overload;
     Node *params = node->to_call->args;
+    if (params && node->to_call->token->type == FN_DEC)
+        check_arg_count(node);
     bool is_write = node->to_call->token->type == WRITE;
     for (int i = 0; i < node->children_count; i++) {
-        analyze(node->children[i]);
         if (is_write && node->children[i]->token->type == CHARS)
-            check_type(node->children[i], new_type(ARRAY, 0, new_type(INT, 8, NULL)), NULL);
+            check_type(node->children[i], chars_type(), NULL);
         if (params == NULL || i >= params->children_count)
             continue;
         Node *param = params->children[i];

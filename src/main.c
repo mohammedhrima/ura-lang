@@ -837,7 +837,7 @@ Node *parse_type(void) {
     bool is_ref = token->type == REF && token->line == prev->line;
     Token *after = is_ref ? peek(1) : token;
     bool is_value_after = after->type == ID ?
-                          find_variable(after->name) != NULL :
+                          find_variable(after->name, after->s) != NULL :
                           !after->is_type;
     if (is_ref && !is_value_after) {
         next(); // SKIP &
@@ -958,7 +958,7 @@ Node *parse_prime() {
         append(node->children, new_builtin(WRITE, "errput", 2, NULL));
         append(
             node->children,
-            new_builtin(READ, "input", 0, new_type(ARRAY, 0, new_type(INT, 8, NULL)))
+            new_builtin(READ, "input", 0, chars_type())
         );
         append(
             node->children, new_builtin(SIZEOF, "sizeof", 0, new_type(INT, 32, NULL))
@@ -966,11 +966,11 @@ Node *parse_prime() {
         append(
             node->children,
             new_builtin(
-                TYPEOF, "typeof", 0, new_type(ARRAY, 0, new_type(INT, 8, NULL))
+                TYPEOF, "typeof", 0, chars_type()
             )
         );
         append(node->children, new_builtin(DROP, "drop", 0, NULL));
-        Node *bytes = new_type(ARRAY, 0, new_type(INT, 8, NULL));
+        Node *bytes = chars_type();
         Node *size = new_type(INT, 32, NULL);
         Node *void_type = new_type(VOID, 0, NULL);
         Node *memory_alloc = new_builtin(ALLOC, "memory_alloc", 0, bytes);
@@ -1085,6 +1085,15 @@ Node *parse_prime() {
                     Node *param = new_node(token);
                     next(); // skip ID
                     param->data_type = parse_type();
+                    if (param->data_type == NULL) {
+                        add_error(
+                            token->s,
+                            token->e,
+                            format("parameter '%s' has no type", token->name),
+                            format("like: %s i32", token->name)
+                        );
+                        param->data_type = new_type(INT, 32, NULL);
+                    }
                     append(node->right->children, param);
                 } else if (token->type == VARIADIC) {
                     // node->token->is_varg = true;
@@ -1413,8 +1422,10 @@ Node *parse_prime() {
         node = new_node(token);
         if (peek(0)->type == ID)
             node->token->name = next()->name;
-        else
+        else {
             expect(ID, "expected a struct name after 'struct'", " Name");
+            node->token->name = "";
+        }
         Node *parents = new_node(new_token(TYPES, token));
         bool has_parents = peek(0)->type == ID && strcmp2(peek(0)->name, "from");
         if (has_parents) {
@@ -1597,13 +1608,20 @@ Node *find_in_scope(Node *scope, char *name) {
     return found;
 }
 
-Node *find_variable(char *name) {
+Node *find_variable(char *name, int pos) {
     for (int i = ura.scopes_count - 1; i >= 0; i--) {
-        Node *curr = ura.scopes[i];
-        print(GREEN("find variable %s in %k\n"), name, curr->token);
-        Node *found = find_in_scope(curr, name);
-        if (found)
-            return found;
+        Node *scope = ura.scopes[i];
+        Node *param = scope->token->type == FN_DEC ? find_in_children(scope->args, name) : NULL;
+        if (param)
+            return param;
+        bool is_global = scope->token->type == SCOPE;
+        for (int j = 0; j < scope->children_count; j++) {
+            Node *child = scope->children[j];
+            if (child->token->type != DECLARE || !strcmp2(child->var->token->name, name))
+                continue;
+            if (is_global || child->var->token->s <= pos)
+                return child->var;
+        }
     }
     return NULL;
 }
@@ -1671,32 +1689,46 @@ Node *find_attr(Node *st, char *name, int *index) {
     return NULL;
 }
 
+bool fits_args(Node *fn, Node **args, int args_count, int self) {
+    if (fn->args->children_count != args_count + self)
+        return false;
+    for (int j = 0; j < args_count; j++) {
+        Node *type = fn->args->children[j + self]->data_type;
+        Node *found = type_of(args[j]);
+        bool is_unknown = found == NULL || type == NULL;
+        bool is_text = args[j]->token->type == CHARS && is_chars(type);
+        if (is_unknown || is_text || (is_number(args[j]) && is_number(type)))
+            continue;
+        bool takes_ref = type->token->type == REF && found->token->type != REF;
+        if (!same_type(found, takes_ref ? type->data_type : type))
+            return false;
+    }
+    return true;
+}
+
 Node *find_method(Node *st, char *name, Node **args, int args_count, bool is_pub) {
     int self = is_pub ? 0 : 1;
     for (int i = 0; i < st->children_count; i++) {
         Node *child = st->children[i];
         if (child->token->type != FN_DEC || child->token->is_pub != is_pub)
             continue;
-        if (!strcmp2(child->token->name, name))
-            continue;
-        if (child->args->children_count != args_count + self)
-            continue;
-        bool fits = true;
-        for (int j = 0; j < args_count && fits; j++) {
-            Node *type = child->args->children[j + self]->data_type;
-            Node *found = type_of(args[j]);
-            bool is_unknown = found == NULL || type == NULL;
-            Node *element = type && type->token->type == ARRAY ? type->data_type : NULL;
-            bool is_text = args[j]->token->type == CHARS && element &&
-                           element->token->type == INT && element->token->shift == 8;
-            if (is_unknown || is_text || (is_number(args[j]) && is_number(type)))
+        if (strcmp2(child->token->name, name) && fits_args(child, args, args_count, self))
+            return child;
+    }
+    return NULL;
+}
+
+Node *find_overload(char *name, Node **args, int args_count) {
+    for (int i = ura.scopes_count - 1; i >= 0; i--) {
+        Node *scope = ura.scopes[i];
+        for (int j = 0; j < scope->children_count; j++) {
+            Node *child = scope->children[j];
+            bool is_function = includes(child->token->type, FN_DEC, PROTO, 0) && child->args;
+            if (!is_function || !strcmp2(child->token->name, name))
                 continue;
-            bool takes_ref = type->token->type == REF && found->token->type != REF;
-            fits = same_type(found, takes_ref ? type->data_type : type);
+            if (fits_args(child, args, args_count, 0))
+                return child;
         }
-        if (!fits)
-            continue;
-        return child;
     }
     return NULL;
 }
@@ -1740,10 +1772,19 @@ Node *bool_type(void) {
     return new_type(INT, 1, NULL);
 }
 
+Node *chars_type(void) {
+    return new_type(ARRAY, 0, new_type(INT, 8, NULL));
+}
+
+bool is_chars(Node *type) {
+    Node *element = type && type->token->type == ARRAY ? type->data_type : NULL;
+    return element && element->token->type == INT && element->token->shift == 8;
+}
+
 Node *string_type(void) {
     Node *st = find_struct("String");
     if (st == NULL)
-        return new_type(ARRAY, 0, new_type(INT, 8, NULL));
+        return chars_type();
     Node *type = new_node(new_token(ID, NULL));
     type->token->name = st->token->name;
     type->token->is_type = true;
@@ -2089,29 +2130,20 @@ void codegen_try(Node *node) {
 }
 
 void codegen_uncaught(Ucg *try_stmt) {
-    Node *st = find_struct("Error");
-    int index = 0;
-    bool has_message = st && find_attr(st, "message", &index);
-    Node *text = has_message ? find_attr(st, "message", &index)->data_type->declared : NULL;
-    Node *c_str = text ? find_method(text, "c_str", NULL, 0, false) : NULL;
-    if (c_str) {
-        Ucg *catch_stmt = ucg_catch(try_stmt, st->token->ucg);
-        Ucg *place = ucg_get_attr(ucg_error(st->token->ucg), index);
-        Ucg *message = ucg_fn_call(
-            c_str->token->ucg,
+    Node *hook = find_function("uncaught");
+    bool has_one_param = hook && hook->args && hook->args->children_count == 1;
+    Node *param = has_one_param ? hook->args->children[0]->data_type : NULL;
+    Node *type = param && param->token->type == REF ? param->data_type : param;
+    if (type) {
+        Ucg *catch_stmt = ucg_catch(try_stmt, type->token->ucg);
+        Ucg *code = ucg_fn_call(
+            hook->token->ucg,
             (Ucg *[]){
-                ucg_ref(place),
+                ucg_ref(ucg_error(type->token->ucg)),
             },
             1
         );
-        ucg_write(
-            ucg_i32_value(2),
-            (Ucg *[]){
-                message,
-            },
-            1
-        );
-        ucg_ret(ucg_i32_value(1));
+        ucg_ret(code);
         ucg_end(catch_stmt);
     } else
         ucg_end_try(try_stmt);
@@ -3021,15 +3053,14 @@ char *parse_escaped(char *input, int s, int e) {
     while (s < e) {
         int c = -1;
         if (s < e - 1 && input[s] == '\\') {
-            char *str = escaped[input[s + 1]];
+            char *str = escaped[(unsigned char)input[s + 1]];
             if (str != NULL) {
                 c = str[0];
                 s += 2;
             }
         }
         if (c == -1)
-            c = input[s++];
-        assert(c >= 0);
+            c = (unsigned char)input[s++];
         res[r++] = c;
     }
     return res;

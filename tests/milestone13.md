@@ -2271,6 +2271,9 @@ target triple = "x86_64-unknown-linux-gnu"
 
 %Event = type { i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32 }
 
+@str = private unnamed_addr constant [11 x i8] c"ura + SDL2\00", align 1
+@str.1 = private unnamed_addr constant [31 x i8] c"window closed after %d frames\0A\00", align 1
+
 declare i32 @SDL_Init(i32)
 
 declare i8* @SDL_CreateWindow(i8*, i32, i32, i32, i32, i32)
@@ -2294,7 +2297,6 @@ entry:
   %width = alloca i32, align 4
   %height = alloca i32, align 4
   %window = alloca i8*, align 8
-  %arr = alloca [11 x i8], align 1
   %renderer = alloca i8*, align 8
   %y = alloca i32, align 4
   %x = alloca i32, align 4
@@ -2303,17 +2305,12 @@ entry:
   %event = alloca %Event, align 8
   %running = alloca i1, align 1
   %frames = alloca i32, align 4
-  %arr24 = alloca [21 x i8], align 1
-  %arr25 = alloca [9 x i8], align 1
-  %arr27 = alloca [31 x i8], align 1
   store i32 400, i32* %width, align 4
   store i32 300, i32* %height, align 4
   %call.SDL_Init = call i32 @SDL_Init(i32 32)
-  store [11 x i8] c"ura + SDL2\00", [11 x i8]* %arr, align 1
-  %0 = getelementptr inbounds [11 x i8], [11 x i8]* %arr, i32 0, i32 0
   %"$width" = load i32, i32* %width, align 4
   %"$height" = load i32, i32* %height, align 4
-  %call.SDL_CreateWindow = call i8* @SDL_CreateWindow(i8* %0, i32 805240832, i32 805240832, i32 %"$width", i32 %"$height", i32 0)
+  %call.SDL_CreateWindow = call i8* @SDL_CreateWindow(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str, i32 0, i32 0), i32 805240832, i32 805240832, i32 %"$width", i32 %"$height", i32 0)
   store i8* %call.SDL_CreateWindow, i8** %window, align 8
   %"$window" = load i8*, i8** %window, align 8
   %call.SDL_CreateRenderer = call i8* @SDL_CreateRenderer(i8* %"$window", i32 -1, i32 0)
@@ -2426,14 +2423,8 @@ endif3:                                           ; preds = %if5.then, %if5
 
 endloop4:                                         ; preds = %while2
   call void @SDL_Quit()
-  store [21 x i8] c"window closed after \00", [21 x i8]* %arr24, align 1
-  %1 = getelementptr inbounds [21 x i8], [21 x i8]* %arr24, i32 0, i32 0
-  store [9 x i8] c" frames\0A\00", [9 x i8]* %arr25, align 1
-  %2 = getelementptr inbounds [9 x i8], [9 x i8]* %arr25, i32 0, i32 0
-  %"$frames26" = load i32, i32* %frames, align 4
-  store [31 x i8] c"window closed after %d frames\0A\00", [31 x i8]* %arr27, align 1
-  %3 = getelementptr inbounds [31 x i8], [31 x i8]* %arr27, i32 0, i32 0
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %3, i32 %"$frames26")
+  %"$frames24" = load i32, i32* %frames, align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([31 x i8], [31 x i8]* @str.1, i32 0, i32 0), i32 %"$frames24")
   ret i32 0
 }
 
@@ -2498,24 +2489,14 @@ target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16
 target triple = "x86_64-unknown-linux-gnu"
 
 @name = global i8* null
+@str = private unnamed_addr constant [5 x i8] c"unix\00", align 1
+@str.1 = private unnamed_addr constant [13 x i8] c"%s sdl only\0A\00", align 1
 
 define i32 @main() {
 entry:
-  %arr = alloca [5 x i8], align 1
-  %arr1 = alloca [2 x i8], align 1
-  %arr2 = alloca [10 x i8], align 1
-  %arr3 = alloca [13 x i8], align 1
-  store [5 x i8] c"unix\00", [5 x i8]* %arr, align 1
-  %0 = getelementptr inbounds [5 x i8], [5 x i8]* %arr, i32 0, i32 0
-  store i8* %0, i8** @name, align 8
-  store [2 x i8] c" \00", [2 x i8]* %arr1, align 1
-  %1 = getelementptr inbounds [2 x i8], [2 x i8]* %arr1, i32 0, i32 0
-  store [10 x i8] c"sdl only\0A\00", [10 x i8]* %arr2, align 1
-  %2 = getelementptr inbounds [10 x i8], [10 x i8]* %arr2, i32 0, i32 0
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str, i32 0, i32 0), i8** @name, align 8
   %"$name" = load i8*, i8** @name, align 8
-  store [13 x i8] c"%s sdl only\0A\00", [13 x i8]* %arr3, align 1
-  %3 = getelementptr inbounds [13 x i8], [13 x i8]* %arr3, i32 0, i32 0
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %3, i8* %"$name")
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str.1, i32 0, i32 0), i8* %"$name")
   ret i32 0
 }
 
