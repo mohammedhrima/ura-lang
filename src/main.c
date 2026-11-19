@@ -1563,10 +1563,15 @@ Node *parse_expr(int min_op) {
         node->left = left;
         Token *token = node->token;
         if (peek(0)->type == LAST || peek(0)->line != token->line) {
+            char *what = "a value";
+            if (token->type == AS)
+                what = "a type";
+            else if (token->type == DOT)
+                what = "an attribute or method name";
             add_error(
                 token->s,
                 token->e,
-                format("expected a value after '%s'", token_text(token)),
+                format("expected %s after '%s'", what, token_text(token)),
                 NULL
             );
             return node;
@@ -1719,6 +1724,7 @@ Node *find_method(Node *st, char *name, Node **args, int args_count, bool is_pub
 }
 
 Node *find_overload(char *name, Node **args, int args_count) {
+    Node *proto = NULL;
     for (int i = ura.scopes_count - 1; i >= 0; i--) {
         Node *scope = ura.scopes[i];
         for (int j = 0; j < scope->children_count; j++) {
@@ -1726,11 +1732,14 @@ Node *find_overload(char *name, Node **args, int args_count) {
             bool is_function = includes(child->token->type, FN_DEC, PROTO, 0) && child->args;
             if (!is_function || !strcmp2(child->token->name, name))
                 continue;
-            if (fits_args(child, args, args_count, 0))
+            if (!fits_args(child, args, args_count, 0))
+                continue;
+            if (child->token->type == FN_DEC)
                 return child;
+            proto = proto ? proto : child;
         }
     }
-    return NULL;
+    return proto;
 }
 
 Node *find_struct(char *name) {
@@ -1909,6 +1918,8 @@ void analyze(Node *node) {
                     analyze(arg->data_type);
             }
         }
+        if (node->token->type == FN_DEC)
+            check_function(node, ura.scopes[ura.scopes_count - 2]);
 
         for (int i = 0; i < node->children_count; i++)
             analyze(node->children[i]);

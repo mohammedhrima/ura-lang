@@ -211,7 +211,7 @@
 - 207 — lexer: a function declaration missing its colon
 - 208 — lexer: a function declaration missing its name
 - 209 — lexer: a parameter missing its type
-- 210 — lexer: a function declaration missing its return type
+- 210 — function: a fn without a return type returns nothing
 - 211 — lexer: if and while missing their colon
 - 212 — lexer: proto not followed by fn
 - 213 — lexer: a struct declaration missing its name
@@ -8772,6 +8772,22 @@ fn main() i32:
     return dup()
 ```
 
+### stderr
+
+```
+error: test.ura:6:1 'dup' is already defined with these parameters
+  |
+6 | fn dup() i32:
+  | ^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
 ---
 
 ## 194 — function: calling a function that does not exist
@@ -8847,6 +8863,22 @@ fn main() i32:
     return 0
 ```
 
+### stderr
+
+```
+error: test.ura:7:10 expected 'i8[]', found 'i32'
+  |
+7 |     show(42)
+  |          ^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
 ---
 
 ## 197 — function: two parameters with the same name
@@ -8860,6 +8892,22 @@ fn add(a i32, a i32) i32:
 fn main() i32:
     output(add(1, 2), "\n")
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:3:15 'a' is already declared
+  |
+3 | fn add(a i32, a i32) i32:
+  |               ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---
@@ -9111,6 +9159,22 @@ fn main() i32:
     return 0
 ```
 
+### stderr
+
+```
+error: test.ura:4:15 expected a type after 'as'
+  |
+4 |     a i32 = 5 as
+  |               ^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
 ---
 
 ## 206 — lexer: a call with no closing parenthesis
@@ -9241,10 +9305,11 @@ error: aborting due to 1 error
 
 ---
 
-## 210 — lexer: a function declaration missing its return type
+## 210 — function: a fn without a return type returns nothing
 
 ```ura
-// error: Expected <data type> after function greet
+// stdout: hi
+// expect: 0
 
 fn greet():
     output("hi\n")
@@ -9252,6 +9317,31 @@ fn greet():
 fn main() i32:
     greet()
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@str = private unnamed_addr constant [4 x i8] c"hi\0A\00", align 1
+
+define void @greet() {
+entry:
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0))
+  ret void
+}
+
+define i32 @main() {
+entry:
+  call void @greet()
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -9297,6 +9387,23 @@ proto x i32
 fn main() i32:
     output("hi\n")
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:3:9 expected '(' after the function name
+  |
+3 | proto x i32
+  |         ^^^
+help: use proto x() i32
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---
@@ -9375,6 +9482,22 @@ fn main() i32:
     p Point
     p.
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:10:6 expected an attribute or method name after '.'
+   |
+10 |     p.
+   |      ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---
@@ -10330,6 +10453,199 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@str = private unnamed_addr constant [5 x i8] c"True\00", align 1
+@str.1 = private unnamed_addr constant [6 x i8] c"False\00", align 1
+@str.2 = private unnamed_addr constant [17 x i8] c"can_proceed: %s\0A\00", align 1
+@str.3 = private unnamed_addr constant [5 x i8] c"True\00", align 1
+@str.4 = private unnamed_addr constant [6 x i8] c"False\00", align 1
+@str.5 = private unnamed_addr constant [17 x i8] c"escape:      %s\0A\00", align 1
+@str.6 = private unnamed_addr constant [5 x i8] c"True\00", align 1
+@str.7 = private unnamed_addr constant [6 x i8] c"False\00", align 1
+@str.8 = private unnamed_addr constant [17 x i8] c"blocked:     %s\0A\00", align 1
+@str.9 = private unnamed_addr constant [13 x i8] c"hero fights\0A\00", align 1
+@str.10 = private unnamed_addr constant [15 x i8] c"hero retreats\0A\00", align 1
+@str.11 = private unnamed_addr constant [15 x i8] c"hero advances\0A\00", align 1
+@str.12 = private unnamed_addr constant [5 x i8] c"True\00", align 1
+@str.13 = private unnamed_addr constant [6 x i8] c"False\00", align 1
+@str.14 = private unnamed_addr constant [13 x i8] c"!!alive: %s\0A\00", align 1
+
+define i1 @is_alive(i32 %0) {
+entry:
+  %hp = alloca i32, align 4
+  store i32 %0, i32* %hp, align 4
+  %"$hp" = load i32, i32* %hp, align 4
+  %GT = icmp sgt i32 %"$hp", 0
+  ret i1 %GT
+}
+
+define i1 @has_key(i32 %0) {
+entry:
+  %keys = alloca i32, align 4
+  store i32 %0, i32* %keys, align 4
+  %"$keys" = load i32, i32* %keys, align 4
+  %GT = icmp sgt i32 %"$keys", 0
+  ret i1 %GT
+}
+
+define i32 @main() {
+entry:
+  %hp = alloca i32, align 4
+  %keys = alloca i32, align 4
+  %exhausted = alloca i1, align 1
+  %can_proceed = alloca i1, align 1
+  %bool.text = alloca i8*, align 8
+  %escape = alloca i1, align 1
+  %bool.text9 = alloca i8*, align 8
+  %blocked = alloca i1, align 1
+  %bool.text14 = alloca i8*, align 8
+  %alive = alloca i1, align 1
+  %bool.text34 = alloca i8*, align 8
+  store i32 60, i32* %hp, align 4
+  store i32 1, i32* %keys, align 4
+  store i1 false, i1* %exhausted, align 1
+  %"$hp" = load i32, i32* %hp, align 4
+  %call.is_alive = call i1 @is_alive(i32 %"$hp")
+  %"$keys" = load i32, i32* %keys, align 4
+  %call.has_key = call i1 @has_key(i32 %"$keys")
+  %AND = and i1 %call.is_alive, %call.has_key
+  %"$exhausted" = load i1, i1* %exhausted, align 1
+  %NOT = xor i1 %"$exhausted", true
+  %AND6 = and i1 %AND, %NOT
+  store i1 %AND6, i1* %can_proceed, align 1
+  %"$can_proceed" = load i1, i1* %can_proceed, align 1
+  store i8* null, i8** %bool.text, align 8
+  br label %if0
+
+if0:                                              ; preds = %entry
+  br i1 %"$can_proceed", label %if0.then, label %else1
+
+if0.then:                                         ; preds = %if0
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str, i32 0, i32 0), i8** %bool.text, align 8
+  br label %endif
+
+else1:                                            ; preds = %if0
+  store i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.1, i32 0, i32 0), i8** %bool.text, align 8
+  br label %endif
+
+endif:                                            ; preds = %else1, %if0.then
+  %"$bool.text" = load i8*, i8** %bool.text, align 8
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([17 x i8], [17 x i8]* @str.2, i32 0, i32 0), i8* %"$bool.text")
+  %"$hp7" = load i32, i32* %hp, align 4
+  %LT = icmp slt i32 %"$hp7", 10
+  %"$keys8" = load i32, i32* %keys, align 4
+  %EQ = icmp eq i32 %"$keys8", 0
+  %OR = or i1 %LT, %EQ
+  store i1 %OR, i1* %escape, align 1
+  %"$escape" = load i1, i1* %escape, align 1
+  store i8* null, i8** %bool.text9, align 8
+  br label %if2
+
+if2:                                              ; preds = %endif
+  br i1 %"$escape", label %if2.then, label %else3
+
+if2.then:                                         ; preds = %if2
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.3, i32 0, i32 0), i8** %bool.text9, align 8
+  br label %endif1
+
+else3:                                            ; preds = %if2
+  store i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.4, i32 0, i32 0), i8** %bool.text9, align 8
+  br label %endif1
+
+endif1:                                           ; preds = %else3, %if2.then
+  %"$bool.text10" = load i8*, i8** %bool.text9, align 8
+  %call.dprintf11 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([17 x i8], [17 x i8]* @str.5, i32 0, i32 0), i8* %"$bool.text10")
+  %"$can_proceed12" = load i1, i1* %can_proceed, align 1
+  %NOT13 = xor i1 %"$can_proceed12", true
+  store i1 %NOT13, i1* %blocked, align 1
+  %"$blocked" = load i1, i1* %blocked, align 1
+  store i8* null, i8** %bool.text14, align 8
+  br label %if4
+
+if4:                                              ; preds = %endif1
+  br i1 %"$blocked", label %if4.then, label %else5
+
+if4.then:                                         ; preds = %if4
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.6, i32 0, i32 0), i8** %bool.text14, align 8
+  br label %endif2
+
+else5:                                            ; preds = %if4
+  store i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.7, i32 0, i32 0), i8** %bool.text14, align 8
+  br label %endif2
+
+endif2:                                           ; preds = %else5, %if4.then
+  %"$bool.text15" = load i8*, i8** %bool.text14, align 8
+  %call.dprintf16 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([17 x i8], [17 x i8]* @str.8, i32 0, i32 0), i8* %"$bool.text15")
+  br label %if6
+
+if6:                                              ; preds = %endif2
+  %"$hp17" = load i32, i32* %hp, align 4
+  %call.is_alive18 = call i1 @is_alive(i32 %"$hp17")
+  %"$exhausted19" = load i1, i1* %exhausted, align 1
+  %NOT20 = xor i1 %"$exhausted19", true
+  %AND21 = and i1 %call.is_alive18, %NOT20
+  br i1 %AND21, label %if6.then, label %endif3
+
+if6.then:                                         ; preds = %if6
+  %call.dprintf22 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str.9, i32 0, i32 0))
+  br label %endif3
+
+endif3:                                           ; preds = %if6.then, %if6
+  br label %if7
+
+if7:                                              ; preds = %endif3
+  %"$hp23" = load i32, i32* %hp, align 4
+  %LT24 = icmp slt i32 %"$hp23", 10
+  %"$keys25" = load i32, i32* %keys, align 4
+  %EQ26 = icmp eq i32 %"$keys25", 0
+  %OR27 = or i1 %LT24, %EQ26
+  br i1 %OR27, label %if7.then, label %else8
+
+if7.then:                                         ; preds = %if7
+  %call.dprintf28 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([15 x i8], [15 x i8]* @str.10, i32 0, i32 0))
+  br label %endif4
+
+else8:                                            ; preds = %if7
+  %call.dprintf29 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([15 x i8], [15 x i8]* @str.11, i32 0, i32 0))
+  br label %endif4
+
+endif4:                                           ; preds = %else8, %if7.then
+  %"$hp30" = load i32, i32* %hp, align 4
+  %call.is_alive31 = call i1 @is_alive(i32 %"$hp30")
+  store i1 %call.is_alive31, i1* %alive, align 1
+  %"$alive" = load i1, i1* %alive, align 1
+  %NOT32 = xor i1 %"$alive", true
+  %NOT33 = xor i1 %NOT32, true
+  store i8* null, i8** %bool.text34, align 8
+  br label %if9
+
+if9:                                              ; preds = %endif4
+  br i1 %NOT33, label %if9.then, label %else10
+
+if9.then:                                         ; preds = %if9
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.12, i32 0, i32 0), i8** %bool.text34, align 8
+  br label %endif5
+
+else10:                                           ; preds = %if9
+  store i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.13, i32 0, i32 0), i8** %bool.text34, align 8
+  br label %endif5
+
+endif5:                                           ; preds = %else10, %if9.then
+  %"$bool.text35" = load i8*, i8** %bool.text34, align 8
+  %call.dprintf36 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str.14, i32 0, i32 0), i8* %"$bool.text35")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 228 — operator: and / or with comparisons and precedence
@@ -10495,6 +10811,23 @@ fn main() i32:
     return twice + 1
 ```
 
+### stderr
+
+```
+error: test.ura:6:12 'twice' is a function, not a value
+  |
+6 |     return twice + 1
+  |            ^^^^^
+help: call it: twice(...)
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
 ---
 
 ## 230 — operator: a comparison result is a bool, not an i32
@@ -10506,6 +10839,22 @@ fn main() i32:
     a i32 = 5
     n i32 = a < 9
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:5:15 expected 'i32', found 'bool'
+  |
+5 |     n i32 = a < 9
+  |               ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---
@@ -10692,6 +11041,81 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@str = private unnamed_addr constant [7 x i8] c"Aldric\00", align 1
+@str.1 = private unnamed_addr constant [11 x i8] c"name:  %s\0A\00", align 1
+@str.2 = private unnamed_addr constant [11 x i8] c"hp:    %d\0A\00", align 1
+@str.3 = private unnamed_addr constant [13 x i8] c"xp:    %lld\0A\00", align 1
+@str.4 = private unnamed_addr constant [11 x i8] c"level: %d\0A\00", align 1
+@str.5 = private unnamed_addr constant [11 x i8] c"grade: %c\0A\00", align 1
+@str.6 = private unnamed_addr constant [5 x i8] c"True\00", align 1
+@str.7 = private unnamed_addr constant [6 x i8] c"False\00", align 1
+@str.8 = private unnamed_addr constant [11 x i8] c"alive: %s\0A\00", align 1
+@str.9 = private unnamed_addr constant [11 x i8] c"ratio: %f\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %name = alloca i8*, align 8
+  %hp = alloca i32, align 4
+  %xp = alloca i64, align 8
+  %level = alloca i16, align 2
+  %grade = alloca i8, align 1
+  %alive = alloca i1, align 1
+  %ratio = alloca float, align 4
+  %bool.text = alloca i8*, align 8
+  store i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i8** %name, align 8
+  store i32 100, i32* %hp, align 4
+  store i64 999999, i64* %xp, align 8
+  store i16 12, i16* %level, align 2
+  store i8 83, i8* %grade, align 1
+  store i1 true, i1* %alive, align 1
+  store float 0x3FEB333340000000, float* %ratio, align 4
+  %"$name" = load i8*, i8** %name, align 8
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.1, i32 0, i32 0), i8* %"$name")
+  %"$hp" = load i32, i32* %hp, align 4
+  %call.dprintf1 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.2, i32 0, i32 0), i32 %"$hp")
+  %"$xp" = load i64, i64* %xp, align 8
+  %call.dprintf2 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str.3, i32 0, i32 0), i64 %"$xp")
+  %"$level" = load i16, i16* %level, align 2
+  %AS = sext i16 %"$level" to i32
+  %call.dprintf3 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.4, i32 0, i32 0), i32 %AS)
+  %"$grade" = load i8, i8* %grade, align 1
+  %AS4 = sext i8 %"$grade" to i32
+  %call.dprintf5 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.5, i32 0, i32 0), i32 %AS4)
+  %"$alive" = load i1, i1* %alive, align 1
+  store i8* null, i8** %bool.text, align 8
+  br label %if0
+
+if0:                                              ; preds = %entry
+  br i1 %"$alive", label %if0.then, label %else1
+
+if0.then:                                         ; preds = %if0
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.6, i32 0, i32 0), i8** %bool.text, align 8
+  br label %endif
+
+else1:                                            ; preds = %if0
+  store i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.7, i32 0, i32 0), i8** %bool.text, align 8
+  br label %endif
+
+endif:                                            ; preds = %else1, %if0.then
+  %"$bool.text" = load i8*, i8** %bool.text, align 8
+  %call.dprintf6 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.8, i32 0, i32 0), i8* %"$bool.text")
+  %"$ratio" = load float, float* %ratio, align 4
+  %AS7 = fpext float %"$ratio" to double
+  %call.dprintf8 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.9, i32 0, i32 0), double %AS7)
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 234 — variable: a use before a shadowing declaration binds to the outer one
@@ -10808,6 +11232,22 @@ fn main() i32:
     return a
 ```
 
+### stderr
+
+```
+error: test.ura:5:5 'a' is already declared
+  |
+5 |     a i32 = 2
+  |     ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
 ---
 
 ## 236 — variable: using a name that was never declared
@@ -10821,6 +11261,23 @@ fn main() i32:
     return 0
 ```
 
+### stderr
+
+```
+error: test.ura:5:12 undeclared variable 'y'
+  |
+5 |     output(y, "\n")
+  |            ^
+help: declare it first, like: y i32 = 0
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
 ---
 
 ## 237 — variable: assigning to a name that was never declared
@@ -10832,6 +11289,28 @@ fn main() i32:
     score = 100
     output(score, "\n")
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:4:5 undeclared variable 'score'
+  |
+4 |     score = 100
+  |     ^^^^^
+help: declare it first, like: score i32 = 0
+error: test.ura:5:12 undeclared variable 'score'
+  |
+5 |     output(score, "\n")
+  |            ^^^^^
+help: declare it first, like: score i32 = 0
+error: aborting due to 2 errors
+```
+
+### status
+
+```
+1
 ```
 
 ---
@@ -10849,6 +11328,23 @@ fn main() i32:
     return 0
 ```
 
+### stderr
+
+```
+error: test.ura:7:12 undeclared variable 'y'
+  |
+7 |     output(y, "\n")
+  |            ^
+help: declare it first, like: y i32 = 0
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
 ---
 
 ## 239 — variable: redeclaring a global
@@ -10864,6 +11360,22 @@ fn main() i32:
     return 0
 ```
 
+### stderr
+
+```
+error: test.ura:4:1 'score' is already declared
+  |
+4 | score i32 = 10
+  | ^^^^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
 ---
 
 ## 240 — variable: a bool takes only True or False
@@ -10874,6 +11386,22 @@ fn main() i32:
 fn main() i32:
     b bool = 5
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:4:14 expected 'bool', found 'i32'
+  |
+4 |     b bool = 5
+  |              ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---
@@ -10892,6 +11420,26 @@ fn main() i32:
     b i32 = p
     output(a, b, "\n")
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:7:13 expected 'i32', found 'String'
+  |
+7 |     a i32 = "hello"
+  |             ^^^^^^^
+error: test.ura:9:13 expected 'i32', found 'Point'
+  |
+9 |     b i32 = p
+  |             ^
+error: aborting due to 2 errors
+```
+
+### status
+
+```
+1
 ```
 
 ---

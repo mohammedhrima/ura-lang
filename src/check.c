@@ -379,6 +379,15 @@ void check_name(Node *node) {
         return;
     }
     Node *var = find_variable(token->name, token->s);
+    if (var == NULL && find_function(token->name)) {
+        add_error(
+            token->s,
+            token->e,
+            format("'%s' is a function, not a value", token->name),
+            format("call it: %s(...)", token->name)
+        );
+        return;
+    }
     if (var == NULL) {
         add_error(
             token->s,
@@ -419,6 +428,52 @@ void check_match(Node *node) {
         Token *branch = node->children[i]->token;
         if (branch->type == DEFAULT)
             add_error(branch->s, branch->e, "default must be the last branch of a match", NULL);
+    }
+}
+
+void check_function(Node *node, Node *scope) {
+    Node **params = node->args->children;
+    int count = node->args->children_count;
+    for (int i = 0; i < count; i++)
+        for (int j = 0; j < i; j++)
+            if (strcmp2(params[i]->token->name, params[j]->token->name))
+                add_error(
+                    params[i]->token->s,
+                    params[i]->token->e,
+                    format("'%s' is already declared", params[i]->token->name),
+                    NULL
+                );
+    for (int i = 0; i < scope->children_count; i++) {
+        Node *other = scope->children[i];
+        bool is_function = includes(other->token->type, FN_DEC, PROTO, 0) && other != node;
+        bool is_same_name = is_function && strcmp2(other->token->name, node->token->name);
+        if (!is_same_name || other->args->children_count != count)
+            continue;
+        bool is_same = true;
+        for (int j = 0; j < count && is_same; j++)
+            is_same = same_type(other->args->children[j]->data_type, params[j]->data_type);
+        bool is_earlier_fn = other->token->type == FN_DEC && other->token->s < node->token->s;
+        bool is_proto = other->token->type == PROTO;
+        Node *ret = ret_type_of(node);
+        if (is_same && is_earlier_fn)
+            add_error(
+                node->token->s,
+                node->token->e,
+                format("'%s' is already defined with these parameters", node->token->name),
+                NULL
+            );
+        else if (is_same && is_proto && !same_type(ret, ret_type_of(other)))
+            add_error(
+                node->token->s,
+                node->token->e,
+                format(
+                    "'%s' returns '%s', but its proto returns '%s'",
+                    node->token->name,
+                    type_name(ret),
+                    type_name(ret_type_of(other))
+                ),
+                "a fn replaces a proto only when both have the same parameters and return type"
+            );
     }
 }
 
