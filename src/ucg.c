@@ -103,7 +103,7 @@ enum Type {
 
     GT, LT, GE, LE, EQ, NQ,
 
-    AND, OR, NOT, NEG,
+    AND, OR, NOT, NEG, BNOT,
 
     PROTO, 
     FN_DEC, ARGS, VARIADIC, FN_CALL, RETURN, WRITE, READ,
@@ -3783,7 +3783,7 @@ const char *to_string(Type type) {
 		[GT] = "GT", [LT] = "LT", [GE] = "GE",
 		[LE] = "LE", [EQ] = "EQ", [NQ] = "NQ",
 
-		[AND] = "AND", [OR] = "OR", [NOT] = "NOT", [NEG] = "NEG",
+		[AND] = "AND", [OR] = "OR", [NOT] = "NOT", [NEG] = "NEG", [BNOT] = "BNOT",
 
 		[PROTO] = "PROTO", [FN_ENTRY] = "FN_ENTRY",
 		[FN_DEC] = "FN_DEC", [ARGS] = "ARGS",

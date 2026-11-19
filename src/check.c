@@ -494,20 +494,23 @@ void check_type(Node *value, Node *expected, char *help) {
     if (found == NULL || expected == NULL || unknown)
         return;
     Token *token = value->token;
-    if (is_number(value) && is_number(expected)) {
+    bool is_negated = token->type == NEG && is_number(value->operand);
+    Node *literal_number = is_negated ? value->operand : value;
+    if (is_number(literal_number) && is_number(expected)) {
+        Token *digits = literal_number->token;
         int bits = expected->token->shift - !expected->token->is_uint;
         long long max = bits == 64 ? ~0ULL >> 1 : (1ULL << bits) - 1;
         long long min = expected->token->is_uint ? 0 : -max - 1;
-        long long number = token->num.value;
+        long long number = is_negated ? -digits->num.value : digits->num.value;
         if (number < min || number > max)
             add_error(
                 token->s,
-                token->e,
+                digits->e,
                 format("%lld doesn't fit in %s", number, type_name(expected)),
                 format("%s goes from %lld to %lld", type_name(expected), min, max)
             );
-        token->shift = expected->token->shift;
-        token->is_uint = expected->token->is_uint;
+        digits->shift = expected->token->shift;
+        digits->is_uint = expected->token->is_uint;
         return;
     }
     bool is_real = value->token->type == FLOAT && !value->token->is_type;
@@ -918,7 +921,17 @@ void check_function(Node *node, Node *scope) {
                    : "'pub' may only be used inside a struct",
             NULL
         );
-    if (is_operator && count > 2)
+    bool is_drop = is_operator && strcmp2(token->name, "drop");
+    bool returns_value = ret_type_of(node)->token->type != VOID;
+    if (is_drop && (count > 1 || returns_value))
+        add_error(
+            token->s,
+            token->e,
+            count > 1 ? "operator drop takes no parameters"
+                      : "operator drop returns nothing",
+            "write operator drop():"
+        );
+    if (is_operator && count > 2 && !is_drop)
         add_error(
             token->s,
             token->e,
@@ -1096,15 +1109,33 @@ void check_array(Node *node) {
     );
 }
 
-void check_neg(Node *node) {
+void check_cast(Node *node) {
+    Node *from = type_of(node->left);
+    Node *to = node->to_type;
+    if (from == NULL || to == NULL || same_type(from, to))
+        return;
+    bool has_struct = from->token->type == ID || to->token->type == ID;
+    if (!has_struct)
+        return;
+    add_error(
+        node->token->s,
+        node->token->e,
+        format("can't cast '%s' to '%s'", type_name(from), type_name(to)),
+        NULL
+    );
+}
+
+void check_unary(Node *node) {
     Token *token = node->token;
     Node *type = type_of(node->operand);
-    if (type == NULL || is_numeric(type))
+    bool is_integer = is_numeric(type) && type->token->type == INT;
+    bool fits = token->type == BNOT ? is_integer : is_numeric(type);
+    if (type == NULL || fits)
         return;
     add_error(
         token->s,
         token->e,
-        format("can't apply '-' to '%s'", type_name(type)),
+        format("can't apply '%s' to '%s'", binary_ops[token->type], type_name(type)),
         NULL
     );
 }
@@ -1319,6 +1350,19 @@ void check_member(Node *node) {
         call->to_call = find_method(
             st, call->token->name, call->children, call->children_count, false
         );
+        bool is_operator = call->to_call && call->to_call->args->symbol;
+        if (is_operator) {
+            char *name = call->token->name;
+            add_error(
+                call->token->s,
+                call->token->e,
+                format("operator %s is not a method", name),
+                strcmp2(name, "drop")
+                    ? format("write drop(%s) to drop it early", token_text(base))
+                    : NULL
+            );
+            return;
+        }
         if (call->to_call == NULL) {
             Node *named = find_method_named(st, call->token->name);
             char *message = format("'%s' has no method '%s'", st->token->name, call->token->name);
@@ -1449,6 +1493,14 @@ void check_call(Node *node) {
             continue;
         Node *arg = node->children[i];
         bool takes_ref = param->data_type && param->data_type->token->type == REF;
+        bool is_member = includes(arg->token->type, DOT, DOUBLE_DOTS, 0);
+        Node *call = is_member ? arg->right : arg;
+        bool is_ref_call = call->token->type == FN_CALL && lives_in_variable(arg);
+        if (takes_ref && is_ref_call) {
+            Node *ref = new_node(new_token(REF, arg->token));
+            ref->operand = arg;
+            node->children[i] = arg = ref;
+        }
         bool is_variable = arg->token->type != REF && lives_in_variable(arg);
         char *help = NULL;
         if (takes_ref && is_variable)
@@ -1549,14 +1601,42 @@ void check_operation(Node *node) {
         );
         return;
     }
+    bool is_bitwise = includes(
+        node->token->type,
+        BAND,
+        BOR,
+        BXOR,
+        LSHIFT,
+        RSHIFT,
+        BAND_ASSIGN,
+        BOR_ASSIGN,
+        BXOR_ASSIGN,
+        LSHIFT_ASSIGN,
+        RSHIFT_ASSIGN,
+        0
+    );
+    bool is_left_real = left_type && left_type->token->type == FLOAT;
+    bool is_right_real = right_type && right_type->token->type == FLOAT;
+    if (is_bitwise && (is_left_real || is_right_real)) {
+        Node *real = is_left_real ? left_type : right_type;
+        add_error(
+            node->token->s,
+            node->token->e,
+            format("can't apply '%s' to '%s'", binary_ops[node->token->type], type_name(real)),
+            "bitwise operators work on integers"
+        );
+        return;
+    }
     bool is_logic = includes(node->token->type, AND, OR, 0);
     Node *left_bool = type_of(node->left);
     bool is_left_bool = !left_bool || same_type(left_bool, bool_type());
     bool is_address = node->right->token->type == REF;
     Node *ref_type = node->left->data_type;
+    bool is_both_numbers = is_number(node->left) && is_number(node->right);
+    bool is_left_wider = is_both_numbers && node->left->token->shift > node->right->token->shift;
     if (is_ref_binding(node))
         check_type(node->right, is_address ? ref_type : ref_type->data_type, NULL);
-    else if (!is_logic && is_number(node->left))
+    else if (!is_logic && is_number(node->left) && !is_left_wider)
         check_type(node->left, type_of(node->right), NULL);
     else if (!is_logic)
         check_type(node->right, type_of(node->left), NULL);

@@ -216,7 +216,7 @@ struct {
 
     { ">=", GE },         { "<=", LE },         { ">", GT },
     { "<", LT },          { "==", EQ },         { "!=", NQ },
-    { "!", NOT },
+    { "!", NOT },         { "~", BNOT },
 
     { "=", ASSIGN },      { ",", COMA },        { "&&", AND },
     { "||", OR },         { "&", REF },         { "|", BOR },
@@ -242,6 +242,7 @@ char *binary_ops[LAST + 1] = {
 
     [AND] = "&&",       [OR] = "||",
     [AND_LIT] = "and",  [OR_LIT] = "or",
+    [NEG] = "-",        [BNOT] = "~",
 };
 
 int precedence[LAST + 1] = {
@@ -366,8 +367,8 @@ Token *parse_num(int s, int e, int space) {
     Token *new = new_token(INT, NULL);
     char *buff = ura.file->buff;
 
-    new->num.value = strtol(buff + s, NULL, 10);
-    new->shift = 32;
+    new->num.value = strtoll(buff + s, NULL, 10);
+    new->shift = new->num.value > 2147483647 ? 64 : 32;
     if (memchr(buff + s, '.', e - s)) {
         new->type = FLOAT;
         new->num.real = strtod(buff + s, NULL);
@@ -999,9 +1000,10 @@ Node *parse_prime() {
         node = parse_expr(0);
         expect(RPARENT, "expected ')' to close this '('", ")");
         return node;
-    }
-    case SUB: {
-        token->type = NEG;
+    } // clang-format off
+    case SUB: case BNOT: { // clang-format on
+        if (token->type == SUB)
+            token->type = NEG;
         node = new_node(token);
         node->operand = parse_expr(precedence[DOT] - 1);
         return node;
@@ -1754,6 +1756,11 @@ Node *type_of(Node *node) {
         Node *type = type_of(node->operand);
         return is_numeric(type) ? type : NULL;
     }
+    case BNOT: {
+        Node *type = type_of(node->operand);
+        bool is_integer = is_numeric(type) && type->token->type == INT;
+        return is_integer ? type : NULL;
+    }
     case COPY:      return type_of(node->to_copy);
     case LT: case GT: case EQ: case LE: case GE: case NQ:
     case AND: case OR: case NOT: return bool_type();
@@ -1879,10 +1886,10 @@ void analyze(Node *node) {
     case LINK: {
         check_link(node);
         break;
-    }
-    case NEG: {
+    } // clang-format off
+    case NEG: case BNOT: { // clang-format on
         analyze(node->operand);
-        check_neg(node);
+        check_unary(node);
         break;
     }
     case NOT: {
@@ -1903,6 +1910,9 @@ void analyze(Node *node) {
     }
     case AS: {
         analyze(node->left);
+        if (node->to_type)
+            analyze(node->to_type);
+        check_cast(node);
         break;
     }
     case LCBRACK: {
@@ -1955,14 +1965,15 @@ void codegen_drop(Ucg *place, Node *type) {
         ucg_fn_call(drop->token->ucg, &self, 1);
     }
     Node *st = type->declared;
-    int index = 0;
-    for (int i = 0; i < st->children_count; i++) {
+    for (int i = st->children_count - 1; i >= 0; i--) {
         Node *attr = st->children[i];
         if (attr->token->type != DECLARE)
             continue;
-        if (needs_drop(attr->var->data_type))
-            codegen_drop(ucg_get_attr(place, index), attr->var->data_type);
-        index++;
+        if (!needs_drop(attr->var->data_type))
+            continue;
+        int index = 0;
+        find_attr(st, attr->var->token->name, &index);
+        codegen_drop(ucg_get_attr(place, index), attr->var->data_type);
     }
 }
 
@@ -1972,6 +1983,14 @@ void codegen_clean(Ucg *place, Node *type) {
     ucg_clean(place);
     codegen_drop(place, type);
     ucg_clean_end();
+}
+
+void codegen_global_drops(Node *scope) {
+    for (int i = 0; i < scope->children_count; i++) {
+        Node *child = scope->children[i];
+        if (child->token->type == DECLARE)
+            codegen_clean(child->var->token->ucg, child->var->data_type);
+    }
 }
 
 void codegen_drop_temporaries(void) {
@@ -2362,6 +2381,7 @@ void codegen(Node *node) {
         if (!has_main) {
             Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL, 0);
             codegen_statements(node);
+            codegen_global_drops(node);
             ucg_end(fn_main);
         }
         for (int i = 0; i < node->children_count; i++) {
@@ -2383,8 +2403,10 @@ void codegen(Node *node) {
         }
         bool is_main = parent->token->type == SCOPE && strcmp2(node->token->name, "main");
         Ucg *try_stmt = is_main && ura.throws ? ucg_try() : NULL;
-        if (is_main)
+        if (is_main) {
             codegen_statements(parent);
+            codegen_global_drops(parent);
+        }
         codegen_block(node, 0);
         if (try_stmt)
             codegen_uncaught(try_stmt);
@@ -2582,6 +2604,13 @@ void codegen(Node *node) {
     case NEG: {
         codegen(node->operand);
         node->token->ucg = ucg_neg(node->operand->token->ucg);
+        break;
+    }
+    case BNOT: {
+        codegen(node->operand);
+        Node *type = type_of(node->operand);
+        Ucg *ones = ucg_int_value(type->token->shift, -1);
+        node->token->ucg = ucg_op(BXOR, node->operand->token->ucg, ones);
         break;
     }
     case NOT: {
