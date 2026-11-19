@@ -111,7 +111,7 @@ enum Type {
     LINK, USE, MACRO_IF, MACRO_ELIF, MACRO_ELSE, MACRO_ERROR,
 	FN_ENTRY,
     SIZEOF, TYPEOF, DROP, COPY, IS_ZERO, ALLOC, MEMCPY, FREE,
-    AS, FROM, AND_LIT, OR_LIT, SELF, FOR, IN, MODULE,
+    AS, FROM, AND_LIT, OR_LIT, SELF, FOR, IN, MODULE, ARGC, ARGV,
 	BLOC,
     IF, ELIF, ELSE, THEN,
     LOOP, BRK, CNT, MATCH, CASE, DEFAULT, CLEAN,
@@ -255,6 +255,9 @@ struct {
     Ucg *alloc_fn;
     Ucg *copy_fn;
     Ucg *free_fn;
+    Ucg *argc;
+    Ucg *argv;
+    bool has_args;
 
     expand(Ucg *, blocks);
     int clean_start;
@@ -335,6 +338,9 @@ void ucg_start(char *name) {
     gb_ucg.alloc_fn = NULL;
     gb_ucg.copy_fn = NULL;
     gb_ucg.free_fn = NULL;
+    gb_ucg.argc = NULL;
+    gb_ucg.argv = NULL;
+    gb_ucg.has_args = false;
     zero_init(gb_ucg.libs);
     gb_ucg.module = LLVMModuleCreateWithNameInContext(name, gb_ucg.context);
     gb_ucg.builder = LLVMCreateBuilderInContext(gb_ucg.context);
@@ -1364,6 +1370,58 @@ Ucg *ucg_global(char *name, Ucg *data_type) {
     return new;
 }
 
+void ucg_main_globals(void) {
+    if (gb_ucg.argc)
+        return;
+    gb_ucg.argc = ucg_new(GLOBAL);
+    gb_ucg.argc->name = "ucg.argc";
+    gb_ucg.argc->data_type = ucg_i32_type();
+    gb_ucg.argv = ucg_new(GLOBAL);
+    gb_ucg.argv->name = "ucg.argv";
+    gb_ucg.argv->data_type = ucg_ref_type(ucg_string_type());
+}
+
+Ucg *ucg_argc(void) {
+    ucg_main_globals();
+    return ucg_dref(gb_ucg.argc);
+}
+
+Ucg *ucg_argv(void) {
+    ucg_main_globals();
+    return ucg_dref(gb_ucg.argv);
+}
+
+void ucg_main_args(void) {
+    Ucg *main = NULL;
+    for (int i = 0; i < gb_ucg.insts_count; i++) {
+        Ucg *inst = gb_ucg.insts[i];
+        bool is_load = inst->type == DREF && gb_ucg.argc;
+        bool is_arg = inst->to_dref == gb_ucg.argc || inst->to_dref == gb_ucg.argv;
+        if (is_load && is_arg)
+            gb_ucg.has_args = true;
+        if (inst->type == FN_DEC && strcmp2(inst->name, "main"))
+            main = inst;
+    }
+    if (!gb_ucg.has_args || main == NULL) {
+        gb_ucg.has_args = false;
+        return;
+    }
+    append(gb_ucg.insts, gb_ucg.argc);
+    append(gb_ucg.insts, gb_ucg.argv);
+    if (main->fn.params_count != 0)
+        return;
+    append(main->fn.params, ucg_param("argc", gb_ucg.argc->data_type));
+    append(main->fn.params, ucg_param("argv", gb_ucg.argv->data_type));
+}
+
+void llvm_main_args(Ucg *fn) {
+    bool is_main = gb_ucg.has_args && strcmp2(fn->name, "main");
+    if (!is_main || fn->fn.params_count < 2)
+        return;
+    LLVMBuildStore(gb_ucg.builder, LLVMGetParam(fn->elem, 0), gb_ucg.argc->elem);
+    LLVMBuildStore(gb_ucg.builder, LLVMGetParam(fn->elem, 1), gb_ucg.argv->elem);
+}
+
 Ucg *ucg_null(Ucg *ref_type) {
     Ucg *new = ucg_new(VAL_CREATE);
     new->to_create = ref_type;
@@ -2194,6 +2252,7 @@ void ucg_optimize(void) {
 void ucg_compile() {
     ucg_splice_checks();
     ucg_optimize();
+    ucg_main_args();
     Value fn = NULL;
     int stmt_index = 0;
     for (int i = 0; i < gb_ucg.insts_count; i++) {
@@ -2292,6 +2351,7 @@ void ucg_compile() {
                 Ucg *param = fn->fn.params[i];
                 llvm_declare_param(param);
             }
+            llvm_main_args(fn);
 
             break;
         }
@@ -3709,6 +3769,23 @@ bool run_test(int p) {
         ucg_end(fn_main);
         break;
     }
+    case 36: {
+        Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL, 0);
+        Ucg *first = ucg_access(ucg_argv(), ucg_i32_value(0));
+        ucg_write(
+            ucg_i32_value(1),
+            (Ucg *[]){
+                ucg_argc(),
+                ucg_string_value(" "),
+                first,
+                ucg_string_value("\n"),
+            },
+            4
+        );
+        ucg_ret(ucg_i32_value(0));
+        ucg_end(fn_main);
+        break;
+    }
     default: {
         return false;
     }
@@ -3877,7 +3954,7 @@ const char *to_string(Type type) {
 		[LOOP] = "LOOP", [BRK] = "BRK", [CNT] = "CNT",
 		[MATCH] = "MATCH", [CASE] = "CASE", [DEFAULT] = "DEFAULT", [CLEAN] = "CLEAN",
 		[TRY] = "TRY", [CATCH] = "CATCH", [THROW] = "THROW", [CHECK] = "CHECK",
-		[AS] = "AS", [FROM] = "FROM", [AND_LIT] = "AND_LIT", [OR_LIT] = "OR_LIT", [SELF] = "SELF", [FOR] = "FOR", [IN] = "IN", [MODULE] = "MODULE",
+		[AS] = "AS", [FROM] = "FROM", [AND_LIT] = "AND_LIT", [OR_LIT] = "OR_LIT", [SELF] = "SELF", [FOR] = "FOR", [IN] = "IN", [MODULE] = "MODULE", [ARGC] = "ARGC", [ARGV] = "ARGV",
 		[LAST] = "LAST",
         // clang-format on
     };

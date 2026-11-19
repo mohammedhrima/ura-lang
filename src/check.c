@@ -719,6 +719,12 @@ void check_name(Node *node) {
         return;
     }
     Node *var = find_variable(token->name, token->s);
+    Node *builtin = var ? NULL : find_builtin_value(token->name);
+    if (builtin) {
+        token->type = builtin->token->type;
+        node->data_type = builtin->ret_type;
+        return;
+    }
     if (var == NULL && find_function(token->name)) {
         add_error(
             token->s,
@@ -777,6 +783,7 @@ void check_name(Node *node) {
     token->type = var->token->type;
     node->data_type = var->data_type;
     node->declared = var;
+    var->token->is_used = true;
 }
 
 void check_throw(Node *node) {

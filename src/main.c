@@ -44,6 +44,7 @@ struct Token {
     bool is_varg;
     bool is_pub;
     bool is_uint;
+    bool is_used;
     // uraIR ir;
 
     Ucg *ucg;
@@ -951,6 +952,7 @@ Node *parse_prime() {
     case SCOPE: {
         node = new_node(token);
         enter_scope(node);
+        append(ura.modules, "ura");
         char *core = find_package("@/core", NULL);
         if (core)
             parse_package(new_file(core));
@@ -966,6 +968,10 @@ Node *parse_prime() {
         append(node->children, new_builtin(TYPEOF, "typeof", 0, chars_type()));
         append(node->children, new_builtin(DROP, "drop", 0, NULL));
         append(node->children, new_builtin(IS_ZERO, "isZero", 0, bool_type()));
+        Node *argc_type = new_type(INT, 32, NULL);
+        Node *argv_type = new_type(ARRAY, 0, chars_type());
+        append(node->children, new_builtin(ARGC, "ura::argc", 0, argc_type));
+        append(node->children, new_builtin(ARGV, "ura::argv", 0, argv_type));
         Node *bytes = chars_type();
         Node *size = new_type(INT, 32, NULL);
         Node *void_type = new_type(VOID, 0, NULL);
@@ -1744,6 +1750,22 @@ Node *find_enum(char *name) {
     return NULL;
 }
 
+Node *find_builtin_value(char *name) {
+    Node *scope = ura.scopes[0];
+    for (int i = 0; i < scope->children_count; i++) {
+        Node *child = scope->children[i];
+        bool is_value = includes(child->token->type, ARGC, ARGV, 0);
+        if (is_value && strcmp2(child->token->name, name))
+            return child;
+    }
+    return NULL;
+}
+
+bool is_unused_global(Token *var) {
+    bool is_package = file_at(var->s) != ura.files[0];
+    return is_package && !var->is_used;
+}
+
 bool is_module(char *name) {
     for (size_t i = 0; i < ura.modules_count; i++) {
         if (strcmp2(ura.modules[i], name))
@@ -1877,6 +1899,7 @@ Node *type_of(Node *node) {
         return is_integer ? type : NULL;
     }
     case COPY:      return type_of(node->to_copy);
+    case ARGC: case ARGV: return node->data_type;
     case LT: case GT: case EQ: case LE: case GE: case NQ:
     case AND: case OR: case NOT: return bool_type();
     case ID:        return NULL;
@@ -1908,7 +1931,8 @@ void analyze(Node *node) {
     case WRITE: case READ: case SIZEOF: case DROP:
     case ALLOC: case MEMCPY: case FREE:
     case TYPEOF: case USE: case IS_ZERO: case ZERO:
-    case MACRO_IF: case MACRO_ERROR: case MODULE: { // clang-format on
+    case MACRO_IF: case MACRO_ERROR: case MODULE:
+    case ARGC: case ARGV: { // clang-format on
         break;
     } // clang-format off
     case ID: case SELF: { // clang-format on
@@ -2118,7 +2142,8 @@ void codegen_clean(Ucg *place, Node *type) {
 void codegen_global_drops(Node *scope) {
     for (int i = 0; i < scope->children_count; i++) {
         Node *child = scope->children[i];
-        if (child->token->type == DECLARE)
+        bool is_declare = child->token->type == DECLARE;
+        if (is_declare && !is_unused_global(child->var->token))
             codegen_clean(child->var->token->ucg, child->var->data_type);
     }
 }
@@ -2398,8 +2423,14 @@ void codegen_statements(Node *node) {
                 ALLOC,
                 MEMCPY,
                 FREE,
+                ARGC,
+                ARGV,
                 0
             ))
+            continue;
+        bool is_assign = child->token->type == ASSIGN;
+        bool is_global = is_assign && child->left->token->type == VAR;
+        if (is_global && is_unused_global(child->left->token))
             continue;
         codegen_statement(child);
     }
@@ -2506,7 +2537,8 @@ void codegen(Node *node) {
         bool has_main = false;
         for (int i = 0; i < node->children_count; i++) {
             Node *child = node->children[i];
-            if (child->token->type == DECLARE)
+            bool is_declare = child->token->type == DECLARE;
+            if (is_declare && !is_unused_global(child->var->token))
                 codegen(child);
             if (child->token->type == LINK)
                 ucg_link(child->token->chars.value);
@@ -2696,6 +2728,14 @@ void codegen(Node *node) {
     }
     case ID: {
         node->token->ucg = node->declared->token->ucg;
+        break;
+    }
+    case ARGC: {
+        node->token->ucg = ucg_argc();
+        break;
+    }
+    case ARGV: {
+        node->token->ucg = ucg_argv();
         break;
     }
     case ZERO: {

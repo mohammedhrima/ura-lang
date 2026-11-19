@@ -99,3 +99,6 @@
 + format the codebase
 + remove unecessary files
 + move any code that can be moved to lib/header.h
++ how ALLOC and MEMECPY .. are handled in ucg ?
+
++ there is too much thrown labels inside main in .ll file why ?
