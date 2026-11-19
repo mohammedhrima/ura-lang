@@ -279,7 +279,7 @@ int precedence[LAST + 1] = {
     [AS] = 35,
 
     [DOT] = 51,        [DOUBLE_DOTS] = 51,  [LBRACK] = 51,
-}; // clang-format onn
+}; // clang-format on
 
 char *escaped[256] = { // clang-format off
     ['n'] = "\n",   ['t'] = "\t",   ['r'] = "\r",   ['b'] = "\b",
@@ -1898,7 +1898,24 @@ bool is_number(Node *node) {
     return node->token->type == INT && node->token->shift != 1;
 }
 
+bool is_operation(Type type) {
+    return precedence[type] && precedence[type] < precedence[AS];
+}
+
+void analyze_block(Node *node) {
+    enter_scope(node);
+    for (int i = 0; i < node->children_count; i++)
+        analyze(node->children[i]);
+    exit_scope();
+}
+
 void analyze(Node *node) {
+    if (is_operation(node->token->type)) {
+        analyze(node->left);
+        analyze(node->right);
+        check_operation(node);
+        return;
+    }
     switch (node->token->type) { // clang-format off
     case INT: case FLOAT: case VOID: 
     case VAR: case PARAM: case CHARS: case VARIADIC:
@@ -1964,20 +1981,14 @@ void analyze(Node *node) {
     } // clang-format off
     case TRY: case CATCH: { // clang-format on
         check_try(node);
-        enter_scope(node);
-        for (int i = 0; i < node->children_count; i++)
-            analyze(node->children[i]);
-        exit_scope();
+        analyze_block(node);
         if (node->next)
             analyze(node->next);
         break;
     } // clang-format off
     case IF: case ELIF: case ELSE: case LOOP: case CASE: case DEFAULT: { // clang-format on
         check_cond(node);
-        enter_scope(node);
-        for (int i = 0; i < node->children_count; i++)
-            analyze(node->children[i]);
-        exit_scope();
+        analyze_block(node);
         if (node->next)
             analyze(node->next);
         break;
@@ -2044,10 +2055,7 @@ void analyze(Node *node) {
     case FOR: {
         analyze(node->right);
         check_for(node);
-        enter_scope(node);
-        for (int i = 0; i < node->children_count; i++)
-            analyze(node->children[i]);
-        exit_scope();
+        analyze_block(node);
         break;
     }
     case ACCESS: {
@@ -2063,20 +2071,6 @@ void analyze(Node *node) {
     }
     case FN_CALL: {
         check_call(node);
-        break;
-    }
-    case ASSIGN: // clang-format off
-	case ADD: case SUB: case MUL: case DIV: case MOD: // math
-	case BAND: case BOR: case BXOR: case LSHIFT: case RSHIFT: // bitwise
-	case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: // composite
-	case DIV_ASSIGN: case MOD_ASSIGN:
-	case BAND_ASSIGN: case BOR_ASSIGN: case BXOR_ASSIGN:
-	case LSHIFT_ASSIGN: case RSHIFT_ASSIGN:
-	case LT: case GT: case EQ: case LE: case GE: case NQ: // comparision
-	case AND: case OR: { // clang-format on
-        analyze(node->left);
-        analyze(node->right);
-        check_operation(node);
         break;
     }
     default: {
@@ -2444,6 +2438,10 @@ void codegen_statements(Node *node) {
 }
 
 void codegen(Node *node) {
+    if (is_operation(node->token->type)) {
+        codegen_operation(node);
+        return;
+    }
     Ucg *ucg = NULL;
     switch (node->token->type) {
     case VAR:
@@ -2819,54 +2817,45 @@ void codegen(Node *node) {
         ucg_cnt(node->loop->token->ucg);
         break;
     }
-    case ASSIGN: // clang-format off
-	case ADD: case SUB: case MUL: case DIV: case MOD: // math
-	case BAND: case BOR: case BXOR: case LSHIFT: case RSHIFT: // bitwise
-	case ADD_ASSIGN: case SUB_ASSIGN: case MUL_ASSIGN: // composite
-	case DIV_ASSIGN: case MOD_ASSIGN:
-	case BAND_ASSIGN: case BOR_ASSIGN: case BXOR_ASSIGN:
-	case LSHIFT_ASSIGN: case RSHIFT_ASSIGN:
-	case LT: case GT: case EQ: case LE: case GE: case NQ: // comparision
-	case AND: case OR: { // clang-format on
-        if (is_ref_binding(node)) {
-            Node *slot = node->left->declared ? node->left->declared : node->left;
-            codegen(node->right);
-            Ucg *address = node->right->token->ucg;
-            if (!includes(node->right->token->type, REF, ZERO, 0))
-                address = ucg_ref(address);
-            node->token->ucg = ucg_assign(slot->token->ucg, address);
-            break;
-        }
-        codegen(node->left);
-        Node *type = type_of(node->left);
-        bool is_declaration =
-            node->left->token->type == VAR && node->left->declared == NULL;
-        bool is_literal = node->right->token->type == CHARS;
-        if (is_declaration && is_literal && is_chars(type))
-            node->right->token->ucg =
-                ucg_string_array(node->right->token->chars.value);
-        else
-            codegen(node->right);
-        if (node->token->type == ASSIGN && !is_declaration && needs_drop(type)) {
-            Ucg *value = ucg_value(node->right->token->ucg);
-            codegen_drop(node->left->token->ucg, type);
-            node->token->ucg = ucg_assign(node->left->token->ucg, value);
-            break;
-        }
-        Ucg *left = node->left->token->ucg;
-        Ucg *right = node->right->token->ucg;
-        bool is_null_compare = node->right->token->type == ZERO;
-        if (is_null_compare && is_ref_variable(node->left))
-            left = node->left->declared->token->ucg;
-        node->token->ucg = ucg_op(node->token->type, left, right);
-        break;
-    }
     default: {
         eprint("%s:%d handle this case %t\n", FILE, LINE, node->token->type);
         exit(1);
         break;
     }
     }
+}
+
+void codegen_operation(Node *node) {
+    if (is_ref_binding(node)) {
+        Node *slot = node->left->declared ? node->left->declared : node->left;
+        codegen(node->right);
+        Ucg *address = node->right->token->ucg;
+        if (!includes(node->right->token->type, REF, ZERO, 0))
+            address = ucg_ref(address);
+        node->token->ucg = ucg_assign(slot->token->ucg, address);
+        return;
+    }
+    codegen(node->left);
+    Node *type = type_of(node->left);
+    bool is_var = node->left->token->type == VAR;
+    bool is_declaration = is_var && node->left->declared == NULL;
+    bool is_literal = node->right->token->type == CHARS;
+    if (is_declaration && is_literal && is_chars(type))
+        node->right->token->ucg = ucg_string_array(node->right->token->chars.value);
+    else
+        codegen(node->right);
+    if (node->token->type == ASSIGN && !is_declaration && needs_drop(type)) {
+        Ucg *value = ucg_value(node->right->token->ucg);
+        codegen_drop(node->left->token->ucg, type);
+        node->token->ucg = ucg_assign(node->left->token->ucg, value);
+        return;
+    }
+    Ucg *left = node->left->token->ucg;
+    Ucg *right = node->right->token->ucg;
+    bool is_null_compare = node->right->token->type == ZERO;
+    if (is_null_compare && is_ref_variable(node->left))
+        left = node->left->declared->token->ucg;
+    node->token->ucg = ucg_op(node->token->type, left, right);
 }
 
 
