@@ -1686,7 +1686,10 @@ Node *find_method(Node *st, char *name, Node **args, int args_count, bool is_pub
             Node *type = child->args->children[j + self]->data_type;
             Node *found = type_of(args[j]);
             bool is_unknown = found == NULL || type == NULL;
-            if (is_unknown || (is_number(args[j]) && is_number(type)))
+            Node *element = type && type->token->type == ARRAY ? type->data_type : NULL;
+            bool is_text = args[j]->token->type == CHARS && element &&
+                           element->token->type == INT && element->token->shift == 8;
+            if (is_unknown || is_text || (is_number(args[j]) && is_number(type)))
                 continue;
             bool takes_ref = type->token->type == REF && found->token->type != REF;
             fits = same_type(found, takes_ref ? type->data_type : type);
@@ -1737,6 +1740,17 @@ Node *bool_type(void) {
     return new_type(INT, 1, NULL);
 }
 
+Node *string_type(void) {
+    Node *st = find_struct("String");
+    if (st == NULL)
+        return new_type(ARRAY, 0, new_type(INT, 8, NULL));
+    Node *type = new_node(new_token(ID, NULL));
+    type->token->name = st->token->name;
+    type->token->is_type = true;
+    type->declared = st;
+    return type;
+}
+
 Node *ret_type_of(Node *fn) {
     return fn->ret_type ? fn->ret_type : new_type(VOID, 0, NULL);
 }
@@ -1785,7 +1799,7 @@ Node *type_of(Node *node) {
         Node *type = type_of(node->left);
         return type && type->token->type == ARRAY ? type->data_type : NULL;
     }
-    case CHARS:     return new_type(ARRAY, 0, new_type(INT, 8, NULL));
+    case CHARS:     return node->data_type ? node->data_type : string_type();
     case VAR: case PARAM: return is_ref_variable(node) ? node->data_type->data_type : node->data_type;
     case REF: {
         Node *type = type_of(node->operand);
@@ -2283,7 +2297,21 @@ void codegen(Node *node) {
         break;
     }
     case CHARS: {
-        node->token->ucg = ucg_string_value(node->token->chars.value);
+        char *text = node->token->chars.value;
+        Node *type = type_of(node);
+        node->token->ucg = ucg_string_value(text);
+        if (type->token->type == ARRAY)
+            break;
+        codegen(type);
+        node->token->ucg = ucg_struct_value(
+            type->token->ucg,
+            (Ucg *[]){
+                node->token->ucg,
+                ucg_i32_value(strlen(text)),
+                ucg_i32_value(0),
+            },
+            3
+        );
         break;
     }
     case DECLARE: {

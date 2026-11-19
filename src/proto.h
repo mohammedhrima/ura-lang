@@ -178,6 +178,7 @@ Node *parse_prime();
 Node *parse_type(void);
 Node *parse_types(Token *token);
 Node *ret_type_of(Node *fn);
+Node *string_type(void);
 Node *type_of(Node *node);
 Token *new_token(Type type, Token *from);
 Token *next();

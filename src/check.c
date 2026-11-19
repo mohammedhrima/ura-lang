@@ -206,6 +206,12 @@ void check_type(Node *value, Node *expected, char *help) {
         check_struct_value(value, expected);
         return;
     }
+    Node *element = expected && expected->token->type == ARRAY ? expected->data_type : NULL;
+    bool wants_chars = element && element->token->type == INT && element->token->shift == 8;
+    if (value->token->type == CHARS && wants_chars) {
+        value->data_type = expected;
+        return;
+    }
     Node *found = type_of(value);
     bool unknown = expected && expected->token->type == ID && !expected->declared;
     if (found == NULL || expected == NULL || unknown)
@@ -636,8 +642,11 @@ void check_call(Node *node) {
             format("use %s(x)", name)
         );
     Node *params = node->to_call->args;
+    bool is_write = node->to_call->token->type == WRITE;
     for (int i = 0; i < node->children_count; i++) {
         analyze(node->children[i]);
+        if (is_write && node->children[i]->token->type == CHARS)
+            check_type(node->children[i], new_type(ARRAY, 0, new_type(INT, 8, NULL)), NULL);
         if (params == NULL || i >= params->children_count)
             continue;
         Node *param = params->children[i];
