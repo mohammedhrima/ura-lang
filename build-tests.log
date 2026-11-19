@@ -18,20 +18,8 @@ milestone11
 [0;32mmilestone11.md:195 builtin: sizeof folds to a constant[0m
 [0;32mmilestone11.md:233 builtin: typeof / sizeof on scalars[0m
 [0;32mmilestone11.md:281 builtin: typeof / sizeof on an array[0m
-[0;31mmilestone11.md:320 builtin: sizeof without parentheses (stderr differs)[0m
-      1c1
-      < error: test.ura:4:19 unknown type 'x'
-      ---
-      > error: test.ura:4:19 expected ',' between arguments
-      5d4
-      < help: declare it: struct x:
-[0;31mmilestone11.md:349 builtin: typeof without parentheses (stderr differs)[0m
-      1c1
-      < error: test.ura:4:19 unknown type 'x'
-      ---
-      > error: test.ura:4:19 expected ',' between arguments
-      5d4
-      < help: declare it: struct x:
+[0;32mmilestone11.md:320 builtin: sizeof without parentheses[0m
+[0;32mmilestone11.md:349 builtin: typeof without parentheses[0m
 [0;32mmilestone11.md:378 builtin: typeof and sizeof on chars, bool, and a literal[0m
 [0;32mmilestone11.md:428 builtin: sizeof of every scalar type[0m
 [0;32mmilestone11.md:467 builtin: sizeof of a struct honours ABI padding[0m
@@ -56,19 +44,19 @@ milestone11
 [0;32mmilestone11.md:1811 operator: compound bitwise assignment[0m
 [0;32mmilestone11.md:1916 operator: bitwise operator on f32 operands is rejected[0m
 [0;31mmilestone11.md:1945 operator: divide by zero prints file:line and exits 1 (llvm ir differs)[0m
-      0a1,4
+      0a1,3
       > ; ModuleID = 'ura'
       > source_filename = "ura"
       > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-      > target triple = "x86_64-unknown-linux-gnu"
-      1a6,18
+      1a5,17
+      > define i32 @main() {
 [0;31mmilestone11.md:1960 operator: f32 division by zero traps (not inf) (llvm ir differs)[0m
-      0a1,4
+      0a1,3
       > ; ModuleID = 'ura'
       > source_filename = "ura"
       > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-      > target triple = "x86_64-unknown-linux-gnu"
-      1a6,18
+      1a5,17
+      > define i32 @main() {
 [0;32mmilestone11.md:1975 literal: f32 and f64 math, casts and printf[0m
 milestone12
 [0;32mmilestone12.md:20 nullable: comparing a never-null value to null is rejected[0m
@@ -902,22 +890,23 @@ milestone4
 [0;32mmilestone4.md:609 templates: used outside the scope it is declared in[0m
 [0;32mmilestone4.md:642 template: several functions in one template, each instance renames all of them; memory_alloc, memory_copy, memory_free[0m
 milestone5
-[0;32mmilestone5.md:24 lexer: use missing opening quote[0m
-[0;32mmilestone5.md:54 lexer: use with unclosed quote[0m
-[0;32mmilestone5.md:84 lexer: link missing opening quote[0m
-[0;32mmilestone5.md:115 lexer: link with unclosed quote[0m
-[0;32mmilestone5.md:146 mod: a module function is called with ::[0m
-[0;32mmilestone5.md:187 mod: nested modules: a::b::f()[0m
-[0;32mmilestone5.md:229 mod: an enum inside a module, read as mod::Enum::VARIANT[0m
-[0;32mmilestone5.md:264 mod: a module may be referenced before it is declared[0m
-[0;32mmilestone5.md:305 mod: a module function calls a sibling unqualified[0m
-[0;32mmilestone5.md:355 mod: a struct declared in a module, used as mod::Type[0m
-[0;32mmilestone5.md:400 mod: a pub static method on a struct inside a module[0m
-[0;32mmilestone5.md:460 mod: calling a module member with . is an error[0m
-[0;32mmilestone5.md:492 mod: an unknown member of a known module is an error[0m
-[0;32mmilestone5.md:523 mod: a global inside a module, read and written with ::[0m
-[0;32mmilestone5.md:576 mod: a module call is arity-checked[0m
-[0;32mmilestone5.md:608 os: argc and argv from the global os[0m
+[0;32mmilestone5.md:25 lexer: use missing opening quote[0m
+[0;32mmilestone5.md:55 lexer: use with unclosed quote[0m
+[0;32mmilestone5.md:85 lexer: link missing opening quote[0m
+[0;32mmilestone5.md:116 lexer: link with unclosed quote[0m
+[0;32mmilestone5.md:147 mod: a module function is called with ::[0m
+[0;32mmilestone5.md:188 mod: nested modules: a::b::f()[0m
+[0;32mmilestone5.md:230 mod: an enum inside a module, read as mod::Enum::VARIANT[0m
+[0;32mmilestone5.md:265 mod: a module may be referenced before it is declared[0m
+[0;32mmilestone5.md:306 mod: a module function calls a sibling unqualified[0m
+[0;32mmilestone5.md:356 mod: a struct declared in a module, used as mod::Type[0m
+[0;32mmilestone5.md:401 mod: a pub static method on a struct inside a module[0m
+[0;32mmilestone5.md:461 mod: calling a module member with . is an error[0m
+[0;32mmilestone5.md:493 mod: an unknown member of a known module is an error[0m
+[0;32mmilestone5.md:524 mod: a global inside a module, read and written with ::[0m
+[0;32mmilestone5.md:577 mod: a module call is arity-checked[0m
+[0;32mmilestone5.md:609 os: argc and argv from the global os[0m
+[0;32mmilestone5.md:1394 mod: a struct attribute with the name of a module global[0m
 milestone6
 [0;32mmilestone6.md:35 calls: output a struct[0m
 [0;31mmilestone6.md:80 function: multi line string (compile error, status 1)[0m
@@ -932,26 +921,26 @@ milestone6
 [0;32mmilestone6.md:96 builtin: output picks the spec from each argument[0m
 [0;32mmilestone6.md:166 builtin: output with literals and escapes[0m
 [0;31mmilestone6.md:205 errput: errput writes to stderr, output writes to stdout (llvm ir differs)[0m
-      0a1,4
+      0a1,3
       > ; ModuleID = 'ura'
       > source_filename = "ura"
       > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-      > target triple = "x86_64-unknown-linux-gnu"
-      1a6,16
+      1a5,15
+      > @str = private unnamed_addr constant [11 x i8] c"on stdout\0A\00", align 1
 [0;31mmilestone6.md:220 errput: errput auto-formats every scalar type, like output (llvm ir differs)[0m
-      0a1,4
+      0a1,3
       > ; ModuleID = 'ura'
       > source_filename = "ura"
       > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-      > target triple = "x86_64-unknown-linux-gnu"
-      1a6,61
+      1a5,60
+      > @str = private unnamed_addr constant [25 x i8] c"hp=%d big=%lld small=%c\0A\00", align 1
 [0;31mmilestone6.md:242 errput: errput expands a struct with the default dump (llvm ir differs)[0m
-      0a1,4
+      0a1,3
       > ; ModuleID = 'ura'
       > source_filename = "ura"
       > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-      > target triple = "x86_64-unknown-linux-gnu"
-      1a6,53
+      1a5,52
+      > %Hero = type { i8*, %Stats }
 [0;31mmilestone6.md:267 errput: errput honours operator output() (compile error, status 1)[0m
       error: test.ura:8:9 undeclared variable 'ret'
         |
@@ -960,88 +949,52 @@ milestone6
       help: declare it first, like: ret i32 = 0
       error: aborting due to 1 error
 [0;31mmilestone6.md:288 errput: errput prints arrays and nested arrays (llvm ir differs)[0m
-      0a1,4
+      0a1,3
       > ; ModuleID = 'ura'
       > source_filename = "ura"
       > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-      > target triple = "x86_64-unknown-linux-gnu"
-      1a6,44
+      1a5,43
+      > @str = private unnamed_addr constant [9 x i8] c"nums %s\0A\00", align 1
 [0;31mmilestone6.md:306 errput: errput() with no arguments still emits the colour pair (llvm ir differs)[0m
-      0a1,4
+      0a1,3
       > ; ModuleID = 'ura'
       > source_filename = "ura"
       > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-      > target triple = "x86_64-unknown-linux-gnu"
-      1a6,16
+      1a5,15
+      > @str = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
 [0;31mmilestone6.md:320 errput: errput and output keep separate struct printers (llvm ir differs)[0m
-      0a1,4
+      0a1,3
       > ; ModuleID = 'ura'
       > source_filename = "ura"
       > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-      > target triple = "x86_64-unknown-linux-gnu"
-      1a6,68
+      1a5,67
+      > %Point = type { i32, i32 }
 [0;32mmilestone6.md:343 output: basic output: strings, ints, floats, bools[0m
 [0;32mmilestone6.md:410 output: output with expressions: arithmetic inline[0m
 [0;32mmilestone6.md:454 output: output all supported types in one block[0m
 [0;32mmilestone6.md:547 output: output() auto-formats each argument by its type[0m
-[0;31mmilestone6.md:613 string: String constructors and accessors (llvm ir differs)[0m
-      8,92d7
-      < @EPERM = global i32 0
-      < @ENOENT = global i32 0
-      < @ESRCH = global i32 0
-      < @EINTR = global i32 0
-      < @EIO = global i32 0
-[0;31mmilestone6.md:1437 string: assign, push, pop, join and clear (llvm ir differs)[0m
-      8,92d7
-      < @EPERM = global i32 0
-      < @ENOENT = global i32 0
-      < @ESRCH = global i32 0
-      < @EINTR = global i32 0
-      < @EIO = global i32 0
-[0;31mmilestone6.md:2248 string: find, contains, starts_with and ends_with (llvm ir differs)[0m
-      8,92d7
-      < @EPERM = global i32 0
-      < @ENOENT = global i32 0
-      < @ESRCH = global i32 0
-      < @EINTR = global i32 0
-      < @EIO = global i32 0
-[0;31mmilestone6.md:3263 string: transforms: upper, lower, substr, trim, replace, repeat, reverse (llvm ir differs)[0m
-      8,92d7
-      < @EPERM = global i32 0
-      < @ENOENT = global i32 0
-      < @ESRCH = global i32 0
-      < @EINTR = global i32 0
-      < @EIO = global i32 0
-[0;31mmilestone6.md:4572 string: operators: + += == != < > against String and against a literal (llvm ir differs)[0m
-      8,92d7
-      < @EPERM = global i32 0
-      < @ENOENT = global i32 0
-      < @ESRCH = global i32 0
-      < @EINTR = global i32 0
-      < @EIO = global i32 0
-[0;31mmilestone6.md:5782 string: to_int, compare and chained transformations (llvm ir differs)[0m
-      8,92d7
-      < @EPERM = global i32 0
-      < @ENOENT = global i32 0
-      < @ESRCH = global i32 0
-      < @EINTR = global i32 0
-      < @EIO = global i32 0
-[0;32mmilestone6.md:6772 struct: output() prints a struct and its nested struct[0m
-[0;31mmilestone6.md:6919 struct: output() follows a bound 'ref?' and prints null when unbound (llvm ir differs)[0m
-      0a1,4
+[0;32mmilestone6.md:613 string: String constructors and accessors[0m
+[0;32mmilestone6.md:1267 string: assign, push, pop, join and clear[0m
+[0;32mmilestone6.md:1908 string: find, contains, starts_with and ends_with[0m
+[0;32mmilestone6.md:2753 string: transforms: upper, lower, substr, trim, replace, repeat, reverse[0m
+[0;32mmilestone6.md:3892 string: operators: + += == != < > against String and against a literal[0m
+[0;32mmilestone6.md:4932 string: to_int, compare and chained transformations[0m
+[0;32mmilestone6.md:5752 struct: output() prints a struct and its nested struct[0m
+[0;31mmilestone6.md:5899 struct: output() follows a bound 'ref?' and prints null when unbound (llvm ir differs)[0m
+      0a1,3
       > ; ModuleID = 'ura'
       > source_filename = "ura"
       > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-      > target triple = "x86_64-unknown-linux-gnu"
-      1a6,54
-[0;31mmilestone6.md:6944 struct: output() prints [Circular] instead of looping forever (llvm ir differs)[0m
-      0a1,4
+      1a5,53
+      > %Node = type { i32, %Node* }
+[0;31mmilestone6.md:5924 struct: output() prints [Circular] instead of looping forever (llvm ir differs)[0m
+      0a1,3
       > ; ModuleID = 'ura'
       > source_filename = "ura"
       > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-      > target triple = "x86_64-unknown-linux-gnu"
-      1a6,56
-[0;31mmilestone6.md:6969 struct: output() expands array fields, including 2D (compile error, status 1)[0m
+      1a5,55
+      > %Node = type { i32, %Node* }
+[0;31mmilestone6.md:5949 struct: output() expands array fields, including 2D (compile error, status 1)[0m
       error: test.ura:19:15 'Room' is a type, not a value
          |
       19 |     f.rooms = Room[2]
@@ -1050,9 +1003,9 @@ milestone6
          |
       26 |     g.rooms = Room[2][2]
          |               ^^^^
-[0;32mmilestone6.md:7008 output: output and errput print every scalar type in one call[0m
-[0;31mmilestone6.md:7080 input: read two lines from stdin (llvm ir differs)[0m
-      7a8,13
+[0;32mmilestone6.md:5988 output: output and errput print every scalar type in one call[0m
+[0;31mmilestone6.md:6060 input: read two lines from stdin (llvm ir differs)[0m
+      6a7,12
       > @str = private unnamed_addr constant [7 x i8] c"name? \00", align 1
       > @str.1 = private unnamed_addr constant [2 x i8] c"r\00", align 1
       > @str.2 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
@@ -1120,12 +1073,12 @@ milestone8
 [0;32mmilestone8.md:518 array: fill a heap char buffer by index, print it, free it[0m
 [0;32mmilestone8.md:614 enum: a variant as an array index and in arithmetic[0m
 [0;31mmilestone8.md:695 errput: errput follows a bound ref? and prints null when unbound (llvm ir differs)[0m
-      0a1,4
+      0a1,3
       > ; ModuleID = 'ura'
       > source_filename = "ura"
       > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-      > target triple = "x86_64-unknown-linux-gnu"
-      1a6,54
+      1a5,53
+      > %Node = type { i32, %Node* }
 [0;32mmilestone8.md:718 heap: new<T>(1) gives one zeroed struct, a ref points at it[0m
 [0;32mmilestone8.md:810 heap: operator drop frees the nodes a tree owns[0m
 [0;32mmilestone8.md:966 heap: a function fills a heap struct and returns a ref to it[0m
@@ -1138,38 +1091,26 @@ milestone8
 [0;32mmilestone8.md:1437 operator: drop on fall-through: an if block, each iteration, reverse order[0m
 [0;32mmilestone8.md:1581 operator: a struct drops the structs it owns, at any depth, but not what it borrows[0m
 [0;32mmilestone8.md:1727 operator: a heap-owning struct: create, deep-copy operator = and drop[0m
-[0;31mmilestone8.md:1904 operator: a growable string struct: nullable buffer, grow, join and drop (llvm ir differs)[0m
-      8,92d7
-      < @EPERM = global i32 0
-      < @ENOENT = global i32 0
-      < @ESRCH = global i32 0
-      < @EINTR = global i32 0
-      < @EIO = global i32 0
-[0;31mmilestone8.md:2471 operator: a struct owning heap buffers: deep-copy operator = and drop (llvm ir differs)[0m
-      8,92d7
-      < @EPERM = global i32 0
-      < @ENOENT = global i32 0
-      < @ESRCH = global i32 0
-      < @EINTR = global i32 0
-      < @EIO = global i32 0
-[0;32mmilestone8.md:2875 ref: ref return: create a node on the heap and return a reference to it[0m
-[0;31mmilestone8.md:2961 ref: ref? return: one branch returns a reference, the other returns null (llvm ir differs)[0m
-      0a1,4
+[0;32mmilestone8.md:1904 operator: a growable string struct: nullable buffer, grow, join and drop[0m
+[0;32mmilestone8.md:2301 operator: a struct owning heap buffers: deep-copy operator = and drop[0m
+[0;32mmilestone8.md:2535 ref: ref return: create a node on the heap and return a reference to it[0m
+[0;31mmilestone8.md:2621 ref: ref? return: one branch returns a reference, the other returns null (llvm ir differs)[0m
+      0a1,3
       > ; ModuleID = 'ura'
       > source_filename = "ura"
       > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-      > target triple = "x86_64-unknown-linux-gnu"
-      1a6,97
-[0;32mmilestone8.md:2986 ref: declare a ref and bind it to a ref-returning call[0m
-[0;32mmilestone8.md:3072 ref: a ref-returning call passed straight into a ref parameter[0m
-[0;32mmilestone8.md:3181 ref: a reference function must return a reference, not a bare value[0m
-[0;32mmilestone8.md:3215 ref: a field read chained directly on a ref-returning call[0m
-[0;32mmilestone8.md:3297 struct: a heap array of structs: new<Room>(N), then free[0m
-[0;32mmilestone8.md:3396 struct: a 2D heap array of structs frees every inner slice[0m
-[0;32mmilestone8.md:3534 struct: an unknown type as a parameter, a return type, or an array element[0m
-[0;32mmilestone8.md:3621 struct: destructor must take no parameters[0m
-[0;32mmilestone8.md:3658 struct: destructor must return void[0m
-[0;31mmilestone8.md:3695 variable: global variables: scalars, arrays, forward reference, shadowing (compile error, status 1)[0m
+      1a5,96
+      > %N = type { i32, %N* }
+[0;32mmilestone8.md:2646 ref: declare a ref and bind it to a ref-returning call[0m
+[0;32mmilestone8.md:2732 ref: a ref-returning call passed straight into a ref parameter[0m
+[0;32mmilestone8.md:2841 ref: a reference function must return a reference, not a bare value[0m
+[0;32mmilestone8.md:2875 ref: a field read chained directly on a ref-returning call[0m
+[0;32mmilestone8.md:2957 struct: a heap array of structs: new<Room>(N), then free[0m
+[0;32mmilestone8.md:3056 struct: a 2D heap array of structs frees every inner slice[0m
+[0;32mmilestone8.md:3194 struct: an unknown type as a parameter, a return type, or an array element[0m
+[0;32mmilestone8.md:3281 struct: destructor must take no parameters[0m
+[0;32mmilestone8.md:3318 struct: destructor must return void[0m
+[0;31mmilestone8.md:3355 variable: global variables: scalars, arrays, forward reference, shadowing (compile error, status 1)[0m
       error: test.ura:11:15 'i32' is 'i32', not an array
          |
       11 | xs    i32[] = i32[3]
@@ -1178,8 +1119,8 @@ milestone8
          |
       27 |     output("xs ", xs[0], " len ", xs.len)
          |                                   ^^
-[0;32mmilestone8.md:3738 variable: a global struct is initialised and dropped like a local[0m
-[0;32mmilestone8.md:3852 variable: a global is dropped on an early return too[0m
+[0;32mmilestone8.md:3398 variable: a global struct is initialised and dropped like a local[0m
+[0;32mmilestone8.md:3512 variable: a global is dropped on an early return too[0m
 milestone9
 [0;32mmilestone9.md:49 method: a pub fn is static: no self, called with ::[0m
 [0;31mmilestone9.md:110 method: calling a non-pub method with :: (compile error, status 1)[0m
@@ -1268,12 +1209,12 @@ milestone9
 [0;32mmilestone9.md:2880 operator: compound bitwise assignment overloads[0m
 [0;32mmilestone9.md:3055 operator: bitwise and shift overloads taking a ref parameter[0m
 [0;31mmilestone9.md:3299 operator: operator output replaces the default struct dump, nested too (llvm ir differs)[0m
-      0a1,4
+      0a1,3
       > ; ModuleID = 'ura'
       > source_filename = "ura"
       > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-      > target triple = "x86_64-unknown-linux-gnu"
-      1a6,98
+      1a5,97
+      > %Tag = type { i8*, i32 }
 [0;31mmilestone9.md:3340 struct: pub inside struct must be followed by fn (compile error, status 1)[0m
       error: test.ura:7:9 'n' is already declared, on line 5
         |
@@ -1304,4 +1245,4 @@ milestone9
 [0;32mmilestone9.md:6553 ownership: nested arrays, an Array attribute, reassignment, drop(x), returning an attribute copies[0m
 [0;32mmilestone9.md:7562 ownership: operator = taking the other side by value[0m
 
-701 passed, 85 failed
+712 passed, 75 failed
