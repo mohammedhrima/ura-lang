@@ -948,6 +948,9 @@ Node *parse_prime() {
     case SCOPE: {
         node = new_node(token);
         enter_scope(node);
+        char *core = find_package("@/core");
+        if (core)
+            parse_package(new_file(core));
         while (peek(0)->type != LAST)
             append(node->children, parse_expr(0));
         exit_scope();
@@ -986,11 +989,12 @@ Node *parse_prime() {
     case ID: {
         Node *template_type = find_template_type(token->name);
         Node *template = find_template(token->name);
-        if (template_type || template || find_struct(token->name))
+        bool is_template_use = template && peek(0)->type == LT;
+        if (template_type || is_template_use || find_struct(token->name))
             check_type_first(token);
         if (template_type)
             return template_type;
-        if (template && peek(0)->type == LT)
+        if (is_template_use)
             token->name = init_from_template(template, parse_types(token));
         Node *type = parse_type();
         if (type != NULL) {
@@ -2074,9 +2078,18 @@ void codegen_uncaught(Ucg *try_stmt) {
     Node *st = find_struct("Error");
     int index = 0;
     bool has_message = st && find_attr(st, "message", &index);
-    if (has_message) {
+    Node *text = has_message ? find_attr(st, "message", &index)->data_type->declared : NULL;
+    Node *c_str = text ? find_method(text, "c_str", NULL, 0, false) : NULL;
+    if (c_str) {
         Ucg *catch_stmt = ucg_catch(try_stmt, st->token->ucg);
-        Ucg *message = ucg_get_attr(ucg_error(st->token->ucg), index);
+        Ucg *place = ucg_get_attr(ucg_error(st->token->ucg), index);
+        Ucg *message = ucg_fn_call(
+            c_str->token->ucg,
+            (Ucg *[]){
+                ucg_ref(place),
+            },
+            1
+        );
         ucg_write(
             ucg_i32_value(2),
             (Ucg *[]){

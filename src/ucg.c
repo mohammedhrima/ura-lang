@@ -1877,17 +1877,22 @@ Ucg *ucg_find_try(void) {
     return NULL;
 }
 
-Ucg *ucg_unwind(void) {
+Ucg *ucg_goto_catch(void) {
     Ucg *try_stmt = ucg_find_try();
-    if (try_stmt)
-        return ucg_brk(try_stmt);
     Ucg *fn = NULL;
     for (int i = gb_ucg.blocks_count - 1; i >= 0 && fn == NULL; i--)
         if (gb_ucg.blocks[i]->type == FN_DEC)
             fn = gb_ucg.blocks[i];
-    if (fn->fn.ret->type == VOID)
-        return ucg_return();
-    return ucg_ret(ucg_null(fn->fn.ret));
+    ucg_assign(ucg_thrown(), ucg_bool_value(0));
+    ucg_leave_blocks(try_stmt, NULL);
+    ucg_assign(ucg_thrown(), ucg_bool_value(1));
+    Ucg *new = ucg_new(try_stmt ? BRK : RETURN);
+    if (try_stmt)
+        new->stmt = try_stmt;
+    else if (fn->fn.ret->type != VOID)
+        new->to_ret = ucg_value(ucg_null(fn->fn.ret));
+    append(gb_ucg.insts, new);
+    return new;
 }
 
 Ucg *ucg_throw(Ucg *value) {
@@ -1895,8 +1900,7 @@ Ucg *ucg_throw(Ucg *value) {
     Ucg *type = ucg_value_type(value);
     ucg_assign(ucg_error(type), value);
     ucg_assign(ucg_error_type(), ucg_type_id(type));
-    ucg_assign(ucg_thrown(), ucg_bool_value(1));
-    return ucg_unwind();
+    return ucg_goto_catch();
 }
 
 void ucg_check(Ucg *fn) {
@@ -1904,8 +1908,9 @@ void ucg_check(Ucg *fn) {
         return;
     int start = gb_ucg.insts_count;
     Ucg *stmt = ucg_if();
+    stmt->name = "thrown";
     ucg_then(stmt, ucg_thrown());
-    ucg_unwind();
+    ucg_goto_catch();
     ucg_end(stmt);
     Ucg *check = ucg_new(CHECK);
     check->to_call = fn;
@@ -1917,6 +1922,7 @@ void ucg_check(Ucg *fn) {
 
 Ucg *ucg_try(void) {
     Ucg *stmt = ucg_if();
+    stmt->name = "try";
     ucg_then(stmt, ucg_bool_value(1));
     append(gb_ucg.tries, stmt);
     return stmt;
@@ -1935,6 +1941,7 @@ Ucg *ucg_catch(Ucg *stmt, Ucg *type) {
         catch_stmt = ucg_if();
     } else
         catch_stmt = ucg_elif(stmt);
+    catch_stmt->name = "catch";
     Ucg *is_type = ucg_op(EQ, ucg_error_type(), ucg_type_id(type));
     ucg_then(catch_stmt, ucg_op(AND, ucg_thrown(), is_type));
     ucg_assign(ucg_thrown(), ucg_bool_value(0));
@@ -1944,8 +1951,9 @@ Ucg *ucg_catch(Ucg *stmt, Ucg *type) {
 Ucg *ucg_end_catch(Ucg *catch_stmt) {
     Ucg *end = ucg_end(catch_stmt);
     Ucg *uncaught = ucg_if();
+    uncaught->name = "rethrow";
     ucg_then(uncaught, ucg_thrown());
-    ucg_unwind();
+    ucg_goto_catch();
     ucg_end(uncaught);
     return end;
 }
@@ -2079,7 +2087,9 @@ void ucg_optimize(void) {
             removed_fn = inst->to_enter;
         bool is_body_end =
             removed_fn && inst->type == END && inst->to_end == removed_fn;
-        if (!removed_fn && !is_removed)
+        bool is_module_level =
+            inst->type == FN_DEC || inst->type == GLOBAL || inst->type == STRUCT;
+        if ((!removed_fn || is_module_level) && !is_removed)
             gb_ucg.insts[count++] = inst;
         if (is_body_end)
             removed_fn = NULL;
@@ -2126,14 +2136,16 @@ void ucg_compile() {
             break;
         }
         case IF: {
-            curr->bloc = llvm_bloc(fn, format("if%d", stmt_index));
-            curr->then = llvm_bloc(fn, format("if%d.then", stmt_index));
+            char *kind = curr->name ? curr->name : "if";
+            curr->bloc = llvm_bloc(fn, format("%s%d", kind, stmt_index));
+            curr->then = llvm_bloc(fn, format("%s%d.then", kind, stmt_index));
             stmt_index++;
             break;
         }
         case ELIF: {
-            curr->bloc = llvm_bloc(fn, format("elif%d", stmt_index));
-            curr->then = llvm_bloc(fn, format("elif%d.then", stmt_index));
+            char *kind = curr->name ? curr->name : "elif";
+            curr->bloc = llvm_bloc(fn, format("%s%d", kind, stmt_index));
+            curr->then = llvm_bloc(fn, format("%s%d.then", kind, stmt_index));
             stmt_index++;
             break;
         }
@@ -2148,6 +2160,8 @@ void ucg_compile() {
             if (to_end->type == FN_DEC)
                 break;
             char *name = to_end->type == LOOP ? "endloop" : "endif";
+            if (to_end->name)
+                name = format("end%s", to_end->name);
             curr->bloc = llvm_bloc(fn, name);
             // stmt_index++;
             break;

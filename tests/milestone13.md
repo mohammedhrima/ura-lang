@@ -531,7 +531,6 @@ fn main() i32:
 // expect: 0
 // stdin and output depend on the program; run it by hand
 use "@/header"
-use "@/error"
 
 enum Type: NONE, NUMBER, ADD, SUB, MUL, DIV, LPAREN, RPAREN
 
@@ -672,7 +671,7 @@ fn eval(n &Node) i32:
         case MUL:    ret eval(&n.left) * eval(&n.right)
         case DIV:
             d i32 = eval(&n.right)
-            if d == 0: throw Error::create("division by zero")
+            if d == 0: throw Error::create(String::create("division by zero"))
             ret eval(&n.left) / d
         default:    ret 0
 
@@ -1730,7 +1729,6 @@ fn main() i32:
 // expect: 1
 // projects/calculator.ura
 use "@/header"
-use "@/error"
 
 enum Type: NONE, NUMBER, ADD, SUB, MUL, DIV, LPAREN, RPAREN
 
@@ -1871,7 +1869,7 @@ fn eval(n &Node) i32:
         case MUL:    ret eval(&n.left) * eval(&n.right)
         case DIV:
             d i32 = eval(&n.right)
-            if d == 0: throw Error::create("division by zero")
+            if d == 0: throw Error::create(String::create("division by zero"))
             ret eval(&n.left) / d
         default:    ret 0
 
