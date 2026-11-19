@@ -1,0 +1,16 @@
+- [Terse replies](feedback-terse.md) — avoid talking too much
+- [Code style](feedback-code-style.md) — study and respect existing ucg.c/main.c style
+- [Reuse](feedback-reuse.md) — what's needed exists; extend it, never reinvent or duplicate
+- [Roadmap](project-roadmap.md) — what is done, the current cleanup pass, next (fmt, io), later ideas
+- [End tasks](project-end-tasks.md) — merge to main, push, rewrite history only when the user says
+- [Commits](feedback-commits.md) — short lowercase messages, no Anthropic attribution
+- [Step by step](feedback-step-by-step.md) — one small edit at a time, user accepts each
+- [No python edits](feedback-no-python-edits.md) — edit files with the Edit tool only, never python/sed scripts
+- [User runs tests](feedback-user-runs-tests.md) — never run tests/record/ucg suites; give the user the commands
+- [Tests](feedback-tests.md) — every feature gets a milestone .md entry (and a ucg run_test case)
+- [No stash](feedback-no-stash.md) — never git stash in ura-lang; use a worktree for baselines
+- [ucg only in codegen](feedback-ucg-in-codegen.md) — ura calls ucg_* only from codegen, never parse/analyze
+- [create](feedback-create.md) — constructors are always Type::create, never make/from/new
+- [Errors in check.c, portable](feedback-errors-portable.md) — add_error only in check.c; build on LLVM 12/15/21 and Linux/macOS/Windows clang
+- [Ask before C](feedback-ask-before-c.md) — no C code edits without the user's yes; tests/.ura are fine
+- [Visual](feedback-visual.md) — explain with a small diagram/table, few words

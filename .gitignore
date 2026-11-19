@@ -8,3 +8,5 @@ bin/
 # scratch: drafts and manual tests
 src/tmp.md
 src/main.ura
+# Claude Code's machine-local settings (permissions, paths)
+.claude/settings.local.json
