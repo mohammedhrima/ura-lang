@@ -75,7 +75,7 @@ target triple = "x86_64-unknown-linux-gnu"
 @str.1 = private unnamed_addr constant [5 x i8] c"boom\00", align 1
 @str.2 = private unnamed_addr constant [12 x i8] c"caught: %s\0A\00", align 1
 
-define i8* @"alloc<i8>"(i32 %0) {
+define i8* @"new<i8>"(i32 %0) {
 entry:
   %count = alloca i32, align 4
   store i32 %0, i32* %count, align 4
@@ -153,7 +153,7 @@ if1.then:                                         ; preds = %if1
 
 endif1:                                           ; preds = %if1
   %"$cap10" = load i32, i32* %cap, align 4
-  %"call.alloc<i8>" = call i8* @"alloc<i8>"(i32 %"$cap10")
+  %"call.new<i8>" = call i8* @"new<i8>"(i32 %"$cap10")
   br label %thrown2
 
 thrown2:                                          ; preds = %endif1
@@ -166,7 +166,7 @@ thrown2.then:                                     ; preds = %thrown2
   ret void
 
 endthrown:                                        ; preds = %thrown2
-  store i8* %"call.alloc<i8>", i8** %bigger, align 8
+  store i8* %"call.new<i8>", i8** %bigger, align 8
   %"*self11" = load %String*, %String** %self, align 8
   %"*self.data" = getelementptr inbounds %String, %String* %"*self11", i32 0, i32 0
   %"*self12" = load %String*, %String** %self, align 8
@@ -838,7 +838,7 @@ target triple = "x86_64-unknown-linux-gnu"
 @str.2 = private unnamed_addr constant [12 x i8] c"caught: %s\0A\00", align 1
 @str.3 = private unnamed_addr constant [7 x i8] c"after\0A\00", align 1
 
-define i8* @"alloc<i8>"(i32 %0) {
+define i8* @"new<i8>"(i32 %0) {
 entry:
   %count = alloca i32, align 4
   store i32 %0, i32* %count, align 4
@@ -916,7 +916,7 @@ if1.then:                                         ; preds = %if1
 
 endif1:                                           ; preds = %if1
   %"$cap10" = load i32, i32* %cap, align 4
-  %"call.alloc<i8>" = call i8* @"alloc<i8>"(i32 %"$cap10")
+  %"call.new<i8>" = call i8* @"new<i8>"(i32 %"$cap10")
   br label %thrown2
 
 thrown2:                                          ; preds = %endif1
@@ -929,7 +929,7 @@ thrown2.then:                                     ; preds = %thrown2
   ret void
 
 endthrown:                                        ; preds = %thrown2
-  store i8* %"call.alloc<i8>", i8** %bigger, align 8
+  store i8* %"call.new<i8>", i8** %bigger, align 8
   %"*self11" = load %String*, %String** %self, align 8
   %"*self.data" = getelementptr inbounds %String, %String* %"*self11", i32 0, i32 0
   %"*self12" = load %String*, %String** %self, align 8
@@ -1639,7 +1639,7 @@ target triple = "x86_64-unknown-linux-gnu"
 @str.3 = private unnamed_addr constant [7 x i8] c"second\00", align 1
 @str.4 = private unnamed_addr constant [10 x i8] c"main: %s\0A\00", align 1
 
-define i8* @"alloc<i8>"(i32 %0) {
+define i8* @"new<i8>"(i32 %0) {
 entry:
   %count = alloca i32, align 4
   store i32 %0, i32* %count, align 4
@@ -1717,7 +1717,7 @@ if1.then:                                         ; preds = %if1
 
 endif1:                                           ; preds = %if1
   %"$cap10" = load i32, i32* %cap, align 4
-  %"call.alloc<i8>" = call i8* @"alloc<i8>"(i32 %"$cap10")
+  %"call.new<i8>" = call i8* @"new<i8>"(i32 %"$cap10")
   br label %thrown2
 
 thrown2:                                          ; preds = %endif1
@@ -1730,7 +1730,7 @@ thrown2.then:                                     ; preds = %thrown2
   ret void
 
 endthrown:                                        ; preds = %thrown2
-  store i8* %"call.alloc<i8>", i8** %bigger, align 8
+  store i8* %"call.new<i8>", i8** %bigger, align 8
   %"*self11" = load %String*, %String** %self, align 8
   %"*self.data" = getelementptr inbounds %String, %String* %"*self11", i32 0, i32 0
   %"*self12" = load %String*, %String** %self, align 8
@@ -2512,7 +2512,7 @@ target triple = "x86_64-unknown-linux-gnu"
 @str.2 = private unnamed_addr constant [11 x i8] c"inner: %s\0A\00", align 1
 @str.3 = private unnamed_addr constant [11 x i8] c"outer: %s\0A\00", align 1
 
-define i8* @"alloc<i8>"(i32 %0) {
+define i8* @"new<i8>"(i32 %0) {
 entry:
   %count = alloca i32, align 4
   store i32 %0, i32* %count, align 4
@@ -2590,7 +2590,7 @@ if1.then:                                         ; preds = %if1
 
 endif1:                                           ; preds = %if1
   %"$cap10" = load i32, i32* %cap, align 4
-  %"call.alloc<i8>" = call i8* @"alloc<i8>"(i32 %"$cap10")
+  %"call.new<i8>" = call i8* @"new<i8>"(i32 %"$cap10")
   br label %thrown2
 
 thrown2:                                          ; preds = %endif1
@@ -2603,7 +2603,7 @@ thrown2.then:                                     ; preds = %thrown2
   ret void
 
 endthrown:                                        ; preds = %thrown2
-  store i8* %"call.alloc<i8>", i8** %bigger, align 8
+  store i8* %"call.new<i8>", i8** %bigger, align 8
   %"*self11" = load %String*, %String** %self, align 8
   %"*self.data" = getelementptr inbounds %String, %String* %"*self11", i32 0, i32 0
   %"*self12" = load %String*, %String** %self, align 8
@@ -3328,7 +3328,7 @@ target triple = "x86_64-unknown-linux-gnu"
 @str = private unnamed_addr constant [3 x i8] c"%s\00", align 1
 @str.1 = private unnamed_addr constant [10 x i8] c"ret = %d\0A\00", align 1
 
-define i8* @"alloc<i8>"(i32 %0) {
+define i8* @"new<i8>"(i32 %0) {
 entry:
   %count = alloca i32, align 4
   store i32 %0, i32* %count, align 4
@@ -3406,7 +3406,7 @@ if1.then:                                         ; preds = %if1
 
 endif1:                                           ; preds = %if1
   %"$cap10" = load i32, i32* %cap, align 4
-  %"call.alloc<i8>" = call i8* @"alloc<i8>"(i32 %"$cap10")
+  %"call.new<i8>" = call i8* @"new<i8>"(i32 %"$cap10")
   br label %thrown2
 
 thrown2:                                          ; preds = %endif1
@@ -3419,7 +3419,7 @@ thrown2.then:                                     ; preds = %thrown2
   ret void
 
 endthrown:                                        ; preds = %thrown2
-  store i8* %"call.alloc<i8>", i8** %bigger, align 8
+  store i8* %"call.new<i8>", i8** %bigger, align 8
   %"*self11" = load %String*, %String** %self, align 8
   %"*self.data" = getelementptr inbounds %String, %String* %"*self11", i32 0, i32 0
   %"*self12" = load %String*, %String** %self, align 8
@@ -3805,7 +3805,7 @@ target triple = "x86_64-unknown-linux-gnu"
 @str.2 = private unnamed_addr constant [3 x i8] c"x\0A\00", align 1
 @str.3 = private unnamed_addr constant [6 x i8] c"done\0A\00", align 1
 
-define i8* @"alloc<i8>"(i32 %0) {
+define i8* @"new<i8>"(i32 %0) {
 entry:
   %count = alloca i32, align 4
   store i32 %0, i32* %count, align 4
@@ -3883,7 +3883,7 @@ if1.then:                                         ; preds = %if1
 
 endif1:                                           ; preds = %if1
   %"$cap10" = load i32, i32* %cap, align 4
-  %"call.alloc<i8>" = call i8* @"alloc<i8>"(i32 %"$cap10")
+  %"call.new<i8>" = call i8* @"new<i8>"(i32 %"$cap10")
   br label %thrown2
 
 thrown2:                                          ; preds = %endif1
@@ -3896,7 +3896,7 @@ thrown2.then:                                     ; preds = %thrown2
   ret void
 
 endthrown:                                        ; preds = %thrown2
-  store i8* %"call.alloc<i8>", i8** %bigger, align 8
+  store i8* %"call.new<i8>", i8** %bigger, align 8
   %"*self11" = load %String*, %String** %self, align 8
   %"*self.data" = getelementptr inbounds %String, %String* %"*self11", i32 0, i32 0
   %"*self12" = load %String*, %String** %self, align 8
@@ -4283,7 +4283,7 @@ target triple = "x86_64-unknown-linux-gnu"
 @str = private unnamed_addr constant [3 x i8] c"%s\00", align 1
 @str.1 = private unnamed_addr constant [10 x i8] c"uncaught\0A\00", align 1
 
-define i8* @"alloc<i8>"(i32 %0) {
+define i8* @"new<i8>"(i32 %0) {
 entry:
   %count = alloca i32, align 4
   store i32 %0, i32* %count, align 4
@@ -4361,7 +4361,7 @@ if1.then:                                         ; preds = %if1
 
 endif1:                                           ; preds = %if1
   %"$cap10" = load i32, i32* %cap, align 4
-  %"call.alloc<i8>" = call i8* @"alloc<i8>"(i32 %"$cap10")
+  %"call.new<i8>" = call i8* @"new<i8>"(i32 %"$cap10")
   br label %thrown2
 
 thrown2:                                          ; preds = %endif1
@@ -4374,7 +4374,7 @@ thrown2.then:                                     ; preds = %thrown2
   ret void
 
 endthrown:                                        ; preds = %thrown2
-  store i8* %"call.alloc<i8>", i8** %bigger, align 8
+  store i8* %"call.new<i8>", i8** %bigger, align 8
   %"*self11" = load %String*, %String** %self, align 8
   %"*self.data" = getelementptr inbounds %String, %String* %"*self11", i32 0, i32 0
   %"*self12" = load %String*, %String** %self, align 8
@@ -4985,7 +4985,7 @@ target triple = "x86_64-unknown-linux-gnu"
 @str.2 = private unnamed_addr constant [9 x i8] c"code %d\0A\00", align 1
 @str.3 = private unnamed_addr constant [7 x i8] c"after\0A\00", align 1
 
-define i8* @"alloc<i8>"(i32 %0) {
+define i8* @"new<i8>"(i32 %0) {
 entry:
   %count = alloca i32, align 4
   store i32 %0, i32* %count, align 4
@@ -5063,7 +5063,7 @@ if1.then:                                         ; preds = %if1
 
 endif1:                                           ; preds = %if1
   %"$cap10" = load i32, i32* %cap, align 4
-  %"call.alloc<i8>" = call i8* @"alloc<i8>"(i32 %"$cap10")
+  %"call.new<i8>" = call i8* @"new<i8>"(i32 %"$cap10")
   br label %thrown2
 
 thrown2:                                          ; preds = %endif1
@@ -5076,7 +5076,7 @@ thrown2.then:                                     ; preds = %thrown2
   ret void
 
 endthrown:                                        ; preds = %thrown2
-  store i8* %"call.alloc<i8>", i8** %bigger, align 8
+  store i8* %"call.new<i8>", i8** %bigger, align 8
   %"*self11" = load %String*, %String** %self, align 8
   %"*self.data" = getelementptr inbounds %String, %String* %"*self11", i32 0, i32 0
   %"*self12" = load %String*, %String** %self, align 8
@@ -5529,7 +5529,7 @@ target triple = "x86_64-unknown-linux-gnu"
 @str.1 = private unnamed_addr constant [2 x i8] c"x\00", align 1
 @str.2 = private unnamed_addr constant [12 x i8] c"caught: %s\0A\00", align 1
 
-define i8* @"alloc<i8>"(i32 %0) {
+define i8* @"new<i8>"(i32 %0) {
 entry:
   %count = alloca i32, align 4
   store i32 %0, i32* %count, align 4
@@ -5607,7 +5607,7 @@ if1.then:                                         ; preds = %if1
 
 endif1:                                           ; preds = %if1
   %"$cap10" = load i32, i32* %cap, align 4
-  %"call.alloc<i8>" = call i8* @"alloc<i8>"(i32 %"$cap10")
+  %"call.new<i8>" = call i8* @"new<i8>"(i32 %"$cap10")
   br label %thrown2
 
 thrown2:                                          ; preds = %endif1
@@ -5620,7 +5620,7 @@ thrown2.then:                                     ; preds = %thrown2
   ret void
 
 endthrown:                                        ; preds = %thrown2
-  store i8* %"call.alloc<i8>", i8** %bigger, align 8
+  store i8* %"call.new<i8>", i8** %bigger, align 8
   %"*self11" = load %String*, %String** %self, align 8
   %"*self.data" = getelementptr inbounds %String, %String* %"*self11", i32 0, i32 0
   %"*self12" = load %String*, %String** %self, align 8

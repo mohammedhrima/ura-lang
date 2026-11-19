@@ -1022,7 +1022,7 @@ target triple = "x86_64-unknown-linux-gnu"
 @str.10 = private unnamed_addr constant [7 x i8] c"never\0A\00", align 1
 @str.11 = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
 
-define i8* @"alloc<i8>"(i32 %0) {
+define i8* @"new<i8>"(i32 %0) {
 entry:
   %count = alloca i32, align 4
   store i32 %0, i32* %count, align 4
@@ -1100,8 +1100,8 @@ if1.then:                                         ; preds = %if1
 
 endif1:                                           ; preds = %if1
   %"$cap8" = load i32, i32* %cap, align 4
-  %"call.alloc<i8>" = call i8* @"alloc<i8>"(i32 %"$cap8")
-  store i8* %"call.alloc<i8>", i8** %bigger, align 8
+  %"call.new<i8>" = call i8* @"new<i8>"(i32 %"$cap8")
+  store i8* %"call.new<i8>", i8** %bigger, align 8
   %"*self9" = load %String*, %String** %self, align 8
   %"*self.data" = getelementptr inbounds %String, %String* %"*self9", i32 0, i32 0
   %"*self10" = load %String*, %String** %self, align 8

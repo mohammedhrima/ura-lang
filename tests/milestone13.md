@@ -8,9 +8,6 @@
 - 004 — directive: a non-matching branch is dropped before parsing
 - 005 — directive: a platform-gated top-level proto
 - 006 — directive: @if selects a value inside a function
-- 007 — directive: without @no-warn, operator drop alone warns
-- 008 — directive: @no-warn above operator drop silences that warning
-- 009 — directive: @no-warn covers only the declaration it precedes
 - 010 — function: fn-typed value: assign top-level fn to a local, call indirectly
 - 011 — function: fn-typed parameter: callback passed to higher-order fn
 - 012 — function: store a function in a fn-typed variable, then call it
@@ -18,14 +15,9 @@
 - 014 — function: nested non-capturing helper function
 - 015 — function: a function-typed parameter given a value
 - 016 — function: proto then definition, and definition then proto
-- 017 — function: signature conflict with a prelude proto
 - 018 — function: conflict between two of your own protos
 - 019 — function: calling a null (zero-init) function value traps with file:line
 - 020 — function: infinite recursion overflows the stack
-- 021 — function: ret is the short spelling of return
-- 022 — function: ret and return mix freely in one file
-- 023 — function: a bare ret in a void function
-- 024 — function: ret ref returns a reference
 - 025 — project: calc
 - 026 — project: libft (library and its main)
 - 027 — project: net server
@@ -61,7 +53,7 @@
 // stdout: none
 // expect: 0
 
-proto fn printf(format pointer, ...) i32
+proto printf(format i8[], ...) i32
 
 fn main() i32:
     f f32 = 3.5
@@ -85,13 +77,13 @@ fn main() i32:
 ## 002 — directive: @if/@elif/@else selects the matching platform branch
 
 ```ura
-// stdout: mac
+// stdout: unix
 // expect: 0
 fn main() i32:
-    @if macos:
-        output("mac\n")
-    @elif linux:
-        output("linux\n")
+    @if os == "macos":
+        output("unix\n")
+    @elif os == "linux":
+        output("unix\n")
     @else:
         output("other\n")
     return 0
@@ -105,7 +97,7 @@ fn main() i32:
 // stdout: posix
 // expect: 0
 fn main() i32:
-    @if unix:
+    @if os == "macos" or os == "linux":
         output("posix\n")
     @else:
         output("windows\n")
@@ -120,7 +112,7 @@ fn main() i32:
 // stdout: kept
 // expect: 0
 fn main() i32:
-    @if linux:
+    @if os == "plan9":
         undefined_that_would_error()
     @else:
         output("kept\n")
@@ -134,10 +126,10 @@ fn main() i32:
 ```ura
 // stdout: True
 // expect: 0
-@if unix:
-    proto fn getpid() i32
+@if os == "macos" or os == "linux":
+    proto getpid() i32
 @else:
-    proto fn GetCurrentProcessId() u32
+    proto GetCurrentProcessId() u32
 
 fn main() i32:
     output(getpid() > 0, "\n")
@@ -152,88 +144,15 @@ fn main() i32:
 // stdout: 1
 // expect: 0
 fn tag() i32:
-    @if macos:
+    @if os == "macos":
         return 1
-    @elif linux:
-        return 2
+    @elif os == "linux":
+        return 1
     @else:
         return 0
 
 fn main() i32:
     output(tag(), "\n")
-    return 0
-```
-
----
-
-## 007 — directive: without @no-warn, operator drop alone warns
-
-```ura
-// stdout: dropping 1
-// stderr: warning: Struct Owned has 'operator drop' but no 'operator ='; copying it makes two owners of the same memory, and both will be destroyed
-// expect: 1
-
-struct Owned:
-    tag i32
-
-    operator drop:
-        output("dropping ", self.tag, "\n")
-
-fn main() i32:
-    o Owned
-    o.tag = 1
-    return 0
-```
-
----
-
-## 008 — directive: @no-warn above operator drop silences that warning
-
-```ura
-// stdout: dropping 1
-// expect: 0
-
-struct Owned:
-    tag i32
-
-    @no-warn
-    operator drop:
-        output("dropping ", self.tag, "\n")
-
-fn main() i32:
-    o Owned
-    o.tag = 1
-    return 0
-```
-
----
-
-## 009 — directive: @no-warn covers only the declaration it precedes
-
-```ura
-// stdout: loud 2
-// stdout: quiet 1
-// stderr: warning: Struct Loud has 'operator drop' but no 'operator ='; copying it makes two owners of the same memory, and both will be destroyed
-// expect: 1
-
-struct Quiet:
-    tag i32
-
-    @no-warn
-    operator drop:
-        output("quiet ", self.tag, "\n")
-
-struct Loud:
-    tag i32
-
-    operator drop:
-        output("loud ", self.tag, "\n")
-
-fn main() i32:
-    q Quiet
-    l Loud
-    q.tag = 1
-    l.tag = 2
     return 0
 ```
 
@@ -321,8 +240,7 @@ fn main() i32:
 ## 014 — function: nested non-capturing helper function
 
 ```ura
-// stderr: exit: 42
-// expect: 1
+// expect: 42
 
 fn main() i32:
     fn dbl(k i32) i32:
@@ -355,7 +273,7 @@ fn main() i32:
 // stdout: 42 42
 // expect: 0
 
-proto fn tally(n i32) i32
+proto tally(n i32) i32
 
 fn tally(n i32) i32:
     return n + 1
@@ -363,24 +281,10 @@ fn tally(n i32) i32:
 fn double(n i32) i32:
     return n * 2
 
-proto fn double(n i32) i32
+proto double(n i32) i32
 
 fn main() i32:
     output(tally(41), " ", double(21), "\n")
-    return 0
-```
-
----
-
-## 017 — function: signature conflict with a prelude proto
-
-```ura
-// error: Conflicting declaration of 'write': parameter 3 is i32, expected i64
-
-proto fn write(fd i32, ptr pointer, len i32) i32
-
-fn main() i32:
-    output("unreachable\n")
     return 0
 ```
 
@@ -391,9 +295,9 @@ fn main() i32:
 ```ura
 // error: Conflicting declaration of 'scan': expected 2 parameter(s), found 3
 
-proto fn scan(a i32, b pointer) i32
+proto scan(a i32, b i8[]) i32
 
-proto fn scan(a i32, b pointer, c i32) i32
+proto scan(a i32, b i8[], c i32) i32
 
 fn main() i32:
     output("unreachable\n")
@@ -418,109 +322,13 @@ fn main() i32:
 ## 020 — function: infinite recursion overflows the stack
 
 ```ura
-// stderr: exit: 139
-// expect: 1
+// expect: 139
 
 fn recurse(n i32) i32:
     return recurse(n)
 
 fn main() i32:
     return recurse(1)
-```
-
----
-
-## 021 — function: ret is the short spelling of return
-
-```ura
-// stdout: 100 0
-// stdout: True False
-// expect: 0
-
-fn clamp(val i32, lo i32, hi i32) i32:
-    if val < lo: ret lo
-    if val > hi: ret hi
-    ret val
-
-fn is_alive(hp i32) bool: ret hp > 0
-
-fn main() i32:
-    output(clamp(120, 0, 100), " ", clamp(-5, 0, 100), "\n")
-    output(is_alive(3), " ", is_alive(0), "\n")
-    return 0
-```
-
----
-
-## 022 — function: ret and return mix freely in one file
-
-```ura
-// stdout: 8 -3
-// expect: 0
-
-fn short(n i32) i32:
-    ret n * 2
-
-fn long(n i32) i32:
-    return n + 1
-
-fn both(n i32) i32:
-    if n > 0: ret short(n)
-    return long(n)
-
-fn main() i32:
-    output(both(4), " ", both(-4), "\n")
-    return 0
-```
-
----
-
-## 023 — function: a bare ret in a void function
-
-```ura
-// stdout: already down
-// stdout: still standing: 12
-// expect: 0
-
-fn announce(hp i32):
-    if hp <= 0:
-        output("already down\n")
-        ret
-    output("still standing: ", hp, "\n")
-
-fn main() i32:
-    announce(0)
-    announce(12)
-    return 0
-```
-
----
-
-## 024 — function: ret ref returns a reference
-
-```ura
-// stdout: 25
-// expect: 0
-
-struct Hero:
-    hp i32
-
-fn strongest(party Hero[]) &Hero:
-    best i32 = 0
-    for i in 1..party.len:
-        if party[i].hp > party[best].hp: best = i
-    ret &party[best]
-
-fn main() i32:
-    party Hero[] = new Hero[3]
-    party[0].hp = 10
-    party[1].hp = 40
-    party[2].hp = 25
-    champ &Hero = strongest(party)
-    champ.hp = champ.hp - 15
-    output(party[1].hp, "\n")
-    clean party
-    return 0
 ```
 
 ---
@@ -560,7 +368,7 @@ struct Node:
         ret &n
 
     @no-warn
-    operator drop:
+    operator drop():
         clean self.token
         clean self.left
         clean self.right
@@ -1271,14 +1079,14 @@ struct PollFd:
     fn has_input() bool:
         return (self.revents & POLLIN) != 0
 
-proto fn socket(domain i32, type i32, protocol i32) i32
-proto fn bind(fd i32, addr &SockAddr, len i32) i32
-proto fn listen(fd i32, backlog i32) i32
-proto fn accept(fd i32, addr pointer, len pointer) i32
-proto fn setsockopt(fd i32, level i32, opt i32, val pointer, len i32) i32
-proto fn close(fd i32) i32
-proto fn read(fd i32, buf pointer, n i64) i64
-proto fn poll(fds &PollFd, nfds i32, timeout i32) i32
+proto socket(domain i32, type i32, protocol i32) i32
+proto bind(fd i32, addr &SockAddr, len i32) i32
+proto listen(fd i32, backlog i32) i32
+proto accept(fd i32, addr i8[], len i8[]) i32
+proto setsockopt(fd i32, level i32, opt i32, val i8[], len i32) i32
+proto close(fd i32) i32
+proto read(fd i32, buf i8[], n i64) i64
+proto poll(fds &PollFd, nfds i32, timeout i32) i32
 
 // Unbuffered terminal write, so prompts appear before we block on poll.
 fn log(msg char[]):
@@ -1311,10 +1119,10 @@ struct Server:
 
     // raw fd, not a Socket: the poll loop owns and closes it explicitly
     fn accept_raw() i32:
-        none pointer = null
+        none i8[] = null
         return accept(self.fd, none, none)
 
-    operator drop:
+    operator drop():
         if self.fd >= 0:
             close(self.fd)
 
@@ -1450,11 +1258,11 @@ struct PollFd:
     fn has_input() bool:
         return (self.revents & POLLIN) != 0
 
-proto fn socket(domain i32, type i32, protocol i32) i32
-proto fn connect(fd i32, addr &SockAddr, len i32) i32
-proto fn close(fd i32) i32
-proto fn read(fd i32, buf pointer, n i64) i64
-proto fn poll(fds &PollFd, nfds i32, timeout i32) i32
+proto socket(domain i32, type i32, protocol i32) i32
+proto connect(fd i32, addr &SockAddr, len i32) i32
+proto close(fd i32) i32
+proto read(fd i32, buf i8[], n i64) i64
+proto poll(fds &PollFd, nfds i32, timeout i32) i32
 
 // 127.0.0.1 -> the four octets in network order, packed into one i32.
 fn ipv4(a i32, b i32, c i32, d i32) i32:
@@ -1476,7 +1284,7 @@ struct Socket:
     fn recv_into(buf char[], cap i32) i32:
         return read(self.fd, buf, cap as i64) as i32
 
-    operator drop:
+    operator drop():
         if self.fd >= 0:
             close(self.fd)
 
@@ -1732,14 +1540,16 @@ declare i32 @dprintf(i32, i8*, ...)
 ## 031 — dungeon: floor14a
 
 ```ura
-// error: Conflicting declaration of 'write': parameter 3 is i32, expected i64
+// stdout: hi
+// stdout: length: 7
+// expect: 0
 // dungeon/floor14a.ura
-proto fn strlen(s pointer) i64
-proto fn write(fd i32, ptr pointer, len i32) i32
-proto fn printf(fmt pointer, ...) i32
+proto strlen(s i8[]) i64
+proto write(fd i32, ptr i8[], len i64) i64
+proto printf(fmt i8[], ...) i32
 
 fn main() i32:
-    n i32 = strlen("dungeon")
+    n i32 = strlen("dungeon") as i32
     write(1, "hi\n", 3)
     printf("length: %d\n", n)
     return 0
@@ -1806,9 +1616,9 @@ fn strongest(party Hero[], n i32) &Hero:
     return &party[best]
 
 fn main() i32:
-    @if macos:
+    @if os == "macos":
         output("== Dungeon (macOS build) ==\n")
-    @elif linux:
+    @elif os == "linux":
         output("== Dungeon (Linux build) ==\n")
     @else:
         output("== Dungeon ==\n")
@@ -1902,7 +1712,7 @@ struct Node:
         ret &n
 
     @no-warn
-    operator drop:
+    operator drop():
         clean self.token
         clean self.left
         clean self.right

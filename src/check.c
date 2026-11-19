@@ -898,6 +898,33 @@ void check_function(Node *node, Node *scope) {
                 NULL
             );
     }
+    for (int i = 0; token->type == PROTO && i < scope->children_count; i++) {
+        Node *other = scope->children[i];
+        bool is_earlier = other->token->type == PROTO && other->token->s < token->s;
+        if (!is_earlier || !strcmp2(other->token->name, token->name))
+            continue;
+        bool is_same = other->args->children_count == count;
+        for (int j = 0; j < count && is_same; j++) {
+            Node *left = other->args->children[j];
+            Node *right = params[j];
+            bool has_types = left->data_type && right->data_type;
+            is_same = has_types ? same_type(left->data_type, right->data_type)
+                                : left->token->type == right->token->type;
+        }
+        if (is_same && same_type(ret_type_of(node), ret_type_of(other)))
+            continue;
+        add_error(
+            name_s,
+            name_e,
+            format(
+                "'%s' is already declared with other parameters, on line %d",
+                token->name,
+                line_at(other->token->s)
+            ),
+            "declare it once, with ... for the optional arguments"
+        );
+        break;
+    }
     if (token->type == PROTO)
         return;
     for (int i = 0; i < count; i++)

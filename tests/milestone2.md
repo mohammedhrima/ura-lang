@@ -6043,6 +6043,124 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+@str.1 = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+@str.2 = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+@str.3 = private unnamed_addr constant [5 x i8] c"True\00", align 1
+@str.4 = private unnamed_addr constant [6 x i8] c"False\00", align 1
+@str.5 = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
+@str.6 = private unnamed_addr constant [5 x i8] c"True\00", align 1
+@str.7 = private unnamed_addr constant [6 x i8] c"False\00", align 1
+@str.8 = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
+@str.9 = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+@str.10 = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+@str.11 = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+@str.12 = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+@str.13 = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+
+define i32 @twice(i32 %0) {
+entry:
+  %n = alloca i32, align 4
+  store i32 %0, i32* %n, align 4
+  %"$n" = load i32, i32* %n, align 4
+  %MUL = mul i32 %"$n", 2
+  ret i32 %MUL
+}
+
+define i32 @main() {
+entry:
+  %x = alloca i32, align 4
+  %r = alloca i32*, align 8
+  %bool.text = alloca i8*, align 8
+  %bool.text13 = alloca i8*, align 8
+  store i32 12, i32* %x, align 4
+  store i32* %x, i32** %r, align 8
+  %"*r" = load i32*, i32** %r, align 8
+  %"$*r" = load i32, i32* %"*r", align 4
+  %ADD = add i32 %"$*r", 3
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i32 %ADD)
+  %"*r2" = load i32*, i32** %r, align 8
+  %"$*r3" = load i32, i32* %"*r2", align 4
+  %SUB = sub i32 %"$*r3", 5
+  %call.dprintf4 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.1, i32 0, i32 0), i32 %SUB)
+  %"*r5" = load i32*, i32** %r, align 8
+  %"$*r6" = load i32, i32* %"*r5", align 4
+  %MUL = mul i32 %"$*r6", 2
+  %call.dprintf7 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.2, i32 0, i32 0), i32 %MUL)
+  %"*r8" = load i32*, i32** %r, align 8
+  %"$*r9" = load i32, i32* %"*r8", align 4
+  %GT = icmp sgt i32 %"$*r9", 10
+  store i8* null, i8** %bool.text, align 8
+  br label %if0
+
+if0:                                              ; preds = %entry
+  br i1 %GT, label %if0.then, label %else1
+
+if0.then:                                         ; preds = %if0
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.3, i32 0, i32 0), i8** %bool.text, align 8
+  br label %endif
+
+else1:                                            ; preds = %if0
+  store i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.4, i32 0, i32 0), i8** %bool.text, align 8
+  br label %endif
+
+endif:                                            ; preds = %else1, %if0.then
+  %"$bool.text" = load i8*, i8** %bool.text, align 8
+  %call.dprintf10 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.5, i32 0, i32 0), i8* %"$bool.text")
+  %"*r11" = load i32*, i32** %r, align 8
+  %"$*r12" = load i32, i32* %"*r11", align 4
+  %EQ = icmp eq i32 %"$*r12", 12
+  store i8* null, i8** %bool.text13, align 8
+  br label %if2
+
+if2:                                              ; preds = %endif
+  br i1 %EQ, label %if2.then, label %else3
+
+if2.then:                                         ; preds = %if2
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.6, i32 0, i32 0), i8** %bool.text13, align 8
+  br label %endif1
+
+else3:                                            ; preds = %if2
+  store i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.7, i32 0, i32 0), i8** %bool.text13, align 8
+  br label %endif1
+
+endif1:                                           ; preds = %else3, %if2.then
+  %"$bool.text14" = load i8*, i8** %bool.text13, align 8
+  %call.dprintf15 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.8, i32 0, i32 0), i8* %"$bool.text14")
+  %"*r16" = load i32*, i32** %r, align 8
+  %"$*r17" = load i32, i32* %"*r16", align 4
+  %BAND = and i32 %"$*r17", 10
+  %call.dprintf18 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.9, i32 0, i32 0), i32 %BAND)
+  %"*r19" = load i32*, i32** %r, align 8
+  %"$*r20" = load i32, i32* %"*r19", align 4
+  %LSHIFT = shl i32 %"$*r20", 1
+  %call.dprintf21 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.10, i32 0, i32 0), i32 %LSHIFT)
+  %"*r22" = load i32*, i32** %r, align 8
+  %"$*r23" = load i32, i32* %"*r22", align 4
+  %NEG = sub i32 0, %"$*r23"
+  %call.dprintf24 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.11, i32 0, i32 0), i32 %NEG)
+  %"*r25" = load i32*, i32** %r, align 8
+  %"$*r26" = load i32, i32* %"*r25", align 4
+  %BXOR = xor i32 %"$*r26", -1
+  %call.dprintf27 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.12, i32 0, i32 0), i32 %BXOR)
+  %"*r28" = load i32*, i32** %r, align 8
+  %"$*r29" = load i32, i32* %"*r28", align 4
+  %call.twice = call i32 @twice(i32 %"$*r29")
+  %call.dprintf30 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.13, i32 0, i32 0), i32 %call.twice)
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 108 — ref: ref? nullable: bound at declaration, guarded reads pass, write-through works
@@ -6903,7 +7021,7 @@ target triple = "x86_64-unknown-linux-gnu"
 @TYPEOF = private unnamed_addr constant [10 x i8] c"Array<i8>\00", align 1
 @str.9 = private unnamed_addr constant [9 x i8] c"%c%c %s\0A\00", align 1
 
-define i8* @"alloc<i8>"(i32 %0) {
+define i8* @"new<i8>"(i32 %0) {
 entry:
   %count = alloca i32, align 4
   store i32 %0, i32* %count, align 4
@@ -6981,8 +7099,8 @@ if1.then:                                         ; preds = %if1
 
 endif1:                                           ; preds = %if1
   %"$cap8" = load i32, i32* %cap, align 4
-  %"call.alloc<i8>" = call i8* @"alloc<i8>"(i32 %"$cap8")
-  store i8* %"call.alloc<i8>", i8** %bigger, align 8
+  %"call.new<i8>" = call i8* @"new<i8>"(i32 %"$cap8")
+  store i8* %"call.new<i8>", i8** %bigger, align 8
   %"*self9" = load %"Array<i8>"*, %"Array<i8>"** %self, align 8
   %"*self.data" = getelementptr inbounds %"Array<i8>", %"Array<i8>"* %"*self9", i32 0, i32 0
   %"*self10" = load %"Array<i8>"*, %"Array<i8>"** %self, align 8
@@ -7186,7 +7304,7 @@ endif:                                            ; preds = %if7.then, %if7
   ret void
 }
 
-define i32* @"alloc<i32>"(i32 %0) {
+define i32* @"new<i32>"(i32 %0) {
 entry:
   %count = alloca i32, align 4
   store i32 %0, i32* %count, align 4
@@ -7268,8 +7386,8 @@ if9.then:                                         ; preds = %if9
 
 endif1:                                           ; preds = %if9
   %"$cap8" = load i32, i32* %cap, align 4
-  %"call.alloc<i32>" = call i32* @"alloc<i32>"(i32 %"$cap8")
-  store i32* %"call.alloc<i32>", i32** %bigger, align 8
+  %"call.new<i32>" = call i32* @"new<i32>"(i32 %"$cap8")
+  store i32* %"call.new<i32>", i32** %bigger, align 8
   %"*self9" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.data" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self9", i32 0, i32 0
   %"*self10" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
