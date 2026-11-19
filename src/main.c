@@ -2130,9 +2130,9 @@ void codegen_write(Node *node) {
         Node *type = type_of(child);
         bool is_string = type && type->declared && same_type(type, string_type());
         if (is_string) {
-            Node *c_str = find_method_named(type->declared, "c_str");
+            Node *chars = find_method_named(type->declared, "chars");
             Ucg *self = ucg_ref(codegen_in_variable(child));
-            args[count++] = ucg_fn_call(c_str->token->ucg, (Ucg *[]){self}, 1);
+            args[count++] = ucg_fn_call(chars->token->ucg, (Ucg *[]){self}, 1);
             continue;
         }
         if (!is_struct_value(type)) {

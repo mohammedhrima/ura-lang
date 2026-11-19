@@ -655,8 +655,8 @@ fn show(n &Node, pre char[], last bool):
     kid String = String::create(pre)
     if last: kid.join("   ")
     else:    kid.join("│  ")
-    if n.left != null:  show(&n.left, kid.c_str(), n.right == null)
-    if n.right != null: show(&n.right, kid.c_str(), True)
+    if n.left != null:  show(&n.left, kid.chars(), n.right == null)
+    if n.right != null: show(&n.right, kid.chars(), True)
 
 fn tree(n &Node):
     label(&n)
@@ -1567,6 +1567,124 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@str = private unnamed_addr constant [5 x i8] c"True\00", align 1
+@str.1 = private unnamed_addr constant [6 x i8] c"False\00", align 1
+@str.2 = private unnamed_addr constant [34 x i8] c"Orc takes %d damage \E2\80\94 dead: %s\0A\00", align 1
+@str.3 = private unnamed_addr constant [15 x i8] c"4 squared: %d\0A\00", align 1
+
+define i32 @clamp(i32 %0, i32 %1, i32 %2) {
+entry:
+  %val = alloca i32, align 4
+  %lo = alloca i32, align 4
+  %hi = alloca i32, align 4
+  store i32 %0, i32* %val, align 4
+  store i32 %1, i32* %lo, align 4
+  store i32 %2, i32* %hi, align 4
+  br label %if0
+
+if0:                                              ; preds = %entry
+  %"$val" = load i32, i32* %val, align 4
+  %"$lo" = load i32, i32* %lo, align 4
+  %LT = icmp slt i32 %"$val", %"$lo"
+  br i1 %LT, label %if0.then, label %endif
+
+if0.then:                                         ; preds = %if0
+  %"$lo2" = load i32, i32* %lo, align 4
+  ret i32 %"$lo2"
+
+endif:                                            ; preds = %if0
+  br label %if1
+
+if1:                                              ; preds = %endif
+  %"$val3" = load i32, i32* %val, align 4
+  %"$hi" = load i32, i32* %hi, align 4
+  %GT = icmp sgt i32 %"$val3", %"$hi"
+  br i1 %GT, label %if1.then, label %endif1
+
+if1.then:                                         ; preds = %if1
+  %"$hi4" = load i32, i32* %hi, align 4
+  ret i32 %"$hi4"
+
+endif1:                                           ; preds = %if1
+  %"$val5" = load i32, i32* %val, align 4
+  ret i32 %"$val5"
+}
+
+define i32 @damage(i32 %0, i32 %1) {
+entry:
+  %atk = alloca i32, align 4
+  %def = alloca i32, align 4
+  store i32 %0, i32* %atk, align 4
+  store i32 %1, i32* %def, align 4
+  %"$atk" = load i32, i32* %atk, align 4
+  %"$def" = load i32, i32* %def, align 4
+  %SUB = sub i32 %"$atk", %"$def"
+  %call.clamp = call i32 @clamp(i32 %SUB, i32 0, i32 999)
+  ret i32 %call.clamp
+}
+
+define i1 @is_dead(i32 %0) {
+entry:
+  %hp = alloca i32, align 4
+  store i32 %0, i32* %hp, align 4
+  %"$hp" = load i32, i32* %hp, align 4
+  %LE = icmp sle i32 %"$hp", 0
+  ret i1 %LE
+}
+
+define i32 @square(i32 %0) {
+entry:
+  %n = alloca i32, align 4
+  store i32 %0, i32* %n, align 4
+  %"$n" = load i32, i32* %n, align 4
+  %"$n1" = load i32, i32* %n, align 4
+  %MUL = mul i32 %"$n", %"$n1"
+  ret i32 %MUL
+}
+
+define i32 @main() {
+entry:
+  %d = alloca i32, align 4
+  %bool.text = alloca i8*, align 8
+  %call.damage = call i32 @damage(i32 25, i32 8)
+  store i32 %call.damage, i32* %d, align 4
+  %"$d" = load i32, i32* %d, align 4
+  %SUB = sub i32 %"$d", 60
+  %call.is_dead = call i1 @is_dead(i32 %SUB)
+  %"$d1" = load i32, i32* %d, align 4
+  store i8* null, i8** %bool.text, align 8
+  br label %if2
+
+if2:                                              ; preds = %entry
+  br i1 %call.is_dead, label %if2.then, label %else3
+
+if2.then:                                         ; preds = %if2
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str, i32 0, i32 0), i8** %bool.text, align 8
+  br label %endif
+
+else3:                                            ; preds = %if2
+  store i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.1, i32 0, i32 0), i8** %bool.text, align 8
+  br label %endif
+
+endif:                                            ; preds = %else3, %if2.then
+  %"$bool.text" = load i8*, i8** %bool.text, align 8
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([34 x i8], [34 x i8]* @str.2, i32 0, i32 0), i32 %"$d1", i8* %"$bool.text")
+  %call.square = call i32 @square(i32 4)
+  %call.dprintf2 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([15 x i8], [15 x i8]* @str.3, i32 0, i32 0), i32 %call.square)
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 030 — dungeon: floor09b
@@ -1581,6 +1699,32 @@ fn main() i32:
     r   = 100
     output(hp, "\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %hp = alloca i32, align 4
+  %r = alloca i32*, align 8
+  store i32 80, i32* %hp, align 4
+  store i32* %hp, i32** %r, align 8
+  %"*r" = load i32*, i32** %r, align 8
+  store i32 100, i32* %"*r", align 4
+  %"$hp" = load i32, i32* %hp, align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i32 %"$hp")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -1853,8 +1997,8 @@ fn show(n &Node, pre char[], last bool):
     kid String = String::create(pre)
     if last: kid.join("   ")
     else:    kid.join("│  ")
-    if n.left != null:  show(&n.left, kid.c_str(), n.right == null)
-    if n.right != null: show(&n.right, kid.c_str(), True)
+    if n.left != null:  show(&n.left, kid.chars(), n.right == null)
+    if n.right != null: show(&n.right, kid.chars(), True)
 
 fn tree(n &Node):
     label(&n)
@@ -1918,6 +2062,76 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@str = private unnamed_addr constant [10 x i8] c"is alnum\0A\00", align 1
+@str.1 = private unnamed_addr constant [14 x i8] c"is not alnum\0A\00", align 1
+
+define i1 @isalpha(i8 %0) {
+entry:
+  %c = alloca i8, align 1
+  store i8 %0, i8* %c, align 1
+  %"$c" = load i8, i8* %c, align 1
+  %GE = icmp sge i8 %"$c", 97
+  %"$c1" = load i8, i8* %c, align 1
+  %LE = icmp sle i8 %"$c1", 122
+  %AND = and i1 %GE, %LE
+  ret i1 %AND
+}
+
+define i1 @isdigit(i8 %0) {
+entry:
+  %c = alloca i8, align 1
+  store i8 %0, i8* %c, align 1
+  %"$c" = load i8, i8* %c, align 1
+  %GE = icmp sge i8 %"$c", 49
+  %"$c1" = load i8, i8* %c, align 1
+  %LE = icmp sle i8 %"$c1", 57
+  %AND = and i1 %GE, %LE
+  ret i1 %AND
+}
+
+define i1 @isalnum(i8 %0) {
+entry:
+  %c = alloca i8, align 1
+  store i8 %0, i8* %c, align 1
+  %"$c" = load i8, i8* %c, align 1
+  %call.isalpha = call i1 @isalpha(i8 %"$c")
+  %"$c1" = load i8, i8* %c, align 1
+  %call.isdigit = call i1 @isdigit(i8 %"$c1")
+  %OR = or i1 %call.isalpha, %call.isdigit
+  ret i1 %OR
+}
+
+define i32 @main() {
+entry:
+  br label %if0
+
+if0:                                              ; preds = %entry
+  %call.isalnum = call i1 @isalnum(i8 49)
+  br i1 %call.isalnum, label %if0.then, label %else1
+
+if0.then:                                         ; preds = %if0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str, i32 0, i32 0))
+  br label %endif
+
+else1:                                            ; preds = %if0
+  %call.dprintf1 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.1, i32 0, i32 0))
+  br label %endif
+
+endif:                                            ; preds = %else1, %if0.then
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 035 — libft: isalpha
@@ -1936,6 +2150,52 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@str = private unnamed_addr constant [10 x i8] c"is alpha\0A\00", align 1
+@str.1 = private unnamed_addr constant [14 x i8] c"is not alpha\0A\00", align 1
+
+define i1 @isalpha(i8 %0) {
+entry:
+  %c = alloca i8, align 1
+  store i8 %0, i8* %c, align 1
+  %"$c" = load i8, i8* %c, align 1
+  %GE = icmp sge i8 %"$c", 97
+  %"$c1" = load i8, i8* %c, align 1
+  %LE = icmp sle i8 %"$c1", 122
+  %AND = and i1 %GE, %LE
+  ret i1 %AND
+}
+
+define i32 @main() {
+entry:
+  br label %if0
+
+if0:                                              ; preds = %entry
+  %call.isalpha = call i1 @isalpha(i8 49)
+  br i1 %call.isalpha, label %if0.then, label %else1
+
+if0.then:                                         ; preds = %if0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str, i32 0, i32 0))
+  br label %endif
+
+else1:                                            ; preds = %if0
+  %call.dprintf1 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.1, i32 0, i32 0))
+  br label %endif
+
+endif:                                            ; preds = %else1, %if0.then
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 036 — libft: isdigit
@@ -1952,6 +2212,52 @@ fn main() i32:
     else:
         output("is not alnum\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@str = private unnamed_addr constant [10 x i8] c"is alnum\0A\00", align 1
+@str.1 = private unnamed_addr constant [14 x i8] c"is not alnum\0A\00", align 1
+
+define i1 @isdigit(i8 %0) {
+entry:
+  %c = alloca i8, align 1
+  store i8 %0, i8* %c, align 1
+  %"$c" = load i8, i8* %c, align 1
+  %GE = icmp sge i8 %"$c", 49
+  %"$c1" = load i8, i8* %c, align 1
+  %LE = icmp sle i8 %"$c1", 57
+  %AND = and i1 %GE, %LE
+  ret i1 %AND
+}
+
+define i32 @main() {
+entry:
+  br label %if0
+
+if0:                                              ; preds = %entry
+  %call.isdigit = call i1 @isdigit(i8 49)
+  br i1 %call.isdigit, label %if0.then, label %else1
+
+if0.then:                                         ; preds = %if0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str, i32 0, i32 0))
+  br label %endif
+
+else1:                                            ; preds = %if0
+  %call.dprintf1 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.1, i32 0, i32 0))
+  br label %endif
+
+endif:                                            ; preds = %else1, %if0.then
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---

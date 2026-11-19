@@ -227,7 +227,7 @@ endif4:                                           ; preds = %endthrown3, %if4
   ret void
 }
 
-define void @String.push_back(%String* %0, i8 %1) {
+define void @String.append(%String* %0, i8 %1) {
 entry:
   %self = alloca %String*, align 8
   %value = alloca i8, align 1
@@ -510,7 +510,7 @@ while17.then:                                     ; preds = %while17
   %"$i2" = load i32, i32* %i, align 4
   %"text[]3" = getelementptr inbounds i8, i8* %"$text1", i32 %"$i2"
   %"$text[]4" = load i8, i8* %"text[]3", align 1
-  call void @String.push_back(%String* %"*self", i8 %"$text[]4")
+  call void @String.append(%String* %"*self", i8 %"$text[]4")
   br label %thrown18
 
 thrown18:                                         ; preds = %while17.then
@@ -532,7 +532,7 @@ endloop:                                          ; preds = %while17
   ret void
 }
 
-define i8* @String.c_str(%String* %0) {
+define i8* @String.chars(%String* %0) {
 entry:
   %self = alloca %String*, align 8
   store %String* %0, %String** %self, align 8
@@ -622,7 +622,7 @@ entry:
   store %Error* %0, %Error** %error, align 8
   %"*error" = load %Error*, %Error** %error, align 8
   %"*error.message" = getelementptr inbounds %Error, %Error* %"*error", i32 0, i32 0
-  %call.String.c_str = call i8* @String.c_str(%String* %"*error.message")
+  %call.String.chars = call i8* @String.chars(%String* %"*error.message")
   br label %thrown22
 
 thrown22:                                         ; preds = %entry
@@ -635,7 +635,7 @@ thrown22.then:                                    ; preds = %thrown22
   ret i32 0
 
 endthrown:                                        ; preds = %thrown22
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i8* %call.String.c_str)
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i8* %call.String.chars)
   ret i32 1
 }
 
@@ -708,7 +708,7 @@ catch27.then:                                     ; preds = %catch27
   %"$*error.at" = load %Error, %Error* %"*error.at9", align 8
   store %Error %"$*error.at", %Error* %e, align 8
   %e.message = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
-  %call.String.c_str = call i8* @String.c_str(%String* %e.message)
+  %call.String.chars = call i8* @String.chars(%String* %e.message)
   br label %thrown28
 
 thrown28:                                         ; preds = %catch27.then
@@ -723,7 +723,7 @@ thrown28.then:                                    ; preds = %thrown28
   br label %endtry3
 
 endthrown2:                                       ; preds = %thrown28
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.2, i32 0, i32 0), i8* %call.String.c_str)
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.2, i32 0, i32 0), i8* %call.String.chars)
   %e.message12 = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
   call void @String.drop(%String* %e.message12)
   br label %endcatch
@@ -990,7 +990,7 @@ endif4:                                           ; preds = %endthrown3, %if4
   ret void
 }
 
-define void @String.push_back(%String* %0, i8 %1) {
+define void @String.append(%String* %0, i8 %1) {
 entry:
   %self = alloca %String*, align 8
   %value = alloca i8, align 1
@@ -1273,7 +1273,7 @@ while17.then:                                     ; preds = %while17
   %"$i2" = load i32, i32* %i, align 4
   %"text[]3" = getelementptr inbounds i8, i8* %"$text1", i32 %"$i2"
   %"$text[]4" = load i8, i8* %"text[]3", align 1
-  call void @String.push_back(%String* %"*self", i8 %"$text[]4")
+  call void @String.append(%String* %"*self", i8 %"$text[]4")
   br label %thrown18
 
 thrown18:                                         ; preds = %while17.then
@@ -1295,7 +1295,7 @@ endloop:                                          ; preds = %while17
   ret void
 }
 
-define i8* @String.c_str(%String* %0) {
+define i8* @String.chars(%String* %0) {
 entry:
   %self = alloca %String*, align 8
   store %String* %0, %String** %self, align 8
@@ -1385,7 +1385,7 @@ entry:
   store %Error* %0, %Error** %error, align 8
   %"*error" = load %Error*, %Error** %error, align 8
   %"*error.message" = getelementptr inbounds %Error, %Error* %"*error", i32 0, i32 0
-  %call.String.c_str = call i8* @String.c_str(%String* %"*error.message")
+  %call.String.chars = call i8* @String.chars(%String* %"*error.message")
   br label %thrown22
 
 thrown22:                                         ; preds = %entry
@@ -1398,7 +1398,7 @@ thrown22.then:                                    ; preds = %thrown22
   ret i32 0
 
 endthrown:                                        ; preds = %thrown22
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i8* %call.String.c_str)
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i8* %call.String.chars)
   ret i32 1
 }
 
@@ -1507,7 +1507,7 @@ catch29.then:                                     ; preds = %catch29
   %"$*error.at" = load %Error, %Error* %"*error.at", align 8
   store %Error %"$*error.at", %Error* %e, align 8
   %e.message = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
-  %call.String.c_str = call i8* @String.c_str(%String* %e.message)
+  %call.String.chars = call i8* @String.chars(%String* %e.message)
   br label %thrown30
 
 thrown30:                                         ; preds = %catch29.then
@@ -1522,7 +1522,7 @@ thrown30.then:                                    ; preds = %thrown30
   br label %endtry2
 
 endthrown1:                                       ; preds = %thrown30
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.2, i32 0, i32 0), i8* %call.String.c_str)
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.2, i32 0, i32 0), i8* %call.String.chars)
   %e.message8 = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
   call void @String.drop(%String* %e.message8)
   br label %endcatch
@@ -1791,7 +1791,7 @@ endif4:                                           ; preds = %endthrown3, %if4
   ret void
 }
 
-define void @String.push_back(%String* %0, i8 %1) {
+define void @String.append(%String* %0, i8 %1) {
 entry:
   %self = alloca %String*, align 8
   %value = alloca i8, align 1
@@ -2074,7 +2074,7 @@ while17.then:                                     ; preds = %while17
   %"$i2" = load i32, i32* %i, align 4
   %"text[]3" = getelementptr inbounds i8, i8* %"$text1", i32 %"$i2"
   %"$text[]4" = load i8, i8* %"text[]3", align 1
-  call void @String.push_back(%String* %"*self", i8 %"$text[]4")
+  call void @String.append(%String* %"*self", i8 %"$text[]4")
   br label %thrown18
 
 thrown18:                                         ; preds = %while17.then
@@ -2096,7 +2096,7 @@ endloop:                                          ; preds = %while17
   ret void
 }
 
-define i8* @String.c_str(%String* %0) {
+define i8* @String.chars(%String* %0) {
 entry:
   %self = alloca %String*, align 8
   store %String* %0, %String** %self, align 8
@@ -2186,7 +2186,7 @@ entry:
   store %Error* %0, %Error** %error, align 8
   %"*error" = load %Error*, %Error** %error, align 8
   %"*error.message" = getelementptr inbounds %Error, %Error* %"*error", i32 0, i32 0
-  %call.String.c_str = call i8* @String.c_str(%String* %"*error.message")
+  %call.String.chars = call i8* @String.chars(%String* %"*error.message")
   br label %thrown22
 
 thrown22:                                         ; preds = %entry
@@ -2199,7 +2199,7 @@ thrown22.then:                                    ; preds = %thrown22
   ret i32 0
 
 endthrown:                                        ; preds = %thrown22
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i8* %call.String.c_str)
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i8* %call.String.chars)
   ret i32 1
 }
 
@@ -2266,7 +2266,7 @@ catch26.then:                                     ; preds = %catch26
   %"$*error.at" = load %Error, %Error* %"*error.at8", align 8
   store %Error %"$*error.at", %Error* %e, align 8
   %e.message = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
-  %call.String.c_str = call i8* @String.c_str(%String* %e.message)
+  %call.String.chars = call i8* @String.chars(%String* %e.message)
   br label %thrown27
 
 thrown27:                                         ; preds = %catch26.then
@@ -2281,7 +2281,7 @@ thrown27.then:                                    ; preds = %thrown27
   ret void
 
 endthrown2:                                       ; preds = %thrown27
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.2, i32 0, i32 0), i8* %call.String.c_str)
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.2, i32 0, i32 0), i8* %call.String.chars)
   %call.String.create11 = call %String @String.create(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.3, i32 0, i32 0))
   br label %thrown28
 
@@ -2387,7 +2387,7 @@ catch34.then:                                     ; preds = %catch34
   %"$*error.at" = load %Error, %Error* %"*error.at", align 8
   store %Error %"$*error.at", %Error* %e, align 8
   %e.message = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
-  %call.String.c_str = call i8* @String.c_str(%String* %e.message)
+  %call.String.chars = call i8* @String.chars(%String* %e.message)
   br label %thrown35
 
 thrown35:                                         ; preds = %catch34.then
@@ -2402,7 +2402,7 @@ thrown35.then:                                    ; preds = %thrown35
   br label %endtry2
 
 endthrown1:                                       ; preds = %thrown35
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.4, i32 0, i32 0), i8* %call.String.c_str)
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.4, i32 0, i32 0), i8* %call.String.chars)
   %e.message8 = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
   call void @String.drop(%String* %e.message8)
   br label %endcatch
@@ -2664,7 +2664,7 @@ endif4:                                           ; preds = %endthrown3, %if4
   ret void
 }
 
-define void @String.push_back(%String* %0, i8 %1) {
+define void @String.append(%String* %0, i8 %1) {
 entry:
   %self = alloca %String*, align 8
   %value = alloca i8, align 1
@@ -2947,7 +2947,7 @@ while17.then:                                     ; preds = %while17
   %"$i2" = load i32, i32* %i, align 4
   %"text[]3" = getelementptr inbounds i8, i8* %"$text1", i32 %"$i2"
   %"$text[]4" = load i8, i8* %"text[]3", align 1
-  call void @String.push_back(%String* %"*self", i8 %"$text[]4")
+  call void @String.append(%String* %"*self", i8 %"$text[]4")
   br label %thrown18
 
 thrown18:                                         ; preds = %while17.then
@@ -2969,7 +2969,7 @@ endloop:                                          ; preds = %while17
   ret void
 }
 
-define i8* @String.c_str(%String* %0) {
+define i8* @String.chars(%String* %0) {
 entry:
   %self = alloca %String*, align 8
   store %String* %0, %String** %self, align 8
@@ -3059,7 +3059,7 @@ entry:
   store %Error* %0, %Error** %error, align 8
   %"*error" = load %Error*, %Error** %error, align 8
   %"*error.message" = getelementptr inbounds %Error, %Error* %"*error", i32 0, i32 0
-  %call.String.c_str = call i8* @String.c_str(%String* %"*error.message")
+  %call.String.chars = call i8* @String.chars(%String* %"*error.message")
   br label %thrown22
 
 thrown22:                                         ; preds = %entry
@@ -3072,7 +3072,7 @@ thrown22.then:                                    ; preds = %thrown22
   ret i32 0
 
 endthrown:                                        ; preds = %thrown22
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i8* %call.String.c_str)
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i8* %call.String.chars)
   ret i32 1
 }
 
@@ -3153,7 +3153,7 @@ catch28.then:                                     ; preds = %catch28
   %"$*error.at" = load %Error, %Error* %"*error.at13", align 8
   store %Error %"$*error.at", %Error* %e, align 8
   %e.message = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
-  %call.String.c_str = call i8* @String.c_str(%String* %e.message)
+  %call.String.chars = call i8* @String.chars(%String* %e.message)
   br label %thrown29
 
 thrown29:                                         ; preds = %catch28.then
@@ -3168,7 +3168,7 @@ thrown29.then:                                    ; preds = %thrown29
   br label %endtry3
 
 endthrown2:                                       ; preds = %thrown29
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.2, i32 0, i32 0), i8* %call.String.c_str)
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.2, i32 0, i32 0), i8* %call.String.chars)
   %e.message16 = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
   call void @String.drop(%String* %e.message16)
   br label %endcatch
@@ -3205,7 +3205,7 @@ catch31.then:                                     ; preds = %catch31
   %"$*error.at25" = load %Error, %Error* %"*error.at24", align 8
   store %Error %"$*error.at25", %Error* %e22, align 8
   %e.message26 = getelementptr inbounds %Error, %Error* %e22, i32 0, i32 0
-  %call.String.c_str27 = call i8* @String.c_str(%String* %e.message26)
+  %call.String.chars27 = call i8* @String.chars(%String* %e.message26)
   br label %thrown32
 
 thrown32:                                         ; preds = %catch31.then
@@ -3220,7 +3220,7 @@ thrown32.then:                                    ; preds = %thrown32
   br label %endtry7
 
 endthrown4:                                       ; preds = %thrown32
-  %call.dprintf30 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.3, i32 0, i32 0), i8* %call.String.c_str27)
+  %call.dprintf30 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.3, i32 0, i32 0), i8* %call.String.chars27)
   %e.message31 = getelementptr inbounds %Error, %Error* %e22, i32 0, i32 0
   call void @String.drop(%String* %e.message31)
   br label %endcatch5
@@ -3579,7 +3579,7 @@ endif:                                            ; preds = %endthrown1, %if9
   ret void
 }
 
-define i8* @String.c_str(%String* %0) {
+define i8* @String.chars(%String* %0) {
 entry:
   %self = alloca %String*, align 8
   store %String* %0, %String** %self, align 8
@@ -3621,7 +3621,7 @@ entry:
   store %Error* %0, %Error** %error, align 8
   %"*error" = load %Error*, %Error** %error, align 8
   %"*error.message" = getelementptr inbounds %Error, %Error* %"*error", i32 0, i32 0
-  %call.String.c_str = call i8* @String.c_str(%String* %"*error.message")
+  %call.String.chars = call i8* @String.chars(%String* %"*error.message")
   br label %thrown12
 
 thrown12:                                         ; preds = %entry
@@ -3634,7 +3634,7 @@ thrown12.then:                                    ; preds = %thrown12
   ret i32 0
 
 endthrown:                                        ; preds = %thrown12
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i8* %call.String.c_str)
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i8* %call.String.chars)
   ret i32 1
 }
 
@@ -4056,7 +4056,7 @@ endif:                                            ; preds = %endthrown1, %if9
   ret void
 }
 
-define i8* @String.c_str(%String* %0) {
+define i8* @String.chars(%String* %0) {
 entry:
   %self = alloca %String*, align 8
   store %String* %0, %String** %self, align 8
@@ -4098,7 +4098,7 @@ entry:
   store %Error* %0, %Error** %error, align 8
   %"*error" = load %Error*, %Error** %error, align 8
   %"*error.message" = getelementptr inbounds %Error, %Error* %"*error", i32 0, i32 0
-  %call.String.c_str = call i8* @String.c_str(%String* %"*error.message")
+  %call.String.chars = call i8* @String.chars(%String* %"*error.message")
   br label %thrown12
 
 thrown12:                                         ; preds = %entry
@@ -4111,7 +4111,7 @@ thrown12.then:                                    ; preds = %thrown12
   ret i32 0
 
 endthrown:                                        ; preds = %thrown12
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i8* %call.String.c_str)
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i8* %call.String.chars)
   ret i32 1
 }
 
@@ -4435,7 +4435,7 @@ endif4:                                           ; preds = %endthrown3, %if4
   ret void
 }
 
-define void @String.push_back(%String* %0, i8 %1) {
+define void @String.append(%String* %0, i8 %1) {
 entry:
   %self = alloca %String*, align 8
   %value = alloca i8, align 1
@@ -4718,7 +4718,7 @@ while17.then:                                     ; preds = %while17
   %"$i2" = load i32, i32* %i, align 4
   %"text[]3" = getelementptr inbounds i8, i8* %"$text1", i32 %"$i2"
   %"$text[]4" = load i8, i8* %"text[]3", align 1
-  call void @String.push_back(%String* %"*self", i8 %"$text[]4")
+  call void @String.append(%String* %"*self", i8 %"$text[]4")
   br label %thrown18
 
 thrown18:                                         ; preds = %while17.then
@@ -4740,7 +4740,7 @@ endloop:                                          ; preds = %while17
   ret void
 }
 
-define i8* @String.c_str(%String* %0) {
+define i8* @String.chars(%String* %0) {
 entry:
   %self = alloca %String*, align 8
   store %String* %0, %String** %self, align 8
@@ -4830,7 +4830,7 @@ entry:
   store %Error* %0, %Error** %error, align 8
   %"*error" = load %Error*, %Error** %error, align 8
   %"*error.message" = getelementptr inbounds %Error, %Error* %"*error", i32 0, i32 0
-  %call.String.c_str = call i8* @String.c_str(%String* %"*error.message")
+  %call.String.chars = call i8* @String.chars(%String* %"*error.message")
   br label %thrown22
 
 thrown22:                                         ; preds = %entry
@@ -4843,7 +4843,7 @@ thrown22.then:                                    ; preds = %thrown22
   ret i32 0
 
 endthrown:                                        ; preds = %thrown22
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i8* %call.String.c_str)
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i8* %call.String.chars)
   ret i32 1
 }
 
@@ -5236,7 +5236,7 @@ endif:                                            ; preds = %endthrown1, %if9
   ret void
 }
 
-define i8* @String.c_str(%String* %0) {
+define i8* @String.chars(%String* %0) {
 entry:
   %self = alloca %String*, align 8
   store %String* %0, %String** %self, align 8
@@ -5278,7 +5278,7 @@ entry:
   store %Error* %0, %Error** %error, align 8
   %"*error" = load %Error*, %Error** %error, align 8
   %"*error.message" = getelementptr inbounds %Error, %Error* %"*error", i32 0, i32 0
-  %call.String.c_str = call i8* @String.c_str(%String* %"*error.message")
+  %call.String.chars = call i8* @String.chars(%String* %"*error.message")
   br label %thrown12
 
 thrown12:                                         ; preds = %entry
@@ -5291,7 +5291,7 @@ thrown12.then:                                    ; preds = %thrown12
   ret i32 0
 
 endthrown:                                        ; preds = %thrown12
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i8* %call.String.c_str)
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i8* %call.String.chars)
   ret i32 1
 }
 
@@ -5358,7 +5358,7 @@ catch16.then:                                     ; preds = %catch16
   %"$*error.at" = load %Error, %Error* %"*error.at", align 8
   store %Error %"$*error.at", %Error* %e, align 8
   %e.message = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
-  %call.String.c_str = call i8* @String.c_str(%String* %e.message)
+  %call.String.chars = call i8* @String.chars(%String* %e.message)
   br label %thrown17
 
 thrown17:                                         ; preds = %catch16.then
@@ -5373,7 +5373,7 @@ thrown17.then:                                    ; preds = %thrown17
   br label %endtry2
 
 endthrown1:                                       ; preds = %thrown17
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.1, i32 0, i32 0), i8* %call.String.c_str)
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.1, i32 0, i32 0), i8* %call.String.chars)
   %e.message8 = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
   call void @String.drop(%String* %e.message8)
   br label %endcatch
@@ -5681,7 +5681,7 @@ endif4:                                           ; preds = %endthrown3, %if4
   ret void
 }
 
-define void @String.push_back(%String* %0, i8 %1) {
+define void @String.append(%String* %0, i8 %1) {
 entry:
   %self = alloca %String*, align 8
   %value = alloca i8, align 1
@@ -5964,7 +5964,7 @@ while17.then:                                     ; preds = %while17
   %"$i2" = load i32, i32* %i, align 4
   %"text[]3" = getelementptr inbounds i8, i8* %"$text1", i32 %"$i2"
   %"$text[]4" = load i8, i8* %"text[]3", align 1
-  call void @String.push_back(%String* %"*self", i8 %"$text[]4")
+  call void @String.append(%String* %"*self", i8 %"$text[]4")
   br label %thrown18
 
 thrown18:                                         ; preds = %while17.then
@@ -5986,7 +5986,7 @@ endloop:                                          ; preds = %while17
   ret void
 }
 
-define i8* @String.c_str(%String* %0) {
+define i8* @String.chars(%String* %0) {
 entry:
   %self = alloca %String*, align 8
   store %String* %0, %String** %self, align 8
@@ -6076,7 +6076,7 @@ entry:
   store %Error* %0, %Error** %error, align 8
   %"*error" = load %Error*, %Error** %error, align 8
   %"*error.message" = getelementptr inbounds %Error, %Error* %"*error", i32 0, i32 0
-  %call.String.c_str = call i8* @String.c_str(%String* %"*error.message")
+  %call.String.chars = call i8* @String.chars(%String* %"*error.message")
   br label %thrown22
 
 thrown22:                                         ; preds = %entry
@@ -6089,7 +6089,7 @@ thrown22.then:                                    ; preds = %thrown22
   ret i32 0
 
 endthrown:                                        ; preds = %thrown22
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i8* %call.String.c_str)
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i8* %call.String.chars)
   ret i32 1
 }
 
@@ -6180,7 +6180,7 @@ catch28.then:                                     ; preds = %catch28
   %"$*error.at" = load %Error, %Error* %"*error.at", align 8
   store %Error %"$*error.at", %Error* %e, align 8
   %e.message = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
-  %call.String.c_str = call i8* @String.c_str(%String* %e.message)
+  %call.String.chars = call i8* @String.chars(%String* %e.message)
   br label %thrown29
 
 thrown29:                                         ; preds = %catch28.then
@@ -6195,7 +6195,7 @@ thrown29.then:                                    ; preds = %thrown29
   br label %endtry2
 
 endthrown1:                                       ; preds = %thrown29
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.2, i32 0, i32 0), i8* %call.String.c_str)
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.2, i32 0, i32 0), i8* %call.String.chars)
   %e.message8 = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
   call void @String.drop(%String* %e.message8)
   br label %endcatch

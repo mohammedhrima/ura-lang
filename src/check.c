@@ -894,6 +894,15 @@ void check_function(Node *node, Node *scope) {
     char *owner = scope->token->name;
     Node *symbol = node->args->symbol;
     bool is_operator = symbol && !token->is_pub;
+    bool is_in_struct = scope->token->type == STRUCT;
+    if (!is_in_struct && (symbol || token->is_pub))
+        add_error(
+            token->s,
+            token->e,
+            symbol ? "'operator' may only be declared inside a struct"
+                   : "'pub' may only be used inside a struct",
+            NULL
+        );
     if (is_operator && count > 2)
         add_error(
             token->s,

@@ -1138,7 +1138,7 @@ endif2:                                           ; preds = %if2.then, %if2
   ret void
 }
 
-define void @String.push_back(%String* %0, i8 %1) {
+define void @String.append(%String* %0, i8 %1) {
 entry:
   %self = alloca %String*, align 8
   %value = alloca i8, align 1
@@ -1348,7 +1348,7 @@ while8.then:                                      ; preds = %while8
   %"$i2" = load i32, i32* %i, align 4
   %"text[]3" = getelementptr inbounds i8, i8* %"$text1", i32 %"$i2"
   %"$text[]4" = load i8, i8* %"text[]3", align 1
-  call void @String.push_back(%String* %"*self", i8 %"$text[]4")
+  call void @String.append(%String* %"*self", i8 %"$text[]4")
   %"$i5" = load i32, i32* %i, align 4
   %ADD = add i32 %"$i5", 1
   store i32 %ADD, i32* %i, align 4
@@ -1358,7 +1358,7 @@ endloop:                                          ; preds = %while8
   ret void
 }
 
-define i8* @String.c_str(%String* %0) {
+define i8* @String.chars(%String* %0) {
 entry:
   %self = alloca %String*, align 8
   store %String* %0, %String** %self, align 8
@@ -1575,8 +1575,8 @@ endif:                                            ; preds = %if15
   br label %while14
 
 endloop:                                          ; preds = %while14
-  %call.String.c_str = call i8* @String.c_str(%String* %name)
-  %call.dprintf10 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.11, i32 0, i32 0), i8* %call.String.c_str)
+  %call.String.chars = call i8* @String.chars(%String* %name)
+  %call.dprintf10 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.11, i32 0, i32 0), i8* %call.String.chars)
   call void @String.drop(%String* %name)
   ret i32 0
 }
