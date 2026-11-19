@@ -7597,13 +7597,11 @@ declare i32 @dprintf(i32, i8*, ...)
 // expect: 0
 
 fn main() i32:
-    i i32 = 0
-    while i < 2:
+    for i in Range::create(0, 2):
         struct Tick:
             n i32
 
         t Tick
-        i += 1
     output("ok\n")
     return 0
 ```
@@ -7616,30 +7614,128 @@ source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-unknown-linux-gnu"
 
+%Range = type { i32, i32, i32 }
 %Tick = type { i32 }
 
 @str = private unnamed_addr constant [4 x i8] c"ok\0A\00", align 1
 
+define %Range @Range.create(i32 %0, i32 %1) {
+entry:
+  %start = alloca i32, align 4
+  %stop = alloca i32, align 4
+  %r = alloca %Range, align 8
+  store i32 %0, i32* %start, align 4
+  store i32 %1, i32* %stop, align 4
+  store %Range zeroinitializer, %Range* %r, align 4
+  %r.start = getelementptr inbounds %Range, %Range* %r, i32 0, i32 0
+  %"$start" = load i32, i32* %start, align 4
+  store i32 %"$start", i32* %r.start, align 4
+  %r.stop = getelementptr inbounds %Range, %Range* %r, i32 0, i32 1
+  %"$stop" = load i32, i32* %stop, align 4
+  store i32 %"$stop", i32* %r.stop, align 4
+  %r.step = getelementptr inbounds %Range, %Range* %r, i32 0, i32 2
+  store i32 1, i32* %r.step, align 4
+  br label %if0
+
+if0:                                              ; preds = %entry
+  %"$stop1" = load i32, i32* %stop, align 4
+  %"$start2" = load i32, i32* %start, align 4
+  %LT = icmp slt i32 %"$stop1", %"$start2"
+  br i1 %LT, label %if0.then, label %endif
+
+if0.then:                                         ; preds = %if0
+  %r.step3 = getelementptr inbounds %Range, %Range* %r, i32 0, i32 2
+  store i32 -1, i32* %r.step3, align 4
+  br label %endif
+
+endif:                                            ; preds = %if0.then, %if0
+  %"$r" = load %Range, %Range* %r, align 4
+  ret %Range %"$r"
+}
+
+define i1 @Range.in(%Range* %0, i32* %1, i32* %2) {
+entry:
+  %self = alloca %Range*, align 8
+  %i = alloca i32*, align 8
+  %x = alloca i32*, align 8
+  %done = alloca i1, align 1
+  store %Range* %0, %Range** %self, align 8
+  store i32* %1, i32** %i, align 8
+  store i32* %2, i32** %x, align 8
+  %"*x" = load i32*, i32** %x, align 8
+  %"*self" = load %Range*, %Range** %self, align 8
+  %"*self.start" = getelementptr inbounds %Range, %Range* %"*self", i32 0, i32 0
+  %"*i" = load i32*, i32** %i, align 8
+  %"*self1" = load %Range*, %Range** %self, align 8
+  %"*self.step" = getelementptr inbounds %Range, %Range* %"*self1", i32 0, i32 2
+  %"$*i" = load i32, i32* %"*i", align 4
+  %"$*self.step" = load i32, i32* %"*self.step", align 4
+  %MUL = mul i32 %"$*i", %"$*self.step"
+  %"$*self.start" = load i32, i32* %"*self.start", align 4
+  %ADD = add i32 %"$*self.start", %MUL
+  store i32 %ADD, i32* %"*x", align 4
+  %"*self2" = load %Range*, %Range** %self, align 8
+  %"*self.step3" = getelementptr inbounds %Range, %Range* %"*self2", i32 0, i32 2
+  %"$*self.step4" = load i32, i32* %"*self.step3", align 4
+  %GT = icmp sgt i32 %"$*self.step4", 0
+  %"*x5" = load i32*, i32** %x, align 8
+  %"*self6" = load %Range*, %Range** %self, align 8
+  %"*self.stop" = getelementptr inbounds %Range, %Range* %"*self6", i32 0, i32 1
+  %"$*x" = load i32, i32* %"*x5", align 4
+  %"$*self.stop" = load i32, i32* %"*self.stop", align 4
+  %GE = icmp sge i32 %"$*x", %"$*self.stop"
+  %AND = and i1 %GT, %GE
+  %"*self7" = load %Range*, %Range** %self, align 8
+  %"*self.step8" = getelementptr inbounds %Range, %Range* %"*self7", i32 0, i32 2
+  %"$*self.step9" = load i32, i32* %"*self.step8", align 4
+  %LT = icmp slt i32 %"$*self.step9", 0
+  %"*x10" = load i32*, i32** %x, align 8
+  %"*self11" = load %Range*, %Range** %self, align 8
+  %"*self.stop12" = getelementptr inbounds %Range, %Range* %"*self11", i32 0, i32 1
+  %"$*x13" = load i32, i32* %"*x10", align 4
+  %"$*self.stop14" = load i32, i32* %"*self.stop12", align 4
+  %LE = icmp sle i32 %"$*x13", %"$*self.stop14"
+  %AND15 = and i1 %LT, %LE
+  %OR = or i1 %AND, %AND15
+  store i1 %OR, i1* %done, align 1
+  br label %if1
+
+if1:                                              ; preds = %entry
+  %"$done" = load i1, i1* %done, align 1
+  br i1 %"$done", label %if1.then, label %endif
+
+if1.then:                                         ; preds = %if1
+  ret i1 false
+
+endif:                                            ; preds = %if1
+  %"*i16" = load i32*, i32** %i, align 8
+  %"$*i17" = load i32, i32* %"*i16", align 4
+  %ADD18 = add i32 %"$*i17", 1
+  store i32 %ADD18, i32* %"*i16", align 4
+  ret i1 true
+}
+
 define i32 @main() {
 entry:
+  %tmp = alloca %Range, align 8
   %i = alloca i32, align 4
+  %i1 = alloca i32, align 4
   %t = alloca %Tick, align 8
+  %call.Range.create = call %Range @Range.create(i32 0, i32 2)
+  store %Range %call.Range.create, %Range* %tmp, align 4
   store i32 0, i32* %i, align 4
-  br label %while0
+  store i32 0, i32* %i1, align 4
+  br label %while2
 
-while0:                                           ; preds = %while0.then, %entry
-  %"$i" = load i32, i32* %i, align 4
-  %LT = icmp slt i32 %"$i", 2
-  br i1 %LT, label %while0.then, label %endloop
+while2:                                           ; preds = %while2.then, %entry
+  %call.Range.in = call i1 @Range.in(%Range* %tmp, i32* %i, i32* %i1)
+  br i1 %call.Range.in, label %while2.then, label %endloop
 
-while0.then:                                      ; preds = %while0
+while2.then:                                      ; preds = %while2
   store %Tick zeroinitializer, %Tick* %t, align 4
-  %"$i1" = load i32, i32* %i, align 4
-  %ADD = add i32 %"$i1", 1
-  store i32 %ADD, i32* %i, align 4
-  br label %while0
+  br label %while2
 
-endloop:                                          ; preds = %while0
+endloop:                                          ; preds = %while2
   %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0))
   ret i32 0
 }

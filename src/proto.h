@@ -293,6 +293,7 @@ void check_cond(Node *node);
 void check_copy(Node **value, Node *type);
 void check_declare(Node *node);
 void check_enum(Node *node);
+void check_for(Node *node);
 void check_function(Node *node, Node *scope);
 void check_jump(Node *node);
 void check_link(Node *node);

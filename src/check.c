@@ -972,7 +972,8 @@ void check_function(Node *node, Node *scope) {
                       : "operator drop returns nothing",
             "write operator drop():"
         );
-    if (is_operator && count > 2 && !is_drop)
+    bool is_in = is_operator && strcmp2(token->name, "in");
+    if (is_operator && count > 2 && !is_drop && !is_in)
         add_error(
             token->s,
             token->e,
@@ -1179,6 +1180,25 @@ void check_unary(Node *node) {
         format("can't apply '%s' to '%s'", binary_ops[token->type], type_name(type)),
         NULL
     );
+}
+
+void check_for(Node *node) {
+    Node *type = type_of(node->right);
+    Node *st = type && type->token->type == ID ? type->declared : NULL;
+    Node *in = st ? find_method_named(st, "in") : NULL;
+    bool fits = in && in->args->children_count == 3;
+    if (fits) {
+        node->var->data_type = in->args->children[2]->data_type->data_type;
+        return;
+    }
+    Token *token = node->right->token;
+    add_error(
+        token->s,
+        token->e,
+        format("can't loop over '%s'", type ? type_name(type) : token_text(token)),
+        "give it operator in(i &i32, x &T) bool"
+    );
+    node->var->data_type = new_type(INT, 32, NULL);
 }
 
 void check_jump(Node *node) {

@@ -762,6 +762,30 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@str = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %arr = alloca [3 x i32], align 4
+  store [3 x i32] [i32 10, i32 20, i32 30], [3 x i32]* %arr, align 4
+  %0 = getelementptr inbounds [3 x i32], [3 x i32]* %arr, i32 0, i32 0
+  %"VAL_CREATE[]" = getelementptr inbounds i32, i32* %0, i32 1
+  %"$VAL_CREATE[]" = load i32, i32* %"VAL_CREATE[]", align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i32 %"$VAL_CREATE[]")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 014 — operator: operators and a method on the same struct

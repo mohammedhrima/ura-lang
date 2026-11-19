@@ -165,6 +165,8 @@ struct {
     { "elif", { .type = ELIF } },
     { "else", { .type = ELSE } },
     { "while", { .type = LOOP } },
+    { "for", { .type = FOR } },
+    { "in", { .type = IN } },
     { "break", { .type = BRK } },
     { "continue", { .type = CNT } },
     { "match", { .type = MATCH } },
@@ -1076,6 +1078,24 @@ Node *parse_prime() {
         }
         return node;
     }
+    case FOR: {
+        node = new_node(token);
+        enter_scope(node);
+        Token *name = peek(0);
+        expect(ID, "expected a name after 'for'", " x");
+        Node *declare = new_node(new_token(DECLARE, name));
+        declare->var = new_node(name);
+        declare->var->token->type = VAR;
+        node->var = declare->var;
+        append(node->children, declare);
+        expect(IN, "expected 'in' after the loop name", " in");
+        node->right = parse_expr(0);
+        expect(DOTS, "expected ':' after the for line", ":");
+        while (inside(token->space))
+            append(node->children, parse_expr(0));
+        exit_scope();
+        return node;
+    }
     case MATCH: {
         node = new_node(token);
         enter_scope(node);
@@ -1376,7 +1396,8 @@ Node *parse_prime() {
         node = new_node(token);
         for (int i = ura.scopes_count - 1; i >= 0 && node->loop == NULL; i--) {
             Type type = ura.scopes[i]->token->type;
-            bool is_target = type == LOOP || (type == MATCH && token->type == BRK);
+            bool is_loop = includes(type, LOOP, FOR, 0);
+            bool is_target = is_loop || (type == MATCH && token->type == BRK);
             if (is_target)
                 node->loop = ura.scopes[i];
         }
@@ -1926,6 +1947,15 @@ void analyze(Node *node) {
         for (int i = 0; i < node->children_count; i++)
             analyze(node->children[i]);
         check_array_literal(node, NULL);
+        break;
+    }
+    case FOR: {
+        analyze(node->right);
+        check_for(node);
+        enter_scope(node);
+        for (int i = 0; i < node->children_count; i++)
+            analyze(node->children[i]);
+        exit_scope();
         break;
     }
     case ACCESS: {
@@ -2503,6 +2533,27 @@ void codegen(Node *node) {
     case LOOP: {
         Ucg *loop = ucg_loop();
         codegen_branch(node, loop);
+        ucg_end(loop);
+        break;
+    }
+    case FOR: {
+        Node *type = type_of(node->right);
+        Node *in = find_method_named(type->declared, "in");
+        Ucg *iter = codegen_in_variable(node->right);
+        Ucg *counter = ucg_var("i", ucg_i32_type());
+        ucg_assign(counter, ucg_i32_value(0));
+        enter_scope(node);
+        codegen(node->children[0]);
+        Ucg *loop = ucg_loop();
+        node->token->ucg = loop;
+        Ucg *args[] = {
+            ucg_ref(iter),
+            ucg_ref(counter),
+            ucg_ref(node->var->token->ucg),
+        };
+        ucg_then(loop, ucg_fn_call(in->token->ucg, args, 3));
+        codegen_block(node, 1);
+        exit_scope();
         ucg_end(loop);
         break;
     }
