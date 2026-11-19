@@ -2489,14 +2489,16 @@ target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16
 target triple = "x86_64-unknown-linux-gnu"
 
 @name = global i8* null
-@str = private unnamed_addr constant [5 x i8] c"unix\00", align 1
-@str.1 = private unnamed_addr constant [13 x i8] c"%s sdl only\0A\00", align 1
+@str = private unnamed_addr constant [13 x i8] c"%s sdl only\0A\00", align 1
 
 define i32 @main() {
 entry:
-  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str, i32 0, i32 0), i8** @name, align 8
+  %arr = alloca [5 x i8], align 1
+  store [5 x i8] c"unix\00", [5 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [5 x i8], [5 x i8]* %arr, i32 0, i32 0
+  store i8* %0, i8** @name, align 8
   %"$name" = load i8*, i8** @name, align 8
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str.1, i32 0, i32 0), i8* %"$name")
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str, i32 0, i32 0), i8* %"$name")
   ret i32 0
 }
 

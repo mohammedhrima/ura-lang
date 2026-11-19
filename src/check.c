@@ -428,7 +428,28 @@ bool is_local_variable(Node *node) {
 
 bool is_math(Node *node) {
     return includes(
-        node->token->type, ADD, SUB, MUL, DIV, MOD, BAND, BOR, BXOR, LSHIFT, RSHIFT, 0
+        node->token->type,
+        ADD,
+        SUB,
+        MUL,
+        DIV,
+        MOD,
+        BAND,
+        BOR,
+        BXOR,
+        LSHIFT,
+        RSHIFT,
+        ADD_ASSIGN,
+        SUB_ASSIGN,
+        MUL_ASSIGN,
+        DIV_ASSIGN,
+        MOD_ASSIGN,
+        BAND_ASSIGN,
+        BOR_ASSIGN,
+        BXOR_ASSIGN,
+        LSHIFT_ASSIGN,
+        RSHIFT_ASSIGN,
+        0
     );
 }
 
@@ -479,6 +500,10 @@ void check_type(Node *value, Node *expected, char *help) {
         token->shift = expected->token->shift;
         return;
     }
+    Node *literal = token->type == NEG ? value->operand : NULL;
+    bool is_real_literal = literal && literal->token->type == FLOAT && !literal->token->is_type;
+    if (is_real_literal && expected->token->type == FLOAT && help == NULL)
+        help = format("write -%sf for an f32", token_text(literal->token));
     if (!same_type(found, expected))
         add_error(
             token->s,
@@ -635,12 +660,19 @@ void check_name(Node *node) {
     }
     if (var == NULL) {
         Node *like = find_variable_like(token->name, token->s, 2);
+        bool is_outer = like && strcmp2(like->token->name, token->name);
+        char *msg = format("undeclared variable '%s'", token->name);
+        char *help = format("declare it first, like: %s i32 = 0", token->name);
+        if (is_outer) {
+            msg = format("'%s' belongs to an enclosing function", token->name);
+            help = "pass it as a parameter";
+        } else if (like)
+            help = format("did you mean '%s'?", like->token->name);
         add_error(
             token->s,
             token->e,
-            format("undeclared variable '%s'", token->name),
-            like ? format("did you mean '%s'?", like->token->name)
-                 : format("declare it first, like: %s i32 = 0", token->name)
+            msg,
+            help
         );
         return;
     }
@@ -705,34 +737,26 @@ void check_param_type(Token *token, Node *param) {
     param->data_type = new_type(INT, 32, NULL);
 }
 
-bool check_comma(Token *item, Token *after) {
-    bool is_arg = item->type == FN_CALL;
-    bool is_param = includes(item->type, PARAM, VARIADIC, 0);
-    bool is_end = includes(after->type, COMA, RPARENT, LAST, 0);
-    bool is_arg_missing = is_arg && !is_end && after->line == item->line;
-    bool is_param_missing = is_param && after->type == ID;
-    if (item->type == VARIADIC && after->type == COMA)
-        add_error(
-            item->s,
-            item->e,
-            "'...' must be the last parameter",
-            NULL
-        );
-    else if (item->type == COMA && after->type == RPARENT)
+bool check_comma(Token *item, Token *after, char *list) {
+    bool is_comma = item->type == COMA;
+    bool is_end = includes(after->type, COMA, RPARENT, DOTS, LAST, 0) || after->is_type;
+    bool is_trailing = is_comma && after->type == RPARENT;
+    bool is_missing = !is_comma && !is_end && after->line == item->line;
+    if (is_trailing)
         add_error(
             after->s,
             after->e,
             "expected an argument after ','",
             NULL
         );
-    else if (is_arg_missing || is_param_missing)
+    else if (is_missing)
         add_error(
             after->s,
             after->e,
-            format("expected ',' between %s", is_arg ? "arguments" : "parameters"),
+            format("expected ',' between %s", list),
             NULL
         );
-    return is_arg_missing || is_param_missing;
+    return is_missing;
 }
 
 void check_function(Node *node, Node *scope) {
@@ -757,10 +781,20 @@ void check_function(Node *node, Node *scope) {
         );
         return;
     }
-    if (token->type == PROTO)
-        return;
     Node **params = node->args->children;
     int count = node->args->children_count;
+    for (int i = 0; i + 1 < count; i++) {
+        Token *param = params[i]->token;
+        if (param->type == VARIADIC)
+            add_error(
+                param->s,
+                param->e,
+                "'...' must be the last parameter",
+                NULL
+            );
+    }
+    if (token->type == PROTO)
+        return;
     for (int i = 0; i < count; i++)
         for (int j = 0; j < i; j++)
             if (strcmp2(params[i]->token->name, params[j]->token->name))
@@ -911,6 +945,57 @@ void check_return(Node *node) {
     check_type(node->left, ret_type_of(fn), NULL);
     if (!is_local_variable(node->left))
         check_copy(&node->left, ret_type_of(fn));
+}
+
+void check_ref(Node *node) {
+    Token *token = node->token;
+    bool is_type = token->is_type;
+    Node *to = node->operand;
+    Token *at = token;
+    char *msg = NULL;
+    if (to == NULL) {
+        msg = "expected a type after '&'";
+        node->data_type = new_type(INT, 32, NULL);
+    } else if (to->token->type == REF) {
+        msg = is_type ? "a ref can't point to a ref" : "can't take the address of an address";
+        node->operand = to->operand;
+    } else if (!is_type && to->token->type != ID && !lives_in_variable(to)) {
+        at = to->token;
+        msg = "'&' expects a variable or a struct attribute";
+    }
+    if (msg == NULL)
+        return;
+    add_error(
+        at->s,
+        at->e,
+        msg,
+        NULL
+    );
+}
+
+void check_array(Node *node) {
+    if (!node->token->is_type || node->index == NULL)
+        return;
+    Token *size = node->index->token;
+    add_error(
+        size->s,
+        size->e,
+        "arrays have no size in the type",
+        format("use '%s[]'", type_name(node->data_type))
+    );
+}
+
+void check_neg(Node *node) {
+    Token *token = node->token;
+    Node *type = type_of(node->operand);
+    if (type == NULL || is_numeric(type))
+        return;
+    add_error(
+        token->s,
+        token->e,
+        format("can't apply '-' to '%s'", type_name(type)),
+        NULL
+    );
 }
 
 void check_jump(Node *node) {
@@ -1238,7 +1323,13 @@ void check_call(Node *node) {
         Node *param = params->children[i];
         if (param->token->type == VARIADIC)
             continue;
-        check_type(node->children[i], param->data_type, NULL);
+        Node *arg = node->children[i];
+        bool takes_ref = param->data_type && param->data_type->token->type == REF;
+        bool is_variable = arg->token->type != REF && lives_in_variable(arg);
+        char *help = NULL;
+        if (takes_ref && is_variable)
+            help = format("pass its address: '&%s'", token_text(arg->token));
+        check_type(arg, param->data_type, help);
         check_copy(&node->children[i], param->data_type);
     }
     bool is_drop = node->to_call->token->type == DROP;
@@ -1281,6 +1372,28 @@ void check_operation(Node *node) {
         );
         return;
     }
+    Node *left = node->left;
+    Node *right = node->right;
+    bool is_ref_declaration = is_ref_variable(left) && left->declared == NULL;
+    if (node->token->type == ASSIGN && is_ref_declaration && !is_ref_binding(node)) {
+        int end = line_end(right->token->s);
+        char *help = NULL;
+        if (lives_in_variable(right))
+            help = format(
+                "write '%.*s&%.*s'",
+                right->token->s - left->token->s,
+                text_at(left->token->s),
+                end - right->token->s,
+                text_at(right->token->s)
+            );
+        add_error(
+            right->token->s,
+            right->token->e,
+            format("'%s' is a ref, initialize it with an address", left->token->name),
+            help
+        );
+        return;
+    }
     Node *left_type = type_of(node->left);
     bool is_struct = left_type && left_type->token->type == ID && left_type->declared;
     if (is_struct) {
@@ -1315,8 +1428,10 @@ void check_operation(Node *node) {
     bool is_logic = includes(node->token->type, AND, OR, 0);
     Node *left_bool = type_of(node->left);
     bool is_left_bool = !left_bool || same_type(left_bool, bool_type());
+    bool is_address = node->right->token->type == REF;
+    Node *ref_type = node->left->data_type;
     if (is_ref_binding(node))
-        check_type(node->right, node->left->data_type, NULL);
+        check_type(node->right, is_address ? ref_type : ref_type->data_type, NULL);
     else if (!is_logic && is_number(node->left))
         check_type(node->left, type_of(node->right), NULL);
     else if (!is_logic)

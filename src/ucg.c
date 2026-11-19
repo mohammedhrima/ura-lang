@@ -110,7 +110,7 @@ enum Type {
     LINK, USE, MACRO_IF, MACRO_ELIF, MACRO_ELSE, MACRO_ERROR,
 	FN_ENTRY,
     SIZEOF, TYPEOF, DROP, COPY, IS_NULLABLE, ALLOC, MEMCPY, FREE,
-    AS, FROM,
+    AS, FROM, AND_LIT, OR_LIT,
 	BLOC,
     IF, ELIF, ELSE, THEN,
     LOOP, BRK, CNT, MATCH, CASE, DEFAULT, CLEAN,
@@ -782,7 +782,7 @@ void llvm_op(Ucg *ir) {
     // Ucg *right = ir->right;
 
     // clang-format off
-    // Type ops[END + 1] = {
+    // Type ops[LAST + 1] = {
     //     [ADD_ASSIGN] = ADD, [SUB_ASSIGN] = SUB, [MUL_ASSIGN] = MUL,
     //     [DIV_ASSIGN] = DIV, [MOD_ASSIGN] = MOD,
     // };
@@ -1077,6 +1077,15 @@ __attribute__((sentinel)) Ucg *ucg_array_value(Ucg *elem, ...) {
 Ucg *ucg_string_value(char *str) {
     Ucg *new = ucg_new(VAL_CREATE);
     new->to_create = ucg_new(CHARS);
+    Ucg *to_create = new->to_create;
+    for (int i = 0; i <= strlen(str); i++)
+        append(to_create->arr.items, ucg_i8_value(str[i]));
+    append(gb_ucg.insts, new);
+    return new;
+}
+
+Ucg *ucg_string_array(char *str) {
+    Ucg *new = ucg_array_new(ucg_char_type());
     Ucg *to_create = new->to_create;
     for (int i = 0; i <= strlen(str); i++)
         append(to_create->arr.items, ucg_i8_value(str[i]));
@@ -3598,6 +3607,23 @@ bool run_test(int p) {
         ucg_end(fn_main);
         break;
     }
+    case 35: {
+        Ucg *fn_main = ucg_fn("main", ucg_i32_type(), NULL, 0);
+        Ucg *s = ucg_var("s", ucg_string_type());
+        ucg_assign(s, ucg_string_array("hello"));
+        ucg_assign(ucg_access(s, ucg_i32_value(0)), ucg_char_value('j'));
+        ucg_write(
+            ucg_i32_value(1),
+            (Ucg *[]){
+                s,
+                ucg_string_value("\n"),
+            },
+            2
+        );
+        ucg_ret(ucg_i32_value(0));
+        ucg_end(fn_main);
+        break;
+    }
     default: {
         return false;
     }
@@ -3774,7 +3800,7 @@ const char *to_string(Type type) {
 		[LOOP] = "LOOP", [BRK] = "BRK", [CNT] = "CNT",
 		[MATCH] = "MATCH", [CASE] = "CASE", [DEFAULT] = "DEFAULT", [CLEAN] = "CLEAN",
 		[TRY] = "TRY", [CATCH] = "CATCH", [THROW] = "THROW", [CHECK] = "CHECK",
-		[AS] = "AS", [FROM] = "FROM",
+		[AS] = "AS", [FROM] = "FROM", [AND_LIT] = "AND_LIT", [OR_LIT] = "OR_LIT",
 		[LAST] = "LAST",
         // clang-format on
     };

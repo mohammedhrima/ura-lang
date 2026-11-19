@@ -158,8 +158,8 @@ struct {
 
     { "struct", { .type = STRUCT } },
     { "enum", { .type = ENUM } },
-    { "and", { .type = AND } },
-    { "or", { .type = OR } },
+    { "and", { .type = AND_LIT } },
+    { "or", { .type = OR_LIT } },
     { "not", { .type = NOT } },
     { "is", { .type = EQ } },
     { "proto", { .type = PROTO } },
@@ -221,7 +221,7 @@ struct {
     { "^", BXOR },        { NULL, NONE },
 };
 
-char *binary_ops[END + 1] = {
+char *binary_ops[LAST + 1] = {
     [ADD] = "+",        [SUB] = "-",        [MUL] = "*",
     [DIV] = "/",        [MOD] = "%",
 
@@ -238,10 +238,11 @@ char *binary_ops[END + 1] = {
     [EQ] = "==",        [NQ] = "!=",        [LT] = "<",
     [GT] = ">",         [LE] = "<=",        [GE] = ">=",
 
-    [AND] = "and",      [OR] = "or",
+    [AND] = "&&",       [OR] = "||",
+    [AND_LIT] = "and",  [OR_LIT] = "or",
 };
 
-int precedence[END + 1] = {
+int precedence[LAST + 1] = {
     [ASSIGN] = 1,     [ADD_ASSIGN] = 1,   [SUB_ASSIGN] = 1,
     [MUL_ASSIGN] = 1, [DIV_ASSIGN] = 1,   [MOD_ASSIGN] = 1,
     [BAND_ASSIGN] = 1, [BOR_ASSIGN] = 1,  [BXOR_ASSIGN] = 1,
@@ -271,7 +272,7 @@ char *escaped[256] = {
     ['\n'] = "\\n", ['\t'] = "\\t", ['\r'] = "\\r", ['\0'] = "\\0",
 };
 
-char *type_names[END + 1] = {
+char *type_names[LAST + 1] = {
     [VOID] = "void",
     // [BOOL] = "bool",
     // [I8] = "i8",
@@ -368,7 +369,7 @@ Token *parse_num(int s, int e, int space) {
     if (memchr(buff + s, '.', e - s)) {
         new->type = FLOAT;
         new->num.real = strtod(buff + s, NULL);
-        new->shift = 64;
+        new->shift = buff[e - 1] == 'f' ? 32 : 64;
     }
     new->line = ura.line;
     new->s = s;
@@ -480,6 +481,9 @@ void tokenize(File *file) {
         if (e != s && buff[e] == '.' && isdigit(buff[e + 1])) {
             e++; // skip .
             while (isdigit(buff[e]))
+                e++;
+            bool ends_name = !isalnum(buff[e + 1]) && buff[e + 1] != '_';
+            if (buff[e] == 'f' && ends_name)
                 e++;
         }
         if (e != s) {
@@ -771,16 +775,22 @@ char *init_from_template(Node *template, Node *types) {
 Node *parse_type(void) {
     Token *token = peek(0);
     Token *prev = ura.tokens[ura.exe_pos - 1];
-    bool is_ref = token->type == REF && token->line == prev->line;
-    Token *after = is_ref ? peek(1) : token;
-    bool is_value_after = after->type == ID ?
-                          find_variable(after->name, after->s) != NULL :
-                          !after->is_type;
-    if (is_ref && !is_value_after) {
-        next(); // SKIP &
+    Token *after = peek(1);
+    bool is_ref = includes(token->type, REF, AND, 0) && token->line == prev->line;
+    bool is_id = after->type == ID;
+    bool is_variable = is_id && find_variable(after->name, after->s);
+    bool is_function = is_id && find_function(after->name);
+    bool is_name = is_id && !is_variable && !is_function;
+    bool is_unary = includes(after->type, ADD, SUB, LBRACK, 0);
+    bool is_operator = precedence[after->type] && !is_unary;
+    if (is_ref && (after->is_type || is_name || is_operator)) {
+        next(); // SKIP & or &&
         Node *ref = new_node(token);
         ref->token->is_type = true;
         ref->data_type = parse_type();
+        if (token->type == AND)
+            ref->data_type = new_type(REF, 0, ref->data_type);
+        token->type = REF;
         return ref;
     }
     if (token->type == ID && token->line == prev->line)
@@ -794,12 +804,15 @@ Node *parse_type(void) {
         Node *types = peek(0)->type == LT ? parse_types(token) : NULL;
         if (check_template_use(token, template, types))
             token->name = init_from_template(template, types);
-        while (peek(0)->type == LBRACK && peek(1)->type == RBRACK) {
+        while (peek(0)->type == LBRACK && peek(0)->line == token->line) {
             next(); // SKIP [
-            next(); // SKIP ]
             Node *array = new_node(new_token(ARRAY, token));
             array->token->is_type = true;
             array->data_type = node;
+            bool has_size = peek(0)->type != RBRACK && peek(0)->line == token->line;
+            if (has_size)
+                array->index = parse_expr(0);
+            expect(RBRACK, "expected ']' after '['", "]");
             node = array;
         }
         return node;
@@ -919,11 +932,11 @@ Node *parse_prime() {
             next(); // SKIP (
             while (!includes(peek(0)->type, RPARENT, LAST, 0)) {
                 append(node->children, parse_expr(0));
-                if (check_comma(token, peek(0)))
+                if (check_comma(token, peek(0), "arguments"))
                     continue;
                 if (peek(0)->type != COMA)
                     break;
-                check_comma(next(), peek(0));
+                check_comma(next(), peek(0), "arguments");
             }
             expect(
                 RPARENT,
@@ -948,6 +961,13 @@ Node *parse_prime() {
     case REF: {
         node = new_node(token);
         node->operand = parse_expr(precedence[DOT] - 1);
+        return node;
+    }
+    case AND: {
+        token->type = REF;
+        node = new_node(token);
+        node->operand = new_node(new_token(REF, token));
+        node->operand->operand = parse_expr(precedence[DOT] - 1);
         return node;
     }
     case ADD: {
@@ -985,16 +1005,11 @@ Node *parse_prime() {
                     check_param_type(token, param);
                     append(node->right->children, param);
                 } else if (token->type == VARIADIC) {
-                    Node *param = new_node(token);
-                    append(node->right->children, param);
+                    append(node->right->children, new_node(token));
                     next(); // skip ...
-                    check_comma(token, peek(0));
-                    while (!includes(peek(0)->type, RPARENT, LAST, 0))
-                        next(); // SKIP what follows ...
-                    break;
                 } else
                     break;
-                if (check_comma(token, peek(0)))
+                if (check_comma(token, peek(0), "parameters"))
                     continue;
                 if (peek(0)->type != COMA)
                     break;
@@ -1274,7 +1289,7 @@ Node *parse_prime() {
                 Node *parent = type ? find_struct(type->token->name) : NULL;
                 if (check_parent(name, parent))
                     append(parents->children, parent);
-                if (peek(0)->type != AND)
+                if (peek(0)->type != AND_LIT)
                     break;
                 next(); // SKIP and
             }
@@ -1339,6 +1354,10 @@ Node *parse_expr(int min_op) {
         bool is_band = peek(0)->type == REF && peek(0)->line == prev->line;
         if (is_band)
             peek(0)->type = BAND;
+        if (peek(0)->type == AND_LIT)
+            peek(0)->type = AND;
+        if (peek(0)->type == OR_LIT)
+            peek(0)->type = OR;
         int e = peek(0)->type;
         if (e == LAST)
             break;
@@ -1390,8 +1409,13 @@ Node *find_in_scope(Node *scope, char *name) {
 }
 
 Node *find_variable(char *name, int pos) {
+    bool is_past_fn = false;
     for (int i = ura.scopes_count - 1; i >= 0; i--) {
         Node *scope = ura.scopes[i];
+        bool is_shared = includes(scope->token->type, SCOPE, STRUCT, 0);
+        if (is_past_fn && !is_shared)
+            continue;
+        is_past_fn = is_past_fn || scope->token->type == FN_DEC;
         Node *param = scope->token->type == FN_DEC ? find_in_children(scope->args, name) : NULL;
         if (param)
             return param;
@@ -1613,7 +1637,13 @@ bool is_ref_variable(Node *node) {
 bool is_ref_binding(Node *node) {
     if (node->token->type != ASSIGN || !is_ref_variable(node->left))
         return false;
-    return node->right->token->type == REF && !node->right->token->is_type;
+    Node *right = node->right;
+    bool is_member = includes(right->token->type, DOT, DOUBLE_DOTS, 0);
+    Node *call = is_member ? right->right : right;
+    bool is_address = right->token->type == REF && !right->token->is_type;
+    bool is_ref_call = call->token->type == FN_CALL && lives_in_variable(right);
+    bool is_declaration = node->left->declared == NULL;
+    return is_address || (is_ref_call && is_declaration);
 }
 
 char *type_name(Node *type) {
@@ -1658,7 +1688,10 @@ Node *type_of(Node *node) {
         Node *type = node->to_call ? ret_type_of(node->to_call) : NULL;
         return type && type->token->type == REF ? type->data_type : type;
     }
-    case NEG:       return type_of(node->operand);
+    case NEG: {
+        Node *type = type_of(node->operand);
+        return is_numeric(type) ? type : NULL;
+    }
     case COPY:      return type_of(node->to_copy);
     case LT: case GT: case EQ: case LE: case GE: case NQ:
     case AND: case OR: case NOT: return bool_type();
@@ -1784,6 +1817,7 @@ void analyze(Node *node) {
     }
     case NEG: {
         analyze(node->operand);
+        check_neg(node);
         break;
     }
     case NOT: {
@@ -1792,10 +1826,14 @@ void analyze(Node *node) {
         break;
     } // clang-format off
     case REF: case ARRAY: { // clang-format on
-        if (node->token->is_type)
+        if (node->token->is_type && node->data_type)
             analyze(node->data_type);
-        else
+        else if (!node->token->is_type)
             analyze(node->operand);
+        if (node->token->type == REF)
+            check_ref(node);
+        else
+            check_array(node);
         break;
     }
     case AS: {
@@ -2427,14 +2465,21 @@ void codegen(Node *node) {
         if (is_ref_binding(node)) {
             Node *slot = node->left->declared ? node->left->declared : node->left;
             codegen(node->right);
-            node->token->ucg = ucg_assign(slot->token->ucg, node->right->token->ucg);
+            Ucg *address = node->right->token->ucg;
+            if (node->right->token->type != REF)
+                address = ucg_ref(address);
+            node->token->ucg = ucg_assign(slot->token->ucg, address);
             break;
         }
         codegen(node->left);
-        codegen(node->right);
         Node *type = type_of(node->left);
         bool is_declaration =
             node->left->token->type == VAR && node->left->declared == NULL;
+        bool is_literal = node->right->token->type == CHARS;
+        if (is_declaration && is_literal && is_chars(type))
+            node->right->token->ucg = ucg_string_array(node->right->token->chars.value);
+        else
+            codegen(node->right);
         if (node->token->type == ASSIGN && !is_declaration && needs_drop(type)) {
             Ucg *value = ucg_value(node->right->token->ucg);
             codegen_drop(node->left->token->ucg, type);
