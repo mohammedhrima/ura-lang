@@ -60,6 +60,60 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@str = private unnamed_addr constant [23 x i8] c"m[0][0]=%d m[1][1]=%d\0A\00", align 1
+@str.1 = private unnamed_addr constant [12 x i8] c"m[0][1]=%d\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %m = alloca i32**, align 8
+  %arr = alloca [2 x i32], align 4
+  %arr1 = alloca [2 x i32], align 4
+  %arr2 = alloca [2 x i32*], align 8
+  store [2 x i32] [i32 1, i32 2], [2 x i32]* %arr, align 4
+  %0 = getelementptr inbounds [2 x i32], [2 x i32]* %arr, i32 0, i32 0
+  store [2 x i32] [i32 3, i32 4], [2 x i32]* %arr1, align 4
+  %1 = getelementptr inbounds [2 x i32], [2 x i32]* %arr1, i32 0, i32 0
+  %2 = insertvalue [2 x i32*] undef, i32* %0, 0
+  %3 = insertvalue [2 x i32*] %2, i32* %1, 1
+  store [2 x i32*] %3, [2 x i32*]* %arr2, align 8
+  %4 = getelementptr inbounds [2 x i32*], [2 x i32*]* %arr2, i32 0, i32 0
+  store i32** %4, i32*** %m, align 8
+  %"$m" = load i32**, i32*** %m, align 8
+  %"m[]" = getelementptr inbounds i32*, i32** %"$m", i32 0
+  %"$m[]" = load i32*, i32** %"m[]", align 8
+  %"m[][]" = getelementptr inbounds i32, i32* %"$m[]", i32 0
+  %"$m3" = load i32**, i32*** %m, align 8
+  %"m[]4" = getelementptr inbounds i32*, i32** %"$m3", i32 1
+  %"$m[]5" = load i32*, i32** %"m[]4", align 8
+  %"m[][]6" = getelementptr inbounds i32, i32* %"$m[]5", i32 1
+  %"$m[][]" = load i32, i32* %"m[][]", align 4
+  %"$m[][]7" = load i32, i32* %"m[][]6", align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([23 x i8], [23 x i8]* @str, i32 0, i32 0), i32 %"$m[][]", i32 %"$m[][]7")
+  %"$m8" = load i32**, i32*** %m, align 8
+  %"m[]9" = getelementptr inbounds i32*, i32** %"$m8", i32 0
+  %"$m[]10" = load i32*, i32** %"m[]9", align 8
+  %"m[][]11" = getelementptr inbounds i32, i32* %"$m[]10", i32 1
+  store i32 99, i32* %"m[][]11", align 4
+  %"$m12" = load i32**, i32*** %m, align 8
+  %"m[]13" = getelementptr inbounds i32*, i32** %"$m12", i32 0
+  %"$m[]14" = load i32*, i32** %"m[]13", align 8
+  %"m[][]15" = getelementptr inbounds i32, i32* %"$m[]14", i32 1
+  %"$m[][]16" = load i32, i32* %"m[][]15", align 4
+  %call.dprintf17 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.1, i32 0, i32 0), i32 %"$m[][]16")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 002 — array: sized 2D matrix i32[N][M], zero-init and writes

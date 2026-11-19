@@ -281,13 +281,38 @@ declare i32 @dprintf(i32, i8*, ...)
 ## 007 — builtin: typeof / sizeof on an array
 
 ```ura
-// stdout: typeof a = array, sizeof a = 16
+// stdout: typeof a = i32[], sizeof a = 8
 // expect: 0
 
 fn main() i32:
     a i32[] = [1, 2, 3]
     output("typeof a = ", typeof(a), ", sizeof a = ", sizeof(a), "\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@TYPEOF = private unnamed_addr constant [6 x i8] c"i32[]\00", align 1
+@str = private unnamed_addr constant [30 x i8] c"typeof a = %s, sizeof a = %d\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %a = alloca i32*, align 8
+  %arr = alloca [3 x i32], align 4
+  store [3 x i32] [i32 1, i32 2, i32 3], [3 x i32]* %arr, align 4
+  %0 = getelementptr inbounds [3 x i32], [3 x i32]* %arr, i32 0, i32 0
+  store i32* %0, i32** %a, align 8
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([30 x i8], [30 x i8]* @str, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @TYPEOF, i32 0, i32 0), i32 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i32))
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -708,6 +733,63 @@ fn main() i32:
     names char[][] = ["orc", "spider", "dragon"]
     output(names[roll % 3], "\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@str = private unnamed_addr constant [10 x i8] c"%c %d %c\0A\00", align 1
+@str.1 = private unnamed_addr constant [16 x i8] c"'d' - 'a' = %d\0A\00", align 1
+@str.2 = private unnamed_addr constant [4 x i8] c"orc\00", align 1
+@str.3 = private unnamed_addr constant [7 x i8] c"spider\00", align 1
+@str.4 = private unnamed_addr constant [7 x i8] c"dragon\00", align 1
+@str.5 = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %grade = alloca i8, align 1
+  %code = alloca i32, align 4
+  %back = alloca i8, align 1
+  %diff = alloca i32, align 4
+  %roll = alloca i32, align 4
+  %names = alloca i8**, align 8
+  %arr = alloca [3 x i8*], align 8
+  store i8 65, i8* %grade, align 1
+  %"$grade" = load i8, i8* %grade, align 1
+  %AS = sext i8 %"$grade" to i32
+  store i32 %AS, i32* %code, align 4
+  %"$code" = load i32, i32* %code, align 4
+  %ADD = add i32 %"$code", 1
+  %AS1 = trunc i32 %ADD to i8
+  store i8 %AS1, i8* %back, align 1
+  %"$grade2" = load i8, i8* %grade, align 1
+  %AS3 = sext i8 %"$grade2" to i32
+  %"$code4" = load i32, i32* %code, align 4
+  %"$back" = load i8, i8* %back, align 1
+  %AS5 = sext i8 %"$back" to i32
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str, i32 0, i32 0), i32 %AS3, i32 %"$code4", i32 %AS5)
+  store i32 3, i32* %diff, align 4
+  %"$diff" = load i32, i32* %diff, align 4
+  %call.dprintf6 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([16 x i8], [16 x i8]* @str.1, i32 0, i32 0), i32 %"$diff")
+  store i32 7, i32* %roll, align 4
+  store [3 x i8*] [i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.2, i32 0, i32 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.3, i32 0, i32 0), i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.4, i32 0, i32 0)], [3 x i8*]* %arr, align 8
+  %0 = getelementptr inbounds [3 x i8*], [3 x i8*]* %arr, i32 0, i32 0
+  store i8** %0, i8*** %names, align 8
+  %"$roll" = load i32, i32* %roll, align 4
+  %MOD = srem i32 %"$roll", 3
+  %"$names" = load i8**, i8*** %names, align 8
+  %"names[]" = getelementptr inbounds i8*, i8** %"$names", i32 %MOD
+  %"$names[]" = load i8*, i8** %"names[]", align 8
+  %call.dprintf7 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.5, i32 0, i32 0), i8* %"$names[]")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---

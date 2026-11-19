@@ -462,6 +462,10 @@ void check_type(Node *value, Node *expected, char *help) {
         check_struct_value(value, expected);
         return;
     }
+    if (value->token->type == LBRACK) {
+        check_array_literal(value, expected);
+        return;
+    }
     bool is_numeric_math = is_math(value) && is_numeric(expected) &&
                            is_numeric(type_of(value->left)) &&
                            is_numeric(type_of(value->right));
@@ -514,6 +518,30 @@ void check_type(Node *value, Node *expected, char *help) {
             format("expected '%s', found '%s'", type_name(expected), type_name(found)),
             help
         );
+}
+
+void check_array_literal(Node *node, Node *expected) {
+    Token *token = node->token;
+    if (expected == NULL) {
+        Node *first = node->children_count ? type_of(node->children[0]) : NULL;
+        node->data_type = first ? new_type(ARRAY, 0, first) : NULL;
+        return;
+    }
+    if (expected->token->type == ID && expected->declared == NULL)
+        expected->declared = find_struct(expected->token->name);
+    Node *elem = element_type_of(expected);
+    if (elem == NULL) {
+        add_error(
+            token->s,
+            token->e,
+            format("expected '%s', found an array literal", type_name(expected)),
+            NULL
+        );
+        return;
+    }
+    for (int i = 0; i < node->children_count; i++)
+        check_type(node->children[i], elem, NULL);
+    node->data_type = expected;
 }
 
 void check_struct_value(Node *value, Node *expected) {
@@ -753,7 +781,8 @@ void check_param_type(Token *token, Node *param) {
 
 bool check_comma(Token *item, Token *after, char *list) {
     bool is_comma = item->type == COMA;
-    bool is_end = includes(after->type, COMA, RPARENT, DOTS, LAST, 0) || after->is_type;
+    bool is_closing = includes(after->type, COMA, RPARENT, RBRACK, DOTS, LAST, 0);
+    bool is_end = is_closing || after->is_type;
     bool is_trailing = is_comma && after->type == RPARENT;
     bool is_missing = !is_comma && !is_end && after->line == item->line;
     if (is_trailing)
@@ -1498,6 +1527,15 @@ void check_call(Node *node) {
     for (int i = 0; i < node->children_count; i++) {
         if (is_write && node->children[i]->token->type == CHARS)
             check_type(node->children[i], chars_type(), NULL);
+        if (is_write && node->children[i]->token->type == LBRACK) {
+            Token *array = node->children[i]->token;
+            add_error(
+                array->s,
+                array->e,
+                "output can't print an array literal yet",
+                "print its elements one by one"
+            );
+        }
         if (params == NULL || i >= params->children_count)
             continue;
         Node *param = params->children[i];

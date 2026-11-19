@@ -1196,6 +1196,19 @@ Node *parse_prime() {
         expect(RCBRACK, "expected '}' to close the struct value", "}");
         return node;
     }
+    case LBRACK: {
+        node = new_node(token);
+        while (!includes(peek(0)->type, RBRACK, LAST, 0)) {
+            append(node->children, parse_expr(0));
+            if (check_comma(token, peek(0), "elements"))
+                continue;
+            if (peek(0)->type != COMA)
+                break;
+            next(); // SKIP ,
+        }
+        expect(RBRACK, "expected ']' to close the array", "]");
+        return node;
+    }
     case NOT: {
         node = new_node(token);
         node->operand = parse_expr(precedence[AND]);
@@ -1654,6 +1667,17 @@ bool is_chars(Node *type) {
     return element && element->token->type == INT && element->token->shift == 8;
 }
 
+Node *element_type_of(Node *type) {
+    if (type->token->type == ARRAY)
+        return type->data_type;
+    bool is_array = type->token->type == ID && strncmp2(type->token->name, "Array<", 6);
+    if (!is_array || type->declared == NULL)
+        return NULL;
+    int index = 0;
+    Node *data = find_attr(type->declared, "data", &index);
+    return data ? data->data_type->data_type : NULL;
+}
+
 Node *string_type(void) {
     Node *st = find_struct("String");
     if (st == NULL)
@@ -1709,6 +1733,7 @@ Node *type_of(Node *node) {
     case INT: case FLOAT: return node;
     case AS:        return node->to_type;
     case LCBRACK:   return node->data_type;
+    case LBRACK:    return node->data_type;
     case DOUBLE_DOTS: return type_of(node->right);
     case DOT: {
         if (node->right->token->type == FN_CALL)
@@ -1895,6 +1920,12 @@ void analyze(Node *node) {
     case LCBRACK: {
         for (int i = 0; i < node->children_count; i++)
             analyze(node->children[i]->left);
+        break;
+    }
+    case LBRACK: {
+        for (int i = 0; i < node->children_count; i++)
+            analyze(node->children[i]);
+        check_array_literal(node, NULL);
         break;
     }
     case ACCESS: {
@@ -2515,6 +2546,33 @@ void codegen(Node *node) {
     }
     case ID: {
         node->token->ucg = node->declared->token->ucg;
+        break;
+    }
+    case LBRACK: {
+        Node *type = node->data_type;
+        Node *elem = element_type_of(type);
+        codegen(elem);
+        Ucg **items = arena_alloc(node->children_count + 1, sizeof(Ucg *));
+        for (int i = 0; i < node->children_count; i++) {
+            codegen(node->children[i]);
+            items[i] = node->children[i]->token->ucg;
+        }
+        Ucg *data = ucg_array_from(elem->token->ucg, items, node->children_count);
+        if (type->token->type == ARRAY) {
+            node->token->ucg = data;
+            break;
+        }
+        codegen(type);
+        Ucg *fields[] = {
+            data,
+            ucg_i32_value(node->children_count),
+            ucg_i32_value(0),
+        };
+        Ucg *array = ucg_var("array", type->token->ucg);
+        ucg_assign(array, ucg_struct_value(type->token->ucg, fields, 3));
+        Node *own = find_method_named(type->declared, "own");
+        ucg_fn_call(own->token->ucg, (Ucg *[]){ucg_ref(array)}, 1);
+        node->token->ucg = array;
         break;
     }
     case LCBRACK: {

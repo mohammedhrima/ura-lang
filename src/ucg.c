@@ -1148,6 +1148,14 @@ __attribute__((sentinel)) Ucg *ucg_array_value(Ucg *elem, ...) {
     return new;
 }
 
+Ucg *ucg_array_from(Ucg *elem, Ucg **items, int count) {
+    Ucg *new = ucg_array_new(elem);
+    for (int i = 0; i < count; i++)
+        append(new->to_create->arr.items, ucg_value(items[i]));
+    append(gb_ucg.insts, new);
+    return new;
+}
+
 Ucg *ucg_string_value(char *str) {
     Ucg *new = ucg_new(VAL_CREATE);
     new->to_create = ucg_new(CHARS);
@@ -1395,6 +1403,9 @@ Ucg *ucg_type_of(Ucg *place) {
 }
 
 Ucg *ucg_value_type(Ucg *value) {
+    bool is_array = value->type == VAL_CREATE && value->to_create->type == ARRAY;
+    if (is_array)
+        return ucg_ref_type(value->to_create->arr.elem);
     switch (value->type) { // clang-format off
     case DREF:       return ucg_type_of(value->to_dref);
     case VAL_CREATE: return value->to_create;
