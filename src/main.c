@@ -2,7 +2,6 @@
 typedef struct Token Token;
 typedef struct Node Node;
 typedef struct NodePrint NodePrint;
-typedef struct uraError uraError;
 
 #define print(...)  (DEBUG ? _print(stdout, __VA_ARGS__) : 0)
 #define help(...)   _print(stdout, __VA_ARGS__)
@@ -98,16 +97,6 @@ struct Node {
     expand(Node *, temporary_types);
 };
 
-struct uraError {
-    Node *file;
-    Token *token;
-    int s;
-    int e;
-    int line;
-    char *msg;
-    char *help;
-};
-
 struct NodePrint {
     expand(int, depths);
     expand(Node *, nodes);
@@ -127,8 +116,6 @@ struct {
     expand(Node *, scopes);
     Node *scope;
     Node *types;
-
-    expand(uraError, errors);
 
     int exe_pos;
     bool throws;
@@ -401,7 +388,6 @@ Token *parse_char(int s, int e, int space) {
     char *buff = ura.file->buff;
 
     char *str = parse_escaped(buff, s + 1, e - 1);
-    // TODO: assert_char
     new->num.value = str[0];
 
     new->line = ura.line;
@@ -415,7 +401,6 @@ Token *parse_char(int s, int e, int space) {
 void tokenize(File *file) {
     ura.file = file;
     int first_token = ura.tokens_count;
-    int first_error = ura.errors_count;
     int s = 0;
     int e = 0;
     int space = 0;
@@ -469,9 +454,7 @@ void tokenize(File *file) {
             }
             if (buff[e] == c)
                 e++; // skip last ' or "
-            int errors = ura.errors_count;
-            check_lexeme(buff, s, e);
-            if (ura.errors_count > errors)
+            if (!check_lexeme(buff, s, e))
                 continue;
             if (c == '"')
                 parse_string(s, e, space);
@@ -490,10 +473,8 @@ void tokenize(File *file) {
                 e++;
         }
         if (e != s) {
-            // TODO:
-            // if (!check_number_fits(s, e, line))
-            //     continue;
-            parse_num(s, e, space);
+            if (check_lexeme(buff, s, e))
+                parse_num(s, e, space);
             continue;
         }
         if (buff[s] == '@' && isalpha(buff[s + 1]))
@@ -530,10 +511,6 @@ void tokenize(File *file) {
     for (int i = first_token; i < ura.tokens_count; i++) {
         ura.tokens[i]->s += file->start;
         ura.tokens[i]->e += file->start;
-    }
-    for (int i = first_error; i < ura.errors_count; i++) {
-        ura.errors[i].s += file->start;
-        ura.errors[i].e += file->start;
     }
     expand_uses(first_token);
 }
@@ -2668,13 +2645,6 @@ void codegen(Node *node) {
     }
 }
 
-/*
-TODO:
-    + replace all fprintf with builtins
-    + try buffring instead of calling fprintf everytime
-    + use (reopen already opened file)
-    + reuse (don't reopen opened files)
-*/
 
 int main(int ac, char **av) {
     atexit(arena_free);
@@ -2700,7 +2670,7 @@ int main(int ac, char **av) {
     }
     new_token(LAST, NULL)->space = -TAB;
 
-    check_errors();
+    ucg_check_errors();
 
     print(GREEN("======================================\n"));
     for (int i = 0; i < ura.tokens_count; i++)
@@ -2710,7 +2680,7 @@ int main(int ac, char **av) {
     print(GREEN("======================================\n"));
     print(GREEN("[AST]:\n"));
     ura.tree = parse_expr(0);
-    check_errors();
+    ucg_check_errors();
     // print(GREEN("======================================\n"));
     for (int i = 0; i < ura.tree->children_count; i++) {
         print("%n", ura.tree->children[i]);
@@ -2720,7 +2690,7 @@ int main(int ac, char **av) {
     print(GREEN("======================================\n"));
     print(GREEN("[ANALYZE]:\n"));
     analyze(ura.tree);
-    check_errors();
+    ucg_check_errors();
     // print(GREEN("======================================\n"));
     for (int i = 0; i < ura.tree->children_count; i++) {
         print("%n", ura.tree->children[i]);
@@ -3033,7 +3003,7 @@ bool parse_args(int ac, char **av) {
     }
     bool has_exe = false;
     bool no_link = false;
-    for (int i = 1; i < ac && ura.errors_count == 0; i++) {
+    for (int i = 1; i < ac && !ucg_has_errors(); i++) {
         char *arg = av[i];
         if (strcmp2(arg, "-o")) {
             if (i + 1 >= ac) {

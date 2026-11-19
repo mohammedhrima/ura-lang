@@ -50,6 +50,7 @@ typedef LLVMCodeModel CodeModel;
 typedef LLVMTypeKind TypeKind;
 typedef LLVMAttributeRef AttributeRef;
 typedef LLVMMetadataRef MetadataRef;
+typedef LLVMOpcode OpCode;
 
 typedef enum Type Type;
 typedef struct Ucg Ucg;
@@ -215,6 +216,14 @@ struct Ucg {
     expand(Ucg *, cleans);
 };
 
+typedef struct {
+    File *file;
+    int s;
+    int e;
+    char *msg;
+    char *help;
+} UcgError;
+
 struct {
     struct {
         TypeRef vd;
@@ -259,7 +268,63 @@ struct {
     Ucg *error_type;
     expand(Ucg *, error_types);
     expand(Ucg *, error_ids);
+
+    expand(UcgError, errors);
 } gb_ucg;
+
+void ucg_add_error(File *file, int s, int e, char *msg, char *help) {
+    UcgError error = { .file = file, .s = s, .e = e, .msg = msg, .help = help };
+    append(gb_ucg.errors, error);
+}
+
+bool ucg_has_errors(void) {
+    return gb_ucg.errors_count > 0;
+}
+
+void ucg_check_errors(void) {
+    if (gb_ucg.errors_count == 0)
+        return;
+    char *cwd = getcwd2();
+    size_t cwd_len = strlen(cwd);
+    for (int i = 0; i < gb_ucg.errors_count; i++) {
+        UcgError *error = &gb_ucg.errors[i];
+        char *buff = error->file->buff;
+        char *path = error->file->path;
+        if (strncmp2(path, cwd, cwd_len) && path[cwd_len] == '/')
+            path += cwd_len + 1;
+        int line = 1;
+        for (int j = 0; j < error->s; j++)
+            line += buff[j] == '\n';
+        int start = error->s;
+        while (start > 0 && buff[start - 1] != '\n')
+            start--;
+        int end = error->s;
+        while (buff[end] && buff[end] != '\n')
+            end++;
+        int col = error->s - start;
+        int width = snprintf(NULL, 0, "%d", line);
+
+        fprintf(
+            stderr, "%s: %s:%d:%d %s\n", RED("error"), path, line, col + 1, error->msg
+        );
+        fprintf(stderr, "%*s |\n", width, "");
+        fprintf(stderr, "%d | %.*s\n", line, end - start, buff + start);
+        fprintf(stderr, "%*s | %*s", width, "", col, "");
+        for (int j = error->s; j < error->e || j == error->s; j++)
+            fprintf(stderr, "^");
+        fprintf(stderr, "\n");
+        if (error->help)
+            fprintf(stderr, "help: %s\n", error->help);
+    }
+    fprintf(
+        stderr,
+        "%s: aborting due to %d error%s\n",
+        RED("error"),
+        (int)gb_ucg.errors_count,
+        gb_ucg.errors_count > 1 ? "s" : ""
+    );
+    exit(1);
+}
 
 void ucg_start(char *name) {
     // atexit(ucg_finish);
@@ -323,12 +388,9 @@ void ucg_start(char *name) {
     LLVMDisposeTargetData(layout);
     LLVMDisposeMessage(triple);
 
-    // TODO: add ASAN stuff here
-    // TODO: add flags stuff (Passes)
 }
 
 void ucg_finish(void) {
-    // TODO: make sure to use ucg.error_msg
     if (gb_ucg.error_msg != NULL) {
         print("there is an error %s\n", gb_ucg.error_msg);
         // LLVMDisposeMessage(gb_ucg.error_msg);
@@ -513,7 +575,6 @@ void llvm_end_fn(Ucg *fn) {
         if (fn->fn.ret->type == VOID)
             LLVMBuildRetVoid(gb_ucg.builder);
         else {
-            // TODO: struct type
             TypeRef rtype = llvm_type(fn->fn.ret);
             LLVMBuildRet(gb_ucg.builder, LLVMConstNull(rtype));
         }
@@ -786,7 +847,7 @@ void llvm_op(Ucg *ir) {
     //     [ADD_ASSIGN] = ADD, [SUB_ASSIGN] = SUB, [MUL_ASSIGN] = MUL,
     //     [DIV_ASSIGN] = DIV, [MOD_ASSIGN] = MOD,
     // };
-    LLVMOpcode opcodes[LAST + 1] = {
+    OpCode opcodes[LAST + 1] = {
         [ADD] = LLVMAdd,  [SUB] = LLVMSub,  [MUL] = LLVMMul,
         [DIV] = LLVMSDiv, [MOD] = LLVMSRem,
         [AND] = LLVMAnd,  [OR] = LLVMOr,
@@ -797,7 +858,7 @@ void llvm_op(Ucg *ir) {
         [GT] = LLVMIntSGT, [LT] = LLVMIntSLT, [GE] = LLVMIntSGE,
         [LE] = LLVMIntSLE, [EQ] = LLVMIntEQ,  [NQ] = LLVMIntNE,
     };
-    LLVMOpcode float_opcodes[LAST + 1] = {
+    OpCode float_opcodes[LAST + 1] = {
         [ADD] = LLVMFAdd, [SUB] = LLVMFSub, [MUL] = LLVMFMul,
         [DIV] = LLVMFDiv, [MOD] = LLVMFRem,
     };
@@ -857,25 +918,38 @@ int llvm_bits(Value value) {
     }
 }
 
-// TODO: review this one
 void llvm_cast(Ucg *ir) {
     Value value = ir->left->elem;
     Ucg *to = ir->to_type;
+    bool from_pointer = LLVMGetTypeKind(LLVMTypeOf(value)) == LLVMPointerTypeKind;
     if (to->type == REF) {
-        ir->elem = LLVMBuildPointerCast(gb_ucg.builder, value, llvm_type(to), "AS");
+        OpCode op = from_pointer ? LLVMBitCast : LLVMIntToPtr;
+        ir->elem = LLVMBuildCast(gb_ucg.builder, op, value, llvm_type(to), "AS");
+        return;
+    }
+    if (from_pointer) {
+        ir->elem = LLVMBuildPtrToInt(gb_ucg.builder, value, llvm_type(to), "AS");
         return;
     }
     bool from_float = llvm_is_float(value);
     bool to_float = to->type == FLOAT;
     int from_bits = llvm_bits(value);
     int to_bits = 1 << to->shift;
+    if (to->type == INT && to_bits == 1 && from_bits != 1) {
+        Value zero = LLVMConstNull(LLVMTypeOf(value));
+        if (from_float)
+            ir->elem = LLVMBuildFCmp(gb_ucg.builder, LLVMRealUNE, value, zero, "AS");
+        else
+            ir->elem = LLVMBuildICmp(gb_ucg.builder, LLVMIntNE, value, zero, "AS");
+        return;
+    }
 
     if (from_float == to_float && from_bits == to_bits) {
         ir->elem = value;
         return;
     }
     bool from_uint = from_bits == 1 || ir->is_uint;
-    LLVMOpcode op;
+    OpCode op;
     if (from_float && to_float)
         op = to_bits > from_bits ? LLVMFPExt : LLVMFPTrunc;
     else if (from_float)
@@ -3631,14 +3705,6 @@ bool run_test(int p) {
     return true;
 }
 
-/*
-TODO:
-    + test it with all llvm versions
-    + asm gen:
-        get rid of .ll file generation when you finish
-        since llvm can automaticaly generate the assembly
-        that's compatible without saving it in external file
-*/
 
 void print_ucgs(void) {
     for (size_t i = 0; i < gb_ucg.insts_count; i++) {

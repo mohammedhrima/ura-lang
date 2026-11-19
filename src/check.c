@@ -1,6 +1,6 @@
 void add_error(int s, int e, char *msg, char *help) {
-    uraError error = { .s = s, .e = e, .msg = msg, .help = help };
-    append(ura.errors, error);
+    File *file = file_at(s);
+    ucg_add_error(file, s - file->start, e - file->start, msg, help);
 }
 
 void expect(Type type, char *msg, char *fix) {
@@ -27,26 +27,47 @@ void expect(Type type, char *msg, char *fix) {
     );
 }
 
-void check_lexeme(char *buff, int s, int e) {
+bool check_lexeme(char *buff, int s, int e) {
     char c = buff[s];
+    if (isdigit(c)) {
+        bool is_real = memchr(buff + s, '.', e - s) != NULL;
+        errno = 0;
+        if (is_real)
+            strtod(buff + s, NULL);
+        else
+            strtoll(buff + s, NULL, 10);
+        if (errno != ERANGE)
+            return true;
+        ucg_add_error(
+            ura.file,
+            s,
+            e,
+            format("%.*s is too big for %s", e - s, buff + s, is_real ? "f64" : "i64"),
+            NULL
+        );
+        return false;
+    }
     if (strncmp2(buff + s, "/*", 2)) {
-        if (buff[e] == '\0')
-            add_error(
-                s,
-                s + 2,
-                "unclosed comment",
-                "add */ to close it"
-            );
-        return;
+        if (buff[e] != '\0')
+            return true;
+        ucg_add_error(
+            ura.file,
+            s,
+            s + 2,
+            "unclosed comment",
+            "add */ to close it"
+        );
+        return false;
     }
     if (c != '"' && c != '\'') {
-        add_error(
+        ucg_add_error(
+            ura.file,
             s,
             s + 1,
             format("unknown character '%c'", c),
             "remove it"
         );
-        return;
+        return false;
     }
     bool is_valid = true;
     int letters = 0;
@@ -56,7 +77,8 @@ void check_lexeme(char *buff, int s, int e) {
         bool is_escape = buff[i] == '\\' && next != '\0' && !strchr2("\n", next);
         bool is_known = isprint(next) && escaped[(unsigned char)next];
         if (is_escape && !is_known) {
-            add_error(
+            ucg_add_error(
+                ura.file,
                 i,
                 i + 2,
                 format("unknown escape '\\%c'", next),
@@ -69,19 +91,26 @@ void check_lexeme(char *buff, int s, int e) {
     }
     if (buff[i] != c) {
         int start = line_start_in(buff, s);
-        add_error(
+        ucg_add_error(
+            ura.file,
             s,
             i,
             c == '"' ? "unclosed string" : "unclosed character",
             format("use %.*s%c", i - start, buff + start, c)
         );
-    } else if (is_valid && c == '\'' && letters > 1)
-        add_error(
+        return false;
+    }
+    if (is_valid && c == '\'' && letters > 1) {
+        ucg_add_error(
+            ura.file,
             s,
             e,
             format("a character holds one letter, not %d", letters),
             format("use \"%.*s\" for a string", e - s - 2, buff + s + 1)
         );
+        return false;
+    }
+    return is_valid;
 }
 
 void check_unexpected(Token *token) {
@@ -245,50 +274,6 @@ void check_operand(Node *node) {
         format("expected %s after '%s'", what, token_text(token)),
         NULL
     );
-}
-
-void check_errors(void) {
-    if (ura.errors_count == 0)
-        return;
-    char *cwd = getcwd2();
-    size_t cwd_len = strlen(cwd);
-    for (int i = 0; i < ura.errors_count; i++) {
-        uraError *error = &ura.errors[i];
-        File *file = file_at(error->s);
-        char *buff = file->buff;
-        int s = error->s - file->start;
-        int e = error->e - file->start;
-        char *path = file->path;
-        if (strncmp2(path, cwd, cwd_len) && path[cwd_len] == '/')
-            path += cwd_len + 1;
-        int line = line_at(error->s);
-        int start = s;
-        while (start > 0 && buff[start - 1] != '\n')
-            start--;
-        int end = line_end_in(buff, s);
-        int col = s - start;
-        int width = snprintf(NULL, 0, "%d", line);
-
-        fprintf(
-            stderr, "%s: %s:%d:%d %s\n", RED("error"), path, line, col + 1, error->msg
-        );
-        fprintf(stderr, "%*s |\n", width, "");
-        fprintf(stderr, "%d | %.*s\n", line, end - start, buff + start);
-        fprintf(stderr, "%*s | %*s", width, "", col, "");
-        for (int j = s; j < e || j == s; j++)
-            fprintf(stderr, "^");
-        fprintf(stderr, "\n");
-        if (error->help)
-            fprintf(stderr, "help: %s\n", error->help);
-    }
-    fprintf(
-        stderr,
-        "%s: aborting due to %d error%s\n",
-        RED("error"),
-        (int)ura.errors_count,
-        ura.errors_count > 1 ? "s" : ""
-    );
-    exit(1);
 }
 
 void check_type_first(Token *token) {
