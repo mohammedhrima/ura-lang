@@ -1,9 +1,0 @@
-fn f() i32:
-    template<T>:
-        struct Box:
-            value T
-    return 0
-
-fn main() i32:
-    b Box<i32>
-    return 0

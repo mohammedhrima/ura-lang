@@ -1,4 +1,3 @@
-use "@/array"
 use "@/math"
 use "@/stdlib"
 use "@/io"
@@ -402,25 +401,25 @@ struct Scene:
         self.light_position = {x: -4.0, y: 6.0, z: 4.0}
         self.light_color = {x: 1.0, y: 0.9, z: 0.75}
         white Vec3 = {x: 1.0, y: 1.0, z: 1.0}
-        self.shapes.push_back(sphere({x: 0.0, y: 0.75, z: 0.0}, 0.75, material(GLASS, white, 1.5)))
-        self.shapes.push_back(sphere({x: -1.45, y: 0.6, z: -0.7}, 0.6, material(MIRROR, {x: 0.95, y: 0.95, z: 0.95}, 1.5)))
-        self.shapes.push_back(cylinder({x: 1.35, y: 0.35, z: -0.4}, {x: 0.0, y: 1.0, z: 0.0}, 0.45, 0.7, material(DIFFUSE, {x: 40.0 / 255.0, y: 150.0 / 255.0, z: 160.0 / 255.0}, 1.5)))
-        self.shapes.push_back(cone({x: 1.35, y: 0.7, z: -0.4}, {x: 0.0, y: 1.0, z: 0.0}, 0.4, 0.9, material(DIFFUSE, {x: 245.0 / 255.0, y: 150.0 / 255.0, z: 60.0 / 255.0}, 1.5)))
+        self.shapes.append(sphere({x: 0.0, y: 0.75, z: 0.0}, 0.75, material(GLASS, white, 1.5)))
+        self.shapes.append(sphere({x: -1.45, y: 0.6, z: -0.7}, 0.6, material(MIRROR, {x: 0.95, y: 0.95, z: 0.95}, 1.5)))
+        self.shapes.append(cylinder({x: 1.35, y: 0.35, z: -0.4}, {x: 0.0, y: 1.0, z: 0.0}, 0.45, 0.7, material(DIFFUSE, {x: 40.0 / 255.0, y: 150.0 / 255.0, z: 160.0 / 255.0}, 1.5)))
+        self.shapes.append(cone({x: 1.35, y: 0.7, z: -0.4}, {x: 0.0, y: 1.0, z: 0.0}, 0.4, 0.9, material(DIFFUSE, {x: 245.0 / 255.0, y: 150.0 / 255.0, z: 60.0 / 255.0}, 1.5)))
         palette Array<Vec3>
-        palette.push_back({x: 240.0 / 255.0, y: 90.0 / 255.0, z: 90.0 / 255.0})
-        palette.push_back({x: 250.0 / 255.0, y: 190.0 / 255.0, z: 60.0 / 255.0})
-        palette.push_back({x: 110.0 / 255.0, y: 210.0 / 255.0, z: 140.0 / 255.0})
-        palette.push_back({x: 80.0 / 255.0, y: 160.0 / 255.0, z: 240.0 / 255.0})
-        palette.push_back({x: 170.0 / 255.0, y: 110.0 / 255.0, z: 230.0 / 255.0})
+        palette.append({x: 240.0 / 255.0, y: 90.0 / 255.0, z: 90.0 / 255.0})
+        palette.append({x: 250.0 / 255.0, y: 190.0 / 255.0, z: 60.0 / 255.0})
+        palette.append({x: 110.0 / 255.0, y: 210.0 / 255.0, z: 140.0 / 255.0})
+        palette.append({x: 80.0 / 255.0, y: 160.0 / 255.0, z: 240.0 / 255.0})
+        palette.append({x: 170.0 / 255.0, y: 110.0 / 255.0, z: 230.0 / 255.0})
         i i32 = 0
         while i < 5:
             angle f64 = ((i - 2) as f64) * 0.38
             center Vec3 = {x: 1.4 * sin(angle), y: 0.2, z: 1.3 - 0.9 * (1.0 - cos(angle))}
-            self.shapes.push_back(sphere(center, 0.2, material(DIFFUSE, palette[i], 1.5)))
+            self.shapes.append(sphere(center, 0.2, material(DIFFUSE, palette[i], 1.5)))
             i += 1
-        self.shapes.push_back(plane({x: 0.0, y: 0.0, z: 0.0}, {x: 0.0, y: 1.0, z: 0.0}, material(DIFFUSE, {x: 160.0 / 255.0, y: 145.0 / 255.0, z: 135.0 / 255.0}, 1.5)))
-        self.shapes.push_back(plane({x: 0.0, y: 0.0, z: -4.0}, {x: 0.0, y: 0.0, z: 1.0}, material(DIFFUSE, {x: 30.0 / 255.0, y: 40.0 / 255.0, z: 75.0 / 255.0}, 1.5)))
-        self.shapes.push_back(triangle({x: -2.4, y: 0.0, z: -2.6}, {x: -0.9, y: 0.0, z: -2.9}, {x: -1.6, y: 2.0, z: -2.75}, material(DIFFUSE, {x: 250.0 / 255.0, y: 210.0 / 255.0, z: 90.0 / 255.0}, 1.5)))
+        self.shapes.append(plane({x: 0.0, y: 0.0, z: 0.0}, {x: 0.0, y: 1.0, z: 0.0}, material(DIFFUSE, {x: 160.0 / 255.0, y: 145.0 / 255.0, z: 135.0 / 255.0}, 1.5)))
+        self.shapes.append(plane({x: 0.0, y: 0.0, z: -4.0}, {x: 0.0, y: 0.0, z: 1.0}, material(DIFFUSE, {x: 30.0 / 255.0, y: 40.0 / 255.0, z: 75.0 / 255.0}, 1.5)))
+        self.shapes.append(triangle({x: -2.4, y: 0.0, z: -2.6}, {x: -0.9, y: 0.0, z: -2.9}, {x: -1.6, y: 2.0, z: -2.75}, material(DIFFUSE, {x: 250.0 / 255.0, y: 210.0 / 255.0, z: 90.0 / 255.0}, 1.5)))
 
 struct Camera:
     width i32
@@ -572,7 +571,11 @@ fn main() i32:
                     camera.reset()
                     changed = True
                 if key == SDLK_UP:
-                    camera.move({x: 0.0, y: CAMERA_STEP, z: 0.0})
+                    camera.move({
+                            x: 0.0, 
+                            y: CAMERA_STEP, 
+                            z: 0.0
+                        })
                     changed = True
                 if key == SDLK_DOWN:
                     camera.move({x: 0.0, y: -CAMERA_STEP, z: 0.0})

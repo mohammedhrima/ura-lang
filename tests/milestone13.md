@@ -72,6 +72,60 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@str = private unnamed_addr constant [18 x i8] c"%.2f %c %d %d %d\0A\00", align 1
+@str.1 = private unnamed_addr constant [5 x i8] c"%ld\0A\00", align 1
+@str.2 = private unnamed_addr constant [12 x i8] c"%.2f %c %d\0A\00", align 1
+@str.3 = private unnamed_addr constant [9 x i8] c"%.2f %d\0A\00", align 1
+@str.4 = private unnamed_addr constant [7 x i8] c"%d %d\0A\00", align 1
+@str.5 = private unnamed_addr constant [6 x i8] c"none\0A\00", align 1
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  %f = alloca float, align 4
+  %c = alloca i8, align 1
+  %s = alloca i16, align 2
+  %b = alloca i1, align 1
+  %l = alloca i64, align 8
+  %i = alloca i32, align 4
+  store float 3.500000e+00, float* %f, align 4
+  store i8 65, i8* %c, align 1
+  store i16 7, i16* %s, align 2
+  store i1 true, i1* %b, align 1
+  store i64 123456789, i64* %l, align 8
+  store i32 42, i32* %i, align 4
+  %"$f" = load float, float* %f, align 4
+  %"$c" = load i8, i8* %c, align 1
+  %"$s" = load i16, i16* %s, align 2
+  %"$b" = load i1, i1* %b, align 1
+  %"$i" = load i32, i32* %i, align 4
+  %0 = fpext float %"$f" to double
+  %call.printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @str, i32 0, i32 0), double %0, i8 %"$c", i16 %"$s", i1 %"$b", i32 %"$i")
+  %"$l" = load i64, i64* %l, align 8
+  %call.printf1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.1, i32 0, i32 0), i64 %"$l")
+  %call.printf2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.2, i32 0, i32 0), double 2.500000e+00, i8 90, i32 9)
+  %"$f3" = load float, float* %f, align 4
+  %"$f4" = load float, float* %f, align 4
+  %ADD = fadd float %"$f3", %"$f4"
+  %"$i5" = load i32, i32* %i, align 4
+  %ADD6 = add i32 %"$i5", 1
+  %1 = fpext float %ADD to double
+  %call.printf7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.3, i32 0, i32 0), double %1, i32 %ADD6)
+  %call.printf8 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.4, i32 0, i32 0), i1 true, i1 false)
+  %call.printf9 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.5, i32 0, i32 0))
+  ret i32 0
+}
+```
+
 ---
 
 ## 002 — directive: @if/@elif/@else selects the matching platform branch
@@ -89,6 +143,25 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@str = private unnamed_addr constant [6 x i8] c"unix\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 003 — directive: @if unix matches on macOS and linux
@@ -102,6 +175,25 @@ fn main() i32:
     @else:
         output("windows\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@str = private unnamed_addr constant [7 x i8] c"posix\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -119,6 +211,25 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@str = private unnamed_addr constant [6 x i8] c"kept\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 005 — directive: a platform-gated top-level proto
@@ -134,6 +245,48 @@ fn main() i32:
 fn main() i32:
     output(getpid() > 0, "\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@str = private unnamed_addr constant [5 x i8] c"True\00", align 1
+@str.1 = private unnamed_addr constant [6 x i8] c"False\00", align 1
+@str.2 = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
+
+declare i32 @getpid()
+
+define i32 @main() {
+entry:
+  %bool.text = alloca i8*, align 8
+  %call.getpid = call i32 @getpid()
+  %GT = icmp sgt i32 %call.getpid, 0
+  store i8* null, i8** %bool.text, align 8
+  br label %if0
+
+if0:                                              ; preds = %entry
+  br i1 %GT, label %if0.then, label %else1
+
+if0.then:                                         ; preds = %if0
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str, i32 0, i32 0), i8** %bool.text, align 8
+  br label %endif
+
+else1:                                            ; preds = %if0
+  store i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.1, i32 0, i32 0), i8** %bool.text, align 8
+  br label %endif
+
+endif:                                            ; preds = %else1, %if0.then
+  %"$bool.text" = load i8*, i8** %bool.text, align 8
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.2, i32 0, i32 0), i8* %"$bool.text")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -154,6 +307,31 @@ fn tag() i32:
 fn main() i32:
     output(tag(), "\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+
+define i32 @tag() {
+entry:
+  ret i32 1
+}
+
+define i32 @main() {
+entry:
+  %call.tag = call i32 @tag()
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i32 %call.tag)
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -248,6 +426,31 @@ fn main() i32:
     return dbl(21)
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+define i32 @main() {
+entry:
+  %call.dbl = call i32 @dbl(i32 21)
+  ret i32 %call.dbl
+}
+
+define i32 @dbl(i32 %0) {
+entry:
+  %k = alloca i32, align 4
+  store i32 %0, i32* %k, align 4
+  %"$k" = load i32, i32* %k, align 4
+  %"$k1" = load i32, i32* %k, align 4
+  %ADD = add i32 %"$k", %"$k1"
+  ret i32 %ADD
+}
+```
+
 ---
 
 ## 015 — function: a function-typed parameter given a value
@@ -263,6 +466,63 @@ fn apply(f fn(i32) i32, x i32) i32:
 
 fn main() i32:
     return apply(5, 21)
+```
+
+### stderr
+
+```
+error: test.ura:6:10 parameter 'f' has no type
+  |
+6 | fn apply(f fn(i32) i32, x i32) i32:
+  |          ^
+help: like: f i32
+error: test.ura:6:12 expected ',' between parameters
+  |
+6 | fn apply(f fn(i32) i32, x i32) i32:
+  |            ^^
+error: test.ura:6:12 expected ')' after the parameters
+  |
+6 | fn apply(f fn(i32) i32, x i32) i32:
+  |            ^^
+help: use fn apply(f) fn(i32) i32, x i32) i32:
+error: test.ura:6:12 expected ':' after the function header
+  |
+6 | fn apply(f fn(i32) i32, x i32) i32:
+  |            ^^
+help: use fn apply(f: fn(i32) i32, x i32) i32:
+error: test.ura:6:15 expected ')' after the parameters
+  |
+6 | fn apply(f fn(i32) i32, x i32) i32:
+  |               ^^^
+help: use fn apply(f fn()i32) i32, x i32) i32:
+error: test.ura:6:18 expected ':' after the function header
+  |
+6 | fn apply(f fn(i32) i32, x i32) i32:
+  |                  ^
+help: use fn apply(f fn(i32:) i32, x i32) i32:
+error: test.ura:6:18 unexpected ')'
+  |
+6 | fn apply(f fn(i32) i32, x i32) i32:
+  |                  ^
+error: test.ura:6:23 unexpected ','
+  |
+6 | fn apply(f fn(i32) i32, x i32) i32:
+  |                       ^
+error: test.ura:6:30 unexpected ')'
+  |
+6 | fn apply(f fn(i32) i32, x i32) i32:
+  |                              ^
+error: test.ura:6:35 unexpected ':'
+  |
+6 | fn apply(f fn(i32) i32, x i32) i32:
+  |                                   ^
+error: aborting due to 10 errors
+```
+
+### status
+
+```
+1
 ```
 
 ---
@@ -288,6 +548,45 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@str = private unnamed_addr constant [7 x i8] c"%d %d\0A\00", align 1
+
+define i32 @tally(i32 %0) {
+entry:
+  %n = alloca i32, align 4
+  store i32 %0, i32* %n, align 4
+  %"$n" = load i32, i32* %n, align 4
+  %ADD = add i32 %"$n", 1
+  ret i32 %ADD
+}
+
+define i32 @double(i32 %0) {
+entry:
+  %n = alloca i32, align 4
+  store i32 %0, i32* %n, align 4
+  %"$n" = load i32, i32* %n, align 4
+  %MUL = mul i32 %"$n", 2
+  ret i32 %MUL
+}
+
+define i32 @main() {
+entry:
+  %call.tally = call i32 @tally(i32 41)
+  %call.double = call i32 @double(i32 21)
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i32 %call.tally, i32 %call.double)
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 018 — function: conflict between two of your own protos
@@ -302,6 +601,23 @@ proto scan(a i32, b i8[], c i32) i32
 fn main() i32:
     output("unreachable\n")
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:5:7 'scan' is already declared with other parameters, on line 3
+  |
+5 | proto scan(a i32, b i8[], c i32) i32
+  |       ^^^^
+help: declare it once, with ... for the optional arguments
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---
@@ -329,6 +645,30 @@ fn recurse(n i32) i32:
 
 fn main() i32:
     return recurse(1)
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+define i32 @recurse(i32 %0) {
+entry:
+  %n = alloca i32, align 4
+  store i32 %0, i32* %n, align 4
+  %"$n" = load i32, i32* %n, align 4
+  %call.recurse = call i32 @recurse(i32 %"$n")
+  ret i32 %call.recurse
+}
+
+define i32 @main() {
+entry:
+  %call.recurse = call i32 @recurse(i32 1)
+  ret i32 %call.recurse
+}
 ```
 
 ---
@@ -1555,6 +1895,37 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@str = private unnamed_addr constant [8 x i8] c"dungeon\00", align 1
+@str.1 = private unnamed_addr constant [4 x i8] c"hi\0A\00", align 1
+@str.2 = private unnamed_addr constant [12 x i8] c"length: %d\0A\00", align 1
+
+declare i64 @strlen(i8*)
+
+declare i64 @write(i32, i8*, i64)
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  %n = alloca i32, align 4
+  %call.strlen = call i64 @strlen(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str, i32 0, i32 0))
+  %AS = trunc i64 %call.strlen to i32
+  store i32 %AS, i32* %n, align 4
+  %call.write = call i64 @write(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.1, i32 0, i32 0), i64 3)
+  %"$n" = load i32, i32* %n, align 4
+  %call.printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.2, i32 0, i32 0), i32 %"$n")
+  ret i32 0
+}
+```
+
 ---
 
 ## 032 — dungeon: boss
@@ -2574,7 +2945,6 @@ error: aborting due to 1 error
 ```
 1
 ```
-
 
 ---
 

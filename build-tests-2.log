@@ -1,0 +1,748 @@
+
+milestone8
+milestone8.md:58 array: 2D array literal and nested indexing (compile error, status 1)
+      error: test.ura:6:17 unexpected '['
+        |
+      6 |     m i32[][] = [[1, 2], [3, 4]]
+        |                 ^
+      error: test.ura:6:20 expected ']' after the index
+        |
+      6 |     m i32[][] = [[1, 2], [3, 4]]
+        |                    ^
+milestone8.md:75 array: sized 2D matrix i32[N][M], zero-init and writes (compile error, status 1)
+      error: test.ura:5:17 'i32' is 'i32', not an array
+        |
+      5 |     g i32[][] = i32[3][4]
+        |                 ^^^
+      error: aborting due to 1 error
+milestone8.md:91 array: 3D sized array with runtime size (compile error, status 1)
+      error: test.ura:6:19 'i32' is 'i32', not an array
+        |
+      6 |     v i32[][][] = i32[n][n][n]
+        |                   ^^^
+      error: aborting due to 1 error
+milestone8.md:107 array: heap array: new i32[N], zero-init, write, clean (compile error, status 1)
+      error: test.ura:5:23 arrays have no size in the type
+        |
+      5 |     a i32[] = new i32[5]
+        |                       ^
+      help: use 'i32[]'
+      error: test.ura:8:11 unknown type 'a'
+        |
+      8 |     clean a
+milestone8.md:123 array: heap array with runtime size (new i32[n]) + clean (compile error, status 1)
+      error: test.ura:6:25 arrays have no size in the type
+        |
+      6 |     a i32[] = new i32[n * 2]
+        |                         ^
+      help: use 'i32[]'
+      error: test.ura:9:11 unknown type 'a'
+        |
+      9 |     clean a
+milestone8.md:140 array: multi-dim heap: new i32[N][M] + recursive clean (compile error, status 1)
+      error: test.ura:5:25 arrays have no size in the type
+        |
+      5 |     m i32[][] = new i32[2][3]
+        |                         ^
+      help: use 'i32[]'
+      error: test.ura:5:28 arrays have no size in the type
+        |
+      5 |     m i32[][] = new i32[2][3]
+milestone8.md:157 array: slice a[1..4] is a view (shared storage, exclusive end) (compile error, status 1)
+      error: test.ura:6:15 unexpected '['
+        |
+      6 |     a i32[] = [10, 20, 30, 40, 50]
+        |               ^
+      error: test.ura:6:18 unexpected ','
+        |
+      6 |     a i32[] = [10, 20, 30, 40, 50]
+        |                  ^
+milestone8.md:175 array: arr.len on stack, heap, slice, and multi-dim (compile error, status 1)
+      error: test.ura:7:18 unexpected '['
+        |
+      7 |     nums i32[] = [10, 20, 30, 40]
+        |                  ^
+      error: test.ura:7:21 unexpected ','
+        |
+      7 |     nums i32[] = [10, 20, 30, 40]
+        |                     ^
+milestone8.md:195 array: clean on a non-array (compile error, status 1)
+      error: test.ura:4:11 unknown type 'x'
+        |
+      4 |     clean x
+        |           ^
+      help: declare it: struct x:
+      error: aborting due to 1 error
+milestone8.md:207 array: new without an array type (compile error, status 1)
+      error: test.ura:3:15 expected 'i32[]', found 'i32'
+        |
+      3 |     a i32[] = new i32
+        |               ^^^
+      error: aborting due to 1 error
+milestone8.md:218 array: range bounds must be integers (compile error, status 1)
+      error: test.ura:3:15 unexpected '['
+        |
+      3 |     a i32[] = [1, 2, 3]
+        |               ^
+      error: test.ura:3:17 unexpected ','
+        |
+      3 |     a i32[] = [1, 2, 3]
+        |                 ^
+milestone8.md:230 array: .len on a non-array (compile error, status 1)
+      error: test.ura:4:12 'x' is 'i32', not a struct
+        |
+      4 |     output(x.len)
+        |            ^
+      error: aborting due to 1 error
+milestone8.md:242 array: array literals: one element, expressions, and strings (compile error, status 1)
+      error: test.ura:11:17 unexpected '['
+         |
+      11 |     one i32[] = [42]
+         |                 ^
+      error: test.ura:11:20 unexpected ']'
+         |
+      11 |     one i32[] = [42]
+         |                    ^
+milestone8.md:275 array: fill a heap char buffer by index, print it, clean it (compile error, status 1)
+      error: test.ura:5:27 arrays have no size in the type
+        |
+      5 |     str char[] = new char[8]
+        |                           ^
+      help: use 'i8[]'
+      error: test.ura:15:11 unknown type 'str'
+         |
+      15 |     clean str
+milestone8.md:298 enum: a variant as an array index and in arithmetic (compile error, status 1)
+      error: test.ura:6:26 arrays have no size in the type
+        |
+      6 |     gear i32[] = new i32[3]
+        |                          ^
+      help: use 'i32[]'
+      error: test.ura:7:10 undeclared variable 'HEAD'
+        |
+      7 |     gear[HEAD] = 5
+milestone8.md:315 errput: errput follows a bound ref? and prints null when unbound (compile error, status 1)
+      error: test.ura:9:18 'head' is a ref, initialize it with an address
+        |
+      9 |     head &Node = new Node
+        |                  ^^^
+      help: write 'head &Node = &new Node'
+      error: test.ura:12:18 'new' is already declared, on line 9
+         |
+      12 |     tail &Node = new Node
+milestone8.md:340 heap: new T allocates one zeroed struct and binds it to a ref (compile error, status 1)
+      error: test.ura:9:12 'p' is a ref, initialize it with an address
+        |
+      9 |     p &P = new P
+        |            ^^^
+      help: write 'p &P = &new P'
+      error: test.ura:13:11 unknown type 'p'
+         |
+      13 |     clean p
+milestone8.md:361 heap: clean frees a heap struct and nulls the reference (compile error, status 1)
+      error: test.ura:8:12 'p' is a ref, initialize it with an address
+        |
+      8 |     p &P = new P
+        |            ^^^
+      help: write 'p &P = &new P'
+      error: test.ura:11:11 unknown type 'p'
+         |
+      11 |     clean p
+milestone8.md:381 heap: clean on an unbound reference is a no-op (compile error, status 1)
+      error: test.ura:8:11 unknown type 'p'
+        |
+      8 |     clean p
+        |           ^
+      help: declare it: struct p:
+      error: aborting due to 1 error
+milestone8.md:398 heap: cleaning twice is safe (compile error, status 1)
+      error: test.ura:7:12 'p' is a ref, initialize it with an address
+        |
+      7 |     p &P = new P
+        |            ^^^
+      help: write 'p &P = &new P'
+      error: test.ura:8:11 unknown type 'p'
+        |
+      8 |     clean p
+milestone8.md:416 heap: operator drop cascades, freeing a whole tree (compile error, status 1)
+      error: test.ura:10:18 expected '(' after the function name
+         |
+      10 |     operator drop:
+         |                  ^
+      help: use operator drop():
+      error: aborting due to 1 error
+milestone8.md:449 heap: a function returns new T from a ref? return (compile error, status 1)
+      error: test.ura:7:12 'p' is a ref, initialize it with an address
+        |
+      7 |     p &P = new P
+        |            ^^^
+      help: write 'p &P = &new P'
+      error: test.ura:9:5 undeclared variable 'ret'
+        |
+      9 |     ret &p
+milestone8.md:471 heap: clean on a value struct is still an error (compile error, status 1)
+      error: test.ura:7:11 unknown type 'p'
+        |
+      7 |     clean p
+        |           ^
+      help: declare it: struct p:
+      error: aborting due to 1 error
+milestone8.md:486 heap: new without an array type is still an error (compile error, status 1)
+      error: test.ura:3:15 expected 'i32[]', found 'i32'
+        |
+      3 |     a i32[] = new i32
+        |               ^^^
+      error: aborting due to 1 error
+milestone8.md:497 lexer: an index with nothing in it (compile error, status 1)
+      error: test.ura:5:17 unexpected ']'
+        |
+      5 |     x i32 = arr[]
+        |                 ^
+      error: test.ura:5:17 expected ']' after the index
+        |
+      5 |     x i32 = arr[]
+        |                 ^
+milestone8.md:510 lexer: :: must be followed by a name (compile error, status 1)
+      error: test.ura:5:24 'String' has no pub fn 'new'
+        |
+      5 |     s String = String::new
+        |                        ^^^
+      error: aborting due to 1 error
+milestone8.md:523 operator: operator drop declares a destructor named Vec.drop (compile error, status 1)
+      error: test.ura:9:18 expected '(' after the function name
+        |
+      9 |     operator drop:
+        |                  ^
+      help: use operator drop():
+      error: aborting due to 1 error
+milestone8.md:546 operator: 'clean' does not destroy a struct, even one with operator drop (compile error, status 1)
+      error: test.ura:7:18 expected '(' after the function name
+        |
+      7 |     operator drop:
+        |                  ^
+      help: use operator drop():
+      error: aborting due to 1 error
+milestone8.md:566 operator: calling .drop() yourself is rejected (compile error, status 1)
+      error: test.ura:7:18 expected '(' after the function name
+        |
+      7 |     operator drop:
+        |                  ^
+      help: use operator drop():
+      error: aborting due to 1 error
+milestone8.md:586 operator: operator drop beside operator = does not warn (compile error, status 1)
+      error: test.ura:11:18 expected '(' after the function name
+         |
+      11 |     operator drop:
+         |                  ^
+      help: use operator drop():
+      error: aborting due to 1 error
+milestone8.md:611 operator: a destructor fires on break and on continue (compile error, status 1)
+      error: test.ura:20:18 expected '(' after the function name
+         |
+      20 |     operator drop:
+         |                  ^
+      help: use operator drop():
+      error: aborting due to 1 error
+milestone8.md:656 operator: drop on fall-through: an if block, each iteration, reverse order (compile error, status 1)
+      error: test.ura:24:18 expected '(' after the function name
+         |
+      24 |     operator drop:
+         |                  ^
+      help: use operator drop():
+      error: aborting due to 1 error
+milestone8.md:705 operator: a struct drops the structs it owns, at any depth, but not what it borrows (compile error, status 1)
+      error: test.ura:18:18 expected '(' after the function name
+         |
+      18 |     operator drop:
+         |                  ^
+      help: use operator drop():
+      error: aborting due to 1 error
+milestone8.md:755 operator: a heap-owning struct: create, deep-copy operator = and drop (compile error, status 1)
+      error: test.ura:15:18 expected '(' after the function name
+         |
+      15 |     operator drop:
+         |                  ^
+      help: use operator drop():
+      error: test.ura:25:5 the type goes after the name
+         |
+      25 |     bool Buffer = Buffer::create()
+milestone8.md:797 operator: a growable string struct: nullable buffer, grow, join and drop (compile error, status 1)
+      error: test.ura:19:18 expected '(' after the function name
+         |
+      19 |     operator drop:
+         |                  ^
+      help: use operator drop():
+      error: aborting due to 1 error
+milestone8.md:877 operator: a struct owning heap buffers: deep-copy operator = and drop (compile error, status 1)
+      error: test.ura:33:18 expected '(' after the function name
+         |
+      33 |     operator drop:
+         |                  ^
+      help: use operator drop():
+      error: aborting due to 1 error
+milestone8.md:935 ref: ref return: create a node on the heap and return a reference to it (compile error, status 1)
+      error: test.ura:12:25 arrays have no size in the type
+         |
+      12 |     h Node[] = new Node[1]
+         |                         ^
+      help: use 'Node[]'
+      error: aborting due to 1 error
+milestone8.md:957 ref: ref? return: one branch returns a reference, the other returns null (compile error, status 1)
+      error: test.ura:10:12 undeclared variable 'null'
+         |
+      10 |     return null
+         |            ^^^^
+      help: declare it first, like: null i32 = 0
+      error: test.ura:13:19 arrays have no size in the type
+         |
+      13 |     h N[] = new N[1]
+milestone8.md:982 ref: declare a ref and bind it to a ref-returning call (compile error, status 1)
+      error: test.ura:12:25 arrays have no size in the type
+         |
+      12 |     h Node[] = new Node[1]
+         |                         ^
+      help: use 'Node[]'
+      error: aborting due to 1 error
+milestone8.md:1004 ref: a ref-returning call passed straight into a ref parameter (compile error, status 1)
+      error: test.ura:18:25 arrays have no size in the type
+         |
+      18 |     h Node[] = new Node[1]
+         |                         ^
+      help: use 'Node[]'
+      error: test.ura:20:19 expected '&Node', found 'Node'
+         |
+      20 |     sethead(&lst, make(5, h))
+milestone8.md:1033 ref: a reference function must return a reference, not a bare value (compile error, status 1)
+      error: test.ura:6:13 expected '&N', found 'N'
+        |
+      6 |     return h[0]
+        |             ^
+      error: test.ura:9:19 arrays have no size in the type
+        |
+      9 |     h N[] = new N[1]
+        |                   ^
+milestone8.md:1051 ref: a field read chained directly on a ref-returning call (compile error, status 1)
+      error: test.ura:12:25 arrays have no size in the type
+         |
+      12 |     h Node[] = new Node[1]
+         |                         ^
+      help: use 'Node[]'
+      error: aborting due to 1 error
+milestone8.md:1072 struct: a heap array of structs: new Room[N], then clean (compile error, status 1)
+      error: test.ura:9:25 arrays have no size in the type
+        |
+      9 |     h Room[] = new Room[2]
+        |                         ^
+      help: use 'Room[]'
+      error: test.ura:14:11 unknown type 'h'
+         |
+      14 |     clean h
+milestone8.md:1094 struct: a 2D heap array of structs frees every inner slice (compile error, status 1)
+      error: test.ura:8:27 arrays have no size in the type
+        |
+      8 |     g Room[][] = new Room[2][2]
+        |                           ^
+      help: use 'Room[]'
+      error: test.ura:8:30 arrays have no size in the type
+        |
+      8 |     g Room[][] = new Room[2][2]
+milestone8.md:1114 struct: an unknown type as a parameter, a return type, or an array element (compile error, status 1)
+      error: test.ura:3:14 unknown type 'Widget'
+        |
+      3 | fn process(p Widget):
+        |              ^^^^^^
+      help: declare it: struct Widget:
+      error: test.ura:6:11 unknown type 'Widget'
+        |
+      6 | fn make() Widget:
+milestone8.md:1134 struct: destructor must take no parameters (compile error, status 1)
+      error: ././ucg.c:367 LLVM verification failed:
+      Incorrect number of arguments passed to called function!
+        call void @Box.drop(%Box* %b)
+milestone8.md:1154 struct: destructor must return void (compile error, status 1)
+      error: test.ura:7:19 expected '(' after the function name
+        |
+      7 |     operator drop i32:
+        |                   ^^^
+      help: use operator drop() i32:
+      error: aborting due to 1 error
+milestone8.md:1174 variable: global variables: scalars, arrays, forward reference, shadowing (compile error, status 1)
+      error: test.ura:11:15 'i32' is 'i32', not an array
+         |
+      11 | xs    i32[] = i32[3]
+         |               ^^^
+      error: test.ura:12:23 arrays have no size in the type
+         |
+      12 | heap  i32[] = new i32[2]
+         |                       ^
+milestone8.md:1217 variable: a global struct is initialised and dropped like a local (compile error, status 1)
+      error: test.ura:20:18 expected '(' after the function name
+         |
+      20 |     operator drop:
+         |                  ^
+      help: use operator drop():
+      error: aborting due to 1 error
+milestone8.md:1257 variable: a global is dropped on an early return too (compile error, status 1)
+      error: test.ura:18:18 expected '(' after the function name
+         |
+      18 |     operator drop:
+         |                  ^
+      help: use operator drop():
+      error: aborting due to 1 error
+
+0 passed, 50 failed
+
+milestone10
+milestone10.md:21 loop: loop (infinite) with break + continue (compile error, status 1)
+      error: test.ura:6:9 unexpected ':'
+        |
+      6 |     loop:
+        |         ^
+      error: aborting due to 1 error
+milestone10.md:42 loop: range-for both directions (a..b) (compile error, status 1)
+      error: test.ura:5:16 unexpected '.'
+        |
+      5 |     for i in 0..5:
+        |                ^
+      error: test.ura:5:18 unexpected ':'
+        |
+      5 |     for i in 0..5:
+        |                  ^
+milestone10.md:60 loop: array-for iterates elements by value (compile error, status 1)
+      error: test.ura:5:18 unexpected '['
+        |
+      5 |     nums i32[] = [10, 20, 30]
+        |                  ^
+      error: test.ura:5:21 unexpected ','
+        |
+      5 |     nums i32[] = [10, 20, 30]
+        |                     ^
+milestone10.md:77 loop: for ref mutates array elements in place (compile error, status 1)
+      error: test.ura:5:18 unexpected '['
+        |
+      5 |     nums i32[] = [1, 2, 3, 4]
+        |                  ^
+      error: test.ura:5:20 unexpected ','
+        |
+      5 |     nums i32[] = [1, 2, 3, 4]
+        |                    ^
+milestone10.md:95 loop: for without a loop variable (compile error, status 1)
+      error: test.ura:3:14 unexpected '.'
+        |
+      3 |     for in 0..5:
+        |              ^
+      error: test.ura:3:16 unexpected ':'
+        |
+      3 |     for in 0..5:
+        |                ^
+milestone10.md:107 loop: for over a non-iterable (compile error, status 1)
+      error: test.ura:4:15 unexpected ':'
+        |
+      4 |     for i in x:
+        |               ^
+      error: aborting due to 1 error
+milestone10.md:120 loop: for ref over a range (compile error, status 1)
+      error: test.ura:3:20 unexpected '.'
+        |
+      3 |     for ref i in 0..5:
+        |                    ^
+      error: test.ura:3:22 unexpected ':'
+        |
+      3 |     for ref i in 0..5:
+        |                      ^
+milestone10.md:132 loop: for over struct-array and 2D-array struct fields (compile error, status 1)
+      error: test.ura:27:29 unexpected ':'
+         |
+      27 |         for row in self.grid:
+         |                             ^
+      error: test.ura:28:25 unexpected ':'
+         |
+      28 |             for v in row:
+         |                         ^
+milestone10.md:188 loop: by sets the step of a range (compile error, status 1)
+      error: test.ura:8:16 unexpected '.'
+        |
+      8 |     for i in 0..10 by 3:
+        |                ^
+      error: test.ura:8:24 unexpected ':'
+        |
+      8 |     for i in 0..10 by 3:
+        |                        ^
+milestone10.md:217 loop: a by step must be a positive integer on a range (compile error, status 1)
+      error: test.ura:4:16 unexpected '.'
+        |
+      4 |     for i in 0..10 by 0:
+        |                ^
+      error: test.ura:4:24 unexpected ':'
+        |
+      4 |     for i in 0..10 by 0:
+        |                        ^
+milestone10.md:230 loop: by needs a range on its left (compile error, status 1)
+      error: test.ura:4:16 unexpected '['
+        |
+      4 |     xs i32[] = [1, 2, 3]
+        |                ^
+      error: test.ura:4:18 unexpected ','
+        |
+      4 |     xs i32[] = [1, 2, 3]
+        |                  ^
+milestone10.md:244 loop: break and continue inside a for (compile error, status 1)
+      error: test.ura:8:16 unexpected '.'
+        |
+      8 |     for i in 0..10:
+        |                ^
+      error: test.ura:8:19 unexpected ':'
+        |
+      8 |     for i in 0..10:
+        |                   ^
+milestone10.md:278 loop: continue: skip wall tiles '#', count open spaces (compile error, status 1)
+      error: test.ura:5:20 unexpected '['
+        |
+      5 |     tiles char[] = ['#', '.', '#', '.', '.',
+        |                    ^
+      error: test.ura:5:24 unexpected ','
+        |
+      5 |     tiles char[] = ['#', '.', '#', '.', '.',
+        |                        ^
+
+0 passed, 13 failed
+
+milestone11
+milestone11.md:43 builtins: typeof without an argument (compile error, status 1)
+      error: test.ura:3:11 'typeof' takes one argument, got 0
+        |
+      3 |    return typeof()
+        |           ^^^^^^
+      help: use typeof(x)
+      error: test.ura:3:11 expected 'i32', found 'i8[]'
+        |
+      3 |    return typeof()
+milestone11.md:53 builtins: sizeof with two arguments (compile error, status 1)
+      error: test.ura:3:11 'sizeof' takes one argument, got 2
+        |
+      3 |    return sizeof(x, x)
+        |           ^^^^^^
+      help: use sizeof(x)
+      error: aborting due to 1 error
+milestone11.md:63 builtin: typeof on a value, a string and a struct (llvm ir differs)
+      10a11
+      > @str = private unnamed_addr constant [10 x i8] c"%s %s %s\0A\00", align 1
+      18,21d18
+      <   %arr1 = alloca [2 x i8], align 1
+      <   %arr2 = alloca [2 x i8], align 1
+      <   %arr3 = alloca [2 x i8], align 1
+milestone11.md:123 builtin: typeof on a ref and on a type name (llvm ir differs)
+      0a1,4
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      > target triple = "x86_64-unknown-linux-gnu"
+      1a6,23
+milestone11.md:138 builtin: sizeof folds to a constant
+milestone11.md:176 builtin: typeof / sizeof on scalars (llvm ir differs)
+      6a7
+      > @str = private unnamed_addr constant [30 x i8] c"typeof x = %s, sizeof x = %d\0A\00", align 1
+      7a9,10
+      > @str.2 = private unnamed_addr constant [30 x i8] c"typeof f = %s, sizeof f = %d\0A\00", align 1
+      > @str.3 = private unnamed_addr constant [17 x i8] c"sizeof i64 = %d\0A\00", align 1
+      13,23d15
+milestone11.md:254 builtin: typeof / sizeof on an array (compile error, status 1)
+      error: test.ura:5:15 unexpected '['
+        |
+      5 |     a i32[] = [1, 2, 3]
+        |               ^
+      error: test.ura:5:17 unexpected ','
+        |
+      5 |     a i32[] = [1, 2, 3]
+        |                 ^
+milestone11.md:268 builtin: sizeof without parentheses (compile error, status 1)
+      error: test.ura:4:19 unknown type 'x'
+        |
+      4 |     output(sizeof x)
+        |                   ^
+      help: declare it: struct x:
+      error: aborting due to 1 error
+milestone11.md:280 builtin: typeof without parentheses (compile error, status 1)
+      error: test.ura:4:19 unknown type 'x'
+        |
+      4 |     output(typeof x)
+        |                   ^
+      help: declare it: struct x:
+      error: aborting due to 1 error
+milestone11.md:292 builtin: typeof and sizeof on chars, bool, and a literal (llvm ir differs)
+      5a6,7
+      > %String = type { i8*, i32, i32 }
+      > 
+      7a10,12
+      > @str = private unnamed_addr constant [7 x i8] c"%s %s\0A\00", align 1
+      > @str.2 = private unnamed_addr constant [6 x i8] c"hello\00", align 1
+milestone11.md:361 builtin: sizeof of every scalar type (llvm ir differs)
+      0a1,4
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      > target triple = "x86_64-unknown-linux-gnu"
+      1a6,18
+milestone11.md:377 builtin: sizeof of a struct honours ABI padding (llvm ir differs)
+      7a8,9
+      > @str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+      > 
+      11,12d12
+      <   %arr = alloca [2 x i8], align 1
+      <   %arr1 = alloca [4 x i8], align 1
+milestone11.md:421 builtin: typeof of a struct gives its name (llvm ir differs)
+      8a9
+      > @str = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
+      13,14d13
+      <   %arr = alloca [2 x i8], align 1
+      <   %arr1 = alloca [4 x i8], align 1
+      16,20c15
+milestone11.md:467 cast: as casting + i64 / i16 via explicit cast (llvm ir differs)
+      0a1,4
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      > target triple = "x86_64-unknown-linux-gnu"
+      1a6,38
+milestone11.md:490 cast: as converts between f32 and the integer types (llvm ir differs)
+      0a1,4
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      > target triple = "x86_64-unknown-linux-gnu"
+      1a6,60
+milestone11.md:523 cast: char arithmetic and an expression cast back to char (compile error, status 1)
+      error: test.ura:19:22 unexpected '['
+         |
+      19 |     names char[][] = ["orc", "spider", "dragon"]
+         |                      ^
+      error: test.ura:19:28 unexpected ','
+         |
+      19 |     names char[][] = ["orc", "spider", "dragon"]
+         |                            ^
+milestone11.md:551 cast: a struct cannot be cast to or from a scalar (compile error, status 1)
+      error: ././ucg.c:367 LLVM verification failed:
+      ZExt only operates on integer
+        %AS = zext %Point %"$p" to i32
+milestone11.md:569 cast: casting a scalar to a struct (compile error, status 1)
+      ==2504191==ERROR: AddressSanitizer: SEGV on unknown address 0x000000000000 (pc 0x5fdbe3e096b5 bp 0x7ffcf32ab050 sp 0x7ffcf32a9e40 T0)
+      #0 0x5fdbe3e096b5 in codegen /home/mhrima/Desktop/personal/ura-lang/src/main.c:2518:44
+      #1 0x5fdbe3e0aa58 in codegen /home/mhrima/Desktop/personal/ura-lang/src/main.c:2578:9
+milestone11.md:586 literal: f32 literals: declare, print, zero-init, in a function (llvm ir differs)
+      0a1,4
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      > target triple = "x86_64-unknown-linux-gnu"
+      1a6,35
+milestone11.md:610 literal: f32 arithmetic + comparison, compound assignment (llvm ir differs)
+      0a1,4
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      > target triple = "x86_64-unknown-linux-gnu"
+      1a6,102
+milestone11.md:641 literal: f64 declaration, arithmetic and compound assignment (llvm ir differs)
+      0a1,4
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      > target triple = "x86_64-unknown-linux-gnu"
+      1a6,124
+milestone11.md:673 literal: a f32 literal takes the type of its target (llvm ir differs)
+      0a1,4
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      > target triple = "x86_64-unknown-linux-gnu"
+      1a6,62
+milestone11.md:705 literal: casts between f64, f32 and the integer types (llvm ir differs)
+      0a1,4
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      > target triple = "x86_64-unknown-linux-gnu"
+      1a6,44
+milestone11.md:728 literal: a return that does not match the function's type (compile error, status 1)
+      error: test.ura:4:12 expected 'i32', found 'f64'
+        |
+      4 |     return 1.5
+        |            ^^^
+      error: aborting due to 1 error
+milestone11.md:743 literal: integer literals at the edge of each type's range (compile error, status 1)
+      error: test.ura:8:19 expected 'i64', found 'i32'
+        |
+      8 |     i64_min i64 = -9223372036854775807
+        |                   ^
+      error: aborting due to 1 error
+milestone11.md:766 literal: an integer literal too wide for i32 keeps its width (compile error, status 1)
+      error: test.ura:10:9 unknown type 'n'
+         |
+      10 |     ret n * 2
+         |         ^
+      help: declare it: struct n:
+      error: test.ura:10:11 can't apply '*' to 'n' and 'i32'
+         |
+      10 |     ret n * 2
+milestone11.md:793 literal: a literal that does not fit its target type (compile error, status 1)
+      error: test.ura:4:16 300 doesn't fit in i8
+        |
+      4 |     small i8 = 300
+        |                ^^^
+      help: i8 goes from -128 to 127
+      error: aborting due to 1 error
+milestone11.md:805 literal: a negative literal at the low edge still fits (compile error, status 1)
+      error: test.ura:5:13 expected 'i8', found 'i32'
+        |
+      5 |     a i8  = -128
+        |             ^
+      error: test.ura:6:13 expected 'i16', found 'i32'
+        |
+      6 |     b i16 = -32768
+        |             ^
+milestone11.md:822 operator: bitwise & | ^ << >> (llvm ir differs)
+      0a1,4
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      > target triple = "x86_64-unknown-linux-gnu"
+      1a6,39
+milestone11.md:845 operator: unary not / minus / bitwise-not (compile error, status 1)
+      error: test.ura:13:12 unknown character '~'
+         |
+      13 |     output(~a, "\n")
+         |            ^
+      help: remove it
+      error: aborting due to 1 error
+milestone11.md:868 operator: compound bitwise assignment (llvm ir differs)
+      0a1,4
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      > target triple = "x86_64-unknown-linux-gnu"
+      1a6,62
+milestone11.md:906 operator: bitwise operator on f32 operands is rejected (compile error, status 1)
+      error: unknown operation BAND
+milestone11.md:918 operator: divide by zero prints file:line and exits 1 (llvm ir differs)
+      0a1,4
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      > target triple = "x86_64-unknown-linux-gnu"
+      1a6,18
+milestone11.md:933 operator: f32 division by zero traps (not inf) (llvm ir differs)
+      0a1,4
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      > target triple = "x86_64-unknown-linux-gnu"
+      1a6,18
+milestone11.md:948 literal: f32 and f64 math, casts and printf (llvm ir differs)
+      5a6,9
+      > @str = private unnamed_addr constant [13 x i8] c"%f %f %f %f\0A\00", align 1
+      > @str.1 = private unnamed_addr constant [10 x i8] c"%f %f %f\0A\00", align 1
+      > @str.2 = private unnamed_addr constant [13 x i8] c"%f %d %f %f\0A\00", align 1
+      > 
+      17d20
+
+1 passed, 34 failed

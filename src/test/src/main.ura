@@ -1,0 +1,26 @@
+proto printf(fmt char[], ...) i32
+
+fn shout(text char[]):                      // char[] parameter: gets the raw text
+    printf("%s!\n", text)
+
+fn kind(s String) i32:
+    match s:
+        case "hello", "test":               // literals compared through String's ==
+            return 1
+        default:
+            return 0
+
+fn main() i32:
+    s String = "hello"                      // borrowed: no allocation yet
+    t String = s                            // a real copy
+    s += " world"                           // s makes its own copy, then appends
+    s[0] = 'H'                              // write is safe: s owns its memory now
+    raw char[] = "raw text"                 // char[] target: raw text, no String
+    printf("%s | %s | %s\n", s.c_str(), t.c_str(), raw)
+    shout("hey")
+    output(kind("test"), kind("nope"), " ", s.size(), "\n")
+    try:
+        throw Error::create("boom")         // literal straight into Error(String)
+    catch e Error:
+        output("caught ", e.message.c_str(), "\n")
+    return 0
