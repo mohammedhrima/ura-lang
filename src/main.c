@@ -161,6 +161,7 @@ struct {
     { "and", { .type = AND } },
     { "or", { .type = OR } },
     { "not", { .type = NOT } },
+    { "is", { .type = EQ } },
     { "proto", { .type = PROTO } },
     { "link", { .type = LINK } },
     { "use", { .type = USE } },
@@ -223,14 +224,15 @@ char *binary_ops[END + 1] = {
     [ADD] = "+",        [SUB] = "-",        [MUL] = "*",
     [DIV] = "/",        [MOD] = "%",
 
-    [ADD_ASSIGN] = "+", [SUB_ASSIGN] = "-", [MUL_ASSIGN] = "*",
-    [DIV_ASSIGN] = "/", [MOD_ASSIGN] = "%",
+    [ASSIGN] = "=",
+    [ADD_ASSIGN] = "+=", [SUB_ASSIGN] = "-=", [MUL_ASSIGN] = "*=",
+    [DIV_ASSIGN] = "/=", [MOD_ASSIGN] = "%=",
 
     [BAND] = "&",       [BOR] = "|",        [BXOR] = "^",
     [LSHIFT] = "<<",    [RSHIFT] = ">>",
 
-    [BAND_ASSIGN] = "&", [BOR_ASSIGN] = "|", [BXOR_ASSIGN] = "^",
-    [LSHIFT_ASSIGN] = "<<", [RSHIFT_ASSIGN] = ">>",
+    [BAND_ASSIGN] = "&=", [BOR_ASSIGN] = "|=", [BXOR_ASSIGN] = "^=",
+    [LSHIFT_ASSIGN] = "<<=", [RSHIFT_ASSIGN] = ">>=",
 
     [EQ] = "==",        [NQ] = "!=",        [LT] = "<",
     [GT] = ">",         [LE] = "<=",        [GE] = ">=",
@@ -1165,7 +1167,6 @@ Node *parse_prime() {
                 Node *value = new_node(new_token(ID, head));
                 value->token->name = declare->var->token->name;
                 Node *eq = new_node(new_token(EQ, head));
-                eq->token->name = "==";
                 eq->left = value;
                 eq->right = parse_expr(0);
                 Node *cond = eq;

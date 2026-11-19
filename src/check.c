@@ -705,7 +705,13 @@ void check_arg_count(Node *node) {
             needed == 1 ? "" : "s",
             node->children_count
         ),
-        format("fn %s(%s)%s", fn->token->name, signature, ret)
+        format(
+            "%s %s(%s)%s",
+            fn->token->type == PROTO ? "proto" : "fn",
+            fn->token->name,
+            signature,
+            ret
+        )
     );
 }
 
@@ -745,7 +751,7 @@ void check_call(Node *node) {
     if (overload)
         node->to_call = overload;
     Node *params = node->to_call->args;
-    if (params && node->to_call->token->type == FN_DEC)
+    if (params && includes(node->to_call->token->type, FN_DEC, PROTO, 0))
         check_arg_count(node);
     bool is_write = node->to_call->token->type == WRITE;
     for (int i = 0; i < node->children_count; i++) {
@@ -776,8 +782,7 @@ void check_operation(Node *node) {
         bool is_conversion = right_type && !same_type(right_type, left_type);
         bool has_assign = find_method(st, "=", &node->right, 1, false) != NULL;
         if (node->token->type != ASSIGN || (is_conversion && has_assign)) {
-            char *symbol = node->token->name ? node->token->name : token_text(node->token);
-            analyze_operator(node, st, symbol);
+            analyze_operator(node, st, binary_ops[node->token->type]);
             return;
         }
         check_copy(&node->right, left_type);

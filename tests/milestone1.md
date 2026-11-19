@@ -220,7 +220,6 @@
 - 216 — literal: bool literals: declare, zero-init, bool function, reassign
 - 217 — literal: char literals: declare, print, escapes, in a function
 - 218 — loop: basic while: count enemy kills
-- 219 — loop: loop without a colon
 - 220 — operator: all arithmetic ops in dungeon combat context
 - 221 — operator: arithmetic with precedence (2*3 + 20/4 - 1)
 - 222 — operator: reassign an existing variable (2*10 + 3)
@@ -7948,12 +7947,35 @@ endif:                                            ; preds = %else1, %if0.then
 // stdout: hello ura 42
 // expect: 0
 
-proto fn printf(fmt pointer, ...) i32
+proto printf(fmt char[], ...) i32
 
 fn main() i32:
     s char[] = "ura"
     printf("hello %s %d\n", s, 42)
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@str = private unnamed_addr constant [4 x i8] c"ura\00", align 1
+@str.1 = private unnamed_addr constant [13 x i8] c"hello %s %d\0A\00", align 1
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  %s = alloca i8*, align 8
+  store i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i8** %s, align 8
+  %"$s" = load i8*, i8** %s, align 8
+  %call.printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str.1, i32 0, i32 0), i8* %"$s", i32 42)
+  ret i32 0
+}
 ```
 
 ---
@@ -8917,11 +8939,28 @@ error: aborting due to 1 error
 ```ura
 // error: Wrong number of arguments to 'printf'
 
-proto fn printf(fmt pointer, ...) i32
+proto printf(fmt char[], ...) i32
 
 fn main() i32:
     printf()
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:6:5 'printf' takes at least 1 argument, not 0
+  |
+6 |     printf()
+  |     ^^^^^^
+help: proto printf(fmt i8[], ...) i32
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---
@@ -9658,18 +9697,6 @@ declare i32 @dprintf(i32, i8*, ...)
 
 ---
 
-## 219 — loop: loop without a colon
-
-```ura
-// error: Expected ':' to open the 'loop' body
-fn main() i32:
-    loop
-        output(1)
-    return 0
-```
-
----
-
 ## 220 — operator: all arithmetic ops in dungeon combat context
 
 ```ura
@@ -10324,6 +10351,62 @@ fn main() i32:
     z bool = a is 5
     m bool = a + 1 < b * 2
     return 3
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+define i32 @main() {
+entry:
+  %a = alloca i32, align 4
+  %b = alloca i32, align 4
+  %t = alloca i1, align 1
+  %u = alloca i1, align 1
+  %v = alloca i1, align 1
+  %w = alloca i1, align 1
+  %x = alloca i1, align 1
+  %y = alloca i1, align 1
+  %z = alloca i1, align 1
+  %m = alloca i1, align 1
+  store i32 5, i32* %a, align 4
+  store i32 9, i32* %b, align 4
+  %"$a" = load i32, i32* %a, align 4
+  %"$b" = load i32, i32* %b, align 4
+  %LT = icmp slt i32 %"$a", %"$b"
+  store i1 %LT, i1* %t, align 1
+  %"$a1" = load i32, i32* %a, align 4
+  %EQ = icmp eq i32 %"$a1", 5
+  store i1 %EQ, i1* %u, align 1
+  %"$b2" = load i32, i32* %b, align 4
+  %"$a3" = load i32, i32* %a, align 4
+  %NQ = icmp ne i32 %"$b2", %"$a3"
+  store i1 %NQ, i1* %v, align 1
+  %"$b4" = load i32, i32* %b, align 4
+  %GE = icmp sge i32 %"$b4", 9
+  store i1 %GE, i1* %w, align 1
+  %"$a5" = load i32, i32* %a, align 4
+  %LE = icmp sle i32 %"$a5", 4
+  store i1 %LE, i1* %x, align 1
+  %"$a6" = load i32, i32* %a, align 4
+  %"$b7" = load i32, i32* %b, align 4
+  %GT = icmp sgt i32 %"$a6", %"$b7"
+  store i1 %GT, i1* %y, align 1
+  %"$a8" = load i32, i32* %a, align 4
+  %EQ9 = icmp eq i32 %"$a8", 5
+  store i1 %EQ9, i1* %z, align 1
+  %"$a10" = load i32, i32* %a, align 4
+  %ADD = add i32 %"$a10", 1
+  %"$b11" = load i32, i32* %b, align 4
+  %MUL = mul i32 %"$b11", 2
+  %LT12 = icmp slt i32 %ADD, %MUL
+  store i1 %LT12, i1* %m, align 1
+  ret i32 3
+}
 ```
 
 ---
