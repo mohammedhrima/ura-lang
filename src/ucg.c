@@ -1748,15 +1748,10 @@ Ucg *ucg_cnt(Ucg *loop) {
 
 void ucg_throws(void) {
     gb_ucg.throws = true;
-}
-
-bool ucg_has_throw(void) {
-    return gb_ucg.throws;
+    gb_ucg.thrown = ucg_global("ucg.thrown", ucg_bool_type());
 }
 
 Ucg *ucg_thrown(void) {
-    if (gb_ucg.thrown == NULL)
-        gb_ucg.thrown = ucg_global("ucg.thrown", ucg_bool_type());
     return gb_ucg.thrown;
 }
 
@@ -1838,12 +1833,16 @@ Ucg *ucg_try(void) {
     return stmt;
 }
 
+Ucg *ucg_end_try(Ucg *try_stmt) {
+    gb_ucg.tries_count--;
+    return ucg_end(try_stmt);
+}
+
 Ucg *ucg_catch(Ucg *stmt, Ucg *type) {
     bool is_first = gb_ucg.tries_count && gb_ucg.tries[gb_ucg.tries_count - 1] == stmt;
     Ucg *catch_stmt = NULL;
     if (is_first) {
-        gb_ucg.tries_count--;
-        ucg_end(stmt);
+        ucg_end_try(stmt);
         catch_stmt = ucg_if();
     } else
         catch_stmt = ucg_elif(stmt);

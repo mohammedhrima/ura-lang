@@ -55,13 +55,13 @@
 struct Room:
     floor i32
 
-    pub fn make(f i32) Room:
+    pub fn create(f i32) Room:
         r Room
         r.floor = f
         return r
 
 fn main() i32:
-    r Room = Room::make(7)
+    r Room = Room::create(7)
     output("floor = ", r.floor, "\n")
     return 0
 ```
@@ -76,7 +76,7 @@ target triple = "x86_64-unknown-linux-gnu"
 
 %Room = type { i32 }
 
-define %Room @Room.make(i32 %0) {
+define %Room @Room.create(i32 %0) {
 entry:
   %f = alloca i32, align 4
   %r = alloca %Room, align 8
@@ -95,8 +95,8 @@ entry:
   %arr = alloca [9 x i8], align 1
   %arr1 = alloca [2 x i8], align 1
   %arr2 = alloca [12 x i8], align 1
-  %call.Room.make = call %Room @Room.make(i32 7)
-  store %Room %call.Room.make, %Room* %r, align 4
+  %call.Room.create = call %Room @Room.create(i32 7)
+  store %Room %call.Room.create, %Room* %r, align 4
   store [9 x i8] c"floor = \00", [9 x i8]* %arr, align 1
   %0 = getelementptr inbounds [9 x i8], [9 x i8]* %arr, i32 0, i32 0
   %r.floor = getelementptr inbounds %Room, %Room* %r, i32 0, i32 0
@@ -138,7 +138,7 @@ fn main() i32:
 // error: Unknown type 'Nope'
 
 fn main() i32:
-    output(Nope::make(), "\n")
+    output(Nope::create(), "\n")
     return 0
 ```
 
@@ -3723,13 +3723,13 @@ fn main() i32:
 ## 030 — struct: pub fn called via . instead of ::
 
 ```ura
-// error: 'm.make' is a 'pub fn', so it is static and takes no receiver; call it as 'Maker::make()'
+// error: 'm.make' is a 'pub fn', so it is static and takes no receiver; call it as 'Maker::create()'
 use "@/header"
 
 struct Maker:
     n i32
 
-    pub fn make() Maker:
+    pub fn create() Maker:
         m Maker
         m.n = 1
         return m
@@ -5018,7 +5018,7 @@ fn main() i32:
     output(t.find("World"), " ", t.contains("lo W"), " ", t.starts_with("Hell"), " ", t.ends_with("ld"), " ", t.find("xyz"), "\n")
     r String = t.replace("World", "ura")
     output(r.c_str(), " ", r.substr(1, 3).c_str(), " ", r.repeat(2).c_str(), "\n")
-    a String = String::from("abc")
+    a String = String::create("abc")
     b String = "abd"
     c String = a + "-" + b
     c += "!"
@@ -5254,7 +5254,7 @@ entry:
   ret void
 }
 
-define %String @String.from(i8* %0) {
+define %String @String.create(i8* %0) {
 entry:
   %text = alloca i8*, align 8
   %res = alloca %String, align 8
@@ -6416,8 +6416,8 @@ endif2:                                           ; preds = %else35, %if34.then
   call void @String.drop(%String* %tmp47)
   store [4 x i8] c"abc\00", [4 x i8]* %arr55, align 1
   %32 = getelementptr inbounds [4 x i8], [4 x i8]* %arr55, i32 0, i32 0
-  %call.String.from = call %String @String.from(i8* %32)
-  store %String %call.String.from, %String* %a, align 8
+  %call.String.create = call %String @String.create(i8* %32)
+  store %String %call.String.create, %String* %a, align 8
   store %String zeroinitializer, %String* %b, align 8
   store [4 x i8] c"abd\00", [4 x i8]* %arr56, align 1
   %33 = getelementptr inbounds [4 x i8], [4 x i8]* %arr56, i32 0, i32 0

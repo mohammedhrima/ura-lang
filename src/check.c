@@ -377,6 +377,17 @@ void check_name(Node *node) {
     node->declared = var;
 }
 
+void check_throw(Node *node) {
+    Token *token = node->token;
+    Node *type = type_of(node->left);
+    bool is_void = type == NULL || type->token->type == VOID;
+    if (is_void) {
+        add_error(token->s, token->e, "throw needs a value", "like: throw Error::make(\"...\")");
+        return;
+    }
+    check_copy(&node->left, type);
+}
+
 void check_match(Node *node) {
     Token *token = node->token;
     Node *var = node->left->left;

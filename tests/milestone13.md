@@ -653,7 +653,7 @@ fn show(n &Node, pre char[], last bool):
     if last: output("└─ ")
     else:    output("├─ ")
     label(&n)
-    kid String = String::from(pre)
+    kid String = String::create(pre)
     if last: kid.join("   ")
     else:    kid.join("│  ")
     if n.left != null:  show(&n.left, kid.c_str(), n.right == null)
@@ -672,14 +672,14 @@ fn eval(n &Node) i32:
         case MUL:    ret eval(&n.left) * eval(&n.right)
         case DIV:
             d i32 = eval(&n.right)
-            if d == 0: throw Error::make("division by zero")
+            if d == 0: throw Error::create("division by zero")
             ret eval(&n.left) / d
         default:    ret 0
 
 fn calc(text char[]):
     output("========================================\n")
     output("calculate expr:  ", text, "\nast:\n")
-    src String = String::from(text)
+    src String = String::create(text)
     toks Token[] = new Token[64]
     n i32 = Lexer::run(&src, toks)
     p i32 = 0
@@ -1852,7 +1852,7 @@ fn show(n &Node, pre char[], last bool):
     if last: output("└─ ")
     else:    output("├─ ")
     label(&n)
-    kid String = String::from(pre)
+    kid String = String::create(pre)
     if last: kid.join("   ")
     else:    kid.join("│  ")
     if n.left != null:  show(&n.left, kid.c_str(), n.right == null)
@@ -1871,7 +1871,7 @@ fn eval(n &Node) i32:
         case MUL:    ret eval(&n.left) * eval(&n.right)
         case DIV:
             d i32 = eval(&n.right)
-            if d == 0: throw Error::make("division by zero")
+            if d == 0: throw Error::create("division by zero")
             ret eval(&n.left) / d
         default:    ret 0
 
@@ -1879,7 +1879,7 @@ fn eval(n &Node) i32:
 fn calc(text char[]):
     output("========================================\n")
     output("calculate expr:  ", text, "\nast:\n")
-    src String = String::from(text)
+    src String = String::create(text)
     toks Token[] = new Token[64]
     n i32 = Lexer::run(&src, toks)
     p i32 = 0

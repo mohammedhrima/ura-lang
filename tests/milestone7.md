@@ -1070,12 +1070,12 @@ fn kind(s String) i32:
     return 2
 
 fn main() i32:
-    name String = String::from("test")
-    output(kind(String::from("hello")), kind(name), kind(String::from("stop")), kind(String::from("x")), "\n")
+    name String = String::create("test")
+    output(kind(String::create("hello")), kind(name), kind(String::create("stop")), kind(String::create("x")), "\n")
     i i32 = 0
     while i < 3:
         i += 1
-        match String::from("abc"):
+        match String::create("abc"):
             case "abc":
                 continue
         output("never\n")
@@ -1295,7 +1295,7 @@ entry:
   ret void
 }
 
-define %String @String.from(i8* %0) {
+define %String @String.create(i8* %0) {
 entry:
   %text = alloca i8*, align 8
   %res = alloca %String, align 8
@@ -1490,7 +1490,7 @@ entry:
   %arr10 = alloca [2 x i8], align 1
   %arr11 = alloca [10 x i8], align 1
   %i = alloca i32, align 4
-  %"match@458" = alloca %String, align 8
+  %"match@466" = alloca %String, align 8
   %arr13 = alloca [4 x i8], align 1
   %arr15 = alloca [4 x i8], align 1
   %arr16 = alloca [7 x i8], align 1
@@ -1499,24 +1499,24 @@ entry:
   %arr20 = alloca [4 x i8], align 1
   store [5 x i8] c"test\00", [5 x i8]* %arr, align 1
   %0 = getelementptr inbounds [5 x i8], [5 x i8]* %arr, i32 0, i32 0
-  %call.String.from = call %String @String.from(i8* %0)
-  store %String %call.String.from, %String* %name, align 8
+  %call.String.create = call %String @String.create(i8* %0)
+  store %String %call.String.create, %String* %name, align 8
   store [6 x i8] c"hello\00", [6 x i8]* %arr1, align 1
   %1 = getelementptr inbounds [6 x i8], [6 x i8]* %arr1, i32 0, i32 0
-  %call.String.from2 = call %String @String.from(i8* %1)
-  %call.kind = call i32 @kind(%String %call.String.from2)
+  %call.String.create2 = call %String @String.create(i8* %1)
+  %call.kind = call i32 @kind(%String %call.String.create2)
   store %String zeroinitializer, %String* %copy, align 8
   call void @"String.="(%String* %copy, %String* %name)
   %"$copy" = load %String, %String* %copy, align 8
   %call.kind3 = call i32 @kind(%String %"$copy")
   store [5 x i8] c"stop\00", [5 x i8]* %arr4, align 1
   %2 = getelementptr inbounds [5 x i8], [5 x i8]* %arr4, i32 0, i32 0
-  %call.String.from5 = call %String @String.from(i8* %2)
-  %call.kind6 = call i32 @kind(%String %call.String.from5)
+  %call.String.create5 = call %String @String.create(i8* %2)
+  %call.kind6 = call i32 @kind(%String %call.String.create5)
   store [2 x i8] c"x\00", [2 x i8]* %arr7, align 1
   %3 = getelementptr inbounds [2 x i8], [2 x i8]* %arr7, i32 0, i32 0
-  %call.String.from8 = call %String @String.from(i8* %3)
-  %call.kind9 = call i32 @kind(%String %call.String.from8)
+  %call.String.create8 = call %String @String.create(i8* %3)
+  %call.kind9 = call i32 @kind(%String %call.String.create8)
   store [2 x i8] c"\0A\00", [2 x i8]* %arr10, align 1
   %4 = getelementptr inbounds [2 x i8], [2 x i8]* %arr10, i32 0, i32 0
   store [10 x i8] c"%d%d%d%d\0A\00", [10 x i8]* %arr11, align 1
@@ -1536,18 +1536,18 @@ while11.then:                                     ; preds = %while11
   store i32 %ADD, i32* %i, align 4
   store [4 x i8] c"abc\00", [4 x i8]* %arr13, align 1
   %6 = getelementptr inbounds [4 x i8], [4 x i8]* %arr13, i32 0, i32 0
-  %call.String.from14 = call %String @String.from(i8* %6)
-  store %String %call.String.from14, %String* %"match@458", align 8
+  %call.String.create14 = call %String @String.create(i8* %6)
+  store %String %call.String.create14, %String* %"match@466", align 8
   br label %if12
 
 if12:                                             ; preds = %while11.then
   store [4 x i8] c"abc\00", [4 x i8]* %arr15, align 1
   %7 = getelementptr inbounds [4 x i8], [4 x i8]* %arr15, i32 0, i32 0
-  %"call.String.==" = call i1 @"String.=="(%String* %"match@458", i8* %7)
+  %"call.String.==" = call i1 @"String.=="(%String* %"match@466", i8* %7)
   br i1 %"call.String.==", label %if12.then, label %endif
 
 if12.then:                                        ; preds = %if12
-  call void @String.drop(%String* %"match@458")
+  call void @String.drop(%String* %"match@466")
   br label %while11
 
 endif:                                            ; preds = %if12
@@ -1556,7 +1556,7 @@ endif:                                            ; preds = %if12
   store [7 x i8] c"never\0A\00", [7 x i8]* %arr17, align 1
   %9 = getelementptr inbounds [7 x i8], [7 x i8]* %arr17, i32 0, i32 0
   %call.dprintf18 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* %9)
-  call void @String.drop(%String* %"match@458")
+  call void @String.drop(%String* %"match@466")
   br label %while11
 
 endloop:                                          ; preds = %while11

@@ -335,13 +335,13 @@ fn main() i32:
 mod g:
     struct Point:
         x i32
-        pub fn make(v i32) Point:
+        pub fn create(v i32) Point:
             p Point
             p.x = v
             return p
 
 fn main() i32:
-    p g::Point = g::Point::make(3)
+    p g::Point = g::Point::create(3)
     output(p.x, "\n")
     return 0
 ```

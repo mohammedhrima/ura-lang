@@ -130,6 +130,7 @@ struct {
     expand(uraError, errors);
 
     int exe_pos;
+    bool throws;
 } ura;
 
 struct {
@@ -180,6 +181,9 @@ struct {
     { "match", { .type = MATCH } },
     { "case", { .type = CASE } },
     { "default", { .type = DEFAULT } },
+    { "try", { .type = TRY } },
+    { "catch", { .type = CATCH } },
+    { "throw", { .type = THROW } },
     { "template", { .type = TEMPLATE } },
     // { "null", {.type = ZERO } },
     { "as", { .type = AS } },
@@ -1136,6 +1140,56 @@ Node *parse_prime() {
         exit_scope();
         return node;
     }
+    case TRY: {
+        ura.throws = true;
+        node = new_node(token);
+        expect(DOTS, "expected ':' after 'try'", ":");
+        enter_scope(node);
+        while (inside(token->space))
+            append(node->children, parse_expr(0));
+        exit_scope();
+        Node *branch = node;
+        while (peek(0)->type == CATCH && peek(0)->space == token->space) {
+            Token *head = next();
+            branch->next = new_node(head);
+            branch = branch->next;
+            enter_scope(branch);
+            if (peek(0)->type == ID && peek(0)->line == head->line) {
+                Token *name = next();
+                Node *declare = new_node(new_token(DECLARE, name));
+                declare->var = new_node(name);
+                declare->var->token->type = VAR;
+                declare->var->data_type = parse_type();
+                if (declare->var->data_type) {
+                    append(branch->children, declare);
+                    branch->var = declare->var;
+                } else
+                    add_error(
+                        name->s, name->e, "expected a type after the catch name", "like: catch e Error:"
+                    );
+            } else
+                add_error(head->s, head->e, "expected a name after 'catch'", "like: catch e Error:");
+            expect(DOTS, "expected ':' after the catch type", ":");
+            while (inside(head->space))
+                append(branch->children, parse_expr(0));
+            exit_scope();
+        }
+        if (node->next == NULL)
+            add_error(token->s, token->e, "expected 'catch' after the try block", "like: catch e Error:");
+        return node;
+    }
+    case CATCH: {
+        add_error(token->s, token->e, "'catch' without a matching 'try'", NULL);
+        while (peek(0)->line == token->line || inside(token->space))
+            next();
+        return new_node(token);
+    }
+    case THROW: {
+        ura.throws = true;
+        node = new_node(token);
+        node->left = parse_expr(0);
+        return node;
+    }
     case CASE:
     case DEFAULT: {
         add_error(
@@ -1770,6 +1824,20 @@ void analyze(Node *node) {
         exit_scope();
         break;
     } // clang-format off
+    case THROW: {
+        analyze(node->left);
+        check_throw(node);
+        break;
+    } // clang-format off
+    case TRY: case CATCH: { // clang-format on
+        enter_scope(node);
+        for (int i = 0; i < node->children_count; i++)
+            analyze(node->children[i]);
+        exit_scope();
+        if (node->next)
+            analyze(node->next);
+        break;
+    } // clang-format off
     case IF: case ELIF: case ELSE: case LOOP: case CASE: case DEFAULT: { // clang-format on
         if (node->cond) {
             analyze(node->cond);
@@ -1915,12 +1983,65 @@ void codegen_branch(Node *node, Ucg *stmt) {
     }
     ucg_then(stmt, cond);
     enter_scope(node);
-    for (int i = 0; i < node->children_count; i++) {
-        codegen_statement(node->children[i]);
-        if (includes(node->children[i]->token->type, RETURN, BRK, CNT, 0))
+    codegen_block(node, 0);
+    exit_scope();
+}
+
+void codegen_block(Node *node, int start) {
+    for (int i = start; i < node->children_count; i++) {
+        Node *child = node->children[i];
+        if (includes(child->token->type, PROTO, STRUCT, 0))
+            continue;
+        codegen_statement(child);
+        if (includes(child->token->type, RETURN, BRK, CNT, THROW, 0))
             break;
     }
+}
+
+void codegen_try(Node *node) {
+    Ucg *try_stmt = ucg_try();
+    enter_scope(node);
+    codegen_block(node, 0);
     exit_scope();
+    Ucg *prev = try_stmt;
+    Ucg *first = NULL;
+    for (Node *branch = node->next; branch; branch = branch->next) {
+        Node *type = branch->var->data_type;
+        codegen(type);
+        Ucg *catch_stmt = ucg_catch(prev, type->token->ucg);
+        first = first ? first : catch_stmt;
+        enter_scope(branch);
+        codegen(branch->children[0]);
+        ucg_assign(branch->var->token->ucg, ucg_error(type->token->ucg));
+        codegen_block(branch, 1);
+        exit_scope();
+        prev = catch_stmt;
+    }
+    ucg_end_catch(first);
+}
+
+void codegen_uncaught(Ucg *try_stmt) {
+    Node *st = find_struct("Error");
+    int index = 0;
+    bool has_message = st && find_attr(st, "message", &index);
+    if (has_message) {
+        Ucg *catch_stmt = ucg_catch(try_stmt, st->token->ucg);
+        Ucg *message = ucg_get_attr(ucg_error(st->token->ucg), index);
+        ucg_write(
+            ucg_i32_value(2),
+            (Ucg *[]){
+                message,
+            },
+            1
+        );
+        ucg_ret(ucg_i32_value(1));
+        ucg_end(catch_stmt);
+    } else
+        ucg_end_try(try_stmt);
+    Ucg *uncaught = ucg_if();
+    ucg_then(uncaught, ucg_thrown());
+    ucg_ret(ucg_i32_value(1));
+    ucg_end(uncaught);
 }
 
 void codegen_proto(Node *node, char *name) {
@@ -2114,6 +2235,8 @@ void codegen(Node *node) {
         break;
     }
     case SCOPE: {
+        if (ura.throws)
+            ucg_throws();
         enter_scope(node);
         codegen_structs(node);
         codegen_protos(node);
@@ -2151,16 +2274,13 @@ void codegen(Node *node) {
             if (param->token->type == PARAM)
                 codegen_clean(param->token->ucg, param->data_type);
         }
-        if (parent->token->type == SCOPE && strcmp2(node->token->name, "main"))
+        bool is_main = parent->token->type == SCOPE && strcmp2(node->token->name, "main");
+        Ucg *try_stmt = is_main && ura.throws ? ucg_try() : NULL;
+        if (is_main)
             codegen_statements(parent);
-        for (int i = 0; i < node->children_count; i++) {
-            Node *child = node->children[i];
-            if (includes(child->token->type, PROTO, STRUCT, 0))
-                continue;
-            codegen_statement(child);
-            if (includes(child->token->type, RETURN, BRK, CNT, 0))
-                break;
-        }
+        codegen_block(node, 0);
+        if (try_stmt)
+            codegen_uncaught(try_stmt);
         ucg_end(node->token->ucg);
         exit_scope();
         break;
@@ -2259,6 +2379,17 @@ void codegen(Node *node) {
         if (if_stmt)
             ucg_end(if_stmt);
         exit_scope();
+        break;
+    }
+    case TRY: {
+        codegen_try(node);
+        break;
+    }
+    case THROW: {
+        codegen(node->left);
+        Ucg *value = ucg_value(node->left->token->ucg);
+        codegen_drop_temporaries();
+        node->token->ucg = ucg_throw(value);
         break;
     }
     case BRK: {

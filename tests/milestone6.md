@@ -328,10 +328,10 @@ fn main() i32:
     s1 String = String::create()
     output(s1.len(), " ", s1.empty(), "\n")
 
-    s2 String = String::from("hello")
+    s2 String = String::create("hello")
     output(s2.value, " ", s2.len(), " ", s2.empty(), "\n")
 
-    s3 String = String::from("")
+    s3 String = String::create("")
     output(s3.len(), " ", s3.empty(), "\n")
 
     s4 String = String::from_int(42)
@@ -390,7 +390,7 @@ fn main() i32:
     c2 char = s2.pop()
     output(c2 as i32, " ", s2.len(), "\n")
 
-    s3 String = String::from("hello")
+    s3 String = String::create("hello")
     s3.join(" world")
     output(s3.value, "\n")
 
@@ -425,7 +425,7 @@ fn main() i32:
 use "@/header"
 
 fn main() i32:
-    s String = String::from("hello world")
+    s String = String::create("hello world")
 
     output(s.find("world"), "\n")
     output(s.find("hello"), "\n")
@@ -477,7 +477,7 @@ fn main() i32:
 use "@/header"
 
 fn main() i32:
-    s String = String::from("Hello World")
+    s String = String::create("Hello World")
 
     u String = s.upper()
     output(u.value, "\n")
@@ -497,19 +497,19 @@ fn main() i32:
     sub4 String = s.substr(-1, 5)
     output(sub4.len(), "\n")
 
-    t1 String = String::from("   hello   ")
+    t1 String = String::create("   hello   ")
     t2 String = t1.trim()
     output(t2.value, "\n")
 
-    t3 String = String::from("hello")
+    t3 String = String::create("hello")
     t4 String = t3.trim()
     output(t4.value, "\n")
 
-    t5 String = String::from("   ")
+    t5 String = String::create("   ")
     t6 String = t5.trim()
     output(t6.len(), "\n")
 
-    r1 String = String::from("foo bar foo baz")
+    r1 String = String::create("foo bar foo baz")
     r2 String = r1.replace("foo", "qux")
     output(r2.value, "\n")
 
@@ -519,18 +519,18 @@ fn main() i32:
     r4 String = r1.replace("", "qux")
     output(r4.value, "\n")
 
-    rep String = String::from("ab")
+    rep String = String::create("ab")
     rep2 String = rep.repeat(3)
     output(rep2.value, "\n")
 
     rep3 String = rep.repeat(0)
     output(rep3.len(), "\n")
 
-    rev String = String::from("abcde")
+    rev String = String::create("abcde")
     rev2 String = rev.reverse()
     output(rev2.value, "\n")
 
-    rev3 String = String::from("a")
+    rev3 String = String::create("a")
     rev4 String = rev3.reverse()
     output(rev4.value, "\n")
     return 0
@@ -562,8 +562,8 @@ fn main() i32:
 use "@/header"
 
 fn main() i32:
-    a String = String::from("hello")
-    b String = String::from(" world")
+    a String = String::create("hello")
+    b String = String::create(" world")
     c String = a + b
     output(c.value, "\n")
 
@@ -573,13 +573,13 @@ fn main() i32:
     a += b
     output(a.value, "\n")
 
-    e String = String::from("test")
+    e String = String::create("test")
     e += "ing"
     output(e.value, "\n")
 
-    x String = String::from("abc")
-    y String = String::from("abc")
-    z String = String::from("xyz")
+    x String = String::create("abc")
+    y String = String::create("abc")
+    z String = String::create("xyz")
 
     output(x == y, "\n")
     output(x == z, "\n")
@@ -621,27 +621,27 @@ fn main() i32:
 use "@/header"
 
 fn main() i32:
-    s1 String = String::from("12345")
+    s1 String = String::create("12345")
     output(s1.to_int(), "\n")
 
-    s2 String = String::from("-99")
+    s2 String = String::create("-99")
     output(s2.to_int(), "\n")
 
-    s3 String = String::from("0")
+    s3 String = String::create("0")
     output(s3.to_int(), "\n")
 
-    a String = String::from("apple")
-    b String = String::from("banana")
+    a String = String::create("apple")
+    b String = String::create("banana")
     output(a.compare(&b), "\n")
     output(b.compare(&a), "\n")
     output(a.compare(&a), "\n")
 
-    s String = String::from("Hello World")
+    s String = String::create("Hello World")
     r String = s.upper()
     r2 String = r.reverse()
     output(r2.value, "\n")
 
-    big String = String::from("aaaa")
+    big String = String::create("aaaa")
     i i32 = 0
     while i < 5:
         big.join("bbbb")
