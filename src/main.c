@@ -727,6 +727,13 @@ int copy_tokens(int from_pos, int to_pos, char *from, char *to, int space) {
     return start;
 }
 
+bool is_declaration(int i) {
+    Token *curr = ura.tokens[i];
+    Token *after = ura.tokens[i + 1];
+    bool is_same_line = after->line == curr->line;
+    return curr->type == ID && is_same_line && (after->is_type || after->type == ID);
+}
+
 void prefix_names(Token *mod) {
     expand(char *, names);
     zero_init(names);
@@ -739,20 +746,25 @@ void prefix_names(Token *mod) {
         Token *curr = ura.tokens[i];
         Token *after = ura.tokens[i + 1];
         bool is_head = curr->space == space && curr->line != ura.tokens[i - 1]->line;
-        bool has_name = after->type == ID;
         bool is_head_type = includes(curr->type, STRUCT, FN_DEC, ENUM, MODULE, 0);
-        bool is_named = is_head_type && has_name;
-        bool is_typed = after->line == curr->line && (after->is_type || has_name);
-        bool is_global = curr->type == ID && is_typed;
+        bool is_named = is_head_type && after->type == ID;
         if (is_head && is_named)
             append(names, after->name);
-        if (is_head && is_global)
+        if (is_head && is_declaration(i))
             append(names, curr->name);
     }
+    int struct_space = -1;
     for (int i = start; i < end; i++) {
         Token *curr = ura.tokens[i];
+        bool starts_line = curr->line != ura.tokens[i - 1]->line;
+        if (starts_line && curr->space <= struct_space)
+            struct_space = -1;
+        if (starts_line && curr->type == STRUCT)
+            struct_space = curr->space;
         bool is_member = includes(ura.tokens[i - 1]->type, DOT, DOUBLE_DOTS, 0);
-        if (curr->type != ID || is_member)
+        bool is_in_struct = struct_space != -1 && curr->space == struct_space + 1;
+        bool is_attr = starts_line && is_in_struct && is_declaration(i);
+        if (curr->type != ID || is_member || is_attr)
             continue;
         for (size_t j = 0; j < names_count; j++) {
             if (!strcmp2(curr->name, names[j]))

@@ -18,6 +18,7 @@
 - 020 — mod: a global inside a module, read and written with ::
 - 021 — mod: a module call is arity-checked
 - 022 — os: argc and argv from the global os
+- 023 — mod: a struct attribute with the name of a module global
 
 ---
 
@@ -1385,6 +1386,65 @@ declare i8* @calloc(i64, i64)
 declare i8* @memcpy(i8*, i8*, i64)
 
 declare void @free(i8*)
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+---
+
+## 023 — mod: a struct attribute with the name of a module global
+
+```ura
+// stdout: 1 2
+// expect: 0
+mod geo:
+    x i32 = 1
+    struct Point:
+        x i32
+        fn show():
+            output(x, " ", self.x, "\n")
+
+fn main() i32:
+    p geo::Point
+    p.x = 2
+    p.show()
+    return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%"geo::Point" = type { i32 }
+
+@"geo::x" = global i32 0
+@str = private unnamed_addr constant [7 x i8] c"%d %d\0A\00", align 1
+
+define void @"geo::Point.show"(%"geo::Point"* %0) {
+entry:
+  %self = alloca %"geo::Point"*, align 8
+  store %"geo::Point"* %0, %"geo::Point"** %self, align 8
+  %"*self" = load %"geo::Point"*, %"geo::Point"** %self, align 8
+  %"*self.x" = getelementptr inbounds %"geo::Point", %"geo::Point"* %"*self", i32 0, i32 0
+  %"$geo::x" = load i32, i32* @"geo::x", align 4
+  %"$*self.x" = load i32, i32* %"*self.x", align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i32 %"$geo::x", i32 %"$*self.x")
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %p = alloca %"geo::Point", align 8
+  store i32 1, i32* @"geo::x", align 4
+  store %"geo::Point" zeroinitializer, %"geo::Point"* %p, align 4
+  %p.x = getelementptr inbounds %"geo::Point", %"geo::Point"* %p, i32 0, i32 0
+  store i32 2, i32* %p.x, align 4
+  call void @"geo::Point.show"(%"geo::Point"* %p)
+  ret i32 0
+}
 
 declare i32 @dprintf(i32, i8*, ...)
 ```

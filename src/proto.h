@@ -213,6 +213,7 @@ bool fits_args(Node *fn, Node **args, int args_count, int self);
 bool includes(Type to_find, ...);
 bool inside(int space);
 bool is_chars(Node *type);
+bool is_declaration(int i);
 bool is_module(char *name);
 bool is_number(Node *node);
 bool is_open(NodePrint *elems, size_t i, int level);
