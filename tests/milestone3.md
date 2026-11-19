@@ -5915,11 +5915,12 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:9:14 User has no attribute 'age'
+error: test.ura:9:14 'User' has no attribute 'age'
   |
 9 |     return u.age
   |              ^^^
 help: User has: name, id
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5949,11 +5950,12 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:11:14 User has no method 'run'
+error: test.ura:11:14 'User' has no method 'run'
    |
 11 |     return u.run()
    |              ^^^
 help: User has: get
+error: aborting due to 1 error
 ```
 
 ### status
@@ -5982,6 +5984,7 @@ error: test.ura:3:12 'self' only exists inside a method
   |
 3 |     return self.a
   |            ^^^^
+error: aborting due to 1 error
 ```
 
 ### status
@@ -6009,6 +6012,7 @@ error: test.ura:1:8 expected a struct name after 'struct'
   |
 1 | struct :
   |        ^
+help: use struct Name :
 error: aborting due to 1 error
 ```
 
@@ -6033,10 +6037,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:1:8 expected ':' after 'struct User'
+error: test.ura:1:8 expected ':' after the struct name
   |
 1 | struct User
   |        ^^^^
+help: use struct User:
 error: aborting due to 1 error
 ```
 
@@ -6094,6 +6099,7 @@ error: test.ura:2:5 attribute 'a' needs a type
   |
 2 |     a
   |     ^
+help: like: a i32
 error: aborting due to 1 error
 ```
 
@@ -6204,10 +6210,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:6:14 struct 'User' has no attribute 'zz'
+error: test.ura:6:14 'User' has no attribute 'zz'
   |
 6 |     return u.zz
   |              ^^
+help: User has: a
 error: aborting due to 1 error
 ```
 
@@ -6233,7 +6240,7 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:6:14 struct 'User' has no method 'zz'
+error: test.ura:6:14 'User' has no method 'zz'
   |
 6 |     return u.zz()
   |              ^^
@@ -6265,11 +6272,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:9:14 no overload of 'add' takes these arguments
+error: test.ura:9:14 'User' has no method 'add' that takes (i32, i32)
   |
 9 |     return u.add(1, 2)
   |              ^^^
-help: 'add' takes 1 argument, got 2
+help: 'add' takes (i32)
 error: aborting due to 1 error
 ```
 
@@ -6297,7 +6304,7 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:5:16 'value' not found
+error: test.ura:5:16 undeclared variable 'value'
   |
 5 |         return value
   |                ^^^^^
@@ -6332,7 +6339,7 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:8:16 function 'get' not found
+error: test.ura:8:16 no function named 'get'
   |
 8 |         return get() * 2
   |                ^^^
@@ -6389,7 +6396,7 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:12 'self' not found
+error: test.ura:2:12 'self' only exists inside a method
   |
 2 |     return self.a
   |            ^^^^
@@ -6418,11 +6425,15 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:6:14 can't apply '+' to 'User' and 'i32'
+error: test.ura:6:14 'User' has no operator '+' that takes 'i32'
   |
 6 |     return u + 1
   |              ^
-error: aborting due to 1 error
+error: test.ura:6:14 expected 'i32', found 'User'
+  |
+6 |     return u + 1
+  |              ^
+error: aborting due to 2 errors
 ```
 
 ### status
@@ -6450,7 +6461,7 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:7:10 can't compare 'User' values
+error: test.ura:7:10 'User' has no operator '==' that takes 'User'
   |
 7 |     if u == v:
   |          ^^

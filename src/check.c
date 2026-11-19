@@ -661,9 +661,20 @@ void check_name(Node *node) {
     if (var == NULL) {
         Node *like = find_variable_like(token->name, token->s, 2);
         bool is_outer = like && strcmp2(like->token->name, token->name);
+        Node *st = find_scope(STRUCT);
+        int index = 0;
+        bool is_attr = st && find_attr(st, token->name, &index);
         char *msg = format("undeclared variable '%s'", token->name);
         char *help = format("declare it first, like: %s i32 = 0", token->name);
-        if (is_outer) {
+        if (token->type == SELF) {
+            msg = "'self' only exists inside a method";
+            help = NULL;
+        } else if (is_attr)
+            help = format("did you mean 'self.%s'?", token->name);
+        else if (find_struct(token->name)) {
+            msg = format("'%s' is a type, not a value", token->name);
+            help = NULL;
+        } else if (is_outer) {
             msg = format("'%s' belongs to an enclosing function", token->name);
             help = "pass it as a parameter";
         } else if (like)
@@ -766,21 +777,56 @@ int name_after(Token *keyword) {
     return pos;
 }
 
+void check_attribute(Node *node) {
+    Token *token = node->token;
+    if (includes(token->type, VAR, MACRO_IF, MACRO_ERROR, 0))
+        return;
+    bool is_name = token->type == ID;
+    add_error(
+        token->s,
+        token->e,
+        is_name ? format("attribute '%s' needs a type", token->name)
+                : "a struct holds only attributes and methods",
+        is_name ? format("like: %s i32", token->name) : NULL
+    );
+}
+
 void check_struct(Node *node, Node *scope) {
     Token *token = node->token;
+    int name_s = name_after(token);
+    int name_e = name_s + strlen(token->name);
     for (int i = 0; i < scope->children_count; i++) {
         Token *other = scope->children[i]->token;
         bool is_earlier = other->type == STRUCT && other->s < token->s;
         if (!is_earlier || !strcmp2(other->name, token->name))
             continue;
-        int name_s = name_after(token);
         add_error(
             name_s,
-            name_s + strlen(token->name),
+            name_e,
             format("struct '%s' is already declared, on line %d", token->name, line_at(other->s)),
             NULL
         );
         return;
+    }
+    if (node->children_count == 0)
+        add_error(
+            name_s,
+            name_e,
+            format("struct '%s' has no attributes", token->name),
+            NULL
+        );
+    for (int i = 0; i < node->children_count; i++) {
+        Node *child = node->children[i];
+        if (child->token->type != DECLARE)
+            continue;
+        Token *type = child->var->data_type->token;
+        if (type->type == ID && strcmp2(type->name, token->name))
+            add_error(
+                type->s,
+                type->e,
+                format("struct '%s' can't contain itself", token->name),
+                format("use a ref: '&%s'", token->name)
+            );
     }
 }
 
@@ -1190,6 +1236,19 @@ void check_access(Node *node) {
     );
 }
 
+char *names_in(Node *st, Type type) {
+    char *names = NULL;
+    for (int i = 0; i < st->children_count; i++) {
+        Node *child = st->children[i];
+        bool is_operator = child->args && child->args->symbol;
+        if (child->token->type != type || child->token->is_pub || is_operator)
+            continue;
+        char *name = type == DECLARE ? child->var->token->name : child->token->name;
+        names = names ? format("%s, %s", names, name) : name;
+    }
+    return names;
+}
+
 void check_member(Node *node) {
     Node *type = type_of(node->left);
     if (type == NULL)
@@ -1219,15 +1278,10 @@ void check_member(Node *node) {
             st, call->token->name, call->children, call->children_count, false
         );
         if (call->to_call == NULL) {
-            Node *named = NULL;
-            for (int i = 0; i < st->children_count && named == NULL; i++) {
-                Node *child = st->children[i];
-                bool is_method = child->token->type == FN_DEC && !child->token->is_pub;
-                if (is_method && strcmp2(child->token->name, call->token->name))
-                    named = child;
-            }
+            Node *named = find_method_named(st, call->token->name);
             char *message = format("'%s' has no method '%s'", st->token->name, call->token->name);
-            char *help = NULL;
+            char *names = names_in(st, FN_DEC);
+            char *help = names ? format("%s has: %s", st->token->name, names) : NULL;
             if (named) {
                 char *given = "";
                 for (int i = 0; i < call->children_count; i++) {
@@ -1255,12 +1309,13 @@ void check_member(Node *node) {
     }
     Token *attr = node->right->token;
     node->right->declared = find_attr(st, attr->name, &attr->attr.index);
+    char *names = names_in(st, DECLARE);
     if (node->right->declared == NULL)
         add_error(
             attr->s,
             attr->e,
             format("'%s' has no attribute '%s'", st->token->name, attr->name),
-            NULL
+            names ? format("%s has: %s", st->token->name, names) : NULL
         );
 }
 
@@ -1309,20 +1364,20 @@ void check_call(Node *node) {
     node->to_call = find_function(name);
     if (node->to_call == NULL) {
         Node *like = find_function_like(name, 2);
-        if (find_variable(name, token->s))
-            add_error(
-                token->s,
-                token->e,
-                format("'%s' is a variable, not a function", name),
-                NULL
-            );
-        else
-            add_error(
-                token->s,
-                token->e,
-                format("no function named '%s'", name),
-                like ? format("did you mean '%s'?", like->token->name) : NULL
-            );
+        Node *st = find_scope(STRUCT);
+        char *msg = format("no function named '%s'", name);
+        char *help = like ? format("did you mean '%s'?", like->token->name) : NULL;
+        if (find_variable(name, token->s)) {
+            msg = format("'%s' is a variable, not a function", name);
+            help = NULL;
+        } else if (st && find_method_named(st, name))
+            help = format("did you mean 'self.%s()'?", name);
+        add_error(
+            token->s,
+            token->e,
+            msg,
+            help
+        );
         return;
     }
     bool takes_type = includes(node->to_call->token->type, SIZEOF, TYPEOF, DROP, 0);

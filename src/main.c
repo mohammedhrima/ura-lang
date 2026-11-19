@@ -189,6 +189,7 @@ struct {
     // { "null", {.type = ZERO } },
     { "as", { .type = AS } },
     { "from", { .type = FROM } },
+    { "self", { .type = SELF, .name = "self" } },
 
     { NULL },
 };
@@ -947,6 +948,9 @@ Node *parse_prime() {
             node = new_node(token);
         return node;
     }
+    case SELF: {
+        return new_node(token);
+    }
     case LPARENT: {
         node = parse_expr(0);
         expect(RPARENT, "expected ')' to close this '('", ")");
@@ -1307,8 +1311,11 @@ Node *parse_prime() {
         token->body.parents = parents;
         while (inside(node->token->space)) {
             Node *child = parse_expr(0);
-            if (includes(child->token->type, FN_DEC, TEMPLATE, 0))
-                append(node->children, child);
+            if (!includes(child->token->type, FN_DEC, TEMPLATE, 0)) {
+                check_attribute(child);
+                continue;
+            }
+            append(node->children, child);
         }
         exit_scope();
         remove_overridden(node);
@@ -1412,14 +1419,13 @@ Node *find_variable(char *name, int pos) {
     bool is_past_fn = false;
     for (int i = ura.scopes_count - 1; i >= 0; i--) {
         Node *scope = ura.scopes[i];
-        bool is_shared = includes(scope->token->type, SCOPE, STRUCT, 0);
-        if (is_past_fn && !is_shared)
+        bool is_global = scope->token->type == SCOPE;
+        if (is_past_fn && !is_global)
             continue;
         is_past_fn = is_past_fn || scope->token->type == FN_DEC;
         Node *param = scope->token->type == FN_DEC ? find_in_children(scope->args, name) : NULL;
         if (param)
             return param;
-        bool is_global = scope->token->type == SCOPE;
         for (int j = 0; j < scope->children_count; j++) {
             Node *child = scope->children[j];
             if (child->token->type != DECLARE || !strcmp2(child->var->token->name, name))
@@ -1471,6 +1477,8 @@ Node *find_function_like(char *name, int max_diff) {
     int found_diff = max_diff + 1;
     for (int i = ura.scopes_count - 1; i >= 0; i--) {
         Node *curr = ura.scopes[i];
+        if (curr->token->type == STRUCT)
+            continue;
         for (int j = 0; j < curr->children_count; j++) {
             Node *child = curr->children[j];
             bool is_function = includes(
@@ -1502,6 +1510,16 @@ Node *find_function_like(char *name, int max_diff) {
 
 Node *find_function(char *name) {
     return find_function_like(name, 0);
+}
+
+Node *find_method_named(Node *st, char *name) {
+    for (int i = 0; i < st->children_count; i++) {
+        Node *child = st->children[i];
+        bool is_method = child->token->type == FN_DEC && !child->token->is_pub;
+        if (is_method && strcmp2(child->token->name, name))
+            return child;
+    }
+    return NULL;
 }
 
 Node *find_attr(Node *st, char *name, int *index) {
@@ -1696,6 +1714,7 @@ Node *type_of(Node *node) {
     case LT: case GT: case EQ: case LE: case GE: case NQ:
     case AND: case OR: case NOT: return bool_type();
     case ID:        return NULL;
+    case SELF:      return NULL;
     default:        return type_of(node->left); // clang-format on
     }
 }
@@ -1725,8 +1744,8 @@ void analyze(Node *node) {
     case TYPEOF: case USE:
     case MACRO_IF: case MACRO_ERROR: { // clang-format on
         break;
-    }
-    case ID: {
+    } // clang-format off
+    case ID: case SELF: { // clang-format on
         check_name(node);
         break;
     }
@@ -2098,6 +2117,13 @@ void codegen_write(Node *node) {
     for (int i = 0; i < node->children_count; i++) {
         Node *child = node->children[i];
         Node *type = type_of(child);
+        bool is_string = type && type->declared && same_type(type, string_type());
+        if (is_string) {
+            Node *c_str = find_method_named(type->declared, "c_str");
+            Ucg *self = ucg_ref(codegen_in_variable(child));
+            args[count++] = ucg_fn_call(c_str->token->ucg, (Ucg *[]){self}, 1);
+            continue;
+        }
         if (!is_struct_value(type)) {
             codegen(child);
             args[count++] = child->token->ucg;

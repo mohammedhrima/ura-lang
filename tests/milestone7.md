@@ -1358,6 +1358,30 @@ endloop:                                          ; preds = %while8
   ret void
 }
 
+define i8* @String.c_str(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %"*self" = load %String*, %String** %self, align 8
+  %"*self1" = load %String*, %String** %self, align 8
+  %"*self.count" = getelementptr inbounds %String, %String* %"*self1", i32 0, i32 1
+  %"$*self.count" = load i32, i32* %"*self.count", align 4
+  %ADD = add i32 %"$*self.count", 1
+  call void @String.reserve(%String* %"*self", i32 %ADD)
+  %"*self2" = load %String*, %String** %self, align 8
+  %"*self.data" = getelementptr inbounds %String, %String* %"*self2", i32 0, i32 0
+  %"*self3" = load %String*, %String** %self, align 8
+  %"*self.count4" = getelementptr inbounds %String, %String* %"*self3", i32 0, i32 1
+  %"$*self.data" = load i8*, i8** %"*self.data", align 8
+  %"$*self.count5" = load i32, i32* %"*self.count4", align 4
+  %"*self.data[]" = getelementptr inbounds i8, i8* %"$*self.data", i32 %"$*self.count5"
+  store i8 0, i8* %"*self.data[]", align 1
+  %"*self6" = load %String*, %String** %self, align 8
+  %"*self.data7" = getelementptr inbounds %String, %String* %"*self6", i32 0, i32 0
+  %"$*self.data8" = load i8*, i8** %"*self.data7", align 8
+  ret i8* %"$*self.data8"
+}
+
 define i32 @String.compare(%String* %0, %String* %1) {
 entry:
   %self = alloca %String*, align 8
@@ -1551,8 +1575,8 @@ endif:                                            ; preds = %if15
   br label %while14
 
 endloop:                                          ; preds = %while14
-  %"$name" = load %String, %String* %name, align 8
-  %call.dprintf10 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.11, i32 0, i32 0), %String %"$name")
+  %call.String.c_str = call i8* @String.c_str(%String* %name)
+  %call.dprintf10 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.11, i32 0, i32 0), i8* %call.String.c_str)
   call void @String.drop(%String* %name)
   ret i32 0
 }
