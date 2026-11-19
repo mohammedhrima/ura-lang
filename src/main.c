@@ -116,6 +116,7 @@ struct NodePrint {
 // Global Ura
 struct {
     expand(File *, files);
+    expand(File *, uses);
     File *file;
     int line;
 
@@ -533,6 +534,49 @@ void tokenize(File *file) {
         ura.errors[i].s += file->start;
         ura.errors[i].e += file->start;
     }
+    expand_uses(first_token);
+}
+
+void use_file(Token *use, Token *name) {
+    char *path = find_package(name->chars.value, ura.file);
+    if (!check_package(name, path))
+        return;
+    File *file = new_file(path);
+    open_file(file);
+    if (!check_reuse(name, file))
+        return;
+    file->start = end_of_sources();
+    append(ura.files, file);
+    append(ura.uses, file);
+    File *outer = ura.file;
+    int line = ura.line;
+    int start = ura.tokens_count;
+    ura.line = 1;
+    tokenize(file);
+    ura.file = outer;
+    ura.line = line;
+    ura.uses_count--;
+    for (int i = start; i < ura.tokens_count; i++)
+        ura.tokens[i]->space += use->space;
+}
+
+void expand_uses(int first_token) {
+    int count = ura.tokens_count - first_token;
+    Token **tokens = arena_alloc(count + 1, sizeof(Token *));
+    memcpy(tokens, ura.tokens + first_token, count * sizeof(Token *));
+    ura.tokens_count = first_token;
+    for (int i = 0; i < count; i++) {
+        Token *token = tokens[i];
+        Token *name = i + 1 < count ? tokens[i + 1] : NULL;
+        bool is_inner = token->space > 0 || ura.uses_count > 0;
+        bool is_named = name && name->type == CHARS;
+        if (token->type != USE || !is_inner || !is_named) {
+            append(ura.tokens, token);
+            continue;
+        }
+        use_file(token, name);
+        i++; // SKIP the file name
+    }
 }
 
 // AST
@@ -870,7 +914,7 @@ Node *parse_prime() {
     case SCOPE: {
         node = new_node(token);
         enter_scope(node);
-        char *core = find_package("@/core");
+        char *core = find_package("@/core", NULL);
         if (core)
             parse_package(new_file(core));
         while (peek(0)->type != LAST)
@@ -1218,7 +1262,7 @@ Node *parse_prime() {
             return node;
         }
         Token *name = next();
-        char *path = find_package(name->chars.value);
+        char *path = find_package(name->chars.value, file_at(name->s));
         if (check_package(name, path))
             parse_package(new_file(path));
         return node;

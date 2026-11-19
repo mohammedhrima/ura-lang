@@ -95,9 +95,9 @@ void remove_package(char *name) {
 }
 
 
-char *find_package(char *name) {
+char *find_package(char *name, File *from) {
     if (!strncmp2(name, "@/", 2)) {
-        char *path = format("%s/%s.ura", dirname2(ura.files[0]->path), name);
+        char *path = format("%s/%s.ura", dirname2(from->path), name);
         return access(path, R_OK) == 0 ? path : NULL;
     }
     char *package = strdup2(name + 2);

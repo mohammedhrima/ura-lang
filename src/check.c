@@ -203,6 +203,21 @@ bool check_package(Token *name, char *path) {
     return false;
 }
 
+bool check_reuse(Token *name, File *file) {
+    for (int i = 0; i < ura.uses_count; i++) {
+        if (!strcmp2(ura.uses[i]->path, file->path))
+            continue;
+        add_error(
+            name->s,
+            name->e,
+            format("circular use of '%s'", name->chars.value),
+            "a used file can't use itself again"
+        );
+        return false;
+    }
+    return true;
+}
+
 bool check_parent(Token *name, Node *parent) {
     if (parent)
         return true;
