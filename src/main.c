@@ -1749,6 +1749,8 @@ void analyze(Node *node) {
         }
         if (includes(node->token->type, FN_DEC, PROTO, 0))
             check_function(node, ura.scopes[ura.scopes_count - 2]);
+        else if (node->token->type == STRUCT)
+            check_struct(node, ura.scopes[ura.scopes_count - 2]);
 
         for (int i = 0; i < node->children_count; i++)
             analyze(node->children[i]);
@@ -2058,6 +2060,58 @@ Ucg *codegen_call_result(Node *fn, Ucg *call) {
     return ucg_point_to(ref);
 }
 
+bool is_struct_value(Node *type) {
+    bool is_struct = type && type->token->type == ID && type->declared;
+    return is_struct && !same_type(type, string_type());
+}
+
+void codegen_write_struct(Ucg *fd, Node *type, Ucg *base) {
+    Node *st = type->declared;
+    ucg_write(fd, (Ucg *[]){ucg_string_value(format("%s{", st->token->name))}, 1);
+    bool is_first = true;
+    for (int i = 0; i < st->children_count; i++) {
+        Node *child = st->children[i];
+        if (child->token->type != DECLARE)
+            continue;
+        char *name = child->var->token->name;
+        Node *attr_type = child->var->data_type;
+        int index = 0;
+        find_attr(st, name, &index);
+        Ucg *label = ucg_string_value(format("%s%s: ", is_first ? "" : ", ", name));
+        Ucg *value = ucg_get_attr(base, index);
+        is_first = false;
+        if (attr_type->token->type == REF)
+            value = ucg_string_value("ref");
+        if (is_struct_value(attr_type)) {
+            ucg_write(fd, (Ucg *[]){label}, 1);
+            codegen_write_struct(fd, attr_type, value);
+        } else
+            ucg_write(fd, (Ucg *[]){label, value}, 2);
+    }
+    ucg_write(fd, (Ucg *[]){ucg_string_value("}")}, 1);
+}
+
+void codegen_write(Node *node) {
+    Ucg *fd = ucg_i32_value(node->to_call->token->num.value);
+    Ucg **args = arena_alloc(node->children_count + 1, sizeof(Ucg *));
+    int count = 0;
+    for (int i = 0; i < node->children_count; i++) {
+        Node *child = node->children[i];
+        Node *type = type_of(child);
+        if (!is_struct_value(type)) {
+            codegen(child);
+            args[count++] = child->token->ucg;
+            continue;
+        }
+        if (count)
+            ucg_write(fd, args, count);
+        count = 0;
+        codegen(type);
+        codegen_write_struct(fd, type, codegen_in_variable(child));
+    }
+    node->token->ucg = ucg_write(fd, args, count);
+}
+
 Ucg *codegen_in_variable(Node *node) {
     codegen(node);
     Ucg *ucg = node->token->ucg;
@@ -2267,16 +2321,17 @@ void codegen(Node *node) {
         break;
     }
     case FN_CALL: {
+        if (node->to_call->token->type == WRITE) {
+            codegen_write(node);
+            break;
+        }
         Ucg **args = arena_alloc(node->children_count + 1, sizeof(Ucg *));
         for (int i = 0; i < node->children_count; i++) {
             codegen(node->children[i]);
             args[i] = node->children[i]->token->ucg;
         }
         Token *fn = node->to_call->token;
-        if (fn->type == WRITE)
-            node->token->ucg =
-                ucg_write(ucg_i32_value(fn->num.value), args, node->children_count);
-        else if (fn->type == READ)
+        if (fn->type == READ)
             node->token->ucg = ucg_read(ucg_i32_value(fn->num.value));
         else if (includes(fn->type, SIZEOF, TYPEOF, 0)) {
             Node *arg = node->children[0];
@@ -2402,6 +2457,9 @@ void codegen(Node *node) {
     }
     case DOT: {
         Ucg *base = codegen_in_variable(node->left);
+        Node *left_type = type_of(node->left);
+        if (left_type && left_type->token->type == REF)
+            base = ucg_point_to(base);
         if (node->right->token->type == FN_CALL) {
             Node *call = node->right;
             Ucg **args = arena_alloc(call->children_count + 2, sizeof(Ucg *));

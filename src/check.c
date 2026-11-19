@@ -759,11 +759,34 @@ bool check_comma(Token *item, Token *after, char *list) {
     return is_missing;
 }
 
+int name_after(Token *keyword) {
+    int pos = keyword->e;
+    while (text_at(pos)[0] == ' ')
+        pos++;
+    return pos;
+}
+
+void check_struct(Node *node, Node *scope) {
+    Token *token = node->token;
+    for (int i = 0; i < scope->children_count; i++) {
+        Token *other = scope->children[i]->token;
+        bool is_earlier = other->type == STRUCT && other->s < token->s;
+        if (!is_earlier || !strcmp2(other->name, token->name))
+            continue;
+        int name_s = name_after(token);
+        add_error(
+            name_s,
+            name_s + strlen(token->name),
+            format("struct '%s' is already declared, on line %d", token->name, line_at(other->s)),
+            NULL
+        );
+        return;
+    }
+}
+
 void check_function(Node *node, Node *scope) {
     Token *token = node->token;
-    int name_s = token->e;
-    while (text_at(name_s)[0] == ' ')
-        name_s++;
+    int name_s = name_after(token);
     int name_e = name_s + strlen(token->name);
     if (token->name[0] == '\0') {
         int start = line_start(name_s);
@@ -1171,6 +1194,8 @@ void check_member(Node *node) {
     Node *type = type_of(node->left);
     if (type == NULL)
         return;
+    if (type->token->type == REF)
+        type = type->data_type;
     Token *base = node->left->token;
     if (type->token->type != ID) {
         add_error(
@@ -1181,6 +1206,8 @@ void check_member(Node *node) {
         );
         return;
     }
+    if (type->declared == NULL)
+        type->declared = find_struct(type->token->name);
     if (type->declared == NULL)
         return;
     Node *st = type->declared;

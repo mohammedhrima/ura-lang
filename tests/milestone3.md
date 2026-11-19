@@ -2505,7 +2505,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Vec = type { i32, i32 }
 
@@ -2517,24 +2517,24 @@ entry:
   store %Vec* %0, %Vec** %self, align 8
   store %Vec %1, %Vec* %o, align 4
   store %Vec zeroinitializer, %Vec* %r, align 4
-  %load.r.x = getelementptr inbounds %Vec, %Vec* %r, i32 0, i32 0
-  %dref.self = load %Vec*, %Vec** %self, align 8
-  %load.dref.self.x = getelementptr inbounds %Vec, %Vec* %dref.self, i32 0, i32 0
-  %load.load.dref.self.x = load i32, i32* %load.dref.self.x, align 4
-  %load.o.x = getelementptr inbounds %Vec, %Vec* %o, i32 0, i32 0
-  %load.load.o.x = load i32, i32* %load.o.x, align 4
-  %ADD = add i32 %load.load.dref.self.x, %load.load.o.x
-  store i32 %ADD, i32* %load.r.x, align 4
-  %load.r.y = getelementptr inbounds %Vec, %Vec* %r, i32 0, i32 1
-  %dref.self1 = load %Vec*, %Vec** %self, align 8
-  %load.dref.self.y = getelementptr inbounds %Vec, %Vec* %dref.self1, i32 0, i32 1
-  %load.load.dref.self.y = load i32, i32* %load.dref.self.y, align 4
-  %load.o.y = getelementptr inbounds %Vec, %Vec* %o, i32 0, i32 1
-  %load.load.o.y = load i32, i32* %load.o.y, align 4
-  %ADD2 = add i32 %load.load.dref.self.y, %load.load.o.y
-  store i32 %ADD2, i32* %load.r.y, align 4
-  %load.r = load %Vec, %Vec* %r, align 4
-  ret %Vec %load.r
+  %r.x = getelementptr inbounds %Vec, %Vec* %r, i32 0, i32 0
+  %"*self" = load %Vec*, %Vec** %self, align 8
+  %"*self.x" = getelementptr inbounds %Vec, %Vec* %"*self", i32 0, i32 0
+  %o.x = getelementptr inbounds %Vec, %Vec* %o, i32 0, i32 0
+  %"$*self.x" = load i32, i32* %"*self.x", align 4
+  %"$o.x" = load i32, i32* %o.x, align 4
+  %ADD = add i32 %"$*self.x", %"$o.x"
+  store i32 %ADD, i32* %r.x, align 4
+  %r.y = getelementptr inbounds %Vec, %Vec* %r, i32 0, i32 1
+  %"*self1" = load %Vec*, %Vec** %self, align 8
+  %"*self.y" = getelementptr inbounds %Vec, %Vec* %"*self1", i32 0, i32 1
+  %o.y = getelementptr inbounds %Vec, %Vec* %o, i32 0, i32 1
+  %"$*self.y" = load i32, i32* %"*self.y", align 4
+  %"$o.y" = load i32, i32* %o.y, align 4
+  %ADD2 = add i32 %"$*self.y", %"$o.y"
+  store i32 %ADD2, i32* %r.y, align 4
+  %"$r" = load %Vec, %Vec* %r, align 4
+  ret %Vec %"$r"
 }
 
 define i32 @Vec.dot(%Vec* %0, %Vec %1) {
@@ -2543,18 +2543,18 @@ entry:
   %o = alloca %Vec, align 8
   store %Vec* %0, %Vec** %self, align 8
   store %Vec %1, %Vec* %o, align 4
-  %dref.self = load %Vec*, %Vec** %self, align 8
-  %load.dref.self.x = getelementptr inbounds %Vec, %Vec* %dref.self, i32 0, i32 0
-  %load.load.dref.self.x = load i32, i32* %load.dref.self.x, align 4
-  %load.o.x = getelementptr inbounds %Vec, %Vec* %o, i32 0, i32 0
-  %load.load.o.x = load i32, i32* %load.o.x, align 4
-  %MUL = mul i32 %load.load.dref.self.x, %load.load.o.x
-  %dref.self1 = load %Vec*, %Vec** %self, align 8
-  %load.dref.self.y = getelementptr inbounds %Vec, %Vec* %dref.self1, i32 0, i32 1
-  %load.load.dref.self.y = load i32, i32* %load.dref.self.y, align 4
-  %load.o.y = getelementptr inbounds %Vec, %Vec* %o, i32 0, i32 1
-  %load.load.o.y = load i32, i32* %load.o.y, align 4
-  %MUL2 = mul i32 %load.load.dref.self.y, %load.load.o.y
+  %"*self" = load %Vec*, %Vec** %self, align 8
+  %"*self.x" = getelementptr inbounds %Vec, %Vec* %"*self", i32 0, i32 0
+  %o.x = getelementptr inbounds %Vec, %Vec* %o, i32 0, i32 0
+  %"$*self.x" = load i32, i32* %"*self.x", align 4
+  %"$o.x" = load i32, i32* %o.x, align 4
+  %MUL = mul i32 %"$*self.x", %"$o.x"
+  %"*self1" = load %Vec*, %Vec** %self, align 8
+  %"*self.y" = getelementptr inbounds %Vec, %Vec* %"*self1", i32 0, i32 1
+  %o.y = getelementptr inbounds %Vec, %Vec* %o, i32 0, i32 1
+  %"$*self.y" = load i32, i32* %"*self.y", align 4
+  %"$o.y" = load i32, i32* %o.y, align 4
+  %MUL2 = mul i32 %"$*self.y", %"$o.y"
   %ADD = add i32 %MUL, %MUL2
   ret i32 %ADD
 }
@@ -2567,14 +2567,14 @@ entry:
   store i32 %0, i32* %x, align 4
   store i32 %1, i32* %y, align 4
   store %Vec zeroinitializer, %Vec* %v, align 4
-  %load.v.x = getelementptr inbounds %Vec, %Vec* %v, i32 0, i32 0
-  %load.x = load i32, i32* %x, align 4
-  store i32 %load.x, i32* %load.v.x, align 4
-  %load.v.y = getelementptr inbounds %Vec, %Vec* %v, i32 0, i32 1
-  %load.y = load i32, i32* %y, align 4
-  store i32 %load.y, i32* %load.v.y, align 4
-  %load.v = load %Vec, %Vec* %v, align 4
-  ret %Vec %load.v
+  %v.x = getelementptr inbounds %Vec, %Vec* %v, i32 0, i32 0
+  %"$x" = load i32, i32* %x, align 4
+  store i32 %"$x", i32* %v.x, align 4
+  %v.y = getelementptr inbounds %Vec, %Vec* %v, i32 0, i32 1
+  %"$y" = load i32, i32* %y, align 4
+  store i32 %"$y", i32* %v.y, align 4
+  %"$v" = load %Vec, %Vec* %v, align 4
+  ret %Vec %"$v"
 }
 
 define i32 @main() {
@@ -2583,19 +2583,19 @@ entry:
   %b = alloca %Vec, align 8
   %c = alloca %Vec, align 8
   %tmp = alloca %Vec, align 8
-  %"make(1,2)" = call %Vec @make(i32 1, i32 2)
-  store %Vec %"make(1,2)", %Vec* %a, align 4
-  %"make(3,4)" = call %Vec @make(i32 3, i32 4)
-  store %Vec %"make(3,4)", %Vec* %b, align 4
-  %load.b = load %Vec, %Vec* %b, align 4
-  %"add(&load.a,load.b)" = call %Vec @Vec.add(%Vec* %a, %Vec %load.b)
-  store %Vec %"add(&load.a,load.b)", %Vec* %tmp, align 4
-  %load.b1 = load %Vec, %Vec* %b, align 4
-  %"add(&add(&load.a,load.b),load.b)" = call %Vec @Vec.add(%Vec* %tmp, %Vec %load.b1)
-  store %Vec %"add(&add(&load.a,load.b),load.b)", %Vec* %c, align 4
-  %load.a = load %Vec, %Vec* %a, align 4
-  %"dot(&load.c,load.a)" = call i32 @Vec.dot(%Vec* %c, %Vec %load.a)
-  ret i32 %"dot(&load.c,load.a)"
+  %call.make = call %Vec @make(i32 1, i32 2)
+  store %Vec %call.make, %Vec* %a, align 4
+  %call.make1 = call %Vec @make(i32 3, i32 4)
+  store %Vec %call.make1, %Vec* %b, align 4
+  %"$b" = load %Vec, %Vec* %b, align 4
+  %call.Vec.add = call %Vec @Vec.add(%Vec* %a, %Vec %"$b")
+  store %Vec %call.Vec.add, %Vec* %tmp, align 4
+  %"$b2" = load %Vec, %Vec* %b, align 4
+  %call.Vec.add3 = call %Vec @Vec.add(%Vec* %tmp, %Vec %"$b2")
+  store %Vec %call.Vec.add3, %Vec* %c, align 4
+  %"$a" = load %Vec, %Vec* %a, align 4
+  %call.Vec.dot = call i32 @Vec.dot(%Vec* %c, %Vec %"$a")
+  ret i32 %call.Vec.dot
 }
 ```
 
@@ -3661,7 +3661,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Point = type { i32, i32 }
 
@@ -3671,37 +3671,36 @@ entry:
   %b = alloca %Point, align 8
   %c = alloca %Point, align 8
   store %Point zeroinitializer, %Point* %a, align 4
-  %load.a.x = getelementptr inbounds %Point, %Point* %a, i32 0, i32 0
-  store i32 1, i32* %load.a.x, align 4
-  %load.a.y = getelementptr inbounds %Point, %Point* %a, i32 0, i32 1
-  store i32 2, i32* %load.a.y, align 4
-  %load.a = load %Point, %Point* %a, align 4
-  store %Point %load.a, %Point* %b, align 4
-  %load.b.x = getelementptr inbounds %Point, %Point* %b, i32 0, i32 0
-  store i32 10, i32* %load.b.x, align 4
-  store %Point zeroinitializer, %Point* %c, align 4
-  %load.b = load %Point, %Point* %b, align 4
-  store %Point %load.b, %Point* %c, align 4
-  %load.c.y = getelementptr inbounds %Point, %Point* %c, i32 0, i32 1
-  store i32 20, i32* %load.c.y, align 4
-  %load.a.x1 = getelementptr inbounds %Point, %Point* %a, i32 0, i32 0
-  %load.load.a.x = load i32, i32* %load.a.x1, align 4
-  %load.a.y2 = getelementptr inbounds %Point, %Point* %a, i32 0, i32 1
-  %load.load.a.y = load i32, i32* %load.a.y2, align 4
-  %MUL = mul i32 %load.load.a.y, 10
-  %ADD = add i32 %load.load.a.x, %MUL
-  %load.b.x3 = getelementptr inbounds %Point, %Point* %b, i32 0, i32 0
-  %load.load.b.x = load i32, i32* %load.b.x3, align 4
-  %ADD4 = add i32 %ADD, %load.load.b.x
-  %load.b.y = getelementptr inbounds %Point, %Point* %b, i32 0, i32 1
-  %load.load.b.y = load i32, i32* %load.b.y, align 4
-  %ADD5 = add i32 %ADD4, %load.load.b.y
-  %load.c.x = getelementptr inbounds %Point, %Point* %c, i32 0, i32 0
-  %load.load.c.x = load i32, i32* %load.c.x, align 4
-  %ADD6 = add i32 %ADD5, %load.load.c.x
-  %load.c.y7 = getelementptr inbounds %Point, %Point* %c, i32 0, i32 1
-  %load.load.c.y = load i32, i32* %load.c.y7, align 4
-  %ADD8 = add i32 %ADD6, %load.load.c.y
+  %a.x = getelementptr inbounds %Point, %Point* %a, i32 0, i32 0
+  store i32 1, i32* %a.x, align 4
+  %a.y = getelementptr inbounds %Point, %Point* %a, i32 0, i32 1
+  store i32 2, i32* %a.y, align 4
+  %"$a" = load %Point, %Point* %a, align 4
+  store %Point %"$a", %Point* %b, align 4
+  %b.x = getelementptr inbounds %Point, %Point* %b, i32 0, i32 0
+  store i32 10, i32* %b.x, align 4
+  %"$b" = load %Point, %Point* %b, align 4
+  store %Point %"$b", %Point* %c, align 4
+  %c.y = getelementptr inbounds %Point, %Point* %c, i32 0, i32 1
+  store i32 20, i32* %c.y, align 4
+  %a.x1 = getelementptr inbounds %Point, %Point* %a, i32 0, i32 0
+  %a.y2 = getelementptr inbounds %Point, %Point* %a, i32 0, i32 1
+  %"$a.y" = load i32, i32* %a.y2, align 4
+  %MUL = mul i32 %"$a.y", 10
+  %"$a.x" = load i32, i32* %a.x1, align 4
+  %ADD = add i32 %"$a.x", %MUL
+  %b.x3 = getelementptr inbounds %Point, %Point* %b, i32 0, i32 0
+  %"$b.x" = load i32, i32* %b.x3, align 4
+  %ADD4 = add i32 %ADD, %"$b.x"
+  %b.y = getelementptr inbounds %Point, %Point* %b, i32 0, i32 1
+  %"$b.y" = load i32, i32* %b.y, align 4
+  %ADD5 = add i32 %ADD4, %"$b.y"
+  %c.x = getelementptr inbounds %Point, %Point* %c, i32 0, i32 0
+  %"$c.x" = load i32, i32* %c.x, align 4
+  %ADD6 = add i32 %ADD5, %"$c.x"
+  %c.y7 = getelementptr inbounds %Point, %Point* %c, i32 0, i32 1
+  %"$c.y" = load i32, i32* %c.y7, align 4
+  %ADD8 = add i32 %ADD6, %"$c.y"
   ret i32 %ADD8
 }
 ```
@@ -3958,7 +3957,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Builder = type { i32 }
 
@@ -3968,26 +3967,35 @@ entry:
   %v = alloca i32, align 4
   store %Builder* %0, %Builder** %self, align 8
   store i32 %1, i32* %v, align 4
-  %dref.self = load %Builder*, %Builder** %self, align 8
-  %load.dref.self.total = getelementptr inbounds %Builder, %Builder* %dref.self, i32 0, i32 0
-  %load.v = load i32, i32* %v, align 4
-  %old = load i32, i32* %load.dref.self.total, align 4
-  %ADD_ASSIGN = add i32 %old, %load.v
-  store i32 %ADD_ASSIGN, i32* %load.dref.self.total, align 4
-  %dref.self1 = load %Builder*, %Builder** %self, align 8
-  ret %Builder* %dref.self1
+  %"*self" = load %Builder*, %Builder** %self, align 8
+  %"*self.total" = getelementptr inbounds %Builder, %Builder* %"*self", i32 0, i32 0
+  %"$v" = load i32, i32* %v, align 4
+  %"$*self.total" = load i32, i32* %"*self.total", align 4
+  %ADD = add i32 %"$*self.total", %"$v"
+  store i32 %ADD, i32* %"*self.total", align 4
+  %"*self1" = load %Builder*, %Builder** %self, align 8
+  ret %Builder* %"*self1"
 }
 
 define i32 @main() {
 entry:
   %b = alloca %Builder, align 8
+  %ref = alloca %Builder*, align 8
+  %ref2 = alloca %Builder*, align 8
+  %ref5 = alloca %Builder*, align 8
   store %Builder zeroinitializer, %Builder* %b, align 4
-  %"add(&load.b,1)" = call %Builder* @Builder.add(%Builder* %b, i32 1)
-  %"add(add(&load.b,1),2)" = call %Builder* @Builder.add(%Builder* %"add(&load.b,1)", i32 2)
-  %"add(add(add(&load.b,1),2),3)" = call %Builder* @Builder.add(%Builder* %"add(add(&load.b,1),2)", i32 3)
-  %load.b.total = getelementptr inbounds %Builder, %Builder* %b, i32 0, i32 0
-  %load.load.b.total = load i32, i32* %load.b.total, align 4
-  ret i32 %load.load.b.total
+  %call.Builder.add = call %Builder* @Builder.add(%Builder* %b, i32 1)
+  store %Builder* %call.Builder.add, %Builder** %ref, align 8
+  %"*ref" = load %Builder*, %Builder** %ref, align 8
+  %call.Builder.add1 = call %Builder* @Builder.add(%Builder* %"*ref", i32 2)
+  store %Builder* %call.Builder.add1, %Builder** %ref2, align 8
+  %"*ref3" = load %Builder*, %Builder** %ref2, align 8
+  %call.Builder.add4 = call %Builder* @Builder.add(%Builder* %"*ref3", i32 3)
+  store %Builder* %call.Builder.add4, %Builder** %ref5, align 8
+  %"*ref6" = load %Builder*, %Builder** %ref5, align 8
+  %b.total = getelementptr inbounds %Builder, %Builder* %b, i32 0, i32 0
+  %"$b.total" = load i32, i32* %b.total, align 4
+  ret i32 %"$b.total"
 }
 ```
 
@@ -4283,7 +4291,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Pair = type { i32, i32 }
 
@@ -4291,44 +4299,50 @@ define i32* @bigger(%Pair* %0) {
 entry:
   %p = alloca %Pair*, align 8
   store %Pair* %0, %Pair** %p, align 8
-  %dref.p = load %Pair*, %Pair** %p, align 8
-  %load.dref.p.a = getelementptr inbounds %Pair, %Pair* %dref.p, i32 0, i32 0
-  %load.load.dref.p.a = load i32, i32* %load.dref.p.a, align 4
-  %dref.p1 = load %Pair*, %Pair** %p, align 8
-  %load.dref.p.b = getelementptr inbounds %Pair, %Pair* %dref.p1, i32 0, i32 1
-  %load.load.dref.p.b = load i32, i32* %load.dref.p.b, align 4
-  %GT = icmp sgt i32 %load.load.dref.p.a, %load.load.dref.p.b
-  br i1 %GT, label %then, label %endif
+  br label %if0
 
-then:                                             ; preds = %entry
-  %dref.p2 = load %Pair*, %Pair** %p, align 8
-  %load.dref.p.a3 = getelementptr inbounds %Pair, %Pair* %dref.p2, i32 0, i32 0
-  ret i32* %load.dref.p.a3
+if0:                                              ; preds = %entry
+  %"*p" = load %Pair*, %Pair** %p, align 8
+  %"*p.a" = getelementptr inbounds %Pair, %Pair* %"*p", i32 0, i32 0
+  %"*p1" = load %Pair*, %Pair** %p, align 8
+  %"*p.b" = getelementptr inbounds %Pair, %Pair* %"*p1", i32 0, i32 1
+  %"$*p.a" = load i32, i32* %"*p.a", align 4
+  %"$*p.b" = load i32, i32* %"*p.b", align 4
+  %GT = icmp sgt i32 %"$*p.a", %"$*p.b"
+  br i1 %GT, label %if0.then, label %endif
 
-endif:                                            ; preds = %entry
-  %dref.p4 = load %Pair*, %Pair** %p, align 8
-  %load.dref.p.b5 = getelementptr inbounds %Pair, %Pair* %dref.p4, i32 0, i32 1
-  ret i32* %load.dref.p.b5
+if0.then:                                         ; preds = %if0
+  %"*p2" = load %Pair*, %Pair** %p, align 8
+  %"*p.a3" = getelementptr inbounds %Pair, %Pair* %"*p2", i32 0, i32 0
+  ret i32* %"*p.a3"
+
+endif:                                            ; preds = %if0
+  %"*p4" = load %Pair*, %Pair** %p, align 8
+  %"*p.b5" = getelementptr inbounds %Pair, %Pair* %"*p4", i32 0, i32 1
+  ret i32* %"*p.b5"
 }
 
 define i32 @main() {
 entry:
   %x = alloca %Pair, align 8
   %r = alloca i32*, align 8
+  %ref = alloca i32*, align 8
   store %Pair zeroinitializer, %Pair* %x, align 4
-  %load.x.a = getelementptr inbounds %Pair, %Pair* %x, i32 0, i32 0
-  store i32 3, i32* %load.x.a, align 4
-  %load.x.b = getelementptr inbounds %Pair, %Pair* %x, i32 0, i32 1
-  store i32 7, i32* %load.x.b, align 4
-  %"bigger(&x)" = call i32* @bigger(%Pair* %x)
-  store i32* %"bigger(&x)", i32** %r, align 8
-  %dref.r = load i32*, i32** %r, align 8
-  store i32 100, i32* %dref.r, align 4
-  %load.x.a1 = getelementptr inbounds %Pair, %Pair* %x, i32 0, i32 0
-  %load.load.x.a = load i32, i32* %load.x.a1, align 4
-  %load.x.b2 = getelementptr inbounds %Pair, %Pair* %x, i32 0, i32 1
-  %load.load.x.b = load i32, i32* %load.x.b2, align 4
-  %ADD = add i32 %load.load.x.a, %load.load.x.b
+  %x.a = getelementptr inbounds %Pair, %Pair* %x, i32 0, i32 0
+  store i32 3, i32* %x.a, align 4
+  %x.b = getelementptr inbounds %Pair, %Pair* %x, i32 0, i32 1
+  store i32 7, i32* %x.b, align 4
+  %call.bigger = call i32* @bigger(%Pair* %x)
+  store i32* %call.bigger, i32** %ref, align 8
+  %"*ref" = load i32*, i32** %ref, align 8
+  store i32* %"*ref", i32** %r, align 8
+  %"*r" = load i32*, i32** %r, align 8
+  store i32 100, i32* %"*r", align 4
+  %x.a1 = getelementptr inbounds %Pair, %Pair* %x, i32 0, i32 0
+  %x.b2 = getelementptr inbounds %Pair, %Pair* %x, i32 0, i32 1
+  %"$x.a" = load i32, i32* %x.a1, align 4
+  %"$x.b" = load i32, i32* %x.b2, align 4
+  %ADD = add i32 %"$x.a", %"$x.b"
   ret i32 %ADD
 }
 ```
@@ -4364,7 +4378,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Pair = type { i32, i32 }
 
@@ -4375,46 +4389,49 @@ entry:
   %p = alloca %Pair, align 8
   store i32 %0, i32* %n, align 4
   store %Pair zeroinitializer, %Pair* %r, align 4
-  %load.n = load i32, i32* %n, align 4
-  %EQ = icmp eq i32 %load.n, 0
-  br i1 %EQ, label %then, label %endif
+  br label %if0
 
-then:                                             ; preds = %entry
-  %load.r.a = getelementptr inbounds %Pair, %Pair* %r, i32 0, i32 0
-  store i32 0, i32* %load.r.a, align 4
-  %load.r.b = getelementptr inbounds %Pair, %Pair* %r, i32 0, i32 1
-  store i32 1, i32* %load.r.b, align 4
-  %load.r = load %Pair, %Pair* %r, align 4
-  ret %Pair %load.r
+if0:                                              ; preds = %entry
+  %"$n" = load i32, i32* %n, align 4
+  %EQ = icmp eq i32 %"$n", 0
+  br i1 %EQ, label %if0.then, label %endif
 
-endif:                                            ; preds = %entry
-  %load.n1 = load i32, i32* %n, align 4
-  %SUB = sub i32 %load.n1, 1
-  %"fib(load.n - 1)" = call %Pair @fib(i32 %SUB)
-  store %Pair %"fib(load.n - 1)", %Pair* %p, align 4
-  %load.r.a2 = getelementptr inbounds %Pair, %Pair* %r, i32 0, i32 0
-  %load.p.b = getelementptr inbounds %Pair, %Pair* %p, i32 0, i32 1
-  %load.load.p.b = load i32, i32* %load.p.b, align 4
-  store i32 %load.load.p.b, i32* %load.r.a2, align 4
-  %load.r.b3 = getelementptr inbounds %Pair, %Pair* %r, i32 0, i32 1
-  %load.p.a = getelementptr inbounds %Pair, %Pair* %p, i32 0, i32 0
-  %load.load.p.a = load i32, i32* %load.p.a, align 4
-  %load.p.b4 = getelementptr inbounds %Pair, %Pair* %p, i32 0, i32 1
-  %load.load.p.b5 = load i32, i32* %load.p.b4, align 4
-  %ADD = add i32 %load.load.p.a, %load.load.p.b5
-  store i32 %ADD, i32* %load.r.b3, align 4
-  %load.r6 = load %Pair, %Pair* %r, align 4
-  ret %Pair %load.r6
+if0.then:                                         ; preds = %if0
+  %r.a = getelementptr inbounds %Pair, %Pair* %r, i32 0, i32 0
+  store i32 0, i32* %r.a, align 4
+  %r.b = getelementptr inbounds %Pair, %Pair* %r, i32 0, i32 1
+  store i32 1, i32* %r.b, align 4
+  %"$r" = load %Pair, %Pair* %r, align 4
+  ret %Pair %"$r"
+
+endif:                                            ; preds = %if0
+  %"$n1" = load i32, i32* %n, align 4
+  %SUB = sub i32 %"$n1", 1
+  %call.fib = call %Pair @fib(i32 %SUB)
+  store %Pair %call.fib, %Pair* %p, align 4
+  %r.a2 = getelementptr inbounds %Pair, %Pair* %r, i32 0, i32 0
+  %p.b = getelementptr inbounds %Pair, %Pair* %p, i32 0, i32 1
+  %"$p.b" = load i32, i32* %p.b, align 4
+  store i32 %"$p.b", i32* %r.a2, align 4
+  %r.b3 = getelementptr inbounds %Pair, %Pair* %r, i32 0, i32 1
+  %p.a = getelementptr inbounds %Pair, %Pair* %p, i32 0, i32 0
+  %p.b4 = getelementptr inbounds %Pair, %Pair* %p, i32 0, i32 1
+  %"$p.a" = load i32, i32* %p.a, align 4
+  %"$p.b5" = load i32, i32* %p.b4, align 4
+  %ADD = add i32 %"$p.a", %"$p.b5"
+  store i32 %ADD, i32* %r.b3, align 4
+  %"$r6" = load %Pair, %Pair* %r, align 4
+  ret %Pair %"$r6"
 }
 
 define i32 @main() {
 entry:
   %tmp = alloca %Pair, align 8
-  %"fib(10)" = call %Pair @fib(i32 10)
-  store %Pair %"fib(10)", %Pair* %tmp, align 4
-  %"fib(10).a" = getelementptr inbounds %Pair, %Pair* %tmp, i32 0, i32 0
-  %"load.fib(10).a" = load i32, i32* %"fib(10).a", align 4
-  ret i32 %"load.fib(10).a"
+  %call.fib = call %Pair @fib(i32 10)
+  store %Pair %call.fib, %Pair* %tmp, align 4
+  %tmp.a = getelementptr inbounds %Pair, %Pair* %tmp, i32 0, i32 0
+  %"$tmp.a" = load i32, i32* %tmp.a, align 4
+  ret i32 %"$tmp.a"
 }
 ```
 
@@ -5194,7 +5211,7 @@ return area(&r) * 10 + make()
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Point = type { i32, i32 }
 %Rect = type { %Point, %Point }
@@ -5207,24 +5224,24 @@ define i32 @area(%Rect* %0) {
 entry:
   %r = alloca %Rect*, align 8
   store %Rect* %0, %Rect** %r, align 8
-  %dref.r = load %Rect*, %Rect** %r, align 8
-  %load.dref.r.b = getelementptr inbounds %Rect, %Rect* %dref.r, i32 0, i32 1
-  %load.load.dref.r.b.x = getelementptr inbounds %Point, %Point* %load.dref.r.b, i32 0, i32 0
-  %load.load.load.dref.r.b.x = load i32, i32* %load.load.dref.r.b.x, align 4
-  %dref.r1 = load %Rect*, %Rect** %r, align 8
-  %load.dref.r.a = getelementptr inbounds %Rect, %Rect* %dref.r1, i32 0, i32 0
-  %load.load.dref.r.a.x = getelementptr inbounds %Point, %Point* %load.dref.r.a, i32 0, i32 0
-  %load.load.load.dref.r.a.x = load i32, i32* %load.load.dref.r.a.x, align 4
-  %SUB = sub i32 %load.load.load.dref.r.b.x, %load.load.load.dref.r.a.x
-  %dref.r2 = load %Rect*, %Rect** %r, align 8
-  %load.dref.r.b3 = getelementptr inbounds %Rect, %Rect* %dref.r2, i32 0, i32 1
-  %load.load.dref.r.b.y = getelementptr inbounds %Point, %Point* %load.dref.r.b3, i32 0, i32 1
-  %load.load.load.dref.r.b.y = load i32, i32* %load.load.dref.r.b.y, align 4
-  %dref.r4 = load %Rect*, %Rect** %r, align 8
-  %load.dref.r.a5 = getelementptr inbounds %Rect, %Rect* %dref.r4, i32 0, i32 0
-  %load.load.dref.r.a.y = getelementptr inbounds %Point, %Point* %load.dref.r.a5, i32 0, i32 1
-  %load.load.load.dref.r.a.y = load i32, i32* %load.load.dref.r.a.y, align 4
-  %SUB6 = sub i32 %load.load.load.dref.r.b.y, %load.load.load.dref.r.a.y
+  %"*r" = load %Rect*, %Rect** %r, align 8
+  %"*r.b" = getelementptr inbounds %Rect, %Rect* %"*r", i32 0, i32 1
+  %"*r.b.x" = getelementptr inbounds %Point, %Point* %"*r.b", i32 0, i32 0
+  %"*r1" = load %Rect*, %Rect** %r, align 8
+  %"*r.a" = getelementptr inbounds %Rect, %Rect* %"*r1", i32 0, i32 0
+  %"*r.a.x" = getelementptr inbounds %Point, %Point* %"*r.a", i32 0, i32 0
+  %"$*r.b.x" = load i32, i32* %"*r.b.x", align 4
+  %"$*r.a.x" = load i32, i32* %"*r.a.x", align 4
+  %SUB = sub i32 %"$*r.b.x", %"$*r.a.x"
+  %"*r2" = load %Rect*, %Rect** %r, align 8
+  %"*r.b3" = getelementptr inbounds %Rect, %Rect* %"*r2", i32 0, i32 1
+  %"*r.b.y" = getelementptr inbounds %Point, %Point* %"*r.b3", i32 0, i32 1
+  %"*r4" = load %Rect*, %Rect** %r, align 8
+  %"*r.a5" = getelementptr inbounds %Rect, %Rect* %"*r4", i32 0, i32 0
+  %"*r.a.y" = getelementptr inbounds %Point, %Point* %"*r.a5", i32 0, i32 1
+  %"$*r.b.y" = load i32, i32* %"*r.b.y", align 4
+  %"$*r.a.y" = load i32, i32* %"*r.a.y", align 4
+  %SUB6 = sub i32 %"$*r.b.y", %"$*r.a.y"
   %MUL = mul i32 %SUB, %SUB6
   ret i32 %MUL
 }
@@ -5233,26 +5250,24 @@ define i32 @make() {
 entry:
   %l = alloca %Local, align 8
   store %Local zeroinitializer, %Local* %l, align 4
-  %load.l.v = getelementptr inbounds %Local, %Local* %l, i32 0, i32 0
-  store i32 3, i32* %load.l.v, align 4
-  %load.l.v1 = getelementptr inbounds %Local, %Local* %l, i32 0, i32 0
-  %load.load.l.v = load i32, i32* %load.l.v1, align 4
-  ret i32 %load.load.l.v
+  %l.v = getelementptr inbounds %Local, %Local* %l, i32 0, i32 0
+  store i32 3, i32* %l.v, align 4
+  %l.v1 = getelementptr inbounds %Local, %Local* %l, i32 0, i32 0
+  %"$l.v" = load i32, i32* %l.v1, align 4
+  ret i32 %"$l.v"
 }
 
 define i32 @main() {
 entry:
-  store %Point zeroinitializer, %Point* @origin, align 4
   store i32 2, i32* getelementptr inbounds (%Point, %Point* @origin, i32 0, i32 0), align 4
-  store %Rect zeroinitializer, %Rect* @r, align 4
-  %load.origin = load %Point, %Point* @origin, align 4
-  store %Point %load.origin, %Point* getelementptr inbounds (%Rect, %Rect* @r, i32 0, i32 0), align 4
+  %"$origin" = load %Point, %Point* @origin, align 4
+  store %Point %"$origin", %Point* getelementptr inbounds (%Rect, %Rect* @r, i32 0, i32 0), align 4
   store i32 7, i32* getelementptr inbounds (%Rect, %Rect* @r, i32 0, i32 1, i32 0), align 4
   store i32 4, i32* getelementptr inbounds (%Rect, %Rect* @r, i32 0, i32 1, i32 1), align 4
-  %"area(&r)" = call i32 @area(%Rect* @r)
-  %MUL = mul i32 %"area(&r)", 10
-  %"make()" = call i32 @make()
-  %ADD = add i32 %MUL, %"make()"
+  %call.area = call i32 @area(%Rect* @r)
+  %MUL = mul i32 %call.area, 10
+  %call.make = call i32 @make()
+  %ADD = add i32 %MUL, %call.make
   ret i32 %ADD
 }
 ```
@@ -5872,6 +5887,7 @@ error: test.ura:5:8 struct 'User' is already declared, on line 2
   |
 5 | struct User:
   |        ^^^^
+error: aborting due to 1 error
 ```
 
 ### status
@@ -6840,6 +6856,48 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Room = type { i8*, i32 }
+
+@str = private unnamed_addr constant [21 x i8] c"room %s on floor %d\0A\00", align 1
+@str.1 = private unnamed_addr constant [5 x i8] c"hall\00", align 1
+
+define void @Room.describe(%Room* %0) {
+entry:
+  %self = alloca %Room*, align 8
+  store %Room* %0, %Room** %self, align 8
+  %"*self" = load %Room*, %Room** %self, align 8
+  %"*self.name" = getelementptr inbounds %Room, %Room* %"*self", i32 0, i32 0
+  %"*self1" = load %Room*, %Room** %self, align 8
+  %"*self.floor" = getelementptr inbounds %Room, %Room* %"*self1", i32 0, i32 1
+  %"$*self.name" = load i8*, i8** %"*self.name", align 8
+  %"$*self.floor" = load i32, i32* %"*self.floor", align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([21 x i8], [21 x i8]* @str, i32 0, i32 0), i8* %"$*self.name", i32 %"$*self.floor")
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %r = alloca %Room, align 8
+  store %Room zeroinitializer, %Room* %r, align 8
+  %r.name = getelementptr inbounds %Room, %Room* %r, i32 0, i32 0
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.1, i32 0, i32 0), i8** %r.name, align 8
+  %r.floor = getelementptr inbounds %Room, %Room* %r, i32 0, i32 1
+  store i32 2, i32* %r.floor, align 4
+  call void @Room.describe(%Room* %r)
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 089 — method: a method mutates through self, and the caller sees it
@@ -6862,6 +6920,51 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Room = type { i32 }
+
+@str = private unnamed_addr constant [12 x i8] c"floor = %d\0A\00", align 1
+
+define void @Room.climb(%Room* %0, i32 %1) {
+entry:
+  %self = alloca %Room*, align 8
+  %n = alloca i32, align 4
+  store %Room* %0, %Room** %self, align 8
+  store i32 %1, i32* %n, align 4
+  %"*self" = load %Room*, %Room** %self, align 8
+  %"*self.floor" = getelementptr inbounds %Room, %Room* %"*self", i32 0, i32 0
+  %"*self1" = load %Room*, %Room** %self, align 8
+  %"*self.floor2" = getelementptr inbounds %Room, %Room* %"*self1", i32 0, i32 0
+  %"$*self.floor" = load i32, i32* %"*self.floor2", align 4
+  %"$n" = load i32, i32* %n, align 4
+  %ADD = add i32 %"$*self.floor", %"$n"
+  store i32 %ADD, i32* %"*self.floor", align 4
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %r = alloca %Room, align 8
+  store %Room zeroinitializer, %Room* %r, align 4
+  %r.floor = getelementptr inbounds %Room, %Room* %r, i32 0, i32 0
+  store i32 2, i32* %r.floor, align 4
+  call void @Room.climb(%Room* %r, i32 3)
+  %r.floor1 = getelementptr inbounds %Room, %Room* %r, i32 0, i32 0
+  %"$r.floor" = load i32, i32* %r.floor1, align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str, i32 0, i32 0), i32 %"$r.floor")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 090 — method: a method with a return value
@@ -6881,6 +6984,43 @@ fn main() i32:
     r.floor = 4
     output("depth = ", r.depth(), "\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Room = type { i32 }
+
+@str = private unnamed_addr constant [12 x i8] c"depth = %d\0A\00", align 1
+
+define i32 @Room.depth(%Room* %0) {
+entry:
+  %self = alloca %Room*, align 8
+  store %Room* %0, %Room** %self, align 8
+  %"*self" = load %Room*, %Room** %self, align 8
+  %"*self.floor" = getelementptr inbounds %Room, %Room* %"*self", i32 0, i32 0
+  %"$*self.floor" = load i32, i32* %"*self.floor", align 4
+  %MUL = mul i32 %"$*self.floor", 10
+  ret i32 %MUL
+}
+
+define i32 @main() {
+entry:
+  %r = alloca %Room, align 8
+  store %Room zeroinitializer, %Room* %r, align 4
+  %r.floor = getelementptr inbounds %Room, %Room* %r, i32 0, i32 0
+  store i32 4, i32* %r.floor, align 4
+  %call.Room.depth = call i32 @Room.depth(%Room* %r)
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str, i32 0, i32 0), i32 %call.Room.depth)
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -6905,6 +7045,52 @@ fn main() i32:
     r.floor = 5
     r.show()
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Room = type { i32 }
+
+@str = private unnamed_addr constant [10 x i8] c"floor %d\0A\00", align 1
+
+define void @Room.show(%Room* %0) {
+entry:
+  %self = alloca %Room*, align 8
+  store %Room* %0, %Room** %self, align 8
+  %"*self" = load %Room*, %Room** %self, align 8
+  %call.Room.twice = call i32 @Room.twice(%Room* %"*self")
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str, i32 0, i32 0), i32 %call.Room.twice)
+  ret void
+}
+
+define i32 @Room.twice(%Room* %0) {
+entry:
+  %self = alloca %Room*, align 8
+  store %Room* %0, %Room** %self, align 8
+  %"*self" = load %Room*, %Room** %self, align 8
+  %"*self.floor" = getelementptr inbounds %Room, %Room* %"*self", i32 0, i32 0
+  %"$*self.floor" = load i32, i32* %"*self.floor", align 4
+  %MUL = mul i32 %"$*self.floor", 2
+  ret i32 %MUL
+}
+
+define i32 @main() {
+entry:
+  %r = alloca %Room, align 8
+  store %Room zeroinitializer, %Room* %r, align 4
+  %r.floor = getelementptr inbounds %Room, %Room* %r, i32 0, i32 0
+  store i32 5, i32* %r.floor, align 4
+  call void @Room.show(%Room* %r)
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -6936,6 +7122,60 @@ fn main() i32:
     r.describe()
     t.describe()
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Room = type { i32 }
+%Tower = type { i32 }
+
+@str = private unnamed_addr constant [18 x i8] c"room on floor %d\0A\00", align 1
+@str.1 = private unnamed_addr constant [20 x i8] c"tower of height %d\0A\00", align 1
+
+define void @Room.describe(%Room* %0) {
+entry:
+  %self = alloca %Room*, align 8
+  store %Room* %0, %Room** %self, align 8
+  %"*self" = load %Room*, %Room** %self, align 8
+  %"*self.floor" = getelementptr inbounds %Room, %Room* %"*self", i32 0, i32 0
+  %"$*self.floor" = load i32, i32* %"*self.floor", align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([18 x i8], [18 x i8]* @str, i32 0, i32 0), i32 %"$*self.floor")
+  ret void
+}
+
+define void @Tower.describe(%Tower* %0) {
+entry:
+  %self = alloca %Tower*, align 8
+  store %Tower* %0, %Tower** %self, align 8
+  %"*self" = load %Tower*, %Tower** %self, align 8
+  %"*self.height" = getelementptr inbounds %Tower, %Tower* %"*self", i32 0, i32 0
+  %"$*self.height" = load i32, i32* %"*self.height", align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([20 x i8], [20 x i8]* @str.1, i32 0, i32 0), i32 %"$*self.height")
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %r = alloca %Room, align 8
+  %t = alloca %Tower, align 8
+  store %Room zeroinitializer, %Room* %r, align 4
+  %r.floor = getelementptr inbounds %Room, %Room* %r, i32 0, i32 0
+  store i32 1, i32* %r.floor, align 4
+  store %Tower zeroinitializer, %Tower* %t, align 4
+  %t.height = getelementptr inbounds %Tower, %Tower* %t, i32 0, i32 0
+  store i32 9, i32* %t.height, align 4
+  call void @Room.describe(%Room* %r)
+  call void @Tower.describe(%Tower* %t)
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -6983,6 +7223,45 @@ fn main() i32:
     d.entry.floor = 3
     output("entry depth ", d.entry.depth(), "\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Room = type { i32 }
+%Dungeon = type { %Room }
+
+@str = private unnamed_addr constant [16 x i8] c"entry depth %d\0A\00", align 1
+
+define i32 @Room.depth(%Room* %0) {
+entry:
+  %self = alloca %Room*, align 8
+  store %Room* %0, %Room** %self, align 8
+  %"*self" = load %Room*, %Room** %self, align 8
+  %"*self.floor" = getelementptr inbounds %Room, %Room* %"*self", i32 0, i32 0
+  %"$*self.floor" = load i32, i32* %"*self.floor", align 4
+  ret i32 %"$*self.floor"
+}
+
+define i32 @main() {
+entry:
+  %d = alloca %Dungeon, align 8
+  store %Dungeon zeroinitializer, %Dungeon* %d, align 4
+  %d.entry = getelementptr inbounds %Dungeon, %Dungeon* %d, i32 0, i32 0
+  %d.entry.floor = getelementptr inbounds %Room, %Room* %d.entry, i32 0, i32 0
+  store i32 3, i32* %d.entry.floor, align 4
+  %d.entry1 = getelementptr inbounds %Dungeon, %Dungeon* %d, i32 0, i32 0
+  %call.Room.depth = call i32 @Room.depth(%Room* %d.entry1)
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([16 x i8], [16 x i8]* @str, i32 0, i32 0), i32 %call.Room.depth)
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -7061,6 +7340,65 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Room = type { i32 }
+
+@str = private unnamed_addr constant [11 x i8] c"static %d\0A\00", align 1
+@str.1 = private unnamed_addr constant [11 x i8] c"plain  %d\0A\00", align 1
+
+define %Room @Room.create(i32 %0) {
+entry:
+  %f = alloca i32, align 4
+  %r = alloca %Room, align 8
+  store i32 %0, i32* %f, align 4
+  store %Room zeroinitializer, %Room* %r, align 4
+  %r.floor = getelementptr inbounds %Room, %Room* %r, i32 0, i32 0
+  %"$f" = load i32, i32* %f, align 4
+  store i32 %"$f", i32* %r.floor, align 4
+  %"$r" = load %Room, %Room* %r, align 4
+  ret %Room %"$r"
+}
+
+define %Room @make(i32 %0) {
+entry:
+  %f = alloca i32, align 4
+  %r = alloca %Room, align 8
+  store i32 %0, i32* %f, align 4
+  store %Room zeroinitializer, %Room* %r, align 4
+  %r.floor = getelementptr inbounds %Room, %Room* %r, i32 0, i32 0
+  %"$f" = load i32, i32* %f, align 4
+  store i32 %"$f", i32* %r.floor, align 4
+  %"$r" = load %Room, %Room* %r, align 4
+  ret %Room %"$r"
+}
+
+define i32 @main() {
+entry:
+  %tmp = alloca %Room, align 8
+  %tmp1 = alloca %Room, align 8
+  %call.Room.create = call %Room @Room.create(i32 7)
+  store %Room %call.Room.create, %Room* %tmp, align 4
+  %tmp.floor = getelementptr inbounds %Room, %Room* %tmp, i32 0, i32 0
+  %"$tmp.floor" = load i32, i32* %tmp.floor, align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str, i32 0, i32 0), i32 %"$tmp.floor")
+  %call.make = call %Room @make(i32 3)
+  store %Room %call.make, %Room* %tmp1, align 4
+  %tmp.floor2 = getelementptr inbounds %Room, %Room* %tmp1, i32 0, i32 0
+  %"$tmp.floor3" = load i32, i32* %tmp.floor2, align 4
+  %call.dprintf4 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.1, i32 0, i32 0), i32 %"$tmp.floor3")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 099 — struct: declare a struct and a local: named type, alloca, zero-init
@@ -7078,6 +7416,29 @@ fn main() i32:
     p Player
     output("ok\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Player = type { i8*, i32, i32 }
+
+@str = private unnamed_addr constant [4 x i8] c"ok\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %p = alloca %Player, align 8
+  store %Player zeroinitializer, %Player* %p, align 8
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -7102,6 +7463,30 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Dungeon = type { i8*, %Room }
+%Room = type { i8*, i32 }
+
+@str = private unnamed_addr constant [4 x i8] c"ok\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %d = alloca %Dungeon, align 8
+  store %Dungeon zeroinitializer, %Dungeon* %d, align 8
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 101 — struct: forward reference: a field type declared later in the file
@@ -7124,6 +7509,30 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Dungeon = type { i8*, %Room }
+%Room = type { i8*, i32 }
+
+@str = private unnamed_addr constant [4 x i8] c"ok\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %d = alloca %Dungeon, align 8
+  store %Dungeon zeroinitializer, %Dungeon* %d, align 8
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 102 — struct: a struct declared inside a function body
@@ -7140,6 +7549,29 @@ fn main() i32:
     l Local
     output("ok\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Local = type { i32, i32 }
+
+@str = private unnamed_addr constant [4 x i8] c"ok\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %l = alloca %Local, align 8
+  store %Local zeroinitializer, %Local* %l, align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -7200,6 +7632,30 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Tree = type { i8*, %Room* }
+%Room = type { i32 }
+
+@str = private unnamed_addr constant [4 x i8] c"ok\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %t = alloca %Tree, align 8
+  store %Tree zeroinitializer, %Tree* %t, align 8
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 106 — struct: a struct nested inside another struct's body
@@ -7221,6 +7677,29 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Outer = type { i8*, i32 }
+
+@str = private unnamed_addr constant [4 x i8] c"ok\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %o = alloca %Outer, align 8
+  store %Outer zeroinitializer, %Outer* %o, align 8
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 107 — struct: self reference through an array stays finite
@@ -7239,6 +7718,29 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Tree = type { i8*, %Tree* }
+
+@str = private unnamed_addr constant [4 x i8] c"ok\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %t = alloca %Tree, align 8
+  store %Tree zeroinitializer, %Tree* %t, align 8
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 108 — struct: an unused struct emits no type: LLVM drops unreferenced named types
@@ -7254,6 +7756,25 @@ struct Unused:
 fn main() i32:
     output("ok\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@str = private unnamed_addr constant [4 x i8] c"ok\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -7310,6 +7831,47 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Room = type { i8*, i32 }
+
+@str = private unnamed_addr constant [7 x i8] c"armory\00", align 1
+@str.1 = private unnamed_addr constant [16 x i8] c"%s on floor %d\0A\00", align 1
+@str.2 = private unnamed_addr constant [14 x i8] c"floor now %d\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %p = alloca %Room, align 8
+  store %Room zeroinitializer, %Room* %p, align 8
+  %p.name = getelementptr inbounds %Room, %Room* %p, i32 0, i32 0
+  store i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i8** %p.name, align 8
+  %p.floor = getelementptr inbounds %Room, %Room* %p, i32 0, i32 1
+  store i32 3, i32* %p.floor, align 4
+  %p.name1 = getelementptr inbounds %Room, %Room* %p, i32 0, i32 0
+  %p.floor2 = getelementptr inbounds %Room, %Room* %p, i32 0, i32 1
+  %"$p.name" = load i8*, i8** %p.name1, align 8
+  %"$p.floor" = load i32, i32* %p.floor2, align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([16 x i8], [16 x i8]* @str.1, i32 0, i32 0), i8* %"$p.name", i32 %"$p.floor")
+  %p.floor3 = getelementptr inbounds %Room, %Room* %p, i32 0, i32 1
+  %p.floor4 = getelementptr inbounds %Room, %Room* %p, i32 0, i32 1
+  %"$p.floor5" = load i32, i32* %p.floor4, align 4
+  %ADD = add i32 %"$p.floor5", 10
+  store i32 %ADD, i32* %p.floor3, align 4
+  %p.floor6 = getelementptr inbounds %Room, %Room* %p, i32 0, i32 1
+  %"$p.floor7" = load i32, i32* %p.floor6, align 4
+  %call.dprintf8 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.2, i32 0, i32 0), i32 %"$p.floor7")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 111 — struct: nested field access through a struct field
@@ -7333,6 +7895,48 @@ fn main() i32:
     d.entry.floor = 1
     output(d.name, " entry ", d.entry.name, " floor ", d.entry.floor, "\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Dungeon = type { i8*, %Room }
+%Room = type { i8*, i32 }
+
+@str = private unnamed_addr constant [5 x i8] c"keep\00", align 1
+@str.1 = private unnamed_addr constant [5 x i8] c"gate\00", align 1
+@str.2 = private unnamed_addr constant [22 x i8] c"%s entry %s floor %d\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %d = alloca %Dungeon, align 8
+  store %Dungeon zeroinitializer, %Dungeon* %d, align 8
+  %d.name = getelementptr inbounds %Dungeon, %Dungeon* %d, i32 0, i32 0
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str, i32 0, i32 0), i8** %d.name, align 8
+  %d.entry = getelementptr inbounds %Dungeon, %Dungeon* %d, i32 0, i32 1
+  %d.entry.name = getelementptr inbounds %Room, %Room* %d.entry, i32 0, i32 0
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.1, i32 0, i32 0), i8** %d.entry.name, align 8
+  %d.entry1 = getelementptr inbounds %Dungeon, %Dungeon* %d, i32 0, i32 1
+  %d.entry.floor = getelementptr inbounds %Room, %Room* %d.entry1, i32 0, i32 1
+  store i32 1, i32* %d.entry.floor, align 4
+  %d.name2 = getelementptr inbounds %Dungeon, %Dungeon* %d, i32 0, i32 0
+  %d.entry3 = getelementptr inbounds %Dungeon, %Dungeon* %d, i32 0, i32 1
+  %d.entry.name4 = getelementptr inbounds %Room, %Room* %d.entry3, i32 0, i32 0
+  %d.entry5 = getelementptr inbounds %Dungeon, %Dungeon* %d, i32 0, i32 1
+  %d.entry.floor6 = getelementptr inbounds %Room, %Room* %d.entry5, i32 0, i32 1
+  %"$d.name" = load i8*, i8** %d.name2, align 8
+  %"$d.entry.name" = load i8*, i8** %d.entry.name4, align 8
+  %"$d.entry.floor" = load i32, i32* %d.entry.floor6, align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([22 x i8], [22 x i8]* @str.2, i32 0, i32 0), i8* %"$d.name", i8* %"$d.entry.name", i32 %"$d.entry.floor")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -7411,6 +8015,31 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@str = private unnamed_addr constant [7 x i8] c"%d %d\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %stack = alloca i32, align 4
+  %heap = alloca i32, align 4
+  store i32 5, i32* %stack, align 4
+  store i32 7, i32* %heap, align 4
+  %"$stack" = load i32, i32* %stack, align 4
+  %"$heap" = load i32, i32* %heap, align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i32 0, i32 0), i32 %"$stack", i32 %"$heap")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 116 — struct: a 'ref?' field may refer to its own struct
@@ -7428,6 +8057,33 @@ fn main() i32:
     a.value = 1
     output(a.value, "\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Node = type { i32, %Node* }
+
+@str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %a = alloca %Node, align 8
+  store %Node zeroinitializer, %Node* %a, align 8
+  %a.value = getelementptr inbounds %Node, %Node* %a, i32 0, i32 0
+  store i32 1, i32* %a.value, align 4
+  %a.value1 = getelementptr inbounds %Node, %Node* %a, i32 0, i32 0
+  %"$a.value" = load i32, i32* %a.value1, align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i32 %"$a.value")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -7479,6 +8135,47 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Room = type { i8*, i32 }
+
+@str = private unnamed_addr constant [5 x i8] c"hall\00", align 1
+@str.1 = private unnamed_addr constant [15 x i8] c"%s %d / %s %d\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %a = alloca %Room, align 8
+  %b = alloca %Room, align 8
+  store %Room zeroinitializer, %Room* %a, align 8
+  %a.name = getelementptr inbounds %Room, %Room* %a, i32 0, i32 0
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str, i32 0, i32 0), i8** %a.name, align 8
+  %a.floor = getelementptr inbounds %Room, %Room* %a, i32 0, i32 1
+  store i32 2, i32* %a.floor, align 4
+  %"$a" = load %Room, %Room* %a, align 8
+  store %Room %"$a", %Room* %b, align 8
+  %b.floor = getelementptr inbounds %Room, %Room* %b, i32 0, i32 1
+  store i32 9, i32* %b.floor, align 4
+  %b.name = getelementptr inbounds %Room, %Room* %b, i32 0, i32 0
+  %b.floor1 = getelementptr inbounds %Room, %Room* %b, i32 0, i32 1
+  %a.name2 = getelementptr inbounds %Room, %Room* %a, i32 0, i32 0
+  %a.floor3 = getelementptr inbounds %Room, %Room* %a, i32 0, i32 1
+  %"$b.name" = load i8*, i8** %b.name, align 8
+  %"$b.floor" = load i32, i32* %b.floor1, align 4
+  %"$a.name" = load i8*, i8** %a.name2, align 8
+  %"$a.floor" = load i32, i32* %a.floor3, align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([15 x i8], [15 x i8]* @str.1, i32 0, i32 0), i8* %"$b.name", i32 %"$b.floor", i8* %"$a.name", i32 %"$a.floor")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 119 — struct: a struct as a by-value parameter
@@ -7502,6 +8199,47 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Room = type { i8*, i32 }
+
+@str = private unnamed_addr constant [12 x i8] c"room %s@%d\0A\00", align 1
+@str.1 = private unnamed_addr constant [5 x i8] c"hall\00", align 1
+
+define void @show(%Room %0) {
+entry:
+  %r = alloca %Room, align 8
+  store %Room %0, %Room* %r, align 8
+  %r.name = getelementptr inbounds %Room, %Room* %r, i32 0, i32 0
+  %r.floor = getelementptr inbounds %Room, %Room* %r, i32 0, i32 1
+  %"$r.name" = load i8*, i8** %r.name, align 8
+  %"$r.floor" = load i32, i32* %r.floor, align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str, i32 0, i32 0), i8* %"$r.name", i32 %"$r.floor")
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %a = alloca %Room, align 8
+  store %Room zeroinitializer, %Room* %a, align 8
+  %a.name = getelementptr inbounds %Room, %Room* %a, i32 0, i32 0
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.1, i32 0, i32 0), i8** %a.name, align 8
+  %a.floor = getelementptr inbounds %Room, %Room* %a, i32 0, i32 1
+  store i32 2, i32* %a.floor, align 4
+  %"$a" = load %Room, %Room* %a, align 8
+  call void @show(%Room %"$a")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 120 — struct: a 'ref' struct parameter mutates the caller's struct
@@ -7523,6 +8261,48 @@ fn main() i32:
     bump(&a)
     output("after ", a.floor, "\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Room = type { i8*, i32 }
+
+@str = private unnamed_addr constant [10 x i8] c"after %d\0A\00", align 1
+
+define void @bump(%Room* %0) {
+entry:
+  %r = alloca %Room*, align 8
+  store %Room* %0, %Room** %r, align 8
+  %"*r" = load %Room*, %Room** %r, align 8
+  %"*r.floor" = getelementptr inbounds %Room, %Room* %"*r", i32 0, i32 1
+  %"*r1" = load %Room*, %Room** %r, align 8
+  %"*r.floor2" = getelementptr inbounds %Room, %Room* %"*r1", i32 0, i32 1
+  %"$*r.floor" = load i32, i32* %"*r.floor2", align 4
+  %ADD = add i32 %"$*r.floor", 1
+  store i32 %ADD, i32* %"*r.floor", align 4
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %a = alloca %Room, align 8
+  store %Room zeroinitializer, %Room* %a, align 8
+  %a.floor = getelementptr inbounds %Room, %Room* %a, i32 0, i32 1
+  store i32 2, i32* %a.floor, align 4
+  call void @bump(%Room* %a)
+  %a.floor1 = getelementptr inbounds %Room, %Room* %a, i32 0, i32 1
+  %"$a.floor" = load i32, i32* %a.floor1, align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str, i32 0, i32 0), i32 %"$a.floor")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -7550,6 +8330,59 @@ fn main() i32:
     a Room = create(4)
     output(describe(a), " ", a.floor, "\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Room = type { i8*, i32 }
+
+@str = private unnamed_addr constant [5 x i8] c"made\00", align 1
+@str.1 = private unnamed_addr constant [7 x i8] c"%s %d\0A\00", align 1
+
+define %Room @create(i32 %0) {
+entry:
+  %f = alloca i32, align 4
+  %r = alloca %Room, align 8
+  store i32 %0, i32* %f, align 4
+  store %Room zeroinitializer, %Room* %r, align 8
+  %r.name = getelementptr inbounds %Room, %Room* %r, i32 0, i32 0
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str, i32 0, i32 0), i8** %r.name, align 8
+  %r.floor = getelementptr inbounds %Room, %Room* %r, i32 0, i32 1
+  %"$f" = load i32, i32* %f, align 4
+  store i32 %"$f", i32* %r.floor, align 4
+  %"$r" = load %Room, %Room* %r, align 8
+  ret %Room %"$r"
+}
+
+define i8* @describe(%Room %0) {
+entry:
+  %r = alloca %Room, align 8
+  store %Room %0, %Room* %r, align 8
+  %r.name = getelementptr inbounds %Room, %Room* %r, i32 0, i32 0
+  %"$r.name" = load i8*, i8** %r.name, align 8
+  ret i8* %"$r.name"
+}
+
+define i32 @main() {
+entry:
+  %a = alloca %Room, align 8
+  %call.create = call %Room @create(i32 4)
+  store %Room %call.create, %Room* %a, align 8
+  %"$a" = load %Room, %Room* %a, align 8
+  %call.describe = call i8* @describe(%Room %"$a")
+  %a.floor = getelementptr inbounds %Room, %Room* %a, i32 0, i32 1
+  %"$a.floor" = load i32, i32* %a.floor, align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.1, i32 0, i32 0), i8* %call.describe, i32 %"$a.floor")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -7708,6 +8541,22 @@ fn main() i32:
     return 0
 ```
 
+### stderr
+
+```
+error: test.ura:6:8 struct 'Player' is already declared, on line 3
+  |
+6 | struct Player:
+  |        ^^^^^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
 ---
 
 ## 132 — struct: a method and a field chain called on a ref? field
@@ -7763,6 +8612,22 @@ struct Point:
 fn main() i32:
     output("hi\n")
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:8:8 struct 'Point' is already declared, on line 4
+  |
+8 | struct Point:
+  |        ^^^^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---
@@ -7834,6 +8699,89 @@ fn main() i32:
     b.tag.name = "two"
     output("last:  ", b, "\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%First = type { %Inner, i32 }
+%Inner = type { i8* }
+%Last = type { i32, %Inner }
+
+@str = private unnamed_addr constant [4 x i8] c"one\00", align 1
+@str.1 = private unnamed_addr constant [8 x i8] c"first: \00", align 1
+@str.2 = private unnamed_addr constant [7 x i8] c"First{\00", align 1
+@str.3 = private unnamed_addr constant [6 x i8] c"tag: \00", align 1
+@str.4 = private unnamed_addr constant [7 x i8] c"Inner{\00", align 1
+@str.5 = private unnamed_addr constant [9 x i8] c"name: %s\00", align 1
+@str.6 = private unnamed_addr constant [2 x i8] c"}\00", align 1
+@str.7 = private unnamed_addr constant [8 x i8] c", n: %d\00", align 1
+@str.8 = private unnamed_addr constant [2 x i8] c"}\00", align 1
+@str.9 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@str.10 = private unnamed_addr constant [4 x i8] c"two\00", align 1
+@str.11 = private unnamed_addr constant [8 x i8] c"last:  \00", align 1
+@str.12 = private unnamed_addr constant [6 x i8] c"Last{\00", align 1
+@str.13 = private unnamed_addr constant [6 x i8] c"n: %d\00", align 1
+@str.14 = private unnamed_addr constant [8 x i8] c", tag: \00", align 1
+@str.15 = private unnamed_addr constant [7 x i8] c"Inner{\00", align 1
+@str.16 = private unnamed_addr constant [9 x i8] c"name: %s\00", align 1
+@str.17 = private unnamed_addr constant [2 x i8] c"}\00", align 1
+@str.18 = private unnamed_addr constant [2 x i8] c"}\00", align 1
+@str.19 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %a = alloca %First, align 8
+  %b = alloca %Last, align 8
+  store %First zeroinitializer, %First* %a, align 8
+  %a.tag = getelementptr inbounds %First, %First* %a, i32 0, i32 0
+  %a.tag.name = getelementptr inbounds %Inner, %Inner* %a.tag, i32 0, i32 0
+  store i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i8** %a.tag.name, align 8
+  %a.n = getelementptr inbounds %First, %First* %a, i32 0, i32 1
+  store i32 1, i32* %a.n, align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.1, i32 0, i32 0))
+  %call.dprintf1 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.2, i32 0, i32 0))
+  %a.tag2 = getelementptr inbounds %First, %First* %a, i32 0, i32 0
+  %call.dprintf3 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.3, i32 0, i32 0))
+  %call.dprintf4 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.4, i32 0, i32 0))
+  %a.tag.name5 = getelementptr inbounds %Inner, %Inner* %a.tag2, i32 0, i32 0
+  %"$a.tag.name" = load i8*, i8** %a.tag.name5, align 8
+  %call.dprintf6 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.5, i32 0, i32 0), i8* %"$a.tag.name")
+  %call.dprintf7 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.6, i32 0, i32 0))
+  %a.n8 = getelementptr inbounds %First, %First* %a, i32 0, i32 1
+  %"$a.n" = load i32, i32* %a.n8, align 4
+  %call.dprintf9 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.7, i32 0, i32 0), i32 %"$a.n")
+  %call.dprintf10 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.8, i32 0, i32 0))
+  %call.dprintf11 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.9, i32 0, i32 0))
+  store %Last zeroinitializer, %Last* %b, align 8
+  %b.n = getelementptr inbounds %Last, %Last* %b, i32 0, i32 0
+  store i32 2, i32* %b.n, align 4
+  %b.tag = getelementptr inbounds %Last, %Last* %b, i32 0, i32 1
+  %b.tag.name = getelementptr inbounds %Inner, %Inner* %b.tag, i32 0, i32 0
+  store i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.10, i32 0, i32 0), i8** %b.tag.name, align 8
+  %call.dprintf12 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.11, i32 0, i32 0))
+  %call.dprintf13 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.12, i32 0, i32 0))
+  %b.n14 = getelementptr inbounds %Last, %Last* %b, i32 0, i32 0
+  %"$b.n" = load i32, i32* %b.n14, align 4
+  %call.dprintf15 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.13, i32 0, i32 0), i32 %"$b.n")
+  %b.tag16 = getelementptr inbounds %Last, %Last* %b, i32 0, i32 1
+  %call.dprintf17 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.14, i32 0, i32 0))
+  %call.dprintf18 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.15, i32 0, i32 0))
+  %b.tag.name19 = getelementptr inbounds %Inner, %Inner* %b.tag16, i32 0, i32 0
+  %"$b.tag.name" = load i8*, i8** %b.tag.name19, align 8
+  %call.dprintf20 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.16, i32 0, i32 0), i8* %"$b.tag.name")
+  %call.dprintf21 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.17, i32 0, i32 0))
+  %call.dprintf22 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.18, i32 0, i32 0))
+  %call.dprintf23 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.19, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
