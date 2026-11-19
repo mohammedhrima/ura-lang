@@ -881,7 +881,7 @@ _ura_test_case() {
 
 _ura_test_file() {
     local md_file="$1" only="$2"
-    local numbers number work code
+    local numbers number work code passed failed stop
 
     numbers=$(grep -oE '^## [0-9]{3}' "$md_file" | grep -oE '[0-9]{3}')
 
@@ -898,36 +898,54 @@ _ura_test_file() {
     work=$(mktemp -d)
     _ura_split_entries "$md_file" "$work"
 
-    # workers run in a subshell: no job-control noise, and wait only sees them;
-    # command substitution, not a bare $numbers: zsh does not word-split variables
+    # everything runs in a subshell, so job control prints nothing: workers start
+    # in the background, and each result prints as soon as it and the ones before
+    # it are done; command substitution, not a bare $numbers: zsh does not split
     (
-        running=0
+        (
+            running=0
+            for number in $(printf '%s\n' "$numbers"); do
+                (
+                    _ura_test_case "$md_file" "$number" "$work" > "$work/$number.out" 2>&1
+                    echo $? > "$work/$number.code"
+                ) &
+                running=$((running + 1))
+                if [ "$running" -ge "$URA_JOBS" ]; then
+                    wait
+                    running=0
+                fi
+            done
+            wait
+        ) &
+        passed=0
+        failed=0
+        stop=0
         for number in $(printf '%s\n' "$numbers"); do
-            (
-                _ura_test_case "$md_file" "$number" "$work" > "$work/$number.out" 2>&1
-                echo $? > "$work/$number.code"
-            ) &
-            running=$((running + 1))
-            if [ "$running" -ge "$URA_JOBS" ]; then
-                wait
-                running=0
+            while [ ! -s "$work/$number.code" ]; do
+                sleep 0.05
+            done
+            cat "$work/$number.out"
+            code=$(cat "$work/$number.code")
+            if [ "$code" -eq 0 ]; then
+                passed=$((passed + 1))
+            elif [ "$code" -eq 2 ]; then
+                stop=1
+                break
+            else
+                failed=$((failed + 1))
             fi
         done
         wait
+        echo "$passed $failed $stop" > "$work/tally"
     )
 
-    for number in $(printf '%s\n' "$numbers"); do
-        cat "$work/$number.out"
-        code=$(cat "$work/$number.code")
-        if [ "$code" -eq 0 ]; then
-            _ura_passed=$((_ura_passed + 1))
-        elif [ "$code" -eq 2 ]; then
-            rm -rf "$work"
-            return 1
-        else
-            _ura_failed=$((_ura_failed + 1))
-        fi
-    done
+    read -r passed failed stop < "$work/tally"
+    _ura_passed=$((_ura_passed + passed))
+    _ura_failed=$((_ura_failed + failed))
+    if [ "$stop" -eq 1 ]; then
+        rm -rf "$work"
+        return 1
+    fi
     rm -rf "$work"
 }
 
