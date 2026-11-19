@@ -3,7 +3,7 @@
 ## index
 
 - 001 — nullable: comparing a never-null value to null is rejected
-- 002 — nullable: null needs a target type
+- 002 — nullable: a char[] (C string) can be null, an i32 can't
 - 003 — try: a throw is caught in the same function
 - 004 — try: a throw propagates across calls to a caller's catch
 - 005 — try: a rethrow inside a catch propagates outward
@@ -23,22 +23,58 @@
 // error: 's1' is never null, so this comparison is always the same
 
 fn main() i32:
-    s1 char[] = "hello"
+    s1 String = String::create("hello")
     if s1 != null:
         output("never\n")
     return 0
 ```
 
+### stderr
+
+```
+error: test.ura:5:8 's1' is never null, so this comparison is always the same
+  |
+5 |     if s1 != null:
+  |        ^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
 ---
 
-## 002 — nullable: null needs a target type
+## 002 — nullable: a char[] (C string) can be null, an i32 can't
 
 ```ura
-// error: 'x' can never be null; declare it optional to assign null to it
+// error: 'i32' can't be null
 
 fn main() i32:
     x char[] = null
+    if x == null:
+        output("x is null\n")
+    n i32 = null
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:7:13 'i32' can't be null
+  |
+7 |     n i32 = null
+  |             ^^^^
+help: null fits a ref (&T) or an array (T[])
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---

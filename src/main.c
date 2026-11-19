@@ -176,7 +176,7 @@ struct {
     { "catch", { .type = CATCH } },
     { "throw", { .type = THROW } },
     { "template", { .type = TEMPLATE } },
-    // { "null", {.type = ZERO } },
+    { "null", { .type = ZERO } },
     { "as", { .type = AS } },
     { "from", { .type = FROM } },
     { "self", { .type = SELF, .name = "self" } },
@@ -891,6 +891,9 @@ Node *parse_prime() {
             check_type_first(token);
         return new_node(token);
     }
+    case ZERO: {
+        return new_node(token);
+    }
     case SCOPE: {
         node = new_node(token);
         enter_scope(node);
@@ -916,6 +919,7 @@ Node *parse_prime() {
             )
         );
         append(node->children, new_builtin(DROP, "drop", 0, NULL));
+        append(node->children, new_builtin(IS_ZERO, "isZero", 0, bool_type()));
         Node *bytes = chars_type();
         Node *size = new_type(INT, 32, NULL);
         Node *void_type = new_type(VOID, 0, NULL);
@@ -1547,6 +1551,7 @@ Node *find_function_like(char *name, int max_diff) {
                 SIZEOF,
                 TYPEOF,
                 DROP,
+                IS_ZERO,
                 ALLOC,
                 MEMCPY,
                 FREE,
@@ -1732,7 +1737,8 @@ bool is_ref_binding(Node *node) {
     bool is_address = right->token->type == REF && !right->token->is_type;
     bool is_ref_call = call->token->type == FN_CALL && lives_in_variable(right);
     bool is_declaration = node->left->declared == NULL;
-    return is_address || (is_ref_call && is_declaration);
+    bool is_null = right->token->type == ZERO;
+    return is_address || is_null || (is_ref_call && is_declaration);
 }
 
 char *type_name(Node *type) {
@@ -1758,6 +1764,7 @@ Node *type_of(Node *node) {
     case AS:        return node->to_type;
     case LCBRACK:   return node->data_type;
     case LBRACK:    return node->data_type;
+    case ZERO:      return node->data_type;
     case DOUBLE_DOTS: return type_of(node->right);
     case DOT: {
         if (node->right->token->type == FN_CALL)
@@ -1772,6 +1779,8 @@ Node *type_of(Node *node) {
     case VAR: case PARAM: return is_ref_variable(node) ? node->data_type->data_type : node->data_type;
     case REF: {
         Node *type = type_of(node->operand);
+        if (type && type->token->type == REF)
+            return type;
         return type ? new_type(REF, 0, type) : NULL;
     }
     case FN_CALL: {
@@ -1818,7 +1827,7 @@ void analyze(Node *node) {
     case VAR: case PARAM: case CHARS: case VARIADIC:
     case WRITE: case READ: case SIZEOF: case DROP:
     case ALLOC: case MEMCPY: case FREE:
-    case TYPEOF: case USE:
+    case TYPEOF: case USE: case IS_ZERO: case ZERO:
     case MACRO_IF: case MACRO_ERROR: { // clang-format on
         break;
     } // clang-format off
@@ -2305,6 +2314,7 @@ void codegen_statements(Node *node) {
                 SIZEOF,
                 TYPEOF,
                 DROP,
+                IS_ZERO,
                 ALLOC,
                 MEMCPY,
                 FREE,
@@ -2355,8 +2365,12 @@ void codegen(Node *node) {
         if (node->token->is_type) {
             codegen(node->data_type);
             node->token->ucg = ucg_ref_type(node->data_type->token->ucg);
-        } else
-            node->token->ucg = ucg_ref(codegen_in_variable(node->operand));
+        } else {
+            Ucg *place = codegen_in_variable(node->operand);
+            Node *type = type_of(node->operand);
+            bool is_ref = type && type->token->type == REF;
+            node->token->ucg = is_ref ? place : ucg_ref(place);
+        }
         break;
     }
     case COPY: {
@@ -2476,7 +2490,14 @@ void codegen(Node *node) {
             args[i] = node->children[i]->token->ucg;
         }
         Token *fn = node->to_call->token;
-        if (fn->type == READ)
+        if (fn->type == IS_ZERO) {
+            Node *arg = node->children[0];
+            bool is_ref = is_ref_variable(arg);
+            Node *type = is_ref ? arg->data_type : type_of(arg);
+            Ucg *value = is_ref ? arg->declared->token->ucg : args[0];
+            codegen(type);
+            node->token->ucg = ucg_op(EQ, value, ucg_null(type->token->ucg));
+        } else if (fn->type == READ)
             node->token->ucg = ucg_read(ucg_i32_value(fn->num.value));
         else if (includes(fn->type, SIZEOF, TYPEOF, 0)) {
             Node *arg = node->children[0];
@@ -2602,6 +2623,11 @@ void codegen(Node *node) {
         node->token->ucg = node->declared->token->ucg;
         break;
     }
+    case ZERO: {
+        codegen(node->data_type);
+        node->token->ucg = ucg_null(node->data_type->token->ucg);
+        break;
+    }
     case LBRACK: {
         Node *type = node->data_type;
         Node *elem = element_type_of(type);
@@ -2724,7 +2750,7 @@ void codegen(Node *node) {
             Node *slot = node->left->declared ? node->left->declared : node->left;
             codegen(node->right);
             Ucg *address = node->right->token->ucg;
-            if (node->right->token->type != REF)
+            if (!includes(node->right->token->type, REF, ZERO, 0))
                 address = ucg_ref(address);
             node->token->ucg = ucg_assign(slot->token->ucg, address);
             break;
@@ -2744,9 +2770,12 @@ void codegen(Node *node) {
             node->token->ucg = ucg_assign(node->left->token->ucg, value);
             break;
         }
-        ucg =
-            ucg_op(node->token->type, node->left->token->ucg, node->right->token->ucg);
-        node->token->ucg = ucg;
+        Ucg *left = node->left->token->ucg;
+        Ucg *right = node->right->token->ucg;
+        bool is_null_compare = node->right->token->type == ZERO;
+        if (is_null_compare && is_ref_variable(node->left))
+            left = node->left->declared->token->ucg;
+        node->token->ucg = ucg_op(node->token->type, left, right);
         break;
     }
     default: {

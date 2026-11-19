@@ -301,6 +301,8 @@ void check_macro(Node *node);
 void check_match(Node *node);
 void check_member(Node *node);
 void check_name(Node *node);
+void check_null(Node *node, Node *expected);
+void check_null_compare(Node *node);
 void check_operand(Node *node);
 void check_operation(Node *node);
 void check_param_type(Token *token, Node *param);

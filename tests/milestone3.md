@@ -2582,7 +2582,7 @@ fn main() i32:
     a.next = &b
     sum i32 = 0
     p &Node = &a
-    while not isNullable(p):
+    while not isZero(p):
         sum += p.value
         p = &p.next
     return sum + a.next.next.value * 10
@@ -2594,7 +2594,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Node = type { i32, %Node* }
 
@@ -2606,52 +2606,53 @@ entry:
   %sum = alloca i32, align 4
   %p = alloca %Node*, align 8
   store %Node zeroinitializer, %Node* %c, align 8
-  %load.c.value = getelementptr inbounds %Node, %Node* %c, i32 0, i32 0
-  store i32 3, i32* %load.c.value, align 4
+  %c.value = getelementptr inbounds %Node, %Node* %c, i32 0, i32 0
+  store i32 3, i32* %c.value, align 4
   store %Node zeroinitializer, %Node* %b, align 8
-  %load.b.value = getelementptr inbounds %Node, %Node* %b, i32 0, i32 0
-  store i32 2, i32* %load.b.value, align 4
-  %load.b.next = getelementptr inbounds %Node, %Node* %b, i32 0, i32 1
-  store %Node* %c, %Node** %load.b.next, align 8
+  %b.value = getelementptr inbounds %Node, %Node* %b, i32 0, i32 0
+  store i32 2, i32* %b.value, align 4
+  %b.next = getelementptr inbounds %Node, %Node* %b, i32 0, i32 1
+  store %Node* %c, %Node** %b.next, align 8
   store %Node zeroinitializer, %Node* %a, align 8
-  %load.a.value = getelementptr inbounds %Node, %Node* %a, i32 0, i32 0
-  store i32 1, i32* %load.a.value, align 4
-  %load.a.next = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
-  store %Node* %b, %Node** %load.a.next, align 8
+  %a.value = getelementptr inbounds %Node, %Node* %a, i32 0, i32 0
+  store i32 1, i32* %a.value, align 4
+  %a.next = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
+  store %Node* %b, %Node** %a.next, align 8
   store i32 0, i32* %sum, align 4
   store %Node* %a, %Node** %p, align 8
-  br label %cond
+  br label %while0
 
-cond:                                             ; preds = %then, %entry
-  %dref.p = load %Node*, %Node** %p, align 8
-  %"isNullable(dref.p)" = icmp eq %Node* %dref.p, null
-  %NOT = xor i1 %"isNullable(dref.p)", true
-  br i1 %NOT, label %then, label %endwhile
+while0:                                           ; preds = %while0.then, %entry
+  %"*p" = load %Node*, %Node** %p, align 8
+  %"$p" = load %Node*, %Node** %p, align 8
+  %EQ = icmp eq %Node* %"$p", null
+  %NOT = xor i1 %EQ, true
+  br i1 %NOT, label %while0.then, label %endloop
 
-then:                                             ; preds = %cond
-  %dref.p1 = load %Node*, %Node** %p, align 8
-  %load.dref.p.value = getelementptr inbounds %Node, %Node* %dref.p1, i32 0, i32 0
-  %load.load.dref.p.value = load i32, i32* %load.dref.p.value, align 4
-  %old = load i32, i32* %sum, align 4
-  %ADD_ASSIGN = add i32 %old, %load.load.dref.p.value
-  store i32 %ADD_ASSIGN, i32* %sum, align 4
-  %dref.p2 = load %Node*, %Node** %p, align 8
-  %load.dref.p.next = getelementptr inbounds %Node, %Node* %dref.p2, i32 0, i32 1
-  %dref.load.dref.p.next = load %Node*, %Node** %load.dref.p.next, align 8
-  store %Node* %dref.load.dref.p.next, %Node** %p, align 8
-  br label %cond
+while0.then:                                      ; preds = %while0
+  %"*p1" = load %Node*, %Node** %p, align 8
+  %"*p.value" = getelementptr inbounds %Node, %Node* %"*p1", i32 0, i32 0
+  %"$*p.value" = load i32, i32* %"*p.value", align 4
+  %"$sum" = load i32, i32* %sum, align 4
+  %ADD = add i32 %"$sum", %"$*p.value"
+  store i32 %ADD, i32* %sum, align 4
+  %"*p2" = load %Node*, %Node** %p, align 8
+  %"*p.next" = getelementptr inbounds %Node, %Node* %"*p2", i32 0, i32 1
+  %"$*p.next" = load %Node*, %Node** %"*p.next", align 8
+  store %Node* %"$*p.next", %Node** %p, align 8
+  br label %while0
 
-endwhile:                                         ; preds = %cond
-  %load.sum = load i32, i32* %sum, align 4
-  %load.a.next3 = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
-  %dref.load.a.next = load %Node*, %Node** %load.a.next3, align 8
-  %load.dref.load.a.next.next = getelementptr inbounds %Node, %Node* %dref.load.a.next, i32 0, i32 1
-  %dref.load.dref.load.a.next.next = load %Node*, %Node** %load.dref.load.a.next.next, align 8
-  %load.dref.load.dref.load.a.next.next.value = getelementptr inbounds %Node, %Node* %dref.load.dref.load.a.next.next, i32 0, i32 0
-  %load.load.dref.load.dref.load.a.next.next.value = load i32, i32* %load.dref.load.dref.load.a.next.next.value, align 4
-  %MUL = mul i32 %load.load.dref.load.dref.load.a.next.next.value, 10
-  %ADD = add i32 %load.sum, %MUL
-  ret i32 %ADD
+endloop:                                          ; preds = %while0
+  %a.next3 = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
+  %"*a.next" = load %Node*, %Node** %a.next3, align 8
+  %"*a.next.next" = getelementptr inbounds %Node, %Node* %"*a.next", i32 0, i32 1
+  %"**a.next.next" = load %Node*, %Node** %"*a.next.next", align 8
+  %"**a.next.next.value" = getelementptr inbounds %Node, %Node* %"**a.next.next", i32 0, i32 0
+  %"$**a.next.next.value" = load i32, i32* %"**a.next.next.value", align 4
+  %MUL = mul i32 %"$**a.next.next.value", 10
+  %"$sum4" = load i32, i32* %sum, align 4
+  %ADD5 = add i32 %"$sum4", %MUL
+  ret i32 %ADD5
 }
 ```
 
@@ -3183,11 +3184,11 @@ struct Tree:
     right &Tree
 
 fn sum(t &Tree) i32:
-    if isNullable(t): return 0
+    if isZero(t): return 0
     return t.value + sum(&t.left) + sum(&t.right)
 
 fn depth(t &Tree) i32:
-    if isNullable(t): return 0
+    if isZero(t): return 0
     l i32 = depth(&t.left)
     r i32 = depth(&t.right)
     if l > r: return l + 1
@@ -3214,7 +3215,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Tree = type { i32, %Tree*, %Tree* }
 
@@ -3222,28 +3223,32 @@ define i32 @sum(%Tree* %0) {
 entry:
   %t = alloca %Tree*, align 8
   store %Tree* %0, %Tree** %t, align 8
-  %dref.t = load %Tree*, %Tree** %t, align 8
-  %"isNullable(dref.t)" = icmp eq %Tree* %dref.t, null
-  br i1 %"isNullable(dref.t)", label %then, label %endif
+  br label %if0
 
-then:                                             ; preds = %entry
+if0:                                              ; preds = %entry
+  %"*t" = load %Tree*, %Tree** %t, align 8
+  %"$t" = load %Tree*, %Tree** %t, align 8
+  %EQ = icmp eq %Tree* %"$t", null
+  br i1 %EQ, label %if0.then, label %endif
+
+if0.then:                                         ; preds = %if0
   ret i32 0
 
-endif:                                            ; preds = %entry
-  %dref.t1 = load %Tree*, %Tree** %t, align 8
-  %load.dref.t.value = getelementptr inbounds %Tree, %Tree* %dref.t1, i32 0, i32 0
-  %load.load.dref.t.value = load i32, i32* %load.dref.t.value, align 4
-  %dref.t2 = load %Tree*, %Tree** %t, align 8
-  %load.dref.t.left = getelementptr inbounds %Tree, %Tree* %dref.t2, i32 0, i32 1
-  %dref.load.dref.t.left = load %Tree*, %Tree** %load.dref.t.left, align 8
-  %"sum(&dref.load.dref.t.left)" = call i32 @sum(%Tree* %dref.load.dref.t.left)
-  %ADD = add i32 %load.load.dref.t.value, %"sum(&dref.load.dref.t.left)"
-  %dref.t3 = load %Tree*, %Tree** %t, align 8
-  %load.dref.t.right = getelementptr inbounds %Tree, %Tree* %dref.t3, i32 0, i32 2
-  %dref.load.dref.t.right = load %Tree*, %Tree** %load.dref.t.right, align 8
-  %"sum(&dref.load.dref.t.right)" = call i32 @sum(%Tree* %dref.load.dref.t.right)
-  %ADD4 = add i32 %ADD, %"sum(&dref.load.dref.t.right)"
-  ret i32 %ADD4
+endif:                                            ; preds = %if0
+  %"*t1" = load %Tree*, %Tree** %t, align 8
+  %"*t.value" = getelementptr inbounds %Tree, %Tree* %"*t1", i32 0, i32 0
+  %"*t2" = load %Tree*, %Tree** %t, align 8
+  %"*t.left" = getelementptr inbounds %Tree, %Tree* %"*t2", i32 0, i32 1
+  %"$*t.left" = load %Tree*, %Tree** %"*t.left", align 8
+  %call.sum = call i32 @sum(%Tree* %"$*t.left")
+  %"$*t.value" = load i32, i32* %"*t.value", align 4
+  %ADD = add i32 %"$*t.value", %call.sum
+  %"*t3" = load %Tree*, %Tree** %t, align 8
+  %"*t.right" = getelementptr inbounds %Tree, %Tree* %"*t3", i32 0, i32 2
+  %"$*t.right" = load %Tree*, %Tree** %"*t.right", align 8
+  %call.sum4 = call i32 @sum(%Tree* %"$*t.right")
+  %ADD5 = add i32 %ADD, %call.sum4
+  ret i32 %ADD5
 }
 
 define i32 @depth(%Tree* %0) {
@@ -3252,37 +3257,44 @@ entry:
   %l = alloca i32, align 4
   %r = alloca i32, align 4
   store %Tree* %0, %Tree** %t, align 8
-  %dref.t = load %Tree*, %Tree** %t, align 8
-  %"isNullable(dref.t)" = icmp eq %Tree* %dref.t, null
-  br i1 %"isNullable(dref.t)", label %then, label %endif
+  br label %if1
 
-then:                                             ; preds = %entry
+if1:                                              ; preds = %entry
+  %"*t" = load %Tree*, %Tree** %t, align 8
+  %"$t" = load %Tree*, %Tree** %t, align 8
+  %EQ = icmp eq %Tree* %"$t", null
+  br i1 %EQ, label %if1.then, label %endif
+
+if1.then:                                         ; preds = %if1
   ret i32 0
 
-endif:                                            ; preds = %entry
-  %dref.t1 = load %Tree*, %Tree** %t, align 8
-  %load.dref.t.left = getelementptr inbounds %Tree, %Tree* %dref.t1, i32 0, i32 1
-  %dref.load.dref.t.left = load %Tree*, %Tree** %load.dref.t.left, align 8
-  %"depth(&dref.load.dref.t.left)" = call i32 @depth(%Tree* %dref.load.dref.t.left)
-  store i32 %"depth(&dref.load.dref.t.left)", i32* %l, align 4
-  %dref.t2 = load %Tree*, %Tree** %t, align 8
-  %load.dref.t.right = getelementptr inbounds %Tree, %Tree* %dref.t2, i32 0, i32 2
-  %dref.load.dref.t.right = load %Tree*, %Tree** %load.dref.t.right, align 8
-  %"depth(&dref.load.dref.t.right)" = call i32 @depth(%Tree* %dref.load.dref.t.right)
-  store i32 %"depth(&dref.load.dref.t.right)", i32* %r, align 4
-  %load.l = load i32, i32* %l, align 4
-  %load.r = load i32, i32* %r, align 4
-  %GT = icmp sgt i32 %load.l, %load.r
-  br i1 %GT, label %then4, label %endif3
+endif:                                            ; preds = %if1
+  %"*t2" = load %Tree*, %Tree** %t, align 8
+  %"*t.left" = getelementptr inbounds %Tree, %Tree* %"*t2", i32 0, i32 1
+  %"$*t.left" = load %Tree*, %Tree** %"*t.left", align 8
+  %call.depth = call i32 @depth(%Tree* %"$*t.left")
+  store i32 %call.depth, i32* %l, align 4
+  %"*t3" = load %Tree*, %Tree** %t, align 8
+  %"*t.right" = getelementptr inbounds %Tree, %Tree* %"*t3", i32 0, i32 2
+  %"$*t.right" = load %Tree*, %Tree** %"*t.right", align 8
+  %call.depth4 = call i32 @depth(%Tree* %"$*t.right")
+  store i32 %call.depth4, i32* %r, align 4
+  br label %if2
 
-then4:                                            ; preds = %endif
-  %load.l5 = load i32, i32* %l, align 4
-  %ADD = add i32 %load.l5, 1
+if2:                                              ; preds = %endif
+  %"$l" = load i32, i32* %l, align 4
+  %"$r" = load i32, i32* %r, align 4
+  %GT = icmp sgt i32 %"$l", %"$r"
+  br i1 %GT, label %if2.then, label %endif1
+
+if2.then:                                         ; preds = %if2
+  %"$l5" = load i32, i32* %l, align 4
+  %ADD = add i32 %"$l5", 1
   ret i32 %ADD
 
-endif3:                                           ; preds = %endif
-  %load.r6 = load i32, i32* %r, align 4
-  %ADD7 = add i32 %load.r6, 1
+endif1:                                           ; preds = %if2
+  %"$r6" = load i32, i32* %r, align 4
+  %ADD7 = add i32 %"$r6", 1
   ret i32 %ADD7
 }
 
@@ -3296,24 +3308,24 @@ entry:
   store %Tree zeroinitializer, %Tree* %b, align 8
   store %Tree zeroinitializer, %Tree* %c, align 8
   store %Tree zeroinitializer, %Tree* %d, align 8
-  %load.a.value = getelementptr inbounds %Tree, %Tree* %a, i32 0, i32 0
-  store i32 1, i32* %load.a.value, align 4
-  %load.b.value = getelementptr inbounds %Tree, %Tree* %b, i32 0, i32 0
-  store i32 2, i32* %load.b.value, align 4
-  %load.c.value = getelementptr inbounds %Tree, %Tree* %c, i32 0, i32 0
-  store i32 3, i32* %load.c.value, align 4
-  %load.d.value = getelementptr inbounds %Tree, %Tree* %d, i32 0, i32 0
-  store i32 4, i32* %load.d.value, align 4
-  %load.a.left = getelementptr inbounds %Tree, %Tree* %a, i32 0, i32 1
-  store %Tree* %b, %Tree** %load.a.left, align 8
-  %load.a.right = getelementptr inbounds %Tree, %Tree* %a, i32 0, i32 2
-  store %Tree* %c, %Tree** %load.a.right, align 8
-  %load.b.left = getelementptr inbounds %Tree, %Tree* %b, i32 0, i32 1
-  store %Tree* %d, %Tree** %load.b.left, align 8
-  %"sum(&a)" = call i32 @sum(%Tree* %a)
-  %MUL = mul i32 %"sum(&a)", 10
-  %"depth(&a)" = call i32 @depth(%Tree* %a)
-  %ADD = add i32 %MUL, %"depth(&a)"
+  %a.value = getelementptr inbounds %Tree, %Tree* %a, i32 0, i32 0
+  store i32 1, i32* %a.value, align 4
+  %b.value = getelementptr inbounds %Tree, %Tree* %b, i32 0, i32 0
+  store i32 2, i32* %b.value, align 4
+  %c.value = getelementptr inbounds %Tree, %Tree* %c, i32 0, i32 0
+  store i32 3, i32* %c.value, align 4
+  %d.value = getelementptr inbounds %Tree, %Tree* %d, i32 0, i32 0
+  store i32 4, i32* %d.value, align 4
+  %a.left = getelementptr inbounds %Tree, %Tree* %a, i32 0, i32 1
+  store %Tree* %b, %Tree** %a.left, align 8
+  %a.right = getelementptr inbounds %Tree, %Tree* %a, i32 0, i32 2
+  store %Tree* %c, %Tree** %a.right, align 8
+  %b.left = getelementptr inbounds %Tree, %Tree* %b, i32 0, i32 1
+  store %Tree* %d, %Tree** %b.left, align 8
+  %call.sum = call i32 @sum(%Tree* %a)
+  %MUL = mul i32 %call.sum, 10
+  %call.depth = call i32 @depth(%Tree* %a)
+  %ADD = add i32 %MUL, %call.depth
   ret i32 %ADD
 }
 ```
@@ -3329,7 +3341,7 @@ struct Node:
     next &Node
 
 fn length(n &Node) i32:
-    if isNullable(n): return 0
+    if isZero(n): return 0
     return 1 + length(&n.next)
 
 fn main() i32:
@@ -3351,7 +3363,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Node = type { i32, %Node* }
 
@@ -3359,19 +3371,23 @@ define i32 @length(%Node* %0) {
 entry:
   %n = alloca %Node*, align 8
   store %Node* %0, %Node** %n, align 8
-  %dref.n = load %Node*, %Node** %n, align 8
-  %"isNullable(dref.n)" = icmp eq %Node* %dref.n, null
-  br i1 %"isNullable(dref.n)", label %then, label %endif
+  br label %if0
 
-then:                                             ; preds = %entry
+if0:                                              ; preds = %entry
+  %"*n" = load %Node*, %Node** %n, align 8
+  %"$n" = load %Node*, %Node** %n, align 8
+  %EQ = icmp eq %Node* %"$n", null
+  br i1 %EQ, label %if0.then, label %endif
+
+if0.then:                                         ; preds = %if0
   ret i32 0
 
-endif:                                            ; preds = %entry
-  %dref.n1 = load %Node*, %Node** %n, align 8
-  %load.dref.n.next = getelementptr inbounds %Node, %Node* %dref.n1, i32 0, i32 1
-  %dref.load.dref.n.next = load %Node*, %Node** %load.dref.n.next, align 8
-  %"length(&dref.load.dref.n.next)" = call i32 @length(%Node* %dref.load.dref.n.next)
-  %ADD = add i32 1, %"length(&dref.load.dref.n.next)"
+endif:                                            ; preds = %if0
+  %"*n1" = load %Node*, %Node** %n, align 8
+  %"*n.next" = getelementptr inbounds %Node, %Node* %"*n1", i32 0, i32 1
+  %"$*n.next" = load %Node*, %Node** %"*n.next", align 8
+  %call.length = call i32 @length(%Node* %"$*n.next")
+  %ADD = add i32 1, %call.length
   ret i32 %ADD
 }
 
@@ -3381,75 +3397,76 @@ entry:
   %b = alloca %Node, align 8
   %c = alloca %Node, align 8
   %nodes = alloca %Node*, align 8
-  %array = alloca [3 x %Node], align 8
+  %arr = alloca [3 x %Node], align 8
   %i = alloca i32, align 4
   store %Node zeroinitializer, %Node* %a, align 8
   store %Node zeroinitializer, %Node* %b, align 8
   store %Node zeroinitializer, %Node* %c, align 8
-  %load.a = load %Node, %Node* %a, align 8
-  %load.b = load %Node, %Node* %b, align 8
-  %load.c = load %Node, %Node* %c, align 8
-  %e = getelementptr inbounds [3 x %Node], [3 x %Node]* %array, i32 0, i32 0
-  store %Node %load.a, %Node* %e, align 8
-  %e1 = getelementptr inbounds [3 x %Node], [3 x %Node]* %array, i32 0, i32 1
-  store %Node %load.b, %Node* %e1, align 8
-  %e2 = getelementptr inbounds [3 x %Node], [3 x %Node]* %array, i32 0, i32 2
-  store %Node %load.c, %Node* %e2, align 8
-  %array3 = getelementptr inbounds [3 x %Node], [3 x %Node]* %array, i32 0, i32 0
-  store %Node* %array3, %Node** %nodes, align 8
+  %"$a" = load %Node, %Node* %a, align 8
+  %"$b" = load %Node, %Node* %b, align 8
+  %"$c" = load %Node, %Node* %c, align 8
+  %0 = insertvalue [3 x %Node] undef, %Node %"$a", 0
+  %1 = insertvalue [3 x %Node] %0, %Node %"$b", 1
+  %2 = insertvalue [3 x %Node] %1, %Node %"$c", 2
+  store [3 x %Node] %2, [3 x %Node]* %arr, align 8
+  %3 = getelementptr inbounds [3 x %Node], [3 x %Node]* %arr, i32 0, i32 0
+  store %Node* %3, %Node** %nodes, align 8
   store i32 0, i32* %i, align 4
-  br label %cond
+  br label %while1
 
-cond:                                             ; preds = %endif, %entry
-  %load.i = load i32, i32* %i, align 4
-  %LT = icmp slt i32 %load.i, 3
-  br i1 %LT, label %then, label %endwhile
+while1:                                           ; preds = %endif, %entry
+  %"$i" = load i32, i32* %i, align 4
+  %LT = icmp slt i32 %"$i", 3
+  br i1 %LT, label %while1.then, label %endloop
 
-then:                                             ; preds = %cond
-  %load.nodes = load %Node*, %Node** %nodes, align 8
-  %load.i4 = load i32, i32* %i, align 4
-  %"load.nodes[load.i]" = getelementptr inbounds %Node, %Node* %load.nodes, i32 %load.i4
-  %"load.load.nodes[load.i].value" = getelementptr inbounds %Node, %Node* %"load.nodes[load.i]", i32 0, i32 0
-  %load.i5 = load i32, i32* %i, align 4
-  %ADD = add i32 %load.i5, 1
+while1.then:                                      ; preds = %while1
+  %"$nodes" = load %Node*, %Node** %nodes, align 8
+  %"$i1" = load i32, i32* %i, align 4
+  %"nodes[]" = getelementptr inbounds %Node, %Node* %"$nodes", i32 %"$i1"
+  %"nodes[].value" = getelementptr inbounds %Node, %Node* %"nodes[]", i32 0, i32 0
+  %"$i2" = load i32, i32* %i, align 4
+  %ADD = add i32 %"$i2", 1
   %MUL = mul i32 %ADD, 10
-  store i32 %MUL, i32* %"load.load.nodes[load.i].value", align 4
-  %load.i7 = load i32, i32* %i, align 4
-  %LT8 = icmp slt i32 %load.i7, 2
-  br i1 %LT8, label %then6, label %endif
+  store i32 %MUL, i32* %"nodes[].value", align 4
+  br label %if2
 
-endwhile:                                         ; preds = %cond
-  %load.nodes15 = load %Node*, %Node** %nodes, align 8
-  %"load.nodes[0]" = getelementptr inbounds %Node, %Node* %load.nodes15, i32 0
-  %"length(&load.nodes[0])" = call i32 @length(%Node* %"load.nodes[0]")
-  %load.nodes16 = load %Node*, %Node** %nodes, align 8
-  %"load.nodes[0]17" = getelementptr inbounds %Node, %Node* %load.nodes16, i32 0
-  %"load.load.nodes[0].next" = getelementptr inbounds %Node, %Node* %"load.nodes[0]17", i32 0, i32 1
-  %"dref.load.load.nodes[0].next" = load %Node*, %Node** %"load.load.nodes[0].next", align 8
-  %"load.dref.load.load.nodes[0].next.next" = getelementptr inbounds %Node, %Node* %"dref.load.load.nodes[0].next", i32 0, i32 1
-  %"dref.load.dref.load.load.nodes[0].next.next" = load %Node*, %Node** %"load.dref.load.load.nodes[0].next.next", align 8
-  %"load.dref.load.dref.load.load.nodes[0].next.next.value" = getelementptr inbounds %Node, %Node* %"dref.load.dref.load.load.nodes[0].next.next", i32 0, i32 0
-  %"load.load.dref.load.dref.load.load.nodes[0].next.next.value" = load i32, i32* %"load.dref.load.dref.load.load.nodes[0].next.next.value", align 4
-  %ADD18 = add i32 %"length(&load.nodes[0])", %"load.load.dref.load.dref.load.load.nodes[0].next.next.value"
-  ret i32 %ADD18
+if2:                                              ; preds = %while1.then
+  %"$i3" = load i32, i32* %i, align 4
+  %LT4 = icmp slt i32 %"$i3", 2
+  br i1 %LT4, label %if2.then, label %endif
 
-then6:                                            ; preds = %then
-  %load.nodes9 = load %Node*, %Node** %nodes, align 8
-  %load.i10 = load i32, i32* %i, align 4
-  %"load.nodes[load.i]11" = getelementptr inbounds %Node, %Node* %load.nodes9, i32 %load.i10
-  %"load.load.nodes[load.i].next" = getelementptr inbounds %Node, %Node* %"load.nodes[load.i]11", i32 0, i32 1
-  %load.nodes12 = load %Node*, %Node** %nodes, align 8
-  %load.i13 = load i32, i32* %i, align 4
-  %ADD14 = add i32 %load.i13, 1
-  %"load.nodes[load.i + 1]" = getelementptr inbounds %Node, %Node* %load.nodes12, i32 %ADD14
-  store %Node* %"load.nodes[load.i + 1]", %Node** %"load.load.nodes[load.i].next", align 8
+if2.then:                                         ; preds = %if2
+  %"$nodes5" = load %Node*, %Node** %nodes, align 8
+  %"$i6" = load i32, i32* %i, align 4
+  %"nodes[]7" = getelementptr inbounds %Node, %Node* %"$nodes5", i32 %"$i6"
+  %"nodes[].next" = getelementptr inbounds %Node, %Node* %"nodes[]7", i32 0, i32 1
+  %"$i8" = load i32, i32* %i, align 4
+  %ADD9 = add i32 %"$i8", 1
+  %"$nodes10" = load %Node*, %Node** %nodes, align 8
+  %"nodes[]11" = getelementptr inbounds %Node, %Node* %"$nodes10", i32 %ADD9
+  store %Node* %"nodes[]11", %Node** %"nodes[].next", align 8
   br label %endif
 
-endif:                                            ; preds = %then6, %then
-  %old = load i32, i32* %i, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* %i, align 4
-  br label %cond
+endif:                                            ; preds = %if2.then, %if2
+  %"$i12" = load i32, i32* %i, align 4
+  %ADD13 = add i32 %"$i12", 1
+  store i32 %ADD13, i32* %i, align 4
+  br label %while1
+
+endloop:                                          ; preds = %while1
+  %"$nodes14" = load %Node*, %Node** %nodes, align 8
+  %"nodes[]15" = getelementptr inbounds %Node, %Node* %"$nodes14", i32 0
+  %call.length = call i32 @length(%Node* %"nodes[]15")
+  %"$nodes16" = load %Node*, %Node** %nodes, align 8
+  %"nodes[]17" = getelementptr inbounds %Node, %Node* %"$nodes16", i32 0
+  %"nodes[].next18" = getelementptr inbounds %Node, %Node* %"nodes[]17", i32 0, i32 1
+  %"*nodes[].next" = load %Node*, %Node** %"nodes[].next18", align 8
+  %"*nodes[].next.next" = getelementptr inbounds %Node, %Node* %"*nodes[].next", i32 0, i32 1
+  %"**nodes[].next.next" = load %Node*, %Node** %"*nodes[].next.next", align 8
+  %"**nodes[].next.next.value" = getelementptr inbounds %Node, %Node* %"**nodes[].next.next", i32 0, i32 0
+  %"$**nodes[].next.next.value" = load i32, i32* %"**nodes[].next.next.value", align 4
+  %ADD19 = add i32 %call.length, %"$**nodes[].next.next.value"
+  ret i32 %ADD19
 }
 ```
 
@@ -3466,7 +3483,7 @@ struct Node:
 fn find(head &Node, v i32) i32:
     i i32 = 0
     p &Node = &head
-    while !isNullable(p):
+    while !isZero(p):
         if p.value == v: return i
         p = &p.next
         i += 1
@@ -3492,7 +3509,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Node = type { i32, %Node* }
 
@@ -3505,40 +3522,44 @@ entry:
   store %Node* %0, %Node** %head, align 8
   store i32 %1, i32* %v, align 4
   store i32 0, i32* %i, align 4
-  %dref.head = load %Node*, %Node** %head, align 8
-  store %Node* %dref.head, %Node** %p, align 8
-  br label %cond
+  %"*head" = load %Node*, %Node** %head, align 8
+  store %Node* %"*head", %Node** %p, align 8
+  br label %while0
 
-cond:                                             ; preds = %endif, %entry
-  %dref.p = load %Node*, %Node** %p, align 8
-  %"isNullable(dref.p)" = icmp eq %Node* %dref.p, null
-  %NOT = xor i1 %"isNullable(dref.p)", true
-  br i1 %NOT, label %then, label %endwhile
+while0:                                           ; preds = %endif, %entry
+  %"*p" = load %Node*, %Node** %p, align 8
+  %"$p" = load %Node*, %Node** %p, align 8
+  %EQ = icmp eq %Node* %"$p", null
+  %NOT = xor i1 %EQ, true
+  br i1 %NOT, label %while0.then, label %endloop
 
-then:                                             ; preds = %cond
-  %dref.p2 = load %Node*, %Node** %p, align 8
-  %load.dref.p.value = getelementptr inbounds %Node, %Node* %dref.p2, i32 0, i32 0
-  %load.load.dref.p.value = load i32, i32* %load.dref.p.value, align 4
-  %load.v = load i32, i32* %v, align 4
-  %EQ = icmp eq i32 %load.load.dref.p.value, %load.v
-  br i1 %EQ, label %then1, label %endif
+while0.then:                                      ; preds = %while0
+  br label %if1
 
-endwhile:                                         ; preds = %cond
+if1:                                              ; preds = %while0.then
+  %"*p1" = load %Node*, %Node** %p, align 8
+  %"*p.value" = getelementptr inbounds %Node, %Node* %"*p1", i32 0, i32 0
+  %"$*p.value" = load i32, i32* %"*p.value", align 4
+  %"$v" = load i32, i32* %v, align 4
+  %EQ2 = icmp eq i32 %"$*p.value", %"$v"
+  br i1 %EQ2, label %if1.then, label %endif
+
+if1.then:                                         ; preds = %if1
+  %"$i" = load i32, i32* %i, align 4
+  ret i32 %"$i"
+
+endif:                                            ; preds = %if1
+  %"*p3" = load %Node*, %Node** %p, align 8
+  %"*p.next" = getelementptr inbounds %Node, %Node* %"*p3", i32 0, i32 1
+  %"$*p.next" = load %Node*, %Node** %"*p.next", align 8
+  store %Node* %"$*p.next", %Node** %p, align 8
+  %"$i4" = load i32, i32* %i, align 4
+  %ADD = add i32 %"$i4", 1
+  store i32 %ADD, i32* %i, align 4
+  br label %while0
+
+endloop:                                          ; preds = %while0
   ret i32 -1
-
-then1:                                            ; preds = %then
-  %load.i = load i32, i32* %i, align 4
-  ret i32 %load.i
-
-endif:                                            ; preds = %then
-  %dref.p3 = load %Node*, %Node** %p, align 8
-  %load.dref.p.next = getelementptr inbounds %Node, %Node* %dref.p3, i32 0, i32 1
-  %dref.load.dref.p.next = load %Node*, %Node** %load.dref.p.next, align 8
-  store %Node* %dref.load.dref.p.next, %Node** %p, align 8
-  %old = load i32, i32* %i, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* %i, align 4
-  br label %cond
 }
 
 define i32 @main() {
@@ -3550,34 +3571,37 @@ entry:
   store %Node zeroinitializer, %Node* %a, align 8
   store %Node zeroinitializer, %Node* %b, align 8
   store %Node zeroinitializer, %Node* %c, align 8
-  %load.a.value = getelementptr inbounds %Node, %Node* %a, i32 0, i32 0
-  store i32 5, i32* %load.a.value, align 4
-  %load.b.value = getelementptr inbounds %Node, %Node* %b, i32 0, i32 0
-  store i32 8, i32* %load.b.value, align 4
-  %load.c.value = getelementptr inbounds %Node, %Node* %c, i32 0, i32 0
-  store i32 13, i32* %load.c.value, align 4
-  %load.a.next = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
-  store %Node* %b, %Node** %load.a.next, align 8
-  %load.b.next = getelementptr inbounds %Node, %Node* %b, i32 0, i32 1
-  store %Node* %c, %Node** %load.b.next, align 8
-  %"find(&a,13)" = call i32 @find(%Node* %a, i32 13)
-  %MUL = mul i32 %"find(&a,13)", 10
-  %"find(&a,8)" = call i32 @find(%Node* %a, i32 8)
-  %ADD = add i32 %MUL, %"find(&a,8)"
+  %a.value = getelementptr inbounds %Node, %Node* %a, i32 0, i32 0
+  store i32 5, i32* %a.value, align 4
+  %b.value = getelementptr inbounds %Node, %Node* %b, i32 0, i32 0
+  store i32 8, i32* %b.value, align 4
+  %c.value = getelementptr inbounds %Node, %Node* %c, i32 0, i32 0
+  store i32 13, i32* %c.value, align 4
+  %a.next = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
+  store %Node* %b, %Node** %a.next, align 8
+  %b.next = getelementptr inbounds %Node, %Node* %b, i32 0, i32 1
+  store %Node* %c, %Node** %b.next, align 8
+  %call.find = call i32 @find(%Node* %a, i32 13)
+  %MUL = mul i32 %call.find, 10
+  %call.find1 = call i32 @find(%Node* %a, i32 8)
+  %ADD = add i32 %MUL, %call.find1
   store i32 %ADD, i32* %r, align 4
-  %"find(&a,99)" = call i32 @find(%Node* %a, i32 99)
-  %EQ = icmp eq i32 %"find(&a,99)", -1
-  br i1 %EQ, label %then, label %endif
+  br label %if2
 
-then:                                             ; preds = %entry
-  %old = load i32, i32* %r, align 4
-  %ADD_ASSIGN = add i32 %old, 100
-  store i32 %ADD_ASSIGN, i32* %r, align 4
+if2:                                              ; preds = %entry
+  %call.find2 = call i32 @find(%Node* %a, i32 99)
+  %EQ = icmp eq i32 %call.find2, -1
+  br i1 %EQ, label %if2.then, label %endif
+
+if2.then:                                         ; preds = %if2
+  %"$r" = load i32, i32* %r, align 4
+  %ADD3 = add i32 %"$r", 100
+  store i32 %ADD3, i32* %r, align 4
   br label %endif
 
-endif:                                            ; preds = %then, %entry
-  %load.r = load i32, i32* %r, align 4
-  ret i32 %load.r
+endif:                                            ; preds = %if2.then, %if2
+  %"$r4" = load i32, i32* %r, align 4
+  ret i32 %"$r4"
 }
 ```
 
@@ -4118,7 +4142,7 @@ struct Tree:
     right &Tree
 
 fn walk(t &Tree, count &i32) i32:
-    if isNullable(t): return 0
+    if isZero(t): return 0
     count += 1
     return t.value + walk(&t.left, &count) + walk(&t.right, &count)
 
@@ -4142,7 +4166,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Tree = type { i32, %Tree*, %Tree* }
 
@@ -4152,34 +4176,38 @@ entry:
   %count = alloca i32*, align 8
   store %Tree* %0, %Tree** %t, align 8
   store i32* %1, i32** %count, align 8
-  %dref.t = load %Tree*, %Tree** %t, align 8
-  %"isNullable(dref.t)" = icmp eq %Tree* %dref.t, null
-  br i1 %"isNullable(dref.t)", label %then, label %endif
+  br label %if0
 
-then:                                             ; preds = %entry
+if0:                                              ; preds = %entry
+  %"*t" = load %Tree*, %Tree** %t, align 8
+  %"$t" = load %Tree*, %Tree** %t, align 8
+  %EQ = icmp eq %Tree* %"$t", null
+  br i1 %EQ, label %if0.then, label %endif
+
+if0.then:                                         ; preds = %if0
   ret i32 0
 
-endif:                                            ; preds = %entry
-  %dref.count = load i32*, i32** %count, align 8
-  %old = load i32, i32* %dref.count, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* %dref.count, align 4
-  %dref.t1 = load %Tree*, %Tree** %t, align 8
-  %load.dref.t.value = getelementptr inbounds %Tree, %Tree* %dref.t1, i32 0, i32 0
-  %load.load.dref.t.value = load i32, i32* %load.dref.t.value, align 4
-  %dref.t2 = load %Tree*, %Tree** %t, align 8
-  %load.dref.t.left = getelementptr inbounds %Tree, %Tree* %dref.t2, i32 0, i32 1
-  %dref.load.dref.t.left = load %Tree*, %Tree** %load.dref.t.left, align 8
-  %dref.count3 = load i32*, i32** %count, align 8
-  %"walk(&dref.load.dref.t.left,&dref.count)" = call i32 @walk(%Tree* %dref.load.dref.t.left, i32* %dref.count3)
-  %ADD = add i32 %load.load.dref.t.value, %"walk(&dref.load.dref.t.left,&dref.count)"
-  %dref.t4 = load %Tree*, %Tree** %t, align 8
-  %load.dref.t.right = getelementptr inbounds %Tree, %Tree* %dref.t4, i32 0, i32 2
-  %dref.load.dref.t.right = load %Tree*, %Tree** %load.dref.t.right, align 8
-  %dref.count5 = load i32*, i32** %count, align 8
-  %"walk(&dref.load.dref.t.right,&dref.count)" = call i32 @walk(%Tree* %dref.load.dref.t.right, i32* %dref.count5)
-  %ADD6 = add i32 %ADD, %"walk(&dref.load.dref.t.right,&dref.count)"
-  ret i32 %ADD6
+endif:                                            ; preds = %if0
+  %"*count" = load i32*, i32** %count, align 8
+  %"$*count" = load i32, i32* %"*count", align 4
+  %ADD = add i32 %"$*count", 1
+  store i32 %ADD, i32* %"*count", align 4
+  %"*t1" = load %Tree*, %Tree** %t, align 8
+  %"*t.value" = getelementptr inbounds %Tree, %Tree* %"*t1", i32 0, i32 0
+  %"*t2" = load %Tree*, %Tree** %t, align 8
+  %"*t.left" = getelementptr inbounds %Tree, %Tree* %"*t2", i32 0, i32 1
+  %"*count3" = load i32*, i32** %count, align 8
+  %"$*t.left" = load %Tree*, %Tree** %"*t.left", align 8
+  %call.walk = call i32 @walk(%Tree* %"$*t.left", i32* %"*count3")
+  %"$*t.value" = load i32, i32* %"*t.value", align 4
+  %ADD4 = add i32 %"$*t.value", %call.walk
+  %"*t5" = load %Tree*, %Tree** %t, align 8
+  %"*t.right" = getelementptr inbounds %Tree, %Tree* %"*t5", i32 0, i32 2
+  %"*count6" = load i32*, i32** %count, align 8
+  %"$*t.right" = load %Tree*, %Tree** %"*t.right", align 8
+  %call.walk7 = call i32 @walk(%Tree* %"$*t.right", i32* %"*count6")
+  %ADD8 = add i32 %ADD4, %call.walk7
+  ret i32 %ADD8
 }
 
 define i32 @main() {
@@ -4192,23 +4220,23 @@ entry:
   store %Tree zeroinitializer, %Tree* %a, align 8
   store %Tree zeroinitializer, %Tree* %b, align 8
   store %Tree zeroinitializer, %Tree* %c, align 8
-  %load.a.value = getelementptr inbounds %Tree, %Tree* %a, i32 0, i32 0
-  store i32 5, i32* %load.a.value, align 4
-  %load.b.value = getelementptr inbounds %Tree, %Tree* %b, i32 0, i32 0
-  store i32 6, i32* %load.b.value, align 4
-  %load.c.value = getelementptr inbounds %Tree, %Tree* %c, i32 0, i32 0
-  store i32 7, i32* %load.c.value, align 4
-  %load.a.left = getelementptr inbounds %Tree, %Tree* %a, i32 0, i32 1
-  store %Tree* %b, %Tree** %load.a.left, align 8
-  %load.b.right = getelementptr inbounds %Tree, %Tree* %b, i32 0, i32 2
-  store %Tree* %c, %Tree** %load.b.right, align 8
+  %a.value = getelementptr inbounds %Tree, %Tree* %a, i32 0, i32 0
+  store i32 5, i32* %a.value, align 4
+  %b.value = getelementptr inbounds %Tree, %Tree* %b, i32 0, i32 0
+  store i32 6, i32* %b.value, align 4
+  %c.value = getelementptr inbounds %Tree, %Tree* %c, i32 0, i32 0
+  store i32 7, i32* %c.value, align 4
+  %a.left = getelementptr inbounds %Tree, %Tree* %a, i32 0, i32 1
+  store %Tree* %b, %Tree** %a.left, align 8
+  %b.right = getelementptr inbounds %Tree, %Tree* %b, i32 0, i32 2
+  store %Tree* %c, %Tree** %b.right, align 8
   store i32 0, i32* %n, align 4
-  %"walk(&a,&n)" = call i32 @walk(%Tree* %a, i32* %n)
-  store i32 %"walk(&a,&n)", i32* %s, align 4
-  %load.s = load i32, i32* %s, align 4
-  %MUL = mul i32 %load.s, 10
-  %load.n = load i32, i32* %n, align 4
-  %ADD = add i32 %MUL, %load.n
+  %call.walk = call i32 @walk(%Tree* %a, i32* %n)
+  store i32 %call.walk, i32* %s, align 4
+  %"$s" = load i32, i32* %s, align 4
+  %MUL = mul i32 %"$s", 10
+  %"$n" = load i32, i32* %n, align 4
+  %ADD = add i32 %MUL, %"$n"
   ret i32 %ADD
 }
 ```
@@ -4484,7 +4512,7 @@ struct Node:
     next &Node
 
 fn print_rev(n &Node):
-    if isNullable(n): return
+    if isZero(n): return
     print_rev(&n.next)
     printf("%d", n.value)
 
@@ -4508,38 +4536,39 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Node = type { i32, %Node* }
 
-@str = private constant [3 x i8] c"%d\00"
-@str.1 = private constant [2 x i8] c"\0A\00"
+@str = private unnamed_addr constant [3 x i8] c"%d\00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 
 declare i32 @printf(i8*, ...)
 
 define void @print_rev(%Node* %0) {
 entry:
   %n = alloca %Node*, align 8
-  %s = alloca [3 x i8], align 1
   store %Node* %0, %Node** %n, align 8
-  %dref.n = load %Node*, %Node** %n, align 8
-  %"isNullable(dref.n)" = icmp eq %Node* %dref.n, null
-  br i1 %"isNullable(dref.n)", label %then, label %endif
+  br label %if0
 
-then:                                             ; preds = %entry
+if0:                                              ; preds = %entry
+  %"*n" = load %Node*, %Node** %n, align 8
+  %"$n" = load %Node*, %Node** %n, align 8
+  %EQ = icmp eq %Node* %"$n", null
+  br i1 %EQ, label %if0.then, label %endif
+
+if0.then:                                         ; preds = %if0
   ret void
 
-endif:                                            ; preds = %entry
-  %dref.n1 = load %Node*, %Node** %n, align 8
-  %load.dref.n.next = getelementptr inbounds %Node, %Node* %dref.n1, i32 0, i32 1
-  %dref.load.dref.n.next = load %Node*, %Node** %load.dref.n.next, align 8
-  call void @print_rev(%Node* %dref.load.dref.n.next)
-  %dst = getelementptr inbounds [3 x i8], [3 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i64 3, i1 false)
-  %dref.n2 = load %Node*, %Node** %n, align 8
-  %load.dref.n.value = getelementptr inbounds %Node, %Node* %dref.n2, i32 0, i32 0
-  %load.load.dref.n.value = load i32, i32* %load.dref.n.value, align 4
-  %"printf(str,load.load.dref.n.value)" = call i32 (i8*, ...) @printf(i8* %dst, i32 %load.load.dref.n.value)
+endif:                                            ; preds = %if0
+  %"*n1" = load %Node*, %Node** %n, align 8
+  %"*n.next" = getelementptr inbounds %Node, %Node* %"*n1", i32 0, i32 1
+  %"$*n.next" = load %Node*, %Node** %"*n.next", align 8
+  call void @print_rev(%Node* %"$*n.next")
+  %"*n2" = load %Node*, %Node** %n, align 8
+  %"*n.value" = getelementptr inbounds %Node, %Node* %"*n2", i32 0, i32 0
+  %"$*n.value" = load i32, i32* %"*n.value", align 4
+  %call.printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i32 %"$*n.value")
   ret void
 }
 
@@ -4548,39 +4577,31 @@ entry:
   %a = alloca %Node, align 8
   %b = alloca %Node, align 8
   %c = alloca %Node, align 8
-  %s = alloca [2 x i8], align 1
   store %Node zeroinitializer, %Node* %a, align 8
   store %Node zeroinitializer, %Node* %b, align 8
   store %Node zeroinitializer, %Node* %c, align 8
-  %load.a.value = getelementptr inbounds %Node, %Node* %a, i32 0, i32 0
-  store i32 1, i32* %load.a.value, align 4
-  %load.b.value = getelementptr inbounds %Node, %Node* %b, i32 0, i32 0
-  store i32 2, i32* %load.b.value, align 4
-  %load.c.value = getelementptr inbounds %Node, %Node* %c, i32 0, i32 0
-  store i32 3, i32* %load.c.value, align 4
-  %load.a.next = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
-  store %Node* %b, %Node** %load.a.next, align 8
-  %load.b.next = getelementptr inbounds %Node, %Node* %b, i32 0, i32 1
-  store %Node* %c, %Node** %load.b.next, align 8
+  %a.value = getelementptr inbounds %Node, %Node* %a, i32 0, i32 0
+  store i32 1, i32* %a.value, align 4
+  %b.value = getelementptr inbounds %Node, %Node* %b, i32 0, i32 0
+  store i32 2, i32* %b.value, align 4
+  %c.value = getelementptr inbounds %Node, %Node* %c, i32 0, i32 0
+  store i32 3, i32* %c.value, align 4
+  %a.next = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
+  store %Node* %b, %Node** %a.next, align 8
+  %b.next = getelementptr inbounds %Node, %Node* %b, i32 0, i32 1
+  store %Node* %c, %Node** %b.next, align 8
   call void @print_rev(%Node* %a)
-  %dst = getelementptr inbounds [2 x i8], [2 x i8]* %s, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0), i64 2, i1 false)
-  %"printf(str)" = call i32 (i8*, ...) @printf(i8* %dst)
-  %load.a.value1 = getelementptr inbounds %Node, %Node* %a, i32 0, i32 0
-  %load.load.a.value = load i32, i32* %load.a.value1, align 4
-  %load.b.value2 = getelementptr inbounds %Node, %Node* %b, i32 0, i32 0
-  %load.load.b.value = load i32, i32* %load.b.value2, align 4
-  %ADD = add i32 %load.load.a.value, %load.load.b.value
-  %load.c.value3 = getelementptr inbounds %Node, %Node* %c, i32 0, i32 0
-  %load.load.c.value = load i32, i32* %load.c.value3, align 4
-  %ADD4 = add i32 %ADD, %load.load.c.value
+  %call.printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  %a.value1 = getelementptr inbounds %Node, %Node* %a, i32 0, i32 0
+  %b.value2 = getelementptr inbounds %Node, %Node* %b, i32 0, i32 0
+  %"$a.value" = load i32, i32* %a.value1, align 4
+  %"$b.value" = load i32, i32* %b.value2, align 4
+  %ADD = add i32 %"$a.value", %"$b.value"
+  %c.value3 = getelementptr inbounds %Node, %Node* %c, i32 0, i32 0
+  %"$c.value" = load i32, i32* %c.value3, align 4
+  %ADD4 = add i32 %ADD, %"$c.value"
   ret i32 %ADD4
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -5212,7 +5233,7 @@ struct Node:
     fn length() i32:
         n i32 = 1
         p &Node = &self
-        while not isNullable(p.next):
+        while not isZero(p.next):
             n += 1
             p = &p.next
         return n
@@ -5232,7 +5253,7 @@ return a.length() * 10 + a.next.next.next.value
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Node = type { i32, %Node* }
 
@@ -5241,18 +5262,18 @@ target triple = "x86_64-pc-linux-gnu"
 @c = global %Node zeroinitializer
 @d = global %Node zeroinitializer
 
-define %Node* @Node.link(%Node* %0, %Node* %1) {
+define %Node* @Node.attach(%Node* %0, %Node* %1) {
 entry:
   %self = alloca %Node*, align 8
   %n = alloca %Node*, align 8
   store %Node* %0, %Node** %self, align 8
   store %Node* %1, %Node** %n, align 8
-  %dref.self = load %Node*, %Node** %self, align 8
-  %load.dref.self.next = getelementptr inbounds %Node, %Node* %dref.self, i32 0, i32 1
-  %dref.n = load %Node*, %Node** %n, align 8
-  store %Node* %dref.n, %Node** %load.dref.self.next, align 8
-  %dref.n1 = load %Node*, %Node** %n, align 8
-  ret %Node* %dref.n1
+  %"*self" = load %Node*, %Node** %self, align 8
+  %"*self.next" = getelementptr inbounds %Node, %Node* %"*self", i32 0, i32 1
+  %"*n" = load %Node*, %Node** %n, align 8
+  store %Node* %"*n", %Node** %"*self.next", align 8
+  %"*n1" = load %Node*, %Node** %n, align 8
+  ret %Node* %"*n1"
 }
 
 define i32 @Node.length(%Node* %0) {
@@ -5262,53 +5283,58 @@ entry:
   %p = alloca %Node*, align 8
   store %Node* %0, %Node** %self, align 8
   store i32 1, i32* %n, align 4
-  %dref.self = load %Node*, %Node** %self, align 8
-  store %Node* %dref.self, %Node** %p, align 8
-  br label %cond
+  %"*self" = load %Node*, %Node** %self, align 8
+  store %Node* %"*self", %Node** %p, align 8
+  br label %while0
 
-cond:                                             ; preds = %then, %entry
-  %dref.p = load %Node*, %Node** %p, align 8
-  %load.dref.p.next = getelementptr inbounds %Node, %Node* %dref.p, i32 0, i32 1
-  %dref.load.dref.p.next = load %Node*, %Node** %load.dref.p.next, align 8
-  %"isNullable(dref.load.dref.p.next)" = icmp eq %Node* %dref.load.dref.p.next, null
-  %NOT = xor i1 %"isNullable(dref.load.dref.p.next)", true
-  br i1 %NOT, label %then, label %endwhile
+while0:                                           ; preds = %while0.then, %entry
+  %"*p" = load %Node*, %Node** %p, align 8
+  %"*p.next" = getelementptr inbounds %Node, %Node* %"*p", i32 0, i32 1
+  %"$*p.next" = load %Node*, %Node** %"*p.next", align 8
+  %EQ = icmp eq %Node* %"$*p.next", null
+  %NOT = xor i1 %EQ, true
+  br i1 %NOT, label %while0.then, label %endloop
 
-then:                                             ; preds = %cond
-  %old = load i32, i32* %n, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* %n, align 4
-  %dref.p1 = load %Node*, %Node** %p, align 8
-  %load.dref.p.next2 = getelementptr inbounds %Node, %Node* %dref.p1, i32 0, i32 1
-  %dref.load.dref.p.next3 = load %Node*, %Node** %load.dref.p.next2, align 8
-  store %Node* %dref.load.dref.p.next3, %Node** %p, align 8
-  br label %cond
+while0.then:                                      ; preds = %while0
+  %"$n" = load i32, i32* %n, align 4
+  %ADD = add i32 %"$n", 1
+  store i32 %ADD, i32* %n, align 4
+  %"*p1" = load %Node*, %Node** %p, align 8
+  %"*p.next2" = getelementptr inbounds %Node, %Node* %"*p1", i32 0, i32 1
+  %"$*p.next3" = load %Node*, %Node** %"*p.next2", align 8
+  store %Node* %"$*p.next3", %Node** %p, align 8
+  br label %while0
 
-endwhile:                                         ; preds = %cond
-  %load.n = load i32, i32* %n, align 4
-  ret i32 %load.n
+endloop:                                          ; preds = %while0
+  %"$n4" = load i32, i32* %n, align 4
+  ret i32 %"$n4"
 }
 
 define i32 @main() {
 entry:
-  store %Node zeroinitializer, %Node* @a, align 8
-  store %Node zeroinitializer, %Node* @b, align 8
-  store %Node zeroinitializer, %Node* @c, align 8
-  store %Node zeroinitializer, %Node* @d, align 8
+  %ref = alloca %Node*, align 8
+  %ref2 = alloca %Node*, align 8
+  %ref5 = alloca %Node*, align 8
   store i32 4, i32* getelementptr inbounds (%Node, %Node* @d, i32 0, i32 0), align 4
-  %"link(&load.a,&b)" = call %Node* @Node.link(%Node* @a, %Node* @b)
-  %"link(link(&load.a,&b),&c)" = call %Node* @Node.link(%Node* %"link(&load.a,&b)", %Node* @c)
-  %"link(link(link(&load.a,&b),&c),&d)" = call %Node* @Node.link(%Node* %"link(link(&load.a,&b),&c)", %Node* @d)
-  %"length(&load.a)" = call i32 @Node.length(%Node* @a)
-  %MUL = mul i32 %"length(&load.a)", 10
-  %dref.load.a.next = load %Node*, %Node** getelementptr inbounds (%Node, %Node* @a, i32 0, i32 1), align 8
-  %load.dref.load.a.next.next = getelementptr inbounds %Node, %Node* %dref.load.a.next, i32 0, i32 1
-  %dref.load.dref.load.a.next.next = load %Node*, %Node** %load.dref.load.a.next.next, align 8
-  %load.dref.load.dref.load.a.next.next.next = getelementptr inbounds %Node, %Node* %dref.load.dref.load.a.next.next, i32 0, i32 1
-  %dref.load.dref.load.dref.load.a.next.next.next = load %Node*, %Node** %load.dref.load.dref.load.a.next.next.next, align 8
-  %load.dref.load.dref.load.dref.load.a.next.next.next.value = getelementptr inbounds %Node, %Node* %dref.load.dref.load.dref.load.a.next.next.next, i32 0, i32 0
-  %load.load.dref.load.dref.load.dref.load.a.next.next.next.value = load i32, i32* %load.dref.load.dref.load.dref.load.a.next.next.next.value, align 4
-  %ADD = add i32 %MUL, %load.load.dref.load.dref.load.dref.load.a.next.next.next.value
+  %call.Node.attach = call %Node* @Node.attach(%Node* @a, %Node* @b)
+  store %Node* %call.Node.attach, %Node** %ref, align 8
+  %"*ref" = load %Node*, %Node** %ref, align 8
+  %call.Node.attach1 = call %Node* @Node.attach(%Node* %"*ref", %Node* @c)
+  store %Node* %call.Node.attach1, %Node** %ref2, align 8
+  %"*ref3" = load %Node*, %Node** %ref2, align 8
+  %call.Node.attach4 = call %Node* @Node.attach(%Node* %"*ref3", %Node* @d)
+  store %Node* %call.Node.attach4, %Node** %ref5, align 8
+  %"*ref6" = load %Node*, %Node** %ref5, align 8
+  %call.Node.length = call i32 @Node.length(%Node* @a)
+  %MUL = mul i32 %call.Node.length, 10
+  %"*a.next" = load %Node*, %Node** getelementptr inbounds (%Node, %Node* @a, i32 0, i32 1), align 8
+  %"*a.next.next" = getelementptr inbounds %Node, %Node* %"*a.next", i32 0, i32 1
+  %"**a.next.next" = load %Node*, %Node** %"*a.next.next", align 8
+  %"**a.next.next.next" = getelementptr inbounds %Node, %Node* %"**a.next.next", i32 0, i32 1
+  %"***a.next.next.next" = load %Node*, %Node** %"**a.next.next.next", align 8
+  %"***a.next.next.next.value" = getelementptr inbounds %Node, %Node* %"***a.next.next.next", i32 0, i32 0
+  %"$***a.next.next.next.value" = load i32, i32* %"***a.next.next.next.value", align 4
+  %ADD = add i32 %MUL, %"$***a.next.next.next.value"
   ret i32 %ADD
 }
 ```
@@ -5326,23 +5352,23 @@ struct Tree:
 
     fn insert(t &Tree):
         if t.value < self.value:
-            if isNullable(self.left): self.left = &t
+            if isZero(self.left): self.left = &t
             else: self.left.insert(&t)
         else:
-            if isNullable(self.right): self.right = &t
+            if isZero(self.right): self.right = &t
             else: self.right.insert(&t)
 
     fn sum() i32:
         s i32 = self.value
-        if not isNullable(self.left): s += self.left.sum()
-        if not isNullable(self.right): s += self.right.sum()
+        if not isZero(self.left): s += self.left.sum()
+        if not isZero(self.right): s += self.right.sum()
         return s
 
     fn depth() i32:
         l i32 = 0
         r i32 = 0
-        if not isNullable(self.left): l = self.left.depth()
-        if not isNullable(self.right): r = self.right.depth()
+        if not isZero(self.left): l = self.left.depth()
+        if not isZero(self.right): r = self.right.depth()
         if l > r: return l + 1
         return r + 1
 
@@ -5369,7 +5395,7 @@ return a.sum() + a.depth()
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Tree = type { i32, %Tree*, %Tree* }
 
@@ -5385,66 +5411,75 @@ entry:
   %t = alloca %Tree*, align 8
   store %Tree* %0, %Tree** %self, align 8
   store %Tree* %1, %Tree** %t, align 8
-  %dref.t = load %Tree*, %Tree** %t, align 8
-  %load.dref.t.value = getelementptr inbounds %Tree, %Tree* %dref.t, i32 0, i32 0
-  %load.load.dref.t.value = load i32, i32* %load.dref.t.value, align 4
-  %dref.self = load %Tree*, %Tree** %self, align 8
-  %load.dref.self.value = getelementptr inbounds %Tree, %Tree* %dref.self, i32 0, i32 0
-  %load.load.dref.self.value = load i32, i32* %load.dref.self.value, align 4
-  %LT = icmp slt i32 %load.load.dref.t.value, %load.load.dref.self.value
-  br i1 %LT, label %then, label %next
+  br label %if0
 
-then:                                             ; preds = %entry
-  %dref.self4 = load %Tree*, %Tree** %self, align 8
-  %load.dref.self.left = getelementptr inbounds %Tree, %Tree* %dref.self4, i32 0, i32 1
-  %dref.load.dref.self.left = load %Tree*, %Tree** %load.dref.self.left, align 8
-  %"isNullable(dref.load.dref.self.left)" = icmp eq %Tree* %dref.load.dref.self.left, null
-  br i1 %"isNullable(dref.load.dref.self.left)", label %then2, label %next3
+if0:                                              ; preds = %entry
+  %"*t" = load %Tree*, %Tree** %t, align 8
+  %"*t.value" = getelementptr inbounds %Tree, %Tree* %"*t", i32 0, i32 0
+  %"*self" = load %Tree*, %Tree** %self, align 8
+  %"*self.value" = getelementptr inbounds %Tree, %Tree* %"*self", i32 0, i32 0
+  %"$*t.value" = load i32, i32* %"*t.value", align 4
+  %"$*self.value" = load i32, i32* %"*self.value", align 4
+  %LT = icmp slt i32 %"$*t.value", %"$*self.value"
+  br i1 %LT, label %if0.then, label %else3
 
-next:                                             ; preds = %entry
-  %dref.self15 = load %Tree*, %Tree** %self, align 8
-  %load.dref.self.right = getelementptr inbounds %Tree, %Tree* %dref.self15, i32 0, i32 2
-  %dref.load.dref.self.right = load %Tree*, %Tree** %load.dref.self.right, align 8
-  %"isNullable(dref.load.dref.self.right)" = icmp eq %Tree* %dref.load.dref.self.right, null
-  br i1 %"isNullable(dref.load.dref.self.right)", label %then13, label %next14
+if0.then:                                         ; preds = %if0
+  br label %if1
 
-then2:                                            ; preds = %then
-  %dref.self5 = load %Tree*, %Tree** %self, align 8
-  %load.dref.self.left6 = getelementptr inbounds %Tree, %Tree* %dref.self5, i32 0, i32 1
-  %dref.t7 = load %Tree*, %Tree** %t, align 8
-  store %Tree* %dref.t7, %Tree** %load.dref.self.left6, align 8
-  br label %endif1
+if1:                                              ; preds = %if0.then
+  %"*self3" = load %Tree*, %Tree** %self, align 8
+  %"*self.left" = getelementptr inbounds %Tree, %Tree* %"*self3", i32 0, i32 1
+  %"$*self.left" = load %Tree*, %Tree** %"*self.left", align 8
+  %EQ = icmp eq %Tree* %"$*self.left", null
+  br i1 %EQ, label %if1.then, label %else2
 
-next3:                                            ; preds = %then
-  %dref.self8 = load %Tree*, %Tree** %self, align 8
-  %load.dref.self.left9 = getelementptr inbounds %Tree, %Tree* %dref.self8, i32 0, i32 1
-  %dref.load.dref.self.left10 = load %Tree*, %Tree** %load.dref.self.left9, align 8
-  %dref.t11 = load %Tree*, %Tree** %t, align 8
-  call void @Tree.insert(%Tree* %dref.load.dref.self.left10, %Tree* %dref.t11)
-  br label %endif1
-
-endif1:                                           ; preds = %next3, %then2
+if1.then:                                         ; preds = %if1
+  %"*self4" = load %Tree*, %Tree** %self, align 8
+  %"*self.left5" = getelementptr inbounds %Tree, %Tree* %"*self4", i32 0, i32 1
+  %"*t6" = load %Tree*, %Tree** %t, align 8
+  store %Tree* %"*t6", %Tree** %"*self.left5", align 8
   br label %endif
 
-then13:                                           ; preds = %next
-  %dref.self16 = load %Tree*, %Tree** %self, align 8
-  %load.dref.self.right17 = getelementptr inbounds %Tree, %Tree* %dref.self16, i32 0, i32 2
-  %dref.t18 = load %Tree*, %Tree** %t, align 8
-  store %Tree* %dref.t18, %Tree** %load.dref.self.right17, align 8
-  br label %endif12
-
-next14:                                           ; preds = %next
-  %dref.self19 = load %Tree*, %Tree** %self, align 8
-  %load.dref.self.right20 = getelementptr inbounds %Tree, %Tree* %dref.self19, i32 0, i32 2
-  %dref.load.dref.self.right21 = load %Tree*, %Tree** %load.dref.self.right20, align 8
-  %dref.t22 = load %Tree*, %Tree** %t, align 8
-  call void @Tree.insert(%Tree* %dref.load.dref.self.right21, %Tree* %dref.t22)
-  br label %endif12
-
-endif12:                                          ; preds = %next14, %then13
+else2:                                            ; preds = %if1
+  %"*self7" = load %Tree*, %Tree** %self, align 8
+  %"*self.left8" = getelementptr inbounds %Tree, %Tree* %"*self7", i32 0, i32 1
+  %"**self.left" = load %Tree*, %Tree** %"*self.left8", align 8
+  %"*t9" = load %Tree*, %Tree** %t, align 8
+  call void @Tree.insert(%Tree* %"**self.left", %Tree* %"*t9")
   br label %endif
 
-endif:                                            ; preds = %endif12, %endif1
+endif:                                            ; preds = %else2, %if1.then
+  br label %endif2
+
+else3:                                            ; preds = %if0
+  br label %if4
+
+if4:                                              ; preds = %else3
+  %"*self10" = load %Tree*, %Tree** %self, align 8
+  %"*self.right" = getelementptr inbounds %Tree, %Tree* %"*self10", i32 0, i32 2
+  %"$*self.right" = load %Tree*, %Tree** %"*self.right", align 8
+  %EQ11 = icmp eq %Tree* %"$*self.right", null
+  br i1 %EQ11, label %if4.then, label %else5
+
+if4.then:                                         ; preds = %if4
+  %"*self12" = load %Tree*, %Tree** %self, align 8
+  %"*self.right13" = getelementptr inbounds %Tree, %Tree* %"*self12", i32 0, i32 2
+  %"*t14" = load %Tree*, %Tree** %t, align 8
+  store %Tree* %"*t14", %Tree** %"*self.right13", align 8
+  br label %endif1
+
+else5:                                            ; preds = %if4
+  %"*self15" = load %Tree*, %Tree** %self, align 8
+  %"*self.right16" = getelementptr inbounds %Tree, %Tree* %"*self15", i32 0, i32 2
+  %"**self.right" = load %Tree*, %Tree** %"*self.right16", align 8
+  %"*t17" = load %Tree*, %Tree** %t, align 8
+  call void @Tree.insert(%Tree* %"**self.right", %Tree* %"*t17")
+  br label %endif1
+
+endif1:                                           ; preds = %else5, %if4.then
+  br label %endif2
+
+endif2:                                           ; preds = %endif1, %endif
   ret void
 }
 
@@ -5453,48 +5488,54 @@ entry:
   %self = alloca %Tree*, align 8
   %s = alloca i32, align 4
   store %Tree* %0, %Tree** %self, align 8
-  %dref.self = load %Tree*, %Tree** %self, align 8
-  %load.dref.self.value = getelementptr inbounds %Tree, %Tree* %dref.self, i32 0, i32 0
-  %load.load.dref.self.value = load i32, i32* %load.dref.self.value, align 4
-  store i32 %load.load.dref.self.value, i32* %s, align 4
-  %dref.self1 = load %Tree*, %Tree** %self, align 8
-  %load.dref.self.left = getelementptr inbounds %Tree, %Tree* %dref.self1, i32 0, i32 1
-  %dref.load.dref.self.left = load %Tree*, %Tree** %load.dref.self.left, align 8
-  %"isNullable(dref.load.dref.self.left)" = icmp eq %Tree* %dref.load.dref.self.left, null
-  %NOT = xor i1 %"isNullable(dref.load.dref.self.left)", true
-  br i1 %NOT, label %then, label %endif
+  %"*self" = load %Tree*, %Tree** %self, align 8
+  %"*self.value" = getelementptr inbounds %Tree, %Tree* %"*self", i32 0, i32 0
+  %"$*self.value" = load i32, i32* %"*self.value", align 4
+  store i32 %"$*self.value", i32* %s, align 4
+  br label %if6
 
-then:                                             ; preds = %entry
-  %dref.self2 = load %Tree*, %Tree** %self, align 8
-  %load.dref.self.left3 = getelementptr inbounds %Tree, %Tree* %dref.self2, i32 0, i32 1
-  %dref.load.dref.self.left4 = load %Tree*, %Tree** %load.dref.self.left3, align 8
-  %"sum(&load.dref.load.dref.self.left)" = call i32 @Tree.sum(%Tree* %dref.load.dref.self.left4)
-  %old = load i32, i32* %s, align 4
-  %ADD_ASSIGN = add i32 %old, %"sum(&load.dref.load.dref.self.left)"
-  store i32 %ADD_ASSIGN, i32* %s, align 4
+if6:                                              ; preds = %entry
+  %"*self2" = load %Tree*, %Tree** %self, align 8
+  %"*self.left" = getelementptr inbounds %Tree, %Tree* %"*self2", i32 0, i32 1
+  %"$*self.left" = load %Tree*, %Tree** %"*self.left", align 8
+  %EQ = icmp eq %Tree* %"$*self.left", null
+  %NOT = xor i1 %EQ, true
+  br i1 %NOT, label %if6.then, label %endif
+
+if6.then:                                         ; preds = %if6
+  %"*self3" = load %Tree*, %Tree** %self, align 8
+  %"*self.left4" = getelementptr inbounds %Tree, %Tree* %"*self3", i32 0, i32 1
+  %"**self.left" = load %Tree*, %Tree** %"*self.left4", align 8
+  %call.Tree.sum = call i32 @Tree.sum(%Tree* %"**self.left")
+  %"$s" = load i32, i32* %s, align 4
+  %ADD = add i32 %"$s", %call.Tree.sum
+  store i32 %ADD, i32* %s, align 4
   br label %endif
 
-endif:                                            ; preds = %then, %entry
-  %dref.self7 = load %Tree*, %Tree** %self, align 8
-  %load.dref.self.right = getelementptr inbounds %Tree, %Tree* %dref.self7, i32 0, i32 2
-  %dref.load.dref.self.right = load %Tree*, %Tree** %load.dref.self.right, align 8
-  %"isNullable(dref.load.dref.self.right)" = icmp eq %Tree* %dref.load.dref.self.right, null
-  %NOT8 = xor i1 %"isNullable(dref.load.dref.self.right)", true
-  br i1 %NOT8, label %then6, label %endif5
+endif:                                            ; preds = %if6.then, %if6
+  br label %if7
 
-then6:                                            ; preds = %endif
-  %dref.self9 = load %Tree*, %Tree** %self, align 8
-  %load.dref.self.right10 = getelementptr inbounds %Tree, %Tree* %dref.self9, i32 0, i32 2
-  %dref.load.dref.self.right11 = load %Tree*, %Tree** %load.dref.self.right10, align 8
-  %"sum(&load.dref.load.dref.self.right)" = call i32 @Tree.sum(%Tree* %dref.load.dref.self.right11)
-  %old12 = load i32, i32* %s, align 4
-  %ADD_ASSIGN13 = add i32 %old12, %"sum(&load.dref.load.dref.self.right)"
-  store i32 %ADD_ASSIGN13, i32* %s, align 4
-  br label %endif5
+if7:                                              ; preds = %endif
+  %"*self5" = load %Tree*, %Tree** %self, align 8
+  %"*self.right" = getelementptr inbounds %Tree, %Tree* %"*self5", i32 0, i32 2
+  %"$*self.right" = load %Tree*, %Tree** %"*self.right", align 8
+  %EQ6 = icmp eq %Tree* %"$*self.right", null
+  %NOT7 = xor i1 %EQ6, true
+  br i1 %NOT7, label %if7.then, label %endif1
 
-endif5:                                           ; preds = %then6, %endif
-  %load.s = load i32, i32* %s, align 4
-  ret i32 %load.s
+if7.then:                                         ; preds = %if7
+  %"*self8" = load %Tree*, %Tree** %self, align 8
+  %"*self.right9" = getelementptr inbounds %Tree, %Tree* %"*self8", i32 0, i32 2
+  %"**self.right" = load %Tree*, %Tree** %"*self.right9", align 8
+  %call.Tree.sum10 = call i32 @Tree.sum(%Tree* %"**self.right")
+  %"$s11" = load i32, i32* %s, align 4
+  %ADD12 = add i32 %"$s11", %call.Tree.sum10
+  store i32 %ADD12, i32* %s, align 4
+  br label %endif1
+
+endif1:                                           ; preds = %if7.then, %if7
+  %"$s13" = load i32, i32* %s, align 4
+  ret i32 %"$s13"
 }
 
 define i32 @Tree.depth(%Tree* %0) {
@@ -5505,61 +5546,65 @@ entry:
   store %Tree* %0, %Tree** %self, align 8
   store i32 0, i32* %l, align 4
   store i32 0, i32* %r, align 4
-  %dref.self = load %Tree*, %Tree** %self, align 8
-  %load.dref.self.left = getelementptr inbounds %Tree, %Tree* %dref.self, i32 0, i32 1
-  %dref.load.dref.self.left = load %Tree*, %Tree** %load.dref.self.left, align 8
-  %"isNullable(dref.load.dref.self.left)" = icmp eq %Tree* %dref.load.dref.self.left, null
-  %NOT = xor i1 %"isNullable(dref.load.dref.self.left)", true
-  br i1 %NOT, label %then, label %endif
+  br label %if8
 
-then:                                             ; preds = %entry
-  %dref.self1 = load %Tree*, %Tree** %self, align 8
-  %load.dref.self.left2 = getelementptr inbounds %Tree, %Tree* %dref.self1, i32 0, i32 1
-  %dref.load.dref.self.left3 = load %Tree*, %Tree** %load.dref.self.left2, align 8
-  %"depth(&load.dref.load.dref.self.left)" = call i32 @Tree.depth(%Tree* %dref.load.dref.self.left3)
-  store i32 %"depth(&load.dref.load.dref.self.left)", i32* %l, align 4
+if8:                                              ; preds = %entry
+  %"*self" = load %Tree*, %Tree** %self, align 8
+  %"*self.left" = getelementptr inbounds %Tree, %Tree* %"*self", i32 0, i32 1
+  %"$*self.left" = load %Tree*, %Tree** %"*self.left", align 8
+  %EQ = icmp eq %Tree* %"$*self.left", null
+  %NOT = xor i1 %EQ, true
+  br i1 %NOT, label %if8.then, label %endif
+
+if8.then:                                         ; preds = %if8
+  %"*self3" = load %Tree*, %Tree** %self, align 8
+  %"*self.left4" = getelementptr inbounds %Tree, %Tree* %"*self3", i32 0, i32 1
+  %"**self.left" = load %Tree*, %Tree** %"*self.left4", align 8
+  %call.Tree.depth = call i32 @Tree.depth(%Tree* %"**self.left")
+  store i32 %call.Tree.depth, i32* %l, align 4
   br label %endif
 
-endif:                                            ; preds = %then, %entry
-  %dref.self6 = load %Tree*, %Tree** %self, align 8
-  %load.dref.self.right = getelementptr inbounds %Tree, %Tree* %dref.self6, i32 0, i32 2
-  %dref.load.dref.self.right = load %Tree*, %Tree** %load.dref.self.right, align 8
-  %"isNullable(dref.load.dref.self.right)" = icmp eq %Tree* %dref.load.dref.self.right, null
-  %NOT7 = xor i1 %"isNullable(dref.load.dref.self.right)", true
-  br i1 %NOT7, label %then5, label %endif4
+endif:                                            ; preds = %if8.then, %if8
+  br label %if9
 
-then5:                                            ; preds = %endif
-  %dref.self8 = load %Tree*, %Tree** %self, align 8
-  %load.dref.self.right9 = getelementptr inbounds %Tree, %Tree* %dref.self8, i32 0, i32 2
-  %dref.load.dref.self.right10 = load %Tree*, %Tree** %load.dref.self.right9, align 8
-  %"depth(&load.dref.load.dref.self.right)" = call i32 @Tree.depth(%Tree* %dref.load.dref.self.right10)
-  store i32 %"depth(&load.dref.load.dref.self.right)", i32* %r, align 4
-  br label %endif4
+if9:                                              ; preds = %endif
+  %"*self5" = load %Tree*, %Tree** %self, align 8
+  %"*self.right" = getelementptr inbounds %Tree, %Tree* %"*self5", i32 0, i32 2
+  %"$*self.right" = load %Tree*, %Tree** %"*self.right", align 8
+  %EQ6 = icmp eq %Tree* %"$*self.right", null
+  %NOT7 = xor i1 %EQ6, true
+  br i1 %NOT7, label %if9.then, label %endif1
 
-endif4:                                           ; preds = %then5, %endif
-  %load.l = load i32, i32* %l, align 4
-  %load.r = load i32, i32* %r, align 4
-  %GT = icmp sgt i32 %load.l, %load.r
-  br i1 %GT, label %then12, label %endif11
+if9.then:                                         ; preds = %if9
+  %"*self8" = load %Tree*, %Tree** %self, align 8
+  %"*self.right9" = getelementptr inbounds %Tree, %Tree* %"*self8", i32 0, i32 2
+  %"**self.right" = load %Tree*, %Tree** %"*self.right9", align 8
+  %call.Tree.depth10 = call i32 @Tree.depth(%Tree* %"**self.right")
+  store i32 %call.Tree.depth10, i32* %r, align 4
+  br label %endif1
 
-then12:                                           ; preds = %endif4
-  %load.l13 = load i32, i32* %l, align 4
-  %ADD = add i32 %load.l13, 1
+endif1:                                           ; preds = %if9.then, %if9
+  br label %if10
+
+if10:                                             ; preds = %endif1
+  %"$l" = load i32, i32* %l, align 4
+  %"$r" = load i32, i32* %r, align 4
+  %GT = icmp sgt i32 %"$l", %"$r"
+  br i1 %GT, label %if10.then, label %endif2
+
+if10.then:                                        ; preds = %if10
+  %"$l11" = load i32, i32* %l, align 4
+  %ADD = add i32 %"$l11", 1
   ret i32 %ADD
 
-endif11:                                          ; preds = %endif4
-  %load.r14 = load i32, i32* %r, align 4
-  %ADD15 = add i32 %load.r14, 1
-  ret i32 %ADD15
+endif2:                                           ; preds = %if10
+  %"$r12" = load i32, i32* %r, align 4
+  %ADD13 = add i32 %"$r12", 1
+  ret i32 %ADD13
 }
 
 define i32 @main() {
 entry:
-  store %Tree zeroinitializer, %Tree* @a, align 8
-  store %Tree zeroinitializer, %Tree* @b, align 8
-  store %Tree zeroinitializer, %Tree* @c, align 8
-  store %Tree zeroinitializer, %Tree* @d, align 8
-  store %Tree zeroinitializer, %Tree* @e, align 8
   store i32 50, i32* getelementptr inbounds (%Tree, %Tree* @a, i32 0, i32 0), align 4
   store i32 30, i32* getelementptr inbounds (%Tree, %Tree* @b, i32 0, i32 0), align 4
   store i32 70, i32* getelementptr inbounds (%Tree, %Tree* @c, i32 0, i32 0), align 4
@@ -5569,9 +5614,9 @@ entry:
   call void @Tree.insert(%Tree* @a, %Tree* @c)
   call void @Tree.insert(%Tree* @a, %Tree* @d)
   call void @Tree.insert(%Tree* @a, %Tree* @e)
-  %"sum(&load.a)" = call i32 @Tree.sum(%Tree* @a)
-  %"depth(&load.a)" = call i32 @Tree.depth(%Tree* @a)
-  %ADD = add i32 %"sum(&load.a)", %"depth(&load.a)"
+  %call.Tree.sum = call i32 @Tree.sum(%Tree* @a)
+  %call.Tree.depth = call i32 @Tree.depth(%Tree* @a)
+  %ADD = add i32 %call.Tree.sum, %call.Tree.depth
   ret i32 %ADD
 }
 ```
@@ -6591,10 +6636,10 @@ fn main() i32:
 ### llvm ir
 
 ```llvm
-; ModuleID = 'ura-module'
-source_filename = "ura-module"
+; ModuleID = 'ura'
+source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Node = type { i32, %Node* }
 
@@ -6603,13 +6648,14 @@ entry:
   %value = alloca i32, align 4
   %res = alloca %Node, align 8
   store i32 %0, i32* %value, align 4
-  %value1 = load i32, i32* %value, align 4
+  store %Node zeroinitializer, %Node* %res, align 8
   %res.value = getelementptr inbounds %Node, %Node* %res, i32 0, i32 0
-  store i32 %value1, i32* %res.value, align 4
+  %"$value" = load i32, i32* %value, align 4
+  store i32 %"$value", i32* %res.value, align 4
   %res.next = getelementptr inbounds %Node, %Node* %res, i32 0, i32 1
   store %Node* null, %Node** %res.next, align 8
-  %res2 = load %Node, %Node* %res, align 8
-  ret %Node %res2
+  %"$res" = load %Node, %Node* %res, align 8
+  ret %Node %"$res"
 }
 
 define i32 @main() {
@@ -6618,35 +6664,35 @@ entry:
   %b = alloca %Node, align 8
   %p = alloca %Node*, align 8
   %sum = alloca i32, align 4
-  %create = call %Node @create(i32 1)
-  store %Node %create, %Node* %a, align 8
-  %create1 = call %Node @create(i32 2)
-  store %Node %create1, %Node* %b, align 8
+  %call.create = call %Node @create(i32 1)
+  store %Node %call.create, %Node* %a, align 8
+  %call.create1 = call %Node @create(i32 2)
+  store %Node %call.create1, %Node* %b, align 8
   %a.next = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
   store %Node* %b, %Node** %a.next, align 8
   store %Node* %a, %Node** %p, align 8
   store i32 0, i32* %sum, align 4
-  br label %cond
+  br label %while0
 
-cond:                                             ; preds = %then, %entry
-  %p2 = load %Node*, %Node** %p, align 8
-  %NQ = icmp ne %Node* %p2, null
-  br i1 %NQ, label %then, label %endwhile
+while0:                                           ; preds = %while0.then, %entry
+  %"*p" = load %Node*, %Node** %p, align 8
+  %NQ = icmp ne %Node* %"*p", null
+  br i1 %NQ, label %while0.then, label %endloop
 
-then:                                             ; preds = %cond
-  %sum3 = load i32, i32* %sum, align 4
-  %p4 = load %Node*, %Node** %p, align 8
-  %p.value = getelementptr inbounds %Node, %Node* %p4, i32 0, i32 0
-  %p.value5 = load i32, i32* %p.value, align 4
-  %ADD = add i32 %sum3, %p.value5
+while0.then:                                      ; preds = %while0
+  %"*p2" = load %Node*, %Node** %p, align 8
+  %"*p.value" = getelementptr inbounds %Node, %Node* %"*p2", i32 0, i32 0
+  %"$*p.value" = load i32, i32* %"*p.value", align 4
+  %"$sum" = load i32, i32* %sum, align 4
+  %ADD = add i32 %"$sum", %"$*p.value"
   store i32 %ADD, i32* %sum, align 4
-  %p6 = load %Node*, %Node** %p, align 8
-  %p.next = getelementptr inbounds %Node, %Node* %p6, i32 0, i32 1
-  %p.next7 = load %Node*, %Node** %p.next, align 8
-  store %Node* %p.next7, %Node** %p, align 8
-  br label %cond
+  %"*p3" = load %Node*, %Node** %p, align 8
+  %"*p.next" = getelementptr inbounds %Node, %Node* %"*p3", i32 0, i32 1
+  %"$*p.next" = load %Node*, %Node** %"*p.next", align 8
+  store %Node* %"$*p.next", %Node** %p, align 8
+  br label %while0
 
-endwhile:                                         ; preds = %cond
+endloop:                                          ; preds = %while0
   ret i32 0
 }
 ```
@@ -6681,10 +6727,10 @@ fn main() i32:
 ### llvm ir
 
 ```llvm
-; ModuleID = 'ura-module'
-source_filename = "ura-module"
+; ModuleID = 'ura'
+source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Node = type { i32, %Node* }
 
@@ -6695,51 +6741,54 @@ entry:
   %a = alloca %Node, align 8
   %sum = alloca i32, align 4
   %p = alloca %Node*, align 8
+  store %Node zeroinitializer, %Node* %c, align 8
   %c.value = getelementptr inbounds %Node, %Node* %c, i32 0, i32 0
   store i32 3, i32* %c.value, align 4
   %c.next = getelementptr inbounds %Node, %Node* %c, i32 0, i32 1
   store %Node* null, %Node** %c.next, align 8
+  store %Node zeroinitializer, %Node* %b, align 8
   %b.value = getelementptr inbounds %Node, %Node* %b, i32 0, i32 0
   store i32 2, i32* %b.value, align 4
   %b.next = getelementptr inbounds %Node, %Node* %b, i32 0, i32 1
   store %Node* %c, %Node** %b.next, align 8
+  store %Node zeroinitializer, %Node* %a, align 8
   %a.value = getelementptr inbounds %Node, %Node* %a, i32 0, i32 0
   store i32 1, i32* %a.value, align 4
   %a.next = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
   store %Node* %b, %Node** %a.next, align 8
   store i32 0, i32* %sum, align 4
   store %Node* %a, %Node** %p, align 8
-  br label %cond
+  br label %while0
 
-cond:                                             ; preds = %then, %entry
-  %p1 = load %Node*, %Node** %p, align 8
-  %NQ = icmp ne %Node* %p1, null
-  br i1 %NQ, label %then, label %endwhile
+while0:                                           ; preds = %while0.then, %entry
+  %"*p" = load %Node*, %Node** %p, align 8
+  %NQ = icmp ne %Node* %"*p", null
+  br i1 %NQ, label %while0.then, label %endloop
 
-then:                                             ; preds = %cond
-  %sum2 = load i32, i32* %sum, align 4
-  %p3 = load %Node*, %Node** %p, align 8
-  %p.value = getelementptr inbounds %Node, %Node* %p3, i32 0, i32 0
-  %p.value4 = load i32, i32* %p.value, align 4
-  %ADD = add i32 %sum2, %p.value4
+while0.then:                                      ; preds = %while0
+  %"*p1" = load %Node*, %Node** %p, align 8
+  %"*p.value" = getelementptr inbounds %Node, %Node* %"*p1", i32 0, i32 0
+  %"$*p.value" = load i32, i32* %"*p.value", align 4
+  %"$sum" = load i32, i32* %sum, align 4
+  %ADD = add i32 %"$sum", %"$*p.value"
   store i32 %ADD, i32* %sum, align 4
-  %p5 = load %Node*, %Node** %p, align 8
-  %p.next = getelementptr inbounds %Node, %Node* %p5, i32 0, i32 1
-  %p.next6 = load %Node*, %Node** %p.next, align 8
-  store %Node* %p.next6, %Node** %p, align 8
-  br label %cond
+  %"*p2" = load %Node*, %Node** %p, align 8
+  %"*p.next" = getelementptr inbounds %Node, %Node* %"*p2", i32 0, i32 1
+  %"$*p.next" = load %Node*, %Node** %"*p.next", align 8
+  store %Node* %"$*p.next", %Node** %p, align 8
+  br label %while0
 
-endwhile:                                         ; preds = %cond
-  %sum7 = load i32, i32* %sum, align 4
-  %a.next8 = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
-  %a.next9 = load %Node*, %Node** %a.next8, align 8
-  %a.next.next = getelementptr inbounds %Node, %Node* %a.next9, i32 0, i32 1
-  %a.next.next10 = load %Node*, %Node** %a.next.next, align 8
-  %a.next.next.value = getelementptr inbounds %Node, %Node* %a.next.next10, i32 0, i32 0
-  %a.next.next.value11 = load i32, i32* %a.next.next.value, align 4
-  %MUL = mul i32 %a.next.next.value11, 10
-  %ADD12 = add i32 %sum7, %MUL
-  ret i32 %ADD12
+endloop:                                          ; preds = %while0
+  %a.next3 = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
+  %"*a.next" = load %Node*, %Node** %a.next3, align 8
+  %"*a.next.next" = getelementptr inbounds %Node, %Node* %"*a.next", i32 0, i32 1
+  %"**a.next.next" = load %Node*, %Node** %"*a.next.next", align 8
+  %"**a.next.next.value" = getelementptr inbounds %Node, %Node* %"**a.next.next", i32 0, i32 0
+  %"$**a.next.next.value" = load i32, i32* %"**a.next.next.value", align 4
+  %MUL = mul i32 %"$**a.next.next.value", 10
+  %"$sum4" = load i32, i32* %sum, align 4
+  %ADD5 = add i32 %"$sum4", %MUL
+  ret i32 %ADD5
 }
 ```
 

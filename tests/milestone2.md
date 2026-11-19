@@ -92,7 +92,6 @@
 - 088 — array: array literal with mixed element types
 - 089 — array: array size is not an integer
 - 090 — array: missing closing bracket on index
-- 091 — array: empty array literal has no element type
 - 092 — array: unknown member
 - 093 — function: single ref param: buff hero hp
 - 094 — function: swap two weapon damage values via refs
@@ -112,7 +111,7 @@
 - 108 — ref: ref? nullable: bound at declaration, guarded reads pass, write-through works
 - 109 — ref: nested fn shares an enclosing var through a ref parameter (the sanctioned path)
 - 110 — ref: a ref reads correctly through the remaining math / comparison / bitwise / cast / logical ops
-- 111 — ref: a reference must be bound when declared
+- 111 — ref: a ref declared without a value starts as null
 - 112 — ref: binding a reference to the wrong type
 - 113 — ref: a ref parameter given a value
 - 114 — ref: taking a reference to a literal
@@ -2059,7 +2058,7 @@ fn count_zero(a i32[], n i32) i32:
     c i32 = 0
     i i32 = 0
     while i < n:
-        if isNullable(a[i]): c += 1
+        if isZero(a[i]): c += 1
         i += 1
     return c
 
@@ -2067,8 +2066,8 @@ fn main() i32:
     a i32[] = [0, 5, 0, 0, 7]
     s i8[] = "ab"
     r i32 = count_zero(a, 5) * 10
-    if isNullable(s[2]): r += 1
-    if !isNullable(s[0]): r += 2
+    if isZero(s[2]): r += 1
+    if !isZero(s[0]): r += 2
     return r
 ```
 
@@ -2078,9 +2077,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-@str = private constant [3 x i8] c"ab\00"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @count_zero(i32* %0, i32 %1) {
 entry:
@@ -2092,100 +2089,95 @@ entry:
   store i32 %1, i32* %n, align 4
   store i32 0, i32* %c, align 4
   store i32 0, i32* %i, align 4
-  br label %cond
+  br label %while0
 
-cond:                                             ; preds = %endif, %entry
-  %load.i = load i32, i32* %i, align 4
-  %load.n = load i32, i32* %n, align 4
-  %LT = icmp slt i32 %load.i, %load.n
-  br i1 %LT, label %then, label %endwhile
+while0:                                           ; preds = %endif, %entry
+  %"$i" = load i32, i32* %i, align 4
+  %"$n" = load i32, i32* %n, align 4
+  %LT = icmp slt i32 %"$i", %"$n"
+  br i1 %LT, label %while0.then, label %endloop
 
-then:                                             ; preds = %cond
-  %load.a = load i32*, i32** %a, align 8
-  %load.i2 = load i32, i32* %i, align 4
-  %"load.a[load.i]" = getelementptr inbounds i32, i32* %load.a, i32 %load.i2
-  %"load.load.a[load.i]" = load i32, i32* %"load.a[load.i]", align 4
-  %"isNullable(load.load.a[load.i])" = icmp eq i32 %"load.load.a[load.i]", 0
-  br i1 %"isNullable(load.load.a[load.i])", label %then1, label %endif
+while0.then:                                      ; preds = %while0
+  br label %if1
 
-endwhile:                                         ; preds = %cond
-  %load.c = load i32, i32* %c, align 4
-  ret i32 %load.c
+if1:                                              ; preds = %while0.then
+  %"$a" = load i32*, i32** %a, align 8
+  %"$i1" = load i32, i32* %i, align 4
+  %"a[]" = getelementptr inbounds i32, i32* %"$a", i32 %"$i1"
+  %"$a[]" = load i32, i32* %"a[]", align 4
+  %EQ = icmp eq i32 %"$a[]", 0
+  br i1 %EQ, label %if1.then, label %endif
 
-then1:                                            ; preds = %then
-  %old = load i32, i32* %c, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* %c, align 4
+if1.then:                                         ; preds = %if1
+  %"$c" = load i32, i32* %c, align 4
+  %ADD = add i32 %"$c", 1
+  store i32 %ADD, i32* %c, align 4
   br label %endif
 
-endif:                                            ; preds = %then1, %then
-  %old3 = load i32, i32* %i, align 4
-  %ADD_ASSIGN4 = add i32 %old3, 1
-  store i32 %ADD_ASSIGN4, i32* %i, align 4
-  br label %cond
+endif:                                            ; preds = %if1.then, %if1
+  %"$i2" = load i32, i32* %i, align 4
+  %ADD3 = add i32 %"$i2", 1
+  store i32 %ADD3, i32* %i, align 4
+  br label %while0
+
+endloop:                                          ; preds = %while0
+  %"$c4" = load i32, i32* %c, align 4
+  ret i32 %"$c4"
 }
 
 define i32 @main() {
 entry:
   %a = alloca i32*, align 8
-  %array = alloca [5 x i32], align 4
+  %arr = alloca [5 x i32], align 4
   %s = alloca i8*, align 8
-  %s6 = alloca [3 x i8], align 1
+  %arr2 = alloca [3 x i8], align 1
   %r = alloca i32, align 4
-  %e = getelementptr inbounds [5 x i32], [5 x i32]* %array, i32 0, i32 0
-  store i32 0, i32* %e, align 4
-  %e1 = getelementptr inbounds [5 x i32], [5 x i32]* %array, i32 0, i32 1
-  store i32 5, i32* %e1, align 4
-  %e2 = getelementptr inbounds [5 x i32], [5 x i32]* %array, i32 0, i32 2
-  store i32 0, i32* %e2, align 4
-  %e3 = getelementptr inbounds [5 x i32], [5 x i32]* %array, i32 0, i32 3
-  store i32 0, i32* %e3, align 4
-  %e4 = getelementptr inbounds [5 x i32], [5 x i32]* %array, i32 0, i32 4
-  store i32 7, i32* %e4, align 4
-  %array5 = getelementptr inbounds [5 x i32], [5 x i32]* %array, i32 0, i32 0
-  store i32* %array5, i32** %a, align 8
-  %dst = getelementptr inbounds [3 x i8], [3 x i8]* %s6, i32 0, i32 0
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %dst, i8* align 1 getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i64 3, i1 false)
-  store i8* %dst, i8** %s, align 8
-  %load.a = load i32*, i32** %a, align 8
-  %"count_zero(load.a,5)" = call i32 @count_zero(i32* %load.a, i32 5)
-  %MUL = mul i32 %"count_zero(load.a,5)", 10
+  store [5 x i32] [i32 0, i32 5, i32 0, i32 0, i32 7], [5 x i32]* %arr, align 4
+  %0 = getelementptr inbounds [5 x i32], [5 x i32]* %arr, i32 0, i32 0
+  store i32* %0, i32** %a, align 8
+  store [3 x i8] c"ab\00", [3 x i8]* %arr2, align 1
+  %1 = getelementptr inbounds [3 x i8], [3 x i8]* %arr2, i32 0, i32 0
+  store i8* %1, i8** %s, align 8
+  %"$a" = load i32*, i32** %a, align 8
+  %call.count_zero = call i32 @count_zero(i32* %"$a", i32 5)
+  %MUL = mul i32 %call.count_zero, 10
   store i32 %MUL, i32* %r, align 4
-  %load.s = load i8*, i8** %s, align 8
-  %"load.s[2]" = getelementptr inbounds i8, i8* %load.s, i32 2
-  %"load.load.s[2]" = load i8, i8* %"load.s[2]", align 1
-  %"isNullable(load.load.s[2])" = icmp eq i8 %"load.load.s[2]", 0
-  br i1 %"isNullable(load.load.s[2])", label %then, label %endif
+  br label %if2
 
-then:                                             ; preds = %entry
-  %old = load i32, i32* %r, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* %r, align 4
+if2:                                              ; preds = %entry
+  %"$s" = load i8*, i8** %s, align 8
+  %"s[]" = getelementptr inbounds i8, i8* %"$s", i32 2
+  %"$s[]" = load i8, i8* %"s[]", align 1
+  %EQ = icmp eq i8 %"$s[]", 0
+  br i1 %EQ, label %if2.then, label %endif
+
+if2.then:                                         ; preds = %if2
+  %"$r" = load i32, i32* %r, align 4
+  %ADD = add i32 %"$r", 1
+  store i32 %ADD, i32* %r, align 4
   br label %endif
 
-endif:                                            ; preds = %then, %entry
-  %load.s9 = load i8*, i8** %s, align 8
-  %"load.s[0]" = getelementptr inbounds i8, i8* %load.s9, i32 0
-  %"load.load.s[0]" = load i8, i8* %"load.s[0]", align 1
-  %"isNullable(load.load.s[0])" = icmp eq i8 %"load.load.s[0]", 0
-  %NOT = xor i1 %"isNullable(load.load.s[0])", true
-  br i1 %NOT, label %then8, label %endif7
+endif:                                            ; preds = %if2.then, %if2
+  br label %if3
 
-then8:                                            ; preds = %endif
-  %old10 = load i32, i32* %r, align 4
-  %ADD_ASSIGN11 = add i32 %old10, 2
-  store i32 %ADD_ASSIGN11, i32* %r, align 4
-  br label %endif7
+if3:                                              ; preds = %endif
+  %"$s3" = load i8*, i8** %s, align 8
+  %"s[]4" = getelementptr inbounds i8, i8* %"$s3", i32 0
+  %"$s[]5" = load i8, i8* %"s[]4", align 1
+  %EQ6 = icmp eq i8 %"$s[]5", 0
+  %NOT = xor i1 %EQ6, true
+  br i1 %NOT, label %if3.then, label %endif1
 
-endif7:                                           ; preds = %then8, %endif
-  %load.r = load i32, i32* %r, align 4
-  ret i32 %load.r
+if3.then:                                         ; preds = %if3
+  %"$r7" = load i32, i32* %r, align 4
+  %ADD8 = add i32 %"$r7", 2
+  store i32 %ADD8, i32* %r, align 4
+  br label %endif1
+
+endif1:                                           ; preds = %if3.then, %if3
+  %"$r9" = load i32, i32* %r, align 4
+  ret i32 %"$r9"
 }
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #0
-
-attributes #0 = { argmemonly nofree nosync nounwind willreturn }
 ```
 
 ---
@@ -3533,7 +3525,7 @@ fn count_if(a i32[], n i32, odd bool) i32:
     i i32 = 0
     while i < n:
         is_odd bool = (a[i] % 2) as bool
-        if is_odd == odd and not isNullable(a[i]): c += 1
+        if is_odd == odd and not isZero(a[i]): c += 1
         i += 1
     return c
 
@@ -3547,7 +3539,7 @@ return count_if(a, 8, True) * 10 + count_if(a, 8, False)
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @a = global i32* null
 
@@ -3564,78 +3556,66 @@ entry:
   store i1 %2, i1* %odd, align 1
   store i32 0, i32* %c, align 4
   store i32 0, i32* %i, align 4
-  br label %cond
+  br label %while0
 
-cond:                                             ; preds = %endif, %entry
-  %load.i = load i32, i32* %i, align 4
-  %load.n = load i32, i32* %n, align 4
-  %LT = icmp slt i32 %load.i, %load.n
-  br i1 %LT, label %then, label %endwhile
+while0:                                           ; preds = %endif, %entry
+  %"$i" = load i32, i32* %i, align 4
+  %"$n" = load i32, i32* %n, align 4
+  %LT = icmp slt i32 %"$i", %"$n"
+  br i1 %LT, label %while0.then, label %endloop
 
-then:                                             ; preds = %cond
-  %load.a = load i32*, i32** %a, align 8
-  %load.i1 = load i32, i32* %i, align 4
-  %"load.a[load.i]" = getelementptr inbounds i32, i32* %load.a, i32 %load.i1
-  %"load.load.a[load.i]" = load i32, i32* %"load.a[load.i]", align 4
-  %MOD = srem i32 %"load.load.a[load.i]", 2
-  %"(bool)load.load.a[load.i] % 2" = trunc i32 %MOD to i1
-  store i1 %"(bool)load.load.a[load.i] % 2", i1* %is_odd, align 1
-  %load.is_odd = load i1, i1* %is_odd, align 1
-  %load.odd = load i1, i1* %odd, align 1
-  %EQ = icmp eq i1 %load.is_odd, %load.odd
-  %load.a3 = load i32*, i32** %a, align 8
-  %load.i4 = load i32, i32* %i, align 4
-  %"load.a[load.i]5" = getelementptr inbounds i32, i32* %load.a3, i32 %load.i4
-  %"load.load.a[load.i]6" = load i32, i32* %"load.a[load.i]5", align 4
-  %"isNullable(load.load.a[load.i])" = icmp eq i32 %"load.load.a[load.i]6", 0
-  %NOT = xor i1 %"isNullable(load.load.a[load.i])", true
+while0.then:                                      ; preds = %while0
+  %"$a" = load i32*, i32** %a, align 8
+  %"$i1" = load i32, i32* %i, align 4
+  %"a[]" = getelementptr inbounds i32, i32* %"$a", i32 %"$i1"
+  %"$a[]" = load i32, i32* %"a[]", align 4
+  %MOD = srem i32 %"$a[]", 2
+  %AS = icmp ne i32 %MOD, 0
+  store i1 %AS, i1* %is_odd, align 1
+  br label %if1
+
+if1:                                              ; preds = %while0.then
+  %"$is_odd" = load i1, i1* %is_odd, align 1
+  %"$odd" = load i1, i1* %odd, align 1
+  %EQ = icmp eq i1 %"$is_odd", %"$odd"
+  %"$a2" = load i32*, i32** %a, align 8
+  %"$i3" = load i32, i32* %i, align 4
+  %"a[]4" = getelementptr inbounds i32, i32* %"$a2", i32 %"$i3"
+  %"$a[]5" = load i32, i32* %"a[]4", align 4
+  %EQ6 = icmp eq i32 %"$a[]5", 0
+  %NOT = xor i1 %EQ6, true
   %AND = and i1 %EQ, %NOT
-  br i1 %AND, label %then2, label %endif
+  br i1 %AND, label %if1.then, label %endif
 
-endwhile:                                         ; preds = %cond
-  %load.c = load i32, i32* %c, align 4
-  ret i32 %load.c
-
-then2:                                            ; preds = %then
-  %old = load i32, i32* %c, align 4
-  %ADD_ASSIGN = add i32 %old, 1
-  store i32 %ADD_ASSIGN, i32* %c, align 4
+if1.then:                                         ; preds = %if1
+  %"$c" = load i32, i32* %c, align 4
+  %ADD = add i32 %"$c", 1
+  store i32 %ADD, i32* %c, align 4
   br label %endif
 
-endif:                                            ; preds = %then2, %then
-  %old7 = load i32, i32* %i, align 4
-  %ADD_ASSIGN8 = add i32 %old7, 1
-  store i32 %ADD_ASSIGN8, i32* %i, align 4
-  br label %cond
+endif:                                            ; preds = %if1.then, %if1
+  %"$i7" = load i32, i32* %i, align 4
+  %ADD8 = add i32 %"$i7", 1
+  store i32 %ADD8, i32* %i, align 4
+  br label %while0
+
+endloop:                                          ; preds = %while0
+  %"$c9" = load i32, i32* %c, align 4
+  ret i32 %"$c9"
 }
 
 define i32 @main() {
 entry:
-  %array = alloca [8 x i32], align 4
-  %e = getelementptr inbounds [8 x i32], [8 x i32]* %array, i32 0, i32 0
-  store i32 0, i32* %e, align 4
-  %e1 = getelementptr inbounds [8 x i32], [8 x i32]* %array, i32 0, i32 1
-  store i32 1, i32* %e1, align 4
-  %e2 = getelementptr inbounds [8 x i32], [8 x i32]* %array, i32 0, i32 2
-  store i32 2, i32* %e2, align 4
-  %e3 = getelementptr inbounds [8 x i32], [8 x i32]* %array, i32 0, i32 3
-  store i32 3, i32* %e3, align 4
-  %e4 = getelementptr inbounds [8 x i32], [8 x i32]* %array, i32 0, i32 4
-  store i32 4, i32* %e4, align 4
-  %e5 = getelementptr inbounds [8 x i32], [8 x i32]* %array, i32 0, i32 5
-  store i32 5, i32* %e5, align 4
-  %e6 = getelementptr inbounds [8 x i32], [8 x i32]* %array, i32 0, i32 6
-  store i32 -3, i32* %e6, align 4
-  %e7 = getelementptr inbounds [8 x i32], [8 x i32]* %array, i32 0, i32 7
-  store i32 0, i32* %e7, align 4
-  %array8 = getelementptr inbounds [8 x i32], [8 x i32]* %array, i32 0, i32 0
-  store i32* %array8, i32** @a, align 8
-  %load.a = load i32*, i32** @a, align 8
-  %"count_if(load.a,8,True)" = call i32 @count_if(i32* %load.a, i32 8, i1 true)
-  %MUL = mul i32 %"count_if(load.a,8,True)", 10
-  %load.a9 = load i32*, i32** @a, align 8
-  %"count_if(load.a,8,False)" = call i32 @count_if(i32* %load.a9, i32 8, i1 false)
-  %ADD = add i32 %MUL, %"count_if(load.a,8,False)"
+  %arr = alloca [8 x i32], align 4
+  store [8 x i32] [i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 -3, i32 0], [8 x i32]* %arr, align 4
+  %0 = getelementptr inbounds [8 x i32], [8 x i32]* %arr, i32 0, i32 0
+  store i32* %0, i32** @a, align 8
+  %"$a" = load i32*, i32** @a, align 8
+  %call.count_if = call i32 @count_if(i32* %"$a", i32 8, i1 true)
+  %MUL = mul i32 %call.count_if, 10
+  %"$a1" = load i32*, i32** @a, align 8
+  %call.count_if2 = call i32 @count_if(i32* %"$a1", i32 8, i1 false)
+  %ADD = add i32 %MUL, %call.count_if2
   ret i32 %ADD
 }
 ```
@@ -3899,10 +3879,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:2:13 expected 'i32', found 'null'
+error: test.ura:2:13 'i32' can't be null
   |
 2 |     x i32 = null
   |             ^^^^
+help: null fits a ref (&T) or an array (T[])
 error: aborting due to 1 error
 ```
 
@@ -3926,10 +3907,10 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:3:17 'null' needs a ref on the other side
+error: test.ura:3:14 'a' is never null, so this comparison is always the same
   |
 3 |     b bool = a == null
-  |                 ^^^^
+  |              ^
 error: aborting due to 1 error
 ```
 
@@ -4790,19 +4771,22 @@ fn main() i32:
 ### llvm ir
 
 ```llvm
-; ModuleID = 'ura-module'
-source_filename = "ura-module"
+; ModuleID = 'ura'
+source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
-  br i1 true, label %then, label %endif
+  br label %if0
 
-then:                                             ; preds = %entry
+if0:                                              ; preds = %entry
+  br i1 true, label %if0.then, label %endif
+
+if0.then:                                         ; preds = %if0
   ret i32 7
 
-endif:                                            ; preds = %entry
+endif:                                            ; preds = %if0
   ret i32 0
 }
 ```
@@ -5138,17 +5122,6 @@ fn main() i32:
 fn main() i32:
     a i32[] = [1, 2, 3]
     output(a[0)
-    return 0
-```
-
----
-
-## 091 — array: empty array literal has no element type
-
-```ura
-// error: Empty array literal has no element type
-fn main() i32:
-    a i32[] = []
     return 0
 ```
 
@@ -6488,14 +6461,93 @@ declare i32 @dprintf(i32, i8*, ...)
 
 ---
 
-## 111 — ref: a reference must be bound when declared
+## 111 — ref: a ref declared without a value starts as null
 
 ```ura
-// error: A reference must be bound when declared (use 'ref?' for an optional reference)
+// stdout: null
+// stdout: bound 4
+// stdout: null again
+// expect: 0
 
 fn main() i32:
     r &i32
+    if r == null:
+        output("null\n")
+    n i32 = 4
+    r = &n
+    if r != null:
+        output("bound ", r, "\n")
+    r = null
+    if isZero(r):
+        output("null again\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+@str = private unnamed_addr constant [6 x i8] c"null\0A\00", align 1
+@str.1 = private unnamed_addr constant [10 x i8] c"bound %d\0A\00", align 1
+@str.2 = private unnamed_addr constant [12 x i8] c"null again\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %r = alloca i32*, align 8
+  %n = alloca i32, align 4
+  store i32* null, i32** %r, align 8
+  br label %if0
+
+if0:                                              ; preds = %entry
+  %"*r" = load i32*, i32** %r, align 8
+  %"$r" = load i32*, i32** %r, align 8
+  %EQ = icmp eq i32* %"$r", null
+  br i1 %EQ, label %if0.then, label %endif
+
+if0.then:                                         ; preds = %if0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str, i32 0, i32 0))
+  br label %endif
+
+endif:                                            ; preds = %if0.then, %if0
+  store i32 4, i32* %n, align 4
+  store i32* %n, i32** %r, align 8
+  br label %if1
+
+if1:                                              ; preds = %endif
+  %"*r3" = load i32*, i32** %r, align 8
+  %"$r4" = load i32*, i32** %r, align 8
+  %NQ = icmp ne i32* %"$r4", null
+  br i1 %NQ, label %if1.then, label %endif1
+
+if1.then:                                         ; preds = %if1
+  %"*r5" = load i32*, i32** %r, align 8
+  %"$*r" = load i32, i32* %"*r5", align 4
+  %call.dprintf6 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.1, i32 0, i32 0), i32 %"$*r")
+  br label %endif1
+
+endif1:                                           ; preds = %if1.then, %if1
+  store i32* null, i32** %r, align 8
+  br label %if2
+
+if2:                                              ; preds = %endif1
+  %"*r7" = load i32*, i32** %r, align 8
+  %"$r8" = load i32*, i32** %r, align 8
+  %EQ9 = icmp eq i32* %"$r8", null
+  br i1 %EQ9, label %if2.then, label %endif2
+
+if2.then:                                         ; preds = %if2
+  %call.dprintf10 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.2, i32 0, i32 0))
+  br label %endif2
+
+endif2:                                           ; preds = %if2.then, %if2
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -6642,6 +6694,70 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Node = type { i32, %Node* }
+
+@str = private unnamed_addr constant [8 x i8] c"sum=%d\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %a = alloca %Node, align 8
+  %b = alloca %Node, align 8
+  %c = alloca %Node, align 8
+  %cur = alloca %Node*, align 8
+  %sum = alloca i32, align 4
+  store %Node zeroinitializer, %Node* %a, align 8
+  %a.value = getelementptr inbounds %Node, %Node* %a, i32 0, i32 0
+  store i32 10, i32* %a.value, align 4
+  store %Node zeroinitializer, %Node* %b, align 8
+  %b.value = getelementptr inbounds %Node, %Node* %b, i32 0, i32 0
+  store i32 20, i32* %b.value, align 4
+  store %Node zeroinitializer, %Node* %c, align 8
+  %c.value = getelementptr inbounds %Node, %Node* %c, i32 0, i32 0
+  store i32 30, i32* %c.value, align 4
+  %a.next = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
+  store %Node* %b, %Node** %a.next, align 8
+  %b.next = getelementptr inbounds %Node, %Node* %b, i32 0, i32 1
+  store %Node* %c, %Node** %b.next, align 8
+  store %Node* %a, %Node** %cur, align 8
+  store i32 0, i32* %sum, align 4
+  br label %while0
+
+while0:                                           ; preds = %while0.then, %entry
+  %"*cur" = load %Node*, %Node** %cur, align 8
+  %"$cur" = load %Node*, %Node** %cur, align 8
+  %NQ = icmp ne %Node* %"$cur", null
+  br i1 %NQ, label %while0.then, label %endloop
+
+while0.then:                                      ; preds = %while0
+  %"*cur1" = load %Node*, %Node** %cur, align 8
+  %"*cur.value" = getelementptr inbounds %Node, %Node* %"*cur1", i32 0, i32 0
+  %"$*cur.value" = load i32, i32* %"*cur.value", align 4
+  %"$sum" = load i32, i32* %sum, align 4
+  %ADD = add i32 %"$sum", %"$*cur.value"
+  store i32 %ADD, i32* %sum, align 4
+  %"*cur2" = load %Node*, %Node** %cur, align 8
+  %"*cur.next" = getelementptr inbounds %Node, %Node* %"*cur2", i32 0, i32 1
+  %"$*cur.next" = load %Node*, %Node** %"*cur.next", align 8
+  store %Node* %"$*cur.next", %Node** %cur, align 8
+  br label %while0
+
+endloop:                                          ; preds = %while0
+  %"$sum3" = load i32, i32* %sum, align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str, i32 0, i32 0), i32 %"$sum3")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 119 — ref: a ref parameter rebinds a struct's ref field in place (add-front)
@@ -6676,6 +6792,84 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Lst = type { %Node* }
+%Node = type { i32, %Node* }
+
+@str = private unnamed_addr constant [4 x i8] c"%d \00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+
+define void @push(%Lst* %0, %Node* %1) {
+entry:
+  %lst = alloca %Lst*, align 8
+  %node = alloca %Node*, align 8
+  store %Lst* %0, %Lst** %lst, align 8
+  store %Node* %1, %Node** %node, align 8
+  %"*node" = load %Node*, %Node** %node, align 8
+  %"*node.next" = getelementptr inbounds %Node, %Node* %"*node", i32 0, i32 1
+  %"*lst" = load %Lst*, %Lst** %lst, align 8
+  %"*lst.head" = getelementptr inbounds %Lst, %Lst* %"*lst", i32 0, i32 0
+  %"$*lst.head" = load %Node*, %Node** %"*lst.head", align 8
+  store %Node* %"$*lst.head", %Node** %"*node.next", align 8
+  %"*lst1" = load %Lst*, %Lst** %lst, align 8
+  %"*lst.head2" = getelementptr inbounds %Lst, %Lst* %"*lst1", i32 0, i32 0
+  %"*node3" = load %Node*, %Node** %node, align 8
+  store %Node* %"*node3", %Node** %"*lst.head2", align 8
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %lst = alloca %Lst, align 8
+  %a = alloca %Node, align 8
+  %b = alloca %Node, align 8
+  %cur = alloca %Node*, align 8
+  store %Lst zeroinitializer, %Lst* %lst, align 8
+  store %Node zeroinitializer, %Node* %a, align 8
+  %a.content = getelementptr inbounds %Node, %Node* %a, i32 0, i32 0
+  store i32 1, i32* %a.content, align 4
+  store %Node zeroinitializer, %Node* %b, align 8
+  %b.content = getelementptr inbounds %Node, %Node* %b, i32 0, i32 0
+  store i32 2, i32* %b.content, align 4
+  call void @push(%Lst* %lst, %Node* %a)
+  call void @push(%Lst* %lst, %Node* %b)
+  %lst.head = getelementptr inbounds %Lst, %Lst* %lst, i32 0, i32 0
+  %"$lst.head" = load %Node*, %Node** %lst.head, align 8
+  store %Node* %"$lst.head", %Node** %cur, align 8
+  br label %while0
+
+while0:                                           ; preds = %while0.then, %entry
+  %"*cur" = load %Node*, %Node** %cur, align 8
+  %"$cur" = load %Node*, %Node** %cur, align 8
+  %NQ = icmp ne %Node* %"$cur", null
+  br i1 %NQ, label %while0.then, label %endloop
+
+while0.then:                                      ; preds = %while0
+  %"*cur1" = load %Node*, %Node** %cur, align 8
+  %"*cur.content" = getelementptr inbounds %Node, %Node* %"*cur1", i32 0, i32 0
+  %"$*cur.content" = load i32, i32* %"*cur.content", align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i32 %"$*cur.content")
+  %"*cur2" = load %Node*, %Node** %cur, align 8
+  %"*cur.next" = getelementptr inbounds %Node, %Node* %"*cur2", i32 0, i32 1
+  %"$*cur.next" = load %Node*, %Node** %"*cur.next", align 8
+  store %Node* %"$*cur.next", %Node** %cur, align 8
+  br label %while0
+
+endloop:                                          ; preds = %while0
+  %call.dprintf3 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 120 — ref: ref? compared to null with == and !=, bound and unbound
@@ -6694,6 +6888,101 @@ fn main() i32:
     q &N = null
     output(p == null, " ", p != null, " ", q == null, "\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%N = type { i32, %N* }
+
+@str = private unnamed_addr constant [5 x i8] c"True\00", align 1
+@str.1 = private unnamed_addr constant [6 x i8] c"False\00", align 1
+@str.2 = private unnamed_addr constant [5 x i8] c"True\00", align 1
+@str.3 = private unnamed_addr constant [6 x i8] c"False\00", align 1
+@str.4 = private unnamed_addr constant [5 x i8] c"True\00", align 1
+@str.5 = private unnamed_addr constant [6 x i8] c"False\00", align 1
+@str.6 = private unnamed_addr constant [10 x i8] c"%s %s %s\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %a = alloca %N, align 8
+  %p = alloca %N*, align 8
+  %q = alloca %N*, align 8
+  %bool.text = alloca i8*, align 8
+  %bool.text6 = alloca i8*, align 8
+  %bool.text7 = alloca i8*, align 8
+  store %N zeroinitializer, %N* %a, align 8
+  %a.v = getelementptr inbounds %N, %N* %a, i32 0, i32 0
+  store i32 1, i32* %a.v, align 4
+  store %N* %a, %N** %p, align 8
+  store %N* null, %N** %q, align 8
+  %"*p" = load %N*, %N** %p, align 8
+  %"$p" = load %N*, %N** %p, align 8
+  %EQ = icmp eq %N* %"$p", null
+  %"*p3" = load %N*, %N** %p, align 8
+  %"$p4" = load %N*, %N** %p, align 8
+  %NQ = icmp ne %N* %"$p4", null
+  %"*q" = load %N*, %N** %q, align 8
+  %"$q" = load %N*, %N** %q, align 8
+  %EQ5 = icmp eq %N* %"$q", null
+  store i8* null, i8** %bool.text, align 8
+  br label %if0
+
+if0:                                              ; preds = %entry
+  br i1 %EQ, label %if0.then, label %else1
+
+if0.then:                                         ; preds = %if0
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str, i32 0, i32 0), i8** %bool.text, align 8
+  br label %endif
+
+else1:                                            ; preds = %if0
+  store i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.1, i32 0, i32 0), i8** %bool.text, align 8
+  br label %endif
+
+endif:                                            ; preds = %else1, %if0.then
+  store i8* null, i8** %bool.text6, align 8
+  br label %if2
+
+if2:                                              ; preds = %endif
+  br i1 %NQ, label %if2.then, label %else3
+
+if2.then:                                         ; preds = %if2
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.2, i32 0, i32 0), i8** %bool.text6, align 8
+  br label %endif1
+
+else3:                                            ; preds = %if2
+  store i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.3, i32 0, i32 0), i8** %bool.text6, align 8
+  br label %endif1
+
+endif1:                                           ; preds = %else3, %if2.then
+  store i8* null, i8** %bool.text7, align 8
+  br label %if4
+
+if4:                                              ; preds = %endif1
+  br i1 %EQ5, label %if4.then, label %else5
+
+if4.then:                                         ; preds = %if4
+  store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.4, i32 0, i32 0), i8** %bool.text7, align 8
+  br label %endif2
+
+else5:                                            ; preds = %if4
+  store i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.5, i32 0, i32 0), i8** %bool.text7, align 8
+  br label %endif2
+
+endif2:                                           ; preds = %else5, %if4.then
+  %"$bool.text" = load i8*, i8** %bool.text, align 8
+  %"$bool.text8" = load i8*, i8** %bool.text6, align 8
+  %"$bool.text9" = load i8*, i8** %bool.text7, align 8
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.6, i32 0, i32 0), i8* %"$bool.text", i8* %"$bool.text8", i8* %"$bool.text9")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -6721,6 +7010,52 @@ fn main() i32:
     lst.head = &lst.head.next
     output(lst.head.v, "\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Node = type { i32, %Node* }
+%Lst = type { %Node* }
+
+@str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %a = alloca %Node, align 8
+  %b = alloca %Node, align 8
+  %lst = alloca %Lst, align 8
+  store %Node zeroinitializer, %Node* %a, align 8
+  %a.v = getelementptr inbounds %Node, %Node* %a, i32 0, i32 0
+  store i32 1, i32* %a.v, align 4
+  store %Node zeroinitializer, %Node* %b, align 8
+  %b.v = getelementptr inbounds %Node, %Node* %b, i32 0, i32 0
+  store i32 2, i32* %b.v, align 4
+  %a.next = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
+  store %Node* %b, %Node** %a.next, align 8
+  store %Lst zeroinitializer, %Lst* %lst, align 8
+  %lst.head = getelementptr inbounds %Lst, %Lst* %lst, i32 0, i32 0
+  store %Node* %a, %Node** %lst.head, align 8
+  %lst.head1 = getelementptr inbounds %Lst, %Lst* %lst, i32 0, i32 0
+  %lst.head2 = getelementptr inbounds %Lst, %Lst* %lst, i32 0, i32 0
+  %"*lst.head" = load %Node*, %Node** %lst.head2, align 8
+  %"*lst.head.next" = getelementptr inbounds %Node, %Node* %"*lst.head", i32 0, i32 1
+  %"$*lst.head.next" = load %Node*, %Node** %"*lst.head.next", align 8
+  store %Node* %"$*lst.head.next", %Node** %lst.head1, align 8
+  %lst.head3 = getelementptr inbounds %Lst, %Lst* %lst, i32 0, i32 0
+  %"*lst.head4" = load %Node*, %Node** %lst.head3, align 8
+  %"*lst.head.v" = getelementptr inbounds %Node, %Node* %"*lst.head4", i32 0, i32 0
+  %"$*lst.head.v" = load i32, i32* %"*lst.head.v", align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i32 %"$*lst.head.v")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -6912,6 +7247,22 @@ fn main() i32:
     x i32 = 5
     output(x == null, "\n")
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:4:12 'x' is never null, so this comparison is always the same
+  |
+4 |     output(x == null, "\n")
+  |            ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---

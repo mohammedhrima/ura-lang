@@ -466,6 +466,10 @@ void check_type(Node *value, Node *expected, char *help) {
         check_array_literal(value, expected);
         return;
     }
+    if (value->token->type == ZERO) {
+        check_null(value, expected);
+        return;
+    }
     bool is_numeric_math = is_math(value) && is_numeric(expected) &&
                            is_numeric(type_of(value->left)) &&
                            is_numeric(type_of(value->right));
@@ -518,6 +522,42 @@ void check_type(Node *value, Node *expected, char *help) {
             format("expected '%s', found '%s'", type_name(expected), type_name(found)),
             help
         );
+}
+
+void check_null_compare(Node *node) {
+    bool is_right = node->right->token->type == ZERO;
+    Node *null = is_right ? node->right : node->left;
+    Node *other = is_right ? node->left : node->right;
+    if (other->token->type == ZERO)
+        other->data_type = chars_type();
+    Node *type = is_ref_variable(other) ? other->data_type : type_of(other);
+    bool is_pointer = type && includes(type->token->type, REF, ARRAY, 0);
+    if (is_pointer) {
+        null->data_type = type;
+        return;
+    }
+    Token *token = other->token;
+    add_error(
+        token->s,
+        token->e,
+        format("'%s' is never null, so this comparison is always the same", token_text(token)),
+        NULL
+    );
+}
+
+void check_null(Node *node, Node *expected) {
+    bool is_pointer = expected && includes(expected->token->type, REF, ARRAY, 0);
+    if (is_pointer) {
+        node->data_type = expected;
+        return;
+    }
+    Token *token = node->token;
+    add_error(
+        token->s,
+        token->e,
+        expected ? format("'%s' can't be null", type_name(expected)) : "null needs a type here",
+        "null fits a ref (&T) or an array (T[])"
+    );
 }
 
 void check_array_literal(Node *node, Node *expected) {
@@ -1527,7 +1567,7 @@ void check_call(Node *node) {
         );
         return;
     }
-    bool takes_type = includes(node->to_call->token->type, SIZEOF, TYPEOF, DROP, 0);
+    bool takes_type = includes(node->to_call->token->type, SIZEOF, TYPEOF, DROP, IS_ZERO, 0);
     if (takes_type && node->children_count != 1)
         add_error(
             token->s,
@@ -1620,6 +1660,12 @@ void check_operation(Node *node) {
     }
     Node *left = node->left;
     Node *right = node->right;
+    bool is_compare = includes(node->token->type, EQ, NQ, 0);
+    bool has_null = left->token->type == ZERO || right->token->type == ZERO;
+    if (is_compare && has_null) {
+        check_null_compare(node);
+        return;
+    }
     bool is_ref_declaration = is_ref_variable(left) && left->declared == NULL;
     if (node->token->type == ASSIGN && is_ref_declaration && !is_ref_binding(node)) {
         int end = line_end(right->token->s);
@@ -1700,7 +1746,7 @@ void check_operation(Node *node) {
     bool is_logic = includes(node->token->type, AND, OR, 0);
     Node *left_bool = type_of(node->left);
     bool is_left_bool = !left_bool || same_type(left_bool, bool_type());
-    bool is_address = node->right->token->type == REF;
+    bool is_address = includes(node->right->token->type, REF, ZERO, 0);
     Node *ref_type = node->left->data_type;
     bool is_both_numbers = is_number(node->left) && is_number(node->right);
     bool is_left_wider = is_both_numbers && node->left->token->shift > node->right->token->shift;
