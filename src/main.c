@@ -804,14 +804,7 @@ void remove_overridden(Node *st) {
                 continue;
             if (other->token->is_pub != method->token->is_pub)
                 continue;
-            bool is_same = other->args->children_count == method->args->children_count;
-            for (int k = 0; is_same && k < method->args->children_count; k++) {
-                Node *left = method->args->children[k]->data_type;
-                Node *right = other->args->children[k]->data_type;
-                bool has_types = left && right;
-                is_same = has_types ? same_type(left, right) : left == right;
-            }
-            if (!is_same)
+            if (!same_params(other, method))
                 continue;
             for (int k = i; k < st->children_count - 1; k++)
                 st->children[k] = st->children[k + 1];
@@ -1892,6 +1885,21 @@ bool same_type(Node *a, Node *b) {
     if (a->token->is_uint != b->token->is_uint)
         return false;
     return a->token->shift == b->token->shift;
+}
+
+bool same_params(Node *a, Node *b) {
+    if (a->args->children_count != b->args->children_count)
+        return false;
+    for (int i = 0; i < a->args->children_count; i++) {
+        Node *left = a->args->children[i];
+        Node *right = b->args->children[i];
+        if (left->token->type != right->token->type)
+            return false;
+        bool has_types = left->data_type && right->data_type;
+        if (has_types && !same_type(left->data_type, right->data_type))
+            return false;
+    }
+    return true;
 }
 
 bool is_number(Node *node) {

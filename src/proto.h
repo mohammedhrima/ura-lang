@@ -224,6 +224,7 @@ bool is_ref_variable(Node *node);
 bool is_struct_value(Node *type);
 bool is_unused_global(Token *var);
 bool parse_args(int ac, char **av);
+bool same_params(Node *a, Node *b);
 bool same_type(Node *a, Node *b);
 char *init_from_template(Node *template, Node *types);
 char *parse_escaped(char *input, int s, int e);

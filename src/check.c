@@ -974,15 +974,8 @@ void check_function(Node *node, Node *scope) {
         bool is_earlier = other->token->type == PROTO && other->token->s < token->s;
         if (!is_earlier || !strcmp2(other->token->name, token->name))
             continue;
-        bool is_same = other->args->children_count == count;
-        for (int j = 0; j < count && is_same; j++) {
-            Node *left = other->args->children[j];
-            Node *right = params[j];
-            bool has_types = left->data_type && right->data_type;
-            is_same = has_types ? same_type(left->data_type, right->data_type)
-                                : left->token->type == right->token->type;
-        }
-        if (is_same && same_type(ret_type_of(node), ret_type_of(other)))
+        bool is_same_ret = same_type(ret_type_of(node), ret_type_of(other));
+        if (same_params(other, node) && is_same_ret)
             continue;
         add_error(
             name_s,
@@ -1055,11 +1048,9 @@ void check_function(Node *node, Node *scope) {
         Node *other = scope->children[i];
         bool is_function = includes(other->token->type, FN_DEC, PROTO, 0) && other != node;
         bool is_same_name = is_function && strcmp2(other->token->name, node->token->name);
-        if (!is_same_name || other->args->children_count != count)
+        if (!is_same_name)
             continue;
-        bool is_same = true;
-        for (int j = 0; j < count && is_same; j++)
-            is_same = same_type(other->args->children[j]->data_type, params[j]->data_type);
+        bool is_same = same_params(other, node);
         bool is_earlier_fn = other->token->type == FN_DEC && other->token->s < node->token->s;
         bool is_proto = other->token->type == PROTO;
         Node *ret = ret_type_of(node);
