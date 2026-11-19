@@ -1311,7 +1311,7 @@ Node *parse_prime() {
         token->body.parents = parents;
         while (inside(node->token->space)) {
             Node *child = parse_expr(0);
-            if (!includes(child->token->type, FN_DEC, TEMPLATE, 0)) {
+            if (!includes(child->token->type, FN_DEC, TEMPLATE, STRUCT, 0)) {
                 check_attribute(child);
                 continue;
             }
@@ -2060,6 +2060,11 @@ void codegen_structs(Node *node) {
     }
     for (int i = 0; i < node->children_count; i++) {
         Node *child = node->children[i];
+        if (child->token->type == STRUCT)
+            codegen_structs(child);
+    }
+    for (int i = 0; i < node->children_count; i++) {
+        Node *child = node->children[i];
         if (child->token->type != STRUCT)
             continue;
         Ucg **attrs = arena_alloc(child->children_count + 1, sizeof(Ucg *));
@@ -2160,21 +2165,24 @@ Ucg *codegen_in_variable(Node *node) {
     return tmp;
 }
 
+void codegen_method_protos(Node *st) {
+    for (int i = 0; i < st->children_count; i++) {
+        Node *child = st->children[i];
+        if (child->token->type == STRUCT)
+            codegen_method_protos(child);
+        if (child->token->type != FN_DEC)
+            continue;
+        codegen_proto(child, format("%s.%s", st->token->name, child->token->name));
+    }
+}
+
 void codegen_protos(Node *node) {
     for (int i = 0; i < node->children_count; i++) {
         Node *child = node->children[i];
         if (includes(child->token->type, FN_DEC, PROTO, 0))
             codegen_proto(child, child->token->name);
-        if (child->token->type != STRUCT)
-            continue;
-        for (int j = 0; j < child->children_count; j++) {
-            Node *method = child->children[j];
-            if (method->token->type != FN_DEC)
-                continue;
-            codegen_proto(
-                method, format("%s.%s", child->token->name, method->token->name)
-            );
-        }
+        if (child->token->type == STRUCT)
+            codegen_method_protos(child);
     }
 }
 
@@ -2344,7 +2352,7 @@ void codegen(Node *node) {
         enter_scope(node);
         for (int i = 0; i < node->children_count; i++) {
             Node *child = node->children[i];
-            if (child->token->type == FN_DEC)
+            if (includes(child->token->type, FN_DEC, STRUCT, 0))
                 codegen(child);
         }
         exit_scope();

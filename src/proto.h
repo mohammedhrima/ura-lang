@@ -235,6 +235,7 @@ void codegen_branch(Node *node, Ucg *stmt);
 void codegen_clean(Ucg *place, Node *type);
 void codegen_drop(Ucg *place, Node *type);
 void codegen_drop_temporaries(void);
+void codegen_method_protos(Node *st);
 void codegen_proto(Node *node, char *name);
 void codegen_protos(Node *node);
 void codegen_statement(Node *node);

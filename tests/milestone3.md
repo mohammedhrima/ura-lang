@@ -3793,7 +3793,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Node = type { i32, %Node* }
 
@@ -3803,27 +3803,27 @@ entry:
   %b = alloca %Node, align 8
   store %Node zeroinitializer, %Node* %a, align 8
   store %Node zeroinitializer, %Node* %b, align 8
-  %load.a.next = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
-  store %Node* %b, %Node** %load.a.next, align 8
-  %load.a.next1 = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
-  %dref.load.a.next = load %Node*, %Node** %load.a.next1, align 8
-  %load.dref.load.a.next.value = getelementptr inbounds %Node, %Node* %dref.load.a.next, i32 0, i32 0
-  %old = load i32, i32* %load.dref.load.a.next.value, align 4
-  %ADD_ASSIGN = add i32 %old, 5
-  store i32 %ADD_ASSIGN, i32* %load.dref.load.a.next.value, align 4
-  %load.a.next2 = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
-  %dref.load.a.next3 = load %Node*, %Node** %load.a.next2, align 8
-  %load.dref.load.a.next.value4 = getelementptr inbounds %Node, %Node* %dref.load.a.next3, i32 0, i32 0
-  %old5 = load i32, i32* %load.dref.load.a.next.value4, align 4
-  %MUL_ASSIGN = mul i32 %old5, 3
-  store i32 %MUL_ASSIGN, i32* %load.dref.load.a.next.value4, align 4
-  %load.b.value = getelementptr inbounds %Node, %Node* %b, i32 0, i32 0
-  %old6 = load i32, i32* %load.b.value, align 4
-  %SUB_ASSIGN = sub i32 %old6, 1
-  store i32 %SUB_ASSIGN, i32* %load.b.value, align 4
-  %load.b.value7 = getelementptr inbounds %Node, %Node* %b, i32 0, i32 0
-  %load.load.b.value = load i32, i32* %load.b.value7, align 4
-  ret i32 %load.load.b.value
+  %a.next = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
+  store %Node* %b, %Node** %a.next, align 8
+  %a.next1 = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
+  %"*a.next" = load %Node*, %Node** %a.next1, align 8
+  %"*a.next.value" = getelementptr inbounds %Node, %Node* %"*a.next", i32 0, i32 0
+  %"$*a.next.value" = load i32, i32* %"*a.next.value", align 4
+  %ADD = add i32 %"$*a.next.value", 5
+  store i32 %ADD, i32* %"*a.next.value", align 4
+  %a.next2 = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
+  %"*a.next3" = load %Node*, %Node** %a.next2, align 8
+  %"*a.next.value4" = getelementptr inbounds %Node, %Node* %"*a.next3", i32 0, i32 0
+  %"$*a.next.value5" = load i32, i32* %"*a.next.value4", align 4
+  %MUL = mul i32 %"$*a.next.value5", 3
+  store i32 %MUL, i32* %"*a.next.value4", align 4
+  %b.value = getelementptr inbounds %Node, %Node* %b, i32 0, i32 0
+  %"$b.value" = load i32, i32* %b.value, align 4
+  %SUB = sub i32 %"$b.value", 1
+  store i32 %SUB, i32* %b.value, align 4
+  %b.value6 = getelementptr inbounds %Node, %Node* %b, i32 0, i32 0
+  %"$b.value7" = load i32, i32* %b.value6, align 4
+  ret i32 %"$b.value7"
 }
 ```
 
@@ -5282,7 +5282,7 @@ struct Node:
     value i32
     next &Node
 
-    fn link(n &Node) &Node:
+    fn attach(n &Node) &Node:
         self.next = &n
         return &n
 
@@ -5299,7 +5299,7 @@ b Node
 c Node
 d Node
 d.value = 4
-a.link(&b).link(&c).link(&d)
+a.attach(&b).attach(&c).attach(&d)
 return a.length() * 10 + a.next.next.next.value
 ```
 
@@ -7291,6 +7291,22 @@ fn main() i32:
     return 0
 ```
 
+### stderr
+
+```
+error: test.ura:8:7 'Room' has no method 'nope'
+  |
+8 |     r.nope()
+  |       ^^^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
 ---
 
 ## 096 — method: calling a method on a non-struct
@@ -7302,6 +7318,22 @@ fn main() i32:
     x i32 = 3
     x.nope()
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:5:5 'x' is 'i32', not a struct
+  |
+5 |     x.nope()
+  |     ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---
@@ -7321,6 +7353,23 @@ fn main() i32:
     r Room
     r.climb()
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:11:7 'Room' has no method 'climb' that takes ()
+   |
+11 |     r.climb()
+   |       ^^^^^
+help: 'climb' takes (i32)
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---
@@ -8241,6 +8290,59 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Node = type { i32, %Node* }
+
+@str = private unnamed_addr constant [10 x i8] c"%d %d %d\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %a = alloca %Node, align 8
+  %b = alloca %Node, align 8
+  %c = alloca %Node, align 8
+  store %Node zeroinitializer, %Node* %a, align 8
+  store %Node zeroinitializer, %Node* %b, align 8
+  store %Node zeroinitializer, %Node* %c, align 8
+  %a.value = getelementptr inbounds %Node, %Node* %a, i32 0, i32 0
+  store i32 1, i32* %a.value, align 4
+  %b.value = getelementptr inbounds %Node, %Node* %b, i32 0, i32 0
+  store i32 2, i32* %b.value, align 4
+  %c.value = getelementptr inbounds %Node, %Node* %c, i32 0, i32 0
+  store i32 3, i32* %c.value, align 4
+  %a.next = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
+  store %Node* %b, %Node** %a.next, align 8
+  %b.next = getelementptr inbounds %Node, %Node* %b, i32 0, i32 1
+  store %Node* %c, %Node** %b.next, align 8
+  %a.next1 = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
+  %"*a.next" = load %Node*, %Node** %a.next1, align 8
+  %"*a.next.value" = getelementptr inbounds %Node, %Node* %"*a.next", i32 0, i32 0
+  store i32 20, i32* %"*a.next.value", align 4
+  %a.next2 = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
+  %"*a.next3" = load %Node*, %Node** %a.next2, align 8
+  %"*a.next.value4" = getelementptr inbounds %Node, %Node* %"*a.next3", i32 0, i32 0
+  %a.next5 = getelementptr inbounds %Node, %Node* %a, i32 0, i32 1
+  %"*a.next6" = load %Node*, %Node** %a.next5, align 8
+  %"*a.next.next" = getelementptr inbounds %Node, %Node* %"*a.next6", i32 0, i32 1
+  %"**a.next.next" = load %Node*, %Node** %"*a.next.next", align 8
+  %"**a.next.next.value" = getelementptr inbounds %Node, %Node* %"**a.next.next", i32 0, i32 0
+  %b.value7 = getelementptr inbounds %Node, %Node* %b, i32 0, i32 0
+  %"$*a.next.value" = load i32, i32* %"*a.next.value4", align 4
+  %"$**a.next.next.value" = load i32, i32* %"**a.next.next.value", align 4
+  %"$b.value" = load i32, i32* %b.value7, align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str, i32 0, i32 0), i32 %"$*a.next.value", i32 %"$**a.next.next.value", i32 %"$b.value")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 118 — struct: struct assignment copies by value
@@ -8531,6 +8633,22 @@ fn main() i32:
     return 0
 ```
 
+### stderr
+
+```
+error: test.ura:6:5 'hp' is already declared, on line 5
+  |
+6 |     hp   i32
+  |     ^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
 ---
 
 ## 123 — struct: a field whose type does not exist
@@ -8544,6 +8662,23 @@ struct Dungeon:
 fn main() i32:
     d Dungeon
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:4:11 unknown type 'Room'
+  |
+4 |     entry Room
+  |           ^^^^
+help: declare it: struct Room:
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---
@@ -8560,6 +8695,23 @@ struct Node:
 fn main() i32:
     n Node
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:5:11 struct 'Node' can't contain itself
+  |
+5 |     next  Node
+  |           ^^^^
+help: use a ref: '&Node'
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---
@@ -8609,6 +8761,23 @@ fn main() i32:
     return 0
 ```
 
+### stderr
+
+```
+error: test.ura:4:7 unknown type 'Player'
+  |
+4 |     p Player
+  |       ^^^^^^
+help: declare it: struct Player:
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
 ---
 
 ## 127 — struct: reading a field the struct does not have
@@ -8626,6 +8795,23 @@ fn main() i32:
     return 0
 ```
 
+### stderr
+
+```
+error: test.ura:9:14 'Player' has no attribute 'nope'
+  |
+9 |     output(p.nope)
+  |              ^^^^
+help: Player has: name, hp
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
 ---
 
 ## 128 — struct: reading a field from a scalar
@@ -8639,6 +8825,22 @@ fn main() i32:
     return 0
 ```
 
+### stderr
+
+```
+error: test.ura:5:12 'x' is 'i32', not a struct
+  |
+5 |     output(x.foo)
+  |            ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
 ---
 
 ## 129 — struct: '.len' on a scalar
@@ -8650,6 +8852,22 @@ fn main() i32:
     x i32 = 3
     output(x.len)
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:5:12 'x' is 'i32', not a struct
+  |
+5 |     output(x.len)
+  |            ^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---
@@ -8667,6 +8885,23 @@ fn main() i32:
 
     i Inner
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:9:7 unknown type 'Inner'
+  |
+9 |     i Inner
+  |       ^^^^^
+help: declare it: struct Inner:
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---
@@ -8739,6 +8974,80 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Item = type { i32, %Item* }
+
+@str = private unnamed_addr constant [10 x i8] c"worth %d\0A\00", align 1
+@str.1 = private unnamed_addr constant [18 x i8] c"chained field %d\0A\00", align 1
+
+define %Item @Item.create(i32 %0) {
+entry:
+  %w = alloca i32, align 4
+  %it = alloca %Item, align 8
+  store i32 %0, i32* %w, align 4
+  store %Item zeroinitializer, %Item* %it, align 8
+  %it.worth = getelementptr inbounds %Item, %Item* %it, i32 0, i32 0
+  %"$w" = load i32, i32* %w, align 4
+  store i32 %"$w", i32* %it.worth, align 4
+  %"$it" = load %Item, %Item* %it, align 8
+  ret %Item %"$it"
+}
+
+define void @Item.show(%Item* %0) {
+entry:
+  %self = alloca %Item*, align 8
+  store %Item* %0, %Item** %self, align 8
+  %"*self" = load %Item*, %Item** %self, align 8
+  %"*self.worth" = getelementptr inbounds %Item, %Item* %"*self", i32 0, i32 0
+  %"$*self.worth" = load i32, i32* %"*self.worth", align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str, i32 0, i32 0), i32 %"$*self.worth")
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %head = alloca %Item, align 8
+  %mid = alloca %Item, align 8
+  %tail = alloca %Item, align 8
+  %call.Item.create = call %Item @Item.create(i32 5)
+  store %Item %call.Item.create, %Item* %head, align 8
+  %call.Item.create1 = call %Item @Item.create(i32 7)
+  store %Item %call.Item.create1, %Item* %mid, align 8
+  %call.Item.create2 = call %Item @Item.create(i32 9)
+  store %Item %call.Item.create2, %Item* %tail, align 8
+  %head.next = getelementptr inbounds %Item, %Item* %head, i32 0, i32 1
+  store %Item* %mid, %Item** %head.next, align 8
+  %mid.next = getelementptr inbounds %Item, %Item* %mid, i32 0, i32 1
+  store %Item* %tail, %Item** %mid.next, align 8
+  call void @Item.show(%Item* %head)
+  %head.next3 = getelementptr inbounds %Item, %Item* %head, i32 0, i32 1
+  %"*head.next" = load %Item*, %Item** %head.next3, align 8
+  call void @Item.show(%Item* %"*head.next")
+  %head.next4 = getelementptr inbounds %Item, %Item* %head, i32 0, i32 1
+  %"*head.next5" = load %Item*, %Item** %head.next4, align 8
+  %"*head.next.next" = getelementptr inbounds %Item, %Item* %"*head.next5", i32 0, i32 1
+  %"**head.next.next" = load %Item*, %Item** %"*head.next.next", align 8
+  call void @Item.show(%Item* %"**head.next.next")
+  %head.next6 = getelementptr inbounds %Item, %Item* %head, i32 0, i32 1
+  %"*head.next7" = load %Item*, %Item** %head.next6, align 8
+  %"*head.next.next8" = getelementptr inbounds %Item, %Item* %"*head.next7", i32 0, i32 1
+  %"**head.next.next9" = load %Item*, %Item** %"*head.next.next8", align 8
+  %"**head.next.next.worth" = getelementptr inbounds %Item, %Item* %"**head.next.next9", i32 0, i32 0
+  %"$**head.next.next.worth" = load i32, i32* %"**head.next.next.worth", align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([18 x i8], [18 x i8]* @str.1, i32 0, i32 0), i32 %"$**head.next.next.worth")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 133 — struct: struct redefinition
@@ -8795,6 +9104,23 @@ fn main() i32:
     return 0
 ```
 
+### stderr
+
+```
+error: test.ura:11:7 'Point' has no attribute 'z'
+   |
+11 |     p.z = 5
+   |       ^
+help: Point has: x, y
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
+```
+
 ---
 
 ## 135 — struct: calling undefined method on struct
@@ -8812,6 +9138,22 @@ fn main() i32:
     p.x = 1
     p.normalize()
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:11:7 'Point' has no method 'normalize'
+   |
+11 |     p.normalize()
+   |       ^^^^^^^^^
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---
