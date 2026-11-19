@@ -538,6 +538,7 @@ TypeRef llvm_type(Ucg *ir) {
     switch (ir->type) { // clang-format off
     case INT:        	return gb_ucg.types.num[1 << ir->shift];
     case FLOAT:			return llvm_float_type(1 << ir->shift);
+    case CHARS:			return LLVMPointerType(gb_ucg.types.num[8], 0);
     case STRUCT:		return ir->rtype;
     case POINT_TO:		return llvm_type(ucg_type_of(ir));
     case ATTR:			return llvm_type(ir->data_type);
@@ -591,6 +592,17 @@ void llvm_val_create(Ucg *ir) {
                 agg = LLVMBuildInsertValue(gb_ucg.builder, agg, item->elem, i, "");
         }
         ir->elem = agg;
+        break;
+    }
+    case CHARS: {
+        if (ir->used < 0)
+            break;
+        int count = to_create->arr.items_count;
+        char *text = arena_alloc(count + 1, sizeof(char));
+        for (int i = 0; i < count; i++)
+            text[i] = to_create->arr.items[i]->to_create->num.value;
+        Value global = LLVMBuildGlobalString(gb_ucg.builder, text, "str");
+        ir->elem = LLVMBuildPointerCast(gb_ucg.builder, global, llvm_type(to_create), "");
         break;
     }
     case ARRAY: {
@@ -671,7 +683,7 @@ void llvm_struct_body(Ucg *ir) {
 }
 
 char *ucg_string_text(Ucg *value) {
-    if (value->type != VAL_CREATE || value->to_create->type != ARRAY)
+    if (value->type != VAL_CREATE || value->to_create->type != CHARS)
         return NULL;
     Ucg *arr = value->to_create;
     char *text = arena_alloc(arr->arr.items_count * 2 + 1, sizeof(char));
@@ -1056,7 +1068,8 @@ __attribute__((sentinel)) Ucg *ucg_array_value(Ucg *elem, ...) {
 }
 
 Ucg *ucg_string_value(char *str) {
-    Ucg *new = ucg_array_new(ucg_i8_type());
+    Ucg *new = ucg_new(VAL_CREATE);
+    new->to_create = ucg_new(CHARS);
     Ucg *to_create = new->to_create;
     for (int i = 0; i <= strlen(str); i++)
         append(to_create->arr.items, ucg_i8_value(str[i]));
@@ -1327,6 +1340,7 @@ Ucg *ucg_write(Ucg *fd, Ucg **values, int values_count) {
         char *text = ucg_string_text(value);
         if (text) {
             layout = format("%s%s", layout, text);
+            value->used = -1;
             continue;
         }
         Ucg *type = ucg_value_type(value);
