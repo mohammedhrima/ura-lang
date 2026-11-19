@@ -1600,7 +1600,8 @@ bool fits_args(Node *fn, Node **args, int args_count, int self) {
         Node *found = type_of(args[j]);
         bool is_unknown = found == NULL || type == NULL;
         bool is_text = args[j]->token->type == CHARS && is_chars(type);
-        if (is_unknown || is_text || (is_number(args[j]) && is_number(type)))
+        bool is_list = args[j]->token->type == LBRACK && type && element_type_of(type);
+        if (is_unknown || is_text || is_list || (is_number(args[j]) && is_number(type)))
             continue;
         bool takes_ref = type->token->type == REF && found->token->type != REF;
         if (!same_type(found, takes_ref ? type->data_type : type))
@@ -1692,6 +1693,8 @@ Node *element_type_of(Node *type) {
     if (type->token->type == ARRAY)
         return type->data_type;
     bool is_array = type->token->type == ID && strncmp2(type->token->name, "Array<", 6);
+    if (is_array && type->declared == NULL)
+        type->declared = find_struct(type->token->name);
     if (!is_array || type->declared == NULL)
         return NULL;
     int index = 0;
