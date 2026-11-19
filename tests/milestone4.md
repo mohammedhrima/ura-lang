@@ -17,6 +17,7 @@
 - 013 — templates: missing colon
 - 014 — template: declared inside a function
 - 015 — templates: used outside the scope it is declared in
+- 016 — template: several functions in one template, each instance renames all of them; memory_alloc, memory_copy, memory_free
 
 ---
 
@@ -634,5 +635,185 @@ error: aborting due to 1 error
 
 ```
 1
+```
+
+---
+
+## 016 — template: several functions in one template, each instance renames all of them; memory_alloc, memory_copy, memory_free
+
+```ura
+// stdout: 10 20 30
+// stdout: 0 7
+// expect: 0
+template<T>:
+    fn alloc(count i32) T[]:
+        return memory_alloc(count * sizeof(T)) as T[]
+
+    fn copy(dst T[], src T[], count i32):
+        memory_copy(dst as i8[], src as i8[], count * sizeof(T))
+
+    fn free(data T[]):
+        memory_free(data as i8[])
+
+struct P:
+    x i32
+    y i32
+
+fn main() i32:
+    a i32[] = alloc<i32>(3)
+    b i32[] = alloc<i32>(3)
+    a[0] = 10
+    a[1] = 20
+    a[2] = 30
+    copy<i32>(b, a, 3)
+    output(b[0], " ", b[1], " ", b[2], "\n")
+    ps P[] = alloc<P>(2)
+    ps[1].y = 7
+    output(ps[0].x, " ", ps[1].y, "\n")
+    free<i32>(a)
+    free<i32>(b)
+    free<P>(ps)
+    return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%P = type { i32, i32 }
+
+@str = private unnamed_addr constant [10 x i8] c"%d %d %d\0A\00", align 1
+@str.1 = private unnamed_addr constant [7 x i8] c"%d %d\0A\00", align 1
+
+define i32* @"alloc<i32>"(i32 %0) {
+entry:
+  %count = alloca i32, align 4
+  store i32 %0, i32* %count, align 4
+  %"$count" = load i32, i32* %count, align 4
+  %MUL = mul i32 %"$count", ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i32)
+  %AS = sext i32 %MUL to i64
+  %call.calloc = call i8* @calloc(i64 %AS, i64 sext (i32 ptrtoint (i8* getelementptr (i8, i8* null, i32 1) to i32) to i64))
+  %AS1 = bitcast i8* %call.calloc to i32*
+  ret i32* %AS1
+}
+
+define void @"copy<i32>"(i32* %0, i32* %1, i32 %2) {
+entry:
+  %dst = alloca i32*, align 8
+  %src = alloca i32*, align 8
+  %count = alloca i32, align 4
+  store i32* %0, i32** %dst, align 8
+  store i32* %1, i32** %src, align 8
+  store i32 %2, i32* %count, align 4
+  %"$dst" = load i32*, i32** %dst, align 8
+  %AS = bitcast i32* %"$dst" to i8*
+  %"$src" = load i32*, i32** %src, align 8
+  %AS1 = bitcast i32* %"$src" to i8*
+  %"$count" = load i32, i32* %count, align 4
+  %MUL = mul i32 %"$count", ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i32)
+  %AS2 = sext i32 %MUL to i64
+  %MUL3 = mul i64 %AS2, sext (i32 ptrtoint (i8* getelementptr (i8, i8* null, i32 1) to i32) to i64)
+  %call.memcpy = call i8* @memcpy(i8* %AS, i8* %AS1, i64 %MUL3)
+  ret void
+}
+
+define void @"free<i32>"(i32* %0) {
+entry:
+  %data = alloca i32*, align 8
+  store i32* %0, i32** %data, align 8
+  %"$data" = load i32*, i32** %data, align 8
+  %AS = bitcast i32* %"$data" to i8*
+  call void @free(i8* %AS)
+  ret void
+}
+
+define %P* @"alloc<P>"(i32 %0) {
+entry:
+  %count = alloca i32, align 4
+  store i32 %0, i32* %count, align 4
+  %"$count" = load i32, i32* %count, align 4
+  %MUL = mul i32 %"$count", trunc (i64 mul nuw (i64 ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i64), i64 2) to i32)
+  %AS = sext i32 %MUL to i64
+  %call.calloc = call i8* @calloc(i64 %AS, i64 sext (i32 ptrtoint (i8* getelementptr (i8, i8* null, i32 1) to i32) to i64))
+  %AS1 = bitcast i8* %call.calloc to %P*
+  ret %P* %AS1
+}
+
+define void @"free<P>"(%P* %0) {
+entry:
+  %data = alloca %P*, align 8
+  store %P* %0, %P** %data, align 8
+  %"$data" = load %P*, %P** %data, align 8
+  %AS = bitcast %P* %"$data" to i8*
+  call void @free(i8* %AS)
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %a = alloca i32*, align 8
+  %b = alloca i32*, align 8
+  %ps = alloca %P*, align 8
+  %"call.alloc<i32>" = call i32* @"alloc<i32>"(i32 3)
+  store i32* %"call.alloc<i32>", i32** %a, align 8
+  %"call.alloc<i32>1" = call i32* @"alloc<i32>"(i32 3)
+  store i32* %"call.alloc<i32>1", i32** %b, align 8
+  %"$a" = load i32*, i32** %a, align 8
+  %"a[]" = getelementptr inbounds i32, i32* %"$a", i32 0
+  store i32 10, i32* %"a[]", align 4
+  %"$a2" = load i32*, i32** %a, align 8
+  %"a[]3" = getelementptr inbounds i32, i32* %"$a2", i32 1
+  store i32 20, i32* %"a[]3", align 4
+  %"$a4" = load i32*, i32** %a, align 8
+  %"a[]5" = getelementptr inbounds i32, i32* %"$a4", i32 2
+  store i32 30, i32* %"a[]5", align 4
+  %"$b" = load i32*, i32** %b, align 8
+  %"$a6" = load i32*, i32** %a, align 8
+  call void @"copy<i32>"(i32* %"$b", i32* %"$a6", i32 3)
+  %"$b7" = load i32*, i32** %b, align 8
+  %"b[]" = getelementptr inbounds i32, i32* %"$b7", i32 0
+  %"$b8" = load i32*, i32** %b, align 8
+  %"b[]9" = getelementptr inbounds i32, i32* %"$b8", i32 1
+  %"$b10" = load i32*, i32** %b, align 8
+  %"b[]11" = getelementptr inbounds i32, i32* %"$b10", i32 2
+  %"$b[]" = load i32, i32* %"b[]", align 4
+  %"$b[]12" = load i32, i32* %"b[]9", align 4
+  %"$b[]13" = load i32, i32* %"b[]11", align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str, i32 0, i32 0), i32 %"$b[]", i32 %"$b[]12", i32 %"$b[]13")
+  %"call.alloc<P>" = call %P* @"alloc<P>"(i32 2)
+  store %P* %"call.alloc<P>", %P** %ps, align 8
+  %"$ps" = load %P*, %P** %ps, align 8
+  %"ps[]" = getelementptr inbounds %P, %P* %"$ps", i32 1
+  %"ps[].y" = getelementptr inbounds %P, %P* %"ps[]", i32 0, i32 1
+  store i32 7, i32* %"ps[].y", align 4
+  %"$ps14" = load %P*, %P** %ps, align 8
+  %"ps[]15" = getelementptr inbounds %P, %P* %"$ps14", i32 0
+  %"ps[].x" = getelementptr inbounds %P, %P* %"ps[]15", i32 0, i32 0
+  %"$ps16" = load %P*, %P** %ps, align 8
+  %"ps[]17" = getelementptr inbounds %P, %P* %"$ps16", i32 1
+  %"ps[].y18" = getelementptr inbounds %P, %P* %"ps[]17", i32 0, i32 1
+  %"$ps[].x" = load i32, i32* %"ps[].x", align 4
+  %"$ps[].y" = load i32, i32* %"ps[].y18", align 4
+  %call.dprintf19 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.1, i32 0, i32 0), i32 %"$ps[].x", i32 %"$ps[].y")
+  %"$a20" = load i32*, i32** %a, align 8
+  call void @"free<i32>"(i32* %"$a20")
+  %"$b21" = load i32*, i32** %b, align 8
+  call void @"free<i32>"(i32* %"$b21")
+  %"$ps22" = load %P*, %P** %ps, align 8
+  call void @"free<P>"(%P* %"$ps22")
+  ret i32 0
+}
+
+declare i8* @calloc(i64, i64)
+
+declare i8* @memcpy(i8*, i8*, i64)
+
+declare void @free(i8*)
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 

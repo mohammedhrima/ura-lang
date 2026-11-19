@@ -809,7 +809,23 @@ char *init_from_template(Node *template, Node *types) {
         return name;
 
     Token *body = template->token;
-    int start = copy_tokens(body->body.start, body->body.end, token->name, name, 0);
+    int start = copy_tokens(body->body.start, body->body.end, NULL, NULL, 0);
+    int end = ura.tokens_count - 1;
+    int top = ura.tokens[start]->space;
+    char *suffix = name + strlen(token->name);
+    for (int i = start; i + 1 < end; i++) {
+        Token *keyword = ura.tokens[i];
+        Token *declared = ura.tokens[i + 1];
+        bool is_declaration = includes(keyword->type, FN_DEC, STRUCT, 0) &&
+                              keyword->space == top && declared->type == ID;
+        if (!is_declaration)
+            continue;
+        char *old = declared->name;
+        char *renamed = format("%s%s", old, suffix);
+        for (int j = start; j < end; j++)
+            if (ura.tokens[j]->type == ID && strcmp2(ura.tokens[j]->name, old))
+                ura.tokens[j]->name = renamed;
+    }
     types->declared = template;
     parse_tokens(template->scope, start, types);
     return name;
@@ -875,6 +891,14 @@ Node *new_builtin(Type type, char *name, int fd, Node *ret_type) {
     node->token->num.value = fd;
     node->ret_type = ret_type;
     return node;
+}
+
+void add_param(Node *fn, Node *type) {
+    if (fn->args == NULL)
+        fn->args = new_node(new_token(ARGS, NULL));
+    Node *param = new_node(new_token(PARAM, NULL));
+    param->data_type = type;
+    append(fn->args->children, param);
 }
 
 Node *parse_block(Token *token) {
@@ -943,6 +967,20 @@ Node *parse_prime() {
             )
         );
         append(node->children, new_builtin(DROP, "drop", 0, NULL));
+        Node *bytes = new_type(ARRAY, 0, new_type(INT, 8, NULL));
+        Node *size = new_type(INT, 32, NULL);
+        Node *void_type = new_type(VOID, 0, NULL);
+        Node *memory_alloc = new_builtin(ALLOC, "memory_alloc", 0, bytes);
+        add_param(memory_alloc, size);
+        append(node->children, memory_alloc);
+        Node *memory_copy = new_builtin(MEMCPY, "memory_copy", 0, void_type);
+        add_param(memory_copy, bytes);
+        add_param(memory_copy, bytes);
+        add_param(memory_copy, size);
+        append(node->children, memory_copy);
+        Node *memory_free = new_builtin(FREE, "memory_free", 0, void_type);
+        add_param(memory_free, bytes);
+        append(node->children, memory_free);
         return node;
     }
     case ID: {
@@ -1581,7 +1619,18 @@ Node *find_function_like(char *name, int max_diff) {
         for (int j = 0; j < curr->children_count; j++) {
             Node *child = curr->children[j];
             bool is_function = includes(
-                child->token->type, FN_DEC, PROTO, WRITE, READ, SIZEOF, TYPEOF, DROP, 0
+                child->token->type,
+                FN_DEC,
+                PROTO,
+                WRITE,
+                READ,
+                SIZEOF,
+                TYPEOF,
+                DROP,
+                ALLOC,
+                MEMCPY,
+                FREE,
+                0
             );
             bool is_operator = child->args && child->args->symbol;
             if (!is_function || is_operator)
@@ -1772,6 +1821,7 @@ void analyze(Node *node) {
     case INT: case FLOAT: case VOID: 
     case VAR: case PARAM: case CHARS: case VARIADIC:
     case WRITE: case READ: case SIZEOF: case DROP:
+    case ALLOC: case MEMCPY: case FREE:
     case TYPEOF: case TEMPLATE: case USE:
     case MACRO_IF: case MACRO_ERROR: { // clang-format on
         break;
@@ -2153,6 +2203,9 @@ void codegen_statements(Node *node) {
                 SIZEOF,
                 TYPEOF,
                 DROP,
+                ALLOC,
+                MEMCPY,
+                FREE,
                 0
             ))
             continue;
@@ -2313,7 +2366,13 @@ void codegen(Node *node) {
             codegen(type);
             Ucg *ucg = type->token->ucg;
             node->token->ucg = fn->type == SIZEOF ? ucg_sizeof(ucg) : ucg_typeof(ucg);
-        } else if (fn->type == DROP) {
+        } else if (fn->type == ALLOC)
+            node->token->ucg = ucg_alloc(ucg_i8_type(), args[0]);
+        else if (fn->type == MEMCPY)
+            node->token->ucg = ucg_copy(args[0], args[1], args[2]);
+        else if (fn->type == FREE)
+            node->token->ucg = ucg_free(args[0]);
+        else if (fn->type == DROP) {
             Node *type = type_of(node->children[0]);
             codegen(type);
             if (needs_drop(type))

@@ -215,6 +215,7 @@ int line_end_in(char *buff, int pos);
 int line_start(int pos);
 int line_start_in(char *buff, int pos);
 void _print_node_helper(NodePrint *elems, Node *node, int depth);
+void add_param(Node *fn, Node *type);
 void analyze(Node *node);
 void build_project(void);
 void codegen(Node *node);
