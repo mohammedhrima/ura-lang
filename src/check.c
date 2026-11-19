@@ -719,12 +719,6 @@ void check_name(Node *node) {
         return;
     }
     Node *var = find_variable(token->name, token->s);
-    Node *builtin = var ? NULL : find_builtin_value(token->name);
-    if (builtin) {
-        token->type = builtin->token->type;
-        node->data_type = builtin->ret_type;
-        return;
-    }
     if (var == NULL && find_function(token->name)) {
         add_error(
             token->s,
@@ -1597,14 +1591,6 @@ void check_call(Node *node) {
         );
         return;
     }
-    bool takes_type = includes(node->to_call->token->type, SIZEOF, TYPEOF, DROP, IS_ZERO, 0);
-    if (takes_type && node->children_count != 1)
-        add_error(
-            token->s,
-            token->e,
-            format("'%s' takes one argument, got %d", name, node->children_count),
-            format("use %s(x)", name)
-        );
     for (int i = 0; i < node->children_count; i++)
         analyze(node->children[i]);
     Node *overload = find_overload(name, node->children, node->children_count);
@@ -1613,19 +1599,7 @@ void check_call(Node *node) {
     Node *params = node->to_call->args;
     if (params && includes(node->to_call->token->type, FN_DEC, PROTO, 0))
         check_arg_count(node);
-    bool is_write = node->to_call->token->type == WRITE;
     for (int i = 0; i < node->children_count; i++) {
-        if (is_write && node->children[i]->token->type == CHARS)
-            check_type(node->children[i], chars_type(), NULL);
-        if (is_write && node->children[i]->token->type == LBRACK) {
-            Token *array = node->children[i]->token;
-            add_error(
-                array->s,
-                array->e,
-                "output can't print an array literal yet",
-                "print its elements one by one"
-            );
-        }
         if (params == NULL || i >= params->children_count)
             continue;
         Node *param = params->children[i];
@@ -1648,17 +1622,39 @@ void check_call(Node *node) {
         check_type(arg, param->data_type, help);
         check_copy(&node->children[i], param->data_type);
     }
-    bool is_drop = node->to_call->token->type == DROP;
-    bool has_one_arg = node->children_count == 1;
-    if (is_drop && has_one_arg && !lives_in_variable(node->children[0])) {
-        Token *arg = node->children[0]->token;
+}
+
+void check_builtin(Node *node) {
+    Token *token = node->token;
+    bool takes_one = includes(token->type, SIZEOF, TYPEOF, DROP, IS_ZERO, 0);
+    if (takes_one && node->children_count != 1)
         add_error(
-            arg->s,
-            arg->e,
+            token->s,
+            token->e,
+            format("'%s' takes one argument, got %d", token->name, node->children_count),
+            format("use %s(x)", token->name)
+        );
+    for (int i = 0; i < node->children_count; i++) {
+        Node *arg = node->children[i];
+        analyze(arg);
+        if (token->type == WRITE && arg->token->type == CHARS)
+            check_type(arg, chars_type(), NULL);
+        if (token->type == WRITE && arg->token->type == LBRACK)
+            add_error(
+                arg->token->s,
+                arg->token->e,
+                "output can't print an array literal yet",
+                "print its elements one by one"
+            );
+    }
+    bool has_one_arg = node->children_count == 1;
+    if (token->type == DROP && has_one_arg && !lives_in_variable(node->children[0]))
+        add_error(
+            node->children[0]->token->s,
+            node->children[0]->token->e,
             "drop takes a variable, an attribute or an element",
             NULL
         );
-    }
 }
 
 void check_operation(Node *node) {

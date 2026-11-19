@@ -2,6 +2,7 @@
 typedef struct Token Token;
 typedef struct Node Node;
 typedef struct NodePrint NodePrint;
+typedef struct Keyword Keyword;
 
 #define print(...)  (DEBUG ? _print(stdout, __VA_ARGS__) : 0)
 #define help(...)   _print(stdout, __VA_ARGS__)
@@ -103,6 +104,11 @@ struct NodePrint {
     expand(Node *, nodes);
 };
 
+struct Keyword {
+    char *value;
+    Token token;
+};
+
 // Global Ura
 struct {
     expand(File *, files);
@@ -123,10 +129,7 @@ struct {
     bool throws;
 } ura;
 
-struct {
-    char *value;
-    Token token;
-} keywords[] = { // clang-format off
+Keyword keywords[] = { // clang-format off
     { "bool",     { .type = INT,   .is_type = true, .shift = 1 } },
     { "i1",       { .type = INT,   .is_type = true, .shift = 1 } },
     { "void",     { .type = VOID,  .is_type = true } },
@@ -183,6 +186,22 @@ struct {
     { "as",       { .type = AS } },
     { "from",     { .type = FROM } },
     { "self",     { .type = SELF, .name = "self" } },
+    { NULL },
+};
+
+Keyword builtins[] = {
+    { "output",       { .type = WRITE, .num = { .value = 1 } } },
+    { "errput",       { .type = WRITE, .num = { .value = 2 } } },
+    { "input",        { .type = READ } },
+    { "sizeof",       { .type = SIZEOF } },
+    { "typeof",       { .type = TYPEOF } },
+    { "drop",         { .type = DROP } },
+    { "isZero",       { .type = IS_ZERO } },
+    { "memory_alloc", { .type = ALLOC } },
+    { "memory_copy",  { .type = MEMCPY } },
+    { "memory_free",  { .type = FREE } },
+    { "ura::argc",    { .type = ARGC } },
+    { "ura::argv",    { .type = ARGV } },
 
     { NULL },
 }; // clang-format on
@@ -332,6 +351,14 @@ int line_end_in(char *buff, int pos) {
     while (buff[pos] && buff[pos] != '\n')
         pos++;
     return pos;
+}
+
+Token *find_builtin(char *name) {
+    for (int i = 0; builtins[i].value; i++) {
+        if (strcmp2(builtins[i].value, name))
+            return &builtins[i].token;
+    }
+    return NULL;
 }
 
 Token *parse_id(int s, int e, int space) {
@@ -900,22 +927,6 @@ Node *parse_type(void) {
     return NULL;
 }
 
-Node *new_builtin(Type type, char *name, int fd, Node *ret_type) {
-    Node *node = new_node(new_token(type, NULL));
-    node->token->name = name;
-    node->token->num.value = fd;
-    node->ret_type = ret_type;
-    return node;
-}
-
-void add_param(Node *fn, Node *type) {
-    if (fn->args == NULL)
-        fn->args = new_node(new_token(ARGS, NULL));
-    Node *param = new_node(new_token(PARAM, NULL));
-    param->data_type = type;
-    append(fn->args->children, param);
-}
-
 Node *parse_block(Token *token) {
     Node *node = new_node(token);
     enter_scope(node);
@@ -959,37 +970,20 @@ Node *parse_prime() {
         while (peek(0)->type != LAST)
             append(node->children, parse_expr(0));
         exit_scope();
-        append(node->children, new_builtin(WRITE, "output", 1, NULL));
-        append(node->children, new_builtin(WRITE, "errput", 2, NULL));
-        append(node->children, new_builtin(READ, "input", 0, chars_type()));
-        append(
-            node->children, new_builtin(SIZEOF, "sizeof", 0, new_type(INT, 32, NULL))
-        );
-        append(node->children, new_builtin(TYPEOF, "typeof", 0, chars_type()));
-        append(node->children, new_builtin(DROP, "drop", 0, NULL));
-        append(node->children, new_builtin(IS_ZERO, "isZero", 0, bool_type()));
-        Node *argc_type = new_type(INT, 32, NULL);
-        Node *argv_type = new_type(ARRAY, 0, chars_type());
-        append(node->children, new_builtin(ARGC, "ura::argc", 0, argc_type));
-        append(node->children, new_builtin(ARGV, "ura::argv", 0, argv_type));
-        Node *bytes = chars_type();
-        Node *size = new_type(INT, 32, NULL);
-        Node *void_type = new_type(VOID, 0, NULL);
-        Node *memory_alloc = new_builtin(ALLOC, "memory_alloc", 0, bytes);
-        add_param(memory_alloc, size);
-        append(node->children, memory_alloc);
-        Node *memory_copy = new_builtin(MEMCPY, "memory_copy", 0, void_type);
-        add_param(memory_copy, bytes);
-        add_param(memory_copy, bytes);
-        add_param(memory_copy, size);
-        append(node->children, memory_copy);
-        Node *memory_free = new_builtin(FREE, "memory_free", 0, void_type);
-        add_param(memory_free, bytes);
-        append(node->children, memory_free);
         return node;
     }
     case ID: {
+        Token *prev = ura.tokens[ura.exe_pos - 2];
+        bool is_member = includes(prev->type, DOT, DOUBLE_DOTS, 0);
         parse_module_name(token);
+        Token *builtin = is_member ? NULL : find_builtin(token->name);
+        if (builtin) {
+            token->type = builtin->type;
+            token->num = builtin->num;
+        }
+        bool is_value = builtin && peek(0)->type != LPARENT;
+        if (is_value)
+            return new_node(token);
         Node *template_type = find_template_type(token->name);
         Node *template = find_template(token->name);
         bool is_template_use = template && peek(0)->type == LT;
@@ -1000,7 +994,7 @@ Node *parse_prime() {
         Node *types = is_template_use ? parse_types(token) : NULL;
         if (types && check_template_use(token, template, types))
             token->name = init_from_template(template, types);
-        Node *type = parse_type();
+        Node *type = builtin ? NULL : parse_type();
         if (type != NULL) {
             node = new_node(new_token(DECLARE, token));
             node->var = new_node(token);
@@ -1009,7 +1003,8 @@ Node *parse_prime() {
             append(ura.scope->children, node);
             node = node->var;
         } else if (peek(0)->type == LPARENT) {
-            token->type = FN_CALL;
+            if (builtin == NULL)
+                token->type = FN_CALL;
             node = new_node(token);
             next(); // SKIP (
             while (!includes(peek(0)->type, RPARENT, LAST, 0)) {
@@ -1616,21 +1611,7 @@ Node *find_function_like(char *name, int max_diff) {
             continue;
         for (int j = 0; j < curr->children_count; j++) {
             Node *child = curr->children[j];
-            bool is_function = includes(
-                child->token->type,
-                FN_DEC,
-                PROTO,
-                WRITE,
-                READ,
-                SIZEOF,
-                TYPEOF,
-                DROP,
-                IS_ZERO,
-                ALLOC,
-                MEMCPY,
-                FREE,
-                0
-            );
+            bool is_function = includes(child->token->type, FN_DEC, PROTO, 0);
             bool is_operator = child->args && child->args->symbol;
             if (!is_function || is_operator)
                 continue;
@@ -1746,17 +1727,6 @@ Node *find_enum(char *name) {
             if (child->token->type == ENUM && strcmp2(child->token->name, name))
                 return child;
         }
-    }
-    return NULL;
-}
-
-Node *find_builtin_value(char *name) {
-    Node *scope = ura.scopes[0];
-    for (int i = 0; i < scope->children_count; i++) {
-        Node *child = scope->children[i];
-        bool is_value = includes(child->token->type, ARGC, ARGV, 0);
-        if (is_value && strcmp2(child->token->name, name))
-            return child;
     }
     return NULL;
 }
@@ -1899,7 +1869,11 @@ Node *type_of(Node *node) {
         return is_integer ? type : NULL;
     }
     case COPY:      return type_of(node->to_copy);
-    case ARGC: case ARGV: return node->data_type;
+    case SIZEOF: case ARGC: return new_type(INT, 32, NULL);
+    case TYPEOF: case READ: case ALLOC: return chars_type();
+    case IS_ZERO: return bool_type();
+    case ARGV: return new_type(ARRAY, 0, chars_type());
+    case WRITE: case DROP: case MEMCPY: case FREE: return new_type(VOID, 0, NULL);
     case LT: case GT: case EQ: case LE: case GE: case NQ:
     case AND: case OR: case NOT: return bool_type();
     case ID:        return NULL;
@@ -1928,11 +1902,13 @@ void analyze(Node *node) {
     switch (node->token->type) { // clang-format off
     case INT: case FLOAT: case VOID: 
     case VAR: case PARAM: case CHARS: case VARIADIC:
-    case WRITE: case READ: case SIZEOF: case DROP:
-    case ALLOC: case MEMCPY: case FREE:
-    case TYPEOF: case USE: case IS_ZERO: case ZERO:
-    case MACRO_IF: case MACRO_ERROR: case MODULE:
-    case ARGC: case ARGV: { // clang-format on
+    case USE: case ZERO:
+    case MACRO_IF: case MACRO_ERROR: case MODULE: { // clang-format on
+        break;
+    } // clang-format off
+    case WRITE: case READ: case SIZEOF: case TYPEOF: case DROP: case IS_ZERO:
+    case ALLOC: case MEMCPY: case FREE: case ARGC: case ARGV: { // clang-format on
+        check_builtin(node);
         break;
     } // clang-format off
     case ID: case SELF: { // clang-format on
@@ -2333,8 +2309,56 @@ void codegen_write_struct(Ucg *fd, Node *type, Ucg *base) {
     ucg_write(fd, (Ucg *[]){ ucg_string_value("}") }, 1);
 }
 
+Ucg **codegen_args(Node *call) {
+    Ucg **args = arena_alloc(call->children_count + 1, sizeof(Ucg *));
+    for (int i = 0; i < call->children_count; i++) {
+        codegen(call->children[i]);
+        args[i] = call->children[i]->token->ucg;
+    }
+    return args;
+}
+
+Node *codegen_type_of(Node *arg) {
+    Node *type = arg->token->is_type ? arg : type_of(arg);
+    codegen(type);
+    return type;
+}
+
+void codegen_builtin(Node *node) {
+    Ucg **args = codegen_args(node);
+    Node *arg = node->children_count ? node->children[0] : NULL;
+    Ucg *ucg = NULL;
+    switch (node->token->type) { // clang-format off
+    case READ:   ucg = ucg_read(ucg_i32_value(node->token->num.value)); break;
+    case SIZEOF: ucg = ucg_sizeof(codegen_type_of(arg)->token->ucg); break;
+    case TYPEOF: ucg = ucg_typeof(codegen_type_of(arg)->token->ucg); break;
+    case ALLOC:  ucg = ucg_alloc(ucg_i8_type(), args[0]); break;
+    case MEMCPY: ucg = ucg_copy(args[0], args[1], args[2]); break;
+    case FREE:   ucg = ucg_free(args[0]); break;
+    case ARGC:   ucg = ucg_argc(); break;
+    case ARGV:   ucg = ucg_argv(); break; // clang-format on
+    case IS_ZERO: {
+        bool is_ref = is_ref_variable(arg);
+        Node *type = is_ref ? arg->data_type : type_of(arg);
+        Ucg *value = is_ref ? arg->declared->token->ucg : args[0];
+        codegen(type);
+        ucg = ucg_op(EQ, value, ucg_null(type->token->ucg));
+        break;
+    }
+    case DROP: {
+        Node *type = codegen_type_of(arg);
+        if (needs_drop(type))
+            codegen_drop(args[0], type);
+        ucg = ucg_assign(args[0], ucg_null(type->token->ucg));
+        break;
+    }
+    default: break;
+    }
+    node->token->ucg = ucg;
+}
+
 void codegen_write(Node *node) {
-    Ucg *fd = ucg_i32_value(node->to_call->token->num.value);
+    Ucg *fd = ucg_i32_value(node->token->num.value);
     Ucg **args = arena_alloc(node->children_count + 1, sizeof(Ucg *));
     int count = 0;
     for (int i = 0; i < node->children_count; i++) {
@@ -2408,17 +2432,6 @@ void codegen_statements(Node *node) {
                 DECLARE,
                 STRUCT,
                 LINK,
-                WRITE,
-                READ,
-                SIZEOF,
-                TYPEOF,
-                DROP,
-                IS_ZERO,
-                ALLOC,
-                MEMCPY,
-                FREE,
-                ARGC,
-                ARGV,
                 0
             ))
             continue;
@@ -2587,47 +2600,18 @@ void codegen(Node *node) {
         break;
     }
     case FN_CALL: {
-        if (node->to_call->token->type == WRITE) {
-            codegen_write(node);
-            break;
-        }
-        Ucg **args = arena_alloc(node->children_count + 1, sizeof(Ucg *));
-        for (int i = 0; i < node->children_count; i++) {
-            codegen(node->children[i]);
-            args[i] = node->children[i]->token->ucg;
-        }
-        Token *fn = node->to_call->token;
-        if (fn->type == IS_ZERO) {
-            Node *arg = node->children[0];
-            bool is_ref = is_ref_variable(arg);
-            Node *type = is_ref ? arg->data_type : type_of(arg);
-            Ucg *value = is_ref ? arg->declared->token->ucg : args[0];
-            codegen(type);
-            node->token->ucg = ucg_op(EQ, value, ucg_null(type->token->ucg));
-        } else if (fn->type == READ)
-            node->token->ucg = ucg_read(ucg_i32_value(fn->num.value));
-        else if (includes(fn->type, SIZEOF, TYPEOF, 0)) {
-            Node *arg = node->children[0];
-            Node *type = arg->token->is_type ? arg : type_of(arg);
-            codegen(type);
-            Ucg *ucg = type->token->ucg;
-            node->token->ucg = fn->type == SIZEOF ? ucg_sizeof(ucg) : ucg_typeof(ucg);
-        } else if (fn->type == ALLOC)
-            node->token->ucg = ucg_alloc(ucg_i8_type(), args[0]);
-        else if (fn->type == MEMCPY)
-            node->token->ucg = ucg_copy(args[0], args[1], args[2]);
-        else if (fn->type == FREE)
-            node->token->ucg = ucg_free(args[0]);
-        else if (fn->type == DROP) {
-            Node *type = type_of(node->children[0]);
-            codegen(type);
-            if (needs_drop(type))
-                codegen_drop(args[0], type);
-            node->token->ucg = ucg_assign(args[0], ucg_null(type->token->ucg));
-        } else
-            node->token->ucg = codegen_call_result(
-                node->to_call, ucg_fn_call(fn->ucg, args, node->children_count)
-            );
+        Ucg **args = codegen_args(node);
+        Ucg *call = ucg_fn_call(node->to_call->token->ucg, args, node->children_count);
+        node->token->ucg = codegen_call_result(node->to_call, call);
+        break;
+    }
+    case WRITE: {
+        codegen_write(node);
+        break;
+    } // clang-format off
+    case READ: case SIZEOF: case TYPEOF: case DROP: case IS_ZERO:
+    case ALLOC: case MEMCPY: case FREE: case ARGC: case ARGV: { // clang-format on
+        codegen_builtin(node);
         break;
     }
     case RETURN: {
@@ -2724,14 +2708,6 @@ void codegen(Node *node) {
         node->token->ucg = node->declared->token->ucg;
         break;
     }
-    case ARGC: {
-        node->token->ucg = ucg_argc();
-        break;
-    }
-    case ARGV: {
-        node->token->ucg = ucg_argv();
-        break;
-    }
     case ZERO: {
         codegen(node->data_type);
         node->token->ucg = ucg_null(node->data_type->token->ucg);
@@ -2809,11 +2785,7 @@ void codegen(Node *node) {
     }
     case DOUBLE_DOTS: {
         Node *call = node->right;
-        Ucg **args = arena_alloc(call->children_count + 1, sizeof(Ucg *));
-        for (int i = 0; i < call->children_count; i++) {
-            codegen(call->children[i]);
-            args[i] = call->children[i]->token->ucg;
-        }
+        Ucg **args = codegen_args(call);
         node->token->ucg = codegen_call_result(
             call->to_call,
             ucg_fn_call(call->to_call->token->ucg, args, call->children_count)
