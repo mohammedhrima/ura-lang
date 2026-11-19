@@ -53,6 +53,7 @@ URA_BIN_DIR="$(cd "$URA_ROOT/.." && pwd)/bin" # the ura compiler itself, in the 
 URA_BUILD_DIR="$URA_ROOT/build" # what ura generates when it compiles a file
 URA_TESTS_DIR="$(cd "$URA_ROOT/.." && pwd)/tests" # one file per milestone, in the repo root
 URA_BIN="$URA_BIN_DIR/ura"
+URA_JOBS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)" # tests run this many at once
 URA_LLVM_FILE="$URA_ROOT/llvm-version.txt" # written by set-llvm, read by build
 URA_LIB="$(cd "$URA_ROOT/.." && pwd)/projects/ura-lib" # use "@/name" reads the repo copy, not ~/.ura/lib
 export URA_LIB
@@ -814,9 +815,73 @@ _ura_compare() {
 # A failure shows its details under its line. Adds to the _ura_passed /
 # _ura_failed counters that tests() resets.
 # ============================================================================
+# rebuild bin/ura only when a source or the LLVM pick is newer than it
+_ura_build_if_changed() {
+    local newer
+    if [ -x "$URA_BIN" ]; then
+        newer=$(find "$URA_ROOT" -maxdepth 2 \( -name '*.c' -o -name '*.h' -o -name 'llvm-version.txt' \) \
+            ! -name proto.h -newer "$URA_BIN" -print -quit)
+        [ -z "$newer" ] && return 0
+    fi
+    build
+}
+
+# one pass over a test file: <dir>/NNN.md holds entry NNN, <dir>/NNN.line its line
+_ura_split_entries() {
+    awk -v dir="$2" '
+        /^## [0-9][0-9][0-9] / {
+            if (out) close(out)
+            number = substr($0, 4, 3)
+            out = dir "/" number ".md"
+            print NR > (dir "/" number ".line")
+            close(dir "/" number ".line")
+        }
+        out { print > out }
+    ' "$1"
+}
+
+# runs one entry and prints its result line; 0 passed, 1 failed, 2 stop everything
+_ura_test_case() {
+    local md_file="$1" number="$2" work="$3"
+    local entry name link tmp_ura compiled
+
+    entry=$(cat "$work/$number.md")
+    name=$(printf '%s\n' "$entry" | head -1 | sed -E 's/^## [0-9]{3} — //')
+    link="${md_file#$URA_TESTS_DIR/}:$(cat "$work/$number.line")"
+
+    # a private directory, so the build/ that ura creates is removed with it
+    mkdir -p "$work/$number"
+    tmp_ura="$work/$number/test.ura"
+    printf '%s\n' "$entry" | _ura_extract_fence > "$tmp_ura"
+
+    _ura_compile_case "$tmp_ura" "test_$number"
+    compiled=$?
+    rm -rf "$work/$number"
+    [ "$compiled" -ne 2 ] || return 2
+
+    if printf '%s\n' "$entry" | grep -qx '### status'; then
+        # an entry that records a status expects the compile to fail,
+        # with exactly that stderr and status
+        if _ura_compare "$entry" "stderr" "$URA_CASE_STDERR" "$number" "$name" "$link" &&
+            _ura_compare "$entry" "status" "$URA_CASE_STATUS" "$number" "$name" "$link"; then
+            _ura_green "$link $name"
+            return 0
+        fi
+        return 1
+    elif [ "$compiled" -ne 0 ]; then
+        _ura_red "$link $name (compile error, status $URA_CASE_STATUS)"
+        _ura_print_failure "$URA_CASE_STDERR"
+        return 1
+    elif _ura_compare "$entry" "llvm ir" "$URA_CASE_IR" "$number" "$name" "$link"; then
+        _ura_green "$link $name"
+        return 0
+    fi
+    return 1
+}
+
 _ura_test_file() {
     local md_file="$1" only="$2"
-    local numbers number entry name link tmp_dir tmp_ura compiled
+    local numbers number work code
 
     numbers=$(grep -oE '^## [0-9]{3}' "$md_file" | grep -oE '[0-9]{3}')
 
@@ -830,44 +895,40 @@ _ura_test_file() {
     [ -n "$numbers" ] || return 0
 
     _ura_label "$md_file"
+    work=$(mktemp -d)
+    _ura_split_entries "$md_file" "$work"
 
+    # workers run in a subshell: no job-control noise, and wait only sees them;
     # command substitution, not a bare $numbers: zsh does not word-split variables
-    for number in $(printf '%s\n' "$numbers"); do
-        entry=$(_ura_extract_entry "$md_file" "$number")
-        name=$(printf '%s\n' "$entry" | head -1 | sed -E 's/^## [0-9]{3} — //')
-        link=$(_ura_entry_link "$md_file" "$number")
-
-        # a private directory, so the build/ that ura creates is removed with it
-        tmp_dir=$(mktemp -d)
-        tmp_ura="$tmp_dir/test.ura"
-        printf '%s\n' "$entry" | _ura_extract_fence > "$tmp_ura"
-
-        _ura_compile_case "$tmp_ura" "test_$number"
-        compiled=$?
-        rm -rf "$tmp_dir"
-        [ "$compiled" -ne 2 ] || return 1
-
-        if printf '%s\n' "$entry" | grep -qx '### status'; then
-            # an entry that records a status expects the compile to fail,
-            # with exactly that stderr and status
-            if _ura_compare "$entry" "stderr" "$URA_CASE_STDERR" "$number" "$name" "$link" &&
-                _ura_compare "$entry" "status" "$URA_CASE_STATUS" "$number" "$name" "$link"; then
-                _ura_green "$link $name"
-                _ura_passed=$((_ura_passed + 1))
-            else
-                _ura_failed=$((_ura_failed + 1))
+    (
+        running=0
+        for number in $(printf '%s\n' "$numbers"); do
+            (
+                _ura_test_case "$md_file" "$number" "$work" > "$work/$number.out" 2>&1
+                echo $? > "$work/$number.code"
+            ) &
+            running=$((running + 1))
+            if [ "$running" -ge "$URA_JOBS" ]; then
+                wait
+                running=0
             fi
-        elif [ "$compiled" -ne 0 ]; then
-            _ura_red "$link $name (compile error, status $URA_CASE_STATUS)"
-            _ura_print_failure "$URA_CASE_STDERR"
-            _ura_failed=$((_ura_failed + 1))
-        elif _ura_compare "$entry" "llvm ir" "$URA_CASE_IR" "$number" "$name" "$link"; then
-            _ura_green "$link $name"
+        done
+        wait
+    )
+
+    for number in $(printf '%s\n' "$numbers"); do
+        cat "$work/$number.out"
+        code=$(cat "$work/$number.code")
+        if [ "$code" -eq 0 ]; then
             _ura_passed=$((_ura_passed + 1))
+        elif [ "$code" -eq 2 ]; then
+            rm -rf "$work"
+            return 1
         else
             _ura_failed=$((_ura_failed + 1))
         fi
     done
+    rm -rf "$work"
 }
 
 # ============================================================================
@@ -886,7 +947,7 @@ tests() {
     _ura_failed=0
 
     # always test the current sources, never a stale bin/ura
-    build || return 1
+    _ura_build_if_changed || return 1
     echo
 
     if ! md_files=$(_ura_test_files "$target"); then
