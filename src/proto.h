@@ -258,6 +258,7 @@ bool check_comma(Token *item, Token *after, char *list);
 bool check_package(Token *name, char *path);
 bool check_parent(Token *name, Node *parent);
 bool check_template_use(Token *token, Node *template, Node *types);
+bool contains_struct(Node *type, char *name, int depth);
 bool is_local_variable(Node *node);
 bool is_math(Node *node);
 bool is_numeric(Node *type);

@@ -1963,10 +1963,16 @@ void codegen_branch(Node *node, Ucg *stmt) {
 }
 
 void codegen_block(Node *node, int start) {
+    codegen_structs(node);
+    codegen_protos(node);
     for (int i = start; i < node->children_count; i++) {
         Node *child = node->children[i];
-        if (includes(child->token->type, PROTO, STRUCT, 0))
+        if (child->token->type == PROTO)
             continue;
+        if (child->token->type == STRUCT) {
+            codegen(child);
+            continue;
+        }
         codegen_statement(child);
         if (includes(child->token->type, RETURN, BRK, CNT, THROW, 0))
             break;
@@ -2317,8 +2323,6 @@ void codegen(Node *node) {
     case FN_DEC: {
         Node *parent = ura.scope;
         enter_scope(node);
-        codegen_structs(node);
-        codegen_protos(node);
         ucg_entry(node->token->ucg);
         for (int i = 0; i < node->args->children_count; i++) {
             Node *param = node->args->children[i];

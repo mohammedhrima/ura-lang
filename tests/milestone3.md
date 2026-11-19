@@ -7604,6 +7604,42 @@ fn main() i32:
     return 0
 ```
 
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Inner = type { i32 }
+
+@str = private unnamed_addr constant [4 x i8] c"ok\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %n = alloca i32, align 4
+  %i = alloca %Inner, align 8
+  store i32 1, i32* %n, align 4
+  br label %if0
+
+if0:                                              ; preds = %entry
+  %"$n" = load i32, i32* %n, align 4
+  %EQ = icmp eq i32 %"$n", 1
+  br i1 %EQ, label %if0.then, label %endif
+
+if0.then:                                         ; preds = %if0
+  store %Inner zeroinitializer, %Inner* %i, align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0))
+  br label %endif
+
+endif:                                            ; preds = %if0.then, %if0
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+
 ---
 
 ## 104 — struct: a struct declared inside a loop body
@@ -7613,13 +7649,54 @@ fn main() i32:
 // expect: 0
 
 fn main() i32:
-    for i in 0..2:
+    i i32 = 0
+    while i < 2:
         struct Tick:
             n i32
 
         t Tick
+        i += 1
     output("ok\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Tick = type { i32 }
+
+@str = private unnamed_addr constant [4 x i8] c"ok\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %i = alloca i32, align 4
+  %t = alloca %Tick, align 8
+  store i32 0, i32* %i, align 4
+  br label %while0
+
+while0:                                           ; preds = %while0.then, %entry
+  %"$i" = load i32, i32* %i, align 4
+  %LT = icmp slt i32 %"$i", 2
+  br i1 %LT, label %while0.then, label %endloop
+
+while0.then:                                      ; preds = %while0
+  store %Tick zeroinitializer, %Tick* %t, align 4
+  %"$i1" = load i32, i32* %i, align 4
+  %ADD = add i32 %"$i1", 1
+  store i32 %ADD, i32* %i, align 4
+  br label %while0
+
+endloop:                                          ; preds = %while0
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -7817,6 +7894,47 @@ fn main() i32:
     l Local
     output("ok\n")
     return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
+
+%Local.0 = type { i32, i32 }
+%Local.1 = type { i8* }
+
+@str = private unnamed_addr constant [4 x i8] c"ok\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %l0 = alloca %Local.0, align 8
+  %n = alloca i32, align 4
+  %l3 = alloca %Local.1, align 8
+  %l = alloca %Local.0, align 8
+  store %Local.0 zeroinitializer, %Local.0* %l0, align 4
+  store i32 1, i32* %n, align 4
+  br label %if0
+
+if0:                                              ; preds = %entry
+  %"$n" = load i32, i32* %n, align 4
+  %EQ = icmp eq i32 %"$n", 1
+  br i1 %EQ, label %if0.then, label %endif
+
+if0.then:                                         ; preds = %if0
+  store %Local.1 zeroinitializer, %Local.1* %l3, align 8
+  br label %endif
+
+endif:                                            ; preds = %if0.then, %if0
+  store %Local.0 zeroinitializer, %Local.0* %l, align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0))
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
 ```
 
 ---
@@ -8460,6 +8578,23 @@ struct B:
 fn main() i32:
     x A
     return 0
+```
+
+### stderr
+
+```
+error: test.ura:4:7 struct 'A' can't contain itself
+  |
+4 |     b B
+  |       ^
+help: use a ref: '&B'
+error: aborting due to 1 error
+```
+
+### status
+
+```
+1
 ```
 
 ---

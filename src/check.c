@@ -819,15 +819,33 @@ void check_struct(Node *node, Node *scope) {
         Node *child = node->children[i];
         if (child->token->type != DECLARE)
             continue;
-        Token *type = child->var->data_type->token;
-        if (type->type == ID && strcmp2(type->name, token->name))
-            add_error(
-                type->s,
-                type->e,
-                format("struct '%s' can't contain itself", token->name),
-                format("use a ref: '&%s'", token->name)
-            );
+        Node *attr_type = child->var->data_type;
+        if (!contains_struct(attr_type, token->name, 0))
+            continue;
+        Token *type = attr_type->token;
+        add_error(
+            type->s,
+            type->e,
+            format("struct '%s' can't contain itself", token->name),
+            format("use a ref: '&%s'", type->name)
+        );
+        child->var->data_type = new_type(REF, 0, attr_type);
     }
+}
+
+bool contains_struct(Node *type, char *name, int depth) {
+    Node *st = type->token->type == ID ? find_struct(type->token->name) : NULL;
+    if (st == NULL || depth > 32)
+        return false;
+    if (strcmp2(st->token->name, name))
+        return true;
+    for (int i = 0; i < st->children_count; i++) {
+        Node *child = st->children[i];
+        bool is_attr = child->token->type == DECLARE;
+        if (is_attr && contains_struct(child->var->data_type, name, depth + 1))
+            return true;
+    }
+    return false;
 }
 
 void check_function(Node *node, Node *scope) {
