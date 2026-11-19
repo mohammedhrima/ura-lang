@@ -1,38 +1,12 @@
-+ phase 1: test cleanup (now)
-	+ milestone1:
-		+ finish old syntax tests (proto fn ... pointer -> proto name(...))
-		+ better error messages, for example:
-			+ "did you mean 'count'?"
-			+ "'x' is used before its declaration, on line 5"
-			+ "can't assign to a value"   (1 = a, f() = 3)
-	+ milestone2, 3, 6, 8, 10, 11, 13: same work
-		+ missing feature -> build it (phase 2)
-		+ dropped feature -> delete the test
-		+ good new message / right output -> record
-	+ compare src/old/*.c with main.c, list the missing features
-	+ go through the TODO comments in main.c and ucg.c
-
-+ phase 2: language features
-	+ array literals
-		+ a i32[] = [1, 2, 3]
++ phase 2: language features (now)
+	+ sized arrays
 		+ rooms Room[] = Room[2]      // zeroed, on the stack; the size can be a runtime value
 		+ grid Room[][] = Room[2][3]
-		+ rooms.len
-	+ for loop through operator in
-		+ for i in Range::create(0, 10):
-		+ for c in "hello":
-		+ struct Range:
-			+ operator in(x &i32) bool:   // writes the next value in x, False when done
-		+ then turn milestone3 104 back into a for loop (rewritten with while for now)
-		+ rewrite milestone10 (old loop, a..b, by, for ref) for for-in
-	+ isZero(x) replaces isNullable(x) (rename it in the tests)
-	+ null (only the literal, for libc)
-		+ r &i32 with no value starts as null: rewrite milestone2 111 (expects an error today)
-		+ if file == null:
-	+ mod
-		+ mod math:
-			+ fn square(x i32) i32: ...
-		+ math::square(3)
+		+ tests that use .len on a raw array switch to Array<T> and len()
+	+ unic: a new 32-bit Unicode code point type (like Rust's char); char stays i8 (C's char)
+		+ c unic = '🦀'     output(c) prints its UTF-8 bytes
+		+ for u in s.unics():   // a String's code points (String stays UTF-8 bytes)
+		+ nothing existing changes: char, char[], String, libc protos stay as they are
 	+ ura::line, ura::filename, ura::function   (like __LINE__, __FILE__, __func__ in C)
 		+ io::err(ura::filename, ":", ura::line, " in ", ura::function, "\n")
 	+ variadic functions written in ura
@@ -43,6 +17,16 @@
 	+ function values (callbacks)
 		+ fn apply(f fn(i32) i32, x i32) i32:
 		+ apply(square, 3)
+		+ milestone13 010-013, 015, 019, 039 test it (fn-typed values, parameters, a zeroed fn value traps)
+	+ ** power operator (like Python)
+		+ x i32 = 2 ** 10      f f64 = 2.0 ** 0.5      x **= 2
+		+ binds tighter than * and is right-associative: 2 ** 3 ** 2 == 2 ** 9
+	+ i128 / u128
+		+ ucg: 128-bit int types (LLVM i128, / and % through __divti3), and printing them
+		+ ura: i128 and u128 keywords
+	+ big integers, provided by ucg so any compiler built on it gets them
+		+ ucg: a bigint type (limbs) with + - * / % and compare, and printing
+		+ ura: n bigint = 2 ** 200
 	+ any (not decided)
 		+ fn show(x any): ...   // works like a template
 
@@ -57,6 +41,7 @@
 	+ colours as globals in io: io::out(io::red, "failed", io::reset, "\n")
 		+ then rewrite milestone6 005, 007, 010, 011 (old errput colour tests) for io::err
 	+ io in core, output / errput builtins removed
+		+ buffered output instead of one dprintf per call
 		+ io::out(...)  io::err(...)
 		+ name String = io::input("Your name: ")
 	+ alias + Stream (files, sockets)
@@ -64,10 +49,10 @@
 		+ f Stream = io::open("a.txt")
 		+ f.write("hi ", n, "\n")   line String = f.getline()
 	+ scan (reverse of fmt)
+		+ scan("12 3.5", &a, &b)
 	+ organize all of ura-lib like core: a folder per area, one struct with methods each
 		+ io/ (Stream, files), net/ (Socket), math/, ...
 		+ root .ura files use their folder, like core.ura uses core/
-		+ scan("12 3.5", &a, &b)
 
 + phase 4: memory and safety
 	+ bitmap arena allocator, default for every ura program
@@ -77,6 +62,7 @@
 		+ then operator drop never sees a never-set (zeroed) value
 		+ today: operator drop must be safe on zeros (milestone8 033 guards with if self.id != 0)
 	+ optimization flags: ura main.ura -O2   (-O0 .. -O3, -Os, -Oz)
+		+ in ucg_start: LLVM passes for -O, ASAN setup for -san
 	+ later: function annotations, like Python decorators
 		+ @cache above a fn: remembers results by arguments (Python's @lru_cache)
 		+ @vector / @gpu above a fn: the compiler runs its math as SIMD vectors or on the GPU (for graphics)
@@ -92,6 +78,8 @@
 	+ ura watch   (rebuild and rerun on every save, like nodemon)
 	+ ura main.ura -tree   (print the AST as a tree)
 	+ Makefile instead of config.sh, make ucg builds only ucg (maybe its own repo)
+		+ test ucg with LLVM 12, 15, 21
+		+ emit assembly / objects straight from LLVM, without writing the .ll file
 	+ installing ura also installs ura-lib
 
 + phase 6: projects
@@ -106,3 +94,8 @@
 	+ rewrite git history, delete files that no longer exist (smaller repo)
 
 + fix all remaining TODOS in thecodebase
++ either put ucg in derent repo, or make it a standlone build, so it can be reusable
++ rename place to osmehting readble
++ format the codebase
++ remove unecessary files
++ move any code that can be moved to lib/header.h

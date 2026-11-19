@@ -111,7 +111,7 @@ enum Type {
     LINK, USE, MACRO_IF, MACRO_ELIF, MACRO_ELSE, MACRO_ERROR,
 	FN_ENTRY,
     SIZEOF, TYPEOF, DROP, COPY, IS_ZERO, ALLOC, MEMCPY, FREE,
-    AS, FROM, AND_LIT, OR_LIT, SELF, FOR, IN,
+    AS, FROM, AND_LIT, OR_LIT, SELF, FOR, IN, MODULE,
 	BLOC,
     IF, ELIF, ELSE, THEN,
     LOOP, BRK, CNT, MATCH, CASE, DEFAULT, CLEAN,
@@ -3877,7 +3877,7 @@ const char *to_string(Type type) {
 		[LOOP] = "LOOP", [BRK] = "BRK", [CNT] = "CNT",
 		[MATCH] = "MATCH", [CASE] = "CASE", [DEFAULT] = "DEFAULT", [CLEAN] = "CLEAN",
 		[TRY] = "TRY", [CATCH] = "CATCH", [THROW] = "THROW", [CHECK] = "CHECK",
-		[AS] = "AS", [FROM] = "FROM", [AND_LIT] = "AND_LIT", [OR_LIT] = "OR_LIT", [SELF] = "SELF", [FOR] = "FOR", [IN] = "IN",
+		[AS] = "AS", [FROM] = "FROM", [AND_LIT] = "AND_LIT", [OR_LIT] = "OR_LIT", [SELF] = "SELF", [FOR] = "FOR", [IN] = "IN", [MODULE] = "MODULE",
 		[LAST] = "LAST",
         // clang-format on
     };

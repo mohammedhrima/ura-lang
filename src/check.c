@@ -219,6 +219,19 @@ void check_macro(Node *node) {
     );
 }
 
+bool check_module(Node *node) {
+    Token *token = node->token;
+    if (ura.scope->token->type == SCOPE)
+        return true;
+    add_error(
+        token->s,
+        token->e,
+        "'mod' only works at the top level",
+        "move it out of the block"
+    );
+    return false;
+}
+
 bool check_package(Token *name, char *path) {
     char *package = name->chars.value;
     if (path)
@@ -745,6 +758,9 @@ void check_name(Node *node) {
         else if (find_struct(token->name)) {
             msg = format("'%s' is a type, not a value", token->name);
             help = NULL;
+        } else if (is_module(token->name)) {
+            msg = format("'%s' is a mod, not a value", token->name);
+            help = format("reach its members with '%s::'", token->name);
         } else if (is_outer) {
             msg = format("'%s' belongs to an enclosing function", token->name);
             help = "pass it as a parameter";
@@ -1345,6 +1361,13 @@ void check_variant(Node *node, Node *en) {
 
 void check_static_call(Node *node) {
     Token *name = node->left->token;
+    if (is_module(name->name)) {
+        Token *member = node->right->token;
+        member->name = format("%s::%s", name->name, member->name);
+        *node = *node->right;
+        analyze(node);
+        return;
+    }
     Node *en = find_enum(name->name);
     if (en) {
         check_variant(node, en);

@@ -116,6 +116,7 @@ struct {
     expand(Node *, scopes);
     Node *scope;
     Node *types;
+    expand(char *, modules);
 
     int exe_pos;
     bool throws;
@@ -124,145 +125,149 @@ struct {
 struct {
     char *value;
     Token token;
-} keywords[] = {
-    { "bool", { .type = INT, .is_type = true, .shift = 1 } },
-    { "i1", { .type = INT, .is_type = true, .shift = 1 } },
-    { "void", { .type = VOID, .is_type = true } },
-    { "f32", { .type = FLOAT, .is_type = true, .shift = 32 } },
-    { "f64", { .type = FLOAT, .is_type = true, .shift = 64 } },
-    { "char", { .type = INT, .is_type = true, .shift = 8 } },
-    { "i8", { .type = INT, .is_type = true, .shift = 8 } },
-    { "i16", { .type = INT, .is_type = true, .shift = 16 } },
-    { "i32", { .type = INT, .is_type = true, .shift = 32 } },
-    { "i64", { .type = INT, .is_type = true, .shift = 64 } },
-    { "u8", { .type = INT, .is_type = true, .shift = 8, .is_uint = true } },
-    { "u16", { .type = INT, .is_type = true, .shift = 16, .is_uint = true } },
-    { "u32", { .type = INT, .is_type = true, .shift = 32, .is_uint = true } },
-    { "u64", { .type = INT, .is_type = true, .shift = 64, .is_uint = true } },
-    { "num", { .type = INT, .is_type = true } },
+} keywords[] = { // clang-format off
+    { "bool",     { .type = INT,   .is_type = true, .shift = 1 } },
+    { "i1",       { .type = INT,   .is_type = true, .shift = 1 } },
+    { "void",     { .type = VOID,  .is_type = true } },
+    { "f32",      { .type = FLOAT, .is_type = true, .shift = 32 } },
+    { "f64",      { .type = FLOAT, .is_type = true, .shift = 64 } },
+    { "char",     { .type = INT,   .is_type = true, .shift = 8 } },
+    { "i8",       { .type = INT,   .is_type = true, .shift = 8 } },
+    { "i16",      { .type = INT,   .is_type = true, .shift = 16 } },
+    { "i32",      { .type = INT,   .is_type = true, .shift = 32 } },
+    { "i64",      { .type = INT,   .is_type = true, .shift = 64 } },
+    { "u8",       { .type = INT,   .is_type = true, .shift = 8,  .is_uint = true } },
+    { "u16",      { .type = INT,   .is_type = true, .shift = 16, .is_uint = true } },
+    { "u32",      { .type = INT,   .is_type = true, .shift = 32, .is_uint = true } },
+    { "u64",      { .type = INT,   .is_type = true, .shift = 64, .is_uint = true } },
+    { "num",      { .type = INT,   .is_type = true } },
 
-    { "True", { .type = INT, .shift = 1, .num = { .value = true } } },
-    { "False", { .type = INT, .shift = 1, .num = { .value = false } } },
+    { "True",     { .type = INT,   .shift = 1, .num = { .value = true } } },
+    { "False",    { .type = INT,   .shift = 1, .num = { .value = false } } },
 
-    { "struct", { .type = STRUCT } },
-    { "enum", { .type = ENUM } },
-    { "and", { .type = AND_LIT } },
-    { "or", { .type = OR_LIT } },
-    { "not", { .type = NOT } },
-    { "is", { .type = EQ } },
-    { "proto", { .type = PROTO } },
-    { "link", { .type = LINK } },
-    { "use", { .type = USE } },
-    { "@if", { .type = MACRO_IF } },
-    { "@elif", { .type = MACRO_ELIF } },
-    { "@else", { .type = MACRO_ELSE } },
-    { "@error", { .type = MACRO_ERROR } },
+    { "struct",   { .type = STRUCT } },
+    { "enum",     { .type = ENUM } },
+    { "and",      { .type = AND_LIT } },
+    { "or",       { .type = OR_LIT } },
+    { "not",      { .type = NOT } },
+    { "is",       { .type = EQ } },
+    { "proto",    { .type = PROTO } },
+    { "link",     { .type = LINK } },
+    { "use",      { .type = USE } },
+    { "@if",      { .type = MACRO_IF } },
+    { "@elif",    { .type = MACRO_ELIF } },
+    { "@else",    { .type = MACRO_ELSE } },
+    { "@error",   { .type = MACRO_ERROR } },
     { "operator", { .type = OPERATOR } },
-    { "pub", { .type = PUB } },
-    { "fn", { .type = FN_DEC } },
-    { "return", { .type = RETURN } },
-    { "if", { .type = IF } },
-    { "elif", { .type = ELIF } },
-    { "else", { .type = ELSE } },
-    { "while", { .type = LOOP } },
-    { "for", { .type = FOR } },
-    { "in", { .type = IN } },
-    { "break", { .type = BRK } },
+    { "pub",      { .type = PUB } },
+    { "fn",       { .type = FN_DEC } },
+    { "return",   { .type = RETURN } },
+    { "if",       { .type = IF } },
+    { "elif",     { .type = ELIF } },
+    { "else",     { .type = ELSE } },
+    { "while",    { .type = LOOP } },
+    { "for",      { .type = FOR } },
+    { "in",       { .type = IN } },
+    { "mod",      { .type = MODULE } },
+    { "break",    { .type = BRK } },
     { "continue", { .type = CNT } },
-    { "match", { .type = MATCH } },
-    { "case", { .type = CASE } },
-    { "default", { .type = DEFAULT } },
-    { "try", { .type = TRY } },
-    { "catch", { .type = CATCH } },
-    { "throw", { .type = THROW } },
+    { "match",    { .type = MATCH } },
+    { "case",     { .type = CASE } },
+    { "default",  { .type = DEFAULT } },
+    { "try",      { .type = TRY } },
+    { "catch",    { .type = CATCH } },
+    { "throw",    { .type = THROW } },
     { "template", { .type = TEMPLATE } },
-    { "null", { .type = ZERO } },
-    { "as", { .type = AS } },
-    { "from", { .type = FROM } },
-    { "self", { .type = SELF, .name = "self" } },
+    { "null",     { .type = ZERO } },
+    { "as",       { .type = AS } },
+    { "from",     { .type = FROM } },
+    { "self",     { .type = SELF, .name = "self" } },
 
     { NULL },
-};
+}; // clang-format on
 
 struct {
     char *value;
     Type type;
 } specials[] = {
-    { "(", LPARENT },     { ")", RPARENT },     { "::", DOUBLE_DOTS },
-    { ":", DOTS },        { "[", LBRACK },      { "]", RBRACK },
-    { "{", LCBRACK },     { "}", RCBRACK },
+    // clang-format off
+    { "(", LPARENT },       { ")", RPARENT },       { "::", DOUBLE_DOTS }, { ":", DOTS },
+    { "[", LBRACK },        { "]", RBRACK },        { "{", LCBRACK },      { "}", RCBRACK },
 
-    { "+=", ADD_ASSIGN }, { "-=", SUB_ASSIGN }, { "*=", MUL_ASSIGN },
-    { "/=", DIV_ASSIGN }, { "%=", MOD_ASSIGN },
-    { "<<=", LSHIFT_ASSIGN }, { ">>=", RSHIFT_ASSIGN }, { "&=", BAND_ASSIGN },
-    { "|=", BOR_ASSIGN }, { "^=", BXOR_ASSIGN },
-    { "<<", LSHIFT },     { ">>", RSHIFT },
+    { "+=", ADD_ASSIGN },   { "-=", SUB_ASSIGN },   { "*=", MUL_ASSIGN },  { "/=", DIV_ASSIGN },
+    { "%=", MOD_ASSIGN },
+    { "<<=", LSHIFT_ASSIGN }, { ">>=", RSHIFT_ASSIGN }, { "&=", BAND_ASSIGN }, { "|=", BOR_ASSIGN },
+    { "^=", BXOR_ASSIGN },  { "<<", LSHIFT },       { ">>", RSHIFT },
 
-    { "...", VARIADIC },  { ".", DOT },
+    { "...", VARIADIC },    { ".", DOT },
 
-    { "+", ADD },         { "-", SUB },         { "*", MUL },
-    { "/", DIV },         { "%", MOD },
+    { "+", ADD },           { "-", SUB },           { "*", MUL },          { "/", DIV },
+    { "%", MOD },
 
-    { ">=", GE },         { "<=", LE },         { ">", GT },
-    { "<", LT },          { "==", EQ },         { "!=", NQ },
-    { "!", NOT },         { "~", BNOT },
+    { ">=", GE },           { "<=", LE },           { ">", GT },           { "<", LT },
+    { "==", EQ },           { "!=", NQ },
+    { "!", NOT },           { "~", BNOT },
 
-    { "=", ASSIGN },      { ",", COMA },        { "&&", AND },
-    { "||", OR },         { "&", REF },         { "|", BOR },
-    { "^", BXOR },        { NULL, NONE },
-};
+    { "=", ASSIGN },        { ",", COMA },
+
+    { "&&", AND },          { "||", OR },           { "&", REF },          { "|", BOR },
+    { "^", BXOR },
+
+    { NULL, NONE },
+}; // clang-format on
 
 char *binary_ops[LAST + 1] = {
-    [ADD] = "+",        [SUB] = "-",        [MUL] = "*",
-    [DIV] = "/",        [MOD] = "%",
+    // clang-format off
+    [ADD] = "+",          [SUB] = "-",          [MUL] = "*",          [DIV] = "/",
+    [MOD] = "%",
 
-    [ASSIGN] = "=",
-    [ADD_ASSIGN] = "+=", [SUB_ASSIGN] = "-=", [MUL_ASSIGN] = "*=",
-    [DIV_ASSIGN] = "/=", [MOD_ASSIGN] = "%=",
+    [ASSIGN] = "=",       [ADD_ASSIGN] = "+=",  [SUB_ASSIGN] = "-=",  [MUL_ASSIGN] = "*=",
+    [DIV_ASSIGN] = "/=",  [MOD_ASSIGN] = "%=",
 
-    [BAND] = "&",       [BOR] = "|",        [BXOR] = "^",
-    [LSHIFT] = "<<",    [RSHIFT] = ">>",
+    [BAND] = "&",         [BOR] = "|",          [BXOR] = "^",
+    [LSHIFT] = "<<",      [RSHIFT] = ">>",
 
     [BAND_ASSIGN] = "&=", [BOR_ASSIGN] = "|=", [BXOR_ASSIGN] = "^=",
     [LSHIFT_ASSIGN] = "<<=", [RSHIFT_ASSIGN] = ">>=",
 
-    [EQ] = "==",        [NQ] = "!=",        [LT] = "<",
-    [GT] = ">",         [LE] = "<=",        [GE] = ">=",
+    [EQ] = "==",          [NQ] = "!=",
+    [LT] = "<",           [GT] = ">",           [LE] = "<=",           [GE] = ">=",
 
-    [AND] = "&&",       [OR] = "||",
-    [AND_LIT] = "and",  [OR_LIT] = "or",
-    [NEG] = "-",        [BNOT] = "~",
-};
+    [AND] = "&&",         [OR] = "||",
+    [AND_LIT] = "and",    [OR_LIT] = "or",
+
+    [NEG] = "-",          [BNOT] = "~",
+}; // clang-format on
 
 int precedence[LAST + 1] = {
-    [ASSIGN] = 1,     [ADD_ASSIGN] = 1,   [SUB_ASSIGN] = 1,
-    [MUL_ASSIGN] = 1, [DIV_ASSIGN] = 1,   [MOD_ASSIGN] = 1,
-    [BAND_ASSIGN] = 1, [BOR_ASSIGN] = 1,  [BXOR_ASSIGN] = 1,
-    [LSHIFT_ASSIGN] = 1, [RSHIFT_ASSIGN] = 1,
+    // clang-format off
+    [ASSIGN] = 1,      [ADD_ASSIGN] = 1,    [SUB_ASSIGN] = 1,    [MUL_ASSIGN] = 1,
+    [DIV_ASSIGN] = 1,  [MOD_ASSIGN] = 1,    [BAND_ASSIGN] = 1,   [BOR_ASSIGN] = 1,
+    [BXOR_ASSIGN] = 1, [LSHIFT_ASSIGN] = 1, [RSHIFT_ASSIGN] = 1,
 
-    [OR] = 11,        [AND] = 12,
+    [OR] = 11,         [AND] = 12,
 
-    [EQ] = 21,        [NQ] = 21,          [GT] = 22,
-    [LT] = 22,        [GE] = 22,          [LE] = 22,
+    [EQ] = 21,         [NQ] = 21,           [GT] = 22,           [LT] = 22,
+    [GE] = 22,         [LE] = 22,
 
-    [BOR] = 23,       [BXOR] = 24,        [BAND] = 25,
-    [LSHIFT] = 28,    [RSHIFT] = 28,
+    [BOR] = 23,        [BXOR] = 24,         [BAND] = 25,         [LSHIFT] = 28,
+    [RSHIFT] = 28,
 
-    [ADD] = 30,       [SUB] = 30,         [MUL] = 31,
-    [DIV] = 31,       [MOD] = 31,
+    [ADD] = 30,        [SUB] = 30,          [MUL] = 31,          [DIV] = 31,
+    [MOD] = 31,
 
     [AS] = 35,
 
-    [DOT] = 51,       [DOUBLE_DOTS] = 51, [LBRACK] = 51,
-};
+    [DOT] = 51,        [DOUBLE_DOTS] = 51,  [LBRACK] = 51,
+}; // clang-format onn
 
-char *escaped[256] = {
+char *escaped[256] = { // clang-format off
     ['n'] = "\n",   ['t'] = "\t",   ['r'] = "\r",   ['b'] = "\b",
     ['f'] = "\f",   ['v'] = "\v",   ['a'] = "\a",   ['?'] = "\?",
     ['0'] = "\0",   ['"'] = "\"",   ['\''] = "\'",  ['\\'] = "\\",
 
     ['\n'] = "\\n", ['\t'] = "\\t", ['\r'] = "\\r", ['\0'] = "\\0",
-};
+}; // clang-format on
 
 char *type_names[LAST + 1] = {
     [VOID] = "void",
@@ -428,7 +433,7 @@ void tokenize(File *file) {
             //     check_indent(s + 1, e, ura.scope->token->line, space);
             continue;
         }
-        while (strncmp2(buff + s, "//", 2) && !strchr2("\n", buff[e]))
+        while (strncmp2(buff + s, "//", 2) && buff[e] && buff[e] != '\n')
             e++;
         if (e != s)
             continue;
@@ -451,7 +456,8 @@ void tokenize(File *file) {
             e++;
             while (buff[e] != '\0' && buff[e] != '\n' && buff[e] != c) {
                 char next = buff[e + 1];
-                bool is_escape = buff[e] == '\\' && next != '\0' && !strchr2("\n", next);
+                bool is_escape =
+                    buff[e] == '\\' && next != '\0' && !strchr2("\n", next);
                 e += is_escape ? 2 : 1;
             }
             if (buff[e] == c)
@@ -697,6 +703,53 @@ int copy_tokens(int from_pos, int to_pos, char *from, char *to, int space) {
     return start;
 }
 
+void prefix_names(Token *mod) {
+    expand(char *, names);
+    zero_init(names);
+    int start = ura.exe_pos;
+    int end = start;
+    while (ura.tokens[end]->space > mod->space)
+        end++;
+    int space = ura.tokens[start]->space;
+    for (int i = start; i < end; i++) {
+        Token *curr = ura.tokens[i];
+        Token *after = ura.tokens[i + 1];
+        bool is_head = curr->space == space && curr->line != ura.tokens[i - 1]->line;
+        bool has_name = after->type == ID;
+        bool is_head_type = includes(curr->type, STRUCT, FN_DEC, ENUM, MODULE, 0);
+        bool is_named = is_head_type && has_name;
+        bool is_typed = after->line == curr->line && (after->is_type || has_name);
+        bool is_global = curr->type == ID && is_typed;
+        if (is_head && is_named)
+            append(names, after->name);
+        if (is_head && is_global)
+            append(names, curr->name);
+    }
+    for (int i = start; i < end; i++) {
+        Token *curr = ura.tokens[i];
+        bool is_member = includes(ura.tokens[i - 1]->type, DOT, DOUBLE_DOTS, 0);
+        if (curr->type != ID || is_member)
+            continue;
+        for (size_t j = 0; j < names_count; j++) {
+            if (!strcmp2(curr->name, names[j]))
+                continue;
+            curr->name = format("%s::%s", mod->name, curr->name);
+            break;
+        }
+    }
+}
+
+void parse_module_name(Token *token) {
+    while (peek(0)->type == DOUBLE_DOTS && peek(1)->type == ID) {
+        if (!is_module(token->name))
+            return;
+        next(); // SKIP ::
+        Token *member = next();
+        token->name = format("%s::%s", token->name, member->name);
+        token->e = member->e;
+    }
+}
+
 
 void inherit_from_parent(Node *st, Node *parent) {
     Token *body = parent->token;
@@ -822,6 +875,7 @@ Node *parse_type(void) {
         token->is_type = true;
     if (token->is_type) {
         next();
+        parse_module_name(token);
         Node *node = token->type == ID ? find_template_type(token->name) : NULL;
         Node *template = token->type == ID ? find_template(token->name) : NULL;
         if (node == NULL)
@@ -905,19 +959,11 @@ Node *parse_prime() {
         exit_scope();
         append(node->children, new_builtin(WRITE, "output", 1, NULL));
         append(node->children, new_builtin(WRITE, "errput", 2, NULL));
-        append(
-            node->children,
-            new_builtin(READ, "input", 0, chars_type())
-        );
+        append(node->children, new_builtin(READ, "input", 0, chars_type()));
         append(
             node->children, new_builtin(SIZEOF, "sizeof", 0, new_type(INT, 32, NULL))
         );
-        append(
-            node->children,
-            new_builtin(
-                TYPEOF, "typeof", 0, chars_type()
-            )
-        );
+        append(node->children, new_builtin(TYPEOF, "typeof", 0, chars_type()));
         append(node->children, new_builtin(DROP, "drop", 0, NULL));
         append(node->children, new_builtin(IS_ZERO, "isZero", 0, bool_type()));
         Node *bytes = chars_type();
@@ -937,6 +983,7 @@ Node *parse_prime() {
         return node;
     }
     case ID: {
+        parse_module_name(token);
         Node *template_type = find_template_type(token->name);
         Node *template = find_template(token->name);
         bool is_template_use = template && peek(0)->type == LT;
@@ -1336,6 +1383,24 @@ Node *parse_prime() {
         }
         return node;
     }
+    case MODULE: {
+        node = new_node(token);
+        if (peek(0)->type == ID)
+            node->token->name = next()->name;
+        else
+            expect(ID, "expected a mod name after 'mod'", " name");
+        expect(DOTS, "expected ':' after the mod name", ":");
+        if (!check_module(node))
+            return node;
+        append(ura.modules, node->token->name);
+        prefix_names(node->token);
+        while (inside(token->space)) {
+            Node *child = parse_expr(0);
+            if (child->token->type != VAR)
+                append(ura.scope->children, child);
+        }
+        return node;
+    }
     case STRUCT: {
         node = new_node(token);
         if (peek(0)->type == ID)
@@ -1396,7 +1461,7 @@ Node *parse_prime() {
         }
         return node;
     } // clang-format off
-    case BRK: case CNT: {  // clang-format on
+    case BRK: case CNT: { // clang-format on
         node = new_node(token);
         for (int i = ura.scopes_count - 1; i >= 0 && node->loop == NULL; i--) {
             Type type = ura.scopes[i]->token->type;
@@ -1484,12 +1549,14 @@ Node *find_variable(char *name, int pos) {
         if (is_past_fn && !is_global)
             continue;
         is_past_fn = is_past_fn || scope->token->type == FN_DEC;
-        Node *param = scope->token->type == FN_DEC ? find_in_children(scope->args, name) : NULL;
+        Node *param =
+            scope->token->type == FN_DEC ? find_in_children(scope->args, name) : NULL;
         if (param)
             return param;
         for (int j = 0; j < scope->children_count; j++) {
             Node *child = scope->children[j];
-            if (child->token->type != DECLARE || !strcmp2(child->var->token->name, name))
+            if (child->token->type != DECLARE ||
+                !strcmp2(child->var->token->name, name))
                 continue;
             if (is_global || child->var->token->s <= pos)
                 return child->var;
@@ -1520,7 +1587,8 @@ Node *find_variable_like(char *name, int pos, int max_diff) {
         Node *scope = ura.scopes[i];
         for (int j = 0; j < scope->children_count; j++) {
             Node *child = scope->children[j];
-            bool is_before = child->token->type == DECLARE && child->var->token->s <= pos;
+            bool is_before =
+                child->token->type == DECLARE && child->var->token->s <= pos;
             if (!is_before)
                 continue;
             int diff = name_diff(child->var->token->name, name);
@@ -1606,7 +1674,8 @@ bool fits_args(Node *fn, Node **args, int args_count, int self) {
         bool is_unknown = found == NULL || type == NULL;
         bool is_text = args[j]->token->type == CHARS && is_chars(type);
         bool is_list = args[j]->token->type == LBRACK && type && element_type_of(type);
-        if (is_unknown || is_text || is_list || (is_number(args[j]) && is_number(type)))
+        if (is_unknown || is_text || is_list ||
+            (is_number(args[j]) && is_number(type)))
             continue;
         bool takes_ref = type->token->type == REF && found->token->type != REF;
         if (!same_type(found, takes_ref ? type->data_type : type))
@@ -1621,7 +1690,8 @@ Node *find_method(Node *st, char *name, Node **args, int args_count, bool is_pub
         Node *child = st->children[i];
         if (child->token->type != FN_DEC || child->token->is_pub != is_pub)
             continue;
-        if (strcmp2(child->token->name, name) && fits_args(child, args, args_count, self))
+        if (strcmp2(child->token->name, name) &&
+            fits_args(child, args, args_count, self))
             return child;
     }
     return NULL;
@@ -1633,7 +1703,8 @@ Node *find_overload(char *name, Node **args, int args_count) {
         Node *scope = ura.scopes[i];
         for (int j = 0; j < scope->children_count; j++) {
             Node *child = scope->children[j];
-            bool is_function = includes(child->token->type, FN_DEC, PROTO, 0) && child->args;
+            bool is_function =
+                includes(child->token->type, FN_DEC, PROTO, 0) && child->args;
             if (!is_function || !strcmp2(child->token->name, name))
                 continue;
             if (!fits_args(child, args, args_count, 0))
@@ -1673,6 +1744,14 @@ Node *find_enum(char *name) {
     return NULL;
 }
 
+bool is_module(char *name) {
+    for (size_t i = 0; i < ura.modules_count; i++) {
+        if (strcmp2(ura.modules[i], name))
+            return true;
+    }
+    return false;
+}
+
 Node *new_type(Type type, int shift, Node *data_type) {
     Node *node = new_node(new_token(type, NULL));
     node->token->is_type = true;
@@ -1697,7 +1776,8 @@ bool is_chars(Node *type) {
 Node *element_type_of(Node *type) {
     if (type->token->type == ARRAY)
         return type->data_type;
-    bool is_array = type->token->type == ID && strncmp2(type->token->name, "Array<", 6);
+    bool is_array =
+        type->token->type == ID && strncmp2(type->token->name, "Array<", 6);
     if (is_array && type->declared == NULL)
         type->declared = find_struct(type->token->name);
     if (!is_array || type->declared == NULL)
@@ -1828,7 +1908,7 @@ void analyze(Node *node) {
     case WRITE: case READ: case SIZEOF: case DROP:
     case ALLOC: case MEMCPY: case FREE:
     case TYPEOF: case USE: case IS_ZERO: case ZERO:
-    case MACRO_IF: case MACRO_ERROR: { // clang-format on
+    case MACRO_IF: case MACRO_ERROR: case MODULE: { // clang-format on
         break;
     } // clang-format off
     case ID: case SELF: { // clang-format on
@@ -2210,7 +2290,7 @@ bool is_struct_value(Node *type) {
 
 void codegen_write_struct(Ucg *fd, Node *type, Ucg *base) {
     Node *st = type->declared;
-    ucg_write(fd, (Ucg *[]){ucg_string_value(format("%s{", st->token->name))}, 1);
+    ucg_write(fd, (Ucg *[]){ ucg_string_value(format("%s{", st->token->name)) }, 1);
     bool is_first = true;
     for (int i = 0; i < st->children_count; i++) {
         Node *child = st->children[i];
@@ -2226,12 +2306,12 @@ void codegen_write_struct(Ucg *fd, Node *type, Ucg *base) {
         if (attr_type->token->type == REF)
             value = ucg_string_value("ref");
         if (is_struct_value(attr_type)) {
-            ucg_write(fd, (Ucg *[]){label}, 1);
+            ucg_write(fd, (Ucg *[]){ label }, 1);
             codegen_write_struct(fd, attr_type, value);
         } else
-            ucg_write(fd, (Ucg *[]){label, value}, 2);
+            ucg_write(fd, (Ucg *[]){ label, value }, 2);
     }
-    ucg_write(fd, (Ucg *[]){ucg_string_value("}")}, 1);
+    ucg_write(fd, (Ucg *[]){ ucg_string_value("}") }, 1);
 }
 
 void codegen_write(Node *node) {
@@ -2245,7 +2325,7 @@ void codegen_write(Node *node) {
         if (is_string) {
             Node *chars = find_method_named(type->declared, "chars");
             Ucg *self = ucg_ref(codegen_in_variable(child));
-            args[count++] = ucg_fn_call(chars->token->ucg, (Ucg *[]){self}, 1);
+            args[count++] = ucg_fn_call(chars->token->ucg, (Ucg *[]){ self }, 1);
             continue;
         }
         if (!is_struct_value(type)) {
@@ -2456,7 +2536,8 @@ void codegen(Node *node) {
             if (param->token->type == PARAM)
                 codegen_clean(param->token->ucg, param->data_type);
         }
-        bool is_main = parent->token->type == SCOPE && strcmp2(node->token->name, "main");
+        bool is_main =
+            parent->token->type == SCOPE && strcmp2(node->token->name, "main");
         Ucg *try_stmt = is_main && ura.throws ? ucg_try() : NULL;
         if (is_main) {
             codegen_statements(parent);
@@ -2522,13 +2603,7 @@ void codegen(Node *node) {
                 node->to_call, ucg_fn_call(fn->ucg, args, node->children_count)
             );
         break;
-    }            codegen(node->left);
-            bool is_local = is_local_variable(node->left);
-            Ucg *value = node->left->token->ucg;
-            if (!is_local)
-                value = ucg_value(value);
-            codegen_drop_temporaries();
-            ucg = ucg_ret(value);
+    }
     case RETURN: {
         if (node->left) {
             codegen(node->left);
@@ -2616,7 +2691,7 @@ void codegen(Node *node) {
         break;
     } // clang-format off
     case TEMPLATE: case USE: case MACRO_IF: 
-    case MACRO_ERROR: case ENUM: { // clang-format on
+    case MACRO_ERROR: case ENUM: case MODULE: { // clang-format on
         break;
     }
     case ID: {
@@ -2651,7 +2726,7 @@ void codegen(Node *node) {
         Ucg *array = ucg_var("array", type->token->ucg);
         ucg_assign(array, ucg_struct_value(type->token->ucg, fields, 3));
         Node *own = find_method_named(type->declared, "own");
-        ucg_fn_call(own->token->ucg, (Ucg *[]){ucg_ref(array)}, 1);
+        ucg_fn_call(own->token->ucg, (Ucg *[]){ ucg_ref(array) }, 1);
         node->token->ucg = array;
         break;
     }
@@ -2665,7 +2740,8 @@ void codegen(Node *node) {
             codegen(attr->left);
             values[attr->token->attr.index] = attr->left->token->ucg;
         }
-        node->token->ucg = ucg_struct_value(node->data_type->token->ucg, values, values_count);
+        node->token->ucg =
+            ucg_struct_value(node->data_type->token->ucg, values, values_count);
         break;
     }
     case ACCESS: {
@@ -2761,7 +2837,8 @@ void codegen(Node *node) {
             node->left->token->type == VAR && node->left->declared == NULL;
         bool is_literal = node->right->token->type == CHARS;
         if (is_declaration && is_literal && is_chars(type))
-            node->right->token->ucg = ucg_string_array(node->right->token->chars.value);
+            node->right->token->ucg =
+                ucg_string_array(node->right->token->chars.value);
         else
             codegen(node->right);
         if (node->token->type == ASSIGN && !is_declaration && needs_drop(type)) {
