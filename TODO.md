@@ -122,3 +122,4 @@
 	+ memory_alloc(W * H) as char[] -> new<char[]>(W * H)
 	+ memory_free -> clean(arr)
 
++ after carfull thinking let's make ura automatically add core in ura.conf
