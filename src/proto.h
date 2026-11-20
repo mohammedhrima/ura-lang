@@ -350,6 +350,7 @@ Node *find_dependency_node(Config *config, char *name);
 bool is_dependency(Node *node);
 bool is_folder(char *where);
 bool is_package_name(char *name);
+bool is_version(char *text);
 bool run_script(char *name);
 char *config_value(Config *config, Type macro, char *name);
 char *dependency_dir(char *project, Node *node);

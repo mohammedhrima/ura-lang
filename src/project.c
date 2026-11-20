@@ -80,7 +80,9 @@ char *dependency_folder(char *project, char *name, char *version, char *where) {
 }
 
 char *dependency_dir(char *project, Node *node) {
-    return dependency_folder(project, entry_value(node, 0), entry_value(node, 1), entry_value(node, 2));
+    return dependency_folder(
+        project, entry_value(node, 0), entry_value(node, 1), entry_value(node, 2)
+    );
 }
 
 Node *find_dependency_node(Config *config, char *name) {
@@ -126,7 +128,9 @@ void load_project(char *dir) {
             continue;
         char *place = dependency_dir(config->dir, node);
         if (access(place, F_OK) != 0) {
-            eprint("%s %s is not installed\n", entry_value(node, 0), entry_value(node, 1));
+            eprint(
+                "%s %s is not installed\n", entry_value(node, 0), entry_value(node, 1)
+            );
             help("run: cd %s && ura install\n", config->dir);
             exit(1);
         }
@@ -136,26 +140,43 @@ void load_project(char *dir) {
     }
 }
 
-int install_dependency(char *project, char *name, char *version, char *where, int depth) {
+bool is_version(char *text) {
+    int major, minor, patch, end = 0;
+    int count = sscanf(text, "%d.%d.%d%n", &major, &minor, &patch, &end);
+    return isdigit(text[0]) && count == 3 && text[end] == '\0';
+}
+
+int install_dependency(
+    char *project, char *name, char *version, char *where, int depth
+) {
     char *place = dependency_folder(project, name, version, where);
     bool is_missing = access(place, F_OK) != 0;
     if (is_missing && is_folder(where)) {
         eprint("dependency %s: no folder %s\n", name, place);
         exit(1);
     }
-    if (is_missing) {
-        char *tagged[] = { "git", "clone", "-q", "--depth", "1", "--branch", version, where, place, NULL };
-        char *latest[] = { "git", "clone", "-q", "--depth", "1", where, place, NULL };
-        if (run_command(strcmp2(version, "latest") ? latest : tagged, NULL) != 0) {
+    if (!is_folder(where) && !is_version(version)) {
+        eprint("dependency %s: version '%s' is not a number like 0.1.0\n", name, version);
+        exit(1);
+    }
+    bool is_download = is_missing && !is_folder(where);
+    char *cache = format("%s/.ura/packages/%s@%s", home2(), name, version);
+    if (is_download && access(cache, F_OK) != 0) {
+        char *clone[] = { "git",      "clone", "-q",  "--depth", "1",
+                          "--branch", version, where, cache,     NULL };
+        if (run_command(clone, NULL) != 0) {
             eprint("can't get %s %s from %s\n", name, version, where);
             exit(1);
         }
+        help("installed %s %s\n", name, version);
+    }
+    if (is_download) {
+        mkdir2(format("%s/dependencies", project));
+        symlink2(cache, place);
     }
     bool has_config = access(format("%s/ura.conf", place), R_OK) == 0;
     if (has_config)
-        parse_config(place, is_missing && !is_folder(where));
-    if (is_missing)
-        help("installed %s %s\n", name, version);
+        parse_config(place, is_download);
     int installed = is_missing;
     if (has_config && depth < 16)
         installed += install_project(place, depth + 1);
@@ -203,7 +224,14 @@ void set_dependency(char *project, char *name, char *version, char *where) {
     }
     bool needs_newline = out[0] && !ends_with(out, "\n");
     if (version)
-        out = format("%s%s%s \"%s\" \"%s\"\n", out, needs_newline ? "\n" : "", entry, version, where);
+        out = format(
+            "%s%s%s \"%s\" \"%s\"\n",
+            out,
+            needs_newline ? "\n" : "",
+            entry,
+            version,
+            where
+        );
     write_file(file->path, out);
 }
 
@@ -222,7 +250,8 @@ void add_package(char *project, char *name, char *version, char *where) {
     Config *config = load_config(project);
     Node *old = find_dependency_node(config, name);
     char *place = dependency_folder(config->dir, name, version, where);
-    bool is_same = old && strcmp2(entry_value(old, 1), version) && strcmp2(entry_value(old, 2), where);
+    bool is_same = old && strcmp2(entry_value(old, 1), version) &&
+                   strcmp2(entry_value(old, 2), where);
     if (is_same && access(place, F_OK) == 0) {
         help("%s %s is already installed\n", name, version);
         return;
@@ -272,7 +301,8 @@ void list_project(char *dir, char *indent, int depth) {
         char *where = entry_value(node, 2);
         char *place = dependency_dir(config->dir, node);
         bool is_missing = access(place, F_OK) != 0;
-        bool has_config = !is_missing && access(format("%s/ura.conf", place), R_OK) == 0;
+        bool has_config =
+            !is_missing && access(format("%s/ura.conf", place), R_OK) == 0;
         char *kind = is_folder(where) ? "folder" : where;
         bool is_last = node == last;
         help(
@@ -286,13 +316,16 @@ void list_project(char *dir, char *indent, int depth) {
             is_missing ? "  missing" : ""
         );
         if (has_config && depth < 16)
-            list_project(place, format("%s%s", indent, is_last ? "    " : "│   "), depth + 1);
+            list_project(
+                place, format("%s%s", indent, is_last ? "    " : "│   "), depth + 1
+            );
     }
 }
 
 bool run_script(char *name) {
     char *project = find_folder_with(getcwd2(), "ura.conf");
-    char *script = project ? config_value(load_config(project), MACRO_SCRIPT, name) : NULL;
+    char *script =
+        project ? config_value(load_config(project), MACRO_SCRIPT, name) : NULL;
     if (script == NULL)
         return false;
     if (chdir(project) != 0) {
@@ -309,32 +342,60 @@ char *find_package(char *name, File *from) {
         char *path = format("%s/%s.ura", dirname2(from->path), name);
         return access(path, R_OK) == 0 ? path : NULL;
     }
-    char *project = find_folder_with(from ? dirname2(from->path) : getcwd2(), "ura.conf");
+    char *project =
+        find_folder_with(from ? dirname2(from->path) : getcwd2(), "ura.conf");
     Config *config = project ? find_config(project) : NULL;
     return config ? find_dependency(config, name + 2) : NULL;
 }
 
 char *template_files[][2] = {
-    { "ura.conf", "@name \"template\"\n@version \"0.1.0\"\n@main \"main.ura\"\n" },
-    { "main.ura", "use \"./src/colors\"\nuse \"./src/donut\"\nuse \"./src/shapes\"\nuse \"./src/errors\"\n\nfn main() i32:\n    donut()\n    shapes()\n    errors()\n    paint(Color::CYAN)\n    output(\"\\n  edit main.ura or src/, then: ura run\\n\\n\")\n    reset()\n    return 0\n" },
-    { "src/colors.ura", "enum Color:\n\tRED, GREEN, YELLOW, BLUE,\n\tMAGENTA, CYAN, WHITE, GREY\n\nfn code(c Color) i32:\n    match c:\n        case Color::RED:     return 31\n        case Color::GREEN:   return 32\n        case Color::YELLOW:  return 33\n        case Color::BLUE:    return 34\n        case Color::MAGENTA: return 35\n        case Color::CYAN:    return 36\n        case Color::GREY:    return 90\n        default:             return 97\n    return 0\n\nfn paint(c Color): output(27 as char, \"[1;\", code(c), \"m\")\nfn reset(): output(27 as char, \"[0m\")\n\nfn title(text char[]):\n    paint(Color::CYAN)\n    output(\"\\n  \", text, \"\\n\")\n    reset()\n    paint(Color::GREY)\n    output(\"  ----------------------------------------\\n\")\n    reset()\n" },
-    { "src/donut.ura", "link \"m\"\nproto sin(x f64) f64\nproto cos(x f64) f64\nproto usleep(usec u32) i32\n\nW i32 = 80\nH i32 = 20\n\nfn glow(light i32) Color:\n    if light < 3: return Color::BLUE\n    if light < 6: return Color::CYAN\n    if light < 9: return Color::WHITE\n    return Color::YELLOW\n\nfn donut():\n    title(\"a spinning donut: sin and cos straight from C\")\n    screen char[] = memory_alloc(W * H) as char[]\n    depth f64[] = memory_alloc(W * H * 8) as f64[]\n    light i32[] = memory_alloc(W * H * 4) as i32[]\n    shades char[] = \".,-~:;=!*#$@\"\n    a f64 = 0.0\n    b f64 = 0.0\n    frame i32 = 0\n    while frame < 140:\n        i i32 = 0\n        while i < W * H:\n            screen[i] = ' '\n            depth[i] = 0.0\n            i += 1\n        theta f64 = 0.0\n        while theta < 6.28:\n            phi f64 = 0.0\n            while phi < 6.28:\n                sp f64 = sin(phi)\n                cp f64 = cos(phi)\n                st f64 = sin(theta)\n                ct f64 = cos(theta)\n                circle f64 = ct + 2.0\n                d f64 = 1.0 / (sp * circle * sin(a) + st * cos(a) + 5.0)\n                t f64 = sp * circle * cos(a) - st * sin(a)\n                x i32 = (40.0 + 30.0 * d * (cp * circle * cos(b) - t * sin(b))) as i32\n                y i32 = (10.0 + 15.0 * d * (cp * circle * sin(b) + t * cos(b))) as i32\n                n i32 = (8.0 * ((st * sin(a) - sp * ct * cos(a)) * cos(b) - sp * ct * sin(a) - st * cos(a) - cp * ct * sin(b))) as i32\n                inside bool = y >= 0 and y < H and x >= 0 and x < W\n                if inside and d > depth[x + W * y]:\n                    depth[x + W * y] = d\n                    if n < 0:\n                        n = 0\n                    screen[x + W * y] = shades[n]\n                    light[x + W * y] = n\n                phi += 0.02\n            theta += 0.07\n        row i32 = 0\n        while row < H:\n            output(\"  \")\n            col i32 = 0\n            while col < W:\n                at i32 = col + W * row\n                if screen[at] != ' ': paint(glow(light[at]))\n                output(screen[at])\n                col += 1\n            reset()\n            output(\"\\n\")\n            row += 1\n        if frame < 139: output(27 as char, \"[\", H, \"A\")\n        a += 0.04\n        b += 0.02\n        usleep(30000)\n        frame += 1\n    memory_free(screen as i8[])\n    memory_free(depth as i8[])\n    memory_free(light as i8[])\n" },
-    { "src/errors.ura", "struct Overdraft:\n    wanted i32\n    balance i32\n\nfn withdraw(balance i32, amount i32) i32:\n    if amount > balance:\n        e Overdraft = {\n            wanted: amount,\n            balance: balance,\n        }\n        throw e\n    return balance - amount\n\nfn errors():\n    title(\"try, catch and throw\")\n    balance i32 = 100\n    amount i32 = 30\n    while amount < 130:\n        try:\n            balance = withdraw(balance, amount)\n            paint(Color::GREEN)\n            output(\"  took \", amount, \", \", balance, \" left\\n\")\n        catch e Overdraft:\n            paint(Color::RED)\n            output(\"  can't take \", e.wanted, \": only \", e.balance, \" left\\n\")\n        reset()\n        amount += 40\n" },
-    { "src/shapes.ura", "struct Vec2:\n    x f64\n    y f64\n\n    operator +(o &Vec2) Vec2:\n        return {\n            x: self.x + o.x,\n            y: self.y + o.y,\n        }\n\n    operator *(k f64) Vec2:\n        return {\n            x: self.x * k,\n            y: self.y * k,\n        }\n\nstruct Shape:\n    name char[]\n    origin Vec2\n\n    fn show(area f64):\n        paint(Color::YELLOW)\n        output(\"  \", self.name)\n        reset()\n        output(\" at (\",\n               self.origin.x as i32,\n               \", \",\n               self.origin.y as i32,\n               \") area \",\n               area as i32,\n               \"\\n\")\n\nstruct Circle from Shape:\n    radius f64\n\n    fn area() f64: return 3.14159265 * self.radius * self.radius\n\nstruct Rect from Shape:\n    size Vec2\n\n    fn area() f64: return self.size.x * self.size.y\n\nfn shapes():\n    title(\"structs, operators and struct from\")\n    step Vec2 = { x: 2.0, y: 1.0 }\n\n    c Circle = {\n        name: \"circle\",\n        origin: step * 2.0,\n        radius: 2.0,\n    }\n\n    c.show(c.area())\n\n    r Rect = {\n        name: \"rect  \",\n        origin: c.origin + step,\n        size: {\n            x: 4.0,\n            y: 2.5,\n        },\n    }\n\n    r.show(r.area())\n" },
+    { "main.ura",
+      "use \"./src/user\"\n\n"
+      "fn main() i32:\n"
+      "    name String = user()\n"
+      "    if name.is_empty():\n"
+      "        name = \"world\"\n\n"
+      "    wave unic = '👋'\n"
+      "    output(\"hello \", name, \" \", wave, \"\\n\")\n\n"
+      "    return 0\n" },
+    { "src/user.ura",
+      "use \"@/stdlib\"\n\n"
+      "fn env(key String) String:\n"
+      "    value char[] = getenv(key.chars())\n"
+      "    if value == null:\n"
+      "        return \"\"\n"
+      "    return String::create(value)\n\n"
+      "fn user() String:\n"
+      "    @if os == \"windows\":\n"
+      "        return env(\"USERNAME\")\n"
+      "    @elif os == \"linux\":\n"
+      "        return env(\"USER\")\n"
+      "    @elif os == \"macos\":\n"
+      "        return env(\"USER\")\n"
+      "    @else:\n"
+      "        return \"unknown user\"\n" },
     { NULL, NULL },
 };
 
 void init_project(char *name) {
     if (access(format("%s/ura.conf", name), F_OK) == 0) {
-        eprint("'%s' already has a ura.conf\n", name);
-        exit(1);
+        eprint("'%s' already has a ura.conf, replace its starter files? [y/N] ", name);
+        char answer[8] = "";
+        bool has_answer = fgets(answer, sizeof(answer), stdin) != NULL;
+        bool is_yes = has_answer && (answer[0] == 'y' || answer[0] == 'Y');
+        if (!is_yes)
+            exit(1);
     }
     mkdir2(name);
     mkdir2(format("%s/src", name));
     char *config = format(
         "@name \"%s\"\n"
         "@version \"0.1.0\"\n"
-        "@main \"main.ura\"\n",
+        "@main \"main.ura\"\n"
+        "@dependency \"ura-core\" \"0.1.0\" "
+        "\"https://github.com/ura-computing/ura-core\"\n"
+        "@dependency \"ura-posix\" \"0.1.0\" "
+        "\"https://github.com/ura-computing/ura-posix\"\n",
         name
     );
     char *readme = format(
@@ -343,15 +404,14 @@ void init_project(char *name) {
         "A [ura](https://github.com/ura-computing/ura-lang) project.\n"
         "\n"
         "```\n"
-        "main.ura          runs every demo\n"
-        "src/donut.ura     a spinning donut, with sin and cos from C\n"
-        "src/shapes.ura    structs, operators and struct from\n"
-        "src/errors.ura    try, catch and throw\n"
-        "src/colors.ura    enum + match for terminal colours\n"
+        "main.ura        says hello to the user\n"
+        "src/user.ura    finds the user name on every OS, used with: use "
+        "\"./src/user\"\n"
         "```\n"
         "\n"
         "| command | what it does |\n"
         "|---|---|\n"
+        "| `ura install` | clone the dependencies (run it first) |\n"
         "| `ura run` | build `main.ura` and run it |\n"
         "| `ura build` | build it into `build/%s` |\n"
         "| `ura install <name> <version> <repo url>` | add a dependency |\n"
@@ -368,7 +428,7 @@ void init_project(char *name) {
         write_file(format("%s/%s", name, files[i][0]), files[i][1]);
     for (int i = 0; template_files[i][0]; i++)
         write_file(format("%s/%s", name, template_files[i][0]), template_files[i][1]);
-    help("created %s/, run it with: cd %s && ura run\n", name, name);
+    help("created %s/, run it with: cd %s && ura install && ura run\n", name, name);
 }
 
 char *find_project(void) {

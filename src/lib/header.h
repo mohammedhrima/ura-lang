@@ -22,6 +22,9 @@
 #include <stdarg.h>
 #include <fcntl.h>
 #include <sys/wait.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 #ifndef bool
 #    define bool  int
@@ -215,6 +218,13 @@ char *getcwd2(void) {
     return res;
 }
 
+char *home2(void) {
+    char *home = getenv("HOME");
+    if (home == NULL)
+        home = getenv("USERPROFILE");
+    return home ? home : ".";
+}
+
 char *dirname2(char *path) {
     return dirname(strdup2(path));
 }
@@ -264,6 +274,19 @@ int run_command(char **argv, char *out_path) {
 void mkdir2(const char *path) {
     if (mkdir(path, 0755) != 0 && errno != EEXIST) {
         fprintf(stderr, "%s:%d mkdir failed\n", FILE, LINE);
+        exit(1);
+    }
+}
+
+void symlink2(const char *target, const char *path) {
+#ifdef _WIN32
+    DWORD flags = SYMBOLIC_LINK_FLAG_DIRECTORY | SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE;
+    bool is_linked = CreateSymbolicLinkA(path, target, flags) != 0;
+#else
+    bool is_linked = symlink(target, path) == 0;
+#endif
+    if (!is_linked) {
+        fprintf(stderr, "can't link %s to %s\n", path, target);
         exit(1);
     }
 }
