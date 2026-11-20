@@ -1,0 +1,26 @@
+struct Overdraft:
+    wanted i32
+    balance i32
+
+fn withdraw(balance i32, amount i32) i32:
+    if amount > balance:
+        e Overdraft
+        e.wanted = amount
+        e.balance = balance
+        throw e
+    return balance - amount
+
+fn errors():
+    title("try, catch and throw")
+    balance i32 = 100
+    amount i32 = 30
+    while amount < 130:
+        try:
+            balance = withdraw(balance, amount)
+            paint(Color::GREEN)
+            output("  took ", amount, ", ", balance, " left\n")
+        catch e Overdraft:
+            paint(Color::RED)
+            output("  can't take ", e.wanted, ": only ", e.balance, " left\n")
+        reset()
+        amount += 40

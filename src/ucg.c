@@ -109,6 +109,7 @@ enum Type {
     PROTO, 
     FN_DEC, ARGS, VARIADIC, FN_CALL, RETURN, WRITE, READ,
     LINK, USE, MACRO_IF, MACRO_ELIF, MACRO_ELSE, MACRO_ERROR,
+    MACRO_NAME, MACRO_VERSION, MACRO_MAIN, MACRO_SCRIPT, MACRO_DEPENDENCY,
 	FN_ENTRY,
     SIZEOF, TYPEOF, DROP, COPY, IS_ZERO, ALLOC, MEMCPY, FREE,
     AS, FROM, AND_LIT, OR_LIT, SELF, FOR, IN, MODULE, ARGC, ARGV,
@@ -2350,7 +2351,7 @@ char *ucg_find_lib_in(char *dir, char *name) {
 
 char *ucg_find_lib(char *name) {
     char *dirs[] = {
-        getenv("URA_LIB_PATH"),
+        getenv("URA_LIBC"),
         "/usr/local/lib",
         "/opt/homebrew/lib",
         "/usr/lib/x86_64-linux-gnu",
@@ -2419,7 +2420,8 @@ const char *to_string(Type type) {
         NAME(RETURN),        NAME(WRITE),         NAME(READ),
         NAME(LINK),          NAME(USE),
         NAME(MACRO_IF),      NAME(MACRO_ELIF),    NAME(MACRO_ELSE),
-        NAME(MACRO_ERROR),
+        NAME(MACRO_ERROR),   NAME(MACRO_NAME),    NAME(MACRO_VERSION),
+        NAME(MACRO_MAIN),    NAME(MACRO_SCRIPT),  NAME(MACRO_DEPENDENCY),
         NAME(SIZEOF),        NAME(TYPEOF),        NAME(DROP),
         NAME(COPY),          NAME(ALLOC),         NAME(MEMCPY),
         NAME(FREE),          NAME(IS_ZERO),

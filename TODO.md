@@ -1,8 +1,5 @@
 + phase 2: language features (now)
-	+ sized arrays
-		+ rooms Room[] = Room[2]      // zeroed, on the stack; the size can be a runtime value
-		+ grid Room[][] = Room[2][3]
-		+ tests that use .len on a raw array switch to Array<T> and len()
+	+ sized arrays: postponed to phase 4 (tests use Array<T> meanwhile)
 	+ unic: a new 32-bit Unicode code point type (like Rust's char); char stays i8 (C's char)
 		+ c unic = '🦀'     output(c) prints its UTF-8 bytes
 		+ for u in s.unics():   // a String's code points (String stays UTF-8 bytes)
@@ -50,7 +47,7 @@
 		+ f.write("hi ", n, "\n")   line String = f.getline()
 	+ scan (reverse of fmt)
 		+ scan("12 3.5", &a, &b)
-	+ organize all of ura-lib like core: a folder per area, one struct with methods each
+	+ organize the std repos (ura-posix, ura-math, ura-graphics) like ura-core: a folder per area, one struct with methods each
 		+ io/ (Stream, files), net/ (Socket), math/, ...
 		+ root .ura files use their folder, like core.ura uses core/
 
@@ -58,6 +55,17 @@
 	+ bitmap arena allocator, default for every ura program
 		+ 1 bit per 16-byte block: 1001 = blocks 1, 4 used, 2, 3 free
 		+ sits behind alloc / free, so Array, String work unchanged
+	+ stack arrays and heap arrays (later, maybe as Array instances made at compile time)
+		+ rooms Room[] = Room[2]      // zeroed, on the stack; the size can be a runtime value
+		+ grid Room[][] = Room[2][3]
+		+ a i32[] = new<i32>(5)       // heap
+		+ no .len on raw arrays; Array<T> has size()
+	+ new before a constructor: copies the stack value to the heap
+		+ p &Vec3 = new Vec3::create(1, 2, 3)
+		+ only before Type::create(...): new Vec3{x: 1} and new 5 are errors
+		+ operator drop cleans fields only, the same for stack and heap values
+	+ arena decorator on a fn (like Zig's arena allocator, design later)
+		+ @arena above a fn: every heap allocation in it is freed when the fn exits
 	+ assignment the C++ way: operator = runs in place on x = y, a move operator for temporaries
 		+ then operator drop never sees a never-set (zeroed) value
 		+ today: operator drop must be safe on zeros (milestone8 033 guards with if self.id != 0)
@@ -70,17 +78,17 @@
 		+ needs debug info (DWARF) from ucg
 
 + phase 5: tooling
-	+ ura.project in yaml
-		+ name: raytracer
-		+ flags: -O2 -san
-		+ packages:  sdl2, math@1.0      (ura install with no name installs them)
-		+ commands:  run: ..., test: ...   (ura test runs it)
+	+ done: ura-config (ura syntax: @name @version @main @script, @if works)
+		+ @dependency "name" "version" "https://github.com/user/repo" (or a folder): always 3 strings
+		+ ura install / install <name> <version> <where> / remove / list / <script>; clones go to <project>/dependencies/
+		+ ura-lib split into repos ura-core, ura-posix, ura-math, ura-graphics (all at the dev tag 0.1.0); ura-lib deleted
+		+ left: @flags "-O2 -san" once -O and -san exist (phase 4); a distinct icon for ura-config in the extension
 	+ ura watch   (rebuild and rerun on every save, like nodemon)
 	+ ura main.ura -tree   (print the AST as a tree)
 	+ Makefile instead of config.sh, make ucg builds only ucg (maybe its own repo)
 		+ test ucg with LLVM 12, 15, 21
 		+ emit assembly / objects straight from LLVM, without writing the .ll file
-	+ installing ura also installs ura-lib
+	+ installing ura also installs ura-core (today: `ura init` adds it, `ura install` clones it)
 
 + phase 6: projects
 	+ rewrite the raytracer with the new features (match, try, fmt, io)
@@ -90,7 +98,7 @@
 	+ later: http lib, backend framework, ura init SDL2
 
 + phase 7: release (only when you say)
-	+ merge refactor -> dev -> main, push ura-lib
+	+ merge refactor -> dev -> main, tag the std repos for the release
 	+ rewrite git history, delete files that no longer exist (smaller repo)
 
 + fix all remaining TODOS in thecodebase

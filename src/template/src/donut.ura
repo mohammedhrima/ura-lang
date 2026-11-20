@@ -1,0 +1,77 @@
+link "m"
+proto sin(x f64) f64
+proto cos(x f64) f64
+proto usleep(usec u32) i32
+
+W i32 = 80
+H i32 = 20
+
+fn glow(light i32) Color:
+    if light < 3:
+        return Color::BLUE
+    if light < 6:
+        return Color::CYAN
+    if light < 9:
+        return Color::WHITE
+    return Color::YELLOW
+
+fn donut():
+    title("a spinning donut: sin and cos straight from C")
+    screen char[] = memory_alloc(W * H) as char[]
+    depth f64[] = memory_alloc(W * H * 8) as f64[]
+    light i32[] = memory_alloc(W * H * 4) as i32[]
+    shades char[] = ".,-~:;=!*#$@"
+    a f64 = 0.0
+    b f64 = 0.0
+    frame i32 = 0
+    while frame < 140:
+        i i32 = 0
+        while i < W * H:
+            screen[i] = ' '
+            depth[i] = 0.0
+            i += 1
+        theta f64 = 0.0
+        while theta < 6.28:
+            phi f64 = 0.0
+            while phi < 6.28:
+                sp f64 = sin(phi)
+                cp f64 = cos(phi)
+                st f64 = sin(theta)
+                ct f64 = cos(theta)
+                circle f64 = ct + 2.0
+                d f64 = 1.0 / (sp * circle * sin(a) + st * cos(a) + 5.0)
+                t f64 = sp * circle * cos(a) - st * sin(a)
+                x i32 = (40.0 + 30.0 * d * (cp * circle * cos(b) - t * sin(b))) as i32
+                y i32 = (10.0 + 15.0 * d * (cp * circle * sin(b) + t * cos(b))) as i32
+                n i32 = (8.0 * ((st * sin(a) - sp * ct * cos(a)) * cos(b) - sp * ct * sin(a) - st * cos(a) - cp * ct * sin(b))) as i32
+                inside bool = y >= 0 and y < H and x >= 0 and x < W
+                if inside and d > depth[x + W * y]:
+                    depth[x + W * y] = d
+                    if n < 0:
+                        n = 0
+                    screen[x + W * y] = shades[n]
+                    light[x + W * y] = n
+                phi += 0.02
+            theta += 0.07
+        row i32 = 0
+        while row < H:
+            output("  ")
+            col i32 = 0
+            while col < W:
+                at i32 = col + W * row
+                if screen[at] != ' ':
+                    paint(glow(light[at]))
+                output(screen[at])
+                col += 1
+            reset()
+            output("\n")
+            row += 1
+        if frame < 139:
+            output(27 as char, "[", H, "A")
+        a += 0.04
+        b += 0.02
+        usleep(30000)
+        frame += 1
+    memory_free(screen as i8[])
+    memory_free(depth as i8[])
+    memory_free(light as i8[])

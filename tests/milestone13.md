@@ -2936,7 +2936,7 @@ error: test.ura:2:1 library 'NoSuchLib' not found
   |
 2 | link "NoSuchLib"
   | ^^^^
-help: install it, or set URA_LIB_PATH to the folder that holds it
+help: install it, or set URA_LIBC to the folder that holds it
 error: aborting due to 1 error
 ```
 

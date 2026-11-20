@@ -1,0 +1,47 @@
+struct Vec2:
+    x f64
+    y f64
+
+    operator +(o &Vec2) Vec2:
+        return { x: self.x + o.x, y: self.y + o.y }
+
+    operator *(k f64) Vec2:
+        return { x: self.x * k, y: self.y * k }
+
+struct Shape:
+    name char[]
+    origin Vec2
+
+    fn show(area f64):
+        paint(Color::YELLOW)
+        output("  ", self.name)
+        reset()
+        output(" at (", self.origin.x as i32, ", ", self.origin.y as i32, ") area ", area as i32, "\n")
+
+struct Circle from Shape:
+    radius f64
+
+    fn area() f64:
+        return 3.14159265 * self.radius * self.radius
+
+struct Rect from Shape:
+    size Vec2
+
+    fn area() f64:
+        return self.size.x * self.size.y
+
+fn shapes():
+    title("structs, operators and struct from")
+    step Vec2 = { x: 2.0, y: 1.0 }
+
+    c Circle
+    c.name = "circle"
+    c.origin = step * 2.0
+    c.radius = 2.0
+    c.show(c.area())
+
+    r Rect
+    r.name = "rect  "
+    r.origin = c.origin + step
+    r.size = { x: 4.0, y: 2.5 }
+    r.show(r.area())

@@ -8468,7 +8468,7 @@ error: test.ura:1:5 package '@/nothing' not found
   |
 1 | use "@/nothing"
   |     ^^^^^^^^^^^
-help: run: ura install nothing
+help: add a dependency that has it: ura install <name> <version> <repo url>
 error: aborting due to 1 error
 ```
 

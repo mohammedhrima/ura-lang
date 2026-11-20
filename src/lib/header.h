@@ -20,6 +20,8 @@
 #include <errno.h>
 #include <libgen.h>
 #include <stdarg.h>
+#include <fcntl.h>
+#include <sys/wait.h>
 
 #ifndef bool
 #    define bool  int
@@ -191,6 +193,12 @@ bool strncmp2(const char *left, const char *right, size_t n) {
     return strncmp(left, right, n) == 0;
 }
 
+bool ends_with(const char *str, const char *end) {
+    size_t n = strlen(str);
+    size_t m = strlen(end);
+    return n >= m && strcmp(str + n - m, end) == 0;
+}
+
 bool strchr2(char *str, int c) {
     char *res = strchr(str, c);
     return c != '\0' && res != NULL && res[0] != '\0';
@@ -209,6 +217,40 @@ char *getcwd2(void) {
 
 char *dirname2(char *path) {
     return dirname(strdup2(path));
+}
+
+char *realpath2(char *path) {
+    char *real = realpath(path, NULL);
+    if (real == NULL)
+        return path;
+    char *res = strdup2(real);
+    free(real);
+    return res;
+}
+
+void write_file(char *path, char *text) {
+    ioFile fp = fopen(path, "w");
+    if (fp == NULL) {
+        fprintf(stderr, "can't write %s\n", path);
+        exit(1);
+    }
+    fputs(text, fp);
+    fclose(fp);
+}
+
+int run_command(char **argv, char *out_path) {
+    pid_t pid = fork();
+    if (pid == 0) {
+        int quiet = open("/dev/null", O_WRONLY);
+        int out = out_path ? open(out_path, O_WRONLY | O_CREAT | O_TRUNC, 0644) : quiet;
+        dup2(out, 1);
+        dup2(quiet, 2);
+        execvp(argv[0], argv);
+        _exit(127);
+    }
+    int status;
+    waitpid(pid, &status, 0);
+    return WIFEXITED(status) ? WEXITSTATUS(status) : 1;
 }
 
 void mkdir2(const char *path) {
@@ -236,6 +278,16 @@ char *format(const char *fmt, ...) {
     char *res = strdup2(buf);
     free(buf);
     return res;
+}
+
+char *find_folder_with(char *dir, char *file) {
+    while (access(format("%s/%s", dir, file), R_OK) != 0) {
+        char *parent = dirname2(dir);
+        if (strcmp2(parent, dir))
+            return NULL;
+        dir = parent;
+    }
+    return dir;
 }
 
 typedef struct File File;

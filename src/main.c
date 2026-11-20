@@ -3,6 +3,7 @@ typedef struct Token Token;
 typedef struct Node Node;
 typedef struct NodePrint NodePrint;
 typedef struct Keyword Keyword;
+typedef struct Config Config;
 
 #define print(...)  (DEBUG ? _print(stdout, __VA_ARGS__) : 0)
 #define help(...)   _print(stdout, __VA_ARGS__)
@@ -109,10 +110,16 @@ struct Keyword {
     Token token;
 };
 
+struct Config {
+    char *dir;
+    Node *tree;
+};
+
 // Global Ura
 struct {
     expand(File *, files);
     expand(File *, uses);
+    expand(Config *, configs);
     File *file;
     int line;
 
@@ -162,6 +169,11 @@ Keyword keywords[] = { // clang-format off
     { "@elif",    { .type = MACRO_ELIF } },
     { "@else",    { .type = MACRO_ELSE } },
     { "@error",   { .type = MACRO_ERROR } },
+    { "@name",    { .type = MACRO_NAME } },
+    { "@version", { .type = MACRO_VERSION } },
+    { "@main",    { .type = MACRO_MAIN } },
+    { "@script",  { .type = MACRO_SCRIPT } },
+    { "@dependency", { .type = MACRO_DEPENDENCY } },
     { "operator", { .type = OPERATOR } },
     { "pub",      { .type = PUB } },
     { "fn",       { .type = FN_DEC } },
@@ -293,7 +305,7 @@ char *escaped[256] = { // clang-format off
 }; // clang-format on
 
 #include "./check.c"
-#include "./package.c"
+#include "./project.c"
 
 // TOKENIZE
 Token *new_token(Type type, Token *from) {
@@ -1324,6 +1336,14 @@ Node *parse_prime() {
         if (peek(0)->type == CHARS && peek(0)->line == token->line)
             node->right = new_node(next());
         check_macro(node);
+        return node;
+    } // clang-format off
+    case MACRO_NAME: case MACRO_VERSION: case MACRO_MAIN:
+    case MACRO_SCRIPT: case MACRO_DEPENDENCY: { // clang-format on
+        node = new_node(token);
+        while (peek(0)->type == CHARS && peek(0)->line == token->line)
+            append(node->children, new_node(next()));
+        check_config(node);
         return node;
     }
     case USE: {
@@ -3122,58 +3142,18 @@ __attribute__((sentinel)) bool includes(Type to_find, ...) {
     return false;
 }
 
-void init_project(char *name) {
-    if (access(format("%s/ura.project", name), F_OK) == 0) {
-        eprint("'%s' already has a ura.project\n", name);
-        exit(1);
-    }
-    mkdir2(name);
-    mkdir2(format("%s/src", name));
-    char *files[][2] = {
-        { "ura.project", format("name \"%s\"\nversion \"0.1.0\"\n", name) },
-        { "src/main.ura", "fn main() i32:\n    output(\"hello\\n\")\n    return 0\n" },
-        { ".gitignore", "build/\n" },
-    };
-    for (size_t i = 0; i < sizeof(files) / sizeof(*files); i++) {
-        ioFile fp = fopen(format("%s/%s", name, files[i][0]), "w");
-        if (fp == NULL) {
-            eprint("can't write %s/%s\n", name, files[i][0]);
-            exit(1);
-        }
-        fputs(files[i][1], fp);
-        fclose(fp);
-    }
-    help("created %s/, run it with: cd %s && ura run\n", name, name);
-}
-
-void build_project(void) {
-    if (access("ura.project", R_OK) != 0) {
-        eprint("no ura.project in this folder\n");
-        help("create a project with: ura init <name>\n");
-        exit(1);
-    }
-    File *project = new_file("ura.project");
-    open_file(project);
-    char *name = strstr(project->buff, "name \"");
-    char *end = name ? strchr(name + 6, '"') : NULL;
-    if (end == NULL) {
-        eprint("ura.project has no name\n");
-        help("add a line: name \"<name>\"\n");
-        exit(1);
-    }
-    name += 6;
-    ucg_bin_path(format("build/%s", strndup2(name, end - name)));
-    append(ura.files, new_file("src/main.ura"));
-}
-
 void print_help(char *ura) {
     help("usage:\n");
     help("  %s <file>.ura [flags]    compile files\n", ura);
     help("  %s init <name>           create a project in a new folder\n", ura);
     help("  %s build                 build the project in this folder\n", ura);
     help("  %s run                   build the project and run it\n", ura);
-    help("  %s install <name>[@ver]  install a package from the registry\n", ura);
-    help("  %s remove <name>         remove an installed package\n", ura);
+    help("  %s install               install the dependencies of ura.conf\n", ura);
+    help("  %s install <name> <version> <where>\n", ura);
+    help("                           add or update one; where: a git repo url or ./folder\n");
+    help("  %s remove <name>         remove a dependency and its folder\n", ura);
+    help("  %s list                  show the dependencies and where they are\n", ura);
+    help("  %s <script>              run a @script of ura.conf\n", ura);
     help("  %s -version              print the ura and LLVM versions\n", ura);
     help("  %s -help                 show this help\n", ura);
     help("flags:\n");
@@ -3216,26 +3196,43 @@ bool parse_args(int ac, char **av) {
         init_project(av[2]);
         exit(0);
     }
+    char *project = find_folder_with(getcwd2(), "ura.conf");
     bool install = strcmp2(av[1], "install");
-    if (install || strcmp2(av[1], "remove")) {
-        if (ac < 3) {
-            eprint("expected a package name:\n");
-            help("%s %s <name>\n", av[0], av[1]);
-            exit(1);
-        }
-        for (int i = 2; i < ac; i++) {
-            if (install)
-                install_package(av[i]);
-            else
-                remove_package(av[i]);
-        }
+    if (install && ac == 2) {
+        install_project(find_project(), 0);
         exit(0);
     }
+    if (install) {
+        if (ac != 5) {
+            eprint("expected a name, a version and where to get it:\n");
+            help("%s install <name> <version> <https://github.com/user/repo | ./folder>\n", av[0]);
+            exit(1);
+        }
+        add_package(find_project(), av[2], av[3], av[4]);
+        exit(0);
+    }
+    if (strcmp2(av[1], "remove")) {
+        if (ac < 3) {
+            eprint("expected a dependency name:\n");
+            help("%s remove <name>\n", av[0]);
+            exit(1);
+        }
+        for (int i = 2; i < ac; i++)
+            remove_dependency(find_project(), av[i]);
+        exit(0);
+    }
+    if (strcmp2(av[1], "list")) {
+        list_project(find_project(), "", 0);
+        exit(0);
+    }
+    run_script(av[1]);
     bool run = strcmp2(av[1], "run");
     if (run || strcmp2(av[1], "build")) {
-        build_project();
+        build_project(find_project());
         return run;
     }
+    if (project)
+        load_project(project);
     bool has_exe = false;
     bool no_link = false;
     for (int i = 1; i < ac && !ucg_has_errors(); i++) {

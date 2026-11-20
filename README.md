@@ -2,6 +2,12 @@
 
 A compiled, statically typed language with Python's indentation and C's speed. No braces, no semicolons. The compiler is written in C and uses LLVM only for the last step, turning IR into native code.
 
+<p align="center">
+  <img src="assets/ura-init.gif" width="760" alt="ura init demo, then ura run: a spinning ASCII donut, structs with operators, and try / catch / throw">
+</p>
+
+<p align="center"><a href="assets/ura-init.mp4">video (mp4)</a></p>
+
 The compiler is being rewritten from scratch, one milestone at a time. This file is the list of everything it has to do. Each feature is tagged with the old compiler that had it: 001 (the biggest, 7467 lines), 002 (3690 lines), 003 (the latest, 3519 lines). The three are kept in src/old. A feature with no tag is new.
 
 ## Layout

@@ -219,6 +219,36 @@ void check_macro(Node *node) {
     );
 }
 
+void check_config(Node *node) {
+    Token *token = node->token;
+    char *text = token_text(token);
+    bool is_config = strcmp2(basename(strdup2(file_at(token->s)->path)), "ura.conf");
+    int count = token->type == MACRO_DEPENDENCY ? 3 : token->type == MACRO_SCRIPT ? 2 : 1;
+    char *like[] = {
+        [1] = "like: %s \"value\"",
+        [2] = "like: %s \"name\" \"command\"",
+        [3] = "like: %s \"name\" \"version\" \"https://github.com/<user>/<repo>\" (or a folder)",
+    };
+    char *strings[] = { [1] = "one string", [2] = "two strings", [3] = "three strings" };
+    if (!is_config) {
+        add_error(
+            token->s,
+            token->e,
+            format("'%s' only works in ura.conf", text),
+            "move it to the project's ura.conf"
+        );
+        return;
+    }
+    if (node->children_count == count)
+        return;
+    add_error(
+        token->s,
+        token->e,
+        format("'%s' takes %s", text, strings[count]),
+        format(like[count], text)
+    );
+}
+
 bool check_module(Node *node) {
     Token *token = node->token;
     if (ura.scope->token->type == SCOPE)
@@ -240,7 +270,7 @@ bool check_package(Token *name, char *path) {
         name->s,
         name->e,
         format("package '%s' not found", package),
-        strncmp2(package, "@/", 2) ? format("run: ura install %s", package + 2) : NULL
+        strncmp2(package, "@/", 2) ? "add a dependency that has it: ura install <name> <version> <repo url>" : NULL
     );
     return false;
 }
@@ -1402,7 +1432,7 @@ void check_link(Node *node) {
             token->s,
             token->e,
             format("library '%s' not found", token->name),
-            "install it, or set URA_LIB_PATH to the folder that holds it"
+            "install it, or set URA_LIBC to the folder that holds it"
         );
 }
 

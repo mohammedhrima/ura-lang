@@ -1,0 +1,35 @@
+enum Color: RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, GREY
+
+fn code(c Color) i32:
+    match c:
+        case Color::RED:
+            return 31
+        case Color::GREEN:
+            return 32
+        case Color::YELLOW:
+            return 33
+        case Color::BLUE:
+            return 34
+        case Color::MAGENTA:
+            return 35
+        case Color::CYAN:
+            return 36
+        case Color::GREY:
+            return 90
+        default:
+            return 97
+    return 0
+
+fn paint(c Color):
+    output(27 as char, "[1;", code(c), "m")
+
+fn reset():
+    output(27 as char, "[0m")
+
+fn title(text char[]):
+    paint(Color::CYAN)
+    output("\n  ", text, "\n")
+    reset()
+    paint(Color::GREY)
+    output("  ----------------------------------------\n")
+    reset()
