@@ -109,4 +109,16 @@
 + move any code that can be moved to lib/header.h
 + how ALLOC and MEMECPY .. are handled in ucg ?
 
++ make sure all github repos have proper description and README's
+
++ change output to:
+	        output(
+				f" at ($(self.origin.x as i32) ", 
+                f"$(self.origin.y as i32) area ",
+	            f"area as i32\n"
+				)
+
++ change :
+	+ memory_alloc(W * H) as char[] -> new<char[]>(W * H)
+	+ memory_free -> clean(arr)
 
