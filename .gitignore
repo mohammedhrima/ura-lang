@@ -7,8 +7,11 @@ compile_commands.json
 # the compiler and programs it builds
 bin/
 *.out
+# test logs, like tests > build-tests.log
+*.log
 # scratch: drafts and manual tests
 src/tmp.md
 src/main.ura
+src/hello-world/
 # Claude Code's machine-local settings (permissions, paths)
 .claude/settings.local.json
