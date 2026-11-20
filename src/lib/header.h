@@ -228,6 +228,14 @@ char *realpath2(char *path) {
     return res;
 }
 
+char *relative_path(char *path) {
+    char *cwd = getcwd2();
+    size_t cwd_len = strlen(cwd);
+    if (strncmp2(path, cwd, cwd_len) && path[cwd_len] == '/')
+        return path + cwd_len + 1;
+    return path;
+}
+
 void write_file(char *path, char *text) {
     ioFile fp = fopen(path, "w");
     if (fp == NULL) {

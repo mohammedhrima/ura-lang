@@ -131,7 +131,7 @@ tokenize (main.c)  ->  parse_prime / parse_expr (main.c)  ->  analyze + check_* 
 | `tests/milestone1..13.md` | | the test suites (format in section 4) |
 | `ura-config` | | the repo's own project file: pins ura-core, ura-posix, ura-math, ura-graphics; `build` installs them into `dependencies/` and the test runner writes a ura-config pointing there in each temp folder |
 | `_extension/` | | the VS Code extension (`make install` there) |
-| (raytracer) | | moved to its own repo, github.com/mohammedhrima/raytracer-ura |
+| (raytracer) | | moved to its own repo, github.com/ura-computing/ura-raytracer |
 | `src/test/` | | the user's scratch ura project (`ura run` there) |
 
 ### ura-config (a project file, ura syntax)
@@ -141,7 +141,7 @@ tokenize (main.c)  ->  parse_prime / parse_expr (main.c)  ->  analyze + check_* 
 @version "0.1.0"
 @main "src/main.ura"
 @script "test" "ura tests/main.ura -o build/t && ./build/t"
-@dependency "ura-core" "0.1.0" "https://github.com/mohammedhrima/ura-core"   // always 3 strings: name, version, repo url or ./folder
+@dependency "ura-core" "0.1.0" "https://github.com/ura-computing/ura-core"   // always 3 strings: name, version, repo url or ./folder
 ```
 
 Clones go to `<project>/dependencies/<name>@<version>`; a missing one is an error ("run: ura install"). Libraries live in 4 repos: ura-core, ura-posix (0.1.1), ura-math, ura-graphics.
@@ -345,7 +345,7 @@ Ideas still open from the review: dispatch by function-pointer tables was reject
 
 - Branch `refactor` (pushed at the end of this session). `main` and `dev` are behind and different.
 - No submodule any more: the libraries are the repos ura-core, ura-posix, ura-math, ura-graphics (dev tag 0.1.0 each), pinned in `ura.conf` and cloned by `ura install` (`build` runs it). ura-lib was deleted on 2026-11-20 after checking every file was in those repos.
-- Repos: ura-lang, ura-core, ura-posix, ura-math, ura-graphics, ura-vscode-extension (its code now lives in ura-lang's `_extension/`), ura-libft, ura-tcp-server (GitHub user mohammedhrima). Every repo except ura-lang is pushed straight to `main`. `gh` is at `/goinfre/mhrima/tools/gh/bin/gh`.
+- Repos: ura-lang, ura-core, ura-posix, ura-math, ura-graphics, ura-vscode-extension (its code now lives in ura-lang's `_extension/`), ura-libft, ura-tcp-server (GitHub organization ura-computing). Every repo except ura-lang is pushed straight to `main`. `gh` is at `/goinfre/mhrima/tools/gh/bin/gh`.
 - Only when the user says the work is finished: merge `refactor` -> `dev` -> `main`, rewrite ura-lang's git history (it's heavy and holds removed files). Confirm in full sentences right before.
 
 ## 9. Where to start on the new machine

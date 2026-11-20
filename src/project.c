@@ -340,7 +340,7 @@ void init_project(char *name) {
     char *readme = format(
         "# %s\n"
         "\n"
-        "A [ura](https://github.com/mohammedhrima/ura-lang) project.\n"
+        "A [ura](https://github.com/ura-computing/ura-lang) project.\n"
         "\n"
         "```\n"
         "main.ura          runs every demo\n"

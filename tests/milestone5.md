@@ -19,6 +19,8 @@
 - 021 — mod: a module call is arity-checked
 - 022 — os: argc and argv from the global os
 - 023 — mod: a struct attribute with the name of a module global
+- 024 — ura::line, ura::filename, ura::function
+- 025 — unic: utf-8 char literals, printed as utf-8
 
 ---
 
@@ -1447,5 +1449,315 @@ entry:
 }
 
 declare i32 @dprintf(i32, i8*, ...)
+```
+---
+
+## 024 — ura::line, ura::filename, ura::function
+
+```ura
+// stdout: test.ura:6 in where
+// stdout: show 11
+// stdout: 18
+// expect: 0
+fn where():
+    output(ura::filename, ":", ura::line, " in ", ura::function, "\n")
+
+struct Point:
+    x i32
+    fn show():
+        output(ura::function, " ", ura::line, "\n")
+
+fn main() i32:
+    where()
+    p Point
+    p.show()
+    n i32 = ura::line + 1
+    output(n, "\n")
+    return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+%Point = type { i32 }
+
+@str = private unnamed_addr constant [22 x i8] c"test.ura:%d in where\0A\00", align 1
+@str.1 = private unnamed_addr constant [9 x i8] c"show %d\0A\00", align 1
+@str.2 = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+
+define void @where() {
+entry:
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([22 x i8], [22 x i8]* @str, i32 0, i32 0), i32 6)
+  ret void
+}
+
+define void @Point.show(%Point* %0) {
+entry:
+  %self = alloca %Point*, align 8
+  store %Point* %0, %Point** %self, align 8
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.1, i32 0, i32 0), i32 11)
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %p = alloca %Point, align 8
+  %n = alloca i32, align 4
+  call void @where()
+  store %Point zeroinitializer, %Point* %p, align 4
+  call void @Point.show(%Point* %p)
+  store i32 18, i32* %n, align 4
+  %"$n" = load i32, i32* %n, align 4
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.2, i32 0, i32 0), i32 %"$n")
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+```
+---
+
+## 025 — unic: utf-8 char literals, printed as utf-8
+
+```ura
+// stdout: a é 浦 🌊 🐚 🐙
+// stdout: 233 28006 127754
+// expect: 0
+fn main() i32:
+    a unic = 'a'
+    e unic = 'é'
+    bay unic = '浦'
+    wave unic = '🌊'
+    shell unic = '🐚'
+    octopus unic = '🐙'
+    output(a, " ", e, " ", bay, " ", wave, " ", shell, " ", octopus, "\n")
+    output(e as i32, " ", bay as i32, " ", wave as i32, "\n")
+    return 0
+```
+
+### llvm ir
+
+```llvm
+; ModuleID = 'ura'
+source_filename = "ura"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+@str = private unnamed_addr constant [19 x i8] c"%s %s %s %s %s %s\0A\00", align 1
+@str.1 = private unnamed_addr constant [10 x i8] c"%d %d %d\0A\00", align 1
+
+define i32 @main() {
+entry:
+  %a = alloca i21, align 4
+  %e = alloca i21, align 4
+  %bay = alloca i21, align 4
+  %wave = alloca i21, align 4
+  %shell = alloca i21, align 4
+  %octopus = alloca i21, align 4
+  %arr = alloca [5 x i8], align 1
+  %arr1 = alloca [5 x i8], align 1
+  %arr4 = alloca [5 x i8], align 1
+  %arr7 = alloca [5 x i8], align 1
+  %arr10 = alloca [5 x i8], align 1
+  %arr13 = alloca [5 x i8], align 1
+  store i21 97, i21* %a, align 4
+  store i21 233, i21* %e, align 4
+  store i21 28006, i21* %bay, align 4
+  store i21 127754, i21* %wave, align 4
+  store i21 128026, i21* %shell, align 4
+  store i21 128025, i21* %octopus, align 4
+  %"$a" = load i21, i21* %a, align 4
+  store [5 x i8] zeroinitializer, [5 x i8]* %arr, align 1
+  %0 = getelementptr inbounds [5 x i8], [5 x i8]* %arr, i32 0, i32 0
+  %AS = sext i21 %"$a" to i32
+  %call.ura.unic = call i8* @ura.unic(i32 %AS, i8* %0)
+  %"$e" = load i21, i21* %e, align 4
+  store [5 x i8] zeroinitializer, [5 x i8]* %arr1, align 1
+  %1 = getelementptr inbounds [5 x i8], [5 x i8]* %arr1, i32 0, i32 0
+  %AS2 = sext i21 %"$e" to i32
+  %call.ura.unic3 = call i8* @ura.unic(i32 %AS2, i8* %1)
+  %"$bay" = load i21, i21* %bay, align 4
+  store [5 x i8] zeroinitializer, [5 x i8]* %arr4, align 1
+  %2 = getelementptr inbounds [5 x i8], [5 x i8]* %arr4, i32 0, i32 0
+  %AS5 = sext i21 %"$bay" to i32
+  %call.ura.unic6 = call i8* @ura.unic(i32 %AS5, i8* %2)
+  %"$wave" = load i21, i21* %wave, align 4
+  store [5 x i8] zeroinitializer, [5 x i8]* %arr7, align 1
+  %3 = getelementptr inbounds [5 x i8], [5 x i8]* %arr7, i32 0, i32 0
+  %AS8 = sext i21 %"$wave" to i32
+  %call.ura.unic9 = call i8* @ura.unic(i32 %AS8, i8* %3)
+  %"$shell" = load i21, i21* %shell, align 4
+  store [5 x i8] zeroinitializer, [5 x i8]* %arr10, align 1
+  %4 = getelementptr inbounds [5 x i8], [5 x i8]* %arr10, i32 0, i32 0
+  %AS11 = sext i21 %"$shell" to i32
+  %call.ura.unic12 = call i8* @ura.unic(i32 %AS11, i8* %4)
+  %"$octopus" = load i21, i21* %octopus, align 4
+  store [5 x i8] zeroinitializer, [5 x i8]* %arr13, align 1
+  %5 = getelementptr inbounds [5 x i8], [5 x i8]* %arr13, i32 0, i32 0
+  %AS14 = sext i21 %"$octopus" to i32
+  %call.ura.unic15 = call i8* @ura.unic(i32 %AS14, i8* %5)
+  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([19 x i8], [19 x i8]* @str, i32 0, i32 0), i8* %call.ura.unic, i8* %call.ura.unic3, i8* %call.ura.unic6, i8* %call.ura.unic9, i8* %call.ura.unic12, i8* %call.ura.unic15)
+  %"$e16" = load i21, i21* %e, align 4
+  %AS17 = sext i21 %"$e16" to i32
+  %"$bay18" = load i21, i21* %bay, align 4
+  %AS19 = sext i21 %"$bay18" to i32
+  %"$wave20" = load i21, i21* %wave, align 4
+  %AS21 = sext i21 %"$wave20" to i32
+  %call.dprintf22 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.1, i32 0, i32 0), i32 %AS17, i32 %AS19, i32 %AS21)
+  ret i32 0
+}
+
+declare i32 @dprintf(i32, i8*, ...)
+
+define i8* @ura.unic(i32 %0, i8* %1) {
+entry:
+  %code = alloca i32, align 4
+  %text = alloca i8*, align 8
+  store i32 %0, i32* %code, align 4
+  store i8* %1, i8** %text, align 8
+  br label %if0
+
+if0:                                              ; preds = %entry
+  %"$code" = load i32, i32* %code, align 4
+  %LT = icmp slt i32 %"$code", 128
+  br i1 %LT, label %if0.then, label %elif1
+
+if0.then:                                         ; preds = %if0
+  %"$code1" = load i32, i32* %code, align 4
+  %DIV = sdiv i32 %"$code1", 1
+  %ADD = add i32 %DIV, 0
+  %MOD = srem i32 %DIV, 64
+  %ADD2 = add i32 %MOD, 128
+  %AS = trunc i32 %ADD to i8
+  %"$text" = load i8*, i8** %text, align 8
+  %"text[]" = getelementptr inbounds i8, i8* %"$text", i32 0
+  store i8 %AS, i8* %"text[]", align 1
+  %"$text3" = load i8*, i8** %text, align 8
+  %"text[]4" = getelementptr inbounds i8, i8* %"$text3", i32 1
+  store i8 0, i8* %"text[]4", align 1
+  br label %endif
+
+elif1:                                            ; preds = %if0
+  %"$code5" = load i32, i32* %code, align 4
+  %LT6 = icmp slt i32 %"$code5", 2048
+  br i1 %LT6, label %elif1.then, label %elif2
+
+elif1.then:                                       ; preds = %elif1
+  %"$code7" = load i32, i32* %code, align 4
+  %DIV8 = sdiv i32 %"$code7", 1
+  %ADD9 = add i32 %DIV8, 192
+  %MOD10 = srem i32 %DIV8, 64
+  %ADD11 = add i32 %MOD10, 128
+  %AS12 = trunc i32 %ADD11 to i8
+  %"$text13" = load i8*, i8** %text, align 8
+  %"text[]14" = getelementptr inbounds i8, i8* %"$text13", i32 1
+  store i8 %AS12, i8* %"text[]14", align 1
+  %"$code15" = load i32, i32* %code, align 4
+  %DIV16 = sdiv i32 %"$code15", 64
+  %ADD17 = add i32 %DIV16, 192
+  %MOD18 = srem i32 %DIV16, 64
+  %ADD19 = add i32 %MOD18, 128
+  %AS20 = trunc i32 %ADD17 to i8
+  %"$text21" = load i8*, i8** %text, align 8
+  %"text[]22" = getelementptr inbounds i8, i8* %"$text21", i32 0
+  store i8 %AS20, i8* %"text[]22", align 1
+  %"$text23" = load i8*, i8** %text, align 8
+  %"text[]24" = getelementptr inbounds i8, i8* %"$text23", i32 2
+  store i8 0, i8* %"text[]24", align 1
+  br label %endif
+
+elif2:                                            ; preds = %elif1
+  %"$code25" = load i32, i32* %code, align 4
+  %LT26 = icmp slt i32 %"$code25", 65536
+  br i1 %LT26, label %elif2.then, label %elif3
+
+elif2.then:                                       ; preds = %elif2
+  %"$code27" = load i32, i32* %code, align 4
+  %DIV28 = sdiv i32 %"$code27", 1
+  %ADD29 = add i32 %DIV28, 224
+  %MOD30 = srem i32 %DIV28, 64
+  %ADD31 = add i32 %MOD30, 128
+  %AS32 = trunc i32 %ADD31 to i8
+  %"$text33" = load i8*, i8** %text, align 8
+  %"text[]34" = getelementptr inbounds i8, i8* %"$text33", i32 2
+  store i8 %AS32, i8* %"text[]34", align 1
+  %"$code35" = load i32, i32* %code, align 4
+  %DIV36 = sdiv i32 %"$code35", 64
+  %ADD37 = add i32 %DIV36, 224
+  %MOD38 = srem i32 %DIV36, 64
+  %ADD39 = add i32 %MOD38, 128
+  %AS40 = trunc i32 %ADD39 to i8
+  %"$text41" = load i8*, i8** %text, align 8
+  %"text[]42" = getelementptr inbounds i8, i8* %"$text41", i32 1
+  store i8 %AS40, i8* %"text[]42", align 1
+  %"$code43" = load i32, i32* %code, align 4
+  %DIV44 = sdiv i32 %"$code43", 4096
+  %ADD45 = add i32 %DIV44, 224
+  %MOD46 = srem i32 %DIV44, 64
+  %ADD47 = add i32 %MOD46, 128
+  %AS48 = trunc i32 %ADD45 to i8
+  %"$text49" = load i8*, i8** %text, align 8
+  %"text[]50" = getelementptr inbounds i8, i8* %"$text49", i32 0
+  store i8 %AS48, i8* %"text[]50", align 1
+  %"$text51" = load i8*, i8** %text, align 8
+  %"text[]52" = getelementptr inbounds i8, i8* %"$text51", i32 3
+  store i8 0, i8* %"text[]52", align 1
+  br label %endif
+
+elif3:                                            ; preds = %elif2
+  %"$code53" = load i32, i32* %code, align 4
+  %LT54 = icmp slt i32 %"$code53", 1114112
+  br i1 %LT54, label %elif3.then, label %endif
+
+elif3.then:                                       ; preds = %elif3
+  %"$code55" = load i32, i32* %code, align 4
+  %DIV56 = sdiv i32 %"$code55", 1
+  %ADD57 = add i32 %DIV56, 240
+  %MOD58 = srem i32 %DIV56, 64
+  %ADD59 = add i32 %MOD58, 128
+  %AS60 = trunc i32 %ADD59 to i8
+  %"$text61" = load i8*, i8** %text, align 8
+  %"text[]62" = getelementptr inbounds i8, i8* %"$text61", i32 3
+  store i8 %AS60, i8* %"text[]62", align 1
+  %"$code63" = load i32, i32* %code, align 4
+  %DIV64 = sdiv i32 %"$code63", 64
+  %ADD65 = add i32 %DIV64, 240
+  %MOD66 = srem i32 %DIV64, 64
+  %ADD67 = add i32 %MOD66, 128
+  %AS68 = trunc i32 %ADD67 to i8
+  %"$text69" = load i8*, i8** %text, align 8
+  %"text[]70" = getelementptr inbounds i8, i8* %"$text69", i32 2
+  store i8 %AS68, i8* %"text[]70", align 1
+  %"$code71" = load i32, i32* %code, align 4
+  %DIV72 = sdiv i32 %"$code71", 4096
+  %ADD73 = add i32 %DIV72, 240
+  %MOD74 = srem i32 %DIV72, 64
+  %ADD75 = add i32 %MOD74, 128
+  %AS76 = trunc i32 %ADD75 to i8
+  %"$text77" = load i8*, i8** %text, align 8
+  %"text[]78" = getelementptr inbounds i8, i8* %"$text77", i32 1
+  store i8 %AS76, i8* %"text[]78", align 1
+  %"$code79" = load i32, i32* %code, align 4
+  %DIV80 = sdiv i32 %"$code79", 262144
+  %ADD81 = add i32 %DIV80, 240
+  %MOD82 = srem i32 %DIV80, 64
+  %ADD83 = add i32 %MOD82, 128
+  %AS84 = trunc i32 %ADD81 to i8
+  %"$text85" = load i8*, i8** %text, align 8
+  %"text[]86" = getelementptr inbounds i8, i8* %"$text85", i32 0
+  store i8 %AS84, i8* %"text[]86", align 1
+  %"$text87" = load i8*, i8** %text, align 8
+  %"text[]88" = getelementptr inbounds i8, i8* %"$text87", i32 4
+  store i8 0, i8* %"text[]88", align 1
+  br label %endif
+
+endif:                                            ; preds = %elif3.then, %elif3, %elif2.then, %elif1.then, %if0.then
+  %"$text89" = load i8*, i8** %text, align 8
+  ret i8* %"$text89"
+}
 ```
 

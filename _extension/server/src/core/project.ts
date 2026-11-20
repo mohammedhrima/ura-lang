@@ -2,7 +2,7 @@
 //
 //     @name "raytracer"
 //     @main "src/main.ura"
-//     @dependency "ura-core" "0.1.0" "https://github.com/mohammedhrima/ura-core"
+//     @dependency "ura-core" "0.1.0" "https://github.com/ura-computing/ura-core"
 //     @dependency "geo" "0.2.0" "../geometry"
 //
 // Same rules as the compiler's src/project.c. Pure: file access is injected.

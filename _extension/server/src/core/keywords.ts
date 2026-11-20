@@ -9,7 +9,7 @@ export const LOGICAL = ["and", "or", "not", "is", "as"];
 export const DECLARATION = ["fn", "proto", "struct", "enum", "mod", "template", "operator", "pub", "from"];
 export const IMPORT = ["use", "link"];
 export const TYPES = [
-    "bool", "i1", "char", "i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64", "f32", "f64", "void", "num",
+    "bool", "i1", "char", "unic", "i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64", "f32", "f64", "void", "num",
 ];
 export const CONSTANTS = ["True", "False", "null"];
 

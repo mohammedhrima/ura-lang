@@ -1,0 +1,1249 @@
+
+milestone10
+[0;32mmilestone10.md:18 loop: loop (infinite) with break + continue[0m
+[0;32mmilestone10.md:97 loop: for over Range::create in both directions[0m
+[0;32mmilestone10.md:274 loop: array-for iterates elements by value[0m
+[0;32mmilestone10.md:616 loop: change array elements through an index[0m
+[0;32mmilestone10.md:1109 loop: for without a loop variable[0m
+[0;32mmilestone10.md:1156 loop: for over a non-iterable[0m
+[0;32mmilestone10.md:1186 loop: for over struct fields: an Array of rows and an Array of structs[0m
+[0;32mmilestone10.md:2507 loop: Range::create with a step[0m
+[0;32mmilestone10.md:2731 loop: break and continue inside a for[0m
+[0;32mmilestone10.md:3000 loop: continue: skip wall tiles '#', count open spaces[0m
+milestone11
+[0;32mmilestone11.md:43 builtins: typeof without an argument[0m
+[0;32mmilestone11.md:75 builtins: sizeof with two arguments[0m
+[0;32mmilestone11.md:103 builtin: typeof on a value, a string and a struct[0m
+[0;32mmilestone11.md:152 builtin: typeof on a ref and on a type name[0m
+[0;32mmilestone11.md:195 builtin: sizeof folds to a constant[0m
+[0;32mmilestone11.md:233 builtin: typeof / sizeof on scalars[0m
+[0;32mmilestone11.md:281 builtin: typeof / sizeof on an array[0m
+[0;32mmilestone11.md:320 builtin: sizeof without parentheses[0m
+[0;32mmilestone11.md:349 builtin: typeof without parentheses[0m
+[0;32mmilestone11.md:378 builtin: typeof and sizeof on chars, bool, and a literal[0m
+[0;32mmilestone11.md:428 builtin: sizeof of every scalar type[0m
+[0;32mmilestone11.md:467 builtin: sizeof of a struct honours ABI padding[0m
+[0;32mmilestone11.md:507 builtin: typeof of a struct gives its name[0m
+[0;32mmilestone11.md:548 cast: as casting + i64 / i16 via explicit cast[0m
+[0;32mmilestone11.md:614 cast: as converts between f32 and the integer types[0m
+[0;32mmilestone11.md:712 cast: char arithmetic and an expression cast back to char[0m
+[0;32mmilestone11.md:797 cast: a struct cannot be cast to or from a scalar[0m
+[0;32mmilestone11.md:831 cast: casting a scalar to a struct[0m
+[0;32mmilestone11.md:864 literal: f32 literals: declare, print, zero-init, in a function[0m
+[0;32mmilestone11.md:928 literal: f32 arithmetic + comparison, compound assignment[0m
+[0;32mmilestone11.md:1066 literal: f64 declaration, arithmetic and compound assignment[0m
+[0;32mmilestone11.md:1227 literal: a f32 literal takes the type of its target[0m
+[0;32mmilestone11.md:1326 literal: casts between f64, f32 and the integer types[0m
+[0;32mmilestone11.md:1398 literal: a return that does not match the function's type[0m
+[0;32mmilestone11.md:1429 literal: integer literals at the edge of each type's range[0m
+[0;32mmilestone11.md:1490 literal: an integer literal too wide for i32 keeps its width[0m
+[0;32mmilestone11.md:1559 literal: a literal that does not fit its target type[0m
+[0;32mmilestone11.md:1588 literal: a negative literal at the low edge still fits[0m
+[0;32mmilestone11.md:1640 operator: bitwise & | ^ << >>[0m
+[0;32mmilestone11.md:1707 operator: unary not / minus / bitwise-not[0m
+[0;32mmilestone11.md:1811 operator: compound bitwise assignment[0m
+[0;32mmilestone11.md:1916 operator: bitwise operator on f32 operands is rejected[0m
+[0;31mmilestone11.md:1945 operator: divide by zero prints file:line and exits 1 (llvm ir differs)[0m
+      0a1,3
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      1a5,17
+      > define i32 @main() {
+[0;31mmilestone11.md:1960 operator: f32 division by zero traps (not inf) (llvm ir differs)[0m
+      0a1,3
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      1a5,17
+      > define i32 @main() {
+[0;32mmilestone11.md:1975 literal: f32 and f64 math, casts and printf[0m
+milestone12
+[0;32mmilestone12.md:20 nullable: comparing a never-null value to null is rejected[0m
+[0;32mmilestone12.md:50 nullable: a char[] (C string) can be null, an i32 can't[0m
+[0;32mmilestone12.md:82 try: a throw is caught in the same function[0m
+[0;32mmilestone12.md:611 try: a throw propagates across calls to a caller's catch[0m
+[0;32mmilestone12.md:1186 try: a rethrow inside a catch propagates outward[0m
+[0;32mmilestone12.md:1798 try: a nested try: the inner catch handles it[0m
+[0;32mmilestone12.md:2377 try: return inside a try returns from the function[0m
+[0;32mmilestone12.md:2740 try: break inside a try exits the enclosing loop[0m
+[0;32mmilestone12.md:3133 try: an uncaught throw prints its message and exits[0m
+[0;32mmilestone12.md:3613 try: any type can be thrown; a catch takes the type it names[0m
+[0;32mmilestone12.md:4023 try: catch without a matching try is a parse error[0m
+[0;32mmilestone12.md:4051 try: code after a throw is unreachable and dropped[0m
+milestone13
+[0;32mmilestone13.md:45 builtin: default argument promotion in a user variadic call[0m
+[0;32mmilestone13.md:131 directive: @if/@elif/@else selects the matching platform branch[0m
+[0;32mmilestone13.md:167 directive: @if unix matches on macOS and linux[0m
+[0;32mmilestone13.md:201 directive: a non-matching branch is dropped before parsing[0m
+[0;32mmilestone13.md:235 directive: a platform-gated top-level proto[0m
+[0;32mmilestone13.md:294 directive: @if selects a value inside a function[0m
+[0;31mmilestone13.md:339 function: fn-typed value: assign top-level fn to a local, call indirectly (compile error, status 1)[0m
+      error: test.ura:12:11 expected ')' after the parameters
+         |
+      12 |     op fn(i32, i32) i32 = add
+         |           ^^^
+      help: use op fn()i32, i32) i32 = add
+      error: test.ura:12:14 expected ':' after the function header
+         |
+      12 |     op fn(i32, i32) i32 = add
+[0;31mmilestone13.md:363 function: fn-typed parameter: callback passed to higher-order fn (compile error, status 1)[0m
+      error: test.ura:11:10 parameter 'cb' has no type
+         |
+      11 | fn apply(cb fn(i32) i32, x i32) i32:
+         |          ^^
+      help: like: cb i32
+      error: test.ura:11:13 expected ',' between parameters
+         |
+      11 | fn apply(cb fn(i32) i32, x i32) i32:
+[0;31mmilestone13.md:387 function: store a function in a fn-typed variable, then call it (compile error, status 1)[0m
+      error: test.ura:7:10 expected ')' after the parameters
+        |
+      7 |     f fn(i32) i32 = twice
+        |          ^^^
+      help: use f fn()i32) i32 = twice
+      error: test.ura:7:13 expected ':' after the function header
+        |
+      7 |     f fn(i32) i32 = twice
+[0;31mmilestone13.md:402 function: pass a function as an argument (higher-order) (compile error, status 1)[0m
+      error: test.ura:6:10 parameter 'f' has no type
+        |
+      6 | fn apply(f fn(i32) i32, x i32) i32:
+        |          ^
+      help: like: f i32
+      error: test.ura:6:12 expected ',' between parameters
+        |
+      6 | fn apply(f fn(i32) i32, x i32) i32:
+[0;32mmilestone13.md:418 function: nested non-capturing helper function[0m
+[0;32mmilestone13.md:456 function: a function-typed parameter given a value[0m
+[0;32mmilestone13.md:530 function: proto then definition, and definition then proto[0m
+[0;32mmilestone13.md:592 function: conflict between two of your own protos[0m
+[0;31mmilestone13.md:625 function: calling a null (zero-init) function value traps with file:line (compile error, status 1)[0m
+      error: test.ura:5:10 expected ')' after the parameters
+        |
+      5 |     f fn(i32) i32
+        |          ^^^
+      help: use f fn()i32) i32
+      error: test.ura:5:13 expected ':' after the function header
+        |
+      5 |     f fn(i32) i32
+[0;32mmilestone13.md:638 function: infinite recursion overflows the stack[0m
+[0;31mmilestone13.md:676 project: calc (compile error, status 1)[0m
+      error: test.ura:32:8 a struct holds only attributes and methods
+         |
+      32 |     @no-warn
+         |        ^
+      error: aborting due to 1 error
+[0;31mmilestone13.md:851 project: libft (library and its main) (compile error, status 1)[0m
+      error: test.ura:87:29 unexpected '.'
+         |
+      87 |         if ft_strncmp(hay[i..i + m], needle, m) == 0:
+         |                             ^
+      error: test.ura:87:30 expected ']' after the index
+         |
+      87 |         if ft_strncmp(hay[i..i + m], needle, m) == 0:
+         |                              ^
+[0;31mmilestone13.md:1367 project: net server (compile error, status 1)[0m
+      error: test.ura:123:9 unexpected ':'
+          |
+      123 |     loop:
+          |         ^
+      error: aborting due to 1 error
+[0;31mmilestone13.md:1550 project: net client (compile error, status 1)[0m
+      error: test.ura:103:9 unexpected ':'
+          |
+      103 |     loop:
+          |         ^
+      error: aborting due to 1 error
+[0;32mmilestone13.md:1690 dungeon: floor04[0m
+[0;32mmilestone13.md:1838 dungeon: floor09b[0m
+[0;32mmilestone13.md:1880 dungeon: floor14a[0m
+[0;31mmilestone13.md:1931 dungeon: boss (compile error, status 1)[0m
+      error: test.ura:80:21 unknown character '?'
+         |
+      80 |                loot ?? "none", "\n")
+         |                     ^
+      help: remove it
+      error: test.ura:80:22 unknown character '?'
+         |
+      80 |                loot ?? "none", "\n")
+[0;31mmilestone13.md:2028 project: calculator — tokenize, parse, print the AST and evaluate with try/catch (compile error, status 1)[0m
+      error: test.ura:55:8 a struct holds only attributes and methods
+         |
+      55 |     @no-warn
+         |        ^
+      error: aborting due to 1 error
+[0;32mmilestone13.md:2228 libft: isalnum[0m
+[0;32mmilestone13.md:2318 libft: isalpha[0m
+[0;32mmilestone13.md:2382 libft: isdigit[0m
+[0;31mmilestone13.md:2446 libft: lstnew — new nodes, add_back, add_front and size (compile error, status 1)[0m
+      error: test.ura:12:25 arrays have no size in the type
+         |
+      12 |     n Node[] = new Node[1]
+         |                         ^
+      help: use 'Node[]'
+      error: aborting due to 1 error
+[0;31mmilestone13.md:2501 libft: lstlast — returns a reference to the last node (compile error, status 1)[0m
+      error: test.ura:11:25 arrays have no size in the type
+         |
+      11 |     n Node[] = new Node[1]
+         |                         ^
+      help: use 'Node[]'
+      error: aborting due to 1 error
+[0;31mmilestone13.md:2547 libft: lstiter — apply a function to each node's content in place (compile error, status 1)[0m
+      error: test.ura:37:25 parameter 'f' has no type
+         |
+      37 | fn ft_lstiter(lst &Lst, f fn(char[]) char[]) void:
+         |                         ^
+      help: like: f i32
+      error: test.ura:37:27 expected ',' between parameters
+         |
+      37 | fn ft_lstiter(lst &Lst, f fn(char[]) char[]) void:
+[0;31mmilestone13.md:2607 libft: lstdelone — unlink a node by index and clear the list (compile error, status 1)[0m
+      error: test.ura:13:25 arrays have no size in the type
+         |
+      13 |     n Node[] = new Node[1]
+         |                         ^
+      help: use 'Node[]'
+      error: aborting due to 1 error
+[0;32mmilestone13.md:2683 link: an SDL2 window drawn from ura[0m
+[0;32mmilestone13.md:2923 link: a library that is not installed[0m
+[0;32mmilestone13.md:2951 macros: @if / @elif / @else on os and installed()[0m
+[0;32mmilestone13.md:2996 macros: @error stops the build with a message and a help[0m
+[0;32mmilestone13.md:3025 macros: @if on something it can't check[0m
+milestone1
+[0;32mmilestone1.md:265 variables: declare with a value[0m
+[0;32mmilestone1.md:293 variables: reassign[0m
+[0;32mmilestone1.md:323 variables: use another variable[0m
+[0;32mmilestone1.md:361 variables: compound assignment[0m
+[0;32mmilestone1.md:421 variables: declare variable[0m
+[0;32mmilestone1.md:449 array: declarations without a value start at zero[0m
+[0;32mmilestone1.md:498 bool: a bool variable[0m
+[0;32mmilestone1.md:537 bool: False skips the branch[0m
+[0;32mmilestone1.md:576 bool: a comparison stored in a bool, reassigned[0m
+[0;32mmilestone1.md:679 bool: bool parameters and return values[0m
+[0;32mmilestone1.md:784 bool: or between bool variables[0m
+[0;32mmilestone1.md:852 bool: a bool as a while condition[0m
+[0;32mmilestone1.md:902 bool: a bool default value is False[0m
+[0;32mmilestone1.md:941 bool: boolean type[0m
+[0;32mmilestone1.md:979 char: print chars[0m
+[0;32mmilestone1.md:1020 char: compare chars[0m
+[0;32mmilestone1.md:1099 char: order of chars[0m
+[0;32mmilestone1.md:1181 char: escaped chars[0m
+[0;32mmilestone1.md:1228 char: reassign a char[0m
+[0;32mmilestone1.md:1267 char: char parameter and return value[0m
+[0;32mmilestone1.md:1344 char: a char decides a loop[0m
+[0;32mmilestone1.md:1433 char: default value of a char is '\0'[0m
+[0;32mmilestone1.md:1473 char: declaring char/i8 variable[0m
+[0;32mmilestone1.md:1503 if: if / elif / else chain[0m
+[0;32mmilestone1.md:1571 if: every comparison[0m
+[0;32mmilestone1.md:1714 if: and / or[0m
+[0;32mmilestone1.md:1802 if: body on the same line[0m
+[0;32mmilestone1.md:1878 if: nested ifs[0m
+[0;32mmilestone1.md:1934 if: no branch taken: code after the if runs[0m
+[0;32mmilestone1.md:1988 if: recursion[0m
+[0;32mmilestone1.md:2040 if: a variable declared in a block[0m
+[0;32mmilestone1.md:2088 if: basic if[0m
+[0;32mmilestone1.md:2127 if: basic if/elif/else chain[0m
+[0;32mmilestone1.md:2182 if: ifs with comparision operators[0m
+[0;32mmilestone1.md:2392 if: nested ifs[0m
+[0;32mmilestone1.md:2446 if: logic operators and/or[0m
+[0;32mmilestone1.md:2488 while: count to 10[0m
+[0;32mmilestone1.md:2532 while: break[0m
+[0;32mmilestone1.md:2589 while: continue[0m
+[0;32mmilestone1.md:2655 while: nested loops[0m
+[0;32mmilestone1.md:2725 while: break leaves only the inner loop[0m
+[0;32mmilestone1.md:2789 while: continue in the inner loop[0m
+[0;32mmilestone1.md:2873 while: return from inside a loop[0m
+[0;32mmilestone1.md:2930 while: loop that never runs[0m
+[0;32mmilestone1.md:2972 while: loop in a function, called from main[0m
+[0;32mmilestone1.md:3036 while: basic while loop[0m
+[0;32mmilestone1.md:3079 while: break[0m
+[0;32mmilestone1.md:3135 while: continue[0m
+[0;32mmilestone1.md:3195 while: nested whiles[0m
+[0;32mmilestone1.md:3256 while: get crazy[0m
+[0;32mmilestone1.md:3325 function: parameters and calls[0m
+[0;32mmilestone1.md:3380 function: call before the definition[0m
+[0;32mmilestone1.md:3417 function: nested calls[0m
+[0;32mmilestone1.md:3456 function: a parameter is a copy[0m
+[0;32mmilestone1.md:3507 function: call result in a variable[0m
+[0;32mmilestone1.md:3554 function: void function and bare return[0m
+[0;32mmilestone1.md:3588 function: function inside a function[0m
+[0;32mmilestone1.md:3620 function: calling function before declaration[0m
+[0;32mmilestone1.md:3652 function: math op on functions[0m
+[0;32mmilestone1.md:3691 function: bare return in a void function[0m
+[0;32mmilestone1.md:3738 proto: printf with a number[0m
+[0;32mmilestone1.md:3771 proto: several extra arguments[0m
+[0;32mmilestone1.md:3815 proto: exit from C[0m
+[0;32mmilestone1.md:3845 proto: escapes[0m
+[0;32mmilestone1.md:3881 proto: printf returns how many chars it wrote[0m
+[0;32mmilestone1.md:3913 proto: printf in a loop[0m
+[0;32mmilestone1.md:3984 proto: proto function[0m
+[0;32mmilestone1.md:4012 proto: escaped characters[0m
+[0;32mmilestone1.md:4043 global scope: a global variable changed by a function[0m
+[0;32mmilestone1.md:4105 crazy: mutual recursion, used before it's declared[0m
+[0;32mmilestone1.md:4225 crazy: gcd, printf with many arguments[0m
+[0;32mmilestone1.md:4303 crazy: collatz: a parameter changed in a loop[0m
+[0;32mmilestone1.md:4384 crazy: the 20th prime: continue, break, a bool function[0m
+[0;32mmilestone1.md:4518 crazy: return from two nested loops[0m
+[0;32mmilestone1.md:4605 crazy: operator precedence soup[0m
+[0;32mmilestone1.md:4651 crazy: negative numbers: signed / and %[0m
+[0;32mmilestone1.md:4699 crazy: ackermann: deep recursion, a call as an argument[0m
+[0;32mmilestone1.md:4772 crazy: one name declared in sibling blocks[0m
+[0;32mmilestone1.md:4872 crazy: script: a global counts recursive calls[0m
+[0;32mmilestone1.md:4949 crazy: script: nested loops with continue and break at file level[0m
+[0;32mmilestone1.md:5061 tokenizer error: unknown character[0m
+[0;32mmilestone1.md:5090 tokenizer error: unclosed string[0m
+[0;32mmilestone1.md:5119 tokenizer error: unclosed character[0m
+[0;32mmilestone1.md:5148 tokenizer error: character with two letters[0m
+[0;32mmilestone1.md:5177 tokenizer error: unknown escape[0m
+[0;32mmilestone1.md:5206 tokenizer error: unclosed comment[0m
+[0;32mmilestone1.md:5235 tokenizer error: number too big for i32[0m
+[0;32mmilestone1.md:5264 tokenizer: indentation that is not a multiple of 4 works[0m
+[0;32mmilestone1.md:5305 tokenizer error: two errors in one file: both are shown[0m
+[0;32mmilestone1.md:5340 parser error: missing : after a function header[0m
+[0;32mmilestone1.md:5368 parser error: missing ( after a function name[0m
+[0;32mmilestone1.md:5396 parser error: missing ) after the parameters[0m
+[0;32mmilestone1.md:5427 parser error: a function with no name[0m
+[0;32mmilestone1.md:5455 parser error: a parameter with no type[0m
+[0;32mmilestone1.md:5486 parser error: missing : after an if condition[0m
+[0;32mmilestone1.md:5517 parser error: missing : after a while condition[0m
+[0;32mmilestone1.md:5548 parser error: else with a condition[0m
+[0;32mmilestone1.md:5581 parser error: elif without an if[0m
+[0;32mmilestone1.md:5612 parser error: unclosed ([0m
+[0;32mmilestone1.md:5641 parser error: nothing after =[0m
+[0;32mmilestone1.md:5668 parser error: nothing after an operator[0m
+[0;32mmilestone1.md:5695 parser error: unclosed ( in a call[0m
+[0;32mmilestone1.md:5726 name error: undeclared variable[0m
+[0;32mmilestone1.md:5755 name error: a typo in a variable name[0m
+[0;32mmilestone1.md:5784 name error: a variable used before its declaration[0m
+[0;32mmilestone1.md:5814 name error: a variable declared twice[0m
+[0;32mmilestone1.md:5844 name error: unknown type[0m
+[0;32mmilestone1.md:5873 name error: undeclared function[0m
+[0;32mmilestone1.md:5899 name error: a typo in a function name[0m
+[0;32mmilestone1.md:5930 name error: wrong number of arguments[0m
+[0;32mmilestone1.md:5961 name error: a function declared twice[0m
+[0;32mmilestone1.md:5993 name error: break outside a loop[0m
+[0;32mmilestone1.md:6022 name error: continue outside a loop[0m
+[0;32mmilestone1.md:6052 name error: calling a variable[0m
+[0;32mmilestone1.md:6079 tokenizer: unexpected character[0m
+[0;32mmilestone1.md:6106 tokenizer: unterminated character[0m
+[0;32mmilestone1.md:6133 tokenizer: empty character[0m
+[0;32mmilestone1.md:6173 tokenizer: character with two letters[0m
+[0;32mmilestone1.md:6200 tokenizer: integer too big for i32[0m
+[0;32mmilestone1.md:6227 functions: missing name[0m
+[0;32mmilestone1.md:6256 functions: unclosed parameters[0m
+[0;32mmilestone1.md:6285 functions: parameter without a type[0m
+[0;32mmilestone1.md:6314 functions: missing comma between parameters[0m
+[0;32mmilestone1.md:6342 functions: variadic not last[0m
+[0;32mmilestone1.md:6369 functions: unknown return type[0m
+[0;32mmilestone1.md:6398 functions: unknown parameter type[0m
+[0;32mmilestone1.md:6427 functions: parameter declared twice[0m
+[0;32mmilestone1.md:6455 functions: defined twice[0m
+[0;32mmilestone1.md:6486 functions: overloaded on return type only[0m
+[0;32mmilestone1.md:6517 functions: return at top level[0m
+[0;32mmilestone1.md:6545 structs: dot on a non-struct[0m
+[0;32mmilestone1.md:6571 variables: unknown type[0m
+[0;32mmilestone1.md:6598 variables: declared twice[0m
+[0;32mmilestone1.md:6626 variables: used before its declaration[0m
+[0;32mmilestone1.md:6654 variables: used outside its block[0m
+[0;32mmilestone1.md:6682 variables: assigned without a declaration[0m
+[0;32mmilestone1.md:6709 expressions: missing operand[0m
+[0;32mmilestone1.md:6735 expressions: unclosed parenthesis[0m
+[0;32mmilestone1.md:6762 expressions: unexpected parenthesis[0m
+[0;32mmilestone1.md:6788 expressions: assign to a literal[0m
+[0;32mmilestone1.md:6815 expressions: assign to a call[0m
+[0;32mmilestone1.md:6844 expressions: compare a number and a string[0m
+[0;32mmilestone1.md:6872 expressions: add a number and a string[0m
+[0;32mmilestone1.md:6897 expressions: and on numbers[0m
+[0;32mmilestone1.md:6924 calls: unknown function[0m
+[0;32mmilestone1.md:6949 calls: too many arguments[0m
+[0;32mmilestone1.md:6978 calls: wrong argument type[0m
+[0;32mmilestone1.md:7006 calls: missing comma between arguments[0m
+[0;32mmilestone1.md:7034 calls: unclosed call[0m
+[0;32mmilestone1.md:7064 calls: trailing comma[0m
+[0;32mmilestone1.md:7092 calls: call a variable[0m
+[0;32mmilestone1.md:7118 calls: use a void result[0m
+[0;32mmilestone1.md:7147 types: string into i8[0m
+[0;32mmilestone1.md:7173 types: bool into i32[0m
+[0;32mmilestone1.md:7199 types: number into bool[0m
+[0;32mmilestone1.md:7225 types: number too big for i8[0m
+[0;32mmilestone1.md:7252 types: wrong return type[0m
+[0;32mmilestone1.md:7280 types: value returned from a void fn[0m
+[0;32mmilestone1.md:7308 types: bare return in a fn with a type[0m
+[0;32mmilestone1.md:7336 types: number as an if condition[0m
+[0;32mmilestone1.md:7363 types: number as a while condition[0m
+[0;32mmilestone1.md:7392 control flow: continue outside a loop[0m
+[0;32mmilestone1.md:7419 control flow: elif without if[0m
+[0;32mmilestone1.md:7447 control flow: else without if[0m
+[0;32mmilestone1.md:7474 control flow: missing colon after if[0m
+[0;32mmilestone1.md:7503 control flow: missing colon after elif[0m
+[0;32mmilestone1.md:7534 control flow: missing colon after else[0m
+[0;32mmilestone1.md:7564 control flow: missing colon after while[0m
+[0;32mmilestone1.md:7593 control flow: if without a condition[0m
+[0;32mmilestone1.md:7620 control flow: else with a condition[0m
+[0;32mmilestone1.md:7651 recovery: three analysis errors[0m
+[0;32mmilestone1.md:7688 recovery: two syntax errors in two functions[0m
+[0;32mmilestone1.md:7725 diagnostics: error past line 9[0m
+[0;32mmilestone1.md:7760 function: bare return in a void function[0m
+[0;32mmilestone1.md:7807 type: compound assignment/unary operator[0m
+[0;32mmilestone1.md:7852 type: boolean type[0m
+[0;32mmilestone1.md:7890 builtin: puts: simple messages, char comparison on hero grade[0m
+[0;32mmilestone1.md:7958 builtin: proto printf: hello world with a format string[0m
+[0;31mmilestone1.md:7999 builtin: custom putchar via write: print dungeon tiles (compile error, status 1)[0m
+      error: test.ura:6:5 no function named 'write'
+        |
+      6 |     write(1, buf, 1)
+        |     ^^^^^
+      error: aborting due to 1 error
+[0;32mmilestone1.md:8024 if: basic if: first floor greeting[0m
+[0;32mmilestone1.md:8071 if: if-else: alive or dead check[0m
+[0;32mmilestone1.md:8125 if: if-elif-else: floor difficulty rating[0m
+[0;32mmilestone1.md:8191 function: void fn: announce dungeon floor[0m
+[0;32mmilestone1.md:8255 function: fn with return value + single-line fns[0m
+[0;32mmilestone1.md:8373 function: multi-fn: clamp, damage, is_dead[0m
+[0;32mmilestone1.md:8509 function: return an integer literal[0m
+[0;32mmilestone1.md:8535 function: declare a variable and return it[0m
+[0;32mmilestone1.md:8565 function: function parameters and a direct call[0m
+[0;32mmilestone1.md:8606 function: forward reference: call a function declared later[0m
+[0;32mmilestone1.md:8645 function: a call used as an argument to another call[0m
+[0;32mmilestone1.md:8699 function: value parameters: take_damage[0m
+[0;32mmilestone1.md:8751 function: a by-value parameter does not change the caller[0m
+[0;32mmilestone1.md:8798 function: redeclaring a function[0m
+[0;32mmilestone1.md:8831 function: calling a function that does not exist[0m
+[0;32mmilestone1.md:8858 function: too many arguments[0m
+[0;32mmilestone1.md:8891 function: an argument of the wrong type[0m
+[0;32mmilestone1.md:8922 function: two parameters with the same name[0m
+[0;32mmilestone1.md:8953 function: a variadic call missing its required arguments[0m
+[0;32mmilestone1.md:8984 function: a bare return in a void function[0m
+[0;32mmilestone1.md:9060 lexer: unterminated string literal[0m
+[0;32mmilestone1.md:9089 lexer: unterminated character literal[0m
+[0;32mmilestone1.md:9118 lexer: unterminated block comment[0m
+[0;32mmilestone1.md:9148 lexer: an unexpected character[0m
+[0;32mmilestone1.md:9177 lexer: an unknown escape sequence[0m
+[0;32mmilestone1.md:9207 lexer: as with no type after it[0m
+[0;32mmilestone1.md:9235 lexer: a call with no closing parenthesis[0m
+[0;32mmilestone1.md:9267 lexer: a function declaration missing its colon[0m
+[0;32mmilestone1.md:9299 lexer: a function declaration missing its name[0m
+[0;32mmilestone1.md:9331 lexer: a parameter missing its type[0m
+[0;32mmilestone1.md:9363 function: a fn without a return type returns nothing[0m
+[0;32mmilestone1.md:9404 lexer: if and while missing their colon[0m
+[0;32mmilestone1.md:9435 lexer: proto not followed by fn[0m
+[0;32mmilestone1.md:9466 lexer: a struct declaration missing its name[0m
+[0;32mmilestone1.md:9498 lexer: an unexpected token in an expression[0m
+[0;32mmilestone1.md:9526 lexer: member access with no member name after .[0m
+[0;32mmilestone1.md:9560 literal: bool literals: declare, zero-init, bool function, reassign[0m
+[0;32mmilestone1.md:9606 literal: char literals: declare, print, escapes, in a function[0m
+[0;32mmilestone1.md:9664 loop: basic while: count enemy kills[0m
+[0;32mmilestone1.md:9716 operator: all arithmetic ops in dungeon combat context[0m
+[0;32mmilestone1.md:10018 operator: arithmetic with precedence (2*3 + 20/4 - 1)[0m
+[0;32mmilestone1.md:10044 operator: reassign an existing variable (2*10 + 3)[0m
+[0;32mmilestone1.md:10079 operator: modulo[0m
+[0;32mmilestone1.md:10105 operator: all comparison ops on hero/enemy stats[0m
+[0;32mmilestone1.md:10352 operator: comparisons produce bools (with precedence)[0m
+[0;32mmilestone1.md:10430 operator: compound assignment += -= *= /= %=[0m
+[0;32mmilestone1.md:10506 operator: logical ops: &&, ||, !, and, or, not[0m
+[0;32mmilestone1.md:10750 operator: and / or with comparisons and precedence[0m
+[0;32mmilestone1.md:10902 operator: type mismatch between operands[0m
+[0;32mmilestone1.md:10932 operator: a comparison result is a bool, not an i32[0m
+[0;32mmilestone1.md:10961 variable: hero stats: declare all common types[0m
+[0;32mmilestone1.md:11044 variable: reassignment: hp loss, xp gain, mp drain[0m
+[0;32mmilestone1.md:11114 variable: all primitive types in one place[0m
+[0;32mmilestone1.md:11224 variable: a use before a shadowing declaration binds to the outer one[0m
+[0;32mmilestone1.md:11327 variable: redeclaring a variable in the same scope[0m
+[0;32mmilestone1.md:11357 variable: using a name that was never declared[0m
+[0;32mmilestone1.md:11387 variable: assigning to a name that was never declared[0m
+[0;32mmilestone1.md:11422 variable: a variable does not outlive the block that declared it[0m
+[0;32mmilestone1.md:11454 variable: redeclaring a global[0m
+[0;32mmilestone1.md:11486 variable: a bool takes only True or False[0m
+[0;32mmilestone1.md:11514 variable: assigning a string or a struct to an integer[0m
+[0;32mmilestone1.md:11552 proto: a string passed to a fn with an i8[] param[0m
+[0;32mmilestone1.md:11598 variables: unary minus on a variable and a parameter[0m
+[0;32mmilestone1.md:11645 global scope: a top-level statement runs before main[0m
+[0;32mmilestone1.md:11679 function: early bare return in a void function[0m
+[0;32mmilestone1.md:11742 bool: i1 and bool are the same type[0m
+[0;32mmilestone1.md:11785 tokenizer: a block comment over two lines, /*/ does not close it[0m
+[0;32mmilestone1.md:11811 calls: arguments over several lines[0m
+[0;32mmilestone1.md:11858 variables: a number literal takes the type of its i8 target[0m
+[0;32mmilestone1.md:11898 variables: a variable first set inside an if still starts at zero[0m
+[0;32mmilestone1.md:11965 variables: a variable with the name of a parameter[0m
+[0;32mmilestone1.md:11995 unsigned: u8 wraps, u32 divides and compares unsigned, u64, casts[0m
+[0;32mmilestone1.md:12074 unsigned: a number that doesn't fit in u8[0m
+[0;32mmilestone1.md:12102 variables: the type written before the name[0m
+[0;32mmilestone1.md:12146 bool: not, with and / or and in if / elif[0m
+[0;32mmilestone1.md:12235 bool: not on an i32[0m
+[0;32mmilestone1.md:12266 float: 2.5f is an f32[0m
+[0;32mmilestone1.md:12313 float: a negative f64 literal into an f32[0m
+milestone2
+[0;32mmilestone2.md:138 array: literal and indexing[0m
+[0;32mmilestone2.md:175 array: write through an index[0m
+[0;32mmilestone2.md:212 array: index from a variable[0m
+[0;32mmilestone2.md:249 array: index from an expression[0m
+[0;32mmilestone2.md:287 array: literal made of variables[0m
+[0;32mmilestone2.md:339 array: compound assignment on an element[0m
+[0;32mmilestone2.md:393 array: loop over an array[0m
+[0;32mmilestone2.md:485 array: an array passed to a function[0m
+[0;32mmilestone2.md:561 array: a function writes into the caller's array[0m
+[0;32mmilestone2.md:613 array: a string is a writable i8[][0m
+[0;32mmilestone2.md:672 array: an array of bools[0m
+[0;32mmilestone2.md:743 proto: a string in a variable[0m
+[0;32mmilestone2.md:783 proto: a string passed to a function[0m
+[0;32mmilestone2.md:829 proto: proto variadic function[0m
+[0;32mmilestone2.md:866 proto: chars type[0m
+[0;32mmilestone2.md:894 ref: write through a ref[0m
+[0;32mmilestone2.md:938 ref: read through a ref, then write[0m
+[0;32mmilestone2.md:990 ref: compound assignment through a ref[0m
+[0;32mmilestone2.md:1031 ref: swap with ref parameters[0m
+[0;32mmilestone2.md:1103 ref: a ref parameter changes the caller[0m
+[0;32mmilestone2.md:1151 ref: p1 = p2 copies the value[0m
+[0;32mmilestone2.md:1202 ref: p1 = &p2 rebinds[0m
+[0;32mmilestone2.md:1256 ref: pass a ref parameter on to another function[0m
+[0;32mmilestone2.md:1315 ref: a ref to a bool[0m
+[0;32mmilestone2.md:1360 ref: a ref in a loop[0m
+[0;32mmilestone2.md:1429 ref: take the address of a variable[0m
+[0;32mmilestone2.md:1458 crazy: fibonacci with a memo array[0m
+[0;32mmilestone2.md:1553 crazy: upper-case a string in place[0m
+[0;32mmilestone2.md:1690 crazy: not and ! on bools, in a loop[0m
+[0;32mmilestone2.md:1782 crazy: count trues with as, then a cast that wraps[0m
+[0;32mmilestone2.md:1852 crazy: caesar cipher: char arithmetic with as[0m
+[0;32mmilestone2.md:1993 crazy: print the alphabet with a char counter[0m
+[0;32mmilestone2.md:2053 crazy: isNullable on array elements and chars[0m
+[0;32mmilestone2.md:2185 crazy: transpose a 3x3 matrix stored flat[0m
+[0;32mmilestone2.md:2334 crazy: a ref to an array element[0m
+[0;32mmilestone2.md:2407 crazy: an array literal made of calls[0m
+[0;32mmilestone2.md:2488 crazy: elif chain on one line each, with not / and / or[0m
+[0;32mmilestone2.md:2641 crazy: reverse a string, palindromes, a while on one line[0m
+[0;32mmilestone2.md:2881 crazy: sieve of eratosthenes on a bool array[0m
+[0;32mmilestone2.md:2982 crazy: atoi: parse numbers from strings[0m
+[0;32mmilestone2.md:3102 crazy: itoa: write a number's digits into a buffer[0m
+[0;32mmilestone2.md:3256 crazy: print a number in hex with as[0m
+[0;32mmilestone2.md:3377 crazy: a string builder on a global buffer[0m
+[0;32mmilestone2.md:3519 crazy: filter with as bool, not and isNullable[0m
+[0;31mmilestone2.md:3625 parser error: unclosed [ in an array literal (stderr differs)[0m
+      1c1
+      < error: test.ura:4:19 expected ']' to close this '['
+      ---
+      > error: test.ura:4:19 expected ']' to close the array
+      5a6
+      > error: aborting due to 1 error
+[0;32mmilestone2.md:3653 refs: ref to a ref[0m
+[0;32mmilestone2.md:3680 refs: missing type after &[0m
+[0;32mmilestone2.md:3707 refs: initialized with a value[0m
+[0;32mmilestone2.md:3735 refs: address of a literal[0m
+[0;32mmilestone2.md:3761 refs: address of an expression[0m
+[0;32mmilestone2.md:3788 refs: address of a call[0m
+[0;32mmilestone2.md:3817 refs: address of an address[0m
+[0;32mmilestone2.md:3844 refs: ref to a different type[0m
+[0;32mmilestone2.md:3871 null: assigned to a value[0m
+[0;32mmilestone2.md:3898 null: compared with a value[0m
+[0;32mmilestone2.md:3925 null: address of null[0m
+[0;32mmilestone2.md:3951 expressions: compound assign on chars[0m
+[0;32mmilestone2.md:3978 expressions: negate a string[0m
+[0;32mmilestone2.md:4004 calls: missing & on a ref argument[0m
+[0;32mmilestone2.md:4035 arrays: unclosed type[0m
+[0;32mmilestone2.md:4062 arrays: size in the type[0m
+[0;32mmilestone2.md:4089 arrays: index a non-array[0m
+[0;31mmilestone2.md:4115 arrays: index with a string (stderr differs)[0m
+      1c1
+      < error: test.ura:3:14 expected 'i32', found 'i8[]'
+      ---
+      > error: test.ura:3:14 expected 'i32', found 'String'
+[0;31mmilestone2.md:4141 arrays: mixed element types (stderr differs)[0m
+      1c1
+      < error: test.ura:2:19 expected 'i32', found 'i8[]'
+      ---
+      > error: test.ura:2:19 expected 'i32', found 'String'
+[0;31mmilestone2.md:4167 arrays: array into a scalar (stderr differs)[0m
+      1c1
+      < error: test.ura:2:13 expected 'i32', found 'i32[]'
+      ---
+      > error: test.ura:2:13 expected 'i32', found an array literal
+[0;31mmilestone2.md:4193 arrays: unclosed literal (stderr differs)[0m
+      1c1
+      < error: test.ura:2:15 unclosed '['
+      ---
+      > error: test.ura:2:19 expected ']' to close the array
+      4c4,5
+      <   |               ^
+[0;32mmilestone2.md:4219 arrays: missing comma between elements[0m
+[0;32mmilestone2.md:4245 array: string as i8[] is writable[0m
+[0;32mmilestone2.md:4297 array: array passed to a function[0m
+[0;32mmilestone2.md:4369 ref: write through a ref[0m
+[0;32mmilestone2.md:4402 ref: ref as parameter[0m
+[0;32mmilestone2.md:4443 ref: read through a ref[0m
+[0;32mmilestone2.md:4478 ref: math through a ref[0m
+[0;32mmilestone2.md:4514 ref: copy the pointed value between refs[0m
+[0;32mmilestone2.md:4555 ref: rebind a ref[0m
+[0;32mmilestone2.md:4597 function: fn returns ref[0m
+[0;32mmilestone2.md:4643 function: swap[0m
+[0;32mmilestone2.md:4703 function: overloaded function[0m
+[0;32mmilestone2.md:4762 program: null compared to null[0m
+[0;32mmilestone2.md:4796 statement: if with a ref[0m
+[0;32mmilestone2.md:4840 array: 1D i32 array: literal, index read, indexed write[0m
+[0;32mmilestone2.md:4898 array: variable index and element arithmetic[0m
+[0;32mmilestone2.md:4959 array: arrays of bool, char, f32[0m
+[0;31mmilestone2.md:5039 array: sized constructor i32[N] with zero-init (compile error, status 1)[0m
+      error: test.ura:6:15 'i32' is 'i32', not an array
+        |
+      6 |     a i32[] = i32[5]
+        |               ^^^
+      error: aborting due to 1 error
+[0;31mmilestone2.md:5056 array: VLA: runtime-sized stack array (compile error, status 1)[0m
+      error: test.ura:6:15 'i32' is 'i32', not an array
+        |
+      6 |     a i32[] = i32[n * 2]
+        |               ^^^
+      error: aborting due to 1 error
+[0;31mmilestone2.md:5072 array: indexing a non-array (compile error, status 1)[0m
+      error: test.ura:4:12 'a' is 'i32', not an array
+        |
+      4 |     output(a[0])
+        |            ^
+      error: aborting due to 1 error
+[0;31mmilestone2.md:5084 array: non-integer index (compile error, status 1)[0m
+      error: test.ura:4:14 expected 'i32', found 'f64'
+        |
+      4 |     output(a[1.5])
+        |              ^^^
+      error: aborting due to 1 error
+[0;31mmilestone2.md:5096 array: array literal with mixed element types (compile error, status 1)[0m
+      error: test.ura:3:19 expected 'i32', found 'bool'
+        |
+      3 |     a i32[] = [1, True, 3]
+        |                   ^^^^
+      error: aborting due to 1 error
+[0;31mmilestone2.md:5107 array: array size is not an integer (compile error, status 1)[0m
+      error: test.ura:3:19 expected 'i32', found 'f64'
+        |
+      3 |     a i32[] = i32[1.5]
+        |                   ^^^
+      error: test.ura:3:15 'i32' is 'i32', not an array
+        |
+      3 |     a i32[] = i32[1.5]
+        |               ^^^
+[0;31mmilestone2.md:5118 array: missing closing bracket on index (compile error, status 1)[0m
+      error: test.ura:4:15 expected ']' after the index
+        |
+      4 |     output(a[0)
+        |               ^
+      help: use output(a[0])
+      error: aborting due to 1 error
+[0;31mmilestone2.md:5130 array: unknown member (compile error, status 1)[0m
+      error: test.ura:4:12 'a' is 'i32[]', not a struct
+        |
+      4 |     output(a.size)
+        |            ^
+      error: aborting due to 1 error
+[0;32mmilestone2.md:5142 function: single ref param: buff hero hp[0m
+[0;32mmilestone2.md:5195 function: swap two weapon damage values via refs[0m
+[0;32mmilestone2.md:5262 function: refs used in expression, return result[0m
+[0;32mmilestone2.md:5327 function: compound ref assign through in a loop[0m
+[0;32mmilestone2.md:5398 function: ref-to-value: ref passing a where value is expected[0m
+[0;32mmilestone2.md:5450 function: ref parameter mutates the caller (counter)[0m
+[0;32mmilestone2.md:5501 function: a void function with a ref parameter[0m
+[0;32mmilestone2.md:5547 ref: basic ref: bind to hp, ref write through[0m
+[0;32mmilestone2.md:5589 ref: aliasing: two refs to same hp, both see mutations[0m
+[0;32mmilestone2.md:5640 ref: compound ref assignment through in a loop[0m
+[0;32mmilestone2.md:5707 ref: separate refs to different vars: hp ref ref and mp[0m
+[0;32mmilestone2.md:5771 ref: multiply and subtract through refs: f64 shield, pay mana[0m
+[0;32mmilestone2.md:5829 ref: chain of compound mutations ref through a[0m
+[0;32mmilestone2.md:5888 ref: reference in conditional[0m
+[0;32mmilestone2.md:5946 ref: a ref reads correctly through every operator + as a by-value arg[0m
+[0;32mmilestone2.md:6100 ref: ref? nullable: bound at declaration, guarded reads pass, write-through works[0m
+[0;32mmilestone2.md:6148 ref: nested fn shares an enclosing var through a ref parameter (the sanctioned path)[0m
+[0;32mmilestone2.md:6200 ref: a ref reads correctly through the remaining math / comparison / bitwise / cast / logical ops[0m
+[0;32mmilestone2.md:6464 ref: a ref declared without a value starts as null[0m
+[0;31mmilestone2.md:6555 ref: binding a reference to the wrong type (compile error, status 1)[0m
+      error: test.ura:5:17 expected '&i8[]', found '&i32'
+        |
+      5 |     y &char[] = &x
+        |                 ^
+      error: aborting due to 1 error
+[0;31mmilestone2.md:6568 ref: a ref parameter given a value (compile error, status 1)[0m
+      error: test.ura:8:17 expected '&i32', found 'i32'
+        |
+      8 |     return tick(5)
+        |                 ^
+      error: aborting due to 1 error
+[0;32mmilestone2.md:6583 ref: taking a reference to a literal[0m
+[0;31mmilestone2.md:6611 ref: a by-value parameter given a reference (compile error, status 1)[0m
+      error: test.ura:8:18 expected 'i32', found '&i32'
+        |
+      8 |     return twice(&x)
+        |                  ^
+      error: aborting due to 1 error
+[0;31mmilestone2.md:6626 ref: a reference to a name that does not exist (compile error, status 1)[0m
+      error: test.ura:4:15 undeclared variable 'ghost'
+        |
+      4 |     r &i32 = &ghost
+        |               ^^^^^
+      help: declare it first, like: ghost i32 = 0
+      error: aborting due to 1 error
+[0;32mmilestone2.md:6638 ref: a nested function may not capture an enclosing local[0m
+[0;32mmilestone2.md:6670 ref: linked list: build with ref, walk it with cur = ref cur.next[0m
+[0;32mmilestone2.md:6763 ref: a ref parameter rebinds a struct's ref field in place (add-front)[0m
+[0;32mmilestone2.md:6875 ref: ref? compared to null with == and !=, bound and unbound[0m
+[0;32mmilestone2.md:6990 ref: chained rebind removes the head: lst.head = ref lst.head.next[0m
+[0;32mmilestone2.md:7063 ref: = ref rebinds the pointer, = value writes through the referent[0m
+[0;32mmilestone2.md:7117 ref: ref a == ref a is identity true, ref a == ref b is false[0m
+[0;31mmilestone2.md:7199 ref: a value function cannot return a reference (compile error, status 1)[0m
+      error: test.ura:4:12 expected 'i32', found '&i32'
+        |
+      4 |     return &x
+        |            ^
+      error: aborting due to 1 error
+[0;32mmilestone2.md:7214 ref: a ref declaration cannot be bound to a plain value[0m
+[0;32mmilestone2.md:7242 ref: a non-nullable value cannot be compared to null[0m
+[0;31mmilestone2.md:7270 variable: an array type carries no size (compile error, status 1)[0m
+      error: test.ura:4:12 arrays have no size in the type
+        |
+      4 |     xs i32[3]
+        |            ^
+      help: use 'i32[]'
+      error: aborting due to 1 error
+[0;32mmilestone2.md:7284 array: Array<T>: append, insert, pop, pop(index), first/last, resize, reverse[0m
+[0;32mmilestone2.md:8455 use: a package that doesn't exist[0m
+[0;32mmilestone2.md:8483 use: an error after a use points at the user's file and line[0m
+[0;32mmilestone2.md:8513 operator: bitwise & | ^ << >> on scalars, compound forms, & stays a ref before a type, >> closes nested templates[0m
+milestone3
+[0;32mmilestone3.md:151 global scope: no main: the file is the program[0m
+[0;32mmilestone3.md:261 struct: declare: attributes start at zero[0m
+[0;32mmilestone3.md:299 struct: write an attribute, read it back[0m
+[0;32mmilestone3.md:337 struct: attributes don't overlap[0m
+[0;32mmilestone3.md:382 struct: compound assignment on an attribute[0m
+[0;32mmilestone3.md:429 struct: two variables of one struct are separate[0m
+[0;32mmilestone3.md:476 struct: attributes of different types[0m
+[0;32mmilestone3.md:538 struct: nested struct: r.b.x[0m
+[0;32mmilestone3.md:599 struct: attributes in a loop[0m
+[0;32mmilestone3.md:659 struct: array attribute[0m
+[0;32mmilestone3.md:711 struct: print attributes[0m
+[0;32mmilestone3.md:764 struct: a function returns a struct[0m
+[0;32mmilestone3.md:817 struct: a ref variable to a struct[0m
+[0;32mmilestone3.md:858 struct: write through a ref parameter[0m
+[0;32mmilestone3.md:907 struct: read through a ref parameter[0m
+[0;32mmilestone3.md:964 method: a method reads self[0m
+[0;32mmilestone3.md:1013 method: a method writes self[0m
+[0;32mmilestone3.md:1065 method: a method reads and writes self[0m
+[0;32mmilestone3.md:1122 method: a method with arguments[0m
+[0;32mmilestone3.md:1175 method: a method calls another method[0m
+[0;32mmilestone3.md:1237 method: a method returns a bool[0m
+[0;32mmilestone3.md:1298 method: a method in a loop[0m
+[0;32mmilestone3.md:1379 method: two structs, one method name[0m
+[0;32mmilestone3.md:1454 method: a method on a nested attribute[0m
+[0;32mmilestone3.md:1510 method: overloaded method[0m
+[0;32mmilestone3.md:1584 method: a method on a ref receiver[0m
+[0;32mmilestone3.md:1645 method: a method through a ref changes the caller[0m
+[0;32mmilestone3.md:1712 crazy: a method called three times through a ref[0m
+[0;32mmilestone3.md:1804 crazy: methods of a nested struct, called through self[0m
+[0;32mmilestone3.md:1931 crazy: bubble sort: a struct with an array, methods calling methods[0m
+[0;32mmilestone3.md:2179 crazy: bank account: methods, a ref parameter, an array of bills[0m
+[0;32mmilestone3.md:2365 crazy: an array of structs is a copy[0m
+[0;32mmilestone3.md:2434 crazy: vectors: struct parameters, struct returns, chained calls[0m
+[0;32mmilestone3.md:2566 crazy: linked list: ref attributes, isNullable, rebinding a ref in a loop[0m
+[0;32mmilestone3.md:2661 crazy: a recursive method that counts its calls[0m
+[0;32mmilestone3.md:2737 crazy: a method takes a ref to its own struct type[0m
+[0;32mmilestone3.md:2812 crazy: stack: push squares, pop until empty[0m
+[0;32mmilestone3.md:2963 crazy: ring-buffer queue: full, wrap around, drain[0m
+[0;32mmilestone3.md:3177 crazy: binary tree: recursion through ref attributes[0m
+[0;32mmilestone3.md:3335 crazy: a linked list over array elements[0m
+[0;32mmilestone3.md:3475 crazy: search a linked list, -1 when missing[0m
+[0;32mmilestone3.md:3610 crazy: assigning a struct copies it[0m
+[0;32mmilestone3.md:3682 crazy: a struct parameter is a copy[0m
+[0;32mmilestone3.md:3744 crazy: compound assignment through a ref attribute[0m
+[0;32mmilestone3.md:3804 crazy: a method on an array element[0m
+[0;32mmilestone3.md:3908 crazy: builder: a method returns a ref to self, chained[0m
+[0;32mmilestone3.md:3975 crazy: a struct holding an array of structs[0m
+[0;32mmilestone3.md:4135 crazy: tree walk with a ref out-parameter[0m
+[0;32mmilestone3.md:4246 crazy: a function returns a ref into a struct, the caller binds it[0m
+[0;32mmilestone3.md:4331 crazy: fibonacci as a pair: recursion returning a struct, .a on a call[0m
+[0;32mmilestone3.md:4419 crazy: method calls nested as arguments[0m
+[0;32mmilestone3.md:4503 crazy: print a linked list backwards with recursion[0m
+[0;32mmilestone3.md:4609 crazy: sort structs in an array by an attribute[0m
+[0;32mmilestone3.md:4798 crazy: ping pong: two structs that name each other, before either is declared[0m
+[0;32mmilestone3.md:4917 crazy: while True with break and return inside a method[0m
+[0;32mmilestone3.md:5030 crazy: script: a global stack evaluates postfix 3 4 + 2 *[0m
+[0;32mmilestone3.md:5120 crazy: structs used before declared, a struct local to a function[0m
+[0;32mmilestone3.md:5221 crazy: a linked list built with chained methods that return refs[0m
+[0;32mmilestone3.md:5344 crazy: binary search tree: recursive methods through ref attributes[0m
+[0;32mmilestone3.md:5626 crazy: 2x2 matrix product with methods and ref parameters[0m
+[0;32mmilestone3.md:5813 name error: a struct declared twice[0m
+[0;32mmilestone3.md:5845 name error: unknown attribute[0m
+[0;32mmilestone3.md:5878 name error: unknown method[0m
+[0;32mmilestone3.md:5913 name error: self outside a method[0m
+[0;32mmilestone3.md:5942 structs: missing name[0m
+[0;32mmilestone3.md:5971 structs: missing colon[0m
+[0;32mmilestone3.md:6000 structs: expression inside a struct[0m
+[0;32mmilestone3.md:6029 structs: attribute without a type[0m
+[0;32mmilestone3.md:6058 structs: attribute declared twice[0m
+[0;32mmilestone3.md:6087 structs: no attributes[0m
+[0;32mmilestone3.md:6114 structs: contains itself by value[0m
+[0;32mmilestone3.md:6143 structs: unknown attribute[0m
+[0;32mmilestone3.md:6173 structs: unknown method[0m
+[0;32mmilestone3.md:6202 structs: method with wrong arguments[0m
+[0;32mmilestone3.md:6235 structs: bare attribute inside a method[0m
+[0;32mmilestone3.md:6267 structs: bare method call inside a method[0m
+[0;32mmilestone3.md:6302 structs: method called on the type[0m
+[0;32mmilestone3.md:6333 structs: self outside a method[0m
+[0;32mmilestone3.md:6358 expressions: add a struct and a number[0m
+[0;32mmilestone3.md:6391 expressions: compare structs[0m
+[0;32mmilestone3.md:6423 types: struct into another struct[0m
+[0;32mmilestone3.md:6456 struct: init a struct[0m
+[0;32mmilestone3.md:6490 struct: modify struct attribute[0m
+[0;32mmilestone3.md:6527 struct: method reads and writes self[0m
+[0;32mmilestone3.md:6557 struct: overloaded method[0m
+[0;32mmilestone3.md:6608 struct: linked list[0m
+[0;32mmilestone3.md:6702 program: linked list walked through ref attributes[0m
+[0;32mmilestone3.md:6797 method: a method reads self[0m
+[0;32mmilestone3.md:6862 method: a method mutates through self, and the caller sees it[0m
+[0;32mmilestone3.md:6929 method: a method with a return value[0m
+[0;32mmilestone3.md:6987 method: a method calling a sibling method declared below it[0m
+[0;32mmilestone3.md:7057 method: two structs may declare the same method name[0m
+[0;31mmilestone3.md:7142 method: a method on an array element (compile error, status 1)[0m
+      error: test.ura:11:20 'Room' is a type, not a value
+         |
+      11 |     rooms Room[] = Room[2]
+         |                    ^^^^
+      error: aborting due to 1 error
+[0;32mmilestone3.md:7165 method: a method on a nested struct field[0m
+[0;32mmilestone3.md:7228 method: calling a method the struct does not have[0m
+[0;32mmilestone3.md:7260 method: calling a method on a non-struct[0m
+[0;32mmilestone3.md:7289 method: wrong argument count to a method[0m
+[0;32mmilestone3.md:7325 method: chaining a field access onto a call[0m
+[0;32mmilestone3.md:7412 struct: declare a struct and a local: named type, alloca, zero-init[0m
+[0;32mmilestone3.md:7454 struct: a field whose type is another struct[0m
+[0;32mmilestone3.md:7500 struct: forward reference: a field type declared later in the file[0m
+[0;32mmilestone3.md:7546 struct: a struct declared inside a function body[0m
+[0;32mmilestone3.md:7587 struct: a struct declared inside an if block[0m
+[0;32mmilestone3.md:7642 struct: a struct declared inside a loop body[0m
+[0;32mmilestone3.md:7797 struct: an array-of-struct field is a fat pointer to the named type[0m
+[0;32mmilestone3.md:7842 struct: a struct nested inside another struct's body[0m
+[0;32mmilestone3.md:7886 struct: self reference through an array stays finite[0m
+[0;32mmilestone3.md:7927 struct: an unused struct emits no type: LLVM drops unreferenced named types[0m
+[0;32mmilestone3.md:7963 struct: the same struct name in three nested scopes: innermost wins[0m
+[0;32mmilestone3.md:8035 struct: read and write a field[0m
+[0;32mmilestone3.md:8099 struct: nested field access through a struct field[0m
+[0;31mmilestone3.md:8166 struct: a stack array of structs: Room[N] (compile error, status 1)[0m
+      error: test.ura:9:16 'Room' is a type, not a value
+        |
+      9 |     s Room[] = Room[2]
+        |                ^^^^
+      error: aborting due to 1 error
+[0;31mmilestone3.md:8187 struct: a 2D array of structs: Room[N][M] (compile error, status 1)[0m
+      error: test.ura:9:18 'Room' is a type, not a value
+        |
+      9 |     g Room[][] = Room[2][1]
+        |                  ^^^^
+      error: aborting due to 1 error
+[0;31mmilestone3.md:8209 struct: '.len' on arrays of structs, including 2D (compile error, status 1)[0m
+      error: test.ura:8:18 'Room' is a type, not a value
+        |
+      8 |     s Room[]   = Room[2]
+        |                  ^^^^
+      error: test.ura:9:18 'Room' is a type, not a value
+        |
+      9 |     g Room[][] = Room[4][1]
+        |                  ^^^^
+[0;32mmilestone3.md:8227 struct: 'stack' and 'heap' are ordinary identifiers[0m
+[0;32mmilestone3.md:8267 struct: a 'ref?' field may refer to its own struct[0m
+[0;32mmilestone3.md:8313 struct: bind, read and write through a 'ref?' field[0m
+[0;32mmilestone3.md:8392 struct: struct assignment copies by value[0m
+[0;32mmilestone3.md:8456 struct: a struct as a by-value parameter[0m
+[0;32mmilestone3.md:8520 struct: a 'ref' struct parameter mutates the caller's struct[0m
+[0;32mmilestone3.md:8585 struct: returning a struct: the create() constructor convention[0m
+[0;32mmilestone3.md:8665 struct: a field declared twice[0m
+[0;32mmilestone3.md:8698 struct: a field whose type does not exist[0m
+[0;32mmilestone3.md:8730 struct: a struct that contains itself by value[0m
+[0;32mmilestone3.md:8763 struct: two structs that contain each other by value[0m
+[0;32mmilestone3.md:8798 struct: a variable of a type that was never declared[0m
+[0;32mmilestone3.md:8827 struct: reading a field the struct does not have[0m
+[0;32mmilestone3.md:8861 struct: reading a field from a scalar[0m
+[0;32mmilestone3.md:8890 struct: '.len' on a scalar[0m
+[0;32mmilestone3.md:8919 struct: a struct declared in a block is not visible outside it[0m
+[0;32mmilestone3.md:8953 struct: a struct declared twice in the same scope[0m
+[0;32mmilestone3.md:8987 struct: a method and a field chain called on a ref? field[0m
+[0;32mmilestone3.md:9097 struct: struct redefinition[0m
+[0;32mmilestone3.md:9134 struct: accessing an undefined field[0m
+[0;32mmilestone3.md:9170 struct: calling undefined method on struct[0m
+[0;32mmilestone3.md:9205 struct: a struct whose first field is a struct is not circular[0m
+[0;32mmilestone3.md:9321 struct: a struct as a parameter and as a return value[0m
+[0;32mmilestone3.md:9410 struct: assigning a struct copies it[0m
+[0;32mmilestone3.md:9473 struct: a struct declared inside a function[0m
+[0;32mmilestone3.md:9516 struct: a nested struct as a parameter and a copy[0m
+[0;32mmilestone3.md:9601 struct: a struct value {x: 10, y: 11}: missing attributes are zero, nested, returned[0m
+[0;32mmilestone3.md:9690 struct: a struct value with an unknown attribute[0m
+[0;32mmilestone3.md:9721 struct: a struct value given to an i32[0m
+milestone4
+[0;32mmilestone4.md:24 template: struct with a type parameter[0m
+[0;32mmilestone4.md:61 template: method that takes the type parameter[0m
+[0;32mmilestone4.md:112 template: two type parameters[0m
+[0;32mmilestone4.md:153 template: two instances of the same template[0m
+[0;32mmilestone4.md:197 template: a template inside itself[0m
+[0;32mmilestone4.md:237 template: proto inside a template keeps its symbol[0m
+[0;32mmilestone4.md:288 template: function called with type arguments[0m
+[0;32mmilestone4.md:363 template: sizeof of the type parameter[0m
+[0;32mmilestone4.md:423 templates: too many type arguments[0m
+[0;32mmilestone4.md:454 templates: used without type arguments[0m
+[0;32mmilestone4.md:484 templates: parameter is not a name[0m
+[0;32mmilestone4.md:514 templates: body holds something else[0m
+[0;32mmilestone4.md:542 templates: missing colon[0m
+[0;32mmilestone4.md:573 template: declared inside a function[0m
+[0;32mmilestone4.md:609 templates: used outside the scope it is declared in[0m
+[0;32mmilestone4.md:642 template: several functions in one template, each instance renames all of them; memory_alloc, memory_copy, memory_free[0m
+milestone5
+[0;32mmilestone5.md:26 lexer: use missing opening quote[0m
+[0;32mmilestone5.md:56 lexer: use with unclosed quote[0m
+[0;32mmilestone5.md:86 lexer: link missing opening quote[0m
+[0;32mmilestone5.md:117 lexer: link with unclosed quote[0m
+[0;32mmilestone5.md:148 mod: a module function is called with ::[0m
+[0;32mmilestone5.md:189 mod: nested modules: a::b::f()[0m
+[0;32mmilestone5.md:231 mod: an enum inside a module, read as mod::Enum::VARIANT[0m
+[0;32mmilestone5.md:266 mod: a module may be referenced before it is declared[0m
+[0;32mmilestone5.md:307 mod: a module function calls a sibling unqualified[0m
+[0;32mmilestone5.md:357 mod: a struct declared in a module, used as mod::Type[0m
+[0;32mmilestone5.md:402 mod: a pub static method on a struct inside a module[0m
+[0;32mmilestone5.md:462 mod: calling a module member with . is an error[0m
+[0;32mmilestone5.md:494 mod: an unknown member of a known module is an error[0m
+[0;32mmilestone5.md:525 mod: a global inside a module, read and written with ::[0m
+[0;32mmilestone5.md:578 mod: a module call is arity-checked[0m
+[0;32mmilestone5.md:610 os: argc and argv from the global os[0m
+[0;32mmilestone5.md:1395 mod: a struct attribute with the name of a module global[0m
+[0;32mmilestone5.md:1454 ura::line, ura::filename, ura::function[0m
+milestone6
+[0;32mmilestone6.md:35 calls: output a struct[0m
+[0;31mmilestone6.md:80 function: multi line string (compile error, status 1)[0m
+      error: test.ura:7:9 expected ')' to close the call to 'output'
+        |
+      7 |         "hello "
+        |         ^^^^^^^^
+      help: use "hello ")
+      error: test.ura:8:16 unexpected ','
+        |
+      8 |         "world",
+[0;32mmilestone6.md:96 builtin: output picks the spec from each argument[0m
+[0;32mmilestone6.md:166 builtin: output with literals and escapes[0m
+[0;31mmilestone6.md:205 errput: errput writes to stderr, output writes to stdout (llvm ir differs)[0m
+      0a1,3
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      1a5,15
+      > @str = private unnamed_addr constant [11 x i8] c"on stdout\0A\00", align 1
+[0;31mmilestone6.md:220 errput: errput auto-formats every scalar type, like output (llvm ir differs)[0m
+      0a1,3
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      1a5,60
+      > @str = private unnamed_addr constant [25 x i8] c"hp=%d big=%lld small=%c\0A\00", align 1
+[0;31mmilestone6.md:242 errput: errput expands a struct with the default dump (llvm ir differs)[0m
+      0a1,3
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      1a5,52
+      > %Hero = type { i8*, %Stats }
+[0;31mmilestone6.md:267 errput: errput honours operator output() (compile error, status 1)[0m
+      error: test.ura:8:9 undeclared variable 'ret'
+        |
+      8 |         ret self.name
+        |         ^^^
+      help: declare it first, like: ret i32 = 0
+      error: aborting due to 1 error
+[0;31mmilestone6.md:288 errput: errput prints arrays and nested arrays (llvm ir differs)[0m
+      0a1,3
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      1a5,43
+      > @str = private unnamed_addr constant [9 x i8] c"nums %s\0A\00", align 1
+[0;31mmilestone6.md:306 errput: errput() with no arguments still emits the colour pair (llvm ir differs)[0m
+      0a1,3
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      1a5,15
+      > @str = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+[0;31mmilestone6.md:320 errput: errput and output keep separate struct printers (llvm ir differs)[0m
+      0a1,3
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      1a5,67
+      > %Point = type { i32, i32 }
+[0;32mmilestone6.md:343 output: basic output: strings, ints, floats, bools[0m
+[0;32mmilestone6.md:410 output: output with expressions: arithmetic inline[0m
+[0;32mmilestone6.md:454 output: output all supported types in one block[0m
+[0;32mmilestone6.md:547 output: output() auto-formats each argument by its type[0m
+[0;32mmilestone6.md:613 string: String constructors and accessors[0m
+[0;32mmilestone6.md:1267 string: assign, push, pop, join and clear[0m
+[0;32mmilestone6.md:1908 string: find, contains, starts_with and ends_with[0m
+[0;32mmilestone6.md:2753 string: transforms: upper, lower, substr, trim, replace, repeat, reverse[0m
+[0;32mmilestone6.md:3892 string: operators: + += == != < > against String and against a literal[0m
+[0;32mmilestone6.md:4932 string: to_int, compare and chained transformations[0m
+[0;32mmilestone6.md:5752 struct: output() prints a struct and its nested struct[0m
+[0;31mmilestone6.md:5899 struct: output() follows a bound 'ref?' and prints null when unbound (llvm ir differs)[0m
+      0a1,3
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      1a5,53
+      > %Node = type { i32, %Node* }
+[0;31mmilestone6.md:5924 struct: output() prints [Circular] instead of looping forever (llvm ir differs)[0m
+      0a1,3
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      1a5,55
+      > %Node = type { i32, %Node* }
+[0;31mmilestone6.md:5949 struct: output() expands array fields, including 2D (compile error, status 1)[0m
+      error: test.ura:19:15 'Room' is a type, not a value
+         |
+      19 |     f.rooms = Room[2]
+         |               ^^^^
+      error: test.ura:26:15 'Room' is a type, not a value
+         |
+      26 |     g.rooms = Room[2][2]
+         |               ^^^^
+[0;32mmilestone6.md:5988 output: output and errput print every scalar type in one call[0m
+[0;31mmilestone6.md:6060 input: read two lines from stdin (llvm ir differs)[0m
+      6a7,12
+      > @str = private unnamed_addr constant [7 x i8] c"name? \00", align 1
+      > @str.1 = private unnamed_addr constant [2 x i8] c"r\00", align 1
+      > @str.2 = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
+      > @str.3 = private unnamed_addr constant [10 x i8] c"hello %s\0A\00", align 1
+      > @str.4 = private unnamed_addr constant [6 x i8] c"age? \00", align 1
+milestone7
+[0;32mmilestone7.md:30 enum: auto values start at 0 and count up[0m
+[0;32mmilestone7.md:66 enum: variants on one line, comma-separated[0m
+[0;32mmilestone7.md:99 enum: an explicit value resets the running counter[0m
+[0;32mmilestone7.md:136 enum: an enum-typed variable compared to a variant[0m
+[0;32mmilestone7.md:191 enum: match over an enum inside a function[0m
+[0;32mmilestone7.md:268 enum: an enum used as a struct field type[0m
+[0;32mmilestone7.md:320 enum: a variant used before the enum is declared[0m
+[0;32mmilestone7.md:362 enum: an enum must declare at least one variant[0m
+[0;32mmilestone7.md:392 enum: a variant name cannot be declared twice[0m
+[0;32mmilestone7.md:422 enum: an explicit variant value must be an integer[0m
+[0;32mmilestone7.md:452 match: a single-value case matches[0m
+[0;32mmilestone7.md:509 match: a case with several values[0m
+[0;32mmilestone7.md:572 match: default runs when nothing matches[0m
+[0;32mmilestone7.md:629 match: break leaves the match early[0m
+[0;32mmilestone7.md:681 match: break exits the match, not the enclosing loop[0m
+[0;32mmilestone7.md:751 match: continue applies to the loop, skipping the rest of the iteration[0m
+[0;32mmilestone7.md:820 match: a case needs at least one value[0m
+[0;32mmilestone7.md:852 match: case value type must match the subject[0m
+[0;32mmilestone7.md:883 match: a case with no enclosing match[0m
+[0;32mmilestone7.md:912 match: a default with no enclosing match[0m
+[0;32mmilestone7.md:941 match: break needs a loop or match[0m
+[0;32mmilestone7.md:970 match: a String subject compares through operator ==, break and continue drop it once[0m
+milestone8
+[0;32mmilestone8.md:48 array: 2D array literal and nested indexing[0m
+[0;31mmilestone8.md:119 array: sized 2D matrix i32[N][M], zero-init and writes (compile error, status 1)[0m
+      error: test.ura:5:17 'i32' is 'i32', not an array
+        |
+      5 |     g i32[][] = i32[3][4]
+        |                 ^^^
+      error: aborting due to 1 error
+[0;31mmilestone8.md:135 array: 3D sized array with runtime size (compile error, status 1)[0m
+      error: test.ura:6:19 'i32' is 'i32', not an array
+        |
+      6 |     v i32[][][] = i32[n][n][n]
+        |                   ^^^
+      error: aborting due to 1 error
+[0;32mmilestone8.md:151 array: heap array: new<i32>(N), zero-init, write, free[0m
+[0;32mmilestone8.md:226 array: heap array with a runtime size, new<i32>(n) + free[0m
+[0;32mmilestone8.md:306 array: multi-dim heap: new<i32[]>(N), a row each, free each[0m
+[0;31mmilestone8.md:440 array: arr.len on a literal and on multi-dim (compile error, status 1)[0m
+      error: test.ura:7:22 'nums' is 'i32[]', not a struct
+        |
+      7 |     output("len = ", nums.len, "\n")
+        |                      ^^^^
+      error: test.ura:8:20 'i32' is 'i32', not an array
+        |
+      8 |     grid i32[][] = i32[3][4]
+        |                    ^^^
+[0;32mmilestone8.md:457 array: .len on a non-array[0m
+[0;31mmilestone8.md:485 array: array literals: one element, expressions, and strings (compile error, status 1)[0m
+      error: test.ura:12:29 'one' is 'i32[]', not a struct
+         |
+      12 |     output(one[0], " len ", one.len, "\n")
+         |                             ^^^
+      error: test.ura:17:14 can't loop over 'i32[]'
+         |
+      17 |     for v in ex:
+         |              ^^
+[0;32mmilestone8.md:518 array: fill a heap char buffer by index, print it, free it[0m
+[0;32mmilestone8.md:614 enum: a variant as an array index and in arithmetic[0m
+[0;31mmilestone8.md:695 errput: errput follows a bound ref? and prints null when unbound (llvm ir differs)[0m
+      0a1,3
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      1a5,53
+      > %Node = type { i32, %Node* }
+[0;32mmilestone8.md:718 heap: new<T>(1) gives one zeroed struct, a ref points at it[0m
+[0;32mmilestone8.md:810 heap: operator drop frees the nodes a tree owns[0m
+[0;32mmilestone8.md:966 heap: a function fills a heap struct and returns a ref to it[0m
+[0;32mmilestone8.md:1066 lexer: an index with nothing in it[0m
+[0;32mmilestone8.md:1100 lexer: :: must be followed by a name[0m
+[0;32mmilestone8.md:1129 operator: operator drop declares a destructor named Vec.drop[0m
+[0;32mmilestone8.md:1189 operator: calling .drop() yourself is rejected[0m
+[0;32mmilestone8.md:1225 operator: operator drop beside operator = does not warn[0m
+[0;32mmilestone8.md:1288 operator: a destructor fires on break and on continue[0m
+[0;32mmilestone8.md:1437 operator: drop on fall-through: an if block, each iteration, reverse order[0m
+[0;32mmilestone8.md:1581 operator: a struct drops the structs it owns, at any depth, but not what it borrows[0m
+[0;32mmilestone8.md:1727 operator: a heap-owning struct: create, deep-copy operator = and drop[0m
+[0;32mmilestone8.md:1904 operator: a growable string struct: nullable buffer, grow, join and drop[0m
+[0;32mmilestone8.md:2301 operator: a struct owning heap buffers: deep-copy operator = and drop[0m
+[0;32mmilestone8.md:2535 ref: ref return: create a node on the heap and return a reference to it[0m
+[0;31mmilestone8.md:2621 ref: ref? return: one branch returns a reference, the other returns null (llvm ir differs)[0m
+      0a1,3
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      1a5,96
+      > %N = type { i32, %N* }
+[0;32mmilestone8.md:2646 ref: declare a ref and bind it to a ref-returning call[0m
+[0;32mmilestone8.md:2732 ref: a ref-returning call passed straight into a ref parameter[0m
+[0;32mmilestone8.md:2841 ref: a reference function must return a reference, not a bare value[0m
+[0;32mmilestone8.md:2875 ref: a field read chained directly on a ref-returning call[0m
+[0;32mmilestone8.md:2957 struct: a heap array of structs: new<Room>(N), then free[0m
+[0;32mmilestone8.md:3056 struct: a 2D heap array of structs frees every inner slice[0m
+[0;32mmilestone8.md:3194 struct: an unknown type as a parameter, a return type, or an array element[0m
+[0;32mmilestone8.md:3281 struct: destructor must take no parameters[0m
+[0;32mmilestone8.md:3318 struct: destructor must return void[0m
+[0;31mmilestone8.md:3355 variable: global variables: scalars, arrays, forward reference, shadowing (compile error, status 1)[0m
+      error: test.ura:11:15 'i32' is 'i32', not an array
+         |
+      11 | xs    i32[] = i32[3]
+         |               ^^^
+      error: test.ura:27:35 'xs' is 'i32[]', not a struct
+         |
+      27 |     output("xs ", xs[0], " len ", xs.len)
+         |                                   ^^
+[0;32mmilestone8.md:3398 variable: a global struct is initialised and dropped like a local[0m
+[0;32mmilestone8.md:3512 variable: a global is dropped on an early return too[0m
+milestone9
+[0;32mmilestone9.md:49 method: a pub fn is static: no self, called with ::[0m
+[0;31mmilestone9.md:110 method: calling a non-pub method with :: (compile error, status 1)[0m
+      error: test.ura:10:18 'Room' has no pub fn 'depth'
+         |
+      10 |     output(Room::depth(), "\n")
+         |                  ^^^^^
+      error: aborting due to 1 error
+[0;31mmilestone9.md:128 method: :: on a type that does not exist (compile error, status 1)[0m
+      error: test.ura:4:12 unknown type 'Nope'
+        |
+      4 |     output(Nope::create(), "\n")
+        |            ^^^^
+      error: aborting due to 1 error
+[0;32mmilestone9.md:140 method: two structs declare the same pub fn, and statics compose[0m
+[0;32mmilestone9.md:303 operator: operator outside a struct definition[0m
+[0;31mmilestone9.md:335 operator: operator missing operator symbol (compile error, status 1)[0m
+      error: test.ura:7:15 expected '(' after the function name
+        |
+      7 |     operator () Vec:
+        |               ^
+      help: use operator (()) Vec:
+      error: test.ura:7:15 expected ':' after the function header
+        |
+      7 |     operator () Vec:
+[0;31mmilestone9.md:355 operator: adding two structs without an operator + overload (compile error, status 1)[0m
+      error: test.ura:11:15 'Vec' has no operator '+' that takes 'Vec'
+         |
+      11 |     c Vec = a + b
+         |               ^
+      error: aborting due to 1 error
+[0;32mmilestone9.md:375 operator: operator + on two structs[0m
+[0;32mmilestone9.md:479 operator: two overloads of + with different right-hand types[0m
+[0;32mmilestone9.md:590 operator: operator == returning bool[0m
+[0;31mmilestone9.md:717 operator: no overload for that operator (compile error, status 1)[0m
+      error: test.ura:9:15 'Vec' has no operator '-' that takes 'Vec'
+        |
+      9 |     c Vec = a - b
+        |               ^
+      error: aborting due to 1 error
+[0;31mmilestone9.md:734 operator: assigning a different struct (compile error, status 1)[0m
+      error: test.ura:12:9 expected 'Vec', found 'Point'
+         |
+      12 |     v = p
+         |         ^
+      error: aborting due to 1 error
+[0;32mmilestone9.md:754 operator: indexing an array literal directly[0m
+[0;32mmilestone9.md:791 operator: operators and a method on the same struct[0m
+[0;31mmilestone9.md:995 operator: assigning a void result (compile error, status 1)[0m
+      error: test.ura:11:14 expected 'Vec', found 'void'
+         |
+      11 |     e Vec = a.show()
+         |              ^
+      error: aborting due to 1 error
+[0;31mmilestone9.md:1014 operator: a binary operator with mismatched scalar types (compile error, status 1)[0m
+      error: test.ura:6:14 can't apply '+' to 'i32' and 'i8[]'
+        |
+      6 |     output(n + s, "\n")
+        |              ^
+      error: aborting due to 1 error
+[0;32mmilestone9.md:1028 operator: operator = copies on declaration and on reassignment[0m
+[0;32mmilestone9.md:1125 operator: compound assignment operators[0m
+[0;31mmilestone9.md:1230 operator: a compound operator with no overload (compile error, status 1)[0m
+      error: test.ura:9:7 'Vec' has no operator '*=' that takes 'Vec'
+        |
+      9 |     a *= b
+        |       ^^
+      error: aborting due to 1 error
+[0;31mmilestone9.md:1247 operator: return unwinds every scope, and keeps the returned local (compile error, status 1)[0m
+      error: test.ura:19:18 expected '(' after the function name
+         |
+      19 |     operator drop:
+         |                  ^
+      help: use operator drop():
+      error: aborting due to 1 error
+[0;32mmilestone9.md:1292 operator: every operator on one struct, and = from an i32 overload[0m
+[0;31mmilestone9.md:1675 operator: a temporary is destroyed at the end of its statement (compile error, status 1)[0m
+      error: test.ura:53:18 expected '(' after the function name
+         |
+      53 |     operator drop:
+         |                  ^
+      help: use operator drop():
+      error: aborting due to 1 error
+[0;32mmilestone9.md:1764 operator: every overloadable operator on one struct[0m
+[0;32mmilestone9.md:2619 operator: bitwise operator overloads, and one returning a scalar[0m
+[0;32mmilestone9.md:2880 operator: compound bitwise assignment overloads[0m
+[0;32mmilestone9.md:3055 operator: bitwise and shift overloads taking a ref parameter[0m
+[0;31mmilestone9.md:3299 operator: operator output replaces the default struct dump, nested too (llvm ir differs)[0m
+      0a1,3
+      > ; ModuleID = 'ura'
+      > source_filename = "ura"
+      > target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+      1a5,97
+      > %Tag = type { i8*, i32 }
+[0;31mmilestone9.md:3340 struct: pub inside struct must be followed by fn (compile error, status 1)[0m
+      error: test.ura:7:9 'n' is already declared, on line 5
+        |
+      7 |     pub n i32
+        |         ^
+      error: aborting due to 1 error
+[0;31mmilestone9.md:3358 struct: instance method called via :: instead of . (compile error, status 1)[0m
+      error: test.ura:13:14 'Counter' has no pub fn 'bump'
+         |
+      13 |     Counter::bump()
+         |              ^^^^
+      error: aborting due to 1 error
+[0;31mmilestone9.md:3379 struct: pub fn called via . instead of :: (compile error, status 1)[0m
+      error: test.ura:15:7 'Maker' has no method 'make'
+         |
+      15 |     m.make()
+         |       ^^^^
+      error: aborting due to 1 error
+[0;32mmilestone9.md:3402 struct: pub may only be used inside a struct[0m
+[0;32mmilestone9.md:3434 operator: [] returns &i32, so b[0] reads and writes through[0m
+[0;32mmilestone9.md:3537 operator: drop runs at the end of blocks, on continue, and not on a returned local[0m
+[0;32mmilestone9.md:4055 operator: copying a struct with drop needs operator =[0m
+[0;32mmilestone9.md:4089 operator: passing a struct with drop by value[0m
+[0;32mmilestone9.md:4125 struct: from takes attributes and methods of a template, a struct and a grandparent; overrides win[0m
+[0;32mmilestone9.md:4866 struct: from a struct that doesn't exist[0m
+[0;32mmilestone9.md:4895 struct: String from Array<char> in "@/string", temporaries are dropped[0m
+[0;32mmilestone9.md:6473 struct: a plain fn drop() is a normal method, only operator drop runs by itself[0m
+[0;32mmilestone9.md:6553 ownership: nested arrays, an Array attribute, reassignment, drop(x), returning an attribute copies[0m
+[0;32mmilestone9.md:7562 ownership: operator = taking the other side by value[0m
+
+713 passed, 75 failed

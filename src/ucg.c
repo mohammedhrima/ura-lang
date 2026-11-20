@@ -113,6 +113,7 @@ enum Type {
 	FN_ENTRY,
     SIZEOF, TYPEOF, DROP, COPY, IS_ZERO, ALLOC, MEMCPY, FREE,
     AS, FROM, AND_LIT, OR_LIT, SELF, FOR, IN, MODULE, ARGC, ARGV,
+    LINE_NUMBER, FILE_NAME, FN_NAME,
 	BLOC,
     IF, ELIF, ELSE, THEN,
     LOOP, BRK, CNT, MATCH, CASE, DEFAULT, CLEAN,
@@ -282,14 +283,10 @@ bool ucg_has_errors(void) {
 void ucg_check_errors(void) {
     if (gb_ucg.errors_count == 0)
         return;
-    char *cwd = getcwd2();
-    size_t cwd_len = strlen(cwd);
     for (int i = 0; i < gb_ucg.errors_count; i++) {
         UcgError *error = &gb_ucg.errors[i];
         char *buff = error->file->buff;
-        char *path = error->file->path;
-        if (strncmp2(path, cwd, cwd_len) && path[cwd_len] == '/')
-            path += cwd_len + 1;
+        char *path = relative_path(error->file->path);
         int line = 1;
         for (int j = 0; j < error->s; j++)
             line += buff[j] == '\n';
@@ -335,7 +332,7 @@ void ucg_start(char *name) {
 
     gb_ucg.types.vd = LLVMVoidTypeInContext(gb_ucg.context);
 
-    for (int i = 1; i < 255; i <<= 1)
+    for (int i = 1; i < 255; i++)
         gb_ucg.types.num[i] = LLVMIntTypeInContext(gb_ucg.context, i);
 
     // Initialize native target.
@@ -597,8 +594,8 @@ TypeRef llvm_float_type(int bits) {
 
 TypeRef llvm_type(Ucg *ir) {
     switch (ir->type) { // clang-format off
-    case INT:        	return gb_ucg.types.num[1 << ir->shift];
-    case FLOAT:			return llvm_float_type(1 << ir->shift);
+    case INT:        	return gb_ucg.types.num[ir->shift];
+    case FLOAT:			return llvm_float_type(ir->shift);
     case CHARS:			return LLVMPointerType(gb_ucg.types.num[8], 0);
     case STRUCT:		return ir->rtype;
     case POINT_TO:		return llvm_type(ucg_type_of(ir));
@@ -917,7 +914,7 @@ void llvm_cast(Ucg *ir) {
     bool from_float = llvm_is_float(value);
     bool to_float = to->type == FLOAT;
     int from_bits = llvm_bits(value);
-    int to_bits = 1 << to->shift;
+    int to_bits = to->shift;
     if (to->type == INT && to_bits == 1 && from_bits != 1) {
         Value zero = LLVMConstNull(LLVMTypeOf(value));
         if (from_float)
@@ -1012,7 +1009,7 @@ Ucg *ucg_new(Type type) {
 Ucg *ucg_int_type(int shift) {
     Ucg *new = ucg_new(INT);
     // printf(">>>> %d\n", shift);
-    new->shift = log2(shift);
+    new->shift = shift;
     // printf(">>>> %d\n", new->shift);
     return new;
 }
@@ -1062,7 +1059,7 @@ Ucg *ucg_array_type(Ucg *elem, int count) {
 
 Ucg *ucg_float_type(int shift) {
     Ucg *new = ucg_new(FLOAT);
-    new->shift = log2(shift);
+    new->shift = shift;
     return new;
 }
 
@@ -1507,7 +1504,7 @@ Ucg *ucg_write(Ucg *fd, Ucg **values, int values_count) {
             continue;
         }
         Ucg *type = ucg_value_type(value);
-        int bits = 1 << type->shift;
+        int bits = type->shift;
         char *spec = "%s";
         if (type->type == FLOAT) {
             spec = "%f";
@@ -1526,6 +1523,8 @@ Ucg *ucg_write(Ucg *fd, Ucg **values, int values_count) {
         } else if (type->type == INT && type->is_uint) {
             spec = "%u";
             value = ucg_cast(value, ucg_uint_type(32));
+        } else if (type->type == INT && bits == 21) {
+            value = ucg_unic_text(value);
         } else if (type->type == INT && bits == 8) {
             spec = "%c";
             value = ucg_cast(value, ucg_i32_type());
@@ -1589,6 +1588,53 @@ Ucg *ucg_read_fn(void) {
 Ucg *ucg_read(Ucg *fd) {
     Ucg *fn = ucg_runtime("ura.read");
     return ucg_call(fn ? fn : ucg_read_fn(), 1, fd);
+}
+
+Ucg *ucg_unic_fn(void) {
+    Ucg *i32 = ucg_i32_type();
+    Ucg *str = ucg_string_type();
+    Ucg *params[] = { ucg_param("code", i32), ucg_param("text", str) };
+    Ucg *fn = ucg_fn("ura.unic", str, params, 2);
+    append(gb_ucg.runtime, fn);
+    Ucg *code = ucg_get_param(fn, 0);
+    Ucg *text = ucg_get_param(fn, 1);
+
+    // code < 128     -> [code]
+    // code < 2048    -> [192 + code / 64,     128 + code % 64]
+    // code < 65536   -> [224 + code / 4096,   128 + code / 64 % 64,   128 + code % 64]
+    // code < 1114112 -> [240 + code / 262144, 128 + code / 4096 % 64, ...]
+    // 233 (é)        -> [192 + 3, 128 + 41] = [C3, A9]
+    int below[] = { 128, 2048, 65536, 1114112 };
+    int marker[] = { 0, 192, 224, 240 };
+    Ucg *stmt = ucg_if();
+    for (int count = 1; count <= 4; count++) {
+        Ucg *branch = count == 1 ? stmt : ucg_elif(stmt);
+        ucg_then(branch, ucg_op(LT, code, ucg_i32_value(below[count - 1])));
+        int place = 1;
+        for (int i = count - 1; i >= 0; i--) {
+            Ucg *digit = ucg_op(DIV, code, ucg_i32_value(place));
+            Ucg *first = ucg_op(ADD, digit, ucg_i32_value(marker[count - 1]));
+            Ucg *next = ucg_op(MOD, digit, ucg_i32_value(64));
+            next = ucg_op(ADD, next, ucg_i32_value(128));
+            Ucg *byte = ucg_cast(i == 0 ? first : next, ucg_char_type());
+            ucg_assign(ucg_access(text, ucg_i32_value(i)), byte);
+            place *= 64;
+        }
+        ucg_assign(ucg_access(text, ucg_i32_value(count)), ucg_char_value(0));
+    }
+    ucg_end(stmt);
+    ucg_ret(text);
+    ucg_end(fn);
+    return fn;
+}
+
+Ucg *ucg_unic_text(Ucg *code) {
+    Ucg *fn = ucg_runtime("ura.unic");
+    if (fn == NULL)
+        fn = ucg_unic_fn();
+    Ucg *zero = ucg_char_value(0);
+    Ucg *text = ucg_array_value(ucg_char_type(), zero, zero, zero, zero, zero, NULL);
+    return ucg_call(fn, 2, ucg_cast(code, ucg_i32_type()), text);
 }
 
 Ucg *ucg_struct_value(Ucg *st, Ucg **values, int values_count) {
@@ -1751,13 +1797,13 @@ Ucg *ucg_free(Ucg *memory) {
 char *ucg_type_name(Ucg *type) {
     switch (type->type) {
     case INT: {
-        int bits = 1 << type->shift;
+        int bits = type->shift;
         if (bits == 1)
             return "bool";
         return format("%c%d", type->is_uint ? 'u' : 'i', bits);
     }
     case FLOAT:
-        return format("f%d", 1 << type->shift);
+        return format("f%d", type->shift);
     case REF:
         return format("%s[]", ucg_type_name(type->to_ref));
     case VOID:
@@ -2437,7 +2483,8 @@ const char *to_string(Type type) {
         NAME(AS),            NAME(FROM),          NAME(AND_LIT),
         NAME(OR_LIT),        NAME(SELF),          NAME(FOR),
         NAME(IN),            NAME(MODULE),        NAME(ARGC),
-        NAME(ARGV),
+        NAME(ARGV),          NAME(LINE_NUMBER),   NAME(FILE_NAME),
+        NAME(FN_NAME),
         NAME(LAST),
     }; // clang-format on
 #undef NAME

@@ -1,6 +1,6 @@
 # Ura Language Support for Visual Studio Code
 
-Editor support for the [Ura programming language](https://github.com/mohammedhrima/ura-lang).
+Editor support for the [Ura programming language](https://github.com/ura-computing/ura-lang).
 The extension grows together with the compiler: it only knows what the compiler
 in `../src` accepts today.
 

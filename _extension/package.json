@@ -26,11 +26,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/mohammedhrima/ura-lang",
+    "url": "https://github.com/ura-computing/ura-lang",
     "directory": "_extension"
   },
   "bugs": {
-    "url": "https://github.com/mohammedhrima/ura-lang/issues"
+    "url": "https://github.com/ura-computing/ura-lang/issues"
   },
   "scripts": {
     "vscode:prepublish": "tsc -b",

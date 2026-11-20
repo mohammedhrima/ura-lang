@@ -86,8 +86,12 @@ bool check_lexeme(char *buff, int s, int e) {
             );
             is_valid = false;
         }
+        // 'é' = [C3 A9]: C3 starts the letter, A9 (0x80..0xBF) continues it
+        unsigned char byte = buff[i];
+        bool is_continuation = byte >= 0x80 && byte < 0xC0;
         i += is_escape ? 2 : 1;
-        letters++;
+        if (!is_continuation)
+            letters++;
     }
     if (buff[i] != c) {
         int start = line_start_in(buff, s);

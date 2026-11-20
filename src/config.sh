@@ -55,11 +55,11 @@ URA_TESTS_DIR="$(cd "$URA_ROOT/.." && pwd)/tests" # one file per milestone, in t
 URA_BIN="$URA_BIN_DIR/ura"
 URA_JOBS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)" # tests run this many at once
 URA_LLVM_FILE="$URA_ROOT/llvm-version.txt" # written by set-llvm, read by build
-# the libraries pinned in the repo's ura.conf, cloned into dependencies/ by
+# the libraries pinned in tests/ura.conf, cloned into tests/dependencies/ by
 # `ura install` (build runs it when one is missing). Each test compiles in its
 # own temporary folder, next to a ura.conf that points at these folders.
-URA_DEPENDENCIES_DIR="$(cd "$URA_ROOT/.." && pwd)/dependencies"
-URA_TEST_CONFIG="$(sed -n 's|^@dependency "\([^"]*\)" "\([^"]*\)" "[^"]*".*|@dependency "\1" "\2" "'"$URA_DEPENDENCIES_DIR"'/\1@\2"|p' "$URA_ROOT/../ura.conf")"
+URA_DEPENDENCIES_DIR="$URA_TESTS_DIR/dependencies"
+URA_TEST_CONFIG="$(sed -n 's|^@dependency "\([^"]*\)" "\([^"]*\)" "[^"]*".*|@dependency "\1" "\2" "'"$URA_DEPENDENCIES_DIR"'/\1@\2"|p' "$URA_TESTS_DIR/ura.conf")"
 
 # put bin/ on PATH so `ura` is callable by name; the case guard keeps
 # re-sourcing from stacking duplicate entries
@@ -259,7 +259,7 @@ build() {
     mkdir -p "$HOME/.local/bin" && ln -sf "$URA_BIN" "$HOME/.local/bin/ura"
     # one pinned library missing: install the repo's dependencies
     if printf '%s\n' "$URA_TEST_CONFIG" | sed 's/.*"\(.*\)"$/\1/' | while read -r dir; do [ -d "$dir" ] || echo missing; done | grep -q missing; then
-        (cd "$URA_ROOT/.." && "$URA_BIN" install)
+        (cd "$URA_TESTS_DIR" && "$URA_BIN" install)
     fi
 }
 
@@ -1062,7 +1062,7 @@ run() {
 # extension - package the VS Code extension and install it into VS Code
 # ============================================================================
 extension() {
-    if make -C "$URA_ROOT/../0.ura-vscode-extension" install; then
+    if make -C "$URA_ROOT/../_extension" install; then
         _ura_green "extension: installed, reload VS Code to use it"
     else
         _ura_red "extension: failed"

@@ -143,6 +143,7 @@ Keyword keywords[] = { // clang-format off
     { "f32",      { .type = FLOAT, .is_type = true, .shift = 32 } },
     { "f64",      { .type = FLOAT, .is_type = true, .shift = 64 } },
     { "char",     { .type = INT,   .is_type = true, .shift = 8 } },
+    { "unic",     { .type = INT,   .is_type = true, .shift = 21 } },
     { "i8",       { .type = INT,   .is_type = true, .shift = 8 } },
     { "i16",      { .type = INT,   .is_type = true, .shift = 16 } },
     { "i32",      { .type = INT,   .is_type = true, .shift = 32 } },
@@ -202,18 +203,21 @@ Keyword keywords[] = { // clang-format off
 };
 
 Keyword builtins[] = {
-    { "output",       { .type = WRITE, .num = { .value = 1 } } },
-    { "errput",       { .type = WRITE, .num = { .value = 2 } } },
-    { "input",        { .type = READ } },
-    { "sizeof",       { .type = SIZEOF } },
-    { "typeof",       { .type = TYPEOF } },
-    { "drop",         { .type = DROP } },
-    { "isZero",       { .type = IS_ZERO } },
-    { "memory_alloc", { .type = ALLOC } },
-    { "memory_copy",  { .type = MEMCPY } },
-    { "memory_free",  { .type = FREE } },
-    { "ura::argc",    { .type = ARGC } },
-    { "ura::argv",    { .type = ARGV } },
+    { "output",        { .type = WRITE, .num = { .value = 1 } } },
+    { "errput",        { .type = WRITE, .num = { .value = 2 } } },
+    { "input",         { .type = READ } },
+    { "sizeof",        { .type = SIZEOF } },
+    { "typeof",        { .type = TYPEOF } },
+    { "drop",          { .type = DROP } },
+    { "isZero",        { .type = IS_ZERO } },
+    { "memory_alloc",  { .type = ALLOC } },
+    { "memory_copy",   { .type = MEMCPY } },
+    { "memory_free",   { .type = FREE } },
+    { "ura::argc",     { .type = ARGC } },
+    { "ura::argv",     { .type = ARGV } },
+    { "ura::line",     { .type = LINE_NUMBER } },
+    { "ura::filename", { .type = FILE_NAME } },
+    { "ura::function", { .type = FN_NAME } },
     { NULL },
 };
 
@@ -369,6 +373,25 @@ Token *find_builtin(char *name) {
     return NULL;
 }
 
+Token *source_value(Token *token) {
+    Node *fn = NULL;
+    for (int i = 0; i < ura.scopes_count; i++) {
+        if (ura.scopes[i]->token->type != FN_DEC)
+            continue;
+        fn = ura.scopes[i];
+    }
+    switch (token->type) { // clang-format off
+    case LINE_NUMBER: token->num.value = line_at(token->s); break;
+    case FILE_NAME:   token->chars.value = relative_path(file_at(token->s)->path); break;
+    case FN_NAME:     token->chars.value = fn ? fn->token->name : ""; break;
+    default:          break; // clang-format on
+    }
+    bool is_line = token->type == LINE_NUMBER;
+    token->type = is_line ? INT : CHARS;
+    token->shift = is_line ? 32 : 0;
+    return token;
+}
+
 Token *parse_id(int s, int e, int space) {
     Token *new = new_token(ID, NULL);
     char *buff = ura.file->buff;
@@ -430,8 +453,33 @@ Token *parse_char(int s, int e, int space) {
     new->shift = 8;
     char *buff = ura.file->buff;
 
-    char *str = parse_escaped(buff, s + 1, e - 1);
-    new->num.value = str[0];
+    // UTF-8: a character is 1 to 4 bytes, read like a number in base 64
+    // the first byte says how many bytes follow, minus its marker it is the first digit
+    //   0xC0 = 192 = 110xxxxx -> 2 bytes (é)
+    //   0xE0 = 224 = 1110xxxx -> 3 bytes (€)
+    //   0xF0 = 240 = 11110xxx -> 4 bytes (🦀)
+    //   below 0x80 = 128      -> 1 byte, plain ascii char ('a')
+    // every next byte is 0x80 (128) + a digit from 0 to 63
+    // example 'é' = C3 A9: (0xC3 - 0xC0) * 64 + (0xA9 - 0x80) = 3 * 64 + 41 = 233
+    unsigned char *str = (unsigned char *)parse_escaped(buff, s + 1, e - 1);
+    int count = 1;
+    int value = str[0];
+    if (str[0] >= 0xF0) {
+        count = 4;
+        value = str[0] - 0xF0;
+    } else if (str[0] >= 0xE0) {
+        count = 3;
+        value = str[0] - 0xE0;
+    } else if (str[0] >= 0xC0) {
+        count = 2;
+        value = str[0] - 0xC0;
+    }
+    for (int i = 1; i < count; i++)
+        value = value * 64 + (str[i] - 0x80);
+    new->num.value = value;
+    // more than 1 byte does not fit a char, it is a unic
+    if (count > 1)
+        new->shift = 21;
 
     new->line = ura.line;
     new->s = s;
@@ -997,6 +1045,9 @@ Node *parse_prime() {
         bool is_value = builtin && includes(builtin->type, ARGC, ARGV, 0);
         if (is_value)
             return new_node(token);
+        bool is_source = includes(token->type, LINE_NUMBER, FILE_NAME, FN_NAME, 0);
+        if (is_source)
+            return new_node(source_value(token));
         if (builtin && peek(0)->type != LPARENT) {
             expect(LPARENT, format("expected '(' after '%s'", token->name), "(x)");
             node = new_node(token);
@@ -1846,6 +1897,8 @@ char *type_name(Node *type) {
         int shift = type->token->shift;
         if (shift == 1)
             return "bool";
+        if (shift == 21)
+            return "unic";
         return format("%c%d", type->token->is_uint ? 'u' : 'i', shift);
     } // clang-format off
     case FLOAT: return format("f%d", type->token->shift);
