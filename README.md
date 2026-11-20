@@ -2,11 +2,45 @@
 
 A compiled, statically typed language with Python's indentation and C's speed. No braces, no semicolons. The compiler is written in C and uses LLVM only for the last step, turning IR into native code.
 
-<p align="center">
-  <img src="assets/ura-init.gif" width="760" alt="ura init demo, then ura run: a spinning ASCII donut, structs with operators, and try / catch / throw">
-</p>
+A demo, a spinning ASCII donut, lives in its own repo: [ura-donut](https://github.com/ura-computing/ura-donut).
 
-<p align="center"><a href="assets/ura-init.mp4">video (mp4)</a></p>
+## Get started
+
+```
+ura init hello && cd hello
+ura install
+ura run
+```
+
+`ura init` writes a small project that says hello to the user (with a `unic` wave), on Linux, macOS and Windows:
+
+| file | what |
+|---|---|
+| main.ura | `name String = user()`, falls back to `"world"`, prints hello |
+| src/user.ura | finds the user name from the environment, per OS with `@if` |
+
+```ura
+// src/user.ura
+use "@/stdlib"
+
+fn env(key String) String:
+    value char[] = getenv(key.chars())
+    if value == null:
+        return ""
+    return String::create(value)
+
+fn user() String:
+    @if os == "windows":
+        return env("USERNAME")
+    @elif os == "linux":
+        return env("USER")
+    @elif os == "macos":
+        return env("USER")
+    @else:
+        return "unknown user"
+```
+
+Programs are written with `String` and `Array`. Raw C types (`char[]`, a `null` from C) stay inside small helpers like `env`, so the rest of the program never sees them.
 
 The compiler is being rewritten from scratch, one milestone at a time. This file is the list of everything it has to do. Each feature is tagged with the old compiler that had it: 001 (the biggest, 7467 lines), 002 (3690 lines), 003 (the latest, 3519 lines). The three are kept in src/old. A feature with no tag is new.
 

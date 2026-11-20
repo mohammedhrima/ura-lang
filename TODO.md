@@ -233,6 +233,25 @@ ura remove / list / <script>
 - after careful thinking: ura adds ura-core to ura.conf by itself
 - installing ura also installs ura-core (today: `ura init` doesn't add it, `ura install` clones it)
 
+### ura install: a global package cache, copied into each project
+```
+ura install
+   for each @dependency "ura-core" "0.1.0" "https://github.com/ura-computing/ura-core"
+   +-- ~/.ura/packages/ura-core@0.1.0 exists?
+   |       no  -> git clone --branch 0.1.0 <url> ~/.ura/packages/ura-core@0.1.0
+   +-- copy ~/.ura/packages/ura-core@0.1.0  ->  <project>/dependencies/ura-core@0.1.0
+```
+- global folder: `~/.ura/packages/` (Linux, macOS), `%USERPROFILE%\.ura\packages\` (Windows)
+- versions are numeric `a.b.c` only: `"latest"`, `"main"`, `"1.0"`, `"^1.2"` are errors
+- the repo has no tag for that version: use the biggest version already in `~/.ura/packages/`;
+  none there: clone the repo's biggest version tag
+- `./folder` dependencies are copied straight into `dependencies/`, never cached
+- already in `dependencies/`: skipped
+
+### ura init: a basic, simple, beautiful starter
+- today's spinning donut starter is overkill: replace it with a small clean program
+- the donut moves to its own repo (milestone 6)
+
 ### ura watch (rebuild and rerun on every save, like nodemon)
 ```
 ura watch
@@ -261,6 +280,9 @@ make ucg                      builds only ucg
 
 ### rewrite the raytracer with the new features (match, try, fmt, io)
 done so far: modern syntax, one folder per struct (like vec3), own repo github.com/ura-computing/ura-raytracer
+
+### ura-donut: the spinning donut demo in its own repo
+- github.com/ura-computing/ura-donut, the donut that `ura init` makes today
 
 ### rewrite ura-tcp-server in the new syntax
 
@@ -304,3 +326,13 @@ push the ura grammar to github.com/github-linguist/linguist, so GitHub colours .
 
 ### VS Code extension in the store
 publish _extension to the VS Code Marketplace (`vsce publish`), so anyone installs it from the Extensions view
+the vs cod extions keep showing th erro even though i installed the depedecies
+
++ 30 push dsrl
+
+## at the end: Makefile replaces config.sh, and Windows
+- remove src/config.sh, a Makefile does build / tests / record / ucg
+- the Makefile checks the build dependencies first and installs the missing ones (LLVM, clang, git, ctags, ...)
+- src/lib/header.h on Windows: `fork` / `waitpid` (run_command), `open_memstream` (format), `realpath`, `dirname` have no Windows path yet
+- `symlink2` already has the Windows path (`CreateSymbolicLinkA`), but it needs Developer Mode without admin rights:
+  fall back to a directory junction, which works without it
