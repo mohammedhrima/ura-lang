@@ -269,6 +269,8 @@ _ura_build() {
 # ============================================================================
 build() {
     _ura_build main.c ura "$@" || return 1
+    # `ura` from any folder: ~/.local/bin is on PATH
+    mkdir -p "$HOME/.local/bin" && ln -sf "$URA_BIN" "$HOME/.local/bin/ura"
     # one pinned library missing: install the repo's dependencies
     if printf '%s\n' "$URA_TEST_CONFIG" | sed 's/.*"\(.*\)"$/\1/' | while read -r dir; do [ -d "$dir" ] || echo missing; done | grep -q missing; then
         (cd "$URA_ROOT/.." && "$URA_BIN" install)

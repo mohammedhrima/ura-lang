@@ -228,7 +228,7 @@ fn main() i32:
 - Deleted tests keep the other numbers (no renumbering).
 - An entry with no recorded `llvm ir` section fails as soon as it compiles (the runner compares against empty IR).
 
-### Current results (711 passed, 75 failed)
+### Current results (712 passed, 75 failed)
 
 | suite | passed | failed | what the failures need |
 |---|---|---|---|
@@ -236,7 +236,7 @@ fn main() i32:
 | m2 | 111 | 19 | sized arrays `T[N]`, VLA, `.len` on raw arrays (Phase 2) |
 | m3 | 139 | 4 | `Room[N]`, `.len` (Phase 2) |
 | m4 | 16 | 0 | |
-| m5 | 16 | 0 | (mod, lexer, os) |
+| m5 | 17 | 0 | (mod, lexer, os) |
 | m6 | 15 | 12 | old errput colour tests, struct dump null/[Circular]/arrays, multi line string, input (Phase 3 fmt/io) |
 | m7 | 22 | 0 | |
 | m8 | 33 | 7 | sized arrays, globals test, errput of ref? (Phase 2/3) |
