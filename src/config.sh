@@ -61,7 +61,6 @@ URA_LLVM_FILE="$URA_ROOT/llvm-version.txt" # written by set-llvm, read by build
 # test compiles in its own temporary folder, next to a ura.conf that points
 # at these folders.
 URA_PROJECTS_DIR="$(cd "$URA_ROOT/.." && pwd)/projects"
-URA_DEPENDENCIES_DIR="$URA_TESTS_DIR/dependencies"
 URA_TEST_CONFIG="$(sed -n 's|^@dependency "\([^"]*\)" "\([^"]*\)" "[^"]*/\([^"/]*\)".*|@dependency "\1" "\2" "'"$URA_PROJECTS_DIR"'/\3"|p' "$URA_TESTS_DIR/ura.conf")"
 
 # each library in projects/ gets its own dependencies (like ura-posix's math)
@@ -413,13 +412,13 @@ _ura_test_files() {
     local target="$1" number="$2" found
 
     if [ -z "$target" ]; then
-        found=$(find "$URA_TESTS_DIR" -path "$URA_DEPENDENCIES_DIR" -prune -o -name '*.md' -print 2>/dev/null | sort)
+        found=$(find "$URA_TESTS_DIR" -name '*.md' 2>/dev/null | sort)
     elif [ -f "$URA_TESTS_DIR/$target.md" ]; then
         found="$URA_TESTS_DIR/$target.md"
     elif [ -d "$URA_TESTS_DIR/$target" ]; then
         found=$(find "$URA_TESTS_DIR/$target" -name '*.md' 2>/dev/null | sort)
     else
-        found=$(find "$URA_TESTS_DIR" -path "$URA_DEPENDENCIES_DIR" -prune -o -name "$target.md" -print 2>/dev/null | sort)
+        found=$(find "$URA_TESTS_DIR" -name "$target.md" 2>/dev/null | sort)
     fi
     if [ -n "$found" ] && [ -n "$number" ]; then
         found=$(printf '%s\n' "$found" | xargs grep -l "^## $(printf '%03d' "$((10#$number))") ")
