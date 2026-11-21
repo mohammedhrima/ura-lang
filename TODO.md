@@ -87,7 +87,7 @@ throw Error::create($"{ura::filename}:{ura::line} no file")
 ```
 - a hidden builtin "$" (FORMAT): snprintf twice into a String that owns its buffer, shares ucg_layout with output
 - a struct inside {} is an error until operator $ exists
-- later: {{ and }} for a literal brace
+- done: \{ and \} for a literal brace (also in plain strings)
 
 ### output / errput move to ura-core, the compiler loses WRITE
 ```ura
