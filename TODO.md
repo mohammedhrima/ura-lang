@@ -308,13 +308,11 @@ done so far: modern syntax, one folder per struct (like vec3), own repo github.c
 ### ura-donut: the spinning donut demo in its own repo
 - github.com/ura-computing/ura-donut, the donut that `ura init` makes today
 
-### rewrite ura-tcp-server in the new syntax
+### done: ura-tcp-server became ura-chatroom
+- rewritten in today's ura as a chat room (rooms, emojis, dice, 8-ball, rainbow, donut), README with a GIF; ura-libft rewritten from the subject
 
 ### rewrite tests/milestone13's projects on today's model (new<T>/free<T>, values own, refs borrow)
 025 calc, 026 libft, 027 net server, 028 net client, 032 dungeon boss, 033 calculator, 037 038 040 libft lists
-
-### fix the READMEs of ura-libft and ura-tcp-server (before graphics)
-they still say: clone ura-lib, download build/ura
 
 ### graphics
 ```
@@ -360,3 +358,4 @@ the vs cod extions keep showing th erro even though i installed the depedecies
 - src/lib/header.h on Windows: `fork` / `waitpid` (run_command), `open_memstream` (format), `realpath`, `dirname` have no Windows path yet
 - `symlink2` already has the Windows path (`CreateSymbolicLinkA`), but it needs Developer Mode without admin rights:
   fall back to a directory junction, which works without it
+- add sanitize, should also chekc memory leaks tests beforei mplem,ented arena allocator

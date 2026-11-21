@@ -264,7 +264,7 @@ fn main() i32:
 - **Phase 3** fmt and io: `fmt` param type, f-strings, `operator fmt`, colours (`io::red`), io in core replaces output/errput, alias + Stream, scan, organize the std repos in folders.
 - **Phase 4** memory and safety: bitmap arena allocator, C++-style assignment, -O flags, `@cache` / `@vector` / `@gpu` annotations, -san with file:line.
 - **Phase 5** tooling: ura.project YAML, `ura watch`, `-tree`, Makefile instead of config.sh, test with each LLVM, emit without the .ll file.
-- **Phase 6** projects: raytracer, ura-tcp-server, the m13 projects.
+- **Phase 6** projects: raytracer, ura-chatroom (done), ura-libft (done, bonus waits for function values), the m13 projects.
 - **Phase 7** release (only when the user says): merge refactor -> dev -> main, tag the std repos, rewrite git history.
 
 ---
@@ -349,7 +349,7 @@ Ideas still open from the review: dispatch by function-pointer tables was reject
 - Branch `refactor` (pushed at the end of this session). `main` and `dev` are behind and different.
 - No submodule any more: the libraries are the repos ura-core, ura-posix, ura-math, ura-graphics (dev tag 0.0.1 each), pinned in `ura.conf` and cloned by `ura install` (`build` runs it). ura-lib was deleted on 2026-11-20 after checking every file was in those repos.
 - `projects/` (gitignored) holds a git clone of every ura-computing repo except ura-lang and ura-vscode (added 2026-11-21). The test runner compiles against `projects/<lib>` (not `tests/dependencies`), and `build` clones a missing one. Every language change (syntax, removed builtins like `output`) must also be applied in these repos, each committed and pushed on its own `main`.
-- Repos: ura-lang, ura-core, ura-posix, ura-math, ura-graphics, ura-vscode-extension (its code now lives in ura-lang's `_extension/`), ura-libft, ura-tcp-server (GitHub organization ura-computing). Every repo except ura-lang is pushed straight to `main`. `gh` is at `/goinfre/mhrima/tools/gh/bin/gh`.
+- Repos: ura-lang, ura-core, ura-posix, ura-math, ura-graphics, ura-vscode-extension (its code now lives in ura-lang's `_extension/`), ura-libft, ura-chatroom (was ura-tcp-server), ura-raytracer, ura-donut, ura-js (GitHub organization ura-computing). Every repo except ura-lang is pushed straight to `main`. GitHub API work goes through node (`/goinfre/mhrima/tools/node/bin/node`, fetch with `GITHUB_TOKEN`); pushes over SSH.
 - Only when the user says the work is finished: merge `refactor` -> `dev` -> `main`, rewrite ura-lang's git history (it's heavy and holds removed files). Confirm in full sentences right before.
 
 ## 9. Where to start on the new machine
