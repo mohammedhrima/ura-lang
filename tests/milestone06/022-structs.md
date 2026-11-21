@@ -711,33 +711,25 @@ entry:
 define %String @"io::input"() {
 entry:
   %line = alloca %String, align 8
-  %c = alloca i8*, align 8
+  %c = alloca i8, align 1
   store %String zeroinitializer, %String* %line, align 8
-  %"call.new<i8>" = call i8* @"new<i8>"(i32 1)
-  store i8* %"call.new<i8>", i8** %c, align 8
+  store i8 0, i8* %c, align 1
   br label %while7
 
 while7:                                           ; preds = %while7.then, %entry
-  %"$c" = load i8*, i8** %c, align 8
-  %call.read = call i64 @read(i32 0, i8* %"$c", i64 1)
+  %call.read = call i64 @read(i32 0, i8* %c, i64 1)
   %EQ = icmp eq i64 %call.read, 1
-  %"$c1" = load i8*, i8** %c, align 8
-  %"c[]" = getelementptr inbounds i8, i8* %"$c1", i32 0
-  %"$c[]" = load i8, i8* %"c[]", align 1
-  %NQ = icmp ne i8 %"$c[]", 10
+  %"$c" = load i8, i8* %c, align 1
+  %NQ = icmp ne i8 %"$c", 10
   %AND = and i1 %EQ, %NQ
   br i1 %AND, label %while7.then, label %endloop
 
 while7.then:                                      ; preds = %while7
-  %"$c2" = load i8*, i8** %c, align 8
-  %"c[]3" = getelementptr inbounds i8, i8* %"$c2", i32 0
-  %"$c[]4" = load i8, i8* %"c[]3", align 1
-  call void @String.append(%String* %line, i8 %"$c[]4")
+  %"$c1" = load i8, i8* %c, align 1
+  call void @String.append(%String* %line, i8 %"$c1")
   br label %while7
 
 endloop:                                          ; preds = %while7
-  %"$c5" = load i8*, i8** %c, align 8
-  call void @"free<i8>"(i8* %"$c5")
   %"$line" = load %String, %String* %line, align 8
   ret %String %"$line"
 }
@@ -2531,33 +2523,25 @@ entry:
 define %String @"io::input"() {
 entry:
   %line = alloca %String, align 8
-  %c = alloca i8*, align 8
+  %c = alloca i8, align 1
   store %String zeroinitializer, %String* %line, align 8
-  %"call.new<i8>" = call i8* @"new<i8>"(i32 1)
-  store i8* %"call.new<i8>", i8** %c, align 8
+  store i8 0, i8* %c, align 1
   br label %while7
 
 while7:                                           ; preds = %while7.then, %entry
-  %"$c" = load i8*, i8** %c, align 8
-  %call.read = call i64 @read(i32 0, i8* %"$c", i64 1)
+  %call.read = call i64 @read(i32 0, i8* %c, i64 1)
   %EQ = icmp eq i64 %call.read, 1
-  %"$c1" = load i8*, i8** %c, align 8
-  %"c[]" = getelementptr inbounds i8, i8* %"$c1", i32 0
-  %"$c[]" = load i8, i8* %"c[]", align 1
-  %NQ = icmp ne i8 %"$c[]", 10
+  %"$c" = load i8, i8* %c, align 1
+  %NQ = icmp ne i8 %"$c", 10
   %AND = and i1 %EQ, %NQ
   br i1 %AND, label %while7.then, label %endloop
 
 while7.then:                                      ; preds = %while7
-  %"$c2" = load i8*, i8** %c, align 8
-  %"c[]3" = getelementptr inbounds i8, i8* %"$c2", i32 0
-  %"$c[]4" = load i8, i8* %"c[]3", align 1
-  call void @String.append(%String* %line, i8 %"$c[]4")
+  %"$c1" = load i8, i8* %c, align 1
+  call void @String.append(%String* %line, i8 %"$c1")
   br label %while7
 
 endloop:                                          ; preds = %while7
-  %"$c5" = load i8*, i8** %c, align 8
-  call void @"free<i8>"(i8* %"$c5")
   %"$line" = load %String, %String* %line, align 8
   ret %String %"$line"
 }
