@@ -19,7 +19,7 @@
 fn main() i32:
     s1 String = String::create("hello")
     if s1 != null:
-        output("never\n")
+        io::out("never\n")
     return 0
 ```
 
@@ -49,7 +49,7 @@ error: aborting due to 1 error
 fn main() i32:
     x char[] = null
     if x == null:
-        output("x is null\n")
+        io::out("x is null\n")
     n i32 = null
     return 0
 ```
@@ -83,7 +83,7 @@ fn main() i32:
     try:
         throw Error::create(String::create("boom"))
     catch e Error:
-        output("caught: ", e.message, "\n")
+        io::out($"caught: {e.message}\n")
     return 0
 ```
 
@@ -93,7 +93,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-unknown-linux-gnu"
+target triple = "x86_64-pc-linux-gnu"
 
 %String = type { i8*, i32, i32 }
 %Error = type { %String }
@@ -101,9 +101,8 @@ target triple = "x86_64-unknown-linux-gnu"
 @ucg.thrown = global i1 false
 @ucg.error = global [2 x i64] zeroinitializer
 @ucg.error_type = global i32 0
-@str = private unnamed_addr constant [3 x i8] c"%s\00", align 1
-@str.1 = private unnamed_addr constant [5 x i8] c"boom\00", align 1
-@str.2 = private unnamed_addr constant [12 x i8] c"caught: %s\0A\00", align 1
+@str = private unnamed_addr constant [5 x i8] c"boom\00", align 1
+@str.1 = private unnamed_addr constant [12 x i8] c"caught: %s\0A\00", align 1
 
 define i8* @"new<i8>"(i32 %0) {
 entry:
@@ -316,6 +315,16 @@ endif:                                            ; preds = %if5.then, %if5
   ret void
 }
 
+define i32 @String.len(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %"*self" = load %String*, %String** %self, align 8
+  %"*self.count" = getelementptr inbounds %String, %String* %"*self", i32 0, i32 1
+  %"$*self.count" = load i32, i32* %"*self.count", align 4
+  ret i32 %"$*self.count"
+}
+
 define void @"String.="(%String* %0, %String* %1) {
 entry:
   %self = alloca %String*, align 8
@@ -489,9 +498,35 @@ entry:
   store %Error* %0, %Error** %error, align 8
   %"*error" = load %Error*, %Error** %error, align 8
   %"*error.message" = getelementptr inbounds %Error, %Error* %"*error", i32 0, i32 0
-  %call.String.chars = call i8* @String.chars(%String* %"*error.message")
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i8* %call.String.chars)
+  %"$*error.message" = load %String, %String* %"*error.message", align 8
+  call void @"io::err"(%String %"$*error.message")
   ret i32 1
+}
+
+declare i64 @write(i32, i8*, i64)
+
+define void @"io::out"(%String %0) {
+entry:
+  %text = alloca %String, align 8
+  store %String %0, %String* %text, align 8
+  %call.String.chars = call i8* @String.chars(%String* %text)
+  %call.String.len = call i32 @String.len(%String* %text)
+  %AS = sext i32 %call.String.len to i64
+  %call.write = call i64 @write(i32 1, i8* %call.String.chars, i64 %AS)
+  call void @String.drop(%String* %text)
+  ret void
+}
+
+define void @"io::err"(%String %0) {
+entry:
+  %text = alloca %String, align 8
+  store %String %0, %String* %text, align 8
+  %call.String.chars = call i8* @String.chars(%String* %text)
+  %call.String.len = call i32 @String.len(%String* %text)
+  %AS = sext i32 %call.String.len to i64
+  %call.write = call i64 @write(i32 2, i8* %call.String.chars, i64 %AS)
+  call void @String.drop(%String* %text)
+  ret void
 }
 
 define i32 @main() {
@@ -499,7 +534,9 @@ entry:
   %error.at = alloca %Error*, align 8
   %e = alloca %Error, align 8
   %error.at3 = alloca %Error*, align 8
-  %error.at11 = alloca %Error*, align 8
+  %format.size = alloca i32, align 4
+  %format.text = alloca i8*, align 8
+  %error.at16 = alloca %Error*, align 8
   br label %try9
 
 try9:                                             ; preds = %entry
@@ -512,7 +549,7 @@ try10:                                            ; preds = %try9.then
   br i1 true, label %try10.then, label %endtry
 
 try10.then:                                       ; preds = %try10
-  %call.String.create = call %String @String.create(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.1, i32 0, i32 0))
+  %call.String.create = call %String @String.create(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str, i32 0, i32 0))
   %call.Error.create = call %Error @Error.create(%String %call.String.create)
   store %Error* bitcast ([2 x i64]* @ucg.error to %Error*), %Error** %error.at, align 8
   %"*error.at" = load %Error*, %Error** %error.at, align 8
@@ -540,17 +577,33 @@ catch11.then:                                     ; preds = %catch11
   store %Error %"$*error.at", %Error* %e, align 8
   %e.message = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
   %call.String.chars = call i8* @String.chars(%String* %e.message)
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.2, i32 0, i32 0), i8* %call.String.chars)
-  %e.message5 = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
-  call void @String.drop(%String* %e.message5)
+  %call.snprintf = call i32 (i8*, i64, i8*, ...) @snprintf(i8* null, i64 0, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.1, i32 0, i32 0), i8* %call.String.chars)
+  store i32 %call.snprintf, i32* %format.size, align 4
+  %"$format.size" = load i32, i32* %format.size, align 4
+  %ADD = add i32 %"$format.size", 1
+  %AS = sext i32 %ADD to i64
+  %call.calloc = call i8* @calloc(i64 %AS, i64 sext (i32 ptrtoint (i8* getelementptr (i8, i8* null, i32 1) to i32) to i64))
+  store i8* %call.calloc, i8** %format.text, align 8
+  %"$format.text" = load i8*, i8** %format.text, align 8
+  %call.snprintf5 = call i32 (i8*, i64, i8*, ...) @snprintf(i8* %"$format.text", i64 %AS, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.1, i32 0, i32 0), i8* %call.String.chars)
+  %"$format.size6" = load i32, i32* %format.size, align 4
+  %ADD7 = add i32 %"$format.size6", 1
+  %"$format.text8" = load i8*, i8** %format.text, align 8
+  %"$format.size9" = load i32, i32* %format.size, align 4
+  %0 = insertvalue %String zeroinitializer, i8* %"$format.text8", 0
+  %1 = insertvalue %String %0, i32 %"$format.size9", 1
+  %2 = insertvalue %String %1, i32 %ADD7, 2
+  call void @"io::out"(%String %2)
+  %e.message10 = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
+  call void @String.drop(%String* %e.message10)
   br label %endcatch
 
 endcatch:                                         ; preds = %catch11.then, %catch11
   br label %rethrow12
 
 rethrow12:                                        ; preds = %endcatch
-  %"$ucg.thrown6" = load i1, i1* @ucg.thrown, align 1
-  br i1 %"$ucg.thrown6", label %rethrow12.then, label %endrethrow
+  %"$ucg.thrown11" = load i1, i1* @ucg.thrown, align 1
+  br i1 %"$ucg.thrown11", label %rethrow12.then, label %endrethrow
 
 rethrow12.then:                                   ; preds = %rethrow12
   store i1 false, i1* @ucg.thrown, align 1
@@ -564,25 +617,25 @@ endtry1:                                          ; preds = %rethrow12.then, %tr
   br label %catch13
 
 catch13:                                          ; preds = %endtry1
-  %"$ucg.error_type7" = load i32, i32* @ucg.error_type, align 4
-  %EQ8 = icmp eq i32 %"$ucg.error_type7", 1
-  %"$ucg.thrown9" = load i1, i1* @ucg.thrown, align 1
-  %AND10 = and i1 %"$ucg.thrown9", %EQ8
-  br i1 %AND10, label %catch13.then, label %endcatch2
+  %"$ucg.error_type12" = load i32, i32* @ucg.error_type, align 4
+  %EQ13 = icmp eq i32 %"$ucg.error_type12", 1
+  %"$ucg.thrown14" = load i1, i1* @ucg.thrown, align 1
+  %AND15 = and i1 %"$ucg.thrown14", %EQ13
+  br i1 %AND15, label %catch13.then, label %endcatch2
 
 catch13.then:                                     ; preds = %catch13
   store i1 false, i1* @ucg.thrown, align 1
-  store %Error* bitcast ([2 x i64]* @ucg.error to %Error*), %Error** %error.at11, align 8
-  %"*error.at12" = load %Error*, %Error** %error.at11, align 8
-  %call.uncaught = call i32 @uncaught(%Error* %"*error.at12")
+  store %Error* bitcast ([2 x i64]* @ucg.error to %Error*), %Error** %error.at16, align 8
+  %"*error.at17" = load %Error*, %Error** %error.at16, align 8
+  %call.uncaught = call i32 @uncaught(%Error* %"*error.at17")
   ret i32 %call.uncaught
 
 endcatch2:                                        ; preds = %catch13
   br label %if14
 
 if14:                                             ; preds = %endcatch2
-  %"$ucg.thrown13" = load i1, i1* @ucg.thrown, align 1
-  br i1 %"$ucg.thrown13", label %if14.then, label %endif
+  %"$ucg.thrown18" = load i1, i1* @ucg.thrown, align 1
+  br i1 %"$ucg.thrown18", label %if14.then, label %endif
 
 if14.then:                                        ; preds = %if14
   ret i32 1
@@ -597,7 +650,7 @@ declare i8* @memcpy(i8*, i8*, i64)
 
 declare void @free(i8*)
 
-declare i32 @dprintf(i32, i8*, ...)
+declare i32 @snprintf(i8*, i64, i8*, ...)
 ```
 
 ---
@@ -619,8 +672,8 @@ fn main() i32:
     try:
         middle()
     catch e Error:
-        output("caught: ", e.message, "\n")
-    output("after\n")
+        io::out($"caught: {e.message}\n")
+    io::out("after\n")
     return 0
 ```
 
@@ -630,7 +683,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-unknown-linux-gnu"
+target triple = "x86_64-pc-linux-gnu"
 
 %String = type { i8*, i32, i32 }
 %Error = type { %String }
@@ -638,10 +691,9 @@ target triple = "x86_64-unknown-linux-gnu"
 @ucg.thrown = global i1 false
 @ucg.error = global [2 x i64] zeroinitializer
 @ucg.error_type = global i32 0
-@str = private unnamed_addr constant [3 x i8] c"%s\00", align 1
-@str.1 = private unnamed_addr constant [10 x i8] c"from deep\00", align 1
-@str.2 = private unnamed_addr constant [12 x i8] c"caught: %s\0A\00", align 1
-@str.3 = private unnamed_addr constant [7 x i8] c"after\0A\00", align 1
+@str = private unnamed_addr constant [10 x i8] c"from deep\00", align 1
+@str.1 = private unnamed_addr constant [12 x i8] c"caught: %s\0A\00", align 1
+@str.2 = private unnamed_addr constant [7 x i8] c"after\0A\00", align 1
 
 define i8* @"new<i8>"(i32 %0) {
 entry:
@@ -854,6 +906,16 @@ endif:                                            ; preds = %if5.then, %if5
   ret void
 }
 
+define i32 @String.len(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %"*self" = load %String*, %String** %self, align 8
+  %"*self.count" = getelementptr inbounds %String, %String* %"*self", i32 0, i32 1
+  %"$*self.count" = load i32, i32* %"*self.count", align 4
+  ret i32 %"$*self.count"
+}
+
 define void @"String.="(%String* %0, %String* %1) {
 entry:
   %self = alloca %String*, align 8
@@ -1027,15 +1089,41 @@ entry:
   store %Error* %0, %Error** %error, align 8
   %"*error" = load %Error*, %Error** %error, align 8
   %"*error.message" = getelementptr inbounds %Error, %Error* %"*error", i32 0, i32 0
-  %call.String.chars = call i8* @String.chars(%String* %"*error.message")
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i8* %call.String.chars)
+  %"$*error.message" = load %String, %String* %"*error.message", align 8
+  call void @"io::err"(%String %"$*error.message")
   ret i32 1
+}
+
+declare i64 @write(i32, i8*, i64)
+
+define void @"io::out"(%String %0) {
+entry:
+  %text = alloca %String, align 8
+  store %String %0, %String* %text, align 8
+  %call.String.chars = call i8* @String.chars(%String* %text)
+  %call.String.len = call i32 @String.len(%String* %text)
+  %AS = sext i32 %call.String.len to i64
+  %call.write = call i64 @write(i32 1, i8* %call.String.chars, i64 %AS)
+  call void @String.drop(%String* %text)
+  ret void
+}
+
+define void @"io::err"(%String %0) {
+entry:
+  %text = alloca %String, align 8
+  store %String %0, %String* %text, align 8
+  %call.String.chars = call i8* @String.chars(%String* %text)
+  %call.String.len = call i32 @String.len(%String* %text)
+  %AS = sext i32 %call.String.len to i64
+  %call.write = call i64 @write(i32 2, i8* %call.String.chars, i64 %AS)
+  call void @String.drop(%String* %text)
+  ret void
 }
 
 define void @deep() {
 entry:
   %error.at = alloca %Error*, align 8
-  %call.String.create = call %String @String.create(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.1, i32 0, i32 0))
+  %call.String.create = call %String @String.create(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str, i32 0, i32 0))
   %call.Error.create = call %Error @Error.create(%String %call.String.create)
   store %Error* bitcast ([2 x i64]* @ucg.error to %Error*), %Error** %error.at, align 8
   %"*error.at" = load %Error*, %Error** %error.at, align 8
@@ -1068,7 +1156,9 @@ define i32 @main() {
 entry:
   %e = alloca %Error, align 8
   %error.at = alloca %Error*, align 8
-  %error.at11 = alloca %Error*, align 8
+  %format.size = alloca i32, align 4
+  %format.text = alloca i8*, align 8
+  %error.at15 = alloca %Error*, align 8
   br label %try10
 
 try10:                                            ; preds = %entry
@@ -1114,17 +1204,33 @@ catch13.then:                                     ; preds = %catch13
   store %Error %"$*error.at", %Error* %e, align 8
   %e.message = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
   %call.String.chars = call i8* @String.chars(%String* %e.message)
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.2, i32 0, i32 0), i8* %call.String.chars)
-  %e.message4 = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
-  call void @String.drop(%String* %e.message4)
+  %call.snprintf = call i32 (i8*, i64, i8*, ...) @snprintf(i8* null, i64 0, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.1, i32 0, i32 0), i8* %call.String.chars)
+  store i32 %call.snprintf, i32* %format.size, align 4
+  %"$format.size" = load i32, i32* %format.size, align 4
+  %ADD = add i32 %"$format.size", 1
+  %AS = sext i32 %ADD to i64
+  %call.calloc = call i8* @calloc(i64 %AS, i64 sext (i32 ptrtoint (i8* getelementptr (i8, i8* null, i32 1) to i32) to i64))
+  store i8* %call.calloc, i8** %format.text, align 8
+  %"$format.text" = load i8*, i8** %format.text, align 8
+  %call.snprintf4 = call i32 (i8*, i64, i8*, ...) @snprintf(i8* %"$format.text", i64 %AS, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.1, i32 0, i32 0), i8* %call.String.chars)
+  %"$format.size5" = load i32, i32* %format.size, align 4
+  %ADD6 = add i32 %"$format.size5", 1
+  %"$format.text7" = load i8*, i8** %format.text, align 8
+  %"$format.size8" = load i32, i32* %format.size, align 4
+  %0 = insertvalue %String zeroinitializer, i8* %"$format.text7", 0
+  %1 = insertvalue %String %0, i32 %"$format.size8", 1
+  %2 = insertvalue %String %1, i32 %ADD6, 2
+  call void @"io::out"(%String %2)
+  %e.message9 = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
+  call void @String.drop(%String* %e.message9)
   br label %endcatch
 
 endcatch:                                         ; preds = %catch13.then, %catch13
   br label %rethrow14
 
 rethrow14:                                        ; preds = %endcatch
-  %"$ucg.thrown5" = load i1, i1* @ucg.thrown, align 1
-  br i1 %"$ucg.thrown5", label %rethrow14.then, label %endrethrow
+  %"$ucg.thrown10" = load i1, i1* @ucg.thrown, align 1
+  br i1 %"$ucg.thrown10", label %rethrow14.then, label %endrethrow
 
 rethrow14.then:                                   ; preds = %rethrow14
   store i1 false, i1* @ucg.thrown, align 1
@@ -1132,32 +1238,32 @@ rethrow14.then:                                   ; preds = %rethrow14
   br label %endtry1
 
 endrethrow:                                       ; preds = %rethrow14
-  %call.dprintf6 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.3, i32 0, i32 0))
+  call void @"io::out"(%String { i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.2, i32 0, i32 0), i32 6, i32 0 })
   ret i32 0
 
 endtry1:                                          ; preds = %rethrow14.then, %try10
   br label %catch15
 
 catch15:                                          ; preds = %endtry1
-  %"$ucg.error_type7" = load i32, i32* @ucg.error_type, align 4
-  %EQ8 = icmp eq i32 %"$ucg.error_type7", 1
-  %"$ucg.thrown9" = load i1, i1* @ucg.thrown, align 1
-  %AND10 = and i1 %"$ucg.thrown9", %EQ8
-  br i1 %AND10, label %catch15.then, label %endcatch2
+  %"$ucg.error_type11" = load i32, i32* @ucg.error_type, align 4
+  %EQ12 = icmp eq i32 %"$ucg.error_type11", 1
+  %"$ucg.thrown13" = load i1, i1* @ucg.thrown, align 1
+  %AND14 = and i1 %"$ucg.thrown13", %EQ12
+  br i1 %AND14, label %catch15.then, label %endcatch2
 
 catch15.then:                                     ; preds = %catch15
   store i1 false, i1* @ucg.thrown, align 1
-  store %Error* bitcast ([2 x i64]* @ucg.error to %Error*), %Error** %error.at11, align 8
-  %"*error.at12" = load %Error*, %Error** %error.at11, align 8
-  %call.uncaught = call i32 @uncaught(%Error* %"*error.at12")
+  store %Error* bitcast ([2 x i64]* @ucg.error to %Error*), %Error** %error.at15, align 8
+  %"*error.at16" = load %Error*, %Error** %error.at15, align 8
+  %call.uncaught = call i32 @uncaught(%Error* %"*error.at16")
   ret i32 %call.uncaught
 
 endcatch2:                                        ; preds = %catch15
   br label %if16
 
 if16:                                             ; preds = %endcatch2
-  %"$ucg.thrown13" = load i1, i1* @ucg.thrown, align 1
-  br i1 %"$ucg.thrown13", label %if16.then, label %endif
+  %"$ucg.thrown17" = load i1, i1* @ucg.thrown, align 1
+  br i1 %"$ucg.thrown17", label %if16.then, label %endif
 
 if16.then:                                        ; preds = %if16
   ret i32 1
@@ -1172,7 +1278,7 @@ declare i8* @memcpy(i8*, i8*, i64)
 
 declare void @free(i8*)
 
-declare i32 @dprintf(i32, i8*, ...)
+declare i32 @snprintf(i8*, i64, i8*, ...)
 ```
 
 ---
@@ -1188,14 +1294,14 @@ fn middle():
     try:
         throw Error::create(String::create("first"))
     catch e Error:
-        output("mid: ", e.message, "\n")
+        io::out($"mid: {e.message}\n")
         throw Error::create(String::create("second"))
 
 fn main() i32:
     try:
         middle()
     catch e Error:
-        output("main: ", e.message, "\n")
+        io::out($"main: {e.message}\n")
     return 0
 ```
 
@@ -1205,7 +1311,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-unknown-linux-gnu"
+target triple = "x86_64-pc-linux-gnu"
 
 %String = type { i8*, i32, i32 }
 %Error = type { %String }
@@ -1213,11 +1319,10 @@ target triple = "x86_64-unknown-linux-gnu"
 @ucg.thrown = global i1 false
 @ucg.error = global [2 x i64] zeroinitializer
 @ucg.error_type = global i32 0
-@str = private unnamed_addr constant [3 x i8] c"%s\00", align 1
-@str.1 = private unnamed_addr constant [6 x i8] c"first\00", align 1
-@str.2 = private unnamed_addr constant [9 x i8] c"mid: %s\0A\00", align 1
-@str.3 = private unnamed_addr constant [7 x i8] c"second\00", align 1
-@str.4 = private unnamed_addr constant [10 x i8] c"main: %s\0A\00", align 1
+@str = private unnamed_addr constant [6 x i8] c"first\00", align 1
+@str.1 = private unnamed_addr constant [9 x i8] c"mid: %s\0A\00", align 1
+@str.2 = private unnamed_addr constant [7 x i8] c"second\00", align 1
+@str.3 = private unnamed_addr constant [10 x i8] c"main: %s\0A\00", align 1
 
 define i8* @"new<i8>"(i32 %0) {
 entry:
@@ -1430,6 +1535,16 @@ endif:                                            ; preds = %if5.then, %if5
   ret void
 }
 
+define i32 @String.len(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %"*self" = load %String*, %String** %self, align 8
+  %"*self.count" = getelementptr inbounds %String, %String* %"*self", i32 0, i32 1
+  %"$*self.count" = load i32, i32* %"*self.count", align 4
+  ret i32 %"$*self.count"
+}
+
 define void @"String.="(%String* %0, %String* %1) {
 entry:
   %self = alloca %String*, align 8
@@ -1603,9 +1718,35 @@ entry:
   store %Error* %0, %Error** %error, align 8
   %"*error" = load %Error*, %Error** %error, align 8
   %"*error.message" = getelementptr inbounds %Error, %Error* %"*error", i32 0, i32 0
-  %call.String.chars = call i8* @String.chars(%String* %"*error.message")
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i8* %call.String.chars)
+  %"$*error.message" = load %String, %String* %"*error.message", align 8
+  call void @"io::err"(%String %"$*error.message")
   ret i32 1
+}
+
+declare i64 @write(i32, i8*, i64)
+
+define void @"io::out"(%String %0) {
+entry:
+  %text = alloca %String, align 8
+  store %String %0, %String* %text, align 8
+  %call.String.chars = call i8* @String.chars(%String* %text)
+  %call.String.len = call i32 @String.len(%String* %text)
+  %AS = sext i32 %call.String.len to i64
+  %call.write = call i64 @write(i32 1, i8* %call.String.chars, i64 %AS)
+  call void @String.drop(%String* %text)
+  ret void
+}
+
+define void @"io::err"(%String %0) {
+entry:
+  %text = alloca %String, align 8
+  store %String %0, %String* %text, align 8
+  %call.String.chars = call i8* @String.chars(%String* %text)
+  %call.String.len = call i32 @String.len(%String* %text)
+  %AS = sext i32 %call.String.len to i64
+  %call.write = call i64 @write(i32 2, i8* %call.String.chars, i64 %AS)
+  call void @String.drop(%String* %text)
+  ret void
 }
 
 define void @middle() {
@@ -1613,14 +1754,16 @@ entry:
   %error.at = alloca %Error*, align 8
   %e = alloca %Error, align 8
   %error.at1 = alloca %Error*, align 8
-  %error.at5 = alloca %Error*, align 8
+  %format.size = alloca i32, align 4
+  %format.text = alloca i8*, align 8
+  %error.at10 = alloca %Error*, align 8
   br label %try9
 
 try9:                                             ; preds = %entry
   br i1 true, label %try9.then, label %endtry
 
 try9.then:                                        ; preds = %try9
-  %call.String.create = call %String @String.create(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.1, i32 0, i32 0))
+  %call.String.create = call %String @String.create(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str, i32 0, i32 0))
   %call.Error.create = call %Error @Error.create(%String %call.String.create)
   store %Error* bitcast ([2 x i64]* @ucg.error to %Error*), %Error** %error.at, align 8
   %"*error.at" = load %Error*, %Error** %error.at, align 8
@@ -1648,16 +1791,32 @@ catch10.then:                                     ; preds = %catch10
   store %Error %"$*error.at", %Error* %e, align 8
   %e.message = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
   %call.String.chars = call i8* @String.chars(%String* %e.message)
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.2, i32 0, i32 0), i8* %call.String.chars)
-  %call.String.create3 = call %String @String.create(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.3, i32 0, i32 0))
-  %call.Error.create4 = call %Error @Error.create(%String %call.String.create3)
-  store %Error* bitcast ([2 x i64]* @ucg.error to %Error*), %Error** %error.at5, align 8
-  %"*error.at6" = load %Error*, %Error** %error.at5, align 8
-  store %Error %call.Error.create4, %Error* %"*error.at6", align 8
+  %call.snprintf = call i32 (i8*, i64, i8*, ...) @snprintf(i8* null, i64 0, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.1, i32 0, i32 0), i8* %call.String.chars)
+  store i32 %call.snprintf, i32* %format.size, align 4
+  %"$format.size" = load i32, i32* %format.size, align 4
+  %ADD = add i32 %"$format.size", 1
+  %AS = sext i32 %ADD to i64
+  %call.calloc = call i8* @calloc(i64 %AS, i64 sext (i32 ptrtoint (i8* getelementptr (i8, i8* null, i32 1) to i32) to i64))
+  store i8* %call.calloc, i8** %format.text, align 8
+  %"$format.text" = load i8*, i8** %format.text, align 8
+  %call.snprintf3 = call i32 (i8*, i64, i8*, ...) @snprintf(i8* %"$format.text", i64 %AS, i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.1, i32 0, i32 0), i8* %call.String.chars)
+  %"$format.size4" = load i32, i32* %format.size, align 4
+  %ADD5 = add i32 %"$format.size4", 1
+  %"$format.text6" = load i8*, i8** %format.text, align 8
+  %"$format.size7" = load i32, i32* %format.size, align 4
+  %0 = insertvalue %String zeroinitializer, i8* %"$format.text6", 0
+  %1 = insertvalue %String %0, i32 %"$format.size7", 1
+  %2 = insertvalue %String %1, i32 %ADD5, 2
+  call void @"io::out"(%String %2)
+  %call.String.create8 = call %String @String.create(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.2, i32 0, i32 0))
+  %call.Error.create9 = call %Error @Error.create(%String %call.String.create8)
+  store %Error* bitcast ([2 x i64]* @ucg.error to %Error*), %Error** %error.at10, align 8
+  %"*error.at11" = load %Error*, %Error** %error.at10, align 8
+  store %Error %call.Error.create9, %Error* %"*error.at11", align 8
   store i32 1, i32* @ucg.error_type, align 4
   store i1 false, i1* @ucg.thrown, align 1
-  %e.message7 = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
-  call void @String.drop(%String* %e.message7)
+  %e.message12 = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
+  call void @String.drop(%String* %e.message12)
   store i1 true, i1* @ucg.thrown, align 1
   ret void
 
@@ -1665,8 +1824,8 @@ endcatch:                                         ; preds = %catch10
   br label %rethrow11
 
 rethrow11:                                        ; preds = %endcatch
-  %"$ucg.thrown8" = load i1, i1* @ucg.thrown, align 1
-  br i1 %"$ucg.thrown8", label %rethrow11.then, label %endrethrow
+  %"$ucg.thrown13" = load i1, i1* @ucg.thrown, align 1
+  br i1 %"$ucg.thrown13", label %rethrow11.then, label %endrethrow
 
 rethrow11.then:                                   ; preds = %rethrow11
   store i1 false, i1* @ucg.thrown, align 1
@@ -1681,7 +1840,9 @@ define i32 @main() {
 entry:
   %e = alloca %Error, align 8
   %error.at = alloca %Error*, align 8
-  %error.at10 = alloca %Error*, align 8
+  %format.size = alloca i32, align 4
+  %format.text = alloca i8*, align 8
+  %error.at15 = alloca %Error*, align 8
   br label %try12
 
 try12:                                            ; preds = %entry
@@ -1727,17 +1888,33 @@ catch15.then:                                     ; preds = %catch15
   store %Error %"$*error.at", %Error* %e, align 8
   %e.message = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
   %call.String.chars = call i8* @String.chars(%String* %e.message)
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.4, i32 0, i32 0), i8* %call.String.chars)
-  %e.message4 = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
-  call void @String.drop(%String* %e.message4)
+  %call.snprintf = call i32 (i8*, i64, i8*, ...) @snprintf(i8* null, i64 0, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.3, i32 0, i32 0), i8* %call.String.chars)
+  store i32 %call.snprintf, i32* %format.size, align 4
+  %"$format.size" = load i32, i32* %format.size, align 4
+  %ADD = add i32 %"$format.size", 1
+  %AS = sext i32 %ADD to i64
+  %call.calloc = call i8* @calloc(i64 %AS, i64 sext (i32 ptrtoint (i8* getelementptr (i8, i8* null, i32 1) to i32) to i64))
+  store i8* %call.calloc, i8** %format.text, align 8
+  %"$format.text" = load i8*, i8** %format.text, align 8
+  %call.snprintf4 = call i32 (i8*, i64, i8*, ...) @snprintf(i8* %"$format.text", i64 %AS, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.3, i32 0, i32 0), i8* %call.String.chars)
+  %"$format.size5" = load i32, i32* %format.size, align 4
+  %ADD6 = add i32 %"$format.size5", 1
+  %"$format.text7" = load i8*, i8** %format.text, align 8
+  %"$format.size8" = load i32, i32* %format.size, align 4
+  %0 = insertvalue %String zeroinitializer, i8* %"$format.text7", 0
+  %1 = insertvalue %String %0, i32 %"$format.size8", 1
+  %2 = insertvalue %String %1, i32 %ADD6, 2
+  call void @"io::out"(%String %2)
+  %e.message9 = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
+  call void @String.drop(%String* %e.message9)
   br label %endcatch
 
 endcatch:                                         ; preds = %catch15.then, %catch15
   br label %rethrow16
 
 rethrow16:                                        ; preds = %endcatch
-  %"$ucg.thrown5" = load i1, i1* @ucg.thrown, align 1
-  br i1 %"$ucg.thrown5", label %rethrow16.then, label %endrethrow
+  %"$ucg.thrown10" = load i1, i1* @ucg.thrown, align 1
+  br i1 %"$ucg.thrown10", label %rethrow16.then, label %endrethrow
 
 rethrow16.then:                                   ; preds = %rethrow16
   store i1 false, i1* @ucg.thrown, align 1
@@ -1751,25 +1928,25 @@ endtry1:                                          ; preds = %rethrow16.then, %tr
   br label %catch17
 
 catch17:                                          ; preds = %endtry1
-  %"$ucg.error_type6" = load i32, i32* @ucg.error_type, align 4
-  %EQ7 = icmp eq i32 %"$ucg.error_type6", 1
-  %"$ucg.thrown8" = load i1, i1* @ucg.thrown, align 1
-  %AND9 = and i1 %"$ucg.thrown8", %EQ7
-  br i1 %AND9, label %catch17.then, label %endcatch2
+  %"$ucg.error_type11" = load i32, i32* @ucg.error_type, align 4
+  %EQ12 = icmp eq i32 %"$ucg.error_type11", 1
+  %"$ucg.thrown13" = load i1, i1* @ucg.thrown, align 1
+  %AND14 = and i1 %"$ucg.thrown13", %EQ12
+  br i1 %AND14, label %catch17.then, label %endcatch2
 
 catch17.then:                                     ; preds = %catch17
   store i1 false, i1* @ucg.thrown, align 1
-  store %Error* bitcast ([2 x i64]* @ucg.error to %Error*), %Error** %error.at10, align 8
-  %"*error.at11" = load %Error*, %Error** %error.at10, align 8
-  %call.uncaught = call i32 @uncaught(%Error* %"*error.at11")
+  store %Error* bitcast ([2 x i64]* @ucg.error to %Error*), %Error** %error.at15, align 8
+  %"*error.at16" = load %Error*, %Error** %error.at15, align 8
+  %call.uncaught = call i32 @uncaught(%Error* %"*error.at16")
   ret i32 %call.uncaught
 
 endcatch2:                                        ; preds = %catch17
   br label %if18
 
 if18:                                             ; preds = %endcatch2
-  %"$ucg.thrown12" = load i1, i1* @ucg.thrown, align 1
-  br i1 %"$ucg.thrown12", label %if18.then, label %endif
+  %"$ucg.thrown17" = load i1, i1* @ucg.thrown, align 1
+  br i1 %"$ucg.thrown17", label %if18.then, label %endif
 
 if18.then:                                        ; preds = %if18
   ret i32 1
@@ -1784,7 +1961,7 @@ declare i8* @memcpy(i8*, i8*, i64)
 
 declare void @free(i8*)
 
-declare i32 @dprintf(i32, i8*, ...)
+declare i32 @snprintf(i8*, i64, i8*, ...)
 ```
 
 ---
@@ -1800,9 +1977,9 @@ fn main() i32:
         try:
             throw Error::create(String::create("inner"))
         catch e Error:
-            output("inner: ", e.message, "\n")
+            io::out($"inner: {e.message}\n")
     catch e Error:
-        output("outer: ", e.message, "\n")
+        io::out($"outer: {e.message}\n")
     return 0
 ```
 
@@ -1812,7 +1989,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-unknown-linux-gnu"
+target triple = "x86_64-pc-linux-gnu"
 
 %String = type { i8*, i32, i32 }
 %Error = type { %String }
@@ -1820,10 +1997,9 @@ target triple = "x86_64-unknown-linux-gnu"
 @ucg.thrown = global i1 false
 @ucg.error = global [2 x i64] zeroinitializer
 @ucg.error_type = global i32 0
-@str = private unnamed_addr constant [3 x i8] c"%s\00", align 1
-@str.1 = private unnamed_addr constant [6 x i8] c"inner\00", align 1
-@str.2 = private unnamed_addr constant [11 x i8] c"inner: %s\0A\00", align 1
-@str.3 = private unnamed_addr constant [11 x i8] c"outer: %s\0A\00", align 1
+@str = private unnamed_addr constant [6 x i8] c"inner\00", align 1
+@str.1 = private unnamed_addr constant [11 x i8] c"inner: %s\0A\00", align 1
+@str.2 = private unnamed_addr constant [11 x i8] c"outer: %s\0A\00", align 1
 
 define i8* @"new<i8>"(i32 %0) {
 entry:
@@ -2036,6 +2212,16 @@ endif:                                            ; preds = %if5.then, %if5
   ret void
 }
 
+define i32 @String.len(%String* %0) {
+entry:
+  %self = alloca %String*, align 8
+  store %String* %0, %String** %self, align 8
+  %"*self" = load %String*, %String** %self, align 8
+  %"*self.count" = getelementptr inbounds %String, %String* %"*self", i32 0, i32 1
+  %"$*self.count" = load i32, i32* %"*self.count", align 4
+  ret i32 %"$*self.count"
+}
+
 define void @"String.="(%String* %0, %String* %1) {
 entry:
   %self = alloca %String*, align 8
@@ -2209,9 +2395,35 @@ entry:
   store %Error* %0, %Error** %error, align 8
   %"*error" = load %Error*, %Error** %error, align 8
   %"*error.message" = getelementptr inbounds %Error, %Error* %"*error", i32 0, i32 0
-  %call.String.chars = call i8* @String.chars(%String* %"*error.message")
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 2, i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0), i8* %call.String.chars)
+  %"$*error.message" = load %String, %String* %"*error.message", align 8
+  call void @"io::err"(%String %"$*error.message")
   ret i32 1
+}
+
+declare i64 @write(i32, i8*, i64)
+
+define void @"io::out"(%String %0) {
+entry:
+  %text = alloca %String, align 8
+  store %String %0, %String* %text, align 8
+  %call.String.chars = call i8* @String.chars(%String* %text)
+  %call.String.len = call i32 @String.len(%String* %text)
+  %AS = sext i32 %call.String.len to i64
+  %call.write = call i64 @write(i32 1, i8* %call.String.chars, i64 %AS)
+  call void @String.drop(%String* %text)
+  ret void
+}
+
+define void @"io::err"(%String %0) {
+entry:
+  %text = alloca %String, align 8
+  store %String %0, %String* %text, align 8
+  %call.String.chars = call i8* @String.chars(%String* %text)
+  %call.String.len = call i32 @String.len(%String* %text)
+  %AS = sext i32 %call.String.len to i64
+  %call.write = call i64 @write(i32 2, i8* %call.String.chars, i64 %AS)
+  call void @String.drop(%String* %text)
+  ret void
 }
 
 define i32 @main() {
@@ -2219,9 +2431,13 @@ entry:
   %error.at = alloca %Error*, align 8
   %e = alloca %Error, align 8
   %error.at6 = alloca %Error*, align 8
-  %e14 = alloca %Error, align 8
-  %error.at15 = alloca %Error*, align 8
-  %error.at27 = alloca %Error*, align 8
+  %format.size = alloca i32, align 4
+  %format.text = alloca i8*, align 8
+  %e19 = alloca %Error, align 8
+  %error.at20 = alloca %Error*, align 8
+  %format.size25 = alloca i32, align 4
+  %format.text30 = alloca i8*, align 8
+  %error.at44 = alloca %Error*, align 8
   br label %try9
 
 try9:                                             ; preds = %entry
@@ -2240,7 +2456,7 @@ try11:                                            ; preds = %try10.then
   br i1 true, label %try11.then, label %endtry
 
 try11.then:                                       ; preds = %try11
-  %call.String.create = call %String @String.create(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.1, i32 0, i32 0))
+  %call.String.create = call %String @String.create(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str, i32 0, i32 0))
   %call.Error.create = call %Error @Error.create(%String %call.String.create)
   store %Error* bitcast ([2 x i64]* @ucg.error to %Error*), %Error** %error.at, align 8
   %"*error.at" = load %Error*, %Error** %error.at, align 8
@@ -2268,17 +2484,33 @@ catch12.then:                                     ; preds = %catch12
   store %Error %"$*error.at", %Error* %e, align 8
   %e.message = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
   %call.String.chars = call i8* @String.chars(%String* %e.message)
-  %call.dprintf = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.2, i32 0, i32 0), i8* %call.String.chars)
-  %e.message8 = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
-  call void @String.drop(%String* %e.message8)
+  %call.snprintf = call i32 (i8*, i64, i8*, ...) @snprintf(i8* null, i64 0, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.1, i32 0, i32 0), i8* %call.String.chars)
+  store i32 %call.snprintf, i32* %format.size, align 4
+  %"$format.size" = load i32, i32* %format.size, align 4
+  %ADD = add i32 %"$format.size", 1
+  %AS = sext i32 %ADD to i64
+  %call.calloc = call i8* @calloc(i64 %AS, i64 sext (i32 ptrtoint (i8* getelementptr (i8, i8* null, i32 1) to i32) to i64))
+  store i8* %call.calloc, i8** %format.text, align 8
+  %"$format.text" = load i8*, i8** %format.text, align 8
+  %call.snprintf8 = call i32 (i8*, i64, i8*, ...) @snprintf(i8* %"$format.text", i64 %AS, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.1, i32 0, i32 0), i8* %call.String.chars)
+  %"$format.size9" = load i32, i32* %format.size, align 4
+  %ADD10 = add i32 %"$format.size9", 1
+  %"$format.text11" = load i8*, i8** %format.text, align 8
+  %"$format.size12" = load i32, i32* %format.size, align 4
+  %0 = insertvalue %String zeroinitializer, i8* %"$format.text11", 0
+  %1 = insertvalue %String %0, i32 %"$format.size12", 1
+  %2 = insertvalue %String %1, i32 %ADD10, 2
+  call void @"io::out"(%String %2)
+  %e.message13 = getelementptr inbounds %Error, %Error* %e, i32 0, i32 0
+  call void @String.drop(%String* %e.message13)
   br label %endcatch
 
 endcatch:                                         ; preds = %catch12.then, %catch12
   br label %rethrow13
 
 rethrow13:                                        ; preds = %endcatch
-  %"$ucg.thrown9" = load i1, i1* @ucg.thrown, align 1
-  br i1 %"$ucg.thrown9", label %rethrow13.then, label %endrethrow
+  %"$ucg.thrown14" = load i1, i1* @ucg.thrown, align 1
+  br i1 %"$ucg.thrown14", label %rethrow13.then, label %endrethrow
 
 rethrow13.then:                                   ; preds = %rethrow13
   store i1 false, i1* @ucg.thrown, align 1
@@ -2292,31 +2524,47 @@ endtry1:                                          ; preds = %endrethrow, %rethro
   br label %catch14
 
 catch14:                                          ; preds = %endtry1
-  %"$ucg.error_type10" = load i32, i32* @ucg.error_type, align 4
-  %EQ11 = icmp eq i32 %"$ucg.error_type10", 1
-  %"$ucg.thrown12" = load i1, i1* @ucg.thrown, align 1
-  %AND13 = and i1 %"$ucg.thrown12", %EQ11
-  br i1 %AND13, label %catch14.then, label %endcatch2
+  %"$ucg.error_type15" = load i32, i32* @ucg.error_type, align 4
+  %EQ16 = icmp eq i32 %"$ucg.error_type15", 1
+  %"$ucg.thrown17" = load i1, i1* @ucg.thrown, align 1
+  %AND18 = and i1 %"$ucg.thrown17", %EQ16
+  br i1 %AND18, label %catch14.then, label %endcatch2
 
 catch14.then:                                     ; preds = %catch14
   store i1 false, i1* @ucg.thrown, align 1
-  store %Error* bitcast ([2 x i64]* @ucg.error to %Error*), %Error** %error.at15, align 8
-  %"*error.at16" = load %Error*, %Error** %error.at15, align 8
-  %"$*error.at17" = load %Error, %Error* %"*error.at16", align 8
-  store %Error %"$*error.at17", %Error* %e14, align 8
-  %e.message18 = getelementptr inbounds %Error, %Error* %e14, i32 0, i32 0
-  %call.String.chars19 = call i8* @String.chars(%String* %e.message18)
-  %call.dprintf20 = call i32 (i32, i8*, ...) @dprintf(i32 1, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.3, i32 0, i32 0), i8* %call.String.chars19)
-  %e.message21 = getelementptr inbounds %Error, %Error* %e14, i32 0, i32 0
-  call void @String.drop(%String* %e.message21)
+  store %Error* bitcast ([2 x i64]* @ucg.error to %Error*), %Error** %error.at20, align 8
+  %"*error.at21" = load %Error*, %Error** %error.at20, align 8
+  %"$*error.at22" = load %Error, %Error* %"*error.at21", align 8
+  store %Error %"$*error.at22", %Error* %e19, align 8
+  %e.message23 = getelementptr inbounds %Error, %Error* %e19, i32 0, i32 0
+  %call.String.chars24 = call i8* @String.chars(%String* %e.message23)
+  %call.snprintf26 = call i32 (i8*, i64, i8*, ...) @snprintf(i8* null, i64 0, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.2, i32 0, i32 0), i8* %call.String.chars24)
+  store i32 %call.snprintf26, i32* %format.size25, align 4
+  %"$format.size27" = load i32, i32* %format.size25, align 4
+  %ADD28 = add i32 %"$format.size27", 1
+  %AS29 = sext i32 %ADD28 to i64
+  %call.calloc31 = call i8* @calloc(i64 %AS29, i64 sext (i32 ptrtoint (i8* getelementptr (i8, i8* null, i32 1) to i32) to i64))
+  store i8* %call.calloc31, i8** %format.text30, align 8
+  %"$format.text32" = load i8*, i8** %format.text30, align 8
+  %call.snprintf33 = call i32 (i8*, i64, i8*, ...) @snprintf(i8* %"$format.text32", i64 %AS29, i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str.2, i32 0, i32 0), i8* %call.String.chars24)
+  %"$format.size34" = load i32, i32* %format.size25, align 4
+  %ADD35 = add i32 %"$format.size34", 1
+  %"$format.text36" = load i8*, i8** %format.text30, align 8
+  %"$format.size37" = load i32, i32* %format.size25, align 4
+  %3 = insertvalue %String zeroinitializer, i8* %"$format.text36", 0
+  %4 = insertvalue %String %3, i32 %"$format.size37", 1
+  %5 = insertvalue %String %4, i32 %ADD35, 2
+  call void @"io::out"(%String %5)
+  %e.message38 = getelementptr inbounds %Error, %Error* %e19, i32 0, i32 0
+  call void @String.drop(%String* %e.message38)
   br label %endcatch2
 
 endcatch2:                                        ; preds = %catch14.then, %catch14
   br label %rethrow15
 
 rethrow15:                                        ; preds = %endcatch2
-  %"$ucg.thrown22" = load i1, i1* @ucg.thrown, align 1
-  br i1 %"$ucg.thrown22", label %rethrow15.then, label %endrethrow3
+  %"$ucg.thrown39" = load i1, i1* @ucg.thrown, align 1
+  br i1 %"$ucg.thrown39", label %rethrow15.then, label %endrethrow3
 
 rethrow15.then:                                   ; preds = %rethrow15
   store i1 false, i1* @ucg.thrown, align 1
@@ -2330,25 +2578,25 @@ endtry4:                                          ; preds = %rethrow15.then, %tr
   br label %catch16
 
 catch16:                                          ; preds = %endtry4
-  %"$ucg.error_type23" = load i32, i32* @ucg.error_type, align 4
-  %EQ24 = icmp eq i32 %"$ucg.error_type23", 1
-  %"$ucg.thrown25" = load i1, i1* @ucg.thrown, align 1
-  %AND26 = and i1 %"$ucg.thrown25", %EQ24
-  br i1 %AND26, label %catch16.then, label %endcatch5
+  %"$ucg.error_type40" = load i32, i32* @ucg.error_type, align 4
+  %EQ41 = icmp eq i32 %"$ucg.error_type40", 1
+  %"$ucg.thrown42" = load i1, i1* @ucg.thrown, align 1
+  %AND43 = and i1 %"$ucg.thrown42", %EQ41
+  br i1 %AND43, label %catch16.then, label %endcatch5
 
 catch16.then:                                     ; preds = %catch16
   store i1 false, i1* @ucg.thrown, align 1
-  store %Error* bitcast ([2 x i64]* @ucg.error to %Error*), %Error** %error.at27, align 8
-  %"*error.at28" = load %Error*, %Error** %error.at27, align 8
-  %call.uncaught = call i32 @uncaught(%Error* %"*error.at28")
+  store %Error* bitcast ([2 x i64]* @ucg.error to %Error*), %Error** %error.at44, align 8
+  %"*error.at45" = load %Error*, %Error** %error.at44, align 8
+  %call.uncaught = call i32 @uncaught(%Error* %"*error.at45")
   ret i32 %call.uncaught
 
 endcatch5:                                        ; preds = %catch16
   br label %if17
 
 if17:                                             ; preds = %endcatch5
-  %"$ucg.thrown29" = load i1, i1* @ucg.thrown, align 1
-  br i1 %"$ucg.thrown29", label %if17.then, label %endif
+  %"$ucg.thrown46" = load i1, i1* @ucg.thrown, align 1
+  br i1 %"$ucg.thrown46", label %if17.then, label %endif
 
 if17.then:                                        ; preds = %if17
   ret i32 1
@@ -2363,6 +2611,6 @@ declare i8* @memcpy(i8*, i8*, i64)
 
 declare void @free(i8*)
 
-declare i32 @dprintf(i32, i8*, ...)
+declare i32 @snprintf(i8*, i64, i8*, ...)
 ```
 
