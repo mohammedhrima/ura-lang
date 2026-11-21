@@ -2392,6 +2392,18 @@ void codegen_uncaught(Ucg *try_stmt) {
     ucg_end(uncaught);
 }
 
+Node *raw_type_of(Node *type) {
+    bool is_named = type && type->token->type == ID;
+    if (is_named && type->declared == NULL)
+        type->declared = find_struct(type->token->name);
+    if (!is_named || type->declared == NULL)
+        return NULL;
+    int index = 0;
+    Node *data = find_attr(type->declared, "data", &index);
+    bool is_raw = data && data->data_type->token->type == ARRAY;
+    return is_raw ? data->data_type : NULL;
+}
+
 void codegen_proto(Node *node, char *name) {
     Ucg *ret_type = NULL;
     if (node->ret_type) {
@@ -2411,8 +2423,12 @@ void codegen_proto(Node *node, char *name) {
                 args[i] = ucg_varg_type();
                 continue;
             }
-            codegen(param->data_type);
-            args[i] = ucg_param(param->token->name, param->data_type->token->ucg);
+            Node *type = param->data_type;
+            Node *raw = node->token->type == PROTO ? raw_type_of(type) : NULL;
+            if (raw)
+                type = raw;
+            codegen(type);
+            args[i] = ucg_param(param->token->name, type->token->ucg);
             param->token->ucg = args[i];
         }
     }
