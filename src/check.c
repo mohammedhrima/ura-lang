@@ -1662,14 +1662,22 @@ void check_builtin(Node *node) {
     for (int i = 0; i < node->children_count; i++) {
         Node *arg = node->children[i];
         analyze(arg);
-        if (token->type == WRITE && arg->token->type == CHARS)
+        bool is_text = includes(token->type, WRITE, FORMAT, 0);
+        if (is_text && arg->token->type == CHARS)
             check_type(arg, chars_type(), NULL);
-        if (token->type == WRITE && arg->token->type == LBRACK)
+        if (is_text && arg->token->type == LBRACK)
             add_error(
                 arg->token->s,
                 arg->token->e,
                 "output can't print an array literal yet",
                 "print its elements one by one"
+            );
+        if (token->type == FORMAT && is_struct_value(type_of(arg)))
+            add_error(
+                arg->token->s,
+                arg->token->e,
+                "a $\"...\" string can't format a struct yet",
+                "format its attributes one by one"
             );
     }
     bool has_one_arg = node->children_count == 1;

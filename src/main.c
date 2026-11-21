@@ -205,6 +205,7 @@ Keyword keywords[] = { // clang-format off
 Keyword builtins[] = {
     { "output",        { .type = WRITE, .num = { .value = 1 } } },
     { "errput",        { .type = WRITE, .num = { .value = 2 } } },
+    { "$",             { .type = FORMAT } },
     { "input",         { .type = READ } },
     { "sizeof",        { .type = SIZEOF } },
     { "typeof",        { .type = TYPEOF } },
@@ -322,6 +323,15 @@ Token *new_token(Type type, Token *from) {
         new->e = from->e;
     }
     append(ura.tokens, new);
+    return new;
+}
+
+Token *new_token_at(Type type, int s, int e, int space) {
+    Token *new = new_token(type, NULL);
+    new->line = ura.line;
+    new->s = s;
+    new->e = e;
+    new->space = space / TAB + ((space % TAB) != 0);
     return new;
 }
 
@@ -448,6 +458,50 @@ Token *parse_string(int s, int e, int space) {
     return new;
 }
 
+int closing_brace(int open) {
+    char *buff = ura.file->buff;
+    int depth = 0;
+    int i = open;
+    for (; buff[i] != '\0' && buff[i] != '\n'; i++) {
+        if (buff[i] == '{')
+            depth++;
+        if (buff[i] == '}')
+            depth--;
+        if (depth == 0)
+            break;
+    }
+    return i;
+}
+
+int parse_format_text(int s, int space) {
+    char *buff = ura.file->buff;
+    int e = s;
+    while (buff[e] != '\0' && !strchr2("\"\n{", buff[e]))
+        e += buff[e] == '\\' ? 2 : 1;
+    parse_string(s - 1, e + 1, space);
+    return e;
+}
+
+// $"hp: {hp}!" -> $("hp: ", hp, "!")
+int parse_format(int s, int space) {
+    char *buff = ura.file->buff;
+    new_token_at(ID, s, s + 1, space)->name = "$";
+    new_token_at(LPARENT, s, s + 1, space);
+    int e = parse_format_text(s + 2, space);
+    while (buff[e] == '{') {
+        int close = closing_brace(e);
+        new_token_at(COMA, e, e, space);
+        tokenize_range(e + 1, close, space);
+        new_token_at(COMA, close, close, space);
+        e = parse_format_text(close + 1, space);
+    }
+    new_token_at(RPARENT, e, e + 1, space);
+    if (buff[e] == '"')
+        e++;
+    check_lexeme(buff, s + 1, e);
+    return e;
+}
+
 Token *parse_char(int s, int e, int space) {
     Token *new = new_token(INT, NULL);
     new->shift = 8;
@@ -492,11 +546,19 @@ Token *parse_char(int s, int e, int space) {
 void tokenize(File *file) {
     ura.file = file;
     int first_token = ura.tokens_count;
-    int s = 0;
-    int e = 0;
-    int space = 0;
-    char *buff = file->buff;
-    while (buff[e] != '\0') {
+    tokenize_range(0, file->len, 0);
+    for (int i = first_token; i < ura.tokens_count; i++) {
+        ura.tokens[i]->s += file->start;
+        ura.tokens[i]->e += file->start;
+    }
+    expand_uses(first_token);
+}
+
+void tokenize_range(int start, int end, int space) {
+    int s = start;
+    int e = start;
+    char *buff = ura.file->buff;
+    while (e < end && buff[e] != '\0') {
         s = e;
         if (isspace(buff[e])) {
             while (buff[e] == '\n') {
@@ -535,6 +597,10 @@ void tokenize(File *file) {
             continue;
         }
 
+        if (strncmp2(buff + s, "$\"", 2)) {
+            e = parse_format(s, space);
+            continue;
+        }
         if (buff[s] != '\0' && strchr2("\"\'", buff[s])) {
             char c = buff[s];
             e++;
@@ -600,11 +666,6 @@ void tokenize(File *file) {
         check_lexeme(buff, s, s + 1);
         e++;
     }
-    for (int i = first_token; i < ura.tokens_count; i++) {
-        ura.tokens[i]->s += file->start;
-        ura.tokens[i]->e += file->start;
-    }
-    expand_uses(first_token);
 }
 
 void use_file(Token *use, Token *name) {
@@ -1951,6 +2012,7 @@ Node *type_of(Node *node) {
     case COPY:      return type_of(node->to_copy);
     case SIZEOF: case ARGC: return new_type(INT, 32, NULL);
     case TYPEOF: case READ: case ALLOC: return chars_type();
+    case FORMAT:    return string_type();
     case IS_ZERO: return bool_type();
     case ARGV: return new_type(ARRAY, 0, chars_type());
     case WRITE: case DROP: case MEMCPY: case FREE: return new_type(VOID, 0, NULL);
@@ -2018,8 +2080,8 @@ void analyze(Node *node) {
     case MACRO_IF: case MACRO_ERROR: case MODULE: { // clang-format on
         break;
     } // clang-format off
-    case WRITE: case READ: case SIZEOF: case TYPEOF: case DROP: case IS_ZERO:
-    case ALLOC: case MEMCPY: case FREE: case ARGC: case ARGV: { // clang-format on
+    case WRITE: case FORMAT: case READ: case SIZEOF: case TYPEOF: case DROP:
+    case IS_ZERO: case ALLOC: case MEMCPY: case FREE: case ARGC: case ARGV: { // clang-format on
         check_builtin(node);
         break;
     } // clang-format off
@@ -2446,6 +2508,34 @@ void codegen_builtin(Node *node) {
     node->token->ucg = ucg;
 }
 
+Ucg *codegen_text_part(Node *node) {
+    Node *type = type_of(node);
+    bool is_string = type && type->declared && same_type(type, string_type());
+    if (is_string) {
+        Node *chars = find_method_named(type->declared, "chars");
+        Ucg *self = ucg_ref(codegen_in_variable(node));
+        return ucg_call(chars->token->ucg, 1, self);
+    }
+    codegen(node);
+    return node->token->ucg;
+}
+
+void codegen_format(Node *node) {
+    Ucg **args = arena_alloc(node->children_count + 1, sizeof(Ucg *));
+    for (int i = 0; i < node->children_count; i++)
+        args[i] = codegen_text_part(node->children[i]);
+    Node *type = string_type();
+    codegen(type);
+    Ucg *size = ucg_var("format.size", ucg_i32_type());
+    Ucg *text = ucg_format(size, args, node->children_count);
+    Ucg *cap = ucg_op(ADD, size, ucg_i32_value(1));
+    node->token->ucg = ucg_struct_value(
+        type->token->ucg,
+        (Ucg *[]){ text, size, cap },
+        3
+    );
+}
+
 void codegen_write(Node *node) {
     Ucg *fd = ucg_i32_value(node->token->num.value);
     Ucg **args = arena_alloc(node->children_count + 1, sizeof(Ucg *));
@@ -2453,16 +2543,8 @@ void codegen_write(Node *node) {
     for (int i = 0; i < node->children_count; i++) {
         Node *child = node->children[i];
         Node *type = type_of(child);
-        bool is_string = type && type->declared && same_type(type, string_type());
-        if (is_string) {
-            Node *chars = find_method_named(type->declared, "chars");
-            Ucg *self = ucg_ref(codegen_in_variable(child));
-            args[count++] = ucg_call(chars->token->ucg, 1, self);
-            continue;
-        }
         if (!is_struct_value(type)) {
-            codegen(child);
-            args[count++] = child->token->ucg;
+            args[count++] = codegen_text_part(child);
             continue;
         }
         if (count)
@@ -2700,6 +2782,10 @@ void codegen(Node *node) {
     }
     case WRITE: {
         codegen_write(node);
+        break;
+    }
+    case FORMAT: {
+        codegen_format(node);
         break;
     } // clang-format off
     case READ: case SIZEOF: case TYPEOF: case DROP: case IS_ZERO:

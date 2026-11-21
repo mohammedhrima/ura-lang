@@ -80,31 +80,37 @@ fn show(x any): ...        // works like a template
 
 ## milestone 3: fmt and io
 
-### fmt as a parameter type
+### $ strings (in progress)
 ```ura
-fn out(text fmt) i32:
-    return write(1, text.data, text.count)
+s String = $"hp: {hp}, mp: {mp}\n"     // the tokenizer makes it $("hp: ", hp, ", mp: ", mp, "\n")
+throw Error::create($"{ura::filename}:{ura::line} no file")
+```
+- a hidden builtin "$" (FORMAT): snprintf twice into a String that owns its buffer, shares ucg_layout with output
+- a struct inside {} is an error until operator $ exists
+- later: {{ and }} for a literal brace
 
-io::out("x = ", x, "\n")   // arguments formatted at compile time
+### output / errput move to ura-core, the compiler loses WRITE
+```ura
+fn output(text String):
+    write(1, text.chars(), text.len())
+
+output($"x = {x}\n")
+```
+then delete WRITE, codegen_write, codegen_write_struct, ucg_write from the compiler
+
+### adjacent string literals join (like C)
+```ura
+text String = "abc"
+              "efg"
+              "xx"            // one literal: "abcefgxx", joined by the tokenizer
 ```
 
-### f strings, sugar over fmt
+### operator $ (a struct formats itself)
 ```ura
-io::out(f"hp: {hp}, mp: {mp}\n")      // same as io::out("hp: ", hp, ", mp: ", mp, "\n")
-```
-then change output calls like this one (the starter's src/shapes.ura, in template_files in src/project.c) to f strings:
-```ura
-output(
-    f" at ($(self.origin.x as i32) ",
-    f"$(self.origin.y as i32) area ",
-    f"area as i32\n"
-)
-```
+operator $() String:
+    return $"({self.x}, {self.y})"
 
-### operator fmt (a struct prints itself)
-```ura
-operator fmt() String:
-    return fmt("(", self.x, ", ", self.y, ")")
+output($"p = {p}\n")      // calls p.operator $()
 ```
 
 ### colours as globals in io

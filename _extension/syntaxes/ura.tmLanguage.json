@@ -5,6 +5,7 @@
   "comment": "Keep these word lists in sync with ura-lang's src/main.c (keywords[], builtins[], specials[]) and server/src/core/keywords.ts.",
   "patterns": [
     { "include": "#comments" },
+    { "include": "#format-strings" },
     { "include": "#strings" },
     { "include": "#characters" },
     { "include": "#directives" },
@@ -31,6 +32,28 @@
       "patterns": [
         { "name": "constant.character.escape.ura", "match": "\\\\[ntrbfva0?\\\\\"']" },
         { "name": "invalid.illegal.unknown-escape.ura", "match": "\\\\." }
+      ]
+    },
+    "format-strings": {
+      "name": "string.interpolated.ura",
+      "begin": "(\\$)(\")",
+      "end": "\"|$",
+      "beginCaptures": {
+        "1": { "name": "storage.type.format.ura" },
+        "2": { "name": "punctuation.definition.string.begin.ura" }
+      },
+      "endCaptures": { "0": { "name": "punctuation.definition.string.end.ura" } },
+      "patterns": [
+        { "include": "#escapes" },
+        {
+          "name": "meta.embedded.expression.ura",
+          "contentName": "source.ura",
+          "begin": "\\{",
+          "end": "\\}",
+          "beginCaptures": { "0": { "name": "punctuation.section.embedded.begin.ura" } },
+          "endCaptures": { "0": { "name": "punctuation.section.embedded.end.ura" } },
+          "patterns": [{ "include": "$self" }]
+        }
       ]
     },
     "strings": {

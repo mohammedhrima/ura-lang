@@ -107,7 +107,7 @@ enum Type {
     AND, OR, NOT, NEG, BNOT,
 
     PROTO, 
-    FN_DEC, ARGS, VARIADIC, FN_CALL, RETURN, WRITE, READ,
+    FN_DEC, ARGS, VARIADIC, FN_CALL, RETURN, WRITE, FORMAT, READ,
     LINK, USE, MACRO_IF, MACRO_ELIF, MACRO_ELSE, MACRO_ERROR,
     MACRO_NAME, MACRO_VERSION, MACRO_MAIN, MACRO_SCRIPT, MACRO_DEPENDENCY,
 	FN_ENTRY,
@@ -1488,12 +1488,8 @@ Ucg *ucg_value_type(Ucg *value) {
     }
 }
 
-Ucg *ucg_write(Ucg *fd, Ucg **values, int values_count) {
-    Ucg *i32 = ucg_i32_type();
-    Ucg *str = ucg_string_type();
-    Ucg *dprintf = ucg_extern("dprintf", i32, 3, i32, str, ucg_varg_type());
-    Ucg **args = arena_alloc(values_count + 3, sizeof(Ucg *));
-    int args_count = 2;
+int ucg_layout(Ucg **values, int values_count, Ucg **args, int at) {
+    int args_count = at;
     char *layout = "";
     for (int i = 0; i < values_count; i++) {
         Ucg *value = ucg_value(values[i]);
@@ -1537,9 +1533,40 @@ Ucg *ucg_write(Ucg *fd, Ucg **values, int values_count) {
         layout = format("%s%s", layout, spec);
         args[args_count++] = value;
     }
+    args[at - 1] = ucg_string_value(layout);
+    return args_count;
+}
+
+Ucg *ucg_write(Ucg *fd, Ucg **values, int values_count) {
+    Ucg *i32 = ucg_i32_type();
+    Ucg *str = ucg_string_type();
+    Ucg *dprintf = ucg_extern("dprintf", i32, 3, i32, str, ucg_varg_type());
+    Ucg **args = arena_alloc(values_count + 3, sizeof(Ucg *));
+    int args_count = ucg_layout(values, values_count, args, 2);
     args[0] = fd;
-    args[1] = ucg_string_value(layout);
     return ucg_fn_call(dprintf, args, args_count);
+}
+
+Ucg *ucg_format(Ucg *size, Ucg **values, int values_count) {
+    Ucg *i32 = ucg_i32_type();
+    Ucg *i64 = ucg_int_type(64);
+    Ucg *str = ucg_string_type();
+    Ucg *snprintf = ucg_extern("snprintf", i32, 4, str, i64, str, ucg_varg_type());
+    Ucg **args = arena_alloc(values_count + 4, sizeof(Ucg *));
+    int args_count = ucg_layout(values, values_count, args, 3);
+    args[0] = ucg_null(str);
+    args[1] = ucg_int_value(64, 0);
+    ucg_assign(size, ucg_fn_call(snprintf, args, args_count));
+
+    Ucg *cap = ucg_cast(ucg_op(ADD, size, ucg_i32_value(1)), i64);
+    Ucg *text = ucg_var("format.text", str);
+    ucg_assign(text, ucg_alloc(ucg_i8_type(), cap));
+    Ucg **fill = arena_alloc(args_count + 1, sizeof(Ucg *));
+    memcpy(fill, args, args_count * sizeof(Ucg *));
+    fill[0] = text;
+    fill[1] = cap;
+    ucg_fn_call(snprintf, fill, args_count);
+    return text;
 }
 
 Ucg *ucg_read_fn(void) {
@@ -2464,6 +2491,7 @@ const char *to_string(Type type) {
         NAME(PROTO),         NAME(FN_ENTRY),      NAME(FN_DEC),
         NAME(ARGS),          NAME(VARIADIC),      NAME(FN_CALL),
         NAME(RETURN),        NAME(WRITE),         NAME(READ),
+        NAME(FORMAT),
         NAME(LINK),          NAME(USE),
         NAME(MACRO_IF),      NAME(MACRO_ELIF),    NAME(MACRO_ELSE),
         NAME(MACRO_ERROR),   NAME(MACRO_NAME),    NAME(MACRO_VERSION),
